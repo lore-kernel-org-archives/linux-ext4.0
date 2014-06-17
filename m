@@ -1,88 +1,71 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: Add support for SFITRIM, an ioctl for secure
- FITRIM.
-Date: Tue, 17 Jun 2014 13:55:26 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1406171346570.2148@localhost.localdomain>
-References: <1402625647-31439-1-git-send-email-jpa@google.com> <539A63C1.8010809@redhat.com> <20140613031538.GR4453@dastard> <20140613033029.GS4453@dastard> <CAKP4w2QvVUNp18jnX69eP0hjA-T6zn2sT3TQ-P6zpu-EhXZPAQ@mail.gmail.com> <20140613050703.GT4453@dastard>
- <20140613142054.GA23180@thunk.org> <20140613143157.GB23180@thunk.org> <CAKP4w2S24_z1zK+Pn_Hd+Hoh8BfbpJcEw1Bk685ESWN9r6R8Dw@mail.gmail.com> <20140613234134.GC5036@thunk.org> <20140617024953.GG9508@dastard>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 78151] e2image -I does not work on ext4?
+Date: Tue, 17 Jun 2014 12:41:54 +0000
+Message-ID: <bug-78151-13602-0EENxft3BQ@https.bugzilla.kernel.org/>
+References: <bug-78151-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "Theodore Ts'o" <tytso@mit.edu>, JP Abgrall <jpa@google.com>,
-	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	Geremy Condra <gcondra@google.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37670 "EHLO mx1.redhat.com"
+Received: from mail.kernel.org ([198.145.19.201]:37159 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752049AbaFQLzj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Jun 2014 07:55:39 -0400
-In-Reply-To: <20140617024953.GG9508@dastard>
+	id S932325AbaFQMl4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Jun 2014 08:41:56 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id D831320306
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Jun 2014 12:41:55 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 683FB202D1
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Jun 2014 12:41:54 +0000 (UTC)
+In-Reply-To: <bug-78151-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 17 Jun 2014, Dave Chinner wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=78151
 
-> Date: Tue, 17 Jun 2014 12:49:53 +1000
-> From: Dave Chinner <david@fromorbit.com>
-> To: Theodore Ts'o <tytso@mit.edu>
-> Cc: JP Abgrall <jpa@google.com>, Eric Sandeen <sandeen@redhat.com>,
->     linux-ext4@vger.kernel.org, Geremy Condra <gcondra@google.com>,
->     "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-> Subject: Re: [PATCH] ext4: Add support for SFITRIM,
->     an ioctl for secure FITRIM.
-> 
-> On Fri, Jun 13, 2014 at 07:41:34PM -0400, Theodore Ts'o wrote:
-> > On Fri, Jun 13, 2014 at 12:44:34PM -0700, JP Abgrall wrote:
-> > > The per-file secure discard seems to be the way to go, as there are
-> > > only a few places in Android where this needs to be turned on.
-> > > The  current idletime-fstrim would  switch from FITRIM to SFITRIM to
-> > > reduce the leftovers.
-> > 
-> > OK, how about this?  The following patch is in the Google data center
-> > kernel, but I never got around to get it upstream (oops, was on my
-> > todo list, but it never happened).
-> > 
-> > If you want to adopt this for usptream, and add support for
-> > BLKSECDISCARD as well as BLKDISCARD, then you could for each file that
-> > you want to do the per-file secure discard, you would just have to
-> > open the file, call the BLKSECDISCARD ioctl, and then delete the file.
-> > 
-> > Cheers,
-> > 
-> > 					- Ted
-> > 
-> > commit 16ff6352b123aa134417793d636f05cd4e240eaa
-> > Author: Theodore Ts'o <tytso@google.com>
-> > Date:   Fri Dec 20 12:48:26 2013 -0500
-> > 
-> >     ext4: add support for the BLKDISCARD ioctl
-> >     
-> >     The blkdicard ioctl previously only worked on block devices.  Allow
-> >     this ioctl to work on ext4 files.
-> >     
-> >     This commit is intended to be sent upstream.
-> 
-> Not in that form - it's an ugly API hack.
-> 
-> This is really just an extension of hole punching (if the blocks in
-> the file are being removed) or zeroing (if the blocks are being
-> retained by the file). Either way, fallocate() is the interface
-> used for per-file block level manipulations, and either of these
-> operations could issue a discard (secure or not) during the
-> punch/zero operation....
+Theodore Tso <tytso@mit.edu> changed:
 
-I definitely agree with Dave here it is an ugly API hack. Fallocate
-seems much more suitable for this.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
 
-New flag FALLOC_FL_ISSUE_DISCARD which would work with
-FALLOC_FL_PUNCH_HOLE, FALLOC_FL_ZERO_RANGE and possibly
-FALLOC_FL_COLLAPSE_RANGE might actually be useful.
+--- Comment #1 from Theodore Tso <tytso@mit.edu> ---
+This isn't a kernel bug, but in any case, the original purpose of e2image was
+to save the static file system metadata.  I should update the man page to
+insert the word "static", but realistically, e2image -I was always a party
+trick.  The form of the part trick was:
 
--Lukas
+e2image /dev/hda1 /tmp/hda1.e2i
+mke2fs -t ext4 /dev/hda1
+e2image -I /dev/hda1.img /tmp/hda1.e2i
+e2fsck -f /dev/hda1.img
 
-> 
-> Cheers,
-> 
-> Dave.
-> 
+The root directory will have been toasted, so all of the top-level directories
+will be in lost+found, but it will allow you to recover all of the files and
+most of the directory hierarchy with a minimum of effort.
+
+The e2image -r command will save the directory inodes as well, but we never
+implemented an e2image -I that would work with the raw e2image.  The main
+utility of e2image -r is to extract enough file system metadata that you can
+run e2image on the image, for the purposes of debugging e2fsck problems (see
+the e2image man page for more details).
+
+What is it that you are trying to *do*?   In general, the directory metadata
+tends to be fairly unstable, so the utility of backing up the directory inodes
+is relatively small.   If you are trying to recover after an accidental rm -rf,
+unless the fs metadata snapshot was taken *right* before the rm -rf (which is
+highly unlikely if the rm -rf was accidental), it's not really going to work.   
+
+If you are trying to protect against sysadmin mistakes, the best thing to do is
+traditional backups.   The e2image file could potentially save you against a
+trashed inode table block, and so one of the things I've thought about doing is
+making e2fsck use a backup metadata block from an e2i file if the metadata
+checksum was incorrect.  Again, unless the e2image file was very recent, it
+might not be that helpful, but it's better than nothing.  But a selective use
+of a single trashed metadata block is much more likely to be useful than a
+wholesale use of all of the static metadata blocks via e2image -I.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
