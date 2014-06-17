@@ -1,36 +1,62 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 78151] e2image -I does not work on ext4?
-Date: Tue, 17 Jun 2014 10:17:30 +0000
-Message-ID: <bug-78151-13602-GmlX0xXTYb@https.bugzilla.kernel.org/>
-References: <bug-78151-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Add support for SFITRIM, an ioctl for secure
+ FITRIM.
+Date: Tue, 17 Jun 2014 07:27:35 -0400
+Message-ID: <20140617112735.GA6537@thunk.org>
+References: <539A63C1.8010809@redhat.com>
+ <20140613031538.GR4453@dastard>
+ <20140613033029.GS4453@dastard>
+ <CAKP4w2QvVUNp18jnX69eP0hjA-T6zn2sT3TQ-P6zpu-EhXZPAQ@mail.gmail.com>
+ <20140613050703.GT4453@dastard>
+ <20140613142054.GA23180@thunk.org>
+ <20140613143157.GB23180@thunk.org>
+ <CAKP4w2S24_z1zK+Pn_Hd+Hoh8BfbpJcEw1Bk685ESWN9r6R8Dw@mail.gmail.com>
+ <20140613234134.GC5036@thunk.org>
+ <20140617024953.GG9508@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:59117 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752465AbaFQKRc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Jun 2014 06:17:32 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 2A3D8202B4
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Jun 2014 10:17:31 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 7D98220200
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Jun 2014 10:17:30 +0000 (UTC)
-In-Reply-To: <bug-78151-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: JP Abgrall <jpa@google.com>, Eric Sandeen <sandeen@redhat.com>,
+	linux-ext4@vger.kernel.org, Geremy Condra <gcondra@google.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20140617024953.GG9508@dastard>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=78151
+On Tue, Jun 17, 2014 at 12:49:53PM +1000, Dave Chinner wrote:
+> >     The blkdicard ioctl previously only worked on block devices.  Allow
+> >     this ioctl to work on ext4 files.
+> >     
+> >     This commit is intended to be sent upstream.
+> 
+> Not in that form - it's an ugly API hack.
 
-J. B. <barth@ub.uni-heidelberg.de> changed:
+The whole *point* was that it's an API hack.  We had a userspace
+program that wanted to use the same code regardless of whether it was
+accessing a block device or a file, and we didn't want to spin up a
+KVM just to simulate a block device (think the whole countainers
+vs. virtualization argument).
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-            Summary|e2image -I does not work(?) |e2image -I does not work on
-                   |                            |ext4?
+> This is really just an extension of hole punching (if the blocks in
+> the file are being removed) or zeroing (if the blocks are being
+> retained by the file). Either way, fallocate() is the interface
+> used for per-file block level manipulations, and either of these
+> operations could issue a discard (secure or not) during the
+> punch/zero operation....
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Except that discard is not an exact equivalent of zeroing, since even
+in the case of discard zeros data, the flash device is free to
+disregard the discard request if it feels like it.  But if you have a
+userspace application which is trying to manage the flash to optimize
+write endurance, that's different from either hole punching or
+zeroing.
+
+Secure discard maps a bit more like a zero'ing or hole punching, since
+hopefully the standard for secure discard was as incompetently
+authored as the discard/trim specification.  So that might be a
+different approach if this is an approach that we want to get adoption
+across multiple file systems.
+
+						- Ted
