@@ -1,71 +1,61 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 78151] e2image -I does not work on ext4?
-Date: Tue, 17 Jun 2014 12:41:54 +0000
-Message-ID: <bug-78151-13602-0EENxft3BQ@https.bugzilla.kernel.org/>
-References: <bug-78151-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Add support for SFITRIM, an ioctl for secure
+ FITRIM.
+Date: Tue, 17 Jun 2014 08:46:29 -0400
+Message-ID: <20140617124629.GA13868@thunk.org>
+References: <20140613031538.GR4453@dastard>
+ <20140613033029.GS4453@dastard>
+ <CAKP4w2QvVUNp18jnX69eP0hjA-T6zn2sT3TQ-P6zpu-EhXZPAQ@mail.gmail.com>
+ <20140613050703.GT4453@dastard>
+ <20140613142054.GA23180@thunk.org>
+ <20140613143157.GB23180@thunk.org>
+ <CAKP4w2S24_z1zK+Pn_Hd+Hoh8BfbpJcEw1Bk685ESWN9r6R8Dw@mail.gmail.com>
+ <20140613234134.GC5036@thunk.org>
+ <20140617024953.GG9508@dastard>
+ <alpine.LFD.2.00.1406171346570.2148@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Dave Chinner <david@fromorbit.com>, JP Abgrall <jpa@google.com>,
+	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	Geremy Condra <gcondra@google.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:37159 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:42815 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932325AbaFQMl4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Jun 2014 08:41:56 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id D831320306
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Jun 2014 12:41:55 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 683FB202D1
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Jun 2014 12:41:54 +0000 (UTC)
-In-Reply-To: <bug-78151-13602@https.bugzilla.kernel.org/>
+	id S1752751AbaFQMqg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Jun 2014 08:46:36 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1406171346570.2148@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=78151
+On Tue, Jun 17, 2014 at 01:55:26PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+>=20
+> I definitely agree with Dave here it is an ugly API hack. Fallocate
+> seems much more suitable for this.
+>=20
+> New flag FALLOC_FL_ISSUE_DISCARD which would work with
+> FALLOC_FL_PUNCH_HOLE, FALLOC_FL_ZERO_RANGE and possibly
+> FALLOC_FL_COLLAPSE_RANGE might actually be useful.
 
-Theodore Tso <tytso@mit.edu> changed:
+I agree it would be useful to have an FL_ISSUE_DISCARD (and while
+we're at it, FL_ISSUE_SECDISCARD) as an fallocate flag.  That doesn't
+obviate the usefulness of a BLKDISCARD ioctl for ext4 files, though.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+Something else that might be useful, and perhaps more appropriate for
+the Android use case, is to add a SECDISCARD flag to the unlinkat(2)
+system call.  That way, people who want to do a "discard and then
+unlink" don't have to be forced to do an open(2), fallocate(2),
+close(2), and only *then* the unlink(2) system call.
 
---- Comment #1 from Theodore Tso <tytso@mit.edu> ---
-This isn't a kernel bug, but in any case, the original purpose of e2image was
-to save the static file system metadata.  I should update the man page to
-insert the word "static", but realistically, e2image -I was always a party
-trick.  The form of the part trick was:
+Cheers,
 
-e2image /dev/hda1 /tmp/hda1.e2i
-mke2fs -t ext4 /dev/hda1
-e2image -I /dev/hda1.img /tmp/hda1.e2i
-e2fsck -f /dev/hda1.img
-
-The root directory will have been toasted, so all of the top-level directories
-will be in lost+found, but it will allow you to recover all of the files and
-most of the directory hierarchy with a minimum of effort.
-
-The e2image -r command will save the directory inodes as well, but we never
-implemented an e2image -I that would work with the raw e2image.  The main
-utility of e2image -r is to extract enough file system metadata that you can
-run e2image on the image, for the purposes of debugging e2fsck problems (see
-the e2image man page for more details).
-
-What is it that you are trying to *do*?   In general, the directory metadata
-tends to be fairly unstable, so the utility of backing up the directory inodes
-is relatively small.   If you are trying to recover after an accidental rm -rf,
-unless the fs metadata snapshot was taken *right* before the rm -rf (which is
-highly unlikely if the rm -rf was accidental), it's not really going to work.   
-
-If you are trying to protect against sysadmin mistakes, the best thing to do is
-traditional backups.   The e2image file could potentially save you against a
-trashed inode table block, and so one of the things I've thought about doing is
-making e2fsck use a backup metadata block from an e2i file if the metadata
-checksum was incorrect.  Again, unless the e2image file was very recent, it
-might not be that helpful, but it's better than nothing.  But a selective use
-of a single trashed metadata block is much more likely to be useful than a
-wholesale use of all of the static metadata blocks via e2image -I.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
