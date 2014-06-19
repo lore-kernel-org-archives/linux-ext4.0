@@ -1,24 +1,26 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 1/2] e2fsprogs: reorder flags in chattr(1)
-Date: Thu, 19 Jun 2014 18:15:26 -0500
-Message-ID: <53A36F0E.6090105@redhat.com>
+Subject: [PATCH 1/2 V2] e2fsprogs: reorder flags in chattr(1)
+Date: Thu, 19 Jun 2014 18:17:49 -0500
+Message-ID: <53A36F9D.3010803@redhat.com>
+References: <53A36F0E.6090105@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59195 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:22092 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965467AbaFSXP1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Jun 2014 19:15:27 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s5JNFRW1015542
+	id S965467AbaFSXRu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Jun 2014 19:17:50 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s5JNHo3v025894
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Jun 2014 19:15:27 -0400
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Jun 2014 19:17:50 -0400
 Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s5JNFQfB004444
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s5JNHniG015037
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Jun 2014 19:15:27 -0400
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Jun 2014 19:17:50 -0400
+In-Reply-To: <53A36F0E.6090105@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -35,6 +37,9 @@ for consistency.
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
+
+V2: remove duplicate line in usage()!
+(why do I only spot these things immediately after I hit send?)
 
 diff --git a/misc/chattr.1.in b/misc/chattr.1.in
 index 2a3640c..ce426e8 100644
@@ -181,15 +186,15 @@ index 2a3640c..ce426e8 100644
  When a file with the `u' attribute set is deleted, its contents are
  saved.  This allows the user to ask for its undeletion.  Note: please
  make sure to read the bugs and limitations section at the end of this
-
 diff --git a/misc/chattr.c b/misc/chattr.c
-index 39a6016..d2ae10f 100644
+index 39a6016..d5a6a61 100644
 --- a/misc/chattr.c
 +++ b/misc/chattr.c
-@@ -84,6 +84,7 @@ static void usage(void)
+@@ -83,7 +83,7 @@ static unsigned long sf;
+ static void usage(void)
  {
  	fprintf(stderr,
- 		_("Usage: %s [-RVf] [-+=AaCcDdeijsSu] [-v version] files...\n"),
+-		_("Usage: %s [-RVf] [-+=AaCcDdeijsSu] [-v version] files...\n"),
 +		_("Usage: %s [-RVf] [-+=aAcCdDeijsSu] [-v version] files...\n"),
  		program_name);
  	exit(1);
