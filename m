@@ -1,66 +1,59 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: [PATCH] ext4: fix COLLAPSE RANGE test failure when bigalloc is
- enable
-Date: Thu, 19 Jun 2014 13:51:58 +0900
-Message-ID: <003a01cf8b7a$33bd03d0$9b370b70$@samsung.com>
-References: <001001cf7fcc$34f3c2c0$9edb4840$@samsung.com>
- <20140617220900.GJ24890@thunk.org>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: Add support for SFITRIM, an ioctl for secure
+ FITRIM.
+Date: Thu, 19 Jun 2014 10:10:56 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1406191010020.2182@localhost.localdomain>
+References: <CAKP4w2QvVUNp18jnX69eP0hjA-T6zn2sT3TQ-P6zpu-EhXZPAQ@mail.gmail.com> <20140613050703.GT4453@dastard> <20140613142054.GA23180@thunk.org> <20140613143157.GB23180@thunk.org> <CAKP4w2S24_z1zK+Pn_Hd+Hoh8BfbpJcEw1Bk685ESWN9r6R8Dw@mail.gmail.com>
+ <20140613234134.GC5036@thunk.org> <20140617024953.GG9508@dastard> <alpine.LFD.2.00.1406171346570.2148@localhost.localdomain> <20140617124629.GA13868@thunk.org> <alpine.LFD.2.00.1406171449000.2148@localhost.localdomain> <20140617135405.GA5054@thunk.org>
+ <CAKP4w2QSUYYFVeM2_a7iMybnad_A27WEx3K=qiMf-_namjvS-A@mail.gmail.com> <alpine.LFD.2.00.1406181125440.3406@localhost.localdomain> <CAKP4w2RoHxhTRmSbSYH8FAgvEMXifZBcOR87Pww9skTRAo8fmw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: 'linux-ext4' <linux-ext4@vger.kernel.org>,
-	'Ashish Sangwan' <a.sangwan@samsung.com>
-To: 'Theodore Ts'o' <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout2.samsung.com ([203.254.224.25]:34363 "EHLO
-	mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750983AbaFSEwE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jun 2014 00:52:04 -0400
-Received: from epcpsbgr5.samsung.com
- (u145.gpu120.samsung.co.kr [203.254.230.145])
- by mailout2.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N7E000S1G6OXX10@mailout2.samsung.com> for
- linux-ext4@vger.kernel.org; Thu, 19 Jun 2014 13:52:00 +0900 (KST)
-In-reply-to: <20140617220900.GJ24890@thunk.org>
-Content-language: ko
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1424403955-1403165460=:2182"
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Dave Chinner <david@fromorbit.com>,
+	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	Geremy Condra <gcondra@google.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: JP Abgrall <jpa@google.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <CAKP4w2RoHxhTRmSbSYH8FAgvEMXifZBcOR87Pww9skTRAo8fmw@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
- On Wed, Jun 04, 2014 at 05:08:45PM +0900, Namjae Jeon wrote:
-> > Blocks in collapse range should be collapsed per cluster unit when bigalloc
-> > is enable. If bigalloc is not enable, EXT4_CLUSTER_SIZE will be same with
-> > EXT4_BLOCK_SIZE.
-> >
-> > Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> > Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+
+--8323328-1424403955-1403165460=:2182
+Content-Type: TEXT/PLAIN; charset=UTF-8
+Content-Transfer-Encoding: 8BIT
+
+On Wed, 18 Jun 2014, JP Abgrall wrote:
+
+> Date: Wed, 18 Jun 2014 14:51:42 -0700
+> From: JP Abgrall <jpa@google.com>
+> To: Lukáš Czerner <lczerner@redhat.com>
+> Cc: Theodore Ts'o <tytso@mit.edu>, Dave Chinner <david@fromorbit.com>,
+>     Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+>     Geremy Condra <gcondra@google.com>,
+>     "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+> Subject: Re: [PATCH] ext4: Add support for SFITRIM,
+>     an ioctl for secure FITRIM.
 > 
-> Correct me if I'm wrong, but this patch enables COLLAPSE_RANGE when
-> bigalloc is enabled.  The commit description (and the one-line
-> summary) should emphasize this.
-Yes, You're right. I will update description.
+> On Wed, Jun 18, 2014 at 2:33 AM, Lukáš Czerner <lczerner@redhat.com> wrote:
+> > Except when it does not. Looking at the mmc driver I can see that we
+> > have already some devices where secure trim is broken.
 > 
-> And I assume you've run a full xfstests auto run with bigalloc and
-> everything passed?
-Yes, kvm-test is passed with no issues.(kvm-xfstests -c bigalloc -g auto,
-kvm-xfstests -c bigalloc_1k -g auto)
-In order to run collapse range xfstests with bigalloc, I had to make some changes.
-1) In case of collapse, fsx and fsstress use block aligned paramteres, but for
-bigalloc it has to be cluster size aligned. I am not aware of any method by which
-ext4 can tell cluster size to user space so I changed fsx and fsstress code to use
-hard coded 64KB cluster size alignment.
+> And that is why we don't just blindly use random eMMC devices.
 
-2) xfstests which tests corner cases for collapse could not be executed with
-bigalloc as they are written keeping in mind that blocksize >= 4096.
-So, for testing purpose. I changed the multiple factor in function
-_test_generic_punch to 64 from 4. Also, the corresponding .out files has to
-be changed.
+'we' as in ... ? Remember, you're not the only one using this code.
 
-I am looking for a proper way to integrate these changes in xfstests.
-
-Thanks!
 > 
-> Thanks,
+> > Let's call is deep discard, or whatever but avoid the security word
+> > at least when file system comes into play.
 > 
-> 						- Ted
-
+> Best effort discard :)
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+--8323328-1424403955-1403165460=:2182--
