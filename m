@@ -1,214 +1,418 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 2/2] e2fsprogs: revise and extend chattr(1) and chattr usage()
-Date: Thu, 19 Jun 2014 23:27:02 -0600
-Message-ID: <5C296395-2A5C-4F90-96ED-5B4FD7EF6E0B@dilger.ca>
-References: <53A36F0E.6090105@redhat.com> <53A37129.2040409@redhat.com>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: Fix punch hole on files with indirect mapping
+Date: Fri, 20 Jun 2014 13:28:09 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1406201222310.7385@localhost.localdomain>
+References: <1403192228-25771-1-git-send-email-lczerner@redhat.com> <20140619174541.GB20194@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f178.google.com ([209.85.192.178]:47476 "EHLO
-	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934263AbaFTF1G convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Jun 2014 01:27:06 -0400
-Received: by mail-pd0-f178.google.com with SMTP id r10so2571851pdi.23
-        for <linux-ext4@vger.kernel.org>; Thu, 19 Jun 2014 22:27:05 -0700 (PDT)
-In-Reply-To: <53A37129.2040409@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:13599 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S966658AbaFTL2Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Jun 2014 07:28:16 -0400
+In-Reply-To: <20140619174541.GB20194@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Please don't do the "use backtick "`" as opening quote for single quote "'" trick" that the GNU utils just stopped doing. I don't think this improves readability, and it makes syntax highlighting tools unhappy since there are imbalanced quotes. 
+On Thu, 19 Jun 2014, Jan Kara wrote:
 
-Cheers, Andreas
+> Date: Thu, 19 Jun 2014 19:45:41 +0200
+> From: Jan Kara <jack@suse.cz>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org, jack@suse.cz, stable@vger.kernel.org
+> Subject: Re: [PATCH] ext4: Fix punch hole on files with indirect mapping
+> 
+> On Thu 19-06-14 17:37:08, Lukas Czerner wrote:
+> > Currently punch hole code on files with direct/indirect mapping has some
+> > problems which may lead to a data loss. For example (from Jan Kara):
+> > 
+> > fallocate -n -p 10240000 4096
+> > 
+> > will punch the range 10240000 - 12632064 instead of the range 1024000 -
+> > 10244096.
+> > 
+> > Also the code is a bit weird and it's not using infrastructure provided
+> > by indirect.c, but rather creating it's own way.
+> > 
+> > This patch fixes the issues as well as making the operation to run 4
+> > times faster from my testing (punching out 60GB file). It uses similar
+> > approach used in ext4_ind_truncate() which takes advantage of
+> > ext4_free_branches() function.
+> > 
+> > Also rename the ext4_free_hole_blocks() to something more sensible, like
+> > the equivalent we have for extent mapped files. Call it
+> > ext4_ind_remove_space().
+> > 
+> > This has been tested mostly with fsx and some xfstests which are testing
+> > punch hole but does not require unwritten extents which are not
+> > supported with direct/indirect mapping. Not problems showed up even with
+> > 1024k block size.
+>   Hum, so I agree current code could use more of the truncate
+> infrastructure and be faster (especially the all_zeroes() checks are
+> presumably rather expensive) but frankly I find your version harder to read
+> than the original code was :-|.
 
-> On Jun 19, 2014, at 17:24, Eric Sandeen <sandeen@redhat.com> wrote:
+Oh yeah, it's not easy to read as well as the rest of the code in indirect.c
+:). But the idea is actually quite simple:
+
+1. If the hole cover only direct level ... easy
+2. If the hole covers multiple levels, free partial blocks on both
+  sides, and the rest to the end/beginning if the level
+3. If we're at the same level, free partial blocks and the rest in
+  between
+4. Free the interior level covering the hole
+
+Maybe we can alter the indirect.c infrastructure a bit so it's more
+convenient to use for things like punch hole, but I am not sure how
+useful it'll be.
+
+Thanks!
+-Lukas
+
+
+> I'll try to read your code again with fresh
+> mind and either decide it's good enough that I can give my reviewed-by or
+> I can try to come up with something simpler...
 > 
-> The chattr(1) manpage and chattr usage() output were missing some flags.
+> 								Honza
 > 
-> Add those, and make some other minor cosmetic fixes.
+> > CC: stable@vger.kernel.org
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > ---
+> >  fs/ext4/ext4.h     |   4 +-
+> >  fs/ext4/indirect.c | 277 +++++++++++++++++++++++++++++++++++++++--------------
+> >  fs/ext4/inode.c    |   2 +-
+> >  3 files changed, 207 insertions(+), 76 deletions(-)
+> > 
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index 1479e2a..22113a73 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -2145,8 +2145,8 @@ extern ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
+> >  extern int ext4_ind_calc_metadata_amount(struct inode *inode, sector_t lblock);
+> >  extern int ext4_ind_trans_blocks(struct inode *inode, int nrblocks);
+> >  extern void ext4_ind_truncate(handle_t *, struct inode *inode);
+> > -extern int ext4_free_hole_blocks(handle_t *handle, struct inode *inode,
+> > -				 ext4_lblk_t first, ext4_lblk_t stop);
+> > +extern int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+> > +				 ext4_lblk_t start, ext4_lblk_t end);
+> >  
+> >  /* ioctl.c */
+> >  extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+> > diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+> > index 594009f..adae538 100644
+> > --- a/fs/ext4/indirect.c
+> > +++ b/fs/ext4/indirect.c
+> > @@ -1291,89 +1291,220 @@ do_indirects:
+> >  	}
+> >  }
+> >  
+> > -static int free_hole_blocks(handle_t *handle, struct inode *inode,
+> > -			    struct buffer_head *parent_bh, __le32 *i_data,
+> > -			    int level, ext4_lblk_t first,
+> > -			    ext4_lblk_t count, int max)
+> > +/**
+> > + *	ext4_ind_remove_space - remove space from the range
+> > + *	@handle: JBD handle for this transaction
+> > + *	@inode:	inode we are dealing with
+> > + *	@start:	First block to remove
+> > + *	@end:	One block after the last block to remove (exclusive)
+> > + *
+> > + *	Free the blocks in the defined range (end is exclusive endpoint of
+> > + *	range). This is used by ext4_punch_hole().
+> > + */
+> > +int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+> > +			  ext4_lblk_t start, ext4_lblk_t end)
+> >  {
+> > -	struct buffer_head *bh = NULL;
+> > +	struct ext4_inode_info *ei = EXT4_I(inode);
+> > +	__le32 *i_data = ei->i_data;
+> >  	int addr_per_block = EXT4_ADDR_PER_BLOCK(inode->i_sb);
+> > -	int ret = 0;
+> > -	int i, inc;
+> > -	ext4_lblk_t offset;
+> > -	__le32 blk;
+> > -
+> > -	inc = 1 << ((EXT4_BLOCK_SIZE_BITS(inode->i_sb) - 2) * level);
+> > -	for (i = 0, offset = 0; i < max; i++, i_data++, offset += inc) {
+> > -		if (offset >= count + first)
+> > -			break;
+> > -		if (*i_data == 0 || (offset + inc) <= first)
+> > -			continue;
+> > -		blk = *i_data;
+> > -		if (level > 0) {
+> > -			ext4_lblk_t first2;
+> > -			bh = sb_bread(inode->i_sb, le32_to_cpu(blk));
+> > -			if (!bh) {
+> > -				EXT4_ERROR_INODE_BLOCK(inode, le32_to_cpu(blk),
+> > -						       "Read failure");
+> > -				return -EIO;
+> > +	ext4_lblk_t offsets[4], offsets2[4];
+> > +	Indirect chain[4], chain2[4];
+> > +	Indirect *partial, *partial2;
+> > +	ext4_lblk_t max_block;
+> > +	__le32 nr = 0, nr2 = 0;
+> > +	int n = 0, n2 = 0;
+> > +	unsigned blocksize = inode->i_sb->s_blocksize;
+> > +
+> > +	max_block = (EXT4_SB(inode->i_sb)->s_bitmap_maxbytes + blocksize-1)
+> > +					>> EXT4_BLOCK_SIZE_BITS(inode->i_sb);
+> > +	if (end >= max_block)
+> > +		end = max_block;
+> > +	if ((start >= end) || (start > max_block))
+> > +		return 0;
+> > +
+> > +	n = ext4_block_to_path(inode, start, offsets, NULL);
+> > +	n2 = ext4_block_to_path(inode, end, offsets2, NULL);
+> > +
+> > +	BUG_ON(n > n2);
+> > +
+> > +	if ((n == 1) && (n == n2)) {
+> > +		/* We're punching only within direct block range */
+> > +		ext4_free_data(handle, inode, NULL, i_data + offsets[0],
+> > +			       i_data + offsets2[0]);
+> > +		return 0;
+> > +	} else if (n2 > n) {
+> > +		/*
+> > +		 * Start and end are on a different levels so we're going to
+> > +		 * free partial block at start, and partial block at end of
+> > +		 * the range. If there are some levels in between then
+> > +		 * do_indirects label will take care of that.
+> > +		 */
+> > +
+> > +		if (n == 1) {
+> > +			/*
+> > +			 * Start is at the direct block level, free
+> > +			 * everything to the end of the level.
+> > +			 */
+> > +			ext4_free_data(handle, inode, NULL, i_data + offsets[0],
+> > +				       i_data + EXT4_NDIR_BLOCKS);
+> > +			goto end_range;
+> > +		}
+> > +
+> > +
+> > +		partial = ext4_find_shared(inode, n, offsets, chain, &nr);
+> > +		if (nr) {
+> > +			if (partial == chain) {
+> > +				/* Shared branch grows from the inode */
+> > +				ext4_free_branches(handle, inode, NULL,
+> > +					   &nr, &nr+1, (chain+n-1) - partial);
+> > +				*partial->p = 0;
+> > +			} else {
+> > +				/* Shared branch grows from an indirect block */
+> > +				BUFFER_TRACE(partial->bh, "get_write_access");
+> > +				ext4_free_branches(handle, inode, partial->bh,
+> > +					partial->p,
+> > +					partial->p+1, (chain+n-1) - partial);
+> >  			}
+> > -			first2 = (first > offset) ? first - offset : 0;
+> > -			ret = free_hole_blocks(handle, inode, bh,
+> > -					       (__le32 *)bh->b_data, level - 1,
+> > -					       first2, count - offset,
+> > -					       inode->i_sb->s_blocksize >> 2);
+> > -			if (ret) {
+> > -				brelse(bh);
+> > -				goto err;
+> > +		}
+> > +
+> > +		/*
+> > +		 * Clear the ends of indirect blocks on the shared branch
+> > +		 * at the start of the range
+> > +		 */
+> > +		while (partial > chain) {
+> > +			ext4_free_branches(handle, inode, partial->bh,
+> > +				partial->p + 1,
+> > +				(__le32 *)partial->bh->b_data+addr_per_block,
+> > +				(chain+n-1) - partial);
+> > +			BUFFER_TRACE(partial->bh, "call brelse");
+> > +			brelse(partial->bh);
+> > +			partial--;
+> > +		}
+> > +
+> > +end_range:
+> > +		partial2 = ext4_find_shared(inode, n2, offsets2, chain2, &nr2);
+> > +		if (nr2) {
+> > +			if (partial2 == chain2) {
+> > +				/*
+> > +				 * Remember, end is exclusive so here we're at
+> > +				 * the start of the next level we're not going
+> > +				 * to free. Everything was covered by the start
+> > +				 * of the range.
+> > +				 */
+> > +				return 0;
+> > +			} else {
+> > +				/* Shared branch grows from an indirect block */
+> > +				partial2--;
+> >  			}
+> > +		} else {
+> > +			/*
+> > +			 * ext4_find_shared returns Indirect structure which
+> > +			 * points to the last element which should not be
+> > +			 * removed by truncate. But this is end of the range
+> > +			 * in punch_hole so we need to point to the next element
+> > +			 */
+> > +			partial2->p++;
+> >  		}
+> > -		if (level == 0 ||
+> > -		    (bh && all_zeroes((__le32 *)bh->b_data,
+> > -				      (__le32 *)bh->b_data + addr_per_block))) {
+> > -			ext4_free_data(handle, inode, parent_bh, &blk, &blk+1);
+> > -			*i_data = 0;
+> > +
+> > +		/*
+> > +		 * Clear the ends of indirect blocks on the shared branch
+> > +		 * at the end of the range
+> > +		 */
+> > +		while (partial2 > chain2) {
+> > +			ext4_free_branches(handle, inode, partial2->bh,
+> > +					   (__le32 *)partial2->bh->b_data,
+> > +					   partial2->p,
+> > +					   (chain2+n2-1) - partial2);
+> > +			BUFFER_TRACE(partial2->bh, "call brelse");
+> > +			brelse(partial2->bh);
+> > +			partial2--;
+> >  		}
+> > -		brelse(bh);
+> > -		bh = NULL;
+> > +		goto do_indirects;
+> >  	}
+> >  
+> > -err:
+> > -	return ret;
+> > -}
+> > -
+> > -int ext4_free_hole_blocks(handle_t *handle, struct inode *inode,
+> > -			  ext4_lblk_t first, ext4_lblk_t stop)
+> > -{
+> > -	int addr_per_block = EXT4_ADDR_PER_BLOCK(inode->i_sb);
+> > -	int level, ret = 0;
+> > -	int num = EXT4_NDIR_BLOCKS;
+> > -	ext4_lblk_t count, max = EXT4_NDIR_BLOCKS;
+> > -	__le32 *i_data = EXT4_I(inode)->i_data;
+> > -
+> > -	count = stop - first;
+> > -	for (level = 0; level < 4; level++, max *= addr_per_block) {
+> > -		if (first < max) {
+> > -			ret = free_hole_blocks(handle, inode, NULL, i_data,
+> > -					       level, first, count, num);
+> > -			if (ret)
+> > -				goto err;
+> > -			if (count > max - first)
+> > -				count -= max - first;
+> > -			else
+> > -				break;
+> > -			first = 0;
+> > -		} else {
+> > -			first -= max;
+> > +	/* Punch happened within the same level (n == n2) */
+> > +	partial = ext4_find_shared(inode, n, offsets, chain, &nr);
+> > +	partial2 = ext4_find_shared(inode, n2, offsets2, chain2, &nr2);
+> > +	/*
+> > +	 * ext4_find_shared returns Indirect structure which
+> > +	 * points to the last element which should not be
+> > +	 * removed by truncate. But this is end of the range
+> > +	 * in punch_hole so we need to point to the next element
+> > +	 */
+> > +	partial2->p++;
+> > +	while ((partial > chain) || (partial2 > chain2)) {
+> > +		/* We're at the same block, so we're almost finished */
+> > +		if ((partial->bh && partial2->bh) &&
+> > +		    (partial->bh->b_blocknr == partial2->bh->b_blocknr)) {
+> > +			if ((partial > chain) && (partial2 > chain2)) {
+> > +				ext4_free_branches(handle, inode, partial->bh,
+> > +						   partial->p + 1,
+> > +						   partial2->p,
+> > +						   (chain+n-1) - partial);
+> > +				BUFFER_TRACE(partial->bh, "call brelse");
+> > +				brelse(partial->bh);
+> > +				BUFFER_TRACE(partial2->bh, "call brelse");
+> > +				brelse(partial2->bh);
+> > +			}
+> > +			return 0;
+> >  		}
+> > -		i_data += num;
+> > -		if (level == 0) {
+> > -			num = 1;
+> > -			max = 1;
+> > +		/*
+> > +		 * Clear the ends of indirect blocks on the shared branch
+> > +		 * at the start of the range
+> > +		 */
+> > +		if (partial > chain) {
+> > +			ext4_free_branches(handle, inode, partial->bh,
+> > +				   partial->p + 1,
+> > +				   (__le32 *)partial->bh->b_data+addr_per_block,
+> > +				   (chain+n-1) - partial);
+> > +			BUFFER_TRACE(partial->bh, "call brelse");
+> > +			brelse(partial->bh);
+> > +			partial--;
+> > +		}
+> > +		/*
+> > +		 * Clear the ends of indirect blocks on the shared branch
+> > +		 * at the end of the range
+> > +		 */
+> > +		if (partial2 > chain2) {
+> > +			ext4_free_branches(handle, inode, partial2->bh,
+> > +					   (__le32 *)partial2->bh->b_data,
+> > +					   partial2->p,
+> > +					   (chain2+n-1) - partial2);
+> > +			BUFFER_TRACE(partial2->bh, "call brelse");
+> > +			brelse(partial2->bh);
+> > +			partial2--;
+> >  		}
+> >  	}
+> >  
+> > -err:
+> > -	return ret;
+> > +do_indirects:
+> > +	/* Kill the remaining (whole) subtrees */
+> > +	switch (offsets[0]) {
+> > +	default:
+> > +		if (++n >= n2)
+> > +			return 0;
+> > +		nr = i_data[EXT4_IND_BLOCK];
+> > +		if (nr) {
+> > +			ext4_free_branches(handle, inode, NULL, &nr, &nr+1, 1);
+> > +			i_data[EXT4_IND_BLOCK] = 0;
+> > +		}
+> > +	case EXT4_IND_BLOCK:
+> > +		if (++n >= n2)
+> > +			return 0;
+> > +		nr = i_data[EXT4_DIND_BLOCK];
+> > +		if (nr) {
+> > +			ext4_free_branches(handle, inode, NULL, &nr, &nr+1, 2);
+> > +			i_data[EXT4_DIND_BLOCK] = 0;
+> > +		}
+> > +	case EXT4_DIND_BLOCK:
+> > +		if (++n >= n2)
+> > +			return 0;
+> > +		nr = i_data[EXT4_TIND_BLOCK];
+> > +		if (nr) {
+> > +			ext4_free_branches(handle, inode, NULL, &nr, &nr+1, 3);
+> > +			i_data[EXT4_TIND_BLOCK] = 0;
+> > +		}
+> > +	case EXT4_TIND_BLOCK:
+> > +		;
+> > +	}
+> > +	return 0;
+> >  }
+> > -
+> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > index 7fcd68e..a5adc09 100644
+> > --- a/fs/ext4/inode.c
+> > +++ b/fs/ext4/inode.c
+> > @@ -3626,7 +3626,7 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
+> >  		ret = ext4_ext_remove_space(inode, first_block,
+> >  					    stop_block - 1);
+> >  	else
+> > -		ret = ext4_free_hole_blocks(handle, inode, first_block,
+> > +		ret = ext4_ind_remove_space(handle, inode, first_block,
+> >  					    stop_block);
+> >  
+> >  	up_write(&EXT4_I(inode)->i_data_sem);
+> > -- 
+> > 1.8.3.1
+> > 
 > 
-> (I've left out the 'B' (EXT2_COMPRBLK_FL) flag, because
-> it's not actually used anywhere, and I can't figure out
-> how it differs from 'c' (EXT2_COMPR_FL))
-> 
-> Also, because the matrix of filesystems & flags is quite large,
-> refer to filesystem-specific manpages for detailed discussion
-> of flags supported by those filesystems, rather than trying to
-> cover it all in this manpage.  I'll send those manpage
-> updates to the appropriate lists a bit later.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
-> 
-> diff --git a/misc/chattr.1.in b/misc/chattr.1.in
-> index ce426e8..6f64e09 100644
-> --- a/misc/chattr.1.in
-> +++ b/misc/chattr.1.in
-> @@ -47,8 +47,17 @@ but not modified by chattr:
-> compression error (E),
-> huge file (h),
-> indexed directory (I),
-> +inline data (N),
-> compression raw access (X),
-> and compressed dirty file (Z).
-> +.PP
-> +Not all flags are supported or utilized by all filesystems; refer to
-> +filesystem-specific man pages such as
-> +.BR btrfs (5), 
-> +.BR ext4 (5),
-> +and
-> +.BR xfs (5)
-> +for more filesystem-specific details.
-> .SH OPTIONS
-> .TP
-> .B \-R
-> @@ -67,7 +76,7 @@ A file with the `a' attribute set can only be open in append mode for writing.
-> Only the superuser or a process possessing the CAP_LINUX_IMMUTABLE
-> capability can set or clear this attribute.
-> .PP
-> -When a file with the 'A' attribute set is accessed, its atime record is
-> +When a file with the `A' attribute set is accessed, its atime record is
-> not modified.  This avoids a certain amount of disk I/O for laptop
-> systems.
-> .PP
-> @@ -77,12 +86,12 @@ this file compresses data before storing them on the disk.  Note: please
-> make sure to read the bugs and limitations section at the end of this
-> document.
-> .PP
-> -A file with the 'C' attribute set will not be subject to copy-on-write
-> +A file with the `C' attribute set will not be subject to copy-on-write
-> updates.  This flag is only supported on file systems which perform
-> -copy-on-write.  (Note: For btrfs, the 'C' flag should be
-> +copy-on-write.  (Note: For btrfs, the `C' flag should be
-> set on new or empty files.  If it is set on a file which already has
-> data blocks, it is undefined when the blocks assigned to the file will
-> -be fully stable.  If the 'C' flag is set on a directory, it will have no
-> +be fully stable.  If the `C' flag is set on a directory, it will have no
-> effect on the directory, but new files created in that directory will
-> the No_COW attribute.)
-> .PP
-> @@ -94,18 +103,18 @@ When a directory with the `D' attribute set is modified,
-> the changes are written synchronously on the disk; this is equivalent to
-> the `dirsync' mount option applied to a subset of the files.
-> .PP
-> -The 'e' attribute indicates that the file is using extents for mapping
-> +The `e' attribute indicates that the file is using extents for mapping
-> the blocks on disk.  It may not be removed using
-> .BR chattr (1).
-> .PP
-> -The 'E' attribute is used by the experimental compression patches to
-> +The `E' attribute is used by the experimental compression patches to
-> indicate that a compressed file has a compression error.  It may not be
-> set or reset using
-> .BR chattr (1),
-> although it can be displayed by
-> .BR lsattr (1).
-> .PP
-> -The 'h' attribute indicates the file is storing its blocks in units of the
-> +The `h' attribute indicates the file is storing its blocks in units of the
-> filesystem blocksize instead of in units of sectors, and means that the file
-> is (or at one time was) larger than 2TB.  It may not be set or reset using
-> .BR chattr (1),
-> @@ -117,7 +126,7 @@ renamed, no link can be created to this file and no data can be written
-> to the file.  Only the superuser or a process possessing the
-> CAP_LINUX_IMMUTABLE capability can set or clear this attribute.
-> .PP
-> -The 'I' attribute is used by the htree code to indicate that a directory
-> +The `I' attribute is used by the htree code to indicate that a directory
-> is being indexed using hashed trees.  It may not be set or reset using
-> .BR chattr (1),
-> although it can be displayed by
-> @@ -131,6 +140,12 @@ is already journalled and this attribute has no effect.  Only
-> the superuser or a process possessing the CAP_SYS_RESOURCE
-> capability can set or clear this attribute.
-> .PP
-> +A file with the `N' attribute set indicates that the file has data 
-> +stored inline, within the inode itself. It may not be set or reset using
-> +.BR chattr (1),
-> +although it can be displayed by
-> +.BR lsattr (1).
-> +.PP
-> When a file with the `s' attribute set is deleted, its blocks are zeroed
-> and written back to the disk.  Note: please make sure to read the bugs
-> and limitations section at the end of this document.
-> @@ -139,19 +154,19 @@ When a file with the `S' attribute set is modified,
-> the changes are written synchronously on the disk; this is equivalent to
-> the `sync' mount option applied to a subset of the files.
-> .PP
-> -A file with the 't' attribute will not have a partial block fragment at
-> +A file with the `t' attribute will not have a partial block fragment at
-> the end of the file merged with other files (for those filesystems which
-> support tail-merging).  This is necessary for applications such as LILO
-> which read the filesystem directly, and which don't understand tail-merged
-> files.  Note: As of this writing, the ext2 or ext3 filesystems do not
-> (yet, except in very experimental patches) support tail-merging.
-> .PP
-> -A directory with the 'T' attribute will be deemed to be the top of
-> +A directory with the `T' attribute will be deemed to be the top of
-> directory hierarchies for the purposes of the Orlov block allocator.
-> This is a hint to the block allocator used by ext3 and ext4 that the
-> subdirectories under this directory are not related, and thus should be
-> spread apart for allocation purposes.   For example it is a very good
-> -idea to set the 'T' attribute on the /home directory, so that /home/john
-> +idea to set the `T' attribute on the /home directory, so that /home/john
-> and /home/mary are placed into separate block groups.  For directories
-> where this attribute is not set, the Orlov block allocator will try to
-> group subdirectories closer together where possible.
-> @@ -161,14 +176,14 @@ saved.  This allows the user to ask for its undeletion.  Note: please
-> make sure to read the bugs and limitations section at the end of this
-> document.
-> .PP
-> -The 'X' attribute is used by the experimental compression patches to
-> -indicate that a raw contents of a compressed file can be accessed
-> +The `X' attribute is used by the experimental compression patches to
-> +indicate that the raw contents of a compressed file can be accessed
-> directly.  It currently may not be set or reset using
-> .BR chattr (1),
-> although it can be displayed by
-> .BR lsattr (1).
-> .PP
-> -The 'Z' attribute is used by the experimental compression patches to
-> +The `Z' attribute is used by the experimental compression patches to
-> indicate a compressed file is dirty.  It may not be set or reset using
-> .BR chattr (1),
-> although it can be displayed by
-> @@ -179,7 +194,7 @@ although it can be displayed by
-> was written by Remy Card <Remy.Card@linux.org>.  It is currently being
-> maintained by Theodore Ts'o <tytso@alum.mit.edu>.
-> .SH BUGS AND LIMITATIONS
-> -The `c', 's',  and `u' attributes are not honored
-> +The `c', `s',  and `u' attributes are not honored
-> by the ext2, ext3, and ext4 filesystems as implemented in the current
-> mainline Linux kernels.
-> .PP
-> @@ -191,4 +206,7 @@ The `D' option is only useful on Linux kernel 2.5.19 and later.
-> is part of the e2fsprogs package and is available from
-> http://e2fsprogs.sourceforge.net.
-> .SH SEE ALSO
-> -.BR lsattr (1)
-> +.BR lsattr (1),
-> +.BR btrfs (5),
-> +.BR ext4 (5),
-> +.BR xfs (5).
-> diff --git a/misc/chattr.c b/misc/chattr.c
-> index d5a6a61..f130108 100644
-> --- a/misc/chattr.c
-> +++ b/misc/chattr.c
-> @@ -83,7 +83,7 @@ static unsigned long sf;
-> static void usage(void)
-> {
->    fprintf(stderr,
-> -        _("Usage: %s [-RVf] [-+=aAcCdDeijsSu] [-v version] files...\n"),
-> +        _("Usage: %s [-RVf] [-+=aAcCdDeijsStTu] [-v version] files...\n"),
->        program_name);
->    exit(1);
-> }
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
