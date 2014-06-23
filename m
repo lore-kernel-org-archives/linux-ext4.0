@@ -1,65 +1,250 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 78651] Write performance of ext4 degrades linearly as volume
- fills
-Date: Sun, 22 Jun 2014 23:18:10 +0000
-Message-ID: <bug-78651-13602-CsIw79ZmUN@https.bugzilla.kernel.org/>
-References: <bug-78651-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: remove metadata reservation checks
+Date: Sun, 22 Jun 2014 22:36:21 -0400
+Message-ID: <1403490981-5457-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:45225 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:52240 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750744AbaFVXSN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 22 Jun 2014 19:18:13 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 641B82024F
-	for <linux-ext4@vger.kernel.org>; Sun, 22 Jun 2014 23:18:12 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 73ECD2021A
-	for <linux-ext4@vger.kernel.org>; Sun, 22 Jun 2014 23:18:10 +0000 (UTC)
-In-Reply-To: <bug-78651-13602@https.bugzilla.kernel.org/>
+	id S1751178AbaFWCg1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 22 Jun 2014 22:36:27 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=78651
+Commit 27dd43854227b ("ext4: introduce reserved space") reserves 2% of
+the file system space to make sure metadata allocations will always
+succeed.  Given that, tracking the reservation of metadata blocks is
+no longer necessary.
 
---- Comment #2 from Joseph D. Wagner <joe@josephdwagner.info> ---
-I changed the script to run "perf record" on the dump command.  I turned
-tracing on for all jbd2 and ext4 events.  (I had to stop it about half way
-through, because the perf.data file was getting too big.)  All non-zero results
-are below.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/balloc.c  |  1 -
+ fs/ext4/ext4.h    |  1 -
+ fs/ext4/extents.c |  3 +-
+ fs/ext4/inode.c   | 93 +++----------------------------------------------------
+ fs/ext4/mballoc.c | 15 +--------
+ 5 files changed, 7 insertions(+), 106 deletions(-)
 
-Are some of these events supposed to be balanced?  For example, there were 8
-ext4:ext4_es_shrink_enter, but 0 ext4:ext4_es_shrink_exit.  I'm wondering if
-some of this code is being called recursively without proper unwinding.  It
-could explain the recursive loss in performance.
-
-499M ext4:ext4_journal_start: 356 chunks LOST!
-252M jbd2:jbd2_handle_stats: 4 chunks LOST!
-252M jbd2:jbd2_handle_start: 1 chunks LOST!
-252M ext4:ext4_mark_inode_dirty: 3 chunks LOST!
-246M ext4:ext4_ext_show_extent: 1 chunks LOST!
-246M ext4:ext4_ext_map_blocks_exit: 1 chunks LOST!
-246M ext4:ext4_ext_map_blocks_enter: 26 chunks LOST!
-246M ext4:ext4_es_lookup_extent_exit
-246M ext4:ext4_es_lookup_extent_enter: 1 chunks LOST!
-246M ext4:ext4_es_insert_extent
-246M ext4:ext4_da_write_end: 6 chunks LOST!
-246M ext4:ext4_da_write_begin: 441 chunks LOST!
-246M ext4:ext4_da_reserve_space
-150 ext4:ext4_drop_inode
-77 ext4:ext4_releasepage
-17 ext4:ext4_es_cache_extent
-8 ext4:ext4_sync_fs
-8 ext4:ext4_es_shrink_enter
-5 ext4:ext4_es_find_delayed_extent_range_exit
-5 ext4:ext4_es_find_delayed_extent_range_enter
-3 ext4:ext4_request_inode
-3 ext4:ext4_allocate_inode
-2 ext4:ext4_ext_load_extent
-
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 0762d14..807071d 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -623,7 +623,6 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+ 	if (!(*errp) &&
+ 	    ext4_test_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED)) {
+ 		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+-		EXT4_I(inode)->i_allocated_meta_blocks += ar.len;
+ 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ 		dquot_alloc_block_nofail(inode,
+ 				EXT4_C2B(EXT4_SB(inode->i_sb), ar.len));
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 7cc5a0e..d35c78c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -591,7 +591,6 @@ enum {
+ #define EXT4_FREE_BLOCKS_NO_QUOT_UPDATE	0x0008
+ #define EXT4_FREE_BLOCKS_NOFREE_FIRST_CLUSTER	0x0010
+ #define EXT4_FREE_BLOCKS_NOFREE_LAST_CLUSTER	0x0020
+-#define EXT4_FREE_BLOCKS_RESERVE		0x0040
+ 
+ /*
+  * ioctl commands
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 4da228a..b30172d 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1808,8 +1808,7 @@ static void ext4_ext_try_to_merge_up(handle_t *handle,
+ 
+ 	brelse(path[1].p_bh);
+ 	ext4_free_blocks(handle, inode, NULL, blk, 1,
+-			 EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET |
+-			 EXT4_FREE_BLOCKS_RESERVE);
++			 EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
+ }
+ 
+ /*
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 8a06473..4ccb624 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -357,35 +357,10 @@ void ext4_da_update_reserve_space(struct inode *inode,
+ 		used = ei->i_reserved_data_blocks;
+ 	}
+ 
+-	if (unlikely(ei->i_allocated_meta_blocks > ei->i_reserved_meta_blocks)) {
+-		ext4_warning(inode->i_sb, "ino %lu, allocated %d "
+-			"with only %d reserved metadata blocks "
+-			"(releasing %d blocks with reserved %d data blocks)",
+-			inode->i_ino, ei->i_allocated_meta_blocks,
+-			     ei->i_reserved_meta_blocks, used,
+-			     ei->i_reserved_data_blocks);
+-		WARN_ON(1);
+-		ei->i_allocated_meta_blocks = ei->i_reserved_meta_blocks;
+-	}
+-
+ 	/* Update per-inode reservations */
+ 	ei->i_reserved_data_blocks -= used;
+-	ei->i_reserved_meta_blocks -= ei->i_allocated_meta_blocks;
+-	percpu_counter_sub(&sbi->s_dirtyclusters_counter,
+-			   used + ei->i_allocated_meta_blocks);
+-	ei->i_allocated_meta_blocks = 0;
++	percpu_counter_sub(&sbi->s_dirtyclusters_counter, used);
+ 
+-	if (ei->i_reserved_data_blocks == 0) {
+-		/*
+-		 * We can release all of the reserved metadata blocks
+-		 * only when we have written all of the delayed
+-		 * allocation blocks.
+-		 */
+-		percpu_counter_sub(&sbi->s_dirtyclusters_counter,
+-				   ei->i_reserved_meta_blocks);
+-		ei->i_reserved_meta_blocks = 0;
+-		ei->i_da_metadata_calc_len = 0;
+-	}
+ 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ 
+ 	/* Update quota subsystem for data blocks */
+@@ -1232,35 +1207,6 @@ static int ext4_da_reserve_metadata(struct inode *inode, ext4_lblk_t lblock)
+ 	ext4_lblk_t save_last_lblock;
+ 	int save_len;
+ 
+-	/*
+-	 * recalculate the amount of metadata blocks to reserve
+-	 * in order to allocate nrblocks
+-	 * worse case is one extent per block
+-	 */
+-	spin_lock(&ei->i_block_reservation_lock);
+-	/*
+-	 * ext4_calc_metadata_amount() has side effects, which we have
+-	 * to be prepared undo if we fail to claim space.
+-	 */
+-	save_len = ei->i_da_metadata_calc_len;
+-	save_last_lblock = ei->i_da_metadata_calc_last_lblock;
+-	md_needed = EXT4_NUM_B2C(sbi,
+-				 ext4_calc_metadata_amount(inode, lblock));
+-	trace_ext4_da_reserve_space(inode, md_needed);
+-
+-	/*
+-	 * We do still charge estimated metadata to the sb though;
+-	 * we cannot afford to run out of free blocks.
+-	 */
+-	if (ext4_claim_free_clusters(sbi, md_needed, 0)) {
+-		ei->i_da_metadata_calc_len = save_len;
+-		ei->i_da_metadata_calc_last_lblock = save_last_lblock;
+-		spin_unlock(&ei->i_block_reservation_lock);
+-		return -ENOSPC;
+-	}
+-	ei->i_reserved_meta_blocks += md_needed;
+-	spin_unlock(&ei->i_block_reservation_lock);
+-
+ 	return 0;       /* success */
+ }
+ 
+@@ -1295,25 +1241,15 @@ static int ext4_da_reserve_space(struct inode *inode, ext4_lblk_t lblock)
+ 	 * ext4_calc_metadata_amount() has side effects, which we have
+ 	 * to be prepared undo if we fail to claim space.
+ 	 */
+-	save_len = ei->i_da_metadata_calc_len;
+-	save_last_lblock = ei->i_da_metadata_calc_last_lblock;
+-	md_needed = EXT4_NUM_B2C(sbi,
+-				 ext4_calc_metadata_amount(inode, lblock));
+-	trace_ext4_da_reserve_space(inode, md_needed);
++	md_needed = 0;
++	trace_ext4_da_reserve_space(inode, 0);
+ 
+-	/*
+-	 * We do still charge estimated metadata to the sb though;
+-	 * we cannot afford to run out of free blocks.
+-	 */
+-	if (ext4_claim_free_clusters(sbi, md_needed + 1, 0)) {
+-		ei->i_da_metadata_calc_len = save_len;
+-		ei->i_da_metadata_calc_last_lblock = save_last_lblock;
++	if (ext4_claim_free_clusters(sbi, 1, 0)) {
+ 		spin_unlock(&ei->i_block_reservation_lock);
+ 		dquot_release_reservation_block(inode, EXT4_C2B(sbi, 1));
+ 		return -ENOSPC;
+ 	}
+ 	ei->i_reserved_data_blocks++;
+-	ei->i_reserved_meta_blocks += md_needed;
+ 	spin_unlock(&ei->i_block_reservation_lock);
+ 
+ 	return 0;       /* success */
+@@ -1346,20 +1282,6 @@ static void ext4_da_release_space(struct inode *inode, int to_free)
+ 	}
+ 	ei->i_reserved_data_blocks -= to_free;
+ 
+-	if (ei->i_reserved_data_blocks == 0) {
+-		/*
+-		 * We can release all of the reserved metadata blocks
+-		 * only when we have written all of the delayed
+-		 * allocation blocks.
+-		 * Note that in case of bigalloc, i_reserved_meta_blocks,
+-		 * i_reserved_data_blocks, etc. refer to number of clusters.
+-		 */
+-		percpu_counter_sub(&sbi->s_dirtyclusters_counter,
+-				   ei->i_reserved_meta_blocks);
+-		ei->i_reserved_meta_blocks = 0;
+-		ei->i_da_metadata_calc_len = 0;
+-	}
+-
+ 	/* update fs dirty data blocks counter */
+ 	percpu_counter_sub(&sbi->s_dirtyclusters_counter, to_free);
+ 
+@@ -1500,10 +1422,6 @@ static void ext4_print_free_blocks(struct inode *inode)
+ 	ext4_msg(sb, KERN_CRIT, "Block reservation details");
+ 	ext4_msg(sb, KERN_CRIT, "i_reserved_data_blocks=%u",
+ 		 ei->i_reserved_data_blocks);
+-	ext4_msg(sb, KERN_CRIT, "i_reserved_meta_blocks=%u",
+-	       ei->i_reserved_meta_blocks);
+-	ext4_msg(sb, KERN_CRIT, "i_allocated_meta_blocks=%u",
+-	       ei->i_allocated_meta_blocks);
+ 	return;
+ }
+ 
+@@ -2843,8 +2761,7 @@ int ext4_alloc_da_blocks(struct inode *inode)
+ {
+ 	trace_ext4_alloc_da_blocks(inode);
+ 
+-	if (!EXT4_I(inode)->i_reserved_data_blocks &&
+-	    !EXT4_I(inode)->i_reserved_meta_blocks)
++	if (!EXT4_I(inode)->i_reserved_data_blocks)
+ 		return 0;
+ 
+ 	/*
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 59e3162..4503b8f 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4619,7 +4619,6 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 	struct buffer_head *gd_bh;
+ 	ext4_group_t block_group;
+ 	struct ext4_sb_info *sbi;
+-	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	struct ext4_buddy e4b;
+ 	unsigned int count_clusters;
+ 	int err = 0;
+@@ -4830,19 +4829,7 @@ do_more:
+ 			     &sbi->s_flex_groups[flex_group].free_clusters);
+ 	}
+ 
+-	if (flags & EXT4_FREE_BLOCKS_RESERVE && ei->i_reserved_data_blocks) {
+-		percpu_counter_add(&sbi->s_dirtyclusters_counter,
+-				   count_clusters);
+-		spin_lock(&ei->i_block_reservation_lock);
+-		if (flags & EXT4_FREE_BLOCKS_METADATA)
+-			ei->i_reserved_meta_blocks += count_clusters;
+-		else
+-			ei->i_reserved_data_blocks += count_clusters;
+-		spin_unlock(&ei->i_block_reservation_lock);
+-		if (!(flags & EXT4_FREE_BLOCKS_NO_QUOT_UPDATE))
+-			dquot_reclaim_block(inode,
+-					EXT4_C2B(sbi, count_clusters));
+-	} else if (!(flags & EXT4_FREE_BLOCKS_NO_QUOT_UPDATE))
++	if (!(flags & EXT4_FREE_BLOCKS_NO_QUOT_UPDATE))
+ 		dquot_free_block(inode, EXT4_C2B(sbi, count_clusters));
+ 	percpu_counter_add(&sbi->s_freeclusters_counter, count_clusters);
+ 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.0.0
+
