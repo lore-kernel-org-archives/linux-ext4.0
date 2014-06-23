@@ -1,400 +1,293 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: Fix punch hole on files with indirect mapping
-Date: Mon, 23 Jun 2014 11:40:31 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1406231136090.2169@localhost.localdomain>
-References: <1403192228-25771-1-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: remove metadata reservation checks
+Date: Mon, 23 Jun 2014 11:56:23 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1406231140560.2169@localhost.localdomain>
+References: <1403490981-5457-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: jack@suse.cz, stable@vger.kernel.org
-To: linux-ext4@vger.kernel.org
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52484 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:26987 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752671AbaFWJki (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Jun 2014 05:40:38 -0400
-In-Reply-To: <1403192228-25771-1-git-send-email-lczerner@redhat.com>
+	id S1751004AbaFWJ42 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Jun 2014 05:56:28 -0400
+In-Reply-To: <1403490981-5457-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 19 Jun 2014, Lukas Czerner wrote:
+On Sun, 22 Jun 2014, Theodore Ts'o wrote:
 
-> Date: Thu, 19 Jun 2014 17:37:08 +0200
-> From: Lukas Czerner <lczerner@redhat.com>
-> To: linux-ext4@vger.kernel.org
-> Cc: jack@suse.cz, Lukas Czerner <lczerner@redhat.com>, stable@vger.kernel.org
-> Subject: [PATCH] ext4: Fix punch hole on files with indirect mapping
+> Date: Sun, 22 Jun 2014 22:36:21 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Subject: [PATCH] ext4: remove metadata reservation checks
+> 
+> Commit 27dd43854227b ("ext4: introduce reserved space") reserves 2% of
+> the file system space to make sure metadata allocations will always
+> succeed.  Given that, tracking the reservation of metadata blocks is
+> no longer necessary.
 
-I've done a bit more testing and after running fsx on ext with 4k and
-1k block size file system with nodelalloc option for 3 days I have not
-seen any problems.
+Hi Ted,
 
-Note that combination of delalloc file system and indirect mapped
-files has some problems due to metadata reservation, however with
-recent patch from Ted this should not be any problem anymore. But
-this is not related to this patch, it's just and explanation why I
-used nodelalloc (I could have used ext3 though).
+I was a bit reluctant to do this when I introduced reserved space
+since I though that we need to run with it for some time to make
+sure that it's solid.
+
+However I am still on the fence about this patch, because it was not
+designed, at least initially to cover all metadata reservation, but
+mainly those we sometimes can not predict (unwritten extent
+conversion for example), or those when the prediction failed (in
+this case we would see a warning).
+
+I think that if we can be really sure, that the reserved space will
+always have enough space to cover all possible metadata blocks
+needed on writeback time (is there any other time we might need
+metadata block and can not fail with ENOSPC?), then this patch is
+definitely very useful.
+
+However I am not sure how to prove that. I think that the size of the
+journal might be an indication of how much "reserved" metadata block
+we might need at any given time, but I am not entirely sure about
+that. But if true, we probably need to modify the metadata
+reservation code to take that into account.
+
+So my question is, do you think that there is a way to prove that we
+will have enough reserved blocks at any time for metadata allocation ?
+If so, what is the metric we use to set the size of the reservation pool
+in the first place ?
 
 Thanks!
 -Lukas
 
 > 
-> Currently punch hole code on files with direct/indirect mapping has some
-> problems which may lead to a data loss. For example (from Jan Kara):
-> 
-> fallocate -n -p 10240000 4096
-> 
-> will punch the range 10240000 - 12632064 instead of the range 1024000 -
-> 10244096.
-> 
-> Also the code is a bit weird and it's not using infrastructure provided
-> by indirect.c, but rather creating it's own way.
-> 
-> This patch fixes the issues as well as making the operation to run 4
-> times faster from my testing (punching out 60GB file). It uses similar
-> approach used in ext4_ind_truncate() which takes advantage of
-> ext4_free_branches() function.
-> 
-> Also rename the ext4_free_hole_blocks() to something more sensible, like
-> the equivalent we have for extent mapped files. Call it
-> ext4_ind_remove_space().
-> 
-> This has been tested mostly with fsx and some xfstests which are testing
-> punch hole but does not require unwritten extents which are not
-> supported with direct/indirect mapping. Not problems showed up even with
-> 1024k block size.
-> 
-> CC: stable@vger.kernel.org
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 > ---
->  fs/ext4/ext4.h     |   4 +-
->  fs/ext4/indirect.c | 277 +++++++++++++++++++++++++++++++++++++++--------------
->  fs/ext4/inode.c    |   2 +-
->  3 files changed, 207 insertions(+), 76 deletions(-)
+>  fs/ext4/balloc.c  |  1 -
+>  fs/ext4/ext4.h    |  1 -
+>  fs/ext4/extents.c |  3 +-
+>  fs/ext4/inode.c   | 93 +++----------------------------------------------------
+>  fs/ext4/mballoc.c | 15 +--------
+>  5 files changed, 7 insertions(+), 106 deletions(-)
 > 
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index 0762d14..807071d 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -623,7 +623,6 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+>  	if (!(*errp) &&
+>  	    ext4_test_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED)) {
+>  		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+> -		EXT4_I(inode)->i_allocated_meta_blocks += ar.len;
+>  		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+>  		dquot_alloc_block_nofail(inode,
+>  				EXT4_C2B(EXT4_SB(inode->i_sb), ar.len));
 > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 1479e2a..22113a73 100644
+> index 7cc5a0e..d35c78c 100644
 > --- a/fs/ext4/ext4.h
 > +++ b/fs/ext4/ext4.h
-> @@ -2145,8 +2145,8 @@ extern ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
->  extern int ext4_ind_calc_metadata_amount(struct inode *inode, sector_t lblock);
->  extern int ext4_ind_trans_blocks(struct inode *inode, int nrblocks);
->  extern void ext4_ind_truncate(handle_t *, struct inode *inode);
-> -extern int ext4_free_hole_blocks(handle_t *handle, struct inode *inode,
-> -				 ext4_lblk_t first, ext4_lblk_t stop);
-> +extern int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
-> +				 ext4_lblk_t start, ext4_lblk_t end);
+> @@ -591,7 +591,6 @@ enum {
+>  #define EXT4_FREE_BLOCKS_NO_QUOT_UPDATE	0x0008
+>  #define EXT4_FREE_BLOCKS_NOFREE_FIRST_CLUSTER	0x0010
+>  #define EXT4_FREE_BLOCKS_NOFREE_LAST_CLUSTER	0x0020
+> -#define EXT4_FREE_BLOCKS_RESERVE		0x0040
 >  
->  /* ioctl.c */
->  extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
-> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-> index 594009f..adae538 100644
-> --- a/fs/ext4/indirect.c
-> +++ b/fs/ext4/indirect.c
-> @@ -1291,89 +1291,220 @@ do_indirects:
->  	}
+>  /*
+>   * ioctl commands
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 4da228a..b30172d 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -1808,8 +1808,7 @@ static void ext4_ext_try_to_merge_up(handle_t *handle,
+>  
+>  	brelse(path[1].p_bh);
+>  	ext4_free_blocks(handle, inode, NULL, blk, 1,
+> -			 EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET |
+> -			 EXT4_FREE_BLOCKS_RESERVE);
+> +			 EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
 >  }
 >  
-> -static int free_hole_blocks(handle_t *handle, struct inode *inode,
-> -			    struct buffer_head *parent_bh, __le32 *i_data,
-> -			    int level, ext4_lblk_t first,
-> -			    ext4_lblk_t count, int max)
-> +/**
-> + *	ext4_ind_remove_space - remove space from the range
-> + *	@handle: JBD handle for this transaction
-> + *	@inode:	inode we are dealing with
-> + *	@start:	First block to remove
-> + *	@end:	One block after the last block to remove (exclusive)
-> + *
-> + *	Free the blocks in the defined range (end is exclusive endpoint of
-> + *	range). This is used by ext4_punch_hole().
-> + */
-> +int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
-> +			  ext4_lblk_t start, ext4_lblk_t end)
->  {
-> -	struct buffer_head *bh = NULL;
-> +	struct ext4_inode_info *ei = EXT4_I(inode);
-> +	__le32 *i_data = ei->i_data;
->  	int addr_per_block = EXT4_ADDR_PER_BLOCK(inode->i_sb);
-> -	int ret = 0;
-> -	int i, inc;
-> -	ext4_lblk_t offset;
-> -	__le32 blk;
-> -
-> -	inc = 1 << ((EXT4_BLOCK_SIZE_BITS(inode->i_sb) - 2) * level);
-> -	for (i = 0, offset = 0; i < max; i++, i_data++, offset += inc) {
-> -		if (offset >= count + first)
-> -			break;
-> -		if (*i_data == 0 || (offset + inc) <= first)
-> -			continue;
-> -		blk = *i_data;
-> -		if (level > 0) {
-> -			ext4_lblk_t first2;
-> -			bh = sb_bread(inode->i_sb, le32_to_cpu(blk));
-> -			if (!bh) {
-> -				EXT4_ERROR_INODE_BLOCK(inode, le32_to_cpu(blk),
-> -						       "Read failure");
-> -				return -EIO;
-> +	ext4_lblk_t offsets[4], offsets2[4];
-> +	Indirect chain[4], chain2[4];
-> +	Indirect *partial, *partial2;
-> +	ext4_lblk_t max_block;
-> +	__le32 nr = 0, nr2 = 0;
-> +	int n = 0, n2 = 0;
-> +	unsigned blocksize = inode->i_sb->s_blocksize;
-> +
-> +	max_block = (EXT4_SB(inode->i_sb)->s_bitmap_maxbytes + blocksize-1)
-> +					>> EXT4_BLOCK_SIZE_BITS(inode->i_sb);
-> +	if (end >= max_block)
-> +		end = max_block;
-> +	if ((start >= end) || (start > max_block))
-> +		return 0;
-> +
-> +	n = ext4_block_to_path(inode, start, offsets, NULL);
-> +	n2 = ext4_block_to_path(inode, end, offsets2, NULL);
-> +
-> +	BUG_ON(n > n2);
-> +
-> +	if ((n == 1) && (n == n2)) {
-> +		/* We're punching only within direct block range */
-> +		ext4_free_data(handle, inode, NULL, i_data + offsets[0],
-> +			       i_data + offsets2[0]);
-> +		return 0;
-> +	} else if (n2 > n) {
-> +		/*
-> +		 * Start and end are on a different levels so we're going to
-> +		 * free partial block at start, and partial block at end of
-> +		 * the range. If there are some levels in between then
-> +		 * do_indirects label will take care of that.
-> +		 */
-> +
-> +		if (n == 1) {
-> +			/*
-> +			 * Start is at the direct block level, free
-> +			 * everything to the end of the level.
-> +			 */
-> +			ext4_free_data(handle, inode, NULL, i_data + offsets[0],
-> +				       i_data + EXT4_NDIR_BLOCKS);
-> +			goto end_range;
-> +		}
-> +
-> +
-> +		partial = ext4_find_shared(inode, n, offsets, chain, &nr);
-> +		if (nr) {
-> +			if (partial == chain) {
-> +				/* Shared branch grows from the inode */
-> +				ext4_free_branches(handle, inode, NULL,
-> +					   &nr, &nr+1, (chain+n-1) - partial);
-> +				*partial->p = 0;
-> +			} else {
-> +				/* Shared branch grows from an indirect block */
-> +				BUFFER_TRACE(partial->bh, "get_write_access");
-> +				ext4_free_branches(handle, inode, partial->bh,
-> +					partial->p,
-> +					partial->p+1, (chain+n-1) - partial);
->  			}
-> -			first2 = (first > offset) ? first - offset : 0;
-> -			ret = free_hole_blocks(handle, inode, bh,
-> -					       (__le32 *)bh->b_data, level - 1,
-> -					       first2, count - offset,
-> -					       inode->i_sb->s_blocksize >> 2);
-> -			if (ret) {
-> -				brelse(bh);
-> -				goto err;
-> +		}
-> +
-> +		/*
-> +		 * Clear the ends of indirect blocks on the shared branch
-> +		 * at the start of the range
-> +		 */
-> +		while (partial > chain) {
-> +			ext4_free_branches(handle, inode, partial->bh,
-> +				partial->p + 1,
-> +				(__le32 *)partial->bh->b_data+addr_per_block,
-> +				(chain+n-1) - partial);
-> +			BUFFER_TRACE(partial->bh, "call brelse");
-> +			brelse(partial->bh);
-> +			partial--;
-> +		}
-> +
-> +end_range:
-> +		partial2 = ext4_find_shared(inode, n2, offsets2, chain2, &nr2);
-> +		if (nr2) {
-> +			if (partial2 == chain2) {
-> +				/*
-> +				 * Remember, end is exclusive so here we're at
-> +				 * the start of the next level we're not going
-> +				 * to free. Everything was covered by the start
-> +				 * of the range.
-> +				 */
-> +				return 0;
-> +			} else {
-> +				/* Shared branch grows from an indirect block */
-> +				partial2--;
->  			}
-> +		} else {
-> +			/*
-> +			 * ext4_find_shared returns Indirect structure which
-> +			 * points to the last element which should not be
-> +			 * removed by truncate. But this is end of the range
-> +			 * in punch_hole so we need to point to the next element
-> +			 */
-> +			partial2->p++;
->  		}
-> -		if (level == 0 ||
-> -		    (bh && all_zeroes((__le32 *)bh->b_data,
-> -				      (__le32 *)bh->b_data + addr_per_block))) {
-> -			ext4_free_data(handle, inode, parent_bh, &blk, &blk+1);
-> -			*i_data = 0;
-> +
-> +		/*
-> +		 * Clear the ends of indirect blocks on the shared branch
-> +		 * at the end of the range
-> +		 */
-> +		while (partial2 > chain2) {
-> +			ext4_free_branches(handle, inode, partial2->bh,
-> +					   (__le32 *)partial2->bh->b_data,
-> +					   partial2->p,
-> +					   (chain2+n2-1) - partial2);
-> +			BUFFER_TRACE(partial2->bh, "call brelse");
-> +			brelse(partial2->bh);
-> +			partial2--;
->  		}
-> -		brelse(bh);
-> -		bh = NULL;
-> +		goto do_indirects;
->  	}
->  
-> -err:
-> -	return ret;
-> -}
-> -
-> -int ext4_free_hole_blocks(handle_t *handle, struct inode *inode,
-> -			  ext4_lblk_t first, ext4_lblk_t stop)
-> -{
-> -	int addr_per_block = EXT4_ADDR_PER_BLOCK(inode->i_sb);
-> -	int level, ret = 0;
-> -	int num = EXT4_NDIR_BLOCKS;
-> -	ext4_lblk_t count, max = EXT4_NDIR_BLOCKS;
-> -	__le32 *i_data = EXT4_I(inode)->i_data;
-> -
-> -	count = stop - first;
-> -	for (level = 0; level < 4; level++, max *= addr_per_block) {
-> -		if (first < max) {
-> -			ret = free_hole_blocks(handle, inode, NULL, i_data,
-> -					       level, first, count, num);
-> -			if (ret)
-> -				goto err;
-> -			if (count > max - first)
-> -				count -= max - first;
-> -			else
-> -				break;
-> -			first = 0;
-> -		} else {
-> -			first -= max;
-> +	/* Punch happened within the same level (n == n2) */
-> +	partial = ext4_find_shared(inode, n, offsets, chain, &nr);
-> +	partial2 = ext4_find_shared(inode, n2, offsets2, chain2, &nr2);
-> +	/*
-> +	 * ext4_find_shared returns Indirect structure which
-> +	 * points to the last element which should not be
-> +	 * removed by truncate. But this is end of the range
-> +	 * in punch_hole so we need to point to the next element
-> +	 */
-> +	partial2->p++;
-> +	while ((partial > chain) || (partial2 > chain2)) {
-> +		/* We're at the same block, so we're almost finished */
-> +		if ((partial->bh && partial2->bh) &&
-> +		    (partial->bh->b_blocknr == partial2->bh->b_blocknr)) {
-> +			if ((partial > chain) && (partial2 > chain2)) {
-> +				ext4_free_branches(handle, inode, partial->bh,
-> +						   partial->p + 1,
-> +						   partial2->p,
-> +						   (chain+n-1) - partial);
-> +				BUFFER_TRACE(partial->bh, "call brelse");
-> +				brelse(partial->bh);
-> +				BUFFER_TRACE(partial2->bh, "call brelse");
-> +				brelse(partial2->bh);
-> +			}
-> +			return 0;
->  		}
-> -		i_data += num;
-> -		if (level == 0) {
-> -			num = 1;
-> -			max = 1;
-> +		/*
-> +		 * Clear the ends of indirect blocks on the shared branch
-> +		 * at the start of the range
-> +		 */
-> +		if (partial > chain) {
-> +			ext4_free_branches(handle, inode, partial->bh,
-> +				   partial->p + 1,
-> +				   (__le32 *)partial->bh->b_data+addr_per_block,
-> +				   (chain+n-1) - partial);
-> +			BUFFER_TRACE(partial->bh, "call brelse");
-> +			brelse(partial->bh);
-> +			partial--;
-> +		}
-> +		/*
-> +		 * Clear the ends of indirect blocks on the shared branch
-> +		 * at the end of the range
-> +		 */
-> +		if (partial2 > chain2) {
-> +			ext4_free_branches(handle, inode, partial2->bh,
-> +					   (__le32 *)partial2->bh->b_data,
-> +					   partial2->p,
-> +					   (chain2+n-1) - partial2);
-> +			BUFFER_TRACE(partial2->bh, "call brelse");
-> +			brelse(partial2->bh);
-> +			partial2--;
->  		}
->  	}
->  
-> -err:
-> -	return ret;
-> +do_indirects:
-> +	/* Kill the remaining (whole) subtrees */
-> +	switch (offsets[0]) {
-> +	default:
-> +		if (++n >= n2)
-> +			return 0;
-> +		nr = i_data[EXT4_IND_BLOCK];
-> +		if (nr) {
-> +			ext4_free_branches(handle, inode, NULL, &nr, &nr+1, 1);
-> +			i_data[EXT4_IND_BLOCK] = 0;
-> +		}
-> +	case EXT4_IND_BLOCK:
-> +		if (++n >= n2)
-> +			return 0;
-> +		nr = i_data[EXT4_DIND_BLOCK];
-> +		if (nr) {
-> +			ext4_free_branches(handle, inode, NULL, &nr, &nr+1, 2);
-> +			i_data[EXT4_DIND_BLOCK] = 0;
-> +		}
-> +	case EXT4_DIND_BLOCK:
-> +		if (++n >= n2)
-> +			return 0;
-> +		nr = i_data[EXT4_TIND_BLOCK];
-> +		if (nr) {
-> +			ext4_free_branches(handle, inode, NULL, &nr, &nr+1, 3);
-> +			i_data[EXT4_TIND_BLOCK] = 0;
-> +		}
-> +	case EXT4_TIND_BLOCK:
-> +		;
-> +	}
-> +	return 0;
->  }
-> -
+>  /*
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 7fcd68e..a5adc09 100644
+> index 8a06473..4ccb624 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -3626,7 +3626,7 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
->  		ret = ext4_ext_remove_space(inode, first_block,
->  					    stop_block - 1);
->  	else
-> -		ret = ext4_free_hole_blocks(handle, inode, first_block,
-> +		ret = ext4_ind_remove_space(handle, inode, first_block,
->  					    stop_block);
+> @@ -357,35 +357,10 @@ void ext4_da_update_reserve_space(struct inode *inode,
+>  		used = ei->i_reserved_data_blocks;
+>  	}
 >  
->  	up_write(&EXT4_I(inode)->i_data_sem);
+> -	if (unlikely(ei->i_allocated_meta_blocks > ei->i_reserved_meta_blocks)) {
+> -		ext4_warning(inode->i_sb, "ino %lu, allocated %d "
+> -			"with only %d reserved metadata blocks "
+> -			"(releasing %d blocks with reserved %d data blocks)",
+> -			inode->i_ino, ei->i_allocated_meta_blocks,
+> -			     ei->i_reserved_meta_blocks, used,
+> -			     ei->i_reserved_data_blocks);
+> -		WARN_ON(1);
+> -		ei->i_allocated_meta_blocks = ei->i_reserved_meta_blocks;
+> -	}
+> -
+>  	/* Update per-inode reservations */
+>  	ei->i_reserved_data_blocks -= used;
+> -	ei->i_reserved_meta_blocks -= ei->i_allocated_meta_blocks;
+> -	percpu_counter_sub(&sbi->s_dirtyclusters_counter,
+> -			   used + ei->i_allocated_meta_blocks);
+> -	ei->i_allocated_meta_blocks = 0;
+> +	percpu_counter_sub(&sbi->s_dirtyclusters_counter, used);
+>  
+> -	if (ei->i_reserved_data_blocks == 0) {
+> -		/*
+> -		 * We can release all of the reserved metadata blocks
+> -		 * only when we have written all of the delayed
+> -		 * allocation blocks.
+> -		 */
+> -		percpu_counter_sub(&sbi->s_dirtyclusters_counter,
+> -				   ei->i_reserved_meta_blocks);
+> -		ei->i_reserved_meta_blocks = 0;
+> -		ei->i_da_metadata_calc_len = 0;
+> -	}
+>  	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+>  
+>  	/* Update quota subsystem for data blocks */
+> @@ -1232,35 +1207,6 @@ static int ext4_da_reserve_metadata(struct inode *inode, ext4_lblk_t lblock)
+>  	ext4_lblk_t save_last_lblock;
+>  	int save_len;
+>  
+> -	/*
+> -	 * recalculate the amount of metadata blocks to reserve
+> -	 * in order to allocate nrblocks
+> -	 * worse case is one extent per block
+> -	 */
+> -	spin_lock(&ei->i_block_reservation_lock);
+> -	/*
+> -	 * ext4_calc_metadata_amount() has side effects, which we have
+> -	 * to be prepared undo if we fail to claim space.
+> -	 */
+> -	save_len = ei->i_da_metadata_calc_len;
+> -	save_last_lblock = ei->i_da_metadata_calc_last_lblock;
+> -	md_needed = EXT4_NUM_B2C(sbi,
+> -				 ext4_calc_metadata_amount(inode, lblock));
+> -	trace_ext4_da_reserve_space(inode, md_needed);
+> -
+> -	/*
+> -	 * We do still charge estimated metadata to the sb though;
+> -	 * we cannot afford to run out of free blocks.
+> -	 */
+> -	if (ext4_claim_free_clusters(sbi, md_needed, 0)) {
+> -		ei->i_da_metadata_calc_len = save_len;
+> -		ei->i_da_metadata_calc_last_lblock = save_last_lblock;
+> -		spin_unlock(&ei->i_block_reservation_lock);
+> -		return -ENOSPC;
+> -	}
+> -	ei->i_reserved_meta_blocks += md_needed;
+> -	spin_unlock(&ei->i_block_reservation_lock);
+> -
+>  	return 0;       /* success */
+>  }
+>  
+> @@ -1295,25 +1241,15 @@ static int ext4_da_reserve_space(struct inode *inode, ext4_lblk_t lblock)
+>  	 * ext4_calc_metadata_amount() has side effects, which we have
+>  	 * to be prepared undo if we fail to claim space.
+>  	 */
+> -	save_len = ei->i_da_metadata_calc_len;
+> -	save_last_lblock = ei->i_da_metadata_calc_last_lblock;
+> -	md_needed = EXT4_NUM_B2C(sbi,
+> -				 ext4_calc_metadata_amount(inode, lblock));
+> -	trace_ext4_da_reserve_space(inode, md_needed);
+> +	md_needed = 0;
+> +	trace_ext4_da_reserve_space(inode, 0);
+>  
+> -	/*
+> -	 * We do still charge estimated metadata to the sb though;
+> -	 * we cannot afford to run out of free blocks.
+> -	 */
+> -	if (ext4_claim_free_clusters(sbi, md_needed + 1, 0)) {
+> -		ei->i_da_metadata_calc_len = save_len;
+> -		ei->i_da_metadata_calc_last_lblock = save_last_lblock;
+> +	if (ext4_claim_free_clusters(sbi, 1, 0)) {
+>  		spin_unlock(&ei->i_block_reservation_lock);
+>  		dquot_release_reservation_block(inode, EXT4_C2B(sbi, 1));
+>  		return -ENOSPC;
+>  	}
+>  	ei->i_reserved_data_blocks++;
+> -	ei->i_reserved_meta_blocks += md_needed;
+>  	spin_unlock(&ei->i_block_reservation_lock);
+>  
+>  	return 0;       /* success */
+> @@ -1346,20 +1282,6 @@ static void ext4_da_release_space(struct inode *inode, int to_free)
+>  	}
+>  	ei->i_reserved_data_blocks -= to_free;
+>  
+> -	if (ei->i_reserved_data_blocks == 0) {
+> -		/*
+> -		 * We can release all of the reserved metadata blocks
+> -		 * only when we have written all of the delayed
+> -		 * allocation blocks.
+> -		 * Note that in case of bigalloc, i_reserved_meta_blocks,
+> -		 * i_reserved_data_blocks, etc. refer to number of clusters.
+> -		 */
+> -		percpu_counter_sub(&sbi->s_dirtyclusters_counter,
+> -				   ei->i_reserved_meta_blocks);
+> -		ei->i_reserved_meta_blocks = 0;
+> -		ei->i_da_metadata_calc_len = 0;
+> -	}
+> -
+>  	/* update fs dirty data blocks counter */
+>  	percpu_counter_sub(&sbi->s_dirtyclusters_counter, to_free);
+>  
+> @@ -1500,10 +1422,6 @@ static void ext4_print_free_blocks(struct inode *inode)
+>  	ext4_msg(sb, KERN_CRIT, "Block reservation details");
+>  	ext4_msg(sb, KERN_CRIT, "i_reserved_data_blocks=%u",
+>  		 ei->i_reserved_data_blocks);
+> -	ext4_msg(sb, KERN_CRIT, "i_reserved_meta_blocks=%u",
+> -	       ei->i_reserved_meta_blocks);
+> -	ext4_msg(sb, KERN_CRIT, "i_allocated_meta_blocks=%u",
+> -	       ei->i_allocated_meta_blocks);
+>  	return;
+>  }
+>  
+> @@ -2843,8 +2761,7 @@ int ext4_alloc_da_blocks(struct inode *inode)
+>  {
+>  	trace_ext4_alloc_da_blocks(inode);
+>  
+> -	if (!EXT4_I(inode)->i_reserved_data_blocks &&
+> -	    !EXT4_I(inode)->i_reserved_meta_blocks)
+> +	if (!EXT4_I(inode)->i_reserved_data_blocks)
+>  		return 0;
+>  
+>  	/*
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 59e3162..4503b8f 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4619,7 +4619,6 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+>  	struct buffer_head *gd_bh;
+>  	ext4_group_t block_group;
+>  	struct ext4_sb_info *sbi;
+> -	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	struct ext4_buddy e4b;
+>  	unsigned int count_clusters;
+>  	int err = 0;
+> @@ -4830,19 +4829,7 @@ do_more:
+>  			     &sbi->s_flex_groups[flex_group].free_clusters);
+>  	}
+>  
+> -	if (flags & EXT4_FREE_BLOCKS_RESERVE && ei->i_reserved_data_blocks) {
+> -		percpu_counter_add(&sbi->s_dirtyclusters_counter,
+> -				   count_clusters);
+> -		spin_lock(&ei->i_block_reservation_lock);
+> -		if (flags & EXT4_FREE_BLOCKS_METADATA)
+> -			ei->i_reserved_meta_blocks += count_clusters;
+> -		else
+> -			ei->i_reserved_data_blocks += count_clusters;
+> -		spin_unlock(&ei->i_block_reservation_lock);
+> -		if (!(flags & EXT4_FREE_BLOCKS_NO_QUOT_UPDATE))
+> -			dquot_reclaim_block(inode,
+> -					EXT4_C2B(sbi, count_clusters));
+> -	} else if (!(flags & EXT4_FREE_BLOCKS_NO_QUOT_UPDATE))
+> +	if (!(flags & EXT4_FREE_BLOCKS_NO_QUOT_UPDATE))
+>  		dquot_free_block(inode, EXT4_C2B(sbi, count_clusters));
+>  	percpu_counter_add(&sbi->s_freeclusters_counter, count_clusters);
+>  
 > 
