@@ -1,51 +1,80 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Recovery after mkfs.ext4 on a ext4
-Date: Mon, 23 Jun 2014 08:37:58 -0400
-Message-ID: <20140623123758.GA14887@thunk.org>
-References: <539D555E.3050707@scarlet.be>
- <20140615132026.GC2180@thunk.org>
- <539E019C.6060600@scarlet.be>
- <20140615214403.GA1420@thunk.org>
- <53A7C4A1.4000603@scarlet.be>
+Subject: Re: [PATCH] ext4: remove metadata reservation checks
+Date: Mon, 23 Jun 2014 08:59:58 -0400
+Message-ID: <20140623125958.GB14887@thunk.org>
+References: <1403490981-5457-1-git-send-email-tytso@mit.edu>
+ <alpine.LFD.2.00.1406231140560.2169@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Killian De Volder <killian.de.volder@scarlet.be>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53022 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:53053 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752529AbaFWMiC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Jun 2014 08:38:02 -0400
+	id S1751066AbaFWNAA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Jun 2014 09:00:00 -0400
 Content-Disposition: inline
-In-Reply-To: <53A7C4A1.4000603@scarlet.be>
+In-Reply-To: <alpine.LFD.2.00.1406231140560.2169@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 23, 2014 at 08:09:37AM +0200, Killian De Volder wrote:
-> It's still checking due to the high amount of ram it's using.
-> However if I start a parallel check with -nf if find other errors the one with the high memory usage hasn't found yet ?
+On Mon, Jun 23, 2014 at 11:56:23AM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+>=20
+> However I am still on the fence about this patch, because it was not
+> designed, at least initially to cover all metadata reservation, but
+> mainly those we sometimes can not predict (unwritten extent
+> conversion for example), or those when the prediction failed (in
+> this case we would see a warning).
 
-No, definitely not that!  Running two e2fsck's in parallel will do far
-more harm than good.
+I was driven to revisit this because we have a map reduce workload
+that triggers the warning fairly consistently, and it's dirtying up
+our logs and monitoring systems.  The prediction algorithm we are
+using is actually pretty awful, unfortunately, and fixing it to do a
+better job is non-trivial.
 
-> Should I start a new one, or is this not advised ?
-> As sometimes I think it's bad inodes causing artificial usage of memory.
+> I think that if we can be really sure, that the reserved space will
+> always have enough space to cover all possible metadata blocks
+> needed on writeback time (is there any other time we might need
+> metadata block and can not fail with ENOSPC?), then this patch is
+> definitely very useful.
 
-What part of the e2fsck run are you in?  If you are in passes
-1b/1c/1d, then one of the things you can do is to analyze the log
-output to date, and individually investigate the inodes that were
-reported as bad using debugfs.  You could then backup what was worth
-backuping up out of those inodes, and then use the debugfs "clri"
-command to zap the bad inode.  I have done that to reduce the number
-of bad inodes to make e2fsck pass 1b, 1c, and 1d run faster.  But I've
-never done it on a really huge file system, and it may not be worth
-the effort.
+The only time we need blocks where we can't fail with ENOSPC is
+delayed allocation writeback and the unwritten extent conversion.  And
+in both cases, the number of blocks we need are quite small; we can,
+after all, fit 340 entries into each extent tree block.
 
-What I'd probably do instead is to edit e2fsck to skip pass 1b, 1c,
-and 1d, and then hope for the best.  The file system will still be
-corrupted, and there is the chance that you will do some damage in the
-later passes because you skipped passes 1b/c/d, but if the goal is to
-get the file system in a state where you can safely mount it
-read-only, that would probably be your best bet.
+The main worry I might have is the worst case scenario where have a
+very small file system.  For example, if you create a file system
+which is only 58k, we only have one free block.  But then again, such
+a file system only has 4 free blocks, so it's physically impossible to
+have any extent tree blocks.  :-)
+
+Here's a potential carefully structured case where 2% of the free
+blocks wouldn't be enough.  I'll let folks decide if we think this is
+realistic enough that we need to care.  Suppose we have a 4M file
+system, using 4k blocks, we would only have 51 reserved blocks.  On
+such a file system, there would be 982 free blocks available to be
+allocated.  If you then had 200 inodes that had exactly 4 extents
+(using 4 blocks written using sparse writes), then there would be 182
+free blocks.  If we then posted 100 sparse writes to half of these
+inodes, we could end up using 100 data blocks, and also require 100
+metadata blocks for the extent tree splits --- and we would then hit
+the ENOSPC failure condition.
+
+So this is a "proof" that 2% is quite enough for small file systems.
+Do we care?  Eh.  I'm not at all convinced such a worst case scenario
+could ever happen in real life, but we could fix this by adding a
+"floor" to the 2% calculation so that we reserve at least 128 or 256
+blocks.  Or we already have code which disables delayed allocation if
+we are close to full, and we could extend that to cover super small
+file systems, or simply entirely disable delalloc for super small file
+systems in the first case.
 
 						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
