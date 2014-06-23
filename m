@@ -1,34 +1,40 @@
-From: "Rishabh Singh B.Tech., CSE, IIT-BHU, Varanasi (INDIA)"
-	<rishabh.singh.cse11@iitbhu.ac.in>
-Subject: Testing performance of SSDs using ext4 and effect on parameters
-Date: Mon, 23 Jun 2014 10:00:51 +0530
-Message-ID: <CAHohGC-fW0CEALotEY_93t=n7a3URZYAsAp2G2EytuRgBBdgtw@mail.gmail.com>
-Reply-To: rishabh.singh.cse11@iitbhu.ac.in
+From: Killian De Volder <killian.de.volder@scarlet.be>
+Subject: Re: Recovery after mkfs.ext4 on a ext4
+Date: Mon, 23 Jun 2014 08:09:37 +0200
+Message-ID: <53A7C4A1.4000603@scarlet.be>
+References: <539D555E.3050707@scarlet.be> <20140615132026.GC2180@thunk.org> <539E019C.6060600@scarlet.be> <20140615214403.GA1420@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f180.google.com ([209.85.212.180]:62110 "EHLO
-	mail-wi0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750833AbaFWEaw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Jun 2014 00:30:52 -0400
-Received: by mail-wi0-f180.google.com with SMTP id hi2so3351547wib.13
-        for <linux-ext4@vger.kernel.org>; Sun, 22 Jun 2014 21:30:51 -0700 (PDT)
+Received: from relay4-d.mail.gandi.net ([217.70.183.196]:49245 "EHLO
+	relay4-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751310AbaFWGJm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Jun 2014 02:09:42 -0400
+In-Reply-To: <20140615214403.GA1420@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On 15-06-14 23:44, Theodore Ts'o wrote:
+>
+>> Sometimes I think it's certain inodes causing the excessive memory usage cause.
+>> 20GiB sounds a lot when the normal -f fschk took less then 3GiB. (It's a 16TiB file system).
+>> But suppose it needs more binary maps when the filesystem is this corrupt ?
+> E2fsck needs a lot more memory when dealing with a file systems where
+> some blocks are claimed by multiple inodes.  This is when pass
+> 1b/1c/1d are invoked.  The e2fsck program also caches where the
+> directory blocks are located, but I doubt that's a particular concern
+> here.
+>
+> Regards,
+> 						- Ted
+It's still checking due to the high amount of ram it's using.
+However if I start a parallel check with -nf if find other errors the one with the high memory usage hasn't found yet ?
 
-I am testing the performance of SSDs using the ext4 file system in
-Ubuntu. I want to test the effects on performance by changing
-parameters:
-1.data=writeback or ordered
-2.barriers
-3.noatime
-4.errors
+Should I start a new one, or is this not advised ?
+As sometimes I think it's bad inodes causing artificial usage of memory.
 
-Can you kindly suggest me how do I change the desired parameters for
-testing? And some other resouces that are helpful.
-
-Thanking you,
-Rishabh Singh
+Kind regards,
+Killian De Volder
