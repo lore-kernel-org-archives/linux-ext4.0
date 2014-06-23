@@ -1,81 +1,73 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] [regression] fix 32-bit breakage in block device read(2)
-Date: Mon, 23 Jun 2014 11:41:54 -0400
-Message-ID: <20140623154154.GA29952@thunk.org>
+From: Killian De Volder <killian.de.volder@scarlet.be>
+Subject: Re: Recovery after mkfs.ext4 on a ext4
+Date: Mon, 23 Jun 2014 18:37:20 +0200
+Message-ID: <53A857C0.3060401@scarlet.be>
+References: <539D555E.3050707@scarlet.be> <20140615132026.GC2180@thunk.org> <539E019C.6060600@scarlet.be> <20140615214403.GA1420@thunk.org> <53A7C4A1.4000603@scarlet.be> <20140623123758.GA14887@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53435 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753980AbaFWPl5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Jun 2014 11:41:57 -0400
-Content-Disposition: inline
+Received: from relay5-d.mail.gandi.net ([217.70.183.197]:34360 "EHLO
+	relay5-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754582AbaFWQhZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Jun 2014 12:37:25 -0400
+In-Reply-To: <20140623123758.GA14887@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Here's the patch that I mentioned on today's concall.  The patch isn't
-in 3.16-rc2, but it's needed if you want to run xfstests on 32-bit
-kernels on 3.16-rc1 or 3.16-rc2 without seeing massive failures.
+On 23-06-14 14:37, Theodore Ts'o wrote:
+> On Mon, Jun 23, 2014 at 08:09:37AM +0200, Killian De Volder wrote:
+>> It's still checking due to the high amount of ram it's using.
+>> However if I start a parallel check with -nf if find other errors the one with the high memory usage hasn't found yet ?
+> No, definitely not that!  Running two e2fsck's in parallel will do far
+> more harm than good.
+In parallel is a big word: the check repair is SOOO slow, it might as well been killed when the second (read-only) test is done.
+I once has a OOM because of tomuch ZRAM allocated, after I restarted e2fsck, it found more error before going into massive ram-usage.
+So I was wonder what would happen if I restarted it.
+>
+>> Should I start a new one, or is this not advised ?
+>> As sometimes I think it's bad inodes causing artificial usage of memory.
+> What part of the e2fsck run are you in?  If you are in passes
+> 1b/1c/1d, then one of the things you can do is to analyze the log
+Pass 1: Checking inodes, blocks, and sizes
+Notthing else below this except things like:
 
-	   	       			- Ted
+Too many illegal blocks in inode 488.
+Clear inode<y>? yes
 
+But no mention of any next pass.
 
->From 71c73fb0fc61fa569d961b8f5ba21bf5597fc3f1 Mon Sep 17 00:00:00 2001
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Date: Mon, 23 Jun 2014 11:31:36 -0400
-Subject: [PATCH] [regression] fix 32-bit breakage in block device read(2)
+This is the stack it's "stuck" on: (should compile one with debugging data)
+#4  0x00007f1b0f1a0edb in block_iterate_dind ()
+   from /lib64/libext2fs.so.2
+#5  0x00007f1b0f1a1950 in ext2fs_block_iterate3 ()
+   from /lib64/libext2fs.so.2
+#6  0x00000000004118c3 in check_blocks ()
+#7  0x0000000000412921 in process_inodes.part.6 ()
+#8  0x0000000000413923 in e2fsck_pass1 ()
+#9  0x000000000040e2cf in e2fsck_run ()
+#10 0x000000000040a8e5 in main ()
 
-blkdev_read_iter() wants to cap the iov_iter by the amount of
-data remaining to the end of device.  That's what iov_iter_truncate()
-is for (trim iter->count if it's above the given limit).  So far,
-so good, but the argument of iov_iter_truncate() is size_t, so on
-32bit boxen (in case of a large device) we end up with that upper
-limit truncated down to 32 bits *before* comparing it with iter->count.
+So this is passA correct ?
 
-Easily fixed by making iov_iter_truncate() take 64bit argument -
-it does the right thing after such change (we only reach the
-assignment in there when the current value of iter->count is greater
-than the limit, i.e. for anything that would get truncated we don't
-reach the assignment at all) and that argument is not the new
-value of iter->count - it's an upper limit for such.
-
-The overhead of passing u64 is not an issue - the thing is inlined,
-so callers passing size_t won't pay any penalty.
-
-Reported-by: Theodore Tso <tytso@mit.edu>
-Tested-by: Theodore Tso <tytso@mit.edu>
-Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
----
- include/linux/uio.h | 14 +++++++++++++-
- 1 file changed, 13 insertions(+), 1 deletion(-)
-
-diff --git a/include/linux/uio.h b/include/linux/uio.h
-index e2231e4..d54985e 100644
---- a/include/linux/uio.h
-+++ b/include/linux/uio.h
-@@ -94,8 +94,20 @@ static inline size_t iov_iter_count(struct iov_iter *i)
- 	return i->count;
- }
- 
--static inline void iov_iter_truncate(struct iov_iter *i, size_t count)
-+/*
-+ * Cap the iov_iter by given limit; note that the second argument is
-+ * *not* the new size - it's upper limit for such.  Passing it a value
-+ * greater than the amount of data in iov_iter is fine - it'll just do
-+ * nothing in that case.
-+ */
-+static inline void iov_iter_truncate(struct iov_iter *i, u64 count)
- {
-+	/*
-+	 * count doesn't have to fit in size_t - comparison extends both
-+	 * operands to u64 here and any value that would be truncated by
-+	 * conversion in assignement is by definition greater than all
-+	 * values of size_t, including old i->count.
-+	 */
- 	if (i->count > count)
- 		i->count = count;
- }
--- 
-2.0.0
-
+> output to date, and individually investigate the inodes that were
+> reported as bad using debugfs.  You could then backup what was worth
+> backuping up out of those inodes, and then use the debugfs "clri"
+> command to zap the bad inode.  I have done that to reduce the number
+> of bad inodes to make e2fsck pass 1b, 1c, and 1d run faster.  But I've
+> never done it on a really huge file system, and it may not be worth
+> the effort.
+>
+> What I'd probably do instead is to edit e2fsck to skip pass 1b, 1c,
+> and 1d, and then hope for the best.  The file system will still be
+> corrupted, and there is the chance that you will do some damage in the
+> later passes because you skipped passes 1b/c/d, but if the goal is to
+> get the file system in a state where you can safely mount it
+> read-only, that would probably be your best bet.
+>
+> 						- Ted
+>
+Regards,
+Killian
