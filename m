@@ -1,48 +1,66 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Livelock when running xfstests generic/127 on ext4 with 3.15
-Date: Wed, 25 Jun 2014 10:45:14 -0400
-Message-ID: <20140625144514.GA10397@thunk.org>
-References: <20140620175322.GO12025@linux.intel.com>
- <20140625131224.GE21507@quack.suse.cz>
- <20140625141756.GS12025@linux.intel.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 41962] New: fs/jbd2/transaction.c:1113 and fs/buffer.c:2915
+Date: Wed, 25 Jun 2014 16:11:27 +0000
+Message-ID: <bug-41962-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Matthew Wilcox <willy@linux.intel.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20140625141756.GS12025@linux.intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:35113 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756887AbaFYQLa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 Jun 2014 12:11:30 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 5DD0620395
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Jun 2014 16:11:28 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 56F9320386
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Jun 2014 16:11:27 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 25, 2014 at 10:17:56AM -0400, Matthew Wilcox wrote:
-> 
-> Okay ... but why is it so much worse in 3.15 than 3.14?
-> 
-> And does ext4 think of "running out of space" as a percentage
-> free, or an absolute number of blocks remaining?  From the code in
-> ext4_nonda_switch(), it seems to be the former, although maybe excessive
-> fragmentation has caused ext4 to think it's running out of space?
+https://bugzilla.kernel.org/show_bug.cgi?id=41962
 
-When the blocks that were allocated using delayed allocation exceeds
-50% of the free space, we initiate writeback.  When delalloc blocks
-exceeds 66% of the free space, we fall back to nodelalloc, which among
-other things, means blocks are allocated for each write system call,
-and we also have to add and remove the inode from on the orphan inode
-list so that if we crash in the middle of the write system call, we
-don't end up exposing stale data.
+            Bug ID: 41962
+           Summary: fs/jbd2/transaction.c:1113 and fs/buffer.c:2915
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.0.3
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: lasse-kernel-bug-2011@mail.plastictree.net
+                CC: xerofoify@gmail.com
+        Regression: No
+                CC: xerofoify@gmail.com
 
-We did have a change to the orphan inode code to improve scalability,
-so that could have been a possible cause; but that happened after
-3.15, so that can't be it.  The other possibility is that there's
-simply a chance in the writeback code that is changing how
-aggressively we start writeback when we exceed the 50% threshold, so
-that we end up switching into nonda mode more often.
+Created attachment 70802
+  --> https://bugzilla.kernel.org/attachment.cgi?id=70802&action=edit
+dmesg
 
-Any chance you can run generic/127 under perf so we can see where
-we're spending all of our CPU time?  The other thing I can imagine
-doing is to add tracepoint when whenver we drop into nonda mode, so we
-can see if that's happening more often under 3.15 versus 3.14.
+Certain filesystem usage leads to one of the two errors visible in dmesg output
+(see attachment). The system needs a reboot after that.
 
-    	   	  	    	       	     - Ted
+I have also tested with olders kernel versions, including 2.6.38.8. Same there
+(at least for the first of the two errors).
+
+Strangely, the only filesystem usage scheme that triggers those errors are two
+parallel processes of the bup backup system <https://github.com/apenwarr/bup>.
+They run fine for some time (several minutes, sometimes longer), then the bug
+message appears in the logs, and the system stops working correctly.
+
+I am using an encrypted LVM.
+
+--- Comment #1 from xerofoify@gmail.com ---
+Please test this bug against a newer kernel to see if it's fixed.
+Cheers Nick
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
