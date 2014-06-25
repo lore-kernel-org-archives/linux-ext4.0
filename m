@@ -1,7 +1,7 @@
-From: Jan Kara <jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: Livelock when running xfstests generic/127 on ext4 with 3.15
-Date: Wed, 25 Jun 2014 16:44:35 +0200
-Message-ID: <20140625144435.GB25238@quack.suse.cz>
+Date: Wed, 25 Jun 2014 10:45:14 -0400
+Message-ID: <20140625144514.GA10397@thunk.org>
 References: <20140620175322.GO12025@linux.intel.com>
  <20140625131224.GE21507@quack.suse.cz>
  <20140625141756.GS12025@linux.intel.com>
@@ -16,61 +16,33 @@ In-Reply-To: <20140625141756.GS12025@linux.intel.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 25-06-14 10:17:56, Matthew Wilcox wrote:
-> On Wed, Jun 25, 2014 at 03:12:24PM +0200, Jan Kara wrote:
-> > > $ sudo cat /proc/4795/stack 
-> > > [<ffffffff8120bee9>] writeback_inodes_sb_nr+0xa9/0xe0
-> > > [<ffffffff8120bfae>] try_to_writeback_inodes_sb_nr+0x5e/0x80
-> > > [<ffffffff8120bff5>] try_to_writeback_inodes_sb+0x25/0x30
-> > > [<ffffffffa01bae2a>] ext4_nonda_switch+0x8a/0x90 [ext4]
-> > > [<ffffffffa01c49a5>] ext4_page_mkwrite+0x265/0x440 [ext4]
-> >   Hum, apparently you are running out of space on the test partition. And
-> > that is known to make ext4 extraordinarily slow...
+On Wed, Jun 25, 2014 at 10:17:56AM -0400, Matthew Wilcox wrote:
 > 
 > Okay ... but why is it so much worse in 3.15 than 3.14?
-  Is it really a difference between kernels? Didn't just the partition get
-more full? If it is really just a kernel difference I don't have a good
-explanation... Bisecting that down would be useful...
-
+> 
 > And does ext4 think of "running out of space" as a percentage
 > free, or an absolute number of blocks remaining?  From the code in
 > ext4_nonda_switch(), it seems to be the former, although maybe excessive
 > fragmentation has caused ext4 to think it's running out of space?
-  We start forcing writeback (and waiting for it) when the amount of free
-space is less than twice the amount of delayed-allocated blocks which are
-not yet written out.
 
-								Honza
+When the blocks that were allocated using delayed allocation exceeds
+50% of the free space, we initiate writeback.  When delalloc blocks
+exceeds 66% of the free space, we fall back to nodelalloc, which among
+other things, means blocks are allocated for each write system call,
+and we also have to add and remove the inode from on the orphan inode
+list so that if we crash in the middle of the write system call, we
+don't end up exposing stale data.
 
-> > > My setup is a 1GB ram disk:
-> > > 
-> > > modprobe brd rd_size=1048576 rd_nr=2
-> > > 
-> > > local.config:
-> > > 
-> > > TEST_DEV=/dev/ram0
-> > > TEST_DIR=/mnt/ram0
-> > > SCRATCH_DEV=/dev/ram1
-> > > SCRATCH_MNT=/mnt/ram1
-> > > 
-> > > 
-> > > Hardware is an Intel(R) Core(TM) i7-4770 CPU @ 3.40GHz with 4GB RAM,
-> > > in case it matters.  But I think what matters is that I'm running it on
-> > > a "tiny" 1GB filesystem, since this code is only invoked whenever the
-> > > number of dirty clusters is large relative to the number of free clusters.
-> > > 
-> > > df shows:
-> > > /dev/ram1         999320     1284    929224   1% /mnt/ram1
-> > > /dev/ram0         999320   646088    284420  70% /mnt/ram0
-> > > 
-> > > So it's not *unreasonably* full.
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > -- 
-> > Jan Kara <jack@suse.cz>
-> > SUSE Labs, CR
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+We did have a change to the orphan inode code to improve scalability,
+so that could have been a possible cause; but that happened after
+3.15, so that can't be it.  The other possibility is that there's
+simply a chance in the writeback code that is changing how
+aggressively we start writeback when we exceed the 50% threshold, so
+that we end up switching into nonda mode more often.
+
+Any chance you can run generic/127 under perf so we can see where
+we're spending all of our CPU time?  The other thing I can imagine
+doing is to add tracepoint when whenver we drop into nonda mode, so we
+can see if that's happening more often under 3.15 versus 3.14.
+
+    	   	  	    	       	     - Ted
