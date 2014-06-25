@@ -1,63 +1,55 @@
-From: "Maciej W. Rozycki" <macro@linux-mips.org>
-Subject: Re: [GIT PULL] ext4 changes for 3.15
-Date: Wed, 25 Jun 2014 00:25:51 +0100 (BST)
-Message-ID: <alpine.LFD.2.11.1406250018180.23403@eddie.linux-mips.org>
-References: <20140403191558.GA8745@thunk.org> <alpine.LFD.2.11.1406242251230.23403@eddie.linux-mips.org> <53A9FE04.2000306@hp.com>
+From: Chin Tzung Cheng <chintzung@gmail.com>
+Subject: About changing the UUID of external journal device
+Date: Wed, 25 Jun 2014 17:31:15 +0800
+Message-ID: <CAPBYzXNb18pwCijLTRrprMjUDGuCwRso7pa0K2foObqr_9pHpQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: T Makphaibulchoke <tmac@hp.com>, Theodore Ts'o <tytso@mit.edu>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Received: from localhost.localdomain ([127.0.0.1]:53617 "EHLO
-        localhost.localdomain" rhost-flags-OK-OK-OK-OK)
-        by eddie.linux-mips.org with ESMTP id S6855799AbaFXXZv0ZsnK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org> + 1 other);
-        Wed, 25 Jun 2014 01:25:51 +0200
-In-Reply-To: <53A9FE04.2000306@hp.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-vc0-f177.google.com ([209.85.220.177]:53954 "EHLO
+	mail-vc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752361AbaFYJbQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Jun 2014 05:31:16 -0400
+Received: by mail-vc0-f177.google.com with SMTP id ij19so1587804vcb.36
+        for <linux-ext4@vger.kernel.org>; Wed, 25 Jun 2014 02:31:15 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 24 Jun 2014, Thavatchai Makphaibulchoke wrote:
+Hi,
+I have problem while I create a ext4 volume with external journal device.
+The UUID of external journal device is not the one I specify.
 
-> >  This change causes breakage:
-> > 
-> > fs/built-in.o: In function `__mb_cache_entry_release':
-> > mbcache.c:(.text+0x56b3c): undefined reference to `log2'
-> > mbcache.c:(.text+0x56b3c): relocation truncated to fit: R_MIPS_26 against `log2'
-> > mbcache.c:(.text+0x56b74): undefined reference to `__fixunsdfsi'
-> > mbcache.c:(.text+0x56b74): relocation truncated to fit: R_MIPS_26 against `__fixunsdfsi'
-> > mbcache.c:(.text+0x56be4): undefined reference to `log2'
-> > mbcache.c:(.text+0x56be4): relocation truncated to fit: R_MIPS_26 against `log2'
-> > mbcache.c:(.text+0x56bf0): undefined reference to `__fixunsdfsi'
-> > mbcache.c:(.text+0x56bf0): relocation truncated to fit: R_MIPS_26 against `__fixunsdfsi'
-> > 
-> > and so on, and so on.  It uses __builtin_log2() that is a floating-point 
-> > function, its corresponding <math.h> prototype is:
-> > 
-> >  -- Function: double log2 (double X)
-> > 
-> > (GCC builtins are of course implicitly prototyped).  Please note that 
-> > floating-point calculations are not allowed in the kernel and relying on 
-> > the compiler to optimise them away is risky to say the least.
-> > 
-> >  Can you please rewrite the fragment using __builtin_log2() so as to avoid 
-> > the floating-point calculation, using ffs() or suchlike perhaps?
-> > 
-> >   Maciej
-> > 
-> 
-> Sorry and thanks for notifying me about the problem.
-> 
-> I've submitted the fix, using ilog2, and could be found at,
-> 
-> https://lkml.org/lkml/2014/5/30/462
-> 
-> Please let me know if you have any comment.
+First, I create a journal device(/dev/sda4).
 
- Thanks, that's even better, and the kernel builds and boots.  I saw no 
-trace of your proposal going anywhere so I gave it my `Reviewed-by' tag in 
-case that helps.
+[root@localhost sbin]# ./mke2fs -O journal_dev /dev/sda4
+[root@localhost sbin]# ./blkid /dev/sda4
+/dev/sda4: UUID="1313c286-7803-4a40-9010-74964554d13f" TYPE="jbd"
 
-  Maciej
+I use tune2fs to change the UUID of journal device. blkid shows the
+UUID is changed.
+
+[root@localhost sbin]# ./tune2fs  /dev/sda4 -U
+aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+[root@localhost sbin]# ./blkid /dev/sda4
+/dev/sda4: UUID="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" TYPE="jbd"
+
+Make an ext4 volume with external journal device (dev/sda4)
+
+[root@localhost sbin]# ./mke2fs /dev/sda3 -t ext4 -J device=/dev/sda4
+
+[root@localhost sbin]# ./dumpe2fs -h /dev/sda3 | grep UUID
+dumpe2fs 1.42.10 (18-May-2014)
+Filesystem UUID:          d8f038e5-9539-4b1d-8ccb-63cc56771fc5
+Journal UUID:             1313c286-7803-4a40-9010-74964554d13f
+
+However, the journal device UUID of ext4 volume is still the old one.
+It's not the new one.
+
+Test environment
+Kernel version: 3.12.10
+e2fsprogs version: 1.42.10
+
+Any help would be appreciated.
+
+Thanks,
+chintzung
