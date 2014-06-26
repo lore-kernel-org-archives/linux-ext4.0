@@ -1,38 +1,39 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [GIT PULL] ext4 changes for 3.15
-Date: Wed, 25 Jun 2014 18:37:03 -0400
-Message-ID: <20140625223703.GC10397@thunk.org>
-References: <20140403191558.GA8745@thunk.org>
- <alpine.LFD.2.11.1406242251230.23403@eddie.linux-mips.org>
- <53A9FE04.2000306@hp.com>
- <CA+55aFzbC9QgO46m2H47NbUMWssDm-t4YQ8bJggGrZj2h-_9EQ@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 41712] kernel BUG at fs/jbd/transaction.c:1155!
+Date: Thu, 26 Jun 2014 04:07:13 +0000
+Message-ID: <bug-41712-13602-luMdZWf6F9@https.bugzilla.kernel.org/>
+References: <bug-41712-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>,
-	"Maciej W. Rozycki" <macro@linux-mips.org>,
-	T Makphaibulchoke <tmac@hp.com>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CA+55aFzbC9QgO46m2H47NbUMWssDm-t4YQ8bJggGrZj2h-_9EQ@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:60338 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751972AbaFZEHP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 Jun 2014 00:07:15 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 10DCB2038C
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Jun 2014 04:07:14 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 52B0820377
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Jun 2014 04:07:13 +0000 (UTC)
+In-Reply-To: <bug-41712-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 25, 2014 at 10:08:02AM -0700, Linus Torvalds wrote:
-> Ted,
->  going through pending issues, and wondering if I'm expected to pick
-> this up directly? The original came through your tree (commit
-> 1f3e55fe02d1: "fs/mbcache.c: doucple the locking of local from global
-> data") and is in 3.15 too, so the patch should be marked for stable as
-> well.
-> 
-> It's hopefully limited to just very bad gcc versions for odd
-> architectures, so it's not exactly high-impact, but still..
+https://bugzilla.kernel.org/show_bug.cgi?id=41712
 
-Yes, I'll get something to you soon.  Sorry, I was on travel to NYC
-earlier this week, so I'm a bit behind on the bug fix patches that I
-needed to send to you now that the merge window is closed.
+xerofoify@gmail.com changed:
 
-       	       	      	       	   	 	- Ted
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |xerofoify@gmail.com
+
+--- Comment #3 from xerofoify@gmail.com ---
+Please test against newer kernel to see if this bug is fixed.
+Cheers Nick
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
