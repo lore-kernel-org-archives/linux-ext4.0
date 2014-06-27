@@ -1,229 +1,120 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: data=journal regressions in 3.16-rc1
-Date: Fri, 27 Jun 2014 20:14:39 +0900
-Message-ID: <006901cf91f8$fc9eb490$f5dc1db0$@samsung.com>
-References: <20140623202404.GA16979@wallace>
- <100D68C7BA14664A8938383216E40DE0407A5AB2@FMSMSX114.amr.corp.intel.com>
- <20140623215514.GB16979@wallace>
- <alpine.LFD.2.00.1406261646500.2172@localhost.localdomain>
- <004101cf91cd$8a4562c0$9ed02840$@samsung.com>
- <alpine.LFD.2.00.1406271246110.2349@localhost.localdomain>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: remove metadata reservation checks
+Date: Fri, 27 Jun 2014 13:29:50 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1406271316300.2349@localhost.localdomain>
+References: <1403490981-5457-1-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.1406231140560.2169@localhost.localdomain> <20140623125958.GB14887@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "'Wilcox, Matthew R'" <matthew.r.wilcox@intel.com>,
-	'Eric Whitney' <enwlinux@gmail.com>,
-	linux-ext4@vger.kernel.org, tytso@mit.edu,
-	'Christoph Hellwig' <hch@infradead.org>,
-	'Ashish Sangwan' <a.sangwan@samsung.com>
-To: =?iso-8859-2?Q?'Luk=E1=B9_Czerner'?= <lczerner@redhat.com>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1929671767-1403868593=:2349"
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout4.samsung.com ([203.254.224.34]:9049 "EHLO
-	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752868AbaF0LOm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Jun 2014 07:14:42 -0400
-Received: from epcpsbgr1.samsung.com
- (u141.gpu120.samsung.co.kr [203.254.230.141])
- by mailout4.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N7T00I87R8F9H10@mailout4.samsung.com> for
- linux-ext4@vger.kernel.org; Fri, 27 Jun 2014 20:14:39 +0900 (KST)
-In-reply-to: <alpine.LFD.2.00.1406271246110.2349@localhost.localdomain>
-Content-language: ko
+Received: from mx1.redhat.com ([209.132.183.28]:22297 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753331AbaF0L3z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 27 Jun 2014 07:29:55 -0400
+In-Reply-To: <20140623125958.GB14887@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->=20
-> On Fri, 27 Jun 2014, Namjae Jeon wrote:
->=20
-> > Date: Fri, 27 Jun 2014 15:03:38 +0900
-> > From: Namjae Jeon <namjae.jeon@samsung.com>
-> > To: 'Luk=E1=B9 Czerner' <lczerner@redhat.com>,
-> >     "'Wilcox, Matthew R'" <matthew.r.wilcox@intel.com>
-> > Cc: 'Eric Whitney' <enwlinux@gmail.com>, linux-ext4@vger.kernel.org=
-,
-> >     tytso@mit.edu, Christoph Hellwig <hch@infradead.org>,
-> >     Ashish Sangwan <a.sangwan@samsung.com>
-> > Subject: RE: data=3Djournal regressions in 3.16-rc1
-> >
-> > > > On Mon, 23 Jun 2014, Eric Whitney wrote:
-> > > >
-> > > > > Date: Mon, 23 Jun 2014 17:55:14 -0400
-> > > > > From: Eric Whitney <enwlinux@gmail.com>
-> > > > > To: "Wilcox, Matthew R" <matthew.r.wilcox@intel.com>
-> > > > > Cc: Eric Whitney <enwlinux@gmail.com>,
-> > > > >     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>=
-,
-> > > > >     "tytso@mit.edu" <tytso@mit.edu>
-> > > > > Subject: Re: data=3Djournal regressions in 3.16-rc1
-> > > > >
-> > > > > The first invocation of fsx causes generic/075 to fail.  With=
-in 075.0.fsxlog,
-> > > > > bad reads appear to be the cause:
-> > > > >
-> > > > > READ BAD DATA: offset =3D 0xb7f0, size =3D 0x8111, fname =3D =
-075.0
-> > > > > OFFSET	GOOD	BAD	RANGE
-> > > > > 0x13000	0x1aee	0x0000	0x    0
-> > > > > operation# (mod 256) for the bad data unknown, check HOLE and=
- EXTEND ops
-> > > > > 0x13001	0xee1a	0x0000	0x    1
-> > > > > operation# (mod 256) for the bad data unknown, check HOLE and=
- EXTEND ops
-> > > > > 0x13002	0x1a01	0x0000	0x    2
-> > > > >
-> > > > > (etc. - goes on until RANGE =3D 0xf)
-> > > > >
-> > > > > This code is new to me, but it looks like fsx is getting zero=
-s where it
-> > > > > expects other values.
-> > > >
-> > > > This seems to be related to collapse range feature. When adding=
- -C
-> > > > to the fsx the problem goes away. Also when comparing the fsxgo=
-od
-> > > > with the real file it seems that there is a big chunk if the fi=
-le
-> > > > missing in the middle.
-> > > >
-> > > > We need to investigate further. Namjae any idea what might be
-> > > > causing it ?
-> > > Hi, Lukas.
-> > >
-> > > It seems this issue is related with collapse range on test result=
-(with fsx -C option)
-> > > I will check it.
-> >
-> > Looks fstart is wrongly calcurated..
-> >
-> > - fstart =3D start + ((loff_t)vma->vm_pgoff << PAGE_SHIFT);
-> > + fstart =3D (start - vma->vm_start) + ((loff_t)vma->vm_pgoff << PA=
-GE_SHIFT);
->=20
-> Good catch, this indeed is a bug. And this change fixes the problem
-> we're seeing with data=3Djournal in ext4.
->=20
-> Will you send a proper patch ?
-Okay, I will send the patch soon.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+
+--8323328-1929671767-1403868593=:2349
+Content-Type: TEXT/PLAIN; charset=utf-8
+Content-Transfer-Encoding: 8BIT
+
+On Mon, 23 Jun 2014, Theodore Ts'o wrote:
+
+> Date: Mon, 23 Jun 2014 08:59:58 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukáš Czerner <lczerner@redhat.com>
+> Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+> Subject: Re: [PATCH] ext4: remove metadata reservation checks
+> 
+> On Mon, Jun 23, 2014 at 11:56:23AM +0200, Lukáš Czerner wrote:
+> > 
+> > However I am still on the fence about this patch, because it was not
+> > designed, at least initially to cover all metadata reservation, but
+> > mainly those we sometimes can not predict (unwritten extent
+> > conversion for example), or those when the prediction failed (in
+> > this case we would see a warning).
+> 
+> I was driven to revisit this because we have a map reduce workload
+> that triggers the warning fairly consistently, and it's dirtying up
+> our logs and monitoring systems.  The prediction algorithm we are
+> using is actually pretty awful, unfortunately, and fixing it to do a
+> better job is non-trivial.
+
+Fair enough. I think that removing all the metadata reservation in
+favour of the pool of reserved blocks for metadata is the right way
+to go. We get rid of some of the complexity and it will become
+easier to make sure that we will have enough blocks for metadata
+allocation.
+
+> 
+> > I think that if we can be really sure, that the reserved space will
+> > always have enough space to cover all possible metadata blocks
+> > needed on writeback time (is there any other time we might need
+> > metadata block and can not fail with ENOSPC?), then this patch is
+> > definitely very useful.
+> 
+> The only time we need blocks where we can't fail with ENOSPC is
+> delayed allocation writeback and the unwritten extent conversion.  And
+> in both cases, the number of blocks we need are quite small; we can,
+> after all, fit 340 entries into each extent tree block.
+> 
+> The main worry I might have is the worst case scenario where have a
+> very small file system.  For example, if you create a file system
+> which is only 58k, we only have one free block.  But then again, such
+> a file system only has 4 free blocks, so it's physically impossible to
+> have any extent tree blocks.  :-)
+> 
+> Here's a potential carefully structured case where 2% of the free
+> blocks wouldn't be enough.  I'll let folks decide if we think this is
+> realistic enough that we need to care.  Suppose we have a 4M file
+> system, using 4k blocks, we would only have 51 reserved blocks.  On
+> such a file system, there would be 982 free blocks available to be
+> allocated.  If you then had 200 inodes that had exactly 4 extents
+> (using 4 blocks written using sparse writes), then there would be 182
+> free blocks.  If we then posted 100 sparse writes to half of these
+> inodes, we could end up using 100 data blocks, and also require 100
+> metadata blocks for the extent tree splits --- and we would then hit
+> the ENOSPC failure condition.
+
+That is a perfect test case :) But seriously I think that we might
+want to do better than just hand wave 2% and be done with it. It is
+rather arbitrary number I've used, but it was supposed to be a last
+resort solution, not the regular allocation pattern.
+
+Also for huge file system this pool might be unnecessarily large, so
+we might want to come up with a better heuristic to guess the size
+of the pool.
+
+On the other hand, this is something we can add later as well as
+export better information about the pool utilization to the user. I
+am just trying to be careful because this really is a big change and
+there might be some unexpected consequences and we do not have
+exactly huge amount of enospc regression tests.
+
+> 
+> So this is a "proof" that 2% is quite enough for small file systems.
+> Do we care?  Eh.  I'm not at all convinced such a worst case scenario
+> could ever happen in real life, but we could fix this by adding a
+> "floor" to the 2% calculation so that we reserve at least 128 or 256
+> blocks.  Or we already have code which disables delayed allocation if
+> we are close to full, and we could extend that to cover super small
+> file systems, or simply entirely disable delalloc for super small file
+> systems in the first case.
+
+yes this is yet another thing we can use to make it more solid.
 
 Thanks!
->=20
-> Thanks!
-> -Lukas
->=20
-> >
-> > Could you confirm this change is correct ? Matthew ?
-> >
-> > Thanks.
-> >
-> > >
-> > > Thanks!
-> > > >
-> > > > -Lukas
-> > > >
-> > > > >
-> > > > > Eric
-> > > > >
-> > > > >
-> > > > > * Wilcox, Matthew R <matthew.r.wilcox@intel.com>:
-> > > > > > Which test in 075.0.fsxlog indicates failure?
-> > > > > > ________________________________________
-> > > > > > From: Eric Whitney [enwlinux@gmail.com]
-> > > > > > Sent: June 23, 2014 1:24 PM
-> > > > > > To: linux-ext4@vger.kernel.org
-> > > > > > Cc: tytso@mit.edu; Wilcox, Matthew R
-> > > > > > Subject: data=3Djournal regressions in 3.16-rc1
-> > > > > >
-> > > > > > My regression test results for 3.16-rc1 on x86_64 show thre=
-e new xfstests
-> > > > > > failures since 3.15 final when running on an ext4 filesyste=
-m mounted with the
-> > > > > > data=3Djournal and block_validity mount options (xfstests-b=
-ld's data_journal
-> > > > > > scenario). These are generic/075, /112, and /231.  All thre=
-e tests fail
-> > > > > > consistently.
-> > > > > >
-> > > > > > These failures bisect to this kernel patch:
-> > > > > > 7fc34a62ca  mm/msync.c: sync only the requested range in ms=
-ync()
-> > > > > >
-> > > > > > These failures also appear when running on 3.16-rc2, and di=
-sappear if the
-> > > > > > aforementioned patch is reverted.  I've not seen the failur=
-es in any of the
-> > > > > > other test scenarios I've run on 3.16-rc1 (4k, ext3, nojour=
-nal, etc.).
-> > > > > >
-> > > > > > No error messages appear in the kernel log, and not a lot u=
-seful is reported
-> > > > > > when a test fails.  Just for reference, here's the result o=
-f a generic/075
-> > > > > > failure:
-> > > > > >
-> > > > > > generic/075 62s ...     [15:33:07] [15:33:09] [failed, exit=
- status 1] - output mismatch (see
-> > > > /root/xfstests/results//generic/075.out.bad)
-> > > > > >     --- tests/generic/075.out   2014-06-16 13:14:27.2338914=
-60 -0400
-> > > > > >     +++ /root/xfstests/results//generic/075.out.bad     201=
-4-06-23 15:33:09.654212783 -0400
-> > > > > >     @@ -4,15 +4,5 @@
-> > > > > >      -----------------------------------------------
-> > > > > >      fsx.0 : -d -N numops -S 0
-> > > > > >      -----------------------------------------------
-> > > > > >     -
-> > > > > >     ------------------------------------------------
-> > > > > >     -fsx.1 : -d -N numops -S 0 -x
-> > > > > >     ------------------------------------------------
-> > > > > >     ...
-> > > > > >     (Run 'diff -u tests/generic/075.out /root/xfstests/resu=
-lts//generic/075.out.bad'  to see
-> the
-> > > > entire diff)
-> > > > > > Ran: generic/075
-> > > > > > Failures: generic/075
-> > > > > > Failed 1 of 1 tests
-> > > > > >
-> > > > > >
-> > > > > > And the contents of xfstests/results/generic/075.out.bad:
-> > > > > >
-> > > > > >
-> > > > > > QA output created by 075
-> > > > > > brevity is wit...
-> > > > > >
-> > > > > > -----------------------------------------------
-> > > > > > fsx.0 : -d -N numops -S 0
-> > > > > > -----------------------------------------------
-> > > > > >     fsx (-d -N 1000 -S 0) failed, 0 - compare
-> > > > /root/xfstests/results//generic/075.0.{good,bad,fsxlog}
-> > > > > > od: /root/xfstests/results//generic/075.0.fsxgood: No such =
-file or directory
-> > > > > >
-> > > > > >
-> > > > > > Additional test configuration info:
-> > > > > >
-> > > > > > e2fsprogs master branch:  bb9cca2ca9
-> > > > > > xfstests master branch:  45d1fac130
-> > > > > >
-> > > > > > Perhaps data=3Djournal has an unexpected dependency on the =
-old msync behavior,
-> > > > > > given the patch comment?
-> > > > > >
-> > > > > > Thanks,
-> > > > > > Eric
-> > > > > --
-> > > > > To unsubscribe from this list: send the line "unsubscribe lin=
-ux-ext4" in
-> > > > > the body of a message to majordomo@vger.kernel.org
-> > > > > More majordomo info at  http://vger.kernel.org/majordomo-info=
-=2Ehtml
-> > > > >
-> >
-> >
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-Lukas
+> 
+> 						- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+--8323328-1929671767-1403868593=:2349--
