@@ -1,182 +1,53 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: RE: data=journal regressions in 3.16-rc1
-Date: Fri, 27 Jun 2014 12:48:37 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1406271246110.2349@localhost.localdomain>
-References: <20140623202404.GA16979@wallace> <100D68C7BA14664A8938383216E40DE0407A5AB2@FMSMSX114.amr.corp.intel.com> <20140623215514.GB16979@wallace> <alpine.LFD.2.00.1406261646500.2172@localhost.localdomain> <004101cf91cd$8a4562c0$9ed02840$@samsung.com>
+Subject: Re: [PATCH] ext4: Fix punch hole on files with indirect mapping
+Date: Fri, 27 Jun 2014 12:58:02 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1406271257250.2349@localhost.localdomain>
+References: <1403192228-25771-1-git-send-email-lczerner@redhat.com> <20140626162450.GD6826@thunk.org> <alpine.LFD.2.00.1406261827080.2172@localhost.localdomain> <20140627013329.GE6826@thunk.org>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-2119707035-1403866123=:2349"
-Cc: "'Wilcox, Matthew R'" <matthew.r.wilcox@intel.com>,
-	"'Eric Whitney'" <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, Christoph Hellwig <hch@infradead.org>,
-	Ashish Sangwan <a.sangwan@samsung.com>
-To: Namjae Jeon <namjae.jeon@samsung.com>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-658542762-1403866686=:2349"
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz, stable@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53860 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51322 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750756AbaF0KtO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Jun 2014 06:49:14 -0400
-In-Reply-To: <004101cf91cd$8a4562c0$9ed02840$@samsung.com>
+	id S1750756AbaF0K6L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 27 Jun 2014 06:58:11 -0400
+In-Reply-To: <20140627013329.GE6826@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
   This message is in MIME format.  The first part should be readable text,
   while the remaining parts are likely unreadable without MIME-aware tools.
 
---8323328-2119707035-1403866123=:2349
-Content-Type: TEXT/PLAIN; charset=iso-8859-2
+--8323328-658542762-1403866686=:2349
+Content-Type: TEXT/PLAIN; charset=utf-8
 Content-Transfer-Encoding: 8BIT
 
-On Fri, 27 Jun 2014, Namjae Jeon wrote:
+On Thu, 26 Jun 2014, Theodore Ts'o wrote:
 
-> Date: Fri, 27 Jun 2014 15:03:38 +0900
-> From: Namjae Jeon <namjae.jeon@samsung.com>
-> To: 'Luk� Czerner' <lczerner@redhat.com>,
->     "'Wilcox, Matthew R'" <matthew.r.wilcox@intel.com>
-> Cc: 'Eric Whitney' <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
->     tytso@mit.edu, Christoph Hellwig <hch@infradead.org>,
->     Ashish Sangwan <a.sangwan@samsung.com>
-> Subject: RE: data=journal regressions in 3.16-rc1
+> Date: Thu, 26 Jun 2014 21:33:29 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukáš Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org, jack@suse.cz, stable@vger.kernel.org
+> Subject: Re: [PATCH] ext4: Fix punch hole on files with indirect mapping
 > 
-> > > On Mon, 23 Jun 2014, Eric Whitney wrote:
-> > >
-> > > > Date: Mon, 23 Jun 2014 17:55:14 -0400
-> > > > From: Eric Whitney <enwlinux@gmail.com>
-> > > > To: "Wilcox, Matthew R" <matthew.r.wilcox@intel.com>
-> > > > Cc: Eric Whitney <enwlinux@gmail.com>,
-> > > >     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-> > > >     "tytso@mit.edu" <tytso@mit.edu>
-> > > > Subject: Re: data=journal regressions in 3.16-rc1
-> > > >
-> > > > The first invocation of fsx causes generic/075 to fail.  Within 075.0.fsxlog,
-> > > > bad reads appear to be the cause:
-> > > >
-> > > > READ BAD DATA: offset = 0xb7f0, size = 0x8111, fname = 075.0
-> > > > OFFSET	GOOD	BAD	RANGE
-> > > > 0x13000	0x1aee	0x0000	0x    0
-> > > > operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-> > > > 0x13001	0xee1a	0x0000	0x    1
-> > > > operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-> > > > 0x13002	0x1a01	0x0000	0x    2
-> > > >
-> > > > (etc. - goes on until RANGE = 0xf)
-> > > >
-> > > > This code is new to me, but it looks like fsx is getting zeros where it
-> > > > expects other values.
-> > >
-> > > This seems to be related to collapse range feature. When adding -C
-> > > to the fsx the problem goes away. Also when comparing the fsxgood
-> > > with the real file it seems that there is a big chunk if the file
-> > > missing in the middle.
-> > >
-> > > We need to investigate further. Namjae any idea what might be
-> > > causing it ?
-> > Hi, Lukas.
+> On Thu, Jun 26, 2014 at 06:28:57PM +0200, Lukáš Czerner wrote:
 > > 
-> > It seems this issue is related with collapse range on test result(with fsx -C option)
-> > I will check it.
+> > It does. But this is not exactly a critical bug and it has been
+> > there since the introduction of punch hole for indirect file. But I
+> > guess it's better to fix it sooner rather than later, so I am fine
+> > with this.
 > 
-> Looks fstart is wrongly calcurated..
+> One of the reasons why I want to get this fixed sooner rather than
+> later is that even when testing a stock ext4 file system, fsstress can
+> potentially create indirect mapped files that could then get punched.
+> So I wonder if bug might be responsible for some of the very random
+> failures that I've been seeing in my testing...
 > 
-> - fstart = start + ((loff_t)vma->vm_pgoff << PAGE_SHIFT);
-> + fstart = (start - vma->vm_start) + ((loff_t)vma->vm_pgoff << PAGE_SHIFT);
+> 					- Ted
 
-Good catch, this indeed is a bug. And this change fixes the problem
-we're seeing with data=journal in ext4.
-
-Will you send a proper patch ?
+Fair enough, we can wait with my patch for the next merge window.
 
 Thanks!
 -Lukas
-
-> 
-> Could you confirm this change is correct ? Matthew ?
-> 
-> Thanks.
-> 
-> > 
-> > Thanks!
-> > >
-> > > -Lukas
-> > >
-> > > >
-> > > > Eric
-> > > >
-> > > >
-> > > > * Wilcox, Matthew R <matthew.r.wilcox@intel.com>:
-> > > > > Which test in 075.0.fsxlog indicates failure?
-> > > > > ________________________________________
-> > > > > From: Eric Whitney [enwlinux@gmail.com]
-> > > > > Sent: June 23, 2014 1:24 PM
-> > > > > To: linux-ext4@vger.kernel.org
-> > > > > Cc: tytso@mit.edu; Wilcox, Matthew R
-> > > > > Subject: data=journal regressions in 3.16-rc1
-> > > > >
-> > > > > My regression test results for 3.16-rc1 on x86_64 show three new xfstests
-> > > > > failures since 3.15 final when running on an ext4 filesystem mounted with the
-> > > > > data=journal and block_validity mount options (xfstests-bld's data_journal
-> > > > > scenario). These are generic/075, /112, and /231.  All three tests fail
-> > > > > consistently.
-> > > > >
-> > > > > These failures bisect to this kernel patch:
-> > > > > 7fc34a62ca  mm/msync.c: sync only the requested range in msync()
-> > > > >
-> > > > > These failures also appear when running on 3.16-rc2, and disappear if the
-> > > > > aforementioned patch is reverted.  I've not seen the failures in any of the
-> > > > > other test scenarios I've run on 3.16-rc1 (4k, ext3, nojournal, etc.).
-> > > > >
-> > > > > No error messages appear in the kernel log, and not a lot useful is reported
-> > > > > when a test fails.  Just for reference, here's the result of a generic/075
-> > > > > failure:
-> > > > >
-> > > > > generic/075 62s ...     [15:33:07] [15:33:09] [failed, exit status 1] - output mismatch (see
-> > > /root/xfstests/results//generic/075.out.bad)
-> > > > >     --- tests/generic/075.out   2014-06-16 13:14:27.233891460 -0400
-> > > > >     +++ /root/xfstests/results//generic/075.out.bad     2014-06-23 15:33:09.654212783 -0400
-> > > > >     @@ -4,15 +4,5 @@
-> > > > >      -----------------------------------------------
-> > > > >      fsx.0 : -d -N numops -S 0
-> > > > >      -----------------------------------------------
-> > > > >     -
-> > > > >     ------------------------------------------------
-> > > > >     -fsx.1 : -d -N numops -S 0 -x
-> > > > >     ------------------------------------------------
-> > > > >     ...
-> > > > >     (Run 'diff -u tests/generic/075.out /root/xfstests/results//generic/075.out.bad'  to see the
-> > > entire diff)
-> > > > > Ran: generic/075
-> > > > > Failures: generic/075
-> > > > > Failed 1 of 1 tests
-> > > > >
-> > > > >
-> > > > > And the contents of xfstests/results/generic/075.out.bad:
-> > > > >
-> > > > >
-> > > > > QA output created by 075
-> > > > > brevity is wit...
-> > > > >
-> > > > > -----------------------------------------------
-> > > > > fsx.0 : -d -N numops -S 0
-> > > > > -----------------------------------------------
-> > > > >     fsx (-d -N 1000 -S 0) failed, 0 - compare
-> > > /root/xfstests/results//generic/075.0.{good,bad,fsxlog}
-> > > > > od: /root/xfstests/results//generic/075.0.fsxgood: No such file or directory
-> > > > >
-> > > > >
-> > > > > Additional test configuration info:
-> > > > >
-> > > > > e2fsprogs master branch:  bb9cca2ca9
-> > > > > xfstests master branch:  45d1fac130
-> > > > >
-> > > > > Perhaps data=journal has an unexpected dependency on the old msync behavior,
-> > > > > given the patch comment?
-> > > > >
-> > > > > Thanks,
-> > > > > Eric
-> > > > --
-> > > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > > > the body of a message to majordomo@vger.kernel.org
-> > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > > >
-> 
-> 
---8323328-2119707035-1403866123=:2349--
+--8323328-658542762-1403866686=:2349--
