@@ -1,104 +1,95 @@
-From: Ross Burton <ross.burton@intel.com>
-Subject: [PATCH] misc: copy extended attributes in populate_fs
-Date: Fri, 27 Jun 2014 22:02:17 +0100
-Message-ID: <1403902937-2781-2-git-send-email-ross.burton@intel.com>
-References: <1403902937-2781-1-git-send-email-ross.burton@intel.com>
-Cc: dvhart@linux.intel.com, tytso@mit.edu, darrick.wong@oracle.com,
-	liezhi.yang@windriver.com
+From: Azat Khuzhin <a3at.mail@gmail.com>
+Subject: [PATCH] tune2fs: update journal super block when changing UUID for fs.
+Date: Sat, 28 Jun 2014 18:29:46 +0400
+Message-ID: <1403965786-14561-1-git-send-email-a3at.mail@gmail.com>
+Cc: chintzung@gmail.com, Azat Khuzhin <a3at.mail@gmail.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wg0-f45.google.com ([74.125.82.45]:43335 "EHLO
-	mail-wg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752122AbaF0VCa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Jun 2014 17:02:30 -0400
-Received: by mail-wg0-f45.google.com with SMTP id l18so5856899wgh.16
-        for <linux-ext4@vger.kernel.org>; Fri, 27 Jun 2014 14:02:29 -0700 (PDT)
-In-Reply-To: <1403902937-2781-1-git-send-email-ross.burton@intel.com>
+Received: from mail-la0-f54.google.com ([209.85.215.54]:33282 "EHLO
+	mail-la0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752311AbaF1OaI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Jun 2014 10:30:08 -0400
+Received: by mail-la0-f54.google.com with SMTP id mc6so3795568lab.27
+        for <linux-ext4@vger.kernel.org>; Sat, 28 Jun 2014 07:30:06 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When creating a file system using a source directory, also copy any extended
-attributes that have been set.
+Using -U option you can change the UUID for fs, however it will not work
+for journal device, since it have a copy of this UUID inside jsb (i.e.
+journal super block). So copy UUID on change into that block.
 
-Signed-off-by: Ross Burton <ross.burton@intel.com>
+Here is the initial thread:
+http://comments.gmane.org/gmane.comp.file-systems.ext4/44532
+
+You can reproduce this by executing following commands:
+$ fallocate -l100M /tmp/dev
+$ fallocate -l100M /tmp/journal
+$ sudo /sbin/losetup /dev/loop1 /tmp/dev
+$ sudo /sbin/losetup /dev/loop0 /tmp/journal
+$ mke2fs -O journal_dev /tmp/journal
+$ tune2fs -U da1f2ed0-60f6-aaaa-92fd-738701418523 /tmp/journal
+$ sudo mke2fs -t ext4 -J device=/dev/loop0 /dev/loop1
+$ dumpe2fs -h /tmp/dev | fgrep UUID
+dumpe2fs 1.43-WIP (18-May-2014)
+Filesystem UUID:          8a776be9-12eb-411f-8e88-b873575ecfb6
+Journal UUID:             e3d02151-e776-4865-af25-aecb7291e8e5
+$ sudo e2fsck /dev/vdc
+e2fsck 1.43-WIP (18-May-2014)
+External journal does not support this filesystem
+
+/dev/loop1: ********** WARNING: Filesystem still has errors **********
+
+Reported-by: Chin Tzung Cheng <chintzung@gmail.com>
+Signed-off-by: Azat Khuzhin <a3at.mail@gmail.com>
 ---
- misc/create_inode.c |   56 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 56 insertions(+)
+Here is the RFC patch for this, I'm not sure about the check for *is this 
+journal device or not*, so I will glad to see some comments. Thanks.
 
-diff --git a/misc/create_inode.c b/misc/create_inode.c
-index c9c99b5..2795f9e 100644
---- a/misc/create_inode.c
-+++ b/misc/create_inode.c
-@@ -103,6 +103,55 @@ static errcode_t set_inode_extra(ext2_filsys fs, ext2_ino_t cwd,
- 	return retval;
- }
+ misc/tune2fs.c | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index d95cc3d..ffa07f6 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -2411,6 +2411,10 @@ int main(int argc, char **argv)
+ 	struct ext2_super_block *sb;
+ 	io_manager io_ptr, io_ptr_orig = NULL;
+ 	int rc = 0;
++	/** For journal dev */
++	journal_superblock_t	*jsb;
++	int jsb_start;
++	char		buf[1024];
  
-+static errcode_t set_inode_xattr(ext2_filsys fs, ext2_ino_t ino, const char *filename)
-+{
-+	errcode_t			retval;
-+	struct ext2_inode		inode;
-+	struct ext2_xattr_handle	*handle;
-+	ssize_t				size, value_size;
-+	char				*list;
-+	int				i;
-+
-+	size = llistxattr(filename, NULL, 0);
-+	if (size == -1) {
-+		com_err(__func__, errno, "listxattr failed on %s", filename);
-+		return errno;
-+	} else if (size == 0) {
-+		return 0;
-+	}
-+
-+	retval = ext2fs_xattrs_open(fs, ino, &handle);
-+	if (retval) {
-+		com_err(__func__, errno, "while opening inode %u", ino);
-+		return errno;
-+	}
-+
-+	list = malloc(size);
-+	size = llistxattr(filename, list, size);
-+
-+	for (i = 0; i < size; i += strlen(&list[i]) + 1) {
-+		const char *name = &list[i];
-+		char *value;
-+
-+		value_size = getxattr(filename, name, NULL, 0);
-+		value = malloc(value_size);
-+		value_size = getxattr(filename, name, value, value_size);
-+
-+		retval = ext2fs_xattr_set(handle, name, value, value_size);
-+		if (retval)
-+			com_err(__func__, retval, "while writing xattr %u", ino);
-+
-+		free (value);
-+	}
-+	free(list);
-+
-+	retval = ext2fs_xattrs_close(&handle);
-+	if (retval)
-+		com_err(__func__, errno, "while closing inode %u", ino);
-+
-+	return retval;
-+}
-+
- /* Make a special files (block and character devices), fifo's, and sockets  */
- errcode_t do_mknod_internal(ext2_filsys fs, ext2_ino_t cwd, const char *name,
- 			    struct stat *st)
-@@ -615,6 +664,13 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
- 			goto out;
+ #ifdef ENABLE_NLS
+ 	setlocale(LC_MESSAGES, "");
+@@ -2736,6 +2740,26 @@ retry_open:
+ 				ext2fs_group_desc_csum_set(fs, i);
+ 			fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
  		}
- 
-+		retval = set_inode_xattr(fs, ino, name);
-+		if (retval) {
-+			com_err(__func__, retval,
-+				_("while setting xattrs for \"%s\""), name);
-+			goto out;
++
++		/* If this is a journal dev, we need to copy UUID into jsb */
++		jsb_start = 1;
++		if (fs->blocksize == 1024)
++			jsb_start++;
++		if ((rc = io_channel_read_blk64(fs->io, jsb_start, -1024, buf))) {
++			goto closefs;
++		}
++		jsb = (journal_superblock_t *) buf;
++		if ((jsb->s_header.h_magic == (unsigned) ntohl(JFS_MAGIC_NUMBER)) ||
++				(jsb->s_header.h_blocktype == (unsigned) ntohl(JFS_SUPERBLOCK_V2))) {
++			fputs(_("Need to update journal superblock.\n"), stdout);
++			memcpy(jsb->s_uuid, sb->s_uuid, sizeof(sb->s_uuid));
++
++			/* Writeback the journal superblock */
++			if ((rc = io_channel_write_blk64(fs->io, jsb_start, -1024, buf))) {
++				goto closefs;
++			}
 +		}
 +
- 		/* Save the hardlink ino */
- 		if (save_inode) {
- 			/*
+ 		ext2fs_mark_super_dirty(fs);
+ 		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+ 				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 -- 
-1.7.10.4
+2.0.0
 
