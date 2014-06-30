@@ -1,138 +1,77 @@
-From: Ross Burton <ross.burton@intel.com>
-Subject: [PATCH][V2] misc: copy extended attributes in populate_fs
-Date: Mon, 30 Jun 2014 20:22:17 +0100
-Message-ID: <1404156137-31473-1-git-send-email-ross.burton@intel.com>
-Cc: dvhart@linux.intel.com, liezhi.yang@windriver.com,
-	darrick.wong@oracle.com, tytso@mit.edu
+From: Matteo Croce <technoboy85@gmail.com>
+Subject: ext4: journal has aborted
+Date: Mon, 30 Jun 2014 23:30:10 +0200
+Message-ID: <CAFnufp3TepsxxX8=WCJ0V=3TELP0rWR-NxFukSL8X=qS1q6Eew@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f173.google.com ([209.85.212.173]:53536 "EHLO
-	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754543AbaF3TWd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Jun 2014 15:22:33 -0400
-Received: by mail-wi0-f173.google.com with SMTP id cc10so6624803wib.6
-        for <linux-ext4@vger.kernel.org>; Mon, 30 Jun 2014 12:22:31 -0700 (PDT)
+Received: from mail-oa0-f43.google.com ([209.85.219.43]:49043 "EHLO
+	mail-oa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757184AbaF3Vau (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Jun 2014 17:30:50 -0400
+Received: by mail-oa0-f43.google.com with SMTP id o6so9583187oag.30
+        for <linux-ext4@vger.kernel.org>; Mon, 30 Jun 2014 14:30:50 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When creating a file system using a source directory, also copy any extended
-attributes that have been set.
+I was web surfing and using gimp when:
 
-Signed-off-by: Ross Burton <ross.burton@intel.com>
----
- misc/create_inode.c |   92 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 92 insertions(+)
-
-diff --git a/misc/create_inode.c b/misc/create_inode.c
-index c9c99b5..31f2d3c 100644
---- a/misc/create_inode.c
-+++ b/misc/create_inode.c
-@@ -103,6 +103,91 @@ static errcode_t set_inode_extra(ext2_filsys fs, ext2_ino_t cwd,
- 	return retval;
- }
- 
-+static errcode_t set_inode_xattr(ext2_filsys fs, ext2_ino_t ino, const char *filename)
-+{
-+	errcode_t			retval, close_retval;
-+	struct ext2_inode		inode;
-+	struct ext2_xattr_handle	*handle;
-+	ssize_t				size, value_size;
-+	char				*list;
-+	int				i;
-+
-+	size = llistxattr(filename, NULL, 0);
-+	if (size == -1) {
-+		com_err(__func__, errno, "llistxattr failed on %s", filename);
-+		return errno;
-+	} else if (size == 0) {
-+		return 0;
-+	}
-+
-+	retval = ext2fs_xattrs_open(fs, ino, &handle);
-+	if (retval) {
-+		if (retval == EXT2_ET_MISSING_EA_FEATURE)
-+			return 0;
-+		com_err(__func__, retval, "while opening inode %u", ino);
-+		return retval;
-+	}
-+
-+	list = malloc(size);
-+	if (!list) {
-+		com_err(__func__, errno, "whilst allocating memory");
-+		retval = errno;
-+		goto out;
-+	}
-+
-+	size = llistxattr(filename, list, size);
-+	if (size == -1) {
-+		com_err(__func__, errno, "llistxattr failed on %s", filename);
-+		retval = errno;
-+		goto out;
-+        }
-+
-+	for (i = 0; i < size; i += strlen(&list[i]) + 1) {
-+		const char *name = &list[i];
-+		char *value;
-+
-+		value_size = getxattr(filename, name, NULL, 0);
-+		if (value_size == -1) {
-+			com_err(__func__, errno, "getxattr failed on %s", filename);
-+			retval = errno;
-+			break;
-+		}
-+
-+		value = malloc(value_size);
-+		if (!value) {
-+			com_err(__func__, errno, "whilst allocating memory");
-+			retval = errno;
-+			break;
-+		}
-+
-+		value_size = getxattr(filename, name, value, value_size);
-+		if (value_size == -1) {
-+			free(value);
-+			com_err(__func__, errno, "getxattr failed on %s", filename);
-+			retval = errno;
-+			break;
-+		}
-+
-+		retval = ext2fs_xattr_set(handle, name, value, value_size);
-+		free (value);
-+		if (retval) {
-+			com_err(__func__, retval, "while writing xattr %u", ino);
-+			break;
-+		}
-+
-+	}
-+ out:
-+	free(list);
-+
-+	close_retval = ext2fs_xattrs_close(&handle);
-+	if (close_retval) {
-+		com_err(__func__, retval, "while closing inode %u", ino);
-+		retval = retval ? close_retval;
-+	}
-+
-+	return retval;
-+}
-+
- /* Make a special files (block and character devices), fifo's, and sockets  */
- errcode_t do_mknod_internal(ext2_filsys fs, ext2_ino_t cwd, const char *name,
- 			    struct stat *st)
-@@ -615,6 +700,13 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
- 			goto out;
- 		}
- 
-+		retval = set_inode_xattr(fs, ino, name);
-+		if (retval) {
-+			com_err(__func__, retval,
-+				_("while setting xattrs for \"%s\""), name);
-+			goto out;
-+		}
-+
- 		/* Save the hardlink ino */
- 		if (save_inode) {
- 			/*
--- 
-1.7.10.4
-
+EXT4-fs error (device sda2): ext4_mb_generate_buddy:756: group 199,
+9414 clusters in bitmap, 9500 in gd; block bitmap corrupt.
+Aborting journal on device sda2-8.
+EXT4-fs (sda2): Remounting filesystem read-only
+------------[ cut here ]------------
+WARNING: CPU: 6 PID: 4134 at fs/ext4/ext4_jbd2.c:259
+__ext4_handle_dirty_metadata+0x18e/0x1d0()
+Modules linked in: snd_hda_codec_hdmi snd_hda_codec_realtek
+snd_hda_codec_generic ecb uvcvideo videobuf2_vmalloc videobuf2_memops
+videobuf2_core videodev ath3k btusb rts5139(C) ctr ccm iTCO_wdt bnep
+rfcomm bluetooth nls_iso8859_1 vfat fat arc4 intel_rapl
+x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm
+snd_hda_intel snd_hda_controller snd_hda_codec snd_hwdep snd_pcm
+aesni_intel aes_x86_64 snd_seq_midi snd_seq_midi_event ath9k led_class
+glue_helper ath9k_common lrw gf128mul ath9k_hw ablk_helper cryptd ath
+mac80211 snd_rawmidi snd_seq cfg80211 radeon microcode rfkill
+snd_timer snd_seq_device sr_mod psmouse r8169 snd cdrom i915 lpc_ich
+soundcore ttm mii mfd_core drm_kms_helper drm intel_gtt agpgart
+ehci_pci mei_me xhci_hcd tpm_infineon ehci_hcd video mei wmi tpm
+backlight
+CPU: 6 PID: 4134 Comm: gimp-2.8 Tainted: G         C    3.15.0 #6
+ 0000000000000009 ffffffff813acbdd 0000000000000000 ffffffff8103de3d
+ ffff8802365231a0 00000000ffffffe2 0000000000000000 ffff8800b90816c0
+ ffffffff814205a0 ffffffff8118879e 0000000000000005 ffff8802365231a0
+Call Trace:
+ [<ffffffff813acbdd>] ? dump_stack+0x41/0x51
+ [<ffffffff8103de3d>] ? warn_slowpath_common+0x6d/0x90
+ [<ffffffff8118879e>] ? __ext4_handle_dirty_metadata+0x18e/0x1d0
+ [<ffffffff8116e130>] ? ext4_dirty_inode+0x20/0x50
+ [<ffffffff811903e9>] ? ext4_free_blocks+0x539/0xa40
+ [<ffffffff8118468b>] ? ext4_ext_remove_space+0x83b/0xe60
+ [<ffffffff81186a58>] ? ext4_ext_truncate+0x98/0xc0
+ [<ffffffff8116c985>] ? ext4_truncate+0x2b5/0x300
+ [<ffffffff8116d3d8>] ? ext4_evict_inode+0x3d8/0x410
+ [<ffffffff81114a46>] ? evict+0xa6/0x160
+ [<ffffffff81109346>] ? do_unlinkat+0x186/0x2a0
+ [<ffffffff8110e51e>] ? SyS_getdents+0xde/0x100
+ [<ffffffff8110e1d0>] ? fillonedir+0xd0/0xd0
+ [<ffffffff813b2626>] ? system_call_fastpath+0x1a/0x1f
+---[ end trace 795411398e41fbcb ]---
+EXT4: jbd2_journal_dirty_metadata failed: handle type 5 started at
+line 241, credits 91/91, errcode -30
+EXT4: jbd2_journal_dirty_metadata failed: handle type 5 started at
+line 241, credits 91/91, errcode -30<2>EXT4-fs error (device sda2) in
+ext4_free_blocks:4867: Journal has aborted
+EXT4-fs error (device sda2): ext4_ext_rm_leaf:2731: inode #8257653:
+block 6520936: comm gimp-2.8: journal_dirty_metadata failed: handle
+type 5 started at line 241, credits 91/91, errcode -30
+EXT4-fs error (device sda2) in ext4_ext_remove_space:3018: Journal has aborted
+EXT4-fs error (device sda2) in ext4_ext_truncate:4666: Journal has aborted
+EXT4-fs error (device sda2) in ext4_reserve_inode_write:4877: Journal
+has aborted
+EXT4-fs error (device sda2) in ext4_truncate:3788: Journal has aborted
+EXT4-fs error (device sda2) in ext4_reserve_inode_write:4877: Journal
+has aborted
+EXT4-fs error (device sda2) in ext4_orphan_del:2684: Journal has aborted
+EXT4-fs error (device sda2) in ext4_reserve_inode_write:4877: Journal
+has aborted
