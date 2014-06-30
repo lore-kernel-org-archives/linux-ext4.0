@@ -1,108 +1,138 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] misc: copy extended attributes in populate_fs
-Date: Mon, 30 Jun 2014 12:13:04 -0700
-Message-ID: <20140630191304.GA15118@birch.djwong.org>
-References: <1403902937-2781-1-git-send-email-ross.burton@intel.com>
- <1403902937-2781-2-git-send-email-ross.burton@intel.com>
- <20140630184346.GF9743@birch.djwong.org>
- <CAJTo0LZL4JMsza7XWkTjT0rPXvbhiYwbgXXJj9AWdohP6TiK7w@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Darren Hart <dvhart@linux.intel.com>,
-	tytso <tytso@mit.edu>, Robert Yang <liezhi.yang@windriver.com>
-To: "Burton, Ross" <ross.burton@intel.com>
+From: Ross Burton <ross.burton@intel.com>
+Subject: [PATCH][V2] misc: copy extended attributes in populate_fs
+Date: Mon, 30 Jun 2014 20:22:17 +0100
+Message-ID: <1404156137-31473-1-git-send-email-ross.burton@intel.com>
+Cc: dvhart@linux.intel.com, liezhi.yang@windriver.com,
+	darrick.wong@oracle.com, tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:23982 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932384AbaF3TNM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Jun 2014 15:13:12 -0400
-Content-Disposition: inline
-In-Reply-To: <CAJTo0LZL4JMsza7XWkTjT0rPXvbhiYwbgXXJj9AWdohP6TiK7w@mail.gmail.com>
+Received: from mail-wi0-f173.google.com ([209.85.212.173]:53536 "EHLO
+	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754543AbaF3TWd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Jun 2014 15:22:33 -0400
+Received: by mail-wi0-f173.google.com with SMTP id cc10so6624803wib.6
+        for <linux-ext4@vger.kernel.org>; Mon, 30 Jun 2014 12:22:31 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 30, 2014 at 07:59:03PM +0100, Burton, Ross wrote:
-> On 30 June 2014 19:43, Darrick J. Wong <darrick.wong@oracle.com> wrote:
-> >> +     retval = ext2fs_xattrs_open(fs, ino, &handle);
-> >
-> > If the FS does not have at least one of the inline_data or ext_attr features
-> > turned on, the ext2fs_xattrs_open call returns EXT2_ET_MISSING_EA_FEATURE,
-> > which aborts the whole operation.  Is that ok?
-> 
-> Good point.
-> 
-> I'm currently dithering over whether this should silently do nothing,
-> or warn per file, or have an already-warned boolean to avoid spamming
-> the user.
-> 
-> >> +     if (retval) {
-> >> +             com_err(__func__, errno, "while opening inode %u", ino);
-> >
-> > retval, not errno.
-> 
-> Literally just squashing some commits for these error paths which went wrong.
-> 
-> >> +             return errno;
-> >> +     }
-> >> +
-> >> +     list = malloc(size);
-> >
-> > What happens if malloc fails?
-> 
-> You're doomed?
-> 
-> What's e2fsprog's policy on OOM - I see some instances of checked
-> malloc() that exit() promptly, others that simply return 0 and hope
-> for the best, and some that use fputs() and gettext() - but if we're
-> OOM then that's even more likely to fail.
-> 
-> I'll follow the official line, but what that line is isn't clear from
-> a sample of malloc() calls in the source.
+When creating a file system using a source directory, also copy any extended
+attributes that have been set.
 
-if (!list) com_err(__func__, ENOMEM, "while _______");
+Signed-off-by: Ross Burton <ross.burton@intel.com>
+---
+ misc/create_inode.c |   92 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 92 insertions(+)
 
-as a starting point.  Better to print a nice error and exit than to simply
-crash on the null pointer dereference.
+diff --git a/misc/create_inode.c b/misc/create_inode.c
+index c9c99b5..31f2d3c 100644
+--- a/misc/create_inode.c
++++ b/misc/create_inode.c
+@@ -103,6 +103,91 @@ static errcode_t set_inode_extra(ext2_filsys fs, ext2_ino_t cwd,
+ 	return retval;
+ }
+ 
++static errcode_t set_inode_xattr(ext2_filsys fs, ext2_ino_t ino, const char *filename)
++{
++	errcode_t			retval, close_retval;
++	struct ext2_inode		inode;
++	struct ext2_xattr_handle	*handle;
++	ssize_t				size, value_size;
++	char				*list;
++	int				i;
++
++	size = llistxattr(filename, NULL, 0);
++	if (size == -1) {
++		com_err(__func__, errno, "llistxattr failed on %s", filename);
++		return errno;
++	} else if (size == 0) {
++		return 0;
++	}
++
++	retval = ext2fs_xattrs_open(fs, ino, &handle);
++	if (retval) {
++		if (retval == EXT2_ET_MISSING_EA_FEATURE)
++			return 0;
++		com_err(__func__, retval, "while opening inode %u", ino);
++		return retval;
++	}
++
++	list = malloc(size);
++	if (!list) {
++		com_err(__func__, errno, "whilst allocating memory");
++		retval = errno;
++		goto out;
++	}
++
++	size = llistxattr(filename, list, size);
++	if (size == -1) {
++		com_err(__func__, errno, "llistxattr failed on %s", filename);
++		retval = errno;
++		goto out;
++        }
++
++	for (i = 0; i < size; i += strlen(&list[i]) + 1) {
++		const char *name = &list[i];
++		char *value;
++
++		value_size = getxattr(filename, name, NULL, 0);
++		if (value_size == -1) {
++			com_err(__func__, errno, "getxattr failed on %s", filename);
++			retval = errno;
++			break;
++		}
++
++		value = malloc(value_size);
++		if (!value) {
++			com_err(__func__, errno, "whilst allocating memory");
++			retval = errno;
++			break;
++		}
++
++		value_size = getxattr(filename, name, value, value_size);
++		if (value_size == -1) {
++			free(value);
++			com_err(__func__, errno, "getxattr failed on %s", filename);
++			retval = errno;
++			break;
++		}
++
++		retval = ext2fs_xattr_set(handle, name, value, value_size);
++		free (value);
++		if (retval) {
++			com_err(__func__, retval, "while writing xattr %u", ino);
++			break;
++		}
++
++	}
++ out:
++	free(list);
++
++	close_retval = ext2fs_xattrs_close(&handle);
++	if (close_retval) {
++		com_err(__func__, retval, "while closing inode %u", ino);
++		retval = retval ? close_retval;
++	}
++
++	return retval;
++}
++
+ /* Make a special files (block and character devices), fifo's, and sockets  */
+ errcode_t do_mknod_internal(ext2_filsys fs, ext2_ino_t cwd, const char *name,
+ 			    struct stat *st)
+@@ -615,6 +700,13 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
+ 			goto out;
+ 		}
+ 
++		retval = set_inode_xattr(fs, ino, name);
++		if (retval) {
++			com_err(__func__, retval,
++				_("while setting xattrs for \"%s\""), name);
++			goto out;
++		}
++
+ 		/* Save the hardlink ino */
+ 		if (save_inode) {
+ 			/*
+-- 
+1.7.10.4
 
-I suppose you could also do the retval = ext2fs_get_mem(size, &list);
-construction as well.
-
---D
-
-> 
-> >> +     size = llistxattr(filename, list, size);
-> >
-> > What if this second call should fail for some reason?  Shouldn't we stop?
-> 
-> Yes, also fixed locally.
-> 
-> >> +
-> >> +     for (i = 0; i < size; i += strlen(&list[i]) + 1) {
-> >> +             const char *name = &list[i];
-> >> +             char *value;
-> >> +
-> >> +             value_size = getxattr(filename, name, NULL, 0);
-> >
-> > What if getxattr returns -1?
-> 
-> Should bail, will fix.
-> 
-> >> +             value = malloc(value_size);
-> >> +             value_size = getxattr(filename, name, value, value_size);
-> >
-> > Same complaints about not checking malloc/getxattr return values.
-> 
-> Agreed.
-> 
-> >> +     retval = ext2fs_xattrs_close(&handle);
-> >> +     if (retval)
-> >> +             com_err(__func__, errno, "while closing inode %u", ino);
-> >
-> > retval, not errno.
-> 
-> [sags head in shame]
-> 
-> Next time I'm patching at 10pm I'll remember to review the patch the
-> next morning before sending...
-> 
-> Ross
