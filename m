@@ -1,52 +1,54 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] msync: fix incorrect fstart calculation
-Date: Sat, 28 Jun 2014 15:57:48 -0400
-Message-ID: <20140628195748.GC2162@thunk.org>
-References: <006a01cf91fc$5d225170$1766f450$@samsung.com>
- <20140628191425.GA2162@thunk.org>
- <20140628124421.c499b001.akpm@linux-foundation.org>
+Subject: [GIT PULL] ext4 bug fixes for 3.16
+Date: Sun, 29 Jun 2014 20:11:59 -0400
+Message-ID: <20140630001159.GA25311@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Namjae Jeon <namjae.jeon@samsung.com>, linux-mm@kvack.org,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
-	'Matthew Wilcox' <matthew.r.wilcox@intel.com>,
-	'Eric Whitney' <enwlinux@gmail.com>,
-	Ashish Sangwan <a.sangwan@samsung.com>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:35899 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752740AbaF3AMB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 29 Jun 2014 20:12:01 -0400
 Content-Disposition: inline
-In-Reply-To: <20140628124421.c499b001.akpm@linux-foundation.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jun 28, 2014 at 12:44:21PM -0700, Andrew Morton wrote:
-> On Sat, 28 Jun 2014 15:14:25 -0400 "Theodore Ts'o" <tytso@mit.edu> wrote:
-> 
-> > On Fri, Jun 27, 2014 at 08:38:49PM +0900, Namjae Jeon wrote:
-> > > Fix a regression caused by Commit 7fc34a62ca mm/msync.c: sync only
-> > > the requested range in msync().
-> > > xfstests generic/075 fail occured on ext4 data=journal mode because
-> > > the intended range was not syncing due to wrong fstart calculation.
-> > > 
-> > > Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>
-> > > Cc: Luk____ Czerner <lczerner@redhat.com>
-> > > Reported-by: Eric Whitney <enwlinux@gmail.com>
-> > > Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> > > Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-> > 
-> > Reviewed-by: Theodore Ts'o <tytso@mit.edu>
-> > 
-> > Andrew, do you want to take this in the mm tree,
-> 
-> I have done so.
+The following changes since commit 7171511eaec5bf23fb06078f59784a3a0626b38f:
 
-Great, thanks!!
+  Linux 3.16-rc1 (2014-06-15 17:45:28 -1000)
 
-						- Ted
+are available in the git repository at:
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
+
+for you to fetch changes up to a93cd4cf86466caa49cfe64607bea7f0bde3f916:
+
+  ext4: Fix hole punching for files with indirect blocks (2014-06-26 12:30:54 -0400)
+
+----------------------------------------------------------------
+Fix a regression when trying to compile ext4 on older versions gcc.
+
+Fix a number of miscellaneous bugs for punch hole as well as a
+long-standing potential double buffer head release when failing a
+block allocation for an indirect-mapped file.
+
+----------------------------------------------------------------
+Jan Kara (3):
+      ext4: Fix buffer double free in ext4_alloc_branch()
+      ext4: Fix block zeroing when punching holes in indirect block files
+      ext4: Fix hole punching for files with indirect blocks
+
+Namjae Jeon (1):
+      ext4: decrement free clusters/inodes counters when block group declared bad
+
+T Makphaibulchoke (1):
+      fs/mbcache: replace __builtin_log2() with ilog2()
+
+ fs/ext4/balloc.c   | 16 ++++++++++++++++
+ fs/ext4/ialloc.c   | 23 +++++++++++++++++++++++
+ fs/ext4/indirect.c | 24 +++++++++++++++++++-----
+ fs/ext4/mballoc.c  |  8 ++++++++
+ fs/mbcache.c       |  3 ++-
+ 5 files changed, 68 insertions(+), 6 deletions(-)
