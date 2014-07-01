@@ -1,374 +1,216 @@
-From: Ross Burton <ross.burton@intel.com>
-Subject: =?UTF-8?q?=5BPATCH=5D=20Move=20e2fsprogs-specific=20macros=20from=20aclocal=2Em4=20to=20acinclude=2Em4?=
-Date: Tue,  1 Jul 2014 11:47:34 +0100
-Message-ID: <1404211654-10158-1-git-send-email-ross.burton@intel.com>
+From: Jaehoon Chung <jh80.chung@samsung.com>
+Subject: Re: ext4: journal has aborted
+Date: Tue, 01 Jul 2014 21:07:27 +0900
+Message-ID: <53B2A47F.90903@samsung.com>
+References: <CAFnufp3TepsxxX8=WCJ0V=3TELP0rWR-NxFukSL8X=qS1q6Eew@mail.gmail.com>
+ <20140701082619.1ac77f1d@archvile> <20140701084206.GG9743@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	Matteo Croce <technoboy85@gmail.com>,
+	David Jander <david@protonic.nl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-we0-f173.google.com ([74.125.82.173]:46977 "EHLO
-	mail-we0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757852AbaGAKrv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jul 2014 06:47:51 -0400
-Received: by mail-we0-f173.google.com with SMTP id t60so9546188wes.4
-        for <linux-ext4@vger.kernel.org>; Tue, 01 Jul 2014 03:47:50 -0700 (PDT)
-Received: from melchett.burtonini.com (35.106.2.81.in-addr.arpa. [81.2.106.35])
-        by mx.google.com with ESMTPSA id d12sm13837383wjx.0.2014.07.01.03.47.48
-        for <linux-ext4@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 01 Jul 2014 03:47:49 -0700 (PDT)
+Received: from mailout4.samsung.com ([203.254.224.34]:52324 "EHLO
+	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751858AbaGAMHa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jul 2014 08:07:30 -0400
+Received: from epcpsbgr3.samsung.com
+ (u143.gpu120.samsung.co.kr [203.254.230.143])
+ by mailout4.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ (7.0.4.24.0) 64bit (built Nov 17 2011))
+ with ESMTP id <0N81006DQ8CG9ND0@mailout4.samsung.com> for
+ linux-ext4@vger.kernel.org; Tue, 01 Jul 2014 21:07:28 +0900 (KST)
+In-reply-to: <20140701084206.GG9743@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Autoconf says that aclocal.m4 is a machine-generated copy of system-wid=
-e macros,
-whereas acinclude.m4 is for project-specific macros.  Reflect this divi=
-sion and
-ease building by anyone who needs to re-generate the autotooling by spl=
-itting
-AX_TLS and CHECK_GNU_MAKE to acinclude.m4.
+Hi,
 
-Signed-off-by: Ross Burton <ross.burton@intel.com>
----
- acinclude.m4 |  130 ++++++++++++++++++++++++++++++++++++++++++++++++++=
-+++++++
- aclocal.m4   |  132 +-------------------------------------------------=
---------
- 2 files changed, 132 insertions(+), 130 deletions(-)
- create mode 100644 acinclude.m4
+i have interesting for this problem..Because i also found the same problem..
+Is it Journal problem?
 
-diff --git a/acinclude.m4 b/acinclude.m4
-new file mode 100644
-index 0000000..cf84acc
---- /dev/null
-+++ b/acinclude.m4
-@@ -0,0 +1,130 @@
-+# from http://autoconf-archive.cryp.to/ax_tls.html
-+#
-+# This was licensed under the GPL with the following exception:
-+#
-+# As a special exception, the respective Autoconf Macro's copyright
-+# owner gives unlimited permission to copy, distribute and modify the
-+# configure scripts that are the output of Autoconf when processing
-+# the Macro. You need not follow the terms of the GNU General Public
-+# License when using or distributing such scripts, even though
-+# portions of the text of the Macro appear in them. The GNU General
-+# Public License (GPL) does govern all other use of the material that
-+# constitutes the Autoconf Macro.
-+#
-+# This special exception to the GPL applies to versions of the
-+# Autoconf Macro released by the Autoconf Macro Archive. When you make
-+# and distribute a modified version of the Autoconf Macro, you may
-+# extend this special exception to the GPL to apply to your modified
-+# version as well.
-+#
-+AC_DEFUN([AX_TLS], [
-+  AC_MSG_CHECKING(for thread local storage (TLS) class)
-+  AC_CACHE_VAL(ac_cv_tls, [
-+    ax_tls_keywords=3D"__thread __declspec(thread) none"
-+    for ax_tls_keyword in $ax_tls_keywords; do
-+       case $ax_tls_keyword in
-+          none) ac_cv_tls=3Dnone ; break ;;
-+          *)
-+             AC_TRY_COMPILE(
-+                [#include <stdlib.h>
-+                 static void
-+                 foo(void) {
-+                 static ] $ax_tls_keyword [ int bar;
-+                 exit(1);
-+                 }],
-+                 [],
-+                 [ac_cv_tls=3D$ax_tls_keyword ; break],
-+                 ac_cv_tls=3Dnone
-+             )
-+          esac
-+    done
-+])
-+
-+  if test "$ac_cv_tls" !=3D "none"; then
-+    dnl AC_DEFINE([TLS], [], [If the compiler supports a TLS storage c=
-lass define it to that here])
-+    AC_DEFINE_UNQUOTED([TLS], $ac_cv_tls, [If the compiler supports a =
-TLS storage class define it to that here])
-+  fi
-+  AC_MSG_RESULT($ac_cv_tls)
-+])
-+
-+# =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
-+#         http://www.nongnu.org/autoconf-archive/check_gnu_make.html
-+# =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
-+#
-+# SYNOPSIS
-+#
-+#   CHECK_GNU_MAKE()
-+#
-+# DESCRIPTION
-+#
-+#   This macro searches for a GNU version of make. If a match is found=
-, the
-+#   makefile variable `ifGNUmake' is set to the empty string, otherwis=
-e it
-+#   is set to "#". This is useful for including a special features in =
-a
-+#   Makefile, which cannot be handled by other versions of make. The
-+#   variable _cv_gnu_make_command is set to the command to invoke GNU =
-make
-+#   if it exists, the empty string otherwise.
-+#
-+#   Here is an example of its use:
-+#
-+#   Makefile.in might contain:
-+#
-+#       # A failsafe way of putting a dependency rule into a makefile
-+#       $(DEPEND):
-+#               $(CC) -MM $(srcdir)/*.c > $(DEPEND)
-+#
-+#       @ifGNUmake@ ifeq ($(DEPEND),$(wildcard $(DEPEND)))
-+#       @ifGNUmake@ include $(DEPEND)
-+#       @ifGNUmake@ endif
-+#
-+#   Then configure.in would normally contain:
-+#
-+#       CHECK_GNU_MAKE()
-+#       AC_OUTPUT(Makefile)
-+#
-+#   Then perhaps to cause gnu make to override any other make, we coul=
-d do
-+#   something like this (note that GNU make always looks for GNUmakefi=
-le
-+#   first):
-+#
-+#       if  ! test x$_cv_gnu_make_command =3D x ; then
-+#               mv Makefile GNUmakefile
-+#               echo .DEFAULT: > Makefile ;
-+#               echo \  $_cv_gnu_make_command \$@ >> Makefile;
-+#       fi
-+#
-+#   Then, if any (well almost any) other make is called, and GNU make =
-also
-+#   exists, then the other make wraps the GNU make.
-+#
-+# LICENSE
-+#
-+#   Copyright (c) 2008 John Darrington <j.darrington@elvis.murdoch.edu=
-=2Eau>
-+#
-+#   Copying and distribution of this file, with or without modificatio=
-n, are
-+#   permitted in any medium without royalty provided the copyright not=
-ice
-+#   and this notice are preserved.
-+#
-+# Note: Modified by Ted Ts'o to add @ifNotGNUMake@
-+
-+AC_DEFUN(
-+        [CHECK_GNU_MAKE], [ AC_CACHE_CHECK( for GNU make,_cv_gnu_make_=
-command,
-+                _cv_gnu_make_command=3D'' ;
-+dnl Search all the common names for GNU make
-+                for a in "$MAKE" make gmake gnumake ; do
-+                        if test -z "$a" ; then continue ; fi ;
-+                        if  ( sh -c "$a --version" 2> /dev/null | grep=
- GNU  2>&1 > /dev/null ) ;  then
-+                                _cv_gnu_make_command=3D$a ;
-+                                break;
-+                        fi
-+                done ;
-+        ) ;
-+dnl If there was a GNU version, then set @ifGNUmake@ to the empty stri=
-ng, '#' otherwise
-+        if test  "x$_cv_gnu_make_command" !=3D "x"  ; then
-+                ifGNUmake=3D'' ;
-+                ifNotGNUmake=3D'#' ;
-+        else
-+                ifGNUmake=3D'#' ;
-+                ifNotGNUmake=3D'' ;
-+                AC_MSG_RESULT("Not found");
-+        fi
-+        AC_SUBST(ifGNUmake)
-+        AC_SUBST(ifNotGNUmake)
-+] )
-diff --git a/aclocal.m4 b/aclocal.m4
-index 6fd4652..1ac3861 100644
---- a/aclocal.m4
-+++ b/aclocal.m4
-@@ -2601,55 +2601,6 @@ AC_DEFUN([gl_XSIZE],
-   AC_CHECK_HEADERS(stdint.h)
- ])
-=20
--# from http://autoconf-archive.cryp.to/ax_tls.html
--#
--# This was licensed under the GPL with the following exception:
--#
--# As a special exception, the respective Autoconf Macro's copyright
--# owner gives unlimited permission to copy, distribute and modify the
--# configure scripts that are the output of Autoconf when processing
--# the Macro. You need not follow the terms of the GNU General Public
--# License when using or distributing such scripts, even though
--# portions of the text of the Macro appear in them. The GNU General
--# Public License (GPL) does govern all other use of the material that
--# constitutes the Autoconf Macro.
--#
--# This special exception to the GPL applies to versions of the
--# Autoconf Macro released by the Autoconf Macro Archive. When you make
--# and distribute a modified version of the Autoconf Macro, you may
--# extend this special exception to the GPL to apply to your modified
--# version as well.
--#
--AC_DEFUN([AX_TLS], [
--  AC_MSG_CHECKING(for thread local storage (TLS) class)
--  AC_CACHE_VAL(ac_cv_tls, [
--    ax_tls_keywords=3D"__thread __declspec(thread) none"
--    for ax_tls_keyword in $ax_tls_keywords; do
--       case $ax_tls_keyword in
--          none) ac_cv_tls=3Dnone ; break ;;
--          *)
--             AC_TRY_COMPILE(
--                [#include <stdlib.h>
--                 static void
--                 foo(void) {
--                 static ] $ax_tls_keyword [ int bar;
--                 exit(1);
--                 }],
--                 [],
--                 [ac_cv_tls=3D$ax_tls_keyword ; break],
--                 ac_cv_tls=3Dnone
--             )
--          esac
--    done
--])
--
--  if test "$ac_cv_tls" !=3D "none"; then
--    dnl AC_DEFINE([TLS], [], [If the compiler supports a TLS storage c=
-lass define it to that here])
--    AC_DEFINE_UNQUOTED([TLS], $ac_cv_tls, [If the compiler supports a =
-TLS storage class define it to that here])
--  fi
--  AC_MSG_RESULT($ac_cv_tls)
--])
--
- # Excerpted from pkg.m4 - Macros to locate and utilise pkg-config
- #
- # Copyright =C3=82=C2=A9 2004 Scott James Remnant <scott@netsplit.com>=
-=2E
-@@ -2694,84 +2645,5 @@ if test -n "$PKG_CONFIG"; then
-               =20
- fi[]dnl
- ])# PKG_PROG_PKG_CONFIG
--# =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
--#         http://www.nongnu.org/autoconf-archive/check_gnu_make.html
--# =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
--#
--# SYNOPSIS
--#
--#   CHECK_GNU_MAKE()
--#
--# DESCRIPTION
--#
--#   This macro searches for a GNU version of make. If a match is found=
-, the
--#   makefile variable `ifGNUmake' is set to the empty string, otherwis=
-e it
--#   is set to "#". This is useful for including a special features in =
-a
--#   Makefile, which cannot be handled by other versions of make. The
--#   variable _cv_gnu_make_command is set to the command to invoke GNU =
-make
--#   if it exists, the empty string otherwise.
--#
--#   Here is an example of its use:
--#
--#   Makefile.in might contain:
--#
--#       # A failsafe way of putting a dependency rule into a makefile
--#       $(DEPEND):
--#               $(CC) -MM $(srcdir)/*.c > $(DEPEND)
--#
--#       @ifGNUmake@ ifeq ($(DEPEND),$(wildcard $(DEPEND)))
--#       @ifGNUmake@ include $(DEPEND)
--#       @ifGNUmake@ endif
--#
--#   Then configure.in would normally contain:
--#
--#       CHECK_GNU_MAKE()
--#       AC_OUTPUT(Makefile)
--#
--#   Then perhaps to cause gnu make to override any other make, we coul=
-d do
--#   something like this (note that GNU make always looks for GNUmakefi=
-le
--#   first):
--#
--#       if  ! test x$_cv_gnu_make_command =3D x ; then
--#               mv Makefile GNUmakefile
--#               echo .DEFAULT: > Makefile ;
--#               echo \  $_cv_gnu_make_command \$@ >> Makefile;
--#       fi
--#
--#   Then, if any (well almost any) other make is called, and GNU make =
-also
--#   exists, then the other make wraps the GNU make.
--#
--# LICENSE
--#
--#   Copyright (c) 2008 John Darrington <j.darrington@elvis.murdoch.edu=
-=2Eau>
--#
--#   Copying and distribution of this file, with or without modificatio=
-n, are
--#   permitted in any medium without royalty provided the copyright not=
-ice
--#   and this notice are preserved.
--#
--# Note: Modified by Ted Ts'o to add @ifNotGNUMake@
--
--AC_DEFUN(
--        [CHECK_GNU_MAKE], [ AC_CACHE_CHECK( for GNU make,_cv_gnu_make_=
-command,
--                _cv_gnu_make_command=3D'' ;
--dnl Search all the common names for GNU make
--                for a in "$MAKE" make gmake gnumake ; do
--                        if test -z "$a" ; then continue ; fi ;
--                        if  ( sh -c "$a --version" 2> /dev/null | grep=
- GNU  2>&1 > /dev/null ) ;  then
--                                _cv_gnu_make_command=3D$a ;
--                                break;
--                        fi
--                done ;
--        ) ;
--dnl If there was a GNU version, then set @ifGNUmake@ to the empty stri=
-ng, '#' otherwise
--        if test  "x$_cv_gnu_make_command" !=3D "x"  ; then
--                ifGNUmake=3D'' ;
--                ifNotGNUmake=3D'#' ;
--        else
--                ifGNUmake=3D'#' ;
--                ifNotGNUmake=3D'' ;
--                AC_MSG_RESULT("Not found");
--        fi
--        AC_SUBST(ifGNUmake)
--        AC_SUBST(ifNotGNUmake)
--] )
-+
-+m4_include([acinclude.m4])
---=20
-1.7.10.4
+I used the Linux version 3.16.0-rc3.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+[    3.866449] EXT4-fs error (device mmcblk0p13): ext4_mb_generate_buddy:756: group 0, 20490 clusters in bitmap, 20488 in gd; block bitmap corrupt.
+[    3.877937] Aborting journal on device mmcblk0p13-8.
+[    3.885025] Kernel panic - not syncing: EXT4-fs (device mmcblk0p13): panic forced after error
+[    3.885025]
+[    3.891751] CPU: 1 PID: 1488 Comm: mv Not tainted 3.16.0-rc3-00206-gc0f4eea0-dirty #2
+[    3.899594] [<c0016258>] (unwind_backtrace) from [<c00127d4>] (show_stack+0x10/0x14)
+[    3.907294] [<c00127d4>] (show_stack) from [<c051f458>] (dump_stack+0x78/0xc8)
+[    3.914495] [<c051f458>] (dump_stack) from [<c051cd28>] (panic+0x8c/0x1f0)
+[    3.921354] [<c051cd28>] (panic) from [<c018eb38>] (ext4_handle_error+0x68/0xa8)
+[    3.928730] [<c018eb38>] (ext4_handle_error) from [<c018f584>] (__ext4_grp_locked_error+0x88/0x1c0)
+[    3.937759] [<c018f584>] (__ext4_grp_locked_error) from [<c01a1e04>] (ext4_mb_generate_buddy+0x260/0x398)
+[    3.947306] [<c01a1e04>] (ext4_mb_generate_buddy) from [<c01a3d20>] (ext4_mb_init_cache+0x2fc/0x7fc)
+[    3.956433] [<c01a3d20>] (ext4_mb_init_cache) from [<c01a43d8>] (ext4_mb_init_group+0x1b8/0x234)
+[    3.965186] [<c01a43d8>] (ext4_mb_init_group) from [<c01a4950>] (ext4_mb_load_buddy+0x34c/0x380)
+[    3.973952] [<c01a4950>] (ext4_mb_load_buddy) from [<c01a9918>] (ext4_free_blocks+0x47c/0xd30)
+[    3.982545] [<c01a9918>] (ext4_free_blocks) from [<c019b440>] (ext4_ext_remove_space+0xae0/0x1474)
+[    3.991486] [<c019b440>] (ext4_ext_remove_space) from [<c019df68>] (ext4_ext_truncate+0xb4/0xd4)
+[    4.000251] [<c019df68>] (ext4_ext_truncate) from [<c0178ac4>] (ext4_truncate+0x37c/0x43c)
+[    4.008497] [<c0178ac4>] (ext4_truncate) from [<c017ba90>] (ext4_evict_inode+0x334/0x4f4)
+[    4.016660] [<c017ba90>] (ext4_evict_inode) from [<c01229b0>] (evict+0x94/0x158)
+[    4.024036] [<c01229b0>] (evict) from [<c011f1fc>] (__dentry_kill+0x1dc/0x22c)
+[    4.031238] [<c011f1fc>] (__dentry_kill) from [<c011f924>] (dput+0xa8/0x1ac)
+[    4.038282] [<c011f924>] (dput) from [<c0119a1c>] (SyS_renameat2+0x250/0x36c)
+[    4.045396] [<c0119a1c>] (SyS_renameat2) from [<c0119b7c>] (SyS_rename+0x28/0x30)
+[    4.052859] [<c0119b7c>] (SyS_rename) from [<c000eea0>] (ret_fast_syscall+0x0/0x3c)
+
+I used with the eMMC card. I want to know the debugging point for this problem.
+If anybody have solution, let me know, plz.
+
+Best Regards,
+Jaehoon Chung
+
+On 07/01/2014 05:42 PM, Darrick J. Wong wrote:
+> On Tue, Jul 01, 2014 at 08:26:19AM +0200, David Jander wrote:
+>>
+>> Hi,
+>>
+>> On Mon, 30 Jun 2014 23:30:10 +0200
+>> Matteo Croce <technoboy85@gmail.com> wrote:
+>>
+>>> I was web surfing and using gimp when:
+>>>
+>>> EXT4-fs error (device sda2): ext4_mb_generate_buddy:756: group 199,
+>>> 9414 clusters in bitmap, 9500 in gd; block bitmap corrupt.
+>>
+>> I was about to post a related question to this list. I am also seeing these
+>> kind of errors when using ext4 on latest mainline (I began testing with 3.15
+>> where I saw this and now in 3.16-rc3 it is still there).
+>> It happens almost instantly when power-cycling the system (unclean shutdown).
+>> The next time the system boots, I get these errors.
+>>
+>> AFAICT, you are using a pretty recent kernel. Which version exactly?
+>>
+>>> Aborting journal on device sda2-8.
+>>> EXT4-fs (sda2): Remounting filesystem read-only
+> 
+> Matteo, could you please post the full dmesg log somewhere?  I'm interested in
+> what happens before all this happens, because...
+> 
+>>> ------------[ cut here ]------------
+>>> WARNING: CPU: 6 PID: 4134 at fs/ext4/ext4_jbd2.c:259
+>>> __ext4_handle_dirty_metadata+0x18e/0x1d0()
+>>> Modules linked in: snd_hda_codec_hdmi snd_hda_codec_realtek
+>>> snd_hda_codec_generic ecb uvcvideo videobuf2_vmalloc videobuf2_memops
+>>> videobuf2_core videodev ath3k btusb rts5139(C) ctr ccm iTCO_wdt bnep
+>>> rfcomm bluetooth nls_iso8859_1 vfat fat arc4 intel_rapl
+>>> x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm
+>>> snd_hda_intel snd_hda_controller snd_hda_codec snd_hwdep snd_pcm
+>>> aesni_intel aes_x86_64 snd_seq_midi snd_seq_midi_event ath9k led_class
+>>> glue_helper ath9k_common lrw gf128mul ath9k_hw ablk_helper cryptd ath
+>>> mac80211 snd_rawmidi snd_seq cfg80211 radeon microcode rfkill
+>>> snd_timer snd_seq_device sr_mod psmouse r8169 snd cdrom i915 lpc_ich
+>>> soundcore ttm mii mfd_core drm_kms_helper drm intel_gtt agpgart
+>>> ehci_pci mei_me xhci_hcd tpm_infineon ehci_hcd video mei wmi tpm
+>>> backlight
+>>> CPU: 6 PID: 4134 Comm: gimp-2.8 Tainted: G         C    3.15.0 #6
+>>>  0000000000000009 ffffffff813acbdd 0000000000000000 ffffffff8103de3d
+>>>  ffff8802365231a0 00000000ffffffe2 0000000000000000 ffff8800b90816c0
+>>>  ffffffff814205a0 ffffffff8118879e 0000000000000005 ffff8802365231a0
+>>> Call Trace:
+>>>  [<ffffffff813acbdd>] ? dump_stack+0x41/0x51
+>>>  [<ffffffff8103de3d>] ? warn_slowpath_common+0x6d/0x90
+>>>  [<ffffffff8118879e>] ? __ext4_handle_dirty_metadata+0x18e/0x1d0
+>>>  [<ffffffff8116e130>] ? ext4_dirty_inode+0x20/0x50
+>>>  [<ffffffff811903e9>] ? ext4_free_blocks+0x539/0xa40
+>>>  [<ffffffff8118468b>] ? ext4_ext_remove_space+0x83b/0xe60
+>>>  [<ffffffff81186a58>] ? ext4_ext_truncate+0x98/0xc0
+>>>  [<ffffffff8116c985>] ? ext4_truncate+0x2b5/0x300
+>>>  [<ffffffff8116d3d8>] ? ext4_evict_inode+0x3d8/0x410
+>>>  [<ffffffff81114a46>] ? evict+0xa6/0x160
+>>>  [<ffffffff81109346>] ? do_unlinkat+0x186/0x2a0
+>>>  [<ffffffff8110e51e>] ? SyS_getdents+0xde/0x100
+>>>  [<ffffffff8110e1d0>] ? fillonedir+0xd0/0xd0
+>>>  [<ffffffff813b2626>] ? system_call_fastpath+0x1a/0x1f
+>>> ---[ end trace 795411398e41fbcb ]---
+>>> EXT4: jbd2_journal_dirty_metadata failed: handle type 5 started at
+>>> line 241, credits 91/91, errcode -30
+>>> EXT4: jbd2_journal_dirty_metadata failed: handle type 5 started at
+>>> line 241, credits 91/91, errcode -30<2>EXT4-fs error (device sda2) in
+>>> ext4_free_blocks:4867: Journal has aborted
+>>> EXT4-fs error (device sda2): ext4_ext_rm_leaf:2731: inode #8257653:
+>>> block 6520936: comm gimp-2.8: journal_dirty_metadata failed: handle
+>>> type 5 started at line 241, credits 91/91, errcode -30
+>>> EXT4-fs error (device sda2) in ext4_ext_remove_space:3018: Journal has
+>>> aborted EXT4-fs error (device sda2) in ext4_ext_truncate:4666: Journal has
+>>> aborted EXT4-fs error (device sda2) in ext4_reserve_inode_write:4877: Journal
+>>> has aborted
+>>> EXT4-fs error (device sda2) in ext4_truncate:3788: Journal has aborted
+>>> EXT4-fs error (device sda2) in ext4_reserve_inode_write:4877: Journal
+>>> has aborted
+>>> EXT4-fs error (device sda2) in ext4_orphan_del:2684: Journal has aborted
+>>> EXT4-fs error (device sda2) in ext4_reserve_inode_write:4877: Journal
+>>> has aborted
+>>
+>> I did not get these errors. I suspect this may be a consequence of FS
+>> corruption due to a bug in etx4.
+>>
+>> Here's why I suspect a bug:
+>>
+>> I am running latest git head (3.16-rc3+ as of yesterday) on an ARM system with
+>> eMMC flash. The eMMC is formatted in SLC mode ("enhanced" mode according to
+>> eMMC 4.41) and "reliable-writes" are enabled, so power-cycling should not
+>> cause FS corruption in presence of a journal.
+>>
+>> I can format the eMMC device either as EXT3 or EXT4 for the test. After
+>> formatting and writing the rootfs to the partition I can boot successfully in
+>> either situation. Once booted from eMMC, I start bonnie++ (to just stress the
+>> FS for a while), and after a minute or so the board is power-cycled while
+>> bonnie++ is still running.
+>>
+>> Next time I boot the situation is this:
+>>
+>> With EXT3: All seems fine, journal is replayed, no errors. I can repeat this as
+>> many times as I want, FS stays consistent.
+>>
+>> With EXT4: After just one power cycle I start getting this:
+>>
+>> [    7.603871] EXT4-fs error (device mmcblk0p2): ext4_mb_generate_buddy:757: group 1, 8542 clusters in bitmap, 8550 in gd; block bitmap corrupt.
+>> [    7.616743] JBD2: Spotted dirty metadata buffer (dev = mmcblk0p2, blocknr = 0). There's a risk of filesystem corruption in case of system crash.
+> 
+> I've been seeing this same set of symptoms with 3.15.0 on various SSDs (Samsung
+> 840 Pro, Crucial M4).  It seems that something (upstart?) is holding open some
+> file or other during poweroff, which means that the root fs can't be unmounted
+> or even remounted rw.  I also noticed that the next time the system comes up,
+> the kernel tells me that it has to process the inode orphan list as part of
+> recovery.
+> 
+> Shortly after the orphan list gets processed, I get that message and the FS
+> goes ro.  A subsequent fsck run reveals that the block bitmap is indeed
+> incorrect in that block group, and when I bd the blocks that are incorrect in
+> the bitmap, I see what could be some kind of upstart log file.  Either way, I
+> suspect some bug in orphan processing.
+> 
+> <shrug> I don't know if this is specific to SSDs or spinning rust.  Right now
+> I've simply rigged the initramfs to e2fsck -p the root fs before mounting it,
+> which seems(?) to have patched around it for now.
+> 
+>> If I continue the test, it doesn't take long and serious corruption starts
+>> occurring.
+> 
+> You're getting actual FS data corruption too?  Or more of those messages?
+> 
+> --D
+>>
+>> Again, with EXT3 I am unable to detect any problems.
+>>
+>> Best regards,
+>>
+>> -- 
+>> David Jander
+>> Protonic Holland.
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
