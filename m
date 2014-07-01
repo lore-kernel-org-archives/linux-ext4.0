@@ -1,95 +1,59 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: help with bug_on on ext4 mount
-Date: Tue, 1 Jul 2014 11:39:14 -0400
-Message-ID: <20140701153914.GB2775@thunk.org>
-References: <6d9f68dc2278627dbe8d5e5434cf5a78.squirrel@www.codeaurora.org>
+Subject: Re: ext4: journal has aborted
+Date: Tue, 1 Jul 2014 11:58:12 -0400
+Message-ID: <20140701155812.GD2775@thunk.org>
+References: <CAFnufp3TepsxxX8=WCJ0V=3TELP0rWR-NxFukSL8X=qS1q6Eew@mail.gmail.com>
+ <20140701082619.1ac77f1d@archvile>
+ <20140701084206.GG9743@birch.djwong.org>
+ <53B2A47F.90903@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org,
-	Tanya Brokhman <tlinder@codeaurora.org>,
-	Maya Erez <merez@codeaurora.org>, kdorfman@codeaurora.org,
-	lsusman@codeaurora.org
-To: Dolev Raviv <draviv@codeaurora.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	Matteo Croce <technoboy85@gmail.com>,
+	David Jander <david@protonic.nl>, linux-ext4@vger.kernel.org
+To: Jaehoon Chung <jh80.chung@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39128 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:39173 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754356AbaGAPjW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jul 2014 11:39:22 -0400
+	id S1755467AbaGAP60 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jul 2014 11:58:26 -0400
 Content-Disposition: inline
-In-Reply-To: <6d9f68dc2278627dbe8d5e5434cf5a78.squirrel@www.codeaurora.org>
+In-Reply-To: <53B2A47F.90903@samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 01, 2014 at 06:44:45AM -0000, Dolev Raviv wrote:
->=20
-> Crash description:
-> I saw a BUG_ON assertion failure in function ext4_clear_journal_err()=
-=2E The
-> assertion that fails is:  !EXT4_HAS_COMPAT_FEATURE(sb,
-> EXT4_FEATURE_COMPAT_HAS_JOURNAL).
-> The strange thing is, that the same BUG_ON assertion is called at the
-> start of the function that calls ext4_clear_journal_err(), which is
-> ext4_load_journal(). This means that the capability flag is changed i=
-n
-> ext4_load_journal, before the call for journal_err().
->=20
-> I=92m not too familiar with ext4 code unfortunately. From analyzing t=
-he
-> journal path I came to the below conclusions:
-> This scenario is possible, if during journal replay, the super_block =
-is
-> restored or overridden from the journal.
-> I have noticed a case where the sb is marked as dirty and later, it i=
-s
-> evicted through the address_space_operations .writepage =3D ext4_writ=
-epage
-> cb. This cb is using the journal and can cause the dirty sb appear on=
- the
-> journal. If during the journal write operation a power cut occurs, an=
-d the
-> sb copy in the journal is corrupted, it may cause the BUG_ON assertio=
-n
-> failure above.
+On Tue, Jul 01, 2014 at 09:07:27PM +0900, Jaehoon Chung wrote:
+> Hi,
+> 
+> i have interesting for this problem..Because i also found the same problem..
+> Is it Journal problem?
+> 
+> I used the Linux version 3.16.0-rc3.
+> 
+> [    3.866449] EXT4-fs error (device mmcblk0p13): ext4_mb_generate_buddy:756: group 0, 20490 clusters in bitmap, 20488 in gd; block bitmap corrupt.
+> [    3.877937] Aborting journal on device mmcblk0p13-8.
+> [    3.885025] Kernel panic - not syncing: EXT4-fs (device mmcblk0p13): panic forced after error
 
-Yes, this is possible --- but if the journal has been corrupted,
-something pretty disastrous has happened.  Indeed, if that has
-happenned, it may be that some other portions of the file system will
-also have been wiped out.  So I'd ask the question of whether you have
-a bigger issue, such as crappy flash that is either not properly
-implementing the CACHE FLUSH operation, or which does not have proper
-transaction handling for its FTL metadata, so that even if the data
-blocks were correctly saved, if power gets removed while the SSD or
-eMMC flash is doing a GC operation, some data or metadata blocks
-(potentially including blocks written days or months ago) can get
-corrupted.  Unfortunately, there does seem to be a huge number of
-crappy flash out there, and there's not much the file system can do
-about it.
+This message means that the file system has detected an inconsistency
+--- specifically, that the number of blocks marked as in use in the
+allocation bbitmap is different from what is in the block group
+descriptors.
 
-> Is the scenario described above even possible (or am I missing someth=
-ing)?
-> Has anyone encountered similar issues? Are there any known fixes for =
-this?
+The file system has been marked to force a panic after an error, at
+which point e2fsck will be able to repair the inconsistency.
 
-We do have journal checksums, but the reason why it hasn't been
-enabled by default is that e2fsck doesn't have good recovery from a
-corrupted journal.  So it will detect a bad journal block, but we
-don't have good recovery strategies implemented yet.
+What's not clear is *how* the why this happened.  It can happen simply
+because of a hardware problem.  (In particular, not all mmc flash
+devices handle power failures gracefully.)  Or it could be a cosmic,
+ray, or it might be a kernel bug.
 
-We could add a sanity check to make sure that, in the absense of
-journal checksums, if we are replaying the superblock and the journal
-copy of the superblock looks insane, to abort the journal replay.
-It's not going to help you recover the bad file system, but it will
-prevent the BUG_ON.
+Normally I would chalk this up to a hardware bug, bug it's possible
+that it is a kernel bug.  If people can reliably reproduce the problem
+where no power failures or other unclean shutdowns were involved
+(since the last time file system has been checked using e2fsck) then
+that would be realy interesting.
 
-Personally, I'd focus on why the journal got corrupted in the first
-place.  A BUG_ON is transient; you reboot, and move on.  Data
-corruption (at least in the absense of backups, and you *have* been
-doing backups, right?) is forever....
+We should probably also change the message so the message is a bit
+more understanding to people who aren't ext4 developers.
 
-							- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+     		      	     	 	- Ted
