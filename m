@@ -1,37 +1,25 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Generated files in e2fsprogs git repo
-Date: Mon, 30 Jun 2014 21:02:50 -0400
-Message-ID: <20140701010250.GA23932@thunk.org>
-References: <CAJTo0LYeerPnHpaxAw36N7BiWH4PKUMAX=1j+Szc7J9zvB7jjw@mail.gmail.com>
+From: "Rishabh Singh B.Tech., CSE, IIT-BHU, Varanasi (INDIA)"
+	<rishabh.singh.cse11@iitbhu.ac.in>
+Subject: How to disable TRIM
+Date: Tue, 1 Jul 2014 11:11:34 +0530
+Message-ID: <CAHohGC8WtcfcsKFd2OjUbeQnUyw7qKmvUYuPtbCjPpQNfLxCaQ@mail.gmail.com>
+Reply-To: rishabh.singh.cse11@iitbhu.ac.in
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Burton, Ross" <ross.burton@intel.com>
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38050 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751237AbaGABCy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Jun 2014 21:02:54 -0400
-Content-Disposition: inline
-In-Reply-To: <CAJTo0LYeerPnHpaxAw36N7BiWH4PKUMAX=1j+Szc7J9zvB7jjw@mail.gmail.com>
+Received: from mail-wi0-f173.google.com ([209.85.212.173]:60334 "EHLO
+	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751848AbaGAFlg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jul 2014 01:41:36 -0400
+Received: by mail-wi0-f173.google.com with SMTP id cc10so7125999wib.12
+        for <linux-ext4@vger.kernel.org>; Mon, 30 Jun 2014 22:41:35 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 30, 2014 at 05:52:29PM +0100, Burton, Ross wrote:
-> 
-> Would anyone object to a patch set to remove all generated files
-> (aclocal.m4, configure, intl/*, po/Makefile.in.in, etc) from the
-> e2fsprogs git repository?  They'll still exist in tarballs, but anyone
-> building from git would need to run autoreconf to regenerate them -
-> the plus side being that the shipped aclocal.m4 won't be forcing
-> archaic macros onto users.
+I have enabled the TRIM option in SSDs by adding "discard" to the
+/etc/fstab. But even after removing the "discard" the TRIM does not
+appear to be disabled. This I can conclude from the write and read
+speeds. How do I disable it?
 
-
-I don't trust autoreconf.  Different versions of autoconf can end up
-with different incompatible versions of autoconf macros, and I have
-seen some rather disastrous failures as a result.  That's why I update
-autoconf under my control, and if you run autoreconf as a user, and it
-breaks because the "archaic macros" work, and the "new shiny" macros
-fail, that's your problem, and I will laugh at you....
-
-      	     	  	       	      - Ted
+Thanking You and Regards
