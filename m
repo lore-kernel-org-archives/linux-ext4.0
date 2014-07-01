@@ -1,136 +1,145 @@
-From: Dolev Raviv <draviv@codeaurora.org>
-Subject: Re: Quadrant write performance degradation - kernel3.10 vs kernel3.4
-Date: Tue, 01 Jul 2014 10:07:18 +0300
-Message-ID: <53B25E26.6040201@codeaurora.org>
-References: <539E8860.3010602@codeaurora.org> <20140616192009.GD9743@birch.djwong.org> <alpine.LFD.2.00.1406170949020.2148@localhost.localdomain> <20140620023615.GA21301@gmail.com>
+From: Matteo Croce <technoboy85@gmail.com>
+Subject: Re: ext4: journal has aborted
+Date: Tue, 1 Jul 2014 10:00:36 +0200
+Message-ID: <CAFnufp2UjFLHm6khas9jO8+OKi31DEOR6uzi8JE8TEb5sSU++Q@mail.gmail.com>
+References: <CAFnufp3TepsxxX8=WCJ0V=3TELP0rWR-NxFukSL8X=qS1q6Eew@mail.gmail.com>
+ <20140701082619.1ac77f1d@archvile>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: =?UTF-8?B?THVrw6HFoSBDemVybmVy?= <lczerner@redhat.com>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	Tanya Brokhman <tlinder@codeaurora.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	kdorfman@codeaurora.org, merez@codeaurora.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20140620023615.GA21301@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+To: David Jander <david@protonic.nl>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ob0-f176.google.com ([209.85.214.176]:45597 "EHLO
+	mail-ob0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757500AbaGAIBR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jul 2014 04:01:17 -0400
+Received: by mail-ob0-f176.google.com with SMTP id wm4so10104617obc.35
+        for <linux-ext4@vger.kernel.org>; Tue, 01 Jul 2014 01:01:16 -0700 (PDT)
+In-Reply-To: <20140701082619.1ac77f1d@archvile>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-
-On 06/20/2014 05:36 AM, Zheng Liu wrote:
-> On Tue, Jun 17, 2014 at 09:52:46AM +0200, Luk=C3=A1=C5=A1 Czerner wro=
-te:
->> On Mon, 16 Jun 2014, Darrick J. Wong wrote:
+2014-07-01 8:26 GMT+02:00 David Jander <david@protonic.nl>:
+>
+> Hi,
+>
+> On Mon, 30 Jun 2014 23:30:10 +0200
+> Matteo Croce <technoboy85@gmail.com> wrote:
+>
+>> I was web surfing and using gimp when:
 >>
->>> Date: Mon, 16 Jun 2014 12:20:09 -0700
->>> From: Darrick J. Wong <darrick.wong@oracle.com>
->>> To: Tanya Brokhman <tlinder@codeaurora.org>
->>> Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
->>>      kdorfman@codeaurora.org, merez@codeaurora.org,
->>>      Dolev Raviv <draviv@codeaurora.org>
->>> Subject: Re: Quadrant write performance degradation - kernel3.10 vs=
- kernel3.4
->>>
->>> On Mon, Jun 16, 2014 at 09:02:08AM +0300, Tanya Brokhman wrote:
->>>> Hello,
->>>> Recently we encountered a performance degradation on 3.10kernel
->>>> based build, compared to 3.4 based one, when running the fs_write
->>>> Quadrant benchmark.
->>>> We profiled the test and came to the conclusion that the root caus=
-e
->>>> of the degradation is in the vfs_write call stack (overhead of
->>>> 2611.2us is observed in 3.10 kernel compared to 3.4):
->>>>
->>>> ret_fast_syscall
->>>> SyS_write
->>>> vfs_write (total time spent: 3.10kernel-21295us, 3.4kernel-18683.7=
-9us)
->>>> do_sync_write
->>>> ext4_file_write
->>>> generic_file_aio_write (total time spent: 3.10kernel-19124.4us,
->>>> 3.4kernel-16815us)
->>>> __generic_file_aio_write
->>>> generic_file_buffered_write
->>>> ext4_da_write_begin (total time spent: 3.10kernel-10935.2us,
->>>> 3.4kernel-8444.6us)
->>>> __block_write_begin
->>>> ext4_da_get_block_prep (total time spent: 3.10kernel-5402.6us,
->>>> 3.4kernel-3576.8us)
->>>> ext4_es_lookup_extent  (total time spent: 3.10kernel-2219.7us,
->>>> 3.4kernel-0us)
-> [snip]
->>>> 2) Extents status tracking: https://git.kernel.org/cgit/linux/kern=
-el/git/stable/linux-stable.git/tree/fs/ext4/extents_status.c?id=3Drefs/=
-tags/v3.10.42#n20
->>>> =E2=80=9CThere is a cache extent for write access, so if writes ar=
-e not very
->>>> random, adding space operations are in O(1) time.=E2=80=9D
->>> I'm no expert on the extent status cache, but this seems like a pos=
-sible cause.
->> Exactly, there has been some fixes since the introduction of extent
->> status tree, however I've noticed some performance going down as
->> well and I believe that extent status tree is to blame.
->>
->> AFAIK you can not turn it off in any way, but there might be some
->> way to test it's overhead. Zheng, do you have any suggestions ?
-> Sigh, sorry for the delay reply.
+>> EXT4-fs error (device sda2): ext4_mb_generate_buddy:756: group 199,
+>> 9414 clusters in bitmap, 9500 in gd; block bitmap corrupt.
 >
-> Lukas, Could you please share your test with me?  From the calltrace =
-it
-> seems that the latency is in ext4_da_get_block_prep.  It is not easy =
-to
-> disable ext4_es_lookup_extent() because we need to lookup delayed ext=
-ent
-> from extent status tree and determine whether or not we need to reser=
-ve
-> some disk spaces.
->
-> Tanya, I really appreciate if you can disable delalloc and re-run you=
-r
-> test.  You can use the following command to turn off the delalloc
-> feature.
->
->   $ sudo mount -t ext4 -o remount,nodelalloc ${DEV} ${MNT}
->
-> Thanks,
->                                                  - Zheng
-Thanks Zheng, Lukas and all for your help.
-Zheng, we have tested with the delalloc feature turned off. We didn't=20
-notice any Improvement.
+> I was about to post a related question to this list. I am also seeing these
+> kind of errors when using ext4 on latest mainline (I began testing with 3.15
+> where I saw this and now in 3.16-rc3 it is still there).
+> It happens almost instantly when power-cycling the system (unclean shutdown).
+> The next time the system boots, I get these errors.
 
-Any other suggestions :) , or other thought regarding this?
->> Thanks!
->> -Lukas
->>
->>> --D
->>>> We tried pick up several performance-enhancement patches from the
->>>> community, released between 3.10 and 3.14 kernel versions. The
->>>> performance was almost the same.
->>>>
->>>> I was wondering what performance tests were performed on these
->>>> features? Has anyone encountered same issue?
->>>>
->>>> Best Regards
->>>> Tanya Brokhman
->>>> --=20
->>>> QUALCOMM ISRAEL, on behalf of Qualcomm Innovation Center, Inc. is =
-a member
->>>> of Code Aurora Forum, hosted by The Linux Foundation
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-ex=
-t4" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
+Indeed I had a power failure during last boot,
+but it took about 1 hour after the unclean mount to abort the journal
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> AFAICT, you are using a pretty recent kernel. Which version exactly?
+
+vanilla 3.15.0
+
+>> Aborting journal on device sda2-8.
+>> EXT4-fs (sda2): Remounting filesystem read-only
+>> ------------[ cut here ]------------
+>> WARNING: CPU: 6 PID: 4134 at fs/ext4/ext4_jbd2.c:259
+>> __ext4_handle_dirty_metadata+0x18e/0x1d0()
+>> Modules linked in: snd_hda_codec_hdmi snd_hda_codec_realtek
+>> snd_hda_codec_generic ecb uvcvideo videobuf2_vmalloc videobuf2_memops
+>> videobuf2_core videodev ath3k btusb rts5139(C) ctr ccm iTCO_wdt bnep
+>> rfcomm bluetooth nls_iso8859_1 vfat fat arc4 intel_rapl
+>> x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm
+>> snd_hda_intel snd_hda_controller snd_hda_codec snd_hwdep snd_pcm
+>> aesni_intel aes_x86_64 snd_seq_midi snd_seq_midi_event ath9k led_class
+>> glue_helper ath9k_common lrw gf128mul ath9k_hw ablk_helper cryptd ath
+>> mac80211 snd_rawmidi snd_seq cfg80211 radeon microcode rfkill
+>> snd_timer snd_seq_device sr_mod psmouse r8169 snd cdrom i915 lpc_ich
+>> soundcore ttm mii mfd_core drm_kms_helper drm intel_gtt agpgart
+>> ehci_pci mei_me xhci_hcd tpm_infineon ehci_hcd video mei wmi tpm
+>> backlight
+>> CPU: 6 PID: 4134 Comm: gimp-2.8 Tainted: G         C    3.15.0 #6
+>>  0000000000000009 ffffffff813acbdd 0000000000000000 ffffffff8103de3d
+>>  ffff8802365231a0 00000000ffffffe2 0000000000000000 ffff8800b90816c0
+>>  ffffffff814205a0 ffffffff8118879e 0000000000000005 ffff8802365231a0
+>> Call Trace:
+>>  [<ffffffff813acbdd>] ? dump_stack+0x41/0x51
+>>  [<ffffffff8103de3d>] ? warn_slowpath_common+0x6d/0x90
+>>  [<ffffffff8118879e>] ? __ext4_handle_dirty_metadata+0x18e/0x1d0
+>>  [<ffffffff8116e130>] ? ext4_dirty_inode+0x20/0x50
+>>  [<ffffffff811903e9>] ? ext4_free_blocks+0x539/0xa40
+>>  [<ffffffff8118468b>] ? ext4_ext_remove_space+0x83b/0xe60
+>>  [<ffffffff81186a58>] ? ext4_ext_truncate+0x98/0xc0
+>>  [<ffffffff8116c985>] ? ext4_truncate+0x2b5/0x300
+>>  [<ffffffff8116d3d8>] ? ext4_evict_inode+0x3d8/0x410
+>>  [<ffffffff81114a46>] ? evict+0xa6/0x160
+>>  [<ffffffff81109346>] ? do_unlinkat+0x186/0x2a0
+>>  [<ffffffff8110e51e>] ? SyS_getdents+0xde/0x100
+>>  [<ffffffff8110e1d0>] ? fillonedir+0xd0/0xd0
+>>  [<ffffffff813b2626>] ? system_call_fastpath+0x1a/0x1f
+>> ---[ end trace 795411398e41fbcb ]---
+>> EXT4: jbd2_journal_dirty_metadata failed: handle type 5 started at
+>> line 241, credits 91/91, errcode -30
+>> EXT4: jbd2_journal_dirty_metadata failed: handle type 5 started at
+>> line 241, credits 91/91, errcode -30<2>EXT4-fs error (device sda2) in
+>> ext4_free_blocks:4867: Journal has aborted
+>> EXT4-fs error (device sda2): ext4_ext_rm_leaf:2731: inode #8257653:
+>> block 6520936: comm gimp-2.8: journal_dirty_metadata failed: handle
+>> type 5 started at line 241, credits 91/91, errcode -30
+>> EXT4-fs error (device sda2) in ext4_ext_remove_space:3018: Journal has
+>> aborted EXT4-fs error (device sda2) in ext4_ext_truncate:4666: Journal has
+>> aborted EXT4-fs error (device sda2) in ext4_reserve_inode_write:4877: Journal
+>> has aborted
+>> EXT4-fs error (device sda2) in ext4_truncate:3788: Journal has aborted
+>> EXT4-fs error (device sda2) in ext4_reserve_inode_write:4877: Journal
+>> has aborted
+>> EXT4-fs error (device sda2) in ext4_orphan_del:2684: Journal has aborted
+>> EXT4-fs error (device sda2) in ext4_reserve_inode_write:4877: Journal
+>> has aborted
+>
+> I did not get these errors. I suspect this may be a consequence of FS
+> corruption due to a bug in etx4.
+>
+> Here's why I suspect a bug:
+>
+> I am running latest git head (3.16-rc3+ as of yesterday) on an ARM system with
+> eMMC flash. The eMMC is formatted in SLC mode ("enhanced" mode according to
+> eMMC 4.41) and "reliable-writes" are enabled, so power-cycling should not
+> cause FS corruption in presence of a journal.
+>
+> I can format the eMMC device either as EXT3 or EXT4 for the test. After
+> formatting and writing the rootfs to the partition I can boot successfully in
+> either situation. Once booted from eMMC, I start bonnie++ (to just stress the
+> FS for a while), and after a minute or so the board is power-cycled while
+> bonnie++ is still running.
+>
+> Next time I boot the situation is this:
+>
+> With EXT3: All seems fine, journal is replayed, no errors. I can repeat this as
+> many times as I want, FS stays consistent.
+>
+> With EXT4: After just one power cycle I start getting this:
+>
+> [    7.603871] EXT4-fs error (device mmcblk0p2): ext4_mb_generate_buddy:757: group 1, 8542 clusters in bitmap, 8550 in gd; block bitmap corrupt.
+> [    7.616743] JBD2: Spotted dirty metadata buffer (dev = mmcblk0p2, blocknr = 0). There's a risk of filesystem corruption in case of system crash.
+>
+> If I continue the test, it doesn't take long and serious corruption starts
+> occurring.
+>
+> Again, with EXT3 I am unable to detect any problems.
+>
+> Best regards,
+>
+> --
+> David Jander
+> Protonic Holland.
+
+
+
+-- 
+Matteo Croce
+OpenWrt Developer
