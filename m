@@ -1,34 +1,32 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+From: Eric Whitney <enwlinux@gmail.com>
 Subject: Re: ext4: journal has aborted
-Date: Tue, 1 Jul 2014 18:14:25 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1407011804280.3096@localhost.localdomain>
-References: <CAFnufp3TepsxxX8=WCJ0V=3TELP0rWR-NxFukSL8X=qS1q6Eew@mail.gmail.com> <20140701082619.1ac77f1d@archvile> <20140701084206.GG9743@birch.djwong.org> <53B2A47F.90903@samsung.com> <20140701155812.GD2775@thunk.org>
+Date: Tue, 1 Jul 2014 12:36:46 -0400
+Message-ID: <20140701163646.GA3126@wallace>
+References: <CAFnufp3TepsxxX8=WCJ0V=3TELP0rWR-NxFukSL8X=qS1q6Eew@mail.gmail.com>
+ <20140701082619.1ac77f1d@archvile>
+ <20140701084206.GG9743@birch.djwong.org>
+ <53B2A47F.90903@samsung.com>
+ <20140701155812.GD2775@thunk.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Cc: Jaehoon Chung <jh80.chung@samsung.com>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>,
 	Matteo Croce <technoboy85@gmail.com>,
 	David Jander <david@protonic.nl>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32222 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754356AbaGAQOs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jul 2014 12:14:48 -0400
+Received: from mail-qg0-f48.google.com ([209.85.192.48]:54810 "EHLO
+	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755421AbaGAQgt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jul 2014 12:36:49 -0400
+Received: by mail-qg0-f48.google.com with SMTP id q108so3534436qgd.7
+        for <linux-ext4@vger.kernel.org>; Tue, 01 Jul 2014 09:36:49 -0700 (PDT)
+Content-Disposition: inline
 In-Reply-To: <20140701155812.GD2775@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 1 Jul 2014, Theodore Ts'o wrote:
-
-> Date: Tue, 1 Jul 2014 11:58:12 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Jaehoon Chung <jh80.chung@samsung.com>
-> Cc: Darrick J. Wong <darrick.wong@oracle.com>,
->     Matteo Croce <technoboy85@gmail.com>, David Jander <david@protonic.nl>,
->     linux-ext4@vger.kernel.org
-> Subject: Re: ext4: journal has aborted
-> 
+* Theodore Ts'o <tytso@mit.edu>:
 > On Tue, Jul 01, 2014 at 09:07:27PM +0900, Jaehoon Chung wrote:
 > > Hi,
 > > 
@@ -59,20 +57,31 @@ On Tue, 1 Jul 2014, Theodore Ts'o wrote:
 > where no power failures or other unclean shutdowns were involved
 > (since the last time file system has been checked using e2fsck) then
 > that would be realy interesting.
+
+Hi Ted:
+
+I saw a similar failure during 3.16-rc3 (plus ext4 stable fixes plus msync
+patch) regression on the Pandaboard this morning.  A generic/068 hang
+on data_journal required a reboot for recovery (old bug, though rarer lately).
+On reboot, the root filesystem - default 4K, and on an SD card - went ro
+after the same sort of bad block bitmap / journal abort sequence.  Rebooting
+forced a fsck that cleared up the problem.  The target test filesystem was on
+a USB-attached disk, and it did not exhibit the same problems on recovery.
+
+So, it looks like there might be more than just hardware involved here, 
+although eMMC/flash might be a common denominator.  I'll see if I can come up
+with a reliable reproducer once the regression pass is finished if someone
+doesn't beat me to it.
+
+Eric
+
+
 > 
 > We should probably also change the message so the message is a bit
 > more understanding to people who aren't ext4 developers.
-
-Yes we probably should :) Maybe we could make it more clear that the
-there might be wide variety of reasons for this and that one of the
-likely reasons for this might be hardware related.
-
--Lukas
-
 > 
 >      		      	     	 	- Ted
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
