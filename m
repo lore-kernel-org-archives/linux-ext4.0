@@ -1,24 +1,26 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
 Subject: Re: ext4: journal has aborted
-Date: Thu, 03 Jul 2014 18:57:18 +0400
-Message-ID: <87vbreze0h.fsf@openvz.org>
+Date: Thu, 03 Jul 2014 18:58:48 +0400
+Message-ID: <87tx6yzdxz.fsf@openvz.org>
 References: <CAFnufp3TepsxxX8=WCJ0V=3TELP0rWR-NxFukSL8X=qS1q6Eew@mail.gmail.com> <20140701082619.1ac77f1d@archvile> <20140701084206.GG9743@birch.djwong.org> <CAFnufp2TPSyZe4NUSTVeSWuSDwsCLHDogBvAWV4_+JaQFRrw-w@mail.gmail.com> <20140703134338.GE2374@thunk.org> <20140703161551.5fd13245@archvile>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/mixed; boundary="=-=-="
 Cc: Matteo Croce <technoboy85@gmail.com>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>,
 	linux-ext4@vger.kernel.org
 To: David Jander <david@protonic.nl>, Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f45.google.com ([209.85.215.45]:37969 "EHLO
-	mail-la0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758624AbaGCO5W (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jul 2014 10:57:22 -0400
-Received: by mail-la0-f45.google.com with SMTP id hr17so264170lab.18
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Jul 2014 07:57:20 -0700 (PDT)
+Received: from mail-la0-f43.google.com ([209.85.215.43]:64979 "EHLO
+	mail-la0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755661AbaGCO6x (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jul 2014 10:58:53 -0400
+Received: by mail-la0-f43.google.com with SMTP id e16so264352lan.30
+        for <linux-ext4@vger.kernel.org>; Thu, 03 Jul 2014 07:58:51 -0700 (PDT)
 In-Reply-To: <20140703161551.5fd13245@archvile>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
+--=-=-=
 
 On Thu, 3 Jul 2014 16:15:51 +0200, David Jander <david@protonic.nl> wrote:
 > 
@@ -103,6 +105,41 @@ simply because it do care about it's data (it does integrity checks).
 Can you also create btrfs on that partition and performs some io
 activity and run fsck after that. You likely will see similar corruption
 
+--=-=-=
+Content-Disposition: inline; filename=disk-veryfy2.fio
+
+[global]
+bs=4k
+direct=1
+rw=randwrite
+ioengine=libaio
+iodepth=32
+runtime=3600
+time_based
+
+verify=crc32c-intel
+verify_fatal=1
+verify_dump=1
+verify_backlog=1024
+verify_async=1
+verifysort=1
+exitall
+
+##############
+# My volume '/dev/mmcblk1p2' size of 4gb
+# In order to run this script just change job't name for example '/dev/sda'
+###############
+# This job will run 4 concurent threads which operate on separated regions
+# [0,1gb][1gb,2gb][2gb,3gb][3gb,4gb]
+#
+[/dev/mmcblk1p2]
+numjobs=4
+offset_increment=1G
+size=1G
+
+--=-=-=
+
+
 > 
 > Best regards,
 > 
@@ -113,3 +150,5 @@ activity and run fsck after that. You likely will see similar corruption
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--=-=-=--
