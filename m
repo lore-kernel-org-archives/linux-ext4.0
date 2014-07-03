@@ -1,154 +1,146 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
+From: Eric Whitney <enwlinux@gmail.com>
 Subject: Re: ext4: journal has aborted
-Date: Thu, 03 Jul 2014 18:58:48 +0400
-Message-ID: <87tx6yzdxz.fsf@openvz.org>
-References: <CAFnufp3TepsxxX8=WCJ0V=3TELP0rWR-NxFukSL8X=qS1q6Eew@mail.gmail.com> <20140701082619.1ac77f1d@archvile> <20140701084206.GG9743@birch.djwong.org> <CAFnufp2TPSyZe4NUSTVeSWuSDwsCLHDogBvAWV4_+JaQFRrw-w@mail.gmail.com> <20140703134338.GE2374@thunk.org> <20140703161551.5fd13245@archvile>
+Date: Thu, 3 Jul 2014 13:14:34 -0400
+Message-ID: <20140703171434.GA15790@wallace>
+References: <CAFnufp3TepsxxX8=WCJ0V=3TELP0rWR-NxFukSL8X=qS1q6Eew@mail.gmail.com>
+ <20140701082619.1ac77f1d@archvile>
+ <20140701084206.GG9743@birch.djwong.org>
+ <53B2A47F.90903@samsung.com>
+ <20140701155812.GD2775@thunk.org>
+ <20140701163646.GA3126@wallace>
+ <20140702121752.37e1f181@archvile>
+ <CAFnufp0Fm8F=qu87R5LiOAunc_2axk4+g9J4euOjaCcNak0MnQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-=-="
-Cc: Matteo Croce <technoboy85@gmail.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: David Jander <david@protonic.nl>,
+	Eric Whitney <enwlinux@gmail.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Jaehoon Chung <jh80.chung@samsung.com>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>,
 	linux-ext4@vger.kernel.org
-To: David Jander <david@protonic.nl>, Theodore Ts'o <tytso@mit.edu>
+To: Matteo Croce <technoboy85@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f43.google.com ([209.85.215.43]:64979 "EHLO
-	mail-la0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755661AbaGCO6x (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jul 2014 10:58:53 -0400
-Received: by mail-la0-f43.google.com with SMTP id e16so264352lan.30
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Jul 2014 07:58:51 -0700 (PDT)
-In-Reply-To: <20140703161551.5fd13245@archvile>
+Received: from mail-qa0-f50.google.com ([209.85.216.50]:49032 "EHLO
+	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752324AbaGCROi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jul 2014 13:14:38 -0400
+Received: by mail-qa0-f50.google.com with SMTP id m5so435744qaj.23
+        for <linux-ext4@vger.kernel.org>; Thu, 03 Jul 2014 10:14:37 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <CAFnufp0Fm8F=qu87R5LiOAunc_2axk4+g9J4euOjaCcNak0MnQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
+* Matteo Croce <technoboy85@gmail.com>:
+> 2014-07-02 12:17 GMT+02:00 David Jander <david@protonic.nl>:
+> >
+> > Hi Eric,
+> >
+> > On Tue, 1 Jul 2014 12:36:46 -0400
+> > Eric Whitney <enwlinux@gmail.com> wrote:
+> >
+> >> * Theodore Ts'o <tytso@mit.edu>:
+> >> > On Tue, Jul 01, 2014 at 09:07:27PM +0900, Jaehoon Chung wrote:
+> >> > > Hi,
+> >> > >
+> >> > > i have interesting for this problem..Because i also found the same problem..
+> >> > > Is it Journal problem?
+> >> > >
+> >> > > I used the Linux version 3.16.0-rc3.
+> >> > >
+> >> > > [    3.866449] EXT4-fs error (device mmcblk0p13): ext4_mb_generate_buddy:756: group 0, 20490 clusters in bitmap, 20488 in gd; block bitmap corrupt.
+> >> > > [    3.877937] Aborting journal on device mmcblk0p13-8.
+> >> > > [    3.885025] Kernel panic - not syncing: EXT4-fs (device mmcblk0p13): panic forced after error
+> >> >
+> >> > This message means that the file system has detected an inconsistency
+> >> > --- specifically, that the number of blocks marked as in use in the
+> >> > allocation bbitmap is different from what is in the block group
+> >> > descriptors.
+> >> >
+> >> > The file system has been marked to force a panic after an error, at
+> >> > which point e2fsck will be able to repair the inconsistency.
+> >> >
+> >> > What's not clear is *how* the why this happened.  It can happen simply
+> >> > because of a hardware problem.  (In particular, not all mmc flash
+> >> > devices handle power failures gracefully.)  Or it could be a cosmic,
+> >> > ray, or it might be a kernel bug.
+> >> >
+> >> > Normally I would chalk this up to a hardware bug, bug it's possible
+> >> > that it is a kernel bug.  If people can reliably reproduce the problem
+> >> > where no power failures or other unclean shutdowns were involved
+> >> > (since the last time file system has been checked using e2fsck) then
+> >> > that would be realy interesting.
+> >>
+> >> Hi Ted:
+> >>
+> >> I saw a similar failure during 3.16-rc3 (plus ext4 stable fixes plus msync
+> >> patch) regression on the Pandaboard this morning.  A generic/068 hang
+> >> on data_journal required a reboot for recovery (old bug, though rarer lately).
+> >> On reboot, the root filesystem - default 4K, and on an SD card - went ro
+> >> after the same sort of bad block bitmap / journal abort sequence.  Rebooting
+> >> forced a fsck that cleared up the problem.  The target test filesystem was on
+> >> a USB-attached disk, and it did not exhibit the same problems on recovery.
+> >
+> > Please be careful about conclusions from regular SD cards and USB sticks for
+> > mass-storage. Unlike hardened eMMC (4.41+), these COTS mass-storage devices
+> > are not meant for intensive use and can perfectly easily corrupt data out of
+> > themselves. I've seen it happening many times already.
+> >
+> >> So, it looks like there might be more than just hardware involved here,
+> >> although eMMC/flash might be a common denominator.  I'll see if I can come up
+> >> with a reliable reproducer once the regression pass is finished if someone
+> >> doesn't beat me to it.
 
-On Thu, 3 Jul 2014 16:15:51 +0200, David Jander <david@protonic.nl> wrote:
-> 
-> Hi Ted,
-> 
-> On Thu, 3 Jul 2014 09:43:38 -0400
-> "Theodore Ts'o" <tytso@mit.edu> wrote:
-> 
-> > On Tue, Jul 01, 2014 at 10:55:11AM +0200, Matteo Croce wrote:
-> > > 2014-07-01 10:42 GMT+02:00 Darrick J. Wong <darrick.wong@oracle.com>:
-> > > 
-> > > I have a Samsung SSD 840 PRO
-> > 
-> > Matteo,
-> > 
-> > For you, you said you were seeing these problems on 3.15.  Was it
-> > *not* happening for you when you used an older kernel?  If so, that
-> > would help us try to provide the basis of trying to do a bisection
-> > search.
-> 
-> I also tested with 3.15, and there too I see the same problem.
-> 
-> > Using the kvm-xfstests infrastructure, I've been trying to reproduce
-> > the problem as follows:
-> > 
-> > ./kvm-xfstests  --no-log -c 4k generic/075 ; e2fsck -p /dev/heap/test-4k ; e2fsck -f /dev/heap/test-4k 
-> > 
-> > xfstests geneeric/075 runs fsx which does a fair amount of block
-> > allocation deallocations, and then after the test finishes, it first
-> > replays the journal (e2fsck -p) and then forces a fsck run on the
-> > test disk that I use for the run.
-> > 
-> > After I launch this, in a separate window, I do this:
-> > 
-> > 	sleep 60  ; killall qemu-system-x86_64 
-> > 
-> > This kills the qemu process midway through the fsx test, and then I
-> > see if I can find a problem.  I haven't had a chance to automate this
-> > yet, and it is my intention to try to set this up where I can run this
-> > on a ramdisk or a SSD, so I can more closely approximate what people
-> > are reporting on flash-based media.
-> > 
-> > So far, I haven't been able to reproduce the problem.  If after doing
-> > a large number of times, it can't be reproduced (especially if it
-> > can't be reproduced on an SSD), then it would lead us to believe that
-> > one of two things is the cause.  (a) The CACHE FLUSH command isn't
-> > properly getting sent to the device in some cases, or (b) there really
-> > is a hardware problem with the flash device in question.
-> 
-> Could (a) be caused by a bug in the mmc subsystem or in the MMC peripheral
-> driver? Can you explain why I don't see any problems with EXT3?
-> 
-> I can't discard the possibility of (b) because I cannot prove it, but I will
-> try to see if I can do the same test on a SSD which I happen to have on that
-> platform. That should be able to rule out problems with the eMMC chip and
-> -driver, right?
-> 
-> Do you know a way to investigate (a) (CACHE FLUSH not being sent correctly)?
-> 
-> I left the system running (it started from a dirty EXT4 partition), and I am
-> seen the following error pop up after a few minutes. The system is not doing
-> much (some syslog activity maybe, but not much more):
-> 
-> [  303.072983] EXT4-fs (mmcblk1p2): error count: 4
-> [  303.077558] EXT4-fs (mmcblk1p2): initial error at 1404216838: ext4_mb_generate_buddy:756
-> [  303.085690] EXT4-fs (mmcblk1p2): last error at 1404388969: ext4_mb_generate_buddy:757
-> 
-> What does that mean?
-This means that it found previous error in internal ext4's log. Which is
-normal because your fs was corrupted before. It is reasonable to
-recreate filesystem from very beginning.
+I've not found a reproducer that doesn't involve an unclean shutdown, which
+is what Ted's looking for.
 
-In order to understand whenever it is regression in eMMC driver it is
-reasonable to run integrity test for a device itself. You can run
-any integrity test you like, For example just run a fio's job
- "fio disk-verify2.fio" (see attachment), IMPORTANT this script will
- destroy data on test partition. If it failed with errors like
- follows "verify: bad magic header XXX" than it is definitely a drivers issue.
+However, I've noted a behavioral change that might be of interest with
+the failure scenario described above using xfstests generic/068 that
+occurred between 3.14 and 3.15-rc3.  It's possible that this change would
+make filesystem damage caused by an unclean shutdown more likely or more
+noticable, and perhaps it's in play for the power fail/cycle cases
+described in this thread.
 
-If my theory is true and it is storage's driver issue than JBD complain
-simply because it do care about it's data (it does integrity checks).
-Can you also create btrfs on that partition and performs some io
-activity and run fsck after that. You likely will see similar corruption
+FWIW, I've also been able to reproduce that failure scenario on an x86_64 KVM
+with raw virtio disks alone.  It's just a lot harder to get there with that
+configuration - many more trials required.
 
---=-=-=
-Content-Disposition: inline; filename=disk-veryfy2.fio
+The change is that the root filesystem sustains damage reported as -
 
-[global]
-bs=4k
-direct=1
-rw=randwrite
-ioengine=libaio
-iodepth=32
-runtime=3600
-time_based
+EXT4-fs error (device mmcblk0p3): ext4_mb_generate_buddy:757: group 65, 1243 clusters in bitmap, 1244 in gd; block bitmap corrupt.
+Aborting journal on device mmcblk0p3-8.
+EXT4-fs error (device mmcblk0p3): ext4_journal_check_start:56: Detected aborted journal
+EXT4-fs (mmcblk0p3): Remounting filesystem read-only
 
-verify=crc32c-intel
-verify_fatal=1
-verify_dump=1
-verify_backlog=1024
-verify_async=1
-verifysort=1
-exitall
+- when generic/068 is run on a separate test filesystem that forces an ext4
+failure requiring a power cycle / reset to recover from a hung reboot attempt.
+This doesn't happen in 3.14 on either my x86_64 or ARM test systems.
+Generally, the root filesystem doesn't appear to be affected at all or is
+minimally affected (does not require fsck to fully recover) in 3.14, whereas
+a fsck is usually required to recover the root in 3.15-rc3.
 
-##############
-# My volume '/dev/mmcblk1p2' size of 4gb
-# In order to run this script just change job't name for example '/dev/sda'
-###############
-# This job will run 4 concurent threads which operate on separated regions
-# [0,1gb][1gb,2gb][2gb,3gb][3gb,4gb]
-#
-[/dev/mmcblk1p2]
-numjobs=4
-offset_increment=1G
-size=1G
+My attempts to bisect further into 3.15-rc1 to 3.15-rc3 haven't gone well as
+yet - other kernel problems are making it difficult to work in there.
 
---=-=-=
+Eric
 
 
+> >
+> > I agree that there is a strong correlation towards flash-based storage, but I
+> > cannot explain why this factor would make a difference. How are flash-based
+> > block-devices different to ext4 than spinning-disk media (besides trim
+> > support)?
 > 
-> Best regards,
+> maybe the zero access time can trigger some race condition?
+> 
+> > Best regards,
+> >
+> > --
+> > David Jander
+> > Protonic Holland.
+> 
+> 
 > 
 > -- 
-> David Jander
-> Protonic Holland.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---=-=-=--
+> Matteo Croce
+> OpenWrt Developer
