@@ -1,217 +1,107 @@
-From: David Jander <david@protonic.nl>
-Subject: Re: ext4: journal has aborted
-Date: Fri, 4 Jul 2014 15:45:59 +0200
-Message-ID: <20140704154559.026331ec@archvile>
-References: <CAFnufp3TepsxxX8=WCJ0V=3TELP0rWR-NxFukSL8X=qS1q6Eew@mail.gmail.com>
-	<20140701082619.1ac77f1d@archvile>
-	<20140701084206.GG9743@birch.djwong.org>
-	<CAFnufp2TPSyZe4NUSTVeSWuSDwsCLHDogBvAWV4_+JaQFRrw-w@mail.gmail.com>
-	<20140703134338.GE2374@thunk.org>
-	<20140703161551.5fd13245@archvile>
-	<87tx6yzdxz.fsf@openvz.org>
-	<20140704114031.2915161a@archvile>
-	<87r421zavi.fsf@openvz.org>
-	<20140704132802.0d43b1fc@archvile>
-	<20140704122022.GC10514@thunk.org>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: Re: ext4: media error but where?
+Date: Fri, 4 Jul 2014 19:21:04 +0200
+Message-ID: <20140704172104.GA4877@xo-6d-61-c0.localdomain>
+References: <20140626202021.GA8512@xo-6d-61-c0.localdomain>
+ <20140626203052.GA9449@xo-6d-61-c0.localdomain>
+ <20140627024659.GF6826@thunk.org>
+ <20140629202516.GA11430@amd.pavel.ucw.cz>
+ <20140629210428.GD2162@thunk.org>
+ <20140630064644.GA23079@amd.pavel.ucw.cz>
+ <20140630134313.GA3753@thunk.org>
+ <20140704102307.GA19252@amd.pavel.ucw.cz>
+ <20140704121119.GB10514@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
-	Matteo Croce <technoboy85@gmail.com>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from protonic.xs4all.nl ([83.163.252.89]:9597 "EHLO
-	protonic.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751554AbaGDNpw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jul 2014 09:45:52 -0400
-In-Reply-To: <20140704122022.GC10514@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Ts'o <tytso@mit.edu>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20140704121119.GB10514@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+Hi!
 
-Hi Ted, Dmitry,
-
-On Fri, 4 Jul 2014 08:20:22 -0400
-"Theodore Ts'o" <tytso@mit.edu> wrote:
-
-> On Fri, Jul 04, 2014 at 01:28:02PM +0200, David Jander wrote:
+> > pavel@duo:~$ uname -a
+> > Linux duo 3.15.0-rc8+ #365 SMP Mon Jun 9 09:18:29 CEST 2014 i686
+> > GNU/Linux
 > > 
-> > Here is the output I am getting... AFAICS no problems on the raw device. Is
-> > this sufficient testing, Ted?
+> > EXT4-fs (sda3): error count: 11
+> > EXT4-fs (sda3): initial error at 1401714179: ext4_mb_generate_buddy:756
+> > EXT4-fs (sda3): last error at 1401714179: ext4_reserve_inode_write:4877
+> > 
+> > That sounds like media error to me?
 > 
-> I'm not sure what theory Dmitry was trying to pursue when he requested
-> that you run the fio test.  Dmitry?
+> If you search your system logs since the last fsck, you should find 11
+> instances of "EXT4-fs error" message, which means that there was some
+> file system inconsisntencies detected.  The first error was detected at:
 > 
+> % date -d @1401714179
+> Mon Jun  2 09:02:59 EDT 2014
+
+Interesting. I always assumed 140... was block number.
+
+> ... which means that you haven't rebooted in a month, or your boot
+> scripts aren't automatically running fsck, or your clock is
+> incorrect.
+
+I suspect something is wrong with the reporting. I got this in kernel log _while
+running fsck_. fsck was clean (take a look in the original email). I got weird
+report with fsck -c, it told me filesystem modified but I don't think I got bad
+blocks there.
+
+I believe my scripts are running fsck automatically, and yes, I rebooted a lot
+in a last month. It _may_ be possible that last month this x60 had different hard drive,
+and I copied it bit-by-bit.
+
+> It does seem to happen more often after an unclean shutdown, and there
+> does seem to be a very high correlation with eMMC devices.  It's
+> possible there is a jbd2 bug that got introduced recently, where ext4
+> is modifying some field outside of a journal transaction.  But I
+> haven't been able to reproduce this yet in controlled circumstances.
 > 
-> Please note that at this point there may be multiple causes with
-> similar symptoms that are showing up.  So just because one person
-> reports one set of data points, such as someone claiming they've seen
-> this without a power drop to the storage device, that therefore all of
-> the problems were caused by flaky I/O to the device.
+> What I need from people reporting problems: 
 > 
-> Right now, there are multiple theories floating around --- and it may
-> be that more than one of them are true (i.e., there may be multiple
-> bugs here).  Some of the possibilities, which again, may not be
-> mutually exclusive:
-> 
-> 1) Some kind of eMMC driver bug, which is possibly causing the CACHE
-> FLUSH command not to be sent.
+> * What is the HDD/SSD/eMMC device involved
 
-How can I investigate this? According to the fio tests I ran and the
-explanation Dmitry gave, I conclude that incorrectly sending of CACHE-FLUSH
-commands is the only thing left to be discarded on the eMMC driver front,
-right?
+SATA hdd, will get you exact data.
 
-> 2) Some kind of hardware problem involving flash translation layers
-> not having durable transactions of their flash metadata across power
-> failures.
+> * What kernel version were you running
 
-That would be like blaming Micron (the eMMC part manufacturer) for faulty
-firmware... could be, but how can we test this?
+For last month? Various, 3.10 to 3.16-rc, mostly 3.15+.
 
-> 3) Some kind of ext4/jbd2 bug, recently introduced, where we are
-> modifying some ext4 metadata (either the block allocation bitmap or
-> block group summary statistics) outside of a valid transaction handle.
+> * What distribution are you running (more so I know what the init
+>   scripts might or might not have been doing vis-a-vis running fsck
+>   after a crash)
 
-I think I have some more evidence to support this case:
+Debian 6.
+ 
+> * Was there an unclean shutdown / power drop / hard reset involved?
+>   If so, did the HDD/SSD/eMMC lose power, or was the reset button hit
+>   on the machine?
 
-Until previously, I did not run fsck EVER! I know that this is not a good idea
-to do in a production environment, but I am only testing right now, and in
-theory it should not be necessary, right?
+Crash in last month? Probably yes.
 
-What I did this time, was to run fsck.ext3 or fsck.ext4 (depending on FS
-format of course) once every one or two power cycles.
+> * What sort of workload / application / test program running before
+>   the crash, if any?
 
-So effectively, what I did amounts to this:
+Just usual desktop / kernel development.
 
-CASE 1: fsck on every power-cycle:
+> and so they don't need to report anymore info.  I need as many data
+> points as possible at this point.
 
-1.- Boot from clean filesystem
-2.- Run the following command line:
-$ cp -a /usr . & bonnie\+\+ -r 32 -u 100:100 & bonnie\+\+ -r 32 -u 102:102
+You'll get them.
 
-3.- Hit CTRL+Z (to stop the second bonnie++ process)
-4.- Execute "sync"
-5.- While "sync" was running, cut off the power supply.
-6.- Turn on power and boot from external medium
-7.- Run fsck.ext3/4 on eMMC device
-8.- Repeat
-
-In this case, there was a minor difference for the fsck output of both
-filesystems:
-
-EXT4 was always something like this:
-
-# fsck.ext4 /dev/mmcblk1p2
-e2fsck 1.42.5 (29-Jul-2012)
-rootfs: recovering journal
-Setting free inodes count to 37692 (was 37695)
-Setting free blocks count to 136285 (was 136291)
-rootfs: clean, 7140/44832 files, 42915/179200 blocks
-
-While for EXT3 the output did not contain the "Setting free * count..."
-messages:
-
-# fsck.ext3 -p /dev/mmcblk1p2
-rootfs: recovering journal
-rootfs: clean, 4895/44832 files, 36473/179200 blocks
-
-
-
-CASE 2: fsck on every other power-cycle:
-
-Same as CASE 1 steps 1...5 and then:
-6.- Turn on power and boot again from dirty internal eMMC without running fsck.
-7.- Repeat steps 2...5 one more time
-8.- Perform steps 6...8 from CASE 1.
-
-With this test, the following difference became apparent:
-
-With EXT3: fsck.ext3 did the same as in CASE 1
-
-With EXT4: I get a long list of errors that are being fixed.
-It starts like this:
-
-
-# fsck.ext4 /dev/mmcblk1p2
-e2fsck 1.42.5 (29-Jul-2012)
-rootfs: recovering journal
-rootfs contains a file system with errors, check forced.
-Pass 1: Checking inodes, blocks, and sizes
-Inode 4591, i_blocks is 16, should be 8.  Fix<y>? yes
-Inode 4594, i_blocks is 16, should be 8.  Fix<y>? yes
-Inode 4595, i_blocks is 16, should be 8.  Fix<y>? yes
-Inode 4596, i_blocks is 16, should be 8.  Fix<y>? yes
-Inode 4597, i_blocks is 16, should be 8.  Fix<y>? yes
-Inode 4598, i_blocks is 16, should be 8.  Fix<y>? yes
-Inode 4599, i_blocks is 16, should be 8.  Fix<y>? yes
-Inode 4600, i_blocks is 16, should be 8.  Fix<y>? yes
-Inode 4601, i_blocks is 16, should be 8.  Fix<y>? yes
-Inode 4602, i_blocks is 16, should be 8.  Fix<y>? yes
-Inode 4603, i_blocks is 16, should be 8.  Fix<y>? yes
-...
-...
-Eventually I pressed CTRL+C and restarted fsck with the option "-p", because
-this list was getting a little long.
-...
-...
-
-# fsck.ext4 -p /dev/mmcblk1p2
-rootfs contains a file system with errors, check forced.
-rootfs: Inode 5391, i_blocks is 32, should be 16.  FIXED.
-rootfs: Inode 5392, i_blocks is 16, should be 8.  FIXED.
-rootfs: Inode 5393, i_blocks is 48, should be 24.  FIXED.
-rootfs: Inode 5394, i_blocks is 32, should be 16.  FIXED.
-rootfs: Inode 5395, i_blocks is 16, should be 8.  FIXED.
-...
-...
-rootfs: Inode 5854, i_blocks is 240, should be 120.  FIXED.
-rootfs: Inode 5857, i_blocks is 576, should be 288.  FIXED.
-rootfs: Inode 5860, i_blocks is 512, should be 256.  FIXED.
-rootfs: Inode 5863, i_blocks is 656, should be 328.  FIXED.
-rootfs: Inode 5866, i_blocks is 480, should be 240.  FIXED.
-rootfs: Inode 5869, i_blocks is 176, should be 88.  FIXED.
-rootfs: Inode 5872, i_blocks is 336, should be 168.  FIXED.
-rootfs: 11379/44832 files (0.1% non-contiguous), 70010/179200 blocks
-#
-
-> 4) Some other kind of hard-to-reproduce race or wild pointer which is
-> sometimes corrupting fs data structures.
-
-I don't have such a hard time reproducing it... but it does take quite some
-time (booting several times, re-installing, testing, etc...)
-
-> If someone has a easy to reproduce failure case, the first step is to
-> do a very rough bisection test.  Does the easy-to-reproduce failure go
-> away if you use 3.14?  3.12?  Also, if you can describe in great
-> detail your hardware and software configuration, and under what
-> circumstances the problem reproduces, and when it doesn't, that would
-> also be critical.  Whether you are just doing reset or a power cycle
-> if an unclean shutdown is involved, might also be important.
-
-Until now, I always do a power-cycle, but I can try to check if I am able to
-reproduce the problem with just a "shutdown -f" (AFAIK, this does NOT sync
-filesystems, right?)
-
-I will try to check 3.14 and 3.12 (if 3.14 still seems buggy). It could take
-quite a while until I have results... certainly not before monday.
-
-> And at this point, because I'm getting very suspicious that there may
-> be more than one root cause, we should try to keep the debugging of
-> one person's reproduction, such as David's, separate from another's,
-> such as Matteo's.  It may be that there ultimately have the same root
-> cause, and so if one person is able to get an interesting reproduction
-> result, it would be great for the other person to try running the same
-> experiment on their hardware/software configuration.  But what we must
-> not do is assume that one person's experiment is automatically
-> applicable to other circumstances.
-
-I agree.
+Is it possible that my fsck is so old it does not clear this "filesystem
+had error in past" flag? Because I strongly suspect I'll boot into
+init=/bin/bash, run fsck, it will tell me "all clean", and the messages
+will repeat in the middle of fsck run.
 
 Best regards,
+								Pavel
 
 -- 
-David Jander
-Protonic Holland.
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
