@@ -1,202 +1,127 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: Re: ext4: journal has aborted
-Date: Fri, 4 Jul 2014 16:48:01 -0400
-Message-ID: <20140704204801.GA3554@wallace>
-References: <CAFnufp3TepsxxX8=WCJ0V=3TELP0rWR-NxFukSL8X=qS1q6Eew@mail.gmail.com>
- <20140701082619.1ac77f1d@archvile>
- <20140701084206.GG9743@birch.djwong.org>
- <53B2A47F.90903@samsung.com>
- <20140701155812.GD2775@thunk.org>
- <20140701163646.GA3126@wallace>
- <20140702121752.37e1f181@archvile>
- <CAFnufp0Fm8F=qu87R5LiOAunc_2axk4+g9J4euOjaCcNak0MnQ@mail.gmail.com>
- <20140703171434.GA15790@wallace>
- <20140703231748.GA5320@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Whitney <enwlinux@gmail.com>,
-	Matteo Croce <technoboy85@gmail.com>,
-	David Jander <david@protonic.nl>,
-	Jaehoon Chung <jh80.chung@samsung.com>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: ext4: media error but where?
+Date: Fri, 4 Jul 2014 16:18:41 -0600
+Message-ID: <D1E29C34-308C-4906-A697-BB383600226B@dilger.ca>
+References: <20140626203052.GA9449@xo-6d-61-c0.localdomain> <20140627024659.GF6826@thunk.org> <20140629202516.GA11430@amd.pavel.ucw.cz> <20140629210428.GD2162@thunk.org> <20140630064644.GA23079@amd.pavel.ucw.cz> <20140630134313.GA3753@thunk.org> <20140704102307.GA19252@amd.pavel.ucw.cz> <20140704121119.GB10514@thunk.org> <20140704172104.GA4877@xo-6d-61-c0.localdomain> <9BEA347C-2246-4746-95A4-0E00E0369816@dilger.ca> <20140704203309.GA28107@amd.pavel.ucw.cz>
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_95B7E185-FAE4-4999-971B-994D1E486D8C"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f180.google.com ([209.85.216.180]:59952 "EHLO
-	mail-qc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752850AbaGDUsF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jul 2014 16:48:05 -0400
-Received: by mail-qc0-f180.google.com with SMTP id r5so1846930qcx.11
-        for <linux-ext4@vger.kernel.org>; Fri, 04 Jul 2014 13:48:04 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20140703231748.GA5320@thunk.org>
+Received: from mail-pa0-f42.google.com ([209.85.220.42]:34840 "EHLO
+	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030800AbaGDWSk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jul 2014 18:18:40 -0400
+Received: by mail-pa0-f42.google.com with SMTP id lj1so2449179pab.15
+        for <linux-ext4@vger.kernel.org>; Fri, 04 Jul 2014 15:18:39 -0700 (PDT)
+In-Reply-To: <20140704203309.GA28107@amd.pavel.ucw.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* Theodore Ts'o <tytso@mit.edu>:
-> On Thu, Jul 03, 2014 at 01:14:34PM -0400, Eric Whitney wrote:
-> > 
-> > FWIW, I've also been able to reproduce that failure scenario on an
-> > x86_64 KVM with raw virtio disks alone.  It's just a lot harder to
-> > get there with that configuration - many more trials required.
-> 
-> What configuration are you using when you see the failure using x86_64
-> KVM with raw virtio?  Is this using kvm-xfstests, or some other setup?
-> And which file system is getting corrupted?
-> 
-> Because with kvm-xfstests the root file system is a read-only
-> snapshot, and the "mmcblk0p3" device which you show before is clearly
-> not the virtio device....
-> 
 
-I'd meant the x86_64 note (paragraph beginning with FWIW) as an aside, and that
-regrettably caused confusion.  Here's a more formal report, this time largely
-limited to an x86_64 case where eMMC is not involved.
+--Apple-Mail=_95B7E185-FAE4-4999-971B-994D1E486D8C
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-x86_64 KVM case:
 
-Base distro installed - Ubuntu 13.10
-Kernel version - mainline 3.15-rc3
-e2fsprogs - master branch, bb9cca2ca9
-xfstests - master branch, 45d1fac130
-xfsprogs - master branch, 03e956b252
-xfstests-bld - master branch, 723c23e1b2 (about a year old)
+On Jul 4, 2014, at 2:33 PM, Pavel Machek <pavel@ucw.cz> wrote:
 
-(e2fsprogs, xfstests, and xfsprogs are relatively recent - 1 to 2 months old,
-and latest as of the availability of 3.15-rc1.)
+> On Fri 2014-07-04 13:17:37, Andreas Dilger wrote:
+>> Maybe it is worthwhile to improve this error message to be:
+>>=20
+>>    EXT4-fs (sda3): initial error at time 1401714179: ...
+>=20
+> I'm glad you suggested it. I actually done a patch before reading
+> this. What about:
 
-The test scenario involves running xfstest generic/068 using the runtests.sh
-script from xfstests-bld within a KVM constructed with libvirt tools and where
-all test components were built and installed by hand.  (kvm-xfstests was not
-used here.)
+Looks good to me.  There have been a few users confused by these =
+messages
+already, so it is nice to make them a bit more clear.
 
-The virtual machine running the test used a raw virtio disk for the root (vda)
-and for the test filesystem (vdc).  (Two other virtio disks were also
-attached but not used for this test - vdb and vdd.)
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-vda contained a vanilla 4k ext4 filesystem as provided by the distro.  vdc
-contained a 4k ext4 filesystem mounted with the data=journal and
-block_validity mount options, newly created and mounted before each attempt
-to execute the test.
+> ---
+>=20
+> Make it clear that values printed are times, and that it is error
+> since last fsck. Also add note about fsck version required.
+>=20
+> Signed-off-by: Pavel Machek <pavel@ucw.cz>
+>=20
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index b9b9aab..3423947 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -2809,10 +2809,11 @@ static void print_daily_error_info(unsigned =
+long arg)
+> 	es =3D sbi->s_es;
+>=20
+> 	if (es->s_error_count)
+> -		ext4_msg(sb, KERN_NOTICE, "error count: %u",
+> +		/* fsck newer than v1.41.13 is needed to clean this =
+condition. */
+> +		ext4_msg(sb, KERN_NOTICE, "error count since last fsck: =
+%u",
+> 			 le32_to_cpu(es->s_error_count));
+> 	if (es->s_first_error_time) {
+> -		printk(KERN_NOTICE "EXT4-fs (%s): initial error at %u: =
+%.*s:%d",
+> +		printk(KERN_NOTICE "EXT4-fs (%s): initial error at time =
+%u: %.*s:%d",
+> 		       sb->s_id, le32_to_cpu(es->s_first_error_time),
+> 		       (int) sizeof(es->s_first_error_func),
+> 		       es->s_first_error_func,
+> @@ -2826,7 +2827,7 @@ static void print_daily_error_info(unsigned long =
+arg)
+> 		printk("\n");
+> 	}
+> 	if (es->s_last_error_time) {
+> -		printk(KERN_NOTICE "EXT4-fs (%s): last error at %u: =
+%.*s:%d",
+> +		printk(KERN_NOTICE "EXT4-fs (%s): last error at time %u: =
+%.*s:%d",
+> 		       sb->s_id, le32_to_cpu(es->s_last_error_time),
+> 		       (int) sizeof(es->s_last_error_func),
+> 		       es->s_last_error_func,
+>=20
+> --=20
+> (english) http://www.livejournal.com/~pavelmachek
+> (cesky, pictures) =
+http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
 
-The failure sequence:
 
-1) running generic/068 on vdc forces a BUG -
-
-[ 1976.238967] kernel BUG at fs/buffer.c:3017!
-[ 1976.239070] invalid opcode: 0000 [#1] SMP
-[ 1976.239150] Modules linked in: kvm_intel kvm psmouse microcode i2c_piix4 serio_raw virtio_balloon
-[ 1976.239286] CPU: 0 PID: 11705 Comm: xfs_io Not tainted 3.15.0-rc3-emmc+ #1
-[ 1976.239380] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-[ 1976.239472] task: ffff88007624a110 ti: ffff8800768da000 task.ti: ffff8800768da000
-[ 1976.239568] RIP: 0010:[<ffffffff811d849c>]  [<ffffffff811d849c>] _submit_bh+0x18c/0x210
-[ 1976.239682] RSP: 0018:ffff8800768dbd38  EFLAGS: 00010246
-[ 1976.239763] RAX: 000000000022c005 RBX: ffff88006e3e3e38 RCX: 0000000000000000
-[ 1976.242063] RDX: 0000000000000000 RSI: ffff88006e3e3e38 RDI: 0000000000000411
-[ 1976.242759] RBP: ffff8800768dbd58 R08: 0000000000000000 R09: 0000000000000000
-[ 1976.242759] R10: 00000000000360b0 R11: 0000000225c17d03 R12: ffff88006e3e3e38
-[ 1976.242759] R13: ffff8800768dbe14 R14: ffff880067648800 R15: ffff88006e023410
-[ 1976.242759] FS:  00007f2e03b85740(0000) GS:ffff88007fc00000(0000) knlGS:0000000000000000
-[ 1976.242759] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[ 1976.242759] CR2: 000000000061da00 CR3: 0000000076a68000 CR4: 00000000000006f0
-[ 1976.242759] Stack:
-[ 1976.242759]  ffff88006e3e3e38 0000000000000411 ffff8800768dbe14 ffff880067648800
-[ 1976.242759]  ffff8800768dbd78 ffffffff811d8f71 0000000000000001 ffff880067648b00
-[ 1976.242759]  ffff8800768dbde0 ffffffff8129a67d 0000000091827364 ffff8800768dbd90
-[ 1976.242759] Call Trace:
-[ 1976.242759]  [<ffffffff811d8f71>] write_dirty_buffer+0x51/0x70
-[ 1976.242759]  [<ffffffff8129a67d>] __flush_batch+0x4d/0xa0
-[ 1976.242759]  [<ffffffff8129ac5c>] jbd2_log_do_checkpoint+0x1dc/0x480
-[ 1976.242759]  [<ffffffff8129f574>] jbd2_journal_flush+0x94/0x180
-[ 1976.242759]  [<ffffffff8126277e>] ext4_freeze+0x3e/0x80
-[ 1976.242759]  [<ffffffff811a6a88>] freeze_super+0xb8/0x130
-[ 1976.242759]  [<ffffffff811b7d3e>] do_vfs_ioctl+0x2ce/0x520
-[ 1976.242759]  [<ffffffff816d3689>] ? retint_swapgs+0xe/0x13
-[ 1976.242759]  [<ffffffff810a09ed>] ? trace_hardirqs_on_caller+0xfd/0x1c0
-[ 1976.242759]  [<ffffffff811b8011>] SyS_ioctl+0x81/0xa0
-[ 1976.242759]  [<ffffffff816dbf92>] system_call_fastpath+0x16/0x1b
-[ 1976.242759] Code: 5d 41 5e 5d c3 66 2e 0f 1f 84 00 00 00 00 00 40 f6 c7 01 0f 84 e3 fe ff ff f0 41 80 64 24 01 f7 e9 d7 fe ff ff 0f 0b 0f 0b 0f 0b <0f> 0b 0f 0b 48 8b 53 78 c1 e0 09 41 f6 c5 01 89 43 28\
- 89 42 08
-[ 1976.242759] RIP  [<ffffffff811d849c>] _submit_bh+0x18c/0x210
-[ 1976.242759]  RSP <ffff8800768dbd38>
-[ 1976.268124] ---[ end trace c0ad2d4fabce4179 ]---
-
-(Note that this snippet was extracted from the kernel log - /var/log/kern.log
-on the root filesystem, and was therefore written successfully.)
-
-2) Components of the test are then left in the D state (fsstress blocked on
-wchan sync_inodes_sb and rm on vfs_unlink according to ps), and the test's
-controlling shell is unresponsive.
-
-3) Rebooting the test system then leads to a hang as the system is shutting
-down - unresponsive console, shutdown does not make progress.  (Nothing new
-here.)
-
-4) Resetting the virtual machine leads to a reboot, which in most (but not
-all) cases results in a read-only root filesystem.  (This is where the
-filesystem damage is that I mentioned.)
-
->From the dmesg log after reboot (since the kernel log can't be written once
-the root filesystem is read only) -
-
-[    1.030238] EXT4-fs (vda1): INFO: recovery required on readonly filesystem
-[    1.031162] EXT4-fs (vda1): write access will be enabled during recovery
-[    1.432329] tsc: Refined TSC clocksource calibration: 3000.110 MHz
-[    1.472223] EXT4-fs (vda1): recovery complete
-[    1.477099] EXT4-fs (vda1): mounted filesystem with ordered data mode. Opts: (null)
-[    1.598232] random: init urandom read with 38 bits of entropy available
-[    2.079563] Adding 1046524k swap on /dev/vda5.  Priority:-1 extents:1 across:1046524k FS
-[    2.305267] systemd-udevd[263]: starting version 204
-[    2.440193] Switched to clocksource tsc
-[    2.441306] EXT4-fs (vda1): re-mounted. Opts: errors=remount-ro
-[    2.626895] piix4_smbus 0000:00:01.3: SMBus Host Controller at 0xb100, revision 0
-[    2.729328] audit: type=1400 audit(1404499589.548:2): apparmor="STATUS" operation="profile_load" name="/sbin/dhclient" pid=314 comm="apparmor_parser"
-[    2.729338] audit: type=1400 audit(1404499589.548:3): apparmor="STATUS" operation="profile_load" name="/usr/lib/NetworkManager/nm-dhcp-client.action" pid=314 comm="apparmor_parser"
-[    2.729342] audit: type=1400 audit(1404499589.548:4): apparmor="STATUS" operation="profile_load" name="/usr/lib/connman/scripts/dhclient-script" pid=314 comm="apparmor_parser"
-[    2.729803] audit: type=1400 audit(1404499589.548:5): apparmor="STATUS" operation="profile_replace" name="/usr/lib/NetworkManager/nm-dhcp-client.action" pid=314 comm="apparmor_parser"
-[    2.729810] audit: type=1400 audit(1404499589.548:6): apparmor="STATUS" operation="profile_replace" name="/usr/lib/connman/scripts/dhclient-script" pid=314 comm="apparmor_parser"
-[    2.729997] audit: type=1400 audit(1404499589.548:7): apparmor="STATUS" operation="profile_replace" name="/usr/lib/connman/scripts/dhclient-script" pid=314 comm="apparmor_parser"
-[    2.853872] microcode: CPU0 sig=0x623, pf=0x0, revision=0x1
-[    2.858650] microcode: CPU1 sig=0x623, pf=0x0, revision=0x1
-[    2.871491] microcode: Microcode Update Driver: v2.00 <tigran@aivazian.fsnet.co.uk>, Peter Oruba
-[    3.780154] input: ImExPS/2 Generic Explorer Mouse as /devices/platform/i8042/serio1/input/input3
-[    4.012541] init: failsafe main process (628) killed by TERM signal
-[    4.300987] audit: type=1400 audit(1404499591.120:8): apparmor="STATUS" operation="profile_replace" name="/sbin/dhclient" pid=749 comm="apparmor_parser"
-[    4.300997] audit: type=1400 audit(1404499591.120:9): apparmor="STATUS" operation="profile_replace" name="/usr/lib/NetworkManager/nm-dhcp-client.action" pid=749 comm="apparmor_parser"
-[    4.301003] audit: type=1400 audit(1404499591.120:10): apparmor="STATUS" operation="profile_replace" name="/usr/lib/connman/scripts/dhclient-script" pid=749 comm="apparmor_parser"
-[    4.361772] EXT4-fs error (device vda1): ext4_mb_generate_buddy:756: group 42, 2591 clusters in bitmap, 2592 in gd; block bitmap corrupt.
-[    4.361908] Aborting journal on device vda1-8.
-[    4.362198] EXT4-fs (vda1): Remounting filesystem read-only
-
-(Note that this snippet is complete from the first indication of successful
-recovery of the root filesystem on reboot down to the apparent subsequent
-discovery of block bitmap corruption and journal abort.)
-
-5)  A second reboot attempt forces fsck to run and successfully recover the
-root filesystem, whereupon the test system resumes normal operation.  (I've
-never observed a failed recovery attempt at this step.)
-
-This same sequence occurs in 3.14 (and has over several past releases) with the
-exception of the block bitmap corruption indication and automated fsck
-recovery on reboot here at the end.  That appears to be new in 3.15 (and at
-least as early there as -rc3).
-
-It's about an order of magnitude harder for me to reproduce this on my
-x86_64 KVM as on my Pandaboard test system.  It requires 100-200 generic/068
-trials to trigger the failure on x86_64 as opposed to roughly 10 on the
-Pandaboard (this is a measure of the relative difficulty in triggering the
-generic/068 failure only - the block bitmap corruption then generally but not
-always occurs).  So far, I've not been able to reproduce the failure on 3.14 on
-either test system.
-
-To be clear, it's not that I think the generic/068 failure is directly
-related to the block bitmap corruption on the root filesystem - it simply
-appears to be a (really awkward) way to trigger that behavior.
-
-Eric
+Cheers, Andreas
 
 
 
 
 
 
+--Apple-Mail=_95B7E185-FAE4-4999-971B-994D1E486D8C
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBU7coQXKl2rkXzB/gAQLT8RAAuO0REQoFcysckKbVse1eMb2QZ5W7dZhy
+v5H90v/e8fh5QLl0lTlE+JPuyd3eoqJC466+jelURJt1FArS6C6wP2Kdg3IPiwSj
+s2nPGybR7Iyrrro60mMzRs4CPzwSlqJizvCt5IZw7Pw16rwo2vb/w7/W+t6hrPVB
+esOto0XyM+6VifHozX5YC7PB/z7cYN3Kd2FeijWwHELhDUp+REVsHkIdSW1uD9F/
+NVdwIM+EMLMRvBLW3roVuY2+EBY1I+f5mWGKwBuC5tszhe7+281pLvUNl4pwG8rD
+73g8WeCYTILO1bHg/fYe+pGJZJwBldQy/WjDY9P9ip/EgVoaQyMbTnkLZBLT1mz/
+8fH7G5I1FNDRcJtuhrWeYJvZ1ti4juGvlhJvMa8m4y8IpPHeDWEpaRBs2paEOXx9
+oVb950EglQ1yQiySbSh9jfAOa9uWLL6yvwueH4oa2R1ayrGNjEFCCPXTaxsMLYdU
+gNCDl2H9ZqAhoOY2AIuFjX+nd49UwPML3arKsAqnx+b7AedmXflon6sTwXWJgaiC
+WvMXjRfyLWrkKdDHX2Jp+rtGDaRDZXxUeesnR2jJYNE3Q72MzZqM6CrC8boWvg5u
+/Uw/dbvdiBLilnqIXXfxxt8YGjRmORkqRuZgE/gWItLYznu400WNVx7RDfmMO511
+/oKXIqfwb7w=
+=h90w
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_95B7E185-FAE4-4999-971B-994D1E486D8C--
