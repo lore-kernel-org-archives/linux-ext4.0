@@ -1,50 +1,95 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsck: Fix last mount time and last write time in preen
- mode
-Date: Fri, 4 Jul 2014 16:32:04 -0400
-Message-ID: <20140704203204.GD11103@thunk.org>
-References: <1400596186-4228-1-git-send-email-jack@suse.cz>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: Re: ext4: media error but where?
+Date: Fri, 4 Jul 2014 22:33:09 +0200
+Message-ID: <20140704203309.GA28107@amd.pavel.ucw.cz>
+References: <20140626203052.GA9449@xo-6d-61-c0.localdomain>
+ <20140627024659.GF6826@thunk.org>
+ <20140629202516.GA11430@amd.pavel.ucw.cz>
+ <20140629210428.GD2162@thunk.org>
+ <20140630064644.GA23079@amd.pavel.ucw.cz>
+ <20140630134313.GA3753@thunk.org>
+ <20140704102307.GA19252@amd.pavel.ucw.cz>
+ <20140704121119.GB10514@thunk.org>
+ <20140704172104.GA4877@xo-6d-61-c0.localdomain>
+ <9BEA347C-2246-4746-95A4-0E00E0369816@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:45829 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030502AbaGDUcH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 4 Jul 2014 16:32:07 -0400
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:52480 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752918AbaGDUdM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jul 2014 16:33:12 -0400
 Content-Disposition: inline
-In-Reply-To: <1400596186-4228-1-git-send-email-jack@suse.cz>
+In-Reply-To: <9BEA347C-2246-4746-95A4-0E00E0369816@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 20, 2014 at 04:29:46PM +0200, Jan Kara wrote:
-> Fixing last mount time and last write time is safe - there's no risk of
-> loosing any important information or making corruption significantly
-> worse even if we get it wrong. So let's just fix these times in preen
-> mode. This allows initrd to automatically check and mount root
-> filesystem in case system clock is wrong without having to manually set
-> broken_system_clock variable (openSUSE uses broken_system_clock by default
-> to avoid these problems during boot but this disables time-based checks
-> even on systems where clock is fine so that's not ideal either).
+On Fri 2014-07-04 13:17:37, Andreas Dilger wrote:
+> On Jul 4, 2014, at 11:21 AM, Pavel Machek <pavel@ucw.cz> wrote:
+> >>> pavel@duo:~$ uname -a
+> >>> Linux duo 3.15.0-rc8+ #365 SMP Mon Jun 9 09:18:29 CEST 2014 i686
+> >>> GNU/Linux
+> >>> 
+> >>> EXT4-fs (sda3): error count: 11
+> >>> EXT4-fs (sda3): initial error at 1401714179: ext4_mb_generate_buddy:756
+> >>> EXT4-fs (sda3): last error at 1401714179: ext4_reserve_inode_write:4877
+> >>> 
+> >>> That sounds like media error to me?
+> >> 
+> >> If you search your system logs since the last fsck, you should find 11
+> >> instances of "EXT4-fs error" message, which means that there was some
+> >> file system inconsisntencies detected.  The first error was detected at:
+> >> 
+> >> % date -d @1401714179
+> >> Mon Jun  2 09:02:59 EDT 2014
+> > 
+> > Interesting. I always assumed 140... was block number.
 > 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> Maybe it is worthwhile to improve this error message to be:
+> 
+>     EXT4-fs (sda3): initial error at time 1401714179: ...
 
-I've accepted this change.  Note that the most common case where the
-system clock is wrong, which is when the time gets reliably stuck in
-the 1970's, immediately after the system boots, we end up declaring
-the system clock "insane", and so we end up skipping the time-based
-checks anyway.
+I'm glad you suggested it. I actually done a patch before reading
+this. What about:
 
-I guess I've gotten more soft in my old age about wanting to guarantee
-that time-based checks happen when they should.  If you have crappy
-hardware that corrupts data blocks, or buggy kernels, time-based
-checks aren't really going to save you, especially given that most
-people aren't rebooting their systems all that often anyway.  Getting
-people to run a script out of crontab which takes read-only snapshots
-and runs fsck on those snapshots is much more likely to protect
-against these sorts of issues.
+---
 
-Cheers,
+Make it clear that values printed are times, and that it is error
+since last fsck. Also add note about fsck version required.
 
-					- Ted
+Signed-off-by: Pavel Machek <pavel@ucw.cz>
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index b9b9aab..3423947 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2809,10 +2809,11 @@ static void print_daily_error_info(unsigned long arg)
+ 	es = sbi->s_es;
+ 
+ 	if (es->s_error_count)
+-		ext4_msg(sb, KERN_NOTICE, "error count: %u",
++		/* fsck newer than v1.41.13 is needed to clean this condition. */
++		ext4_msg(sb, KERN_NOTICE, "error count since last fsck: %u",
+ 			 le32_to_cpu(es->s_error_count));
+ 	if (es->s_first_error_time) {
+-		printk(KERN_NOTICE "EXT4-fs (%s): initial error at %u: %.*s:%d",
++		printk(KERN_NOTICE "EXT4-fs (%s): initial error at time %u: %.*s:%d",
+ 		       sb->s_id, le32_to_cpu(es->s_first_error_time),
+ 		       (int) sizeof(es->s_first_error_func),
+ 		       es->s_first_error_func,
+@@ -2826,7 +2827,7 @@ static void print_daily_error_info(unsigned long arg)
+ 		printk("\n");
+ 	}
+ 	if (es->s_last_error_time) {
+-		printk(KERN_NOTICE "EXT4-fs (%s): last error at %u: %.*s:%d",
++		printk(KERN_NOTICE "EXT4-fs (%s): last error at time %u: %.*s:%d",
+ 		       sb->s_id, le32_to_cpu(es->s_last_error_time),
+ 		       (int) sizeof(es->s_last_error_func),
+ 		       es->s_last_error_func,
+
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
