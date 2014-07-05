@@ -1,58 +1,57 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: fix unjournalled bg descriptor while initializing inode bitmap
-Date: Sat,  5 Jul 2014 16:28:51 -0400
-Message-ID: <1404592131-29738-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: Re: ext4: journal has aborted
+Date: Sat, 5 Jul 2014 16:36:07 -0400
+Message-ID: <20140705203607.GJ11103@thunk.org>
+References: <CAFnufp2TPSyZe4NUSTVeSWuSDwsCLHDogBvAWV4_+JaQFRrw-w@mail.gmail.com>
+ <20140703134338.GE2374@thunk.org>
+ <20140703161551.5fd13245@archvile>
+ <87tx6yzdxz.fsf@openvz.org>
+ <20140704114031.2915161a@archvile>
+ <87r421zavi.fsf@openvz.org>
+ <20140704132802.0d43b1fc@archvile>
+ <20140704122022.GC10514@thunk.org>
+ <20140704154559.026331ec@archvile>
+ <20140704184539.GA11103@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	Matteo Croce <technoboy85@gmail.com>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	linux-ext4@vger.kernel.org, Pavel Machek <pavel@ucw.cz>
+To: David Jander <david@protonic.nl>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:46973 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932687AbaGEUgW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 5 Jul 2014 16:36:22 -0400
+Content-Disposition: inline
+In-Reply-To: <20140704184539.GA11103@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The first time that we allocate from an uninitialized inode allocation
-bitmap, if the block allocation bitmap is also uninitalized, we need
-to get write access to the block group descriptor before we start
-modifying the block group descriptor flags and updating the free block
-count, etc.  Otherwise, there is the potential of a bad journal
-checksum (if journal checksums are enabled), and of the file system
-becoming inconsistent if we crash at exactly the wrong time.
+I've been auditing the ext4 code looking for a potential bug in our
+journalling code that might result in fs corruption after a
+crash/power failure.
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@vger.kernel.org
----
- fs/ext4/ialloc.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+I did find one such instance: http://patchwork.ozlabs.org/patch/367346/
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index a87455d..0840bf3 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -874,6 +874,13 @@ got:
- 		goto out;
- 	}
- 
-+	BUFFER_TRACE(group_desc_bh, "get_write_access");
-+	err = ext4_journal_get_write_access(handle, group_desc_bh);
-+	if (err) {
-+		ext4_std_error(sb, err);
-+		goto out;
-+	}
-+
- 	/* We may have to initialize the block bitmap if it isn't already */
- 	if (ext4_has_group_desc_csum(sb) &&
- 	    gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
-@@ -910,13 +917,6 @@ got:
- 		}
- 	}
- 
--	BUFFER_TRACE(group_desc_bh, "get_write_access");
--	err = ext4_journal_get_write_access(handle, group_desc_bh);
--	if (err) {
--		ext4_std_error(sb, err);
--		goto out;
--	}
--
- 	/* Update the relevant bg descriptor fields */
- 	if (ext4_has_group_desc_csum(sb)) {
- 		int free;
--- 
-2.0.0
+However, I'm fairly sure this is not the cause of most of the problems
+folks have been complaining about.  For one thing, this bug has been
+around for a long, long time (since v3.5 or so).  For another, hitting
+it is incredibly rare.
+
+It would only be noticeable if you crash immediately (within 5 seconds
+or so) after allocating the first inode in a block group where both
+the inode allocation bitmap and block allocation bitmap are
+uninitialized (i.e, no inodes or blocks have ever been allocated from
+that block group since the file system was first initialized).
+
+So for people who are indicating that they are seeing problems much
+more frequently in 3.15, but not in older kernels, it's almost
+certainly something else going on.  But if you can reliably reproduce
+the problem, you might want to try applying the patch.  It certainly
+won't hurt, and if it does help, please let me know.  :-)
+
+Cheers,
+
+						- Ted
