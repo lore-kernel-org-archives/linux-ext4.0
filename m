@@ -1,41 +1,50 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: clarify ext4_error message in ext4_mb_generate_buddy_error()
-Date: Sat,  5 Jul 2014 19:16:02 -0400
-Message-ID: <1404602162-16730-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH] e2fsprogs: Add INCLUDES to BUILD_CFLAGS when
+ cross-compiling
+Date: Sat, 5 Jul 2014 19:55:42 -0400
+Message-ID: <20140705235542.GA19036@thunk.org>
+References: <1401832319-2247-1-git-send-email-gustavo@zacarias.com.ar>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Gustavo Zacarias <gustavo@zacarias.com.ar>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47065 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:47078 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753465AbaGEXQI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 5 Jul 2014 19:16:08 -0400
+	id S1751737AbaGEXzr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 5 Jul 2014 19:55:47 -0400
+Content-Disposition: inline
+In-Reply-To: <1401832319-2247-1-git-send-email-gustavo@zacarias.com.ar>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We are spending a lot of time explaining to users what this error
-means.  Let's try to improve the message to avoid this problem.
+On Tue, Jun 03, 2014 at 06:51:59PM -0300, Gustavo Zacarias wrote:
+> We need $INCLUDES in BUILD_CFLAGS otherwise cross-compilation is broken
+> now that util/subst.c uses config.h (from commit 2873927d15).
+> 
+> Signed-off-by: Gustavo Zacarias <gustavo@zacarias.com.ar>
+> ---
+>  configure.in | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/configure.in b/configure.in
+> index 448a292..8bac870 100644
+> --- a/configure.in
+> +++ b/configure.in
+> @@ -1382,7 +1382,7 @@ if test $cross_compiling = no; then
+>     BUILD_CFLAGS="$CFLAGS $CPPFLAGS $INCLUDES -DHAVE_CONFIG_H"
+>     BUILD_LDFLAGS="$LDFLAGS"
+>  else
+> -   BUILD_CFLAGS=
+> +   BUILD_CFLAGS="$INCLUDES -DHAVE_CONFIG_H"
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@vger.kernel.org
----
- fs/ext4/mballoc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+I would think that
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 7f72f50..2dcb936 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -752,8 +752,8 @@ void ext4_mb_generate_buddy(struct super_block *sb,
- 
- 	if (free != grp->bb_free) {
- 		ext4_grp_locked_error(sb, group, 0, 0,
--				      "%u clusters in bitmap, %u in gd; "
--				      "block bitmap corrupt.",
-+				      "block bitmap and bg descriptor "
-+				      "inconsistent: %u vs %u free clusters",
- 				      free, grp->bb_free);
- 		/*
- 		 * If we intend to continue, we consider group descriptor
--- 
-2.0.0
+BUILD_CFLAGS="-I$(top_builddir)/lib -DHAVE_CONFIG_H"
 
+... would be safer, since $INCLUDES could potentially include some
+$CPPFLAGS that could be specific to the target architecture.
+
+Yes?
+
+						- Ted
