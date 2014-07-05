@@ -1,57 +1,39 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4: journal has aborted
-Date: Sat, 5 Jul 2014 16:36:07 -0400
-Message-ID: <20140705203607.GJ11103@thunk.org>
-References: <CAFnufp2TPSyZe4NUSTVeSWuSDwsCLHDogBvAWV4_+JaQFRrw-w@mail.gmail.com>
- <20140703134338.GE2374@thunk.org>
- <20140703161551.5fd13245@archvile>
- <87tx6yzdxz.fsf@openvz.org>
- <20140704114031.2915161a@archvile>
- <87r421zavi.fsf@openvz.org>
- <20140704132802.0d43b1fc@archvile>
- <20140704122022.GC10514@thunk.org>
- <20140704154559.026331ec@archvile>
- <20140704184539.GA11103@thunk.org>
+Subject: Re: ext4: media error but where?
+Date: Sat, 5 Jul 2014 18:17:55 -0400
+Message-ID: <20140705221755.GK11103@thunk.org>
+References: <20140627024659.GF6826@thunk.org>
+ <20140629202516.GA11430@amd.pavel.ucw.cz>
+ <20140629210428.GD2162@thunk.org>
+ <20140630064644.GA23079@amd.pavel.ucw.cz>
+ <20140630134313.GA3753@thunk.org>
+ <20140704102307.GA19252@amd.pavel.ucw.cz>
+ <20140704121119.GB10514@thunk.org>
+ <20140704172104.GA4877@xo-6d-61-c0.localdomain>
+ <9BEA347C-2246-4746-95A4-0E00E0369816@dilger.ca>
+ <20140704203309.GA28107@amd.pavel.ucw.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
-	Matteo Croce <technoboy85@gmail.com>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	linux-ext4@vger.kernel.org, Pavel Machek <pavel@ucw.cz>
-To: David Jander <david@protonic.nl>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46973 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:47033 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932687AbaGEUgW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 5 Jul 2014 16:36:22 -0400
+	id S1753051AbaGEWSA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 5 Jul 2014 18:18:00 -0400
 Content-Disposition: inline
-In-Reply-To: <20140704184539.GA11103@thunk.org>
+In-Reply-To: <20140704203309.GA28107@amd.pavel.ucw.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've been auditing the ext4 code looking for a potential bug in our
-journalling code that might result in fs corruption after a
-crash/power failure.
+On Fri, Jul 04, 2014 at 10:33:09PM +0200, Pavel Machek wrote:
+> 
+> Make it clear that values printed are times, and that it is error
+> since last fsck. Also add note about fsck version required.
+> 
+> Signed-off-by: Pavel Machek <pavel@ucw.cz>
 
-I did find one such instance: http://patchwork.ozlabs.org/patch/367346/
+Thanks, applied.
 
-However, I'm fairly sure this is not the cause of most of the problems
-folks have been complaining about.  For one thing, this bug has been
-around for a long, long time (since v3.5 or so).  For another, hitting
-it is incredibly rare.
-
-It would only be noticeable if you crash immediately (within 5 seconds
-or so) after allocating the first inode in a block group where both
-the inode allocation bitmap and block allocation bitmap are
-uninitialized (i.e, no inodes or blocks have ever been allocated from
-that block group since the file system was first initialized).
-
-So for people who are indicating that they are seeing problems much
-more frequently in 3.15, but not in older kernels, it's almost
-certainly something else going on.  But if you can reliably reproduce
-the problem, you might want to try applying the patch.  It certainly
-won't hurt, and if it does help, please let me know.  :-)
-
-Cheers,
-
-						- Ted
+					- Ted
