@@ -1,9 +1,8 @@
 From: Pavel Machek <pavel@ucw.cz>
 Subject: Re: ext4: media error but where?
-Date: Sun, 6 Jul 2014 15:32:47 +0200
-Message-ID: <20140706133247.GB18204@amd.pavel.ucw.cz>
-References: <20140626203052.GA9449@xo-6d-61-c0.localdomain>
- <20140627024659.GF6826@thunk.org>
+Date: Sun, 6 Jul 2014 15:43:25 +0200
+Message-ID: <20140706134325.GA18955@amd.pavel.ucw.cz>
+References: <20140627024659.GF6826@thunk.org>
  <20140629202516.GA11430@amd.pavel.ucw.cz>
  <20140629210428.GD2162@thunk.org>
  <20140630064644.GA23079@amd.pavel.ucw.cz>
@@ -12,77 +11,88 @@ References: <20140626203052.GA9449@xo-6d-61-c0.localdomain>
  <20140704121119.GB10514@thunk.org>
  <20140704172104.GA4877@xo-6d-61-c0.localdomain>
  <20140704185626.GB11103@thunk.org>
+ <20140706133247.GB18204@amd.pavel.ucw.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 To: Theodore Ts'o <tytso@mit.edu>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:48673 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750859AbaGFNct (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Jul 2014 09:32:49 -0400
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20140704185626.GB11103@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20140706133247.GB18204@amd.pavel.ucw.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri 2014-07-04 14:56:26, Theodore Ts'o wrote:
-> On Fri, Jul 04, 2014 at 07:21:04PM +0200, Pavel Machek wrote:
-> > 
-> > Is it possible that my fsck is so old it does not clear this "filesystem
-> > had error in past" flag? Because I strongly suspect I'll boot into
-> > init=/bin/bash, run fsck, it will tell me "all clean", and the messages
-> > will repeat in the middle of fsck run.
-> 
-> Yes, that's what's going on.  E2fsprogs v1.41.12 does not have the
-> code to clear those fields in the superblock; that code was added in
-> v1.41.13.
-> 
-> (There have also been a ****huge**** number of bug fixes since May
-> 2010, which is when 1.41.12 was released, so I'd strongly suggest that
-> you upgrade to a newer version of e2fsprogs.  In particular DON'T try
-> resizing an an ext4 file system, either on-line or off-line with a
-> version of e2fsprogs that ancient; there is a very good chance you
-> will badly corrupt the file system.)
+Hi!
 
-Ok, I have compiled fsck from git, it calls itself 1.43-WIP (18-May-2014).
+> Now I'm running fsck.new -cf. I don't think this filesystem has any
+> bad blocks. Still, it says "rootfs: Updating bad block inode."
+> ... "FILE SYSTEM WAS MODIFIED", "REBOOT LINUX".
 
-If I run it on my /dev/sda3, it still calls it clean and quits (even
-through it should still have the "filesystem had error in past" flag).
+And here's patch to fix this uglyness. Unfortunately, it makes it read
+the inode... but perhaps it is good idea as we are able to print
+before/after bad block counts...?
 
-I ran it -f, and it said all clean. Did not mention modifying the
-filesystem.
+Signed-off-by: Pavel Machek <pavel@ucw.cz>
 
-Now I'm running fsck.new -cf. I don't think this filesystem has any
-bad blocks. Still, it says "rootfs: Updating bad block inode."
-... "FILE SYSTEM WAS MODIFIED", "REBOOT LINUX".
+Thanks,
+								Pavel
 
-While looking at e2fsck sources:
+diff --git a/e2fsck/badblocks.c b/e2fsck/badblocks.c
+index 7f3641b..32e08bf 100644
+--- a/e2fsck/badblocks.c
++++ b/e2fsck/badblocks.c
+@@ -30,6 +30,7 @@ void read_bad_blocks_file(e2fsck_t ctx, const char *bad_blocks_file,
+ 	ext2_filsys fs = ctx->fs;
+ 	errcode_t	retval;
+ 	badblocks_list	bb_list = 0;
++	int		old_bb_count = -1;
+ 	FILE		*f;
+ 	char		buf[1024];
+ 
+@@ -51,14 +52,16 @@ void read_bad_blocks_file(e2fsck_t ctx, const char *bad_blocks_file,
+ 	 * If we're appending to the bad blocks inode, read in the
+ 	 * current bad blocks.
+ 	 */
+-	if (!replace_bad_blocks) {
+-		retval = ext2fs_read_bb_inode(fs, &bb_list);
+-		if (retval) {
+-			com_err("ext2fs_read_bb_inode", retval, "%s",
+-				_("while reading the bad blocks inode"));
+-			goto fatal;
+-		}
++	retval = ext2fs_read_bb_inode(fs, &bb_list);
++	if (retval) {
++		com_err("ext2fs_read_bb_inode", retval, "%s",
++			_("while reading the bad blocks inode"));
++		goto fatal;
+ 	}
++	old_bb_count = ext2fs_u32_list_count(bb_list);
++	printf("%s: Currently %d bad blocks.\n", ctx->device_name, old_bb_count);
++	if (replace_bad_blocks)
++		bb_list = 0;
+ 
+ 	/*
+ 	 * Now read in the bad blocks from the file; if
+@@ -95,10 +98,16 @@ void read_bad_blocks_file(e2fsck_t ctx, const char *bad_blocks_file,
+ 		goto fatal;
+ 	}
+ 
++	if ((ext2fs_u32_list_count(bb_list) == 0) &&
++	    ((!replace_bad_blocks) || (!old_bb_count))) {
++	  	printf("%s: No bad blocks found, no update neeeded.\n", ctx->device_name);
++		return;
++	}
++
+ 	/*
+ 	 * Finally, update the bad blocks from the bad_block_map
+ 	 */
+-	printf("%s: Updating bad block inode.\n", ctx->device_name);
++	printf("%s: Updating bad block inode (%d bad blocks).\n", ctx->device_name, ext2fs_u32_list_count(bb_list));
+ 	retval = ext2fs_update_bb_inode(fs, bb_list);
+ 	if (retval) {
+ 		com_err("ext2fs_update_bb_inode", retval, "%s",
 
-                sprintf(buf, "badblocks -b %d -X %s%s%s %llu",
-                fs->blocksize,
-                        (ctx->options & E2F_OPT_PREEN) ? "" : "-s ",
-                        (ctx->options & E2F_OPT_WRITECHECK) ? "-n " :
-                "",
-		                fs->device_name,
-                ext2fs_blocks_count(fs->super)-1);
-                f = popen(buf, "r");
-
-...is it really good idea? I think it will do the bad thing in (crazy)
-setup such as this, or in any setup with space in filename:
-
-root@duo:/dev# ls -al  | grep echo
-brw-rw----   1 root disk      8,   3 Jul  6 14:56 `echo ownered`
-root@duo:/dev# /usr/local/bin/
-e2fsck.new  unrar2      
-root@duo:/dev# /usr/local/bin/e2fsck.new '`echo ownered`' 
-e2fsck 1.43-WIP (18-May-2014)
-`echo ownered` is mounted.
-e2fsck: Cannot continue, aborting.
-
-Best regards,
-									Pavel
 -- 
 (english) http://www.livejournal.com/~pavelmachek
 (cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
