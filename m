@@ -1,61 +1,54 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 78651] Write performance of ext4 degrades linearly as volume
- fills
-Date: Sun, 06 Jul 2014 17:57:24 +0000
-Message-ID: <bug-78651-13602-SRv4NhDCsM@https.bugzilla.kernel.org/>
-References: <bug-78651-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ext4: media error but where?
+Date: Sun, 6 Jul 2014 14:29:36 -0400
+Message-ID: <20140706182936.GB471@thunk.org>
+References: <20140629202516.GA11430@amd.pavel.ucw.cz>
+ <20140629210428.GD2162@thunk.org>
+ <20140630064644.GA23079@amd.pavel.ucw.cz>
+ <20140630134313.GA3753@thunk.org>
+ <20140704102307.GA19252@amd.pavel.ucw.cz>
+ <20140704121119.GB10514@thunk.org>
+ <20140704172104.GA4877@xo-6d-61-c0.localdomain>
+ <20140704185626.GB11103@thunk.org>
+ <20140706133247.GB18204@amd.pavel.ucw.cz>
+ <20140706134325.GA18955@amd.pavel.ucw.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:56625 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751749AbaGFR51 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 6 Jul 2014 13:57:27 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id AE7CE2035D
-	for <linux-ext4@vger.kernel.org>; Sun,  6 Jul 2014 17:57:26 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 21D19202A1
-	for <linux-ext4@vger.kernel.org>; Sun,  6 Jul 2014 17:57:25 +0000 (UTC)
-In-Reply-To: <bug-78651-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: kernel list <linux-kernel@vger.kernel.org>,
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+To: Pavel Machek <pavel@ucw.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20140706134325.GA18955@amd.pavel.ucw.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=78651
+On Sun, Jul 06, 2014 at 03:43:25PM +0200, Pavel Machek wrote:
+> Hi!
+> 
+> > Now I'm running fsck.new -cf. I don't think this filesystem has any
+> > bad blocks. Still, it says "rootfs: Updating bad block inode."
+> > ... "FILE SYSTEM WAS MODIFIED", "REBOOT LINUX".
+> 
+> And here's patch to fix this uglyness. Unfortunately, it makes it read
+> the inode... but perhaps it is good idea as we are able to print
+> before/after bad block counts...?
+> 
+> Signed-off-by: Pavel Machek <pavel@ucw.cz>
 
-Theodore Tso <tytso@mit.edu> changed:
+Thanks, I'll take a look at these patches.  Honestly, I've been half
+tempted to remove the e2fsck -c option entirely.  99.9% of the time,
+with modern disks, which has bad block remapping, it doesn't do any
+good, and often, it's harmful.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+In general, e2fsck -c is not something I recommend people use.  If you
+want to use badblocks by itself to see if there are any blocks that
+are suffering read problems, that's fine, but if there is, in general
+the safest thing to do is to mount the disk read-only, back it up, and
+then either (a) reformat and see if you can restore onto it with
+backups w/o any further errors, or (b) just trash the disk, and get a
+new one, since in general the contents are way more valuable than the
+disk itself.  Certainly after trying (a), you get any further errors,
+(b) is defintely the way to go.
 
---- Comment #5 from Theodore Tso <tytso@mit.edu> ---
-Delayed allocation certainly works with or without the journal.  But disabling
-delayed allocation will _significantly_ impact performance.   There's certainly
-no surprise there.   Delalloc is one of the reasons why ext4 is significantly
-more performant than ext3, and the mode that we use in Google is ext4 with
-delalloc in no journal mode.
-
-In answer to your other questions, no the es_shrink_enter and es_shrink_exit
-calls are not balanced.  In particular, the ext4_es_shrink_enter tracepoint
-gets called from two different functions (which is a bad thing; recent shrinker
-infrastructure changes added a s_es_shrinker_.count_objects() callback, and the
-person converted the ext4 shirnker over to the new setup duplicated the
-tracepoint instead of creating a new one.   Also, in ext4_es_scan(), if
-nr_to_scan is zero, we don't end up calling the ext4_es_shrinker_exit
-tracepoint.
-
-Some other things to try.  (1)  Try collecting copies of /proc/meminfo and
-/proc/slabinfo every 10% of the dump process or so.  That might be useful.  (2)
-Try reformatting with a much larger journal, and see if that makes a
-difference.  I doubt it will, but it's worth a try.   (3)   Either using
-/sys/kernel/debug, or the ftrace command (don't use perf; since we need the
-data associated with the tracepoints, not just the count), enable the
-jbd2_checkpoint and jbd2_run_stats and collect the tracepoint data during the
-run.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+					- Ted
