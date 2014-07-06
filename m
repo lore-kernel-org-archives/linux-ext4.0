@@ -1,50 +1,43 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs: Add INCLUDES to BUILD_CFLAGS when
- cross-compiling
-Date: Sat, 5 Jul 2014 19:55:42 -0400
-Message-ID: <20140705235542.GA19036@thunk.org>
-References: <1401832319-2247-1-git-send-email-gustavo@zacarias.com.ar>
+From: Gustavo Zacarias <gustavo@zacarias.com.ar>
+Subject: Re: [PATCH] e2fsprogs: Add INCLUDES to BUILD_CFLAGS when cross-compiling
+Date: Sat, 05 Jul 2014 21:32:40 -0300
+Message-ID: <53B89928.3010206@zacarias.com.ar>
+References: <1401832319-2247-1-git-send-email-gustavo@zacarias.com.ar> <20140705235542.GA19036@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Gustavo Zacarias <gustavo@zacarias.com.ar>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47078 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751737AbaGEXzr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 5 Jul 2014 19:55:47 -0400
-Content-Disposition: inline
-In-Reply-To: <1401832319-2247-1-git-send-email-gustavo@zacarias.com.ar>
+Received: from loknar.toptech.com.ar ([78.46.79.162]:53389 "EHLO
+	loknar.toptech.com.ar" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751065AbaGFAcz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2014 20:32:55 -0400
+In-Reply-To: <20140705235542.GA19036@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 03, 2014 at 06:51:59PM -0300, Gustavo Zacarias wrote:
-> We need $INCLUDES in BUILD_CFLAGS otherwise cross-compilation is broken
-> now that util/subst.c uses config.h (from commit 2873927d15).
+On 07/05/2014 08:55 PM, Theodore Ts'o wrote:
+
+> I would think that
 > 
-> Signed-off-by: Gustavo Zacarias <gustavo@zacarias.com.ar>
-> ---
->  configure.in | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> BUILD_CFLAGS="-I$(top_builddir)/lib -DHAVE_CONFIG_H"
 > 
-> diff --git a/configure.in b/configure.in
-> index 448a292..8bac870 100644
-> --- a/configure.in
-> +++ b/configure.in
-> @@ -1382,7 +1382,7 @@ if test $cross_compiling = no; then
->     BUILD_CFLAGS="$CFLAGS $CPPFLAGS $INCLUDES -DHAVE_CONFIG_H"
->     BUILD_LDFLAGS="$LDFLAGS"
->  else
-> -   BUILD_CFLAGS=
-> +   BUILD_CFLAGS="$INCLUDES -DHAVE_CONFIG_H"
+> ... would be safer, since $INCLUDES could potentially include some
+> $CPPFLAGS that could be specific to the target architecture.
+> 
+> Yes?
 
-I would think that
+Not really, since that way it's missing config.h, still failing:
 
-BUILD_CFLAGS="-I$(top_builddir)/lib -DHAVE_CONFIG_H"
+-----
+cd ./util ; /usr/bin/make subst
+make[2]: Entering directory
+`/home/gustavoz/b/test/output/build/e2fsprogs-1.42.10/util'
+        CREATE dirpaths.h
+        CC subst.c
+subst.c:8:20: fatal error: config.h: No such file or directory
+compilation terminated.
+-----
 
-... would be safer, since $INCLUDES could potentially include some
-$CPPFLAGS that could be specific to the target architecture.
-
-Yes?
-
-						- Ted
+Regards.
