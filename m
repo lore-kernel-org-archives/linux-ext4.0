@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
 Subject: [PATCH] e2fsck: reopen the file system with saved flags after a journal replay
-Date: Sat,  5 Jul 2014 23:09:57 -0400
-Message-ID: <1404616198-315-1-git-send-email-tytso@mit.edu>
+Date: Sat,  5 Jul 2014 23:12:05 -0400
+Message-ID: <1404616325-551-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
@@ -11,10 +11,10 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 	744953@bugs.debian.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47206 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:47214 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751991AbaGFDKP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 5 Jul 2014 23:10:15 -0400
+	id S1751991AbaGFDMM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 5 Jul 2014 23:12:12 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -23,8 +23,9 @@ any changes in the superblock can get reflected in the libext2fs's
 internal data structures.  We need to save the flags passed to
 ext2fs_open() that we used when we originally opened the file system.
 
-Otherwise we could end up triggering the following error message when
-checking a large (or bigalloc) file system after an unclean shutdown:
+Otherwise we will end up not be able to repair a file system which
+requires a journal replay and which has bigalloc enabled or which has
+more than 2**32 blocks; e2fsck will abort with the error message:
 
 fsck.ext4: Filesystem too large to use legacy bitmaps while trying to r=
 e-open
@@ -36,9 +37,8 @@ Cc: Jon Severinsson <jon@severinsson.net>
 Cc: 744953@bugs.debian.org
 ---
 
-Distributions will almost certainly want to backport this patch, since
-it breaks running e2fsck on file system with the 64-bit or bigalloc
-feature enabled=20
+Distributions will almost certainly want to backport this commit.  I
+plan to release e2fsprogs 1.42.11, which will include this fix.
 
  e2fsck/e2fsck.h  | 1 +
  e2fsck/journal.c | 2 +-
