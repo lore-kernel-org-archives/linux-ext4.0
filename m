@@ -1,93 +1,78 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: ext4: media error but where?
-Date: Mon, 7 Jul 2014 20:55:43 +0200
-Message-ID: <20140707185543.GA26056@amd.pavel.ucw.cz>
-References: <20140630134313.GA3753@thunk.org>
- <20140704102307.GA19252@amd.pavel.ucw.cz>
- <20140704121119.GB10514@thunk.org>
- <20140704172104.GA4877@xo-6d-61-c0.localdomain>
- <20140704185626.GB11103@thunk.org>
- <20140706133247.GB18204@amd.pavel.ucw.cz>
- <20140706134325.GA18955@amd.pavel.ucw.cz>
- <20140706182936.GB471@thunk.org>
- <20140706213710.GA19847@amd.pavel.ucw.cz>
- <20140707010002.GD471@thunk.org>
+From: Benjamin LaHaise <bcrl@kvack.org>
+Subject: ext4: first write to large ext3 filesystem takes 96 seconds
+Date: Mon, 7 Jul 2014 17:13:49 -0400
+Message-ID: <20140707211349.GA12478@kvack.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:58987 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751798AbaGGSzp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Jul 2014 14:55:45 -0400
+Received: from kanga.kvack.org ([205.233.56.17]:47246 "EHLO kanga.kvack.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751038AbaGGVNu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Jul 2014 17:13:50 -0400
 Content-Disposition: inline
-In-Reply-To: <20140707010002.GD471@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 2014-07-06 21:00:02, Theodore Ts'o wrote:
-> On Sun, Jul 06, 2014 at 11:37:11PM +0200, Pavel Machek wrote:
-> > 
-> > Well, when I got report about hw problems, badblocks -c was my first
-> > instinct. On the usb hdd, the most errors were due to 3.16-rc1 kernel
-> > bug, not real problems.
-> 
-> The problem is with modern disk drives, this is a *wrong* instinct.
-> That's my point.  In general, trying to mess with the bad blocks list
-> in the ext2/3/4 file system is just not the right thing to do with
-> modern disk drives.  That's because with modern disk drives, the hard
-> drives will do bad block remapping.
+Hi folks,
 
-Actually... I believe it was the right instinct. 
+I've just ran into a bug with the ext4 codebase in 3.4.91 that doesn't seem 
+to exist in ext3, and was wondering if anyone has encountered this before.  
+I have a 7.4TB ext3 filesystem that has been filled with 1.8TB of data.  
+When this filesystem is freshly mounted, the first write to the filesystem 
+takes a whopping 96 seconds to complete, during which time the system is 
+reading about 1000 blocks per second.  Subsequent writes are much quicker.  
+The problem seems to be that ext4 is loading all of the bitmaps on the 
+filesystem before the first write proceeds.  The backtrace looks roughly as 
+follows:
 
-If I wanted to recover the data... remount-r would be the way to
-go. Then back it up using dd_rescue. ... But that way I'd turn bad
-sectors into silent data corruption.
+[ 4480.921288]  [<ffffffff81437472>] ? dm_request_fn+0x112/0x1c0
+[ 4480.921292]  [<ffffffff81244bf5>] ? __blk_run_queue+0x15/0x20
+[ 4480.921294]  [<ffffffff81246670>] ? queue_unplugged+0x20/0x50
+[ 4480.921297]  [<ffffffff8154ed05>] schedule+0x45/0x60
+[ 4480.921299]  [<ffffffff8154ef7c>] io_schedule+0x6c/0xb0
+[ 4480.921301]  [<ffffffff810fb7a9>] sleep_on_buffer+0x9/0x10
+[ 4480.921303]  [<ffffffff8154d435>] __wait_on_bit+0x55/0x80
+[ 4480.921306]  [<ffffffff810fb7a0>] ? unmap_underlying_metadata+0x40/0x40
+[ 4480.921308]  [<ffffffff810fb7a0>] ? unmap_underlying_metadata+0x40/0x40
+[ 4480.921310]  [<ffffffff8154d4d8>] out_of_line_wait_on_bit+0x78/0x90
+[ 4480.921312]  [<ffffffff8104d5b0>] ? autoremove_wake_function+0x40/0x40
+[ 4480.921315]  [<ffffffff810fb756>] __wait_on_buffer+0x26/0x30
+[ 4480.921318]  [<ffffffff81146258>] ext4_wait_block_bitmap+0x138/0x190
+[ 4480.921321]  [<ffffffff8116c816>] ext4_mb_init_cache+0x1e6/0x5f0
+[ 4480.921324]  [<ffffffff8109654a>] ? add_to_page_cache_locked+0x9a/0xd0
+[ 4480.921327]  [<ffffffff810965b1>] ? add_to_page_cache_lru+0x31/0x50
+[ 4480.921330]  [<ffffffff8116cd1f>] ext4_mb_init_group+0xff/0x1e0
+[ 4480.921332]  [<ffffffff8116ce9f>] ext4_mb_good_group+0x9f/0x130
+[ 4480.921334]  [<ffffffff8116e41f>] ext4_mb_regular_allocator+0x1bf/0x3d0
+[ 4480.921337]  [<ffffffff8116c0ac>] ? ext4_mb_normalize_request+0x26c/0x4d0
+[ 4480.921339]  [<ffffffff811716ce>] ext4_mb_new_blocks+0x2ee/0x490
+[ 4480.921342]  [<ffffffff81174c11>] ? ext4_get_branch+0x101/0x130
+[ 4480.921345]  [<ffffffff8117639c>] ext4_ind_map_blocks+0x9bc/0xc10
+[ 4480.921347]  [<ffffffff810fae11>] ? __getblk+0x21/0x2b0
+[ 4480.921350]  [<ffffffff8114c9a3>] ext4_map_blocks+0x293/0x390
+[ 4480.921353]  [<ffffffff8117a462>] ? do_get_write_access+0x1d2/0x450
+[ 4480.921355]  [<ffffffff810cb0b4>] ? kmem_cache_alloc+0xa4/0xc0
+[ 4480.921358]  [<ffffffff8114d9e9>] _ext4_get_block+0xa9/0x140
+[ 4480.921360]  [<ffffffff8114dab1>] ext4_get_block+0x11/0x20
+[ 4480.921362]  [<ffffffff810fbda5>] __block_write_begin+0x2b5/0x470
+[ 4480.921365]  [<ffffffff8114daa0>] ? noalloc_get_block_write+0x20/0x20
+[ 4480.921368]  [<ffffffff81096679>] ? grab_cache_page_write_begin+0xa9/0x100
+[ 4480.921370]  [<ffffffff8114c1e2>] ext4_write_begin+0x132/0x2f0
+[ 4480.921373]  [<ffffffff81095869>] generic_file_buffered_write+0x119/0x260
+[ 4480.921376]  [<ffffffff81096eef>] __generic_file_aio_write+0x27f/0x430
+[ 4480.921379]  [<ffffffff810cfbba>] ? do_huge_pmd_anonymous_page+0x1ea/0x2d0
+[ 4480.921382]  [<ffffffff81097101>] generic_file_aio_write+0x61/0xc0
+[ 4480.921384]  [<ffffffff81147c18>] ext4_file_write+0x68/0x2a0
+[ 4480.921387]  [<ffffffff8154e723>] ? __schedule+0x2c3/0x800
+[ 4480.921389]  [<ffffffff810d2a41>] do_sync_write+0xe1/0x120
+[ 4480.921392]  [<ffffffff8154eefa>] ? _cond_resched+0x2a/0x40
+[ 4480.921395]  [<ffffffff810d31c9>] vfs_write+0xc9/0x170
+[ 4480.921397]  [<ffffffff810d3910>] sys_write+0x50/0x90
+[ 4480.921400]  [<ffffffff8155155f>] sysenter_dispatch+0x7/0x1a
 
-If I wanted to recover data from that partition, fsck -c (or
-badblocks, but that's trickier) and then dd_rescue would be the way to go.
+Any thoughts?  Have there been any changes to this area of the ext4 code?
 
-> Basically, with modern disks, if the HDD has a hard ECC error, it will
-> return an error --- but if you write to the sector, it will either
-> rewrite onto that location on the platter, or if that part of the
-> platter is truly gone, it will remap to the bad block spare pool.  So
-> telling the disk to never use that block again isn't going to be the
-> right answer.
-
-Actually -- tool to do relocations would be nice. It is not exactly
-easy to do it right by hand.
-
-I know the theory. I had 5 read-error incidents this year.
-
-#1: Seagate refuses to reallocate sectors. Not sure why, I tried
- pretty much everything.
-
-#2: 3.16-rc1 produces incorrect errors every 4GB, leading to "bad
-sectors" that disappear with other kernels
-
-#3: Some more bad sectors appear on the Seagate
-
-#4: Kernel on thinkpad reports errors in daily check. Which is strange
- because there's nothing in SMART.
-
-#5: Some old IDE hdd has bad sectors in unused or unimportant areas. 
-
-In #5 the theory might match the reality (I did not check, I trashed
-the disks).
-
-> The badblocks approach to dealing with hardware problems made sense
-> back when we had IDE disks.  But that's been over a decade ago.  These
-> days, it's horribly obsolete.
-
-Forcing reallocation is hard & tricky. You may want to simply mark it
-bad and lose a tiny bit of disk space... And even if you want to force
-reallocation, you want to do fsck -c, first, and restore affected
-files from backup.
-
-									Pavel
-
+		-ben
 -- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+"Thought is the essence of where you are now."
