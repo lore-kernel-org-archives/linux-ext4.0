@@ -1,9 +1,8 @@
-From: Pavel Machek <pavel@ucw.cz>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: ext4: media error but where?
-Date: Sun, 6 Jul 2014 23:37:11 +0200
-Message-ID: <20140706213710.GA19847@amd.pavel.ucw.cz>
-References: <20140629210428.GD2162@thunk.org>
- <20140630064644.GA23079@amd.pavel.ucw.cz>
+Date: Sun, 6 Jul 2014 21:00:02 -0400
+Message-ID: <20140707010002.GD471@thunk.org>
+References: <20140630064644.GA23079@amd.pavel.ucw.cz>
  <20140630134313.GA3753@thunk.org>
  <20140704102307.GA19252@amd.pavel.ucw.cz>
  <20140704121119.GB10514@thunk.org>
@@ -12,97 +11,43 @@ References: <20140629210428.GD2162@thunk.org>
  <20140706133247.GB18204@amd.pavel.ucw.cz>
  <20140706134325.GA18955@amd.pavel.ucw.cz>
  <20140706182936.GB471@thunk.org>
+ <20140706213710.GA19847@amd.pavel.ucw.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>,
-	kernel list <linux-kernel@vger.kernel.org>,
+Cc: kernel list <linux-kernel@vger.kernel.org>,
 	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:57401 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751196AbaGFVhO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Jul 2014 17:37:14 -0400
+Received: from imap.thunk.org ([74.207.234.97]:47977 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752131AbaGGBAF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 6 Jul 2014 21:00:05 -0400
 Content-Disposition: inline
-In-Reply-To: <20140706182936.GB471@thunk.org>
+In-Reply-To: <20140706213710.GA19847@amd.pavel.ucw.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
-
-> > > Now I'm running fsck.new -cf. I don't think this filesystem has any
-> > > bad blocks. Still, it says "rootfs: Updating bad block inode."
-> > > ... "FILE SYSTEM WAS MODIFIED", "REBOOT LINUX".
-> > 
-> > And here's patch to fix this uglyness. Unfortunately, it makes it read
-> > the inode... but perhaps it is good idea as we are able to print
-> > before/after bad block counts...?
-> > 
-> > Signed-off-by: Pavel Machek <pavel@ucw.cz>
+On Sun, Jul 06, 2014 at 11:37:11PM +0200, Pavel Machek wrote:
 > 
-> Thanks, I'll take a look at these patches.  Honestly, I've been half
-> tempted to remove the e2fsck -c option entirely.  99.9% of the time,
-> with modern disks, which has bad block remapping, it doesn't do any
-> good, and often, it's harmful.
+> Well, when I got report about hw problems, badblocks -c was my first
+> instinct. On the usb hdd, the most errors were due to 3.16-rc1 kernel
+> bug, not real problems.
 
-Well, when I got report about hw problems, badblocks -c was my first
-instinct. On the usb hdd, the most errors were due to 3.16-rc1 kernel
-bug, not real problems.
+The problem is with modern disk drives, this is a *wrong* instinct.
+That's my point.  In general, trying to mess with the bad blocks list
+in the ext2/3/4 file system is just not the right thing to do with
+modern disk drives.  That's because with modern disk drives, the hard
+drives will do bad block remapping.
 
-> In general, e2fsck -c is not something I recommend people use.  If you
-> want to use badblocks by itself to see if there are any blocks that
-> are suffering read problems, that's fine, but if there is, in
-> general
+Basically, with modern disks, if the HDD has a hard ECC error, it will
+return an error --- but if you write to the sector, it will either
+rewrite onto that location on the platter, or if that part of the
+platter is truly gone, it will remap to the bad block spare pool.  So
+telling the disk to never use that block again isn't going to be the
+right answer.
 
-Actually, badblocks is really tricky to use, I'd not trust myself to
-get parameters right.
+The badblocks approach to dealing with hardware problems made sense
+back when we had IDE disks.  But that's been over a decade ago.  These
+days, it's horribly obsolete.
 
-> the safest thing to do is to mount the disk read-only, back it up, and
-> then either (a) reformat and see if you can restore onto it with
-> backups w/o any further errors, or (b) just trash the disk, and get a
-> new one, since in general the contents are way more valuable than the
-> disk itself.  Certainly after trying (a), you get any further errors,
-> (b) is defintely the way to go.
-
-Well, 500GB disk takes a while to back up, plus you need the space. a)
-will take few hours... And sometimes, data are much less valuable then
-the HDD. I do have 2 copies of data I care about, using unison to keep
-it in sync, and I plan to add 3rd, encrypted copy to Seagate Momentus
-5400.6 series that failed (a). It seems that Seagate just got their
-firmware wrong, while in thinkpad, the drive worked very much ok, with
-exception with few sectors that could not be remapped. Now, USB
-envelope seems to be much harsher evnironment for a HDD, and it has
-few more bad sectors now, but that's somehow expected. I was not
-treating the hdd as if it had valuable data.
-
-So... please keep fsck -c :-).
-
-[Actually, badblocks documentation leaves something to be desired.
-Is ^C safe w.r.t. badblocks -n? Is hard poweroff safe?]
-
-Thanks,
-								Pavel
-
-(Actually it looks I forgot to free the badlist. Incremental patch:)
-
-diff --git a/e2fsck/badblocks.c b/e2fsck/badblocks.c
-index 32e08bf..7ae7a61 100644
---- a/e2fsck/badblocks.c
-+++ b/e2fsck/badblocks.c
-@@ -60,8 +60,10 @@ void read_bad_blocks_file(e2fsck_t ctx, const char *bad_blocks_file,
- 	}
- 	old_bb_count = ext2fs_u32_list_count(bb_list);
- 	printf("%s: Currently %d bad blocks.\n", ctx->device_name, old_bb_count);
--	if (replace_bad_blocks)
-+	if (replace_bad_blocks) {
-+	  	ext2fs_badblocks_list_free(bb_list);
- 		bb_list = 0;
-+	}
- 
- 	/*
- 	 * Now read in the bad blocks from the file; if
-
-
-
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+						- Ted
