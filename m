@@ -1,527 +1,211 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 3/3] ext4: Add support IOC_MOV_DATA ioctl
-Date: Tue, 8 Jul 2014 16:02:28 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1407081558280.2180@localhost.localdomain>
-References: <004001cf9aa4$2670e280$7352a780$@samsung.com>
+From: Benjamin LaHaise <bcrl@kvack.org>
+Subject: Re: ext4: first write to large ext3 filesystem takes 96 seconds
+Date: Tue, 8 Jul 2014 10:53:53 -0400
+Message-ID: <20140708145353.GE12478@kvack.org>
+References: <20140707211349.GA12478@kvack.org> <20140708001655.GI8254@thunk.org> <20140708013510.GB12478@kvack.org> <20140708035405.GA27440@thunk.org>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1224561518-1404828153=:2180"
-Cc: Theodore Ts'o <tytso@mit.edu>, Brian Foster <bfoster@redhat.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-	Christoph Hellwig <hch@infradead.org>,
-	Ashish Sangwan <a.sangwan@samsung.com>, linux-fsdevel@vger.kernel.org,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Namjae Jeon <namjae.jeon@samsung.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <004001cf9aa4$2670e280$7352a780$@samsung.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
-
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
-
---8323328-1224561518-1404828153=:2180
-Content-Type: TEXT/PLAIN; charset=iso-8859-2
-Content-Transfer-Encoding: quoted-printable
-
-On Tue, 8 Jul 2014, Namjae Jeon wrote:
-
-> Date: Tue, 08 Jul 2014 21:00:02 +0900
-> From: Namjae Jeon <namjae.jeon@samsung.com>
-> To: Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>
-> Cc: linux-ext4 <linux-ext4@vger.kernel.org>, linux-fsdevel@vger.kernel.=
-org,
->     linux-kernel@vger.kernel.org, Luk=E1=B9 Czerner <lczerner@redhat.co=
-m>,
->     Brian Foster <bfoster@redhat.com>, Christoph Hellwig <hch@infradead=
-.org>,
->     Ashish Sangwan <a.sangwan@samsung.com>, xfs@oss.sgi.com
-> Subject: [PATCH 3/3] ext4: Add support IOC_MOV_DATA ioctl
->=20
-> This patch implements fs ioctl's IOC_MOV_DATA for Ext4.
-
-Hmm isn't this basically what ext4_move_extents() does ? eg.
-EXT4_IOC_MOVE_EXT ?
-
-I guess that the intention here is to do the move, without actually
-moving the data right ? But nevertheless maybe some code can be
-shared with ext4_move_extents() ?
-
--Lukas
-
->=20
-> The semantics of this ioctl are:
-> 1) Like collapse range, offsets and length should be file system block =
-size
->    aligned.
-> 2) In the receiver file, atleast length size hole should be present at
->    receiver_offset
-> 3) It does not change file size of any of donor or receiver file.
-> 4) It leaves a hole at the place from where blocks are moved out in don=
-or file.
-> 5) Both (donor_offset + length) and (receiver_offset + length) should b=
-e within
->    size of donor file and receiver file respectively.
->    Only unwritten extents resides beyond file size and it does not make=
- sense
->    to transfer unwritten extents, leave apart the security issues it ma=
-y raise.
-> 6) If the range to be transfered from donor file contain any holes, the=
-y are
->    replicated as it is in receiver file. It mean holes are preserved an=
-d
->    the length of hole will be added to moved_len signifying that the ho=
-le range
->    is succesfully transfered.
->=20
-> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-> ---
->  fs/ext4/ext4.h    |   2 +
->  fs/ext4/extents.c | 375 ++++++++++++++++++++++++++++++++++++++++++++++=
-++++++++
->  fs/ext4/file.c    |   1 +
->  3 files changed, 378 insertions(+)
->=20
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 6386c5f..26478eb 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -2725,6 +2725,8 @@ extern int ext4_fiemap(struct inode *inode, struc=
-t fiemap_extent_info *fieinfo,
->  extern int ext4_ext_precache(struct inode *inode);
->  extern int ext4_collapse_range(struct inode *inode, loff_t offset, lof=
-f_t len);
->  extern int ext4_insert_range(struct file *file, loff_t offset, loff_t =
-len);
-> +extern int ext4_mov_data(struct inode *, struct inode *, loff_t, loff_=
-t, loff_t,
-> +			 loff_t *);
-> =20
->  /* move_extent.c */
->  extern void ext4_double_down_write_data_sem(struct inode *first,
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 0c2432e..511db03 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -5811,3 +5811,378 @@ out_mutex:
->  	mutex_unlock(&inode->i_mutex);
->  	return ret;
->  }
-> +
-> +/*
-> + * If offset_lblk does not lie on the extent start boundary, split ext=
-ent
-> + */
-> +int ext4_find_and_split_extent_at(struct inode *inode, ext4_lblk_t off=
-set_lblk)
-> +{
-> +	struct ext4_ext_path *path;
-> +	handle_t *handle;
-> +	int credits, err =3D 0, split_flag, ex_len;
-> +	struct ext4_extent *ex;
-> +	int depth =3D ext_depth(inode);
-> +	ext4_lblk_t ex_start;
-> +
-> +	path =3D ext4_ext_find_extent(inode, offset_lblk, NULL, 0);
-> +	if (IS_ERR(path))
-> +		return PTR_ERR(path);
-> +
-> +	ex =3D path[depth].p_ext;
-> +	if (!ex)
-> +		goto free_path;
-> +	ex_start =3D le32_to_cpu(ex->ee_block);
-> +	ex_len =3D ext4_ext_get_actual_len(ex);
-> +
-> +	if (offset_lblk > ex_start && offset_lblk < (ex_start + ex_len)) {
-> +		credits =3D ext4_writepage_trans_blocks(inode);
-> +		handle =3D ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
-> +		if (IS_ERR(handle)) {
-> +			err =3D PTR_ERR(handle);
-> +			goto free_path;
-> +		}
-> +		if (ext4_ext_is_unwritten(ex))
-> +			split_flag =3D EXT4_EXT_MARK_UNWRIT1 |
-> +				     EXT4_EXT_MARK_UNWRIT2;
-> +		else
-> +			split_flag =3D 0;
-> +
-> +		err =3D ext4_split_extent_at(handle, inode, path, offset_lblk,
-> +					   split_flag, EXT4_EX_NOCACHE |
-> +					   EXT4_GET_BLOCKS_PRE_IO);
-> +		ext4_journal_stop(handle);
-> +	}
-> +
-> +free_path:
-> +	ext4_ext_drop_refs(path);
-> +	kfree(path);
-> +	return err;
-> +}
-> +
-> +/*
-> + * Compute the size of hole in terms of filesystem blocks present at o=
-ffset_lblk
-> + * until the next extent is found OR till we reach the last block with=
-in isize.
-> + * Store the computed value in hole_blkcnt.
-> + * offset_lblk should be within isize of inode.
-> + */
-> +int ext4_compute_hole_size(struct inode *inode, ext4_lblk_t offset_lbl=
-k,
-> +			   ext4_lblk_t *hole_blkcnt)
-> +{
-> +	struct ext4_ext_path *path;
-> +	struct ext4_extent *ex;
-> +	ext4_lblk_t ex_start, isize_lblk;
-> +	int ret =3D 0, depth, ex_len;
-> +
-> +	isize_lblk =3D (inode->i_size + EXT4_BLOCK_SIZE(inode->i_sb) - 1) >>
-> +		     EXT4_BLOCK_SIZE_BITS(inode->i_sb);
-> +
-> +	if (offset_lblk > isize_lblk)
-> +		return -EINVAL;
-> +
-> +	*hole_blkcnt =3D 0;
-> +	path =3D ext4_ext_find_extent(inode, offset_lblk, NULL, 0);
-> +	if (IS_ERR(path))
-> +		return PTR_ERR(path);
-> +
-> +	depth =3D ext_depth(inode);
-> +	ex =3D path[depth].p_ext;
-> +	if (!ex) {
-> +		/* No blocks allocated in this file */
-> +		*hole_blkcnt =3D isize_lblk - offset_lblk;
-> +		goto out;
-> +	}
-> +	ex_start =3D le32_to_cpu(ex->ee_block);
-> +	ex_len =3D ext4_ext_get_actual_len(ex);
-> +
-> +	/* if offset_lblk lies within extent? */
-> +	if (offset_lblk >=3D ex_start && offset_lblk < (ex_start + ex_len))
-> +		goto out;
-> +
-> +	if (ex_start < offset_lblk) {
-> +		ret =3D mext_next_extent(inode, path, &ex);
-> +		if (!ret) {
-> +			ex_start =3D le32_to_cpu(ex->ee_block);
-> +		} else {
-> +			if (ret =3D=3D 1) {
-> +				*hole_blkcnt =3D isize_lblk - offset_lblk;
-> +				ret =3D 0;
-> +			}
-> +			goto out;
-> +		}
-> +	}
-> +	*hole_blkcnt =3D (ex_start < isize_lblk) ? (ex_start - offset_lblk) :
-> +						 (isize_lblk - offset_lblk);
-> +out:
-> +	ext4_ext_drop_refs(path);
-> +	kfree(path);
-> +
-> +	return ret;
-> +}
-> +
-> +/*
-> + * Remove a complete extent from in memory and on-disk extent tree
-> + * without freeing any data blocks covered by the extent. Caller must =
-call
-> + * ext4_mark_inode_dirty() to sync the changes to disk.
-> + */
-> +int ext4_ext_rm_extent(handle_t *handle, struct inode *inode,
-> +		       struct ext4_ext_path *path, struct ext4_extent *ex)
-> +{
-> +	struct ext4_extent_header *eh;
-> +	int depth =3D ext_depth(inode);
-> +	int credits, err, correct_index =3D 0;
-> +	int ex_ee_len =3D ext4_ext_get_actual_len(ex);
-> +
-> +	if (!path[depth].p_hdr)
-> +		path[depth].p_hdr =3D ext_block_hdr(path[depth].p_bh);
-> +	eh =3D path[depth].p_hdr;
-> +
-> +	credits =3D 7 + 2*(ex_ee_len/EXT4_BLOCKS_PER_GROUP(inode->i_sb));
-> +	if (ex =3D=3D EXT_FIRST_EXTENT(eh)) {
-> +		correct_index =3D 1;
-> +		credits +=3D (ext_depth(inode)) + 1;
-> +	}
-> +	credits +=3D EXT4_MAXQUOTAS_TRANS_BLOCKS(inode->i_sb);
-> +	err =3D ext4_ext_truncate_extend_restart(handle, inode, credits);
-> +	if (err)
-> +		return err;
-> +
-> +	err =3D ext4_ext_get_access(handle, inode, path + depth);
-> +	if (err)
-> +		return err;
-> +
-> +	ext4_ext_store_pblock(ex, 0);
-> +	memmove(ex, ex+1,
-> +		(EXT_LAST_EXTENT(eh) - ex) * sizeof(struct ext4_extent));
-> +	memset(EXT_LAST_EXTENT(eh), 0, sizeof(struct ext4_extent));
-> +	le16_add_cpu(&eh->eh_entries, -1);
-> +
-> +	err =3D ext4_ext_dirty(handle, inode, path + depth);
-> +	if (err)
-> +		return err;
-> +
-> +	if (correct_index && eh->eh_entries)
-> +		err =3D ext4_ext_correct_indexes(handle, inode, path);
-> +
-> +	if (err =3D=3D 0 && eh->eh_entries =3D=3D 0 && path[depth].p_bh !=3D =
-NULL)
-> +		err =3D ext4_ext_rm_idx(handle, inode, path, depth);
-> +
-> +	return err;
-> +}
-> +
-> +/*
-> + * Move len_lblk amount of blocks from donor inode to receiver inode.
-> + * Blocks are to be moved from doffset_lblk and moved to roffset_lblk.
-> + * Caller of this function must make sure there is atleast len_lblk si=
-ze
-> + * hole at roffset_lblk. Also doffset_lblk and doffset_lblk + len_lblk
-> + * should fall on extent boundary.
-> + */
-> +int ext4_ext_mov_data(struct inode *donor, struct inode *receiver,
-> +		      ext4_lblk_t doffset_lblk, ext4_lblk_t roffset_lblk,
-> +		      ext4_lblk_t len_lblk, loff_t *bytes_moved)
-> +{
-> +	int error =3D 0, depth =3D ext_depth(donor);
-> +	struct ext4_ext_path *path;
-> +	struct ext4_extent *ex;
-> +	loff_t blocks_moved =3D 0;
-> +	handle_t *handle;
-> +	int credits =3D ext4_writepage_trans_blocks(donor) +
-> +		      ext4_writepage_trans_blocks(receiver);
-> +
-> +	while (blocks_moved < len_lblk && !error) {
-> +		struct ext4_ext_path *rpath =3D NULL;
-> +		ext4_lblk_t ex_start;
-> +		int ex_len;
-> +
-> +		path =3D ext4_ext_find_extent(donor, doffset_lblk, NULL, 0);
-> +		if (IS_ERR(path)) {
-> +			error =3D PTR_ERR(path);
-> +			break;
-> +		}
-> +		ex =3D path[depth].p_ext;
-> +		/*
-> +		 * No allocated blocks? This could only happen during
-> +		 * 1st iteration. Otherwise it is en error.
-> +		 */
-> +		if (!ex) {
-> +			if (blocks_moved)
-> +				error =3D -EIO;
-> +			else
-> +				blocks_moved =3D len_lblk;
-> +			goto out;
-> +		}
-> +		ex_start =3D le32_to_cpu(ex->ee_block);
-> +		ex_len =3D ext4_ext_get_actual_len(ex);
-> +
-> +		if (doffset_lblk !=3D ex_start) {
-> +			/* Hole within range, move to the next extent */
-> +			if (ex_start < doffset_lblk)
-> +				error =3D mext_next_extent(donor, path, &ex);
-> +			/* Below if will also handle ex_start > doffset_lblk */
-> +			if (error =3D=3D 0) {
-> +				ex_start =3D le32_to_cpu(ex->ee_block);
-> +				blocks_moved +=3D ex_start - doffset_lblk;
-> +				roffset_lblk +=3D ex_start - doffset_lblk;
-> +				doffset_lblk =3D ex_start;
-> +			}
-> +			if (error =3D=3D 1) {
-> +				/* doffset_lblk till EOF is hole. Success!! */
-> +				blocks_moved =3D len_lblk;
-> +				error =3D 0;
-> +			}
-> +			goto out;
-> +		}
-> +
-> +		/* Add this extent to receiver */
-> +		handle =3D ext4_journal_start(donor, EXT4_HT_TRUNCATE, credits);
-> +		if (IS_ERR(handle)) {
-> +			error =3D PTR_ERR(handle);
-> +			goto out;
-> +		}
-> +
-> +		rpath =3D ext4_ext_find_extent(receiver, roffset_lblk, NULL, 0);
-> +		if (IS_ERR(rpath)) {
-> +			error =3D PTR_ERR(rpath);
-> +			ext4_journal_stop(handle);
-> +			goto out;
-> +		}
-> +		ex->ee_block =3D cpu_to_le32(roffset_lblk);
-> +		error =3D ext4_ext_insert_extent(handle, receiver, rpath, ex, 0);
-> +		if (error)
-> +			goto hout;
-> +
-> +		/* Remove this extent from donor */
-> +		error =3D ext4_ext_rm_extent(handle, donor, path, ex);
-> +		if (error)
-> +			goto hout;
-> +
-> +		/* Extent moved successfully */
-> +		roffset_lblk +=3D ex_len;
-> +		doffset_lblk +=3D ex_len;
-> +		blocks_moved +=3D ex_len;
-> +
-> +		donor->i_blocks -=3D (ex_len << (donor->i_blkbits - 9));
-> +		receiver->i_blocks +=3D (ex_len << (receiver->i_blkbits - 9));
-> +		donor->i_mtime =3D donor->i_ctime =3D ext4_current_time(donor);
-> +		receiver->i_mtime =3D receiver->i_ctime =3D
-> +						ext4_current_time(receiver);
-> +		ext4_mark_inode_dirty(handle, donor);
-> +		ext4_mark_inode_dirty(handle, receiver);
-> +hout:
-> +		ext4_journal_stop(handle);
-> +		ext4_ext_drop_refs(rpath);
-> +		kfree(rpath);
-> +out:
-> +		ext4_ext_drop_refs(path);
-> +		kfree(path);
-> +	}
-> +
-> +	/* This can happen when (doffset_lblk + len_lblk) is in a hole */
-> +	if (blocks_moved > len_lblk)
-> +		blocks_moved =3D len_lblk;
-> +
-> +	*bytes_moved =3D blocks_moved << EXT4_BLOCK_SIZE_BITS(donor->i_sb);
-> +	return error;
-> +}
-> +
-> +int ext4_mov_data(struct inode *donor, struct inode *receiver, loff_t =
-doffset,
-> +		  loff_t roffset, loff_t len, loff_t *moved_len)
-> +{
-> +	struct super_block *sb =3D donor->i_sb;
-> +	loff_t d_pg_off, r_pg_off, pg_len;
-> +	ext4_lblk_t doffset_lblk, roffset_lblk, len_lblk, hole_size;
-> +	int error;
-> +
-> +	if (doffset & (EXT4_BLOCK_SIZE(sb) - 1) ||
-> +	    roffset & (EXT4_BLOCK_SIZE(sb) - 1) ||
-> +	    len & (EXT4_BLOCK_SIZE(sb) - 1))
-> +		return -EINVAL;
-> +
-> +	if (EXT4_SB(sb)->s_cluster_ratio > 1)
-> +		return -EOPNOTSUPP;
-> +
-> +	if (!ext4_test_inode_flag(donor, EXT4_INODE_EXTENTS) ||
-> +	    !ext4_test_inode_flag(receiver, EXT4_INODE_EXTENTS))
-> +		return -EOPNOTSUPP;
-> +
-> +	doffset_lblk =3D doffset >> EXT4_BLOCK_SIZE_BITS(sb);
-> +	roffset_lblk =3D roffset >> EXT4_BLOCK_SIZE_BITS(sb);
-> +	len_lblk =3D len >> EXT4_BLOCK_SIZE_BITS(sb);
-> +
-> +	d_pg_off =3D round_down(doffset, PAGE_SIZE);
-> +	r_pg_off =3D round_down(roffset, PAGE_SIZE);
-> +	pg_len =3D round_up(len, PAGE_SIZE);
-> +
-> +	if (ext4_should_journal_data(donor)) {
-> +		error =3D ext4_force_commit(donor->i_sb);
-> +		if (error)
-> +			return error;
-> +		error =3D ext4_force_commit(receiver->i_sb);
-> +		if (error)
-> +			return error;
-> +	}
-> +
-> +	error =3D filemap_write_and_wait_range(donor->i_mapping,
-> +					     d_pg_off, d_pg_off + pg_len);
-> +	if (error)
-> +		return error;
-> +	error =3D filemap_write_and_wait_range(receiver->i_mapping,
-> +					     r_pg_off, r_pg_off + pg_len);
-> +	if (error)
-> +		return error;
-> +
-> +	lock_two_nondirectories(donor, receiver);
-> +
-> +	/* Check for isize limits for both files */
-> +	if (doffset + len > donor->i_size ||
-> +	    roffset + len > receiver->i_size) {
-> +		error =3D -EINVAL;
-> +		goto out_mutex;
-> +	}
-> +
-> +	truncate_pagecache_range(donor, d_pg_off, d_pg_off + pg_len - 1);
-> +	truncate_pagecache_range(receiver, r_pg_off, r_pg_off + pg_len - 1);
-> +
-> +	ext4_inode_block_unlocked_dio(donor);
-> +	inode_dio_wait(donor);
-> +	ext4_inode_block_unlocked_dio(receiver);
-> +	inode_dio_wait(receiver);
-> +
-> +	ext4_discard_preallocations(donor);
-> +	ext4_discard_preallocations(receiver);
-> +
-> +	error =3D ext4_es_remove_extent(donor, doffset_lblk, len_lblk);
-> +	if (error)
-> +		goto out_sem;
-> +	error =3D ext4_es_remove_extent(receiver, roffset_lblk, len_lblk);
-> +	if (error)
-> +		goto out_sem;
-> +
-> +	error =3D ext4_compute_hole_size(receiver, roffset_lblk, &hole_size);
-> +	if (error)
-> +		goto out_sem;
-> +	if (len_lblk > hole_size) {
-> +		error =3D -EINVAL;
-> +		goto out_sem;
-> +	}
-> +
-> +	error =3D ext4_find_and_split_extent_at(donor, doffset_lblk);
-> +	if (error)
-> +		goto out_sem;
-> +
-> +	error =3D ext4_find_and_split_extent_at(donor, doffset_lblk + len_lbl=
-k);
-> +	if (error)
-> +		goto out_sem;
-> +
-> +	error =3D ext4_ext_mov_data(donor, receiver, doffset_lblk,
-> +				  roffset_lblk, len_lblk, moved_len);
-> +
-> +	ext4_discard_preallocations(donor);
-> +	ext4_discard_preallocations(receiver);
-> +out_sem:
-> +	ext4_inode_resume_unlocked_dio(donor);
-> +	ext4_inode_resume_unlocked_dio(receiver);
-> +
-> +out_mutex:
-> +	unlock_two_nondirectories(donor, receiver);
-> +	return error;
-> +}
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 8695f70..d2feaba 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -614,5 +614,6 @@ const struct inode_operations ext4_file_inode_opera=
-tions =3D {
->  	.get_acl	=3D ext4_get_acl,
->  	.set_acl	=3D ext4_set_acl,
->  	.fiemap		=3D ext4_fiemap,
-> +	.mov_data	=3D ext4_mov_data,
->  };
-> =20
->=20
---8323328-1224561518-1404828153=:2180
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from kanga.kvack.org ([205.233.56.17]:53937 "EHLO kanga.kvack.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751566AbaGHOxy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Jul 2014 10:53:54 -0400
 Content-Disposition: inline
+In-Reply-To: <20140708035405.GA27440@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+On Mon, Jul 07, 2014 at 11:54:05PM -0400, Theodore Ts'o wrote:
+> On Mon, Jul 07, 2014 at 09:35:11PM -0400, Benjamin LaHaise wrote:
+> > 
+> > Sure -- I put a copy at http://www.kvack.org/~bcrl/mb_groups as it's a bit 
+> > too big for the mailing list.  The filesystem in question has a couple of 
+> > 11GB files on it, with the remainder of the space being taken up by files 
+> > 7200016 bytes in size.  
+> 
+> Right, so looking at mb_groups we see a bunch of the problems.  There
+> are a large number block groups which look like this:
+> 
+> #group: free  frags first [ 2^0   2^1   2^2   2^3   2^4   2^5   2^6   2^7   2^8   2^9   2^10  2^11  2^12  2^13  ]
+> #288  : 1540  7     13056 [ 0     0     1     0     0     0     0     0     6     0     0     0     0     0     ]
+> 
+> It would be very interesting to see what allocation pattern resulted
+> in so many block groups with this layout.  Before we read in
+> allocation bitmap, all we know from the block group descriptors is
+> that there are 1540 free blocks.  What we don't know is that they are
+> broken up into 6 256 block free regions, plus a 4 block region.
 
---8323328-1224561518-1404828153=:2180--
+I did have to make a change to the ext4 inode allocator to bias things 
+towards allocating inodes at the beginning of the disk (see below).  
+Without that change the allocation pattern of writes to the filesystem 
+resulted in a significant performance regression relative to ext3, 
+owing mostly to the fact that fallocate() on ext4 is unimplemented for 
+indirect style metadata.  (Note that we mount the filesystem with this 
+noorlov mount option.)
+
+With that change, the workload essentially consists of writing 7200016 
+files in one write() operation rotating between 100 subdirectories off 
+the root of the filesystem.
+
+> If we try to allocate a 1024 block region, we'll end up searching a
+> large number of these block groups before find one which is suitable.
+> 
+> Or there is a large collection of block groups that look like this:
+> 
+> #834  : 4900  39    514   [ 0     20    5     5     16    6     4     8     6     1     1     0     0     0     ]
+> 
+> Similarly, we could try to look for a contiguous 2048 range, but even
+> though there is 4900 blocks available, we can't tell the difference
+> between something a free block layout which looks like like the above,
+> versus one that looks like this:
+> 
+> #834  : 4900  39    514   [ 0      6    0     1     3    5     1     4     0     0     0     2     0     0     ]
+> 
+> We could try going straight for the largely empty block groups, but
+> that's more likely to fragment the file system more quickly, and then
+> once those largely empty block groups are partially used, then we'll
+> end up taking a long time while we scan all of the block groups.
+
+Fragmentation is not a significant concern for the workload in question.  
+Write performance is much more important to us than read performance, and 
+read performance tends to degrade to random reads owing to the fact that 
+the system can have many queues (~16k) issuing reads.  Hence, getting the 
+block allocator to make writes get allocated as close to sequential on 
+disk as possible is an important corner of performance.  Ext4 with indirect 
+blocks has a tendency to leave gaps between files, which degrades 
+performance for this workload, since files tend not to be packed as closely 
+together as they were with ext3.  Ext4 with extents + fallocate() packs 
+files on disk without any gaps, but turning on extents is not an option 
+(unfortunately, as a 20+ minute fsck time / outage as part of an upgrade is 
+not viable).
+
+		-ben
+
+>        	      	     	  	   	- Ted
+> 
+
+-- 
+"Thought is the essence of where you are now."
+
+diff -pu ./fs/ext4/ext4.h /opt/cvsdirs/blahaise/kernel34-d35/fs/ext4/ext4.h
+--- ./fs/ext4/ext4.h	2014-03-12 16:32:21.077386952 -0400
++++ /opt/cvsdirs/blahaise/kernel34-d35/fs/ext4/ext4.h	2014-07-03 14:05:14.000000000 -0400
+@@ -962,6 +962,7 @@ struct ext4_inode_info {
+ 
+ #define EXT4_MOUNT2_EXPLICIT_DELALLOC	0x00000001 /* User explicitly
+ 						      specified delalloc */
++#define EXT4_MOUNT2_NO_ORLOV		0x00000002 /* Disable orlov */
+ 
+ #define clear_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt &= \
+ 						~EXT4_MOUNT_##opt
+diff -pu ./fs/ext4/ialloc.c /opt/cvsdirs/blahaise/kernel34-d35/fs/ext4/ialloc.c
+--- ./fs/ext4/ialloc.c	2014-03-12 16:32:21.078386958 -0400
++++ /opt/cvsdirs/blahaise/kernel34-d35/fs/ext4/ialloc.c	2014-05-26 14:22:23.000000000 -0400
+@@ -517,6 +517,9 @@ static int find_group_other(struct super
+ 	struct ext4_group_desc *desc;
+ 	int flex_size = ext4_flex_bg_size(EXT4_SB(sb));
+ 
++	if (test_opt2(sb, NO_ORLOV))
++		goto do_linear;
++
+ 	/*
+ 	 * Try to place the inode is the same flex group as its
+ 	 * parent.  If we can't find space, use the Orlov algorithm to
+@@ -589,6 +592,7 @@ static int find_group_other(struct super
+ 			return 0;
+ 	}
+ 
++do_linear:
+ 	/*
+ 	 * That failed: try linear search for a free inode, even if that group
+ 	 * has no free blocks.
+@@ -655,7 +659,7 @@ struct inode *ext4_new_inode(handle_t *h
+ 		goto got_group;
+ 	}
+ 
+-	if (S_ISDIR(mode))
++	if (!test_opt2(sb, NO_ORLOV) && S_ISDIR(mode))
+ 		ret2 = find_group_orlov(sb, dir, &group, mode, qstr);
+ 	else
+ 		ret2 = find_group_other(sb, dir, &group, mode);
+diff -pu ./fs/ext4/super.c /opt/cvsdirs/blahaise/kernel34-d35/fs/ext4/super.c
+--- ./fs/ext4/super.c	2014-03-12 16:32:21.080386971 -0400
++++ /opt/cvsdirs/blahaise/kernel34-d35/fs/ext4/super.c	2014-05-26 14:22:23.000000000 -0400
+@@ -1191,6 +1201,7 @@ enum {
+ 	Opt_inode_readahead_blks, Opt_journal_ioprio,
+ 	Opt_dioread_nolock, Opt_dioread_lock,
+ 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
++	Opt_noorlov
+ };
+ 
+ static const match_table_t tokens = {
+@@ -1210,6 +1221,7 @@ static const match_table_t tokens = {
+ 	{Opt_debug, "debug"},
+ 	{Opt_removed, "oldalloc"},
+ 	{Opt_removed, "orlov"},
++	{Opt_noorlov, "noorlov"},
+ 	{Opt_user_xattr, "user_xattr"},
+ 	{Opt_nouser_xattr, "nouser_xattr"},
+ 	{Opt_acl, "acl"},
+@@ -1376,6 +1388,7 @@ static const struct mount_opts {
+ 	int	token;
+ 	int	mount_opt;
+ 	int	flags;
++	int	mount_opt2;
+ } ext4_mount_opts[] = {
+ 	{Opt_minix_df, EXT4_MOUNT_MINIX_DF, MOPT_SET},
+ 	{Opt_bsd_df, EXT4_MOUNT_MINIX_DF, MOPT_CLEAR},
+@@ -1444,6 +1457,7 @@ static const struct mount_opts {
+ 	{Opt_jqfmt_vfsold, QFMT_VFS_OLD, MOPT_QFMT},
+ 	{Opt_jqfmt_vfsv0, QFMT_VFS_V0, MOPT_QFMT},
+ 	{Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
++	{Opt_noorlov, 0, MOPT_SET, EXT4_MOUNT2_NO_ORLOV},
+ 	{Opt_err, 0, 0}
+ };
+ 
+@@ -1562,6 +1576,7 @@ static int handle_mount_opt(struct super
+ 			} else {
+ 				clear_opt(sb, DATA_FLAGS);
+ 				sbi->s_mount_opt |= m->mount_opt;
++				sbi->s_mount_opt2 |= m->mount_opt2;
+ 			}
+ #ifdef CONFIG_QUOTA
+ 		} else if (m->flags & MOPT_QFMT) {
+@@ -1585,10 +1600,13 @@ static int handle_mount_opt(struct super
+ 				WARN_ON(1);
+ 				return -1;
+ 			}
+-			if (arg != 0)
++			if (arg != 0) {
+ 				sbi->s_mount_opt |= m->mount_opt;
+-			else
++				sbi->s_mount_opt2 |= m->mount_opt2;
++			} else {
+ 				sbi->s_mount_opt &= ~m->mount_opt;
++				sbi->s_mount_opt2 &= ~m->mount_opt2;
++			}
+ 		}
+ 		return 1;
+ 	}
+@@ -1736,11 +1754,15 @@ static int _ext4_show_options(struct seq
+ 		if (((m->flags & (MOPT_SET|MOPT_CLEAR)) == 0) ||
+ 		    (m->flags & MOPT_CLEAR_ERR))
+ 			continue;
+-		if (!(m->mount_opt & (sbi->s_mount_opt ^ def_mount_opt)))
++		if (!(m->mount_opt & (sbi->s_mount_opt ^ def_mount_opt)) &&
++		    !(m->mount_opt2 & sbi->s_mount_opt2))
+ 			continue; /* skip if same as the default */
+-		if ((want_set &&
+-		     (sbi->s_mount_opt & m->mount_opt) != m->mount_opt) ||
+-		    (!want_set && (sbi->s_mount_opt & m->mount_opt)))
++		if (want_set &&
++		    (((sbi->s_mount_opt & m->mount_opt) != m->mount_opt) ||
++		     ((sbi->s_mount_opt2 & m->mount_opt2) != m->mount_opt2)))
++			continue; /* select Opt_noFoo vs Opt_Foo */
++		if (!want_set && ((sbi->s_mount_opt & m->mount_opt) ||
++		                  (sbi->s_mount_opt2 & m->mount_opt2)))
+ 			continue; /* select Opt_noFoo vs Opt_Foo */
+ 		SEQ_OPTS_PRINT("%s", token2str(m->token));
+ 	}
