@@ -1,81 +1,61 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: fix unjournalled bg descriptor while initializing
- inode bitmap
-Date: Tue, 8 Jul 2014 08:46:14 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1407080845130.2180@localhost.localdomain>
-References: <1404592131-29738-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH] ext4: clarify ext4_error message in
+ ext4_mb_generate_buddy_error()
+Date: Tue, 8 Jul 2014 09:03:48 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1407080855520.2180@localhost.localdomain>
+References: <1404602162-16730-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	stable@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12561 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751931AbaGHGqT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Jul 2014 02:46:19 -0400
-In-Reply-To: <1404592131-29738-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+In-Reply-To: <1404602162-16730-1-git-send-email-tytso@mit.edu>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 On Sat, 5 Jul 2014, Theodore Ts'o wrote:
 
-> Date: Sat,  5 Jul 2014 16:28:51 -0400
+> Date: Sat,  5 Jul 2014 19:16:02 -0400
 > From: Theodore Ts'o <tytso@mit.edu>
 > To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 > Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-> Subject: [PATCH] ext4: fix unjournalled bg descriptor while initializing inode
->      bitmap
+> Subject: [PATCH] ext4: clarify ext4_error message in
+>     ext4_mb_generate_buddy_error()
 > 
-> The first time that we allocate from an uninitialized inode allocation
-> bitmap, if the block allocation bitmap is also uninitalized, we need
-> to get write access to the block group descriptor before we start
-> modifying the block group descriptor flags and updating the free block
-> count, etc.  Otherwise, there is the potential of a bad journal
-> checksum (if journal checksums are enabled), and of the file system
-> becoming inconsistent if we crash at exactly the wrong time.
+> We are spending a lot of time explaining to users what this error
+> means.  Let's try to improve the message to avoid this problem.
 
-Looks good.
+It is a bit better, even though strictly speaking it's not
+right, because it is not block bitmap alone, but rather aggregation
+of block bitmap and preallocations. But for the user this is really
+an implementation detail they do not need to worry about I guess.
 
 Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+
+Thanks!
+-Lukas
 
 > 
 > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 > Cc: stable@vger.kernel.org
 > ---
->  fs/ext4/ialloc.c | 14 +++++++-------
->  1 file changed, 7 insertions(+), 7 deletions(-)
+>  fs/ext4/mballoc.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
 > 
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index a87455d..0840bf3 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -874,6 +874,13 @@ got:
->  		goto out;
->  	}
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 7f72f50..2dcb936 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -752,8 +752,8 @@ void ext4_mb_generate_buddy(struct super_block *sb,
 >  
-> +	BUFFER_TRACE(group_desc_bh, "get_write_access");
-> +	err = ext4_journal_get_write_access(handle, group_desc_bh);
-> +	if (err) {
-> +		ext4_std_error(sb, err);
-> +		goto out;
-> +	}
-> +
->  	/* We may have to initialize the block bitmap if it isn't already */
->  	if (ext4_has_group_desc_csum(sb) &&
->  	    gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
-> @@ -910,13 +917,6 @@ got:
->  		}
->  	}
->  
-> -	BUFFER_TRACE(group_desc_bh, "get_write_access");
-> -	err = ext4_journal_get_write_access(handle, group_desc_bh);
-> -	if (err) {
-> -		ext4_std_error(sb, err);
-> -		goto out;
-> -	}
-> -
->  	/* Update the relevant bg descriptor fields */
->  	if (ext4_has_group_desc_csum(sb)) {
->  		int free;
+>  	if (free != grp->bb_free) {
+>  		ext4_grp_locked_error(sb, group, 0, 0,
+> -				      "%u clusters in bitmap, %u in gd; "
+> -				      "block bitmap corrupt.",
+> +				      "block bitmap and bg descriptor "
+> +				      "inconsistent: %u vs %u free clusters",
+>  				      free, grp->bb_free);
+>  		/*
+>  		 * If we intend to continue, we consider group descriptor
 > 
