@@ -1,81 +1,53 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] e2fsck: reopen the file system with saved flags after
- a journal replay
-Date: Tue, 8 Jul 2014 14:49:55 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1407081448530.2180@localhost.localdomain>
-References: <1404616198-315-1-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.1407080947580.2180@localhost.localdomain> <20140708115827.GB27440@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: clarify ext4_error message in
+ ext4_mb_generate_buddy_error()
+Date: Tue, 8 Jul 2014 08:54:54 -0400
+Message-ID: <20140708125454.GA22156@thunk.org>
+References: <1404602162-16730-1-git-send-email-tytso@mit.edu>
+ <alpine.LFD.2.00.1407080855520.2180@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1348034113-1404823798=:2180"
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	=?KOI8-R?B?4c7E0sXKIPfB08nMydvJzg==?= <a.vasilishin@kpi.ua>,
-	Jon Severinsson <jon@severinsson.net>, 744953@bugs.debian.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+	stable@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10331 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:51172 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753505AbaGHMu3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Jul 2014 08:50:29 -0400
-In-Reply-To: <20140708115827.GB27440@thunk.org>
+	id S1754441AbaGHMy5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Jul 2014 08:54:57 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1407080855520.2180@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On Tue, Jul 08, 2014 at 09:03:48AM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+>=20
+> It is a bit better, even though strictly speaking it's not
+> right, because it is not block bitmap alone, but rather aggregation
+> of block bitmap and preallocations. But for the user this is really
+> an implementation detail they do not need to worry about I guess.
 
---8323328-1348034113-1404823798=:2180
-Content-Type: TEXT/PLAIN; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
+Actually, no, because the preallocations aren't reflected in the
+in-block bitmap.
 
-On Tue, 8 Jul 2014, Theodore Ts'o wrote:
+And, oh sh*t, I wonder if that's the cause of the
+ext4_mb_generate_buddy().  We don't need the buddy bitmaps to allocate
+out of the preallocations, and it's not needed by
+ext4_mb_mark_diskspace_used().  If the buddy bitmaps have been pushed
+out of the page cache between when the blocks were originally
+preallocated and when we try to use some preallocated blocks, and then
+we have a race between ext4_mb_mark_diskspace_used() and
+ext4_mb_buddy_generate(), that could explain the discrepancy between
+the block group descriptors and the loaded buddy bitmap.
 
-> Date: Tue, 8 Jul 2014 07:58:27 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Lukáš Czerner <lczerner@redhat.com>
-> Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
->     Андрей Василишин <a.vasilishin@kpi.ua>,
->     Jon Severinsson <jon@severinsson.net>, 744953@bugs.debian.org
-> Subject: Re: [PATCH] e2fsck: reopen the file system with saved flags after a
->     journal replay
-> 
-> On Tue, Jul 08, 2014 at 11:03:53AM +0200, Lukáš Czerner wrote:
-> > > +	ctx->openfs_flags = flags;
-> > >  	retval = try_open_fs(ctx, flags, io_ptr, &fs);
-> > 
-> > Maybe we can get rid of 'flags' argument since it's not needed
-> > anymore ?
-> 
-> Yeah, I thought of that, but I was trying to keep the patch small,
-> since I thought this was one that distros might want to cherry pick.
+If this is what's going on, it doesn't explain why we hacen't been
+seeing this until post 3.15, though....
 
-Makes sense.
-
-> 
-> > Otherwise the patch looks good, however for some reason I can not
-> > reproduce the problem in the big file system (without bigalloc) even
-> > though looking at bitmap.c it looks like we really should get that
-> > error.
-> 
-> Ah, yes, in the big file system case we don't hit it because we don't
-> actually load the bitmaps before we close and reopen the file system
-> again.  But in the bigalloc case, we check and fail at openfs time,
-> which aborts the fsck run.
-> 
-> So we could work around this by moving the bigalloc check to when we
-> open the file system, but you want get the other openfs flags right,
-> especially the EXT2_FLAG_SKIP_MMP flags.
-
-Yep, I agree with the fix, I was just wondering about the big fs
-case. Anyway you can add:
-
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-
-> 
-> Cheers,
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
---8323328-1348034113-1404823798=:2180--
+				- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
