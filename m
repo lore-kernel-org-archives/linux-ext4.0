@@ -1,58 +1,96 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsck: reopen the file system with saved flags after a
- journal replay
-Date: Tue, 8 Jul 2014 07:58:27 -0400
-Message-ID: <20140708115827.GB27440@thunk.org>
-References: <1404616198-315-1-git-send-email-tytso@mit.edu>
- <alpine.LFD.2.00.1407080947580.2180@localhost.localdomain>
+From: Namjae Jeon <namjae.jeon@samsung.com>
+Subject: [PATCH 0/3] fs: introduce IOC_MOV_DATA ioctl
+Date: Tue, 08 Jul 2014 20:59:32 +0900
+Message-ID: <003d01cf9aa4$14386cf0$3ca946d0$@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	=?utf-8?B?0JDQvdC00YDQtdC5INCS0LDRgdC40LvQuNGI0LjQvQ==?=
-	<a.vasilishin@kpi.ua>, Jon Severinsson <jon@severinsson.net>,
-	744953@bugs.debian.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=iso-8859-2
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	=?iso-8859-2?Q?Luk=E1=B9_Czerner?= <lczerner@redhat.com>,
+	Brian Foster <bfoster@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Ashish Sangwan <a.sangwan@samsung.com>, xfs@oss.sgi.com
+To: Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51030 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750774AbaGHL64 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Jul 2014 07:58:56 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1407080947580.2180@localhost.localdomain>
+Received: from mailout2.samsung.com ([203.254.224.25]:18927 "EHLO
+	mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750774AbaGHL7e (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Jul 2014 07:59:34 -0400
+Content-language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 08, 2014 at 11:03:53AM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> > +	ctx->openfs_flags =3D flags;
-> >  	retval =3D try_open_fs(ctx, flags, io_ptr, &fs);
->=20
-> Maybe we can get rid of 'flags' argument since it's not needed
-> anymore ?
+For speeding non linear media editing operations, we have already implemeted
+FALLOC_FL_COLLAPSE_RANGE (merged in kernel since 3.15) and 
+FALLOC_FL_INSERT_RANGE (currently awaiting review).
+Both of these fallocate flags are used to remove/insert data within same file.
+In continuation of our effort of speeding non linear media editing
+(although the use case is not limited to just media editing) we introduce here
+an ioctl FS_IOC_MOV_DATA which moves arbitrary (but fs block size aligned
+as of now) bytes of data from one file into other file .
 
-Yeah, I thought of that, but I was trying to keep the patch small,
-since I thought this was one that distros might want to cherry pick.
+The movement takes place by transfering complete extents from donor file to
+receiver file and leaves a hole in the donor file at the point from where
+the blocks are moved. To eliminate the hole from donor, user can call
+COLLAPSE_RANGE after the ioctl is finished if contiguous file space is required.
 
-> Otherwise the patch looks good, however for some reason I can not
-> reproduce the problem in the big file system (without bigalloc) even
-> though looking at bitmap.c it looks like we really should get that
-> error.
+The main data structure for this ioctl is:
+struct mov_data {
+       int     donor_fd;               /* fd of donor file */
+       int     receiver_fd;            /* fd of receiver file */
+       loff_t  donor_offset;           /* offset into donor file */
+       loff_t  receiver_offset;        /* offset into receiver file */
+       loff_t  length;                 /* data length to be moved */
+       loff_t  moved_len;              /* data length actually moved after completion */
+       int     flags;                  /* Currently unused */
+};
 
-Ah, yes, in the big file system case we don't hit it because we don't
-actually load the bitmaps before we close and reopen the file system
-again.  But in the bigalloc case, we check and fail at openfs time,
-which aborts the fsck run.
+FS_IOC_MOV_DATA will move length bytes of data from donor_fd's donor_offset
+to receiver_fd's receiver_offset. The prerequisite is that there must be 
+atleast length size hole present @receiver_offset.
 
-So we could work around this by moving the bigalloc check to when we
-open the file system, but you want get the other openfs flags right,
-especially the EXT2_FLAG_SKIP_MMP flags.
+For inserting hole within file size at receiver_offset, FALLOC_FL_INSERT_RANGE
+can be used. We will shortly post new version of FALLOC_FL_INSERT_RANGE which
+enables inserting hole instead of current behavior of allocating unwritten
+extents. If the requirement is to create hole at the end of file, truncate(2)
+will suffice.
 
-Cheers,
+The semantics of this ioctl are:
+1) Like collapse range, offsets and length should be file system block size
+   aligned.
+2) In the receiver file, atleast length size hole should be present at
+   receiver_offset
+3) It does not change file size of any of donor or receiver file.
+4) It leaves a hole at the place from where blocks are moved out in donor file.
+5) Both (donor_offset + length) and (receiver_offset + length) should be within
+   size of donor file and receiver file respectively.
+   Only unwritten extents resides beyond file size and it does not make sense
+   to transfer unwritten extents, leave apart the security issues it may raise.
+6) If the range to be transfered from donor file contain any holes, they are
+   replicated as it is in receiver file. It mean holes are preserved and
+   the length of hole will be added to moved_len signifying that the hole range
+   is succesfully transfered.
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Currently, flags field is unused but could be used to expand new functionalities
+in future.
+Some potential enhancements could be:
+1) Instead of moving data, one could use it for zero copying between 2 regular
+   files.
+2) Can expand it for a generic VFS interface for defragmenting files.
+   Copying data from donor to receiver and than swapping their extents.
+   Currently xfs has swap_extent ioctl and ext4 has move_extent ioctl.
+   These two calls could additionaly go through the common interface.
+3) Or it can be expanded just for swapping extents without copying.
+
+Note: These patchse are created on source included INSERT RANGE patches.
+Please Firstly Apply INSERT RANGE patches before applying IOC_MOV_DATA patches.
+
+Namjae Jeon (3):
+ fs: Add support IOC_MOV_DATA ioctl
+ xfs: Add support IOC_MOV_DATA ioctl
+ ext4: Add support IOC_MOV_DATA ioctl
+ TODO: Add testcases in xfstests
+-- 
+1.7.11-rc0
+
