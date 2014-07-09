@@ -1,93 +1,284 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 1/3] journal: use consts instead of 1024 and add helper for journal with 1k blocksize
-Date: Tue, 8 Jul 2014 17:30:10 -0600
-Message-ID: <D7E9803B-18EC-4E23-BD3A-4A3B7802C735@dilger.ca>
-References: <1404852082-1550-1-git-send-email-a3at.mail@gmail.com> <1404852082-1550-2-git-send-email-a3at.mail@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_E68E22E4-8611-4A6B-854D-C8594563A4F3"; protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Azat Khuzhin <a3at.mail@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] mke2fs: add support to align hugefiles relative to beginning of the disk
+Date: Tue,  8 Jul 2014 20:44:51 -0400
+Message-ID: <1404866691-23148-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f53.google.com ([209.85.220.53]:64594 "EHLO
-	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752158AbaGHXaP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Jul 2014 19:30:15 -0400
-Received: by mail-pa0-f53.google.com with SMTP id ey11so8011849pad.26
-        for <linux-ext4@vger.kernel.org>; Tue, 08 Jul 2014 16:30:14 -0700 (PDT)
-In-Reply-To: <1404852082-1550-2-git-send-email-a3at.mail@gmail.com>
+Received: from imap.thunk.org ([74.207.234.97]:52592 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751940AbaGIApA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Jul 2014 20:45:00 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Add the mke2fs.conf configuration option which causes the hugefiles to
+be aligned to the beginning of the disk.  This is important if the the
+reason for aligning the hugefiles is to support hard-drive specific
+features such as Shingled Magnetic Recording (SMR).
 
---Apple-Mail=_E68E22E4-8611-4A6B-854D-C8594563A4F3
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ misc/mk_hugefiles.c   | 154 ++++++++++++++++++++++++++++++++++++++++++++++++--
+ misc/mke2fs.c         |   2 +-
+ misc/mke2fs.conf.5.in |   7 +++
+ misc/mke2fs.h         |   2 +-
+ 4 files changed, 157 insertions(+), 8 deletions(-)
 
-On Jul 8, 2014, at 2:41 PM, Azat Khuzhin <a3at.mail@gmail.com> wrote:
-> Use EXT2_MIN_BLOCK_SIZE/JFS_MIN_JOURNAL_BLOCKS instead of hardcoded =
-1024
-> when it is okay, and also add a helper ext2fs_journal_sb_start() that
-> will return start of journal sb with special case for fs with 1k block
-> size.
+diff --git a/misc/mk_hugefiles.c b/misc/mk_hugefiles.c
+index b7a9840..ea42b6c 100644
+--- a/misc/mk_hugefiles.c
++++ b/misc/mk_hugefiles.c
+@@ -3,9 +3,11 @@
+  */
+ 
+ #define _XOPEN_SOURCE 600 /* for inclusion of PATH_MAX in Solaris */
++#define _BSD_SOURCE	  /* for makedev() and major() */
+ 
+ #include "config.h"
+ #include <stdio.h>
++#include <stdarg.h>
+ #include <string.h>
+ #include <strings.h>
+ #include <fcntl.h>
+@@ -60,6 +62,141 @@ static char *fn_buf;
+ static char *fn_numbuf;
+ int zero_hugefile = 1;
+ 
++#define SYSFS_PATH_LEN 256
++typedef char sysfs_path_t[SYSFS_PATH_LEN];
++
++#ifndef HAVE_SNPRINTF
++/*
++ * We are very careful to avoid needing to worry about buffer
++ * overflows, so we don't really need to use snprintf() except as an
++ * additional safety check.  So if snprintf() is not present, it's
++ * safe to fall back to vsprintf().  This provides portability since
++ * vsprintf() is guaranteed by C89, while snprintf() is only
++ * guaranteed by C99 --- which for example, Microsoft Visual Studio
++ * has *still* not bothered to implement.  :-/  (Not that I expect
++ * mke2fs to be ported to MS Visual Studio any time soon, but
++ * libext2fs *does* get built on Microsoft platforms, and we might
++ * want to move this into libext2fs some day.)
++ */
++static int my_snprintf(char *str, size_t size, const char *format, ...)
++{
++	va_list	ap;
++	int ret;
++
++	va_start(ap, format);
++	ret = vsprintf(str, format, ap);
++	va_end(ap);
++	return ret;
++}
++
++#define snprintf my_snprintf
++#endif
++
++/*
++ * Fall back to Linux's definitions of makedev and major are needed.
++ * The search_sysfs_block() function is highly unlikely to work on
++ * non-Linux systems anyway.
++ */
++#ifndef makedev
++#define makedev(maj, min) (((maj) << 8) + (min))
++#endif
++
++static char *search_sysfs_block(dev_t devno, sysfs_path_t ret_path)
++{
++	struct dirent	*de, *p_de;
++	DIR		*dir = NULL, *p_dir = NULL;
++	FILE		*f;
++	sysfs_path_t	path, p_path;
++	unsigned int	major, minor;
++	char		*ret = ret_path;
++
++	ret_path[0] = 0;
++	if ((dir = opendir("/sys/block")) == NULL)
++		return NULL;
++	while ((de = readdir(dir)) != NULL) {
++		if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..") ||
++		    strlen(de->d_name) > sizeof(path)-32)
++			continue;
++		snprintf(path, SYSFS_PATH_LEN,
++			 "/sys/block/%s/dev", de->d_name);
++		f = fopen(path, "r");
++		if (f &&
++		    (fscanf(f, "%u:%u", &major, &minor) == 2)) {
++			fclose(f); f = NULL;
++			if (makedev(major, minor) == devno) {
++				snprintf(ret_path, SYSFS_PATH_LEN,
++					 "/sys/block/%s", de->d_name);
++				goto success;
++			}
++#ifdef major
++			if (major(devno) != major)
++				continue;
++#endif
++		}
++		if (f)
++			fclose(f);
++
++		snprintf(path, SYSFS_PATH_LEN, "/sys/block/%s", de->d_name);
++
++		if (p_dir)
++			closedir(p_dir);
++		if ((p_dir = opendir(path)) == NULL)
++			continue;
++		while ((p_de = readdir(p_dir)) != NULL) {
++			if (!strcmp(p_de->d_name, ".") ||
++			    !strcmp(p_de->d_name, "..") ||
++			    (strlen(p_de->d_name) >
++			     SYSFS_PATH_LEN - strlen(path) - 32))
++				continue;
++			snprintf(p_path, SYSFS_PATH_LEN, "%s/%s/dev",
++				 path, p_de->d_name);
++
++			f = fopen(p_path, "r");
++			if (f &&
++			    (fscanf(f, "%u:%u", &major, &minor) == 2) &&
++			    (((major << 8) + minor) == devno)) {
++				fclose(f);
++				snprintf(ret_path, SYSFS_PATH_LEN, "%s/%s",
++					 path, p_de->d_name);
++				goto success;
++			}
++			if (f)
++				fclose(f);
++		}
++	}
++	ret = NULL;
++success:
++	if (dir)
++		closedir(dir);
++	if (p_dir)
++		closedir(p_dir);
++	return ret;
++}
++
++static blk64_t get_partition_start(const char *device_name)
++{
++	unsigned long long start;
++	sysfs_path_t	path;
++	struct stat	st;
++	FILE		*f;
++	char		*cp;
++	int		n;
++
++	if ((stat(device_name, &st) < 0) || !S_ISBLK(st.st_mode))
++		return 0;
++
++	cp = search_sysfs_block(st.st_rdev, path);
++	if (!cp)
++		return 0;
++	strncat(path, "/start", SYSFS_PATH_LEN);
++	f = fopen(path, "r");
++	if (!f)
++		return 0;
++	n = fscanf(f, "%llu", &start);
++	fclose(f);
++	return (n == 1) ? start : 0;
++}
++
+ static errcode_t create_directory(ext2_filsys fs, char *dir,
+ 				  ext2_ino_t *ret_ino)
+ 
+@@ -310,24 +447,26 @@ static blk64_t get_start_block(ext2_filsys fs, blk64_t slack)
+ 	return blk;
+ }
+ 
+-static blk64_t round_up_align(blk64_t b, unsigned long align)
++static blk64_t round_up_align(blk64_t b, unsigned long align,
++			      blk64_t part_offset)
+ {
+ 	unsigned long m;
+ 
+ 	if (align == 0)
+ 		return b;
+-	m = b % align;
++	part_offset = part_offset % align;
++	m = (b + part_offset) % align;
+ 	if (m)
+ 		b += align - m;
+ 	return b;
+ }
+ 
+-errcode_t mk_hugefiles(ext2_filsys fs)
++errcode_t mk_hugefiles(ext2_filsys fs, const char *device_name)
+ {
+ 	unsigned long	i;
+ 	ext2_ino_t	dir;
+ 	errcode_t	retval;
+-	blk64_t		fs_blocks;
++	blk64_t		fs_blocks, part_offset;
+ 	unsigned long	align;
+ 	int		d, dsize;
+ 	char		*t;
+@@ -348,7 +487,10 @@ errcode_t mk_hugefiles(ext2_filsys fs)
+ 	t = get_string_from_profile(fs_types, "hugefiles_align", "0");
+ 	align = parse_num_blocks2(t, fs->super->s_log_block_size);
+ 	free(t);
+-	num_blocks = round_up_align(num_blocks, align);
++	if (get_bool_from_profile(fs_types, "hugefiles_align_disk", 0))
++		part_offset = get_partition_start(device_name) /
++			(fs->blocksize / 512);
++	num_blocks = round_up_align(num_blocks, align, 0);
+ 	zero_hugefile = get_bool_from_profile(fs_types, "zero_hugefiles",
+ 					      zero_hugefile);
+ 
+@@ -400,7 +542,7 @@ errcode_t mk_hugefiles(ext2_filsys fs)
+ 	num_slack += calc_overhead(fs, num_blocks) * num_files;
+ 	num_slack += (num_files / 16) + 1; /* space for dir entries */
+ 	goal = get_start_block(fs, num_slack);
+-	goal = round_up_align(goal, align);
++	goal = round_up_align(goal, align, part_offset);
+ 
+ 	if ((num_blocks ? num_blocks : fs_blocks) >
+ 	    (0x80000000UL / fs->blocksize))
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index ecd47e6..da77e3a 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -2913,7 +2913,7 @@ no_journal:
+ 				       EXT4_FEATURE_RO_COMPAT_QUOTA))
+ 		create_quota_inodes(fs);
+ 
+-	retval = mk_hugefiles(fs);
++	retval = mk_hugefiles(fs, device_name);
+ 	if (retval)
+ 		com_err(program_name, retval, "while creating huge files");
+ 
+diff --git a/misc/mke2fs.conf.5.in b/misc/mke2fs.conf.5.in
+index 8e25892..19458ac 100644
+--- a/misc/mke2fs.conf.5.in
++++ b/misc/mke2fs.conf.5.in
+@@ -480,6 +480,13 @@ files.  It also forces the size of huge files to be a multiple of the
+ requested alignment.  If this relation is not specified, no alignment
+ requirement will be imposed on the huge files.
+ .TP
++.I hugefiles_align_disk
++Thie relations specifies whether the alignment should be relative to the
++beginning of the hard drive (assuming that the starting offset of the
++partition is available to mke2fs).  The default value is false, which
++if will cause hugefile alignment to be relative to the beginning of the
++file system.
++.TP
+ .I hugefiles_name
+ This relation specifies the base file name for the huge files.
+ .TP
+diff --git a/misc/mke2fs.h b/misc/mke2fs.h
+index 9fa6bfe..ce72cb3 100644
+--- a/misc/mke2fs.h
++++ b/misc/mke2fs.h
+@@ -24,7 +24,7 @@ extern int get_bool_from_profile(char **types, const char *opt, int def_val);
+ extern int int_log10(unsigned long long arg);
+ 
+ /* mk_hugefiles.c */
+-extern errcode_t mk_hugefiles(ext2_filsys fs);
++extern errcode_t mk_hugefiles(ext2_filsys fs, const char *device_name);
+ 
+ 
+ 
+-- 
+2.0.0
 
-Seems like a good idea, but an issue below.
-
-> diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-> index 884d9c0..068eed7 100644
-> --- a/lib/ext2fs/mkjournal.c
-> +++ b/lib/ext2fs/mkjournal.c
-> @@ -75,10 +75,7 @@ errcode_t =
-ext2fs_create_journal_superblock(ext2_filsys fs,
-> 	if (fs->super->s_feature_incompat &
-> 	    EXT3_FEATURE_INCOMPAT_JOURNAL_DEV) {
-> 		jsb->s_nr_users =3D 0;
-> -		if (fs->blocksize =3D=3D 1024)
-> -			jsb->s_first =3D htonl(3);
-> -		else
-> -			jsb->s_first =3D htonl(2);
-> +		jsb->s_first =3D ext2fs_journal_sb_start(fs->blocksize) =
-+ 1;
-
-This looks like it is missing the htonl() conversion, and will break the =
-on-disk format?
-
-The JBD code stores all data on-disk in big-endian to ensure that it is =
-converted properly
-on the most common little-endian systems, and will therefore also work =
-on big-endian systems.
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_E68E22E4-8611-4A6B-854D-C8594563A4F3
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBU7x/AnKl2rkXzB/gAQJL1A/8CDxOpPnEKGeNEIzXBeeHfXxy4IDW5hQ6
-0PpG4G02u5T3QJrJQeWgZIG18Eu1PmU6WEWlh63ZtSIS35DFKzJfxptc6QwuLabh
-9ucO2QxE1HrVggeeHpLbpuK5FmHscUjpbRK7Sk3vgVIdGBmHI9fZN2hjsMhnzIR0
-SIXmoGbPjIGHVMW+Kb7o3jhEfkHbjKU/TxSiV1cWrqcRM8iWouL9Qw2jf2iEQUZ/
-HhQc6ccP0INUugbS0wIfnjTglpVxLyUUzBO/u501FddNgbZSrXAD8pM0ikGYRPz6
-HZWMv8tT9SUFOQOGXKHatPun4BYHPuQaAkXZbuqWM4E68xaEl2sZnsgfQEC4ihle
-0hpmm0/JfKHDmNcHs2UGlsKDC0nF9qh76Sl9gxw95wMF8ZicZn2QOmR0dd2LaN/6
-kXtFQ6blxL6vlrn7SQ4m+yz03hTjTtNBl6YhV/Q7jPdtSji6VlwYFs3leBT3O4Au
-BWw6L6SIa6hICfKOy4y/c2BkhDAyoDQpNUhdn2nwHyE91detReETRqqqAyE+jS+K
-URed6GJXJ5lhLnHT2PVRNY/JtBNaA5lUMJ7Ja2R793Xl9vfhb1Iv+eL/AGaW2w4/
-+2sA7BxNMnInXDiAdHJRjGkkzRiQRl8rcbkHI+uixVx50dvz6yVSi3vcbO9We5Ef
-OmKhXmB4VNM=
-=bWg6
------END PGP SIGNATURE-----
-
---Apple-Mail=_E68E22E4-8611-4A6B-854D-C8594563A4F3--
