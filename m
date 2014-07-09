@@ -1,70 +1,184 @@
 From: Azat Khuzhin <a3at.mail@gmail.com>
-Subject: Re: [PATCH 1/3] journal: use consts instead of 1024 and add helper
- for journal with 1k blocksize
-Date: Wed, 9 Jul 2014 07:51:36 +0400
-Message-ID: <20140709035136.GF4622@azat>
-References: <1404852082-1550-1-git-send-email-a3at.mail@gmail.com>
- <1404852082-1550-2-git-send-email-a3at.mail@gmail.com>
- <D7E9803B-18EC-4E23-BD3A-4A3B7802C735@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH 1/3 v2] journal: use consts instead of 1024 and add helper for journal with 1k blocksize
+Date: Wed,  9 Jul 2014 07:56:19 +0400
+Message-ID: <1404878179-31704-1-git-send-email-a3at.mail@gmail.com>
+References: <D7E9803B-18EC-4E23-BD3A-4A3B7802C735@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
+	Azat Khuzhin <a3at.mail@gmail.com>
+To: adilger@dilger.ca
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f43.google.com ([209.85.215.43]:41227 "EHLO
-	mail-la0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751465AbaGIDvk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Jul 2014 23:51:40 -0400
-Received: by mail-la0-f43.google.com with SMTP id e16so4655353lan.30
-        for <linux-ext4@vger.kernel.org>; Tue, 08 Jul 2014 20:51:38 -0700 (PDT)
-Content-Disposition: inline
+Received: from mail-lb0-f176.google.com ([209.85.217.176]:57576 "EHLO
+	mail-lb0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754201AbaGID4i (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Jul 2014 23:56:38 -0400
+Received: by mail-lb0-f176.google.com with SMTP id w7so4523153lbi.7
+        for <linux-ext4@vger.kernel.org>; Tue, 08 Jul 2014 20:56:36 -0700 (PDT)
 In-Reply-To: <D7E9803B-18EC-4E23-BD3A-4A3B7802C735@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 08, 2014 at 05:30:10PM -0600, Andreas Dilger wrote:
-> On Jul 8, 2014, at 2:41 PM, Azat Khuzhin <a3at.mail@gmail.com> wrote:
-> > Use EXT2_MIN_BLOCK_SIZE/JFS_MIN_JOURNAL_BLOCKS instead of hardcoded 1024
-> > when it is okay, and also add a helper ext2fs_journal_sb_start() that
-> > will return start of journal sb with special case for fs with 1k block
-> > size.
-> 
-> Seems like a good idea, but an issue below.
-> 
-> > diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-> > index 884d9c0..068eed7 100644
-> > --- a/lib/ext2fs/mkjournal.c
-> > +++ b/lib/ext2fs/mkjournal.c
-> > @@ -75,10 +75,7 @@ errcode_t ext2fs_create_journal_superblock(ext2_filsys fs,
-> > 	if (fs->super->s_feature_incompat &
-> > 	    EXT3_FEATURE_INCOMPAT_JOURNAL_DEV) {
-> > 		jsb->s_nr_users = 0;
-> > -		if (fs->blocksize == 1024)
-> > -			jsb->s_first = htonl(3);
-> > -		else
-> > -			jsb->s_first = htonl(2);
-> > +		jsb->s_first = ext2fs_journal_sb_start(fs->blocksize) + 1;
-> 
-> This looks like it is missing the htonl() conversion, and will break the on-disk format?
+Use EXT2_MIN_BLOCK_SIZE/JFS_MIN_JOURNAL_BLOCKS instead of hardcoded 1024
+when it is okay, and also add a helper ext2fs_journal_sb_start() that
+will return start of journal sb with special case for fs with 1k block
+size.
 
-Yeah, good catch, thanks!
-I will resend this patch with htonl().
+Signed-off-by: Azat Khuzhin <a3at.mail@gmail.com>
+---
+v2: mixxed htonl() (thanks to Andreas Dilger)
 
-Cheers, Azat.
+ e2fsck/journal.c       |  5 ++---
+ lib/ext2fs/ext2fs.h    |  1 +
+ lib/ext2fs/mkjournal.c | 28 ++++++++++++++++------------
+ misc/tune2fs.c         |  6 +++---
+ 4 files changed, 22 insertions(+), 18 deletions(-)
 
-> 
-> The JBD code stores all data on-disk in big-endian to ensure that it is converted properly
-> on the most common little-endian systems, and will therefore also work on big-endian systems.
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
-
-
-
+diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+index a7b1150..5780be0 100644
+--- a/e2fsck/journal.c
++++ b/e2fsck/journal.c
+@@ -443,8 +443,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
+ 	if (ext_journal) {
+ 		blk64_t maxlen;
+ 
+-		if (ctx->fs->blocksize == 1024)
+-			start = 1;
++		start = ext2fs_journal_sb_start(ctx->fs->blocksize) - 1;
+ 		bh = getblk(dev_journal, start, ctx->fs->blocksize);
+ 		if (!bh) {
+ 			retval = EXT2_ET_NO_MEMORY;
+@@ -455,7 +454,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
+ 			brelse(bh);
+ 			goto errout;
+ 		}
+-		memcpy(&jsuper, start ? bh->b_data :  bh->b_data + 1024,
++		memcpy(&jsuper, start ? bh->b_data :  bh->b_data + EXT2_MIN_BLOCK_SIZE,
+ 		       sizeof(jsuper));
+ 		brelse(bh);
+ #ifdef WORDS_BIGENDIAN
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 599c972..a759741 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1498,6 +1498,7 @@ extern errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t num_blocks,
+ extern errcode_t ext2fs_add_journal_inode2(ext2_filsys fs, blk_t num_blocks,
+ 					   blk64_t goal, int flags);
+ extern int ext2fs_default_journal_size(__u64 num_blocks);
++extern int ext2fs_journal_sb_start(int blocksize);
+ 
+ /* openfs.c */
+ extern errcode_t ext2fs_open(const char *name, int flags, int superblock,
+diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
+index 884d9c0..0ad674d 100644
+--- a/lib/ext2fs/mkjournal.c
++++ b/lib/ext2fs/mkjournal.c
+@@ -49,7 +49,7 @@ errcode_t ext2fs_create_journal_superblock(ext2_filsys fs,
+ 	errcode_t		retval;
+ 	journal_superblock_t	*jsb;
+ 
+-	if (num_blocks < 1024)
++	if (num_blocks < JFS_MIN_JOURNAL_BLOCKS)
+ 		return EXT2_ET_JOURNAL_TOO_SMALL;
+ 
+ 	if ((retval = ext2fs_get_mem(fs->blocksize, &jsb)))
+@@ -75,10 +75,7 @@ errcode_t ext2fs_create_journal_superblock(ext2_filsys fs,
+ 	if (fs->super->s_feature_incompat &
+ 	    EXT3_FEATURE_INCOMPAT_JOURNAL_DEV) {
+ 		jsb->s_nr_users = 0;
+-		if (fs->blocksize == 1024)
+-			jsb->s_first = htonl(3);
+-		else
+-			jsb->s_first = htonl(2);
++		jsb->s_first = htonl(ext2fs_journal_sb_start(fs->blocksize) + 1);
+ 	}
+ 
+ 	*ret_jsb = (char *) jsb;
+@@ -430,6 +427,13 @@ int ext2fs_default_journal_size(__u64 num_blocks)
+ 	return 32768;
+ }
+ 
++int ext2fs_journal_sb_start(int blocksize)
++{
++	if (blocksize == EXT2_MIN_BLOCK_SIZE)
++		return 2;
++	return 1;
++}
++
+ /*
+  * This function adds a journal device to a filesystem
+  */
+@@ -437,7 +441,7 @@ errcode_t ext2fs_add_journal_device(ext2_filsys fs, ext2_filsys journal_dev)
+ {
+ 	struct stat	st;
+ 	errcode_t	retval;
+-	char		buf[1024];
++	char		buf[SUPERBLOCK_SIZE];
+ 	journal_superblock_t	*jsb;
+ 	int		start;
+ 	__u32		i, nr_users;
+@@ -450,10 +454,9 @@ errcode_t ext2fs_add_journal_device(ext2_filsys fs, ext2_filsys journal_dev)
+ 		return EXT2_ET_JOURNAL_NOT_BLOCK; /* Must be a block device */
+ 
+ 	/* Get the journal superblock */
+-	start = 1;
+-	if (journal_dev->blocksize == 1024)
+-		start++;
+-	if ((retval = io_channel_read_blk64(journal_dev->io, start, -1024,
++	start = ext2fs_journal_sb_start(journal_dev->blocksize);
++	if ((retval = io_channel_read_blk64(journal_dev->io, start,
++					    -SUPERBLOCK_SIZE,
+ 					    buf)))
+ 		return retval;
+ 
+@@ -479,7 +482,8 @@ errcode_t ext2fs_add_journal_device(ext2_filsys fs, ext2_filsys journal_dev)
+ 	}
+ 
+ 	/* Writeback the journal superblock */
+-	if ((retval = io_channel_write_blk64(journal_dev->io, start, -1024, buf)))
++	if ((retval = io_channel_write_blk64(journal_dev->io, start,
++					    -SUPERBLOCK_SIZE, buf)))
+ 		return retval;
+ 
+ 	fs->super->s_journal_inum = 0;
+@@ -632,7 +636,7 @@ main(int argc, char **argv)
+ 		exit(1);
+ 	}
+ 
+-	retval = ext2fs_add_journal_inode(fs, 1024, 0);
++	retval = ext2fs_add_journal_inode(fs, JFS_MIN_JOURNAL_BLOCKS, 0);
+ 	if (retval) {
+ 		com_err(argv[0], retval, "while adding journal to %s",
+ 			device_name);
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index d95cc3d..0e7caf2 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -187,7 +187,7 @@ static int remove_journal_device(ext2_filsys fs)
+ {
+ 	char		*journal_path;
+ 	ext2_filsys	jfs;
+-	char		buf[1024];
++	char		buf[SUPERBLOCK_SIZE];
+ 	journal_superblock_t	*jsb;
+ 	int		i, nr_users;
+ 	errcode_t	retval;
+@@ -230,7 +230,7 @@ static int remove_journal_device(ext2_filsys fs)
+ 	}
+ 
+ 	/* Get the journal superblock */
+-	if ((retval = io_channel_read_blk64(jfs->io, 1, -1024, buf))) {
++	if ((retval = io_channel_read_blk64(jfs->io, 1, -SUPERBLOCK_SIZE, buf))) {
+ 		com_err(program_name, retval, "%s",
+ 			_("while reading journal superblock"));
+ 		goto no_valid_journal;
+@@ -261,7 +261,7 @@ static int remove_journal_device(ext2_filsys fs)
+ 	jsb->s_nr_users = htonl(nr_users);
+ 
+ 	/* Write back the journal superblock */
+-	if ((retval = io_channel_write_blk64(jfs->io, 1, -1024, buf))) {
++	if ((retval = io_channel_write_blk64(jfs->io, 1, -SUPERBLOCK_SIZE, buf))) {
+ 		com_err(program_name, retval,
+ 			"while writing journal superblock.");
+ 		goto no_valid_journal;
 -- 
-Respectfully
-Azat Khuzhin
+2.0.0
+
