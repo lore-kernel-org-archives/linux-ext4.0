@@ -1,225 +1,202 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 1/3 v3] journal: use consts instead of 1024 and add helper for journal with 1k blocksize
-Date: Wed, 9 Jul 2014 14:33:45 -0600
-Message-ID: <8C896C64-232E-4B9F-B3A6-45F5B00F96FA@dilger.ca>
-References: <20140709185742.GC10417@birch.djwong.org> <1404934797-31667-1-git-send-email-a3at.mail@gmail.com>
+Subject: Re: [PATCH 3/3] tune2fs: update journal super block when changing UUID for fs.
+Date: Wed, 9 Jul 2014 14:38:19 -0600
+Message-ID: <F7FBA430-6337-40C9-BCD0-22503131FD3E@dilger.ca>
+References: <1404852082-1550-1-git-send-email-a3at.mail@gmail.com> <1404852082-1550-4-git-send-email-a3at.mail@gmail.com>
 Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_51CC6AEB-0E63-4B72-8F55-E9E654CF489C"; protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: darrick.wong@oracle.com, linux-ext4@vger.kernel.org, tytso@mit.edu
+Content-Type: multipart/signed; boundary="Apple-Mail=_3A5EDB07-E304-43C3-826B-92FCCFD6DB57"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
 To: Azat Khuzhin <a3at.mail@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f48.google.com ([209.85.220.48]:50714 "EHLO
-	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750724AbaGIUdt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Jul 2014 16:33:49 -0400
-Received: by mail-pa0-f48.google.com with SMTP id et14so9699050pad.7
-        for <linux-ext4@vger.kernel.org>; Wed, 09 Jul 2014 13:33:48 -0700 (PDT)
-In-Reply-To: <1404934797-31667-1-git-send-email-a3at.mail@gmail.com>
+Received: from mail-pd0-f178.google.com ([209.85.192.178]:62071 "EHLO
+	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751861AbaGIUiZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Jul 2014 16:38:25 -0400
+Received: by mail-pd0-f178.google.com with SMTP id r10so9682327pdi.9
+        for <linux-ext4@vger.kernel.org>; Wed, 09 Jul 2014 13:38:24 -0700 (PDT)
+In-Reply-To: <1404852082-1550-4-git-send-email-a3at.mail@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_51CC6AEB-0E63-4B72-8F55-E9E654CF489C
+--Apple-Mail=_3A5EDB07-E304-43C3-826B-92FCCFD6DB57
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
 
-On Jul 9, 2014, at 1:39 PM, Azat Khuzhin <a3at.mail@gmail.com> wrote:
+On Jul 8, 2014, at 2:41 PM, Azat Khuzhin <a3at.mail@gmail.com> wrote:
 
-> Use EXT2_MIN_BLOCK_SIZE/JFS_MIN_JOURNAL_BLOCKS instead of hardcoded =
-1024
-> when it is okay, and also add a helper ext2fs_journal_sb_start() that
-> will return start of journal sb with special case for fs with 1k block
-> size.
+> Using -U option you can change the UUID for fs, however it will not =
+work
+> for journal device, since it have a copy of this UUID inside jsb (i.e.
+> journal super block). So copy UUID on change into that block.
 >=20
+> Here is the initial thread:
+> http://comments.gmane.org/gmane.comp.file-systems.ext4/44532
+>=20
+> You can reproduce this by executing following commands:
+> $ fallocate -l100M /tmp/dev
+> $ fallocate -l100M /tmp/journal
+> $ sudo /sbin/losetup /dev/loop1 /tmp/dev
+> $ sudo /sbin/losetup /dev/loop0 /tmp/journal
+> $ mke2fs -O journal_dev /tmp/journal
+> $ tune2fs -U da1f2ed0-60f6-aaaa-92fd-738701418523 /tmp/journal
+> $ sudo mke2fs -t ext4 -J device=3D/dev/loop0 /dev/loop1
+> $ dumpe2fs -h /tmp/dev | fgrep UUID
+> dumpe2fs 1.43-WIP (18-May-2014)
+> Filesystem UUID:          8a776be9-12eb-411f-8e88-b873575ecfb6
+> Journal UUID:             e3d02151-e776-4865-af25-aecb7291e8e5
+> $ sudo e2fsck /dev/vdc
+> e2fsck 1.43-WIP (18-May-2014)
+> External journal does not support this filesystem
+>=20
+> /dev/loop1: ********** WARNING: Filesystem still has errors **********
+>=20
+> Reported-by: Chin Tzung Cheng <chintzung@gmail.com>
 > Signed-off-by: Azat Khuzhin <a3at.mail@gmail.com>
+
+It may be that the reverse problem also exists - if the UUID is changed
+on the filesystem, it probably is not updated in the journal "users" =
+list?
+I'm not sure either way, but it is worthwhile to check.
 
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
 > ---
-> v2: missed htonl() (thanks to Andreas Dilger)
-> v3: use SUPERBLOCK_OFFSET instead of EXT2_MIN_BLOCK_SIZE (thanks to =
-Darrick J.
-> Wong)
+> misc/tune2fs.c | 74 =
+++++++++++++++++++++++++++++++++++++++++++++--------------
+> 1 file changed, 56 insertions(+), 18 deletions(-)
 >=20
-> e2fsck/journal.c       |  5 ++---
-> lib/ext2fs/ext2fs.h    |  1 +
-> lib/ext2fs/mkjournal.c | 28 ++++++++++++++++------------
-> misc/tune2fs.c         |  6 +++---
-> 4 files changed, 22 insertions(+), 18 deletions(-)
+> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+> index 811cb4d..898a1b3 100644
+> --- a/misc/tune2fs.c
+> +++ b/misc/tune2fs.c
+> @@ -180,6 +180,38 @@ static __u32 clear_ok_features[3] =3D {
+> 		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
+> };
 >=20
-> diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-> index a7b1150..6df0165 100644
-> --- a/e2fsck/journal.c
-> +++ b/e2fsck/journal.c
-> @@ -443,8 +443,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, =
-journal_t **ret_journal)
-> 	if (ext_journal) {
-> 		blk64_t maxlen;
->=20
-> -		if (ctx->fs->blocksize =3D=3D 1024)
-> -			start =3D 1;
-> +		start =3D ext2fs_journal_sb_start(ctx->fs->blocksize) - =
-1;
-> 		bh =3D getblk(dev_journal, start, ctx->fs->blocksize);
-> 		if (!bh) {
-> 			retval =3D EXT2_ET_NO_MEMORY;
-> @@ -455,7 +454,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, =
-journal_t **ret_journal)
-> 			brelse(bh);
-> 			goto errout;
-> 		}
-> -		memcpy(&jsuper, start ? bh->b_data :  bh->b_data + 1024,
-> +		memcpy(&jsuper, start ? bh->b_data :  bh->b_data + =
-SUPERBLOCK_OFFSET,
-> 		       sizeof(jsuper));
-> 		brelse(bh);
-> #ifdef WORDS_BIGENDIAN
-> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> index 599c972..a759741 100644
-> --- a/lib/ext2fs/ext2fs.h
-> +++ b/lib/ext2fs/ext2fs.h
-> @@ -1498,6 +1498,7 @@ extern errcode_t =
-ext2fs_add_journal_inode(ext2_filsys fs, blk_t num_blocks,
-> extern errcode_t ext2fs_add_journal_inode2(ext2_filsys fs, blk_t =
-num_blocks,
-> 					   blk64_t goal, int flags);
-> extern int ext2fs_default_journal_size(__u64 num_blocks);
-> +extern int ext2fs_journal_sb_start(int blocksize);
->=20
-> /* openfs.c */
-> extern errcode_t ext2fs_open(const char *name, int flags, int =
-superblock,
-> diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-> index 884d9c0..0ad674d 100644
-> --- a/lib/ext2fs/mkjournal.c
-> +++ b/lib/ext2fs/mkjournal.c
-> @@ -49,7 +49,7 @@ errcode_t =
-ext2fs_create_journal_superblock(ext2_filsys fs,
-> 	errcode_t		retval;
-> 	journal_superblock_t	*jsb;
->=20
-> -	if (num_blocks < 1024)
-> +	if (num_blocks < JFS_MIN_JOURNAL_BLOCKS)
-> 		return EXT2_ET_JOURNAL_TOO_SMALL;
->=20
-> 	if ((retval =3D ext2fs_get_mem(fs->blocksize, &jsb)))
-> @@ -75,10 +75,7 @@ errcode_t =
-ext2fs_create_journal_superblock(ext2_filsys fs,
-> 	if (fs->super->s_feature_incompat &
-> 	    EXT3_FEATURE_INCOMPAT_JOURNAL_DEV) {
-> 		jsb->s_nr_users =3D 0;
-> -		if (fs->blocksize =3D=3D 1024)
-> -			jsb->s_first =3D htonl(3);
-> -		else
-> -			jsb->s_first =3D htonl(2);
-> +		jsb->s_first =3D =
-htonl(ext2fs_journal_sb_start(fs->blocksize) + 1);
-> 	}
->=20
-> 	*ret_jsb =3D (char *) jsb;
-> @@ -430,6 +427,13 @@ int ext2fs_default_journal_size(__u64 num_blocks)
-> 	return 32768;
-> }
->=20
-> +int ext2fs_journal_sb_start(int blocksize)
+> +/**
+> + * Try to get journal super block if any
+> + */
+> +static int get_journal_sb(ext2_filsys jfs, char buf[SUPERBLOCK_SIZE])
 > +{
-> +	if (blocksize =3D=3D EXT2_MIN_BLOCK_SIZE)
-> +		return 2;
-> +	return 1;
+> +	int retval;
+> +	int start;
+> +	journal_superblock_t *jsb;
+> +
+> +	if (!(jfs->super->s_feature_incompat &
+> +	    EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)) {
+> +		return EXT2_ET_UNSUPP_FEATURE;
+> +	}
+> +
+> +	/* Get the journal superblock */
+> +	if ((retval =3D io_channel_read_blk64(jfs->io,
+> +	    ext2fs_journal_sb_start(jfs->blocksize), -SUPERBLOCK_SIZE, =
+buf))) {
+> +		com_err(program_name, retval, "%s",
+> +		_("while reading journal superblock"));
+> +		return retval;
+> +	}
+> +
+> +	jsb =3D (journal_superblock_t *) buf;
+> +	if ((jsb->s_header.h_magic !=3D =
+(unsigned)ntohl(JFS_MAGIC_NUMBER)) ||
+> +	    (jsb->s_header.h_blocktype !=3D =
+(unsigned)ntohl(JFS_SUPERBLOCK_V2))) {
+> +		fputs(_("Journal superblock not found!\n"), stderr);
+> +		return EXT2_ET_BAD_MAGIC;
+> +	}
+> +
+> +	return 0;
 > +}
 > +
 > /*
->  * This function adds a journal device to a filesystem
+>  * Remove an external journal from the filesystem
 >  */
-> @@ -437,7 +441,7 @@ errcode_t ext2fs_add_journal_device(ext2_filsys =
-fs, ext2_filsys journal_dev)
-> {
-> 	struct stat	st;
-> 	errcode_t	retval;
-> -	char		buf[1024];
-> +	char		buf[SUPERBLOCK_SIZE];
-> 	journal_superblock_t	*jsb;
-> 	int		start;
-> 	__u32		i, nr_users;
-> @@ -450,10 +454,9 @@ errcode_t ext2fs_add_journal_device(ext2_filsys =
-fs, ext2_filsys journal_dev)
-> 		return EXT2_ET_JOURNAL_NOT_BLOCK; /* Must be a block =
-device */
->=20
-> 	/* Get the journal superblock */
-> -	start =3D 1;
-> -	if (journal_dev->blocksize =3D=3D 1024)
-> -		start++;
-> -	if ((retval =3D io_channel_read_blk64(journal_dev->io, start, =
--1024,
-> +	start =3D ext2fs_journal_sb_start(journal_dev->blocksize);
-> +	if ((retval =3D io_channel_read_blk64(journal_dev->io, start,
-> +					    -SUPERBLOCK_SIZE,
-> 					    buf)))
-> 		return retval;
->=20
-> @@ -479,7 +482,8 @@ errcode_t ext2fs_add_journal_device(ext2_filsys =
-fs, ext2_filsys journal_dev)
-> 	}
->=20
-> 	/* Writeback the journal superblock */
-> -	if ((retval =3D io_channel_write_blk64(journal_dev->io, start, =
--1024, buf)))
-> +	if ((retval =3D io_channel_write_blk64(journal_dev->io, start,
-> +					    -SUPERBLOCK_SIZE, buf)))
-> 		return retval;
->=20
-> 	fs->super->s_journal_inum =3D 0;
-> @@ -632,7 +636,7 @@ main(int argc, char **argv)
-> 		exit(1);
-> 	}
->=20
-> -	retval =3D ext2fs_add_journal_inode(fs, 1024, 0);
-> +	retval =3D ext2fs_add_journal_inode(fs, JFS_MIN_JOURNAL_BLOCKS, =
-0);
-> 	if (retval) {
-> 		com_err(argv[0], retval, "while adding journal to %s",
-> 			device_name);
-> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-> index d95cc3d..0e7caf2 100644
-> --- a/misc/tune2fs.c
-> +++ b/misc/tune2fs.c
-> @@ -187,7 +187,7 @@ static int remove_journal_device(ext2_filsys fs)
-> {
-> 	char		*journal_path;
-> 	ext2_filsys	jfs;
-> -	char		buf[1024];
-> +	char		buf[SUPERBLOCK_SIZE];
-> 	journal_superblock_t	*jsb;
-> 	int		i, nr_users;
-> 	errcode_t	retval;
-> @@ -230,7 +230,7 @@ static int remove_journal_device(ext2_filsys fs)
-> 	}
->=20
-> 	/* Get the journal superblock */
-> -	if ((retval =3D io_channel_read_blk64(jfs->io, 1, -1024, buf))) =
-{
-> +	if ((retval =3D io_channel_read_blk64(jfs->io, 1, =
--SUPERBLOCK_SIZE, buf))) {
-> 		com_err(program_name, retval, "%s",
-> 			_("while reading journal superblock"));
+> @@ -223,29 +255,15 @@ static int remove_journal_device(ext2_filsys fs)
+> 			_("while trying to open external journal"));
 > 		goto no_valid_journal;
-> @@ -261,7 +261,7 @@ static int remove_journal_device(ext2_filsys fs)
-> 	jsb->s_nr_users =3D htonl(nr_users);
+> 	}
+> -	if (!(jfs->super->s_feature_incompat &
+> -	      EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)) {
+> -		fprintf(stderr, _("%s is not a journal device.\n"),
+> -			journal_path);
+> -		goto no_valid_journal;
+> -	}
 >=20
-> 	/* Write back the journal superblock */
-> -	if ((retval =3D io_channel_write_blk64(jfs->io, 1, -1024, buf))) =
-{
-> +	if ((retval =3D io_channel_write_blk64(jfs->io, 1, =
--SUPERBLOCK_SIZE, buf))) {
-> 		com_err(program_name, retval,
-> 			"while writing journal superblock.");
+> -	start =3D ext2fs_journal_sb_start(fs->blocksize);
+> -	/* Get the journal superblock */
+> -	if ((retval =3D io_channel_read_blk64(jfs->io, start,
+> -	    -SUPERBLOCK_SIZE, buf))) {
+> -		com_err(program_name, retval, "%s",
+> -			_("while reading journal superblock"));
+> +	if ((retval =3D get_journal_sb(jfs, buf))) {
+> +		if (retval =3D=3D EXT2_ET_UNSUPP_FEATURE)
+> +			fprintf(stderr, _("%s is not a journal =
+device.\n"),
+> +				journal_path);
 > 		goto no_valid_journal;
+> 	}
+>=20
+> 	jsb =3D (journal_superblock_t *) buf;
+> -	if ((jsb->s_header.h_magic !=3D =
+(unsigned)ntohl(JFS_MAGIC_NUMBER)) ||
+> -	    (jsb->s_header.h_blocktype !=3D =
+(unsigned)ntohl(JFS_SUPERBLOCK_V2))) {
+> -		fputs(_("Journal superblock not found!\n"), stderr);
+> -		goto no_valid_journal;
+> -	}
+> -
+> 	/* Find the filesystem UUID */
+> 	nr_users =3D ntohl(jsb->s_nr_users);
+> 	for (i =3D 0; i < nr_users; i++) {
+> @@ -2695,6 +2713,7 @@ retry_open:
+> 	if (U_flag) {
+> 		int set_csum =3D 0;
+> 		dgrp_t i;
+> +		char buf[SUPERBLOCK_SIZE];
+>=20
+> 		if (ext2fs_has_group_desc_csum(fs)) {
+> 			/*
+> @@ -2740,6 +2759,25 @@ retry_open:
+> 				ext2fs_group_desc_csum_set(fs, i);
+> 			fs->flags &=3D ~EXT2_FLAG_SUPER_ONLY;
+> 		}
+> +
+> +		/* If this is a journal dev, we need to copy UUID into =
+jsb */
+> +		if (!(rc =3D get_journal_sb(fs, buf))) {
+> +			journal_superblock_t *jsb;
+> +
+> +			jsb =3D (journal_superblock_t *) buf;
+> +			fputs(_("Need to update journal superblock.\n"), =
+stdout);
+> +			memcpy(jsb->s_uuid, sb->s_uuid, =
+sizeof(sb->s_uuid));
+> +
+> +			/* Writeback the journal superblock */
+> +			if ((rc =3D io_channel_write_blk64(fs->io,
+> +				ext2fs_journal_sb_start(fs->blocksize),
+> +					-SUPERBLOCK_SIZE, buf)))
+> +				goto closefs;
+> +		} else if (rc !=3D EXT2_ET_UNSUPP_FEATURE)
+> +			goto closefs;
+> +		else
+> +			rc =3D 0; /** Reset rc to avoid =
+ext2fs_mmp_stop() */
+> +
+> 		ext2fs_mark_super_dirty(fs);
+> 		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+> 				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 > --=20
 > 2.0.0
 >=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
 Cheers, Andreas
@@ -229,7 +206,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_51CC6AEB-0E63-4B72-8F55-E9E654CF489C
+--Apple-Mail=_3A5EDB07-E304-43C3-826B-92FCCFD6DB57
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -240,19 +217,19 @@ Content-Description: Message signed with OpenPGP using GPGMail
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIVAwUBU72nKXKl2rkXzB/gAQJIiBAArVoqv2SPmgxqNHWoaACNOuUO+aWhlyVF
-/4LNwVscGq1INlA1gKS8wDqfNiOtu2EughuziAKzNXRz85VAIJgDi+RIH7bGy1b7
-n2/d35iRCMeF/EEdnBeXcJQDNkOdehVXJ/lIyfYqLsmz1tbzO+ffdGnbd5QndUtG
-yYJXlMnpCEjY7SfMnBBUhjzX5qHwAZYG1E1TnjDC4Y1YBdfZaXd9Ed30v1FBak5r
-mw396770/ZsQsaokTV7S8+fD8j3yyNNrxLGZ0s4099/Nyz6pf4vZsXszweSI/NUo
-WbLXPzEfX7LYyUvN5sYbiGtmPGOMfGfo8jM4aS1vCHxj7g91kOeP5LvLfTNH4x0K
-YCozkC4VwZOVRVk/w32+3VgLI+89P0fO+ii9XRY2Hl84f3kruaC+zFi6RUV2Z66u
-iyDBGcdmNijyZ0sBISSz9THeoha7yTAKW+kyGejD+9J9NOhFCYM3StqFjA8UMqqx
-GKu5U1Q6dhPHZnLfC0Pl5Yf9DSOgXdKkbjGLxg2MakAOfQs6yeaguu4VxaHBr3wJ
-h5zt5nw98UgRq5oj06du/VHwxIi/YZKIdz3loEIjtKWg9FXeHacKSiwlFp5HmCQl
-a7NtYQrgkzBgiyd9QycE3vYsRVvnat7CaUiJPoPbsqzNx15xfGPJVh9XRfRlpIAk
-bEfxNQ7M+ZY=
-=ewCz
+iQIVAwUBU72oO3Kl2rkXzB/gAQLgWxAAkUvSiIR9kOwx5vy9xTm3CtjsJlI3YLl8
+TvE9xsB6MezE1gfgepfCIfwtPvSgWm0CvLQWXrFhdpO4qOhAKFzmt97jcGcCiqkI
+pQb9RHrtlpZ3neuIORgm49XiMSvTqcb8+TDVGWlhCMe8eVZUJ9wfZ3bOsNcgdJMs
+9jjJKIMHx8msrxqdNGvssdFDZHm4LKZzevZPR8I0ZHw8VRJC4xcWtBiaQaPY2BUI
+6SeSHHMGzvAXyuLfauX5Q/u6Njl59STLgwbZHVN4C51cq+AWtht2EDbiU0NdDKgT
+oChBKqVh+cswY8cgUqB19VL0XPlTiv8LJkRgs+fAKWofzmfwbU7hBYbb5NZtVZeO
+mJCwAuW0BqdV1WmDI7dtoaXV6xEbbbUqTHzwBhatNqJmUbVekJdhEQCb7qAhsn+/
+FpkTbElkZV5GRiOvn93Lu7XuaQpOJw1/D5Y1MkJxX4og+EfzHBmzY1OxHIKNsnOa
+qVZ4F72HZZ3KsjHMgGBPvZIIkDtb0kNAzv2Ulff22y3GjiWjGzf7fpq7u13GFqBx
+kO5PFMmcLfCe3v++OfBKsM9pK9y88+dkTBifCxcmxr6G9ElWtwkx/qHyUEQr9NUG
+7D8zU8t7Pc/zGPmrn3t/uOUnKRwJXHqQjDWdflfpNt4hxwaCifpF2lF+ERJYQhNS
+j4U6WnW7aQM=
+=UdOK
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_51CC6AEB-0E63-4B72-8F55-E9E654CF489C--
+--Apple-Mail=_3A5EDB07-E304-43C3-826B-92FCCFD6DB57--
