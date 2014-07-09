@@ -1,213 +1,47 @@
-From: Azat Khuzhin <a3at.mail@gmail.com>
-Subject: Re: [PATCH 1/3 v2] journal: use consts instead of 1024 and add
- helper for journal with 1k blocksize
-Date: Wed, 9 Jul 2014 08:54:35 +0400
-Message-ID: <20140709045435.GI4622@azat>
-References: <D7E9803B-18EC-4E23-BD3A-4A3B7802C735@dilger.ca>
- <1404878179-31704-1-git-send-email-a3at.mail@gmail.com>
- <BDEE3738-D5A8-49E8-993A-45BB8C4DCDF0@dilger.ca>
+From: Namjae Jeon <namjae.jeon@samsung.com>
+Subject: RE: [PATCH 2/3] xfs: Add support IOC_MOV_DATA ioctl
+Date: Wed, 09 Jul 2014 15:33:21 +0900
+Message-ID: <001801cf9b3f$ad786ff0$08694fd0$@samsung.com>
+References: <003f01cf9aa4$1e9e5240$5bdaf6c0$@samsung.com>
+	<20140708121500.GA518@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"tytso@mit.edu" <tytso@mit.edu>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f170.google.com ([209.85.217.170]:50337 "EHLO
-	mail-lb0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750746AbaGIEyj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Jul 2014 00:54:39 -0400
-Received: by mail-lb0-f170.google.com with SMTP id 10so4689437lbg.29
-        for <linux-ext4@vger.kernel.org>; Tue, 08 Jul 2014 21:54:37 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <BDEE3738-D5A8-49E8-993A-45BB8C4DCDF0@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-On Tue, Jul 08, 2014 at 10:46:56PM -0600, Andreas Dilger wrote:
-> The patch looks good, and you can add:
-> 
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-> 
-> One thing that could probably be fixed if this patch is refreshed,
-> or in a precursor patch is to rename SUPERBLOCK_SIZE to be
-> EXT2_SUPERBLOCK_SIZE since this avoids potential name clashes. 
-
-I don't have any objections, but this change could break the
-header-compatibily, no? (Since lib/ext2fs/ext2fs.h is public available).
-
-Cheers, Azat.
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: 'Theodore Ts'o' <tytso@mit.edu>, 'Brian Foster' <bfoster@redhat.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	'Ashish Sangwan' <a.sangwan@samsung.com>, linux-fsdevel@vger.kernel.org,
+	'Luk?? Czerner' <lczerner@redhat.com>,
+	'linux-ext4' <linux-ext4@vger.kernel.org>
+To: 'Christoph Hellwig' <hch@infradead.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-reply-to: <20140708121500.GA518@infradead.org>
+Content-language: ko
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
 > 
-> Cheers, Andreas
+> On Tue, Jul 08, 2014 at 08:59:49PM +0900, Namjae Jeon wrote:
+> > This patch implements fs ioctl's IOC_MOV_DATA for XFS.
 > 
-> > On Jul 8, 2014, at 21:56, Azat Khuzhin <a3at.mail@gmail.com> wrote:
-> > 
-> > Use EXT2_MIN_BLOCK_SIZE/JFS_MIN_JOURNAL_BLOCKS instead of hardcoded 1024
-> > when it is okay, and also add a helper ext2fs_journal_sb_start() that
-> > will return start of journal sb with special case for fs with 1k block
-> > size.
-> > 
-> > Signed-off-by: Azat Khuzhin <a3at.mail@gmail.com>
-> > ---
-> > v2: mixxed htonl() (thanks to Andreas Dilger)
-> > 
-> > e2fsck/journal.c       |  5 ++---
-> > lib/ext2fs/ext2fs.h    |  1 +
-> > lib/ext2fs/mkjournal.c | 28 ++++++++++++++++------------
-> > misc/tune2fs.c         |  6 +++---
-> > 4 files changed, 22 insertions(+), 18 deletions(-)
-> > 
-> > diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-> > index a7b1150..5780be0 100644
-> > --- a/e2fsck/journal.c
-> > +++ b/e2fsck/journal.c
-> > @@ -443,8 +443,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
-> >    if (ext_journal) {
-> >        blk64_t maxlen;
-> > 
-> > -        if (ctx->fs->blocksize == 1024)
-> > -            start = 1;
-> > +        start = ext2fs_journal_sb_start(ctx->fs->blocksize) - 1;
-> >        bh = getblk(dev_journal, start, ctx->fs->blocksize);
-> >        if (!bh) {
-> >            retval = EXT2_ET_NO_MEMORY;
-> > @@ -455,7 +454,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
-> >            brelse(bh);
-> >            goto errout;
-> >        }
-> > -        memcpy(&jsuper, start ? bh->b_data :  bh->b_data + 1024,
-> > +        memcpy(&jsuper, start ? bh->b_data :  bh->b_data + EXT2_MIN_BLOCK_SIZE,
-> >               sizeof(jsuper));
-> >        brelse(bh);
-> > #ifdef WORDS_BIGENDIAN
-> > diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> > index 599c972..a759741 100644
-> > --- a/lib/ext2fs/ext2fs.h
-> > +++ b/lib/ext2fs/ext2fs.h
-> > @@ -1498,6 +1498,7 @@ extern errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t num_blocks,
-> > extern errcode_t ext2fs_add_journal_inode2(ext2_filsys fs, blk_t num_blocks,
-> >                       blk64_t goal, int flags);
-> > extern int ext2fs_default_journal_size(__u64 num_blocks);
-> > +extern int ext2fs_journal_sb_start(int blocksize);
-> > 
-> > /* openfs.c */
-> > extern errcode_t ext2fs_open(const char *name, int flags, int superblock,
-> > diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-> > index 884d9c0..0ad674d 100644
-> > --- a/lib/ext2fs/mkjournal.c
-> > +++ b/lib/ext2fs/mkjournal.c
-> > @@ -49,7 +49,7 @@ errcode_t ext2fs_create_journal_superblock(ext2_filsys fs,
-> >    errcode_t        retval;
-> >    journal_superblock_t    *jsb;
-> > 
-> > -    if (num_blocks < 1024)
-> > +    if (num_blocks < JFS_MIN_JOURNAL_BLOCKS)
-> >        return EXT2_ET_JOURNAL_TOO_SMALL;
-> > 
-> >    if ((retval = ext2fs_get_mem(fs->blocksize, &jsb)))
-> > @@ -75,10 +75,7 @@ errcode_t ext2fs_create_journal_superblock(ext2_filsys fs,
-> >    if (fs->super->s_feature_incompat &
-> >        EXT3_FEATURE_INCOMPAT_JOURNAL_DEV) {
-> >        jsb->s_nr_users = 0;
-> > -        if (fs->blocksize == 1024)
-> > -            jsb->s_first = htonl(3);
-> > -        else
-> > -            jsb->s_first = htonl(2);
-> > +        jsb->s_first = htonl(ext2fs_journal_sb_start(fs->blocksize) + 1);
-> >    }
-> > 
-> >    *ret_jsb = (char *) jsb;
-> > @@ -430,6 +427,13 @@ int ext2fs_default_journal_size(__u64 num_blocks)
-> >    return 32768;
-> > }
-> > 
-> > +int ext2fs_journal_sb_start(int blocksize)
-> > +{
-> > +    if (blocksize == EXT2_MIN_BLOCK_SIZE)
-> > +        return 2;
-> > +    return 1;
-> > +}
-> > +
-> > /*
-> >  * This function adds a journal device to a filesystem
-> >  */
-> > @@ -437,7 +441,7 @@ errcode_t ext2fs_add_journal_device(ext2_filsys fs, ext2_filsys journal_dev)
-> > {
-> >    struct stat    st;
-> >    errcode_t    retval;
-> > -    char        buf[1024];
-> > +    char        buf[SUPERBLOCK_SIZE];
-> >    journal_superblock_t    *jsb;
-> >    int        start;
-> >    __u32        i, nr_users;
-> > @@ -450,10 +454,9 @@ errcode_t ext2fs_add_journal_device(ext2_filsys fs, ext2_filsys journal_dev)
-> >        return EXT2_ET_JOURNAL_NOT_BLOCK; /* Must be a block device */
-> > 
-> >    /* Get the journal superblock */
-> > -    start = 1;
-> > -    if (journal_dev->blocksize == 1024)
-> > -        start++;
-> > -    if ((retval = io_channel_read_blk64(journal_dev->io, start, -1024,
-> > +    start = ext2fs_journal_sb_start(journal_dev->blocksize);
-> > +    if ((retval = io_channel_read_blk64(journal_dev->io, start,
-> > +                        -SUPERBLOCK_SIZE,
-> >                        buf)))
-> >        return retval;
-> > 
-> > @@ -479,7 +482,8 @@ errcode_t ext2fs_add_journal_device(ext2_filsys fs, ext2_filsys journal_dev)
-> >    }
-> > 
-> >    /* Writeback the journal superblock */
-> > -    if ((retval = io_channel_write_blk64(journal_dev->io, start, -1024, buf)))
-> > +    if ((retval = io_channel_write_blk64(journal_dev->io, start,
-> > +                        -SUPERBLOCK_SIZE, buf)))
-> >        return retval;
-> > 
-> >    fs->super->s_journal_inum = 0;
-> > @@ -632,7 +636,7 @@ main(int argc, char **argv)
-> >        exit(1);
-> >    }
-> > 
-> > -    retval = ext2fs_add_journal_inode(fs, 1024, 0);
-> > +    retval = ext2fs_add_journal_inode(fs, JFS_MIN_JOURNAL_BLOCKS, 0);
-> >    if (retval) {
-> >        com_err(argv[0], retval, "while adding journal to %s",
-> >            device_name);
-> > diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-> > index d95cc3d..0e7caf2 100644
-> > --- a/misc/tune2fs.c
-> > +++ b/misc/tune2fs.c
-> > @@ -187,7 +187,7 @@ static int remove_journal_device(ext2_filsys fs)
-> > {
-> >    char        *journal_path;
-> >    ext2_filsys    jfs;
-> > -    char        buf[1024];
-> > +    char        buf[SUPERBLOCK_SIZE];
-> >    journal_superblock_t    *jsb;
-> >    int        i, nr_users;
-> >    errcode_t    retval;
-> > @@ -230,7 +230,7 @@ static int remove_journal_device(ext2_filsys fs)
-> >    }
-> > 
-> >    /* Get the journal superblock */
-> > -    if ((retval = io_channel_read_blk64(jfs->io, 1, -1024, buf))) {
-> > +    if ((retval = io_channel_read_blk64(jfs->io, 1, -SUPERBLOCK_SIZE, buf))) {
-> >        com_err(program_name, retval, "%s",
-> >            _("while reading journal superblock"));
-> >        goto no_valid_journal;
-> > @@ -261,7 +261,7 @@ static int remove_journal_device(ext2_filsys fs)
-> >    jsb->s_nr_users = htonl(nr_users);
-> > 
-> >    /* Write back the journal superblock */
-> > -    if ((retval = io_channel_write_blk64(jfs->io, 1, -1024, buf))) {
-> > +    if ((retval = io_channel_write_blk64(jfs->io, 1, -SUPERBLOCK_SIZE, buf))) {
-> >        com_err(program_name, retval,
-> >            "while writing journal superblock.");
-> >        goto no_valid_journal;
-> > -- 
-> > 2.0.0
-> > 
+> Shouldn't this share code with the XFS_IOC_SWAPEXT implementation?
+Lukas has raised the same question for ext4.
+Both xfs(XFS_IOC_SWAPEXT) and ext4(EXT4_IOC_MOVE_EXT) has ioctls which uses
+almost similar kind of structure as struct mov_data.
+As such, there seems to be possiblity for sharing basic code (I will try)
+used for sanity checking in IOC_MOV_DATA to be shared with these ioctls
+but the core functionality code will remain different.
 
--- 
-Respectfully
-Azat Khuzhin
+Thanks!
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
