@@ -1,73 +1,68 @@
-From: Azat Khuzhin <a3at.mail@gmail.com>
-Subject: Re: [PATCH 3/3] tune2fs: update journal super block when changing
- UUID for fs.
-Date: Thu, 10 Jul 2014 10:03:06 +0400
-Message-ID: <20140710060306.GW4622@azat>
-References: <1404852082-1550-1-git-send-email-a3at.mail@gmail.com>
- <1404852082-1550-4-git-send-email-a3at.mail@gmail.com>
- <F7FBA430-6337-40C9-BCD0-22503131FD3E@dilger.ca>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: fix wrong size computation in
+ ext4_mb_normalize_request()
+Date: Thu, 10 Jul 2014 11:25:07 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1407101110560.5461@localhost.localdomain>
+References: <1404970836-21357-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, mlombard@redhat.com
+To: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f169.google.com ([209.85.217.169]:40382 "EHLO
-	mail-lb0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751235AbaGJGDJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2014 02:03:09 -0400
-Received: by mail-lb0-f169.google.com with SMTP id l4so5719186lbv.14
-        for <linux-ext4@vger.kernel.org>; Wed, 09 Jul 2014 23:03:08 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <F7FBA430-6337-40C9-BCD0-22503131FD3E@dilger.ca>
+Received: from mx1.redhat.com ([209.132.183.28]:59358 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752135AbaGJJZQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Jul 2014 05:25:16 -0400
+In-Reply-To: <1404970836-21357-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 09, 2014 at 02:38:19PM -0600, Andreas Dilger wrote:
-> 
-> On Jul 8, 2014, at 2:41 PM, Azat Khuzhin <a3at.mail@gmail.com> wrote:
-> 
-> > Using -U option you can change the UUID for fs, however it will not work
-> > for journal device, since it have a copy of this UUID inside jsb (i.e.
-> > journal super block). So copy UUID on change into that block.
-> > 
-> > Here is the initial thread:
-> > http://comments.gmane.org/gmane.comp.file-systems.ext4/44532
-> > 
-> > You can reproduce this by executing following commands:
-> > $ fallocate -l100M /tmp/dev
-> > $ fallocate -l100M /tmp/journal
-> > $ sudo /sbin/losetup /dev/loop1 /tmp/dev
-> > $ sudo /sbin/losetup /dev/loop0 /tmp/journal
-> > $ mke2fs -O journal_dev /tmp/journal
-> > $ tune2fs -U da1f2ed0-60f6-aaaa-92fd-738701418523 /tmp/journal
-> > $ sudo mke2fs -t ext4 -J device=/dev/loop0 /dev/loop1
-> > $ dumpe2fs -h /tmp/dev | fgrep UUID
-> > dumpe2fs 1.43-WIP (18-May-2014)
-> > Filesystem UUID:          8a776be9-12eb-411f-8e88-b873575ecfb6
-> > Journal UUID:             e3d02151-e776-4865-af25-aecb7291e8e5
-> > $ sudo e2fsck /dev/vdc
-> > e2fsck 1.43-WIP (18-May-2014)
-> > External journal does not support this filesystem
-> > 
-> > /dev/loop1: ********** WARNING: Filesystem still has errors **********
-> > 
-> > Reported-by: Chin Tzung Cheng <chintzung@gmail.com>
-> > Signed-off-by: Azat Khuzhin <a3at.mail@gmail.com>
-> 
-> It may be that the reverse problem also exists - if the UUID is changed
-> on the filesystem, it probably is not updated in the journal "users" list?
-> I'm not sure either way, but it is worthwhile to check.
+On Thu, 10 Jul 2014, Xiaoguang Wang wrote:
 
-You are right, it will not update the 'Journal users' field, there is no
-code for U_flag in tune2fs for this (I also test it).
-But to make patch clean I need more time, I will send it later.
-
+> Date: Thu, 10 Jul 2014 13:40:36 +0800
+> From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+> To: linux-ext4@vger.kernel.org
+> Cc: tytso@mit.edu, mlombard@redhat.com,
+>     Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+> Subject: [PATCH] ext4: fix wrong size computation in
+>     ext4_mb_normalize_request()
 > 
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> As the member fe_len defined in struct ext4_free_extent is expressed as
+> number of clusters, the variable "size" computation is wrong, we need to
+> first translate it to block number, then to bytes.
+> 
+> Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+> ---
+>  fs/ext4/mballoc.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 7f72f50..9a543b5 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -3076,7 +3076,8 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+>  		size = 8 * 1024 * 1024;
+>  	} else {
+>  		start_off = (loff_t)ac->ac_o_ex.fe_logical << bsbits;
+> -		size	  = ac->ac_o_ex.fe_len << bsbits;
+> +		size	  = EXT4_C2B(EXT4_SB(ac->ac_sb),
+> +				     ac->ac_o_ex.fe_len) << bsbits;
+
+There is a patch out there up for more discussion which rewrites a
+whole bunch of code in ext4_mb_normalize_request(). But more
+importantly this fix, while correct is not going to change anything
+since this condition will never be run.
+
+Btw, I take back the correct part since it seems that there is a
+a possibility of overflow. This should be better.
+
+		size	  = (loff_t)EXT4_C2B(EXT4_SB(ac->ac_sb),
+					     ac->ac_o_ex.fe_len) << bsbits;
 
 Thanks!
+-Lukas
 
-
--- 
-Respectfully
-Azat Khuzhin
+>  	}
+>  	size = size >> bsbits;
+>  	start = start_off >> bsbits;
+> 
