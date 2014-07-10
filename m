@@ -1,16 +1,16 @@
 From: Ross Burton <ross.burton@intel.com>
-Subject: [PATCH][V3] misc: copy extended attributes in populate_fs
-Date: Thu, 10 Jul 2014 17:39:49 +0100
-Message-ID: <1405010389-25988-1-git-send-email-ross.burton@intel.com>
+Subject: [PATCH][V4] misc: copy extended attributes in populate_fs
+Date: Thu, 10 Jul 2014 17:44:38 +0100
+Message-ID: <1405010678-993-1-git-send-email-ross.burton@intel.com>
 Cc: darrick.wong@oracle.com, tytso@mit.edu
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f181.google.com ([209.85.212.181]:44970 "EHLO
-	mail-wi0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750768AbaGJQkN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2014 12:40:13 -0400
-Received: by mail-wi0-f181.google.com with SMTP id bs8so723436wib.14
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Jul 2014 09:40:12 -0700 (PDT)
+Received: from mail-wi0-f173.google.com ([209.85.212.173]:49257 "EHLO
+	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750896AbaGJQor (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2014 12:44:47 -0400
+Received: by mail-wi0-f173.google.com with SMTP id cc10so4903925wib.0
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Jul 2014 09:44:45 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -24,7 +24,7 @@ Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
  1 file changed, 90 insertions(+)
 
 diff --git a/misc/create_inode.c b/misc/create_inode.c
-index c9c99b5..1a5c378 100644
+index c9c99b5..660a294 100644
 --- a/misc/create_inode.c
 +++ b/misc/create_inode.c
 @@ -103,6 +103,89 @@ static errcode_t set_inode_extra(ext2_filsys fs, ext2_ino_t cwd,
@@ -108,7 +108,7 @@ index c9c99b5..1a5c378 100644
 +	close_retval = ext2fs_xattrs_close(&handle);
 +	if (close_retval) {
 +		com_err(__func__, retval, "while closing inode %u", ino);
-+		retval = retval ? close_retval;
++		retval = retval ? retval : close_retval;
 +	}
 +
 +	return retval;
