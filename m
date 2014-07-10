@@ -1,43 +1,51 @@
-From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-Subject: [PATCH] ext4: fix wrong size computation in ext4_mb_normalize_request()
-Date: Thu, 10 Jul 2014 13:40:36 +0800
-Message-ID: <1404970836-21357-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
+From: Azat Khuzhin <a3at.mail@gmail.com>
+Subject: Re: [PATCH 4/4 v2] lib: add EXT2_ prefix for SUPERBLOCK_{OFFSET,SIZE}
+Date: Thu, 10 Jul 2014 10:00:25 +0400
+Message-ID: <20140710060025.GV4622@azat>
+References: <20140709195844.GD10417@birch.djwong.org>
+ <1404936525-11914-1-git-send-email-a3at.mail@gmail.com>
+ <952214F8-A0E2-4F2C-A749-60C3B5E1109B@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <tytso@mit.edu>, <mlombard@redhat.com>,
-	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: darrick.wong@oracle.com, linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([59.151.112.132]:56097 "EHLO
-	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750708AbaGJFlI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2014 01:41:08 -0400
+Received: from mail-la0-f42.google.com ([209.85.215.42]:48053 "EHLO
+	mail-la0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750725AbaGJGA3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2014 02:00:29 -0400
+Received: by mail-la0-f42.google.com with SMTP id pn19so5826901lab.29
+        for <linux-ext4@vger.kernel.org>; Wed, 09 Jul 2014 23:00:27 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <952214F8-A0E2-4F2C-A749-60C3B5E1109B@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-As the member fe_len defined in struct ext4_free_extent is expressed as
-number of clusters, the variable "size" computation is wrong, we need to
-first translate it to block number, then to bytes.
+On Wed, Jul 09, 2014 at 02:32:54PM -0600, Andreas Dilger wrote:
+> 
+> On Jul 9, 2014, at 2:08 PM, Azat Khuzhin <a3at.mail@gmail.com> wrote:
+> 
+> > Since mostly all macros have this prefix, and to avoid potential name
+> > clashes.
+> > 
+> > Proposed-by: Andreas Dilger <adilger@dilger.ca>
+> > Signed-off-by: Azat Khuzhin <a3at.mail@gmail.com>
+> 
+> You can add:
+> 
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> 
+> If you are refreshing the whole series, it might make sense to move this
+> first, instead of adding a bunch of SUPERBLOCK_{SIZE,OFFSET} uses, and
+> then changing them to EXT2_SUPERBLOCK_{SIZE,OFFSET} in the next patch.
+> Not a huge deal either way, just a suggestion.
 
-Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
----
- fs/ext4/mballoc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Yeah, that's a good point, I will do this.
+Thanks.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 7f72f50..9a543b5 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3076,7 +3076,8 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 		size = 8 * 1024 * 1024;
- 	} else {
- 		start_off = (loff_t)ac->ac_o_ex.fe_logical << bsbits;
--		size	  = ac->ac_o_ex.fe_len << bsbits;
-+		size	  = EXT4_C2B(EXT4_SB(ac->ac_sb),
-+				     ac->ac_o_ex.fe_len) << bsbits;
- 	}
- 	size = size >> bsbits;
- 	start = start_off >> bsbits;
+Cheers, Azat.
+
+
 -- 
-1.8.2.1
-
+Respectfully
+Azat Khuzhin
