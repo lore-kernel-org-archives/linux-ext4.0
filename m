@@ -1,61 +1,65 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH v2] ext4: fix wrong size computation in
- ext4_mb_normalize_request()
-Date: Fri, 11 Jul 2014 11:04:52 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1407111104090.2165@localhost.localdomain>
-References: <alpine.LFD.2.00.1407110906340.2165@localhost.localdomain> <1405067660-728-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ext4: journal has aborted
+Date: Fri, 11 Jul 2014 07:43:59 -0400
+Message-ID: <20140711114359.GA433@thunk.org>
+References: <20140704184539.GA11103@thunk.org>
+ <20140707141701.2f9529af@archvile>
+ <20140707155310.GB8254@thunk.org>
+ <20140707225619.GD8254@thunk.org>
+ <20140710185748.GA26636@wallace>
+ <20140710200126.GE10417@birch.djwong.org>
+ <CAFnufp2yDsbHby6Ye-Ldjz=qGWyxOJUMv8JZJa-5+f6CUFSpYw@mail.gmail.com>
+ <20140710223245.GB12018@thunk.org>
+ <20140711001334.GF10417@birch.djwong.org>
+ <20140711004507.GB26636@wallace>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	Matteo Croce <technoboy85@gmail.com>,
+	David Jander <david@protonic.nl>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	linux-ext4@vger.kernel.org, Azat Khuzhin <a3at.mail@gmail.com>
+To: Eric Whitney <enwlinux@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41907 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:57843 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751255AbaGKJFA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Jul 2014 05:05:00 -0400
-In-Reply-To: <1405067660-728-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
+	id S1751235AbaGKLoH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Jul 2014 07:44:07 -0400
+Content-Disposition: inline
+In-Reply-To: <20140711004507.GB26636@wallace>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 11 Jul 2014, Xiaoguang Wang wrote:
-
-> Date: Fri, 11 Jul 2014 16:34:20 +0800
-> From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-> To: linux-ext4@vger.kernel.org
-> Cc: tytso@mit.edu, lczerner@redhat.com,
->     Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-> Subject: [PATCH v2] ext4: fix wrong size computation in
->     ext4_mb_normalize_request()
+On Thu, Jul 10, 2014 at 08:45:08PM -0400, Eric Whitney wrote:
 > 
-> As the member fe_len defined in struct ext4_free_extent is expressed as
-> number of clusters, the variable "size" computation is wrong, we need to
-> first translate fe_len to block number, then to bytes.
-> 
-> Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-> ---
->  fs/ext4/mballoc.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 7f72f50..975a35e 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -3076,7 +3076,8 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
->  		size = 8 * 1024 * 1024;
->  	} else {
->  		start_off = (loff_t)ac->ac_o_ex.fe_logical << bsbits;
-> -		size	  = ac->ac_o_ex.fe_len << bsbits;
-> +		size	  = (loff_t)EXT4_C2B(EXT4_SB(ac->ac_sb),
-> +				     ac->ac_o_ex.fe_len) << bsbits;
+> Reverting the suspect patch - 007649375f - on 3.16-rc3 and running on the
+> Panda yielded 10 successive "successful" generic/068 failures (no block
+> bitmap trouble on reboot).  So, it looks like that patch is all of it.
 
-The indentation is wrong, otherwise it looks good.
+Thanks again Eric, for finding this!!
 
-Thanks!
+> Running the same test scenario on Darrick's patch (CONFIG_EXT4FS_DEBUG =>
+> CONFIG_EXT4_DEBUG) applied to 3.16-rc3 lead to exactly the same result.
+> No panics, BUGS, or other misbehavior whether generic/068 completed 
+> successfully or failed (and that test used here simply because it was
+> convenient) and no trouble on boot, etc.
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+I've been looking more closely at the changes in line, and I suspect
+the real fix is that we should move these lines:
 
+	ext4_free_blocks_count_set(sbi->s_es,
+				   EXT4_C2B(sbi, ext4_count_free_clusters(sb)));
+	sbi->s_es->s_free_inodes_count =cpu_to_le32(ext4_count_free_inodes(sb));
 
->  	}
->  	size = size >> bsbits;
->  	start = start_off >> bsbits;
-> 
+after the journal is run.  Not that it really matters since so very
+little (and nothing for normal file system operation, including the
+statfs(2) system call) actually depends on the free blocks count in
+the superblock --- instead we the percpu "s_freeclusters_count" and
+"s_dirtyclusters_counter" fields for scalability reasons --- but if we
+*are* going to set these fields in the on-disk superblock, we should
+wait until *after* we have updated the allocation bitmaps before we
+start counting the free blocks in those bitmaps.
+
+Cheers,
+
+					- Ted
