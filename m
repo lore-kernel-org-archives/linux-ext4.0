@@ -1,188 +1,94 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: Re: ext4: journal has aborted
-Date: Thu, 10 Jul 2014 20:45:08 -0400
-Message-ID: <20140711004507.GB26636@wallace>
-References: <20140704154559.026331ec@archvile>
- <20140704184539.GA11103@thunk.org>
- <20140707141701.2f9529af@archvile>
- <20140707155310.GB8254@thunk.org>
- <20140707225619.GD8254@thunk.org>
- <20140710185748.GA26636@wallace>
- <20140710200126.GE10417@birch.djwong.org>
- <CAFnufp2yDsbHby6Ye-Ldjz=qGWyxOJUMv8JZJa-5+f6CUFSpYw@mail.gmail.com>
- <20140710223245.GB12018@thunk.org>
- <20140711001334.GF10417@birch.djwong.org>
+From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+Subject: Re: [PATCH] ext4: fix wrong size computation in ext4_mb_normalize_request()
+Date: Fri, 11 Jul 2014 11:41:08 +0800
+Message-ID: <53BF5CD4.3030804@cn.fujitsu.com>
+References: <1404970836-21357-1-git-send-email-wangxg.fnst@cn.fujitsu.com> <alpine.LFD.2.00.1407101110560.5461@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Matteo Croce <technoboy85@gmail.com>,
-	Eric Whitney <enwlinux@gmail.com>,
-	David Jander <david@protonic.nl>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
-	linux-ext4@vger.kernel.org, Azat Khuzhin <a3at.mail@gmail.com>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: <linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
+	<mlombard@redhat.com>
+To: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:48258 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750896AbaGKApM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2014 20:45:12 -0400
-Received: by mail-qc0-f175.google.com with SMTP id i8so351382qcq.20
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Jul 2014 17:45:12 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20140711001334.GF10417@birch.djwong.org>
+Received: from cn.fujitsu.com ([59.151.112.132]:35093 "EHLO
+	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751790AbaGKDlg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2014 23:41:36 -0400
+In-Reply-To: <alpine.LFD.2.00.1407101110560.5461@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* Darrick J. Wong <darrick.wong@oracle.com>:
-> On Thu, Jul 10, 2014 at 06:32:45PM -0400, Theodore Ts'o wrote:
-> > To be clear, what you would need to do is to revert commit
-> > 007649375f6af242d5b1df2c15996949714303ba to prevent the fs corruption.
-> > Darrick's patch is one that tries to fix the problem addressed by that
-> > commit in a different fashion.
-> > 
-> > Quite frankly, reverting the commit, which is causing real damage, is
-> > far more impotrant to me right now than what to do in order allow
-> > CONFIG_EXT4FS_DEBUG to work (which is nice, but it's only something
-> > that file system developers need, and to be honest I can't remember
-> > the last time I've used said config option).  But if we know that
-> > Darrick's fix works, I'm willing to push that to Linus at the same
-> > time that I push a revert of 007649375f6af242d5b1df2c15996949714303ba
-> 
-> Reverting the 007649375... patch doesn't seem to create any obvious regressions
-> on my test box (though again, I was never able to reproduce it as consistently
-> as Eric W.).
-> 
-> Tossing in the [1] patch also fixes the crash when CONFIG_EXT4_DEBUG=y on
-> 3.16-rc4.  I'd say it's safe to send both to Linus and stable.
-> 
-> If anyone experiences problems that I'm not seeing, please yell loudly and
-> soon!
-> 
+Hi,
 
-Reverting the suspect patch - 007649375f - on 3.16-rc3 and running on the
-Panda yielded 10 successive "successful" generic/068 failures (no block
-bitmap trouble on reboot).  So, it looks like that patch is all of it.
+On 07/10/2014 05:25 PM, Luk=E1=9A Czerner wrote:
+> On Thu, 10 Jul 2014, Xiaoguang Wang wrote:
+>=20
+>> Date: Thu, 10 Jul 2014 13:40:36 +0800
+>> From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+>> To: linux-ext4@vger.kernel.org
+>> Cc: tytso@mit.edu, mlombard@redhat.com,
+>>     Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+>> Subject: [PATCH] ext4: fix wrong size computation in
+>>     ext4_mb_normalize_request()
+>>
+>> As the member fe_len defined in struct ext4_free_extent is expressed=
+ as
+>> number of clusters, the variable "size" computation is wrong, we nee=
+d to
+>> first translate it to block number, then to bytes.
+>>
+>> Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+>> ---
+>>  fs/ext4/mballoc.c | 3 ++-
+>>  1 file changed, 2 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+>> index 7f72f50..9a543b5 100644
+>> --- a/fs/ext4/mballoc.c
+>> +++ b/fs/ext4/mballoc.c
+>> @@ -3076,7 +3076,8 @@ ext4_mb_normalize_request(struct ext4_allocati=
+on_context *ac,
+>>  		size =3D 8 * 1024 * 1024;
+>>  	} else {
+>>  		start_off =3D (loff_t)ac->ac_o_ex.fe_logical << bsbits;
+>> -		size	  =3D ac->ac_o_ex.fe_len << bsbits;
+>> +		size	  =3D EXT4_C2B(EXT4_SB(ac->ac_sb),
+>> +				     ac->ac_o_ex.fe_len) << bsbits;
+>=20
+> There is a patch out there up for more discussion which rewrites a
+> whole bunch of code in ext4_mb_normalize_request(). But more
+> importantly this fix, while correct is not going to change anything
+> since this condition will never be run.
 
-Running the same test scenario on Darrick's patch (CONFIG_EXT4FS_DEBUG =>
-CONFIG_EXT4_DEBUG) applied to 3.16-rc3 lead to exactly the same result.
-No panics, BUGS, or other misbehavior whether generic/068 completed 
-successfully or failed (and that test used here simply because it was
-convenient) and no trouble on boot, etc.
+Yeah, I have read your patch and related discussions, indeed this condi=
+tion
+would never be run, thanks for your explanation. But given that current=
+ly your
+patch is not merged, still this code is wrong and should be fixed.
+I'm new to ext4:) Whether should I continue to send a v2 version to fix=
+ this issue? thanks!
 
-Let me know if anything else is needed.
+Regards,
+Xiaoguang Wang
+>=20
+> Btw, I take back the correct part since it seems that there is a
+> a possibility of overflow. This should be better.
+>=20
+> 		size	  =3D (loff_t)EXT4_C2B(EXT4_SB(ac->ac_sb),
+> 					     ac->ac_o_ex.fe_len) << bsbits;
+>=20
+> Thanks!
+> -Lukas
+>=20
+>>  	}
+>>  	size =3D size >> bsbits;
+>>  	start =3D start_off >> bsbits;
+>>
+> .
+>=20
 
-Eric
-
-> --D
-> 
-> [1] http://www.spinics.net/lists/linux-ext4/msg43287.html
-> > 
-> > Cheers,
-> > 
-> > 						- Ted
-> > 
-> > On Thu, Jul 10, 2014 at 11:31:14PM +0200, Matteo Croce wrote:
-> > > Will do, thanks!
-> > > 
-> > > 2014-07-10 22:01 GMT+02:00 Darrick J. Wong <darrick.wong@oracle.com>:
-> > > > On Thu, Jul 10, 2014 at 02:57:48PM -0400, Eric Whitney wrote:
-> > > >> * Theodore Ts'o <tytso@mit.edu>:
-> > > >> > On Mon, Jul 07, 2014 at 11:53:10AM -0400, Theodore Ts'o wrote:
-> > > >> > > An update from today's ext4 concall.  Eric Whitney can fairly reliably
-> > > >> > > reproduce this on his Panda board with 3.15, and definitely not on
-> > > >> > > 3.14.  So at this point there seems to be at least some kind of 3.15
-> > > >> > > regression going on here, regardless of whether it's in the eMMC
-> > > >> > > driver or the ext4 code.  (It also means that the bug fix I found is
-> > > >> > > irrelevant for the purposes of working this issue, since that's a much
-> > > >> > > harder to hit, and that bug has been around long before 3.14.)
-> > > >> > >
-> > > >> > > The problem in terms of narrowing it down any further is that the
-> > > >> > > Pandaboard is running into RCU bugs which makes it hard to test the
-> > > >> > > early 3.15-rcX kernels.....
-> > > >> >
-> > > >> > In the hopes of making it easy to bisect, I've created a kernel branch
-> > > >> > which starts with 3.14, and then adds on all of the ext4-related
-> > > >> > commits since then.   You can find it at:
-> > > >> >
-> > > >> > git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git test-mb_generate_buddy-failure
-> > > >> >
-> > > >> > https://git.kernel.org/cgit/linux/kernel/git/tytso/ext4.git/log/?h=test-mb_generate_buddy-failure
-> > > >> >
-> > > >> > Eric, can you see if you can repro the failure on your Panda Board?
-> > > >> > If you can, try doing a bisection search on these series:
-> > > >> >
-> > > >> > git bisect start
-> > > >> > git bisect good v3.14
-> > > >> > git bisect bad test-mb_generate_buddy-failure
-> > > >> >
-> > > >> > Hopefully if it is caused by one of the commits in this series, we'll
-> > > >> > be able to pin point it this way.
-> > > >>
-> > > >> First, the good news (with luck):
-> > > >>
-> > > >> My testing currently suggests that the patch causing this regression was
-> > > >> pulled into 3.15-rc3 -
-> > > >>
-> > > >> 007649375f6af242d5b1df2c15996949714303ba
-> > > >> ext4: initialize multi-block allocator before checking block descriptors
-> > > >>
-> > > >> Bisection by selectively reverting ext4 commits in -rc3 identified this patch
-> > > >> while running on the Pandaboard.  I'm still using generic/068 as my reproducer.
-> > > >> It occasionally yields a false negative, but it has passed 10 consecutive
-> > > >> trials on my revert/bisect kernel derived from 3.15-rc3.  Given the frequency
-> > > >> of false negatives I've seen, I'm reasonably confident in that result.  I'm
-> > > >> going to run another series with just that patch reverted on 3.16-rc3.
-> > > >>
-> > > >> Looking at the patch, the call to ext4_mb_init() was hoisted above the code
-> > > >> performing journal recovery in ext4_fill_super().  The regression occurs only
-> > > >> after journal recovery on the root filesystem.
-> > > >
-> > > > Thanks for finding the culprit! :)
-> > > >
-> > > > Can you apply this patch, build with CONFIG_EXT4FS_DEBUG=y, and see if an
-> > > > FS will mount without crashing?  This was the cruddy patch I sent in (and later
-> > > > killed) that fixed the crash on mount with EXT4FS_DEBUG in a somewhat silly
-> > > > way.  Maybe it's appropriate now.
-> > > > http://www.spinics.net/lists/linux-ext4/msg43287.html
-> > > >
-> > > > --D
-> > > >
-> > > >>
-> > > >> Secondly:
-> > > >>
-> > > >> Thanks for that git tree!  However, I discovered that the same "RCU bug" I
-> > > >> thought I was seeing on the Panda was also visible on the x86_64 KVM, and
-> > > >> it was actually just RCU noticing stalls.  These also occurred when using
-> > > >> your git tree as well as on mainline 3.15-rc1 and 3.15-rc2 and during
-> > > >> bisection attempts on 3.15-rc3 within the ext4 patches, and had the effect of
-> > > >> masking the regression on the root filesystem.  The test system would lock up
-> > > >> completely - no console response - and made it impossible to force the reboot
-> > > >> which was required to set up the failure.  Hence the reversion approach, since
-> > > >> RCU does not report stalls in 3.15-rc3 (final).
-> > > >>
-> > > >> Eric
-> > > >>
-> > > >>
-> > > >>
-> > > >> >
-> > > >> > Thanks!!
-> > > >> >
-> > > >> >                                             - Ted
-> > > >> --
-> > > >> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > > >> the body of a message to majordomo@vger.kernel.org
-> > > >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > > 
-> > > 
-> > > 
-> > > -- 
-> > > Matteo Croce
-> > > OpenWrt Developer
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
