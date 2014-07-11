@@ -1,54 +1,152 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] mke2fs: add support to align hugefiles relative to
- beginning of the disk
-Date: Fri, 11 Jul 2014 12:48:10 -0700
-Message-ID: <20140711194810.GH10417@birch.djwong.org>
-References: <1404866691-23148-1-git-send-email-tytso@mit.edu>
- <20140711182558.GG10417@birch.djwong.org>
- <20140711193733.GC1304@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: revert commit which was causing fs corruption after journal replays
+Date: Fri, 11 Jul 2014 17:52:36 -0400
+Message-ID: <1405115566-2034-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:51035 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751014AbaGKTsQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Jul 2014 15:48:16 -0400
-Content-Disposition: inline
-In-Reply-To: <20140711193733.GC1304@thunk.org>
+Received: from imap.thunk.org ([74.207.234.97]:59060 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753595AbaGKVwy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Jul 2014 17:52:54 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 11, 2014 at 03:37:33PM -0400, Theodore Ts'o wrote:
-> On Fri, Jul 11, 2014 at 11:25:58AM -0700, Darrick J. Wong wrote:
-> > The third argument is the maximum number of bytes to concatenate from the
-> > second argument ("/start").  Though it's unlikely that we'll ever find anything
-> > in /sys/block approaching 255 characters, we might as well guard against stack
-> > corruption:
-> > 
-> > 	if (strlen(path) > SYSFS_PATH_LEN - strlen("/start") - 1)
-> > 		return 0;
-> > 	strcat(path, "/start");
-> > 
-> > Oh, I guess coverity is complaining about this too.
-> > 
-> > Though FWIW, "find /sys | while read f; do echo "$f" | wc -c; done | sort -g |
-> > tail -n 5" spits out "133" as the longest sysfs path ever.  I guess that could
-> > be much longer on some multi-node NUMA box or whatever.
-> > 
-> > <shrug> /me codes up a fix, tosses it on the patch pile.
-> 
-> Already fixed on the maint branch.
+Commit 007649375f6af2 ("ext4: initialize multi-block allocator before
+checking block descriptors") causes the block group descriptor's count
+of the number of free blocks to become inconsistent with the number of
+free blocks in the allocation bitmap.  This is a harmless form of fs
+corruption, but it causes the kernel to potentially remount the file
+system read-only, or to panic, depending on the file systems's error
+behavior.
 
-Oh, I guess git.kernel.org is out of date. :/
+Thanks to Eric Whitney for his tireless work to reproduce and to find
+the guilty commit.
 
---D
-> 
-> Cheers,
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Fixes: 007649375f6af2 ("ext4: initialize multi-block allocator before checking block descriptors"
+
+Cc: stable@vger.kernel.org  # 3.15
+Reported-by: David Jander <david@protonic.nl>
+Reported-by: Matteo Croce <technoboy85@gmail.com>
+Tested-by: Eric Whitney <enwlinux@gmail.com>
+Suggested-by: Eric Whitney <enwlinux@gmail.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/super.c | 51 ++++++++++++++++++++++++---------------------------
+ 1 file changed, 24 insertions(+), 27 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 6297c07..6df7bc6 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3879,38 +3879,19 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 			goto failed_mount2;
+ 		}
+ 	}
+-
+-	/*
+-	 * set up enough so that it can read an inode,
+-	 * and create new inode for buddy allocator
+-	 */
+-	sbi->s_gdb_count = db_count;
+-	if (!test_opt(sb, NOLOAD) &&
+-	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
+-		sb->s_op = &ext4_sops;
+-	else
+-		sb->s_op = &ext4_nojournal_sops;
+-
+-	ext4_ext_init(sb);
+-	err = ext4_mb_init(sb);
+-	if (err) {
+-		ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
+-			 err);
+-		goto failed_mount2;
+-	}
+-
+ 	if (!ext4_check_descriptors(sb, &first_not_zeroed)) {
+ 		ext4_msg(sb, KERN_ERR, "group descriptors corrupted!");
+-		goto failed_mount2a;
++		goto failed_mount2;
+ 	}
+ 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
+ 		if (!ext4_fill_flex_info(sb)) {
+ 			ext4_msg(sb, KERN_ERR,
+ 			       "unable to initialize "
+ 			       "flex_bg meta info!");
+-			goto failed_mount2a;
++			goto failed_mount2;
+ 		}
+ 
++	sbi->s_gdb_count = db_count;
+ 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
+ 	spin_lock_init(&sbi->s_next_gen_lock);
+ 
+@@ -3945,6 +3926,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi->s_stripe = ext4_get_stripe_size(sbi);
+ 	sbi->s_extent_max_zeroout_kb = 32;
+ 
++	/*
++	 * set up enough so that it can read an inode
++	 */
++	if (!test_opt(sb, NOLOAD) &&
++	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
++		sb->s_op = &ext4_sops;
++	else
++		sb->s_op = &ext4_nojournal_sops;
+ 	sb->s_export_op = &ext4_export_ops;
+ 	sb->s_xattr = ext4_xattr_handlers;
+ #ifdef CONFIG_QUOTA
+@@ -4134,13 +4123,21 @@ no_journal:
+ 	if (err) {
+ 		ext4_msg(sb, KERN_ERR, "failed to reserve %llu clusters for "
+ 			 "reserved pool", ext4_calculate_resv_clusters(sb));
+-		goto failed_mount5;
++		goto failed_mount4a;
+ 	}
+ 
+ 	err = ext4_setup_system_zone(sb);
+ 	if (err) {
+ 		ext4_msg(sb, KERN_ERR, "failed to initialize system "
+ 			 "zone (%d)", err);
++		goto failed_mount4a;
++	}
++
++	ext4_ext_init(sb);
++	err = ext4_mb_init(sb);
++	if (err) {
++		ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
++			 err);
+ 		goto failed_mount5;
+ 	}
+ 
+@@ -4217,8 +4214,11 @@ failed_mount8:
+ failed_mount7:
+ 	ext4_unregister_li_request(sb);
+ failed_mount6:
+-	ext4_release_system_zone(sb);
++	ext4_mb_release(sb);
+ failed_mount5:
++	ext4_ext_release(sb);
++	ext4_release_system_zone(sb);
++failed_mount4a:
+ 	dput(sb->s_root);
+ 	sb->s_root = NULL;
+ failed_mount4:
+@@ -4242,14 +4242,11 @@ failed_mount3:
+ 	percpu_counter_destroy(&sbi->s_extent_cache_cnt);
+ 	if (sbi->s_mmp_tsk)
+ 		kthread_stop(sbi->s_mmp_tsk);
+-failed_mount2a:
+-	ext4_mb_release(sb);
+ failed_mount2:
+ 	for (i = 0; i < db_count; i++)
+ 		brelse(sbi->s_group_desc[i]);
+ 	ext4_kvfree(sbi->s_group_desc);
+ failed_mount:
+-	ext4_ext_release(sb);
+ 	if (sbi->s_chksum_driver)
+ 		crypto_free_shash(sbi->s_chksum_driver);
+ 	if (sbi->s_proc) {
+-- 
+2.0.0
+
