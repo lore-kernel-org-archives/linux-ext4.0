@@ -1,14 +1,14 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: rearrange initialization to fix EXT4FS_DEBUG
-Date: Fri, 11 Jul 2014 17:59:30 -0400
-Message-ID: <1405115970-2668-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH -v2] ext4: rearrange initialization to fix EXT4FS_DEBUG
+Date: Sat, 12 Jul 2014 12:10:15 -0400
+Message-ID: <1405181415-1403-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:59078 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:59845 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750723AbaGKV7e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Jul 2014 17:59:34 -0400
+	id S1751473AbaGLQKV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Jul 2014 12:10:21 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -26,34 +26,13 @@ simplifies the code somewhat.
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
 
-[ I don't plan to push this to Linus until the next merge window -- Ted ]
+[ This will teach me not to try to push out a patch in a hurry before
+  running to catch an airplane...  and again, I don't plan to include
+  this until the next merge window.  -- Ted ]
 
- fs/ext4/ext4.h  |  4 +--
  fs/ext4/super.c | 87 +++++++++++++++++++++++++--------------------------------
- 2 files changed, 40 insertions(+), 51 deletions(-)
+ 1 file changed, 38 insertions(+), 49 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 7cc5a0e..1e05065 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -29,7 +29,7 @@
- #include <linux/wait.h>
- #include <linux/blockgroup_lock.h>
- #include <linux/percpu_counter.h>
--#include <linux/ratelimit.h>
-+h#include <linux/ratelimit.h>
- #include <crypto/hash.h>
- #include <linux/falloc.h>
- #ifdef __KERNEL__
-@@ -43,7 +43,7 @@
- /*
-  * Define EXT4FS_DEBUG to produce debug messages
-  */
--#undef EXT4FS_DEBUG
-+#define EXT4FS_DEBUG
- 
- /*
-  * Debug code
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
 index 6df7bc6..30767cd 100644
 --- a/fs/ext4/super.c
