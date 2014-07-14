@@ -1,53 +1,167 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 bug fixes for 3.16
-Date: Sun, 13 Jul 2014 16:10:18 -0400
-Message-ID: <20140713201018.GA31590@thunk.org>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: revert commit which was causing fs corruption
+ after journal replays
+Date: Mon, 14 Jul 2014 09:23:52 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1407140923440.13527@localhost.localdomain>
+References: <1405115566-2034-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:41982 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752202AbaGNHX6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Jul 2014 03:23:58 -0400
+In-Reply-To: <1405115566-2034-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The following changes since commit 16874b2cb867d3eb63ed838f2847143e11556708:
+On Fri, 11 Jul 2014, Theodore Ts'o wrote:
 
-  Merge tag 'ext4_for_linus_stable' of git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4 (2014-06-29 19:20:43 -0700)
+> Date: Fri, 11 Jul 2014 17:52:36 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Subject: [PATCH] ext4: revert commit which was causing fs corruption after
+>     journal replays
+> 
+> Commit 007649375f6af2 ("ext4: initialize multi-block allocator before
+> checking block descriptors") causes the block group descriptor's count
+> of the number of free blocks to become inconsistent with the number of
+> free blocks in the allocation bitmap.  This is a harmless form of fs
+> corruption, but it causes the kernel to potentially remount the file
+> system read-only, or to panic, depending on the file systems's error
+> behavior.
+> 
+> Thanks to Eric Whitney for his tireless work to reproduce and to find
+> the guilty commit.
+> 
+> Fixes: 007649375f6af2 ("ext4: initialize multi-block allocator before checking block descriptors"
 
-are available in the git repository at:
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
-
-for you to fetch changes up to bf40c92635d63fcc574c52649f7cda13e0418ac1:
-
-  ext4: fix potential null pointer dereference in ext4_free_inode (2014-07-12 16:11:42 -0400)
-
-----------------------------------------------------------------
-More bug fixes for ext4 -- most importantly, a fix for a bug
-(introduced in 3.15) that can end up triggering a file system
-corruption error after a journal replay.  (It shouldn't lead to any
-actual data corruption, but it is scary and can force file systems to
-be remounted read-only, etc.)
-
-----------------------------------------------------------------
-Eric Sandeen (1):
-      ext4: disable synchronous transaction batching if max_batch_time==0
-
-Namjae Jeon (1):
-      ext4: fix potential null pointer dereference in ext4_free_inode
-
-Theodore Ts'o (5):
-      ext4: fix unjournalled bg descriptor while initializing inode bitmap
-      ext4: clarify error count warning messages
-      ext4: clarify ext4_error message in ext4_mb_generate_buddy_error()
-      ext4: revert commit which was causing fs corruption after journal replays
-      ext4: fix a potential deadlock in __ext4_es_shrink()
-
- fs/ext4/extents_status.c |  4 ++--
- fs/ext4/ialloc.c         | 16 ++++++++--------
- fs/ext4/mballoc.c        |  4 ++--
- fs/ext4/super.c          | 60 ++++++++++++++++++++++++++++--------------------------------
- fs/jbd2/transaction.c    |  5 ++++-
- 5 files changed, 44 insertions(+), 45 deletions(-)
+> 
+> Cc: stable@vger.kernel.org  # 3.15
+> Reported-by: David Jander <david@protonic.nl>
+> Reported-by: Matteo Croce <technoboy85@gmail.com>
+> Tested-by: Eric Whitney <enwlinux@gmail.com>
+> Suggested-by: Eric Whitney <enwlinux@gmail.com>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+>  fs/ext4/super.c | 51 ++++++++++++++++++++++++---------------------------
+>  1 file changed, 24 insertions(+), 27 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 6297c07..6df7bc6 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -3879,38 +3879,19 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  			goto failed_mount2;
+>  		}
+>  	}
+> -
+> -	/*
+> -	 * set up enough so that it can read an inode,
+> -	 * and create new inode for buddy allocator
+> -	 */
+> -	sbi->s_gdb_count = db_count;
+> -	if (!test_opt(sb, NOLOAD) &&
+> -	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
+> -		sb->s_op = &ext4_sops;
+> -	else
+> -		sb->s_op = &ext4_nojournal_sops;
+> -
+> -	ext4_ext_init(sb);
+> -	err = ext4_mb_init(sb);
+> -	if (err) {
+> -		ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
+> -			 err);
+> -		goto failed_mount2;
+> -	}
+> -
+>  	if (!ext4_check_descriptors(sb, &first_not_zeroed)) {
+>  		ext4_msg(sb, KERN_ERR, "group descriptors corrupted!");
+> -		goto failed_mount2a;
+> +		goto failed_mount2;
+>  	}
+>  	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
+>  		if (!ext4_fill_flex_info(sb)) {
+>  			ext4_msg(sb, KERN_ERR,
+>  			       "unable to initialize "
+>  			       "flex_bg meta info!");
+> -			goto failed_mount2a;
+> +			goto failed_mount2;
+>  		}
+>  
+> +	sbi->s_gdb_count = db_count;
+>  	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
+>  	spin_lock_init(&sbi->s_next_gen_lock);
+>  
+> @@ -3945,6 +3926,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  	sbi->s_stripe = ext4_get_stripe_size(sbi);
+>  	sbi->s_extent_max_zeroout_kb = 32;
+>  
+> +	/*
+> +	 * set up enough so that it can read an inode
+> +	 */
+> +	if (!test_opt(sb, NOLOAD) &&
+> +	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
+> +		sb->s_op = &ext4_sops;
+> +	else
+> +		sb->s_op = &ext4_nojournal_sops;
+>  	sb->s_export_op = &ext4_export_ops;
+>  	sb->s_xattr = ext4_xattr_handlers;
+>  #ifdef CONFIG_QUOTA
+> @@ -4134,13 +4123,21 @@ no_journal:
+>  	if (err) {
+>  		ext4_msg(sb, KERN_ERR, "failed to reserve %llu clusters for "
+>  			 "reserved pool", ext4_calculate_resv_clusters(sb));
+> -		goto failed_mount5;
+> +		goto failed_mount4a;
+>  	}
+>  
+>  	err = ext4_setup_system_zone(sb);
+>  	if (err) {
+>  		ext4_msg(sb, KERN_ERR, "failed to initialize system "
+>  			 "zone (%d)", err);
+> +		goto failed_mount4a;
+> +	}
+> +
+> +	ext4_ext_init(sb);
+> +	err = ext4_mb_init(sb);
+> +	if (err) {
+> +		ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
+> +			 err);
+>  		goto failed_mount5;
+>  	}
+>  
+> @@ -4217,8 +4214,11 @@ failed_mount8:
+>  failed_mount7:
+>  	ext4_unregister_li_request(sb);
+>  failed_mount6:
+> -	ext4_release_system_zone(sb);
+> +	ext4_mb_release(sb);
+>  failed_mount5:
+> +	ext4_ext_release(sb);
+> +	ext4_release_system_zone(sb);
+> +failed_mount4a:
+>  	dput(sb->s_root);
+>  	sb->s_root = NULL;
+>  failed_mount4:
+> @@ -4242,14 +4242,11 @@ failed_mount3:
+>  	percpu_counter_destroy(&sbi->s_extent_cache_cnt);
+>  	if (sbi->s_mmp_tsk)
+>  		kthread_stop(sbi->s_mmp_tsk);
+> -failed_mount2a:
+> -	ext4_mb_release(sb);
+>  failed_mount2:
+>  	for (i = 0; i < db_count; i++)
+>  		brelse(sbi->s_group_desc[i]);
+>  	ext4_kvfree(sbi->s_group_desc);
+>  failed_mount:
+> -	ext4_ext_release(sb);
+>  	if (sbi->s_chksum_driver)
+>  		crypto_free_shash(sbi->s_chksum_driver);
+>  	if (sbi->s_proc) {
+> 
