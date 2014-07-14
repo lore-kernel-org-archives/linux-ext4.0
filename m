@@ -1,101 +1,81 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: testing result of loop-aio patchset on ext3
-Date: Mon, 14 Jul 2014 11:51:16 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1407141142520.13527@localhost.localdomain>
-References: <53C3A42E.40000@huawei.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [ext4:dev 8/8] fs/ext4/indirect.c:1462 ext4_ind_remove_space()
+ error: we previously assumed 'partial->bh' could be null (see line 1441)
+Date: Mon, 14 Jul 2014 06:00:45 -0400
+Message-ID: <20140714100045.GB8935@thunk.org>
+References: <20140712093409.GX23001@mwanda>
+ <alpine.LFD.2.00.1407140853160.13527@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Dave Kleikamp <dave.kleikamp@oracle.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Li Zefan <lizefan@huawei.com>
-To: Rui Xiang <rui.xiang@huawei.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <53C3A42E.40000@huawei.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Dan Carpenter <dan.carpenter@oracle.com>,
+	linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:33340 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751718AbaGNKA5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Jul 2014 06:00:57 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1407140853160.13527@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 14 Jul 2014, Rui Xiang wrote:
+On Mon, Jul 14, 2014 at 09:03:37AM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> > tree:   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.gi=
+t dev
 
-> Date: Mon, 14 Jul 2014 17:34:38 +0800
-> From: Rui Xiang <rui.xiang@huawei.com>
-> To: Dave Kleikamp <dave.kleikamp@oracle.com>, linux-ext4@vger.kernel.org
-> Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
->     Li Zefan <lizefan@huawei.com>
-> Subject: testing result of loop-aio patchset on ext3
-> 
-> Hi Dave,
-> 
-> We export a container image file as a block device via loop device, but we
-> found it's very easy that the container rootfs gets corrupted due to power
-> loss.
-> 
-> Your early version of loop-aio patchset said the patchset can make loop
-> mounted filesystems recoverable(lkml.org/lkml/2012/3/30/317), but we found
-> it doesn't help.
-> 
-> Both the guest fs and host fs are ext3.
-> 
-> The loop-aio patchset is from:
-> git://github.com/kleikamp/linux-shaggy.git aio_loop
-> 
-> Steps:
-> 1. dd a 10G image, mkfs.ext3,
->   # dd if=/dev/zero of=./raw_image bs=1M count=10000
->   # echo y | mkfs.ext3 raw_image
-> 
-> 2. losetup a loop device, mount at ./test_dir
->   # losetup /dev/loop1 raw_image
->   # mount /dev/loop1 ./test_dir
-> 
-> 3. copy fs_mark into test_dir and run
->   # ./fs_mark -d ./tmp/ -s 102400000 -n 80
-> 
-> 4. during runing fs_mark, make systerm reboot indirectly.
->   # echo b > /proc/sysrq-trigger
-> 
-> After systerm booted up, sometimes fsck reported raw_image fs has been damaged.
-> 
-> # fsck.ext3 -n raw_image
-> e2fsck 1.41.9 (22-Aug-2009)
-> Warning: skipping journal recovery because doing a read-only filesystem check.
-> raw_image contains a file system with errors, check forced.
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> Free blocks count wrong (2481348, counted=2480577).
-> Fix? no
-> Free inodes count wrong (640837, counted=640835).
-> Fix? no
-> raw_image: ********** WARNING: Filesystem still has errors **********
-> raw_image: 11/640848 files (0.0% non-contiguous), 78652/2560000 blocks
+> Hi Ted,
+>=20
+> in which branch is it ? I can not find this commit anywhere in the
+> ext4 tree.
 
-It's not damaged, this is expected result if you're using old
-e2fsprogs which still treats this as an error.
+It's on the tip of the dev tree, but remember, the dev branch is a
+rewinding branch, so the commit id's are not stable.  Patches that are
+behind the master branch are guaranteed to be stable, but at the
+moment master =3D=3D origin.
 
-It's not an error because we only update superblock summary at
-unmount time so with unclean shutdown it's likely that it does not
-match the reality, but e2fsck can and will easily fix that for you.
+What happened is that I had just rewound the dev branch to reflect
+v3.16-rc5, since Linus accepted the stable regression fixes right
+before he released 3.16-rc5, and to fix the bug you pointed out in
+"ext4: rearrange initialization to fix EXT4FS_DEBUG".
 
-Please try e2fsprogs v1.42.3 or newer.
+(Moving forward to v3.16-rc5 also means that we now have the mm fix
+that was causing the data=3Djournal fsx test failures.)
 
-Thanks!
--Lukas
+At the moment the commit is 14e4f8cecbc4e (which is the tip of dev).
+I don't plan to make any more changes for the three patches currently
+on dev:
 
-> 
-> 
-> With a specific script, I can almost 100% reproduce this issue.
-> 
-> And it seems the corruption can only happen when reboot happens at the
-> time loop is calling vfs_fsync().
-> 
-> Do you have any idea why the loop-aio patchset doesn't help?
-> 
-> Thanks.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+14e4f8c ext4: fix punch hole on files with indirect mapping
+9f2fc8c ext4: remove metadata reservation checks
+07dd825 ext4: rearrange initialization to fix EXT4FS_DEBUG
+
+although I wouldn't be surprised if we get more review comments or
+find issues with 9f2fc8c and 14e4f8c that require that we fix them up. =
+ :-)
+
+Also as a reminder (which you probably know, but this may be useful
+for other newer ext4 developers on the list), the dev branch is
+(mostly) a dual of the state of the patches on the ext4 patch queue:
+
+https://ext4.wiki.kernel.org/index.php/Ext4_patchsets#The_ext4_patch_qu=
+eue
+
+(The reason why I say "mostly" is that I'm not always that good about
+making sure I keep the timestamps file up to date, so the instructions
+described in the ext4 wiki don't *always* result in exactly the same
+commit id's.  Most people don't seem to care, but if this is a
+problem, let me know and I can be more anal about updating the
+timestamp file when I push out changes to the ext4 patch queue's git
+tree.)
+
+Cheers,
+
+					- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
