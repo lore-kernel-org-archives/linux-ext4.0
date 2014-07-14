@@ -1,167 +1,210 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: revert commit which was causing fs corruption
- after journal replays
-Date: Mon, 14 Jul 2014 09:23:52 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1407140923440.13527@localhost.localdomain>
-References: <1405115566-2034-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH -v2] ext4: rearrange initialization to fix EXT4FS_DEBUG
+Date: Mon, 14 Jul 2014 10:04:47 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1407140959450.13527@localhost.localdomain>
+References: <1405181415-1403-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41982 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64015 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752202AbaGNHX6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Jul 2014 03:23:58 -0400
-In-Reply-To: <1405115566-2034-1-git-send-email-tytso@mit.edu>
+	id S1752296AbaGNIEx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Jul 2014 04:04:53 -0400
+In-Reply-To: <1405181415-1403-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 11 Jul 2014, Theodore Ts'o wrote:
+On Sat, 12 Jul 2014, Theodore Ts'o wrote:
 
-> Date: Fri, 11 Jul 2014 17:52:36 -0400
+> Date: Sat, 12 Jul 2014 12:10:15 -0400
 > From: Theodore Ts'o <tytso@mit.edu>
 > To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 > Cc: Theodore Ts'o <tytso@mit.edu>
-> Subject: [PATCH] ext4: revert commit which was causing fs corruption after
->     journal replays
+> Subject: [PATCH -v2] ext4: rearrange initialization to fix EXT4FS_DEBUG
 > 
-> Commit 007649375f6af2 ("ext4: initialize multi-block allocator before
-> checking block descriptors") causes the block group descriptor's count
-> of the number of free blocks to become inconsistent with the number of
-> free blocks in the allocation bitmap.  This is a harmless form of fs
-> corruption, but it causes the kernel to potentially remount the file
-> system read-only, or to panic, depending on the file systems's error
-> behavior.
+> The EXT4FS_DEBUG is a *very* developer specific #ifdef designed for
+> ext4 developers only.  (You have to modify fs/ext4/ext4.h to enable
+> it.)
 > 
-> Thanks to Eric Whitney for his tireless work to reproduce and to find
-> the guilty commit.
+> Rearrange how we initialize data structures to avoid calling
+> ext4_count_free_clusters() until the multiblock allocator has been
+> initialized.
 > 
-> Fixes: 007649375f6af2 ("ext4: initialize multi-block allocator before checking block descriptors"
-
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-
+> This also allows us to only call ext4_count_free_clusters() once, and
+> simplifies the code somewhat.
 > 
-> Cc: stable@vger.kernel.org  # 3.15
-> Reported-by: David Jander <david@protonic.nl>
-> Reported-by: Matteo Croce <technoboy85@gmail.com>
-> Tested-by: Eric Whitney <enwlinux@gmail.com>
-> Suggested-by: Eric Whitney <enwlinux@gmail.com>
 > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 > ---
->  fs/ext4/super.c | 51 ++++++++++++++++++++++++---------------------------
->  1 file changed, 24 insertions(+), 27 deletions(-)
+> 
+> [ This will teach me not to try to push out a patch in a hurry before
+>   running to catch an airplane...  and again, I don't plan to include
+>   this until the next merge window.  -- Ted ]
+> 
+>  fs/ext4/super.c | 87 +++++++++++++++++++++++++--------------------------------
+>  1 file changed, 38 insertions(+), 49 deletions(-)
 > 
 > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 6297c07..6df7bc6 100644
+> index 6df7bc6..30767cd 100644
 > --- a/fs/ext4/super.c
 > +++ b/fs/ext4/super.c
-> @@ -3879,38 +3879,19 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  			goto failed_mount2;
->  		}
+> @@ -2142,10 +2142,6 @@ static int ext4_check_descriptors(struct super_block *sb,
 >  	}
+>  	if (NULL != first_not_zeroed)
+>  		*first_not_zeroed = grp;
 > -
-> -	/*
-> -	 * set up enough so that it can read an inode,
-> -	 * and create new inode for buddy allocator
-> -	 */
-> -	sbi->s_gdb_count = db_count;
-> -	if (!test_opt(sb, NOLOAD) &&
-> -	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
-> -		sb->s_op = &ext4_sops;
-> -	else
-> -		sb->s_op = &ext4_nojournal_sops;
-> -
-> -	ext4_ext_init(sb);
-> -	err = ext4_mb_init(sb);
-> -	if (err) {
-> -		ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
-> -			 err);
-> -		goto failed_mount2;
-> -	}
-> -
->  	if (!ext4_check_descriptors(sb, &first_not_zeroed)) {
+> -	ext4_free_blocks_count_set(sbi->s_es,
+> -				   EXT4_C2B(sbi, ext4_count_free_clusters(sb)));
+> -	sbi->s_es->s_free_inodes_count =cpu_to_le32(ext4_count_free_inodes(sb));
+>  	return 1;
+>  }
+>  
+> @@ -3883,13 +3879,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 >  		ext4_msg(sb, KERN_ERR, "group descriptors corrupted!");
-> -		goto failed_mount2a;
-> +		goto failed_mount2;
+>  		goto failed_mount2;
 >  	}
->  	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
->  		if (!ext4_fill_flex_info(sb)) {
->  			ext4_msg(sb, KERN_ERR,
->  			       "unable to initialize "
->  			       "flex_bg meta info!");
-> -			goto failed_mount2a;
-> +			goto failed_mount2;
->  		}
+> -	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
+> -		if (!ext4_fill_flex_info(sb)) {
+> -			ext4_msg(sb, KERN_ERR,
+> -			       "unable to initialize "
+> -			       "flex_bg meta info!");
+> -			goto failed_mount2;
+> -		}
 >  
-> +	sbi->s_gdb_count = db_count;
+>  	sbi->s_gdb_count = db_count;
 >  	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
->  	spin_lock_init(&sbi->s_next_gen_lock);
+> @@ -3902,23 +3891,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  	/* Register extent status tree shrinker */
+>  	ext4_es_register_shrinker(sbi);
 >  
-> @@ -3945,6 +3926,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	sbi->s_stripe = ext4_get_stripe_size(sbi);
->  	sbi->s_extent_max_zeroout_kb = 32;
->  
-> +	/*
-> +	 * set up enough so that it can read an inode
-> +	 */
-> +	if (!test_opt(sb, NOLOAD) &&
-> +	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
-> +		sb->s_op = &ext4_sops;
-> +	else
-> +		sb->s_op = &ext4_nojournal_sops;
->  	sb->s_export_op = &ext4_export_ops;
->  	sb->s_xattr = ext4_xattr_handlers;
->  #ifdef CONFIG_QUOTA
-> @@ -4134,13 +4123,21 @@ no_journal:
->  	if (err) {
->  		ext4_msg(sb, KERN_ERR, "failed to reserve %llu clusters for "
->  			 "reserved pool", ext4_calculate_resv_clusters(sb));
-> -		goto failed_mount5;
-> +		goto failed_mount4a;
+> -	err = percpu_counter_init(&sbi->s_freeclusters_counter,
+> -			ext4_count_free_clusters(sb));
+> -	if (!err) {
+> -		err = percpu_counter_init(&sbi->s_freeinodes_counter,
+> -				ext4_count_free_inodes(sb));
+> -	}
+> -	if (!err) {
+> -		err = percpu_counter_init(&sbi->s_dirs_counter,
+> -				ext4_count_dirs(sb));
+> -	}
+> -	if (!err) {
+> -		err = percpu_counter_init(&sbi->s_dirtyclusters_counter, 0);
+> -	}
+> -	if (!err) {
+> -		err = percpu_counter_init(&sbi->s_extent_cache_cnt, 0);
+> -	}
+> -	if (err) {
+> +	if ((err = percpu_counter_init(&sbi->s_extent_cache_cnt, 0)) != 0) {
+>  		ext4_msg(sb, KERN_ERR, "insufficient memory");
+>  		goto failed_mount3;
 >  	}
+> @@ -4022,18 +3995,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 >  
->  	err = ext4_setup_system_zone(sb);
->  	if (err) {
->  		ext4_msg(sb, KERN_ERR, "failed to initialize system "
->  			 "zone (%d)", err);
-> +		goto failed_mount4a;
-> +	}
-> +
-> +	ext4_ext_init(sb);
-> +	err = ext4_mb_init(sb);
-> +	if (err) {
-> +		ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
-> +			 err);
+>  	sbi->s_journal->j_commit_callback = ext4_journal_commit_callback;
+>  
+> -	/*
+> -	 * The journal may have updated the bg summary counts, so we
+> -	 * need to update the global counters.
+> -	 */
+> -	percpu_counter_set(&sbi->s_freeclusters_counter,
+> -			   ext4_count_free_clusters(sb));
+> -	percpu_counter_set(&sbi->s_freeinodes_counter,
+> -			   ext4_count_free_inodes(sb));
+> -	percpu_counter_set(&sbi->s_dirs_counter,
+> -			   ext4_count_dirs(sb));
+> -	percpu_counter_set(&sbi->s_dirtyclusters_counter, 0);
+> -
+>  no_journal:
+>  	if (ext4_mballoc_ready) {
+>  		sbi->s_mb_cache = ext4_xattr_create_cache(sb->s_id);
+> @@ -4141,6 +4102,32 @@ no_journal:
 >  		goto failed_mount5;
 >  	}
 >  
-> @@ -4217,8 +4214,11 @@ failed_mount8:
->  failed_mount7:
+> +	block = ext4_count_free_clusters(sb);
+> +	ext4_free_blocks_count_set(sbi->s_es, block);
+
+
+This does not seem right. block is in cluster units so we need to
+convert.
+
+	ext4_free_blocks_count_set(sbi->s_es, EXT4_C2B(sbi, blocks));
+
+Otherwise it looks good to me.
+
+Thanks!
+-Lukas
+
+
+> +	err = percpu_counter_init(&sbi->s_freeclusters_counter, block);
+> +	if (!err) {
+> +		unsigned long freei = ext4_count_free_inodes(sb);
+> +		sbi->s_es->s_free_inodes_count = cpu_to_le32(freei);
+> +		err = percpu_counter_init(&sbi->s_freeinodes_counter, freei);
+> +	}
+> +	if (!err)
+> +		err = percpu_counter_init(&sbi->s_dirs_counter,
+> +					  ext4_count_dirs(sb));
+> +	if (!err)
+> +		err = percpu_counter_init(&sbi->s_dirtyclusters_counter, 0);
+> +	if (err) {
+> +		ext4_msg(sb, KERN_ERR, "insufficient memory");
+> +		goto failed_mount6;
+> +	}
+> +
+> +	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
+> +		if (!ext4_fill_flex_info(sb)) {
+> +			ext4_msg(sb, KERN_ERR,
+> +			       "unable to initialize "
+> +			       "flex_bg meta info!");
+> +			goto failed_mount6;
+> +		}
+> +
+>  	err = ext4_register_li_request(sb, first_not_zeroed);
+>  	if (err)
+>  		goto failed_mount6;
+> @@ -4215,6 +4202,12 @@ failed_mount7:
 >  	ext4_unregister_li_request(sb);
 >  failed_mount6:
-> -	ext4_release_system_zone(sb);
-> +	ext4_mb_release(sb);
+>  	ext4_mb_release(sb);
+> +	if (sbi->s_flex_groups)
+> +		ext4_kvfree(sbi->s_flex_groups);
+> +	percpu_counter_destroy(&sbi->s_freeclusters_counter);
+> +	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+> +	percpu_counter_destroy(&sbi->s_dirs_counter);
+> +	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
 >  failed_mount5:
-> +	ext4_ext_release(sb);
-> +	ext4_release_system_zone(sb);
-> +failed_mount4a:
->  	dput(sb->s_root);
->  	sb->s_root = NULL;
->  failed_mount4:
-> @@ -4242,14 +4242,11 @@ failed_mount3:
+>  	ext4_ext_release(sb);
+>  	ext4_release_system_zone(sb);
+> @@ -4233,12 +4226,6 @@ failed_mount_wq:
+>  failed_mount3:
+>  	ext4_es_unregister_shrinker(sbi);
+>  	del_timer_sync(&sbi->s_err_report);
+> -	if (sbi->s_flex_groups)
+> -		ext4_kvfree(sbi->s_flex_groups);
+> -	percpu_counter_destroy(&sbi->s_freeclusters_counter);
+> -	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+> -	percpu_counter_destroy(&sbi->s_dirs_counter);
+> -	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
 >  	percpu_counter_destroy(&sbi->s_extent_cache_cnt);
 >  	if (sbi->s_mmp_tsk)
 >  		kthread_stop(sbi->s_mmp_tsk);
-> -failed_mount2a:
-> -	ext4_mb_release(sb);
->  failed_mount2:
->  	for (i = 0; i < db_count; i++)
->  		brelse(sbi->s_group_desc[i]);
->  	ext4_kvfree(sbi->s_group_desc);
->  failed_mount:
-> -	ext4_ext_release(sb);
->  	if (sbi->s_chksum_driver)
->  		crypto_free_shash(sbi->s_chksum_driver);
->  	if (sbi->s_proc) {
+> @@ -4556,11 +4543,13 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+>  	else
+>  		es->s_kbytes_written =
+>  			cpu_to_le64(EXT4_SB(sb)->s_kbytes_written);
+> -	ext4_free_blocks_count_set(es,
+> +	if (EXT4_SB(sb)->s_freeclusters_counter.counters)
+> +		ext4_free_blocks_count_set(es,
+>  			EXT4_C2B(EXT4_SB(sb), percpu_counter_sum_positive(
+>  				&EXT4_SB(sb)->s_freeclusters_counter)));
+> -	es->s_free_inodes_count =
+> -		cpu_to_le32(percpu_counter_sum_positive(
+> +	if (EXT4_SB(sb)->s_freeinodes_counter.counters)
+> +		es->s_free_inodes_count =
+> +			cpu_to_le32(percpu_counter_sum_positive(
+>  				&EXT4_SB(sb)->s_freeinodes_counter));
+>  	BUFFER_TRACE(sbh, "marking dirty");
+>  	ext4_superblock_csum_set(sb);
 > 
