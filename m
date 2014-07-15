@@ -1,47 +1,36 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: make ext4_has_inline_data() as a inline function
-Date: Tue, 15 Jul 2014 10:08:52 -0400
-Message-ID: <20140715140852.GA1491@thunk.org>
-References: <1401709168-27403-1-git-send-email-wenqing.lz@taobao.com>
- <20140602145631.GD30598@thunk.org>
- <20140604071111.GA19191@gmail.com>
+Subject: Re: [PATCH v2] ext4: remove readpage() check up for mmap file
+Date: Tue, 15 Jul 2014 09:43:28 -0400
+Message-ID: <20140715134328.GB32728@thunk.org>
+References: <1404368274-10404-1-git-send-email-zhenzhang.zhang@huawei.com>
+ <53B4F5B7.7060209@huawei.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, Ian Nartowicz <claws@nartowicz.co.uk>,
-	Tao Ma <tm@tao.ma>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Zheng Liu <wenqing.lz@taobao.com>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	wangnan0@huawei.com, "Zwisler, Ross" <ross.zwisler@intel.com>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>
+To: Zhang Zhen <zhenzhang.zhang@huawei.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35928 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:35927 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750984AbaGOOJG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Jul 2014 10:09:06 -0400
+	id S1750960AbaGOOJE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Jul 2014 10:09:04 -0400
 Content-Disposition: inline
-In-Reply-To: <20140604071111.GA19191@gmail.com>
+In-Reply-To: <53B4F5B7.7060209@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 04, 2014 at 03:11:11PM +0800, Zheng Liu wrote:
-> Now ext4_has_inline_data() is used in wide spread codepaths.  So we need
-> to make it as a inline function to avoid burning some CPU cycles.
-> 
-> text size (bytes):
-> vanilla: 10350562
-> patched: 10384933 (+0.33%)
+On Thu, Jul 03, 2014 at 02:18:31PM +0800, Zhang Zhen wrote:
+> There is no kind of file does not supply page reading function.
 
-This represents a difference of 34k, which was over 10% the text size
-of ext4.o --- so this surprised me greatly.  I just did my own
-testing, and difference I see is 117 bytes:
+The code in question originally came from ext2, when the a_ops used in
+XIP mode did not have a readpage function.  And since there is an
+outstanding XIP patch set that Matthew Wilcox has been working on, I
+was going to NACK this.  Howeveer, it looks like the lines in question
+are getting removed in the most recent version of the XIP patch set
+that I've seen, so it it seems the only problem is this will cause a
+minor patch conflict with XIP.
 
-         text	  data	    bss     dec	    hex	filename
-before: 326110	  19258	   5528	 350896	  55ab0	fs/ext4/ext4.o
-after:  326227	  19258	   5528	 351013	  55b25	fs/ext4/ext4.o
+So I'll accept this, and assume the XIP folks aren't going to object....
 
-So I'm going to adjust the patch include these numbers, which are much
-less likely to cause embedded people to complain about a large
-increase in code bloat.  :-)
-
-Thanks, applied.
-
-					- Ted
+   	       	     	 	    	- Ted
