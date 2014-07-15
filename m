@@ -1,85 +1,79 @@
 From: David Jander <david@protonic.nl>
-Subject: Re: ext4: journal has aborted
-Date: Tue, 15 Jul 2014 08:31:01 +0200
-Message-ID: <20140715083101.2c70e8f5@archvile>
-References: <20140704154559.026331ec@archvile>
-	<20140704184539.GA11103@thunk.org>
-	<20140707141701.2f9529af@archvile>
-	<20140707155310.GB8254@thunk.org>
-	<20140707225619.GD8254@thunk.org>
-	<20140710185748.GA26636@wallace>
-	<20140710200126.GE10417@birch.djwong.org>
-	<CAFnufp2yDsbHby6Ye-Ldjz=qGWyxOJUMv8JZJa-5+f6CUFSpYw@mail.gmail.com>
-	<20140710223245.GB12018@thunk.org>
-	<20140711001334.GF10417@birch.djwong.org>
-	<20140711004507.GB26636@wallace>
+Subject: Re: Question about data integrity on SD cards
+Date: Tue, 15 Jul 2014 09:09:36 +0200
+Message-ID: <20140715090936.44531046@archvile>
+References: <53BD32D5.3000804@kelvatek.com>
+	<alpine.LFD.2.00.1407091444140.2128@localhost.localdomain>
+	<53BD4251.3070501@kelvatek.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Matteo Croce <technoboy85@gmail.com>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
-	linux-ext4@vger.kernel.org, Azat Khuzhin <a3at.mail@gmail.com>
-To: Eric Whitney <enwlinux@gmail.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: =?UTF-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: Grzegorz Sikorski <g.sikorski@kelvatek.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from protonic.xs4all.nl ([83.163.252.89]:8347 "EHLO
+Received: from protonic.xs4all.nl ([83.163.252.89]:8442 "EHLO
 	protonic.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757766AbaGOGbB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2014 02:31:01 -0400
-In-Reply-To: <20140711004507.GB26636@wallace>
+	with ESMTP id S1757988AbaGOHJT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2014 03:09:19 -0400
+In-Reply-To: <53BD4251.3070501@kelvatek.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, 09 Jul 2014 14:23:29 +0100
+Grzegorz Sikorski <g.sikorski@kelvatek.com> wrote:
 
-Dear Eric, Ted, ...
+> We are using 2.6.37 version and we may have some issues with underlyi=
+ng=20
+> mmc-host driver. We also tested our setup on newer kernels as well as=
+=20
+> different media with similar results, but I was not involved in these=
+=20
+> tests, so cannot give any details straight away.
+>=20
+> But my main question was partially answered by you. I just need a=20
+> confirmation that design of our system should in general be OK, as we=
+=20
+> may expect random power downs occasionally. So do you think it is=20
+> possible (in general) to build embedded system with SQLite3 database =
+on=20
+> EXT4 filesystem on SD card that is not fragile on unexpected power=20
+> sequence? Do you know what type of SD card would be recommended in th=
+is=20
+> case? Are our mounting options fine?
 
-On Thu, 10 Jul 2014 20:45:08 -0400
-Eric Whitney <enwlinux@gmail.com> wrote:
+Sorry for the late reaction. In case you still wonder, no. It is not po=
+ssible
+to do this with common (COTS) SD cards in general. Due to their nature,=
+ SD
+cards can corrupt even data that is not being written to when power is
+interrupted during a write (or read) action. There is no filesystem tha=
+t can
+protect you from that.
 
-> * Darrick J. Wong <darrick.wong@oracle.com>:
-> > On Thu, Jul 10, 2014 at 06:32:45PM -0400, Theodore Ts'o wrote:
-> > > To be clear, what you would need to do is to revert commit
-> > > 007649375f6af242d5b1df2c15996949714303ba to prevent the fs corruption.
-> > > Darrick's patch is one that tries to fix the problem addressed by that
-> > > commit in a different fashion.
-> > > 
-> > > Quite frankly, reverting the commit, which is causing real damage, is
-> > > far more impotrant to me right now than what to do in order allow
-> > > CONFIG_EXT4FS_DEBUG to work (which is nice, but it's only something
-> > > that file system developers need, and to be honest I can't remember
-> > > the last time I've used said config option).  But if we know that
-> > > Darrick's fix works, I'm willing to push that to Linus at the same
-> > > time that I push a revert of 007649375f6af242d5b1df2c15996949714303ba
-> > 
-> > Reverting the 007649375... patch doesn't seem to create any obvious regressions
-> > on my test box (though again, I was never able to reproduce it as consistently
-> > as Eric W.).
-> > 
-> > Tossing in the [1] patch also fixes the crash when CONFIG_EXT4_DEBUG=y on
-> > 3.16-rc4.  I'd say it's safe to send both to Linus and stable.
-> > 
-> > If anyone experiences problems that I'm not seeing, please yell loudly and
-> > soon!
-> > 
-> 
-> Reverting the suspect patch - 007649375f - on 3.16-rc3 and running on the
-> Panda yielded 10 successive "successful" generic/068 failures (no block
-> bitmap trouble on reboot).  So, it looks like that patch is all of it.
-> 
-> Running the same test scenario on Darrick's patch (CONFIG_EXT4FS_DEBUG =>
-> CONFIG_EXT4_DEBUG) applied to 3.16-rc3 lead to exactly the same result.
-> No panics, BUGS, or other misbehavior whether generic/068 completed 
-> successfully or failed (and that test used here simply because it was
-> convenient) and no trouble on boot, etc.
+And btw, the thread Luk=C3=A1=C5=A1 mentioned is about a bug in ext4, n=
+ot really about
+problems with SD cards.
 
-Thanks a lot to everyone for the excellent work hunting this down!
-I can confirm that on 3.16-rc5 the problem is gone. At least after extensively
-testing yesterday, I have not been unable to reproduce it. No ext4 error
-messages and no filesystem corruption anymore!
+If you need robust flash storage, please look at MMC 4.41+ enhanced mod=
+e and
+"reliable-write" functionality. Without these two functions combined, i=
+t is
+not possible to do what you want to do. I have not seen (non embedded) =
+MMC
+cards (in actual SD/MMC-card format) that support version 4.41 or newer=
+ of the
+(e)MMC standard, but it may be possible that someone makes them.... tha=
+t might be
+a solution for your problem.
 
 Best regards,
 
--- 
+--=20
 David Jander
 Protonic Holland.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
