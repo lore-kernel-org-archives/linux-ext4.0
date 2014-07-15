@@ -1,64 +1,187 @@
-From: Chen Gang <gang.chen.5i5j@gmail.com>
-Subject: Re: [PATCH] fs/ext4/super.c: Let 'counters' switched by SMP
-Date: Tue, 15 Jul 2014 18:06:31 +0800
-Message-ID: <53C4FD27.2030906@gmail.com>
-References: <53C47E59.8030502@gmail.com> <20140715093154.GB1451@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: rearrange initialization to fix EXT4FS_DEBUG
+Date: Tue, 15 Jul 2014 07:35:29 -0400
+Message-ID: <1405424129-4479-1-git-send-email-tytso@mit.edu>
+Cc: gang.chen.5i5j@gmail.com, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f47.google.com ([209.85.220.47]:33971 "EHLO
-	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758043AbaGOKG4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2014 06:06:56 -0400
-In-Reply-To: <20140715093154.GB1451@thunk.org>
+Received: from imap.thunk.org ([74.207.234.97]:35675 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758739AbaGOLfo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Jul 2014 07:35:44 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/15/2014 05:31 PM, Theodore Ts'o wrote:
-> On Tue, Jul 15, 2014 at 09:05:29AM +0800, Chen Gang wrote:
->> When SMP is disabled, 'struct percpu_counter' has no 'counters' member,
->> so need skip it when in !SMP.
->>
->> The related git commit:
->>
->>   "feab139 ext4: rearrange initialization to fix EXT4FS_DEBUG".
->>
->> The related error (with allmodconfig under score):
->>
->>     CC [M]  fs/ext4/super.o
->>   fs/ext4/super.c: In function 'ext4_commit_super':
->>   fs/ext4/super.c:4546:41: error: 'struct percpu_counter' has no member named 'counters'
->>     if (EXT4_SB(sb)->s_freeclusters_counter.counters)
->>                                            ^
->>   fs/ext4/super.c:4550:39: error: 'struct percpu_counter' has no member named 'counters'
->>     if (EXT4_SB(sb)->s_freeinodes_counter.counters)
-> 
-> Thanks for the pointing out the problem.  I though think the right way
-> of fixing this problem, though, instead of using the #ifdef
-> CONFIG_SMP, is to do this:
-> 
->        if (percpu_counter_initialized(&EXT4_SB(sb)->s_freeclusters_counter))
->        	  ...
-> 
+The EXT4FS_DEBUG is a *very* developer specific #ifdef designed for
+ext4 developers only.  (You have to modify fs/ext4/ext4.h to enable
+it.)
 
-That sounds fine to me (unlike my ugly fix, your fix is common and
-standard), thanks.
+Rearrange how we initialize data structures to avoid calling
+ext4_count_free_clusters() until the multiblock allocator has been
+initialized.
 
-> I'll respin the "ext4: rearrange initialization to fix EXT4FS_DEBUG"
-> commit to include this fix and give you credit in the commit logs for
-> pointing out this issue.
-> 
+This also allows us to only call ext4_count_free_clusters() once, and
+simplifies the code somewhat.
 
-Thank you for your work.
+(Thanks to Chen Gang <gang.chen.5i5j@gmail.com> for pointing out a
+!CONFIG_SMP compile breakage in the original patch.)
 
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/super.c | 88 +++++++++++++++++++++++++--------------------------------
+ 1 file changed, 39 insertions(+), 49 deletions(-)
 
-Thanks.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 6df7bc6..32b43ad 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2142,10 +2142,6 @@ static int ext4_check_descriptors(struct super_block *sb,
+ 	}
+ 	if (NULL != first_not_zeroed)
+ 		*first_not_zeroed = grp;
+-
+-	ext4_free_blocks_count_set(sbi->s_es,
+-				   EXT4_C2B(sbi, ext4_count_free_clusters(sb)));
+-	sbi->s_es->s_free_inodes_count =cpu_to_le32(ext4_count_free_inodes(sb));
+ 	return 1;
+ }
+ 
+@@ -3883,13 +3879,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		ext4_msg(sb, KERN_ERR, "group descriptors corrupted!");
+ 		goto failed_mount2;
+ 	}
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
+-		if (!ext4_fill_flex_info(sb)) {
+-			ext4_msg(sb, KERN_ERR,
+-			       "unable to initialize "
+-			       "flex_bg meta info!");
+-			goto failed_mount2;
+-		}
+ 
+ 	sbi->s_gdb_count = db_count;
+ 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
+@@ -3902,23 +3891,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	/* Register extent status tree shrinker */
+ 	ext4_es_register_shrinker(sbi);
+ 
+-	err = percpu_counter_init(&sbi->s_freeclusters_counter,
+-			ext4_count_free_clusters(sb));
+-	if (!err) {
+-		err = percpu_counter_init(&sbi->s_freeinodes_counter,
+-				ext4_count_free_inodes(sb));
+-	}
+-	if (!err) {
+-		err = percpu_counter_init(&sbi->s_dirs_counter,
+-				ext4_count_dirs(sb));
+-	}
+-	if (!err) {
+-		err = percpu_counter_init(&sbi->s_dirtyclusters_counter, 0);
+-	}
+-	if (!err) {
+-		err = percpu_counter_init(&sbi->s_extent_cache_cnt, 0);
+-	}
+-	if (err) {
++	if ((err = percpu_counter_init(&sbi->s_extent_cache_cnt, 0)) != 0) {
+ 		ext4_msg(sb, KERN_ERR, "insufficient memory");
+ 		goto failed_mount3;
+ 	}
+@@ -4022,18 +3995,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 
+ 	sbi->s_journal->j_commit_callback = ext4_journal_commit_callback;
+ 
+-	/*
+-	 * The journal may have updated the bg summary counts, so we
+-	 * need to update the global counters.
+-	 */
+-	percpu_counter_set(&sbi->s_freeclusters_counter,
+-			   ext4_count_free_clusters(sb));
+-	percpu_counter_set(&sbi->s_freeinodes_counter,
+-			   ext4_count_free_inodes(sb));
+-	percpu_counter_set(&sbi->s_dirs_counter,
+-			   ext4_count_dirs(sb));
+-	percpu_counter_set(&sbi->s_dirtyclusters_counter, 0);
+-
+ no_journal:
+ 	if (ext4_mballoc_ready) {
+ 		sbi->s_mb_cache = ext4_xattr_create_cache(sb->s_id);
+@@ -4141,6 +4102,33 @@ no_journal:
+ 		goto failed_mount5;
+ 	}
+ 
++	block = ext4_count_free_clusters(sb);
++	ext4_free_blocks_count_set(sbi->s_es, 
++				   EXT4_C2B(sbi, block));
++	err = percpu_counter_init(&sbi->s_freeclusters_counter, block);
++	if (!err) {
++		unsigned long freei = ext4_count_free_inodes(sb);
++		sbi->s_es->s_free_inodes_count = cpu_to_le32(freei);
++		err = percpu_counter_init(&sbi->s_freeinodes_counter, freei);
++	}
++	if (!err)
++		err = percpu_counter_init(&sbi->s_dirs_counter,
++					  ext4_count_dirs(sb));
++	if (!err)
++		err = percpu_counter_init(&sbi->s_dirtyclusters_counter, 0);
++	if (err) {
++		ext4_msg(sb, KERN_ERR, "insufficient memory");
++		goto failed_mount6;
++	}
++
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
++		if (!ext4_fill_flex_info(sb)) {
++			ext4_msg(sb, KERN_ERR,
++			       "unable to initialize "
++			       "flex_bg meta info!");
++			goto failed_mount6;
++		}
++
+ 	err = ext4_register_li_request(sb, first_not_zeroed);
+ 	if (err)
+ 		goto failed_mount6;
+@@ -4215,6 +4203,12 @@ failed_mount7:
+ 	ext4_unregister_li_request(sb);
+ failed_mount6:
+ 	ext4_mb_release(sb);
++	if (sbi->s_flex_groups)
++		ext4_kvfree(sbi->s_flex_groups);
++	percpu_counter_destroy(&sbi->s_freeclusters_counter);
++	percpu_counter_destroy(&sbi->s_freeinodes_counter);
++	percpu_counter_destroy(&sbi->s_dirs_counter);
++	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
+ failed_mount5:
+ 	ext4_ext_release(sb);
+ 	ext4_release_system_zone(sb);
+@@ -4233,12 +4227,6 @@ failed_mount_wq:
+ failed_mount3:
+ 	ext4_es_unregister_shrinker(sbi);
+ 	del_timer_sync(&sbi->s_err_report);
+-	if (sbi->s_flex_groups)
+-		ext4_kvfree(sbi->s_flex_groups);
+-	percpu_counter_destroy(&sbi->s_freeclusters_counter);
+-	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+-	percpu_counter_destroy(&sbi->s_dirs_counter);
+-	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
+ 	percpu_counter_destroy(&sbi->s_extent_cache_cnt);
+ 	if (sbi->s_mmp_tsk)
+ 		kthread_stop(sbi->s_mmp_tsk);
+@@ -4556,11 +4544,13 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+ 	else
+ 		es->s_kbytes_written =
+ 			cpu_to_le64(EXT4_SB(sb)->s_kbytes_written);
+-	ext4_free_blocks_count_set(es,
++	if (percpu_counter_initialized(&EXT4_SB(sb)->s_freeclusters_counter))
++		ext4_free_blocks_count_set(es,
+ 			EXT4_C2B(EXT4_SB(sb), percpu_counter_sum_positive(
+ 				&EXT4_SB(sb)->s_freeclusters_counter)));
+-	es->s_free_inodes_count =
+-		cpu_to_le32(percpu_counter_sum_positive(
++	if (percpu_counter_initialized(&EXT4_SB(sb)->s_freeinodes_counter))
++		es->s_free_inodes_count =
++			cpu_to_le32(percpu_counter_sum_positive(
+ 				&EXT4_SB(sb)->s_freeinodes_counter));
+ 	BUFFER_TRACE(sbh, "marking dirty");
+ 	ext4_superblock_csum_set(sb);
 -- 
-Chen Gang
+2.0.0
 
-Open, share, and attitude like air, water, and life which God blessed
