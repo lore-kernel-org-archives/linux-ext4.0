@@ -1,67 +1,204 @@
-From: Dr Ahmed Kabore <dr.ahkab2012@gmail.com>
-Subject: Business Proposal
-Date: Thu, 17 Jul 2014 12:22:08 +0200
-Message-ID: <CAM8OR6wdpqmWobZu2Ow1NQvGQ-AbA-kL1LOTB=J8f8iVS7K14Q__48169.7317948148$1405592560$gmane$org@mail.gmail.com>
-Reply-To: ahmedk@barid.com
+From: Mason <mpeg.blue@free.fr>
+Subject: Re: After unlinking a large file on ext4, the process stalls for a
+ long time
+Date: Thu, 17 Jul 2014 12:30:34 +0200
+Message-ID: <53C7A5CA.4050903@free.fr>
+References: <53C687B1.30809@free.fr>
+	<21446.38705.190786.631403@quad.stoffel.home> <53C6B38A.3000100@free.fr>
+	<59C3F41A-6AFD-418E-BCE6-2361B8140D9A@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: undisclosed-recipients:;
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f196.google.com ([209.85.212.196]:48856 "EHLO
-	mail-wi0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756445AbaGQKWM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jul 2014 06:22:12 -0400
-Received: by mail-wi0-f196.google.com with SMTP id ho1so897586wib.11
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Jul 2014 03:22:10 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-15
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <59C3F41A-6AFD-418E-BCE6-2361B8140D9A@dilger.ca>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Dear Friend,
+Hello,
 
-I know that this message might meet you in utmost surprise. However,
-it's just my urgent need for foreign partner that made me to contact
-you for this transaction; I got your contact from the professional
-data base found in the internet Yahoo tourist search when I was
-searching for a foreign reliable partner. I assured of your capability
-and reliability to champion this business opportunity.
+Andreas Dilger wrote:
 
-I am (Dr Ahmed Kabore) a banker by profession from Benin Republic
-Cotonou in west Africa and currently holding the post of Audits and
-Account manager at the foreign remittance department, African
-development bank (A.D.B) I have the opportunity of transferring the
-left over sum of ($10.5 Million Dollars) that belongs to late Mr Rudi
-Harmanto, from Indonesia who died along with his entire family in the
-Asia Earth Quake (TSUNAMI, DISASTER IN INDONESIA / INDIA. 2004, and
-since then the fund has been in a suspense account.
+> Mason wrote:
+> 
+>> The use case is
+>> - allocate a large file
+>> - stick a file system on it
+>> - store stuff (typically video files) inside this "private" FS
+>> - when the user decides he doesn't need it anymore, unmount and unlink
+>> (I also have a resize operation in there, but I wanted to get the
+>> basics before taking the hard stuff head on.)
+>> 
+>> So, in the limit, we don't store anything at all: just create and
+>> immediately delete. This was my test.
+> 
+> I would agree that LVM is the real solution that you want to use.
+> It is specifically designed for this, and has much less overhead than
+> a filesystem on a loopback device on a file on another filesystem.
+> The amount of space overhead is tuneable, but typically the volumes
+> are allocated in multiples of 4MB chunks.
 
-After my further investigation, I discovered that Mr Rudi Harmanto
-died with his next of kin and according to the laws and constitution
-guiding this banking institution, stated that after the expiration of
-(10) years, if no body or person comes for the claim as the next of
-kin, the fund will be channel into national treasury as unclaimed
-fund. Because of the static of this transaction I want you to stand as
-the next of kin so that our bank will accord you their recognition and
-have the fund transfer to your account.
+I'll take a look at LVM. (But, at this point, it's too late to change
+the architecture of the system.)
 
-Hence, I am inviting you for a business deal where this money can be
-shared between us in the ratio of 50/50; I will not fail to bring to
-your notice that this transaction is hitch free if you can follow my
-instruction and also keep every thing as top secret until this fund
-transfer to your nominated bank that you are going to provide to the
-bank here so that I will come over to your country for sharing of the
-fund according to our percentage ratio Immediately the fund transfer
-into your account.
+> That said, I think you've found some kind of strange performance problem,
+> and it is worthwhile to figure this out.
+> 
+>>>> /tmp # time ./foo /mnt/hdd/xxx 5
+>>>> posix_fallocate(fd, 0, size_in_GiB << 30): 0 [68 ms]
+>>>> unlink(filename): 0 [0 ms]
+>>>> 0.00user 1.86system 0:01.92elapsed 97%CPU (0avgtext+0avgdata 528maxresident)k
+>>>> 0inputs+0outputs (0major+168minor)pagefaults 0swaps
+>>>>
+>>>> /tmp # time ./foo /mnt/hdd/xxx 10
+>>>> posix_fallocate(fd, 0, size_in_GiB << 30): 0 [141 ms]
+>>>> unlink(filename): 0 [0 ms]
+>>>> 0.00user 3.71system 0:03.83elapsed 96%CPU (0avgtext+0avgdata 528maxresident)k
+>>>> 0inputs+0outputs (0major+168minor)pagefaults 0swaps
+>>>>
+>>>> /tmp # time ./foo /mnt/hdd/xxx 100
+>>>> posix_fallocate(fd, 0, size_in_GiB << 30): 0 [1882 ms]
+>>>> unlink(filename): 0 [0 ms]
+>>>> 0.00user 37.12system 0:38.93elapsed 95%CPU (0avgtext+0avgdata 528maxresident)k
+>>>> 0inputs+0outputs (0major+168minor)pagefaults 0swaps
+>>>>
+>>>> /tmp # time ./foo /mnt/hdd/xxx 300
+>>>> posix_fallocate(fd, 0, size_in_GiB << 30): 0 [3883 ms]
+>>>> unlink(filename): 0 [0 ms]
+>>>> 0.00user 111.38system 1:55.04elapsed 96%CPU (0avgtext+0avgdata 528maxresident)k
+>>>> 0inputs+0outputs (0major+168minor)pagefaults 0swaps
 
-However, further details of this transaction and the text of
-application form will be forwarded to you as soon as I receive your
-return mail. I am waiting for your immediate response as you receive
-this mail. Extend my sincere greetings to your entire family. God
-bless you and bye for now
+Preliminary info:
 
-POST SCRITUM: You have to keep everything secret as to enable the
-transfer to move very smoothly in to the account you will prove to the
-bank. Please reply me through my private E-mail address:
-(ahmedk@barid.com)
+The partition was created/mounted with
+$ mkfs.ext4 -m 0 -i 1024000 -L ZOZO -O ^has_journal,^huge_file /dev/sda1
+$ mount -t ext4 /dev/sda1 /mnt/hdd -o noexec,noatime
+(mount is busybox, in case it matters)
 
-Yours Faithfully,
-Dr Ahmed Kabore
+mke2fs 1.42.10 (18-May-2014)
+/dev/sda1 contains a ext4 file system labelled 'ZOZO'
+        last mounted on /mnt/hdd on Wed Jul 16 15:40:40 2014
+Proceed anyway? (y,n) y
+Creating filesystem with 104857600 4k blocks and 460800 inodes
+Filesystem UUID: 8c12c8fe-6ab8-4888-b9a3-6f28c86020eb
+Superblock backups stored on blocks:
+        32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208,
+        4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968,
+        102400000
+
+Allocating group tables: done
+Writing inode tables: done
+Writing superblocks and filesystem accounting information: done
+
+/dev/sda1 on /mnt/hdd type ext4 (rw,noexec,noatime,barrier=1)
+/* No support for xattr in this kernel */
+
+# dumpe2fs -h /dev/sda1
+dumpe2fs 1.42.10 (18-May-2014)
+Filesystem volume name:   ZOZO
+Last mounted on:          <not available>
+Filesystem UUID:          8c12c8fe-6ab8-4888-b9a3-6f28c86020eb
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      ext_attr resize_inode dir_index filetype extent flex_bg sparse_super large_file uninit_bg dir_nlink extra_isize
+Filesystem flags:         signed_directory_hash
+Default mount options:    user_xattr acl
+Filesystem state:         not clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              460800
+Block count:              104857600
+Reserved block count:     0
+Free blocks:              104803944
+Free inodes:              460789
+First block:              0
+Block size:               4096
+Fragment size:            4096
+Reserved GDT blocks:      999
+Blocks per group:         32768
+Fragments per group:      32768
+Inodes per group:         144
+Inode blocks per group:   9
+Flex block group size:    16
+Filesystem created:       Thu Jul 17 11:14:27 2014
+Last mount time:          Thu Jul 17 11:14:29 2014
+Last write time:          Thu Jul 17 11:14:29 2014
+Mount count:              1
+Maximum mount count:      -1
+Last checked:             Thu Jul 17 11:14:27 2014
+Check interval:           0 (<none>)
+Lifetime writes:          4883 kB
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group unknown)
+First inode:              11
+Inode size:               256
+Required extra isize:     28
+Desired extra isize:      28
+Default directory hash:   half_md4
+Directory Hash Seed:      157f2107-76fc-417b-9a07-491951c873b7
+
+> Firstly, have you tried using "fallocate()" directly, instead of
+> posix_fallocate()?  It may be (depending on your userspace) that
+> posix_fallocate() is writing zeroes to the file instead of using
+> the fallocate() syscall, and the kernel is busy cleaning up all
+> of the dirty pages when the file is unlinked.  You could try using
+> strace to see what system calls are actually being used.
+
+Unfortunately, I'm using a prehistoric version of glibc (2.8)
+that doesn't support the fallocate wrapper (imported in 2.10).
+
+I'm 70% sure that posix_fallocate() is not actually writing zeros
+to the file, because when I tested it on ext2, creating a 300-GB
+file took hours, literally (approx. 3 hours). The same operation
+on ext4 takes a few seconds. (Although, now that I think of it,
+it could be working asynchronously, or defer some operation, that
+I eventually have to pay for on deletion.)
+
+# time strace -tt -T ./foo /mnt/hdd/xxx 300 2> strace.out
+posix_fallocate(fd, 0, size_in_GiB << 30): 0 [414 ms]
+unlink(filename): 0 [1 ms]
+
+
+12:23:27.218838 open("/mnt/hdd/xxx", O_WRONLY|O_CREAT|O_EXCL|O_LARGEFILE, 0600) = 3 <0.000486>
+12:23:27.220121 clock_gettime(CLOCK_MONOTONIC, {79879, 926227018}) = 0 <0.000105>
+12:23:27.221029 SYS_4320()              = 0 <0.412013>
+12:23:27.633673 clock_gettime(CLOCK_MONOTONIC, {79880, 339646593}) = 0 <0.000104>
+12:23:27.634657 fstat64(1, {st_mode=S_IFCHR|0755, st_rdev=makedev(4, 64), ...}) = 0 <0.000116>
+12:23:27.636187 ioctl(1, TIOCNXCL, {B115200 opost isig icanon echo ...}) = 0 <0.000146>
+12:23:27.637509 old_mmap(NULL, 65536, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x77248000 <0.000143>
+12:23:27.638306 write(1, "posix_fallocate(fd, 0, size_in_G"..., 54) = 54 <0.000237>
+12:23:27.639496 clock_gettime(CLOCK_MONOTONIC, {79880, 345448452}) = 0 <0.000102>
+12:23:27.640168 unlink("/mnt/hdd/xxx")  = 0 <0.000231>
+12:23:27.641174 clock_gettime(CLOCK_MONOTONIC, {79880, 347202581}) = 0 <0.000100>
+12:23:27.641984 write(1, "unlink(filename): 0 [1 ms]\n", 27) = 27 <0.000157>
+12:23:27.643056 exit_group(0)           = ?
+0.02user 111.51system 1:51.99elapsed 99%CPU (0avgtext+0avgdata 864maxresident)k
+0inputs+0outputs (0major+459minor)pagefaults 0swaps
+
+
+AFAICT, SYS_4320() is fallocate.
+
+/*
+ * Linux o32 style syscalls are in the range from 4000 to 4999.
+ */
+#define __NR_Linux  4000
+#define __NR_fallocate  (__NR_Linux + 320)
+
+
+Where is the process stalling? That is a mystery. Seems it's stuck
+in exit_group(), waiting for the kernel to clean up on its behalf?
+Maybe I need ftrace, or something to profile the kernel?
+
+> Secondly, where is the process actually stuck?  From your output
+> above, the unlink() call takes no measurable time before returning,
+> so I don't see where it is actually stuck.  Again, running your
+> test with "strace -tt -T ./foo /mnt/hdd/xxx 300" will show which
+> syscall is actually taking so much time to complete.  I don't
+> think it is unlink().
+
+See above, the process is stalled, but I don't know where!
+
+-- 
+Regards.
