@@ -1,41 +1,58 @@
-From: Daniel <dnlfrm@immunepc.com>
-Subject: Automatic fsck behavior
-Date: Thu, 17 Jul 2014 02:55:46 +0000 (UTC)
-Message-ID: <loom.20140717T043842-31@post.gmane.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Automatic fsck behavior
+Date: Wed, 16 Jul 2014 22:14:25 -0500
+Message-ID: <53C73F91.8040301@redhat.com>
+References: <loom.20140717T043842-31@post.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+To: Daniel <dnlfrm@immunepc.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:43135 "EHLO plane.gmane.org"
+Received: from mx1.redhat.com ([209.132.183.28]:39295 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752077AbaGQDAJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Jul 2014 23:00:09 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1X7bvQ-0003bR-9h
-	for linux-ext4@vger.kernel.org; Thu, 17 Jul 2014 05:00:04 +0200
-Received: from 99-21-121-156.lightspeed.livnmi.sbcglobal.net ([99.21.121.156])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Jul 2014 05:00:04 +0200
-Received: from dnlfrm by 99-21-121-156.lightspeed.livnmi.sbcglobal.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Jul 2014 05:00:04 +0200
+	id S1752077AbaGQDO0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Jul 2014 23:14:26 -0400
+In-Reply-To: <loom.20140717T043842-31@post.gmane.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On 7/16/14, 9:55 PM, Daniel wrote:
+> Hi,
+> 
+> Had some questions about automatic boot-time fsck, following a power-loss or
+> hard-shutdown, etc.
+> All prior research (web searching, etc) on this has been inconclusive.
+> 
+> 1) Does it do a real fsck or only a journal playback?
 
-Had some questions about automatic boot-time fsck, following a power-loss or
-hard-shutdown, etc.
-All prior research (web searching, etc) on this has been inconclusive.
+By default, e2fsck at boot time only replays the journal if
+needed.
 
-1) Does it do a real fsck or only a journal playback?
+A full fsck at boot time is generally only done if:
 
-2) If it's a real fsck, is it done in repair mode or diagnostic mode?
+*) The filesystem was marked with an error prior to the fsck due
+   to a runtime metadata error
+*) Mount-count or time-based thresholds have been reached
+   (newer mke2fs doesn't set these threshold by default)
 
-Also, do the answers depend/vary according to ext4 version or anything else?
+> 2) If it's a real fsck, is it done in repair mode or diagnostic mode?
 
-Thank you
+Depends on how initscripts invoke it, but most likely
+it is in preen ("repair the easy stuff") mode.
+
+> Also, do the answers depend/vary according to ext4 version or anything else?
+
+yep, see above, w.r.t. initscript behavior, older/newer mke2fs,
+e2fsck.conf, mke2fs.conf, etc ;)
+
+-Eric
+
+ 
+> Thank you
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
