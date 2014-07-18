@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 19/24] e2fsck: always submit logical block 0 of a directory
- for pass 2
-Date: Fri, 18 Jul 2014 15:54:38 -0700
-Message-ID: <20140718225438.31374.51461.stgit@birch.djwong.org>
+Subject: [PATCH 20/24] e2fsck: pass2 should not process directory blocks
+ that are impossibly large
+Date: Fri, 18 Jul 2014 15:54:46 -0700
+Message-ID: <20140718225446.31374.67903.stgit@birch.djwong.org>
 References: <20140718225200.31374.85411.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,134 +10,117 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:33531 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756463AbaGRWyq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jul 2014 18:54:46 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:36002 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756528AbaGRWzQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jul 2014 18:55:16 -0400
 In-Reply-To: <20140718225200.31374.85411.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Always iterate logical block 0 in a directory, even if no physical
-block has been allocated.  Pass 2 will notice the lack of mapping and
-offer to allocate a new directory block; this enables us to link the
-directory into lost+found.
+Currently, directories cannot be fallocated, which means that the only
+way they get bigger is for the kernel to append blocks one by one.
+Therefore, if we encounter a logical block offset that is too big, we
+needn't bother adding it to the dblist for pass2 processing, because
+it's unlikely to contain a valid directory block.  The code that
+handles extent based directories also does not add toobig blocks to
+the dblist.
 
-Previously, if there were no logical blocks mapped, we would fail to
-pick up even block 0 of the directory for processing in pass 2.  This
-meant that e2fsck never allocated a block 0 and therefore wouldn't fix
-the missing . and .. entries for the directory; subsequent e2fsck runs
-would complain about (yet never fix) the problem.
+Note that we can easily cause e2fsck to fail with ENOMEM if we start
+feeding it really large logical block offsets, as the dblist
+implementation will try to realloc() an array big enough to hold it.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- e2fsck/pass1.c            |   15 +++++++++++++++
- tests/f_emptydir/expect.1 |   19 +++++++++++++++++++
- tests/f_emptydir/expect.2 |    7 +++++++
- tests/f_emptydir/image.gz |  Bin
- tests/f_emptydir/name     |    2 ++
- 5 files changed, 43 insertions(+)
- create mode 100644 tests/f_emptydir/expect.1
- create mode 100644 tests/f_emptydir/expect.2
- create mode 100644 tests/f_emptydir/image.gz
- create mode 100644 tests/f_emptydir/name
+ e2fsck/pass1.c                  |   11 +++++++++++
+ tests/f_hugedir_blocks/expect.1 |   10 ++++++++++
+ tests/f_hugedir_blocks/expect.2 |    7 +++++++
+ tests/f_hugedir_blocks/image.gz |  Bin
+ tests/f_hugedir_blocks/name     |    1 +
+ 5 files changed, 29 insertions(+)
+ create mode 100644 tests/f_hugedir_blocks/expect.1
+ create mode 100644 tests/f_hugedir_blocks/expect.2
+ create mode 100644 tests/f_hugedir_blocks/image.gz
+ create mode 100644 tests/f_hugedir_blocks/name
 
 
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 756e3bb..7a16780 100644
+index 7a16780..b478bca 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -2652,6 +2652,21 @@ static int process_block(ext2_filsys fs,
- 		return 0;
- 	}
- 
-+	/*
-+	 * For a directory, add logical block zero for processing even if it's
-+	 * not mapped or we'll be perennially stuck with broken "." and ".."
-+	 * entries.
-+	 */
-+	if (p->is_dir && blockcnt == 0 && blk == 0) {
-+		pctx->errcode = ext2fs_add_dir_block2(fs->dblist, p->ino, 0, 0);
-+		if (pctx->errcode) {
-+			pctx->blk = blk;
-+			pctx->num = blockcnt;
-+			goto failed_add_dir_block;
-+		}
-+		p->last_db_block++;
-+	}
-+
- 	if (blk == 0)
- 		return 0;
- 
-diff --git a/tests/f_emptydir/expect.1 b/tests/f_emptydir/expect.1
+@@ -2758,6 +2758,17 @@ static int process_block(ext2_filsys fs,
+ 			blk = *block_nr = 0;
+ 			ret_code = BLOCK_CHANGED;
+ 			p->inode_modified = 1;
++			/*
++			 * If the directory block is too big and is beyond the
++			 * end of the FS, don't bother trying to add it for
++			 * processing -- the kernel would never have created a
++			 * directory this large, and we risk an ENOMEM abort.
++			 * In any case, the toobig handler for extent-based
++			 * directories also doesn't feed toobig blocks to
++			 * pass 2.
++			 */
++			if (problem == PR_1_TOOBIG_DIR)
++				return ret_code;
+ 			goto mark_dir;
+ 		} else
+ 			return 0;
+diff --git a/tests/f_hugedir_blocks/expect.1 b/tests/f_hugedir_blocks/expect.1
 new file mode 100644
-index 0000000..c612621
+index 0000000..798a7ac
 --- /dev/null
-+++ b/tests/f_emptydir/expect.1
-@@ -0,0 +1,19 @@
++++ b/tests/f_hugedir_blocks/expect.1
+@@ -0,0 +1,10 @@
 +Pass 1: Checking inodes, blocks, and sizes
-+Inode 12, i_size is 1024, should be 0.  Fix? yes
++Inode 12 is too big.  Truncate? yes
 +
++Block #1074791435 (13) causes directory to be too big.  CLEARED.
 +Pass 2: Checking directory structure
-+Directory inode 12 has an unallocated block #0.  Allocate? yes
-+
 +Pass 3: Checking directory connectivity
 +Pass 4: Checking reference counts
 +Pass 5: Checking group summary information
-+Free blocks count wrong for group #0 (957, counted=956).
-+Fix? yes
-+
-+Free blocks count wrong (957, counted=956).
-+Fix? yes
-+
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 12/256 files (8.3% non-contiguous), 1092/2048 blocks
-+Exit status is 1
-diff --git a/tests/f_emptydir/expect.2 b/tests/f_emptydir/expect.2
++test_filesys: 12/128 files (8.3% non-contiguous), 22/512 blocks
++Exit status is 0
+diff --git a/tests/f_hugedir_blocks/expect.2 b/tests/f_hugedir_blocks/expect.2
 new file mode 100644
-index 0000000..75c0515
+index 0000000..ac5f4c1
 --- /dev/null
-+++ b/tests/f_emptydir/expect.2
++++ b/tests/f_hugedir_blocks/expect.2
 @@ -0,0 +1,7 @@
 +Pass 1: Checking inodes, blocks, and sizes
 +Pass 2: Checking directory structure
 +Pass 3: Checking directory connectivity
 +Pass 4: Checking reference counts
 +Pass 5: Checking group summary information
-+test_filesys: 12/256 files (16.7% non-contiguous), 1092/2048 blocks
++test_filesys: 12/128 files (8.3% non-contiguous), 22/512 blocks
 +Exit status is 0
-diff --git a/tests/f_emptydir/image.gz b/tests/f_emptydir/image.gz
+diff --git a/tests/f_hugedir_blocks/image.gz b/tests/f_hugedir_blocks/image.gz
 new file mode 100644
-index 0000000000000000000000000000000000000000..1b6f8f8350312013782acd2d2136db9f77c896dd
+index 0000000000000000000000000000000000000000..1d54de806e596575a2a081931c587d77a695b79d
 GIT binary patch
-literal 2710
-zcmb2|=3q#<KR=j>`R(2P*;fK&7(PtDv+`@y*0o$s-fO#+L;_h{*-MK89Q_M7b7*zh
-zYyFeBqqSrAuCMk51x12Ku7<u)Vht2zUHORDZ=U{i>*{Uop|AS0KmR=NeUi76+{vfX
-zaYZMq6&YHm9(lp}utvs4uQeds?^oUm$-+mgS9ZSoE#bN1`s&M`$vaQ}*jpPq^Pa?G
-z!*53`X0;Vq^S#ftEO~kQ+TqvoHL|wbUS2smy*@qp+L@V`E}QN9{bjN6{5W~ZeY^iX
-zS?B%UZl3p~zYF!xK2N<J_%nv<>9(hrpDkN{)-=D*P$1dr-SVvCpMG1vyLWSwk=_*9
-zsz3G3hHc4jGM?1yZb^60-6OlTodFd*c)z;5^V0vDe?D4?L|ohE8}D&x;)LzRm&GrY
-zq^RT{PLEx&Wcu;EJ9o<J-dwx7`Q{#hdDEvY4?h=UUHx%avARy#-p!x(hn@N?ufdUf
-zvGEW46MKdKj6eBL)I0oR{v<!)e*;KpgNDt`-OvA>kz8;`>g=wy^Zt6pEnfbH?{9_r
-zHzl1{fBa|twEZ*L_3|}Kg<Chx>@1Aq>~5IVy5IhBOG30-dY5<YS)0#|OTGU&C-RzU
-z|BX!jTewn8|5th*+qFZt15H&DPTu=(Az;6)-N4c`FxT~U+3~hx8<u~J{5j{(2XoJB
-zVwZN=2mEVi{;7N2eB+(4EvNivKUJ4Kb$*%bpQHbC<9znoyqdmj_UrGr{x{dJ*U$LR
-z-IbU3_xt^ftM%&7uhgIZe69ZaubUAWtRMW!{)X$FxBWNSV9SA0`TtixIoH1ksjGW=
-zbJstezXgBNcN$)iN!$Lx{J2Dip{(|${gV&e`rpcQ|Np7^|1;~irN>?ET=`vE-=;d_
-zJtHIv9Lhibk#`OG^8A0-y5INzM@KMc-?VPJ_n#RxhR}FFY?oem(PX95z0u}a*M#p?
-zdyU*w-SSWT-W?~JTzcZS^n3ow`p0N`M!BOQFd71*Aut*OqaiRF0s|fb8>ZAS-!GLj
-JV_;BV0054XfYJZ}
+literal 2497
+zcmb2|=3uxyeNiwI^V>Uy*}{P`3?Is;hhz(93W_gGC@csx?s^bZx=}%o@nERSk`B?T
+zq-@zBbMwNN_YU$ucr@$%0)-tMeNDSwEOM%u?w!>sn6uV%_P@G^^~X=|z4LVM?md6r
+z7pbr$?9X~K*`y`8@S7s1;%l4vWs71L2A+AhcJ1}~$32`@hyI__5@CDhcu{$*XL{UA
+zk#kR9cW6g;e)fOAU$1RucmBMXox5r>Yo7ixxV7ucn`2M2?>~>*yQlWq(VyGZkAM0e
+z?c1F?`}W4*Wsj9#ey*`RHpiKtp+WJ)<@?Hpep^2O*O_wbW~L%{zyE7R1_p*3zoU+y
+ze(3&EK8_#AdsFrE{r{^ImTV2U!yUkz8MRvU`v*B*;g@q;kG{FGw)J;;{<G6g6}FLH
+z)2GSrDqsTYsP<U;{LlZ>DTV()`g>+*#sVpZbN?BE<n#X^HV_=xAajWoNE>`wCH?R}
+zSPm@Cz>u)rY7IA(jZ7sdL`}9$1&Sm**}(*|hfHuF?9BSL*LQE6f9vl@r#U{NZ_ir=
+z>S(rq^qZ^V_R>DL-s;%pXU&@{OTITR7L;f?mNmyD{ddp*lgEB+kDWTN=u`X0_1~*c
+z#5Eqwc=q#r&i+68yvDO%O-=4OY9a9W0pD}`!+-vif8PIQ`=9sWzdsjdC(V9+{`iHf
+z<@e?O`u>~lzVC0I9tW8YAJsM*0;3@?8UmvsFd71*AwVbu4qW@oGI8xHe+C8x1^`B?
+B32*=a
 
 literal 0
 HcmV?d00001
 
-diff --git a/tests/f_emptydir/name b/tests/f_emptydir/name
+diff --git a/tests/f_hugedir_blocks/name b/tests/f_hugedir_blocks/name
 new file mode 100644
-index 0000000..d5bc660
+index 0000000..d74761b
 --- /dev/null
-+++ b/tests/f_emptydir/name
-@@ -0,0 +1,2 @@
-+always iterate dir block 0 or e2fsck goes into infinite loop
-+
++++ b/tests/f_hugedir_blocks/name
+@@ -0,0 +1 @@
++crash e2fsck with a dir with an impossibly high logical blk offset
 
