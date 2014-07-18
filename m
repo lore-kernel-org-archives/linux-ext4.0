@@ -1,44 +1,32 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] e2fsck: free bh on csum verify error in do_one_pass
-Date: Thu, 17 Jul 2014 16:11:59 -0500
-Message-ID: <53C83C1F.8020303@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: Question about e2fsprogs/e4defrag
+Date: Thu, 17 Jul 2014 20:05:46 -0600
+Message-ID: <B641A278-9C28-4B1A-9C6F-400722EAB353@dilger.ca>
+References: <53C5FCA5.20207@cn.fujitsu.com> <20140716192236.GA8628@birch.djwong.org> <53C74316.1050902@cn.fujitsu.com> <20140717180908.GB8628@birch.djwong.org>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"a-fujita@rs.jp.nec.com" <a-fujita@rs.jp.nec.com>,
+	"t-sato@yk.jp.nec.com" <t-sato@yk.jp.nec.com>
+To: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25300 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752420AbaGQVMA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Jul 2014 17:12:00 -0400
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s6HLC0SH019305
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 17 Jul 2014 17:12:00 -0400
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s6HLBxXJ021921
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 17 Jul 2014 17:12:00 -0400
+Received: from mail-pa0-f43.google.com ([209.85.220.43]:64987 "EHLO
+	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752976AbaGRCFt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jul 2014 22:05:49 -0400
+Received: by mail-pa0-f43.google.com with SMTP id lf10so4452200pab.30
+        for <linux-ext4@vger.kernel.org>; Thu, 17 Jul 2014 19:05:47 -0700 (PDT)
+In-Reply-To: <20140717180908.GB8628@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Coverity (re-)spotted this; it was triaged as a false positive,
-but it seems pretty clear that the bh (which was just checked)
-isn't currently freed before the function exits.
+This thread for me to thinking that it would be useful if filefrag also
+printed the "fragmentation score" that e4defrag prints that would make
+It more clear whether a file should be considered "fragmented" or not,
+and it helps the user to decide if e4defrag should be run on it. 
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+I'm not sure whether this is always printed or only with an option. 
 
-diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
-index 54579c2..66d02b2 100644
---- a/e2fsck/recovery.c
-+++ b/e2fsck/recovery.c
-@@ -523,6 +523,7 @@ static int do_one_pass(journal_t *journal,
- 			    !jbd2_descr_block_csum_verify(journal,
- 							  bh->b_data)) {
- 				err = -EIO;
-+				brelse(bh);
- 				goto failed;
- 			}
- 
-
+Cheers, Andreas
