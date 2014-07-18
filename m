@@ -1,63 +1,201 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] e2fsck: free bh on csum verify error in do_one_pass
-Date: Fri, 18 Jul 2014 11:04:45 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1407181104330.12453@localhost.localdomain>
-References: <53C83C1F.8020303@redhat.com>
+Subject: Re: testing result of loop-aio patchset on ext3
+Date: Fri, 18 Jul 2014 11:10:34 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1407181105410.12453@localhost.localdomain>
+References: <53C3A42E.40000@huawei.com> <alpine.LFD.2.00.1407141142520.13527@localhost.localdomain> <53C5F770.9030105@huawei.com> <alpine.LFD.2.00.1407160955010.2431@localhost.localdomain> <53C645AA.9080509@huawei.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51585 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760770AbaGRJEs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Jul 2014 05:04:48 -0400
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s6I94mDO032761
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Jul 2014 05:04:48 -0400
-In-Reply-To: <53C83C1F.8020303@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-292471106-1405674638=:12453"
+Cc: Dave Kleikamp <dave.kleikamp@oracle.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Li Zefan <lizefan@huawei.com>
+To: Rui Xiang <rui.xiang@huawei.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <53C645AA.9080509@huawei.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 17 Jul 2014, Eric Sandeen wrote:
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-> Date: Thu, 17 Jul 2014 16:11:59 -0500
-> From: Eric Sandeen <sandeen@redhat.com>
-> To: ext4 development <linux-ext4@vger.kernel.org>
-> Subject: [PATCH] e2fsck: free bh on csum verify error in do_one_pass
+--8323328-292471106-1405674638=:12453
+Content-Type: TEXT/PLAIN; charset=windows-1252
+Content-Transfer-Encoding: 8BIT
+
+On Wed, 16 Jul 2014, Rui Xiang wrote:
+
+> Date: Wed, 16 Jul 2014 17:28:10 +0800
+> From: Rui Xiang <rui.xiang@huawei.com>
+> To: Lukáš Czerner <lczerner@redhat.com>
+> Cc: Dave Kleikamp <dave.kleikamp@oracle.com>, linux-ext4@vger.kernel.org,
+>     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+>     Li Zefan <lizefan@huawei.com>
+> Subject: Re: testing result of loop-aio patchset on ext3
 > 
-> Coverity (re-)spotted this; it was triaged as a false positive,
-> but it seems pretty clear that the bh (which was just checked)
-> isn't currently freed before the function exits.
+> On 2014/7/16 15:58, Lukáš Czerner wrote:
+> > On Wed, 16 Jul 2014, Rui Xiang wrote:
+> > 
+> >> Date: Wed, 16 Jul 2014 11:54:24 +0800
+> >> From: Rui Xiang <rui.xiang@huawei.com>
+> >> To: Lukáš Czerner <lczerner@redhat.com>
+> >> Cc: Dave Kleikamp <dave.kleikamp@oracle.com>, linux-ext4@vger.kernel.org,
+> >>     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+> >>     Li Zefan <lizefan@huawei.com>
+> >> Subject: Re: testing result of loop-aio patchset on ext3
+> >>
+> >> On 2014/7/14 17:51, Lukáš Czerner wrote:
+> >>> On Mon, 14 Jul 2014, Rui Xiang wrote:
+> >>>
+> >>>> Date: Mon, 14 Jul 2014 17:34:38 +0800
+> >>>> From: Rui Xiang <rui.xiang@huawei.com>
+> >>>> To: Dave Kleikamp <dave.kleikamp@oracle.com>, linux-ext4@vger.kernel.org
+> >>>> Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+> >>>>     Li Zefan <lizefan@huawei.com>
+> >>>> Subject: testing result of loop-aio patchset on ext3
+> >>>>
+> >>>> Hi Dave,
+> >>>>
+> >>>> We export a container image file as a block device via loop device, but we
+> >>>> found it's very easy that the container rootfs gets corrupted due to power
+> >>>> loss.
+> >>>>
+> >>>> Your early version of loop-aio patchset said the patchset can make loop
+> >>>> mounted filesystems recoverable(lkml.org/lkml/2012/3/30/317), but we found
+> >>>> it doesn't help.
+> >>>>
+> >>>> Both the guest fs and host fs are ext3.
+> >>>>
+> >>>> The loop-aio patchset is from:
+> >>>> git://github.com/kleikamp/linux-shaggy.git aio_loop
+> >>>>
+> >>>> Steps:
+> >>>> 1. dd a 10G image, mkfs.ext3,
+> >>>>   # dd if=/dev/zero of=./raw_image bs=1M count=10000
+> >>>>   # echo y | mkfs.ext3 raw_image
+> >>>>
+> >>>> 2. losetup a loop device, mount at ./test_dir
+> >>>>   # losetup /dev/loop1 raw_image
+> >>>>   # mount /dev/loop1 ./test_dir
+> >>>>
+> >>>> 3. copy fs_mark into test_dir and run
+> >>>>   # ./fs_mark -d ./tmp/ -s 102400000 -n 80
+> >>>>
+> >>>> 4. during runing fs_mark, make systerm reboot indirectly.
+> >>>>   # echo b > /proc/sysrq-trigger
+> >>>>
+> >>>> After systerm booted up, sometimes fsck reported raw_image fs has been damaged.
+> >>>>
+> >>>> # fsck.ext3 -n raw_image
+> >>>> e2fsck 1.41.9 (22-Aug-2009)
+> >>>> Warning: skipping journal recovery because doing a read-only filesystem check.
+> >>>> raw_image contains a file system with errors, check forced.
+> >>>> Pass 1: Checking inodes, blocks, and sizes
+> >>>> Pass 2: Checking directory structure
+> >>>> Pass 3: Checking directory connectivity
+> >>>> Pass 4: Checking reference counts
+> >>>> Pass 5: Checking group summary information
+> >>>> Free blocks count wrong (2481348, counted=2480577).
+> >>>> Fix? no
+> >>>> Free inodes count wrong (640837, counted=640835).
+> >>>> Fix? no
+> >>>> raw_image: ********** WARNING: Filesystem still has errors **********
+> >>>> raw_image: 11/640848 files (0.0% non-contiguous), 78652/2560000 blocks
+> >>>
+> >>> It's not damaged, this is expected result if you're using old
+> >>> e2fsprogs which still treats this as an error.
+> >>>
+> >>> It's not an error because we only update superblock summary at
+> >>> unmount time so with unclean shutdown it's likely that it does not
+> >>> match the reality, but e2fsck can and will easily fix that for you.
+> >>>
+> >>> Please try e2fsprogs v1.42.3 or newer.
+> >>>
+> >>
+> >> Hi Lukas,
+> >>
+> >> I updated e2fsprogs to v1.42.3, and user the newer fsck.ext3 to check raw_image.
+> >> Exactly, the result seemed normal.
+> > 
+> > Now I can see that there are much more problems than before, that's
+> > weird. Sorry for not making this clear, but for this kind of
+> > reproducers please use the most recent e2fsprogs. Also , what is the
+> > kernel version you're using in this test ?
+> > 
+> 
+> I use the most recent e2fsprogs 1.42.11 to check, and the error info is same as
+> result fscked by v1.42.3. It seems that shouldn't be the reason.
+> 
+> Otherwise, the kernel version in this test is stable 3.4.
 
-Looks good.
+In that case, this is a problem somewhere else. I'll try to
+reproduce and see what I can see.
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+I assume you're not able to reproduce this on a real device ?
 
 Thanks!
 -Lukas
 
-
 > 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
 > 
-> diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
-> index 54579c2..66d02b2 100644
-> --- a/e2fsck/recovery.c
-> +++ b/e2fsck/recovery.c
-> @@ -523,6 +523,7 @@ static int do_one_pass(journal_t *journal,
->  			    !jbd2_descr_block_csum_verify(journal,
->  							  bh->b_data)) {
->  				err = -EIO;
-> +				brelse(bh);
->  				goto failed;
->  			}
->  
+> Thanks!
+> 
+> > Thanks!
+> > -Lukas
+> > 
+> >>
+> >> Then, I continue my previous test. And after testing 35 times, "fsck -n" reported image fs
+> >> had been damaged, too.
+> >>
+> >>  # fsck.ext3 -n image1
+> >> e2fsck 1.42.3.wc1 (28-May-2012)
+> >> Warning: skipping journal recovery because doing a read-only filesystem check.
+> >> image1 has been mounted 36 times without being checked, check forced.
+> >> Pass 1: Checking inodes, blocks, and sizes
+> >> Inode 16407, i_size is 597447, should be 602112.  Fix? no
+> >> Inode 16407, i_blocks is 1176, should be 1184.  Fix? no
+> >> Inode 409941, i_blocks is 200208, should be 112.  Fix? no
+> >> Pass 2: Checking directory structure
+> >> Pass 3: Checking directory connectivity
+> >> Pass 4: Checking reference counts
+> >> Pass 5: Checking group summary information
+> >> Block bitmap differences:  -1506836 -1506843 -(1506859--1506860) -(1660941--1661964) -(1661966--1671167) -(1671688--1686473)
+> >> Fix? no
+> >> Free blocks count wrong for group #2 (31558, counted=31556).
+> >> Fix? no
+> >> Free blocks count wrong for group #43 (15871, counted=15867).
+> >> Fix? no
+> >> Free blocks count wrong (2204041, counted=2204035).
+> >> Fix? no
+> >> image1: ********** WARNING: Filesystem still has errors **********
+> >> image1: 13008/655360 files (0.3% non-contiguous), 417399/2621440 blocks
+> >>
+> >> I backup the image to image_bk, and then mount the image to a dir, and cat all files in the image.
+> >> Steps:
+> >> # dd if=image1 of=image_bk
+> >> # mount image1 err_dir
+> >> # find -name '*' -exec cat > /dev/null {} \;
+> >>
+> >> There are no issues during catting, and no err in dmesg too.
+> >>
+> >> *But when I umount the image1 from err_dir, The fsck result didn't show any fs corruption info.
+> >>
+> >> I mount image_bk to err_dir and umount it with no operation directly. The result is same to iamge1.
+> >>
+> >> *So, is fs in the image as a block device via loop device damaged really, or does it have some others issues? 
+> >> Could you give me some opinions?
+> >>
+> >>
+> >> Thanks.
+> >>
+> >>
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+--8323328-292471106-1405674638=:12453--
