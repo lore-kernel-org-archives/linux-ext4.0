@@ -1,100 +1,94 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: After unlinking a large file on ext4, the process stalls for a
- long time
-Date: Fri, 18 Jul 2014 11:29:34 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1407181127440.12453@localhost.localdomain>
-References: <53C687B1.30809@free.fr> <21446.38705.190786.631403@quad.stoffel.home> <53C6B38A.3000100@free.fr> <59C3F41A-6AFD-418E-BCE6-2361B8140D9A@dilger.ca> <53C7A5CA.4050903@free.fr> <alpine.LFD.2.00.1407171238060.2312@localhost.localdomain>
- <53C7B0B7.9030007@free.fr> <20140717133755.GN1491@thunk.org> <53C7F4C2.6070804@free.fr>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: RE: [PATCH 3/3] ext4: Add support IOC_MOV_DATA ioctl
+Date: Fri, 18 Jul 2014 14:38:12 +0400
+Message-ID: <87zjg7ar57.fsf@openvz.org>
+References: <004001cf9aa4$2670e280$7352a780$@samsung.com>
+	<alpine.LFD.2.00.1407081558280.2180@localhost.localdomain>
+	<87tx6ktiay.fsf@openvz.org>
+	<002901cfa265$636d2e50$2a478af0$@samsung.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-2098905349-1405675778=:12453"
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Mason <mpeg.blue@free.fr>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <53C7F4C2.6070804@free.fr>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: 'Theodore Ts'o' <tytso@mit.edu>, 'Brian Foster' <bfoster@redhat.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	'Christoph Hellwig' <hch@infradead.org>,
+	'Ashish Sangwan' <a.sangwan@samsung.com>, linux-fsdevel@vger.kernel.org,
+	=?utf-8?B?J0x1a8OhxaE=?= Czerner' <lczerner@redhat.com>,
+	'linux-ext4' <linux-ext4@vger.kernel.org>
+To: Namjae Jeon <namjae.jeon@samsung.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <002901cfa265$636d2e50$2a478af0$@samsung.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
-
---8323328-2098905349-1405675778=:12453
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
-
-On Thu, 17 Jul 2014, Mason wrote:
-
-> Date: Thu, 17 Jul 2014 18:07:30 +0200
-> From: Mason <mpeg.blue@free.fr>
-> To: Theodore Ts'o <tytso@mit.edu>
-> Cc: Luká¨ Czerner <lczerner@redhat.com>, Andreas Dilger <adilger@dilger.ca>,
->     Ext4 Developers List <linux-ext4@vger.kernel.org>,
->     linux-fsdevel <linux-fsdevel@vger.kernel.org>
-> Subject: Re: After unlinking a large file on ext4,
->     the process stalls for a long time
-> 
-> Theodore Ts'o wrote:
-> 
-> > Mason wrote:
-> > 
-> >> unlink("/mnt/hdd/xxx")                  = 0 <111.479283>
-> >>
-> >> 0.01user 111.48system 1:51.99elapsed 99%CPU (0avgtext+0avgdata 772maxresident)k
-> >> 0inputs+0outputs (0major+434minor)pagefaults 0swaps
-> > 
-> > ... and we're CPU bound inside the kernel.
-> > 
-> > Can you run perf so we can see exactly where we're spending the CPU?
-> > You're not using a journal, so I'm pretty sure what you will find is
-> > that we're spending all of our time in mb_free_blocks(), when it is
-> > updating the internal mballoc buddy bitmaps.
-> > 
-> > With a journal, this work done by mb_free_blocks() is hidden in the
-> > kjournal thread, and happens after the commit is completed, so it
-> > won't block other file system operations (other than burning some
-> > extra CPU on one of the multiple cores available on a typical x86
-> > CPU).
-> > 
-> > Also, I suspect the CPU overhead is *much* less on an x86 CPU, which
-> > has native bit test/set/clear instructions, whereas the MIPS
-> > architecture was designed by Prof. Hennessy at Stanford, who was a
-> > doctrinaire RISC fanatic, so there would be no bitop instructions.
-> > 
-> > Even though I'm pretty sure what we'll find, knowing exactly *where*
-> > in mb_free_blocks() or the function it calls would be helpful in
-> > knowing what we need to optimize.  So if you could try using perf
-> > (assuming that the perf is supported MIPS; not sure if it does) that
-> > would be really helpful.
-> 
-> Is perf "better" than oprofile? (For some metric)
-> 
-> I have enabled:
-> 
-> CONFIG_PERF_EVENTS=y
-> CONFIG_PROFILING=y
-> CONFIG_TRACEPOINTS=y
-> CONFIG_OPROFILE=y
-> CONFIG_HAVE_OPROFILE=y
-> CONFIG_KPROBES=y
-> CONFIG_KRETPROBES=y
-> 
-> What command-line do you suggest I run to get the output you expect?
-> (I'll try to get it done, but I might have to wait two weeks before
-> I can run these tests.)
-
-If perf works on your system you can record data with
-
-perf record -g ./test file <size>
-
-and then report with
-
-perf report --stdio
-
-That should yield some interesting information about where we spend
-the most time in kernel.
-
-Thanks!
--Lukas
---8323328-2098905349-1405675778=:12453--
+T24gRnJpLCAxOCBKdWwgMjAxNCAxNzo1MDo1NSArMDkwMCwgTmFtamFlIEplb24gPG5hbWphZS5q
+ZW9uQHNhbXN1bmcuY29tPiB3cm90ZToKPiA+IE9uIFR1ZSwgOCBKdWwgMjAxNCAxNjowMjoyOCAr
+MDIwMCAoQ0VTVCksIEx1a8OhxaEgQ3plcm5lciA8bGN6ZXJuZXJAcmVkaGF0LmNvbT4gd3JvdGU6
+Cj4gPiBOb24tdGV4dCBwYXJ0OiBNVUxUSVBBUlQvTUlYRUQKPiA+ID4gT24gVHVlLCA4IEp1bCAy
+MDE0LCBOYW1qYWUgSmVvbiB3cm90ZToKPiA+ID4KPiA+ID4gPiBEYXRlOiBUdWUsIDA4IEp1bCAy
+MDE0IDIxOjAwOjAyICswOTAwCj4gPiA+ID4gRnJvbTogTmFtamFlIEplb24gPG5hbWphZS5qZW9u
+QHNhbXN1bmcuY29tPgo+ID4gPiA+IFRvOiBEYXZlIENoaW5uZXIgPGRhdmlkQGZyb21vcmJpdC5j
+b20+LCBUaGVvZG9yZSBUcydvIDx0eXRzb0BtaXQuZWR1Pgo+ID4gPiA+IENjOiBsaW51eC1leHQ0
+IDxsaW51eC1leHQ0QHZnZXIua2VybmVsLm9yZz4sIGxpbnV4LWZzZGV2ZWxAdmdlci5rZXJuZWwu
+b3JnLAo+ID4gPiA+ICAgICBsaW51eC1rZXJuZWxAdmdlci5rZXJuZWwub3JnLCBMdWvDocWhIEN6
+ZXJuZXIgPGxjemVybmVyQHJlZGhhdC5jb20+LAo+ID4gPiA+ICAgICBCcmlhbiBGb3N0ZXIgPGJm
+b3N0ZXJAcmVkaGF0LmNvbT4sIENocmlzdG9waCBIZWxsd2lnIDxoY2hAaW5mcmFkZWFkLm9yZz4s
+Cj4gPiA+ID4gICAgIEFzaGlzaCBTYW5nd2FuIDxhLnNhbmd3YW5Ac2Ftc3VuZy5jb20+LCB4ZnNA
+b3NzLnNnaS5jb20KPiA+ID4gPiBTdWJqZWN0OiBbUEFUQ0ggMy8zXSBleHQ0OiBBZGQgc3VwcG9y
+dCBJT0NfTU9WX0RBVEEgaW9jdGwKPiA+ID4gPgo+ID4gPiA+IFRoaXMgcGF0Y2ggaW1wbGVtZW50
+cyBmcyBpb2N0bCdzIElPQ19NT1ZfREFUQSBmb3IgRXh0NC4KPiA+ID4KPiA+ID4gSG1tIGlzbid0
+IHRoaXMgYmFzaWNhbGx5IHdoYXQgZXh0NF9tb3ZlX2V4dGVudHMoKSBkb2VzID8gZWcuCj4gPiA+
+IEVYVDRfSU9DX01PVkVfRVhUID8KPiA+ID4KPiA+ID4gSSBndWVzcyB0aGF0IHRoZSBpbnRlbnRp
+b24gaGVyZSBpcyB0byBkbyB0aGUgbW92ZSwgd2l0aG91dCBhY3R1YWxseQo+ID4gPiBtb3Zpbmcg
+dGhlIGRhdGEgcmlnaHQgPyBCdXQgbmV2ZXJ0aGVsZXNzIG1heWJlIHNvbWUgY29kZSBjYW4gYmUK
+PiA+ID4gc2hhcmVkIHdpdGggZXh0NF9tb3ZlX2V4dGVudHMoKSA/Cj4gPiBJdCBkZWZpbml0ZWx5
+IGNhbiBiZSBzaGFyZWQsIGJlY2F1c2UgaXQgaGFzIHNwZWNpZmljIGNhc2UgZm9yIHVud3JpdHRl
+bgo+ID4gZGF0YSBzZWUgbW92ZV9leHRlbnRfcGVyX3BhZ2UoKS4KPiBJZiBJIHVuZGVyc3RhbmQg
+Y29ycmVjdGx5LCBtb3ZfZXh0ZW50X3Blcl9wYWdlIGNhbGxzIG1leHRfcmVwbGFjZV9icmFuY2hl
+cyB0bwo+IF9yZXBsYWNlXyBleHRlbnRzIGZyb20gMSBpbm9kZSB0byBvdGhlciBpbm9kZS4gUGxl
+YXNlIGNvcnJlY3QgbWUgaWYgSQo+ID4gPiBhbSB3cm9uZy4KWW91IGFyZSByaWdodC4KPiBpb2Nf
+bW92X2RhdGEgd2lsbCBub3QgcmVwbGFjZSBleHRlbnRzLCBidXQgaXQgd2lsbCBhY3R1YWxseSBf
+bW92ZV8gZXh0ZW50cyBpbnRvCj4gaG9sZSBmcm9tIGRvbm9yIHRvIHJlY2VpdmVyLCBsZWF2aW5n
+IGEgaG9sZSBhdCB0aGUgcGxhY2UgZnJvbSB3aGVyZSBleHRlbnRzIGFyZQo+IG1vdmVkLgpTbyB3
+ZSBjYW4gcmVmZXIgZXh0NF9tb3ZlX2V4dGVudHMgYXMgU1dBUCwgYW5kIGlvY19tb3ZfZGF0YSBh
+cyBBU1NJTkcuCkFuZCBib3RoIHRhc2tzIGxvb2tzIHZlcnkgc2ltaWxhciwgZXhjZXB0IHRoZSB3
+YXkgaG93IGhvbGVzIGFyZQppbnRlcnByZXRlZC4gSSB0aGluayBpdCBpcyByZWFzb25hYmxlIHRv
+IGFsbG93IGV4dDRfbW92ZV9leHRlbnRzKCkKdG8gaW50ZXJwcmV0IGhvbGVzIHNpbWlsYXIgdG8g
+aW9jX21vdl9kYXRhLiAKPiBDb3VsZCB5b3UgZWxhYm9yYXRlIG1vcmUgaG93IGl0IGNhbiBiZSBz
+aGFyZWQgZm9yIHVud3JpdHRlbiBkYXRhIGNhc2UgPwpJZiB3ZSBmb3VuZCB1bndyaXR0ZW4gZXh0
+ZW50IHdlIGRvIG5vdCBoYXZlIHRvIGNvcHkgZGF0YSwganVzdCBzd2FwIHRvCmV4dGVudHMgYmV0
+d2VlbiBpbm9kZXMuCj4gCj4gPiBCdXQgSSB0aGluayB3ZSBjYW4gb2JzZXJ2ZSBhbm90aGVyIHdh
+eSB0byB1bmlmeSB0aGlzIHR3byB0aGluZ3MuCj4gPiBBbiBpZGVhIGluc3BpcmVkIGJ5IHRoZSBm
+YWN0IHRoYXQgaW9jX21vdmVfZGF0YSB3b3JrcyBvbmx5IGZvcgo+ID4gcmVndWxhciBpbm9kZXMs
+IHdoZXJlIG9yaWdfb2Zmc2V0ID09IGRvbm9yX29mZnNldC4gCj4gQ291bGQgeW91IGVsYWJvcmF0
+ZSB0aGlzIHBvaW50PwpBdCB0aGlzIG1vbWVudCBvZmZzZXQgZm9yIGJvdGggaW5vZGVzIHNob3Vs
+ZCBiZSBlcXVhbC4gVGhpcyBpcyBwdXJlCmFydGlmaWNpYWwgcmVzdHJpY3Rpb24uIEF0IHRoaXMg
+bW9tZW50IEknbSB3b3JraW5nIG9uIHBhdGNoIHdoaWNoCnJlbW92ZSB0aGlzIHJlc3RyaWN0aW9u
+LiAKPiAKPiA+IFRoaXMgaXMgc2hvd3N0b3BwZXIKPiA+IGZvciAgbXkgdXRpbGl0eSBlNGRlZnJh
+ZzIgKCBuZXcgdmVyc2lvbiBvZiBlNGRlZnJhZyB3aGljaCBpcyBhYmxlIGRlZnJhZ21lbnQKPiA+
+IHBhY2sgc21hbGwgZmlsZXMgYXMgZGVzY3JpYmVkIGhlcmUgOgo+ID4gaHR0cDovL2xpc3RzLm9w
+ZW53YWxsLm5ldC9saW51eC1leHQ0LzIwMTQvMDQvMjgvMykKPiA+IAo+ID4gUHJvcG9zZWQgQVBJ
+IGlzIHZlcnkgc2ltaWxhciB0byBleHQ0X2V4dF9taWdyYXRlOgo+ID4gQXJnczoKPiA+ICAgb3Jp
+Z19maWxlOiBpbm9kZSB3aGljaCB3ZSB3YW50IHRvIGRlZnJhZ21lbnQKPiA+ICAgZG9ub3JfZmls
+ZTogYSBmaWxlIHdoaWNoIHdpbGwgYmUgdXNlZCBhcyBhIGRvbm9yIG9mIGJsb2Nrcwo+ID4gMSkg
+ZmFsbG9jYXRlIGJpZyBkb25vcl9maWxlCj4gPiAyKSBhKSBDcmVhdGUgdG1wIGlub2RlIHdpY2gg
+bmxpbmsgPSAwCj4gPiAgICBiKSBtb3ZlIGV4dGVudHMgcmVxdWlyZWQgZXh0ZW50cyBmcm9tICBk
+b25vciB0byB0bXBfZG9ub3JfaW5vZGUKPiA+ICAgIGMpIHJldHVybiBmaWxlIGRlc2NyaXB0b3Ig
+KHRtcF9mZCkgdG8gdGhhdCB0bXBfZG9ub3JfaW5vZGUKPiA+IDQpIE1hcmsgb3JpZ19maWxlJ3Mg
+aW5vZGUgd2l0aCBFWFQ0X1NUQVRFX0VYVF9NSUdSQVRFIHN0YXRlCj4gPiA1KSBDb3B5IGRhdGEg
+ZnJvbSBvcmlnX2ZpbGUgdG8gdG1wX2ZkCj4gPiA2KSBJT0NfU1dBUF9FWDogYXRvbWljYWxseSBz
+d2FwICBvcmlnX2ZpbGUtPmlfZGF0YSBhbmQgdG1wX2ZkLT5pX2RhdGEKPiA+ICAgIGlmIEVYVDRf
+U1RBVEVfRVhUX01JR1JBVEUgd2FzIG5vdCBjbGVhcmVkLgo+ID4gCj4gPiBUaGlzIGFwcHJvYWNo
+IGNhbiB3b3JrcyBub3Qgb25seSBmb3IgcmVndWxhciBmaWxlIHcvbyBqb3VybmFsaW5nCj4gPiBl
+bmFibGVkLCBidXQgYWxzbyBmb3Igam91cm5hbGVkIG9uZXMsIGFuZCBkaXJlY3Rvcmllcy4KPiA+
+IAo+ID4gCj4gPiAKPiA+IAo+ID4gPgo+ID4gPiAtTHVrYXMKPiA+ID4KPiAKCl9fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCnhmcyBtYWlsaW5nIGxpc3QKeGZz
+QG9zcy5zZ2kuY29tCmh0dHA6Ly9vc3Muc2dpLmNvbS9tYWlsbWFuL2xpc3RpbmZvL3hmcwo=
