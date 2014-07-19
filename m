@@ -1,84 +1,62 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 02/24] debugfs: Only print the first 60 bytes from i_block on a fast symlink
-Date: Sat, 19 Jul 2014 10:49:35 -0600
-Message-ID: <B72871BE-3D5E-4A07-8EDE-9B4032119174@dilger.ca>
-References: <20140718225200.31374.85411.stgit@birch.djwong.org> <20140718225224.31374.15186.stgit@birch.djwong.org>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "tytso@mit.edu" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: Charles Cazabon <charlesc-linux-ext4@pyropus.ca>
+Subject: Delayed block allocation failures after shrinking fs
+Date: Sat, 19 Jul 2014 16:39:06 -0600
+Message-ID: <20140719223906.GA8148@pyropus.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f50.google.com ([209.85.220.50]:47698 "EHLO
-	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755317AbaGSQtm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Jul 2014 12:49:42 -0400
-Received: by mail-pa0-f50.google.com with SMTP id et14so7167294pad.23
-        for <linux-ext4@vger.kernel.org>; Sat, 19 Jul 2014 09:49:41 -0700 (PDT)
-In-Reply-To: <20140718225224.31374.15186.stgit@birch.djwong.org>
+Received: from detritus.pyropus.ca ([64.5.53.58]:54369 "HELO
+	detritus.pyropus.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751137AbaGSWqZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Jul 2014 18:46:25 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Wouldn't it be better to decode and print the whole symlink from the inline data?  Depending on the use of debugfs, printing only the first 60 bytes may cause people/scripts to think the link is corrupted. 
+Greetings,
 
-Cheers, Andreas
+I ran into some odd behaviour/problems with an ext4 filesystem recently, and
+it appears I ran into an ext4 problem.  I've recovered my data, but wanted to
+know if the developers want any info about this problem before I wipe it out.
 
-> On Jul 18, 2014, at 16:52, "Darrick J. Wong" <darrick.wong@oracle.com> wrote:
-> 
-> If we have an inline_data fast symlink, i_size can be larger than the
-> size of i_block.  In this case, debugfs prints off the end of the
-> buffer, so fix that.
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
-> debugfs/debugfs.c            |   15 ++++++++++-----
-> tests/d_special_files/expect |    2 +-
-> 2 files changed, 11 insertions(+), 6 deletions(-)
-> 
-> 
-> diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-> index 51f386b..5eecabe 100644
-> --- a/debugfs/debugfs.c
-> +++ b/debugfs/debugfs.c
-> @@ -783,11 +783,16 @@ void internal_dump_inode(FILE *out, const char *prefix,
->    }
-> 
->    if (LINUX_S_ISLNK(inode->i_mode) &&
-> -        ext2fs_inode_data_blocks(current_fs,inode) == 0 &&
-> -        !(inode->i_flags & EXT4_INLINE_DATA_FL))
-> -        fprintf(out, "%sFast_link_dest: %.*s\n", prefix,
-> -            (int) inode->i_size, (char *)inode->i_block);
-> -    else if (LINUX_S_ISBLK(inode->i_mode) || LINUX_S_ISCHR(inode->i_mode)) {
-> +        ext2fs_inode_data_blocks(current_fs, inode) == 0 &&
-> +        !(inode->i_flags & EXT4_INLINE_DATA_FL)) {
-> +        int sz = EXT2_I_SIZE(inode);
-> +
-> +        if (sz > sizeof(inode->i_block))
-> +            sz = sizeof(inode->i_block);
-> +        fprintf(out, "%sFast link dest: \"%.*s\"\n", prefix, sz,
-> +            (char *)inode->i_block);
-> +    } else if (LINUX_S_ISBLK(inode->i_mode) ||
-> +           LINUX_S_ISCHR(inode->i_mode)) {
->        int major, minor;
->        const char *devnote;
-> 
-> diff --git a/tests/d_special_files/expect b/tests/d_special_files/expect
-> index 2b2dbfa..f729b0f 100644
-> --- a/tests/d_special_files/expect
-> +++ b/tests/d_special_files/expect
-> @@ -11,7 +11,7 @@ Fragment:  Address: 0    Number: 0    Size: 0
-> ctime: 0x50f560e0 -- Tue Jan 15 14:00:00 2013
-> atime: 0x50f560e0 -- Tue Jan 15 14:00:00 2013
-> mtime: 0x50f560e0 -- Tue Jan 15 14:00:00 2013
-> -Fast_link_dest: bar
-> +Fast link dest: "bar"
-> Exit status is 0
-> debugfs -R ''stat foo2'' -w test.img
-> Inode: 13   Type: symlink    Mode:  0777   Flags: 0x0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I had a ~5TB ext4 filesystem (on LVM, on LUKS encrypted partitions, on
+spinning disks) that I had migrated much of the data off of, and planned to
+replace the underlying disks with a much smaller but faster SSD setup.
+
+So I unmounted the filesystem, fsck'ed it, shrank it to ~300GB with `resize2fs
+-M, then shrank the size of the LVM logical volume it was sitting on (to
+~320G), then migrated the data off the spinning disks and to the SSD by
+migrating the LVM extents.  After this, I started seeing `Delayed block
+allocation failed` errors for this filesystem, and indeed some files were
+getting corrupted as they were written to.  My first suspicion was that this
+was due to a faulty SSD, but that doesn't appear to be the case -- for one
+thing, there were no SATA or other errors for the device logged.
+
+I tested the SSD by setting up another filesystem on it, and letting mkfs.ext4
+run badblocks over it -- no errors were reported.  Running various filesystem
+benchmarks and testing programs on the test filesystem showed no problems
+either, so I created a new ext4 filesystem, copied the data over from the
+failing filesystem, and switched to using it -- and the problems went away
+entirely (this is with the new filesystem on the same underlying physical
+device as the problematic one).  I've run like this for several days now, and
+have had no EXT4 errors (or other errors) logged about the new filesystem, and
+have experienced no further data corruption.
+
+So it would appear the filesystem didn't survive the shrink operation entirely
+fine.  I've recovered my data from backups, so this is not a big deal, but I
+was wondering if the ext4 developers would like any information (metadata
+image or whatever else) from this filesystem before I wipe it and reuse the
+space.  Shrinking a formerly-full filesystem from several TB to a few hundred
+GB is probably not a case that gets tested a lot, I would guess.
+
+I'm not subscribed to the list, so would appreciate a cc: on responses.
+
+Thanks,
+
+Charles
+-- 
+------------------------------------------------------------------
+Charles Cazabon                   <charlesc-linux-ext4@pyropus.ca>
+Software, consulting, and services available at http://pyropus.ca/
+------------------------------------------------------------------
