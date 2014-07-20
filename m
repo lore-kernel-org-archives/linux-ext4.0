@@ -1,193 +1,147 @@
-From: Brad Campbell <lists2009@fnarfbargle.com>
-Subject: Online resize issue with 3.13.5 & 3.15.6
-Date: Sun, 20 Jul 2014 19:26:19 +0800
-Message-ID: <53CBA75B.2030102@fnarfbargle.com>
+From: Azat Khuzhin <a3at.mail@gmail.com>
+Subject: Re: Delayed block allocation failures after shrinking fs
+Date: Mon, 21 Jul 2014 01:40:33 +0400
+Message-ID: <20140720214033.GA24249@azat>
+References: <20140719223906.GA8148@pyropus.ca>
+ <20140719234749.GB6073@azat>
+ <20140720040824.GA10571@pyropus.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "open list:EXT4 FILE SYSTEM" <linux-ext4@vger.kernel.org>
+To: Charles Cazabon <charlesc-linux-ext4@pyropus.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns3.fnarfbargle.com ([103.4.17.7]:35068 "EHLO
-	ns3.fnarfbargle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752071AbaGTLwA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Jul 2014 07:52:00 -0400
-Received: from srv
-	([10.8.0.1] helo=srv.home ident=heh11082)
-	by ns3.fnarfbargle.com with esmtp (Exim 4.80)
-	(envelope-from <lists2009@fnarfbargle.com>)
-	id 1X8pFm-0004eS-Cl
-	for linux-ext4@vger.kernel.org; Sun, 20 Jul 2014 21:26:06 +1000
-Received: from bkmac.home ([192.168.2.87])
-	by srv.home with esmtp (Exim 4.80)
-	(envelope-from <lists2009@fnarfbargle.com>)
-	id 1X8pFz-0002qm-5V
-	for linux-ext4@vger.kernel.org; Sun, 20 Jul 2014 19:26:19 +0800
+Received: from mail-la0-f50.google.com ([209.85.215.50]:51769 "EHLO
+	mail-la0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750731AbaGTVki (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Jul 2014 17:40:38 -0400
+Received: by mail-la0-f50.google.com with SMTP id gf5so4076385lab.37
+        for <linux-ext4@vger.kernel.org>; Sun, 20 Jul 2014 14:40:35 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20140720040824.GA10571@pyropus.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-G'day all,
+On Sat, Jul 19, 2014 at 10:08:24PM -0600, Charles Cazabon wrote:
+> Azat Khuzhin <a3at.mail@gmail.com> wrote:
+> > On Sun, Jul 20, 2014 at 2:39 AM, Charles Cazabon <charlesc-linux-ext4@pyropus.ca> wrote:
+> > >
+> > > space.  Shrinking a formerly-full filesystem from several TB to a few hundred
+> > > GB is probably not a case that gets tested a lot, I would guess.
+> > 
+> > I've also used resize2fs for shrinking the fs, but with extra padding.
+> 
+> I also left the LVM volume ~20GB bigger than I had shrunk the filesystem to,
+> as I didn't want to risk corrupting the filesystem.  This should have been
+> sufficient to take care of the 2^30 vs 10^9 confusion and other slack.
+> 
+> > I'm not sure about this, but if you could test shrinking with extra
+> > padding, maybe it will help to avoid that errors, and also it would help
+> > find the place where the problem is (if it is still there?).
+> 
+> I'm not entirely sure what you mean.  Is it that you think I didn't leave
+> sufficient room for the fs?
 
-Machine was running 3.13.5. x86_64.
+No no, maybe I don't understand you correctly, but as I can see that you
+only have lvm volume bigger, but that doesn't matter since you already
+shrunk the fs.
+Instead, I suggested you to try 'resize2fs -M' + 20G (for example),
+instead of just 'resize2fs -M', *but* I looked into my scripts, and I
+didn't see there any padding, so I guess that I was wrong about that, so
+please forget it.
 
-I had a 12 device (2TB) RAID-6 formatted ext4. I added 2 drives to its 
-underlying md and restriped it (no issues). After the restripe I 
-attempted an online resize using ext2progs 1.42.5 (Debian stable). This 
-failed with a message about the size not fitting into 32 bits so I 
-compiled 1.42.11 and tried again.
+I looked into the place where that message printed, and there is extra
+information, could you post full messages? Actually I'm insteresting in
+'with error %d' part, and I guess it will be 28 (ENOSPC).
 
-This resulted in a message I no longer have access to that indicated 
-that something went wrong. I attempted it a couple more times (how dumb 
-am I?) The resulting parts of dmesg are :
+And one more thing, I remember that I had some errors after fsck on
+destination fs'es, here is the output of fsck for one of disks (and
+seems that you didn't run fsck on destination ssd?):
+e2fsck 1.42.5 (29-Jul-2012)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+Group 9706 block(s) in use but group is marked BLOCK_UNINIT
+Fix? yes
 
-Jul 20 17:20:13 srv kernel: [11893469.381692] EXT4-fs (md0): resizing 
-filesystem from 4883458240 to 5860149888 blocks
-Jul 20 17:20:23 srv kernel: [11893479.597505] EXT4-fs (md0): resized to 
-5128585216 blocks
+Block bitmap differences:  +(318046208--318073173)
+Fix? yes
 
-Jul 20 17:20:43 srv kernel: [11893499.681961] EXT4-fs (md0): resized to 
-5525995520 blocks
-Jul 20 17:20:53 srv kernel: [11893509.762719] EXT4-fs (md0): resized to 
-5641863168 blocks
-Jul 20 17:21:02 srv kernel: [11893517.869988] EXT4-fs warning (device 
-md0): verify_reserved_gdb:705: reserved GDT 2769 missing grp 177147 
-(5804755665)
-Jul 20 17:21:02 srv kernel: [11893517.906663] EXT4-fs (md0): resized 
-filesystem to 5860149888
-Jul 20 17:21:08 srv kernel: [11893523.795964] EXT4-fs warning (device 
-md0): ext4_group_extend:1712: can't shrink FS - resize aborted
-Jul 20 17:21:17 srv kernel: [11893533.224440] EXT4-fs (md0): resizing 
-filesystem from 5804916736 to 5860149888 blocks
-Jul 20 17:21:17 srv kernel: [11893533.261982] EXT4-fs warning (device 
-md0): verify_reserved_gdb:705: reserved GDT 2769 missing grp 177147 
-(5804755665)
-Jul 20 17:21:17 srv kernel: [11893533.300352] EXT4-fs (md0): resized 
-filesystem to 5860149888
-Jul 20 17:21:17 srv kernel: [11893533.636745] EXT4-fs warning (device 
-md0): ext4_group_extend:1712: can't shrink FS - resize aborted
+Free blocks count wrong for group #9706 (32768, counted=5802).
+Fix? yes
 
-Jul 20 17:23:11 srv kernel: [11893647.253580] EXT4-fs (md0): resizing 
-filesystem from 5804916736 to 5860149888 blocks
-Jul 20 17:23:11 srv kernel: [11893647.291562] EXT4-fs warning (device 
-md0): verify_reserved_gdb:705: reserved GDT 2769 missing grp 177147 
-(5804755665)
-Jul 20 17:23:11 srv kernel: [11893647.330267] EXT4-fs (md0): resized 
-filesystem to 5860149888
-Jul 20 17:23:12 srv kernel: [11893647.675745] EXT4-fs warning (device 
-md0): ext4_group_extend:1712: can't shrink FS - resize aborted
+Free blocks count wrong (1240824, counted=1213858).
+Fix? yes
 
 
-At this point I thought it best to reboot the machine, so I upgraded to 
-3.15.6 and brought it up in single user mode. The filesystem passed fsck 
-with a message about an uninitialised block group and no other errors. 
-I've since repeated the fsck several times and it is clean.
+/dev/sdb1: ***** FILE SYSTEM WAS MODIFIED *****
+/dev/sdb1: 8878914/319520768 files (1.7% non-contiguous),
+318292078/319505936 blocks
 
-The issue is it locks up resize2fs hard (just spins on one core). Once 
-it starts spinning there is no strace, so it's chasing its tail.
-
-This is the current state of the fs.
-
-root@srv:/s# dumpe2fs -h /dev/md0
-dumpe2fs 1.42.11 (09-Jul-2014)
-Filesystem volume name:   <none>
-Last mounted on:          /s/src
-Filesystem UUID:          99566e8e-e66d-4351-9675-0b3a549e2ba5
-Filesystem magic number:  0xEF53
-Filesystem revision #:    1 (dynamic)
-Filesystem features:      has_journal ext_attr resize_inode dir_index 
-filetype extent 64bit flex_bg sparse_super large_file huge_file 
-uninit_bg dir_nlink extra_isize
-Filesystem flags:         signed_directory_hash
-Default mount options:    user_xattr acl
-Filesystem state:         clean
-Errors behavior:          Continue
-Filesystem OS type:       Linux
-Inode count:              362807296
-Block count:              5804916736
-Reserved block count:     0
-Free blocks:              1407676872
-Free inodes:              358800089
-First block:              0
-Block size:               4096
-Fragment size:            4096
-Group descriptor size:    64
-Reserved GDT blocks:      585
-Blocks per group:         32768
-Fragments per group:      32768
-Inodes per group:         2048
-Inode blocks per group:   128
-RAID stride:              32
-RAID stripe width:        320
-Flex block group size:    16
-Filesystem created:       Wed Jul 31 15:02:47 2013
-Last mount time:          Sun Jul 20 17:41:16 2014
-Last write time:          Sun Jul 20 18:48:00 2014
-Mount count:              0
-Maximum mount count:      -1
-Last checked:             Sun Jul 20 18:48:00 2014
-Check interval:           0 (<none>)
-Lifetime writes:          4088 GB
-Reserved blocks uid:      0 (user root)
-Reserved blocks gid:      0 (group root)
-First inode:              11
-Inode size:	          256
-Required extra isize:     28
-Desired extra isize:      28
-Journal inode:            8
-Default directory hash:   half_md4
-Directory Hash Seed:      c08e3b0a-2c23-4b0f-b2d6-9bb8f26e0b48
-Journal backup:           inode blocks
-Journal features:         journal_incompat_revoke journal_64bit
-Journal size:             128M
-Journal length:           32768
-Journal sequence:         0x00229921
-Journal start:            0
-
-root@srv:/s# mdadm --detail /dev/md0
-/dev/md0:
-         Version : 1.2
-   Creation Time : Wed Jul 31 15:02:11 2013
-      Raid Level : raid6
-      Array Size : 23440599552 (22354.70 GiB 24003.17 GB)
-   Used Dev Size : 1953383296 (1862.89 GiB 2000.26 GB)
-    Raid Devices : 14
-   Total Devices : 14
-     Persistence : Superblock is persistent
-
-   Intent Bitmap : Internal
-
-     Update Time : Sun Jul 20 18:54:56 2014
-           State : active
-  Active Devices : 14
-Working Devices : 14
-  Failed Devices : 0
-   Spare Devices : 0
-
-          Layout : left-symmetric
-      Chunk Size : 128K
-
-            Name : srv:0  (local to host srv)
-            UUID : a66b7f8a:dcf6b939:c14a87af:b21fcedf
-          Events : 303231
-
-     Number   Major   Minor   RaidDevice State
-        0       8       64        0      active sync   /dev/sde
-        1       8      144        1      active sync   /dev/sdj
-        2       8      160        2      active sync   /dev/sdk
-       14       8      176        3      active sync   /dev/sdl
-        4       8      192        4      active sync   /dev/sdm
-        5       8      224        5      active sync   /dev/sdo
-        6       8      208        6      active sync   /dev/sdn
-        7      65        0        7      active sync   /dev/sdq
-        8      65       16        8      active sync   /dev/sdr
-        9      65       48        9      active sync   /dev/sdt
-       13      65      112       10      active sync   /dev/sdx
-       12       8       32       11      active sync   /dev/sdc
-       16      65       32       12      active sync   /dev/sds
-       15       8      240       13      active sync   /dev/sdp
-
-The filesystem looks clean, everything is accessible and though this is 
-a production box, no business critical elements are on this array so we 
-can live without it mounted if someone can give me some stuff to try.
-
-Regards,
-Brad
+> 
+> > And one question for you, do you have bigalloc option enabled?
+> 
+> I have to confess I'm not familiar with that option.  When creating ext4 
+> filesystems I generally use dir_index, extent, flex_bg, sparse_super, 
+> and uninit_bg.  The shrunken filesystem shows this from tune2fs -l:
+> 
+> 
+> Filesystem UUID:          bdf98430-a81c-4a92-9d81-e259a6aeec5b
+> Filesystem magic number:  0xEF53
+> Filesystem revision #:    1 (dynamic)
+> Filesystem features:      has_journal ext_attr resize_inode dir_index filetype
+> needs_recovery extent flex_bg sparse_super large_file huge_file uninit_bg
+> dir_nlink extra_isize
+> Filesystem flags:         signed_directory_hash 
+> Default mount options:    (none)
+> Filesystem state:         clean with errors
+> Errors behavior:          Continue
+> Filesystem OS type:       Linux
+> Inode count:              19660800
+> Block count:              78643200
+> Reserved block count:     7864
+> Free blocks:              7300885
+> Free inodes:              19657174
+> First block:              0
+> Block size:               4096
+> Fragment size:            4096
+> Reserved GDT blocks:      1005
+> Blocks per group:         32768
+> Fragments per group:      32768
+> Inodes per group:         8192
+> Inode blocks per group:   512
+> RAID stride:              32
+> RAID stripe width:        128
+> Flex block group size:    16
+> Filesystem created:       Mon Jun  6 07:06:52 2011
+> Last mount time:          Tue Jul 15 21:34:45 2014
+> Last write time:          Thu Jul 17 16:17:19 2014
+> Mount count:              3
+> Maximum mount count:      22
+> Last checked:             Tue Jul 15 20:29:52 2014
+> Check interval:           15552000 (6 months)
+> Next check after:         Sun Jan 11 20:29:52 2015
+> Lifetime writes:          19 TB
+> Reserved blocks uid:      0 (user root)
+> Reserved blocks gid:      0 (group root)
+> First inode:              11
+> Inode size:           256
+> Required extra isize:     28
+> Desired extra isize:      28
+> Journal inode:            8
+> Default directory hash:   half_md4
+> Directory Hash Seed:      9d433555-1436-4e13-8486-3b5cb1349e91
+> Journal backup:           inode blocks
+> FS Error count:           1127
+> First error time:         Tue Jul 15 21:48:31 2014
+> First error function:     ext4_ext_search_left
+> First error line #:       1423
+> First error inode #:      2648
+> First error block #:      0
+> Last error time:          Thu Jul 17 16:17:19 2014
+> Last error function:      ext4_ext_search_left
+> Last error line #:        1423
+> Last error inode #:       2662
+> Last error block #:       0
+> 
