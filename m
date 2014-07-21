@@ -1,289 +1,152 @@
-From: Rui Xiang <rui.xiang@huawei.com>
-Subject: Re: testing result of loop-aio patchset on ext3
-Date: Mon, 21 Jul 2014 10:34:47 +0800
-Message-ID: <53CC7C47.9040001@huawei.com>
-References: <53C3A42E.40000@huawei.com> <alpine.LFD.2.00.1407141142520.13527@localhost.localdomain> <53C5F770.9030105@huawei.com> <alpine.LFD.2.00.1407160955010.2431@localhost.localdomain> <53C645AA.9080509@huawei.com> <alpine.LFD.2.00.1407181105410.12453@localhost.localdomain>
+From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+Subject: Re: [PATCH] ext4: regression test for wrong assert in ext4_mb_normalize_request()
+Date: Mon, 21 Jul 2014 11:23:12 +0800
+Message-ID: <53CC87A0.1060204@cn.fujitsu.com>
+References: <1405503795-3198-1-git-send-email-wangxg.fnst@cn.fujitsu.com> <alpine.LFD.2.00.1407161401080.2400@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=windows-1252
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Dave Kleikamp <dave.kleikamp@oracle.com>,
-	<linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>, Li Zefan <lizefan@huawei.com>
+Cc: <fstests@vger.kernel.org>, <linux-ext4@vger.kernel.org>
 To: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga03-in.huawei.com ([119.145.14.66]:28948 "EHLO
-	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751949AbaGUCfI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Jul 2014 22:35:08 -0400
-In-Reply-To: <alpine.LFD.2.00.1407181105410.12453@localhost.localdomain>
+Received: from cn.fujitsu.com ([59.151.112.132]:19908 "EHLO
+	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752007AbaGUDYO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Jul 2014 23:24:14 -0400
+In-Reply-To: <alpine.LFD.2.00.1407161401080.2400@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2014/7/18 17:10, Luk=E1=9A Czerner wrote:
-> On Wed, 16 Jul 2014, Rui Xiang wrote:
+Hi Lukas,
+
+On 07/16/2014 08:02 PM, Luk=E1=9A Czerner wrote:
+> On Wed, 16 Jul 2014, Xiaoguang Wang wrote:
 >=20
->> Date: Wed, 16 Jul 2014 17:28:10 +0800
->> From: Rui Xiang <rui.xiang@huawei.com>
->> To: Luk=E1=9A Czerner <lczerner@redhat.com>
->> Cc: Dave Kleikamp <dave.kleikamp@oracle.com>, linux-ext4@vger.kernel=
-=2Eorg,
->>     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
->>     Li Zefan <lizefan@huawei.com>
->> Subject: Re: testing result of loop-aio patchset on ext3
+>> Date: Wed, 16 Jul 2014 17:43:15 +0800
+>> From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+>> To: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+>> Cc: tytso@mit.edu, mlombard@redhat.com,
+>>     Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+>> Subject: [PATCH] ext4: regression test for wrong assert in
+>>     ext4_mb_normalize_request()
 >>
->> On 2014/7/16 15:58, Luk=E1=9A Czerner wrote:
->>> On Wed, 16 Jul 2014, Rui Xiang wrote:
->>>
->>>> Date: Wed, 16 Jul 2014 11:54:24 +0800
->>>> From: Rui Xiang <rui.xiang@huawei.com>
->>>> To: Luk=E1=9A Czerner <lczerner@redhat.com>
->>>> Cc: Dave Kleikamp <dave.kleikamp@oracle.com>, linux-ext4@vger.kern=
-el.org,
->>>>     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
->>>>     Li Zefan <lizefan@huawei.com>
->>>> Subject: Re: testing result of loop-aio patchset on ext3
->>>>
->>>> On 2014/7/14 17:51, Luk=E1=9A Czerner wrote:
->>>>> On Mon, 14 Jul 2014, Rui Xiang wrote:
->>>>>
->>>>>> Date: Mon, 14 Jul 2014 17:34:38 +0800
->>>>>> From: Rui Xiang <rui.xiang@huawei.com>
->>>>>> To: Dave Kleikamp <dave.kleikamp@oracle.com>, linux-ext4@vger.ke=
-rnel.org
->>>>>> Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
->>>>>>     Li Zefan <lizefan@huawei.com>
->>>>>> Subject: testing result of loop-aio patchset on ext3
->>>>>>
->>>>>> Hi Dave,
->>>>>>
->>>>>> We export a container image file as a block device via loop devi=
-ce, but we
->>>>>> found it's very easy that the container rootfs gets corrupted du=
-e to power
->>>>>> loss.
->>>>>>
->>>>>> Your early version of loop-aio patchset said the patchset can ma=
-ke loop
->>>>>> mounted filesystems recoverable(lkml.org/lkml/2012/3/30/317), bu=
-t we found
->>>>>> it doesn't help.
->>>>>>
->>>>>> Both the guest fs and host fs are ext3.
->>>>>>
->>>>>> The loop-aio patchset is from:
->>>>>> git://github.com/kleikamp/linux-shaggy.git aio_loop
->>>>>>
->>>>>> Steps:
->>>>>> 1. dd a 10G image, mkfs.ext3,
->>>>>>   # dd if=3D/dev/zero of=3D./raw_image bs=3D1M count=3D10000
->>>>>>   # echo y | mkfs.ext3 raw_image
->>>>>>
->>>>>> 2. losetup a loop device, mount at ./test_dir
->>>>>>   # losetup /dev/loop1 raw_image
->>>>>>   # mount /dev/loop1 ./test_dir
->>>>>>
->>>>>> 3. copy fs_mark into test_dir and run
->>>>>>   # ./fs_mark -d ./tmp/ -s 102400000 -n 80
->>>>>>
->>>>>> 4. during runing fs_mark, make systerm reboot indirectly.
->>>>>>   # echo b > /proc/sysrq-trigger
->>>>>>
->>>>>> After systerm booted up, sometimes fsck reported raw_image fs ha=
-s been damaged.
->>>>>>
->>>>>> # fsck.ext3 -n raw_image
->>>>>> e2fsck 1.41.9 (22-Aug-2009)
->>>>>> Warning: skipping journal recovery because doing a read-only fil=
-esystem check.
->>>>>> raw_image contains a file system with errors, check forced.
->>>>>> Pass 1: Checking inodes, blocks, and sizes
->>>>>> Pass 2: Checking directory structure
->>>>>> Pass 3: Checking directory connectivity
->>>>>> Pass 4: Checking reference counts
->>>>>> Pass 5: Checking group summary information
->>>>>> Free blocks count wrong (2481348, counted=3D2480577).
->>>>>> Fix? no
->>>>>> Free inodes count wrong (640837, counted=3D640835).
->>>>>> Fix? no
->>>>>> raw_image: ********** WARNING: Filesystem still has errors *****=
-*****
->>>>>> raw_image: 11/640848 files (0.0% non-contiguous), 78652/2560000 =
-blocks
->>>>>
->>>>> It's not damaged, this is expected result if you're using old
->>>>> e2fsprogs which still treats this as an error.
->>>>>
->>>>> It's not an error because we only update superblock summary at
->>>>> unmount time so with unclean shutdown it's likely that it does no=
-t
->>>>> match the reality, but e2fsck can and will easily fix that for yo=
-u.
->>>>>
->>>>> Please try e2fsprogs v1.42.3 or newer.
->>>>>
->>>>
->>>> Hi Lukas,
->>>>
->>>> I updated e2fsprogs to v1.42.3, and user the newer fsck.ext3 to ch=
-eck raw_image.
->>>> Exactly, the result seemed normal.
->>>
->>> Now I can see that there are much more problems than before, that's
->>> weird. Sorry for not making this clear, but for this kind of
->>> reproducers please use the most recent e2fsprogs. Also , what is th=
-e
->>> kernel version you're using in this test ?
->>>
+>> Regression test for:
+>>     b5b6077 ext4: fix wrong assert in ext4_mb_normalize_request()
 >>
->> I use the most recent e2fsprogs 1.42.11 to check, and the error info=
- is same as
->> result fscked by v1.42.3. It seems that shouldn't be the reason.
+>> Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+>> ---
+>>  tests/ext4/003     | 57 +++++++++++++++++++++++++++++++++++++++++++=
++++++++++++
+>>  tests/ext4/003.out |  2 ++
+>>  tests/ext4/group   |  1 +
+>>  3 files changed, 60 insertions(+)
+>>  create mode 100755 tests/ext4/003
+>>  create mode 100644 tests/ext4/003.out
 >>
->> Otherwise, the kernel version in this test is stable 3.4.
+>> diff --git a/tests/ext4/003 b/tests/ext4/003
+>> new file mode 100755
+>> index 0000000..d5be9a7
+>> --- /dev/null
+>> +++ b/tests/ext4/003
+>> @@ -0,0 +1,57 @@
+>> +#! /bin/bash
+>> +# FS QA Test No. ext4/003
+>> +#
+>> +# Regression test for commit:
+>> +# b5b6077 ext4: fix wrong assert in ext4_mb_normalize_request()
+>> +# This testcase checks whether this bug has been fixed.
+>> +#
+>> +#------------------------------------------------------------------=
+-----
+>> +# Copyright (c) 2014 Fujitsu.  All Rights Reserved.
+>> +#
+>> +# This program is free software; you can redistribute it and/or
+>> +# modify it under the terms of the GNU General Public License as
+>> +# published by the Free Software Foundation.
+>> +#
+>> +# This program is distributed in the hope that it would be useful,
+>> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+>> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+>> +# GNU General Public License for more details.
+>> +#
+>> +# You should have received a copy of the GNU General Public License
+>> +# along with this program; if not, write the Free Software Foundati=
+on,
+>> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+>> +#------------------------------------------------------------------=
+-----
+>> +
+>> +seq=3D`basename $0`
+>> +seqres=3D$RESULT_DIR/$seq
+>> +echo "QA output created by $seq"
+>> +
+>> +trap "_cleanup; exit \$status" 0 1 2 3 15
+>> +
+>> +_cleanup()
+>> +{
+>> +    _scratch_unmount
+>> +}
+>> +
+>> +# get standard environment, filters and checks
+>> +. ./common/rc
+>> +. ./common/filter
+>> +
+>> +# real QA test starts here
+>> +_supported_fs ext4
+>> +_supported_os Linux
+>> +
+>> +_require_scratch
+>> +
+>> +rm -f $seqres.full
+>> +
+>> +yes | mkfs.ext4 -O bigalloc -C 65536  -g 256 $SCRATCH_DEV 512m \
+>> +    >> $seqres.full 2>&1
 >=20
-> In that case, this is a problem somewhere else. I'll try to
-> reproduce and see what I can see.
+> If we want to have bigalloc specific tests we should probably add a
+> helpers to check for bigalloc support in both kernel, and e2fsprogs
+> so this test does not fail on older kernel/older e2fsprogs.
+Sorry for the delay. New version will be sent soon, thanks!
+
+Regards,
+Xiaoguang Wang
+
+
 >=20
-> I assume you're not able to reproduce this on a real device ?
->=20
-
-Yes, it only exits on a loop device in my test.
-
-Otherwise, There was another case in this test:
-
-I fsck the err image with "-n", the result contains 7 issues.
-
-# fsck.ext3 -n image1
-Warning: skipping journal recovery because doing a read-only filesystem=
- check.
-image1 has been mounted 36 times without being checked, check forced.
-Pass 1: Checking inodes, blocks, and sizes
-*Inode 16407, i_size is 643005, should be 647168.  Fix? no
-*Inode 16407, i_blocks is 1264, should be 1272.  Fix? no
-*Inode 409941, i_blocks is 200208, should be 16688.  Fix? no
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-*Block bitmap differences:  -1643951 +1644741 -(1646592--1646598) +(164=
-8640--1648646) -(1657079--1658102) -(1658104--1659127) -(1659129--16601=
-52) -(1660154--1661177) -(1661179--1662202) -(1662204--1663227) -(16632=
-29--1664252) -(1664254--1665277) -(1665279--1666302) -(1666304--1667327=
-) -(1667329--1668352) -(1668354--1669377) -(1669379--1670402) -(1670404=
---1671167) -(1671688--1671947) -(1671949--1672972) -(1672974--1673997) =
--(1673999--1675022) -(1675024--1676047) -(1676049--1677072) -(1677074--=
-1678097) -(1678099--1679122) -(1679124--1680147) -(1680149--1680560)
-=46ix? no
-*Free blocks count wrong for group #2 (31522, counted=3D31520).
-=46ix? no
-*Free blocks count wrong for group #43 (15870, counted=3D15871).
-=46ix? no
-*Free blocks count wrong for group #45 (398, counted=3D396).
-=46ix? no
-*Free blocks count wrong (2203971, counted=3D2203968).
-=46ix? no
-image1: ********** WARNING: Filesystem still has errors **********
-image1: 13008/655360 files (0.3% non-contiguous), 417469/2621440 blocks
-
-When I "fsck -y" the image, it seems that only fixes 1 issue.
-
-# fsck.ext3 -y image1
-image1: recovering journal
-image1 has been mounted 36 times without being checked, check forced.
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-*Free blocks count wrong (2203971, counted=3D2203968).
-=46ix<y>? yes
-image1: ***** FILE SYSTEM WAS MODIFIED *****
-image1: 13008/655360 files (0.3% non-contiguous), 417472/2621440 blocks
-
-So, I assume journal is revocered before fs checking while doing
-"fsck -y", and other issues are fixed during fs revovering journal,
- is that?
-
-Thanks!
-
 > Thanks!
 > -Lukas
 >=20
+>> +_scratch_mount || _fail "couldn't mount fs"
+>> +
+>> +dd if=3D/dev/zero of=3D$SCRATCH_MNT/testfile bs=3D1M count=3D256 2>=
+&1 | _filter_dd
+>> +
+>> +echo "Slience is golden"
+>> +
+>> +status=3D0
+>> +exit
+>> diff --git a/tests/ext4/003.out b/tests/ext4/003.out
+>> new file mode 100644
+>> index 0000000..07f245d
+>> --- /dev/null
+>> +++ b/tests/ext4/003.out
+>> @@ -0,0 +1,2 @@
+>> +QA output created by 003
+>> +Slience is golden
+>> diff --git a/tests/ext4/group b/tests/ext4/group
+>> index 7e66035..152196c 100644
+>> --- a/tests/ext4/group
+>> +++ b/tests/ext4/group
+>> @@ -5,6 +5,7 @@
+>>  #
+>>  001 auto prealloc quick
+>>  002 auto quick prealloc
+>> +003 auto quick
+>>  271 auto rw quick
+>>  301 aio dangerous ioctl rw stress
+>>  302 aio dangerous ioctl rw stress
 >>
->>
->> Thanks!
->>
->>> Thanks!
->>> -Lukas
->>>
->>>>
->>>> Then, I continue my previous test. And after testing 35 times, "fs=
-ck -n" reported image fs
->>>> had been damaged, too.
->>>>
->>>>  # fsck.ext3 -n image1
->>>> e2fsck 1.42.3.wc1 (28-May-2012)
->>>> Warning: skipping journal recovery because doing a read-only files=
-ystem check.
->>>> image1 has been mounted 36 times without being checked, check forc=
-ed.
->>>> Pass 1: Checking inodes, blocks, and sizes
->>>> Inode 16407, i_size is 597447, should be 602112.  Fix? no
->>>> Inode 16407, i_blocks is 1176, should be 1184.  Fix? no
->>>> Inode 409941, i_blocks is 200208, should be 112.  Fix? no
->>>> Pass 2: Checking directory structure
->>>> Pass 3: Checking directory connectivity
->>>> Pass 4: Checking reference counts
->>>> Pass 5: Checking group summary information
->>>> Block bitmap differences:  -1506836 -1506843 -(1506859--1506860) -=
-(1660941--1661964) -(1661966--1671167) -(1671688--1686473)
->>>> Fix? no
->>>> Free blocks count wrong for group #2 (31558, counted=3D31556).
->>>> Fix? no
->>>> Free blocks count wrong for group #43 (15871, counted=3D15867).
->>>> Fix? no
->>>> Free blocks count wrong (2204041, counted=3D2204035).
->>>> Fix? no
->>>> image1: ********** WARNING: Filesystem still has errors **********
->>>> image1: 13008/655360 files (0.3% non-contiguous), 417399/2621440 b=
-locks
->>>>
->>>> I backup the image to image_bk, and then mount the image to a dir,=
- and cat all files in the image.
->>>> Steps:
->>>> # dd if=3Dimage1 of=3Dimage_bk
->>>> # mount image1 err_dir
->>>> # find -name '*' -exec cat > /dev/null {} \;
->>>>
->>>> There are no issues during catting, and no err in dmesg too.
->>>>
->>>> *But when I umount the image1 from err_dir, The fsck result didn't=
- show any fs corruption info.
->>>>
->>>> I mount image_bk to err_dir and umount it with no operation direct=
-ly. The result is same to iamge1.
->>>>
->>>> *So, is fs in the image as a block device via loop device damaged =
-really, or does it have some others issues?=20
->>>> Could you give me some opinions?
->>>>
->>>>
->>>> Thanks.
->>>>
->>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-ex=
-t4" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-fsde=
-vel" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+> .
+>=20
 
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
