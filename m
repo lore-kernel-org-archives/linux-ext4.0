@@ -1,144 +1,94 @@
-From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-Subject: [PATCH v2] ext4: regression test for wrong assert in ext4_mb_normalize_request()
-Date: Mon, 21 Jul 2014 11:27:05 +0800
-Message-ID: <1405913225-1920-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
-References: <53CC87A0.1060204@cn.fujitsu.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: Question about EXT4_IOC_MOVE_EXT
+Date: Mon, 21 Jul 2014 14:45:16 +0400
+Message-ID: <87tx6bf0sj.fsf@openvz.org>
+References: <CAGqmi74q4fu38gqCGuy3a1-YB5tjZywThXZCHj+3U0gSua9YhQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <lczerner@redhat.com>, Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-To: <fstests@vger.kernel.org>, <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: Timofey Titovets <nefelim4ag@gmail.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([59.151.112.132]:16372 "EHLO
-	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752007AbaGUD14 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Jul 2014 23:27:56 -0400
-In-Reply-To: <53CC87A0.1060204@cn.fujitsu.com>
+Received: from mail-lb0-f170.google.com ([209.85.217.170]:65436 "EHLO
+	mail-lb0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754324AbaGUKpU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Jul 2014 06:45:20 -0400
+Received: by mail-lb0-f170.google.com with SMTP id w7so3801414lbi.29
+        for <linux-ext4@vger.kernel.org>; Mon, 21 Jul 2014 03:45:19 -0700 (PDT)
+In-Reply-To: <CAGqmi74q4fu38gqCGuy3a1-YB5tjZywThXZCHj+3U0gSua9YhQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Regression test for:
-    b5b6077 ext4: fix wrong assert in ext4_mb_normalize_request()
+On Sun, 20 Jul 2014 13:16:45 +0300, Timofey Titovets <nefelim4ag@gmail.com> wrote:
+> Good time of day, i am working for optimization of readahead in
+> systemd and now, i try to implement EXT4_IOC_MOVE_EXT ioctl. I have
+> several questions:
+> 
+> 1. In fs every file has a file descriptor, file descriptor is a
+> integer number. Can we say what, by file descriptor, we can determine
+> order of files where he places on a disk?
+> As example: a - 5; b - 54; c - 31; d - 20;
+> This mean what files place order like:
+> start of disk -> a -> d ->  c -> b -> end of disk
+> and if i swap files by EXT4_IOC_MOVE_EXT, i can reorder it to:
+> start of disk -> a -> b -> c -> d -> end of disk
+> This is true?
+No. filedescriptor num absolutely not related with disk layout.
+inode number has some relationship with disk layout (allocator
+try to allocate blocks from same group see fs/ext4/mballoc.c)
 
-Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
----
- common/rc          | 18 ++++++++++++++++++
- tests/ext4/003     | 55 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/ext4/003.out |  2 ++
- tests/ext4/group   |  1 +
- 4 files changed, 76 insertions(+)
- create mode 100755 tests/ext4/003
- create mode 100644 tests/ext4/003.out
+> 
+> 2. Can i pack files in custom order on a disk? (i have order of
+> accessing files on a disk, and i want place him in accessing order
+> like e4rat project do)
+> If yes, how? May be we have ioctl call or e2fsprogs has realisation of this?
+> ( e4rat as i understand by looking source, patch kernel, to get
+> features of files reorder)
+At this moment no. But I'm working on that, it requires
+Kernel part: remove artificial restriction where orig_start == donor_start
+             this restriction do not allow to pack small files to one
+             cluster.
+  
 
-diff --git a/common/rc b/common/rc
-index 2c83340..018e569 100644
---- a/common/rc
-+++ b/common/rc
-@@ -1113,6 +1113,24 @@ _require_xfs_crc()
- 	umount $SCRATCH_MNT
- }
- 
-+# this test requires the bigalloc feature to be available in mkfs.ext4
-+#
-+_require_ext4_mkfs_bigalloc()
-+{
-+	_scratch_mkfs_ext4 -O bigalloc >/dev/null 2>&1 \
-+	   || _notrun "mkfs.ext4 doesn't have bigalloc feature"
-+}
-+
-+# this test requires the ext4 kernel support bigalloc feature
-+#
-+_require_ext4_bigalloc()
-+{
-+	_scratch_mkfs_ext4 -O bigalloc >/dev/null 2>&1
-+	_scratch_mount >/dev/null 2>&1 \
-+	   || _notrun "Ext4 kernel doesn't support bigalloc feature"
-+	umount $SCRATCH_MNT
-+}
-+
- # this test requires the finobt feature to be available in mkfs.xfs
- #
- _require_xfs_mkfs_finobt()
-diff --git a/tests/ext4/003 b/tests/ext4/003
-new file mode 100755
-index 0000000..4ca282f
---- /dev/null
-+++ b/tests/ext4/003
-@@ -0,0 +1,55 @@
-+#! /bin/bash
-+# FS QA Test No. ext4/003
-+#
-+# Regression test for commit:
-+# b5b6077 ext4: fix wrong assert in ext4_mb_normalize_request()
-+# This testcase checks whether this bug has been fixed.
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2014 Fujitsu.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#-----------------------------------------------------------------------
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+    _scratch_unmount
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# real QA test starts here
-+_supported_fs ext4
-+_supported_os Linux
-+
-+_require_scratch
-+_require_ext4_mkfs_bigalloc
-+_require_ext4_bigalloc
-+
-+rm -f $seqres.full
-+
-+yes | mkfs.ext4 -O bigalloc -C 65536  -g 256 $SCRATCH_DEV 512m \
-+    >> $seqres.full 2>&1
-+_scratch_mount || _fail "couldn't mount fs"
-+
-+dd if=/dev/zero of=$SCRATCH_MNT/testfile bs=1M count=256 2>&1 | _filter_dd
-+
-+echo "Slience is golden"
-+
-+status=0
-+exit
-diff --git a/tests/ext4/003.out b/tests/ext4/003.out
-new file mode 100644
-index 0000000..07f245d
---- /dev/null
-+++ b/tests/ext4/003.out
-@@ -0,0 +1,2 @@
-+QA output created by 003
-+Slience is golden
-diff --git a/tests/ext4/group b/tests/ext4/group
-index 7e66035..152196c 100644
---- a/tests/ext4/group
-+++ b/tests/ext4/group
-@@ -5,6 +5,7 @@
- #
- 001 auto prealloc quick
- 002 auto quick prealloc
-+003 auto quick
- 271 auto rw quick
- 301 aio dangerous ioctl rw stress
- 302 aio dangerous ioctl rw stress
--- 
-1.8.2.1
+userspace part: new version of e4defrag which allow to pack small files
+                effectively.
 
+At this moment size is looks like follows:
+ fs/ext4/ext4.h        |    4 +
+ fs/ext4/extents.c     |  204 +++++++++++-
+ fs/ext4/move_extent.c |  901 ++++++-------------------------------------------
+Userspace:
+ Makefile.in               |   28 
+ e4defrag2-assupmtions.org |   22 
+ e4defrag2.8               |   80 +
+ e4defrag2.8.in            |   80 +
+ e4defrag2.c               | 2486 ++++++++++++++++++++++++++++++++++++++++++++++
+
+So testing is moved slow. I hope I can send first version today.
+
+> 3. In
+> struct move_extent {
+>     __s32 reserved;    /* original file descriptor */
+>     __u32 donor_fd;    /* donor file descriptor */
+>     __u64 orig_start;  /* logical start offset in block for orig */
+>     __u64 donor_start; /* logical start offset in block for donor */
+>     __u64 len;         /* block length to be moved */
+>     __u64 moved_len;   /* moved block length */
+> };
+> Can i ignore (not set) orig_start, donor_start, len, moved_len?
+> What happen if i set it by zeros?
+same as youcall pwrite(fd,buf, 0,0), nothing. If you have asked
+to exchange ZERO bytes it will be hapy to do nothing :).
+> if i move original file descriptor to file descriptor with zero size
+> of file, what happen? or in begger file donor then original?
+If both files has zero size that again nothing will happen, but EINVAL
+will be returned.
+If donor is bigger than original it will swap extents untill
+orig->i_size.
+
+> 
+> -----
+> Best regards,
+> Timofey.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
