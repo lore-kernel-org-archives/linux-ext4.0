@@ -1,62 +1,64 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/3] ext4: fix incorrect locking in move_extent_per_page
-Date: Mon, 21 Jul 2014 21:51:02 +0200
-Message-ID: <20140721195102.GC19942@quack.suse.cz>
-References: <1405955089-12777-1-git-send-email-dmonakhov@openvz.org>
- <1405955089-12777-3-git-send-email-dmonakhov@openvz.org>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: RE: [PATCH 01/24] e4defrag: backwards-allocated files should be
+ defragmented too
+Date: Mon, 21 Jul 2014 23:44:59 +0000
+Message-ID: <28989C0C9F1C0A428470D967B5FCED372B3917@BPXM22GP.gisp.nec.co.jp>
+References: <20140718225200.31374.85411.stgit@birch.djwong.org>
+ <20140718225209.31374.76567.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	"tytso@mit.edu" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57913 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752925AbaGUTvI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Jul 2014 15:51:08 -0400
-Content-Disposition: inline
-In-Reply-To: <1405955089-12777-3-git-send-email-dmonakhov@openvz.org>
+Received: from TYO200.gate.nec.co.jp ([210.143.35.50]:57627 "EHLO
+	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750832AbaGUXv5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Jul 2014 19:51:57 -0400
+Received: from tyo201.gate.nec.co.jp ([10.7.69.201])
+	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id s6LNlqnI015167
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Jul 2014 08:51:54 +0900 (JST)
+In-Reply-To: <20140718225209.31374.76567.stgit@birch.djwong.org>
+Content-Language: ja-JP
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 21-07-14 19:04:49, Dmitry Monakhov wrote:
-> If we have to copy data we must drop i_data_sem because of
-> get_blocks() will be called inside mext_page_mkuptodate(), but later we must
-> reacquire it again because we are about to change extent's tree
-> 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-  Looks good. You can add:
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/ext4/move_extent.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-> index 2484c7e..671a74b 100644
-> --- a/fs/ext4/move_extent.c
-> +++ b/fs/ext4/move_extent.c
-> @@ -1013,10 +1013,11 @@ data_copy:
->  		*err = -EBUSY;
->  		goto unlock_pages;
->  	}
-> -
-> +	ext4_double_down_write_data_sem(orig_inode, donor_inode);
->  	replaced_count = mext_replace_branches(handle, orig_inode, donor_inode,
->  					       orig_blk_offset,
->  					       block_len_in_page, err);
-> +	ext4_double_up_write_data_sem(orig_inode, donor_inode);
->  	if (*err) {
->  		if (replaced_count) {
->  			block_len_in_page = replaced_count;
-> -- 
-> 1.7.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Pi0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+RnJvbTogbGludXgtZXh0NC1vd25lckB2Z2Vy
+Lmtlcm5lbC5vcmcgW21haWx0bzpsaW51eC1leHQ0LW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
+QmVoYWxmIE9mDQo+RGFycmljayBKLiBXb25nDQo+U2VudDogU2F0dXJkYXksIEp1bHkgMTksIDIw
+MTQgNzo1MiBBTQ0KPlRvOiB0eXRzb0BtaXQuZWR1OyBkYXJyaWNrLndvbmdAb3JhY2xlLmNvbQ0K
+PkNjOiBYaWFvZ3VhbmcgV2FuZzsgbGludXgtZXh0NEB2Z2VyLmtlcm5lbC5vcmcNCj5TdWJqZWN0
+OiBbUEFUQ0ggMDEvMjRdIGU0ZGVmcmFnOiBiYWNrd2FyZHMtYWxsb2NhdGVkIGZpbGVzIHNob3Vs
+ZCBiZSBkZWZyYWdtZW50ZWQgdG9vDQo+DQo+Q3VycmVudGx5LCBlNGRlZnJhZyBhdm9pZHMgaW5j
+cmVhc2luZyBmaWxlIGZyYWdtZW50YXRpb24gYnkgY29tcGFyaW5nDQo+dGhlIG51bWJlciBvZiBy
+dW5zIG9mIHBoeXNpY2FsIGV4dGVudHMgb2YgYm90aCB0aGUgb3JpZ2luYWwgYW5kIHRoZQ0KPmRv
+bm9yIGZpbGVzLiAgVW5mb3J0dW5hdGVseSwgdGhlcmUgaXMgYSBidWcgaW4gdGhlIHJvdXRpbmUg
+dGhhdCBjb3VudHMNCj5waHlzaWNhbCBleHRlbnRzLCBzaW5jZSBpdCBkb2Vzbid0IGxvb2sgYXQg
+dGhlIGxvZ2ljYWwgYmxvY2sgb2Zmc2V0cw0KPm9mIHRoZSBleHRlbnRzLiAgVGhlcmVmb3JlLCBh
+IGZpbGUgd2hvc2UgYmxvY2tzIHdlcmUgYWxsb2NhdGVkIGluDQo+cmV2ZXJzZSBvcmRlciB3aWxs
+IGJlIHNlZW4gYXMgb25seSBoYXZpbmcgb25lIGJpZyBwaHlzaWNhbCBleHRlbnQsIGFuZA0KPnRo
+ZXJlZm9yZSB3aWxsIG5vdCBiZSBkZWZyYWdtZW50ZWQuDQo+DQo+Rml4IHRoZSBjb3VudGluZyBy
+b3V0aW5lIHRvIGNvbnNpZGVyIGxvZ2ljYWwgZXh0ZW50IG9mZnNldCBzbyB0aGF0IHdlDQo+ZGVm
+cmFnbWVudCBiYWNrd2FyZHMtYWxsb2NhdGVkIGZpbGVzLiAgVGhpcyBjb3VsZCBiZSBwcm9ibGVt
+YXRpYyBpZiB3ZQ0KPmV2ZXIgZ2FpbiB0aGUgYWJpbGl0eSB0byBsYXkgb3V0IGxvZ2ljYWxseSBz
+cGFyc2UgZXh0ZW50cyBpbiBhDQo+cGh5c2ljYWxseSBjb250aWd1b3VzIG1hbm5lciwgYnV0IHBy
+ZXN1bWFibHkgb25lIHdvdWxkbid0IGNhbGwgZGVmcmFnDQo+b24gc3VjaCBhIGZpbGUuDQo+DQo+
+UmVwb3J0ZWQtYnk6IFhpYW9ndWFuZyBXYW5nIDx3YW5neGcuZm5zdEBjbi5mdWppdHN1LmNvbT4N
+Cj5TaWduZWQtb2ZmLWJ5OiBEYXJyaWNrIEouIFdvbmcgPGRhcnJpY2sud29uZ0BvcmFjbGUuY29t
+Pg0KPi0tLQ0KPiBtaXNjL2U0ZGVmcmFnLmMgfCAgICA0ICsrKy0NCj4gMSBmaWxlIGNoYW5nZWQs
+IDMgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbigtKQ0KPg0KPg0KPmRpZmYgLS1naXQgYS9taXNj
+L2U0ZGVmcmFnLmMgYi9taXNjL2U0ZGVmcmFnLmMNCj5pbmRleCBhMjA0NzkzLi5kMGVhYzYwIDEw
+MDY0NA0KPi0tLSBhL21pc2MvZTRkZWZyYWcuYw0KPisrKyBiL21pc2MvZTRkZWZyYWcuYw0KPkBA
+IC04ODgsNyArODg4LDkgQEAgc3RhdGljIGludCBnZXRfcGh5c2ljYWxfY291bnQoc3RydWN0IGZp
+ZW1hcF9leHRlbnRfbGlzdCAqcGh5c2ljYWxfbGlzdF9oZWFkKQ0KPg0KPiAJZG8gew0KPiAJCWlm
+ICgoZXh0X2xpc3RfdG1wLT5kYXRhLnBoeXNpY2FsICsgZXh0X2xpc3RfdG1wLT5kYXRhLmxlbikN
+Cj4tCQkJCSE9IGV4dF9saXN0X3RtcC0+bmV4dC0+ZGF0YS5waHlzaWNhbCkgew0KPisJCQkJIT0g
+ZXh0X2xpc3RfdG1wLT5uZXh0LT5kYXRhLnBoeXNpY2FsIHx8DQo+KwkJICAgIChleHRfbGlzdF90
+bXAtPmRhdGEubG9naWNhbCArIGV4dF9saXN0X3RtcC0+ZGF0YS5sZW4pDQo+KwkJCQkhPSBleHRf
+bGlzdF90bXAtPm5leHQtPmRhdGEubG9naWNhbCkgew0KPiAJCQkvKiBUaGlzIGV4dGVudCBhbmQg
+bmV4dCBleHRlbnQgYXJlIG5vdCBjb250aW51b3VzLiAqLw0KPiAJCQlyZXQrKzsNCj4gCQl9DQoN
+Ckl0IGxvb2tzIGdvb2QgdG8gbWUuDQoNClJldmlld2VkLWJ5OiBBa2lyYSBGdWppdGEgPGEtZnVq
+aXRhQHJzLmpwLm5lYy5jb20+DQoNClRoYW5rcywNCkFraXJhIEZ1aml0YQ0K
