@@ -1,36 +1,97 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] fs/ext4/super.c: Let 'counters' switched by SMP
-Date: Mon, 21 Jul 2014 15:11:48 -0400
-Message-ID: <20140721191148.GB24960@thunk.org>
-References: <53C47E59.8030502@gmail.com>
- <20140715093154.GB1451@thunk.org>
- <CAOesGMhmENA+eojUYBOCJQBNq4zcWx8C-qDCv5umNPm0it8qxg@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/3] ext4: add i_data_sem sanity check
+Date: Mon, 21 Jul 2014 21:35:10 +0200
+Message-ID: <20140721193510.GA19942@quack.suse.cz>
+References: <1405955089-12777-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Chen Gang <gang.chen.5i5j@gmail.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Olof Johansson <olof@lixom.net>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:57233 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933534AbaGUTfO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Jul 2014 15:35:14 -0400
 Content-Disposition: inline
-In-Reply-To: <CAOesGMhmENA+eojUYBOCJQBNq4zcWx8C-qDCv5umNPm0it8qxg@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1405955089-12777-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 21, 2014 at 10:40:02AM -0700, Olof Johansson wrote:
-> > I'll respin the "ext4: rearrange initialization to fix EXT4FS_DEBUG"
-> > commit to include this fix and give you credit in the commit logs for
-> > pointing out this issue.
+On Mon 21-07-14 19:04:47, Dmitry Monakhov wrote:
+> Each caller of ext4_ext_dirty must hold i_data_sem,
+> The only exception is migration code, let's make it convenient.
 > 
-> Friendly ping, since all !SMP builds in -next seem to be broken by this still.
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+  Looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Right, sorry, I'm currently in vacation in Rome, and the network
-connection was really lousy here now that I'm no longer at the ACACES
-summer school in Fiuggi.  (Also, now that I'm no longer actually
-teaching, I've beeen trying to actually do the disconnecting and
-sightseeing thing.  :-)
+								Honza
 
-Pushed now.
-
-						- Ted
+> ---
+>  fs/ext4/extents.c |    2 ++
+>  fs/ext4/migrate.c |    7 +++++++
+>  2 files changed, 9 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index b30172d..ee93f82 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -161,6 +161,8 @@ int __ext4_ext_dirty(const char *where, unsigned int line, handle_t *handle,
+>  		     struct inode *inode, struct ext4_ext_path *path)
+>  {
+>  	int err;
+> +
+> +	WARN_ON(!rwsem_is_locked(&EXT4_I(inode)->i_data_sem));
+>  	if (path->p_bh) {
+>  		ext4_extent_block_csum_set(inode, ext_block_hdr(path->p_bh));
+>  		/* path points to block */
+> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+> index ec09243..d3567f2 100644
+> --- a/fs/ext4/migrate.c
+> +++ b/fs/ext4/migrate.c
+> @@ -39,6 +39,8 @@ static int finish_range(handle_t *handle, struct inode *inode,
+>  	newext.ee_block = cpu_to_le32(lb->first_block);
+>  	newext.ee_len   = cpu_to_le16(lb->last_block - lb->first_block + 1);
+>  	ext4_ext_store_pblock(&newext, lb->first_pblock);
+> +	/* Locking only for convinience since we are operating on temp inode */
+> +	down_write(&EXT4_I(inode)->i_data_sem);
+>  	path = ext4_ext_find_extent(inode, lb->first_block, NULL, 0);
+>  
+>  	if (IS_ERR(path)) {
+> @@ -61,7 +63,9 @@ static int finish_range(handle_t *handle, struct inode *inode,
+>  	 */
+>  	if (needed && ext4_handle_has_enough_credits(handle,
+>  						EXT4_RESERVE_TRANS_BLOCKS)) {
+> +		up_write((&EXT4_I(inode)->i_data_sem));
+>  		retval = ext4_journal_restart(handle, needed);
+> +		down_write((&EXT4_I(inode)->i_data_sem));
+>  		if (retval)
+>  			goto err_out;
+>  	} else if (needed) {
+> @@ -70,13 +74,16 @@ static int finish_range(handle_t *handle, struct inode *inode,
+>  			/*
+>  			 * IF not able to extend the journal restart the journal
+>  			 */
+> +			up_write((&EXT4_I(inode)->i_data_sem));
+>  			retval = ext4_journal_restart(handle, needed);
+> +			down_write((&EXT4_I(inode)->i_data_sem));
+>  			if (retval)
+>  				goto err_out;
+>  		}
+>  	}
+>  	retval = ext4_ext_insert_extent(handle, inode, path, &newext, 0);
+>  err_out:
+> +	up_write((&EXT4_I(inode)->i_data_sem));
+>  	if (path) {
+>  		ext4_ext_drop_refs(path);
+>  		kfree(path);
+> -- 
+> 1.7.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
