@@ -1,46 +1,48 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 09/24] e2fsck: clear i_block if there are too many bad
- block mappings
-Date: Tue, 22 Jul 2014 14:59:33 -0400
-Message-ID: <20140722185933.GM25291@thunk.org>
-References: <20140718225200.31374.85411.stgit@birch.djwong.org>
- <20140718225321.31374.48416.stgit@birch.djwong.org>
+Subject: Re: [PATCH] e2fsck: free bh on csum verify error in do_one_pass
+Date: Tue, 22 Jul 2014 12:31:14 -0400
+Message-ID: <20140722163114.GD25291@thunk.org>
+References: <53C83C1F.8020303@redhat.com>
+ <alpine.LFD.2.00.1407181104330.12453@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50617 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:50622 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932131AbaGVUfG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Jul 2014 16:35:06 -0400
+	id S932137AbaGVUfH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Jul 2014 16:35:07 -0400
 Content-Disposition: inline
-In-Reply-To: <20140718225321.31374.48416.stgit@birch.djwong.org>
+In-Reply-To: <alpine.LFD.2.00.1407181104330.12453@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 18, 2014 at 03:53:21PM -0700, Darrick J. Wong wrote:
-> If there are too many bad block mappings in a file and the user says
-> to zap it, erase i_block before clearing the inode.
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+On Fri, Jul 18, 2014 at 11:04:45AM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> On Thu, 17 Jul 2014, Eric Sandeen wrote:
+>=20
+> > Date: Thu, 17 Jul 2014 16:11:59 -0500
+> > From: Eric Sandeen <sandeen@redhat.com>
+> > To: ext4 development <linux-ext4@vger.kernel.org>
+> > Subject: [PATCH] e2fsck: free bh on csum verify error in do_one_pas=
+s
+> >=20
+> > Coverity (re-)spotted this; it was triaged as a false positive,
+> > but it seems pretty clear that the bh (which was just checked)
+> > isn't currently freed before the function exits.
+>=20
+> Looks good.
+>=20
+> Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
-Why is this necessary?  E2fsck will clear i_links_count and set dtime,
-so the contents of i_block shouldn't matter, yes?
+Thanks, applied.
 
-						- Ted
-
-> 
-> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-> index b696d02..18980f1 100644
-> --- a/e2fsck/pass1.c
-> +++ b/e2fsck/pass1.c
-> @@ -2329,6 +2329,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
->  	}
->  
->  	if (pb.clear) {
-> +		memset(inode->i_block, 0, sizeof(inode->i_block));
->  		e2fsck_clear_inode(ctx, ino, inode, E2F_FLAG_RESTART,
->  				   "check_blocks");
->  		return;
-> 
+					- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
