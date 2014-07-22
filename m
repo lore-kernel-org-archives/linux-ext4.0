@@ -1,101 +1,70 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 02/24] debugfs: Only print the first 60 bytes from
- i_block on a fast symlink
-Date: Tue, 22 Jul 2014 13:34:38 -0700
-Message-ID: <20140722203438.GC8628@birch.djwong.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 03/24] debugfs: create idump command to dump an inode in
+ hex
+Date: Tue, 22 Jul 2014 13:47:36 -0400
+Message-ID: <20140722174736.GG25291@thunk.org>
 References: <20140718225200.31374.85411.stgit@birch.djwong.org>
- <20140718225224.31374.15186.stgit@birch.djwong.org>
- <B72871BE-3D5E-4A07-8EDE-9B4032119174@dilger.ca>
+ <20140718225236.31374.97509.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "tytso@mit.edu" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:19162 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752000AbaGVUep (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jul 2014 16:34:45 -0400
+Received: from imap.thunk.org ([74.207.234.97]:50618 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932135AbaGVUfG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Jul 2014 16:35:06 -0400
 Content-Disposition: inline
-In-Reply-To: <B72871BE-3D5E-4A07-8EDE-9B4032119174@dilger.ca>
+In-Reply-To: <20140718225236.31374.97509.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jul 19, 2014 at 10:49:35AM -0600, Andreas Dilger wrote:
-> Wouldn't it be better to decode and print the whole symlink from the inline
-> data?  Depending on the use of debugfs, printing only the first 60 bytes may
-> cause people/scripts to think the link is corrupted. 
-
-Hmm, you're right, this /does/ expose some weird behavior w.r.t. fast link
-printing.  I think I should go further and inhibit printing of system.data
-entirely during xattr dump since dump_inode doesn't print file contents, and
-the inline data could be fairly long.
-
-Ok, I retract this patch and I'll repost it as part of the inline data cleanup
-later this week.
-
---D
+On Fri, Jul 18, 2014 at 03:52:36PM -0700, Darrick J. Wong wrote:
+> Create a command that will dump an entire inode's space in hex.
 > 
-> Cheers, Andreas
-> 
-> > On Jul 18, 2014, at 16:52, "Darrick J. Wong" <darrick.wong@oracle.com> wrote:
-> > 
-> > If we have an inline_data fast symlink, i_size can be larger than the
-> > size of i_block.  In this case, debugfs prints off the end of the
-> > buffer, so fix that.
-> > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > ---
-> > debugfs/debugfs.c            |   15 ++++++++++-----
-> > tests/d_special_files/expect |    2 +-
-> > 2 files changed, 11 insertions(+), 6 deletions(-)
-> > 
-> > 
-> > diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-> > index 51f386b..5eecabe 100644
-> > --- a/debugfs/debugfs.c
-> > +++ b/debugfs/debugfs.c
-> > @@ -783,11 +783,16 @@ void internal_dump_inode(FILE *out, const char *prefix,
-> >    }
-> > 
-> >    if (LINUX_S_ISLNK(inode->i_mode) &&
-> > -        ext2fs_inode_data_blocks(current_fs,inode) == 0 &&
-> > -        !(inode->i_flags & EXT4_INLINE_DATA_FL))
-> > -        fprintf(out, "%sFast_link_dest: %.*s\n", prefix,
-> > -            (int) inode->i_size, (char *)inode->i_block);
-> > -    else if (LINUX_S_ISBLK(inode->i_mode) || LINUX_S_ISCHR(inode->i_mode)) {
-> > +        ext2fs_inode_data_blocks(current_fs, inode) == 0 &&
-> > +        !(inode->i_flags & EXT4_INLINE_DATA_FL)) {
-> > +        int sz = EXT2_I_SIZE(inode);
-> > +
-> > +        if (sz > sizeof(inode->i_block))
-> > +            sz = sizeof(inode->i_block);
-> > +        fprintf(out, "%sFast link dest: \"%.*s\"\n", prefix, sz,
-> > +            (char *)inode->i_block);
-> > +    } else if (LINUX_S_ISBLK(inode->i_mode) ||
-> > +           LINUX_S_ISCHR(inode->i_mode)) {
-> >        int major, minor;
-> >        const char *devnote;
-> > 
-> > diff --git a/tests/d_special_files/expect b/tests/d_special_files/expect
-> > index 2b2dbfa..f729b0f 100644
-> > --- a/tests/d_special_files/expect
-> > +++ b/tests/d_special_files/expect
-> > @@ -11,7 +11,7 @@ Fragment:  Address: 0    Number: 0    Size: 0
-> > ctime: 0x50f560e0 -- Tue Jan 15 14:00:00 2013
-> > atime: 0x50f560e0 -- Tue Jan 15 14:00:00 2013
-> > mtime: 0x50f560e0 -- Tue Jan 15 14:00:00 2013
-> > -Fast_link_dest: bar
-> > +Fast link dest: "bar"
-> > Exit status is 0
-> > debugfs -R ''stat foo2'' -w test.img
-> > Inode: 13   Type: symlink    Mode:  0777   Flags: 0x0
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+
+Applied with the following addition which (a) adds a formal longer
+command name ("inode_dump") to be analogous with the "block_dump"
+command, and (b) adds an entry to the debugfs man page.
+
+	     	      	       	  - Ted
+
+diff --git a/debugfs/debug_cmds.ct b/debugfs/debug_cmds.ct
+index ef4c5c4..ed3728f 100644
+--- a/debugfs/debug_cmds.ct
++++ b/debugfs/debug_cmds.ct
+@@ -188,7 +188,7 @@ request do_zap_block, "Zap block: fill with 0, pattern, flip bits etc.",
+ 	zap_block, zap;
+ 
+ request do_block_dump, "Dump contents of a block",
+-	block_dump, bd;
++	block_dump, bdump, bd;
+ 
+ request do_list_quota, "List quota",
+ 	list_quota, lq;
+@@ -196,8 +196,8 @@ request do_list_quota, "List quota",
+ request do_get_quota, "Get quota",
+ 	get_quota, gq;
+ 
+-request do_idump, "Dump inode",
+-	idump;
++request do_idump, "Dump the inode structure in hex",
++	inode_dump, idump, id;
+ 
+ 
+ end;
+diff --git a/debugfs/debugfs.8.in b/debugfs/debugfs.8.in
+index 73254d3..9a125f6 100644
+--- a/debugfs/debugfs.8.in
++++ b/debugfs/debugfs.8.in
+@@ -346,6 +346,9 @@ showing its tree structure.
+ Print a listing of the inodes which use the one or more blocks specified
+ on the command line.
+ .TP
++.BI inode_dump " filespec"
++Print the contents of the inode data structure in hex and ASCII format.
++.TP
+ .BI imap " filespec"
+ Print the location of the inode data structure (in the inode table)
+ of the inode
