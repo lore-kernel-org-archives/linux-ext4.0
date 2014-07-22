@@ -1,63 +1,41 @@
-From: Gioh Kim <gioh.kim@lge.com>
-Subject: [PATCH 2/2] ext4: allocate buffer-cache for superblock in, non-movable
- area
-Date: Tue, 22 Jul 2014 14:22:44 +0900
-Message-ID: <53CDF524.3080006@lge.com>
+From: Peter Zijlstra <peterz@infradead.org>
+Subject: Re: [PATCH 0/2] new API to allocate buffer-cache for superblock in
+ non-movable area
+Date: Tue, 22 Jul 2014 09:30:05 +0200
+Message-ID: <20140722073005.GT3935@laptop>
+References: <53CDF437.4090306@lge.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=EUC-KR
-Content-Transfer-Encoding: 7bit
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Andrew Morton <akpm@linux-foundation.org>,
 	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org,
-	=?EUC-KR?B?wMywx8ij?= <gunho.lee@lge.com>
+	linux-ext4@vger.kernel.org
+To: Gioh Kim <gioh.kim@lge.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <53CDF437.4090306@lge.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-A buffer-cache for superblock is disturbing page migration,
-because the buffer-cache is not released until unmount.
-The buffer-cache must be allocated from non-movable area.
+On Tue, Jul 22, 2014 at 02:18:47PM +0900, Gioh Kim wrote:
+> Hello,
+> 
+> This patch try to solve problem that a long-lasting page cache of
+> ext4 superblock disturbs page migration.
+> 
+> I've been testing CMA feature on my ARM-based platform
+> and found some pages for page caches cannot be migrated.
+> Some of them are page caches of superblock of ext4 filesystem.
+> 
+> Current ext4 reads superblock with sb_bread(). sb_bread() allocates page
+> from movable area. But the problem is that ext4 hold the page until
+> it is unmounted. If root filesystem is ext4 the page cannot be migrated forever.
+> 
+> I introduce a new API for allocating page from non-movable area.
+> It is useful for ext4 and others that want to hold page cache for a long time.
 
-Signed-off-by: Gioh Kim <gioh.kim@lge.com>
----
- fs/ext4/super.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index cc6c0ff..3f0ad64 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3435,7 +3435,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
-                logical_sb_block = sb_block;
-        }
-
--       if (!(bh = sb_bread(sb, logical_sb_block))) {
-+       if (!(bh = sb_bread_nonmovable(sb, logical_sb_block))) {
-                ext4_msg(sb, KERN_ERR, "unable to read superblock");
-                goto out_fail;
-        }
-@@ -3645,7 +3645,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
-                brelse(bh);
-                logical_sb_block = sb_block * EXT4_MIN_BLOCK_SIZE;
-                offset = do_div(logical_sb_block, blocksize);
--               bh = sb_bread(sb, logical_sb_block);
-+               bh = sb_bread_nonmovable(sb, logical_sb_block);
-                if (!bh) {
-                        ext4_msg(sb, KERN_ERR,
-                               "Can't read superblock on 2nd try");
-@@ -3867,7 +3867,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
-
-        for (i = 0; i < db_count; i++) {
-                block = descriptor_loc(sb, logical_sb_block, i);
--               sbi->s_group_desc[i] = sb_bread(sb, block);
-+               sbi->s_group_desc[i] = sb_bread_nonmovable(sb, block);
-                if (!sbi->s_group_desc[i]) {
-                        ext4_msg(sb, KERN_ERR,
-                               "can't read group descriptor %d", i);
---
-1.7.9.5
+There's no word on why you can't teach ext4 to still migrate that page.
+For all I know it might be impossible, but at least mention why.
