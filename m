@@ -1,58 +1,93 @@
-From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-Subject: [PATCH] ext4: save goal group and offset in struct ext4_allocation_context.ac_g_ex
-Date: Wed, 23 Jul 2014 17:47:41 +0800
-Message-ID: <1406108861-2581-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <adilger@dilger.ca>, <lczerner@redhat.com>, <tytso@mit.edu>,
-	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([59.151.112.132]:65204 "EHLO
-	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757022AbaGWJss (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jul 2014 05:48:48 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Michael Halcrow <mhalcrow@google.com>
+Subject: [PATCH 0/5] ext4: RFC: Encryption
+Date: Wed, 23 Jul 2014 14:23:23 -0700
+Message-ID: <1406150608-19351-1-git-send-email-mhalcrow@google.com>
+Cc: zohar@linux.vnet.ibm.com, mhalcrow@google.com,
+	herbert@gondor.apana.org.au, pavel@ucw.cz, hch@infradead.org,
+	lczerner@redhat.com, tytso@mit.edu, tyhicks@canonical.com,
+	serge.hallyn@canonical.com
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-In ext4_mb_normalize_request(), if ac_g_ex.fe_logical is adjacent to the closest logical
-allocated block to the left or (ac_g_ex.fe_logical+len) adjacent to the closest logical
-allocated block to the right, we'll attach EXT4_MB_HINT_TRY_GOAL flag taking the physical
-block (ext4_allocation_request.lleft+1) or (ext4_allocation_request.pright-len) as a goal,
-and put this information in ext4_allocation_context.ac_f_ex.
+This patchset proposes a method for encrypting in EXT4 data read and
+write paths. It's a proof-of-concept/prototype only right
+now. Outstanding issues:
 
-But look at the ext4_mb_find_by_goal(), indeed it use ac_g_ex to look up, so this is wrong,
-we should save goal group and offset in struct ext4_allocation_context.ac_g_ex.
+ * While it seems to work well with complex tasks like a parallel
+   kernel build, fsx is pretty good at reliably breaking it in its
+   current form. I think it's trying to decrypt a page of all zeros
+   when doing a mmap'd write after an falloc. I want to get feedback
+   on the overall approach before I spend too much time bug-hunting.
 
-Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
----
- fs/ext4/mballoc.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ * It has not undergone a security audit/review. It isn't IND-CCA2
+   secure, and that's the goal. We need a way to store (at least)
+   page-granular metadata.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 2dcb936..6d939d79 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3168,15 +3168,15 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 	if (ar->pright && (ar->lright == (start + size))) {
- 		/* merge to the right */
- 		ext4_get_group_no_and_offset(ac->ac_sb, ar->pright - size,
--						&ac->ac_f_ex.fe_group,
--						&ac->ac_f_ex.fe_start);
-+						&ac->ac_g_ex.fe_group,
-+						&ac->ac_g_ex.fe_start);
- 		ac->ac_flags |= EXT4_MB_HINT_TRY_GOAL;
- 	}
- 	if (ar->pleft && (ar->lleft + 1 == start)) {
- 		/* merge to the left */
- 		ext4_get_group_no_and_offset(ac->ac_sb, ar->pleft + 1,
--						&ac->ac_f_ex.fe_group,
--						&ac->ac_f_ex.fe_start);
-+						&ac->ac_g_ex.fe_group,
-+						&ac->ac_g_ex.fe_start);
- 		ac->ac_flags |= EXT4_MB_HINT_TRY_GOAL;
- 	}
- 
+ * Only the file data is encrypted. I'd like to look into also
+   encrypting the file system metadata with a mount-wide key. That's
+   for another phase of development.
+
+ * The key management isn't fleshed out. I've hacked in some eCryptfs
+   stuff because it was the fastest way for me to stand up the
+   prototype with real crypto keys. Use ecryptfs-add-passphrase to add
+   a key to the keyring, and then pass the hex sig as the
+   encrypt_key_sig mount option:
+
+# apt-get install ecryptfs-utils
+# echo -n "hunter2" | ecryptfs-add-passphrase 
+Passphrase: 
+Inserted auth tok with sig [4cb927ea0c564410] into the user session keyring
+# mount -o encrypt_key_sig=4cb927ea0c564410 /dev/sdb1 /mnt/ext4crypt
+
+ * The EXT4 block size must be the same as the page size. I'm not yet
+   sure whether I will want to try to support block-granular
+   encryption or page-granular encryption. There are implications with
+   respect to how much the integrity data occupies in relation to the
+   encrypted data.
+
+Mimi, maybe an approach like this one will work out for IMA. We've
+just got to figure out where to store the block- or page-granular
+integrity data.
+
+I've broken up the patches so that not only can each one build after
+application, but discrete steps of functionality can be tested one
+patch at a time.
+
+A couple of other thoughts:
+
+ * Maybe the write submit path can complete on the encryption
+   callback. Not sure what that might buy us.
+
+ * Maybe a key with a specific descriptor in each user's keyring
+   (e.g. "EXT4_DEFAULT_KEY") can be used when creating new files so
+   that each user can use his own key in a common EXT4 mount. Or maybe
+   we can specify an encryption context in the parent directory xattr.
+
+Michael Halcrow (5):
+  ext4: Adds callback support for bio read completion
+  ext4: Adds EXT4 encryption facilities
+  ext4: Implements the EXT4 encryption write path
+  ext4: Adds EXT4 encryption read callback support
+  ext4: Implements real encryption in the EXT4 write and read paths
+
+ fs/buffer.c                 |  46 +++-
+ fs/ext4/Makefile            |   9 +-
+ fs/ext4/crypto.c            | 629 ++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4.h              |  50 ++++
+ fs/ext4/file.c              |   9 +-
+ fs/ext4/inode.c             | 196 +++++++++++++-
+ fs/ext4/namei.c             |   3 +
+ fs/ext4/page-io.c           | 182 ++++++++++---
+ fs/ext4/super.c             |  34 ++-
+ fs/ext4/xattr.h             |   1 +
+ include/linux/bio.h         |   3 +
+ include/linux/blk_types.h   |   4 +
+ include/linux/buffer_head.h |   8 +
+ 13 files changed, 1118 insertions(+), 56 deletions(-)
+ create mode 100644 fs/ext4/crypto.c
+
 -- 
-1.8.2.1
+2.0.0.526.g5318336
 
