@@ -1,132 +1,175 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] ext4: Reduce contention on s_orphan_lock
-Date: Wed, 23 Jul 2014 10:15:40 +0200
-Message-ID: <20140723081539.GB15688@quack.suse.cz>
-References: <1400185026-3972-3-git-send-email-jack@suse.cz>
- <537B1353.8060704@hp.com>
- <20140520135723.GB15177@thunk.org>
- <538CB83C.9080409@hp.com>
- <20140603085205.GA29219@quack.suse.cz>
- <539F4380.5090001@hp.com>
- <20140617092932.GB8622@quack.suse.cz>
- <53A117C8.3000207@hp.com>
- <20140618103738.GA16162@quack.suse.cz>
- <53CDEA0C.6060400@hp.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH v2] ext4: regression test for wrong assert in
+ ext4_mb_normalize_request()
+Date: Wed, 23 Jul 2014 11:01:21 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1407231048490.2207@localhost.localdomain>
+References: <53CC87A0.1060204@cn.fujitsu.com> <1405913225-1920-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:33035 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:17798 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751347AbaGWIPo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Jul 2014 04:15:44 -0400
-Content-Disposition: inline
-In-Reply-To: <53CDEA0C.6060400@hp.com>
+	id S932189AbaGWJB1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Jul 2014 05:01:27 -0400
+In-Reply-To: <1405913225-1920-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+On Mon, 21 Jul 2014, Xiaoguang Wang wrote:
 
-On Mon 21-07-14 22:35:24, Thavatchai Makphaibulchoke wrote:
-> On 06/18/2014 04:37 AM, Jan Kara wrote:
-> >   That's not true. The original test program creates one file per process:
-> > void run_test(char *base, int count)
-> > {
-> > ...
-> >        sprintf(pbuf, "%s/file-%d", base, count);
-> >        fd = open(pbuf, O_CREAT | O_TRUNC | O_WRONLY, 0644);
-> > ...
-> >   and forks given number of processes. Ah, maybe I see what you are getting
-> > at. My original test program doesn't bother with synchronizing start of the
-> > processes - I have manually set number of repetitions (COUNT) so that each
-> > process runs long enough on my machine that the differences in start time
-> > are negligible.  Maybe you thought these processes run sequentially (and
-> > maybe they really did if you had fast enough setup). So I agree
-> > synchronization of start using shared memory as you did it is a good thing
-> > and gets more reliable numbers especially for high numbers of processes
-> > (which I didn't really test because of my limited HW) just there's no need
-> > to add another level of iteration...
-> > 
-> First sorry for taking a little long to get back.
+> Date: Mon, 21 Jul 2014 11:27:05 +0800
+> From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+> To: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+> Cc: lczerner@redhat.com, Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+> Subject: [PATCH v2] ext4: regression test for wrong assert in
+>     ext4_mb_normalize_request()
 > 
-> Your original main is now my new run_main() function.  The old main and
-> new run_main() function, practically are doing the same thing, fork and
-> immediately all the child processes as indicated by argv[1], running the
-> original run_test() function.  By converting it to a run_main function,
-> I'm trying to start each incarnation of the old main as closed to each
-> other as possible, making sure I have some overlapping orphan activities
-> on different files.  Actually I should have done the synchronization in
-> the run_test function instead, this way both tests should be closer to
-> each other.
+> Regression test for:
+>     b5b6077 ext4: fix wrong assert in ext4_mb_normalize_request()
 > 
-> Here are the results with 3.15-rc5 baseline kernel, using your original
-> test.  Each result is an average over ten runs, except those longer runs,
-> marked with an '*', which is an average of only 5 runs.
+> Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+> ---
+>  common/rc          | 18 ++++++++++++++++++
+>  tests/ext4/003     | 55 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  tests/ext4/003.out |  2 ++
+>  tests/ext4/group   |  1 +
+>  4 files changed, 76 insertions(+)
+>  create mode 100755 tests/ext4/003
+>  create mode 100644 tests/ext4/003.out
 > 
-> On a 2 socket 16 thread machine,
-> 
->             ----------------------------------
->  Num files  |   40  |  100  |  400  |  1000  |
-> ----------------------------------------------
-> |W/O Mutexes|118.593|178.118|595.017|1480.165|
-> -----------------------------------------------
-> |W Mutexes  |129.212|194.728|620.412|1430.908|
-> ----------------------------------------------
-> 
-> On an 8 socket 160 thread machine,
-> 
->             --------------------------------------------
->  Num files  |   40  |  100  |   400  |  1000* |  1500* |
-> -------------------------------------------------------
-> |W/O Mutexes|387.257|644.270|1692.018|4254.766|7362.064|
-> -------------------------------------------------------
-> |W Mutexes  |328.490|557.508|1967.676|4721.060|7013.618|
-> --------------------------------------------------------
-> 
-> From the above data, looks like without mutexes (WOM) performs better
-> across the board on a smaller machine, except at 1000 files.  For a
-> larger machine, I give the edge to with mutexes (WM) for smaller number
-> of files, until around 400 to 100 something files.  Looks like with WOM
-> starts performing better again at 1500 files.
-> 
-  
-<snip results for larger truncates as those don't seem to show anything
-new>
+> diff --git a/common/rc b/common/rc
+> index 2c83340..018e569 100644
+> --- a/common/rc
+> +++ b/common/rc
+> @@ -1113,6 +1113,24 @@ _require_xfs_crc()
+>  	umount $SCRATCH_MNT
+>  }
+>  
+> +# this test requires the bigalloc feature to be available in mkfs.ext4
+> +#
+> +_require_ext4_mkfs_bigalloc()
+> +{
+> +	_scratch_mkfs_ext4 -O bigalloc >/dev/null 2>&1 \
+> +	   || _notrun "mkfs.ext4 doesn't have bigalloc feature"
+> +}
+> +
+> +# this test requires the ext4 kernel support bigalloc feature
+> +#
+> +_require_ext4_bigalloc()
+> +{
+> +	_scratch_mkfs_ext4 -O bigalloc >/dev/null 2>&1
+> +	_scratch_mount >/dev/null 2>&1 \
+> +	   || _notrun "Ext4 kernel doesn't support bigalloc feature"
+> +	umount $SCRATCH_MNT
+> +}
 
-> Here are also aim7 results on an 8 socket 160 threads machine, at 2000
-> users,
-> 
->            | % of Average job per minutes of WM compared to WOM
-> ----------------------------------------------------------------
-> all_tests  | +42.02%
-> ----------------------------------------------------------------
-> custom     | +56.22%
-> ----------------------------------------------------------------
-> dbase      |      0%
-> ----------------------------------------------------------------
-> disk       |      0%
-> ----------------------------------------------------------------
-> fserver    | +51.23%
-> ----------------------------------------------------------------
-> new_dbase  |      0%
-> ----------------------------------------------------------------
-> new_fserver|+53.83%
-> ----------------------------------------------------------------
-> shared     |+44.37%
-> ----------------------------------------------------------------
-> 
-> Please let me know if you have need any additional info or have any
-> question and also if you would like a copy of the patch for testing.
-  Thanks for all the measurements! I don't have further questions I think.
-All your tests seem to point to the fact that when contention on orphan
-list is high, your hashed mutexes improve performance (especially when we
-are bouncing cache between sockets) while they have some cost for low
-contention cases. I'm not sure it is a worthwhile tradeoff but it's upto
-Ted as a maintainer to decide.
+Even though we do not need the distinction here I can see that it
+might be useful when testing mkfs alone, also I can see that xfs is
+doing the same thing so I guess we can be consistent.
 
-							Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+_scratch_mkfs_ext4 might fail due to incompatible mkfs
+options being passed in with MKFS_OPTIONS. This can be resolved by
+ignoring MKFS_OPTIONS if it fails the first time in
+_scratch_mkfs_ext4() see _scratch_mkfs_xfs().
+
+Also I feel that the same should be done with _scratch_mount because
+again we can have incompatible mount options in MOUNT_OPTIONS, or
+SCRATCH_OPTIONS. But that's a different issue entirely.
+
+Thanks!
+-Lukas
+
+
+> +
+>  # this test requires the finobt feature to be available in mkfs.xfs
+>  #
+>  _require_xfs_mkfs_finobt()
+> diff --git a/tests/ext4/003 b/tests/ext4/003
+> new file mode 100755
+> index 0000000..4ca282f
+> --- /dev/null
+> +++ b/tests/ext4/003
+> @@ -0,0 +1,55 @@
+> +#! /bin/bash
+> +# FS QA Test No. ext4/003
+> +#
+> +# Regression test for commit:
+> +# b5b6077 ext4: fix wrong assert in ext4_mb_normalize_request()
+> +# This testcase checks whether this bug has been fixed.
+> +#
+> +#-----------------------------------------------------------------------
+> +# Copyright (c) 2014 Fujitsu.  All Rights Reserved.
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License as
+> +# published by the Free Software Foundation.
+> +#
+> +# This program is distributed in the hope that it would be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#-----------------------------------------------------------------------
+> +
+> +seq=`basename $0`
+> +seqres=$RESULT_DIR/$seq
+> +echo "QA output created by $seq"
+> +
+> +trap "_cleanup; exit \$status" 0 1 2 3 15
+> +
+> +_cleanup()
+> +{
+> +    _scratch_unmount
+> +}
+> +
+> +# get standard environment, filters and checks
+> +. ./common/rc
+> +. ./common/filter
+> +
+> +# real QA test starts here
+> +_supported_fs ext4
+> +_supported_os Linux
+> +
+> +_require_scratch
+> +_require_ext4_mkfs_bigalloc
+> +_require_ext4_bigalloc
+> +
+> +rm -f $seqres.full
+> +
+> +yes | mkfs.ext4 -O bigalloc -C 65536  -g 256 $SCRATCH_DEV 512m \
+> +    >> $seqres.full 2>&1
+
+Here you should really be using
+
+_scratch_mkfs_ext4
+
+> +_scratch_mount || _fail "couldn't mount fs"
+> +
+> +dd if=/dev/zero of=$SCRATCH_MNT/testfile bs=1M count=256 2>&1 | _filter_dd
+> +
+> +echo "Slience is golden"
+> +
+> +status=0
+> +exit
+> diff --git a/tests/ext4/003.out b/tests/ext4/003.out
+> new file mode 100644
+> index 0000000..07f245d
+> --- /dev/null
+> +++ b/tests/ext4/003.out
+> @@ -0,0 +1,2 @@
+> +QA output created by 003
+> +Slience is golden
+> diff --git a/tests/ext4/group b/tests/ext4/group
+> index 7e66035..152196c 100644
+> --- a/tests/ext4/group
+> +++ b/tests/ext4/group
+> @@ -5,6 +5,7 @@
+>  #
+>  001 auto prealloc quick
+>  002 auto quick prealloc
+> +003 auto quick
+>  271 auto rw quick
+>  301 aio dangerous ioctl rw stress
+>  302 aio dangerous ioctl rw stress
+> 
