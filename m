@@ -1,50 +1,126 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 09/24] e2fsck: clear i_block if there are too many bad
- block mappings
-Date: Tue, 22 Jul 2014 18:48:27 -0400
-Message-ID: <20140722224827.GT25291@thunk.org>
-References: <20140718225200.31374.85411.stgit@birch.djwong.org>
- <20140718225321.31374.48416.stgit@birch.djwong.org>
- <20140722185933.GM25291@thunk.org>
- <20140722221426.GF8628@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: f@birch.djwong.org, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH] build: fix unused/uninitialized variable warnings
+Date: Wed, 23 Jul 2014 00:58:32 -0600
+Message-ID: <1406098712-7147-1-git-send-email-adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51082 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933194AbaGVWui (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Jul 2014 18:50:38 -0400
-Content-Disposition: inline
-In-Reply-To: <20140722221426.GF8628@birch.djwong.org>
+Received: from smtp-out-05.shaw.ca ([64.59.134.13]:37304 "EHLO
+	smtp-out-05.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756015AbaGWHIF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jul 2014 03:08:05 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 22, 2014 at 03:14:26PM -0700, Darrick J. Wong wrote:
-> On Tue, Jul 22, 2014 at 02:59:33PM -0400, Theodore Ts'o wrote:
-> > On Fri, Jul 18, 2014 at 03:53:21PM -0700, Darrick J. Wong wrote:
-> > > If there are too many bad block mappings in a file and the user says
-> > > to zap it, erase i_block before clearing the inode.
-> > > 
-> > > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > 
-> > Why is this necessary?  E2fsck will clear i_links_count and set dtime,
-> > so the contents of i_block shouldn't matter, yes?
-> 
-> Hmm... oh, I think I remember where this patch came from.  When I wrote the
-> patch "e2fsck: fix inode coherency issue when iterating an inode's blocks", I
-> looked down a few lines to see what pb.clear == 1 did.  I figured that if the
-> block mappings were really bad (i.e. there are more than 12 bad mappings), why
-> not just wipe i_block entirely?
-> 
-> I didn't have a specific failure case in mind when I wrote this patch.
+Fix a few warnings about unused and uninitialized variables.
 
-Ok, then I'll drop this.  In general I try to avoid unnecessary
-zero'ing when possible.  It might be useful in doing a post morten
-after the user runs e2fsck -y, and so long as inode is skipped, I'd
-rather not zap more of the inode structure than is strictly necessary.
+Also fix util/subst.c to include <sys/time.h> to avoid using
+undeclared functions gettimeofday() and futimes().
 
-Cheers,
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+---
+ debugfs/debugfs.c        |    3 ---
+ e2fsck/pass5.c           |    3 ---
+ lib/ext2fs/blkmap64_rb.c |    2 +-
+ lib/quota/mkquota.c      |    1 -
+ misc/mk_hugefiles.c      |    2 +-
+ util/subst.c             |    3 +++
+ 6 files changed, 5 insertions(+), 9 deletions(-)
 
-						- Ted
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 1703aba..c5c9ecf 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -2314,7 +2314,6 @@ try_again:
+ 
+ void do_dump_mmp(int argc EXT2FS_ATTR((unused)), char *argv[])
+ {
+-	struct ext2_super_block *sb;
+ 	struct mmp_struct *mmp_s;
+ 	time_t t;
+ 	errcode_t retval = 0;
+@@ -2322,8 +2321,6 @@ void do_dump_mmp(int argc EXT2FS_ATTR((unused)), char *argv[])
+ 	if (check_fs_open(argv[0]))
+ 		return;
+ 
+-	sb  = current_fs->super;
+-
+ 	if (current_fs->mmp_buf == NULL) {
+ 		retval = ext2fs_get_mem(current_fs->blocksize,
+ 					&current_fs->mmp_buf);
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index b31490f..d0b1ced 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -206,7 +206,6 @@ static void check_block_bitmaps(e2fsck_t ctx)
+ 	problem_t	problem, save_problem;
+ 	int		fixit, had_problem;
+ 	errcode_t	retval;
+-	int		csum_flag;
+ 	int	old_desc_blocks = 0;
+ 	int	count = 0;
+ 	int	cmp_block = 0;
+@@ -253,8 +252,6 @@ static void check_block_bitmaps(e2fsck_t ctx)
+ 		goto errout;
+ 	}
+ 
+-	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
+ redo_counts:
+ 	had_problem = 0;
+ 	save_problem = 0;
+diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
+index 4dcb03f..a1dde6d 100644
+--- a/lib/ext2fs/blkmap64_rb.c
++++ b/lib/ext2fs/blkmap64_rb.c
+@@ -83,7 +83,7 @@ static void print_tree(struct rb_root *root)
+ 
+ static void check_tree(struct rb_root *root, const char *msg)
+ {
+-	struct rb_node *new_node, *node, *next;
++	struct rb_node *node;
+ 	struct bmap_rb_extent *ext, *old = NULL;
+ 
+ 	for (node = ext2fs_rb_first(root); node;
+diff --git a/lib/quota/mkquota.c b/lib/quota/mkquota.c
+index 58803d0..0ece088 100644
+--- a/lib/quota/mkquota.c
++++ b/lib/quota/mkquota.c
+@@ -580,7 +580,6 @@ out:
+ errcode_t quota_compare_and_update(quota_ctx_t qctx, int qtype,
+ 				   int *usage_inconsistent)
+ {
+-	ext2_filsys fs = qctx->fs;
+ 	struct quota_handle qh;
+ 	struct scan_dquots_data scan_data;
+ 	struct dquot *dq;
+diff --git a/misc/mk_hugefiles.c b/misc/mk_hugefiles.c
+index 41280f0..cc71d33 100644
+--- a/misc/mk_hugefiles.c
++++ b/misc/mk_hugefiles.c
+@@ -466,7 +466,7 @@ errcode_t mk_hugefiles(ext2_filsys fs, const char *device_name)
+ 	unsigned long	i;
+ 	ext2_ino_t	dir;
+ 	errcode_t	retval;
+-	blk64_t		fs_blocks, part_offset;
++	blk64_t		fs_blocks, part_offset = 0;
+ 	unsigned long	align;
+ 	int		d, dsize;
+ 	char		*t;
+diff --git a/util/subst.c b/util/subst.c
+index 6244831..36eaa94 100644
+--- a/util/subst.c
++++ b/util/subst.c
+@@ -14,6 +14,9 @@
+ #include <unistd.h>
+ #include <string.h>
+ #include <ctype.h>
++#ifdef HAVE_SYS_TIME_H
++#include <sys/time.h>
++#endif
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <fcntl.h>
+-- 
+1.7.3.4
+
