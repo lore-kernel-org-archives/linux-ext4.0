@@ -1,126 +1,132 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH] build: fix unused/uninitialized variable warnings
-Date: Wed, 23 Jul 2014 00:58:32 -0600
-Message-ID: <1406098712-7147-1-git-send-email-adilger@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
-To: tytso@mit.edu
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] ext4: Reduce contention on s_orphan_lock
+Date: Wed, 23 Jul 2014 10:15:40 +0200
+Message-ID: <20140723081539.GB15688@quack.suse.cz>
+References: <1400185026-3972-3-git-send-email-jack@suse.cz>
+ <537B1353.8060704@hp.com>
+ <20140520135723.GB15177@thunk.org>
+ <538CB83C.9080409@hp.com>
+ <20140603085205.GA29219@quack.suse.cz>
+ <539F4380.5090001@hp.com>
+ <20140617092932.GB8622@quack.suse.cz>
+ <53A117C8.3000207@hp.com>
+ <20140618103738.GA16162@quack.suse.cz>
+ <53CDEA0C.6060400@hp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+To: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-05.shaw.ca ([64.59.134.13]:37304 "EHLO
-	smtp-out-05.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756015AbaGWHIF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jul 2014 03:08:05 -0400
+Received: from cantor2.suse.de ([195.135.220.15]:33035 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751347AbaGWIPo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Jul 2014 04:15:44 -0400
+Content-Disposition: inline
+In-Reply-To: <53CDEA0C.6060400@hp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix a few warnings about unused and uninitialized variables.
+  Hello,
 
-Also fix util/subst.c to include <sys/time.h> to avoid using
-undeclared functions gettimeofday() and futimes().
+On Mon 21-07-14 22:35:24, Thavatchai Makphaibulchoke wrote:
+> On 06/18/2014 04:37 AM, Jan Kara wrote:
+> >   That's not true. The original test program creates one file per process:
+> > void run_test(char *base, int count)
+> > {
+> > ...
+> >        sprintf(pbuf, "%s/file-%d", base, count);
+> >        fd = open(pbuf, O_CREAT | O_TRUNC | O_WRONLY, 0644);
+> > ...
+> >   and forks given number of processes. Ah, maybe I see what you are getting
+> > at. My original test program doesn't bother with synchronizing start of the
+> > processes - I have manually set number of repetitions (COUNT) so that each
+> > process runs long enough on my machine that the differences in start time
+> > are negligible.  Maybe you thought these processes run sequentially (and
+> > maybe they really did if you had fast enough setup). So I agree
+> > synchronization of start using shared memory as you did it is a good thing
+> > and gets more reliable numbers especially for high numbers of processes
+> > (which I didn't really test because of my limited HW) just there's no need
+> > to add another level of iteration...
+> > 
+> First sorry for taking a little long to get back.
+> 
+> Your original main is now my new run_main() function.  The old main and
+> new run_main() function, practically are doing the same thing, fork and
+> immediately all the child processes as indicated by argv[1], running the
+> original run_test() function.  By converting it to a run_main function,
+> I'm trying to start each incarnation of the old main as closed to each
+> other as possible, making sure I have some overlapping orphan activities
+> on different files.  Actually I should have done the synchronization in
+> the run_test function instead, this way both tests should be closer to
+> each other.
+> 
+> Here are the results with 3.15-rc5 baseline kernel, using your original
+> test.  Each result is an average over ten runs, except those longer runs,
+> marked with an '*', which is an average of only 5 runs.
+> 
+> On a 2 socket 16 thread machine,
+> 
+>             ----------------------------------
+>  Num files  |   40  |  100  |  400  |  1000  |
+> ----------------------------------------------
+> |W/O Mutexes|118.593|178.118|595.017|1480.165|
+> -----------------------------------------------
+> |W Mutexes  |129.212|194.728|620.412|1430.908|
+> ----------------------------------------------
+> 
+> On an 8 socket 160 thread machine,
+> 
+>             --------------------------------------------
+>  Num files  |   40  |  100  |   400  |  1000* |  1500* |
+> -------------------------------------------------------
+> |W/O Mutexes|387.257|644.270|1692.018|4254.766|7362.064|
+> -------------------------------------------------------
+> |W Mutexes  |328.490|557.508|1967.676|4721.060|7013.618|
+> --------------------------------------------------------
+> 
+> From the above data, looks like without mutexes (WOM) performs better
+> across the board on a smaller machine, except at 1000 files.  For a
+> larger machine, I give the edge to with mutexes (WM) for smaller number
+> of files, until around 400 to 100 something files.  Looks like with WOM
+> starts performing better again at 1500 files.
+> 
+  
+<snip results for larger truncates as those don't seem to show anything
+new>
 
-Signed-off-by: Andreas Dilger <adilger@dilger.ca>
----
- debugfs/debugfs.c        |    3 ---
- e2fsck/pass5.c           |    3 ---
- lib/ext2fs/blkmap64_rb.c |    2 +-
- lib/quota/mkquota.c      |    1 -
- misc/mk_hugefiles.c      |    2 +-
- util/subst.c             |    3 +++
- 6 files changed, 5 insertions(+), 9 deletions(-)
+> Here are also aim7 results on an 8 socket 160 threads machine, at 2000
+> users,
+> 
+>            | % of Average job per minutes of WM compared to WOM
+> ----------------------------------------------------------------
+> all_tests  | +42.02%
+> ----------------------------------------------------------------
+> custom     | +56.22%
+> ----------------------------------------------------------------
+> dbase      |      0%
+> ----------------------------------------------------------------
+> disk       |      0%
+> ----------------------------------------------------------------
+> fserver    | +51.23%
+> ----------------------------------------------------------------
+> new_dbase  |      0%
+> ----------------------------------------------------------------
+> new_fserver|+53.83%
+> ----------------------------------------------------------------
+> shared     |+44.37%
+> ----------------------------------------------------------------
+> 
+> Please let me know if you have need any additional info or have any
+> question and also if you would like a copy of the patch for testing.
+  Thanks for all the measurements! I don't have further questions I think.
+All your tests seem to point to the fact that when contention on orphan
+list is high, your hashed mutexes improve performance (especially when we
+are bouncing cache between sockets) while they have some cost for low
+contention cases. I'm not sure it is a worthwhile tradeoff but it's upto
+Ted as a maintainer to decide.
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index 1703aba..c5c9ecf 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -2314,7 +2314,6 @@ try_again:
- 
- void do_dump_mmp(int argc EXT2FS_ATTR((unused)), char *argv[])
- {
--	struct ext2_super_block *sb;
- 	struct mmp_struct *mmp_s;
- 	time_t t;
- 	errcode_t retval = 0;
-@@ -2322,8 +2321,6 @@ void do_dump_mmp(int argc EXT2FS_ATTR((unused)), char *argv[])
- 	if (check_fs_open(argv[0]))
- 		return;
- 
--	sb  = current_fs->super;
--
- 	if (current_fs->mmp_buf == NULL) {
- 		retval = ext2fs_get_mem(current_fs->blocksize,
- 					&current_fs->mmp_buf);
-diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index b31490f..d0b1ced 100644
---- a/e2fsck/pass5.c
-+++ b/e2fsck/pass5.c
-@@ -206,7 +206,6 @@ static void check_block_bitmaps(e2fsck_t ctx)
- 	problem_t	problem, save_problem;
- 	int		fixit, had_problem;
- 	errcode_t	retval;
--	int		csum_flag;
- 	int	old_desc_blocks = 0;
- 	int	count = 0;
- 	int	cmp_block = 0;
-@@ -253,8 +252,6 @@ static void check_block_bitmaps(e2fsck_t ctx)
- 		goto errout;
- 	}
- 
--	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
--					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
- redo_counts:
- 	had_problem = 0;
- 	save_problem = 0;
-diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
-index 4dcb03f..a1dde6d 100644
---- a/lib/ext2fs/blkmap64_rb.c
-+++ b/lib/ext2fs/blkmap64_rb.c
-@@ -83,7 +83,7 @@ static void print_tree(struct rb_root *root)
- 
- static void check_tree(struct rb_root *root, const char *msg)
- {
--	struct rb_node *new_node, *node, *next;
-+	struct rb_node *node;
- 	struct bmap_rb_extent *ext, *old = NULL;
- 
- 	for (node = ext2fs_rb_first(root); node;
-diff --git a/lib/quota/mkquota.c b/lib/quota/mkquota.c
-index 58803d0..0ece088 100644
---- a/lib/quota/mkquota.c
-+++ b/lib/quota/mkquota.c
-@@ -580,7 +580,6 @@ out:
- errcode_t quota_compare_and_update(quota_ctx_t qctx, int qtype,
- 				   int *usage_inconsistent)
- {
--	ext2_filsys fs = qctx->fs;
- 	struct quota_handle qh;
- 	struct scan_dquots_data scan_data;
- 	struct dquot *dq;
-diff --git a/misc/mk_hugefiles.c b/misc/mk_hugefiles.c
-index 41280f0..cc71d33 100644
---- a/misc/mk_hugefiles.c
-+++ b/misc/mk_hugefiles.c
-@@ -466,7 +466,7 @@ errcode_t mk_hugefiles(ext2_filsys fs, const char *device_name)
- 	unsigned long	i;
- 	ext2_ino_t	dir;
- 	errcode_t	retval;
--	blk64_t		fs_blocks, part_offset;
-+	blk64_t		fs_blocks, part_offset = 0;
- 	unsigned long	align;
- 	int		d, dsize;
- 	char		*t;
-diff --git a/util/subst.c b/util/subst.c
-index 6244831..36eaa94 100644
---- a/util/subst.c
-+++ b/util/subst.c
-@@ -14,6 +14,9 @@
- #include <unistd.h>
- #include <string.h>
- #include <ctype.h>
-+#ifdef HAVE_SYS_TIME_H
-+#include <sys/time.h>
-+#endif
- #include <sys/types.h>
- #include <sys/stat.h>
- #include <fcntl.h>
+							Honza
 -- 
-1.7.3.4
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
