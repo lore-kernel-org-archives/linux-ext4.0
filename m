@@ -1,228 +1,53 @@
-From: Michael Halcrow <mhalcrow@google.com>
-Subject: [PATCH 1/5] ext4: Adds callback support for bio read completion
-Date: Wed, 23 Jul 2014 14:23:24 -0700
-Message-ID: <1406150608-19351-2-git-send-email-mhalcrow@google.com>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: Re: [PATCH 0/5] ext4: RFC: Encryption
+Date: Thu, 24 Jul 2014 00:25:06 +0200
+Message-ID: <20140723222506.GA29033@amd.pavel.ucw.cz>
 References: <1406150608-19351-1-git-send-email-mhalcrow@google.com>
-Cc: zohar@linux.vnet.ibm.com, mhalcrow@google.com,
-	herbert@gondor.apana.org.au, pavel@ucw.cz, hch@infradead.org,
-	lczerner@redhat.com, tytso@mit.edu, tyhicks@canonical.com,
-	serge.hallyn@canonical.com
-To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	zohar@linux.vnet.ibm.com, herbert@gondor.apana.org.au,
+	hch@infradead.org, lczerner@redhat.com, tytso@mit.edu,
+	tyhicks@canonical.com, serge.hallyn@canonical.com
+To: Michael Halcrow <mhalcrow@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oa0-f74.google.com ([209.85.219.74]:64549 "EHLO
-	mail-oa0-f74.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933282AbaGWV27 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jul 2014 17:28:59 -0400
-Received: by mail-oa0-f74.google.com with SMTP id eb12so530144oac.1
-        for <linux-ext4@vger.kernel.org>; Wed, 23 Jul 2014 14:28:59 -0700 (PDT)
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:34012 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933640AbaGWWZJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jul 2014 18:25:09 -0400
+Content-Disposition: inline
 In-Reply-To: <1406150608-19351-1-git-send-email-mhalcrow@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Adds callback support for bio read completion. This
-supports data transformation such as encryption.
+Hi!
+> This patchset proposes a method for encrypting in EXT4 data read and
+> write paths. It's a proof-of-concept/prototype only right
+> now. Outstanding issues:
+> 
+>  * While it seems to work well with complex tasks like a parallel
+>    kernel build, fsx is pretty good at reliably breaking it in its
+>    current form. I think it's trying to decrypt a page of all zeros
+>    when doing a mmap'd write after an falloc. I want to get feedback
+>    on the overall approach before I spend too much time bug-hunting.
+> 
+>  * It has not undergone a security audit/review. It isn't IND-CCA2
+>    secure, and that's the goal. We need a way to store (at least)
+>    page-granular metadata.
 
-Signed-off-by: Michael Halcrow <mhalcrow@google.com>
----
- fs/buffer.c                 | 46 +++++++++++++++++++++++++++++++++++++++------
- include/linux/blk_types.h   |  4 ++++
- include/linux/buffer_head.h |  8 ++++++++
- 3 files changed, 52 insertions(+), 6 deletions(-)
+http://en.wikipedia.org/wiki/Ciphertext_indistinguishability#Indistinguishability_under_chosen_ciphertext_attack.2Fadaptive_chosen_ciphertext_attack_.28IND-CCA1.2C_IND-CCA2.29
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index eba6e4f..a5527c5 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -296,7 +296,7 @@ static void free_more_memory(void)
-  * I/O completion handler for block_read_full_page() - pages
-  * which come unlocked at the end of I/O.
-  */
--static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
-+void end_buffer_async_read(struct buffer_head *bh, int uptodate)
- {
- 	unsigned long flags;
- 	struct buffer_head *first;
-@@ -339,6 +339,13 @@ static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
- 	bit_spin_unlock(BH_Uptodate_Lock, &first->b_state);
- 	local_irq_restore(flags);
- 
-+	if (bh->b_private) {
-+		struct bio *bio = (struct bio *)bh->b_private;
-+		BUG_ON(!bio->bi_cb);
-+		if (!bio->bi_cb(bio, !(page_uptodate && !PageError(page))))
-+			goto out;
-+	}
-+
- 	/*
- 	 * If none of the buffers had errors and they are all
- 	 * uptodate then we can set the page uptodate.
-@@ -346,6 +353,7 @@ static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
- 	if (page_uptodate && !PageError(page))
- 		SetPageUptodate(page);
- 	unlock_page(page);
-+out:
- 	return;
- 
- still_busy:
-@@ -353,6 +361,7 @@ still_busy:
- 	local_irq_restore(flags);
- 	return;
- }
-+EXPORT_SYMBOL_GPL(end_buffer_async_read);
- 
- /*
-  * Completion handler for block_write_full_page() - pages which are unlocked
-@@ -431,11 +440,12 @@ EXPORT_SYMBOL(end_buffer_async_write);
-  * PageLocked prevents anyone from starting writeback of a page which is
-  * under read I/O (PageWriteback is only ever set against a locked page).
-  */
--static void mark_buffer_async_read(struct buffer_head *bh)
-+void mark_buffer_async_read(struct buffer_head *bh)
- {
- 	bh->b_end_io = end_buffer_async_read;
- 	set_buffer_async_read(bh);
- }
-+EXPORT_SYMBOL_GPL(mark_buffer_async_read);
- 
- static void mark_buffer_async_write_endio(struct buffer_head *bh,
- 					  bh_end_io_t *handler)
-@@ -1654,14 +1664,17 @@ static inline int block_size_bits(unsigned int blocksize)
- 	return ilog2(blocksize);
- }
- 
--static struct buffer_head *create_page_buffers(struct page *page, struct inode *inode, unsigned int b_state)
-+struct buffer_head *create_page_buffers(struct page *page, struct inode *inode,
-+					unsigned int b_state)
- {
- 	BUG_ON(!PageLocked(page));
- 
- 	if (!page_has_buffers(page))
--		create_empty_buffers(page, 1 << ACCESS_ONCE(inode->i_blkbits), b_state);
-+		create_empty_buffers(page, 1 << ACCESS_ONCE(inode->i_blkbits),
-+				     b_state);
- 	return page_buffers(page);
- }
-+EXPORT_SYMBOL_GPL(create_page_buffers);
- 
- /*
-  * NOTE! All mapped/uptodate combinations are valid:
-@@ -3009,7 +3022,8 @@ static void guard_bh_eod(int rw, struct bio *bio, struct buffer_head *bh)
- 	}
- }
- 
--int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags)
-+int _submit_bh_cb(int rw, struct buffer_head *bh, unsigned long bio_flags,
-+		  bio_completion_cb_t *cb, void *cb_ctx)
- {
- 	struct bio *bio;
- 	int ret = 0;
-@@ -3043,6 +3057,8 @@ int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags)
- 
- 	bio->bi_end_io = end_bio_bh_io_sync;
- 	bio->bi_private = bh;
-+	bio->bi_cb = cb;
-+	bio->bi_cb_ctx = cb_ctx;
- 	bio->bi_flags |= bio_flags;
- 
- 	/* Take care of bh's that straddle the end of the device */
-@@ -3054,6 +3070,12 @@ int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags)
- 		rw |= REQ_PRIO;
- 
- 	bio_get(bio);
-+
-+	if (bio->bi_cb) {
-+		BUG_ON(bh->b_private);
-+		bh->b_private = bio;
-+	}
-+
- 	submit_bio(rw, bio);
- 
- 	if (bio_flagged(bio, BIO_EOPNOTSUPP))
-@@ -3062,14 +3084,26 @@ int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags)
- 	bio_put(bio);
- 	return ret;
- }
-+
-+int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags)
-+{
-+	return _submit_bh_cb(rw, bh, bio_flags, NULL, NULL);
-+}
- EXPORT_SYMBOL_GPL(_submit_bh);
- 
- int submit_bh(int rw, struct buffer_head *bh)
- {
--	return _submit_bh(rw, bh, 0);
-+	return submit_bh_cb(rw, bh, NULL, NULL);
- }
- EXPORT_SYMBOL(submit_bh);
- 
-+int submit_bh_cb(int rw, struct buffer_head *bh, bio_completion_cb_t *cb,
-+		 void *cb_ctx)
-+{
-+	return _submit_bh_cb(rw, bh, 0, cb, cb_ctx);
-+}
-+EXPORT_SYMBOL_GPL(submit_bh_cb);
-+
- /**
-  * ll_rw_block: low-level access to block devices (DEPRECATED)
-  * @rw: whether to %READ or %WRITE or maybe %READA (readahead)
-diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
-index 66c2167..06102df 100644
---- a/include/linux/blk_types.h
-+++ b/include/linux/blk_types.h
-@@ -16,6 +16,7 @@ struct io_context;
- struct cgroup_subsys_state;
- typedef void (bio_end_io_t) (struct bio *, int);
- typedef void (bio_destructor_t) (struct bio *);
-+typedef int (bio_completion_cb_t) (struct bio *, int);
- 
- /*
-  * was unsigned short, but we might as well be ready for > 64kB I/O pages
-@@ -96,6 +97,9 @@ struct bio {
- 
- 	struct bio_set		*bi_pool;
- 
-+	bio_completion_cb_t     *bi_cb;          /* completion callback */
-+	void                    *bi_cb_ctx;      /* callback context */
-+
- 	/*
- 	 * We can inline a number of vecs at the end of the bio, to avoid
- 	 * double allocations for a small number of bio_vecs. This member
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index 324329c..24ea03a 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -160,7 +160,9 @@ void create_empty_buffers(struct page *, unsigned long,
- 			unsigned long b_state);
- void end_buffer_read_sync(struct buffer_head *bh, int uptodate);
- void end_buffer_write_sync(struct buffer_head *bh, int uptodate);
-+void end_buffer_async_read(struct buffer_head *bh, int uptodate);
- void end_buffer_async_write(struct buffer_head *bh, int uptodate);
-+void mark_buffer_async_read(struct buffer_head *bh);
- 
- /* Things to do with buffers at mapping->private_list */
- void mark_buffer_dirty_inode(struct buffer_head *bh, struct inode *inode);
-@@ -169,6 +171,8 @@ void invalidate_inode_buffers(struct inode *);
- int remove_inode_buffers(struct inode *inode);
- int sync_mapping_buffers(struct address_space *mapping);
- void unmap_underlying_metadata(struct block_device *bdev, sector_t block);
-+struct buffer_head *create_page_buffers(struct page *page, struct inode *inode,
-+					unsigned int b_state);
- 
- void mark_buffer_async_write(struct buffer_head *bh);
- void __wait_on_buffer(struct buffer_head *);
-@@ -191,7 +195,11 @@ int sync_dirty_buffer(struct buffer_head *bh);
- int __sync_dirty_buffer(struct buffer_head *bh, int rw);
- void write_dirty_buffer(struct buffer_head *bh, int rw);
- int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags);
-+int _submit_bh_cb(int rw, struct buffer_head *bh, unsigned long bio_flags,
-+		  bio_completion_cb_t *cb, void *cb_ctx);
- int submit_bh(int, struct buffer_head *);
-+int submit_bh_cb(int rw, struct buffer_head *bh, bio_completion_cb_t *cb,
-+		 void *cb_ctx);
- void write_boundary_block(struct block_device *bdev,
- 			sector_t bblock, unsigned blocksize);
- int bh_uptodate_or_lock(struct buffer_head *bh);
+So .. you are trying to say that if I offer Disney ability to decrypt
+their chosen data, Disney may be able to prove I have their film
+encrypted elsewhere on the disk?
+
+Is it supposed to be IND-CPA secure? I.e. can Disney prove I have
+their film on my disk if I don't help them? IND-CCA1?
+
+Can I keep just a subtree (/home/pavel/.ssh) encrypted?
+
+Hmm, I might actually want to try this.
+									Pavel
 -- 
-2.0.0.526.g5318336
-
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
