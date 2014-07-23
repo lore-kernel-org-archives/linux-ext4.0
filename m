@@ -1,424 +1,228 @@
 From: Michael Halcrow <mhalcrow@google.com>
-Subject: [PATCH 4/5] ext4: Adds EXT4 encryption read callback support
-Date: Wed, 23 Jul 2014 14:23:27 -0700
-Message-ID: <1406150608-19351-5-git-send-email-mhalcrow@google.com>
+Subject: [PATCH 1/5] ext4: Adds callback support for bio read completion
+Date: Wed, 23 Jul 2014 14:23:24 -0700
+Message-ID: <1406150608-19351-2-git-send-email-mhalcrow@google.com>
 References: <1406150608-19351-1-git-send-email-mhalcrow@google.com>
 Cc: zohar@linux.vnet.ibm.com, mhalcrow@google.com,
 	herbert@gondor.apana.org.au, pavel@ucw.cz, hch@infradead.org,
 	lczerner@redhat.com, tytso@mit.edu, tyhicks@canonical.com,
 	serge.hallyn@canonical.com
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-oa0-f74.google.com ([209.85.219.74]:64549 "EHLO
+	mail-oa0-f74.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933282AbaGWV27 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jul 2014 17:28:59 -0400
+Received: by mail-oa0-f74.google.com with SMTP id eb12so530144oac.1
+        for <linux-ext4@vger.kernel.org>; Wed, 23 Jul 2014 14:28:59 -0700 (PDT)
 In-Reply-To: <1406150608-19351-1-git-send-email-mhalcrow@google.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Adds EXT4 encryption read callback support.
-
-Copies block_read_full_page() to ext4_read_full_page() and adds some
-callback stuff near the end. I couldn't think of an elegant way to
-modify block_read_full_page() to accept the callback context without
-unnecessarily repeatedly allocating it and immediately deallocating it
-for sparse pages.
-
-Mimi, for IMA, maybe you'll want to do something like what's happening
-in ext4_completion_work().
+Adds callback support for bio read completion. This
+supports data transformation such as encryption.
 
 Signed-off-by: Michael Halcrow <mhalcrow@google.com>
 ---
- fs/ext4/crypto.c    |  30 +++++++--
- fs/ext4/ext4.h      |   1 +
- fs/ext4/file.c      |   9 ++-
- fs/ext4/inode.c     | 184 ++++++++++++++++++++++++++++++++++++++++++++++++++--
- include/linux/bio.h |   3 +
- 5 files changed, 215 insertions(+), 12 deletions(-)
+ fs/buffer.c                 | 46 +++++++++++++++++++++++++++++++++++++++------
+ include/linux/blk_types.h   |  4 ++++
+ include/linux/buffer_head.h |  8 ++++++++
+ 3 files changed, 52 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-index 3c9e9f4..435f33f 100644
---- a/fs/ext4/crypto.c
-+++ b/fs/ext4/crypto.c
-@@ -58,6 +58,7 @@ atomic_t ext4_dbg_ctxs = ATOMIC_INIT(0);
- void ext4_release_crypto_ctx(ext4_crypto_ctx_t *ctx)
+diff --git a/fs/buffer.c b/fs/buffer.c
+index eba6e4f..a5527c5 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -296,7 +296,7 @@ static void free_more_memory(void)
+  * I/O completion handler for block_read_full_page() - pages
+  * which come unlocked at the end of I/O.
+  */
+-static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
++void end_buffer_async_read(struct buffer_head *bh, int uptodate)
  {
  	unsigned long flags;
-+	atomic_dec(&ctx->dbg_refcnt);
- 	if (ctx->bounce_page) {
- 		if (ctx->flags & EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL) {
- 			__free_page(ctx->bounce_page);
-@@ -67,6 +68,7 @@ void ext4_release_crypto_ctx(ext4_crypto_ctx_t *ctx)
- 		}
- 		ctx->bounce_page = NULL;
- 	}
-+	ctx->control_page = NULL;
- 	if (ctx->flags & EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL) {
- 		if (ctx->tfm)
- 			crypto_free_ablkcipher(ctx->tfm);
-@@ -136,6 +138,7 @@ ext4_crypto_ctx_t *ext4_get_crypto_ctx(
- 	} else {
- 		ctx->flags &= ~EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL;
- 	}
-+	atomic_set(&ctx->dbg_refcnt, 0);
+ 	struct buffer_head *first;
+@@ -339,6 +339,13 @@ static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
+ 	bit_spin_unlock(BH_Uptodate_Lock, &first->b_state);
+ 	local_irq_restore(flags);
  
- 	/* Allocate a new Crypto API context if we don't already have
- 	 * one. */
-@@ -417,13 +420,28 @@ int ext4_decrypt(ext4_crypto_ctx_t *ctx, struct page* page)
- 	sg_set_page(&src, page, PAGE_CACHE_SIZE, 0);
- 	ablkcipher_request_set_crypt(req, &src, &dst, PAGE_CACHE_SIZE,
- 				     xts_tweak);
--	res = crypto_ablkcipher_decrypt(req);
--	if (res == -EINPROGRESS || res == -EBUSY) {
--		BUG_ON(req->base.data != &ecr);
--		wait_for_completion(&ecr.completion);
--		res = ecr.res;
--		reinit_completion(&ecr.completion);
-+/* =======
-+ * TODO(mhalcrow): Removed real crypto so intermediate patch for read
-+ * path is still fully functional. For now just doing something that
-+ * might expose a race condition. */
-+	{
-+		char *page_virt;
-+		char tmp;
-+                int i;
-+		page_virt = kmap(page);
-+		for (i = 0; i < PAGE_CACHE_SIZE / 2; ++i) {
-+			tmp = page_virt[i];
-+			page_virt[i] = page_virt[PAGE_CACHE_SIZE - i - 1];
-+			page_virt[PAGE_CACHE_SIZE - i - 1] = tmp;
-+		}
-+		for (i = 0; i < PAGE_CACHE_SIZE / 2; ++i) {
-+			tmp = page_virt[i];
-+			page_virt[i] = page_virt[PAGE_CACHE_SIZE - i - 1];
-+			page_virt[PAGE_CACHE_SIZE - i - 1] = tmp;
-+		}
-+		kunmap(page);
- 	}
-+/* ======= */
- 	ablkcipher_request_free(req);
- out:
- 	if (res)
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 7508261..1118bb0 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2821,6 +2821,7 @@ typedef struct ext4_crypto_ctx {
- 	struct work_struct work;	/* Work queue for read complete path */
- 	struct list_head free_list;	/* Free list */
- 	int flags;			/* Flags */
-+	atomic_t dbg_refcnt;		/* TODO(mhalcrow): Remove for release */
- } ext4_crypto_ctx_t;
- extern struct workqueue_struct *mpage_read_workqueue;
- int ext4_allocate_crypto(size_t num_crypto_pages, size_t num_crypto_ctxs);
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index aca7b24..9b8478c 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -202,6 +202,7 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
- {
- 	file_accessed(file);
- 	vma->vm_ops = &ext4_file_vm_ops;
-+	ext4_get_crypto_key(file->f_mapping->host);
- 	return 0;
- }
- 
-@@ -212,6 +213,7 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 	struct vfsmount *mnt = filp->f_path.mnt;
- 	struct path path;
- 	char buf[64], *cp;
-+	int ret;
- 
- 	if (unlikely(!(sbi->s_mount_flags & EXT4_MF_MNTDIR_SAMPLED) &&
- 		     !(sb->s_flags & MS_RDONLY))) {
-@@ -250,11 +252,14 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 	 * writing and the journal is present
- 	 */
- 	if (filp->f_mode & FMODE_WRITE) {
--		int ret = ext4_inode_attach_jinode(inode);
-+		ret = ext4_inode_attach_jinode(inode);
- 		if (ret < 0)
- 			return ret;
- 	}
--	return dquot_file_open(inode, filp);
-+	ret = dquot_file_open(inode, filp);
-+	if (!ret)
-+		ext4_get_crypto_key(inode);
-+	return ret;
- }
- 
- /*
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4d37a12..6bf57d3 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -800,6 +800,8 @@ struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
- 			       ext4_lblk_t block, int create, int *err)
- {
- 	struct buffer_head *bh;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	ext4_crypto_ctx_t *ctx;
- 
- 	bh = ext4_getblk(handle, inode, block, create, err);
- 	if (!bh)
-@@ -808,8 +810,16 @@ struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
- 		return bh;
- 	ll_rw_block(READ | REQ_META | REQ_PRIO, 1, &bh);
- 	wait_on_buffer(bh);
--	if (buffer_uptodate(bh))
-+	if (buffer_uptodate(bh)) {
-+		if (ei->i_encrypt) {
-+			BUG_ON(!bh->b_page);
-+			BUG_ON(bh->b_size != PAGE_CACHE_SIZE);
-+			ctx = ext4_get_crypto_ctx(false, ei->i_crypto_key);
-+			WARN_ON_ONCE(ext4_decrypt(ctx, bh->b_page));
-+			ext4_release_crypto_ctx(ctx);
-+		}
- 		return bh;
++	if (bh->b_private) {
++		struct bio *bio = (struct bio *)bh->b_private;
++		BUG_ON(!bio->bi_cb);
++		if (!bio->bi_cb(bio, !(page_uptodate && !PageError(page))))
++			goto out;
 +	}
- 	put_bh(bh);
- 	*err = -EIO;
- 	return NULL;
-@@ -2833,20 +2843,151 @@ static sector_t ext4_bmap(struct address_space *mapping, sector_t block)
- 	return generic_block_bmap(mapping, block, ext4_get_block);
- }
- 
-+static void ext4_completion_work(struct work_struct *work)
-+{
-+	ext4_crypto_ctx_t *ctx = container_of(work, ext4_crypto_ctx_t, work);
-+	struct page *page = ctx->control_page;
-+	WARN_ON_ONCE(ext4_decrypt(ctx, page));
-+	ext4_release_crypto_ctx(ctx);
-+	SetPageUptodate(page);
-+	unlock_page(page);
-+}
-+
-+static int ext4_complete_cb(struct bio *bio, int res)
-+{
-+	ext4_crypto_ctx_t *ctx = bio->bi_cb_ctx;
-+	struct page *page = ctx->control_page;
-+	BUG_ON(atomic_read(&ctx->dbg_refcnt) != 1);
-+	if (res) {
-+		ext4_release_crypto_ctx(ctx);
-+		unlock_page(page);
-+		return res;
-+	}
-+	INIT_WORK(&ctx->work, ext4_completion_work);
-+	queue_work(mpage_read_workqueue, &ctx->work);
-+	return 0;
-+}
-+
-+static int ext4_read_full_page(struct page *page)
-+{
-+	struct inode *inode = page->mapping->host;
-+	sector_t iblock, lblock;
-+	struct buffer_head *bh, *head, *arr[MAX_BUF_PER_PAGE];
-+	unsigned int blocksize, bbits;
-+	int nr, i;
-+	int fully_mapped = 1;
-+
-+	head = create_page_buffers(page, inode, 0);
-+	blocksize = head->b_size;
-+	bbits = ilog2(blocksize);
-+
-+	iblock = (sector_t)page->index << (PAGE_CACHE_SHIFT - bbits);
-+	lblock = (i_size_read(inode)+blocksize-1) >> bbits;
-+	bh = head;
-+	nr = 0;
-+	i = 0;
-+
-+	do {
-+		if (buffer_uptodate(bh))
-+			continue;
-+
-+		if (!buffer_mapped(bh)) {
-+			int err = 0;
-+
-+			fully_mapped = 0;
-+			if (iblock < lblock) {
-+				WARN_ON(bh->b_size != blocksize);
-+				err = ext4_get_block(inode, iblock, bh, 0);
-+				if (err)
-+					SetPageError(page);
-+			}
-+			if (!buffer_mapped(bh)) {
-+				zero_user(page, i * blocksize, blocksize);
-+				if (!err)
-+					set_buffer_uptodate(bh);
-+				continue;
-+			}
-+			/*
-+			 * get_block() might have updated the buffer
-+			 * synchronously
-+			 */
-+			if (buffer_uptodate(bh))
-+				continue;
-+		}
-+		arr[nr++] = bh;
-+	} while (i++, iblock++, (bh = bh->b_this_page) != head);
-+
-+	if (fully_mapped)
-+		SetPageMappedToDisk(page);
-+
-+	if (!nr) {
-+		/*
-+		 * All buffers are uptodate - we can set the page uptodate
-+		 * as well. But not if get_block() returned an error.
-+		 */
-+		if (!PageError(page))
-+			SetPageUptodate(page);
-+		unlock_page(page);
-+		return 0;
-+	}
-+
-+	/* TODO(mhalcrow): For the development phase, encryption
-+	 * requires that the block size be equal to the page size. To
-+	 * make this the case for release (if we go that route), we'll
-+	 * need a super.c change to verify. */
-+	BUG_ON(nr != 1);
-+
-+	/* Stage two: lock the buffers */
-+	for (i = 0; i < nr; i++) {
-+		bh = arr[i];
-+		lock_buffer(bh);
-+		mark_buffer_async_read(bh);
-+	}
-+
-+	/*
-+	 * Stage 3: start the IO.  Check for uptodateness
-+	 * inside the buffer lock in case another process reading
-+	 * the underlying blockdev brought it uptodate (the sct fix).
-+	 */
-+	for (i = 0; i < nr; i++) {
-+		bh = arr[i];
-+		if (buffer_uptodate(bh))
-+			end_buffer_async_read(bh, 1);
-+		else {
-+			struct ext4_inode_info *ei = EXT4_I(inode);
-+			ext4_crypto_ctx_t *ctx = ext4_get_crypto_ctx(
-+				false, ei->i_crypto_key);
-+			BUG_ON(atomic_read(&ctx->dbg_refcnt) != 0);
-+			atomic_inc(&ctx->dbg_refcnt);
-+			BUG_ON(ctx->control_page);
-+			ctx->control_page = page;
-+			BUG_ON(atomic_read(&ctx->dbg_refcnt) != 1);
-+			if (submit_bh_cb(READ, bh, ext4_complete_cb, ctx))
-+				ext4_release_crypto_ctx(ctx);
-+		}
-+	}
-+	return 0;
-+}
-+
- static int ext4_readpage(struct file *file, struct page *page)
- {
- 	int ret = -EAGAIN;
- 	struct inode *inode = page->mapping->host;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
- 
- 	trace_ext4_readpage(page);
- 
- 	if (ext4_has_inline_data(inode))
- 		ret = ext4_readpage_inline(inode, page);
- 
--	if (ret == -EAGAIN)
-+	if (ei->i_encrypt) {
-+		BUG_ON(ret != -EAGAIN);
-+		ext4_read_full_page(page);
-+	} else if (ret == -EAGAIN) {
- 		return mpage_readpage(page, ext4_get_block);
-+	}
- 
--	return ret;
-+	return 0;
- }
- 
- static int
-@@ -2854,12 +2995,35 @@ ext4_readpages(struct file *file, struct address_space *mapping,
- 		struct list_head *pages, unsigned nr_pages)
- {
- 	struct inode *inode = mapping->host;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct page *page = NULL;
-+	unsigned page_idx;
- 
- 	/* If the file has inline data, no need to do readpages. */
- 	if (ext4_has_inline_data(inode))
- 		return 0;
- 
--	return mpage_readpages(mapping, pages, nr_pages, ext4_get_block);
-+	if (ei->i_encrypt) {
-+		for (page_idx = 0; page_idx < nr_pages; page_idx++) {
-+			page = list_entry(pages->prev, struct page, lru);
-+			prefetchw(&page->flags);
-+			list_del(&page->lru);
-+			if (!add_to_page_cache_lru(page, mapping, page->index,
-+						   GFP_KERNEL)) {
-+				if (!PageUptodate(page)) {
-+					ext4_read_full_page(page);
-+				} else {
-+					unlock_page(page);
-+				}
-+			}
-+			page_cache_release(page);
-+		}
-+		BUG_ON(!list_empty(pages));
-+		return 0;
-+	} else {
-+		return mpage_readpages(mapping, pages, nr_pages,
-+				       ext4_get_block);
-+	}
- }
- 
- static void ext4_invalidatepage(struct page *page, unsigned int offset,
-@@ -3118,9 +3282,13 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
- 	size_t count = iov_iter_count(iter);
- 	ssize_t ret;
- 
-+	if (ei->i_encrypt)
-+		return 0;
 +
  	/*
- 	 * If we are doing data journalling we don't support O_DIRECT
- 	 */
-@@ -3243,8 +3411,10 @@ static int ext4_block_zero_page_range(handle_t *handle,
- 	unsigned blocksize, max, pos;
- 	ext4_lblk_t iblock;
- 	struct inode *inode = mapping->host;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
- 	struct buffer_head *bh;
- 	struct page *page;
-+	ext4_crypto_ctx_t *ctx;
- 	int err = 0;
+ 	 * If none of the buffers had errors and they are all
+ 	 * uptodate then we can set the page uptodate.
+@@ -346,6 +353,7 @@ static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
+ 	if (page_uptodate && !PageError(page))
+ 		SetPageUptodate(page);
+ 	unlock_page(page);
++out:
+ 	return;
  
- 	page = find_or_create_page(mapping, from >> PAGE_CACHE_SHIFT,
-@@ -3300,6 +3470,12 @@ static int ext4_block_zero_page_range(handle_t *handle,
- 		/* Uhhuh. Read error. Complain and punt. */
- 		if (!buffer_uptodate(bh))
- 			goto unlock;
-+		if (ei->i_encrypt) {
-+			BUG_ON(blocksize != PAGE_CACHE_SIZE);
-+			ctx = ext4_get_crypto_ctx(false, ei->i_crypto_key);
-+			WARN_ON_ONCE(ext4_decrypt(ctx, page));
-+			ext4_release_crypto_ctx(ctx);
-+		}
- 	}
- 	if (ext4_should_journal_data(inode)) {
- 		BUFFER_TRACE(bh, "get write access");
-diff --git a/include/linux/bio.h b/include/linux/bio.h
-index d2633ee..6ec3bee 100644
---- a/include/linux/bio.h
-+++ b/include/linux/bio.h
-@@ -375,6 +375,9 @@ static inline struct bio *bio_clone_kmalloc(struct bio *bio, gfp_t gfp_mask)
+ still_busy:
+@@ -353,6 +361,7 @@ still_busy:
+ 	local_irq_restore(flags);
+ 	return;
+ }
++EXPORT_SYMBOL_GPL(end_buffer_async_read);
  
+ /*
+  * Completion handler for block_write_full_page() - pages which are unlocked
+@@ -431,11 +440,12 @@ EXPORT_SYMBOL(end_buffer_async_write);
+  * PageLocked prevents anyone from starting writeback of a page which is
+  * under read I/O (PageWriteback is only ever set against a locked page).
+  */
+-static void mark_buffer_async_read(struct buffer_head *bh)
++void mark_buffer_async_read(struct buffer_head *bh)
+ {
+ 	bh->b_end_io = end_buffer_async_read;
+ 	set_buffer_async_read(bh);
+ }
++EXPORT_SYMBOL_GPL(mark_buffer_async_read);
+ 
+ static void mark_buffer_async_write_endio(struct buffer_head *bh,
+ 					  bh_end_io_t *handler)
+@@ -1654,14 +1664,17 @@ static inline int block_size_bits(unsigned int blocksize)
+ 	return ilog2(blocksize);
  }
  
-+/* TODO(mhalcrow): Only here for test; remove before release */
-+extern atomic_t global_bio_count;
+-static struct buffer_head *create_page_buffers(struct page *page, struct inode *inode, unsigned int b_state)
++struct buffer_head *create_page_buffers(struct page *page, struct inode *inode,
++					unsigned int b_state)
+ {
+ 	BUG_ON(!PageLocked(page));
+ 
+ 	if (!page_has_buffers(page))
+-		create_empty_buffers(page, 1 << ACCESS_ONCE(inode->i_blkbits), b_state);
++		create_empty_buffers(page, 1 << ACCESS_ONCE(inode->i_blkbits),
++				     b_state);
+ 	return page_buffers(page);
+ }
++EXPORT_SYMBOL_GPL(create_page_buffers);
+ 
+ /*
+  * NOTE! All mapped/uptodate combinations are valid:
+@@ -3009,7 +3022,8 @@ static void guard_bh_eod(int rw, struct bio *bio, struct buffer_head *bh)
+ 	}
+ }
+ 
+-int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags)
++int _submit_bh_cb(int rw, struct buffer_head *bh, unsigned long bio_flags,
++		  bio_completion_cb_t *cb, void *cb_ctx)
+ {
+ 	struct bio *bio;
+ 	int ret = 0;
+@@ -3043,6 +3057,8 @@ int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags)
+ 
+ 	bio->bi_end_io = end_bio_bh_io_sync;
+ 	bio->bi_private = bh;
++	bio->bi_cb = cb;
++	bio->bi_cb_ctx = cb_ctx;
+ 	bio->bi_flags |= bio_flags;
+ 
+ 	/* Take care of bh's that straddle the end of the device */
+@@ -3054,6 +3070,12 @@ int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags)
+ 		rw |= REQ_PRIO;
+ 
+ 	bio_get(bio);
 +
- extern void bio_endio(struct bio *, int);
- extern void bio_endio_nodec(struct bio *, int);
- struct request_queue;
++	if (bio->bi_cb) {
++		BUG_ON(bh->b_private);
++		bh->b_private = bio;
++	}
++
+ 	submit_bio(rw, bio);
+ 
+ 	if (bio_flagged(bio, BIO_EOPNOTSUPP))
+@@ -3062,14 +3084,26 @@ int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags)
+ 	bio_put(bio);
+ 	return ret;
+ }
++
++int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags)
++{
++	return _submit_bh_cb(rw, bh, bio_flags, NULL, NULL);
++}
+ EXPORT_SYMBOL_GPL(_submit_bh);
+ 
+ int submit_bh(int rw, struct buffer_head *bh)
+ {
+-	return _submit_bh(rw, bh, 0);
++	return submit_bh_cb(rw, bh, NULL, NULL);
+ }
+ EXPORT_SYMBOL(submit_bh);
+ 
++int submit_bh_cb(int rw, struct buffer_head *bh, bio_completion_cb_t *cb,
++		 void *cb_ctx)
++{
++	return _submit_bh_cb(rw, bh, 0, cb, cb_ctx);
++}
++EXPORT_SYMBOL_GPL(submit_bh_cb);
++
+ /**
+  * ll_rw_block: low-level access to block devices (DEPRECATED)
+  * @rw: whether to %READ or %WRITE or maybe %READA (readahead)
+diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+index 66c2167..06102df 100644
+--- a/include/linux/blk_types.h
++++ b/include/linux/blk_types.h
+@@ -16,6 +16,7 @@ struct io_context;
+ struct cgroup_subsys_state;
+ typedef void (bio_end_io_t) (struct bio *, int);
+ typedef void (bio_destructor_t) (struct bio *);
++typedef int (bio_completion_cb_t) (struct bio *, int);
+ 
+ /*
+  * was unsigned short, but we might as well be ready for > 64kB I/O pages
+@@ -96,6 +97,9 @@ struct bio {
+ 
+ 	struct bio_set		*bi_pool;
+ 
++	bio_completion_cb_t     *bi_cb;          /* completion callback */
++	void                    *bi_cb_ctx;      /* callback context */
++
+ 	/*
+ 	 * We can inline a number of vecs at the end of the bio, to avoid
+ 	 * double allocations for a small number of bio_vecs. This member
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 324329c..24ea03a 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -160,7 +160,9 @@ void create_empty_buffers(struct page *, unsigned long,
+ 			unsigned long b_state);
+ void end_buffer_read_sync(struct buffer_head *bh, int uptodate);
+ void end_buffer_write_sync(struct buffer_head *bh, int uptodate);
++void end_buffer_async_read(struct buffer_head *bh, int uptodate);
+ void end_buffer_async_write(struct buffer_head *bh, int uptodate);
++void mark_buffer_async_read(struct buffer_head *bh);
+ 
+ /* Things to do with buffers at mapping->private_list */
+ void mark_buffer_dirty_inode(struct buffer_head *bh, struct inode *inode);
+@@ -169,6 +171,8 @@ void invalidate_inode_buffers(struct inode *);
+ int remove_inode_buffers(struct inode *inode);
+ int sync_mapping_buffers(struct address_space *mapping);
+ void unmap_underlying_metadata(struct block_device *bdev, sector_t block);
++struct buffer_head *create_page_buffers(struct page *page, struct inode *inode,
++					unsigned int b_state);
+ 
+ void mark_buffer_async_write(struct buffer_head *bh);
+ void __wait_on_buffer(struct buffer_head *);
+@@ -191,7 +195,11 @@ int sync_dirty_buffer(struct buffer_head *bh);
+ int __sync_dirty_buffer(struct buffer_head *bh, int rw);
+ void write_dirty_buffer(struct buffer_head *bh, int rw);
+ int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags);
++int _submit_bh_cb(int rw, struct buffer_head *bh, unsigned long bio_flags,
++		  bio_completion_cb_t *cb, void *cb_ctx);
+ int submit_bh(int, struct buffer_head *);
++int submit_bh_cb(int rw, struct buffer_head *bh, bio_completion_cb_t *cb,
++		 void *cb_ctx);
+ void write_boundary_block(struct block_device *bdev,
+ 			sector_t bblock, unsigned blocksize);
+ int bh_uptodate_or_lock(struct buffer_head *bh);
 -- 
 2.0.0.526.g5318336
 
