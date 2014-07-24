@@ -1,228 +1,55 @@
-From: JP Abgrall <jpa@google.com>
-Subject: [PATCH] ext4: Add support for FIDTRIM, a best-effort ioctl for deep discard trim
-Date: Wed, 23 Jul 2014 16:47:18 -0700
-Message-ID: <1406159238-7557-1-git-send-email-jpa@google.com>
-Cc: linux-fsdevel@vger.kernel.org, JP Abgrall <jpa@google.com>,
-	Geremy Condra <gcondra@google.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Rakesh Pandit <rakesh@tuxera.com>
+Subject: [PATCH] filefrag: fix -B option and extents calculation for FIBMAP
+Date: Thu, 24 Jul 2014 13:05:40 +0300
+Message-ID: <20140724100539.GA8061@hercules.tuxera.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from nbl-ex10-fe01.nebula.fi ([188.117.32.121]:51021 "EHLO
+	ex10.nebula.fi" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S932901AbaGXKLL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jul 2014 06:11:11 -0400
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-* What
-This provides an interface for issuing an FITRIM which uses the
-secure discard instead of just a discard.
-Only the eMMC command is "secure", and not how the FS uses it:
-due to the fact that the FS might reassign a region somewhere else,
-the original deleted data will not be affected by the "trim" which only
-handles un-used regions.
-So we'll just call it "deep discard", and note that this is a
-"best effort" cleanup.
+29758d2 broke -B option which is useful for filesystems not supporting
+FIEMAP. Also, fix extents calculation for -B which is broken since
+2508eaa7.
 
-* Why
-We want to be able to cleanup most of the unused blocks.
-We don't want to constantly secure-discard via a mount option.
-
->From an eMMC spec perspective, it tells the device to really get rid of
-all the data for the specified blocks and not just put them back into the
-pool of free ones. The eMMC spec says the secure trim handling must
-makes sure the data (and metadata) is not available anymore.
-  JEDEC Standard No. 84-A441
-  7.6.9 Secure Erase
-  7.6.10 Secure Trim
-
-Signed-off-by: Geremy Condra <gcondra@google.com>
-Signed-off-by: JP Abgrall <jpa@google.com>
+Signed-off-by: Rakesh Pandit <rakesh@tuxera.com>
 ---
- fs/ext4/ext4.h          |  3 ++-
- fs/ext4/ioctl.c         |  6 +++++-
- fs/ext4/mballoc.c       | 28 ++++++++++++++++++----------
- include/uapi/linux/fs.h |  1 +
- 4 files changed, 26 insertions(+), 12 deletions(-)
+ misc/filefrag.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 7cc5a0e..5156fd6 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2082,7 +2082,8 @@ extern int ext4_mb_add_groupinfo(struct super_block *sb,
- 		ext4_group_t i, struct ext4_group_desc *desc);
- extern int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
- 				ext4_fsblk_t block, unsigned long count);
--extern int ext4_trim_fs(struct super_block *, struct fstrim_range *);
-+extern int ext4_trim_fs(struct super_block *, struct fstrim_range *,
-+				unsigned long blkdev_flags);
- 
- /* inode.c */
- struct buffer_head *ext4_getblk(handle_t *, struct inode *,
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 0f2252e..60bb5bc 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -580,11 +580,13 @@ resizefs_out:
- 		return err;
+diff --git a/misc/filefrag.c b/misc/filefrag.c
+index 820821b..bb060b6 100644
+--- a/misc/filefrag.c
++++ b/misc/filefrag.c
+@@ -331,9 +331,10 @@ static int filefrag_fibmap(int fd, int blk_shift, int *num_extents,
+ 			fm_ext.fe_physical = block * st->st_blksize;
+ 			fm_ext.fe_length = 0;
+ 			(*num_extents)++;
+-		} else if (verbose && last_block && (block != last_block + 1)) {
+-			printf("Discontinuity: Block %ld is at %lu (was %lu)\n",
+-			       i, block, last_block + 1);
++		} else if (last_block && (block != last_block + 1)) {
++			if (verbose)
++				printf("Discontinuity: Block %ld is at %lu (was "
++				       "%lu)\n", i, block, last_block + 1);
+ 			(*num_extents)++;
+ 		}
+ 		fm_ext.fe_length += st->st_blksize;
+@@ -439,7 +440,7 @@ static int frag_report(const char *filename)
+ 		expected = 0;
  	}
  
-+	case FIDTRIM:
- 	case FITRIM:
- 	{
- 		struct request_queue *q = bdev_get_queue(sb->s_bdev);
- 		struct fstrim_range range;
- 		int ret = 0;
-+		int flags  = cmd == FIDTRIM ? BLKDEV_DISCARD_SECURE : 0;
- 
- 		if (!capable(CAP_SYS_ADMIN))
- 			return -EPERM;
-@@ -592,13 +594,15 @@ resizefs_out:
- 		if (!blk_queue_discard(q))
- 			return -EOPNOTSUPP;
- 
-+		if ((flags & BLKDEV_DISCARD_SECURE) && !blk_queue_secdiscard(q))
-+			return -EOPNOTSUPP;
- 		if (copy_from_user(&range, (struct fstrim_range __user *)arg,
- 		    sizeof(range)))
- 			return -EFAULT;
- 
- 		range.minlen = max((unsigned int)range.minlen,
- 				   q->limits.discard_granularity);
--		ret = ext4_trim_fs(sb, &range);
-+		ret = ext4_trim_fs(sb, &range, flags);
- 		if (ret < 0)
- 			return ret;
- 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 2dcb936..48caed9 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2742,7 +2742,8 @@ int ext4_mb_release(struct super_block *sb)
- }
- 
- static inline int ext4_issue_discard(struct super_block *sb,
--		ext4_group_t block_group, ext4_grpblk_t cluster, int count)
-+		ext4_group_t block_group, ext4_grpblk_t cluster, int count,
-+		unsigned long flags)
- {
- 	ext4_fsblk_t discard_block;
- 
-@@ -2751,7 +2752,7 @@ static inline int ext4_issue_discard(struct super_block *sb,
- 	count = EXT4_C2B(EXT4_SB(sb), count);
- 	trace_ext4_discard_blocks(sb,
- 			(unsigned long long) discard_block, count);
--	return sb_issue_discard(sb, discard_block, count, GFP_NOFS, 0);
-+	return sb_issue_discard(sb, discard_block, count, GFP_NOFS, flags);
- }
- 
- /*
-@@ -2773,7 +2774,7 @@ static void ext4_free_data_callback(struct super_block *sb,
- 	if (test_opt(sb, DISCARD)) {
- 		err = ext4_issue_discard(sb, entry->efd_group,
- 					 entry->efd_start_cluster,
--					 entry->efd_count);
-+					 entry->efd_count, 0);
- 		if (err && err != -EOPNOTSUPP)
- 			ext4_msg(sb, KERN_WARNING, "discard request in"
- 				 " group:%d block:%d count:%d failed"
-@@ -4812,7 +4813,8 @@ do_more:
- 		 * them with group lock_held
- 		 */
- 		if (test_opt(sb, DISCARD)) {
--			err = ext4_issue_discard(sb, block_group, bit, count);
-+			err = ext4_issue_discard(sb, block_group, bit, count,
-+						 0);
- 			if (err && err != -EOPNOTSUPP)
- 				ext4_msg(sb, KERN_WARNING, "discard request in"
- 					 " group:%d block:%d count:%lu failed"
-@@ -5019,13 +5021,15 @@ error_return:
-  * @count:	number of blocks to TRIM
-  * @group:	alloc. group we are working with
-  * @e4b:	ext4 buddy for the group
-+ * @blkdev_flags: flags for the block device
-  *
-  * Trim "count" blocks starting at "start" in the "group". To assure that no
-  * one will allocate those blocks, mark it as used in buddy bitmap. This must
-  * be called with under the group lock.
-  */
- static int ext4_trim_extent(struct super_block *sb, int start, int count,
--			     ext4_group_t group, struct ext4_buddy *e4b)
-+			    ext4_group_t group, struct ext4_buddy *e4b,
-+			    unsigned long blkdev_flags)
- __releases(bitlock)
- __acquires(bitlock)
- {
-@@ -5046,7 +5050,7 @@ __acquires(bitlock)
- 	 */
- 	mb_mark_used(e4b, &ex);
- 	ext4_unlock_group(sb, group);
--	ret = ext4_issue_discard(sb, group, start, count);
-+	ret = ext4_issue_discard(sb, group, start, count, blkdev_flags);
- 	ext4_lock_group(sb, group);
- 	mb_free_blocks(NULL, e4b, start, ex.fe_len);
- 	return ret;
-@@ -5059,6 +5063,7 @@ __acquires(bitlock)
-  * @start:		first group block to examine
-  * @max:		last group block to examine
-  * @minblocks:		minimum extent block count
-+ * @blkdev_flags:	flags for the block device
-  *
-  * ext4_trim_all_free walks through group's buddy bitmap searching for free
-  * extents. When the free block is found, ext4_trim_extent is called to TRIM
-@@ -5073,7 +5078,7 @@ __acquires(bitlock)
- static ext4_grpblk_t
- ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
- 		   ext4_grpblk_t start, ext4_grpblk_t max,
--		   ext4_grpblk_t minblocks)
-+		   ext4_grpblk_t minblocks, unsigned long blkdev_flags)
- {
- 	void *bitmap;
- 	ext4_grpblk_t next, count = 0, free_count = 0;
-@@ -5106,7 +5111,8 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
- 
- 		if ((next - start) >= minblocks) {
- 			ret = ext4_trim_extent(sb, start,
--					       next - start, group, &e4b);
-+					       next - start, group, &e4b,
-+					       blkdev_flags);
- 			if (ret && ret != -EOPNOTSUPP)
- 				break;
- 			ret = 0;
-@@ -5148,6 +5154,7 @@ out:
-  * ext4_trim_fs() -- trim ioctl handle function
-  * @sb:			superblock for filesystem
-  * @range:		fstrim_range structure
-+ * @blkdev_flags:	flags for the block device
-  *
-  * start:	First Byte to trim
-  * len:		number of Bytes to trim from start
-@@ -5156,7 +5163,8 @@ out:
-  * start to start+len. For each such a group ext4_trim_all_free function
-  * is invoked to trim all free space.
-  */
--int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
-+int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range,
-+			unsigned long blkdev_flags)
- {
- 	struct ext4_group_info *grp;
- 	ext4_group_t group, first_group, last_group;
-@@ -5212,7 +5220,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 
- 		if (grp->bb_free >= minlen) {
- 			cnt = ext4_trim_all_free(sb, group, first_cluster,
--						end, minlen);
-+						end, minlen, blkdev_flags);
- 			if (cnt < 0) {
- 				ret = cnt;
- 				break;
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index ca1a11b..a1816ca 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -156,6 +156,7 @@ struct inodes_stat_t {
- #define FIFREEZE	_IOWR('X', 119, int)	/* Freeze */
- #define FITHAW		_IOWR('X', 120, int)	/* Thaw */
- #define FITRIM		_IOWR('X', 121, struct fstrim_range)	/* Trim */
-+#define FIDTRIM	_IOWR('X', 122, struct fstrim_range)	/* Deep discard trim */
- 
- #define	FS_IOC_GETFLAGS			_IOR('f', 1, long)
- #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
+-	if (rc < 0) {
++	if (force_bmap || rc < 0) {
+ 		expected = filefrag_fibmap(fd, blk_shift, &num_extents,
+ 					   &st, numblocks, is_ext2);
+ 		if (expected < 0) {
 -- 
-2.0.0.526.g5318336
+1.9.3
 
