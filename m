@@ -1,82 +1,57 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] ext4: check inline directory before converting
-Date: Thu, 24 Jul 2014 14:22:22 -0700
-Message-ID: <20140724212222.GG8628@birch.djwong.org>
+From: "Dilger, Andreas" <andreas.dilger@intel.com>
+Subject: Unable to build e2fsprogs 1.42.11 on RHEL 5
+Date: Thu, 24 Jul 2014 22:04:53 +0000
+Message-ID: <CFF6DF2A.B393D%andreas.dilger@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>, darrick.wong@oracle.com,
-	Zheng Liu <gnehzuil.liu@gmail.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:19687 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759771AbaGXVWa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jul 2014 17:22:30 -0400
-Content-Disposition: inline
+Received: from mga11.intel.com ([192.55.52.93]:32701 "EHLO mga11.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751164AbaGXWFL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jul 2014 18:05:11 -0400
+Content-Language: en-US
+Content-ID: <C60D0EA9801B724B8672FB878EA446D1@intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Before converting an inline directory to a regular directory, check
-the directory entries to make sure they're not obviously broken.
-This helps us to avoid a BUG_ON if one of the dirents is trashed.
+I'm unable to build the latest e2fsprogs on RHEL 5, since it returns an
+error running autoconf:
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- fs/ext4/inline.c |   37 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 37 insertions(+)
+  autoconf
+  aclocal.m4:3095: error: Autoconf version 2.60 or higher is required
+  aclocal.m4:3095: the top level
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 645205d..c79d8e7 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1157,6 +1157,31 @@ out:
- 	return err;
- }
- 
-+static int ext4_check_all_de(struct inode *dir, struct buffer_head *bh,
-+			     void *buf, int buf_size)
-+{
-+	struct ext4_dir_entry_2 *de;
-+	int nlen, rlen;
-+	unsigned int offset = 0;
-+	char *top;
-+
-+	de = (struct ext4_dir_entry_2 *)buf;
-+	top = buf + buf_size;
-+	while ((char *) de < top) {
-+		if (ext4_check_dir_entry(dir, NULL, de, bh,
-+					 buf, buf_size, offset))
-+			return -EIO;
-+		nlen = EXT4_DIR_REC_LEN(de->name_len);
-+		rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
-+		de = (struct ext4_dir_entry_2 *)((char *)de + rlen);
-+		offset += rlen;
-+	}
-+	if ((char *) de > top)
-+		return -EIO;
-+
-+	return 0;
-+}
-+
- static int ext4_convert_inline_data_nolock(handle_t *handle,
- 					   struct inode *inode,
- 					   struct ext4_iloc *iloc)
-@@ -1178,6 +1203,18 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
- 	if (error < 0)
- 		goto out;
- 
-+	/*
-+	 * Make sure the inline directory entries pass checks before we try to
-+	 * convert them, so that we avoid touching stuff that needs fsck.
-+	 */
-+	if (S_ISDIR(inode->i_mode)) {
-+		error = ext4_check_all_de(inode, iloc->bh,
-+					buf + EXT4_INLINE_DOTDOT_SIZE,
-+					inline_size - EXT4_INLINE_DOTDOT_SIZE);
-+		if (error)
-+			goto out;
-+	}
-+
- 	error = ext4_destroy_inline_data_nolock(handle, inode);
- 	if (error)
- 		goto out;
+
+The "2.60" version is explicitly checked in aclocal.m4, and changing it
+to "2.59" (as is shipped with RHEL5) results in more errors:
+
+  autoconf
+  configure.in:903: warning: AC_PROG_MKDIR_P is m4_require'd but is not
+m4_defun'd
+  configure.in:903: AC_PROG_MKDIR_P is required by...
+  aclocal.m4:3292: AM_PO_SUBDIRS is expanded from...
+  configure.in:903: AM_PO_SUBDIRS is required by...
+  aclocal.m4:626: AM_GNU_GETTEXT is expanded from...
+  configure.in:903: the top level
+  [etc]
+
+It looks like this was added in commit 93613951 "aclocal.m4: update to
+newer
+versions of autoconf macros".  Was there a particular reason for that
+change
+(there is no explanation given in the commit message)?  I tried reverting
+that patch to build on RHEL5 again, and it also appears to work on RHEL6,
+but
+there may be issues with newer autoconf versions...
+
+Cheers, Andreas
+-- 
+Andreas Dilger
+
+Lustre Software Architect
+Intel High Performance Data Division
+
+
