@@ -1,75 +1,66 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Is warn_on() right reply for i/o error?
-Date: Thu, 24 Jul 2014 17:27:22 +0200
-Message-ID: <20140724152721.GA4771@amd.pavel.ucw.cz>
+From: David Sterba <dsterba-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 2/4 v3] fiemap: add EXTENT_DATA_COMPRESSED flag
+Date: Thu, 24 Jul 2014 21:22:45 +0200
+Message-ID: <20140724192245.GG1553@suse.cz>
+References: <cover.1386778302.git.dsterba@suse.cz>
+ <4f8d5dc5b51a43efaf16c39398c23a6276e40a30.1386778303.git.dsterba@suse.cz>
+ <20131212232443.GL31386@dastard>
+ <9520AB36-B728-423A-8EA1-FDD22B79AE90@dilger.ca>
+ <B58DEEA8-561A-4173-B9F5-528B73E06C6D@dilger.ca>
+Reply-To: dsterba-AlSwsSmVLrQ@public.gmane.org
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: tytso@mit.edu, linux-kernel@vger.kernel.org,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, jack@suse.cz
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-nilfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org,
+	Btrfs Developer List <linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org
+To: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Return-path: <linux-nilfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <B58DEEA8-561A-4173-B9F5-528B73E06C6D-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Sender: linux-nilfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi!
+On Thu, Jul 17, 2014 at 12:07:57AM -0600, Andreas Dilger wrote:
+> any progress on this patch series?
 
-Just... I know, I should not be unscrewing hard drive cover while
-operating.
+I'm sorry I got distracted at the end of year and did not finish the
+series.
 
-But on the other hand... WARN_ON() does not sound like right reply for
-a disk failure... right?
+> I never saw an updated version of this patch series after the last round of
+> reviews, but it would be great to move it forward.  I have filefrag patches
+> in my e2fsprogs tree waiting for an updated version of your patch.
+> 
+> I recall the main changes were:
+> - add FIEMAP_EXTENT_PHYS_LENGTH flag to indicate if fe_phys_length was valid
 
-And on related note... automounting is evil. Oh well.
+fe_phys_length will be always valid, so other the flags are set only if it's
+not equal to the logical length.
 
-								Pavel
+> - rename fe_length to fe_logi_length and #define fe_length fe_logi_length
+> - always fill in fe_phys_length (= fe_logi_length for uncompressed files)
+>   and set FIEMAP_EXTENT_PHYS_LENGTH whether the extent is compressed or not
 
-sd 6:0:0:0: [sdf] Unhandled error code
-sd 6:0:0:0: [sdf]  
-Result: hostbyte=0x01 driverbyte=0x00
-sd 6:0:0:0: [sdf] CDB: 
-cdb[0]=0x28: 28 00 00 05 4a 00 00 00 40 00
-end_request: I/O error, dev sdf, sector 346624
-Buffer I/O error on device sdf, logical block 43328
-Buffer I/O error on device sdf, logical block 43329
-------------[ cut here ]------------
-WARNING: CPU: 0 PID: 4710 at fs/fs-writeback.c:1199
-__mark_inode_dirty+0x1be/0x1d0()
-bdi-block not registered
-Modules linked in:
-CPU: 0 PID: 4710 Comm: umount Not tainted 3.16.0-rc5+ #381
-Hardware name:                  /DG41MJ, BIOS
-MJG4110H.86A.0006.2009.1223.1155 12/23/2009
- 000004af df661e18 c480956d c4a2bae0 df661e48 c403914a c4a2baf7
- df661e74
- 00001266 c4a2bae0 000004af c41154fe c41154fe d21ffa74 c6263dec
- d21ffc60
- df661e60 c40391ee 00000009 df661e58 c4a2baf7 df661e74 df661e88
- c41154fe
-Call Trace:
- [<c480956d>] dump_stack+0x41/0x52
- [<c403914a>] warn_slowpath_common+0x7a/0xa0
- [<c41154fe>] ? __mark_inode_dirty+0x1be/0x1d0
- [<c41154fe>] ? __mark_inode_dirty+0x1be/0x1d0
- [<c40391ee>] warn_slowpath_fmt+0x2e/0x30
- [<c41154fe>] __mark_inode_dirty+0x1be/0x1d0
- [<c411b806>] __set_page_dirty+0x66/0xb0
- [<c411b8a6>] mark_buffer_dirty+0x56/0x80
- [<c415bc1d>] ext3_put_super+0x20d/0x250
- [<c410a042>] ? evict_inodes+0xb2/0x110
- [<c40f4888>] generic_shutdown_super+0x68/0xe0
- [<c40f4925>] kill_block_super+0x25/0x70
- [<c40f4b88>] deactivate_locked_super+0x48/0x70
- [<c40f5161>] deactivate_super+0x51/0x70
- [<c410da6f>] mntput_no_expire+0x12f/0x1f0
- [<c410f1e7>] ? SyS_umount+0xa7/0x430
- [<c410f1e7>] SyS_umount+0xa7/0x430
- [<c480e41e>] ? syscall_call+0x7/0xb
- [<c40df3e1>] ? vm_munmap+0x41/0x50
- [<c480e41e>] syscall_call+0x7/0xb
----[ end trace 6642457659b6f1ae ]---
-EXT3-fs (sdf1): I/O error while writing superblock
-usb 1-1: new high-speed USB device number 8 using ehci-pci
+This is my understanding and contradicts the first point.
 
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+> - add WARN_ONCE() in fiemap_fill_next_extent() as described below
+>
+> I don't know if there was any clear statement about whether there should be
+> separate FIEMAP_EXTENT_PHYS_LENGTH and FIEMAP_EXTENT_DATA_COMPRESSED flags,
+> or if the latter should be implicit?  Probably makes sense to have separate
+> flags.  It should be fine to use:
+>
+> #define FIEMAP_EXTENT_PHYS_LENGTH	0x00000010
+> 
+> since this flag was never used.
+
+I've kept only FIEMAP_EXTENT_DATA_COMPRESSED, I don't see a need for
+FIEMAP_EXTENT_PHYS_LENGTH and this would be yet another flag because the
+FIEMAP_EXTENT_DATA_ENCODED is also implied.
+
+I'll send V4, we can discuss the PHYS_LENGTH flag then.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nilfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
