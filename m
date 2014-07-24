@@ -1,106 +1,115 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 2/4 v3] fiemap: add EXTENT_DATA_COMPRESSED flag
-Date: Thu, 24 Jul 2014 16:34:35 -0600
-Message-ID: <5B4825C3-F47E-48B7-8DA4-6D79F53B73B1@dilger.ca>
-References: <cover.1386778302.git.dsterba@suse.cz> <4f8d5dc5b51a43efaf16c39398c23a6276e40a30.1386778303.git.dsterba@suse.cz> <20131212232443.GL31386@dastard> <9520AB36-B728-423A-8EA1-FDD22B79AE90@dilger.ca> <B58DEEA8-561A-4173-B9F5-528B73E06C6D@dilger.ca> <20140724192245.GG1553@suse.cz>
+Subject: Re: [PATCH] ext4: check inline directory before converting
+Date: Thu, 24 Jul 2014 16:41:04 -0600
+Message-ID: <253FEEC3-F619-4D9B-8358-A8FC8A832740@dilger.ca>
+References: <20140724212222.GG8628@birch.djwong.org>
 Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_EE49BFE3-FECB-40D9-B2D2-AD63AA8C9172"; protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-nilfs@vger.kernel.org, xfs@oss.sgi.com,
-	Btrfs Developer List <linux-btrfs@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	ocfs2-devel@oss.oracle.com
-To: dsterba@suse.cz
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20140724192245.GG1553@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/signed; boundary="Apple-Mail=_C6F136A6-1F2A-47E5-9DBC-7E3B614F4E57"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Theodore Ts'o <tytso@mit.edu>, Zheng Liu <gnehzuil.liu@gmail.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pd0-f181.google.com ([209.85.192.181]:40641 "EHLO
+	mail-pd0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752163AbaGXWlJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jul 2014 18:41:09 -0400
+Received: by mail-pd0-f181.google.com with SMTP id g10so4487421pdj.40
+        for <linux-ext4@vger.kernel.org>; Thu, 24 Jul 2014 15:41:09 -0700 (PDT)
+In-Reply-To: <20140724212222.GG8628@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_EE49BFE3-FECB-40D9-B2D2-AD63AA8C9172
+--Apple-Mail=_C6F136A6-1F2A-47E5-9DBC-7E3B614F4E57
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
+On Jul 24, 2014, at 3:22 PM, Darrick J. Wong <darrick.wong@oracle.com> =
+wrote:
+> Before converting an inline directory to a regular directory, check
+> the directory entries to make sure they're not obviously broken.
+> This helps us to avoid a BUG_ON if one of the dirents is trashed.
+>=20
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+> fs/ext4/inline.c |   37 +++++++++++++++++++++++++++++++++++++
+> 1 file changed, 37 insertions(+)
+>=20
+> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> index 645205d..c79d8e7 100644
+> --- a/fs/ext4/inline.c
+> +++ b/fs/ext4/inline.c
+> @@ -1157,6 +1157,31 @@ out:
+> 	return err;
+> }
+>=20
+> +static int ext4_check_all_de(struct inode *dir, struct buffer_head =
+*bh,
+> +			     void *buf, int buf_size)
 
-On Jul 24, 2014, at 1:22 PM, David Sterba <dsterba@suse.cz> wrote:
-> On Thu, Jul 17, 2014 at 12:07:57AM -0600, Andreas Dilger wrote:
->> any progress on this patch series?
->=20
-> I'm sorry I got distracted at the end of year and did not finish the
-> series.
->=20
->> I never saw an updated version of this patch series after the last =
-round of
->> reviews, but it would be great to move it forward.  I have filefrag =
-patches
->> in my e2fsprogs tree waiting for an updated version of your patch.
->>=20
->> I recall the main changes were:
->> - add FIEMAP_EXTENT_PHYS_LENGTH flag to indicate if fe_phys_length =
-was valid
->=20
-> fe_phys_length will be always valid, so other the flags are set only =
-if it's
-> not equal to the logical length.
->=20
->> - rename fe_length to fe_logi_length and #define fe_length =
-fe_logi_length
->> - always fill in fe_phys_length (=3D fe_logi_length for uncompressed =
-files)
->>  and set FIEMAP_EXTENT_PHYS_LENGTH whether the extent is compressed =
-or not
->=20
-> This is my understanding and contradicts the first point.
-
-I think Dave Chinner's former point was that having fe_phys_length =
-validity
-depend on FIEMAP_EXTENT_DATA_COMPRESSED is a non-intuitive interface.  =
-It is
-not true that fe_phys_length would always be valid, since that is not =
-the
-case for older kernels that currently always set this field to 0, so =
-they
-need some flag to indicate if fe_phys_length is valid.  Alternately,
-userspace could do:
-
-	if (ext->fe_phys_length =3D=3D 0)
-		ext->fe_phys_length =3D ext->fe_logi_length;
-
-but that pre-supposes that fe_phys_length =3D=3D 0 is never a valid =
-value when
-fe_logi_length is non-zero, and this might introduce errors in some =
-cases.
-I could imagine that some compression methods might not allocate any =
-space
-at all if it was all zeroes, and just store a bit in the blockpointer or
-extent, so having a separate FIEMAP_EXTENT_PHYS_LENGTH is probably safer
-in the long run.  That opens up the question of whether a written zero
-filled space that gets compressed away is different from a hole, but I'd
-prefer to just return whatever the file mapping is than interpret it.
+It would seem that this function would be useful in ext4_readdir(), =
+which
+open-codes something very similar?  It might be better to locate this
+function in ext4/dir.c since it doesn't appear to have anything specific
+to do with inline directories.
 
 Cheers, Andreas
 
->> - add WARN_ONCE() in fiemap_fill_next_extent() as described below
->>=20
->> I don't know if there was any clear statement about whether there =
-should be
->> separate FIEMAP_EXTENT_PHYS_LENGTH and FIEMAP_EXTENT_DATA_COMPRESSED =
-flags,
->> or if the latter should be implicit?  Probably makes sense to have =
-separate
->> flags.  It should be fine to use:
->>=20
->> #define FIEMAP_EXTENT_PHYS_LENGTH	0x00000010
->>=20
->> since this flag was never used.
+> +{
+> +	struct ext4_dir_entry_2 *de;
+> +	int nlen, rlen;
+> +	unsigned int offset =3D 0;
+> +	char *top;
+> +
+> +	de =3D (struct ext4_dir_entry_2 *)buf;
+> +	top =3D buf + buf_size;
+> +	while ((char *) de < top) {
+> +		if (ext4_check_dir_entry(dir, NULL, de, bh,
+> +					 buf, buf_size, offset))
+> +			return -EIO;
+> +		nlen =3D EXT4_DIR_REC_LEN(de->name_len);
+> +		rlen =3D ext4_rec_len_from_disk(de->rec_len, buf_size);
+> +		de =3D (struct ext4_dir_entry_2 *)((char *)de + rlen);
+> +		offset +=3D rlen;
+> +	}
+> +	if ((char *) de > top)
+> +		return -EIO;
+> +
+> +	return 0;
+> +}
+> +
+> static int ext4_convert_inline_data_nolock(handle_t *handle,
+> 					   struct inode *inode,
+> 					   struct ext4_iloc *iloc)
+> @@ -1178,6 +1203,18 @@ static int =
+ext4_convert_inline_data_nolock(handle_t *handle,
+> 	if (error < 0)
+> 		goto out;
 >=20
-> I've kept only FIEMAP_EXTENT_DATA_COMPRESSED, I don't see a need for
-> FIEMAP_EXTENT_PHYS_LENGTH and this would be yet another flag because =
-the
-> FIEMAP_EXTENT_DATA_ENCODED is also implied.
->=20
-> I'll send V4, we can discuss the PHYS_LENGTH flag then.
+> +	/*
+> +	 * Make sure the inline directory entries pass checks before we =
+try to
+> +	 * convert them, so that we avoid touching stuff that needs =
+fsck.
+> +	 */
+> +	if (S_ISDIR(inode->i_mode)) {
+> +		error =3D ext4_check_all_de(inode, iloc->bh,
+> +					buf + EXT4_INLINE_DOTDOT_SIZE,
+> +					inline_size - =
+EXT4_INLINE_DOTDOT_SIZE);
+> +		if (error)
+> +			goto out;
+> +	}
+> +
+> 	error =3D ext4_destroy_inline_data_nolock(handle, inode);
+> 	if (error)
+> 		goto out;
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
 Cheers, Andreas
@@ -110,7 +119,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_EE49BFE3-FECB-40D9-B2D2-AD63AA8C9172
+--Apple-Mail=_C6F136A6-1F2A-47E5-9DBC-7E3B614F4E57
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -121,19 +130,19 @@ Content-Description: Message signed with OpenPGP using GPGMail
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIVAwUBU9GJ+3Kl2rkXzB/gAQL14w/9E/WENH/RddgvYvMI0mPiMkdxzFK++PEH
-dsaix22ddMjmnP7cRHt/Ty5ZfcnydZqFG/FNta9ZOcfTDaUOXGw3C7U7X93MAorx
-s+q6ISAO81cYTLKvxFJDXzYzo/QxB219+oByPSdutEOYvANM1x/2vY5QYPVwjg4g
-dxTAmoChCCbGEn96VZOG0M93kugQn7n4EzMjjK/5niUOiQiT4GCsTCFGyXuieXf+
-PifblnRrNgQVRCzOimY+lXbXgL0+huGFw0okgx1/QCz176s60yFweEktWPuHdrZ1
-8cDp97T5EwLXe9NYH+tyR6aw6yURzx8BSLMMscQWXs12lceuV0c5tBQ9l8RKtlEo
-cLJJwPXHt7BS/CWsLpjyEz3zNTkvX88rmV0kPZIdVeseI3yP7GLLTdJ5TWXeR3Jb
-BS9RQlXXU+1dZET3Lab22uEkUted8qH0sKyACbcwGRitJNx6aDpu5ByV4MyCjKPm
-HnJAmTbADVpJRVTaPmgQbs4MrEgZm9PxAG/JWm7Qi+KythnZVFG1DVocvmE9ZWSK
-FCkyBKEwDR/7KiFy3EBm1v0nwVetoHVOykTLBu6jCW8BU70o5BwAp5gVfGYEj2x8
-9lx6QZWKDSRH2YyVjh2q7s0DrNosPpejxwT5ZxdKNOAUTcw+m4HO5LzD6WYbkU5W
-nvpdaVUDRbc=
-=Z7dA
+iQIVAwUBU9GLgHKl2rkXzB/gAQJjOA//XHS4P/sx23IFrxk6z7X99/eSIgfKSGiP
+mJay8e+LZKT2nvywzLkNcR+jm3UjnLSJXAAbUwbSgBQXh2PTFoDZKvj7KVGEntDk
+FoQx5iVaoEtF3Mt9j3U7F7Hb46pZq3Popc1BRyQLviXzTw7P616J0UaAM06J6Qx4
+RNAwfAdrzqzjoF6JLsCsWXDP5Hp33BJBBTUfbyA7x6nQsrAcwOV5E+sWQ0bsKzs2
+/n6v0jFY6/ShnIAaJrN+7CEcsfLPXeZ9EuSTZzsnYOngqnRmbkX4oD20BO43COwN
+z1Sby7rYL0ruh0V7Uw2itN1GDNDfYD21cOV3FrqIAebApQQ6bQkrpjBHiM1lVlwa
+eqHz8BPqGafzzbZJZ4RQuK/miKaY2QGAJjSWNXAezKLLGT0PiO+7kcuyKX4zl0cx
+gaM5P5PkGI4jNGTIpsoIxDMYajWz/BAGsUyyPe9B2rbs4QZarxBmOO61o7rKNLNT
+WCshYhPdT/B9tsUnPC/Op+slF/Z6m7vmYAFvJcdHGm+pbq0TX/DMQ4QRB3CkSh7d
+fEeS93zVEi0SuDOWJpFQ4wS63ur+C1A+pFfS864AqmR5K9LrOWNQY4mgtvHyu0x8
+ZX4iHKm9ZVhT10xpKaOS7X1GFgCB6FmVir9H6cha/DAoQyhOpDzFp71LvVP3zfjS
+e0d92tA5MFQ=
+=7avY
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_EE49BFE3-FECB-40D9-B2D2-AD63AA8C9172--
+--Apple-Mail=_C6F136A6-1F2A-47E5-9DBC-7E3B614F4E57--
