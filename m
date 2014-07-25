@@ -1,34 +1,21 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 13/24] e2fsck: fix off-by-one bounds check on group number
-Date: Thu, 24 Jul 2014 22:20:11 -0400
-Message-ID: <20140725022011.GD1865@thunk.org>
-References: <20140718225200.31374.85411.stgit@birch.djwong.org>
- <20140718225348.31374.59045.stgit@birch.djwong.org>
+From: Nick Krause <xerofoify@gmail.com>
+Subject: Work on ext4
+Date: Thu, 24 Jul 2014 22:29:49 -0400
+Message-ID: <CAPDOMVi_qXwY3R2fYiSwu9Bs2fA4kwamt3TKzVEZOZmuaLkbMA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55628 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757335AbaGYCUN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 24 Jul 2014 22:20:13 -0400
-Content-Disposition: inline
-In-Reply-To: <20140718225348.31374.59045.stgit@birch.djwong.org>
+Received: from mail-vc0-f173.google.com ([209.85.220.173]:50566 "EHLO
+	mail-vc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755965AbaGYC3t (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jul 2014 22:29:49 -0400
+Received: by mail-vc0-f173.google.com with SMTP id hy10so6304972vcb.4
+        for <linux-ext4@vger.kernel.org>; Thu, 24 Jul 2014 19:29:49 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 18, 2014 at 03:53:48PM -0700, Darrick J. Wong wrote:
-> Since fs->group_desc_count is the number of block groups, the number
-> of the last group is always one less than this count.  Fix the bounds
-> check to reflect that.
-> 
-> This flaw shouldn't have any user-visible side effects, since the
-> block bitmap test based on last_grp later on can handle overbig block
-> numbers.
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-
-Thanks, applied.
-
-					- Ted
+Sorry about my other issues Ted. But if you would like to give
+me a change, I would like to help out on ext4 development.
+Just tell me what I should read before I start helping out:).
+Cheers Nick
