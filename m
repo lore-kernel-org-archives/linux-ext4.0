@@ -1,116 +1,67 @@
-From: Azat Khuzhin <a3at.mail@gmail.com>
-Subject: Re: Online resize issue with 3.13.5 & 3.15.6
-Date: Fri, 25 Jul 2014 12:13:12 +0400
-Message-ID: <20140725081312.GO6397@azat>
-References: <53CBA75B.2030102@fnarfbargle.com>
- <53CC66DA.2080804@fnarfbargle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Brad Campbell <lists2009@fnarfbargle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f52.google.com ([209.85.215.52]:41323 "EHLO
-	mail-la0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750994AbaGYIN0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jul 2014 04:13:26 -0400
-Received: by mail-la0-f52.google.com with SMTP id e16so2743781lan.39
-        for <linux-ext4@vger.kernel.org>; Fri, 25 Jul 2014 01:13:23 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <53CC66DA.2080804@fnarfbargle.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: David Sterba <dsterba@suse.cz>
+Subject: [PATCH 0/5 v4] fiemap: introduce EXTENT_DATA_COMPRESSED flag
+Date: Fri, 25 Jul 2014 10:31:28 +0200
+Message-ID: <cover.1406229792.git.dsterba@suse.cz>
+Cc: David Sterba <dsterba@suse.cz>, adilger@dilger.ca,
+	hch@infradead.org, mfasheh@suse.com, viro@zeniv.linux.org.uk,
+	david@fromorbit.com, xfs@oss.sgi.com, linux-nilfs@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jul 21, 2014 at 09:03:22AM +0800, Brad Campbell wrote:
-> On 20/07/14 19:26, Brad Campbell wrote:
-> >G'day all,
-> >
-> >Machine was running 3.13.5. x86_64.
-> >
-> >I had a 12 device (2TB) RAID-6 formatted ext4. I added 2 drives to its
-> >underlying md and restriped it (no issues). After the restripe I
-> >attempted an online resize using ext2progs 1.42.5 (Debian stable). This
-> >failed with a message about the size not fitting into 32 bits so I
-> >compiled 1.42.11 and tried again.
-> 
-> 
-> More info:
-> I discovered the debug flags, so this is resize2fs -f 255 /dev/md0
-> 
-> last_start just keeps incrementing for as long as I care to leave it run.
-> 
-> fs has 4007207 inodes, 1957 groups required.
-> fs requires 4374122900 data blocks.
-> With 1957 group(s), we have 63820826 blocks available.
-> Added 131540 extra group(s), blks_needed 4374122900, data_blocks 62023030,
-> last_start 4356599580
-> Added 131595 extra group(s), blks_needed 4374122900, data_blocks 73483100,
-> last_start 5781212288
-> Added 131246 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781244926
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781277564
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781310202
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781342840
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781375478
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781408116
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781440754
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781473392
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781506030
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781538668
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781571306
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781603944
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781636582
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781669220
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781701858
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781734496
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781767134
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781799772
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781832410
-> Added 131072 extra group(s), blks_needed 4374122900, data_blocks 79184732,
-> last_start 5781865048
+The original FIEMAP patch did not define this bit, btrfs will make use of
+it.  The defined constant maintains the same value as originally proposed.
 
-blocks_per_group=32768 (u32)
-extra_groups=131072 (u32)
-b*e=4294967296 # overflow
+Currently, the 'filefrag' utility has no way to recognize and denote a
+compressed extent. As implemented in btrfs right now, the compression step
+splits a big extent into smaller chunks and this is reported as a heavily
+fragmented file. Adding the flag to filefrag will at least give some
+explanation why, this has been confusing users for some time already.
 
-Could you try attached patched? (I will add appropriate message letter)
-It is totally untested and shouldn't break anything, *but* I strongly
-recommend you to have a backup before running it.
-You could also wait until somebody else review it.
+fiemap_fill_next_extent is extended and takes argument to fill the physical
+length.
 
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index a8af969..98ce10a 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -2479,7 +2479,8 @@ blk64_t calculate_minimum_resize_size(ext2_filsys fs, int flags)
-                extra_grps = ext2fs_div64_ceil(remainder,
-                                               EXT2_BLOCKS_PER_GROUP(fs->super));
- 
--               data_blocks += extra_grps * EXT2_BLOCKS_PER_GROUP(fs->super);
-+               data_blocks += (unsigned long long)extra_grps *
-+                       EXT2_BLOCKS_PER_GROUP(fs->super);
- 
-                /* ok we have to account for the last group */
-                overhead = calc_group_overhead(fs, groups-1, old_desc_blocks);
+V4:
+The physical length is always set and equal to logical, or different and
+then sets the COMPRESSED flag.
+fiemap_extent::fe_length renamed to fe_logi_length
 
+V3:
+Based on feedback from Andreas, implement #1 from V2, current users of
+fiemap_fill_next_extent (fs/, ext4, gfs2, ocfs2, nilfs2, xfs) updated
+accordingly, no functional change.
+
+V2:
+Based on feedback from Andreas, the fiemap_extent is now able to hold the
+physical extent length, to be filled by the filesystem callback.
+
+
+1) extend fiemap_fill_next_extent to take phys_length and update all
+   users (ext4, gfs2, ocfs2, nilfs2, xfs)
+
+David Sterba (5):
+  fiemap: fix comment at EXTENT_DATA_ENCRYPTED
+  fiemap: add EXTENT_DATA_COMPRESSED flag
+  btrfs: set FIEMAP_EXTENT_DATA_COMPRESSED for compressed extents
+  Documentation/fiemap: Document the DATA_COMPRESSED flag
+  fiemap: rename fe_length to fe_logi_length
+
+ Documentation/filesystems/fiemap.txt | 19 +++++++++++++++----
+ fs/btrfs/extent_io.c                 |  8 ++++++--
+ fs/ext4/extents.c                    |  3 ++-
+ fs/ext4/inline.c                     |  2 +-
+ fs/gfs2/inode.c                      |  2 +-
+ fs/ioctl.c                           | 29 ++++++++++++++++++++++-------
+ fs/nilfs2/inode.c                    |  8 +++++---
+ fs/ocfs2/extent_map.c                |  4 ++--
+ fs/xfs/xfs_iops.c                    |  2 +-
+ include/linux/fs.h                   |  2 +-
+ include/uapi/linux/fiemap.h          | 13 ++++++++++---
+ 11 files changed, 66 insertions(+), 26 deletions(-)
 
 -- 
-Respectfully
-Azat Khuzhin
+1.8.4.5
+
