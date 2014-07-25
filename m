@@ -1,57 +1,46 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] debugfs: allow do_write() to handle files over 4GB
-Date: Thu, 24 Jul 2014 17:04:31 -0700
-Message-ID: <20140725000431.GI8628@birch.djwong.org>
-References: <1406245759-1617-1-git-send-email-adilger@dilger.ca>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 10/24] e2fsck: don't clobber critical metadata during
+ check_blocks
+Date: Thu, 24 Jul 2014 21:03:22 -0400
+Message-ID: <20140725010322.GA1865@thunk.org>
+References: <20140718225200.31374.85411.stgit@birch.djwong.org>
+ <20140718225328.31374.71677.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:41833 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934753AbaGYAEi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jul 2014 20:04:38 -0400
+Received: from imap.thunk.org ([74.207.234.97]:55549 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751315AbaGYBD1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 24 Jul 2014 21:03:27 -0400
 Content-Disposition: inline
-In-Reply-To: <1406245759-1617-1-git-send-email-adilger@dilger.ca>
+In-Reply-To: <20140718225328.31374.71677.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 24, 2014 at 05:49:19PM -0600, Andreas Dilger wrote:
-> Fix debugfs do_write() to correctly set i_size_high if the source
-> file is larger than 4GB.  Otherwise, only the low 32 bits of the
-> size is stored in i_size.
-
-You might also want to set large_file if needed.  I wrote a helper to set an
-inode's i_size* fields and turn on feature bits; it's been languishing at the
-back end of the patchbomb for a while:
-http://permalink.gmane.org/gmane.comp.file-systems.ext4/43861
-
---D
-
+On Fri, Jul 18, 2014 at 03:53:28PM -0700, Darrick J. Wong wrote:
+> If we encounter an inode with IND/DIND/TIND blocks or internal extent
+> tree blocks that point into critical FS metadata such as the
+> superblock, the group descriptors, the bitmaps, or the inode table,
+> it's quite possible that the validation code for those blocks is not
+> going to like what it finds, and it'll ask to try to fix the block.
+> Unfortunately, this happens before duplicate block processing (pass
+> 1b), which means that we can end up doing stupid things like writing
+> extent blocks into the inode table, which multiplies e2fsck'
+> destructive effect and can render a filesystem unfixable.
 > 
-> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
-> ---
->  debugfs/debugfs.c |    2 ++
->  1 files changed, 2 insertions(+), 0 deletions(-)
+> To solve this, create a bitmap of all the critical FS metadata.  If
+> before pass1b runs (basically check_blocks) we find a metadata block
+> that points into these critical regions, continue processing that
+> block, but avoid making any modifications, because we could be
+> misinterpreting inodes as block maps.  Pass 1b will find the
+> multiply-owned blocks and fix that situation, which means that we can
+> then restart e2fsck from the beginning and actually fix whatever
+> problems we find.
 > 
-> diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-> index 1703aba..1184596 100644
-> --- a/debugfs/debugfs.c
-> +++ b/debugfs/debugfs.c
-> @@ -1719,6 +1719,8 @@ void do_write(int argc, char *argv[])
->  		current_fs->now ? current_fs->now : time(0);
->  	inode.i_links_count = 1;
->  	inode.i_size = statbuf.st_size;
-> +	/* cast to (long long) to avoid shift warning if st_size is 32 bits */
-> +	inode.i_size_high = (long long)statbuf.st_size >> 32;
->  	if (current_fs->super->s_feature_incompat &
->  	    EXT3_FEATURE_INCOMPAT_EXTENTS) {
->  		int i;
-> -- 
-> 1.7.3.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+
+Thanks, applied.
+
+					- Ted
