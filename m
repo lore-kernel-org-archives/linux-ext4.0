@@ -1,54 +1,44 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: Nick Krause <xerofoify@gmail.com>
 Subject: Re: Work on ext4
-Date: Fri, 25 Jul 2014 11:41:42 -0400
-Message-ID: <20140725154142.GU1865@thunk.org>
+Date: Fri, 25 Jul 2014 11:59:55 -0400
+Message-ID: <CAPDOMVjUZwkkgQLKctUUtPC5AmgPtbfXOheVdTvjcRk3T90HOQ@mail.gmail.com>
 References: <CAPDOMVi_qXwY3R2fYiSwu9Bs2fA4kwamt3TKzVEZOZmuaLkbMA@mail.gmail.com>
- <20140725145946.GT1865@thunk.org>
- <CAPDOMVgmkoXQxGODzVaYWYykPWVmpG=jyKNbGv5=3BZ=XQnGrg@mail.gmail.com>
+	<C19CC31F-C577-42BD-BF6A-BFDE7BC7C14D@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=UTF-8
 Cc: linux-ext4@vger.kernel.org
-To: Nick Krause <xerofoify@gmail.com>
+To: Wang Shilong <wangshilong1991@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:56793 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753239AbaGYPlp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Jul 2014 11:41:45 -0400
-Content-Disposition: inline
-In-Reply-To: <CAPDOMVgmkoXQxGODzVaYWYykPWVmpG=jyKNbGv5=3BZ=XQnGrg@mail.gmail.com>
+Received: from mail-vc0-f169.google.com ([209.85.220.169]:53138 "EHLO
+	mail-vc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752924AbaGYP74 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jul 2014 11:59:56 -0400
+Received: by mail-vc0-f169.google.com with SMTP id hu12so7650323vcb.28
+        for <linux-ext4@vger.kernel.org>; Fri, 25 Jul 2014 08:59:55 -0700 (PDT)
+In-Reply-To: <C19CC31F-C577-42BD-BF6A-BFDE7BC7C14D@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 25, 2014 at 11:22:02AM -0400, Nick Krause wrote:
-> I was being sloppy. I screwed up if you want my help still, please
-> let me known.
+On Fri, Jul 25, 2014 at 11:24 AM, Wang Shilong
+<wangshilong1991@gmail.com> wrote:
+> Hi Nick,
+>
+> Ext4 is relatively stable, i think there are a lot of things to do
+> for Btrfs development, maybe you can take a notice:
+>
+> https://btrfs.wiki.kernel.org/index.php/Main_Page
+>
+>
+>> Sorry about my other issues Ted. But if you would like to give
+>> me a change, I would like to help out on ext4 development.
+>> Just tell me what I should read before I start helping out:).
+>> Cheers Nick
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
-Well, tell you what.  Why don't you start by downloading the following
-git repository:
-
-git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
-
-And then start by trying to use kvm-xfstests.  There are some tests
-which are known failures; some are false positives, some are just bugs
-that we haven't gotten around to fixing.  (This is especially true for
-bigalloc, which has a number of failures that still need to be tracked
-down.)
-
-The main rule that we follow is that we don't want to see any
-regressions.  So extending kvm-xfstests by writing a script which
-analyzes the output of the get-results scripts so that regressions can
-be automatically flagged would be a good and useful thing to add.
-
-Another thing that would be useful is a script which automates using
-kvm-xfstests to drive "git bisect".  Typically what happens after we
-discover a regression is to try to check and see of the failure is
-easily replicable using a single xfstests, and then to start bisecting
-from the baseline run where the test was successful, to try to find
-the guilty bisect.  Automating this would be very useful.
-
-This will hopefully get you started on the testing side of things,
-which is also a good way to start learning about how ext4 works.
-
-Cheers,
-
-						- Ted
+Thanks Wang,
+I will look into brtfs development later today.
+Cheers Nick
