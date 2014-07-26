@@ -1,34 +1,37 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] resize2fs: fix 32bit overflow during minimal size
- calculation for 64bit fs.
-Date: Sat, 26 Jul 2014 17:53:41 -0400
-Message-ID: <20140726215341.GU6725@thunk.org>
-References: <1406359167-13610-1-git-send-email-a3at.mail@gmail.com>
+From: Vlad Dobrotescu <vlad@dobrotescu.ca>
+Subject: Question: errors=continue behaviour for failed external journal device
+Date: Sat, 26 Jul 2014 23:07:59 +0000 (UTC)
+Message-ID: <loom.20140727T010632-633@post.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, lists2009@fnarfbargle.com
-To: Azat Khuzhin <a3at.mail@gmail.com>
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58815 "EHLO imap.thunk.org"
+Received: from plane.gmane.org ([80.91.229.3]:41053 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750837AbaGZVxt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 26 Jul 2014 17:53:49 -0400
-Content-Disposition: inline
-In-Reply-To: <1406359167-13610-1-git-send-email-a3at.mail@gmail.com>
+	id S1750803AbaGZXKH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 26 Jul 2014 19:10:07 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1XBB6L-0006bC-5P
+	for linux-ext4@vger.kernel.org; Sun, 27 Jul 2014 01:10:05 +0200
+Received: from CPE0014bf20c105-CMbc140122c850.cpe.net.cable.rogers.com ([99.224.129.89])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sun, 27 Jul 2014 01:10:05 +0200
+Received: from vlad by CPE0014bf20c105-CMbc140122c850.cpe.net.cable.rogers.com with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sun, 27 Jul 2014 01:10:05 +0200
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jul 26, 2014 at 11:19:27AM +0400, Azat Khuzhin wrote:
-> calculate_minimum_resize_size() multiplying two 32bit numbers, however the
-> result must be 64bit, but it will be truncated to 32bit, and because of this
-> data_blocks will be zero, and it will never leave loop...
+If this isn't the proper place for this question, please point me in 
+the right direction.
 
-There is a much more general patch which solves a number of other
-instances where this bug exists which I've already committed into my
-tree:
+I couldn't find any description on Ext4's behaviour when mounted 
+with errors=continue and external journal if the journal block device 
+is unavailable at mount time (or becomes unavailable at some point).
 
-https://git.kernel.org/cgit/fs/ext2/e2fsprogs.git/commit/?h=maint&id=1e33a8b408123a4e02a6b9135807f6fd61f3e235
+I would be using CentOS 7 (kernel 3.10.0-123.4.4.el7 x86_64) and 
+(probably) full data journaling on a SSD. Can someone help?
 
-Cheers,
-
-					- Ted
