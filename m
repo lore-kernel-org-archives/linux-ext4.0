@@ -1,32 +1,84 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 05/18] e2fsck: during pass1b delete_file, only free a
- cluster once
-Date: Sat, 26 Jul 2014 16:30:32 -0400
-Message-ID: <20140726203032.GN6725@thunk.org>
+Subject: Re: [PATCH 07/18] e2fsck: verify checksums after checking everything
+ else
+Date: Sat, 26 Jul 2014 16:53:16 -0400
+Message-ID: <20140726205316.GO6725@thunk.org>
 References: <20140726003339.28334.54447.stgit@birch.djwong.org>
- <20140726003410.28334.82583.stgit@birch.djwong.org>
+ <20140726003422.28334.29365.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58713 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:58737 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750923AbaGZUae (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 26 Jul 2014 16:30:34 -0400
+	id S1752016AbaGZUxV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 26 Jul 2014 16:53:21 -0400
 Content-Disposition: inline
-In-Reply-To: <20140726003410.28334.82583.stgit@birch.djwong.org>
+In-Reply-To: <20140726003422.28334.29365.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 25, 2014 at 05:34:10PM -0700, Darrick J. Wong wrote:
-> If we're forced to delete a crosslinked file, only call
-> ext2fs_block_alloc_stats2() on cluster boundaries, since the block
-> bitmaps are all cluster bitmaps at this point.  It's safe to do this
-> only once per cluster since we know all the blocks are going away.
+On Fri, Jul 25, 2014 at 05:34:22PM -0700, Darrick J. Wong wrote:
+> There's a particular problem with e2fsck's user interface where
+> checksum errors are concerned:  Fixing the first complaint about
+> a checksum problem results in the inode being cleared even if e2fsck
+> could otherwise have recovered it.  While this mode is useful for
+> cleaning the remaining broken crud off the filesystem, we could at
+> least default to checking everything /else/ and only complaining about
+> the incorrect checksum if fsck finds nothing else wrong.
 > 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> So, plumb in a config option.  We default to "verify and checksum"
+> unless the user tell us otherwise.
 
-Thanks, applied.
+I'm not convinced this is the right way to go.  Telling the user that
+they need to muck with the config file depending on what sort of file
+system corruption they have seems rather unsatisfying.
 
-						- Ted
+This is what I'd much rather do.  Add a "sanity checking" mode to the
+inode scanning functions which gets enabled when EXT2_SF_SANITY_CHECK
+is set via ext2fs_inode_scan_flags().  What the sanity check mode does
+is every time the inode scan functions read in a new inode table
+block, it performs a "sanity check" on the inode table block.  
+
+The sanity check is carried out as follows.  If a majority of the
+inodes in the inode table block are "insane" then set the
+EXT2_SF_INSANE_ITABLE_BLOCK flag in scan flags, if not, clear this
+flag.  If checksum is incorrect, the inode is considered insane.  If
+the extent flag is set, and the extent header looks insane, then the
+inode is considered insane.  For indirect blocks, if more than 50% of
+the blocks in i_blocks[] are invalid, then inode is considered insane.
+
+This is basically a simiplified version of an algorithm which Andreas
+has been carrying in Lustre's e2fsprogs for a while, which tries to
+apply a hueristic check over multiple inodes to decide whether if we
+would be better off just zapping all of the inodes in an inode table
+block.  The reason why I never integrated that change into mainline is
+that in order to make it work, it violated a large number of
+abstractions, and so I considered too ugly to live.
+
+The advantage of doing this all inside lib/ext2fs/inode.c's inode
+scanning function is that it's much cleaner.  We can't do as many
+checks as Andreas did, but for the rough hueristic of deciding whether
+we have a minor problem in a single inode, or a massive problem caused
+by garbage written into the inode table or another inode table block
+getting written into the wrong place on disk (which we can only do if
+metadata checksums are enabled, but that's OK), we can get away with
+doing only the obvious "local" checks.
+
+After all, in practice, it's usually either problems in a single inode
+(usually caused by a kernel bug or a memory bit flip), or complete
+garbage written into the inode table block, or an inode table block
+written to wrong place on disk, on top of another inode table block.
+So we just need a rough hueristic to distinguish between these cases.
+
+Once we've decided whether the entire inode table block is insane or
+not, then what we do is if an inode has any problems at all during the
+pass1 scan, we check to see if the inode table block is marked insane.
+If it is considered insane, then we just clear the i_links_count and
+set dtime, effectively zapping the inode, no questions asked.
+Otherwise, we proceed doing the individual fix ups of each inode field.
+
+Does that make sense?
+
+					- Ted
