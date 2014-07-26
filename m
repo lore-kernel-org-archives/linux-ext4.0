@@ -1,102 +1,67 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH v2] ext4: check inline directory before converting
-Date: Fri, 25 Jul 2014 15:23:56 -0700
-Message-ID: <20140725222356.GK8628@birch.djwong.org>
+Subject: [PATCH 00/18] e2fsprogs patchbomb 7/14, part 2
+Date: Fri, 25 Jul 2014 17:33:39 -0700
+Message-ID: <20140726003339.28334.54447.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Zheng Liu <gnehzuil.liu@gmail.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:37742 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751579AbaGYWYH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jul 2014 18:24:07 -0400
-Content-Disposition: inline
+Received: from aserp1040.oracle.com ([141.146.126.69]:17108 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751199AbaGZAdu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jul 2014 20:33:50 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Before converting an inline directory to a regular directory, check
-the directory entries to make sure they're not obviously broken.
-This helps us to avoid a BUG_ON if one of the dirents is trashed.
+Hi all,
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- fs/ext4/dir.c    |   25 +++++++++++++++++++++++++
- fs/ext4/ext4.h   |    2 ++
- fs/ext4/inline.c |   12 ++++++++++++
- 3 files changed, 39 insertions(+)
+Continuing the patchset that I sent last Friday, here are patches to
+fix e2fsck failures with filesystems containing the bigalloc and/or
+metadata checksumming features.  Like last week, e2fuzz helped me to
+find the failures.
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index ef1bed6..0bb3f9e 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -571,6 +571,31 @@ static int ext4_release_dir(struct inode *inode, struct file *filp)
- 	return 0;
- }
- 
-+int ext4_check_all_de(struct inode *dir, struct buffer_head *bh, void *buf,
-+		      int buf_size)
-+{
-+	struct ext4_dir_entry_2 *de;
-+	int nlen, rlen;
-+	unsigned int offset = 0;
-+	char *top;
-+
-+	de = (struct ext4_dir_entry_2 *)buf;
-+	top = buf + buf_size;
-+	while ((char *) de < top) {
-+		if (ext4_check_dir_entry(dir, NULL, de, bh,
-+					 buf, buf_size, offset))
-+			return -EIO;
-+		nlen = EXT4_DIR_REC_LEN(de->name_len);
-+		rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
-+		de = (struct ext4_dir_entry_2 *)((char *)de + rlen);
-+		offset += rlen;
-+	}
-+	if ((char *) de > top)
-+		return -EIO;
-+
-+	return 0;
-+}
-+
- const struct file_operations ext4_dir_operations = {
- 	.llseek		= ext4_dir_llseek,
- 	.read		= generic_read_dir,
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 22b790e..4726d5f 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2064,6 +2064,8 @@ static inline  unsigned char get_dtype(struct super_block *sb, int filetype)
- 
- 	return ext4_filetype_table[filetype];
- }
-+extern int ext4_check_all_de(struct inode *dir, struct buffer_head *bh,
-+			     void *buf, int buf_size);
- 
- /* fsync.c */
- extern int ext4_sync_file(struct file *, loff_t, loff_t, int);
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 645205d..fc54169 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1178,6 +1178,18 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
- 	if (error < 0)
- 		goto out;
- 
-+	/*
-+	 * Make sure the inline directory entries pass checks before we try to
-+	 * convert them, so that we avoid touching stuff that needs fsck.
-+	 */
-+	if (S_ISDIR(inode->i_mode)) {
-+		error = ext4_check_all_de(inode, iloc->bh,
-+					buf + EXT4_INLINE_DOTDOT_SIZE,
-+					inline_size - EXT4_INLINE_DOTDOT_SIZE);
-+		if (error)
-+			goto out;
-+	}
-+
- 	error = ext4_destroy_inline_data_nolock(handle, inode);
- 	if (error)
- 		goto out;
+The first patch is the 'reserve & repair root' patch from last week,
+unchanged from last week but included so it doesn't get lost in the
+noise.  The second patch fixes a merge error in -next.
+
+Patches 3 & 5 fix some fairly common errors when allocating or
+deallocating blocks within a cluster.  Perhaps the most controversial
+bigalloc patch is #4, which uses the duplicate block handler to
+enforce that a logical cluster only maps to a single physical cluster,
+and that within a cluster, each logical block maps to the same block
+within the physical cluster.
+
+Patches 6-10 are largely unchanged from patches 10-14 in the 5/14
+patchbomb, though they include suggestions that Luk=C3=A1=C5=A1 had at =
+that
+time.  These patches largely alter e2fsck's behavior regarding
+checksums -- allowing the user to specify strict mode (zap anything
+with a bad checksum) or regular mode (fix checksum if it passes other
+tests), and corrects some mis-handling by other parts of fsck.
+
+Patches 11-18 also fix errors when dealing with FS objects that fail
+checksum tests.  Library flag handling, error reporting, inode
+re-checking (for regular mode), directory repair, and extent checksum
+repair all required minor corrections.
+
+I've tested these e2fsprogs changes against the -next branch as of
+7/25.  As I stated in the part 1 introduction, I use several VMs, each
+with 32M-1G ramdisks to test with; the test process is "misc/e2fuzz.sh
+-B <fuzz> -s <size>", where fuzz is anything from 2 bytes to "0.1%"
+of metadata bytes.  Since the bulk of changes to -next in the past 12
+days are my own patches, I've only run the `make check' tests and run
+e2fuzz a few thousand times to quick-check for errors.
+
+Next week will be e2fsck fixes for extended attribute and inline data
+problems.
+
+Comments and questions are, as always, welcome.
+
+--D
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
