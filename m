@@ -1,35 +1,52 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] debugfs: allow do_write() to handle files over 4GB
-Date: Sat, 26 Jul 2014 14:40:41 -0400
-Message-ID: <20140726184041.GG6725@thunk.org>
-References: <1406245759-1617-1-git-send-email-adilger@dilger.ca>
- <20140725000431.GI8628@birch.djwong.org>
+Subject: Re: [PATCH 01/18] e2fsck: reserve blocks for root/lost+found
+ directory repair
+Date: Sat, 26 Jul 2014 15:47:03 -0400
+Message-ID: <20140726194703.GI6725@thunk.org>
+References: <20140726003339.28334.54447.stgit@birch.djwong.org>
+ <20140726003345.28334.14376.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58319 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:58523 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752104AbaGZSkn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 26 Jul 2014 14:40:43 -0400
+	id S1755451AbaGZTrG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 26 Jul 2014 15:47:06 -0400
 Content-Disposition: inline
-In-Reply-To: <20140725000431.GI8628@birch.djwong.org>
+In-Reply-To: <20140726003345.28334.14376.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 24, 2014 at 05:04:31PM -0700, Darrick J. Wong wrote:
-> On Thu, Jul 24, 2014 at 05:49:19PM -0600, Andreas Dilger wrote:
-> > Fix debugfs do_write() to correctly set i_size_high if the source
-> > file is larger than 4GB.  Otherwise, only the low 32 bits of the
-> > size is stored in i_size.
-> 
-> You might also want to set large_file if needed.  I wrote a helper to set an
-> inode's i_size* fields and turn on feature bits; it's been languishing at the
-> back end of the patchbomb for a while:
-> http://permalink.gmane.org/gmane.comp.file-systems.ext4/43861
+On Fri, Jul 25, 2014 at 05:33:45PM -0700, Darrick J. Wong wrote:
+> +static void reserve_block_for_lnf_repair(e2fsck_t ctx)
+> +{
+> +	blk64_t		blk = 0;
+> +	errcode_t	err;
+> +	ext2_filsys	fs = ctx->fs;
+> +	const char	*name = "lost+found";
+> +	ext2_ino_t	ino;
+> +
+> +	ctx->lnf_repair_block = 0;
+> +	if (!ext2fs_lookup(fs, EXT2_ROOT_INO, name, sizeof(name)-1, 0, &ino))
+> +		return;
 
-I've pulled in a slightly modified version of Darrick's patch, which
-takes care of this issue.
+Let me guess... this originally read:
 
-							- Ted
+	const char	name[] = "lost+found";
+
+But you changed it without rerunning the regression tests.  :-(
+
+Another reason why there is no such thing as not running the
+regression tests too many times, even after the most trivial changes.
+
+I'll fix this up and commit it, with the following comment added:
+
+    [ Fixed up an obvious C trap: const char * and const char [] are not
+      the same thing when you are taking the size of the parameter.
+      People, run your regression tests!  Like spinache, it's good for you.  :-)
+      -- tytso ]
+
+						- Ted
+
