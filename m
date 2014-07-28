@@ -1,71 +1,89 @@
-From: Nick Krause <xerofoify@gmail.com>
-Subject: Re: Work on ext4
-Date: Mon, 28 Jul 2014 11:17:45 -0400
-Message-ID: <CAPDOMVijNtsfZwEn_D41ZU82KJ4W7dcjPMj4Pi6XkVpfR8PzeA@mail.gmail.com>
-References: <CAPDOMVi_qXwY3R2fYiSwu9Bs2fA4kwamt3TKzVEZOZmuaLkbMA@mail.gmail.com>
-	<20140725145946.GT1865@thunk.org>
-	<CAPDOMVgmkoXQxGODzVaYWYykPWVmpG=jyKNbGv5=3BZ=XQnGrg@mail.gmail.com>
-	<20140725154142.GU1865@thunk.org>
-	<53D280C7.1080904@redhat.com>
-	<CAPDOMVhJTQtrcpouejTU17MRpPGD6Sie+hRNsC97aR_Be7jL1g@mail.gmail.com>
-	<20140728124523.GM6725@thunk.org>
+From: "Vicentiu Neagoe" <vicentiu.neagoe@ni.com>
+Subject: Re: resilience against power loss
+Date: Mon, 28 Jul 2014 18:23:11 +0300
+Message-ID: <53D66ADF.14170.351043D9@vicentiu.neagoe.ni.com>
+References: <53CE9282.11182.166B0034@vicentiu.neagoe.ni.com>, <alpine.LFD.2.00.1407281044200.2077@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vc0-f170.google.com ([209.85.220.170]:49575 "EHLO
-	mail-vc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752328AbaG1PRq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2014 11:17:46 -0400
-Received: by mail-vc0-f170.google.com with SMTP id lf12so11361655vcb.29
-        for <linux-ext4@vger.kernel.org>; Mon, 28 Jul 2014 08:17:45 -0700 (PDT)
-In-Reply-To: <20140728124523.GM6725@thunk.org>
+Received: from skprod3.natinst.com ([130.164.80.24]:57882 "EHLO ni.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751046AbaG1PXP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Jul 2014 11:23:15 -0400
+Received: from us-aus-mgwout1.amer.corp.natinst.com (nb-chan1-1338.natinst.com [130.164.19.134])
+	by us-aus-skprod3.natinst.com (8.14.5/8.14.5) with ESMTP id s6SFNCdj004521
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Jul 2014 10:23:13 -0500
+In-reply-to: <alpine.LFD.2.00.1407281044200.2077@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 28, 2014 at 8:45 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Mon, Jul 28, 2014 at 12:01:54AM -0400, Nick Krause wrote:
->> I have got some work in brtfs for now , Ted so I won't
->> be able to run the tests for you for the next few weeks
->> probably. Sorry about the issues, but brtfs seems
->> more work then ext4 as of this point in time.
->
-> Yes, that's probably true.
->
-> One bit of advice.  I'd encourage you to think about this not about
-> your lending help to a project.  At your level of experience, you will
-> be consuming far more project development resources than you will be
-> contributing, no matter whether it is btrfs or ext4.  I'd suggest that
-> you focus on learning, and in order to do that, you will need to focus
-> on one area --- and by that I mean not just one subsystem, but one
-> feature or one specific subarea --- for a sustained amount of effort.
-> I have to agree with Hugo Mills' observation that you are "bouncing
-> all over the place like a hyperactive puppy".  His advice is on the
-> mark; listen to it.
->
-> There are no short cuts.  Malcolm Gladwell's book "Outliers" quotes
-> some studies which show that on average, master musicians have
-> accumulated an average 10,000 hours of practice before they achieved
-> mastery.  Some other sources have "debunked" Gladwell's claim by
-> showing in their studies, it has required 10,000 to **30,000** hours
-> of practice.  So if anything 10,000 hours is not a magic threshold,
-> and it might be much more than that for some.
->
-> No doubt you will be higher functioning contributor --- a journeyman
-> --- before you achieve complete mastery of the craft of programming,
-> but at this point, you are barely an apprentice.  And as such, people
-> who spend time hand holding you are doing so in the hopes that some
-> point, the investment the OSS community has put into you will pay off,
-> and you will start adding more value than you are subtracting, and
-> then, in turn, that you will "pay it forward".  But that point, at
-> which the breakeven is reached and you can start contributing at a
-> high level and perhaps, mentoring other enthusiastic newocmers, is
-> months if not years away.
->
-> Good luck on your journey,
->
->                                                 - Ted
-Ted,
-I am already reading the brtfs good and found some work there.
-Regards Nick
+On 28 Jul 2014 at 10:48, Luk=E1s Czerner wrote:
+
+> On Tue, 22 Jul 2014, vicentiu.neagoe@ni.com wrote:
+>=20
+> > Date: Tue, 22 Jul 2014 19:34:10 +0300
+> > From: vicentiu.neagoe@ni.com
+> > To: linux-ext4@vger.kernel.org
+> > Subject: resilience against power loss
+> >=20
+> > Hello,
+> >=20
+> > I'm trying to configure ext4 to prevent data corruption in case of =
+a=20
+> > power loss.
+> >=20
+> > I test by doing a cold reset right after writing to a file.
+> > I tried the nodelalloc option, but the file still becomes corrupted=
+=20
+> > with trailing garbage.
+> >=20
+> > Using ext3, I either get the old version of the file, or the new=20
+> > version, and there is no corruption.
+> >=20
+> > Does nodelalloc not guarantee data integrity?
+> >=20
+> > Are there any other options that provide complete resilience agains=
+t=20
+> > power loss?
+>=20
+> Well, that would be fsync. It'll make sure that your data actually re=
+ach
+> disk and that the disk actually write it from the cache to platters.
+
+I don't have control over how the applications were written, yet I=20
+need the system to not corrupt or lose data in case of a power loss.
+
+I have the partition mounted with the sync option but the issue still=20
+reproduces.
+Are there no options on ext4 to provide the same data integrity as=20
+data=3Dordered on ext3? I also tested with Btrfs and there is no data=20
+corruption on a power loss.
+
+Vicentiu
+
+> -Lukas
+>=20
+> >=20
+> > thanks
+> >=20
+> > Vicentiu
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext=
+4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
