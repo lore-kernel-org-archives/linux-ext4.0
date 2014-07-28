@@ -1,63 +1,55 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 01/18] e2fsck: reserve blocks for root/lost+found
- directory repair
-Date: Mon, 28 Jul 2014 00:27:47 -0700
-Message-ID: <20140728072747.GA404@birch.djwong.org>
+Subject: Re: [PATCH 12/18] e2fsck: toggle checksum verification error
+ reporting appropriately
+Date: Mon, 28 Jul 2014 00:38:26 -0700
+Message-ID: <20140728073826.GB404@birch.djwong.org>
 References: <20140726003339.28334.54447.stgit@birch.djwong.org>
- <20140726003345.28334.14376.stgit@birch.djwong.org>
- <20140726194703.GI6725@thunk.org>
+ <20140726003453.28334.47494.stgit@birch.djwong.org>
+ <20140727233721.GA6725@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:20541 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:24680 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750903AbaG1H1w (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2014 03:27:52 -0400
+	with ESMTP id S1750954AbaG1Hib (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2014 03:38:31 -0400
 Content-Disposition: inline
-In-Reply-To: <20140726194703.GI6725@thunk.org>
+In-Reply-To: <20140727233721.GA6725@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jul 26, 2014 at 03:47:03PM -0400, Theodore Ts'o wrote:
-> On Fri, Jul 25, 2014 at 05:33:45PM -0700, Darrick J. Wong wrote:
-> > +static void reserve_block_for_lnf_repair(e2fsck_t ctx)
-> > +{
-> > +	blk64_t		blk = 0;
-> > +	errcode_t	err;
-> > +	ext2_filsys	fs = ctx->fs;
-> > +	const char	*name = "lost+found";
-> > +	ext2_ino_t	ino;
-> > +
-> > +	ctx->lnf_repair_block = 0;
-> > +	if (!ext2fs_lookup(fs, EXT2_ROOT_INO, name, sizeof(name)-1, 0, &ino))
-> > +		return;
+On Sun, Jul 27, 2014 at 07:37:22PM -0400, Theodore Ts'o wrote:
+> On Fri, Jul 25, 2014 at 05:34:53PM -0700, Darrick J. Wong wrote:
+> > There are a few mistakes in the checksum verification error reporting
+> > logic.  First, when we're doing a re-check of an inode that failed
+> > earlier, we must never ignore checksum errors.  Second, if we're
+> > performing sanity checks after an initial checksum verification
+> > failure, then we /should/ disable checksum error reporting for
+> > block_iterate because that function will re-read the inode from disk.
+> > This fixes the numerous "inode checksum failure" problems that cause
+> > e2fsck to abort.
 > 
-> Let me guess... this originally read:
-> 
-> 	const char	name[] = "lost+found";
-> 
-> But you changed it without rerunning the regression tests.  :-(
+> I'm starting to wonder if we just set IGNORE_CSUM_ERRORS when we open
+> the file system, and explicitly check the checksums in e2fsck.  It
+> might make the logic clearer, especially when we start trying to be a
+> bit more sophisticated in handling checksum errors.
 
-Oops.
+We could make e2fsck verify the checksums itself, though we'd have to provide a
+way for either (a) libext2fs to provide the raw buffer data to e2fsck or (b)
+e2fsck to find the block number in question and (re)read the raw buffer, since
+the checksums are computed against the on-disk structures.
 
-Actually, I /did/ rerun the regression tests, and nothing blew up.  Now I'm
-puzzling over why it worked.  I'll look into that tomorrow.
+This could get a bit nasty for EA and extent handling, since e2fsck doesn't
+touch the underlying blocks directly, and the checksums are per-block, not per
+FS object.
 
-Thanks for catching that.
+> Otherwise, if we get a checksum error, we would have to set the flag
+> and then retry the read.
+
+Also doable.
 
 --D
 > 
-> Another reason why there is no such thing as not running the
-> regression tests too many times, even after the most trivial changes.
-> 
-> I'll fix this up and commit it, with the following comment added:
-> 
->     [ Fixed up an obvious C trap: const char * and const char [] are not
->       the same thing when you are taking the size of the parameter.
->       People, run your regression tests!  Like spinache, it's good for you.  :-)
->       -- tytso ]
-> 
-> 						- Ted
-> 
+> 					- Ted
