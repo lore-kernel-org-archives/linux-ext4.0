@@ -1,87 +1,78 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: Question: errors=continue behaviour for failed external journal
- device
-Date: Mon, 28 Jul 2014 09:09:34 -0700
-Message-ID: <20140728160934.GP8628@birch.djwong.org>
-References: <loom.20140727T010632-633@post.gmane.org>
- <20140727000733.GV6725@thunk.org>
- <alpine.LFD.2.00.1407281107530.2077@localhost.localdomain>
- <20140728131742.GP6725@thunk.org>
+From: David Sterba <dsterba@suse.cz>
+Subject: Re: [Ocfs2-devel] [PATCH 2/4 v3] fiemap: add EXTENT_DATA_COMPRESSED
+ flag
+Date: Mon, 28 Jul 2014 18:49:09 +0200
+Message-ID: <20140728164909.GK1553@twin.jikos.cz>
+References: <cover.1386778302.git.dsterba@suse.cz>
+ <4f8d5dc5b51a43efaf16c39398c23a6276e40a30.1386778303.git.dsterba@suse.cz>
+ <20131212232443.GL31386@dastard>
+ <9520AB36-B728-423A-8EA1-FDD22B79AE90@dilger.ca>
+ <B58DEEA8-561A-4173-B9F5-528B73E06C6D@dilger.ca>
+ <20140724192245.GG1553@suse.cz>
+ <5B4825C3-F47E-48B7-8DA4-6D79F53B73B1@dilger.ca>
+Reply-To: dsterba@suse.cz
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
-	Vlad Dobrotescu <vlad@dobrotescu.ca>,
-	linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: dsterba@suse.cz, linux-nilfs@vger.kernel.org, xfs@oss.sgi.com,
+	Btrfs Developer List <linux-btrfs@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	ocfs2-devel@oss.oracle.com
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:25545 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751999AbaG1QJo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2014 12:09:44 -0400
+Received: from cantor2.suse.de ([195.135.220.15]:57368 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750917AbaG1QtM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Jul 2014 12:49:12 -0400
 Content-Disposition: inline
-In-Reply-To: <20140728131742.GP6725@thunk.org>
+In-Reply-To: <5B4825C3-F47E-48B7-8DA4-6D79F53B73B1@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 28, 2014 at 09:17:42AM -0400, Theodore Ts'o wrote:
-> On Mon, Jul 28, 2014 at 11:11:45AM +0200, Luk=C3=A1=C5=A1 Czerner wro=
-te:
-> >=20
-> > I very much agree with that, that's why I was quite surprised that =
-I
-> > found out recently that this is the default. I was living in the
-> > delusion that the default was ERRORS_RO for as long as I can rememb=
-er.
-> > So my question is, should we change it ? This really does not seem
-> > like a sane default.
->=20
-> Yeah, I've been thinking that this would be a good thing to change fo=
-r
-> 1.43.
->=20
-> The only reason that errors=3Dcontinue was the default was for
-> historical reasons.  I could imagine some system administrators being
-> surprised when all of a sudden their production systems start getting
-> lots of EROFS errors getting reported by applications.  So I could
-> potentially imagine some Help Desks / Support folks at distributions
-> not being enthusiastic about such a change.
->=20
-> Hmm.... we are starting to have some errors where we can allow the
-> system to stagger on, even if we need to disallow new allocations in
-> some block groups.  I wonder if it is worthwhile to have a "continue
-> for correctable errors".  The danger, of course, is that some errors,
-> even if they are correctable, (such as freeing a block which is
-> already freed), could be a hint that there are other fs corruptions,
-> not yet detected, that might lead to data loss if we reboot and fsck,
-> or remount readonly right away.  So the question is while there is
-> some value, is it worth the added complexity to add an
-> "errors=3Dcontinue-correctable" option?
+Thanks for the feedback.
 
-Back in the earlier 3.15 days when I was trying to figure out what was =
-going on
-with that corruption bug that Eric Whitney found, it was useful for the=
- kernel
-to be able to stumble on with the non-broken block groups long enough t=
-o save
-the logs of what had happened.  (Laptops don't seem to have serial cons=
-oles...)
+On Thu, Jul 24, 2014 at 04:34:35PM -0600, Andreas Dilger wrote:
+> >> - rename fe_length to fe_logi_length and #define fe_length fe_logi_length
+> >> - always fill in fe_phys_length (= fe_logi_length for uncompressed files)
+> >>  and set FIEMAP_EXTENT_PHYS_LENGTH whether the extent is compressed or not
+> > 
+> > This is my understanding and contradicts the first point.
+> 
+> I think Dave Chinner's former point was that having fe_phys_length validity
+> depend on FIEMAP_EXTENT_DATA_COMPRESSED is a non-intuitive interface.  It is
+> not true that fe_phys_length would always be valid, since that is not the
+> case for older kernels that currently always set this field to 0, so they
+> need some flag to indicate if fe_phys_length is valid.
 
-In general I think it's worth the effort.
+I see the backward compatibility issue now. The patches (up to v4)
+updated all filesystems to fill the physical length with logical,
+but this should be 0 to keep the backward compatibility and also to keep
+the changes to existing fiemap users minimal.
 
-(I'd shovel crash reports into pstore if I wasn't afraid of bricking UE=
-=46I.)
+So for v5, PHYS_LENGTH will be introduced but only used by btrfs
+together with ENCODED and COMPRESSED. Though this may look too much for
+my needs to represent compressed extent, it is flexible for future use.
 
---D
->=20
-> 							- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Alternately,
+> userspace could do:
+> 
+> 	if (ext->fe_phys_length == 0)
+> 		ext->fe_phys_length = ext->fe_logi_length;
+> 
+> but that pre-supposes that fe_phys_length == 0 is never a valid value when
+> fe_logi_length is non-zero, and this might introduce errors in some cases.
+> I could imagine that some compression methods might not allocate any space
+> at all if it was all zeroes, and just store a bit in the blockpointer or
+> extent, so having a separate FIEMAP_EXTENT_PHYS_LENGTH is probably safer
+> in the long run.
+
+Sounds good to me.
+
+> That opens up the question of whether a written zero
+> filled space that gets compressed away is different from a hole, but I'd
+> prefer to just return whatever the file mapping is than interpret it.
+
+It could save some bytes, but I don' see it too practical. I expect the
+amount of zeroed blocks to be low on average and the current compression
+methods are able to squeeze long runs of zeros to a few tens of bytes
+per page.
