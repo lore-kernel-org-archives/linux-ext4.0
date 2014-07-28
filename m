@@ -1,108 +1,77 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 07/18] e2fsck: verify checksums after checking everything
- else
-Date: Mon, 28 Jul 2014 01:27:43 -0700
-Message-ID: <20140728082743.GN8628@birch.djwong.org>
+Subject: Re: [PATCH 04/18] e2fsck: fix rule-violating lblk->pblk mappings on
+ bigalloc filesystems
+Date: Mon, 28 Jul 2014 01:28:29 -0700
+Message-ID: <20140728082829.GO8628@birch.djwong.org>
 References: <20140726003339.28334.54447.stgit@birch.djwong.org>
- <20140726003422.28334.29365.stgit@birch.djwong.org>
- <20140726205316.GO6725@thunk.org>
+ <20140726003404.28334.18860.stgit@birch.djwong.org>
+ <C91A6455-139E-4E6B-935F-F00332F76616@dilger.ca>
+ <20140726202728.GM6725@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:30145 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751605AbaG1I1r (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2014 04:27:47 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:45155 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751905AbaG1I2g (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2014 04:28:36 -0400
 Content-Disposition: inline
-In-Reply-To: <20140726205316.GO6725@thunk.org>
+In-Reply-To: <20140726202728.GM6725@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jul 26, 2014 at 04:53:16PM -0400, Theodore Ts'o wrote:
-> On Fri, Jul 25, 2014 at 05:34:22PM -0700, Darrick J. Wong wrote:
-> > There's a particular problem with e2fsck's user interface where
-> > checksum errors are concerned:  Fixing the first complaint about
-> > a checksum problem results in the inode being cleared even if e2fsck
-> > could otherwise have recovered it.  While this mode is useful for
-> > cleaning the remaining broken crud off the filesystem, we could at
-> > least default to checking everything /else/ and only complaining about
-> > the incorrect checksum if fsck finds nothing else wrong.
+On Sat, Jul 26, 2014 at 04:27:28PM -0400, Theodore Ts'o wrote:
+> On Sat, Jul 26, 2014 at 12:02:10AM -0600, Andreas Dilger wrote:
+> > Wouldn't it be possible to use this information to determine which
+> > of the inodes sharing a duplicate mapped block is the right one
+> > and which inode is the bad one?
+> 
+> Yes, although I'm not sure it's worth the effort.  Putting in more
+> intelligent hueristics for using the metadata checksums will help all
+> file systems, and not just bigalloc file systems --- and I think it
+> would be easier.
+> 
+> > On Jul 25, 2014, at 18:34, "Darrick J. Wong" <darrick.wong@oracle.com> wrote:
 > > 
-> > So, plumb in a config option.  We default to "verify and checksum"
-> > unless the user tell us otherwise.
+> > As far as I can tell, logical block mappings on a bigalloc filesystem are
+> > supposed to follow a few constraints:
+> > 
+> > * The logical cluster offset must match the physical cluster offset.
+> > * A logical cluster may not map to multiple physical clusters.
+> > 
+> > Since the multiply-claimed block recovery code can be used to fix these
+> > problems, teach e2fsck to find these transgressions and fix them.
+> > 
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 > 
-> I'm not convinced this is the right way to go.  Telling the user that
-> they need to muck with the config file depending on what sort of file
-> system corruption they have seems rather unsatisfying.
+> Thanks, applied, but a couple of tips about writing test scripts.
 > 
-> This is what I'd much rather do.  Add a "sanity checking" mode to the
-> inode scanning functions which gets enabled when EXT2_SF_SANITY_CHECK
-> is set via ext2fs_inode_scan_flags().  What the sanity check mode does
-> is every time the inode scan functions read in a new inode table
-> block, it performs a "sanity check" on the inode table block.  
+> You originally had this:
 > 
-> The sanity check is carried out as follows.  If a majority of the
-> inodes in the inode table block are "insane" then set the
-> EXT2_SF_INSANE_ITABLE_BLOCK flag in scan flags, if not, clear this
-> flag.  If checksum is incorrect, the inode is considered insane.  If
-> the extent flag is set, and the extent header looks insane, then the
-> inode is considered insane.  For indirect blocks, if more than 50% of
-> the blocks in i_blocks[] are invalid, then inode is considered insane.
+> 	../misc/tune2fs -L test_fs $TMPFILE
+> 	../e2fsck/e2fsck -fy $TMPFILE > $OUT
+> 	../e2fsck/e2fsck -fy $TMPFILE >> $OUT
+> 	../e2fsck/e2fsck -fy $TMPFILE >> $OUT
 > 
-> This is basically a simiplified version of an algorithm which Andreas
-> has been carrying in Lustre's e2fsprogs for a while, which tries to
-> apply a hueristic check over multiple inodes to decide whether if we
-> would be better off just zapping all of the inodes in an inode table
-> block.  The reason why I never integrated that change into mainline is
-> that in order to make it work, it violated a large number of
-> abstractions, and so I considered too ugly to live.
+> This spits out the version numbers to stderr, which is ugly.  I fixed
+> up the binary image file to have the test_fs label, and I changed the
+> lines above to:
 > 
-> The advantage of doing this all inside lib/ext2fs/inode.c's inode
-> scanning function is that it's much cleaner.  We can't do as many
-> checks as Andreas did, but for the rough hueristic of deciding whether
-> we have a minor problem in a single inode, or a massive problem caused
-> by garbage written into the inode table or another inode table block
-> getting written into the wrong place on disk (which we can only do if
-> metadata checksums are enabled, but that's OK), we can get away with
-> doing only the obvious "local" checks.
+> 	$FSCK -fy $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed > $OUT
+> 	$FSCK -fy $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT
+> 	$FSCK -fy $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT
 > 
-> After all, in practice, it's usually either problems in a single inode
-> (usually caused by a kernel bug or a memory bit flip), or complete
-> garbage written into the inode table block, or an inode table block
-> written to wrong place on disk, on top of another inode table block.
-> So we just need a rough hueristic to distinguish between these cases.
-> 
-> Once we've decided whether the entire inode table block is insane or
-> not, then what we do is if an inode has any problems at all during the
-> pass1 scan, we check to see if the inode table block is marked insane.
-> If it is considered insane, then we just clear the i_links_count and
-> set dtime, effectively zapping the inode, no questions asked.
-> Otherwise, we proceed doing the individual fix ups of each inode field.
-> 
-> Does that make sense?
+> The advantage of doing things this way is that any errors get captured
+> in the log file.  Also, if the user has requested valgrind be used,
+> that gets reflected in the value of $FSCK.
 
-Yes, that makes sense for dealing with the inodes.  What about the other FS
-object blocks, such as directories, EAs, and extents?
-
-Perhaps I'll try to define some insane heuristics:
-
-For EA and extent blocks we could declare the block insane if the checksum
-fails and the magic number is missing.  Seems pretty straightforward.
-
-For classic directory blocks, we could declare the block insane if the checksum
-fails and the end of the block is not {00 00 00 00 0C 00 00 DE XX XX XX XX}.
-
-For htree directory blocks, we could similarly declare insanity if the checksum
-fails and the beginning of the block are not the required fake dir entries.
-
-...and if it's insane, zap it immediately; otherwise, run the usual checks and
-fix the checksum if the other checks pass.
-
-Hmm, that doesn't seem so bad.  What do people think?
+Got it, thanks.  I'll do that next time.
 
 --D
+> 
+> Cheers,
 > 
 > 					- Ted
 > --
