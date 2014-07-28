@@ -1,100 +1,63 @@
-From: Nick Krause <xerofoify@gmail.com>
-Subject: Re: Work on ext4
-Date: Mon, 28 Jul 2014 00:01:54 -0400
-Message-ID: <CAPDOMVhJTQtrcpouejTU17MRpPGD6Sie+hRNsC97aR_Be7jL1g@mail.gmail.com>
-References: <CAPDOMVi_qXwY3R2fYiSwu9Bs2fA4kwamt3TKzVEZOZmuaLkbMA@mail.gmail.com>
-	<20140725145946.GT1865@thunk.org>
-	<CAPDOMVgmkoXQxGODzVaYWYykPWVmpG=jyKNbGv5=3BZ=XQnGrg@mail.gmail.com>
-	<20140725154142.GU1865@thunk.org>
-	<53D280C7.1080904@redhat.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 01/18] e2fsck: reserve blocks for root/lost+found
+ directory repair
+Date: Mon, 28 Jul 2014 00:27:47 -0700
+Message-ID: <20140728072747.GA404@birch.djwong.org>
+References: <20140726003339.28334.54447.stgit@birch.djwong.org>
+ <20140726003345.28334.14376.stgit@birch.djwong.org>
+ <20140726194703.GI6725@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-we0-f172.google.com ([74.125.82.172]:48889 "EHLO
-	mail-we0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750907AbaG1EBz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2014 00:01:55 -0400
-Received: by mail-we0-f172.google.com with SMTP id x48so6843087wes.31
-        for <linux-ext4@vger.kernel.org>; Sun, 27 Jul 2014 21:01:54 -0700 (PDT)
-In-Reply-To: <53D280C7.1080904@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:20541 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750903AbaG1H1w (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2014 03:27:52 -0400
+Content-Disposition: inline
+In-Reply-To: <20140726194703.GI6725@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 25, 2014 at 12:07 PM, Eric Sandeen <sandeen@redhat.com> wrote:
-> On 7/25/14, 10:41 AM, Theodore Ts'o wrote:
->
-> ...
->
->> This will hopefully get you started on the testing side of things,
->> which is also a good way to start learning about how ext4 works.
->>
->> Cheers,
->>
->>                                               - Ted
->
-> The old adage on IRC is "Don't ask to ask; ask."  In
-> development-land, it's more like "Don't ask to help; help."
->
-> The trick is knowing what constitutes "help."  Asking for
-> detailed instruction is not "help."
->
-> Over on the btrfs-list, Hugo had a good set of suggestions as
-> well; some are btrfs-specific, but in general, good advice for
-> anyone trying to get engaged with an upstream project:
->
-> From Hugo -
->
-> ...
->
->>    My recommendations for you, if you want to work on btrfs, are:
->>
->>  * Build and install the latest kernel from Linus's git repo
->>
->>  * Read and understand the user documentation [2]
->>
->>  * Create one or several btrfs filesystems with different
->>    configurations and learn how they work in userspace -- what are the
->>    features, what are the problems you see? Actually use at least one
->>    of the filesystems you created for real data in daily use (with
->>    backups)
->>
->>  * Build the userspace tools from git
->>
->>  * Pick up one of the userspace projects from [3] and implement that.
->>    If you pick the right one(s), you'll have to learn about some of
->>    the internal structures of the FS anyway. Compile and test your
->>    patch. If you're adding a new feature, write an automated xfstest
->>    for it as well.
->>
->>  * Get that patch accepted. This will probably involve a sequence of
->>    revisions to it, multiple versions over a period of several weeks
->>    or more, with a review process. You should also send your test to
->>    xfstests and get that accepted.
->>
->>  * Do the above again, until you get used to the processes involved,
->>    and have demonstrated that you can work well with the other people
->>    in the subsystem, and are generally producing useful and sane code.
->>    It's all about trust -- can you be trusted to mostly do the right
->>    thing? (So far on linux-kernel, you've rather demonstrated the
->>    opposite: your intentions are good, but your execution leaves a lot
->>    to be desired)
->>
->>  * Use the documentation at [4], and the output of btrfs-debug-tree to
->>    understand the internal structure of the FS
->>
->>  * Pick up one of the smaller, more self-contained ideas from the
->>    projects page [5] (say, [6] or [7]) and try to implement it. Again:
->>    build, write test code, test thoroughly, submit patch for review,
->>    modify as suggested by reviewers, and repeat as often as necessary
->>
->>    Hugo.
->
->
+On Sat, Jul 26, 2014 at 03:47:03PM -0400, Theodore Ts'o wrote:
+> On Fri, Jul 25, 2014 at 05:33:45PM -0700, Darrick J. Wong wrote:
+> > +static void reserve_block_for_lnf_repair(e2fsck_t ctx)
+> > +{
+> > +	blk64_t		blk = 0;
+> > +	errcode_t	err;
+> > +	ext2_filsys	fs = ctx->fs;
+> > +	const char	*name = "lost+found";
+> > +	ext2_ino_t	ino;
+> > +
+> > +	ctx->lnf_repair_block = 0;
+> > +	if (!ext2fs_lookup(fs, EXT2_ROOT_INO, name, sizeof(name)-1, 0, &ino))
+> > +		return;
+> 
+> Let me guess... this originally read:
+> 
+> 	const char	name[] = "lost+found";
+> 
+> But you changed it without rerunning the regression tests.  :-(
 
-I have got some work in brtfs for now , Ted so I won't
-be able to run the tests for you for the next few weeks
-probably. Sorry about the issues, but brtfs seems
-more work then ext4 as of this point in time.
-Nick
+Oops.
+
+Actually, I /did/ rerun the regression tests, and nothing blew up.  Now I'm
+puzzling over why it worked.  I'll look into that tomorrow.
+
+Thanks for catching that.
+
+--D
+> 
+> Another reason why there is no such thing as not running the
+> regression tests too many times, even after the most trivial changes.
+> 
+> I'll fix this up and commit it, with the following comment added:
+> 
+>     [ Fixed up an obvious C trap: const char * and const char [] are not
+>       the same thing when you are taking the size of the parameter.
+>       People, run your regression tests!  Like spinache, it's good for you.  :-)
+>       -- tytso ]
+> 
+> 						- Ted
+> 
