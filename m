@@ -1,55 +1,53 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 12/18] e2fsck: toggle checksum verification error
- reporting appropriately
-Date: Mon, 28 Jul 2014 00:38:26 -0700
-Message-ID: <20140728073826.GB404@birch.djwong.org>
-References: <20140726003339.28334.54447.stgit@birch.djwong.org>
- <20140726003453.28334.47494.stgit@birch.djwong.org>
- <20140727233721.GA6725@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Azat Khuzhin <a3at.mail@gmail.com>
+Subject: [PATCH 0/4 v3] e2fsprogs journal fixes (UUID and 1k block size issue)
+Date: Mon, 28 Jul 2014 11:43:21 +0400
+Message-ID: <1406533405-6899-1-git-send-email-a3at.mail@gmail.com>
+Cc: tytso@mit.edu, darrick.wong@oracle.com, adilger@dilger.ca,
+	Azat Khuzhin <a3at.mail@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:24680 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750954AbaG1Hib (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2014 03:38:31 -0400
-Content-Disposition: inline
-In-Reply-To: <20140727233721.GA6725@thunk.org>
+Received: from mail-lb0-f176.google.com ([209.85.217.176]:60834 "EHLO
+	mail-lb0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751083AbaG1Hnw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2014 03:43:52 -0400
+Received: by mail-lb0-f176.google.com with SMTP id u10so5384055lbd.7
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Jul 2014 00:43:50 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jul 27, 2014 at 07:37:22PM -0400, Theodore Ts'o wrote:
-> On Fri, Jul 25, 2014 at 05:34:53PM -0700, Darrick J. Wong wrote:
-> > There are a few mistakes in the checksum verification error reporting
-> > logic.  First, when we're doing a re-check of an inode that failed
-> > earlier, we must never ignore checksum errors.  Second, if we're
-> > performing sanity checks after an initial checksum verification
-> > failure, then we /should/ disable checksum error reporting for
-> > block_iterate because that function will re-read the inode from disk.
-> > This fixes the numerous "inode checksum failure" problems that cause
-> > e2fsck to abort.
-> 
-> I'm starting to wonder if we just set IGNORE_CSUM_ERRORS when we open
-> the file system, and explicitly check the checksums in e2fsck.  It
-> might make the logic clearer, especially when we start trying to be a
-> bit more sophisticated in handling checksum errors.
+Hi all,
 
-We could make e2fsck verify the checksums itself, though we'd have to provide a
-way for either (a) libext2fs to provide the raw buffer data to e2fsck or (b)
-e2fsck to find the block number in question and (re)read the raw buffer, since
-the checksums are computed against the on-disk structures.
+Here is patchset with some fixes for journal code in e2fsprogs.
+I've removed first patch from previous version "lib: add EXT2_ prefix for
+SUPERBLOCK_{OFFSET,SIZE}", and rebase other patches on top of the maint branch.
 
-This could get a bit nasty for EA and extent handling, since e2fsck doesn't
-touch the underlying blocks directly, and the checksums are per-block, not per
-FS object.
+I've tested it using "make check" and commands from commits.
+I do want to add tests for this cases, but they requires some extra
+capabilities (CAP_SYS_ADMIN for mount(2)), while right now tests don't have
+such cases, if somebody have proposal how to do this tests without extra
+mount(2) I will be happy to hear (for more info about possible test cases see
+"tune2fs: update journal super block when changing UUID for fs." and "tune2fs:
+update journal users while updating fs UUID (with external journal)")
 
-> Otherwise, if we get a checksum error, we would have to set the flag
-> and then retry the read.
+Thanks.
+Azat.
 
-Also doable.
+Azat Khuzhin (4):
+  journal: use consts instead of 1024 and add helper for journal with 1k
+    blocksize
+  tune2fs: remove_journal_device(): use the correct block to find jsb
+  tune2fs: update journal super block when changing UUID for fs.
+  tune2fs: update journal users while updating fs UUID (with external
+    journal)
 
---D
-> 
-> 					- Ted
+ e2fsck/journal.c        |   5 +-
+ lib/ext2fs/ext2fs.h     |   3 +
+ lib/ext2fs/kernel-jbd.h |   6 +-
+ lib/ext2fs/mkjournal.c  |  28 ++++----
+ misc/tune2fs.c          | 166 +++++++++++++++++++++++++++++++++++++++++-------
+ misc/uuidd.c            |   3 +-
+ 6 files changed, 171 insertions(+), 40 deletions(-)
+
+-- 
+2.0.1
+
