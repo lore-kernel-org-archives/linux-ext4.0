@@ -1,77 +1,35 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: Question: errors=continue behaviour for failed external journal
- device
-Date: Mon, 28 Jul 2014 11:11:45 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1407281107530.2077@localhost.localdomain>
-References: <loom.20140727T010632-633@post.gmane.org> <20140727000733.GV6725@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 12/18] e2fsck: toggle checksum verification error
+ reporting appropriately
+Date: Mon, 28 Jul 2014 07:41:08 -0400
+Message-ID: <20140728114108.GL6725@thunk.org>
+References: <20140726003339.28334.54447.stgit@birch.djwong.org>
+ <20140726003453.28334.47494.stgit@birch.djwong.org>
+ <20140727233721.GA6725@thunk.org>
+ <20140728073826.GB404@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Vlad Dobrotescu <vlad@dobrotescu.ca>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21668 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:60353 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752063AbaG1JL5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Jul 2014 05:11:57 -0400
-In-Reply-To: <20140727000733.GV6725@thunk.org>
+	id S1751985AbaG1LlO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Jul 2014 07:41:14 -0400
+Content-Disposition: inline
+In-Reply-To: <20140728073826.GB404@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 26 Jul 2014, Theodore Ts'o wrote:
+On Mon, Jul 28, 2014 at 12:38:26AM -0700, Darrick J. Wong wrote:
+> 
+> We could make e2fsck verify the checksums itself, though we'd have to provide a
+> way for either (a) libext2fs to provide the raw buffer data to e2fsck or (b)
+> e2fsck to find the block number in question and (re)read the raw buffer, since
+> the checksums are computed against the on-disk structures.
 
-> Date: Sat, 26 Jul 2014 20:07:33 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Vlad Dobrotescu <vlad@dobrotescu.ca>
-> Cc: linux-ext4@vger.kernel.org
-> Subject: Re: Question: errors=continue behaviour for failed external journal
->     device
-> 
-> On Sat, Jul 26, 2014 at 11:07:59PM +0000, Vlad Dobrotescu wrote:
-> > If this isn't the proper place for this question, please point me in 
-> > the right direction.
-> > 
-> > I couldn't find any description on Ext4's behaviour when mounted 
-> > with errors=continue and external journal if the journal block device 
-> > is unavailable at mount time (or becomes unavailable at some point).
-> > 
-> > I would be using CentOS 7 (kernel 3.10.0-123.4.4.el7 x86_64) and 
-> > (probably) full data journaling on a SSD. Can someone help?
-> 
-> So there are two different questions.
-> 
-> If you use errors=continue, there is the chance that the file system
-> inconsistencies that discovered could cause further file system
-> damage, which might lead to the loss or corruption of data files
-> written earlier.  So it's not really recommended for most purposes,
+Hmm.  Another possibility is we could change the functions so that if
+there is a checksum error, we return the error code, but we also
+return the contents of the inode, directory entry, etc. to the caller.
 
-I very much agree with that, that's why I was quite surprised that I
-found out recently that this is the default. I was living in the
-delusion that the default was ERRORS_RO for as long as I can remember.
-So my question is, should we change it ? This really does not seem
-like a sane default.
-
-Thanks!
--Lukas
-
-> unless you have some scheme where you are monitoring dmesgs and having
-> some strategy to deal with detected file system errors, or when the
-> system absolutely, positively must continue running, and this is more
-> important than potential data loss. 
-> 
-> If the journal block device is not present then the file system can't
-> be mounted, and if the system was uncleanly shut down you won't be
-> able to recover from the unclean shutdown by replaying the journal.
-> 
-> If the journal block device is *gone*, it is possible to remove the
-> external journal block device, and then force a file system repair,
-> but if this happens after an unclean shutdown, you may very well lose
-> data.
-> 
-> Cheers,
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+       	   	       	   	  	    	   - Ted
