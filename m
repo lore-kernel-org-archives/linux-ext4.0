@@ -1,59 +1,71 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 11/18] libext2/fsck: correctly preserve fs flags when
- modifying ignore-csum-error flag
-Date: Mon, 28 Jul 2014 01:06:17 -0700
-Message-ID: <20140728080617.GM8628@birch.djwong.org>
-References: <20140726003339.28334.54447.stgit@birch.djwong.org>
- <20140726003447.28334.51963.stgit@birch.djwong.org>
- <20140727232746.GZ6725@thunk.org>
+From: Azat Khuzhin <a3at.mail@gmail.com>
+Subject: Re: [PATCH 0/5] e2fsprogs: some small cleanups and fixes for journal
+ code
+Date: Mon, 28 Jul 2014 12:06:19 +0400
+Message-ID: <20140728080619.GA6041@azat>
+References: <1405002908-16332-1-git-send-email-a3at.mail@gmail.com>
+ <20140726073329.GB24045@azat>
+ <20140726143101.GD6725@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	"open list:EXT4 FILE SYSTEM" <linux-ext4@vger.kernel.org>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:21316 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751363AbaG1IGW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2014 04:06:22 -0400
+Received: from mail-lb0-f173.google.com ([209.85.217.173]:34285 "EHLO
+	mail-lb0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751753AbaG1IGX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2014 04:06:23 -0400
+Received: by mail-lb0-f173.google.com with SMTP id p9so5491977lbv.18
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Jul 2014 01:06:21 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20140727232746.GZ6725@thunk.org>
+In-Reply-To: <20140726143101.GD6725@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jul 27, 2014 at 07:27:46PM -0400, Theodore Ts'o wrote:
-> On Fri, Jul 25, 2014 at 05:34:47PM -0700, Darrick J. Wong wrote:
-> > nor is it correct
-> > to assume that we can unconditionally set (or clear) the "ignore csum
-> > error" flag bit.
-> 
-> For functions inside e2fsck, why is this true?  All of the places
-> where we are are EXT2_FLAG_IGNORE_CSUM_ERRORS are places where we set
-> it, and then clear it after an ext2 call.  So as near as I can tell it
-> shouldn't matter.
-> 
-> I can understand why we need to be careful for functions inside
-> libext2fs, but in that particular case, none of the downstream
-> functions of ext2fs_read_inode_full() modify fs->flags.
-> 
-> So I'm really puzzled what problem this patch actually solves.  Was
-> this a theoretical concern, or was there something I missed?
+On 26 Jul 2014 18:31, "Theodore Ts'o" <tytso <tytso@mit.edu>@ 
+<tytso@mit.edu>mit.edu <tytso@mit.edu>> wrote:
+>
+> On Sat, Jul 26, 2014 at 11:33:29AM +0400, Azat Khuzhin wrote:
+> > On Thu, Jul 10, 2014 at 06:35:03PM +0400, Azat Khuzhin wrote:
+> > > [PATCH 1/5] lib: add EXT2_ prefix for SUPERBLOCK_{OFFSET,SIZE}
+> > > [PATCH 2/5] journal: use consts instead of 1024 and add helper for
+> > > [PATCH 3/5] tune2fs: remove_journal_device(): use the correct block
+> > > [PATCH 4/5] tune2fs: update journal super block when changing UUID
+> > > [PATCH 5/5] tune2fs: update journal users while updating fs UUID
+> >
+> > Hi Ted, any news on this?
+>
+> What branch was this against?  The first patch scared me, since making
+> global changes to rename a constant is very likely to cause all sorts
+> of patch conflicts, especially when I have to juggle patches across
+> the maint and next branches.  So that's why I put it off.
 
-It's mostly a theoretical concern -- rather than having to decide where it's ok
-to set the flag and unset it later vs. where we have to set the flag and then
-restore it to the previous value, I'd rather just be careful every time, so
-that the next time I read through this code I'll know that IGNORE_CSUM_ERRORS
-is always put back to its previous value and the other flags are left alone, no
-matter how much e2fsck or libext2fs might get refactored.
+AFAIR it was against master.
+Yeah massive rename will do a lot of conflicts, I've just rebased them
+against maint without first patch and sent new patchset (v3).
 
-One of those sites where we modify IGNORE_CSUM_ERRORS actually would
-incorrectly clobber the other flag bits that were set inside the library (I
-think it's the write_dir_block4 in pass2.c), so I decided to fix all of the
-sites.
+>
+> I know there are some real bug fixes here, and it's helpful it those
+> come *first*, and make the minimal changes necessary, so I can apply
+> it to the maint branch and not have to worry about potential merge
+> conflicts.
 
---D
-> 
->        		   	       	   	 - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+There is one patch that I decide to leave, while it's not bugfix -
+"journal: use consts instead of 1024 and add helper for journal with 1k
+blocksize" because it will add one helper that is really useful instead
+of hardcoding it in place in next patches.
+
+>
+> In general, for global renames/cleanups, especially ones that don't
+> actually fix any bugs, and which are there mostly for aesthetic
+> reasons, I'd much prefer to hold off making them until after 1.43.0 is
+> released, and after I've a abandoned making any further releases
+> (except for truely catastrophic bugs) on the 1.42.x branch.
+>
+
+Got it.
+
+Thanks.
+Azat.
