@@ -1,31 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [V4] misc: copy extended attributes in populate_fs
-Date: Sun, 27 Jul 2014 21:29:09 -0400
-Message-ID: <20140728012909.GA19632@thunk.org>
-References: <1405010678-993-1-git-send-email-ross.burton@intel.com>
+Subject: Re: [PATCH v2] ext4: fix wrong size computation in
+ ext4_mb_normalize_request()
+Date: Sun, 27 Jul 2014 22:26:57 -0400
+Message-ID: <20140728022657.GH6725@thunk.org>
+References: <alpine.LFD.2.00.1407110906340.2165@localhost.localdomain>
+ <1405067660-728-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, darrick.wong@oracle.com
-To: Ross Burton <ross.burton@intel.com>
+Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com
+To: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:59696 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:59734 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751243AbaG1B3P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 27 Jul 2014 21:29:15 -0400
+	id S1751505AbaG1C1D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 27 Jul 2014 22:27:03 -0400
 Content-Disposition: inline
-In-Reply-To: <1405010678-993-1-git-send-email-ross.burton@intel.com>
+In-Reply-To: <1405067660-728-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 10, 2014 at 05:44:38PM +0100, Ross Burton wrote:
-> When creating a file system using a source directory, also copy any extended
-> attributes that have been set.
+On Fri, Jul 11, 2014 at 04:34:20PM +0800, Xiaoguang Wang wrote:
+> As the member fe_len defined in struct ext4_free_extent is expressed as
+> number of clusters, the variable "size" computation is wrong, we need to
+> first translate fe_len to block number, then to bytes.
 > 
-> Signed-off-by: Ross Burton <ross.burton@intel.com>
-> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+> Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
 
-Applied, after I added configure tests to test for the Linux-specific
-system calls, and to add a fallback in case we are compiling on a
-non-Linux system.
+Thanks, applied.
 
-					- Ted
+						- Ted
