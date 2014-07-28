@@ -1,87 +1,85 @@
-From: "Vicentiu Neagoe" <vicentiu.neagoe@ni.com>
-Subject: Re: resilience against power loss
-Date: Mon, 28 Jul 2014 18:23:11 +0300
-Message-ID: <53D66ADF.14170.351043D9@vicentiu.neagoe.ni.com>
-References: <53CE9282.11182.166B0034@vicentiu.neagoe.ni.com>, <alpine.LFD.2.00.1407281044200.2077@localhost.localdomain>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: Question: errors=continue behaviour for failed external journal
+ device
+Date: Mon, 28 Jul 2014 09:09:34 -0700
+Message-ID: <20140728160934.GP8628@birch.djwong.org>
+References: <loom.20140727T010632-633@post.gmane.org>
+ <20140727000733.GV6725@thunk.org>
+ <alpine.LFD.2.00.1407281107530.2077@localhost.localdomain>
+ <20140728131742.GP6725@thunk.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	Vlad Dobrotescu <vlad@dobrotescu.ca>,
+	linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from skprod3.natinst.com ([130.164.80.24]:57882 "EHLO ni.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751046AbaG1PXP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Jul 2014 11:23:15 -0400
-Received: from us-aus-mgwout1.amer.corp.natinst.com (nb-chan1-1338.natinst.com [130.164.19.134])
-	by us-aus-skprod3.natinst.com (8.14.5/8.14.5) with ESMTP id s6SFNCdj004521
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Jul 2014 10:23:13 -0500
-In-reply-to: <alpine.LFD.2.00.1407281044200.2077@localhost.localdomain>
+Received: from aserp1040.oracle.com ([141.146.126.69]:25545 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751999AbaG1QJo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2014 12:09:44 -0400
+Content-Disposition: inline
+In-Reply-To: <20140728131742.GP6725@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 28 Jul 2014 at 10:48, Luk=E1s Czerner wrote:
-
-> On Tue, 22 Jul 2014, vicentiu.neagoe@ni.com wrote:
+On Mon, Jul 28, 2014 at 09:17:42AM -0400, Theodore Ts'o wrote:
+> On Mon, Jul 28, 2014 at 11:11:45AM +0200, Luk=C3=A1=C5=A1 Czerner wro=
+te:
+> >=20
+> > I very much agree with that, that's why I was quite surprised that =
+I
+> > found out recently that this is the default. I was living in the
+> > delusion that the default was ERRORS_RO for as long as I can rememb=
+er.
+> > So my question is, should we change it ? This really does not seem
+> > like a sane default.
 >=20
-> > Date: Tue, 22 Jul 2014 19:34:10 +0300
-> > From: vicentiu.neagoe@ni.com
-> > To: linux-ext4@vger.kernel.org
-> > Subject: resilience against power loss
-> >=20
-> > Hello,
-> >=20
-> > I'm trying to configure ext4 to prevent data corruption in case of =
-a=20
-> > power loss.
-> >=20
-> > I test by doing a cold reset right after writing to a file.
-> > I tried the nodelalloc option, but the file still becomes corrupted=
-=20
-> > with trailing garbage.
-> >=20
-> > Using ext3, I either get the old version of the file, or the new=20
-> > version, and there is no corruption.
-> >=20
-> > Does nodelalloc not guarantee data integrity?
-> >=20
-> > Are there any other options that provide complete resilience agains=
-t=20
-> > power loss?
+> Yeah, I've been thinking that this would be a good thing to change fo=
+r
+> 1.43.
 >=20
-> Well, that would be fsync. It'll make sure that your data actually re=
-ach
-> disk and that the disk actually write it from the cache to platters.
-
-I don't have control over how the applications were written, yet I=20
-need the system to not corrupt or lose data in case of a power loss.
-
-I have the partition mounted with the sync option but the issue still=20
-reproduces.
-Are there no options on ext4 to provide the same data integrity as=20
-data=3Dordered on ext3? I also tested with Btrfs and there is no data=20
-corruption on a power loss.
-
-Vicentiu
-
-> -Lukas
+> The only reason that errors=3Dcontinue was the default was for
+> historical reasons.  I could imagine some system administrators being
+> surprised when all of a sudden their production systems start getting
+> lots of EROFS errors getting reported by applications.  So I could
+> potentially imagine some Help Desks / Support folks at distributions
+> not being enthusiastic about such a change.
 >=20
-> >=20
-> > thanks
-> >=20
-> > Vicentiu
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >=20
+> Hmm.... we are starting to have some errors where we can allow the
+> system to stagger on, even if we need to disallow new allocations in
+> some block groups.  I wonder if it is worthwhile to have a "continue
+> for correctable errors".  The danger, of course, is that some errors,
+> even if they are correctable, (such as freeing a block which is
+> already freed), could be a hint that there are other fs corruptions,
+> not yet detected, that might lead to data loss if we reboot and fsck,
+> or remount readonly right away.  So the question is while there is
+> some value, is it worth the added complexity to add an
+> "errors=3Dcontinue-correctable" option?
+
+Back in the earlier 3.15 days when I was trying to figure out what was =
+going on
+with that corruption bug that Eric Whitney found, it was useful for the=
+ kernel
+to be able to stumble on with the non-broken block groups long enough t=
+o save
+the logs of what had happened.  (Laptops don't seem to have serial cons=
+oles...)
+
+In general I think it's worth the effort.
+
+(I'd shovel crash reports into pstore if I wasn't afraid of bricking UE=
+=46I.)
+
+--D
+>=20
+> 							- Ted
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
  in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
