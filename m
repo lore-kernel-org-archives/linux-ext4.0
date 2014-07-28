@@ -1,80 +1,56 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 04/18] e2fsck: fix rule-violating lblk->pblk mappings on
- bigalloc filesystems
-Date: Mon, 28 Jul 2014 01:28:29 -0700
-Message-ID: <20140728082829.GO8628@birch.djwong.org>
-References: <20140726003339.28334.54447.stgit@birch.djwong.org>
- <20140726003404.28334.18860.stgit@birch.djwong.org>
- <C91A6455-139E-4E6B-935F-F00332F76616@dilger.ca>
- <20140726202728.GM6725@thunk.org>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: resilience against power loss
+Date: Mon, 28 Jul 2014 10:48:05 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1407281044200.2077@localhost.localdomain>
+References: <53CE9282.11182.166B0034@vicentiu.neagoe.ni.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org
+To: vicentiu.neagoe@ni.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:45155 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751905AbaG1I2g (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2014 04:28:36 -0400
-Content-Disposition: inline
-In-Reply-To: <20140726202728.GM6725@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:41454 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750978AbaG1IsM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Jul 2014 04:48:12 -0400
+In-Reply-To: <53CE9282.11182.166B0034@vicentiu.neagoe.ni.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jul 26, 2014 at 04:27:28PM -0400, Theodore Ts'o wrote:
-> On Sat, Jul 26, 2014 at 12:02:10AM -0600, Andreas Dilger wrote:
-> > Wouldn't it be possible to use this information to determine which
-> > of the inodes sharing a duplicate mapped block is the right one
-> > and which inode is the bad one?
-> 
-> Yes, although I'm not sure it's worth the effort.  Putting in more
-> intelligent hueristics for using the metadata checksums will help all
-> file systems, and not just bigalloc file systems --- and I think it
-> would be easier.
-> 
-> > On Jul 25, 2014, at 18:34, "Darrick J. Wong" <darrick.wong@oracle.com> wrote:
-> > 
-> > As far as I can tell, logical block mappings on a bigalloc filesystem are
-> > supposed to follow a few constraints:
-> > 
-> > * The logical cluster offset must match the physical cluster offset.
-> > * A logical cluster may not map to multiple physical clusters.
-> > 
-> > Since the multiply-claimed block recovery code can be used to fix these
-> > problems, teach e2fsck to find these transgressions and fix them.
-> > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> 
-> Thanks, applied, but a couple of tips about writing test scripts.
-> 
-> You originally had this:
-> 
-> 	../misc/tune2fs -L test_fs $TMPFILE
-> 	../e2fsck/e2fsck -fy $TMPFILE > $OUT
-> 	../e2fsck/e2fsck -fy $TMPFILE >> $OUT
-> 	../e2fsck/e2fsck -fy $TMPFILE >> $OUT
-> 
-> This spits out the version numbers to stderr, which is ugly.  I fixed
-> up the binary image file to have the test_fs label, and I changed the
-> lines above to:
-> 
-> 	$FSCK -fy $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed > $OUT
-> 	$FSCK -fy $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT
-> 	$FSCK -fy $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT
-> 
-> The advantage of doing things this way is that any errors get captured
-> in the log file.  Also, if the user has requested valgrind be used,
-> that gets reflected in the value of $FSCK.
+On Tue, 22 Jul 2014, vicentiu.neagoe@ni.com wrote:
 
-Got it, thanks.  I'll do that next time.
+> Date: Tue, 22 Jul 2014 19:34:10 +0300
+> From: vicentiu.neagoe@ni.com
+> To: linux-ext4@vger.kernel.org
+> Subject: resilience against power loss
+> 
+> Hello,
+> 
+> I'm trying to configure ext4 to prevent data corruption in case of a 
+> power loss.
+> 
+> I test by doing a cold reset right after writing to a file.
+> I tried the nodelalloc option, but the file still becomes corrupted 
+> with trailing garbage.
+> 
+> Using ext3, I either get the old version of the file, or the new 
+> version, and there is no corruption.
+> 
+> Does nodelalloc not guarantee data integrity?
+> 
+> Are there any other options that provide complete resilience against 
+> power loss?
 
---D
+Well, that would be fsync. It'll make sure that your data actually reach
+disk and that the disk actually write it from the cache to platters.
+
+-Lukas
+
 > 
-> Cheers,
+> thanks
 > 
-> 					- Ted
+> Vicentiu
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
