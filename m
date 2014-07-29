@@ -1,70 +1,58 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: add sysfs entry showing whether the fs contains
- errors
-Date: Tue, 29 Jul 2014 10:49:03 -0400
-Message-ID: <20140729144903.GD2256@thunk.org>
-References: <1399382357-12703-1-git-send-email-lczerner@redhat.com>
- <20140506174301.GQ8434@birch.djwong.org>
- <20140506192325.GB5012@thunk.org>
- <alpine.LFD.2.00.1405071040240.2128@localhost.localdomain>
- <20140520094741.GG11499@pcnci.linuxbox.cz>
- <alpine.LFD.2.00.1405201150180.2162@localhost.localdomain>
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: Re: dump ext4 performance degrades linearly as disk fills
+Date: Tue, 29 Jul 2014 16:55:27 -0400
+Message-ID: <53D80A3F.5010807@ubuntu.com>
+References: <d5c373beb24a9da86986ea43afe13594@josephdwagner.info>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Nikola Ciprich <nikola.ciprich@linuxbox.cz>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	linux-ext4@vger.kernel.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: "Joseph D. Wagner" <joe@josephdwagner.info>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34505 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751979AbaG2OtK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Jul 2014 10:49:10 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1405201150180.2162@localhost.localdomain>
+Received: from mail-yk0-f177.google.com ([209.85.160.177]:56917 "EHLO
+	mail-yk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753470AbaG2Uzu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jul 2014 16:55:50 -0400
+Received: by mail-yk0-f177.google.com with SMTP id 79so155532ykr.8
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Jul 2014 13:55:49 -0700 (PDT)
+In-Reply-To: <d5c373beb24a9da86986ea43afe13594@josephdwagner.info>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 20, 2014 at 11:56:53AM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> On Tue, 20 May 2014, Nikola Ciprich wrote:
->=20
-> > Date: Tue, 20 May 2014 11:47:41 +0200
-> > From: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
-> > To: Luk=C3=A1=C5=A1 Czerner <lczerner@redhat.com>
-> > Cc: Theodore Ts'o <tytso@mit.edu>, Darrick J. Wong <darrick.wong@or=
-acle.com>,
-> >     linux-ext4@vger.kernel.org, Nikola Ciprich <nikola.ciprich@linu=
-xbox.cz>
-> > Subject: Re: [PATCH] ext4: add sysfs entry showing whether the fs c=
-ontains
-> >     errors
-> >=20
-> > Hello Luk=C3=A1=C5=A1,
-> >=20
-> > just wanted to ask about the status of this patch.. it didn't make =
-it
-> > to git yet, did it? Do you plan to make some changes to it? I'm eag=
-er
-> > to test it ;-)
->=20
-> No it did not and it would not given that there was not a merge
-> window since then. I've been distracted by other work, but I'll put
-> you in cc when I have a new patch - yes I plan to change the format
-> of the output to be more compliant with sysfs rules.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Hey Lukas,
+On 6/19/2014 2:42 PM, Joseph D. Wagner wrote:
+> Hello Theo.
+> 
+> I know you're working-for-free and have other things to do besides 
+> work on my low priority problem.  However, I haven't heard from
+> you. I just wanted to follow-up and make sure you got my
+> attachment, not that anything fell through the cracks so-to-speak.
 
-I've been looking at old patches still in the ext4 patchwork queue,
-and I came across this.  Just a quick reminder you were planning on
-updating this patch at some point when you have time.
+Just thought I'd suggest two things you might try:
 
-Cheers,
+1)  dump to /dev/null to make sure it is a read problem, and not a
+problem writing the output file.
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+2)  You might try throwing e2defrag at the fs and see if that helps (
+after a full backup of course ).  In the past I have seen significant
+slowness when dumping due to my Maildir being fragmented all to hell.
+ If you have any sets of large numbers of relatively small files, that
+could be what you are seeing.  An e2defrag pass will completely clear
+this up.
+
+
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.17 (MingW32)
+Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+
+iQEcBAEBAgAGBQJT2Ao/AAoJEI5FoCIzSKrwsOYH/R/k7GLCUEV59/didyUml6jC
+MMZ3LlHBcFZQeWrZ8f0VlIJ46Kc3Cc7Xmc82GDFbhg6m+m2vkz48/78wj+CpQvn3
+Rw/l6aJw9pC6c6riA6OzXdzYESJZI7njH+IEOJFJdtziUrBRcZ6W8UpIxkZ3DAWl
+66CGz7UxfBYLme4RftIe1+dz6YKORNlwQ3Mnu16nocsggkA09gHbGqYQvMIpWGdj
+3YiGhg95AT/KCpoyUoxkVq79tzay6c1JPn4mMSB2mOZpTx99oHd9WUk1yasIghk0
+4yDOPtO2G1ZN0Mda3C3+cSs/FKoJu1U7ZDSklEGHlFy+cI1EZRi32+PLiMwfS+o=
+=/SM9
+-----END PGP SIGNATURE-----
