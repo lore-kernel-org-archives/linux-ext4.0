@@ -1,103 +1,58 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: refactor ext4_move_extents code base v2
-Date: Tue, 29 Jul 2014 10:25:56 -0400
-Message-ID: <20140729142556.GB2256@thunk.org>
-References: <1406062822-2883-1-git-send-email-dmonakhov@openvz.org>
+Subject: Re: [PATCH] ext4: fix COLLAPSE RANGE test failure when bigalloc is
+ enable
+Date: Tue, 29 Jul 2014 10:47:16 -0400
+Message-ID: <20140729144716.GC2256@thunk.org>
+References: <001001cf7fcc$34f3c2c0$9edb4840$@samsung.com>
+ <20140617220900.GJ24890@thunk.org>
+ <003a01cf8b7a$33bd03d0$9b370b70$@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: 'linux-ext4' <linux-ext4@vger.kernel.org>,
+	'Ashish Sangwan' <a.sangwan@samsung.com>
+To: Namjae Jeon <namjae.jeon@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34461 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:34495 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753852AbaG2OZ7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Jul 2014 10:25:59 -0400
+	id S1753899AbaG2OrZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Jul 2014 10:47:25 -0400
 Content-Disposition: inline
-In-Reply-To: <1406062822-2883-1-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <003a01cf8b7a$33bd03d0$9b370b70$@samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 23, 2014 at 01:00:22AM +0400, Dmitry Monakhov wrote:
-> ext4_move_extents is too complex for review. It has duplicate almost each funciton
-> available in the rest of other codebase. It has useless artifical restriction
-> orig_offset == donor_offset. But in fact logic of ext4_move_extents
-> is very simple:
+On Thu, Jun 19, 2014 at 01:51:58PM +0900, Namjae Jeon wrote:
+>  On Wed, Jun 04, 2014 at 05:08:45PM +0900, Namjae Jeon wrote:
+> > > Blocks in collapse range should be collapsed per cluster unit when bigalloc
+> > > is enable. If bigalloc is not enable, EXT4_CLUSTER_SIZE will be same with
+> > > EXT4_BLOCK_SIZE.
+> > >
+> > > Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+> > > Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+> > 
+> > Correct me if I'm wrong, but this patch enables COLLAPSE_RANGE when
+> > bigalloc is enabled.  The commit description (and the one-line
+> > summary) should emphasize this.
+> Yes, You're right. I will update description.
 
-Thanks for working to clean this up.  ext4_move_extents() is a
-complicated hot mess.
+I don't think I saw an updated description, so I've taken care of
+updating the description and applied the patch:
 
+commit 3c17714e61314b101fb9bb671e7191ef1e9e63f3
+Author: Namjae Jeon <namjae.jeon@samsung.com>
+Date:   Tue Jul 29 10:45:31 2014 -0400
 
-> +
-> +int
-> +ext4_swap_extents(handle_t *handle, struct inode *o_inode,
-> +		     struct inode *d_inode, ext4_lblk_t o_off, ext4_lblk_t d_off,
-> +		     ext4_lblk_t count, int *erp)
-> +{
-> +	struct ext4_ext_path *o_path = NULL;
-> +	struct ext4_ext_path *d_path = NULL;
-> +	int replaced_count = 0;
+    ext4: fix COLLAPSE RANGE test for bigalloc file systems
+    
+    Blocks in collapse range should be collapsed per cluster unit when
+    bigalloc is enable. If bigalloc is not enable, EXT4_CLUSTER_SIZE will
+    be same with EXT4_BLOCK_SIZE.
+    
+    With this bug fixed, patch enables COLLAPSE_RANGE for bigalloc, which
+    fixes a large number of xfstest failures which use fsx.
+    
+    Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+    Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-We should document when the locking requirements are for
-ext4_swap_extents.  Better yet, there should an assertion here so we
-BUG if the appropriate locks (i_data_sem, i_mutex, etc.) aren't taken.
-
-Why are you using the parameter names o_off and d_off?  "off" can make
-someone think of byte offsets (which is where my mind went at first).
-Maybe o_lblk and d_lblk instead?
-
-> +		/* ext4_split_extent_at() may retult in leaf extent split,
-> +		 * path must to be revalidated. */
-> +		if (split)
-> +			goto  repeat;
-                            ^^^
-Whitespace?
-
-> +		/* If extents has different length we have to update i_blocks */
-
-Why would the extents ever have different lengths?  Should this
-(already) be disallowed above?
-
-
-> +	repeat:
-> +		if (o_path) {
-> +			ext4_ext_drop_refs(o_path);
-> +			kfree(o_path);
-> +			o_path = NULL;
-> +		}
-> +		if (d_path) {
-> +			ext4_ext_drop_refs(d_path);
-> +			kfree(d_path);
-> +			d_path = NULL;
-> +		}
-> +		o_off += len;
-> +		d_off += len;
-> +		replaced_count += len;
-> +		count -= len;
-> +	}
-
-Why not swap things so this reads:
-
-		o_off += len;
-		d_off += len;
-		replaced_count += len;
-		count -= len;
-	repeat:
-		if (o_path) {
-			ext4_ext_drop_refs(o_path);
-			kfree(o_path);
-			o_path = NULL;
-		}
-		if (d_path) {
-			ext4_ext_drop_refs(d_path);
-			kfree(d_path);
-			d_path = NULL;
-		}
-	}
-
-This way we don't have to rely on len == 0, and in one of the places
-where the code currently reads "{ len = 0; goto repeat; }", the len=0;
-assignment can be dropped.
-
-Cheers,
-
-						- Ted
+							- Ted
