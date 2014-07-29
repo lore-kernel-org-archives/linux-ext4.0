@@ -1,46 +1,23 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Is warn_on() right reply for i/o error?
-Date: Tue, 29 Jul 2014 14:05:55 +0200
-Message-ID: <20140729120555.GB5944@quack.suse.cz>
-References: <20140724152721.GA4771@amd.pavel.ucw.cz>
- <20140724192938.GM6673@thunk.org>
+From: "Noemi Alvarez" <nimvarez@gmail.com>
+Subject: Hello
+Date: Tue, 29 Jul 2014 10:23:20 +0200
+Message-ID: <adf9c84deea711c6326c744d8c46dc8a.squirrel__10057.4463759132$1406636029$gmane$org@acemedia.mk>
+Reply-To: nimvarez@live.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Pavel Machek <pavel@ucw.cz>, linux-kernel@vger.kernel.org,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, jack@suse.cz
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20140724192938.GM6673@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain;charset=UTF8
+Content-Transfer-Encoding: 8bit
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from dns.inelhost.com ([37.26.96.2]:34598 "EHLO inelhost.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753709AbaG2MNH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Jul 2014 08:13:07 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 24-07-14 15:29:38, Ted Tso wrote:
-> On Thu, Jul 24, 2014 at 05:27:22PM +0200, Pavel Machek wrote:
-> > Hi!
-> > 
-> > Just... I know, I should not be unscrewing hard drive cover while
-> > operating.
-> > 
-> > But on the other hand... WARN_ON() does not sound like right reply for
-> > a disk failure... right?
-> 
-> Actually, it can be worse than that.  If a hard drive disappears out
-> from under you while writeback is happening, it's possible to get
-> crashes in bdi_writeack_workfn() because you can have races between
-> bdi_unregister() and bdi_writeback_workfn(), since the latter requeues
-> itself and flush_delayed_work() can return while
-> bdi_writeback_workfn() is still executing.
-  This should be fixed by 5acda9d12dcf1ad0d9a5a2a7c646de3472fa7555 I wrote
-in April. But there are certainly other races in that code...
 
-> This looks like it's a related problem, where the block device gets
-> unregistered (and this happens in the block device layer without it
-> telling the file system that the disk drive is about to disappear out
-> from under it), and occasionally, Bad Stuff Happens.  :-(
-  Yeah.
+I want to keep up with you with hope for friendship if you are interested.
+If you don't mind i will like you to write me back. I am waiting to read
+from you, because i have something important and urgent to discuss with
+you. I will also send some of my beautiful photos to you.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
