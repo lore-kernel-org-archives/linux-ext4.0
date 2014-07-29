@@ -1,120 +1,111 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH 2/2] tests: fix f_badcluster output formatting
-Date: Tue, 29 Jul 2014 17:30:40 -0600
-Message-ID: <1406676640-5627-2-git-send-email-adilger@dilger.ca>
-References: <1406676640-5627-1-git-send-email-adilger@dilger.ca>
+Subject: [PATCH 1/2] misc: quiet signed/unsigned charactr compiler warnings
+Date: Tue, 29 Jul 2014 17:30:39 -0600
+Message-ID: <1406676640-5627-1-git-send-email-adilger@dilger.ca>
 Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from smtp-out-04.shaw.ca ([64.59.134.12]:9286 "EHLO
 	smtp-out-04.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754507AbaG2Xan (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jul 2014 19:30:43 -0400
-In-Reply-To: <1406676640-5627-1-git-send-email-adilger@dilger.ca>
+	with ESMTP id S1751527AbaG2Xam (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jul 2014 19:30:42 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The f_badcluster output format depends on how libreadline formats
-and outputs the commands read from stdin.  Instead of trying to
-handle these differences, use an input command file, which does
-not depend on external components to be consistent.
+Quiet warnings about signed vs. unsigned character mismatch.
+Use __u8 for storing UUIDs instead of char to match the superblock
+s_uuid field.
 
 Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 ---
- tests/f_badcluster/expect |   16 ++++++++--------
- tests/f_badcluster/script |    5 ++++-
- 2 files changed, 12 insertions(+), 9 deletions(-)
+ debugfs/debugfs.c |    2 +-
+ misc/tune2fs.c    |   21 ++++++++++++---------
+ 2 files changed, 13 insertions(+), 10 deletions(-)
 
-diff --git a/tests/f_badcluster/expect b/tests/f_badcluster/expect
-index 5a60cf3..6cfffb7 100644
---- a/tests/f_badcluster/expect
-+++ b/tests/f_badcluster/expect
-@@ -109,7 +109,7 @@ Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
- Pass 5: Checking group summary information
- test_fs: 18/128 files (5.6% non-contiguous), 1248/2048 blocks
--debugfs:  stat /a
-+debugfs: stat /a
- Inode: 12   Type: regular    Mode:  0644   Flags: 0x80000
- Generation: 1117152157    Version: 0x00000001
- User:     0   Group:     0   Size: 3072
-@@ -121,7 +121,7 @@ atime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
- mtime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
- EXTENTS:
- (0-1):1136-1137, (2):1138
--debugfs:  stat /b
-+debugfs: stat /b
- Inode: 13   Type: regular    Mode:  0644   Flags: 0x80000
- Generation: 1117152158    Version: 0x00000001
- User:     0   Group:     0   Size: 3072
-@@ -133,7 +133,7 @@ atime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
- mtime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
- EXTENTS:
- (0-2):1152-1154
--debugfs:  stat /c
-+debugfs: stat /c
- Inode: 14   Type: regular    Mode:  0644   Flags: 0x80000
- Generation: 1117152159    Version: 0x00000001
- User:     0   Group:     0   Size: 3072
-@@ -145,7 +145,7 @@ atime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
- mtime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
- EXTENTS:
- (0-1):1216-1217, (2):1218
--debugfs:  stat /d
-+debugfs: stat /d
- Inode: 15   Type: regular    Mode:  0644   Flags: 0x0
- Generation: 1117152160    Version: 0x00000001
- User:     0   Group:     0   Size: 3072
-@@ -159,7 +159,7 @@ BLOCKS:
- (TIND):1650
- TOTAL: 1
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index dc925de..00c2d38 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -2153,7 +2153,7 @@ void do_imap(int argc, char *argv[])
+ void do_idump(int argc, char *argv[])
+ {
+ 	ext2_ino_t	ino;
+-	char		*buf;
++	unsigned char	*buf;
+ 	errcode_t	err;
+ 	int		isize;
  
--debugfs:  stat /e
-+debugfs: stat /e
- Inode: 16   Type: regular    Mode:  0644   Flags: 0x80000
- Generation: 1117152161    Version: 0x00000001
- User:     0   Group:     0   Size: 6144
-@@ -171,7 +171,7 @@ atime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
- mtime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
- EXTENTS:
- (0-2):1664-1666, (5):1669
--debugfs:  stat /f
-+debugfs: stat /f
- Inode: 17   Type: regular    Mode:  0644   Flags: 0x80000
- Generation: 1117152162    Version: 0x00000001
- User:     0   Group:     0   Size: 3072
-@@ -183,7 +183,7 @@ atime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
- mtime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
- EXTENTS:
- (0):1232, (1):1233, (2):1234
--debugfs:  stat /g
-+debugfs: stat /g
- Inode: 18   Type: regular    Mode:  0644   Flags: 0x80000
- Generation: 1117152163    Version: 0x00000001
- User:     0   Group:     0   Size: 3072
-@@ -195,4 +195,4 @@ atime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
- mtime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
- EXTENTS:
- (0-2):1680-1682, (3):1683
--debugfs:  
-\ No newline at end of file
-+debugfs: quit
-diff --git a/tests/f_badcluster/script b/tests/f_badcluster/script
-index 74498a4..56b4b7f 100644
---- a/tests/f_badcluster/script
-+++ b/tests/f_badcluster/script
-@@ -6,7 +6,10 @@ if test -x $DEBUGFS_EXE; then
- 	$FSCK -fy $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed > $OUT
- 	$FSCK -fy $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT
- 	$FSCK -fy $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT
--	for i in a b c d e f g; do echo "stat /$i"; done | $DEBUGFS_EXE $TMPFILE >> $OUT
-+	for i in a b c d e f g; do echo "stat /$i"; done > $TMPFILE.tmp
-+	echo "quit" >> $TMPFILE.tmp
-+	$DEBUGFS_EXE -f $TMPFILE.tmp $TMPFILE >> $OUT
-+	rm -f $TMPFILE.tmp
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 0c1feb1..ffa42ba 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -207,8 +207,8 @@ static int get_journal_sb(ext2_filsys jfs, char buf[SUPERBLOCK_SIZE])
+ 	return 0;
+ }
  
- 	cmp -s $OUT $EXP
- 	status=$?
+-static void *
+-journal_user(char uuid[UUID_SIZE], char s_users[JFS_USERS_SIZE], int nr_users)
++static __u8 *journal_user(__u8 uuid[UUID_SIZE], __u8 s_users[JFS_USERS_SIZE],
++			  int nr_users)
+ {
+ 	int i;
+ 	for (i = 0; i < nr_users; i++) {
+@@ -1925,12 +1925,13 @@ static int tune2fs_setup_tdb(const char *name, io_manager *io_ptr)
+ }
+ 
+ int
+-fs_update_journal_user(struct ext2_super_block *sb, char old_uuid[UUID_SIZE])
++fs_update_journal_user(struct ext2_super_block *sb, __u8 old_uuid[UUID_SIZE])
+ {
+ 	int retval, nr_users, start;
+ 	journal_superblock_t *jsb;
+ 	ext2_filsys jfs;
+-	char *j_uuid, *journal_path;
++	__u8 *j_uuid;
++	char *journal_path;
+ 	char uuid[UUID_STR_SIZE];
+ 	char buf[SUPERBLOCK_SIZE];
+ 
+@@ -1953,7 +1954,8 @@ fs_update_journal_user(struct ext2_super_block *sb, char old_uuid[UUID_SIZE])
+ 		return retval;
+ 	}
+ 
+-	if ((retval = get_journal_sb(jfs, buf))) {
++	retval = get_journal_sb(jfs, buf);
++	if (retval != 0) {
+ 		if (retval == EXT2_ET_UNSUPP_FEATURE)
+ 			fprintf(stderr, _("%s is not a journal device.\n"),
+ 				journal_path);
+@@ -1964,7 +1966,8 @@ fs_update_journal_user(struct ext2_super_block *sb, char old_uuid[UUID_SIZE])
+ 	/* Find the filesystem UUID */
+ 	nr_users = ntohl(jsb->s_nr_users);
+ 
+-	if (!(j_uuid = journal_user(old_uuid, jsb->s_users, nr_users))) {
++	j_uuid = journal_user(old_uuid, jsb->s_users, nr_users);
++	if (j_uuid == NULL) {
+ 		fputs(_("Filesystem's UUID not found on journal device.\n"),
+ 		      stderr);
+ 		return EXT2_ET_LOAD_EXT_JOURNAL;
+@@ -1974,8 +1977,8 @@ fs_update_journal_user(struct ext2_super_block *sb, char old_uuid[UUID_SIZE])
+ 
+ 	start = ext2fs_journal_sb_start(jfs->blocksize);
+ 	/* Write back the journal superblock */
+-	if ((retval = io_channel_write_blk64(jfs->io, start,
+-	    -SUPERBLOCK_SIZE, buf))) {
++	retval = io_channel_write_blk64(jfs->io, start, -SUPERBLOCK_SIZE, buf);
++	if (retval != 0) {
+ 		com_err(program_name, retval,
+ 			"while writing journal superblock.");
+ 		return retval;
+@@ -2274,7 +2277,7 @@ retry_open:
+ 		int set_csum = 0;
+ 		dgrp_t i;
+ 		char buf[SUPERBLOCK_SIZE];
+-		char old_uuid[UUID_SIZE];
++		__u8 old_uuid[UUID_SIZE];
+ 
+ 		if (sb->s_feature_ro_compat &
+ 		    EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
 -- 
 1.7.3.4
 
