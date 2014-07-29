@@ -1,58 +1,70 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix COLLAPSE RANGE test failure when bigalloc is
- enable
-Date: Tue, 29 Jul 2014 10:47:16 -0400
-Message-ID: <20140729144716.GC2256@thunk.org>
-References: <001001cf7fcc$34f3c2c0$9edb4840$@samsung.com>
- <20140617220900.GJ24890@thunk.org>
- <003a01cf8b7a$33bd03d0$9b370b70$@samsung.com>
+Subject: Re: [PATCH] ext4: add sysfs entry showing whether the fs contains
+ errors
+Date: Tue, 29 Jul 2014 10:49:03 -0400
+Message-ID: <20140729144903.GD2256@thunk.org>
+References: <1399382357-12703-1-git-send-email-lczerner@redhat.com>
+ <20140506174301.GQ8434@birch.djwong.org>
+ <20140506192325.GB5012@thunk.org>
+ <alpine.LFD.2.00.1405071040240.2128@localhost.localdomain>
+ <20140520094741.GG11499@pcnci.linuxbox.cz>
+ <alpine.LFD.2.00.1405201150180.2162@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: 'linux-ext4' <linux-ext4@vger.kernel.org>,
-	'Ashish Sangwan' <a.sangwan@samsung.com>
-To: Namjae Jeon <namjae.jeon@samsung.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Nikola Ciprich <nikola.ciprich@linuxbox.cz>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34495 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:34505 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753899AbaG2OrZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Jul 2014 10:47:25 -0400
+	id S1751979AbaG2OtK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Jul 2014 10:49:10 -0400
 Content-Disposition: inline
-In-Reply-To: <003a01cf8b7a$33bd03d0$9b370b70$@samsung.com>
+In-Reply-To: <alpine.LFD.2.00.1405201150180.2162@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 19, 2014 at 01:51:58PM +0900, Namjae Jeon wrote:
->  On Wed, Jun 04, 2014 at 05:08:45PM +0900, Namjae Jeon wrote:
-> > > Blocks in collapse range should be collapsed per cluster unit when bigalloc
-> > > is enable. If bigalloc is not enable, EXT4_CLUSTER_SIZE will be same with
-> > > EXT4_BLOCK_SIZE.
-> > >
-> > > Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> > > Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-> > 
-> > Correct me if I'm wrong, but this patch enables COLLAPSE_RANGE when
-> > bigalloc is enabled.  The commit description (and the one-line
-> > summary) should emphasize this.
-> Yes, You're right. I will update description.
+On Tue, May 20, 2014 at 11:56:53AM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> On Tue, 20 May 2014, Nikola Ciprich wrote:
+>=20
+> > Date: Tue, 20 May 2014 11:47:41 +0200
+> > From: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
+> > To: Luk=C3=A1=C5=A1 Czerner <lczerner@redhat.com>
+> > Cc: Theodore Ts'o <tytso@mit.edu>, Darrick J. Wong <darrick.wong@or=
+acle.com>,
+> >     linux-ext4@vger.kernel.org, Nikola Ciprich <nikola.ciprich@linu=
+xbox.cz>
+> > Subject: Re: [PATCH] ext4: add sysfs entry showing whether the fs c=
+ontains
+> >     errors
+> >=20
+> > Hello Luk=C3=A1=C5=A1,
+> >=20
+> > just wanted to ask about the status of this patch.. it didn't make =
+it
+> > to git yet, did it? Do you plan to make some changes to it? I'm eag=
+er
+> > to test it ;-)
+>=20
+> No it did not and it would not given that there was not a merge
+> window since then. I've been distracted by other work, but I'll put
+> you in cc when I have a new patch - yes I plan to change the format
+> of the output to be more compliant with sysfs rules.
 
-I don't think I saw an updated description, so I've taken care of
-updating the description and applied the patch:
+Hey Lukas,
 
-commit 3c17714e61314b101fb9bb671e7191ef1e9e63f3
-Author: Namjae Jeon <namjae.jeon@samsung.com>
-Date:   Tue Jul 29 10:45:31 2014 -0400
+I've been looking at old patches still in the ext4 patchwork queue,
+and I came across this.  Just a quick reminder you were planning on
+updating this patch at some point when you have time.
 
-    ext4: fix COLLAPSE RANGE test for bigalloc file systems
-    
-    Blocks in collapse range should be collapsed per cluster unit when
-    bigalloc is enable. If bigalloc is not enable, EXT4_CLUSTER_SIZE will
-    be same with EXT4_BLOCK_SIZE.
-    
-    With this bug fixed, patch enables COLLAPSE_RANGE for bigalloc, which
-    fixes a large number of xfstest failures which use fsx.
-    
-    Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-    Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cheers,
 
-							- Ted
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
