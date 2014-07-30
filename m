@@ -1,81 +1,168 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH] mke2fs: fix flexbg check to allow small filesystems
-Date: Wed, 30 Jul 2014 02:30:22 -0600
-Message-ID: <1406709022-28957-1-git-send-email-adilger@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>,
-	Andreas Dilger <andreas.dilger@intel.com>
-To: tytso@mit.edu
+From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+Subject: Re: [PATCH v2] ext4: regression test for wrong assert in ext4_mb_normalize_request()
+Date: Wed, 30 Jul 2014 17:26:17 +0800
+Message-ID: <53D8BA39.9080205@cn.fujitsu.com>
+References: <53CC87A0.1060204@cn.fujitsu.com> <1405913225-1920-1-git-send-email-wangxg.fnst@cn.fujitsu.com> <alpine.LFD.2.00.1407231048490.2207@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: <fstests@vger.kernel.org>, <linux-ext4@vger.kernel.org>
+To: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-02.shaw.ca ([64.59.136.138]:49224 "EHLO
-	smtp-out-02.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750894AbaG3Ij7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jul 2014 04:39:59 -0400
+Received: from cn.fujitsu.com ([59.151.112.132]:25216 "EHLO
+	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750999AbaG3J1C convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jul 2014 05:27:02 -0400
+In-Reply-To: <alpine.LFD.2.00.1407231048490.2207@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix the flexbg check added in d988201ef9c so that it allows common
-small filesystem configurations to succeed instead of reporting
-a cryptic error message and failing due to a bad flex_bg layout:
+Hi,
 
-    mke2fs -O flex_bg -b 4096 -I 1024 -F /tmp/tt 79106
-    mke2fs 1.42.11 (09-Jul-2014)
-    /tmp/tt: Invalid argument passed to ext2 library while setting
-             up superblock
+On 07/23/2014 05:01 PM, Luk=E1=9A Czerner wrote:
+> On Mon, 21 Jul 2014, Xiaoguang Wang wrote:
+>=20
+>>=20
+>> +# this test requires the bigalloc feature to be available in mkfs.e=
+xt4
+>> +#
+>> +_require_ext4_mkfs_bigalloc()
+>> +{
+>> +	_scratch_mkfs_ext4 -O bigalloc >/dev/null 2>&1 \
+>> +	   || _notrun "mkfs.ext4 doesn't have bigalloc feature"
+>> +}
+>> +
+>> +# this test requires the ext4 kernel support bigalloc feature
+>> +#
+>> +_require_ext4_bigalloc()
+>> +{
+>> +	_scratch_mkfs_ext4 -O bigalloc >/dev/null 2>&1
+>> +	_scratch_mount >/dev/null 2>&1 \
+>> +	   || _notrun "Ext4 kernel doesn't support bigalloc feature"
+>> +	umount $SCRATCH_MNT
+>> +}
+>=20
+> Even though we do not need the distinction here I can see that it
+> might be useful when testing mkfs alone, also I can see that xfs is
+> doing the same thing so I guess we can be consistent.
+>=20
+> _scratch_mkfs_ext4 might fail due to incompatible mkfs
+> options being passed in with MKFS_OPTIONS. This can be resolved by
+> ignoring MKFS_OPTIONS if it fails the first time in
+> _scratch_mkfs_ext4() see _scratch_mkfs_xfs().
 
-This check in ext2fs_initialize() was added to prevent the metadata
-from being allocated beyond the end of the filesystem, but it is
-also causing a wide range of failures for small filesystems.
+Got it, new version will be sent soon, thanks!
 
-Fix this by shrinking the flex_bg factor by half repeatedly until it
-would be expected to fit into the current filesystem size, rather
-than return an error as previously done.  Ideally it would only try
-a smaller flex_bg factor if the default value was being used, and had
-not been specified on the command line, but it isn't possible to see
-if this is the case in ext2fs_initialize() or not.
+Regards,
+Xiaoguang Wang
+>=20
+> Also I feel that the same should be done with _scratch_mount because
+> again we can have incompatible mount options in MOUNT_OPTIONS, or
+> SCRATCH_OPTIONS. But that's a different issue entirely.
+>=20
+> Thanks!
+> -Lukas
+>=20
+>=20
+>> +
+>>  # this test requires the finobt feature to be available in mkfs.xfs
+>>  #
+>>  _require_xfs_mkfs_finobt()
+>> diff --git a/tests/ext4/003 b/tests/ext4/003
+>> new file mode 100755
+>> index 0000000..4ca282f
+>> --- /dev/null
+>> +++ b/tests/ext4/003
+>> @@ -0,0 +1,55 @@
+>> +#! /bin/bash
+>> +# FS QA Test No. ext4/003
+>> +#
+>> +# Regression test for commit:
+>> +# b5b6077 ext4: fix wrong assert in ext4_mb_normalize_request()
+>> +# This testcase checks whether this bug has been fixed.
+>> +#
+>> +#------------------------------------------------------------------=
+-----
+>> +# Copyright (c) 2014 Fujitsu.  All Rights Reserved.
+>> +#
+>> +# This program is free software; you can redistribute it and/or
+>> +# modify it under the terms of the GNU General Public License as
+>> +# published by the Free Software Foundation.
+>> +#
+>> +# This program is distributed in the hope that it would be useful,
+>> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+>> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+>> +# GNU General Public License for more details.
+>> +#------------------------------------------------------------------=
+-----
+>> +
+>> +seq=3D`basename $0`
+>> +seqres=3D$RESULT_DIR/$seq
+>> +echo "QA output created by $seq"
+>> +
+>> +trap "_cleanup; exit \$status" 0 1 2 3 15
+>> +
+>> +_cleanup()
+>> +{
+>> +    _scratch_unmount
+>> +}
+>> +
+>> +# get standard environment, filters and checks
+>> +. ./common/rc
+>> +. ./common/filter
+>> +
+>> +# real QA test starts here
+>> +_supported_fs ext4
+>> +_supported_os Linux
+>> +
+>> +_require_scratch
+>> +_require_ext4_mkfs_bigalloc
+>> +_require_ext4_bigalloc
+>> +
+>> +rm -f $seqres.full
+>> +
+>> +yes | mkfs.ext4 -O bigalloc -C 65536  -g 256 $SCRATCH_DEV 512m \
+>> +    >> $seqres.full 2>&1
+>=20
+> Here you should really be using
+>=20
+> _scratch_mkfs_ext4
+>=20
+>> +_scratch_mount || _fail "couldn't mount fs"
+>> +
+>> +dd if=3D/dev/zero of=3D$SCRATCH_MNT/testfile bs=3D1M count=3D256 2>=
+&1 | _filter_dd
+>> +
+>> +echo "Slience is golden"
+>> +
+>> +status=3D0
+>> +exit
+>> diff --git a/tests/ext4/003.out b/tests/ext4/003.out
+>> new file mode 100644
+>> index 0000000..07f245d
+>> --- /dev/null
+>> +++ b/tests/ext4/003.out
+>> @@ -0,0 +1,2 @@
+>> +QA output created by 003
+>> +Slience is golden
+>> diff --git a/tests/ext4/group b/tests/ext4/group
+>> index 7e66035..152196c 100644
+>> --- a/tests/ext4/group
+>> +++ b/tests/ext4/group
+>> @@ -5,6 +5,7 @@
+>>  #
+>>  001 auto prealloc quick
+>>  002 auto quick prealloc
+>> +003 auto quick
+>>  271 auto rw quick
+>>  301 aio dangerous ioctl rw stress
+>>  302 aio dangerous ioctl rw stress
+>>
+> .
+>=20
 
-Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
----
- lib/ext2fs/initialize.c |   13 +++++++------
- 1 files changed, 7 insertions(+), 6 deletions(-)
-
-diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
-index de358fd..d58a664 100644
---- a/lib/ext2fs/initialize.c
-+++ b/lib/ext2fs/initialize.c
-@@ -91,7 +91,7 @@ errcode_t ext2fs_initialize(const char *name, int flags,
- 	unsigned int	rem;
- 	unsigned int	overhead = 0;
- 	unsigned int	ipg;
--	unsigned int	flexbg_size;
-+	unsigned int	flexbg_factor;
- 	dgrp_t		i;
- 	blk64_t		free_blocks;
- 	blk64_t		flexbg_overhead;
-@@ -428,18 +428,19 @@ ipg_retry:
- 	 * This is a simple check, so that the backup superblock and
- 	 * other feature related blocks are not considered.
- 	 */
--	flexbg_size = 1 << fs->super->s_log_groups_per_flex;
-+flex_retry:
-+	flexbg_factor = 1 << super->s_log_groups_per_flex;
- 	flexbg_overhead = super->s_first_data_block + 1 +
- 		fs->desc_blocks + super->s_reserved_gdt_blocks +
--		(__u64)flexbg_size * (2 + fs->inode_blocks_per_group);
-+		(__u64)flexbg_factor * (2 + fs->inode_blocks_per_group);
- 
- 	/*
- 	 * Disallow creating ext4 which breaks flex_bg metadata layout
- 	 * obviously.
- 	 */
--	if (flexbg_overhead > ext2fs_blocks_count(fs->super)) {
--		retval = EXT2_ET_INVALID_ARGUMENT;
--		goto cleanup;
-+	if (flexbg_overhead > ext2fs_blocks_count(super)) {
-+		super->s_log_groups_per_flex -= 1;
-+		goto flex_retry;
- 	}
- 
- 	/*
--- 
-1.7.3.4
-
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
