@@ -1,182 +1,123 @@
-From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-Subject: [PATCH v3] xfstests/ext4: regression test for wrong assert in ext4_mb_normalize_request()
-Date: Wed, 30 Jul 2014 17:27:17 +0800
-Message-ID: <1406712437-2184-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
-References: <alpine.LFD.2.00.1407231048490.2207@localhost.localdomain>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/2] new API to allocate buffer-cache for superblock in
+ non-movable area
+Date: Wed, 30 Jul 2014 12:11:43 +0200
+Message-ID: <20140730101143.GB19205@quack.suse.cz>
+References: <53CDF437.4090306@lge.com>
+ <20140722073005.GT3935@laptop>
+ <20140722093838.GA22331@quack.suse.cz>
+ <53D8A258.7010904@lge.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <lczerner@redhat.com>, Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-To: <fstests@vger.kernel.org>, <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([59.151.112.132]:64585 "EHLO
-	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751758AbaG3J2J (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jul 2014 05:28:09 -0400
-In-Reply-To: <alpine.LFD.2.00.1407231048490.2207@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Cc: Jan Kara <jack@suse.cz>, Peter Zijlstra <peterz@infradead.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+	Minchan Kim <minchan@kernel.org>, Joonsoo Kim <js1304@gmail.com>
+To: Gioh Kim <gioh.kim@lge.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <53D8A258.7010904@lge.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Regression test for:
-    b5b6077 ext4: fix wrong assert in ext4_mb_normalize_request()
+On Wed 30-07-14 16:44:24, Gioh Kim wrote:
+> 2014-07-22 =EC=98=A4=ED=9B=84 6:38, Jan Kara =EC=93=B4 =EA=B8=80:
+> >On Tue 22-07-14 09:30:05, Peter Zijlstra wrote:
+> >>On Tue, Jul 22, 2014 at 02:18:47PM +0900, Gioh Kim wrote:
+> >>>Hello,
+> >>>
+> >>>This patch try to solve problem that a long-lasting page cache of
+> >>>ext4 superblock disturbs page migration.
+> >>>
+> >>>I've been testing CMA feature on my ARM-based platform
+> >>>and found some pages for page caches cannot be migrated.
+> >>>Some of them are page caches of superblock of ext4 filesystem.
+> >>>
+> >>>Current ext4 reads superblock with sb_bread(). sb_bread() allocates =
+page
+> >>>from movable area. But the problem is that ext4 hold the page until
+> >>>it is unmounted. If root filesystem is ext4 the page cannot be migra=
+ted forever.
+> >>>
+> >>>I introduce a new API for allocating page from non-movable area.
+> >>>It is useful for ext4 and others that want to hold page cache for a =
+long time.
+> >>
+> >>There's no word on why you can't teach ext4 to still migrate that pag=
+e.
+> >>For all I know it might be impossible, but at least mention why.
+>=20
+> I am very sorry for lacking of details.
+>=20
+> In ext4_fill_super() the buffer-head of superblock is stored in sbi->s_=
+sbh.
+> The page belongs to the buffer-head is allocated from movable area.
+> To migrate the page the buffer-head should be released via brelse().
+> But brelse() is not called until unmount.
+  Hum, I don't see where in the code do we check buffer_head use count. C=
+an
+you please point me? Thanks.
 
-Meanwhile make minor changes to _scratch_mkfs_ext4() in common/rc, _scratch_mkfs_ext4()
-might fail due to conflicts between being passed options and MKFS_OPTIONS. We fix this
-by ignoring MKFS_OPTIONS if it fails the first time(see _scratch_mkfs_xfs()), as suggested
-by Lukas Czerner.
+> >   It doesn't seem to be worth the effort to make that page movable to=
+ me
+> >(it's reasonably doable since superblock buffer isn't accessed in *tha=
+t*
+> >many places but single movable page doesn't seem like a good tradeoff =
+for
+> >the complexity).
+> >
+> >But this made me look into the migration code and it isn't completely =
+clear
+> >to me what makes the migration code decide that sb buffer isn't movabl=
+e? We
+> >seem to be locking the buffers before moving the underlying page but w=
+e
+> >don't do any reference or state checks on the buffers... That seems to=
+ be
+> >assuming that noone looks at bh->b_data without holding buffer lock. T=
+hat
+> >is likely true for ordinary data but definitely not true for metadata
+> >buffers (i.e., buffers for pages from block device mappings).
+>=20
+> The sb buffer is not movable because it is not released.
+> sb_bread increase the reference counter of buffer-head so that
+> the page of the buffer-head cannot be movable.
+>=20
+> sb_bread allocates page from movable area but it is not movable until t=
+he
+> reference counter of the buffer-head becomes zero.
+> There is no lock for the buffer but the reference counter acts like loc=
+k.
+  OK, but why do you care about a single page (of at most handful if you
+have more filesystems) which isn't movable? That shouldn't make a big
+difference to compaction...
 
-Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
----
- common/rc          | 39 +++++++++++++++++++++++++++++++++++++-
- tests/ext4/003     | 55 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/ext4/003.out |  2 ++
- tests/ext4/group   |  1 +
- 4 files changed, 96 insertions(+), 1 deletion(-)
- create mode 100755 tests/ext4/003
- create mode 100644 tests/ext4/003.out
+> Actually it is strange that ext4 keeps buffer-head in superblock
+> structure until unmount (it can be long time) I thinks the buffer-head
+> should be released immediately like fat_fill_super() did.  I believe
+> there is a reason to keep buffer-head so that I suggest this patch.
+  We don't copy some data from the superblock to other structure so from
+time to time we need to look e.g. at feature bits within superblock buffe=
+r.
+Historically we were updating numbers of free blocks and inodes in the
+superblock with each allocation but we don't do that anymore because it
+scales poorly. So there is no fundamental reason for keeping sb buffer
+pinned anymore. Just someone would have to rewrite the code to copy some
+pieces of data from the buffer to some other structure and use it there.
 
-diff --git a/common/rc b/common/rc
-index 2c83340..f39e472 100644
---- a/common/rc
-+++ b/common/rc
-@@ -446,12 +446,31 @@ _setup_large_ext4_fs()
- 
- _scratch_mkfs_ext4()
- {
-+	# extra mkfs options can be added by tests
-+	local extra_mkfs_options=$*
-+
- 	local tmp_dir=/tmp/
- 
--	/sbin/mkfs -t $FSTYP -- -F $MKFS_OPTIONS $* $SCRATCH_DEV \
-+	/sbin/mkfs -t ext4 -- -F $MKFS_OPTIONS $extra_mkfs_options $SCRATCH_DEV \
- 			2>$tmp_dir.mkfserr 1>$tmp_dir.mkfsstd
- 	local mkfs_status=$?
- 
-+	# a mkfs failure may be caused by conflicts between
-+	# $MKFS_OPTIONS and $extra_mkfs_options
-+	if [ $mkfs_status -ne 0 -a ! -z "$extra_mkfs_options" ]; then
-+		(
-+		echo -n "** mkfs failed with extra mkfs options "
-+		echo "added to \"$MKFS_OPTIONS\" by test $seq **"
-+		echo -n "** attempting to mkfs using only test $seq "
-+		echo "options: $extra_mkfs_options **"
-+		) >> $seqres.full
-+
-+		# running mkfs again. overwrite previous mkfs output files
-+		/sbin/mkfs -t ext4 -- -F $extra_mkfs_options $SCRATCH_DEV \
-+				2>$tmp_dir.mkfserr 1>$tmp_dir.mkfsstd
-+		local mkfs_status=$?
-+	fi
-+
- 	if [ $mkfs_status -eq 0 -a "$LARGE_SCRATCH_DEV" = yes ]; then
- 		# manually parse the mkfs output to get the fs size in bytes
- 		fs_size=`cat $tmp_dir.mkfsstd | awk ' \
-@@ -1113,6 +1132,24 @@ _require_xfs_crc()
- 	umount $SCRATCH_MNT
- }
- 
-+# this test requires the bigalloc feature to be available in mkfs.ext4
-+#
-+_require_ext4_mkfs_bigalloc()
-+{
-+	_scratch_mkfs_ext4 -O bigalloc >/dev/null 2>&1 \
-+	   || _notrun "mkfs.ext4 doesn't have bigalloc feature"
-+}
-+
-+# this test requires the ext4 kernel support bigalloc feature
-+#
-+_require_ext4_bigalloc()
-+{
-+	_scratch_mkfs_ext4 -O bigalloc >/dev/null 2>&1
-+	_scratch_mount >/dev/null 2>&1 \
-+	   || _notrun "Ext4 kernel doesn't support bigalloc feature"
-+	umount $SCRATCH_MNT
-+}
-+
- # this test requires the finobt feature to be available in mkfs.xfs
- #
- _require_xfs_mkfs_finobt()
-diff --git a/tests/ext4/003 b/tests/ext4/003
-new file mode 100755
-index 0000000..4ca282f
---- /dev/null
-+++ b/tests/ext4/003
-@@ -0,0 +1,55 @@
-+#! /bin/bash
-+# FS QA Test No. ext4/003
-+#
-+# Regression test for commit:
-+# b5b6077 ext4: fix wrong assert in ext4_mb_normalize_request()
-+# This testcase checks whether this bug has been fixed.
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2014 Fujitsu.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#-----------------------------------------------------------------------
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+    _scratch_unmount
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# real QA test starts here
-+_supported_fs ext4
-+_supported_os Linux
-+
-+_require_scratch
-+_require_ext4_mkfs_bigalloc
-+_require_ext4_bigalloc
-+
-+rm -f $seqres.full
-+
-+yes | mkfs.ext4 -O bigalloc -C 65536  -g 256 $SCRATCH_DEV 512m \
-+    >> $seqres.full 2>&1
-+_scratch_mount || _fail "couldn't mount fs"
-+
-+dd if=/dev/zero of=$SCRATCH_MNT/testfile bs=1M count=256 2>&1 | _filter_dd
-+
-+echo "Slience is golden"
-+
-+status=0
-+exit
-diff --git a/tests/ext4/003.out b/tests/ext4/003.out
-new file mode 100644
-index 0000000..07f245d
---- /dev/null
-+++ b/tests/ext4/003.out
-@@ -0,0 +1,2 @@
-+QA output created by 003
-+Slience is golden
-diff --git a/tests/ext4/group b/tests/ext4/group
-index 7e66035..152196c 100644
---- a/tests/ext4/group
-+++ b/tests/ext4/group
-@@ -5,6 +5,7 @@
- #
- 001 auto prealloc quick
- 002 auto quick prealloc
-+003 auto quick
- 271 auto rw quick
- 301 aio dangerous ioctl rw stress
- 302 aio dangerous ioctl rw stress
--- 
-1.8.2.1
+								Honza
+--=20
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
