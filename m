@@ -1,111 +1,61 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH 1/2] misc: quiet signed/unsigned charactr compiler warnings
-Date: Tue, 29 Jul 2014 17:30:39 -0600
-Message-ID: <1406676640-5627-1-git-send-email-adilger@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
-To: tytso@mit.edu
+From: "Dilger, Andreas" <andreas.dilger@intel.com>
+Subject: Bad flexbg_overhead calculation
+Date: Wed, 30 Jul 2014 01:07:10 +0000
+Message-ID: <CFFDA174.B4921%andreas.dilger@intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-04.shaw.ca ([64.59.134.12]:9286 "EHLO
-	smtp-out-04.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751527AbaG2Xam (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jul 2014 19:30:42 -0400
+Received: from mga03.intel.com ([143.182.124.21]:29833 "EHLO mga03.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752191AbaG3BHL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jul 2014 21:07:11 -0400
+Content-Language: en-US
+Content-ID: <C54941F4E960A64B80D21D7F27A57C55@intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Quiet warnings about signed vs. unsigned character mismatch.
-Use __u8 for storing UUIDs instead of char to match the superblock
-s_uuid field.
+I was running the "f_random_corruption" test during a build (patches
+posted long ago), which formats filesystems with semi-random parameters,
+and then
+corrupts it and sees if e2fsck can fix it.  In this case, it failed during
+mke2fs, but without any obvious reason:
 
-Signed-off-by: Andreas Dilger <adilger@dilger.ca>
----
- debugfs/debugfs.c |    2 +-
- misc/tune2fs.c    |   21 ++++++++++++---------
- 2 files changed, 13 insertions(+), 10 deletions(-)
+./misc/mke2fs -j -t ext4 -b 4096 -I 1024 -O
+sparse_super,filetype,dir_index,resize_inode -F /tmp/tt 79106
+mke2fs 1.42.11 (09-Jul-2014)
+Creating regular file /tmp/tt
+/tmp/tt: Invalid argument passed to ext2 library while setting up
+superblock
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index dc925de..00c2d38 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -2153,7 +2153,7 @@ void do_imap(int argc, char *argv[])
- void do_idump(int argc, char *argv[])
- {
- 	ext2_ino_t	ino;
--	char		*buf;
-+	unsigned char	*buf;
- 	errcode_t	err;
- 	int		isize;
- 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 0c1feb1..ffa42ba 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -207,8 +207,8 @@ static int get_journal_sb(ext2_filsys jfs, char buf[SUPERBLOCK_SIZE])
- 	return 0;
- }
- 
--static void *
--journal_user(char uuid[UUID_SIZE], char s_users[JFS_USERS_SIZE], int nr_users)
-+static __u8 *journal_user(__u8 uuid[UUID_SIZE], __u8 s_users[JFS_USERS_SIZE],
-+			  int nr_users)
- {
- 	int i;
- 	for (i = 0; i < nr_users; i++) {
-@@ -1925,12 +1925,13 @@ static int tune2fs_setup_tdb(const char *name, io_manager *io_ptr)
- }
- 
- int
--fs_update_journal_user(struct ext2_super_block *sb, char old_uuid[UUID_SIZE])
-+fs_update_journal_user(struct ext2_super_block *sb, __u8 old_uuid[UUID_SIZE])
- {
- 	int retval, nr_users, start;
- 	journal_superblock_t *jsb;
- 	ext2_filsys jfs;
--	char *j_uuid, *journal_path;
-+	__u8 *j_uuid;
-+	char *journal_path;
- 	char uuid[UUID_STR_SIZE];
- 	char buf[SUPERBLOCK_SIZE];
- 
-@@ -1953,7 +1954,8 @@ fs_update_journal_user(struct ext2_super_block *sb, char old_uuid[UUID_SIZE])
- 		return retval;
- 	}
- 
--	if ((retval = get_journal_sb(jfs, buf))) {
-+	retval = get_journal_sb(jfs, buf);
-+	if (retval != 0) {
- 		if (retval == EXT2_ET_UNSUPP_FEATURE)
- 			fprintf(stderr, _("%s is not a journal device.\n"),
- 				journal_path);
-@@ -1964,7 +1966,8 @@ fs_update_journal_user(struct ext2_super_block *sb, char old_uuid[UUID_SIZE])
- 	/* Find the filesystem UUID */
- 	nr_users = ntohl(jsb->s_nr_users);
- 
--	if (!(j_uuid = journal_user(old_uuid, jsb->s_users, nr_users))) {
-+	j_uuid = journal_user(old_uuid, jsb->s_users, nr_users);
-+	if (j_uuid == NULL) {
- 		fputs(_("Filesystem's UUID not found on journal device.\n"),
- 		      stderr);
- 		return EXT2_ET_LOAD_EXT_JOURNAL;
-@@ -1974,8 +1977,8 @@ fs_update_journal_user(struct ext2_super_block *sb, char old_uuid[UUID_SIZE])
- 
- 	start = ext2fs_journal_sb_start(jfs->blocksize);
- 	/* Write back the journal superblock */
--	if ((retval = io_channel_write_blk64(jfs->io, start,
--	    -SUPERBLOCK_SIZE, buf))) {
-+	retval = io_channel_write_blk64(jfs->io, start, -SUPERBLOCK_SIZE, buf);
-+	if (retval != 0) {
- 		com_err(program_name, retval,
- 			"while writing journal superblock.");
- 		return retval;
-@@ -2274,7 +2277,7 @@ retry_open:
- 		int set_csum = 0;
- 		dgrp_t i;
- 		char buf[SUPERBLOCK_SIZE];
--		char old_uuid[UUID_SIZE];
-+		__u8 old_uuid[UUID_SIZE];
- 
- 		if (sb->s_feature_ro_compat &
- 		    EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
+
+
+It looks like this is caused by the following check in ext2fs_initialize():
+
+        flexbg_overhead = super->s_first_data_block + 1 +
+		fs->desc_blocks + super->s_reserved_gdt_blocks +
+		(__u64)flexbg_size * (2 + fs->inode_blocks_per_group);
+
+	/*
+	 * Disallow creating ext4 which breaks flex_bg metadata layout
+	 * obviously.
+	 */
+	if (flexbg_overhead > ext2fs_blocks_count(fs->super)) {
+		retval = EXT2_ET_INVALID_ARGUMENT;
+		goto cleanup;
+	}
+
+I suspect the reason it is failing is due to "-I 1024", which is creating
+large inodes with extra xattr space, and this is confusing the flexbg
+check, though I don't think this should be considered an invalid option?
+
+
+Cheers, Andreas
 -- 
-1.7.3.4
+Andreas Dilger
+
+Lustre Software Architect
+Intel High Performance Data Division
+
 
