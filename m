@@ -1,81 +1,74 @@
-From: Benjamin LaHaise <bcrl@kvack.org>
-Subject: Re: ext4: first write to large ext3 filesystem takes 96 seconds
-Date: Wed, 30 Jul 2014 10:49:28 -0400
-Message-ID: <20140730144928.GA10295@kvack.org>
-References: <20140707211349.GA12478@kvack.org> <20140708001655.GI8254@thunk.org> <E0178FE2-1C0C-4AF3-BA8C-3F32B4A4ACF7@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kanga.kvack.org ([205.233.56.17]:50072 "EHLO kanga.kvack.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753151AbaG3Ot3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Jul 2014 10:49:29 -0400
-Content-Disposition: inline
-In-Reply-To: <E0178FE2-1C0C-4AF3-BA8C-3F32B4A4ACF7@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: David Sterba <dsterba@suse.cz>
+Subject: [PATCH 0/6 v5] fiemap: introduce DATA_COMPRESSED and PHYS_LENGTH flags
+Date: Wed, 30 Jul 2014 19:18:29 +0200
+Message-ID: <cover.1406739708.git.dsterba@suse.cz>
+Cc: David Sterba <dsterba@suse.cz>, adilger@dilger.ca,
+	hch@infradead.org, mfasheh@suse.com, viro@zeniv.linux.org.uk,
+	david@fromorbit.com, xfs@oss.sgi.com, linux-nilfs@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Andreas, Ted,
+The original FIEMAP patch did not define the bits, btrfs would like to use a
+flag for compressed extents. The PHYS_LENGTH flag emerged during patchset
+revisions to keep backward compatibility and flexible fiemap API.
 
-I've finally had some more time to dig into this problem, and it's worse 
-than I initially thought in that it occurs on normal ext4 filesystems.
+Currently, the 'filefrag' utility has no way to recognize and denote a
+compressed extent. As implemented in btrfs right now, the compression step
+splits a big extent into smaller chunks and this is reported as a heavily
+fragmented file. Adding the flag to filefrag will at least give some
+explanation why, this has been confusing users for some time already.
 
-On Mon, Jul 07, 2014 at 11:11:58PM -0600, Andreas Dilger wrote:
-...
-> The main problem here is that reading all of the block bitmaps takes
-> a huge amount of time for a large filesystem.
+fiemap_fill_next_extent is extended and takes argument to fill the physical
+length.
 
-Very true.
+V5:
+Physical length is by default undefined. Btrfs use of compressed flag was
+enhanced to reflect the fiemap changes. Patches reordered so the generic fiemap
+go first.
 
-...
-> 
-> 7.8TB / 128MB/group ~= 8000 groups
-> 8000 bitmaps / 100 seeks/sec = 80s
-> 
-> So that is what is making things slow. Once the allocator has all the
-> blocks in memory there are no problems. There are some heuristics
-> to skip bitmaps that are totally full, but they don't work in your case. 
-> 
-> This is why the flex_bg feature was created - to allow the bitmaps
-> to be read from disk without seeks.  This also speeds up e2fsck by
-> the same 96s that would otherwise be wasted waiting for the disk.
+V4:
+The physical length is always set and equal to logical, or different and
+then sets the COMPRESSED flag.
+fiemap_extent::fe_length renamed to fe_logi_length
 
-Unfortunately, that isn't the case.
+V3:
+Based on feedback from Andreas, implement #1 from V2, current users of
+fiemap_fill_next_extent (fs/, ext4, gfs2, ocfs2, nilfs2, xfs) updated
+accordingly, no functional change.
 
-> Backporting flex_bg to ext3 would be fairly trivial - just disable the checks
-> for the location of the bitmaps at mount time. However, using it
-> requires that you reformat your filesystem with "-O flex_bg" to
-> get the improved layout. 
+V2:
+Based on feedback from Andreas, the fiemap_extent is now able to hold the
+physical extent length, to be filled by the filesystem callback.
 
-flex_bg is not sufficient to resolve this issue.  Using a native ext4 
-formatted filesystem initialized with mke4fs 1.41.12, this problem still 
-occurs.  I created a 7.1TB filesystem, filled it to about 92% full with 
-8MB files.  The time to create a new 8MB file after a fresh mount ranges 
-from 0.017 seconds 13.2 seconds.  The outlier correlates with bitmaps 
-being read from disk.  A copy of /proc/fs/ext4/dm-2/mb_groups from this 
-92% full fs is available at http://www.kvack.org/~bcrl/mb_groups.ext4-92 
+1) extend fiemap_fill_next_extent to take phys_length and update all
+   users (ext4, gfs2, ocfs2, nilfs2, xfs)
 
-Note that is isn't the first allocating write to the filesystem that is 
-the worst in terms of timing, it can end up being the 10th or even the 
-100th attempt.
 
-> The other option (if your runtime environment allows it) is to prefetch
-> the block bitmaps using "dumpe2fs /dev/XXX > /dev/null" before the
-> filesystem is in use. This still takes 90s, but can be started early in
-> the boot process on each disk in parallel.
+David Sterba (6):
+  fiemap: fix comment at EXTENT_DATA_ENCRYPTED
+  fiemap: add fe_phys_length and EXTENT_PHYS_LENGTH flag
+  fiemap: add FIEMAP_EXTENT_DATA_COMPRESSED flag
+  Documentation/fiemap: Document DATA_COMPRESSED and PHYS_LENGTH flags
+  fiemap: rename fe_length to fe_logi_length
+  btrfs: set FIEMAP_EXTENT_DATA_COMPRESSED for compressed extents
 
-That isn't a solution.  Prefetching is impossible in my particular use-case, 
-as the filesystem is being mounted after a failover from another node -- 
-any data prefetched prior to switching active nodes is not guaranteed to be 
-valid.
+ Documentation/filesystems/fiemap.txt | 24 ++++++++++++++++++++----
+ fs/btrfs/extent_io.c                 | 11 ++++++++---
+ fs/ext4/extents.c                    |  4 ++--
+ fs/ext4/inline.c                     |  2 +-
+ fs/gfs2/inode.c                      |  2 +-
+ fs/ioctl.c                           | 21 ++++++++++++++-------
+ fs/nilfs2/inode.c                    |  8 +++++---
+ fs/ocfs2/extent_map.c                |  4 ++--
+ fs/xfs/xfs_iops.c                    |  2 +-
+ include/linux/fs.h                   |  2 +-
+ include/uapi/linux/fiemap.h          | 16 +++++++++++++---
+ 11 files changed, 68 insertions(+), 28 deletions(-)
 
-This seems like a pretty serious regression relative to ext3.  Why can't 
-ext4's mballoc pick better block groups to attempt allocating from based 
-on the free block counts in the block group summaries?
-
-		-ben
 -- 
-"Thought is the essence of where you are now."
+1.8.4.5
+
