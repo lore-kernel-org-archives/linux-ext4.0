@@ -1,75 +1,113 @@
-From: "Dilger, Andreas" <andreas.dilger@intel.com>
-Subject: Re: Bad flexbg_overhead calculation
-Date: Wed, 30 Jul 2014 07:07:24 +0000
-Message-ID: <CFFDF44C.B4ADD%andreas.dilger@intel.com>
-References: <CFFDA174.B4921%andreas.dilger@intel.com>
+From: Gioh Kim <gioh.kim@lge.com>
+Subject: Re: [PATCH 0/2] new API to allocate buffer-cache for superblock in
+ non-movable area
+Date: Wed, 30 Jul 2014 16:44:24 +0900
+Message-ID: <53D8A258.7010904@lge.com>
+References: <53CDF437.4090306@lge.com> <20140722073005.GT3935@laptop> <20140722093838.GA22331@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: Akira Fujita <a-fujita@rs.jp.nec.com>
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga09.intel.com ([134.134.136.24]:49402 "EHLO mga09.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755241AbaG3HHf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jul 2014 03:07:35 -0400
-In-Reply-To: <CFFDA174.B4921%andreas.dilger@intel.com>
-Content-Language: en-US
-Content-ID: <40770F3014D6704989BB819D4FD0F8DF@intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: quoted-printable
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+ Andrew Morton <akpm@linux-foundation.org>,
+ "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+ linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+ Theodore Ts'o <tytso@mit.edu>,
+ Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
+ linux-mm@kvack.org, Minchan Kim <minchan@kernel.org>,
+ Joonsoo Kim <js1304@gmail.com>
+To: Jan Kara <jack@suse.cz>, Peter Zijlstra <peterz@infradead.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20140722093838.GA22331@quack.suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2014/07/29, 7:07 PM, "Dilger, Andreas" <andreas.dilger@intel.com> wrote:
 
->I was running the "f_random_corruption" test during a build (patches
->posted long ago), which formats filesystems with semi-random parameters,
->and then
->corrupts it and sees if e2fsck can fix it.  In this case, it failed during
->mke2fs, but without any obvious reason:
+
+2014-07-22 =EC=98=A4=ED=9B=84 6:38, Jan Kara =EC=93=B4 =EA=B8=80:
+> On Tue 22-07-14 09:30:05, Peter Zijlstra wrote:
+>> On Tue, Jul 22, 2014 at 02:18:47PM +0900, Gioh Kim wrote:
+>>> Hello,
+>>>
+>>> This patch try to solve problem that a long-lasting page cache of
+>>> ext4 superblock disturbs page migration.
+>>>
+>>> I've been testing CMA feature on my ARM-based platform
+>>> and found some pages for page caches cannot be migrated.
+>>> Some of them are page caches of superblock of ext4 filesystem.
+>>>
+>>> Current ext4 reads superblock with sb_bread(). sb_bread() allocates p=
+age
+>>> from movable area. But the problem is that ext4 hold the page until
+>>> it is unmounted. If root filesystem is ext4 the page cannot be migrat=
+ed forever.
+>>>
+>>> I introduce a new API for allocating page from non-movable area.
+>>> It is useful for ext4 and others that want to hold page cache for a l=
+ong time.
+>>
+>> There's no word on why you can't teach ext4 to still migrate that page=
+.
+>> For all I know it might be impossible, but at least mention why.
+
+I am very sorry for lacking of details.
+
+In ext4_fill_super() the buffer-head of superblock is stored in sbi->s_sb=
+h.
+The page belongs to the buffer-head is allocated from movable area.
+To migrate the page the buffer-head should be released via brelse().
+But brelse() is not called until unmount.
+
+For example, fat_fill_super() reads superblock via sb_bread()
+and release it via brelse() immediately. Therefore the page that stores s=
+uperblock can be migrated.
+
+
+
+>    It doesn't seem to be worth the effort to make that page movable to =
+me
+> (it's reasonably doable since superblock buffer isn't accessed in *that=
+*
+> many places but single movable page doesn't seem like a good tradeoff f=
+or
+> the complexity).
 >
->./misc/mke2fs -j -t ext4 -b 4096 -I 1024 -O
->sparse_super,filetype,dir_index,resize_inode -F /tmp/tt 79106
->mke2fs 1.42.11 (09-Jul-2014)
->Creating regular file /tmp/tt
->/tmp/tt: Invalid argument passed to ext2 library while setting up
->superblock
->
->
->
->It looks like this is caused by the following check in
->ext2fs_initialize():
->
->        flexbg_overhead = super->s_first_data_block + 1 +
->		fs->desc_blocks + super->s_reserved_gdt_blocks +
->		(__u64)flexbg_size * (2 + fs->inode_blocks_per_group);
->
->	/*
->	 * Disallow creating ext4 which breaks flex_bg metadata layout
->	 * obviously.
->	 */
->	if (flexbg_overhead > ext2fs_blocks_count(fs->super)) {
->		retval = EXT2_ET_INVALID_ARGUMENT;
->		goto cleanup;
->	}
->
->I suspect the reason it is failing is due to "-I 1024", which is creating
->large inodes with extra xattr space, and this is confusing the flexbg
->check, though I don't think this should be considered an invalid option?
+> But this made me look into the migration code and it isn't completely c=
+lear
+> to me what makes the migration code decide that sb buffer isn't movable=
+? We
+> seem to be locking the buffers before moving the underlying page but we
+> don't do any reference or state checks on the buffers... That seems to =
+be
+> assuming that noone looks at bh->b_data without holding buffer lock. Th=
+at
+> is likely true for ordinary data but definitely not true for metadata
+> buffers (i.e., buffers for pages from block device mappings).
 
-It seems this check/problem was introduced in commit d988201ef9cb6f7b521e5
-"mke2fs: prevent creation of unmountable ext4 with large flex_bg count".
-It looks like numerous combinations of -I with a larger inode size or
--N with more inodes than blocks can trigger this problem.
+The sb buffer is not movable because it is not released.
+sb_bread increase the reference counter of buffer-head so that
+the page of the buffer-head cannot be movable.
 
-It looks like this was introduced just before 1.42.11, but I'd consider it
-a blocker to get fixed before 1.42.12 is released.  Now let's see if I can
-make a patch for it before I fly in the morning...
+sb_bread allocates page from movable area but it is not movable until the
+reference counter of the buffer-head becomes zero.
+There is no lock for the buffer but the reference counter acts like lock.
 
-Cheers, Andreas
--- 
-Andreas Dilger
-
-Lustre Software Architect
-Intel High Performance Data Division
+Actually it is strange that ext4 keeps buffer-head in superblock structur=
+e until unmount (it can be long time)
+I thinks the buffer-head should be released immediately like fat_fill_sup=
+er() did.
+I believe there is a reason to keep buffer-head so that I suggest this pa=
+tch.
 
 
+
+>
+> Added linux-mm to CC to enlighten me a bit ;)
+>
+> 								Honza
+>
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
