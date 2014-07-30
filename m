@@ -1,85 +1,81 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: add sysfs entry showing whether the fs contains
- errorsx
-Date: Wed, 30 Jul 2014 09:47:41 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1407300946320.2071@localhost.localdomain>
-References: <1399382357-12703-1-git-send-email-lczerner@redhat.com> <20140506174301.GQ8434@birch.djwong.org> <20140506192325.GB5012@thunk.org> <alpine.LFD.2.00.1405071040240.2128@localhost.localdomain> <20140520094741.GG11499@pcnci.linuxbox.cz>
- <alpine.LFD.2.00.1405201150180.2162@localhost.localdomain> <20140729144903.GD2256@thunk.org>
-Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-785089812-1406706465=:2071"
-Cc: Nikola Ciprich <nikola.ciprich@linuxbox.cz>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH] mke2fs: fix flexbg check to allow small filesystems
+Date: Wed, 30 Jul 2014 02:30:22 -0600
+Message-ID: <1406709022-28957-1-git-send-email-adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>,
+	Andreas Dilger <andreas.dilger@intel.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36417 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750949AbaG3IEm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Jul 2014 04:04:42 -0400
-In-Reply-To: <20140729144903.GD2256@thunk.org>
+Received: from smtp-out-02.shaw.ca ([64.59.136.138]:49224 "EHLO
+	smtp-out-02.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750894AbaG3Ij7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jul 2014 04:39:59 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+Fix the flexbg check added in d988201ef9c so that it allows common
+small filesystem configurations to succeed instead of reporting
+a cryptic error message and failing due to a bad flex_bg layout:
 
---8323328-785089812-1406706465=:2071
-Content-Type: TEXT/PLAIN; charset=utf-8
-Content-Transfer-Encoding: 8BIT
+    mke2fs -O flex_bg -b 4096 -I 1024 -F /tmp/tt 79106
+    mke2fs 1.42.11 (09-Jul-2014)
+    /tmp/tt: Invalid argument passed to ext2 library while setting
+             up superblock
 
-On Tue, 29 Jul 2014, Theodore Ts'o wrote:
+This check in ext2fs_initialize() was added to prevent the metadata
+from being allocated beyond the end of the filesystem, but it is
+also causing a wide range of failures for small filesystems.
 
-> Date: Tue, 29 Jul 2014 10:49:03 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Lukáš Czerner <lczerner@redhat.com>
-> Cc: Nikola Ciprich <nikola.ciprich@linuxbox.cz>,
->     Darrick J. Wong <darrick.wong@oracle.com>, linux-ext4@vger.kernel.org
-> Subject: Re: [PATCH] ext4: add sysfs entry showing whether the fs contains
->     errors
-> 
-> On Tue, May 20, 2014 at 11:56:53AM +0200, Lukáš Czerner wrote:
-> > On Tue, 20 May 2014, Nikola Ciprich wrote:
-> > 
-> > > Date: Tue, 20 May 2014 11:47:41 +0200
-> > > From: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
-> > > To: Lukáš Czerner <lczerner@redhat.com>
-> > > Cc: Theodore Ts'o <tytso@mit.edu>, Darrick J. Wong <darrick.wong@oracle.com>,
-> > >     linux-ext4@vger.kernel.org, Nikola Ciprich <nikola.ciprich@linuxbox.cz>
-> > > Subject: Re: [PATCH] ext4: add sysfs entry showing whether the fs contains
-> > >     errors
-> > > 
-> > > Hello Lukáš,
-> > > 
-> > > just wanted to ask about the status of this patch.. it didn't make it
-> > > to git yet, did it? Do you plan to make some changes to it? I'm eager
-> > > to test it ;-)
-> > 
-> > No it did not and it would not given that there was not a merge
-> > window since then. I've been distracted by other work, but I'll put
-> > you in cc when I have a new patch - yes I plan to change the format
-> > of the output to be more compliant with sysfs rules.
-> 
-> Hey Lukas,
-> 
-> I've been looking at old patches still in the ext4 patchwork queue,
-> and I came across this.  Just a quick reminder you were planning on
-> updating this patch at some point when you have time.
-> 
-> Cheers,
+Fix this by shrinking the flex_bg factor by half repeatedly until it
+would be expected to fit into the current filesystem size, rather
+than return an error as previously done.  Ideally it would only try
+a smaller flex_bg factor if the default value was being used, and had
+not been specified on the command line, but it isn't possible to see
+if this is the case in ext2fs_initialize() or not.
 
-Right,
+Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
+---
+ lib/ext2fs/initialize.c |   13 +++++++------
+ 1 files changed, 7 insertions(+), 6 deletions(-)
 
-thanks a lot for the remainder it completely slipped out of my mind.
-I'll take a look at it once again.
+diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
+index de358fd..d58a664 100644
+--- a/lib/ext2fs/initialize.c
++++ b/lib/ext2fs/initialize.c
+@@ -91,7 +91,7 @@ errcode_t ext2fs_initialize(const char *name, int flags,
+ 	unsigned int	rem;
+ 	unsigned int	overhead = 0;
+ 	unsigned int	ipg;
+-	unsigned int	flexbg_size;
++	unsigned int	flexbg_factor;
+ 	dgrp_t		i;
+ 	blk64_t		free_blocks;
+ 	blk64_t		flexbg_overhead;
+@@ -428,18 +428,19 @@ ipg_retry:
+ 	 * This is a simple check, so that the backup superblock and
+ 	 * other feature related blocks are not considered.
+ 	 */
+-	flexbg_size = 1 << fs->super->s_log_groups_per_flex;
++flex_retry:
++	flexbg_factor = 1 << super->s_log_groups_per_flex;
+ 	flexbg_overhead = super->s_first_data_block + 1 +
+ 		fs->desc_blocks + super->s_reserved_gdt_blocks +
+-		(__u64)flexbg_size * (2 + fs->inode_blocks_per_group);
++		(__u64)flexbg_factor * (2 + fs->inode_blocks_per_group);
+ 
+ 	/*
+ 	 * Disallow creating ext4 which breaks flex_bg metadata layout
+ 	 * obviously.
+ 	 */
+-	if (flexbg_overhead > ext2fs_blocks_count(fs->super)) {
+-		retval = EXT2_ET_INVALID_ARGUMENT;
+-		goto cleanup;
++	if (flexbg_overhead > ext2fs_blocks_count(super)) {
++		super->s_log_groups_per_flex -= 1;
++		goto flex_retry;
+ 	}
+ 
+ 	/*
+-- 
+1.7.3.4
 
-Thanks!
--Lukas
-
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
---8323328-785089812-1406706465=:2071--
