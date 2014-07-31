@@ -1,116 +1,70 @@
-From: Gioh Kim <gioh.kim@lge.com>
-Subject: Re: [PATCH 0/2] new API to allocate buffer-cache for superblock in
- non-movable area
-Date: Thu, 31 Jul 2014 09:37:15 +0900
-Message-ID: <53D98FBB.6060700@lge.com>
-References: <53CDF437.4090306@lge.com> <20140722073005.GT3935@laptop> <20140722093838.GA22331@quack.suse.cz> <53D8A258.7010904@lge.com> <20140730101143.GB19205@quack.suse.cz> <53D985C0.3070300@lge.com> <20140731000355.GB25362@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: quoted-printable
-Cc: Peter Zijlstra <peterz@infradead.org>,
- Alexander Viro <viro@zeniv.linux.org.uk>,
- Andrew Morton <akpm@linux-foundation.org>,
- "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
- linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
- Theodore Ts'o <tytso@mit.edu>,
- Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
- linux-mm@kvack.org, Minchan Kim <minchan@kernel.org>,
- Joonsoo Kim <js1304@gmail.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20140731000355.GB25362@quack.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: fix ext4_discard_allocated_blocks() if we can't allocate the pa struct
+Date: Wed, 30 Jul 2014 22:27:34 -0400
+Message-ID: <1406773654-21704-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:37536 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751277AbaGaC1k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Jul 2014 22:27:40 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+If there is a failure while allocating the preallocation structure, a
+number of blocks can end up getting marked in the in-memory buddy
+bitmap, and then not getting released.  This can result in the
+following corruption getting reported by the kernel:
 
+EXT4-fs error (device sda3): ext4_mb_generate_buddy:758: group 1126,
+12793 clusters in bitmap, 12729 in gd
 
-2014-07-31 =EC=98=A4=EC=A0=84 9:03, Jan Kara =EC=93=B4 =EA=B8=80:
-> On Thu 31-07-14 08:54:40, Gioh Kim wrote:
->> 2014-07-30 =EC=98=A4=ED=9B=84 7:11, Jan Kara =EC=93=B4 =EA=B8=80:
->>> On Wed 30-07-14 16:44:24, Gioh Kim wrote:
->>>> 2014-07-22 =EC=98=A4=ED=9B=84 6:38, Jan Kara =EC=93=B4 =EA=B8=80:
->>>>> On Tue 22-07-14 09:30:05, Peter Zijlstra wrote:
->>>>>> On Tue, Jul 22, 2014 at 02:18:47PM +0900, Gioh Kim wrote:
->>>>>>> Hello,
->>>>>>>
->>>>>>> This patch try to solve problem that a long-lasting page cache of
->>>>>>> ext4 superblock disturbs page migration.
->>>>>>>
->>>>>>> I've been testing CMA feature on my ARM-based platform
->>>>>>> and found some pages for page caches cannot be migrated.
->>>>>>> Some of them are page caches of superblock of ext4 filesystem.
->>>>>>>
->>>>>>> Current ext4 reads superblock with sb_bread(). sb_bread() allocat=
-es page
->>>>>> >from movable area. But the problem is that ext4 hold the page unt=
-il
->>>>>>> it is unmounted. If root filesystem is ext4 the page cannot be mi=
-grated forever.
->>>>>>>
->>>>>>> I introduce a new API for allocating page from non-movable area.
->>>>>>> It is useful for ext4 and others that want to hold page cache for=
- a long time.
->>>>>>
->>>>>> There's no word on why you can't teach ext4 to still migrate that =
-page.
->>>>>> For all I know it might be impossible, but at least mention why.
->>>>
->>>> I am very sorry for lacking of details.
->>>>
->>>> In ext4_fill_super() the buffer-head of superblock is stored in sbi-=
->s_sbh.
->>>> The page belongs to the buffer-head is allocated from movable area.
->>>> To migrate the page the buffer-head should be released via brelse().
->>>> But brelse() is not called until unmount.
->>>    Hum, I don't see where in the code do we check buffer_head use cou=
-nt. Can
->>> you please point me? Thanks.
->>
->> Filesystem code does not check buffer_head use count.  sb_bread() retu=
-rns
->> the buffer_head that is included in bh_lru and has non-zero use count.
->> You can see the bh_lru code in buffer.c: __find_get_clock() and
->> lookup_bh_lru().  bh_lru_install() inserts the buffer_head into the
->> bh_lru().  It first calls get_bh() to increase the use count and inser=
-t
->> bh into the lru array.
->>
->> The buffer_head use count is non-zero until brelse() is called.
->    So I probably didn't phrase the question precisely enough. What I wa=
-s
-> asking about is where exactly *migration* code checks buffer use count?
-> Because as I'm looking at buffer_migrate_page() we lock the buffers on =
-a
-> migrated page but we don't look at buffer use counts... So it seems to =
-me
-> that migration of a page with buffers should succeed even if buffer hea=
-d
-> has an elevated use count. Now I think that it *should* check the buffe=
-r
-> use counts (it is dangerous to migrate buffers someone holds reference =
-to)
-> but I just cannot find that place. Or does CMA use some other migration
-> function for buffer pages than buffer_migrate_page()?
+In that case, we need to release the blocks using mb_free_blocks().
 
-CMA allocation function is cma_alloc().
-Function flow is alloc_contig_range() -> __alloc_contig_migrate_range() -=
-> migrate_pages -> unmap_and_move
--> __unmap_and_move -> try_to_free_buffers -> drop_buffers -> buffer_busy=
-.
+Tested: fs smoke test; also demonstrated that with injected errors,
+	the file system is no longer getting corrupted
 
-The buffer_busy() is checking b_count.
-If buffer is busy buffer-cache cannot be removed.
-So the page that includes buffer_head and the page that is refered by buf=
-fer_head are not movable.
+Google-Bug-Id: 16657874
 
-Is this what you need?
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/mballoc.c | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
 
->
-> 								Honza
->
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index ced8bcb..4d7a6c4 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3217,8 +3217,27 @@ static void ext4_mb_collect_stats(struct ext4_allocation_context *ac)
+ static void ext4_discard_allocated_blocks(struct ext4_allocation_context *ac)
+ {
+ 	struct ext4_prealloc_space *pa = ac->ac_pa;
++	struct ext4_buddy e4b;
++	int err;
+ 
+-	if (pa && pa->pa_type == MB_INODE_PA)
++	if (pa == NULL) {
++		err = ext4_mb_load_buddy(ac->ac_sb, ac->ac_f_ex.fe_group, &e4b);
++		if (err) {
++			/*
++			 * This should never happen since we pin the
++			 * pages in the ext4_allocation_context so
++			 * ext4_mb_load_buddy() should never fail.
++			 */
++			WARN(1, "mb_load_buddy failed (%d)", err);
++			return;
++		}
++		ext4_lock_group(ac->ac_sb, ac->ac_f_ex.fe_group);
++		mb_free_blocks(ac->ac_inode, &e4b, ac->ac_f_ex.fe_start,
++			       ac->ac_f_ex.fe_len);
++		ext4_unlock_group(ac->ac_sb, ac->ac_f_ex.fe_group);
++		return;
++	}
++	if (pa->pa_type == MB_INODE_PA)
+ 		pa->pa_free += ac->ac_b_ex.fe_len;
+ }
+ 
+-- 
+2.0.0
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
