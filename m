@@ -1,234 +1,322 @@
-From: Andy Isaacson <adi@hexapodia.org>
-Subject: Re: ext4_mb_generate_buddy: 18745 clusters in bitmap, 18746 in gd;
- block bitmap corrupt
-Date: Thu, 31 Jul 2014 13:33:03 -0700
-Message-ID: <20140731203303.GB22842@hexapodia.org>
-References: <20140731195138.GA22842@hexapodia.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 81461] New: EXT-4 kernel panic
+Date: Thu, 31 Jul 2014 21:08:09 +0000
+Message-ID: <bug-81461-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from straum.hexapodia.org ([192.235.78.53]:43841 "EHLO
-	straum.hexapodia.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751280AbaGaUdE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jul 2014 16:33:04 -0400
-Content-Disposition: inline
-In-Reply-To: <20140731195138.GA22842@hexapodia.org>
+Received: from mail.kernel.org ([198.145.19.201]:41380 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752695AbaGaVIO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 Jul 2014 17:08:14 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 5991C201BB
+	for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2014 21:08:12 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 4B42620158
+	for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2014 21:08:10 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-3.14.9 boots just fine after a fsck.
+https://bugzilla.kernel.org/show_bug.cgi?id=81461
 
--andy
+            Bug ID: 81461
+           Summary: EXT-4 kernel panic
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.4
+          Hardware: ARM
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: dennes544@gmail.com
+        Regression: No
 
-On Thu, Jul 31, 2014 at 12:51:38PM -0700, Andy Isaacson wrote:
-> 3.15.5 amd64, ext4 rootfs on LVM on LUKS on Samsung SSD 840 EVO on
-> Thinkpad T440s.
-> 
-> System has been quite stable for ~9 months, always running a very recent
-> stable tree.
-> 
-> kernel panicked this morning probably due to an external drive
-> triggering UAS errors in 3.15 (but the syslog didn't make it to disk
-> alas).  The system remained powered on for >30 seconds after the panic,
-> finally I shut down by holding down the power button.  So there should
-> not have been any writes in flight to the SSD.
-> 
-> After reboot, rootfs was deeply unhappy:
-> 
-> [    7.248400] EXT4-fs (dm-1): INFO: recovery required on readonly filesystem
-> [    7.248404] EXT4-fs (dm-1): write access will be enabled during recovery
-> [    7.303580] EXT4-fs (dm-1): orphan cleanup on readonly fs
-> [    7.326277] EXT4-fs (dm-1): 10 orphan inodes deleted
-> [    7.326280] EXT4-fs (dm-1): recovery complete
-> [    7.380065] EXT4-fs (dm-1): mounted filesystem with ordered data mode. Opts: (null)
-> ...
-> [    8.829221] EXT4-fs (dm-1): re-mounted. Opts: errors=remount-ro
-> ...
-> [   39.354383] EXT4-fs error (device dm-1): ext4_mb_generate_buddy:756: group 835, 18745 clusters in bitmap, 18746 in gd; block bitmap corrupt.
-> [   39.354389] Aborting journal on device dm-1-8.
-> [   39.354478] EXT4-fs (dm-1): Remounting filesystem read-only
-> [   39.354485] ------------[ cut here ]------------
-> [   39.354517] WARNING: CPU: 0 PID: 2312 at fs/ext4/ext4_jbd2.c:259 __ext4_handle_dirty_metadata+0xf4/0x1a4 [ext4]()
-> [   39.354519] Modules linked in: snd_hda_codec_realtek snd_hda_codec_hdmi snd_hda_codec_generic nls_utf8 nls_cp437 vfat fat ext2 joydev uvcvideo videobuf2_vmalloc videobuf2_memops videobuf2_core videodev arc4 media ecb btusb bluetooth 6lowpan_iphc x86_pkg_temp_thermal intel_rapl kvm_intel iwlmvm kvm mac80211 pcspkr psmouse evdev serio_raw iwlwifi snd_hda_intel snd_hda_controller cfg80211 i2c_i801 snd_hda_codec snd_hwdep snd_pcm snd_seq i915 snd_seq_device thinkpad_acpi snd_timer nvram tpm_tis rfkill battery tpm ac drm_kms_helper drm snd video acpi_cpufreq intel_gtt shpchp i2c_algo_bit intel_smartconnect i2c_core soundcore button processor loop fuse autofs4 ext4 crc16 jbd2 mbcache hid_generic usbhid hid dm_crypt dm_mod sg sd_mod crc_t10dif crct10dif_generic crct10dif_common rtsx_pci_sdmm
- c mmc_core ahci e1000e ptp pps_core aesni_intel libahci aes_x86_64 glue_helper libata lrw gf128mul ablk_helper cryptd scsi_mod ehci_pci ehci_hcd xhci_hcd rtsx_pci mfd_core usbcore thermal usb_common thermal_sys
-> [   39.354598] CPU: 0 PID: 2312 Comm: systemd-tmpfile Not tainted 3.15.5 #19
-> [   39.354600] Hardware name: LENOVO 20AQCTO1WW/20AQCTO1WW, BIOS GJET61WW (2.11 ) 10/02/2013
-> [   39.354602]  0000000000000000 ffff880213c67b78 ffffffff81378c2a 0000000000000000
-> [   39.354605]  ffff880213c67bb0 ffffffff8103dc62 ffffffffa03a3d33 ffff8800d607eea0
-> [   39.354608]  00000000ffffffe2 0000000000000000 ffff8800d60a3030 ffff880213c67bc0
-> [   39.354611] Call Trace:
-> [   39.354617]  [<ffffffff81378c2a>] dump_stack+0x45/0x56
-> [   39.354621]  [<ffffffff8103dc62>] warn_slowpath_common+0x7f/0x98
-> [   39.354643]  [<ffffffffa03a3d33>] ? __ext4_handle_dirty_metadata+0xf4/0x1a4 [ext4]
-> [   39.354648]  [<ffffffff8103dd2e>] warn_slowpath_null+0x1a/0x1c
-> [   39.354666]  [<ffffffffa03a3d33>] __ext4_handle_dirty_metadata+0xf4/0x1a4 [ext4]
-> [   39.354686]  [<ffffffffa03aa380>] ext4_free_blocks+0x713/0x809 [ext4]
-> [   39.354704]  [<ffffffffa03a0639>] ext4_ext_remove_space+0x698/0xbdc [ext4]
-> [   39.354723]  [<ffffffffa03af7b1>] ? __es_remove_extent+0x46/0x27d [ext4]
-> [   39.354741]  [<ffffffffa03a246f>] ext4_ext_truncate+0x89/0xad [ext4]
-> [   39.354756]  [<ffffffffa0383024>] ext4_truncate+0x199/0x281 [ext4]
-> [   39.354770]  [<ffffffffa038379b>] ext4_evict_inode+0x1a7/0x2d0 [ext4]
-> [   39.354775]  [<ffffffff8113f390>] evict+0xa8/0x14c
-> [   39.354778]  [<ffffffff8113fa75>] iput+0x12d/0x136
-> [   39.354783]  [<ffffffff81136d5b>] do_unlinkat+0x14e/0x1f4
-> [   39.354788]  [<ffffffff8112bfe9>] ? ____fput+0xe/0x10
-> [   39.354794]  [<ffffffff8105659d>] ? task_work_run+0x87/0x98
-> [   39.354798]  [<ffffffff81137b98>] SyS_unlinkat+0x29/0x2b
-> [   39.354802]  [<ffffffff81137b98>] ? SyS_unlinkat+0x29/0x2b
-> [   39.354807]  [<ffffffff8137d0d2>] system_call_fastpath+0x16/0x1b
-> [   39.354810] ---[ end trace 80365b8da4738adc ]---
-> [   39.354814] EXT4: jbd2_journal_dirty_metadata failed: handle type 5 started at line 241, credits 91/89, errcode -30
-> [   39.354817] EXT4: jbd2_journal_dirty_metadata failed: handle type 5 started at line 241, credits 91/89, errcode -30<2>[   39.354821] EXT4-fs error (device dm-1) in ext4_free_blocks:4867: Journal has aborted
-> [   39.354906] EXT4-fs error (device dm-1) in ext4_reserve_inode_write:4879: Journal has aborted
-> [   39.354976] EXT4-fs error (device dm-1) in ext4_reserve_inode_write:4879: Journal has aborted
-> [   39.355042] EXT4-fs error (device dm-1) in ext4_ext_remove_space:3018: Journal has aborted
-> [   39.355109] EXT4-fs error (device dm-1) in ext4_ext_truncate:4666: Journal has aborted
-> [   39.355179] EXT4-fs error (device dm-1) in ext4_reserve_inode_write:4879: Journal has aborted
-> [   39.355248] EXT4-fs error (device dm-1) in ext4_truncate:3790: Journal has aborted
-> [   39.355314] EXT4-fs error (device dm-1) in ext4_reserve_inode_write:4879: Journal has aborted
-> [   39.355382] EXT4-fs error (device dm-1) in ext4_orphan_del:2684: Journal has aborted
-> 
-> 
-> Rebooted again and rootfs came up dirty, of course, but journal seems
-> sadder than expected:
-> 
-> [   12.465200] EXT4-fs (dm-1): warning: mounting fs with errors, running e2fsck is recommended
-> [   12.465403] EXT4-fs (dm-1): re-mounted. Opts: errors=remount-ro
-> [   12.504024] systemd-journald[230]: Received request to flush runtime journal from PID 1
-> [   12.506433] EXT4-fs error (device dm-1): ext4_free_inode:323: comm systemd-tmpfile: bit already cleared for inode 3801146
-> [   12.506527] Aborting journal on device dm-1-8.
-> [   12.506950] EXT4-fs (dm-1): Remounting filesystem read-only
-> [   12.506957] EXT4-fs error (device dm-1) in ext4_evict_inode:310: IO failure
-> [   12.506991] EXT4-fs error (device dm-1): mb_free_blocks:1441: group 464, block 15212940:freeing already freed block (bit 8588); block bitmap corrupt.
-> [   12.507004] EXT4-fs error (device dm-1): ext4_mb_generate_buddy:756: group 464, 24180 clusters in bitmap, 24181 in gd; block bitmap corrupt.
-> 
-> 
-> fsck claims to have fixed it but on reboot it blows up the same way:
-> 
-> e2fsck 1.42.11 (09-Jul-2014)
-> /dev/mapper/t440s-root: recovering journal
-> /dev/mapper/t440s-root contains a file system with errors, check forced.
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Unconnected directory inode 3801092 (/tmp/???)
-> Connect to /lost+found<y>? yes
-> Unconnected directory inode 3801093 (/tmp/???)
-> Connect to /lost+found<y>? yes
-> Unconnected directory inode 3801106 (/tmp/???)
-> Connect to /lost+found<y>? yes
-> Unconnected directory inode 3801107 (/lost+found/#3801106/???)
-> Connect to /lost+found<y>? yes
-> Unconnected directory inode 3801111 (/tmp/???)
-> Connect to /lost+found<y>? yes
-> Unconnected directory inode 3801116 (/tmp/???)
-> Connect to /lost+found<y>? yes
-> Unconnected directory inode 3801118 (/tmp/???)
-> Connect to /lost+found<y>? yes
-> Pass 4: Checking reference counts
-> Inode 3801089 ref count is 61, should be 42.  Fix<y>? yes
-> Inode 3801092 ref count is 3, should be 2.  Fix<y>? yes
-> Inode 3801093 ref count is 3, should be 2.  Fix<y>? yes
-> Unattached inode 3801099
-> Connect to /lost+found<y>? yes
-> Inode 3801099 ref count is 2, should be 1.  Fix<y>? yes
-> Unattached inode 3801103
-> Connect to /lost+found<y>? yes
-> Inode 3801103 ref count is 2, should be 1.  Fix<y>? yes
-> Inode 3801106 ref count is 3, should be 2.  Fix<y>? yes
-> Inode 3801107 ref count is 3, should be 2.  Fix<y>? yes
-> Inode 3801111 ref count is 3, should be 2.  Fix<y>? yes
-> Unattached inode 3801112
-> Connect to /lost+found<y>? yes
-> Inode 3801112 ref count is 2, should be 1.  Fix<y>? yes
-> Inode 3801116 ref count is 3, should be 2.  Fix<y>? yes
-> Inode 3801118 ref count is 3, should be 2.  Fix<y>? yes
-> 
-> Pass 5: Checking group summary information
-> Block bitmap differences:  -(15212585--15212586) -(15212756--15212757) -15212761 -15212765 -15212883 -15212886 -(15212888--15212891) -15212905 -15212907 -15212911 -(15212923--15212924) -15212938 -15212940 -15213385 +15237175 +(27371328--27371391) +(27427126--27427191) +(27427648--27427711) +82127850
-> Fix<y>? yes
-> Free blocks count wrong for group #464 (24160, counted=24180).
-> Fix<y>? yes
-> Free blocks count wrong for group #465 (25520, counted=25827).
-> Fix<y>? yes
-> Free blocks count wrong for group #835 (18809, counted=18745).
-> Fix<y>? yes
-> Free blocks count wrong for group #837 (23154, counted=23024).
-> Fix<y>? yes
-> Free blocks count wrong for group #2506 (28536, counted=28535).
-> Fix<y>? yes
-> Free blocks count wrong for group #2842 (2415, counted=2478).
-> Fix<y>? yes
-> Free blocks count wrong for group #2844 (27816, counted=28135).
-> Fix<y>? yes
-> Free blocks count wrong (108044209, counted=108044918).
-> Fix<y>? yes
-> Inode bitmap differences:  -3801122 -3801126 -(3801128--3801129) -3801134 -3801137 -(3801139--3801142) -3801146 -(3801149--3801150) -(3801152--3801154) -3801158 -3801160 -3801168 -(3801176--3801179) -(3801182--3801183) -3801186 -3801189 -3801193 -(3801199--3801200) -(3801203--3801205) -(3801208--3801211) -(3801213--3801214) -3801216 -3801220 -(3801223--3801224) -3801226 -(3801228--3801232) -(3801238--3801239) -3801738 -3801753 -3801755 -(3801758--3801759) -(3801762--3801763) -3801769 -3801792 -(3801805--3801806) -3801809 -(3801813--3801817) -3801822 -(3801826--3801828) -(3801832--3801834) -(3801836--3801837) -(3801842--3801843) -3801848 -3801853 -3801857 -(3801863--3801864) -3801871 -(3801873--3801876) -3801879 -3801881 -3801883 -3801885 -(3801888--3801889) -(3801891--3801892) -(3801896-
- -3801897) -3801899 -(3801901--3801902) -(3801905--3801906) -(3801909--3801910) -3801912 -3801914 -(3801920--3801921) -(3801923--3801924) -3801926 -3802690 -3805907
-> Fix<y>? yes
-> Free inodes count wrong for group #464 (6581, counted=6696).
-> Fix<y>? yes
-> Directories count wrong for group #464 (366, counted=346).
-> Fix<y>? yes
-> Free inodes count wrong (29348331, counted=29348445).
-> Fix<y>? yes
-> 
-> /dev/mapper/t440s-root: ***** FILE SYSTEM WAS MODIFIED *****
-> /dev/mapper/t440s-root: ***** REBOOT LINUX *****
-> /dev/mapper/t440s-root: 617891/29966336 files (0.7% non-contiguous), 11796874/119841792 blocks
-> 
-> 
-> After fsck reports clean, reboot still shows failures:
-> 
-> 
-> [    7.378361] EXT4-fs (dm-1): INFO: recovery required on readonly filesystem
-> [    7.378365] EXT4-fs (dm-1): write access will be enabled during recovery
-> [    7.384663] EXT4-fs (dm-1): recovery complete
-> [    7.386479] EXT4-fs (dm-1): mounted filesystem with ordered data mode. Opts: (null)
-> 
-> [    7.710694] EXT4-fs (dm-1): re-mounted. Opts: errors=remount-ro
-> 
-> [    9.820974] EXT4-fs error (device dm-1): ext4_mb_generate_buddy:756: group 465, 29923 clusters in bitmap, 29922 in gd; block bitmap corrupt.
-> [    9.820975] Aborting journal on device dm-1-8.
-> [    9.821614] EXT4-fs (dm-1): Remounting filesystem read-only
-> 
-> 
-> Similar repeated problems repeat on every reboot.
-> 
-> SMART stats on the SSD do not indicate any signs of failing hardware:
-> 
-> Device Model:     Samsung SSD 840 EVO 500GB
-> Serial Number:    S1DHNSAD929048M
-> LU WWN Device Id: 5 002538 8a00452f8
-> Firmware Version: EXT0BB0Q
-> User Capacity:    500,107,862,016 bytes [500 GB]
-> Sector Size:      512 bytes logical/physical
-> Rotation Rate:    Solid State Device
-> Device is:        Not in smartctl database [for details use: -P showall]
-> ATA Version is:   ACS-2, ATA8-ACS T13/1699-D revision 4c
-> SATA Version is:  SATA 3.1, 6.0 Gb/s (current: 6.0 Gb/s)
-> Local Time is:    Thu Jul 31 12:36:59 2014 PDT
-> ...
-> ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
->   5 Reallocated_Sector_Ct   0x0033   100   100   010    Pre-fail  Always       -       0
->   9 Power_On_Hours          0x0032   099   099   000    Old_age   Always       -       1693
->  12 Power_Cycle_Count       0x0032   099   099   000    Old_age   Always       -       165
-> 177 Wear_Leveling_Count     0x0013   099   099   000    Pre-fail  Always       -       2
-> 179 Used_Rsvd_Blk_Cnt_Tot   0x0013   100   100   010    Pre-fail  Always       -       0
-> 181 Program_Fail_Cnt_Total  0x0032   100   100   010    Old_age   Always       -       0
-> 182 Erase_Fail_Count_Total  0x0032   100   100   010    Old_age   Always       -       0
-> 183 Runtime_Bad_Block       0x0013   100   100   010    Pre-fail  Always       -       0
-> 187 Reported_Uncorrect      0x0032   100   100   000    Old_age   Always       -       0
-> 190 Airflow_Temperature_Cel 0x0032   069   053   000    Old_age   Always       -       31
-> 195 Hardware_ECC_Recovered  0x001a   200   200   000    Old_age   Always       -       0
-> 199 UDMA_CRC_Error_Count    0x003e   100   100   000    Old_age   Always       -       0
-> 235 Unknown_Attribute       0x0012   099   099   000    Old_age   Always       -       7
-> 241 Total_LBAs_Written      0x0032   099   099   000    Old_age   Always       -       2102932957
-> 
-> -andy
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+[   21.066870] Unable to handle kernel paging request at virtual address
+013d5000
+[   21.066932] pgd = eb138000
+[   21.067026] [013d5000] *pgd=00000000
+[   21.067131] Internal error: Oops: 5 [#1] PREEMPT SMP ARM
+[   21.067185] CPU: 1    Not tainted  (3.4.0-purity #5)
+[   21.067284] PC is at __percpu_counter_add+0x4c/0xd8
+[   21.067341] LR is at __sb_start_write+0x60/0x104
+[   21.067435] pc : [<c042bd68>]    lr : [<c0269fb4>]    psr: 80000013
+[   21.067438] sp : ebb53e38  ip : 00000020  fp : ebb53e5c
+[   21.067572] r10: 00000000  r9 : ebb52000  r8 : c103c0d8
+[   21.067624] r7 : ec0d51e8  r6 : ebb52000  r5 : 00000000  r4 : 00000001
+[   21.067717] r3 : 00000000  r2 : 00000020  r1 : 00000000  r0 : 013d5000
+[   21.067772] Flags: Nzcv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment
+user
+[   21.067867] Control: 10c5787d  Table: 3353806a  DAC: 00000015
+[   21.067960] 
+[   21.067962] PC: 0xc042bce8:
+[   21.068058] bce8  e3a01004 ebff88b2 e5983000 e1a02000 e1530000 cafffff4
+e1c640f8 e1a00006
+[   21.068584] bd08  eb187c15 e89daff8 c103b868 c103c0d8 c0b093f8 e1a0c00d
+e92dddf0 e24cb004
+[   21.069067] bd28  e1a0100d e1a05003 e59bc004 e3c16d7f e1a07000 e3c6603f
+e1a04002 e5963004
+[   21.069555] bd48  e2833001 e5863004 e59f8098 e1a03fcc e1a0200c e5960014
+e5971018 e7980100
+[   21.070081] bd68  e791a000 e094400a e0a55fca e1540002 e0d5a003 aa000006
+e26cc000 e1a03fcc
+[   21.070603] bd88  e1a0200c e1520004 e0d3c005 b7814000 ba00000c e1a00007
+eb187b79 e1c720d8
+[   21.071090] bda8  e1a00007 e596c014 e5971018 e0922004 e0a33005 e1c720f8
+e798310c e3a02000
+[   21.071621] bdc8  e7812003 eb187be4 e5963004 e2433001 e5863004 e5963000
+e3130002 089dadf0
+[   21.072163] 
+[   21.072164] LR: 0xc0269f34:
+[   21.072262] 9f34  0a000003 e3a01003 e3a02001 e3a03000 ebfd6812 e24bd010
+e89da810 c103c214
+[   21.072808] 9f54  e1a0c00d e92dddf0 e24cb004 e24dd020 e52de004 e8bd4000
+e1a0300d e59f80d8
+[   21.073366] 9f74  e1a04000 e3c37d7f e1a05001 e1a06002 e3c7703f e5943214
+e1530005 aa00000e
+[   21.073861] 9f94  e59f10b8 e0840285 e3a02001 e3a03000 e2800f62 e5911000
+e58d1000 eb070759
+[   21.074391] 9fb4  f57ff05f e5943214 e1550003 da00001c e3a00001 e24bd024
+e89dadf0 e3560000
+[   21.074923] 9fd4  0a00001b e3a02014 e24b0038 e3a01000 e284af86 eb0691cc
+e597300c e24b202c
+[   21.075411] 9ff4  e50b8030 e50b202c e50b2028 e50b3034 ea000000 eb1f7f2e
+e1a0000a e24b1038
+[   21.075939] a014  e3a02002 ebfd2a7b e5943214 e1550003 dafffff7 e1a0000a
+e24b1038 ebfd2ab7
+[   21.076499] 
+[   21.076501] SP: 0xebb53db8:
+[   21.076602] 3db8  00200200 00000000 00000000 c042bd68 80000013 ffffffff
+ebb53e24 c103c0d8
+[   21.077137] 3dd8  ebb52000 00000000 ebb53e5c ebb53df0 c0106f98 c0100234
+013d5000 00000000
+[   21.077688] 3df8  00000020 00000000 00000001 00000000 ebb52000 ec0d51e8
+c103c0d8 ebb52000
+[   21.078325] 3e18  00000000 ebb53e5c 00000020 ebb53e38 c0269fb4 c042bd68
+80000013 ffffffff
+[   21.078995] 3e38  ec0d5000 00000003 00000001 ebb52000 c01b4c34 00000000
+ebb53ea4 ebb53e60
+[   21.079648] 3e58  c0269fb4 c042bd28 00000020 ea8e10b8 c0b1a3f0 c0107644
+ebb52000 00000000
+[   21.080314] 3e78  ebb53ea4 ebb53e88 ea8e10b8 ea8e1158 ea8e10b8 c0b1a3f0
+c0107644 00000000
+[   21.080885] 3e98  ebb53ecc ebb53ea8 c02fd064 c0269f60 00000000 ea8e10b8
+ea8e10b8 ea8e1158
+[   21.081549] 
+[   21.081550] FP: 0xebb53ddc:
+[   21.081687] 3ddc  00000000 ebb53e5c ebb53df0 c0106f98 c0100234 013d5000
+00000000 00000020
+[   21.082323] 3dfc  00000000 00000001 00000000 ebb52000 ec0d51e8 c103c0d8
+ebb52000 00000000
+[   21.082926] 3e1c  ebb53e5c 00000020 ebb53e38 c0269fb4 c042bd68 80000013
+ffffffff ec0d5000
+[   21.083570] 3e3c  00000003 00000001 ebb52000 c01b4c34 00000000 ebb53ea4
+ebb53e60 c0269fb4
+[   21.084191] 3e5c  c042bd28 00000020 ea8e10b8 c0b1a3f0 c0107644 ebb52000
+00000000 ebb53ea4
+[   21.084800] 3e7c  ebb53e88 ea8e10b8 ea8e1158 ea8e10b8 c0b1a3f0 c0107644
+00000000 ebb53ecc
+[   21.085374] 3e9c  ebb53ea8 c02fd064 c0269f60 00000000 ea8e10b8 ea8e10b8
+ea8e1158 c0b1a3f0
+[   21.086062] 3ebc  c0b1a3f0 ebb53eec ebb53ed0 c027ed0c c02fcf80 00000000
+ea8e10b8 ea8e1104
+[   21.086674] 
+[   21.086676] R6: 0xebb51f80:
+[   21.086869] 1f80  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.087329] 1fa0  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.087833] 1fc0  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.088300] 1fe0  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.088789] 2000  00000002 00000003 00000000 e8fff300 c10661c0 00000001
+00000015 eb79ac40
+[   21.089253] 2020  eb79ac40 c103c0d8 ebb52000 e8fff300 eb78ad00 c2406600
+ebb53d3c ebb53c90
+[   21.089758] 2040  c0a498c8 00000000 00000000 00000000 00000000 00000000
+01010000 00000000
+[   21.090271] 2060  7e213dd0 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.090725] 
+[   21.090726] R7: 0xec0d5168:
+[   21.090858] 5168  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.091363] 5188  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.091830] 51a8  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.092334] 51c8  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.092838] 51e8  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.093308] 5208  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.093817] 5228  00000000 00000000 ec0d5230 ec0d5230 62636d6d 70306b6c
+00003732 00000000
+[   21.094337] 5248  00000000 00000000 00000000 00000000 bcf4f857 5f65f4ab
+6f9467bf 5bf2f9c0
+[   21.094845] 
+[   21.094846] R8: 0xc103c058:
+[   21.094945] c058  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.095446] c078  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.095913] c098  00000064 00008000 0000000f c241a040 00000004 00000008
+c2412000 c241a000
+[   21.096424] c0b8  00000001 0000002c c2402000 c240a000 00001000 00000000
+00000003 c23fb000
+[   21.096936] c0d8  013cd000 013d5000 013dd000 013e5000 00046b00 00000002
+00036be5 0007ffff
+[   21.097438] c0f8  00000001 00000032 0000fffa 00000001 ee002100 0000000f
+ed89b910 ed9b5d00
+[   21.097909] c118  00000011 c241e100 0001ffff ee012680 ee002480 00000064
+ee012700 00000010
+[   21.098415] c138  c249e100 0000ffff 00100000 ee015000 ee002100 0000000f
+00000001 c0d26e0c
+[   21.098916] 
+[   21.098918] R9: 0xebb51f80:
+[   21.099022] 1f80  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.099565] 1fa0  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.100104] 1fc0  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.100570] 1fe0  00000000 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.101070] 2000  00000002 00000003 00000000 e8fff300 c10661c0 00000001
+00000015 eb79ac40
+[   21.101677] 2020  eb79ac40 c103c0d8 ebb52000 e8fff300 eb78ad00 c2406600
+ebb53d3c ebb53c90
+[   21.102257] 2040  c0a498c8 00000000 00000000 00000000 00000000 00000000
+01010000 00000000
+[   21.102804] 2060  7e213dd0 00000000 00000000 00000000 00000000 00000000
+00000000 00000000
+[   21.103358] Process Thread-71 (pid: 1504, stack limit = 0xebb522f0)
+[   21.103493] Stack: (0xebb53e38 to 0xebb54000)
+[   21.103599] 3e20:                                                      
+ec0d5000 00000003
+[   21.103695] 3e40: 00000001 ebb52000 c01b4c34 00000000 ebb53ea4 ebb53e60
+c0269fb4 c042bd28
+[   21.103750] 3e60: 00000020 ea8e10b8 c0b1a3f0 c0107644 ebb52000 00000000
+ebb53ea4 ebb53e88
+[   21.103850] 3e80: ea8e10b8 ea8e1158 ea8e10b8 c0b1a3f0 c0107644 00000000
+ebb53ecc ebb53ea8
+[   21.103949] 3ea0: c02fd064 c0269f60 00000000 ea8e10b8 ea8e10b8 ea8e1158
+c0b1a3f0 c0b1a3f0
+[   21.104041] 3ec0: ebb53eec ebb53ed0 c027ed0c c02fcf80 00000000 ea8e10b8
+ea8e1104 ec0d5000
+[   21.104093] 3ee0: ebb53f0c ebb53ef0 c027f8f8 c027ec7c 00000000 ea88cf68
+ea8e10b8 0000000a
+[   21.104225] 3f00: ebb53f94 ebb53f10 c0274c84 c027f820 ebe6d3d0 ebd2a000
+ebe6d3d0 ec4c7f68
+[   21.104361] 3f20: 0026c8ca 00000003 ebd2a010 00000000 edc04088 ec535308
+00000000 00000002
+[   21.104414] 3f40: 00000000 00000000 0b30001b c0108180 00000001 000003e8
+000003e8 00000000
+[   21.104510] 3f60: 000044e1 00000000 006447ef 1017df7f 53da94a7 0ca47722
+53da94a7 7747ab60
+[   21.104600] 3f80: 77496de0 00000000 ebb53fa4 ebb53f98 c0274d24 c0274b74
+00000000 ebb53fa8
+[   21.104690] 3fa0: c0107400 c0274d10 7747ab60 77496de0 7747ab60 00008000
+77496de0 00008180
+[   21.104741] 3fc0: 7747ab60 77496de0 00000000 0000000a 7e213b10 7a168ed8
+77496df0 7e213b24
+[   21.104928] 3fe0: 7a168ee0 7e213a80 4013d1d1 40148a30 20070010 7747ab60
+00000000 00000000
+[   21.105032] [<c042bd68>] (__percpu_counter_add+0x4c/0xd8) from [<c0269fb4>]
+(__sb_start_write+0x60/0x104)
+[   21.105126] [<c0269fb4>] (__sb_start_write+0x60/0x104) from [<c02fd064>]
+(ext4_evict_inode+0xf0/0x4a0)
+[   21.105186] [<c02fd064>] (ext4_evict_inode+0xf0/0x4a0) from [<c027ed0c>]
+(evict+0x9c/0x184)
+[   21.105280] [<c027ed0c>] (evict+0x9c/0x184) from [<c027f8f8>]
+(iput+0xe4/0x1ec)
+[   21.105371] [<c027f8f8>] (iput+0xe4/0x1ec) from [<c0274c84>]
+(do_unlinkat+0x11c/0x160)
+[   21.105557] [<c0274c84>] (do_unlinkat+0x11c/0x160) from [<c0274d24>]
+(sys_unlink+0x20/0x24)
+[   21.105612] [<c0274d24>] (sys_unlink+0x20/0x24) from [<c0107400>]
+(ret_fast_syscall+0x0/0x30)
+[   21.105708] Code: e1a0200c e5960014 e5971018 e7980100 (e791a000) 
+[   21.105867] ---[ end trace b2d354afff160c81 ]---
+[   21.105920] Kernel panic - not syncing: Fatal exception
+[   21.105979] CPU3: stopping
+[   21.106079] [<c010e498>] (unwind_backtrace+0x0/0x144) from [<c0a398e8>]
+(dump_stack+0x20/0x24)
+[   21.106136] [<c0a398e8>] (dump_stack+0x20/0x24) from [<c010c9b0>]
+(handle_IPI+0x198/0x1cc)
+[   21.106317] [<c010c9b0>] (handle_IPI+0x198/0x1cc) from [<c01005a0>]
+(gic_handle_irq+0xb0/0xf4)
+[   21.106421] [<c01005a0>] (gic_handle_irq+0xb0/0xf4) from [<c0107000>]
+(__irq_svc+0x40/0x70)
+[   21.106514] Exception stack(0xebe97e98 to 0xebe97ee0)
+[   21.106583] 7e80:                                                      
+eaf50b80 07b00000
+[   21.106685] 7ea0: 00000000 c1a2eae0 c0ba6414 ea23c414 eaf5da40 eaf5da58
+ebe97f78 eaf50b80
+[   21.106781] 7ec0: 00001000 ebe97ef4 ebe97ef8 ebe97ee0 c02c5120 c02c5d80
+600f0013 ffffffff
+[   21.106841] [<c0107000>] (__irq_svc+0x40/0x70) from [<c02c5d80>]
+(sysfs_get_active+0x28/0x74)
+[   21.106968] [<c02c5d80>] (sysfs_get_active+0x28/0x74) from [<c02c5120>]
+(sysfs_read_file+0x78/0x180)
+[   21.107083] [<c02c5120>] (sysfs_read_file+0x78/0x180) from [<c0266350>]
+(vfs_read+0xac/0x150)
+[   21.107180] [<c0266350>] (vfs_read+0xac/0x150) from [<c0266684>]
+(sys_read+0x48/0x80)
+[   21.107236] [<c0266684>] (sys_read+0x48/0x80) from [<c0107400>]
+(ret_fast_syscall+0x0/0x30)
+[   21.107365] CPU2: stopping
+[   21.107433] [<c010e498>] (unwind_backtrace+0x0/0x144) from [<c0a398e8>]
+(dump_stack+0x20/0x24)
+[   21.107535] [<c0a398e8>] (dump_stack+0x20/0x24) from [<c010c9b0>]
+(handle_IPI+0x198/0x1cc)
+[   21.107634] [<c010c9b0>] (handle_IPI+0x198/0x1cc) from [<c01005a0>]
+(gic_handle_irq+0xb0/0xf4)
+[   21.107791] [<c01005a0>] (gic_handle_irq+0xb0/0xf4) from [<c01071c0>]
+(__irq_usr+0x40/0x60)
+[   21.107844] Exception stack(0xeb0abfb0 to 0xeb0abff8)
+[   21.107944] bfa0:                                     b7248210 b72508c0
+00001000 00000001
+[   21.108040] bfc0: b7250618 b4dc4d64 00001000 b7248210 b72508c0 b4cc7000
+bedce5dc b6ed62ec
+[   21.108095] bfe0: 00000004 b4dc4cf8 b6970499 b689a6d6 20000030 ffffffff
+[   21.108245] CPU0: stopping
+[   21.108307] [<c010e498>] (unwind_backtrace+0x0/0x144) from [<c0a398e8>]
+(dump_stack+0x20/0x24)
+[   21.108416] [<c0a398e8>] (dump_stack+0x20/0x24) from [<c010c9b0>]
+(handle_IPI+0x198/0x1cc)
+[   21.108514] [<c010c9b0>] (handle_IPI+0x198/0x1cc) from [<c01005a0>]
+(gic_handle_irq+0xb0/0xf4)
+[   21.108570] [<c01005a0>] (gic_handle_irq+0xb0/0xf4) from [<c0107000>]
+(__irq_svc+0x40/0x70)
+[   21.108663] Exception stack(0xea2cbf00 to 0xea2cbf48)
+[   21.108760] bf00: 00000000 7696e000 ffff0001 eacf5500 ebe8d500 7696e000
+00000007 7696f000
+[   21.108816] bf20: ea2ca000 00000007 00000007 ea2cbf5c ea2cbf60 ea2cbf48
+c02563c8 c0253ef8
+[   21.108914] bf40: 600e0013 ffffffff
+[   21.108976] [<c0107000>] (__irq_svc+0x40/0x70) from [<c0253ef8>]
+(find_vma+0x24/0xc0)
+[   21.109079] [<c0253ef8>] (find_vma+0x24/0xc0) from [<c02563c8>]
+(sys_mprotect+0xc4/0x1f4)
+[   21.109180] [<c02563c8>] (sys_mprotect+0xc4/0x1f4) from [<c0107400>]
+(ret_fast_syscall+0x0/0x30)
+[   22.109582] Rebooting in 5 seconds..
+[   27.111231] Going down for restart now
+[   27.111989] Calling SCM to disable SPMI PMIC arbiter
+
+No errors detected
+Boot info:
+Last boot reason: kernel_panic
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
