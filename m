@@ -1,46 +1,188 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: save goal group and offset in struct
- ext4_allocation_context.ac_g_ex
-Date: Thu, 31 Jul 2014 11:32:55 -0400
-Message-ID: <20140731153255.GE1566@thunk.org>
-References: <1406108861-2581-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
- <20140729135819.GA2256@thunk.org>
+From: Azat Khuzhin <a3at.mail@gmail.com>
+Subject: Re: [PATCH 3/4 v3] tune2fs: update journal super block when changing
+ UUID for fs.
+Date: Thu, 31 Jul 2014 19:45:27 +0400
+Message-ID: <20140731154527.GM15655@azat>
+References: <1406533405-6899-1-git-send-email-a3at.mail@gmail.com>
+ <1406533405-6899-4-git-send-email-a3at.mail@gmail.com>
+ <53DA5DDC.1020703@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, adilger@dilger.ca, lczerner@redhat.com
-To: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, darrick.wong@oracle.com,
+	adilger@dilger.ca
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38544 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750883AbaGaPdB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 Jul 2014 11:33:01 -0400
+Received: from mail-la0-f47.google.com ([209.85.215.47]:59831 "EHLO
+	mail-la0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751132AbaGaPpc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jul 2014 11:45:32 -0400
+Received: by mail-la0-f47.google.com with SMTP id mc6so2276999lab.34
+        for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2014 08:45:30 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20140729135819.GA2256@thunk.org>
+In-Reply-To: <53DA5DDC.1020703@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 29, 2014 at 09:58:19AM -0400, Theodore Ts'o wrote:
-> On Wed, Jul 23, 2014 at 05:47:41PM +0800, Xiaoguang Wang wrote:
-> > In ext4_mb_normalize_request(), if ac_g_ex.fe_logical is adjacent to the closest logical
-> > allocated block to the left or (ac_g_ex.fe_logical+len) adjacent to the closest logical
-> > allocated block to the right, we'll attach EXT4_MB_HINT_TRY_GOAL flag taking the physical
-> > block (ext4_allocation_request.lleft+1) or (ext4_allocation_request.pright-len) as a goal,
-> > and put this information in ext4_allocation_context.ac_f_ex.
-> > 
-> > But look at the ext4_mb_find_by_goal(), indeed it use ac_g_ex to look up, so this is wrong,
-> > we should save goal group and offset in struct ext4_allocation_context.ac_g_ex.
-> > 
-> > Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-> 
-> Nice catch!
-> 
-> Thanks, applied.
+On Thu, Jul 31, 2014 at 10:16:44AM -0500, Eric Sandeen wrote:
+> On 7/28/14, 2:43 AM, Azat Khuzhin wrote:
+> > Using -U option you can change the UUID for fs, however it will not=
+ work
+> > for journal device, since it have a copy of this UUID inside jsb (i=
+=2Ee.
+> > journal super block). So copy UUID on change into that block.
+> >=20
+> > Here is the initial thread:
+> > http://comments.gmane.org/gmane.comp.file-systems.ext4/44532
+> >=20
+> > You can reproduce this by executing following commands:
+> > $ fallocate -l100M /tmp/dev
+> > $ fallocate -l100M /tmp/journal
+> > $ sudo /sbin/losetup /dev/loop1 /tmp/dev
+> > $ sudo /sbin/losetup /dev/loop0 /tmp/journal
+> > $ mke2fs -O journal_dev /tmp/journal
+> > $ tune2fs -U da1f2ed0-60f6-aaaa-92fd-738701418523 /tmp/journal
+> > $ sudo mke2fs -t ext4 -J device=3D/dev/loop0 /dev/loop1
+> > $ dumpe2fs -h /tmp/dev | fgrep UUID
+> > dumpe2fs 1.43-WIP (18-May-2014)
+> > Filesystem UUID:          8a776be9-12eb-411f-8e88-b873575ecfb6
+> > Journal UUID:             e3d02151-e776-4865-af25-aecb7291e8e5
+> > $ sudo e2fsck /dev/vdc
+> > e2fsck 1.43-WIP (18-May-2014)
+> > External journal does not support this filesystem
+> >=20
+> > /dev/loop1: ********** WARNING: Filesystem still has errors *******=
+***
+> >=20
+> > Reported-by: Chin Tzung Cheng <chintzung@gmail.com>
+> > Signed-off-by: Azat Khuzhin <a3at.mail@gmail.com>
+> > Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> > ---
+> >  misc/tune2fs.c | 74 ++++++++++++++++++++++++++++++++++++++++++++--=
+------------
+> >  1 file changed, 56 insertions(+), 18 deletions(-)
+> >=20
+> > diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+> > index 1df655a..74e57ae 100644
+> > --- a/misc/tune2fs.c
+> > +++ b/misc/tune2fs.c
+> > @@ -175,6 +175,38 @@ static __u32 clear_ok_features[3] =3D {
+> >  		EXT4_FEATURE_RO_COMPAT_GDT_CSUM
+> >  };
+> > =20
+> > +/**
+> > + * Try to get journal super block if any
+> > + */
+> > +static int get_journal_sb(ext2_filsys jfs, char buf[SUPERBLOCK_SIZ=
+E])
+> > +{
+> > +	int retval;
+> > +	int start;
+> > +	journal_superblock_t *jsb;
+> > +
+> > +	if (!(jfs->super->s_feature_incompat &
+> > +	    EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)) {
+> > +		return EXT2_ET_UNSUPP_FEATURE;
+> > +	}
+> > +
+> > +	/* Get the journal superblock */
+> > +	if ((retval =3D io_channel_read_blk64(jfs->io,
+> > +	    ext2fs_journal_sb_start(jfs->blocksize), -SUPERBLOCK_SIZE, bu=
+f))) {
+> > +		com_err(program_name, retval, "%s",
+> > +		_("while reading journal superblock"));
+> > +		return retval;
+> > +	}
+> > +
+> > +	jsb =3D (journal_superblock_t *) buf;
+> > +	if ((jsb->s_header.h_magic !=3D (unsigned)ntohl(JFS_MAGIC_NUMBER)=
+) ||
+> > +	    (jsb->s_header.h_blocktype !=3D (unsigned)ntohl(JFS_SUPERBLOC=
+K_V2))) {
+> > +		fputs(_("Journal superblock not found!\n"), stderr);
+> > +		return EXT2_ET_BAD_MAGIC;
+> > +	}
+> > +
+> > +	return 0;
+> > +}
+> > +
+> >  /*
+> >   * Remove an external journal from the filesystem
+> >   */
+> > @@ -218,29 +250,15 @@ static int remove_journal_device(ext2_filsys =
+fs)
+> >  			_("while trying to open external journal"));
+> >  		goto no_valid_journal;
+> >  	}
+> > -	if (!(jfs->super->s_feature_incompat &
+> > -	      EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)) {
+> > -		fprintf(stderr, _("%s is not a journal device.\n"),
+> > -			journal_path);
+> > -		goto no_valid_journal;
+> > -	}
+> > =20
+> > -	start =3D ext2fs_journal_sb_start(fs->blocksize);
+>=20
+> This is already committed (which is why Coverity whined about it), bu=
+t:
+> removing this assignment causes an uninitialized use of "start" later
+> in this function:
+>=20
+>         /* Write back the journal superblock */
+>         if ((retval =3D io_channel_write_blk64(jfs->io, start,
+>             -SUPERBLOCK_SIZE, buf)))
+>=20
+> -Eric
 
-I've had to drop this patch, as it is causing xfstests failures for
-generic/074.
+Hi Eric,
 
-I'm not sure why, and right now I don't have time to investigate.  If
-someone who has time and experience wading into fs/ext4/mballoc.c, it
-would be great if someone could take a closer look.
+Thanks for catching this.
+Patch in attachment must fix this issue.
 
-      	       	  	  	       - Ted
+I maked with -Wall to catch more bugs like this.
+And there is one more note:
+expected =E2=80=98char *=E2=80=99 but argument is of type =E2=80=98__u8=
+ *=E2=80=99
+journal_user()
+I will send a patch later.
+
+
+=46rom 903f251e1ebce3d666a8b2af04b812d4f6751056 Mon Sep 17 00:00:00 200=
+1
+=46rom: Azat Khuzhin <a3at.mail@gmail.com>
+Date: Thu, 31 Jul 2014 19:26:16 +0400
+Subject: [PATCH] tune2fs: initialize start block in remove_journal_devi=
+ce()
+
+---
+ misc/tune2fs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 0c1feb1..044daaf 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -181,7 +181,6 @@ static __u32 clear_ok_features[3] =3D {
+ static int get_journal_sb(ext2_filsys jfs, char buf[SUPERBLOCK_SIZE])
+ {
+ 	int retval;
+-	int start;
+ 	journal_superblock_t *jsb;
+=20
+ 	if (!(jfs->super->s_feature_incompat &
+@@ -286,6 +285,7 @@ static int remove_journal_device(ext2_filsys fs)
+ 	jsb->s_nr_users =3D htonl(nr_users);
+=20
+ 	/* Write back the journal superblock */
++	start =3D ext2fs_journal_sb_start(jfs->blocksize);
+ 	if ((retval =3D io_channel_write_blk64(jfs->io, start,
+ 	    -SUPERBLOCK_SIZE, buf))) {
+ 		com_err(program_name, retval,
+--=20
+2.0.1
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
