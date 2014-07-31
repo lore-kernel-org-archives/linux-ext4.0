@@ -1,108 +1,116 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: RE: [PATCH] mke2fs: fix flexbg check to allow small filesystems
-Date: Thu, 31 Jul 2014 00:12:11 +0000
-Message-ID: <28989C0C9F1C0A428470D967B5FCED372B71A0@BPXM22GP.gisp.nec.co.jp>
-References: <1406709022-28957-1-git-send-email-adilger@dilger.ca>
+From: Gioh Kim <gioh.kim@lge.com>
+Subject: Re: [PATCH 0/2] new API to allocate buffer-cache for superblock in
+ non-movable area
+Date: Thu, 31 Jul 2014 09:37:15 +0900
+Message-ID: <53D98FBB.6060700@lge.com>
+References: <53CDF437.4090306@lge.com> <20140722073005.GT3935@laptop> <20140722093838.GA22331@quack.suse.cz> <53D8A258.7010904@lge.com> <20140730101143.GB19205@quack.suse.cz> <53D985C0.3070300@lge.com> <20140731000355.GB25362@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-2022-jp"
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <andreas.dilger@intel.com>
-To: Andreas Dilger <adilger@dilger.ca>, "tytso@mit.edu" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO200.gate.nec.co.jp ([210.143.35.50]:36353 "EHLO
-	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756101AbaGaAb1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jul 2014 20:31:27 -0400
-Received: from tyo201.gate.nec.co.jp ([10.7.69.201])
-	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id s6V0VPix000440
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2014 09:31:25 +0900 (JST)
-In-Reply-To: <1406709022-28957-1-git-send-email-adilger@dilger.ca>
-Content-Language: ja-JP
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-Hi Andreas,
-
->From: linux-ext4-owner@vger.kernel.org [mailto:linux-ext4-owner@vger.kernel.org] On Behalf Of
->Andreas Dilger
->Sent: Wednesday, July 30, 2014 5:30 PM
->To: tytso@mit.edu
->Cc: linux-ext4@vger.kernel.org; Andreas Dilger; Andreas Dilger
->Subject: [PATCH] mke2fs: fix flexbg check to allow small filesystems
->
->Fix the flexbg check added in d988201ef9c so that it allows common
->small filesystem configurations to succeed instead of reporting
->a cryptic error message and failing due to a bad flex_bg layout:
->
->    mke2fs -O flex_bg -b 4096 -I 1024 -F /tmp/tt 79106
->    mke2fs 1.42.11 (09-Jul-2014)
->    /tmp/tt: Invalid argument passed to ext2 library while setting
->             up superblock
->
->This check in ext2fs_initialize() was added to prevent the metadata
->from being allocated beyond the end of the filesystem, but it is
->also causing a wide range of failures for small filesystems.
->
->Fix this by shrinking the flex_bg factor by half repeatedly until it
->would be expected to fit into the current filesystem size, rather
->than return an error as previously done.  Ideally it would only try
->a smaller flex_bg factor if the default value was being used, and had
->not been specified on the command line, but it isn't possible to see
->if this is the case in ext2fs_initialize() or not.
->
->Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
->---
-> lib/ext2fs/initialize.c |   13 +++++++------
-> 1 files changed, 7 insertions(+), 6 deletions(-)
->
->diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
->index de358fd..d58a664 100644
->--- a/lib/ext2fs/initialize.c
->+++ b/lib/ext2fs/initialize.c
->@@ -91,7 +91,7 @@ errcode_t ext2fs_initialize(const char *name, int flags,
-> 	unsigned int	rem;
-> 	unsigned int	overhead = 0;
-> 	unsigned int	ipg;
->-	unsigned int	flexbg_size;
->+	unsigned int	flexbg_factor;
-> 	dgrp_t		i;
-> 	blk64_t		free_blocks;
-> 	blk64_t		flexbg_overhead;
->@@ -428,18 +428,19 @@ ipg_retry:
-> 	 * This is a simple check, so that the backup superblock and
-> 	 * other feature related blocks are not considered.
-> 	 */
->-	flexbg_size = 1 << fs->super->s_log_groups_per_flex;
->+flex_retry:
->+	flexbg_factor = 1 << super->s_log_groups_per_flex;
-> 	flexbg_overhead = super->s_first_data_block + 1 +
-> 		fs->desc_blocks + super->s_reserved_gdt_blocks +
->-		(__u64)flexbg_size * (2 + fs->inode_blocks_per_group);
->+		(__u64)flexbg_factor * (2 + fs->inode_blocks_per_group);
->
-> 	/*
-> 	 * Disallow creating ext4 which breaks flex_bg metadata layout
-> 	 * obviously.
-> 	 */
-
-This comment is unneeded any more,
-But patch looks good to me, thanks.
-
-Reviewed-by: Akira Fujita <a-fujita@rs.jp.nec.co.jp>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: quoted-printable
+Cc: Peter Zijlstra <peterz@infradead.org>,
+ Alexander Viro <viro@zeniv.linux.org.uk>,
+ Andrew Morton <akpm@linux-foundation.org>,
+ "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+ linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+ Theodore Ts'o <tytso@mit.edu>,
+ Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
+ linux-mm@kvack.org, Minchan Kim <minchan@kernel.org>,
+ Joonsoo Kim <js1304@gmail.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20140731000355.GB25362@quack.suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
 
->-	if (flexbg_overhead > ext2fs_blocks_count(fs->super)) {
->-		retval = EXT2_ET_INVALID_ARGUMENT;
->-		goto cleanup;
->+	if (flexbg_overhead > ext2fs_blocks_count(super)) {
->+		super->s_log_groups_per_flex -= 1;
->+		goto flex_retry;
-> 	}
+
+2014-07-31 =EC=98=A4=EC=A0=84 9:03, Jan Kara =EC=93=B4 =EA=B8=80:
+> On Thu 31-07-14 08:54:40, Gioh Kim wrote:
+>> 2014-07-30 =EC=98=A4=ED=9B=84 7:11, Jan Kara =EC=93=B4 =EA=B8=80:
+>>> On Wed 30-07-14 16:44:24, Gioh Kim wrote:
+>>>> 2014-07-22 =EC=98=A4=ED=9B=84 6:38, Jan Kara =EC=93=B4 =EA=B8=80:
+>>>>> On Tue 22-07-14 09:30:05, Peter Zijlstra wrote:
+>>>>>> On Tue, Jul 22, 2014 at 02:18:47PM +0900, Gioh Kim wrote:
+>>>>>>> Hello,
+>>>>>>>
+>>>>>>> This patch try to solve problem that a long-lasting page cache of
+>>>>>>> ext4 superblock disturbs page migration.
+>>>>>>>
+>>>>>>> I've been testing CMA feature on my ARM-based platform
+>>>>>>> and found some pages for page caches cannot be migrated.
+>>>>>>> Some of them are page caches of superblock of ext4 filesystem.
+>>>>>>>
+>>>>>>> Current ext4 reads superblock with sb_bread(). sb_bread() allocat=
+es page
+>>>>>> >from movable area. But the problem is that ext4 hold the page unt=
+il
+>>>>>>> it is unmounted. If root filesystem is ext4 the page cannot be mi=
+grated forever.
+>>>>>>>
+>>>>>>> I introduce a new API for allocating page from non-movable area.
+>>>>>>> It is useful for ext4 and others that want to hold page cache for=
+ a long time.
+>>>>>>
+>>>>>> There's no word on why you can't teach ext4 to still migrate that =
+page.
+>>>>>> For all I know it might be impossible, but at least mention why.
+>>>>
+>>>> I am very sorry for lacking of details.
+>>>>
+>>>> In ext4_fill_super() the buffer-head of superblock is stored in sbi-=
+>s_sbh.
+>>>> The page belongs to the buffer-head is allocated from movable area.
+>>>> To migrate the page the buffer-head should be released via brelse().
+>>>> But brelse() is not called until unmount.
+>>>    Hum, I don't see where in the code do we check buffer_head use cou=
+nt. Can
+>>> you please point me? Thanks.
+>>
+>> Filesystem code does not check buffer_head use count.  sb_bread() retu=
+rns
+>> the buffer_head that is included in bh_lru and has non-zero use count.
+>> You can see the bh_lru code in buffer.c: __find_get_clock() and
+>> lookup_bh_lru().  bh_lru_install() inserts the buffer_head into the
+>> bh_lru().  It first calls get_bh() to increase the use count and inser=
+t
+>> bh into the lru array.
+>>
+>> The buffer_head use count is non-zero until brelse() is called.
+>    So I probably didn't phrase the question precisely enough. What I wa=
+s
+> asking about is where exactly *migration* code checks buffer use count?
+> Because as I'm looking at buffer_migrate_page() we lock the buffers on =
+a
+> migrated page but we don't look at buffer use counts... So it seems to =
+me
+> that migration of a page with buffers should succeed even if buffer hea=
+d
+> has an elevated use count. Now I think that it *should* check the buffe=
+r
+> use counts (it is dangerous to migrate buffers someone holds reference =
+to)
+> but I just cannot find that place. Or does CMA use some other migration
+> function for buffer pages than buffer_migrate_page()?
+
+CMA allocation function is cma_alloc().
+Function flow is alloc_contig_range() -> __alloc_contig_migrate_range() -=
+> migrate_pages -> unmap_and_move
+-> __unmap_and_move -> try_to_free_buffers -> drop_buffers -> buffer_busy=
+.
+
+The buffer_busy() is checking b_count.
+If buffer is busy buffer-cache cannot be removed.
+So the page that includes buffer_head and the page that is refered by buf=
+fer_head are not movable.
+
+Is this what you need?
+
 >
-> 	/*
->--
->1.7.3.4
+> 								Honza
 >
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
