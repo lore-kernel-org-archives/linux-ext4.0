@@ -1,321 +1,39 @@
 From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 81461] New: EXT-4 kernel panic
-Date: Thu, 31 Jul 2014 21:08:09 +0000
-Message-ID: <bug-81461-13602@https.bugzilla.kernel.org/>
+Subject: [Bug 81461] EXT-4 kernel panic
+Date: Thu, 31 Jul 2014 21:10:18 +0000
+Message-ID: <bug-81461-13602-f8ooIDSa1N@https.bugzilla.kernel.org/>
+References: <bug-81461-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:41380 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.19.201]:41551 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752695AbaGaVIO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 Jul 2014 17:08:14 -0400
+	id S1752145AbaGaVKU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 Jul 2014 17:10:20 -0400
 Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 5991C201BB
-	for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2014 21:08:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9DDAF201C0
+	for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2014 21:10:19 +0000 (UTC)
 Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 4B42620158
-	for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2014 21:08:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 97EA92017A
+	for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2014 21:10:18 +0000 (UTC)
+In-Reply-To: <bug-81461-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 https://bugzilla.kernel.org/show_bug.cgi?id=81461
 
-            Bug ID: 81461
-           Summary: EXT-4 kernel panic
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.4
-          Hardware: ARM
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: high
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: dennes544@gmail.com
-        Regression: No
+Denis <dennes544@gmail.com> changed:
 
-[   21.066870] Unable to handle kernel paging request at virtual address
-013d5000
-[   21.066932] pgd = eb138000
-[   21.067026] [013d5000] *pgd=00000000
-[   21.067131] Internal error: Oops: 5 [#1] PREEMPT SMP ARM
-[   21.067185] CPU: 1    Not tainted  (3.4.0-purity #5)
-[   21.067284] PC is at __percpu_counter_add+0x4c/0xd8
-[   21.067341] LR is at __sb_start_write+0x60/0x104
-[   21.067435] pc : [<c042bd68>]    lr : [<c0269fb4>]    psr: 80000013
-[   21.067438] sp : ebb53e38  ip : 00000020  fp : ebb53e5c
-[   21.067572] r10: 00000000  r9 : ebb52000  r8 : c103c0d8
-[   21.067624] r7 : ec0d51e8  r6 : ebb52000  r5 : 00000000  r4 : 00000001
-[   21.067717] r3 : 00000000  r2 : 00000020  r1 : 00000000  r0 : 013d5000
-[   21.067772] Flags: Nzcv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment
-user
-[   21.067867] Control: 10c5787d  Table: 3353806a  DAC: 00000015
-[   21.067960] 
-[   21.067962] PC: 0xc042bce8:
-[   21.068058] bce8  e3a01004 ebff88b2 e5983000 e1a02000 e1530000 cafffff4
-e1c640f8 e1a00006
-[   21.068584] bd08  eb187c15 e89daff8 c103b868 c103c0d8 c0b093f8 e1a0c00d
-e92dddf0 e24cb004
-[   21.069067] bd28  e1a0100d e1a05003 e59bc004 e3c16d7f e1a07000 e3c6603f
-e1a04002 e5963004
-[   21.069555] bd48  e2833001 e5863004 e59f8098 e1a03fcc e1a0200c e5960014
-e5971018 e7980100
-[   21.070081] bd68  e791a000 e094400a e0a55fca e1540002 e0d5a003 aa000006
-e26cc000 e1a03fcc
-[   21.070603] bd88  e1a0200c e1520004 e0d3c005 b7814000 ba00000c e1a00007
-eb187b79 e1c720d8
-[   21.071090] bda8  e1a00007 e596c014 e5971018 e0922004 e0a33005 e1c720f8
-e798310c e3a02000
-[   21.071621] bdc8  e7812003 eb187be4 e5963004 e2433001 e5863004 e5963000
-e3130002 089dadf0
-[   21.072163] 
-[   21.072164] LR: 0xc0269f34:
-[   21.072262] 9f34  0a000003 e3a01003 e3a02001 e3a03000 ebfd6812 e24bd010
-e89da810 c103c214
-[   21.072808] 9f54  e1a0c00d e92dddf0 e24cb004 e24dd020 e52de004 e8bd4000
-e1a0300d e59f80d8
-[   21.073366] 9f74  e1a04000 e3c37d7f e1a05001 e1a06002 e3c7703f e5943214
-e1530005 aa00000e
-[   21.073861] 9f94  e59f10b8 e0840285 e3a02001 e3a03000 e2800f62 e5911000
-e58d1000 eb070759
-[   21.074391] 9fb4  f57ff05f e5943214 e1550003 da00001c e3a00001 e24bd024
-e89dadf0 e3560000
-[   21.074923] 9fd4  0a00001b e3a02014 e24b0038 e3a01000 e284af86 eb0691cc
-e597300c e24b202c
-[   21.075411] 9ff4  e50b8030 e50b202c e50b2028 e50b3034 ea000000 eb1f7f2e
-e1a0000a e24b1038
-[   21.075939] a014  e3a02002 ebfd2a7b e5943214 e1550003 dafffff7 e1a0000a
-e24b1038 ebfd2ab7
-[   21.076499] 
-[   21.076501] SP: 0xebb53db8:
-[   21.076602] 3db8  00200200 00000000 00000000 c042bd68 80000013 ffffffff
-ebb53e24 c103c0d8
-[   21.077137] 3dd8  ebb52000 00000000 ebb53e5c ebb53df0 c0106f98 c0100234
-013d5000 00000000
-[   21.077688] 3df8  00000020 00000000 00000001 00000000 ebb52000 ec0d51e8
-c103c0d8 ebb52000
-[   21.078325] 3e18  00000000 ebb53e5c 00000020 ebb53e38 c0269fb4 c042bd68
-80000013 ffffffff
-[   21.078995] 3e38  ec0d5000 00000003 00000001 ebb52000 c01b4c34 00000000
-ebb53ea4 ebb53e60
-[   21.079648] 3e58  c0269fb4 c042bd28 00000020 ea8e10b8 c0b1a3f0 c0107644
-ebb52000 00000000
-[   21.080314] 3e78  ebb53ea4 ebb53e88 ea8e10b8 ea8e1158 ea8e10b8 c0b1a3f0
-c0107644 00000000
-[   21.080885] 3e98  ebb53ecc ebb53ea8 c02fd064 c0269f60 00000000 ea8e10b8
-ea8e10b8 ea8e1158
-[   21.081549] 
-[   21.081550] FP: 0xebb53ddc:
-[   21.081687] 3ddc  00000000 ebb53e5c ebb53df0 c0106f98 c0100234 013d5000
-00000000 00000020
-[   21.082323] 3dfc  00000000 00000001 00000000 ebb52000 ec0d51e8 c103c0d8
-ebb52000 00000000
-[   21.082926] 3e1c  ebb53e5c 00000020 ebb53e38 c0269fb4 c042bd68 80000013
-ffffffff ec0d5000
-[   21.083570] 3e3c  00000003 00000001 ebb52000 c01b4c34 00000000 ebb53ea4
-ebb53e60 c0269fb4
-[   21.084191] 3e5c  c042bd28 00000020 ea8e10b8 c0b1a3f0 c0107644 ebb52000
-00000000 ebb53ea4
-[   21.084800] 3e7c  ebb53e88 ea8e10b8 ea8e1158 ea8e10b8 c0b1a3f0 c0107644
-00000000 ebb53ecc
-[   21.085374] 3e9c  ebb53ea8 c02fd064 c0269f60 00000000 ea8e10b8 ea8e10b8
-ea8e1158 c0b1a3f0
-[   21.086062] 3ebc  c0b1a3f0 ebb53eec ebb53ed0 c027ed0c c02fcf80 00000000
-ea8e10b8 ea8e1104
-[   21.086674] 
-[   21.086676] R6: 0xebb51f80:
-[   21.086869] 1f80  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.087329] 1fa0  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.087833] 1fc0  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.088300] 1fe0  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.088789] 2000  00000002 00000003 00000000 e8fff300 c10661c0 00000001
-00000015 eb79ac40
-[   21.089253] 2020  eb79ac40 c103c0d8 ebb52000 e8fff300 eb78ad00 c2406600
-ebb53d3c ebb53c90
-[   21.089758] 2040  c0a498c8 00000000 00000000 00000000 00000000 00000000
-01010000 00000000
-[   21.090271] 2060  7e213dd0 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.090725] 
-[   21.090726] R7: 0xec0d5168:
-[   21.090858] 5168  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.091363] 5188  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.091830] 51a8  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.092334] 51c8  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.092838] 51e8  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.093308] 5208  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.093817] 5228  00000000 00000000 ec0d5230 ec0d5230 62636d6d 70306b6c
-00003732 00000000
-[   21.094337] 5248  00000000 00000000 00000000 00000000 bcf4f857 5f65f4ab
-6f9467bf 5bf2f9c0
-[   21.094845] 
-[   21.094846] R8: 0xc103c058:
-[   21.094945] c058  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.095446] c078  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.095913] c098  00000064 00008000 0000000f c241a040 00000004 00000008
-c2412000 c241a000
-[   21.096424] c0b8  00000001 0000002c c2402000 c240a000 00001000 00000000
-00000003 c23fb000
-[   21.096936] c0d8  013cd000 013d5000 013dd000 013e5000 00046b00 00000002
-00036be5 0007ffff
-[   21.097438] c0f8  00000001 00000032 0000fffa 00000001 ee002100 0000000f
-ed89b910 ed9b5d00
-[   21.097909] c118  00000011 c241e100 0001ffff ee012680 ee002480 00000064
-ee012700 00000010
-[   21.098415] c138  c249e100 0000ffff 00100000 ee015000 ee002100 0000000f
-00000001 c0d26e0c
-[   21.098916] 
-[   21.098918] R9: 0xebb51f80:
-[   21.099022] 1f80  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.099565] 1fa0  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.100104] 1fc0  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.100570] 1fe0  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.101070] 2000  00000002 00000003 00000000 e8fff300 c10661c0 00000001
-00000015 eb79ac40
-[   21.101677] 2020  eb79ac40 c103c0d8 ebb52000 e8fff300 eb78ad00 c2406600
-ebb53d3c ebb53c90
-[   21.102257] 2040  c0a498c8 00000000 00000000 00000000 00000000 00000000
-01010000 00000000
-[   21.102804] 2060  7e213dd0 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[   21.103358] Process Thread-71 (pid: 1504, stack limit = 0xebb522f0)
-[   21.103493] Stack: (0xebb53e38 to 0xebb54000)
-[   21.103599] 3e20:                                                      
-ec0d5000 00000003
-[   21.103695] 3e40: 00000001 ebb52000 c01b4c34 00000000 ebb53ea4 ebb53e60
-c0269fb4 c042bd28
-[   21.103750] 3e60: 00000020 ea8e10b8 c0b1a3f0 c0107644 ebb52000 00000000
-ebb53ea4 ebb53e88
-[   21.103850] 3e80: ea8e10b8 ea8e1158 ea8e10b8 c0b1a3f0 c0107644 00000000
-ebb53ecc ebb53ea8
-[   21.103949] 3ea0: c02fd064 c0269f60 00000000 ea8e10b8 ea8e10b8 ea8e1158
-c0b1a3f0 c0b1a3f0
-[   21.104041] 3ec0: ebb53eec ebb53ed0 c027ed0c c02fcf80 00000000 ea8e10b8
-ea8e1104 ec0d5000
-[   21.104093] 3ee0: ebb53f0c ebb53ef0 c027f8f8 c027ec7c 00000000 ea88cf68
-ea8e10b8 0000000a
-[   21.104225] 3f00: ebb53f94 ebb53f10 c0274c84 c027f820 ebe6d3d0 ebd2a000
-ebe6d3d0 ec4c7f68
-[   21.104361] 3f20: 0026c8ca 00000003 ebd2a010 00000000 edc04088 ec535308
-00000000 00000002
-[   21.104414] 3f40: 00000000 00000000 0b30001b c0108180 00000001 000003e8
-000003e8 00000000
-[   21.104510] 3f60: 000044e1 00000000 006447ef 1017df7f 53da94a7 0ca47722
-53da94a7 7747ab60
-[   21.104600] 3f80: 77496de0 00000000 ebb53fa4 ebb53f98 c0274d24 c0274b74
-00000000 ebb53fa8
-[   21.104690] 3fa0: c0107400 c0274d10 7747ab60 77496de0 7747ab60 00008000
-77496de0 00008180
-[   21.104741] 3fc0: 7747ab60 77496de0 00000000 0000000a 7e213b10 7a168ed8
-77496df0 7e213b24
-[   21.104928] 3fe0: 7a168ee0 7e213a80 4013d1d1 40148a30 20070010 7747ab60
-00000000 00000000
-[   21.105032] [<c042bd68>] (__percpu_counter_add+0x4c/0xd8) from [<c0269fb4>]
-(__sb_start_write+0x60/0x104)
-[   21.105126] [<c0269fb4>] (__sb_start_write+0x60/0x104) from [<c02fd064>]
-(ext4_evict_inode+0xf0/0x4a0)
-[   21.105186] [<c02fd064>] (ext4_evict_inode+0xf0/0x4a0) from [<c027ed0c>]
-(evict+0x9c/0x184)
-[   21.105280] [<c027ed0c>] (evict+0x9c/0x184) from [<c027f8f8>]
-(iput+0xe4/0x1ec)
-[   21.105371] [<c027f8f8>] (iput+0xe4/0x1ec) from [<c0274c84>]
-(do_unlinkat+0x11c/0x160)
-[   21.105557] [<c0274c84>] (do_unlinkat+0x11c/0x160) from [<c0274d24>]
-(sys_unlink+0x20/0x24)
-[   21.105612] [<c0274d24>] (sys_unlink+0x20/0x24) from [<c0107400>]
-(ret_fast_syscall+0x0/0x30)
-[   21.105708] Code: e1a0200c e5960014 e5971018 e7980100 (e791a000) 
-[   21.105867] ---[ end trace b2d354afff160c81 ]---
-[   21.105920] Kernel panic - not syncing: Fatal exception
-[   21.105979] CPU3: stopping
-[   21.106079] [<c010e498>] (unwind_backtrace+0x0/0x144) from [<c0a398e8>]
-(dump_stack+0x20/0x24)
-[   21.106136] [<c0a398e8>] (dump_stack+0x20/0x24) from [<c010c9b0>]
-(handle_IPI+0x198/0x1cc)
-[   21.106317] [<c010c9b0>] (handle_IPI+0x198/0x1cc) from [<c01005a0>]
-(gic_handle_irq+0xb0/0xf4)
-[   21.106421] [<c01005a0>] (gic_handle_irq+0xb0/0xf4) from [<c0107000>]
-(__irq_svc+0x40/0x70)
-[   21.106514] Exception stack(0xebe97e98 to 0xebe97ee0)
-[   21.106583] 7e80:                                                      
-eaf50b80 07b00000
-[   21.106685] 7ea0: 00000000 c1a2eae0 c0ba6414 ea23c414 eaf5da40 eaf5da58
-ebe97f78 eaf50b80
-[   21.106781] 7ec0: 00001000 ebe97ef4 ebe97ef8 ebe97ee0 c02c5120 c02c5d80
-600f0013 ffffffff
-[   21.106841] [<c0107000>] (__irq_svc+0x40/0x70) from [<c02c5d80>]
-(sysfs_get_active+0x28/0x74)
-[   21.106968] [<c02c5d80>] (sysfs_get_active+0x28/0x74) from [<c02c5120>]
-(sysfs_read_file+0x78/0x180)
-[   21.107083] [<c02c5120>] (sysfs_read_file+0x78/0x180) from [<c0266350>]
-(vfs_read+0xac/0x150)
-[   21.107180] [<c0266350>] (vfs_read+0xac/0x150) from [<c0266684>]
-(sys_read+0x48/0x80)
-[   21.107236] [<c0266684>] (sys_read+0x48/0x80) from [<c0107400>]
-(ret_fast_syscall+0x0/0x30)
-[   21.107365] CPU2: stopping
-[   21.107433] [<c010e498>] (unwind_backtrace+0x0/0x144) from [<c0a398e8>]
-(dump_stack+0x20/0x24)
-[   21.107535] [<c0a398e8>] (dump_stack+0x20/0x24) from [<c010c9b0>]
-(handle_IPI+0x198/0x1cc)
-[   21.107634] [<c010c9b0>] (handle_IPI+0x198/0x1cc) from [<c01005a0>]
-(gic_handle_irq+0xb0/0xf4)
-[   21.107791] [<c01005a0>] (gic_handle_irq+0xb0/0xf4) from [<c01071c0>]
-(__irq_usr+0x40/0x60)
-[   21.107844] Exception stack(0xeb0abfb0 to 0xeb0abff8)
-[   21.107944] bfa0:                                     b7248210 b72508c0
-00001000 00000001
-[   21.108040] bfc0: b7250618 b4dc4d64 00001000 b7248210 b72508c0 b4cc7000
-bedce5dc b6ed62ec
-[   21.108095] bfe0: 00000004 b4dc4cf8 b6970499 b689a6d6 20000030 ffffffff
-[   21.108245] CPU0: stopping
-[   21.108307] [<c010e498>] (unwind_backtrace+0x0/0x144) from [<c0a398e8>]
-(dump_stack+0x20/0x24)
-[   21.108416] [<c0a398e8>] (dump_stack+0x20/0x24) from [<c010c9b0>]
-(handle_IPI+0x198/0x1cc)
-[   21.108514] [<c010c9b0>] (handle_IPI+0x198/0x1cc) from [<c01005a0>]
-(gic_handle_irq+0xb0/0xf4)
-[   21.108570] [<c01005a0>] (gic_handle_irq+0xb0/0xf4) from [<c0107000>]
-(__irq_svc+0x40/0x70)
-[   21.108663] Exception stack(0xea2cbf00 to 0xea2cbf48)
-[   21.108760] bf00: 00000000 7696e000 ffff0001 eacf5500 ebe8d500 7696e000
-00000007 7696f000
-[   21.108816] bf20: ea2ca000 00000007 00000007 ea2cbf5c ea2cbf60 ea2cbf48
-c02563c8 c0253ef8
-[   21.108914] bf40: 600e0013 ffffffff
-[   21.108976] [<c0107000>] (__irq_svc+0x40/0x70) from [<c0253ef8>]
-(find_vma+0x24/0xc0)
-[   21.109079] [<c0253ef8>] (find_vma+0x24/0xc0) from [<c02563c8>]
-(sys_mprotect+0xc4/0x1f4)
-[   21.109180] [<c02563c8>] (sys_mprotect+0xc4/0x1f4) from [<c0107400>]
-(ret_fast_syscall+0x0/0x30)
-[   22.109582] Rebooting in 5 seconds..
-[   27.111231] Going down for restart now
-[   27.111989] Calling SCM to disable SPMI PMIC arbiter
-
-No errors detected
-Boot info:
-Last boot reason: kernel_panic
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                URL|                            |http://git.kernel.org/cgit/
+                   |                            |linux/kernel/git/jaegeuk/f2
+                   |                            |fs.git/commit/fs/ext4/inode
+                   |                            |.c?h=linux-3.4&id=8e8ad8a57
+                   |                            |c75f3bda2d03a4c4396a9a7024a
+                   |                            |d275
 
 -- 
 You are receiving this mail because:
