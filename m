@@ -1,70 +1,46 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: fix ext4_discard_allocated_blocks() if we can't allocate the pa struct
-Date: Wed, 30 Jul 2014 22:27:34 -0400
-Message-ID: <1406773654-21704-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: ext4 metadata corruption bug?
+Date: Wed, 30 Jul 2014 22:37:44 -0400
+Message-ID: <20140731023744.GA17375@thunk.org>
+References: <20140420163211.GT10985@gradx.cs.jhu.edu>
+ <20140423072311.GD10163@dot.freshdot.net>
+ <20140423143642.GA29925@thunk.org>
+ <20140501162503.GL5136@gradx.cs.jhu.edu>
+ <20140506154239.GA5012@thunk.org>
+ <20140506155159.GY5136@gradx.cs.jhu.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, admins@acm.jhu.edu,
+	Sander Smeenk <ssmeenk@freshdot.net>
+To: Nathaniel W Filardo <nwf@cs.jhu.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37536 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:37548 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751277AbaGaC1k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Jul 2014 22:27:40 -0400
+	id S1753106AbaGaChx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Jul 2014 22:37:53 -0400
+Content-Disposition: inline
+In-Reply-To: <20140506155159.GY5136@gradx.cs.jhu.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If there is a failure while allocating the preallocation structure, a
-number of blocks can end up getting marked in the in-memory buddy
-bitmap, and then not getting released.  This can result in the
-following corruption getting reported by the kernel:
+Hi,
 
-EXT4-fs error (device sda3): ext4_mb_generate_buddy:758: group 1126,
-12793 clusters in bitmap, 12729 in gd
+Are you folks still seeing ext4_mb_generate_buddy or
+ext4_mb_release_inode_pa EXT4-fs errors?
 
-In that case, we need to release the blocks using mb_free_blocks().
+I think I may have found a fix for this problem.  Or at least, I've
+found one of the causes.  If we get a memory allocation failure from
+ext4_mb_new_inode_pa(), it can cause these errors.  Actually
+triggering it is a bit tricky, but it looks like we saw it hit when a
+task which was running under high memory pressure (because it was
+running right against its cgroup memory limit) core dump.
 
-Tested: fs smoke test; also demonstrated that with injected errors,
-	the file system is no longer getting corrupted
+Anyway, if you are still seeing these issues, this patch might help you out:
 
-Google-Bug-Id: 16657874
+	http://patchwork.ozlabs.org/patch/375106/
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/mballoc.c | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
+If it works out for you, please let me know.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index ced8bcb..4d7a6c4 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3217,8 +3217,27 @@ static void ext4_mb_collect_stats(struct ext4_allocation_context *ac)
- static void ext4_discard_allocated_blocks(struct ext4_allocation_context *ac)
- {
- 	struct ext4_prealloc_space *pa = ac->ac_pa;
-+	struct ext4_buddy e4b;
-+	int err;
- 
--	if (pa && pa->pa_type == MB_INODE_PA)
-+	if (pa == NULL) {
-+		err = ext4_mb_load_buddy(ac->ac_sb, ac->ac_f_ex.fe_group, &e4b);
-+		if (err) {
-+			/*
-+			 * This should never happen since we pin the
-+			 * pages in the ext4_allocation_context so
-+			 * ext4_mb_load_buddy() should never fail.
-+			 */
-+			WARN(1, "mb_load_buddy failed (%d)", err);
-+			return;
-+		}
-+		ext4_lock_group(ac->ac_sb, ac->ac_f_ex.fe_group);
-+		mb_free_blocks(ac->ac_inode, &e4b, ac->ac_f_ex.fe_start,
-+			       ac->ac_f_ex.fe_len);
-+		ext4_unlock_group(ac->ac_sb, ac->ac_f_ex.fe_group);
-+		return;
-+	}
-+	if (pa->pa_type == MB_INODE_PA)
- 		pa->pa_free += ac->ac_b_ex.fe_len;
- }
- 
--- 
-2.0.0
+Cheers,
 
+							- Ted
