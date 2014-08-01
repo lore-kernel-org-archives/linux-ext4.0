@@ -1,215 +1,146 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] debugfs: Add inline data feature for symlink.
-Date: Thu, 31 Jul 2014 18:38:02 -0700
-Message-ID: <20140801013802.GS8628@birch.djwong.org>
-References: <1406789932-13770-1-git-send-email-houpu.hp@alibaba-inc.com>
+From: Gioh Kim <gioh.kim@lge.com>
+Subject: Re: [PATCH 0/2] new API to allocate buffer-cache for superblock in
+ non-movable area
+Date: Fri, 01 Aug 2014 09:07:11 +0900
+Message-ID: <53DADA2F.1020404@lge.com>
+References: <53CDF437.4090306@lge.com> <20140722073005.GT3935@laptop> <20140722093838.GA22331@quack.suse.cz> <53D8A258.7010904@lge.com> <20140730101143.GB19205@quack.suse.cz> <53D985C0.3070300@lge.com> <20140731000355.GB25362@quack.suse.cz> <53D98FBB.6060700@lge.com> <20140731122114.GA5240@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, boyu.mt@taobao.com,
-	wenqing.lz@taobao.com
-To: Pu Hou <houpu.hp@alibaba-inc.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:25099 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752370AbaHABiM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jul 2014 21:38:12 -0400
-Content-Disposition: inline
-In-Reply-To: <1406789932-13770-1-git-send-email-houpu.hp@alibaba-inc.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: quoted-printable
+Cc: Peter Zijlstra <peterz@infradead.org>,
+ Alexander Viro <viro@zeniv.linux.org.uk>,
+ Andrew Morton <akpm@linux-foundation.org>,
+ "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+ linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+ Theodore Ts'o <tytso@mit.edu>,
+ Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
+ linux-mm@kvack.org, Minchan Kim <minchan@kernel.org>,
+ Joonsoo Kim <js1304@gmail.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20140731122114.GA5240@quack.suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 31, 2014 at 02:58:52PM +0800, Pu Hou wrote:
-> Symlink in debugfs can take advantage of inline data feature. The path name of the target of the symbol link which is longer than 60 byte and shorter than 132 byte can stay in inline data area.
 
-I think Ted prefers wrapping commit messages at 70 bytes.
 
-> Signed-off-by: Pu Hou <houpu.hp@alibaba-inc.com>
-> ---
->  lib/ext2fs/ext2fs.h      |  3 +++
->  lib/ext2fs/inline_data.c | 26 +++++++++++++++++++++++
->  lib/ext2fs/symlink.c     | 55 +++++++++++++++++++++++++++++++++++-------------
->  3 files changed, 69 insertions(+), 15 deletions(-)
-> 
-> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> index 7812956..8268d96 100644
-> --- a/lib/ext2fs/ext2fs.h
-> +++ b/lib/ext2fs/ext2fs.h
-> @@ -1401,6 +1401,9 @@ extern errcode_t ext2fs_inline_data_get(ext2_filsys fs, ext2_ino_t ino,
->  extern errcode_t ext2fs_inline_data_set(ext2_filsys fs, ext2_ino_t ino,
->  					struct ext2_inode *inode,
->  					void *buf, size_t size);
-> +extern errcode_t ext2fs_symlink_inline_data_set(ext2_filsys fs, ext2_ino_t ino,
-> +					struct ext2_inode *inode,
-> +					void *buf, size_t size);
->  
->  /* inode.c */
->  extern errcode_t ext2fs_create_inode_cache(ext2_filsys fs,
-> diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
-> index 19248a0..ed82a32 100644
-> --- a/lib/ext2fs/inline_data.c
-> +++ b/lib/ext2fs/inline_data.c
-> @@ -585,6 +585,32 @@ errcode_t ext2fs_inline_data_set(ext2_filsys fs, ext2_ino_t ino,
->  	return ext2fs_inline_data_ea_set(&data);
->  }
->  
-> +errcode_t ext2fs_symlink_inline_data_set(ext2_filsys fs, ext2_ino_t ino,
-> +				 struct ext2_inode *inode,
-> +				 void *buf, size_t size)
-> +{
-> +	struct ext2_inode inode_buf;
-> +	struct ext2_inline_data data;
-> +	errcode_t retval;
-> +	size_t free_ea_size, existing_size, free_inode_size;
-> +
-> +	if (!inode) {
-> +		retval = ext2fs_read_inode(fs, ino, &inode_buf);
-> +		if (retval)
-> +			return retval;
-> +		inode = &inode_buf;
-> +	}
-> +	memcpy((void *)inode->i_block, buf, EXT4_MIN_INLINE_DATA_SIZE);
-> +	retval = ext2fs_write_inode(fs, ino, inode);
-> +	if (retval)
-> +		return retval;
-> +	data.fs = fs;
-> +	data.ino = ino;
-> +	data.ea_size = size - EXT4_MIN_INLINE_DATA_SIZE;
-> +	data.ea_data = buf + EXT4_MIN_INLINE_DATA_SIZE;
-> +	return ext2fs_inline_data_ea_set(&data);
+2014-07-31 =EC=98=A4=ED=9B=84 9:21, Jan Kara =EC=93=B4 =EA=B8=80:
+> On Thu 31-07-14 09:37:15, Gioh Kim wrote:
+>>
+>>
+>> 2014-07-31 =EC=98=A4=EC=A0=84 9:03, Jan Kara =EC=93=B4 =EA=B8=80:
+>>> On Thu 31-07-14 08:54:40, Gioh Kim wrote:
+>>>> 2014-07-30 =EC=98=A4=ED=9B=84 7:11, Jan Kara =EC=93=B4 =EA=B8=80:
+>>>>> On Wed 30-07-14 16:44:24, Gioh Kim wrote:
+>>>>>> 2014-07-22 =EC=98=A4=ED=9B=84 6:38, Jan Kara =EC=93=B4 =EA=B8=80:
+>>>>>>> On Tue 22-07-14 09:30:05, Peter Zijlstra wrote:
+>>>>>>>> On Tue, Jul 22, 2014 at 02:18:47PM +0900, Gioh Kim wrote:
+>>>>>>>>> Hello,
+>>>>>>>>>
+>>>>>>>>> This patch try to solve problem that a long-lasting page cache =
+of
+>>>>>>>>> ext4 superblock disturbs page migration.
+>>>>>>>>>
+>>>>>>>>> I've been testing CMA feature on my ARM-based platform
+>>>>>>>>> and found some pages for page caches cannot be migrated.
+>>>>>>>>> Some of them are page caches of superblock of ext4 filesystem.
+>>>>>>>>>
+>>>>>>>>> Current ext4 reads superblock with sb_bread(). sb_bread() alloc=
+ates page
+>>>>>>>> >from movable area. But the problem is that ext4 hold the page u=
+ntil
+>>>>>>>>> it is unmounted. If root filesystem is ext4 the page cannot be =
+migrated forever.
+>>>>>>>>>
+>>>>>>>>> I introduce a new API for allocating page from non-movable area=
+.
+>>>>>>>>> It is useful for ext4 and others that want to hold page cache f=
+or a long time.
+>>>>>>>>
+>>>>>>>> There's no word on why you can't teach ext4 to still migrate tha=
+t page.
+>>>>>>>> For all I know it might be impossible, but at least mention why.
+>>>>>>
+>>>>>> I am very sorry for lacking of details.
+>>>>>>
+>>>>>> In ext4_fill_super() the buffer-head of superblock is stored in sb=
+i->s_sbh.
+>>>>>> The page belongs to the buffer-head is allocated from movable area=
+.
+>>>>>> To migrate the page the buffer-head should be released via brelse(=
+).
+>>>>>> But brelse() is not called until unmount.
+>>>>>    Hum, I don't see where in the code do we check buffer_head use c=
+ount. Can
+>>>>> you please point me? Thanks.
+>>>>
+>>>> Filesystem code does not check buffer_head use count.  sb_bread() re=
+turns
+>>>> the buffer_head that is included in bh_lru and has non-zero use coun=
+t.
+>>>> You can see the bh_lru code in buffer.c: __find_get_clock() and
+>>>> lookup_bh_lru().  bh_lru_install() inserts the buffer_head into the
+>>>> bh_lru().  It first calls get_bh() to increase the use count and ins=
+ert
+>>>> bh into the lru array.
+>>>>
+>>>> The buffer_head use count is non-zero until brelse() is called.
+>>>    So I probably didn't phrase the question precisely enough. What I =
+was
+>>> asking about is where exactly *migration* code checks buffer use coun=
+t?
+>>> Because as I'm looking at buffer_migrate_page() we lock the buffers o=
+n a
+>>> migrated page but we don't look at buffer use counts... So it seems t=
+o me
+>>> that migration of a page with buffers should succeed even if buffer h=
+ead
+>>> has an elevated use count. Now I think that it *should* check the buf=
+fer
+>>> use counts (it is dangerous to migrate buffers someone holds referenc=
+e to)
+>>> but I just cannot find that place. Or does CMA use some other migrati=
+on
+>>> function for buffer pages than buffer_migrate_page()?
+>>
+>> CMA allocation function is cma_alloc().
+>> Function flow is alloc_contig_range() -> __alloc_contig_migrate_range(=
+) -> migrate_pages -> unmap_and_move
+>> -> __unmap_and_move -> try_to_free_buffers -> drop_buffers -> buffer_b=
+usy.
+>>
+>> The buffer_busy() is checking b_count.
+>> If buffer is busy buffer-cache cannot be removed.
+>> So the page that includes buffer_head and the page that is refered by
+>> buffer_head are not movable.
+>>
+>> Is this what you need?
+>    Yes, this is what I was asking about. Thanks! But as I'm looking int=
+o
+> __unmap_and_move() it calls try_to_free_buffers() only if page->mapping=
+ =3D=3D
+> NULL. As the comment before that test states, this can happen only for =
+swap
+> cache (not our case) or for pagecache pages that were truncated and not=
+ yet
+> fully cleaned up. But superblock page cannot really be truncated. So I
+> somewhat doubt you can hit the above path for a page holding superblock=
+...
 
-Doesn't ext2fs_inline_data_set() suffice?
+I printed the address of busy buffer_head in drop_buffers() that is calle=
+d by try_to_free_buffers().
+And I printed the address of sb buffer_head.
+They were the same.
 
-> +}
-> +
->  #ifdef DEBUG
->  #include "e2p/e2p.h"
->  
-> diff --git a/lib/ext2fs/symlink.c b/lib/ext2fs/symlink.c
-> index ba8ed8e..a31912d 100644
-> --- a/lib/ext2fs/symlink.c
-> +++ b/lib/ext2fs/symlink.c
-> @@ -27,6 +27,7 @@
->  
->  #include "ext2_fs.h"
->  #include "ext2fs.h"
-> +#include "ext2_ext_attr.h"
->  
->  errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
->  			 const char *name, char *target)
-> @@ -36,6 +37,8 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
->  	ext2_ino_t		scratch_ino;
->  	blk64_t			blk;
->  	int			fastlink;
-> +	int                     inline_link = 0;
-> +	int                     max_inline;
->  	unsigned int		target_len;
->  	char			*block_buf = 0;
->  
-> @@ -53,12 +56,27 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
->  	 */
->  	fastlink = (target_len < sizeof(inode.i_block));
->  	if (!fastlink) {
-> -		retval = ext2fs_new_block2(fs, 0, 0, &blk);
-> -		if (retval)
-> -			goto cleanup;
-> -		retval = ext2fs_get_mem(fs->blocksize, &block_buf);
-> -		if (retval)
-> -			goto cleanup;
-> +		if (EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-> +				EXT4_FEATURE_INCOMPAT_INLINE_DATA)) {
-> +			/* whether target string can be stored
-> +			in inline data area */
-> +			max_inline = EXT2_INODE_SIZE(fs->super) -
-> +					sizeof(struct ext2_inode_large)-
-> +					sizeof(__u32)-
-> +					sizeof(struct ext2_ext_attr_entry)-
-> +					strlen("data")-
-> +					sizeof(__u32)+
-> +					EXT4_MIN_INLINE_DATA_SIZE;
-> +			inline_link = (target_len < max_inline);
+I'm going to check page->mapping.
 
-Does ext2fs_xattr_inode_max_size() + EXT4_MIN_INLINE_DATA_SIZE return incorrect
-results?  I don't think we should have all xattr specific stuff belongs here in
-the symlink routines.
 
-> +		}
-> +		if (!inline_link) {
-> +			retval = ext2fs_new_block2(fs, 0, 0, &blk);
-> +			if (retval)
-> +				goto cleanup;
-> +			retval = ext2fs_get_mem(fs->blocksize, &block_buf);
-> +			if (retval)
-> +				goto cleanup;
-> +		}
->  	}
->  
->  	/*
-> @@ -77,7 +95,7 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
->  	memset(&inode, 0, sizeof(struct ext2_inode));
->  	inode.i_mode = LINUX_S_IFLNK | 0777;
->  	inode.i_uid = inode.i_gid = 0;
-> -	ext2fs_iblk_set(fs, &inode, fastlink ? 0 : 1);
-> +	ext2fs_iblk_set(fs, &inode, (fastlink || inline_link) ? 0 : 1);
->  	inode.i_links_count = 1;
->  	ext2fs_inode_size_set(fs, &inode, target_len);
->  	/* The time fields are set by ext2fs_write_new_inode() */
-> @@ -85,6 +103,8 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
->  	if (fastlink) {
->  		/* Fast symlinks, target stored in inode */
->  		strcpy((char *)&inode.i_block, target);
-> +	} else if (inline_link) {
-> +		inode.i_flags |= EXT4_INLINE_DATA_FL;
->  	} else {
->  		/* Slow symlinks, target stored in the first block */
->  		memset(block_buf, 0, fs->blocksize);
-> @@ -109,14 +129,19 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
->  		goto cleanup;
->  
->  	if (!fastlink) {
-> -		retval = ext2fs_bmap2(fs, ino, &inode, NULL, BMAP_SET, 0, NULL,
-> -				      &blk);
-> -		if (retval)
-> -			goto cleanup;
-> +		if (inline_link) {
-> +			retval = ext2fs_symlink_inline_data_set(fs, ino, 0,
-> +						target, target_len);
-> +		} else {
-> +			retval = ext2fs_bmap2(fs, ino, &inode, NULL,
-> +						BMAP_SET, 0, NULL, &blk);
-> +		  if (retval)
-> +		    goto cleanup;
->  
-> -		retval = io_channel_write_blk64(fs->io, blk, 1, block_buf);
-> -		if (retval)
-> -			goto cleanup;
-> +		  retval = io_channel_write_blk64(fs->io, blk, 1, block_buf);
-> +		  if (retval)
-> +		    goto cleanup;
+>
+> 								Honza
+>
 
-Please fix the indentation inconsistency (tabs, not spaces).
-
-> +		}
->  	}
->  
->  	/*
-> @@ -139,7 +164,7 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
->  	/*
->  	 * Update accounting....
->  	 */
-> -	if (!fastlink)
-> +	if ((!fastlink) && (!inline_link))
-
-Probably unnecessary to put !fastlink and !inline_link in parentheses.
-
---D
->  		ext2fs_block_alloc_stats2(fs, blk, +1);
->  	ext2fs_inode_alloc_stats2(fs, ino, +1, 0);
->  
-> -- 
-> 1.9.1
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
