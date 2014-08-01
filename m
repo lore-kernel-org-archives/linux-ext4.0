@@ -1,97 +1,104 @@
-From: Peter Zijlstra <peterz@infradead.org>
-Subject: Re: [PATCH 0/2] new API to allocate buffer-cache for superblock in
- non-movable area
-Date: Fri, 1 Aug 2014 18:04:15 +0200
-Message-ID: <20140801160415.GD9918@twins.programming.kicks-ass.net>
-References: <20140730101143.GB19205@quack.suse.cz>
- <53D985C0.3070300@lge.com>
- <20140731000355.GB25362@quack.suse.cz>
- <53D98FBB.6060700@lge.com>
- <20140731122114.GA5240@quack.suse.cz>
- <53DADA2F.1020404@lge.com>
- <53DAE820.7050508@lge.com>
- <20140801095700.GB27281@quack.suse.cz>
- <20140801133618.GJ19379@twins.programming.kicks-ass.net>
- <20140801152459.GA7525@quack.suse.cz>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] debugfs: Add inline data feature for symlink.
+Date: Fri, 1 Aug 2014 09:48:10 -0700
+Message-ID: <20140801164810.GT8628@birch.djwong.org>
+References: <1406789932-13770-1-git-send-email-houpu.hp@alibaba-inc.com>
+ <63e6941e-70ab-4fec-941c-f13f47585594@alibaba-inc.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="qqF1XwZUdAkx0x+N"
-Cc: Gioh Kim <gioh.kim@lge.com>, Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-	Minchan Kim <minchan@kernel.org>, Joonsoo Kim <js1304@gmail.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: =?utf-8?B?5L6v5pmuKOiwt+eGoCk=?= <houpu.hp@alibaba-inc.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:25195 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751204AbaHAQsS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Aug 2014 12:48:18 -0400
 Content-Disposition: inline
-In-Reply-To: <20140801152459.GA7525@quack.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <63e6941e-70ab-4fec-941c-f13f47585594@alibaba-inc.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Aug 01, 2014 at 06:37:56PM +0800, =E4=BE=AF=E6=99=AE(=E8=B0=B7=E7=
+=86=A0) wrote:
+> On Thu, Jul 31, 2014 at 02:58:52PM +0800, Pu Hou wrote:
+> >> Symlink in debugfs can take advantage of inline data feature. The =
+path name of the target of the symbol link which is longer than 60 byte=
+ and shorter than 132 byte can stay in inline data area.
+> >
+> >I think Ted prefers wrapping commit messages at 70 bytes.
+> >
+> Thanks for reminding me. I will fix it.
+>=20
+> >> +	data.ea_size =3D size - EXT4_MIN_INLINE_DATA_SIZE;
+> >> +	data.ea_data =3D buf + EXT4_MIN_INLINE_DATA_SIZE;
+> >> +	return ext2fs_inline_data_ea_set(&data);
+> >
+> >Doesn't ext2fs_inline_data_set() suffice?
+> >
+> It is unnecessary to use this dedicated function.
 
---qqF1XwZUdAkx0x+N
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Why do you say it's unnecessary?  The dedicated function does (or at le=
+ast is
+supposed to) do exactly what you want.
 
-On Fri, Aug 01, 2014 at 05:24:59PM +0200, Jan Kara wrote:
+Now I'm wondering -- why worry about size at all?  You can modify
+ext2fs_symlink to call ext2fs_inline_data_set() directly.  If there's n=
+ot
+enough room, it'll return EXT2_ET_INLINE_DATA_NO_SPACE and you can try =
+again
+with the classic stuff-it-in-a-block method.
 
->   OK, makes sense. But then if there's heavy IO going on, anything that h=
-as
-> IO pending on it is pinned and IO completion can easily take something
-> close to a second or more. So meeting subsecond deadlines may be tough ev=
-en
-> for ordinary data pages under heavy load, even more so for metadata where
-> there are further constraints. OTOH phones aren't usually IO bound so in
-> practice it needn't be so bad ;).=20
+(Of course, if you try this and the API turns not to behave as advertis=
+ed I'd
+like to hear about that too. :))
 
-Yeah, typically phones are not IO bound :-)
+--D
 
-> So if it is sub-second unless someone
-> loads the storage, then that sounds doable even for metadata. But we'll
-> need to attach ->migratepage callback to blkdev pages and at least in ext4
-> case teach it how to move pages tracked by the journal.
-
-Right, making it possible at all if of course much prefered over not
-possible, regardless of timeliness :-)
-
-> > Sadly its not only mobile devices that excel in crappy hardware, there's
-> > plenty desktop stuff that could use this too, like some of the v4l
-> > devices iirc.
->   Yeah, but in such usecases the guarantees we can offer for completion of
-> migration are even more vague :(.
-
-Yeah, lets start by making it possible, after that we can maybe look at
-making it better, who knows.
-
---qqF1XwZUdAkx0x+N
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAEBAgAGBQJT27p/AAoJEHZH4aRLwOS6PNAP/iVWD5KPtksZmG02fnnp7cz1
-mMgKeKBIzYXGVSKIH2uRDnzsAYpTXpV1ZZNTrT55K83pDSEZpHRc3zhAh8UqyWnH
-7TP78reCgATaQdA6mO4hEt7I9UuFg3MCaxNFxAKkh4p6A+l9Dk4RcDJCFwFSWdAo
-S88SnAePEIiLa0W9MCmeq5SesAjXPgKYInUvSEV7xNL+QKVTY9CWIp8WPaTBGZPE
-bwq9P6EOsWUgLL2yz8kvvyNx9vQG1/JbDYDoNLeh+n6P7lFW01rX1HlApnKh2m7L
-UtEv6KA0RBDhefMbx1N0R5mjExAbVLeAWtM86RHYp+ttSKnluoXnmEwbRXx8cjzp
-SiMQzJFxduFhl5Qh2j2YfZzbAloqDVVQhDjn2zwIIq3eQ9XMywBHJpuDrMuj641p
-Mlnb60ZxrUBsIk0igucGPcWlHXu1Yngrw6sUYtoXlVU2WE9E367ZqXk0qcNQO3Ap
-fnqtaFzujt74tKG/UHcqU8iv+kLTTDE67U9oikFL3QzVp6HHG9bkhbzvL3h1bSKy
-y8wHEolW1gvzy56T1za7lfQLlQq+3a+lhsxN8S6hqCSxUVX27yWu8J7/CVsFey/3
-4ZKhg7gvO80zCn/mkou657Eud5KZcBPs5aoPDumhzMNZC2u8VLhfpp6lKIlt5Toq
-T5AdnrNclICuKWukhQjH
-=Pwjj
------END PGP SIGNATURE-----
-
---qqF1XwZUdAkx0x+N--
-
+>=20
+> >> +					sizeof(__u32)+
+> >> +					EXT4_MIN_INLINE_DATA_SIZE;
+> >> +			inline_link =3D (target_len < max_inline);
+> >
+> >Does ext2fs_xattr_inode_max_size() + EXT4_MIN_INLINE_DATA_SIZE retur=
+n incorrect
+> >results?  I don't think we should have all xattr specific stuff belo=
+ngs here in
+> >the symlink routines.
+>=20
+> Sorry. I did not notice that some xattr might be existed  when an ino=
+de
+> number is passed to ext2fs_symlink(). But, as far as I can see, when =
+0
+> is pass as inode number. ext2fs_xattr_inode_max_size() will read inod=
+e
+> by ext2fs_read_inode_full(). But at that time, we have not writen the
+> inode back. and the size of inline data for symlink is uncertain.
+> I will try to find a workaround.
+>=20
+> >> -		if (retval)
+> >> -			goto cleanup;
+> >> +		  retval =3D io_channel_write_blk64(fs->io, blk, 1, block_buf);
+> >> +		  if (retval)
+> >> +		    goto cleanup;
+> >
+> >Please fix the indentation inconsistency (tabs, not spaces).
+>=20
+> >> -	if (!fastlink)
+> >> +	if ((!fastlink) && (!inline_link))
+> >
+> >Probably unnecessary to put !fastlink and !inline_link in parenthese=
+s.
+> >
+> >--D
+> Darrick, thank again for your generous help.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
