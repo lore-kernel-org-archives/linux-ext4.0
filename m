@@ -1,65 +1,97 @@
-From: Li Xi <pkuelelixi@gmail.com>
-Subject: Re: [PATCH 0/4] quota: add project quota support
-Date: Fri, 1 Aug 2014 23:48:31 +0800
-Message-ID: <CAPTn0cD3eZgL1FaJLrgN-c_vhsvSoifmyLah=y60ejcAEOz-Mg@mail.gmail.com>
+From: Peter Zijlstra <peterz@infradead.org>
+Subject: Re: [PATCH 0/2] new API to allocate buffer-cache for superblock in
+ non-movable area
+Date: Fri, 1 Aug 2014 18:04:15 +0200
+Message-ID: <20140801160415.GD9918@twins.programming.kicks-ass.net>
+References: <20140730101143.GB19205@quack.suse.cz>
+ <53D985C0.3070300@lge.com>
+ <20140731000355.GB25362@quack.suse.cz>
+ <53D98FBB.6060700@lge.com>
+ <20140731122114.GA5240@quack.suse.cz>
+ <53DADA2F.1020404@lge.com>
+ <53DAE820.7050508@lge.com>
+ <20140801095700.GB27281@quack.suse.cz>
+ <20140801133618.GJ19379@twins.programming.kicks-ass.net>
+ <20140801152459.GA7525@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="qqF1XwZUdAkx0x+N"
+Cc: Gioh Kim <gioh.kim@lge.com>, Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+	Minchan Kim <minchan@kernel.org>, Joonsoo Kim <js1304@gmail.com>
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:52644 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750738AbaHAPsc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Aug 2014 11:48:32 -0400
-Received: by mail-ig0-f182.google.com with SMTP id c1so1795772igq.15
-        for <linux-ext4@vger.kernel.org>; Fri, 01 Aug 2014 08:48:31 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20140801152459.GA7525@quack.suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-2014-08-01 23:28 GMT+08:00 Li Xi <pkuelelixi@gmail.com>:
-> 2014-08-01 20:40 GMT+08:00 Jan Kara <jack@suse.cz>:
->>
->> 1) It should have been also posted to linux-fsdevel@vger.kernel.org, Al Viro
->> <viro@ZenIV.linux.org.uk>, Christoph Hellwig <hch@infradead.org> because
->> you are changing core VFS inode and infrastructure as well. For quota
->> changes you should have also CCed me as a quota maintainer.
-> Sure. Thanks for reminding me. I will add these addresses next time.
->>
->> 2) I'm not convinced we actually want project ID in the core inode - so far
->> only XFS has this. For everyone else it's just extra bloat so we could just
->> put it in ext4_inode_info. Granted we'd need to somewhat change quota
->> interface so that it sees all the ids (uid, gid, projid) but they are
->> really needed in two places - dquot_initalize() and dquot_transfer() and
->> creating variants of these functions that just take an array of ids and use
->> them in ext4 is simple enough.
-> OK, agreed.
-After searching dquot_initalize() and dquot_transfer(), I found changing these
-two functions envolves too many file systems. Is there any good reason not to
-add kprojid_t field in inode structure?
->>
->> 3) I see no way how to get / set project ID from userspace. Did I miss
->> something?
-> Yeah, you are right. I didn't push the interface patch. We implemeted
-> two kinds of interfaces. One is based on extended attribute interfaces which
-> simulate project ID as an extended attribute of the inode. The other implemented
-> a new ioctl command for ext4. Personally, I think ioctl is better. What is your
-> opinion?
->>
->> 4) The ext4 change is changing on-disk format. You definitely need a
->> feature flag for that so that kernels that don't understand project quotas
->> don't corrupt the filesystem. Also you need a support for this in
->> e2fsprogs.
-> Sure. I will add feature flag for project quota of ext4. And there are
-> quite some
-> related tools need updates, including e2fsprogs and quota-tools. We will push
-> those patches as soon as they are ready.
->>
->> 5) You make the feature configurable both in quota code and ext4. I don't
->> think the footprint of the feature warrants that.
-> Sure. Good point.
->
-> Thank you for the advices, I will refresh the patches and send the mails to all
-> of the related addresses soon.
->
-> Regards,
-> Li Xi
+
+--qqF1XwZUdAkx0x+N
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
+
+On Fri, Aug 01, 2014 at 05:24:59PM +0200, Jan Kara wrote:
+
+>   OK, makes sense. But then if there's heavy IO going on, anything that h=
+as
+> IO pending on it is pinned and IO completion can easily take something
+> close to a second or more. So meeting subsecond deadlines may be tough ev=
+en
+> for ordinary data pages under heavy load, even more so for metadata where
+> there are further constraints. OTOH phones aren't usually IO bound so in
+> practice it needn't be so bad ;).=20
+
+Yeah, typically phones are not IO bound :-)
+
+> So if it is sub-second unless someone
+> loads the storage, then that sounds doable even for metadata. But we'll
+> need to attach ->migratepage callback to blkdev pages and at least in ext4
+> case teach it how to move pages tracked by the journal.
+
+Right, making it possible at all if of course much prefered over not
+possible, regardless of timeliness :-)
+
+> > Sadly its not only mobile devices that excel in crappy hardware, there's
+> > plenty desktop stuff that could use this too, like some of the v4l
+> > devices iirc.
+>   Yeah, but in such usecases the guarantees we can offer for completion of
+> migration are even more vague :(.
+
+Yeah, lets start by making it possible, after that we can maybe look at
+making it better, who knows.
+
+--qqF1XwZUdAkx0x+N
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQIcBAEBAgAGBQJT27p/AAoJEHZH4aRLwOS6PNAP/iVWD5KPtksZmG02fnnp7cz1
+mMgKeKBIzYXGVSKIH2uRDnzsAYpTXpV1ZZNTrT55K83pDSEZpHRc3zhAh8UqyWnH
+7TP78reCgATaQdA6mO4hEt7I9UuFg3MCaxNFxAKkh4p6A+l9Dk4RcDJCFwFSWdAo
+S88SnAePEIiLa0W9MCmeq5SesAjXPgKYInUvSEV7xNL+QKVTY9CWIp8WPaTBGZPE
+bwq9P6EOsWUgLL2yz8kvvyNx9vQG1/JbDYDoNLeh+n6P7lFW01rX1HlApnKh2m7L
+UtEv6KA0RBDhefMbx1N0R5mjExAbVLeAWtM86RHYp+ttSKnluoXnmEwbRXx8cjzp
+SiMQzJFxduFhl5Qh2j2YfZzbAloqDVVQhDjn2zwIIq3eQ9XMywBHJpuDrMuj641p
+Mlnb60ZxrUBsIk0igucGPcWlHXu1Yngrw6sUYtoXlVU2WE9E367ZqXk0qcNQO3Ap
+fnqtaFzujt74tKG/UHcqU8iv+kLTTDE67U9oikFL3QzVp6HHG9bkhbzvL3h1bSKy
+y8wHEolW1gvzy56T1za7lfQLlQq+3a+lhsxN8S6hqCSxUVX27yWu8J7/CVsFey/3
+4ZKhg7gvO80zCn/mkou657Eud5KZcBPs5aoPDumhzMNZC2u8VLhfpp6lKIlt5Toq
+T5AdnrNclICuKWukhQjH
+=Pwjj
+-----END PGP SIGNATURE-----
+
+--qqF1XwZUdAkx0x+N--
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
