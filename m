@@ -1,79 +1,46 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/4] quota: add project quota support
-Date: Fri, 1 Aug 2014 14:40:15 +0200
-Message-ID: <20140801124015.GA5431@quack.suse.cz>
-References: <CAPTn0cBJMx=s5YhKPEVgGa4xvxP1H9L=gJaK1iP4dkooHzr_FA@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: save goal group and offset in struct
+ ext4_allocation_context.ac_g_ex
+Date: Fri, 1 Aug 2014 08:40:37 -0400
+Message-ID: <20140801124037.GB15110@thunk.org>
+References: <1406108861-2581-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
+ <20140729135819.GA2256@thunk.org>
+ <20140731153255.GE1566@thunk.org>
+ <53DAE9CD.5090308@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Li Xi <pkuelelixi@gmail.com>
+Cc: linux-ext4@vger.kernel.org, adilger@dilger.ca, lczerner@redhat.com
+To: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53940 "EHLO mx2.suse.de"
+Received: from imap.thunk.org ([74.207.234.97]:40150 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751963AbaHAMkR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 Aug 2014 08:40:17 -0400
+	id S1754684AbaHAMkm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Aug 2014 08:40:42 -0400
 Content-Disposition: inline
-In-Reply-To: <CAPTn0cBJMx=s5YhKPEVgGa4xvxP1H9L=gJaK1iP4dkooHzr_FA@mail.gmail.com>
+In-Reply-To: <53DAE9CD.5090308@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 01-08-14 09:05:23, Li Xi wrote:
-> The following patches propose an implementation of project support
-> for ext4. A project is an aggregate of unrelated inodes which might
-> scatter in different directories. Inodes belongs to a project
-> possesses a same identification i.e. 'project ID', just like every
-> inode has its user/group indentification. The following patches adds
-> project quota as supplement to the former uer/group quota types.
-> This project ID of an inode is iherited from its parent direcotry
-> and saved as an internal field of ext4 inode.
+On Fri, Aug 01, 2014 at 09:13:49AM +0800, Xiaoguang Wang wrote:
+> > I'm not sure why, and right now I don't have time to investigate.  If
+> > someone who has time and experience wading into fs/ext4/mballoc.c, it
+> > would be great if someone could take a closer look.
 > 
-> This is not the first existed attepmtion to add project quta support
-> for ext4. Patches of subtree quota support which was posted by Dmity
-> Monakhov in 2012 (http://lwn.net/Articles/506064/) implemented the
-> similar feature in a different way. Rather than saving the project
-> (or subtree) ID as an internal inode field, those patches manages
-> the ID as extented attributes.
-  Thanks for reviving the feature. I think it is a useful one.  I had a
-brief look into the series and here are some highlevel comments:
+> I'll investigate it and have full tests, thanks!
 
-1) It should have been also posted to linux-fsdevel@vger.kernel.org, Al Viro
-<viro@ZenIV.linux.org.uk>, Christoph Hellwig <hch@infradead.org> because
-you are changing core VFS inode and infrastructure as well. For quota
-changes you should have also CCed me as a quota maintainer.
+Thanks!  
 
-2) I'm not convinced we actually want project ID in the core inode - so far
-only XFS has this. For everyone else it's just extra bloat so we could just
-put it in ext4_inode_info. Granted we'd need to somewhat change quota
-interface so that it sees all the ids (uid, gid, projid) but they are
-really needed in two places - dquot_initalize() and dquot_transfer() and
-creating variants of these functions that just take an array of ids and use
-them in ext4 is simple enough.
+The patch *looked* correct, and it was pretty obvious, so I don't
+entirely blame you for not running tests --- but it's why I tend to
+run smoke tests regularly when merging in patches, and I do encourage
+folks to run the smoke test for any patch, no matter how simple.  Yes,
+it takes 30 minutes, but it's worth it.
 
-3) I see no way how to get / set project ID from userspace. Did I miss
-something?
+I suspect there may be some underlying bug which your patch unmasked,
+so it would be good for us to understand why it caused the failure.
 
-4) The ext4 change is changing on-disk format. You definitely need a
-feature flag for that so that kernels that don't understand project quotas
-don't corrupt the filesystem. Also you need a support for this in
-e2fsprogs.
+      	       	    	      		     - Ted
 
-5) You make the feature configurable both in quota code and ext4. I don't
-think the footprint of the feature warrants that.
- 
-> We rebased both patch sets onto the same kernel version and run
-> benchmakrs respectively to comparing the peformance difference.
-> It is worth noting that patches from Lai Siyao and Niu Yawei
-> (quota: remove dqptr_sem,
-> http://article.gmane.org/gmane.comp.file-systems.ext4/44341/)
-> improve the performance of quota enforcement significantly, which
-> can be seen clearly from following results.
-  I plan to send that to Linus in this merge window BTW.
 
-> It is obvious that extended attribute implementation has performance
-> impact when creating files. That is why we choose to push the patches
-> which use internal inode field to save project ID.
 
-							Honza
---
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+
