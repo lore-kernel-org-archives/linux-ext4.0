@@ -1,67 +1,79 @@
-From: "=?UTF-8?B?5L6v5pmuKOiwt+eGoCk=?=" <houpu.hp@alibaba-inc.com>
-Subject: =?UTF-8?B?UmU6IFtQQVRDSF0gZGVidWdmczogQWRkIGlubGluZSBkYXRhIGZlYXR1cmUgZm9yIHN5bWxp?=
-  =?UTF-8?B?bmsu?=
-Date: Fri, 01 Aug 2014 18:37:56 +0800
-Message-ID: <63e6941e-70ab-4fec-941c-f13f47585594@alibaba-inc.com>
-References: <1406789932-13770-1-git-send-email-houpu.hp@alibaba-inc.com>,20140801013802.GS8628@birch.djwong.org
-Reply-To: "=?UTF-8?B?5L6v5pmuKOiwt+eGoCk=?=" <houpu.hp@alibaba-inc.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/4] quota: add project quota support
+Date: Fri, 1 Aug 2014 14:40:15 +0200
+Message-ID: <20140801124015.GA5431@quack.suse.cz>
+References: <CAPTn0cBJMx=s5YhKPEVgGa4xvxP1H9L=gJaK1iP4dkooHzr_FA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-Cc: "Ext4 Developers List" <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Li Xi <pkuelelixi@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [42.120.133.98] ([42.120.133.98]:46344 "EHLO
-	out4133-98.mail.aliyun.com" rhost-flags-FAIL-FAIL-OK-OK)
-	by vger.kernel.org with ESMTP id S1750703AbaHALLc convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 Aug 2014 07:11:32 -0400
-In-Reply-To: 20140801013802.GS8628@birch.djwong.org
+Received: from cantor2.suse.de ([195.135.220.15]:53940 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751963AbaHAMkR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Aug 2014 08:40:17 -0400
+Content-Disposition: inline
+In-Reply-To: <CAPTn0cBJMx=s5YhKPEVgGa4xvxP1H9L=gJaK1iP4dkooHzr_FA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 31, 2014 at 02:58:52PM +0800, Pu Hou wrote:
->> Symlink in debugfs can take advantage of inline data feature. The path name of the target of the symbol link which is longer than 60 byte and shorter than 132 byte can stay in inline data area.
->
->I think Ted prefers wrapping commit messages at 70 bytes.
->
-Thanks for reminding me. I will fix it.
+On Fri 01-08-14 09:05:23, Li Xi wrote:
+> The following patches propose an implementation of project support
+> for ext4. A project is an aggregate of unrelated inodes which might
+> scatter in different directories. Inodes belongs to a project
+> possesses a same identification i.e. 'project ID', just like every
+> inode has its user/group indentification. The following patches adds
+> project quota as supplement to the former uer/group quota types.
+> This project ID of an inode is iherited from its parent direcotry
+> and saved as an internal field of ext4 inode.
+> 
+> This is not the first existed attepmtion to add project quta support
+> for ext4. Patches of subtree quota support which was posted by Dmity
+> Monakhov in 2012 (http://lwn.net/Articles/506064/) implemented the
+> similar feature in a different way. Rather than saving the project
+> (or subtree) ID as an internal inode field, those patches manages
+> the ID as extented attributes.
+  Thanks for reviving the feature. I think it is a useful one.  I had a
+brief look into the series and here are some highlevel comments:
 
->> +	data.ea_size = size - EXT4_MIN_INLINE_DATA_SIZE;
->> +	data.ea_data = buf + EXT4_MIN_INLINE_DATA_SIZE;
->> +	return ext2fs_inline_data_ea_set(&data);
->
->Doesn't ext2fs_inline_data_set() suffice?
->
-It is unnecessary to use this dedicated function.
+1) It should have been also posted to linux-fsdevel@vger.kernel.org, Al Viro
+<viro@ZenIV.linux.org.uk>, Christoph Hellwig <hch@infradead.org> because
+you are changing core VFS inode and infrastructure as well. For quota
+changes you should have also CCed me as a quota maintainer.
 
->> +					sizeof(__u32)+
->> +					EXT4_MIN_INLINE_DATA_SIZE;
->> +			inline_link = (target_len < max_inline);
->
->Does ext2fs_xattr_inode_max_size() + EXT4_MIN_INLINE_DATA_SIZE return incorrect
->results?  I don't think we should have all xattr specific stuff belongs here in
->the symlink routines.
+2) I'm not convinced we actually want project ID in the core inode - so far
+only XFS has this. For everyone else it's just extra bloat so we could just
+put it in ext4_inode_info. Granted we'd need to somewhat change quota
+interface so that it sees all the ids (uid, gid, projid) but they are
+really needed in two places - dquot_initalize() and dquot_transfer() and
+creating variants of these functions that just take an array of ids and use
+them in ext4 is simple enough.
 
-Sorry. I did not notice that some xattr might be existed  when an inode
-number is passed to ext2fs_symlink(). But, as far as I can see, when 0
-is pass as inode number. ext2fs_xattr_inode_max_size() will read inode
-by ext2fs_read_inode_full(). But at that time, we have not writen the
-inode back. and the size of inline data for symlink is uncertain.
-I will try to find a workaround.
+3) I see no way how to get / set project ID from userspace. Did I miss
+something?
 
->> -		if (retval)
->> -			goto cleanup;
->> +		  retval = io_channel_write_blk64(fs->io, blk, 1, block_buf);
->> +		  if (retval)
->> +		    goto cleanup;
->
->Please fix the indentation inconsistency (tabs, not spaces).
+4) The ext4 change is changing on-disk format. You definitely need a
+feature flag for that so that kernels that don't understand project quotas
+don't corrupt the filesystem. Also you need a support for this in
+e2fsprogs.
 
->> -	if (!fastlink)
->> +	if ((!fastlink) && (!inline_link))
->
->Probably unnecessary to put !fastlink and !inline_link in parentheses.
->
->--D
-Darrick, thank again for your generous help.
+5) You make the feature configurable both in quota code and ext4. I don't
+think the footprint of the feature warrants that.
+ 
+> We rebased both patch sets onto the same kernel version and run
+> benchmakrs respectively to comparing the peformance difference.
+> It is worth noting that patches from Lai Siyao and Niu Yawei
+> (quota: remove dqptr_sem,
+> http://article.gmane.org/gmane.comp.file-systems.ext4/44341/)
+> improve the performance of quota enforcement significantly, which
+> can be seen clearly from following results.
+  I plan to send that to Linus in this merge window BTW.
+
+> It is obvious that extended attribute implementation has performance
+> impact when creating files. That is why we choose to push the patches
+> which use internal inode field to save project ID.
+
+							Honza
+--
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
