@@ -1,173 +1,142 @@
 From: Li Xi <pkuelelixi@gmail.com>
-Subject: Re: [PATCH 2/4] quota: add project quota support
-Date: Fri, 1 Aug 2014 09:07:15 +0800
-Message-ID: <CAPTn0cBCiRD2s_76QeW0=Ai6DUJSjUERi6AOQeE5=yUrt6izQA@mail.gmail.com>
+Subject: Re: [PATCH 3/4] quota: add project quota support
+Date: Fri, 1 Aug 2014 09:07:50 +0800
+Message-ID: <CAPTn0cCRzZSKhaqnuGGDJ2tVwC-=NX2TkNfOVd-sYGfBZ1vBPg@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:50479 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752439AbaHABHQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jul 2014 21:07:16 -0400
-Received: by mail-ie0-f176.google.com with SMTP id tr6so4956035ieb.35
-        for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2014 18:07:15 -0700 (PDT)
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:49472 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753126AbaHABHv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jul 2014 21:07:51 -0400
+Received: by mail-ig0-f175.google.com with SMTP id uq10so645538igb.8
+        for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2014 18:07:50 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[PATCH 2/4] quota: add project quota support
+Adds project ID support for ext4
 
-Enforces project quota limites
-
-This patch adds a new quota type PRJQUOTA for project quota
-enforcement.
+This patch adds a new internal field of ext4 inode to save project
+identifier.
 
 Signed-off-by: Li Xi <lixi <at> ddn.com>
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
-Index: linux.git/fs/quota/dquot.c
+Index: linux.git/fs/ext4/ialloc.c
 ===================================================================
---- linux.git.orig/fs/quota/dquot.c
-+++ linux.git/fs/quota/dquot.c
-@@ -1170,8 +1170,12 @@ static int need_print_warning(struct dqu
-             return uid_eq(current_fsuid(), warn->w_dq_id.uid);
-         case GRPQUOTA:
-             return in_group_p(warn->w_dq_id.gid);
--        case PRJQUOTA:    /* Never taken... Just make gcc happy */
-+        case PRJQUOTA:
-+#ifdef CONFIG_QUOTA_PROJECT
-+            return 1;
-+#else
-             return 0;
-+#endif
-     }
-     return 0;
- }
-@@ -1418,6 +1422,10 @@ static void __dquot_initialize(struct in
-         got[cnt] = NULL;
-         if (type != -1 && cnt != type)
-             continue;
-+#ifndef CONFIG_QUOTA_PROJECT
-+        if (cnt == PRJQUOTA)
-+            continue;
-+#endif
-         switch (cnt) {
-         case USRQUOTA:
-             qid = make_kqid_uid(inode->i_uid);
-@@ -1425,6 +1433,9 @@ static void __dquot_initialize(struct in
-         case GRPQUOTA:
-             qid = make_kqid_gid(inode->i_gid);
-             break;
-+        case PRJQUOTA:
-+            qid = make_kqid_projid(inode->i_projid);
-+            break;
-         }
-         got[cnt] = dqget(sb, qid);
-     }
-@@ -1954,6 +1965,8 @@ int dquot_transfer(struct inode *inode,
-         transfer_to[USRQUOTA] = dqget(sb, make_kqid_uid(iattr->ia_uid));
-     if (iattr->ia_valid & ATTR_GID && !gid_eq(iattr->ia_gid, inode->i_gid))
-         transfer_to[GRPQUOTA] = dqget(sb, make_kqid_gid(iattr->ia_gid));
-+    if (iattr->ia_valid & ATTR_PROJID && !projid_eq(iattr->ia_projid,
-inode->i_projid))
-+        transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(iattr->ia_projid));
+--- linux.git.orig/fs/ext4/ialloc.c
++++ linux.git/fs/ext4/ialloc.c
+@@ -756,6 +756,7 @@ struct inode *__ext4_new_inode(handle_t
+         inode->i_gid = dir->i_gid;
+     } else
+         inode_init_owner(inode, dir, mode);
++    inode->i_projid = dir->i_projid;
+     dquot_initialize(inode);
 
-     ret = __dquot_transfer(inode, transfer_to);
-     dqput_all(transfer_to);
-Index: linux.git/fs/quota/quotaio_v2.h
+     if (!goal)
+Index: linux.git/fs/ext4/ext4.h
 ===================================================================
---- linux.git.orig/fs/quota/quotaio_v2.h
-+++ linux.git/fs/quota/quotaio_v2.h
-@@ -13,12 +13,14 @@
-  */
- #define V2_INITQMAGICS {\
-     0xd9c01f11,    /* USRQUOTA */\
--    0xd9c01927    /* GRPQUOTA */\
-+    0xd9c01927,    /* GRPQUOTA */\
-+    0xd9c03f14    /* PRJQUOTA */\
- }
-
- #define V2_INITQVERSIONS {\
-     1,        /* USRQUOTA */\
--    1        /* GRPQUOTA */\
-+    1,        /* GRPQUOTA */\
-+    1        /* PRJQUOTA */\
- }
-
- /* First generic header */
-Index: linux.git/include/linux/quota.h
-===================================================================
---- linux.git.orig/include/linux/quota.h
-+++ linux.git/include/linux/quota.h
-@@ -50,6 +50,7 @@
-
- #undef USRQUOTA
- #undef GRPQUOTA
-+#undef PRJQUOTA
- enum quota_type {
-     USRQUOTA = 0,        /* element used for user quotas */
-     GRPQUOTA = 1,        /* element used for group quotas */
-Index: linux.git/include/uapi/linux/quota.h
-===================================================================
---- linux.git.orig/include/uapi/linux/quota.h
-+++ linux.git/include/uapi/linux/quota.h
-@@ -36,11 +36,12 @@
- #include <linux/errno.h>
- #include <linux/types.h>
-
--#define __DQUOT_VERSION__    "dquot_6.5.2"
-+#define __DQUOT_VERSION__    "dquot_6.6.0"
-
--#define MAXQUOTAS 2
-+#define MAXQUOTAS 3
- #define USRQUOTA  0        /* element used for user quotas */
- #define GRPQUOTA  1        /* element used for group quotas */
-+#define PRJQUOTA  2        /* element used for project quotas */
-
- /*
-  * Definitions for the default names of the quotas files.
-@@ -48,6 +49,7 @@
- #define INITQFNAMES { \
-     "user",    /* USRQUOTA */ \
-     "group",   /* GRPQUOTA */ \
-+    "project", /* PRJQUOTA */ \
-     "undefined", \
+--- linux.git.orig/fs/ext4/ext4.h
++++ linux.git/fs/ext4/ext4.h
+@@ -695,6 +695,7 @@ struct ext4_inode {
+     __le32  i_crtime;       /* File Creation time */
+     __le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch) */
+     __le32  i_version_hi;    /* high 32 bits for 64-bit version */
++    __le32  i_projid;    /* Project ID */
  };
 
-Index: linux.git/fs/quota/Kconfig
-===================================================================
---- linux.git.orig/fs/quota/Kconfig
-+++ linux.git/fs/quota/Kconfig
-@@ -17,6 +17,15 @@ config QUOTA
-       with the quota tools. Probably the quota support is only useful for
-       multi user systems. If unsure, say N.
+ struct move_extent {
+@@ -2108,6 +2109,8 @@ int do_journal_get_write_access(handle_t
+ #define CONVERT_INLINE_DATA     2
 
-+config QUOTA_PROJECT
-+    bool "Enable project quota"
-+    depends on QUOTA
-+    default y
-+    help
-+      This option enables project inode identifier. Project id
-+      may be used as auxiliary owner specifier in addition to
-+      standard uid/gid.
-+
- config QUOTA_NETLINK_INTERFACE
-     bool "Report quota messages through netlink interface"
-     depends on QUOTACTL && NET
-Index: linux.git/fs/quota/quota.c
+ extern struct inode *ext4_iget(struct super_block *, unsigned long);
++extern projid_t ext4_inode_projid_get(struct inode *, struct ext4_inode *,
++                      struct ext4_inode_info *);
+ extern int  ext4_write_inode(struct inode *, struct writeback_control *);
+ extern int  ext4_setattr(struct dentry *, struct iattr *);
+ extern int  ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
+Index: linux.git/fs/ext4/inode.c
 ===================================================================
---- linux.git.orig/fs/quota/quota.c
-+++ linux.git/fs/quota/quota.c
-@@ -30,7 +30,10 @@ static int check_quotactl_permission(str
-     case Q_XGETQSTATV:
-     case Q_XQUOTASYNC:
-         break;
--    /* allow to query information for dquots we "own" */
-+    /*
-+     * allow to query information for dquots we "own"
-+     * always allow quota check for project quota
-+     */
-     case Q_GETQUOTA:
-     case Q_XGETQUOTA:
-         if ((type == USRQUOTA && uid_eq(current_euid(),
-make_kuid(current_user_ns(), id))) ||
+--- linux.git.orig/fs/ext4/inode.c
++++ linux.git/fs/ext4/inode.c
+@@ -4026,6 +4026,28 @@ static inline void ext4_iget_extra_inode
+         EXT4_I(inode)->i_inline_off = 0;
+ }
+
++projid_t ext4_inode_projid_get(struct inode *inode, struct ext4_inode *raw,
++                   struct ext4_inode_info *ei)
++{
++    projid_t projid = 0;
++
++    if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
++        EXT4_FITS_IN_INODE(raw, ei, i_projid))
++        projid = (projid_t)le32_to_cpu(raw->i_projid);
++    return projid;
++}
++
++static void ext4_inode_projid_set(struct inode *inode, struct ext4_inode *raw,
++                  struct ext4_inode_info *ei)
++{
++    __u32 projid;
++
++    projid = __kprojid_val(inode->i_projid);
++    if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
++        EXT4_FITS_IN_INODE(raw, ei, i_projid))
++        raw->i_projid = cpu_to_le32(projid);
++}
++
+ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ {
+     struct ext4_iloc iloc;
+@@ -4037,6 +4059,7 @@ struct inode *ext4_iget(struct super_blo
+     int block;
+     uid_t i_uid;
+     gid_t i_gid;
++    projid_t i_projid;
+
+     inode = iget_locked(sb, ino);
+     if (!inode)
+@@ -4087,12 +4110,14 @@ struct inode *ext4_iget(struct super_blo
+     inode->i_mode = le16_to_cpu(raw_inode->i_mode);
+     i_uid = (uid_t)le16_to_cpu(raw_inode->i_uid_low);
+     i_gid = (gid_t)le16_to_cpu(raw_inode->i_gid_low);
++    i_projid = ext4_inode_projid_get(inode, raw_inode, ei);
+     if (!(test_opt(inode->i_sb, NO_UID32))) {
+         i_uid |= le16_to_cpu(raw_inode->i_uid_high) << 16;
+         i_gid |= le16_to_cpu(raw_inode->i_gid_high) << 16;
+     }
+     i_uid_write(inode, i_uid);
+     i_gid_write(inode, i_gid);
++    i_projid_write(inode, i_projid);
+     set_nlink(inode, le16_to_cpu(raw_inode->i_links_count));
+
+     ext4_clear_state_flags(ei);    /* Only relevant on 32-bit archs */
+@@ -4407,6 +4432,8 @@ static int ext4_do_update_inode(handle_t
+
+     ext4_inode_csum_set(inode, raw_inode, ei);
+
++    ext4_inode_projid_set(inode, raw_inode, ei);
++
+     spin_unlock(&ei->i_raw_lock);
+
+     BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+@@ -4591,7 +4618,8 @@ int ext4_setattr(struct dentry *dentry,
+     if (is_quota_modification(inode, attr))
+         dquot_initialize(inode);
+     if ((ia_valid & ATTR_UID && !uid_eq(attr->ia_uid, inode->i_uid)) ||
+-        (ia_valid & ATTR_GID && !gid_eq(attr->ia_gid, inode->i_gid))) {
++        (ia_valid & ATTR_GID && !gid_eq(attr->ia_gid, inode->i_gid)) ||
++        (ia_valid & ATTR_PROJID && !projid_eq(attr->ia_projid,
+inode->i_projid))) {
+         handle_t *handle;
+
+         /* (user+group)*(old+new) structure, inode write (sb,
+@@ -4614,6 +4642,8 @@ int ext4_setattr(struct dentry *dentry,
+             inode->i_uid = attr->ia_uid;
+         if (attr->ia_valid & ATTR_GID)
+             inode->i_gid = attr->ia_gid;
++        if (attr->ia_valid & ATTR_PROJID)
++            inode->i_projid = attr->ia_projid;
+         error = ext4_mark_inode_dirty(handle, inode);
+         ext4_journal_stop(handle);
+     }
