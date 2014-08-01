@@ -1,125 +1,173 @@
 From: Li Xi <pkuelelixi@gmail.com>
-Subject: Re: [PATCH 0/4] quota: add project quota support
-Date: Fri, 1 Aug 2014 09:06:25 +0800
-Message-ID: <CAPTn0cDvnmojeFeyAap2EuO4RR0+FBAf6tik7xMctYRriLv3jg@mail.gmail.com>
-References: <CAPTn0cBJMx=s5YhKPEVgGa4xvxP1H9L=gJaK1iP4dkooHzr_FA@mail.gmail.com>
+Subject: Re: [PATCH 2/4] quota: add project quota support
+Date: Fri, 1 Aug 2014 09:07:15 +0800
+Message-ID: <CAPTn0cBCiRD2s_76QeW0=Ai6DUJSjUERi6AOQeE5=yUrt6izQA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ig0-f179.google.com ([209.85.213.179]:40651 "EHLO
-	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752439AbaHABG0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jul 2014 21:06:26 -0400
-Received: by mail-ig0-f179.google.com with SMTP id h18so642459igc.12
-        for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2014 18:06:26 -0700 (PDT)
-In-Reply-To: <CAPTn0cBJMx=s5YhKPEVgGa4xvxP1H9L=gJaK1iP4dkooHzr_FA@mail.gmail.com>
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:50479 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752439AbaHABHQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jul 2014 21:07:16 -0400
+Received: by mail-ie0-f176.google.com with SMTP id tr6so4956035ieb.35
+        for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2014 18:07:15 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[PATCH 1/4] quota: add project quota support
+[PATCH 2/4] quota: add project quota support
 
-Adds project identifier of inode.
+Enforces project quota limites
 
-Project identifier is saved as an internal attribute of inode.
-This patch adds a new field in inode structure and inode attribute
-structure for project ID.
+This patch adds a new quota type PRJQUOTA for project quota
+enforcement.
 
 Signed-off-by: Li Xi <lixi <at> ddn.com>
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- /* First generic header */
-Index: linux.git/include/linux/fs.h
+Index: linux.git/fs/quota/dquot.c
 ===================================================================
---- linux.git.orig/include/linux/fs.h
-+++ linux.git/include/linux/fs.h
-@@ -26,6 +26,7 @@
- #include <linux/shrinker.h>
- #include <linux/migrate_mode.h>
- #include <linux/uidgid.h>
-+#include <linux/projid.h>
- #include <linux/lockdep.h>
- #include <linux/percpu-rwsem.h>
- #include <linux/blk_types.h>
-@@ -223,6 +224,7 @@ typedef void (dio_iodone_t)(struct kiocb
- #define ATTR_KILL_PRIV    (1 << 14)
- #define ATTR_OPEN    (1 << 15) /* Truncating from open(O_TRUNC) */
- #define ATTR_TIMES_SET    (1 << 16)
-+#define ATTR_PROJID    (1 << 17)
+--- linux.git.orig/fs/quota/dquot.c
++++ linux.git/fs/quota/dquot.c
+@@ -1170,8 +1170,12 @@ static int need_print_warning(struct dqu
+             return uid_eq(current_fsuid(), warn->w_dq_id.uid);
+         case GRPQUOTA:
+             return in_group_p(warn->w_dq_id.gid);
+-        case PRJQUOTA:    /* Never taken... Just make gcc happy */
++        case PRJQUOTA:
++#ifdef CONFIG_QUOTA_PROJECT
++            return 1;
++#else
+             return 0;
++#endif
+     }
+     return 0;
+ }
+@@ -1418,6 +1422,10 @@ static void __dquot_initialize(struct in
+         got[cnt] = NULL;
+         if (type != -1 && cnt != type)
+             continue;
++#ifndef CONFIG_QUOTA_PROJECT
++        if (cnt == PRJQUOTA)
++            continue;
++#endif
+         switch (cnt) {
+         case USRQUOTA:
+             qid = make_kqid_uid(inode->i_uid);
+@@ -1425,6 +1433,9 @@ static void __dquot_initialize(struct in
+         case GRPQUOTA:
+             qid = make_kqid_gid(inode->i_gid);
+             break;
++        case PRJQUOTA:
++            qid = make_kqid_projid(inode->i_projid);
++            break;
+         }
+         got[cnt] = dqget(sb, qid);
+     }
+@@ -1954,6 +1965,8 @@ int dquot_transfer(struct inode *inode,
+         transfer_to[USRQUOTA] = dqget(sb, make_kqid_uid(iattr->ia_uid));
+     if (iattr->ia_valid & ATTR_GID && !gid_eq(iattr->ia_gid, inode->i_gid))
+         transfer_to[GRPQUOTA] = dqget(sb, make_kqid_gid(iattr->ia_gid));
++    if (iattr->ia_valid & ATTR_PROJID && !projid_eq(iattr->ia_projid,
+inode->i_projid))
++        transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(iattr->ia_projid));
 
- /*
-  * This is the Inode Attributes structure, used for notify_change().  It
-@@ -238,6 +240,7 @@ struct iattr {
-     umode_t        ia_mode;
-     kuid_t        ia_uid;
-     kgid_t        ia_gid;
-+    kprojid_t    ia_projid;
-     loff_t        ia_size;
-     struct timespec    ia_atime;
-     struct timespec    ia_mtime;
-@@ -504,6 +507,7 @@ struct inode {
-     unsigned short        i_opflags;
-     kuid_t            i_uid;
-     kgid_t            i_gid;
-+    kprojid_t        i_projid;
-     unsigned int        i_flags;
-
- #ifdef CONFIG_FS_POSIX_ACL
-@@ -701,6 +705,11 @@ static inline void i_gid_write(struct in
-     inode->i_gid = make_kgid(&init_user_ns, gid);
+     ret = __dquot_transfer(inode, transfer_to);
+     dqput_all(transfer_to);
+Index: linux.git/fs/quota/quotaio_v2.h
+===================================================================
+--- linux.git.orig/fs/quota/quotaio_v2.h
++++ linux.git/fs/quota/quotaio_v2.h
+@@ -13,12 +13,14 @@
+  */
+ #define V2_INITQMAGICS {\
+     0xd9c01f11,    /* USRQUOTA */\
+-    0xd9c01927    /* GRPQUOTA */\
++    0xd9c01927,    /* GRPQUOTA */\
++    0xd9c03f14    /* PRJQUOTA */\
  }
 
-+static inline void i_projid_write(struct inode *inode, projid_t projid)
-+{
-+    inode->i_projid = make_kprojid(&init_user_ns, projid);
-+}
-+
- static inline unsigned iminor(const struct inode *inode)
- {
-     return MINOR(inode->i_rdev);
-Index: linux.git/fs/attr.c
+ #define V2_INITQVERSIONS {\
+     1,        /* USRQUOTA */\
+-    1        /* GRPQUOTA */\
++    1,        /* GRPQUOTA */\
++    1        /* PRJQUOTA */\
+ }
+
+ /* First generic header */
+Index: linux.git/include/linux/quota.h
 ===================================================================
---- linux.git.orig/fs/attr.c
-+++ linux.git/fs/attr.c
-@@ -60,6 +60,11 @@ int inode_change_ok(const struct inode *
-         !capable_wrt_inode_uidgid(inode, CAP_CHOWN))
-         return -EPERM;
+--- linux.git.orig/include/linux/quota.h
++++ linux.git/include/linux/quota.h
+@@ -50,6 +50,7 @@
 
-+    /* Make sure caller can change project. */
-+    if ((ia_valid & ATTR_PROJID) &&
-+        (!capable(CAP_SYS_ADMIN)))
-+        return -EPERM;
-+
-     /* Make sure a caller can chmod. */
-     if (ia_valid & ATTR_MODE) {
-         if (!inode_owner_or_capable(inode))
-@@ -147,6 +152,8 @@ void setattr_copy(struct inode *inode, c
-         inode->i_uid = attr->ia_uid;
-     if (ia_valid & ATTR_GID)
-         inode->i_gid = attr->ia_gid;
-+    if (ia_valid & ATTR_PROJID)
-+        inode->i_projid = attr->ia_projid;
-     if (ia_valid & ATTR_ATIME)
-         inode->i_atime = timespec_trunc(attr->ia_atime,
-                         inode->i_sb->s_time_gran);
-@@ -197,7 +204,8 @@ int notify_change(struct dentry * dentry
-
-     WARN_ON_ONCE(!mutex_is_locked(&inode->i_mutex));
-
--    if (ia_valid & (ATTR_MODE | ATTR_UID | ATTR_GID | ATTR_TIMES_SET)) {
-+    if (ia_valid & (ATTR_MODE | ATTR_UID | ATTR_GID | ATTR_PROJID |
-+            ATTR_TIMES_SET)) {
-         if (IS_IMMUTABLE(inode) || IS_APPEND(inode))
-             return -EPERM;
-     }
-Index: linux.git/fs/inode.c
+ #undef USRQUOTA
+ #undef GRPQUOTA
++#undef PRJQUOTA
+ enum quota_type {
+     USRQUOTA = 0,        /* element used for user quotas */
+     GRPQUOTA = 1,        /* element used for group quotas */
+Index: linux.git/include/uapi/linux/quota.h
 ===================================================================
---- linux.git.orig/fs/inode.c
-+++ linux.git/fs/inode.c
-@@ -138,6 +138,7 @@ int inode_init_always(struct super_block
-     inode->i_opflags = 0;
-     i_uid_write(inode, 0);
-     i_gid_write(inode, 0);
-+    i_projid_write(inode, 0);
-     atomic_set(&inode->i_writecount, 0);
-     inode->i_size = 0;
-     inode->i_blocks = 0;
+--- linux.git.orig/include/uapi/linux/quota.h
++++ linux.git/include/uapi/linux/quota.h
+@@ -36,11 +36,12 @@
+ #include <linux/errno.h>
+ #include <linux/types.h>
+
+-#define __DQUOT_VERSION__    "dquot_6.5.2"
++#define __DQUOT_VERSION__    "dquot_6.6.0"
+
+-#define MAXQUOTAS 2
++#define MAXQUOTAS 3
+ #define USRQUOTA  0        /* element used for user quotas */
+ #define GRPQUOTA  1        /* element used for group quotas */
++#define PRJQUOTA  2        /* element used for project quotas */
+
+ /*
+  * Definitions for the default names of the quotas files.
+@@ -48,6 +49,7 @@
+ #define INITQFNAMES { \
+     "user",    /* USRQUOTA */ \
+     "group",   /* GRPQUOTA */ \
++    "project", /* PRJQUOTA */ \
+     "undefined", \
+ };
+
+Index: linux.git/fs/quota/Kconfig
+===================================================================
+--- linux.git.orig/fs/quota/Kconfig
++++ linux.git/fs/quota/Kconfig
+@@ -17,6 +17,15 @@ config QUOTA
+       with the quota tools. Probably the quota support is only useful for
+       multi user systems. If unsure, say N.
+
++config QUOTA_PROJECT
++    bool "Enable project quota"
++    depends on QUOTA
++    default y
++    help
++      This option enables project inode identifier. Project id
++      may be used as auxiliary owner specifier in addition to
++      standard uid/gid.
++
+ config QUOTA_NETLINK_INTERFACE
+     bool "Report quota messages through netlink interface"
+     depends on QUOTACTL && NET
+Index: linux.git/fs/quota/quota.c
+===================================================================
+--- linux.git.orig/fs/quota/quota.c
++++ linux.git/fs/quota/quota.c
+@@ -30,7 +30,10 @@ static int check_quotactl_permission(str
+     case Q_XGETQSTATV:
+     case Q_XQUOTASYNC:
+         break;
+-    /* allow to query information for dquots we "own" */
++    /*
++     * allow to query information for dquots we "own"
++     * always allow quota check for project quota
++     */
+     case Q_GETQUOTA:
+     case Q_XGETQUOTA:
+         if ((type == USRQUOTA && uid_eq(current_euid(),
+make_kuid(current_user_ns(), id))) ||
