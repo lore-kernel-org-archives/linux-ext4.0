@@ -1,104 +1,56 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] debugfs: Add inline data feature for symlink.
-Date: Fri, 1 Aug 2014 09:48:10 -0700
-Message-ID: <20140801164810.GT8628@birch.djwong.org>
-References: <1406789932-13770-1-git-send-email-houpu.hp@alibaba-inc.com>
- <63e6941e-70ab-4fec-941c-f13f47585594@alibaba-inc.com>
+Subject: [PATCH 00/19] e2fsprogs patchbomb 7/14, part 2.1
+Date: Fri, 01 Aug 2014 11:11:40 -0700
+Message-ID: <20140801181139.12496.14390.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: =?utf-8?B?5L6v5pmuKOiwt+eGoCk=?= <houpu.hp@alibaba-inc.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:25195 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:32803 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751204AbaHAQsS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Aug 2014 12:48:18 -0400
-Content-Disposition: inline
-In-Reply-To: <63e6941e-70ab-4fec-941c-f13f47585594@alibaba-inc.com>
+	with ESMTP id S1750851AbaHASLp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Aug 2014 14:11:45 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 01, 2014 at 06:37:56PM +0800, =E4=BE=AF=E6=99=AE(=E8=B0=B7=E7=
-=86=A0) wrote:
-> On Thu, Jul 31, 2014 at 02:58:52PM +0800, Pu Hou wrote:
-> >> Symlink in debugfs can take advantage of inline data feature. The =
-path name of the target of the symbol link which is longer than 60 byte=
- and shorter than 132 byte can stay in inline data area.
-> >
-> >I think Ted prefers wrapping commit messages at 70 bytes.
-> >
-> Thanks for reminding me. I will fix it.
->=20
-> >> +	data.ea_size =3D size - EXT4_MIN_INLINE_DATA_SIZE;
-> >> +	data.ea_data =3D buf + EXT4_MIN_INLINE_DATA_SIZE;
-> >> +	return ext2fs_inline_data_ea_set(&data);
-> >
-> >Doesn't ext2fs_inline_data_set() suffice?
-> >
-> It is unnecessary to use this dedicated function.
+Hi all,
 
-Why do you say it's unnecessary?  The dedicated function does (or at le=
-ast is
-supposed to) do exactly what you want.
+Here are revisions to the patchset that I sent last Friday, fixing
+e2fsck failures with filesystems containing the metadata checksumming
+features.  Like last week, e2fuzz helped me to find the failures.
 
-Now I'm wondering -- why worry about size at all?  You can modify
-ext2fs_symlink to call ext2fs_inline_data_set() directly.  If there's n=
-ot
-enough room, it'll return EXT2_ET_INLINE_DATA_NO_SPACE and you can try =
-again
-with the classic stuff-it-in-a-block method.
+The first patch fixes a Coverity complaint against e2fuzz.  Patch 2
+ensures that e2fsck never clears a block in block_found_map if it's in
+marked in the block_metadata_map.  Patch 3 suggests putting lost
+inodes in the root directory if it's impossible to recreate the
+lost+found directory.  Patch 4 fixes dumpe2fs to complain about
+checksum errors without requiring command line options.
 
-(Of course, if you try this and the API turns not to behave as advertis=
-ed I'd
-like to hear about that too. :))
+Patches 5-8 tear down the foundations of the strict_csum vs
+no_strict_csum patchset in favor of checking any object that fails
+checksum verification for some basic sanity.  If it finds sanity it'll
+try to recover it, otherwise it'll declare it to be garbage and simply
+zap it.  Users will not have to decide on a config option.
+
+Patches 9-12 also fix errors when dealing with FS objects that fail
+checksum tests.  Library flag handling, error reporting, and inode
+re-checking (for regular mode) all receive some treatment.
+
+Patches 13-19 are simple regression tests to check that e2fsck can
+deal with various kinds of checksum failures -- errors that trigger
+other corrective action; errors that don't make the FS inconsistent
+(and would have gone unnoticed without metadata_csu); the checksum
+itself being wrong; and total block destruction.
+
+I've tested these e2fsprogs changes against the -next branch as of
+7/29.  As I stated in the part 1 introduction, I use several VMs, each
+with 32M-1G ramdisks to test with; the test process is "misc/e2fuzz.sh
+-B <fuzz> -s <size>", where fuzz is anything from 2 bytes to "0.1%"
+of metadata bytes.  I've been running five VMs for the past two days,
+and the only new failures it found resulted in the patches 2-3.
+
+Comments and questions are, as always, welcome.
 
 --D
-
->=20
-> >> +					sizeof(__u32)+
-> >> +					EXT4_MIN_INLINE_DATA_SIZE;
-> >> +			inline_link =3D (target_len < max_inline);
-> >
-> >Does ext2fs_xattr_inode_max_size() + EXT4_MIN_INLINE_DATA_SIZE retur=
-n incorrect
-> >results?  I don't think we should have all xattr specific stuff belo=
-ngs here in
-> >the symlink routines.
->=20
-> Sorry. I did not notice that some xattr might be existed  when an ino=
-de
-> number is passed to ext2fs_symlink(). But, as far as I can see, when =
-0
-> is pass as inode number. ext2fs_xattr_inode_max_size() will read inod=
-e
-> by ext2fs_read_inode_full(). But at that time, we have not writen the
-> inode back. and the size of inline data for symlink is uncertain.
-> I will try to find a workaround.
->=20
-> >> -		if (retval)
-> >> -			goto cleanup;
-> >> +		  retval =3D io_channel_write_blk64(fs->io, blk, 1, block_buf);
-> >> +		  if (retval)
-> >> +		    goto cleanup;
-> >
-> >Please fix the indentation inconsistency (tabs, not spaces).
->=20
-> >> -	if (!fastlink)
-> >> +	if ((!fastlink) && (!inline_link))
-> >
-> >Probably unnecessary to put !fastlink and !inline_link in parenthese=
-s.
-> >
-> >--D
-> Darrick, thank again for your generous help.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
