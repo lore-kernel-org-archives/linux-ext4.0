@@ -1,45 +1,37 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 81461] EXT-4 kernel panic
-Date: Sat, 02 Aug 2014 00:17:00 +0000
-Message-ID: <bug-81461-13602-36iE7KTjtV@https.bugzilla.kernel.org/>
-References: <bug-81461-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] tune2fs: fix uninitialized variable in
+ remove_journal_device
+Date: Fri, 1 Aug 2014 21:32:06 -0400
+Message-ID: <20140802013206.GC27252@thunk.org>
+References: <53DA5DDC.1020703@redhat.com>
+ <1406821994-19600-1-git-send-email-tytso@mit.edu>
+ <6FF7A658-00C4-4185-A182-E9895E704A3E@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Azat Khuzhin <a3at.mail@gmail.com>,
+	Eric Sandeen <sandeen@redhat.com>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:33454 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:41227 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750997AbaHBARE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 Aug 2014 20:17:04 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 0EE1D20225
-	for <linux-ext4@vger.kernel.org>; Sat,  2 Aug 2014 00:17:02 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 6160820218
-	for <linux-ext4@vger.kernel.org>; Sat,  2 Aug 2014 00:17:01 +0000 (UTC)
-In-Reply-To: <bug-81461-13602@https.bugzilla.kernel.org/>
+	id S1751008AbaHBBcM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Aug 2014 21:32:12 -0400
+Content-Disposition: inline
+In-Reply-To: <6FF7A658-00C4-4185-A182-E9895E704A3E@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=81461
+On Fri, Aug 01, 2014 at 08:38:30AM +0200, Andreas Dilger wrote:
+> >    /* Write back the journal superblock */
+> > -    if ((retval = io_channel_write_blk64(jfs->io, start,
+> > -        -SUPERBLOCK_SIZE, buf))) {
+> > +    if ((retval = io_channel_write_blk64(jfs->io,
+> > +                ext2fs_journal_sb_start(fs->blocksize),
+> > +                -SUPERBLOCK_SIZE, buf))) {
+> 
+> Better to also remove assignment in conditional check. 
 
-Theodore Tso <tytso@mit.edu> changed:
+Good point, done.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-                 CC|                            |tytso@mit.edu
-         Resolution|---                         |OBSOLETE
-
---- Comment #3 from Theodore Tso <tytso@mit.edu> ---
-There have been a huge number of fixes involving ext4_evict_inode, including
-some races that look like they could be responsible for this crash that have
-been made since v3.4.
-
-And it's not something which can be easily backported to a kernel that old, so
-there's not much we can do our end.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+						- Ted
