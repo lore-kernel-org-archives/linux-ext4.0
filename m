@@ -1,17 +1,36 @@
-From: "Pu Hou" <hp_main@163.com>
-Subject: =?GBK?Q?=C0=B4=D7=D4Pu_Hou=B5=C4=D3=CA=BC=FE?=
-Date: Sun, 3 Aug 2014 23:38:57 +0800 (CST)
-Message-ID: <1b367f13.4210.1479c8610ce.Coremail.hp_main@163.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 81461] EXT-4 kernel panic
+Date: Sun, 03 Aug 2014 17:05:44 +0000
+Message-ID: <bug-81461-13602-fxWIYYa0XY@https.bugzilla.kernel.org/>
+References: <bug-81461-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GBK
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from m13-123.163.com ([220.181.13.123]:51658 "EHLO m13-123.163.com"
+Received: from mail.kernel.org ([198.145.19.201]:57522 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751914AbaHCPyP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 3 Aug 2014 11:54:15 -0400
+	id S1753088AbaHCRFr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 3 Aug 2014 13:05:47 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 3FB14200E0
+	for <linux-ext4@vger.kernel.org>; Sun,  3 Aug 2014 17:05:46 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 4EC9D200E5
+	for <linux-ext4@vger.kernel.org>; Sun,  3 Aug 2014 17:05:44 +0000 (UTC)
+In-Reply-To: <bug-81461-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
- subscribe linux-ext4
+https://bugzilla.kernel.org/show_bug.cgi?id=81461
+
+Denis <dennes544@gmail.com> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|RESOLVED                    |CLOSED
+         Resolution|OBSOLETE                    |CODE_FIX
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
