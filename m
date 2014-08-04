@@ -1,84 +1,119 @@
-From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-Subject: [PATCH v2] ext4: save goal group and offset in struct ext4_allocation_context.ac_g_ex
-Date: Mon, 4 Aug 2014 18:39:33 +0800
-Message-ID: <1407148773-14886-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
-References: <53DF2F76.7060307@cn.fujitsu.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/4] quota: add project quota support
+Date: Mon, 4 Aug 2014 16:08:18 +0200
+Message-ID: <20140804140818.GB25770@quack.suse.cz>
+References: <CAPTn0cD3eZgL1FaJLrgN-c_vhsvSoifmyLah=y60ejcAEOz-Mg@mail.gmail.com>
+ <20140801201756.GD7525@quack.suse.cz>
+ <CAPTn0cDkN_aBZwOVCZjPcJD+8ArKvPmZcE7XHwkDRSjoXhVY+A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <tytso@mit.edu>, <adilger@dilger.ca>, <lczerner@redhat.com>,
-	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Li Xi <pkuelelixi@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([59.151.112.132]:24735 "EHLO
-	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752150AbaHDKks (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2014 06:40:48 -0400
-In-Reply-To: <53DF2F76.7060307@cn.fujitsu.com>
+Received: from cantor2.suse.de ([195.135.220.15]:60495 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752536AbaHDOIV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Aug 2014 10:08:21 -0400
+Content-Disposition: inline
+In-Reply-To: <CAPTn0cDkN_aBZwOVCZjPcJD+8ArKvPmZcE7XHwkDRSjoXhVY+A@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In ext4_mb_normalize_request(), if ac_g_ex.fe_logical is adjacent to the closest logical
-allocated block to the left or (ac_g_ex.fe_logical+len) adjacent to the closest logical
-allocated block to the right, we'll attach EXT4_MB_HINT_TRY_GOAL flag taking the physical
-block (ext4_allocation_request.lleft+1) or (ext4_allocation_request.pright-len) as a goal,
-and put this information in ext4_allocation_context.ac_f_ex.
+On Sat 02-08-14 09:35:58, Li Xi wrote:
+> 2014-08-02 4:17 GMT+08:00 Jan Kara <jack@suse.cz>:
+> > On Fri 01-08-14 23:48:31, Li Xi wrote:
+> >> 2014-08-01 23:28 GMT+08:00 Li Xi <pkuelelixi@gmail.com>:
+> >> > 2014-08-01 20:40 GMT+08:00 Jan Kara <jack@suse.cz>:
+> >> >>
+> >> >> 1) It should have been also posted to linux-fsdevel@vger.kernel.org, Al Viro
+> >> >> <viro@ZenIV.linux.org.uk>, Christoph Hellwig <hch@infradead.org> because
+> >> >> you are changing core VFS inode and infrastructure as well. For quota
+> >> >> changes you should have also CCed me as a quota maintainer.
+> >> > Sure. Thanks for reminding me. I will add these addresses next time.
+> >> >>
+> >> >> 2) I'm not convinced we actually want project ID in the core inode - so far
+> >> >> only XFS has this. For everyone else it's just extra bloat so we could just
+> >> >> put it in ext4_inode_info. Granted we'd need to somewhat change quota
+> >> >> interface so that it sees all the ids (uid, gid, projid) but they are
+> >> >> really needed in two places - dquot_initalize() and dquot_transfer() and
+> >> >> creating variants of these functions that just take an array of ids and use
+> >> >> them in ext4 is simple enough.
+> >> > OK, agreed.
+> >> After searching dquot_initalize() and dquot_transfer(), I found changing these
+> >> two functions envolves too many file systems. Is there any good reason not to
+> >> add kprojid_t field in inode structure?
+> >   Yes. It grows struct inode which is used by *all* filesystems and only
+> > ext4 (and possibly xfs) would use it. That's why I suggested you create
+> > something like:
+> >
+> > struct inode_ids {
+> >         kuid_t uid;
+> >         kgid_t gid;
+> >         kprojid_t projid;
+> > };
+> >
+> > void dquot_initialize_ids(struct inode *inode, struct inode_ids *ids)
+> > {
+> > ...
+> > }
+> >
+> > and
+> >
+> > static inline void dquot_initialize(struct inode *inode)
+> > {
+> >         struct inode_ids ids = {
+> >                                 .uid = inode->i_uid,
+> >                                 .gid = inode->i_gid,
+> >                                 .projid = INVALID_PROJID,
+> >                         };
+> >         dquot_initialize_ids(inode, &ids);
+> > }
+> >
+> > Then filesystems not using project ids remain untouched and filesystems
+> > with project ids (i.e. ext4) can use dquot_initialize_ids() - probably you
+> > should create something like:
+> >
+> > static inline void ext4_dquot_initialize(struct inode *inode)
+> > {
+> >         struct inode_ids ids = {
+> >                                 .uid = inode->i_uid,
+> >                                 .gid = inode->i_gid,
+> >                                 .projid = EXT4_I(inode)->i_projid,
+> >                         };
+> >         dquot_initialize_ids(inode, &ids);
+> > }
+> >
+> > and use ext4_dquot_initialize() throughout ext4.
+> >
+> I tried to change it in this way, but there ia another problem. add_dquot_ref()
+> calls __dquot_initialize() for each inode in the list of super block. That means
+> there is no way to pass projid as an argument of __dquot_initialize(). The
+> solution is to add a get_projid() method (and maybe set_projid too) in the
+> inode_operations structure.
+  Hum, you are right. add_dquot_ref() is an issue. So probably we'll have
+add get_projid() method to struct dquot_operations (similar to
+get_reserved_space() we have there).
 
-But look at the ext4_mb_find_by_goal(), indeed it uses ac_g_ex to look up, so this is wrong,
-we should save goal group and offset in struct ext4_allocation_context.ac_g_ex.
+> Personally, I perfer to add projid in the inode
+> stucture, since projid looks like uid and gid of an inode.
+> get_projid()/setprojid()
+> looks duplicated with getattr()/setattr() or getxattr()/setxattr(). Is there any
+> performance impact of increasing size of inode structure, e.g. cache
+> line problem?  I will add get_projid() method if so.
+  I agree projid looks like uid or gid. But uid & gid are in POSIX so
+everyone needs them. projid isn't so we'll just waste space for lots of
+inodes (not too much but still some and this way struct inode gets slowly
+bloated and we can have lots of inodes around). And it's not too hard to
+live without project ID in core inode... Once significant portion of
+filesystems start to support project ID, situation is different and we'll
+move project ID into core inode.
 
-Meanwhile if the group number is invalid(not be between 0 and s_groups_count), we ignore
-the EXT4_MB_HINT_TRY_GOAL flag. If we still attach this flag wrongly, we will trigger a
-BUG_ON:
-----ext4_mb_find_by_goal
---------ext4_get_group_info(BUG_ON(group >= EXT4_SB(sb)->s_groups_count);)
+Regarding getting & setting project ID from userspace I suppose you'll have
+to resort to fs-specific ioctl like XFS does and then setting project ID in
+fs-specific part of the inode is trivial.
 
-Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
----
- fs/ext4/mballoc.c | 29 +++++++++++++++++++----------
- 1 file changed, 19 insertions(+), 10 deletions(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 2dcb936..829c12b 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3166,18 +3166,27 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 
- 	/* define goal start in order to merge */
- 	if (ar->pright && (ar->lright == (start + size))) {
--		/* merge to the right */
--		ext4_get_group_no_and_offset(ac->ac_sb, ar->pright - size,
--						&ac->ac_f_ex.fe_group,
--						&ac->ac_f_ex.fe_start);
--		ac->ac_flags |= EXT4_MB_HINT_TRY_GOAL;
-+		/* merge to the right, we need to make sure
-+		 * 'ar->pright - size' is valid and in a valid group */
-+		if (likely(ar->pright >=
-+		    (size + le32_to_cpu(sbi->s_es->s_first_data_block)))) {
-+			ext4_get_group_no_and_offset(ac->ac_sb,
-+						     ar->pright - size,
-+						     &ac->ac_g_ex.fe_group,
-+						     &ac->ac_g_ex.fe_start);
-+			ac->ac_flags |= EXT4_MB_HINT_TRY_GOAL;
-+		}
- 	}
- 	if (ar->pleft && (ar->lleft + 1 == start)) {
--		/* merge to the left */
--		ext4_get_group_no_and_offset(ac->ac_sb, ar->pleft + 1,
--						&ac->ac_f_ex.fe_group,
--						&ac->ac_f_ex.fe_start);
--		ac->ac_flags |= EXT4_MB_HINT_TRY_GOAL;
-+		/* merge to the left, we also need to make sure 'ar->pleft + 1'
-+		 * is valid and in a valid group */
-+		if (likely((ar->pleft + 1) < ext4_group_first_block_no(
-+		    ac->ac_sb, sbi->s_groups_count))) {
-+			ext4_get_group_no_and_offset(ac->ac_sb, ar->pleft + 1,
-+						&ac->ac_g_ex.fe_group,
-+						&ac->ac_g_ex.fe_start);
-+			ac->ac_flags |= EXT4_MB_HINT_TRY_GOAL;
-+		}
- 	}
- 
- 	mb_debug(1, "goal: %u(was %u) blocks at %u\n", (unsigned) size,
+								Honza
 -- 
-1.8.2.1
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
