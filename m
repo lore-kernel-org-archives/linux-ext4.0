@@ -1,74 +1,76 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 bug updates for 3.17
-Date: Mon, 4 Aug 2014 23:11:32 -0400
-Message-ID: <20140805031132.GA16323@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 42723] EXT4-fs error: ext4_mb_generate_buddy
+Date: Tue, 05 Aug 2014 05:06:17 +0000
+Message-ID: <bug-42723-13602-ej6RWuhm2F@https.bugzilla.kernel.org/>
+References: <bug-42723-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:44578 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.19.201]:50503 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753169AbaHEDLf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Aug 2014 23:11:35 -0400
-Content-Disposition: inline
+	id S1753802AbaHEFGV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Aug 2014 01:06:21 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 6ADBD20173
+	for <linux-ext4@vger.kernel.org>; Tue,  5 Aug 2014 05:06:19 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id D70322012F
+	for <linux-ext4@vger.kernel.org>; Tue,  5 Aug 2014 05:06:17 +0000 (UTC)
+In-Reply-To: <bug-42723-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The following changes since commit 1795cd9b3a91d4b5473c97f491d63892442212ab:
+https://bugzilla.kernel.org/show_bug.cgi?id=42723
 
-  Linux 3.16-rc5 (2014-07-13 14:04:33 -0700)
+Zhiyong Wu <zwu.kernel@gmail.com> changed:
 
-are available in the git repository at:
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |zwu.kernel@gmail.com
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
+--- Comment #21 from Zhiyong Wu <zwu.kernel@gmail.com> ---
+When trying to upgrade my deabian 7.5 box to 7.6 with "apt-get upgrade", i also
+met this issue recently. And i checked its source and found that commit
+b0dd6b70f0fd had been applied to my box kernel.
 
-for you to fetch changes up to 86f0afd463215fc3e58020493482faa4ac3a4d69:
+[ 35.500785] EXT4-fs (xvda1): re-mounted. Opts: errors=remount-ro,barrier=0
+[ 35.526502] loop: module loaded
+[ 36.367517] RPC: Registered named UNIX socket transport module.
+[ 36.367520] RPC: Registered udp transport module.
+[ 36.367521] RPC: Registered tcp transport module.
+[ 36.367523] RPC: Registered tcp NFSv4.1 backchannel transport module.
+[ 36.378239] FS-Cache: Loaded
+[ 36.393865] FS-Cache: Netfs 'nfs' registered for caching
+[ 36.405048] Installing knfsd (copyright (C) 1996 okir@monad.swb.de).
+[ 38.196190] EXT4-fs error (device xvda1): ext4_mb_generate_buddy:739: group
+33, 9127 clusters in bitmap, 9143 in gd
+[ 38.198208] Aborting journal on device xvda1-8.
+[ 38.201249] EXT4-fs (xvda1): Remounting filesystem read-only
+[ 38.202165] EXT4-fs error (device xvda1) in ext4_reserve_inode_write:4507:
+Journal has aborted
+[ 38.203509] EXT4-fs error (device xvda1): ext4_journal_start_sb:327: Detected
+aborted journal
+[ 38.207454] EXT4-fs error (device xvda1) in ext4_reserve_inode_write:4507:
+Journal has aborted
+[ 38.210148] EXT4-fs error (device xvda1) in ext4_ext_remove_space:2779:
+Journal has aborted
+[ 38.212614] EXT4-fs error (device xvda1) in ext4_reserve_inode_write:4507:
+Journal has aborted
+[ 38.215156] EXT4-fs error (device xvda1) in ext4_ext_truncate:4420: Journal
+has aborted
+[ 38.217590] EXT4-fs error (device xvda1) in ext4_reserve_inode_write:4507:
+Journal has aborted
+[ 38.220327] EXT4-fs error (device xvda1) in ext4_orphan_del:2110: Journal has
+aborted
+[ 38.227881] EXT4-fs error (device xvda1) in ext4_reserve_inode_write:4507:
+Journal has aborted
 
-  ext4: fix ext4_discard_allocated_blocks() if we can't allocate the pa struct (2014-07-30 22:17:17 -0400)
+# uname -a
+Linux AY140708130459758e83Z 3.2.0-4-amd64 #1 SMP Debian 3.2.60-1+deb7u3 x86_64
+GNU/Linux
 
-----------------------------------------------------------------
-Bug fixes and clean ups for the 3.17 merge window
-
-----------------------------------------------------------------
-Darrick J. Wong (1):
-      ext4: check inline directory before converting
-
-Dmitry Monakhov (3):
-      ext4: add i_data_sem sanity check
-      ext4: use correct depth value
-      ext4: fix incorrect locking in move_extent_per_page
-
-Lukas Czerner (1):
-      ext4: fix punch hole on files with indirect mapping
-
-Namjae Jeon (1):
-      ext4: fix COLLAPSE RANGE test for bigalloc file systems
-
-Theodore Ts'o (3):
-      ext4: rearrange initialization to fix EXT4FS_DEBUG
-      ext4: remove metadata reservation checks
-      ext4: fix ext4_discard_allocated_blocks() if we can't allocate the pa struct
-
-Xiaoguang Wang (1):
-      ext4: fix wrong size computation in ext4_mb_normalize_request()
-
-Zhang Zhen (1):
-      ext4: remove readpage() check in ext4_mmap_file()
-
-Zheng Liu (1):
-      ext4: make ext4_has_inline_data() as a inline function
-
- fs/ext4/balloc.c      |   1 -
- fs/ext4/dir.c         |  25 ++++++
- fs/ext4/ext4.h        |  14 +++-
- fs/ext4/extents.c     |  14 ++--
- fs/ext4/file.c        |   4 -
- fs/ext4/indirect.c    | 281 +++++++++++++++++++++++++++++++++++++++++++++++------------------
- fs/ext4/inline.c      |  18 +++--
- fs/ext4/inode.c       | 130 ++----------------------------
- fs/ext4/mballoc.c     |  41 ++++++----
- fs/ext4/migrate.c     |   7 ++
- fs/ext4/move_extent.c |   3 +-
- fs/ext4/super.c       |  88 +++++++++------------
- 12 files changed, 333 insertions(+), 293 deletions(-)
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
