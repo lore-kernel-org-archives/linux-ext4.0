@@ -1,49 +1,135 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 42723] EXT4-fs error: ext4_mb_generate_buddy
-Date: Tue, 05 Aug 2014 12:38:33 +0000
-Message-ID: <bug-42723-13602-jvb4fq1O3o@https.bugzilla.kernel.org/>
-References: <bug-42723-13602@https.bugzilla.kernel.org/>
+From: "Pu Hou" <houpu.hp@alibaba-inc.com>
+Subject: Re: [PATCH] debugfs: Add inline data feature for symlink.
+Date: Tue, 05 Aug 2014 20:27:58 +0800
+Message-ID: <20140805122758.GE2949@guyi-aliyun>
+References: <1406789932-13770-1-git-send-email-houpu.hp@alibaba-inc.com>
+ <63e6941e-70ab-4fec-941c-f13f47585594@alibaba-inc.com>
+ <20140801164810.GT8628@birch.djwong.org>
+ <20140804065341.GC6751@guyi-aliyun>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:37412 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754017AbaHEMig (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Aug 2014 08:38:36 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id CC8DF201D3
-	for <linux-ext4@vger.kernel.org>; Tue,  5 Aug 2014 12:38:34 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id E7FA02017A
-	for <linux-ext4@vger.kernel.org>; Tue,  5 Aug 2014 12:38:33 +0000 (UTC)
-In-Reply-To: <bug-42723-13602@https.bugzilla.kernel.org/>
+Received: from out113-251.biz.mail.alibaba.com ([205.204.113.251]:38065 "EHLO
+	us-alimail-mta2.hst.scl.en.alidc.net" rhost-flags-OK-FAIL-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753114AbaHENAW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Aug 2014 09:00:22 -0400
+Content-Disposition: inline
+In-Reply-To: <20140804065341.GC6751@guyi-aliyun>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=42723
+On Mon, Aug 04, 2014 at 02:53:41PM +0800, Pu Hou wrote:
+> On Sat, Aug 02, 2014 at 12:48:10AM +0800, Darrick J. Wong wrote:
+> > On Fri, Aug 01, 2014 at 06:37:56PM +0800, Pu Hou wrote:
+> > > On Thu, Jul 31, 2014 at 02:58:52PM +0800, Pu Hou wrote:
+> > > >> Symlink in debugfs can take advantage of inline data feature. The path name of the target of the symbol link which is longer than 60 byte and shorter than 132 byte can stay in inline data area.
+> > > >
+> > > >I think Ted prefers wrapping commit messages at 70 bytes.
+> > > >
+> > > Thanks for reminding me. I will fix it.
+> > > 
+> > > >> +	data.ea_size = size - EXT4_MIN_INLINE_DATA_SIZE;
+> > > >> +	data.ea_data = buf + EXT4_MIN_INLINE_DATA_SIZE;
+> > > >> +	return ext2fs_inline_data_ea_set(&data);
+> > > >
+> > > >Doesn't ext2fs_inline_data_set() suffice?
+> > > >
+> > > It is unnecessary to use this dedicated function.
+> > 
+> > Why do you say it's unnecessary?  The dedicated function does (or at least is
+> > supposed to) do exactly what you want.
+> > 
+> 
+> Compare with the dedicated function, ext2fs_inline_data_set() will check
+> the available xattr size and inline data size by read the inode and do
+> some calculation. And I thought some "dirty data" of an inode on disk might
+> have an effect on the calculated available size.
+> 
+> Now I find that this concern is unnecessary. Because ext2fs_write_new_inode()
+> which is called before will make sure the xattr of the inode are clean.
+> So there is no need to use this dedicated function.
+> 
+> > Now I'm wondering -- why worry about size at all?  You can modify
+> > ext2fs_symlink to call ext2fs_inline_data_set() directly.  If there's not
+> > enough room, it'll return EXT2_ET_INLINE_DATA_NO_SPACE and you can try again
+> > with the classic stuff-it-in-a-block method.
+> > 
+> > (Of course, if you try this and the API turns not to behave as advertised I'd
+> > like to hear about that too. :))
+> 
+> That sounds nice. I will try in this way and give a feedback later.
+>
+I tried to call ext2fs_inline_data_set() from ext2fs_symlink. The result is
+not as expected. Before it gets to "return EXT2_ET_INLINE_DATA_NO_SPACE",
+ext2fs_inline_data_size() is called. In this function, it may return at here:
 
---- Comment #23 from Theodore Tso <tytso@mit.edu> ---
-Zhiyong,
+	if (!(inode.i_flags & EXT4_INLINE_DATA_FL))
+		return EXT2_ET_NO_INLINE_DATA;
 
-The ext4_mb_generate_buddy() error message just means that there is an
-inconsistency between the allocation bitmap and the allocation statistics in
-the block group descriptor.   So people who just google for
-"ext4_mb_generate_buddy" can often find old bugs that had similar symptoms.
+and the message was printed as below:
 
-The most recent bugfix in this area was caused by a backport of commit:
+ext2fs_symlink: Inode doesn't have inline data
+symlink: Inode doesn't have inline data
 
-007649375f6af2 ext4: initialize multi-block allocator before checking block
-descriptors
+That is because we did not mark EXT4_INLINE_DATA_FL yet. Even if mark the flag,
+it still return at this point:
 
-which caused errors after a replay.  It was reverted in mainline commit:
+	data.fs = fs;
+	data.ino = ino;
+	retval = ext2fs_inline_data_ea_get(&data);
+	if (retval)
+		return retval;
 
-f9ae9cf5d72b39 ext4: revert commit which was causing fs corruption after
-journal replays
+and the message was printed as below:
 
-You might want to check to see if that might be applicable for your kernel.
+ext2fs_symlink: Extended attribute key not found
+symlink: Extended attribute key not found
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+That means the xattr of the new created inode is clean.
+because ext2fs_write_new_inode() is called early, the xattr is made clean.
+
+I think use "ext2fs_xattr_inode_max_size() + EXT4_MIN_INLINE_DATA_SIZE"
+to get the available xattr size. And use ext2fs_inline_data_ea_set()
+directly to set inline data is a workaround.
+
+ 
+> > 
+> > --D
+> > 
+> > > 
+> > > >> +					sizeof(__u32)+
+> > > >> +					EXT4_MIN_INLINE_DATA_SIZE;
+> > > >> +			inline_link = (target_len < max_inline);
+> > > >
+> > > >Does ext2fs_xattr_inode_max_size() + EXT4_MIN_INLINE_DATA_SIZE return incorrect
+> > > >results?  I don't think we should have all xattr specific stuff belongs here in
+> > > >the symlink routines.
+> > > 
+> > > Sorry. I did not notice that some xattr might be existed  when an inode
+> > > number is passed to ext2fs_symlink(). But, as far as I can see, when 0
+> > > is pass as inode number. ext2fs_xattr_inode_max_size() will read inode
+> > > by ext2fs_read_inode_full(). But at that time, we have not writen the
+> > > inode back. and the size of inline data for symlink is uncertain.
+> > > I will try to find a workaround.
+> > > 
+> > > >> -		if (retval)
+> > > >> -			goto cleanup;
+> > > >> +		  retval = io_channel_write_blk64(fs->io, blk, 1, block_buf);
+> > > >> +		  if (retval)
+> > > >> +		    goto cleanup;
+> > > >
+> > > >Please fix the indentation inconsistency (tabs, not spaces).
+> > > 
+> > > >> -	if (!fastlink)
+> > > >> +	if ((!fastlink) && (!inline_link))
+> > > >
+> > > >Probably unnecessary to put !fastlink and !inline_link in parentheses.
+> > > >
+> > > >--D
+> > > Darrick, thank again for your generous help.
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
