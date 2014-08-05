@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 09/21] e2fsck: check ea-in-inode regions for overlap
-Date: Mon, 04 Aug 2014 18:05:55 -0700
-Message-ID: <20140805010555.2611.52850.stgit@birch.djwong.org>
+Subject: [PATCH 10/21] e2fsck: clear inline_data inode flag if EA missing
+Date: Mon, 04 Aug 2014 18:06:02 -0700
+Message-ID: <20140805010602.2611.64599.stgit@birch.djwong.org>
 References: <20140805010457.2611.89813.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,208 +9,121 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:44273 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752843AbaHEBGD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2014 21:06:03 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:40293 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752843AbaHEBGH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2014 21:06:07 -0400
 In-Reply-To: <20140805010457.2611.89813.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ensure that the various blobs in the in-inode EA region do not overlap.
+If i_size indicates that an inode requires a system.data extended
+attribute to hold overflow from i_blocks but the EA cannot be found,
+offer to truncate the file.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- e2fsck/pass1.c                      |   41 ++++++++++++++++++++++++++++++++---
- e2fsck/problem.c                    |    5 ++++
- e2fsck/problem.h                    |    3 +++
- tests/f_inode_ea_collision/expect.1 |   15 +++++++++++++
- tests/f_inode_ea_collision/expect.2 |    7 ++++++
- tests/f_inode_ea_collision/image.gz |  Bin
- tests/f_inode_ea_collision/name     |    1 +
- 7 files changed, 69 insertions(+), 3 deletions(-)
- create mode 100644 tests/f_inode_ea_collision/expect.1
- create mode 100644 tests/f_inode_ea_collision/expect.2
- create mode 100644 tests/f_inode_ea_collision/image.gz
- create mode 100644 tests/f_inode_ea_collision/name
+ e2fsck/pass1.c   |   56 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ e2fsck/problem.c |    5 +++++
+ e2fsck/problem.h |    3 +++
+ 3 files changed, 64 insertions(+)
 
 
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 6c79eed..172d664 100644
+index 172d664..74c70ca 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -286,15 +286,17 @@ static void check_ea_in_inode(e2fsck_t ctx, struct problem_context *pctx)
- 	struct ext2_super_block *sb = ctx->fs->super;
- 	struct ext2_inode_large *inode;
- 	struct ext2_ext_attr_entry *entry;
--	char *start;
-+	char *start, *header;
- 	unsigned int storage_size, remain;
- 	problem_t problem = 0;
-+	region_t region = 0;
- 
- 	inode = (struct ext2_inode_large *) pctx->inode;
- 	storage_size = EXT2_INODE_SIZE(ctx->fs->super) - EXT2_GOOD_OLD_INODE_SIZE -
- 		inode->i_extra_isize;
--	start = ((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
--		inode->i_extra_isize + sizeof(__u32);
-+	header = ((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
-+		 inode->i_extra_isize;
-+	start = header + sizeof(__u32);
- 	entry = (struct ext2_ext_attr_entry *) start;
- 
- 	/* scan all entry's headers first */
-@@ -302,10 +304,28 @@ static void check_ea_in_inode(e2fsck_t ctx, struct problem_context *pctx)
- 	/* take finish entry 0UL into account */
- 	remain = storage_size - sizeof(__u32);
- 
-+	region = region_create(0, storage_size);
-+	if (!region) {
-+		fix_problem(ctx, PR_1_EA_ALLOC_REGION_ABORT, pctx);
-+		problem = 0;
-+		ctx->flags |= E2F_FLAG_ABORT;
-+		return;
-+	}
-+	if (region_allocate(region, 0, sizeof(__u32))) {
-+		problem = PR_1_INODE_EA_ALLOC_COLLISION;
-+		goto fix;
-+	}
-+
- 	while (remain >= sizeof(struct ext2_ext_attr_entry) &&
- 	       !EXT2_EXT_IS_LAST_ENTRY(entry)) {
- 		__u32 hash;
- 
-+		if (region_allocate(region, (char *)entry - (char *)header,
-+				    EXT2_EXT_ATTR_LEN(entry->e_name_len))) {
-+			problem = PR_1_INODE_EA_ALLOC_COLLISION;
-+			goto fix;
-+		}
-+
- 		/* header eats this space */
- 		remain -= sizeof(struct ext2_ext_attr_entry);
- 
-@@ -333,6 +353,13 @@ static void check_ea_in_inode(e2fsck_t ctx, struct problem_context *pctx)
- 			goto fix;
+@@ -959,6 +959,62 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 			}
  		}
  
-+		if (entry->e_value_size &&
-+		    region_allocate(region, sizeof(__u32) + entry->e_value_offs,
-+				    EXT2_EXT_ATTR_SIZE(entry->e_value_size))) {
-+			problem = PR_1_INODE_EA_ALLOC_COLLISION;
-+			goto fix;
++		/* Test for inline data flag but no attr */
++		if ((inode->i_flags & EXT4_INLINE_DATA_FL) && inlinedata_fs &&
++		    EXT2_I_SIZE(inode) > EXT4_MIN_INLINE_DATA_SIZE &&
++		    (ino >= EXT2_FIRST_INODE(fs->super))) {
++			size_t size = 0;
++			errcode_t err;
++			int flags;
++
++			flags = fs->flags;
++			if (failed_csum)
++				fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
++			err = ext2fs_inline_data_size(fs, ino, &size);
++			fs->flags = (flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) |
++				    (fs->flags & ~EXT2_FLAG_IGNORE_CSUM_ERRORS);
++
++			switch (err) {
++			case 0:
++				/* Everything is awesome... */
++				break;
++			case EXT2_ET_BAD_EA_BLOCK_NUM:
++			case EXT2_ET_BAD_EA_HASH:
++			case EXT2_ET_BAD_EA_HEADER:
++			case EXT2_ET_EA_BAD_NAME_LEN:
++			case EXT2_ET_EA_BAD_VALUE_SIZE:
++			case EXT2_ET_EA_KEY_NOT_FOUND:
++			case EXT2_ET_EA_NO_SPACE:
++			case EXT2_ET_MISSING_EA_FEATURE:
++			case EXT2_ET_INLINE_DATA_CANT_ITERATE:
++			case EXT2_ET_INLINE_DATA_NO_BLOCK:
++			case EXT2_ET_INLINE_DATA_NO_SPACE:
++			case EXT2_ET_NO_INLINE_DATA:
++			case EXT2_ET_EXT_ATTR_CSUM_INVALID:
++			case EXT2_ET_EA_BAD_VALUE_OFFSET:
++				/* no system.data attr, so truncate file */
++				if (fix_problem(ctx, PR_1_INLINE_DATA_NO_ATTR,
++						&pctx)) {
++					err = ext2fs_inode_size_set(fs, inode,
++							sizeof(inode->i_block));
++					if (err) {
++						pctx.errcode = err;
++						ctx->flags |= E2F_FLAG_ABORT;
++						goto endit;
++					}
++					e2fsck_write_inode(ctx, ino, inode,
++							   "pass1");
++					failed_csum = 0;
++				}
++				break;
++			default:
++				/* Some other kind of non-xattr error? */
++				pctx.errcode = err;
++				ctx->flags |= E2F_FLAG_ABORT;
++				goto endit;
++			}
 +		}
 +
- 		hash = ext2fs_ext_attr_hash_entry(entry,
- 						  start + entry->e_value_offs);
- 
-@@ -347,7 +374,15 @@ static void check_ea_in_inode(e2fsck_t ctx, struct problem_context *pctx)
- 
- 		entry = EXT2_EXT_ATTR_NEXT(entry);
- 	}
-+
-+	if (region_allocate(region, (char *)entry - (char *)header,
-+			    sizeof(__u32))) {
-+		problem = PR_1_INODE_EA_ALLOC_COLLISION;
-+		goto fix;
-+	}
- fix:
-+	if (region)
-+		region_free(region);
- 	/*
- 	 * it seems like a corruption. it's very unlikely we could repair
- 	 * EA(s) in automatic fashion -bzzz
+ 		/*
+ 		 * Test for incorrect extent flag settings.
+ 		 *
 diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 2d29c35..b982a27 100644
+index b982a27..9081277 100644
 --- a/e2fsck/problem.c
 +++ b/e2fsck/problem.c
-@@ -977,6 +977,11 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("@i %i passes checks, but checksum does not match @i.  "),
- 	  PROMPT_FIX, PR_PREEN_OK },
+@@ -1045,6 +1045,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("@i %i logical @b %b (physical @b %c) violates cluster allocation rules.\nWill fix in pass 1B.\n"),
+ 	  PROMPT_NONE, 0 },
  
-+	/* Inode extended attribute is corrupt (allocation collision) */
-+	{ PR_1_INODE_EA_ALLOC_COLLISION,
-+	  N_("@i %i @a is corrupt (allocation collision).  "),
-+	  PROMPT_CLEAR, 0},
++	/* Inode has INLINE_DATA_FL flag but extended attribute not found */
++	{ PR_1_INLINE_DATA_NO_ATTR,
++	  N_("@i %i has INLINE_DATA_FL flag but @a not found.  "),
++	  PROMPT_TRUNCATE, 0 },
 +
- 	/*
- 	 * Inode extent block passes checks, but checksum does not match
- 	 * extent
+ 	/* Pass 1b errors */
+ 
+ 	/* Pass 1B: Rescan for duplicate/bad blocks */
 diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 89146ec..f051c11 100644
+index f051c11..1f0be2d 100644
 --- a/e2fsck/problem.h
 +++ b/e2fsck/problem.h
-@@ -577,6 +577,9 @@ struct problem_context {
- /* inode passes checks, but checksum does not match inode */
- #define PR_1_INODE_ONLY_CSUM_INVALID   0x010068
+@@ -609,6 +609,9 @@ struct problem_context {
+ /* Inode logical block is misaligned */
+ #define PR_1_MISALIGNED_CLUSTER		0x010074
  
-+/* Inode EA allocation collision */
-+#define PR_1_INODE_EA_ALLOC_COLLISION	0x010069
++/* Inode has INLINE_DATA_FL flag but extended attribute not found */
++#define PR_1_INLINE_DATA_NO_ATTR	0x010075
 +
- /* extent block passes checks, but checksum does not match extent block */
- #define PR_1_EXTENT_ONLY_CSUM_INVALID  0x01006A
- 
-diff --git a/tests/f_inode_ea_collision/expect.1 b/tests/f_inode_ea_collision/expect.1
-new file mode 100644
-index 0000000..a67a5f1
---- /dev/null
-+++ b/tests/f_inode_ea_collision/expect.1
-@@ -0,0 +1,15 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Inode 12 extended attribute is corrupt (allocation collision).  Clear? yes
-+
-+Inode 13 extended attribute is corrupt (allocation collision).  Clear? yes
-+
-+Inode 14 extended attribute is corrupt (allocation collision).  Clear? yes
-+
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 14/128 files (0.0% non-contiguous), 18/512 blocks
-+Exit status is 1
-diff --git a/tests/f_inode_ea_collision/expect.2 b/tests/f_inode_ea_collision/expect.2
-new file mode 100644
-index 0000000..5a7ca86
---- /dev/null
-+++ b/tests/f_inode_ea_collision/expect.2
-@@ -0,0 +1,7 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 14/128 files (0.0% non-contiguous), 18/512 blocks
-+Exit status is 0
-diff --git a/tests/f_inode_ea_collision/image.gz b/tests/f_inode_ea_collision/image.gz
-new file mode 100644
-index 0000000000000000000000000000000000000000..5217f6503404864944a88bfc36b7d75a305aafb8
-GIT binary patch
-literal 2602
-zcmb2|=3rRTdo!4c`Ry(1jNn8Oh6n%E1ihnk1;sZu?eJW<NUv+f#j`7&rz`1+%6Chx
-z=yzP$zj61~h22d*Bw~&@hIDCYH8poTn;&#Na(uyTr@!x&7j4w~mb&)7_&M9}GoL+C
-zGk@+c%=BTul$ZKafv}@r^f(vpkBHY&x}B)u->fWbo2immwCQ=R(4%*W3VPSyYikyH
-zZ``1|?Dt2%b4UJs`SxP5`rf<qk6jPBKPPtAKflM1ZxnpF(YbTo*E?sW`@hG%t1C!M
-z`g-u=^W<936>Zmo_PxDrmFDffM>TlO`Xe_UFJ)&q5I<qte(j_+r+@wbw<G4~uC?|#
-zcOOVHF)%dL-%klvt<gLGpn`#cA>p9+|Nr-;CIy9`sOP>Q<+XI(x<BT7w4IAzdc6J7
-zdCqz3<l}rxZf~lc+-s<>{mlI69-Cu#x2fEG^I8O`IbuST)Up5aw?BQf2l6(Y*iy{}
-zq!0X%2a*Q=*nuRGpkb%!&drIEK-Cc?HOxRqk_!&ZmynqGV&(DwA>VJu7G9cn-9Ex)
-z-%^=bo9>7_cgpxTq2-kMan+l0#@7WOyMF(gCH3|5gR2~8+7~{w*cm?e(XaU;*Z057
-z&W!M@EBc%LN2Vw&q3(|N@A<Dn{>E#r(fu{w!1aHyW|G;j`TKwV+ix=G`9b+#`+r?s
-zr8ztMpTXa%^)Y*{{yhEf{nO2F^^e8ndMp3^ovC;3;OnAI>tDDPw`Xk)@T=PVQ}yVs
-zzqQN%|1gw&XD!<Qdj9lZ>;J9$x8;BAuL5_e$iIgFSN+p<{rgaU<^NmnU)kI5+HJ>n
-z;+6g}CVTt;_t($%{7Y`ojOrT=fzc2c4S~@R7!85Z5Fii&8zgEO|2Qt4#K54y004(2
-BL%09{
-
-literal 0
-HcmV?d00001
-
-diff --git a/tests/f_inode_ea_collision/name b/tests/f_inode_ea_collision/name
-new file mode 100644
-index 0000000..b64119e
---- /dev/null
-+++ b/tests/f_inode_ea_collision/name
-@@ -0,0 +1 @@
-+collisions in the inode ea area
+ /*
+  * Pass 1b errors
+  */
 
