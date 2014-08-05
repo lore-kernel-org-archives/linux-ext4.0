@@ -1,67 +1,62 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 03/19] e2fsck: use root dir for lost+found when really
- desperate
-Date: Mon, 4 Aug 2014 17:58:58 -0700
-Message-ID: <20140805005858.GU8628@birch.djwong.org>
-References: <20140801181139.12496.14390.stgit@birch.djwong.org>
- <20140801181159.12496.97356.stgit@birch.djwong.org>
- <20140803022553.GC24826@thunk.org>
+Subject: [PATCH 00/21] e2fsprogs Summer 2014 patchbomb, part 3
+Date: Mon, 04 Aug 2014 18:04:57 -0700
+Message-ID: <20140805010457.2611.89813.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:38096 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:39988 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753348AbaHEA7E (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2014 20:59:04 -0400
-Content-Disposition: inline
-In-Reply-To: <20140803022553.GC24826@thunk.org>
+	with ESMTP id S1753332AbaHEBFC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2014 21:05:02 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 02, 2014 at 10:25:53PM -0400, Theodore Ts'o wrote:
-> On Fri, Aug 01, 2014 at 11:11:59AM -0700, Darrick J. Wong wrote:
-> > From: Darrick J. Wong <darrick.wong@oracle.com>
-> > 
-> > If we're totally unable to allocate a lost+found directory, ask the
-> > user if he would like to dump orphaned files in the root directory.
-> > Hopefully this enables the user to delete enough files so that a
-> > subsequent run of e2fsck will make more progress.  Better to cram lost
-> > files in the rootdir than the current behavior, which is to fail at
-> > linking them in, thereby leaving them as lost files.
-> > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> 
-> Applied, although I changed:
-> 
-> > +		printf("Delete some files and re-run e2fsck.\n\n");
-> 
-> to:
-> 
-> 		printf(_("Delete some files and re-run e2fsck.\n\n"));
+Hi all,
 
-I don't see this in the tree on kernel.org, but I'm sending you a patch to
-change it to a fix_problem anyway.
+This is part 3 of the July e2fsprogs patchset (even though it is
+August) that fixes e2fsck failures with filesystems containing the
+inline data feature.  e2fuzz helped me to find the failures.
+
+The first patch fixes build problems with e2fuzz on i386 Linux and
+Mac OSX, and the second patch fixes an error message introduced in
+the previous patchbomb.
+
+Patches 3-8 fix library functions such that we won't read off the end
+of the EA buffer when parsing keys; some places where we neglect to
+handle byte-swapping on big-endian systems correctly; remove the EA
+part of inline data if it's not necessary; and fix a memory leak.
+
+Patches 9-11 fix problems I found in libext2fs: there's a patch to add
+to e2fsck the ability to find overlapping blobs in the inode EA area;
+to truncate inline data files if the EA cannot be found; and to check
+inline data symlinks.
+
+Patches 12-13 fix a few bugs where e2fsck would abort unnecessarily
+due to finding an inode with the inline data flag set.
+
+Patches 14-15 try to fix inodes that shouldn't have inline_data set,
+and to resolve conflicts if both extents and inline_data are set on an
+inode.
+
+Patches 16-20 deal with repair of inline data directories, since
+containing directory data adds extra constraints on what constitutes a
+valid inode that e2fsck should be able to fix.
+
+Patch 21 adds test cases for the bugs I found in the inline data
+repair code, and exercises the sanity tests in e2fsck.
+
+I've tested these e2fsprogs changes against the -next branch as of
+8/4.  That's not much testing, but most of the changes between 7/29
+and today on that branch have been to add the patches that were in the
+previous patch bomb.  As I stated in the part 1 introduction, I use
+several VMs, each with 32M-1G ramdisks to test with; the test process
+is "misc/e2fuzz.sh -B <fuzz> -s <size>", where fuzz is anything from 2
+bytes to "0.1%" of metadata bytes.
+
+Comments and questions are, as always, welcome.
 
 --D
-> 
-> for proper internationalization support.  Usually, I like to run all
-> messages through problem.c, like this:
-> 
-> 	fix_problem(ctx, PR_3_PASS_HEADER, &pctx);
-> 
-> 	{ PR_3_PASS_HEADER,
-> 	  N_("Pass 3: Checking @d connectivity\n"),
-> 	    PROMPT_NONE, 0 },
-> 
-> and I may change this over at some point, but I'll leave it as a
-> printf for now.
-> 
-> Thanks!!
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
