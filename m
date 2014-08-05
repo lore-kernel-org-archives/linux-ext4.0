@@ -1,62 +1,90 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 00/21] e2fsprogs Summer 2014 patchbomb, part 3
-Date: Mon, 04 Aug 2014 18:04:57 -0700
-Message-ID: <20140805010457.2611.89813.stgit@birch.djwong.org>
+Subject: [PATCH 01/21] e2fuzz: fix build problems on macosx and i386 linux
+Date: Mon, 04 Aug 2014 18:05:04 -0700
+Message-ID: <20140805010504.2611.14307.stgit@birch.djwong.org>
+References: <20140805010457.2611.89813.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:39988 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753332AbaHEBFC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2014 21:05:02 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:44110 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753206AbaHEBFJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2014 21:05:09 -0400
+In-Reply-To: <20140805010457.2611.89813.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+Fix clang warnings about forgotten header files, dead code, and pwrite
+support on OS X.  The unistd.h inclusion also fixes a parameter
+truncation bug on i386.
 
-This is part 3 of the July e2fsprogs patchset (even though it is
-August) that fixes e2fsck failures with filesystems containing the
-inline data feature.  e2fuzz helped me to find the failures.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ misc/e2fuzz.c |   21 +++++++++++++--------
+ 1 file changed, 13 insertions(+), 8 deletions(-)
 
-The first patch fixes build problems with e2fuzz on i386 Linux and
-Mac OSX, and the second patch fixes an error message introduced in
-the previous patchbomb.
 
-Patches 3-8 fix library functions such that we won't read off the end
-of the EA buffer when parsing keys; some places where we neglect to
-handle byte-swapping on big-endian systems correctly; remove the EA
-part of inline data if it's not necessary; and fix a memory leak.
+diff --git a/misc/e2fuzz.c b/misc/e2fuzz.c
+index 8c989dd..91aafe5 100644
+--- a/misc/e2fuzz.c
++++ b/misc/e2fuzz.c
+@@ -18,6 +18,7 @@
+ #include <sys/stat.h>
+ #include <fcntl.h>
+ #include <stdint.h>
++#include <unistd.h>
+ #ifdef HAVE_GETOPT_H
+ #include <getopt.h>
+ #endif
+@@ -31,6 +32,16 @@ static int metadata_only = 1;
+ static unsigned long long user_corrupt_bytes = 0;
+ static double user_corrupt_pct = 0.0;
+ 
++#ifndef HAVE_PWRITE
++ssize_t pwrite(int fd, const void *buf, size_t count, off_t offset)
++{
++	if (lseek(fd, offset, SEEK_SET) < 0)
++		return 0;
++
++	return write(fd, buf, count);
++}
++#endif /* HAVE_PWRITE */
++
+ int getseed(void)
+ {
+ 	int r;
+@@ -70,7 +81,7 @@ errcode_t find_metadata_blocks(ext2_filsys fs, ext2fs_block_bitmap bmap,
+ 			       off_t *corrupt_bytes)
+ {
+ 	dgrp_t i;
+-	blk64_t b, c, d, j, old_desc_blocks;
++	blk64_t b, c;
+ 	ext2_inode_scan scan;
+ 	ext2_ino_t ino;
+ 	struct ext2_inode inode;
+@@ -79,12 +90,6 @@ errcode_t find_metadata_blocks(ext2_filsys fs, ext2fs_block_bitmap bmap,
+ 
+ 	*corrupt_bytes = 0;
+ 	fb.corrupt_blocks = 0;
+-	if (EXT2_HAS_INCOMPAT_FEATURE(fs->super,
+-				      EXT2_FEATURE_INCOMPAT_META_BG))
+-		old_desc_blocks = fs->super->s_first_meta_bg;
+-	else
+-		old_desc_blocks = fs->desc_blocks +
+-				  fs->super->s_reserved_gdt_blocks;
+ 
+ 	/* Construct bitmaps of super/descriptor blocks */
+ 	for (i = 0; i < fs->group_desc_count; i++) {
+@@ -271,7 +276,7 @@ int process_fs(const char *fsname)
+ 			       off % fs->blocksize, off / fs->blocksize, c);
+ 		if (dryrun)
+ 			continue;
+-		if (pwrite64(fd, &c, sizeof(c), off) != sizeof(c)) {
++		if (pwrite(fd, &c, sizeof(c), off) != sizeof(c)) {
+ 			perror(fsname);
+ 			goto fail3;
+ 		}
 
-Patches 9-11 fix problems I found in libext2fs: there's a patch to add
-to e2fsck the ability to find overlapping blobs in the inode EA area;
-to truncate inline data files if the EA cannot be found; and to check
-inline data symlinks.
-
-Patches 12-13 fix a few bugs where e2fsck would abort unnecessarily
-due to finding an inode with the inline data flag set.
-
-Patches 14-15 try to fix inodes that shouldn't have inline_data set,
-and to resolve conflicts if both extents and inline_data are set on an
-inode.
-
-Patches 16-20 deal with repair of inline data directories, since
-containing directory data adds extra constraints on what constitutes a
-valid inode that e2fsck should be able to fix.
-
-Patch 21 adds test cases for the bugs I found in the inline data
-repair code, and exercises the sanity tests in e2fsck.
-
-I've tested these e2fsprogs changes against the -next branch as of
-8/4.  That's not much testing, but most of the changes between 7/29
-and today on that branch have been to add the patches that were in the
-previous patch bomb.  As I stated in the part 1 introduction, I use
-several VMs, each with 32M-1G ramdisks to test with; the test process
-is "misc/e2fuzz.sh -B <fuzz> -s <size>", where fuzz is anything from 2
-bytes to "0.1%" of metadata bytes.
-
-Comments and questions are, as always, welcome.
-
---D
