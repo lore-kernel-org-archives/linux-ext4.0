@@ -1,54 +1,49 @@
-From: Patrick Palka <patrick@parcs.ath.cx>
-Subject: Re: [PATCH v2] ext4: check inline directory before converting
-Date: Tue, 5 Aug 2014 12:20:12 +0000 (UTC)
-Message-ID: <loom.20140805T141533-363@post.gmane.org>
-References: <20140725222356.GK8628@birch.djwong.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 42723] EXT4-fs error: ext4_mb_generate_buddy
+Date: Tue, 05 Aug 2014 12:38:33 +0000
+Message-ID: <bug-42723-13602-jvb4fq1O3o@https.bugzilla.kernel.org/>
+References: <bug-42723-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:38619 "EHLO plane.gmane.org"
+Received: from mail.kernel.org ([198.145.19.201]:37412 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753119AbaHEMZL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Aug 2014 08:25:11 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1XEdnb-0001Eg-0S
-	for linux-ext4@vger.kernel.org; Tue, 05 Aug 2014 14:25:03 +0200
-Received: from ool-4353af5c.dyn.optonline.net ([67.83.175.92])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Tue, 05 Aug 2014 14:25:03 +0200
-Received: from patrick by ool-4353af5c.dyn.optonline.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Tue, 05 Aug 2014 14:25:03 +0200
+	id S1754017AbaHEMig (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Aug 2014 08:38:36 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id CC8DF201D3
+	for <linux-ext4@vger.kernel.org>; Tue,  5 Aug 2014 12:38:34 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id E7FA02017A
+	for <linux-ext4@vger.kernel.org>; Tue,  5 Aug 2014 12:38:33 +0000 (UTC)
+In-Reply-To: <bug-42723-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+https://bugzilla.kernel.org/show_bug.cgi?id=42723
 
-Darrick J. Wong <darrick.wong <at> oracle.com> writes:
+--- Comment #23 from Theodore Tso <tytso@mit.edu> ---
+Zhiyong,
 
-> +int ext4_check_all_de(struct inode *dir, struct buffer_head *bh, void 
-*buf,
-> +		      int buf_size)
-> +{
-> +	struct ext4_dir_entry_2 *de;
-> +	int nlen, rlen;
+The ext4_mb_generate_buddy() error message just means that there is an
+inconsistency between the allocation bitmap and the allocation statistics in
+the block group descriptor.   So people who just google for
+"ext4_mb_generate_buddy" can often find old bugs that had similar symptoms.
 
-Is nlen actually used in this function?
+The most recent bugfix in this area was caused by a backport of commit:
 
-> +	unsigned int offset = 0;
-> +	char *top;
-> +
-> +	de = (struct ext4_dir_entry_2 *)buf;
-> +	top = buf + buf_size;
-> +	while ((char *) de < top) {
-> +		if (ext4_check_dir_entry(dir, NULL, de, bh,
-> +					 buf, buf_size, offset))
-> +			return -EIO;
-> +		nlen = EXT4_DIR_REC_LEN(de->name_len);
+007649375f6af2 ext4: initialize multi-block allocator before checking block
+descriptors
 
-It is set here, but its value is never used.
+which caused errors after a replay.  It was reverted in mainline commit:
 
+f9ae9cf5d72b39 ext4: revert commit which was causing fs corruption after
+journal replays
+
+You might want to check to see if that might be applicable for your kernel.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
