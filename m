@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 16/21] e2fsck: do a better job of fixing i_size of inline
- directories
-Date: Mon, 04 Aug 2014 18:06:42 -0700
-Message-ID: <20140805010642.2611.55743.stgit@birch.djwong.org>
+Subject: [PATCH 15/21] e2fsck: fix conflicting extents|inlinedata inode flags
+Date: Mon, 04 Aug 2014 18:06:35 -0700
+Message-ID: <20140805010635.2611.19661.stgit@birch.djwong.org>
 References: <20140805010457.2611.89813.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,78 +9,315 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:40441 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753482AbaHEBGs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2014 21:06:48 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:44418 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753441AbaHEBGl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2014 21:06:41 -0400
 In-Reply-To: <20140805010457.2611.89813.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If we encounter a directory whose i_size != the inline data size, just
-set i_size to the size of the inline data.  The pb.last_block
-calculation is wrong since pb.last_block == -1, which results in
-i_size being set to zero, which corrupts the directory.
-
-Clear the inline_data inode flag if we actually /are/ setting i_size
-to zero.
+If we come across an inode with the inline data and extents inode flag
+set, try to figure out the correct flag settings from the contents of
+i_block and i_size.  If i_blocks looks like an extent tree head, we'll
+make it an extent inode; if it's small enough for inline data, set it
+to that.  This leaves the weird gray area where there's no extent
+tree but it's too big for the inode -- if /could/ be a block map,
+change it to that; otherwise, just clear the inode.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- e2fsck/pass1.c |   22 +++++++++++++++++-----
- 1 file changed, 17 insertions(+), 5 deletions(-)
+ e2fsck/pass1.c                     |  114 ++++++++++++++++++++++++++++++++++++
+ e2fsck/problem.c                   |   20 ++++++
+ e2fsck/problem.h                   |   12 ++++
+ tests/f_idata_and_extents/expect.1 |   35 +++++++++++
+ tests/f_idata_and_extents/expect.2 |    7 ++
+ tests/f_idata_and_extents/image.gz |  Bin
+ tests/f_idata_and_extents/name     |    1 
+ 7 files changed, 189 insertions(+)
+ create mode 100644 tests/f_idata_and_extents/expect.1
+ create mode 100644 tests/f_idata_and_extents/expect.2
+ create mode 100644 tests/f_idata_and_extents/image.gz
+ create mode 100644 tests/f_idata_and_extents/name
 
 
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index b214f72..1a9e0d5 100644
+index d41b230..b214f72 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -2832,17 +2832,21 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 		if (inode->i_flags & EXT4_INLINE_DATA_FL) {
- 			int flags;
- 			size_t size;
-+			errcode_t err;
+@@ -735,6 +735,108 @@ static void finish_processing_inode(e2fsck_t ctx, ext2_ino_t ino,
+ 			return; \
+ 	} while (0)
  
-+			size = 0;
- 			flags = ctx->fs->flags;
- 			ctx->fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
--			if (ext2fs_inline_data_size(ctx->fs, pctx->ino, &size))
--				bad_size = 5;
-+			err = ext2fs_inline_data_size(ctx->fs, pctx->ino,
-+						      &size);
- 			ctx->fs->flags = (flags &
- 					  EXT2_FLAG_IGNORE_CSUM_ERRORS) |
- 					 (ctx->fs->flags &
- 					  ~EXT2_FLAG_IGNORE_CSUM_ERRORS);
--			if (size != inode->i_size)
--				bad_size = 5;
-+			if (err || size != inode->i_size) {
-+				bad_size = 7;
-+				pctx->num = size;
-+			}
- 		} else if (inode->i_size & (fs->blocksize - 1))
- 			bad_size = 5;
- 		else if (nblock > (pb.last_block + 1))
-@@ -2875,12 +2879,20 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 	}
- 	/* i_size for symlinks is checked elsewhere */
- 	if (bad_size && !LINUX_S_ISLNK(inode->i_mode)) {
--		pctx->num = (pb.last_block+1) * fs->blocksize;
-+		/* Did inline_data set pctx->num earlier? */
-+		if (bad_size != 7)
-+			pctx->num = (pb.last_block + 1) * fs->blocksize;
- 		pctx->group = bad_size;
- 		if (fix_problem(ctx, PR_1_BAD_I_SIZE, pctx)) {
- 			if (LINUX_S_ISDIR(inode->i_mode))
- 				pctx->num &= 0xFFFFFFFFULL;
- 			ext2fs_inode_size_set(fs, inode, pctx->num);
-+			if (EXT2_I_SIZE(inode) == 0 &&
-+			    (inode->i_flags & EXT4_INLINE_DATA_FL)) {
-+				memset(inode->i_block, 0,
-+				       sizeof(inode->i_block));
-+				inode->i_flags &= ~EXT4_INLINE_DATA_FL;
-+			}
- 			dirty_inode++;
++static int could_be_block_map(ext2_filsys fs, struct ext2_inode *inode)
++{
++	__u32 x;
++	int i;
++
++	for (i = 0; i < EXT2_N_BLOCKS; i++) {
++		x = inode->i_block[i];
++#ifdef WORDS_BIGENDIAN
++		x = ext2fs_swab32(x);
++#endif
++		if (x >= ext2fs_blocks_count(fs->super))
++			return 0;
++	}
++
++	return 1;
++}
++
++/*
++ * Figure out what to do with an inode that has both extents and inline data
++ * inode flags set.  Returns -1 if we decide to erase the inode, 0 otherwise.
++ */
++static int fix_inline_data_extents_file(e2fsck_t ctx,
++					ext2_ino_t ino,
++					struct ext2_inode *inode,
++					int inode_size,
++					struct problem_context *pctx)
++{
++	size_t max_inline_ea_size;
++	ext2_filsys fs = ctx->fs;
++	int dirty = 0;
++
++	/* Both feature flags not set?  Just run the regular checks */
++	if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
++				       EXT3_FEATURE_INCOMPAT_EXTENTS) &&
++	    !EXT2_HAS_INCOMPAT_FEATURE(fs->super,
++				       EXT4_FEATURE_INCOMPAT_INLINE_DATA))
++		return 0;
++
++	/* Clear both flags if it's a special file */
++	if (LINUX_S_ISCHR(inode->i_mode) ||
++	    LINUX_S_ISBLK(inode->i_mode) ||
++	    LINUX_S_ISFIFO(inode->i_mode) ||
++	    LINUX_S_ISSOCK(inode->i_mode)) {
++		check_extents_inlinedata(ctx, pctx);
++		return 0;
++	}
++
++	/* If it looks like an extent tree, try to clear inlinedata */
++	if (ext2fs_extent_header_verify(inode->i_block,
++				 sizeof(inode->i_block)) == 0 &&
++	    fix_problem(ctx, PR_1_CLEAR_INLINE_DATA_FOR_EXTENT, pctx)) {
++		inode->i_flags &= ~EXT4_INLINE_DATA_FL;
++		dirty = 1;
++		goto out;
++	}
++
++	/* If it looks short enough to be inline data, try to clear extents */
++	if (EXT2_INODE_SIZE(fs->super) > EXT2_GOOD_OLD_INODE_SIZE)
++		max_inline_ea_size = EXT2_INODE_SIZE(fs->super) -
++				     (EXT2_GOOD_OLD_INODE_SIZE +
++				      ((struct ext2_inode_large *)inode)->i_extra_isize);
++	else
++		max_inline_ea_size = 0;
++	if (EXT2_I_SIZE(inode) <
++	    EXT4_MIN_INLINE_DATA_SIZE + max_inline_ea_size &&
++	    fix_problem(ctx, PR_1_CLEAR_EXTENT_FOR_INLINE_DATA, pctx)) {
++		inode->i_flags &= ~EXT4_EXTENTS_FL;
++		dirty = 1;
++		goto out;
++	}
++
++	/*
++	 * Too big for inline data, but no evidence of extent tree -
++	 * maybe it's a block map file?  If the mappings all look valid?
++	 */
++	if (could_be_block_map(fs, inode) &&
++	    fix_problem(ctx, PR_1_CLEAR_EXTENT_INLINE_DATA_FLAGS, pctx)) {
++		int i;
++
++#ifdef WORDS_BIGENDIAN
++		for (i = 0; i < EXT2_N_BLOCKS; i++)
++			inode->i_block[i] = ext2fs_swab32(inode->i_block[i]);
++#endif
++
++		inode->i_flags &= ~(EXT4_EXTENTS_FL | EXT4_INLINE_DATA_FL);
++		dirty = 1;
++		goto out;
++	}
++
++	/* Oh well, just clear the busted inode. */
++	if (fix_problem(ctx, PR_1_CLEAR_EXTENT_INLINE_DATA_INODE, pctx)) {
++		e2fsck_clear_inode(ctx, ino, inode, 0, "pass1");
++		return -1;
++	}
++
++out:
++	if (dirty)
++		e2fsck_write_inode(ctx, ino, inode, "pass1");
++
++	return 0;
++}
++
+ void e2fsck_pass1(e2fsck_t ctx)
+ {
+ 	int	i;
+@@ -983,6 +1085,18 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 			}
  		}
- 		pctx->num = 0;
+ 
++		/* Conflicting inlinedata/extents inode flags? */
++		if ((inode->i_flags & EXT4_INLINE_DATA_FL) &&
++		    (inode->i_flags & EXT4_EXTENTS_FL)) {
++			int res = fix_inline_data_extents_file(ctx, ino, inode,
++							       inode_size,
++							       &pctx);
++			if (res < 0) {
++				/* skip FINISH_INODE_LOOP */
++				continue;
++			}
++		}
++
+ 		/* Test for incorrect inline_data flags settings. */
+ 		if ((inode->i_flags & EXT4_INLINE_DATA_FL) && !inlinedata_fs &&
+ 		    (ino >= EXT2_FIRST_INODE(fs->super))) {
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 26ee51b..4245244 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1056,6 +1056,26 @@ static struct e2fsck_problem problem_table[] = {
+ 	     "or inline-data flag set.  "),
+ 	  PROMPT_CLEAR, PR_PREEN_OK | PR_PREEN_NO | PR_NO_OK },
+ 
++	/* Inode has extent header but inline data flag is set */
++	{ PR_1_CLEAR_INLINE_DATA_FOR_EXTENT,
++	  N_("@i %i has @x header but inline data flag is set.\n"),
++	  PROMPT_FIX, 0 },
++
++	/* Inode seems to have inline data but extent flag is set */
++	{ PR_1_CLEAR_EXTENT_FOR_INLINE_DATA,
++	  N_("@i %i seems to have inline data but @x flag is set.\n"),
++	  PROMPT_FIX, 0 },
++
++	/* Inode seems to have block map but inline data and extent flags set */
++	{ PR_1_CLEAR_EXTENT_INLINE_DATA_FLAGS,
++	  N_("@i %i seems to have @b map but inline data and @x flags set.\n"),
++	  PROMPT_FIX, 0 },
++
++	/* Inode has inline data and extent flags but i_block contains junk */
++	{ PR_1_CLEAR_EXTENT_INLINE_DATA_INODE,
++	  N_("@i %i has inline data and @x flags set but i_block contains junk.\n"),
++	  PROMPT_CLEAR_INODE, 0 },
++
+ 	/* Pass 1b errors */
+ 
+ 	/* Pass 1B: Rescan for duplicate/bad blocks */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 3c5e11a..22c86c5 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -615,6 +615,18 @@ struct problem_context {
+ /* extents/inlinedata set on fifo/socket/device */
+ #define PR_1_SPECIAL_EXTENTS_IDATA	0x010076
+ 
++/* idata/extent flag set and extent header found, clear idata flag */
++#define PR_1_CLEAR_INLINE_DATA_FOR_EXTENT	0x010077
++
++/* inlinedata/extent set and no extent header found, clear extent flag */
++#define PR_1_CLEAR_EXTENT_FOR_INLINE_DATA	0x010078
++
++/* inlinedata/extent set, clear both flags */
++#define PR_1_CLEAR_EXTENT_INLINE_DATA_FLAGS	0x010079
++
++/* inlinedata/extent set, clear inode */
++#define PR_1_CLEAR_EXTENT_INLINE_DATA_INODE	0x01007A
++
+ /*
+  * Pass 1b errors
+  */
+diff --git a/tests/f_idata_and_extents/expect.1 b/tests/f_idata_and_extents/expect.1
+new file mode 100644
+index 0000000..7f7fbf3
+--- /dev/null
++++ b/tests/f_idata_and_extents/expect.1
+@@ -0,0 +1,35 @@
++Pass 1: Checking inodes, blocks, and sizes
++Special (device/socket/fifo) file (inode 19) has extents
++or inline-data flag set.  Clear? yes
++
++Inode 20 has extent header but inline data flag is set.
++Fix? yes
++
++Inode 21 has inline data and extent flags set but i_block contains junk.
++Clear inode? yes
++
++Inode 22 seems to have block map but inline data and extent flags set.
++Fix? yes
++
++Inode 23 seems to have inline data but extent flag is set.
++Fix? yes
++
++Pass 2: Checking directory structure
++Entry 'garbage' in /bad (18) has deleted/unused inode 21.  Clear? yes
++
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++Inode bitmap differences:  -21
++Fix? yes
++
++Free inodes count wrong for group #0 (105, counted=106).
++Fix? yes
++
++Free inodes count wrong (105, counted=106).
++Fix? yes
++
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 22/128 files (0.0% non-contiguous), 21/512 blocks
++Exit status is 1
+diff --git a/tests/f_idata_and_extents/expect.2 b/tests/f_idata_and_extents/expect.2
+new file mode 100644
+index 0000000..307d3f6
+--- /dev/null
++++ b/tests/f_idata_and_extents/expect.2
+@@ -0,0 +1,7 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 22/128 files (0.0% non-contiguous), 21/512 blocks
++Exit status is 0
+diff --git a/tests/f_idata_and_extents/image.gz b/tests/f_idata_and_extents/image.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..5187ba14138568a1ccd3540228b092f93186d109
+GIT binary patch
+literal 3112
+zcmeIxT})GV7zXg8MnQ}yL5)$cYIMvfWdxZDVk1r*0)wDisaDj2pi(Rf43x4HC)Fun
+zCtre9kJy#LfMTs+3qtD#fz6NdS)fH4C~c)sTPPMzdwTxE>)m*<%f2^H-sF95e#uM7
+zb%u_;tU9uAkwJ0dZ1EWn$fOGjZ1hhItkO8eev|1onDFg&H`d}~&zxz`SJRXE0`dO0
+zZ2jh9;)@#2&zl>gZjRL6%%+!K?mFlkay7m)&t=<=%10YdH_P@IF9lwBSpUYaN5#No
+z<`&%xWh!oLH)ATH`@$5i!kutwQ%yJrDO}ko)TL5Z?HV|8e#s4|<8UbVi@e(n_`RGo
+z^ON&upQKMRwo;nDJU&?ZwU>oux}<2q$M829LEY26FPSpyfh3jQ8zxLNd|Xa7P>mkU
+zC!I5sB{o-J>TBuW@UDLQQcmyz{)}R7ul67Pj91wh%3Q~Ja0P;1UyH$sq3YW-yXt|w
+z0)<abxF8b7iUklP1*-R>*HZ)uYa}Zm2%?%t0azbgkmSlUF5H<z<%`8Lp2KI#_w_3!
+z*{2M0+%wyAs(vj>CByI`?5#90-(PHLa3wsR?@IkIbgh~NU1*5SX@2FeU)(ew&=6Sk
+zDL#Lsef|N~!-E0yjg;o8rOuz<{Ldw5`=k7&Tp+qL-C|0yMmdj|Os6Kg%A<>7DJ%82
+zl23H-*dHZcn@AsK3wEB@J_3E`^6u~Dw2Cq>gxd2Pz*SV3$grj`d$y?If_&KTc_lrl
+zjD~GTZg{M&ysZ}CVy_&(zcl?Yv8F?hd=+YUPeL${K2jWRH4LY_*MXtPzDf`qp*(U9
+zM-qHX;EE`u*896SN@ZlD?Mjm^AW*SH5iAnN>?4K;WUNTDEYInT8A>?aJ*)&&nWdXB
+zFf}(?vRwmD<&u0_cMH=EoTP5-5I$!`1(>;>$2G+?WLNbUT>o`U*<&dg&8m!ORK%WT
+zOz878bWvchCf8WbP1W6^k(M1cR@H!OSz+zI^5zIiQNElddR8lu{8VAfOk`n){$&4t
+z>yBJ103zl#a8t>a!NgWf?V5`+I%uO9nLOlP*azx+CgaFFEGzOpG2|XRNg|RbtONv%
+zk3<*AfNwuf_&zR!g)K7<;h}k@!0rnQRivZ!m{3@?)i4{i&igI`csx$RaC`1*Hpr?D
+zvGi~F#m&Y}{+<p0XrGPu^#uYmtX12?il>2ADX0C`PO=d0R$m5$cCZ^fc>S1()xDCJ
+ztnn!hQ|q5T6##i!cAMy8=4(MMhaif^QOVspwwq4EZ8HOU^f^r8J&{F!NO{O-?BH;I
+zsF2l`(T0#oj1(}Ao+OtVP_Unc<sxvr4zyy`yYS?WX(S%=3HQe%GlH>{05maG%G9U|
+zH7dV@IG4-K_cN%u<6}tv0&_8ZKcmHi*cOk<w6Sw)7nF4Il%{0u#bFK`Q(t~p<OwRa
+z@xfp(e4u9!PFbFb&XHMGpY$!&c6PYPsg#2n$1`lh{G&i8$x>7E24H%15FotLw#2z>
+zrQ*LqnG4!3uA60=wQB`npwaKsKRL!B;1F;KI0PI54uSt&K&v3N2~T{0ppDSKYUGCn
+
+literal 0
+HcmV?d00001
+
+diff --git a/tests/f_idata_and_extents/name b/tests/f_idata_and_extents/name
+new file mode 100644
+index 0000000..362ce0e
+--- /dev/null
++++ b/tests/f_idata_and_extents/name
+@@ -0,0 +1 @@
++conflicting extents and inline_data inode flags
 
