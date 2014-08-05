@@ -1,135 +1,46 @@
-From: "Pu Hou" <houpu.hp@alibaba-inc.com>
-Subject: Re: [PATCH] debugfs: Add inline data feature for symlink.
-Date: Tue, 05 Aug 2014 20:27:58 +0800
-Message-ID: <20140805122758.GE2949@guyi-aliyun>
-References: <1406789932-13770-1-git-send-email-houpu.hp@alibaba-inc.com>
- <63e6941e-70ab-4fec-941c-f13f47585594@alibaba-inc.com>
- <20140801164810.GT8628@birch.djwong.org>
- <20140804065341.GC6751@guyi-aliyun>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: After unlinking a large file on ext4, the process stalls for a long time
+Date: Tue, 5 Aug 2014 23:54:35 +0200
+Message-ID: <DE44CAD2-9FB4-4D46-A381-BFB00D39B607@dilger.ca>
+References: <53C6B38A.3000100@free.fr> <59C3F41A-6AFD-418E-BCE6-2361B8140D9A@dilger.ca> <53C7A5CA.4050903@free.fr> <alpine.LFD.2.00.1407171238060.2312@localhost.localdomain> <53C7B0B7.9030007@free.fr> <20140717133755.GN1491@thunk.org> <53C7F4C2.6070804@free.fr> <alpine.LFD.2.00.1407181127440.12453@localhost.localdomain> <53DF9918.3010206@free.fr> <6910CF48-15F8-4218-8881-06899D7C56A5@dilger.ca> <20140805023300.GE5263@thunk.org>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Mason <mpeg.blue@free.fr>,
+	=?utf-8?Q?Luk=C3=A1=C5=A1_Czerner?= <lczerner@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out113-251.biz.mail.alibaba.com ([205.204.113.251]:38065 "EHLO
-	us-alimail-mta2.hst.scl.en.alidc.net" rhost-flags-OK-FAIL-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753114AbaHENAW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Aug 2014 09:00:22 -0400
-Content-Disposition: inline
-In-Reply-To: <20140804065341.GC6751@guyi-aliyun>
+Received: from mail-wi0-f176.google.com ([209.85.212.176]:55770 "EHLO
+	mail-wi0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753390AbaHEVyk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Aug 2014 17:54:40 -0400
+Received: by mail-wi0-f176.google.com with SMTP id bs8so7738490wib.9
+        for <linux-ext4@vger.kernel.org>; Tue, 05 Aug 2014 14:54:39 -0700 (PDT)
+In-Reply-To: <20140805023300.GE5263@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 04, 2014 at 02:53:41PM +0800, Pu Hou wrote:
-> On Sat, Aug 02, 2014 at 12:48:10AM +0800, Darrick J. Wong wrote:
-> > On Fri, Aug 01, 2014 at 06:37:56PM +0800, Pu Hou wrote:
-> > > On Thu, Jul 31, 2014 at 02:58:52PM +0800, Pu Hou wrote:
-> > > >> Symlink in debugfs can take advantage of inline data feature. The path name of the target of the symbol link which is longer than 60 byte and shorter than 132 byte can stay in inline data area.
-> > > >
-> > > >I think Ted prefers wrapping commit messages at 70 bytes.
-> > > >
-> > > Thanks for reminding me. I will fix it.
-> > > 
-> > > >> +	data.ea_size = size - EXT4_MIN_INLINE_DATA_SIZE;
-> > > >> +	data.ea_data = buf + EXT4_MIN_INLINE_DATA_SIZE;
-> > > >> +	return ext2fs_inline_data_ea_set(&data);
-> > > >
-> > > >Doesn't ext2fs_inline_data_set() suffice?
-> > > >
-> > > It is unnecessary to use this dedicated function.
-> > 
-> > Why do you say it's unnecessary?  The dedicated function does (or at least is
-> > supposed to) do exactly what you want.
-> > 
+On Aug 5, 2014, at 4:33, Theodore Ts'o <tytso@mit.edu> wrote:
 > 
-> Compare with the dedicated function, ext2fs_inline_data_set() will check
-> the available xattr size and inline data size by read the inode and do
-> some calculation. And I thought some "dirty data" of an inode on disk might
-> have an effect on the calculated available size.
+>> On Tue, Aug 05, 2014 at 12:55:14AM +0200, Andreas Dilger wrote:
+>> It would be possible to optimize mb_free_blocks() by having it
+>> clear a whole word at a time instead of a series if bits. 
 > 
-> Now I find that this concern is unnecessary. Because ext2fs_write_new_inode()
-> which is called before will make sure the xattr of the inode are clean.
-> So there is no need to use this dedicated function.
+> It looks like we're doing this already in mb_test_and_clear_bits(),
+> aren't we?
+
+Sorry, I didn't see mb_test_and_clear_bits(), I was only looking at
+mb_clear_bit() to see if it be the multi-bit optimization. 
+
+>> I thought that was done already, but it doesn't appear to be the case.
+>> Also, it isn't clear that the bit "normalization" is needed anymore.
+>> This was done back in the aniceint times when the buddy bitmaps were stored on disk instead of being regenerated only at mount time. 
 > 
-> > Now I'm wondering -- why worry about size at all?  You can modify
-> > ext2fs_symlink to call ext2fs_inline_data_set() directly.  If there's not
-> > enough room, it'll return EXT2_ET_INLINE_DATA_NO_SPACE and you can try again
-> > with the classic stuff-it-in-a-block method.
-> > 
-> > (Of course, if you try this and the API turns not to behave as advertised I'd
-> > like to hear about that too. :))
-> 
-> That sounds nice. I will try in this way and give a feedback later.
->
-I tried to call ext2fs_inline_data_set() from ext2fs_symlink. The result is
-not as expected. Before it gets to "return EXT2_ET_INLINE_DATA_NO_SPACE",
-ext2fs_inline_data_size() is called. In this function, it may return at here:
+> I'm not sure what you mean by this; the only reference I can find
+> normalization is with normalizing requests?
 
-	if (!(inode.i_flags & EXT4_INLINE_DATA_FL))
-		return EXT2_ET_NO_INLINE_DATA;
+I meant mb_correct_addr_and_bit(). 
 
-and the message was printed as below:
-
-ext2fs_symlink: Inode doesn't have inline data
-symlink: Inode doesn't have inline data
-
-That is because we did not mark EXT4_INLINE_DATA_FL yet. Even if mark the flag,
-it still return at this point:
-
-	data.fs = fs;
-	data.ino = ino;
-	retval = ext2fs_inline_data_ea_get(&data);
-	if (retval)
-		return retval;
-
-and the message was printed as below:
-
-ext2fs_symlink: Extended attribute key not found
-symlink: Extended attribute key not found
-
-That means the xattr of the new created inode is clean.
-because ext2fs_write_new_inode() is called early, the xattr is made clean.
-
-I think use "ext2fs_xattr_inode_max_size() + EXT4_MIN_INLINE_DATA_SIZE"
-to get the available xattr size. And use ext2fs_inline_data_ea_set()
-directly to set inline data is a workaround.
-
- 
-> > 
-> > --D
-> > 
-> > > 
-> > > >> +					sizeof(__u32)+
-> > > >> +					EXT4_MIN_INLINE_DATA_SIZE;
-> > > >> +			inline_link = (target_len < max_inline);
-> > > >
-> > > >Does ext2fs_xattr_inode_max_size() + EXT4_MIN_INLINE_DATA_SIZE return incorrect
-> > > >results?  I don't think we should have all xattr specific stuff belongs here in
-> > > >the symlink routines.
-> > > 
-> > > Sorry. I did not notice that some xattr might be existed  when an inode
-> > > number is passed to ext2fs_symlink(). But, as far as I can see, when 0
-> > > is pass as inode number. ext2fs_xattr_inode_max_size() will read inode
-> > > by ext2fs_read_inode_full(). But at that time, we have not writen the
-> > > inode back. and the size of inline data for symlink is uncertain.
-> > > I will try to find a workaround.
-> > > 
-> > > >> -		if (retval)
-> > > >> -			goto cleanup;
-> > > >> +		  retval = io_channel_write_blk64(fs->io, blk, 1, block_buf);
-> > > >> +		  if (retval)
-> > > >> +		    goto cleanup;
-> > > >
-> > > >Please fix the indentation inconsistency (tabs, not spaces).
-> > > 
-> > > >> -	if (!fastlink)
-> > > >> +	if ((!fastlink) && (!inline_link))
-> > > >
-> > > >Probably unnecessary to put !fastlink and !inline_link in parentheses.
-> > > >
-> > > >--D
-> > > Darrick, thank again for your generous help.
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Cheers, Andreas
