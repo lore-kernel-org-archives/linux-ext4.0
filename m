@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 12/21] e2fsck: check inline directory data "block" first
-Date: Mon, 04 Aug 2014 18:06:15 -0700
-Message-ID: <20140805010615.2611.4060.stgit@birch.djwong.org>
+Subject: [PATCH 13/21] e2fsck: don't try to iterate blocks of an inline_data
+ inode when deallocating it
+Date: Mon, 04 Aug 2014 18:06:22 -0700
+Message-ID: <20140805010622.2611.77018.stgit@birch.djwong.org>
 References: <20140805010457.2611.89813.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,50 +10,37 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:40355 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753431AbaHEBGU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2014 21:06:20 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:44379 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753431AbaHEBG3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2014 21:06:29 -0400
 In-Reply-To: <20140805010457.2611.89813.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Since the inline data flag will cause the extent/block map iteration
-code to abort fsck early, move the test for the inode flag and the
-actual block check call further forward in check_blocks.  This
-eliminates an e2fsck abort on an inline data symlink when the file ACL
-block is set.
+Inodes with inline_data set do not have iterable blocks, so don't try
+to iterate the blocks, because that will just fail, causing e2fsck to
+abort.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- e2fsck/pass1.c |    8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
+ e2fsck/pass2.c |    4 ++++
+ 1 file changed, 4 insertions(+)
 
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index f7c1fbb..8bd08ee 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -2596,7 +2596,9 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 		pb.num_blocks++;
- 	}
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 38bf37a..d56b4c8 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -1441,6 +1441,10 @@ static void deallocate_inode(e2fsck_t ctx, ext2_ino_t ino, char* block_buf)
+ 	if (!ext2fs_inode_has_valid_blocks2(fs, &inode))
+ 		goto clear_inode;
  
--	if (ext2fs_inode_has_valid_blocks2(fs, inode)) {
-+	if (inlinedata_fs && (inode->i_flags & EXT4_INLINE_DATA_FL))
-+		check_blocks_inline_data(ctx, pctx, &pb);
-+	else if (ext2fs_inode_has_valid_blocks2(fs, inode)) {
- 		if (extent_fs && (inode->i_flags & EXT4_EXTENTS_FL))
- 			check_blocks_extents(ctx, pctx, &pb);
- 		else {
-@@ -2632,10 +2634,6 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 			fs->flags = (flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) |
- 				    (fs->flags & ~EXT2_FLAG_IGNORE_CSUM_ERRORS);
- 		}
--	} else {
--		/* check inline data */
--		if (inlinedata_fs && (inode->i_flags & EXT4_INLINE_DATA_FL))
--			check_blocks_inline_data(ctx, pctx, &pb);
- 	}
- 	end_problem_latch(ctx, PR_LATCH_BLOCK);
- 	end_problem_latch(ctx, PR_LATCH_TOOBIG);
++	/* Inline data inodes don't have blocks to iterate */
++	if (inode.i_flags & EXT4_INLINE_DATA_FL)
++		goto clear_inode;
++
+ 	if (LINUX_S_ISREG(inode.i_mode) &&
+ 	    ext2fs_needs_large_file_feature(EXT2_I_SIZE(&inode)))
+ 		ctx->large_files--;
 
