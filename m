@@ -1,46 +1,74 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: After unlinking a large file on ext4, the process stalls for a
- long time
-Date: Mon, 4 Aug 2014 22:33:00 -0400
-Message-ID: <20140805023300.GE5263@thunk.org>
-References: <53C6B38A.3000100@free.fr>
- <59C3F41A-6AFD-418E-BCE6-2361B8140D9A@dilger.ca>
- <53C7A5CA.4050903@free.fr>
- <alpine.LFD.2.00.1407171238060.2312@localhost.localdomain>
- <53C7B0B7.9030007@free.fr>
- <20140717133755.GN1491@thunk.org>
- <53C7F4C2.6070804@free.fr>
- <alpine.LFD.2.00.1407181127440.12453@localhost.localdomain>
- <53DF9918.3010206@free.fr>
- <6910CF48-15F8-4218-8881-06899D7C56A5@dilger.ca>
+Subject: [GIT PULL] ext4 bug updates for 3.17
+Date: Mon, 4 Aug 2014 23:11:32 -0400
+Message-ID: <20140805031132.GA16323@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mason <mpeg.blue@free.fr>,
-	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:44543 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:44578 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753153AbaHECdG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Aug 2014 22:33:06 -0400
+	id S1753169AbaHEDLf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Aug 2014 23:11:35 -0400
 Content-Disposition: inline
-In-Reply-To: <6910CF48-15F8-4218-8881-06899D7C56A5@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 05, 2014 at 12:55:14AM +0200, Andreas Dilger wrote:
-> It would be possible to optimize mb_free_blocks() by having it
-> clear a whole word at a time instead of a series if bits. 
+The following changes since commit 1795cd9b3a91d4b5473c97f491d63892442212ab:
 
-It looks like we're doing this already in mb_test_and_clear_bits(),
-aren't we?
+  Linux 3.16-rc5 (2014-07-13 14:04:33 -0700)
 
-> I thought that was done already, but it doesn't appear to be the case.
-> Also, it isn't clear that the bit "normalization" is needed anymore.
-> This was done back in the aniceint times when the buddy bitmaps were stored on disk instead of being regenerated only at mount time. 
+are available in the git repository at:
 
-I'm not sure what you mean by this; the only reference I can find
-normalization is with normalizing requests?
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
 
-						- Ted
+for you to fetch changes up to 86f0afd463215fc3e58020493482faa4ac3a4d69:
+
+  ext4: fix ext4_discard_allocated_blocks() if we can't allocate the pa struct (2014-07-30 22:17:17 -0400)
+
+----------------------------------------------------------------
+Bug fixes and clean ups for the 3.17 merge window
+
+----------------------------------------------------------------
+Darrick J. Wong (1):
+      ext4: check inline directory before converting
+
+Dmitry Monakhov (3):
+      ext4: add i_data_sem sanity check
+      ext4: use correct depth value
+      ext4: fix incorrect locking in move_extent_per_page
+
+Lukas Czerner (1):
+      ext4: fix punch hole on files with indirect mapping
+
+Namjae Jeon (1):
+      ext4: fix COLLAPSE RANGE test for bigalloc file systems
+
+Theodore Ts'o (3):
+      ext4: rearrange initialization to fix EXT4FS_DEBUG
+      ext4: remove metadata reservation checks
+      ext4: fix ext4_discard_allocated_blocks() if we can't allocate the pa struct
+
+Xiaoguang Wang (1):
+      ext4: fix wrong size computation in ext4_mb_normalize_request()
+
+Zhang Zhen (1):
+      ext4: remove readpage() check in ext4_mmap_file()
+
+Zheng Liu (1):
+      ext4: make ext4_has_inline_data() as a inline function
+
+ fs/ext4/balloc.c      |   1 -
+ fs/ext4/dir.c         |  25 ++++++
+ fs/ext4/ext4.h        |  14 +++-
+ fs/ext4/extents.c     |  14 ++--
+ fs/ext4/file.c        |   4 -
+ fs/ext4/indirect.c    | 281 +++++++++++++++++++++++++++++++++++++++++++++++------------------
+ fs/ext4/inline.c      |  18 +++--
+ fs/ext4/inode.c       | 130 ++----------------------------
+ fs/ext4/mballoc.c     |  41 ++++++----
+ fs/ext4/migrate.c     |   7 ++
+ fs/ext4/move_extent.c |   3 +-
+ fs/ext4/super.c       |  88 +++++++++------------
+ 12 files changed, 333 insertions(+), 293 deletions(-)
