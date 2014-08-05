@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 04/21] libext2fs/e2fsck: don't run off the end of the EA
- block
-Date: Mon, 04 Aug 2014 18:05:23 -0700
-Message-ID: <20140805010523.2611.3554.stgit@birch.djwong.org>
+Subject: [PATCH 05/21] misc: fix various endianness problems with inline_data
+Date: Mon, 04 Aug 2014 18:05:30 -0700
+Message-ID: <20140805010530.2611.80567.stgit@birch.djwong.org>
 References: <20140805010457.2611.89813.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,69 +9,112 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:40152 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:40175 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752843AbaHEBF2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2014 21:05:28 -0400
+	with ESMTP id S1752843AbaHEBFe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2014 21:05:34 -0400
 In-Reply-To: <20140805010457.2611.89813.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When we're (a) reading EAs into a buffer; (b) byte-swapping EA
-entries; or (c) checking EA data, be careful not to run off the end of
-the memory buffer, because this causes invalid memory accesses and
-e2fsck crashes.  This can happen if we encounter a specially crafted
-FS image.
+The inline data code fails to perform endianness conversions correctly
+or at all in a number of places, so fix this so that big-endian
+machines function properly.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- e2fsck/pass1.c        |    3 ++-
- lib/ext2fs/ext_attr.c |    3 ++-
- lib/ext2fs/swapfs.c   |    4 +++-
- 3 files changed, 7 insertions(+), 3 deletions(-)
+ e2fsck/pass2.c           |   25 +++++++++++++++++++++++--
+ lib/ext2fs/inline_data.c |    5 ++++-
+ lib/ext2fs/newdir.c      |    9 +++++++++
+ 3 files changed, 36 insertions(+), 3 deletions(-)
 
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 5c72f48..6c79eed 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -302,7 +302,8 @@ static void check_ea_in_inode(e2fsck_t ctx, struct problem_context *pctx)
- 	/* take finish entry 0UL into account */
- 	remain = storage_size - sizeof(__u32);
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index e968831..38bf37a 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -870,11 +870,21 @@ static int check_dir_block(ext2_filsys fs,
+ #endif
  
--	while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
-+	while (remain >= sizeof(struct ext2_ext_attr_entry) &&
-+	       !EXT2_EXT_IS_LAST_ENTRY(entry)) {
- 		__u32 hash;
+ 	ehandler_operation(_("reading directory block"));
+-	if (inline_data_size)
++	if (inline_data_size) {
+ 		cd->pctx.errcode = ext2fs_inline_data_get(fs, ino, 0, buf, 0);
+-	else
++		if (cd->pctx.errcode)
++			goto inline_read_fail;
++#ifdef WORDS_BIGENDIAN
++		*((__u32 *)buf) = ext2fs_le32_to_cpu(*((__u32 *)buf));
++		cd->pctx.errcode = ext2fs_dirent_swab_in2(fs,
++				buf + EXT4_INLINE_DATA_DOTDOT_SIZE,
++				inline_data_size - EXT4_INLINE_DATA_DOTDOT_SIZE,
++				0);
++#endif
++	} else
+ 		cd->pctx.errcode = ext2fs_read_dir_block4(fs, block_nr,
+ 							  buf, 0, ino);
++inline_read_fail:
+ 	ehandler_operation(0);
+ 	if (cd->pctx.errcode == EXT2_ET_DIR_CORRUPTED)
+ 		cd->pctx.errcode = 0; /* We'll handle this ourselves */
+@@ -1311,6 +1321,17 @@ write_and_fix:
+ 			ctx->fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
+ 		}
+ 		if (inline_data_size) {
++#ifdef WORDS_BIGENDIAN
++			*((__u32 *)buf) = ext2fs_le32_to_cpu(*((__u32 *)buf));
++			cd->pctx.errcode = ext2fs_dirent_swab_out2(fs,
++					buf + EXT4_INLINE_DATA_DOTDOT_SIZE,
++					inline_data_size -
++					EXT4_INLINE_DATA_DOTDOT_SIZE,
++					0);
++			if (cd->pctx.errcode &&
++			    !fix_problem(ctx, PR_2_WRITE_DIRBLOCK, &cd->pctx))
++				goto abort_free_dict;
++#endif
+ 			cd->pctx.errcode =
+ 				ext2fs_inline_data_set(fs, ino, 0, buf,
+ 						       inline_data_size);
+diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
+index 19248a0..c188d75 100644
+--- a/lib/ext2fs/inline_data.c
++++ b/lib/ext2fs/inline_data.c
+@@ -361,13 +361,16 @@ ext2fs_inline_data_dir_expand(ext2_filsys fs, ext2_ino_t ino,
+ 		return retval;
  
- 		/* header eats this space */
-diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index 96530f8..5732ca6 100644
---- a/lib/ext2fs/ext_attr.c
-+++ b/lib/ext2fs/ext_attr.c
-@@ -633,7 +633,8 @@ static errcode_t read_xattrs_from_buffer(struct ext2_xattr_handle *handle,
+ #ifdef WORDS_BIGENDIAN
+-	retval = ext2fs_dirent_swab_in2(fs, buf, size, 0);
++	retval = ext2fs_dirent_swab_in2(fs, buf + EXT4_INLINE_DATA_DOTDOT_SIZE,
++					size, 0);
+ 	if (retval)
+ 		goto errout;
+ #endif
  
- 	entry = entries;
- 	remain = storage_size;
--	while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
-+	while (remain >= sizeof(struct ext2_ext_attr_entry) &&
-+	       !EXT2_EXT_IS_LAST_ENTRY(entry)) {
- 		__u32 hash;
+ 	/* Adjust the rec_len */
+ 	retval = ext2fs_inline_data_convert_dir(fs, ino, blk_buf, buf, size);
++	if (retval)
++		goto errout;
+ 	/* Allocate a new block */
+ 	retval = ext2fs_new_block2(fs, 0, 0, &blk);
+ 	if (retval)
+diff --git a/lib/ext2fs/newdir.c b/lib/ext2fs/newdir.c
+index cd32d0a..506d609 100644
+--- a/lib/ext2fs/newdir.c
++++ b/lib/ext2fs/newdir.c
+@@ -115,6 +115,15 @@ errcode_t ext2fs_new_dir_inline_data(ext2_filsys fs, ext2_ino_t dir_ino,
+ 	dir->inode = 0;
+ 	rec_len = EXT4_MIN_INLINE_DATA_SIZE - EXT4_INLINE_DATA_DOTDOT_SIZE;
+ 	retval = ext2fs_set_rec_len(fs, rec_len, dir);
++	if (retval)
++		goto errout;
++
++#ifdef WORDS_BIGENDIAN
++	retval = ext2fs_dirent_swab_out2(fs, (char *)dir, rec_len, 0);
++	if (retval)
++		goto errout;
++#endif
  
- 		/* header eats this space */
-diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
-index f08859b..e2aa41d 100644
---- a/lib/ext2fs/swapfs.c
-+++ b/lib/ext2fs/swapfs.c
-@@ -196,7 +196,9 @@ void ext2fs_swap_ext_attr(char *to, char *from, int bufsize, int has_header)
- 		to_entry   = (struct ext2_ext_attr_entry *)to_header;
- 	}
- 
--	while ((char *)from_entry < from_end && *(__u32 *)from_entry) {
-+	while ((char *)from_entry < from_end &&
-+	       (char *)EXT2_EXT_ATTR_NEXT(from_entry) <= from_end &&
-+	       *(__u32 *)from_entry) {
- 		ext2fs_swap_ext_attr_entry(to_entry, from_entry);
- 		from_entry = EXT2_EXT_ATTR_NEXT(from_entry);
- 		to_entry   = EXT2_EXT_ATTR_NEXT(to_entry);
++errout:
+ 	return retval;
+ }
 
