@@ -1,70 +1,50 @@
-From: Gioh Kim <gioh.kim@lge.com>
-Subject: Re: [PATCH 0/2] new API to allocate buffer-cache for superblock in
- non-movable area
-Date: Wed, 06 Aug 2014 15:15:17 +0900
-Message-ID: <53E1C7F5.7040901@lge.com>
-References: <20140730101143.GB19205@quack.suse.cz> <53D985C0.3070300@lge.com> <20140731000355.GB25362@quack.suse.cz> <53D98FBB.6060700@lge.com> <20140731122114.GA5240@quack.suse.cz> <53DADA2F.1020404@lge.com> <53DAE820.7050508@lge.com> <20140801095700.GB27281@quack.suse.cz> <20140801133618.GJ19379@twins.programming.kicks-ass.net> <20140801152459.GA7525@quack.suse.cz> <20140801160415.GD9918@twins.programming.kicks-ass.net>
+From: Sander Smeenk <ssmeenk@freshdot.net>
+Subject: Re: ext4 metadata corruption bug?
+Date: Wed, 6 Aug 2014 10:53:45 +0200
+Message-ID: <20140806085345.GM25902@dot.freshdot.net>
+References: <20140420163211.GT10985@gradx.cs.jhu.edu>
+ <20140423072311.GD10163@dot.freshdot.net>
+ <20140423143642.GA29925@thunk.org>
+ <20140501162503.GL5136@gradx.cs.jhu.edu>
+ <20140506154239.GA5012@thunk.org>
+ <20140506155159.GY5136@gradx.cs.jhu.edu>
+ <20140731023744.GA17375@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: quoted-printable
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
- Andrew Morton <akpm@linux-foundation.org>,
- "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
- linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
- Theodore Ts'o <tytso@mit.edu>,
- Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
- linux-mm@kvack.org, Minchan Kim <minchan@kernel.org>,
- Joonsoo Kim <js1304@gmail.com>
-To: Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20140801160415.GD9918@twins.programming.kicks-ass.net>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from dot.freshdot.net ([213.154.236.176]:32995 "EHLO
+	dot.freshdot.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753286AbaHFJjB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Aug 2014 05:39:01 -0400
+Content-Disposition: inline
+In-Reply-To: <20140731023744.GA17375@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+Quoting Theodore Ts'o (tytso@mit.edu):
 
+> Are you folks still seeing ext4_mb_generate_buddy or
+> ext4_mb_release_inode_pa EXT4-fs errors?
+> 
+> I think I may have found a fix for this problem.  Or at least, I've
+> found one of the causes.  If we get a memory allocation failure from
+> ext4_mb_new_inode_pa(), it can cause these errors.
 
-2014-08-02 =EC=98=A4=EC=A0=84 1:04, Peter Zijlstra =EC=93=B4 =EA=B8=80:
-> On Fri, Aug 01, 2014 at 05:24:59PM +0200, Jan Kara wrote:
->
->>    OK, makes sense. But then if there's heavy IO going on, anything th=
-at has
->> IO pending on it is pinned and IO completion can easily take something
->> close to a second or more. So meeting subsecond deadlines may be tough=
- even
->> for ordinary data pages under heavy load, even more so for metadata wh=
-ere
->> there are further constraints. OTOH phones aren't usually IO bound so =
-in
->> practice it needn't be so bad ;).
->
-> Yeah, typically phones are not IO bound :-)
->
->> So if it is sub-second unless someone
->> loads the storage, then that sounds doable even for metadata. But we'l=
-l
->> need to attach ->migratepage callback to blkdev pages and at least in =
-ext4
->> case teach it how to move pages tracked by the journal.
->
-> Right, making it possible at all if of course much prefered over not
-> possible, regardless of timeliness :-)
->
->>> Sadly its not only mobile devices that excel in crappy hardware, ther=
-e's
->>> plenty desktop stuff that could use this too, like some of the v4l
->>> devices iirc.
->>    Yeah, but in such usecases the guarantees we can offer for completi=
-on of
->> migration are even more vague :(.
->
-> Yeah, lets start by making it possible, after that we can maybe look at
-> making it better, who knows.
->
+Good to hear a probable cause was found. Unfortunately for this bug's
+progress, i've switched to a newer kernel altogether since the 3.13
+tree in Ubuntu has had a lot of other problems besides this
+EXT4 ext_mb_generate_buddy issue.
 
-Is my patch applicable? Or what do I have to do now?
+With 3.15.0 i have not experienced any ext4 issues at all.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
+If you want me to, i would be willing to boot that VM in 3.13 with this
+patch, but as said, it can take ages before the bug was triggered...
+
+Thanks for your hard work.
+
+-Sndr.
+-- 
+| > Because we read from top to bottom.
+| > > Why should i start my email reply *below* the quoted text?
+| 4096R/20CC6CD2 - 6D40 1A20 B9AA 87D4 84C7  FBD6 F3A9 9442 20CC 6CD2
