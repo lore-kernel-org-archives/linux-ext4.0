@@ -1,311 +1,159 @@
-From: Rui Xiang <rui.xiang@huawei.com>
-Subject: Re: testing result of loop-aio patchset on ext3
-Date: Thu, 7 Aug 2014 11:09:33 +0800
-Message-ID: <53E2EDED.2070502@huawei.com>
-References: <53C3A42E.40000@huawei.com> <alpine.LFD.2.00.1407141142520.13527@localhost.localdomain> <53C5F770.9030105@huawei.com> <alpine.LFD.2.00.1407160955010.2431@localhost.localdomain> <53C645AA.9080509@huawei.com> <alpine.LFD.2.00.1407181105410.12453@localhost.localdomain> <53CC7C47.9040001@huawei.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Dave Kleikamp <dave.kleikamp@oracle.com>,
-	<linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>, Li Zefan <lizefan@huawei.com>
-To: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <53CC7C47.9040001@huawei.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH v3 3/6] ext4: cache extent hole in extent status tree for ext4_da_map_blocks()
+Date: Thu,  7 Aug 2014 11:35:50 +0800
+Message-ID: <1407382553-24256-4-git-send-email-wenqing.lz@taobao.com>
+References: <1407382553-24256-1-git-send-email-wenqing.lz@taobao.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.cz>, Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:63784 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756746AbaHGDbH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Aug 2014 23:31:07 -0400
+Received: by mail-pa0-f47.google.com with SMTP id kx10so4575489pab.20
+        for <linux-ext4@vger.kernel.org>; Wed, 06 Aug 2014 20:31:07 -0700 (PDT)
+In-Reply-To: <1407382553-24256-1-git-send-email-wenqing.lz@taobao.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2014/7/21 10:34, Rui Xiang wrote:
-> On 2014/7/18 17:10, Luk=E1=9A Czerner wrote:
->> On Wed, 16 Jul 2014, Rui Xiang wrote:
->>
->>> Date: Wed, 16 Jul 2014 17:28:10 +0800
->>> From: Rui Xiang <rui.xiang@huawei.com>
->>> To: Luk=E1=9A Czerner <lczerner@redhat.com>
->>> Cc: Dave Kleikamp <dave.kleikamp@oracle.com>, linux-ext4@vger.kerne=
-l.org,
->>>     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
->>>     Li Zefan <lizefan@huawei.com>
->>> Subject: Re: testing result of loop-aio patchset on ext3
->>>
->>> On 2014/7/16 15:58, Luk=E1=9A Czerner wrote:
->>>> On Wed, 16 Jul 2014, Rui Xiang wrote:
->>>>
->>>>> Date: Wed, 16 Jul 2014 11:54:24 +0800
->>>>> From: Rui Xiang <rui.xiang@huawei.com>
->>>>> To: Luk=E1=9A Czerner <lczerner@redhat.com>
->>>>> Cc: Dave Kleikamp <dave.kleikamp@oracle.com>, linux-ext4@vger.ker=
-nel.org,
->>>>>     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
->>>>>     Li Zefan <lizefan@huawei.com>
->>>>> Subject: Re: testing result of loop-aio patchset on ext3
->>>>>
->>>>> On 2014/7/14 17:51, Luk=E1=9A Czerner wrote:
->>>>>> On Mon, 14 Jul 2014, Rui Xiang wrote:
->>>>>>
->>>>>>> Date: Mon, 14 Jul 2014 17:34:38 +0800
->>>>>>> From: Rui Xiang <rui.xiang@huawei.com>
->>>>>>> To: Dave Kleikamp <dave.kleikamp@oracle.com>, linux-ext4@vger.k=
-ernel.org
->>>>>>> Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org=
-,
->>>>>>>     Li Zefan <lizefan@huawei.com>
->>>>>>> Subject: testing result of loop-aio patchset on ext3
->>>>>>>
->>>>>>> Hi Dave,
->>>>>>>
->>>>>>> We export a container image file as a block device via loop dev=
-ice, but we
->>>>>>> found it's very easy that the container rootfs gets corrupted d=
-ue to power
->>>>>>> loss.
->>>>>>>
->>>>>>> Your early version of loop-aio patchset said the patchset can m=
-ake loop
->>>>>>> mounted filesystems recoverable(lkml.org/lkml/2012/3/30/317), b=
-ut we found
->>>>>>> it doesn't help.
->>>>>>>
->>>>>>> Both the guest fs and host fs are ext3.
->>>>>>>
->>>>>>> The loop-aio patchset is from:
->>>>>>> git://github.com/kleikamp/linux-shaggy.git aio_loop
->>>>>>>
->>>>>>> Steps:
->>>>>>> 1. dd a 10G image, mkfs.ext3,
->>>>>>>   # dd if=3D/dev/zero of=3D./raw_image bs=3D1M count=3D10000
->>>>>>>   # echo y | mkfs.ext3 raw_image
->>>>>>>
->>>>>>> 2. losetup a loop device, mount at ./test_dir
->>>>>>>   # losetup /dev/loop1 raw_image
->>>>>>>   # mount /dev/loop1 ./test_dir
->>>>>>>
->>>>>>> 3. copy fs_mark into test_dir and run
->>>>>>>   # ./fs_mark -d ./tmp/ -s 102400000 -n 80
->>>>>>>
->>>>>>> 4. during runing fs_mark, make systerm reboot indirectly.
->>>>>>>   # echo b > /proc/sysrq-trigger
->>>>>>>
->>>>>>> After systerm booted up, sometimes fsck reported raw_image fs h=
-as been damaged.
->>>>>>>
->>>>>>> # fsck.ext3 -n raw_image
->>>>>>> e2fsck 1.41.9 (22-Aug-2009)
->>>>>>> Warning: skipping journal recovery because doing a read-only fi=
-lesystem check.
->>>>>>> raw_image contains a file system with errors, check forced.
->>>>>>> Pass 1: Checking inodes, blocks, and sizes
->>>>>>> Pass 2: Checking directory structure
->>>>>>> Pass 3: Checking directory connectivity
->>>>>>> Pass 4: Checking reference counts
->>>>>>> Pass 5: Checking group summary information
->>>>>>> Free blocks count wrong (2481348, counted=3D2480577).
->>>>>>> Fix? no
->>>>>>> Free inodes count wrong (640837, counted=3D640835).
->>>>>>> Fix? no
->>>>>>> raw_image: ********** WARNING: Filesystem still has errors ****=
-******
->>>>>>> raw_image: 11/640848 files (0.0% non-contiguous), 78652/2560000=
- blocks
->>>>>>
->>>>>> It's not damaged, this is expected result if you're using old
->>>>>> e2fsprogs which still treats this as an error.
->>>>>>
->>>>>> It's not an error because we only update superblock summary at
->>>>>> unmount time so with unclean shutdown it's likely that it does n=
-ot
->>>>>> match the reality, but e2fsck can and will easily fix that for y=
-ou.
->>>>>>
->>>>>> Please try e2fsprogs v1.42.3 or newer.
->>>>>>
->>>>>
->>>>> Hi Lukas,
->>>>>
->>>>> I updated e2fsprogs to v1.42.3, and user the newer fsck.ext3 to c=
-heck raw_image.
->>>>> Exactly, the result seemed normal.
->>>>
->>>> Now I can see that there are much more problems than before, that'=
-s
->>>> weird. Sorry for not making this clear, but for this kind of
->>>> reproducers please use the most recent e2fsprogs. Also , what is t=
-he
->>>> kernel version you're using in this test ?
->>>>
->>>
->>> I use the most recent e2fsprogs 1.42.11 to check, and the error inf=
-o is same as
->>> result fscked by v1.42.3. It seems that shouldn't be the reason.
->>>
->>> Otherwise, the kernel version in this test is stable 3.4.
->>
->> In that case, this is a problem somewhere else. I'll try to
->> reproduce and see what I can see.
->>
->> I assume you're not able to reproduce this on a real device ?
->>
->=20
-> Yes, it only exits on a loop device in my test.
->=20
-> Otherwise, There was another case in this test:
->=20
-> I fsck the err image with "-n", the result contains 7 issues.
->=20
-> # fsck.ext3 -n image1
-> Warning: skipping journal recovery because doing a read-only filesyst=
-em check.
-> image1 has been mounted 36 times without being checked, check forced.
-> Pass 1: Checking inodes, blocks, and sizes
-> *Inode 16407, i_size is 643005, should be 647168.  Fix? no
-> *Inode 16407, i_blocks is 1264, should be 1272.  Fix? no
-> *Inode 409941, i_blocks is 200208, should be 16688.  Fix? no
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> *Block bitmap differences:  -1643951 +1644741 -(1646592--1646598) +(1=
-648640--1648646) -(1657079--1658102) -(1658104--1659127) -(1659129--166=
-0152) -(1660154--1661177) -(1661179--1662202) -(1662204--1663227) -(166=
-3229--1664252) -(1664254--1665277) -(1665279--1666302) -(1666304--16673=
-27) -(1667329--1668352) -(1668354--1669377) -(1669379--1670402) -(16704=
-04--1671167) -(1671688--1671947) -(1671949--1672972) -(1672974--1673997=
-) -(1673999--1675022) -(1675024--1676047) -(1676049--1677072) -(1677074=
---1678097) -(1678099--1679122) -(1679124--1680147) -(1680149--1680560)
-> Fix? no
-> *Free blocks count wrong for group #2 (31522, counted=3D31520).
-> Fix? no
-> *Free blocks count wrong for group #43 (15870, counted=3D15871).
-> Fix? no
-> *Free blocks count wrong for group #45 (398, counted=3D396).
-> Fix? no
-> *Free blocks count wrong (2203971, counted=3D2203968).
-> Fix? no
-> image1: ********** WARNING: Filesystem still has errors **********
-> image1: 13008/655360 files (0.3% non-contiguous), 417469/2621440 bloc=
-ks
->=20
-> When I "fsck -y" the image, it seems that only fixes 1 issue.
->=20
-> # fsck.ext3 -y image1
-> image1: recovering journal
-> image1 has been mounted 36 times without being checked, check forced.
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> *Free blocks count wrong (2203971, counted=3D2203968).
-> Fix<y>? yes
-> image1: ***** FILE SYSTEM WAS MODIFIED *****
-> image1: 13008/655360 files (0.3% non-contiguous), 417472/2621440 bloc=
-ks
->=20
-> So, I assume journal is revocered before fs checking while doing
-> "fsck -y", and other issues are fixed during fs revovering journal,
->  is that?
->=20
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-Hi Lukas,
+Currently extent status tree doesn't cache extent hole when a write
+looks up in extent tree to make sure whether a block has been allocated
+or not.  In this case, we don't put extent hole in extent cache because
+later this extent might be removed and a new delayed extent might be
+added back.  But it will cause a defect when we do a lot of writes.
+If we don't put extent hole in extent cache, the following writes also
+need to access extent tree to look at whether or not a block has been
+allocated.  It brings a cache miss.  This commit fixes this defect.
+Meanwhile, if an inode has no any extent, this extent hole also will
+be cached.
 
-Do you have some new opinions about this?=20
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Jan Kara <jack@suse.cz>
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+ fs/ext4/ext4.h              |    4 +---
+ fs/ext4/extents.c           |   23 +++++++++--------------
+ fs/ext4/inode.c             |    6 ++----
+ include/trace/events/ext4.h |    3 +--
+ 4 files changed, 13 insertions(+), 23 deletions(-)
 
-Otherwise, I found the issue after recovering journal was always that f=
-ree blocks
-count was more than counted one during above test.=20
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6f294d3..7df9220 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -565,10 +565,8 @@ enum {
+ #define EXT4_GET_BLOCKS_KEEP_SIZE		0x0080
+ 	/* Do not take i_data_sem locking in ext4_map_blocks */
+ #define EXT4_GET_BLOCKS_NO_LOCK			0x0100
+-	/* Do not put hole in extent cache */
+-#define EXT4_GET_BLOCKS_NO_PUT_HOLE		0x0200
+ 	/* Convert written extents to unwritten */
+-#define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0400
++#define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0200
+ 
+ /*
+  * The bit position of these flags must not overlap with any of the
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 76c2df3..6463d34 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2284,16 +2284,15 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
+ 				ext4_lblk_t block)
+ {
+ 	int depth = ext_depth(inode);
+-	unsigned long len = 0;
+-	ext4_lblk_t lblock = 0;
++	unsigned long len;
++	ext4_lblk_t lblock;
+ 	struct ext4_extent *ex;
+ 
+ 	ex = path[depth].p_ext;
+ 	if (ex == NULL) {
+-		/*
+-		 * there is no extent yet, so gap is [0;-] and we
+-		 * don't cache it
+-		 */
++		/* there is no extent yet, so gap is [0;-] */
++		lblock = 0;
++		len = EXT_MAX_BLOCKS;
+ 		ext_debug("cache gap(whole file):");
+ 	} else if (block < le32_to_cpu(ex->ee_block)) {
+ 		lblock = block;
+@@ -2302,9 +2301,6 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
+ 				block,
+ 				le32_to_cpu(ex->ee_block),
+ 				 ext4_ext_get_actual_len(ex));
+-		if (!ext4_find_delalloc_range(inode, lblock, lblock + len - 1))
+-			ext4_es_insert_extent(inode, lblock, len, ~0,
+-					      EXTENT_STATUS_HOLE);
+ 	} else if (block >= le32_to_cpu(ex->ee_block)
+ 			+ ext4_ext_get_actual_len(ex)) {
+ 		ext4_lblk_t next;
+@@ -2318,14 +2314,14 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
+ 				block);
+ 		BUG_ON(next == lblock);
+ 		len = next - lblock;
+-		if (!ext4_find_delalloc_range(inode, lblock, lblock + len - 1))
+-			ext4_es_insert_extent(inode, lblock, len, ~0,
+-					      EXTENT_STATUS_HOLE);
+ 	} else {
+ 		BUG();
+ 	}
+ 
+ 	ext_debug(" -> %u:%lu\n", lblock, len);
++	if (!ext4_find_delalloc_range(inode, lblock, lblock + len - 1))
++		ext4_es_insert_extent(inode, lblock, len, ~0,
++				      EXTENT_STATUS_HOLE);
+ }
+ 
+ /*
+@@ -4362,8 +4358,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 		 * put just found gap into cache to speed up
+ 		 * subsequent requests
+ 		 */
+-		if ((flags & EXT4_GET_BLOCKS_NO_PUT_HOLE) == 0)
+-			ext4_ext_put_gap_in_cache(inode, path, map->m_lblk);
++		ext4_ext_put_gap_in_cache(inode, path, map->m_lblk);
+ 		goto out2;
+ 	}
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 367a60c..d1ad9f9 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1485,11 +1485,9 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 			map->m_flags |= EXT4_MAP_FROM_CLUSTER;
+ 		retval = 0;
+ 	} else if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+-		retval = ext4_ext_map_blocks(NULL, inode, map,
+-					     EXT4_GET_BLOCKS_NO_PUT_HOLE);
++		retval = ext4_ext_map_blocks(NULL, inode, map, 0);
+ 	else
+-		retval = ext4_ind_map_blocks(NULL, inode, map,
+-					     EXT4_GET_BLOCKS_NO_PUT_HOLE);
++		retval = ext4_ind_map_blocks(NULL, inode, map, 0);
+ 
+ add_delayed:
+ 	if (retval == 0) {
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index ff4bd1b..9337d36 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -43,8 +43,7 @@ struct extent_status;
+ 	{ EXT4_GET_BLOCKS_METADATA_NOFAIL,	"METADATA_NOFAIL" },	\
+ 	{ EXT4_GET_BLOCKS_NO_NORMALIZE,		"NO_NORMALIZE" },	\
+ 	{ EXT4_GET_BLOCKS_KEEP_SIZE,		"KEEP_SIZE" },		\
+-	{ EXT4_GET_BLOCKS_NO_LOCK,		"NO_LOCK" },		\
+-	{ EXT4_GET_BLOCKS_NO_PUT_HOLE,		"NO_PUT_HOLE" })
++	{ EXT4_GET_BLOCKS_NO_LOCK,		"NO_LOCK" })
+ 
+ #define show_mflags(flags) __print_flags(flags, "",	\
+ 	{ EXT4_MAP_NEW,		"N" },			\
+-- 
+1.7.9.7
 
-> *Free blocks count wrong (2203971, counted=3D2203968).
-> Fix<y>? yes
-
-
-And was that fsck result acceptable to continue using the loop device, =
-but not a=20
-damage for the filesysterm above the device?
-
-
-
-Thanks!
-
-
-> Thanks!
->=20
->> Thanks!
->> -Lukas
->>
->>>
->>>
->>> Thanks!
->>>
->>>> Thanks!
->>>> -Lukas
->>>>
->>>>>
->>>>> Then, I continue my previous test. And after testing 35 times, "f=
-sck -n" reported image fs
->>>>> had been damaged, too.
->>>>>
->>>>>  # fsck.ext3 -n image1
->>>>> e2fsck 1.42.3.wc1 (28-May-2012)
->>>>> Warning: skipping journal recovery because doing a read-only file=
-system check.
->>>>> image1 has been mounted 36 times without being checked, check for=
-ced.
->>>>> Pass 1: Checking inodes, blocks, and sizes
->>>>> Inode 16407, i_size is 597447, should be 602112.  Fix? no
->>>>> Inode 16407, i_blocks is 1176, should be 1184.  Fix? no
->>>>> Inode 409941, i_blocks is 200208, should be 112.  Fix? no
->>>>> Pass 2: Checking directory structure
->>>>> Pass 3: Checking directory connectivity
->>>>> Pass 4: Checking reference counts
->>>>> Pass 5: Checking group summary information
->>>>> Block bitmap differences:  -1506836 -1506843 -(1506859--1506860) =
--(1660941--1661964) -(1661966--1671167) -(1671688--1686473)
->>>>> Fix? no
->>>>> Free blocks count wrong for group #2 (31558, counted=3D31556).
->>>>> Fix? no
->>>>> Free blocks count wrong for group #43 (15871, counted=3D15867).
->>>>> Fix? no
->>>>> Free blocks count wrong (2204041, counted=3D2204035).
->>>>> Fix? no
->>>>> image1: ********** WARNING: Filesystem still has errors *********=
-*
->>>>> image1: 13008/655360 files (0.3% non-contiguous), 417399/2621440 =
-blocks
->>>>>
->>>>> I backup the image to image_bk, and then mount the image to a dir=
-, and cat all files in the image.
->>>>> Steps:
->>>>> # dd if=3Dimage1 of=3Dimage_bk
->>>>> # mount image1 err_dir
->>>>> # find -name '*' -exec cat > /dev/null {} \;
->>>>>
->>>>> There are no issues during catting, and no err in dmesg too.
->>>>>
->>>>> *But when I umount the image1 from err_dir, The fsck result didn'=
-t show any fs corruption info.
->>>>>
->>>>> I mount image_bk to err_dir and umount it with no operation direc=
-tly. The result is same to iamge1.
->>>>>
->>>>> *So, is fs in the image as a block device via loop device damaged=
- really, or does it have some others issues?=20
->>>>> Could you give me some opinions?
->>>>>
->>>>>
->>>>> Thanks.
->>>>>
->>>>>
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-e=
-xt4" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.htm=
-l
->>>
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-fsd=
-evel" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->=20
