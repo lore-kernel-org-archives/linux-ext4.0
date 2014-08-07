@@ -1,7 +1,7 @@
 From: Rui Xiang <rui.xiang@huawei.com>
 Subject: Re: testing result of loop-aio patchset on ext3
-Date: Thu, 7 Aug 2014 10:42:39 +0800
-Message-ID: <53E2E79F.6040903@huawei.com>
+Date: Thu, 7 Aug 2014 11:09:33 +0800
+Message-ID: <53E2EDED.2070502@huawei.com>
 References: <53C3A42E.40000@huawei.com> <alpine.LFD.2.00.1407141142520.13527@localhost.localdomain> <53C5F770.9030105@huawei.com> <alpine.LFD.2.00.1407160955010.2431@localhost.localdomain> <53C645AA.9080509@huawei.com> <alpine.LFD.2.00.1407181105410.12453@localhost.localdomain> <53CC7C47.9040001@huawei.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=windows-1252
@@ -208,7 +208,23 @@ ks
 
 Hi Lukas,
 
+Do you have some new opinions about this?=20
 
+Otherwise, I found the issue after recovering journal was always that f=
+ree blocks
+count was more than counted one during above test.=20
+
+> *Free blocks count wrong (2203971, counted=3D2203968).
+> Fix<y>? yes
+
+
+And was that fsck result acceptable to continue using the loop device, =
+but not a=20
+damage for the filesysterm above the device?
+
+
+
+Thanks!
 
 
 > Thanks!
