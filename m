@@ -1,530 +1,544 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v3 2/6] ext4: track extent status tree shrinker delay statictics
-Date: Thu,  7 Aug 2014 11:35:49 +0800
-Message-ID: <1407382553-24256-3-git-send-email-wenqing.lz@taobao.com>
-References: <1407382553-24256-1-git-send-email-wenqing.lz@taobao.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
+Subject: [PATCH v3 0/6] ext4: extents status tree shrinker improvement
+Date: Thu,  7 Aug 2014 11:35:47 +0800
+Message-ID: <1407382553-24256-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.cz>, Zheng Liu <wenqing.lz@taobao.com>
+	Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:58348 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756226AbaHGDbF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Aug 2014 23:31:05 -0400
-Received: by mail-pa0-f46.google.com with SMTP id lj1so4616336pab.33
-        for <linux-ext4@vger.kernel.org>; Wed, 06 Aug 2014 20:31:05 -0700 (PDT)
-In-Reply-To: <1407382553-24256-1-git-send-email-wenqing.lz@taobao.com>
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:61949 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754120AbaHGDbA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Aug 2014 23:31:00 -0400
+Received: by mail-pa0-f49.google.com with SMTP id hz1so4587121pad.36
+        for <linux-ext4@vger.kernel.org>; Wed, 06 Aug 2014 20:30:59 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+Hi all,
 
-This commit adds some statictics in extent status tree shrinker.  The
-purpose to add these is that we want to collect more details when we
-encounter a stall caused by extent status tree shrinker.  Here we count
-the following statictics:
-  stats:
-    the number of all objects on all extent status trees
-    the number of reclaimable objects on lru list
-    cache hits/misses
-    the last sorted interval
-    the number of inodes on lru list
-  average:
-    scan time for shrinking some objects
-    the number of shrunk objects
-  maximum:
-    the inode that has max nr. of objects on lru list
-    the maximum scan time for shrinking some objects
+Intro
+=====
 
-The output looks like below:
-  $ cat /proc/fs/ext4/sda1/es_shrinker_info
-  stats:
-    28228 objects
-    6341 reclaimable objects
-    5281/631 cache hits/misses
-    586 ms last sorted interval
-    250 inodes on lru list
-  average:
-    153 us scan time
-    128 shrunk objects
-  maximum:
-    255 inode (255 objects, 198 reclaimable)
-    125723 us max scan time
+Here is the third version to improve the extent status tree shrinker.
+Sorry for very late work.  Thanks Ted's and Dave's suggestions.  I
+revise my work and currently in extent status tree shrinker we should
+fix two issues.  One is how to reclaim some objects from the tree as
+quick as possible, and another is how to keep useful extent cache in
+the tree as many as possible.  The first issue also can be divided into
+two problems: a) how to scan list that tracks all inodes and b) how to
+reclaim object from an inode.  This patch set tries to fix these issues.
 
-If the lru list has never been sorted, the following line will not be
-printed:
-    586ms last sorted interval
-If there is an empty lru list, the following lines also will not be
-printed:
-    250 inodes on lru list
-  ...
-  maximum:
-    255 inode (255 objects, 198 reclaimable)
-    0 us max scan time
+In the patch set, the first two patches just does some cleanups and
+adds some statistics for measuring the improvements.
 
-Meanwhile in this commit a new trace point is defined to print some
-details in __ext4_es_shrink().
+Patch 3 makes extent status tree cache extent hole in delalloc code path
+to improve the cache hit ratio.  Currently we don't cache extent hole
+when we do a delalloc write because this extent hole might be converted
+into delayed soon.  But the defect is that we could miss some extent
+hole in extent cache.  That means that the following writes must lookup
+in extent tree again to make sure whether a block has been allocated or
+not.
 
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: Jan Kara <jack@suse.cz>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- fs/ext4/ext4.h              |    4 +-
- fs/ext4/extents_status.c    |  186 ++++++++++++++++++++++++++++++++++++++++---
- fs/ext4/extents_status.h    |   13 ++-
- fs/ext4/super.c             |   11 +--
- include/trace/events/ext4.h |   31 ++++++++
- 5 files changed, 224 insertions(+), 21 deletions(-)
+Patch 4 makes shrinker replace lru list with a normal list to track all
+inodes.  Then the shrinker uses a round-robin algorithm to scan this
+list.  The purpose that we discard the lru list and use rr algorithm is
+that we don't need to take a long time to keep lru list.  Thus we can
+save some scan time.  Meanwhile this commit tries to reduce the critical
+section.  Thus the locking gets more fine-granularity.  That means that
+other processes don't need to wait on this locking for a long time.  The
+improvement can be seen in test case (b).
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 5b19760..6f294d3 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -890,6 +890,7 @@ struct ext4_inode_info {
- 	struct ext4_es_tree i_es_tree;
- 	rwlock_t i_es_lock;
- 	struct list_head i_es_lru;
-+	unsigned int i_es_all_nr;	/* protected by i_es_lock */
- 	unsigned int i_es_lru_nr;	/* protected by i_es_lock */
- 	unsigned long i_touch_when;	/* jiffies of last accessing */
- 
-@@ -1330,8 +1331,7 @@ struct ext4_sb_info {
- 	/* Reclaim extents from extent status tree */
- 	struct shrinker s_es_shrinker;
- 	struct list_head s_es_lru;
--	unsigned long s_es_last_sorted;
--	struct percpu_counter s_extent_cache_cnt;
-+	struct ext4_es_stats s_es_stats;
- 	struct mb_cache *s_mb_cache;
- 	spinlock_t s_es_lru_lock ____cacheline_aligned_in_smp;
- 
+Patch 5 uses a list to track all reclaimable objects in an inode to
+speed up the reclaim time.  Now when shrinker tries to reclaim some
+objects it should scan rb-tree in an inode.  But in this rb-tree, it
+has some non-reclaimable objects (delayed extent, ext4 uses them to
+finish seeking data/hole, finding delayed range, etc.).  That means the
+shrinker must take some time to skip these non-reclaimble objects during
+the scan time.  So after applying this patch the shrinker can directly
+reclaim objects.  The improvement can be seen in test case (a).
+
+Patch 6 improve the list that tracks all reclaimable objects in order
+to promote the cache hit ratio.  After applied patch 5, the extent
+cache could be flushed by a streaming workload because we don't any
+way to recognize which one should be kept as much as possible.  In this
+commit it splits the list into active list and inactive list.  Meanwhile
+a new flag called '_ACCESSED' is defined.  When an extent cache is
+accessed, this flag will be markd.  When the shrinker encounters this
+flag during scanning list, this extent cache will be moved to the tail
+of active list.  All these active extent caches will be reclaimed when
+we are under high memory pressure and the shrinker doesn't reclaim any
+object in the first round.  The improvement can be seen in test case (c).
+
+Environment
+===========
+$ lscpu
+Architecture:          x86_64
+CPU op-mode(s):        32-bit, 64-bit
+Byte Order:            Little Endian
+CPU(s):                16
+On-line CPU(s) list:   0-15
+Thread(s) per core:    2
+Core(s) per socket:    4
+CPU socket(s):         2
+NUMA node(s):          2
+Vendor ID:             GenuineIntel
+CPU family:            6
+Model:                 44
+Stepping:              2
+CPU MHz:               2400.000
+BogoMIPS:              4799.89
+Virtualization:        VT-x
+L1d cache:             32K
+L1i cache:             32K
+L2 cache:              256K
+L3 cache:              12288K
+NUMA node0 CPU(s):     0-3,8-11
+NUMA node1 CPU(s):     4-7,12-15
+
+$ cat /proc/meminfo
+MemTotal:       24677988 kB
+
+$ df -ah
+/dev/sdb1             453G   51G  380G  12% /mnt/sdb1 (HDD)
+
+Test Case
+=========
+
+Test Case (a)
+-------------
+The test case (a) is used to create a huge number of extent caches in
+500 inodes.  Running this test, we will get a very big rb-tree on every
+inodes.  The purpose is to measure the latency when shrinker reclaim
+object from an inode.
+
+Fio script:
+
+[global]
+ioengine=psync
+bs=4k
+directory=/mnt/sdb1
+group_reporting
+fallocate=0
+direct=0
+filesize=100000g
+size=600000g
+runtime=300
+create_on_open=1
+create_serialize=0
+create_fsync=0
+norandommap
+
+[io]
+rw=write
+numjobs=100
+nrfiles=5
+
+Test Case (b)
+-------------
+The test case (b) is used to create a very long list in super block so
+that we can measure the latency when shrinker scan the list.
+
+Fio script:
+
+[global]
+ioengine=psync
+bs=4k
+directory=/mnt/sdb1
+group_reporting
+fallocate=0
+direct=0
+runtime=300
+create_on_open=1
+create_serialize=0
+create_fsync=0
+norandommap
+
+[io]
+filesize=100000g
+size=600000g
+rw=write
+numjobs=100
+nrfiles=5
+openfiles=10000
+
+[rand]
+filesize=1000g
+size=600000g
+rw=write:4k
+numjobs=20
+nrfiles=20000
+
+Test Case (c)
+-------------
+The test case (c) is used to measure the cache hit/miss.
+
+*NOTE*
+I reduce the memory to 12g in order to make shrinker work more aggressive.
+
+Fio script:
+
+[global]
+ioengine=psync
+bs=4k
+directory=/mnt/sdb1
+group_reporting
+direct=0
+runtime=300
+
+[read]
+rw=read
+numjobs=1
+nrfiles=50
+filesize=1g
+size=600000g
+
+[stream]
+filesize=1000g
+size=600000g
+rw=write
+numjobs=100
+nrfiles=5
+create_on_open=1
+create_serialize=0
+create_fsync=0
+
+Note 1
+------
+*For getting a very fragmented extent status tree, I use the following
+patch to disallow to merge extent cache*
+
 diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 47d60dc..b6c3366 100644
+index b6c3366..f8c693e 100644
 --- a/fs/ext4/extents_status.c
 +++ b/fs/ext4/extents_status.c
-@@ -11,6 +11,8 @@
-  */
- #include <linux/rbtree.h>
- #include <linux/list_sort.h>
-+#include <linux/proc_fs.h>
-+#include <linux/seq_file.h>
- #include "ext4.h"
- #include "extents_status.h"
- 
-@@ -313,19 +315,27 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
- 	 */
- 	if (!ext4_es_is_delayed(es)) {
- 		EXT4_I(inode)->i_es_lru_nr++;
--		percpu_counter_inc(&EXT4_SB(inode->i_sb)->s_extent_cache_cnt);
-+		percpu_counter_inc(&EXT4_SB(inode->i_sb)->
-+					s_es_stats.es_stats_lru_cnt);
- 	}
- 
-+	EXT4_I(inode)->i_es_all_nr++;
-+	percpu_counter_inc(&EXT4_SB(inode->i_sb)->s_es_stats.es_stats_all_cnt);
-+
- 	return es;
- }
- 
- static void ext4_es_free_extent(struct inode *inode, struct extent_status *es)
+@@ -351,6 +351,7 @@ static void ext4_es_free_extent(struct inode *inode, struct
+extent_status *es)
+ static int ext4_es_can_be_merged(struct extent_status *es1,
+                                 struct extent_status *es2)
  {
-+	EXT4_I(inode)->i_es_all_nr--;
-+	percpu_counter_dec(&EXT4_SB(inode->i_sb)->s_es_stats.es_stats_all_cnt);
-+
- 	/* Decrease the lru counter when this es is not delayed */
- 	if (!ext4_es_is_delayed(es)) {
- 		BUG_ON(EXT4_I(inode)->i_es_lru_nr == 0);
- 		EXT4_I(inode)->i_es_lru_nr--;
--		percpu_counter_dec(&EXT4_SB(inode->i_sb)->s_extent_cache_cnt);
-+		percpu_counter_dec(&EXT4_SB(inode->i_sb)->
-+					s_es_stats.es_stats_lru_cnt);
- 	}
- 
- 	kmem_cache_free(ext4_es_cachep, es);
-@@ -731,6 +741,7 @@ int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
- 			  struct extent_status *es)
- {
- 	struct ext4_es_tree *tree;
-+	struct ext4_es_stats *stats;
- 	struct extent_status *es1 = NULL;
- 	struct rb_node *node;
- 	int found = 0;
-@@ -767,11 +778,15 @@ int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
- 	}
- 
- out:
-+	stats = &EXT4_SB(inode->i_sb)->s_es_stats;
- 	if (found) {
- 		BUG_ON(!es1);
- 		es->es_lblk = es1->es_lblk;
- 		es->es_len = es1->es_len;
- 		es->es_pblk = es1->es_pblk;
-+		stats->es_stats_cache_hits++;
-+	} else {
-+		stats->es_stats_cache_misses++;
- 	}
- 
- 	read_unlock(&EXT4_I(inode)->i_es_lock);
-@@ -933,11 +948,16 @@ static int __ext4_es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
- 			    struct ext4_inode_info *locked_ei)
- {
- 	struct ext4_inode_info *ei;
-+	struct ext4_es_stats *es_stats;
- 	struct list_head *cur, *tmp;
- 	LIST_HEAD(skipped);
-+	ktime_t start_time;
-+	u64 scan_time;
- 	int nr_shrunk = 0;
- 	int retried = 0, skip_precached = 1, nr_skipped = 0;
- 
-+	es_stats = &sbi->s_es_stats;
-+	start_time = ktime_get();
- 	spin_lock(&sbi->s_es_lru_lock);
- 
- retry:
-@@ -948,7 +968,8 @@ retry:
- 		 * If we have already reclaimed all extents from extent
- 		 * status tree, just stop the loop immediately.
- 		 */
--		if (percpu_counter_read_positive(&sbi->s_extent_cache_cnt) == 0)
-+		if (percpu_counter_read_positive(
-+				&es_stats->es_stats_lru_cnt) == 0)
- 			break;
- 
- 		ei = list_entry(cur, struct ext4_inode_info, i_es_lru);
-@@ -958,7 +979,7 @@ retry:
- 		 * time.  Normally we try hard to avoid shrinking
- 		 * precached inodes, but we will as a last resort.
- 		 */
--		if ((sbi->s_es_last_sorted < ei->i_touch_when) ||
-+		if ((es_stats->es_stats_last_sorted < ei->i_touch_when) ||
- 		    (skip_precached && ext4_test_inode_state(&ei->vfs_inode,
- 						EXT4_STATE_EXT_PRECACHED))) {
- 			nr_skipped++;
-@@ -992,7 +1013,7 @@ retry:
- 	if ((nr_shrunk == 0) && nr_skipped && !retried) {
- 		retried++;
- 		list_sort(NULL, &sbi->s_es_lru, ext4_inode_touch_time_cmp);
--		sbi->s_es_last_sorted = jiffies;
-+		es_stats->es_stats_last_sorted = jiffies;
- 		ei = list_first_entry(&sbi->s_es_lru, struct ext4_inode_info,
- 				      i_es_lru);
- 		/*
-@@ -1010,6 +1031,22 @@ retry:
- 	if (locked_ei && nr_shrunk == 0)
- 		nr_shrunk = __es_try_to_reclaim_extents(locked_ei, nr_to_scan);
- 
-+	scan_time = ktime_to_ns(ktime_sub(ktime_get(), start_time));
-+	if (likely(es_stats->es_stats_scan_time))
-+		es_stats->es_stats_scan_time = (scan_time +
-+				es_stats->es_stats_scan_time*3) / 4;
-+	else
-+		es_stats->es_stats_scan_time = scan_time;
-+	if (scan_time > es_stats->es_stats_max_scan_time)
-+		es_stats->es_stats_max_scan_time = scan_time;
-+	if (likely(es_stats->es_stats_shrunk))
-+		es_stats->es_stats_shrunk = (nr_shrunk +
-+				es_stats->es_stats_shrunk*3) / 4;
-+	else
-+		es_stats->es_stats_shrunk = nr_shrunk;
-+
-+	trace_ext4_es_shrink(sbi->s_sb, nr_shrunk, scan_time, skip_precached,
-+			     nr_skipped, retried);
- 	return nr_shrunk;
++#if 0
+        if (ext4_es_status(es1) != ext4_es_status(es2))
+                return 0;
+
+@@ -376,6 +377,7 @@ static int ext4_es_can_be_merged(struct extent_status *es1,
+        /* we need to check delayed extent is without unwritten status */
+        if (ext4_es_is_delayed(es1) && !ext4_es_is_unwritten(es1))
+                return 1;
++#endif
+
+        return 0;
  }
- 
-@@ -1020,7 +1057,7 @@ static unsigned long ext4_es_count(struct shrinker *shrink,
- 	struct ext4_sb_info *sbi;
- 
- 	sbi = container_of(shrink, struct ext4_sb_info, s_es_shrinker);
--	nr = percpu_counter_read_positive(&sbi->s_extent_cache_cnt);
-+	nr = percpu_counter_read_positive(&sbi->s_es_stats.es_stats_lru_cnt);
- 	trace_ext4_es_shrink_count(sbi->s_sb, sc->nr_to_scan, nr);
- 	return nr;
- }
-@@ -1033,7 +1070,7 @@ static unsigned long ext4_es_scan(struct shrinker *shrink,
- 	int nr_to_scan = sc->nr_to_scan;
- 	int ret, nr_shrunk;
- 
--	ret = percpu_counter_read_positive(&sbi->s_extent_cache_cnt);
-+	ret = percpu_counter_read_positive(&sbi->s_es_stats.es_stats_lru_cnt);
- 	trace_ext4_es_shrink_scan_enter(sbi->s_sb, nr_to_scan, ret);
- 
- 	if (!nr_to_scan)
-@@ -1045,19 +1082,148 @@ static unsigned long ext4_es_scan(struct shrinker *shrink,
- 	return nr_shrunk;
- }
- 
--void ext4_es_register_shrinker(struct ext4_sb_info *sbi)
-+static void *ext4_es_seq_shrinker_info_start(struct seq_file *seq, loff_t *pos)
-+{
-+	return *pos ? NULL : SEQ_START_TOKEN;
-+}
-+
-+static void *
-+ext4_es_seq_shrinker_info_next(struct seq_file *seq, void *v, loff_t *pos)
-+{
-+	return NULL;
-+}
-+
-+static int ext4_es_seq_shrinker_info_show(struct seq_file *seq, void *v)
-+{
-+	struct ext4_sb_info *sbi = seq->private;
-+	struct ext4_es_stats *es_stats = &sbi->s_es_stats;
-+	struct ext4_inode_info *ei, *max = NULL;
-+	unsigned int inode_cnt = 0;
-+
-+	if (v != SEQ_START_TOKEN)
-+		return 0;
-+
-+	/* here we just find an inode that has the max nr. of objects */
-+	spin_lock(&sbi->s_es_lru_lock);
-+	list_for_each_entry(ei, &sbi->s_es_lru, i_es_lru) {
-+		inode_cnt++;
-+		if (max && max->i_es_all_nr < ei->i_es_all_nr)
-+			max = ei;
-+		else if (!max)
-+			max = ei;
-+	}
-+	spin_unlock(&sbi->s_es_lru_lock);
-+
-+	seq_printf(seq, "stats:\n  %lld objects\n  %lld reclaimable objects\n",
-+		   percpu_counter_sum_positive(&es_stats->es_stats_all_cnt),
-+		   percpu_counter_sum_positive(&es_stats->es_stats_lru_cnt));
-+	seq_printf(seq, "  %lu/%lu cache hits/misses\n",
-+		   es_stats->es_stats_cache_hits,
-+		   es_stats->es_stats_cache_misses);
-+	if (es_stats->es_stats_last_sorted != 0)
-+		seq_printf(seq, "  %u ms last sorted interval\n",
-+			   jiffies_to_msecs(jiffies -
-+					    es_stats->es_stats_last_sorted));
-+	if (inode_cnt)
-+		seq_printf(seq, "  %d inodes on lru list\n", inode_cnt);
-+
-+	seq_printf(seq, "average:\n  %llu us scan time\n",
-+	    div_u64(es_stats->es_stats_scan_time, 1000));
-+	seq_printf(seq, "  %lu shrunk objects\n", es_stats->es_stats_shrunk);
-+	if (inode_cnt)
-+		seq_printf(seq,
-+		    "maximum:\n  %lu inode (%u objects, %u reclaimable)\n"
-+		    "  %llu us max scan time\n",
-+		    max->vfs_inode.i_ino, max->i_es_all_nr, max->i_es_lru_nr,
-+		    div_u64(es_stats->es_stats_max_scan_time, 1000));
-+
-+	return 0;
-+}
-+
-+static void ext4_es_seq_shrinker_info_stop(struct seq_file *seq, void *v)
-+{
-+}
-+
-+static const struct seq_operations ext4_es_seq_shrinker_info_ops = {
-+	.start = ext4_es_seq_shrinker_info_start,
-+	.next  = ext4_es_seq_shrinker_info_next,
-+	.stop  = ext4_es_seq_shrinker_info_stop,
-+	.show  = ext4_es_seq_shrinker_info_show,
-+};
-+
-+static int
-+ext4_es_seq_shrinker_info_open(struct inode *inode, struct file *file)
-+{
-+	int ret;
-+
-+	ret = seq_open(file, &ext4_es_seq_shrinker_info_ops);
-+	if (!ret) {
-+		struct seq_file *m = file->private_data;
-+		m->private = PDE_DATA(inode);
-+	}
-+
-+	return ret;
-+}
-+
-+static int
-+ext4_es_seq_shrinker_info_release(struct inode *inode, struct file *file)
-+{
-+	return seq_release(inode, file);
-+}
-+
-+static const struct file_operations ext4_es_seq_shrinker_info_fops = {
-+	.owner		= THIS_MODULE,
-+	.open		= ext4_es_seq_shrinker_info_open,
-+	.read		= seq_read,
-+	.llseek		= seq_lseek,
-+	.release	= ext4_es_seq_shrinker_info_release,
-+};
-+
-+int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
- {
-+	int err;
-+
- 	INIT_LIST_HEAD(&sbi->s_es_lru);
- 	spin_lock_init(&sbi->s_es_lru_lock);
--	sbi->s_es_last_sorted = 0;
-+	sbi->s_es_stats.es_stats_last_sorted = 0;
-+	sbi->s_es_stats.es_stats_shrunk = 0;
-+	sbi->s_es_stats.es_stats_cache_hits = 0;
-+	sbi->s_es_stats.es_stats_cache_misses = 0;
-+	sbi->s_es_stats.es_stats_scan_time = 0;
-+	sbi->s_es_stats.es_stats_max_scan_time = 0;
-+	err = percpu_counter_init(&sbi->s_es_stats.es_stats_all_cnt, 0);
-+	if (err)
-+		return err;
-+	err = percpu_counter_init(&sbi->s_es_stats.es_stats_lru_cnt, 0);
-+	if (err)
-+		goto err1;
-+
- 	sbi->s_es_shrinker.scan_objects = ext4_es_scan;
- 	sbi->s_es_shrinker.count_objects = ext4_es_count;
- 	sbi->s_es_shrinker.seeks = DEFAULT_SEEKS;
--	register_shrinker(&sbi->s_es_shrinker);
-+	err = register_shrinker(&sbi->s_es_shrinker);
-+	if (err)
-+		goto err2;
-+
-+	if (sbi->s_proc)
-+		proc_create_data("es_shrinker_info", S_IRUGO, sbi->s_proc,
-+				 &ext4_es_seq_shrinker_info_fops, sbi);
-+
-+	return 0;
-+
-+err2:
-+	percpu_counter_destroy(&sbi->s_es_stats.es_stats_lru_cnt);
-+err1:
-+	percpu_counter_destroy(&sbi->s_es_stats.es_stats_all_cnt);
-+	return err;
- }
- 
- void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi)
- {
-+	if (sbi->s_proc)
-+		remove_proc_entry("es_shrinker_info", sbi->s_proc);
-+	percpu_counter_destroy(&sbi->s_es_stats.es_stats_all_cnt);
-+	percpu_counter_destroy(&sbi->s_es_stats.es_stats_lru_cnt);
- 	unregister_shrinker(&sbi->s_es_shrinker);
- }
- 
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index f1b62a4..efd5f97 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -64,6 +64,17 @@ struct ext4_es_tree {
- 	struct extent_status *cache_es;	/* recently accessed extent */
- };
- 
-+struct ext4_es_stats {
-+	unsigned long es_stats_last_sorted;
-+	unsigned long es_stats_shrunk;
-+	unsigned long es_stats_cache_hits;
-+	unsigned long es_stats_cache_misses;
-+	u64 es_stats_scan_time;
-+	u64 es_stats_max_scan_time;
-+	struct percpu_counter es_stats_all_cnt;
-+	struct percpu_counter es_stats_lru_cnt;
-+};
-+
- extern int __init ext4_init_es(void);
- extern void ext4_exit_es(void);
- extern void ext4_es_init_tree(struct ext4_es_tree *tree);
-@@ -138,7 +149,7 @@ static inline void ext4_es_store_pblock_status(struct extent_status *es,
- 		       (pb & ~ES_MASK));
- }
- 
--extern void ext4_es_register_shrinker(struct ext4_sb_info *sbi);
-+extern int ext4_es_register_shrinker(struct ext4_sb_info *sbi);
- extern void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi);
- extern void ext4_es_lru_add(struct inode *inode);
- extern void ext4_es_lru_del(struct inode *inode);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 32b43ad..7a06eb4 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -820,7 +820,6 @@ static void ext4_put_super(struct super_block *sb)
- 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
- 	percpu_counter_destroy(&sbi->s_dirs_counter);
- 	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
--	percpu_counter_destroy(&sbi->s_extent_cache_cnt);
- 	brelse(sbi->s_sbh);
- #ifdef CONFIG_QUOTA
- 	for (i = 0; i < MAXQUOTAS; i++)
-@@ -885,6 +884,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	ext4_es_init_tree(&ei->i_es_tree);
- 	rwlock_init(&ei->i_es_lock);
- 	INIT_LIST_HEAD(&ei->i_es_lru);
-+	ei->i_es_all_nr = 0;
- 	ei->i_es_lru_nr = 0;
- 	ei->i_touch_when = 0;
- 	ei->i_reserved_data_blocks = 0;
-@@ -3889,12 +3889,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	sbi->s_err_report.data = (unsigned long) sb;
- 
- 	/* Register extent status tree shrinker */
--	ext4_es_register_shrinker(sbi);
--
--	if ((err = percpu_counter_init(&sbi->s_extent_cache_cnt, 0)) != 0) {
--		ext4_msg(sb, KERN_ERR, "insufficient memory");
-+	if (ext4_es_register_shrinker(sbi))
- 		goto failed_mount3;
--	}
- 
- 	sbi->s_stripe = ext4_get_stripe_size(sbi);
- 	sbi->s_extent_max_zeroout_kb = 32;
-@@ -4224,10 +4220,9 @@ failed_mount_wq:
- 		jbd2_journal_destroy(sbi->s_journal);
- 		sbi->s_journal = NULL;
- 	}
--failed_mount3:
- 	ext4_es_unregister_shrinker(sbi);
-+failed_mount3:
- 	del_timer_sync(&sbi->s_err_report);
--	percpu_counter_destroy(&sbi->s_extent_cache_cnt);
- 	if (sbi->s_mmp_tsk)
- 		kthread_stop(sbi->s_mmp_tsk);
- failed_mount2:
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 849aaba..ff4bd1b 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -2450,6 +2450,37 @@ TRACE_EVENT(ext4_collapse_range,
- 		  __entry->offset, __entry->len)
- );
- 
-+TRACE_EVENT(ext4_es_shrink,
-+	TP_PROTO(struct super_block *sb, int nr_shrunk, u64 scan_time,
-+		 int skip_precached, int nr_skipped, int retried),
-+
-+	TP_ARGS(sb, nr_shrunk, scan_time, skip_precached, nr_skipped, retried),
-+
-+	TP_STRUCT__entry(
-+		__field(	dev_t,		dev		)
-+		__field(	int,		nr_shrunk	)
-+		__field(	unsigned long long, scan_time	)
-+		__field(	int,		skip_precached	)
-+		__field(	int,		nr_skipped	)
-+		__field(	int,		retried		)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev		= sb->s_dev;
-+		__entry->nr_shrunk	= nr_shrunk;
-+		__entry->scan_time	= div_u64(scan_time, 1000);
-+		__entry->skip_precached = skip_precached;
-+		__entry->nr_skipped	= nr_skipped;
-+		__entry->retried	= retried;
-+	),
-+
-+	TP_printk("dev %d,%d nr_shrunk %d, scan_time %llu skip_precached %d "
-+		  "nr_skipped %d retried %d",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->nr_shrunk,
-+		  __entry->scan_time, __entry->skip_precached,
-+		  __entry->nr_skipped, __entry->retried)
-+);
-+
- #endif /* _TRACE_EXT4_H */
- 
- /* This part must be outside protection */
+
+Note 2
+------
+For caching data in memory as many as possible, two sysctl parameters
+are changed:
+ sudo sysctl vm.dirty_ratio=80
+ sudo sysctl vm.dirty_background_ratio=60
+
+Result
+======
+Every test cases we collect 5 metrics:
+ 1. The shrinker avg. scan time
+ 2. The shrinker max scan time
+ 3. The extent cache hit/miss
+ 4. The userspace avg. latency
+ 5. The userspace max latency
+
+Due to using fio to do the test, it is easy to get the userspace latency.
+
+For review, I brief the patch as blow:
+ * baseline: ext4/dev branch + patch 1, 2
+ * es-cache: baseline + patch 3
+ * es-slist: es-cache + patch 4
+ * es-ilist: es-slist + patch 5
+ * es-gc:    es-ilist + patch 6
+
+Every test cases should be run 3 times.
+
+1. es avg. scan time
+
+test case (a)
+-------------
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3          9402         11552          9633     10195.667      1180.284
++   3          7069         10358          9931     9119.3333     1788.4301
+*   3          3754          6854          4480     5029.3333     1621.3653
+%   3           190           243           204     212.33333     27.465129
+#   3           269           513           290     357.33333     135.21957
+
+test case (b)
+-------------
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3         23047         36274         30195     29838.667     6620.6958
++   3          2992         32867         14370         16743     15078.205
+*   3           124          1281           173           526     654.30803
+%   3           133           157           136           142     13.076697
+#   3           124           315           140           193     105.95754
+
+test case (c)
+-------------
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3           137           235           163     178.33333     50.767444
++   3            57          9333          6383     5257.6667     4739.2853
+*   3            48            54            49     50.333333     3.2145503
+%   3            52            57            53            54     2.6457513
+#   3            49            88            69     68.666667     19.502137
+
+2. es max scan time
+
+test case (a)
+-------------
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3         17503         22339         19329     19723.667     2442.0371
++   3         26275         33930         31867     30690.667     3960.7545
+*   3        170970        199678        188287     186311.67     14455.579
+%   3           325           405           382     370.66667     41.186567
+#   3           500           857           790     715.66667     189.75335
+
+test case (b)
+-------------
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3        361903        384286        380877     375688.67       12059.8
++   3        277470        313231        293883     294861.33     17900.562
+*   3        112727        131888        114761        119792     10524.695
+%   3         59466         76178         67195         67613     8363.8376
+#   3         38747         84505         45682     56311.333     24661.421
+
+test case (c)
+-------------
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3           337           462           355     384.66667      67.57465
++   3         22136         31236         24031         25801     4801.2681
+*   3         36105         56888         54150     49047.667     11291.972
+%   3           152           191           158           167            21
+#   3           115           154           139           136     19.672316
+
+3. cache hit/miss
+
+test case (a)
+-------------
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3          4673          4858          4832     4787.6667     100.15155
++   3       7911368       8364372       8263210       8179650     237781.12
+*   3       6657959       6900137       6830922     6796339.3     124737.79
+%   3       6525957       6691967       6535884     6584602.7     93112.627
+#   3      10061008      10704728      10501548      10422428      329072.7
+
+test case (b)
+-------------
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3       1645455       1648083       1646239     1646592.3     1349.1588
++   3       8531336       9081690       8570763     8727929.7     306999.03
+*   3       6591288       6643048       6595983     6610106.3     28624.741
+%   3       6501434       6556700       6537840     6531991.3     28093.378
+#   3       9656351       9801225       9739132       9732236      72682.77
+
+test case (c)
+-------------
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3         10873         18200         15614     14895.667     3715.9433
++   3       1781010       1925331       1888470       1864937      74983.26
+*   3       1697486       1929501       1765950     1797645.7     119210.74
+%   3       1703674       1870348       1743376       1772466     87061.626
+#   3       1687157       1953796       1774275       1805076     135961.82
+
+4. userspace avg. latency (usec)
+
+test case (a)
+-------------
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3       2638.64       2798.02       2649.18       2695.28     89.131384
++   3       2641.12       2817.16       2648.18     2702.1533     99.661231
+*   3       2637.54       2812.82       2642.68       2697.68     99.747279
+%   3       2850.76       2859.45       2852.68     2854.2967     4.5650009
+#   3       2643.07       2817.62       2653.54     2704.7433     97.894135
+
+test case (b)
+-------------
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3        3561.9        3580.1       3563.47       3568.49     10.085152
++   3       3596.12       3631.57        3600.2     3609.2967     19.396846
+*   3        3565.4       3605.12       3585.48     3585.3333     19.860406
+%   3       3577.07       3597.76       3588.12       3587.65     10.353004
+#   3       3593.63        3626.3       3602.66       3607.53     16.870682
+
+test case (c)
+-------------
+read:
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3        165.46        200.33        166.31     177.36667     19.891371
++   3        165.11        218.36        165.16     182.87667     30.729478
+*   3        165.14        199.36        165.36        176.62     19.693725
+%   3        165.45        197.07        166.32        176.28     18.009922
+#   3        165.13        228.35        165.71     186.39667      36.33381
+
+write:
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3      13804.25      15932.47      15148.61     14961.777     1076.3411
++   3      13807.94      15922.01      15114.67     14948.207     1066.8203
+*   3      13808.51      15936.08      15083.47     14942.687      1070.749
+%   3      13807.08       15290.5      15093.27     14730.283     805.57632
+#   3      13809.13      15972.27       15308.6         15030     1108.1548
+
+5. userspace max latency (usec)
+
+test case (a)
+-------------
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3        849941       2720800        941754       1504165     1054636.4
++   3       1080500       2199500       1090500     1456833.3     643187.63
+*   3        863204       2663400        920104       1482236     1023313.6
+%   3        879189       1156700        991861       1009250     139570.31
+#   3        896181       1692100        984983       1191088     436155.04
+
+test case (b)
+-------------
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3       1293500       4917500       3935800     3382266.7     1874338.1
++   3       1027900       3232200       1505500     1921866.7     1159635.9
+*   3       1025500       1109300       1033500       1056100     46245.865
+%   3        983719       1188300       1119400     1097139.7     104091.25
+#   3        869236       1118400        992344     993326.67     124584.91
+
+test case (c)
+-------------
+read:
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3        147107       3594200        566804       1436037     1880767.7
++   3        124889       3586600        402357       1371282     1923531.3
+*   3        299597       3578300        327797       1401898     1884872.2
+%   3        406603       3587600        729393       1574532     1750822.8
+#   3        301480       3583600        997081       1627387       1729463
+
+write:
+x baseline
++ es-cache
+* es-slist
+% es-ilist
+# es-gc
+    N           Min           Max        Median           Avg        Stddev
+x   3      28892400      29715800      29536400      29381533     432994.98
++   3      28726600      29821200      29530000      29359267     566921.24
+*   3      28859400      29681400      29528700      29356500      437219.2
+%   3      28472300      29819700      28728200      29006733     715581.79
+#   3      28807200      29681900      29516100      29335067     464601.79
+
+Conclusion
+==========
+On the view of kernel side that the max scan time and avg. scan time can
+be improved.  Meanwhile the cache hit ratio is also increased.
+
+On the view of userspace side, the max latency of test case (a) and (b) 
+can be improved.  Others are not outstanding.
+
+As always, any comment or feedback are welcome.
+
+Thanks,
+						- Zheng
+
+Zheng Liu (6):
+  ext4: improve extents status tree trace point
+  ext4: track extent status tree shrinker delay statictics
+  ext4: cache extent hole in extent status tree for
+    ext4_da_map_blocks()
+  ext4: change lru to round-robin in extent status tree shrinker
+  ext4: use a list to track all reclaimable objects for extent status
+    tree
+  ext4: use a garbage collection algorithm to manage object
+
+ fs/ext4/ext4.h              |   18 +-
+ fs/ext4/extents.c           |   27 ++-
+ fs/ext4/extents_status.c    |  430 ++++++++++++++++++++++++++++++-------------
+ fs/ext4/extents_status.h    |   47 ++++-
+ fs/ext4/inode.c             |   10 +-
+ fs/ext4/ioctl.c             |    4 +-
+ fs/ext4/super.c             |   18 +-
+ include/trace/events/ext4.h |   59 +++++-
+ 8 files changed, 419 insertions(+), 194 deletions(-)
+
 -- 
 1.7.9.7
 
