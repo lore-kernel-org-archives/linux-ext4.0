@@ -1,123 +1,222 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: [PATCH v5 9/10]  xfstests: fsstress: Add fallocate insert range
-Date: Fri, 08 Aug 2014 14:07:05 +0900
-Message-ID: <004a01cfb2c6$98c4b250$ca4e16f0$@samsung.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Brian Foster <bfoster@redhat.com>, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
-	=?iso-8859-2?Q?Luk=E1=B9_Czerner?= <lczerner@redhat.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-language: ko
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+From: "Pu Hou" <houpu.hp@alibaba-inc.com>
+Subject: [PATCH v2] debugfs: add inline data feature for symlink
+Date: Fri, 08 Aug 2014 14:34:52 +0800
+Message-ID: <1407479692-29026-1-git-send-email-houpu.hp@alibaba-inc.com>
+Cc: <darrick.wong@oracle.com>, "Pu Hou" <houpu.hp@alibaba-inc.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from out11.biz.mail.alibaba.com ([205.204.114.131]:41426 "EHLO
+	out11.biz.mail.alibaba.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752831AbaHHGlT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Aug 2014 02:41:19 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This commit adds insert operation support for fsstress, which is
-meant to exercise fallocate FALLOC_FL_INSERT_RANGE support.
+Symlink in debugfs can take advantage of inline data feature.
+The target string of the symbol link whose length is shorter
+than the available size of the inline data of the inode
+can be stored in the inline data area.
 
-Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+Signed-off-by: Pu Hou <houpu.hp@alibaba-inc.com>
 ---
- ltp/fsstress.c | 19 ++++++++++++++++---
- src/global.h   |  4 ++++
- 2 files changed, 20 insertions(+), 3 deletions(-)
+ lib/ext2fs/ext2fs.h      |  3 ++
+ lib/ext2fs/inline_data.c | 39 +++++++++++++++++++++++
+ lib/ext2fs/symlink.c     | 81 +++++++++++++++++++++++++++++-------------------
+ 3 files changed, 91 insertions(+), 32 deletions(-)
 
-diff --git a/ltp/fsstress.c b/ltp/fsstress.c
-index b56fe5c..aa3e0c3 100644
---- a/ltp/fsstress.c
-+++ b/ltp/fsstress.c
-@@ -72,6 +72,7 @@ typedef enum {
- 	OP_PUNCH,
- 	OP_ZERO,
- 	OP_COLLAPSE,
-+	OP_INSERT,
- 	OP_READ,
- 	OP_READLINK,
- 	OP_RENAME,
-@@ -170,6 +171,7 @@ void	mknod_f(int, long);
- void	punch_f(int, long);
- void	zero_f(int, long);
- void	collapse_f(int, long);
-+void	insert_f(int, long);
- void	read_f(int, long);
- void	readlink_f(int, long);
- void	rename_f(int, long);
-@@ -209,6 +211,7 @@ opdesc_t	ops[] = {
- 	{ OP_PUNCH, "punch", punch_f, 1, 1 },
- 	{ OP_ZERO, "zero", zero_f, 1, 1 },
- 	{ OP_COLLAPSE, "collapse", collapse_f, 1, 1 },
-+	{ OP_INSERT, "insert", insert_f, 1, 1 },
- 	{ OP_READ, "read", read_f, 1, 0 },
- 	{ OP_READLINK, "readlink", readlink_f, 1, 0 },
- 	{ OP_RENAME, "rename", rename_f, 2, 1 },
-@@ -2176,6 +2179,7 @@ struct print_flags falloc_flags [] = {
- 	{ FALLOC_FL_NO_HIDE_STALE, "NO_HIDE_STALE"},
- 	{ FALLOC_FL_COLLAPSE_RANGE, "COLLAPSE_RANGE"},
- 	{ FALLOC_FL_ZERO_RANGE, "ZERO_RANGE"},
-+	{ FALLOC_FL_INSERT_RANGE, "INSERT_RANGE"},
- 	{ -1, NULL}
- };
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 7812956..8268d96 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1401,6 +1401,9 @@ extern errcode_t ext2fs_inline_data_get(ext2_filsys fs, ext2_ino_t ino,
+ extern errcode_t ext2fs_inline_data_set(ext2_filsys fs, ext2_ino_t ino,
+ 					struct ext2_inode *inode,
+ 					void *buf, size_t size);
++extern errcode_t ext2fs_symlink_inline_data_set(ext2_filsys fs, ext2_ino_t ino,
++					struct ext2_inode *inode,
++					void *buf, size_t size);
  
-@@ -2227,10 +2231,11 @@ do_fallocate(int opno, long r, int mode)
- 	off %= maxfsize;
- 	len = (off64_t)(random() % (1024 * 1024));
- 	/*
--	 * Collapse range requires off and len to be block aligned, make it
--	 * more likely to be the case.
-+	 * Collapse/insert range requires off and len to be block aligned,
-+	 * make it more likely to be the case.
- 	 */
--	if ((mode & FALLOC_FL_COLLAPSE_RANGE) && (opno % 2)) {
-+	if ((mode & (FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_INSERT_RANGE)) &&
-+		(opno % 2)) {
- 		off = ((off + stb.st_blksize - 1) & ~(stb.st_blksize - 1));
- 		len = ((len + stb.st_blksize - 1) & ~(stb.st_blksize - 1));
- 	}
-@@ -2656,6 +2661,14 @@ collapse_f(int opno, long r)
+ /* inode.c */
+ extern errcode_t ext2fs_create_inode_cache(ext2_filsys fs,
+diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
+index 19248a0..1cc7331 100644
+--- a/lib/ext2fs/inline_data.c
++++ b/lib/ext2fs/inline_data.c
+@@ -585,6 +585,45 @@ errcode_t ext2fs_inline_data_set(ext2_filsys fs, ext2_ino_t ino,
+ 	return ext2fs_inline_data_ea_set(&data);
  }
  
- void
-+insert_f(int opno, long r)
++errcode_t ext2fs_symlink_inline_data_set(ext2_filsys fs, ext2_ino_t ino,
++				 struct ext2_inode *inode,
++				 void *buf, size_t size)
 +{
-+#ifdef HAVE_LINUX_FALLOC_H
-+	do_fallocate(opno, r, FALLOC_FL_INSERT_RANGE);
-+#endif
++	struct ext2_inode inode_buf;
++	struct ext2_inline_data data;
++	errcode_t retval;
++	size_t free_ea_size;
++
++	if (!inode) {
++		retval = ext2fs_read_inode(fs, ino, &inode_buf);
++		if (retval)
++			return retval;
++		inode = &inode_buf;
++	}
++
++	if (size <= EXT4_MIN_INLINE_DATA_SIZE) {
++		memcpy((void *)inode->i_block, buf, size);
++		return ext2fs_write_inode(fs, ino, inode);
++	}
++
++	retval = ext2fs_xattr_inode_max_size(fs, ino, &free_ea_size);
++	if (retval)
++		return retval;
++
++	if (size > EXT4_MIN_INLINE_DATA_SIZE + free_ea_size)
++		return EXT2_ET_INLINE_DATA_NO_SPACE;
++
++	memcpy((void *)inode->i_block, buf, EXT4_MIN_INLINE_DATA_SIZE);
++	retval = ext2fs_write_inode(fs, ino, inode);
++	if (retval)
++		return retval;
++	data.fs = fs;
++	data.ino = ino;
++	data.ea_size = size - EXT4_MIN_INLINE_DATA_SIZE;
++	data.ea_data = buf + EXT4_MIN_INLINE_DATA_SIZE;
++	return ext2fs_inline_data_ea_set(&data);
 +}
 +
-+void
- read_f(int opno, long r)
- {
- 	char		*buf;
-diff --git a/src/global.h b/src/global.h
-index 8180f66..f63246b 100644
---- a/src/global.h
-+++ b/src/global.h
-@@ -172,6 +172,10 @@
- #define FALLOC_FL_ZERO_RANGE		0x10
- #endif
+ #ifdef DEBUG
+ #include "e2p/e2p.h"
  
-+#ifndef FALLOC_FL_INSERT_RANGE
-+#define FALLOC_FL_INSERT_RANGE		0x20
-+#endif
+diff --git a/lib/ext2fs/symlink.c b/lib/ext2fs/symlink.c
+index ba8ed8e..c6993ac 100644
+--- a/lib/ext2fs/symlink.c
++++ b/lib/ext2fs/symlink.c
+@@ -36,6 +36,7 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
+ 	ext2_ino_t		scratch_ino;
+ 	blk64_t			blk;
+ 	int			fastlink;
++	int			inline_link = 0;
+ 	unsigned int		target_len;
+ 	char			*block_buf = 0;
+ 
+@@ -48,18 +49,7 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
+ 		goto cleanup;
+ 	}
+ 
+-	/*
+-	 * Allocate a data block for slow links
+-	 */
+ 	fastlink = (target_len < sizeof(inode.i_block));
+-	if (!fastlink) {
+-		retval = ext2fs_new_block2(fs, 0, 0, &blk);
+-		if (retval)
+-			goto cleanup;
+-		retval = ext2fs_get_mem(fs->blocksize, &block_buf);
+-		if (retval)
+-			goto cleanup;
+-	}
+ 
+ 	/*
+ 	 * Allocate an inode, if necessary
+@@ -77,7 +67,6 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
+ 	memset(&inode, 0, sizeof(struct ext2_inode));
+ 	inode.i_mode = LINUX_S_IFLNK | 0777;
+ 	inode.i_uid = inode.i_gid = 0;
+-	ext2fs_iblk_set(fs, &inode, fastlink ? 0 : 1);
+ 	inode.i_links_count = 1;
+ 	ext2fs_inode_size_set(fs, &inode, target_len);
+ 	/* The time fields are set by ext2fs_write_new_inode() */
+@@ -85,18 +74,6 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
+ 	if (fastlink) {
+ 		/* Fast symlinks, target stored in inode */
+ 		strcpy((char *)&inode.i_block, target);
+-	} else {
+-		/* Slow symlinks, target stored in the first block */
+-		memset(block_buf, 0, fs->blocksize);
+-		strcpy(block_buf, target);
+-		if (fs->super->s_feature_incompat &
+-		    EXT3_FEATURE_INCOMPAT_EXTENTS) {
+-			/*
+-			 * The extent bmap is setup after the inode and block
+-			 * have been written out below.
+-			 */
+-			inode.i_flags |= EXT4_EXTENTS_FL;
+-		}
+ 	}
+ 
+ 	/*
+@@ -109,14 +86,54 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
+ 		goto cleanup;
+ 
+ 	if (!fastlink) {
+-		retval = ext2fs_bmap2(fs, ino, &inode, NULL, BMAP_SET, 0, NULL,
+-				      &blk);
+-		if (retval)
+-			goto cleanup;
++		/*Try to store symbol link in inline data area*/
++		if (EXT2_HAS_INCOMPAT_FEATURE(fs->super,
++				EXT4_FEATURE_INCOMPAT_INLINE_DATA)) {
++			retval = ext2fs_symlink_inline_data_set(fs, ino,
++						0, target, target_len);
++			if (retval == EXT2_ET_INLINE_DATA_NO_SPACE) {
++				inline_link = 0;
++			} else if (retval) {
++				goto cleanup;
++			} else {
++				inline_link = 1;
++				ext2fs_read_inode(fs, ino, &inode);
++				inode.i_flags |= EXT4_INLINE_DATA_FL;
++				ext2fs_write_inode(fs, ino, &inode);
++			}
++		}
++		if (!inline_link) {
++			/* Store the symlink in a block */
++			retval = ext2fs_new_block2(fs, 0, 0, &blk);
++			if (retval)
++				goto cleanup;
++			retval = ext2fs_get_mem(fs->blocksize, &block_buf);
++			if (retval)
++				goto cleanup;
++			memset(block_buf, 0, fs->blocksize);
++			strcpy(block_buf, target);
++			ext2fs_read_inode(fs, ino, &inode);
++			ext2fs_iblk_set(fs, &inode, 1);
++			if (fs->super->s_feature_incompat &
++					EXT3_FEATURE_INCOMPAT_EXTENTS) {
++				/*
++				 * The extent bmap is setup after the inode and
++				 * block have been written out below.
++				 */
++				inode.i_flags |= EXT4_EXTENTS_FL;
++			}
++			ext2fs_write_inode(fs, ino, &inode);
+ 
+-		retval = io_channel_write_blk64(fs->io, blk, 1, block_buf);
+-		if (retval)
+-			goto cleanup;
++			retval = ext2fs_bmap2(fs, ino, &inode, NULL,
++						BMAP_SET, 0, NULL, &blk);
++			if (retval)
++				goto cleanup;
 +
- #endif /* HAVE_LINUX_FALLOC_H */
++			retval = io_channel_write_blk64(fs->io, blk, 1,
++							block_buf);
++			if (retval)
++				goto cleanup;
++		}
+ 	}
  
- #endif /* GLOBAL_H */
+ 	/*
+@@ -139,7 +156,7 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
+ 	/*
+ 	 * Update accounting....
+ 	 */
+-	if (!fastlink)
++	if (!fastlink && !inline_link)
+ 		ext2fs_block_alloc_stats2(fs, blk, +1);
+ 	ext2fs_inode_alloc_stats2(fs, ino, +1, 0);
+ 
 -- 
-1.7.11-rc0
+1.9.1
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
