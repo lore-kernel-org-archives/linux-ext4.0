@@ -1,59 +1,227 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2 0/4] quota: add project quota support
-Date: Fri, 8 Aug 2014 18:33:35 -0400
-Message-ID: <20140808223335.GQ25145@thunk.org>
-References: <CAPTn0cAKi64Fh1pAVTDLvSS5-1Kjv7KN2HpGxtm4J8-ym-4nOQ@mail.gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH v2 09/21] e2fsck: check ea-in-inode regions for overlap
+Date: Fri, 8 Aug 2014 15:43:58 -0700
+Message-ID: <20140808224358.GF11191@birch.djwong.org>
+References: <20140805010457.2611.89813.stgit@birch.djwong.org>
+ <20140805010555.2611.52850.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	viro@ZenIV.linux.org.uk, hch@infradead.org, Jan Kara <jack@suse.cz>
-To: Li Xi <pkuelelixi@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51669 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753121AbaHHWdo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Aug 2014 18:33:44 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:32251 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751645AbaHHWoE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Aug 2014 18:44:04 -0400
 Content-Disposition: inline
-In-Reply-To: <CAPTn0cAKi64Fh1pAVTDLvSS5-1Kjv7KN2HpGxtm4J8-ym-4nOQ@mail.gmail.com>
+In-Reply-To: <20140805010555.2611.52850.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 09, 2014 at 12:39:58AM +0800, Li Xi wrote:
-> 
-> It is obvious that extended attribute implementation has performance
-> impact when creating files. That is why we choose to push the patches
-> which use internal inode field to save project ID.
+Ensure that the various blobs in the in-inode EA region do not overlap.
 
-Were you using 256-byte inodes or 128-byte inodes when you benchmarked
-using xattr versus an in-inode project quota?
+v2: Actually clear the magic number when we're clearing a bad inode EA
+region, not whatever comes after it.
 
-The other major comment I have is that as much as possible, the
-semantics should be compatible xfs's project quota.  In particular,
-this bit:
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ e2fsck/pass1.c                      |   43 ++++++++++++++++++++++++++++++++---
+ e2fsck/problem.c                    |    5 ++++
+ e2fsck/problem.h                    |    3 ++
+ tests/f_inode_ea_collision/expect.1 |   15 ++++++++++++
+ tests/f_inode_ea_collision/expect.2 |    7 ++++++
+ tests/f_inode_ea_collision/image.gz |  Bin
+ tests/f_inode_ea_collision/name     |    1 +
+ 7 files changed, 70 insertions(+), 4 deletions(-)
+ create mode 100644 tests/f_inode_ea_collision/expect.1
+ create mode 100644 tests/f_inode_ea_collision/expect.2
+ create mode 100644 tests/f_inode_ea_collision/image.gz
+ create mode 100644 tests/f_inode_ea_collision/name
 
-       A managed tree must be setup initially  using  the  -s  option  to  the
-       project command. The specified project name or identifier is matched to
-       one or more trees defined in /etc/projects, and these  trees  are  then
-       recursively descended to mark the affected inodes as being part of that
-       tree.  This process sets an inode flag and the  project  identifier  on
-       every  file  in  the affected tree.  Once this has been done, new files
-       created in the tree will automatically be accounted to the  tree  based
-       on  their  project  identifier.   An attempt to create a hard link to a
-       file in the tree will only succeed if the  project  identifier  matches
-       the project identifier for the tree.  The xfs_io utility can be used to
-       set the project ID for an arbitrary file, but this can only be done  by
-       a privileged user.
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 6c79eed..3fbf00a 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -286,15 +286,17 @@ static void check_ea_in_inode(e2fsck_t ctx, struct problem_context *pctx)
+ 	struct ext2_super_block *sb = ctx->fs->super;
+ 	struct ext2_inode_large *inode;
+ 	struct ext2_ext_attr_entry *entry;
+-	char *start;
++	char *start, *header;
+ 	unsigned int storage_size, remain;
+ 	problem_t problem = 0;
++	region_t region = 0;
+ 
+ 	inode = (struct ext2_inode_large *) pctx->inode;
+ 	storage_size = EXT2_INODE_SIZE(ctx->fs->super) - EXT2_GOOD_OLD_INODE_SIZE -
+ 		inode->i_extra_isize;
+-	start = ((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
+-		inode->i_extra_isize + sizeof(__u32);
++	header = ((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
++		 inode->i_extra_isize;
++	start = header + sizeof(__u32);
+ 	entry = (struct ext2_ext_attr_entry *) start;
+ 
+ 	/* scan all entry's headers first */
+@@ -302,10 +304,28 @@ static void check_ea_in_inode(e2fsck_t ctx, struct problem_context *pctx)
+ 	/* take finish entry 0UL into account */
+ 	remain = storage_size - sizeof(__u32);
+ 
++	region = region_create(0, storage_size);
++	if (!region) {
++		fix_problem(ctx, PR_1_EA_ALLOC_REGION_ABORT, pctx);
++		problem = 0;
++		ctx->flags |= E2F_FLAG_ABORT;
++		return;
++	}
++	if (region_allocate(region, 0, sizeof(__u32))) {
++		problem = PR_1_INODE_EA_ALLOC_COLLISION;
++		goto fix;
++	}
++
+ 	while (remain >= sizeof(struct ext2_ext_attr_entry) &&
+ 	       !EXT2_EXT_IS_LAST_ENTRY(entry)) {
+ 		__u32 hash;
+ 
++		if (region_allocate(region, (char *)entry - (char *)header,
++				    EXT2_EXT_ATTR_LEN(entry->e_name_len))) {
++			problem = PR_1_INODE_EA_ALLOC_COLLISION;
++			goto fix;
++		}
++
+ 		/* header eats this space */
+ 		remain -= sizeof(struct ext2_ext_attr_entry);
+ 
+@@ -333,6 +353,13 @@ static void check_ea_in_inode(e2fsck_t ctx, struct problem_context *pctx)
+ 			goto fix;
+ 		}
+ 
++		if (entry->e_value_size &&
++		    region_allocate(region, sizeof(__u32) + entry->e_value_offs,
++				    EXT2_EXT_ATTR_SIZE(entry->e_value_size))) {
++			problem = PR_1_INODE_EA_ALLOC_COLLISION;
++			goto fix;
++		}
++
+ 		hash = ext2fs_ext_attr_hash_entry(entry,
+ 						  start + entry->e_value_offs);
+ 
+@@ -347,7 +374,15 @@ static void check_ea_in_inode(e2fsck_t ctx, struct problem_context *pctx)
+ 
+ 		entry = EXT2_EXT_ATTR_NEXT(entry);
+ 	}
++
++	if (region_allocate(region, (char *)entry - (char *)header,
++			    sizeof(__u32))) {
++		problem = PR_1_INODE_EA_ALLOC_COLLISION;
++		goto fix;
++	}
+ fix:
++	if (region)
++		region_free(region);
+ 	/*
+ 	 * it seems like a corruption. it's very unlikely we could repair
+ 	 * EA(s) in automatic fashion -bzzz
+@@ -356,7 +391,7 @@ fix:
+ 		return;
+ 
+ 	/* simply remove all possible EA(s) */
+-	*((__u32 *)start) = 0UL;
++	*((__u32 *)header) = 0UL;
+ 	e2fsck_write_inode_full(ctx, pctx->ino, pctx->inode,
+ 				EXT2_INODE_SIZE(sb), "pass1");
+ }
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 2d29c35..b982a27 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -977,6 +977,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("@i %i passes checks, but checksum does not match @i.  "),
+ 	  PROMPT_FIX, PR_PREEN_OK },
+ 
++	/* Inode extended attribute is corrupt (allocation collision) */
++	{ PR_1_INODE_EA_ALLOC_COLLISION,
++	  N_("@i %i @a is corrupt (allocation collision).  "),
++	  PROMPT_CLEAR, 0},
++
+ 	/*
+ 	 * Inode extent block passes checks, but checksum does not match
+ 	 * extent
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 89146ec..f051c11 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -577,6 +577,9 @@ struct problem_context {
+ /* inode passes checks, but checksum does not match inode */
+ #define PR_1_INODE_ONLY_CSUM_INVALID   0x010068
+ 
++/* Inode EA allocation collision */
++#define PR_1_INODE_EA_ALLOC_COLLISION	0x010069
++
+ /* extent block passes checks, but checksum does not match extent block */
+ #define PR_1_EXTENT_ONLY_CSUM_INVALID  0x01006A
+ 
+diff --git a/tests/f_inode_ea_collision/expect.1 b/tests/f_inode_ea_collision/expect.1
+new file mode 100644
+index 0000000..a67a5f1
+--- /dev/null
++++ b/tests/f_inode_ea_collision/expect.1
+@@ -0,0 +1,15 @@
++Pass 1: Checking inodes, blocks, and sizes
++Inode 12 extended attribute is corrupt (allocation collision).  Clear? yes
++
++Inode 13 extended attribute is corrupt (allocation collision).  Clear? yes
++
++Inode 14 extended attribute is corrupt (allocation collision).  Clear? yes
++
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 14/128 files (0.0% non-contiguous), 18/512 blocks
++Exit status is 1
+diff --git a/tests/f_inode_ea_collision/expect.2 b/tests/f_inode_ea_collision/expect.2
+new file mode 100644
+index 0000000..5a7ca86
+--- /dev/null
++++ b/tests/f_inode_ea_collision/expect.2
+@@ -0,0 +1,7 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 14/128 files (0.0% non-contiguous), 18/512 blocks
++Exit status is 0
+diff --git a/tests/f_inode_ea_collision/image.gz b/tests/f_inode_ea_collision/image.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..5217f6503404864944a88bfc36b7d75a305aafb8
+GIT binary patch
+literal 2602
+zcmb2|=3rRTdo!4c`Ry(1jNn8Oh6n%E1ihnk1;sZu?eJW<NUv+f#j`7&rz`1+%6Chx
+z=yzP$zj61~h22d*Bw~&@hIDCYH8poTn;&#Na(uyTr@!x&7j4w~mb&)7_&M9}GoL+C
+zGk@+c%=BTul$ZKafv}@r^f(vpkBHY&x}B)u->fWbo2immwCQ=R(4%*W3VPSyYikyH
+zZ``1|?Dt2%b4UJs`SxP5`rf<qk6jPBKPPtAKflM1ZxnpF(YbTo*E?sW`@hG%t1C!M
+z`g-u=^W<936>Zmo_PxDrmFDffM>TlO`Xe_UFJ)&q5I<qte(j_+r+@wbw<G4~uC?|#
+zcOOVHF)%dL-%klvt<gLGpn`#cA>p9+|Nr-;CIy9`sOP>Q<+XI(x<BT7w4IAzdc6J7
+zdCqz3<l}rxZf~lc+-s<>{mlI69-Cu#x2fEG^I8O`IbuST)Up5aw?BQf2l6(Y*iy{}
+zq!0X%2a*Q=*nuRGpkb%!&drIEK-Cc?HOxRqk_!&ZmynqGV&(DwA>VJu7G9cn-9Ex)
+z-%^=bo9>7_cgpxTq2-kMan+l0#@7WOyMF(gCH3|5gR2~8+7~{w*cm?e(XaU;*Z057
+z&W!M@EBc%LN2Vw&q3(|N@A<Dn{>E#r(fu{w!1aHyW|G;j`TKwV+ix=G`9b+#`+r?s
+zr8ztMpTXa%^)Y*{{yhEf{nO2F^^e8ndMp3^ovC;3;OnAI>tDDPw`Xk)@T=PVQ}yVs
+zzqQN%|1gw&XD!<Qdj9lZ>;J9$x8;BAuL5_e$iIgFSN+p<{rgaU<^NmnU)kI5+HJ>n
+z;+6g}CVTt;_t($%{7Y`ojOrT=fzc2c4S~@R7!85Z5Fii&8zgEO|2Qt4#K54y004(2
+BL%09{
 
-Note the hard link restriction.  And we should check with the XFS
-folks what happens if you move a file from one directory which belongs
-to one project quota to another directory which has a different
-project quota (or no quota whatsoever).  I suspect the right answer is
-that the quota gets transferred from one project to another, so that
-it is a true directory-tree quota system, but regardless, if we're
-going to go down this path, let's stay consistent with how XFS does
-things.
+literal 0
+HcmV?d00001
 
-Cheers,
-
-						- Ted
+diff --git a/tests/f_inode_ea_collision/name b/tests/f_inode_ea_collision/name
+new file mode 100644
+index 0000000..b64119e
+--- /dev/null
++++ b/tests/f_inode_ea_collision/name
+@@ -0,0 +1 @@
++collisions in the inode ea area
