@@ -1,325 +1,141 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH v2 15/21] e2fsck: fix conflicting extents|inlinedata inode
- flags
-Date: Fri, 8 Aug 2014 09:24:29 -0700
-Message-ID: <20140808162429.GB11191@birch.djwong.org>
-References: <20140805010457.2611.89813.stgit@birch.djwong.org>
- <20140805010635.2611.19661.stgit@birch.djwong.org>
+From: Li Xi <pkuelelixi@gmail.com>
+Subject: [PATCH v2 0/4] quota: add project quota support
+Date: Sat, 9 Aug 2014 00:39:58 +0800
+Message-ID: <CAPTn0cAKi64Fh1pAVTDLvSS5-1Kjv7KN2HpGxtm4J8-ym-4nOQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:45528 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756019AbaHHQYg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Aug 2014 12:24:36 -0400
-Content-Disposition: inline
-In-Reply-To: <20140805010635.2611.19661.stgit@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+To: linux-fsdevel@vger.kernel.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	viro@ZenIV.linux.org.uk, hch@infradead.org, Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-If we come across an inode with the inline data and extents inode flag
-set, try to figure out the correct flag settings from the contents of
-i_block and i_size.  If i_blocks looks like an extent tree head, we'll
-make it an extent inode; if it's small enough for inline data, set it
-to that.  This leaves the weird gray area where there's no extent
-tree but it's too big for the inode -- if /could/ be a block map,
-change it to that; otherwise, just clear the inode.
+Hi all,
 
-v2: Don't add unnecessary variables.
+The following patches propose an implementation of project support
+for ext4. A project is an aggregate of unrelated inodes which might
+scatter in different directories. Inodes belongs to a project
+possesses a same identification i.e. 'project ID', just like every
+inode has its user/group indentification. The following patches adds
+project quota as supplement to the former uer/group quota types.
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- e2fsck/pass1.c                     |  114 ++++++++++++++++++++++++++++++++++++
- e2fsck/problem.c                   |   20 ++++++
- e2fsck/problem.h                   |   12 ++++
- tests/f_idata_and_extents/expect.1 |   35 +++++++++++
- tests/f_idata_and_extents/expect.2 |    7 ++
- tests/f_idata_and_extents/image.gz |  Bin
- tests/f_idata_and_extents/name     |    1 
- 7 files changed, 189 insertions(+)
- create mode 100644 tests/f_idata_and_extents/expect.1
- create mode 100644 tests/f_idata_and_extents/expect.2
- create mode 100644 tests/f_idata_and_extents/image.gz
- create mode 100644 tests/f_idata_and_extents/name
+This project ID of an inode is iherited from its parent direcotry
+and saved as an internal field of ext4 inode.
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index d41b230..b8ab94a 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -735,6 +735,108 @@ static void finish_processing_inode(e2fsck_t ctx, ext2_ino_t ino,
- 			return; \
- 	} while (0)
- 
-+static int could_be_block_map(ext2_filsys fs, struct ext2_inode *inode)
-+{
-+	__u32 x;
-+	int i;
-+
-+	for (i = 0; i < EXT2_N_BLOCKS; i++) {
-+		x = inode->i_block[i];
-+#ifdef WORDS_BIGENDIAN
-+		x = ext2fs_swab32(x);
-+#endif
-+		if (x >= ext2fs_blocks_count(fs->super))
-+			return 0;
-+	}
-+
-+	return 1;
-+}
-+
-+/*
-+ * Figure out what to do with an inode that has both extents and inline data
-+ * inode flags set.  Returns -1 if we decide to erase the inode, 0 otherwise.
-+ */
-+static int fix_inline_data_extents_file(e2fsck_t ctx,
-+					ext2_ino_t ino,
-+					struct ext2_inode *inode,
-+					int inode_size,
-+					struct problem_context *pctx)
-+{
-+	size_t max_inline_ea_size;
-+	ext2_filsys fs = ctx->fs;
-+	int dirty = 0;
-+
-+	/* Both feature flags not set?  Just run the regular checks */
-+	if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-+				       EXT3_FEATURE_INCOMPAT_EXTENTS) &&
-+	    !EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-+				       EXT4_FEATURE_INCOMPAT_INLINE_DATA))
-+		return 0;
-+
-+	/* Clear both flags if it's a special file */
-+	if (LINUX_S_ISCHR(inode->i_mode) ||
-+	    LINUX_S_ISBLK(inode->i_mode) ||
-+	    LINUX_S_ISFIFO(inode->i_mode) ||
-+	    LINUX_S_ISSOCK(inode->i_mode)) {
-+		check_extents_inlinedata(ctx, pctx);
-+		return 0;
-+	}
-+
-+	/* If it looks like an extent tree, try to clear inlinedata */
-+	if (ext2fs_extent_header_verify(inode->i_block,
-+				 sizeof(inode->i_block)) == 0 &&
-+	    fix_problem(ctx, PR_1_CLEAR_INLINE_DATA_FOR_EXTENT, pctx)) {
-+		inode->i_flags &= ~EXT4_INLINE_DATA_FL;
-+		dirty = 1;
-+		goto out;
-+	}
-+
-+	/* If it looks short enough to be inline data, try to clear extents */
-+	if (EXT2_INODE_SIZE(fs->super) > EXT2_GOOD_OLD_INODE_SIZE)
-+		max_inline_ea_size = EXT2_INODE_SIZE(fs->super) -
-+				     (EXT2_GOOD_OLD_INODE_SIZE +
-+				      ((struct ext2_inode_large *)inode)->i_extra_isize);
-+	else
-+		max_inline_ea_size = 0;
-+	if (EXT2_I_SIZE(inode) <
-+	    EXT4_MIN_INLINE_DATA_SIZE + max_inline_ea_size &&
-+	    fix_problem(ctx, PR_1_CLEAR_EXTENT_FOR_INLINE_DATA, pctx)) {
-+		inode->i_flags &= ~EXT4_EXTENTS_FL;
-+		dirty = 1;
-+		goto out;
-+	}
-+
-+	/*
-+	 * Too big for inline data, but no evidence of extent tree -
-+	 * maybe it's a block map file?  If the mappings all look valid?
-+	 */
-+	if (could_be_block_map(fs, inode) &&
-+	    fix_problem(ctx, PR_1_CLEAR_EXTENT_INLINE_DATA_FLAGS, pctx)) {
-+#ifdef WORDS_BIGENDIAN
-+		int i;
-+
-+		for (i = 0; i < EXT2_N_BLOCKS; i++)
-+			inode->i_block[i] = ext2fs_swab32(inode->i_block[i]);
-+#endif
-+
-+		inode->i_flags &= ~(EXT4_EXTENTS_FL | EXT4_INLINE_DATA_FL);
-+		dirty = 1;
-+		goto out;
-+	}
-+
-+	/* Oh well, just clear the busted inode. */
-+	if (fix_problem(ctx, PR_1_CLEAR_EXTENT_INLINE_DATA_INODE, pctx)) {
-+		e2fsck_clear_inode(ctx, ino, inode, 0, "pass1");
-+		return -1;
-+	}
-+
-+out:
-+	if (dirty)
-+		e2fsck_write_inode(ctx, ino, inode, "pass1");
-+
-+	return 0;
-+}
-+
- void e2fsck_pass1(e2fsck_t ctx)
- {
- 	int	i;
-@@ -983,6 +1085,18 @@ void e2fsck_pass1(e2fsck_t ctx)
- 			}
- 		}
- 
-+		/* Conflicting inlinedata/extents inode flags? */
-+		if ((inode->i_flags & EXT4_INLINE_DATA_FL) &&
-+		    (inode->i_flags & EXT4_EXTENTS_FL)) {
-+			int res = fix_inline_data_extents_file(ctx, ino, inode,
-+							       inode_size,
-+							       &pctx);
-+			if (res < 0) {
-+				/* skip FINISH_INODE_LOOP */
-+				continue;
-+			}
-+		}
-+
- 		/* Test for incorrect inline_data flags settings. */
- 		if ((inode->i_flags & EXT4_INLINE_DATA_FL) && !inlinedata_fs &&
- 		    (ino >= EXT2_FIRST_INODE(fs->super))) {
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 26ee51b..4245244 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -1056,6 +1056,26 @@ static struct e2fsck_problem problem_table[] = {
- 	     "or inline-data flag set.  "),
- 	  PROMPT_CLEAR, PR_PREEN_OK | PR_PREEN_NO | PR_NO_OK },
- 
-+	/* Inode has extent header but inline data flag is set */
-+	{ PR_1_CLEAR_INLINE_DATA_FOR_EXTENT,
-+	  N_("@i %i has @x header but inline data flag is set.\n"),
-+	  PROMPT_FIX, 0 },
-+
-+	/* Inode seems to have inline data but extent flag is set */
-+	{ PR_1_CLEAR_EXTENT_FOR_INLINE_DATA,
-+	  N_("@i %i seems to have inline data but @x flag is set.\n"),
-+	  PROMPT_FIX, 0 },
-+
-+	/* Inode seems to have block map but inline data and extent flags set */
-+	{ PR_1_CLEAR_EXTENT_INLINE_DATA_FLAGS,
-+	  N_("@i %i seems to have @b map but inline data and @x flags set.\n"),
-+	  PROMPT_FIX, 0 },
-+
-+	/* Inode has inline data and extent flags but i_block contains junk */
-+	{ PR_1_CLEAR_EXTENT_INLINE_DATA_INODE,
-+	  N_("@i %i has inline data and @x flags set but i_block contains junk.\n"),
-+	  PROMPT_CLEAR_INODE, 0 },
-+
- 	/* Pass 1b errors */
- 
- 	/* Pass 1B: Rescan for duplicate/bad blocks */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 3c5e11a..22c86c5 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -615,6 +615,18 @@ struct problem_context {
- /* extents/inlinedata set on fifo/socket/device */
- #define PR_1_SPECIAL_EXTENTS_IDATA	0x010076
- 
-+/* idata/extent flag set and extent header found, clear idata flag */
-+#define PR_1_CLEAR_INLINE_DATA_FOR_EXTENT	0x010077
-+
-+/* inlinedata/extent set and no extent header found, clear extent flag */
-+#define PR_1_CLEAR_EXTENT_FOR_INLINE_DATA	0x010078
-+
-+/* inlinedata/extent set, clear both flags */
-+#define PR_1_CLEAR_EXTENT_INLINE_DATA_FLAGS	0x010079
-+
-+/* inlinedata/extent set, clear inode */
-+#define PR_1_CLEAR_EXTENT_INLINE_DATA_INODE	0x01007A
-+
- /*
-  * Pass 1b errors
-  */
-diff --git a/tests/f_idata_and_extents/expect.1 b/tests/f_idata_and_extents/expect.1
-new file mode 100644
-index 0000000..7f7fbf3
---- /dev/null
-+++ b/tests/f_idata_and_extents/expect.1
-@@ -0,0 +1,35 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Special (device/socket/fifo) file (inode 19) has extents
-+or inline-data flag set.  Clear? yes
-+
-+Inode 20 has extent header but inline data flag is set.
-+Fix? yes
-+
-+Inode 21 has inline data and extent flags set but i_block contains junk.
-+Clear inode? yes
-+
-+Inode 22 seems to have block map but inline data and extent flags set.
-+Fix? yes
-+
-+Inode 23 seems to have inline data but extent flag is set.
-+Fix? yes
-+
-+Pass 2: Checking directory structure
-+Entry 'garbage' in /bad (18) has deleted/unused inode 21.  Clear? yes
-+
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+Inode bitmap differences:  -21
-+Fix? yes
-+
-+Free inodes count wrong for group #0 (105, counted=106).
-+Fix? yes
-+
-+Free inodes count wrong (105, counted=106).
-+Fix? yes
-+
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 22/128 files (0.0% non-contiguous), 21/512 blocks
-+Exit status is 1
-diff --git a/tests/f_idata_and_extents/expect.2 b/tests/f_idata_and_extents/expect.2
-new file mode 100644
-index 0000000..307d3f6
---- /dev/null
-+++ b/tests/f_idata_and_extents/expect.2
-@@ -0,0 +1,7 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 22/128 files (0.0% non-contiguous), 21/512 blocks
-+Exit status is 0
-diff --git a/tests/f_idata_and_extents/image.gz b/tests/f_idata_and_extents/image.gz
-new file mode 100644
-index 0000000000000000000000000000000000000000..5187ba14138568a1ccd3540228b092f93186d109
-GIT binary patch
-literal 3112
-zcmeIxT})GV7zXg8MnQ}yL5)$cYIMvfWdxZDVk1r*0)wDisaDj2pi(Rf43x4HC)Fun
-zCtre9kJy#LfMTs+3qtD#fz6NdS)fH4C~c)sTPPMzdwTxE>)m*<%f2^H-sF95e#uM7
-zb%u_;tU9uAkwJ0dZ1EWn$fOGjZ1hhItkO8eev|1onDFg&H`d}~&zxz`SJRXE0`dO0
-zZ2jh9;)@#2&zl>gZjRL6%%+!K?mFlkay7m)&t=<=%10YdH_P@IF9lwBSpUYaN5#No
-z<`&%xWh!oLH)ATH`@$5i!kutwQ%yJrDO}ko)TL5Z?HV|8e#s4|<8UbVi@e(n_`RGo
-z^ON&upQKMRwo;nDJU&?ZwU>oux}<2q$M829LEY26FPSpyfh3jQ8zxLNd|Xa7P>mkU
-zC!I5sB{o-J>TBuW@UDLQQcmyz{)}R7ul67Pj91wh%3Q~Ja0P;1UyH$sq3YW-yXt|w
-z0)<abxF8b7iUklP1*-R>*HZ)uYa}Zm2%?%t0azbgkmSlUF5H<z<%`8Lp2KI#_w_3!
-z*{2M0+%wyAs(vj>CByI`?5#90-(PHLa3wsR?@IkIbgh~NU1*5SX@2FeU)(ew&=6Sk
-zDL#Lsef|N~!-E0yjg;o8rOuz<{Ldw5`=k7&Tp+qL-C|0yMmdj|Os6Kg%A<>7DJ%82
-zl23H-*dHZcn@AsK3wEB@J_3E`^6u~Dw2Cq>gxd2Pz*SV3$grj`d$y?If_&KTc_lrl
-zjD~GTZg{M&ysZ}CVy_&(zcl?Yv8F?hd=+YUPeL${K2jWRH4LY_*MXtPzDf`qp*(U9
-zM-qHX;EE`u*896SN@ZlD?Mjm^AW*SH5iAnN>?4K;WUNTDEYInT8A>?aJ*)&&nWdXB
-zFf}(?vRwmD<&u0_cMH=EoTP5-5I$!`1(>;>$2G+?WLNbUT>o`U*<&dg&8m!ORK%WT
-zOz878bWvchCf8WbP1W6^k(M1cR@H!OSz+zI^5zIiQNElddR8lu{8VAfOk`n){$&4t
-z>yBJ103zl#a8t>a!NgWf?V5`+I%uO9nLOlP*azx+CgaFFEGzOpG2|XRNg|RbtONv%
-zk3<*AfNwuf_&zR!g)K7<;h}k@!0rnQRivZ!m{3@?)i4{i&igI`csx$RaC`1*Hpr?D
-zvGi~F#m&Y}{+<p0XrGPu^#uYmtX12?il>2ADX0C`PO=d0R$m5$cCZ^fc>S1()xDCJ
-ztnn!hQ|q5T6##i!cAMy8=4(MMhaif^QOVspwwq4EZ8HOU^f^r8J&{F!NO{O-?BH;I
-zsF2l`(T0#oj1(}Ao+OtVP_Unc<sxvr4zyy`yYS?WX(S%=3HQe%GlH>{05maG%G9U|
-zH7dV@IG4-K_cN%u<6}tv0&_8ZKcmHi*cOk<w6Sw)7nF4Il%{0u#bFK`Q(t~p<OwRa
-z@xfp(e4u9!PFbFb&XHMGpY$!&c6PYPsg#2n$1`lh{G&i8$x>7E24H%15FotLw#2z>
-zrQ*LqnG4!3uA60=wQB`npwaKsKRL!B;1F;KI0PI54uSt&K&v3N2~T{0ppDSKYUGCn
+This is not the first existed attepmtion to add project quta support
+for ext4. Patches of subtree quota support which was posted by Dmity
+Monakhov in 2012 (http://lwn.net/Articles/506064/) implemented the
+similar feature in a different way. Rather than saving the project
+(or subtree) ID as an internal inode field, those patches manages
+the ID as extented attributes.
 
-literal 0
-HcmV?d00001
+We rebased both patch sets onto the same kernel version and run
+benchmakrs respectively to comparing the peformance difference.
+It is worth noting that patches from Lai Siyao and Niu Yawei
+(quota: remove-dqptr_sem,
+http://article.gmane.org/gmane.comp.file-systems.ext4/44341/)
+improve the performance of quota enforcement significantly, which
+can be seen clearly from following results.
 
-diff --git a/tests/f_idata_and_extents/name b/tests/f_idata_and_extents/name
-new file mode 100644
-index 0000000..362ce0e
---- /dev/null
-+++ b/tests/f_idata_and_extents/name
-@@ -0,0 +1 @@
-+conflicting extents and inline_data inode flags
+It is obvious that extended attribute implementation has performance
+impact when creating files. That is why we choose to push the patches
+which use internal inode field to save project ID.
+
+Kernel: 3.16.0-rc5
+Server: Dell R620 (2 x E5-2667@3.3GHz, 256GB memory)
+Storage: 10 x 15K SAS disks(RAID10)
+Test tool: mdtest-1.9.3. Mdtest created 800K files in total. Each
+thread created files in unique directory.
+
+File Creation:
+                     1thr     2thr     4thr     8thr    16thr
+- vanilla
+quota disabled      66094   105781   178968   186647   172536
+quotaon(ug)         60337    99582   157396   171463   162872
+
+- vanilla + remove-dqptr_sem patches
+quota disabled      65955   112082   185550   181511   171988
+quotaon(ug)         62391   101905   171013   190570   168914
+
+- prjquota(xattr)
+quota disabled      61396    97580   147852   146423   164895
+quotaon(ug)         57009    93435   140589   135748   153196
+quotaon(ugP)        57500    89419   133604   125291   105127
+
+- prjquota(xattr) + remove-dqptr_sem patches
+quota disabled      64053   100078   147608   139403   163960
+quotaon(ug)         60754   104726   149231   139053   165990
+quotaon(ugP)        59238    93606   148921   138434   163931
+
+- prjquota(internal) + remove-dqptr_sem patches
+quota disabled      65826   111828   181486   189227   171241
+quotaon(ug)         65418   107745   173584   180562   173752
+quotaon(ugP)        64669   103890   169176   186426   172192
+
+
+File Removal:
+                     1thr     2thr     4thr     8thr    16thr
+- vanilla
+quota disabled     118059   169825   234661   291812   345656
+quotaon(ug)        106675   135834   153532   100437    87489
+
+- vanilla + remove-dqptr_sem patches
+quota disabled     120374   168437   236818   291754   331141
+quotaon(ug)        110709   161954   238333   293700   329015
+
+- prjquota(xattr)
+quota disabled     116680   161662   229190   295642   332959
+quotaon(ug)        104783   134359   154950   100516    87923
+quotaon(ugP)       100240   125978   108653    68286    58991
+
+- prjquota(xattr) + remove-dqptr_sem patches
+quota disabled     116281   168938   233733   286663   344002
+quotaon(ug)        109775   164995   236001   299389   340683
+quotaon(ugP)       113935   162979   236112   300033   356117
+
+- prjquota(internal) + remove-dqptr_sem patches
+quota disabled     119537   171565   247418   291068   350138
+quotaon(ug)        121756   159580   240778   298012   342437
+quotaon(ugP)       118954   168022   241206   289055   334008
+
+Changelog:
+* v2 <- v1:
+  - Add ioctl interface for setting/getting project;
+  - Add EXT4_FEATURE_RO_COMPAT_PROJECT;
+  - Add get_projid() method in struct dquot_operations;
+  - Add error check of ext4_inode_projid_set/get().
+
+v1: http://article.gmane.org/gmane.comp.file-systems.ext4/45153
+
+Any comments or feedbacks are appreciated.
+
+Regards,
+                                          - Li Xi
+
+Li Xi(4):
+ quota: Adds general codes to enforces project quota limites
+ ext4: Adds project ID support for ext4
+ ext4: Adds project quota support for ext4
+ ext4: Adds ioctl interface support for ext4 project
+
+ Documentation/filesystems/ext4.txt |    4 +
+ fs/ext4/Kconfig                    |   11 --
+ fs/ext4/Makefile                   |    1 -
+ fs/ext4/ext4.h                     |   19 +++-
+ fs/ext4/ialloc.c                   |   16 +--
+ fs/ext4/inode.c                    |   85 +++++++++++++-
+ fs/ext4/ioctl.c                    |  100 ++++++++++++++++
+ fs/ext4/project.c                  |  224 ------------------------------------
+ fs/ext4/project.h                  |   58 ---------
+ fs/ext4/super.c                    |   45 ++++++--
+ fs/ext4/xattr.c                    |    6 -
+ fs/ext4/xattr.h                    |    2 -
+ fs/quota/Kconfig                   |    9 ++
+ fs/quota/dquot.c                   |  120 ++++++++++++++-----
+ fs/quota/quota.c                   |    5 +-
+ fs/quota/quotaio_v2.h              |    4 +-
+ include/linux/fs.h                 |    1 -
+ include/linux/quota.h              |    8 ++
+ include/uapi/linux/xattr.h         |    2 -
+ 19 files changed, 345 insertions(+), 375 deletions(-)
