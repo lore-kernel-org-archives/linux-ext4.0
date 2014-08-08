@@ -1,198 +1,170 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] debugfs: Add inline data feature for symlink.
-Date: Fri, 8 Aug 2014 11:04:22 -0700
-Message-ID: <20140808180422.GC11191@birch.djwong.org>
-References: <1406789932-13770-1-git-send-email-houpu.hp@alibaba-inc.com>
- <63e6941e-70ab-4fec-941c-f13f47585594@alibaba-inc.com>
- <20140801164810.GT8628@birch.djwong.org>
- <20140804065341.GC6751@guyi-aliyun>
- <20140805122758.GE2949@guyi-aliyun>
+From: TR Reardon <thomas_reardon@hotmail.com>
+Subject: journal recovery problems with metadata_csum, *non-64bit*
+Date: Fri, 8 Aug 2014 15:31:12 -0400
+Message-ID: <BLU436-SMTP84585FAA628776E190822AFDEE0@phx.gbl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Pu Hou <houpu.hp@alibaba-inc.com>
+Content-Type: multipart/mixed; boundary="20cf303a32f3e7637005002341a0"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:25308 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750738AbaHHSE2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Aug 2014 14:04:28 -0400
-Content-Disposition: inline
-In-Reply-To: <20140805122758.GE2949@guyi-aliyun>
+Received: from blu004-omc1s12.hotmail.com ([65.55.116.23]:59969 "EHLO
+	BLU004-OMC1S12.hotmail.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751061AbaHHThD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Aug 2014 15:37:03 -0400
+Received: by mail-yk0-f174.google.com with SMTP id q9so4215240ykb.19
+        for <linux-ext4@vger.kernel.org>; Fri, 08 Aug 2014 12:31:53 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 05, 2014 at 08:27:58PM +0800, Pu Hou wrote:
-> On Mon, Aug 04, 2014 at 02:53:41PM +0800, Pu Hou wrote:
-> > On Sat, Aug 02, 2014 at 12:48:10AM +0800, Darrick J. Wong wrote:
-> > > On Fri, Aug 01, 2014 at 06:37:56PM +0800, Pu Hou wrote:
-> > > > On Thu, Jul 31, 2014 at 02:58:52PM +0800, Pu Hou wrote:
-> > > > >> Symlink in debugfs can take advantage of inline data feature. The path name of the target of the symbol link which is longer than 60 byte and shorter than 132 byte can stay in inline data area.
-> > > > >
-> > > > >I think Ted prefers wrapping commit messages at 70 bytes.
-> > > > >
-> > > > Thanks for reminding me. I will fix it.
-> > > > 
-> > > > >> +	data.ea_size = size - EXT4_MIN_INLINE_DATA_SIZE;
-> > > > >> +	data.ea_data = buf + EXT4_MIN_INLINE_DATA_SIZE;
-> > > > >> +	return ext2fs_inline_data_ea_set(&data);
-> > > > >
-> > > > >Doesn't ext2fs_inline_data_set() suffice?
-> > > > >
-> > > > It is unnecessary to use this dedicated function.
-> > > 
-> > > Why do you say it's unnecessary?  The dedicated function does (or at least is
-> > > supposed to) do exactly what you want.
-> > > 
-> > 
-> > Compare with the dedicated function, ext2fs_inline_data_set() will check
-> > the available xattr size and inline data size by read the inode and do
-> > some calculation. And I thought some "dirty data" of an inode on disk might
-> > have an effect on the calculated available size.
-> > 
-> > Now I find that this concern is unnecessary. Because ext2fs_write_new_inode()
-> > which is called before will make sure the xattr of the inode are clean.
-> > So there is no need to use this dedicated function.
-> > 
-> > > Now I'm wondering -- why worry about size at all?  You can modify
-> > > ext2fs_symlink to call ext2fs_inline_data_set() directly.  If there's not
-> > > enough room, it'll return EXT2_ET_INLINE_DATA_NO_SPACE and you can try again
-> > > with the classic stuff-it-in-a-block method.
-> > > 
-> > > (Of course, if you try this and the API turns not to behave as advertised I'd
-> > > like to hear about that too. :))
-> > 
-> > That sounds nice. I will try in this way and give a feedback later.
-> >
-> I tried to call ext2fs_inline_data_set() from ext2fs_symlink. The result is
-> not as expected. Before it gets to "return EXT2_ET_INLINE_DATA_NO_SPACE",
-> ext2fs_inline_data_size() is called. In this function, it may return at here:
-> 
-> 	if (!(inode.i_flags & EXT4_INLINE_DATA_FL))
-> 		return EXT2_ET_NO_INLINE_DATA;
-> 
-> and the message was printed as below:
-> 
-> ext2fs_symlink: Inode doesn't have inline data
-> symlink: Inode doesn't have inline data
+--20cf303a32f3e7637005002341a0
+Content-Type: text/plain; charset="UTF-8"
 
-Yeah, you have to set EXT4_INLINE_DATA_FL then write_new_inode before calling
-ext2fs_inline_data_set() so that the subsequent inlinedata calls (which re-read
-the inode off the disk) see the flag.  (Yuck)
+Kernel 3.16, e2fsprogs 1.43-WIP (1.42.11 compiled with metadata_csum
+support), filesystems mounted with journal_async_commit.
 
-> That is because we did not mark EXT4_INLINE_DATA_FL yet. Even if mark the flag,
-> it still return at this point:
-> 
-> 	data.fs = fs;
-> 	data.ino = ino;
-> 	retval = ext2fs_inline_data_ea_get(&data);
-> 	if (retval)
-> 		return retval;
-> 
-> and the message was printed as below:
-> 
-> ext2fs_symlink: Extended attribute key not found
-> symlink: Extended attribute key not found
+This may be an fsck problem, hard to tell.  I consistently have
+problems with journal recovery after hard reboot when filesystem has
+metadata_csum.   Interestingly, no problems with 64-bit filesystems.
 
-Personally, I think that's a bug in inline_data.c.  Retrieving any of the
-inline data shouldn't fail just because there's no EA -- what if the EA is
-damaged?  For the case of creating a symlink, the EA doesn't exist because we
-haven't finished creating the file yet.
+during journal replay, bogus block numbers are reported.  in this
+case, a 128MB file was deleted on two filesystems where the only
+difference is 64bit vs non-64bit.  This also happens with or without
+bigalloc, though I only document bigalloc case here.
 
-I think it makes more sense for ext2fs_inline_data_ea_get() to check for
-EXT2_ET_EA_KEY_NOT_FOUND when it tries to grab the EA, and simply set
-data.ea_size = 0.
+please see attached superblocks, dumped just prior to hard reboot.
+disk8=sdm1, disk9=sdn1
 
-> That means the xattr of the new created inode is clean.
-> because ext2fs_write_new_inode() is called early, the xattr is made clean.
+dmesg:
 
-If you've already called write_new_inode (for the inline symlink case) then you
-must call write_inode or else you see the behavior you observed.
+[Fri Aug  8 15:16:28 2014] JBD2: Out of memory during recovery.
+[Fri Aug  8 15:16:28 2014] JBD2: recovery failed
+[Fri Aug  8 15:16:28 2014] EXT4-fs (sdm1): error loading journal
+[Fri Aug  8 15:16:27 2014] EXT4-fs (sdn1): recovery complete
+[Fri Aug  8 15:16:27 2014] EXT4-fs (sdn1): mounted filesystem with
+ordered data mode. Opts: journal_async_commit
 
-> I think use "ext2fs_xattr_inode_max_size() + EXT4_MIN_INLINE_DATA_SIZE"
-> to get the available xattr size. And use ext2fs_inline_data_ea_set()
-> directly to set inline data is a workaround.
 
-There should provide a test case.  Ted seems to be getting stricter about that.
+fsck:
 
-Oh well, how about this patch?  Seeing as I'm messing around with the inline
-data patchbomb some more anyway.
+#e2fsck -f -v /dev/sdm1
+e2fsck 1.43-WIP (09-Jul-2014)
+disk8: recovering journal
+Error writing block 549755813991 (Invalid argument).  Ignore error<y>? yes
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+Free blocks count wrong (11332304, counted=11365072).
+Fix<y>? yes
+Free inodes count wrong (177287, counted=177288).
+Fix<y>? yes
 
---D
+disk8: ***** FILE SYSTEM WAS MODIFIED *****
 
-diff --git a/lib/ext2fs/symlink.c b/lib/ext2fs/symlink.c
-index 2e1fc68..68f8893 100644
---- a/lib/ext2fs/symlink.c
-+++ b/lib/ext2fs/symlink.c
-@@ -35,7 +35,7 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
- 	struct ext2_inode	inode;
- 	ext2_ino_t		scratch_ino;
- 	blk64_t			blk;
--	int			fastlink;
-+	int			fastlink, inlinelink;
- 	unsigned int		target_len;
- 	char			*block_buf = 0;
- 
-@@ -78,15 +78,36 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
- 	memset(&inode, 0, sizeof(struct ext2_inode));
- 	inode.i_mode = LINUX_S_IFLNK | 0777;
- 	inode.i_uid = inode.i_gid = 0;
--	ext2fs_iblk_set(fs, &inode, fastlink ? 0 : 1);
- 	inode.i_links_count = 1;
- 	ext2fs_inode_size_set(fs, &inode, target_len);
- 	/* The time fields are set by ext2fs_write_new_inode() */
- 
-+	inlinelink = !fastlink &&
-+		     (fs->super->s_feature_incompat &
-+					EXT4_FEATURE_INCOMPAT_INLINE_DATA) &&
-+		     (target_len < fs->blocksize);
- 	if (fastlink) {
- 		/* Fast symlinks, target stored in inode */
- 		strcpy((char *)&inode.i_block, target);
-+	} else if (inlinelink) {
-+		/* Try inserting an inline data symlink */
-+		inode.i_flags |= EXT4_INLINE_DATA_FL;
-+		retval = ext2fs_write_new_inode(fs, ino, &inode);
-+		if (retval)
-+			goto cleanup;
-+		retval = ext2fs_inline_data_set(fs, ino, &inode, target,
-+						target_len);
-+		if (retval) {
-+			inode.i_flags &= ~EXT4_INLINE_DATA_FL;
-+			inlinelink = 0;
-+			goto need_block;
-+		}
-+		retval = ext2fs_read_inode(fs, ino, &inode);
-+		if (retval)
-+			goto cleanup;
- 	} else {
-+need_block:
-+		ext2fs_iblk_set(fs, &inode, 1);
- 		/* Slow symlinks, target stored in the first block */
- 		memset(block_buf, 0, fs->blocksize);
- 		strcpy(block_buf, target);
-@@ -105,11 +126,14 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
- 	 * number is assigned by write_new_inode, which means that the
- 	 * operations using ino must come after it.
- 	 */
--	retval = ext2fs_write_new_inode(fs, ino, &inode);
-+	if (inlinelink)
-+		retval = ext2fs_write_inode(fs, ino, &inode);
-+	else
-+		retval = ext2fs_write_new_inode(fs, ino, &inode);
- 	if (retval)
- 		goto cleanup;
- 
--	if (!fastlink) {
-+	if (!fastlink && !inlinelink) {
- 		retval = ext2fs_bmap2(fs, ino, &inode, NULL, BMAP_SET, 0, NULL,
- 				      &blk);
- 		if (retval)
-@@ -140,7 +164,7 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
- 	/*
- 	 * Update accounting....
- 	 */
--	if (!fastlink)
-+	if (!fastlink && !inlinelink)
- 		ext2fs_block_alloc_stats2(fs, blk, +1);
- 	ext2fs_inode_alloc_stats2(fs, ino, +1, 0);
- 
+        1656 inodes used (0.93%, out of 178944)
+         260 non-contiguous files (15.7%)
+           0 non-contiguous directories (0.0%)
+             # of inodes with ind/dind/tind blocks: 0/0/0
+             Extent depth histogram: 1280/363/5
+   721201312 blocks used (98.45%, out of 732566384)
+           0 bad blocks
+         358 large files
+
+        1267 regular files
+         380 directories
+           0 character device files
+           0 block device files
+           0 fifos
+           0 links
+           0 symbolic links (0 fast symbolic links)
+           0 sockets
+------------
+        1647 files
+
+--20cf303a32f3e7637005002341a0
+Content-Type: application/octet-stream; name="disk8-dumpe2fs-postrm"
+Content-Disposition: attachment; filename="disk8-dumpe2fs-postrm"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_hylwn89n0
+
+RmlsZXN5c3RlbSB2b2x1bWUgbmFtZTogICBkaXNrOApMYXN0IG1vdW50ZWQgb246ICAgICAgICAg
+IC9tbnQvZGlzazgKRmlsZXN5c3RlbSBVVUlEOiAgICAgICAgICAwZGY4ODJhNS0xZGY2LTRkNTEt
+YjAzNy1jMTMyZTMwOGUzNDEKRmlsZXN5c3RlbSBtYWdpYyBudW1iZXI6ICAweEVGNTMKRmlsZXN5
+c3RlbSByZXZpc2lvbiAjOiAgICAxIChkeW5hbWljKQpGaWxlc3lzdGVtIGZlYXR1cmVzOiAgICAg
+IGhhc19qb3VybmFsIGV4dF9hdHRyIHJlc2l6ZV9pbm9kZSBkaXJfaW5kZXggZmlsZXR5cGUgbmVl
+ZHNfcmVjb3ZlcnkgZXh0ZW50IGZsZXhfYmcgc3BhcnNlX3N1cGVyIGxhcmdlX2ZpbGUgaHVnZV9m
+aWxlIGRpcl9ubGluayBleHRyYV9pc2l6ZSBiaWdhbGxvYyBtZXRhZGF0YV9jc3VtCkZpbGVzeXN0
+ZW0gZmxhZ3M6ICAgICAgICAgc2lnbmVkX2RpcmVjdG9yeV9oYXNoIApEZWZhdWx0IG1vdW50IG9w
+dGlvbnM6ICAgIHVzZXJfeGF0dHIgYWNsCkZpbGVzeXN0ZW0gc3RhdGU6ICAgICAgICAgY2xlYW4K
+RXJyb3JzIGJlaGF2aW9yOiAgICAgICAgICBDb250aW51ZQpGaWxlc3lzdGVtIE9TIHR5cGU6ICAg
+ICAgIExpbnV4Cklub2RlIGNvdW50OiAgICAgICAgICAgICAgMTc4OTQ0CkJsb2NrIGNvdW50OiAg
+ICAgICAgICAgICAgNzMyNTY2Mzg0ClJlc2VydmVkIGJsb2NrIGNvdW50OiAgICAgMApGcmVlIGJs
+b2NrczogICAgICAgICAgICAgIDExMzMyMzA0CkZyZWUgaW5vZGVzOiAgICAgICAgICAgICAgMTc3
+Mjg3CkZpcnN0IGJsb2NrOiAgICAgICAgICAgICAgMApCbG9jayBzaXplOiAgICAgICAgICAgICAg
+IDQwOTYKQ2x1c3RlciBzaXplOiAgICAgICAgICAgICA2NTUzNgpSZXNlcnZlZCBHRFQgYmxvY2tz
+OiAgICAgIDUzCkJsb2NrcyBwZXIgZ3JvdXA6ICAgICAgICAgNTI0Mjg4CkNsdXN0ZXJzIHBlciBn
+cm91cDogICAgICAgMzI3NjgKSW5vZGVzIHBlciBncm91cDogICAgICAgICAxMjgKSW5vZGUgYmxv
+Y2tzIHBlciBncm91cDogICA4CkZsZXggYmxvY2sgZ3JvdXAgc2l6ZTogICAgMTYKRmlsZXN5c3Rl
+bSBjcmVhdGVkOiAgICAgICBUdWUgSmFuIDE1IDE3OjE4OjA3IDIwMTMKTGFzdCBtb3VudCB0aW1l
+OiAgICAgICAgICBGcmkgQXVnICA4IDE0OjQ2OjAxIDIwMTQKTGFzdCB3cml0ZSB0aW1lOiAgICAg
+ICAgICBGcmkgQXVnICA4IDE0OjQ2OjAxIDIwMTQKTW91bnQgY291bnQ6ICAgICAgICAgICAgICAx
+Ck1heGltdW0gbW91bnQgY291bnQ6ICAgICAgLTEKTGFzdCBjaGVja2VkOiAgICAgICAgICAgICBG
+cmkgQXVnICA4IDE0OjQzOjU4IDIwMTQKQ2hlY2sgaW50ZXJ2YWw6ICAgICAgICAgICAwICg8bm9u
+ZT4pCkxpZmV0aW1lIHdyaXRlczogICAgICAgICAgNjAyMiBHQgpSZXNlcnZlZCBibG9ja3MgdWlk
+OiAgICAgIDAgKHVzZXIgcm9vdCkKUmVzZXJ2ZWQgYmxvY2tzIGdpZDogICAgICAwIChncm91cCBy
+b290KQpGaXJzdCBpbm9kZTogICAgICAgICAgICAgIDExCklub2RlIHNpemU6CSAgICAgICAgICAy
+NTYKUmVxdWlyZWQgZXh0cmEgaXNpemU6ICAgICAyOApEZXNpcmVkIGV4dHJhIGlzaXplOiAgICAg
+IDI4CkpvdXJuYWwgaW5vZGU6ICAgICAgICAgICAgOApEZWZhdWx0IGRpcmVjdG9yeSBoYXNoOiAg
+IGhhbGZfbWQ0CkRpcmVjdG9yeSBIYXNoIFNlZWQ6ICAgICAgZTBmNDZjMTAtZWNlNi00M2E0LTk0
+NjktYzBkODlkNjQ0YjBmCkpvdXJuYWwgYmFja3VwOiAgICAgICAgICAgaW5vZGUgYmxvY2tzCkNo
+ZWNrc3VtIHR5cGU6ICAgICAgICAgICAgY3JjMzJjCkNoZWNrc3VtOiAgICAgICAgICAgICAgICAg
+MHhmYTQ5MDQxNQpKb3VybmFsIGZlYXR1cmVzOiAgICAgICAgIGpvdXJuYWxfaW5jb21wYXRfcmV2
+b2tlIGpvdXJuYWxfYXN5bmNfY29tbWl0IGpvdXJuYWxfY2hlY2tzdW1fdjIKSm91cm5hbCBzaXpl
+OiAgICAgICAgICAgICAxMjhNCkpvdXJuYWwgbGVuZ3RoOiAgICAgICAgICAgMzI3NjgKSm91cm5h
+bCBzZXF1ZW5jZTogICAgICAgICAweDAwMDAwMDdmCkpvdXJuYWwgc3RhcnQ6ICAgICAgICAgICAg
+MQpKb3VybmFsIGNoZWNrc3VtIHR5cGU6ICAgIGNyYzMyYwpKb3VybmFsIGNoZWNrc3VtOiAgICAg
+ICAgIDB4Y2ZiN2I0NWUKCg==
+--20cf303a32f3e7637005002341a0
+Content-Type: application/octet-stream; name="disk9-dumpe2fs-postrm"
+Content-Disposition: attachment; filename="disk9-dumpe2fs-postrm"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_hylwn8a01
+
+RmlsZXN5c3RlbSB2b2x1bWUgbmFtZTogICBkaXNrOQpMYXN0IG1vdW50ZWQgb246ICAgICAgICAg
+IC9tbnQvZGlzazkKRmlsZXN5c3RlbSBVVUlEOiAgICAgICAgICAxMTM5OTE4My00ZjQyLTRiMTQt
+OGI1ZC0zN2NiZGEzOGIwMjkKRmlsZXN5c3RlbSBtYWdpYyBudW1iZXI6ICAweEVGNTMKRmlsZXN5
+c3RlbSByZXZpc2lvbiAjOiAgICAxIChkeW5hbWljKQpGaWxlc3lzdGVtIGZlYXR1cmVzOiAgICAg
+IGhhc19qb3VybmFsIGV4dF9hdHRyIGRpcl9pbmRleCBmaWxldHlwZSBuZWVkc19yZWNvdmVyeSBl
+eHRlbnQgNjRiaXQgZmxleF9iZyBzcGFyc2Vfc3VwZXIgbGFyZ2VfZmlsZSBodWdlX2ZpbGUgZGly
+X25saW5rIGV4dHJhX2lzaXplIGJpZ2FsbG9jIG1ldGFkYXRhX2NzdW0KRmlsZXN5c3RlbSBmbGFn
+czogICAgICAgICBzaWduZWRfZGlyZWN0b3J5X2hhc2ggCkRlZmF1bHQgbW91bnQgb3B0aW9uczog
+ICAgdXNlcl94YXR0ciBhY2wKRmlsZXN5c3RlbSBzdGF0ZTogICAgICAgICBjbGVhbgpFcnJvcnMg
+YmVoYXZpb3I6ICAgICAgICAgIENvbnRpbnVlCkZpbGVzeXN0ZW0gT1MgdHlwZTogICAgICAgTGlu
+dXgKSW5vZGUgY291bnQ6ICAgICAgICAgICAgICAxNzg5NDQKQmxvY2sgY291bnQ6ICAgICAgICAg
+ICAgICA3MzI1NjYzODQKUmVzZXJ2ZWQgYmxvY2sgY291bnQ6ICAgICAwCkZyZWUgYmxvY2tzOiAg
+ICAgICAgICAgICAgMTY3ODg2OTYwCkZyZWUgaW5vZGVzOiAgICAgICAgICAgICAgMTc3NjEyCkZp
+cnN0IGJsb2NrOiAgICAgICAgICAgICAgMApCbG9jayBzaXplOiAgICAgICAgICAgICAgIDQwOTYK
+Q2x1c3RlciBzaXplOiAgICAgICAgICAgICA2NTUzNgpHcm91cCBkZXNjcmlwdG9yIHNpemU6ICAg
+IDY0CkJsb2NrcyBwZXIgZ3JvdXA6ICAgICAgICAgNTI0Mjg4CkNsdXN0ZXJzIHBlciBncm91cDog
+ICAgICAgMzI3NjgKSW5vZGVzIHBlciBncm91cDogICAgICAgICAxMjgKSW5vZGUgYmxvY2tzIHBl
+ciBncm91cDogICA4CkZsZXggYmxvY2sgZ3JvdXAgc2l6ZTogICAgMTYKRmlsZXN5c3RlbSBjcmVh
+dGVkOiAgICAgICBUaHUgRGVjIDI2IDE5OjI5OjIxIDIwMTMKTGFzdCBtb3VudCB0aW1lOiAgICAg
+ICAgICBGcmkgQXVnICA4IDE0OjQyOjU2IDIwMTQKTGFzdCB3cml0ZSB0aW1lOiAgICAgICAgICBG
+cmkgQXVnICA4IDE0OjQyOjU2IDIwMTQKTW91bnQgY291bnQ6ICAgICAgICAgICAgICAxMApNYXhp
+bXVtIG1vdW50IGNvdW50OiAgICAgIC0xCkxhc3QgY2hlY2tlZDogICAgICAgICAgICAgVGh1IEF1
+ZyAgNyAwMTozNToyMCAyMDE0CkNoZWNrIGludGVydmFsOiAgICAgICAgICAgMCAoPG5vbmU+KQpM
+aWZldGltZSB3cml0ZXM6ICAgICAgICAgIDI0MTMgR0IKUmVzZXJ2ZWQgYmxvY2tzIHVpZDogICAg
+ICAwICh1c2VyIHJvb3QpClJlc2VydmVkIGJsb2NrcyBnaWQ6ICAgICAgMCAoZ3JvdXAgcm9vdCkK
+Rmlyc3QgaW5vZGU6ICAgICAgICAgICAgICAxMQpJbm9kZSBzaXplOgkgICAgICAgICAgMjU2ClJl
+cXVpcmVkIGV4dHJhIGlzaXplOiAgICAgMjgKRGVzaXJlZCBleHRyYSBpc2l6ZTogICAgICAyOApK
+b3VybmFsIGlub2RlOiAgICAgICAgICAgIDgKRGVmYXVsdCBkaXJlY3RvcnkgaGFzaDogICBoYWxm
+X21kNApEaXJlY3RvcnkgSGFzaCBTZWVkOiAgICAgIDc3NzgwZDc0LTU5YzktNDkxMC04OGMxLWZm
+NTBjM2U5NTVjMQpKb3VybmFsIGJhY2t1cDogICAgICAgICAgIGlub2RlIGJsb2NrcwpDaGVja3N1
+bSB0eXBlOiAgICAgICAgICAgIGNyYzMyYwpDaGVja3N1bTogICAgICAgICAgICAgICAgIDB4MjBm
+MDk0MjUKSm91cm5hbCBmZWF0dXJlczogICAgICAgICBqb3VybmFsX2luY29tcGF0X3Jldm9rZSBq
+b3VybmFsXzY0Yml0IGpvdXJuYWxfYXN5bmNfY29tbWl0IGpvdXJuYWxfY2hlY2tzdW1fdjIKSm91
+cm5hbCBzaXplOiAgICAgICAgICAgICAxMjhNCkpvdXJuYWwgbGVuZ3RoOiAgICAgICAgICAgMzI3
+NjgKSm91cm5hbCBzZXF1ZW5jZTogICAgICAgICAweDAwMDFlMTFiCkpvdXJuYWwgc3RhcnQ6ICAg
+ICAgICAgICAgMQpKb3VybmFsIGNoZWNrc3VtIHR5cGU6ICAgIGNyYzMyYwpKb3VybmFsIGNoZWNr
+c3VtOiAgICAgICAgIDB4OThkNzBiOTMKCg==
+--20cf303a32f3e7637005002341a0--
