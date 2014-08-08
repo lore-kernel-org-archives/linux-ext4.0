@@ -1,214 +1,68 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v3 6/6] ext4: use a garbage collection algorithm to manage object
-Date: Thu,  7 Aug 2014 11:35:53 +0800
-Message-ID: <1407382553-24256-7-git-send-email-wenqing.lz@taobao.com>
-References: <1407382553-24256-1-git-send-email-wenqing.lz@taobao.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.cz>, Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f182.google.com ([209.85.192.182]:38609 "EHLO
-	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754928AbaHGDsH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Aug 2014 23:48:07 -0400
-Received: by mail-pd0-f182.google.com with SMTP id fp1so4464270pdb.27
-        for <linux-ext4@vger.kernel.org>; Wed, 06 Aug 2014 20:48:06 -0700 (PDT)
-In-Reply-To: <1407382553-24256-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Namjae Jeon <namjae.jeon@samsung.com>
+Subject: [PATCH v5 0/10] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
+Date: Fri, 08 Aug 2014 14:05:23 +0900
+Message-ID: <004101cfb2c6$5c0194f0$1404bed0$@samsung.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Brian Foster <bfoster@redhat.com>, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
+	=?iso-8859-2?Q?Luk=E1=B9_Czerner?= <lczerner@redhat.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-language: ko
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+In continuation of the work of making the process of non linear editing of
+media files faster, we introduce here the new flag FALLOC_FL_INSERT_RANGE
+for fallocate.
 
-For keeping useful extent cache in the tree, this commit uses a gc-like
-algorithm to manage object.  A new flag called '_ACCESSED' is defined to
-track whether an extent cache is touched or not.  When the shrinker tries
-to reclaim some ojbects, an extent cache will be moved to the tail of
-active list from inactive list if this flag is marked.  The object in
-active list will be reclaimed when we are under a high memory pressure.
-After that, the aged extent cache should be kept as many as possible.
+This flag will work opposite to the FALLOC_FL_COLLAPSE_RANGE flag.
+As such, specifying FALLOC_FL_INSERT_RANGE flag will create new space inside file
+by inserting a hole within the range specified by offset and len. 
+User can write new data in this space. e.g. ads.
+Like collapse range, currently we have the limitation that offset and len should
+be block size aligned for both XFS and Ext4.
 
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: Jan Kara <jack@suse.cz>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- fs/ext4/extents_status.c |   42 +++++++++++++++++++++++++++++++++---------
- fs/ext4/extents_status.h |   31 ++++++++++++++++++++++++-------
- 2 files changed, 57 insertions(+), 16 deletions(-)
+The semantics of the flag are :
+1) It creates space within file by inserting a hole of  len bytes starting
+   at offset byte without overwriting any existing data. All the data blocks
+   from offset to EOF are shifted towards right to make hole space.
+2) It should be used exclusively. No other fallocate flag in combination.
+3) Offset and length supplied to fallocate should be fs block size aligned
+   in case of xfs and ext4.
+4) Insert range does not work for the case when offset is overlapping/beyond
+   i_size. If the user wants to insert space at the end of file they are
+   advised to use either ftruncate(2) or fallocate(2) with mode 0.
+5) It increses the size of file by len bytes.
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 2f81d1e..2f6bb538 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -149,7 +149,7 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- 			      ext4_lblk_t end);
- static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
- 				       struct list_head *freeable,
--				       int *nr_to_scan);
-+				       int *nr_to_scan, int force);
- static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
- 		       struct ext4_inode_info *locked_ei);
- 
-@@ -172,7 +172,8 @@ void ext4_exit_es(void)
- void ext4_es_init_tree(struct ext4_es_tree *tree)
- {
- 	tree->root = RB_ROOT;
--	INIT_LIST_HEAD(&tree->list);
-+	INIT_LIST_HEAD(&tree->active_list);
-+	INIT_LIST_HEAD(&tree->inactive_list);
- 	tree->cache_es = NULL;
- }
- 
-@@ -317,7 +318,7 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
- 	 * We don't count delayed extent because we never try to reclaim them
- 	 */
- 	if (!ext4_es_is_delayed(es)) {
--		list_add_tail(&es->list, &ei->i_es_tree.list);
-+		list_add_tail(&es->list, &ei->i_es_tree.inactive_list);
- 		ei->i_es_shk_nr++;
- 		percpu_counter_inc(&EXT4_SB(inode->i_sb)->
- 					s_es_stats.es_stats_shk_cnt);
-@@ -787,6 +788,7 @@ out:
- 	stats = &EXT4_SB(inode->i_sb)->s_es_stats;
- 	if (found) {
- 		BUG_ON(!es1);
-+		ext4_es_mark_accessed(es1);
- 		es->es_lblk = es1->es_lblk;
- 		es->es_len = es1->es_len;
- 		es->es_pblk = es1->es_pblk;
-@@ -1027,7 +1029,7 @@ retry:
- 		}
- 
- 		nr_shrunk += __es_try_to_reclaim_extents(ei, &freeable,
--							 &nr_to_scan);
-+							 &nr_to_scan, retried);
- 		write_unlock(&ei->i_es_lock);
- 		dispose_list(&ei->vfs_inode, &freeable);
- 
-@@ -1048,7 +1050,7 @@ retry:
- 
- 	if (locked_ei && nr_shrunk == 0) {
- 		nr_shrunk = __es_try_to_reclaim_extents(locked_ei, &freeable,
--							&nr_to_scan);
-+							&nr_to_scan, 1);
- 		dispose_list(&locked_ei->vfs_inode, &freeable);
- 	}
- 
-@@ -1247,7 +1249,7 @@ void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi)
- 
- static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
- 				       struct list_head *freeable,
--				       int *nr_to_scan)
-+				       int *nr_to_scan, int force)
- {
- 	struct inode *inode = &ei->vfs_inode;
- 	struct ext4_es_tree *tree = &ei->i_es_tree;
-@@ -1263,13 +1265,35 @@ static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
- 	    __ratelimit(&_rs))
- 		ext4_warning(inode->i_sb, "forced shrink of precached extents");
- 
--	list_for_each_entry_safe(es, tmp, &tree->list, list) {
-+	list_for_each_entry_safe(es, tmp, &tree->inactive_list, list) {
-+		if (!*nr_to_scan)
-+			goto done;
-+		--*nr_to_scan;
-+
-+		if (ext4_es_is_accessed(es)) {
-+			list_move_tail(&es->list, &tree->active_list);
-+			continue;
-+		} else {
-+			rb_erase(&es->rb_node, &tree->root);
-+			list_move_tail(&es->list, freeable);
-+			nr_shrunk++;
-+		}
-+	}
-+
-+	if (!force)
-+		goto done;
-+
-+	list_for_each_entry_safe(es, tmp, &tree->active_list, list) {
-+		if (!*nr_to_scan)
-+			goto done;
-+		--*nr_to_scan;
-+
- 		rb_erase(&es->rb_node, &tree->root);
- 		list_move_tail(&es->list, freeable);
- 		nr_shrunk++;
--		if (--*nr_to_scan == 0)
--			break;
- 	}
-+
-+done:
- 	tree->cache_es = NULL;
- 	return nr_shrunk;
- }
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index a45c7fe..213e056 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -29,12 +29,12 @@
- /*
-  * These flags live in the high bits of extent_status.es_pblk
-  */
--#define ES_SHIFT	60
-+#define ES_SHIFT	59
- 
--#define EXTENT_STATUS_WRITTEN	(1 << 3)
--#define EXTENT_STATUS_UNWRITTEN (1 << 2)
--#define EXTENT_STATUS_DELAYED	(1 << 1)
--#define EXTENT_STATUS_HOLE	(1 << 0)
-+#define EXTENT_STATUS_WRITTEN	(1 << 4)
-+#define EXTENT_STATUS_UNWRITTEN (1 << 3)
-+#define EXTENT_STATUS_DELAYED	(1 << 2)
-+#define EXTENT_STATUS_HOLE	(1 << 1)
- 
- #define EXTENT_STATUS_FLAGS	(EXTENT_STATUS_WRITTEN | \
- 				 EXTENT_STATUS_UNWRITTEN | \
-@@ -45,9 +45,10 @@
- #define ES_UNWRITTEN		(1ULL << 62)
- #define ES_DELAYED		(1ULL << 61)
- #define ES_HOLE			(1ULL << 60)
-+#define ES_ACCESSED		(1ULL << 59)
- 
- #define ES_MASK			(ES_WRITTEN | ES_UNWRITTEN | \
--				 ES_DELAYED | ES_HOLE)
-+				 ES_DELAYED | ES_HOLE | ES_ACCESSED)
- 
- struct ext4_sb_info;
- struct ext4_extent;
-@@ -62,7 +63,8 @@ struct extent_status {
- 
- struct ext4_es_tree {
- 	struct rb_root root;
--	struct list_head list;
-+	struct list_head active_list;
-+	struct list_head inactive_list;
- 	struct extent_status *cache_es;	/* recently accessed extent */
- };
- 
-@@ -114,6 +116,21 @@ static inline int ext4_es_is_hole(struct extent_status *es)
- 	return (es->es_pblk & ES_HOLE) != 0;
- }
- 
-+static inline int ext4_es_is_accessed(struct extent_status *es)
-+{
-+	return (es->es_pblk & ES_ACCESSED) != 0;
-+}
-+
-+static inline void ext4_es_mark_accessed(struct extent_status *es)
-+{
-+	es->es_pblk |= ES_ACCESSED;
-+}
-+
-+static inline void ext4_es_clear_accessed(struct extent_status *es)
-+{
-+	es->es_pblk &= ~ES_ACCESSED;
-+}
-+
- static inline unsigned int ext4_es_status(struct extent_status *es)
- {
- 	return es->es_pblk >> ES_SHIFT;
+
+Namjae Jeon (10):
+ fs: Add support FALLOC_FL_INSERT_RANGE for fallocate
+ xfs: Add support FALLOC_FL_INSERT_RANGE for fallocate
+ ext4: Add support FALLOC_FL_INSERT_RANGE for fallocate
+ xfsprogs: xfs_io: add finsert command for insert range via fallocate
+ xfstests: generic/029: Standard insert range tests
+ xfstests: generic/030: Delayed allocation insert range
+ xfstests: generic/031: Multi insert range tests
+ xfstests: generic/032: Delayed allocation multi insert
+ xfstests: fsstress: Add fallocate insert range operation
+ xfstests: fsx: Add fallocate insert range operation
+
 -- 
-1.7.9.7
+1.7.11-rc0
 
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
