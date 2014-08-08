@@ -1,93 +1,172 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH v2 07/21] libext2fs: don't fail inline data operations if
- there's no EA
-Date: Fri, 8 Aug 2014 15:46:40 -0700
-Message-ID: <20140808224640.GH11191@birch.djwong.org>
+Subject: [PATCH v2 21/21] tests: add regression tests for inlinedata fixes
+Date: Fri, 8 Aug 2014 15:47:11 -0700
+Message-ID: <20140808224711.GI11191@birch.djwong.org>
 References: <20140805010457.2611.89813.stgit@birch.djwong.org>
- <20140805010543.2611.86125.stgit@birch.djwong.org>
+ <20140805010716.2611.99727.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:30860 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751343AbaHHWqq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Aug 2014 18:46:46 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:33545 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757821AbaHHWrQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Aug 2014 18:47:16 -0400
 Content-Disposition: inline
-In-Reply-To: <20140805010543.2611.86125.stgit@birch.djwong.org>
+In-Reply-To: <20140805010716.2611.99727.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix up the rest of the inline data code not to complain if there's no
-EA, since it's possible that there's no EA because we're in the
-process of creating an inline data file.  Also, don't return an error
-code when removing a nonexistent EA, because there's no reason to.
+Add a regression test to ensure that previous patches' fixes to e2fsck
+do not revert.
 
-Furthermore, if we write less than 60 bytes of inline data, remove the
-EA to avoid wasting space.
-
-v2: Fix a few more places where inline data functions would totally
-fail if the EA was missing, even though the EA's presence isn't
-required.
+v2: Amend test case to reflect the inode EA clearing bug fixed earlier.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/ext_attr.c      |    3 ++-
- lib/ext2fs/inline_data.c   |    9 ++++++++-
- tests/d_xattr_edits/expect |    1 -
- 3 files changed, 10 insertions(+), 3 deletions(-)
+ tests/f_inlinedata_repair/expect.1 |   75 ++++++++++++++++++++++++++++++++++++
+ tests/f_inlinedata_repair/expect.2 |    7 +++
+ tests/f_inlinedata_repair/image.gz |  Bin
+ tests/f_inlinedata_repair/name     |    1 
+ 4 files changed, 83 insertions(+)
+ create mode 100644 tests/f_inlinedata_repair/expect.1
+ create mode 100644 tests/f_inlinedata_repair/expect.2
+ create mode 100644 tests/f_inlinedata_repair/image.gz
+ create mode 100644 tests/f_inlinedata_repair/name
 
-diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index 5732ca6..fc191f5 100644
---- a/lib/ext2fs/ext_attr.c
-+++ b/lib/ext2fs/ext_attr.c
-@@ -1020,7 +1020,8 @@ errcode_t ext2fs_xattr_remove(struct ext2_xattr_handle *handle,
- 		}
- 	}
- 
--	return EXT2_ET_EA_KEY_NOT_FOUND;
-+	/* no key found, success! */
-+	return 0;
- }
- 
- errcode_t ext2fs_xattrs_open(ext2_filsys fs, ext2_ino_t ino,
-diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
-index b9bda50..3ba04ae 100644
---- a/lib/ext2fs/inline_data.c
-+++ b/lib/ext2fs/inline_data.c
-@@ -70,7 +70,11 @@ static errcode_t ext2fs_inline_data_ea_get(struct ext2_inline_data *data)
- 
- 	retval = ext2fs_xattr_get(handle, "system.data",
- 				  (void **)&data->ea_data, &data->ea_size);
--	if (retval)
-+	if (retval == EXT2_ET_EA_KEY_NOT_FOUND) {
-+		data->ea_size = 0;
-+		data->ea_data = NULL;
-+		retval = 0;
-+	} else if (retval)
- 		goto err;
- 
- err:
-@@ -557,6 +561,9 @@ errcode_t ext2fs_inline_data_set(ext2_filsys fs, ext2_ino_t ino,
- 	}
- 
- 	if (size <= EXT4_MIN_INLINE_DATA_SIZE) {
-+		retval = ext2fs_inline_data_ea_remove(fs, ino);
-+		if (retval)
-+			return retval;
- 		memcpy((void *)inode->i_block, buf, size);
- 		return ext2fs_write_inode(fs, ino, inode);
- 	}
-diff --git a/tests/d_xattr_edits/expect b/tests/d_xattr_edits/expect
-index 10e30c1..44ce5e4 100644
---- a/tests/d_xattr_edits/expect
-+++ b/tests/d_xattr_edits/expect
-@@ -19,7 +19,6 @@ Exit status is 0
- ea_rm / user.moo
- Exit status is 0
- ea_rm / nosuchea
--ea_rm: Extended attribute key not found while removing extended attribute
- Exit status is 0
- ea_list /
- Extended attributes:
+diff --git a/tests/f_inlinedata_repair/expect.1 b/tests/f_inlinedata_repair/expect.1
+new file mode 100644
+index 0000000..faba192
+--- /dev/null
++++ b/tests/f_inlinedata_repair/expect.1
+@@ -0,0 +1,75 @@
++Pass 1: Checking inodes, blocks, and sizes
++Inode 12 has INLINE_DATA_FL flag but extended attribute not found.  Truncate? yes
++
++Inode 16, i_size is 56, should be 60.  Fix? yes
++
++Inode 24, i_size is 59, should be 60.  Fix? yes
++
++Inode 28 is a unknown file type with mode 00 but it looks like it is really a directory.
++Fix? yes
++
++Inode 36 is a unknown file type with mode 00 but it looks like it is really a directory.
++Fix? yes
++
++Inode 36, i_size is 5, should be 60.  Fix? yes
++
++Pass 2: Checking directory structure
++Directory inode 20, block #0, offset 4: directory corrupted
++Salvage? yes
++
++Directory inode 28, block #0, offset 4: directory corrupted
++Salvage? yes
++
++Directory inode 32, block #0, offset 4: directory corrupted
++Salvage? yes
++
++Directory inode 32, block #0, offset 4: directory corrupted
++Salvage? yes
++
++Entry '..' in ??? (36) has invalid inode #: 1633774699.
++Clear? yes
++
++Directory inode 36, block #0, offset 4: directory corrupted
++Salvage? yes
++
++Symlink /3 (inode #14) is invalid.
++Clear? yes
++
++Inode 38 (/B) has invalid mode (00).
++Clear? yes
++
++Entry 'A' in / (2) has an incorrect filetype (was 1, should be 2).
++Fix? yes
++
++Pass 3: Checking directory connectivity
++'..' in /A (36) is ??? (1633774699), should be / (2).
++Fix? yes
++
++Error while adjusting inode count on inode 0
++Pass 4: Checking reference counts
++Unattached zero-length inode 22.  Clear? yes
++
++Unattached zero-length inode 23.  Clear? yes
++
++Unattached zero-length inode 29.  Clear? yes
++
++Unattached zero-length inode 30.  Clear? yes
++
++Unattached zero-length inode 31.  Clear? yes
++
++Unattached zero-length inode 33.  Clear? yes
++
++Unattached zero-length inode 34.  Clear? yes
++
++Unattached zero-length inode 35.  Clear? yes
++
++Inode 36 ref count is 1, should be 2.  Fix? yes
++
++Pass 5: Checking group summary information
++Directories count wrong for group #0 (7, counted=8).
++Fix? yes
++
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 28/128 files (0.0% non-contiguous), 18/512 blocks
++Exit status is 1
+diff --git a/tests/f_inlinedata_repair/expect.2 b/tests/f_inlinedata_repair/expect.2
+new file mode 100644
+index 0000000..519f21d
+--- /dev/null
++++ b/tests/f_inlinedata_repair/expect.2
+@@ -0,0 +1,7 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 28/128 files (0.0% non-contiguous), 18/512 blocks
++Exit status is 0
+diff --git a/tests/f_inlinedata_repair/image.gz b/tests/f_inlinedata_repair/image.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..c33d81dc60f828c89c9b743e64e0b9cf4224da1f
+GIT binary patch
+literal 3201
+zcmeH}TToMX5XOV3SS*O*jEG_=Sfruc3K|e0RjE{iqQyW6AO%r`D1m}NDR8{uSS&JA
+z>J5PmD#aMWCEN|+R4qmWns#Cg;6Nymq(IU@0*Qy5oPXm>-<)y!oPF8-cD|jR`OQ8o
+z{_+akvzp=PCD!Uu^2x&#C!5&-v0KO5vNL66=O&KsT;dt#>b%s^eUBqOqiFnch84cO
+zoYt{?ooAIpqQfrg>J+~<u|DO_cigyHM-#g5hxcE-7@pYTx~H=6MNLSuXX*M8ns87f
+zEz;FYMJn}>rut?`7cqUsmv=^f_9^=$Va;o1slzLU%vW)BG?~oex1_b?xW+^~IZvZ(
+zhl$b0t3sBC3{+5_8rxB!cF4YW{UgQD^^N@RP5F2Zrd1PTRan;Z3XL5Iy*59u2eP<Z
+zV<hO$vq#zXr@S-!Kp$TR`(B{bai|YCUkD0ru7hpei{Ri_HMNB}T=lYaLw-ynn`;6c
+z$r+vbH10OlSel&`4)<FR<6eC*`a19;(*}pbdGO~Ap!1-ok9~cP)yS^a?t<*8jbp)e
+z9o;NVJ@(ax#UuZy4|E+f)D#x0#JV}VR?$<zKng=7AU+8TfK<1*0zx_CN^xdb-=}wT
+zQpxh%rrC2vy>5CsS^mg{yt{ilzWIu&it3_{wjK2~%=ap0?aW(WrjC3T2DZRm@g%c4
+zNIXtkX3pcfcPcB>YtvqEhal054qyz*{?e_(q@{0jX;b>zzA*O3K@ZIyzbWL+5_A55
+z_%hU~EEAvSVz%D%y>jLQCf;Ys@+cYdABt<*BQy!73;Y8vkn`>G`nU~;>*Hw?u`JQ0
+z>zs&{bv+YG+t#Wl$%rn+C9M5qe2m(}FYm<8wxtbhm`efoS04c@kr~<F`#0qAv&y9K
+zUz**Wwvj)X(m~qP*G8z{k0=8lxvRk4Vx}T{1OzXjzMBwOw@PhS=dMr6v(IZ9qz|zr
+zgMrRY=WSN`7>(^lsLcj?o}o)5{yN!^jp!9D!|~z+C43$mrnkpMERGU%vf5a0M3h>(
+z<FGeiD~qcsgUoBpCzEQ@YDDuw*DR#>c7ewdEzD!2#rQ+C66dH?Osh|-k+v9szY^N4
+zU=}_=VGbI=zCrRPm2V+Hi)h!5F@1DGW{<ELnpDfGlX$K%@h1qmp$oY;u2%4*j1_J2
+zf}I<iWi8piPd0HnP0%oQEQYDU+`LH(awMu3P_-3r&J*{U-k_68h`cQ$bo-*z7(suI
+z_Zq+(!}(x;I3{r30pyiIP!;Hs1OeYj<4OdD@1<Z#3CA$fA#ZTn+Sry+IK%!NQY{1m
+zX5&_<@m)EOCP~K;o<}wo2pF7fEa{s$3`*}u;YJ|}-KSxFr){_o(!|m@Y-lDOBPG%?
+z>br6Zk&TWc(x?e^FGmBe3#w{Gz>A;&C_xA9?m$EEZ#~$RTB!h)QU99&k>{0A-WnyT
+z(geKPIu2EVSjr$Mr6@p-L<?~h-}Z3PR;d_;N?sx}as*~Q)EOct&}Y9;1ry(aA5W{+
+z3LvKJr9`q_D9~`O!F<>-d)vCXVc$Sh@ogpO=PeHr2m7&@1!%tNHS|M-fZh;_@j51z
+zkK;l2HVUm|+OfwZo&(w*l0XF3!*U?Q_}YGPCMea7J)8c6dnz4a;boZ1@QKBsQ@{~i
+kvVPxvTly9P76KLm76KLm76Sj9z-C~@tUY1=!Ci6x0)&jPy8r+H
+
+literal 0
+HcmV?d00001
+
+diff --git a/tests/f_inlinedata_repair/name b/tests/f_inlinedata_repair/name
+new file mode 100644
+index 0000000..7e7e898
+--- /dev/null
++++ b/tests/f_inlinedata_repair/name
+@@ -0,0 +1 @@
++repair corrupt inline data files
