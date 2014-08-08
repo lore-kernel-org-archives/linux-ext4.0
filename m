@@ -1,471 +1,236 @@
 From: Li Xi <pkuelelixi@gmail.com>
-Subject: Re: [PATCH v2 1/4] quota: add project quota support
-Date: Sat, 9 Aug 2014 00:42:25 +0800
-Message-ID: <CAPTn0cArMbcbfdOdmg3oXyDYT+OYPHsB64uXYc1JAKiP67FGuA@mail.gmail.com>
+Subject: Re: [PATCH v2 2/4] quota: add project quota support
+Date: Sat, 9 Aug 2014 00:43:27 +0800
+Message-ID: <CAPTn0cDUkdwKXFVQ+i7DbR-e1rPfpvEH+Vchb4QWb=9V8tjzjw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 To: linux-fsdevel@vger.kernel.org,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	viro@zeniv.linux.org.uk, hch@infradead.org, Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:50165 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756435AbaHHQm0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Aug 2014 12:42:26 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Adds general codes to enforces project quota limites
+Adds project ID support for ext4
 
-This patch adds support for a new quota type PRJQUOTA for project quota
-enforcement. Also a new method get_projid() is added into dquot_operations
-structure.
+This patch adds a new internal field of ext4 inode to save project
+identifier.
 
 Signed-off-by: Li Xi <lixi <at> ddn.com>
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
-Index: linux.git/fs/quota/dquot.c
+Index: linux.git/fs/ext4/ialloc.c
 ===================================================================
---- linux.git.orig/fs/quota/dquot.c
-+++ linux.git/fs/quota/dquot.c
-@@ -161,6 +161,19 @@ static struct quota_module_name module_n
- /* SLAB cache for dquot structures */
- static struct kmem_cache *dquot_cachep;
-
-+static inline unsigned long compat_qtype2bits(int type)
-+{
+--- linux.git.orig/fs/ext4/ialloc.c
++++ linux.git/fs/ext4/ialloc.c
+@@ -756,6 +756,10 @@ struct inode *__ext4_new_inode(handle_t
+         inode->i_gid = dir->i_gid;
+     } else
+         inode_init_owner(inode, dir, mode);
 +#ifdef CONFIG_QUOTA_PROJECT
-+    unsigned long qtype_bits = QUOTA_ALL_BIT;
-+#else
-+    unsigned long qtype_bits = QUOTA_USR_BIT | QUOTA_GRP_BIT;
++    if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT))
++        ei->i_projid = EXT4_I(dir)->i_projid;
 +#endif
-+    if (type != -1) {
-+        qtype_bits = 1 << type;
-+    }
-+    return qtype_bits;
-+}
-+
- int register_quota_format(struct quota_format_type *fmt)
- {
-     spin_lock(&dq_list_lock);
-@@ -250,7 +263,8 @@ struct dqstats dqstats;
- EXPORT_SYMBOL(dqstats);
+     dquot_initialize(inode);
 
- static qsize_t inode_get_rsv_space(struct inode *inode);
--static void __dquot_initialize(struct inode *inode, int type);
-+static void __dquot_initialize(struct inode *inode,
-+                   unsigned long qtype_bits);
+     if (!goal)
+Index: linux.git/fs/ext4/ext4.h
+===================================================================
+--- linux.git.orig/fs/ext4/ext4.h
++++ linux.git/fs/ext4/ext4.h
+@@ -695,6 +695,7 @@ struct ext4_inode {
+     __le32  i_crtime;       /* File Creation time */
+     __le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch) */
+     __le32  i_version_hi;    /* high 32 bits for 64-bit version */
++    __le32  i_projid;    /* Project ID */
+ };
 
- static inline unsigned int
- hashfn(const struct super_block *sb, struct kqid qid)
-@@ -513,7 +527,8 @@ static inline void do_destroy_dquot(stru
-  * just deleted or pruned by prune_icache() (those are not attached to any
-  * list) or parallel quotactl call. We have to wait for such users.
-  */
--static void invalidate_dquots(struct super_block *sb, int type)
-+static void invalidate_dquots(struct super_block *sb,
-+                  unsigned long qtype_bits)
- {
-     struct dquot *dquot, *tmp;
+ struct move_extent {
+@@ -943,6 +944,9 @@ struct ext4_inode_info {
 
-@@ -522,7 +537,7 @@ restart:
-     list_for_each_entry_safe(dquot, tmp, &inuse_list, dq_inuse) {
-         if (dquot->dq_sb != sb)
-             continue;
--        if (dquot->dq_id.type != type)
-+        if (((1 << dquot->dq_id.type) & qtype_bits) == 0)
-             continue;
-         /* Wait for dquot users */
-         if (atomic_read(&dquot->dq_count)) {
-@@ -605,7 +620,8 @@ out:
- EXPORT_SYMBOL(dquot_scan_active);
-
- /* Write all dquot structures to quota files */
--int dquot_writeback_dquots(struct super_block *sb, int type)
-+static int __dquot_writeback_dquots(struct super_block *sb,
-+                    unsigned long qtype_bits)
- {
-     struct list_head *dirty;
-     struct dquot *dquot;
-@@ -615,7 +631,7 @@ int dquot_writeback_dquots(struct super_
-
-     mutex_lock(&dqopt->dqonoff_mutex);
-     for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
--        if (type != -1 && cnt != type)
-+        if (((1 << cnt) & qtype_bits) == 0)
-             continue;
-         if (!sb_has_quota_active(sb, cnt))
-             continue;
-@@ -645,7 +661,7 @@ int dquot_writeback_dquots(struct super_
-     }
-
-     for (cnt = 0; cnt < MAXQUOTAS; cnt++)
--        if ((cnt == type || type == -1) && sb_has_quota_active(sb, cnt)
-+        if (((1 << cnt) & qtype_bits) && sb_has_quota_active(sb, cnt)
-             && info_dirty(&dqopt->info[cnt]))
-             sb->dq_op->write_info(sb, cnt);
-     dqstats_inc(DQST_SYNCS);
-@@ -653,16 +669,23 @@ int dquot_writeback_dquots(struct super_
-
-     return ret;
- }
-+
-+int dquot_writeback_dquots(struct super_block *sb, int type)
-+{
-+    unsigned long qtype_bits = compat_qtype2bits(type);
-+    return __dquot_writeback_dquots(sb, qtype_bits);
-+}
- EXPORT_SYMBOL(dquot_writeback_dquots);
-
- /* Write all dquot structures to disk and make them visible from userspace */
--int dquot_quota_sync(struct super_block *sb, int type)
-+static int __dquot_quota_sync(struct super_block *sb,
-+                  unsigned long qtype_bits)
- {
-     struct quota_info *dqopt = sb_dqopt(sb);
-     int cnt;
-     int ret;
-
--    ret = dquot_writeback_dquots(sb, type);
-+    ret = dquot_writeback_dquots(sb, qtype_bits);
-     if (ret)
-         return ret;
-     if (dqopt->flags & DQUOT_QUOTA_SYS_FILE)
-@@ -681,7 +704,7 @@ int dquot_quota_sync(struct super_block
-      */
-     mutex_lock(&dqopt->dqonoff_mutex);
-     for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
--        if (type != -1 && cnt != type)
-+        if (((1 << cnt) & qtype_bits) == 0)
-             continue;
-         if (!sb_has_quota_active(sb, cnt))
-             continue;
-@@ -693,6 +716,12 @@ int dquot_quota_sync(struct super_block
-
-     return 0;
- }
-+
-+int dquot_quota_sync(struct super_block *sb, int type)
-+{
-+    unsigned long qtype_bits = compat_qtype2bits(type);
-+    return __dquot_quota_sync(sb, qtype_bits);
-+}
- EXPORT_SYMBOL(dquot_quota_sync);
-
- static unsigned long
-@@ -897,17 +926,18 @@ out:
- }
- EXPORT_SYMBOL(dqget);
-
--static int dqinit_needed(struct inode *inode, int type)
-+static int dqinit_needed(struct inode *inode, unsigned long qtype_bits)
- {
-     int cnt;
-
-     if (IS_NOQUOTA(inode))
-         return 0;
--    if (type != -1)
--        return !inode->i_dquot[type];
--    for (cnt = 0; cnt < MAXQUOTAS; cnt++)
-+    for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
-+        if (((1 << cnt) & qtype_bits) == 0)
-+            continue;
-         if (!inode->i_dquot[cnt])
-             return 1;
-+    }
-     return 0;
- }
-
-@@ -924,7 +954,7 @@ static void add_dquot_ref(struct super_b
-         spin_lock(&inode->i_lock);
-         if ((inode->i_state & (I_FREEING|I_WILL_FREE|I_NEW)) ||
-             !atomic_read(&inode->i_writecount) ||
--            !dqinit_needed(inode, type)) {
-+            !dqinit_needed(inode, 1 << type)) {
-             spin_unlock(&inode->i_lock);
-             continue;
-         }
-@@ -937,7 +967,7 @@ static void add_dquot_ref(struct super_b
-             reserved = 1;
- #endif
-         iput(old_inode);
--        __dquot_initialize(inode, type);
-+        __dquot_initialize(inode, 1 << type);
-
-         /*
-          * We hold a reference to 'inode' so it couldn't have been
-@@ -1170,8 +1200,12 @@ static int need_print_warning(struct dqu
-             return uid_eq(current_fsuid(), warn->w_dq_id.uid);
-         case GRPQUOTA:
-             return in_group_p(warn->w_dq_id.gid);
--        case PRJQUOTA:    /* Never taken... Just make gcc happy */
-+        case PRJQUOTA:
+     /* Precomputed uuid+inum+igen checksum for seeding inode checksums */
+     __u32 i_csum_seed;
 +#ifdef CONFIG_QUOTA_PROJECT
-+            return 1;
-+#else
-             return 0;
++    kprojid_t i_projid;
 +#endif
-     }
-     return 0;
- }
-@@ -1400,7 +1434,7 @@ static int dquot_active(const struct ino
-  * It is better to call this function outside of any transaction as it
-  * might need a lot of space in journal for dquot structure allocation.
-  */
--static void __dquot_initialize(struct inode *inode, int type)
-+static void __dquot_initialize(struct inode *inode, unsigned long qtype_bits)
- {
-     int cnt;
-     struct dquot *got[MAXQUOTAS];
-@@ -1415,8 +1449,13 @@ static void __dquot_initialize(struct in
-     /* First get references to structures we might need. */
-     for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
-         struct kqid qid;
-+#ifdef CONFIG_QUOTA_PROJECT
-+        kprojid_t projid;
-+        int rc;
-+#endif
-+
-         got[cnt] = NULL;
--        if (type != -1 && cnt != type)
-+        if (((1 << cnt) & qtype_bits) == 0)
-             continue;
-         switch (cnt) {
-         case USRQUOTA:
-@@ -1425,6 +1464,19 @@ static void __dquot_initialize(struct in
-         case GRPQUOTA:
-             qid = make_kqid_gid(inode->i_gid);
-             break;
-+        case PRJQUOTA:
-+#ifdef CONFIG_QUOTA_PROJECT
-+            /* Project ID is not supported */
-+            if (!inode->i_sb->dq_op->get_projid)
-+                continue;
-+            rc = inode->i_sb->dq_op->get_projid(inode, &projid);
-+            if (rc)
-+                continue;
-+            qid = make_kqid_projid(projid);
-+#else
-+            continue;
-+#endif
-+            break;
-         }
-         got[cnt] = dqget(sb, qid);
-     }
-@@ -1433,7 +1485,7 @@ static void __dquot_initialize(struct in
-     if (IS_NOQUOTA(inode))
-         goto out_err;
-     for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
--        if (type != -1 && cnt != type)
-+        if (((1 << cnt) & qtype_bits) == 0)
-             continue;
-         /* Avoid races with quotaoff() */
-         if (!sb_has_quota_active(sb, cnt))
-@@ -1464,7 +1516,12 @@ out_err:
-
- void dquot_initialize(struct inode *inode)
- {
--    __dquot_initialize(inode, -1);
-+#ifdef CONFIG_QUOTA_PROJECT
-+    unsigned long qtype_bits = QUOTA_ALL_BIT;
-+#else
-+    unsigned long qtype_bits = QUOTA_USR_BIT | QUOTA_GRP_BIT;
-+#endif
-+    __dquot_initialize(inode, qtype_bits);
- }
- EXPORT_SYMBOL(dquot_initialize);
-
-@@ -2005,9 +2062,10 @@ int dquot_file_open(struct inode *inode,
- EXPORT_SYMBOL(dquot_file_open);
+ };
 
  /*
-- * Turn quota off on a device. type == -1 ==> quotaoff for all types (umount)
-+ * Turn quota off on a device. (umount)
+@@ -1525,6 +1529,7 @@ static inline void ext4_clear_state_flag
+  * GDT_CSUM bits are mutually exclusive.
   */
--int dquot_disable(struct super_block *sb, int type, unsigned int flags)
-+static int __dquot_disable(struct super_block *sb, unsigned long qtype_bits,
-+               unsigned int flags)
- {
-     int cnt, ret = 0;
-     struct quota_info *dqopt = sb_dqopt(sb);
-@@ -2034,7 +2092,7 @@ int dquot_disable(struct super_block *sb
-     }
-     for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
-         toputinode[cnt] = NULL;
--        if (type != -1 && cnt != type)
-+        if (((1 << cnt) & qtype_bits) == 0)
-             continue;
-         if (!sb_has_quota_loaded(sb, cnt))
-             continue;
-@@ -2066,7 +2124,7 @@ int dquot_disable(struct super_block *sb
+ #define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM    0x0400
++#define EXT4_FEATURE_RO_COMPAT_PROJECT        0x1000 /* Project quota */
 
-         /* Note: these are blocking operations */
-         drop_dquot_ref(sb, cnt);
--        invalidate_dquots(sb, cnt);
-+        invalidate_dquots(sb, 1 << cnt);
-         /*
-          * Now all dquots should be invalidated, all writes done so we
-          * should be only users of the info. No locks needed.
-@@ -2136,6 +2194,13 @@ put_inodes:
-         }
-     return ret;
- }
-+int dquot_disable(struct super_block *sb, int type,
-+          unsigned int flags)
-+{
-+    unsigned long qtype_bits = compat_qtype2bits(type);
-+    return __dquot_disable(sb, qtype_bits, flags);
-+}
-+
- EXPORT_SYMBOL(dquot_disable);
+ #define EXT4_FEATURE_INCOMPAT_COMPRESSION    0x0001
+ #define EXT4_FEATURE_INCOMPAT_FILETYPE        0x0002
+@@ -1574,7 +1579,8 @@ static inline void ext4_clear_state_flag
+                      EXT4_FEATURE_RO_COMPAT_HUGE_FILE |\
+                      EXT4_FEATURE_RO_COMPAT_BIGALLOC |\
+                      EXT4_FEATURE_RO_COMPAT_METADATA_CSUM|\
+-                     EXT4_FEATURE_RO_COMPAT_QUOTA)
++                     EXT4_FEATURE_RO_COMPAT_QUOTA |\
++                     EXT4_FEATURE_RO_COMPAT_PROJECT)
 
- int dquot_quota_off(struct super_block *sb, int type)
-@@ -2264,7 +2329,7 @@ out_fmt:
- }
-
- /* Reenable quotas on remount RW */
--int dquot_resume(struct super_block *sb, int type)
-+static int __dquot_resume(struct super_block *sb, unsigned long qtype_bits)
- {
-     struct quota_info *dqopt = sb_dqopt(sb);
-     struct inode *inode;
-@@ -2272,7 +2337,7 @@ int dquot_resume(struct super_block *sb,
-     unsigned int flags;
-
-     for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
--        if (type != -1 && cnt != type)
-+        if (((1 << cnt) & qtype_bits) == 0)
-             continue;
-
-         mutex_lock(&dqopt->dqonoff_mutex);
-@@ -2298,6 +2363,12 @@ int dquot_resume(struct super_block *sb,
-
-     return ret;
- }
-+
-+int dquot_resume(struct super_block *sb, int type)
-+{
-+    unsigned long qtype_bits = compat_qtype2bits(type);
-+    return __dquot_resume(sb, qtype_bits);
-+}
- EXPORT_SYMBOL(dquot_resume);
-
- int dquot_quota_on(struct super_block *sb, int type, int format_id,
-Index: linux.git/fs/quota/quotaio_v2.h
-===================================================================
---- linux.git.orig/fs/quota/quotaio_v2.h
-+++ linux.git/fs/quota/quotaio_v2.h
-@@ -13,12 +13,14 @@
-  */
- #define V2_INITQMAGICS {\
-     0xd9c01f11,    /* USRQUOTA */\
--    0xd9c01927    /* GRPQUOTA */\
-+    0xd9c01927,    /* GRPQUOTA */\
-+    0xd9c03f14    /* PRJQUOTA */\
- }
-
- #define V2_INITQVERSIONS {\
-     1,        /* USRQUOTA */\
--    1        /* GRPQUOTA */\
-+    1,        /* GRPQUOTA */\
-+    1        /* PRJQUOTA */\
- }
-
- /* First generic header */
-Index: linux.git/include/linux/quota.h
-===================================================================
---- linux.git.orig/include/linux/quota.h
-+++ linux.git/include/linux/quota.h
-@@ -50,12 +50,18 @@
-
- #undef USRQUOTA
- #undef GRPQUOTA
-+#undef PRJQUOTA
- enum quota_type {
-     USRQUOTA = 0,        /* element used for user quotas */
-     GRPQUOTA = 1,        /* element used for group quotas */
-     PRJQUOTA = 2,        /* element used for project quotas */
- };
-
-+#define QUOTA_USR_BIT (1 << USRQUOTA)
-+#define QUOTA_GRP_BIT (1 << GRPQUOTA)
-+#define QUOTA_PRJ_BIT (1 << PRJQUOTA)
-+#define QUOTA_ALL_BIT (QUOTA_USR_BIT | QUOTA_GRP_BIT | QUOTA_PRJ_BIT)
-+
- typedef __kernel_uid32_t qid_t; /* Type in which we store ids in memory */
- typedef long long qsize_t;    /* Type in which we store sizes */
-
-@@ -312,6 +318,9 @@ struct dquot_operations {
-     /* get reserved quota for delayed alloc, value returned is managed by
-      * quota code only */
-     qsize_t *(*get_reserved_space) (struct inode *);
+ /*
+  * Default values for user and/or group using reserved blocks
+@@ -2133,6 +2139,9 @@ extern int ext4_zero_partial_blocks(hand
+                  loff_t lstart, loff_t lend);
+ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
+ extern qsize_t *ext4_get_reserved_space(struct inode *inode);
 +#ifdef CONFIG_QUOTA_PROJECT
-+    int (*get_projid) (struct inode *, kprojid_t *);/* Get project ID */
++extern int ext4_get_projid(struct inode *inode, kprojid_t *projid);
++#endif
+ extern void ext4_da_update_reserve_space(struct inode *inode,
+                     int used, int quota_claim);
+
+Index: linux.git/fs/ext4/inode.c
+===================================================================
+--- linux.git.orig/fs/ext4/inode.c
++++ linux.git/fs/ext4/inode.c
+@@ -4026,6 +4026,47 @@ static inline void ext4_iget_extra_inode
+         EXT4_I(inode)->i_inline_off = 0;
+ }
+
++#ifdef CONFIG_QUOTA_PROJECT
++static int ext4_inode_projid_get(struct inode *inode, struct ext4_inode *raw,
++                 struct ext4_inode_info *ei, projid_t *projid)
++{
++    BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
++            EXT4_FEATURE_RO_COMPAT_PROJECT));
++
++    if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
++        EXT4_FITS_IN_INODE(raw, ei, i_projid)) {
++        *projid = (projid_t)le32_to_cpu(raw->i_projid);
++        return 0;
++    }
++    return -EFBIG;
++}
++
++static int ext4_inode_projid_set(struct inode *inode, struct ext4_inode *raw,
++                 struct ext4_inode_info *ei, projid_t projid)
++{
++    BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
++            EXT4_FEATURE_RO_COMPAT_PROJECT));
++
++    if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
++        EXT4_FITS_IN_INODE(raw, ei, i_projid)) {
++        raw->i_projid = cpu_to_le32(projid);
++        return 0;
++    }
++    return -EFBIG;
++}
++
++int ext4_get_projid(struct inode *inode, kprojid_t *projid)
++{
++    if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
++            EXT4_FEATURE_RO_COMPAT_PROJECT)) {
++        return -ENOTSUPP;
++    }
++
++    *projid = EXT4_I(inode)->i_projid;
++    return 0;
++}
++#endif
++
+ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ {
+     struct ext4_iloc iloc;
+@@ -4037,6 +4078,9 @@ struct inode *ext4_iget(struct super_blo
+     int block;
+     uid_t i_uid;
+     gid_t i_gid;
++#ifdef CONFIG_QUOTA_PROJECT
++    projid_t i_projid = 0;
++#endif
+
+     inode = iget_locked(sb, ino);
+     if (!inode)
+@@ -4087,12 +4131,26 @@ struct inode *ext4_iget(struct super_blo
+     inode->i_mode = le16_to_cpu(raw_inode->i_mode);
+     i_uid = (uid_t)le16_to_cpu(raw_inode->i_uid_low);
+     i_gid = (gid_t)le16_to_cpu(raw_inode->i_gid_low);
++#ifdef CONFIG_QUOTA_PROJECT
++    if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT)) {
++        ret = ext4_inode_projid_get(inode, raw_inode, ei, &i_projid);
++        if (ret) {
++            EXT4_ERROR_INODE(inode, "failed to get project ID");
++            goto bad_inode;
++        }
++    }
++#endif
++
+     if (!(test_opt(inode->i_sb, NO_UID32))) {
+         i_uid |= le16_to_cpu(raw_inode->i_uid_high) << 16;
+         i_gid |= le16_to_cpu(raw_inode->i_gid_high) << 16;
+     }
+     i_uid_write(inode, i_uid);
+     i_gid_write(inode, i_gid);
++#ifdef CONFIG_QUOTA_PROJECT
++    if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT))
++        ei->i_projid = make_kprojid(&init_user_ns, i_projid);;
++#endif
+     set_nlink(inode, le16_to_cpu(raw_inode->i_links_count));
+
+     ext4_clear_state_flags(ei);    /* Only relevant on 32-bit archs */
+@@ -4315,6 +4373,9 @@ static int ext4_do_update_inode(handle_t
+     int need_datasync = 0, set_large_file = 0;
+     uid_t i_uid;
+     gid_t i_gid;
++#ifdef CONFIG_QUOTA_PROJECT
++    projid_t i_projid = 0;
++#endif
+
+     spin_lock(&ei->i_raw_lock);
+
+@@ -4327,6 +4388,10 @@ static int ext4_do_update_inode(handle_t
+     raw_inode->i_mode = cpu_to_le16(inode->i_mode);
+     i_uid = i_uid_read(inode);
+     i_gid = i_gid_read(inode);
++#ifdef CONFIG_QUOTA_PROJECT
++    if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT))
++        i_projid = from_kprojid(&init_user_ns, ei->i_projid);
++#endif
+     if (!(test_opt(inode->i_sb, NO_UID32))) {
+         raw_inode->i_uid_low = cpu_to_le16(low_16_bits(i_uid));
+         raw_inode->i_gid_low = cpu_to_le16(low_16_bits(i_gid));
+@@ -4356,7 +4421,8 @@ static int ext4_do_update_inode(handle_t
+     EXT4_INODE_SET_XTIME(i_atime, inode, raw_inode);
+     EXT4_EINODE_SET_XTIME(i_crtime, ei, raw_inode);
+
+-    if (ext4_inode_blocks_set(handle, raw_inode, ei)) {
++    err = ext4_inode_blocks_set(handle, raw_inode, ei);
++    if (err) {
+         spin_unlock(&ei->i_raw_lock);
+         goto out_brelse;
+     }
+@@ -4407,6 +4473,16 @@ static int ext4_do_update_inode(handle_t
+
+     ext4_inode_csum_set(inode, raw_inode, ei);
+
++#ifdef CONFIG_QUOTA_PROJECT
++    if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT)) {
++        err = ext4_inode_projid_set(inode, raw_inode, ei, i_projid);
++        if (err) {
++            spin_unlock(&ei->i_raw_lock);
++            goto out_brelse;
++        }
++    }
++#endif
++
+     spin_unlock(&ei->i_raw_lock);
+
+     BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+Index: linux.git/fs/ext4/super.c
+===================================================================
+--- linux.git.orig/fs/ext4/super.c
++++ linux.git/fs/ext4/super.c
+@@ -1080,6 +1080,9 @@ static const struct dquot_operations ext
+     .write_info    = ext4_write_info,
+     .alloc_dquot    = dquot_alloc,
+     .destroy_dquot    = dquot_destroy,
++#ifdef CONFIG_QUOTA_PROJECT
++    .get_projid    = ext4_get_projid,
 +#endif
  };
 
- struct path;
-Index: linux.git/include/uapi/linux/quota.h
-===================================================================
---- linux.git.orig/include/uapi/linux/quota.h
-+++ linux.git/include/uapi/linux/quota.h
-@@ -36,11 +36,12 @@
- #include <linux/errno.h>
- #include <linux/types.h>
-
--#define __DQUOT_VERSION__    "dquot_6.5.2"
-+#define __DQUOT_VERSION__    "dquot_6.6.0"
-
--#define MAXQUOTAS 2
-+#define MAXQUOTAS 3
- #define USRQUOTA  0        /* element used for user quotas */
- #define GRPQUOTA  1        /* element used for group quotas */
-+#define PRJQUOTA  2        /* element used for project quotas */
-
- /*
-  * Definitions for the default names of the quotas files.
-@@ -48,6 +49,7 @@
- #define INITQFNAMES { \
-     "user",    /* USRQUOTA */ \
-     "group",   /* GRPQUOTA */ \
-+    "project", /* PRJQUOTA */ \
-     "undefined", \
- };
-
-Index: linux.git/fs/quota/Kconfig
-===================================================================
---- linux.git.orig/fs/quota/Kconfig
-+++ linux.git/fs/quota/Kconfig
-@@ -17,6 +17,15 @@ config QUOTA
-       with the quota tools. Probably the quota support is only useful for
-       multi user systems. If unsure, say N.
-
-+config QUOTA_PROJECT
-+    bool "Enable project quota"
-+    depends on QUOTA
-+    default y
-+    help
-+      This option enables project inode identifier. Project id
-+      may be used as auxiliary owner specifier in addition to
-+      standard uid/gid.
-+
- config QUOTA_NETLINK_INTERFACE
-     bool "Report quota messages through netlink interface"
-     depends on QUOTACTL && NET
-Index: linux.git/fs/quota/quota.c
-===================================================================
---- linux.git.orig/fs/quota/quota.c
-+++ linux.git/fs/quota/quota.c
-@@ -30,7 +30,10 @@ static int check_quotactl_permission(str
-     case Q_XGETQSTATV:
-     case Q_XQUOTASYNC:
-         break;
--    /* allow to query information for dquots we "own" */
-+    /*
-+     * allow to query information for dquots we "own"
-+     * always allow quota check for project quota
-+     */
-     case Q_GETQUOTA:
-     case Q_XGETQUOTA:
-         if ((type == USRQUOTA && uid_eq(current_euid(),
-make_kuid(current_user_ns(), id))) ||
+ static const struct quotactl_ops ext4_qctl_operations = {
