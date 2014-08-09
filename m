@@ -1,64 +1,68 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: journal recovery problems with metadata_csum, *non-64bit*
-Date: Fri, 8 Aug 2014 20:21:31 -0400
-Message-ID: <20140809002131.GR25145@thunk.org>
-References: <BLU436-SMTP84585FAA628776E190822AFDEE0@phx.gbl>
- <20140808214732.GN25145@thunk.org>
- <BLU436-SMTP222E1BBA304D4F1F10EC4A6FDEE0@phx.gbl>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: e2fsck readahead speedup performance report
+Date: Fri, 8 Aug 2014 20:18:45 -0700
+Message-ID: <20140809031845.GJ11191@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: TR Reardon <thomas_reardon@hotmail.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51804 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751288AbaHIAVg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Aug 2014 20:21:36 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:42886 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750804AbaHIDSw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Aug 2014 23:18:52 -0400
 Content-Disposition: inline
-In-Reply-To: <BLU436-SMTP222E1BBA304D4F1F10EC4A6FDEE0@phx.gbl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 08, 2014 at 06:29:40PM -0400, TR Reardon wrote:
-> 
-> Using master @ de25d9c8c48c7474828e9452184e204b18b8e090, which was the
-> 1.42.11 release.  The current master and next have same problem.
+Hi all,
 
-What's going on is that the "master" and "next" branches on the
-e2fsprogs git tree are development branches which will eventually be
-the 1.43.0 release.  The "maint" branch is where the 1.42.x releases
-are cut.
+Since I this email last week, I rewrote the prefetch algorithms for pass 1 and
+2 and separated thread support into a separate patch.  Upon discovering that
+issuing a POSIX_FADV_DONTNEED call caused a noticeable increase (of about 2-5%
+points) on fsck runtime, I dropped that part out.
 
-The maint branch does not have metadata_csum and inline_data support
-at all.  It's not a matter of it being disabled, that code is simply
-not there.
+In pass 1, we now walk the group descriptors looking for inode table blocks to
+read until we have found enough to issue a $readahead_kb size readahead
+command.  The patch also computes the number of the first inode of the last
+inode buffer block of the last group of the readahead group and schedules the
+next readahead to occur when we reach that inode.  This keeps the readahead
+running at closer to full speed and eliminates conflicting IOs between the
+checker thread and the readahead.
 
-So I'm not sure what you mean by "master @
-de25d9c8c48c7474828e9452184e204b18b8e090".  Your local git tree may
-have assigned master to that git commit id, but then it wouldn't have
-any metadata_csum support at all.
+For pass 2, readahead is broken up into $readahead_kb sized chunks instead of
+issuing all of them at once.  This should increase the likelihood that a block
+is not evicted before pass2 tries to read it.
 
+Pass 4's readahead remains unchanged.
 
-> I'd rather use debian versions, but metadata_csum is disabled there.
-> debian does not sync with git master, so what exactly does it sync
-> with?  ie, how are the metadata_csum patches dropped, since they exist
-> in master?
+The raw numbers from my performance evaluation of the new code live here:
+https://docs.google.com/spreadsheets/d/1hTCfr30TebXcUV8HnSatNkm4OXSyP9ezbhtMbB_UuLU
 
-See above.  The reason why debian doesn't support metadata_csum is
-because it's not ready yet.  If you'd like to help us debug it, we
-will be very grateful, but please understand it's still a work in
-progress.
+This time, I repeatedly ran e2fsck -Fnfvtt with various sizes of readahead
+buffer to see how that affected fsck runtime.  The run times are listed in the
+table at row 22, and I've created a table at row 46 to show % reduction in
+e2fsck runtime.  I tried (mostly) power-of-two buffer sizes from 1MB to 1GB; as
+you can see, even a small amount of readahead can speed things up quite a lot,
+though the returns diminish as the buffer sizes get exponentially larger.  USB
+disks suffer across the board, probably due to their slow single-issue nature.
+Hopefully UAS will eliminate that gap, though currently it just crashes my
+machines.
 
-There's a big difference between "it mostly works", and "it's ready
-for it to be used in production".  When I have time I might drop a
-1.43-WIP ("work in progress") into debian experimental, but Debian
-Jessie is going to be targetting 3.16, and we will need to make sure
-that all of the necessary kernel bits for metadata_csum and
-inline_data are working flawlessly before I'll want to let a 1.43
-release into Debian testing --- and that's assuming we can get the
-1.43 userspace bits fully stablized as well before Jessie date of
-November 5, 2014.
+Note that all of these filesystems are formatted ext4 with an per-group inode
+table size of 2MB, which is probably why readahead=2MB seems to win most often.
+I think 2MB is a small enough amount that we needn't worry about thrashing
+memory in the case of parallel e2fsck, particularly because with a small
+readahead amount, e2fsck is most likely going to demand the blocks fairly soon
+anyway.  The design of the new pass1 RA code won't issue RA for a fraction of a
+block group's inode table blocks, so I propose setting RA to blocksize *
+inode_blocks_per_group.
 
-Cheers,
+On a lark I fired up an old ext3 filesystem to see what would happen, and the
+results generally follow the ext4 results.  I haven't done much digging into
+ext3 though.  Potentially, one could prefetch the block map blocks when reading
+in another inode_buffer_block's worth of inode tables.
 
-					- Ted
+Will send patches soon.
+
+--D
