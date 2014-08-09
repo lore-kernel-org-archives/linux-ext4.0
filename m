@@ -1,68 +1,101 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2 0/4] quota: add project quota support
-Date: Sat, 9 Aug 2014 13:24:27 -0400
-Message-ID: <20140809172427.GF15431@thunk.org>
-References: <CAPTn0cAKi64Fh1pAVTDLvSS5-1Kjv7KN2HpGxtm4J8-ym-4nOQ@mail.gmail.com>
- <20140808223335.GQ25145@thunk.org>
- <CAPTn0cCwczoaH7va4x3yJZBgtRr8b7_eG9V0YO16YzQcnshdTA@mail.gmail.com>
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+Subject: Re: fuzz testing an ext4fs file system under a 32 bit Linux user
+ mode linux guest let task jbd2/ubda hang
+Date: Sat, 09 Aug 2014 20:45:43 +0200
+Message-ID: <53E66C57.8010303@gmx.de>
+References: <53DE3E92.3060304@gmx.de> <20140803184210.GV24826@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	viro@zeniv.linux.org.uk, hch@infradead.org,
-	Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
-	"Niu, Yawei" <yawei.niu@intel.com>
-To: Li Xi <pkuelelixi@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org,
+	UML devel <user-mode-linux-devel@lists.sourceforge.net>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:52472 "EHLO imap.thunk.org"
+Received: from mout.gmx.net ([212.227.15.18]:57364 "EHLO mout.gmx.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751752AbaHIRYp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 9 Aug 2014 13:24:45 -0400
-Content-Disposition: inline
-In-Reply-To: <CAPTn0cCwczoaH7va4x3yJZBgtRr8b7_eG9V0YO16YzQcnshdTA@mail.gmail.com>
+	id S1751983AbaHISps (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 9 Aug 2014 14:45:48 -0400
+In-Reply-To: <20140803184210.GV24826@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 09, 2014 at 10:24:59PM +0800, Li Xi wrote:
-> Given the fact that project indentifier is naturally like UID/GID, project ID
-> should be managed in the similar way like UID/GID. And that is what people are
-> actually doing right now. We already have kuid_t/kgid_t/kprojid_t and a series
-> of similar functions for both UIG/GID and project ID. I don't think it is
-> necessary to break this kind of self-consistency when we are trying to add
-> project quota support. It would be really straightfoward for a new user to
-> understand what project ID and project quota means, if we are able to explain
-> that project quota has exactly the same semantics with user/group quota.
+On 08/03/2014 08:42 PM, Theodore Ts'o wrote:
+> On Sun, Aug 03, 2014 at 03:52:18PM +0200, Toralf F=C3=B6rster wrote:
+>> Hello,
+>>
+>> fuzzying a 32 bit stable Gentoo x86 linux with trinity (and without =
+excluding the munmap syscall but it might be independed from this) give=
+s within a 32 bit user mode linux guest :
+>=20
+> The problem with these sorts of trinity bug reports is that we have n=
+o
+> idea which syscall or set of syscalls might have corrupted kernel
+> state to the point where the kernel started malfunctioning.
+>=20
+> Sometimes, a trinity induced bug is obvious, when it causes a system
+> call to immediately access an illegal memory location.  But if it
+> causes some more subtle corruption, possibly in a completely unrelate=
+d
+> subsystem, figuring out what actually happened can be close to
+> impossible.
+>=20
+> So there's not much I can do with this sort of bug report.  If you ca=
+n
+> easily repeat it, and you can dump out the system call stream, we
+> might be able to make a smaller reproduction case, at which point
+> trying to debug this sort of failure would be tractable.
+>=20
+> Cheers,
+>=20
+> 						- Ted
+>=20
+ok, fair enough.
 
-There is a very big and fundamental difference about project id's
-versus user/group id's, and that is that project id's are not first
-class objects in the file system.  That is, stat() doesn't understand
-them.  Processes do not belong to one (or more) projects, the way they
-do for user and group id's.
 
-As a result, project id's are a massive administration nightmare.  You
-can't easily see which project a file belongs to, since "ls" and
-"stat" has no support for the project id.  So if a file is created in
-one directory, the file will inherent that project id from its parent
-directory.  Suppose that file is 100 gigabytes, and it chews up most
-of the project quota for that project.  Now suppose that file is moved
-to some other directory.
+BTW may I just ask, if the following (same 32 bit system, host and UML =
+guest are both at v3.16, 4 trinity childs hammering victims files in a =
+ramdisk within the uML guest) matches the above too ? Or does the BUG o=
+utput here more helpful data ? :
 
-How in the world is the administrator supposed to find the file which
-is chewing up 100GB of quota?  Find doesn't support project id's
-either....
 
-The last time I asked why in the world anyone would want to use this
-feature, the only use case that I heard was people who were using
-containers, and where the all of the project id's were inside a
-chroot.  Hence, any questions I asked about what happens when a file
-gets moved out from the hierarchy were hand-waved away, since inside a
-chroot, it could never happen.
+Kernel panic - not syncing: BUG!
+CPU: 0 PID: 105 Comm: kworker/u2:2 Not tainted 3.16.0 #2
+Workqueue: writeback bdi_writeback_workfn (flush-98:0)
+Stack:
+ 085be12e 085be12e 00000003 086e8547 0000000c 000002b3 85177cc4 85177c7=
+4
+ 085015c3 00000000 85177c48 85177c9c 084fd6dd 085c9dc0 08727180 085bae4=
+a
+ 85177ca8 00000000 0000000c 000002b3 85177cc4 85177d10 0818ec0f 085bae4=
+a
+Call Trace:
+ [<085015c3>] dump_stack+0x26/0x28
+ [<084fd6dd>] panic+0x8f/0x1a9
+ [<0818ec0f>] mpage_release_unused_pages+0x11f/0x1b0
+ [<0819395a>] ext4_writepages+0x42a/0x640
+ [<080d87e5>] do_writepages+0x25/0x50
+ [<0812fd2c>] __writeback_single_inode+0x3c/0xf0
+ [<08130064>] writeback_sb_inodes+0x1d4/0x320
+ [<08130214>] __writeback_inodes_wb+0x64/0xa0
+ [<08130501>] wb_writeback+0xf1/0x190
+ [<081308a2>] bdi_writeback_workfn+0xa2/0x2d0
+ [<08504c56>] ? _raw_spin_unlock_irq+0x16/0x20
+ [<0809e30c>] ? finish_task_switch.constprop.52+0x3c/0x90
+ [<08091474>] process_one_work+0x184/0x2f0
+ [<080918da>] worker_thread+0x2fa/0x540
+ [<08504c3c>] ? _raw_spin_unlock_irqrestore+0x1c/0x20
+ [<08502d65>] ? schedule+0x55/0x60
+ [<080915e0>] ? worker_thread+0x0/0x540
+ [<080971b6>] kthread+0xd6/0xe0
+ [<0805f68b>] new_thread_handler+0x6b/0x90
 
-The question is what are the sane semantics when you don't have the
-chroot restriction, and having free-range inodes with project quotas
-that can moved all over the file system, seems to me to result in a
-not very usable system in the end.
 
-Regards,
 
-						- Ted
+--=20
+Toralf
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
