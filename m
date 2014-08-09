@@ -1,71 +1,71 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/6] resize2fs: disable the meta_bg feature if necessary
-Date: Sat,  9 Aug 2014 13:10:17 -0400
-Message-ID: <1407604220-2620-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 6/6] tests: add the r_meta_bg_shrink test
+Date: Sat,  9 Aug 2014 13:10:20 -0400
+Message-ID: <1407604220-2620-6-git-send-email-tytso@mit.edu>
 References: <1407604220-2620-1-git-send-email-tytso@mit.edu>
 Cc: antymat+debian@chelmska.waw.pl, 756922@bugs.debian.org,
 	Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:52422 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:52421 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752010AbaHIRK1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752104AbaHIRK1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 9 Aug 2014 13:10:27 -0400
 In-Reply-To: <1407604220-2620-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When shrinking a file system, if the number block groups drops below
-the point where we started using the meta_bg layout, disable the
-meta_bg feature and set s_first_meta_bg to zero.  This is necessary to
-avoid creating an invalid/corrupted file system after the shrink.
+This test checks to make sure resize2fs can properly handle a file
+system which started life as a normal ext4 file system and then was
+grown to a size where meta_bg was enabled, and then shrunk back below
+the point where the meta_bg format is still needed.
 
-Addresses-Debian-Bug: 756922
-
-Reported-by: Marcin Wolcendorf <antymat+debian@chelmska.waw.pl>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- resize/resize2fs.c | 17 +++++++++++++----
- 1 file changed, 13 insertions(+), 4 deletions(-)
+ tests/r_meta_bg_shrink/script | 34 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 34 insertions(+)
+ create mode 100644 tests/r_meta_bg_shrink/script
 
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 9641b1e..b3755f6 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -489,6 +489,13 @@ retry:
- 		fs->super->s_reserved_gdt_blocks = new;
- 	}
- 
-+	if ((fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG) &&
-+	    (fs->super->s_first_meta_bg > fs->desc_blocks)) {
-+		fs->super->s_feature_incompat &=
-+			~EXT2_FEATURE_INCOMPAT_META_BG;
-+		fs->super->s_first_meta_bg = 0;
-+	}
+diff --git a/tests/r_meta_bg_shrink/script b/tests/r_meta_bg_shrink/script
+new file mode 100644
+index 0000000..a29c28a
+--- /dev/null
++++ b/tests/r_meta_bg_shrink/script
+@@ -0,0 +1,34 @@
++if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
 +
- 	/*
- 	 * Update the location of the backup superblocks if the
- 	 * sparse_super2 feature is enabled.
-@@ -998,13 +1005,15 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
- 		ext2fs_mark_block_bitmap2(rfs->reserve_blocks, blk);
- 	}
- 
--	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG) {
-+	if (old_fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
- 		old_blocks = old_fs->super->s_first_meta_bg;
-+	else
-+		old_blocks = old_fs->desc_blocks +
-+			old_fs->super->s_reserved_gdt_blocks;
-+	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
- 		new_blocks = fs->super->s_first_meta_bg;
--	} else {
--		old_blocks = old_fs->desc_blocks + old_fs->super->s_reserved_gdt_blocks;
-+	else
- 		new_blocks = fs->desc_blocks + fs->super->s_reserved_gdt_blocks;
--	}
- 
- 	retval = reserve_sparse_super2_last_group(rfs, meta_bmap);
- 	if (retval)
++test_description="meta_bg shrink"
++FEATURES="-t ext4 -O 64bit,meta_bg,^resize_inode -b 1024"
++SIZE_1=1G
++SIZE_2=48M
++LOG=$test_name.log
++E2FSCK=../e2fsck/e2fsck
++RESIZE2FS_OPTS=-f
++
++. $cmd_dir/scripts/resize_test
++
++export MKE2FS_FIRST_META_BG=2
++resize_test
++unset MKE2FS_FIRST_META_BG
++
++RC=$?
++if [ $RC -eq 0 ]; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++elif [ $RC -eq 111 ]; then
++	echo "$test_name: $test_description: skipped"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	ln $LOG $test_name.failed
++fi
++
++unset FEATURES SIZE_1 SIZE_2 LOG E2FSCK
++
++else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi 
++
 -- 
 2.0.0
 
