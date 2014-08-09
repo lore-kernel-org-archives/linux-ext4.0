@@ -1,100 +1,82 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v2 0/4] quota: add project quota support
-Date: Sun, 10 Aug 2014 09:38:32 +1000
-Message-ID: <20140809233832.GM20518@dastard>
-References: <CAPTn0cAKi64Fh1pAVTDLvSS5-1Kjv7KN2HpGxtm4J8-ym-4nOQ@mail.gmail.com>
- <20140808223335.GQ25145@thunk.org>
- <CAPTn0cCwczoaH7va4x3yJZBgtRr8b7_eG9V0YO16YzQcnshdTA@mail.gmail.com>
- <20140809172427.GF15431@thunk.org>
- <20140809221710.GH15431@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Updated versoin of kvm-xfstests available
+Date: Sat, 9 Aug 2014 19:45:56 -0400
+Message-ID: <20140809234556.GA11072@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Li Xi <pkuelelixi@gmail.com>, linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	viro@zeniv.linux.org.uk, hch@infradead.org,
-	Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
-	"Niu, Yawei" <yawei.niu@intel.com>
-To: Theodore Ts'o <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:23352 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751787AbaHIXih (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 9 Aug 2014 19:38:37 -0400
+Received: from imap.thunk.org ([74.207.234.97]:52660 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751939AbaHIXp5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 9 Aug 2014 19:45:57 -0400
 Content-Disposition: inline
-In-Reply-To: <20140809221710.GH15431@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 09, 2014 at 06:17:10PM -0400, Theodore Ts'o wrote:
-> An additional philosophical question.  If your argument is that you
-> want project quotas to be as fully general and to work like group
-> quotas --- then this brings up a fundamental question --- why can't
-> you just use group quotas?
-> 
-> What is the use case where you need to have two different quotas that
-> work exactly like group quotas?  And following in the general design
-> rule of "Zero, one, or infinity: there is no two", for whatever use
-> case where you might argue that you need _two_ quotas with identical
-> semantics as group quotas, who is to say that there won't be someone
-> that comes up with some other use case where you need _three_ quotas
-> with identical semantics as group quotas.  Or _four_ group quotas
-> being tracked simultaneously.  Etc, etc., etc.
-> 
-> The advantage of doing the directory hierarcy based quota system is
-> not just that it's compatible with XFS; it is that it is *different*
-> from group quotas.  Not more restrictive, but *different*.  There will
-> certainly be scenarios where someone wants to enforce a restriction on
-> the size or number of inodes in a directory hierarcy, and where when
-> you move a file out of a directory hierarcy into another one, you
-> *want* the usage quota to be transfered from the source to the
-> destination hierarcy.
-> 
-> It may not be what *you* want, but let me ask you this --- why is it
-> that you can't use the group quota system, and need to invent an
-> entirely new project quota?  The only excuse I've heard is for people
-> who are doing container virtualization.
+I've uploaded a new set of precompiled kvm-xfstests test appliances
+at:
 
-Step into the enterprise or the HPC world where you are managing
-thousands of users spread across departmental/research groups and
-undertaking a few tens of distinct projects at the same time.
+   https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests
 
-Users have space limits, departments are billed for their user's
-space usage, and project space usage needs to be accounted (and
-maybe limited) to ensure the shared storage doesn't run out of space
-inapprpriately.
+This new version has an updated xfstests, with more of the tests
+enabled.  The root_fs image is 40% smaller, and if you want to build
+your own root_fs.img, it's much faster and convenient to do so now.
 
-I've seen this sort of thing quite a bit over the past 10 years.
-Most of the time on storage systems measured in the high tens to
-hundreds of TB of storage, which puts it way out of the scope of
-knowledge of most Linux distro and application developers. That's
-most likely why you don't get any other answer to your questions -
-most people can't see how project quotas get used because they've
-never worked in a large, multi-project environment before.
+All ext4 developers are strongly encouraged to test their patches
+using xfstests before sending them out for review; you are free to use
+your own installation of xfstests, but if you want something simple
+and turn-key, so there can be no excuses not to test, this is what
+kvm-xfstests is for.  :-)
 
-> Personally, I think this latter approach is way too complicated, and
-> I'd much rather implement a single directory hierarcy based quota
-> system which is compatible with XFS and has XFS's semantics.  But at
-> least this second approach is *fully* general, if you are going to
-> argue for a more general solution.
+Please do at least "smoke" testing, and if you are working on a major
+new feature, doing a full run using "-g auto" is much appreciated.
+Once I'm done running my baseline, I'll send out the results for your
+convenience; if your patches cause any regressions, *please* take a
+look and figure out why, since that will save me a lot of time and
+allow your patches to get merged that much more quickly.
 
-AFAICT, the 90% solution is "compatible with XFS" solution. It's
-also the simplest and lowest cost, given that you should be able
-to do it with a few hundred lines of kernel code. Userspace doesn't
-need immediate work, because you can use the XFS tools initially
-and hence all the xfstests validation. Don't be different just
-because of NIH syndrome....
+					- Ted
 
-If we need a more *complex* solution because people need more than
-just what the simple solution gives them, then that is a topic for
--fsdevel and probably LSFMM because there's all sorts of semantic
-and interface discussions that are needed and a lot more code that
-needs to be written. i.e. the simple solution can be deployed within
-a couple of kernel releases, a generic solution is more likely a
-coupleof *years* of work to deploy...
+Quick start instructions:
 
-Cheers,
+0.  Make sure qemu with kvm support is installed on your system.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+1.  Run the following commands:
+
+    git clone git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git fstests
+    cd fstests/kvm-xfstests
+    wget -O test_appliance/root_fs.img https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386
+
+Substitute "i386" for "x86_64" in the above URL if you want to test
+using a native 64-bit userspace.  It should be possible to use the
+32-bit userspace with a 64-bit kernel, although you may run into some
+rough spots via-a-vis compat ioctls working correctly.  (If you do,
+let me know; those are bugs that should be fixed.  :-)
+
+2.  Take a look at the "config" file and either edit that file in
+    place, or put override values in ~/.config/kvm-xfstests or
+    config.custom.  The latter is preferred.
+
+3.  Build a kernel with all of the necessary drives for kvm built into
+    the kernel (i.e., no modules!).  There are some sample kernel
+    configs in the kernel-configs directory.
+
+4.  Run "./kvm-xfstests smoke" to do a quick test.  Or "./kvm-xfstests
+    -g auto" to do a full test.  You can also run specific tests on
+    specific configurations, i.e., "./kvm-xfstests -c bigalloc
+    generic/013 generic/127".  
+
+For more information, please see:
+
+https://git.kernel.org/cgit/fs/ext2/xfstests-bld.git/tree/kvm-xfstests/README
+
+GPL Compliance information can be found here:
+
+https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/README
+
+
+
+
+
+
