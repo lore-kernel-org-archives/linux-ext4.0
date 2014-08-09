@@ -1,80 +1,71 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/6] e2fsck: fix file systems with an overly large s_first_meta_bg
-Date: Sat,  9 Aug 2014 13:10:16 -0400
-Message-ID: <1407604220-2620-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 3/6] resize2fs: disable the meta_bg feature if necessary
+Date: Sat,  9 Aug 2014 13:10:17 -0400
+Message-ID: <1407604220-2620-3-git-send-email-tytso@mit.edu>
 References: <1407604220-2620-1-git-send-email-tytso@mit.edu>
 Cc: antymat+debian@chelmska.waw.pl, 756922@bugs.debian.org,
 	Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:52425 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:52422 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751900AbaHIRK1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752010AbaHIRK1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 9 Aug 2014 13:10:27 -0400
 In-Reply-To: <1407604220-2620-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+When shrinking a file system, if the number block groups drops below
+the point where we started using the meta_bg layout, disable the
+meta_bg feature and set s_first_meta_bg to zero.  This is necessary to
+avoid creating an invalid/corrupted file system after the shrink.
+
+Addresses-Debian-Bug: 756922
+
+Reported-by: Marcin Wolcendorf <antymat+debian@chelmska.waw.pl>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- e2fsck/problem.c |  5 +++++
- e2fsck/problem.h |  3 +++
- e2fsck/super.c   | 12 ++++++++++++
- 3 files changed, 20 insertions(+)
+ resize/resize2fs.c | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
 
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 6d9b1af..57c2e39 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -440,6 +440,11 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("@S 64bit filesystems needs extents to access the whole disk.  "),
- 	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK},
- 
-+	/* The first_meta_bg is too big */
-+	{ PR_0_FIRST_META_BG_TOO_BIG,
-+	  N_("First_meta_bg is too big.  (%N, max value %g).  "),
-+	  PROMPT_CLEAR, 0 },
-+
- 	/* Pass 1 errors */
- 
- 	/* Pass 1: Checking inodes, blocks, and sizes */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index d673a4e..3426a22 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -252,6 +252,9 @@ struct problem_context {
- /* 64bit is set but extents are not set. */
- #define PR_0_64BIT_WITHOUT_EXTENTS		0x000048
- 
-+/* The first_meta_bg is too big */
-+#define PR_0_FIRST_META_BG_TOO_BIG		0x000049
-+
- /*
-  * Pass 1 errors
-  */
-diff --git a/e2fsck/super.c b/e2fsck/super.c
-index 8d468e6..768316a 100644
---- a/e2fsck/super.c
-+++ b/e2fsck/super.c
-@@ -591,6 +591,18 @@ void check_super_block(e2fsck_t ctx)
- 		ext2fs_mark_super_dirty(fs);
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 9641b1e..b3755f6 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -489,6 +489,13 @@ retry:
+ 		fs->super->s_reserved_gdt_blocks = new;
  	}
  
 +	if ((fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG) &&
 +	    (fs->super->s_first_meta_bg > fs->desc_blocks)) {
-+		pctx.group = fs->desc_blocks;
-+		pctx.num = fs->super->s_first_meta_bg;
-+		if (fix_problem(ctx, PR_0_FIRST_META_BG_TOO_BIG, &pctx)) {
-+			fs->super->s_feature_incompat &=
-+				~EXT2_FEATURE_INCOMPAT_META_BG;
-+			fs->super->s_first_meta_bg = 0;
-+			ext2fs_mark_super_dirty(fs);
-+		}
++		fs->super->s_feature_incompat &=
++			~EXT2_FEATURE_INCOMPAT_META_BG;
++		fs->super->s_first_meta_bg = 0;
 +	}
 +
  	/*
- 	 * Verify the group descriptors....
- 	 */
+ 	 * Update the location of the backup superblocks if the
+ 	 * sparse_super2 feature is enabled.
+@@ -998,13 +1005,15 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
+ 		ext2fs_mark_block_bitmap2(rfs->reserve_blocks, blk);
+ 	}
+ 
+-	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG) {
++	if (old_fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
+ 		old_blocks = old_fs->super->s_first_meta_bg;
++	else
++		old_blocks = old_fs->desc_blocks +
++			old_fs->super->s_reserved_gdt_blocks;
++	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
+ 		new_blocks = fs->super->s_first_meta_bg;
+-	} else {
+-		old_blocks = old_fs->desc_blocks + old_fs->super->s_reserved_gdt_blocks;
++	else
+ 		new_blocks = fs->desc_blocks + fs->super->s_reserved_gdt_blocks;
+-	}
+ 
+ 	retval = reserve_sparse_super2_last_group(rfs, meta_bmap);
+ 	if (retval)
 -- 
 2.0.0
 
