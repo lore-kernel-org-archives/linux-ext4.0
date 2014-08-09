@@ -1,45 +1,47 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: journal recovery problems with metadata_csum, *non-64bit*
-Date: Sat, 9 Aug 2014 00:07:36 -0400
-Message-ID: <20140809040736.GB23604@thunk.org>
-References: <BLU436-SMTP84585FAA628776E190822AFDEE0@phx.gbl>
- <20140808214732.GN25145@thunk.org>
- <BLU436-SMTP222E1BBA304D4F1F10EC4A6FDEE0@phx.gbl>
- <20140809002131.GR25145@thunk.org>
- <BLU436-SMTP1726DA8B9CB511781B73155FDEF0@phx.gbl>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH 0/6] e2fsprogs Summer 2014 patchbomb, part 5
+Date: Fri, 08 Aug 2014 21:26:10 -0700
+Message-ID: <20140809042610.2441.6868.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: TR Reardon <thomas_reardon@hotmail.com>
+To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51954 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750801AbaHIEHj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 9 Aug 2014 00:07:39 -0400
-Content-Disposition: inline
-In-Reply-To: <BLU436-SMTP1726DA8B9CB511781B73155FDEF0@phx.gbl>
+Received: from userp1040.oracle.com ([156.151.31.81]:18602 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751023AbaHIE0P (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 9 Aug 2014 00:26:15 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 08, 2014 at 11:29:11PM -0400, TR Reardon wrote:
-> 
-> I meant only: that commit is in master _and_ maint branches, so to get a
-> version roughly = 1.42.11 + metadata_csum, I pulled up to that commit.
+Hi all,
 
-Right but you gave me the git commit id for 1.42.11, which is not
-particularly useful; I know the commit id for v1.42.11 already.  :-)
+This is part 5 of the Summer 2014 e2fsprogs patchset.  Whereas all the
+patches I've sent previously were to fix problems in the library and
+e2fsck uncovered by the e2fuzz metadata fuzzer, we're now to the part
+of the patch set that includes new features.  I'm only posting things
+that have been discussed recently; the other "new" features (that have
+been out for review for quite some time) haven't changed since May.
+They'll be in part 6, which I'm holding onto until Ted has a chance to
+look at the inline data pile of stuff.
 
-What I needed to know was the git commit of "master" that you had
-grabbed, since the "master" and "next" branches are fairly active
-these days.  (The master branch langs the next branch, so depending on
-how exciting a life you want to live, you can try the next branch
-instead of the master branch.)
+The first new feature was suggested by Pu Hou -- the ability to create
+inline data symlinks.  That's patch 1, and it requires the patches in
+part 4 + the v2 patches I sent out today.
 
-> Regardless, the problem exists in kernel too, judging by the JBD2 errors.
+Patch 2 fixes a number of gcc warnings.
 
-Yes, we'll need to look into that.  Definitely worth knowing; thanks
-for that.
+Patch 3-6 implement v2 of the e2fsck readahead functionality, which
+promises to reduce fsck runtime by 10-30%.  You might want to read
+the report: http://marc.info/?l=linux-ext4&m=140755433701165&w=2
+("e2fsck readahead speedup performance report") for all the juicy
+details!
 
-Cheers,
+I've tested these e2fsprogs changes against the -next branch as of
+8/4.  The patches follow the end of "Summer 2014 patchbomb part 4",
+and have been tested against the 'make check' suite.
 
-					- Ted
+Comments and questions are, as always, welcome.
+
+--D
