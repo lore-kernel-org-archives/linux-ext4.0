@@ -1,83 +1,92 @@
-From: Dave Chinner <david@fromorbit.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH v2 0/4] quota: add project quota support
-Date: Sun, 10 Aug 2014 08:14:53 +1000
-Message-ID: <20140809221453.GL20518@dastard>
+Date: Sat, 9 Aug 2014 18:17:10 -0400
+Message-ID: <20140809221710.GH15431@thunk.org>
 References: <CAPTn0cAKi64Fh1pAVTDLvSS5-1Kjv7KN2HpGxtm4J8-ym-4nOQ@mail.gmail.com>
  <20140808223335.GQ25145@thunk.org>
+ <CAPTn0cCwczoaH7va4x3yJZBgtRr8b7_eG9V0YO16YzQcnshdTA@mail.gmail.com>
+ <20140809172427.GF15431@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Li Xi <pkuelelixi@gmail.com>, linux-fsdevel@vger.kernel.org,
+Cc: linux-fsdevel@vger.kernel.org,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	viro@ZenIV.linux.org.uk, hch@infradead.org, Jan Kara <jack@suse.cz>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+	viro@zeniv.linux.org.uk, hch@infradead.org,
+	Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
+	"Niu, Yawei" <yawei.niu@intel.com>
+To: Li Xi <pkuelelixi@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:52602 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751374AbaHIWRT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 9 Aug 2014 18:17:19 -0400
 Content-Disposition: inline
-In-Reply-To: <20140808223335.GQ25145@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20140809172427.GF15431@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 08, 2014 at 06:33:35PM -0400, Theodore Ts'o wrote:
-> On Sat, Aug 09, 2014 at 12:39:58AM +0800, Li Xi wrote:
-> > 
-> > It is obvious that extended attribute implementation has performance
-> > impact when creating files. That is why we choose to push the patches
-> > which use internal inode field to save project ID.
-> 
-> Were you using 256-byte inodes or 128-byte inodes when you benchmarked
-> using xattr versus an in-inode project quota?
-> 
-> The other major comment I have is that as much as possible, the
-> semantics should be compatible xfs's project quota.  In particular,
-> this bit:
-> 
->        A managed tree must be setup initially  using  the  -s  option  to  the
->        project command. The specified project name or identifier is matched to
->        one or more trees defined in /etc/projects, and these  trees  are  then
->        recursively descended to mark the affected inodes as being part of that
->        tree.  This process sets an inode flag and the  project  identifier  on
->        every  file  in  the affected tree.  Once this has been done, new files
->        created in the tree will automatically be accounted to the  tree  based
->        on  their  project  identifier.   An attempt to create a hard link to a
->        file in the tree will only succeed if the  project  identifier  matches
->        the project identifier for the tree.  The xfs_io utility can be used to
->        set the project ID for an arbitrary file, but this can only be done  by
->        a privileged user.
-> 
-> Note the hard link restriction.  And we should check with the XFS
-> folks what happens if you move a file from one directory which belongs
-> to one project quota to another directory which has a different
-> project quota (or no quota whatsoever).
+An additional philosophical question.  If your argument is that you
+want project quotas to be as fully general and to work like group
+quotas --- then this brings up a fundamental question --- why can't
+you just use group quotas?
 
-Rename to a destination with a different project quota gives EXDEV,
-same as if you were trying to rename across different filesystems.
-See xfs_rename().
+What is the use case where you need to have two different quotas that
+work exactly like group quotas?  And following in the general design
+rule of "Zero, one, or infinity: there is no two", for whatever use
+case where you might argue that you need _two_ quotas with identical
+semantics as group quotas, who is to say that there won't be someone
+that comes up with some other use case where you need _three_ quotas
+with identical semantics as group quotas.  Or _four_ group quotas
+being tracked simultaneously.  Etc, etc., etc.
 
-> I suspect the right answer is
-> that the quota gets transferred from one project to another, so that
-> it is a true directory-tree quota system,
+The advantage of doing the directory hierarcy based quota system is
+not just that it's compatible with XFS; it is that it is *different*
+from group quotas.  Not more restrictive, but *different*.  There will
+certainly be scenarios where someone wants to enforce a restriction on
+the size or number of inodes in a directory hierarcy, and where when
+you move a file out of a directory hierarcy into another one, you
+*want* the usage quota to be transfered from the source to the
+destination hierarcy.
 
-XFS doesn't transfer the quota from projid to projid because it's
-borderline impossible to correctly track all the metadata
-allocation/free operations that can happen in a rename operation and
-account them to the correct quota. Hence all those corner cases are
-avoided by treating it as EXDEV and forcing userspace to cp/unlink
-the files rather than rename.
+It may not be what *you* want, but let me ask you this --- why is it
+that you can't use the group quota system, and need to invent an
+entirely new project quota?  The only excuse I've heard is for people
+who are doing container virtualization.  I don't know if that's your
+reason, but let's examine that use case in detail.  The reason why the
+container virtualization folks want project quotas is because they
+want to have quotas imposed on a portion of the directory hiearchy
+that is given to a customer to use in a chrooted container-style "VM".
+And since the user is going to be using their own user and group id's,
+virtualized using the user and group namespaces, they need a third
+dimension, called project id's.  
 
-That's really an implementation detail.
+That's all very fine and good, but if you make it fully general, where
+support for it is in ls, find, a new "chproj" command, etc., it start
+becoming an attractive nuisance which either systemd or GNOME might
+start using for their own nefarious purposes.  And once they start
+using that, and it's incorporated into a Fedora release, now someone
+who wants to run Fedora inside a container, and use project id's for a
+quota system for a container, will collide with the use of project
+id's for Fedora!   Oops.
 
-> but regardless, if we're
-> going to go down this path, let's stay consistent with how XFS does
-> things.
+And this is where the "zero, one, or infinity" rule comes into play.
+You can either keep project quotas very tightly constrained for a
+single use case --- namely, virtualization for containers, in which
+case what you want really *is* based on directory hierarcies --- or
+you make it be something fully general, where these different quota
+types are stored as extended attributes, so you can have multiple
+different namespaces --- one for the Parallel's container group name,
+for the container quota system; another one for the GNOME use of the
+"project quota", and so instead of having a single "project quota"
+inode, let that reserved inode be used for a directory, so you can
+have multiple "quota inodes" for the different dimensions of quota
+usage.
 
-Agreed. I also think they shoul duse the same userspace quota
-interface, so you can use xfs_quota to manage project quotas on both
-ext4 and XFS. That way all the xfstests that test project quota
-behaviour will work on ext4 without modification, and tests written
-for ext4 should also work on XFS.
+Personally, I think this latter approach is way too complicated, and
+I'd much rather implement a single directory hierarcy based quota
+system which is compatible with XFS and has XFS's semantics.  But at
+least this second approach is *fully* general, if you are going to
+argue for a more general solution.
 
-Cheers,
+Regards,
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+					- Ted
