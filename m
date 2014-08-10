@@ -1,30 +1,46 @@
-From: Vimal A R <arvimal@yahoo.in>
-Subject: New feature/project ideas
-Date: Mon, 11 Aug 2014 03:49:11 +0800
-Message-ID: <1407700151.84765.YahooMailNeo@web192906.mail.sg3.yahoo.com>
-Reply-To: Vimal A R <arvimal@yahoo.in>
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+Subject: Re: [PATCH v2 0/4] quota: add project quota support
+Date: Sun, 10 Aug 2014 13:47:24 -0700
+Message-ID: <1407703644.8477.1.camel@jarvis.lan>
+References: <CAPTn0cAKi64Fh1pAVTDLvSS5-1Kjv7KN2HpGxtm4J8-ym-4nOQ@mail.gmail.com>
+	 <20140808223335.GQ25145@thunk.org>
+	 <CAPTn0cCwczoaH7va4x3yJZBgtRr8b7_eG9V0YO16YzQcnshdTA@mail.gmail.com>
+	 <20140809172427.GF15431@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8BIT
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Li Xi <pkuelelixi@gmail.com>, linux-fsdevel@vger.kernel.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	viro@zeniv.linux.org.uk, hch@infradead.org,
+	Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
+	"Niu, Yawei" <yawei.niu@intel.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nm1-vm4.bullet.mail.sg3.yahoo.com ([106.10.148.75]:44307 "EHLO
-	nm1-vm4.bullet.mail.sg3.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751122AbaHJTy6 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 10 Aug 2014 15:54:58 -0400
-References: 
+Received: from bedivere.hansenpartnership.com ([66.63.167.143]:56405 "EHLO
+	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751076AbaHJUr1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 10 Aug 2014 16:47:27 -0400
+In-Reply-To: <20140809172427.GF15431@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
 
-I came across https://ext4.wiki.kernel.org/index.php/TODO_list while searching for an idea as part of my undergraduate CS project. 
+On Sat, 2014-08-09 at 13:24 -0400, Theodore Ts'o wrote:
+> The last time I asked why in the world anyone would want to use this
+> feature, the only use case that I heard was people who were using
+> containers, and where the all of the project id's were inside a
+> chroot.  Hence, any questions I asked about what happens when a file
+> gets moved out from the hierarchy were hand-waved away, since inside a
+> chroot, it could never happen.
 
+Actually, I don't believe that's entirely accurate.  The performance
+problem with shared filesystem roots for containers has meant OpenVZ has
+been using a block root for a while.  However, we still support the old
+shared filesystem root, but for quota's within the chroot, we use a subtree
+quota system (not a project quota) for which Dmitry Monakhov
+posted the patches several times a couple of years ago.
 
-I would like to know if this list is updated/latest, and if not, are there any project ideas which would be apt for a 3-4 month time-frame. Any ideas and suggestions are welcome.
+James
 
-Thank you,
-
-Vimal
 
