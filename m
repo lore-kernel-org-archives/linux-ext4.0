@@ -1,60 +1,61 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: Li Xi <pkuelelixi@gmail.com>
 Subject: Re: [PATCH v2 0/4] quota: add project quota support
-Date: Sat, 9 Aug 2014 20:09:51 -0400
-Message-ID: <20140810000951.GI15431@thunk.org>
-References: <CAPTn0cAKi64Fh1pAVTDLvSS5-1Kjv7KN2HpGxtm4J8-ym-4nOQ@mail.gmail.com>
- <20140808223335.GQ25145@thunk.org>
- <CAPTn0cCwczoaH7va4x3yJZBgtRr8b7_eG9V0YO16YzQcnshdTA@mail.gmail.com>
- <20140809172427.GF15431@thunk.org>
- <20140809221710.GH15431@thunk.org>
- <20140809233832.GM20518@dastard>
+Date: Sun, 10 Aug 2014 08:38:18 +0800
+Message-ID: <CAPTn0cC2a1BdtH2Jjp4NoU4apqzrJdxkPK0vf0Ahq=gds0wj3w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Li Xi <pkuelelixi@gmail.com>, linux-fsdevel@vger.kernel.org,
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-fsdevel@vger.kernel.org,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	viro@zeniv.linux.org.uk, hch@infradead.org,
 	Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
 	"Niu, Yawei" <yawei.niu@intel.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20140809233832.GM20518@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ie0-f182.google.com ([209.85.223.182]:33667 "EHLO
+	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751513AbaHJAiT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 9 Aug 2014 20:38:19 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Aug 10, 2014 at 09:38:32AM +1000, Dave Chinner wrote:
-> 
-> I've seen this sort of thing quite a bit over the past 10 years.
-> Most of the time on storage systems measured in the high tens to
-> hundreds of TB of storage, which puts it way out of the scope of
-> knowledge of most Linux distro and application developers. That's
-> most likely why you don't get any other answer to your questions -
-> most people can't see how project quotas get used because they've
-> never worked in a large, multi-project environment before.
+> There is a very big and fundamental difference about project id's
+> versus user/group id's, and that is that project id's are not first
+> class objects in the file system.  That is, stat() doesn't understand
+> them.  Processes do not belong to one (or more) projects, the way they
+> do for user and group id's.
+Yeah, I totally agree that project ID is different from UID/GID in this
+sense. And I think it happens to be why we need project quota rather than
+using existing group quota actually.
+>
+> As a result, project id's are a massive administration nightmare.  You
+> can't easily see which project a file belongs to, since "ls" and
+> "stat" has no support for the project id.  So if a file is created in
+> one directory, the file will inherent that project id from its parent
+> directory.  Suppose that file is 100 gigabytes, and it chews up most
+> of the project quota for that project.  Now suppose that file is moved
+> to some other directory.
+>
+> How in the world is the administrator supposed to find the file which
+> is chewing up 100GB of quota?  Find doesn't support project id's
+> either....
+That is the same problem when we are scattering inodes with different
+UID/GID into directory-trees. I don't think there is any difficulty in
+writing a script to locates the files with a specific project ID. It
+might be slightly slower than native find, but I don't think there is
+any fundamental difference.
+>
+> The last time I asked why in the world anyone would want to use this
+> feature, the only use case that I heard was people who were using
+> containers, and where the all of the project id's were inside a
+> chroot.  Hence, any questions I asked about what happens when a file
+> gets moved out from the hierarchy were hand-waved away, since inside a
+> chroot, it could never happen.
+I think administrators in HPC or datacenter would like this feature in a
+flexible way. I was always getting asked by customers 'how can I know
+the spaces/inode used by directoris shared by multiple users/groups'.
+'du' doesn't help much because no body wants to wait such a long time if
+disk space is at PB-level. In this use case of project quota, I think
+it is common for users to move files inside or outside directory-trees.
 
-Sure, but the people who are advocating for project quotas had better
-understand how they plan to use them, both so that (a) if they do a
-design different from XFS, they can justify why the differences are
-necessary, and (b) to justify whether we need it in ext4 to begin
-with.
-
-The "directory hierarchy quota" is easy to understand, it's something
-that the Andrew File System had --- down to restriction that you can't
-move a file between different AFS volumes, but instead have to copy
-and unlink.
-
-> If we need a more *complex* solution because people need more than
-> just what the simple solution gives them, then that is a topic for
-> -fsdevel and probably LSFMM because there's all sorts of semantic
-> and interface discussions that are needed and a lot more code that
-> needs to be written. i.e. the simple solution can be deployed within
-> a couple of kernel releases, a generic solution is more likely a
-> coupleof *years* of work to deploy...
-
-100% agreed.  And I have yet to see a compelling case that even the
-simple form of project id's would get a lot of use in the ext4 world.
-Which is why I want to know from those who want to add project quotas
-in to ext4.  How do you plan to use them?  What's the use case
-scenario?
-
-							- Ted
+Regards,
+                                       -Li Xi
