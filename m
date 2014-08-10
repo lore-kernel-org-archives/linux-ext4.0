@@ -1,82 +1,60 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Updated versoin of kvm-xfstests available
-Date: Sat, 9 Aug 2014 19:45:56 -0400
-Message-ID: <20140809234556.GA11072@thunk.org>
+Subject: Re: [PATCH v2 0/4] quota: add project quota support
+Date: Sat, 9 Aug 2014 20:09:51 -0400
+Message-ID: <20140810000951.GI15431@thunk.org>
+References: <CAPTn0cAKi64Fh1pAVTDLvSS5-1Kjv7KN2HpGxtm4J8-ym-4nOQ@mail.gmail.com>
+ <20140808223335.GQ25145@thunk.org>
+ <CAPTn0cCwczoaH7va4x3yJZBgtRr8b7_eG9V0YO16YzQcnshdTA@mail.gmail.com>
+ <20140809172427.GF15431@thunk.org>
+ <20140809221710.GH15431@thunk.org>
+ <20140809233832.GM20518@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:52660 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751939AbaHIXp5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 9 Aug 2014 19:45:57 -0400
+Cc: Li Xi <pkuelelixi@gmail.com>, linux-fsdevel@vger.kernel.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	viro@zeniv.linux.org.uk, hch@infradead.org,
+	Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
+	"Niu, Yawei" <yawei.niu@intel.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20140809233832.GM20518@dastard>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-I've uploaded a new set of precompiled kvm-xfstests test appliances
-at:
+On Sun, Aug 10, 2014 at 09:38:32AM +1000, Dave Chinner wrote:
+> 
+> I've seen this sort of thing quite a bit over the past 10 years.
+> Most of the time on storage systems measured in the high tens to
+> hundreds of TB of storage, which puts it way out of the scope of
+> knowledge of most Linux distro and application developers. That's
+> most likely why you don't get any other answer to your questions -
+> most people can't see how project quotas get used because they've
+> never worked in a large, multi-project environment before.
 
-   https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests
+Sure, but the people who are advocating for project quotas had better
+understand how they plan to use them, both so that (a) if they do a
+design different from XFS, they can justify why the differences are
+necessary, and (b) to justify whether we need it in ext4 to begin
+with.
 
-This new version has an updated xfstests, with more of the tests
-enabled.  The root_fs image is 40% smaller, and if you want to build
-your own root_fs.img, it's much faster and convenient to do so now.
+The "directory hierarchy quota" is easy to understand, it's something
+that the Andrew File System had --- down to restriction that you can't
+move a file between different AFS volumes, but instead have to copy
+and unlink.
 
-All ext4 developers are strongly encouraged to test their patches
-using xfstests before sending them out for review; you are free to use
-your own installation of xfstests, but if you want something simple
-and turn-key, so there can be no excuses not to test, this is what
-kvm-xfstests is for.  :-)
+> If we need a more *complex* solution because people need more than
+> just what the simple solution gives them, then that is a topic for
+> -fsdevel and probably LSFMM because there's all sorts of semantic
+> and interface discussions that are needed and a lot more code that
+> needs to be written. i.e. the simple solution can be deployed within
+> a couple of kernel releases, a generic solution is more likely a
+> coupleof *years* of work to deploy...
 
-Please do at least "smoke" testing, and if you are working on a major
-new feature, doing a full run using "-g auto" is much appreciated.
-Once I'm done running my baseline, I'll send out the results for your
-convenience; if your patches cause any regressions, *please* take a
-look and figure out why, since that will save me a lot of time and
-allow your patches to get merged that much more quickly.
+100% agreed.  And I have yet to see a compelling case that even the
+simple form of project id's would get a lot of use in the ext4 world.
+Which is why I want to know from those who want to add project quotas
+in to ext4.  How do you plan to use them?  What's the use case
+scenario?
 
-					- Ted
-
-Quick start instructions:
-
-0.  Make sure qemu with kvm support is installed on your system.
-
-1.  Run the following commands:
-
-    git clone git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git fstests
-    cd fstests/kvm-xfstests
-    wget -O test_appliance/root_fs.img https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386
-
-Substitute "i386" for "x86_64" in the above URL if you want to test
-using a native 64-bit userspace.  It should be possible to use the
-32-bit userspace with a 64-bit kernel, although you may run into some
-rough spots via-a-vis compat ioctls working correctly.  (If you do,
-let me know; those are bugs that should be fixed.  :-)
-
-2.  Take a look at the "config" file and either edit that file in
-    place, or put override values in ~/.config/kvm-xfstests or
-    config.custom.  The latter is preferred.
-
-3.  Build a kernel with all of the necessary drives for kvm built into
-    the kernel (i.e., no modules!).  There are some sample kernel
-    configs in the kernel-configs directory.
-
-4.  Run "./kvm-xfstests smoke" to do a quick test.  Or "./kvm-xfstests
-    -g auto" to do a full test.  You can also run specific tests on
-    specific configurations, i.e., "./kvm-xfstests -c bigalloc
-    generic/013 generic/127".  
-
-For more information, please see:
-
-https://git.kernel.org/cgit/fs/ext2/xfstests-bld.git/tree/kvm-xfstests/README
-
-GPL Compliance information can be found here:
-
-https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/README
-
-
-
-
-
-
+							- Ted
