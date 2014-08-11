@@ -1,51 +1,62 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 5/6] libext2fs/e2fsck: provide routines to read-ahead
- metadata
-Date: Sun, 10 Aug 2014 23:31:20 -0700
-Message-ID: <20140811063120.GB2808@birch.djwong.org>
-References: <20140809042610.2441.6868.stgit@birch.djwong.org>
- <20140809042643.2441.79312.stgit@birch.djwong.org>
- <20140811052151.GA2808@birch.djwong.org>
- <20140811062415.GG15431@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 61601] rootflags=noatime causes kernel panic when booting
+ without initrd.
+Date: Mon, 11 Aug 2014 07:04:14 +0000
+Message-ID: <bug-61601-13602-J9Ryp2vIrG@https.bugzilla.kernel.org/>
+References: <bug-61601-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:22301 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751511AbaHKGb1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Aug 2014 02:31:27 -0400
-Content-Disposition: inline
-In-Reply-To: <20140811062415.GG15431@thunk.org>
+Received: from mail.kernel.org ([198.145.19.201]:42673 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752242AbaHKHER (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Aug 2014 03:04:17 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id D975C201ED
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Aug 2014 07:04:15 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 5D8EF201BA
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Aug 2014 07:04:14 +0000 (UTC)
+In-Reply-To: <bug-61601-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 11, 2014 at 02:24:15AM -0400, Theodore Ts'o wrote:
-> On Sun, Aug 10, 2014 at 10:21:51PM -0700, Darrick J. Wong wrote:
-> > 
-> > It turns out that each of the calls to ext2fs_resize_mem in the
-> > ext2fs_add_dir_block2() function is costing us ~2ms for each call to this
-> > function.  I'll add a new ext2fs_init_dblist() APi that lets us specify the
-> > initial size of the list.  This seems to reduce the fsck runtime by a few more
-> > seconds.
-> 
-> I suspect dblist is the wrong abstraction to use here.  Since the
-> blocks we want to read ahead are generally going to be contiguous, why
-> not use a rbtree bitmap, setting the blocks that should be subject to
-> readahead, and then use the find_first_set() function to iterate over
-> the bitmap?  Or if you want to be even more efficient, create an
-> interator function which takes a bitmap and returns blocks that are
-> set in the bitmap, one by one.
+https://bugzilla.kernel.org/show_bug.cgi?id=61601
 
-Hmm, I'll try that, though I'm almost tempted just to issue io_cache_readahead
-calls directly from the for loop.  The only reason I'm using the list here at
-all is to handle the case of reading multiple groups in a flexbg (pass5 RA).
+--- Comment #12 from Jacob Lane <jaclane299@gmail.com> ---
+the maintaners should be open to helping people solver other problems.
+thats a big issue for me. the mailing lists arent very open to new people.
+its either your a pro or gtfo. and i feel that slows the amount of people
+getting involved in the community. why not teach outside people how to
+solve bugs/fix problems? Its like free volunteers for helping people out.
+they just need training.
 
---D
-> 
-> 						- Ted
+
+On Mon, Aug 11, 2014 at 12:32 AM, <bugzilla-daemon@bugzilla.kernel.org>
+wrote:
+
+> https://bugzilla.kernel.org/show_bug.cgi?id=61601
+>
+> --- Comment #11 from xerofoify@gmail.com ---
+> Thanks Ted,
+> I was guessing, seems your right. The only choice I have with bugs and
+> other
+> work now is to guess or known what I am doing. Due to the maintainers not
+> wanting to help me any more I have no choice but to guess or just leave.
+> Seems
+> better now to just leave it.
+>
+> --
+> You are receiving this mail because:
+> You are watching the assignee of the bug.
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
