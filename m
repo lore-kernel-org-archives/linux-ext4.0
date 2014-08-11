@@ -1,63 +1,56 @@
-From: Li Xi <pkuelelixi@gmail.com>
-Subject: Re: [PATCH v2 0/4] quota: add project quota support
-Date: Mon, 11 Aug 2014 22:16:05 +0800
-Message-ID: <CAPTn0cBAYxCX0w3uiT1FLi2Nw4R+AFj2whouD4jr5tbZsFqaUw@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 61601] rootflags=noatime causes kernel panic when booting
+ without initrd.
+Date: Mon, 11 Aug 2014 14:24:13 +0000
+Message-ID: <bug-61601-13602-obGetyG9Oc@https.bugzilla.kernel.org/>
+References: <bug-61601-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"hch@infradead.org" <hch@infradead.org>,
-	Andreas Dilger <adilger@dilger.ca>,
-	"Niu, Yawei" <yawei.niu@intel.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:57811 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753370AbaHKOYQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Aug 2014 10:24:16 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 1DE6220131
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Aug 2014 14:24:15 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 417252010F
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Aug 2014 14:24:13 +0000 (UTC)
+In-Reply-To: <bug-61601-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
->   So I actually don't think project quota as implemented by XFS (and with
-> which me and Ted want to stay compatible with) isn't different from what you
-> want. Let me explain what XFS does:
->   1) Each file has an additional ID - the project ID
->   2) Each dir can have XFS_DIFLAG_PROJINHERIT flag set. When this flag is
->      set, all files and directories created in the directory inherit project
->      ID, directories also inherit XFS_DIFLAG_PROJINHERIT - this is
->      equivalent of sgid bit on directories for gids.
->   3) When you hard-link a file into directory with XFS_DIFLAG_PROJINHERIT
->      set, the file already has to have the same project ID as the directory
->      you are linking into.
->   4) When you rename a file into a directory with XFS_DIFLAG_PROJINHERIT
->      set, the file already has to have the same project ID as the directory
->      you are renaming into.
->   5) If you call statfs() on a directory with XFS_DIFLAG_PROJINHERIT set
->      and project quota is being enforced, statfs() will return free/used
->      blocks of the corresponding project instead of number of free/used
->      blocks in the filesystem.
->
-> Now if, as an administrator, you decide you need completely generic
-> additional ID, you can do so. You just never set XFS_DIFLAG_PROJINHERIT.
-> Quota accounting and enforcement works just fine without that flag.
->
-> So the discussion really is about the semantics of the
-> XFS_DIFLAG_PROJINHERIT flag. If you want automatic inheritance of project
-> ids, you set XFS_DIFLAG_PROJINHERIT.  With that you'll get additional
-> limitations described in 3) and 4). And I am of the opinion that these
-> limitations help to maintain sanity in a system where project quotas are
-> used. I can imagine XFS_DIFLAG_PROJINHERIT would be split in two flags
-> for ext4 - one controlling whether project ID is inherited, another
-> controlling whether we enforce rules 3) and 4) but such difference from XFS
-> would have to be very well justified because different filesystems having
-> subtly different semantics is a real administrative nightmare, much worse
-> than the additional cp + unlink done when rename() returns EXDEV because
-> you tried to rename from one project to another.
-Thank you so much for your detailed introduction! I didn't know there
-is a tunable
-XFS_DIFLAG_PROJINHERIT flag and I thought that rule 3) and 4) always
-took effect. I would like to keep everything compatible with XFS if
-this flag can
-turn on/off rule 3) and 4) freely. I will check the implement details of XFS in
-case of making similar mistakes.
+https://bugzilla.kernel.org/show_bug.cgi?id=61601
 
-Regards,
-Li Xi
+--- Comment #13 from Theodore Tso <tytso@mit.edu> ---
+Jacob, there are very good programs to help people learn how to get involved
+with kernel development.  See the kernelnewbies.org web site and mailing list,
+for example.   But you need to have some amount of basic competence; being able
+to use Google well, for example, and doing silly things like making sure the
+patches compile before you submit patches for review.
+
+Also, if you have clueless people asking users completely random questions that
+are completely useless in terms of fixing the problem, it wastes the user's
+time and causes them to get very frustrated.   So having newbies trying to help
+users who are reporting kernel bugs is not a good idea.  If they want to help
+users install Linux distributions, that's fine --- so long as you are minimally
+competent in doing installation.  Similarly, if you are completely incompetent
+in doing kernel development, you should not be offering to help users.
+
+There are ways for newbies to get involved.  The problem is Nick has
+consistently ignored advice of people who have wasted a huge amount of time
+trying to get him on the right path.  Which is why he has gotten banned.
+
+If you are someone who wants to get started, there is the Eudyptula Challenge
+(http://eudyptula-challenge.org).   Nick finally got involved with this, and
+then violated the very simple rules, which caused him to get ejected from the
+Challenge within hours, thus setting a new record for the Eudyuptula Challenge.
+ Anyway, this is off topic for the bug.  So please stop discussing this here,
+please.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
