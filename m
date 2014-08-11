@@ -1,46 +1,38 @@
 From: Li Xi <pkuelelixi@gmail.com>
 Subject: Re: [PATCH v2 0/4] quota: add project quota support
-Date: Mon, 11 Aug 2014 08:06:41 +0800
-Message-ID: <CAPTn0cDSyvA15k+3BGgWtG2hfrS0zkb75=NYhfgPt5pvANTMCg@mail.gmail.com>
+Date: Mon, 11 Aug 2014 08:19:45 +0800
+Message-ID: <CAPTn0cD03NJTTKWrFB29HGEVmAPX8HkzMC9Ap5kzFXENE2dEXw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: Shuichi Ihara <sihara@ddn.com>,
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
 	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
 	"hch@infradead.org" <hch@infradead.org>, Jan Kara <jack@suse.cz>,
 	Andreas Dilger <adilger@dilger.ca>,
 	"Niu, Yawei" <yawei.niu@intel.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:50447 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751711AbaHKAGm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Aug 2014 20:06:42 -0400
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:50556 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751271AbaHKATq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Aug 2014 20:19:46 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> This being said, for this particular use case, I'm not entirely sure
-> why you can't just create separate groups for each project, and then
-> let group inheritance take care of things:
->
-> mkdir top-level
-> chgrp project1 top-level
-> chmod g+s top-level
->
-> Now all of the files created in top-level will be accounted in
-> project1's quota.
->
-> If the answer is that it's too easy to evade quota controls by using
-> the "chgrp" command, note that if you are going to allow users to mv
-> files around, they can easily evade the project quota anyway, by
-> creating the file in top-level dirctory of project2, and then mv'ing
-> it into the top-level directory of project1.
-Yeah, we don't want common users to change the project ID of thier
-files, so setting project is only allowed for administrator in this
-implementation. And since project ID of an inode won't be changed
-when it is renamed around, common users has no way to evade
-project quota.
+> That's fair enough, though I think you'll find that the plain
+> project quota will find many different uses that filesystem
+> developers will have never thought of if it is there. e.g. I came
+> across an embedded NAS device a few years ago implemented with a
+> centralised object stores but had per-export space usage accounting
+> and enforcement by assigning every object associated with a specific
+> exported volume the same project quota....
+100% agreed. I can imagine that a lot of users will find their requirement
+of space managing with project quota. In this sense, general project quota
+is just like extended attribute comparing to internal attribute. For unknown
+use case in the future, I' d suggest to keep everything flexible. We don't
+really want to hear from customers that project quota looks attractive, but
+needs to be hacked to be usable for their usage.
 
 Regards,
-                                          -Li Xi
+Li Xi
