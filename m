@@ -1,120 +1,73 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: journal recovery problems with metadata_csum, *non-64bit*
-Date: Mon, 11 Aug 2014 00:10:25 -0700
-Message-ID: <20140811071025.GE19223@birch.djwong.org>
-References: <BLU437-SMTP3407533C3883653626BD3DFDEC0@phx.gbl>
+From: Li Xi <pkuelelixi@gmail.com>
+Subject: Re: [PATCH v2 0/4] quota: add project quota support
+Date: Mon, 11 Aug 2014 18:23:53 +0800
+Message-ID: <CAPTn0cBGU+bsBc6DumassOyw0HuDP2tAetFaoAOV4TFw21Ud4A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: TR Reardon <thomas_reardon@hotmail.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: Shuichi Ihara <sihara@ddn.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"hch@infradead.org" <hch@infradead.org>, Jan Kara <jack@suse.cz>,
+	Andreas Dilger <adilger@dilger.ca>,
+	"Niu, Yawei" <yawei.niu@intel.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:43870 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751769AbaHKHKd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Aug 2014 03:10:33 -0400
-Content-Disposition: inline
-In-Reply-To: <BLU437-SMTP3407533C3883653626BD3DFDEC0@phx.gbl>
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:43630 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751672AbaHKKXy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Aug 2014 06:23:54 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Aug 10, 2014 at 06:35:33PM -0400, TR Reardon wrote:
-> Ok, I found the problem in jbd2, and have a solution, though it's
-> debatable what the ideal solution is.  For now, the simplest patch is
-> below, though a similar patch in lib/ext2fs/kernel-jbd.h is required
-> to get e2fsck back in sync.
-> 
-> The original c3900875 commit adding metadata_csum (ie
-> journal_checksum_v2) to jbd2 added 2 extra bytes for the block
-> checksums, in addition to re-allocating 2 bytes from the 4 bytes of
-> flags.  However, a decision was made to only retain the lower 16-bits
-> of the crc32c, and thus those extra 2 bytes were unneeded.  But those
-> 2 extra bytes were never "deallocated" from journal_tag_bytes().
+>
+> Or are you really saying you really need to simultaneously track quota
+> from a group perspective, and a project perspectively, at the same
+> time?  If so, why?
+An reason that we don't want to use group quota for project use case is that
+we don't want to lose the track of the group usage that the user belongs
+to. Let's assume GROUP1 has only two users, USER1 and USER2. Normally, we
+want to query the disk usage of GROUP1 by 'quota -g GROUP1 -v'. The disk
+usage should be the sum of 'quota -u USER1 -v' and 'quota -u USER2 -v', if
+we never do any unusual chgrp/chown. But if we change the GID of files
+created by USER1 to PROJECT1, there will be a mismatching between
+'quota -g GROUP1 -v' and ('quota -u USER1 -v' + 'quota -u USER2 -v').
 
-Hrmm... yes, I remember trying to push for full 32-bit checksums on journal
-blocks, and our subsequent decision not to put in the two bytes.  Oops.
+As mentioned by Ihara, project quota support for ext4 is an important
+part of project quota support for Lustre. I'd like to explain a little
+bit about the expecting usage of project quota for Lustre.
 
-(This looks more like a coding error on my part.)
+As a distributed file system, Lustre is able to use hundreds of seperate
+ext4 file systems to store its data as well as metadata, yet provides a
+united global name space. Some of users start to use SSD devices for better
+performance on Lustre. However as we can expect, they might want to replace
+only part of the drivers to SSD, since SSD is expensive. That means, part
+of the ext4 file systems are using SSD and the other part of the ext4 file
+systems are using hard disks. In the sight of Lustre, users can choose to
+locate files on SSDs or hard disks using features of Lustre, namely 'stripe'
+and 'OST pool'. Here comes the problem, how to limit the usage of SSD since
+all end users want good performance badly?
 
-I suppose it would help to be able to use debugfs or something to create
-journal transactions just to see if they'll replay correctly in the
-kernel/e2fsck.  I've wondered for a while if the e2fsck jbd code ought to be
-pushed into libext2fs (or libjbd2) to make this easier.  A long ago fuse2fs
-patchbomb actually did this so that fuse2fs could at least replay the journal.
+Quota system is designed to allot such kind of limited resources. However,
+unfortunately, former UID/GID based quotas won't help in this case. UID/GID
+based quotas works well in alloting one determined kind of resource, i.e.
+global space and inode usage. But when the resource itself have to be
+devided to seperate parts either for management reasons (e.g. virtualization)
+or physical reasons (e.g. SSD v.s. hard disk v.s. tape), UID/GID based quota
+is not helping, simply because UID/GID is not a suitable way to distinguish
+resources. That is why we need another dimension of quota.
 
-> Unfortunately, different code relies on JBD_TAG_SIZE32/64 constants
-> directly rather than the journal_tag_bytes() utility function, in
-> particular the recovery code which is common to e2fsck and jbd2.  This
-> led different tools to think they were looking at a 64bit journal when
-> actually it was 32bit.  Code that relied on journal_tag_bytes()
-> remained safe, so the block iterators were fine, but any direct use of
-> those constants [including the hideous greater-than comparison in
-> read_tag_bytes()] went awry, and journal replay will fail.
+Of course, we might be able to find some walk-around ways using group quota.
+However, because the owners of the files can change the group attributes
+freely, it is so easy for the users to evade the group quota and steal the
+tight resources. For example, in order to steal SSD space, a user can just
+creating the files using the sepcific group ID and then change it back.
+And administrators can never expect users will cooperate on this. Users always
+have enough excuses to ignore requirements from administrators to delete
+unnecessary data on a shared file system, if there is no hard quota
+limits on that system. In the current implementation of project quota,
+project ID can only be changed by privileged users, so that won't be a
+problem for it.
 
-Hmm... I thought recovery.c sets tag_bytes to journal_tag_bytes()?
-
-(It's late, I'll have another look in the morning.)
-
-> As far as I can tell, metadata_csum + journal checksum has never
-> worked for 32bit filesystems. By a little bit of padding luck, 64bit
-> worked fine.
-`
-D'oh. :(
-
-FWIW, 64bit is recommended for metadata_csum since it enables full 32-bit
-bitmap checksums.
-
-> Now, as to the solution: depends on whether one feels that existing
-> in-the-wild journals matter. The original commit was May 2012, are we
-> past early-adopters now?  If this patch is taken, you shrink the
-
-Definitely not past the early adopter stage.  The e2fsprogs code will be in
-1.43, which means that most people can't use metadata_csum yet.
-
-So, thank you very much for helping us to smoke test. :)
-
-> journal block tags to the intended size but in-the-wild journals will
-> be broken.  But they already are, so...?  This opens up the
-> possibility of now using those extra 2 bytes and retaining full 32-bit
-> crc32c for the block tags.  If going that route, debugs/logdump needs
-> a fix in addition to changes to jbd2.
-
-In theory the only wild journals should be on test FSes anyway, so breaking
-them isn't the end of the world.
-
-But as you point out, the space is already getting used because journal_csum_v2
-is the gate for the extra 2 bytes to be turned on, so I guess we could just use
-the extra 2 bytes and store the full checksum.
-
-> FWIW, the "JBD2: Out of memory during recovery." error in
-> fs/jbd2/recovery.c was opaque at best and should be changed to always
-> include the block# that caused the problem.
-
-recovery.c line 611, correct?
-
---D
-> 
-> +Reardon
-> 
-> ---
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 67b8e30..dc27d09 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -2166,15 +2166,11 @@ int jbd2_journal_blocks_per_page(struct inode *inode)
->  size_t journal_tag_bytes(journal_t *journal)
->  {
->         journal_block_tag_t tag;
-> -       size_t x = 0;
-> -
-> -       if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
-> -               x += sizeof(tag.t_checksum);
-> 
->         if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
-> -               return x + JBD2_TAG_SIZE64;
-> +               return JBD2_TAG_SIZE64;
->         else
-> -               return x + JBD2_TAG_SIZE32;
-> +               return JBD2_TAG_SIZE32;
->  }
-> 
->  /*
+Thanks,
+Li Xi
