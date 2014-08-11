@@ -1,40 +1,49 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 5/6] libext2fs/e2fsck: provide routines to read-ahead
- metadata
-Date: Mon, 11 Aug 2014 10:34:23 -0400
-Message-ID: <20140811143423.GB3506@thunk.org>
-References: <20140809042610.2441.6868.stgit@birch.djwong.org>
- <20140809042643.2441.79312.stgit@birch.djwong.org>
- <20140811052151.GA2808@birch.djwong.org>
- <20140811062415.GG15431@thunk.org>
- <20140811063120.GB2808@birch.djwong.org>
+From: Li Xi <pkuelelixi@gmail.com>
+Subject: Re: [PATCH v2 0/4] quota: add project quota support
+Date: Mon, 11 Aug 2014 22:40:38 +0800
+Message-ID: <CAPTn0cCh0fh2REPgyXg_nBrJVVppiujVyj6XKruocg1q7MVVVA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: Shuichi Ihara <sihara@ddn.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"hch@infradead.org" <hch@infradead.org>, Jan Kara <jack@suse.cz>,
+	Andreas Dilger <adilger@dilger.ca>,
+	"Niu, Yawei" <yawei.niu@intel.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:54502 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753914AbaHKOeZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Aug 2014 10:34:25 -0400
-Content-Disposition: inline
-In-Reply-To: <20140811063120.GB2808@birch.djwong.org>
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:64759 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753442AbaHKOkj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Aug 2014 10:40:39 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Aug 10, 2014 at 11:31:20PM -0700, Darrick J. Wong wrote:
-> 
-> Hmm, I'll try that, though I'm almost tempted just to issue io_cache_readahead
-> calls directly from the for loop.  The only reason I'm using the list here at
-> all is to handle the case of reading multiple groups in a flexbg (pass5 RA).
+> But since you've been arguing that the project id should get preserved
+> across renames, they can evade quota usage by doing:
+>
+>          touch /product/mail/huge_file
+>          mv  /product/mail/huge_file /product/maps
+I don't really understand why these commands can evade project quota
+since:
+1) A newly created file will inherit project ID from its parent inode.
+2) Project ID will be preserved across renames
+3) Project quota won't be transfered unless its project ID is changed.
+4) Only root user has the right to change project ID.
+The rule 2) and 3) are just the same sematics with UID/GID quotas.
+So, becasue of rule 1), after 'touch /product/mail/huge_file', the project
+ID of 'huge_file' is 'mail', and its usage is accouted as project 'mail'.
+Even we do 'mv /product/mail/huge_file /product/maps', because
+of rule 2), there is no project ID updating and no quota transfer. Since
+so, the project quota of file 'huge_file' is always accounted as 'mail',
+from the first beginning to the end. And that is why I think project quota
+of 'mail' can't be evaded in this way.
 
-In that case you could just use an accumulator for each of the block
-and inode bitmaps, and so long as the next group's block and inode
-bitmaps are contiguous with the previous one, you can bump a counter.
-Once you reach a discontiguous bitmap block, you can issue a single
-readahead request for N blocks starting at block B.  That way you only
-issue a single syscall, instead of one for every single block, and you
-don't have the overhead involved with storing the list of blocks and
-then sorting them.
+According to the discription of Jan Kara, I think the current implementation
+of project quota support for ext4 is just a subset of XFS project quota, i.e.
+project quota without XFS_DIFLAG_PROJINHERIT flag. I would like to
+add such kind of flag for sure.
 
-					- Ted
+Regards,
+Li Xi
