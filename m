@@ -1,56 +1,40 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 61601] rootflags=noatime causes kernel panic when booting
- without initrd.
-Date: Mon, 11 Aug 2014 14:24:13 +0000
-Message-ID: <bug-61601-13602-obGetyG9Oc@https.bugzilla.kernel.org/>
-References: <bug-61601-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 5/6] libext2fs/e2fsck: provide routines to read-ahead
+ metadata
+Date: Mon, 11 Aug 2014 10:34:23 -0400
+Message-ID: <20140811143423.GB3506@thunk.org>
+References: <20140809042610.2441.6868.stgit@birch.djwong.org>
+ <20140809042643.2441.79312.stgit@birch.djwong.org>
+ <20140811052151.GA2808@birch.djwong.org>
+ <20140811062415.GG15431@thunk.org>
+ <20140811063120.GB2808@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:57811 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:54502 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753370AbaHKOYQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Aug 2014 10:24:16 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 1DE6220131
-	for <linux-ext4@vger.kernel.org>; Mon, 11 Aug 2014 14:24:15 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 417252010F
-	for <linux-ext4@vger.kernel.org>; Mon, 11 Aug 2014 14:24:13 +0000 (UTC)
-In-Reply-To: <bug-61601-13602@https.bugzilla.kernel.org/>
+	id S1753914AbaHKOeZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Aug 2014 10:34:25 -0400
+Content-Disposition: inline
+In-Reply-To: <20140811063120.GB2808@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=61601
+On Sun, Aug 10, 2014 at 11:31:20PM -0700, Darrick J. Wong wrote:
+> 
+> Hmm, I'll try that, though I'm almost tempted just to issue io_cache_readahead
+> calls directly from the for loop.  The only reason I'm using the list here at
+> all is to handle the case of reading multiple groups in a flexbg (pass5 RA).
 
---- Comment #13 from Theodore Tso <tytso@mit.edu> ---
-Jacob, there are very good programs to help people learn how to get involved
-with kernel development.  See the kernelnewbies.org web site and mailing list,
-for example.   But you need to have some amount of basic competence; being able
-to use Google well, for example, and doing silly things like making sure the
-patches compile before you submit patches for review.
+In that case you could just use an accumulator for each of the block
+and inode bitmaps, and so long as the next group's block and inode
+bitmaps are contiguous with the previous one, you can bump a counter.
+Once you reach a discontiguous bitmap block, you can issue a single
+readahead request for N blocks starting at block B.  That way you only
+issue a single syscall, instead of one for every single block, and you
+don't have the overhead involved with storing the list of blocks and
+then sorting them.
 
-Also, if you have clueless people asking users completely random questions that
-are completely useless in terms of fixing the problem, it wastes the user's
-time and causes them to get very frustrated.   So having newbies trying to help
-users who are reporting kernel bugs is not a good idea.  If they want to help
-users install Linux distributions, that's fine --- so long as you are minimally
-competent in doing installation.  Similarly, if you are completely incompetent
-in doing kernel development, you should not be offering to help users.
-
-There are ways for newbies to get involved.  The problem is Nick has
-consistently ignored advice of people who have wasted a huge amount of time
-trying to get him on the right path.  Which is why he has gotten banned.
-
-If you are someone who wants to get started, there is the Eudyptula Challenge
-(http://eudyptula-challenge.org).   Nick finally got involved with this, and
-then violated the very simple rules, which caused him to get ejected from the
-Challenge within hours, thus setting a new record for the Eudyuptula Challenge.
- Anyway, this is off topic for the bug.  So please stop discussing this here,
-please.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+					- Ted
