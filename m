@@ -1,59 +1,41 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: New feature/project ideas
-Date: Mon, 11 Aug 2014 11:21:11 -0700
-Message-ID: <20140811182111.GF2808@birch.djwong.org>
-References: <1407700151.84765.YahooMailNeo@web192906.mail.sg3.yahoo.com>
- <6C7C8265-F142-4C07-8EDC-B0DBFAB8CBF5@dilger.ca>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 5/6] libext2fs/e2fsck: provide routines to read-ahead
+ metadata
+Date: Mon, 11 Aug 2014 14:32:58 -0400
+Message-ID: <20140811183258.GF6553@thunk.org>
+References: <20140809042610.2441.6868.stgit@birch.djwong.org>
+ <20140809042643.2441.79312.stgit@birch.djwong.org>
+ <20140811052151.GA2808@birch.djwong.org>
+ <20140811062415.GG15431@thunk.org>
+ <20140811063120.GB2808@birch.djwong.org>
+ <20140811143423.GB3506@thunk.org>
+ <20140811180509.GE2808@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Vimal A R <arvimal@yahoo.in>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:45131 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751506AbaHKSVR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Aug 2014 14:21:17 -0400
+Received: from imap.thunk.org ([74.207.234.97]:54983 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753506AbaHKSdA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Aug 2014 14:33:00 -0400
 Content-Disposition: inline
-In-Reply-To: <6C7C8265-F142-4C07-8EDC-B0DBFAB8CBF5@dilger.ca>
+In-Reply-To: <20140811180509.GE2808@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 11, 2014 at 08:12:44PM +0200, Andreas Dilger wrote:
-> Many of the projects listed on that page are already implemented. 
+On Mon, Aug 11, 2014 at 11:05:09AM -0700, Darrick J. Wong wrote:
 > 
-> I think one of the more important ones that has not yet been done
-> is the per-block journal checksums and improved recovery in case
-> of checksum failure on a transaction. 
+> Using the bitmap turns out to be pretty quick (~130us to start RA for 4 groups
+> vs. ~70us per group if I issue the RA directly).  Each fadvise call seems to
+> cost us ~1ms, so I'll keep using the bitmap to minimize the number of fadvise
+> calls, since it's also a lot less code.
 
-I was about to start poking around with that this afternoon, hoping it doesn't
-take 3-4 months. :)
+4 groups?  Since the default flex_bg size is 16 block groups, I would
+have expected that you would want to start RA every 16 groups.
 
-Also piling on are: adding commit.c to e2fsprogs so debugfs can create journal
-transactions for testing, and possibly resyncing revoke.c/recovery.c.
+(And BTW, I've been wondering whether we should increase the flex_bg
+size for bigger file systems.  By the time we get to 4TB disks, Having
+a flex_bg every 2GB seems a little small.)
 
---D
-> 
-> Cheers, Andreas
-> 
-> > On Aug 10, 2014, at 21:49, Vimal A R <arvimal@yahoo.in> wrote:
-> > 
-> > Hello,
-> > 
-> > I came across https://ext4.wiki.kernel.org/index.php/TODO_list while searching for an idea as part of my undergraduate CS project. 
-> > 
-> > 
-> > I would like to know if this list is updated/latest, and if not, are there any project ideas which would be apt for a 3-4 month time-frame. Any ideas and suggestions are welcome.
-> > 
-> > Thank you,
-> > 
-> > Vimal
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+						- Ted
