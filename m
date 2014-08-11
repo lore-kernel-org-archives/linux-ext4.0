@@ -1,130 +1,114 @@
-From: Jan Kara <jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH v2 0/4] quota: add project quota support
-Date: Mon, 11 Aug 2014 12:49:50 +0200
-Message-ID: <20140811104950.GD29526@quack.suse.cz>
-References: <CAPTn0cAKi64Fh1pAVTDLvSS5-1Kjv7KN2HpGxtm4J8-ym-4nOQ@mail.gmail.com>
- <20140808223335.GQ25145@thunk.org>
- <CAPTn0cCwczoaH7va4x3yJZBgtRr8b7_eG9V0YO16YzQcnshdTA@mail.gmail.com>
- <20140809172427.GF15431@thunk.org>
- <20140809221710.GH15431@thunk.org>
- <CAPTn0cBQZsXfcC5FL17s48REGiO0YnQiZB0ez6neCmQr3V5Z4Q@mail.gmail.com>
+Date: Mon, 11 Aug 2014 09:48:36 -0400
+Message-ID: <20140811134836.GA3506@thunk.org>
+References: <CAPTn0cBGU+bsBc6DumassOyw0HuDP2tAetFaoAOV4TFw21Ud4A@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+Cc: Shuichi Ihara <sihara@ddn.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	viro@zeniv.linux.org.uk, hch@infradead.org,
-	Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"hch@infradead.org" <hch@infradead.org>, Jan Kara <jack@suse.cz>,
+	Andreas Dilger <adilger@dilger.ca>,
 	"Niu, Yawei" <yawei.niu@intel.com>
 To: Li Xi <pkuelelixi@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:54424 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753778AbaHKNsz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Aug 2014 09:48:55 -0400
 Content-Disposition: inline
-In-Reply-To: <CAPTn0cBQZsXfcC5FL17s48REGiO0YnQiZB0ez6neCmQr3V5Z4Q@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <CAPTn0cBGU+bsBc6DumassOyw0HuDP2tAetFaoAOV4TFw21Ud4A@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 10-08-14 10:15:36, Li Xi wrote:
-> > An additional philosophical question.  If your argument is that you
-> > want project quotas to be as fully general and to work like group
-> > quotas --- then this brings up a fundamental question --- why can't
-> > you just use group quotas?
-> I think the reason that people want another quota type is that the UID/GID
-> is used in privilege management. And it is always troublesome when things
-> are related to privilege, because no administrator want to be blamed for
-> file access from unauthorized users. UID/GID usually has a determined
-> mapping rule to customers in reality. In this sense, I don't think
-> administrators want to (or can) change user/group settings frequently.
-> And that is why we need an extra quota type. It looks like group quota,
-> but it is flexible and safer for management.
-  Well, but you can easily setup the system in such a way that GID (outside
-of several system groups) has no priviledge implications (you can use ACLs
-if you need more users to access files) and use group quotas if you really
-need full flexibility of additional file ID... So I'm not sure I buy this
-fear of security implications.
+On Mon, Aug 11, 2014 at 06:23:53PM +0800, Li Xi wrote:
+> As a distributed file system, Lustre is able to use hundreds of seperate
+> ext4 file systems to store its data as well as metadata, yet provides a
+> united global name space. Some of users start to use SSD devices for better
+> performance on Lustre. However as we can expect, they might want to replace
+> only part of the drivers to SSD, since SSD is expensive. That means, part
+> of the ext4 file systems are using SSD and the other part of the ext4 file
+> systems are using hard disks. In the sight of Lustre, users can choose to
+> locate files on SSDs or hard disks using features of Lustre, namely 'stripe'
+> and 'OST pool'. Here comes the problem, how to limit the usage of SSD since
+> all end users want good performance badly?
 
-> > What is the use case where you need to have two different quotas that
-> > work exactly like group quotas?  And following in the general design
-> > rule of "Zero, one, or infinity: there is no two", for whatever use
-> > case where you might argue that you need _two_ quotas with identical
-> > semantics as group quotas, who is to say that there won't be someone
-> > that comes up with some other use case where you need _three_ quotas
-> > with identical semantics as group quotas.  Or _four_ group quotas
-> > being tracked simultaneously.  Etc, etc., etc.
-> "Zero, one, or infinity: there is no two" looks like a beautiful philosophy.
-> I totally agree on that. However, I think general project quota happens to
-> be the one, not two. If it is an acceptable conclusion that administrator
-> can't change global group settings and group attributes of inodes frequently,
-  But why would administrator have to change group setting or attributes
-frequently?
+Ext4 quotas are per-disk, and storage technologies are per disk.  So
+if *I* were designing a clustered file system, and we had different
+cost centers, say, "mail", and "maps", "social", and "search", each of
+which might have differnt amounts disk drive and SSD space, which
+might be based on how much SSD each of the product area budgets are
+willing to pay, and what the requires of each of the products might
+be, I'd simply assign different groups to each of these cost centers.
 
-> project quota become the first flexible and fully controled quota type,
-> which administrators can use for freewill space accountment and limit
-> enforcement. Unfortunately, this feature has been missing for such a long
-> time and the requirement for it grows to a critical point that a lot of
-> distributed file systems find their own way of providing similar features,
-> e.g. directory/volume/file-set/project quotas. These features looks
-> extremely familar, yet aim at different use cases and havs different
-> restraints. I prefer a version without any unnecessary restraints becasue
-> it retains all possibility.
-  I agree additional ID for quota purposes is useful. The question is
-whether we leave it as 'just another ID attached to a file' or constrain it
-in some way.
+For the purposes of usages of clustered file systems, you don't want
+to do quota enforcement.  If you've spent tens or hundreds of CPU
+years working on some distributed computation, you don't want to throw
+it all away due to a quota failure.  Or if you are running an
+international web-based service, causing a even a partial downtime of
+everyone's maps or e-mail due to quota failure is also considered,
+well, not cool.
 
-> > The advantage of doing the directory hierarcy based quota system is
-> > not just that it's compatible with XFS; it is that it is *different*
-> > from group quotas.  Not more restrictive, but *different*.  There will
-> > certainly be scenarios where someone wants to enforce a restriction on
-> > the size or number of inodes in a directory hierarcy, and where when
-> > you move a file out of a directory hierarcy into another one, you
-> > *want* the usage quota to be transfered from the source to the
-> > destination hierarcy.
-> I agree that project quota and group quota is different. And I gree that
-> the use case of enforcing directory-tree quota is a very important use case,
-> probably the most important use case. What I am suggesting is that, with an
-> unlimited general project quota, we can enable other potential use cases
-> without harming this use case at all. For example, if we want to move
-> a file out of a directory hierarcy into another and want the usage quota
-> to be transfered, why can't we add a 'setproject' command following with
-> 'rename/mv' command? In this use case, this operation is usually done by
-> administrator. And I guess it can be safely assumed that a administrator
-> is well trained to know what should be done when managing project related
-> directories.
-  So I actually don't think project quota as implemented by XFS (and with
-which me and Ted want to stay compatible with) isn't different from what you
-want. Let me explain what XFS does:
-  1) Each file has an additional ID - the project ID
-  2) Each dir can have XFS_DIFLAG_PROJINHERIT flag set. When this flag is
-     set, all files and directories created in the directory inherit project
-     ID, directories also inherit XFS_DIFLAG_PROJINHERIT - this is
-     equivalent of sgid bit on directories for gids.
-  3) When you hard-link a file into directory with XFS_DIFLAG_PROJINHERIT
-     set, the file already has to have the same project ID as the directory
-     you are linking into.
-  4) When you rename a file into a directory with XFS_DIFLAG_PROJINHERIT
-     set, the file already has to have the same project ID as the directory
-     you are renaming into.
-  5) If you call statfs() on a directory with XFS_DIFLAG_PROJINHERIT set
-     and project quota is being enforced, statfs() will return free/used
-     blocks of the corresponding project instead of number of free/used
-     blocks in the filesystem.
+So let's assume that you're only doing usage tracking, but even if you
+wanted to do usage control, the files will be scattered across many
+different servers and file systems, and so it doesn't make sense to do
+quota control, or even usage tracking, on a disk by disk basis.
 
-Now if, as an administrator, you decide you need completely generic
-additional ID, you can do so. You just never set XFS_DIFLAG_PROJINHERIT.
-Quota accounting and enforcement works just fine without that flag.
+Hence, the clustered file system will have to sum up the usage quotas
+of every each underlying file system, with different sums for the
+HDD's and SSD's, by group.  Fortunately, Map Reduce is your friend.
 
-So the discussion really is about the semantics of the
-XFS_DIFLAG_PROJINHERIT flag. If you want automatic inheritance of project
-ids, you set XFS_DIFLAG_PROJINHERIT.  With that you'll get additional
-limitations described in 3) and 4). And I am of the opinion that these
-limitations help to maintain sanity in a system where project quotas are
-used. I can imagine XFS_DIFLAG_PROJINHERIT would be split in two flags 
-for ext4 - one controlling whether project ID is inherited, another
-controlling whether we enforce rules 3) and 4) but such difference from XFS
-would have to be very well justified because different filesystems having
-subtly different semantics is a real administrative nightmare, much worse
-than the additional cp + unlink done when rename() returns EXDEV because
-you tried to rename from one project to another.
+Then for each group the cluster file system can report usage of HDD
+and SSD space and inodes, separately.  When a project gets within a
+few terabytes of being filled, or the overall free space in the
+cluster drops below a few petabytes, you page the your SRE or devops
+team so they can take care of things, perhaps by negotiating an
+emergency quota increase, or moving files around, or deleting old
+files, etc.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+The bottom line is that you *can* run an exabyte+ cluster file system
+supporting many different budget/cost centers with only group-level
+quotas and nothing else.  And you can do this even supporting both
+HDD's and SSD's, with separate quota tracking of the two storage
+technologies.
+
+Can you go into more detail about how Lustre would use project quotas
+from a the cluster file system centric perspective, such as I've
+sketched out above?
+
+> Of course, we might be able to find some walk-around ways using group quota.
+> However, because the owners of the files can change the group attributes
+> freely, it is so easy for the users to evade the group quota and steal the
+> tight resources.
+
+But all of the users will be sending chgrp request through Lustre, or
+whatever the cluster file system is.  So Lustre can enforce whatever
+permissions policy it would like.
+
+> For example, in order to steal SSD space, a user can just
+> creating the files using the sepcific group ID and then change it back.
+
+But since you've been arguing that the project id should get preserved
+across renames, they can evade quota usage by doing:
+
+	 touch /product/mail/huge_file
+	 mv  /product/mail/huge_file /product/maps
+
+And if you allow the rename, and allow the project id to be preserved
+across renames, then the quota evasion is just as easy.  And yes, you
+could prevent renames at the cluster file system level.  But the
+question remains what makes sense on a single disk system, and if
+users can trivially subvert the project quota by creating the file in
+one directory, where it inherits the quota of project A, and then be
+able to move the file to another directory, they have evaded quota
+enforcement just as surely if they used chgrp.
+
+Hence, to prevent this, you need to restrict administrator changes to
+the superuser, *and* not allow renames across project hierarchies.
+And surprise!  That looks exactly what XFS has built.
+
+Cheers,
+
+       		     	       	       	       - Ted
