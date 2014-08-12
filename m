@@ -1,156 +1,132 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH v2 0/4] quota: add project quota support
-Date: Tue, 12 Aug 2014 19:35:58 +0400
-Message-ID: <87oavpsotd.fsf@openvz.org>
-References: <CAPTn0cAKi64Fh1pAVTDLvSS5-1Kjv7KN2HpGxtm4J8-ym-4nOQ@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Updated version of kvm-xfstests available
+Date: Tue, 12 Aug 2014 12:08:32 -0400
+Message-ID: <20140812160832.GB12871@thunk.org>
+References: <20140809234556.GA11072@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Li Xi <pkuelelixi@gmail.com>, linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	viro@ZenIV.linux.org.uk, hch@infradead.org, Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <CAPTn0cAKi64Fh1pAVTDLvSS5-1Kjv7KN2HpGxtm4J8-ym-4nOQ@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:56486 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752779AbaHLQIe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Aug 2014 12:08:34 -0400
+Content-Disposition: inline
+In-Reply-To: <20140809234556.GA11072@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 9 Aug 2014 00:39:58 +0800, Li Xi <pkuelelixi@gmail.com> wrote:
-> Hi all,
-> 
-> The following patches propose an implementation of project support
-> for ext4. A project is an aggregate of unrelated inodes which might
-> scatter in different directories. Inodes belongs to a project
-> possesses a same identification i.e. 'project ID', just like every
-> inode has its user/group indentification. The following patches adds
-> project quota as supplement to the former uer/group quota types.
-> 
-> This project ID of an inode is iherited from its parent direcotry
-> and saved as an internal field of ext4 inode.
-> 
-> This is not the first existed attepmtion to add project quta support
-> for ext4. Patches of subtree quota support which was posted by Dmity
-> Monakhov in 2012 (http://lwn.net/Articles/506064/) implemented the
-> similar feature in a different way. Rather than saving the project
-> (or subtree) ID as an internal inode field, those patches manages
-> the ID as extented attributes.
-> 
-> We rebased both patch sets onto the same kernel version and run
-> benchmakrs respectively to comparing the peformance difference.
-> It is worth noting that patches from Lai Siyao and Niu Yawei
-> (quota: remove-dqptr_sem,
-> http://article.gmane.org/gmane.comp.file-systems.ext4/44341/)
-> improve the performance of quota enforcement significantly, which
-> can be seen clearly from following results.
-> 
-> It is obvious that extended attribute implementation has performance
-> impact when creating files. That is why we choose to push the patches
-> which use internal inode field to save project ID.
-I'll bet a box of "russian caviar" that AlViro will never ever allow 
-to place project ID to generic inode. Because it is obviously has no
-reason for any other filesystem except xfs/ext4.
+On Sat, Aug 09, 2014 at 07:45:56PM -0400, Theodore Ts'o wrote:
+> Once I'm done running my baseline, I'll send out the results for your
+> convenience; if your patches cause any regressions, *please* take a
+> look and figure out why, since that will save me a lot of time and
+> allow your patches to get merged that much more quickly.
 
-BTW. Which quota options you use for performance testing? It looks like
-you use non-journaled quota. But this means that you have to fully
-recalculate quota in case of power failure. It is reasonable to enable
-journaled-quota, but it result in visible journaling overhead.
-> 
-> Kernel: 3.16.0-rc5
-> Server: Dell R620 (2 x E5-2667@3.3GHz, 256GB memory)
-> Storage: 10 x 15K SAS disks(RAID10)
-> Test tool: mdtest-1.9.3. Mdtest created 800K files in total. Each
-> thread created files in unique directory.
-> 
-> File Creation:
->                      1thr     2thr     4thr     8thr    16thr
-> - vanilla
-> quota disabled      66094   105781   178968   186647   172536
-> quotaon(ug)         60337    99582   157396   171463   162872
-> 
-> - vanilla + remove-dqptr_sem patches
-> quota disabled      65955   112082   185550   181511   171988
-> quotaon(ug)         62391   101905   171013   190570   168914
-> 
-> - prjquota(xattr)
-> quota disabled      61396    97580   147852   146423   164895
-> quotaon(ug)         57009    93435   140589   135748   153196
-> quotaon(ugP)        57500    89419   133604   125291   105127
-> 
-> - prjquota(xattr) + remove-dqptr_sem patches
-> quota disabled      64053   100078   147608   139403   163960
-> quotaon(ug)         60754   104726   149231   139053   165990
-> quotaon(ugP)        59238    93606   148921   138434   163931
-> 
-> - prjquota(internal) + remove-dqptr_sem patches
-> quota disabled      65826   111828   181486   189227   171241
-> quotaon(ug)         65418   107745   173584   180562   173752
-> quotaon(ugP)        64669   103890   169176   186426   172192
-> 
-> 
-> File Removal:
->                      1thr     2thr     4thr     8thr    16thr
-> - vanilla
-> quota disabled     118059   169825   234661   291812   345656
-> quotaon(ug)        106675   135834   153532   100437    87489
-> 
-> - vanilla + remove-dqptr_sem patches
-> quota disabled     120374   168437   236818   291754   331141
-> quotaon(ug)        110709   161954   238333   293700   329015
-> 
-> - prjquota(xattr)
-> quota disabled     116680   161662   229190   295642   332959
-> quotaon(ug)        104783   134359   154950   100516    87923
-> quotaon(ugP)       100240   125978   108653    68286    58991
-> 
-> - prjquota(xattr) + remove-dqptr_sem patches
-> quota disabled     116281   168938   233733   286663   344002
-> quotaon(ug)        109775   164995   236001   299389   340683
-> quotaon(ugP)       113935   162979   236112   300033   356117
-> 
-> - prjquota(internal) + remove-dqptr_sem patches
-> quota disabled     119537   171565   247418   291068   350138
-> quotaon(ug)        121756   159580   240778   298012   342437
-> quotaon(ugP)       118954   168022   241206   289055   334008
-> 
-> Changelog:
-> * v2 <- v1:
->   - Add ioctl interface for setting/getting project;
->   - Add EXT4_FEATURE_RO_COMPAT_PROJECT;
->   - Add get_projid() method in struct dquot_operations;
->   - Add error check of ext4_inode_projid_set/get().
-> 
-> v1: http://article.gmane.org/gmane.comp.file-systems.ext4/45153
-> 
-> Any comments or feedbacks are appreciated.
-> 
-> Regards,
->                                           - Li Xi
-> 
-> Li Xi(4):
->  quota: Adds general codes to enforces project quota limites
->  ext4: Adds project ID support for ext4
->  ext4: Adds project quota support for ext4
->  ext4: Adds ioctl interface support for ext4 project
-> 
->  Documentation/filesystems/ext4.txt |    4 +
->  fs/ext4/Kconfig                    |   11 --
->  fs/ext4/Makefile                   |    1 -
->  fs/ext4/ext4.h                     |   19 +++-
->  fs/ext4/ialloc.c                   |   16 +--
->  fs/ext4/inode.c                    |   85 +++++++++++++-
->  fs/ext4/ioctl.c                    |  100 ++++++++++++++++
->  fs/ext4/project.c                  |  224 ------------------------------------
->  fs/ext4/project.h                  |   58 ---------
->  fs/ext4/super.c                    |   45 ++++++--
->  fs/ext4/xattr.c                    |    6 -
->  fs/ext4/xattr.h                    |    2 -
->  fs/quota/Kconfig                   |    9 ++
->  fs/quota/dquot.c                   |  120 ++++++++++++++-----
->  fs/quota/quota.c                   |    5 +-
->  fs/quota/quotaio_v2.h              |    4 +-
->  include/linux/fs.h                 |    1 -
->  include/linux/quota.h              |    8 ++
->  include/uapi/linux/xattr.h         |    2 -
->  19 files changed, 345 insertions(+), 375 deletions(-)
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I did two different baseline runs; I will attach the full log files
+under separate cover, to avoid running into the vger message size
+limits.  There are a few differences in the bigalloc and bigalloc-1k
+runs, and clearly we still have some work to do there.  I believe most
+of the bigalloc test failures are with the "punch hole" and/or
+"collapse range" functions.
+
+Of note are the test failures with inline data.  I had to skip
+generic/027 because it would BUG the kernel.  There were also failures
+with the tests generic/015, generic/077, generic/083, and shared/298
+which need investigation.
+
+						- Ted
+
+[    0.000000] Linux version 3.16.0-03638-g8e099d1 (tytso@rt-11.cam.corp.google.com) (gcc version 4.6.3 (Ubuntu/Linaro 4.6.3-1ubuntu5) ) #2 SMP Fri Aug 8 19:33:13 EDT 2014
+FSTESTVER: e2fsprogs	v1.42.11-340-g489ff4a (Fri, 8 Aug 2014 17:02:34 -0400)
+FSTESTVER: fio		fio-2.1.4 (Sat, 16 Nov 2013 11:15:12 -0700)
+FSTESTVER: quota		f215e3f (Mon, 2 Dec 2013 23:06:23 -0300)
+FSTESTVER: xfsprogs	v3.2.1-6-gba24eb7 (Fri, 18 Jul 2014 10:47:11 +1000)
+FSTESTVER: xfstests-bld	7f80d5e (Sun, 10 Aug 2014 16:18:45 -0400)
+FSTESTVER: xfstests	linux-v3.8-438-g67abe66 (Sat, 9 Aug 2014 01:29:24 -0400)
+FSTESTVER: kernel	3.16.0-03638-g8e099d1 #2 SMP Fri Aug 8 19:33:13 EDT 2014 i686
+FSTESTCFG: "all"
+FSTESTSET: "-g auto"
+FSTESTOPT: "aex"
+BEGIN TEST: Ext4 4k block Sun Aug 10 19:25:52 EDT 2014
+MKFS_OPTIONS  -- -q /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdc /vdc
+Ran: ext4/001 ext4/002 ext4/271 ext4/305 ext4/306 generic/001 generic/002 generic/003 generic/004 generic/005 generic/006 generic/007 generic/008 generic/009 generic/010 generic/011 generic/012 generic/013 generic/014 generic/015 generic/016 generic/017 generic/018 generic/020 generic/021 generic/022 generic/023 generic/024 generic/025 generic/027 generic/028 generic/053 generic/062 generic/068 generic/069 generic/070 generic/074 generic/075 generic/076 generic/077 generic/079 generic/083 generic/088 generic/089 generic/091 generic/100 generic/105 generic/112 generic/113 generic/117 generic/120 generic/123 generic/124 generic/125 generic/126 generic/127 generic/128 generic/129 generic/130 generic/131 generic/132 generic/133 generic/135 generic/141 generic/169 generic/184 generic/192 generi
+ c/193 generic/198 generic/204 generic/207 generic/208 generic/209 generic/210 generic/211 generic/212 generic/213 generic/214 generic/215 generic/219 generic/221 generic/223 generic/224 generic/225 generic/226 generic/228 generic/230 generic/231 generic/232 generic/233 generic/234 generic/235 generic/236 generic/237 generic/239 generic/240 generic/241 generic/245 generic/246 generic/247 generic/248 generic/249 generic/255 generic/256 generic/257 generic/258 generic/263 generic/269 generic/273 generic/274 generic/275 generic/277 generic/280 generic/285 generic/286 generic/294 generic/299 generic/300 generic/306 generic/307 generic/308 generic/309 generic/310 generic/312 generic/313 generic/314 generic/315 generic/316 generic/319 generic/320 shared/006 shared/272 shared/289 shared/298
+Failures: generic/256
+END TEST: Ext4 4k block Sun Aug 10 20:51:59 EDT 2014
+BEGIN TEST: Ext4 1k block Sun Aug 10 20:52:02 EDT 2014
+MKFS_OPTIONS  -- -q -b 1024 /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdc /vdc
+Ran: ext4/001 ext4/002 ext4/271 ext4/305 ext4/306 generic/001 generic/002 generic/003 generic/004 generic/005 generic/006 generic/007 generic/008 generic/009 generic/010 generic/011 generic/012 generic/013 generic/014 generic/015 generic/016 generic/017 generic/018 generic/020 generic/021 generic/022 generic/023 generic/024 generic/025 generic/027 generic/028 generic/053 generic/062 generic/068 generic/069 generic/070 generic/074 generic/075 generic/076 generic/077 generic/079 generic/083 generic/088 generic/089 generic/091 generic/100 generic/105 generic/112 generic/113 generic/117 generic/120 generic/123 generic/124 generic/125 generic/126 generic/127 generic/128 generic/129 generic/130 generic/131 generic/132 generic/133 generic/135 generic/141 generic/169 generic/184 generic/192 generi
+ c/193 generic/198 generic/204 generic/207 generic/208 generic/209 generic/210 generic/211 generic/212 generic/213 generic/214 generic/215 generic/219 generic/221 generic/223 generic/224 generic/225 generic/226 generic/228 generic/230 generic/231 generic/232 generic/233 generic/234 generic/235 generic/236 generic/237 generic/239 generic/240 generic/241 generic/245 generic/246 generic/247 generic/248 generic/249 generic/255 generic/256 generic/257 generic/258 generic/263 generic/269 generic/273 generic/274 generic/275 generic/277 generic/280 generic/285 generic/286 generic/294 generic/299 generic/300 generic/306 generic/307 generic/308 generic/309 generic/310 generic/312 generic/313 generic/314 generic/315 generic/316 generic/319 generic/320 shared/006 shared/272 shared/289 shared/298
+Failures: generic/018 generic/256
+END TEST: Ext4 1k block Sun Aug 10 23:37:15 EDT 2014
+BEGIN TEST: Ext4 4k block w/nodelalloc, no flex_bg, and no extents Sun Aug 10 23:37:20 EDT 2014
+MKFS_OPTIONS  -- -q -O ^extents,^flex_bg,^uninit_bg /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,nodelalloc /dev/vdc /vdc
+Ran: ext4/271 ext4/305 ext4/306 generic/001 generic/002 generic/003 generic/004 generic/005 generic/006 generic/007 generic/010 generic/011 generic/013 generic/014 generic/015 generic/018 generic/020 generic/023 generic/024 generic/025 generic/027 generic/028 generic/053 generic/062 generic/068 generic/069 generic/070 generic/074 generic/075 generic/076 generic/077 generic/079 generic/083 generic/088 generic/089 generic/091 generic/100 generic/105 generic/112 generic/113 generic/117 generic/120 generic/123 generic/124 generic/125 generic/126 generic/127 generic/128 generic/129 generic/130 generic/131 generic/132 generic/133 generic/135 generic/141 generic/169 generic/184 generic/192 generic/193 generic/198 generic/204 generic/207 generic/208 generic/209 generic/210 generic/211 generic/212 
+ generic/215 generic/219 generic/221 generic/224 generic/225 generic/226 generic/230 generic/231 generic/232 generic/233 generic/234 generic/235 generic/236 generic/237 generic/239 generic/240 generic/241 generic/245 generic/246 generic/247 generic/248 generic/249 generic/256 generic/257 generic/258 generic/263 generic/269 generic/273 generic/275 generic/277 generic/280 generic/285 generic/286 generic/294 generic/299 generic/306 generic/307 generic/308 generic/309 generic/310 generic/313 generic/314 generic/315 generic/316 generic/319 generic/320 shared/006 shared/272 shared/289 shared/298
+Failures: generic/018 generic/256
+END TEST: Ext4 4k block w/nodelalloc, no flex_bg, and no extents Mon Aug 11 01:41:10 EDT 2014
+BEGIN TEST: Ext4 4k block w/ no journal Mon Aug 11 01:41:10 EDT 2014
+MKFS_OPTIONS  -- -q -O ^has_journal /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,noload /dev/vdc /vdc
+Ran: ext4/001 ext4/002 ext4/271 ext4/305 ext4/306 generic/001 generic/002 generic/003 generic/004 generic/005 generic/006 generic/007 generic/008 generic/009 generic/010 generic/011 generic/012 generic/013 generic/014 generic/015 generic/016 generic/017 generic/018 generic/020 generic/021 generic/022 generic/023 generic/024 generic/025 generic/027 generic/028 generic/053 generic/062 generic/069 generic/070 generic/074 generic/075 generic/076 generic/077 generic/079 generic/083 generic/088 generic/089 generic/091 generic/100 generic/105 generic/112 generic/113 generic/117 generic/120 generic/123 generic/124 generic/125 generic/126 generic/127 generic/128 generic/129 generic/130 generic/131 generic/132 generic/133 generic/135 generic/141 generic/169 generic/184 generic/192 generic/193 generi
+ c/198 generic/204 generic/207 generic/208 generic/209 generic/210 generic/211 generic/212 generic/213 generic/214 generic/215 generic/219 generic/221 generic/223 generic/224 generic/225 generic/226 generic/228 generic/230 generic/231 generic/232 generic/233 generic/234 generic/235 generic/236 generic/237 generic/239 generic/240 generic/241 generic/245 generic/246 generic/247 generic/248 generic/249 generic/255 generic/256 generic/257 generic/258 generic/263 generic/269 generic/273 generic/274 generic/275 generic/277 generic/285 generic/286 generic/294 generic/299 generic/300 generic/306 generic/307 generic/308 generic/309 generic/310 generic/312 generic/313 generic/314 generic/315 generic/316 generic/319 generic/320 shared/006 shared/272 shared/289 shared/298
+Failures: generic/256
+END TEST: Ext4 4k block w/ no journal Mon Aug 11 03:08:21 EDT 2014
+BEGIN TEST: Ext4 4k block w/nodelalloc and no flex_bg Mon Aug 11 03:08:24 EDT 2014
+MKFS_OPTIONS  -- -q -O ^flex_bg /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,nodelalloc /dev/vdc /vdc
+Ran: ext4/001 ext4/002 ext4/271 ext4/305 ext4/306 generic/001 generic/002 generic/003 generic/004 generic/005 generic/006 generic/007 generic/008 generic/009 generic/010 generic/011 generic/012 generic/013 generic/014 generic/015 generic/016 generic/017 generic/018 generic/020 generic/021 generic/022 generic/023 generic/024 generic/025 generic/027 generic/028 generic/053 generic/062 generic/068 generic/069 generic/070 generic/074 generic/075 generic/076 generic/077 generic/079 generic/083 generic/088 generic/089 generic/091 generic/100 generic/105 generic/112 generic/113 generic/117 generic/120 generic/123 generic/124 generic/125 generic/126 generic/127 generic/128 generic/129 generic/130 generic/131 generic/132 generic/133 generic/135 generic/141 generic/169 generic/184 generic/192 generi
+ c/193 generic/198 generic/204 generic/207 generic/208 generic/209 generic/210 generic/211 generic/212 generic/213 generic/214 generic/215 generic/219 generic/221 generic/223 generic/224 generic/225 generic/226 generic/228 generic/230 generic/231 generic/232 generic/233 generic/234 generic/235 generic/236 generic/237 generic/239 generic/240 generic/241 generic/245 generic/246 generic/247 generic/248 generic/249 generic/255 generic/256 generic/257 generic/258 generic/263 generic/269 generic/273 generic/274 generic/275 generic/277 generic/280 generic/285 generic/286 generic/294 generic/299 generic/300 generic/306 generic/307 generic/308 generic/309 generic/310 generic/312 generic/313 generic/314 generic/315 generic/316 generic/319 generic/320 shared/006 shared/272 shared/289 shared/298
+Failures: generic/223 generic/256
+END TEST: Ext4 4k block w/nodelalloc and no flex_bg Mon Aug 11 05:06:35 EDT 2014
+BEGIN TEST: Ext4 4k block w/metadata_csum Mon Aug 11 05:06:39 EDT 2014
+MKFS_OPTIONS  -- -q -O metadata_csum,64bit /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdc /vdc
+Ran: ext4/001 ext4/002 ext4/271 ext4/305 ext4/306 generic/001 generic/002 generic/003 generic/004 generic/005 generic/006 generic/007 generic/008 generic/009 generic/010 generic/011 generic/012 generic/013 generic/014 generic/015 generic/016 generic/017 generic/018 generic/020 generic/021 generic/022 generic/023 generic/024 generic/025 generic/027 generic/028 generic/053 generic/062 generic/068 generic/069 generic/070 generic/074 generic/075 generic/076 generic/077 generic/079 generic/083 generic/088 generic/089 generic/091 generic/100 generic/105 generic/112 generic/113 generic/117 generic/120 generic/123 generic/124 generic/125 generic/126 generic/127 generic/128 generic/129 generic/130 generic/131 generic/132 generic/133 generic/135 generic/141 generic/169 generic/184 generic/192 generi
+ c/193 generic/198 generic/204 generic/207 generic/208 generic/209 generic/210 generic/211 generic/212 generic/213 generic/214 generic/215 generic/219 generic/221 generic/223 generic/224 generic/225 generic/226 generic/228 generic/230 generic/231 generic/232 generic/233 generic/234 generic/235 generic/236 generic/237 generic/239 generic/240 generic/241 generic/245 generic/246 generic/247 generic/248 generic/249 generic/255 generic/256 generic/257 generic/258 generic/263 generic/269 generic/273 generic/274 generic/275 generic/277 generic/280 generic/285 generic/286 generic/294 generic/299 generic/300 generic/306 generic/307 generic/308 generic/309 generic/310 generic/312 generic/313 generic/314 generic/315 generic/316 generic/319 generic/320 shared/006 shared/272 shared/289 shared/298
+Failures: generic/256
+END TEST: Ext4 4k block w/metadata_csum Mon Aug 11 06:35:52 EDT 2014
+BEGIN TEST: Ext4 4k block w/dioread_nolock Mon Aug 11 06:35:52 EDT 2014
+MKFS_OPTIONS  -- -q /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,dioread_nolock /dev/vdc /vdc
+Ran: ext4/001 ext4/002 ext4/271 ext4/305 ext4/306 generic/001 generic/002 generic/003 generic/004 generic/005 generic/006 generic/007 generic/008 generic/009 generic/010 generic/011 generic/012 generic/013 generic/014 generic/015 generic/016 generic/017 generic/018 generic/020 generic/021 generic/022 generic/023 generic/024 generic/025 generic/027 generic/028 generic/053 generic/062 generic/068 generic/069 generic/070 generic/074 generic/075 generic/076 generic/077 generic/079 generic/083 generic/088 generic/089 generic/091 generic/100 generic/105 generic/112 generic/113 generic/117 generic/120 generic/123 generic/124 generic/125 generic/126 generic/127 generic/128 generic/129 generic/130 generic/131 generic/132 generic/133 generic/135 generic/141 generic/169 generic/184 generic/192 generi
+ c/193 generic/198 generic/204 generic/207 generic/208 generic/209 generic/210 generic/211 generic/212 generic/213 generic/214 generic/215 generic/219 generic/221 generic/223 generic/224 generic/225 generic/226 generic/228 generic/230 generic/231 generic/232 generic/233 generic/234 generic/235 generic/236 generic/237 generic/239 generic/240 generic/241 generic/245 generic/246 generic/247 generic/248 generic/249 generic/255 generic/256 generic/257 generic/258 generic/263 generic/269 generic/273 generic/274 generic/275 generic/277 generic/280 generic/285 generic/286 generic/294 generic/299 generic/300 generic/306 generic/307 generic/308 generic/309 generic/310 generic/312 generic/313 generic/314 generic/315 generic/316 generic/319 generic/320 shared/006 shared/272 shared/289 shared/298
+Failures: ext4/001 generic/017 generic/256
+END TEST: Ext4 4k block w/dioread_nolock Mon Aug 11 08:07:21 EDT 2014
+BEGIN TEST: Ext4 4k block w/data=journal Mon Aug 11 08:07:21 EDT 2014
+MKFS_OPTIONS  -- -q /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,data=journal /dev/vdc /vdc
+Ran: ext4/001 ext4/002 ext4/271 ext4/305 ext4/306 generic/001 generic/002 generic/003 generic/004 generic/005 generic/006 generic/007 generic/008 generic/009 generic/010 generic/011 generic/012 generic/013 generic/014 generic/015 generic/016 generic/017 generic/018 generic/020 generic/021 generic/022 generic/023 generic/024 generic/025 generic/027 generic/028 generic/053 generic/062 generic/069 generic/070 generic/074 generic/075 generic/076 generic/077 generic/079 generic/083 generic/088 generic/089 generic/091 generic/100 generic/105 generic/112 generic/113 generic/117 generic/120 generic/123 generic/124 generic/125 generic/126 generic/127 generic/128 generic/129 generic/130 generic/131 generic/132 generic/133 generic/135 generic/141 generic/169 generic/184 generic/192 generic/193 generi
+ c/198 generic/204 generic/207 generic/208 generic/209 generic/210 generic/211 generic/212 generic/213 generic/214 generic/215 generic/219 generic/221 generic/223 generic/224 generic/225 generic/226 generic/228 generic/230 generic/231 generic/232 generic/233 generic/234 generic/235 generic/236 generic/237 generic/239 generic/240 generic/241 generic/245 generic/246 generic/247 generic/248 generic/249 generic/255 generic/256 generic/257 generic/258 generic/263 generic/269 generic/273 generic/274 generic/275 generic/277 generic/280 generic/285 generic/286 generic/294 generic/299 generic/300 generic/306 generic/307 generic/308 generic/309 generic/310 generic/312 generic/313 generic/314 generic/315 generic/316 generic/319 generic/320 shared/006 shared/272 shared/289 shared/298
+Failures: generic/018 generic/223 generic/256
+END TEST: Ext4 4k block w/data=journal Mon Aug 11 11:35:03 EDT 2014
+BEGIN TEST: Ext4 4k block w/bigalloc Mon Aug 11 11:35:06 EDT 2014
+MKFS_OPTIONS  -- -q -O bigalloc /dev/vdf
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdf /vdf
+[61175.808220] WARNING: CPU: 0 PID: 16980 at /usr/local/google/home/tytso/linux/ext4/fs/quota/dquot.c:1092 dquot_claim_space_nodirty+0xf1/0x1e3()
+    +_check_generic_filesystem: filesystem on /dev/vdf is inconsistent (see /results/results-bigalloc/generic/300.full)
+Ran: ext4/001 ext4/002 ext4/271 ext4/305 ext4/306 generic/001 generic/002 generic/003 generic/004 generic/005 generic/006 generic/007 generic/008 generic/009 generic/010 generic/011 generic/012 generic/013 generic/014 generic/015 generic/016 generic/017 generic/018 generic/020 generic/021 generic/022 generic/023 generic/024 generic/025 generic/027 generic/028 generic/053 generic/062 generic/068 generic/069 generic/070 generic/074 generic/075 generic/076 generic/077 generic/079 generic/083 generic/088 generic/089 generic/091 generic/100 generic/105 generic/112 generic/113 generic/117 generic/120 generic/123 generic/124 generic/125 generic/126 generic/127 generic/128 generic/129 generic/130 generic/131 generic/132 generic/133 generic/135 generic/141 generic/169 generic/184 generic/192 generi
+ c/193 generic/198 generic/204 generic/207 generic/208 generic/209 generic/210 generic/211 generic/212 generic/213 generic/214 generic/215 generic/219 generic/221 generic/223 generic/224 generic/225 generic/226 generic/228 generic/230 generic/231 generic/232 generic/233 generic/234 generic/235 generic/236 generic/237 generic/239 generic/240 generic/241 generic/245 generic/246 generic/247 generic/248 generic/249 generic/255 generic/256 generic/257 generic/258 generic/263 generic/269 generic/273 generic/274 generic/275 generic/277 generic/280 generic/285 generic/286 generic/294 generic/299 generic/300 generic/306 generic/307 generic/308 generic/309 generic/310 generic/312 generic/313 generic/314 generic/315 generic/316 generic/319 generic/320 shared/006 shared/272 shared/289 shared/298
+Failures: generic/012 generic/016 generic/017 generic/018 generic/021 generic/022 generic/027 generic/075 generic/091 generic/112 generic/127 generic/192 generic/204 generic/219 generic/231 generic/233 generic/235 generic/256 generic/263 generic/273 generic/300
+END TEST: Ext4 4k block w/bigalloc Mon Aug 11 12:42:03 EDT 2014
+BEGIN TEST: Ext4 1k block w/bigalloc Mon Aug 11 12:42:04 EDT 2014
+MKFS_OPTIONS  -- -q -b 1024 -O bigalloc /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdc /vdc
+    +_check_generic_filesystem: filesystem on /dev/vdc is inconsistent (see /results/results-bigalloc_1k/generic/300.full)
+Ran: ext4/001 ext4/002 ext4/271 ext4/305 ext4/306 generic/001 generic/002 generic/003 generic/004 generic/005 generic/006 generic/007 generic/008 generic/009 generic/010 generic/011 generic/012 generic/013 generic/014 generic/015 generic/016 generic/017 generic/018 generic/020 generic/021 generic/022 generic/023 generic/024 generic/025 generic/027 generic/028 generic/053 generic/062 generic/068 generic/069 generic/070 generic/074 generic/075 generic/076 generic/077 generic/079 generic/083 generic/088 generic/089 generic/091 generic/100 generic/105 generic/112 generic/113 generic/117 generic/120 generic/123 generic/124 generic/125 generic/126 generic/127 generic/128 generic/129 generic/130 generic/131 generic/132 generic/133 generic/135 generic/141 generic/169 generic/184 generic/192 generi
+ c/193 generic/198 generic/204 generic/207 generic/208 generic/209 generic/210 generic/211 generic/212 generic/213 generic/214 generic/215 generic/219 generic/221 generic/223 generic/224 generic/225 generic/226 generic/228 generic/230 generic/231 generic/232 generic/233 generic/234 generic/235 generic/236 generic/237 generic/239 generic/240 generic/241 generic/245 generic/246 generic/247 generic/248 generic/249 generic/255 generic/256 generic/257 generic/258 generic/263 generic/269 generic/273 generic/274 generic/275 generic/277 generic/280 generic/285 generic/286 generic/294 generic/299 generic/300 generic/306 generic/307 generic/308 generic/309 generic/310 generic/312 generic/313 generic/314 generic/315 generic/316 generic/319 generic/320 shared/006 shared/272 shared/289 shared/298
+Failures: generic/017 generic/018 generic/027 generic/075 generic/091 generic/112 generic/127 generic/204 generic/231 generic/235 generic/256 generic/263 generic/273 generic/300
+END TEST: Ext4 1k block w/bigalloc Mon Aug 11 14:04:28 EDT 2014
+BEGIN TEST: Ext4 4k block w/inline Mon Aug 11 14:04:35 EDT 2014
+MKFS_OPTIONS  -- -q -O inline_data,metadata_csum,64bit /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdc /vdc
+Ran: ext4/001 ext4/002 ext4/271 ext4/305 ext4/306 generic/001 generic/002 generic/003 generic/004 generic/005 generic/006 generic/007 generic/008 generic/009 generic/010 generic/011 generic/012 generic/013 generic/014 generic/015 generic/016 generic/017 generic/018 generic/020 generic/021 generic/022 generic/023 generic/024 generic/025 generic/028 generic/053 generic/062 generic/068 generic/069 generic/070 generic/074 generic/075 generic/076 generic/077 generic/079 generic/083 generic/088 generic/089 generic/091 generic/100 generic/105 generic/112 generic/113 generic/117 generic/120 generic/123 generic/124 generic/125 generic/126 generic/127 generic/128 generic/129 generic/130 generic/131 generic/132 generic/133 generic/135 generic/141 generic/169 generic/184 generic/192 generic/193 generi
+ c/198 generic/204 generic/207 generic/208 generic/209 generic/210 generic/211 generic/212 generic/213 generic/214 generic/215 generic/219 generic/221 generic/223 generic/224 generic/225 generic/226 generic/228 generic/230 generic/231 generic/232 generic/233 generic/234 generic/235 generic/236 generic/237 generic/239 generic/240 generic/241 generic/245 generic/246 generic/247 generic/248 generic/249 generic/255 generic/256 generic/257 generic/258 generic/263 generic/269 generic/273 generic/274 generic/275 generic/277 generic/280 generic/285 generic/286 generic/294 generic/299 generic/300 generic/306 generic/307 generic/308 generic/309 generic/310 generic/312 generic/313 generic/314 generic/315 generic/316 generic/319 generic/320 shared/006 shared/272 shared/289 shared/298
+Failures: generic/015 generic/077 generic/083 generic/256 shared/298
+END TEST: Ext4 4k block w/inline Mon Aug 11 15:30:09 EDT 2014
+
+
