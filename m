@@ -1,541 +1,101 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 82201] New: ext4 crash in ext4_superblock_csum
-Date: Tue, 12 Aug 2014 05:19:24 +0000
-Message-ID: <bug-82201-13602@https.bugzilla.kernel.org/>
+From: TR Reardon <thomas_reardon@hotmail.com>
+Subject: Re: journal_checksum_v2 on-disk format change? (was: Re: journal
+ recovery problems with metadata_csum, *non-64bit*)
+Date: Tue, 12 Aug 2014 01:39:35 -0400
+Message-ID: <BLU436-SMTP123C75E96D9A42B3CA66A12FDEA0@phx.gbl>
+References: <BLU437-SMTP3407533C3883653626BD3DFDEC0@phx.gbl>
+	<20140811071025.GE19223@birch.djwong.org>
+	<20140811192529.GG2808@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:54052 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751287AbaHLFT3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Aug 2014 01:19:29 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 11F652011B
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2014 05:19:27 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id D68E620114
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2014 05:19:24 +0000 (UTC)
+Received: from blu004-omc1s14.hotmail.com ([65.55.116.25]:59225 "EHLO
+	BLU004-OMC1S14.hotmail.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750736AbaHLFjj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Aug 2014 01:39:39 -0400
+Received: by mail-yh0-f42.google.com with SMTP id a41so7117059yho.15
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Aug 2014 22:39:35 -0700 (PDT)
+In-Reply-To: <20140811192529.GG2808@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=82201
+On 8/11/14, Darrick J. Wong <darrick.wong@oracle.com> wrote:
+> Hi all,
+>
+> Mr. Reardon has discovered that due to a bug in journal_tag_bytes(), if the
+> the
+> "journal csum v2" feature flag is turned on, block tag records are being
+> written with two extra bytes of space because we don't need to execute
+> "x += sizeof(tag.t_checksum);".  In 32-bit mode, other parts of the journal
+> then perform incorrect size comparisons, leading to BUG() being called.  In
+> 64-bit mode, there's enough padding that bad things won't happen.
+>
+> This is a remnant of the days when I tried to enlarge journal_block_tag_t
+> to
+> hold the full 32-bit checksum for a data block that's stored in the
+> journal.
+> Back in 2011, we decided (though sadly I can't find the link; I think we
+> might
+> have discussed this in the concall) that it was better not to change the
+> size
+> of journal_block_tag_t than it was to make it bigger so that it could hold
+> the
+> full checksum.
+>
+> A simple fix for the problem has been proposed by Mr. Reardon which fixes
+> journal_tag_bytes() and leaves everything else unchanged.  However, that is
+> technically a disk format change since the size of journal_block_tag_t on
+> disk
+> changes, albeit only for people running experimental metadata_csum
+> filesystems.
+> Since we've been allocating disk space for the enlarged checksum this whole
+> time, if we apply that patch, anyone with an unclean 64bit FS will not be
+> able
+> to recover the journal.  (Anyone with an unclean 32-bit FS has been broken
+> the
+> whole time, and still will be.)
+>
+> The other thing we could do is actually use the two bytes to store the high
+> 16-bits of the checksum, fix the jbd2 helper functions to reflect that
+> reality
+> (so that they don't BUG()), and change the checksum verify routine to pass
+> the
+> block if either the full checksum matches, or if the lower 16 bits match
+> and
+> the upper 16 bits are zero.  With this route, anybody with an uncleanly
+> unmounted FS could still recover the journal, since we're not changing the
+> size
+> of anything.
+>
+> Fortunately, journal tag blocks are fairly ephemeral and nobody ought to be
+> using metadata_csum on a production filesystem, so at this point we can
+> probably change the disk format without too many repercussions.  If you
+> make
+> sure to cleanly unmount the filesystem when changing kernel/e2fsprogs
+> versions,
+> there will be no problems.
+>
+> So, uh... comments?  How should we proceed?
+>
+> --D
 
-            Bug ID: 82201
-           Summary: ext4 crash in ext4_superblock_csum
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.10.20+
-          Hardware: ARM
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: high
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: kun.chen@mediatek.com
-        Regression: No
+My only concern is that legacy applies to in-the-wild kernels, not
+just journals.  Any post 3.4 kernel has this problem, which will be
+exposed as soon as e2fsprogs 1.43 is released.  A common (enough) use
+case might be, say, a 2TB USB drive, being unplugged and replugged
+across machines  without proper shutdown.  Old machines will think
+they recognize the journal but don't actually, and replay something
+destructive.
 
-I met a ext4 oops crash, similar as this one:https://lkml.org/lkml/2013/12/19/5
+In other words, this is a future-retro problem.  The problem is not so
+much with existing fs experimenting with metadata_csum, but a future
+properly-journaled drive being plugged into an legacy faulty machine.
+Those incompat flags are supposed to protect against just this
+scenario, but won't.  So perhaps you'll need make a new
+"INCOMPAT_CSUM_V3" flag to protect?  Actually, dwelling on this a bit
+today, I think whether or not you retain those 2 extra checksum bytes
+in final fix, you ought use a new flag for the format.
 
-I think maybe it related to crypto_alloc_shash error return
-
-call stack:
-[    7.169278] (3)[120:init]Unable to handle kernel NULL pointer dereference at
-virtual address 00000000
-[    7.178289] (3)[120:init]pgd = dd454000
-[    7.182054][00000000] *pgd=9d434831, *pte=00000000, *ppte=00000000
-[    7.188172] (3)[120:init][KERN Warning] ERROR/WARN forces debug_lock off!
-[    7.194915] (3)[120:init][KERN Warning] check backtrace:
-[    7.200145]Backtrace: 
-[    7.202485] (3)[120:init][<c0212de8>] (dump_backtrace+0x0/0x10c) from
-[<c0951494>] (dump_stack+0x18/0x1c)
-[    7.211978] r6:00000017 r5:c0b4fa0c r4:dd431758 r3:00000000
-[    7.217471] (3)[120:init][<c095147c>] (dump_stack+0x0/0x1c) from
-[<c04bda70>] (debug_locks_off+0x50/0x78)
-[    7.226966] (3)[120:init][<c04bda20>] (debug_locks_off+0x0/0x78) from
-[<c024bbdc>] (oops_enter+0x14/0x30)
-[    7.236438] (3)[120:init][<c024bbc8>] (oops_enter+0x0/0x30) from
-[<c0212fd8>] (die+0x30/0x3e4)
-[    7.244967] (3)[120:init][<c0212fa8>] (die+0x0/0x3e4) from [<c0951504>]
-(__do_kernel_fault.part.10+0x5c/0x7c)
-[    7.254798] (3)[120:init][<c09514a8>] (__do_kernel_fault.part.10+0x0/0x7c)
-from [<c0960078>] (do_page_fault+0x3b8/0x3dc)
-[    7.265574] r7:dd450000 r3:dd431758
-[    7.268989] (3)[120:init][<c095fcc0>] (do_page_fault+0x0/0x3dc) from
-[<c02083e0>] (do_DataAbort+0x7c/0x100)
-[    7.278793] (3)[120:init][<c0208364>] (do_DataAbort+0x0/0x100) from
-[<c095e398>] (__dabt_svc+0x38/0x60)
-[    7.287976] (3)[120:init]Exception stack(0xdd431758 to 0xdd4317a0)
-[    7.294093] (3)[120:init]1740:                                              
-        dd44e800 c406d400
-[    7.303305] (3)[120:init]1760: 000413bd 00000000 dd4317c0 00000000 c0d1d150
-00000000 dd87db80 c0d1d1c8
-[    7.312502] (3)[120:init]1780: c406d400 dd431874 dd431878 dd4317a0 c03f4cd8
-c03f48f0 000f0113 ffffffff
-[    7.321732] r8:dd87db80 r7:dd43178c r6:ffffffff r5:000f0113 r4:c03f48f0
-[    7.328274] (3)[120:init][<c03f48d0>] (ext4_superblock_csum+0x0/0x68) from
-[<c03f4cd8>] (ext4_superblock_csum_set+0x28/0x30)
-[    7.339393] r4:c406d400 r3:c53e05e6
-[    7.342831] (3)[120:init][<c03f4cb0>] (ext4_superblock_csum_set+0x0/0x30)
-from [<c03f52d0>] (ext4_commit_super+0x174/0x270)
-[    7.353887] r4:dd44e800 r3:00000000
-[    7.357305] (3)[120:init][<c03f515c>] (ext4_commit_super+0x0/0x270) from
-[<c03f5538>] (save_error_info+0x20/0x24)
-[    7.367487] (3)[120:init][<c03f5518>] (save_error_info+0x0/0x24) from
-[<c03f60bc>] (ext4_error_inode+0x44/0xf0)
-[    7.377476] r4:0000149b r3:000001d8
-[    7.380912] (3)[120:init][<c03f6078>] (ext4_error_inode+0x0/0xf0) from
-[<c03dc394>] (__check_block_validity.constprop.19+0x78/0x88)
-[    7.392636] r8:00000281 r7:dd87e4e8 r6:dd4319e8 r5:00000000 r4:0000149b
-[    7.399175] (3)[120:init][<c03dc31c>]
-(__check_block_validity.constprop.19+0x0/0x88) from [<c03dc918>]
-(ext4_map_blocks+0x294/0x434)
-[    7.410987] r8:00000000 r7:dd87e4e8 r6:dd4319e8 r5:00001196 r4:0000119a
-[    7.417526] (3)[120:init][<c03dc684>] (ext4_map_blocks+0x0/0x434) from
-[<c03de0b8>] (_ext4_get_block+0x7c/0x164)
-[    7.427623] (3)[120:init][<c03de03c>] (_ext4_get_block+0x0/0x164) from
-[<c03de224>] (ext4_get_block+0x2c/0x34)
-[    7.437534] (3)[120:init][<c03de1f8>] (ext4_get_block+0x0/0x34) from
-[<c037f1ac>] (generic_block_bmap+0x4c/0x5c)
-[    7.447611] (3)[120:init][<c037f160>] (generic_block_bmap+0x0/0x5c) from
-[<c03db738>] (ext4_bmap+0x90/0x100)
-[    7.457337] r5:00000000 r4:00001196
-[    7.460778] (3)[120:init][<c03db6a8>] (ext4_bmap+0x0/0x100) from
-[<c0368cfc>] (bmap+0x24/0x44)
-[    7.469314] r8:00001196 r7:dd44d800 r6:dd431b18 r5:dd8824c0 r4:00001196
-[    7.475857] (3)[120:init][<c0368cd8>] (bmap+0x0/0x44) from [<c0432228>]
-(jbd2_journal_bmap+0x34/0xb0)
-[    7.484999] (3)[120:init][<c04321f4>] (jbd2_journal_bmap+0x0/0xb0) from
-[<c042bf9c>] (jread+0x40/0x234)
-[    7.494301] r8:dd431bbc r7:0000444a r6:00001196 r3:0000420f
-[    7.499802] (3)[120:init][<c042bf5c>] (jread+0x0/0x234) from [<c042c50c>]
-(do_one_pass+0x37c/0x8b8)
-[    7.508777] (3)[120:init][<c042c190>] (do_one_pass+0x0/0x8b8) from
-[<c042cb1c>] (jbd2_journal_recover+0xd4/0x104)
-[    7.518944] (3)[120:init][<c042ca48>] (jbd2_journal_recover+0x0/0x104) from
-[<c0431d74>] (jbd2_journal_load+0xc4/0x34c)
-[    7.529621] r5:dd43c380 r4:dd87e4e8
-[    7.533079] (3)[120:init][<c0431cb0>] (jbd2_journal_load+0x0/0x34c) from
-[<c03f9980>] (ext4_fill_super+0x1fe8/0x2d28)
-[    7.543587] (3)[120:init][<c03f7998>] (ext4_fill_super+0x0/0x2d28) from
-[<c035475c>] (mount_bdev+0x194/0x1d0)
-[    7.553410] (3)[120:init][<c03545c8>] (mount_bdev+0x0/0x1d0) from
-[<c03ebf0c>] (ext4_mount+0x20/0x28)
-[    7.562523] (3)[120:init][<c03ebeec>] (ext4_mount+0x0/0x28) from
-[<c0355384>] (mount_fs+0x4c/0x180)
-[    7.571498] (3)[120:init][<c0355338>] (mount_fs+0x0/0x180) from [<c036ea0c>]
-(vfs_kern_mount+0x54/0xc8)
-[    7.580802] (3)[120:init][<c036e9b8>] (vfs_kern_mount+0x0/0xc8) from
-[<c0370b98>] (do_mount+0x1d0/0x87c)
-[    7.590188] r8:c0d4ee70 r7:dd401b00 r6:dd42f000 r5:00000000 r4:c0d5cb90
-r3:dd42f000
-[    7.597846] (3)[120:init][<c03709c8>] (do_mount+0x0/0x87c) from [<c03712d0>]
-(SyS_mount+0x8c/0xc0)
-[    7.606735] (3)[120:init][<c0371244>] (SyS_mount+0x0/0xc0) from [<c020ebc0>]
-(ret_fast_syscall+0x0/0x30)
-[    7.616132] r7:00000015 r6:0003229a r5:ffffffff r4:000aaba8
-[    7.621622]-(3)[120:init]Internal error: Oops: 17 [#1] PREEMPT SMP ARM
-[    7.628081]Modules linked in:
-[    7.631013]-(3)[120:init]CPU: 3 PID: 120 Comm: init Not tainted 3.10.20+ #1
-[    7.637904]-(3)[120:init]task: dd450000 ti: dd430000 task.ti: dd430000
-[    7.644367]-(3)[120:init]PC is at ext4_superblock_csum+0x20/0x68
-[    7.650311]-(3)[120:init]LR is at ext4_superblock_csum_set+0x28/0x30
-[    7.656600]-(3)[120:init]pc : [<c03f48f0>]    lr : [<c03f4cd8>]    psr:
-000f0113
-[    7.656600]sp : dd4317a0  ip : dd431878  fp : dd431874
-[    7.669005]-(3)[120:init]r10: c406d400  r9 : c0d1d1c8  r8 : dd87db80
-[    7.675294]-(3)[120:init]r7 : 00000000  r6 : c0d1d150  r5 : 00000000  r4 :
-dd4317c0
-[    7.682875]-(3)[120:init]r3 : 00000000  r2 : 000413bd  r1 : c406d400  r0 :
-dd44e800
-[    7.690458]-(3)[120:init]Flags: nzcv  IRQs on  FIQs on  Mode SVC_32  ISA ARM
- Segment user
-[    7.698642]-(3)[120:init]Control: 10c5387d  Table: 9d45406a  DAC: 00000015
-[    7.705448]-(3)[120:init]
-[    7.705448]PC: 0xc03f4870:
-[    7.710701]4870  e5931000 e2800fd7 e2811883 e2811cd6 ebf99b9d e5963194
-e2833001 e5863194
-[    7.718714]4890  e89da9f8 e59631cc e1a01004 e3a02020 e2860f6a e5863198
-eb031021 e59631d0
-[    7.726726]48b0  e3a02f76 e18640d2 e586319c e3a03e1a e58681c8 e18640f3
-eaffffe3 c0cff0c0
-[    7.734738]48d0  e1a0c00d e92dd818 e24cb004 e59033b0 e24dd0c0 e28d403f
-e3c4403f e5933398
-[    7.742750]48f0  e5932000 e3520004 1a00000c e5843000 e1a00004 e3a03000
-e3a02fff e5843004
-[    7.750762]4910  e3e03000 e5843040 eb02421e e3500000 1a000003 e5940040
-e24bd014 e89da818
-[    7.758775]4930  eb1580fe e7f001f2 e1a0c00d e92dd8f0 e24cb004 e590302c
-e1a06000 e3530000
-[    7.766787]4950  03a05001 0a000002 e59050e0 e2755001 33a05000 e1a00000
-e1a00005 e89da8f0
-[    7.774801]-(3)[120:init]
-[    7.774801]LR: 0xc03f4c58:
-[    7.780055]4c58  e1b12f9f e1a12f98 e3320000 1afffffb e51b0038 eafffff6
-e1a0c00d e92dd818
-[    7.788067]4c78  e24cb004 e59033b0 e5933044 e5933064 e3130b01 1a000001
-e3a00001 e89da818
-[    7.796079]4c98  e59143fc ebffff0b e054c000 e27c0000 e0b0000c e89da818
-e1a0c00d e92dd818
-[    7.804092]4cb8  e24cb004 e59033b0 e5934044 e5943064 e3130b01 089da818
-e1a01004 ebfffefd
-[    7.812104]4cd8  e58403fc e89da818 e1a0c00d e92dd830 e24cb004 e1a05000
-e1a04001 ebfd6100
-[    7.820116]4cf8  e3500000 189da830 e59f3014 e1a00005 e1a01004 e5932000
-e3822c02 ebfd338f
-[    7.828129]4d18  e89da830 c0dcd67c e1a0c00d e92dd830 e24cb004 e3814902
-e1a05000 e1a01004
-[    7.836141]4d38  ebfd60ef e3500000 189da830 e59f3014 e1a00005 e1a01004
-e5932000 e3822c02
-[    7.844155]-(3)[120:init]
-[    7.844155]SP: 0xdd431720:
-[    7.849409]1720  dd430000 c0291b0c dd43177c dd431738 c02b5530 c03f48f0
-000f0113 ffffffff
-[    7.857421]1740  dd43178c dd87db80 dd431874 dd431758 c095e398 c0208370
-dd44e800 c406d400
-[    7.865433]1760  000413bd 00000000 dd4317c0 00000000 c0d1d150 00000000
-dd87db80 c0d1d1c8
-[    7.873445]1780  c406d400 dd431874 dd431878 dd4317a0 c03f4cd8 c03f48f0
-000f0113 ffffffff
-[    7.881458]17a0  00000000 dd4504f0 000004f0 00000000 00000000 dd44d118
-00000001 c0d1d1c8
-[    7.889470]17c0  dd4318ac dd4317d0 c0290a00 00000000 dd44d118 00000000
-00000000 00000000
-[    7.897482]17e0  dd430000 c04cfa70 dd43183c dd4317f8 c02b5530 c02b43c8
-00000000 00000000
-[    7.905495]1800  c04cfa70 00000000 000000b7 600f0113 00000000 dd44d108
-c04cfa70 dd44d108
-[    7.913509]-(3)[120:init]
-[    7.913509]IP: 0xdd4317f8:
-[    7.918763]17f8  00000000 00000000 c04cfa70 00000000 000000b7 600f0113
-00000000 dd44d108
-[    7.926775]1818  c04cfa70 dd44d108 00000004 dd44d108 00000000 dd44d108
-c0d1d148 00010000
-[    7.934787]1838  dd44d108 dd44d108 dd431864 dd431850 c095dde0 c09602fc
-00000004 000413bd
-[    7.942799]1858  dd43188c dd431868 c53e05e6 c406d400 dd43188c dd431878
-c03f4cd8 c03f48dc
-[    7.950812]1878  00000000 dd44e800 dd4318cc dd431890 c03f52d0 c03f4cbc
-001f978c 00000000
-[    7.958824]1898  dd4318cc 00000001 c03f48ac dd44e800 00000000 dd87e4e8
-00000281 c0987218
-[    7.966836]18b8  00000000 000000f0 dd4318e4 dd4318d0 c03f5538 c03f5168
-000001d8 0000149b
-[    7.974849]18d8  dd431934 dd4318e8 c03f60bc c03f5524 dd87e74c dd44d400
-dd44d000 dd44d400
-[    7.982862]-(3)[120:init]
-[    7.982862]FP: 0xdd4317f4:
-[    7.988116]17f4  c02b43c8 00000000 00000000 c04cfa70 00000000 000000b7
-600f0113 00000000
-[    7.996129]1814  dd44d108 c04cfa70 dd44d108 00000004 dd44d108 00000000
-dd44d108 c0d1d148
-[    8.004141]1834  00010000 dd44d108 dd44d108 dd431864 dd431850 c095dde0
-c09602fc 00000004
-[    8.012153]1854  000413bd dd43188c dd431868 c53e05e6 c406d400 dd43188c
-dd431878 c03f4cd8
-[    8.020166]1874  c03f48dc 00000000 dd44e800 dd4318cc dd431890 c03f52d0
-c03f4cbc 001f978c
-[    8.028178]1894  00000000 dd4318cc 00000001 c03f48ac dd44e800 00000000
-dd87e4e8 00000281
-[    8.036190]18b4  c0987218 00000000 000000f0 dd4318e4 dd4318d0 c03f5538
-c03f5168 000001d8
-[    8.044202]18d4  0000149b dd431934 dd4318e8 c03f60bc c03f5524 dd87e74c
-dd44d400 dd44d000
-[    8.052216]-(3)[120:init]
-[    8.052216]R0: 0xdd44e780:
-[    8.057470]e780  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[    8.065483]e7a0  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[    8.073495]e7c0  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[    8.081507]e7e0  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[    8.089519]e800  c0d59bec de591800 0b30000f 0000000c 00001000 00000000
-fffff000 000001ff
-[    8.097532]e820  c0d5cb90 c0987f34 00000000 00000000 c0987fd4 10000000
-0000ef53 00000000
-[    8.105544]e840  ffffffff 00010001 dead4ead ffffffff ffffffff c129b1d4
-c0e9ac90 00000000
-[    8.113556]e860  c0ba0da4 dd44e864 dd44e864 c0d5cbb4 00000000 c0ecdda0
-c0b818e8 00000001
-[    8.121570]-(3)[120:init]
-[    8.121570]R1: 0xc406d380:
-[    8.126824]d380  0000001c b7951204 b7951204 0bebc20c 53cda99e 0bebc20c
-00000000 ea020000
-[    8.134836]d3a0  00400607 00000000 0000001f 00000000 696c6573 0078756e
-00000000 00000000
-[    8.142849]d3c0  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[    8.150861]d3e0  626f3a75 7463656a 733a725f 65747379 61645f6d 665f6174
-3a656c69 00003073
-[    8.158873]d400  03e88180 0000070b 53cdcab5 000ca286 000413bd 00000000
-000103e8 00000008
-[    8.166885]d420  00080080 00000001 0001f30a 00000004 53cdcfb7 00000000
-00020001 00088a73
-[    8.174898]d440  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[    8.182910]d460  00000000 c53e05e6 00000000 00000000 00000000 00000000
-00000000 00000000
-[    8.190924]-(3)[120:init]
-[    8.190924]R4: 0xdd431740:
-[    8.196178]1740  dd43178c dd87db80 dd431874 dd431758 c095e398 c0208370
-dd44e800 c406d400
-[    8.204190]1760  000413bd 00000000 dd4317c0 00000000 c0d1d150 00000000
-dd87db80 c0d1d1c8
-[    8.212202]1780  c406d400 dd431874 dd431878 dd4317a0 c03f4cd8 c03f48f0
-000f0113 ffffffff
-[    8.220215]17a0  00000000 dd4504f0 000004f0 00000000 00000000 dd44d118
-00000001 c0d1d1c8
-[    8.228227]17c0  dd4318ac dd4317d0 c0290a00 00000000 dd44d118 00000000
-00000000 00000000
-[    8.236239]17e0  dd430000 c04cfa70 dd43183c dd4317f8 c02b5530 c02b43c8
-00000000 00000000
-[    8.244252]1800  c04cfa70 00000000 000000b7 600f0113 00000000 dd44d108
-c04cfa70 dd44d108
-[    8.252264]1820  00000004 dd44d108 00000000 dd44d108 c0d1d148 00010000
-dd44d108 dd44d108
-[    8.260278]-(3)[120:init]
-[    8.260278]R6: 0xc0d1d0d0:
-[    8.265532]d0d0  046a0e5f ceb6af04 90d34de8 5a0fecb3 a5d9c4e1 6f0565ba
-31608756 fbbc260d
-[    8.273544]d0f0  3ab7828b f06b23d0 ae0ec13c 64d26067 00000000 00000001
-271ae708 c0220e0c
-[    8.281556]d110  ffffffff c0211938 00000009 000fb8d7 c021d7c0 c021d7f8
-90f00000 c021d168
-[    8.289569]d130  c021d124 00000012 ffffffff 00000000 00000000 00000000
-0000000f 0000000f
-[    8.297581]d150  0000000f 0000000f 00000000 df822100 df822200 df822300
-df803400 df822500
-[    8.305593]d170  00000000 0000003c 00000001 00000000 00002e7b 000003e8
-00000001 00000001
-[    8.313606]d190  00000020 00000001 00000000 0007a120 00000028 00989680
-00004e20 00000000
-[    8.321618]d1b0  00000000 00000000 00000000 00000003 00000001 00000001
-00000004 00000001
-[    8.329632]-(3)[120:init]
-[    8.329632]R8: 0xdd87db00:
-[    8.334886]db00  00000001 dd87dac0 c14ed0e0 00000000 00000001 00000000
-00000400 c406c400
-[    8.342898]db20  00000000 c0380000 00000000 dd87db2c dd87db2c 00000000
-00000000 00000000
-[    8.350910]db40  00000000 dd87db00 c14ed0e0 00000000 00000000 00000000
-00000400 c406c000
-[    8.358922]db60  00000000 00000000 00000000 dd87db6c dd87db6c 00000000
-00000000 00000000
-[    8.366935]db80  0000002b dd87db80 c14ed108 00000000 00000000 00000000
-00001000 c406d000
-[    8.374947]dba0  dd867900 c0380000 00000000 dd87dbac dd87dbac 00000000
-00000003 00000000
-[    8.382960]dbc0  00000029 dd87dbc0 c14ecf28 00000000 00000041 00000000
-00001000 c4061000
-[    8.390972]dbe0  dd898000 c0380000 00000000 dd87dbec dd87dbec 00000000
-00000000 00000000
-[    8.398985]-(3)[120:init]
-[    8.398985]R9: 0xc0d1d148:
-[    8.404240]d148  0000000f 0000000f 0000000f 0000000f 00000000 df822100
-df822200 df822300
-[    8.412252]d168  df803400 df822500 00000000 0000003c 00000001 00000000
-00002e7b 000003e8
-[    8.420264]d188  00000001 00000001 00000020 00000001 00000000 0007a120
-00000028 00989680
-[    8.428276]d1a8  00004e20 00000000 00000000 00000000 00000000 00000003
-00000001 00000001
-[    8.436289]d1c8  00000004 00000001 00000001 00000000 00000000 00000001
-00000001 00000001
-[    8.444301]d1e8  00000001 00000001 c0d1d408 0000000f 00000000 00000000
-00000000 c0daa0e4
-[    8.452313]d208  c0daa12c c0daa174 c0daa1bc c0daa204 c0daa24c c0daa294
-c0daa2dc c0daa324
-[    8.460325]d228  c0daa36c c0daa3b4 c0daa3fc c0daa444 c0daa48c c0daa4d4
-c0daa51c c0daa564
-[    8.468339]-(3)[120:init]
-[    8.468339]R10: 0xc406d380:
-[    8.473680]d380  0000001c b7951204 b7951204 0bebc20c 53cda99e 0bebc20c
-00000000 ea020000
-[    8.481692]d3a0  00400607 00000000 0000001f 00000000 696c6573 0078756e
-00000000 00000000
-[    8.489704]d3c0  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[    8.497716]d3e0  626f3a75 7463656a 733a725f 65747379 61645f6d 665f6174
-3a656c69 00003073
-[    8.505728]d400  03e88180 0000070b 53cdcab5 000ca286 000413bd 00000000
-000103e8 00000008
-[    8.513741]d420  00080080 00000001 0001f30a 00000004 53cdcfb7 00000000
-00020001 00088a73
-[    8.521753]d440  00000000 00000000 00000000 00000000 00000000 00000000
-00000000 00000000
-[    8.529765]d460  00000000 c53e05e6 00000000 00000000 00000000 00000000
-00000000 00000000
-[    8.537781]-(3)[120:init]Process init (pid: 120, stack limit = 0xdd430248)
-[    8.544586]-(3)[120:init]Stack: (0xdd4317a0 to 0xdd432000)
-[    8.550016]-(3)[120:init]17a0: 00000000 dd4504f0 000004f0 00000000 00000000
-dd44d118 00000001 c0d1d1c8
-[    8.559235]-(3)[120:init]17c0: dd4318ac dd4317d0 c0290a00 00000000 dd44d118
-00000000 00000000 00000000
-[    8.568452]-(3)[120:init]17e0: dd430000 c04cfa70 dd43183c dd4317f8 c02b5530
-c02b43c8 00000000 00000000
-[    8.577671]-(3)[120:init]1800: c04cfa70 00000000 000000b7 600f0113 00000000
-dd44d108 c04cfa70 dd44d108
-[    8.586890]-(3)[120:init]1820: 00000004 dd44d108 00000000 dd44d108 c0d1d148
-00010000 dd44d108 dd44d108
-[    8.596108]-(3)[120:init]1840: dd431864 dd431850 c095dde0 c09602fc 00000004
-000413bd dd43188c dd431868
-[    8.605326]-(3)[120:init]1860: c53e05e6 c406d400 dd43188c dd431878 c03f4cd8
-c03f48dc 00000000 dd44e800
-[    8.614545]-(3)[120:init]1880: dd4318cc dd431890 c03f52d0 c03f4cbc 001f978c
-00000000 dd4318cc 00000001
-[    8.623763]-(3)[120:init]18a0: c03f48ac dd44e800 00000000 dd87e4e8 00000281
-c0987218 00000000 000000f0
-[    8.632982]-(3)[120:init]18c0: dd4318e4 dd4318d0 c03f5538 c03f5168 000001d8
-0000149b dd431934 dd4318e8
-[    8.642200]-(3)[120:init]18e0: c03f60bc c03f5524 dd87e74c dd44d400 dd44d000
-dd44d400 dd431998 092d092c
-[    8.651419]-(3)[120:init]1900: dd44d400 dd44d400 dd43192c dd431918 c095dde0
-0000149b 00000000 dd4319e8
-[    8.660637]-(3)[120:init]1920: dd87e4e8 00000281 dd431974 dd431938 c03dc394
-c03f6084 0000149b 00000000
-[    8.669856]-(3)[120:init]1940: c0b8aaa4 00001196 00000001 c0415e64 00000000
-0000119a 00001196 dd4319e8
-[    8.679074]-(3)[120:init]1960: dd87e4e8 00000000 dd4319e4 dd431978 c03dc918
-c03dc328 00000000 dd4504f0
-[    8.688292]-(3)[120:init]1980: 000004f0 dd4504f0 000004f0 00000001 00000000
-dd867bc0 00000000 dd882580
-[    8.697511]-(3)[120:init]19a0: c144cc08 000010aa 000000f0 00000000 000013af
-80000000 00000000 00000000
-[    8.706729]-(3)[120:init]19c0: 00001196 dd431a50 dd87e4e8 00000000 dd44d800
-00000000 dd431a2c dd4319e8
-[    8.715948]-(3)[120:init]19e0: c03de0b8 c03dc690 0000149b 00000000 00001196
-00000001 00000020 dd867b14
-[    8.725166]-(3)[120:init]1a00: dd87dbb8 00000000 00000000 dd87e4e8 dd87e60c
-00001196 dd44d800 00000002
-[    8.734385]-(3)[120:init]1a20: dd431a44 dd431a30 c03de224 c03de048 dd431a50
-00000000 dd431aa4 dd431a48
-[    8.743603]-(3)[120:init]1a40: c037f1ac c03de204 dd431a50 00000000 00000000
-dd867bb0 dd882480 dd888000
-[    8.752822]-(3)[120:init]1a60: 00000000 00000000 00001000 0000444a 00000000
-00000002 dd431b04 271ae708
-[    8.762040]-(3)[120:init]1a80: 000004f0 01034000 dd431aa4 dd431a98 00001196
-00000000 dd431ad4 dd431aa8
-[    8.771258]-(3)[120:init]1aa0: c03db738 c037f16c c03de1f8 c031d3d8 dd87db80
-00001196 dd8824c0 dd431b18
-[    8.780477]-(3)[120:init]1ac0: dd44d800 00001196 dd431ae4 dd431ad8 c0368cfc
-c03db6b4 dd431b04 dd431ae8
-[    8.789695]-(3)[120:init]1ae0: c0432228 c0368ce4 0000420f 00001196 0000444a
-dd431bbc dd431b74 dd431b08
-[    8.798914]-(3)[120:init]1b00: c042bf9c c0432200 00000000 00c500c4 dd87db80
-dd867900 00000000 00000000
-[    8.808132]-(3)[120:init]1b20: c095dde0 c09602fc dd450000 dd44c800 dd87db80
-00000002 dd431b5c dd431b48
-[    8.817351]-(3)[120:init]1b40: c02708e8 c0270890 dd87db80 00001196 dd8824c0
-c004a034 0000444a dd431bf4
-[    8.826569]-(3)[120:init]1b60: dd44d800 00000002 dd431bec dd431b78 c042c50c
-c042bf68 00001000 c031d3d8
-[    8.835788]-(3)[120:init]1b80: dd87d880 dd87d840 dd87d804 dd87d7c0 00000000
-00000000 c004a000 00000002
-[    8.845006]-(3)[120:init]1ba0: ffffffff 00000008 98393bc0 00001197 00000000
-00000000 dd8824c0 00000000
-[    8.854225]-(3)[120:init]1bc0: c038199c dd44d800 00000000 00000001 c406d594
-00000000 00000000 dd44d800
-[    8.863444]-(3)[120:init]1be0: dd431c1c dd431bf0 c042cb1c c042c19c 00000000
-00004437 00004466 000000c5
-[    8.872662]-(3)[120:init]1c00: 00000000 00000000 dd87e4e8 dd43c380 dd431c7c
-dd431c20 c0431d74 c042ca54
-[    8.881880]-(3)[120:init]1c20: dd44e800 dd44d814 dd87e4e8 c0cfdef0 dd431c7c
-dd431c40 c034d334 c09602fc
-[    8.891099]-(3)[120:init]1c40: c095d840 c09602fc a00f0013 00000c87 dd431c7c
-dd87e4e8 dd43c380 dd44d800
-[    8.900317]-(3)[120:init]1c60: c406d594 dd44e800 00000000 dd44d000 dd431e34
-dd431c80 c03f9980 c0431cbc
-[    8.909535]-(3)[120:init]1c80: c1293318 c0d575e0 c02b5530 c02b43c8 00000004
-00000000 00000001 00000000
-[    8.918754]-(3)[120:init]1ca0: c0d575e0 dd450520 00000504 00000000 00000001
-c0d5652c dd431cd4 dd450508
-[    8.927972]-(3)[120:init]1cc0: 00000508 00000000 00000000 c0d5652c c0d5652c
-dd431e54 dd431d8c dd431ce8
-[    8.937191]-(3)[120:init]1ce0: c04bbacc c04b96e0 c0d5652c 00000000 00000000
-00000000 00000000 00000000
-[    8.946409]-(3)[120:init]1d00: 00000000 ffffffff 00000002 0000000a 00000002
-00000000 31356f04 00000000
-[    8.955628]-(3)[120:init]1d20: 00000000 600f0093 00200200 dd4504d8 000004d8
-00000000 00000000 dd44e86c
-[    8.964846]-(3)[120:init]1d40: c0d5653c 200f0013 c0d5651c c0d56518 c0d1d7d0
-00000000 c406d400 271ae708
-[    8.974065]-(3)[120:init]1d60: dd44d000 00000000 00000000 00000000 dd44d35c
-00000000 00000001 00000000
-[    8.983283]-(3)[120:init]1d80: dd44d108 00000000 00000022 00000000 dd44d140
-00000000 00108000 00000000
-[    8.992501]-(3)[120:init]1da0: 00000001 00000000 dd44d178 00000000 dd44d3c0
-00000000 00000000 00000000
-[    9.001721]-(3)[120:init]1dc0: dd44d0d0 dd44eb80 dd401b40 dd87db80 00110000
-00000000 c04bcb9c 00000000
-[    9.010938]-(3)[120:init]1de0: 00004003 dd431dfc dd431e24 dd431e00 c04a669c
-c04bcb88 c0b9f718 dd44eb80
-[    9.020157]-(3)[120:init]1e00: 00000000 271ae708 dd44e800 dd867900 dd44e800
-c0d1d108 00000083 dd8679a4
-[    9.029375]-(3)[120:init]1e20: dd42f000 00000000 dd431e9c dd431e38 c035475c
-c03f79a4 dd867900 c0318cf4
-[    9.038594]-(3)[120:init]1e40: dd42f010 c03f7998 dd431e64 62636d6d 70306b6c
-c0003531 dd431ea4 dd431e68
-[    9.047812]-(3)[120:init]1e60: c046960c c0318f08 00000000 271ae708 dd42f000
-00000000 dd42f000 dd401b00
-[    9.057031]-(3)[120:init]1e80: c0d5cb90 c0d5cb90 00000000 de7ca000 dd431eb4
-dd431ea0 c03ebf0c c03545d4
-[    9.066249]-(3)[120:init]1ea0: c03f7998 c04694e4 dd431eec dd431eb8 c0355384
-c03ebef8 dd431eec dd431ec8
-[    9.075468]-(3)[120:init]1ec0: c036e544 dd405600 dd401b00 00000000 c0d5cb90
-dd42f000 0000000b dd401a40
-[    9.084686]-(3)[120:init]1ee0: dd431f14 dd431ef0 c036ea0c c0355344 dd42f000
-c0d5cb90 00000000 dd42f000
-[    9.093905]-(3)[120:init]1f00: dd401b00 c0d4ee70 dd431f6c dd431f18 c0370b98
-c036e9c4 dd42f000 dd42f000
-[    9.103123]-(3)[120:init]1f20: dd431f84 dd430000 df80d190 df6550a8 000ab000
-dd431f48 c0318cbc c09642b0
-[    9.112342]-(3)[120:init]1f40: 200f0013 00000000 de694000 000aab50 00000406
-c020ed44 dd430000 00000000
-[    9.121560]-(3)[120:init]1f60: dd431fa4 dd431f70 c03712d0 c03709d4 dd42f000
-29209080 53cdcfb7 dd401a40
-[    9.130779]-(3)[120:init]1f80: dd401b00 dd42f000 000aaba8 ffffffff 0003229a
-00000015 00000000 dd431fa8
-[    9.139997]-(3)[120:init]1fa0: c020ebc0 c0371250 000aaba8 ffffffff 000aab50
-000aab88 000aab98 00000406
-[    9.149215]-(3)[120:init]1fc0: 000aaba8 ffffffff 0003229a 00000015 000aab50
-00000406 000aab98 000302a0
-[    9.158434]-(3)[120:init]1fe0: becdbd58 becdbd48 0000f71d 0001d434 000f0010
-000aab50 00000000 00000000
-
-and objdump of vmlinux
-fs/ext4/ext4.h:1709
-c03f48ec: e5933398 ldr r3, [r3, #920] ; 0x398
-c03f48f0: e5932000 ldr r2, [r3]
-c03f48f4: e3520004 cmp r2, #4
-
-and source code:
-BUG_ON(crypto_shash_descsize(sbi->s_chksum_driver)!=sizeof(desc.ctx));
-
-So it should be s_chksum_driver is null.
-
-But it value only be changed at:
-/* Load the checksum driver */
-if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-                EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-    sbi->s_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
-    if (IS_ERR(sbi->s_chksum_driver)) {
-        ext4_msg(sb, KERN_ERR, "Cannot load crc32c driver."); ret =
-PTR_ERR(sbi-    >s_chksum_driver);
-        sbi->s_chksum_driver = NULL;
-        goto failed_mount;
-    }
-}
-
-maybe crypto_alloc_shash will return NULL under some case.
-It's hard to reproduce, currently i only meet it once
-
-Thanks
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
++Reardon
