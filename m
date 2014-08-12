@@ -1,76 +1,88 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 5/6] libext2fs/e2fsck: provide routines to read-ahead
- metadata
-Date: Mon, 11 Aug 2014 13:50:19 -0700
-Message-ID: <20140811205019.GB1695@birch.djwong.org>
-References: <20140809042610.2441.6868.stgit@birch.djwong.org>
- <20140809042643.2441.79312.stgit@birch.djwong.org>
- <20140811052151.GA2808@birch.djwong.org>
- <20140811062415.GG15431@thunk.org>
- <20140811063120.GB2808@birch.djwong.org>
- <20140811143423.GB3506@thunk.org>
- <20140811180509.GE2808@birch.djwong.org>
- <20140811183258.GF6553@thunk.org>
- <20140811185532.GA1695@birch.djwong.org>
- <20140811201030.GH6553@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 61601] rootflags=noatime causes kernel panic when booting
+ without initrd.
+Date: Tue, 12 Aug 2014 05:02:49 +0000
+Message-ID: <bug-61601-13602-CXlBupSln9@https.bugzilla.kernel.org/>
+References: <bug-61601-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:17926 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754692AbaHKUuZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Aug 2014 16:50:25 -0400
-Content-Disposition: inline
-In-Reply-To: <20140811201030.GH6553@thunk.org>
+Received: from mail.kernel.org ([198.145.19.201]:53737 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751550AbaHLFCx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Aug 2014 01:02:53 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id BED942014A
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2014 05:02:51 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 106D52011B
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2014 05:02:50 +0000 (UTC)
+In-Reply-To: <bug-61601-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 11, 2014 at 04:10:30PM -0400, Theodore Ts'o wrote:
-> On Mon, Aug 11, 2014 at 11:55:32AM -0700, Darrick J. Wong wrote:
-> > I was expecting 16 groups (32M readahead) to win, but as the observations in my
-> > spreadsheet show, 2MB tends to win.  I _think_ the reason is that if we
-> > encounter indirect map blocks or ETB blocks, they tend to be fairly close to
-> > the file blocks in the block group, and if we're trying to do a large readahead
-> > at the same time, we end up with a largeish seek penalty (half the flexbg on
-> > average) for every ETB/map block.
-> 
-> Hmm, that might be an argument for not trying to increase the flex_bg
-> size, since we want to keep seek distances within a flex_bg to be
-> dominated by settling time, and not by the track-to-track
-> accelleration/coasting/deaccelleration time.
+https://bugzilla.kernel.org/show_bug.cgi?id=61601
 
-It might not be too horrible of a regression, since the distance between tracks
-has gotten shorter and cylinders themselves have gotten bigger.  I suppose
-you'd have to test a variety of flexbg sizes against a disk from, say, 5 years
-ago.  If you know the size of the files you'll be storing at mkfs time (such as
-with the mk_hugefiles.c options) then increasing flexbg size is probably ok to
-avoid fragmenting.
+--- Comment #14 from Jacob Lane <jaclane299@gmail.com> ---
+damn, i see now. im definitely gonna go after that challenge. thanks
 
-But yes, I was sort of enjoying how stuff within a flexbg gets (sort of) faster
-as disks get bigger. :)
 
-> > I figured out what was going on with the 1TB SSD -- it has a huge RAM cache big
-> > enough to store most of the metadata.  At that point, reads are essentially
-> > free, but readahead costs us ~1ms per fadvise call. 
-> 
-> Do we understand why fadvise() takes 1ms?   Is that something we can fix?
-> 
-> And readahead(2) was even worse, right?
+On Mon, Aug 11, 2014 at 9:24 AM, <bugzilla-daemon@bugzilla.kernel.org>
+wrote:
 
->From the readahead(2) manpage:
+> https://bugzilla.kernel.org/show_bug.cgi?id=61601
+>
+> --- Comment #13 from Theodore Tso <tytso@mit.edu> ---
+> Jacob, there are very good programs to help people learn how to get
+> involved
+> with kernel development.  See the kernelnewbies.org web site and mailing
+> list,
+> for example.   But you need to have some amount of basic competence; being
+> able
+> to use Google well, for example, and doing silly things like making sure
+> the
+> patches compile before you submit patches for review.
+>
+> Also, if you have clueless people asking users completely random questions
+> that
+> are completely useless in terms of fixing the problem, it wastes the user's
+> time and causes them to get very frustrated.   So having newbies trying to
+> help
+> users who are reporting kernel bugs is not a good idea.  If they want to
+> help
+> users install Linux distributions, that's fine --- so long as you are
+> minimally
+> competent in doing installation.  Similarly, if you are completely
+> incompetent
+> in doing kernel development, you should not be offering to help users.
+>
+> There are ways for newbies to get involved.  The problem is Nick has
+> consistently ignored advice of people who have wasted a huge amount of time
+> trying to get him on the right path.  Which is why he has gotten banned.
+>
+> If you are someone who wants to get started, there is the Eudyptula
+> Challenge
+> (http://eudyptula-challenge.org).   Nick finally got involved with this,
+> and
+> then violated the very simple rules, which caused him to get ejected from
+> the
+> Challenge within hours, thus setting a new record for the Eudyuptula
+> Challenge.
+>  Anyway, this is off topic for the bug.  So please stop discussing this
+> here,
+> please.
+>
+> --
+> You are receiving this mail because:
+> You are watching the assignee of the bug.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
-"readahead() blocks until the specified data has been read."
-
-The fadvise time is pretty consistently 1ms, but with readahead you have to
-wait for it to read everything off the disk.  That's fine for threaded
-readahead, but for our single-thread readahead it's not much better than
-regular blocking reads.  Letting the kernel do the readahead in the background
-is way faster.
-
-I don't know why fadvise takes so long.  I'll ftrace it to see where it goes.
-
---D
-> 
-> 							- Ted
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
