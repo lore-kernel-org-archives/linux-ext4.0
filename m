@@ -1,48 +1,43 @@
-From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: [PATCH] ext4: remove a duplicate call in ext4_init_new_dir()
-Date: Tue, 12 Aug 2014 23:18:29 +0800
-Message-ID: <1407856709-18612-1-git-send-email-wangshilong1991@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 82201] ext4 crash in ext4_superblock_csum
+Date: Tue, 12 Aug 2014 15:25:22 +0000
+Message-ID: <bug-82201-13602-1hZ5O4UQ0j@https.bugzilla.kernel.org/>
+References: <bug-82201-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f47.google.com ([209.85.220.47]:38865 "EHLO
-	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752719AbaHLPTS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Aug 2014 11:19:18 -0400
-Received: by mail-pa0-f47.google.com with SMTP id kx10so12988340pab.6
-        for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2014 08:19:17 -0700 (PDT)
-Received: from localhost.localdomain.localdomain ([223.65.191.205])
-        by mx.google.com with ESMTPSA id qi7sm14921733pbc.14.2014.08.12.08.19.16
-        for <linux-ext4@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 12 Aug 2014 08:19:17 -0700 (PDT)
+Received: from mail.kernel.org ([198.145.19.201]:46846 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752669AbaHLPZY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Aug 2014 11:25:24 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 83D0F2015E
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2014 15:25:23 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id C837520115
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2014 15:25:22 +0000 (UTC)
+In-Reply-To: <bug-82201-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Wang Shilong <wshilong@ddn.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=82201
 
-ext4_journal_get_write_access() has just been called in ext4_append()
-calling it again here is duplicated.
+Theodore Tso <tytso@mit.edu> changed:
 
-Signed-off-by: Wang Shilong <wshilong@ddn.com>
----
- fs/ext4/namei.c | 4 ----
- 1 file changed, 4 deletions(-)
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 3520ab8..6d0d01f 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2390,10 +2390,6 @@ static int ext4_init_new_dir(handle_t *handle, struct inode *dir,
- 	dir_block = ext4_append(handle, inode, &block);
- 	if (IS_ERR(dir_block))
- 		return PTR_ERR(dir_block);
--	BUFFER_TRACE(dir_block, "get_write_access");
--	err = ext4_journal_get_write_access(handle, dir_block);
--	if (err)
--		goto out;
- 	de = (struct ext4_dir_entry_2 *)dir_block->b_data;
- 	ext4_init_dot_dotdot(inode, de, blocksize, csum_size, dir->i_ino, 0);
- 	set_nlink(inode, 2);
+--- Comment #1 from Theodore Tso <tytso@mit.edu> ---
+Can you attach a copy of dumpe2fs -h?
+
+And did this happen after an unclean shutdown (so the journal had to be
+replayed), by any chance?
+
+-- Ted
+
 -- 
-1.9.3
-
+You are receiving this mail because:
+You are watching the assignee of the bug.
