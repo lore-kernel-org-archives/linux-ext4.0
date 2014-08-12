@@ -1,30 +1,115 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsck: don't flush the FS unless it's actually dirty
-Date: Tue, 12 Aug 2014 12:16:49 -0400
-Message-ID: <20140812161649.GE12871@thunk.org>
-References: <20140811175045.GD2808@birch.djwong.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: journal_checksum_v2 on-disk format change? (was: Re: journal
+ recovery problems with metadata_csum, *non-64bit*)
+Date: Tue, 12 Aug 2014 10:08:26 -0700
+Message-ID: <20140812170826.GH2808@birch.djwong.org>
+References: <BLU437-SMTP3407533C3883653626BD3DFDEC0@phx.gbl>
+ <20140811071025.GE19223@birch.djwong.org>
+ <20140811192529.GG2808@birch.djwong.org>
+ <BLU436-SMTP123C75E96D9A42B3CA66A12FDEA0@phx.gbl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Dan Jacobson <jidanni@jidanni.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: linux-ext4@vger.kernel.org
+To: TR Reardon <thomas_reardon@hotmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:56522 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753195AbaHLQQx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Aug 2014 12:16:53 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:16683 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753618AbaHLRIc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Aug 2014 13:08:32 -0400
 Content-Disposition: inline
-In-Reply-To: <20140811175045.GD2808@birch.djwong.org>
+In-Reply-To: <BLU436-SMTP123C75E96D9A42B3CA66A12FDEA0@phx.gbl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Darrick, thanks for the patch.
+On Tue, Aug 12, 2014 at 01:39:35AM -0400, TR Reardon wrote:
+> On 8/11/14, Darrick J. Wong <darrick.wong@oracle.com> wrote:
+> > Hi all,
+> >
+> > Mr. Reardon has discovered that due to a bug in journal_tag_bytes(), if the
+> > the
+> > "journal csum v2" feature flag is turned on, block tag records are being
+> > written with two extra bytes of space because we don't need to execute
+> > "x += sizeof(tag.t_checksum);".  In 32-bit mode, other parts of the journal
+> > then perform incorrect size comparisons, leading to BUG() being called.  In
+> > 64-bit mode, there's enough padding that bad things won't happen.
+> >
+> > This is a remnant of the days when I tried to enlarge journal_block_tag_t
+> > to
+> > hold the full 32-bit checksum for a data block that's stored in the
+> > journal.
+> > Back in 2011, we decided (though sadly I can't find the link; I think we
+> > might
+> > have discussed this in the concall) that it was better not to change the
+> > size
+> > of journal_block_tag_t than it was to make it bigger so that it could hold
+> > the
+> > full checksum.
+> >
+> > A simple fix for the problem has been proposed by Mr. Reardon which fixes
+> > journal_tag_bytes() and leaves everything else unchanged.  However, that is
+> > technically a disk format change since the size of journal_block_tag_t on
+> > disk
+> > changes, albeit only for people running experimental metadata_csum
+> > filesystems.
+> > Since we've been allocating disk space for the enlarged checksum this whole
+> > time, if we apply that patch, anyone with an unclean 64bit FS will not be
+> > able
+> > to recover the journal.  (Anyone with an unclean 32-bit FS has been broken
+> > the
+> > whole time, and still will be.)
+> >
+> > The other thing we could do is actually use the two bytes to store the high
+> > 16-bits of the checksum, fix the jbd2 helper functions to reflect that
+> > reality
+> > (so that they don't BUG()), and change the checksum verify routine to pass
+> > the
+> > block if either the full checksum matches, or if the lower 16 bits match
+> > and
+> > the upper 16 bits are zero.  With this route, anybody with an uncleanly
+> > unmounted FS could still recover the journal, since we're not changing the
+> > size
+> > of anything.
+> >
+> > Fortunately, journal tag blocks are fairly ephemeral and nobody ought to be
+> > using metadata_csum on a production filesystem, so at this point we can
+> > probably change the disk format without too many repercussions.  If you
+> > make
+> > sure to cleanly unmount the filesystem when changing kernel/e2fsprogs
+> > versions,
+> > there will be no problems.
+> >
+> > So, uh... comments?  How should we proceed?
+> >
+> > --D
+> 
+> My only concern is that legacy applies to in-the-wild kernels, not
+> just journals.  Any post 3.4 kernel has this problem, which will be
+> exposed as soon as e2fsprogs 1.43 is released.  A common (enough) use
+> case might be, say, a 2TB USB drive, being unplugged and replugged
+> across machines  without proper shutdown.  Old machines will think
+> they recognize the journal but don't actually, and replay something
+> destructive.
+> 
+> In other words, this is a future-retro problem.  The problem is not so
+> much with existing fs experimenting with metadata_csum, but a future
+> properly-journaled drive being plugged into an legacy faulty machine.
+> Those incompat flags are supposed to protect against just this
+> scenario, but won't.  So perhaps you'll need make a new
+> "INCOMPAT_CSUM_V3" flag to protect?  Actually, dwelling on this a bit
+> today, I think whether or not you retain those 2 extra checksum bytes
+> in final fix, you ought use a new flag for the format.
 
-Could you change the test to use $CRCSUM instead of md5sum.  I'd
-prefer not to introduce an additional dependency to e2fsprogs, and
-using a crc checksum should be sufficient for our purposes here.
+Definitely we need a new bit to keep the old kernels out; I wanted others to
+weigh in on whether we ought to shrink the struct or put the two bytes to use.
 
-Thanks!!
+That said... journal recovery is not so well tested, so I'm currently busy
+building out debugfs to create journal transactions so we can test recovery
+both with and without *_csum.
 
-						- Ted
-
+--D
+> 
+> +Reardon
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
