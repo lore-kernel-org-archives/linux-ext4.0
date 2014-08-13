@@ -1,53 +1,74 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] filefrag: fix extent count calculation when using FIBMAP
-Date: Wed, 13 Aug 2014 16:03:44 -0400
-Message-ID: <1407960224-987-1-git-send-email-tytso@mit.edu>
-Cc: 1356496@bugs.launchpad.net, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: fine grain block allocation API request
+Date: Wed, 13 Aug 2014 22:38:06 +0200
+Message-ID: <30E81BCD-E53F-412D-BA78-8061176A5792@dilger.ca>
+References: <87bnrosdu6.fsf@openvz.org>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Lukas Czerner <lczerner@redhat.com>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58939 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752550AbaHMUDv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Aug 2014 16:03:51 -0400
+Received: from mail-wg0-f48.google.com ([74.125.82.48]:33503 "EHLO
+	mail-wg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752629AbaHMUiK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Aug 2014 16:38:10 -0400
+Received: by mail-wg0-f48.google.com with SMTP id x13so245926wgg.19
+        for <linux-ext4@vger.kernel.org>; Wed, 13 Aug 2014 13:38:09 -0700 (PDT)
+In-Reply-To: <87bnrosdu6.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The extent count calculation works correctly with the FIBMAP ioctl in
-verbose (-v) mode, but without the verbose option, the calculation was
-broken because we weren't properly updating the fm_ext data structures
-in non-verbose mode.
+One question to ask is whether a goal inode allocation API would be enough
+or if you need specific block allocation, or both? If you could start
+allocation at a specific inode, would that be enough to avoid the messy
+code below?
 
-Addresses-Launchpad-Bug: #1356496
+Cheers, Andreas
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- misc/filefrag.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/misc/filefrag.c b/misc/filefrag.c
-index d71bf43..c1a8684 100644
---- a/misc/filefrag.c
-+++ b/misc/filefrag.c
-@@ -329,16 +329,17 @@ static int filefrag_fibmap(int fd, int blk_shift, int *num_extents,
- 			print_extent_info(&fm_ext, *num_extents - 1,
- 					  (last_block + 1) * st->st_blksize,
- 					  blk_shift, st);
--			fm_ext.fe_logical = logical;
--			fm_ext.fe_physical = block * st->st_blksize;
- 			fm_ext.fe_length = 0;
- 			(*num_extents)++;
- 		} else if (last_block && (block != last_block + 1)) {
- 			if (verbose)
- 				printf("Discontinuity: Block %ld is at %lu (was "
- 				       "%lu)\n", i, block, last_block + 1);
-+			fm_ext.fe_length = 0;
- 			(*num_extents)++;
- 		}
-+		fm_ext.fe_logical = logical;
-+		fm_ext.fe_physical = block * st->st_blksize;
- 		fm_ext.fe_length += st->st_blksize;
- 		last_block = block;
- 	}
--- 
-2.0.0
-
+> On Aug 13, 2014, at 15:45, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
+> 
+> 
+> Currently we have not public API for block allocation from some
+> specific region (group/flex_group/blk_range).  The only existing
+> hack is available in migrate.c where we use goal_inode for
+> ext4_new_inode().
+> 
+> In fact this tend make some specific task very complicated.
+> For example my e4defrag2 utility try to compact small files from
+> one group together. In order to allocate blocks from given group
+> I have to perform number of crazy stuff, such as:
+> 1) Prepare cache of directories according to it's group (where dir_inode
+> is placed)
+> 
+> 2) Try to allocate local donor file with local blocks (from given group)
+>   Pseudo code of donor creation procedure :
+>   int find_donor(int grp, ...) {
+>       for (i = 0; i = dir_cache[grp].num;i++) {
+>           fd = openat(dir_cache[grp].fd[i], "donor", O_CREAT|flags,... )
+>           fstat(fd, &stat);
+>           if (inode_group(stat->st_ino) != grp)
+>              goto next_candidate;
+>           do_falloc(fd, size);
+>           /* Check that blocks we allocated are belongs to group we want*/
+>           if (!is_block_local(fd, group))
+>              goto next_candidate;
+>           goto found_donor;
+>          .....
+>       }
+>      .....
+>   }
+> All this machinery is very ugly, unstable and increase code-base about
+> 500-700 lines of code. And I want to ask you why we do not have such
+> API? AFAIR this API was requested several times, but it was rejected.
+> I do understand that this is not good idea to allow unprivileged user to
+> manipulate block allocator, but IMHO we can hide it under CAP_RESOURCES
+> or CAP_ADMIN.
+> Please tell be your opinion. I'll happy to implement that ioctl.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
