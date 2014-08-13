@@ -1,152 +1,57 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: journal_checksum_v2 on-disk format change? (was: Re: journal
- recovery problems with metadata_csum, *non-64bit*)
-Date: Wed, 13 Aug 2014 15:53:58 -0700
-Message-ID: <20140813225358.GB11105@birch.djwong.org>
-References: <BLU437-SMTP3407533C3883653626BD3DFDEC0@phx.gbl>
- <20140811071025.GE19223@birch.djwong.org>
- <20140811192529.GG2808@birch.djwong.org>
- <BLU436-SMTP123C75E96D9A42B3CA66A12FDEA0@phx.gbl>
- <20140812170826.GH2808@birch.djwong.org>
- <5DA9CA9E-9DAE-4279-A706-9D895FA0CF70@dilger.ca>
+Subject: Re: [PATCH] ext4: include journal blocks of internal journal in df
+ overhead calcs
+Date: Wed, 13 Aug 2014 15:55:43 -0700
+Message-ID: <20140813225543.GK2808@birch.djwong.org>
+References: <1407937043-23186-1-git-send-email-chintzung@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: TR Reardon <thomas_reardon@hotmail.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:27526 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754667AbaHMWyE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Aug 2014 18:54:04 -0400
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Chin-Tsung Cheng <chintzung@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <5DA9CA9E-9DAE-4279-A706-9D895FA0CF70@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1407937043-23186-1-git-send-email-chintzung@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 13, 2014 at 11:35:50PM +0200, Andreas Dilger wrote:
-> Doesn't a larger journal_tag_bytes() size mean more overhead for
-> the journal?
+On Wed, Aug 13, 2014 at 09:37:23PM +0800, Chin-Tsung Cheng wrote:
+> The journal blocks of external journal device should not
+> be counted as overhead.
+> 
+> Signed-off-by: Chin-Tsung Cheng <chintzung@gmail.com>
+> ---
+>  fs/ext4/super.c | 7 ++++---
+>  1 file changed, 4 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 32b43ad..03b2f62 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -3316,9 +3316,10 @@ int ext4_calculate_overhead(struct super_block *sb)
+>  			memset(buf, 0, PAGE_SIZE);
+>  		cond_resched();
+>  	}
+> -	/* Add the journal blocks as well */
+> -	if (sbi->s_journal)
+> -		overhead += EXT4_NUM_B2C(sbi, sbi->s_journal->j_maxlen);
+> +	/* Add the internal journal blocks as well */
+> +	if ((sbi->s_journal) &&
+> +		(sbi->s_journal->j_fs_dev == sbi->s_journal->j_dev))
+> +			overhead += EXT4_NUM_B2C(sbi, sbi->s_journal->j_maxlen);
 
-Yes.  If we move to a 16-byte block tag:
+I think you have some whitespace issues here, but otherwise this seems ok.
 
-typedef struct journal_block_tag3_s
-{
-	__u32		t_blocknr;	/* The on-disk block number */
-	__u32		t_flags;	/* See below */
-	__u32		t_blocknr_high; /* most-significant high 32bits. */
-	__u32		t_checksum;	/* crc32c(uuid+seq+block) */
-} journal_block_tag3_t;
-
-Notice that this fixes the alignment problem due to the v2 bug -- tag 2 starts
-with a 4-byte field at offset 14.
-
-For a 32-bit FS with 4K blocks and a 32768 block journal, I found through
-experimentation that if I fill the journal with nothing but journal blocks
-(i.e. no revoke blocks), overhead increases by 264 blocks, or 0.8%.  For a
-64-bit FS with the same parameters, the increase is 136 blocks, or 0.4%.
-
-I'm hoping that a <1% increase won't discourage people. :)
+External journals aren't counted towards the total blocks count, correct?
 
 --D
+>  
+>  	sbi->s_overhead = overhead;
+>  	smp_wmb();
+> -- 
+> 1.9.3
 > 
-> Cheers, Andreas
-> 
-> > On Aug 12, 2014, at 19:08, "Darrick J. Wong" <darrick.wong@oracle.com> wrote:
-> > 
-> >> On Tue, Aug 12, 2014 at 01:39:35AM -0400, TR Reardon wrote:
-> >>> On 8/11/14, Darrick J. Wong <darrick.wong@oracle.com> wrote:
-> >>> Hi all,
-> >>> 
-> >>> Mr. Reardon has discovered that due to a bug in journal_tag_bytes(), if the
-> >>> the
-> >>> "journal csum v2" feature flag is turned on, block tag records are being
-> >>> written with two extra bytes of space because we don't need to execute
-> >>> "x += sizeof(tag.t_checksum);".  In 32-bit mode, other parts of the journal
-> >>> then perform incorrect size comparisons, leading to BUG() being called.  In
-> >>> 64-bit mode, there's enough padding that bad things won't happen.
-> >>> 
-> >>> This is a remnant of the days when I tried to enlarge journal_block_tag_t
-> >>> to
-> >>> hold the full 32-bit checksum for a data block that's stored in the
-> >>> journal.
-> >>> Back in 2011, we decided (though sadly I can't find the link; I think we
-> >>> might
-> >>> have discussed this in the concall) that it was better not to change the
-> >>> size
-> >>> of journal_block_tag_t than it was to make it bigger so that it could hold
-> >>> the
-> >>> full checksum.
-> >>> 
-> >>> A simple fix for the problem has been proposed by Mr. Reardon which fixes
-> >>> journal_tag_bytes() and leaves everything else unchanged.  However, that is
-> >>> technically a disk format change since the size of journal_block_tag_t on
-> >>> disk
-> >>> changes, albeit only for people running experimental metadata_csum
-> >>> filesystems.
-> >>> Since we've been allocating disk space for the enlarged checksum this whole
-> >>> time, if we apply that patch, anyone with an unclean 64bit FS will not be
-> >>> able
-> >>> to recover the journal.  (Anyone with an unclean 32-bit FS has been broken
-> >>> the
-> >>> whole time, and still will be.)
-> >>> 
-> >>> The other thing we could do is actually use the two bytes to store the high
-> >>> 16-bits of the checksum, fix the jbd2 helper functions to reflect that
-> >>> reality
-> >>> (so that they don't BUG()), and change the checksum verify routine to pass
-> >>> the
-> >>> block if either the full checksum matches, or if the lower 16 bits match
-> >>> and
-> >>> the upper 16 bits are zero.  With this route, anybody with an uncleanly
-> >>> unmounted FS could still recover the journal, since we're not changing the
-> >>> size
-> >>> of anything.
-> >>> 
-> >>> Fortunately, journal tag blocks are fairly ephemeral and nobody ought to be
-> >>> using metadata_csum on a production filesystem, so at this point we can
-> >>> probably change the disk format without too many repercussions.  If you
-> >>> make
-> >>> sure to cleanly unmount the filesystem when changing kernel/e2fsprogs
-> >>> versions,
-> >>> there will be no problems.
-> >>> 
-> >>> So, uh... comments?  How should we proceed?
-> >>> 
-> >>> --D
-> >> 
-> >> My only concern is that legacy applies to in-the-wild kernels, not
-> >> just journals.  Any post 3.4 kernel has this problem, which will be
-> >> exposed as soon as e2fsprogs 1.43 is released.  A common (enough) use
-> >> case might be, say, a 2TB USB drive, being unplugged and replugged
-> >> across machines  without proper shutdown.  Old machines will think
-> >> they recognize the journal but don't actually, and replay something
-> >> destructive.
-> >> 
-> >> In other words, this is a future-retro problem.  The problem is not so
-> >> much with existing fs experimenting with metadata_csum, but a future
-> >> properly-journaled drive being plugged into an legacy faulty machine.
-> >> Those incompat flags are supposed to protect against just this
-> >> scenario, but won't.  So perhaps you'll need make a new
-> >> "INCOMPAT_CSUM_V3" flag to protect?  Actually, dwelling on this a bit
-> >> today, I think whether or not you retain those 2 extra checksum bytes
-> >> in final fix, you ought use a new flag for the format.
-> > 
-> > Definitely we need a new bit to keep the old kernels out; I wanted others to
-> > weigh in on whether we ought to shrink the struct or put the two bytes to use.
-> > 
-> > That said... journal recovery is not so well tested, so I'm currently busy
-> > building out debugfs to create journal transactions so we can test recovery
-> > both with and without *_csum.
-> > 
-> > --D
-> >> 
-> >> +Reardon
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
