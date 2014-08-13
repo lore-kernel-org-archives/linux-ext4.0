@@ -1,52 +1,42 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 82201] ext4 crash in ext4_superblock_csum
-Date: Wed, 13 Aug 2014 02:34:37 +0000
-Message-ID: <bug-82201-13602-fGaCCbqK4I@https.bugzilla.kernel.org/>
-References: <bug-82201-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2 0/4] quota: add project quota support
+Date: Wed, 13 Aug 2014 09:22:22 -0400
+Message-ID: <20140813132222.GB6437@thunk.org>
+References: <CAPTn0cDY+sYFpFnPQmpLRCDdtvc3rThgNzSkevcyYkcia=poew@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:40901 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752238AbaHMCek (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Aug 2014 22:34:40 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 960C3201D3
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Aug 2014 02:34:39 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 66718201BC
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Aug 2014 02:34:37 +0000 (UTC)
-In-Reply-To: <bug-82201-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"hch@infradead.org" <hch@infradead.org>, Jan Kara <jack@suse.cz>
+To: Li Xi <pkuelelixi@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <CAPTn0cDY+sYFpFnPQmpLRCDdtvc3rThgNzSkevcyYkcia=poew@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=82201
+On Wed, Aug 13, 2014 at 10:32:31AM +0800, Li Xi wrote:
+> Yeah, we were using non-journaled quota. And we were doing this
+> benchmark to confirm that xattr based implementation has extra
+> overhead. We will run benchmarks on journaled-quota, and let's see
+> what is the performance difference between non-journaled and
+> journaled quotas.
 
-kun.chen <kun.chen@mediatek.com> changed:
+Can you give a lot of details about exactly how you ran the benchmark
+(and run future benchmarks)?  Was this on a ramdisk?  An SSD?  A HDD?
+How many CPU's, how many threads were creating files, etc.  And do you
+understand where the performance overhead was coming from?  Was it CPU
+overhead?  Locking overhead?
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-         Resolution|---                         |INVALID
+It just doesn't make sense that storing the value in the xattr, when
+the xattr is stored in the on-disk inode, that it should make a huge
+difference; the cost of the I/O should completely dominate the cost of
+whether we format the bytes as an integer or storing it in the
+in-inode xattr.  So either there is a bug in the benchmark, or a bug
+in our code somewhere.  Either way, we should find and fix it.
 
---- Comment #2 from kun.chen <kun.chen@mediatek.com> ---
-I already checked that this is because ext4 super block memory was corrupted,
-because we didn't set EXT4_FEATURE_RO_COMPAT_METADATA_CSUM, but it skip the
-checking and enter ext4_superblock_csum.
+Regards,
 
-ext4_super_block was stored in r1:c406d400, from stack the s_feature_ro_compat
-value is c53e05e6, so it can skip the checking in ext4_superblock_csum_set.
-
-And refer to r1 stack data, we already find it related to selinux.
-
-"And did this happen after an unclean shutdown (so the journal had to be
-replayed)"
-Yes, it happened after a software watchdog reset. I'm not sure whether the
-journal data corrupt related to memory corrupt, because next reboot it can
-mount successful.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+						- Ted
