@@ -1,35 +1,52 @@
-From: Li Xi <pkuelelixi@gmail.com>
-Subject: Re: [PATCH v2 0/4] quota: add project quota support
-Date: Wed, 13 Aug 2014 10:32:31 +0800
-Message-ID: <CAPTn0cDY+sYFpFnPQmpLRCDdtvc3rThgNzSkevcyYkcia=poew@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 82201] ext4 crash in ext4_superblock_csum
+Date: Wed, 13 Aug 2014 02:34:37 +0000
+Message-ID: <bug-82201-13602-fGaCCbqK4I@https.bugzilla.kernel.org/>
+References: <bug-82201-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"hch@infradead.org" <hch@infradead.org>, Jan Kara <jack@suse.cz>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:40901 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752238AbaHMCek (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Aug 2014 22:34:40 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 960C3201D3
+	for <linux-ext4@vger.kernel.org>; Wed, 13 Aug 2014 02:34:39 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 66718201BC
+	for <linux-ext4@vger.kernel.org>; Wed, 13 Aug 2014 02:34:37 +0000 (UTC)
+In-Reply-To: <bug-82201-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 12, 2014 at 11:35 PM, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
-> I'll bet a box of "russian caviar" that AlViro will never ever allow
-> to place project ID to generic inode. Because it is obviously has no
-> reason for any other filesystem except xfs/ext4.
-Yeah, understood. Maybe the discription is misleading. I added a
-field of project ID in ext4_inode structure. The general ext4 inode
-structure is not changed.
->
-> BTW. Which quota options you use for performance testing? It looks like
-> you use non-journaled quota. But this means that you have to fully
-> recalculate quota in case of power failure. It is reasonable to enable
-> journaled-quota, but it result in visible journaling overhead.
-Yeah, we were using non-journaled quota. And we were doing this
-benchmark to confirm that xattr based implementation has extra
-overhead. We will run benchmarks on journaled-quota, and let's see
-what is the performance difference between non-journaled and
-journaled quotas.
+https://bugzilla.kernel.org/show_bug.cgi?id=82201
 
-Regards,
-                                                  -Li Xi
+kun.chen <kun.chen@mediatek.com> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |RESOLVED
+         Resolution|---                         |INVALID
+
+--- Comment #2 from kun.chen <kun.chen@mediatek.com> ---
+I already checked that this is because ext4 super block memory was corrupted,
+because we didn't set EXT4_FEATURE_RO_COMPAT_METADATA_CSUM, but it skip the
+checking and enter ext4_superblock_csum.
+
+ext4_super_block was stored in r1:c406d400, from stack the s_feature_ro_compat
+value is c53e05e6, so it can skip the checking in ext4_superblock_csum_set.
+
+And refer to r1 stack data, we already find it related to selinux.
+
+"And did this happen after an unclean shutdown (so the journal had to be
+replayed)"
+Yes, it happened after a software watchdog reset. I'm not sure whether the
+journal data corrupt related to memory corrupt, because next reboot it can
+mount successful.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
