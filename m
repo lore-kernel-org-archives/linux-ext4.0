@@ -1,8 +1,8 @@
 From: Gioh Kim <gioh.kim@lge.com>
-Subject: [PATCH 2/3] ext4: allocate buffer-cache for superblock in, non-movable
- area
-Date: Thu, 14 Aug 2014 14:16:42 +0900
-Message-ID: <53EC463A.8060100@lge.com>
+Subject: [PATCH 3/3] jbd/jbd2: allocate buffer-cache for superblock inode
+ in, non-movable area
+Date: Thu, 14 Aug 2014 14:17:35 +0900
+Message-ID: <53EC466F.6080408@lge.com>
 References: <53EC4531.1000904@lge.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=EUC-KR
@@ -22,45 +22,48 @@ In-Reply-To: <53EC4531.1000904@lge.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-A buffer-cache for superblock is disturbing page migration,
-because the buffer-cache is not released until unmount.
-The buffer-cache must be allocated from non-movable area.
+A long-lasting buffer-cache can distrub page migration so that
+it must be allocated from non-movable area.
+
+The journal_init_inode is creating a buffer-cache for superblock journaling.
+The superblock exists until system shutdown so that the buffer-cache
+for the superblock would also exist for a long time
+and it can distrub page migration.
+
+This patch make the buffer-cache be allocated from non-movable area
+not to distrub page migration.
 
 Signed-off-by: Gioh Kim <gioh.kim@lge.com>
 ---
- fs/ext4/super.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/jbd/journal.c  |    2 +-
+ fs/jbd2/journal.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 32b43ad..0630a88 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3435,7 +3435,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
-                logical_sb_block = sb_block;
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 06fe11e..2ed8aa2 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -886,7 +886,7 @@ journal_t * journal_init_inode (struct inode *inode)
+                goto out_err;
         }
 
--       if (!(bh = sb_bread(sb, logical_sb_block))) {
-+       if (!(bh = sb_bread_nonmovable(sb, logical_sb_block))) {
-                ext4_msg(sb, KERN_ERR, "unable to read superblock");
-                goto out_fail;
+-       bh = __getblk(journal->j_dev, blocknr, journal->j_blocksize);
++       bh = __getblk_nonmovable(journal->j_dev, blocknr, journal->j_blocksize);
+        if (!bh) {
+                printk(KERN_ERR
+                       "%s: Cannot get buffer for journal superblock\n",
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 67b8e30..a618e49 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1237,7 +1237,7 @@ journal_t * jbd2_journal_init_inode (struct inode *inode)
+                goto out_err;
         }
-@@ -3645,7 +3645,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
-                brelse(bh);
-                logical_sb_block = sb_block * EXT4_MIN_BLOCK_SIZE;
-                offset = do_div(logical_sb_block, blocksize);
--               bh = sb_bread(sb, logical_sb_block);
-+               bh = sb_bread_nonmovable(sb, logical_sb_block);
-                if (!bh) {
-                        ext4_msg(sb, KERN_ERR,
-                               "Can't read superblock on 2nd try");
-@@ -3867,7 +3867,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 
-        for (i = 0; i < db_count; i++) {
-                block = descriptor_loc(sb, logical_sb_block, i);
--               sbi->s_group_desc[i] = sb_bread(sb, block);
-+               sbi->s_group_desc[i] = sb_bread_nonmovable(sb, block);
-                if (!sbi->s_group_desc[i]) {
-                        ext4_msg(sb, KERN_ERR,
-                               "can't read group descriptor %d", i);
+-       bh = __getblk(journal->j_dev, blocknr, journal->j_blocksize);
++       bh = __getblk_nonmovable(journal->j_dev, blocknr, journal->j_blocksize);
+        if (!bh) {
+                printk(KERN_ERR
+                       "%s: Cannot get buffer for journal superblock\n",
 --
 1.7.9.5
