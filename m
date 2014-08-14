@@ -1,8 +1,8 @@
 From: Gioh Kim <gioh.kim@lge.com>
-Subject: [PATCH 3/3] jbd/jbd2: allocate buffer-cache for superblock inode
- in, non-movable area
-Date: Thu, 14 Aug 2014 14:17:35 +0900
-Message-ID: <53EC466F.6080408@lge.com>
+Subject: Re: [PATCH 0/2] new APIs to allocate buffer-cache for superblock
+ in non-movable area
+Date: Thu, 14 Aug 2014 14:19:22 +0900
+Message-ID: <53EC46DA.1060005@lge.com>
 References: <53EC4531.1000904@lge.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=EUC-KR
@@ -22,48 +22,6 @@ In-Reply-To: <53EC4531.1000904@lge.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-A long-lasting buffer-cache can distrub page migration so that
-it must be allocated from non-movable area.
 
-The journal_init_inode is creating a buffer-cache for superblock journaling.
-The superblock exists until system shutdown so that the buffer-cache
-for the superblock would also exist for a long time
-and it can distrub page migration.
-
-This patch make the buffer-cache be allocated from non-movable area
-not to distrub page migration.
-
-Signed-off-by: Gioh Kim <gioh.kim@lge.com>
----
- fs/jbd/journal.c  |    2 +-
- fs/jbd2/journal.c |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index 06fe11e..2ed8aa2 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -886,7 +886,7 @@ journal_t * journal_init_inode (struct inode *inode)
-                goto out_err;
-        }
-
--       bh = __getblk(journal->j_dev, blocknr, journal->j_blocksize);
-+       bh = __getblk_nonmovable(journal->j_dev, blocknr, journal->j_blocksize);
-        if (!bh) {
-                printk(KERN_ERR
-                       "%s: Cannot get buffer for journal superblock\n",
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 67b8e30..a618e49 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1237,7 +1237,7 @@ journal_t * jbd2_journal_init_inode (struct inode *inode)
-                goto out_err;
-        }
-
--       bh = __getblk(journal->j_dev, blocknr, journal->j_blocksize);
-+       bh = __getblk_nonmovable(journal->j_dev, blocknr, journal->j_blocksize);
-        if (!bh) {
-                printk(KERN_ERR
-                       "%s: Cannot get buffer for journal superblock\n",
---
-1.7.9.5
+I'm sorry for a typo at the tile.
+It is 0/3, not 0/2.
