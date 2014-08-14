@@ -1,7 +1,8 @@
 From: Gioh Kim <gioh.kim@lge.com>
-Subject: [PATCH 1/2] fs/buffer.c: allocate buffer cache from non-movable area
-Date: Thu, 14 Aug 2014 14:15:40 +0900
-Message-ID: <53EC45FC.7050508@lge.com>
+Subject: [PATCH 2/3] ext4: allocate buffer-cache for superblock in, non-movable
+ area
+Date: Thu, 14 Aug 2014 14:16:42 +0900
+Message-ID: <53EC463A.8060100@lge.com>
 References: <53EC4531.1000904@lge.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=EUC-KR
@@ -21,181 +22,45 @@ In-Reply-To: <53EC4531.1000904@lge.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-A buffer cache is allocated from movable area
-because it is referred for a while and released soon.
-But some filesystems are taking buffer cache for a long time
-and it can disturb page migration.
-
-A new API should be introduced to allocate buffer cache from
-non-movable area.
+A buffer-cache for superblock is disturbing page migration,
+because the buffer-cache is not released until unmount.
+The buffer-cache must be allocated from non-movable area.
 
 Signed-off-by: Gioh Kim <gioh.kim@lge.com>
 ---
- fs/buffer.c                 |   63 ++++++++++++++++++++++++++++++++++++++-----
- include/linux/buffer_head.h |   10 +++++++
- 2 files changed, 66 insertions(+), 7 deletions(-)
+ fs/ext4/super.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 8f05111..7ef658f 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -993,7 +993,7 @@ init_page_buffers(struct page *page, struct block_device *bdev,
-  */
- static int
- grow_dev_page(struct block_device *bdev, sector_t block,
--               pgoff_t index, int size, int sizebits)
-+             pgoff_t index, int size, int sizebits, gfp_t movable_mask)
- {
-        struct inode *inode = bdev->bd_inode;
-        struct page *page;
-@@ -1003,7 +1003,8 @@ grow_dev_page(struct block_device *bdev, sector_t block,
-        gfp_t gfp_mask;
-
-        gfp_mask = mapping_gfp_mask(inode->i_mapping) & ~__GFP_FS;
--       gfp_mask |= __GFP_MOVABLE;
-+       if (movable_mask & __GFP_MOVABLE)
-+               gfp_mask |= __GFP_MOVABLE;
-        /*
-         * XXX: __getblk_slow() can not really deal with failure and
-         * will endlessly loop on improvised global reclaim.  Prefer
-@@ -1058,7 +1059,8 @@ failed:
-  * that page was dirty, the buffers are set dirty also.
-  */
- static int
--grow_buffers(struct block_device *bdev, sector_t block, int size)
-+grow_buffers(struct block_device *bdev, sector_t block,
-+            int size, gfp_t movable_mask)
- {
-        pgoff_t index;
-        int sizebits;
-@@ -1085,11 +1087,12 @@ grow_buffers(struct block_device *bdev, sector_t block, int size)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 32b43ad..0630a88 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3435,7 +3435,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+                logical_sb_block = sb_block;
         }
 
-        /* Create a page with the proper size buffers.. */
--       return grow_dev_page(bdev, block, index, size, sizebits);
-+       return grow_dev_page(bdev, block, index, size, sizebits, movable_mask);
- }
+-       if (!(bh = sb_bread(sb, logical_sb_block))) {
++       if (!(bh = sb_bread_nonmovable(sb, logical_sb_block))) {
+                ext4_msg(sb, KERN_ERR, "unable to read superblock");
+                goto out_fail;
+        }
+@@ -3645,7 +3645,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+                brelse(bh);
+                logical_sb_block = sb_block * EXT4_MIN_BLOCK_SIZE;
+                offset = do_div(logical_sb_block, blocksize);
+-               bh = sb_bread(sb, logical_sb_block);
++               bh = sb_bread_nonmovable(sb, logical_sb_block);
+                if (!bh) {
+                        ext4_msg(sb, KERN_ERR,
+                               "Can't read superblock on 2nd try");
+@@ -3867,7 +3867,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 
- static struct buffer_head *
--__getblk_slow(struct block_device *bdev, sector_t block, int size)
-+__getblk_slow(struct block_device *bdev, sector_t block,
-+             int size, gfp_t movable_mask)
- {
-        /* Size must be multiple of hard sectorsize */
-        if (unlikely(size & (bdev_logical_block_size(bdev)-1) ||
-@@ -1111,7 +1114,7 @@ __getblk_slow(struct block_device *bdev, sector_t block, int size)
-                if (bh)
-                        return bh;
-
--               ret = grow_buffers(bdev, block, size);
-+               ret = grow_buffers(bdev, block, size, movable_mask);
-                if (ret < 0)
-                        return NULL;
-                if (ret == 0)
-@@ -1385,11 +1388,34 @@ __getblk(struct block_device *bdev, sector_t block, unsigned size)
-
-        might_sleep();
-        if (bh == NULL)
--               bh = __getblk_slow(bdev, block, size);
-+               bh = __getblk_slow(bdev, block, size, __GFP_MOVABLE);
-        return bh;
- }
- EXPORT_SYMBOL(__getblk);
-
-+ /*
-+ * __getblk_nonmovable will locate (and, if necessary, create) the buffer_head
-+ * which corresponds to the passed block_device, block and size. The
-+ * returned buffer has its reference count incremented.
-+ *
-+ * The page cache is allocated from non-movable area
-+ * not to prevent page migration.
-+ *
-+ * __getblk()_nonmovable will lock up the machine
-+ * if grow_dev_page's try_to_free_buffers() attempt is failing. FIXME, perhaps?
-+ */
-+struct buffer_head *
-+__getblk_nonmovable(struct block_device *bdev, sector_t block, unsigned size)
-+{
-+       struct buffer_head *bh = __find_get_block(bdev, block, size);
-+
-+       might_sleep();
-+       if (bh == NULL)
-+               bh = __getblk_slow(bdev, block, size, 0);
-+       return bh;
-+}
-+EXPORT_SYMBOL(__getblk_nonmovable);
-+
- /*
-  * Do async read-ahead on a buffer..
-  */
-@@ -1410,6 +1436,7 @@ EXPORT_SYMBOL(__breadahead);
-  *  @size: size (in bytes) to read
-  *
-  *  Reads a specified block, and returns buffer head that contains it.
-+ *  The page cache is allocated from movable area so that it can be migrated.
-  *  It returns NULL if the block was unreadable.
-  */
- struct buffer_head *
-@@ -1423,6 +1450,28 @@ __bread(struct block_device *bdev, sector_t block, unsigned size)
- }
- EXPORT_SYMBOL(__bread);
-
-+/**
-+ *  __bread_nonmovable() - reads a specified block and returns the bh
-+ *  @bdev: the block_device to read from
-+ *  @block: number of block
-+ *  @size: size (in bytes) to read
-+ *
-+ *  Reads a specified block, and returns buffer head that contains it.
-+ *  The page cache is allocated from non-movable area
-+ *  not to prevent page migration.
-+ *  It returns NULL if the block was unreadable.
-+ */
-+struct buffer_head *
-+__bread_nonmovable(struct block_device *bdev, sector_t block, unsigned size)
-+{
-+       struct buffer_head *bh = __getblk_slow(bdev, block, size, 0);
-+
-+       if (likely(bh) && !buffer_uptodate(bh))
-+               bh = __bread_slow(bh);
-+       return bh;
-+}
-+EXPORT_SYMBOL(__bread_nonmovable);
-+
- /*
-  * invalidate_bh_lrus() is called rarely - but not only at unmount.
-  * This doesn't race because it runs in each cpu either in irq
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index 324329c..3f52370 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -177,10 +177,14 @@ struct buffer_head *__find_get_block(struct block_device *bdev, sector_t block,
-                        unsigned size);
- struct buffer_head *__getblk(struct block_device *bdev, sector_t block,
-                        unsigned size);
-+struct buffer_head *__getblk_nonmovable(struct block_device *bdev,
-+                                       sector_t block, unsigned size);
- void __brelse(struct buffer_head *);
- void __bforget(struct buffer_head *);
- void __breadahead(struct block_device *, sector_t block, unsigned int size);
- struct buffer_head *__bread(struct block_device *, sector_t block, unsigned size);
-+struct buffer_head *__bread_nonmovable(struct block_device *,
-+                                      sector_t block, unsigned size);
- void invalidate_bh_lrus(void);
- struct buffer_head *alloc_buffer_head(gfp_t gfp_flags);
- void free_buffer_head(struct buffer_head * bh);
-@@ -298,6 +302,12 @@ sb_bread(struct super_block *sb, sector_t block)
-        return __bread(sb->s_bdev, block, sb->s_blocksize);
- }
-
-+static inline struct buffer_head *
-+sb_bread_nonmovable(struct super_block *sb, sector_t block)
-+{
-+       return __bread_nonmovable(sb->s_bdev, block, sb->s_blocksize);
-+}
-+
- static inline void
- sb_breadahead(struct super_block *sb, sector_t block)
- {
+        for (i = 0; i < db_count; i++) {
+                block = descriptor_loc(sb, logical_sb_block, i);
+-               sbi->s_group_desc[i] = sb_bread(sb, block);
++               sbi->s_group_desc[i] = sb_bread_nonmovable(sb, block);
+                if (!sbi->s_group_desc[i]) {
+                        ext4_msg(sb, KERN_ERR,
+                               "can't read group descriptor %d", i);
 --
 1.7.9.5
