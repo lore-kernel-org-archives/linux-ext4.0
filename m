@@ -1,76 +1,77 @@
-From: Gioh Kim <gioh.kim@lge.com>
-Subject: Re: [PATCH 0/2] new APIs to allocate buffer-cache for superblock
- in non-movable area
-Date: Thu, 14 Aug 2014 14:23:00 +0900
-Message-ID: <53EC47B4.8020408@lge.com>
-References: <53EC4531.1000904@lge.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: fine grain block allocation API request
+Date: Thu, 14 Aug 2014 10:48:40 +0400
+Message-ID: <8761hvsh13.fsf@openvz.org>
+References: <87bnrosdu6.fsf@openvz.org> <30E81BCD-E53F-412D-BA78-8061176A5792@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=EUC-KR
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Minchan Kim <minchan@kernel.org>, Joonsoo Kim <js1304@gmail.com>,
-	=?EUC-KR?B?wMywx8ij?= <gunho.lee@lge.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
 	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <53EC4531.1000904@lge.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	Lukas Czerner <lczerner@redhat.com>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lb0-f170.google.com ([209.85.217.170]:48083 "EHLO
+	mail-lb0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751832AbaHNGso (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Aug 2014 02:48:44 -0400
+Received: by mail-lb0-f170.google.com with SMTP id l4so627716lbv.1
+        for <linux-ext4@vger.kernel.org>; Wed, 13 Aug 2014 23:48:42 -0700 (PDT)
+In-Reply-To: <30E81BCD-E53F-412D-BA78-8061176A5792@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-
-
-2014-08-14 =BF=C0=C8=C4 2:12, Gioh Kim =BE=B4 =B1=DB:
-> Hello,
->=20
-> This patch try to solve problem that a long-lasting page caches of
-> ext4 superblock and journaling of superblock disturb page migration.
->=20
-> I've been testing CMA feature on my ARM-based platform
-> and found that two page caches cannot be migrated.
-> They are page caches of superblock of ext4 filesystem and its journal=
-ing data.
->=20
-> Current ext4 reads superblock with sb_bread() that allocates page
-> from movable area. But the problem is that ext4 hold the page until
-> it is unmounted. If root filesystem is ext4 the page cannot be migrat=
-ed forever.
-> And also the journaling data for the superblock cannot be migreated.
->=20
-> I introduce a new API for allocating page cache from non-movable area=
-=2E
-> It is useful for ext4/ext3 and others that want to hold page cache fo=
-r a long time.
->=20
-> I have 3 patchs:
->=20
-> 1. Patch 1/3: introduce a new API that create page cache from non-mov=
-able area
-> 2. Patch 2/3: have ext4 use the new API to read superblock
-> 3. Patch 3/3: have jbd/jbd2 use the new API to make journaling of sup=
-erblock
->=20
-> This patchset is based on linux-next-20140814.
->=20
-> Thanks a lot.
->=20
-> Gioh Kim (3):
->   fs/buffer.c: allocate buffer cache from non-movable area
->   ext4: allocate buffer-cache for superblock in non-movable area
->   jbd-jbd2-allocate-buffer-cache-for-superblock-inode-.patch
->=20
->   fs/buffer.c                 |   63 ++++++++++++++++++++++++++++++--=
---
->   fs/ext4/super.c             |    6 +--
->   fs/jbd/journal.c            |    2 -
->   fs/jbd2/journal.c           |    2 -
->   include/linux/buffer_head.h |   10 +++++
->   5 files changed, 71 insertions(+), 12 deletions(-)
->=20
-
-I'm sorry to forget mentioning that this is 2nd version of https://lkml=
-=2Eorg/lkml/2014/7/22/34.
+On Wed, 13 Aug 2014 22:38:06 +0200, Andreas Dilger <adilger@dilger.ca> wrote:
+> One question to ask is whether a goal inode allocation API would be enough
+> or if you need specific block allocation, or both? If you could start
+> allocation at a specific inode, would that be enough to avoid the messy
+> code below?
+In order to pack small files I need goal block allocator API.
+Goal inode allocation API is almost useless for my task. But other tasks may
+gain from that feature. For example this allow to implement online filesystem shrink.
+ 
+> 
+> Cheers, Andreas
+> 
+> > On Aug 13, 2014, at 15:45, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
+> > 
+> > 
+> > Currently we have not public API for block allocation from some
+> > specific region (group/flex_group/blk_range).  The only existing
+> > hack is available in migrate.c where we use goal_inode for
+> > ext4_new_inode().
+> > 
+> > In fact this tend make some specific task very complicated.
+> > For example my e4defrag2 utility try to compact small files from
+> > one group together. In order to allocate blocks from given group
+> > I have to perform number of crazy stuff, such as:
+> > 1) Prepare cache of directories according to it's group (where dir_inode
+> > is placed)
+> > 
+> > 2) Try to allocate local donor file with local blocks (from given group)
+> >   Pseudo code of donor creation procedure :
+> >   int find_donor(int grp, ...) {
+> >       for (i = 0; i = dir_cache[grp].num;i++) {
+> >           fd = openat(dir_cache[grp].fd[i], "donor", O_CREAT|flags,... )
+> >           fstat(fd, &stat);
+> >           if (inode_group(stat->st_ino) != grp)
+> >              goto next_candidate;
+> >           do_falloc(fd, size);
+> >           /* Check that blocks we allocated are belongs to group we want*/
+> >           if (!is_block_local(fd, group))
+> >              goto next_candidate;
+> >           goto found_donor;
+> >          .....
+> >       }
+> >      .....
+> >   }
+> > All this machinery is very ugly, unstable and increase code-base about
+> > 500-700 lines of code. And I want to ask you why we do not have such
+> > API? AFAIR this API was requested several times, but it was rejected.
+> > I do understand that this is not good idea to allow unprivileged user to
+> > manipulate block allocator, but IMHO we can hide it under CAP_RESOURCES
+> > or CAP_ADMIN.
+> > Please tell be your opinion. I'll happy to implement that ioctl.
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
