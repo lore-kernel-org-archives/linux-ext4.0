@@ -1,146 +1,188 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 1/2] Use ext4_ext_next_allocated_block instead of
- mext_next_extent
-Date: Thu, 14 Aug 2014 17:07:36 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1408141705540.2267@localhost.localdomain>
-References: <1407944711-5025-1-git-send-email-dmonakhov@openvz.org> <878umss83j.fsf@openvz.org> <alpine.LFD.2.00.1408141704180.2267@localhost.localdomain>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 1/2] fs/buffer.c: allocate buffer cache from non-movable
+ area
+Date: Thu, 14 Aug 2014 14:22:25 -0700
+Message-ID: <20140814142225.50911fd0a0bf65427a1a214f@linux-foundation.org>
+References: <53EC4531.1000904@lge.com>
+	<53EC45FC.7050508@lge.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1097395591-1408028859=:2267"
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45132 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752323AbaHNPHm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Aug 2014 11:07:42 -0400
-In-Reply-To: <alpine.LFD.2.00.1408141704180.2267@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+	Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, Minchan Kim <minchan@kernel.org>,
+	Joonsoo Kim <js1304@gmail.com>,
+	=?UTF-8?Q?=EC=9D=B4?= =?UTF-8?Q?=EA=B1=B4=ED=98=B8?=
+	<gunho.lee@lge.com>
+To: Gioh Kim <gioh.kim@lge.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <53EC45FC.7050508@lge.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On Thu, 14 Aug 2014 14:15:40 +0900 Gioh Kim <gioh.kim@lge.com> wrote:
 
---8323328-1097395591-1408028859=:2267
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
-
-On Thu, 14 Aug 2014, Luká¨ Czerner wrote:
-
-> Date: Thu, 14 Aug 2014 17:04:32 +0200 (CEST)
-> From: Luká¨ Czerner <lczerner@redhat.com>
-> To: Dmitry Monakhov <dmonakhov@openvz.org>
-> Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-> Subject: Re: [PATCH 1/2] Use ext4_ext_next_allocated_block instead of
->     mext_next_extent
+> A buffer cache is allocated from movable area
+> because it is referred for a while and released soon.
+> But some filesystems are taking buffer cache for a long time
+> and it can disturb page migration.
 > 
-> On Wed, 13 Aug 2014, Dmitry Monakhov wrote:
-> 
-> > Date: Wed, 13 Aug 2014 19:49:20 +0400
-> > From: Dmitry Monakhov <dmonakhov@openvz.org>
-> > To: linux-ext4@vger.kernel.org
-> > Cc: tytso@mit.edu
-> > Subject: Re: [PATCH 1/2] Use ext4_ext_next_allocated_block instead of
-> >     mext_next_extent
-> > 
-> > On Wed, 13 Aug 2014 19:45:10 +0400, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
-> > Sorry this is wrong vesrion. Please ignore this series.
-> 
-> oops :) ok I will
+> A new API should be introduced to allocate buffer cache from
+> non-movable area.
 
-Can you version your patches ? I am not really sure which is the
-last one, even though I can guess by the timestamp.
+I think the API could and should be more flexible than this.
 
-Also I comented on the first patch in this series which you say
-should be ignored, but can you still reply so I do not have to send
-it again to the other version ?
+Rather than making the API be "movable or not movable", let's permit
+callers to specify the gfp_t and leave it at that.  That way, if
+someone later wants to allocate a buffer head with, I dunno,
+__GFP_NOTRACK then they can do so.
 
-Thanks!
--Lukas
+So the word "movable" shouldn't appear in buffer.c at all, except in a
+single place.
 
+> --- a/fs/buffer.c
+> +++ b/fs/buffer.c
+> @@ -993,7 +993,7 @@ init_page_buffers(struct page *page, struct block_device *bdev,
+>   */
+>  static int
+>  grow_dev_page(struct block_device *bdev, sector_t block,
+> -               pgoff_t index, int size, int sizebits)
+> +             pgoff_t index, int size, int sizebits, gfp_t movable_mask)
+
+s/movable_mask/gfp/
+
+>  {
+>         struct inode *inode = bdev->bd_inode;
+>         struct page *page;
+> @@ -1003,7 +1003,8 @@ grow_dev_page(struct block_device *bdev, sector_t block,
+>         gfp_t gfp_mask;
 > 
-> > > This allow to make mext_next_extent static.
-> > > 
-> > > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> > > ---
-> > >  fs/ext4/ext4.h        |    2 --
-> > >  fs/ext4/extents.c     |   18 ++++++------------
-> > >  fs/ext4/move_extent.c |    2 +-
-> > >  3 files changed, 7 insertions(+), 15 deletions(-)
-> > > 
-> > > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> > > index 5b19760..f8d85f7 100644
-> > > --- a/fs/ext4/ext4.h
-> > > +++ b/fs/ext4/ext4.h
-> > > @@ -2739,8 +2739,6 @@ extern void ext4_double_up_write_data_sem(struct inode *orig_inode,
-> > >  extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
-> > >  			     __u64 start_orig, __u64 start_donor,
-> > >  			     __u64 len, __u64 *moved_len);
-> > > -extern int mext_next_extent(struct inode *inode, struct ext4_ext_path *path,
-> > > -			    struct ext4_extent **extent);
-> > >  
-> > >  /* page-io.c */
-> > >  extern int __init ext4_init_pageio(void);
-> > > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> > > index 76c2df3..2e38ecb 100644
-> > > --- a/fs/ext4/extents.c
-> > > +++ b/fs/ext4/extents.c
-> > > @@ -5304,7 +5304,7 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
-> > >  	struct ext4_ext_path *path;
-> > >  	int ret = 0, depth;
-> > >  	struct ext4_extent *extent;
-> > > -	ext4_lblk_t stop_block, current_block;
-> > > +	ext4_lblk_t stop_block;
-> > >  	ext4_lblk_t ex_start, ex_end;
-> > >  
-> > >  	/* Let path point to the last extent */
-> > > @@ -5365,18 +5365,12 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
-> > >  					 (unsigned long) start);
-> > >  			return -EIO;
-> > >  		}
-> > > -
-> > > -		current_block = le32_to_cpu(extent->ee_block);
-> > > -		if (start > current_block) {
-> > > +		if (start > le32_to_cpu(extent->ee_block)) {
-> > >  			/* Hole, move to the next extent */
-> > > -			ret = mext_next_extent(inode, path, &extent);
-> > > -			if (ret != 0) {
-> > > -				ext4_ext_drop_refs(path);
-> > > -				kfree(path);
-> > > -				if (ret == 1)
-> > > -					ret = 0;
-> > > -				break;
-> > > -			}
-> > > +			start = ext4_ext_next_allocated_block(path);
-> > > +			ext4_ext_drop_refs(path);
-> > > +			kfree(path);
-> > > +			continue;
-> > >  		}
-> > >  		ret = ext4_ext_shift_path_extents(path, shift, inode,
-> > >  				handle, &start);
-> > > diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-> > > index 671a74b..123a51b 100644
-> > > --- a/fs/ext4/move_extent.c
-> > > +++ b/fs/ext4/move_extent.c
-> > > @@ -76,7 +76,7 @@ copy_extent_status(struct ext4_extent *src, struct ext4_extent *dest)
-> > >   * ext4_ext_path structure refers to the last extent, or a negative error
-> > >   * value on failure.
-> > >   */
-> > > -int
-> > > +static int
-> > >  mext_next_extent(struct inode *inode, struct ext4_ext_path *path,
-> > >  		      struct ext4_extent **extent)
-> > >  {
-> > > -- 
-> > > 1.7.1
-> > > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>         gfp_mask = mapping_gfp_mask(inode->i_mapping) & ~__GFP_FS;
+> -       gfp_mask |= __GFP_MOVABLE;
+> +       if (movable_mask & __GFP_MOVABLE)
+> +               gfp_mask |= __GFP_MOVABLE;
+
+This becomes
+
+	gfp_mask |= gfp;
+
+>         /*
+>          * XXX: __getblk_slow() can not really deal with failure and
+>          * will endlessly loop on improvised global reclaim.  Prefer
+> @@ -1058,7 +1059,8 @@ failed:
+>   * that page was dirty, the buffers are set dirty also.
+>   */
+>  static int
+> -grow_buffers(struct block_device *bdev, sector_t block, int size)
+> +grow_buffers(struct block_device *bdev, sector_t block,
+> +            int size, gfp_t movable_mask)
+
+gfp
+
+>  {
+>         pgoff_t index;
+>         int sizebits;
+> @@ -1085,11 +1087,12 @@ grow_buffers(struct block_device *bdev, sector_t block, int size)
+>         }
 > 
---8323328-1097395591-1408028859=:2267--
+>         /* Create a page with the proper size buffers.. */
+> -       return grow_dev_page(bdev, block, index, size, sizebits);
+> +       return grow_dev_page(bdev, block, index, size, sizebits, movable_mask);
+>  }
+> 
+>  static struct buffer_head *
+> -__getblk_slow(struct block_device *bdev, sector_t block, int size)
+> +__getblk_slow(struct block_device *bdev, sector_t block,
+> +             int size, gfp_t movable_mask)
+
+gfp
+
+>  {
+>         /* Size must be multiple of hard sectorsize */
+>         if (unlikely(size & (bdev_logical_block_size(bdev)-1) ||
+> @@ -1111,7 +1114,7 @@ __getblk_slow(struct block_device *bdev, sector_t block, int size)
+>                 if (bh)
+>                         return bh;
+> 
+> -               ret = grow_buffers(bdev, block, size);
+> +               ret = grow_buffers(bdev, block, size, movable_mask);
+
+gfp
+
+>                 if (ret < 0)
+>                         return NULL;
+>                 if (ret == 0)
+> @@ -1385,11 +1388,34 @@ __getblk(struct block_device *bdev, sector_t block, unsigned size)
+> 
+>         might_sleep();
+>         if (bh == NULL)
+> -               bh = __getblk_slow(bdev, block, size);
+> +               bh = __getblk_slow(bdev, block, size, __GFP_MOVABLE);
+
+Here is the place where buffer.c. mentions "movable".
+
+>         return bh;
+>  }
+>  EXPORT_SYMBOL(__getblk);
+> 
+> + /*
+> + * __getblk_nonmovable will locate (and, if necessary, create) the buffer_head
+> + * which corresponds to the passed block_device, block and size. The
+> + * returned buffer has its reference count incremented.
+> + *
+> + * The page cache is allocated from non-movable area
+> + * not to prevent page migration.
+> + *
+> + * __getblk()_nonmovable will lock up the machine
+> + * if grow_dev_page's try_to_free_buffers() attempt is failing. FIXME, perhaps?
+> + */
+> +struct buffer_head *
+> +__getblk_nonmovable(struct block_device *bdev, sector_t block, unsigned size)
+> +{
+> +       struct buffer_head *bh = __find_get_block(bdev, block, size);
+> +
+> +       might_sleep();
+> +       if (bh == NULL)
+> +               bh = __getblk_slow(bdev, block, size, 0);
+> +       return bh;
+> +}
+> +EXPORT_SYMBOL(__getblk_nonmovable);
+
+Suggest this be called __getblk_gfp(bdev, block, size, gfp) and then
+__getblk() be changed to call __getblk_gfp(..., __GFP_MOVABLE).
+
+We could then write a __getblk_nonmovable() which calls __getblk_gfp()
+(a static inlined one-line function) or we can just call
+__getblk_gfp(..., 0) directly from filesystems.
+
+> @@ -1423,6 +1450,28 @@ __bread(struct block_device *bdev, sector_t block, unsigned size)
+>  }
+>  EXPORT_SYMBOL(__bread);
+> 
+> +/**
+> + *  __bread_nonmovable() - reads a specified block and returns the bh
+> + *  @bdev: the block_device to read from
+> + *  @block: number of block
+> + *  @size: size (in bytes) to read
+> + *
+> + *  Reads a specified block, and returns buffer head that contains it.
+> + *  The page cache is allocated from non-movable area
+> + *  not to prevent page migration.
+> + *  It returns NULL if the block was unreadable.
+> + */
+> +struct buffer_head *
+> +__bread_nonmovable(struct block_device *bdev, sector_t block, unsigned size)
+> +{
+> +       struct buffer_head *bh = __getblk_slow(bdev, block, size, 0);
+> +
+> +       if (likely(bh) && !buffer_uptodate(bh))
+> +               bh = __bread_slow(bh);
+> +       return bh;
+> +}
+> +EXPORT_SYMBOL(__bread_nonmovable);
+
+Treat this in the same fashion as __getblk_nonmovable().
