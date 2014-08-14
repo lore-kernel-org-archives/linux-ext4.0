@@ -1,72 +1,61 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: include journal blocks of internal journal in df
- overhead calcs
-Date: Wed, 13 Aug 2014 20:21:00 -0700
-Message-ID: <53EC2B1C.1090806@redhat.com>
-References: <1407937043-23186-1-git-send-email-chintzung@gmail.com>
+From: Gioh Kim <gioh.kim@lge.com>
+Subject: [PATCH 0/2] new APIs to allocate buffer-cache for superblock in non-movable
+ area
+Date: Thu, 14 Aug 2014 14:12:17 +0900
+Message-ID: <53EC4531.1000904@lge.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=EUC-KR
 Content-Transfer-Encoding: 7bit
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Chin-Tsung Cheng <chintzung@gmail.com>, tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40699 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752042AbaHNDVH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Aug 2014 23:21:07 -0400
-In-Reply-To: <1407937043-23186-1-git-send-email-chintzung@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Minchan Kim <minchan@kernel.org>, Joonsoo Kim <js1304@gmail.com>,
+	=?EUC-KR?B?wMywx8ij?= <gunho.lee@lge.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+	Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 8/13/14, 6:37 AM, Chin-Tsung Cheng wrote:
-> The journal blocks of external journal device should not
-> be counted as overhead.
-> 
-> Signed-off-by: Chin-Tsung Cheng <chintzung@gmail.com>
+Hello,
 
-Yep, I added this and didn't consider external journals, oops.	
+This patch try to solve problem that a long-lasting page caches of
+ext4 superblock and journaling of superblock disturb page migration.
 
-Agree with Darrick that whitespace (and parens) aren't ideal...
+I've been testing CMA feature on my ARM-based platform
+and found that two page caches cannot be migrated.
+They are page caches of superblock of ext4 filesystem and its journaling data.
 
-Is this a shorter test?
+Current ext4 reads superblock with sb_bread() that allocates page
+from movable area. But the problem is that ext4 hold the page until
+it is unmounted. If root filesystem is ext4 the page cannot be migrated forever.
+And also the journaling data for the superblock cannot be migreated.
 
-	if (sbi->s_journal && !sbi->journal_bdev) {
-		overhead += EXT4_NUM_B2C(sbi, sbi->s_journal->j_maxlen);
+I introduce a new API for allocating page cache from non-movable area.
+It is useful for ext4/ext3 and others that want to hold page cache for a long time.
 
+I have 3 patchs:
 
-*sbi gets kzalloced and I *think* journal_bdev is only filled in for
-external journals...
+1. Patch 1/3: introduce a new API that create page cache from non-movable area
+2. Patch 2/3: have ext4 use the new API to read superblock
+3. Patch 3/3: have jbd/jbd2 use the new API to make journaling of superblock
 
-ext3_statfs probably needs the same treatment, it unconditionally does:
+This patchset is based on linux-next-20140814.
 
+Thanks a lot.
 
-                /* Add the journal blocks as well */
-                overhead += sbi->s_journal->j_maxlen;
+Gioh Kim (3):
+ fs/buffer.c: allocate buffer cache from non-movable area
+ ext4: allocate buffer-cache for superblock in non-movable area
+ jbd-jbd2-allocate-buffer-cache-for-superblock-inode-.patch
 
--Eric
-
-> ---
->  fs/ext4/super.c | 7 ++++---
->  1 file changed, 4 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 32b43ad..03b2f62 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -3316,9 +3316,10 @@ int ext4_calculate_overhead(struct super_block *sb)
->  			memset(buf, 0, PAGE_SIZE);
->  		cond_resched();
->  	}
-> -	/* Add the journal blocks as well */
-> -	if (sbi->s_journal)
-> -		overhead += EXT4_NUM_B2C(sbi, sbi->s_journal->j_maxlen);
-> +	/* Add the internal journal blocks as well */
-> +	if ((sbi->s_journal) &&
-> +		(sbi->s_journal->j_fs_dev == sbi->s_journal->j_dev))
-> +			overhead += EXT4_NUM_B2C(sbi, sbi->s_journal->j_maxlen);
->  
->  	sbi->s_overhead = overhead;
->  	smp_wmb();
-> 
+ fs/buffer.c                 |   63 ++++++++++++++++++++++++++++++----
+ fs/ext4/super.c             |    6 +--
+ fs/jbd/journal.c            |    2 -
+ fs/jbd2/journal.c           |    2 -
+ include/linux/buffer_head.h |   10 +++++
+ 5 files changed, 71 insertions(+), 12 deletions(-)
 
