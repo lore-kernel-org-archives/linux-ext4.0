@@ -1,354 +1,185 @@
-From: Li Xi <pkuelelixi@gmail.com>
-Subject: Re: [PATCH v2 0/4] quota: add project quota support
-Date: Thu, 14 Aug 2014 09:34:55 +0800
-Message-ID: <CAPTn0cAqLGVJpx9eUhpAyOgFHFx1e5aKHcJpDwOgUaoVEGUB1g@mail.gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: journal_checksum_v2 on-disk format change? (was: Re: journal
+ recovery problems with metadata_csum, *non-64bit*)
+Date: Wed, 13 Aug 2014 18:56:38 -0700
+Message-ID: <20140814015638.GL2808@birch.djwong.org>
+References: <BLU437-SMTP3407533C3883653626BD3DFDEC0@phx.gbl>
+ <20140811071025.GE19223@birch.djwong.org>
+ <20140811192529.GG2808@birch.djwong.org>
+ <BLU436-SMTP123C75E96D9A42B3CA66A12FDEA0@phx.gbl>
+ <20140812170826.GH2808@birch.djwong.org>
+ <5DA9CA9E-9DAE-4279-A706-9D895FA0CF70@dilger.ca>
+ <20140813225358.GB11105@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"hch@infradead.org" <hch@infradead.org>, Jan Kara <jack@suse.cz>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: TR Reardon <thomas_reardon@hotmail.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ig0-f171.google.com ([209.85.213.171]:63477 "EHLO
-	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751984AbaHNBez (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Aug 2014 21:34:55 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:22697 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753082AbaHNB4o (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Aug 2014 21:56:44 -0400
+Content-Disposition: inline
+In-Reply-To: <20140813225358.GB11105@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 13, 2014 at 9:22 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Wed, Aug 13, 2014 at 10:32:31AM +0800, Li Xi wrote:
->> Yeah, we were using non-journaled quota. And we were doing this
->> benchmark to confirm that xattr based implementation has extra
->> overhead. We will run benchmarks on journaled-quota, and let's see
->> what is the performance difference between non-journaled and
->> journaled quotas.
->
-> Can you give a lot of details about exactly how you ran the benchmark
-> (and run future benchmarks)?  Was this on a ramdisk?  An SSD?  A HDD?
-> How many CPU's, how many threads were creating files, etc.  And do you
-> understand where the performance overhead was coming from?  Was it CPU
-> overhead?  Locking overhead?
->
-> It just doesn't make sense that storing the value in the xattr, when
-> the xattr is stored in the on-disk inode, that it should make a huge
-> difference; the cost of the I/O should completely dominate the cost of
-> whether we format the bytes as an integer or storing it in the
-> in-inode xattr.  So either there is a bug in the benchmark, or a bug
-> in our code somewhere.  Either way, we should find and fix it.
-All these tests were running on following environment:
+On Wed, Aug 13, 2014 at 03:53:58PM -0700, Darrick J. Wong wrote:
+> On Wed, Aug 13, 2014 at 11:35:50PM +0200, Andreas Dilger wrote:
+> > Doesn't a larger journal_tag_bytes() size mean more overhead for
+> > the journal?
+> 
+> Yes.  If we move to a 16-byte block tag:
+> 
+> typedef struct journal_block_tag3_s
+> {
+> 	__u32		t_blocknr;	/* The on-disk block number */
+> 	__u32		t_flags;	/* See below */
+> 	__u32		t_blocknr_high; /* most-significant high 32bits. */
+> 	__u32		t_checksum;	/* crc32c(uuid+seq+block) */
+> } journal_block_tag3_t;
+> 
+> Notice that this fixes the alignment problem due to the v2 bug -- tag 2 starts
+> with a 4-byte field at offset 14.
+> 
+> For a 32-bit FS with 4K blocks and a 32768 block journal, I found through
+> experimentation that if I fill the journal with nothing but journal blocks
+> (i.e. no revoke blocks), overhead increases by 264 blocks, or 0.8%.  For a
+> 64-bit FS with the same parameters, the increase is 136 blocks, or 0.4%.
+> 
+> I'm hoping that a <1% increase won't discourage people. :)
 
-Kernel: 3.16.0-rc5
-Server: Dell R620 (2 x E5-2667@3.3GHz, 16 CPU cores, 256GB memory(1866MHz))
-Storage: Dothill 3730(10 x 15K RPM SAS, RAID1+0, 2GB RAID Cache, 8Gbps FC)
-Test tool: mdtest-1.9.3. Mdtest created 800K files in total. Each
-thread created files in unique directory.
+Nuts, those figures are for 1k block filesystems.  For a FS with 4k blocks,
+storing 16384 blocks in the journal required this many blocks:
 
-And we are using default settings of ext4, execept journal size is set
-to 4GB. Following is the output of dumpe2fs:
+16450 for 64bit journal_csum_v3
+16450 for 32bit journal_csum_v3 (assuming I reuse the tag3 structure as-is)
 
-Filesystem volume name:   <none>
-Last mounted on:          <not available>
-Filesystem UUID:          98b77829-6154-4c5f-a0a5-da1306e82d8d
-Filesystem magic number:  0xEF53
-Filesystem revision #:    1 (dynamic)
-Filesystem features:      has_journal ext_attr resize_inode dir_index
-filetype extent flex_bg sparse_super large_file huge_file uninit_bg
-dir_nlink extra_isize
-Filesystem flags:         signed_directory_hash
-Default mount options:    user_xattr acl
-Filesystem state:         clean
-Errors behavior:          Continue
-Filesystem OS type:       Linux
-Inode count:              6111232
-Block count:              24414048
-Reserved block count:     1220702
-Free blocks:              22966646
-Free inodes:              6111221
-First block:              0
-Block size:               4096
-Fragment size:            4096
-Reserved GDT blocks:      1018
-Blocks per group:         32768
-Fragments per group:      32768
-Inodes per group:         8192
-Inode blocks per group:   512
-RAID stripe width:        256
-Flex block group size:    16
-Filesystem created:       Wed Aug 13 23:52:54 2014
-Last mount time:          n/a
-Last write time:          Wed Aug 13 23:52:57 2014
-Mount count:              0
-Maximum mount count:      -1
-Last checked:             Wed Aug 13 23:52:54 2014
-Check interval:           0 (<none>)
-Lifetime writes:          4104 MB
-Reserved blocks uid:      0 (user root)
-Reserved blocks gid:      0 (group root)
-First inode:              11
-Inode size:              256
-Required extra isize:     28
-Desired extra isize:      28
-Journal inode:            8
-Default directory hash:   half_md4
-Directory Hash Seed:      96a5bb0c-3fcf-4114-bba3-049f15a2d8f4
-Journal backup:           inode blocks
-Journal features:         (none)
-Journal size:             4096M
-Journal length:           1048576
-Journal sequence:         0x00000001
-Journal start:            0
+16442 for 64bit journal_csum_v2
+16426 for 32bit journal_csum_v2
 
-We did several rounds of file creation and removal:
-1) vanilla kernel
- 1a) diabling quota
- 1b) enabling user/group quota
+16434 for 64bit journal_csum_v1
+16418 for 32bit journal_csum_v1
 
-2) vanilla kernel with remove-dqptr_sem patches
- 2a) diabling quota
- 2b) enabling user/group quota
+16434 for 64bit none
+16418 for 32bit none
 
-3) kernel with xattr based project quota
- 3a) diabling quota
- 3b) enabling user/group quota
- 3c) enabling user/group/project quota
+So for 32-bit FSes, the extra overhead to go from no journal checksumming at
+all to v3 checksums is 0.2%.  For 64-bit FSes, the extra overhead is 0.1%.
 
-4) kernel with remove-dqptr_sem patches as well as xattr based project quota
- 4a) diabling quota
- 4b) enabling user/group quota
- 4c) enabling user/group/project quota
+The overhead to move a 32-bit v2 FS to a v3 FS is 0.1%, and for a 64-bit FS
+it's 0.05%.
 
-5) kernel with remove-dqptr_sem patches as well as inode-internal project
-quota
- 5a) diabling quota
- 5b) enabling user/group quota
- 5c) enabling user/group/project quota
+Also, for those watching at home, I fixed the infinite loop on journal block
+checksum failure that someone complained about months ago.
 
-6) kernel with remove-dqptr_sem patches as well as xattr based project quota,
- but skipped writing the project ID xattr onto disk.
- 6a) diabling quota
- 6b) enabling user/group quota
- 6c) enabling user/group/project quota
+--D
 
-7) kernel with remove-dqptr_sem patches, but test in a directory with
-default ACL. That means file creation will have to inherit ACL xattr from
-the directory too.
- 7a) diabling quota
- 7b) enabling user/group quota
-
-
-We got following conclusion:
-
-A) The results of 1a) and 1b) shows that quota enforcement brings
-significant performance regression, especially to file removal, if
-remove-dqptr_sem patches are not landed.
-
-B) The results of 1b) and 2b) shows that remove-dqptr_sem patches indeed
-improves performance when quota is enabled.
-
-C) The results of 2a) and 2b) shows that remove-dqptr_sem patches elimits
-the overhead of enforcing quota.
-
-D) The results of 3a) and 1a) shows that xattr based quota brings
-significant performance regression to file creation. Even the quota
-enforcement is disabled, the iheriting of project ID harms the
-performance.
-
-E) The results of 3b) and 2b) confirms D).
-
-F) The results of 3c) and 3b) shows that extra quota enforcement
-brings performance regression both to file creation and removal, if
-remove-dqptr_sem patches are not landed.
-
-G) The results of 4b) and 3b) confirms B).
-
-H) The results of 4a), 4b) and 4c) confirms C). Extra quota enforcement
-does not necessarily harms performance if remove-dqptr_sem patches
-are landed.
-
-I) The results of 4c) and 3c) confirms C).
-
-J) The results of 5a) and 4a) shows that inode-internal based project ID
-improves performance, especially for file creation. Since the quota
-enforcement is not disabled, the overhead of inheriting project ID harms
-the performance of 4a).
-
-K) The results of 5b) and 4b) confirms J).
-
-L) The results of 5c) and 4c) confirms J).
-
-M) The results of 6) and 4) confirms saving xattr of project ID is the main
-cause of the performance regression.
-
-N) The result of 7) and 2) shows that iheriting default ACL
-causes performance regression for file creation. This result confirms M).
-
-
-Following are the test results:
-File Creation:
-                     1thr     2thr     4thr     8thr    16thr
-1) vanilla
-1a) quota disabled  66094   105781   178968   186647   172536
-1b) quotaon(ug)     60337    99582   157396   171463   162872
-
-2) vanilla + remove-dqptr_sem patches
-2a) quota disabled  65955   112082   185550   181511   171988
-2b) quotaon(ug)     62391   101905   171013   190570   168914
-
-3) prjquota(xattr)
-3a) quota disabled  61396    97580   147852   146423   164895
-3b) quotaon(ug)     57009    93435   140589   135748   153196
-3c) quotaon(ugP)    57500    89419   133604   125291   105127
-
-4) prjquota(xattr) + remove-dqptr_sem patches
-4a) quota disabled  64053   100078   147608   139403   163960
-4b) quotaon(ug)     60754   104726   149231   139053   165990
-4c) quotaon(ugP)    59238    93606   148921   138434   163931
-
-5) prjquota(internal) + remove-dqptr_sem patches
-5a) quota disabled  65826   111828   181486   189227   171241
-5b) quotaon(ug)     65418   107745   173584   180562   173752
-5c) quotaon(ugP)    64669   103890   169176   186426   172192
-
-6) prjquota(xattr) + remove-dqptr_sem patches + skip xattr saving
-6a) quota disabled  68590   112022   181028   185626   174231
-6b) quotaon(ug)     58189    99716   167318   179360   180188
-6c) quotaon(ugP)    59049    99110   172885   181841   172034
-
-7) vanilla + remove-dqptr_sem patches + in directory with default ACL
-7a) quota disabled  63630   103930   134828   114534   137676
-7b) quotaon(ug)     62274    93960   130317   111247   138620
-
-File Removal:
-                     1thr     2thr     4thr     8thr    16thr
-1) vanilla
-1a) quota disabled 118059   169825   234661   291812   345656
-1b) quotaon(ug)    106675   135834   153532   100437    87489
-
-2) vanilla + remove-dqptr_sem patches
-2a) quota disabled 120374   168437   236818   291754   331141
-2b) quotaon(ug)    110709   161954   238333   293700   329015
-
-3) prjquota(xattr)
-3a) quota disabled 116680   161662   229190   295642   332959
-3b) quotaon(ug)    104783   134359   154950   100516    87923
-3c) quotaon(ugP)   100240   125978   108653    68286    58991
-
-4) prjquota(xattr) + remove-dqptr_sem patches
-4a) quota disabled 116281   168938   233733   286663   344002
-4b) quotaon(ug)    109775   164995   236001   299389   340683
-4c) quotaon(ugP)   113935   162979   236112   300033   356117
-
-5) prjquota(internal) + remove-dqptr_sem patches
-5a) quota disabled 119537   171565   247418   291068   350138
-5b) quotaon(ug)    121756   159580   240778   298012   342437
-5c) quotaon(ugP)   118954   168022   241206   289055   334008
-
-6) prjquota(xattr) + remove-dqptr_sem patches + skip xattr saving
-6a) quota disabled 120573   170316   239318   300070   344562
-6b) quotaon(ug)    102690   156876   233259   302307   330111
-6c) quotaon(ugP)   104816   161109   239573   294188   332578
-
-7) vanilla + remove-dqptr_sem patches + in directory with default ACL
-7a) quota disabled 123580   173847   246271   302456   335549
-7b) quotaon(ug)    115557   156577   236049   305340   339873
-
-
-115557   156577   236049   305340   339873
-
-Following is the script we used to get result 3), 4), 5) and 6). (Please
-note that we wrote a xattr interface for inode-internal implementation too.
-That is why we are able to use this script to get result of 5).)
---
-#!/bin/sh
-
-export PATH=/work/tools/openmpi-1.6.2/bin:/usr/local/projquota/bin:/usr/local/projquota/sbin:$PATH
-export LD_LIBRARY_PATH=/work/tools/openmpi-1.6.2/lib/
-NFILES=800000
-DIR=/mnt/ext4/testdir/
-DEV=/dev/mapper/LUN01
-MNTPT=/mnt/ext4
-MPIRUN="mpirun -mca btl ^openib"
-USER_ID=1000
-PROJ_ID=1000
-
-do_mount()
-{
-    local opts="$1"
-
-    sudo sh -c "sync; echo 3 > /proc/sys/vm/drop_caches"
-    sudo umount $MNTPT
-    sudo sh -c "echo y | mkfs.ext4 -J size=4096 $DEV"
-    sudo mount -t ext4 $DEV $opts $MNTPT
-    sudo mkdir $DIR
-    #sudo setfacl -m d:user1:--- $DIR
-    sudo chmod 777 $DIR
-}
-
-quota_on()
-{
-    local opts="$1"
-
-    sudo -i quotacheck $opts $MNTPT
-    sudo -i quotaon $opts $MNTPT
-}
-
-run_pretest()
-{
-    local logfile=$1
-    local opts=$2
-    local nfiles=1000
-
-    $MPIRUN -np 1 ./mdtest -n $nfiles -u -i 1 -F -C -d $DIR
-    echo "#### quota $opts after file creation ####" > $logfile 2>&1
-    sudo -i quota $opts >> $logfile 2>&1
-    $MPIRUN -np 1 ./mdtest -n $nfiles -u -i 1 -F -r -d $DIR
-    echo "#### quota $opts after file removal ####" >> $logfile 2>&1
-    sudo -i quota $opts >> $logfile 2>&1
-}
-
-run_mdtest()
-{
-    local logfile=$1
-
-    for n in 1 2 4 8 16; do
-        nfiles=$((NFILES/n))
-        $MPIRUN -np $n ./mdtest -n $nfiles -u -i 5 -F -d $DIR >> $logfile 2>&1
-    done
-}
-
-# test with disabled quota
-test_disable_quota()
-{
-    do_mount
-    run_mdtest mdtest-disable-noopt.log
-}
-
-# test with enabled quota, but only user/group quota enforced
-test_enable_quota_ug()
-{
-    do_mount "-o usrquota,grpquota"
-    quota_on "-ug"
-    sudo -i setquota -u $USER_ID 0 0 0 0 $MNTPT
-    run_pretest "mdtest-enable-ug.log" "-vu $USER_ID"
-    run_mdtest mdtest-enable-ug.log
-}
-
-# test with enabled quota and enforced project quota as well as user/group quota
-test_enable_quota_ugP()
-{
-    do_mount "-o usrquota,grpquota,prjquota"
-    quota_on "-ugP"
-    sudo -i setfattr -n "system.project" -v $PROJ_ID $DIR
-    sudo -i setquota -P $PROJ_ID 0 0 0 0 $MNTPT
-    run_pretest "mdtest-enable-ugP.log" "-vP $PROJ_ID"
-    run_mdtest mdtest-enable-ugP.log
-}
-
-sudo sh -c ./tune.sh
-
-test_disable_quota
-test_enable_quota_ug
-test_enable_quota_ugP
+> 
+> --D
+> > 
+> > Cheers, Andreas
+> > 
+> > > On Aug 12, 2014, at 19:08, "Darrick J. Wong" <darrick.wong@oracle.com> wrote:
+> > > 
+> > >> On Tue, Aug 12, 2014 at 01:39:35AM -0400, TR Reardon wrote:
+> > >>> On 8/11/14, Darrick J. Wong <darrick.wong@oracle.com> wrote:
+> > >>> Hi all,
+> > >>> 
+> > >>> Mr. Reardon has discovered that due to a bug in journal_tag_bytes(), if the
+> > >>> the
+> > >>> "journal csum v2" feature flag is turned on, block tag records are being
+> > >>> written with two extra bytes of space because we don't need to execute
+> > >>> "x += sizeof(tag.t_checksum);".  In 32-bit mode, other parts of the journal
+> > >>> then perform incorrect size comparisons, leading to BUG() being called.  In
+> > >>> 64-bit mode, there's enough padding that bad things won't happen.
+> > >>> 
+> > >>> This is a remnant of the days when I tried to enlarge journal_block_tag_t
+> > >>> to
+> > >>> hold the full 32-bit checksum for a data block that's stored in the
+> > >>> journal.
+> > >>> Back in 2011, we decided (though sadly I can't find the link; I think we
+> > >>> might
+> > >>> have discussed this in the concall) that it was better not to change the
+> > >>> size
+> > >>> of journal_block_tag_t than it was to make it bigger so that it could hold
+> > >>> the
+> > >>> full checksum.
+> > >>> 
+> > >>> A simple fix for the problem has been proposed by Mr. Reardon which fixes
+> > >>> journal_tag_bytes() and leaves everything else unchanged.  However, that is
+> > >>> technically a disk format change since the size of journal_block_tag_t on
+> > >>> disk
+> > >>> changes, albeit only for people running experimental metadata_csum
+> > >>> filesystems.
+> > >>> Since we've been allocating disk space for the enlarged checksum this whole
+> > >>> time, if we apply that patch, anyone with an unclean 64bit FS will not be
+> > >>> able
+> > >>> to recover the journal.  (Anyone with an unclean 32-bit FS has been broken
+> > >>> the
+> > >>> whole time, and still will be.)
+> > >>> 
+> > >>> The other thing we could do is actually use the two bytes to store the high
+> > >>> 16-bits of the checksum, fix the jbd2 helper functions to reflect that
+> > >>> reality
+> > >>> (so that they don't BUG()), and change the checksum verify routine to pass
+> > >>> the
+> > >>> block if either the full checksum matches, or if the lower 16 bits match
+> > >>> and
+> > >>> the upper 16 bits are zero.  With this route, anybody with an uncleanly
+> > >>> unmounted FS could still recover the journal, since we're not changing the
+> > >>> size
+> > >>> of anything.
+> > >>> 
+> > >>> Fortunately, journal tag blocks are fairly ephemeral and nobody ought to be
+> > >>> using metadata_csum on a production filesystem, so at this point we can
+> > >>> probably change the disk format without too many repercussions.  If you
+> > >>> make
+> > >>> sure to cleanly unmount the filesystem when changing kernel/e2fsprogs
+> > >>> versions,
+> > >>> there will be no problems.
+> > >>> 
+> > >>> So, uh... comments?  How should we proceed?
+> > >>> 
+> > >>> --D
+> > >> 
+> > >> My only concern is that legacy applies to in-the-wild kernels, not
+> > >> just journals.  Any post 3.4 kernel has this problem, which will be
+> > >> exposed as soon as e2fsprogs 1.43 is released.  A common (enough) use
+> > >> case might be, say, a 2TB USB drive, being unplugged and replugged
+> > >> across machines  without proper shutdown.  Old machines will think
+> > >> they recognize the journal but don't actually, and replay something
+> > >> destructive.
+> > >> 
+> > >> In other words, this is a future-retro problem.  The problem is not so
+> > >> much with existing fs experimenting with metadata_csum, but a future
+> > >> properly-journaled drive being plugged into an legacy faulty machine.
+> > >> Those incompat flags are supposed to protect against just this
+> > >> scenario, but won't.  So perhaps you'll need make a new
+> > >> "INCOMPAT_CSUM_V3" flag to protect?  Actually, dwelling on this a bit
+> > >> today, I think whether or not you retain those 2 extra checksum bytes
+> > >> in final fix, you ought use a new flag for the format.
+> > > 
+> > > Definitely we need a new bit to keep the old kernels out; I wanted others to
+> > > weigh in on whether we ought to shrink the struct or put the two bytes to use.
+> > > 
+> > > That said... journal recovery is not so well tested, so I'm currently busy
+> > > building out debugfs to create journal transactions so we can test recovery
+> > > both with and without *_csum.
+> > > 
+> > > --D
+> > >> 
+> > >> +Reardon
+> > >> --
+> > >> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > >> the body of a message to majordomo@vger.kernel.org
+> > >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
