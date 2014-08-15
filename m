@@ -1,54 +1,37 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 0/2] new APIs to allocate buffer-cache for superblock in
- non-movable area
-Date: Thu, 14 Aug 2014 14:26:10 -0700
-Message-ID: <20140814142610.6f0d4194c373fef188870772@linux-foundation.org>
-References: <53EC4531.1000904@lge.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, Minchan Kim <minchan@kernel.org>,
-	Joonsoo Kim <js1304@gmail.com>,
-	=?UTF-8?Q?=EC=9D=B4?= =?UTF-8?Q?=EA=B1=B4=ED=98=B8?=
-	<gunho.lee@lge.com>
-To: Gioh Kim <gioh.kim@lge.com>
+From: Chin-Tsung Cheng <chintzung@gmail.com>
+Subject: [PATCH v2] ext4: include journal blocks of internal journal in df overhead calcs
+Date: Fri, 15 Aug 2014 14:42:51 +0800
+Message-ID: <1408084971-1456-1-git-send-email-chintzung@gmail.com>
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Chin-Tsung Cheng <chintzung@gmail.com>
+To: tytso@mit.edu
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <53EC4531.1000904@lge.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 14 Aug 2014 14:12:17 +0900 Gioh Kim <gioh.kim@lge.com> wrote:
+The journal blocks of external journal device should not
+be counted as overhead.
 
-> This patch try to solve problem that a long-lasting page caches of
-> ext4 superblock and journaling of superblock disturb page migration.
-> 
-> I've been testing CMA feature on my ARM-based platform
-> and found that two page caches cannot be migrated.
-> They are page caches of superblock of ext4 filesystem and its journaling data.
-> 
-> Current ext4 reads superblock with sb_bread() that allocates page
-> from movable area. But the problem is that ext4 hold the page until
-> it is unmounted. If root filesystem is ext4 the page cannot be migrated forever.
-> And also the journaling data for the superblock cannot be migreated.
-> 
-> I introduce a new API for allocating page cache from non-movable area.
-> It is useful for ext4/ext3 and others that want to hold page cache for a long time.
+Signed-off-by: Chin-Tsung Cheng <chintzung@gmail.com>
+---
+ fs/ext4/super.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-All seems reasonable to me.  The additional overhead in buffer.c from
-additional function arguments is regrettable but I don't see a
-non-hacky alternative.
-
-
-One vital question which the changelog doesn't really address (it
-should): how important is this patch?  Is your test system presently
-"completely dead in the water utterly unusable" or "occasionally not
-quite as good as it could be".  Somewhere in between?
-
-See, the patch adds costs.  I'd like us to have a good understanding of
-what benefits it brings.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 32b43ad..a80b122 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3316,8 +3316,8 @@ int ext4_calculate_overhead(struct super_block *sb)
+ 			memset(buf, 0, PAGE_SIZE);
+ 		cond_resched();
+ 	}
+-	/* Add the journal blocks as well */
+-	if (sbi->s_journal)
++	/* Add the internal journal blocks as well */
++	if (sbi->s_journal && !sbi->journal_bdev)
+ 		overhead += EXT4_NUM_B2C(sbi, sbi->s_journal->j_maxlen);
+ 
+ 	sbi->s_overhead = overhead;
+-- 
+1.9.3
