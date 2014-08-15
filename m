@@ -1,46 +1,42 @@
-From: "GVA Abogados." <o.nyvlt@post.cz>
-Subject: Transaction XLK-14-TTF/ESP.
-Date: Fri, 15 Aug 2014 15:36:07 +0200
-Message-ID: <e67c722c0a1c9ab2e433f8853687c1dc__1026.95081518522$1408110898$gmane$org@i-net.ro>
-Reply-To: gvaintencia@aim.com
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: 2014 Linux Plumbers Call for File and Storage Systems Microconference
+ Proposals
+Date: Fri, 15 Aug 2014 16:30:21 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1408151618160.2220@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII;
- format=flowed
-Content-Transfer-Encoding: 7bit
-To: undisclosed-recipients:;
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from p2.i-net.ro ([193.230.184.10]:16649 "EHLO
-	mail.comtelnetworks.ro" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751104AbaHONx6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Aug 2014 09:53:58 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Ric Wheeler <rwheeler@redhat.com>, Hannes Reinecke <hare@suse.de>
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, linux-btrfs@vger.kernel.org,
+	util-linux@vger.kernel.org
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Dear Friend,
+Submission for Microconferences discussion topics and BOFs are now open [1]
+and as a File and Storage Systems [2] microconference leads we'd like to
+invite you to submit your proposals.
 
-                  Please acknowledge and accept my proposal.
+You can find the instructions on how to propose a discussion topic here:
 
-My name is Barrister Miguel Martinez Moreno, an Attorney at Law, in 
-Alicante-Spain.
+http://www.linuxplumbersconf.org/2014/how-to-submit-microconference-discussions-topics/
 
-I am writing to notify you of the unclaimed inheritance deposit of our 
-late client, who passed on to Great beyond on August 21st, 2010 in a 
-motor accident in auto pista de Alcala Del Henares, Madrid-Spain.
+The Linux Plumbers Conference has officially sold out all of the places, so
+we encourage submissions for our file and storage microconference from people
+who have already registered.  We will work to get exceptionally compelling
+session leaders registered, but our ability is limited, so please submit your
+topics early.
 
-I got your name and email address through a web search engine in my 
-quest to get a reliable individual who shall work with me in claiming 
-this inheritance deposit since all my efforts to get the biological 
-relative has proved abortive.
+Deadline for submissions is Friday, August 30th at midnight and we will
+announce the topics on Monday, September 1st.
 
-Conclusively, I await your urgent response to include the following :( 
-1).Your full Names & Address. (2).Your Telephone and Fax numbers. 
-(3).Your business name if any: for more information on how to release 
-the inheritance deposit, amount, procedure and legality of this claim 
-send me an email via: gva_abogados@aim.com
+If you have any questions, please let us know.
 
-Have a very nice day my friend!
+Thanks!
+-Lukas
 
-Regards,
-Miguel Martinez Moreno (Esq)
-Attorney At Law.
-gvaintencia@aim.com
+-- 
+[1] http://www.linuxplumbersconf.org/2014/submissions-for-microconferences-discussion-topics-and-bofs-are-now-open/
+[2] http://www.linuxplumbersconf.org/2014/ocw/events/LPC2014/tracks/303
+[3] http://www.linuxplumbersconf.org/2014/how-to-submit-microconference-discussions-topics/
+[4] http://wiki.linuxplumbersconf.org/2014:file_and_storage_systems
