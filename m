@@ -1,38 +1,46 @@
-From: Chin-Tsung Cheng <chintzung@gmail.com>
-Subject: [PATCH] ext3: Count internal journal as bsddf overhead in ext3_statfs
-Date: Fri, 15 Aug 2014 15:49:31 +0800
-Message-ID: <1408088971-3221-1-git-send-email-chintzung@gmail.com>
-Cc: akpm@linux-foundation.org, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Chin-Tsung Cheng <chintzung@gmail.com>
-To: jack@suse.cz
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "GVA Abogados." <o.nyvlt@post.cz>
+Subject: Transaction XLK-14-TTF/ESP.
+Date: Fri, 15 Aug 2014 15:36:07 +0200
+Message-ID: <e67c722c0a1c9ab2e433f8853687c1dc__1026.95081518522$1408110898$gmane$org@i-net.ro>
+Reply-To: gvaintencia@aim.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII;
+ format=flowed
+Content-Transfer-Encoding: 7bit
+To: undisclosed-recipients:;
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from p2.i-net.ro ([193.230.184.10]:16649 "EHLO
+	mail.comtelnetworks.ro" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751104AbaHONx6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Aug 2014 09:53:58 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The journal blocks of external journal device should not
-be counted as overhead.
+Dear Friend,
 
-Signed-off-by: Chin-Tsung Cheng <chintzung@gmail.com>
----
- fs/ext3/super.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+                  Please acknowledge and accept my proposal.
 
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 08cdfe5..622e882 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -2828,8 +2828,9 @@ static int ext3_statfs (struct dentry * dentry, struct kstatfs * buf)
- 		 */
- 		overhead += ngroups * (2 + sbi->s_itb_per_group);
- 
--		/* Add the journal blocks as well */
--                overhead += sbi->s_journal->j_maxlen;
-+		/* Add the internal journal blocks as well */
-+		if (sbi->s_journal && !sbi->journal_bdev)
-+			overhead += sbi->s_journal->j_maxlen;
- 
- 		sbi->s_overhead_last = overhead;
- 		smp_wmb();
--- 
-1.9.3
+My name is Barrister Miguel Martinez Moreno, an Attorney at Law, in 
+Alicante-Spain.
+
+I am writing to notify you of the unclaimed inheritance deposit of our 
+late client, who passed on to Great beyond on August 21st, 2010 in a 
+motor accident in auto pista de Alcala Del Henares, Madrid-Spain.
+
+I got your name and email address through a web search engine in my 
+quest to get a reliable individual who shall work with me in claiming 
+this inheritance deposit since all my efforts to get the biological 
+relative has proved abortive.
+
+Conclusively, I await your urgent response to include the following :( 
+1).Your full Names & Address. (2).Your Telephone and Fax numbers. 
+(3).Your business name if any: for more information on how to release 
+the inheritance deposit, amount, procedure and legality of this claim 
+send me an email via: gva_abogados@aim.com
+
+Have a very nice day my friend!
+
+Regards,
+Miguel Martinez Moreno (Esq)
+Attorney At Law.
+gvaintencia@aim.com
