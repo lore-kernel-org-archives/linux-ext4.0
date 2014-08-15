@@ -1,41 +1,58 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 0/2] jbd2 checksum-related fixes
-Date: Fri, 15 Aug 2014 13:43:46 -0700
-Message-ID: <20140815204346.16444.14064.stgit@birch.djwong.org>
+Subject: [PATCH 1/2] jbd2: fix infinite loop when recovering corrupt journal
+ blocks
+Date: Fri, 15 Aug 2014 13:43:52 -0700
+Message-ID: <20140815204352.16444.79311.stgit@birch.djwong.org>
+References: <20140815204346.16444.14064.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:23647 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:23718 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751063AbaHOUnv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Aug 2014 16:43:51 -0400
+	with ESMTP id S1751063AbaHOUn6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Aug 2014 16:43:58 -0400
+In-Reply-To: <20140815204346.16444.14064.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+From: Darrick J. Wong <darrick.wong@oracle.com>
 
-This is a pair of patches to jbd2 that fix some problems that have
-been found when journal checksumming is enabled.
+When recovering the journal, don't fall into an infinite loop if we
+encounter a corrupt journal block.  Instead, just skip the block and
+return an error, which fails the mount and thus forces the user to run
+a full filesystem fsck.
 
-Patch 1 fixes a longstanding bug -- journal recovery goes into an
-infinite loop when a non-revoked journal block fails its metadata
-checksum test.  Instead, keep replaying the journal and proceed to the
-e2fsck.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ fs/jbd2/recovery.c |    7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-Patch 2 introduces journal_csum v3 to fix numerous journal block
-tag size handling bugs.  The test of 64bitness should not rely on
-guessing the tag size when it could simply query the feature flags.
-Furthermore, the journal_csum v2 structure had memory access alignment
-issues.  Just replace this all with a 16-byte tag with everything in
-it; the overhead for checksums is no more than 0.1%.
-
-Patches are against 3.16, and have been xfstest'd and checked against
-debugfs creating test journals (see e2fsprogs patchbomb 5.1 later
-tonight).
-
-Comments and questions are, as always, welcome.
-
---D
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index 3b6bb19..00e9703 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -426,6 +426,7 @@ static int do_one_pass(journal_t *journal,
+ 	int			tag_bytes = journal_tag_bytes(journal);
+ 	__u32			crc32_sum = ~0; /* Transactional Checksums */
+ 	int			descr_csum_size = 0;
++	int			block_error = 0;
+ 
+ 	/*
+ 	 * First thing is to establish what we expect to find in the log
+@@ -598,7 +599,8 @@ static int do_one_pass(journal_t *journal,
+ 						       "checksum recovering "
+ 						       "block %llu in log\n",
+ 						       blocknr);
+-						continue;
++						block_error = 1;
++						goto skip_write;
+ 					}
+ 
+ 					/* Find a buffer for the new
+@@ -797,7 +799,8 @@ static int do_one_pass(journal_t *journal,
+ 				success = -EIO;
+ 		}
+ 	}
