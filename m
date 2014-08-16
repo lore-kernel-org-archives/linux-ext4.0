@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 14/27] debugfs: add the ability to write transactions to the
- journal
-Date: Sat, 16 Aug 2014 16:47:23 -0700
-Message-ID: <20140816234723.11171.4037.stgit@birch.djwong.org>
+Subject: [PATCH 15/27] tests: test writing and recovering checksum-free
+ 32/64bit journals
+Date: Sat, 16 Aug 2014 16:47:31 -0700
+Message-ID: <20140816234731.11171.59257.stgit@birch.djwong.org>
 References: <20140816234550.11171.61585.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,1161 +10,1160 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:24065 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:24101 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750980AbaHPXra (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 16 Aug 2014 19:47:30 -0400
+	with ESMTP id S1750980AbaHPXrg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 16 Aug 2014 19:47:36 -0400
 In-Reply-To: <20140816234550.11171.61585.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Extend debugfs with the ability to create transactions and replay the
-journal.  This will eventually be used to test kernel recovery and
-metadata_csum recovery.
+Simple tests for the journal transaction creation code.   We test
+writing (bad) block bitmaps out through the journal and replaying them
+via fsck, with a few twists:
+
+(a) All bitmaps are committed (fs errors reported)
+(b) All the bitmap blocks are revoked (no errors)
+(c) The transaction is never committed (no errors)
+(d) Same as (a), but debugfs gets to do the replay.
+
+We also test:
+
+(a) writing and replaying transactions with multiple
+    descriptor blocks
+(b) same, but with multiple revoke blocks.
+(c) adding the 64bit flag to a journal
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- debugfs/Makefile.in    |   16 +
- debugfs/debug_cmds.ct  |   11 +
- debugfs/debugfs.h      |    1 
- debugfs/do_journal.c   |  975 ++++++++++++++++++++++++++++++++++++++++++++++++
- debugfs/util.c         |   35 ++
- lib/ext2fs/Makefile.in |    9 
- 6 files changed, 1043 insertions(+), 4 deletions(-)
- create mode 100644 debugfs/do_journal.c
+ tests/defaults/j_script                 |    1 
+ tests/j_long_revoke_trans/expect        |   81 +++++++++++++++++++++++
+ tests/j_long_revoke_trans/name          |    1 
+ tests/j_long_revoke_trans/script        |   62 ++++++++++++++++++
+ tests/j_long_trans/expect               |  107 +++++++++++++++++++++++++++++++
+ tests/j_long_trans/name                 |    1 
+ tests/j_long_trans/script               |   59 +++++++++++++++++
+ tests/j_short_revoke_trans/expect       |   32 +++++++++
+ tests/j_short_revoke_trans/name         |    1 
+ tests/j_short_revoke_trans/script       |   64 +++++++++++++++++++
+ tests/j_short_trans/expect              |   38 +++++++++++
+ tests/j_short_trans/name                |    1 
+ tests/j_short_trans/script              |   61 ++++++++++++++++++
+ tests/j_short_trans_64bit/expect        |   40 ++++++++++++
+ tests/j_short_trans_64bit/name          |    1 
+ tests/j_short_trans_64bit/script        |   65 +++++++++++++++++++
+ tests/j_short_trans_open_recover/expect |   43 ++++++++++++
+ tests/j_short_trans_open_recover/name   |    1 
+ tests/j_short_trans_open_recover/script |   69 ++++++++++++++++++++
+ tests/j_short_trans_recover/expect      |   40 ++++++++++++
+ tests/j_short_trans_recover/name        |    1 
+ tests/j_short_trans_recover/script      |   70 ++++++++++++++++++++
+ tests/j_short_uncommitted_trans/expect  |   26 ++++++++
+ tests/j_short_uncommitted_trans/name    |    1 
+ tests/j_short_uncommitted_trans/script  |   61 ++++++++++++++++++
+ 25 files changed, 927 insertions(+)
+ create mode 100644 tests/defaults/j_script
+ create mode 100644 tests/j_long_revoke_trans/expect
+ create mode 100644 tests/j_long_revoke_trans/name
+ create mode 100644 tests/j_long_revoke_trans/script
+ create mode 100644 tests/j_long_trans/expect
+ create mode 100644 tests/j_long_trans/name
+ create mode 100644 tests/j_long_trans/script
+ create mode 100644 tests/j_short_revoke_trans/expect
+ create mode 100644 tests/j_short_revoke_trans/name
+ create mode 100644 tests/j_short_revoke_trans/script
+ create mode 100644 tests/j_short_trans/expect
+ create mode 100644 tests/j_short_trans/name
+ create mode 100644 tests/j_short_trans/script
+ create mode 100644 tests/j_short_trans_64bit/expect
+ create mode 100644 tests/j_short_trans_64bit/name
+ create mode 100644 tests/j_short_trans_64bit/script
+ create mode 100644 tests/j_short_trans_open_recover/expect
+ create mode 100644 tests/j_short_trans_open_recover/name
+ create mode 100644 tests/j_short_trans_open_recover/script
+ create mode 100644 tests/j_short_trans_recover/expect
+ create mode 100644 tests/j_short_trans_recover/name
+ create mode 100644 tests/j_short_trans_recover/script
+ create mode 100644 tests/j_short_uncommitted_trans/expect
+ create mode 100644 tests/j_short_uncommitted_trans/name
+ create mode 100644 tests/j_short_uncommitted_trans/script
 
 
-diff --git a/debugfs/Makefile.in b/debugfs/Makefile.in
-index 9523b9b..4a7ddac 100644
---- a/debugfs/Makefile.in
-+++ b/debugfs/Makefile.in
-@@ -19,7 +19,7 @@ MK_CMDS=	_SS_DIR_OVERRIDE=../lib/ss ../lib/ss/mk_cmds
- DEBUG_OBJS= debug_cmds.o debugfs.o util.o ncheck.o icheck.o ls.o \
- 	lsdel.o dump.o set_fields.o logdump.o htree.o unused.o e2freefrag.o \
- 	filefrag.o extent_cmds.o extent_inode.o zap.o create_inode.o \
--	quota.o xattrs.o journal.o revoke.o recovery.o
-+	quota.o xattrs.o journal.o revoke.o recovery.o do_journal.o
- 
- RO_DEBUG_OBJS= ro_debug_cmds.o ro_debugfs.o util.o ncheck.o icheck.o ls.o \
- 	lsdel.o logdump.o htree.o e2freefrag.o filefrag.o extent_cmds.o \
-@@ -32,7 +32,7 @@ SRCS= debug_cmds.c $(srcdir)/debugfs.c $(srcdir)/util.c $(srcdir)/ls.c \
- 	$(srcdir)/filefrag.c $(srcdir)/extent_inode.c $(srcdir)/zap.c \
- 	$(srcdir)/../misc/create_inode.c $(srcdir)/xattrs.c $(srcdir)/quota.c \
- 	$(srcdir)/journal.c $(srcdir)/../e2fsck/revoke.c \
--	$(srcdir)/../e2fsck/recovery.c
-+	$(srcdir)/../e2fsck/recovery.c $(srcdir)/do_journal.c
- 
- LIBS= $(LIBQUOTA) $(LIBEXT2FS) $(LIBE2P) $(LIBSS) $(LIBCOM_ERR) $(LIBBLKID) \
- 	$(LIBUUID) $(SYSLIBS)
-@@ -358,6 +358,18 @@ revoke.o: $(srcdir)/../e2fsck/revoke.c $(top_builddir)/lib/config.h \
-  $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-  $(top_srcdir)/lib/../e2fsck/dict.h $(top_srcdir)/lib/ext2fs/kernel-jbd.h \
-  $(top_srcdir)/lib/ext2fs/jfs_compat.h $(top_srcdir)/lib/ext2fs/kernel-list.h
-+do_journal.o: $(srcdir)/do_journal.c $(srcdir)/debugfs.h \
-+ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-+ $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
-+ $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
-+ $(top_builddir)/lib/ext2fs/ext2_err.h \
-+ $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-+ $(srcdir)/jfs_user.h $(top_srcdir)/lib/ext2fs/kernel-jbd.h \
-+ $(top_srcdir)/lib/ext2fs/jfs_compat.h $(top_srcdir)/lib/ext2fs/kernel-list.h \
-+ $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-+ $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-+ $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-+ $(top_srcdir)/lib/e2p/e2p.h
- xattrs.o: $(srcdir)/xattrs.c $(srcdir)/debugfs.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-  $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
-diff --git a/debugfs/debug_cmds.ct b/debugfs/debug_cmds.ct
-index 5bd3fe1..c6f6d6c 100644
---- a/debugfs/debug_cmds.ct
-+++ b/debugfs/debug_cmds.ct
-@@ -211,6 +211,17 @@ request do_get_quota, "Get quota",
- request do_idump, "Dump the inode structure in hex",
- 	inode_dump, idump, id;
- 
-+request do_journal_open, "Open the journal",
-+	journal_open, jo;
-+
-+request do_journal_close, "Close the journal",
-+	journal_close, jc;
-+
-+request do_journal_write, "Write a transaction to the journal",
-+	journal_write, jw;
-+
-+request do_journal_run, "Recover the journal",
-+	journal_run, jr;
- 
- end;
- 
-diff --git a/debugfs/debugfs.h b/debugfs/debugfs.h
-index 6eb5732..e163d0a 100644
---- a/debugfs/debugfs.h
-+++ b/debugfs/debugfs.h
-@@ -180,6 +180,7 @@ extern void do_get_quota(int argc, char *argv[]);
- 
- /* util.c */
- extern time_t string_to_time(const char *arg);
-+errcode_t read_list(const char *str, blk64_t **list, size_t *len);
- 
- /* xattrs.c */
- void dump_inode_attributes(FILE *out, ext2_ino_t ino);
-diff --git a/debugfs/do_journal.c b/debugfs/do_journal.c
+diff --git a/tests/defaults/j_script b/tests/defaults/j_script
 new file mode 100644
-index 0000000..b85c2d7
+index 0000000..7a3b34f
 --- /dev/null
-+++ b/debugfs/do_journal.c
-@@ -0,0 +1,975 @@
-+/*
-+ * do_journal.c --- Scribble onto the journal!
-+ *
-+ * Copyright (C) 2014 Oracle.  This file may be redistributed
-+ * under the terms of the GNU Public License.
-+ */
-+
-+#include "config.h"
-+#include <stdio.h>
-+#ifdef HAVE_GETOPT_H
-+#include <getopt.h>
-+#else
-+extern int optind;
-+extern char *optarg;
-+#endif
-+#include <ctype.h>
-+#include <unistd.h>
-+#ifdef HAVE_SYS_TIME_H
-+#include <sys/time.h>
-+#endif
-+
-+#include "debugfs.h"
-+#include "jfs_user.h"
-+#include "ext2fs/kernel-jbd.h"
-+
-+/* journal.c */
-+errcode_t ext2fs_open_journal(ext2_filsys fs, journal_t **j);
-+errcode_t ext2fs_close_journal(ext2_filsys fs, journal_t **j);
-+errcode_t ext2fs_run_ext3_journal(ext2_filsys *fs);
-+void jbd2_commit_block_csum_set(journal_t *j, struct buffer_head *bh);
-+void jbd2_revoke_csum_set(journal_t *j, struct buffer_head *bh);
-+void jbd2_descr_block_csum_set(journal_t *j, struct buffer_head *bh);
-+void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
-+			     struct buffer_head *bh, __u32 sequence);
-+
-+#define DEBUG
-+
-+#ifdef DEBUG
-+# define dbg_printf(f, a...)  do {printf("JFS DEBUG: " f, ## a); \
-+	fflush(stdout); \
-+} while (0)
-+#else
-+# define dbg_printf(f, a...)
-+#endif
-+
-+#define JOURNAL_CHECK_TRANS_MAGIC(x)	\
-+	do { if ((x)->magic != J_TRANS_MAGIC) \
-+		return EXT2_ET_INVALID_ARGUMENT; } while(0)
-+
-+#define J_TRANS_MAGIC		0xD15EA5ED
-+#define J_TRANS_OPEN		1
-+#define J_TRANS_COMMITTED	2
-+struct journal_transaction_s
-+{
-+	unsigned int magic;
-+	ext2_filsys fs;
-+	journal_t *journal;
-+	blk64_t block;
-+	blk64_t start, end;
-+	tid_t tid;
-+	int flags;
-+};
-+
-+typedef struct journal_transaction_s journal_transaction_t;
-+
-+static journal_t *current_journal = NULL;
-+
-+static void journal_dump_trans(journal_transaction_t *trans, const char *tag)
-+{
-+	dbg_printf("TRANS %p(%s): tid=%d start=%llu block=%llu end=%llu flags=0x%x\n",
-+		   trans, tag, trans->tid, trans->start, trans->block,
-+		   trans->end, trans->flags);
-+}
-+
-+static errcode_t journal_commit_trans(journal_transaction_t *trans)
-+{
-+	struct buffer_head *bh, *cbh = NULL;
-+	struct commit_header *commit;
-+#ifdef HAVE_SYS_TIME_H
-+	struct timeval tv;
-+#endif
-+	errcode_t err;
-+
-+	JOURNAL_CHECK_TRANS_MAGIC(trans);
-+
-+	if ((trans->flags & J_TRANS_COMMITTED) ||
-+	    !(trans->flags & J_TRANS_OPEN))
-+		return EXT2_ET_INVALID_ARGUMENT;
-+
-+	bh = getblk(trans->journal->j_dev, 0, trans->journal->j_blocksize);
-+	if (bh == NULL)
-+		return ENOMEM;
-+
-+	/* write the descriptor block header */
-+	commit = (struct commit_header *)bh->b_data;
-+	commit->h_magic = ext2fs_cpu_to_be32(JFS_MAGIC_NUMBER);
-+	commit->h_blocktype = ext2fs_cpu_to_be32(JFS_COMMIT_BLOCK);
-+	commit->h_sequence = ext2fs_cpu_to_be32(trans->tid);
-+	if (JFS_HAS_COMPAT_FEATURE(trans->journal,
-+				   JFS_FEATURE_COMPAT_CHECKSUM)) {
-+		__u32 csum_v1 = ~0;
-+		blk64_t cblk;
-+
-+		cbh = getblk(trans->journal->j_dev, 0,
-+			     trans->journal->j_blocksize);
-+		if (cbh == NULL) {
-+			err = ENOMEM;
-+			goto error;
-+		}
-+
-+		for (cblk = trans->start; cblk < trans->block; cblk++) {
-+			err = journal_bmap(trans->journal, cblk,
-+					   &cbh->b_blocknr);
-+			if (err)
-+				goto error;
-+			mark_buffer_uptodate(cbh, 0);
-+			ll_rw_block(READ, 1, &cbh);
-+			err = cbh->b_err;
-+			if (err)
-+				goto error;
-+			csum_v1 = ext2fs_crc32_be(csum_v1,
-+					(unsigned char const *)cbh->b_data,
-+					cbh->b_size);
-+		}
-+
-+		commit->h_chksum_type = JFS_CRC32_CHKSUM;
-+		commit->h_chksum_size = JFS_CRC32_CHKSUM_SIZE;
-+		commit->h_chksum[0] = ext2fs_cpu_to_be32(csum_v1);
-+	} else {
-+		commit->h_chksum_type = 0;
-+		commit->h_chksum_size = 0;
-+		commit->h_chksum[0] = 0;
-+	}
-+#ifdef HAVE_SYS_TIME_H
-+	gettimeofday(&tv, NULL);
-+	commit->h_commit_sec = ext2fs_cpu_to_be32(tv.tv_sec);
-+	commit->h_commit_nsec = ext2fs_cpu_to_be32(tv.tv_usec * 1000);
-+#else
-+	commit->h_commit_sec = 0;
-+	commit->h_commit_nsec = 0;
-+#endif
-+
-+	/* Write block */
-+	jbd2_commit_block_csum_set(trans->journal, bh);
-+	err = journal_bmap(trans->journal, trans->block, &bh->b_blocknr);
-+	if (err)
-+		goto error;
-+
-+	dbg_printf("Writing commit block at %llu:%llu\n", trans->block,
-+		   bh->b_blocknr);
-+	mark_buffer_dirty(bh);
-+	ll_rw_block(WRITE, 1, &bh);
-+	err = bh->b_err;
-+	if (err)
-+		goto error;
-+	trans->flags |= J_TRANS_COMMITTED;
-+	trans->flags &= ~J_TRANS_OPEN;
-+	trans->block++;
-+
-+error:
-+	if (cbh)
-+		brelse(cbh);
-+	brelse(bh);
-+	return err;
-+}
-+
-+static errcode_t journal_add_revoke_to_trans(journal_transaction_t *trans,
-+					     blk64_t *revoke_list,
-+					     size_t revoke_len)
-+{
-+	journal_revoke_header_t *jrb;
-+	void *buf;
-+	size_t i, offset;
-+	blk64_t curr_blk;
-+	int csum_size = 0;
-+	struct buffer_head *bh;
-+	errcode_t err;
-+
-+	JOURNAL_CHECK_TRANS_MAGIC(trans);
-+
-+	if ((trans->flags & J_TRANS_COMMITTED) ||
-+	    !(trans->flags & J_TRANS_OPEN))
-+		return EXT2_ET_INVALID_ARGUMENT;
-+
-+	if (revoke_len == 0)
-+		return 0;
-+
-+	/* Do we need to leave space at the end for a checksum? */
-+	if (journal_has_csum_v2or3(trans->journal))
-+		csum_size = sizeof(struct journal_revoke_tail);
-+
-+	curr_blk = trans->block;
-+
-+	bh = getblk(trans->journal->j_dev, curr_blk,
-+		    trans->journal->j_blocksize);
-+	if (bh == NULL)
-+		return ENOMEM;
-+	jrb = buf = bh->b_data;
-+	jrb->r_header.h_magic = ext2fs_cpu_to_be32(JFS_MAGIC_NUMBER);
-+	jrb->r_header.h_blocktype = ext2fs_cpu_to_be32(JFS_REVOKE_BLOCK);
-+	jrb->r_header.h_sequence = ext2fs_cpu_to_be32(trans->tid);
-+	offset = sizeof(*jrb);
-+
-+	for (i = 0; i < revoke_len; i++) {
-+		/* Block full, write to journal */
-+		if (offset > trans->journal->j_blocksize - csum_size) {
-+			jrb->r_count = ext2fs_cpu_to_be32(offset);
-+			jbd2_revoke_csum_set(trans->journal, bh);
-+
-+			err = journal_bmap(trans->journal, curr_blk,
-+					   &bh->b_blocknr);
-+			if (err)
-+				goto error;
-+			dbg_printf("Writing revoke block at %llu:%llu\n",
-+				   curr_blk, bh->b_blocknr);
-+			mark_buffer_dirty(bh);
-+			ll_rw_block(WRITE, 1, &bh);
-+			err = bh->b_err;
-+			if (err)
-+				goto error;
-+
-+			offset = sizeof(*jrb);
-+			curr_blk++;
-+		}
-+
-+		if (revoke_list[i] >=
-+		    ext2fs_blocks_count(trans->journal->j_inode->i_fs->super)) {
-+			err = EXT2_ET_BAD_BLOCK_NUM;
-+			goto error;
-+		}
-+
-+		if (JFS_HAS_INCOMPAT_FEATURE(trans->journal,
-+					     JFS_FEATURE_INCOMPAT_64BIT)) {
-+			* ((__u64 *)(&((char *)buf)[offset])) =
-+				ext2fs_cpu_to_be64(revoke_list[i]);
-+			offset += 8;
-+
-+		} else {
-+			* ((__u32 *)(&((char *)buf)[offset])) =
-+				ext2fs_cpu_to_be32(revoke_list[i]);
-+			offset += 4;
-+		}
-+	}
-+
-+	if (offset > 0) {
-+		jrb->r_count = ext2fs_cpu_to_be32(offset);
-+		jbd2_revoke_csum_set(trans->journal, bh);
-+
-+		err = journal_bmap(trans->journal, curr_blk, &bh->b_blocknr);
-+		if (err)
-+			goto error;
-+		dbg_printf("Writing revoke block at %llu:%llu\n",
-+			   curr_blk, bh->b_blocknr);
-+		mark_buffer_dirty(bh);
-+		ll_rw_block(WRITE, 1, &bh);
-+		err = bh->b_err;
-+		if (err)
-+			goto error;
-+		curr_blk++;
-+	}
-+
-+error:
-+	trans->block = curr_blk;
-+	brelse(bh);
-+	return err;
-+}
-+
-+static errcode_t journal_add_blocks_to_trans(journal_transaction_t *trans,
-+				      blk64_t *block_list, size_t block_len,
-+				      FILE *fp)
-+{
-+	blk64_t curr_blk, jdb_blk;
-+	size_t i, j;
-+	int csum_size = 0;
-+	journal_header_t *jdb;
-+	journal_block_tag_t *jdbt;
-+	int tag_bytes;
-+	void *buf = NULL, *jdb_buf = NULL;
-+	struct buffer_head *bh = NULL, *data_bh;
-+	errcode_t err;
-+
-+	JOURNAL_CHECK_TRANS_MAGIC(trans);
-+
-+	if ((trans->flags & J_TRANS_COMMITTED) ||
-+	    !(trans->flags & J_TRANS_OPEN))
-+		return EXT2_ET_INVALID_ARGUMENT;
-+
-+	if (block_len == 0)
-+		return 0;
-+
-+	/* Do we need to leave space at the end for a checksum? */
-+	if (journal_has_csum_v2or3(trans->journal))
-+		csum_size = sizeof(struct journal_block_tail);
-+
-+	curr_blk = jdb_blk = trans->block;
-+
-+	data_bh = getblk(trans->journal->j_dev, curr_blk,
-+			 trans->journal->j_blocksize);
-+	if (data_bh == NULL)
-+		return ENOMEM;
-+	buf = data_bh->b_data;
-+
-+	/* write the descriptor block header */
-+	bh = getblk(trans->journal->j_dev, curr_blk,
-+		    trans->journal->j_blocksize);
-+	if (bh == NULL) {
-+		err = ENOMEM;
-+		goto error;
-+	}
-+	jdb = jdb_buf = bh->b_data;
-+	jdb->h_magic = ext2fs_cpu_to_be32(JFS_MAGIC_NUMBER);
-+	jdb->h_blocktype = ext2fs_cpu_to_be32(JFS_DESCRIPTOR_BLOCK);
-+	jdb->h_sequence = ext2fs_cpu_to_be32(trans->tid);
-+	jdbt = (journal_block_tag_t *)(jdb + 1);
-+
-+	curr_blk++;
-+	for (i = 0; i < block_len; i++) {
-+		j = fread(data_bh->b_data, trans->journal->j_blocksize, 1, fp);
-+		if (j != 1) {
-+			err = errno;
-+			goto error;
-+		}
-+
-+		tag_bytes = journal_tag_bytes(trans->journal);
-+
-+		/* No space left in descriptor block, write it out */
-+		if ((char *)jdbt + tag_bytes >
-+		    (char *)jdb_buf + trans->journal->j_blocksize - csum_size) {
-+			jbd2_descr_block_csum_set(trans->journal, bh);
-+			err = journal_bmap(trans->journal, jdb_blk,
-+					   &bh->b_blocknr);
-+			if (err)
-+				goto error;
-+			dbg_printf("Writing descriptor block at %llu:%llu\n",
-+				   jdb_blk, bh->b_blocknr);
-+			mark_buffer_dirty(bh);
-+			ll_rw_block(WRITE, 1, &bh);
-+			err = bh->b_err;
-+			if (err)
-+				goto error;
-+
-+			jdbt = (journal_block_tag_t *)(jdb + 1);
-+			jdb_blk = curr_blk;
-+			curr_blk++;
-+		}
-+
-+		if (block_list[i] >=
-+		    ext2fs_blocks_count(trans->journal->j_inode->i_fs->super)) {
-+			err = EXT2_ET_BAD_BLOCK_NUM;
-+			goto error;
-+		}
-+
-+		/* Fill out the block tag */
-+		jdbt->t_blocknr = ext2fs_cpu_to_be32(block_list[i] & 0xFFFFFFFF);
-+		jdbt->t_flags = 0;
-+		if (jdbt != (journal_block_tag_t *)(jdb + 1))
-+			jdbt->t_flags |= ext2fs_cpu_to_be16(JFS_FLAG_SAME_UUID);
-+		else {
-+			memcpy(jdbt + tag_bytes,
-+			       trans->journal->j_superblock->s_uuid,
-+			       sizeof(trans->journal->j_superblock->s_uuid));
-+			tag_bytes += 16;
-+		}
-+		if (i == block_len - 1)
-+			jdbt->t_flags |= ext2fs_cpu_to_be16(JFS_FLAG_LAST_TAG);
-+		if (*((__u32 *)buf) == ext2fs_cpu_to_be32(JFS_MAGIC_NUMBER)) {
-+			*((__u32 *)buf) = 0;
-+			jdbt->t_flags |= ext2fs_cpu_to_be16(JFS_FLAG_ESCAPE);
-+		}
-+		if (JFS_HAS_INCOMPAT_FEATURE(trans->journal,
-+					     JFS_FEATURE_INCOMPAT_64BIT))
-+			jdbt->t_blocknr_high = ext2fs_cpu_to_be32(block_list[i] >> 32);
-+		jbd2_block_tag_csum_set(trans->journal, jdbt, data_bh,
-+					trans->tid);
-+
-+		/* Write the data block */
-+		err = journal_bmap(trans->journal, curr_blk,
-+				   &data_bh->b_blocknr);
-+		if (err)
-+			goto error;
-+		dbg_printf("Writing data block %llu at %llu:%llu tag %d\n",
-+			   block_list[i], curr_blk, data_bh->b_blocknr,
-+			   tag_bytes);
-+		mark_buffer_dirty(data_bh);
-+		ll_rw_block(WRITE, 1, &data_bh);
-+		err = data_bh->b_err;
-+		if (err)
-+			goto error;
-+
-+		curr_blk++;
-+		jdbt = (journal_block_tag_t *)(((char *)jdbt) + tag_bytes);
-+	}
-+
-+	/* Write out the last descriptor block */
-+	if (jdbt != (journal_block_tag_t *)(jdb + 1)) {
-+		jbd2_descr_block_csum_set(trans->journal, bh);
-+		err = journal_bmap(trans->journal, jdb_blk, &bh->b_blocknr);
-+		if (err)
-+			goto error;
-+		dbg_printf("Writing descriptor block at %llu:%llu\n",
-+			   jdb_blk, bh->b_blocknr);
-+		mark_buffer_dirty(bh);
-+		ll_rw_block(WRITE, 1, &bh);
-+		err = bh->b_err;
-+		if (err)
-+			goto error;
-+	}
-+
-+error:
-+	trans->block = curr_blk;
-+	if (bh)
-+		brelse(bh);
-+	brelse(data_bh);
-+	return err;
-+}
-+
-+static blk64_t journal_guess_blocks(journal_t *journal, blk64_t data_blocks,
-+				    blk64_t revoke_blocks)
-+{
-+	blk64_t ret = 1;
-+	unsigned int bs, sz;
-+
-+	/* Estimate # of revoke blocks */
-+	bs = journal->j_blocksize;
-+	if (journal_has_csum_v2or3(journal))
-+		bs -= sizeof(struct journal_revoke_tail);
-+	sz = JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_64BIT) ?
-+				sizeof(__u64) : sizeof(__u32);
-+	ret += revoke_blocks * sz / bs;
-+
-+	/* Estimate # of data blocks */
-+	bs = journal->j_blocksize - 16;
-+	if (journal_has_csum_v2or3(journal))
-+		bs -= sizeof(struct journal_block_tail);
-+	sz = journal_tag_bytes(journal);
-+	ret += data_blocks * sz / bs;
-+
-+	ret += data_blocks;
-+
-+	return ret;
-+}
-+
-+static errcode_t journal_open_trans(journal_t *journal,
-+				    journal_transaction_t *trans,
-+				    blk64_t blocks)
-+{
-+	trans->fs = journal->j_inode->i_fs;
-+	trans->journal = journal;
-+	trans->flags = J_TRANS_OPEN;
-+
-+	if (journal->j_tail == 0) {
-+		/* Clean journal, start at the tail */
-+		trans->tid = journal->j_tail_sequence;
-+		trans->start = 1;
-+	} else {
-+		/* Put new transaction at the head of the list */
-+		trans->tid = journal->j_transaction_sequence;
-+		trans->start = journal->j_head;
-+	}
-+
-+	trans->block = trans->start;
-+	if (trans->start + blocks > journal->j_last)
-+		return ENOSPC;
-+	trans->end = trans->block + blocks;
-+	journal_dump_trans(trans, "new transaction");
-+
-+	trans->magic = J_TRANS_MAGIC;
-+	return 0;
-+}
-+
-+static errcode_t journal_close_trans(journal_transaction_t *trans)
-+{
-+	journal_t *journal;
-+
-+	JOURNAL_CHECK_TRANS_MAGIC(trans);
-+
-+	if (!(trans->flags & J_TRANS_COMMITTED))
-+		return 0;
-+
-+	journal = trans->journal;
-+	if (journal->j_tail == 0) {
-+		/* Update the tail */
-+		journal->j_tail_sequence = trans->tid;
-+		journal->j_tail = trans->start;
-+		journal->j_superblock->s_start = ext2fs_cpu_to_be32(trans->start);
-+	}
-+
-+	/* Update the head */
-+	journal->j_head = trans->end + 1;
-+	journal->j_transaction_sequence = trans->tid + 1;
-+
-+	trans->magic = 0;
-+
-+	/* Mark ourselves as needing recovery */
-+	if (!(EXT2_HAS_INCOMPAT_FEATURE(trans->fs->super,
-+					EXT3_FEATURE_INCOMPAT_RECOVER))) {
-+		trans->fs->super->s_feature_incompat |=
-+					EXT3_FEATURE_INCOMPAT_RECOVER;
-+		ext2fs_mark_super_dirty(trans->fs);
-+	}
-+
-+	return 0;
-+}
-+
-+#define JOURNAL_WRITE_NO_COMMIT		1
-+static errcode_t journal_write(journal_t *journal,
-+			       int flags, blk64_t *block_list,
-+			       size_t block_len, blk64_t *revoke_list,
-+			       size_t revoke_len, FILE *fp)
-+{
-+	blk64_t blocks;
-+	journal_transaction_t trans;
-+	errcode_t err;
-+
-+	if (revoke_len > 0) {
-+		journal->j_superblock->s_feature_incompat |=
-+				ext2fs_cpu_to_be32(JFS_FEATURE_INCOMPAT_REVOKE);
-+		mark_buffer_dirty(journal->j_sb_buffer);
-+	}
-+
-+	blocks = journal_guess_blocks(journal, block_len, revoke_len);
-+	err = journal_open_trans(journal, &trans, blocks);
-+	if (err)
-+		goto error;
-+
-+	err = journal_add_blocks_to_trans(&trans, block_list, block_len, fp);
-+	if (err)
-+		goto error;
-+
-+	err = journal_add_revoke_to_trans(&trans, revoke_list, revoke_len);
-+	if (err)
-+		goto error;
-+
-+	if (!(flags & JOURNAL_WRITE_NO_COMMIT)) {
-+		err = journal_commit_trans(&trans);
-+		if (err)
-+			goto error;
-+	}
-+
-+	err = journal_close_trans(&trans);
-+	if (err)
-+		goto error;
-+error:
-+	return err;
-+}
-+
-+void do_journal_write(int argc, char *argv[])
-+{
-+	blk64_t *blist = NULL, *rlist = NULL;
-+	size_t bn = 0, rn = 0;
-+	FILE *fp = NULL;
-+	int opt;
-+	int flags = 0;
-+	errcode_t err;
-+
-+	if (current_journal == NULL) {
-+		printf("Journal not open.\n");
-+		return;
-+	}
-+
-+	reset_getopt();
-+	while ((opt = getopt(argc, argv, "b:r:c")) != -1) {
-+		switch (opt) {
-+		case 'b':
-+			err = read_list(optarg, &blist, &bn);
-+			if (err)
-+				com_err(argv[0], err,
-+					"while reading block list");
-+			break;
-+		case 'r':
-+			err = read_list(optarg, &rlist, &rn);
-+			if (err)
-+				com_err(argv[0], err,
-+					"while reading revoke list");
-+			break;
-+		case 'c':
-+			flags |= JOURNAL_WRITE_NO_COMMIT;
-+			break;
-+		default:
-+			printf("%s [-b blocks] [-r revoke] [-c] file\n",
-+			       argv[0]);
-+			printf("-b: Write these blocks into transaction.\n");
-+			printf("-c: Do not commit transaction.\n");
-+			printf("-r: Revoke these blocks from transaction.\n");
-+
-+			goto out;
-+		}
-+	}
-+
-+	if (bn > 0 && optind != argc - 1) {
-+		printf("Need a file to read blocks from.\n");
-+		return;
-+	}
-+
-+	if (bn > 0) {
-+		fp = fopen(argv[optind], "r");
-+		if (fp == NULL) {
-+			com_err(argv[0], errno,
-+				"while opening journal data file");
-+			goto out;
-+		}
-+	}
-+
-+	err = journal_write(current_journal, flags, blist, bn,
-+			    rlist, rn, fp);
-+	if (err)
-+		com_err("journal_write", err, "while writing journal");
-+
-+	if (fp)
-+		fclose(fp);
-+out:
-+	if (blist)
-+		free(blist);
-+	if (rlist)
-+		free(rlist);
-+}
-+
-+/* Make sure we wrap around the log correctly! */
-+#define wrap(journal, var)						\
-+do {									\
-+	if (var >= (journal)->j_last)					\
-+		var -= ((journal)->j_last - (journal)->j_first);	\
-+} while (0)
-+
-+/*
-+ * Count the number of in-use tags in a journal descriptor block.
-+ */
-+
-+static int count_tags(journal_t *journal, char *buf)
-+{
-+	char *			tagp;
-+	journal_block_tag_t *	tag;
-+	int			nr = 0, size = journal->j_blocksize;
-+	int			tag_bytes = journal_tag_bytes(journal);
-+
-+	if (journal_has_csum_v2or3(journal))
-+		size -= sizeof(struct journal_block_tail);
-+
-+	tagp = buf + sizeof(journal_header_t);
-+
-+	while ((tagp - buf + tag_bytes) <= size) {
-+		tag = (journal_block_tag_t *) tagp;
-+
-+		nr++;
-+		tagp += tag_bytes;
-+		if (!(tag->t_flags & ext2fs_cpu_to_be16(JFS_FLAG_SAME_UUID)))
-+			tagp += 16;
-+
-+		if (tag->t_flags & ext2fs_cpu_to_be16(JFS_FLAG_LAST_TAG))
-+			break;
-+	}
-+
-+	return nr;
-+}
-+
-+errcode_t journal_find_head(journal_t *journal)
-+{
-+	unsigned int		next_commit_ID;
-+	blk64_t			next_log_block, head_block;
-+	int			err;
-+	journal_superblock_t *	sb;
-+	journal_header_t *	tmp;
-+	struct buffer_head *	bh;
-+	unsigned int		sequence;
-+	int			blocktype;
-+
-+	/*
-+	 * First thing is to establish what we expect to find in the log
-+	 * (in terms of transaction IDs), and where (in terms of log
-+	 * block offsets): query the superblock.
-+	 */
-+
-+	sb = journal->j_superblock;
-+	next_commit_ID = ext2fs_be32_to_cpu(sb->s_sequence);
-+	next_log_block = ext2fs_be32_to_cpu(sb->s_start);
-+	head_block = next_log_block;
-+
-+	if (next_log_block == 0)
-+		return 0;
-+
-+	bh = getblk(journal->j_dev, 0, journal->j_blocksize);
-+	if (bh == NULL)
-+		return ENOMEM;
-+
-+	/*
-+	 * Now we walk through the log, transaction by transaction,
-+	 * making sure that each transaction has a commit block in the
-+	 * expected place.  Each complete transaction gets replayed back
-+	 * into the main filesystem.
-+	 */
-+	while (1) {
-+		dbg_printf("Scanning for sequence ID %u at %lu/%lu\n",
-+			  next_commit_ID, (unsigned long)next_log_block,
-+			  journal->j_last);
-+
-+		/* Skip over each chunk of the transaction looking
-+		 * either the next descriptor block or the final commit
-+		 * record. */
-+		err = journal_bmap(journal, next_log_block, &bh->b_blocknr);
-+		if (err)
-+			goto err;
-+		mark_buffer_uptodate(bh, 0);
-+		ll_rw_block(READ, 1, &bh);
-+		err = bh->b_err;
-+		if (err)
-+			goto err;
-+
-+		next_log_block++;
-+		wrap(journal, next_log_block);
-+
-+		/* What kind of buffer is it?
-+		 *
-+		 * If it is a descriptor block, check that it has the
-+		 * expected sequence number.  Otherwise, we're all done
-+		 * here. */
-+
-+		tmp = (journal_header_t *)bh->b_data;
-+
-+		if (tmp->h_magic != ext2fs_cpu_to_be32(JFS_MAGIC_NUMBER)) {
-+			dbg_printf("JBD2: wrong magic 0x%x\n", tmp->h_magic);
-+			goto err;
-+		}
-+
-+		blocktype = ext2fs_be32_to_cpu(tmp->h_blocktype);
-+		sequence = ext2fs_be32_to_cpu(tmp->h_sequence);
-+		dbg_printf("Found magic %d, sequence %d\n",
-+			  blocktype, sequence);
-+
-+		if (sequence != next_commit_ID) {
-+			dbg_printf("JBD2: Wrong sequence %d (wanted %d)\n",
-+				   sequence, next_commit_ID);
-+			goto err;
-+		}
-+
-+		/* OK, we have a valid descriptor block which matches
-+		 * all of the sequence number checks.  What are we going
-+		 * to do with it?  That depends on the pass... */
-+
-+		switch(blocktype) {
-+		case JFS_DESCRIPTOR_BLOCK:
-+			next_log_block += count_tags(journal, bh->b_data);
-+			wrap(journal, next_log_block);
-+			continue;
-+
-+		case JFS_COMMIT_BLOCK:
-+			head_block = next_log_block;
-+			next_commit_ID++;
-+			continue;
-+
-+		case JFS_REVOKE_BLOCK:
-+			continue;
-+
-+		default:
-+			dbg_printf("Unrecognised magic %d, end of scan.\n",
-+				  blocktype);
-+			err = -EINVAL;
-+			goto err;
-+		}
-+	}
-+
-+err:
-+	if (err == 0) {
-+		dbg_printf("head seq=%d blk=%llu\n", next_commit_ID,
-+			   head_block);
-+		journal->j_transaction_sequence = next_commit_ID;
-+		journal->j_head = head_block;
-+	}
-+	brelse(bh);
-+	return err;
-+}
-+
-+static void update_journal_csum(journal_t *journal, int ver)
-+{
-+	journal_superblock_t *jsb;
-+
-+	if (journal->j_format_version < 2)
-+		return;
-+
-+	if (journal->j_tail != 0 ||
-+	    EXT2_HAS_INCOMPAT_FEATURE(journal->j_inode->i_fs->super,
-+				      EXT3_FEATURE_INCOMPAT_RECOVER)) {
-+		printf("Journal needs recovery, will not add csums.\n");
-+		return;
-+	}
-+
-+	/* metadata_csum implies journal csum v3 */
-+	jsb = journal->j_superblock;
-+	if (EXT2_HAS_RO_COMPAT_FEATURE(journal->j_inode->i_fs->super,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+		printf("Setting csum v%d\n", ver);
-+		switch (ver) {
-+		case 2:
-+			journal->j_superblock->s_feature_incompat &=
-+				ext2fs_cpu_to_be32(~JFS_FEATURE_INCOMPAT_CSUM_V3);
-+			journal->j_superblock->s_feature_incompat |=
-+				ext2fs_cpu_to_be32(JFS_FEATURE_INCOMPAT_CSUM_V2);
-+			journal->j_superblock->s_feature_compat &=
-+				ext2fs_cpu_to_be32(~JFS_FEATURE_COMPAT_CHECKSUM);
-+			break;
-+		case 3:
-+			journal->j_superblock->s_feature_incompat &=
-+				ext2fs_cpu_to_be32(~JFS_FEATURE_INCOMPAT_CSUM_V2);
-+			journal->j_superblock->s_feature_incompat |=
-+				ext2fs_cpu_to_be32(JFS_FEATURE_INCOMPAT_CSUM_V3);
-+			journal->j_superblock->s_feature_compat &=
-+				ext2fs_cpu_to_be32(~JFS_FEATURE_COMPAT_CHECKSUM);
-+			break;
-+		default:
-+			printf("Unknown checksum v%d\n", ver);
-+			break;
-+		}
-+		journal->j_superblock->s_checksum_type = JBD2_CRC32C_CHKSUM;
-+		journal->j_csum_seed = jbd2_chksum(journal, ~0, jsb->s_uuid,
-+						   sizeof(jsb->s_uuid));
-+	} else {
-+		journal->j_superblock->s_feature_compat |=
-+			ext2fs_cpu_to_be32(JFS_FEATURE_COMPAT_CHECKSUM);
-+		journal->j_superblock->s_feature_incompat &=
-+			ext2fs_cpu_to_be32(~(JFS_FEATURE_INCOMPAT_CSUM_V2 |
-+					     JFS_FEATURE_INCOMPAT_CSUM_V3));
-+	}
-+}
-+
-+static void update_uuid(journal_t *journal)
-+{
-+	size_t z;
-+	ext2_filsys fs;
-+
-+	if (journal->j_format_version < 2)
-+		return;
-+
-+	for (z = 0; z < sizeof(journal->j_superblock->s_uuid); z++)
-+		if (journal->j_superblock->s_uuid[z])
-+			break;
-+	if (z == 0)
-+		return;
-+
-+	fs = journal->j_inode->i_fs;
-+	if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-+				       EXT4_FEATURE_INCOMPAT_64BIT))
-+		return;
-+
-+	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_64BIT) &&
-+	    EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-+				      EXT4_FEATURE_INCOMPAT_64BIT))
-+		return;
-+
-+	if (journal->j_tail != 0 ||
-+	    EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-+				      EXT3_FEATURE_INCOMPAT_RECOVER)) {
-+		printf("Journal needs recovery, will not set 64bit.\n");
-+		return;
-+	}
-+
-+	memcpy(journal->j_superblock->s_uuid, fs->super->s_uuid,
-+	       sizeof(fs->super->s_uuid));
-+}
-+
-+static void update_64bit_flag(journal_t *journal)
-+{
-+	if (journal->j_format_version < 2)
-+		return;
-+
-+	if (!EXT2_HAS_INCOMPAT_FEATURE(journal->j_inode->i_fs->super,
-+				       EXT4_FEATURE_INCOMPAT_64BIT))
-+		return;
-+
-+	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_64BIT) &&
-+	    EXT2_HAS_INCOMPAT_FEATURE(journal->j_inode->i_fs->super,
-+				      EXT4_FEATURE_INCOMPAT_64BIT))
-+		return;
-+
-+	if (journal->j_tail != 0 ||
-+	    EXT2_HAS_INCOMPAT_FEATURE(journal->j_inode->i_fs->super,
-+				      EXT3_FEATURE_INCOMPAT_RECOVER)) {
-+		printf("Journal needs recovery, will not set 64bit.\n");
-+		return;
-+	}
-+
-+	journal->j_superblock->s_feature_incompat |=
-+				ext2fs_cpu_to_be32(JFS_FEATURE_INCOMPAT_64BIT);
-+}
-+
-+void do_journal_open(int argc, char *argv[])
-+{
-+	int opt, enable_csum = 0, csum_ver = 3;
-+	journal_t *journal;
-+	errcode_t err;
-+
-+	if (check_fs_open(argv[0]))
-+		return;
-+	if (check_fs_read_write(argv[0]))
-+		return;
-+	if (check_fs_bitmaps(argv[0]))
-+		return;
-+	if (current_journal) {
-+		printf("Journal is already open.\n");
-+		return;
-+	}
-+	if (!EXT2_HAS_COMPAT_FEATURE(current_fs->super,
-+				     EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
-+		printf("Journalling is not enabled on this filesystem.\n");
-+		return;
-+	}
-+
-+	reset_getopt();
-+	while ((opt = getopt(argc, argv, "cv:")) != -1) {
-+		switch (opt) {
-+		case 'c':
-+			enable_csum = 1;
-+			break;
-+		case 'v':
-+			csum_ver = atoi(optarg);
-+			if (csum_ver != 2 && csum_ver != 3) {
-+				printf("Unknown journal csum v%d\n", csum_ver);
-+				csum_ver = 3;
-+			}
-+			break;
-+		default:
-+			printf("%s: [-c] [-v ver]\n", argv[0]);
-+			printf("-c: Enable journal checksumming.\n");
-+			printf("-v: Use this version checksum format.\n");
-+		}
-+	}
-+
-+	err = ext2fs_open_journal(current_fs, &current_journal);
-+	if (err) {
-+		com_err(argv[0], err, "while opening journal");
-+		return;
-+	}
-+	journal = current_journal;
-+
-+	dbg_printf("JOURNAL: seq=%d tailseq=%d start=%lu first=%lu maxlen=%lu\n",
-+		   journal->j_tail_sequence, journal->j_transaction_sequence,
-+		   journal->j_tail, journal->j_first, journal->j_last);
-+
-+	update_uuid(journal);
-+	update_64bit_flag(journal);
-+	if (enable_csum)
-+		update_journal_csum(journal, csum_ver);
-+
-+	err = journal_find_head(journal);
-+	if (err)
-+		com_err(argv[0], err, "while examining journal");
-+}
-+
-+void do_journal_close(int argc, char *argv[])
-+{
-+	if (current_journal == NULL) {
-+		printf("Journal not open.\n");
-+		return;
-+	}
-+
-+	ext2fs_close_journal(current_fs, &current_journal);
-+}
-+
-+void do_journal_run(int argc, char *argv[])
-+{
-+	errcode_t err;
-+
-+	if (check_fs_open(argv[0]))
-+		return;
-+	if (check_fs_read_write(argv[0]))
-+		return;
-+	if (check_fs_bitmaps(argv[0]))
-+		return;
-+	if (current_journal) {
-+		printf("Please close the journal before recovering it.\n");
-+		return;
-+	}
-+
-+	err = ext2fs_run_ext3_journal(&current_fs);
-+	if (err)
-+		com_err("journal_run", err, "while recovering journal");
-+}
-diff --git a/debugfs/util.c b/debugfs/util.c
-index 6c48fba..470f5fb 100644
---- a/debugfs/util.c
-+++ b/debugfs/util.c
-@@ -497,3 +497,38 @@ int ext2_file_type(unsigned int mode)
- 
- 	return 0;
- }
-+
-+errcode_t read_list(const char *str, blk64_t **list, size_t *len)
-+{
-+	blk64_t *lst = *list;
-+	size_t ln = *len;
-+	char *tok, *p = optarg;
-+	while ((tok = strtok(p, ","))) {
-+		blk64_t *l;
-+		blk64_t x, y;
-+		char *e;
-+
-+		errno = 0;
-+		y = x = strtoull(tok, &e, 0);
-+		if (errno)
-+			return errno;
-+		if (*e == '-') {
-+			y = strtoull(e + 1, NULL, 0);
-+			if (errno)
-+				return errno;
-+		} else if (*e != 0)
-+			return EINVAL;
-+
-+		l = realloc(lst, sizeof(blk64_t) * (ln + y - x + 1));
-+		if (l == NULL)
-+			return ENOMEM;
-+		lst = l;
-+		for (; x <= y; x++)
-+			lst[ln++] = x;
-+		p = NULL;
-+	}
-+
-+	*list = lst;
-+	*len = ln;
-+	return 0;
-+}
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index 058eb64..6597e2d 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -20,7 +20,7 @@ DEBUG_OBJS= debug_cmds.o extent_cmds.o tst_cmds.o debugfs.o util.o \
- 	ncheck.o icheck.o ls.o lsdel.o dump.o set_fields.o logdump.o \
- 	htree.o unused.o e2freefrag.o filefrag.o extent_inode.o zap.o \
- 	xattrs.o quota.o tst_libext2fs.o create_inode.o journal.o \
--	revoke.o recovery.o
-+	revoke.o recovery.o do_journal.o
- 
- DEBUG_SRCS= debug_cmds.c extent_cmds.c tst_cmds.c \
- 	$(top_srcdir)/debugfs/debugfs.c \
-@@ -43,7 +43,8 @@ DEBUG_SRCS= debug_cmds.c extent_cmds.c tst_cmds.c \
- 	$(top_srcdir)/misc/create_inode.c \
- 	$(top_srcdir)/debugfs/journal.c \
- 	$(top_srcdir)/debugfs/revoke.c \
--	$(top_srcdir)/debugfs/recovery.c
-+	$(top_srcdir)/debugfs/recovery.c \
-+	$(top_srcdir)/debugfs/do_journal.c
- 
- OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
- 	$(TEST_IO_LIB_OBJS) \
-@@ -407,6 +408,10 @@ recovery.o: $(top_srcdir)/debugfs/recovery.c
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
- 
-+do_journal.o: $(top_srcdir)/debugfs/do_journal.c
-+	$(E) "	CC $<"
-+	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
-+
- xattrs.o: $(top_srcdir)/debugfs/xattrs.c
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
++++ b/tests/defaults/j_script
+@@ -0,0 +1 @@
++. $cmd_dir/run_e2fsck
+diff --git a/tests/j_long_revoke_trans/expect b/tests/j_long_revoke_trans/expect
+new file mode 100644
+index 0000000..c0730e6
+--- /dev/null
++++ b/tests/j_long_revoke_trans/expect
+@@ -0,0 +1,81 @@
++Creating filesystem with 262144 1k blocks and 16384 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185
++
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (8192 blocks): done
++Writing superblocks and filesystem accounting information:      done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/16384 files (0.0% non-contiguous), 14431/262144 blocks
++Exit status is 0
++debugfs write journal
++debugfs: logdump -c
++Journal starts at block 1, transaction 1
++Found expected sequence 1, type 1 (descriptor block) at block 1
++Found expected sequence 1, type 1 (descriptor block) at block 126
++Found expected sequence 1, type 1 (descriptor block) at block 251
++Found expected sequence 1, type 1 (descriptor block) at block 376
++Found expected sequence 1, type 1 (descriptor block) at block 501
++Found expected sequence 1, type 1 (descriptor block) at block 626
++Found expected sequence 1, type 1 (descriptor block) at block 751
++Found expected sequence 1, type 1 (descriptor block) at block 876
++Found expected sequence 1, type 1 (descriptor block) at block 1001
++Found expected sequence 1, type 1 (descriptor block) at block 1126
++Found expected sequence 1, type 1 (descriptor block) at block 1251
++Found expected sequence 1, type 1 (descriptor block) at block 1376
++Found expected sequence 1, type 1 (descriptor block) at block 1501
++Found expected sequence 1, type 1 (descriptor block) at block 1626
++Found expected sequence 1, type 1 (descriptor block) at block 1751
++Found expected sequence 1, type 1 (descriptor block) at block 1876
++Found expected sequence 1, type 1 (descriptor block) at block 2001
++Found expected sequence 1, type 1 (descriptor block) at block 2126
++Found expected sequence 1, type 1 (descriptor block) at block 2251
++Found expected sequence 1, type 1 (descriptor block) at block 2376
++Found expected sequence 1, type 1 (descriptor block) at block 2501
++Found expected sequence 1, type 1 (descriptor block) at block 2626
++Found expected sequence 1, type 1 (descriptor block) at block 2751
++Found expected sequence 1, type 1 (descriptor block) at block 2876
++Found expected sequence 1, type 1 (descriptor block) at block 3001
++Found expected sequence 1, type 1 (descriptor block) at block 3126
++Found expected sequence 1, type 1 (descriptor block) at block 3251
++Found expected sequence 1, type 1 (descriptor block) at block 3376
++Found expected sequence 1, type 1 (descriptor block) at block 3501
++Found expected sequence 1, type 1 (descriptor block) at block 3626
++Found expected sequence 1, type 1 (descriptor block) at block 3751
++Found expected sequence 1, type 1 (descriptor block) at block 3876
++Found expected sequence 1, type 1 (descriptor block) at block 4001
++Found expected sequence 1, type 1 (descriptor block) at block 4126
++Found expected sequence 1, type 2 (commit block) at block 4133
++Found expected sequence 2, type 5 (revoke table) at block 4134
++Found expected sequence 2, type 5 (revoke table) at block 4135
++Found expected sequence 2, type 5 (revoke table) at block 4136
++Found expected sequence 2, type 5 (revoke table) at block 4137
++Found expected sequence 2, type 5 (revoke table) at block 4138
++Found expected sequence 2, type 5 (revoke table) at block 4139
++Found expected sequence 2, type 5 (revoke table) at block 4140
++Found expected sequence 2, type 5 (revoke table) at block 4141
++Found expected sequence 2, type 5 (revoke table) at block 4142
++Found expected sequence 2, type 5 (revoke table) at block 4143
++Found expected sequence 2, type 5 (revoke table) at block 4144
++Found expected sequence 2, type 5 (revoke table) at block 4145
++Found expected sequence 2, type 5 (revoke table) at block 4146
++Found expected sequence 2, type 5 (revoke table) at block 4147
++Found expected sequence 2, type 5 (revoke table) at block 4148
++Found expected sequence 2, type 5 (revoke table) at block 4149
++Found expected sequence 2, type 5 (revoke table) at block 4150
++Found expected sequence 2, type 2 (commit block) at block 4151
++No magic number at block 4152: end of journal.
++test_filesys: recovering journal
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/16384 files (0.0% non-contiguous), 14431/262144 blocks
++Exit status is 0
+diff --git a/tests/j_long_revoke_trans/name b/tests/j_long_revoke_trans/name
+new file mode 100644
+index 0000000..3cbb2cd
+--- /dev/null
++++ b/tests/j_long_revoke_trans/name
+@@ -0,0 +1 @@
++revoked transaction nuking free space
+diff --git a/tests/j_long_revoke_trans/script b/tests/j_long_revoke_trans/script
+new file mode 100644
+index 0000000..4289c2e
+--- /dev/null
++++ b/tests/j_long_revoke_trans/script
+@@ -0,0 +1,62 @@
++if test -x $DEBUGFS_EXE; then
++
++FSCK_OPT=-fy
++OUT=$test_name.log
++if [ -f $test_dir/expect.gz ]; then
++	EXP=$test_name.tmp
++	gunzip < $test_dir/expect.gz > $EXP1
++else
++	EXP=$test_dir/expect
++fi
++
++cp /dev/null $OUT
++
++$MKE2FS -F -o Linux -b 1024 -O has_journal -T ext4 $TMPFILE 262144 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT 2>&1
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++echo "debugfs write journal" >> $OUT
++echo "jo" > $TMPFILE.cmd
++echo "jw -b 259-4356 /dev/zero" >> $TMPFILE.cmd
++echo "jc" >> $TMPFILE.cmd
++echo "jo" >> $TMPFILE.cmd
++echo "jw -r 259-4356" >> $TMPFILE.cmd
++echo "jc" >> $TMPFILE.cmd
++$DEBUGFS_EXE -w $TMPFILE -f $TMPFILE.cmd 2>> $OUT.new > /dev/null
++sed -f $cmd_dir/filter.sed < $OUT.new >> $OUT
++rm -rf $OUT.new
++
++test -d "$JOURNAL_DUMP_DIR" -a -w "$JOURNAL_DUMP_DIR" && cp "$TMPFILE" "$JOURNAL_DUMP_DIR/$test_name.img"
++echo "logdump -c" > $TMPFILE.cmd
++$DEBUGFS_EXE $TMPFILE -f $TMPFILE.cmd 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT
++rm -rf $TMPFILE.cmd
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++rm -f $TMPFILE
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++	rm -f $test_name.tmp
++fi
++
++unset IMAGE FSCK_OPT OUT EXP
++
++else #if test -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
+diff --git a/tests/j_long_trans/expect b/tests/j_long_trans/expect
+new file mode 100644
+index 0000000..7638ef1
+--- /dev/null
++++ b/tests/j_long_trans/expect
+@@ -0,0 +1,107 @@
++Creating filesystem with 262144 1k blocks and 16384 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185
++
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (8192 blocks): done
++Writing superblocks and filesystem accounting information:      done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/16384 files (0.0% non-contiguous), 14431/262144 blocks
++Exit status is 0
++debugfs write journal
++debugfs: logdump -c
++Journal starts at block 1, transaction 1
++Found expected sequence 1, type 1 (descriptor block) at block 1
++Found expected sequence 1, type 1 (descriptor block) at block 126
++Found expected sequence 1, type 1 (descriptor block) at block 251
++Found expected sequence 1, type 1 (descriptor block) at block 376
++Found expected sequence 1, type 1 (descriptor block) at block 501
++Found expected sequence 1, type 1 (descriptor block) at block 626
++Found expected sequence 1, type 1 (descriptor block) at block 751
++Found expected sequence 1, type 1 (descriptor block) at block 876
++Found expected sequence 1, type 1 (descriptor block) at block 1001
++Found expected sequence 1, type 1 (descriptor block) at block 1126
++Found expected sequence 1, type 1 (descriptor block) at block 1251
++Found expected sequence 1, type 1 (descriptor block) at block 1376
++Found expected sequence 1, type 1 (descriptor block) at block 1501
++Found expected sequence 1, type 1 (descriptor block) at block 1626
++Found expected sequence 1, type 1 (descriptor block) at block 1751
++Found expected sequence 1, type 1 (descriptor block) at block 1876
++Found expected sequence 1, type 1 (descriptor block) at block 2001
++Found expected sequence 1, type 1 (descriptor block) at block 2126
++Found expected sequence 1, type 1 (descriptor block) at block 2251
++Found expected sequence 1, type 1 (descriptor block) at block 2376
++Found expected sequence 1, type 1 (descriptor block) at block 2501
++Found expected sequence 1, type 1 (descriptor block) at block 2626
++Found expected sequence 1, type 1 (descriptor block) at block 2751
++Found expected sequence 1, type 1 (descriptor block) at block 2876
++Found expected sequence 1, type 1 (descriptor block) at block 3001
++Found expected sequence 1, type 1 (descriptor block) at block 3126
++Found expected sequence 1, type 1 (descriptor block) at block 3251
++Found expected sequence 1, type 1 (descriptor block) at block 3376
++Found expected sequence 1, type 1 (descriptor block) at block 3501
++Found expected sequence 1, type 1 (descriptor block) at block 3626
++Found expected sequence 1, type 1 (descriptor block) at block 3751
++Found expected sequence 1, type 1 (descriptor block) at block 3876
++Found expected sequence 1, type 1 (descriptor block) at block 4001
++Found expected sequence 1, type 1 (descriptor block) at block 4126
++Found expected sequence 1, type 2 (commit block) at block 4133
++No magic number at block 4134: end of journal.
++test_filesys: recovering journal
++Superblock has an invalid journal (inode 8).
++Clear? yes
++
++*** ext3 journal has been deleted - filesystem is now ext2 only ***
++
++Resize inode not valid.  Recreate? yes
++
++Pass 1: Checking inodes, blocks, and sizes
++Root inode is not a directory.  Clear? yes
++
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Root inode not allocated.  Allocate? yes
++
++/lost+found not found.  Create? yes
++
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++Block bitmap differences:  +(1--259) +273 +275 +289 +(291--418) +(2083--2210) +2341
++Fix? yes
++
++Free blocks count wrong for group #0 (5838, counted=5851).
++Fix? yes
++
++Free blocks count wrong for group #14 (0, counted=8192).
++Fix? yes
++
++Free blocks count wrong (247711, counted=255916).
++Fix? yes
++
++Inode bitmap differences:  +1 +(3--10)
++Fix? yes
++
++Free inodes count wrong for group #0 (500, counted=501).
++Fix? yes
++
++Directories count wrong for group #0 (3, counted=2).
++Fix? yes
++
++Free inodes count wrong (16372, counted=16373).
++Fix? yes
++
++Recreate journal? yes
++
++Creating journal (8192 blocks):  Done.
++
++*** journal has been re-created - filesystem is now ext3 again ***
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 11/16384 files (0.0% non-contiguous), 14420/262144 blocks
++Exit status is 1
+diff --git a/tests/j_long_trans/name b/tests/j_long_trans/name
+new file mode 100644
+index 0000000..7a70f8f
+--- /dev/null
++++ b/tests/j_long_trans/name
+@@ -0,0 +1 @@
++transaction nuking free space
+diff --git a/tests/j_long_trans/script b/tests/j_long_trans/script
+new file mode 100644
+index 0000000..9a4f131
+--- /dev/null
++++ b/tests/j_long_trans/script
+@@ -0,0 +1,59 @@
++if test -x $DEBUGFS_EXE; then
++
++FSCK_OPT=-fy
++OUT=$test_name.log
++if [ -f $test_dir/expect.gz ]; then
++	EXP=$test_name.tmp
++	gunzip < $test_dir/expect.gz > $EXP1
++else
++	EXP=$test_dir/expect
++fi
++
++cp /dev/null $OUT
++
++$MKE2FS -F -o Linux -b 1024 -O has_journal -T ext4 $TMPFILE 262144 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT 2>&1
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++echo "debugfs write journal" >> $OUT
++echo "jo" > $TMPFILE.cmd
++echo "jw -b 259-4356 /dev/zero" >> $TMPFILE.cmd
++echo "jc" >> $TMPFILE.cmd
++$DEBUGFS_EXE -w $TMPFILE -f $TMPFILE.cmd 2>> $OUT.new > /dev/null
++sed -f $cmd_dir/filter.sed < $OUT.new >> $OUT
++rm -rf $OUT.new
++
++test -d "$JOURNAL_DUMP_DIR" -a -w "$JOURNAL_DUMP_DIR" && cp "$TMPFILE" "$JOURNAL_DUMP_DIR/$test_name.img"
++echo "logdump -c" > $TMPFILE.cmd
++$DEBUGFS_EXE $TMPFILE -f $TMPFILE.cmd 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT
++rm -rf $TMPFILE.cmd
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++rm -f $TMPFILE
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++	rm -f $test_name.tmp
++fi
++
++unset IMAGE FSCK_OPT OUT EXP
++
++else #if test -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
+diff --git a/tests/j_short_revoke_trans/expect b/tests/j_short_revoke_trans/expect
+new file mode 100644
+index 0000000..e83c5ea
+--- /dev/null
++++ b/tests/j_short_revoke_trans/expect
+@@ -0,0 +1,32 @@
++Creating filesystem with 65536 4k blocks and 16384 inodes
++Superblock backups stored on blocks: 
++	32768
++
++Allocating group tables:    done                            
++Writing inode tables:    done                            
++Creating journal (4096 blocks): done
++Writing superblocks and filesystem accounting information:    done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++Exit status is 0
++debugfs write journal
++debugfs: logdump -c
++Journal starts at block 1, transaction 1
++Found expected sequence 1, type 1 (descriptor block) at block 1
++Found expected sequence 1, type 2 (commit block) at block 6
++Found expected sequence 2, type 5 (revoke table) at block 7
++Found expected sequence 2, type 2 (commit block) at block 8
++No magic number at block 9: end of journal.
++test_filesys: recovering journal
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++Exit status is 0
+diff --git a/tests/j_short_revoke_trans/name b/tests/j_short_revoke_trans/name
+new file mode 100644
+index 0000000..5470018
+--- /dev/null
++++ b/tests/j_short_revoke_trans/name
+@@ -0,0 +1 @@
++revoke blocks of transaction nuking bitmaps
+diff --git a/tests/j_short_revoke_trans/script b/tests/j_short_revoke_trans/script
+new file mode 100644
+index 0000000..edf28f9
+--- /dev/null
++++ b/tests/j_short_revoke_trans/script
+@@ -0,0 +1,64 @@
++if test -x $DEBUGFS_EXE; then
++
++FSCK_OPT=-fy
++OUT=$test_name.log
++if [ -f $test_dir/expect.gz ]; then
++	EXP=$test_name.tmp
++	gunzip < $test_dir/expect.gz > $EXP1
++else
++	EXP=$test_dir/expect
++fi
++
++cp /dev/null $OUT
++
++$MKE2FS -F -o Linux -b 4096 -O has_journal -T ext4 $TMPFILE 65536 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT 2>&1
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++bitmaps="$($DUMPE2FS $TMPFILE 2>&1 | grep 'bitmap at' | sed -e 's/^.*Block bitmap at \([0-9]*\) .*Inode bitmap at \([0-9]*\).*$/\1,\2/g' | tr '\n' ',')"
++
++echo "debugfs write journal" >> $OUT
++echo "jo" > $TMPFILE.cmd
++echo "jw -b $bitmaps /dev/zero" >> $TMPFILE.cmd
++echo "jc" >> $TMPFILE.cmd
++echo "jo" >> $TMPFILE.cmd
++echo "jw -r $bitmaps" >> $TMPFILE.cmd
++echo "jc" >> $TMPFILE.cmd
++$DEBUGFS_EXE -w $TMPFILE -f $TMPFILE.cmd 2>> $OUT.new > /dev/null
++sed -f $cmd_dir/filter.sed < $OUT.new >> $OUT
++rm -rf $OUT.new
++
++test -d "$JOURNAL_DUMP_DIR" -a -w "$JOURNAL_DUMP_DIR" && cp "$TMPFILE" "$JOURNAL_DUMP_DIR/$test_name.img"
++echo "logdump -c" > $TMPFILE.cmd
++$DEBUGFS_EXE $TMPFILE -f $TMPFILE.cmd 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT
++rm -rf $TMPFILE.cmd
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++rm -f $TMPFILE
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++	rm -f $test_name.tmp
++fi
++
++unset IMAGE FSCK_OPT OUT EXP
++
++else #if test -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
+diff --git a/tests/j_short_trans/expect b/tests/j_short_trans/expect
+new file mode 100644
+index 0000000..bcc8fe8
+--- /dev/null
++++ b/tests/j_short_trans/expect
+@@ -0,0 +1,38 @@
++Creating filesystem with 65536 4k blocks and 16384 inodes
++Superblock backups stored on blocks: 
++	32768
++
++Allocating group tables:    done                            
++Writing inode tables:    done                            
++Creating journal (4096 blocks): done
++Writing superblocks and filesystem accounting information:    done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++Exit status is 0
++debugfs write journal
++debugfs: logdump -c
++Journal starts at block 1, transaction 1
++Found expected sequence 1, type 1 (descriptor block) at block 1
++Found expected sequence 1, type 2 (commit block) at block 6
++No magic number at block 7: end of journal.
++test_filesys: recovering journal
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++Block bitmap differences:  +(0--1050) +(32768--36880)
++Fix? yes
++
++Inode bitmap differences:  +(1--11)
++Fix? yes
++
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++Exit status is 1
+diff --git a/tests/j_short_trans/name b/tests/j_short_trans/name
+new file mode 100644
+index 0000000..730fbad
+--- /dev/null
++++ b/tests/j_short_trans/name
+@@ -0,0 +1 @@
++transaction nuking the bitmaps
+diff --git a/tests/j_short_trans/script b/tests/j_short_trans/script
+new file mode 100644
+index 0000000..00f4d6e
+--- /dev/null
++++ b/tests/j_short_trans/script
+@@ -0,0 +1,61 @@
++if test -x $DEBUGFS_EXE; then
++
++FSCK_OPT=-fy
++OUT=$test_name.log
++if [ -f $test_dir/expect.gz ]; then
++	EXP=$test_name.tmp
++	gunzip < $test_dir/expect.gz > $EXP1
++else
++	EXP=$test_dir/expect
++fi
++
++cp /dev/null $OUT
++
++$MKE2FS -F -o Linux -b 4096 -O has_journal -T ext4 $TMPFILE 65536 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT 2>&1
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++bitmaps="$($DUMPE2FS $TMPFILE 2>&1 | grep 'bitmap at' | sed -e 's/^.*Block bitmap at \([0-9]*\) .*Inode bitmap at \([0-9]*\).*$/\1,\2/g' | tr '\n' ',')"
++
++echo "debugfs write journal" >> $OUT
++echo "jo" > $TMPFILE.cmd
++echo "jw -b $bitmaps /dev/zero" >> $TMPFILE.cmd
++echo "jc" >> $TMPFILE.cmd
++$DEBUGFS_EXE -w $TMPFILE -f $TMPFILE.cmd 2>> $OUT.new > /dev/null
++sed -f $cmd_dir/filter.sed < $OUT.new >> $OUT
++rm -rf $OUT.new
++
++test -d "$JOURNAL_DUMP_DIR" -a -w "$JOURNAL_DUMP_DIR" && cp "$TMPFILE" "$JOURNAL_DUMP_DIR/$test_name.img"
++echo "logdump -c" > $TMPFILE.cmd
++$DEBUGFS_EXE $TMPFILE -f $TMPFILE.cmd 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT
++rm -rf $TMPFILE.cmd
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++rm -f $TMPFILE
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++	rm -f $test_name.tmp
++fi
++
++unset IMAGE FSCK_OPT OUT EXP
++
++else #if test -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
+diff --git a/tests/j_short_trans_64bit/expect b/tests/j_short_trans_64bit/expect
+new file mode 100644
+index 0000000..f9971eb
+--- /dev/null
++++ b/tests/j_short_trans_64bit/expect
+@@ -0,0 +1,40 @@
++Creating filesystem with 65536 4k blocks and 16384 inodes
++Superblock backups stored on blocks: 
++	32768
++
++Allocating group tables:    done                            
++Writing inode tables:    done                            
++Creating journal (4096 blocks): done
++Writing superblocks and filesystem accounting information:    done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/16384 files (0.0% non-contiguous), 5196/65536 blocks
++Exit status is 0
++Journal features:         (none)
++debugfs write journal
++Journal features:         journal_64bit
++debugfs: logdump -c
++Journal starts at block 1, transaction 1
++Found expected sequence 1, type 1 (descriptor block) at block 1
++Found expected sequence 1, type 2 (commit block) at block 6
++No magic number at block 7: end of journal.
++test_filesys: recovering journal
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++Block bitmap differences:  +(0--1066) +(32768--36896)
++Fix? yes
++
++Inode bitmap differences:  +(1--11)
++Fix? yes
++
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 11/16384 files (0.0% non-contiguous), 5196/65536 blocks
++Exit status is 1
+diff --git a/tests/j_short_trans_64bit/name b/tests/j_short_trans_64bit/name
+new file mode 100644
+index 0000000..17b70d0
+--- /dev/null
++++ b/tests/j_short_trans_64bit/name
+@@ -0,0 +1 @@
++transaction nuking the bitmaps on 64bit
+diff --git a/tests/j_short_trans_64bit/script b/tests/j_short_trans_64bit/script
+new file mode 100644
+index 0000000..daf0866
+--- /dev/null
++++ b/tests/j_short_trans_64bit/script
+@@ -0,0 +1,65 @@
++if test -x $DEBUGFS_EXE; then
++
++FSCK_OPT=-fy
++OUT=$test_name.log
++if [ -f $test_dir/expect.gz ]; then
++	EXP=$test_name.tmp
++	gunzip < $test_dir/expect.gz > $EXP1
++else
++	EXP=$test_dir/expect
++fi
++
++cp /dev/null $OUT
++
++$MKE2FS -F -o Linux -b 4096 -O 64bit,has_journal -T ext4 $TMPFILE 65536 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT 2>&1
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++bitmaps="$($DUMPE2FS $TMPFILE 2>&1 | grep 'bitmap at' | sed -e 's/^.*Block bitmap at \([0-9]*\) .*Inode bitmap at \([0-9]*\).*$/\1,\2/g' | tr '\n' ',')"
++
++$DUMPE2FS $TMPFILE 2>&1 | grep '^Journal features:' >> $OUT
++
++echo "debugfs write journal" >> $OUT
++echo "jo" > $TMPFILE.cmd
++echo "jw -b $bitmaps /dev/zero" >> $TMPFILE.cmd
++echo "jc" >> $TMPFILE.cmd
++$DEBUGFS_EXE -w $TMPFILE -f $TMPFILE.cmd 2>> $OUT.new > /dev/null
++sed -f $cmd_dir/filter.sed < $OUT.new >> $OUT
++rm -rf $OUT.new
++
++$DUMPE2FS $TMPFILE 2>&1 | grep '^Journal features:' >> $OUT
++
++test -d "$JOURNAL_DUMP_DIR" -a -w "$JOURNAL_DUMP_DIR" && cp "$TMPFILE" "$JOURNAL_DUMP_DIR/$test_name.img"
++echo "logdump -c" > $TMPFILE.cmd
++$DEBUGFS_EXE $TMPFILE -f $TMPFILE.cmd 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT
++rm -rf $TMPFILE.cmd
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++rm -f $TMPFILE
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++	rm -f $test_name.tmp
++fi
++
++unset IMAGE FSCK_OPT OUT EXP
++
++else #if test -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
+diff --git a/tests/j_short_trans_open_recover/expect b/tests/j_short_trans_open_recover/expect
+new file mode 100644
+index 0000000..be6e363
+--- /dev/null
++++ b/tests/j_short_trans_open_recover/expect
+@@ -0,0 +1,43 @@
++Creating filesystem with 65536 4k blocks and 16384 inodes
++Superblock backups stored on blocks: 
++	32768
++
++Allocating group tables:    done                            
++Writing inode tables:    done                            
++Creating journal (4096 blocks): done
++Writing superblocks and filesystem accounting information:    done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++Exit status is 0
++debugfs write journal
++debugfs: logdump -c
++Journal starts at block 1, transaction 1
++Found expected sequence 1, type 1 (descriptor block) at block 1
++Found expected sequence 1, type 2 (commit block) at block 6
++No magic number at block 7: end of journal.
++debugfs can't recover open journal
++debugfs: jo
++debugfs: jr
++Please close the journal before recovering it.
++debugfs: jc
++test_filesys: recovering journal
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++Block bitmap differences:  +(0--1050) +(32768--36880)
++Fix? yes
++
++Inode bitmap differences:  +(1--11)
++Fix? yes
++
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++Exit status is 1
+diff --git a/tests/j_short_trans_open_recover/name b/tests/j_short_trans_open_recover/name
+new file mode 100644
+index 0000000..892e95c
+--- /dev/null
++++ b/tests/j_short_trans_open_recover/name
+@@ -0,0 +1 @@
++ensure we can't recover the journal with journal open
+diff --git a/tests/j_short_trans_open_recover/script b/tests/j_short_trans_open_recover/script
+new file mode 100644
+index 0000000..fbbb714
+--- /dev/null
++++ b/tests/j_short_trans_open_recover/script
+@@ -0,0 +1,69 @@
++if test -x $DEBUGFS_EXE; then
++
++FSCK_OPT=-fy
++OUT=$test_name.log
++if [ -f $test_dir/expect.gz ]; then
++	EXP=$test_name.tmp
++	gunzip < $test_dir/expect.gz > $EXP1
++else
++	EXP=$test_dir/expect
++fi
++
++cp /dev/null $OUT
++
++$MKE2FS -F -o Linux -b 4096 -O has_journal -T ext4 $TMPFILE 65536 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT 2>&1
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++bitmaps="$($DUMPE2FS $TMPFILE 2>&1 | grep 'bitmap at' | sed -e 's/^.*Block bitmap at \([0-9]*\) .*Inode bitmap at \([0-9]*\).*$/\1,\2/g' | tr '\n' ',')"
++
++echo "debugfs write journal" >> $OUT
++echo "jo" > $TMPFILE.cmd
++echo "jw -b $bitmaps /dev/zero" >> $TMPFILE.cmd
++echo "jc" >> $TMPFILE.cmd
++$DEBUGFS_EXE -w $TMPFILE -f $TMPFILE.cmd 2>> $OUT.new > /dev/null
++sed -f $cmd_dir/filter.sed < $OUT.new >> $OUT
++rm -rf $OUT.new
++
++test -d "$JOURNAL_DUMP_DIR" -a -w "$JOURNAL_DUMP_DIR" && cp "$TMPFILE" "$JOURNAL_DUMP_DIR/$test_name.img"
++echo "logdump -c" > $TMPFILE.cmd
++$DEBUGFS_EXE $TMPFILE -f $TMPFILE.cmd 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT
++rm -rf $TMPFILE.cmd
++
++echo "debugfs can't recover open journal" >> $OUT
++echo "jo" > $TMPFILE.cmd
++echo "jr" >> $TMPFILE.cmd
++echo "jc" >> $TMPFILE.cmd
++$DEBUGFS_EXE -w $TMPFILE -f $TMPFILE.cmd > $OUT.new 2>&1
++sed -f $cmd_dir/filter.sed < $OUT.new >> $OUT
++rm -rf $OUT.new
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++rm -f $TMPFILE
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++	rm -f $test_name.tmp
++fi
++
++unset IMAGE FSCK_OPT OUT EXP
++
++else #if test -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
+diff --git a/tests/j_short_trans_recover/expect b/tests/j_short_trans_recover/expect
+new file mode 100644
+index 0000000..7586733
+--- /dev/null
++++ b/tests/j_short_trans_recover/expect
+@@ -0,0 +1,40 @@
++Creating filesystem with 65536 4k blocks and 16384 inodes
++Superblock backups stored on blocks: 
++	32768
++
++Allocating group tables:    done                            
++Writing inode tables:    done                            
++Creating journal (4096 blocks): done
++Writing superblocks and filesystem accounting information:    done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++Exit status is 0
++debugfs write journal
++debugfs: logdump -c
++Journal starts at block 1, transaction 1
++Found expected sequence 1, type 1 (descriptor block) at block 1
++Found expected sequence 1, type 2 (commit block) at block 7
++Found expected sequence 2, type 5 (revoke table) at block 8
++Found expected sequence 2, type 2 (commit block) at block 9
++No magic number at block 10: end of journal.
++debugfs recover journal
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++Block bitmap differences:  +(0--1050) +(32768--36880)
++Fix? yes
++
++Inode bitmap differences:  +(1--11)
++Fix? yes
++
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++Exit status is 1
+diff --git a/tests/j_short_trans_recover/name b/tests/j_short_trans_recover/name
+new file mode 100644
+index 0000000..54e3553
+--- /dev/null
++++ b/tests/j_short_trans_recover/name
+@@ -0,0 +1 @@
++transaction nuking the bitmaps (debugfs recovery)
+diff --git a/tests/j_short_trans_recover/script b/tests/j_short_trans_recover/script
+new file mode 100644
+index 0000000..7fa6158
+--- /dev/null
++++ b/tests/j_short_trans_recover/script
+@@ -0,0 +1,70 @@
++if test -x $DEBUGFS_EXE; then
++
++FSCK_OPT=-fy
++OUT=$test_name.log
++if [ -f $test_dir/expect.gz ]; then
++	EXP=$test_name.tmp
++	gunzip < $test_dir/expect.gz > $EXP1
++else
++	EXP=$test_dir/expect
++fi
++
++cp /dev/null $OUT
++
++$MKE2FS -F -o Linux -b 4096 -O has_journal -T ext4 $TMPFILE 65536 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT 2>&1
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++bitmaps="$($DUMPE2FS $TMPFILE 2>&1 | grep 'bitmap at' | sed -e 's/^.*Block bitmap at \([0-9]*\) .*Inode bitmap at \([0-9]*\).*$/\1,\2/g' | tr '\n' ',')"
++
++echo "debugfs write journal" >> $OUT
++echo "jo" > $TMPFILE.cmd
++echo "jw -b 333,$bitmaps /dev/zero" >> $TMPFILE.cmd
++echo "jc" >> $TMPFILE.cmd
++echo "jo" >> $TMPFILE.cmd
++echo "jw -r 333" >> $TMPFILE.cmd
++echo "jc" >> $TMPFILE.cmd
++$DEBUGFS_EXE -w $TMPFILE -f $TMPFILE.cmd 2>> $OUT.new > /dev/null
++sed -f $cmd_dir/filter.sed < $OUT.new >> $OUT
++rm -rf $OUT.new
++
++test -d "$JOURNAL_DUMP_DIR" -a -w "$JOURNAL_DUMP_DIR" && cp "$TMPFILE" "$JOURNAL_DUMP_DIR/$test_name.img"
++echo "logdump -c" > $TMPFILE.cmd
++$DEBUGFS_EXE $TMPFILE -f $TMPFILE.cmd 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT
++rm -rf $TMPFILE.cmd
++
++echo "debugfs recover journal" >> $OUT
++echo "jr" > $TMPFILE.cmd
++$DEBUGFS_EXE -w $TMPFILE -f $TMPFILE.cmd 2>> $OUT.new > /dev/null
++sed -f $cmd_dir/filter.sed < $OUT.new >> $OUT
++rm -rf $OUT.new
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++rm -f $TMPFILE
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++	rm -f $test_name.tmp
++fi
++
++unset IMAGE FSCK_OPT OUT EXP
++
++else #if test -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
+diff --git a/tests/j_short_uncommitted_trans/expect b/tests/j_short_uncommitted_trans/expect
+new file mode 100644
+index 0000000..dedddb5
+--- /dev/null
++++ b/tests/j_short_uncommitted_trans/expect
+@@ -0,0 +1,26 @@
++Creating filesystem with 65536 4k blocks and 16384 inodes
++Superblock backups stored on blocks: 
++	32768
++
++Allocating group tables:    done                            
++Writing inode tables:    done                            
++Creating journal (4096 blocks): done
++Writing superblocks and filesystem accounting information:    done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++Exit status is 0
++debugfs write journal
++debugfs: logdump -c
++Journal starts at block 0, transaction 1
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++Exit status is 0
+diff --git a/tests/j_short_uncommitted_trans/name b/tests/j_short_uncommitted_trans/name
+new file mode 100644
+index 0000000..b617231
+--- /dev/null
++++ b/tests/j_short_uncommitted_trans/name
+@@ -0,0 +1 @@
++uncommitted transaction nuking bitmaps
+diff --git a/tests/j_short_uncommitted_trans/script b/tests/j_short_uncommitted_trans/script
+new file mode 100644
+index 0000000..207d746
+--- /dev/null
++++ b/tests/j_short_uncommitted_trans/script
+@@ -0,0 +1,61 @@
++if test -x $DEBUGFS_EXE; then
++
++FSCK_OPT=-fy
++OUT=$test_name.log
++if [ -f $test_dir/expect.gz ]; then
++	EXP=$test_name.tmp
++	gunzip < $test_dir/expect.gz > $EXP1
++else
++	EXP=$test_dir/expect
++fi
++
++cp /dev/null $OUT
++
++$MKE2FS -F -o Linux -b 4096 -O has_journal -T ext4 $TMPFILE 65536 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT 2>&1
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++bitmaps="$($DUMPE2FS $TMPFILE 2>&1 | grep 'bitmap at' | sed -e 's/^.*Block bitmap at \([0-9]*\) .*Inode bitmap at \([0-9]*\).*$/\1,\2/g' | tr '\n' ',')"
++
++echo "debugfs write journal" >> $OUT
++echo "jo" > $TMPFILE.cmd
++echo "jw -b $bitmaps -c /dev/zero" >> $TMPFILE.cmd
++echo "jc" >> $TMPFILE.cmd
++$DEBUGFS_EXE -w $TMPFILE -f $TMPFILE.cmd 2>> $OUT.new > /dev/null
++sed -f $cmd_dir/filter.sed < $OUT.new >> $OUT
++rm -rf $OUT.new
++
++test -d "$JOURNAL_DUMP_DIR" -a -w "$JOURNAL_DUMP_DIR" && cp "$TMPFILE" "$JOURNAL_DUMP_DIR/$test_name.img"
++echo "logdump -c" > $TMPFILE.cmd
++$DEBUGFS_EXE $TMPFILE -f $TMPFILE.cmd 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT
++rm -rf $TMPFILE.cmd
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++rm -f $TMPFILE
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++	rm -f $test_name.tmp
++fi
++
++unset IMAGE FSCK_OPT OUT EXP
++
++else #if test -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
 
