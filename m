@@ -1,166 +1,563 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 25/27] ext2fs: add readahead method to improve scanning
-Date: Sat, 16 Aug 2014 16:48:37 -0700
-Message-ID: <20140816234837.11171.69385.stgit@birch.djwong.org>
+Subject: [PATCH 26/27] libext2fs/e2fsck: provide routines to read-ahead
+ metadata
+Date: Sat, 16 Aug 2014 16:48:44 -0700
+Message-ID: <20140816234844.11171.81495.stgit@birch.djwong.org>
 References: <20140816234550.11171.61585.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org,
-	Andreas Dilger <andreas.dilger@intel.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:24262 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751201AbaHPXsn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 16 Aug 2014 19:48:43 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:43778 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751201AbaHPXsu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 16 Aug 2014 19:48:50 -0400
 In-Reply-To: <20140816234550.11171.61585.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-=46r=C3=B8m: Andreas Dilger <adilger@whamcloud.com>
+This patch adds to e2fsck the ability to pre-fetch metadata into the
+page cache in the hopes of speeding up fsck runs.  There are two new
+functions -- the first allows a caller to readahead a list of blocks,
+and the second is a helper function that uses that first mechanism to
+load group data (bitmaps, inode tables).
 
-Add a readahead method for prefetching ranges of disk blocks.  This is
-useful for inode table scanning, and other large contiguous ranges of
-blocks, and may also prove useful for random block prefetch, since it
-will allow reordering of the IO without waiting synchronously for the
-reads to complete.
+These new e2fsck routines require the addition of a dblist API to
+allow us to iterate a subset of a dblist.  This will enable
+incremental directory block readahead in e2fsck pass 2.
 
-It is currently using the posix_fadvise(POSIX_FADV_WILLNEED)
-interface, as this proved most efficient during our testing.
+There's also a function to estimate the readahead given a FS.
 
-[darrick.wong@oracle.com]
-Make the arguments to the readahead function take the same ULL values
-as the other IO functions, and return an appropriate error code when
-fadvise isn't available.
+v2: Add an API to create a dblist with a given number of list elements
+pre-allocated.  This enables us to save ~2ms per call to
+e2fsck_readahead() (assuming a 2MB RA buffer) by not having to
+repeatedly call ext2_resize_mem as we add blocks to the list.
 
-Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/ext2_io.h    |    8 +++++++-
- lib/ext2fs/io_manager.c |    9 +++++++++
- lib/ext2fs/unix_io.c    |   27 ++++++++++++++++++++++++---
- 3 files changed, 40 insertions(+), 4 deletions(-)
+ configure           |    2 
+ configure.in        |    1 
+ e2fsck/Makefile.in  |    8 +-
+ e2fsck/e2fsck.h     |   18 ++++
+ e2fsck/readahead.c  |  252 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ e2fsck/util.c       |   51 ++++++++++
+ lib/config.h.in     |    3 +
+ lib/ext2fs/dblist.c |   21 ++++
+ lib/ext2fs/ext2fs.h |   10 ++
+ 9 files changed, 358 insertions(+), 8 deletions(-)
+ create mode 100644 e2fsck/readahead.c
 
 
-diff --git a/lib/ext2fs/ext2_io.h b/lib/ext2fs/ext2_io.h
-index 1894fb8..4c5a5c5 100644
---- a/lib/ext2fs/ext2_io.h
-+++ b/lib/ext2fs/ext2_io.h
-@@ -90,7 +90,10 @@ struct struct_io_manager {
- 					int count, const void *data);
- 	errcode_t (*discard)(io_channel channel, unsigned long long block,
- 			     unsigned long long count);
--	long	reserved[16];
-+	errcode_t (*cache_readahead)(io_channel channel,
-+				     unsigned long long block,
-+				     unsigned long long count);
-+	long	reserved[15];
- };
-=20
- #define IO_FLAG_RW		0x0001
-@@ -124,6 +127,9 @@ extern errcode_t io_channel_discard(io_channel chan=
-nel,
- 				    unsigned long long count);
- extern errcode_t io_channel_alloc_buf(io_channel channel,
- 				      int count, void *ptr);
-+extern errcode_t io_channel_cache_readahead(io_channel io,
-+					    unsigned long long block,
-+					    unsigned long long count);
-=20
- /* unix_io.c */
- extern io_manager unix_io_manager;
-diff --git a/lib/ext2fs/io_manager.c b/lib/ext2fs/io_manager.c
-index 34e4859..dc5888d 100644
---- a/lib/ext2fs/io_manager.c
-+++ b/lib/ext2fs/io_manager.c
-@@ -128,3 +128,12 @@ errcode_t io_channel_alloc_buf(io_channel io, int =
-count, void *ptr)
- 	else
- 		return ext2fs_get_mem(size, ptr);
- }
+diff --git a/configure b/configure
+index 65449c9..0ea5fc5 100755
+--- a/configure
++++ b/configure
+@@ -12404,7 +12404,7 @@ fi
+ done
+ 
+ fi
+-for ac_header in  	dirent.h 	errno.h 	execinfo.h 	getopt.h 	malloc.h 	mntent.h 	paths.h 	semaphore.h 	setjmp.h 	signal.h 	stdarg.h 	stdint.h 	stdlib.h 	termios.h 	termio.h 	unistd.h 	utime.h 	attr/xattr.h 	linux/falloc.h 	linux/fd.h 	linux/major.h 	linux/loop.h 	net/if_dl.h 	netinet/in.h 	sys/disklabel.h 	sys/disk.h 	sys/file.h 	sys/ioctl.h 	sys/mkdev.h 	sys/mman.h 	sys/mount.h 	sys/prctl.h 	sys/resource.h 	sys/select.h 	sys/socket.h 	sys/sockio.h 	sys/stat.h 	sys/syscall.h 	sys/sysmacros.h 	sys/time.h 	sys/types.h 	sys/un.h 	sys/wait.h
++for ac_header in  	dirent.h 	errno.h 	execinfo.h 	getopt.h 	malloc.h 	mntent.h 	paths.h 	semaphore.h 	setjmp.h 	signal.h 	stdarg.h 	stdint.h 	stdlib.h 	termios.h 	termio.h 	unistd.h 	utime.h 	attr/xattr.h 	linux/falloc.h 	linux/fd.h 	linux/major.h 	linux/loop.h 	net/if_dl.h 	netinet/in.h 	sys/disklabel.h 	sys/disk.h 	sys/file.h 	sys/ioctl.h 	sys/mkdev.h 	sys/mman.h 	sys/mount.h 	sys/prctl.h 	sys/resource.h 	sys/select.h 	sys/socket.h 	sys/sockio.h 	sys/stat.h 	sys/syscall.h 	sys/sysctl.h 	sys/sysmacros.h 	sys/time.h 	sys/types.h 	sys/un.h 	sys/wait.h
+ do :
+   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
+ ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
+diff --git a/configure.in b/configure.in
+index 97a58c5..5106f96 100644
+--- a/configure.in
++++ b/configure.in
+@@ -941,6 +941,7 @@ AC_CHECK_HEADERS(m4_flatten([
+ 	sys/sockio.h
+ 	sys/stat.h
+ 	sys/syscall.h
++	sys/sysctl.h
+ 	sys/sysmacros.h
+ 	sys/time.h
+ 	sys/types.h
+diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
+index c40b188..3a9d7b5 100644
+--- a/e2fsck/Makefile.in
++++ b/e2fsck/Makefile.in
+@@ -62,7 +62,7 @@ OBJS= dict.o unix.o e2fsck.o super.o pass1.o pass1b.o pass2.o \
+ 	pass3.o pass4.o pass5.o journal.o badblocks.o util.o dirinfo.o \
+ 	dx_dirinfo.o ehandler.o problem.o message.o quota.o recovery.o \
+ 	region.o revoke.o ea_refcount.o rehash.o profile.o prof_err.o \
+-	logfile.o sigcatcher.o $(MTRACE_OBJ)
++	logfile.o sigcatcher.o readahead.o $(MTRACE_OBJ)
+ 
+ PROFILED_OBJS= profiled/dict.o profiled/unix.o profiled/e2fsck.o \
+ 	profiled/super.o profiled/pass1.o profiled/pass1b.o \
+@@ -73,7 +73,7 @@ PROFILED_OBJS= profiled/dict.o profiled/unix.o profiled/e2fsck.o \
+ 	profiled/recovery.o profiled/region.o profiled/revoke.o \
+ 	profiled/ea_refcount.o profiled/rehash.o profiled/profile.o \
+ 	profiled/prof_err.o profiled/logfile.o \
+-	profiled/sigcatcher.o
++	profiled/sigcatcher.o profiled/readahead.o
+ 
+ SRCS= $(srcdir)/e2fsck.c \
+ 	$(srcdir)/dict.c \
+@@ -97,6 +97,7 @@ SRCS= $(srcdir)/e2fsck.c \
+ 	$(srcdir)/message.c \
+ 	$(srcdir)/ea_refcount.c \
+ 	$(srcdir)/rehash.c \
++	$(srcdir)/readahead.c \
+ 	$(srcdir)/region.c \
+ 	$(srcdir)/profile.c \
+ 	$(srcdir)/sigcatcher.c \
+@@ -527,3 +528,6 @@ quota.o: $(srcdir)/quota.c $(top_builddir)/lib/config.h \
+  $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
+  $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
+  $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h
++readahead.o: $(srcdir)/readahead.c $(top_builddir)/lib/config.h \
++ $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
++ $(top_builddir)/lib/ext2fs/ext2_err.h $(srcdir)/e2fsck.h
+diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+index 8f16218..ead546e 100644
+--- a/e2fsck/e2fsck.h
++++ b/e2fsck/e2fsck.h
+@@ -490,6 +490,23 @@ extern ext2_ino_t e2fsck_get_lost_and_found(e2fsck_t ctx, int fix);
+ extern errcode_t e2fsck_adjust_inode_count(e2fsck_t ctx, ext2_ino_t ino,
+ 					   int adj);
+ 
++/* readahead.c */
++#define E2FSCK_READA_SUPER	(0x01)
++#define E2FSCK_READA_GDT	(0x02)
++#define E2FSCK_READA_BBITMAP	(0x04)
++#define E2FSCK_READA_IBITMAP	(0x08)
++#define E2FSCK_READA_ITABLE	(0x10)
++#define E2FSCK_READA_ALL_FLAGS	(0x1F)
++errcode_t e2fsck_readahead(ext2_filsys fs, int flags, dgrp_t start,
++			   dgrp_t ngroups);
++#define E2FSCK_RA_DBLIST_IGNORE_BLOCKCNT	(0x01)
++#define E2FSCK_RA_DBLIST_ALL_FLAGS		(0x01)
++errcode_t e2fsck_readahead_dblist(ext2_filsys fs, int flags,
++				  ext2_dblist dblist,
++				  unsigned long long start,
++				  unsigned long long count);
++int e2fsck_can_readahead(ext2_filsys fs);
++unsigned long long e2fsck_guess_readahead(ext2_filsys fs);
+ 
+ /* region.c */
+ extern region_t region_create(region_addr_t min, region_addr_t max);
+@@ -579,6 +596,7 @@ extern errcode_t e2fsck_allocate_subcluster_bitmap(ext2_filsys fs,
+ 						   int default_type,
+ 						   const char *profile_name,
+ 						   ext2fs_block_bitmap *ret);
++unsigned long long get_memory_size(void);
+ 
+ /* unix.c */
+ extern void e2fsck_clear_progbar(e2fsck_t ctx);
+diff --git a/e2fsck/readahead.c b/e2fsck/readahead.c
+new file mode 100644
+index 0000000..a35f9f8
+--- /dev/null
++++ b/e2fsck/readahead.c
+@@ -0,0 +1,252 @@
++/*
++ * readahead.c -- Prefetch filesystem metadata to speed up fsck.
++ *
++ * Copyright (C) 2014 Oracle.
++ *
++ * %Begin-Header%
++ * This file may be redistributed under the terms of the GNU Library
++ * General Public License, version 2.
++ * %End-Header%
++ */
 +
-+errcode_t io_channel_cache_readahead(io_channel io, unsigned long long=
- block,
-+				     unsigned long long count)
-+{
-+	if (!io->manager->cache_readahead)
-+		return EXT2_ET_OP_NOT_SUPPORTED;
++#include "config.h"
++#include <string.h>
 +
-+	return io->manager->cache_readahead(io, block, count);
-+}
-diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
-index eb39b28..189adce 100644
---- a/lib/ext2fs/unix_io.c
-+++ b/lib/ext2fs/unix_io.c
-@@ -15,6 +15,9 @@
-  * %End-Header%
-  */
-=20
-+#define _XOPEN_SOURCE 600
-+#define _DARWIN_C_SOURCE
-+#define _FILE_OFFSET_BITS 64
- #define _LARGEFILE_SOURCE
- #define _LARGEFILE64_SOURCE
- #ifndef _GNU_SOURCE
-@@ -35,6 +38,9 @@
- #ifdef __linux__
- #include <sys/utsname.h>
- #endif
-+#if HAVE_SYS_TYPES_H
-+#include <sys/types.h>
-+#endif
- #ifdef HAVE_SYS_IOCTL_H
- #include <sys/ioctl.h>
- #endif
-@@ -44,9 +50,6 @@
- #if HAVE_SYS_STAT_H
- #include <sys/stat.h>
- #endif
--#if HAVE_SYS_TYPES_H
--#include <sys/types.h>
--#endif
- #if HAVE_SYS_RESOURCE_H
- #include <sys/resource.h>
- #endif
-@@ -830,6 +833,23 @@ static errcode_t unix_write_blk64(io_channel chann=
-el, unsigned long long block,
- #endif /* NO_IO_CACHE */
- }
-=20
-+static errcode_t unix_cache_readahead(io_channel channel,
-+				      unsigned long long block,
-+				      unsigned long long count)
-+{
-+#ifdef POSIX_FADV_WILLNEED
-+	struct unix_private_data *data;
++#include "e2fsck.h"
 +
-+	data =3D (struct unix_private_data *)channel->private_data;
-+	return posix_fadvise(data->dev,
-+			     (ext2_loff_t)block * channel->block_size,
-+			     (ext2_loff_t)count * channel->block_size,
-+			     POSIX_FADV_WILLNEED);
++#undef DEBUG
++
++#ifdef DEBUG
++# define dbg_printf(f, a...)  do {printf(f, ## a); fflush(stdout); } while (0)
 +#else
-+	return EXT2_ET_OP_NOT_SUPPORTED;
++# define dbg_printf(f, a...)
 +#endif
++
++struct read_dblist {
++	errcode_t err;
++	blk64_t run_start;
++	blk64_t run_len;
++	int flags;
++};
++
++static int readahead_dir_block(ext2_filsys fs, struct ext2_db_entry2 *db,
++			       void *priv_data)
++{
++	struct read_dblist *pr = priv_data;
++	e2_blkcnt_t count = (pr->flags & E2FSCK_RA_DBLIST_IGNORE_BLOCKCNT ?
++			     1 : db->blockcnt);
++
++	if (!pr->run_len || db->blk != pr->run_start + pr->run_len) {
++		if (pr->run_len) {
++			pr->err = io_channel_cache_readahead(fs->io,
++							     pr->run_start,
++							     pr->run_len);
++			dbg_printf("readahead start=%llu len=%llu err=%d\n",
++				   pr->run_start, pr->run_len,
++				   (int)pr->err);
++		}
++		pr->run_start = db->blk;
++		pr->run_len = 0;
++	}
++	pr->run_len += count;
++
++	return pr->err ? DBLIST_ABORT : 0;
 +}
 +
- static errcode_t unix_write_blk(io_channel channel, unsigned long bloc=
-k,
- 				int count, const void *buf)
++errcode_t e2fsck_readahead_dblist(ext2_filsys fs, int flags,
++				  ext2_dblist dblist,
++				  unsigned long long start,
++				  unsigned long long count)
++{
++	errcode_t err;
++	struct read_dblist pr;
++
++	dbg_printf("%s: flags=0x%x\n", __func__, flags);
++	if (flags & ~E2FSCK_RA_DBLIST_ALL_FLAGS)
++		return EXT2_ET_INVALID_ARGUMENT;
++
++	memset(&pr, 0, sizeof(pr));
++	pr.flags = flags;
++	err = ext2fs_dblist_iterate3(dblist, readahead_dir_block, start,
++				     count, &pr);
++	if (pr.err)
++		return pr.err;
++	if (err)
++		return err;
++
++	if (pr.run_len)
++		err = io_channel_cache_readahead(fs->io, pr.run_start,
++						 pr.run_len);
++
++	return err;
++}
++
++static errcode_t e2fsck_readahead_bitmap(ext2_filsys fs,
++					 ext2fs_block_bitmap ra_map)
++{
++	blk64_t start, end, out;
++	errcode_t err;
++
++	start = 1;
++	end = ext2fs_blocks_count(fs->super) - 1;
++
++	err = ext2fs_find_first_set_block_bitmap2(ra_map, start, end, &out);
++	while (err == 0) {
++		start = out;
++		err = ext2fs_find_first_zero_block_bitmap2(ra_map, start, end,
++							   &out);
++		if (err == ENOENT) {
++			out = end;
++			err = 0;
++		} else if (err)
++			break;
++
++		err = io_channel_cache_readahead(fs->io, start, out - start);
++		if (err)
++			break;
++		start = out;
++		err = ext2fs_find_first_set_block_bitmap2(ra_map, start, end,
++							  &out);
++	}
++
++	if (err == ENOENT)
++		err = 0;
++
++	return err;
++}
++
++/* Try not to spew bitmap range errors for readahead */
++static errcode_t mark_bmap_range(ext2_filsys fs, ext2fs_block_bitmap map,
++				 blk64_t blk, unsigned int num)
++{
++	if (blk >= ext2fs_get_generic_bmap_start(map) &&
++	    blk + num <= ext2fs_get_generic_bmap_end(map))
++		ext2fs_mark_block_bitmap_range2(map, blk, num);
++	else
++		return EXT2_ET_INVALID_ARGUMENT;
++	return 0;
++}
++
++static errcode_t mark_bmap(ext2_filsys fs, ext2fs_block_bitmap map, blk64_t blk)
++{
++	if (blk >= ext2fs_get_generic_bmap_start(map) &&
++	    blk <= ext2fs_get_generic_bmap_end(map))
++		ext2fs_mark_block_bitmap2(map, blk);
++	else
++		return EXT2_ET_INVALID_ARGUMENT;
++	return 0;
++}
++
++errcode_t e2fsck_readahead(ext2_filsys fs, int flags, dgrp_t start,
++			   dgrp_t ngroups)
++{
++	blk64_t		super, old_gdt, new_gdt;
++	blk_t		blocks;
++	dgrp_t		i;
++	ext2fs_block_bitmap		ra_map = NULL;
++	dgrp_t		end = start + ngroups;
++	errcode_t	err = 0;
++
++	dbg_printf("%s: flags=0x%x start=%d groups=%d\n", __func__, flags,
++		   start, ngroups);
++	if (flags & ~E2FSCK_READA_ALL_FLAGS)
++		return EXT2_ET_INVALID_ARGUMENT;
++
++	if (end > fs->group_desc_count)
++		end = fs->group_desc_count;
++
++	if (flags == 0)
++		return 0;
++
++	err = ext2fs_allocate_block_bitmap(fs, "readahead bitmap",
++					   &ra_map);
++	if (err)
++		return err;
++
++	for (i = start; i < end; i++) {
++		err = ext2fs_super_and_bgd_loc2(fs, i, &super, &old_gdt,
++						&new_gdt, &blocks);
++		if (err)
++			break;
++
++		if (flags & E2FSCK_READA_SUPER) {
++			err = mark_bmap(fs, ra_map, super);
++			if (err)
++				break;
++		}
++
++		if (flags & E2FSCK_READA_GDT) {
++			err = mark_bmap_range(fs, ra_map,
++					      old_gdt ? old_gdt : new_gdt,
++					      blocks);
++			if (err)
++				break;
++		}
++
++		if ((flags & E2FSCK_READA_BBITMAP) &&
++		    !ext2fs_bg_flags_test(fs, i, EXT2_BG_BLOCK_UNINIT) &&
++		    ext2fs_bg_free_blocks_count(fs, i) <
++				fs->super->s_blocks_per_group) {
++			super = ext2fs_block_bitmap_loc(fs, i);
++			err = mark_bmap(fs, ra_map, super);
++			if (err)
++				break;
++		}
++
++		if ((flags & E2FSCK_READA_IBITMAP) &&
++		    !ext2fs_bg_flags_test(fs, i, EXT2_BG_INODE_UNINIT) &&
++		    ext2fs_bg_free_inodes_count(fs, i) <
++				fs->super->s_inodes_per_group) {
++			super = ext2fs_inode_bitmap_loc(fs, i);
++			err = mark_bmap(fs, ra_map, super);
++			if (err)
++				break;
++		}
++
++		if ((flags & E2FSCK_READA_ITABLE) &&
++		    ext2fs_bg_free_inodes_count(fs, i) <
++				fs->super->s_inodes_per_group) {
++			super = ext2fs_inode_table_loc(fs, i);
++			blocks = fs->inode_blocks_per_group -
++				 (ext2fs_bg_itable_unused(fs, i) *
++				  EXT2_INODE_SIZE(fs->super) / fs->blocksize);
++			err = mark_bmap_range(fs, ra_map, super, blocks);
++			if (err)
++				break;
++		}
++	}
++
++	if (!err)
++		err = e2fsck_readahead_bitmap(fs, ra_map);
++
++	ext2fs_free_block_bitmap(ra_map);
++	return err;
++}
++
++int e2fsck_can_readahead(ext2_filsys fs)
++{
++	errcode_t err;
++
++	err = io_channel_cache_readahead(fs->io, 0, 1);
++	dbg_printf("%s: supp=%d\n", __func__, err != EXT2_ET_OP_NOT_SUPPORTED);
++	return err != EXT2_ET_OP_NOT_SUPPORTED;
++}
++
++unsigned long long e2fsck_guess_readahead(ext2_filsys fs)
++{
++	unsigned long long guess;
++
++	/*
++	 * The optimal readahead sizes were experimentally determined by
++	 * djwong in August 2014.  Setting the RA size to one block group's
++	 * worth of inode table blocks seems to yield the largest reductions
++	 * in e2fsck runtime.
++	 */
++	guess = fs->blocksize * fs->inode_blocks_per_group;
++
++	/* Disable RA if it'd use more 1/100th of RAM. */
++	if (get_memory_size() > (guess * 100))
++		return guess / 1024;
++
++	return 0;
++}
+diff --git a/e2fsck/util.c b/e2fsck/util.c
+index 8237328..74f20062 100644
+--- a/e2fsck/util.c
++++ b/e2fsck/util.c
+@@ -37,6 +37,10 @@
+ #include <errno.h>
+ #endif
+ 
++#ifdef HAVE_SYS_SYSCTL_H
++#include <sys/sysctl.h>
++#endif
++
+ #include "e2fsck.h"
+ 
+ extern e2fsck_t e2fsck_global_ctx;   /* Try your very best not to use this! */
+@@ -848,3 +852,50 @@ errcode_t e2fsck_allocate_subcluster_bitmap(ext2_filsys fs, const char *descr,
+ 	fs->default_bitmap_type = save_type;
+ 	return retval;
+ }
++
++/* Return memory size in bytes */
++unsigned long long get_memory_size(void)
++{
++#if defined(_SC_PHYS_PAGES)
++# if defined(_SC_PAGESIZE)
++	return (unsigned long long)sysconf(_SC_PHYS_PAGES) *
++	       (unsigned long long)sysconf(_SC_PAGESIZE);
++# elif defined(_SC_PAGE_SIZE)
++	return (unsigned long long)sysconf(_SC_PHYS_PAGES) *
++	       (unsigned long long)sysconf(_SC_PAGE_SIZE);
++# endif
++#elif defined(CTL_HW)
++# if (defined(HW_MEMSIZE) || defined(HW_PHYSMEM64))
++#  define CTL_HW_INT64
++# elif (defined(HW_PHYSMEM) || defined(HW_REALMEM))
++#  define CTL_HW_UINT
++# endif
++	int mib[2];
++
++	mib[0] = CTL_HW;
++# if defined(HW_MEMSIZE)
++	mib[1] = HW_MEMSIZE;
++# elif defined(HW_PHYSMEM64)
++	mib[1] = HW_PHYSMEM64;
++# elif defined(HW_REALMEM)
++	mib[1] = HW_REALMEM;
++# elif defined(HW_PYSMEM)
++	mib[1] = HW_PHYSMEM;
++# endif
++# if defined(CTL_HW_INT64)
++	unsigned long long size = 0;
++# elif defined(CTL_HW_UINT)
++	unsigned int size = 0;
++# endif
++# if defined(CTL_HW_INT64) || defined(CTL_HW_UINT)
++	size_t len = sizeof(size);
++
++	if (sysctl(mib, 2, &size, &len, NULL, 0) == 0)
++		return (unsigned long long)size;
++# endif
++	return 0;
++#else
++# warning "Don't know how to detect memory on your platform?"
++	return 0;
++#endif
++}
+diff --git a/lib/config.h.in b/lib/config.h.in
+index 4dcc966..be8f976 100644
+--- a/lib/config.h.in
++++ b/lib/config.h.in
+@@ -506,6 +506,9 @@
+ /* Define to 1 if you have the <sys/syscall.h> header file. */
+ #undef HAVE_SYS_SYSCALL_H
+ 
++/* Define to 1 if you have the <sys/sysctl.h> header file. */
++#undef HAVE_SYS_SYSCTL_H
++
+ /* Define to 1 if you have the <sys/sysmacros.h> header file. */
+ #undef HAVE_SYS_SYSMACROS_H
+ 
+diff --git a/lib/ext2fs/dblist.c b/lib/ext2fs/dblist.c
+index 942c4f0..bbdb221 100644
+--- a/lib/ext2fs/dblist.c
++++ b/lib/ext2fs/dblist.c
+@@ -194,20 +194,25 @@ void ext2fs_dblist_sort2(ext2_dblist dblist,
+ /*
+  * This function iterates over the directory block list
+  */
+-errcode_t ext2fs_dblist_iterate2(ext2_dblist dblist,
++errcode_t ext2fs_dblist_iterate3(ext2_dblist dblist,
+ 				 int (*func)(ext2_filsys fs,
+ 					     struct ext2_db_entry2 *db_info,
+ 					     void	*priv_data),
++				 unsigned long long start,
++				 unsigned long long count,
+ 				 void *priv_data)
  {
-@@ -981,6 +1001,7 @@ static struct struct_io_manager struct_unix_manage=
-r =3D {
- 	.read_blk64	=3D unix_read_blk64,
- 	.write_blk64	=3D unix_write_blk64,
- 	.discard	=3D unix_discard,
-+	.cache_readahead	=3D unix_cache_readahead,
- };
-=20
- io_manager unix_io_manager =3D &struct_unix_manager;
+-	unsigned long long	i;
++	unsigned long long	i, end;
+ 	int		ret;
+ 
+ 	EXT2_CHECK_MAGIC(dblist, EXT2_ET_MAGIC_DBLIST);
+ 
++	end = start + count;
+ 	if (!dblist->sorted)
+ 		ext2fs_dblist_sort2(dblist, 0);
+-	for (i=0; i < dblist->count; i++) {
++	if (end > dblist->count)
++		end = dblist->count;
++	for (i = start; i < end; i++) {
+ 		ret = (*func)(dblist->fs, &dblist->list[i], priv_data);
+ 		if (ret & DBLIST_ABORT)
+ 			return 0;
+@@ -215,6 +220,16 @@ errcode_t ext2fs_dblist_iterate2(ext2_dblist dblist,
+ 	return 0;
+ }
+ 
++errcode_t ext2fs_dblist_iterate2(ext2_dblist dblist,
++				 int (*func)(ext2_filsys fs,
++					     struct ext2_db_entry2 *db_info,
++					     void	*priv_data),
++				 void *priv_data)
++{
++	return ext2fs_dblist_iterate3(dblist, func, 0, dblist->count,
++				      priv_data);
++}
++
+ static EXT2_QSORT_TYPE dir_block_cmp2(const void *a, const void *b)
+ {
+ 	const struct ext2_db_entry2 *db_a =
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index e9c16e7..d57dc32 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1055,11 +1055,17 @@ extern void ext2fs_dblist_sort2(ext2_dblist dblist,
+ extern errcode_t ext2fs_dblist_iterate(ext2_dblist dblist,
+ 	int (*func)(ext2_filsys fs, struct ext2_db_entry *db_info,
+ 		    void	*priv_data),
+-       void *priv_data);
++	void *priv_data);
+ extern errcode_t ext2fs_dblist_iterate2(ext2_dblist dblist,
+ 	int (*func)(ext2_filsys fs, struct ext2_db_entry2 *db_info,
+ 		    void	*priv_data),
+-       void *priv_data);
++	void *priv_data);
++extern errcode_t ext2fs_dblist_iterate3(ext2_dblist dblist,
++	int (*func)(ext2_filsys fs, struct ext2_db_entry2 *db_info,
++		    void	*priv_data),
++	unsigned long long start,
++	unsigned long long count,
++	void *priv_data);
+ extern errcode_t ext2fs_set_dir_block(ext2_dblist dblist, ext2_ino_t ino,
+ 				      blk_t blk, int blockcnt);
+ extern errcode_t ext2fs_set_dir_block2(ext2_dblist dblist, ext2_ino_t ino,
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
