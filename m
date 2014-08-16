@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 08/27] e2fsck: resync jbd2 recovery code from Linux 3.16
-Date: Sat, 16 Aug 2014 16:46:42 -0700
-Message-ID: <20140816234642.11171.76498.stgit@birch.djwong.org>
+Subject: [PATCH 09/27] e2fsck: resync jbd2 revoke code from Linux 3.16
+Date: Sat, 16 Aug 2014 16:46:48 -0700
+Message-ID: <20140816234648.11171.8811.stgit@birch.djwong.org>
 References: <20140816234550.11171.61585.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,667 +9,911 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:43425 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:43444 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751437AbaHPXqr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 16 Aug 2014 19:46:47 -0400
+	with ESMTP id S1751486AbaHPXqz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 16 Aug 2014 19:46:55 -0400
 In-Reply-To: <20140816234550.11171.61585.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Synchronize e2fsck's copy of recovery.c with the kernel's copy in
+Synchronize e2fsck's copy of revoke.c with the kernel's copy in
 fs/jbd2.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
  e2fsck/jfs_user.h       |    2 
- e2fsck/journal.c        |    8 +-
- e2fsck/recovery.c       |  209 +++++++++++++++++++++--------------------------
- lib/ext2fs/jfs_compat.h |   18 ++++
- 4 files changed, 120 insertions(+), 117 deletions(-)
+ e2fsck/revoke.c         |  477 ++++++++++++++++++++++++++++++-----------------
+ lib/ext2fs/jfs_compat.h |   15 +
+ lib/ext2fs/kernel-jbd.h |    5 
+ 4 files changed, 320 insertions(+), 179 deletions(-)
 
 
 diff --git a/e2fsck/jfs_user.h b/e2fsck/jfs_user.h
-index 3cccd3f..799c6da 100644
+index 799c6da..9405e47 100644
 --- a/e2fsck/jfs_user.h
 +++ b/e2fsck/jfs_user.h
-@@ -123,7 +123,7 @@ _INLINE_ void do_cache_destroy(lkmem_cache_t *cache)
-  */
- int journal_bmap(journal_t *journal, blk64_t block, unsigned long long *phys);
- struct buffer_head *getblk(kdev_t ctx, blk64_t blocknr, int blocksize);
--void sync_blockdev(kdev_t kdev);
-+int sync_blockdev(kdev_t kdev);
- void ll_rw_block(int rw, int dummy, struct buffer_head *bh[]);
- void mark_buffer_dirty(struct buffer_head *bh);
- void mark_buffer_uptodate(struct buffer_head *bh, int val);
-diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-index 206685a..533b1d6 100644
---- a/e2fsck/journal.c
-+++ b/e2fsck/journal.c
-@@ -144,7 +144,7 @@ struct buffer_head *getblk(kdev_t kdev, blk64_t blocknr, int blocksize)
- 	return bh;
- }
+@@ -54,7 +54,7 @@ typedef struct {
  
--void sync_blockdev(kdev_t kdev)
-+int sync_blockdev(kdev_t kdev)
- {
- 	io_channel	io;
- 
-@@ -153,7 +153,7 @@ void sync_blockdev(kdev_t kdev)
- 	else
- 		io = kdev->k_ctx->journal_io;
- 
--	io_channel_flush(io);
-+	return io_channel_flush(io) ? EIO : 0;
- }
- 
- void ll_rw_block(int rw, int nr, struct buffer_head *bhp[])
-@@ -632,6 +632,10 @@ static errcode_t e2fsck_journal_load(journal_t *journal)
- 	    !e2fsck_journal_sb_csum_verify(journal, jsb))
- 		return EXT2_ET_CORRUPT_SUPERBLOCK;
- 
-+	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_CSUM_V2))
-+		journal->j_csum_seed = jbd2_chksum(journal, ~0, jsb->s_uuid,
-+						   sizeof(jsb->s_uuid));
-+
- 	/* We have now checked whether we know enough about the journal
- 	 * format to be able to proceed safely, so any other checks that
- 	 * fail we should attempt to recover from. */
-diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
-index 66d02b2..e4c7519 100644
---- a/e2fsck/recovery.c
-+++ b/e2fsck/recovery.c
+ #define kmem_cache_alloc(cache,flags) malloc((cache)->object_length)
+ #define kmem_cache_free(cache,obj) free(obj)
+-#define kmem_cache_create(name,len,a,b,c,d) do_cache_create(len)
++#define kmem_cache_create(name,len,a,b,c) do_cache_create(len)
+ #define kmem_cache_destroy(cache) do_cache_destroy(cache)
+ #define kmalloc(len,flags) malloc(len)
+ #define kfree(p) free(p)
+diff --git a/e2fsck/revoke.c b/e2fsck/revoke.c
+index 38c265e..383164e 100644
+--- a/e2fsck/revoke.c
++++ b/e2fsck/revoke.c
 @@ -1,5 +1,5 @@
  /*
-- * linux/fs/jbd/recovery.c
-+ * linux/fs/jbd2/recovery.c
+- * linux/fs/revoke.c
++ * linux/fs/jbd2/revoke.c
   *
-  * Written by Stephen C. Tweedie <sct@redhat.com>, 1999
+  * Written by Stephen C. Tweedie <sct@redhat.com>, 2000
   *
-@@ -14,14 +14,14 @@
+@@ -47,6 +47,10 @@
+  *   overwriting the new data.  We don't even need to clear the revoke
+  *   bit here.
+  *
++ * We cache revoke status of a buffer in the current transaction in b_states
++ * bits.  As the name says, revokevalid flag indicates that the cached revoke
++ * status of a buffer is valid and we can rely on the cached status.
++ *
+  * Revoke information on buffers is a tri-state value:
+  *
+  * RevokeValid clear:	no cached revoke status, need to look it up
+@@ -55,40 +59,58 @@
+  *			need do nothing.
+  * RevokeValid set, Revoked set:
+  *			buffer has been revoked.
++ *
++ * Locking rules:
++ * We keep two hash tables of revoke records. One hashtable belongs to the
++ * running transaction (is pointed to by journal->j_revoke), the other one
++ * belongs to the committing transaction. Accesses to the second hash table
++ * happen only from the kjournald and no other thread touches this table.  Also
++ * journal_switch_revoke_table() which switches which hashtable belongs to the
++ * running and which to the committing transaction is called only from
++ * kjournald. Therefore we need no locks when accessing the hashtable belonging
++ * to the committing transaction.
++ *
++ * All users operating on the hash table belonging to the running transaction
++ * have a handle to the transaction. Therefore they are safe from kjournald
++ * switching hash tables under them. For operations on the lists of entries in
++ * the hash table j_revoke_lock is used.
++ *
++ * Finally, also replay code uses the hash tables but at this moment no one else
++ * can touch them (filesystem isn't mounted yet) and hence no locking is
++ * needed.
   */
  
  #ifndef __KERNEL__
 -#include "config.h"
  #include "jfs_user.h"
  #else
- #include <linux/time.h>
+-#include <linux/sched.h>
++#include <linux/time.h>
  #include <linux/fs.h>
 -#include <linux/jbd.h>
 +#include <linux/jbd2.h>
  #include <linux/errno.h>
--#include <linux/slab.h>
-+#include <linux/crc32.h>
-+#include <linux/blkdev.h>
+ #include <linux/slab.h>
+-#include <linux/locks.h>
+ #include <linux/list.h>
+-#include <linux/smp_lock.h>
+ #include <linux/init.h>
++#include <linux/bio.h>
++#include <linux/log2.h>
  #endif
  
- /*
-@@ -90,7 +90,7 @@ static int do_readahead(journal_t *journal, unsigned int start)
- 		err = journal_bmap(journal, next, &blocknr);
+-static lkmem_cache_t *revoke_record_cache;
+-static lkmem_cache_t *revoke_table_cache;
++static lkmem_cache_t *jbd2_revoke_record_cache;
++static lkmem_cache_t *jbd2_revoke_table_cache;
  
- 		if (err) {
--			printk (KERN_ERR "JBD: bad block at offset %u\n",
-+			printk(KERN_ERR "JBD2: bad block at offset %u\n",
- 				next);
- 			goto failed;
- 		}
-@@ -139,14 +139,14 @@ static int jread(struct buffer_head **bhp, journal_t *journal,
- 	*bhp = NULL;
+ /* Each revoke record represents one single revoked block.  During
+    journal replay, this involves recording the transaction ID of the
+    last transaction to revoke this block. */
  
- 	if (offset >= journal->j_maxlen) {
--		printk(KERN_ERR "JBD: corrupted journal superblock\n");
-+		printk(KERN_ERR "JBD2: corrupted journal superblock\n");
- 		return -EIO;
- 	}
- 
- 	err = journal_bmap(journal, offset, &blocknr);
- 
- 	if (err) {
--		printk (KERN_ERR "JBD: bad block at offset %u\n",
-+		printk(KERN_ERR "JBD2: bad block at offset %u\n",
- 			offset);
- 		return err;
- 	}
-@@ -164,7 +164,7 @@ static int jread(struct buffer_head **bhp, journal_t *journal,
- 	}
- 
- 	if (!buffer_uptodate(bh)) {
--		printk (KERN_ERR "JBD: Failed to read block at offset %u\n",
-+		printk(KERN_ERR "JBD2: Failed to read block at offset %u\n",
- 			offset);
- 		brelse(bh);
- 		return -EIO;
-@@ -178,22 +178,20 @@ static int jbd2_descr_block_csum_verify(journal_t *j,
- 					void *buf)
+-struct jbd_revoke_record_s
++struct jbd2_revoke_record_s
  {
- 	struct journal_block_tail *tail;
--	__u32 provided, calculated;
-+	__u32 provided;
-+	__u32 calculated;
- 
- 	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
- 		return 1;
- 
--	tail = (struct journal_block_tail *)((char *)buf + j->j_blocksize -
-+	tail = (struct journal_block_tail *)(buf + j->j_blocksize -
- 			sizeof(struct journal_block_tail));
- 	provided = tail->t_checksum;
- 	tail->t_checksum = 0;
--	calculated = ext2fs_crc32c_le(~0, j->j_superblock->s_uuid,
--				      sizeof(j->j_superblock->s_uuid));
--	calculated = ext2fs_crc32c_le(calculated, buf, j->j_blocksize);
-+	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
- 	tail->t_checksum = provided;
- 
--	provided = ext2fs_be32_to_cpu(provided);
--	return provided == calculated;
-+	return provided == ext2fs_cpu_to_be32(calculated);
- }
- 
- /*
-@@ -217,10 +215,10 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
- 
- 		nr++;
- 		tagp += tag_bytes;
--		if (!(tag->t_flags & cpu_to_be16(JFS_FLAG_SAME_UUID)))
-+		if (!(tag->t_flags & ext2fs_cpu_to_be16(JFS_FLAG_SAME_UUID)))
- 			tagp += 16;
- 
--		if (tag->t_flags & cpu_to_be16(JFS_FLAG_LAST_TAG))
-+		if (tag->t_flags & ext2fs_cpu_to_be16(JFS_FLAG_LAST_TAG))
- 			break;
- 	}
- 
-@@ -249,7 +247,7 @@ do {									\
-  */
- int journal_recover(journal_t *journal)
- {
--	int			err;
-+	int			err, err2;
- 	journal_superblock_t *	sb;
- 
- 	struct recovery_info	info;
-@@ -265,8 +263,8 @@ int journal_recover(journal_t *journal)
- 
- 	if (!sb->s_start) {
- 		jbd_debug(1, "No recovery required, last transaction %d\n",
--			  be32_to_cpu(sb->s_sequence));
--		journal->j_transaction_sequence = be32_to_cpu(sb->s_sequence) + 1;
-+			  ext2fs_be32_to_cpu(sb->s_sequence));
-+		journal->j_transaction_sequence = ext2fs_be32_to_cpu(sb->s_sequence) + 1;
- 		return 0;
- 	}
- 
-@@ -276,10 +274,10 @@ int journal_recover(journal_t *journal)
- 	if (!err)
- 		err = do_one_pass(journal, &info, PASS_REPLAY);
- 
--	jbd_debug(1, "JBD: recovery, exit status %d, "
-+	jbd_debug(1, "JBD2: recovery, exit status %d, "
- 		  "recovered transactions %u to %u\n",
- 		  err, info.start_transaction, info.end_transaction);
--	jbd_debug(1, "JBD: Replayed %d and revoked %d/%d blocks\n",
-+	jbd_debug(1, "JBD2: Replayed %d and revoked %d/%d blocks\n",
- 		  info.nr_replays, info.nr_revoke_hits, info.nr_revokes);
- 
- 	/* Restart the log at the next transaction ID, thus invalidating
-@@ -287,7 +285,15 @@ int journal_recover(journal_t *journal)
- 	journal->j_transaction_sequence = ++info.end_transaction;
- 
- 	journal_clear_revoke(journal);
--	sync_blockdev(journal->j_fs_dev);
-+	err2 = sync_blockdev(journal->j_fs_dev);
-+	if (!err)
-+		err = err2;
-+	/* Make sure all replayed data is on permanent storage */
-+	if (journal->j_flags & JFS_BARRIER) {
-+		err2 = blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
-+		if (!err)
-+			err = err2;
-+	}
- 	return err;
- }
- 
-@@ -307,6 +313,7 @@ int journal_recover(journal_t *journal)
- int journal_skip_recovery(journal_t *journal)
- {
- 	int			err;
-+
- 	struct recovery_info	info;
- 
- 	memset (&info, 0, sizeof(info));
-@@ -314,17 +321,16 @@ int journal_skip_recovery(journal_t *journal)
- 	err = do_one_pass(journal, &info, PASS_SCAN);
- 
- 	if (err) {
--		printk(KERN_ERR "JBD: error %d scanning journal\n", err);
-+		printk(KERN_ERR "JBD2: error %d scanning journal\n", err);
- 		++journal->j_transaction_sequence;
- 	} else {
--#ifdef CONFIG_JBD_DEBUG
--		journal_superblock_t *sb = journal->j_superblock;
--
--		int dropped = info.end_transaction - be32_to_cpu(sb->s_sequence);
--#endif
-+#ifdef CONFIG_JFS_DEBUG
-+		int dropped = info.end_transaction - 
-+			ext2fs_be32_to_cpu(journal->j_superblock->s_sequence);
- 		jbd_debug(1,
--			  "JBD: ignoring %d transaction%s from the journal.\n",
-+			  "JBD2: ignoring %d transaction%s from the journal.\n",
- 			  dropped, (dropped == 1) ? "" : "s");
-+#endif
- 		journal->j_transaction_sequence = ++info.end_transaction;
- 	}
- 
-@@ -334,9 +340,9 @@ int journal_skip_recovery(journal_t *journal)
- 
- static inline unsigned long long read_tag_block(int tag_bytes, journal_block_tag_t *tag)
- {
--	unsigned long long block = be32_to_cpu(tag->t_blocknr);
--	if (tag_bytes > JBD_TAG_SIZE32)
--		block |= (__u64)be32_to_cpu(tag->t_blocknr_high) << 32;
-+	unsigned long long block = ext2fs_be32_to_cpu(tag->t_blocknr);
-+	if (tag_bytes > JFS_TAG_SIZE32)
-+		block |= (u64)ext2fs_be32_to_cpu(tag->t_blocknr_high) << 32;
- 	return block;
- }
- 
-@@ -345,31 +351,29 @@ static inline unsigned long long read_tag_block(int tag_bytes, journal_block_tag
-  * descriptor block.
-  */
- static int calc_chksums(journal_t *journal, struct buffer_head *bh,
--			unsigned long long *next_log_block, __u32 *crc32_sum)
-+			unsigned long *next_log_block, __u32 *crc32_sum)
- {
- 	int i, num_blks, err;
--	unsigned long long io_block;
-+	unsigned long io_block;
- 	struct buffer_head *obh;
- 
- 	num_blks = count_tags(journal, bh);
- 	/* Calculate checksum of the descriptor block. */
--	*crc32_sum = ext2fs_crc32_be(*crc32_sum, (void *)bh->b_data,
--				     bh->b_size);
-+	*crc32_sum = crc32_be(*crc32_sum, (void *)bh->b_data, bh->b_size);
- 
- 	for (i = 0; i < num_blks; i++) {
- 		io_block = (*next_log_block)++;
- 		wrap(journal, *next_log_block);
- 		err = jread(&obh, journal, io_block);
- 		if (err) {
--			printk(KERN_ERR "JBD: IO error %d recovering block "
--				"%llu in log\n", err, io_block);
-+			printk(KERN_ERR "JBD2: IO error %d recovering block "
-+				"%lu in log\n", err, io_block);
- 			return 1;
- 		} else {
--			*crc32_sum = ext2fs_crc32_be(*crc32_sum,
--						     (void *)obh->b_data,
--						     obh->b_size);
-+			*crc32_sum = crc32_be(*crc32_sum, (void *)obh->b_data,
-+				     obh->b_size);
- 		}
--		brelse(obh);
-+		put_bh(obh);
- 	}
- 	return 0;
- }
-@@ -377,7 +381,8 @@ static int calc_chksums(journal_t *journal, struct buffer_head *bh,
- static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
- {
- 	struct commit_header *h;
--	__u32 provided, calculated;
-+	__u32 provided;
-+	__u32 calculated;
- 
- 	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
- 		return 1;
-@@ -385,41 +390,33 @@ static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
- 	h = buf;
- 	provided = h->h_chksum[0];
- 	h->h_chksum[0] = 0;
--	calculated = ext2fs_crc32c_le(~0, j->j_superblock->s_uuid,
--				      sizeof(j->j_superblock->s_uuid));
--	calculated = ext2fs_crc32c_le(calculated, buf, j->j_blocksize);
-+	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
- 	h->h_chksum[0] = provided;
- 
--	provided = ext2fs_be32_to_cpu(provided);
--	return provided == calculated;
-+	return provided == ext2fs_cpu_to_be32(calculated);
- }
- 
- static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
- 				      void *buf, __u32 sequence)
- {
--	__u32 calculated;
--	__u16 provided, crc;
-+	__u32 csum32;
-+	__u32 seq;
- 
- 	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
- 		return 1;
- 
--	sequence = ext2fs_cpu_to_be32(sequence);
--	calculated = ext2fs_crc32c_le(~0, j->j_superblock->s_uuid,
--				      sizeof(j->j_superblock->s_uuid));
--	calculated = ext2fs_crc32c_le(calculated, (__u8 *)&sequence,
--				      sizeof(sequence));
--	calculated = ext2fs_crc32c_le(calculated, buf, j->j_blocksize) & 0xffff;
--	crc = calculated & 0xFFFF;
--	provided = ext2fs_be16_to_cpu(tag->t_checksum);
-+	seq = ext2fs_cpu_to_be32(sequence);
-+	csum32 = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&seq, sizeof(seq));
-+	csum32 = jbd2_chksum(j, csum32, buf, j->j_blocksize);
- 
--	return provided == crc;
-+	return tag->t_checksum == ext2fs_cpu_to_be16(csum32);
- }
- 
- static int do_one_pass(journal_t *journal,
- 			struct recovery_info *info, enum passtype pass)
- {
- 	unsigned int		first_commit_ID, next_commit_ID;
--	unsigned long long	next_log_block;
-+	unsigned long		next_log_block;
- 	int			err, success = 0;
- 	journal_superblock_t *	sb;
- 	journal_header_t *	tmp;
-@@ -437,8 +434,8 @@ static int do_one_pass(journal_t *journal,
- 	 */
- 
- 	sb = journal->j_superblock;
--	next_commit_ID = be32_to_cpu(sb->s_sequence);
--	next_log_block = be32_to_cpu(sb->s_start);
-+	next_commit_ID = ext2fs_be32_to_cpu(sb->s_sequence);
-+	next_log_block = ext2fs_be32_to_cpu(sb->s_start);
- 
- 	first_commit_ID = next_commit_ID;
- 	if (pass == PASS_SCAN)
-@@ -470,14 +467,14 @@ static int do_one_pass(journal_t *journal,
- 			if (tid_geq(next_commit_ID, info->end_transaction))
- 				break;
- 
--		jbd_debug(2, "Scanning for sequence ID %u at %llu/%lu\n",
-+		jbd_debug(2, "Scanning for sequence ID %u at %lu/%lu\n",
- 			  next_commit_ID, next_log_block, journal->j_last);
- 
- 		/* Skip over each chunk of the transaction looking
- 		 * either the next descriptor block or the final commit
- 		 * record. */
- 
--		jbd_debug(3, "JBD: checking block %llu\n", next_log_block);
-+		jbd_debug(3, "JBD2: checking block %ld\n", next_log_block);
- 		err = jread(&bh, journal, next_log_block);
- 		if (err)
- 			goto failed;
-@@ -493,13 +490,13 @@ static int do_one_pass(journal_t *journal,
- 
- 		tmp = (journal_header_t *)bh->b_data;
- 
--		if (tmp->h_magic != cpu_to_be32(JFS_MAGIC_NUMBER)) {
-+		if (tmp->h_magic != ext2fs_cpu_to_be32(JFS_MAGIC_NUMBER)) {
- 			brelse(bh);
- 			break;
- 		}
- 
--		blocktype = be32_to_cpu(tmp->h_blocktype);
--		sequence = be32_to_cpu(tmp->h_sequence);
-+		blocktype = ext2fs_be32_to_cpu(tmp->h_blocktype);
-+		sequence = ext2fs_be32_to_cpu(tmp->h_sequence);
- 		jbd_debug(3, "Found magic %d, sequence %d\n",
- 			  blocktype, sequence);
- 
-@@ -523,7 +520,6 @@ static int do_one_pass(journal_t *journal,
- 			    !jbd2_descr_block_csum_verify(journal,
- 							  bh->b_data)) {
- 				err = -EIO;
--				brelse(bh);
- 				goto failed;
- 			}
- 
-@@ -539,15 +535,15 @@ static int do_one_pass(journal_t *journal,
- 					if (calc_chksums(journal, bh,
- 							&next_log_block,
- 							&crc32_sum)) {
--						brelse(bh);
-+						put_bh(bh);
- 						break;
- 					}
--					brelse(bh);
-+					put_bh(bh);
- 					continue;
- 				}
- 				next_log_block += count_tags(journal, bh);
- 				wrap(journal, next_log_block);
--				brelse(bh);
-+				put_bh(bh);
- 				continue;
- 			}
- 
-@@ -558,10 +554,10 @@ static int do_one_pass(journal_t *journal,
- 			tagp = &bh->b_data[sizeof(journal_header_t)];
- 			while ((tagp - bh->b_data + tag_bytes)
- 			       <= journal->j_blocksize - descr_csum_size) {
--				unsigned long long io_block;
-+				unsigned long io_block;
- 
- 				tag = (journal_block_tag_t *) tagp;
--				flags = be16_to_cpu(tag->t_flags);
-+				flags = ext2fs_be16_to_cpu(tag->t_flags);
- 
- 				io_block = next_log_block++;
- 				wrap(journal, next_log_block);
-@@ -570,9 +566,9 @@ static int do_one_pass(journal_t *journal,
- 					/* Recover what we can, but
- 					 * report failure at the end. */
- 					success = err;
--					printk (KERN_ERR
--						"JBD: IO error %d recovering "
--						"block %llu in log\n",
-+					printk(KERN_ERR
-+						"JBD2: IO error %d recovering "
-+						"block %ld in log\n",
- 						err, io_block);
- 				} else {
- 					unsigned long long blocknr;
-@@ -595,12 +591,12 @@ static int do_one_pass(journal_t *journal,
- 					/* Look for block corruption */
- 					if (!jbd2_block_tag_csum_verify(
- 						journal, tag, obh->b_data,
--						be32_to_cpu(tmp->h_sequence))) {
-+						ext2fs_be32_to_cpu(tmp->h_sequence))) {
- 						brelse(obh);
- 						success = -EIO;
--						printk(KERN_ERR "JBD: Invalid "
-+						printk(KERN_ERR "JBD2: Invalid "
- 						       "checksum recovering "
--						       "block %lld in log\n",
-+						       "block %llu in log\n",
- 						       blocknr);
- 						continue;
- 					}
-@@ -612,7 +608,7 @@ static int do_one_pass(journal_t *journal,
- 							journal->j_blocksize);
- 					if (nbh == NULL) {
- 						printk(KERN_ERR
--						       "JBD: Out of memory "
-+						       "JBD2: Out of memory "
- 						       "during recovery.\n");
- 						err = -ENOMEM;
- 						brelse(bh);
-@@ -624,10 +620,8 @@ static int do_one_pass(journal_t *journal,
- 					memcpy(nbh->b_data, obh->b_data,
- 							journal->j_blocksize);
- 					if (flags & JFS_FLAG_ESCAPE) {
--						journal_header_t *header;
--
--						header = (journal_header_t *) &nbh->b_data[0];
--						header->h_magic = cpu_to_be32(JFS_MAGIC_NUMBER);
-+						*((__u32 *)nbh->b_data) =
-+						ext2fs_cpu_to_be32(JFS_MAGIC_NUMBER);
- 					}
- 
- 					BUFFER_TRACE(nbh, "marking dirty");
-@@ -654,8 +648,6 @@ static int do_one_pass(journal_t *journal,
- 			continue;
- 
- 		case JFS_COMMIT_BLOCK:
--			jbd_debug(3, "Commit block for #%u found\n",
--				  next_commit_ID);
- 			/*     How to differentiate between interrupted commit
- 			 *               and journal corruption ?
- 			 *
-@@ -698,12 +690,10 @@ static int do_one_pass(journal_t *journal,
- 				struct commit_header *cbh =
- 					(struct commit_header *)bh->b_data;
- 				unsigned found_chksum =
--					be32_to_cpu(cbh->h_chksum[0]);
-+					ext2fs_be32_to_cpu(cbh->h_chksum[0]);
- 
- 				chksum_err = chksum_seen = 0;
- 
--				jbd_debug(3, "Checksums %x %x\n",
--					  crc32_sum, found_chksum);
- 				if (info->end_transaction) {
- 					journal->j_failed_commit =
- 						info->end_transaction;
-@@ -712,9 +702,9 @@ static int do_one_pass(journal_t *journal,
- 				}
- 
- 				if (crc32_sum == found_chksum &&
--				    cbh->h_chksum_type == JBD2_CRC32_CHKSUM &&
-+				    cbh->h_chksum_type == JFS_CRC32_CHKSUM &&
- 				    cbh->h_chksum_size ==
--						JBD2_CRC32_CHKSUM_SIZE)
-+						JFS_CRC32_CHKSUM_SIZE)
- 				       chksum_seen = 1;
- 				else if (!(cbh->h_chksum_type == 0 &&
- 					     cbh->h_chksum_size == 0 &&
-@@ -734,8 +724,7 @@ static int do_one_pass(journal_t *journal,
- 
- 				if (chksum_err) {
- 					info->end_transaction = next_commit_ID;
--					jbd_debug(1, "Checksum_err %x %x\n",
--						  crc32_sum, found_chksum);
-+
- 					if (!JFS_HAS_INCOMPAT_FEATURE(journal,
- 					   JFS_FEATURE_INCOMPAT_ASYNC_COMMIT)){
- 						journal->j_failed_commit =
-@@ -801,7 +790,7 @@ static int do_one_pass(journal_t *journal,
- 		/* It's really bad news if different passes end up at
- 		 * different places (but possible due to IO errors). */
- 		if (info->end_transaction != next_commit_ID) {
--			printk (KERN_ERR "JBD: recovery pass %d ended at "
-+			printk(KERN_ERR "JBD2: recovery pass %d ended at "
- 				"transaction %u, expected %u\n",
- 				pass, next_commit_ID, info->end_transaction);
- 			if (!success)
-@@ -819,22 +808,20 @@ static int jbd2_revoke_block_csum_verify(journal_t *j,
- 					 void *buf)
- {
- 	struct journal_revoke_tail *tail;
--	__u32 provided, calculated;
-+	__u32 provided;
-+	__u32 calculated;
- 
- 	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
- 		return 1;
- 
--	tail = (struct journal_revoke_tail *)((char *)buf + j->j_blocksize -
-+	tail = (struct journal_revoke_tail *)(buf + j->j_blocksize -
- 			sizeof(struct journal_revoke_tail));
- 	provided = tail->r_checksum;
- 	tail->r_checksum = 0;
--	calculated = ext2fs_crc32c_le(~0, j->j_superblock->s_uuid,
--				      sizeof(j->j_superblock->s_uuid));
--	calculated = ext2fs_crc32c_le(calculated, buf, j->j_blocksize);
-+	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
- 	tail->r_checksum = provided;
- 
--	provided = ext2fs_be32_to_cpu(provided);
--	return provided == calculated;
-+	return provided == ext2fs_cpu_to_be32(calculated);
- }
- 
- /* Scan a revoke record, marking all blocks mentioned as revoked. */
-@@ -848,7 +835,7 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
- 
- 	header = (journal_revoke_header_t *) bh->b_data;
- 	offset = sizeof(journal_revoke_header_t);
--	max = be32_to_cpu(header->r_count);
-+	max = ext2fs_be32_to_cpu(header->r_count);
- 
- 	if (!jbd2_revoke_block_csum_verify(journal, header))
- 		return -EINVAL;
-@@ -856,20 +843,14 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
- 	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_64BIT))
- 		record_len = 8;
- 
--	while (offset < max) {
-+	while (offset + record_len <= max) {
- 		unsigned long long blocknr;
- 		int err;
- 
--		if (record_len == 4) {
--			__be32 b;
--			memcpy(&b, bh->b_data + offset, sizeof(__be32));
--			blocknr = ext2fs_be32_to_cpu(b);
--		} else {
--			__be64 b;
--			memcpy(&b, bh->b_data + offset, sizeof(__be64));
--			blocknr = ext2fs_be64_to_cpu(b);
--		}
--
-+		if (record_len == 4)
-+			blocknr = ext2fs_be32_to_cpu(* ((__u32 *) (bh->b_data+offset)));
-+		else
-+			blocknr = ext2fs_be64_to_cpu(* ((__u64 *) (bh->b_data+offset)));
- 		offset += record_len;
- 		err = journal_set_revoke(journal, blocknr, sequence);
- 		if (err)
-diff --git a/lib/ext2fs/jfs_compat.h b/lib/ext2fs/jfs_compat.h
-index 7947ef5..2638c31 100644
---- a/lib/ext2fs/jfs_compat.h
-+++ b/lib/ext2fs/jfs_compat.h
-@@ -7,6 +7,7 @@
- #ifdef HAVE_NETINET_IN_H
- #include <netinet/in.h>
- #endif
-+#include <arpa/inet.h>
- 
- #define printk printf
- #define KERN_ERR ""
-@@ -26,6 +27,22 @@ typedef struct journal_s journal_t;
- struct buffer_head;
- struct inode;
- 
-+#define GFP_KERNEL	0
-+#define JFS_TAG_SIZE32	JBD_TAG_SIZE32
-+#define JFS_BARRIER	0
-+typedef __u64 u64;
-+#define JFS_CRC32_CHKSUM	JBD2_CRC32_CHKSUM
-+#define JFS_CRC32_CHKSUM_SIZE	JBD2_CRC32_CHKSUM_SIZE
-+#define put_bh(x)	brelse(x)
-+#define be64_to_cpu(x)	ext2fs_be64_to_cpu(x)
-+
-+static inline __u32 jbd2_chksum(journal_t *j, __u32 crc, const void *address,
-+			unsigned int length)
-+{
-+	return ext2fs_crc32c_le(crc, address, length);
-+}
-+#define crc32_be(x, y, z)	ext2fs_crc32_be((x), (y), (z))
-+
- struct journal_s
- {
- 	unsigned long		j_flags;
-@@ -48,6 +65,7 @@ struct journal_s
- 	__u8			j_uuid[16];
- 	struct jbd_revoke_table_s *j_revoke;
- 	tid_t			j_failed_commit;
-+	__u32			j_csum_seed;
+ 	struct list_head  hash;
+ 	tid_t		  sequence;	/* Used for recovery only */
+-	unsigned long	  blocknr;
++	unsigned long long	  blocknr;
  };
  
- #define J_ASSERT(assert)						\
+ 
+ /* The revoke table is just a simple hash table of revoke records. */
+-struct jbd_revoke_table_s
++struct jbd2_revoke_table_s
+ {
+ 	/* It is conceivable that we might want a larger hash table
+ 	 * for recovery.  Must be a power of two. */
+@@ -100,159 +122,187 @@ struct jbd_revoke_table_s
+ 
+ #ifdef __KERNEL__
+ static void write_one_revoke_record(journal_t *, transaction_t *,
+-				    struct journal_head **, int *,
+-				    struct jbd_revoke_record_s *);
+-static void flush_descriptor(journal_t *, struct journal_head *, int);
++				    struct list_head *,
++				    struct buffer_head **, int *,
++				    struct jbd2_revoke_record_s *, int);
++static void flush_descriptor(journal_t *, struct buffer_head *, int, int);
+ #endif
+ 
+ /* Utility functions to maintain the revoke table */
+ 
+ /* Borrowed from buffer.c: this is a tried and tested block hash function */
+-static inline int hash(journal_t *journal, unsigned long block)
++static inline int hash(journal_t *journal, unsigned long long block)
+ {
+-	struct jbd_revoke_table_s *table = journal->j_revoke;
++	struct jbd2_revoke_table_s *table = journal->j_revoke;
+ 	int hash_shift = table->hash_shift;
++	int hash = (int)block ^ (int)((block >> 31) >> 1);
+ 
+-	return ((block << (hash_shift - 6)) ^
+-		(block >> 13) ^
+-		(block << (hash_shift - 12))) & (table->hash_size - 1);
++	return ((hash << (hash_shift - 6)) ^
++		(hash >> 13) ^
++		(hash << (hash_shift - 12))) & (table->hash_size - 1);
+ }
+ 
+-static int insert_revoke_hash(journal_t *journal, unsigned long blocknr,
++static int insert_revoke_hash(journal_t *journal, unsigned long long blocknr,
+ 			      tid_t seq)
+ {
+ 	struct list_head *hash_list;
+-	struct jbd_revoke_record_s *record;
++	struct jbd2_revoke_record_s *record;
+ 
+-#ifdef __KERNEL__
+ repeat:
+-#endif
+-	record = kmem_cache_alloc(revoke_record_cache, GFP_NOFS);
++	record = kmem_cache_alloc(jbd2_revoke_record_cache, GFP_NOFS);
+ 	if (!record)
+ 		goto oom;
+ 
+ 	record->sequence = seq;
+ 	record->blocknr = blocknr;
+ 	hash_list = &journal->j_revoke->hash_table[hash(journal, blocknr)];
++	spin_lock(&journal->j_revoke_lock);
+ 	list_add(&record->hash, hash_list);
++	spin_unlock(&journal->j_revoke_lock);
+ 	return 0;
+ 
+ oom:
+-#ifdef __KERNEL__
+ 	if (!journal_oom_retry)
+ 		return -ENOMEM;
+-	jbd_debug(1, "ENOMEM in " __FUNCTION__ ", retrying.\n");
+-	current->policy |= SCHED_YIELD;
+-	schedule();
++	jbd_debug(1, "ENOMEM in %s, retrying\n", __func__);
++	yield();
+ 	goto repeat;
+-#else
+-	return -ENOMEM;
+-#endif
+ }
+ 
+ /* Find a revoke record in the journal's hash table. */
+ 
+-static struct jbd_revoke_record_s *find_revoke_record(journal_t *journal,
+-						      unsigned long blocknr)
++static struct jbd2_revoke_record_s *find_revoke_record(journal_t *journal,
++						      unsigned long long blocknr)
+ {
+ 	struct list_head *hash_list;
+-	struct jbd_revoke_record_s *record;
++	struct jbd2_revoke_record_s *record;
+ 
+ 	hash_list = &journal->j_revoke->hash_table[hash(journal, blocknr)];
+ 
+-	record = (struct jbd_revoke_record_s *) hash_list->next;
++	spin_lock(&journal->j_revoke_lock);
++	record = (struct jbd2_revoke_record_s *) hash_list->next;
+ 	while (&(record->hash) != hash_list) {
+-		if (record->blocknr == blocknr)
++		if (record->blocknr == blocknr) {
++			spin_unlock(&journal->j_revoke_lock);
+ 			return record;
+-		record = (struct jbd_revoke_record_s *) record->hash.next;
++		}
++		record = (struct jbd2_revoke_record_s *) record->hash.next;
+ 	}
++	spin_unlock(&journal->j_revoke_lock);
+ 	return NULL;
+ }
+ 
+-int __init journal_init_revoke_caches(void)
++void journal_destroy_revoke_caches(void)
+ {
+-	revoke_record_cache = kmem_cache_create("revoke_record",
+-					   sizeof(struct jbd_revoke_record_s),
+-					   0, SLAB_HWCACHE_ALIGN, NULL, NULL);
+-	if (revoke_record_cache == 0)
+-		return -ENOMEM;
+-
+-	revoke_table_cache = kmem_cache_create("revoke_table",
+-					   sizeof(struct jbd_revoke_table_s),
+-					   0, 0, NULL, NULL);
+-	if (revoke_table_cache == 0) {
+-		kmem_cache_destroy(revoke_record_cache);
+-		revoke_record_cache = NULL;
+-		return -ENOMEM;
++	if (jbd2_revoke_record_cache) {
++		kmem_cache_destroy(jbd2_revoke_record_cache);
++		jbd2_revoke_record_cache = NULL;
++	}
++	if (jbd2_revoke_table_cache) {
++		kmem_cache_destroy(jbd2_revoke_table_cache);
++		jbd2_revoke_table_cache = NULL;
+ 	}
+-	return 0;
+ }
+ 
+-void journal_destroy_revoke_caches(void)
++int __init journal_init_revoke_caches(void)
+ {
+-	kmem_cache_destroy(revoke_record_cache);
+-	revoke_record_cache = 0;
+-	kmem_cache_destroy(revoke_table_cache);
+-	revoke_table_cache = 0;
++	J_ASSERT(!jbd2_revoke_record_cache);
++	J_ASSERT(!jbd2_revoke_table_cache);
++
++	jbd2_revoke_record_cache = KMEM_CACHE(jbd2_revoke_record_s,
++					SLAB_HWCACHE_ALIGN|SLAB_TEMPORARY);
++	if (!jbd2_revoke_record_cache)
++		goto record_cache_failure;
++
++	jbd2_revoke_table_cache = KMEM_CACHE(jbd2_revoke_table_s,
++					     SLAB_TEMPORARY);
++	if (!jbd2_revoke_table_cache)
++		goto table_cache_failure;
++	return 0;
++table_cache_failure:
++	journal_destroy_revoke_caches();
++record_cache_failure:
++		return -ENOMEM;
+ }
+ 
+-/* Initialise the revoke table for a given journal to a given size. */
+-
+-int journal_init_revoke(journal_t *journal, int hash_size)
++static struct jbd2_revoke_table_s *journal_init_revoke_table(int hash_size)
+ {
+-	int shift, tmp;
++	int shift = 0;
++	int tmp = hash_size;
++	struct jbd2_revoke_table_s *table;
+ 
+-	J_ASSERT (journal->j_revoke == NULL);
+-
+-	journal->j_revoke = kmem_cache_alloc(revoke_table_cache, GFP_KERNEL);
+-	if (!journal->j_revoke)
+-		return -ENOMEM;
+-
+-	/* Check that the hash_size is a power of two */
+-	J_ASSERT ((hash_size & (hash_size-1)) == 0);
+-
+-	journal->j_revoke->hash_size = hash_size;
++	table = kmem_cache_alloc(jbd2_revoke_table_cache, GFP_KERNEL);
++	if (!table)
++		goto out;
+ 
+-	shift = 0;
+-	tmp = hash_size;
+ 	while((tmp >>= 1UL) != 0UL)
+ 		shift++;
+-	journal->j_revoke->hash_shift = shift;
+ 
+-	journal->j_revoke->hash_table =
++	table->hash_size = hash_size;
++	table->hash_shift = shift;
++	table->hash_table =
+ 		kmalloc(hash_size * sizeof(struct list_head), GFP_KERNEL);
+-	if (!journal->j_revoke->hash_table) {
+-		kmem_cache_free(revoke_table_cache, journal->j_revoke);
+-		journal->j_revoke = NULL;
+-		return -ENOMEM;
++	if (!table->hash_table) {
++		kmem_cache_free(jbd2_revoke_table_cache, table);
++		table = NULL;
++		goto out;
+ 	}
+ 
+ 	for (tmp = 0; tmp < hash_size; tmp++)
+-		INIT_LIST_HEAD(&journal->j_revoke->hash_table[tmp]);
++		INIT_LIST_HEAD(&table->hash_table[tmp]);
+ 
+-	return 0;
++out:
++	return table;
+ }
+ 
+-/* Destoy a journal's revoke table.  The table must already be empty! */
+-
+-void journal_destroy_revoke(journal_t *journal)
++static void journal_destroy_revoke_table(struct jbd2_revoke_table_s *table)
+ {
+-	struct jbd_revoke_table_s *table;
+-	struct list_head *hash_list;
+ 	int i;
++	struct list_head *hash_list;
+ 
+-	table = journal->j_revoke;
+-	if (!table)
+-		return;
+-
+-	for (i=0; i<table->hash_size; i++) {
++	for (i = 0; i < table->hash_size; i++) {
+ 		hash_list = &table->hash_table[i];
+-		J_ASSERT (list_empty(hash_list));
++		J_ASSERT(list_empty(hash_list));
+ 	}
+ 
+ 	kfree(table->hash_table);
+-	kmem_cache_free(revoke_table_cache, table);
++	kmem_cache_free(jbd2_revoke_table_cache, table);
++}
++
++/* Initialise the revoke table for a given journal to a given size. */
++int journal_init_revoke(journal_t *journal, int hash_size)
++{
++	J_ASSERT(journal->j_revoke_table[0] == NULL);
++	J_ASSERT(is_power_of_2(hash_size));
++
++	journal->j_revoke_table[0] = journal_init_revoke_table(hash_size);
++	if (!journal->j_revoke_table[0])
++		goto fail0;
++
++	journal->j_revoke_table[1] = journal_init_revoke_table(hash_size);
++	if (!journal->j_revoke_table[1])
++		goto fail1;
++
++	journal->j_revoke = journal->j_revoke_table[1];
++
++	spin_lock_init(&journal->j_revoke_lock);
++
++	return 0;
++
++fail1:
++	journal_destroy_revoke_table(journal->j_revoke_table[0]);
++fail0:
++	return -ENOMEM;
++}
++
++/* Destroy a journal's revoke table.  The table must already be empty! */
++void journal_destroy_revoke(journal_t *journal)
++{
+ 	journal->j_revoke = NULL;
++	if (journal->j_revoke_table[0])
++		journal_destroy_revoke_table(journal->j_revoke_table[0]);
++	if (journal->j_revoke_table[1])
++		journal_destroy_revoke_table(journal->j_revoke_table[1]);
+ }
+ 
+ 
+@@ -282,14 +332,15 @@ void journal_destroy_revoke(journal_t *journal)
+  * by one.
+  */
+ 
+-int journal_revoke(handle_t *handle, unsigned long blocknr,
++int journal_revoke(handle_t *handle, unsigned long long blocknr,
+ 		   struct buffer_head *bh_in)
+ {
+ 	struct buffer_head *bh = NULL;
+ 	journal_t *journal;
+-	kdev_t dev;
++	struct block_device *bdev;
+ 	int err;
+ 
++	might_sleep();
+ 	if (bh_in)
+ 		BUFFER_TRACE(bh_in, "enter");
+ 
+@@ -299,34 +350,32 @@ int journal_revoke(handle_t *handle, unsigned long blocknr,
+ 		return -EINVAL;
+ 	}
+ 
+-	dev = journal->j_fs_dev;
++	bdev = journal->j_fs_dev;
+ 	bh = bh_in;
+ 
+ 	if (!bh) {
+-		bh = get_hash_table(dev, blocknr, journal->j_blocksize);
++		bh = __find_get_block(bdev, blocknr, journal->j_blocksize);
+ 		if (bh)
+ 			BUFFER_TRACE(bh, "found on hash");
+ 	}
+-#ifdef JBD_EXPENSIVE_CHECKING
++#ifdef JFS_EXPENSIVE_CHECKING
+ 	else {
+ 		struct buffer_head *bh2;
+ 
+ 		/* If there is a different buffer_head lying around in
+ 		 * memory anywhere... */
+-		bh2 = get_hash_table(dev, blocknr, journal->j_blocksize);
++		bh2 = __find_get_block(bdev, blocknr, journal->j_blocksize);
+ 		if (bh2) {
+ 			/* ... and it has RevokeValid status... */
+-			if ((bh2 != bh) &&
+-			    test_bit(BH_RevokeValid, &bh2->b_state))
++			if (bh2 != bh && buffer_revokevalid(bh2))
+ 				/* ...then it better be revoked too,
+ 				 * since it's illegal to create a revoke
+ 				 * record against a buffer_head which is
+ 				 * not marked revoked --- that would
+ 				 * risk missing a subsequent revoke
+ 				 * cancel. */
+-				J_ASSERT_BH(bh2, test_bit(BH_Revoked, &
+-							  bh2->b_state));
+-			__brelse(bh2);
++				J_ASSERT_BH(bh2, buffer_revoked(bh2));
++			put_bh(bh2);
+ 		}
+ 	}
+ #endif
+@@ -335,9 +384,14 @@ int journal_revoke(handle_t *handle, unsigned long blocknr,
+            first having the revoke cancelled: it's illegal to free a
+            block twice without allocating it in between! */
+ 	if (bh) {
+-		J_ASSERT_BH(bh, !test_bit(BH_Revoked, &bh->b_state));
+-		set_bit(BH_Revoked, &bh->b_state);
+-		set_bit(BH_RevokeValid, &bh->b_state);
++		if (!J_EXPECT_BH(bh, !buffer_revoked(bh),
++				 "inconsistent data on disk")) {
++			if (!bh_in)
++				brelse(bh);
++			return -EIO;
++		}
++		set_buffer_revoked(bh);
++		set_buffer_revokevalid(bh);
+ 		if (bh_in) {
+ 			BUFFER_TRACE(bh_in, "call journal_forget");
+ 			journal_forget(handle, bh_in);
+@@ -347,11 +401,9 @@ int journal_revoke(handle_t *handle, unsigned long blocknr,
+ 		}
+ 	}
+ 
+-	lock_journal(journal);
+-	jbd_debug(2, "insert revoke for block %lu, bh_in=%p\n", blocknr, bh_in);
++	jbd_debug(2, "insert revoke for block %llu, bh_in=%p\n",blocknr, bh_in);
+ 	err = insert_revoke_hash(journal, blocknr,
+ 				handle->h_transaction->t_tid);
+-	unlock_journal(journal);
+ 	BUFFER_TRACE(bh_in, "exit");
+ 	return err;
+ }
+@@ -360,7 +412,7 @@ int journal_revoke(handle_t *handle, unsigned long blocknr,
+  * Cancel an outstanding revoke.  For use only internally by the
+  * journaling code (called from journal_get_write_access).
+  *
+- * We trust the BH_Revoked bit on the buffer if the buffer is already
++ * We trust buffer_revoked() on the buffer if the buffer is already
+  * being journaled: if there is no revoke pending on the buffer, then we
+  * don't do anything here.
+  *
+@@ -370,12 +422,10 @@ int journal_revoke(handle_t *handle, unsigned long blocknr,
+  * the second time we would still have a pending revoke to cancel.  So,
+  * do not trust the Revoked bit on buffers unless RevokeValid is also
+  * set.
+- *
+- * The caller must have the journal locked.
+  */
+ int journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
+ {
+-	struct jbd_revoke_record_s *record;
++	struct jbd2_revoke_record_s *record;
+ 	journal_t *journal = handle->h_transaction->t_journal;
+ 	int need_cancel;
+ 	int did_revoke = 0;	/* akpm: debug */
+@@ -387,25 +437,27 @@ int journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
+ 	 * only perform the full cancel if the revoke bit is set.  If
+ 	 * not, we can't trust the revoke bit, and we need to do the
+ 	 * full search for a revoke record. */
+-	if (test_and_set_bit(BH_RevokeValid, &bh->b_state))
+-		need_cancel = (test_and_clear_bit(BH_Revoked, &bh->b_state));
+-	else {
++	if (test_set_buffer_revokevalid(bh)) {
++		need_cancel = test_clear_buffer_revoked(bh);
++	} else {
+ 		need_cancel = 1;
+-		clear_bit(BH_Revoked, &bh->b_state);
++		clear_buffer_revoked(bh);
+ 	}
+ 
+ 	if (need_cancel) {
+ 		record = find_revoke_record(journal, bh->b_blocknr);
+ 		if (record) {
+ 			jbd_debug(4, "cancelled existing revoke on "
+-				  "blocknr %lu\n", bh->b_blocknr);
++				  "blocknr %llu\n", (unsigned long long)bh->b_blocknr);
++			spin_lock(&journal->j_revoke_lock);
+ 			list_del(&record->hash);
+-			kmem_cache_free(revoke_record_cache, record);
++			spin_unlock(&journal->j_revoke_lock);
++			kmem_cache_free(jbd2_revoke_record_cache, record);
+ 			did_revoke = 1;
+ 		}
+ 	}
+ 
+-#ifdef JBD_EXPENSIVE_CHECKING
++#ifdef JFS_EXPENSIVE_CHECKING
+ 	/* There better not be one left behind by now! */
+ 	record = find_revoke_record(journal, bh->b_blocknr);
+ 	J_ASSERT_JH(jh, record == NULL);
+@@ -415,56 +467,104 @@ int journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
+ 	 * buffer_head?  If so, we'd better make sure we clear the
+ 	 * revoked status on any hashed alias too, otherwise the revoke
+ 	 * state machine will get very upset later on. */
+-	if (need_cancel && !bh->b_pprev) {
++	if (need_cancel) {
+ 		struct buffer_head *bh2;
+-		bh2 = get_hash_table(bh->b_dev, bh->b_blocknr, bh->b_size);
++		bh2 = __find_get_block(bh->b_bdev, bh->b_blocknr, bh->b_size);
+ 		if (bh2) {
+-			clear_bit(BH_Revoked, &bh2->b_state);
++			if (bh2 != bh)
++				clear_buffer_revoked(bh2);
+ 			__brelse(bh2);
+ 		}
+ 	}
+-
+ 	return did_revoke;
+ }
+ 
++/*
++ * journal_clear_revoked_flag clears revoked flag of buffers in
++ * revoke table to reflect there is no revoked buffers in the next
++ * transaction which is going to be started.
++ */
++void jbd2_clear_buffer_revoked_flags(journal_t *journal)
++{
++	struct jbd2_revoke_table_s *revoke = journal->j_revoke;
++	int i = 0;
++
++	for (i = 0; i < revoke->hash_size; i++) {
++		struct list_head *hash_list;
++		struct list_head *list_entry;
++		hash_list = &revoke->hash_table[i];
++
++		list_for_each(list_entry, hash_list) {
++			struct jbd2_revoke_record_s *record;
++			struct buffer_head *bh;
++			record = (struct jbd2_revoke_record_s *)list_entry;
++			bh = __find_get_block(journal->j_fs_dev,
++					      record->blocknr,
++					      journal->j_blocksize);
++			if (bh) {
++				clear_buffer_revoked(bh);
++				__brelse(bh);
++			}
++		}
++	}
++}
++
++/* journal_switch_revoke table select j_revoke for next transaction
++ * we do not want to suspend any processing until all revokes are
++ * written -bzzz
++ */
++void journal_switch_revoke_table(journal_t *journal)
++{
++	int i;
++
++	if (journal->j_revoke == journal->j_revoke_table[0])
++		journal->j_revoke = journal->j_revoke_table[1];
++	else
++		journal->j_revoke = journal->j_revoke_table[0];
++
++	for (i = 0; i < journal->j_revoke->hash_size; i++)
++		INIT_LIST_HEAD(&journal->j_revoke->hash_table[i]);
++}
+ 
+ /*
+  * Write revoke records to the journal for all entries in the current
+  * revoke hash, deleting the entries as we go.
+- *
+- * Called with the journal lock held.
+  */
+-
+ void journal_write_revoke_records(journal_t *journal,
+-				  transaction_t *transaction)
++				       transaction_t *transaction,
++				       struct list_head *log_bufs,
++				       int write_op)
+ {
+-	struct journal_head *descriptor;
+-	struct jbd_revoke_record_s *record;
+-	struct jbd_revoke_table_s *revoke;
++	struct buffer_head *descriptor;
++	struct jbd2_revoke_record_s *record;
++	struct jbd2_revoke_table_s *revoke;
+ 	struct list_head *hash_list;
+ 	int i, offset, count;
+ 
+ 	descriptor = NULL;
+ 	offset = 0;
+ 	count = 0;
+-	revoke = journal->j_revoke;
++
++	/* select revoke table for committing transaction */
++	revoke = journal->j_revoke == journal->j_revoke_table[0] ?
++		journal->j_revoke_table[1] : journal->j_revoke_table[0];
+ 
+ 	for (i = 0; i < revoke->hash_size; i++) {
+ 		hash_list = &revoke->hash_table[i];
+ 
+ 		while (!list_empty(hash_list)) {
+-			record = (struct jbd_revoke_record_s *)
++			record = (struct jbd2_revoke_record_s *)
+ 				hash_list->next;
+-			write_one_revoke_record(journal, transaction,
++			write_one_revoke_record(journal, transaction, log_bufs,
+ 						&descriptor, &offset,
+-						record);
++						record, write_op);
+ 			count++;
+ 			list_del(&record->hash);
+-			kmem_cache_free(revoke_record_cache, record);
++			kmem_cache_free(jbd2_revoke_record_cache, record);
+ 		}
+ 	}
+ 	if (descriptor)
+-		flush_descriptor(journal, descriptor, offset);
++		flush_descriptor(journal, descriptor, offset, write_op);
+ 	jbd_debug(1, "Wrote %d revoke records\n", count);
+ }
+ 
+@@ -475,11 +575,14 @@ void journal_write_revoke_records(journal_t *journal,
+ 
+ static void write_one_revoke_record(journal_t *journal,
+ 				    transaction_t *transaction,
+-				    struct journal_head **descriptorp,
++				    struct list_head *log_bufs,
++				    struct buffer_head **descriptorp,
+ 				    int *offsetp,
+-				    struct jbd_revoke_record_s *record)
++				    struct jbd2_revoke_record_s *record,
++				    int write_op)
+ {
+-	struct journal_head *descriptor;
++	int csum_size = 0;
++	struct buffer_head *descriptor;
+ 	int offset;
+ 	journal_header_t *header;
+ 
+@@ -493,10 +596,14 @@ static void write_one_revoke_record(journal_t *journal,
+ 	descriptor = *descriptorp;
+ 	offset = *offsetp;
+ 
++	/* Do we need to leave space at the end for a checksum? */
++	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_CSUM_V2))
++		csum_size = sizeof(struct journal_revoke_tail);
++
+ 	/* Make sure we have a descriptor with space left for the record */
+ 	if (descriptor) {
+-		if (offset == journal->j_blocksize) {
+-			flush_descriptor(journal, descriptor, offset);
++		if (offset >= journal->j_blocksize - csum_size) {
++			flush_descriptor(journal, descriptor, offset, write_op);
+ 			descriptor = NULL;
+ 		}
+ 	}
+@@ -505,25 +612,48 @@ static void write_one_revoke_record(journal_t *journal,
+ 		descriptor = journal_get_descriptor_buffer(journal);
+ 		if (!descriptor)
+ 			return;
+-		header = (journal_header_t *) &jh2bh(descriptor)->b_data[0];
+-		header->h_magic     = htonl(JFS_MAGIC_NUMBER);
+-		header->h_blocktype = htonl(JFS_REVOKE_BLOCK);
+-		header->h_sequence  = htonl(transaction->t_tid);
++		header = (journal_header_t *)descriptor->b_data;
++		header->h_magic     = ext2fs_cpu_to_be32(JFS_MAGIC_NUMBER);
++		header->h_blocktype = ext2fs_cpu_to_be32(JFS_REVOKE_BLOCK);
++		header->h_sequence  = ext2fs_cpu_to_be32(transaction->t_tid);
+ 
+ 		/* Record it so that we can wait for IO completion later */
+-		JBUFFER_TRACE(descriptor, "file as BJ_LogCtl");
+-		journal_file_buffer(descriptor, transaction, BJ_LogCtl);
++		BUFFER_TRACE(descriptor, "file in log_bufs");
++		jbd2_file_log_bh(log_bufs, descriptor);
+ 
+ 		offset = sizeof(journal_revoke_header_t);
+ 		*descriptorp = descriptor;
+ 	}
+ 
+-	* ((unsigned int *)(&jh2bh(descriptor)->b_data[offset])) =
+-		htonl(record->blocknr);
+-	offset += 4;
++	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_64BIT)) {
++		* ((__u64 *)(&descriptor->b_data[offset])) =
++			ext2fs_cpu_to_be64(record->blocknr);
++		offset += 8;
++
++	} else {
++		* ((__u32 *)(&descriptor->b_data[offset])) =
++			ext2fs_cpu_to_be32(record->blocknr);
++		offset += 4;
++	}
++
+ 	*offsetp = offset;
+ }
+ 
++static void jbd2_revoke_csum_set(journal_t *j, struct buffer_head *bh)
++{
++	struct journal_revoke_tail *tail;
++	__u32 csum;
++
++	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
++		return;
++
++	tail = (struct journal_revoke_tail *)(bh->b_data + j->j_blocksize -
++			sizeof(struct journal_revoke_tail));
++	tail->r_checksum = 0;
++	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
++	tail->r_checksum = ext2fs_cpu_to_be32(csum);
++}
++
+ /*
+  * Flush a revoke descriptor out to the journal.  If we are aborting,
+  * this is a noop; otherwise we are generating a buffer which needs to
+@@ -532,27 +662,25 @@ static void write_one_revoke_record(journal_t *journal,
+  */
+ 
+ static void flush_descriptor(journal_t *journal,
+-			     struct journal_head *descriptor,
+-			     int offset)
++			     struct buffer_head *descriptor,
++			     int offset, int write_op)
+ {
+ 	journal_revoke_header_t *header;
+ 
+ 	if (is_journal_aborted(journal)) {
+-		JBUFFER_TRACE(descriptor, "brelse");
+-		__brelse(jh2bh(descriptor));
++		put_bh(descriptor);
+ 		return;
+ 	}
+ 
+-	header = (journal_revoke_header_t *) jh2bh(descriptor)->b_data;
+-	header->r_count = htonl(offset);
+-	set_bit(BH_JWrite, &jh2bh(descriptor)->b_state);
+-	{
+-		struct buffer_head *bh = jh2bh(descriptor);
+-		BUFFER_TRACE(bh, "write");
+-		ll_rw_block (WRITE, 1, &bh);
+-	}
+-}
++	header = (journal_revoke_header_t *)descriptor->b_data;
++	header->r_count = ext2fs_cpu_to_be32(offset);
++	jbd2_revoke_csum_set(journal, descriptor);
+ 
++	set_buffer_jwrite(descriptor);
++	BUFFER_TRACE(descriptor, "write");
++	set_buffer_dirty(descriptor);
++	write_dirty_buffer(descriptor, write_op);
++}
+ #endif
+ 
+ /*
+@@ -578,14 +706,14 @@ static void flush_descriptor(journal_t *journal,
+  */
+ 
+ int journal_set_revoke(journal_t *journal,
+-		       unsigned long blocknr,
++		       unsigned long long blocknr,
+ 		       tid_t sequence)
+ {
+-	struct jbd_revoke_record_s *record;
++	struct jbd2_revoke_record_s *record;
+ 
+ 	record = find_revoke_record(journal, blocknr);
+ 	if (record) {
+-		/* If we have multiple occurences, only record the
++		/* If we have multiple occurrences, only record the
+ 		 * latest sequence number in the hashed record */
+ 		if (tid_gt(sequence, record->sequence))
+ 			record->sequence = sequence;
+@@ -602,10 +730,10 @@ int journal_set_revoke(journal_t *journal,
+  */
+ 
+ int journal_test_revoke(journal_t *journal,
+-			unsigned long blocknr,
++			unsigned long long blocknr,
+ 			tid_t sequence)
+ {
+-	struct jbd_revoke_record_s *record;
++	struct jbd2_revoke_record_s *record;
+ 
+ 	record = find_revoke_record(journal, blocknr);
+ 	if (!record)
+@@ -624,18 +752,17 @@ void journal_clear_revoke(journal_t *journal)
+ {
+ 	int i;
+ 	struct list_head *hash_list;
+-	struct jbd_revoke_record_s *record;
+-	struct jbd_revoke_table_s *revoke;
++	struct jbd2_revoke_record_s *record;
++	struct jbd2_revoke_table_s *revoke;
+ 
+ 	revoke = journal->j_revoke;
+ 
+ 	for (i = 0; i < revoke->hash_size; i++) {
+ 		hash_list = &revoke->hash_table[i];
+ 		while (!list_empty(hash_list)) {
+-			record = (struct jbd_revoke_record_s*) hash_list->next;
++			record = (struct jbd2_revoke_record_s*) hash_list->next;
+ 			list_del(&record->hash);
+-			kmem_cache_free(revoke_record_cache, record);
++			kmem_cache_free(jbd2_revoke_record_cache, record);
+ 		}
+ 	}
+ }
+-
+diff --git a/lib/ext2fs/jfs_compat.h b/lib/ext2fs/jfs_compat.h
+index 2638c31..d92f931 100644
+--- a/lib/ext2fs/jfs_compat.h
++++ b/lib/ext2fs/jfs_compat.h
+@@ -42,6 +42,18 @@ static inline __u32 jbd2_chksum(journal_t *j, __u32 crc, const void *address,
+ 	return ext2fs_crc32c_le(crc, address, length);
+ }
+ #define crc32_be(x, y, z)	ext2fs_crc32_be((x), (y), (z))
++#define spin_lock_init(x)
++#define spin_lock(x)
++#define spin_unlock(x)
++#define yield()
++#define SLAB_HWCACHE_ALIGN	0
++#define SLAB_TEMPORARY		0
++#define KMEM_CACHE(__struct, __flags) kmem_cache_create(#__struct,\
++                sizeof(struct __struct), __alignof__(struct __struct),\
++                (__flags), NULL)
++
++#define blkdev_issue_flush(kdev, a, b)	sync_blockdev(kdev)
++#define is_power_of_2(x)	((x) != 0 && (((x) & ((x) - 1)) == 0))
+ 
+ struct journal_s
+ {
+@@ -63,7 +75,8 @@ struct journal_s
+ 	tid_t			j_tail_sequence;
+ 	tid_t			j_transaction_sequence;
+ 	__u8			j_uuid[16];
+-	struct jbd_revoke_table_s *j_revoke;
++	struct jbd2_revoke_table_s *j_revoke;
++	struct jbd2_revoke_table_s *j_revoke_table[2];
+ 	tid_t			j_failed_commit;
+ 	__u32			j_csum_seed;
+ };
+diff --git a/lib/ext2fs/kernel-jbd.h b/lib/ext2fs/kernel-jbd.h
+index a9cdc30..407f4a5 100644
+--- a/lib/ext2fs/kernel-jbd.h
++++ b/lib/ext2fs/kernel-jbd.h
+@@ -365,6 +365,7 @@ static inline struct journal_head *bh2jh(struct buffer_head *bh)
+ }
+ 
+ struct jbd_revoke_table_s;
++struct jbd2_revoke_table_s;
+ 
+ /* The handle_t type represents a single atomic update being performed
+  * by some process.  All filesystem modifications made by the process go
+@@ -892,8 +893,8 @@ extern void	   journal_destroy_revoke_caches(void);
+ extern int	   journal_init_revoke_caches(void);
+ 
+ /* Recovery revoke support */
+-extern int	   journal_set_revoke(journal_t *, unsigned long, tid_t);
+-extern int	   journal_test_revoke(journal_t *, unsigned long, tid_t);
++extern int	   journal_set_revoke(journal_t *, unsigned long long, tid_t);
++extern int	   journal_test_revoke(journal_t *, unsigned long long, tid_t);
+ extern void	   journal_clear_revoke(journal_t *);
+ extern void	   journal_brelse_array(struct buffer_head *b[], int n);
+ 
 
