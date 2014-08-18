@@ -1,37 +1,36 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Mark Ballard <markjballard@googlemail.com>
 Subject: Re: Corrupted superblock? But disk still mounts.
-Date: Mon, 18 Aug 2014 13:37:09 -0500
-Message-ID: <53F247D5.4030502@redhat.com>
+Date: Mon, 18 Aug 2014 21:23:41 +0100
+Message-ID: <CAMJSjjucoP1rGRYKECEb=eoLz29bZQ=z=GHgaz+TUYDf=815ng@mail.gmail.com>
 References: <CAMJSjjuRj5-VNs0TeoMEvrozyeJVQH+BUxsBaqO07WH9eKD88w@mail.gmail.com>
+	<53F247D5.4030502@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-To: Mark Ballard <markjballard@googlemail.com>,
-	linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:29562 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751860AbaHRShO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Aug 2014 14:37:14 -0400
-In-Reply-To: <CAMJSjjuRj5-VNs0TeoMEvrozyeJVQH+BUxsBaqO07WH9eKD88w@mail.gmail.com>
+Received: from mail-vc0-f170.google.com ([209.85.220.170]:62395 "EHLO
+	mail-vc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751930AbaHRUXm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Aug 2014 16:23:42 -0400
+Received: by mail-vc0-f170.google.com with SMTP id lf12so6383579vcb.15
+        for <linux-ext4@vger.kernel.org>; Mon, 18 Aug 2014 13:23:41 -0700 (PDT)
+In-Reply-To: <53F247D5.4030502@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 8/18/14, 1:14 PM, Mark Ballard wrote:
-> Found bad superblock when trying to rename partition using e2label.
-> 
-> The same problem has prevented me using dumpe2fs, e2fsck and fsck to
-> try and resolve the problem.
-> 
-> But I can still mount the disk and use it.
-> 
-> The disk is encrypted.
+> I'm guessing that it's the encryption getting in your way.
 
-How is /dev/sdb1 encrypted?  Usually this is done with something like dm-crypt.
-Or is it hardware encryption managed in the bios?  Did you unlock it?
+Cheers, Eric. Does rather look that way. But for the sake of a user report...
 
-What does "blkid /dev/sdb1" say?
+>
+> How is /dev/sdb1 encrypted?  Usually this is done with something like dm-crypt.
+> Or is it hardware encryption managed in the bios?  Did you unlock it?
 
-I'm guessing that it's the encryption getting in your way.
+Done with crytpsetup using luks.
 
--Eric
+>
+> What does "blkid /dev/sdb1" say?
+>
+
+It says Luks.
