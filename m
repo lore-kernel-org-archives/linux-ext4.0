@@ -1,81 +1,62 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: e2fsprogs: debugfs: set_inode_field fails to set block[IND]...
-Date: Mon, 18 Aug 2014 21:38:58 -0700
-Message-ID: <20140819043858.GN2808@birch.djwong.org>
-References: <CABW1wHSXSc-4kNDEzGKxPYTfust0Htc66VkcmoJVxrS-FA9Oog@mail.gmail.com>
+From: Gioh Kim <gioh.kim@lge.com>
+Subject: [PATCHv2 0/3] new APIs to allocate buffer-cache with user specific
+ flag
+Date: Tue, 19 Aug 2014 15:51:18 +0900
+Message-ID: <53F2F3E6.1030901@lge.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Jun He <jhe@cs.wisc.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:26484 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750724AbaHSEj0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Aug 2014 00:39:26 -0400
-Content-Disposition: inline
-In-Reply-To: <CABW1wHSXSc-4kNDEzGKxPYTfust0Htc66VkcmoJVxrS-FA9Oog@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=EUC-KR
+Content-Transfer-Encoding: 7bit
+Cc: Minchan Kim <minchan@kernel.org>, Joonsoo Kim <js1304@gmail.com>,
+	=?EUC-KR?B?wMywx8ij?= <gunho.lee@lge.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+	Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Aug 18, 2014 at 11:32:10PM -0500, Jun He wrote:
-> Hi,
-> I hope this is the right place to report problems of e2fsprogs.
-> 
-> When trying to update block[IND], block[DIND], and block[TIND], it
-> gives the similar error message:
-> 
-> jhe@node001:~$ sudo debugfs /dev/loop0 -w -R 'set_inode_field
-> firstfile block[IND] 2'
-> debugfs 1.42 (29-Nov-2011)
-> set_inode_field: invalid field specifier: block[IND]
-> 
-> I looked at the code and found the problem in the following code in
-> find_field() in debugfs/set_fields.c.
-> 
->     idx = strchr(arg, '[');
->     if (idx) {
->         *idx++ = 0;
->         delim = idx + strlen(idx) - 1;
->         if (!*idx || *delim != ']')
->             idx = 0;
->         else
->             *delim = 0;
->     }
->     /*
->      * Can we parse the number?
->      */
->     if (idx) {
->         array_idx = strtol(idx, &tmp, 0);
->         if (*tmp)
->             idx = 0;
->     }
-> 
-> 
-> When the field name is something like "block[4]", this works. It sets
-> '[' and ']' to 0 and converts the number between them.
-> When the field name is block[IND], it still replaces '[' and ']' with
-> 0. So arg becomes 'block' and will always fail the following test of
->   if (strcmp(ss->name, arg) != 0).
-> 
-> One possible fix is to change the max limit for field 'block', use
-> number to index IND, DIND, and TIND.
-> Or, name 'block[IND]', 'block[DIND]', and 'block[TIND]' differently
-> without the '[' ']'. Such as 'block.IND', 'block.DIND', 'block.TIND'.
-> 
-> If it's just a usage problem, please let me know how to use
-> set_inode_field to set block[IND].. correctly.
+Hello,
 
-Seems pretty broken to me.  I'll review any patch you send. :)
+This patch try to solve problem that a long-lasting page caches of
+ext4 superblock and journaling of superblock disturb page migration.
 
-FWIW, I've been using modify_inode to mess with those fields.
+I've been testing CMA feature on my ARM-based platform
+and found that two page caches cannot be migrated.
+They are page caches of superblock of ext4 filesystem and its journaling data.
 
-Not that either command does much good for an extent files.
+Current ext4 reads superblock with sb_bread() that allocates page
+from movable area. But the problem is that ext4 hold the page until
+it is unmounted. If root filesystem is ext4 the page cannot be migrated forever.
+And also the journaling data for the superblock cannot be migreated.
 
---D
-> 
-> Thanks,
-> Jun
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I introduce a new API that allocates page cache with specific flag passed by an argument.
+The API user can set flag to zero if the user wants to allocate page cache from non-movable area.
+
+It is useful for ext4/ext3 and others that want to hold page cache for a long time.
+
+I have 3 patchs:
+
+1. Patch 1/3: introduce a new API that create page cache with allocation flag
+2. Patch 2/3: have ext4 use the new API to read superblock
+3. Patch 3/3: have jbd/jbd2 use the new API to make journaling of superblock
+
+This patchset is based on linux-next-20140814.
+
+Thanks a lot.
+
+Gioh Kim (3):
+ fs/buffer.c: allocate buffer cache with user specific flag
+ ext4: allocate buffer-cache for superblock in non-movable area
+ jbd-jbd2-allocate-buffer-cache-for-superblock-inode-.patch
+
+ fs/buffer.c                 |   52 +++++++++++++++++++++++++++++---------------
+ fs/ext4/super.c             |    6 ++---
+ fs/jbd/journal.c            |    2 -
+ fs/jbd2/journal.c           |    2 -
+ include/linux/buffer_head.h |   12 +++++++++-
+ 5 files changed, 51 insertions(+), 23 deletions(-)
