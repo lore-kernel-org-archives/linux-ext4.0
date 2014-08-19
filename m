@@ -1,55 +1,52 @@
-From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: Re: [PATCH] ext4: remove a duplicate call in ext4_init_new_dir()
-Date: Wed, 20 Aug 2014 01:21:55 +0800
-Message-ID: <B0F97F2C-631A-4D01-97EC-E6687D4E674D@gmail.com>
-References: <1407856709-18612-1-git-send-email-wangshilong1991@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3: Count internal journal as bsddf overhead in
+ ext3_statfs
+Date: Tue, 19 Aug 2014 23:20:13 +0200
+Message-ID: <20140819212013.GA3271@quack.suse.cz>
+References: <1408088971-3221-1-git-send-email-chintzung@gmail.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f53.google.com ([209.85.220.53]:65474 "EHLO
-	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751837AbaHSRWE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Aug 2014 13:22:04 -0400
-Received: by mail-pa0-f53.google.com with SMTP id rd3so10112409pab.26
-        for <linux-ext4@vger.kernel.org>; Tue, 19 Aug 2014 10:21:59 -0700 (PDT)
-In-Reply-To: <1407856709-18612-1-git-send-email-wangshilong1991@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: jack@suse.cz, akpm@linux-foundation.org, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Chin-Tsung Cheng <chintzung@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1408088971-3221-1-git-send-email-chintzung@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Any comments on this cleanup patch?
+On Fri 15-08-14 15:49:31, Chin-Tsung Cheng wrote:
+> The journal blocks of external journal device should not
+> be counted as overhead.
+  Thanks. I've added the patch to my tree.
 
-> From: Wang Shilong <wshilong@ddn.com>
+								Honza
+
 > 
-> ext4_journal_get_write_access() has just been called in ext4_append()
-> calling it again here is duplicated.
-> 
-> Signed-off-by: Wang Shilong <wshilong@ddn.com>
+> Signed-off-by: Chin-Tsung Cheng <chintzung@gmail.com>
 > ---
-> fs/ext4/namei.c | 4 ----
-> 1 file changed, 4 deletions(-)
+>  fs/ext3/super.c | 5 +++--
+>  1 file changed, 3 insertions(+), 2 deletions(-)
 > 
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 3520ab8..6d0d01f 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -2390,10 +2390,6 @@ static int ext4_init_new_dir(handle_t *handle, struct inode *dir,
-> 	dir_block = ext4_append(handle, inode, &block);
-> 	if (IS_ERR(dir_block))
-> 		return PTR_ERR(dir_block);
-> -	BUFFER_TRACE(dir_block, "get_write_access");
-> -	err = ext4_journal_get_write_access(handle, dir_block);
-> -	if (err)
-> -		goto out;
-> 	de = (struct ext4_dir_entry_2 *)dir_block->b_data;
-> 	ext4_init_dot_dotdot(inode, de, blocksize, csum_size, dir->i_ino, 0);
-> 	set_nlink(inode, 2);
+> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+> index 08cdfe5..622e882 100644
+> --- a/fs/ext3/super.c
+> +++ b/fs/ext3/super.c
+> @@ -2828,8 +2828,9 @@ static int ext3_statfs (struct dentry * dentry, struct kstatfs * buf)
+>  		 */
+>  		overhead += ngroups * (2 + sbi->s_itb_per_group);
+>  
+> -		/* Add the journal blocks as well */
+> -                overhead += sbi->s_journal->j_maxlen;
+> +		/* Add the internal journal blocks as well */
+> +		if (sbi->s_journal && !sbi->journal_bdev)
+> +			overhead += sbi->s_journal->j_maxlen;
+>  
+>  		sbi->s_overhead_last = overhead;
+>  		smp_wmb();
 > -- 
 > 1.9.3
 > 
-
-Best Regards,
-Wang Shilong
-
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
