@@ -1,55 +1,49 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 42723] EXT4-fs error: ext4_mb_generate_buddy
-Date: Thu, 21 Aug 2014 09:21:35 +0000
-Message-ID: <bug-42723-13602-uRdTfwxu55@https.bugzilla.kernel.org/>
-References: <bug-42723-13602@https.bugzilla.kernel.org/>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 0/2] new APIs to allocate buffer-cache for superblock in
+ non-movable area
+Date: Thu, 21 Aug 2014 14:38:00 -0700
+Message-ID: <20140821143800.8eef83c98bffbeb700830edf@linux-foundation.org>
+References: <53EC4531.1000904@lge.com>
+	<20140814142610.6f0d4194c373fef188870772@linux-foundation.org>
+	<20140816185208.GA1589@quack.suse.cz>
+	<53F153B4.1060309@lge.com>
+	<20140818032422.GD23084@thunk.org>
+	<53F184B6.5080503@lge.com>
+	<20140818121146.GD9603@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:53043 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752988AbaHUJVj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Aug 2014 05:21:39 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 5E3F3201B4
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Aug 2014 09:21:37 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 2396F20176
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Aug 2014 09:21:36 +0000 (UTC)
-In-Reply-To: <bug-42723-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Gioh Kim <gioh.kim@lge.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+	Peter Zijlstra <peterz@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, Minchan Kim <minchan@kernel.org>,
+	Joonsoo Kim <js1304@gmail.com>,
+	=?UTF-8?Q?=EC=9D=B4?= =?UTF-8?Q?=EA=B1=B4=ED=98=B8?=
+	<gunho.lee@lge.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20140818121146.GD9603@quack.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=42723
+On Mon, 18 Aug 2014 14:11:46 +0200 Jan Kara <jack@suse.cz> wrote:
 
---- Comment #25 from Zhiyong Wu <zwu.kernel@gmail.com> ---
-Hi, Ted
+> > >Yes, but are you actually *using* the ext4 partitions for anything?
+> > >If this is a realistic real world use case, file systems are used to
+> > >store, well, files, and that means there will be inodes and dentry
+> > >cache entries that will also be allocated.  Does your test scenario
+> > >reflect real world usage?
+> > 
+> > Yes. I'm working for LG Electronics.
+> > My test platform is currently selling item in the market.
+> > And also I test my patch when my platform is working as if real user uses it.
+>   Great, this is exactly what I was looking for. So if it really makes
+> your usecase work I don't have objections to your solution (after you
+> change what Andrew suggested).
 
-I checked debian 7.5/6 kernel src code, it hasn't merged commit 007649375f6af2
-,so this issue whih i met seems to be not caused by this commit.
-
-(In reply to Theodore Tso from comment #23)
-> Zhiyong,
-
-The ext4_mb_generate_buddy() error message just means that there
-> is an inconsistency between the allocation bitmap and the allocation
-> statistics in the block group descriptor.   So people who just google for
-> "ext4_mb_generate_buddy" can often find old bugs that had similar symptoms.
-> The most recent bugfix in this area was caused by a backport of commit:
-> 007649375f6af2 ext4: initialize multi-block allocator before checking block
-> descriptors
-
-which caused errors after a replay.  It was reverted in
-> mainline commit:
-
-f9ae9cf5d72b39 ext4: revert commit which was causing fs
-> corruption after journal replays
-
-You might want to check to see if that
-> might be applicable for your kernel.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Yup.  This sort os real-world usage information is terribly important
+and the more you can tell us the better.  It helps us all to allocate
+our time to the places where it is most needed...
