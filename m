@@ -1,160 +1,227 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/6] ext4: propagate errors up to ext4_find_entry()'s callers
-Date: Fri, 22 Aug 2014 03:29:45 -0400
-Message-ID: <1408692590-13346-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 5/6] ext4: convert dx_probe() to use ERR_PTR convention
+Date: Fri, 22 Aug 2014 03:29:49 -0400
+Message-ID: <1408692590-13346-6-git-send-email-tytso@mit.edu>
 References: <1408692590-13346-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:44050 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:44048 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755888AbaHVHaB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755887AbaHVHaB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 22 Aug 2014 03:30:01 -0400
 In-Reply-To: <1408692590-13346-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If we run into some kind of error, such as ENOMEM, while calling
-ext4_getblk() or ext4_dx_find_entry(), we need to make sure this error
-gets propagated up to ext4_find_entry() and then to its callers.  This
-way, transient errors such as ENOMEM can get propagated to the VFS.
-This is important so that the system calls return the appropriate
-error, and also so that in the case of ext4_lookup(), we return an
-error instead of a NULL inode, since that will result in a negative
-dentry cache entry that will stick around long past the OOM condition
-which caused a transient ENOMEM error.
-
-Addresses-Google-Bug: #17142205
-
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@vger.kernel.org
 ---
- fs/ext4/namei.c | 35 +++++++++++++++++++++++++++++++++--
- 1 file changed, 33 insertions(+), 2 deletions(-)
+ fs/ext4/namei.c | 89 +++++++++++++++++++++++----------------------------------
+ 1 file changed, 35 insertions(+), 54 deletions(-)
 
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index b147a67..ae7088b 100644
+index 8043398..d4f5832 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -1227,7 +1227,7 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
- 				   buffer */
- 	int num = 0;
- 	ext4_lblk_t  nblocks;
--	int i, err;
-+	int i, err = 0;
- 	int namelen;
+@@ -253,8 +253,7 @@ static unsigned dx_node_limit(struct inode *dir);
+ static struct dx_frame *dx_probe(const struct qstr *d_name,
+ 				 struct inode *dir,
+ 				 struct dx_hash_info *hinfo,
+-				 struct dx_frame *frame,
+-				 int *err);
++				 struct dx_frame *frame);
+ static void dx_release(struct dx_frame *frames);
+ static int dx_make_map(struct ext4_dir_entry_2 *de, unsigned blocksize,
+ 		       struct dx_hash_info *hinfo, struct dx_map_entry map[]);
+@@ -670,29 +669,25 @@ struct stats dx_show_entries(struct dx_hash_info *hinfo, struct inode *dir,
+  */
+ static struct dx_frame *
+ dx_probe(const struct qstr *d_name, struct inode *dir,
+-	 struct dx_hash_info *hinfo, struct dx_frame *frame_in, int *err)
++	 struct dx_hash_info *hinfo, struct dx_frame *frame_in)
+ {
+ 	unsigned count, indirect;
+ 	struct dx_entry *at, *entries, *p, *q, *m;
+ 	struct dx_root *root;
+-	struct buffer_head *bh;
+ 	struct dx_frame *frame = frame_in;
++	struct dx_frame *ret_err = ERR_PTR(ERR_BAD_DX_DIR);
+ 	u32 hash;
  
- 	*res_dir = NULL;
-@@ -1264,7 +1264,11 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
- 		 * return.  Otherwise, fall back to doing a search the
- 		 * old fashioned way.
- 		 */
--		if (bh || (err != ERR_BAD_DX_DIR))
-+		if (err == -ENOENT)
-+			return NULL;
-+		if (err && err != ERR_BAD_DX_DIR)
-+			return ERR_PTR(err);
-+		if (bh)
- 			return bh;
- 		dxtrace(printk(KERN_DEBUG "ext4_find_entry: dx failed, "
- 			       "falling back\n"));
-@@ -1295,6 +1299,11 @@ restart:
- 				}
- 				num++;
- 				bh = ext4_getblk(NULL, dir, b++, 0, &err);
-+				if (unlikely(err)) {
-+					if (ra_max == 0)
-+						return ERR_PTR(err);
-+					break;
-+				}
- 				bh_use[ra_max] = bh;
- 				if (bh)
- 					ll_rw_block(READ | REQ_META | REQ_PRIO,
-@@ -1417,6 +1426,8 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
- 		return ERR_PTR(-ENAMETOOLONG);
+-	frame->bh = NULL;
+-	bh = ext4_read_dirblock(dir, 0, INDEX);
+-	if (IS_ERR(bh)) {
+-		*err = PTR_ERR(bh);
+-		goto fail;
+-	}
+-	root = (struct dx_root *) bh->b_data;
++	frame->bh = ext4_read_dirblock(dir, 0, INDEX);
++	if (IS_ERR(frame->bh))
++		return (struct dx_frame *) frame->bh;
++
++	root = (struct dx_root *) frame->bh->b_data;
+ 	if (root->info.hash_version != DX_HASH_TEA &&
+ 	    root->info.hash_version != DX_HASH_HALF_MD4 &&
+ 	    root->info.hash_version != DX_HASH_LEGACY) {
+ 		ext4_warning(dir->i_sb, "Unrecognised inode hash code %d",
+ 			     root->info.hash_version);
+-		brelse(bh);
+-		*err = ERR_BAD_DX_DIR;
+ 		goto fail;
+ 	}
+ 	hinfo->hash_version = root->info.hash_version;
+@@ -706,16 +701,12 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
+ 	if (root->info.unused_flags & 1) {
+ 		ext4_warning(dir->i_sb, "Unimplemented inode hash flags: %#06x",
+ 			     root->info.unused_flags);
+-		brelse(bh);
+-		*err = ERR_BAD_DX_DIR;
+ 		goto fail;
+ 	}
  
- 	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL);
-+	if (IS_ERR(bh))
-+		return (struct dentry *) bh;
- 	inode = NULL;
- 	if (bh) {
- 		__u32 ino = le32_to_cpu(de->inode);
-@@ -1450,6 +1461,8 @@ struct dentry *ext4_get_parent(struct dentry *child)
+ 	if ((indirect = root->info.indirect_levels) > 1) {
+ 		ext4_warning(dir->i_sb, "Unimplemented inode hash depth: %#06x",
+ 			     root->info.indirect_levels);
+-		brelse(bh);
+-		*err = ERR_BAD_DX_DIR;
+ 		goto fail;
+ 	}
+ 
+@@ -725,27 +716,21 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
+ 	if (dx_get_limit(entries) != dx_root_limit(dir,
+ 						   root->info.info_length)) {
+ 		ext4_warning(dir->i_sb, "dx entry: limit != root limit");
+-		brelse(bh);
+-		*err = ERR_BAD_DX_DIR;
+ 		goto fail;
+ 	}
+ 
+ 	dxtrace(printk("Look up %x", hash));
+-	while (1)
+-	{
++	while (1) {
+ 		count = dx_get_count(entries);
+ 		if (!count || count > dx_get_limit(entries)) {
+ 			ext4_warning(dir->i_sb,
+ 				     "dx entry: no count or count > limit");
+-			brelse(bh);
+-			*err = ERR_BAD_DX_DIR;
+-			goto fail2;
++			goto fail;
+ 		}
+ 
+ 		p = entries + 1;
+ 		q = entries + count - 1;
+-		while (p <= q)
+-		{
++		while (p <= q) {
+ 			m = p + (q - p)/2;
+ 			dxtrace(printk("."));
+ 			if (dx_get_hash(m) > hash)
+@@ -754,8 +739,7 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
+ 				p = m + 1;
+ 		}
+ 
+-		if (0) // linear search cross check
+-		{
++		if (0) { // linear search cross check
+ 			unsigned n = count - 1;
+ 			at = entries;
+ 			while (n--)
+@@ -772,38 +756,35 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
+ 
+ 		at = p - 1;
+ 		dxtrace(printk(" %x->%u\n", at == entries? 0: dx_get_hash(at), dx_get_block(at)));
+-		frame->bh = bh;
+ 		frame->entries = entries;
+ 		frame->at = at;
+-		if (!indirect--) return frame;
+-		bh = ext4_read_dirblock(dir, dx_get_block(at), INDEX);
+-		if (IS_ERR(bh)) {
+-			*err = PTR_ERR(bh);
+-			goto fail2;
++		if (!indirect--)
++			return frame;
++		frame++;
++		frame->bh = ext4_read_dirblock(dir, dx_get_block(at), INDEX);
++		if (IS_ERR(frame->bh)) {
++			ret_err = (struct dx_frame *) frame->bh;
++			frame->bh = NULL;
++			goto fail;
+ 		}
+-		entries = ((struct dx_node *) bh->b_data)->entries;
++		entries = ((struct dx_node *) frame->bh->b_data)->entries;
+ 
+ 		if (dx_get_limit(entries) != dx_node_limit (dir)) {
+ 			ext4_warning(dir->i_sb,
+ 				     "dx entry: limit != node limit");
+-			brelse(bh);
+-			*err = ERR_BAD_DX_DIR;
+-			goto fail2;
++			goto fail;
+ 		}
+-		frame++;
+-		frame->bh = NULL;
+ 	}
+-fail2:
++fail:
+ 	while (frame >= frame_in) {
+ 		brelse(frame->bh);
+ 		frame--;
+ 	}
+-fail:
+-	if (*err == ERR_BAD_DX_DIR)
++	if (ret_err == ERR_PTR(ERR_BAD_DX_DIR))
+ 		ext4_warning(dir->i_sb,
+ 			     "Corrupt dir inode %lu, running e2fsck is "
+ 			     "recommended.", dir->i_ino);
+-	return NULL;
++	return ret_err;
+ }
+ 
+ static void dx_release (struct dx_frame *frames)
+@@ -989,9 +970,9 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
+ 	}
+ 	hinfo.hash = start_hash;
+ 	hinfo.minor_hash = 0;
+-	frame = dx_probe(NULL, dir, &hinfo, frames, &err);
+-	if (!frame)
+-		return err;
++	frame = dx_probe(NULL, dir, &hinfo, frames);
++	if (IS_ERR(frame))
++		return PTR_ERR(frame);
+ 
+ 	/* Add '.' and '..' from the htree header */
+ 	if (!start_hash && !start_minor_hash) {
+@@ -1369,11 +1350,11 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir, const struct q
+ 	struct dx_frame frames[2], *frame;
  	struct buffer_head *bh;
+ 	ext4_lblk_t block;
+-	int err = 0, retval;
++	int retval;
  
- 	bh = ext4_find_entry(child->d_inode, &dotdot, &de, NULL);
-+	if (IS_ERR(bh))
-+		return (struct dentry *) bh;
- 	if (!bh)
- 		return ERR_PTR(-ENOENT);
- 	ino = le32_to_cpu(de->inode);
-@@ -2727,6 +2740,8 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
- 
- 	retval = -ENOENT;
- 	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL);
-+	if (IS_ERR(bh))
-+		return PTR_ERR(bh);
- 	if (!bh)
- 		goto end_rmdir;
- 
-@@ -2794,6 +2809,8 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 
- 	retval = -ENOENT;
- 	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL);
-+	if (IS_ERR(bh))
-+		return PTR_ERR(bh);
- 	if (!bh)
- 		goto end_unlink;
- 
-@@ -3121,6 +3138,8 @@ static int ext4_find_delete_entry(handle_t *handle, struct inode *dir,
+-	frame = dx_probe(d_name, dir, &hinfo, frames, &err);
+-	if (err)
+-		return ERR_PTR(err);
++	frame = dx_probe(d_name, dir, &hinfo, frames);
++	if (IS_ERR(frame))
++		return (struct buffer_head *) frame;
+ 	do {
+ 		block = dx_get_block(frame->at);
+ 		bh = ext4_read_dirblock(dir, block, DIRENT);
+@@ -1977,9 +1958,9 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
  	struct ext4_dir_entry_2 *de;
+ 	int err;
  
- 	bh = ext4_find_entry(dir, d_name, &de, NULL);
-+	if (IS_ERR(bh))
-+		return PTR_ERR(bh);
- 	if (bh) {
- 		retval = ext4_delete_entry(handle, dir, de, bh);
- 		brelse(bh);
-@@ -3202,6 +3221,8 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		dquot_initialize(new.inode);
- 
- 	old.bh = ext4_find_entry(old.dir, &old.dentry->d_name, &old.de, NULL);
-+	if (IS_ERR(old.bh))
-+		return PTR_ERR(old.bh);
- 	/*
- 	 *  Check for inode number is _not_ due to possible IO errors.
- 	 *  We might rmdir the source, keep it as pwd of some process
-@@ -3214,6 +3235,10 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 
- 	new.bh = ext4_find_entry(new.dir, &new.dentry->d_name,
- 				 &new.de, &new.inlined);
-+	if (IS_ERR(new.bh)) {
-+		retval = PTR_ERR(new.bh);
-+		goto end_rename;
-+	}
- 	if (new.bh) {
- 		if (!new.inode) {
- 			brelse(new.bh);
-@@ -3330,6 +3355,8 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
- 
- 	old.bh = ext4_find_entry(old.dir, &old.dentry->d_name,
- 				 &old.de, &old.inlined);
-+	if (IS_ERR(old.bh))
-+		return PTR_ERR(old.bh);
- 	/*
- 	 *  Check for inode number is _not_ due to possible IO errors.
- 	 *  We might rmdir the source, keep it as pwd of some process
-@@ -3342,6 +3369,10 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
- 
- 	new.bh = ext4_find_entry(new.dir, &new.dentry->d_name,
- 				 &new.de, &new.inlined);
-+	if (IS_ERR(new.bh)) {
-+		retval = PTR_ERR(new.bh);
-+		goto end_rename;
-+	}
- 
- 	/* RENAME_EXCHANGE case: old *and* new must both exist */
- 	if (!new.bh || le32_to_cpu(new.de->inode) != new.inode->i_ino)
+-	frame = dx_probe(&dentry->d_name, dir, &hinfo, frames, &err);
+-	if (!frame)
+-		return err;
++	frame = dx_probe(&dentry->d_name, dir, &hinfo, frames);
++	if (IS_ERR(frame))
++		return PTR_ERR(frame);
+ 	entries = frame->entries;
+ 	at = frame->at;
+ 	bh = ext4_read_dirblock(dir, dx_get_block(frame->at), DIRENT);
 -- 
 2.1.0
 
