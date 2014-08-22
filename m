@@ -1,168 +1,29 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 2/5] move i_size,i_diskzie update routines to helper function
-Date: Fri, 22 Aug 2014 15:32:24 +0400
-Message-ID: <1408707147-22482-3-git-send-email-dmonakhov@openvz.org>
-References: <1408707147-22482-1-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 0/5] i_size/i_disksize update fixes and cleanup series
+Date: Fri, 22 Aug 2014 15:32:22 +0400
+Message-ID: <1408707147-22482-1-git-send-email-dmonakhov@openvz.org>
 Cc: lczerner@redhat.com, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:46857 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:42707 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756071AbaHVLcy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1756049AbaHVLcy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 22 Aug 2014 07:32:54 -0400
-In-Reply-To: <1408707147-22482-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+#First two patches are simply cleanups
+use ext4_update_i_disksize instead of opencoded ones
+move i_size, i_diskzie update routines to helper function
+# Simple fix found during code review
+ext4_zero_range fix incorect journal credits reservation
+# Fixes i_size,i_disksize,mtime,ctime update issues
+# primary test: xfstest generic/019
+fix transaction issues for fallocate and zero_range
+update sync i_disksize coherently with block allocation
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/ext4.h    |   16 ++++++++++++++++
- fs/ext4/extents.c |   17 ++++-------------
- fs/ext4/inode.c   |   34 ++++++++--------------------------
- 3 files changed, 28 insertions(+), 39 deletions(-)
+In fact last two issues can be fixed by inserting inode to orphan list
+during file grow, but this turns to be a problem for ext4_writepages because
+orhpan list is protected by i_mutex.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 847f7a4..a6b4f1e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2454,6 +2454,22 @@ static inline void ext4_update_i_disksize(struct inode *inode, loff_t newsize)
- 	up_write(&EXT4_I(inode)->i_data_sem);
- }
- 
-+/* Update i_size, i_disksize. Requires i_mutex to avoid races with truncate */
-+static inline int ext4_update_inode_size(struct inode *inode, loff_t newsize)
-+{
-+	int changed = 0;
-+
-+	if (newsize > inode->i_size) {
-+		i_size_write(inode, newsize);
-+		changed = 1;
-+	}
-+	if (newsize > EXT4_I(inode)->i_disksize) {
-+		ext4_update_i_disksize(inode, newsize);
-+		changed |= 2;
-+	}
-+	return changed;
-+}
-+
- struct ext4_group_info {
- 	unsigned long   bb_state;
- 	struct rb_root  bb_free_root;
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index ee7489f..5bf718b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4848,12 +4848,8 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 	}
- 
- 	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
--
- 	if (new_size) {
--		if (new_size > i_size_read(inode))
--			i_size_write(inode, new_size);
--		if (new_size > EXT4_I(inode)->i_disksize)
--			ext4_update_i_disksize(inode, new_size);
-+		ext4_update_inode_size(inode, new_size);
- 	} else {
- 		/*
- 		* Mark that we allocate beyond EOF so the subsequent truncate
-@@ -4895,7 +4891,6 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 	int ret = 0;
- 	int flags;
- 	ext4_lblk_t lblk;
--	struct timespec tv;
- 	unsigned int blkbits = inode->i_blkbits;
- 
- 	/* Return error if mode is not supported */
-@@ -4954,15 +4949,11 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 	if (IS_ERR(handle))
- 		goto out;
- 
--	tv = inode->i_ctime = ext4_current_time(inode);
-+	inode->i_ctime = ext4_current_time(inode);
- 
- 	if (new_size) {
--		if (new_size > i_size_read(inode)) {
--			i_size_write(inode, new_size);
--			inode->i_mtime = tv;
--		}
--		if (new_size > EXT4_I(inode)->i_disksize)
--			ext4_update_i_disksize(inode, new_size);
-+		if (ext4_update_inode_size(inode, new_size) & 0x1)
-+			inode->i_mtime = inode->i_ctime;
- 	} else {
- 		/*
- 		* Mark that we allocate beyond EOF so the subsequent truncate
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b3b755b..3919e25 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1055,27 +1055,11 @@ static int ext4_write_end(struct file *file,
- 	} else
- 		copied = block_write_end(file, mapping, pos,
- 					 len, copied, page, fsdata);
--
- 	/*
--	 * No need to use i_size_read() here, the i_size
--	 * cannot change under us because we hole i_mutex.
--	 *
--	 * But it's important to update i_size while still holding page lock:
-+	 * it's important to update i_size while still holding page lock:
- 	 * page writeout could otherwise come in and zero beyond i_size.
- 	 */
--	if (pos + copied > inode->i_size) {
--		i_size_write(inode, pos + copied);
--		i_size_changed = 1;
--	}
--
--	if (pos + copied > EXT4_I(inode)->i_disksize) {
--		/* We need to mark inode dirty even if
--		 * new_i_size is less that inode->i_size
--		 * but greater than i_disksize. (hint delalloc)
--		 */
--		ext4_update_i_disksize(inode, (pos + copied));
--		i_size_changed = 1;
--	}
-+	i_size_changed = ext4_update_inode_size(inode, pos + copied);
- 	unlock_page(page);
- 	page_cache_release(page);
- 
-@@ -1123,7 +1107,7 @@ static int ext4_journalled_write_end(struct file *file,
- 	int ret = 0, ret2;
- 	int partial = 0;
- 	unsigned from, to;
--	loff_t new_i_size;
-+	int size_changed = 0;
- 
- 	trace_ext4_journalled_write_end(inode, pos, len, copied);
- 	from = pos & (PAGE_CACHE_SIZE - 1);
-@@ -1146,20 +1130,18 @@ static int ext4_journalled_write_end(struct file *file,
- 		if (!partial)
- 			SetPageUptodate(page);
- 	}
--	new_i_size = pos + copied;
--	if (new_i_size > inode->i_size)
--		i_size_write(inode, pos+copied);
-+	size_changed = ext4_update_inode_size(inode, pos + copied);
- 	ext4_set_inode_state(inode, EXT4_STATE_JDATA);
- 	EXT4_I(inode)->i_datasync_tid = handle->h_transaction->t_tid;
--	if (new_i_size > EXT4_I(inode)->i_disksize) {
--		ext4_update_i_disksize(inode, new_i_size);
-+	unlock_page(page);
-+	page_cache_release(page);
-+
-+	if (size_changed) {
- 		ret2 = ext4_mark_inode_dirty(handle, inode);
- 		if (!ret)
- 			ret = ret2;
- 	}
- 
--	unlock_page(page);
--	page_cache_release(page);
- 	if (pos + len > inode->i_size && ext4_can_truncate(inode))
- 		/* if we have allocated more blocks and copied
- 		 * less. We will have blocks allocated outside
--- 
-1.7.1
-
+BTW: May be it is reasonable serialize orhpan list manipulations by i_data_sem?
