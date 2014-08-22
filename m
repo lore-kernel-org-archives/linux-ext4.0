@@ -1,189 +1,41 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 4/5] fix transaction issues for ext4_fallocate and ext_zero_range
-Date: Fri, 22 Aug 2014 15:32:26 +0400
-Message-ID: <1408707147-22482-5-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 1/5] use ext4_update_i_disksize instead of opencoded ones
+Date: Fri, 22 Aug 2014 15:32:23 +0400
+Message-ID: <1408707147-22482-2-git-send-email-dmonakhov@openvz.org>
 References: <1408707147-22482-1-git-send-email-dmonakhov@openvz.org>
 Cc: lczerner@redhat.com, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:13048 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:28854 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756086AbaHVLc6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Aug 2014 07:32:58 -0400
+	id S1754517AbaHVLcy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Aug 2014 07:32:54 -0400
 In-Reply-To: <1408707147-22482-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-After commit f282ac19d86f we use different transactions for preallocation
-and i_disksize update which result in complain from fsck after power-failure.
-spotted by generic/019. IMHO this is regression because fs becomes inconsistent,
-even more 'e2fsck -p' will no longer works (which drives admins go crazy)
-Same transaction requirement applies ctime,mtime updates
-
-testcase: xfstest generic/019
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/extents.c |   68 +++++++++++++++++++++++++++-------------------------
- 1 files changed, 35 insertions(+), 33 deletions(-)
+ fs/ext4/inode.c |    5 +----
+ 1 files changed, 1 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 39fbcbb..3fae328 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4674,7 +4674,8 @@ retry:
- }
- 
- static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
--				  ext4_lblk_t len, int flags, int mode)
-+				  ext4_lblk_t len, loff_t new_size,
-+				  int flags, int mode)
- {
- 	struct inode *inode = file_inode(file);
- 	handle_t *handle;
-@@ -4683,8 +4684,10 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
- 	int retries = 0;
- 	struct ext4_map_blocks map;
- 	unsigned int credits;
-+	loff_t epos;
- 
- 	map.m_lblk = offset;
-+	map.m_len = len;
- 	/*
- 	 * Don't normalize the request if it can fit in one extent so
- 	 * that it doesn't get unnecessarily split into multiple
-@@ -4699,9 +4702,7 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
- 	credits = ext4_chunk_trans_blocks(inode, len);
- 
- retry:
--	while (ret >= 0 && ret < len) {
--		map.m_lblk = map.m_lblk + ret;
--		map.m_len = len = len - ret;
-+	while (ret >= 0 && len) {
- 		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS,
- 					    credits);
- 		if (IS_ERR(handle)) {
-@@ -4718,6 +4719,21 @@ retry:
- 			ret2 = ext4_journal_stop(handle);
- 			break;
- 		}
-+		map.m_lblk += ret;
-+		map.m_len = len = len - ret;
-+		epos = (loff_t)map.m_lblk << inode->i_blkbits;
-+		inode->i_ctime = ext4_current_time(inode);
-+		if (new_size) {
-+			if (epos > new_size)
-+				epos = new_size;
-+			if (ext4_update_inode_size(inode, epos) & 0x1)
-+				inode->i_mtime = inode->i_ctime;
-+		} else {
-+			if (epos > inode->i_size)
-+				ext4_set_inode_flag(inode,
-+						    EXT4_INODE_EOFBLOCKS);
-+		}
-+		ext4_mark_inode_dirty(handle, inode);
- 		ret2 = ext4_journal_stop(handle);
- 		if (ret2)
- 			break;
-@@ -4741,7 +4757,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 	int ret = 0;
- 	int flags;
- 	int credits;
--	int partial;
-+	int partial_begin, partial_end;
- 	loff_t start, end;
- 	ext4_lblk_t lblk;
- 	struct address_space *mapping = inode->i_mapping;
-@@ -4781,7 +4797,8 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 
- 	if (start < offset || end > offset + len)
- 		return -EINVAL;
--	partial = (offset + len) & ((1 << blkbits) - 1);
-+	partial_begin = offset & ((1 << blkbits) - 1);
-+	partial_end = (offset + len) & ((1 << blkbits) - 1);
- 
- 	lblk = start >> blkbits;
- 	max_blocks = (end >> blkbits);
-@@ -4815,7 +4832,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 		 * If we have a partial block after EOF we have to allocate
- 		 * the entire block.
- 		 */
--		if (partial)
-+		if (partial_end)
- 			max_blocks += 1;
- 	}
- 
-@@ -4823,6 +4840,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 
- 		/* Now release the pages and zero block aligned part of pages*/
- 		truncate_pagecache_range(inode, start, end - 1);
-+		inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
- 
- 		/* Wait all existing dio workers, newcomers will block on i_mutex */
- 		ext4_inode_block_unlocked_dio(inode);
-@@ -4835,11 +4853,14 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 		if (ret)
- 			goto out_dio;
- 
--		ret = ext4_alloc_file_blocks(file, lblk, max_blocks, flags,
--					     mode);
-+		ret = ext4_alloc_file_blocks(file, lblk, max_blocks, new_size,
-+					     flags, mode);
- 		if (ret)
- 			goto out_dio;
- 	}
-+	if (!partial_begin && !partial_end)
-+		goto out_dio;
-+
- 	/* In worst case we have to writeout two nonadjacent unwritten blocks */
- 	credits = ext4_chunk_trans_blocks(inode, 1) * 2 -
- 		EXT4_META_TRANS_BLOCKS(inode->i_sb);
-@@ -4861,7 +4882,6 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 		if ((offset + len) > i_size_read(inode))
- 			ext4_set_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
- 	}
--
- 	ext4_mark_inode_dirty(handle, inode);
- 
- 	/* Zero out partial block at the edges of the range */
-@@ -4888,7 +4908,6 @@ out_mutex:
- long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- {
- 	struct inode *inode = file_inode(file);
--	handle_t *handle;
- 	loff_t new_size = 0;
- 	unsigned int max_blocks;
- 	int ret = 0;
-@@ -4944,32 +4963,15 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 			goto out;
- 	}
- 
--	ret = ext4_alloc_file_blocks(file, lblk, max_blocks, flags, mode);
-+	ret = ext4_alloc_file_blocks(file, lblk, max_blocks, new_size,
-+				     flags, mode);
- 	if (ret)
- 		goto out;
- 
--	handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
--	if (IS_ERR(handle))
--		goto out;
--
--	inode->i_ctime = ext4_current_time(inode);
--
--	if (new_size) {
--		if (ext4_update_inode_size(inode, new_size) & 0x1)
--			inode->i_mtime = inode->i_ctime;
--	} else {
--		/*
--		* Mark that we allocate beyond EOF so the subsequent truncate
--		* can proceed even if the new size is the same as i_size.
--		*/
--		if ((offset + len) > i_size_read(inode))
--			ext4_set_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
-+	if (file->f_flags & O_SYNC && EXT4_SB(inode->i_sb)->s_journal) {
-+		ret = jbd2_complete_transaction(EXT4_SB(inode->i_sb)->s_journal,
-+						EXT4_I(inode)->i_sync_tid);
- 	}
--	ext4_mark_inode_dirty(handle, inode);
--	if (file->f_flags & O_SYNC)
--		ext4_handle_sync(handle);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 367a60c..b3b755b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2670,10 +2670,7 @@ static int ext4_da_write_end(struct file *file,
+ 	if (copied && new_i_size > EXT4_I(inode)->i_disksize) {
+ 		if (ext4_has_inline_data(inode) ||
+ 		    ext4_da_should_update_i_disksize(page, end)) {
+-			down_write(&EXT4_I(inode)->i_data_sem);
+-			if (new_i_size > EXT4_I(inode)->i_disksize)
+-				EXT4_I(inode)->i_disksize = new_i_size;
+-			up_write(&EXT4_I(inode)->i_data_sem);
++			ext4_update_i_disksize(inode, new_i_size);
+ 			/* We need to mark inode dirty even if
+ 			 * new_i_size is less that inode->i_size
+ 			 * bu greater than i_disksize.(hint delalloc)
+-- 
+1.7.1
+
