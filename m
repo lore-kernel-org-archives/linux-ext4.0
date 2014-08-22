@@ -1,157 +1,54 @@
-From: Fengguang Wu <fengguang.wu@intel.com>
-Subject: Re: [ext4] 71d4f7d0321: -49.6% xfstests.generic.274.seconds
-Date: Fri, 22 Aug 2014 09:52:23 +0800
-Message-ID: <20140822015223.GA11430@localhost>
-References: <20140821143006.GA19943@localhost>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: Potential bug in fs/ext4/inline.c?
+Date: Thu, 21 Aug 2014 21:02:46 -0700
+Message-ID: <20140822040246.GA12576@birch.djwong.org>
+References: <20140821220126.GA3597@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	lkp@01.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: gnehzuil.liu@gmail.com, linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:18162 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750733AbaHVECv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Aug 2014 00:02:51 -0400
 Content-Disposition: inline
-In-Reply-To: <20140821143006.GA19943@localhost>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20140821220126.GA3597@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 21, 2014 at 10:30:06PM +0800, Fengguang Wu wrote:
-> Hi Ted,
->=20
-> We noticed increased xfstests 274's test speed and the first good
-> commit is 71d4f7d032149b935a26eb3ff85c6c837f3714e1 ("ext4: remove
-> metadata reservation checks").
->=20
-> test case: snb-drag/xfstests/4HDD-ext4-generic-slow2
-> snb-drag is a Sandy Bridge PC with 6G memory.
->=20
-> d5e03cbb0c88cd1  71d4f7d032149b935a26eb3ff=20
-> ---------------  -------------------------=20
->         51 =C2=B1 2%     -49.6%         25 =C2=B1 1%  TOTAL xfstests.=
-generic.274.seconds
->        817 =C2=B1 1%      -3.0%        792 =C2=B1 1%  TOTAL time.elap=
-sed_time
->=20
->                           xfstests.generic.274.seconds
->=20
->   60 ++--------------------------------------------------------------=
--------+
->      |                                                               =
-       |
->   55 ++         .*..*..             *..               *..            =
-       |
->      |       .*.       .          ..                ..               =
-       |
->   50 *+.*..*.           *..*..*..*     *..*..*..*..*     *           =
-       |
->      |                                                               =
-       |
->   45 ++                                                              =
-       |
->      |                                                               =
-       |
->   40 ++                                                              =
-       |
->      |                                                               =
-       |
->   35 ++                                                              =
-       |
->      |                                                               =
-       |
->   30 ++                                                              =
-       |
->      |                                                               =
-       |
->   25 O+-O--O--O--O--O---O--O--O--O--O--O--O--O--O--O--O--O---O--O--O-=
--O--O--O
->=20
->=20
-> 	[*] bisect-good sample
-> 	[O] bisect-bad  sample
+On Thu, Aug 21, 2014 at 06:01:26PM -0400, Theodore Ts'o wrote:
+> In ext4_find_inline_entry(), there is the following:
+> 
+> 	if (ext4_get_inline_size(dir) == EXT4_MIN_INLINE_DATA_SIZE)
+> 		goto out;
+> 
+> Am I missing something, or shouldn't this be:
+> 
+> 	if (ext4_get_inline_size(dir) <= EXT4_MIN_INLINE_DATA_SIZE)
+> 		goto out;
+> 
+> ?
 
-This is sweet, got another improvement:
+I'm not sure it matters, since I see:
 
-testbox/testcase/testparams: snb-drag/xfstests/4HDD-ext4-generic-mid
+EXT4_I(inode)->i_inline_size = len + EXT4_MIN_INLINE_DATA_SIZE
 
-d5e03cbb0c88cd1  71d4f7d032149b935a26eb3ff =20
----------------  ------------------------- =20
-        45 =C2=B1 4%     -50.2%         22 =C2=B1 7%  xfstests.generic.=
-256.seconds
-   7044859 =C2=B1 2%      -7.0%    6553446 =C2=B1 0%  time.minor_page_f=
-aults
-     36156 =C2=B1 2%      -7.0%      33638 =C2=B1 0%  time.involuntary_=
-context_switches
-    171551 =C2=B1 1%      -4.8%     163312 =C2=B1 0%  time.voluntary_co=
-ntext_switches
-       436 =C2=B1 1%      -5.7%        411 =C2=B1 0%  time.elapsed_time
+scattered all over the code.  I'm not sure I like the idea that both ext4 and
+e2fsprogs think that the inline data size is never <= 60, but afaict it doesn't
+cause any problems.
 
-                           time.voluntary_context_switches
+--D
 
-  176000 ++------------------------------------------------------------=
------+
-         |                   *        *..         *..                  =
-     |
-  174000 ++       *..      .. :      :   *..*    :   *                 =
-     |
-  172000 ++     ..     .*.*   :      :       +   :    +                =
-     |
-         *..*..*     *.        :    :         + :      +  .*           =
-     |
-  170000 ++                    :  .*           *        *.             =
-     |                                                                 =
- =20
-  168000 ++                     *.                                     =
-     |
-         |                                                             =
-     |
-  166000 ++                                                            =
-     |
-  164000 ++                     O                                  O   =
-     |
-         |                   O     O  O     O     O  O  O       O     O=
-  O  O
-  162000 ++ O        O  O O                                O O         =
-     |
-  160000 O+                              O     O                       =
-     |
-         |     O  O                                                    =
-     |
-  158000 ++------------------------------------------------------------=
------+
-
-
-                          xfstests.generic.256.seconds
-
-  60 ++-----------------------------*----------------------------------=
------+
-     |                             : :                                 =
-     |
-  55 ++                            : :                                 =
-     |
-  50 ++                           :   :                                =
-     |
-     | .*..                     .*    :     .*..                       =
-     |
-  45 *+    *..  .*..*...*..*..*.       : .*.      .*..  .*             =
-     |
-     |        *.                       *.       *.    *.               =
-     |
-  40 ++                                                                =
-     |
-     |                                                                 =
-     |
-  35 ++                                                                =
-     |
-  30 ++                                                                =
-     |
-     |                                                                 =
-     |
-  25 ++                                                  O         O   =
-     |
-     O  O     O  O      O  O           O     O     O         O  O     O=
-  O  |
-  20 ++----O--------O---------O--O--O-----O-----O-----O----------------=
------O
-
-Thanks,
-=46engguang
+> 
+> Thanks,
+> 
+> 						- Ted
+> 
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
