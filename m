@@ -1,14 +1,14 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/6] ext4: change ext4_getblk() to use the ERR_PTR convention
-Date: Fri, 22 Aug 2014 03:29:47 -0400
-Message-ID: <1408692590-13346-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/6] ext4: convert ext4_dx_find_entry() to use the ERR_PTR convention
+Date: Fri, 22 Aug 2014 03:29:46 -0400
+Message-ID: <1408692590-13346-3-git-send-email-tytso@mit.edu>
 References: <1408692590-13346-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:44042 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:44043 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754214AbaHVHaA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755825AbaHVHaA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 22 Aug 2014 03:30:00 -0400
 In-Reply-To: <1408692590-13346-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -16,150 +16,114 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/ext4.h  |  3 +--
- fs/ext4/inode.c | 51 +++++++++++++++++++++++++--------------------------
- fs/ext4/namei.c |  9 ++++-----
- 3 files changed, 30 insertions(+), 33 deletions(-)
+ fs/ext4/namei.c | 46 ++++++++++++++++++++--------------------------
+ 1 file changed, 20 insertions(+), 26 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 5b19760..0258710 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2086,8 +2086,7 @@ extern int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
- extern int ext4_trim_fs(struct super_block *, struct fstrim_range *);
- 
- /* inode.c */
--struct buffer_head *ext4_getblk(handle_t *, struct inode *,
--						ext4_lblk_t, int, int *);
-+struct buffer_head *ext4_getblk(handle_t *, struct inode *, ext4_lblk_t, int);
- struct buffer_head *ext4_bread(handle_t *, struct inode *,
- 						ext4_lblk_t, int, int *);
- int ext4_get_block_write(struct inode *inode, sector_t iblock,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 367a60c..7757657 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -734,11 +734,11 @@ int ext4_get_block(struct inode *inode, sector_t iblock,
-  * `handle' can be NULL if create is zero
-  */
- struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
--				ext4_lblk_t block, int create, int *errp)
-+				ext4_lblk_t block, int create)
- {
- 	struct ext4_map_blocks map;
- 	struct buffer_head *bh;
--	int fatal = 0, err;
-+	int err;
- 
- 	J_ASSERT(handle != NULL || create == 0);
- 
-@@ -747,21 +747,14 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
- 	err = ext4_map_blocks(handle, inode, &map,
- 			      create ? EXT4_GET_BLOCKS_CREATE : 0);
- 
--	/* ensure we send some value back into *errp */
--	*errp = 0;
--
--	if (create && err == 0)
--		err = -ENOSPC;	/* should never happen */
-+	if (err == 0)
-+		return create ? ERR_PTR(-ENOSPC) : NULL;
- 	if (err < 0)
--		*errp = err;
--	if (err <= 0)
--		return NULL;
-+		return ERR_PTR(err);
- 
- 	bh = sb_getblk(inode->i_sb, map.m_pblk);
--	if (unlikely(!bh)) {
--		*errp = -ENOMEM;
--		return NULL;
--	}
-+	if (unlikely(!bh))
-+		return ERR_PTR(-ENOMEM);
- 	if (map.m_flags & EXT4_MAP_NEW) {
- 		J_ASSERT(create != 0);
- 		J_ASSERT(handle != NULL);
-@@ -775,25 +768,26 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
- 		 */
- 		lock_buffer(bh);
- 		BUFFER_TRACE(bh, "call get_create_access");
--		fatal = ext4_journal_get_create_access(handle, bh);
--		if (!fatal && !buffer_uptodate(bh)) {
-+		err = ext4_journal_get_create_access(handle, bh);
-+		if (unlikely(err)) {
-+			unlock_buffer(bh);
-+			goto errout;
-+		}
-+		if (!buffer_uptodate(bh)) {
- 			memset(bh->b_data, 0, inode->i_sb->s_blocksize);
- 			set_buffer_uptodate(bh);
- 		}
- 		unlock_buffer(bh);
- 		BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
- 		err = ext4_handle_dirty_metadata(handle, inode, bh);
--		if (!fatal)
--			fatal = err;
--	} else {
-+		if (unlikely(err))
-+			goto errout;
-+	} else
- 		BUFFER_TRACE(bh, "not a new buffer");
--	}
--	if (fatal) {
--		*errp = fatal;
--		brelse(bh);
--		bh = NULL;
--	}
- 	return bh;
-+errout:
-+	brelse(bh);
-+	return ERR_PTR(err);
- }
- 
- struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
-@@ -801,7 +795,12 @@ struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
- {
- 	struct buffer_head *bh;
- 
--	bh = ext4_getblk(handle, inode, block, create, err);
-+	*err = 0;
-+	bh = ext4_getblk(handle, inode, block, create);
-+	if (IS_ERR(bh)) {
-+		*err = PTR_ERR(bh);
-+		return NULL;
-+	}
- 	if (!bh)
- 		return bh;
- 	if (buffer_uptodate(bh))
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 51a4a5d..53b53bc 100644
+index ae7088b..51a4a5d 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -1226,8 +1226,7 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
- 				   buffer */
- 	int num = 0;
- 	ext4_lblk_t  nblocks;
--	int i, err = 0;
--	int namelen;
-+	int i, namelen;
+@@ -270,8 +270,7 @@ static int ext4_htree_next_block(struct inode *dir, __u32 hash,
+ 				 __u32 *start_hash);
+ static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
+ 		const struct qstr *d_name,
+-		struct ext4_dir_entry_2 **res_dir,
+-		int *err);
++		struct ext4_dir_entry_2 **res_dir);
+ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
+ 			     struct inode *inode);
  
- 	*res_dir = NULL;
- 	sb = dir->i_sb;
-@@ -1293,10 +1292,10 @@ restart:
- 					break;
- 				}
- 				num++;
--				bh = ext4_getblk(NULL, dir, b++, 0, &err);
--				if (unlikely(err)) {
-+				bh = ext4_getblk(NULL, dir, b++, 0);
-+				if (unlikely(IS_ERR(bh))) {
- 					if (ra_max == 0)
--						return ERR_PTR(err);
-+						return bh;
- 					break;
- 				}
- 				bh_use[ra_max] = bh;
+@@ -1258,17 +1257,13 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
+ 		goto restart;
+ 	}
+ 	if (is_dx(dir)) {
+-		bh = ext4_dx_find_entry(dir, d_name, res_dir, &err);
++		bh = ext4_dx_find_entry(dir, d_name, res_dir);
+ 		/*
+ 		 * On success, or if the error was file not found,
+ 		 * return.  Otherwise, fall back to doing a search the
+ 		 * old fashioned way.
+ 		 */
+-		if (err == -ENOENT)
+-			return NULL;
+-		if (err && err != ERR_BAD_DX_DIR)
+-			return ERR_PTR(err);
+-		if (bh)
++		if (!IS_ERR(bh) || PTR_ERR(bh) != ERR_BAD_DX_DIR)
+ 			return bh;
+ 		dxtrace(printk(KERN_DEBUG "ext4_find_entry: dx failed, "
+ 			       "falling back\n"));
+@@ -1366,34 +1361,32 @@ cleanup_and_exit:
+ }
+ 
+ static struct buffer_head * ext4_dx_find_entry(struct inode *dir, const struct qstr *d_name,
+-		       struct ext4_dir_entry_2 **res_dir, int *err)
++		       struct ext4_dir_entry_2 **res_dir)
+ {
+ 	struct super_block * sb = dir->i_sb;
+ 	struct dx_hash_info	hinfo;
+ 	struct dx_frame frames[2], *frame;
+ 	struct buffer_head *bh;
+ 	ext4_lblk_t block;
+-	int retval;
++	int err = 0, retval;
+ 
+-	if (!(frame = dx_probe(d_name, dir, &hinfo, frames, err)))
+-		return NULL;
++	frame = dx_probe(d_name, dir, &hinfo, frames, &err);
++	if (err)
++		return ERR_PTR(err);
+ 	do {
+ 		block = dx_get_block(frame->at);
+ 		bh = ext4_read_dirblock(dir, block, DIRENT);
+-		if (IS_ERR(bh)) {
+-			*err = PTR_ERR(bh);
++		if (IS_ERR(bh))
+ 			goto errout;
+-		}
++
+ 		retval = search_dirblock(bh, dir, d_name,
+ 					 block << EXT4_BLOCK_SIZE_BITS(sb),
+ 					 res_dir);
+-		if (retval == 1) { 	/* Success! */
+-			dx_release(frames);
+-			return bh;
+-		}
++		if (retval == 1)
++			goto success;
+ 		brelse(bh);
+ 		if (retval == -1) {
+-			*err = ERR_BAD_DX_DIR;
++			bh = ERR_PTR(ERR_BAD_DX_DIR);
+ 			goto errout;
+ 		}
+ 
+@@ -1402,18 +1395,19 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir, const struct q
+ 					       frames, NULL);
+ 		if (retval < 0) {
+ 			ext4_warning(sb,
+-			     "error reading index page in directory #%lu",
+-			     dir->i_ino);
+-			*err = retval;
++			     "error %d reading index page in directory #%lu",
++			     retval, dir->i_ino);
++			bh = ERR_PTR(retval);
+ 			goto errout;
+ 		}
+ 	} while (retval == 1);
+ 
+-	*err = -ENOENT;
++	bh = NULL;
+ errout:
+ 	dxtrace(printk(KERN_DEBUG "%s not found\n", d_name->name));
+-	dx_release (frames);
+-	return NULL;
++success:
++	dx_release(frames);
++	return bh;
+ }
+ 
+ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
 -- 
 2.1.0
 
