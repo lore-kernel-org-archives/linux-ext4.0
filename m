@@ -1,41 +1,85 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 3/5] ext4_zero_range: fix incorect journal credits reservation
-Date: Fri, 22 Aug 2014 15:32:25 +0400
-Message-ID: <1408707147-22482-4-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 5/5] update i_disksize coherently with block allocation
+Date: Fri, 22 Aug 2014 15:32:27 +0400
+Message-ID: <1408707147-22482-6-git-send-email-dmonakhov@openvz.org>
 References: <1408707147-22482-1-git-send-email-dmonakhov@openvz.org>
 Cc: lczerner@redhat.com, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:11051 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:32961 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756086AbaHVLcy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Aug 2014 07:32:54 -0400
+	id S1756049AbaHVLc5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Aug 2014 07:32:57 -0400
 In-Reply-To: <1408707147-22482-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently we reserve only 4 blocks but in worst case scenario
-ext4_zero_partial_blocks() may want to zeroout and convert two
-non adjacent blocks.
+Writeback call trace looks like follows:
+ext4_writepages
+ while(nr_pages)
+ ->journal_start
+ ->mpage_map_and_submit_extent -> may alloc some blocks
+   ->mpage_map_one_extent
+ ->journal_stop
+In case of delalloc block i_disksize may be less than i_size. So we have to
+update i_disksize each time we allocated and submitted some blocks beyond
+i_disksize. And we MUST update it in the same transaction, otherwise this
+result in fs-inconsistency in case of upcoming power-failure.
+
+Another possible way to fix that issue is to insert inode to orhphan list
+on ext4_writepages entrance.
+
+testcase: xfstest generic/019
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/extents.c |    7 +++++--
- 1 files changed, 5 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c |   10 ++++++++--
+ 1 files changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 5bf718b..39fbcbb 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4740,6 +4740,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 	loff_t new_size = 0;
- 	int ret = 0;
- 	int flags;
-+	int credits;
- 	int partial;
- 	loff_t start, end;
- 	ext4_lblk_t lblk;
-@@ -4839,8 +4840,10 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 		if (ret)
- 			goto out_dio;
- 	}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3919e25..b1d92fb 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2077,6 +2077,7 @@ static int mpage_map_and_submit_extent(handle_t *handle,
+ 	struct ext4_map_blocks *map = &mpd->map;
+ 	int err;
+ 	loff_t disksize;
++	int progress = 0;
+ 
+ 	mpd->io_submit.io_end->offset =
+ 				((loff_t)map->m_lblk) << inode->i_blkbits;
+@@ -2093,8 +2094,11 @@ static int mpage_map_and_submit_extent(handle_t *handle,
+ 			 * is non-zero, a commit should free up blocks.
+ 			 */
+ 			if ((err == -ENOMEM) ||
+-			    (err == -ENOSPC && ext4_count_free_clusters(sb)))
++			    (err == -ENOSPC && ext4_count_free_clusters(sb))) {
++				if (progress)
++					goto update_disksize;
+ 				return err;
++			}
+ 			ext4_msg(sb, KERN_CRIT,
+ 				 "Delayed block allocation failed for "
+ 				 "inode %lu at logical offset %llu with"
+@@ -2111,15 +2115,17 @@ static int mpage_map_and_submit_extent(handle_t *handle,
+ 			*give_up_on_write = true;
+ 			return err;
+ 		}
++		progress = 1;
+ 		/*
+ 		 * Update buffer state, submit mapped pages, and get us new
+ 		 * extent to map
+ 		 */
+ 		err = mpage_map_and_submit_buffers(mpd);
+ 		if (err < 0)
+-			return err;
++			goto update_disksize;
+ 	} while (map->m_len);
+ 
++update_disksize:
+ 	/*
+ 	 * Update on-disk size after IO is submitted.  Races with
+ 	 * truncate are avoided by checking i_size under i_data_sem.
+-- 
+1.7.1
+
