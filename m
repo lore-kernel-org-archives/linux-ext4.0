@@ -1,66 +1,80 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: fix BUG_ON in mb_free_blocks()
-Date: Fri, 22 Aug 2014 11:29:00 -0400
-Message-ID: <1408721340-10601-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Corrupted superblock? But disk still mounts.
+Date: Fri, 22 Aug 2014 11:09:53 -0500
+Message-ID: <53F76B51.5090709@redhat.com>
+References: <CAMJSjjuRj5-VNs0TeoMEvrozyeJVQH+BUxsBaqO07WH9eKD88w@mail.gmail.com>	<53F247D5.4030502@redhat.com>	<CAMJSjjucoP1rGRYKECEb=eoLz29bZQ=z=GHgaz+TUYDf=815ng@mail.gmail.com>	<53F360FB.1090809@redhat.com> <CAMJSjjs=gRuoi5gYeR2hp4Nd9kT6TJb4xxH0cTv2zSEh976UHA@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Mark Ballard <markjballard@googlemail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:20208 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932098AbaHVQJs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Aug 2014 12:09:48 -0400
+In-Reply-To: <CAMJSjjs=gRuoi5gYeR2hp4Nd9kT6TJb4xxH0cTv2zSEh976UHA@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-If we suffer a block allocation failure (for example due to a memory
-allocation failures), it's possible that we will call
-ext4_discard_allocated_blocks() before we've actually allocated any
-blocks.  In that case, fe_len and fe_start in ac->ac_f_ex will still
-be zero, and this will result in mb_free_blocks(inode, e4b, 0, 0)
-getting called, and this will trigger the BUG_ON mb_free_blocks():
+On 8/22/14, 9:19 AM, Mark Ballard wrote:
+> Ya. It did look that way. 'Scuse me for not checking first.
+> 
+> But my point is that it may still be a problem for ext4, dumpe2fs,
+> e2fsck, fsck and presumably gparted and so on.
+> 
+> That is, would it not be polite of them to report the error ...<drum
+> roll>... accurately?
 
-	BUG_ON(last >= (sb->s_blocksize << 3));
+Ah, I see.  So you don't like "corrupted" - you'd like to know that it's
+something else perfectly valid, just not the thing you were looking for.
 
-Fix this by bailing out of ext4_discard_allocated_blocks() if fs_len
-is zero.
+Maybe like:
 
-Also fix a missing ext4_mb_unload_buddy() call in
-ext4_discard_allocated_blocks().
+# misc/dumpe2fs /dev/sdc1
+dumpe2fs 1.43-WIP (09-Jul-2014)
+misc/dumpe2fs: Superblock checksum does not match superblock while trying to open /dev/sdc1
+Couldn't find valid filesystem superblock.
+/dev/sdc1 contains a xfs file system
 
-Google-Bug-Id: 16844242
 
-Fixes: 86f0afd463215fc3e58020493482faa4ac3a4d69
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@vger.kernel.org
----
- fs/ext4/mballoc.c | 5 +++++
- 1 file changed, 5 insertions(+)
+# misc/dumpe2fs /dev/sdc
+dumpe2fs 1.43-WIP (09-Jul-2014)
+misc/dumpe2fs: Superblock checksum does not match superblock while trying to open /dev/sdc
+Couldn't find valid filesystem superblock.
+/dev/sdc is entire device, not just one partition!
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 9560277..8b0f9ef 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1412,6 +1412,8 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
- 	int last = first + count - 1;
- 	struct super_block *sb = e4b->bd_sb;
- 
-+	if (WARN_ON(count == 0))
-+		return;
- 	BUG_ON(last >= (sb->s_blocksize << 3));
- 	assert_spin_locked(ext4_group_lock_ptr(sb, e4b->bd_group));
- 	/* Don't bother if the block group is corrupt. */
-@@ -3221,6 +3223,8 @@ static void ext4_discard_allocated_blocks(struct ext4_allocation_context *ac)
- 	int err;
- 
- 	if (pa == NULL) {
-+		if (ac->ac_f_ex.fe_len == 0)
-+			return;
- 		err = ext4_mb_load_buddy(ac->ac_sb, ac->ac_f_ex.fe_group, &e4b);
- 		if (err) {
- 			/*
-@@ -3235,6 +3239,7 @@ static void ext4_discard_allocated_blocks(struct ext4_allocation_context *ac)
- 		mb_free_blocks(ac->ac_inode, &e4b, ac->ac_f_ex.fe_start,
- 			       ac->ac_f_ex.fe_len);
- 		ext4_unlock_group(ac->ac_sb, ac->ac_f_ex.fe_group);
-+		ext4_mb_unload_buddy(&e4b);
- 		return;
- 	}
- 	if (pa->pa_type == MB_INODE_PA)
--- 
-2.1.0
+-Eric
+
+> (No irony intended.)
+> 
+> 
+> On 19 August 2014 15:36, Eric Sandeen <sandeen@redhat.com> wrote:
+>> On 8/18/14, 3:23 PM, Mark Ballard wrote:
+>>>> I'm guessing that it's the encryption getting in your way.
+>>>
+>>> Cheers, Eric. Does rather look that way. But for the sake of a user report...
+>>>
+>>>>
+>>>> How is /dev/sdb1 encrypted?  Usually this is done with something like dm-crypt.
+>>>> Or is it hardware encryption managed in the bios?  Did you unlock it?
+>>>
+>>> Done with crytpsetup using luks.
+>>>
+>>>>
+>>>> What does "blkid /dev/sdb1" say?
+>>>>
+>>>
+>>> It says Luks.
+>>
+>> and not ext4 - so you need to unlock it via mumblemumbleLuksStuffmumblemumble
+>> before you can operate on it with e2fsprogs tools.
+>>
+>> # cryptsetup luksOpen /dev/sdb1 <name>... or something.  Sorry, I'm not a LUKS
+>> expert...
+>>
+>> Anyway, not an ext4 problem.  Your superblock isn't corrupted, it's encrypted.  :)
+>>
+>> -Eric
+>>
+
