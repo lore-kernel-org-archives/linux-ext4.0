@@ -1,62 +1,66 @@
-From: Mark Ballard <markjballard@googlemail.com>
-Subject: Re: Corrupted superblock? But disk still mounts.
-Date: Fri, 22 Aug 2014 15:19:23 +0100
-Message-ID: <CAMJSjjs=gRuoi5gYeR2hp4Nd9kT6TJb4xxH0cTv2zSEh976UHA@mail.gmail.com>
-References: <CAMJSjjuRj5-VNs0TeoMEvrozyeJVQH+BUxsBaqO07WH9eKD88w@mail.gmail.com>
-	<53F247D5.4030502@redhat.com>
-	<CAMJSjjucoP1rGRYKECEb=eoLz29bZQ=z=GHgaz+TUYDf=815ng@mail.gmail.com>
-	<53F360FB.1090809@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ie0-f180.google.com ([209.85.223.180]:45122 "EHLO
-	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756308AbaHVOTX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Aug 2014 10:19:23 -0400
-Received: by mail-ie0-f180.google.com with SMTP id at20so6557732iec.39
-        for <linux-ext4@vger.kernel.org>; Fri, 22 Aug 2014 07:19:23 -0700 (PDT)
-In-Reply-To: <53F360FB.1090809@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: fix BUG_ON in mb_free_blocks()
+Date: Fri, 22 Aug 2014 11:29:00 -0400
+Message-ID: <1408721340-10601-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Ya. It did look that way. 'Scuse me for not checking first.
+If we suffer a block allocation failure (for example due to a memory
+allocation failures), it's possible that we will call
+ext4_discard_allocated_blocks() before we've actually allocated any
+blocks.  In that case, fe_len and fe_start in ac->ac_f_ex will still
+be zero, and this will result in mb_free_blocks(inode, e4b, 0, 0)
+getting called, and this will trigger the BUG_ON mb_free_blocks():
 
-But my point is that it may still be a problem for ext4, dumpe2fs,
-e2fsck, fsck and presumably gparted and so on.
+	BUG_ON(last >= (sb->s_blocksize << 3));
 
-That is, would it not be polite of them to report the error ...<drum
-roll>... accurately?
+Fix this by bailing out of ext4_discard_allocated_blocks() if fs_len
+is zero.
 
-(No irony intended.)
+Also fix a missing ext4_mb_unload_buddy() call in
+ext4_discard_allocated_blocks().
 
+Google-Bug-Id: 16844242
 
-On 19 August 2014 15:36, Eric Sandeen <sandeen@redhat.com> wrote:
-> On 8/18/14, 3:23 PM, Mark Ballard wrote:
->>> I'm guessing that it's the encryption getting in your way.
->>
->> Cheers, Eric. Does rather look that way. But for the sake of a user report...
->>
->>>
->>> How is /dev/sdb1 encrypted?  Usually this is done with something like dm-crypt.
->>> Or is it hardware encryption managed in the bios?  Did you unlock it?
->>
->> Done with crytpsetup using luks.
->>
->>>
->>> What does "blkid /dev/sdb1" say?
->>>
->>
->> It says Luks.
->
-> and not ext4 - so you need to unlock it via mumblemumbleLuksStuffmumblemumble
-> before you can operate on it with e2fsprogs tools.
->
-> # cryptsetup luksOpen /dev/sdb1 <name>... or something.  Sorry, I'm not a LUKS
-> expert...
->
-> Anyway, not an ext4 problem.  Your superblock isn't corrupted, it's encrypted.  :)
->
-> -Eric
->
+Fixes: 86f0afd463215fc3e58020493482faa4ac3a4d69
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/mballoc.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 9560277..8b0f9ef 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1412,6 +1412,8 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 	int last = first + count - 1;
+ 	struct super_block *sb = e4b->bd_sb;
+ 
++	if (WARN_ON(count == 0))
++		return;
+ 	BUG_ON(last >= (sb->s_blocksize << 3));
+ 	assert_spin_locked(ext4_group_lock_ptr(sb, e4b->bd_group));
+ 	/* Don't bother if the block group is corrupt. */
+@@ -3221,6 +3223,8 @@ static void ext4_discard_allocated_blocks(struct ext4_allocation_context *ac)
+ 	int err;
+ 
+ 	if (pa == NULL) {
++		if (ac->ac_f_ex.fe_len == 0)
++			return;
+ 		err = ext4_mb_load_buddy(ac->ac_sb, ac->ac_f_ex.fe_group, &e4b);
+ 		if (err) {
+ 			/*
+@@ -3235,6 +3239,7 @@ static void ext4_discard_allocated_blocks(struct ext4_allocation_context *ac)
+ 		mb_free_blocks(ac->ac_inode, &e4b, ac->ac_f_ex.fe_start,
+ 			       ac->ac_f_ex.fe_len);
+ 		ext4_unlock_group(ac->ac_sb, ac->ac_f_ex.fe_group);
++		ext4_mb_unload_buddy(&e4b);
+ 		return;
+ 	}
+ 	if (pa->pa_type == MB_INODE_PA)
+-- 
+2.1.0
