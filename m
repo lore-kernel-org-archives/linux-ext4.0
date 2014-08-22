@@ -1,46 +1,101 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: Potential bug in fs/ext4/inline.c?
-Date: Fri, 22 Aug 2014 15:29:12 +0800
-Message-ID: <20140822072912.GA4042@gmail.com>
-References: <20140821220126.GA3597@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 6/6] ext4: convert do_split() to use ERR_PTR convention
+Date: Fri, 22 Aug 2014 03:29:50 -0400
+Message-ID: <1408692590-13346-7-git-send-email-tytso@mit.edu>
+References: <1408692590-13346-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f173.google.com ([209.85.192.173]:45526 "EHLO
-	mail-pd0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752640AbaHVHT4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Aug 2014 03:19:56 -0400
-Received: by mail-pd0-f173.google.com with SMTP id w10so15568059pde.4
-        for <linux-ext4@vger.kernel.org>; Fri, 22 Aug 2014 00:19:56 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20140821220126.GA3597@thunk.org>
+Received: from imap.thunk.org ([74.207.234.97]:44046 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755883AbaHVHaB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Aug 2014 03:30:01 -0400
+In-Reply-To: <1408692590-13346-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 21, 2014 at 06:01:26PM -0400, Theodore Ts'o wrote:
-> In ext4_find_inline_entry(), there is the following:
-> 
-> 	if (ext4_get_inline_size(dir) == EXT4_MIN_INLINE_DATA_SIZE)
-> 		goto out;
-> 
-> Am I missing something, or shouldn't this be:
-> 
-> 	if (ext4_get_inline_size(dir) <= EXT4_MIN_INLINE_DATA_SIZE)
-> 		goto out;
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/namei.c | 23 +++++++++++------------
+ 1 file changed, 11 insertions(+), 12 deletions(-)
 
-Hi Ted,
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index d4f5832..ddca7b4 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1509,7 +1509,7 @@ static struct ext4_dir_entry_2* dx_pack_dirents(char *base, unsigned blocksize)
+  */
+ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+ 			struct buffer_head **bh,struct dx_frame *frame,
+-			struct dx_hash_info *hinfo, int *error)
++			struct dx_hash_info *hinfo)
+ {
+ 	unsigned blocksize = dir->i_sb->s_blocksize;
+ 	unsigned count, continued;
+@@ -1532,8 +1532,7 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+ 	if (IS_ERR(bh2)) {
+ 		brelse(*bh);
+ 		*bh = NULL;
+-		*error = PTR_ERR(bh2);
+-		return NULL;
++		return (struct ext4_dir_entry_2 *) bh2;
+ 	}
+ 
+ 	BUFFER_TRACE(*bh, "get_write_access");
+@@ -1593,8 +1592,7 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+ 	dxtrace(dx_show_leaf (hinfo, (struct ext4_dir_entry_2 *) data2, blocksize, 1));
+ 
+ 	/* Which block gets the new entry? */
+-	if (hinfo->hash >= hash2)
+-	{
++	if (hinfo->hash >= hash2) {
+ 		swap(*bh, bh2);
+ 		de = de2;
+ 	}
+@@ -1614,8 +1612,7 @@ journal_error:
+ 	brelse(bh2);
+ 	*bh = NULL;
+ 	ext4_std_error(dir->i_sb, err);
+-	*error = err;
+-	return NULL;
++	return ERR_PTR(err);
+ }
+ 
+ int ext4_find_dest_de(struct inode *dir, struct inode *inode,
+@@ -1838,8 +1835,8 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 	ext4_handle_dirty_dx_node(handle, dir, frame->bh);
+ 	ext4_handle_dirty_dirent_node(handle, dir, bh);
+ 
+-	de = do_split(handle,dir, &bh, frame, &hinfo, &retval);
+-	if (!de) {
++	de = do_split(handle,dir, &bh, frame, &hinfo);
++	if (IS_ERR(de)) {
+ 		/*
+ 		 * Even if the block split failed, we have to properly write
+ 		 * out all the changes we did so far. Otherwise we can end up
+@@ -1847,7 +1844,7 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 		 */
+ 		ext4_mark_inode_dirty(handle, dir);
+ 		dx_release(frames);
+-		return retval;
++		return PTR_ERR(de);
+ 	}
+ 	dx_release(frames);
+ 
+@@ -2071,9 +2068,11 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
+ 			goto cleanup;
+ 		}
+ 	}
+-	de = do_split(handle, dir, &bh, frame, &hinfo, &err);
+-	if (!de)
++	de = do_split(handle, dir, &bh, frame, &hinfo);
++	if (IS_ERR(de)) {
++		err = PTR_ERR(de);
+ 		goto cleanup;
++	}
+ 	err = add_dirent_to_buf(handle, dentry, inode, de, bh);
+ 	goto cleanup;
+ 
+-- 
+2.1.0
 
-The original design idea is that the size of inline data shouldn't be
-less than EXT4_MIN_INLINE_DATA_SIZE (60 bytes).  That means that the
-inline data will occupy the whole i_block[] space.
-
-If we create a new dir with inline data feature, the disk layout will
-looks like below (ext4_try_create_inline_dir()):
-
-i_block[0]: parent ino (4 bytes)
-i_block+4:  dir entry (ino 0, rec_len 56 bytes)
-
-Regards,
-                                                - Zheng
