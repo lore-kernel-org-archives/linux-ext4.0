@@ -1,43 +1,62 @@
-From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: Re: [PATCH] ext4: remove a duplicate call in ext4_init_new_dir()
-Date: Sat, 23 Aug 2014 11:48:08 +0800
-Message-ID: <7F0C9105-F6FE-480B-8225-080624BECD7B@gmail.com>
-References: <1407856709-18612-1-git-send-email-wangshilong1991@gmail.com> <B0F97F2C-631A-4D01-97EC-E6687D4E674D@gmail.com> <20140822235540.GS11085@thunk.org>
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+From: Joakim Ziegler <joakim@terminalmx.com>
+Subject: What happened to e4defrag relevant file and free space defrag?
+Date: Sat, 23 Aug 2014 06:04:50 -0500
+Message-ID: <53F87552.6050000@terminalmx.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f54.google.com ([209.85.220.54]:41027 "EHLO
-	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751862AbaHWDsi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Aug 2014 23:48:38 -0400
-Received: by mail-pa0-f54.google.com with SMTP id fa1so17900804pad.27
-        for <linux-ext4@vger.kernel.org>; Fri, 22 Aug 2014 20:48:37 -0700 (PDT)
-In-Reply-To: <20140822235540.GS11085@thunk.org>
+Received: from famine.copyleft.no ([188.94.218.115]:63062 "EHLO
+	mail9.copyleft.no" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751085AbaHWLbU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Aug 2014 07:31:20 -0400
+Received: from 187-176-226-3.dynamic.axtel.net ([187.176.226.3] helo=deck.local)
+	by mail9.copyleft.no with esmtpsa (TLSv1:AES128-SHA:128)
+	(Exim 4.72 (FreeBSD))
+	(envelope-from <joakim@terminalmx.com>)
+	id 1XL97y-000F9E-5U
+	for linux-ext4@vger.kernel.org; Sat, 23 Aug 2014 13:04:58 +0200
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+I'm using ext4 on quite large filesystems, for large image sequences. S=
+ome times=20
+these file systems fill up, and things get fragmented and a lot slower.
 
-> On Wed, Aug 20, 2014 at 01:21:55AM +0800, Wang Shilong wrote:
->> Any comments on this cleanup patch?
-> 
-> Looks good.  This got sent just before the merge window opened, and
-> this week has been the Kernel Summit / LinuxCon North America.  So I
-> haven't started accepting patches to the ext4 git tree just yet.  Now
-> that the event is open, we'll start with regression fixes and high
-> priority bug fixes that need to go to Linus before 3.17 is released,
-> and then cleanup and patch mixups.
+When reading this presentation from Linuxcon Japan 2010:
 
-Thanks for detailed information!
+https://events.linuxfoundation.org/slides/2010/linuxcon_japan/linuxcon_=
+jp2010_fujita.pdf
 
-> 
-> Cheers,
-> 
-> 						- Ted
+I see references to "relevant file defrag", which would be useable for =
+me to=20
+defrag image sequences to get them in sequence, specifically:
 
-Best Regards,
-Wang Shilong
+"Patches related to relevant file defrag (e4defrag -r) are under review=
+=2E"
 
+Also, about free space defrag, it says:
+
+"Implement free space defragmentation (e4defrag -f). We might implement=
+ this=20
+feature when the relevant defrag development is completed."
+
+Both of these, but especially relevant file defrag, would be very usefu=
+l to=20
+solve the problems I'm facing. What happened to the patches that were u=
+nder=20
+review? Was anything done? Was development of these features abandoned?=
+ Is there=20
+any chance of any of them being implemented in the relatively near futu=
+re?
+
+--=20
+Joakim Ziegler  -  Supervisor de postproducci=F3n  -  Terminal
+joakim@terminalmx.com   -   044 55 2971 8514   -   5264 0864
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
