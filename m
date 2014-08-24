@@ -1,26 +1,58 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/6] misc: fix gcc warnings
-Date: Sun, 24 Aug 2014 12:24:39 -0400
-Message-ID: <20140824162439.GF6236@thunk.org>
+Subject: Re: [PATCH 3/6] mke2fs: set block_validity as a default mount option
+Date: Sun, 24 Aug 2014 18:47:21 -0400
+Message-ID: <20140824224721.GG6236@thunk.org>
 References: <20140809042610.2441.6868.stgit@birch.djwong.org>
- <20140809042624.2441.34798.stgit@birch.djwong.org>
+ <20140809042630.2441.34661.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46704 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:47019 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752754AbaHXQYm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 24 Aug 2014 12:24:42 -0400
+	id S1753483AbaHXWrX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 24 Aug 2014 18:47:23 -0400
 Content-Disposition: inline
-In-Reply-To: <20140809042624.2441.34798.stgit@birch.djwong.org>
+In-Reply-To: <20140809042630.2441.34661.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 08, 2014 at 09:26:24PM -0700, Darrick J. Wong wrote:
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+On Fri, Aug 08, 2014 at 09:26:30PM -0700, Darrick J. Wong wrote:
+> The block_validity mount option spot-checks block allocations against
+> a bitmap of known group metadata blocks.  This helps us to prevent
+> self-inflicted catastrophic failures such as trying to "share"
+> critical metadata (think bitmaps) with file data, which usually
+> results in filesystem destruction.
+> 
+> In order to test the overhead of the mount option, I re-used the speed
+> tests in the metadata checksum testing script.  In short, the program
+> creates what looks like 15 copies of a kernel source tree, except that
+> it uses fallocate to strip out the overhead of writing the file data
+> so that we can focus on metadata overhead.  On a 64G RAM disk, the
+> overhead was generally about 0.9% and at most 1.6%.  On a 160G USB
+> disk, the overhead was about 0.8% and peaked at 1.2%.
 
-Applied, thanks.
+I was doing a spot check of the additional memory impact of
+block_validity mount option, and it's for a 20T file system, assuming
+the basic flex_bg size of 16 block groups, it's a bit over 400k of
+kernel memory.  That's not a *huge* amount of memory, but it could
+potentially be noticeable on a bookshelf NAS server.
 
-						- Ted
+However, I could imagine that for a system with say, two dozen 10T
+drives (which aren't that far off in the future) in a tray, that's
+around 4 megabytes of memory, which starts being non-trivial.
+
+That being said, I suspect for most users, it's not that big of a deal
+--- so maybe this is something we should just simply enable by default
+in the kernel, let those folks who want to disable specify a
+noblock_validity mount option.
+
+The other thing to consider is that for big raid arrays, maybe we
+should use a larger flex_bg size.  The main reason for keeping the
+size small is to minimize the seek time between the inode table and a
+block in the flex_bg.  But for raid devices, we could probably afford
+to increase flex_bg size, which would decrease the numer of system
+zones that the block validity code would need to track.
+
+      	       	     	      	   	      - Ted
