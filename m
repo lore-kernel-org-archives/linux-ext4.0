@@ -1,118 +1,123 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] ext4: fix same-dir rename when inline data directory
- overflows
-Date: Mon, 25 Aug 2014 12:40:31 -0700
-Message-ID: <20140825194031.GE22645@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>, Zheng Liu <gnehzuil.liu@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] tests/d_inline_dump: remove version dependency in the expected output
+Date: Mon, 25 Aug 2014 18:31:08 -0400
+Message-ID: <1409005868-10854-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:23245 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933313AbaHYTki (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Aug 2014 15:40:38 -0400
-Content-Disposition: inline
+Received: from imap.thunk.org ([74.207.234.97]:48675 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753453AbaHYWbO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Aug 2014 18:31:14 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When performing a same-directory rename, it's possible that adding or
-setting the new directory entry will cause the directory to overflow
-the inline data area, which causes the directory to be converted to an
-extent-based directory.  Under this circumstance it is necessary to
-re-read the directory when deleting the old dirent because the "old
-directory" context still points to i_block in the inode table, which
-is now an extent tree root!  The delete fails with an FS error, and
-the subsequent fsck complains about incorrect link counts and
-hardlinked directories.
+Also add the convenience macro $CLEAN_OUTPUT in test_config which can
+be used to run the "sed -e $cmd_dir/filter.sed" command to clean up
+e2fsprogs command output before comparing with the expected golden
+output.
 
-Test case (originally found with flat_dir_test in the metadata_csum
-test program):
-
-# mkfs.ext4 -O inline_data /dev/sda
-# mount /dev/sda /mnt
-# mkdir /mnt/x
-# touch /mnt/x/changelog.gz /mnt/x/copyright /mnt/x/README.Debian
-# sync
-# for i in /mnt/x/*; do mv $i $i.longer; done
-# ls -la /mnt/x/
-total 0
--rw-r--r-- 1 root root 0 Aug 25 12:03 changelog.gz.longer
--rw-r--r-- 1 root root 0 Aug 25 12:03 copyright
--rw-r--r-- 1 root root 0 Aug 25 12:03 copyright.longer
--rw-r--r-- 1 root root 0 Aug 25 12:03 README.Debian.longer
-
-(Hey!  Why are there four files now??)
-
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/namei.c |   21 ++++++++++++++++++---
- 1 file changed, 18 insertions(+), 3 deletions(-)
+ tests/d_inline_dump/expect |  6 ------
+ tests/d_inline_dump/script | 12 ++++++------
+ tests/test_config          |  1 +
+ 3 files changed, 7 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index b147a67..f1bbe1c 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -3128,7 +3128,8 @@ static int ext4_find_delete_entry(handle_t *handle, struct inode *dir,
- 	return retval;
- }
+diff --git a/tests/d_inline_dump/expect b/tests/d_inline_dump/expect
+index ead47f9..c84f64d 100644
+--- a/tests/d_inline_dump/expect
++++ b/tests/d_inline_dump/expect
+@@ -1,5 +1,4 @@
+ *** long file
+-debugfs 1.43-WIP (09-Jul-2014)
+ Inode: 13   Type: regular    Mode:  0644   Flags: 0x10000000
+ Generation: 3289262644    Version: 0x00000000:00000001
+ User:     0   Group:     0   Size: 80
+@@ -16,7 +15,6 @@ Extended attributes:
+   user.a = "b" (1)
+ Size of inline data: 80
+ *** short file
+-debugfs 1.43-WIP (09-Jul-2014)
+ Inode: 18   Type: regular    Mode:  0644   Flags: 0x10000000
+ Generation: 3842229473    Version: 0x00000000:00000001
+ User:     0   Group:     0   Size: 20
+@@ -34,7 +32,6 @@ Extended attributes:
+ Size of inline data: 60
  
--static void ext4_rename_delete(handle_t *handle, struct ext4_renament *ent)
-+static void ext4_rename_delete(handle_t *handle, struct ext4_renament *ent,
-+			       int force_reread)
- {
- 	int retval;
- 	/*
-@@ -3140,7 +3141,8 @@ static void ext4_rename_delete(handle_t *handle, struct ext4_renament *ent)
- 	if (le32_to_cpu(ent->de->inode) != ent->inode->i_ino ||
- 	    ent->de->name_len != ent->dentry->d_name.len ||
- 	    strncmp(ent->de->name, ent->dentry->d_name.name,
--		    ent->de->name_len)) {
-+		    ent->de->name_len) ||
-+	    force_reread) {
- 		retval = ext4_find_delete_entry(handle, ent->dir,
- 						&ent->dentry->d_name);
- 	} else {
-@@ -3191,6 +3193,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		.dentry = new_dentry,
- 		.inode = new_dentry->d_inode,
- 	};
-+	int force_reread;
- 	int retval;
+ *** long dir
+-debugfs 1.43-WIP (09-Jul-2014)
+ Inode: 16   Type: directory    Mode:  0755   Flags: 0x10000000
+ Generation: 3842229469    Version: 0x00000000:00000004
+ User:     0   Group:     0   Size: 132
+@@ -51,7 +48,6 @@ Extended attributes:
+   user.a = "b" (1)
+ Size of inline data: 132
+ *** short dir
+-debugfs 1.43-WIP (09-Jul-2014)
+ Inode: 20   Type: directory    Mode:  0755   Flags: 0x10000000
+ Generation: 3710818931    Version: 0x00000000:00000001
+ User:     0   Group:     0   Size: 60
+@@ -69,7 +65,6 @@ Extended attributes:
+ Size of inline data: 60
  
- 	dquot_initialize(old.dir);
-@@ -3246,6 +3249,15 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		if (retval)
- 			goto end_rename;
- 	}
-+	/*
-+	 * If we're renaming a file within an inline_data dir and adding or
-+	 * setting the new dirent causes a conversion from inline_data to
-+	 * extents/blockmap, we need to force the dirent delete code to
-+	 * re-read the directory, or else we end up trying to delete a dirent
-+	 * from what is now the extent tree root (or a block map).
-+	 */
-+	force_reread = (new.dir->i_ino == old.dir->i_ino &&
-+			ext4_test_inode_flag(new.dir, EXT4_INODE_INLINE_DATA));
- 	if (!new.bh) {
- 		retval = ext4_add_entry(handle, new.dentry, old.inode);
- 		if (retval)
-@@ -3256,6 +3268,9 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		if (retval)
- 			goto end_rename;
- 	}
-+	if (force_reread)
-+		force_reread = !ext4_test_inode_flag(new.dir,
-+						     EXT4_INODE_INLINE_DATA);
+ *** long link
+-debugfs 1.43-WIP (09-Jul-2014)
+ Inode: 12   Type: symlink    Mode:  0777   Flags: 0x10000000
+ Generation: 3289262643    Version: 0x00000000:00000001
+ User:     0   Group:     0   Size: 80
+@@ -85,7 +80,6 @@ Extended attributes:
+   system.data (20)
+ Fast link dest: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+ *** short link
+-debugfs 1.43-WIP (09-Jul-2014)
+ Inode: 19   Type: symlink    Mode:  0777   Flags: 0x0
+ Generation: 3842229474    Version: 0x00000000:00000001
+ User:     0   Group:     0   Size: 20
+diff --git a/tests/d_inline_dump/script b/tests/d_inline_dump/script
+index 8d97729..7199453 100644
+--- a/tests/d_inline_dump/script
++++ b/tests/d_inline_dump/script
+@@ -11,21 +11,21 @@ ZIMAGE=$test_dir/image.gz
+ gzip -d < $ZIMAGE > $TMPFILE
  
- 	/*
- 	 * Like most other Unix systems, set the ctime for inodes on a
-@@ -3267,7 +3282,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	/*
- 	 * ok, that's it
- 	 */
--	ext4_rename_delete(handle, &old);
-+	ext4_rename_delete(handle, &old, force_reread);
+ echo "*** long file" > $OUT
+-$DEBUGFS -R 'stat /file' $TMPFILE >> $OUT 2>&1
++$DEBUGFS -R 'stat /file' $TMPFILE 2>&1 | $CLEAN_OUTPUT >> $OUT 2>&1
+ echo "*** short file" >> $OUT
+-$DEBUGFS -R 'stat /shortfile' $TMPFILE >> $OUT 2>&1
++$DEBUGFS -R 'stat /shortfile' $TMPFILE 2>&1 | $CLEAN_OUTPUT >> $OUT 2>&1
+ echo >> $OUT
  
- 	if (new.inode) {
- 		ext4_dec_count(handle, new.inode);
+ echo "*** long dir" >> $OUT
+-$DEBUGFS -R 'stat /dir' $TMPFILE >> $OUT 2>&1
++$DEBUGFS -R 'stat /dir' $TMPFILE 2>&1 | $CLEAN_OUTPUT >> $OUT 2>&1
+ echo "*** short dir" >> $OUT
+-$DEBUGFS -R 'stat /shortdir' $TMPFILE >> $OUT 2>&1
++$DEBUGFS -R 'stat /shortdir' $TMPFILE 2>&1 | $CLEAN_OUTPUT >> $OUT 2>&1
+ echo >> $OUT
+ 
+ echo "*** long link" >> $OUT
+-$DEBUGFS -R 'stat /link' $TMPFILE >> $OUT 2>&1
++$DEBUGFS -R 'stat /link' $TMPFILE 2>&1 | $CLEAN_OUTPUT >> $OUT 2>&1
+ echo "*** short link" >> $OUT
+-$DEBUGFS -R 'stat /shortlink' $TMPFILE >> $OUT 2>&1
++$DEBUGFS -R 'stat /shortlink' $TMPFILE 2>&1 | $CLEAN_OUTPUT >> $OUT 2>&1
+ 
+ echo "*** end test" >> $OUT
+ 
+diff --git a/tests/test_config b/tests/test_config
+index 1872e5c..50e987e 100644
+--- a/tests/test_config
++++ b/tests/test_config
+@@ -20,6 +20,7 @@ E2UNDO_EXE="../misc/e2undo"
+ TEST_REL=../tests/progs/test_rel
+ TEST_ICOUNT=../tests/progs/test_icount
+ CRCSUM=../tests/progs/crcsum
++CLEAN_OUTPUT="sed -f $cmd_dir/filter.sed"
+ LD_LIBRARY_PATH=../lib:../lib/ext2fs:../lib/e2p:../lib/et:../lib/ss
+ DYLD_LIBRARY_PATH=../lib:../lib/ext2fs:../lib/e2p:../lib/et:../lib/ss
+ export LD_LIBRARY_PATH
+-- 
+2.1.0
+
