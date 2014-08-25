@@ -1,87 +1,80 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: [PATCH v5 2/10] xfs: Add support FALLOC_FL_INSERT_RANGE for
-	fallocate
-Date: Mon, 25 Aug 2014 15:52:26 +0900
-Message-ID: <001901cfc031$2140a950$63c1fbf0$@samsung.com>
-References: <004301cfb2c6$6ef2d330$4cd87990$@samsung.com>
-	<20140822120659.GF3152@laptop.bfoster>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH 3/5] ext4_zero_range: fix incorect journal credits reservation
+Date: Mon, 25 Aug 2014 11:19:39 +0400
+Message-ID: <87k35x9gtw.fsf@openvz.org>
+References: <1408707147-22482-1-git-send-email-dmonakhov@openvz.org> <1408707147-22482-4-git-send-email-dmonakhov@openvz.org> <20140823190835.GB6236@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: 'Theodore Ts'o' <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
-	=?iso-8859-2?Q?'Luk=E1=B9_Czerner'?= <lczerner@redhat.com>,
-	'linux-ext4' <linux-ext4@vger.kernel.org>
-To: 'Brian Foster' <bfoster@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-reply-to: <20140822120659.GF3152@laptop.bfoster>
-Content-language: ko
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/mixed; boundary="=-=-="
+Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lb0-f182.google.com ([209.85.217.182]:63958 "EHLO
+	mail-lb0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753927AbaHYHTo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Aug 2014 03:19:44 -0400
+Received: by mail-lb0-f182.google.com with SMTP id z11so11814608lbi.13
+        for <linux-ext4@vger.kernel.org>; Mon, 25 Aug 2014 00:19:42 -0700 (PDT)
+In-Reply-To: <20140823190835.GB6236@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> Hi Namjae,
-Hi Brian.
+--=-=-=
 
-Thanks for your mail :)
+On Sat, 23 Aug 2014 15:08:35 -0400, "Theodore Ts'o" <tytso@mit.edu> wrote:
+> On Fri, Aug 22, 2014 at 03:32:25PM +0400, Dmitry Monakhov wrote:
+> > -	handle = ext4_journal_start(inode, EXT4_HT_MISC, 4);
+> > +	/* In worst case we have to writeout two nonadjacent unwritten blocks */
+> > +	credits = ext4_chunk_trans_blocks(inode, 1) * 2 -
+> > +		EXT4_META_TRANS_BLOCKS(inode->i_sb);
 > 
-> Sorry for finding things so late, but it looks like this suffers from
-> the same couple bugs we've recently discovered with the collapse range
-> patches. See the following for a couple fixes that have been proposed
-> recently:
+> This looks like it would be a massive over-estimate, since it includes
+> the block group allocation bitmaps, which we wouldn't need to update,
+> no?
+  Oh. You right. groups metadata/quota should not be affected.
 > 
-> http://oss.sgi.com/archives/xfs/2014-08/msg00292.html
+> Wouldn't
 > 
-> This one helps prevent scenarios where we try to cancel a transaction
-> that is dirty. This leads to a shutdown on XFS. The idea is basically to
-> avoid logging until we actually make a change, so errors hit early in
-> the function (before we change anything) won't lead to an abort in the
-> error path. It looks like the bmap split and shift functions in this
-> patch could use the very same attention.
-Okay, I will add this commit to insert range patch.
+> 	credts = ext4_index_trans_blocks(inode, 1, 1) * 2;
+Yes, but ext4_index_trans_blocks is statically defined in inode.c,
+but since zero_range works only for extent based
+ext4_ext_index_trans_blocks is sufficient. Also we must reserve 2 block
+for data. So final calculation looks like follows:
+credits =  ext4_ext_index_trans_blocks(inode, 2) + 2
 
-> 
-> http://oss.sgi.com/archives/xfs/2014-08/index.html
-> 
-> This one deals with a problem with the high level shift algorithm. The
-> problem with the algorithm here is that 'current_ext' can change
-> unexpectedly once we release the ilock due to writeback on parts of the
-> file before the range being collapsed/inserted. E.g., it is not a stable
-> index once ilock is dropped. The temporary solution is to flush the
-> entire file, since we have the iolock during the entire operation and
-> nothing else can dirty the file. The better fix is to track via an
-> offset across iterations of the shift, rather than the extent count
-> (iirc, xfs_bunmapi() and other bmap functions provide examples of this
-> kind of algorithm).
-Okay, I will check your points.
 
-> 
-> Brian
-> 
-> P.S., It's probably a good idea to remove my r-b tag on the next post as
-> well to avoid confusion and remind me that I need to take another look
-> at this. ;) Thanks again.
-Okay, I will remove it.
+--=-=-=
+Content-Type: text/x-patch
+Content-Disposition: inline;
+ filename=0001-ext4_zero_range-fix-incorect-journal-credits-reserva.patch
 
-Thanks Brian!
-> 
+>From ec7e1926e8bb99ccd0eb525efc6666cb8ea36a5e Mon Sep 17 00:00:00 2001
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Date: Mon, 25 Aug 2014 11:12:35 +0400
+Subject: [PATCH] ext4_zero_range: fix incorect journal credits reservation v2
 
-> > --
-> > 1.7.11-rc0
-> >
-> > _______________________________________________
-> > xfs mailing list
-> > xfs@oss.sgi.com
-> > http://oss.sgi.com/mailman/listinfo/xfs
+Currently we reserve only 4 blocks but in worst case scenario
+ext4_zero_partial_blocks() may want to zeroout and convert two
+non adjacent blocks.
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/extents.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 5bf718b..f09dbe7 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4740,6 +4740,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+ 	loff_t new_size = 0;
+ 	int ret = 0;
+ 	int flags;
++	int credits;
+ 	int partial;
+ 	loff_t start, end;
+ 	ext4_lblk_t lblk;
+@@ -4839,8 +4840,9 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+ 		if (ret)
+ 			goto out_dio;
+ 	}
+--=-=-=--
