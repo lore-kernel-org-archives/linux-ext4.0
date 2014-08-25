@@ -1,32 +1,44 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 06/27] libext2fs: create inlinedata symlinks
-Date: Sun, 24 Aug 2014 22:05:09 -0400
-Message-ID: <20140825020509.GM6236@thunk.org>
-References: <20140816234550.11171.61585.stgit@birch.djwong.org>
- <20140816234629.11171.85990.stgit@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Pu Hou <houpu.hp@alibaba-inc.com>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH 2/5] resize2fs.8.in: clarify when on-line resizing is supported
+Date: Sun, 24 Aug 2014 23:59:49 -0400
+Message-ID: <1408939192-22656-2-git-send-email-tytso@mit.edu>
+References: <1408939192-22656-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47196 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:47270 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753088AbaHYCFO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 24 Aug 2014 22:05:14 -0400
-Content-Disposition: inline
-In-Reply-To: <20140816234629.11171.85990.stgit@birch.djwong.org>
+	id S1753011AbaHYD75 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 24 Aug 2014 23:59:57 -0400
+In-Reply-To: <1408939192-22656-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 16, 2014 at 04:46:29PM -0700, Darrick J. Wong wrote:
-> Add to ext2fs_symlink the ability to create inline data symlinks.
-> 
-> Suggested-by: Pu Hou <houpu.hp@alibaba-inc.com>
-> Cc: Pu Hou <houpu.hp@alibaba-inc.com>
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Addresses-Debian-Bug: #726760
 
-This is identical to the already applied:
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ resize/resize2fs.8.in | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-     http://patchwork.ozlabs.org/patch/378712/
+diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
+index a1f3099..86495c6 100644
+--- a/resize/resize2fs.8.in
++++ b/resize/resize2fs.8.in
+@@ -29,9 +29,10 @@ program will resize ext2, ext3, or ext4 file systems.  It can be used to
+ enlarge or shrink an unmounted file system located on
+ .IR device .
+ If the filesystem is mounted, it can be used to expand the size of the
+-mounted filesystem, assuming the kernel supports on-line resizing.  (As
+-of this writing, the Linux 2.6 kernel supports on-line resize for
+-filesystems mounted using ext3 and ext4.).
++mounted filesystem, assuming the kernel and the file system supports
++on-line resizing.  (Modern Linux 2.6 kernels will support on-line resize
++for file systems mounted using ext3 and ext4; ext3 file systems will
++require the use of file systems with the resize_inode feature enabled.)
+ .PP
+ The
+ .I size
+-- 
+2.1.0
 
-							- Ted
