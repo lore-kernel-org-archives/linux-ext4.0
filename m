@@ -1,112 +1,81 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 5/5] update i_disksize coherently with block allocation
-Date: Tue, 26 Aug 2014 11:47:10 +0400
-Message-ID: <87egw3ae0x.fsf@openvz.org>
-References: <1408707147-22482-1-git-send-email-dmonakhov@openvz.org> <1408707147-22482-6-git-send-email-dmonakhov@openvz.org> <20140826011310.GB11317@thunk.org>
+From: Liwei <xieliwei@gmail.com>
+Subject: Recovering from a damaged root inode
+Date: Tue, 26 Aug 2014 19:32:59 +0800
+Message-ID: <CAPE0SYxva9AkaynNDofObS-U5VW7RYW8io+N9Pz+6jVsCody8A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f53.google.com ([209.85.215.53]:51988 "EHLO
-	mail-la0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934013AbaHZHrO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Aug 2014 03:47:14 -0400
-Received: by mail-la0-f53.google.com with SMTP id gl10so14307168lab.40
-        for <linux-ext4@vger.kernel.org>; Tue, 26 Aug 2014 00:47:12 -0700 (PDT)
-In-Reply-To: <20140826011310.GB11317@thunk.org>
+Received: from mail-wg0-f49.google.com ([74.125.82.49]:59315 "EHLO
+	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754305AbaHZLdV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Aug 2014 07:33:21 -0400
+Received: by mail-wg0-f49.google.com with SMTP id k14so14376533wgh.20
+        for <linux-ext4@vger.kernel.org>; Tue, 26 Aug 2014 04:33:20 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 25 Aug 2014 21:13:10 -0400, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Fri, Aug 22, 2014 at 03:32:27PM +0400, Dmitry Monakhov wrote:
-> > Writeback call trace looks like follows:
-> > ext4_writepages
-> >  while(nr_pages)
-> >  ->journal_start
-> >  ->mpage_map_and_submit_extent -> may alloc some blocks
-> >    ->mpage_map_one_extent
-> >  ->journal_stop
-> > In case of delalloc block i_disksize may be less than i_size. So we have to
-> > update i_disksize each time we allocated and submitted some blocks beyond
-> > i_disksize. And we MUST update it in the same transaction, otherwise this
-> > result in fs-inconsistency in case of upcoming power-failure.
-> 
-> This description doesn't seem to be consistent with the change in the
-> patch; the patch included makes sure that on an error, we update the
-> on-disk block size if some blocks had been previously allocated.
-> Which looks OK, but the commit description seems to imply tha the
-> patch does more than this.
+Hi list,
+    I have an ext4 volume that went through a power failure,
+corrupting both the first superblock and apparently at least the root
+inode.
+    fsck managed to restore a backup superblock, so I believe that is
+fine, but I am unable to see any files when the volume is mounted.
+    dmesg gives me the following:
 
->  Did part of the patch get dropped, or
-> should we rewrite the commit description to be more clear what it is
-> changing?
-No. patch was written like this from very beginning. 
-By logic is follows. We must update i_disksize in the same transaction
-Before the patch i_disksize was updated only if requested range was fully completed.
-But we also have to update it in case of error. And patch fix what.
-> > Another possible way to fix that issue is to insert inode to orhphan list
-> > on ext4_writepages entrance.
-> > 
-> > testcase: xfstest generic/019
-> > 
-> > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> > ---
-> >  fs/ext4/inode.c |   10 ++++++++--
-> >  1 files changed, 8 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index 3919e25..b1d92fb 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -2077,6 +2077,7 @@ static int mpage_map_and_submit_extent(handle_t *handle,
-> >  	struct ext4_map_blocks *map = &mpd->map;
-> >  	int err;
-> >  	loff_t disksize;
-> > +	int progress = 0;
-> >  
-> >  	mpd->io_submit.io_end->offset =
-> >  				((loff_t)map->m_lblk) << inode->i_blkbits;
-> > @@ -2093,8 +2094,11 @@ static int mpage_map_and_submit_extent(handle_t *handle,
-> >  			 * is non-zero, a commit should free up blocks.
-> >  			 */
-> >  			if ((err == -ENOMEM) ||
-> > -			    (err == -ENOSPC && ext4_count_free_clusters(sb)))
-> > +			    (err == -ENOSPC && ext4_count_free_clusters(sb))) {
-> > +				if (progress)
-> > +					goto update_disksize;
-> >  				return err;
-> > +			}
-> >  			ext4_msg(sb, KERN_CRIT,
-> >  				 "Delayed block allocation failed for "
-> >  				 "inode %lu at logical offset %llu with"
-> > @@ -2111,15 +2115,17 @@ static int mpage_map_and_submit_extent(handle_t *handle,
-> >  			*give_up_on_write = true;
-> >  			return err;
-> >  		}
-> > +		progress = 1;
-> >  		/*
-> >  		 * Update buffer state, submit mapped pages, and get us new
-> >  		 * extent to map
-> >  		 */
-> >  		err = mpage_map_and_submit_buffers(mpd);
-> >  		if (err < 0)
-> > -			return err;
-> > +			goto update_disksize;
-> >  	} while (map->m_len);
-> >  
-> > +update_disksize:
-> >  	/*
-> >  	 * Update on-disk size after IO is submitted.  Races with
-> >  	 * truncate are avoided by checking i_size under i_data_sem.
-> > -- 
-> > 1.7.1
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+        EXT4-fs error (device dm-2): htree_dirblock_to_tree:919: inode
+#2: block 9249: comm ls: bad entry in directory: rec_len % 4 != 0 -
+offset=0(0), inode=1848761160, rec_len=32290, name_len=62
+
+    I thought a second fsck run would help, but running it with -n
+gave me the following:
+
+Resize inode not valid.  Recreate? no
+Pass 1: Checking inodes, blocks, and sizes
+Inode 1049 has imagic flag set.  Clear? no
+Inode 1049 has a extra size (21138) which is invalid
+Fix? no
+Inode 1049 has a bad extended attribute block 470477004.  Clear? no
+Extended attribute block 470477004 has h_blocks > 1.  Clear? no
+Extended attribute block 470477004 is corrupt (invalid value).  Clear? no
+Extended attribute block 470477004 is corrupt (invalid value).  Clear? no
+Extended attribute block 470477004 is corrupt (allocation collision).  Clear? no
+Error while reading over extent tree in inode 1049: Corrupt extent header
+Clear inode? no
+Inode 1049, i_size is 11664618411086678673, should be 0.  Fix? no
+Inode 1049, i_blocks is 263842572654276, should be 1.  Fix? no
+Inode 1050 is in use, but has dtime set.  Fix? no
+Inode 1050 has a extra size (22079) which is invalid
+Fix? no
+
+--------snip--------
+
+Block #1032 (1256803293) causes symlink to be too big.  IGNORED.
+Block #1033 (18311953) causes symlink to be too big.  IGNORED.
+Block #1034 (2250429016) causes symlink to be too big.  IGNORED.
+Block #1035 (1392819776) causes symlink to be too big.  IGNORED.
+Illegal indirect block (4041828270) in inode 1065.  IGNORED.
+Illegal triple indirect block (3637063325) in inode 1065.  IGNORED.
+Error while iterating over blocks in inode 1065: Illegal triply
+indirect block found
+
+Archive: ********** WARNING: Filesystem still has errors **********
+e2fsck: aborted
+Archive: ********** WARNING: Filesystem still has errors **********
+
+    Which is a bad sign that something is majorly messed up.
+
+    It might also be relevant that a few days prior to this, I ran an
+online resize from 10TB to 12TB. The volume had not been unmounted for
+almost a year prior to that nor the days leading up to the power
+failure.
+
+    # uname -a
+        Linux Archiver 3.9.0+ #2 SMP PREEMPT Mon Jun 17 21:25:29 SGT
+2013 x86_64 GNU/Linux
+    fsck from util-linux 2.20.1
+
+    What would be the best way to proceed? The volume is sitting on
+top of a LVM, which I had already taken a snapshot of.
+
+Liwei
