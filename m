@@ -1,51 +1,55 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] jbd2: fix descriptor block size handling errors with
- journal_csum
-Date: Mon, 25 Aug 2014 22:44:24 -0400
-Message-ID: <20140826024424.GG11317@thunk.org>
-References: <20140815204346.16444.14064.stgit@birch.djwong.org>
- <20140815204359.16444.22808.stgit@birch.djwong.org>
+Subject: Re: [PATCH] ext4: fix same-dir rename when inline data directory
+ overflows
+Date: Mon, 25 Aug 2014 22:49:20 -0400
+Message-ID: <20140826024920.GH11317@thunk.org>
+References: <20140825194031.GE22645@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, TR Reardon <thomas_reardon@hotmail.com>
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:48961 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:48976 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757070AbaHZCo0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Aug 2014 22:44:26 -0400
+	id S1755217AbaHZCtX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Aug 2014 22:49:23 -0400
 Content-Disposition: inline
-In-Reply-To: <20140815204359.16444.22808.stgit@birch.djwong.org>
+In-Reply-To: <20140825194031.GE22645@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 15, 2014 at 01:43:59PM -0700, Darrick J. Wong wrote:
-> From: Darrick J. Wong <darrick.wong@oracle.com>
+On Mon, Aug 25, 2014 at 12:40:31PM -0700, Darrick J. Wong wrote:
+> When performing a same-directory rename, it's possible that adding or
+> setting the new directory entry will cause the directory to overflow
+> the inline data area, which causes the directory to be converted to an
+> extent-based directory.  Under this circumstance it is necessary to
+> re-read the directory when deleting the old dirent because the "old
+> directory" context still points to i_block in the inode table, which
+> is now an extent tree root!  The delete fails with an FS error, and
+> the subsequent fsck complains about incorrect link counts and
+> hardlinked directories.
 > 
-> It turns out that there are some serious problems with the on-disk
-> format of journal checksum v2.  The foremost is that the function to
-> calculate descriptor tag size returns sizes that are too big.  This
-> causes alignment issues on some architectures and is compounded by the
-> fact that some parts of jbd2 use the structure size (incorrectly) to
-> determine the presence of a 64bit journal instead of checking the
-> feature flags.
+> Test case (originally found with flat_dir_test in the metadata_csum
+> test program):
 > 
-> Therefore, introduce journal checksum v3, which enlarges the
-> descriptor block tag format to allow for full 32-bit checksums of
-> journal blocks, fix the journal tag function to return the correct
-> sizes, and fix the jbd2 recovery code to use feature flags to
-> determine 64bitness.
+> # mkfs.ext4 -O inline_data /dev/sda
+> # mount /dev/sda /mnt
+> # mkdir /mnt/x
+> # touch /mnt/x/changelog.gz /mnt/x/copyright /mnt/x/README.Debian
+> # sync
+> # for i in /mnt/x/*; do mv $i $i.longer; done
+> # ls -la /mnt/x/
+> total 0
+> -rw-r--r-- 1 root root 0 Aug 25 12:03 changelog.gz.longer
+> -rw-r--r-- 1 root root 0 Aug 25 12:03 copyright
+> -rw-r--r-- 1 root root 0 Aug 25 12:03 copyright.longer
+> -rw-r--r-- 1 root root 0 Aug 25 12:03 README.Debian.longer
 > 
-> Add a few function helpers so we don't have to open-code quite so
-> many pieces.
-> 
-> Switching to a 16-byte block size was found to increase journal size
-> overhead by a maximum of 0.1%, to convert a 32-bit journal with no
-> checksumming to a 32-bit journal with checksum v3 enabled.
+> (Hey!  Why are there four files now??)
 > 
 > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> Reported-by: TR Reardon <thomas_reardon@hotmail.com>
 
 Thanks, applied.
 
-					- Ted
+						- Ted
