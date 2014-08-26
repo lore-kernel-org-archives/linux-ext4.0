@@ -1,35 +1,34 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 4/5] fix transaction issues for ext4_fallocate and
- ext_zero_range
-Date: Mon, 25 Aug 2014 21:30:55 -0400
-Message-ID: <20140826013055.GE11317@thunk.org>
-References: <1408707147-22482-1-git-send-email-dmonakhov@openvz.org>
- <1408707147-22482-5-git-send-email-dmonakhov@openvz.org>
+Subject: Re: [PATCH 1/2] jbd2: fix infinite loop when recovering corrupt
+ journal blocks
+Date: Mon, 25 Aug 2014 22:44:12 -0400
+Message-ID: <20140826024412.GF11317@thunk.org>
+References: <20140815204346.16444.14064.stgit@birch.djwong.org>
+ <20140815204352.16444.79311.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:48884 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:48956 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932194AbaHZBa6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Aug 2014 21:30:58 -0400
+	id S1752959AbaHZCoT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Aug 2014 22:44:19 -0400
 Content-Disposition: inline
-In-Reply-To: <1408707147-22482-5-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <20140815204352.16444.79311.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 22, 2014 at 03:32:26PM +0400, Dmitry Monakhov wrote:
-> After commit f282ac19d86f we use different transactions for preallocation
-> and i_disksize update which result in complain from fsck after power-failure.
-> spotted by generic/019. IMHO this is regression because fs becomes inconsistent,
-> even more 'e2fsck -p' will no longer works (which drives admins go crazy)
-> Same transaction requirement applies ctime,mtime updates
+On Fri, Aug 15, 2014 at 01:43:52PM -0700, Darrick J. Wong wrote:
+> From: Darrick J. Wong <darrick.wong@oracle.com>
 > 
-> testcase: xfstest generic/019
+> When recovering the journal, don't fall into an infinite loop if we
+> encounter a corrupt journal block.  Instead, just skip the block and
+> return an error, which fails the mount and thus forces the user to run
+> a full filesystem fsck.
 > 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Applied, thanks.
+Thanks, applied.
 
 					- Ted
