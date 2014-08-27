@@ -1,232 +1,58 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v3 6/6] ext4: use a garbage collection algorithm to
- manage object
-Date: Wed, 27 Aug 2014 17:24:59 +0200
-Message-ID: <20140827152459.GE22211@quack.suse.cz>
-References: <1407382553-24256-1-git-send-email-wenqing.lz@taobao.com>
- <1407382553-24256-7-git-send-email-wenqing.lz@taobao.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 3/5] ext4_zero_range: fix incorect journal credits
+ reservation
+Date: Wed, 27 Aug 2014 17:31:03 -0400
+Message-ID: <20140827213103.GV11317@thunk.org>
+References: <1408707147-22482-1-git-send-email-dmonakhov@openvz.org>
+ <1408707147-22482-4-git-send-email-dmonakhov@openvz.org>
+ <20140823190835.GB6236@thunk.org>
+ <87k35x9gtw.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.cz>, Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:38484 "EHLO mx2.suse.de"
+Received: from imap.thunk.org ([74.207.234.97]:52731 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935056AbaH0PZE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Aug 2014 11:25:04 -0400
+	id S965100AbaH0VbK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Aug 2014 17:31:10 -0400
 Content-Disposition: inline
-In-Reply-To: <1407382553-24256-7-git-send-email-wenqing.lz@taobao.com>
+In-Reply-To: <87k35x9gtw.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 07-08-14 11:35:53, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
-> 
-> For keeping useful extent cache in the tree, this commit uses a gc-like
-> algorithm to manage object.  A new flag called '_ACCESSED' is defined to
-> track whether an extent cache is touched or not.  When the shrinker tries
-> to reclaim some ojbects, an extent cache will be moved to the tail of
-> active list from inactive list if this flag is marked.  The object in
-> active list will be reclaimed when we are under a high memory pressure.
-> After that, the aged extent cache should be kept as many as possible.
-  So I like the idea of basic aging logic. However active / inactive list
-makes it necessary to have list_head in the extent and I'd like to avoid
-that. Also it seems like an overkill for a relatively simple structure like
-extent cache. What we could do is to have only the ACCESSED bit - it gets
-set when cache entry is used. When shrinker sees cache entry with ACCESSED
-bit, it clears the bit and skips the entry. Entry without ACCESSED bit is
-reclaimed. This way frequently accessed entries have higher chances of
-being kept in cache. Again latency of scanning is limited by the fact we
-stop scanning after inspecting nr_to_scan entries.
+On Mon, Aug 25, 2014 at 11:19:39AM +0400, Dmitry Monakhov wrote:
+> Yes, but ext4_index_trans_blocks is statically defined in inode.c,
+> but since zero_range works only for extent based
+> ext4_ext_index_trans_blocks is sufficient. Also we must reserve 2 block
+> for data. So final calculation looks like follows:
+> credits =  ext4_ext_index_trans_blocks(inode, 2) + 2
 
-								Honza
-> 
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: Jan Kara <jack@suse.cz>
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> ---
->  fs/ext4/extents_status.c |   42 +++++++++++++++++++++++++++++++++---------
->  fs/ext4/extents_status.h |   31 ++++++++++++++++++++++++-------
->  2 files changed, 57 insertions(+), 16 deletions(-)
-> 
-> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-> index 2f81d1e..2f6bb538 100644
-> --- a/fs/ext4/extents_status.c
-> +++ b/fs/ext4/extents_status.c
-> @@ -149,7 +149,7 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
->  			      ext4_lblk_t end);
->  static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
->  				       struct list_head *freeable,
-> -				       int *nr_to_scan);
-> +				       int *nr_to_scan, int force);
->  static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
->  		       struct ext4_inode_info *locked_ei);
->  
-> @@ -172,7 +172,8 @@ void ext4_exit_es(void)
->  void ext4_es_init_tree(struct ext4_es_tree *tree)
->  {
->  	tree->root = RB_ROOT;
-> -	INIT_LIST_HEAD(&tree->list);
-> +	INIT_LIST_HEAD(&tree->active_list);
-> +	INIT_LIST_HEAD(&tree->inactive_list);
->  	tree->cache_es = NULL;
->  }
->  
-> @@ -317,7 +318,7 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
->  	 * We don't count delayed extent because we never try to reclaim them
->  	 */
->  	if (!ext4_es_is_delayed(es)) {
-> -		list_add_tail(&es->list, &ei->i_es_tree.list);
-> +		list_add_tail(&es->list, &ei->i_es_tree.inactive_list);
->  		ei->i_es_shk_nr++;
->  		percpu_counter_inc(&EXT4_SB(inode->i_sb)->
->  					s_es_stats.es_stats_shk_cnt);
-> @@ -787,6 +788,7 @@ out:
->  	stats = &EXT4_SB(inode->i_sb)->s_es_stats;
->  	if (found) {
->  		BUG_ON(!es1);
-> +		ext4_es_mark_accessed(es1);
->  		es->es_lblk = es1->es_lblk;
->  		es->es_len = es1->es_len;
->  		es->es_pblk = es1->es_pblk;
-> @@ -1027,7 +1029,7 @@ retry:
->  		}
->  
->  		nr_shrunk += __es_try_to_reclaim_extents(ei, &freeable,
-> -							 &nr_to_scan);
-> +							 &nr_to_scan, retried);
->  		write_unlock(&ei->i_es_lock);
->  		dispose_list(&ei->vfs_inode, &freeable);
->  
-> @@ -1048,7 +1050,7 @@ retry:
->  
->  	if (locked_ei && nr_shrunk == 0) {
->  		nr_shrunk = __es_try_to_reclaim_extents(locked_ei, &freeable,
-> -							&nr_to_scan);
-> +							&nr_to_scan, 1);
->  		dispose_list(&locked_ei->vfs_inode, &freeable);
->  	}
->  
-> @@ -1247,7 +1249,7 @@ void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi)
->  
->  static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
->  				       struct list_head *freeable,
-> -				       int *nr_to_scan)
-> +				       int *nr_to_scan, int force)
->  {
->  	struct inode *inode = &ei->vfs_inode;
->  	struct ext4_es_tree *tree = &ei->i_es_tree;
-> @@ -1263,13 +1265,35 @@ static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
->  	    __ratelimit(&_rs))
->  		ext4_warning(inode->i_sb, "forced shrink of precached extents");
->  
-> -	list_for_each_entry_safe(es, tmp, &tree->list, list) {
-> +	list_for_each_entry_safe(es, tmp, &tree->inactive_list, list) {
-> +		if (!*nr_to_scan)
-> +			goto done;
-> +		--*nr_to_scan;
-> +
-> +		if (ext4_es_is_accessed(es)) {
-> +			list_move_tail(&es->list, &tree->active_list);
-> +			continue;
-> +		} else {
-> +			rb_erase(&es->rb_node, &tree->root);
-> +			list_move_tail(&es->list, freeable);
-> +			nr_shrunk++;
-> +		}
-> +	}
-> +
-> +	if (!force)
-> +		goto done;
-> +
-> +	list_for_each_entry_safe(es, tmp, &tree->active_list, list) {
-> +		if (!*nr_to_scan)
-> +			goto done;
-> +		--*nr_to_scan;
-> +
->  		rb_erase(&es->rb_node, &tree->root);
->  		list_move_tail(&es->list, freeable);
->  		nr_shrunk++;
-> -		if (--*nr_to_scan == 0)
-> -			break;
->  	}
-> +
-> +done:
->  	tree->cache_es = NULL;
->  	return nr_shrunk;
->  }
-> diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-> index a45c7fe..213e056 100644
-> --- a/fs/ext4/extents_status.h
-> +++ b/fs/ext4/extents_status.h
-> @@ -29,12 +29,12 @@
->  /*
->   * These flags live in the high bits of extent_status.es_pblk
->   */
-> -#define ES_SHIFT	60
-> +#define ES_SHIFT	59
->  
-> -#define EXTENT_STATUS_WRITTEN	(1 << 3)
-> -#define EXTENT_STATUS_UNWRITTEN (1 << 2)
-> -#define EXTENT_STATUS_DELAYED	(1 << 1)
-> -#define EXTENT_STATUS_HOLE	(1 << 0)
-> +#define EXTENT_STATUS_WRITTEN	(1 << 4)
-> +#define EXTENT_STATUS_UNWRITTEN (1 << 3)
-> +#define EXTENT_STATUS_DELAYED	(1 << 2)
-> +#define EXTENT_STATUS_HOLE	(1 << 1)
->  
->  #define EXTENT_STATUS_FLAGS	(EXTENT_STATUS_WRITTEN | \
->  				 EXTENT_STATUS_UNWRITTEN | \
-> @@ -45,9 +45,10 @@
->  #define ES_UNWRITTEN		(1ULL << 62)
->  #define ES_DELAYED		(1ULL << 61)
->  #define ES_HOLE			(1ULL << 60)
-> +#define ES_ACCESSED		(1ULL << 59)
->  
->  #define ES_MASK			(ES_WRITTEN | ES_UNWRITTEN | \
-> -				 ES_DELAYED | ES_HOLE)
-> +				 ES_DELAYED | ES_HOLE | ES_ACCESSED)
->  
->  struct ext4_sb_info;
->  struct ext4_extent;
-> @@ -62,7 +63,8 @@ struct extent_status {
->  
->  struct ext4_es_tree {
->  	struct rb_root root;
-> -	struct list_head list;
-> +	struct list_head active_list;
-> +	struct list_head inactive_list;
->  	struct extent_status *cache_es;	/* recently accessed extent */
->  };
->  
-> @@ -114,6 +116,21 @@ static inline int ext4_es_is_hole(struct extent_status *es)
->  	return (es->es_pblk & ES_HOLE) != 0;
->  }
->  
-> +static inline int ext4_es_is_accessed(struct extent_status *es)
-> +{
-> +	return (es->es_pblk & ES_ACCESSED) != 0;
-> +}
-> +
-> +static inline void ext4_es_mark_accessed(struct extent_status *es)
-> +{
-> +	es->es_pblk |= ES_ACCESSED;
-> +}
-> +
-> +static inline void ext4_es_clear_accessed(struct extent_status *es)
-> +{
-> +	es->es_pblk &= ~ES_ACCESSED;
-> +}
-> +
->  static inline unsigned int ext4_es_status(struct extent_status *es)
->  {
->  	return es->es_pblk >> ES_SHIFT;
-> -- 
-> 1.7.9.7
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+It turns out this wasn't enough.  This was causing test failures in
+the data=journal case for tests generic/008, generic/091, generic/127,
+and generic/263, due to not reserving enough credits.  After taking a
+closer look at the code, and the requirements of ext4_zero_range, I
+believe this is the correct fix.
+
+       	       	   	   	   	   - Ted
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 0d531d1..0e9de23 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4831,8 +4831,13 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+ 		if (ret)
+ 			goto out_dio;
+ 	}
+-	/* In worst case we have to writeout two nonadjacent unwritten blocks */
+-	credits = ext4_ext_index_trans_blocks(inode, 2) + 2;
++	/*
++	 * In worst case we have to writeout two nonadjacent unwritten
++	 * blocks and update the inode
++	 */
++	credits = (2 * ext4_ext_index_trans_blocks(inode, 2)) + 1;
++	if (ext4_should_journal_data(inode))
++		credits += 2;
+ 	handle = ext4_journal_start(inode, EXT4_HT_MISC, credits);
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
