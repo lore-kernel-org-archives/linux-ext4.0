@@ -1,10 +1,10 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v3 4/6] ext4: change lru to round-robin in extent status
- tree shrinker
-Date: Wed, 27 Aug 2014 17:01:21 +0200
-Message-ID: <20140827150121.GC22211@quack.suse.cz>
+Subject: Re: [PATCH v3 5/6] ext4: use a list to track all reclaimable objects
+ for extent status tree
+Date: Wed, 27 Aug 2014 17:13:54 +0200
+Message-ID: <20140827151354.GD22211@quack.suse.cz>
 References: <1407382553-24256-1-git-send-email-wenqing.lz@taobao.com>
- <1407382553-24256-5-git-send-email-wenqing.lz@taobao.com>
+ <1407382553-24256-6-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
@@ -12,168 +12,249 @@ Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
 	Jan Kara <jack@suse.cz>, Zheng Liu <wenqing.lz@taobao.com>
 To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:37896 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:38125 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934344AbaH0PBZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Aug 2014 11:01:25 -0400
+	id S934344AbaH0PN7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Aug 2014 11:13:59 -0400
 Content-Disposition: inline
-In-Reply-To: <1407382553-24256-5-git-send-email-wenqing.lz@taobao.com>
+In-Reply-To: <1407382553-24256-6-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 07-08-14 11:35:51, Zheng Liu wrote:
+On Thu 07-08-14 11:35:52, Zheng Liu wrote:
 > From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> In this commit we discard the lru algorithm because it should take a
-> long time to keep a lru list in extent status tree shrinker and the
-> shrinker should take a long time to scan this lru list in order to
-> reclaim some objects.
+> Currently the shrinker needs to take a long time to reclaim some objects
+> from a extent status tree because there are a lot of objects that are
+> delayed.  These objects could not be reclaimed because ext4 uses them to
+> finish seeking data/hole, finding delayed range and other works.  If a
+> rb-tree has a large number of delayed objects, shrinker should scan more
+> objects and the latency will be high.  This commit uses a list to track
+> all reclaimble objects in order to reduce the latency when the shrinker
+> tries to reclaim some objects from a extent status tree.
 > 
-> For reducing the latency, this commit does two works.  The first one
-> is to replace lru with round-robin.  After that we never need to keep
-> a lru list.  That means that the list shouldn't be sorted if the
-> shrinker can not reclaim any objects in the first round.  The second
-> one is to shrink the length of the list.  After using round-robin
-> algorithm, the shrinker takes the first inode in the list and handle
-> it.  If this inode is skipped, it will be moved into the tail of the
-> list.  Otherwise it will be added back when it is touched again.
-  I like this change. Some comments are below.
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+> Cc: Jan Kara <jack@suse.cz>
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+  Hmm, this will grow structure for caching single extent from 5 to 7
+longs. That is quite noticeable. Since lots of delalloc extents within an
+inode isn't really a common case I would prefer to avoid that.
 
-...
-> @@ -685,8 +685,8 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
->  		goto error;
->  retry:
->  	err = __es_insert_extent(inode, &newes);
-> -	if (err == -ENOMEM && __ext4_es_shrink(EXT4_SB(inode->i_sb), 1,
-> -					       EXT4_I(inode)))
-> +	if (err == -ENOMEM && __es_shrink(EXT4_SB(inode->i_sb),
-> +					  1, EXT4_I(inode)))
->  		goto retry;
->  	if (err == -ENOMEM && !ext4_es_is_delayed(&newes))
->  		err = 0;
-  This comment is not directly related to this patch but looking into the
-code made me think about it. It seems ugly to call __es_shrink() from
-internals of ext4_es_insert_extent(). Also thinking about locking
-implications makes me shudder a bit and finally this may make the pressure
-on the extent cache artificially bigger because MM subsystem is not aware
-of the shrinking you do here. I would prefer to leave shrinking on
-the slab subsystem itself.
+What we could do to limit latency caused by scanning of unreclaimable
+extents is to change the shrinker to really stop after inspecting
+nr_to_scan extents regardless of how many extents did we really reclaim -
+this is actually how slab shrinkers are designed to work.  We would also
+have to record the logical block where the shrinker stopped scanning the
+inode and the next shrinker invocation will start scanning at that offset -
+it is enough to store this offset in the superblock, we just have to zero
+it out when we remove the first inode from the list of inodes with cached
+extents.
 
-Now GFP_ATOMIC allocation we use for extent cache makes it hard for the
-slab subsystem and actually we could fairly easily use GFP_NOFS. We can just
-allocate the structure before grabbing i_es_lock with GFP_NOFS allocation and
-in case we don't need the structure, we can just free it again. It may
-introduce some overhead from unnecessary alloc/free but things get simpler
-that way (no need for that locked_ei argument for __es_shrink(), no need
-for internal calls to __es_shrink() from within the filesystem).
+What do people think about this?
 
-...
-> +static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
-> +		       struct ext4_inode_info *locked_ei)
+								Honza
+
+> ---
+>  fs/ext4/extents_status.c |   74 ++++++++++++++++++++++++++--------------------
+>  fs/ext4/extents_status.h |    2 ++
+>  2 files changed, 44 insertions(+), 32 deletions(-)
+> 
+> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+> index 8d76fd5..2f81d1e 100644
+> --- a/fs/ext4/extents_status.c
+> +++ b/fs/ext4/extents_status.c
+> @@ -148,7 +148,8 @@ static int __es_insert_extent(struct inode *inode, struct extent_status *newes);
+>  static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+>  			      ext4_lblk_t end);
+>  static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
+> -				       int nr_to_scan);
+> +				       struct list_head *freeable,
+> +				       int *nr_to_scan);
+>  static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+>  		       struct ext4_inode_info *locked_ei);
+>  
+> @@ -171,6 +172,7 @@ void ext4_exit_es(void)
+>  void ext4_es_init_tree(struct ext4_es_tree *tree)
+>  {
+>  	tree->root = RB_ROOT;
+> +	INIT_LIST_HEAD(&tree->list);
+>  	tree->cache_es = NULL;
+>  }
+>  
+> @@ -302,6 +304,7 @@ static struct extent_status *
+>  ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
+>  		     ext4_fsblk_t pblk)
+>  {
+> +	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	struct extent_status *es;
+>  	es = kmem_cache_alloc(ext4_es_cachep, GFP_ATOMIC);
+>  	if (es == NULL)
+> @@ -314,12 +317,13 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
+>  	 * We don't count delayed extent because we never try to reclaim them
+>  	 */
+>  	if (!ext4_es_is_delayed(es)) {
+> -		EXT4_I(inode)->i_es_shk_nr++;
+> +		list_add_tail(&es->list, &ei->i_es_tree.list);
+> +		ei->i_es_shk_nr++;
+>  		percpu_counter_inc(&EXT4_SB(inode->i_sb)->
+>  					s_es_stats.es_stats_shk_cnt);
+>  	}
+>  
+> -	EXT4_I(inode)->i_es_all_nr++;
+> +	ei->i_es_all_nr++;
+>  	percpu_counter_inc(&EXT4_SB(inode->i_sb)->s_es_stats.es_stats_all_cnt);
+>  
+>  	return es;
+> @@ -327,13 +331,15 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
+>  
+>  static void ext4_es_free_extent(struct inode *inode, struct extent_status *es)
+>  {
+> -	EXT4_I(inode)->i_es_all_nr--;
+> +	struct ext4_inode_info *ei = EXT4_I(inode);
+> +
+> +	ei->i_es_all_nr--;
+>  	percpu_counter_dec(&EXT4_SB(inode->i_sb)->s_es_stats.es_stats_all_cnt);
+>  
+>  	/* Decrease the shrink counter when this es is not delayed */
+>  	if (!ext4_es_is_delayed(es)) {
+> -		BUG_ON(EXT4_I(inode)->i_es_shk_nr == 0);
+> -		EXT4_I(inode)->i_es_shk_nr--;
+> +		list_del(&es->list);
+> +		BUG_ON(ei->i_es_shk_nr-- == 0);
+>  		percpu_counter_dec(&EXT4_SB(inode->i_sb)->
+>  					s_es_stats.es_stats_shk_cnt);
+>  	}
+> @@ -958,11 +964,24 @@ void ext4_es_list_del(struct inode *inode)
+>  	spin_unlock(&sbi->s_es_lock);
+>  }
+>  
+> +static void dispose_list(struct inode *inode, struct list_head *head)
+> +{
+> +	while (!list_empty(head)) {
+> +		struct extent_status *es;
+> +
+> +		es = list_first_entry(head, struct extent_status, list);
+> +		list_del_init(&es->list);
+> +
+> +		ext4_es_free_extent(inode, es);
+> +	}
+> +}
+> +
+>  static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+>  		       struct ext4_inode_info *locked_ei)
 >  {
 >  	struct ext4_inode_info *ei;
 >  	struct ext4_es_stats *es_stats;
-> -	struct list_head *cur, *tmp;
-> -	LIST_HEAD(skipped);
+> +	LIST_HEAD(freeable);
 >  	ktime_t start_time;
 >  	u64 scan_time;
-> +	int nr_to_walk;
->  	int nr_shrunk = 0;
-> -	int retried = 0, skip_precached = 1, nr_skipped = 0;
-> +	int retried = 0, nr_skipped = 0;
+>  	int nr_to_walk;
+> @@ -976,8 +995,6 @@ retry:
+>  	spin_lock(&sbi->s_es_lock);
+>  	nr_to_walk = sbi->s_es_nr_inode;
+>  	while (!list_empty(&sbi->s_es_list) && nr_to_walk-- > 0) {
+> -		int shrunk;
+> -
+>  		ei = list_first_entry(&sbi->s_es_list, struct ext4_inode_info,
+>  				      i_es_list);
 >  
->  	es_stats = &sbi->s_es_stats;
->  	start_time = ktime_get();
-> -	spin_lock(&sbi->s_es_lru_lock);
->  
->  retry:
-> -	list_for_each_safe(cur, tmp, &sbi->s_es_lru) {
-> +	spin_lock(&sbi->s_es_lock);
-> +	nr_to_walk = sbi->s_es_nr_inode;
-> +	while (!list_empty(&sbi->s_es_list) && nr_to_walk-- > 0) {
->  		int shrunk;
->  
-> -		/*
-> -		 * If we have already reclaimed all extents from extent
-> -		 * status tree, just stop the loop immediately.
-> -		 */
-> -		if (percpu_counter_read_positive(
-> -				&es_stats->es_stats_lru_cnt) == 0)
-> -			break;
-> +		ei = list_first_entry(&sbi->s_es_list, struct ext4_inode_info,
-> +				      i_es_list);
->  
-> -		ei = list_entry(cur, struct ext4_inode_info, i_es_lru);
-> +		list_del_init(&ei->i_es_list);
-> +		sbi->s_es_nr_inode--;
-> +		spin_unlock(&sbi->s_es_lock);
-  Nothing seems to prevent reclaim from freeing the inode after we drop
-s_es_lock. So we could use freed memory. I don't think we want to pin the
-inode here by grabbing a refcount since we don't want to deal with iput()
-in the shrinker (that could mean having to delete the inode from shrinker
-context). But what we could do it to grab ei->i_es_lock before dropping
-s_es_lock. Since ext4_es_remove_extent() called from ext4_clear_inode()
-always grabs i_es_lock, we are protected from inode being freed while we
-hold that lock. But please add comments about this both to the
-__es_shrink() and ext4_es_remove_extent().
-
->  
->  		/*
-> -		 * Skip the inode that is newer than the last_sorted
-> -		 * time.  Normally we try hard to avoid shrinking
-> -		 * precached inodes, but we will as a last resort.
-> +		 * Normally we try hard to avoid shrinking precached inodes,
-> +		 * but we will as a last resort.
->  		 */
-> -		if ((es_stats->es_stats_last_sorted < ei->i_touch_when) ||
-> -		    (skip_precached && ext4_test_inode_state(&ei->vfs_inode,
-> -						EXT4_STATE_EXT_PRECACHED))) {
-> +		if (!retried && ext4_test_inode_state(&ei->vfs_inode,
-> +						EXT4_STATE_EXT_PRECACHED)) {
->  			nr_skipped++;
-> -			list_move_tail(cur, &skipped);
-> +			spin_lock(&sbi->s_es_lock);
-> +			__ext4_es_list_add(sbi, ei);
-> +			continue;
-> +		}
-> +
-> +		if (ei->i_es_shk_nr == 0) {
-> +			spin_lock(&sbi->s_es_lock);
+> @@ -1009,11 +1026,10 @@ retry:
 >  			continue;
 >  		}
 >  
-> -		if (ei->i_es_lru_nr == 0 || ei == locked_ei ||
-> -		    !write_trylock(&ei->i_es_lock))
-> +		if (ei == locked_ei || !write_trylock(&ei->i_es_lock)) {
-> +			nr_skipped++;
-> +			spin_lock(&sbi->s_es_lock);
-> +			__ext4_es_list_add(sbi, ei);
->  			continue;
-> +		}
-  These tests will need some reorg when we rely on ei->i_es_lock but it
-should be easily doable.
-
->  
->  		shrunk = __es_try_to_reclaim_extents(ei, nr_to_scan);
-> -		if (ei->i_es_lru_nr == 0)
-> -			list_del_init(&ei->i_es_lru);
+> -		shrunk = __es_try_to_reclaim_extents(ei, nr_to_scan);
+> +		nr_shrunk += __es_try_to_reclaim_extents(ei, &freeable,
+> +							 &nr_to_scan);
 >  		write_unlock(&ei->i_es_lock);
->  
->  		nr_shrunk += shrunk;
->  		nr_to_scan -= shrunk;
-> +
->  		if (nr_to_scan == 0)
-> -			break;
-> +			goto out;
-> +		spin_lock(&sbi->s_es_lock);
->  	}
 > -
-> -	/* Move the newer inodes into the tail of the LRU list. */
-> -	list_splice_tail(&skipped, &sbi->s_es_lru);
-> -	INIT_LIST_HEAD(&skipped);
-> +	spin_unlock(&sbi->s_es_lock);
+> -		nr_shrunk += shrunk;
+> -		nr_to_scan -= shrunk;
+> +		dispose_list(&ei->vfs_inode, &freeable);
 >  
-								Honza
+>  		if (nr_to_scan == 0)
+>  			goto out;
+> @@ -1030,8 +1046,11 @@ retry:
+>  		goto retry;
+>  	}
+>  
+> -	if (locked_ei && nr_shrunk == 0)
+> -		nr_shrunk = __es_try_to_reclaim_extents(locked_ei, nr_to_scan);
+> +	if (locked_ei && nr_shrunk == 0) {
+> +		nr_shrunk = __es_try_to_reclaim_extents(locked_ei, &freeable,
+> +							&nr_to_scan);
+> +		dispose_list(&locked_ei->vfs_inode, &freeable);
+> +	}
+>  
+>  out:
+>  	scan_time = ktime_to_ns(ktime_sub(ktime_get(), start_time));
+> @@ -1227,12 +1246,12 @@ void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi)
+>  }
+>  
+>  static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
+> -				       int nr_to_scan)
+> +				       struct list_head *freeable,
+> +				       int *nr_to_scan)
+>  {
+>  	struct inode *inode = &ei->vfs_inode;
+>  	struct ext4_es_tree *tree = &ei->i_es_tree;
+> -	struct rb_node *node;
+> -	struct extent_status *es;
+> +	struct extent_status *es, *tmp;
+>  	unsigned long nr_shrunk = 0;
+>  	static DEFINE_RATELIMIT_STATE(_rs, DEFAULT_RATELIMIT_INTERVAL,
+>  				      DEFAULT_RATELIMIT_BURST);
+> @@ -1244,21 +1263,12 @@ static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
+>  	    __ratelimit(&_rs))
+>  		ext4_warning(inode->i_sb, "forced shrink of precached extents");
+>  
+> -	node = rb_first(&tree->root);
+> -	while (node != NULL) {
+> -		es = rb_entry(node, struct extent_status, rb_node);
+> -		node = rb_next(&es->rb_node);
+> -		/*
+> -		 * We can't reclaim delayed extent from status tree because
+> -		 * fiemap, bigallic, and seek_data/hole need to use it.
+> -		 */
+> -		if (!ext4_es_is_delayed(es)) {
+> -			rb_erase(&es->rb_node, &tree->root);
+> -			ext4_es_free_extent(inode, es);
+> -			nr_shrunk++;
+> -			if (--nr_to_scan == 0)
+> -				break;
+> -		}
+> +	list_for_each_entry_safe(es, tmp, &tree->list, list) {
+> +		rb_erase(&es->rb_node, &tree->root);
+> +		list_move_tail(&es->list, freeable);
+> +		nr_shrunk++;
+> +		if (--*nr_to_scan == 0)
+> +			break;
+>  	}
+>  	tree->cache_es = NULL;
+>  	return nr_shrunk;
+> diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+> index 0e6a33e..a45c7fe 100644
+> --- a/fs/ext4/extents_status.h
+> +++ b/fs/ext4/extents_status.h
+> @@ -54,6 +54,7 @@ struct ext4_extent;
+>  
+>  struct extent_status {
+>  	struct rb_node rb_node;
+> +	struct list_head list;
+>  	ext4_lblk_t es_lblk;	/* first logical block extent covers */
+>  	ext4_lblk_t es_len;	/* length of extent in block */
+>  	ext4_fsblk_t es_pblk;	/* first physical block */
+> @@ -61,6 +62,7 @@ struct extent_status {
+>  
+>  struct ext4_es_tree {
+>  	struct rb_root root;
+> +	struct list_head list;
+>  	struct extent_status *cache_es;	/* recently accessed extent */
+>  };
+>  
+> -- 
+> 1.7.9.7
+> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
