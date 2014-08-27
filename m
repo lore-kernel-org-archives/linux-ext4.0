@@ -1,41 +1,32 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 5/5] update i_disksize coherently with block allocation
-Date: Tue, 26 Aug 2014 08:26:40 -0400
-Message-ID: <20140826122640.GI11317@thunk.org>
-References: <1408707147-22482-1-git-send-email-dmonakhov@openvz.org>
- <1408707147-22482-6-git-send-email-dmonakhov@openvz.org>
- <20140826011310.GB11317@thunk.org>
- <87egw3ae0x.fsf@openvz.org>
+Subject: Re: [PATCH 07/27] contrib: add script to help resync journal code
+ with kernel
+Date: Tue, 26 Aug 2014 23:44:25 -0400
+Message-ID: <20140827034425.GR11317@thunk.org>
+References: <20140816234550.11171.61585.stgit@birch.djwong.org>
+ <20140816234635.11171.50609.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49633 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:51063 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754820AbaHZM0u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Aug 2014 08:26:50 -0400
+	id S1756472AbaH0Doc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Aug 2014 23:44:32 -0400
 Content-Disposition: inline
-In-Reply-To: <87egw3ae0x.fsf@openvz.org>
+In-Reply-To: <20140816234635.11171.50609.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 26, 2014 at 11:47:10AM +0400, Dmitry Monakhov wrote:
-> No. patch was written like this from very beginning. 
-> By logic is follows. We must update i_disksize in the same transaction
-> Before the patch i_disksize was updated only if requested range was fully completed.
-> But we also have to update it in case of error. And patch fix what.
+On Sat, Aug 16, 2014 at 04:46:35PM -0700, Darrick J. Wong wrote:
+> Add a script that handles (most) of the code massaging necessary to resync
+> {recovery,revoke}.c from the Linux kernel into e2fsprogs.
+> 
+> Usage: jbd2-resync.sh linux/fs/jbd2/revoke.c e2fsprogs/e2fsck/revoke.c
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Ok, I'll update the commit description to make it clear that what
-we're fixing is on the error path.
+Applied, thanks.
 
-Thanks!!
-
-						- Ted
-
-P.S.  I haven't forgotten about your 1/5 patch; I'm just currently
-prioritizing patches that will get pushed to Linus during the current
-development cycle.  I'll do a second pass for cleanup and new feature
-commits (i.e., things that aren't stable kernel fodder) after I push
-fixes to Linus for -rc3.
-
+					- Ted
