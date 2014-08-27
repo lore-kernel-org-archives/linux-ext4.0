@@ -1,26 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 09/27] e2fsck: resync jbd2 revoke code from Linux 3.16
-Date: Tue, 26 Aug 2014 23:44:50 -0400
-Message-ID: <20140827034450.GT11317@thunk.org>
+Subject: Re: [PATCH 10/27] e2fsck: fix infinite loop when recovering corrupt
+ journal blocks
+Date: Tue, 26 Aug 2014 23:45:23 -0400
+Message-ID: <20140827034523.GU11317@thunk.org>
 References: <20140816234550.11171.61585.stgit@birch.djwong.org>
- <20140816234648.11171.8811.stgit@birch.djwong.org>
+ <20140816234655.11171.49022.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51075 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:51081 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756472AbaH0Dow (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Aug 2014 23:44:52 -0400
+	id S1756472AbaH0Dp0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Aug 2014 23:45:26 -0400
 Content-Disposition: inline
-In-Reply-To: <20140816234648.11171.8811.stgit@birch.djwong.org>
+In-Reply-To: <20140816234655.11171.49022.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 16, 2014 at 04:46:48PM -0700, Darrick J. Wong wrote:
-> Synchronize e2fsck's copy of revoke.c with the kernel's copy in
-> fs/jbd2.
+On Sat, Aug 16, 2014 at 04:46:55PM -0700, Darrick J. Wong wrote:
+> When recovering the journal, don't fall into an infinite loop if we
+> encounter a corrupt journal block.  Instead, just skip the block and
+> proceed with the full filesystem fsck.
+> 
+> The test case for this will be "j_corrupt_journal_block" further on
+> in the patch series.
 > 
 > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
