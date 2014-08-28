@@ -1,8 +1,8 @@
 From: Gioh Kim <gioh.kim@lge.com>
-Subject: [PATCHv3 2/3] ext4: allocate buffer-cache for superblock in, non-movable
- area
-Date: Thu, 28 Aug 2014 11:32:29 +0900
-Message-ID: <53FE94BD.3020408@lge.com>
+Subject: [PATCHv3 3/3] jbd/jbd2: allocate buffer-cache for superblock inode
+ in non-movable area
+Date: Thu, 28 Aug 2014 11:33:20 +0900
+Message-ID: <53FE94F0.5070401@lge.com>
 References: <53FE9357.6000505@lge.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=EUC-KR
@@ -17,52 +17,54 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <53FE9357.6000505@lge.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
-A buffer-cache for superblock is disturbing page migration,
-because the buffer-cache is not released until unmount.
-The buffer-cache must be allocated from non-movable area.
+A long-lasting buffer-cache can distrub page migration so that
+it must be allocated from non-movable area.
+
+The journal_init_inode is creating a buffer-cache for superblock journaling.
+The superblock exists until system shutdown so that the buffer-cache
+for the superblock would also exist for a long time
+and it can distrub page migration.
+
+This patch make the buffer-cache be allocated from non-movable area
+not to distrub page migration.
 
 Signed-off-by: Gioh Kim <gioh.kim@lge.com>
 ---
- fs/ext4/super.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/jbd/journal.c  |    2 +-
+ fs/jbd2/journal.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 32b43ad..e4b62b3 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3435,7 +3435,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
-                logical_sb_block = sb_block;
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 06fe11e..aab8549 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -886,7 +886,7 @@ journal_t * journal_init_inode (struct inode *inode)
+                goto out_err;
         }
 
--       if (!(bh = sb_bread(sb, logical_sb_block))) {
-+       if (!(bh = sb_bread_unmovable(sb, logical_sb_block))) {
-                ext4_msg(sb, KERN_ERR, "unable to read superblock");
-                goto out_fail;
+-       bh = __getblk(journal->j_dev, blocknr, journal->j_blocksize);
++       bh = getblk_unmovable(journal->j_dev, blocknr, journal->j_blocksize);
+        if (!bh) {
+                printk(KERN_ERR
+                       "%s: Cannot get buffer for journal superblock\n",
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 67b8e30..65bd3b1 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1237,7 +1237,7 @@ journal_t * jbd2_journal_init_inode (struct inode *inode)
+                goto out_err;
         }
-@@ -3645,7 +3645,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
-                brelse(bh);
-                logical_sb_block = sb_block * EXT4_MIN_BLOCK_SIZE;
-                offset = do_div(logical_sb_block, blocksize);
--               bh = sb_bread(sb, logical_sb_block);
-+               bh = sb_bread_unmovable(sb, logical_sb_block);
-                if (!bh) {
-                        ext4_msg(sb, KERN_ERR,
-                               "Can't read superblock on 2nd try");
-@@ -3867,7 +3867,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 
-        for (i = 0; i < db_count; i++) {
-                block = descriptor_loc(sb, logical_sb_block, i);
--               sbi->s_group_desc[i] = sb_bread(sb, block);
-+               sbi->s_group_desc[i] = sb_bread_unmovable(sb, block);
-                if (!sbi->s_group_desc[i]) {
-                        ext4_msg(sb, KERN_ERR,
-                               "can't read group descriptor %d", i);
+-       bh = __getblk(journal->j_dev, blocknr, journal->j_blocksize);
++       bh = getblk_unmovable(journal->j_dev, blocknr, journal->j_blocksize);
+        if (!bh) {
+                printk(KERN_ERR
+                       "%s: Cannot get buffer for journal superblock\n",
 --
 1.7.9.5
-
