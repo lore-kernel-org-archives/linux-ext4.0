@@ -1,68 +1,72 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCHv3 0/3] new APIs to allocate buffer-cache with user
- specific flag
-Date: Thu, 28 Aug 2014 09:48:04 -0400
-Message-ID: <20140828134804.GC21925@thunk.org>
-References: <53FE9357.6000505@lge.com>
+From: Rob Harris <rob.harris@gmail.com>
+Subject: Refreshing after OOB file update?
+Date: Thu, 28 Aug 2014 10:37:04 -0400
+Message-ID: <53FF3E90.1060200@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, Minchan Kim <minchan@kernel.org>,
-	Joonsoo Kim <js1304@gmail.com>,
-	=?utf-8?B?7J206rG07Zi4?= <gunho.lee@lge.com>
-To: Gioh Kim <gioh.kim@lge.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53896 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750801AbaH1NsZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Aug 2014 09:48:25 -0400
-Content-Disposition: inline
-In-Reply-To: <53FE9357.6000505@lge.com>
+Received: from mail-qa0-f44.google.com ([209.85.216.44]:60779 "EHLO
+	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751099AbaH1OhF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Aug 2014 10:37:05 -0400
+Received: by mail-qa0-f44.google.com with SMTP id j7so780381qaq.17
+        for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2014 07:37:05 -0700 (PDT)
+Received: from [10.14.1.70] ([199.119.119.178])
+        by mx.google.com with ESMTPSA id f105sm5813657qge.10.2014.08.28.07.37.04
+        for <linux-ext4@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 28 Aug 2014 07:37:04 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 28, 2014 at 11:26:31AM +0900, Gioh Kim wrote:
-> 
-> I have 3 patchs:
-> 
-> 1. Patch 1/3: introduce a new API that create page cache with allocation flag
-> 2. Patch 2/3: have ext4 use the new API to read superblock
-> 3. Patch 3/3: have jbd/jbd2 use the new API to make journaling of superblock
-> 
-> This patchset is based on linux-next-20140814.
+Greetings. My apologies in advance... I need to ask a weird question and 
+can't think of a more appropriate place to ask.
 
-Looks good.  Unless there are any objections from the mm folks, since
-the nearly all of the changes are in fs/buffer.c and in ext4/jbd2
-code, I plan to carry this in the ext4 tree.
+And yes, I know this is a broken/stupid/insane/WTF?/n00b request, but 
+bear with me for a second.
 
-I do plan to clean up the patch titles a little; from:
+I'm writing a FUSE layer for a project that sits on top of a ext4 
+filesystem. My daemon will be the ONLY reader and writer; Except! ... 
+I've been told that upon request, another (hardware--pcie) component of 
+my system needs to be able to write data into a existing file in the 
+filesystem DIRECTLY (i.e. using the absolute block ID returned from 
+fiemap() ) without my FUSE layer or the ext4 file system knowing that 
+the writing is occuring (I get a notification later via another means). 
+So, basically, files are changing out from under me. (Assume that they 
+know how big the extents are so they won't do anything stupid like 
+overrun them or anything.)
 
-fs/buffer.c: allocate buffer cache with user specific flag
-ext4: allocate buffer-cache for superblock in, non-movable area
-jbd/jbd2: allocate buffer-cache for superblock inode in non-movable area
+Thinking this was insane, I ran a simple test:
 
-to:
+- I created a file of all 0's using dd.
+- I ran mkfs.ext4 on the file and loop mounted the file system.
+- I created a dummy text file comprised of all 'y's (output of the yes 
+command).
+- I wrote a program to call fiemap() and get the physical location of 
+the text file contents in the loop mounted fs file.
+- I used dd to write a string into the file (i.e. echo "xxxx" | dd 
+of=/tmp/dummy.fs bs=1 seek=138416128 conv=notrunc)
+- If I dd if=/tmp/dummy.fs | hexdump -C, then I can see the changes written.
+- If I cat the text file, I DON'T see the changes.
+- If I touch the text file and cat it, still no joy.
+- If I copy the text file to another file, I DON'T see the changes in 
+either file.
+- If I umount and remount the partition and then cat the file, I CAN see 
+the changes.
 
-fs.c: support buffer cache allocations with gfp modifiers
-ext4: use non-movable memory for the ext4 superblock
-jbd/jbd2: use non-movable memory for the jbd superblock
+This tells me (probably naively) that the kernel is caching the old file 
+contents.
 
-And do some minor english grammar/spelling cleanups in the commit
-description when I apply the patch.
+Is there a way for me to tell the file system that something out-of-band 
+change a file contents and to force a re-read from the disk?
 
-Thanks for this work; I'm going to need to use the interfaces you
-introduced in fs/buffer.c to guarantee that certain directory reads
-can be done with GFP_NOFAIL (since under heavy memory pressure,
-allocation failures there can currently lead to the file system
-getting declared corrupt.  Interestingly, this bug has been around for
-a long time, and hasn't been noticed in over two cycles of enterprise
-distro qualifications by either RHEL or SLES, which leads me to wonder
-if there are other places where the error paths for GFP_NOFS
-allocations haven't been well tested....)
+Also, this was performed using a loop mount--is the expectation that a 
+similar test with live hardware/block device file systems would behave 
+similarly?
 
-						- Ted
+Thanks again for placating my insanity.
+-Rob Harris
+
+
