@@ -1,72 +1,93 @@
-From: Rob Harris <rob.harris@gmail.com>
-Subject: Refreshing after OOB file update?
-Date: Thu, 28 Aug 2014 10:37:04 -0400
-Message-ID: <53FF3E90.1060200@gmail.com>
+From: Liwei <xieliwei@gmail.com>
+Subject: Re: Recovering from a damaged root inode
+Date: Fri, 29 Aug 2014 01:19:06 +0800
+Message-ID: <CAPE0SYzRsYFQ9WrLvRzqABXVzRVshhgSK_q5rb+AgEZGQ_NE5A@mail.gmail.com>
+References: <CAPE0SYxva9AkaynNDofObS-U5VW7RYW8io+N9Pz+6jVsCody8A@mail.gmail.com>
+ <20140828121637.GA3043@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:60779 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751099AbaH1OhF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Aug 2014 10:37:05 -0400
-Received: by mail-qa0-f44.google.com with SMTP id j7so780381qaq.17
-        for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2014 07:37:05 -0700 (PDT)
-Received: from [10.14.1.70] ([199.119.119.178])
-        by mx.google.com with ESMTPSA id f105sm5813657qge.10.2014.08.28.07.37.04
-        for <linux-ext4@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 28 Aug 2014 07:37:04 -0700 (PDT)
+Received: from mail-wi0-f181.google.com ([209.85.212.181]:45508 "EHLO
+	mail-wi0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751087AbaH1RT1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Aug 2014 13:19:27 -0400
+Received: by mail-wi0-f181.google.com with SMTP id e4so1293661wiv.2
+        for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2014 10:19:26 -0700 (PDT)
+In-Reply-To: <20140828121637.GA3043@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Greetings. My apologies in advance... I need to ask a weird question and 
-can't think of a more appropriate place to ask.
+Hi Ted,
+    Thanks for the response! Responses in-line.
 
-And yes, I know this is a broken/stupid/insane/WTF?/n00b request, but 
-bear with me for a second.
+On 28 August 2014 20:16, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Tue, Aug 26, 2014 at 07:32:59PM +0800, Liwei wrote:
+>>
+>>     I thought a second fsck run would help, but running it with -n
+>> gave me the following:
+>
+> I take it you don't have the transcript from the first fsck run?
 
-I'm writing a FUSE layer for a project that sits on top of a ext4 
-filesystem. My daemon will be the ONLY reader and writer; Except! ... 
-I've been told that upon request, another (hardware--pcie) component of 
-my system needs to be able to write data into a existing file in the 
-filesystem DIRECTLY (i.e. using the absolute block ID returned from 
-fiemap() ) without my FUSE layer or the ext4 file system knowing that 
-the writing is occuring (I get a notification later via another means). 
-So, basically, files are changing out from under me. (Assume that they 
-know how big the extents are so they won't do anything stupid like 
-overrun them or anything.)
+Yes, I initially thought it was a simple problem, so I did not keep a
+log of the first run. From memory, all it did was replace the
+superblock from a backup.
 
-Thinking this was insane, I ran a simple test:
+>
+> Also, you didn't tell us what version of e2fsprogs you are using.
 
-- I created a file of all 0's using dd.
-- I ran mkfs.ext4 on the file and loop mounted the file system.
-- I created a dummy text file comprised of all 'y's (output of the yes 
-command).
-- I wrote a program to call fiemap() and get the physical location of 
-the text file contents in the loop mounted fs file.
-- I used dd to write a string into the file (i.e. echo "xxxx" | dd 
-of=/tmp/dummy.fs bs=1 seek=138416128 conv=notrunc)
-- If I dd if=/tmp/dummy.fs | hexdump -C, then I can see the changes written.
-- If I cat the text file, I DON'T see the changes.
-- If I touch the text file and cat it, still no joy.
-- If I copy the text file to another file, I DON'T see the changes in 
-either file.
-- If I umount and remount the partition and then cat the file, I CAN see 
-the changes.
+Not sure why I left out the obvious: 1.42.5-1.1
 
-This tells me (probably naively) that the kernel is caching the old file 
-contents.
+>
+> Finally, this error is one was caused by your using fsck -n:
+>
+>> Illegal triple indirect block (3637063325) in inode 1065.  IGNORED.
+>> Error while iterating over blocks in inode 1065: Illegal triply
+>> indirect block found
+>
+> There was an illegal indirect bock in inode 1065, which wasn't fixed
+> because of e2fsck -n.  Unfortunately, this caused the scan to get
+> aborted, because the unfixed error caused the inode iterator to fail.
+> We could try to fix things up to make e2fsck -n recover more cleanly
+> in the face of errors caused by not fixing previously found errors,
+> but that hasn't been something that's been high priority.  (If someone
+> would like to improve e2fsck in this regard, please send patches.)
 
-Is there a way for me to tell the file system that something out-of-band 
-change a file contents and to force a re-read from the disk?
+Personally I think the way e2fsck handled it is fine. Maybe a simple
+message stating that "errors that occur when using -n may be the
+result of the decision to ignore all fixes" would work.
 
-Also, this was performed using a loop mount--is the expectation that a 
-similar test with live hardware/block device file systems would behave 
-similarly?
+>
+> More generally, it looks like part of your inode table got smashed.
 
-Thanks again for placating my insanity.
--Rob Harris
+That sounds bad. From my limited understanding of ext4's structure,
+each block group has its own inode table, right? Or is the inode table
+global? What are my chances of recovering from this?
 
+> How, it's hard to say.  There have historically been some bugs with
+> resizing, but online resizing has been much more safe than off-line
+> resizing with big file systems, and the problems tend to with file
+> systems larger than 16TB.  (Although for file systems larger than 8TB,
 
+I believe the problem came as a result of the power failure. Or are
+you suggesting that the resize could have been instrumental in causing
+this?
+
+> I do strongly recommend that people update to the latest kernel and
+> e2fsprogs; and there have been a lot of bug fixes to e2fsprogs in the
+> past year and a half.  If you are using an enterprise distribution,
+> hopefully you're using one which has been good about backporting fixes
+> --- but 3.9.x hasn't been used by a distro kernel as far as I know,
+> and 3.9.x isn't even a long-term stable maintenace kernel.  So I'm
+> guessing this is a roll-your-own sort of system?)
+>
+
+Very good deduction. The machine is mainly a virtual machine host for
+my own work, and I had to use the mainline kernel (about a year and
+half ago, when I built the machine) in order to get some xen features
+working. Since xen was very fidgety between kernel versions, I decided
+to "not update when it ain't broke". I'll definitely update everything
+after this, but my main concern now is the possibility of recovery.
+
+>                                          - Ted
