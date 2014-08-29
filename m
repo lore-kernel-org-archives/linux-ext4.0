@@ -1,86 +1,58 @@
-From: Gioh Kim <gioh.kim@lge.com>
-Subject: Re: [PATCHv3 0/3] new APIs to allocate buffer-cache with user specific
- flag
-Date: Fri, 29 Aug 2014 09:22:55 +0900
-Message-ID: <53FFC7DF.9030508@lge.com>
-References: <53FE9357.6000505@lge.com> <20140828134804.GC21925@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [GIT PULL] ext4 bug fixes for 3.17
+Date: Thu, 28 Aug 2014 22:48:38 -0400
+Message-ID: <20140829024838.GA2734@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, Minchan Kim <minchan@kernel.org>,
-	Joonsoo Kim <js1304@gmail.com>,
-	=?UTF-8?B?7J206rG07Zi4?= <gunho.lee@lge.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20140828134804.GC21925@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: torvalds@linux-foundation.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+The following changes since commit 7d1311b93e58ed55f3a31cc8f94c4b8fe988a2b9:
 
+  Linux 3.17-rc1 (2014-08-16 10:40:26 -0600)
 
-2014-08-28 =EC=98=A4=ED=9B=84 10:48, Theodore Ts'o =EC=93=B4 =EA=B8=80:
-> On Thu, Aug 28, 2014 at 11:26:31AM +0900, Gioh Kim wrote:
->>
->> I have 3 patchs:
->>
->> 1. Patch 1/3: introduce a new API that create page cache with alloca=
-tion flag
->> 2. Patch 2/3: have ext4 use the new API to read superblock
->> 3. Patch 3/3: have jbd/jbd2 use the new API to make journaling of su=
-perblock
->>
->> This patchset is based on linux-next-20140814.
->
-> Looks good.  Unless there are any objections from the mm folks, since
-> the nearly all of the changes are in fs/buffer.c and in ext4/jbd2
-> code, I plan to carry this in the ext4 tree.
->
-> I do plan to clean up the patch titles a little; from:
->
-> fs/buffer.c: allocate buffer cache with user specific flag
-> ext4: allocate buffer-cache for superblock in, non-movable area
-> jbd/jbd2: allocate buffer-cache for superblock inode in non-movable a=
-rea
->
-> to:
->
-> fs.c: support buffer cache allocations with gfp modifiers
-> ext4: use non-movable memory for the ext4 superblock
-> jbd/jbd2: use non-movable memory for the jbd superblock
->
-> And do some minor english grammar/spelling cleanups in the commit
-> description when I apply the patch.
->
-> Thanks for this work; I'm going to need to use the interfaces you
-> introduced in fs/buffer.c to guarantee that certain directory reads
-> can be done with GFP_NOFAIL (since under heavy memory pressure,
-> allocation failures there can currently lead to the file system
-> getting declared corrupt.  Interestingly, this bug has been around fo=
-r
-> a long time, and hasn't been noticed in over two cycles of enterprise
-> distro qualifications by either RHEL or SLES, which leads me to wonde=
-r
-> if there are other places where the error paths for GFP_NOFS
-> allocations haven't been well tested....)
->
-> 						- Ted
->
+are available in the git repository at:
 
-Thanks a lot. It's my honor.
-I'm not good at English, so please feel free to fix it.
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
 
-Jan Kara requested me some changes for the interfaces.
-I'm going to send v4 soon with new titles you recommend and some change=
- for the interfaces.
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+for you to fetch changes up to d80d448c6c5bdd32605b78a60fe8081d82d4da0f:
+
+  ext4: fix same-dir rename when inline data directory overflows (2014-08-28 22:22:29 -0400)
+
+----------------------------------------------------------------
+Ext4 bug fixes for 3.17, to provide better handling of memory
+allocation failures, and to fix some journaling bugs involving journal
+checksums and FALLOC_FL_ZERO_RANGE.
+
+----------------------------------------------------------------
+Darrick J. Wong (3):
+      jbd2: fix infinite loop when recovering corrupt journal blocks
+      jbd2: fix descriptor block size handling errors with journal_csum
+      ext4: fix same-dir rename when inline data directory overflows
+
+Dmitry Monakhov (4):
+      ext4: move i_size,i_disksize update routines to helper function
+      ext4: fix incorect journal credits reservation in ext4_zero_range
+      ext4: fix transaction issues for ext4_fallocate and ext_zero_range
+      ext4: update i_disksize coherently with block allocation on error path
+
+Theodore Ts'o (2):
+      ext4: propagate errors up to ext4_find_entry()'s callers
+      ext4: fix BUG_ON in mb_free_blocks()
+
+ fs/ext4/ext4.h       | 18 ++++++++++-
+ fs/ext4/extents.c    | 88 +++++++++++++++++++++++++++---------------------------
+ fs/ext4/inode.c      | 44 ++++++++++-----------------
+ fs/ext4/mballoc.c    |  5 ++++
+ fs/ext4/namei.c      | 56 ++++++++++++++++++++++++++++++----
+ fs/ext4/super.c      |  5 ++--
+ fs/jbd2/commit.c     | 21 +++++++------
+ fs/jbd2/journal.c    | 56 ++++++++++++++++++++++------------
+ fs/jbd2/recovery.c   | 33 ++++++++++++--------
+ fs/jbd2/revoke.c     |  6 ++--
+ include/linux/jbd2.h | 30 +++++++++++++++----
+ 11 files changed, 233 insertions(+), 129 deletions(-)
