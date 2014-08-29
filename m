@@ -1,75 +1,56 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] debugfs: add better error checking when printing extended attributes
-Date: Fri, 29 Aug 2014 15:54:06 -0400
-Message-ID: <1409342046-11307-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: tune2fs and setting noatime as a default mount options
+Date: Fri, 29 Aug 2014 18:56:49 -0400
+Message-ID: <20140829225649.GC27177@thunk.org>
+References: <16b17d3bf6a5952c3f20a8644be22c58@admin.virtall.com>
+ <54009D31.70703@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Tomasz Chmielewski <mangoo@wpkg.org>, linux-ext4@vger.kernel.org,
+	luto@amacapital.net
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:56355 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:56549 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754310AbaH2TyK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Aug 2014 15:54:10 -0400
+	id S1751458AbaH2W4x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Aug 2014 18:56:53 -0400
+Content-Disposition: inline
+In-Reply-To: <54009D31.70703@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Check to make sure the length of the name and value fields in the
-extended attribute don't result in overrun the bounds of the inode.
+On Fri, Aug 29, 2014 at 10:33:05AM -0500, Eric Sandeen wrote:
+> 
+> > Is there a reason why noatime can't be set as a default mount option? Thinking of all these USB connected devices where it would be handy.
+> 
+> I haven't looked, but I'm guessing it's because noatime is a
+> vfs-level switch, and by the time the ext4 superblock is getting
+> read and processed during mount, that chance has passed.
 
-Addresses-Coverity-Bug: #709517
+Yes, and this is also the cause of this user complaint/bug:
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- debugfs/debugfs.c | 18 ++++++++----------
- 1 file changed, 8 insertions(+), 10 deletions(-)
+	https://bugzilla.kernel.org/show_bug.cgi?id=61601
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index 00c2d38..5423634 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -535,7 +535,6 @@ static void internal_dump_inode_extra(FILE *out,
- 	struct ext2_ext_attr_entry *entry;
- 	__u32 *magic;
- 	char *start, *end;
--	unsigned int storage_size;
- 
- 	fprintf(out, "Size of extra inode fields: %u\n", inode->i_extra_isize);
- 	if (inode->i_extra_isize > EXT2_INODE_SIZE(current_fs->super) -
-@@ -544,9 +543,6 @@ static void internal_dump_inode_extra(FILE *out,
- 				inode->i_extra_isize);
- 		return;
- 	}
--	storage_size = EXT2_INODE_SIZE(current_fs->super) -
--			EXT2_GOOD_OLD_INODE_SIZE -
--			inode->i_extra_isize;
- 	magic = (__u32 *)((char *)inode + EXT2_GOOD_OLD_INODE_SIZE +
- 			inode->i_extra_isize);
- 	if (*magic == EXT2_EXT_ATTR_MAGIC) {
-@@ -557,17 +553,19 @@ static void internal_dump_inode_extra(FILE *out,
- 		while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
- 			struct ext2_ext_attr_entry *next =
- 				EXT2_EXT_ATTR_NEXT(entry);
--			if (entry->e_value_size > storage_size ||
--					(char *) next >= end) {
-+			char *name = EXT2_EXT_ATTR_NAME(entry);
-+			char *value = start + entry->e_value_offs;
-+
-+			if (name + entry->e_name_len >= end ||
-+			    value + entry->e_value_size >= end ||
-+			    (char *) next >= end) {
- 				fprintf(out, "invalid EA entry in inode\n");
- 				return;
- 			}
- 			fprintf(out, "  ");
--			dump_xattr_string(out, EXT2_EXT_ATTR_NAME(entry),
--					  entry->e_name_len);
-+			dump_xattr_string(out, name, entry->e_name_len);
- 			fprintf(out, " = \"");
--			dump_xattr_string(out, start + entry->e_value_offs,
--						entry->e_value_size);
-+			dump_xattr_string(out, value, entry->e_value_size);
- 			fprintf(out, "\" (%u)\n", entry->e_value_size);
- 			entry = next;
- 		}
--- 
-2.1.0
+There was some discussion at the kernel summit by Andy Lutomirski to
+create new mount system call with sane parsing, and Al Viro wasn't
+totally against that idea.  If we do go forward with some of the ideas
+that was tossed about, this would be something else that would be a
+nice thing to fix at the same time.
+
+The whole distinction between VFS-level mount options (which are
+parsed in userspace and passed down into the kernel using bits in a
+bitfield) and file system-level mount options (which is parsed by the
+kernel and passed in from userspace as a string) is just nasty.
+
+What I would suggest is that all mount options would be passed all the
+way down to the file system, and then there would be a library
+function to handle common VFS-level mount options that would be called
+by the file system's mount option handling code.
+
+							- Ted
+
+P.S.  At the kernel summit, Al recited the history of the mount system
+call going all the way back to 1991-1992 when minix was the only file
+system, and let's just say there is some major cruftiness going back
+literally decades.  :-/
 
