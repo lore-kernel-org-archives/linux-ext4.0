@@ -1,88 +1,94 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 05/10] ext4: call ext4_ext_drop_refs() from ext4_ext_find_extent()
-Date: Mon,  1 Sep 2014 00:06:46 -0400
-Message-ID: <1409544411-31544-6-git-send-email-tytso@mit.edu>
+Subject: [PATCH 08/10] ext4: reuse path object in ext4_ext_shift_extents()
+Date: Mon,  1 Sep 2014 00:06:49 -0400
+Message-ID: <1409544411-31544-9-git-send-email-tytso@mit.edu>
 References: <1409544411-31544-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58466 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:58464 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751131AbaIAEG4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751110AbaIAEG4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 1 Sep 2014 00:06:56 -0400
 In-Reply-To: <1409544411-31544-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In nearly all of the calls to ext4_ext_find_extent() where the caller
-is trying to recycle the path object, ext4_ext_drop_refs() gets called
-to release the buffer heads before the path object gets overwritten.
-To simplify things for the callers, and to avoid the possibility of a
-memory leak, make ext4_ext_find_extent() responsible for dropping the
-buffers.
+Now that the semantics of ext4_ext_find_extent() are much cleaner,
+it's safe and more efficient to reuse the path object across the
+multiple calls to ext4_ext_find_extent() in ext4_ext_shift_extents().
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/extents.c | 11 ++++-------
- 1 file changed, 4 insertions(+), 7 deletions(-)
+ fs/ext4/extents.c | 25 ++++++++-----------------
+ 1 file changed, 8 insertions(+), 17 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index f6d8b00..62aa508 100644
+index fd840e9..bfae63b 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -859,8 +859,10 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
- 	eh = ext_inode_hdr(inode);
- 	depth = ext_depth(inode);
+@@ -5305,26 +5305,21 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
  
--	/* account possible depth increase */
--	if (!path) {
-+	if (path)
-+		ext4_ext_drop_refs(path);
-+	else {
-+		/* account possible depth increase */
- 		path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 2),
- 				GFP_NOFS);
- 		if (unlikely(!path))
-@@ -1348,7 +1350,6 @@ repeat:
- 			goto out;
- 
- 		/* refill path */
+ 	depth = path->p_depth;
+ 	extent = path[depth].p_ext;
+-	if (!extent) {
 -		ext4_ext_drop_refs(path);
- 		path = ext4_ext_find_extent(inode,
- 				    (ext4_lblk_t)le32_to_cpu(newext->ee_block),
- 				    ppath, gb_flags);
-@@ -1361,7 +1362,6 @@ repeat:
- 			goto out;
+-		kfree(path);
+-		return ret;
+-	}
++	if (!extent)
++		goto out;
  
- 		/* refill path */
--		ext4_ext_drop_refs(path);
- 		path = ext4_ext_find_extent(inode,
- 				   (ext4_lblk_t)le32_to_cpu(newext->ee_block),
- 				    ppath, gb_flags);
-@@ -3325,7 +3325,6 @@ static int ext4_split_extent(handle_t *handle,
- 	 * Update path is required because previous ext4_split_extent_at() may
- 	 * result in split of original leaf or extent zeroout.
- 	 */
+ 	stop_block = le32_to_cpu(extent->ee_block) +
+ 			ext4_ext_get_actual_len(extent);
 -	ext4_ext_drop_refs(path);
- 	path = ext4_ext_find_extent(inode, map->m_lblk, ppath, 0);
+-	kfree(path);
+ 
+ 	/* Nothing to shift, if hole is at the end of file */
+ 	if (start >= stop_block)
+-		return ret;
++		goto out;
+ 
+ 	/*
+ 	 * Don't start shifting extents until we make sure the hole is big
+ 	 * enough to accomodate the shift.
+ 	 */
+-	path = ext4_ext_find_extent(inode, start - 1, NULL, 0);
++	path = ext4_ext_find_extent(inode, start - 1, &path, 0);
  	if (IS_ERR(path))
  		return PTR_ERR(path);
-@@ -3724,7 +3723,6 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
- 						 EXT4_GET_BLOCKS_CONVERT);
- 		if (err < 0)
- 			return err;
--		ext4_ext_drop_refs(path);
- 		path = ext4_ext_find_extent(inode, map->m_lblk, ppath, 0);
+ 	depth = path->p_depth;
+@@ -5337,8 +5332,6 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
+ 		ex_start = 0;
+ 		ex_end = 0;
+ 	}
+-	ext4_ext_drop_refs(path);
+-	kfree(path);
+ 
+ 	if ((start == ex_start && shift > ex_start) ||
+ 	    (shift > start - ex_end))
+@@ -5346,7 +5339,7 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
+ 
+ 	/* Its safe to start updating extents */
+ 	while (start < stop_block) {
+-		path = ext4_ext_find_extent(inode, start, NULL, 0);
++		path = ext4_ext_find_extent(inode, start, &path, 0);
  		if (IS_ERR(path))
  			return PTR_ERR(path);
-@@ -3953,7 +3951,6 @@ convert_initialized_extent(handle_t *handle, struct inode *inode,
- 				EXT4_GET_BLOCKS_CONVERT_UNWRITTEN);
- 		if (err < 0)
- 			return err;
+ 		depth = path->p_depth;
+@@ -5362,19 +5355,17 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
+ 				path[depth].p_ext++;
+ 			} else {
+ 				start = ext4_ext_next_allocated_block(path);
+-				ext4_ext_drop_refs(path);
+-				kfree(path);
+ 				continue;
+ 			}
+ 		}
+ 		ret = ext4_ext_shift_path_extents(path, shift, inode,
+ 				handle, &start);
 -		ext4_ext_drop_refs(path);
- 		path = ext4_ext_find_extent(inode, map->m_lblk, ppath, 0);
- 		if (IS_ERR(path))
- 			return PTR_ERR(path);
--- 
-2.1.0
-
+-		kfree(path);
+ 		if (ret)
+ 			break;
+ 	}
