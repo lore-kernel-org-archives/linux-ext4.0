@@ -1,81 +1,88 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 07/10] ext4: teach ext4_ext_find_extent() to realloc path if necessary
-Date: Mon,  1 Sep 2014 00:06:48 -0400
-Message-ID: <1409544411-31544-8-git-send-email-tytso@mit.edu>
+Subject: [PATCH 05/10] ext4: call ext4_ext_drop_refs() from ext4_ext_find_extent()
+Date: Mon,  1 Sep 2014 00:06:46 -0400
+Message-ID: <1409544411-31544-6-git-send-email-tytso@mit.edu>
 References: <1409544411-31544-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58469 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:58466 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751198AbaIAEG4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751131AbaIAEG4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 1 Sep 2014 00:06:56 -0400
 In-Reply-To: <1409544411-31544-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This adds additional safety in case for some reason we end reusing a
-path structure which isn't big enough for current depth of the inode.
+In nearly all of the calls to ext4_ext_find_extent() where the caller
+is trying to recycle the path object, ext4_ext_drop_refs() gets called
+to release the buffer heads before the path object gets overwritten.
+To simplify things for the callers, and to avoid the possibility of a
+memory leak, make ext4_ext_find_extent() responsible for dropping the
+buffers.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/ext4_extents.h |  1 +
- fs/ext4/extents.c      | 20 ++++++++++----------
- 2 files changed, 11 insertions(+), 10 deletions(-)
+ fs/ext4/extents.c | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index a867f5c..3c93815 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -123,6 +123,7 @@ find_ext4_extent_tail(struct ext4_extent_header *eh)
- struct ext4_ext_path {
- 	ext4_fsblk_t			p_block;
- 	__u16				p_depth;
-+	__u16				p_maxdepth;
- 	struct ext4_extent		*p_ext;
- 	struct ext4_extent_idx		*p_idx;
- 	struct ext4_extent_header	*p_hdr;
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 17a1f6f..fd840e9 100644
+index f6d8b00..62aa508 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -861,14 +861,20 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
+@@ -859,8 +859,10 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
  	eh = ext_inode_hdr(inode);
  	depth = ext_depth(inode);
  
--	if (path)
-+	if (path) {
- 		ext4_ext_drop_refs(path);
--	else {
-+		if (depth > path[0].p_maxdepth) {
-+			kfree(path);
-+			*orig_path = path = NULL;
-+		}
-+	}
-+	if (!path) {
- 		/* account possible depth increase */
+-	/* account possible depth increase */
+-	if (!path) {
++	if (path)
++		ext4_ext_drop_refs(path);
++	else {
++		/* account possible depth increase */
  		path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 2),
  				GFP_NOFS);
  		if (unlikely(!path))
- 			return ERR_PTR(-ENOMEM);
-+		path[0].p_maxdepth = depth + 1;
- 	}
- 	path[0].p_hdr = eh;
- 	path[0].p_bh = NULL;
-@@ -1812,6 +1818,7 @@ static void ext4_ext_try_to_merge_up(handle_t *handle,
- 		sizeof(struct ext4_extent_idx);
- 	s += sizeof(struct ext4_extent_header);
+@@ -1348,7 +1350,6 @@ repeat:
+ 			goto out;
  
-+	path[1].p_maxdepth = path[0].p_maxdepth;
- 	memcpy(path[0].p_hdr, path[1].p_hdr, s);
- 	path[0].p_depth = 0;
- 	path[0].p_ext = EXT_FIRST_EXTENT(path[0].p_hdr) +
-@@ -2142,12 +2149,6 @@ static int ext4_fill_fiemap_extents(struct inode *inode,
- 		/* find extent for this block */
- 		down_read(&EXT4_I(inode)->i_data_sem);
+ 		/* refill path */
+-		ext4_ext_drop_refs(path);
+ 		path = ext4_ext_find_extent(inode,
+ 				    (ext4_lblk_t)le32_to_cpu(newext->ee_block),
+ 				    ppath, gb_flags);
+@@ -1361,7 +1362,6 @@ repeat:
+ 			goto out;
  
--		if (path && ext_depth(inode) != depth) {
--			/* depth was changed. we have to realloc path */
--			kfree(path);
--			path = NULL;
--		}
+ 		/* refill path */
+-		ext4_ext_drop_refs(path);
+ 		path = ext4_ext_find_extent(inode,
+ 				   (ext4_lblk_t)le32_to_cpu(newext->ee_block),
+ 				    ppath, gb_flags);
+@@ -3325,7 +3325,6 @@ static int ext4_split_extent(handle_t *handle,
+ 	 * Update path is required because previous ext4_split_extent_at() may
+ 	 * result in split of original leaf or extent zeroout.
+ 	 */
+-	ext4_ext_drop_refs(path);
+ 	path = ext4_ext_find_extent(inode, map->m_lblk, ppath, 0);
+ 	if (IS_ERR(path))
+ 		return PTR_ERR(path);
+@@ -3724,7 +3723,6 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
+ 						 EXT4_GET_BLOCKS_CONVERT);
+ 		if (err < 0)
+ 			return err;
+-		ext4_ext_drop_refs(path);
+ 		path = ext4_ext_find_extent(inode, map->m_lblk, ppath, 0);
+ 		if (IS_ERR(path))
+ 			return PTR_ERR(path);
+@@ -3953,7 +3951,6 @@ convert_initialized_extent(handle_t *handle, struct inode *inode,
+ 				EXT4_GET_BLOCKS_CONVERT_UNWRITTEN);
+ 		if (err < 0)
+ 			return err;
+-		ext4_ext_drop_refs(path);
+ 		path = ext4_ext_find_extent(inode, map->m_lblk, ppath, 0);
+ 		if (IS_ERR(path))
+ 			return PTR_ERR(path);
+-- 
+2.1.0
+
