@@ -1,273 +1,261 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 10/10] ext4: rename ext4_ext_find_extent() to ext4_find_extent()
-Date: Mon,  1 Sep 2014 00:06:51 -0400
-Message-ID: <1409544411-31544-11-git-send-email-tytso@mit.edu>
-References: <1409544411-31544-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58459 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750891AbaIAEG4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 1 Sep 2014 00:06:56 -0400
-In-Reply-To: <1409544411-31544-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCHv3 1/3] fs/buffer.c: allocate buffer cache with user
+ specific flag
+Date: Mon, 1 Sep 2014 09:53:01 +0200
+Message-ID: <20140901075301.GA32399@quack.suse.cz>
+References: <53FE9357.6000505@lge.com>
+ <53FE9492.1030909@lge.com>
+ <20140828105909.GE5961@quack.suse.cz>
+ <5400061B.7060709@lge.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+	Peter Zijlstra <peterz@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, Minchan Kim <minchan@kernel.org>,
+	Joonsoo Kim <js1304@gmail.com>,
+	=?utf-8?B?7J206rG07Zi4?= <gunho.lee@lge.com>
+To: Gioh Kim <gioh.kim@lge.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <5400061B.7060709@lge.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Make the function name less redundant.
+On Fri 29-08-14 13:48:27, Gioh Kim wrote:
+> What about below?: add gfp for __getblk_slow, change __getblk into __getblk_gfp,
+> getblk_unmovable and __getblk are, I think, symmetric.
+> 
+> If you say OK, I'm going to send v4 with tabs ;-)
+  Yes, this looks like what I wanted. I've just spotted two typos in
+comments and one function which should be inline (see below). Thanks for
+work!
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/ext4.h           |  8 ++++----
- fs/ext4/extents.c        | 38 +++++++++++++++++++-------------------
- fs/ext4/extents_status.c |  2 +-
- fs/ext4/migrate.c        |  3 +--
- fs/ext4/move_extent.c    |  4 ++--
- 5 files changed, 27 insertions(+), 28 deletions(-)
+								Honza
+ 
+> diff --git a/fs/buffer.c b/fs/buffer.c
+> index 8f05111..21711c78 100644
+> --- a/fs/buffer.c
+> +++ b/fs/buffer.c
+> @@ -993,7 +993,7 @@ init_page_buffers(struct page *page, struct block_device *bdev,
+>   */
+>  static int
+>  grow_dev_page(struct block_device *bdev, sector_t block,
+> -               pgoff_t index, int size, int sizebits)
+> +             pgoff_t index, int size, int sizebits, gfp_t gfp)
+>  {
+>         struct inode *inode = bdev->bd_inode;
+>         struct page *page;
+> @@ -1002,10 +1002,10 @@ grow_dev_page(struct block_device *bdev, sector_t block,
+>         int ret = 0;            /* Will call free_more_memory() */
+>         gfp_t gfp_mask;
+> 
+> -       gfp_mask = mapping_gfp_mask(inode->i_mapping) & ~__GFP_FS;
+> -       gfp_mask |= __GFP_MOVABLE;
+> +       gfp_mask = (mapping_gfp_mask(inode->i_mapping) & ~__GFP_FS) | gfp;
+> +
+>         /*
+> -        * XXX: __getblk_slow() can not really deal with failure and
+> +        * XXX: __getblk_gfp() can not really deal with failure and
+  You can leave __getblk_slow() here I believe.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 4a5a6b9..c07f43f 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -573,7 +573,7 @@ enum {
- 
- /*
-  * The bit position of these flags must not overlap with any of the
-- * EXT4_GET_BLOCKS_*.  They are used by ext4_ext_find_extent(),
-+ * EXT4_GET_BLOCKS_*.  They are used by ext4_find_extent(),
-  * read_extent_tree_block(), ext4_split_extent_at(),
-  * ext4_ext_insert_extent(), and ext4_ext_create_new_leaf().
-  * EXT4_EX_NOCACHE is used to indicate that the we shouldn't be
-@@ -2732,9 +2732,9 @@ extern int ext4_can_extents_be_merged(struct inode *inode,
- extern int ext4_ext_insert_extent(handle_t *, struct inode *,
- 				  struct ext4_ext_path **,
- 				  struct ext4_extent *, int);
--extern struct ext4_ext_path *ext4_ext_find_extent(struct inode *, ext4_lblk_t,
--						  struct ext4_ext_path **,
--						  int flags);
-+extern struct ext4_ext_path *ext4_find_extent(struct inode *, ext4_lblk_t,
-+					      struct ext4_ext_path **,
-+					      int flags);
- extern void ext4_ext_drop_refs(struct ext4_ext_path *);
- extern int ext4_ext_check_inode(struct inode *inode);
- extern int ext4_find_delalloc_range(struct inode *inode,
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index bfae63b..47b9aa1 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -849,8 +849,8 @@ int ext4_ext_tree_init(handle_t *handle, struct inode *inode)
- }
- 
- struct ext4_ext_path *
--ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
--		     struct ext4_ext_path **orig_path, int flags)
-+ext4_find_extent(struct inode *inode, ext4_lblk_t block,
-+		 struct ext4_ext_path **orig_path, int flags)
- {
- 	struct ext4_extent_header *eh;
- 	struct buffer_head *bh;
-@@ -1358,7 +1358,7 @@ repeat:
- 			goto out;
- 
- 		/* refill path */
--		path = ext4_ext_find_extent(inode,
-+		path = ext4_find_extent(inode,
- 				    (ext4_lblk_t)le32_to_cpu(newext->ee_block),
- 				    ppath, gb_flags);
- 		if (IS_ERR(path))
-@@ -1370,7 +1370,7 @@ repeat:
- 			goto out;
- 
- 		/* refill path */
--		path = ext4_ext_find_extent(inode,
-+		path = ext4_find_extent(inode,
- 				   (ext4_lblk_t)le32_to_cpu(newext->ee_block),
- 				    ppath, gb_flags);
- 		if (IS_ERR(path)) {
-@@ -1943,7 +1943,7 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
- 		/*
- 		 * Try to see whether we should rather test the extent on
- 		 * right from ex, or from the left of ex. This is because
--		 * ext4_ext_find_extent() can return either extent on the
-+		 * ext4_find_extent() can return either extent on the
- 		 * left, or on the right from the searched position. This
- 		 * will make merging more effective.
- 		 */
-@@ -2026,7 +2026,7 @@ prepend:
- 	if (next != EXT_MAX_BLOCKS) {
- 		ext_debug("next leaf block - %u\n", next);
- 		BUG_ON(npath != NULL);
--		npath = ext4_ext_find_extent(inode, next, NULL, 0);
-+		npath = ext4_find_extent(inode, next, NULL, 0);
- 		if (IS_ERR(npath))
- 			return PTR_ERR(npath);
- 		BUG_ON(npath->p_depth != path->p_depth);
-@@ -2149,7 +2149,7 @@ static int ext4_fill_fiemap_extents(struct inode *inode,
- 		/* find extent for this block */
- 		down_read(&EXT4_I(inode)->i_data_sem);
- 
--		path = ext4_ext_find_extent(inode, block, &path, 0);
-+		path = ext4_find_extent(inode, block, &path, 0);
- 		if (IS_ERR(path)) {
- 			up_read(&EXT4_I(inode)->i_data_sem);
- 			err = PTR_ERR(path);
-@@ -2832,7 +2832,7 @@ again:
- 		ext4_lblk_t ee_block;
- 
- 		/* find extent for this block */
--		path = ext4_ext_find_extent(inode, end, NULL, EXT4_EX_NOCACHE);
-+		path = ext4_find_extent(inode, end, NULL, EXT4_EX_NOCACHE);
- 		if (IS_ERR(path)) {
- 			ext4_journal_stop(handle);
- 			return PTR_ERR(path);
-@@ -3320,7 +3320,7 @@ static int ext4_split_extent(handle_t *handle,
- 	 * Update path is required because previous ext4_split_extent_at() may
- 	 * result in split of original leaf or extent zeroout.
- 	 */
--	path = ext4_ext_find_extent(inode, map->m_lblk, ppath, 0);
-+	path = ext4_find_extent(inode, map->m_lblk, ppath, 0);
- 	if (IS_ERR(path))
- 		return PTR_ERR(path);
- 	depth = ext_depth(inode);
-@@ -3718,7 +3718,7 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
- 						 EXT4_GET_BLOCKS_CONVERT);
- 		if (err < 0)
- 			return err;
--		path = ext4_ext_find_extent(inode, map->m_lblk, ppath, 0);
-+		path = ext4_find_extent(inode, map->m_lblk, ppath, 0);
- 		if (IS_ERR(path))
- 			return PTR_ERR(path);
- 		depth = ext_depth(inode);
-@@ -3946,7 +3946,7 @@ convert_initialized_extent(handle_t *handle, struct inode *inode,
- 				EXT4_GET_BLOCKS_CONVERT_UNWRITTEN);
- 		if (err < 0)
- 			return err;
--		path = ext4_ext_find_extent(inode, map->m_lblk, ppath, 0);
-+		path = ext4_find_extent(inode, map->m_lblk, ppath, 0);
- 		if (IS_ERR(path))
- 			return PTR_ERR(path);
- 		depth = ext_depth(inode);
-@@ -4272,7 +4272,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	trace_ext4_ext_map_blocks_enter(inode, map->m_lblk, map->m_len, flags);
- 
- 	/* find extent for this block */
--	path = ext4_ext_find_extent(inode, map->m_lblk, NULL, 0);
-+	path = ext4_find_extent(inode, map->m_lblk, NULL, 0);
- 	if (IS_ERR(path)) {
- 		err = PTR_ERR(path);
- 		path = NULL;
-@@ -4284,7 +4284,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	/*
- 	 * consistent leaf must not be empty;
- 	 * this situation is possible, though, _during_ tree modification;
--	 * this is why assert can't be put in ext4_ext_find_extent()
-+	 * this is why assert can't be put in ext4_find_extent()
- 	 */
- 	if (unlikely(path[depth].p_ext == NULL && depth != 0)) {
- 		EXT4_ERROR_INODE(inode, "bad extent address "
-@@ -4369,7 +4369,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 
- 	/*
- 	 * If we are doing bigalloc, check to see if the extent returned
--	 * by ext4_ext_find_extent() implies a cluster we can use.
-+	 * by ext4_find_extent() implies a cluster we can use.
- 	 */
- 	if (cluster_offset && ex &&
- 	    get_implied_cluster_alloc(inode->i_sb, map, ex, path)) {
-@@ -5299,7 +5299,7 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
- 	ext4_lblk_t ex_start, ex_end;
- 
- 	/* Let path point to the last extent */
--	path = ext4_ext_find_extent(inode, EXT_MAX_BLOCKS - 1, NULL, 0);
-+	path = ext4_find_extent(inode, EXT_MAX_BLOCKS - 1, NULL, 0);
- 	if (IS_ERR(path))
- 		return PTR_ERR(path);
- 
-@@ -5319,7 +5319,7 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
- 	 * Don't start shifting extents until we make sure the hole is big
- 	 * enough to accomodate the shift.
- 	 */
--	path = ext4_ext_find_extent(inode, start - 1, &path, 0);
-+	path = ext4_find_extent(inode, start - 1, &path, 0);
- 	if (IS_ERR(path))
- 		return PTR_ERR(path);
- 	depth = path->p_depth;
-@@ -5339,7 +5339,7 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
- 
- 	/* Its safe to start updating extents */
- 	while (start < stop_block) {
--		path = ext4_ext_find_extent(inode, start, &path, 0);
-+		path = ext4_find_extent(inode, start, &path, 0);
- 		if (IS_ERR(path))
- 			return PTR_ERR(path);
- 		depth = path->p_depth;
-@@ -5536,7 +5536,7 @@ ext4_swap_extents(handle_t *handle, struct inode *inode1,
- 		int e1_len, e2_len, len;
- 		int split = 0;
- 
--		path1 = ext4_ext_find_extent(inode1, lblk1, NULL, EXT4_EX_NOCACHE);
-+		path1 = ext4_find_extent(inode1, lblk1, NULL, EXT4_EX_NOCACHE);
- 		if (unlikely(IS_ERR(path1))) {
- 			*erp = PTR_ERR(path1);
- 			path1 = NULL;
-@@ -5544,7 +5544,7 @@ ext4_swap_extents(handle_t *handle, struct inode *inode1,
- 			count = 0;
- 			goto repeat;
- 		}
--		path2 = ext4_ext_find_extent(inode2, lblk2, NULL, EXT4_EX_NOCACHE);
-+		path2 = ext4_find_extent(inode2, lblk2, NULL, EXT4_EX_NOCACHE);
- 		if (unlikely(IS_ERR(path2))) {
- 			*erp = PTR_ERR(path2);
- 			path2 = NULL;
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 8ffff96..bdd400c 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -426,7 +426,7 @@ static void ext4_es_insert_extent_ext_check(struct inode *inode,
- 	unsigned short ee_len;
- 	int depth, ee_status, es_status;
- 
--	path = ext4_ext_find_extent(inode, es->es_lblk, NULL, EXT4_EX_NOCACHE);
-+	path = ext4_find_extent(inode, es->es_lblk, NULL, EXT4_EX_NOCACHE);
- 	if (IS_ERR(path))
- 		return;
- 
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 061c300..a432634 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -41,8 +41,7 @@ static int finish_range(handle_t *handle, struct inode *inode,
- 	ext4_ext_store_pblock(&newext, lb->first_pblock);
- 	/* Locking only for convinience since we are operating on temp inode */
- 	down_write(&EXT4_I(inode)->i_data_sem);
--	path = ext4_ext_find_extent(inode, lb->first_block, NULL, 0);
--
-+	path = ext4_find_extent(inode, lb->first_block, NULL, 0);
- 	if (IS_ERR(path)) {
- 		retval = PTR_ERR(path);
- 		path = NULL;
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 7bf970d..5d78063 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -27,7 +27,7 @@
-  * @lblock:	logical block number to find an extent path
-  * @path:	pointer to an extent path pointer (for output)
-  *
-- * ext4_ext_find_extent wrapper. Return 0 on success, or a negative error value
-+ * ext4_find_extent wrapper. Return 0 on success, or a negative error value
-  * on failure.
-  */
- static inline int
-@@ -36,7 +36,7 @@ get_ext_path(struct inode *inode, ext4_lblk_t lblock,
- {
- 	struct ext4_ext_path *path;
- 
--	path = ext4_ext_find_extent(inode, lblock, ppath, EXT4_EX_NOCACHE);
-+	path = ext4_find_extent(inode, lblock, ppath, EXT4_EX_NOCACHE);
- 	if (IS_ERR(path))
- 		return PTR_ERR(path);
- 	if (path[ext_depth(inode)].p_ext == NULL) {
+
+>          * will endlessly loop on improvised global reclaim.  Prefer
+>          * looping in the allocator rather than here, at least that
+>          * code knows what it's doing.
+> @@ -1058,7 +1058,7 @@ failed:
+>   * that page was dirty, the buffers are set dirty also.
+>   */
+>  static int
+> -grow_buffers(struct block_device *bdev, sector_t block, int size)
+> +grow_buffers(struct block_device *bdev, sector_t block, int size, gfp_t gfp)
+>  {
+>         pgoff_t index;
+>         int sizebits;
+> @@ -1085,11 +1085,12 @@ grow_buffers(struct block_device *bdev, sector_t block, int size)
+>         }
+> 
+>         /* Create a page with the proper size buffers.. */
+> -       return grow_dev_page(bdev, block, index, size, sizebits);
+> +       return grow_dev_page(bdev, block, index, size, sizebits, gfp);
+>  }
+> 
+> -static struct buffer_head *
+> -__getblk_slow(struct block_device *bdev, sector_t block, int size)
+> +struct buffer_head *
+> +__getblk_slow(struct block_device *bdev, sector_t block,
+> +            unsigned size, gfp_t gfp)
+>  {
+>         /* Size must be multiple of hard sectorsize */
+>         if (unlikely(size & (bdev_logical_block_size(bdev)-1) ||
+> @@ -1111,13 +1112,14 @@ __getblk_slow(struct block_device *bdev, sector_t block, int size)
+>                 if (bh)
+>                         return bh;
+> 
+> -               ret = grow_buffers(bdev, block, size);
+> +               ret = grow_buffers(bdev, block, size, gfp);
+>                 if (ret < 0)
+>                         return NULL;
+>                 if (ret == 0)
+>                         free_more_memory();
+>         }
+>  }
+> +EXPORT_SYMBOL(__getblk_slow);
+> 
+>  /*
+>   * The relationship between dirty buffers and dirty pages:
+> @@ -1371,24 +1373,25 @@ __find_get_block(struct block_device *bdev, sector_t block, unsigned size)
+>  EXPORT_SYMBOL(__find_get_block);
+> 
+>  /*
+> - * __getblk will locate (and, if necessary, create) the buffer_head
+> + * __getblk_gfp will locate (and, if necessary, create) the buffer_head
+>   * which corresponds to the passed block_device, block and size. The
+>   * returned buffer has its reference count incremented.
+>   *
+> - * __getblk() will lock up the machine if grow_dev_page's try_to_free_buffers()
+> - * attempt is failing.  FIXME, perhaps?
+> + * __getblk()_gfp will lock up the machine if grow_dev_page's
+  _gfp should be before () in the line above.
+
+> + * try_to_free_buffers() attempt is failing.  FIXME, perhaps?
+>   */
+>  struct buffer_head *
+> -__getblk(struct block_device *bdev, sector_t block, unsigned size)
+> +__getblk_gfp(struct block_device *bdev, sector_t block,
+> +            unsigned size, gfp_t gfp)
+>  {
+>         struct buffer_head *bh = __find_get_block(bdev, block, size);
+> 
+>         might_sleep();
+>         if (bh == NULL)
+> -               bh = __getblk_slow(bdev, block, size);
+> +               bh = __getblk_slow(bdev, block, size, gfp);
+>         return bh;
+>  }
+> -EXPORT_SYMBOL(__getblk);
+> +EXPORT_SYMBOL(__getblk_gfp);
+> 
+>  /*
+>   * Do async read-ahead on a buffer..
+> @@ -1410,18 +1413,39 @@ EXPORT_SYMBOL(__breadahead);
+>   *  @size: size (in bytes) to read
+>   *
+>   *  Reads a specified block, and returns buffer head that contains it.
+> + *  The page cache is allocated from movable area so that it can be migrated.
+>   *  It returns NULL if the block was unreadable.
+>   */
+>  struct buffer_head *
+>  __bread(struct block_device *bdev, sector_t block, unsigned size)
+>  {
+> -       struct buffer_head *bh = __getblk(bdev, block, size);
+> +       return __bread_gfp(bdev, block, size, __GFP_MOVABLE);
+> +}
+> +EXPORT_SYMBOL(__bread);
+  This can be just inline defined in buffer_head.h.
+
+
+> +
+> +/**
+> + *  __bread_gfp() - reads a specified block and returns the bh
+> + *  @bdev: the block_device to read from
+> + *  @block: number of block
+> + *  @size: size (in bytes) to read
+> + *  @gfp: page allocation flag
+> + *
+> + *  Reads a specified block, and returns buffer head that contains it.
+> + *  The page cache can be allocated from non-movable area
+> + *  not to prevent page migration if you set gfp to zero.
+> + *  It returns NULL if the block was unreadable.
+> + */
+> +struct buffer_head *
+> +__bread_gfp(struct block_device *bdev, sector_t block,
+> +                  unsigned size, gfp_t gfp)
+> +{
+> +       struct buffer_head *bh = __getblk_gfp(bdev, block, size, gfp);
+> 
+>         if (likely(bh) && !buffer_uptodate(bh))
+>                 bh = __bread_slow(bh);
+>         return bh;
+>  }
+> -EXPORT_SYMBOL(__bread);
+> +EXPORT_SYMBOL(__bread_gfp);
+> 
+>  /*
+>   * invalidate_bh_lrus() is called rarely - but not only at unmount.
+> diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+> index 324329c..6073f5d 100644
+> --- a/include/linux/buffer_head.h
+> +++ b/include/linux/buffer_head.h
+> @@ -175,12 +175,14 @@ void __wait_on_buffer(struct buffer_head *);
+>  wait_queue_head_t *bh_waitq_head(struct buffer_head *bh);
+>  struct buffer_head *__find_get_block(struct block_device *bdev, sector_t block,
+>                         unsigned size);
+> -struct buffer_head *__getblk(struct block_device *bdev, sector_t block,
+> -                       unsigned size);
+> +struct buffer_head *__getblk_gfp(struct block_device *bdev, sector_t block,
+> +                                 unsigned size, gfp_t gfp);
+>  void __brelse(struct buffer_head *);
+>  void __bforget(struct buffer_head *);
+>  void __breadahead(struct block_device *, sector_t block, unsigned int size);
+>  struct buffer_head *__bread(struct block_device *, sector_t block, unsigned size);
+> +struct buffer_head *__bread_gfp(struct block_device *,
+> +                               sector_t block, unsigned size, gfp_t gfp);
+>  void invalidate_bh_lrus(void);
+>  struct buffer_head *alloc_buffer_head(gfp_t gfp_flags);
+>  void free_buffer_head(struct buffer_head * bh);
+> @@ -295,7 +297,13 @@ static inline void bforget(struct buffer_head *bh)
+>  static inline struct buffer_head *
+>  sb_bread(struct super_block *sb, sector_t block)
+>  {
+> -       return __bread(sb->s_bdev, block, sb->s_blocksize);
+> +       return __bread_gfp(sb->s_bdev, block, sb->s_blocksize, __GFP_MOVABLE);
+> +}
+> +
+> +static inline struct buffer_head *
+> +sb_bread_unmovable(struct super_block *sb, sector_t block)
+> +{
+> +       return __bread_gfp(sb->s_bdev, block, sb->s_blocksize, 0);
+>  }
+> 
+>  static inline void
+> @@ -307,7 +315,7 @@ sb_breadahead(struct super_block *sb, sector_t block)
+>  static inline struct buffer_head *
+>  sb_getblk(struct super_block *sb, sector_t block)
+>  {
+> -       return __getblk(sb->s_bdev, block, sb->s_blocksize);
+> +       return __getblk_gfp(sb->s_bdev, block, sb->s_blocksize, __GFP_MOVABLE);
+>  }
+> 
+>  static inline struct buffer_head *
+> @@ -344,6 +352,20 @@ static inline void lock_buffer(struct buffer_head *bh)
+>                 __lock_buffer(bh);
+>  }
+> 
+> +static inline struct buffer_head *getblk_unmovable(struct block_device *bdev,
+> +                                                  sector_t block,
+> +                                                  unsigned size)
+> +{
+> +       return __getblk_gfp(bdev, block, size, 0);
+> +}
+> +
+> +static inline struct buffer_head *__getblk(struct block_device *bdev,
+> +                                          sector_t block,
+> +                                          unsigned size)
+> +{
+> +       return __getblk_gfp(bdev, block, size, __GFP_MOVABLE);
+> +}
+> +
+>  extern int __set_page_dirty_buffers(struct page *page);
+> 
+>  #else /* CONFIG_BLOCK */
+> --
+> 1.7.9.5
+> 
 -- 
-2.1.0
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
