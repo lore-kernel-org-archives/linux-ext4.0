@@ -1,94 +1,205 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 08/10] ext4: reuse path object in ext4_ext_shift_extents()
-Date: Mon,  1 Sep 2014 00:06:49 -0400
-Message-ID: <1409544411-31544-9-git-send-email-tytso@mit.edu>
+Subject: [PATCH 06/10] ext4: allow a NULL argument to ext4_ext_drop_refs()
+Date: Mon,  1 Sep 2014 00:06:47 -0400
+Message-ID: <1409544411-31544-7-git-send-email-tytso@mit.edu>
 References: <1409544411-31544-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58464 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:58458 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751110AbaIAEG4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1750869AbaIAEG4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 1 Sep 2014 00:06:56 -0400
 In-Reply-To: <1409544411-31544-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Now that the semantics of ext4_ext_find_extent() are much cleaner,
-it's safe and more efficient to reuse the path object across the
-multiple calls to ext4_ext_find_extent() in ext4_ext_shift_extents().
+Teach ext4_ext_drop_refs() to accept a NULL argument, much like
+kfree().  This allows us to drop a lot of checks to make sure path is
+non-NULL before calling ext4_ext_drop_refs().
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/extents.c | 25 ++++++++-----------------
- 1 file changed, 8 insertions(+), 17 deletions(-)
+ fs/ext4/extents.c        | 48 ++++++++++++++++++------------------------------
+ fs/ext4/extents_status.c |  6 ++----
+ fs/ext4/migrate.c        |  6 ++----
+ fs/ext4/move_extent.c    | 20 +++++++-------------
+ 4 files changed, 29 insertions(+), 51 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index fd840e9..bfae63b 100644
+index 62aa508..17a1f6f 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -5305,26 +5305,21 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
+@@ -701,9 +701,11 @@ static void ext4_ext_show_move(struct inode *inode, struct ext4_ext_path *path,
  
- 	depth = path->p_depth;
- 	extent = path[depth].p_ext;
--	if (!extent) {
--		ext4_ext_drop_refs(path);
--		kfree(path);
--		return ret;
+ void ext4_ext_drop_refs(struct ext4_ext_path *path)
+ {
+-	int depth = path->p_depth;
+-	int i;
++	int depth, i;
+ 
++	if (!path)
++		return;
++	depth = path->p_depth;
+ 	for (i = 0; i <= depth; i++, path++)
+ 		if (path->p_bh) {
+ 			brelse(path->p_bh);
+@@ -2117,10 +2119,8 @@ merge:
+ 	err = ext4_ext_dirty(handle, inode, path + path->p_depth);
+ 
+ cleanup:
+-	if (npath) {
+-		ext4_ext_drop_refs(npath);
+-		kfree(npath);
 -	}
-+	if (!extent)
-+		goto out;
++	ext4_ext_drop_refs(npath);
++	kfree(npath);
+ 	return err;
+ }
  
- 	stop_block = le32_to_cpu(extent->ee_block) +
- 			ext4_ext_get_actual_len(extent);
--	ext4_ext_drop_refs(path);
--	kfree(path);
- 
- 	/* Nothing to shift, if hole is at the end of file */
- 	if (start >= stop_block)
--		return ret;
-+		goto out;
- 
- 	/*
- 	 * Don't start shifting extents until we make sure the hole is big
- 	 * enough to accomodate the shift.
- 	 */
--	path = ext4_ext_find_extent(inode, start - 1, NULL, 0);
-+	path = ext4_ext_find_extent(inode, start - 1, &path, 0);
- 	if (IS_ERR(path))
- 		return PTR_ERR(path);
- 	depth = path->p_depth;
-@@ -5337,8 +5332,6 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
- 		ex_start = 0;
- 		ex_end = 0;
+@@ -2275,11 +2275,8 @@ static int ext4_fill_fiemap_extents(struct inode *inode,
+ 		block = es.es_lblk + es.es_len;
  	}
--	ext4_ext_drop_refs(path);
--	kfree(path);
  
- 	if ((start == ex_start && shift > ex_start) ||
- 	    (shift > start - ex_end))
-@@ -5346,7 +5339,7 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
- 
- 	/* Its safe to start updating extents */
- 	while (start < stop_block) {
--		path = ext4_ext_find_extent(inode, start, NULL, 0);
-+		path = ext4_ext_find_extent(inode, start, &path, 0);
- 		if (IS_ERR(path))
- 			return PTR_ERR(path);
- 		depth = path->p_depth;
-@@ -5362,19 +5355,17 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
- 				path[depth].p_ext++;
- 			} else {
- 				start = ext4_ext_next_allocated_block(path);
--				ext4_ext_drop_refs(path);
--				kfree(path);
- 				continue;
- 			}
- 		}
- 		ret = ext4_ext_shift_path_extents(path, shift, inode,
- 				handle, &start);
+-	if (path) {
 -		ext4_ext_drop_refs(path);
 -		kfree(path);
- 		if (ret)
- 			break;
+-	}
+-
++	ext4_ext_drop_refs(path);
++	kfree(path);
+ 	return err;
+ }
+ 
+@@ -3010,11 +3007,9 @@ again:
+ 		}
  	}
+ out:
+-	if (path) {
+-		ext4_ext_drop_refs(path);
+-		kfree(path);
+-		path = NULL;
+-	}
++	ext4_ext_drop_refs(path);
++	kfree(path);
++	path = NULL;
+ 	if (err == -EAGAIN)
+ 		goto again;
+ 	ext4_journal_stop(handle);
+@@ -4617,10 +4612,8 @@ out:
+ 	map->m_pblk = newblock;
+ 	map->m_len = allocated;
+ out2:
+-	if (path) {
+-		ext4_ext_drop_refs(path);
+-		kfree(path);
+-	}
++	ext4_ext_drop_refs(path);
++	kfree(path);
+ 
+ 	trace_ext4_ext_map_blocks_exit(inode, flags, map,
+ 				       err ? err : allocated);
+@@ -5692,16 +5685,11 @@ ext4_swap_extents(handle_t *handle, struct inode *inode1,
+ 		count -= len;
+ 
+ 	repeat:
+-		if (path1) {
+-			ext4_ext_drop_refs(path1);
+-			kfree(path1);
+-			path1 = NULL;
+-		}
+-		if (path2) {
+-			ext4_ext_drop_refs(path2);
+-			kfree(path2);
+-			path2 = NULL;
+-		}
++		ext4_ext_drop_refs(path1);
++		kfree(path1);
++		ext4_ext_drop_refs(path2);
++		kfree(path2);
++		path1 = path2 = NULL;
+ 	}
+ 	return replaced_count;
+ }
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 0b7e28e..8ffff96 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -499,10 +499,8 @@ static void ext4_es_insert_extent_ext_check(struct inode *inode,
+ 		}
+ 	}
+ out:
+-	if (path) {
+-		ext4_ext_drop_refs(path);
+-		kfree(path);
+-	}
++	ext4_ext_drop_refs(path);
++	kfree(path);
+ }
+ 
+ static void ext4_es_insert_extent_ind_check(struct inode *inode,
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index aff7bdf..061c300 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -84,10 +84,8 @@ static int finish_range(handle_t *handle, struct inode *inode,
+ 	retval = ext4_ext_insert_extent(handle, inode, &path, &newext, 0);
+ err_out:
+ 	up_write((&EXT4_I(inode)->i_data_sem));
+-	if (path) {
+-		ext4_ext_drop_refs(path);
+-		kfree(path);
+-	}
++	ext4_ext_drop_refs(path);
++	kfree(path);
+ 	lb->first_pblock = 0;
+ 	return retval;
+ }
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 5e2465a..a34c076 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -113,10 +113,8 @@ mext_check_coverage(struct inode *inode, ext4_lblk_t from, ext4_lblk_t count,
+ 	}
+ 	ret = 1;
+ out:
+-	if (path) {
+-		ext4_ext_drop_refs(path);
+-		kfree(path);
+-	}
++	ext4_ext_drop_refs(path);
++	kfree(path);
+ 	return ret;
+ }
+ 
+@@ -711,11 +709,9 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
+ 		o_start += cur_len;
+ 		d_start += cur_len;
+ 	repeat:
+-		if (path) {
+-			ext4_ext_drop_refs(path);
+-			kfree(path);
+-			path = NULL;
+-		}
++		ext4_ext_drop_refs(path);
++		kfree(path);
++		path = NULL;
+ 	}
+ 	*moved_len = o_start - orig_blk;
+ 	if (*moved_len > len)
+@@ -727,10 +723,8 @@ out:
+ 		ext4_discard_preallocations(donor_inode);
+ 	}
+ 
+-	if (path) {
+-		ext4_ext_drop_refs(path);
+-		kfree(path);
+-	}
++	ext4_ext_drop_refs(path);
++	kfree(path);
+ 	ext4_double_up_write_data_sem(orig_inode, donor_inode);
+ 	ext4_inode_resume_unlocked_dio(orig_inode);
+ 	ext4_inode_resume_unlocked_dio(donor_inode);
+-- 
+2.1.0
+
