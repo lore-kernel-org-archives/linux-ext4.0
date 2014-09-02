@@ -1,114 +1,81 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: fix accidental flag aliasing in ext4_map_blocks flags
-Date: Tue, 2 Sep 2014 13:01:54 -0600
-Message-ID: <A71E6FF0-16EC-4747-89E4-F9574A89FF89@dilger.ca>
-References: <1409515240-9451-1-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_5F35E030-BFE4-4D52-9A05-3AFB99400F19"; protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+From: TR Reardon <thomas_reardon@hotmail.com>
+Subject: Re: [PATCH 2/2] jbd2: fix descriptor block size handling errors
+ with journal_csum
+Date: Tue, 2 Sep 2014 15:28:33 -0400
+Message-ID: <BAY406-EAS2912CB28A4B081AF994BDA2FDC70@phx.gbl>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8BIT
+Cc: <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f51.google.com ([209.85.220.51]:37962 "EHLO
-	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751850AbaIBTAe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Sep 2014 15:00:34 -0400
-Received: by mail-pa0-f51.google.com with SMTP id rd3so15310633pab.24
-        for <linux-ext4@vger.kernel.org>; Tue, 02 Sep 2014 12:00:33 -0700 (PDT)
-In-Reply-To: <1409515240-9451-1-git-send-email-tytso@mit.edu>
+Received: from bay004-omc1s21.hotmail.com ([65.54.190.32]:57909 "EHLO
+	BAY004-OMC1S21.hotmail.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754692AbaIBT2k convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Sep 2014 15:28:40 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+There may still be problems with this patch.  After applying to 3.16.1, I am now getting "can't enable checksumming v2 and v3 at the same time" errors on mount.  Initial mount/dismount work fine, but once fs is touched--forcing superblock update--it cannot be mounted anew.
 
---Apple-Mail=_5F35E030-BFE4-4D52-9A05-3AFB99400F19
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
+Note results from dumpe2fs  (without recent patches)
 
-On Aug 31, 2014, at 2:00 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> Commit b8a8684502a0f introduced an accidental flag aliasing between
-> EXT4_EX_NOCACHE and EXT4_GET_BLOCKS_CONVERT_UNWRITTEN.
-> 
-> Fortunately, this didn't introduce any untorward side effects --- we
-> got lucky.  Nevertheless, fix this and leave a warning to hopefully
-> avoid this from happening in the future.
+Journal backup:           inode blocks
+Checksum type:            crc32c
+Checksum:                 0x39141b69
+Journal features:         journal_incompat_revoke journal_64bit journal_async_commit journal_checksum_v2 FEATURE_I4
+Journal size:             128M
+Journal length:           32768
+Journal sequence:         0x00012aa4
+Journal start:            0
+Journal checksum type:    crc32c
+Journal checksum:         0x3952b695
 
-Why not move EXT4_EX_*CACHE flags to the end of the range (e.g. 0x8000
-and 0x4000) to minimize potential conflicts in the future?
-
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> ---
-> fs/ext4/ext4.h | 5 +++--
-> 1 file changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index cf3ad75..550b4f9 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -569,6 +569,7 @@ enum {
-> #define EXT4_GET_BLOCKS_NO_PUT_HOLE		0x0200
-> 	/* Convert written extents to unwritten */
-> #define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0400
-> +/* DO NOT ASSIGN ADDITIONAL FLAG VALUES WITHOUT ADJUSTING THE FLAGS BELOW
-
-It might be useful here to mention the EXT4_EX_* flags explicitly?
-In my experience, time and incremental changes will make it less
-clear what "FLAGS BELOW" means...
-
-Cheers, Andreas
-
-> /*
->  * The bit position of these flags must not overlap with any of the
-> @@ -579,8 +580,8 @@ enum {
->  * caching the extents when reading from the extent tree while a
->  * truncate or punch hole operation is in progress.
->  */
-> -#define EXT4_EX_NOCACHE				0x0400
-> -#define EXT4_EX_FORCE_CACHE			0x0800
-> +#define EXT4_EX_NOCACHE				0x0800
-> +#define EXT4_EX_FORCE_CACHE			0x1000
-> 
-> /*
->  * Flags used by ext4_free_blocks
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-Cheers, Andreas
+Seems that the old v2 flag is not cleared on dismount?
 
 
 
+--- Original Message ---
 
+From: "Theodore Ts'o" <tytso@mit.edu>
+Sent: August 25, 2014 10:44 PM
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: linux-ext4@vger.kernel.org, "TR Reardon" <thomas_reardon@hotmail.com>
+Subject: Re: [PATCH 2/2] jbd2: fix descriptor block size handling errors with journal_csum
 
+On Fri, Aug 15, 2014 at 01:43:59PM -0700, Darrick J. Wong wrote:
+> From: Darrick J. Wong <darrick.wong@oracle.com>
+>
+> It turns out that there are some serious problems with the on-disk
+> format of journal checksum v2.  The foremost is that the function to
+> calculate descriptor tag size returns sizes that are too big.  This
+> causes alignment issues on some architectures and is compounded by the
+> fact that some parts of jbd2 use the structure size (incorrectly) to
+> determine the presence of a 64bit journal instead of checking the
+> feature flags.
+>
+> Therefore, introduce journal checksum v3, which enlarges the
+> descriptor block tag format to allow for full 32-bit checksums of
+> journal blocks, fix the journal tag function to return the correct
+> sizes, and fix the jbd2 recovery code to use feature flags to
+> determine 64bitness.
+>
+> Add a few function helpers so we don't have to open-code quite so
+> many pieces.
+>
+> Switching to a 16-byte block size was found to increase journal size
+> overhead by a maximum of 0.1%, to convert a 32-bit journal with no
+> checksumming to a 32-bit journal with checksum v3 enabled.
+>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> Reported-by: TR Reardon <thomas_reardon@hotmail.com>
 
---Apple-Mail=_5F35E030-BFE4-4D52-9A05-3AFB99400F19
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
+Thanks, applied.
 
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBVAYUI3Kl2rkXzB/gAQJdcBAAlmgOa9/3Hh4miSnA39tWfUn3fyO3qcfM
-U4H3UnnwUdbl9b2BEBPSObDxMt/+AaGfPzA2nMEeKN/0z0tIC1rbd3KeJuAp5o/e
-P1KuJr7NzsrlhH8HjMVy6AjSuuecTNQnd9cvSQ8p/XjnIEzv3G3fJ9tFCsA6kIyI
-Ol3/0MgVTv7bA8DVJ15l3QQD7CSkFqHexNCezOGJg+2DLvq9uR16KKYkvCgr/jYf
-4TyFA0oKh6uiewXc0fvTLUEDiJ6VFi5ckHzGprw0/Ac8zr7/0oJqjaWtWzXcXojV
-GLXWunuzFJzWfyly/kMKA0w7ikAWl+0NEgkMt8HfHgYTf6Z3P5k5sjdWd31qWpoj
-d080VIUFcpnewmfpE9+VGBVkQ50DdMTwkiZbVIw6QPv5RVEQjcXu62Ln6OIzkhDO
-7Qv84bi3SRRQPliGkR02gOBMPaJIy4xWAK+Koc9xZVKb32YjIb6pMXi/FCYHgArp
-x6Qw2pQFEbcg7XpixCT7bU0Z44/4SRfkAlolLizm8MKrszM+duVl8qOqXbeM9R+b
-diMn4UlzAzET/uX+MWNrCnDh9ZC3hSzqNEAjE/XsZQ7O7sB0X9O0KzIBKQa0umUl
-U62b542UnPZvYG4siix/rpXo3d9P9g3+vBH6EWu4QSE2qfTvkRNpPLH5HZb46Vb/
-xXYcVsTb2IY=
-=ChfS
------END PGP SIGNATURE-----
-
---Apple-Mail=_5F35E030-BFE4-4D52-9A05-3AFB99400F19--
+                                        - Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
