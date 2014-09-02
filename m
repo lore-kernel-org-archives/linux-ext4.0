@@ -1,100 +1,244 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/3] ext4: drop the EXT4_STATE_DELALLOC_RESERVED flag
-Date: Tue,  2 Sep 2014 18:05:49 -0400
-Message-ID: <1409695549-18605-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/3] ext4: pass allocation_request struct to ext4_(alloc,splice)_branch
+Date: Tue,  2 Sep 2014 18:05:47 -0400
+Message-ID: <1409695549-18605-2-git-send-email-tytso@mit.edu>
 References: <1409695549-18605-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33720 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:33727 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755230AbaIBWoA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755291AbaIBWoA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 2 Sep 2014 18:44:00 -0400
 In-Reply-To: <1409695549-18605-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Having done a full regression test, we can now drop the
-DELALLOC_RESERVED state flag.
+Instead of initializing the allocation_request structure in
+ext4_alloc_branch(), set it up in ext4_ind_map_blocks(), and then pass
+it to ext4_alloc_branch() and ext4_splice_branch().
+
+This allows ext4_ind_map_blocks to pass flags in the allocation
+request structure without having to add Yet Another argument to
+ext4_alloc_branch().
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/ext4.h    |  1 -
- fs/ext4/inode.c   | 20 ++++----------------
- fs/ext4/mballoc.c | 10 ----------
- 3 files changed, 4 insertions(+), 27 deletions(-)
+ fs/ext4/indirect.c | 82 +++++++++++++++++++++++++-----------------------------
+ 1 file changed, 38 insertions(+), 44 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 00fd822..4855800 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1400,7 +1400,6 @@ enum {
- 	EXT4_STATE_EXT_MIGRATE,		/* Inode is migrating */
- 	EXT4_STATE_DIO_UNWRITTEN,	/* need convert on dio done*/
- 	EXT4_STATE_NEWENTRY,		/* File just added to dir */
--	EXT4_STATE_DELALLOC_RESERVED,	/* blks already reserved for delalloc */
- 	EXT4_STATE_DIOREAD_LOCK,	/* Disable support for dio read
- 					   nolocking */
- 	EXT4_STATE_MAY_INLINE_DATA,	/* may have in-inode data */
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4a16b0c..d5dd7d4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -596,14 +596,6 @@ found:
- 	down_write(&EXT4_I(inode)->i_data_sem);
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index e75f840..69af0cd 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -318,34 +318,22 @@ static int ext4_blks_to_allocate(Indirect *branch, int k, unsigned int blks,
+  *	ext4_alloc_block() (normally -ENOSPC). Otherwise we set the chain
+  *	as described above and return 0.
+  */
+-static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
+-			     ext4_lblk_t iblock, int indirect_blks,
+-			     int *blks, ext4_fsblk_t goal,
+-			     ext4_lblk_t *offsets, Indirect *branch)
++static int ext4_alloc_branch(handle_t *handle,
++			     struct ext4_allocation_request *ar,
++			     int indirect_blks, ext4_lblk_t *offsets,
++			     Indirect *branch)
+ {
+-	struct ext4_allocation_request	ar;
+ 	struct buffer_head *		bh;
+ 	ext4_fsblk_t			b, new_blocks[4];
+ 	__le32				*p;
+ 	int				i, j, err, len = 1;
+ 
+-	/*
+-	 * Set up for the direct block allocation
+-	 */
+-	memset(&ar, 0, sizeof(ar));
+-	ar.inode = inode;
+-	ar.len = *blks;
+-	ar.logical = iblock;
+-	if (S_ISREG(inode->i_mode))
+-		ar.flags = EXT4_MB_HINT_DATA;
+-
+ 	for (i = 0; i <= indirect_blks; i++) {
+ 		if (i == indirect_blks) {
+-			ar.goal = goal;
+-			new_blocks[i] = ext4_mb_new_blocks(handle, &ar, &err);
++			new_blocks[i] = ext4_mb_new_blocks(handle, ar, &err);
+ 		} else
+-			goal = new_blocks[i] = ext4_new_meta_blocks(handle, inode,
+-							goal, 0, NULL, &err);
++			ar->goal = new_blocks[i] = ext4_new_meta_blocks(handle,
++				    ar->inode, ar->goal, 0, NULL, &err);
+ 		if (err) {
+ 			i--;
+ 			goto failed;
+@@ -354,7 +342,7 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
+ 		if (i == 0)
+ 			continue;
+ 
+-		bh = branch[i].bh = sb_getblk(inode->i_sb, new_blocks[i-1]);
++		bh = branch[i].bh = sb_getblk(ar->inode->i_sb, new_blocks[i-1]);
+ 		if (unlikely(!bh)) {
+ 			err = -ENOMEM;
+ 			goto failed;
+@@ -372,7 +360,7 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
+ 		b = new_blocks[i];
+ 
+ 		if (i == indirect_blks)
+-			len = ar.len;
++			len = ar->len;
+ 		for (j = 0; j < len; j++)
+ 			*p++ = cpu_to_le32(b++);
+ 
+@@ -381,11 +369,10 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
+ 		unlock_buffer(bh);
+ 
+ 		BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+-		err = ext4_handle_dirty_metadata(handle, inode, bh);
++		err = ext4_handle_dirty_metadata(handle, ar->inode, bh);
+ 		if (err)
+ 			goto failed;
+ 	}
+-	*blks = ar.len;
+ 	return 0;
+ failed:
+ 	for (; i >= 0; i--) {
+@@ -396,10 +383,10 @@ failed:
+ 		 * existing before ext4_alloc_branch() was called.
+ 		 */
+ 		if (i > 0 && i != indirect_blks && branch[i].bh)
+-			ext4_forget(handle, 1, inode, branch[i].bh,
++			ext4_forget(handle, 1, ar->inode, branch[i].bh,
+ 				    branch[i].bh->b_blocknr);
+-		ext4_free_blocks(handle, inode, NULL, new_blocks[i],
+-				 (i == indirect_blks) ? ar.len : 1, 0);
++		ext4_free_blocks(handle, ar->inode, NULL, new_blocks[i],
++				 (i == indirect_blks) ? ar->len : 1, 0);
+ 	}
+ 	return err;
+ }
+@@ -419,9 +406,9 @@ failed:
+  * inode (->i_blocks, etc.). In case of success we end up with the full
+  * chain to new block and return 0.
+  */
+-static int ext4_splice_branch(handle_t *handle, struct inode *inode,
+-			      ext4_lblk_t block, Indirect *where, int num,
+-			      int blks)
++static int ext4_splice_branch(handle_t *handle,
++			      struct ext4_allocation_request *ar,
++			      Indirect *where, int num)
+ {
+ 	int i;
+ 	int err = 0;
+@@ -446,9 +433,9 @@ static int ext4_splice_branch(handle_t *handle, struct inode *inode,
+ 	 * Update the host buffer_head or inode to point to more just allocated
+ 	 * direct blocks blocks
+ 	 */
+-	if (num == 0 && blks > 1) {
++	if (num == 0 && ar->len > 1) {
+ 		current_block = le32_to_cpu(where->key) + 1;
+-		for (i = 1; i < blks; i++)
++		for (i = 1; i < ar->len; i++)
+ 			*(where->p + i) = cpu_to_le32(current_block++);
+ 	}
+ 
+@@ -465,14 +452,14 @@ static int ext4_splice_branch(handle_t *handle, struct inode *inode,
+ 		 */
+ 		jbd_debug(5, "splicing indirect only\n");
+ 		BUFFER_TRACE(where->bh, "call ext4_handle_dirty_metadata");
+-		err = ext4_handle_dirty_metadata(handle, inode, where->bh);
++		err = ext4_handle_dirty_metadata(handle, ar->inode, where->bh);
+ 		if (err)
+ 			goto err_out;
+ 	} else {
+ 		/*
+ 		 * OK, we spliced it into the inode itself on a direct block.
+ 		 */
+-		ext4_mark_inode_dirty(handle, inode);
++		ext4_mark_inode_dirty(handle, ar->inode);
+ 		jbd_debug(5, "splicing direct\n");
+ 	}
+ 	return err;
+@@ -484,11 +471,11 @@ err_out:
+ 		 * need to revoke the block, which is why we don't
+ 		 * need to set EXT4_FREE_BLOCKS_METADATA.
+ 		 */
+-		ext4_free_blocks(handle, inode, where[i].bh, 0, 1,
++		ext4_free_blocks(handle, ar->inode, where[i].bh, 0, 1,
+ 				 EXT4_FREE_BLOCKS_FORGET);
+ 	}
+-	ext4_free_blocks(handle, inode, NULL, le32_to_cpu(where[num].key),
+-			 blks, 0);
++	ext4_free_blocks(handle, ar->inode, NULL, le32_to_cpu(where[num].key),
++			 ar->len, 0);
+ 
+ 	return err;
+ }
+@@ -525,11 +512,11 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+ 			struct ext4_map_blocks *map,
+ 			int flags)
+ {
++	struct ext4_allocation_request ar;
+ 	int err = -EIO;
+ 	ext4_lblk_t offsets[4];
+ 	Indirect chain[4];
+ 	Indirect *partial;
+-	ext4_fsblk_t goal;
+ 	int indirect_blks;
+ 	int blocks_to_boundary = 0;
+ 	int depth;
+@@ -579,7 +566,14 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+ 		return -ENOSPC;
+ 	}
+ 
+-	goal = ext4_find_goal(inode, map->m_lblk, partial);
++	/* Set up for the direct block allocation */
++	memset(&ar, 0, sizeof(ar));
++	ar.inode = inode;
++	ar.logical = map->m_lblk;
++	if (S_ISREG(inode->i_mode))
++		ar.flags = EXT4_MB_HINT_DATA;
++
++	ar.goal = ext4_find_goal(inode, map->m_lblk, partial);
+ 
+ 	/* the number of blocks need to allocate for [d,t]indirect blocks */
+ 	indirect_blks = (chain + depth) - partial - 1;
+@@ -588,13 +582,13 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+ 	 * Next look up the indirect map to count the totoal number of
+ 	 * direct blocks to allocate for this branch.
+ 	 */
+-	count = ext4_blks_to_allocate(partial, indirect_blks,
+-				      map->m_len, blocks_to_boundary);
++	ar.len = ext4_blks_to_allocate(partial, indirect_blks,
++				       map->m_len, blocks_to_boundary);
++
+ 	/*
+ 	 * Block out ext4_truncate while we alter the tree
+ 	 */
+-	err = ext4_alloc_branch(handle, inode, map->m_lblk, indirect_blks,
+-				&count, goal,
++	err = ext4_alloc_branch(handle, &ar, indirect_blks,
+ 				offsets + (partial - chain), partial);
  
  	/*
--	 * if the caller is from delayed allocation writeout path
--	 * we have already reserved fs blocks for allocation
--	 * let the underlying get_block() function know to
--	 * avoid double accounting
--	 */
--	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
--		ext4_set_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED);
--	/*
- 	 * We need to check for EXT4 here because migrate
- 	 * could have changed the inode type in between
+@@ -605,14 +599,14 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+ 	 * may need to return -EAGAIN upwards in the worst case.  --sct
  	 */
-@@ -631,8 +623,6 @@ found:
- 			(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE))
- 			ext4_da_update_reserve_space(inode, retval, 1);
- 	}
--	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
--		ext4_clear_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED);
+ 	if (!err)
+-		err = ext4_splice_branch(handle, inode, map->m_lblk,
+-					 partial, indirect_blks, count);
++		err = ext4_splice_branch(handle, &ar, partial, indirect_blks);
+ 	if (err)
+ 		goto cleanup;
  
- 	if (retval > 0) {
- 		unsigned int status;
-@@ -2004,12 +1994,10 @@ static int mpage_map_one_extent(handle_t *handle, struct mpage_da_data *mpd)
- 	 * in data loss.  So use reserved blocks to allocate metadata if
- 	 * possible.
- 	 *
--	 * We pass in the magic EXT4_GET_BLOCKS_DELALLOC_RESERVE if the blocks
--	 * in question are delalloc blocks.  This affects functions in many
--	 * different parts of the allocation call path.  This flag exists
--	 * primarily because we don't want to change *many* call functions, so
--	 * ext4_map_blocks() will set the EXT4_STATE_DELALLOC_RESERVED flag
--	 * once the inode's allocation semaphore is taken.
-+	 * We pass in the magic EXT4_GET_BLOCKS_DELALLOC_RESERVE if
-+	 * the blocks in question are delalloc blocks.  This indicates
-+	 * that the blocks and quotas has already been checked when
-+	 * the data was copied into the page cache.
- 	 */
- 	get_blocks_flags = EXT4_GET_BLOCKS_CREATE |
- 			   EXT4_GET_BLOCKS_METADATA_NOFAIL;
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 15dffda..65cca28 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4410,16 +4410,6 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
- 	if (IS_NOQUOTA(ar->inode))
- 		ar->flags |= EXT4_MB_USE_ROOT_BLOCKS;
+ 	map->m_flags |= EXT4_MAP_NEW;
  
--	/*
--	 * For delayed allocation, we could skip the ENOSPC and
--	 * EDQUOT check, as blocks and quotas have been already
--	 * reserved when data being copied into pagecache.
--	 */
--	if (ext4_test_inode_state(ar->inode, EXT4_STATE_DELALLOC_RESERVED)) {
--		WARN_ON((ar->flags & EXT4_MB_DELALLOC_RESERVED) == 0);
--		ar->flags |= EXT4_MB_DELALLOC_RESERVED;
--	}
+ 	ext4_update_inode_fsync_trans(handle, inode, 1);
++	count = ar.len;
+ got_it:
+ 	map->m_flags |= EXT4_MAP_MAPPED;
+ 	map->m_pblk = le32_to_cpu(chain[depth-1].key);
+-- 
+2.1.0
+
