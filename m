@@ -1,81 +1,100 @@
-From: TR Reardon <thomas_reardon@hotmail.com>
-Subject: Re: [PATCH 2/2] jbd2: fix descriptor block size handling errors
- with journal_csum
-Date: Tue, 2 Sep 2014 15:28:33 -0400
-Message-ID: <BAY406-EAS2912CB28A4B081AF994BDA2FDC70@phx.gbl>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8BIT
-Cc: <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 3/3] ext4: drop the EXT4_STATE_DELALLOC_RESERVED flag
+Date: Tue,  2 Sep 2014 18:05:49 -0400
+Message-ID: <1409695549-18605-4-git-send-email-tytso@mit.edu>
+References: <1409695549-18605-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bay004-omc1s21.hotmail.com ([65.54.190.32]:57909 "EHLO
-	BAY004-OMC1S21.hotmail.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754692AbaIBT2k convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Sep 2014 15:28:40 -0400
+Received: from imap.thunk.org ([74.207.234.97]:33720 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755230AbaIBWoA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Sep 2014 18:44:00 -0400
+In-Reply-To: <1409695549-18605-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There may still be problems with this patch.  After applying to 3.16.1, I am now getting "can't enable checksumming v2 and v3 at the same time" errors on mount.  Initial mount/dismount work fine, but once fs is touched--forcing superblock update--it cannot be mounted anew.
+Having done a full regression test, we can now drop the
+DELALLOC_RESERVED state flag.
 
-Note results from dumpe2fs  (without recent patches)
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/ext4.h    |  1 -
+ fs/ext4/inode.c   | 20 ++++----------------
+ fs/ext4/mballoc.c | 10 ----------
+ 3 files changed, 4 insertions(+), 27 deletions(-)
 
-Journal backup:           inode blocks
-Checksum type:            crc32c
-Checksum:                 0x39141b69
-Journal features:         journal_incompat_revoke journal_64bit journal_async_commit journal_checksum_v2 FEATURE_I4
-Journal size:             128M
-Journal length:           32768
-Journal sequence:         0x00012aa4
-Journal start:            0
-Journal checksum type:    crc32c
-Journal checksum:         0x3952b695
-
-Seems that the old v2 flag is not cleared on dismount?
-
-
-
---- Original Message ---
-
-From: "Theodore Ts'o" <tytso@mit.edu>
-Sent: August 25, 2014 10:44 PM
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: linux-ext4@vger.kernel.org, "TR Reardon" <thomas_reardon@hotmail.com>
-Subject: Re: [PATCH 2/2] jbd2: fix descriptor block size handling errors with journal_csum
-
-On Fri, Aug 15, 2014 at 01:43:59PM -0700, Darrick J. Wong wrote:
-> From: Darrick J. Wong <darrick.wong@oracle.com>
->
-> It turns out that there are some serious problems with the on-disk
-> format of journal checksum v2.  The foremost is that the function to
-> calculate descriptor tag size returns sizes that are too big.  This
-> causes alignment issues on some architectures and is compounded by the
-> fact that some parts of jbd2 use the structure size (incorrectly) to
-> determine the presence of a 64bit journal instead of checking the
-> feature flags.
->
-> Therefore, introduce journal checksum v3, which enlarges the
-> descriptor block tag format to allow for full 32-bit checksums of
-> journal blocks, fix the journal tag function to return the correct
-> sizes, and fix the jbd2 recovery code to use feature flags to
-> determine 64bitness.
->
-> Add a few function helpers so we don't have to open-code quite so
-> many pieces.
->
-> Switching to a 16-byte block size was found to increase journal size
-> overhead by a maximum of 0.1%, to convert a 32-bit journal with no
-> checksumming to a 32-bit journal with checksum v3 enabled.
->
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> Reported-by: TR Reardon <thomas_reardon@hotmail.com>
-
-Thanks, applied.
-
-                                        - Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 00fd822..4855800 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1400,7 +1400,6 @@ enum {
+ 	EXT4_STATE_EXT_MIGRATE,		/* Inode is migrating */
+ 	EXT4_STATE_DIO_UNWRITTEN,	/* need convert on dio done*/
+ 	EXT4_STATE_NEWENTRY,		/* File just added to dir */
+-	EXT4_STATE_DELALLOC_RESERVED,	/* blks already reserved for delalloc */
+ 	EXT4_STATE_DIOREAD_LOCK,	/* Disable support for dio read
+ 					   nolocking */
+ 	EXT4_STATE_MAY_INLINE_DATA,	/* may have in-inode data */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 4a16b0c..d5dd7d4 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -596,14 +596,6 @@ found:
+ 	down_write(&EXT4_I(inode)->i_data_sem);
+ 
+ 	/*
+-	 * if the caller is from delayed allocation writeout path
+-	 * we have already reserved fs blocks for allocation
+-	 * let the underlying get_block() function know to
+-	 * avoid double accounting
+-	 */
+-	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
+-		ext4_set_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED);
+-	/*
+ 	 * We need to check for EXT4 here because migrate
+ 	 * could have changed the inode type in between
+ 	 */
+@@ -631,8 +623,6 @@ found:
+ 			(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE))
+ 			ext4_da_update_reserve_space(inode, retval, 1);
+ 	}
+-	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
+-		ext4_clear_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED);
+ 
+ 	if (retval > 0) {
+ 		unsigned int status;
+@@ -2004,12 +1994,10 @@ static int mpage_map_one_extent(handle_t *handle, struct mpage_da_data *mpd)
+ 	 * in data loss.  So use reserved blocks to allocate metadata if
+ 	 * possible.
+ 	 *
+-	 * We pass in the magic EXT4_GET_BLOCKS_DELALLOC_RESERVE if the blocks
+-	 * in question are delalloc blocks.  This affects functions in many
+-	 * different parts of the allocation call path.  This flag exists
+-	 * primarily because we don't want to change *many* call functions, so
+-	 * ext4_map_blocks() will set the EXT4_STATE_DELALLOC_RESERVED flag
+-	 * once the inode's allocation semaphore is taken.
++	 * We pass in the magic EXT4_GET_BLOCKS_DELALLOC_RESERVE if
++	 * the blocks in question are delalloc blocks.  This indicates
++	 * that the blocks and quotas has already been checked when
++	 * the data was copied into the page cache.
+ 	 */
+ 	get_blocks_flags = EXT4_GET_BLOCKS_CREATE |
+ 			   EXT4_GET_BLOCKS_METADATA_NOFAIL;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 15dffda..65cca28 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4410,16 +4410,6 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 	if (IS_NOQUOTA(ar->inode))
+ 		ar->flags |= EXT4_MB_USE_ROOT_BLOCKS;
+ 
+-	/*
+-	 * For delayed allocation, we could skip the ENOSPC and
+-	 * EDQUOT check, as blocks and quotas have been already
+-	 * reserved when data being copied into pagecache.
+-	 */
+-	if (ext4_test_inode_state(ar->inode, EXT4_STATE_DELALLOC_RESERVED)) {
+-		WARN_ON((ar->flags & EXT4_MB_DELALLOC_RESERVED) == 0);
+-		ar->flags |= EXT4_MB_DELALLOC_RESERVED;
+-	}
