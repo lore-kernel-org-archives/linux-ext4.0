@@ -1,159 +1,87 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/3] ext4: prepare to drop EXT4_STATE_DELALLOC_RESERVED
-Date: Tue,  2 Sep 2014 18:05:48 -0400
-Message-ID: <1409695549-18605-3-git-send-email-tytso@mit.edu>
-References: <1409695549-18605-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/2] jbd2: don't call get_bh() before calling __jbd2_journal_remove_checkpoint()
+Date: Tue,  2 Sep 2014 18:46:39 -0400
+Message-ID: <1409698000-18126-1-git-send-email-tytso@mit.edu>
+References: <20140902215930.GJ6232@thunk.org>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33729 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:33754 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755292AbaIBWoA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Sep 2014 18:44:00 -0400
-In-Reply-To: <1409695549-18605-1-git-send-email-tytso@mit.edu>
+	id S1755274AbaIBWrA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Sep 2014 18:47:00 -0400
+In-Reply-To: <20140902215930.GJ6232@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The EXT4_STATE_DELALLOC_RESERVED flag was originally implemented
-because it was too hard to make sure mballoc and get_block flags could
-be reliably passed down through all of the codepaths that end up
-calling ext4_mb_new_blocks().
+The __jbd2_journal_remove_checkpoint() doesn't require an elevated
+b_count; indeed, until the jh structure gets released by the call to
+jbd2_journal_put_journal_head(), the bh's b_count is elevated by
+virtue of the existence of the jh structure.
 
-Since then, we have mb_flags passed down through most of the code
-paths, so getting rid of EXT4_STATE_DELALLOC_RESERVED isn't as tricky
-as it used to.
-
-This commit plumbs in the last of what is required, and then adds a
-WARN_ON check to make sure we haven't missed anything.  If this passes
-a full regression test run, we can then drop
-EXT4_STATE_DELALLOC_RESERVED.
-
+Suggested-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/balloc.c   |  3 +--
- fs/ext4/extents.c  |  6 +++++-
- fs/ext4/indirect.c |  6 +++++-
- fs/ext4/mballoc.c  | 10 ++++++----
- fs/ext4/xattr.c    |  6 ------
- 5 files changed, 17 insertions(+), 14 deletions(-)
+ fs/jbd2/checkpoint.c | 12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 581ef40..d70f154 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -636,8 +636,7 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
- 	 * Account for the allocated meta blocks.  We will never
- 	 * fail EDQUOT for metdata, but we do account for it.
- 	 */
--	if (!(*errp) &&
--	    ext4_test_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED)) {
-+	if (!(*errp) && (flags & EXT4_MB_DELALLOC_RESERVED)) {
- 		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 		dquot_alloc_block_nofail(inode,
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 3ac1686..8170b32 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1933,6 +1933,8 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
- 	ext4_lblk_t next;
- 	int mb_flags = 0, unwritten;
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 22fcd50..cb6e17c 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -100,11 +100,8 @@ static int __try_to_free_cp_buf(struct journal_head *jh)
+ 		 * Get our reference so that bh cannot be freed before
+ 		 * we unlock it
+ 		 */
+-		get_bh(bh);
+ 		JBUFFER_TRACE(jh, "remove from checkpoint list");
+ 		ret = __jbd2_journal_remove_checkpoint(jh) + 1;
+-		BUFFER_TRACE(bh, "release");
+-		__brelse(bh);
+ 	}
+ 	return ret;
+ }
+@@ -216,7 +213,7 @@ int jbd2_log_do_checkpoint(journal_t *journal)
+ 	struct buffer_head	*bh;
+ 	transaction_t		*transaction;
+ 	tid_t			this_tid;
+-	int			result, batch_count = 0, done = 0;
++	int			result, batch_count = 0;
  
-+	if (gb_flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
-+		mb_flags |= EXT4_MB_DELALLOC_RESERVED;
- 	if (unlikely(ext4_ext_get_actual_len(newext) == 0)) {
- 		EXT4_ERROR_INODE(inode, "ext4_ext_get_actual_len(newext) == 0");
- 		return -EIO;
-@@ -2054,7 +2056,7 @@ prepend:
- 	 * We're gonna add a new leaf in the tree.
- 	 */
- 	if (gb_flags & EXT4_GET_BLOCKS_METADATA_NOFAIL)
--		mb_flags = EXT4_MB_USE_RESERVED;
-+		mb_flags |= EXT4_MB_USE_RESERVED;
- 	err = ext4_ext_create_new_leaf(handle, inode, mb_flags, gb_flags,
- 				       ppath, newext);
- 	if (err)
-@@ -4438,6 +4440,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 		ar.flags = 0;
- 	if (flags & EXT4_GET_BLOCKS_NO_NORMALIZE)
- 		ar.flags |= EXT4_MB_HINT_NOPREALLOC;
-+	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
-+		ar.flags |= EXT4_MB_DELALLOC_RESERVED;
- 	newblock = ext4_mb_new_blocks(handle, &ar, &err);
- 	if (!newblock)
- 		goto out2;
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 69af0cd..36b3696 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -333,7 +333,9 @@ static int ext4_alloc_branch(handle_t *handle,
- 			new_blocks[i] = ext4_mb_new_blocks(handle, ar, &err);
- 		} else
- 			ar->goal = new_blocks[i] = ext4_new_meta_blocks(handle,
--				    ar->inode, ar->goal, 0, NULL, &err);
-+					ar->inode, ar->goal,
-+					ar->flags & EXT4_MB_DELALLOC_RESERVED,
-+					NULL, &err);
- 		if (err) {
- 			i--;
- 			goto failed;
-@@ -572,6 +574,8 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
- 	ar.logical = map->m_lblk;
- 	if (S_ISREG(inode->i_mode))
- 		ar.flags = EXT4_MB_HINT_DATA;
-+	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
-+		ar.flags |= EXT4_MB_DELALLOC_RESERVED;
+ 	jbd_debug(1, "Start checkpoint\n");
  
- 	ar.goal = ext4_find_goal(inode, map->m_lblk, partial);
+@@ -291,11 +288,9 @@ restart:
+ 		if (!buffer_dirty(bh)) {
+ 			if (unlikely(buffer_write_io_error(bh)) && !result)
+ 				result = -EIO;
+-			get_bh(bh);
+ 			BUFFER_TRACE(bh, "remove from checkpoint");
+ 			__jbd2_journal_remove_checkpoint(jh);
+ 			spin_unlock(&journal->j_list_lock);
+-			__brelse(bh);
+ 			goto retry;
+ 		}
+ 		/*
+@@ -338,7 +333,7 @@ restart2:
+ 	    transaction->t_tid != this_tid)
+ 		goto out;
  
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 8b0f9ef..15dffda 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4415,9 +4415,12 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
- 	 * EDQUOT check, as blocks and quotas have been already
- 	 * reserved when data being copied into pagecache.
- 	 */
--	if (ext4_test_inode_state(ar->inode, EXT4_STATE_DELALLOC_RESERVED))
-+	if (ext4_test_inode_state(ar->inode, EXT4_STATE_DELALLOC_RESERVED)) {
-+		WARN_ON((ar->flags & EXT4_MB_DELALLOC_RESERVED) == 0);
- 		ar->flags |= EXT4_MB_DELALLOC_RESERVED;
--	else {
-+	}
-+
-+	if ((ar->flags & EXT4_MB_DELALLOC_RESERVED) == 0) {
- 		/* Without delayed allocation we need to verify
- 		 * there is enough free blocks to do block allocation
- 		 * and verify allocation doesn't exceed the quota limits.
-@@ -4528,8 +4531,7 @@ out:
- 	if (inquota && ar->len < inquota)
- 		dquot_free_block(ar->inode, EXT4_C2B(sbi, inquota - ar->len));
- 	if (!ar->len) {
--		if (!ext4_test_inode_state(ar->inode,
--					   EXT4_STATE_DELALLOC_RESERVED))
-+		if ((ar->flags & EXT4_MB_DELALLOC_RESERVED) == 0)
- 			/* release all the reserved blocks if non delalloc */
- 			percpu_counter_sub(&sbi->s_dirtyclusters_counter,
- 						reserv_clstrs);
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index e738733..da4df70 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -899,14 +899,8 @@ inserted:
- 			if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
- 				goal = goal & EXT4_MAX_BLOCK_FILE_PHYS;
- 
--			/*
--			 * take i_data_sem because we will test
--			 * i_delalloc_reserved_flag in ext4_mb_new_blocks
--			 */
--			down_read(&EXT4_I(inode)->i_data_sem);
- 			block = ext4_new_meta_blocks(handle, inode, goal, 0,
- 						     NULL, &error);
--			up_read((&EXT4_I(inode)->i_data_sem));
- 			if (error)
- 				goto cleanup;
- 
+-	while (!done && transaction->t_checkpoint_io_list) {
++	while (transaction->t_checkpoint_io_list) {
+ 		jh = transaction->t_checkpoint_io_list;
+ 		bh = jh2bh(jh);
+ 		get_bh(bh);
+@@ -359,8 +354,9 @@ restart2:
+ 		 * know that it has been written out and so we can
+ 		 * drop it from the list
+ 		 */
+-		done = __jbd2_journal_remove_checkpoint(jh);
+ 		__brelse(bh);
++		if (__jbd2_journal_remove_checkpoint(jh))
++			break;
+ 	}
+ out:
+ 	spin_unlock(&journal->j_list_lock);
 -- 
 2.1.0
 
