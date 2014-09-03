@@ -1,102 +1,82 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v3 4/6] ext4: change lru to round-robin in extent status
- tree shrinker
-Date: Wed, 3 Sep 2014 17:31:22 +0200
-Message-ID: <20140903153122.GA17066@quack.suse.cz>
-References: <1407382553-24256-1-git-send-email-wenqing.lz@taobao.com>
- <1407382553-24256-5-git-send-email-wenqing.lz@taobao.com>
- <20140827150121.GC22211@quack.suse.cz>
- <20140903033738.GB2504@thunk.org>
+Subject: Re: [PATCH] jbd2: Optimize jbd2_log_do_checkpoint() a bit
+Date: Wed, 3 Sep 2014 18:03:26 +0200
+Message-ID: <20140903160326.GB17066@quack.suse.cz>
+References: <1409678310-11646-1-git-send-email-jack@suse.cz>
+ <20140902215930.GJ6232@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Zheng Liu <gnehzuil.liu@gmail.com>,
-	linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Zheng Liu <wenqing.lz@taobao.com>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:38163 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:38840 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932836AbaICPb0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Sep 2014 11:31:26 -0400
+	id S1756418AbaICQDb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Sep 2014 12:03:31 -0400
 Content-Disposition: inline
-In-Reply-To: <20140903033738.GB2504@thunk.org>
+In-Reply-To: <20140902215930.GJ6232@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 02-09-14 23:37:38, Ted Tso wrote:
-> On Wed, Aug 27, 2014 at 05:01:21PM +0200, Jan Kara wrote:
-> > On Thu 07-08-14 11:35:51, Zheng Liu wrote:
-> >   This comment is not directly related to this patch but looking into the
-> > code made me think about it. It seems ugly to call __es_shrink() from
-> > internals of ext4_es_insert_extent(). Also thinking about locking
-> > implications makes me shudder a bit and finally this may make the pressure
-> > on the extent cache artificially bigger because MM subsystem is not aware
-> > of the shrinking you do here. I would prefer to leave shrinking on
-> > the slab subsystem itself.
+On Tue 02-09-14 17:59:30, Ted Tso wrote:
+> On Tue, Sep 02, 2014 at 07:18:30PM +0200, Jan Kara wrote:
+> > When we discover written out buffer in transaction checkpoint list we
+> > don't have to recheck validity of a transaction. Either this is the last
+> > buffer in a transaction - and then we are done - or this isn't and then
+> > we can just take another buffer from the checkpoint list without
+> > dropping j_list_lock.
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> >  fs/jbd2/checkpoint.c | 13 ++++++++-----
+> >  1 file changed, 8 insertions(+), 5 deletions(-)
+> > 
+> > diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+> > index 993a187527f3..3722e2e53638 100644
+> > --- a/fs/jbd2/checkpoint.c
+> > +++ b/fs/jbd2/checkpoint.c
+> > @@ -343,12 +343,15 @@ restart:
+> >  		if (!buffer_dirty(bh)) {
+> >  			if (unlikely(buffer_write_io_error(bh)) && !result)
+> >  				result = -EIO;
+> > -			get_bh(bh);
+> >  			BUFFER_TRACE(bh, "remove from checkpoint");
+> > -			__jbd2_journal_remove_checkpoint(jh);
+> > -			spin_unlock(&journal->j_list_lock);
+> > -			__brelse(bh);
 > 
-> If we fail, the allocation we only try to free at most one extent, so
-> I don't think it's going to make the slab system that confused; it's
-> the equivalent of freeing an entry and then using allocating it again.
+> Currently, all of the places which call
+> __jbd2_jouranl_remove_checkpoint(jh) are doing so with an elevated
+> b_count.  For example, see __try_to_free_cp_buf().
+  I did a bit of archeology and commit
+932bb305ba2a01cd62809644d569f004e77a4355 removed the need to hold buffer
+reference when calling __jbd2_journal_remove_checkpoint(). So it should be
+safe to remove that reference handling also from __try_to_free_cp_buf().
+
+> After doing a lot of desk checking, I can't see any reason for holding
+> the elevanted b_count, so I think it should be to remove it, but then
+> we can simplify the other uses __try_to_free_cp_buf().  For example,
+> in the loop that I folded from __wait_cp_io, we could drop the done
+> variable and change:
 > 
-> > Now GFP_ATOMIC allocation we use for extent cache makes it hard for the
-> > slab subsystem and actually we could fairly easily use GFP_NOFS. We can just
-> > allocate the structure before grabbing i_es_lock with GFP_NOFS allocation and
-> > in case we don't need the structure, we can just free it again. It may
-> > introduce some overhead from unnecessary alloc/free but things get simpler
-> > that way (no need for that locked_ei argument for __es_shrink(), no need
-> > for internal calls to __es_shrink() from within the filesystem).
+> 		done = __jbd2_journal_remove_checkpoint(jh);
+> 		__brelse(bh);
 > 
-> The tricky bit is that even __es_remove_extent() can require a memory
-> allocation, and in the worst case, it's possible that
-> ext4_es_insert_extent() can require *two* allocations.  For example,
-> if you start with a single large extent, and then need to insert a
-> subregion with a different set of flags into the already existing
-> extent, thus resulting in three extents where you started with one.
-  Right, I didn't realize that.
-
-> And in some cases, no allocation is required at all....
+> to this:
 > 
-> One thing that can help is that so long as we haven't done something
-> critical, such as erase a delalloc region, we always release the write
-> lock and retry the allocation with GFP_NOFS, and the try the operation
-> again.
-  Yeah, maybe we could use mempools for this. It should make the code less
-clumsy.
+> 		__brelse(bh);
+> 		if (__jbd2_journal_remove_checkpoint(jh))
+> 			break;
+  Well, we don't even need to grab bh reference unless we find the buffer
+is locked and are going to wait for it. And yes, we can get rid of that
+'done' variable.
 
-> So we may need to think a bit about what's the best way to improve
-> this, although it is separate topic from making the shrinker be less
-> heavyweight.
-  Agreed, it's a separate topic.
-
-> >   Nothing seems to prevent reclaim from freeing the inode after we drop
-> > s_es_lock. So we could use freed memory. I don't think we want to pin the
-> > inode here by grabbing a refcount since we don't want to deal with iput()
-> > in the shrinker (that could mean having to delete the inode from shrinker
-> > context). But what we could do it to grab ei->i_es_lock before dropping
-> > s_es_lock. Since ext4_es_remove_extent() called from ext4_clear_inode()
-> > always grabs i_es_lock, we are protected from inode being freed while we
-> > hold that lock. But please add comments about this both to the
-> > __es_shrink() and ext4_es_remove_extent().
-> 
-> Something like this should work, yes?
-  Yes, this should work. I would just add a comment to
-ext4_es_remove_extent() about the fact that ext4_clear_inode() requires
-grabbing i_es_lock so that we don't do some clever optimization in future
-and break these lifetime rules...
-
-Also one question:
-
-> -		if (ei == locked_ei || !write_trylock(&ei->i_es_lock)) {
-> -			nr_skipped++;
-> -			spin_lock(&sbi->s_es_lock);
->  			__ext4_es_list_add(sbi, ei);
-> +			if (spin_is_contended(&sbi->s_es_lock)) {
-> +				spin_unlock(&sbi->s_es_lock);
-> +				spin_lock(&sbi->s_es_lock);
-> +			}
-  Why not cond_resched_lock(&sbi->s_es_lock)?
-
+> How much testing have you done of this optimization?  I'm tempted to
+> try nuking all of the elevated b_counts around the call to
+> __jbd2_journal_remove_checkpoint(), and then doing a test to see if
+> anything blows up.
+  Honestly, I didn't test much but I'm pretty confident we are safe to
+remove those bh refs ;)
 
 								Honza
 -- 
