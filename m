@@ -1,31 +1,31 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
 Subject: Re: [PATCH v3 3/6] ext4: cache extent hole in extent status tree for
  ext4_da_map_blocks()
-Date: Thu, 4 Sep 2014 21:04:48 +0800
-Message-ID: <20140904130448.GB13193@gmail.com>
+Date: Thu, 4 Sep 2014 21:05:50 +0800
+Message-ID: <20140904130550.GC13193@gmail.com>
 References: <1407382553-24256-1-git-send-email-wenqing.lz@taobao.com>
  <1407382553-24256-4-git-send-email-wenqing.lz@taobao.com>
- <20140902024350.GS8974@thunk.org>
+ <20140827135516.GB22211@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.cz>, Zheng Liu <wenqing.lz@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f170.google.com ([209.85.192.170]:44839 "EHLO
+Received: from mail-pd0-f170.google.com ([209.85.192.170]:51869 "EHLO
 	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754222AbaIDMzW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Sep 2014 08:55:22 -0400
-Received: by mail-pd0-f170.google.com with SMTP id r10so13495940pdi.15
-        for <linux-ext4@vger.kernel.org>; Thu, 04 Sep 2014 05:55:20 -0700 (PDT)
+	with ESMTP id S1754473AbaIDM4Z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Sep 2014 08:56:25 -0400
+Received: by mail-pd0-f170.google.com with SMTP id r10so13575910pdi.29
+        for <linux-ext4@vger.kernel.org>; Thu, 04 Sep 2014 05:56:21 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20140902024350.GS8974@thunk.org>
+In-Reply-To: <20140827135516.GB22211@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 01, 2014 at 10:43:50PM -0400, Theodore Ts'o wrote:
-> On Thu, Aug 07, 2014 at 11:35:50AM +0800, Zheng Liu wrote:
+On Wed, Aug 27, 2014 at 03:55:16PM +0200, Jan Kara wrote:
+> On Thu 07-08-14 11:35:50, Zheng Liu wrote:
 > > From: Zheng Liu <wenqing.lz@taobao.com>
 > > 
 > > Currently extent status tree doesn't cache extent hole when a write
@@ -38,21 +38,27 @@ On Mon, Sep 01, 2014 at 10:43:50PM -0400, Theodore Ts'o wrote:
 > > allocated.  It brings a cache miss.  This commit fixes this defect.
 > > Meanwhile, if an inode has no any extent, this extent hole also will
 > > be cached.
+> > 
+> > Cc: "Theodore Ts'o" <tytso@mit.edu>
+> > Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+> > Cc: Jan Kara <jack@suse.cz>
+> > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+>   So I agree with this change, it certainly doesn't make things worse. But
+> when looking into ext4_ext_put_gap_in_cache() I have one question: That
+> function uses ext4_find_delalloc_range() to check that the intended range
+> doesn't have any delalloc blocks in it. However it doesn't make any effort
+> to put a smaller hole in cache - for example if we have blocks allocated
+> like:
 > 
-> Hi Zheng,
+> 5-6 = delalloc
+> 7-10 = allocated
 > 
-> I thought the reason why we have the EXT4_GET_BLOCKS_NO_PUT_HOLE flag
-> is because in ext4_da_map_blocks(), if there is a hole, we will be
-> immediately following it up with a call to ext4_es_insert_extent() to
-> fill in the hole with the EXTENT_STATUS_DELAYED flag.  The only time
-> we don't is if we run into an ENOSPC error.
-> 
-> Am I missing something?
+> and ext4_ext_put_gap_in_cache() is called for block 0, the function won't
+> put anything into cache although it could put range 0-4 in the cache as a
+> hole. Why is that?
 
-Yes, you are right.  The purpose is used to do the work like you said
-above.  As the commit log described this flag brings a huge number of
-cache misses when an empty file is written.  So it might be worth
-putting a hole in the cache when delalloc is enabled.
+Oops, it should put range 0-4 in the cache.  Thanks for pointing it out.
+I will fix it.
 
 Regards,
                                                 - Zheng
