@@ -1,47 +1,66 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3 3/6] ext4: cache extent hole in extent status tree for
- ext4_da_map_blocks()
-Date: Thu, 4 Sep 2014 11:54:36 -0400
-Message-ID: <20140904155436.GG4047@thunk.org>
-References: <1407382553-24256-1-git-send-email-wenqing.lz@taobao.com>
- <1407382553-24256-4-git-send-email-wenqing.lz@taobao.com>
- <20140902024350.GS8974@thunk.org>
- <20140904130448.GB13193@gmail.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCHv4 0/3] new APIs to allocate buffer-cache with user
+ specific flag
+Date: Thu, 4 Sep 2014 15:16:12 -0700
+Message-ID: <20140904151612.7bf5b813069ff78973e01571@linux-foundation.org>
+References: <1409815781-28011-1-git-send-email-gioh.kim@lge.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.cz>, Zheng Liu <wenqing.lz@taobao.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: jack@suse.cz, tytso@mit.edu, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	viro@zeniv.linux.org.uk, paulmck@linux.vnet.ibm.com,
+	peterz@infradead.org, adilger.kernel@dilger.ca, minchan@kernel.org,
+	js1304@gmail.com, gunho.lee@lge.com
+To: Gioh Kim <gioh.kim@lge.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37968 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750882AbaIDPyo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Sep 2014 11:54:44 -0400
-Content-Disposition: inline
-In-Reply-To: <20140904130448.GB13193@gmail.com>
+Received: from mail.linuxfoundation.org ([140.211.169.12]:56593 "EHLO
+	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755467AbaIDWQO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Sep 2014 18:16:14 -0400
+In-Reply-To: <1409815781-28011-1-git-send-email-gioh.kim@lge.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 04, 2014 at 09:04:48PM +0800, Zheng Liu wrote:
-> > I thought the reason why we have the EXT4_GET_BLOCKS_NO_PUT_HOLE flag
-> > is because in ext4_da_map_blocks(), if there is a hole, we will be
-> > immediately following it up with a call to ext4_es_insert_extent() to
-> > fill in the hole with the EXTENT_STATUS_DELAYED flag.  The only time
-> > we don't is if we run into an ENOSPC error.
-> > 
-> > Am I missing something?
+On Thu,  4 Sep 2014 16:29:38 +0900 Gioh Kim <gioh.kim@lge.com> wrote:
+
+> This patch try to solve problem that a long-lasting page caches of
+> ext4 superblock and journaling of superblock disturb page migration.
 > 
-> Yes, you are right.  The purpose is used to do the work like you said
-> above.  As the commit log described this flag brings a huge number of
-> cache misses when an empty file is written.  
+> I've been testing CMA feature on my ARM-based platform
+> and found that two page caches cannot be migrated.
+> They are page caches of superblock of ext4 filesystem and its journaling data.
+> 
+> Current ext4 reads superblock with sb_bread() that allocates page
+> from movable area. But the problem is that ext4 hold the page until
+> it is unmounted. If root filesystem is ext4 the page cannot be migrated
+> forever.
+> And also the journaling data for the superblock cannot be migreated.
+> 
+> I introduce new APIs that allocates page cache with specific flag passed by an
+> argument.
+> *_gfp APIs are for user want to set page allocation flag for page cache
+> allocation.
+> And *_unmovable APIs are for the user wants to allocate page cache from
+> non-movable area.
+> 
+> It is useful for ext4/ext3 and others that want to hold page cache for a long
+> time.
 
-Right, and I was trying to figure out why that was happening, because
-it looked like in the normal case we would immediately fill in the
-hole afterwards.  I was goign to try doing some tracing to understand
-why this was resulting a huge number of cache misses, but I haven't
-had time to do that investigation yet.  Can you sketch out the
-scenario where this was leading to so many cache misses?
+Could we please have some detailed information about the real-world
+effect of this patchset?
 
-Thanks,
+You earlier said "My test platform is currently selling item in the
+market.  And also I test my patch when my platform is working as if
+real user uses it.".
 
-					- Ted
+But what were the problems which were observed in standard kernels and
+what effect did this patchset have upon them?  Some quantitative
+measurements will really help here.
+
+I'm trying to get an understanding of how effective and important the
+change is, whether others will see similar benefits.  I'd also like to
+understand how *complete* the fix is - were the problems which you
+observed completely fixed, or do outstanding problems remain?
+
+Thanks.
