@@ -1,66 +1,87 @@
-From: Li Xi <pkuelelixi@gmail.com>
-Subject: Re: [PATCH] ext4: fix deadlock of i_data_sem in ext4_mark_inode_dirty()
-Date: Fri, 5 Sep 2014 12:44:49 +0800
-Message-ID: <CAPTn0cCk2LGxOQxxYXDHCAM2Whnh38Dg-pxRduQeik1DDG5aeQ@mail.gmail.com>
-References: <CAPTn0cAPYMMDx-_RvL22Mf8YMcGib65YbiwfzDhCkEO7-OtHjw@mail.gmail.com>
-	<20140905015935.GF4364@thunk.org>
-	<CAPTn0cBcy+hHeC0oUk8eVrqHUTF8N05puKmZPBOKrafvaQHhxA@mail.gmail.com>
-	<20140905033054.GE1971@thunk.org>
+From: Joonsoo Kim <iamjoonsoo.kim@lge.com>
+Subject: Re: [PATCHv4 0/3] new APIs to allocate buffer-cache with user
+ specific flag
+Date: Fri, 5 Sep 2014 16:32:48 +0900
+Message-ID: <20140905073247.GA31827@js1304-P5Q-DELUXE>
+References: <1409815781-28011-1-git-send-email-gioh.kim@lge.com>
+ <20140904151612.7bf5b813069ff78973e01571@linux-foundation.org>
+ <540905B1.1050200@lge.com>
+ <20140905011419.GE4364@thunk.org>
+ <20140905014808.GA26070@js1304-P5Q-DELUXE>
+ <20140905031735.GD1971@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@dilger.ca>, Jan Kara <jack@suse.cz>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Ts'o <tytso@mit.edu>, Gioh Kim <gioh.kim@lge.com>,
+	Andrew Morton <akpm@linux-foundation.org>, jack@suse.cz,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+	paulmck@linux.vnet.ibm.com, peterz@infradead.org,
+	adilger.kernel@dilger.ca, minchan@kernel.org, gunho.lee@lge.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:43664 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750711AbaIEEou (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Sep 2014 00:44:50 -0400
-Received: by mail-ie0-f171.google.com with SMTP id rp18so13119660iec.30
-        for <linux-ext4@vger.kernel.org>; Thu, 04 Sep 2014 21:44:49 -0700 (PDT)
-In-Reply-To: <20140905033054.GE1971@thunk.org>
+Received: from LGEMRELSE7Q.lge.com ([156.147.1.151]:46518 "EHLO
+	lgemrelse7q.lge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753529AbaIEHb6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Sep 2014 03:31:58 -0400
+Content-Disposition: inline
+In-Reply-To: <20140905031735.GD1971@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 5, 2014 at 11:30 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Fri, Sep 05, 2014 at 10:29:16AM +0800, Li Xi wrote:
->> On Fri, Sep 5, 2014 at 9:59 AM, Theodore Ts'o <tytso@mit.edu> wrote:
->> > On Thu, Sep 04, 2014 at 04:49:58PM +0800, Li Xi wrote:
->> >> There are multiple places where ext4_mark_inode_dirty() is called holding
->> >> write lock of EXT4_I(inode)->i_data_sem. However, if
->> >> ext4_mark_inode_dirty() needs to expand inode size, this will cause
->> >> deadlock when ext4_xattr_block_set() tries to get read lock of
->> >> EXT4_I(inode)->i_data_sem.
->> >
->> > This was with inline data enabled, right?
->> I hit this problem when starting a kernel with project quota support for ext4.
->> The ext4 file system was not formated with project quota feature so it tried
->> to extend the space for project ID. And this problem happened every time
->> when the kernel was rebooted. Inline data was not enable on that file
->> system. I am not sure whether this problem will happen under other
->> circumstances. :)
->
-> I'm not understanding why expanding the inode size would result in
-> needing to call ext4_xattr_block_set.  Was that becuse you were
-> storing the project quota in the xattr?  I'm just trying to understand
-> the context.
-Yeah, you are right. The problem happened when the project ID was
-saved as xattr. And I can't reproduce the same problem with the new
-patches.
->
-> Please also note that a recent set of patches (sent to the ext4 list
-> and in the ext4 git tree) has removed the need for taking i_data_sem
-> in xattr.c:
->
-> http://patchwork.ozlabs.org/patch/385347
-> http://patchwork.ozlabs.org/patch/385348
-> http://patchwork.ozlabs.org/patch/385346
->
-> (It's the 2/3 patch that removes taking i_data_sem read lock in xattr.c.)
->
-Great! Please ignore this patch since it won't be a problem
-any more.
+On Thu, Sep 04, 2014 at 11:17:35PM -0400, Theodore Ts'o wrote:
+> Joonson,
+> 
+> Thanks for the update.  I've applied Gioh's patches to the ext4 tree,
+> but I'd appreciate a further clarification.  My understanding with the
+> problem you were trying to address is that with the current CMA
+> implementation, kswapd was getting activiated too early, yes?
+> 
+> But it would still be a good idea to try to use non-moveable memory in
+> preference in favor of CMA memory; even if the page migration can move
+> the contents of the page elsewhere, wouldn't be better to avoid
+> needing to do the page migation in the first place.  Given that the
+> ext4 file systems are getting mounted very early in the boot process,
+> when there should be plenty of CMA and non-CMA elegible memory
+> available, why was CMA memory getting selected for the buffer cache
+> allocations when non-CMA memory available?
+> 
+> In other words, even without Gioh's patch to force the use of non-CMA
+> eligible memory, wouldn't it be better if the memory allocator used
+> non-CMA preferentially if it were available.  This should be
+> orthogonal to whether or not kswaped gets activiated, right?
 
- Regards,
+Hello,
 
-                                                 - Li Xi
+Yes, similar with your understanding.
+
+With current CMA implementation, page allocator doesn't returns
+freepages in CMA reserved region until there is no freepage of movable
+type. If there is no freepage of movable type, freepages in CMA reserved
+region is allocated via fallback allocation. This approach is simliar
+with what you suggested.
+
+In that situation, kswapd would start to reclaim because free memory
+is already too low. By this reclaim, freepages of movable type are
+refilled and page allocator would stop to allocate freepages in CMA
+reserved region. So, with above approach, system would work as if
+it has only (total memory - CMA reserved memory) memory.
+
+CMA is intended for using reserved memory on general purpose when
+reserved memory isn't used. But current implementation don't do that.
+My patch fixes this situation by allocating freepages in CMA reserved
+region aggrressively.
+
+I also test another approach, such as allocate freepage in CMA
+reserved region as late as possible, which is also similar to your
+suggestion and this doesn't works well. When reclaim is started,
+too many pages reclaim at once, because lru list has successive pages
+in CMA region and these doesn't help kswapd's reclaim. kswapd stop
+reclaiming when freepage count is recovered. But, CMA pages isn't
+counted for freepage for kswapd because they can't be usable for
+unmovable, reclaimable allocation. So kswap reclaim too many pages
+at once unnecessarilly.
+
+More detailed explanation may be in following link.
+https://lkml.org/lkml/2014/5/28/57
+
+Thanks.
+
