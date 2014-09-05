@@ -1,49 +1,58 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCHv4 0/3] new APIs to allocate buffer-cache with user
- specific flag
-Date: Thu, 4 Sep 2014 23:17:35 -0400
-Message-ID: <20140905031735.GD1971@thunk.org>
-References: <1409815781-28011-1-git-send-email-gioh.kim@lge.com>
- <20140904151612.7bf5b813069ff78973e01571@linux-foundation.org>
- <540905B1.1050200@lge.com>
- <20140905011419.GE4364@thunk.org>
- <20140905014808.GA26070@js1304-P5Q-DELUXE>
+Subject: Re: [PATCH] ext4: fix deadlock of i_data_sem in
+ ext4_mark_inode_dirty()
+Date: Thu, 4 Sep 2014 23:30:54 -0400
+Message-ID: <20140905033054.GE1971@thunk.org>
+References: <CAPTn0cAPYMMDx-_RvL22Mf8YMcGib65YbiwfzDhCkEO7-OtHjw@mail.gmail.com>
+ <20140905015935.GF4364@thunk.org>
+ <CAPTn0cBcy+hHeC0oUk8eVrqHUTF8N05puKmZPBOKrafvaQHhxA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Gioh Kim <gioh.kim@lge.com>,
-	Andrew Morton <akpm@linux-foundation.org>, jack@suse.cz,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-	paulmck@linux.vnet.ibm.com, peterz@infradead.org,
-	adilger.kernel@dilger.ca, minchan@kernel.org, gunho.lee@lge.com
-To: Joonsoo Kim <iamjoonsoo.kim@lge.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@dilger.ca>, Jan Kara <jack@suse.cz>
+To: Li Xi <pkuelelixi@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:39200 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752812AbaIEDw4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Sep 2014 23:52:56 -0400
 Content-Disposition: inline
-In-Reply-To: <20140905014808.GA26070@js1304-P5Q-DELUXE>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <CAPTn0cBcy+hHeC0oUk8eVrqHUTF8N05puKmZPBOKrafvaQHhxA@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Joonson,
+On Fri, Sep 05, 2014 at 10:29:16AM +0800, Li Xi wrote:
+> On Fri, Sep 5, 2014 at 9:59 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> > On Thu, Sep 04, 2014 at 04:49:58PM +0800, Li Xi wrote:
+> >> There are multiple places where ext4_mark_inode_dirty() is called holding
+> >> write lock of EXT4_I(inode)->i_data_sem. However, if
+> >> ext4_mark_inode_dirty() needs to expand inode size, this will cause
+> >> deadlock when ext4_xattr_block_set() tries to get read lock of
+> >> EXT4_I(inode)->i_data_sem.
+> >
+> > This was with inline data enabled, right?
+> I hit this problem when starting a kernel with project quota support for ext4.
+> The ext4 file system was not formated with project quota feature so it tried
+> to extend the space for project ID. And this problem happened every time
+> when the kernel was rebooted. Inline data was not enable on that file
+> system. I am not sure whether this problem will happen under other
+> circumstances. :)
 
-Thanks for the update.  I've applied Gioh's patches to the ext4 tree,
-but I'd appreciate a further clarification.  My understanding with the
-problem you were trying to address is that with the current CMA
-implementation, kswapd was getting activiated too early, yes?
+I'm not understanding why expanding the inode size would result in
+needing to call ext4_xattr_block_set.  Was that becuse you were
+storing the project quota in the xattr?  I'm just trying to understand
+the context.
 
-But it would still be a good idea to try to use non-moveable memory in
-preference in favor of CMA memory; even if the page migration can move
-the contents of the page elsewhere, wouldn't be better to avoid
-needing to do the page migation in the first place.  Given that the
-ext4 file systems are getting mounted very early in the boot process,
-when there should be plenty of CMA and non-CMA elegible memory
-available, why was CMA memory getting selected for the buffer cache
-allocations when non-CMA memory available?
+Please also note that a recent set of patches (sent to the ext4 list
+and in the ext4 git tree) has removed the need for taking i_data_sem
+in xattr.c:
 
-In other words, even without Gioh's patch to force the use of non-CMA
-eligible memory, wouldn't it be better if the memory allocator used
-non-CMA preferentially if it were available.  This should be
-orthogonal to whether or not kswaped gets activiated, right?
+http://patchwork.ozlabs.org/patch/385347
+http://patchwork.ozlabs.org/patch/385348
+http://patchwork.ozlabs.org/patch/385346
+
+(It's the 2/3 patch that removes taking i_data_sem read lock in xattr.c.)
 
 Regards,
 
-							- Ted
+						- Ted
