@@ -1,50 +1,86 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCHv4 0/3] new APIs to allocate buffer-cache with user
- specific flag
-Date: Fri, 5 Sep 2014 10:14:16 -0400
-Message-ID: <20140905141416.GA1510@thunk.org>
-References: <1409815781-28011-1-git-send-email-gioh.kim@lge.com>
- <20140904151612.7bf5b813069ff78973e01571@linux-foundation.org>
- <540905B1.1050200@lge.com>
- <20140905011419.GE4364@thunk.org>
- <20140905014808.GA26070@js1304-P5Q-DELUXE>
- <20140905031735.GD1971@thunk.org>
- <20140905073247.GA31827@js1304-P5Q-DELUXE>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 2/2] jbd2: fix descriptor block size handling errors with
+ journal_csum
+Date: Fri, 5 Sep 2014 21:01:54 -0700
+Message-ID: <20140906040154.GA27293@birch.djwong.org>
+References: <BAY406-EAS2912CB28A4B081AF994BDA2FDC70@phx.gbl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Gioh Kim <gioh.kim@lge.com>,
-	Andrew Morton <akpm@linux-foundation.org>, jack@suse.cz,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-	paulmck@linux.vnet.ibm.com, peterz@infradead.org,
-	adilger.kernel@dilger.ca, minchan@kernel.org, gunho.lee@lge.com
-To: Joonsoo Kim <iamjoonsoo.kim@lge.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: TR Reardon <thomas_reardon@hotmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:50366 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750721AbaIFEB7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 6 Sep 2014 00:01:59 -0400
 Content-Disposition: inline
-In-Reply-To: <20140905073247.GA31827@js1304-P5Q-DELUXE>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <BAY406-EAS2912CB28A4B081AF994BDA2FDC70@phx.gbl>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 05, 2014 at 04:32:48PM +0900, Joonsoo Kim wrote:
-> I also test another approach, such as allocate freepage in CMA
-> reserved region as late as possible, which is also similar to your
-> suggestion and this doesn't works well. When reclaim is started,
-> too many pages reclaim at once, because lru list has successive pages
-> in CMA region and these doesn't help kswapd's reclaim. kswapd stop
-> reclaiming when freepage count is recovered. But, CMA pages isn't
-> counted for freepage for kswapd because they can't be usable for
-> unmovable, reclaimable allocation. So kswap reclaim too many pages
-> at once unnecessarilly.
+On Tue, Sep 02, 2014 at 03:28:33PM -0400, TR Reardon wrote:
+> There may still be problems with this patch.  After applying to 3.16.1, I am now getting "can't enable checksumming v2 and v3 at the same time" errors on mount.  Initial mount/dismount work fine, but once fs is touched--forcing superblock update--it cannot be mounted anew.
+> 
+> Note results from dumpe2fs  (without recent patches)
+> 
+> Journal backup:           inode blocks
+> Checksum type:            crc32c
+> Checksum:                 0x39141b69
+> Journal features:         journal_incompat_revoke journal_64bit journal_async_commit journal_checksum_v2 FEATURE_I4
+> Journal size:             128M
+> Journal length:           32768
+> Journal sequence:         0x00012aa4
+> Journal start:            0
+> Journal checksum type:    crc32c
+> Journal checksum:         0x3952b695
+> 
+> Seems that the old v2 flag is not cleared on dismount?
 
-Have you considered putting the pages in a CMA region in a separate
-zone?  After all, that's what we originally did with brain-damaged
-hardware that could only DMA into the low 16M of memory.  We just
-reserved a separate zone for that?  That way, we could do
-zone-directed reclaim and free pages in that zone, if that was what
-was actually needed.
+Yep.  Thanks for catching this.
 
-But if we would also preferentially avoid using pages from that zone
-unless there was no choice, in order to avoid needing to do that
-zone-directed reclaim.  Perhaps a similar solution could do done here?
-
-	      			  	  - Ted
+--D
+> 
+> 
+> 
+> --- Original Message ---
+> 
+> From: "Theodore Ts'o" <tytso@mit.edu>
+> Sent: August 25, 2014 10:44 PM
+> To: "Darrick J. Wong" <darrick.wong@oracle.com>
+> Cc: linux-ext4@vger.kernel.org, "TR Reardon" <thomas_reardon@hotmail.com>
+> Subject: Re: [PATCH 2/2] jbd2: fix descriptor block size handling errors with journal_csum
+> 
+> On Fri, Aug 15, 2014 at 01:43:59PM -0700, Darrick J. Wong wrote:
+> > From: Darrick J. Wong <darrick.wong@oracle.com>
+> >
+> > It turns out that there are some serious problems with the on-disk
+> > format of journal checksum v2.  The foremost is that the function to
+> > calculate descriptor tag size returns sizes that are too big.  This
+> > causes alignment issues on some architectures and is compounded by the
+> > fact that some parts of jbd2 use the structure size (incorrectly) to
+> > determine the presence of a 64bit journal instead of checking the
+> > feature flags.
+> >
+> > Therefore, introduce journal checksum v3, which enlarges the
+> > descriptor block tag format to allow for full 32-bit checksums of
+> > journal blocks, fix the journal tag function to return the correct
+> > sizes, and fix the jbd2 recovery code to use feature flags to
+> > determine 64bitness.
+> >
+> > Add a few function helpers so we don't have to open-code quite so
+> > many pieces.
+> >
+> > Switching to a 16-byte block size was found to increase journal size
+> > overhead by a maximum of 0.1%, to convert a 32-bit journal with no
+> > checksumming to a 32-bit journal with checksum v3 enabled.
+> >
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > Reported-by: TR Reardon <thomas_reardon@hotmail.com>
+> 
+> Thanks, applied.
+> 
+>                                         - Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
