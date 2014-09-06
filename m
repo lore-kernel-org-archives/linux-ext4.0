@@ -1,48 +1,64 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: journal_dev + metadata_csum issues
-Date: Sat, 6 Sep 2014 00:13:20 -0700
-Message-ID: <20140906071320.GC27293@birch.djwong.org>
-References: <BAY406-EAS34578C88C7F39934F1D8730FDC50@phx.gbl>
+Subject: Re: [PATCH v2] ext4: include journal blocks of internal journal in
+ df overhead calcs
+Date: Sat, 6 Sep 2014 13:17:36 -0700
+Message-ID: <20140906201736.GC10351@birch.djwong.org>
+References: <1408084971-1456-1-git-send-email-chintzung@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: TR Reardon <thomas_reardon@hotmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:35541 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750856AbaIFHNZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 6 Sep 2014 03:13:25 -0400
+Cc: Chin-Tsung Cheng <chintzung@gmail.com>, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: tytso@mit.edu
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <BAY406-EAS34578C88C7F39934F1D8730FDC50@phx.gbl>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1408084971-1456-1-git-send-email-chintzung@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Sep 04, 2014 at 12:14:32AM -0400, TR Reardon wrote:
-> 1) tune2fs hiccups when presented with journal device fs.  Should it instead
-> at least report "this is a journal device" rather than "invalid super block"?
+On Fri, Aug 15, 2014 at 02:42:51PM +0800, Chin-Tsung Cheng wrote:
+> The journal blocks of external journal device should not
+> be counted as overhead.
 
-Yes.  e2fsck/debugfs seem to issue the 'unsupported features' complaint but
-without the 'invalid superblock' wording.
+Hi Ted,
 
-> 2) no way to create journal_dev with metadata_csum.  This would provide
-> checksum for the fs superblock.
+Would you mind queueing this one up for 3.17?  It fixes this problem:
 
-Not sure how useful this is since most of the SB is irrelevant here.  But I
-don't see any reason why we shouldn't let users turn it on.
+# df /mnt
+/dev/sda      64Z   64Z  2.8G 100% /mnt
 
-> 3) dumpe2fs should still display journal flags for journal_dev; currently it
-> fails to display journal flags.
+...which is a regression introduced in commit 0875a2b448 ("ext4: include
+journal blocks in df overhead calcs") when one creates an ext4 with an
+external journal.
 
-Ick.  Yes, that should work.
-
-> 4) s_jnl_blocks in the superblock should be zeroed when removing a journal
-> (ie ^has_journal) or when setting the journal to journal_dev.  Currently, the
-> legacy (now dead) block list is maintained.  I'd argue that will invite
-> misuse.
-
-Seems like a reasonable precaution.
-
-Now, does anyone know why ext4 reports a df size of 64ZB when I create an
-external journal FS? :)
+It doesn't look like this patch is in any upstream tree.
 
 --D
+
+> 
+> Signed-off-by: Chin-Tsung Cheng <chintzung@gmail.com>
+> ---
+>  fs/ext4/super.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 32b43ad..a80b122 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -3316,8 +3316,8 @@ int ext4_calculate_overhead(struct super_block *sb)
+>  			memset(buf, 0, PAGE_SIZE);
+>  		cond_resched();
+>  	}
+> -	/* Add the journal blocks as well */
+> -	if (sbi->s_journal)
+> +	/* Add the internal journal blocks as well */
+> +	if (sbi->s_journal && !sbi->journal_bdev)
+>  		overhead += EXT4_NUM_B2C(sbi, sbi->s_journal->j_maxlen);
+>  
+>  	sbi->s_overhead = overhead;
+> -- 
+> 1.9.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
