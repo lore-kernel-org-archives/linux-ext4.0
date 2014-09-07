@@ -1,62 +1,97 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: use mkfs.ext4 -F instead of piping in yes
-Date: Sun,  7 Sep 2014 08:29:02 -0400
-Message-ID: <1410092942-22201-1-git-send-email-tytso@mit.edu>
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>,
-	Eryu Guan <eguan@redhat.com>
-To: fstests@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:42340 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751151AbaIGM3V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 7 Sep 2014 08:29:21 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Daniel Bomar <dbdaniel42@gmail.com>
+Subject: [PATCH] ext4: Fixed styling issues
+Date: Sun,  7 Sep 2014 07:45:05 -0500
+Message-ID: <1410093905-15431-1-git-send-email-dbdaniel42@gmail.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Daniel Bomar <dbdaniel42@gmail.com>
+To: tytso@mit.edu, adilger.kernel@dilger.ca
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Using "yes | mkfs.ext4 ..." results in the error message results in
-the test failing, at least for some versions of e2fsprogs:
+Fixed styling issues as reported by scripts/checkpatch.pl
 
-    +yes: standard output: Broken pipe
-    +yes: write error
-
-It better to use the -F option, which will eliminate the questions.
-
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-Cc: Eryu Guan <eguan@redhat.com>
+Signed-off-by: Daniel Bomar <dbdaniel42@gmail.com>
 ---
- tests/ext4/003 | 2 +-
- tests/ext4/306 | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h | 29 ++++++++++++++---------------
+ 1 file changed, 14 insertions(+), 15 deletions(-)
 
-diff --git a/tests/ext4/003 b/tests/ext4/003
-index 572e685..a2e9d75 100755
---- a/tests/ext4/003
-+++ b/tests/ext4/003
-@@ -43,7 +43,7 @@ _require_ext4_bigalloc
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b0c225c..3728c38 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -282,8 +282,7 @@ struct ext4_io_submit {
+ /*
+  * Structure of a blocks group descriptor
+  */
+-struct ext4_group_desc
+-{
++struct ext4_group_desc {
+ 	__le32	bg_block_bitmap_lo;	/* Blocks bitmap block */
+ 	__le32	bg_inode_bitmap_lo;	/* Inodes bitmap block */
+ 	__le32	bg_inode_table_lo;	/* Inodes table block */
+@@ -1192,7 +1191,7 @@ struct ext4_sb_info {
+ 	unsigned int s_cluster_ratio;	/* Number of blocks per cluster */
+ 	unsigned int s_cluster_bits;	/* log2 of s_cluster_ratio */
+ 	loff_t s_bitmap_maxbytes;	/* max bytes for bitmap files */
+-	struct buffer_head * s_sbh;	/* Buffer containing the super block */
++	struct buffer_head *s_sbh;	/* Buffer containing the super block */
+ 	struct ext4_super_block *s_es;	/* Pointer to the super block in the buffer */
+ 	struct buffer_head **s_group_desc;
+ 	unsigned int s_mount_opt;
+@@ -1481,23 +1480,23 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+  * Feature set definitions
+  */
  
- rm -f $seqres.full
+-#define EXT4_HAS_COMPAT_FEATURE(sb,mask)			\
++#define EXT4_HAS_COMPAT_FEATURE(sb, mask)			\
+ 	((EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask)) != 0)
+-#define EXT4_HAS_RO_COMPAT_FEATURE(sb,mask)			\
++#define EXT4_HAS_RO_COMPAT_FEATURE(sb, mask)			\
+ 	((EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask)) != 0)
+-#define EXT4_HAS_INCOMPAT_FEATURE(sb,mask)			\
++#define EXT4_HAS_INCOMPAT_FEATURE(sb, mask)			\
+ 	((EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask)) != 0)
+-#define EXT4_SET_COMPAT_FEATURE(sb,mask)			\
++#define EXT4_SET_COMPAT_FEATURE(sb, mask)			\
+ 	EXT4_SB(sb)->s_es->s_feature_compat |= cpu_to_le32(mask)
+-#define EXT4_SET_RO_COMPAT_FEATURE(sb,mask)			\
++#define EXT4_SET_RO_COMPAT_FEATURE(sb, mask)			\
+ 	EXT4_SB(sb)->s_es->s_feature_ro_compat |= cpu_to_le32(mask)
+-#define EXT4_SET_INCOMPAT_FEATURE(sb,mask)			\
++#define EXT4_SET_INCOMPAT_FEATURE(sb, mask)			\
+ 	EXT4_SB(sb)->s_es->s_feature_incompat |= cpu_to_le32(mask)
+-#define EXT4_CLEAR_COMPAT_FEATURE(sb,mask)			\
++#define EXT4_CLEAR_COMPAT_FEATURE(sb, mask)			\
+ 	EXT4_SB(sb)->s_es->s_feature_compat &= ~cpu_to_le32(mask)
+-#define EXT4_CLEAR_RO_COMPAT_FEATURE(sb,mask)			\
++#define EXT4_CLEAR_RO_COMPAT_FEATURE(sb, mask)			\
+ 	EXT4_SB(sb)->s_es->s_feature_ro_compat &= ~cpu_to_le32(mask)
+-#define EXT4_CLEAR_INCOMPAT_FEATURE(sb,mask)			\
++#define EXT4_CLEAR_INCOMPAT_FEATURE(sb, mask)			\
+ 	EXT4_SB(sb)->s_es->s_feature_incompat &= ~cpu_to_le32(mask)
  
--yes | mkfs.ext4 -O bigalloc -C 65536  -g 256 $SCRATCH_DEV 512m \
-+mkfs.ext4 -F -O bigalloc -C 65536  -g 256 $SCRATCH_DEV 512m \
- 	>> $seqres.full 2>&1
- _scratch_mount || _fail "couldn't mount fs"
+ #define EXT4_FEATURE_COMPAT_DIR_PREALLOC	0x0001
+@@ -1749,7 +1748,7 @@ static inline u32 ext4_chksum(struct ext4_sb_info *sbi, u32 crc,
+ 	} desc;
+ 	int err;
  
-diff --git a/tests/ext4/306 b/tests/ext4/306
-index fd50b0e..fd5c3a2 100755
---- a/tests/ext4/306
-+++ b/tests/ext4/306
-@@ -48,7 +48,7 @@ _require_scratch
- rm -f $seqres.full
+-	BUG_ON(crypto_shash_descsize(sbi->s_chksum_driver)!=sizeof(desc.ctx));
++	BUG_ON(crypto_shash_descsize(sbi->s_chksum_driver) != sizeof(desc.ctx));
  
- # Make a small ext4 fs with extents disabled & mount it
--yes | mkfs.ext4 -O ^extents,^64bit $SCRATCH_DEV 512m >> $seqres.full 2>&1
-+mkfs.ext4 -F -O ^extents,^64bit $SCRATCH_DEV 512m >> $seqres.full 2>&1
- _scratch_mount || _fail "couldn't mount fs"
+ 	desc.shash.tfm = sbi->s_chksum_driver;
+ 	desc.shash.flags = 0;
+@@ -1971,9 +1970,9 @@ extern int ext4_claim_free_clusters(struct ext4_sb_info *sbi,
+ 				    s64 nclusters, unsigned int flags);
+ extern ext4_fsblk_t ext4_count_free_clusters(struct super_block *);
+ extern void ext4_check_blocks_bitmap(struct super_block *);
+-extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
++extern struct ext4_group_desc *ext4_get_group_desc(struct super_block *sb,
+ 						    ext4_group_t block_group,
+-						    struct buffer_head ** bh);
++						    struct buffer_head **bh);
+ extern int ext4_should_retry_alloc(struct super_block *sb, int *retries);
  
- # Create a small non-extent-based file
+ extern struct buffer_head *ext4_read_block_bitmap_nowait(struct super_block *sb,
 -- 
 2.1.0
-
