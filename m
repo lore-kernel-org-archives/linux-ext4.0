@@ -1,155 +1,62 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, WIP] ext4: add dummy_encryption mount option
-Date: Sat,  6 Sep 2014 19:30:40 -0400
-Message-ID: <1410046240-31255-1-git-send-email-tytso@mit.edu>
-Cc: mhalcrow@google.com, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: [PATCH] ext4: use mkfs.ext4 -F instead of piping in yes
+Date: Sun,  7 Sep 2014 08:29:02 -0400
+Message-ID: <1410092942-22201-1-git-send-email-tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>,
+	Eryu Guan <eguan@redhat.com>
+To: fstests@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:42002 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:42340 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751909AbaIFXbQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 6 Sep 2014 19:31:16 -0400
+	id S1751151AbaIGM3V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 7 Sep 2014 08:29:21 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ted lost his saving throw vs ecryptfs key management, so use a dummy
-key for testing purposes.  It appears the ecryptfs userspace ABI is
-mysteriously kconfig dependent, or there is some mysterious silent
-failure if you are missing some kconfig option.  This also allows us
-to avoid bloating the kvm-xfstests image with ecryptfs-utils.
+Using "yes | mkfs.ext4 ..." results in the error message results in
+the test failing, at least for some versions of e2fsprogs:
+
+    +yes: standard output: Broken pipe
+    +yes: write error
+
+It better to use the -F option, which will eliminate the questions.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+Cc: Eryu Guan <eguan@redhat.com>
 ---
- fs/ext4/crypto.c | 40 +++++++++++++++++++++++++++++++++++++++-
- fs/ext4/ext4.h   |  1 +
- fs/ext4/super.c  |  8 +++++++-
- 3 files changed, 47 insertions(+), 2 deletions(-)
+ tests/ext4/003 | 2 +-
+ tests/ext4/306 | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-index 0428608..d0191d4 100644
---- a/fs/ext4/crypto.c
-+++ b/fs/ext4/crypto.c
-@@ -40,6 +40,7 @@ static mempool_t *ext4_bounce_page_pool = NULL;
+diff --git a/tests/ext4/003 b/tests/ext4/003
+index 572e685..a2e9d75 100755
+--- a/tests/ext4/003
++++ b/tests/ext4/003
+@@ -43,7 +43,7 @@ _require_ext4_bigalloc
  
- static LIST_HEAD(ext4_free_crypto_ctxs);
- static DEFINE_SPINLOCK(ext4_crypto_ctx_lock);
-+static struct ext4_encryption_key dummy_key;
+ rm -f $seqres.full
  
- /* TODO(mhalcrow): Remove for release */
- atomic_t ext4_dbg_pages = ATOMIC_INIT(0);
-@@ -1109,6 +1110,26 @@ static void ext4_generate_encryption_key(const struct dentry *dentry)
- 	get_random_bytes(key->raw, key->size);
- }
+-yes | mkfs.ext4 -O bigalloc -C 65536  -g 256 $SCRATCH_DEV 512m \
++mkfs.ext4 -F -O bigalloc -C 65536  -g 256 $SCRATCH_DEV 512m \
+ 	>> $seqres.full 2>&1
+ _scratch_mount || _fail "couldn't mount fs"
  
-+/*
-+ * Ted lost his saving throw vs ecryptfs key management, so use a
-+ * dummy key for testing purposes.  It appears the ecryptfs userspace
-+ * ABI is mysteriously kconfig dependent, or there is some mysterious
-+ * silent failure if you are missing some kconfig option.  This also
-+ * allows us to avoid bloating the kvm-xfstests image with
-+ * ecryptfs-utils.
-+ */
-+static void generate_dummy_key(struct inode *inode)
-+{
-+	int i;
-+
-+	dummy_key.mode = EXT4_SB(inode->i_sb)->s_default_encryption_mode;
-+	dummy_key.size = ext4_encryption_key_size(dummy_key.mode);
-+	for (i = 0; i < dummy_key.size; i++) {
-+		dummy_key.raw[i] = "NSAKEY"[i % 6];
-+	}
-+}
-+
-+
- /**
-  * ext4_set_crypto_key() - Generates and sets the encryption key for the inode
-  * @dentry: The dentry for the encryption key.
-@@ -1129,6 +1150,14 @@ int ext4_set_crypto_key(struct dentry *dentry)
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 	int res = 0;
+diff --git a/tests/ext4/306 b/tests/ext4/306
+index fd50b0e..fd5c3a2 100755
+--- a/tests/ext4/306
++++ b/tests/ext4/306
+@@ -48,7 +48,7 @@ _require_scratch
+ rm -f $seqres.full
  
-+	if (test_opt2(inode->i_sb, DUMMY_ENCRYPTION)) {
-+		if (unlikely(dummy_key.mode) == 0)
-+			generate_dummy_key(inode);
-+		ei->i_encryption_key = dummy_key;
-+		printk_ratelimited(KERN_ERR "Setting dummy encryption key\n");
-+		return 0;
-+	}
-+
- try_again:
- 	ext4_generate_encryption_key(dentry);
- 	res = ext4_wrap_key(wrapped_key_packet, &wrapped_key_packet_size,
-@@ -1209,8 +1238,17 @@ int ext4_get_crypto_key(const struct file *file)
- 				   wrapped_key_packet_size);
- 	struct inode *inode = file->f_mapping->host;
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	int res = ext4_get_root_packet(inode, root_packet, &root_packet_size);
-+	int res;
-+
-+	if (test_opt2(inode->i_sb, DUMMY_ENCRYPTION)) {
-+		if (unlikely(dummy_key.mode) == 0)
-+			generate_dummy_key(inode);
-+		ei->i_encryption_key = dummy_key;
-+		printk_ratelimited(KERN_ERR "Using dummy encryption key\n");
-+		return 0;
-+	}
+ # Make a small ext4 fs with extents disabled & mount it
+-yes | mkfs.ext4 -O ^extents,^64bit $SCRATCH_DEV 512m >> $seqres.full 2>&1
++mkfs.ext4 -F -O ^extents,^64bit $SCRATCH_DEV 512m >> $seqres.full 2>&1
+ _scratch_mount || _fail "couldn't mount fs"
  
-+	res = ext4_get_root_packet(inode, root_packet, &root_packet_size);
- 	if (res)
- 		goto out;
- 	res = ext4_unwrap_key(wrapped_key_packet,
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9f679f0..bc762a9 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1011,6 +1011,7 @@ struct ext4_inode_info {
- 						      blocks */
- #define EXT4_MOUNT2_HURD_COMPAT		0x00000004 /* Support HURD-castrated
- 						      file systems */
-+#define EXT4_MOUNT2_DUMMY_ENCRYPTION	0x80000000 /* Use dummy encryption */
- 
- #define clear_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt &= \
- 						~EXT4_MOUNT_##opt
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 1aa0d53..d2d5028 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1169,7 +1169,7 @@ enum {
- 	Opt_inode_readahead_blks, Opt_journal_ioprio,
- 	Opt_dioread_nolock, Opt_dioread_lock,
- 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
--	Opt_max_dir_size_kb, Opt_encrypt_key_sig,
-+	Opt_max_dir_size_kb, Opt_encrypt_key_sig, Opt_dummy_encryption
- };
- 
- static const match_table_t tokens = {
-@@ -1246,6 +1246,7 @@ static const match_table_t tokens = {
- 	{Opt_noinit_itable, "noinit_itable"},
- 	{Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
- 	{Opt_encrypt_key_sig, "encrypt_key_sig=%s"},
-+	{Opt_dummy_encryption, "dummy_encryption" },
- 	{Opt_removed, "check=none"},	/* mount option from ext2/3 */
- 	{Opt_removed, "nocheck"},	/* mount option from ext2/3 */
- 	{Opt_removed, "reservation"},	/* mount option from ext2/3 */
-@@ -1445,6 +1446,7 @@ static const struct mount_opts {
- 	{Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
- 	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
- 	{Opt_encrypt_key_sig, 0, MOPT_STRING},
-+	{Opt_dummy_encryption, 0, 0},
- 	{Opt_err, 0, 0}
- };
- 
-@@ -1568,6 +1570,10 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 		       ECRYPTFS_SIG_SIZE_HEX);
- 		sbi->s_default_encryption_wrapper_desc.wrapping_key_sig[
- 			ECRYPTFS_SIG_SIZE_HEX] = '\0';
-+	} else if (token == Opt_dummy_encryption) {
-+		sbi->s_default_encryption_mode =
-+			EXT4_ENCRYPTION_MODE_AES_256_XTS;
-+		set_opt2(sb, DUMMY_ENCRYPTION);
- 	} else if (token == Opt_stripe) {
- 		sbi->s_stripe = arg;
- 	} else if (token == Opt_resuid) {
+ # Create a small non-extent-based file
 -- 
 2.1.0
 
