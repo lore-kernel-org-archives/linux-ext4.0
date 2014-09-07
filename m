@@ -1,36 +1,33 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] ext4: Fixed styling issues
-Date: Sun, 7 Sep 2014 08:46:25 -0700
-Message-ID: <20140907154625.GA18274@infradead.org>
-References: <1410093905-15431-1-git-send-email-dbdaniel42@gmail.com>
- <CAFLxGvwVNTXw1uvzJaTyo6EQNgGWuAnGTi7s2+r3P+zF71zD3A@mail.gmail.com>
+Subject: Re: [PATCH] ext4: use mkfs.ext4 -F instead of piping in yes
+Date: Sun, 7 Sep 2014 08:49:27 -0700
+Message-ID: <20140907154927.GA23630@infradead.org>
+References: <1410092942-22201-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Daniel Bomar <dbdaniel42@gmail.com>, Theodore Ts'o <tytso@mit.edu>,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>
-To: Richard Weinberger <richard.weinberger@gmail.com>
+Cc: fstests@vger.kernel.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>,
+	Eryu Guan <eguan@redhat.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:44177 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:44252 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752437AbaIGPq3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Sep 2014 11:46:29 -0400
+	with ESMTP id S1752437AbaIGPt2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Sep 2014 11:49:28 -0400
 Content-Disposition: inline
-In-Reply-To: <CAFLxGvwVNTXw1uvzJaTyo6EQNgGWuAnGTi7s2+r3P+zF71zD3A@mail.gmail.com>
+In-Reply-To: <1410092942-22201-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 07, 2014 at 03:16:22PM +0200, Richard Weinberger wrote:
-> On Sun, Sep 7, 2014 at 2:45 PM, Daniel Bomar <dbdaniel42@gmail.com> wrote:
-> > Fixed styling issues as reported by scripts/checkpatch.pl
-> >
-> > Signed-off-by: Daniel Bomar <dbdaniel42@gmail.com>
+On Sun, Sep 07, 2014 at 08:29:02AM -0400, Theodore Ts'o wrote:
+> Using "yes | mkfs.ext4 ..." results in the error message results in
+> the test failing, at least for some versions of e2fsprogs:
 > 
-> Please don't run checkpatch.pl on in-kernel files.
+>     +yes: standard output: Broken pipe
+>     +yes: write error
+> 
+> It better to use the -F option, which will eliminate the questions.
 
-I don't think it's up to us to tell people what files they should run
-patches on on..  That doesn't mean that pure style cleanup patches in an
-area you don't understand are a good idea, so don't send them.  This is
-different when you actually do a major overhaul of an area, in which
-case I'd actually like to do a first pass of style cleanup and
-refactoring before submitting the real work.
+Looks good, but maybe we should have a $MKFS_EXT4_PROG variable similar
+to $MKFS_XFS_PROG so that we can set this in one place?
