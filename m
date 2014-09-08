@@ -1,41 +1,37 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: require fallocate support to run ext4/307
-Date: Mon,  8 Sep 2014 00:05:48 -0400
-Message-ID: <1410149148-26533-1-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: fstests@vger.kernel.org
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 2/2] ext4: speed up _require_ext4_bigalloc and
+ _require_ext4_mkfs_bigalloc
+Date: Mon, 8 Sep 2014 19:50:00 +1000
+Message-ID: <20140908095000.GD30012@dastard>
+References: <20140907192110.GC1066@thunk.org>
+ <1410141968-17551-1-git-send-email-tytso@mit.edu>
+ <1410141968-17551-2-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: fstests@vger.kernel.org, hch@infradead.org,
+	linux-ext4@vger.kernel.org, wangxg.fnst@cn.fujitsu.com,
+	eguan@redhat.com
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:42907 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750746AbaIHEF6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Sep 2014 00:05:58 -0400
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:32339 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752981AbaIHJuP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Sep 2014 05:50:15 -0400
+Content-Disposition: inline
+In-Reply-To: <1410141968-17551-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Some file system configurations don't support fallocate, which is
-required for e4defrag to run.  So add a _require_xfs_io_command to
-prevent a test failure if fallocate isn't supported in (for example)
-ext3 compatibility mode.
+On Sun, Sep 07, 2014 at 10:06:08PM -0400, Theodore Ts'o wrote:
+> We don't need to make a full-sized file system in order to test
+> whether "mkfs.ext4 -O bigalloc" works.
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>
----
- tests/ext4/307 | 1 +
- 1 file changed, 1 insertion(+)
+Why wouldn't you just use the "-n" option? If bigalloc is not
+supported, that should still fail, right?
 
-diff --git a/tests/ext4/307 b/tests/ext4/307
-index 081f819..673b9ce 100755
---- a/tests/ext4/307
-+++ b/tests/ext4/307
-@@ -64,6 +64,7 @@ _supported_os Linux
- _need_to_be_root
- _require_scratch
- _require_defrag
-+_require_xfs_io_command "falloc"
- 
- _scratch_mkfs_sized $((512 * 1024 * 1024)) >> $seqres.full 2>&1
- _scratch_mount
+Cheers,
+
+Dave.
 -- 
-2.1.0
-
+Dave Chinner
+david@fromorbit.com
