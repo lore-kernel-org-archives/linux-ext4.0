@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 18/25] tests: test how e2fsck recovers from corrupt journal
- superblocks
-Date: Mon, 08 Sep 2014 16:13:35 -0700
-Message-ID: <20140908231335.25904.49826.stgit@birch.djwong.org>
+Subject: [PATCH 19/25] tests: test e2fsck recovery of corrupt revoke blocks
+Date: Mon, 08 Sep 2014 16:13:41 -0700
+Message-ID: <20140908231341.25904.75703.stgit@birch.djwong.org>
 References: <20140908231135.25904.66591.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,56 +9,52 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:39426 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:39461 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755405AbaIHXNk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Sep 2014 19:13:40 -0400
+	with ESMTP id S1755405AbaIHXNs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Sep 2014 19:13:48 -0400
 In-Reply-To: <20140908231135.25904.66591.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Test e2fsck' ability to deal with corrupt journal superblock checksum
-and a bad magic.
+Test e2fsck' ability to deal with (a) revoke blocks with a bad
+checksum and (b) revoke blocks with an obviously bad block number.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- tests/j_corrupt_sb_csum/expect    |   21 +++++++++++++++
- tests/j_corrupt_sb_csum/image.gz  |  Bin
- tests/j_corrupt_sb_csum/name      |    1 +
- tests/j_corrupt_sb_csum/script    |   51 +++++++++++++++++++++++++++++++++++++
- tests/j_corrupt_sb_magic/expect   |   42 ++++++++++++++++++++++++++++++
- tests/j_corrupt_sb_magic/image.gz |  Bin
- tests/j_corrupt_sb_magic/name     |    1 +
- tests/j_corrupt_sb_magic/script   |   51 +++++++++++++++++++++++++++++++++++++
- 8 files changed, 167 insertions(+)
- create mode 100644 tests/j_corrupt_sb_csum/expect
- create mode 100644 tests/j_corrupt_sb_csum/image.gz
- create mode 100644 tests/j_corrupt_sb_csum/name
- create mode 100644 tests/j_corrupt_sb_csum/script
- create mode 100644 tests/j_corrupt_sb_magic/expect
- create mode 100644 tests/j_corrupt_sb_magic/image.gz
- create mode 100644 tests/j_corrupt_sb_magic/name
- create mode 100644 tests/j_corrupt_sb_magic/script
+ tests/j_corrupt_revoke_block/expect   |   17 +++++++++++
+ tests/j_corrupt_revoke_block/image.gz |  Bin
+ tests/j_corrupt_revoke_block/name     |    1 +
+ tests/j_corrupt_revoke_block/script   |   51 +++++++++++++++++++++++++++++++++
+ tests/j_corrupt_revoke_csum/expect    |   17 +++++++++++
+ tests/j_corrupt_revoke_csum/image.gz  |  Bin
+ tests/j_corrupt_revoke_csum/name      |    1 +
+ tests/j_corrupt_revoke_csum/script    |   51 +++++++++++++++++++++++++++++++++
+ 8 files changed, 138 insertions(+)
+ create mode 100644 tests/j_corrupt_revoke_block/expect
+ create mode 100644 tests/j_corrupt_revoke_block/image.gz
+ create mode 100644 tests/j_corrupt_revoke_block/name
+ create mode 100644 tests/j_corrupt_revoke_block/script
+ create mode 100644 tests/j_corrupt_revoke_csum/expect
+ create mode 100644 tests/j_corrupt_revoke_csum/image.gz
+ create mode 100644 tests/j_corrupt_revoke_csum/name
+ create mode 100644 tests/j_corrupt_revoke_csum/script
 
 
-diff --git a/tests/j_corrupt_sb_csum/expect b/tests/j_corrupt_sb_csum/expect
+diff --git a/tests/j_corrupt_revoke_block/expect b/tests/j_corrupt_revoke_block/expect
 new file mode 100644
-index 0000000..0493500
+index 0000000..52cda2c
 --- /dev/null
-+++ b/tests/j_corrupt_sb_csum/expect
-@@ -0,0 +1,21 @@
-+Journal superblock is corrupt.
-+Fix? yes
-+
++++ b/tests/j_corrupt_revoke_block/expect
+@@ -0,0 +1,17 @@
++test_filesys: recovering journal
 +Pass 1: Checking inodes, blocks, and sizes
 +Pass 2: Checking directory structure
 +Pass 3: Checking directory connectivity
 +Pass 4: Checking reference counts
 +Pass 5: Checking group summary information
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
 +test_filesys: 12/128 files (8.3% non-contiguous), 1092/2048 blocks
-+Exit status is 1
++Exit status is 0
 +Pass 1: Checking inodes, blocks, and sizes
 +Pass 2: Checking directory structure
 +Pass 3: Checking directory connectivity
@@ -68,56 +63,56 @@ index 0000000..0493500
 +test_filesys: 12/128 files (8.3% non-contiguous), 1092/2048 blocks
 +Exit status is 0
 +debugfs: cat /a
-+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!
- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!
- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!
- aaaaaaaaaa
++bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb!
+ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb!
+ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb!
+ bbbbbbbbbb
 \ No newline at end of file
-diff --git a/tests/j_corrupt_sb_csum/image.gz b/tests/j_corrupt_sb_csum/image.gz
+diff --git a/tests/j_corrupt_revoke_block/image.gz b/tests/j_corrupt_revoke_block/image.gz
 new file mode 100644
-index 0000000000000000000000000000000000000000..ee92f6b10a68ac7bb761e645969f612af7598b8b
+index 0000000000000000000000000000000000000000..b165d00b46676b6c35d974053ee557c1a757bc09
 GIT binary patch
-literal 3030
-zcmeH_|5MU;9LFiT(94}(Ds;<L+PCZGj+~^a6{Y92)ODE?Ly>Dt^N=s87y>FZ?8`OH
-zYJQs{)e_14ww7UNLSGiv@>_1|P!W}(ATtmT5RuP&KWzQbzu@`$<#o@y*DsI9^R@j4
-z7ns00cX~a1UPZW?@Qn}5lygoYNDn6D-rd#|)VzNK_Ez}27iE4f`R85PF}smPDR5kP
-zbke5pO`=P8T<UK8(rt=7wyQYW&$sB>{apv56Rr{%w>MY!DLDu$X@%FT$Sss>xyEr$
-z|35v_9AG2O^awn77Y<Zy9P(J6*5!p1T|C&QK<VD>EFU|>mIg;6=PVObl%|wwniqAv
-z^<GsHDr#?xFQv7}WKnkQ#7VlA7H3C>RdQYFobXLQ$$lNWs2@pxUluZy)m|yU<}5v%
-zi>tIUONE_5ZRY5TX7^fA{+S0+^W=~OMLF7g2<;76S;ee?%Nq6^b$N;4S&vl6n~pb}
-zsA%=f5G{(W`2pDLs8@N}{s1v85z?#rFBDo#M|EI|Z7Wz28;9|H*vDg1-&gylx7RQ8
-zb2CW#c4}xuA|7d0OZ9G|!C%wt^d-g>yxvmVxv|1JKdu6JJn}`m)_;uL?iz^i(W>1E
-zKb?MGRR&ORSrDAbgy@Gl3^fc+8>QfArxpYnx8e7JV-VcD{RZHzApXYg0PF1TuenDd
-zcpw^_Y$7b468N+4wP0xVw8pn*zr{^%8oYBHJK@>!M0i|<7aOt4%^Bw+A(TB;IZy>=
-z^;Gw-zaS{LARZgg^yWQ|J(Hn{PW;vf{k81a4WloEV0Y%dMu2GADcf(JQFhZ9y#pK;
-zBj;0e!SY>P%CYB!1xVdA-RwYIv)O}^0?#uYj>#)1#b==VNCyWRvM1B#mw*D9>5(pZ
-zj=6t%02M`4e9lvy9Yic2X4PfaM4@f<ufw}0!UQGdF@Kc&T;j;}@-$5Az8il;X&qmA
-zB-Ms3BkGAY($g~u-Kx}VsAme^7)%&dA7;NF9r%6c8Oaewg*mNZ+v7&9>pbd2q$TDR
-zH`RxfT0Hec$gVk3I8xMbX#t%X|KOI^umP{{(nN@zP;gso)+`Vu$5k^vG5t1)F#g3~
-z|6hyGYDMoP^n8wNjG9+xu|Njt{$VqV?0g%^zdDz+RW>?A2_Jigp+CoLcia^I`ISlJ
-zL}3en#;auHE<qv{7iJm-VU9%32v>K>+5!}0!|j)ovV%#d8e&x-jYPdI&W)A6F>{CO
-zoa%@CA4?+u#~FdkNCZz8@*uxBIdv)FusGgHENm;c&_zV6gb6X5$j+RDH~YAWm@u%<
-zo4Aom0iONbP!i+h;=@W=tppgk6s;8~Wlyj5n&sL2MR}QRD{UdnC#tlUI7or^&c-{@
-z#h5-2U)N0+Z2F({<FEaYnsL`}c6?dutr2c{6ft2ibOn$DLc=H2hJt{ZqNj3A%MBaT
-u?ZfffUNf*}VAUEJASbWmNi=RQtCnyLY|X&xG{76v69;z-J7KULuzvwe)<rY`
+literal 3038
+zcmeIw*;7*o6bA4JGbS}!El`RI5(f)q!c<Ze5NeTH#Ssw{WfO=f9Rz{Ypp6*GWeJN=
+z#1>OFB_It#(O^(w7Lu??U_iE_!2l*hiGT<piQX*SaBm;_#J|9B-oA(P@cqtlEW)5D
+z#`#bS%f+`qfz4Tal*UVVIh9&feIo>jh>42Bz{fTn!G;#%G+Rq*kkg;}_j+jd(CJTc
+z7^ESmrr@tTPyD(7o1Z!h_E`PcP;kO$i`AF^elC(&2^2y(YeER3qq)_P$zEA;zv8(U
+zG&AGt>j9+_F^7cn!8v5ix#_tG0$uDqDE(?~(1|hOO>T5KVtX`zn%BZ1CkkSp!ELw4
+zUsQVgoWjJNbEP+<4V#Gyoq32!j7eL{R`v^B#J5=!RH#0-N?tm1x94E&RrSl-6}(sU
+z<k)_)e!gAT70LBHgEh6BDd}Te_@)?7Y&a_kfd;S_U*00vJP!>X1u32<21@)QOHZ@h
+zl+MG)XHTl(3#s;d3$(@v*wCGEP)T62Y2bO{+{#qcP{yZ+OJNh)sMVuU+KGZ*CI^8~
+zKy5K=iQAa>=*b?HGA(pVZs#9gn<&PsxyPqoJNQDjq_><V1LK(+om3RbmB(4vx0d%y
+z9NNBbdPCTa?6vu5MynUhL?C|F>%I2ah(7bze&nIz2VOLsV@9j|aL5MJ)?VNcY^ig+
+zgJhb~^+ec_D4Or`j{Hz8I0KXm9)FuBWw+0={7Y$VI|aPzlW(IWRF2Q3;F|ldb&@}q
+zSl2)kaBrN9sQzJrS3>xDoh*r*Y{8D}e&5$Vw;)Z2opy}(*rI9{U$GHvE0hsu1UmxQ
+zl!4*2#Q2Ll_R@4&Wzqf}4p$J;Q31b<jZQL{Wb*HRNq|1Iqi6kK!wRraCrlt#3*XNu
+z5aL8Uw)2yWx$)gLu5_eKyXky*xh9K7+0{5H{XOuYYm2+jxX0aMM&Ky;0Gz${%31be
+z<kt0gd6+<(kQVsdpbrvxK6M#zEupr}O;#L+!c%#?=F6&u*IDoKpC+d?*y?_6+{M6m
+z=jpMzQ6RQe+2$_2XLtCDFSsuTNa%WHHkR&pJ=>>Cv3UGxkdqZEMs|*m@gN|#DyZ`6
+z7EJ^Kkq%^A{C~^#MV5j~x=9tEOS!}YLHJ{ZyG)l(UMXtb_{BSp=S>Da^6*6aK9a&_
+zY$b$}<Yep=W0_*ZslsJtZH%7pLQ7e?xASJ5=!2gonmPt#@WJL<fMoB6XE-||EgbGp
+z=#5~0hfWgCnpTcjS}XHm!*c%M@FO^VT5B%Z2Xd!MuQ5-6fOaZOCSlOzqY9If^8jp~
+zy6%HS$`;HIx2dty21NRine-dml}*)FB_asi6Q)L(ivvw>+>pSr14v-HMD2{^Pxp@S
+ziz){YRr246X=>R-EPMtp^Kq-6c6A!Q(QVg=AKgw+7ZN;FBC*1u&Z^EywIWhjUkvMo
+yeAS!Nfu7YX>uFtJU0^K=JmzjkUGg2wT#Mb-JFN?>WdR-o-hkUp??Rz)sQ&=iqgHMJ
 
 literal 0
 HcmV?d00001
 
-diff --git a/tests/j_corrupt_sb_csum/name b/tests/j_corrupt_sb_csum/name
+diff --git a/tests/j_corrupt_revoke_block/name b/tests/j_corrupt_revoke_block/name
 new file mode 100644
-index 0000000..921a0fd
+index 0000000..c7a0088
 --- /dev/null
-+++ b/tests/j_corrupt_sb_csum/name
++++ b/tests/j_corrupt_revoke_block/name
 @@ -0,0 +1 @@
-+corrupt sb csum (csum v3)
-diff --git a/tests/j_corrupt_sb_csum/script b/tests/j_corrupt_sb_csum/script
++corrupt revoke block (csum v3)
+diff --git a/tests/j_corrupt_revoke_block/script b/tests/j_corrupt_revoke_block/script
 new file mode 100644
 index 0000000..102feba
 --- /dev/null
-+++ b/tests/j_corrupt_sb_csum/script
++++ b/tests/j_corrupt_revoke_block/script
 @@ -0,0 +1,51 @@
 +if test -x $DEBUGFS_EXE; then
 +
@@ -170,45 +165,20 @@ index 0000000..102feba
 +else #if test -x $DEBUGFS_EXE; then
 +	echo "$test_name: $test_description: skipped"
 +fi
-diff --git a/tests/j_corrupt_sb_magic/expect b/tests/j_corrupt_sb_magic/expect
+diff --git a/tests/j_corrupt_revoke_csum/expect b/tests/j_corrupt_revoke_csum/expect
 new file mode 100644
-index 0000000..a233033
+index 0000000..52cda2c
 --- /dev/null
-+++ b/tests/j_corrupt_sb_magic/expect
-@@ -0,0 +1,42 @@
-+Superblock has an invalid journal (inode 8).
-+Clear? yes
-+
-+*** ext3 journal has been deleted - filesystem is now ext2 only ***
-+
-+Superblock has_journal flag is clear, but a journal is present.
-+Clear? yes
-+
++++ b/tests/j_corrupt_revoke_csum/expect
+@@ -0,0 +1,17 @@
++test_filesys: recovering journal
 +Pass 1: Checking inodes, blocks, and sizes
-+Journal inode is not in use, but contains data.  Clear? yes
-+
 +Pass 2: Checking directory structure
 +Pass 3: Checking directory connectivity
 +Pass 4: Checking reference counts
 +Pass 5: Checking group summary information
-+Block bitmap differences:  -(32--33) -(35--49) -(83--1089)
-+Fix? yes
-+
-+Free blocks count wrong for group #0 (956, counted=1980).
-+Fix? yes
-+
-+Free blocks count wrong (956, counted=1980).
-+Fix? yes
-+
-+Recreate journal? yes
-+
-+Creating journal (1024 blocks):  Done.
-+
-+*** journal has been re-created - filesystem is now ext3 again ***
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 12/128 files (0.0% non-contiguous), 1092/2048 blocks
-+Exit status is 1
++test_filesys: 12/128 files (8.3% non-contiguous), 1092/2048 blocks
++Exit status is 0
 +Pass 1: Checking inodes, blocks, and sizes
 +Pass 2: Checking directory structure
 +Pass 3: Checking directory connectivity
@@ -217,56 +187,56 @@ index 0000000..a233033
 +test_filesys: 12/128 files (8.3% non-contiguous), 1092/2048 blocks
 +Exit status is 0
 +debugfs: cat /a
-+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!
- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!
- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!
- aaaaaaaaaa
++bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb!
+ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb!
+ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb!
+ bbbbbbbbbb
 \ No newline at end of file
-diff --git a/tests/j_corrupt_sb_magic/image.gz b/tests/j_corrupt_sb_magic/image.gz
+diff --git a/tests/j_corrupt_revoke_csum/image.gz b/tests/j_corrupt_revoke_csum/image.gz
 new file mode 100644
-index 0000000000000000000000000000000000000000..5d895e78beaf49dd8e53370b85d7a7e5ce1afe82
+index 0000000000000000000000000000000000000000..f505592079452ad78b22f5c096f951158d47981d
 GIT binary patch
-literal 3036
-zcmeIw>o?m67zgka-5hl6Y=_n@%E75p%_zDwby+ROn7S7^T8_DtR!TxDL|j|6?lme%
-z)hV4aT1-Zw3@vpZQ9(9o5Rrr*@w1TMZ*TU-zu<V@eP28;zMtno<|!lcch<cX6h(`;
-z2R^>Kh|Tzj!3Cl%jzHIMvUzn;$-dZWvai%onLKB_W>Kb*8La5<<PxBozDd_iH!O7O
-z)9=?hS#;6xVWx)JvtqxDYgu#7;5oXWs>{myH9EETXWq9gF2G6@_eAWDb;ZMpV%lXZ
-zQ>9wmsTYn|WzO<i5-O8!H@2?2!!H_^{uHe3Qj~R%bkqFTQn%^$XYKn0U(?xv$@fmm
-z9JjONON_(=V0M)v+gN8LYsr^dBLH3iGb}Dr)?R@Q_rNZSj915Wul{y_dO+UuRYc3<
-zrYpta!tWB#hCErHB-NjGCGb^e*0o;3Bz!&zHMmUFj$}a9*^OCSmbblLmhw4Dfr5ob
-zOwD)!&l#oP@(K1_U~lVf3&fU4U6l-Oh>%$T?TG?|G!Tae(&2Od+?e&D{H_*jF7I$p
-ze5W$v1fgvg>7D@{=J2VSrHLC!gw<wxJ%=dPCmUO+{_`~SNi2RY^Nhs`a5v||_&K8c
-zFswRo1*W3Wu&w^0l)%7Te}k!A1mMO_^;e~^0es?L^>-8pND)95!f6Mef3i1#sTJk0
-z0PTQpo7W*U60Hb9IJHMOs-;VYi9E?R0gowRw5NihU;~CqB!-GA)!|WaDtrFG-s5f$
-zC0Z~wXt&nA3(Q8}i&1F4HDgIL;&(mTCL3wb5BVW#MLsRC>I}Hww<oMC2$odd`g`gc
-zMcXn3pq2+azSY};xJ~OpAn40o<=h<UrHNWHkX0?o@)mLexG}PA%Uuw{x1Yv3{_-(<
-zy4EN&7Qf@%tuUu&l2Xep$C|P2@lgiOn!|i*Ym?UncXsZqnC(jo(88MXio%lxgEgZT
-zT$G))eEtLNn-_KB-QxI&FOUH}f@Nsw;cI`apZ@zcDgBQ^OE>9Sw^vLg%d^3c<tZP}
-z3;U3V((Igen3jUpKU(BdZj^Y{n{!PjTqU~5%Oa3PPnn^?T6b)srY`k{^-EZMWtIOg
-z*;yXQVaj&No%3@^LZN)siarI9qUCurpM9xUW<#d=w`F%wqn6U6n)m6<zrNqhl51Th
-zN$S3CU!~)AyG&DKB~>~pbv;6RAUK&#3BwAJ{hLg?fa_-N7%04~V|@C)d)Hfl#eUA?
-zwq}%s<UpV-r+T6ZBJs8keyB|4Y&Oa~>Se6Gxbs4;tGy&vav%wukqyNe(%_~@BIMnW
-zdge_BY+DT{46V^t80E~0U09MD$%kM8vpaVbU?tGDS*4)P9RRJ1Ef@`%ih+hAyyfEs
-z>@nEuxs*M2^2FhvJ(SXB&kwrbD#mj0{`nuzN~BWpX&Q>*w8Rx+P%D|;EM9dXn5cGW
-r<v1J*919#pfr;oKL|O+=P5CI6JMMHWaD)ZYf&@ryg3DtB!T|9f_U=kB
+literal 3034
+zcmeH_>o?m67{_DICZ~k0T2s|VXS2Fg=CoT}aw*!PV|K!EkGLIkO<YDSwMIwP$z0m4
+znPM0gw^o=-G?GZ`oJu<fahqChCUXx#BqF!pUaW6=&i;bV^X~bc^St<cz7O<!Fi3Q;
+z5%QMtmIzmNBF`4IBazXWqD<0;H!=bn6%RH99J^{7Lb2O<YQJ`Y`fdrrIM~PE-SoSi
+zCUa7mKLvcl40qznNZE(SecH<~o{(cFm&`fvrp*IZ4NbsOTEs9Kw1>8mn)(`vc$<(v
+z+;_2$E5d;<vuyl})4&4hT7gH2!F|HPYVCzRRe&IMz^_`3j*{;5?dGHo#rEIiP9!8?
+zZR=fb_p}@znfKLRb0yp`tWI{*S;Q&%9OuVI-d_E;`kC%=p<`~RB_8HMR_#2Ut8+cO
+zb{0v@%UZtY5)DnG6-IXY@u)fNf#-2foj50hV#!*OV8&C<3ifwdHmz2p+(!W&*MI7^
+zOra^-R5#twmG3_*C`15SDWie#Ab5V5)PvsFXLV^&ni*nxmpAD3Q4`8V4#|V98skL%
+z=rlnv>k}4bwI^YA+{UCX^y=V+L%x3Nb6A$P8ZQ}WlT-U$N(f_-j5)kza{q%d?wKJ(
+zo6y4%fZbQ<Otxh@Nx|0#@O4$nf~F{c3}_Rh`Z0!Loyp&5JHY7B;yL-U!FUgP7bw!1
+zB*z*WBUmfN?veY~upN>>QCPKaV)&xz^e+KuF$5bk`76Fl!ihND`w@SFqJ!;mdYe!{
+z)r?@fF>0vS&D@jDVGq>G>Wb1Ml<B<1m%`C+hTns1C7uTH^C=1dlg)vZvr+rcl@q5(
+zunPPaQd%%-=ZA~uAKTM`aVJ-iBs^wS5I6p${z5%K-j{0uwI6YE7(pHz=Kx&BGn<l{
+zOgl*Dxs0k7nDo?>hELXw^$iFNbG)UR6q1xZIpy_pMfK-1%4VfD&&qOhX)Q_ECu<j~
+z`<TmKT1^|Sjv2BN`mr!J#~}Nw_#qsN;3G-f8;if&M>0^e*AII`t16wBOI4<{W({o#
+z4Xbp6jb_CJbAq7Uhw*9gy0O~(ok@qDx57xP>cvzp0NF|(QF5op9fCYf3NjY;gEDWU
+ze|ub1VF&{FZ%9ekXNYMH2~Y-F6AlprhUI4OD|u`Pjz@jelo?k$7*|`R|1vnuUOjTl
+zw2^%fPtk1hT?InRum1E}EfuH8H5RCOu~HI|sn4~32{mzcqIPJx8SE`Zzc>WnqmzG{
+z3J_&8FXX<!4ZUx8N*KW2Eiil##LZNPBHJ)}T;XG?l0d_$28aeCJx!nMey@@ocFD`&
+zcoO$c7Xhf?p$Du*Gleo5p>+$;LZg{_G6UV6(5LH;SyjW9^`&(>bKX><qWV%Du*(bu
+z(0&^{vg5RLzUu8)q_6+&tF7n{XP!T{W`dF(UcPWnu2gPYpK<f_6-zdeZYw2hu9SZF
+wfN1ugr$^zDfg=NNk^z2Nv{4a53I@MPP)96B2L1;IilWz{_JJk~AdnsCAAu!D7XSbN
 
 literal 0
 HcmV?d00001
 
-diff --git a/tests/j_corrupt_sb_magic/name b/tests/j_corrupt_sb_magic/name
+diff --git a/tests/j_corrupt_revoke_csum/name b/tests/j_corrupt_revoke_csum/name
 new file mode 100644
-index 0000000..dc781aa
+index 0000000..b63ea23
 --- /dev/null
-+++ b/tests/j_corrupt_sb_magic/name
++++ b/tests/j_corrupt_revoke_csum/name
 @@ -0,0 +1 @@
-+corrupt sb magic (csum v3)
-diff --git a/tests/j_corrupt_sb_magic/script b/tests/j_corrupt_sb_magic/script
++corrupt revoke csum (csum v3)
+diff --git a/tests/j_corrupt_revoke_csum/script b/tests/j_corrupt_revoke_csum/script
 new file mode 100644
 index 0000000..102feba
 --- /dev/null
-+++ b/tests/j_corrupt_sb_magic/script
++++ b/tests/j_corrupt_revoke_csum/script
 @@ -0,0 +1,51 @@
 +if test -x $DEBUGFS_EXE; then
 +
