@@ -1,425 +1,107 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 25/25] e2fsck: read-ahead metadata during passes 1, 2, and 4
-Date: Mon, 08 Sep 2014 16:14:21 -0700
-Message-ID: <20140908231421.25904.86043.stgit@birch.djwong.org>
-References: <20140908231135.25904.66591.stgit@birch.djwong.org>
+Subject: Re: [PATCH 2/2] jbd2: fix descriptor block size handling errors with
+ journal_csum
+Date: Mon, 8 Sep 2014 16:18:42 -0700
+Message-ID: <20140908231842.GA12894@birch.djwong.org>
+References: <BAY406-EAS2912CB28A4B081AF994BDA2FDC70@phx.gbl>
+ <20140906040154.GA27293@birch.djwong.org>
+ <20140906042734.GA10351@birch.djwong.org>
+ <BAY179-W502087BB782D5AD3D06197FDC10@phx.gbl>
+ <BAY179-W21189CCAAFFB4BA9D7CF1BFDC10@phx.gbl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu, darrick.wong@oracle.com
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: TR Reardon <thomas_reardon@hotmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:49692 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755218AbaIHXO0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Sep 2014 19:14:26 -0400
-In-Reply-To: <20140908231135.25904.66591.stgit@birch.djwong.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:40989 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755009AbaIHXSs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Sep 2014 19:18:48 -0400
+Content-Disposition: inline
+In-Reply-To: <BAY179-W21189CCAAFFB4BA9D7CF1BFDC10@phx.gbl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-e2fsck pass1 is modified to use the block group data prefetch function
-to try to fetch the inode tables into the pagecache before it is
-needed.  We iterate through the blockgroups until we have enough inode
-tables that need reading such that we can issue readahead; then we sit
-and wait until the last inode table block read of the last group to
-start fetching the next bunch.
+On Mon, Sep 08, 2014 at 11:10:41AM -0400, TR Reardon wrote:
+> This updated patch was tested and works. Created fs with journal_checksum_v2
+> on Debian kernel 3.14 (which remains unaware of journal_checksum_v3), touched
+> files, clean dismount, then mounted under 3.16.2 with this updated patch
+> which cleanly upgrades to journal_checksum_v3
 
-pass2 is modified to use the dirblock prefetching function to prefetch
-the list of directory blocks that are assembled in pass1.  We use the
-"iterate a subset of a dblist" and avoid copying the dblist.  Directory
-blocks are fetched incrementally as we walk through the directory
-block list.  In previous iterations of this patch we would free the
-directory blocks after processing, but the performance hit to e2fsck
-itself wasn't worth it.  Furthermore, it is anticipated that most
-users will then mount the FS and start using the directories, so they
-may as well remain in the page cache.
+Ok good, I officially sent the patch to the list a little while ago.
 
-pass4 is modified to prefetch the block and inode bitmaps in
-anticipation of pass 5, because pass4 is entirely CPU bound.
+>  One aside, I noticed that the original patch was picked up for 3.14 and 3.16
+>  stable, but not for 3.10-stable or 3.12-stable; seems like it should have
+>  been?
 
-In general, these mechanisms can decrease fsck time by 10-40%, if the
-host system has sufficient memory and the storage system can provide a
-lot of IOPs.  Pretty much any storage system capable of handling
-multiple IOs in-flight at any time will see a fairly large performance
-boost.  (Single-issue USB mass storage disks seem to suffer badly.)
+Probably all three of the jbd2 patches ought to be sent to 3.{10,12,14,16}
+stable.
 
-By default, the readahead buffer size will be set to the size of a block
-group's inode table (which is 2MiB for a regular ext4 FS).  The -E
-readahead_kb= option can be given to specify the amount of memory to
-use for readahead or zero to disable it entirely; or an option can be
-given in e2fsck.conf.
+--D
 
-v2: Fix an off-by-one error in the pass1 readahead which made the
-readahead trigger one inode too late if the block groups are full.
-
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- e2fsck/e2fsck.8.in      |    7 +++++
- e2fsck/e2fsck.conf.5.in |   15 +++++++++++
- e2fsck/e2fsck.h         |    3 ++
- e2fsck/pass1.c          |   65 +++++++++++++++++++++++++++++++++++++++++++++++
- e2fsck/pass2.c          |   38 +++++++++++++++++++++++++++
- e2fsck/pass4.c          |    9 +++++++
- e2fsck/unix.c           |   28 ++++++++++++++++++++
- lib/ext2fs/ext2fs.h     |    1 +
- lib/ext2fs/inode.c      |    3 +-
- 9 files changed, 167 insertions(+), 2 deletions(-)
-
-
-diff --git a/e2fsck/e2fsck.8.in b/e2fsck/e2fsck.8.in
-index f5ed758..84ae50f 100644
---- a/e2fsck/e2fsck.8.in
-+++ b/e2fsck/e2fsck.8.in
-@@ -207,6 +207,13 @@ option may prevent you from further manual data recovery.
- .BI nodiscard
- Do not attempt to discard free blocks and unused inode blocks. This option is
- exactly the opposite of discard option. This is set as default.
-+.TP
-+.BI readahead_kb
-+Use this many KiB of memory to pre-fetch metadata in the hopes of reducing
-+e2fsck runtime.  By default, this is set to the size of a block group's inode
-+table (typically 2MiB on a regular ext4 filesystem); if this amount is more
-+than 1/100 of total physical memory, readahead is disabled.  Set this to zero
-+to disable readahead entirely.
- .RE
- .TP
- .B \-f
-diff --git a/e2fsck/e2fsck.conf.5.in b/e2fsck/e2fsck.conf.5.in
-index 9ebfbbf..e1d0518 100644
---- a/e2fsck/e2fsck.conf.5.in
-+++ b/e2fsck/e2fsck.conf.5.in
-@@ -205,6 +205,21 @@ of that type are squelched.  This can be useful if the console is slow
- (i.e., connected to a serial port) and so a large amount of output could
- end up delaying the boot process for a long time (potentially hours).
- .TP
-+.I readahead_mem_pct
-+Use this percentage of memory to try to read in metadata blocks ahead of the
-+main e2fsck thread.  This should reduce run times, depending on the speed of
-+the underlying storage and the amount of free memory.  There is no default, but
-+see
-+.B readahead_mem_pct
-+for more details.
-+.TP
-+.I readahead_kb
-+Use this amount of memory to read in metadata blocks ahead of the main checking
-+thread.  Setting this value to zero disables readahead entirely.  By default,
-+this is set the size of one block group's inode table (typically 2MiB on a
-+regular ext4 filesystem); if this amount is more than 1/100th of total physical
-+memory, readahead is disabled.
-+.TP
- .I report_features
- If this boolean relation is true, e2fsck will print the file system
- features as part of its verbose reporting (i.e., if the
-diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index ead546e..39aa353 100644
---- a/e2fsck/e2fsck.h
-+++ b/e2fsck/e2fsck.h
-@@ -378,6 +378,9 @@ struct e2fsck_struct {
- 	 */
- 	void *priv_data;
- 	ext2fs_block_bitmap block_metadata_map; /* Metadata blocks */
-+
-+	/* How much are we allowed to readahead? */
-+	unsigned long long readahead_kb;
- };
- 
- /* Used by the region allocation code */
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 4fc5311..f09cddb 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -867,6 +867,60 @@ out:
- 	return 0;
- }
- 
-+static void pass1_readahead(e2fsck_t ctx, dgrp_t *group, ext2_ino_t *next_ino)
-+{
-+	ext2_ino_t inodes_in_group = 0, inodes_per_block, inodes_per_buffer;
-+	dgrp_t start = *group, grp;
-+	blk64_t blocks_to_read = 0;
-+	errcode_t err = EXT2_ET_INVALID_ARGUMENT;
-+
-+	if (ctx->readahead_kb == 0)
-+		goto out;
-+
-+	/* Keep iterating groups until we have enough to readahead */
-+	inodes_per_block = EXT2_INODES_PER_BLOCK(ctx->fs->super);
-+	for (grp = start; grp < ctx->fs->group_desc_count; grp++) {
-+		if (ext2fs_bg_flags_test(ctx->fs, grp, EXT2_BG_INODE_UNINIT))
-+			continue;
-+		inodes_in_group = ctx->fs->super->s_inodes_per_group -
-+					ext2fs_bg_itable_unused(ctx->fs, grp);
-+		blocks_to_read += (inodes_in_group + inodes_per_block - 1) /
-+					inodes_per_block;
-+		if (blocks_to_read * ctx->fs->blocksize >
-+		    ctx->readahead_kb * 1024)
-+			break;
-+	}
-+
-+	err = e2fsck_readahead(ctx->fs, E2FSCK_READA_ITABLE, start,
-+			       grp - start + 1);
-+	if (err == EAGAIN) {
-+		ctx->readahead_kb /= 2;
-+		err = 0;
-+	}
-+
-+out:
-+	if (err) {
-+		/* Error; disable itable readahead */
-+		*group = ctx->fs->group_desc_count;
-+		*next_ino = ctx->fs->super->s_inodes_count;
-+	} else {
-+		/*
-+		 * Don't do more readahead until we've reached the first inode
-+		 * of the last inode scan buffer block for the last group.
-+		 */
-+		*group = grp + 1;
-+		inodes_per_buffer = (ctx->inode_buffer_blocks ?
-+				     ctx->inode_buffer_blocks :
-+				     EXT2_INODE_SCAN_DEFAULT_BUFFER_BLOCKS) *
-+				    ctx->fs->blocksize /
-+				    EXT2_INODE_SIZE(ctx->fs->super);
-+		inodes_in_group--;
-+		*next_ino = inodes_in_group -
-+			    (inodes_in_group % inodes_per_buffer) + 1 +
-+			    (grp * ctx->fs->super->s_inodes_per_group);
-+	}
-+}
-+
- void e2fsck_pass1(e2fsck_t ctx)
- {
- 	int	i;
-@@ -889,10 +943,19 @@ void e2fsck_pass1(e2fsck_t ctx)
- 	int		low_dtime_check = 1;
- 	int		inode_size;
- 	int		failed_csum = 0;
-+	ext2_ino_t	ino_threshold = 0;
-+	dgrp_t		ra_group = 0;
- 
- 	init_resource_track(&rtrack, ctx->fs->io);
- 	clear_problem_context(&pctx);
- 
-+	/* If we can do readahead, figure out how many groups to pull in. */
-+	if (!e2fsck_can_readahead(ctx->fs))
-+		ctx->readahead_kb = 0;
-+	else if (ctx->readahead_kb == ~0ULL)
-+		ctx->readahead_kb = e2fsck_guess_readahead(ctx->fs);
-+	pass1_readahead(ctx, &ra_group, &ino_threshold);
-+
- 	if (!(ctx->options & E2F_OPT_PREEN))
- 		fix_problem(ctx, PR_1_PASS_HEADER, &pctx);
- 
-@@ -1072,6 +1135,8 @@ void e2fsck_pass1(e2fsck_t ctx)
- 		old_op = ehandler_operation(_("getting next inode from scan"));
- 		pctx.errcode = ext2fs_get_next_inode_full(scan, &ino,
- 							  inode, inode_size);
-+		if (ino > ino_threshold)
-+			pass1_readahead(ctx, &ra_group, &ino_threshold);
- 		ehandler_operation(old_op);
- 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
- 			return;
-diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-index 0b9c5c5..2060ed2 100644
---- a/e2fsck/pass2.c
-+++ b/e2fsck/pass2.c
-@@ -61,6 +61,9 @@
-  * Keeps track of how many times an inode is referenced.
-  */
- static void deallocate_inode(e2fsck_t ctx, ext2_ino_t ino, char* block_buf);
-+static int check_dir_block2(ext2_filsys fs,
-+			   struct ext2_db_entry2 *dir_blocks_info,
-+			   void *priv_data);
- static int check_dir_block(ext2_filsys fs,
- 			   struct ext2_db_entry2 *dir_blocks_info,
- 			   void *priv_data);
-@@ -77,6 +80,9 @@ struct check_dir_struct {
- 	struct problem_context	pctx;
- 	int	count, max;
- 	e2fsck_t ctx;
-+	unsigned long long list_offset;
-+	unsigned long long ra_entries;
-+	unsigned long long next_ra_off;
- };
- 
- void e2fsck_pass2(e2fsck_t ctx)
-@@ -96,6 +102,9 @@ void e2fsck_pass2(e2fsck_t ctx)
- 	int			i, depth;
- 	problem_t		code;
- 	int			bad_dir;
-+	int (*check_dir_func)(ext2_filsys fs,
-+			      struct ext2_db_entry2 *dir_blocks_info,
-+			      void *priv_data);
- 
- 	init_resource_track(&rtrack, ctx->fs->io);
- 	clear_problem_context(&cd.pctx);
-@@ -139,6 +148,9 @@ void e2fsck_pass2(e2fsck_t ctx)
- 	cd.ctx = ctx;
- 	cd.count = 1;
- 	cd.max = ext2fs_dblist_count2(fs->dblist);
-+	cd.list_offset = 0;
-+	cd.ra_entries = ctx->readahead_kb * 1024 / ctx->fs->blocksize;
-+	cd.next_ra_off = 0;
- 
- 	if (ctx->progress)
- 		(void) (ctx->progress)(ctx, 2, 0, cd.max);
-@@ -146,7 +158,8 @@ void e2fsck_pass2(e2fsck_t ctx)
- 	if (fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_DIR_INDEX)
- 		ext2fs_dblist_sort2(fs->dblist, special_dir_block_cmp);
- 
--	cd.pctx.errcode = ext2fs_dblist_iterate2(fs->dblist, check_dir_block,
-+	check_dir_func = cd.ra_entries ? check_dir_block2 : check_dir_block;
-+	cd.pctx.errcode = ext2fs_dblist_iterate2(fs->dblist, check_dir_func,
- 						 &cd);
- 	if (ctx->flags & E2F_FLAG_SIGNAL_MASK || ctx->flags & E2F_FLAG_RESTART)
- 		return;
-@@ -824,6 +837,29 @@ err:
- 	return retval;
- }
- 
-+static int check_dir_block2(ext2_filsys fs,
-+			   struct ext2_db_entry2 *db,
-+			   void *priv_data)
-+{
-+	int err;
-+	struct check_dir_struct *cd = priv_data;
-+
-+	if (cd->ra_entries && cd->list_offset >= cd->next_ra_off) {
-+		err = e2fsck_readahead_dblist(fs,
-+					E2FSCK_RA_DBLIST_IGNORE_BLOCKCNT,
-+					fs->dblist,
-+					cd->list_offset + cd->ra_entries / 8,
-+					cd->ra_entries);
-+		if (err)
-+			cd->ra_entries = 0;
-+		cd->next_ra_off = cd->list_offset + (cd->ra_entries * 7 / 8);
-+	}
-+
-+	err = check_dir_block(fs, db, priv_data);
-+	cd->list_offset++;
-+	return err;
-+}
-+
- static int check_dir_block(ext2_filsys fs,
- 			   struct ext2_db_entry2 *db,
- 			   void *priv_data)
-diff --git a/e2fsck/pass4.c b/e2fsck/pass4.c
-index 21d93f0..bc9a2c4 100644
---- a/e2fsck/pass4.c
-+++ b/e2fsck/pass4.c
-@@ -106,6 +106,15 @@ void e2fsck_pass4(e2fsck_t ctx)
- #ifdef MTRACE
- 	mtrace_print("Pass 4");
- #endif
-+	/*
-+	 * Since pass4 is mostly CPU bound, start readahead of bitmaps
-+	 * ahead of pass 5 if we haven't already loaded them.
-+	 */
-+	if (ctx->readahead_kb &&
-+	    (fs->block_map == NULL || fs->inode_map == NULL))
-+		e2fsck_readahead(fs, E2FSCK_READA_BBITMAP |
-+				     E2FSCK_READA_IBITMAP,
-+				 0, fs->group_desc_count);
- 
- 	clear_problem_context(&pctx);
- 
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 1a089a9..6b0ca96 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -649,6 +649,7 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
- 	char	*buf, *token, *next, *p, *arg;
- 	int	ea_ver;
- 	int	extended_usage = 0;
-+	unsigned long long reada_kb;
- 
- 	buf = string_copy(ctx, opts, 0);
- 	for (token = buf; token && *token; token = next) {
-@@ -677,6 +678,15 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
- 				continue;
- 			}
- 			ctx->ext_attr_ver = ea_ver;
-+		} else if (strcmp(token, "readahead_kb") == 0) {
-+			reada_kb = strtoull(arg, &p, 0);
-+			if (*p) {
-+				fprintf(stderr, "%s",
-+					_("Invalid readahead buffer size.\n"));
-+				extended_usage++;
-+				continue;
-+			}
-+			ctx->readahead_kb = reada_kb;
- 		} else if (strcmp(token, "fragcheck") == 0) {
- 			ctx->options |= E2F_OPT_FRAGCHECK;
- 			continue;
-@@ -716,6 +726,7 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
- 		fputs(("\tjournal_only\n"), stderr);
- 		fputs(("\tdiscard\n"), stderr);
- 		fputs(("\tnodiscard\n"), stderr);
-+		fputs(("\treadahead_kb=<buffer size>\n"), stderr);
- 		fputc('\n', stderr);
- 		exit(1);
- 	}
-@@ -749,6 +760,7 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
- #ifdef CONFIG_JBD_DEBUG
- 	char 		*jbd_debug;
- #endif
-+	unsigned long long phys_mem_kb;
- 
- 	retval = e2fsck_allocate_context(&ctx);
- 	if (retval)
-@@ -776,6 +788,8 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
- 	else
- 		ctx->program_name = "e2fsck";
- 
-+	phys_mem_kb = get_memory_size() / 1024;
-+	ctx->readahead_kb = ~0ULL;
- 	while ((c = getopt (argc, argv, "panyrcC:B:dE:fvtFVM:b:I:j:P:l:L:N:SsDk")) != EOF)
- 		switch (c) {
- 		case 'C':
-@@ -960,6 +974,20 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
- 	if (c)
- 		verbose = 1;
- 
-+	if (ctx->readahead_kb == ~0ULL) {
-+		profile_get_integer(ctx->profile, "options",
-+				    "readahead_mem_pct", 0, -1, &c);
-+		if (c >= 0 && c <= 100)
-+			ctx->readahead_kb = phys_mem_kb * c / 100;
-+		profile_get_integer(ctx->profile, "options",
-+				    "readahead_kb", 0, -1, &c);
-+		if (c >= 0)
-+			ctx->readahead_kb = c;
-+		if (ctx->readahead_kb != ~0ULL &&
-+		    ctx->readahead_kb > phys_mem_kb)
-+			ctx->readahead_kb = phys_mem_kb;
-+	}
-+
- 	/* Turn off discard in read-only mode */
- 	if ((ctx->options & E2F_OPT_NO) &&
- 	    (ctx->options & E2F_OPT_DISCARD))
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index bba40ac..fe82a32 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1421,6 +1421,7 @@ extern errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan,
- 					    ext2_ino_t *ino,
- 					    struct ext2_inode *inode,
- 					    int bufsize);
-+#define EXT2_INODE_SCAN_DEFAULT_BUFFER_BLOCKS	8
- extern errcode_t ext2fs_open_inode_scan(ext2_filsys fs, int buffer_blocks,
- 				  ext2_inode_scan *ret_scan);
- extern void ext2fs_close_inode_scan(ext2_inode_scan scan);
-diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
-index 4310b82..4b3e14e 100644
---- a/lib/ext2fs/inode.c
-+++ b/lib/ext2fs/inode.c
-@@ -175,7 +175,8 @@ errcode_t ext2fs_open_inode_scan(ext2_filsys fs, int buffer_blocks,
- 	scan->bytes_left = 0;
- 	scan->current_group = 0;
- 	scan->groups_left = fs->group_desc_count - 1;
--	scan->inode_buffer_blocks = buffer_blocks ? buffer_blocks : 8;
-+	scan->inode_buffer_blocks = buffer_blocks ? buffer_blocks :
-+				    EXT2_INODE_SCAN_DEFAULT_BUFFER_BLOCKS;
- 	scan->current_block = ext2fs_inode_table_loc(scan->fs,
- 						     scan->current_group);
- 	scan->inodes_left = EXT2_INODES_PER_GROUP(scan->fs->super);
-
+> 
+>  +Reardon
+> 
+> > Date: Fri, 5 Sep 2014 21:27:34 -0700
+> > From: darrick.wong@oracle.com
+> > To: thomas_reardon@hotmail.com
+> > CC: tytso@mit.edu; linux-ext4@vger.kernel.org
+> > Subject: Re: [PATCH 2/2] jbd2: fix descriptor block size handling errors with journal_csum
+> > 
+> > On Fri, Sep 05, 2014 at 09:01:54PM -0700, Darrick J. Wong wrote:
+> >> On Tue, Sep 02, 2014 at 03:28:33PM -0400, TR Reardon wrote:
+> >>> There may still be problems with this patch. After applying to 3.16.1, I am now getting "can't enable checksumming v2 and v3 at the same time" errors on mount. Initial mount/dismount work fine, but once fs is touched--forcing superblock update--it cannot be mounted anew.
+> >>> 
+> >>> Note results from dumpe2fs (without recent patches)
+> >>> 
+> >>> Journal backup: inode blocks
+> >>> Checksum type: crc32c
+> >>> Checksum: 0x39141b69
+> >>> Journal features: journal_incompat_revoke journal_64bit journal_async_commit journal_checksum_v2 FEATURE_I4
+> >>> Journal size: 128M
+> >>> Journal length: 32768
+> >>> Journal sequence: 0x00012aa4
+> >>> Journal start: 0
+> >>> Journal checksum type: crc32c
+> >>> Journal checksum: 0x3952b695
+> >>> 
+> >>> Seems that the old v2 flag is not cleared on dismount?
+> >> 
+> >> Yep. Thanks for catching this.
+> > 
+> > Also, would you mind testing this patch? I think it'll suffice to clear all
+> > the journal flags before enabling whichever one we want.
+> > 
+> > --D
+> > 
+> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > index 0b28b36..aff945d 100644
+> > --- a/fs/ext4/super.c
+> > +++ b/fs/ext4/super.c
+> > @@ -3190,6 +3190,10 @@ static int set_journal_csum_feature_set(struct super_block *sb)
+> > incompat = 0;
+> > }
+> > 
+> > + jbd2_journal_clear_features(sbi->s_journal,
+> > + JBD2_FEATURE_COMPAT_CHECKSUM, 0,
+> > + JBD2_FEATURE_INCOMPAT_CSUM_V3 |
+> > + JBD2_FEATURE_INCOMPAT_CSUM_V2);
+> > if (test_opt(sb, JOURNAL_ASYNC_COMMIT)) {
+> > ret = jbd2_journal_set_features(sbi->s_journal,
+> > compat, 0,
+> > @@ -3202,11 +3206,8 @@ static int set_journal_csum_feature_set(struct super_block *sb)
+> > jbd2_journal_clear_features(sbi->s_journal, 0, 0,
+> > JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
+> > } else {
+> > - jbd2_journal_clear_features(sbi->s_journal,
+> > - JBD2_FEATURE_COMPAT_CHECKSUM, 0,
+> > - JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT |
+> > - JBD2_FEATURE_INCOMPAT_CSUM_V3 |
+> > - JBD2_FEATURE_INCOMPAT_CSUM_V2);
+> > + jbd2_journal_clear_features(sbi->s_journal, 0, 0,
+> > + JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
+> > }
+> > 
+> > return ret;
+> > -- 		 	   		  
