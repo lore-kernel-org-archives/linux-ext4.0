@@ -1,75 +1,78 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 2/2] ext4: Provide separate operations for sysfs feature files
-Date: Tue,  9 Sep 2014 13:32:20 +0200
-Message-ID: <1410262340-13713-2-git-send-email-lczerner@redhat.com>
-References: <1410262340-13713-1-git-send-email-lczerner@redhat.com>
-Cc: Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Eryu Guan <eguan@redhat.com>
+Subject: Re: [PATCH] ext4: use mkfs.ext4 -F instead of piping in yes
+Date: Tue, 9 Sep 2014 19:49:15 +0800
+Message-ID: <20140909114915.GT2977@dhcp-13-216.nay.redhat.com>
+References: <1410092942-22201-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: fstests@vger.kernel.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60178 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56181 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932202AbaIILc2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Sep 2014 07:32:28 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s89BWSFs006343
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Sep 2014 07:32:28 -0400
-In-Reply-To: <1410262340-13713-1-git-send-email-lczerner@redhat.com>
+	id S1753054AbaIILtZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Sep 2014 07:49:25 -0400
+Content-Disposition: inline
+In-Reply-To: <1410092942-22201-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently sysfs feature files uses ext4_attr_ops as the file operations
-to show/store data. However the feature files is not supposed to contain
-any data at all, the sole existence of the file means that the module
-support the feature. Moreover, none of the sysfs feature attributes
-actually register show/store functions so that would not be a problem.
+On Sun, Sep 07, 2014 at 08:29:02AM -0400, Theodore Ts'o wrote:
+> Using "yes | mkfs.ext4 ..." results in the error message results in
+> the test failing, at least for some versions of e2fsprogs:
+> 
+>     +yes: standard output: Broken pipe
+>     +yes: write error
+> 
+> It better to use the -F option, which will eliminate the questions.
+> 
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> Cc: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+> Cc: Eryu Guan <eguan@redhat.com>
 
-However if a sysfs feature attribute register a show or store function
-we might be in trouble because the kobject in this case is _not_ embedded
-in the ext4_sb_info structure as ext4_attr_show/store expect.
+Looks good to me.
 
-So just to be safe, provide separate empty sysfs_ops to use in
-ext4_feat_ktype. This might safe us from potential problems in the
-future. As a bonus we can "store" something more descriptive than
-nothing in the files, so let it contain "enabled" to make it clear that
-the feature is really present in the module.
+Reviewed-by: Eryu Guan <eguan@redhat.com>
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/super.c | 18 +++++++++++++++++-
- 1 file changed, 17 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 8e55ae1..2eff922 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2754,9 +2754,25 @@ static void ext4_feat_release(struct kobject *kobj)
- 	complete(&ext4_feat->f_kobj_unregister);
- }
- 
-+static ssize_t ext4_feat_show(struct kobject *kobj,
-+			      struct attribute *attr, char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "supported\n");
-+}
-+
-+/*
-+ * We can not use ext4_attr_show/store because it relies on the kobject
-+ * being embedded in the ext4_sb_info structure which is definitely not
-+ * true in this case.
-+ */
-+static const struct sysfs_ops ext4_feat_ops = {
-+	.show	= ext4_feat_show,
-+	.store	= NULL,
-+};
-+
- static struct kobj_type ext4_feat_ktype = {
- 	.default_attrs	= ext4_feat_attrs,
--	.sysfs_ops	= &ext4_attr_ops,
-+	.sysfs_ops	= &ext4_feat_ops,
- 	.release	= ext4_feat_release,
- };
- 
--- 
-1.8.3.1
-
+Thanks,
+Eryu
+> ---
+>  tests/ext4/003 | 2 +-
+>  tests/ext4/306 | 2 +-
+>  2 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/tests/ext4/003 b/tests/ext4/003
+> index 572e685..a2e9d75 100755
+> --- a/tests/ext4/003
+> +++ b/tests/ext4/003
+> @@ -43,7 +43,7 @@ _require_ext4_bigalloc
+>  
+>  rm -f $seqres.full
+>  
+> -yes | mkfs.ext4 -O bigalloc -C 65536  -g 256 $SCRATCH_DEV 512m \
+> +mkfs.ext4 -F -O bigalloc -C 65536  -g 256 $SCRATCH_DEV 512m \
+>  	>> $seqres.full 2>&1
+>  _scratch_mount || _fail "couldn't mount fs"
+>  
+> diff --git a/tests/ext4/306 b/tests/ext4/306
+> index fd50b0e..fd5c3a2 100755
+> --- a/tests/ext4/306
+> +++ b/tests/ext4/306
+> @@ -48,7 +48,7 @@ _require_scratch
+>  rm -f $seqres.full
+>  
+>  # Make a small ext4 fs with extents disabled & mount it
+> -yes | mkfs.ext4 -O ^extents,^64bit $SCRATCH_DEV 512m >> $seqres.full 2>&1
+> +mkfs.ext4 -F -O ^extents,^64bit $SCRATCH_DEV 512m >> $seqres.full 2>&1
+>  _scratch_mount || _fail "couldn't mount fs"
+>  
+>  # Create a small non-extent-based file
+> -- 
+> 2.1.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
