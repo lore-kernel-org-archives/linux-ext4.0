@@ -1,34 +1,71 @@
-From: "Burton, Ross" <ross.burton@intel.com>
-Subject: Re: [V4] misc: copy extended attributes in populate_fs
-Date: Tue, 9 Sep 2014 14:09:27 +0100
-Message-ID: <CAJTo0LZkfa5yJi8YG-EA+AM0Some8YrBThULqJ_49heNrOT5LA@mail.gmail.com>
-References: <1405010678-993-1-git-send-email-ross.burton@intel.com>
- <20140728012909.GA19632@thunk.org> <CAJTo0LYSjRtoN29_VmKv=CxyCJpwaywqfqOegZPFnWbV1+96ow@mail.gmail.com>
- <20140909130329.GE24855@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 84201] New: mount doesn't clear usrjquota / grpjqouta options
+Date: Tue, 09 Sep 2014 14:28:52 +0000
+Message-ID: <bug-84201-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:36038 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756757AbaIINJs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Sep 2014 09:09:48 -0400
-Received: by mail-qg0-f51.google.com with SMTP id e89so3601981qgf.10
-        for <linux-ext4@vger.kernel.org>; Tue, 09 Sep 2014 06:09:47 -0700 (PDT)
-In-Reply-To: <20140909130329.GE24855@thunk.org>
+Received: from mail.kernel.org ([198.145.19.201]:57061 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756812AbaIIO3A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Sep 2014 10:29:00 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id BE4B020160
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Sep 2014 14:28:58 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 0689C20166
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Sep 2014 14:28:53 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 9 September 2014 14:03, Theodore Ts'o <tytso@mit.edu> wrote:
-> It's on the master branch, which means it's waiting on 1.43.  It's
-> very likely that 1.42.12 will be last maint branch release, and that
-> 1.43.0 will be releasing relatively soon with inline data and metadata
-> checksum support.  There are a number of patches still in the review
-> queue and some additional testing we need to do before we can release
-> 1.43, though.
+https://bugzilla.kernel.org/show_bug.cgi?id=84201
 
-Thanks, it's good to understand this.
+            Bug ID: 84201
+           Summary: mount doesn't clear usrjquota / grpjqouta options
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.2.0-4-amd64
+          Hardware: i386
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: low
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: robinedgar@gmail.com
+        Regression: No
 
-Cheers,
-Ross
+Hi, After changing the group quota file name in after the first run of
+remount -o remount /
+gives a
+mount: / not mounted or bad option
+error.
+If you remove the usrjquota and groupjquota options from the fstab and remount,
+mount runs. dmesg gives
+EXT4-fs (vda1): re-mounted. Opts: (null)
+but when you
+mount
+it still shows the old usrjquota and groupjquota values in the output.
+
+/dev/disk/by-uuid/2ceaad1e-7ca8-42f9-b657-ce689beba638 on / type ext4
+(rw,relatime,errors=remount-ro,user_xattr,barrier=1,data=ordered,jqfmt=vfsv1,usrjquota=aquota.user,grpjquota=aquota.user)
+
+The same if you specify the noquota option in fstab or options. dmesg then
+gives
+EXT4-fs (vda1): re-mounted. Opts: noquota
+If you remove all from the fstab and try
+mount -o
+remount,usrjquota=aquota.user,grpjquota=aquota.otherfilename,jqfmt=vfsv1 /
+You get the bad option error again. In dmesg you get
+EXT4-fs (vda1): group quota file already specified
+I have deleted the old files and made sure that quotas are off using
+quotaoff -afugpv
+
+How do you clear the options completely?
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
