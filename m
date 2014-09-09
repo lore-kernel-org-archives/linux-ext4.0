@@ -1,71 +1,47 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 84201] New: mount doesn't clear usrjquota / grpjqouta options
-Date: Tue, 09 Sep 2014 14:28:52 +0000
-Message-ID: <bug-84201-13602@https.bugzilla.kernel.org/>
+From: TR Reardon <thomas_reardon@hotmail.com>
+Subject: dumpe2fs: only print 'unused inodes' once
+Date: Tue, 9 Sep 2014 15:32:56 -0400
+Message-ID: <BAY179-W101B94761503C2D6FBA0CBFDCE0@phx.gbl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:57061 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756812AbaIIO3A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Sep 2014 10:29:00 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id BE4B020160
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Sep 2014 14:28:58 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 0689C20166
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Sep 2014 14:28:53 +0000 (UTC)
+Received: from bay004-omc1s4.hotmail.com ([65.54.190.15]:63879 "EHLO
+	BAY004-OMC1S4.hotmail.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751955AbaIITc5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Sep 2014 15:32:57 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=84201
+just a minor nit...and I don't think fixing this harms any existing tes=
+ts.
 
-            Bug ID: 84201
-           Summary: mount doesn't clear usrjquota / grpjqouta options
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.2.0-4-amd64
-          Hardware: i386
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: low
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: robinedgar@gmail.com
-        Regression: No
++Reardon
 
-Hi, After changing the group quota file name in after the first run of
-remount -o remount /
-gives a
-mount: / not mounted or bad option
-error.
-If you remove the usrjquota and groupjquota options from the fstab and remount,
-mount runs. dmesg gives
-EXT4-fs (vda1): re-mounted. Opts: (null)
-but when you
-mount
-it still shows the old usrjquota and groupjquota values in the output.
 
-/dev/disk/by-uuid/2ceaad1e-7ca8-42f9-b657-ce689beba638 on / type ext4
-(rw,relatime,errors=remount-ro,user_xattr,barrier=1,data=ordered,jqfmt=vfsv1,usrjquota=aquota.user,grpjquota=aquota.user)
+diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+index a1c5ba2..d30cf87 100644
+--- a/misc/dumpe2fs.c
++++ b/misc/dumpe2fs.c
+@@ -205,8 +205,6 @@ static void list_desc (ext2_filsys fs)
+=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 printf(_(" =A0Checksum =
+0x%04x"), csum);
+=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (csum !=3D exp_csum)
+=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 printf(=
+_(" (EXPECTED 0x%04x)"), exp_csum);
+- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 printf(_(", unused inodes=
+ %u\n"),
+- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext2fs_bg_=
+itable_unused(fs, i));
+=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 has_super =3D ((i=3D=3D0) || super_blk)=
+;
+=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (has_super) {
 
-The same if you specify the noquota option in fstab or options. dmesg then
-gives
-EXT4-fs (vda1): re-mounted. Opts: noquota
-If you remove all from the fstab and try
-mount -o
-remount,usrjquota=aquota.user,grpjquota=aquota.otherfilename,jqfmt=vfsv1 /
-You get the bad option error again. In dmesg you get
-EXT4-fs (vda1): group quota file already specified
-I have deleted the old files and made sure that quotas are off using
-quotaoff -afugpv
 
-How do you clear the options completely?
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+ 		 	   		  --
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
