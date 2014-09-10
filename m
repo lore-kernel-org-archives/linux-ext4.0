@@ -1,7 +1,7 @@
 From: Li Xi <pkuelelixi@gmail.com>
-Subject: [PATCH v3 2/4] quota: add project quota support
-Date: Wed, 10 Sep 2014 11:54:07 +0800
-Message-ID: <CAPTn0cDP0H90R10hwgp41npFCDZGH7FT4U4K49dTyp3YLSRW-A@mail.gmail.com>
+Subject: [PATCH v3 3/4] quota: add project quota support
+Date: Wed, 10 Sep 2014 11:54:31 +0800
+Message-ID: <CAPTn0cB4xNr69eb2cv7yUP-SLHm0dGxhM=VUT9E0nQ8+VQ3SXQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 To: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
@@ -11,327 +11,334 @@ To: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
 	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
 	"hch@infradead.org" <hch@infradead.org>, Jan Kara <jack@suse.cz>,
 	Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:32998 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751023AbaIJDyI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Sep 2014 23:54:08 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Adds project ID support for ext4
+Adds project quota support for ext4
 
-This patch adds a new internal field of ext4 inode to save project
-identifier. Also a new flag EXT4_INODE_PROJINHERIT is added for
-inheriting project ID from parent directory.
+This patch adds mount options for enabling/disabling project quota
+accounting and enforcement. A new specific inode is also used for
+project quota accounting.
 
 Signed-off-by: Li Xi <lixi <at> ddn.com>
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
-Index: linux.git/fs/ext4/ialloc.c
-===================================================================
---- linux.git.orig/fs/ext4/ialloc.c
-+++ linux.git/fs/ext4/ialloc.c
-@@ -756,6 +756,16 @@ struct inode *__ext4_new_inode(handle_t
-         inode->i_gid = dir->i_gid;
-     } else
-         inode_init_owner(inode, dir, mode);
-+#ifdef CONFIG_QUOTA_PROJECT
-+    if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-+        if (ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT)) {
-+            ei->i_projid = EXT4_I(dir)->i_projid;
-+        } else {
-+            ei->i_projid =
-+                make_kprojid(&init_user_ns, EXT4_DEF_PROJID);
-+        }
-+    }
-+#endif
-     dquot_initialize(inode);
-
-     if (!goal)
 Index: linux.git/fs/ext4/ext4.h
 ===================================================================
 --- linux.git.orig/fs/ext4/ext4.h
 +++ linux.git/fs/ext4/ext4.h
-@@ -386,16 +386,18 @@ struct flex_groups {
- #define EXT4_EA_INODE_FL            0x00200000 /* Inode used for large EA */
- #define EXT4_EOFBLOCKS_FL        0x00400000 /* Blocks allocated beyond EOF */
- #define EXT4_INLINE_DATA_FL        0x10000000 /* Inode has inline data. */
-+#define EXT4_PROJINHERIT_FL        0x20000000 /* Create with parents projid */
- #define EXT4_RESERVED_FL        0x80000000 /* reserved for ext4 lib */
+@@ -217,6 +217,7 @@ struct ext4_io_submit {
+ #define EXT4_UNDEL_DIR_INO     6    /* Undelete directory inode */
+ #define EXT4_RESIZE_INO         7    /* Reserved group descriptors inode */
+ #define EXT4_JOURNAL_INO     8    /* Journal inode */
++#define EXT4_PRJ_QUOTA_INO     9    /* Project quota inode */
 
--#define EXT4_FL_USER_VISIBLE        0x004BDFFF /* User visible flags */
--#define EXT4_FL_USER_MODIFIABLE        0x004380FF /* User modifiable flags */
-+#define EXT4_FL_USER_VISIBLE        0x204BDFFF /* User visible flags */
-+#define EXT4_FL_USER_MODIFIABLE        0x204380FF /* User modifiable flags */
-
- /* Flags that should be inherited by new inodes from their parent. */
- #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
-                EXT4_SYNC_FL | EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
-                EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
--               EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
-+               EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL |\
-+               EXT4_PROJINHERIT_FL)
-
- /* Flags that are appropriate for regular files (all but dir-specific ones). */
- #define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
-@@ -443,6 +445,7 @@ enum {
-     EXT4_INODE_EA_INODE    = 21,    /* Inode used for large EA */
-     EXT4_INODE_EOFBLOCKS    = 22,    /* Blocks allocated beyond EOF */
-     EXT4_INODE_INLINE_DATA    = 28,    /* Data in inode. */
-+    EXT4_INODE_PROJINHERIT    = 29,    /* Create with parents projid */
-     EXT4_INODE_RESERVED    = 31,    /* reserved for ext4 lib */
+ /* First non-reserved inode for old ext4 filesystems */
+ #define EXT4_GOOD_OLD_FIRST_INO    11
+@@ -993,6 +994,7 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_DIOREAD_NOLOCK    0x400000 /* Enable support for
+dio read nolocking */
+ #define EXT4_MOUNT_JOURNAL_CHECKSUM    0x800000 /* Journal checksums */
+ #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT    0x1000000 /* Journal Async Commit */
++#define EXT4_MOUNT_PRJQUOTA        0x4000000 /* Project quota support */
+ #define EXT4_MOUNT_DELALLOC        0x8000000 /* Delalloc support */
+ #define EXT4_MOUNT_DATA_ERR_ABORT    0x10000000 /* Abort on file data write */
+ #define EXT4_MOUNT_BLOCK_VALIDITY    0x20000000 /* Block validity checking */
+@@ -1168,7 +1170,8 @@ struct ext4_super_block {
+     __le32    s_grp_quota_inum;    /* inode for tracking group quota */
+     __le32    s_overhead_clusters;    /* overhead blocks/clusters in fs */
+     __le32    s_backup_bgs[2];    /* groups with sparse_super2 SBs */
+-    __le32    s_reserved[106];    /* Padding to the end of the block */
++    __le32    s_prj_quota_inum;    /* inode for tracking project quota */
++    __le32    s_reserved[105];    /* Padding to the end of the block */
+     __le32    s_checksum;        /* crc32c(superblock) */
  };
 
-@@ -695,6 +698,7 @@ struct ext4_inode {
-     __le32  i_crtime;       /* File Creation time */
-     __le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch) */
-     __le32  i_version_hi;    /* high 32 bits for 64-bit version */
-+    __le32  i_projid;    /* Project ID */
- };
-
- struct move_extent {
-@@ -943,6 +947,9 @@ struct ext4_inode_info {
-
-     /* Precomputed uuid+inum+igen checksum for seeding inode checksums */
-     __u32 i_csum_seed;
-+#ifdef CONFIG_QUOTA_PROJECT
-+    kprojid_t i_projid;
-+#endif
- };
-
- /*
-@@ -1525,6 +1532,7 @@ static inline void ext4_clear_state_flag
-  * GDT_CSUM bits are mutually exclusive.
-  */
- #define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM    0x0400
-+#define EXT4_FEATURE_RO_COMPAT_PROJECT        0x1000 /* Project quota */
-
- #define EXT4_FEATURE_INCOMPAT_COMPRESSION    0x0001
- #define EXT4_FEATURE_INCOMPAT_FILETYPE        0x0002
-@@ -1574,7 +1582,8 @@ static inline void ext4_clear_state_flag
-                      EXT4_FEATURE_RO_COMPAT_HUGE_FILE |\
-                      EXT4_FEATURE_RO_COMPAT_BIGALLOC |\
-                      EXT4_FEATURE_RO_COMPAT_METADATA_CSUM|\
--                     EXT4_FEATURE_RO_COMPAT_QUOTA)
-+                     EXT4_FEATURE_RO_COMPAT_QUOTA |\
-+                     EXT4_FEATURE_RO_COMPAT_PROJECT)
-
- /*
-  * Default values for user and/or group using reserved blocks
-@@ -1582,6 +1591,11 @@ static inline void ext4_clear_state_flag
- #define    EXT4_DEF_RESUID        0
- #define    EXT4_DEF_RESGID        0
-
-+/*
-+ * Default project ID
-+ */
-+#define    EXT4_DEF_PROJID        0
-+
- #define EXT4_DEF_INODE_READAHEAD_BLKS    32
-
- /*
-@@ -2133,6 +2147,9 @@ extern int ext4_zero_partial_blocks(hand
-                  loff_t lstart, loff_t lend);
- extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
- extern qsize_t *ext4_get_reserved_space(struct inode *inode);
-+#ifdef CONFIG_QUOTA_PROJECT
-+extern int ext4_get_projid(struct inode *inode, kprojid_t *projid);
-+#endif
- extern void ext4_da_update_reserve_space(struct inode *inode,
-                     int used, int quota_claim);
-
-Index: linux.git/fs/ext4/inode.c
-===================================================================
---- linux.git.orig/fs/ext4/inode.c
-+++ linux.git/fs/ext4/inode.c
-@@ -4026,6 +4026,47 @@ static inline void ext4_iget_extra_inode
-         EXT4_I(inode)->i_inline_off = 0;
+@@ -1372,6 +1375,7 @@ static inline int ext4_valid_inum(struct
+         ino == EXT4_BOOT_LOADER_INO ||
+         ino == EXT4_JOURNAL_INO ||
+         ino == EXT4_RESIZE_INO ||
++        ino == EXT4_PRJ_QUOTA_INO ||
+         (ino >= EXT4_FIRST_INO(sb) &&
+          ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
  }
-
-+#ifdef CONFIG_QUOTA_PROJECT
-+static int ext4_inode_projid_get(struct inode *inode, struct ext4_inode *raw,
-+                 struct ext4_inode_info *ei, projid_t *projid)
-+{
-+    BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+            EXT4_FEATURE_RO_COMPAT_PROJECT));
-+
-+    if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-+        EXT4_FITS_IN_INODE(raw, ei, i_projid)) {
-+        *projid = (projid_t)le32_to_cpu(raw->i_projid);
-+        return 0;
-+    }
-+    return -EFBIG;
-+}
-+
-+static int ext4_inode_projid_set(struct inode *inode, struct ext4_inode *raw,
-+                 struct ext4_inode_info *ei, projid_t projid)
-+{
-+    BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+            EXT4_FEATURE_RO_COMPAT_PROJECT));
-+
-+    if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-+        EXT4_FITS_IN_INODE(raw, ei, i_projid)) {
-+        raw->i_projid = cpu_to_le32(projid);
-+        return 0;
-+    }
-+    return -EFBIG;
-+}
-+
-+int ext4_get_projid(struct inode *inode, kprojid_t *projid)
-+{
-+    if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+            EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-+        return -ENOTSUPP;
-+    }
-+
-+    *projid = EXT4_I(inode)->i_projid;
-+    return 0;
-+}
-+#endif
-+
- struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- {
-     struct ext4_iloc iloc;
-@@ -4037,6 +4078,9 @@ struct inode *ext4_iget(struct super_blo
-     int block;
-     uid_t i_uid;
-     gid_t i_gid;
-+#ifdef CONFIG_QUOTA_PROJECT
-+    projid_t i_projid = 0;
-+#endif
-
-     inode = iget_locked(sb, ino);
-     if (!inode)
-@@ -4087,12 +4131,26 @@ struct inode *ext4_iget(struct super_blo
-     inode->i_mode = le16_to_cpu(raw_inode->i_mode);
-     i_uid = (uid_t)le16_to_cpu(raw_inode->i_uid_low);
-     i_gid = (gid_t)le16_to_cpu(raw_inode->i_gid_low);
-+#ifdef CONFIG_QUOTA_PROJECT
-+    if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-+        ret = ext4_inode_projid_get(inode, raw_inode, ei, &i_projid);
-+        if (ret) {
-+            EXT4_ERROR_INODE(inode, "failed to get project ID");
-+            goto bad_inode;
-+        }
-+    }
-+#endif
-+
-     if (!(test_opt(inode->i_sb, NO_UID32))) {
-         i_uid |= le16_to_cpu(raw_inode->i_uid_high) << 16;
-         i_gid |= le16_to_cpu(raw_inode->i_gid_high) << 16;
-     }
-     i_uid_write(inode, i_uid);
-     i_gid_write(inode, i_gid);
-+#ifdef CONFIG_QUOTA_PROJECT
-+    if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT))
-+        ei->i_projid = make_kprojid(&init_user_ns, i_projid);;
-+#endif
-     set_nlink(inode, le16_to_cpu(raw_inode->i_links_count));
-
-     ext4_clear_state_flags(ei);    /* Only relevant on 32-bit archs */
-@@ -4315,6 +4373,9 @@ static int ext4_do_update_inode(handle_t
-     int need_datasync = 0, set_large_file = 0;
-     uid_t i_uid;
-     gid_t i_gid;
-+#ifdef CONFIG_QUOTA_PROJECT
-+    projid_t i_projid = 0;
-+#endif
-
-     spin_lock(&ei->i_raw_lock);
-
-@@ -4327,6 +4388,10 @@ static int ext4_do_update_inode(handle_t
-     raw_inode->i_mode = cpu_to_le16(inode->i_mode);
-     i_uid = i_uid_read(inode);
-     i_gid = i_gid_read(inode);
-+#ifdef CONFIG_QUOTA_PROJECT
-+    if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT))
-+        i_projid = from_kprojid(&init_user_ns, ei->i_projid);
-+#endif
-     if (!(test_opt(inode->i_sb, NO_UID32))) {
-         raw_inode->i_uid_low = cpu_to_le16(low_16_bits(i_uid));
-         raw_inode->i_gid_low = cpu_to_le16(low_16_bits(i_gid));
-@@ -4356,7 +4421,8 @@ static int ext4_do_update_inode(handle_t
-     EXT4_INODE_SET_XTIME(i_atime, inode, raw_inode);
-     EXT4_EINODE_SET_XTIME(i_crtime, ei, raw_inode);
-
--    if (ext4_inode_blocks_set(handle, raw_inode, ei)) {
-+    err = ext4_inode_blocks_set(handle, raw_inode, ei);
-+    if (err) {
-         spin_unlock(&ei->i_raw_lock);
-         goto out_brelse;
-     }
-@@ -4407,6 +4473,16 @@ static int ext4_do_update_inode(handle_t
-
-     ext4_inode_csum_set(inode, raw_inode, ei);
-
-+#ifdef CONFIG_QUOTA_PROJECT
-+    if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-+        err = ext4_inode_projid_set(inode, raw_inode, ei, i_projid);
-+        if (err) {
-+            spin_unlock(&ei->i_raw_lock);
-+            goto out_brelse;
-+        }
-+    }
-+#endif
-+
-     spin_unlock(&ei->i_raw_lock);
-
-     BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
 Index: linux.git/fs/ext4/super.c
 ===================================================================
 --- linux.git.orig/fs/ext4/super.c
 +++ linux.git/fs/ext4/super.c
-@@ -1080,6 +1080,9 @@ static const struct dquot_operations ext
-     .write_info    = ext4_write_info,
-     .alloc_dquot    = dquot_alloc,
-     .destroy_dquot    = dquot_destroy,
-+#ifdef CONFIG_QUOTA_PROJECT
-+    .get_projid    = ext4_get_projid,
-+#endif
- };
+@@ -1048,8 +1048,8 @@ static int bdev_try_to_free_page(struct
+ }
 
- static const struct quotactl_ops ext4_qctl_operations = {
-Index: linux.git/fs/ext4/namei.c
-===================================================================
---- linux.git.orig/fs/ext4/namei.c
-+++ linux.git/fs/ext4/namei.c
-@@ -2951,11 +2951,21 @@ static int ext4_link(struct dentry *old_
+ #ifdef CONFIG_QUOTA
+-#define QTYPE2NAME(t) ((t) == USRQUOTA ? "user" : "group")
+-#define QTYPE2MOPT(on, t) ((t) == USRQUOTA?((on)##USRJQUOTA):((on)##GRPJQUOTA))
++static char *quotatypes[] = INITQFNAMES;
++#define QTYPE2NAME(t) (quotatypes[t])
+
+ static int ext4_write_dquot(struct dquot *dquot);
+ static int ext4_acquire_dquot(struct dquot *dquot);
+@@ -1162,10 +1162,11 @@ enum {
+     Opt_journal_path, Opt_journal_checksum, Opt_journal_async_commit,
+     Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
+     Opt_data_err_abort, Opt_data_err_ignore,
+-    Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
++    Opt_usrjquota, Opt_grpjquota, Opt_prjjquota,
++    Opt_offusrjquota, Opt_offgrpjquota, Opt_offprjjquota,
+     Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_jqfmt_vfsv1, Opt_quota,
+     Opt_noquota, Opt_barrier, Opt_nobarrier, Opt_err,
+-    Opt_usrquota, Opt_grpquota, Opt_i_version,
++    Opt_usrquota, Opt_grpquota, Opt_prjquota, Opt_i_version,
+     Opt_stripe, Opt_delalloc, Opt_nodelalloc, Opt_mblk_io_submit,
+     Opt_nomblk_io_submit, Opt_block_validity, Opt_noblock_validity,
+     Opt_inode_readahead_blks, Opt_journal_ioprio,
+@@ -1216,6 +1217,8 @@ static const match_table_t tokens = {
+     {Opt_usrjquota, "usrjquota=%s"},
+     {Opt_offgrpjquota, "grpjquota="},
+     {Opt_grpjquota, "grpjquota=%s"},
++    {Opt_offprjjquota, "prjjquota="},
++    {Opt_prjjquota, "prjjquota=%s"},
+     {Opt_jqfmt_vfsold, "jqfmt=vfsold"},
+     {Opt_jqfmt_vfsv0, "jqfmt=vfsv0"},
+     {Opt_jqfmt_vfsv1, "jqfmt=vfsv1"},
+@@ -1223,6 +1226,7 @@ static const match_table_t tokens = {
+     {Opt_noquota, "noquota"},
+     {Opt_quota, "quota"},
+     {Opt_usrquota, "usrquota"},
++    {Opt_prjquota, "prjquota"},
+     {Opt_barrier, "barrier=%u"},
+     {Opt_barrier, "barrier"},
+     {Opt_nobarrier, "nobarrier"},
+@@ -1435,6 +1439,12 @@ static const struct mount_opts {
+                             MOPT_SET | MOPT_Q},
+     {Opt_grpquota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_GRPQUOTA,
+                             MOPT_SET | MOPT_Q},
++#ifdef CONFIG_QUOTA_PROJECT
++    {Opt_prjquota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_PRJQUOTA,
++                            MOPT_SET | MOPT_Q},
++#else
++    {Opt_prjquota, 0, MOPT_NOSUPPORT},
++#endif
+     {Opt_noquota, (EXT4_MOUNT_QUOTA | EXT4_MOUNT_USRQUOTA |
+                EXT4_MOUNT_GRPQUOTA), MOPT_CLEAR | MOPT_Q},
+     {Opt_usrjquota, 0, MOPT_Q},
+@@ -1463,10 +1473,14 @@ static int handle_mount_opt(struct super
+         return set_qf_name(sb, USRQUOTA, &args[0]);
+     else if (token == Opt_grpjquota)
+         return set_qf_name(sb, GRPQUOTA, &args[0]);
++    else if (token == Opt_prjjquota)
++        return set_qf_name(sb, PRJQUOTA, &args[0]);
+     else if (token == Opt_offusrjquota)
+         return clear_qf_name(sb, USRQUOTA);
+     else if (token == Opt_offgrpjquota)
+         return clear_qf_name(sb, GRPQUOTA);
++    else if (token == Opt_offprjjquota)
++        return clear_qf_name(sb, PRJQUOTA);
+ #endif
+     switch (token) {
+     case Opt_noacl:
+@@ -1692,19 +1706,28 @@ static int parse_options(char *options,
+     }
+ #ifdef CONFIG_QUOTA
+     if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
+-        (test_opt(sb, USRQUOTA) || test_opt(sb, GRPQUOTA))) {
++        (test_opt(sb, USRQUOTA) ||
++         test_opt(sb, GRPQUOTA) ||
++         test_opt(sb, PRJQUOTA))) {
+         ext4_msg(sb, KERN_ERR, "Cannot set quota options when QUOTA "
+              "feature is enabled");
+         return 0;
+     }
+-    if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
++    if (sbi->s_qf_names[USRQUOTA] ||
++        sbi->s_qf_names[GRPQUOTA] ||
++        sbi->s_qf_names[PRJQUOTA]) {
+         if (test_opt(sb, USRQUOTA) && sbi->s_qf_names[USRQUOTA])
+             clear_opt(sb, USRQUOTA);
+
+         if (test_opt(sb, GRPQUOTA) && sbi->s_qf_names[GRPQUOTA])
+             clear_opt(sb, GRPQUOTA);
+
+-        if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA)) {
++        if (test_opt(sb, PRJQUOTA) && sbi->s_qf_names[PRJQUOTA])
++            clear_opt(sb, PRJQUOTA);
++
++        if (test_opt(sb, GRPQUOTA) ||
++            test_opt(sb, USRQUOTA) ||
++            test_opt(sb, PRJQUOTA)) {
+             ext4_msg(sb, KERN_ERR, "old and new quota "
+                     "format mixing");
+             return 0;
+@@ -1765,6 +1788,9 @@ static inline void ext4_show_quota_optio
+
+     if (sbi->s_qf_names[GRPQUOTA])
+         seq_printf(seq, ",grpjquota=%s", sbi->s_qf_names[GRPQUOTA]);
++
++    if (sbi->s_qf_names[PRJQUOTA])
++        seq_printf(seq, ",prjjquota=%s", sbi->s_qf_names[PRJQUOTA]);
+ #endif
+ }
+
+@@ -2793,6 +2819,15 @@ static int ext4_feature_set_ok(struct su
+         return 0;
+     }
+ #endif  /* CONFIG_QUOTA */
++#ifndef CONFIG_QUOTA_PROJECT
++    if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT) &&
++        !readonly) {
++        ext4_msg(sb, KERN_ERR,
++             "Filesystem with quota feature cannot be mounted RDWR "
++             "without CONFIG_QUOTA_PROJECT");
++        return 0;
++    }
++#endif
+     return 1;
+ }
+
+@@ -5011,6 +5046,48 @@ restore_opts:
+     return err;
+ }
+
++#ifdef CONFIG_QUOTA_PROJECT
++static int ext4_statfs_project(struct super_block *sb,
++                   kprojid_t projid, struct kstatfs *buf)
++{
++    struct kqid qid;
++    struct dquot *dquot;
++    u64 limit;
++    u64 curblock;
++
++    qid = make_kqid_projid(projid);
++    dquot = dqget(sb, qid);
++    if (!dquot)
++        return -ESRCH;
++    spin_lock(&dq_data_lock);
++
++    limit = dquot->dq_dqb.dqb_bsoftlimit ?
++        dquot->dq_dqb.dqb_bsoftlimit :
++        dquot->dq_dqb.dqb_bhardlimit;
++    if (limit && buf->f_blocks * buf->f_bsize > limit) {
++        curblock = dquot->dq_dqb.dqb_curspace / buf->f_bsize;
++        buf->f_blocks = limit / buf->f_bsize;
++        buf->f_bfree = buf->f_bavail =
++            (buf->f_blocks > curblock) ?
++             (buf->f_blocks - curblock) : 0;
++    }
++
++    limit = dquot->dq_dqb.dqb_isoftlimit ?
++        dquot->dq_dqb.dqb_isoftlimit :
++        dquot->dq_dqb.dqb_ihardlimit;
++    if (limit && buf->f_files > limit) {
++        buf->f_files = limit;
++        buf->f_ffree =
++            (buf->f_files > dquot->dq_dqb.dqb_curinodes) ?
++             (buf->f_ffree - dquot->dq_dqb.dqb_curinodes) : 0;
++    }
++
++    spin_unlock(&dq_data_lock);
++    dqput(dquot);
++    return 0;
++}
++#endif
++
+ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
  {
-     handle_t *handle;
-     struct inode *inode = old_dentry->d_inode;
-+    struct super_block *sb = dir->i_sb;
-     int err, retries = 0;
+     struct super_block *sb = dentry->d_sb;
+@@ -5019,6 +5096,8 @@ static int ext4_statfs(struct dentry *de
+     ext4_fsblk_t overhead = 0, resv_blocks;
+     u64 fsid;
+     s64 bfree;
++    struct inode *inode = dentry->d_inode;
++    int err = 0;
+     resv_blocks = EXT4_C2B(sbi, atomic64_read(&sbi->s_resv_clusters));
 
-     if (inode->i_nlink >= EXT4_LINK_MAX)
-         return -EMLINK;
+     if (!test_opt(sb, MINIX_DF))
+@@ -5043,7 +5122,20 @@ static int ext4_statfs(struct dentry *de
+     buf->f_fsid.val[0] = fsid & 0xFFFFFFFFUL;
+     buf->f_fsid.val[1] = (fsid >> 32) & 0xFFFFFFFFUL;
 
+-    return 0;
 +#ifdef CONFIG_QUOTA_PROJECT
-+    if ((EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT)) &&
-+        (ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT)) &&
-+        (!projid_eq(EXT4_I(dir)->i_projid,
-+            EXT4_I(old_dentry->d_inode)->i_projid))) {
-+        return -EXDEV;
++    if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT) &&
++        ext4_test_inode_flag(inode, EXT4_INODE_PROJINHERIT) &&
++        sb_has_quota_usage_enabled(sb, PRJQUOTA) &&
++        sb_has_quota_limits_enabled(sb, PRJQUOTA)) {
++            err = ext4_statfs_project(sb, EXT4_I(inode)->i_projid, buf);
++            if (err) {
++            ext4_warning(sb, "Cannot get quota of project %u\n",
++                     from_kprojid(&init_user_ns,
++                          EXT4_I(inode)->i_projid));
++            }
 +    }
 +#endif
-+
-     dquot_initialize(dir);
++    return err;
+ }
 
- retry:
-@@ -3191,8 +3201,18 @@ static int ext4_rename(struct inode *old
-         .dentry = new_dentry,
-         .inode = new_dentry->d_inode,
+ /* Helper function for writing quotas on sync - we need to start transaction
+@@ -5123,7 +5215,9 @@ static int ext4_mark_dquot_dirty(struct
+
+     /* Are we journaling quotas? */
+     if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) ||
+-        sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
++        sbi->s_qf_names[USRQUOTA] ||
++        sbi->s_qf_names[GRPQUOTA] ||
++        sbi->s_qf_names[PRJQUOTA]) {
+         dquot_mark_dquot_dirty(dquot);
+         return ext4_write_dquot(dquot);
+     } else {
+@@ -5207,10 +5301,14 @@ static int ext4_quota_enable(struct supe
+     struct inode *qf_inode;
+     unsigned long qf_inums[MAXQUOTAS] = {
+         le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
+-        le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
++        le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum),
++        le32_to_cpu(EXT4_SB(sb)->s_es->s_prj_quota_inum)
      };
-+    struct super_block *sb = new_dir->i_sb;
-     int retval;
 
-+#ifdef CONFIG_QUOTA_PROJECT
-+    if ((EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT)) &&
-+        (ext4_test_inode_flag(new_dir, EXT4_INODE_PROJINHERIT)) &&
-+        (!projid_eq(EXT4_I(new_dir)->i_projid,
-+            EXT4_I(old_dentry->d_inode)->i_projid))) {
-+        return -EXDEV;
-+    }
-+#endif
+     BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA));
++    BUG_ON(type == PRJQUOTA &&
++           (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++                EXT4_FEATURE_RO_COMPAT_PROJECT)));
+
+     if (!qf_inums[type])
+         return -EPERM;
+@@ -5235,11 +5333,16 @@ static int ext4_enable_quotas(struct sup
+     int type, err = 0;
+     unsigned long qf_inums[MAXQUOTAS] = {
+         le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
+-        le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
++        le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum),
++        le32_to_cpu(EXT4_SB(sb)->s_es->s_prj_quota_inum)
+     };
+
+     sb_dqopt(sb)->flags |= DQUOT_QUOTA_SYS_FILE;
+     for (type = 0; type < MAXQUOTAS; type++) {
++        if (type == PRJQUOTA &&
++            (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++                EXT4_FEATURE_RO_COMPAT_PROJECT)))
++            continue;
+         if (qf_inums[type]) {
+             err = ext4_quota_enable(sb, type, QFMT_VFS_V1,
+                         DQUOT_USAGE_ENABLED);
+@@ -5264,6 +5367,10 @@ static int ext4_quota_on_sysfile(struct
+     if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
+         return -EINVAL;
+
++    if (type == PRJQUOTA &&
++        (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT)))
++        return -EINVAL;
 +
-     dquot_initialize(old.dir);
-     dquot_initialize(new.dir);
+     /*
+      * USAGE was enabled at mount time. Only need to enable LIMITS now.
+      */
+@@ -5304,6 +5411,10 @@ static int ext4_quota_off_sysfile(struct
+     if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
+         return -EINVAL;
+
++    if (type == PRJQUOTA &&
++        (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT)))
++        return -EINVAL;
++
+     /* Disable only the limits. */
+     return dquot_disable(sb, type, DQUOT_LIMITS_ENABLED);
+ }
