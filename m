@@ -1,108 +1,142 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v3 1/4] quota: add project quota support
-Date: Wed, 10 Sep 2014 18:45:59 +0200
-Message-ID: <20140910164559.GA10507@quack.suse.cz>
-References: <CAPTn0cAOeQ_nyKx5k+kJOzx17tq+5WtyrMhBE8bpFCKx0UecGw@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"hch@infradead.org" <hch@infradead.org>, Jan Kara <jack@suse.cz>,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: Li Xi <pkuelelixi@gmail.com>
+Subject: [PATCH 1/5] ext3: Don't use MAXQUOTAS value
+Date: Wed, 10 Sep 2014 21:22:48 +0200
+Message-ID: <1410376972-18417-2-git-send-email-jack@suse.cz>
+References: <1410376972-18417-1-git-send-email-jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46242 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:48845 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751229AbaIJQqC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Sep 2014 12:46:02 -0400
-Content-Disposition: inline
-In-Reply-To: <CAPTn0cAOeQ_nyKx5k+kJOzx17tq+5WtyrMhBE8bpFCKx0UecGw@mail.gmail.com>
+	id S1752256AbaIJTXD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Sep 2014 15:23:03 -0400
+In-Reply-To: <1410376972-18417-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 10-09-14 11:52:35, Li Xi wrote:
-> Adds general codes to enforces project quota limits
-> 
-> This patch adds support for a new quota type PRJQUOTA for project quota
-> enforcement. Also a new method get_projid() is added into dquot_operations
-> structure.
-> 
-  One general note:
-  Your mail client has apparently mangled the patch (replaced tabs with
-spaces). Please resend patches using git-send-email or some other email
-client that doesn't do this so that they can be applied cleanly.
+MAXQUOTAS value defines maximum number of quota types VFS supports. This
+isn't necessarily the number of types ext3 supports and with addition of
+project quotas these two numbers stop matching. So make ext3 use its
+private definition.
 
-  Some other comments below.
+CC: linux-ext4@vger.kernel.org
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext3/ext3.h  | 12 +++++++-----
+ fs/ext3/super.c | 14 +++++++-------
+ 2 files changed, 14 insertions(+), 12 deletions(-)
 
-> Signed-off-by: Li Xi <lixi <at> ddn.com>
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
-> Index: linux.git/fs/quota/dquot.c
-> ===================================================================
-> --- linux.git.orig/fs/quota/dquot.c
-> +++ linux.git/fs/quota/dquot.c
-> @@ -161,6 +161,19 @@ static struct quota_module_name module_n
->  /* SLAB cache for dquot structures */
->  static struct kmem_cache *dquot_cachep;
-> 
-> +static inline unsigned long compat_qtype2bits(int type)
-> +{
-> +#ifdef CONFIG_QUOTA_PROJECT
-  I don't find CONFIG_QUOTA_PROJECT all that useful. If someone is building
-a kernel with CONFIG_QUOTA enabled (i.e., a kernel for a server), he can
-well spare those few kilobytes for project quota support and it makes the
-code somewhat nicer. So I would just remove this config option.
-
-> +    unsigned long qtype_bits = QUOTA_ALL_BIT;
-> +#else
-> +    unsigned long qtype_bits = QUOTA_USR_BIT | QUOTA_GRP_BIT;
-> +#endif
-> +    if (type != -1) {
-> +        qtype_bits = 1 << type;
-> +    }
-> +    return qtype_bits;
-> +}
-> +
->  int register_quota_format(struct quota_format_type *fmt)
->  {
->      spin_lock(&dq_list_lock);
-> @@ -250,7 +263,8 @@ struct dqstats dqstats;
->  EXPORT_SYMBOL(dqstats);
-> 
->  static qsize_t inode_get_rsv_space(struct inode *inode);
-> -static void __dquot_initialize(struct inode *inode, int type);
-> +static void __dquot_initialize(struct inode *inode,
-> +                   unsigned long qtype_bits);
-  I've noticed you are changing interface of several functions from taking
-a type number (or -1) to taking a bitmask. I guess it's because of
-CONFIG_QUOTA_PROJECT or is there also any other reason? If we get rid of
-that config, we won't need this change either, right?
-
-...
-> Index: linux.git/include/uapi/linux/quota.h
-> ===================================================================
-> --- linux.git.orig/include/uapi/linux/quota.h
-> +++ linux.git/include/uapi/linux/quota.h
-> @@ -36,11 +36,12 @@
->  #include <linux/errno.h>
->  #include <linux/types.h>
-> 
-> -#define __DQUOT_VERSION__    "dquot_6.5.2"
-> +#define __DQUOT_VERSION__    "dquot_6.6.0"
-> 
-> -#define MAXQUOTAS 2
-> +#define MAXQUOTAS 3
-  Hum, actually this isn't so simple. MAXQUOTAS is used in several
-filesystems - ext3, ext4, ocfs2, reiserfs, gfs2 - and just bumping up
-MAXQUOTAS can have unexpected consequences for them (they won't have
-properly initialized data structures for new quota type). So what we have
-to do as a preparatory step is to make these filesystems define their own
-MAXQUOTAS value (like EXT3_MAXQUOTAS, ...). I'll take care of that.
-
-								Honza
+diff --git a/fs/ext3/ext3.h b/fs/ext3/ext3.h
+index e85ff15a060e..fc3cdcf24aed 100644
+--- a/fs/ext3/ext3.h
++++ b/fs/ext3/ext3.h
+@@ -237,6 +237,8 @@ struct ext3_new_group_data {
+ #define EXT3_IOC32_GETVERSION_OLD	FS_IOC32_GETVERSION
+ #define EXT3_IOC32_SETVERSION_OLD	FS_IOC32_SETVERSION
+ 
++/* Number of supported quota types */
++#define EXT3_MAXQUOTAS 2
+ 
+ /*
+  *  Mount options
+@@ -248,7 +250,7 @@ struct ext3_mount_options {
+ 	unsigned long s_commit_interval;
+ #ifdef CONFIG_QUOTA
+ 	int s_jquota_fmt;
+-	char *s_qf_names[MAXQUOTAS];
++	char *s_qf_names[EXT3_MAXQUOTAS];
+ #endif
+ };
+ 
+@@ -669,7 +671,7 @@ struct ext3_sb_info {
+ 	unsigned long s_commit_interval;
+ 	struct block_device *journal_bdev;
+ #ifdef CONFIG_QUOTA
+-	char *s_qf_names[MAXQUOTAS];		/* Names of quota files with journalled quota */
++	char *s_qf_names[EXT3_MAXQUOTAS];	/* Names of quota files with journalled quota */
+ 	int s_jquota_fmt;			/* Format of quota to use */
+ #endif
+ };
+@@ -1183,9 +1185,9 @@ extern const struct inode_operations ext3_fast_symlink_inode_operations;
+ #define EXT3_QUOTA_INIT_BLOCKS(sb) 0
+ #define EXT3_QUOTA_DEL_BLOCKS(sb) 0
+ #endif
+-#define EXT3_MAXQUOTAS_TRANS_BLOCKS(sb) (MAXQUOTAS*EXT3_QUOTA_TRANS_BLOCKS(sb))
+-#define EXT3_MAXQUOTAS_INIT_BLOCKS(sb) (MAXQUOTAS*EXT3_QUOTA_INIT_BLOCKS(sb))
+-#define EXT3_MAXQUOTAS_DEL_BLOCKS(sb) (MAXQUOTAS*EXT3_QUOTA_DEL_BLOCKS(sb))
++#define EXT3_MAXQUOTAS_TRANS_BLOCKS(sb) (EXT3_MAXQUOTAS*EXT3_QUOTA_TRANS_BLOCKS(sb))
++#define EXT3_MAXQUOTAS_INIT_BLOCKS(sb) (EXT3_MAXQUOTAS*EXT3_QUOTA_INIT_BLOCKS(sb))
++#define EXT3_MAXQUOTAS_DEL_BLOCKS(sb) (EXT3_MAXQUOTAS*EXT3_QUOTA_DEL_BLOCKS(sb))
+ 
+ int
+ ext3_mark_iloc_dirty(handle_t *handle,
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 622e88249024..b79f04bf72fc 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -441,7 +441,7 @@ static void ext3_put_super (struct super_block * sb)
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
+ 	brelse(sbi->s_sbh);
+ #ifdef CONFIG_QUOTA
+-	for (i = 0; i < MAXQUOTAS; i++)
++	for (i = 0; i < EXT3_MAXQUOTAS; i++)
+ 		kfree(sbi->s_qf_names[i]);
+ #endif
+ 
+@@ -1555,7 +1555,7 @@ static void ext3_orphan_cleanup (struct super_block * sb,
+ 	/* Needed for iput() to work correctly and not trash data */
+ 	sb->s_flags |= MS_ACTIVE;
+ 	/* Turn on quotas so that they are updated correctly */
+-	for (i = 0; i < MAXQUOTAS; i++) {
++	for (i = 0; i < EXT3_MAXQUOTAS; i++) {
+ 		if (EXT3_SB(sb)->s_qf_names[i]) {
+ 			int ret = ext3_quota_on_mount(sb, i);
+ 			if (ret < 0)
+@@ -1606,7 +1606,7 @@ static void ext3_orphan_cleanup (struct super_block * sb,
+ 		       PLURAL(nr_truncates));
+ #ifdef CONFIG_QUOTA
+ 	/* Turn quotas off */
+-	for (i = 0; i < MAXQUOTAS; i++) {
++	for (i = 0; i < EXT3_MAXQUOTAS; i++) {
+ 		if (sb_dqopt(sb)->files[i])
+ 			dquot_quota_off(sb, i);
+ 	}
+@@ -2139,7 +2139,7 @@ failed_mount2:
+ 	kfree(sbi->s_group_desc);
+ failed_mount:
+ #ifdef CONFIG_QUOTA
+-	for (i = 0; i < MAXQUOTAS; i++)
++	for (i = 0; i < EXT3_MAXQUOTAS; i++)
+ 		kfree(sbi->s_qf_names[i]);
+ #endif
+ 	ext3_blkdev_remove(sbi);
+@@ -2659,7 +2659,7 @@ static int ext3_remount (struct super_block * sb, int * flags, char * data)
+ 	old_opts.s_commit_interval = sbi->s_commit_interval;
+ #ifdef CONFIG_QUOTA
+ 	old_opts.s_jquota_fmt = sbi->s_jquota_fmt;
+-	for (i = 0; i < MAXQUOTAS; i++)
++	for (i = 0; i < EXT3_MAXQUOTAS; i++)
+ 		if (sbi->s_qf_names[i]) {
+ 			old_opts.s_qf_names[i] = kstrdup(sbi->s_qf_names[i],
+ 							 GFP_KERNEL);
+@@ -2763,7 +2763,7 @@ static int ext3_remount (struct super_block * sb, int * flags, char * data)
+ 	}
+ #ifdef CONFIG_QUOTA
+ 	/* Release old quota file names */
+-	for (i = 0; i < MAXQUOTAS; i++)
++	for (i = 0; i < EXT3_MAXQUOTAS; i++)
+ 		kfree(old_opts.s_qf_names[i]);
+ #endif
+ 	if (enable_quota)
+@@ -2777,7 +2777,7 @@ restore_opts:
+ 	sbi->s_commit_interval = old_opts.s_commit_interval;
+ #ifdef CONFIG_QUOTA
+ 	sbi->s_jquota_fmt = old_opts.s_jquota_fmt;
+-	for (i = 0; i < MAXQUOTAS; i++) {
++	for (i = 0; i < EXT3_MAXQUOTAS; i++) {
+ 		kfree(sbi->s_qf_names[i]);
+ 		sbi->s_qf_names[i] = old_opts.s_qf_names[i];
+ 	}
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.8.1.4
+
