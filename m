@@ -1,108 +1,240 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] badblocks: Limit maximum number of bad blocks
-Date: Thu, 11 Sep 2014 12:03:24 +0200
-Message-ID: <1410429804-26459-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+Subject: [PATCH] jbd2: remove __jbd2_journal_clean_checkpoint_list to solve scalability issue
+Date: Thu, 11 Sep 2014 18:09:53 +0800
+Message-ID: <1410430193-6112-1-git-send-email-yuanhan.liu@linux.intel.com>
+Cc: Yuanhan Liu <yuanhan.liu@linux.intel.com>,
+	Andi Kleen <ak@linux.intel.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:58876 "EHLO mx2.suse.de"
+Received: from mga02.intel.com ([134.134.136.20]:15434 "EHLO mga02.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753858AbaIKKDc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Sep 2014 06:03:32 -0400
+	id S1754125AbaIKKJv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Sep 2014 06:09:51 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently maximum number of bad blocks is not limited in any way.
-However our code can really handle at most INT_MAX/2 bad blocks (for
-larger numbers binary search indexes start overflowing). So report
-number of bad blocks is just too big instead of plaing segfault.
+Firstly, if I read the code correctly(I have a feeling I missed something),
+__jbd2_journal_clean_checkpoint_list is not necessary. jbd2_log_do_checkpoint
+will remove them for the checkpointed transaction. In another word,
+__jbd2_journal_clean_checkpoint_list can't drop an transaction if it's not
+checkpointed.
 
-It won't be too hard to raise the limit but I don't think there's any
-real use for disks with over 1 billion of bad blocks...
+Secondly, I noticed severe scalability limit caused by this function with fsmark:
+   $ fs_mark  -d  /fs/ram0/1  -D  2  -N  2560  -n  1000000  -L  1  -S  1  -s  4096
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+It mainly writes tons of small files, each with 4K, and calls fsync after
+each write. It's one thread only, and it's tested on a 32G memory disk(brd).
+
+"perf top" shows that journal_clean_one_cp_list() is very hot, like 40%.
+However, that function is quite cheap, actually. But __jbd2_journal_clean_checkpoint_list()
+will repeatedly call it for each transaction on the j_checkpoint_transactions.
+The list becomes longer and longer in linear with time. It soon grows to
+a list with 3,000 and more transactions. What's worse, we will iterate all
+those transactions on this list every time before committing a transaction,
+aka, fsync a file in our case.
+
+So, that's roughly the reason why journal_clean_one_cp_list() is hot. However,
+I'm wondering why the j_checkpoint_transactions list keeps growing. Is there
+a bug? I did more investigates, and I guess I found the root cause.
+
+In this case, we invoke fsync after each write, so, it basically means one
+transaction for one file. One transaction normally contains few blocks of meta
+data, like bitmap, inode and so on. All files in same group shares one bitmap
+block. But one inode table block could contains 16 files. Hence, it's possible
+that 2 different file points to same meta blocks.
+
+For example, if file A and B uses same meta blocks, and if we write A and B in
+following style:
+        write(A);
+        fsync(A);
+
+        write(B);
+        fsync(B);
+
+then, when we are about to commit transation for B, and assume transaction of A
+is not checkpointted yet, we can safely drop transaction A and replace it with
+transaction B. Hence, the j_checkpoint_transactions grows by 1 only.
+
+And then assume A is the last inode in one inode block, hence, B will use another
+inode table block. Thus transaction A and B is different. Hence, both A and B are
+inserted to the j_checkpoint_transactions; the list grows by 2.
+
+Here I also got the proves; I added a trace point in jbd2_log_do_checkpoint(),
+and here are some of them:
+
+         fs_mark-2646  [000] ....     5.830990: jbd2_start_checkpoint: tid=20
+         fs_mark-2646  [000] ....     5.832391: jbd2_start_checkpoint: tid=36
+         fs_mark-2646  [000] ....     5.833794: jbd2_start_checkpoint: tid=52
+         fs_mark-2646  [000] ....     5.835153: jbd2_start_checkpoint: tid=68
+         fs_mark-2646  [000] ....     5.836517: jbd2_start_checkpoint: tid=84
+         fs_mark-2646  [000] ....     5.837982: jbd2_start_checkpoint: tid=100
+         fs_mark-2646  [000] ....     5.839464: jbd2_start_checkpoint: tid=116
+         fs_mark-2646  [000] ....     5.840820: jbd2_start_checkpoint: tid=132
+
+As you can see, the tid jumps by 16 each time, and other transactions are just
+replaced by the way I described above.
+
+Step by step like above, that list grows. And that's why journal_clean_one_cp_list() is hot.
+
+It removes the scalability issue when I removed this function, and the fsmark
+result(Files/sec) jumps from 9000 to 16000, which is an increase about 80%.
+
+Thoughts?
+
+CC: Andi Kleen <ak@linux.intel.com>
+Signed-off-by: Yuanhan Liu <yuanhan.liu@linux.intel.com>
 ---
- misc/badblocks.c | 25 ++++++++++++++++++++-----
- 1 file changed, 20 insertions(+), 5 deletions(-)
+ fs/jbd2/checkpoint.c | 115 ---------------------------------------------------
+ fs/jbd2/commit.c     |   9 ----
+ include/linux/jbd2.h |   1 -
+ 3 files changed, 125 deletions(-)
 
-diff --git a/misc/badblocks.c b/misc/badblocks.c
-index e5024f6c67d1..2c28ee00ec15 100644
---- a/misc/badblocks.c
-+++ b/misc/badblocks.c
-@@ -65,6 +65,9 @@ extern int optind;
- #define O_LARGEFILE 0
- #endif
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 9ffb19c..31fce78 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -83,26 +83,6 @@ static inline void __buffer_relink_io(struct journal_head *jh)
+ }
  
-+/* Maximum number of bad blocks we support */
-+#define MAX_BAD_BLOCKS (INT_MAX/2)
-+
- static const char * program_name = "badblocks";
- static const char * done_string = N_("done                                                 \n");
+ /*
+- * Try to release a checkpointed buffer from its transaction.
+- * Returns 1 if we released it and 2 if we also released the
+- * whole transaction.
+- *
+- * Requires j_list_lock
+- */
+-static int __try_to_free_cp_buf(struct journal_head *jh)
+-{
+-	int ret = 0;
+-	struct buffer_head *bh = jh2bh(jh);
+-
+-	if (jh->b_transaction == NULL && !buffer_locked(bh) &&
+-	    !buffer_dirty(bh) && !buffer_write_io_error(bh)) {
+-		JBUFFER_TRACE(jh, "remove from checkpoint list");
+-		ret = __jbd2_journal_remove_checkpoint(jh) + 1;
+-	}
+-	return ret;
+-}
+-
+-/*
+  * __jbd2_log_wait_for_space: wait until there is space in the journal.
+  *
+  * Called under j-state_lock *only*.  It will be unlocked if we have to wait
+@@ -412,101 +392,6 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
  
-@@ -78,7 +81,9 @@ static int t_max;			/* allocated test patterns */
- static unsigned int *t_patts;		/* test patterns */
- static int use_buffered_io;
- static int exclusive_ok;
--static unsigned int max_bb;		/* Abort test if more than this number of bad blocks has been encountered */
-+static unsigned int max_bb = MAX_BAD_BLOCKS;	/* Abort test if more than this
-+						 * number of bad blocks has been
-+						 * encountered */
- static unsigned int d_flag;		/* delay factor between reads */
- static struct timeval time_start;
+ /* Checkpoint list management */
  
-@@ -526,7 +531,7 @@ static unsigned int test_ro (int dev, blk_t last_block,
- 		alarm_intr(SIGALRM);
- 	while (currently_testing < last_block)
- 	{
--		if (max_bb && bb_count >= max_bb) {
-+		if (bb_count >= max_bb) {
- 			if (s_flag || v_flag) {
- 				fputs(_("Too many bad blocks, aborting test\n"), stderr);
- 			}
-@@ -633,7 +638,7 @@ static unsigned int test_rw (int dev, blk_t last_block,
+-/*
+- * journal_clean_one_cp_list
+- *
+- * Find all the written-back checkpoint buffers in the given list and
+- * release them.
+- *
+- * Called with the journal locked.
+- * Called with j_list_lock held.
+- * Returns number of buffers reaped (for debug)
+- */
+-
+-static int journal_clean_one_cp_list(struct journal_head *jh, int *released)
+-{
+-	struct journal_head *last_jh;
+-	struct journal_head *next_jh = jh;
+-	int ret, freed = 0;
+-
+-	*released = 0;
+-	if (!jh)
+-		return 0;
+-
+-	last_jh = jh->b_cpprev;
+-	do {
+-		jh = next_jh;
+-		next_jh = jh->b_cpnext;
+-		ret = __try_to_free_cp_buf(jh);
+-		if (ret) {
+-			freed++;
+-			if (ret == 2) {
+-				*released = 1;
+-				return freed;
+-			}
+-		}
+-		/*
+-		 * This function only frees up some memory
+-		 * if possible so we dont have an obligation
+-		 * to finish processing. Bail out if preemption
+-		 * requested:
+-		 */
+-		if (need_resched())
+-			return freed;
+-	} while (jh != last_jh);
+-
+-	return freed;
+-}
+-
+-/*
+- * journal_clean_checkpoint_list
+- *
+- * Find all the written-back checkpoint buffers in the journal and release them.
+- *
+- * Called with the journal locked.
+- * Called with j_list_lock held.
+- * Returns number of buffers reaped (for debug)
+- */
+-
+-int __jbd2_journal_clean_checkpoint_list(journal_t *journal)
+-{
+-	transaction_t *transaction, *last_transaction, *next_transaction;
+-	int ret = 0;
+-	int released;
+-
+-	transaction = journal->j_checkpoint_transactions;
+-	if (!transaction)
+-		goto out;
+-
+-	last_transaction = transaction->t_cpprev;
+-	next_transaction = transaction;
+-	do {
+-		transaction = next_transaction;
+-		next_transaction = transaction->t_cpnext;
+-		ret += journal_clean_one_cp_list(transaction->
+-				t_checkpoint_list, &released);
+-		/*
+-		 * This function only frees up some memory if possible so we
+-		 * dont have an obligation to finish processing. Bail out if
+-		 * preemption requested:
+-		 */
+-		if (need_resched())
+-			goto out;
+-		if (released)
+-			continue;
+-		/*
+-		 * It is essential that we are as careful as in the case of
+-		 * t_checkpoint_list with removing the buffer from the list as
+-		 * we can possibly see not yet submitted buffers on io_list
+-		 */
+-		ret += journal_clean_one_cp_list(transaction->
+-				t_checkpoint_io_list, &released);
+-		if (need_resched())
+-			goto out;
+-	} while (transaction != last_transaction);
+-out:
+-	return ret;
+-}
  
- 		try = blocks_at_once;
- 		while (currently_testing < last_block) {
--			if (max_bb && bb_count >= max_bb) {
-+			if (bb_count >= max_bb) {
- 				if (s_flag || v_flag) {
- 					fputs(_("Too many bad blocks, aborting test\n"), stderr);
- 				}
-@@ -675,7 +680,7 @@ static unsigned int test_rw (int dev, blk_t last_block,
+ /*
+  * journal_remove_checkpoint: called after a buffer has been committed
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index b73e021..1ebdd70 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -504,15 +504,6 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		jbd2_journal_refile_buffer(journal, jh);
+ 	}
  
- 		try = blocks_at_once;
- 		while (currently_testing < last_block) {
--			if (max_bb && bb_count >= max_bb) {
-+			if (bb_count >= max_bb) {
- 				if (s_flag || v_flag) {
- 					fputs(_("Too many bad blocks, aborting test\n"), stderr);
- 				}
-@@ -822,7 +827,7 @@ static unsigned int test_nd (int dev, blk_t last_block,
- 			alarm_intr(SIGALRM);
- 
- 		while (currently_testing < last_block) {
--			if (max_bb && bb_count >= max_bb) {
-+			if (bb_count >= max_bb) {
- 				if (s_flag || v_flag) {
- 					fputs(_("Too many bad blocks, aborting test\n"), stderr);
- 				}
-@@ -1117,6 +1122,16 @@ int main (int argc, char ** argv)
- 			break;
- 		case 'e':
- 			max_bb = parse_uint(optarg, "max bad block count");
-+			if (max_bb > MAX_BAD_BLOCKS) {
-+				com_err (program_name, 0,
-+					 _("Too big max bad blocks count %u - "
-+					   "maximum is %u"), max_bb,
-+					   MAX_BAD_BLOCKS);
-+				exit (1);
-+			}
-+			/* 0 really means unlimited but we cannot do that much... */
-+			if (max_bb == 0)
-+				max_bb = MAX_BAD_BLOCKS;
- 			break;
- 		case 'd':
- 			d_flag = parse_uint(optarg, "read delay factor");
--- 
-1.8.1.4
-
+-	/*
+-	 * Now try to drop any written-back buffers from the journal's
+-	 * checkpoint lists.  We do this *before* commit because it potentially
+-	 * frees some memory
+-	 */
+-	spin_lock(&journal->j_list_lock);
+-	__jbd2_journal_clean_checkpoint_list(journal);
+-	spin_unlock(&journal->j_list_lock);
