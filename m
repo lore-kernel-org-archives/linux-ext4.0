@@ -1,54 +1,116 @@
-From: TR Reardon <thomas_reardon@hotmail.com>
-Subject: RE: possible different donor file naming in e4defrag
-Date: Thu, 11 Sep 2014 15:48:02 -0400
-Message-ID: <BAY179-W923915B59A3302CF7A1CB0FDCC0@phx.gbl>
-References: <BLU436-SMTP2540BD5998FEB4A3695A2E4FDE90@phx.gbl>
- <20140815203909.GM2808@birch.djwong.org>
- <BAY179-W62818B481ECC21D8121A2FFDE90@phx.gbl>,<4DF4149D-9995-475D-B25E-DAE799DE6100@dilger.ca>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH 29/25] e2fsck: expand root dir if linking l+f fails
+Date: Thu, 11 Sep 2014 12:48:04 -0700
+Message-ID: <20140911194804.GU10351@birch.djwong.org>
+References: <20140908231135.25904.66591.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bay004-omc3s1.hotmail.com ([65.54.190.139]:62915 "EHLO
-	BAY004-OMC3S1.hotmail.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751432AbaIKTsD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Sep 2014 15:48:03 -0400
-In-Reply-To: <4DF4149D-9995-475D-B25E-DAE799DE6100@dilger.ca>
+Received: from userp1040.oracle.com ([156.151.31.81]:21453 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753913AbaIKTsK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Sep 2014 15:48:10 -0400
+Content-Disposition: inline
+In-Reply-To: <20140908231135.25904.66591.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Picking this back up. =A0How would O_TMPFILE avoid races? =A0It definit=
-ely avoids the unwanted mtime/atime update, but then the existing "<fil=
-ename>.defrag" pseudo-lock file would no longer be available. =A0How co=
-uld you use O_TMPFILE and still avoid multiple defrag? =A0If this isn't=
- possible, then resetting the parent times on unlink(tmpfile), as you s=
-uggest, is the simplest way out of this.
+If there isn't space in the root directory to add the lost+found
+entry, try expanding the root directory before failing the fsck.
 
-+Reardon
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ e2fsck/pass3.c                         |    8 ++++++++
+ tests/f_expandroot_create_lnf/expect.1 |   12 ++++++++++++
+ tests/f_expandroot_create_lnf/expect.2 |    7 +++++++
+ tests/f_expandroot_create_lnf/image.gz |  Bin
+ tests/f_expandroot_create_lnf/name     |    1 +
+ 5 files changed, 28 insertions(+)
+ create mode 100644 tests/f_expandroot_create_lnf/expect.1
+ create mode 100644 tests/f_expandroot_create_lnf/expect.2
+ create mode 100644 tests/f_expandroot_create_lnf/image.gz
+ create mode 100644 tests/f_expandroot_create_lnf/name
 
-> From: adilger@dilger.ca
-> Subject: Re: possible different donor file naming in e4defrag
-> Date: Fri, 15 Aug 2014 23:04:21 +0200
-> To: thomas_reardon@hotmail.com
->
-> The reason the donor file is created in the same directory as the sou=
-rce is to try and keep the block allocation policy consistent with the =
-original inode.
->
-> You may not need a SIGINT handler, since the timestamp could be reset=
- as soon as the file is created and unlinked.
->
-> It may also be possible to use O_TMPFILE on newer kernels to create t=
-he donor file to avoid any races?
->
-> Cheers, Andreas
->
+diff --git a/e2fsck/pass3.c b/e2fsck/pass3.c
+index 9860cdf..f03c7ae 100644
+--- a/e2fsck/pass3.c
++++ b/e2fsck/pass3.c
+@@ -530,7 +530,15 @@ skip_new_block:
+ 	 * Finally, create the directory link
+ 	 */
+ 	pctx.errcode = ext2fs_link(fs, EXT2_ROOT_INO, name, ino, EXT2_FT_DIR);
++	if (pctx.errcode == EXT2_ET_DIR_NO_SPACE) {
++		pctx.errcode = ext2fs_expand_dir(fs, EXT2_ROOT_INO);
++		if (pctx.errcode)
++			goto link_error;
++		pctx.errcode = ext2fs_link(fs, EXT2_ROOT_INO, name, ino,
++					   EXT2_FT_DIR);
++	}
+ 	if (pctx.errcode) {
++link_error:
+ 		pctx.str = "ext2fs_link";
+ 		fix_problem(ctx, PR_3_CREATE_LPF_ERROR, &pctx);
+ 		return 0;
+diff --git a/tests/f_expandroot_create_lnf/expect.1 b/tests/f_expandroot_create_lnf/expect.1
+new file mode 100644
+index 0000000..9593dbf
+--- /dev/null
++++ b/tests/f_expandroot_create_lnf/expect.1
+@@ -0,0 +1,12 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++/lost+found not found.  Create? yes
++
++Pass 3A: Optimizing directories
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 16/64 files (0.0% non-contiguous), 33/1024 blocks
++Exit status is 1
+diff --git a/tests/f_expandroot_create_lnf/expect.2 b/tests/f_expandroot_create_lnf/expect.2
+new file mode 100644
+index 0000000..5eec1f0
+--- /dev/null
++++ b/tests/f_expandroot_create_lnf/expect.2
+@@ -0,0 +1,7 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 16/64 files (6.3% non-contiguous), 33/1024 blocks
++Exit status is 0
+diff --git a/tests/f_expandroot_create_lnf/image.gz b/tests/f_expandroot_create_lnf/image.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..ccdbfa7a03aafbc206638d704d8bb22b21a293ed
+GIT binary patch
+literal 1622
+zcmb2|=3r2MEf~VY{Pynoe4juOh6lfwHLnVq9ARRT*uBKWY?_CPl9<ruWak#%tpT3e
+zg0JK^2-piLiG_tJDaA%8OzfE28qwLSWOB*%=%pRy_x3Ev4Jo;_^2~SBbido*Z{04o
+ze*V?ZI6scVVfU?xd8ZU}x?h&Mb1)mG?|-*Jv46|`o#&@!RW1rT>$J8k!D#h+^N%Zo
+zbjx)2<+(m?ersr}+iD>6`55nY_iuOa{(X4w*Szjv{rJ4u|B7=gEiFv`XHENC`1-}|
+z^^dpnzr9uc_DA=|f9BzRDH~V43)=Vgy49?u`ukEh*Vy@$TfA6zT<L;na&C|B*MIUH
+zOMmS(HW$dVHF0KufDJ#cW<8(Y_I~Rc*TeBE7<DJl`*%%tQ&9bxpTCy|)z|-%*=M?N
+zb;+X-FBhIY?l)J`X4baW3p1~7diYH&%<Ng>lD(~=y_FWX?>YI;X?K6<SoXtyOH$PT
+z`nM;3%V!9u1~dGUzwp1|ANv>k1^*fU^1rBe_|FUyVqiFs6k>h<gu`vmz4tHv5I-<U
+z!rQq{bnZEc)3S1mP^Uqt1*&Rxp{rcC1mBG>Yx{Nbe7;@ys`XM6^Ixur=eL~8Irm)e
+zyIH5|s%LJ|d2-!j{`!3qhue3}TQ0$EUUfV7U*ol%22%OkrkytK{~sA)d;b02cl!PH
+zm;dwqTzlY9#hh#Q(dp6ur#j^){}oP){9j_eNb>dkuy6n8UbKntdc9AnZrz7ZzcyF>
+z{r}Hs=i};k@_&N=UOkx}-tF;t`JM}3<NF?qU3~NF{`tWFXY=15>w=1Qf<^7m1pfag
+zdw-tD#AE)I3t!ipKK|(c`PF|5_rFIU&lk!3GeveLsy|UYJ<1skfzc2cG9i$#O#ZIS
+K!%zkW0R{l3<x~Iw
 
- 		 	   		  --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+literal 0
+HcmV?d00001
+
+diff --git a/tests/f_expandroot_create_lnf/name b/tests/f_expandroot_create_lnf/name
+new file mode 100644
+index 0000000..f22542b
+--- /dev/null
++++ b/tests/f_expandroot_create_lnf/name
+@@ -0,0 +1 @@
++no space in root to create lost+found entry
