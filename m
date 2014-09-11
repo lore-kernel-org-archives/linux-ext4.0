@@ -1,132 +1,51 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: dumpe2fs: only print 'unused inodes' once
-Date: Wed, 10 Sep 2014 14:47:46 -0700
-Message-ID: <20140910214746.GJ10351@birch.djwong.org>
-References: <BAY179-W101B94761503C2D6FBA0CBFDCE0@phx.gbl>
- <20140909194746.GF10351@birch.djwong.org>
- <20140910213843.GB15632@thunk.org>
+Subject: [PATCH 0/4] ext4/jbd2: misc 3.17 bugfixes
+Date: Wed, 10 Sep 2014 17:28:18 -0700
+Message-ID: <20140911002818.10109.51772.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: TR Reardon <thomas_reardon@hotmail.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:26807 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:42184 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753633AbaIJVrx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Sep 2014 17:47:53 -0400
-Content-Disposition: inline
-In-Reply-To: <20140910213843.GB15632@thunk.org>
+	with ESMTP id S1751163AbaIKA2Y (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Sep 2014 20:28:24 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 10, 2014 at 05:38:43PM -0400, Theodore Ts'o wrote:
-> On Tue, Sep 09, 2014 at 12:47:46PM -0700, Darrick J. Wong wrote:
-> > On Tue, Sep 09, 2014 at 03:32:56PM -0400, TR Reardon wrote:
-> > > just a minor nit...and I don't think fixing this harms any existi=
-ng tests.
-> >=20
-> > Running 'make check' will tell you.
-> >=20
-> > This also needs a Signed-off-by.
->=20
-> It also might make more sense to move the checksum to after the inode
-> table, i.e., instead of:
->=20
-> Group 0: (Blocks 0-32767) [ITABLE_ZEROED]
->   Checksum 0xe0c6
->   Primary superblock at 0, Group descriptors at 1-1
->   Reserved GDT blocks at 2-512
->   Block bitmap at 513 (+513), Inode bitmap at 529 (+529)
->   Inode table at 545-1056 (+545)
->   24025 free blocks, 8181 free inodes, 2 directories, 8181 unused ino=
-des
->   Free blocks: 8743-32767
->   Free inodes: 12-8192
->=20
-> how about:
->=20
-> Group 0: (Blocks 0-32767) [ITABLE_ZEROED]
->   Primary superblock at 0, Group descriptors at 1-1
->   Reserved GDT blocks at 2-512
->   Block bitmap at 513 (+513), Inode bitmap at 529 (+529)
->   Inode table at 545-1056 (+545), Checksum 0xe0c6
+Hi all,
 
-But... 0xE0C6 is the group descriptor checksum.  Since we report the bi=
-tmap
-csum after mentioning them:
+Here are four patches against 3.17-rc4 to fix some minor problems
+in jbd2 and ext4.  None of these four depend on each other; they
+fix separate small bugs.
 
->  Block bitmap at 2 (+2), csum 0xc759340d, Inode bitmap at 18 (+18), c=
-sum 0x941e2bba
+The first patch fixes the journal_checksum feature flag handling at
+mount time.  This patch has been out for review on the list for a
+while.
 
-It would make more sense to report the group checksum on the first line=
-:
+The second patch fixes external journal mounting so that the
+superblock checksum (of the ext. journal) is verified if metadata_csum
+is set.  This is the same patch that has been out for review for a few
+days.
 
-Group 0: (Blocks 0-32767) csum 0xe0c6 [ITABLE_ZEROED]                  =
-                  =20
+The third patch fixes a journal_checksum_v3 replay bug -- if a block
+is in a transaction, and then later revoked and written into another
+transaction, and the block in the second transaction is corrupt, the
+journal would fail even to write the block from the first transaction.
+This would worsen the damage caused by a corrupt journal.
 
-Unless it'll break peoples' scripts?
+The fourth bug fixes an inline_data bug where we would release a page
+but then keep using it, which resulted in complaints about freeing
+locked pages at umount time or strange system crashes.
+
+Patches are against 3.17-rc4, and have been xfstest'd and checked
+against debugfs creating test journals.  There's still a hard to
+reproduce crash when ext4_destroy_inline_data_nolock tries to remove
+the inline data xattr from a corrupt inode, so we'll see if I can nail
+that one.
+
+Comments and questions are, as always, welcome.
 
 --D
-
->   24025 free blocks, 8181 free inodes, 2 directories, 8181 unused ino=
-des
->   Free blocks: 8743-32767
->   Free inodes: 12-8192
->=20
-> 								- Ted
->=20
->=20
->=20
->=20
->=20
->=20
-> >=20
-> > --D
-> > >=20
-> > > +Reardon
-> > >=20
-> > >=20
-> > > diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-> > > index a1c5ba2..d30cf87 100644
-> > > --- a/misc/dumpe2fs.c
-> > > +++ b/misc/dumpe2fs.c
-> > > @@ -205,8 +205,6 @@ static void list_desc (ext2_filsys fs)
-> > > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 printf(_(" =A0Che=
-cksum 0x%04x"), csum);
-> > > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (csum !=3D exp=
-_csum)
-> > > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 p=
-rintf(_(" (EXPECTED 0x%04x)"), exp_csum);
-> > > - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 printf(_(", unused =
-inodes %u\n"),
-> > > - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext2=
-fs_bg_itable_unused(fs, i));
-> > > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> > > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 has_super =3D ((i=3D=3D0) || supe=
-r_blk);
-> > > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (has_super) {
-> > >=20
-> > >=20
-> > >  		 	   		  --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-e=
-xt4" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.htm=
-l
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
