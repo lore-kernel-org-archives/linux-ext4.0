@@ -1,33 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/4] ext4: validate external journal superblock checksum
-Date: Thu, 11 Sep 2014 11:47:27 -0400
-Message-ID: <20140911154727.GE26178@thunk.org>
-References: <20140911002818.10109.51772.stgit@birch.djwong.org>
- <20140911002831.10109.84707.stgit@birch.djwong.org>
- <20140911132554.GC30901@quack.suse.cz>
+Subject: Re: [PATCH 02/25] libext2fs: report bad magic over bad sb checksum
+Date: Thu, 11 Sep 2014 12:43:13 -0400
+Message-ID: <20140911164313.GJ26178@thunk.org>
+References: <20140908231135.25904.66591.stgit@birch.djwong.org>
+ <20140908231149.25904.94554.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51271 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:51440 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756601AbaIKPr3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Sep 2014 11:47:29 -0400
+	id S1754600AbaIKQnO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Sep 2014 12:43:14 -0400
 Content-Disposition: inline
-In-Reply-To: <20140911132554.GC30901@quack.suse.cz>
+In-Reply-To: <20140908231149.25904.94554.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 11, 2014 at 03:25:54PM +0200, Jan Kara wrote:
-> On Wed 10-09-14 17:28:32, Darrick J. Wong wrote:
-> > If the external journal device has metadata_csum enabled, verify
-> > that the superblock checksum matches the block before we try to
-> > mount.
->   Looks good. You can add:
-> Reviewed-by: Jan Kara <jack@suse.cz>
+On Mon, Sep 08, 2014 at 04:11:49PM -0700, Darrick J. Wong wrote:
+> We don't want ext2fs_open2() to report bad sb checksum on something
+> that's not even an ext* superblock.  This apparently happens pretty
+> easily if we try to open an XFS filesystem.  Thus, make it so that a
+> bad magic number code always trumps the sb checksum error code.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Thanks, applied.
+Applied, thanks.
 
 					- Ted
