@@ -1,83 +1,68 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] tune2fs: warn if the filesystem journal is dirty
-Date: Fri, 12 Sep 2014 14:18:40 -0700
-Message-ID: <20140912211840.GC10150@birch.djwong.org>
-References: <1410554380-2014-1-git-send-email-andreas.dilger@intel.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 26/25] libext2fs: call get_alloc_block hook when
+ allocating blocks
+Date: Fri, 12 Sep 2014 18:17:53 -0400
+Message-ID: <20140912221753.GB27092@thunk.org>
+References: <20140908231135.25904.66591.stgit@birch.djwong.org>
+ <20140911194153.GR10351@birch.djwong.org>
+ <20140911220552.GB17990@thunk.org>
+ <20140911223447.GZ10351@birch.djwong.org>
+ <20140912173551.GA27092@thunk.org>
+ <20140912175750.GA10150@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
-	Jim Garlick <garlick@llnl.gov>
-To: Andreas Dilger <andreas.dilger@intel.com>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:18537 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752296AbaILVSs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Sep 2014 17:18:48 -0400
+Received: from imap.thunk.org ([74.207.234.97]:54430 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752501AbaILWR5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Sep 2014 18:17:57 -0400
 Content-Disposition: inline
-In-Reply-To: <1410554380-2014-1-git-send-email-andreas.dilger@intel.com>
+In-Reply-To: <20140912175750.GA10150@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 12, 2014 at 02:39:40PM -0600, Andreas Dilger wrote:
-> From: Jim Garlick <garlick@llnl.gov>
+On Fri, Sep 12, 2014 at 10:57:50AM -0700, Darrick J. Wong wrote:
 > 
-> Running tune2fs on a filesystem with an unrecovered journal can
-> cause the tune2fs settings changes in the superblock to be reverted
-> when the journal is replayed if it contains an uncommitted copy of
-> the superblock.  Print a warning if this is detected so that the
-> user isn't surprised if it happens.
+> > errcode_t ext2fs_alloc_blocks(ext2_filsys fs, blk64_t goal,
+> > 	  	              unsigned int *num_blocks,
+> > 			      char *block_buf, int flags, blk64_t *ret)
+> > 
+> > ... which can be used to efficiently allocate up to *num_blocks blocks
+> > at a time, much like the mballoc interface.  I suspect that would be
+> > useful for a number of different cases, including ext2fs_fallocate and
+> > mk_hugefiles.c.
 > 
-> Signed-off-by: Jim Garlick <garlick@llnl.gov>
-> Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
-> ---
->  misc/tune2fs.c |   12 ++++++++++++
->  1 files changed, 12 insertions(+), 0 deletions(-)
+> Sounds familiar:  http://marc.info/?l=linux-ext4&m=139898612510491&w=2
+
+Yes, but I'm thinking of something which is a superset of
+ext2fs_alloc_block2().  That is, that it should call the
+get_alloc_block hook (and also adding a possible get_alloc_blocks
+hook), and that a flag would control whether the data blocks would be
+zero'ed or not.  (Indeed, I was thinking originally of calling it
+ext2fs_alloc_block3.)
+
+> > What I'm currently wondering about is whether it's worth the interface
+> > complexity to have something like a "struct ext2fs_allocation_request"
+> > structure, so we can potentially add more hints that a future
+> > implementation might use, or whether that's not worth it.
+> > 
+> > What do folks think?
 > 
-> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-> index b65dab9..e5ec8a4 100644
-> --- a/misc/tune2fs.c
-> +++ b/misc/tune2fs.c
-> @@ -2395,6 +2395,7 @@ retry_open:
->  		ext2fs_mark_super_dirty(fs);
->  		printf(_("Setting stripe width to %d\n"), stripe_width);
->  	}
-> +
->  	if (ext_mount_opts) {
->  		strncpy((char *)(fs->super->s_mount_opts), ext_mount_opts,
->  			sizeof(fs->super->s_mount_opts));
-> @@ -2404,6 +2405,17 @@ retry_open:
->  		       ext_mount_opts);
->  		free(ext_mount_opts);
->  	}
-> +
-> +	/* Warn if file system needs recovery and it is opened for writing. */
-> +	if ((open_flag & EXT2_FLAG_RW) && !(mount_flags & EXT2_MF_MOUNTED) &&
-> +	    (sb->s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL) &&
-> +	    (sb->s_feature_incompat & EXT3_FEATURE_INCOMPAT_RECOVER)) {
-> +		fprintf(stderr,
-> +			_("Warning: needs_recovery flag is set. You may wish\n"
-> +			  "replay the journal then rerun this command, or any\n"
-> +			  "changes may be overwritten by journal recovery.\n"));
+> I'm not sure changing a struct vs. changing whatever parameters we feed into
+> that function is all that much different.  I guess you could get around
+> structure size changes by forcing callers to use a library allocator function.
+> But OTOH large allocations are probably rare.
 
-At a bare minimum this ought to be "You may wish *to* replay...", but I
-suggest:
+We can also insulate against structure sizes by using padding fields,
+but the ultimate question is how complicated we want to make this
+interface.  We know it will be used by mk_hugeblock and the fallocate
+interface.  In theory it could be use by your fuse driver to do
+allocations more efficiently.  There is the question of whether it's
+worth it, although it has crossed my mind that this might be an
+interesting place to start experimenting with an eventual replacement
+of the buddy-bitmap implementation in mballoc with something that use
+in-memory rbtrees, for example....
 
-"You should replay the journal and then rerun this command because it is
-possible that your changes will be overwritten by the journal recovery."
-
-Otherwise looks fine to me.
-
---D
-
-> +	}
-> +
->  	free(device_name);
->  	remove_error_table(&et_ext2_error_table);
->  
-> -- 
-> 1.7.3.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+					- Ted
