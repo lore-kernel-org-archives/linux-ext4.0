@@ -1,57 +1,45 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 09/25] misc: zero s_jnl_blocks when removing internal
- journal
-Date: Fri, 12 Sep 2014 09:43:42 -0700
-Message-ID: <20140912164342.GA10178@birch.djwong.org>
-References: <BAY406-EAS308E30D9E82235BD5A84A0EFDCD0@phx.gbl>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 84201] mount doesn't clear usrjquota / grpjqouta options
+Date: Fri, 12 Sep 2014 16:45:54 +0000
+Message-ID: <bug-84201-13602-prOwWAjnDr@https.bugzilla.kernel.org/>
+References: <bug-84201-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: TR Reardon <thomas_reardon@hotmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:23640 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751077AbaILQnr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Sep 2014 12:43:47 -0400
-Content-Disposition: inline
-In-Reply-To: <BAY406-EAS308E30D9E82235BD5A84A0EFDCD0@phx.gbl>
+Received: from mail.kernel.org ([198.145.19.201]:56789 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750833AbaILQp4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Sep 2014 12:45:56 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 4BA9F2022A
+	for <linux-ext4@vger.kernel.org>; Fri, 12 Sep 2014 16:45:55 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 8F5222017A
+	for <linux-ext4@vger.kernel.org>; Fri, 12 Sep 2014 16:45:54 +0000 (UTC)
+In-Reply-To: <bug-84201-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[cc linux-ext4]
+https://bugzilla.kernel.org/show_bug.cgi?id=84201
 
-On Fri, Sep 12, 2014 at 10:09:55AM -0400, TR Reardon wrote:
-> Note that this only works (zeroes out) when removing inode journal.  Removing
-> an existing journal_dev leaves s_jnl_blocks untouched.  To be absolutely
-> clean, perhaps it should be wiped in all removal cases?
+Jan Kara <jack@suse.cz> changed:
 
-s_jnl_blocks shouldn't be set if an external journal is in use.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |NEEDINFO
 
-(Unless it is somehow?)
+--- Comment #5 from Jan Kara <jack@suse.cz> ---
+With the space in the arguments, you make shell pass the ",grpjquota=" as
+another argument and thus it ends up being used a s device name for the
+remount. The device is ignored by remount so nothing happens.
 
---D
+I would be interested in what kernel message does kernel spit out when you try:
+mount -o remount,grpjquota= /
 
-> 
-> --- Original Message ---
-> 
-> From: "Theodore Ts'o" <tytso@mit.edu>
-> Sent: September 11, 2014 12:44 PM
-> To: "Darrick J. Wong" <darrick.wong@oracle.com>
-> Cc: linux-ext4@vger.kernel.org, "TR Reardon" <thomas_reardon@hotmail.com>
-> Subject: Re: [PATCH 09/25] misc: zero s_jnl_blocks when removing internal journal
-> 
-> On Mon, Sep 08, 2014 at 04:12:35PM -0700, Darrick J. Wong wrote:
-> > When we're removing the internal journal (broken journal, turning it
-> > off, or adding an external journal), zero s_jnl_blocks so that they
-> > can't be picked up by accident later.
-> >
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > Cc: TR Reardon <thomas_reardon@hotmail.com>
-> 
-> Applied, thanks.
-> 
->                                         - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Because that's what's working for me. When kernel version do you use?
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
