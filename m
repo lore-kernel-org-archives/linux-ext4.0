@@ -1,78 +1,60 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 26/25] libext2fs: call get_alloc_block hook when
- allocating blocks
-Date: Fri, 12 Sep 2014 10:57:50 -0700
-Message-ID: <20140912175750.GA10150@birch.djwong.org>
-References: <20140908231135.25904.66591.stgit@birch.djwong.org>
- <20140911194153.GR10351@birch.djwong.org>
- <20140911220552.GB17990@thunk.org>
- <20140911223447.GZ10351@birch.djwong.org>
- <20140912173551.GA27092@thunk.org>
+From: TR Reardon <thomas_reardon@hotmail.com>
+Subject: RE: [PATCH 09/25] misc: zero s_jnl_blocks when removing internal
+ journal
+Date: Fri, 12 Sep 2014 15:06:23 -0400
+Message-ID: <BAY179-W471384B15AB594C29D96F9FDCD0@phx.gbl>
+References: <BAY406-EAS308E30D9E82235BD5A84A0EFDCD0@phx.gbl>,<20140912164342.GA10178@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:51366 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751236AbaILR5z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Sep 2014 13:57:55 -0400
-Content-Disposition: inline
-In-Reply-To: <20140912173551.GA27092@thunk.org>
+Received: from bay004-omc4s5.hotmail.com ([65.54.190.207]:65060 "EHLO
+	BAY004-OMC4S5.hotmail.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751935AbaILTGZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Sep 2014 15:06:25 -0400
+In-Reply-To: <20140912164342.GA10178@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 12, 2014 at 01:35:51PM -0400, Theodore Ts'o wrote:
-> On Thu, Sep 11, 2014 at 03:34:47PM -0700, Darrick J. Wong wrote:
-> > > Hmm... I wonder if we can get away with changing ext2fs_new_block2(fs,
-> > > goal, bmap, ret_blk) so that if bmap is NULL, we change its behavior
-> > > so that (a) it tries to use the get_alloc_block() hook if it is present, and
-> > > (b) it will try to load the block bitmap if it is not already loaded,
-> > > instead of returning an error.
-> > 
-> > Quite probably.  I tried to avoid API behavioral change, at least for the
-> > inital patch, though I was thinking that a general cleanup was probably in
-> > order.
-> 
-> It turns out that making a behavioral change could very well break
-> some callers --- including e2fsck (see e2fsck_get_alloc_block for an
-> example of wahy).  What I'm currently thinking about is an API sort of
-> like this:
+If the change from journal_inode to journal_dev is/was made prior to th=
+e recent change, the s_jnl_blocks will have whatever it last had. =A0So=
+ if it started with journal_inode and then switched to journal_dev (aga=
+in, prior to your fix) or no journal, the s_jnl_blocks will have the ol=
+d journal_inode info, and adding/removing journal_dev does no clear it =
+out. =A0For a new fs with created only with journal_dev, there is no is=
+sue. =A0I'm just arguing that *adding* journal_dev should also zero thi=
+s out.
 
-I currently patched that the stupid way -- by temporarily swapping
-fs->get_alloc_block with NULL in new_block2() while we call the function
-pointer.
++Reardon
 
-(Also by fixing e2fsck.)
 
-> errcode_t ext2fs_alloc_blocks(ext2_filsys fs, blk64_t goal,
-> 	  	              unsigned int *num_blocks,
-> 			      char *block_buf, int flags, blk64_t *ret)
-> 
-> ... which can be used to efficiently allocate up to *num_blocks blocks
-> at a time, much like the mballoc interface.  I suspect that would be
-> useful for a number of different cases, including ext2fs_fallocate and
-> mk_hugefiles.c.
+----------------------------------------
+> Date: Fri, 12 Sep 2014 09:43:42 -0700
+> From: darrick.wong@oracle.com
+> To: thomas_reardon@hotmail.com
+> CC: linux-ext4@vger.kernel.org
+> Subject: Re: [PATCH 09/25] misc: zero s_jnl_blocks when removing inte=
+rnal journal
+>
+> [cc linux-ext4]
+>
+> On Fri, Sep 12, 2014 at 10:09:55AM -0400, TR Reardon wrote:
+>> Note that this only works (zeroes out) when removing inode journal. =
+Removing
+>> an existing journal_dev leaves s_jnl_blocks untouched. To be absolut=
+ely
+>> clean, perhaps it should be wiped in all removal cases?
+>
+> s_jnl_blocks shouldn't be set if an external journal is in use.
+>
+> (Unless it is somehow?)
+>
+> --D
 
-Sounds familiar:  http://marc.info/?l=linux-ext4&m=139898612510491&w=2
-
-> What I'm currently wondering about is whether it's worth the interface
-> complexity to have something like a "struct ext2fs_allocation_request"
-> structure, so we can potentially add more hints that a future
-> implementation might use, or whether that's not worth it.
-> 
-> What do folks think?
-
-I'm not sure changing a struct vs. changing whatever parameters we feed into
-that function is all that much different.  I guess you could get around
-structure size changes by forcing callers to use a library allocator function.
-But OTOH large allocations are probably rare.
-
---D
-
-> 
-> 					- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ 		 	   		  --
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
