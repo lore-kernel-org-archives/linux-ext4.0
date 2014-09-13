@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 15/34] libext2fs: support BLKZEROOUT/FALLOC_FL_ZERO_RANGE in
- ext2fs_zero_blocks
-Date: Sat, 13 Sep 2014 15:12:53 -0700
-Message-ID: <20140913221253.13646.7723.stgit@birch.djwong.org>
+Subject: [PATCH 16/34] libext2fs/e2fsck: refactor everyone who writes zero
+ blocks to disk
+Date: Sat, 13 Sep 2014 15:12:59 -0700
+Message-ID: <20140913221259.13646.60917.stgit@birch.djwong.org>
 References: <20140913221112.13646.3873.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,265 +10,365 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:32277 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752307AbaIMWM5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Sep 2014 18:12:57 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:24384 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752319AbaIMWND (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Sep 2014 18:13:03 -0400
 In-Reply-To: <20140913221112.13646.3873.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Plumb a new call into the IO manager to support translating
-ext2fs_zero_blocks calls into the equivalent kernel-level BLKZEROOUT
-ioctl or FALLOC_FL_ZERO_RANGE fallocate flag primitives when possible.
+Convert all call sites that write zero blocks to disk to use
+ext2fs_zero_blocks2() since it can use Linux's zero out feature to do
+the writes more quickly.  Reclaim the zero buffer at freefs time and
+make the write-zeroes fallback use a larger buffer.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- contrib/fallocate.c     |   14 +++++++++
- lib/ext2fs/ext2_io.h    |    7 ++++-
- lib/ext2fs/io_manager.c |   11 +++++++
- lib/ext2fs/mkjournal.c  |    6 ++++
- lib/ext2fs/test_io.c    |   21 ++++++++++++++
- lib/ext2fs/unix_io.c    |   71 +++++++++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 128 insertions(+), 2 deletions(-)
+ e2fsck/e2fsck.h        |    2 --
+ e2fsck/pass1.c         |   13 +++++++-----
+ e2fsck/pass3.c         |   13 +++---------
+ e2fsck/util.c          |   53 ------------------------------------------------
+ lib/ext2fs/alloc.c     |   14 +++----------
+ lib/ext2fs/expanddir.c |   13 +++---------
+ lib/ext2fs/freefs.c    |    1 +
+ lib/ext2fs/mkjournal.c |   16 ++++++--------
+ misc/mke2fs.c          |    2 --
+ resize/resize2fs.c     |   25 ++++++++---------------
+ 10 files changed, 34 insertions(+), 118 deletions(-)
 
 
-diff --git a/contrib/fallocate.c b/contrib/fallocate.c
-index 1f9b59a..01d4af7 100644
---- a/contrib/fallocate.c
-+++ b/contrib/fallocate.c
-@@ -36,6 +36,8 @@
- // #include <linux/falloc.h>
- #define FALLOC_FL_KEEP_SIZE	0x01
- #define FALLOC_FL_PUNCH_HOLE	0x02 /* de-allocates range */
-+#define FALLOC_FL_COLLAPSE_RANGE	0x08
-+#define FALLOC_FL_ZERO_RANGE		0x10
+diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+index b2654ef..e359515 100644
+--- a/e2fsck/e2fsck.h
++++ b/e2fsck/e2fsck.h
+@@ -544,8 +544,6 @@ extern void e2fsck_read_bitmaps(e2fsck_t ctx);
+ extern void e2fsck_write_bitmaps(e2fsck_t ctx);
+ extern void preenhalt(e2fsck_t ctx);
+ extern char *string_copy(e2fsck_t ctx, const char *str, int len);
+-extern errcode_t e2fsck_zero_blocks(ext2_filsys fs, blk_t blk, int num,
+-				    blk_t *ret_blk, int *ret_count);
+ extern int fs_proc_check(const char *fs_name);
+ extern int check_for_modules(const char *fs_name);
+ #ifdef RESOURCE_TRACK
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index d4760ef..a963849 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -3576,12 +3576,15 @@ static void new_table_block(e2fsck_t ctx, blk64_t first_block, dgrp_t group,
+ 				   old_block + i, 1, buf);
+ 			if (pctx.errcode)
+ 				fix_problem(ctx, PR_1_RELOC_READ_ERR, &pctx);
+-		} else
+-			memset(buf, 0, fs->blocksize);
++			pctx.blk = (*new_block) + i;
++			pctx.errcode = io_channel_write_blk64(fs->io, pctx.blk,
++							      1, buf);
++		} else {
++			pctx.blk = (*new_block) + i;
++			pctx.errcode = ext2fs_zero_blocks2(fs, pctx.blk, 1,
++							   NULL, NULL);
++		}
  
- void usage(void)
- {
-@@ -95,7 +97,7 @@ int main(int argc, char **argv)
- 	int	error;
- 	int	tflag = 0;
+-		pctx.blk = (*new_block) + i;
+-		pctx.errcode = io_channel_write_blk64(fs->io, pctx.blk,
+-					      1, buf);
+ 		if (pctx.errcode)
+ 			fix_problem(ctx, PR_1_RELOC_WRITE_ERR, &pctx);
+ 	}
+diff --git a/e2fsck/pass3.c b/e2fsck/pass3.c
+index f03c7ae..2d94ece 100644
+--- a/e2fsck/pass3.c
++++ b/e2fsck/pass3.c
+@@ -809,20 +809,13 @@ static int expand_dir_proc(ext2_filsys fs,
+ 		es->num--;
+ 		retval = ext2fs_write_dir_block4(fs, new_blk, block, 0,
+ 						 es->dir);
+-	} else {
+-		retval = ext2fs_get_mem(fs->blocksize, &block);
+-		if (retval) {
+-			es->err = retval;
+-			return BLOCK_ABORT;
+-		}
+-		memset(block, 0, fs->blocksize);
+-		retval = io_channel_write_blk64(fs->io, new_blk, 1, block);
+-	}
++		ext2fs_free_mem(&block);
++	} else
++		retval = ext2fs_zero_blocks2(fs, new_blk, 1, NULL, NULL);
+ 	if (retval) {
+ 		es->err = retval;
+ 		return BLOCK_ABORT;
+ 	}
+-	ext2fs_free_mem(&block);
+ 	*blocknr = new_blk;
+ 	ext2fs_mark_block_bitmap2(ctx->block_found_map, new_blk);
  
--	while ((opt = getopt(argc, argv, "npl:o:t")) != -1) {
-+	while ((opt = getopt(argc, argv, "npl:o:tzc")) != -1) {
- 		switch(opt) {
- 		case 'n':
- 			/* do not change filesize */
-@@ -106,6 +108,16 @@ int main(int argc, char **argv)
- 			falloc_mode = (FALLOC_FL_PUNCH_HOLE |
- 				       FALLOC_FL_KEEP_SIZE);
- 			break;
-+		case 'c':
-+			/* collapse range mode */
-+			falloc_mode = (FALLOC_FL_COLLAPSE_RANGE |
-+				       FALLOC_FL_KEEP_SIZE);
-+			break;
-+		case 'z':
-+			/* zero range mode */
-+			falloc_mode = (FALLOC_FL_ZERO_RANGE |
-+				       FALLOC_FL_KEEP_SIZE);
-+			break;
- 		case 'l':
- 			length = cvtnum(optarg);
- 			break;
-diff --git a/lib/ext2fs/ext2_io.h b/lib/ext2fs/ext2_io.h
-index 4c5a5c5..1faa720 100644
---- a/lib/ext2fs/ext2_io.h
-+++ b/lib/ext2fs/ext2_io.h
-@@ -93,7 +93,9 @@ struct struct_io_manager {
- 	errcode_t (*cache_readahead)(io_channel channel,
- 				     unsigned long long block,
- 				     unsigned long long count);
--	long	reserved[15];
-+	errcode_t (*zeroout)(io_channel channel, unsigned long long block,
-+			     unsigned long long count);
-+	long	reserved[14];
- };
- 
- #define IO_FLAG_RW		0x0001
-@@ -125,6 +127,9 @@ extern errcode_t io_channel_write_blk64(io_channel channel,
- extern errcode_t io_channel_discard(io_channel channel,
- 				    unsigned long long block,
- 				    unsigned long long count);
-+extern errcode_t io_channel_zeroout(io_channel channel,
-+				    unsigned long long block,
-+				    unsigned long long count);
- extern errcode_t io_channel_alloc_buf(io_channel channel,
- 				      int count, void *ptr);
- extern errcode_t io_channel_cache_readahead(io_channel io,
-diff --git a/lib/ext2fs/io_manager.c b/lib/ext2fs/io_manager.c
-index dc5888d..c395d61 100644
---- a/lib/ext2fs/io_manager.c
-+++ b/lib/ext2fs/io_manager.c
-@@ -112,6 +112,17 @@ errcode_t io_channel_discard(io_channel channel, unsigned long long block,
- 	return EXT2_ET_UNIMPLEMENTED;
+diff --git a/e2fsck/util.c b/e2fsck/util.c
+index 74f20062..723dafb 100644
+--- a/e2fsck/util.c
++++ b/e2fsck/util.c
+@@ -612,59 +612,6 @@ int ext2_file_type(unsigned int mode)
+ 	return 0;
  }
  
-+errcode_t io_channel_zeroout(io_channel channel, unsigned long long block,
-+			     unsigned long long count)
-+{
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+
-+	if (channel->manager->zeroout)
-+		return (channel->manager->zeroout)(channel, block, count);
-+
-+	return EXT2_ET_UNIMPLEMENTED;
-+}
-+
- errcode_t io_channel_alloc_buf(io_channel io, int count, void *ptr)
+-#define STRIDE_LENGTH 8
+-/*
+- * Helper function which zeros out _num_ blocks starting at _blk_.  In
+- * case of an error, the details of the error is returned via _ret_blk_
+- * and _ret_count_ if they are non-NULL pointers.  Returns 0 on
+- * success, and an error code on an error.
+- *
+- * As a special case, if the first argument is NULL, then it will
+- * attempt to free the static zeroizing buffer.  (This is to keep
+- * programs that check for memory leaks happy.)
+- */
+-errcode_t e2fsck_zero_blocks(ext2_filsys fs, blk_t blk, int num,
+-			     blk_t *ret_blk, int *ret_count)
+-{
+-	int		j, count;
+-	static char	*buf;
+-	errcode_t	retval;
+-
+-	/* If fs is null, clean up the static buffer and return */
+-	if (!fs) {
+-		if (buf) {
+-			free(buf);
+-			buf = 0;
+-		}
+-		return 0;
+-	}
+-	/* Allocate the zeroizing buffer if necessary */
+-	if (!buf) {
+-		buf = malloc(fs->blocksize * STRIDE_LENGTH);
+-		if (!buf) {
+-			com_err("malloc", ENOMEM, "%s",
+-				_("while allocating zeroizing buffer"));
+-			exit(1);
+-		}
+-		memset(buf, 0, fs->blocksize * STRIDE_LENGTH);
+-	}
+-	/* OK, do the write loop */
+-	for (j = 0; j < num; j += STRIDE_LENGTH, blk += STRIDE_LENGTH) {
+-		count = num - j;
+-		if (count > STRIDE_LENGTH)
+-			count = STRIDE_LENGTH;
+-		retval = io_channel_write_blk64(fs->io, blk, count, buf);
+-		if (retval) {
+-			if (ret_count)
+-				*ret_count = count;
+-			if (ret_blk)
+-				*ret_blk = blk;
+-			return retval;
+-		}
+-	}
+-	return 0;
+-}
+-
+ /*
+  * Check to see if a filesystem is in /proc/filesystems.
+  * Returns 1 if found, 0 if not
+diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
+index d1c1a84..4e3bfdb 100644
+--- a/lib/ext2fs/alloc.c
++++ b/lib/ext2fs/alloc.c
+@@ -198,15 +198,9 @@ errcode_t ext2fs_alloc_block2(ext2_filsys fs, blk64_t goal,
  {
- 	size_t	size;
-diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-index 6f3a862..5be425c 100644
---- a/lib/ext2fs/mkjournal.c
-+++ b/lib/ext2fs/mkjournal.c
-@@ -164,6 +164,12 @@ errcode_t ext2fs_zero_blocks2(ext2_filsys fs, blk64_t blk, int num,
- 		}
- 		return 0;
- 	}
-+
-+	/* Try a zero out command, if supported */
-+	retval = io_channel_zeroout(fs->io, blk, num);
-+	if (retval == 0)
-+		return 0;
-+
- 	/* Allocate the zeroizing buffer if necessary */
- 	if (!buf) {
- 		buf = malloc(fs->blocksize * STRIDE_LENGTH);
-diff --git a/lib/ext2fs/test_io.c b/lib/ext2fs/test_io.c
-index b03a939..f7c50d1 100644
---- a/lib/ext2fs/test_io.c
-+++ b/lib/ext2fs/test_io.c
-@@ -86,6 +86,7 @@ void (*test_io_cb_write_byte)
- #define TEST_FLAG_SET_OPTION		0x20
- #define TEST_FLAG_DISCARD		0x40
- #define TEST_FLAG_READAHEAD		0x80
-+#define TEST_FLAG_ZEROOUT		0x100
+ 	errcode_t	retval;
+ 	blk64_t		block;
+-	char		*buf = 0;
  
- static void test_dump_block(io_channel channel,
- 			    struct test_private_data *data,
-@@ -507,6 +508,25 @@ static errcode_t test_cache_readahead(io_channel channel,
+-	if (!block_buf) {
+-		retval = ext2fs_get_mem(fs->blocksize, &buf);
+-		if (retval)
+-			return retval;
+-		block_buf = buf;
+-	}
+-	memset(block_buf, 0, fs->blocksize);
++	if (block_buf)
++		memset(block_buf, 0, fs->blocksize);
+ 
+ 	if (fs->get_alloc_block) {
+ 		retval = (fs->get_alloc_block)(fs, goal, &block);
+@@ -224,7 +218,7 @@ errcode_t ext2fs_alloc_block2(ext2_filsys fs, blk64_t goal,
+ 			goto fail;
+ 	}
+ 
+-	retval = io_channel_write_blk64(fs->io, block, 1, block_buf);
++	retval = ext2fs_zero_blocks2(fs, block, 1, NULL, NULL);
+ 	if (retval)
+ 		goto fail;
+ 
+@@ -232,8 +226,6 @@ errcode_t ext2fs_alloc_block2(ext2_filsys fs, blk64_t goal,
+ 	*ret = block;
+ 
+ fail:
+-	if (buf)
+-		ext2fs_free_mem(&buf);
  	return retval;
  }
  
-+static errcode_t test_zeroout(io_channel channel, unsigned long long block,
-+			      unsigned long long count)
-+{
-+	struct test_private_data *data;
-+	errcode_t	retval = 0;
-+
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+	data = (struct test_private_data *) channel->private_data;
-+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_TEST_IO_CHANNEL);
-+
-+	if (data->real)
-+		retval = io_channel_zeroout(data->real, block, count);
-+	if (data->flags & TEST_FLAG_ZEROOUT)
-+		fprintf(data->outfile,
-+			"Test_io: zeroout(%llu, %llu) returned %s\n",
-+			block, count, retval ? error_message(retval) : "OK");
-+	return retval;
-+}
-+
- static struct struct_io_manager struct_test_manager = {
- 	.magic		= EXT2_ET_MAGIC_IO_MANAGER,
- 	.name		= "Test I/O Manager",
-@@ -523,6 +543,7 @@ static struct struct_io_manager struct_test_manager = {
- 	.write_blk64	= test_write_blk64,
- 	.discard	= test_discard,
- 	.cache_readahead	= test_cache_readahead,
-+	.zeroout	= test_zeroout,
- };
+diff --git a/lib/ext2fs/expanddir.c b/lib/ext2fs/expanddir.c
+index d0f7287..ecc13ae 100644
+--- a/lib/ext2fs/expanddir.c
++++ b/lib/ext2fs/expanddir.c
+@@ -67,22 +67,15 @@ static int expand_dir_proc(ext2_filsys	fs,
+ 		es->done = 1;
+ 		retval = ext2fs_write_dir_block4(fs, new_blk, block, 0,
+ 						 es->dir);
+-	} else {
+-		retval = ext2fs_get_mem(fs->blocksize, &block);
+-		if (retval) {
+-			es->err = retval;
+-			return BLOCK_ABORT;
+-		}
+-		memset(block, 0, fs->blocksize);
+-		retval = io_channel_write_blk64(fs->io, new_blk, 1, block);
+-	}
++		ext2fs_free_mem(&block);
++	} else
++		retval = ext2fs_zero_blocks2(fs, new_blk, 1, NULL, NULL);
+ 	if (blockcnt >= 0)
+ 		es->goal = new_blk;
+ 	if (retval) {
+ 		es->err = retval;
+ 		return BLOCK_ABORT;
+ 	}
+-	ext2fs_free_mem(&block);
+ 	*blocknr = new_blk;
  
- io_manager test_io_manager = &struct_test_manager;
-diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
-index 189adce..20e5b64 100644
---- a/lib/ext2fs/unix_io.c
-+++ b/lib/ext2fs/unix_io.c
-@@ -986,6 +986,76 @@ unimplemented:
- 	return EXT2_ET_UNIMPLEMENTED;
+ 	if (es->done)
+diff --git a/lib/ext2fs/freefs.c b/lib/ext2fs/freefs.c
+index 89a157b..ea9742e 100644
+--- a/lib/ext2fs/freefs.c
++++ b/lib/ext2fs/freefs.c
+@@ -61,6 +61,7 @@ void ext2fs_free(ext2_filsys fs)
+ 
+ 	fs->magic = 0;
+ 
++	ext2fs_zero_blocks2(NULL, 0, 0, NULL, NULL);
+ 	ext2fs_free_mem(&fs);
  }
  
-+#if defined(__linux__) && !defined(BLKZEROOUT)
-+#define BLKZEROOUT		_IO(0x12, 127)
-+#endif
-+
-+#if defined(__linux__) && !defined(FALLOC_FL_ZERO_RANGE)
-+#define FALLOC_FL_ZERO_RANGE    0x10
-+#endif
-+
-+static errcode_t unix_zeroout(io_channel channel, unsigned long long block,
-+			      unsigned long long count)
-+{
-+	struct unix_private_data *data;
-+	int		ret;
-+
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+	data = (struct unix_private_data *) channel->private_data;
-+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
-+
-+	if (getenv("UNIX_IO_NOZEROOUT"))
-+		goto unimplemented;
-+
-+	if (channel->flags & CHANNEL_FLAGS_BLOCK_DEVICE) {
-+#ifdef BLKZEROOUT
-+		__u64 range[2];
-+
-+		range[0] = (__u64)(block) * channel->block_size;
-+		range[1] = (__u64)(count) * channel->block_size;
-+
-+		ret = ioctl(data->dev, BLKZEROOUT, &range);
-+#else
-+		goto unimplemented;
-+#endif
-+	} else {
-+#if defined(HAVE_FALLOCATE) && defined(FALLOC_FL_ZERO_RANGE)
-+		int flag = FALLOC_FL_ZERO_RANGE;
-+		struct stat statbuf;
-+
-+		/*
-+		 * If we're trying to zero a range past the end of the file,
-+		 * just use regular fallocate to get there, because zeroing
-+		 * a range past EOF does not extend the file.
-+		 */
-+		ret = fstat(data->dev, &statbuf);
-+		if (ret)
-+			goto err;
-+		if (statbuf.st_size < (block + count) * channel->block_size)
-+			flag = 0;
-+		/*
-+		 * If we are not on block device, try to use the zero out
-+		 * primitive.
-+		 */
-+		ret = fallocate(data->dev,
-+				flag,
-+				(off_t)(block) * channel->block_size,
-+				(off_t)(count) * channel->block_size);
-+#else
-+		goto unimplemented;
-+#endif
-+	}
-+err:
-+	if (ret < 0) {
-+		if (errno == EOPNOTSUPP)
-+			goto unimplemented;
-+		return errno;
-+	}
-+	return 0;
-+unimplemented:
-+	return EXT2_ET_UNIMPLEMENTED;
-+}
-+
- static struct struct_io_manager struct_unix_manager = {
- 	.magic		= EXT2_ET_MAGIC_IO_MANAGER,
- 	.name		= "Unix I/O Manager",
-@@ -1002,6 +1072,7 @@ static struct struct_io_manager struct_unix_manager = {
- 	.write_blk64	= unix_write_blk64,
- 	.discard	= unix_discard,
- 	.cache_readahead	= unix_cache_readahead,
-+	.zeroout	= unix_zeroout,
- };
+diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
+index 5be425c..3cc15a9 100644
+--- a/lib/ext2fs/mkjournal.c
++++ b/lib/ext2fs/mkjournal.c
+@@ -148,7 +148,7 @@ errfree:
+  * attempt to free the static zeroizing buffer.  (This is to keep
+  * programs that check for memory leaks happy.)
+  */
+-#define STRIDE_LENGTH 8
++#define STRIDE_LENGTH (4194304 / fs->blocksize)
+ errcode_t ext2fs_zero_blocks2(ext2_filsys fs, blk64_t blk, int num,
+ 			      blk64_t *ret_blk, int *ret_count)
+ {
+@@ -372,20 +372,20 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
+ 	retval = ext2fs_block_iterate3(fs, journal_ino, BLOCK_FLAG_APPEND,
+ 				       0, mkjournal_proc, &es);
+ 	if (retval)
+-		goto errout;
++		goto out2;
+ 	if (es.err) {
+ 		retval = es.err;
+-		goto errout;
++		goto out2;
+ 	}
+ 	if (es.zero_count) {
+ 		retval = ext2fs_zero_blocks2(fs, es.blk_to_zero,
+ 					    es.zero_count, 0, 0);
+ 		if (retval)
+-			goto errout;
++			goto out2;
+ 	}
  
- io_manager unix_io_manager = &struct_unix_manager;
-
+ 	if ((retval = ext2fs_read_inode(fs, journal_ino, &inode)))
+-		goto errout;
++		goto out2;
+ 
+ 	inode_size = (unsigned long long)fs->blocksize * num_blocks;
+ 	ext2fs_iblk_add_blocks(fs, &inode, es.newblocks);
+@@ -394,10 +394,10 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
+ 	inode.i_mode = LINUX_S_IFREG | 0600;
+ 	retval = ext2fs_inode_size_set(fs, &inode, inode_size);
+ 	if (retval)
+-		goto errout;
++		goto out2;
+ 
+ 	if ((retval = ext2fs_write_new_inode(fs, journal_ino, &inode)))
+-		goto errout;
++		goto out2;
+ 	retval = 0;
+ 
+ 	memcpy(fs->super->s_jnl_blocks, inode.i_block, EXT2_N_BLOCKS*4);
+@@ -406,8 +406,6 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
+ 	fs->super->s_jnl_backup_type = EXT3_JNL_BACKUP_BLOCKS;
+ 	ext2fs_mark_super_dirty(fs);
+ 
+-errout:
+-	ext2fs_zero_blocks2(0, 0, 0, 0, 0);
+ out2:
+ 	ext2fs_free_mem(&buf);
+ 	return retval;
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 3a963d7..055b2ab 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -434,7 +434,6 @@ static void write_inode_tables(ext2_filsys fs, int lazy_flag, int itable_zeroed)
+ 				sync();
+ 		}
+ 	}
+-	ext2fs_zero_blocks2(0, 0, 0, 0, 0);
+ 	ext2fs_numeric_progress_close(fs, &progress,
+ 				      _("done                            \n"));
+ 
+@@ -623,7 +622,6 @@ static void create_journal_dev(ext2_filsys fs)
+ 		count -= c;
+ 		ext2fs_numeric_progress_update(fs, &progress, blk);
+ 	}
+-	ext2fs_zero_blocks2(0, 0, 0, 0, 0);
+ 
+ 	ext2fs_numeric_progress_close(fs, &progress, NULL);
+ write_superblock:
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index b59f482..57fe485 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -758,11 +758,11 @@ static errcode_t adjust_superblock(ext2_resize_t rfs, blk64_t new_size)
+ 		/*
+ 		 * Write out the new inode table
+ 		 */
+-		retval = io_channel_write_blk64(fs->io,
+-						ext2fs_inode_table_loc(fs, i),
+-						fs->inode_blocks_per_group,
+-						rfs->itable_buf);
+-		if (retval) goto errout;
++		retval = ext2fs_zero_blocks2(fs, ext2fs_inode_table_loc(fs, i),
++					     fs->inode_blocks_per_group, NULL,
++					     NULL);
++		if (retval)
++			goto errout;
+ 
+ 		io_channel_flush(fs->io);
+ 		if (rfs->progress) {
+@@ -2186,15 +2186,11 @@ static errcode_t fix_resize_inode(ext2_filsys fs)
+ {
+ 	struct ext2_inode	inode;
+ 	errcode_t		retval;
+-	char			*block_buf = NULL;
+ 
+ 	if (!(fs->super->s_feature_compat &
+ 	      EXT2_FEATURE_COMPAT_RESIZE_INODE))
+ 		return 0;
+ 
+-	retval = ext2fs_get_mem(fs->blocksize, &block_buf);
+-	if (retval) goto errout;
+-
+ 	retval = ext2fs_read_inode(fs, EXT2_RESIZE_INO, &inode);
+ 	if (retval) goto errout;
+ 
+@@ -2214,19 +2210,16 @@ static errcode_t fix_resize_inode(ext2_filsys fs)
+ 		exit(1);
+ 	}
+ 
+-	memset(block_buf, 0, fs->blocksize);
