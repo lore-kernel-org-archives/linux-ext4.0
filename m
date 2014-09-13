@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 04/34] libext2fs: ext2fs_new_block2() should call
- alloc_block hook
-Date: Sat, 13 Sep 2014 15:11:39 -0700
-Message-ID: <20140913221139.13646.58932.stgit@birch.djwong.org>
+Subject: [PATCH 05/34] debugfs: manage needs_recover feature when messing
+ with the journal
+Date: Sat, 13 Sep 2014 15:11:45 -0700
+Message-ID: <20140913221145.13646.30513.stgit@birch.djwong.org>
 References: <20140913221112.13646.3873.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,74 +10,47 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:32131 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:32140 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752186AbaIMWLo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Sep 2014 18:11:44 -0400
+	with ESMTP id S1752186AbaIMWLu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Sep 2014 18:11:50 -0400
 In-Reply-To: <20140913221112.13646.3873.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If ext2fs_new_block2() is called without a specific block map, we
-should call the alloc_block hook before checking fs->block_map.  This
-helps us to avoid a bug in e2fsck where we need to allocate a block
-but instead of consulting block_found_map, we use the FS bitmaps,
-which (prior to pass 5) could be wrong.
+Set the needs_recover incompat feature when debugfs writes journal
+transactions so that we actually replay the journal contents at the
+next mount.
+
+Likewise, clear it if we successfully recover the journal.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- e2fsck/pass1.c     |    2 +-
- lib/ext2fs/alloc.c |   15 +++++++++++++++
- 2 files changed, 16 insertions(+), 1 deletion(-)
+ debugfs/do_journal.c |    7 +++++++
+ 1 file changed, 7 insertions(+)
 
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index db5273e..04bb465 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -3725,7 +3725,7 @@ static errcode_t e2fsck_get_alloc_block(ext2_filsys fs, blk64_t goal,
- 				return retval;
- 		}
+diff --git a/debugfs/do_journal.c b/debugfs/do_journal.c
+index 711ed27..a17af6e 100644
+--- a/debugfs/do_journal.c
++++ b/debugfs/do_journal.c
+@@ -158,6 +158,8 @@ static errcode_t journal_commit_trans(journal_transaction_t *trans)
+ 	trans->flags &= ~J_TRANS_OPEN;
+ 	trans->block++;
  
--		retval = ext2fs_new_block2(fs, goal, 0, &new_block);
-+		retval = ext2fs_new_block2(fs, goal, fs->block_map, &new_block);
- 		if (retval)
- 			return retval;
- 	}
-diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
-index 578fd7f..d1c1a84 100644
---- a/lib/ext2fs/alloc.c
-+++ b/lib/ext2fs/alloc.c
-@@ -137,9 +137,23 @@ errcode_t ext2fs_new_block2(ext2_filsys fs, blk64_t goal,
- {
- 	errcode_t retval;
- 	blk64_t	b = 0;
-+	errcode_t (*gab)(ext2_filsys fs, blk64_t goal, blk64_t *ret);
- 
- 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
- 
-+	if (!map && fs->get_alloc_block) {
-+		/*
-+		 * In case there are clients out there whose get_alloc_block
-+		 * handlers call ext2fs_new_block2 with a NULL block map,
-+		 * temporarily swap out the function pointer so that we don't
-+		 * end up in an infinite loop.
-+		 */
-+		gab = fs->get_alloc_block;
-+		fs->get_alloc_block = NULL;
-+		retval = gab(fs, goal, &b);
-+		fs->get_alloc_block = gab;
-+		goto allocated;
++	trans->fs->super->s_feature_incompat |= EXT3_FEATURE_INCOMPAT_RECOVER;
++	ext2fs_mark_super_dirty(trans->fs);
+ error:
+ 	if (cbh)
+ 		brelse(cbh);
+@@ -979,4 +981,9 @@ void do_journal_run(int argc, char *argv[])
+ 	err = ext2fs_run_ext3_journal(&current_fs);
+ 	if (err)
+ 		com_err("journal_run", err, "while recovering journal");
++	else {
++		current_fs->super->s_feature_incompat &=
++				~EXT3_FEATURE_INCOMPAT_RECOVER;
++		ext2fs_mark_super_dirty(current_fs);
 +	}
- 	if (!map)
- 		map = fs->block_map;
- 	if (!map)
-@@ -153,6 +167,7 @@ errcode_t ext2fs_new_block2(ext2_filsys fs, blk64_t goal,
- 	if ((retval == ENOENT) && (goal != fs->super->s_first_data_block))
- 		retval = ext2fs_find_first_zero_block_bitmap2(map,
- 			fs->super->s_first_data_block, goal - 1, &b);
-+allocated:
- 	if (retval == ENOENT)
- 		return EXT2_ET_BLOCK_ALLOC_FAIL;
- 	if (retval)
+ }
 
