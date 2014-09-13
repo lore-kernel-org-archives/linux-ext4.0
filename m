@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 13/34] misc: add plausibility checks to
- debugfs/tune2fs/dumpe2fs/e2fsck
-Date: Sat, 13 Sep 2014 15:12:39 -0700
-Message-ID: <20140913221239.13646.32074.stgit@birch.djwong.org>
+Subject: [PATCH 14/34] misc: use libmagic when libblkid can't identify
+ something
+Date: Sat, 13 Sep 2014 15:12:46 -0700
+Message-ID: <20140913221246.13646.27212.stgit@birch.djwong.org>
 References: <20140913221112.13646.3873.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,390 +10,334 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:32261 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:32269 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752291AbaIMWMo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Sep 2014 18:12:44 -0400
+	with ESMTP id S1752298AbaIMWMw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Sep 2014 18:12:52 -0400
 In-Reply-To: <20140913221112.13646.3873.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If any of these utilities detect a bad superblock magic, call
-check_plausibility to see if blkid can identify the passed-in argument
-as something else (xfs, partition, etc.) in the hopes of catching a
-user error.
+If we're using check_plausibility() to try to identify something that
+obviously isn't an ext* filesystem and libblkid doesn't know what it
+is, try libmagic instead.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- debugfs/Makefile.in                 |   23 ++++++++++++++++++----
- debugfs/debugfs.c                   |    3 +++
- e2fsck/Makefile.in                  |   19 ++++++++++++++++--
- e2fsck/problem.c                    |    2 +-
- e2fsck/unix.c                       |    7 ++++++-
- misc/Makefile.in                    |   33 ++++++++++++++++++--------------
- misc/dumpe2fs.c                     |    3 +++
- misc/e2image.c                      |    3 +++
- misc/tune2fs.c                      |    2 ++
- tests/f_detect_xfs/expect           |   25 ++++++++++++++++++++++++
- tests/f_detect_xfs/expect.nodebugfs |   23 ++++++++++++++++++++++
- tests/f_detect_xfs/image.bz2        |  Bin
- tests/f_detect_xfs/name             |    1 +
- tests/f_detect_xfs/script           |   36 +++++++++++++++++++++++++++++++++++
- 14 files changed, 156 insertions(+), 24 deletions(-)
- create mode 100644 tests/f_detect_xfs/expect
- create mode 100644 tests/f_detect_xfs/expect.nodebugfs
- create mode 100644 tests/f_detect_xfs/image.bz2
- create mode 100644 tests/f_detect_xfs/name
- create mode 100755 tests/f_detect_xfs/script
+ MCONFIG.in                           |    1 +
+ configure                            |   54 ++++++++++++++++++++++++++++++++++
+ configure.in                         |    6 ++++
+ debugfs/Makefile.in                  |    4 +--
+ e2fsck/Makefile.in                   |    4 +--
+ lib/config.h.in                      |    3 ++
+ misc/Makefile.in                     |   23 ++++++++------
+ misc/plausible.c                     |   22 ++++++++++++++
+ tests/f_detect_junk/expect           |   25 ++++++++++++++++
+ tests/f_detect_junk/expect.nodebugfs |   23 ++++++++++++++
+ tests/f_detect_junk/image.bz2        |  Bin
+ tests/f_detect_junk/name             |    1 +
+ tests/f_detect_junk/script           |   43 +++++++++++++++++++++++++++
+ 13 files changed, 195 insertions(+), 14 deletions(-)
+ create mode 100644 tests/f_detect_junk/expect
+ create mode 100644 tests/f_detect_junk/expect.nodebugfs
+ create mode 100644 tests/f_detect_junk/image.bz2
+ create mode 100644 tests/f_detect_junk/name
+ create mode 100755 tests/f_detect_junk/script
 
 
+diff --git a/MCONFIG.in b/MCONFIG.in
+index 2a5055f..4751176 100644
+--- a/MCONFIG.in
++++ b/MCONFIG.in
+@@ -114,6 +114,7 @@ LIBCOM_ERR = $(LIB)/libcom_err@LIB_EXT@ @PRIVATE_LIBS_CMT@ @SEM_INIT_LIB@
+ LIBE2P = $(LIB)/libe2p@LIB_EXT@
+ LIBEXT2FS = $(LIB)/libext2fs@LIB_EXT@
+ LIBUUID = @LIBUUID@ @SOCKET_LIB@
++LIBMAGIC = @MAGIC_LIB@
+ LIBQUOTA = @STATIC_LIBQUOTA@
+ LIBBLKID = @LIBBLKID@ @PRIVATE_LIBS_CMT@ $(LIBUUID)
+ LIBINTL = @LIBINTL@
+diff --git a/configure b/configure
+index 0ea5fc5..ac2fba0 100755
+--- a/configure
++++ b/configure
+@@ -643,6 +643,7 @@ CYGWIN_CMT
+ LINUX_CMT
+ UNI_DIFF_OPTS
+ SEM_INIT_LIB
++MAGIC_LIB
+ SOCKET_LIB
+ SIZEOF_OFF_T
+ SIZEOF_LONG_LONG
+@@ -13125,6 +13126,59 @@ if test "x$ac_cv_lib_socket_socket" = xyes; then :
+ fi
+ 
+ 
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for magic_file in -lmagic" >&5
++$as_echo_n "checking for magic_file in -lmagic... " >&6; }
++if ${ac_cv_lib_magic_magic_file+:} false; then :
++  $as_echo_n "(cached) " >&6
++else
++  ac_check_lib_save_LIBS=$LIBS
++LIBS="-lmagic  $LIBS"
++cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++/* end confdefs.h.  */
++
++/* Override any GCC internal prototype to avoid an error.
++   Use char because int might match the return type of a GCC
++   builtin and then its argument prototype would still apply.  */
++#ifdef __cplusplus
++extern "C"
++#endif
++char magic_file ();
++int
++main ()
++{
++return magic_file ();
++  ;
++  return 0;
++}
++_ACEOF
++if ac_fn_c_try_link "$LINENO"; then :
++  ac_cv_lib_magic_magic_file=yes
++else
++  ac_cv_lib_magic_magic_file=no
++fi
++rm -f core conftest.err conftest.$ac_objext \
++    conftest$ac_exeext conftest.$ac_ext
++LIBS=$ac_check_lib_save_LIBS
++fi
++{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_magic_magic_file" >&5
++$as_echo "$ac_cv_lib_magic_magic_file" >&6; }
++if test "x$ac_cv_lib_magic_magic_file" = xyes; then :
++  MAGIC_LIB=-lmagic
++for ac_header in magic.h
++do :
++  ac_fn_c_check_header_mongrel "$LINENO" "magic.h" "ac_cv_header_magic_h" "$ac_includes_default"
++if test "x$ac_cv_header_magic_h" = xyes; then :
++  cat >>confdefs.h <<_ACEOF
++#define HAVE_MAGIC_H 1
++_ACEOF
++
++fi
++
++done
++
++fi
++
++
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for optreset" >&5
+ $as_echo_n "checking for optreset... " >&6; }
+ if ${ac_cv_have_optreset+:} false; then :
+diff --git a/configure.in b/configure.in
+index 5106f96..98dca5e 100644
+--- a/configure.in
++++ b/configure.in
+@@ -1146,6 +1146,12 @@ SOCKET_LIB=''
+ AC_CHECK_LIB(socket, socket, [SOCKET_LIB=-lsocket])
+ AC_SUBST(SOCKET_LIB)
+ dnl
++dnl See if libmagic exists
++dnl
++AC_CHECK_LIB(magic, magic_file, [MAGIC_LIB=-lmagic
++AC_CHECK_HEADERS([magic.h])])
++AC_SUBST(MAGIC_LIB)
++dnl
+ dnl See if optreset exists
+ dnl
+ AC_MSG_CHECKING(for optreset)
 diff --git a/debugfs/Makefile.in b/debugfs/Makefile.in
-index 6220943..b33f73b 100644
+index b33f73b..f6eae6c 100644
 --- a/debugfs/Makefile.in
 +++ b/debugfs/Makefile.in
-@@ -19,11 +19,12 @@ MK_CMDS=	_SS_DIR_OVERRIDE=../lib/ss ../lib/ss/mk_cmds
- DEBUG_OBJS= debug_cmds.o debugfs.o util.o ncheck.o icheck.o ls.o \
- 	lsdel.o dump.o set_fields.o logdump.o htree.o unused.o e2freefrag.o \
- 	filefrag.o extent_cmds.o extent_inode.o zap.o create_inode.o \
--	quota.o xattrs.o journal.o revoke.o recovery.o do_journal.o
-+	quota.o xattrs.o journal.o revoke.o recovery.o do_journal.o \
-+	plausible.o
- 
- RO_DEBUG_OBJS= ro_debug_cmds.o ro_debugfs.o util.o ncheck.o icheck.o ls.o \
- 	lsdel.o logdump.o htree.o e2freefrag.o filefrag.o extent_cmds.o \
--	extent_inode.o quota.o xattrs.o
-+	extent_inode.o quota.o xattrs.o ../misc/plausible.o
- 
- SRCS= debug_cmds.c $(srcdir)/debugfs.c $(srcdir)/util.c $(srcdir)/ls.c \
- 	$(srcdir)/ncheck.c $(srcdir)/icheck.c $(srcdir)/lsdel.c \
-@@ -32,7 +33,8 @@ SRCS= debug_cmds.c $(srcdir)/debugfs.c $(srcdir)/util.c $(srcdir)/ls.c \
- 	$(srcdir)/filefrag.c $(srcdir)/extent_inode.c $(srcdir)/zap.c \
- 	$(srcdir)/../misc/create_inode.c $(srcdir)/xattrs.c $(srcdir)/quota.c \
- 	$(srcdir)/journal.c $(srcdir)/../e2fsck/revoke.c \
--	$(srcdir)/../e2fsck/recovery.c $(srcdir)/do_journal.c
-+	$(srcdir)/../e2fsck/recovery.c $(srcdir)/do_journal.c \
-+	$(srcdir)/../misc/plausible.c
+@@ -37,13 +37,13 @@ SRCS= debug_cmds.c $(srcdir)/debugfs.c $(srcdir)/util.c $(srcdir)/ls.c \
+ 	$(srcdir)/../misc/plausible.c
  
  LIBS= $(LIBQUOTA) $(LIBEXT2FS) $(LIBE2P) $(LIBSS) $(LIBCOM_ERR) $(LIBBLKID) \
- 	$(LIBUUID) $(SYSLIBS) $(LIBINTL)
-@@ -59,6 +61,10 @@ DEPEND_CFLAGS = -I$(srcdir)
+-	$(LIBUUID) $(SYSLIBS) $(LIBINTL)
++	$(LIBUUID) $(SYSLIBS) $(LIBINTL) $(LIBMAGIC)
+ DEPLIBS= $(DEPLIBQUOTA) $(LIBEXT2FS) $(LIBE2P) $(DEPLIBSS) $(DEPLIBCOM_ERR) \
+ 	$(DEPLIBBLKID) $(DEPLIBUUID)
  
- all:: $(PROGS) $(MANPAGES)
- 
-+plausible.o: $(top_srcdir)/misc/plausible.c
-+	$(E) "	CC $<"
-+	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
-+
- debugfs: $(DEBUG_OBJS) $(DEPLIBS)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) $(ALL_LDFLAGS) -o debugfs $(DEBUG_OBJS) $(LIBS)
-@@ -172,7 +178,8 @@ debugfs.o: $(srcdir)/debugfs.c $(top_builddir)/lib/config.h \
-  $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-  $(top_srcdir)/lib/../e2fsck/dict.h $(top_srcdir)/version.h \
-  $(srcdir)/../e2fsck/jfs_user.h $(top_srcdir)/lib/ext2fs/kernel-jbd.h \
-- $(top_srcdir)/lib/ext2fs/jfs_compat.h $(top_srcdir)/lib/ext2fs/kernel-list.h
-+ $(top_srcdir)/lib/ext2fs/jfs_compat.h $(top_srcdir)/lib/ext2fs/kernel-list.h \
-+ $(srcdir)/../misc/plausible.h
- util.o: $(srcdir)/util.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/ss/ss.h \
-  $(top_builddir)/lib/ss/ss_err.h $(top_srcdir)/lib/et/com_err.h \
-@@ -398,3 +405,11 @@ do_journal.o: $(srcdir)/do_journal.c $(top_builddir)/lib/config.h \
-  $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/../e2fsck/jfs_user.h \
-  $(top_srcdir)/lib/ext2fs/kernel-jbd.h $(top_srcdir)/lib/ext2fs/jfs_compat.h \
-  $(top_srcdir)/lib/ext2fs/kernel-list.h
-+plausible.o: $(srcdir)/../misc/plausible.c $(top_builddir)/lib/config.h \
-+ $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/et/com_err.h \
-+ $(top_srcdir)/lib/e2p/e2p.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
-+ $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
-+ $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
-+ $(top_builddir)/lib/ext2fs/ext2_err.h \
-+ $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-+ $(srcdir)/../misc/nls-enable.h $(srcdir)/../misc/plausible.h
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index 0d8e9e8..db85028 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -34,6 +34,7 @@ extern char *optarg;
- 
- #include "../version.h"
- #include "jfs_user.h"
-+#include "../misc/plausible.h"
- 
- #ifndef BUFSIZ
- #define BUFSIZ 8192
-@@ -87,6 +88,8 @@ static void open_filesystem(char *device, int open_flags, blk64_t superblock,
- 			     unix_io_manager, &current_fs);
- 	if (retval) {
- 		com_err(device, retval, "while opening filesystem");
-+		if (retval == EXT2_ET_BAD_MAGIC)
-+			check_plausibility(device, CHECK_FS_EXIST, NULL);
- 		current_fs = NULL;
- 		return;
- 	}
+ STATIC_LIBS= $(STATIC_LIBQUOTA) $(STATIC_LIBEXT2FS) $(STATIC_LIBSS) \
+ 	$(STATIC_LIBCOM_ERR) $(STATIC_LIBBLKID) $(STATIC_LIBUUID) \
+-	$(STATIC_LIBE2P) $(SYSLIBS) $(LIBINTL)
++	$(STATIC_LIBE2P) $(SYSLIBS) $(LIBINTL) $(LIBMAGIC)
+ STATIC_DEPLIBS= $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBSS) \
+ 		$(DEPSTATIC_LIBCOM_ERR) $(DEPSTATIC_LIBUUID) \
+ 		$(DEPSTATIC_LIBE2P)
 diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
-index 8d7e769..1afd15f 100644
+index 1afd15f..5c40fee 100644
 --- a/e2fsck/Makefile.in
 +++ b/e2fsck/Makefile.in
-@@ -62,7 +62,7 @@ OBJS= dict.o unix.o e2fsck.o super.o pass1.o pass1b.o pass2.o \
- 	pass3.o pass4.o pass5.o journal.o badblocks.o util.o dirinfo.o \
- 	dx_dirinfo.o ehandler.o problem.o message.o quota.o recovery.o \
- 	region.o revoke.o ea_refcount.o rehash.o profile.o prof_err.o \
--	logfile.o sigcatcher.o readahead.o $(MTRACE_OBJ)
-+	logfile.o sigcatcher.o readahead.o $(MTRACE_OBJ) plausible.o
+@@ -16,13 +16,13 @@ MANPAGES=	e2fsck.8
+ FMANPAGES=	e2fsck.conf.5
  
- PROFILED_OBJS= profiled/dict.o profiled/unix.o profiled/e2fsck.o \
- 	profiled/super.o profiled/pass1.o profiled/pass1b.o \
-@@ -73,7 +73,7 @@ PROFILED_OBJS= profiled/dict.o profiled/unix.o profiled/e2fsck.o \
- 	profiled/recovery.o profiled/region.o profiled/revoke.o \
- 	profiled/ea_refcount.o profiled/rehash.o profiled/profile.o \
- 	profiled/prof_err.o profiled/logfile.o \
--	profiled/sigcatcher.o profiled/readahead.o
-+	profiled/sigcatcher.o profiled/readahead.o profiled/plausible.o
+ LIBS= $(LIBQUOTA) $(LIBEXT2FS) $(LIBCOM_ERR) $(LIBBLKID) $(LIBUUID) \
+-	$(LIBINTL) $(LIBE2P) $(SYSLIBS)
++	$(LIBINTL) $(LIBE2P) $(SYSLIBS) $(LIBMAGIC)
+ DEPLIBS= $(DEPLIBQUOTA) $(LIBEXT2FS) $(DEPLIBCOM_ERR) $(DEPLIBBLKID) \
+ 	 $(DEPLIBUUID) $(DEPLIBE2P)
  
- SRCS= $(srcdir)/e2fsck.c \
- 	$(srcdir)/dict.c \
-@@ -104,12 +104,17 @@ SRCS= $(srcdir)/e2fsck.c \
- 	$(srcdir)/logfile.c \
- 	prof_err.c \
- 	$(srcdir)/quota.c \
-+	$(srcdir)/../misc/plausible.c \
- 	$(MTRACE_SRC)
+ STATIC_LIBS= $(STATIC_LIBQUOTA) $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) \
+ 	     $(STATIC_LIBBLKID) $(STATIC_LIBUUID) $(LIBINTL) $(STATIC_LIBE2P) \
+-	     $(SYSLIBS)
++	     $(SYSLIBS) $(LIBMAGIC)
+ STATIC_DEPLIBS= $(DEPSTATIC_LIBQUOTA) $(STATIC_LIBEXT2FS) \
+ 		$(DEPSTATIC_LIBCOM_ERR) $(DEPSTATIC_LIBBLKID) \
+ 		$(DEPSTATIC_LIBUUID) $(DEPSTATIC_LIBE2P)
+diff --git a/lib/config.h.in b/lib/config.h.in
+index be8f976..92fca3e 100644
+--- a/lib/config.h.in
++++ b/lib/config.h.in
+@@ -265,6 +265,9 @@
+ /* Define to 1 if lseek64 declared in unistd.h */
+ #undef HAVE_LSEEK64_PROTOTYPE
  
- all:: profiled $(PROGS) e2fsck $(MANPAGES) $(FMANPAGES)
- 
- @PROFILE_CMT@all:: e2fsck.profiled
- 
-+plausible.o: $(top_srcdir)/misc/plausible.c
-+	$(E) "	CC $<"
-+	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
++/* Define to 1 if you have the <magic.h> header file. */
++#undef HAVE_MAGIC_H
 +
- prof_err.c prof_err.h: prof_err.et
- 	$(E) "	COMPILE_ET prof_err.et"
- 	$(Q) $(COMPILE_ET) $(srcdir)/prof_err.et
-@@ -411,7 +416,7 @@ unix.o: $(srcdir)/unix.c $(top_builddir)/lib/config.h \
-  $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-  $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-  $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h \
-- $(top_srcdir)/version.h
-+ $(top_srcdir)/version.h $(srcdir)/../misc/plausible.h
- dirinfo.o: $(srcdir)/dirinfo.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-@@ -529,3 +534,11 @@ quota.o: $(srcdir)/quota.c $(top_builddir)/lib/config.h \
- readahead.o: $(srcdir)/readahead.c $(top_builddir)/lib/config.h \
-  $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
-  $(top_builddir)/lib/ext2fs/ext2_err.h $(srcdir)/e2fsck.h prof_err.h
-+plausible.o: $(srcdir)/../misc/plausible.c $(top_builddir)/lib/config.h \
-+ $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/et/com_err.h \
-+ $(top_srcdir)/lib/e2p/e2p.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
-+ $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
-+ $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
-+ $(top_builddir)/lib/ext2fs/ext2_err.h \
-+ $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-+ $(srcdir)/../misc/nls-enable.h $(srcdir)/../misc/plausible.h
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 174f45a..a4da64b 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -126,7 +126,7 @@ static struct e2fsck_problem problem_table[] = {
- 	  "    e2fsck -b 8193 <@v>\n"
- 	  " or\n"
- 	  "    e2fsck -b 32768 <@v>\n\n"),
--	  PROMPT_NONE, PR_FATAL },
-+	  PROMPT_NONE, 0 },
+ /* Define to 1 if you have the `mallinfo' function. */
+ #undef HAVE_MALLINFO
  
- 	/* Filesystem size is wrong */
- 	{ PR_0_FS_SIZE_WRONG,
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 6b0ca96..b3338ab 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -52,6 +52,7 @@ extern int optind;
- #include "e2fsck.h"
- #include "problem.h"
- #include "../version.h"
-+#include "../misc/plausible.h"
- 
- /* Command line options */
- static int cflag;		/* check disk */
-@@ -1410,8 +1411,12 @@ failure:
- 					     "-n option to do a read-only\n"
- 					     "check of the device.\n"));
- #endif
--		else
-+		else {
- 			fix_problem(ctx, PR_0_SB_CORRUPT, &pctx);
-+			if (retval == EXT2_ET_BAD_MAGIC)
-+				check_plausibility(ctx->filesystem_name,
-+						   CHECK_FS_EXIST, NULL);
-+		}
- 		fatal_error(ctx, 0);
- 	}
- 	/*
 diff --git a/misc/Makefile.in b/misc/Makefile.in
-index e49078b..bdeaa49 100644
+index bdeaa49..d19908f 100644
 --- a/misc/Makefile.in
 +++ b/misc/Makefile.in
-@@ -48,9 +48,9 @@ CHATTR_OBJS=	chattr.o
- LSATTR_OBJS=	lsattr.o
- UUIDGEN_OBJS=	uuidgen.o
- UUIDD_OBJS=	uuidd.o
--DUMPE2FS_OBJS=	dumpe2fs.o
-+DUMPE2FS_OBJS=	dumpe2fs.o plausible.o
- BADBLOCKS_OBJS=	badblocks.o
--E2IMAGE_OBJS=	e2image.o
-+E2IMAGE_OBJS=	e2image.o plausible.o
- FSCK_OBJS=	fsck.o base_device.o ismounted.o
- BLKID_OBJS=	blkid.o
- FILEFRAG_OBJS=	filefrag.o
-@@ -70,7 +70,7 @@ PROFILED_CHATTR_OBJS=	profiled/chattr.o
- PROFILED_LSATTR_OBJS=	profiled/lsattr.o
- PROFILED_UUIDGEN_OBJS=	profiled/uuidgen.o
- PROFILED_UUIDD_OBJS=	profiled/uuidd.o
--PROFILED_DUMPE2FS_OBJS=	profiled/dumpe2fs.o
-+PROFILED_DUMPE2FS_OBJS=	profiled/dumpe2fs.o profiled/plausible.o
- PROFILED_BADBLOCKS_OBJS=	profiled/badblocks.o
- PROFILED_E2IMAGE_OBJS=	profiled/e2image.o
- PROFILED_FSCK_OBJS=	profiled/fsck.o profiled/base_device.o \
-@@ -165,13 +165,14 @@ tune2fs: $(TUNE2FS_OBJS) $(DEPLIBS) $(DEPLIBS_E2P) $(DEPLIBBLKID) \
+@@ -165,14 +165,14 @@ tune2fs: $(TUNE2FS_OBJS) $(DEPLIBS) $(DEPLIBS_E2P) $(DEPLIBBLKID) \
  	$(E) "	LD $@"
  	$(Q) $(CC) $(ALL_LDFLAGS) -o tune2fs $(TUNE2FS_OBJS) $(LIBS) \
  		$(LIBBLKID) $(LIBUUID) $(LIBQUOTA) $(LIBEXT2FS) $(LIBS_E2P) \
--		$(LIBINTL) $(SYSLIBS)
-+		$(LIBINTL) $(SYSLIBS) $(LIBBLKID)
+-		$(LIBINTL) $(SYSLIBS) $(LIBBLKID)
++		$(LIBINTL) $(SYSLIBS) $(LIBBLKID) $(LIBMAGIC)
  
  tune2fs.static: $(TUNE2FS_OBJS) $(STATIC_DEPLIBS) $(STATIC_LIBE2P) $(DEPSTATIC_LIBBLKID)
  	$(E) "	LD $@"
  	$(Q) $(CC) $(LDFLAGS_STATIC) -o tune2fs.static $(TUNE2FS_OBJS) \
  		$(STATIC_LIBS) $(STATIC_LIBBLKID) $(STATIC_LIBUUID) \
--		$(STATIC_LIBQUOTA) $(STATIC_LIBE2P) $(LIBINTL) $(SYSLIBS)
-+		$(STATIC_LIBQUOTA) $(STATIC_LIBE2P) $(LIBINTL) $(SYSLIBS) \
-+		$(STATIC_LIBBLKID)
+ 		$(STATIC_LIBQUOTA) $(STATIC_LIBE2P) $(LIBINTL) $(SYSLIBS) \
+-		$(STATIC_LIBBLKID)
++		$(STATIC_LIBBLKID) $(LIBMAGIC)
  
  tune2fs.profiled: $(TUNE2FS_OBJS) $(PROFILED_DEPLIBS) \
  		$(PROFILED_E2P) $(DEPPROFILED_LIBBLKID) $(DEPPROFILED_LIBUUID) \
-@@ -180,7 +181,7 @@ tune2fs.profiled: $(TUNE2FS_OBJS) $(PROFILED_DEPLIBS) \
+@@ -181,7 +181,8 @@ tune2fs.profiled: $(TUNE2FS_OBJS) $(PROFILED_DEPLIBS) \
  	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o tune2fs.profiled \
  		$(PROFILED_TUNE2FS_OBJS) $(PROFILED_LIBBLKID) \
  		$(PROFILED_LIBUUID) $(PROFILED_LIBQUOTA) $(PROFILED_LIBE2P) \
--		$(LIBINTL) $(PROFILED_LIBS) $(SYSLIBS)
-+		$(LIBINTL) $(PROFILED_LIBS) $(SYSLIBS) $(PROFILED_LIBBLKID)
+-		$(LIBINTL) $(PROFILED_LIBS) $(SYSLIBS) $(PROFILED_LIBBLKID)
++		$(LIBINTL) $(PROFILED_LIBS) $(SYSLIBS) $(PROFILED_LIBBLKID) \
++		$(PROFILED_LIBMAGIC)
  
  blkid: $(BLKID_OBJS) $(DEPLIBBLKID) $(LIBEXT2FS)
  	$(E) "	LD $@"
-@@ -198,15 +199,16 @@ blkid.profiled: $(BLKID_OBJS) $(DEPPROFILED_LIBBLKID) \
- 	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o blkid.profiled $(PROFILED_BLKID_OBJS) \
- 		$(PROFILED_LIBBLKID) $(LIBINTL) $(PROFILED_LIBEXT2FS) $(SYSLIBS)
- 
--e2image: $(E2IMAGE_OBJS) $(DEPLIBS)
-+e2image: $(E2IMAGE_OBJS) $(DEPLIBS) $(DEPLIBBLKID)
+@@ -202,13 +203,13 @@ blkid.profiled: $(BLKID_OBJS) $(DEPPROFILED_LIBBLKID) \
+ e2image: $(E2IMAGE_OBJS) $(DEPLIBS) $(DEPLIBBLKID)
  	$(E) "	LD $@"
  	$(Q) $(CC) $(ALL_LDFLAGS) -o e2image $(E2IMAGE_OBJS) $(LIBS) \
--		$(LIBINTL) $(SYSLIBS)
-+		$(LIBINTL) $(SYSLIBS) $(LIBBLKID)
+-		$(LIBINTL) $(SYSLIBS) $(LIBBLKID)
++		$(LIBINTL) $(SYSLIBS) $(LIBBLKID) $(LIBMAGIC)
  
--e2image.profiled: $(E2IMAGE_OBJS) $(PROFILED_DEPLIBS)
-+e2image.profiled: $(E2IMAGE_OBJS) $(PROFILED_DEPLIBS) $(DEPLIBBLKID)
+ e2image.profiled: $(E2IMAGE_OBJS) $(PROFILED_DEPLIBS) $(DEPLIBBLKID)
  	$(E) "	LD $@"
  	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o e2image.profiled \
--		$(PROFILED_E2IMAGE_OBJS) $(PROFILED_LIBS) $(LIBINTL) $(SYSLIBS)
-+		$(PROFILED_E2IMAGE_OBJS) $(PROFILED_LIBS) $(LIBINTL) $(SYSLIBS) \
-+		$(LIBBLKID)
+ 		$(PROFILED_E2IMAGE_OBJS) $(PROFILED_LIBS) $(LIBINTL) $(SYSLIBS) \
+-		$(LIBBLKID)
++		$(LIBBLKID) $(LIBMAGIC)
  
  e2undo: $(E2UNDO_OBJS) $(DEPLIBS)
  	$(E) "	LD $@"
-@@ -296,17 +298,18 @@ uuidd.profiled: $(UUIDD_OBJS) $(PROFILED_DEPLIBUUID)
- 	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o uuidd.profiled $(PROFILED_UUIDD_OBJS) \
- 		$(PROFILED_LIBUUID) $(LIBINTL) $(SYSLIBS)
+@@ -249,14 +250,15 @@ mke2fs: $(MKE2FS_OBJS) $(DEPLIBS) $(LIBE2P) $(DEPLIBBLKID) $(DEPLIBUUID) \
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -o mke2fs $(MKE2FS_OBJS) $(LIBS) $(LIBBLKID) \
+ 		$(LIBUUID) $(LIBQUOTA) $(LIBEXT2FS) $(LIBE2P) $(LIBINTL) \
+-		$(SYSLIBS)
++		$(SYSLIBS) $(LIBMAGIC)
  
--dumpe2fs: $(DUMPE2FS_OBJS) $(DEPLIBS) $(DEPLIBS_E2P) $(DEPLIBUUID)
-+dumpe2fs: $(DUMPE2FS_OBJS) $(DEPLIBS) $(DEPLIBS_E2P) $(DEPLIBUUID) $(DEPLIBBLKID)
+ mke2fs.static: $(MKE2FS_OBJS) $(STATIC_DEPLIBS) $(STATIC_LIBE2P) $(DEPSTATIC_LIBUUID) \
+ 		$(DEPSTATIC_LIBQUOTA) $(DEPSTATIC_LIBBLKID)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -static -o mke2fs.static $(MKE2FS_OBJS) \
+ 		$(STATIC_LIBQUOTA) $(STATIC_LIBS) $(STATIC_LIBE2P) \
+-		$(STATIC_LIBBLKID) $(STATIC_LIBUUID) $(LIBINTL) $(SYSLIBS)
++		$(STATIC_LIBBLKID) $(STATIC_LIBUUID) $(LIBINTL) $(SYSLIBS) \
++		$(LIBMAGIC)
+ 
+ mke2fs.profiled: $(MKE2FS_OBJS) $(PROFILED_DEPLIBS) \
+ 	$(PROFILED_LIBE2P) $(PROFILED_DEPLIBBLKID) $(PROFILED_DEPLIBUUID) \
+@@ -265,7 +267,7 @@ mke2fs.profiled: $(MKE2FS_OBJS) $(PROFILED_DEPLIBS) \
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o mke2fs.profiled \
+ 		$(PROFILED_MKE2FS_OBJS) $(PROFILED_LIBBLKID) \
+ 		$(PROFILED_LIBUUID) $(PROFILED_LIBQUOTA) $(PROFILED_LIBE2P) \
+-		$(LIBINTL) $(PROFILED_LIBS) $(SYSLIBS)
++		$(LIBINTL) $(PROFILED_LIBS) $(SYSLIBS) $(LIBMAGIC)
+ 
+ chattr: $(CHATTR_OBJS) $(DEPLIBS_E2P)
+ 	$(E) "	LD $@"
+@@ -301,7 +303,8 @@ uuidd.profiled: $(UUIDD_OBJS) $(PROFILED_DEPLIBUUID)
+ dumpe2fs: $(DUMPE2FS_OBJS) $(DEPLIBS) $(DEPLIBS_E2P) $(DEPLIBUUID) $(DEPLIBBLKID)
  	$(E) "	LD $@"
  	$(Q) $(CC) $(ALL_LDFLAGS) -o dumpe2fs $(DUMPE2FS_OBJS) $(LIBS) \
--		$(LIBS_E2P) $(LIBUUID) $(LIBINTL) $(SYSLIBS)
-+		$(LIBS_E2P) $(LIBUUID) $(LIBINTL) $(SYSLIBS) $(LIBBLKID)
+-		$(LIBS_E2P) $(LIBUUID) $(LIBINTL) $(SYSLIBS) $(LIBBLKID)
++		$(LIBS_E2P) $(LIBUUID) $(LIBINTL) $(SYSLIBS) $(LIBBLKID) \
++		$(LIBMAGIC)
  
  dumpe2fs.profiled: $(DUMPE2FS_OBJS) $(PROFILED_DEPLIBS) \
--		$(PROFILED_LIBE2P) $(PROFILED_DEPLIBUUID)
-+		$(PROFILED_LIBE2P) $(PROFILED_DEPLIBUUID) $(PROFILED_DEPLIBBLKID)
- 	$(E) "	LD $@"
+ 		$(PROFILED_LIBE2P) $(PROFILED_DEPLIBUUID) $(PROFILED_DEPLIBBLKID)
+@@ -309,7 +312,7 @@ dumpe2fs.profiled: $(DUMPE2FS_OBJS) $(PROFILED_DEPLIBS) \
  	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o dumpe2fs.profiled \
  		$(PROFILED_DUMPE2FS_OBJS) $(PROFILED_LIBS) \
--		$(PROFILED_LIBE2P) $(PROFILED_LIBUUID) $(LIBINTL) $(SYSLIBS)
-+		$(PROFILED_LIBE2P) $(PROFILED_LIBUUID) $(LIBINTL) $(SYSLIBS) \
-+		$(PROFILED_LIBBLKID)
+ 		$(PROFILED_LIBE2P) $(PROFILED_LIBUUID) $(LIBINTL) $(SYSLIBS) \
+-		$(PROFILED_LIBBLKID)
++		$(PROFILED_LIBBLKID) $(PROFILED_LIBMAGIC)
  
  fsck: $(FSCK_OBJS) $(DEPLIBBLKID)
  	$(E) "	LD $@"
-@@ -688,7 +691,7 @@ dumpe2fs.o: $(srcdir)/dumpe2fs.c $(top_builddir)/lib/config.h \
-  $(top_srcdir)/lib/e2p/e2p.h $(srcdir)/jfs_user.h \
-  $(top_srcdir)/lib/ext2fs/kernel-jbd.h $(top_srcdir)/lib/ext2fs/jfs_compat.h \
-  $(top_srcdir)/lib/ext2fs/kernel-list.h $(top_srcdir)/version.h \
-- $(srcdir)/nls-enable.h
-+ $(srcdir)/nls-enable.h $(srcdir)/plausible.h
- badblocks.o: $(srcdir)/badblocks.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/et/com_err.h \
-  $(top_srcdir)/lib/ext2fs/ext2_io.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
-diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-index 39505a8..7c3c2cc 100644
---- a/misc/dumpe2fs.c
-+++ b/misc/dumpe2fs.c
-@@ -42,6 +42,7 @@ extern int optind;
- 
- #include "../version.h"
+diff --git a/misc/plausible.c b/misc/plausible.c
+index 2768e4b..caeb929 100644
+--- a/misc/plausible.c
++++ b/misc/plausible.c
+@@ -28,6 +28,9 @@
+ #ifdef HAVE_UNISTD_H
+ #include <unistd.h>
+ #endif
++#ifdef HAVE_MAGIC_H
++#include <magic.h>
++#endif
+ #include "plausible.h"
+ #include "ext2fs/ext2fs.h"
  #include "nls-enable.h"
-+#include "plausible.h"
- 
- #define in_use(m, x)	(ext2fs_test_bit ((x), (m)))
- 
-@@ -689,6 +690,8 @@ try_open_again:
- 		com_err (program_name, retval, _("while trying to open %s"),
- 			 device_name);
- 		printf("%s", _("Couldn't find valid filesystem superblock.\n"));
-+		if (retval == EXT2_ET_BAD_MAGIC)
-+			check_plausibility(device_name, CHECK_FS_EXIST, NULL);
- 		exit (1);
- 	}
- 	fs->default_bitmap_type = EXT2FS_BMAP64_RBTREE;
-diff --git a/misc/e2image.c b/misc/e2image.c
-index e1c63a7..e876ae8 100644
---- a/misc/e2image.c
-+++ b/misc/e2image.c
-@@ -47,6 +47,7 @@ extern int optind;
- 
- #include "../version.h"
- #include "nls-enable.h"
-+#include "plausible.h"
- 
- #define QCOW_OFLAG_COPIED     (1LL << 63)
- #define NO_BLK ((blk64_t) -1)
-@@ -1578,6 +1579,8 @@ int main (int argc, char ** argv)
- 		com_err (program_name, retval, _("while trying to open %s"),
- 			 device_name);
- 		fputs(_("Couldn't find valid filesystem superblock.\n"), stdout);
-+		if (retval == EXT2_ET_BAD_MAGIC)
-+			check_plausibility(device_name, CHECK_FS_EXIST, NULL);
- 		exit(1);
+@@ -194,6 +197,25 @@ int check_plausibility(const char *device, int flags, int *ret_is_dev)
+ 		return 0;
  	}
  
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index c454b84..d17c8de 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -2575,6 +2575,8 @@ retry_open:
- 			fprintf(stderr,
- 				_("MMP block magic is bad. Try to fix it by "
- 				  "running:\n'e2fsck -f %s'\n"), device_name);
-+		else if (retval == EXT2_ET_BAD_MAGIC)
-+			check_plausibility(device_name, CHECK_FS_EXIST, NULL);
- 		else if (retval != EXT2_ET_MMP_FAILED)
- 			fprintf(stderr, "%s",
- 			     _("Couldn't find valid filesystem superblock.\n"));
-diff --git a/tests/f_detect_xfs/expect b/tests/f_detect_xfs/expect
++#ifdef HAVE_MAGIC_H
++	if (flags & CHECK_FS_EXIST) {
++		const char *msg;
++		magic_t mag;
++
++		mag = magic_open(MAGIC_RAW | MAGIC_SYMLINK | MAGIC_DEVICES |
++				 MAGIC_ERROR | MAGIC_NO_CHECK_ELF |
++				 MAGIC_NO_CHECK_COMPRESS);
++		magic_load(mag, NULL);
++
++		msg = magic_file(mag, device);
++		if (msg && strcmp(msg, "data") && strcmp(msg, "empty"))
++			printf(_("%s contains a `%s'\n"), device, msg);
++
++		magic_close(mag);
++		return 0;
++	}
++#endif
++
+ 	ret = check_partition_table(device);
+ 	if (ret >= 0)
+ 		return ret;
+diff --git a/tests/f_detect_junk/expect b/tests/f_detect_junk/expect
 new file mode 100644
-index 0000000..4ab6e5b
+index 0000000..57f7f89
 --- /dev/null
-+++ b/tests/f_detect_xfs/expect
++++ b/tests/f_detect_junk/expect
 @@ -0,0 +1,25 @@
 +*** e2fsck
 +ext2fs_open2: Bad magic number in super-block
@@ -408,23 +352,23 @@ index 0000000..4ab6e5b
 + or
 +    e2fsck -b 32768 <device>
 +
-+test.img contains a xfs file system labelled 'test_filsys'
++test.img contains a `PNG image data, 148 x 31, 8-bit/color RGBA, non-interlaced'
 +*** debugfs
 +test.img: Bad magic number in super-block while opening filesystem
-+test.img contains a xfs file system labelled 'test_filsys'
++test.img contains a `PNG image data, 148 x 31, 8-bit/color RGBA, non-interlaced'
 +*** tune2fs
 +../misc/tune2fs: Bad magic number in super-block while trying to open test.img
-+test.img contains a xfs file system labelled 'test_filsys'
++test.img contains a `PNG image data, 148 x 31, 8-bit/color RGBA, non-interlaced'
 +*** mke2fs
 +Creating filesystem with 16384 1k blocks and 4096 inodes
 +Superblock backups stored on blocks: 
 +	8193
 +
-diff --git a/tests/f_detect_xfs/expect.nodebugfs b/tests/f_detect_xfs/expect.nodebugfs
+diff --git a/tests/f_detect_junk/expect.nodebugfs b/tests/f_detect_junk/expect.nodebugfs
 new file mode 100644
-index 0000000..d3b7935
+index 0000000..d9281a0
 --- /dev/null
-+++ b/tests/f_detect_xfs/expect.nodebugfs
++++ b/tests/f_detect_junk/expect.nodebugfs
 @@ -0,0 +1,23 @@
 +*** e2fsck
 +ext2fs_open2: Bad magic number in super-block
@@ -439,53 +383,96 @@ index 0000000..d3b7935
 + or
 +    e2fsck -b 32768 <device>
 +
-+test.img contains a xfs file system labelled 'test_filsys'
++test.img contains a `PNG image data, 148 x 31, 8-bit/color RGBA, non-interlaced'
 +*** debugfs
 +*** tune2fs
 +../misc/tune2fs: Bad magic number in super-block while trying to open test.img
-+test.img contains a xfs file system labelled 'test_filsys'
++test.img contains a `PNG image data, 148 x 31, 8-bit/color RGBA, non-interlaced'
 +*** mke2fs
 +Creating filesystem with 16384 1k blocks and 4096 inodes
 +Superblock backups stored on blocks: 
 +	8193
 +
-diff --git a/tests/f_detect_xfs/image.bz2 b/tests/f_detect_xfs/image.bz2
+diff --git a/tests/f_detect_junk/image.bz2 b/tests/f_detect_junk/image.bz2
 new file mode 100644
-index 0000000000000000000000000000000000000000..9dc5e44b57c25d68cf46059439245b4f02c0d8f7
+index 0000000000000000000000000000000000000000..3d52600d67d5f9e3212f6e6b5b8bbc918343fd41
 GIT binary patch
-literal 450
-zcmV;z0X_agT4*^jL0KkKS;zj9s{#Zw|NsB~#OOgr144bF4*%07Okh9|5J8R*M73Zb
-zK|paT0LiccmH^Pypa1{>&;S9TG|&J505lI%O$b6qr~^O%00000000000E$VZo~DM7
-z)6z6F0BC5@u#i7g(8sDakUd6a2AL1Yfk;si5lUbx4#)^}>SV#PqKFOtoDKj&Bt)hQ
-zk8_=H64EPjfmeEEP!>VI3Wp>j5<jw30Z|+<sEP=MUzj#;_cN!HS8U^-qR}P6hp9jn
-zLrf{B2`xD)w`h`x0sse{6@?1@dwsIeN}o;AbQ95&D0U&9w2%V^w1hwq06CC=9fAQ2
-zP@;%{0i_ezHRm%dY`}J5!GbeQt8|LE{1OKI0c-aqxp0C}hF6I9l<yR0!0K)i=|X40
-zSj32`7uBmRqBwZRbkQf93>eA_b0RNja^f}oxVPC=$Z%#-O00;l^DMLg0=q1-EQ{|I
-z-UFP9{H}W`A0XuTloI=J@mt1a$(Fq?Qdym%5C9rM@4&KeGzZ~%chaW?2qK|iAweqy
-sLXu;sl0e`{>cWa302YhTqK(sV6`W^c`qpYum;L`2az!{$kjMU$tCv{5XaE2J
+literal 2504
+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
+SjgZZI;_gVN3KAGF=qTVdHMar)
 
 literal 0
 HcmV?d00001
 
-diff --git a/tests/f_detect_xfs/name b/tests/f_detect_xfs/name
+diff --git a/tests/f_detect_junk/name b/tests/f_detect_junk/name
 new file mode 100644
-index 0000000..d5b9b82
+index 0000000..81cf655
 --- /dev/null
-+++ b/tests/f_detect_xfs/name
++++ b/tests/f_detect_junk/name
 @@ -0,0 +1 @@
-+detect xfs filesystem
-diff --git a/tests/f_detect_xfs/script b/tests/f_detect_xfs/script
++detect non-fs file data
+diff --git a/tests/f_detect_junk/script b/tests/f_detect_junk/script
 new file mode 100755
-index 0000000..2531c5e
+index 0000000..8409fdd
 --- /dev/null
-+++ b/tests/f_detect_xfs/script
-@@ -0,0 +1,36 @@
++++ b/tests/f_detect_junk/script
+@@ -0,0 +1,43 @@
 +#!/bin/bash
++
++if [ "$(grep -c 'define HAVE_MAGIC_H' $test_dir/../../lib/config.h)" -gt 0 ]; then
 +
 +FSCK_OPT=-fn
 +IMAGE=$test_dir/image.bz2
 +
 +bzip2 -d < $IMAGE > $TMPFILE
++dd if=/dev/zero of=$TMPFILE conv=notrunc oflag=append bs=1024k count=16 > /dev/null 2>&1
 +
 +# Run fsck to fix things?
 +if [ -x $DEBUGFS_EXE ]; then
@@ -516,4 +503,8 @@ index 0000000..2531c5e
 +	diff -u $EXP $OUT >> $test_name.failed
 +fi
 +unset EXP OUT FSCK_OPT IMAGE
++
++else #if HAVE_MAGIC_H
++	echo "$test_name: $test_description: skipped"
++fi
 
