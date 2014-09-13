@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 12/34] misc: move check_plausibility into a separate file
-Date: Sat, 13 Sep 2014 15:12:33 -0700
-Message-ID: <20140913221233.13646.56301.stgit@birch.djwong.org>
+Subject: [PATCH 13/34] misc: add plausibility checks to
+ debugfs/tune2fs/dumpe2fs/e2fsck
+Date: Sat, 13 Sep 2014 15:12:39 -0700
+Message-ID: <20140913221239.13646.32074.stgit@birch.djwong.org>
 References: <20140913221112.13646.3873.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,650 +10,510 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:24334 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752279AbaIMWMj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Sep 2014 18:12:39 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:32261 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752291AbaIMWMo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Sep 2014 18:12:44 -0400
 In-Reply-To: <20140913221112.13646.3873.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Move check_plausibility() into a separate file so that various
-programs can use it without having to declare useless global variables
-that the util.c functions seem to require.
+If any of these utilities detect a bad superblock magic, call
+check_plausibility to see if blkid can identify the passed-in argument
+as something else (xfs, partition, etc.) in the hopes of catching a
+user error.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/Makefile.in |   11 ++
- misc/Makefile.in       |   20 +++-
- misc/mke2fs.c          |    1 
- misc/plausible.c       |  232 ++++++++++++++++++++++++++++++++++++++++++++++++
- misc/plausible.h       |   28 ++++++
- misc/tune2fs.c         |    1 
- misc/util.c            |  197 -----------------------------------------
- misc/util.h            |   11 --
- 8 files changed, 285 insertions(+), 216 deletions(-)
- create mode 100644 misc/plausible.c
- create mode 100644 misc/plausible.h
+ debugfs/Makefile.in                 |   23 ++++++++++++++++++----
+ debugfs/debugfs.c                   |    3 +++
+ e2fsck/Makefile.in                  |   19 ++++++++++++++++--
+ e2fsck/problem.c                    |    2 +-
+ e2fsck/unix.c                       |    7 ++++++-
+ misc/Makefile.in                    |   33 ++++++++++++++++++--------------
+ misc/dumpe2fs.c                     |    3 +++
+ misc/e2image.c                      |    3 +++
+ misc/tune2fs.c                      |    2 ++
+ tests/f_detect_xfs/expect           |   25 ++++++++++++++++++++++++
+ tests/f_detect_xfs/expect.nodebugfs |   23 ++++++++++++++++++++++
+ tests/f_detect_xfs/image.bz2        |  Bin
+ tests/f_detect_xfs/name             |    1 +
+ tests/f_detect_xfs/script           |   36 +++++++++++++++++++++++++++++++++++
+ 14 files changed, 156 insertions(+), 24 deletions(-)
+ create mode 100644 tests/f_detect_xfs/expect
+ create mode 100644 tests/f_detect_xfs/expect.nodebugfs
+ create mode 100644 tests/f_detect_xfs/image.bz2
+ create mode 100644 tests/f_detect_xfs/name
+ create mode 100755 tests/f_detect_xfs/script
 
 
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index 45e733c..343d5d0 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -23,7 +23,7 @@ DEBUG_OBJS= debug_cmds.o extent_cmds.o tst_cmds.o debugfs.o util.o \
- 	ncheck.o icheck.o ls.o lsdel.o dump.o set_fields.o logdump.o \
- 	htree.o unused.o e2freefrag.o filefrag.o extent_inode.o zap.o \
- 	xattrs.o quota.o tst_libext2fs.o create_inode.o journal.o \
--	revoke.o recovery.o do_journal.o
-+	revoke.o recovery.o do_journal.o plausible.o
+diff --git a/debugfs/Makefile.in b/debugfs/Makefile.in
+index 6220943..b33f73b 100644
+--- a/debugfs/Makefile.in
++++ b/debugfs/Makefile.in
+@@ -19,11 +19,12 @@ MK_CMDS=	_SS_DIR_OVERRIDE=../lib/ss ../lib/ss/mk_cmds
+ DEBUG_OBJS= debug_cmds.o debugfs.o util.o ncheck.o icheck.o ls.o \
+ 	lsdel.o dump.o set_fields.o logdump.o htree.o unused.o e2freefrag.o \
+ 	filefrag.o extent_cmds.o extent_inode.o zap.o create_inode.o \
+-	quota.o xattrs.o journal.o revoke.o recovery.o do_journal.o
++	quota.o xattrs.o journal.o revoke.o recovery.o do_journal.o \
++	plausible.o
  
- DEBUG_SRCS= debug_cmds.c extent_cmds.c tst_cmds.c \
- 	$(top_srcdir)/debugfs/debugfs.c \
-@@ -47,7 +47,8 @@ DEBUG_SRCS= debug_cmds.c extent_cmds.c tst_cmds.c \
- 	$(top_srcdir)/debugfs/journal.c \
- 	$(top_srcdir)/e2fsck/revoke.c \
- 	$(top_srcdir)/e2fsck/recovery.c \
--	$(top_srcdir)/debugfs/do_journal.c
-+	$(top_srcdir)/debugfs/do_journal.c \
-+	$(top_srcdir)/misc/plausible.c
+ RO_DEBUG_OBJS= ro_debug_cmds.o ro_debugfs.o util.o ncheck.o icheck.o ls.o \
+ 	lsdel.o logdump.o htree.o e2freefrag.o filefrag.o extent_cmds.o \
+-	extent_inode.o quota.o xattrs.o
++	extent_inode.o quota.o xattrs.o ../misc/plausible.o
  
- OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
- 	$(TEST_IO_LIB_OBJS) \
-@@ -412,6 +413,10 @@ recovery.o: $(top_srcdir)/e2fsck/recovery.c
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(DEBUGFS_CFLAGS) -c $< -o $@
+ SRCS= debug_cmds.c $(srcdir)/debugfs.c $(srcdir)/util.c $(srcdir)/ls.c \
+ 	$(srcdir)/ncheck.c $(srcdir)/icheck.c $(srcdir)/lsdel.c \
+@@ -32,7 +33,8 @@ SRCS= debug_cmds.c $(srcdir)/debugfs.c $(srcdir)/util.c $(srcdir)/ls.c \
+ 	$(srcdir)/filefrag.c $(srcdir)/extent_inode.c $(srcdir)/zap.c \
+ 	$(srcdir)/../misc/create_inode.c $(srcdir)/xattrs.c $(srcdir)/quota.c \
+ 	$(srcdir)/journal.c $(srcdir)/../e2fsck/revoke.c \
+-	$(srcdir)/../e2fsck/recovery.c $(srcdir)/do_journal.c
++	$(srcdir)/../e2fsck/recovery.c $(srcdir)/do_journal.c \
++	$(srcdir)/../misc/plausible.c
+ 
+ LIBS= $(LIBQUOTA) $(LIBEXT2FS) $(LIBE2P) $(LIBSS) $(LIBCOM_ERR) $(LIBBLKID) \
+ 	$(LIBUUID) $(SYSLIBS) $(LIBINTL)
+@@ -59,6 +61,10 @@ DEPEND_CFLAGS = -I$(srcdir)
+ 
+ all:: $(PROGS) $(MANPAGES)
  
 +plausible.o: $(top_srcdir)/misc/plausible.c
 +	$(E) "	CC $<"
 +	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
 +
- do_journal.o: $(top_srcdir)/debugfs/do_journal.c
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(DEBUGFS_CFLAGS) -c $< -o $@
-@@ -464,7 +469,7 @@ tst_libext2fs: $(DEBUG_OBJS) \
+ debugfs: $(DEBUG_OBJS) $(DEPLIBS)
  	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_libext2fs $(ALL_LDFLAGS) -DDEBUG $(DEBUG_OBJS) \
- 		$(STATIC_LIBSS) $(STATIC_LIBE2P) $(LIBQUOTA) \
--		$(STATIC_LIBEXT2FS) $(LIBBLKID) $(LIBUUID) \
-+		$(STATIC_LIBEXT2FS) $(LIBBLKID) $(LIBUUID) $(LIBMAGIC) \
- 		$(STATIC_LIBCOM_ERR) $(SYSLIBS) -I $(top_srcdir)/debugfs
- 
- tst_inline: $(srcdir)/inline.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
-diff --git a/misc/Makefile.in b/misc/Makefile.in
-index 925846e..e49078b 100644
---- a/misc/Makefile.in
-+++ b/misc/Makefile.in
-@@ -40,10 +40,10 @@ UMANPAGES=	chattr.1 lsattr.1 @UUID_CMT@ uuidgen.1
- 
- LPROGS=		@E2INITRD_PROG@
- 
--TUNE2FS_OBJS=	tune2fs.o util.o
-+TUNE2FS_OBJS=	tune2fs.o util.o plausible.o
- MKLPF_OBJS=	mklost+found.o
- MKE2FS_OBJS=	mke2fs.o util.o profile.o prof_err.o default_profile.o \
--			mk_hugefiles.o create_inode.o
-+			mk_hugefiles.o create_inode.o plausible.o
- CHATTR_OBJS=	chattr.o
- LSATTR_OBJS=	lsattr.o
- UUIDGEN_OBJS=	uuidgen.o
-@@ -59,11 +59,12 @@ E4DEFRAG_OBJS=	e4defrag.o
- E2FREEFRAG_OBJS= e2freefrag.o
- E2FUZZ_OBJS=	e2fuzz.o
- 
--PROFILED_TUNE2FS_OBJS=	profiled/tune2fs.o profiled/util.o
-+PROFILED_TUNE2FS_OBJS=	profiled/tune2fs.o profiled/util.o profiled/plausible.o
- PROFILED_MKLPF_OBJS=	profiled/mklost+found.o
- PROFILED_MKE2FS_OBJS=	profiled/mke2fs.o profiled/util.o profiled/profile.o \
- 			profiled/prof_err.o profiled/default_profile.o \
--			profiled/mk_hugefiles.o profiled/create_inode.o
-+			profiled/mk_hugefiles.o profiled/create_inode.o \
-+			profiled/plausible.o
- 
- PROFILED_CHATTR_OBJS=	profiled/chattr.o
- PROFILED_LSATTR_OBJS=	profiled/lsattr.o
-@@ -86,7 +87,8 @@ SRCS=	$(srcdir)/tune2fs.c $(srcdir)/mklost+found.c $(srcdir)/mke2fs.c $(srcdir)/
- 		$(srcdir)/uuidgen.c $(srcdir)/blkid.c $(srcdir)/logsave.c \
- 		$(srcdir)/filefrag.c $(srcdir)/base_device.c \
- 		$(srcdir)/ismounted.c $(srcdir)/../e2fsck/profile.c \
--		$(srcdir)/e2undo.c $(srcdir)/e2freefrag.c $(srcdir)/create_inode.c
-+		$(srcdir)/e2undo.c $(srcdir)/e2freefrag.c $(srcdir)/create_inode.c \
-+		$(srcdir)/plausible.c
- 
- LIBS= $(LIBEXT2FS) $(LIBCOM_ERR)
- DEPLIBS= $(LIBEXT2FS) $(DEPLIBCOM_ERR)
-@@ -698,6 +700,14 @@ badblocks.o: $(srcdir)/badblocks.c $(top_builddir)/lib/config.h \
- fsck.o: $(srcdir)/fsck.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(top_srcdir)/version.h \
-  $(srcdir)/nls-enable.h $(srcdir)/fsck.h
-+plausible.o: $(srcdir)/plausible.c $(top_builddir)/lib/config.h \
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -o debugfs $(DEBUG_OBJS) $(LIBS)
+@@ -172,7 +178,8 @@ debugfs.o: $(srcdir)/debugfs.c $(top_builddir)/lib/config.h \
+  $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
+  $(top_srcdir)/lib/../e2fsck/dict.h $(top_srcdir)/version.h \
+  $(srcdir)/../e2fsck/jfs_user.h $(top_srcdir)/lib/ext2fs/kernel-jbd.h \
+- $(top_srcdir)/lib/ext2fs/jfs_compat.h $(top_srcdir)/lib/ext2fs/kernel-list.h
++ $(top_srcdir)/lib/ext2fs/jfs_compat.h $(top_srcdir)/lib/ext2fs/kernel-list.h \
++ $(srcdir)/../misc/plausible.h
+ util.o: $(srcdir)/util.c $(top_builddir)/lib/config.h \
+  $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/ss/ss.h \
+  $(top_builddir)/lib/ss/ss_err.h $(top_srcdir)/lib/et/com_err.h \
+@@ -398,3 +405,11 @@ do_journal.o: $(srcdir)/do_journal.c $(top_builddir)/lib/config.h \
+  $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/../e2fsck/jfs_user.h \
+  $(top_srcdir)/lib/ext2fs/kernel-jbd.h $(top_srcdir)/lib/ext2fs/jfs_compat.h \
+  $(top_srcdir)/lib/ext2fs/kernel-list.h
++plausible.o: $(srcdir)/../misc/plausible.c $(top_builddir)/lib/config.h \
 + $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/et/com_err.h \
 + $(top_srcdir)/lib/e2p/e2p.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
 + $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
 + $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
 + $(top_builddir)/lib/ext2fs/ext2_err.h \
 + $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-+ $(srcdir)/nls-enable.h $(srcdir)/plausible.h
- util.o: $(srcdir)/util.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/et/com_err.h \
-  $(top_srcdir)/lib/e2p/e2p.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 2bc435b..3a963d7 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -52,6 +52,7 @@ extern int optind;
- #include "ext2fs/ext2fsP.h"
- #include "uuid/uuid.h"
- #include "util.h"
-+#include "plausible.h"
- #include "profile.h"
- #include "prof_err.h"
++ $(srcdir)/../misc/nls-enable.h $(srcdir)/../misc/plausible.h
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 0d8e9e8..db85028 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -34,6 +34,7 @@ extern char *optarg;
+ 
  #include "../version.h"
-diff --git a/misc/plausible.c b/misc/plausible.c
-new file mode 100644
-index 0000000..2768e4b
---- /dev/null
-+++ b/misc/plausible.c
-@@ -0,0 +1,232 @@
-+/*
-+ * plausible.c --- Figure out if a pathname is ext* or something else.
-+ *
-+ * Copyright 2014, Oracle, Inc.
-+ *
-+ * Some parts are:
-+ * Copyright 1995, 1996, 1997, 1998, 1999, 2000 by Theodore Ts'o.
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Public
-+ * License.
-+ * %End-Header%
-+ */
+ #include "jfs_user.h"
++#include "../misc/plausible.h"
+ 
+ #ifndef BUFSIZ
+ #define BUFSIZ 8192
+@@ -87,6 +88,8 @@ static void open_filesystem(char *device, int open_flags, blk64_t superblock,
+ 			     unix_io_manager, &current_fs);
+ 	if (retval) {
+ 		com_err(device, retval, "while opening filesystem");
++		if (retval == EXT2_ET_BAD_MAGIC)
++			check_plausibility(device, CHECK_FS_EXIST, NULL);
+ 		current_fs = NULL;
+ 		return;
+ 	}
+diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
+index 8d7e769..1afd15f 100644
+--- a/e2fsck/Makefile.in
++++ b/e2fsck/Makefile.in
+@@ -62,7 +62,7 @@ OBJS= dict.o unix.o e2fsck.o super.o pass1.o pass1b.o pass2.o \
+ 	pass3.o pass4.o pass5.o journal.o badblocks.o util.o dirinfo.o \
+ 	dx_dirinfo.o ehandler.o problem.o message.o quota.o recovery.o \
+ 	region.o revoke.o ea_refcount.o rehash.o profile.o prof_err.o \
+-	logfile.o sigcatcher.o readahead.o $(MTRACE_OBJ)
++	logfile.o sigcatcher.o readahead.o $(MTRACE_OBJ) plausible.o
+ 
+ PROFILED_OBJS= profiled/dict.o profiled/unix.o profiled/e2fsck.o \
+ 	profiled/super.o profiled/pass1.o profiled/pass1b.o \
+@@ -73,7 +73,7 @@ PROFILED_OBJS= profiled/dict.o profiled/unix.o profiled/e2fsck.o \
+ 	profiled/recovery.o profiled/region.o profiled/revoke.o \
+ 	profiled/ea_refcount.o profiled/rehash.o profiled/profile.o \
+ 	profiled/prof_err.o profiled/logfile.o \
+-	profiled/sigcatcher.o profiled/readahead.o
++	profiled/sigcatcher.o profiled/readahead.o profiled/plausible.o
+ 
+ SRCS= $(srcdir)/e2fsck.c \
+ 	$(srcdir)/dict.c \
+@@ -104,12 +104,17 @@ SRCS= $(srcdir)/e2fsck.c \
+ 	$(srcdir)/logfile.c \
+ 	prof_err.c \
+ 	$(srcdir)/quota.c \
++	$(srcdir)/../misc/plausible.c \
+ 	$(MTRACE_SRC)
+ 
+ all:: profiled $(PROGS) e2fsck $(MANPAGES) $(FMANPAGES)
+ 
+ @PROFILE_CMT@all:: e2fsck.profiled
+ 
++plausible.o: $(top_srcdir)/misc/plausible.c
++	$(E) "	CC $<"
++	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
 +
-+#define _LARGEFILE_SOURCE
-+#define _LARGEFILE64_SOURCE
-+
-+#include "config.h"
-+#include <fcntl.h>
-+#include <time.h>
-+#ifdef HAVE_LINUX_MAJOR_H
-+#include <linux/major.h>
-+#endif
-+#include <sys/types.h>
-+#ifdef HAVE_SYS_STAT_H
-+#include <sys/stat.h>
-+#endif
-+#ifdef HAVE_UNISTD_H
-+#include <unistd.h>
-+#endif
+ prof_err.c prof_err.h: prof_err.et
+ 	$(E) "	COMPILE_ET prof_err.et"
+ 	$(Q) $(COMPILE_ET) $(srcdir)/prof_err.et
+@@ -411,7 +416,7 @@ unix.o: $(srcdir)/unix.c $(top_builddir)/lib/config.h \
+  $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
+  $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
+  $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h \
+- $(top_srcdir)/version.h
++ $(top_srcdir)/version.h $(srcdir)/../misc/plausible.h
+ dirinfo.o: $(srcdir)/dirinfo.c $(top_builddir)/lib/config.h \
+  $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
+  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
+@@ -529,3 +534,11 @@ quota.o: $(srcdir)/quota.c $(top_builddir)/lib/config.h \
+ readahead.o: $(srcdir)/readahead.c $(top_builddir)/lib/config.h \
+  $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
+  $(top_builddir)/lib/ext2fs/ext2_err.h $(srcdir)/e2fsck.h prof_err.h
++plausible.o: $(srcdir)/../misc/plausible.c $(top_builddir)/lib/config.h \
++ $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/et/com_err.h \
++ $(top_srcdir)/lib/e2p/e2p.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
++ $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
++ $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
++ $(top_builddir)/lib/ext2fs/ext2_err.h \
++ $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
++ $(srcdir)/../misc/nls-enable.h $(srcdir)/../misc/plausible.h
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 174f45a..a4da64b 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -126,7 +126,7 @@ static struct e2fsck_problem problem_table[] = {
+ 	  "    e2fsck -b 8193 <@v>\n"
+ 	  " or\n"
+ 	  "    e2fsck -b 32768 <@v>\n\n"),
+-	  PROMPT_NONE, PR_FATAL },
++	  PROMPT_NONE, 0 },
+ 
+ 	/* Filesystem size is wrong */
+ 	{ PR_0_FS_SIZE_WRONG,
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index 6b0ca96..b3338ab 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -52,6 +52,7 @@ extern int optind;
+ #include "e2fsck.h"
+ #include "problem.h"
+ #include "../version.h"
++#include "../misc/plausible.h"
+ 
+ /* Command line options */
+ static int cflag;		/* check disk */
+@@ -1410,8 +1411,12 @@ failure:
+ 					     "-n option to do a read-only\n"
+ 					     "check of the device.\n"));
+ #endif
+-		else
++		else {
+ 			fix_problem(ctx, PR_0_SB_CORRUPT, &pctx);
++			if (retval == EXT2_ET_BAD_MAGIC)
++				check_plausibility(ctx->filesystem_name,
++						   CHECK_FS_EXIST, NULL);
++		}
+ 		fatal_error(ctx, 0);
+ 	}
+ 	/*
+diff --git a/misc/Makefile.in b/misc/Makefile.in
+index e49078b..bdeaa49 100644
+--- a/misc/Makefile.in
++++ b/misc/Makefile.in
+@@ -48,9 +48,9 @@ CHATTR_OBJS=	chattr.o
+ LSATTR_OBJS=	lsattr.o
+ UUIDGEN_OBJS=	uuidgen.o
+ UUIDD_OBJS=	uuidd.o
+-DUMPE2FS_OBJS=	dumpe2fs.o
++DUMPE2FS_OBJS=	dumpe2fs.o plausible.o
+ BADBLOCKS_OBJS=	badblocks.o
+-E2IMAGE_OBJS=	e2image.o
++E2IMAGE_OBJS=	e2image.o plausible.o
+ FSCK_OBJS=	fsck.o base_device.o ismounted.o
+ BLKID_OBJS=	blkid.o
+ FILEFRAG_OBJS=	filefrag.o
+@@ -70,7 +70,7 @@ PROFILED_CHATTR_OBJS=	profiled/chattr.o
+ PROFILED_LSATTR_OBJS=	profiled/lsattr.o
+ PROFILED_UUIDGEN_OBJS=	profiled/uuidgen.o
+ PROFILED_UUIDD_OBJS=	profiled/uuidd.o
+-PROFILED_DUMPE2FS_OBJS=	profiled/dumpe2fs.o
++PROFILED_DUMPE2FS_OBJS=	profiled/dumpe2fs.o profiled/plausible.o
+ PROFILED_BADBLOCKS_OBJS=	profiled/badblocks.o
+ PROFILED_E2IMAGE_OBJS=	profiled/e2image.o
+ PROFILED_FSCK_OBJS=	profiled/fsck.o profiled/base_device.o \
+@@ -165,13 +165,14 @@ tune2fs: $(TUNE2FS_OBJS) $(DEPLIBS) $(DEPLIBS_E2P) $(DEPLIBBLKID) \
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -o tune2fs $(TUNE2FS_OBJS) $(LIBS) \
+ 		$(LIBBLKID) $(LIBUUID) $(LIBQUOTA) $(LIBEXT2FS) $(LIBS_E2P) \
+-		$(LIBINTL) $(SYSLIBS)
++		$(LIBINTL) $(SYSLIBS) $(LIBBLKID)
+ 
+ tune2fs.static: $(TUNE2FS_OBJS) $(STATIC_DEPLIBS) $(STATIC_LIBE2P) $(DEPSTATIC_LIBBLKID)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(LDFLAGS_STATIC) -o tune2fs.static $(TUNE2FS_OBJS) \
+ 		$(STATIC_LIBS) $(STATIC_LIBBLKID) $(STATIC_LIBUUID) \
+-		$(STATIC_LIBQUOTA) $(STATIC_LIBE2P) $(LIBINTL) $(SYSLIBS)
++		$(STATIC_LIBQUOTA) $(STATIC_LIBE2P) $(LIBINTL) $(SYSLIBS) \
++		$(STATIC_LIBBLKID)
+ 
+ tune2fs.profiled: $(TUNE2FS_OBJS) $(PROFILED_DEPLIBS) \
+ 		$(PROFILED_E2P) $(DEPPROFILED_LIBBLKID) $(DEPPROFILED_LIBUUID) \
+@@ -180,7 +181,7 @@ tune2fs.profiled: $(TUNE2FS_OBJS) $(PROFILED_DEPLIBS) \
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o tune2fs.profiled \
+ 		$(PROFILED_TUNE2FS_OBJS) $(PROFILED_LIBBLKID) \
+ 		$(PROFILED_LIBUUID) $(PROFILED_LIBQUOTA) $(PROFILED_LIBE2P) \
+-		$(LIBINTL) $(PROFILED_LIBS) $(SYSLIBS)
++		$(LIBINTL) $(PROFILED_LIBS) $(SYSLIBS) $(PROFILED_LIBBLKID)
+ 
+ blkid: $(BLKID_OBJS) $(DEPLIBBLKID) $(LIBEXT2FS)
+ 	$(E) "	LD $@"
+@@ -198,15 +199,16 @@ blkid.profiled: $(BLKID_OBJS) $(DEPPROFILED_LIBBLKID) \
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o blkid.profiled $(PROFILED_BLKID_OBJS) \
+ 		$(PROFILED_LIBBLKID) $(LIBINTL) $(PROFILED_LIBEXT2FS) $(SYSLIBS)
+ 
+-e2image: $(E2IMAGE_OBJS) $(DEPLIBS)
++e2image: $(E2IMAGE_OBJS) $(DEPLIBS) $(DEPLIBBLKID)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -o e2image $(E2IMAGE_OBJS) $(LIBS) \
+-		$(LIBINTL) $(SYSLIBS)
++		$(LIBINTL) $(SYSLIBS) $(LIBBLKID)
+ 
+-e2image.profiled: $(E2IMAGE_OBJS) $(PROFILED_DEPLIBS)
++e2image.profiled: $(E2IMAGE_OBJS) $(PROFILED_DEPLIBS) $(DEPLIBBLKID)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o e2image.profiled \
+-		$(PROFILED_E2IMAGE_OBJS) $(PROFILED_LIBS) $(LIBINTL) $(SYSLIBS)
++		$(PROFILED_E2IMAGE_OBJS) $(PROFILED_LIBS) $(LIBINTL) $(SYSLIBS) \
++		$(LIBBLKID)
+ 
+ e2undo: $(E2UNDO_OBJS) $(DEPLIBS)
+ 	$(E) "	LD $@"
+@@ -296,17 +298,18 @@ uuidd.profiled: $(UUIDD_OBJS) $(PROFILED_DEPLIBUUID)
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o uuidd.profiled $(PROFILED_UUIDD_OBJS) \
+ 		$(PROFILED_LIBUUID) $(LIBINTL) $(SYSLIBS)
+ 
+-dumpe2fs: $(DUMPE2FS_OBJS) $(DEPLIBS) $(DEPLIBS_E2P) $(DEPLIBUUID)
++dumpe2fs: $(DUMPE2FS_OBJS) $(DEPLIBS) $(DEPLIBS_E2P) $(DEPLIBUUID) $(DEPLIBBLKID)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -o dumpe2fs $(DUMPE2FS_OBJS) $(LIBS) \
+-		$(LIBS_E2P) $(LIBUUID) $(LIBINTL) $(SYSLIBS)
++		$(LIBS_E2P) $(LIBUUID) $(LIBINTL) $(SYSLIBS) $(LIBBLKID)
+ 
+ dumpe2fs.profiled: $(DUMPE2FS_OBJS) $(PROFILED_DEPLIBS) \
+-		$(PROFILED_LIBE2P) $(PROFILED_DEPLIBUUID)
++		$(PROFILED_LIBE2P) $(PROFILED_DEPLIBUUID) $(PROFILED_DEPLIBBLKID)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o dumpe2fs.profiled \
+ 		$(PROFILED_DUMPE2FS_OBJS) $(PROFILED_LIBS) \
+-		$(PROFILED_LIBE2P) $(PROFILED_LIBUUID) $(LIBINTL) $(SYSLIBS)
++		$(PROFILED_LIBE2P) $(PROFILED_LIBUUID) $(LIBINTL) $(SYSLIBS) \
++		$(PROFILED_LIBBLKID)
+ 
+ fsck: $(FSCK_OBJS) $(DEPLIBBLKID)
+ 	$(E) "	LD $@"
+@@ -688,7 +691,7 @@ dumpe2fs.o: $(srcdir)/dumpe2fs.c $(top_builddir)/lib/config.h \
+  $(top_srcdir)/lib/e2p/e2p.h $(srcdir)/jfs_user.h \
+  $(top_srcdir)/lib/ext2fs/kernel-jbd.h $(top_srcdir)/lib/ext2fs/jfs_compat.h \
+  $(top_srcdir)/lib/ext2fs/kernel-list.h $(top_srcdir)/version.h \
+- $(srcdir)/nls-enable.h
++ $(srcdir)/nls-enable.h $(srcdir)/plausible.h
+ badblocks.o: $(srcdir)/badblocks.c $(top_builddir)/lib/config.h \
+  $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/et/com_err.h \
+  $(top_srcdir)/lib/ext2fs/ext2_io.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
+diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+index 39505a8..7c3c2cc 100644
+--- a/misc/dumpe2fs.c
++++ b/misc/dumpe2fs.c
+@@ -42,6 +42,7 @@ extern int optind;
+ 
+ #include "../version.h"
+ #include "nls-enable.h"
 +#include "plausible.h"
-+#include "ext2fs/ext2fs.h"
-+#include "nls-enable.h"
-+#include "blkid/blkid.h"
-+
-+static void print_ext2_info(const char *device)
-+
-+{
-+	struct ext2_super_block	*sb;
-+	ext2_filsys		fs;
-+	errcode_t		retval;
-+	time_t			tm;
-+	char			buf[80];
-+
-+	retval = ext2fs_open2(device, 0, EXT2_FLAG_64BITS, 0, 0,
-+			      unix_io_manager, &fs);
-+	if (retval)
-+		return;
-+	sb = fs->super;
-+
-+	if (sb->s_mtime) {
-+		tm = sb->s_mtime;
-+		if (sb->s_last_mounted[0]) {
-+			memset(buf, 0, sizeof(buf));
-+			strncpy(buf, sb->s_last_mounted,
-+				sizeof(sb->s_last_mounted));
-+			printf(_("\tlast mounted on %s on %s"), buf,
-+			       ctime(&tm));
-+		} else
-+			printf(_("\tlast mounted on %s"), ctime(&tm));
-+	} else if (sb->s_mkfs_time) {
-+		tm = sb->s_mkfs_time;
-+		printf(_("\tcreated on %s"), ctime(&tm));
-+	} else if (sb->s_wtime) {
-+		tm = sb->s_wtime;
-+		printf(_("\tlast modified on %s"), ctime(&tm));
-+	}
-+	ext2fs_close_free(&fs);
-+}
-+
-+/*
-+ * return 1 if there is no partition table, 0 if a partition table is
-+ * detected, and -1 on an error.
-+ */
-+static int check_partition_table(const char *device)
-+{
-+#ifdef HAVE_BLKID_PROBE_ENABLE_PARTITIONS
-+	blkid_probe pr;
-+	const char *value;
-+	int ret;
-+
-+	pr = blkid_new_probe_from_filename(device);
-+	if (!pr)
-+		return -1;
-+
-+	ret = blkid_probe_enable_partitions(pr, 1);
-+	if (ret < 0)
-+		goto errout;
-+
-+	ret = blkid_probe_enable_superblocks(pr, 0);
-+	if (ret < 0)
-+		goto errout;
-+
-+	ret = blkid_do_fullprobe(pr);
-+	if (ret < 0)
-+		goto errout;
-+
-+	ret = blkid_probe_lookup_value(pr, "PTTYPE", &value, NULL);
-+	if (ret == 0)
-+		fprintf(stderr, _("Found a %s partition table in %s\n"),
-+			value, device);
-+	else
-+		ret = 1;
-+
-+errout:
-+	blkid_free_probe(pr);
-+	return ret;
-+#else
-+	return -1;
-+#endif
-+}
-+
-+/*
-+ * return 1 if the device looks plausible, creating the file if necessary
-+ */
-+int check_plausibility(const char *device, int flags, int *ret_is_dev)
-+{
-+	int fd, ret, is_dev = 0;
-+	ext2fs_struct_stat s;
-+	int fl = O_RDONLY;
-+	blkid_cache cache = NULL;
-+	char *fs_type = NULL;
-+	char *fs_label = NULL;
-+
-+	fd = ext2fs_open_file(device, fl, 0666);
-+	if ((fd < 0) && (errno == ENOENT) && (flags & NO_SIZE)) {
-+		fprintf(stderr, _("The file %s does not exist and no "
-+				  "size was specified.\n"), device);
-+		exit(1);
-+	}
-+	if ((fd < 0) && (errno == ENOENT) && (flags & CREATE_FILE)) {
-+		fl |= O_CREAT;
-+		fd = ext2fs_open_file(device, fl, 0666);
-+		if (fd >= 0 && (flags & VERBOSE_CREATE))
-+			printf(_("Creating regular file %s\n"), device);
-+	}
-+	if (fd < 0) {
-+		fprintf(stderr, _("Could not open %s: %s\n"),
-+			device, error_message(errno));
-+		if (errno == ENOENT)
-+			fputs(_("\nThe device apparently does not exist; "
-+				"did you specify it correctly?\n"), stderr);
-+		exit(1);
-+	}
-+
-+	if (ext2fs_fstat(fd, &s) < 0) {
-+		perror("stat");
-+		exit(1);
-+	}
-+	close(fd);
-+
-+	if (S_ISBLK(s.st_mode))
-+		is_dev = 1;
-+#if defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
-+	/* On FreeBSD, all disk devices are character specials */
-+	if (S_ISCHR(s.st_mode))
-+		is_dev = 1;
-+#endif
-+	if (ret_is_dev)
-+		*ret_is_dev = is_dev;
-+
-+	if ((flags & CHECK_BLOCK_DEV) && !is_dev) {
-+		printf(_("%s is not a block special device.\n"), device);
-+		return 0;
-+	}
-+
-+	/*
-+	 * Note: we use the older-style blkid API's here because we
-+	 * want as much functionality to be available when using the
-+	 * internal blkid library, when e2fsprogs is compiled for
-+	 * non-Linux systems that will probably not have the libraries
-+	 * from util-linux available.  We only use the newer
-+	 * blkid-probe interfaces to access functionality not
-+	 * available in the original blkid library.
-+	 */
-+	if ((flags & CHECK_FS_EXIST) && blkid_get_cache(&cache, NULL) >= 0) {
-+		fs_type = blkid_get_tag_value(cache, "TYPE", device);
-+		if (fs_type)
-+			fs_label = blkid_get_tag_value(cache, "LABEL", device);
-+		blkid_put_cache(cache);
-+	}
-+
-+	if (fs_type) {
-+		if (fs_label)
-+			printf(_("%s contains a %s file system "
-+				 "labelled '%s'\n"), device, fs_type, fs_label);
-+		else
-+			printf(_("%s contains a %s file system\n"), device,
-+			       fs_type);
-+		if (strncmp(fs_type, "ext", 3) == 0)
-+			print_ext2_info(device);
-+		free(fs_type);
-+		free(fs_label);
-+		return 0;
-+	}
-+
-+	ret = check_partition_table(device);
-+	if (ret >= 0)
-+		return ret;
-+
-+#ifdef HAVE_LINUX_MAJOR_H
-+#ifndef MAJOR
-+#define MAJOR(dev)	((dev)>>8)
-+#define MINOR(dev)	((dev) & 0xff)
-+#endif
-+#ifndef SCSI_BLK_MAJOR
-+#ifdef SCSI_DISK0_MAJOR
-+#ifdef SCSI_DISK8_MAJOR
-+#define SCSI_DISK_MAJOR(M) ((M) == SCSI_DISK0_MAJOR || \
-+	((M) >= SCSI_DISK1_MAJOR && (M) <= SCSI_DISK7_MAJOR) || \
-+	((M) >= SCSI_DISK8_MAJOR && (M) <= SCSI_DISK15_MAJOR))
-+#else
-+#define SCSI_DISK_MAJOR(M) ((M) == SCSI_DISK0_MAJOR || \
-+	((M) >= SCSI_DISK1_MAJOR && (M) <= SCSI_DISK7_MAJOR))
-+#endif /* defined(SCSI_DISK8_MAJOR) */
-+#define SCSI_BLK_MAJOR(M) (SCSI_DISK_MAJOR((M)) || (M) == SCSI_CDROM_MAJOR)
-+#else
-+#define SCSI_BLK_MAJOR(M)  ((M) == SCSI_DISK_MAJOR || (M) == SCSI_CDROM_MAJOR)
-+#endif /* defined(SCSI_DISK0_MAJOR) */
-+#endif /* defined(SCSI_BLK_MAJOR) */
-+	if (((MAJOR(s.st_rdev) == HD_MAJOR &&
-+	      MINOR(s.st_rdev)%64 == 0) ||
-+	     (SCSI_BLK_MAJOR(MAJOR(s.st_rdev)) &&
-+	      MINOR(s.st_rdev)%16 == 0))) {
-+		printf(_("%s is entire device, not just one partition!\n"),
-+		       device);
-+		return 0;
-+	}
-+#endif
-+	return 1;
-+}
-+
-diff --git a/misc/plausible.h b/misc/plausible.h
-new file mode 100644
-index 0000000..594e4b1
---- /dev/null
-+++ b/misc/plausible.h
-@@ -0,0 +1,28 @@
-+/*
-+ * plausible.h --- header file defining prototypes for helper functions
-+ * used by tune2fs and mke2fs
-+ *
-+ * Copyright 2014 by Oracle, Inc.
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Public
-+ * License.
-+ * %End-Header%
-+ */
-+
-+#ifndef PLAUSIBLE_H_
-+#define PLAUSIBLE_H_
-+
-+/*
-+ * Flags for check_plausibility()
-+ */
-+#define CHECK_BLOCK_DEV	0x0001
-+#define CREATE_FILE	0x0002
-+#define CHECK_FS_EXIST	0x0004
-+#define VERBOSE_CREATE	0x0008
-+#define NO_SIZE		0x0010
-+
-+extern int check_plausibility(const char *device, int flags,
-+			      int *ret_is_dev);
-+
-+#endif /* PLAUSIBLE_H_ */
+ 
+ #define in_use(m, x)	(ext2fs_test_bit ((x), (m)))
+ 
+@@ -689,6 +690,8 @@ try_open_again:
+ 		com_err (program_name, retval, _("while trying to open %s"),
+ 			 device_name);
+ 		printf("%s", _("Couldn't find valid filesystem superblock.\n"));
++		if (retval == EXT2_ET_BAD_MAGIC)
++			check_plausibility(device_name, CHECK_FS_EXIST, NULL);
+ 		exit (1);
+ 	}
+ 	fs->default_bitmap_type = EXT2FS_BMAP64_RBTREE;
+diff --git a/misc/e2image.c b/misc/e2image.c
+index e1c63a7..e876ae8 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -47,6 +47,7 @@ extern int optind;
+ 
+ #include "../version.h"
+ #include "nls-enable.h"
++#include "plausible.h"
+ 
+ #define QCOW_OFLAG_COPIED     (1LL << 63)
+ #define NO_BLK ((blk64_t) -1)
+@@ -1578,6 +1579,8 @@ int main (int argc, char ** argv)
+ 		com_err (program_name, retval, _("while trying to open %s"),
+ 			 device_name);
+ 		fputs(_("Couldn't find valid filesystem superblock.\n"), stdout);
++		if (retval == EXT2_ET_BAD_MAGIC)
++			check_plausibility(device_name, CHECK_FS_EXIST, NULL);
+ 		exit(1);
+ 	}
+ 
 diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 510e936..c454b84 100644
+index c454b84..d17c8de 100644
 --- a/misc/tune2fs.c
 +++ b/misc/tune2fs.c
-@@ -59,6 +59,7 @@ extern int optind;
- #include "e2p/e2p.h"
- #include "jfs_user.h"
- #include "util.h"
-+#include "plausible.h"
- #include "blkid/blkid.h"
- #include "quota/quotaio.h"
- 
-diff --git a/misc/util.c b/misc/util.c
-index 2898830..f906339 100644
---- a/misc/util.c
-+++ b/misc/util.c
-@@ -108,203 +108,6 @@ void proceed_question(int delay)
- 	signal(SIGALRM, SIG_IGN);
- }
- 
--static void print_ext2_info(const char *device)
--
--{
--	struct ext2_super_block	*sb;
--	ext2_filsys		fs;
--	errcode_t		retval;
--	time_t 			tm;
--	char			buf[80];
--
--	retval = ext2fs_open2(device, 0, EXT2_FLAG_64BITS, 0, 0,
--			      unix_io_manager, &fs);
--	if (retval)
--		return;
--	sb = fs->super;
--
--	if (sb->s_mtime) {
--		tm = sb->s_mtime;
--		if (sb->s_last_mounted[0]) {
--			memset(buf, 0, sizeof(buf));
--			strncpy(buf, sb->s_last_mounted,
--				sizeof(sb->s_last_mounted));
--			printf(_("\tlast mounted on %s on %s"), buf,
--			       ctime(&tm));
--		} else
--			printf(_("\tlast mounted on %s"), ctime(&tm));
--	} else if (sb->s_mkfs_time) {
--		tm = sb->s_mkfs_time;
--		printf(_("\tcreated on %s"), ctime(&tm));
--	} else if (sb->s_wtime) {
--		tm = sb->s_wtime;
--		printf(_("\tlast modified on %s"), ctime(&tm));
--	}
--	ext2fs_close_free(&fs);
--}
--
--/*
-- * return 1 if there is no partition table, 0 if a partition table is
-- * detected, and -1 on an error.
-- */
--static int check_partition_table(const char *device)
--{
--#ifdef HAVE_BLKID_PROBE_ENABLE_PARTITIONS
--	blkid_probe pr;
--	const char *value;
--	int ret;
--
--	pr = blkid_new_probe_from_filename(device);
--	if (!pr)
--		return -1;
--
--        ret = blkid_probe_enable_partitions(pr, 1);
--        if (ret < 0)
--		goto errout;
--
--	ret = blkid_probe_enable_superblocks(pr, 0);
--	if (ret < 0)
--		goto errout;
--
--	ret = blkid_do_fullprobe(pr);
--	if (ret < 0)
--		goto errout;
--
--	ret = blkid_probe_lookup_value(pr, "PTTYPE", &value, NULL);
--	if (ret == 0)
--		fprintf(stderr, _("Found a %s partition table in %s\n"),
--			value, device);
--	else
--		ret = 1;
--
--errout:
--	blkid_free_probe(pr);
--	return ret;
--#else
--	return -1;
--#endif
--}
--
--/*
-- * return 1 if the device looks plausible, creating the file if necessary
-- */
--int check_plausibility(const char *device, int flags, int *ret_is_dev)
--{
--	int fd, ret, is_dev = 0;
--	ext2fs_struct_stat s;
--	int fl = O_RDONLY;
--	blkid_cache cache = NULL;
--	char *fs_type = NULL;
--	char *fs_label = NULL;
--
--	fd = ext2fs_open_file(device, fl, 0666);
--	if ((fd < 0) && (errno == ENOENT) && (flags & NO_SIZE)) {
--		fprintf(stderr, _("The file %s does not exist and no "
--				  "size was specified.\n"), device);
--		exit(1);
--	}
--	if ((fd < 0) && (errno == ENOENT) && (flags & CREATE_FILE)) {
--		fl |= O_CREAT;
--		fd = ext2fs_open_file(device, fl, 0666);
--		if (fd >= 0 && (flags & VERBOSE_CREATE))
--			printf(_("Creating regular file %s\n"), device);
--	}
--	if (fd < 0) {
--		fprintf(stderr, _("Could not open %s: %s\n"),
--			device, error_message(errno));
--		if (errno == ENOENT)
--			fputs(_("\nThe device apparently does not exist; "
--				"did you specify it correctly?\n"), stderr);
--		exit(1);
--	}
--
--	if (ext2fs_fstat(fd, &s) < 0) {
--		perror("stat");
--		exit(1);
--	}
--	close(fd);
--
--	if (S_ISBLK(s.st_mode))
--		is_dev = 1;
--#if defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
--	/* On FreeBSD, all disk devices are character specials */
--	if (S_ISCHR(s.st_mode))
--		is_dev = 1;
--#endif
--	if (ret_is_dev)
--		*ret_is_dev = is_dev;
--
--	if ((flags & CHECK_BLOCK_DEV) && !is_dev) {
--		printf(_("%s is not a block special device.\n"), device);
--		return 0;
--	}
--
--	/*
--	 * Note: we use the older-style blkid API's here because we
--	 * want as much functionality to be available when using the
--	 * internal blkid library, when e2fsprogs is compiled for
--	 * non-Linux systems that will probably not have the libraries
--	 * from util-linux available.  We only use the newer
--	 * blkid-probe interfaces to access functionality not
--	 * available in the original blkid library.
--	 */
--	if ((flags & CHECK_FS_EXIST) && blkid_get_cache(&cache, NULL) >= 0) {
--		fs_type = blkid_get_tag_value(cache, "TYPE", device);
--		if (fs_type)
--			fs_label = blkid_get_tag_value(cache, "LABEL", device);
--		blkid_put_cache(cache);
--	}
--
--	if (fs_type) {
--		if (fs_label)
--			printf(_("%s contains a %s file system "
--				 "labelled '%s'\n"), device, fs_type, fs_label);
--		else
--			printf(_("%s contains a %s file system\n"), device,
--			       fs_type);
--		if (strncmp(fs_type, "ext", 3) == 0)
--			print_ext2_info(device);
--		free(fs_type);
--		free(fs_label);
--		return 0;
--	}
--
--	ret = check_partition_table(device);
--	if (ret >= 0)
--		return ret;
--
--#ifdef HAVE_LINUX_MAJOR_H
--#ifndef MAJOR
--#define MAJOR(dev)	((dev)>>8)
--#define MINOR(dev)	((dev) & 0xff)
--#endif
--#ifndef SCSI_BLK_MAJOR
--#ifdef SCSI_DISK0_MAJOR
--#ifdef SCSI_DISK8_MAJOR
--#define SCSI_DISK_MAJOR(M) ((M) == SCSI_DISK0_MAJOR || \
--  ((M) >= SCSI_DISK1_MAJOR && (M) <= SCSI_DISK7_MAJOR) || \
--  ((M) >= SCSI_DISK8_MAJOR && (M) <= SCSI_DISK15_MAJOR))
--#else
--#define SCSI_DISK_MAJOR(M) ((M) == SCSI_DISK0_MAJOR || \
--  ((M) >= SCSI_DISK1_MAJOR && (M) <= SCSI_DISK7_MAJOR))
--#endif /* defined(SCSI_DISK8_MAJOR) */
--#define SCSI_BLK_MAJOR(M) (SCSI_DISK_MAJOR((M)) || (M) == SCSI_CDROM_MAJOR)
--#else
--#define SCSI_BLK_MAJOR(M)  ((M) == SCSI_DISK_MAJOR || (M) == SCSI_CDROM_MAJOR)
--#endif /* defined(SCSI_DISK0_MAJOR) */
--#endif /* defined(SCSI_BLK_MAJOR) */
--	if (((MAJOR(s.st_rdev) == HD_MAJOR &&
--	      MINOR(s.st_rdev)%64 == 0) ||
--	     (SCSI_BLK_MAJOR(MAJOR(s.st_rdev)) &&
--	      MINOR(s.st_rdev)%16 == 0))) {
--		printf(_("%s is entire device, not just one partition!\n"),
--		       device);
--		return 0;
--	}
--#endif
--	return 1;
--}
--
- void check_mount(const char *device, int force, const char *type)
- {
- 	errcode_t	retval;
-diff --git a/misc/util.h b/misc/util.h
-index f3827dd..49b4b9c 100644
---- a/misc/util.h
-+++ b/misc/util.h
-@@ -15,22 +15,11 @@ extern int	 journal_flags;
- extern char	*journal_device;
- extern char	*journal_location_string;
- 
--/*
-- * Flags for check_plausibility()
-- */
--#define CHECK_BLOCK_DEV	0x0001
--#define CREATE_FILE	0x0002
--#define CHECK_FS_EXIST	0x0004
--#define VERBOSE_CREATE	0x0008
--#define NO_SIZE		0x0010
+@@ -2575,6 +2575,8 @@ retry_open:
+ 			fprintf(stderr,
+ 				_("MMP block magic is bad. Try to fix it by "
+ 				  "running:\n'e2fsck -f %s'\n"), device_name);
++		else if (retval == EXT2_ET_BAD_MAGIC)
++			check_plausibility(device_name, CHECK_FS_EXIST, NULL);
+ 		else if (retval != EXT2_ET_MMP_FAILED)
+ 			fprintf(stderr, "%s",
+ 			     _("Couldn't find valid filesystem superblock.\n"));
+diff --git a/tests/f_detect_xfs/expect b/tests/f_detect_xfs/expect
+new file mode 100644
+index 0000000..4ab6e5b
+--- /dev/null
++++ b/tests/f_detect_xfs/expect
+@@ -0,0 +1,25 @@
++*** e2fsck
++ext2fs_open2: Bad magic number in super-block
++../e2fsck/e2fsck: Superblock invalid, trying backup blocks...
++../e2fsck/e2fsck: Bad magic number in super-block while trying to open test.img
++
++The superblock could not be read or does not describe a valid ext2/ext3/ext4
++filesystem.  If the device is valid and it really contains an ext2/ext3/ext4
++filesystem (and not swap or ufs or something else), then the superblock
++is corrupt, and you might try running e2fsck with an alternate superblock:
++    e2fsck -b 8193 <device>
++ or
++    e2fsck -b 32768 <device>
++
++test.img contains a xfs file system labelled 'test_filsys'
++*** debugfs
++test.img: Bad magic number in super-block while opening filesystem
++test.img contains a xfs file system labelled 'test_filsys'
++*** tune2fs
++../misc/tune2fs: Bad magic number in super-block while trying to open test.img
++test.img contains a xfs file system labelled 'test_filsys'
++*** mke2fs
++Creating filesystem with 16384 1k blocks and 4096 inodes
++Superblock backups stored on blocks: 
++	8193
++
+diff --git a/tests/f_detect_xfs/expect.nodebugfs b/tests/f_detect_xfs/expect.nodebugfs
+new file mode 100644
+index 0000000..d3b7935
+--- /dev/null
++++ b/tests/f_detect_xfs/expect.nodebugfs
+@@ -0,0 +1,23 @@
++*** e2fsck
++ext2fs_open2: Bad magic number in super-block
++../e2fsck/e2fsck: Superblock invalid, trying backup blocks...
++../e2fsck/e2fsck: Bad magic number in super-block while trying to open test.img
++
++The superblock could not be read or does not describe a valid ext2/ext3/ext4
++filesystem.  If the device is valid and it really contains an ext2/ext3/ext4
++filesystem (and not swap or ufs or something else), then the superblock
++is corrupt, and you might try running e2fsck with an alternate superblock:
++    e2fsck -b 8193 <device>
++ or
++    e2fsck -b 32768 <device>
++
++test.img contains a xfs file system labelled 'test_filsys'
++*** debugfs
++*** tune2fs
++../misc/tune2fs: Bad magic number in super-block while trying to open test.img
++test.img contains a xfs file system labelled 'test_filsys'
++*** mke2fs
++Creating filesystem with 16384 1k blocks and 4096 inodes
++Superblock backups stored on blocks: 
++	8193
++
+diff --git a/tests/f_detect_xfs/image.bz2 b/tests/f_detect_xfs/image.bz2
+new file mode 100644
+index 0000000000000000000000000000000000000000..9dc5e44b57c25d68cf46059439245b4f02c0d8f7
+GIT binary patch
+literal 450
+zcmV;z0X_agT4*^jL0KkKS;zj9s{#Zw|NsB~#OOgr144bF4*%07Okh9|5J8R*M73Zb
+zK|paT0LiccmH^Pypa1{>&;S9TG|&J505lI%O$b6qr~^O%00000000000E$VZo~DM7
+z)6z6F0BC5@u#i7g(8sDakUd6a2AL1Yfk;si5lUbx4#)^}>SV#PqKFOtoDKj&Bt)hQ
+zk8_=H64EPjfmeEEP!>VI3Wp>j5<jw30Z|+<sEP=MUzj#;_cN!HS8U^-qR}P6hp9jn
+zLrf{B2`xD)w`h`x0sse{6@?1@dwsIeN}o;AbQ95&D0U&9w2%V^w1hwq06CC=9fAQ2
+zP@;%{0i_ezHRm%dY`}J5!GbeQt8|LE{1OKI0c-aqxp0C}hF6I9l<yR0!0K)i=|X40
+zSj32`7uBmRqBwZRbkQf93>eA_b0RNja^f}oxVPC=$Z%#-O00;l^DMLg0=q1-EQ{|I
+z-UFP9{H}W`A0XuTloI=J@mt1a$(Fq?Qdym%5C9rM@4&KeGzZ~%chaW?2qK|iAweqy
+sLXu;sl0e`{>cWa302YhTqK(sV6`W^c`qpYum;L`2az!{$kjMU$tCv{5XaE2J
+
+literal 0
+HcmV?d00001
+
+diff --git a/tests/f_detect_xfs/name b/tests/f_detect_xfs/name
+new file mode 100644
+index 0000000..d5b9b82
+--- /dev/null
++++ b/tests/f_detect_xfs/name
+@@ -0,0 +1 @@
++detect xfs filesystem
+diff --git a/tests/f_detect_xfs/script b/tests/f_detect_xfs/script
+new file mode 100755
+index 0000000..2531c5e
+--- /dev/null
++++ b/tests/f_detect_xfs/script
+@@ -0,0 +1,36 @@
++#!/bin/bash
++
++FSCK_OPT=-fn
++IMAGE=$test_dir/image.bz2
++
++bzip2 -d < $IMAGE > $TMPFILE
++
++# Run fsck to fix things?
++if [ -x $DEBUGFS_EXE ]; then
++	EXP=$test_dir/expect
++else
++	EXP=$test_dir/expect.nodebugfs
++fi
++OUT=$test_name.log
++rm -rf $test_name.failed $test_name.ok
++
++echo "*** e2fsck" > $OUT
++$FSCK $FSCK_OPT $TMPFILE >> $OUT 2>&1
++echo "*** debugfs" >> $OUT
++test -x $DEBUGFS_EXE && $DEBUGFS_EXE -R 'quit' $TMPFILE >> $OUT 2>&1
++echo "*** tune2fs" >> $OUT
++$TUNE2FS -i 0 $TMPFILE >> $OUT 2>&1
++echo "*** mke2fs" >> $OUT
++$MKE2FS -n $TMPFILE >> $OUT 2>&1
++
++sed -f $cmd_dir/filter.sed -e "s|$TMPFILE|test.img|g" -i $OUT
++
++# Figure out what happened
++if cmp -s $EXP $OUT; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff -u $EXP $OUT >> $test_name.failed
++fi
++unset EXP OUT FSCK_OPT IMAGE
+
