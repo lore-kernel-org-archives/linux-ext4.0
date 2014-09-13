@@ -1,61 +1,83 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 03/34] misc: zero s_jnl_blocks when adding journal online or
- removing external journal
-Date: Sat, 13 Sep 2014 15:11:32 -0700
-Message-ID: <20140913221132.13646.78435.stgit@birch.djwong.org>
+Subject: [PATCH 04/34] libext2fs: ext2fs_new_block2() should call
+ alloc_block hook
+Date: Sat, 13 Sep 2014 15:11:39 -0700
+Message-ID: <20140913221139.13646.58932.stgit@birch.djwong.org>
 References: <20140913221112.13646.3873.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, thomas_reardon@hotmail.com
+Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:24232 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752138AbaIMWLh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Sep 2014 18:11:37 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:32131 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752186AbaIMWLo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Sep 2014 18:11:44 -0400
 In-Reply-To: <20140913221112.13646.3873.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Erase s_jnl_blocks when removing an external journal, or adding an
-internal journal online.  We can't add the backup for the internal
-journal because we have no good way to get the indirect block or ETB
-addresses, so the best we can do is hope that the user runs e2fsck,
-which will correct that.  We are motivated to erase during external
-journal removal to state emphatically that there's no journal.
+If ext2fs_new_block2() is called without a specific block map, we
+should call the alloc_block hook before checking fs->block_map.  This
+helps us to avoid a bug in e2fsck where we need to allocate a block
+but instead of consulting block_found_map, we use the FS bitmaps,
+which (prior to pass 5) could be wrong.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-Reported-by: thomas_reardon@hotmail.com
 ---
- lib/ext2fs/mkjournal.c |    2 ++
- misc/tune2fs.c         |    1 +
- 2 files changed, 3 insertions(+)
+ e2fsck/pass1.c     |    2 +-
+ lib/ext2fs/alloc.c |   15 +++++++++++++++
+ 2 files changed, 16 insertions(+), 1 deletion(-)
 
 
-diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-index 0a7cd18..6f3a862 100644
---- a/lib/ext2fs/mkjournal.c
-+++ b/lib/ext2fs/mkjournal.c
-@@ -585,6 +585,8 @@ errcode_t ext2fs_add_journal_inode2(ext2_filsys fs, blk_t num_blocks,
- 			goto errout;
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index db5273e..04bb465 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -3725,7 +3725,7 @@ static errcode_t e2fsck_get_alloc_block(ext2_filsys fs, blk64_t goal,
+ 				return retval;
  		}
- 		journal_ino = st.st_ino;
-+		memset(fs->super->s_jnl_blocks, 0,
-+		       sizeof(fs->super->s_jnl_blocks));
- 	} else {
- 		if ((mount_flags & EXT2_MF_BUSY) &&
- 		    !(fs->flags & EXT2_FLAG_EXCLUSIVE)) {
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 80debe7..510e936 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -308,6 +308,7 @@ no_valid_journal:
- 		return 1;
+ 
+-		retval = ext2fs_new_block2(fs, goal, 0, &new_block);
++		retval = ext2fs_new_block2(fs, goal, fs->block_map, &new_block);
+ 		if (retval)
+ 			return retval;
  	}
- 	fs->super->s_journal_dev = 0;
-+	memset(fs->super->s_jnl_blocks, 0, sizeof(fs->super->s_jnl_blocks));
- 	uuid_clear(fs->super->s_journal_uuid);
- 	ext2fs_mark_super_dirty(fs);
- 	fputs(_("Journal removed\n"), stdout);
+diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
+index 578fd7f..d1c1a84 100644
+--- a/lib/ext2fs/alloc.c
++++ b/lib/ext2fs/alloc.c
+@@ -137,9 +137,23 @@ errcode_t ext2fs_new_block2(ext2_filsys fs, blk64_t goal,
+ {
+ 	errcode_t retval;
+ 	blk64_t	b = 0;
++	errcode_t (*gab)(ext2_filsys fs, blk64_t goal, blk64_t *ret);
+ 
+ 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+ 
++	if (!map && fs->get_alloc_block) {
++		/*
++		 * In case there are clients out there whose get_alloc_block
++		 * handlers call ext2fs_new_block2 with a NULL block map,
++		 * temporarily swap out the function pointer so that we don't
++		 * end up in an infinite loop.
++		 */
++		gab = fs->get_alloc_block;
++		fs->get_alloc_block = NULL;
++		retval = gab(fs, goal, &b);
++		fs->get_alloc_block = gab;
++		goto allocated;
++	}
+ 	if (!map)
+ 		map = fs->block_map;
+ 	if (!map)
+@@ -153,6 +167,7 @@ errcode_t ext2fs_new_block2(ext2_filsys fs, blk64_t goal,
+ 	if ((retval == ENOENT) && (goal != fs->super->s_first_data_block))
+ 		retval = ext2fs_find_first_zero_block_bitmap2(map,
+ 			fs->super->s_first_data_block, goal - 1, &b);
++allocated:
+ 	if (retval == ENOENT)
+ 		return EXT2_ET_BLOCK_ALLOC_FAIL;
+ 	if (retval)
 
