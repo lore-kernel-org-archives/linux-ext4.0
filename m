@@ -1,113 +1,103 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 1/2] ext4: check EA value offset when loading
-Date: Sun, 14 Sep 2014 10:32:59 -0700
-Message-ID: <20140914173259.31996.39833.stgit@birch.djwong.org>
-References: <20140914173252.31996.86784.stgit@birch.djwong.org>
+From: TR Reardon <thomas_reardon@hotmail.com>
+Subject: RE: [PATCH 19/34] resize2fs: convert fs to and from 64bit mode
+Date: Sun, 14 Sep 2014 13:34:14 -0400
+Message-ID: <BAY179-W70F5EE403F82604CE977F9FDCB0@phx.gbl>
+References: <20140913221112.13646.3873.stgit@birch.djwong.org>,<20140913221318.13646.90438.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu, darrick.wong@oracle.com
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	"tytso@mit.edu" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:34185 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752801AbaINRdF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Sep 2014 13:33:05 -0400
-In-Reply-To: <20140914173252.31996.86784.stgit@birch.djwong.org>
+Received: from bay004-omc4s11.hotmail.com ([65.54.190.213]:53013 "EHLO
+	BAY004-OMC4S11.hotmail.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752851AbaINReO convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 14 Sep 2014 13:34:14 -0400
+In-Reply-To: <20140913221318.13646.90438.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When loading extended attributes, check each entry's value offset to
-make sure it doesn't collide with the entries.
+> Subject: [PATCH 19/34] resize2fs: convert fs to and from 64bit mode
+> From: darrick.wong@oracle.com
+> To: tytso@mit.edu; darrick.wong@oracle.com
+> CC: linux-ext4@vger.kernel.org
+> Date: Sat, 13 Sep 2014 15:13:18 -0700
+>
+> resize2fs does its magic by loading a filesystem, duplicating the
+> in-memory image of that fs, moving relevant blocks out of the way of
+> whatever new metadata get created, and finally writing everything back
+> out to disk. Enabling 64bit mode enlarges the group descriptors,
+> which makes resize2fs a reasonable vehicle for taking care of the rest
+> of the bookkeeping requirements, so add to resize2fs the ability to
+> convert a filesystem to 64bit mode and back.
+>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+> resize/main.c | 40 ++++++
+> resize/resize2fs.8.in | 18 +++
+> resize/resize2fs.c | 326 ++++++++++++++++++++++++++++++++++++++++++++++++-
+> resize/resize2fs.h | 3
+> 4 files changed, 379 insertions(+), 8 deletions(-)
+>
+>
+> diff --git a/resize/main.c b/resize/main.c
+> index c107028..9fea3d8 100644
+> --- a/resize/main.c
+> +++ b/resize/main.c
+> @@ -42,7 +42,7 @@ static char *device_name, *io_options;
+> static void usage (char *prog)
+> {
+> fprintf (stderr, _("Usage: %s [-d debug_flags] [-f] [-F] [-M] [-P] "
+> - "[-p] device [new_size]\n\n"), prog);
+> + "[-p] device [-b|-s|new_size]\n\n"), prog);
+>
+> exit (1);
+> }
+> @@ -200,7 +200,7 @@ int main (int argc, char ** argv)
+> if (argc && *argv)
+> program_name = *argv;
+>
+> - while ((c = getopt (argc, argv, "d:fFhMPpS:")) != EOF) {
+> + while ((c = getopt(argc, argv, "d:fFhMPpS:bs")) != EOF) {
+> switch (c) {
+> case 'h':
+> usage(program_name);
+> @@ -226,6 +226,12 @@ int main (int argc, char ** argv)
+> case 'S':
+> use_stride = atoi(optarg);
+> break;
+> + case 'b':
+> + flags |= RESIZE_ENABLE_64BIT;
+> + break;
+> + case 's':
+> + flags |= RESIZE_DISABLE_64BIT;
+> + break;
+> default:
+> usage(program_name);
+> }
+> @@ -389,6 +395,10 @@ int main (int argc, char ** argv)
+> if (sys_page_size> fs->blocksize)
+> new_size &= ~((sys_page_size / fs->blocksize)-1);
+> }
+> + /* If changing 64bit, don't change the filesystem size. */
+> + if (flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)) {
+> + new_size = ext2fs_blocks_count(fs->super);
+> + }
+> if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
+> EXT4_FEATURE_INCOMPAT_64BIT)) {
+> /* Take 16T down to 2^32-1 blocks */
+> @@ -440,7 +450,31 @@ int main (int argc, char ** argv)
+> fs->blocksize / 1024, new_size);
+> exit(1);
+> }
+> - if (new_size == ext2fs_blocks_count(fs->super)) {
+> + if ((flags & RESIZE_DISABLE_64BIT) && (flags & RESIZE_ENABLE_64BIT)) {
+> + fprintf(stderr, _("Cannot set and unset 64bit feature.\n"));
+> + exit(1);
+> + } else if (flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)) {
+> + new_size = ext2fs_blocks_count(fs->super);
 
-Without this check it is easy to crash the kernel by mounting a
-malicious FS containing a file with an EA wherein e_value_offs = 0 and
-e_value_size > 0 and then deleting the EA, which corrupts the name
-list.
 
-(See the f_ea_value_crash test's FS image in e2fsprogs for an example.)
-
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- fs/ext4/xattr.c |   34 +++++++++++++++++++++++++---------
- 1 file changed, 25 insertions(+), 9 deletions(-)
-
-
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index e738733..c11738e 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -189,15 +189,29 @@ ext4_listxattr(struct dentry *dentry, char *buffer, size_t size)
- 	return ext4_xattr_list(dentry, buffer, size);
- }
- 
--static int
--ext4_xattr_check_names(struct ext4_xattr_entry *entry, void *end)
-+int
-+ext4_xattr_check_names(struct ext4_xattr_entry *entry, void *end,
-+		       void *value_start)
- {
--	while (!IS_LAST_ENTRY(entry)) {
--		struct ext4_xattr_entry *next = EXT4_XATTR_NEXT(entry);
-+	struct ext4_xattr_entry *e = entry;
-+
-+	while (!IS_LAST_ENTRY(e)) {
-+		struct ext4_xattr_entry *next = EXT4_XATTR_NEXT(e);
- 		if ((void *)next >= end)
- 			return -EIO;
--		entry = next;
-+		e = next;
- 	}
-+
-+	while (!IS_LAST_ENTRY(entry)) {
-+		if (entry->e_value_size != 0 &&
-+		    (value_start + le16_to_cpu(entry->e_value_offs) <
-+		     (void *)e + sizeof(__u32) ||
-+		     value_start + le16_to_cpu(entry->e_value_offs) +
-+		    le32_to_cpu(entry->e_value_size) > end))
-+			return -EIO;
-+		entry = EXT4_XATTR_NEXT(entry);
-+	}
-+
- 	return 0;
- }
- 
-@@ -214,7 +228,8 @@ ext4_xattr_check_block(struct inode *inode, struct buffer_head *bh)
- 		return -EIO;
- 	if (!ext4_xattr_block_csum_verify(inode, bh->b_blocknr, BHDR(bh)))
- 		return -EIO;
--	error = ext4_xattr_check_names(BFIRST(bh), bh->b_data + bh->b_size);
-+	error = ext4_xattr_check_names(BFIRST(bh), bh->b_data + bh->b_size,
-+				       bh->b_data);
- 	if (!error)
- 		set_buffer_verified(bh);
- 	return error;
-@@ -331,7 +346,7 @@ ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
- 	header = IHDR(inode, raw_inode);
- 	entry = IFIRST(header);
- 	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
--	error = ext4_xattr_check_names(entry, end);
-+	error = ext4_xattr_check_names(entry, end, entry);
- 	if (error)
- 		goto cleanup;
- 	error = ext4_xattr_find_entry(&entry, name_index, name,
-@@ -463,7 +478,7 @@ ext4_xattr_ibody_list(struct dentry *dentry, char *buffer, size_t buffer_size)
- 	raw_inode = ext4_raw_inode(&iloc);
- 	header = IHDR(inode, raw_inode);
- 	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
--	error = ext4_xattr_check_names(IFIRST(header), end);
-+	error = ext4_xattr_check_names(IFIRST(header), end, IFIRST(header));
- 	if (error)
- 		goto cleanup;
- 	error = ext4_xattr_list_entries(dentry, IFIRST(header),
-@@ -986,7 +1001,8 @@ int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
- 	is->s.here = is->s.first;
- 	is->s.end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
- 	if (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {
--		error = ext4_xattr_check_names(IFIRST(header), is->s.end);
-+		error = ext4_xattr_check_names(IFIRST(header), is->s.end,
-+					       IFIRST(header));
- 		if (error)
- 			return error;
- 		/* Find the named attribute. */
-
+Redundant to assignment just above? 		 	   		  
