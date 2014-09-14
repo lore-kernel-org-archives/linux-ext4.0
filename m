@@ -1,43 +1,36 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 35/34] e2fsck: free bh when descriptor block checksum fails
-Date: Sun, 14 Sep 2014 10:19:35 -0700
-Message-ID: <20140914171935.GE10150@birch.djwong.org>
-References: <20140913221112.13646.3873.stgit@birch.djwong.org>
+Subject: [PATCH 0/2] ext4/jbd2: misc 3.17 bugfixes, part 2
+Date: Sun, 14 Sep 2014 10:32:53 -0700
+Message-ID: <20140914173252.31996.86784.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>
-To: tytso@mit.edu
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:38771 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:40512 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752707AbaINRTn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Sep 2014 13:19:43 -0400
-Content-Disposition: inline
-In-Reply-To: <20140913221112.13646.3873.stgit@birch.djwong.org>
+	with ESMTP id S1752782AbaINRc5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Sep 2014 13:32:57 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Free the buffer head if the journal descriptor block fails checksum
-verification.  This has been patched before (see "e2fsck: free bh on
-csum verify error in do_one_pass") but apparently the patch was never
-committed to jbd2 in the kernel, so when we resync'd the recovery code
-with 3.16, the bug came back.  Sigh.
+Hi all,
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-Cc: Eric Sandeen <sandeen@redhat.com>
----
- e2fsck/recovery.c |    1 +
- 1 file changed, 1 insertion(+)
+Here are two more patches against 3.17-rc4 to fix some minor problems
+in jbd2 and ext4.  Neither of these two depend on each other; they fix
+separate small bugs.
 
-diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
-index 3dc7c06..b5ce3b3 100644
---- a/e2fsck/recovery.c
-+++ b/e2fsck/recovery.c
-@@ -525,6 +525,7 @@ static int do_one_pass(journal_t *journal,
- 			    !jbd2_descr_block_csum_verify(journal,
- 							  bh->b_data)) {
- 				err = -EIO;
-+				brelse(bh);
- 				goto failed;
- 			}
- 
+The first patch teaches ext4 to check the e_value_offs value in the
+extended attribute data structure to avoid data corruption and
+kernel crashes resulting from the corruption.  This fixes the crash I
+alluded to in the previous 3.17 bugfixes email pile.
+
+The second patch fixes a bh leak in the journal replay code when a
+descriptor block fails checksum verification.
+
+Patches are against 3.17-rc4, and have been xfstest'd.
+
+Comments and questions are, as always, welcome.
+
+--D
