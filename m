@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 2/2] jbd2: free bh when descriptor block checksum fails
-Date: Sun, 14 Sep 2014 10:33:05 -0700
-Message-ID: <20140914173305.31996.71172.stgit@birch.djwong.org>
+Subject: [PATCH 1/2] ext4: check EA value offset when loading
+Date: Sun, 14 Sep 2014 10:32:59 -0700
+Message-ID: <20140914173259.31996.39833.stgit@birch.djwong.org>
 References: <20140914173252.31996.86784.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,36 +9,105 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:40558 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752801AbaINRdK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Sep 2014 13:33:10 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:34185 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752801AbaINRdF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Sep 2014 13:33:05 -0400
 In-Reply-To: <20140914173252.31996.86784.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Free the buffer head if the journal descriptor block fails checksum
-verification.
+When loading extended attributes, check each entry's value offset to
+make sure it doesn't collide with the entries.
 
-This is the jbd2 port of the e2fsprogs patch "e2fsck: free bh on csum
-verify error in do_one_pass".
+Without this check it is easy to crash the kernel by mounting a
+malicious FS containing a file with an EA wherein e_value_offs = 0 and
+e_value_size > 0 and then deleting the EA, which corrupts the name
+list.
+
+(See the f_ea_value_crash test's FS image in e2fsprogs for an example.)
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/jbd2/recovery.c |    1 +
- 1 file changed, 1 insertion(+)
+ fs/ext4/xattr.c |   34 +++++++++++++++++++++++++---------
+ 1 file changed, 25 insertions(+), 9 deletions(-)
 
 
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index 9b329b5..bcbef08 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -525,6 +525,7 @@ static int do_one_pass(journal_t *journal,
- 			    !jbd2_descr_block_csum_verify(journal,
- 							  bh->b_data)) {
- 				err = -EIO;
-+				brelse(bh);
- 				goto failed;
- 			}
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index e738733..c11738e 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -189,15 +189,29 @@ ext4_listxattr(struct dentry *dentry, char *buffer, size_t size)
+ 	return ext4_xattr_list(dentry, buffer, size);
+ }
  
+-static int
+-ext4_xattr_check_names(struct ext4_xattr_entry *entry, void *end)
++int
++ext4_xattr_check_names(struct ext4_xattr_entry *entry, void *end,
++		       void *value_start)
+ {
+-	while (!IS_LAST_ENTRY(entry)) {
+-		struct ext4_xattr_entry *next = EXT4_XATTR_NEXT(entry);
++	struct ext4_xattr_entry *e = entry;
++
++	while (!IS_LAST_ENTRY(e)) {
++		struct ext4_xattr_entry *next = EXT4_XATTR_NEXT(e);
+ 		if ((void *)next >= end)
+ 			return -EIO;
+-		entry = next;
++		e = next;
+ 	}
++
++	while (!IS_LAST_ENTRY(entry)) {
++		if (entry->e_value_size != 0 &&
++		    (value_start + le16_to_cpu(entry->e_value_offs) <
++		     (void *)e + sizeof(__u32) ||
++		     value_start + le16_to_cpu(entry->e_value_offs) +
++		    le32_to_cpu(entry->e_value_size) > end))
++			return -EIO;
++		entry = EXT4_XATTR_NEXT(entry);
++	}
++
+ 	return 0;
+ }
+ 
+@@ -214,7 +228,8 @@ ext4_xattr_check_block(struct inode *inode, struct buffer_head *bh)
+ 		return -EIO;
+ 	if (!ext4_xattr_block_csum_verify(inode, bh->b_blocknr, BHDR(bh)))
+ 		return -EIO;
+-	error = ext4_xattr_check_names(BFIRST(bh), bh->b_data + bh->b_size);
++	error = ext4_xattr_check_names(BFIRST(bh), bh->b_data + bh->b_size,
++				       bh->b_data);
+ 	if (!error)
+ 		set_buffer_verified(bh);
+ 	return error;
+@@ -331,7 +346,7 @@ ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
+ 	header = IHDR(inode, raw_inode);
+ 	entry = IFIRST(header);
+ 	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
+-	error = ext4_xattr_check_names(entry, end);
++	error = ext4_xattr_check_names(entry, end, entry);
+ 	if (error)
+ 		goto cleanup;
+ 	error = ext4_xattr_find_entry(&entry, name_index, name,
+@@ -463,7 +478,7 @@ ext4_xattr_ibody_list(struct dentry *dentry, char *buffer, size_t buffer_size)
+ 	raw_inode = ext4_raw_inode(&iloc);
+ 	header = IHDR(inode, raw_inode);
+ 	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
+-	error = ext4_xattr_check_names(IFIRST(header), end);
++	error = ext4_xattr_check_names(IFIRST(header), end, IFIRST(header));
+ 	if (error)
+ 		goto cleanup;
+ 	error = ext4_xattr_list_entries(dentry, IFIRST(header),
+@@ -986,7 +1001,8 @@ int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
+ 	is->s.here = is->s.first;
+ 	is->s.end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
+ 	if (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {
+-		error = ext4_xattr_check_names(IFIRST(header), is->s.end);
++		error = ext4_xattr_check_names(IFIRST(header), is->s.end,
++					       IFIRST(header));
+ 		if (error)
+ 			return error;
+ 		/* Find the named attribute. */
 
