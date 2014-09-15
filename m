@@ -1,76 +1,355 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Writeback, partial page writes and data corruption (was Re: [PATCH
- v3] ext4: fix data integrity sync in ordered mode)
-Date: Mon, 15 Sep 2014 12:07:14 +1000
-Message-ID: <20140915020714.GD4322@dastard>
-References: <000801cf6a4a$5d5c2dc0$18148940$@samsung.com>
+From: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+Subject: Re: [PATCH] jbd2: remove __jbd2_journal_clean_checkpoint_list to
+ solve scalability issue
+Date: Mon, 15 Sep 2014 11:38:52 +0800
+Message-ID: <20140915033852.GL3052@yliu-dev.sh.intel.com>
+References: <1410430193-6112-1-git-send-email-yuanhan.liu@linux.intel.com>
+ <20140911135147.GD30901@quack.suse.cz>
+ <20140911154539.GK3052@yliu-dev.sh.intel.com>
+ <20140912094054.GA5958@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-mm@kvack.org, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org
-To: Namjae Jeon <namjae.jeon@samsung.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: linux-ext4@vger.kernel.org, Andi Kleen <ak@linux.intel.com>,
+	Yuanhan Liu <yuanhan.liu@linux.intel.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga14.intel.com ([192.55.52.115]:15365 "EHLO mga14.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752282AbaIODis (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 14 Sep 2014 23:38:48 -0400
 Content-Disposition: inline
-In-Reply-To: <000801cf6a4a$5d5c2dc0$18148940$@samsung.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20140912094054.GA5958@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-[cc linux-fsdevel as a heads-up]
-
-On Thu, May 08, 2014 at 08:16:24AM +0900, Namjae Jeon wrote:
-> When we perform a data integrity sync we tag all the dirty pages with
-> PAGECACHE_TAG_TOWRITE at start of ext4_da_writepages.
-> Later we check for this tag in write_cache_pages_da and creates a
-> struct mpage_da_data containing contiguously indexed pages tagged with this
-> tag and sync these pages with a call to mpage_da_map_and_submit.
-> This process is done in while loop until all the PAGECACHE_TAG_TOWRITE pages
-> are synced. We also do journal start and stop in each iteration.
-> journal_stop could initiate journal commit which would call ext4_writepage
-> which in turn will call ext4_bio_write_page even for delayed OR unwritten
-> buffers. When ext4_bio_write_page is called for such buffers, even though it
-> does not sync them but it clears the PAGECACHE_TAG_TOWRITE of the corresponding
-> page and hence these pages are also not synced by the currently running data
-> integrity sync. We will end up with dirty pages although sync is completed.
+On Fri, Sep 12, 2014 at 11:40:54AM +0200, Jan Kara wrote:
+> On Thu 11-09-14 23:45:39, Yuanhan Liu wrote:
+> > On Thu, Sep 11, 2014 at 03:51:47PM +0200, Jan Kara wrote:
+> > > On Thu 11-09-14 18:09:53, Yuanhan Liu wrote:
+> > > > Firstly, if I read the code correctly(I have a feeling I missed something),
+> > > > __jbd2_journal_clean_checkpoint_list is not necessary. jbd2_log_do_checkpoint
+> > > > will remove them for the checkpointed transaction. In another word,
+> > > > __jbd2_journal_clean_checkpoint_list can't drop an transaction if it's not
+> > > > checkpointed.
+> > >   Yes, that's correct. __jbd2_journal_clean_checkpoint_list() is there only
+> > > to free up buffers that were already checkpointed.
+> > 
+> > Yes, and that might be something I missed: if a transaction is
+> > checkpointed, those buffers attached to the transaction should also be
+> > released, right? If that's ture, what __jbd2_journal_clean_checkpoint_list()
+> > is for?
+>   They aren't released unless memory reclaim wants to free the
+> corresponding pagecache page. So they need to be detached from the
+> transaction somehow once they are written so that the transaction can be
+> eventually freed which frees the space in the journal. Currently we do this
+> detaching either in __jbd2_journal_clean_checkpoint_list() or in
+> jbd2_log_do_checkpoint(). However the latter function gets called only when
+> we really run out of space in the journal and thus everything in the
+> filesystem waits for some space to be reclaimed. So relying on that function
+> isn't good for performance either...
 > 
-> This could cause a potential data loss when the sync call is followed by a
-> truncate_pagecache call, which is exactly the case in collapse_range.
-> (It will cause generic/127 failure in xfstests)
+> One possibility is to remove buffer from transaction on IO completion.
 
-Yes, this is a patch that went into 3.16, but I only just found out
-about it because Brian just found a very similar data corruption bug
-in XFS. i.e. a partial page write was starting writeback and hence
-clearing PAGECACHE_TAG_TOWRITE before the page was fully cleaned and
-hence WB_SYNC_ALL wasn't writing the entire page.
+Yes, that's the same thing I thought of. b_end_io hook is the first
+thing I thought of, and I tried it. Badly, it was never being invoked.
 
-http://oss.sgi.com/pipermail/xfs/2014-September/038150.html
-http://oss.sgi.com/pipermail/xfs/2014-September/038167.html
+I then realised that it should be written by page cache(writeback or
+page reclaim as you mentioned), and that's the stuff I missed before.
+So, my patch was wrong and sorry for that.
 
-IOWs, if a filesystem does write-ahead in ->writepages() or
-relies on the write_cache_pages() layer to reissue dirty pages in
-partial page write situations for data integrity purposes, then it
-needs to be converted to use set_page_writeback_keepwrite() until
-the page is fully clean, at which point it can then use
-set_page_writeback().
+> However that's likely going to bounce j_list_lock between CPUs badly. So
 
-For everyone: if one filesystem is using the generic code
-incorrectly, then it is likely the same or similar bugs exist in
-other filesystems. As a courtesy to your fellow filesystem
-developers, if you find a data corruption bug caused by interactions
-with the generic code can the fixes please be CC'd to linux-fsdevel
-so everyone knows about the issue? This is especially important if
-new interfaces in the generic code have been added to avoid the
-problem.
+I checked __jbd2_journal_remove_checkpoint(jh) again, which is the
+entrance to free a journal buffer. It has two main parts:
 
-Cheers,
+	__buffer_unlink(jh)
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+	drop_transaction() if all jh are written
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+The two are all protected by j_list_lock. IMO, we can split it, say
+let __buffer_unlink(jh) be protected by a per-transaction spin lock,
+and let drop_transaction() be protected by by j_list_lock as it was.
+
+As drop_transaction() doesn't happen frequently as __buffer_unlink(jh),
+it should alleviate the lock contention a bit.
+
+Thoughts?
+
+
+	--yliu
+
+> I'd rather somehow batch the updates of the checkpointing lists...
+> 
+> 								Honza
+> 
+> > > > Secondly, I noticed severe scalability limit caused by this function with fsmark:
+> > > >    $ fs_mark  -d  /fs/ram0/1  -D  2  -N  2560  -n  1000000  -L  1  -S  1  -s  4096
+> > > > 
+> > > > It mainly writes tons of small files, each with 4K, and calls fsync after
+> > > > each write. It's one thread only, and it's tested on a 32G memory disk(brd).
+> > > > 
+> > > > "perf top" shows that journal_clean_one_cp_list() is very hot, like 40%.
+> > > > However, that function is quite cheap, actually. But __jbd2_journal_clean_checkpoint_list()
+> > > > will repeatedly call it for each transaction on the j_checkpoint_transactions.
+> > > > The list becomes longer and longer in linear with time. It soon grows to
+> > > > a list with 3,000 and more transactions. What's worse, we will iterate all
+> > > > those transactions on this list every time before committing a transaction,
+> > > > aka, fsync a file in our case.
+> > >   OK, this is kind of a pathological workload (generating lots of tiny
+> > > transactions) but it's not insane. I'd also note that we should eventually
+> > > reach a steady state once the journal fills up and we will be forced to
+> > > checkpoint transactions from the journal to make space for new ones.
+> > > However at that point we will have few thousands of transactions in the
+> > > journal and I agree it takes a while to scan them in
+> > > __jbd2_journal_clean_checkpoint_list().
+> > > 
+> > > I'm not yet convinced that just dropping
+> > > __jbd2_journal_clean_checkpoint_list() is the right thing to do.
+> > 
+> > Yes, I feel the same. BTW, I should add a RFC tag before the subject.
+> > This patch is mainly for informing you guys there might be a scalability
+> > issue with current JBD2 code.
+> > 
+> > 	--yliu
+> > 
+> > > Some
+> > > periodic cleaning of checkpointed entries would seem reasonable so that we
+> > > don't save all that work for the moment we run out of space in the journal.
+> > > I'll think how to do that in a more efficient way...
+> > > 
+> > > 								Honza
+> > > 
+> > > > So, that's roughly the reason why journal_clean_one_cp_list() is hot. However,
+> > > > I'm wondering why the j_checkpoint_transactions list keeps growing. Is there
+> > > > a bug? I did more investigates, and I guess I found the root cause.
+> > > > 
+> > > > In this case, we invoke fsync after each write, so, it basically means one
+> > > > transaction for one file. One transaction normally contains few blocks of meta
+> > > > data, like bitmap, inode and so on. All files in same group shares one bitmap
+> > > > block. But one inode table block could contains 16 files. Hence, it's possible
+> > > > that 2 different file points to same meta blocks.
+> > > > 
+> > > > For example, if file A and B uses same meta blocks, and if we write A and B in
+> > > > following style:
+> > > >         write(A);
+> > > >         fsync(A);
+> > > > 
+> > > >         write(B);
+> > > >         fsync(B);
+> > > > 
+> > > > then, when we are about to commit transation for B, and assume transaction of A
+> > > > is not checkpointted yet, we can safely drop transaction A and replace it with
+> > > > transaction B. Hence, the j_checkpoint_transactions grows by 1 only.
+> > > > 
+> > > > And then assume A is the last inode in one inode block, hence, B will use another
+> > > > inode table block. Thus transaction A and B is different. Hence, both A and B are
+> > > > inserted to the j_checkpoint_transactions; the list grows by 2.
+> > > > 
+> > > > Here I also got the proves; I added a trace point in jbd2_log_do_checkpoint(),
+> > > > and here are some of them:
+> > > > 
+> > > >          fs_mark-2646  [000] ....     5.830990: jbd2_start_checkpoint: tid=20
+> > > >          fs_mark-2646  [000] ....     5.832391: jbd2_start_checkpoint: tid=36
+> > > >          fs_mark-2646  [000] ....     5.833794: jbd2_start_checkpoint: tid=52
+> > > >          fs_mark-2646  [000] ....     5.835153: jbd2_start_checkpoint: tid=68
+> > > >          fs_mark-2646  [000] ....     5.836517: jbd2_start_checkpoint: tid=84
+> > > >          fs_mark-2646  [000] ....     5.837982: jbd2_start_checkpoint: tid=100
+> > > >          fs_mark-2646  [000] ....     5.839464: jbd2_start_checkpoint: tid=116
+> > > >          fs_mark-2646  [000] ....     5.840820: jbd2_start_checkpoint: tid=132
+> > > > 
+> > > > As you can see, the tid jumps by 16 each time, and other transactions are just
+> > > > replaced by the way I described above.
+> > > > 
+> > > > Step by step like above, that list grows. And that's why journal_clean_one_cp_list() is hot.
+> > > > 
+> > > > It removes the scalability issue when I removed this function, and the fsmark
+> > > > result(Files/sec) jumps from 9000 to 16000, which is an increase about 80%.
+> > > > 
+> > > > Thoughts?
+> > > > 
+> > > > CC: Andi Kleen <ak@linux.intel.com>
+> > > > Signed-off-by: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+> > > > ---
+> > > >  fs/jbd2/checkpoint.c | 115 ---------------------------------------------------
+> > > >  fs/jbd2/commit.c     |   9 ----
+> > > >  include/linux/jbd2.h |   1 -
+> > > >  3 files changed, 125 deletions(-)
+> > > > 
+> > > > diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+> > > > index 9ffb19c..31fce78 100644
+> > > > --- a/fs/jbd2/checkpoint.c
+> > > > +++ b/fs/jbd2/checkpoint.c
+> > > > @@ -83,26 +83,6 @@ static inline void __buffer_relink_io(struct journal_head *jh)
+> > > >  }
+> > > >  
+> > > >  /*
+> > > > - * Try to release a checkpointed buffer from its transaction.
+> > > > - * Returns 1 if we released it and 2 if we also released the
+> > > > - * whole transaction.
+> > > > - *
+> > > > - * Requires j_list_lock
+> > > > - */
+> > > > -static int __try_to_free_cp_buf(struct journal_head *jh)
+> > > > -{
+> > > > -	int ret = 0;
+> > > > -	struct buffer_head *bh = jh2bh(jh);
+> > > > -
+> > > > -	if (jh->b_transaction == NULL && !buffer_locked(bh) &&
+> > > > -	    !buffer_dirty(bh) && !buffer_write_io_error(bh)) {
+> > > > -		JBUFFER_TRACE(jh, "remove from checkpoint list");
+> > > > -		ret = __jbd2_journal_remove_checkpoint(jh) + 1;
+> > > > -	}
+> > > > -	return ret;
+> > > > -}
+> > > > -
+> > > > -/*
+> > > >   * __jbd2_log_wait_for_space: wait until there is space in the journal.
+> > > >   *
+> > > >   * Called under j-state_lock *only*.  It will be unlocked if we have to wait
+> > > > @@ -412,101 +392,6 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
+> > > >  
+> > > >  /* Checkpoint list management */
+> > > >  
+> > > > -/*
+> > > > - * journal_clean_one_cp_list
+> > > > - *
+> > > > - * Find all the written-back checkpoint buffers in the given list and
+> > > > - * release them.
+> > > > - *
+> > > > - * Called with the journal locked.
+> > > > - * Called with j_list_lock held.
+> > > > - * Returns number of buffers reaped (for debug)
+> > > > - */
+> > > > -
+> > > > -static int journal_clean_one_cp_list(struct journal_head *jh, int *released)
+> > > > -{
+> > > > -	struct journal_head *last_jh;
+> > > > -	struct journal_head *next_jh = jh;
+> > > > -	int ret, freed = 0;
+> > > > -
+> > > > -	*released = 0;
+> > > > -	if (!jh)
+> > > > -		return 0;
+> > > > -
+> > > > -	last_jh = jh->b_cpprev;
+> > > > -	do {
+> > > > -		jh = next_jh;
+> > > > -		next_jh = jh->b_cpnext;
+> > > > -		ret = __try_to_free_cp_buf(jh);
+> > > > -		if (ret) {
+> > > > -			freed++;
+> > > > -			if (ret == 2) {
+> > > > -				*released = 1;
+> > > > -				return freed;
+> > > > -			}
+> > > > -		}
+> > > > -		/*
+> > > > -		 * This function only frees up some memory
+> > > > -		 * if possible so we dont have an obligation
+> > > > -		 * to finish processing. Bail out if preemption
+> > > > -		 * requested:
+> > > > -		 */
+> > > > -		if (need_resched())
+> > > > -			return freed;
+> > > > -	} while (jh != last_jh);
+> > > > -
+> > > > -	return freed;
+> > > > -}
+> > > > -
+> > > > -/*
+> > > > - * journal_clean_checkpoint_list
+> > > > - *
+> > > > - * Find all the written-back checkpoint buffers in the journal and release them.
+> > > > - *
+> > > > - * Called with the journal locked.
+> > > > - * Called with j_list_lock held.
+> > > > - * Returns number of buffers reaped (for debug)
+> > > > - */
+> > > > -
+> > > > -int __jbd2_journal_clean_checkpoint_list(journal_t *journal)
+> > > > -{
+> > > > -	transaction_t *transaction, *last_transaction, *next_transaction;
+> > > > -	int ret = 0;
+> > > > -	int released;
+> > > > -
+> > > > -	transaction = journal->j_checkpoint_transactions;
+> > > > -	if (!transaction)
+> > > > -		goto out;
+> > > > -
+> > > > -	last_transaction = transaction->t_cpprev;
+> > > > -	next_transaction = transaction;
+> > > > -	do {
+> > > > -		transaction = next_transaction;
+> > > > -		next_transaction = transaction->t_cpnext;
+> > > > -		ret += journal_clean_one_cp_list(transaction->
+> > > > -				t_checkpoint_list, &released);
+> > > > -		/*
+> > > > -		 * This function only frees up some memory if possible so we
+> > > > -		 * dont have an obligation to finish processing. Bail out if
+> > > > -		 * preemption requested:
+> > > > -		 */
+> > > > -		if (need_resched())
+> > > > -			goto out;
+> > > > -		if (released)
+> > > > -			continue;
+> > > > -		/*
+> > > > -		 * It is essential that we are as careful as in the case of
+> > > > -		 * t_checkpoint_list with removing the buffer from the list as
+> > > > -		 * we can possibly see not yet submitted buffers on io_list
+> > > > -		 */
+> > > > -		ret += journal_clean_one_cp_list(transaction->
+> > > > -				t_checkpoint_io_list, &released);
+> > > > -		if (need_resched())
+> > > > -			goto out;
+> > > > -	} while (transaction != last_transaction);
+> > > > -out:
+> > > > -	return ret;
+> > > > -}
+> > > >  
+> > > >  /*
+> > > >   * journal_remove_checkpoint: called after a buffer has been committed
+> > > > diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> > > > index b73e021..1ebdd70 100644
+> > > > --- a/fs/jbd2/commit.c
+> > > > +++ b/fs/jbd2/commit.c
+> > > > @@ -504,15 +504,6 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+> > > >  		jbd2_journal_refile_buffer(journal, jh);
+> > > >  	}
+> > > >  
+> > > > -	/*
+> > > > -	 * Now try to drop any written-back buffers from the journal's
+> > > > -	 * checkpoint lists.  We do this *before* commit because it potentially
+> > > > -	 * frees some memory
+> > > > -	 */
+> > > > -	spin_lock(&journal->j_list_lock);
+> > > > -	__jbd2_journal_clean_checkpoint_list(journal);
+> > > > -	spin_unlock(&journal->j_list_lock);
+> > > > -
+> > > >  	jbd_debug(3, "JBD2: commit phase 1\n");
+> > > >  
+> > > >  	/*
+> > > > diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> > > > index 0dae71e..c41ab38 100644
+> > > > --- a/include/linux/jbd2.h
+> > > > +++ b/include/linux/jbd2.h
+> > > > @@ -1042,7 +1042,6 @@ void jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
+> > > >  extern void jbd2_journal_commit_transaction(journal_t *);
+> > > >  
+> > > >  /* Checkpoint list management */
+> > > > -int __jbd2_journal_clean_checkpoint_list(journal_t *journal);
+> > > >  int __jbd2_journal_remove_checkpoint(struct journal_head *);
+> > > >  void __jbd2_journal_insert_checkpoint(struct journal_head *, transaction_t *);
+> > > >  
+> > > > -- 
+> > > > 1.9.0
+> > > > 
+> > > > --
+> > > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > > > the body of a message to majordomo@vger.kernel.org
+> > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > -- 
+> > > Jan Kara <jack@suse.cz>
+> > > SUSE Labs, CR
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
