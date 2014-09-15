@@ -1,7 +1,7 @@
 From: "Elliott, Robert (Server Storage)" <Elliott@hp.com>
-Subject: mark_buffer_dirty WARN_ON_ONCE on buffer_uptodate
-Date: Mon, 15 Sep 2014 21:56:44 +0000
-Message-ID: <94D0CD8314A33A4D9D801C0FE68B402958C81B63@G9W0745.americas.hpqcorp.net>
+Subject: bdev_inode_switch_bdi WARN_ON_ONCE on write_inode_now
+Date: Mon, 15 Sep 2014 23:24:02 +0000
+Message-ID: <94D0CD8314A33A4D9D801C0FE68B402958C8207F@G9W0745.americas.hpqcorp.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 8BIT
@@ -12,119 +12,72 @@ To: "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
 	Christoph Hellwig <hch@infradead.org>,
 	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g4t3425.houston.hp.com ([15.201.208.53]:58664 "EHLO
-	g4t3425.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754984AbaIOV6p convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Sep 2014 17:58:45 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Language: en-US
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Stress-testing blk-mq/scsi-mq (3.17rc4/blk-next), I was running 
-fio + mkfs.ext4 + e2fsck to 16 mpt3sas devices and unplugged the 
-JBOD containing the SAS SSDs.  This triggered lots of mpt3sas,
-SCSI midlayer, and block layer error messages, as expected.
-The linux device (/dev/sdc) does not disappear here; it just
-starts generating errors for every IO.
+After the warning described in
+	"mark_buffer_dirty WARN_ON_ONCE on buffer_uptodate"
 
-After it triggered "Remounting filesystem read-only", a 
-WARN_ON_ONCE triggered in mark_buffer_dirty in the filesystem
-layer.  I don't know if that is expected/desired error handling 
-behavior.
+shutting down the system triggered a different WARN_ON_ONCE,
+reporting that write_inode_now failed.
 
-Kernel log excerpt:
+[22138.654946] EXT4-fs (sdu): previous I/O error to superblock detected
+[22138.657435] Buffer I/O error on dev sdu, logical block 0, lost sync page write
+[22138.660216] EXT4-fs error (device sdu): ext4_put_super:792: Couldn't clean up the journal
+[22138.686148] ------------[ cut here ]------------
+[22138.688406] WARNING: CPU: 0 PID: 15793 at fs/block_dev.c:67 bdev_inode_switch_bdi+0x81/0x90()
+[22138.691568] Modules linked in: ftdi_sio usbserial nfsd nfs_acl exportfs autofs4 rpcsec_gss_krb5 auth_rpcgss nfsv4 nfs fscache lockd sunrpc cpufreq_ondemand pcc_cpufreq dm_mirror dm_region_hash dm_log uinput ipv6 iTCO_wdt iTCO_vendor_support microcode serio_raw pcspkr sb_edac edac_core hpilo hpwdt lpc_ich mfd_core ioatdma dca dm_mod wmi sg tg3 ptp pps_core ext4(E) jbd2(E) mbcache(E) sd_mod(E) crc_t10dif(E) crct10dif_common(E) pata_acpi(E) ata_generic(E) ata_piix(E) hpsa(E) mpt3sas(E) scsi_transport_sas(E) raid_class(E)
+[22138.715231] CPU: 0 PID: 15793 Comm: umount Tainted: G        W   EL 3.17.0-rc4+ #3
+[22138.718904] Hardware name: HP ProLiant DL380p Gen8, BIOS P70 09/08/2013
+[22138.721423]  0000000000000043 ffff8803ea14fda8 ffffffff815a8b3f 0000000000000043
+[22138.725253]  0000000000000000 ffff8803ea14fde8 ffffffff8105267c ffffffff8181ca12
+[22138.728817]  ffff88042e0f75b8 ffff88042e0f7530 ffffffff81a8d9a0 ffff88042c80d000
+[22138.732579] Call Trace:
+[22138.733623]  [<ffffffff815a8b3f>] dump_stack+0x49/0x62
+[22138.735595]  [<ffffffff8105267c>] warn_slowpath_common+0x8c/0xc0
+[22138.737952]  [<ffffffff810526ca>] warn_slowpath_null+0x1a/0x20
+[22138.740080]  [<ffffffff811cfcd1>] bdev_inode_switch_bdi+0x81/0x90
+[22138.742708]  [<ffffffff811d0fbf>] __blkdev_put+0x7f/0x1c0
+[22138.744745]  [<ffffffff815aa519>] ? mutex_unlock+0x9/0x20
+[22138.747487]  [<ffffffff811d1156>] blkdev_put+0x56/0x140
+[22138.749512]  [<ffffffff8119d4fd>] kill_block_super+0x4d/0x80
+[22138.751942]  [<ffffffff8119d804>] deactivate_locked_super+0x54/0x70
+[22138.754315]  [<ffffffff8119e05a>] deactivate_super+0x4a/0x70
+[22138.756435]  [<ffffffff811b9184>] mntput_no_expire+0x94/0xf0
+[22138.759070]  [<ffffffff811bb474>] SyS_umount+0xc4/0x100
+[22138.761175]  [<ffffffff815ad152>] system_call_fastpath+0x16/0x1b
+[22138.763392] ---[ end trace 72065e1b51c7c1cc ]---
+
+That starts in
+SYSCALL_DEFINE2(umount, char __user *, name, int, flags)
 ...
-[18075.539314] Buffer I/O error on dev sdk, logical block 0, lost sync page write
-[18075.539333] EXT4-fs (sdk): previous I/O error to superblock detected
-<presumably one of those also appeared for sdc, but it is no longer in the buffer>
+        retval = do_umount(mnt, flags);
+dput_and_out:
+        /* we mustn't call path_put() as that would clear mnt_expiry_mark */
+        dput(path.dentry);
+        mntput_no_expire(mnt);
+out:
+        return retval;
 
+and hits the warning in that mntput_no_expire call:
+static void bdev_inode_switch_bdi(struct inode *inode,
+                        struct backing_dev_info *dst)
 ...
-[18156.572672] mpt3sas0: log_info(0x311201ff): originator(PL), code(0x12), sub_code(0x01ff)
-[18156.572676] sd 0:0:2:0: timing out command, waited 0s
-[18156.572680] Buffer I/O error on dev sdc, logical block 48791552, lost sync page write
-[18156.572699] JBD2: Error -5 detected when updating journal superblock for sdc-8.
-[18156.582177] sd 0:0:2:0: timing out command, waited 0s
-[18156.583969] Buffer I/O error on dev sdc, logical block 0, lost sync page write
-[18156.586107] mpt3sas0: log_info(0x311201ff): originator(PL), code(0x12), sub_code(0x01ff)
-[18156.589136] EXT4-fs error (device sdc): ext4_journal_check_start:56: Detected aborted journal
-[18156.589137] EXT4-fs (sdc): Remounting filesystem read-only
-[18156.589142] ------------[ cut here ]------------
-[18156.589146] WARNING: CPU: 1 PID: 3368 at fs/buffer.c:1139 mark_buffer_dirty+0xb5/0xd0()
-[18156.589171] Modules linked in: ftdi_sio usbserial nfsd nfs_acl exportfs autofs4 rpcsec_gss_krb5 auth_rpcgss nfsv4 nfs fscache lockd sunrpc cpufrendemand pcc_cpufreq dm_mirror dm_region_hash dm_log uinput ipv6 iTCO_wdt iTCO_vendor_support microcode serio_raw pcspkr sb_edac edac_core hpilo hpwdt lpc_ich mfd_core ioatdma dca dm_mod wmi sg tg3 ptp pps_core ext4(E) jbd2(E) mbcache(E) sd_mod(E) crc_t10dif(E) crct10dif_common(E) pata_acpi(E) ata_generic(E) ata_piix(E) hpsa(E) mpt3sas(E) scsi_transport_sas(E) raid_class(E)
-[18156.589174] CPU: 1 PID: 3368 Comm: ddpt Tainted: G        W   EL 3.17.0-rc4+ #3
-[18156.589175] Hardware name: HP ProLiant DL380p Gen8, BIOS P70 09/08/2013
-[18156.589177]  0000000000000473 ffff8800b777b9f8 ffffffff815a8b3f 0000000000000473
-[18156.589179]  0000000000000000 ffff8800b777ba38 ffffffff8105267c ffffffff8181c8fa
-[18156.589181]  ffff88037afd5800 ffff8803537cdd28 ffff8803ddda2400 0000000000000001
-[18156.589182] Call Trace:
-[18156.589186]  [<ffffffff815a8b3f>] dump_stack+0x49/0x62
-[18156.589189]  [<ffffffff8105267c>] warn_slowpath_common+0x8c/0xc0
-[18156.589191]  [<ffffffff810526ca>] warn_slowpath_null+0x1a/0x20
-[18156.589193]  [<ffffffff811cc0b5>] mark_buffer_dirty+0xb5/0xd0
-[18156.589205]  [<ffffffffa00d8a9a>] ext4_commit_super+0x18a/0x250 [ext4]
-[18156.589215]  [<ffffffffa00d93c3>] save_error_info+0x23/0x30 [ext4]
-[18156.589223]  [<ffffffffa00d9a6e>] __ext4_abort+0x10e/0x130 [ext4]
-[18156.589226]  [<ffffffff815a93f9>] ? _cond_resched+0x9/0x40
-[18156.589234]  [<ffffffffa00c638a>] ? ext4_da_write_begin+0x19a/0x2b0 [ext4]
-[18156.589244]  [<ffffffffa00f0f88>] ext4_journal_check_start+0x68/0x90 [ext4]
-[18156.589253]  [<ffffffffa00f13f1>] __ext4_journal_start_sb+0x41/0xf0 [ext4]
-[18156.589261]  [<ffffffffa00c638a>] ext4_da_write_begin+0x19a/0x2b0 [ext4]
-[18156.589265]  [<ffffffff8115d5dd>] ? iov_iter_fault_in_readable+0xd/0x80
-[18156.589268]  [<ffffffff8113554a>] generic_perform_write+0xca/0x1c0
-[18156.589270]  [<ffffffff815aef5d>] ? ftrace_call+0x5/0x2f
-[18156.589273]  [<ffffffff811384ef>] __generic_file_write_iter+0x18f/0x390
-[18156.589280]  [<ffffffffa00bcc19>] ext4_file_write_iter+0x109/0x420 [ext4]
-[18156.589]  [<ffffffff8115d219>] ? iov_iter_init+0x9/0x40
-[18156.589286]  [<ffffffff811996a2>] new_sync_write+0x92/0xd0
-[18156.589289]  [<ffffffff81199bbe>] vfs_write+0xce/0x180
-[18156.589291]  [<ffffffff8119a1fa>] SyS_write+0x5a/0xd0
-[18156.589294]  [<ffffffff815ad152>] system_call_fastpath+0x16/0x1b
-[18156.589296] ---[ end trace 72065e1b51c7c1cb ]---
+	                WARN_ON_ONCE(write_inode_now(inode, true));
 
+The mntput_no_expire call chain doesn't pass return values 
+back, so umount doesn't report if anything extra went wrong
+in the write_inode_now call; it just returns the result
+from do_umount.  The first problem to the first device
+triggers the WARN_ON_ONCE message, but then it's silent
+for other afflicted devices.
 
-That's apparently from this function:
+Every afflicted device does get one of these:
+[22141.816183] EXT4-fs error (device sda): ext4_put_super:792: Couldn't clean up the journal
 
-static int ext4_commit_super(struct super_block *sb, int sync)
-{
-...
-        if (!sbh || block_device_ejected(sb))
-                return error;
-        if (buffer_write_io_error(sbh)) {
-                /*
-                 * Oh, dear.  A previous attempt to write the
-                 * superblock failed.  This could happen because the
-                 * USB device was yanked out.  Or it could happen to
-                 * be a transient write error and maybe the block will
-                 * be remapped.  Nothing we can do but to retry the
-                 * write and hope for the best.
-                 */
-                ext4_msg(sb, KERN_ERR, "previous I/O error to "
-                       "superblock detected");
-                clear_buffer_write_io_error(sbh);
-                set_buffer_uptodate(sbh);
-        }
-...
-        /*
-         * If the file system is mounted read-only, don't update the
-         * superblock write time.  This avoids updating the superblock
-         * write time when we are mounting the root file system
-         * read/only but we need to replay the journal; at that point,
-         * for people who are east of GMT and who make their clock
-         * tick in localtime for Windows bug-for-bug compatibility,
-         * the clock is set in the future, and this will cause e2fsck
-         * to complain and force a full file system check.
-         */
-...
-        BUFFER_TRACE(sbh, "marking dirty");
-        ext4_superblock_csum_set(sb);
-        mark_buffer_dirty(sbh);
-...
-
-void mark_buffer_dirty(struct buffer_head *bh)
-{
-        WARN_ON_ONCE(!buffer_uptodate(bh));
-
+and shutdown was not blocked by these problems.
 
 ---
 Rob Elliott    HP Server Storage
