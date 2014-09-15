@@ -1,60 +1,76 @@
-From: Joonsoo Kim <iamjoonsoo.kim@lge.com>
-Subject: Re: [PATCHv4 0/3] new APIs to allocate buffer-cache with user
- specific flag
-Date: Mon, 15 Sep 2014 10:10:18 +0900
-Message-ID: <20140915011018.GA2676@js1304-P5Q-DELUXE>
-References: <1409815781-28011-1-git-send-email-gioh.kim@lge.com>
- <20140904151612.7bf5b813069ff78973e01571@linux-foundation.org>
- <540905B1.1050200@lge.com>
- <20140905011419.GE4364@thunk.org>
- <20140905014808.GA26070@js1304-P5Q-DELUXE>
- <20140905031735.GD1971@thunk.org>
- <20140905073247.GA31827@js1304-P5Q-DELUXE>
- <20140905141416.GA1510@thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Writeback, partial page writes and data corruption (was Re: [PATCH
+ v3] ext4: fix data integrity sync in ordered mode)
+Date: Mon, 15 Sep 2014 12:07:14 +1000
+Message-ID: <20140915020714.GD4322@dastard>
+References: <000801cf6a4a$5d5c2dc0$18148940$@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mel Gorman <mgorman@suse.de>,
-	Marek Szyprowski <m.szyprowski@samsung.com>,
-	Michal Nazarewicz <mina86@mina86.com>
-To: Theodore Ts'o <tytso@mit.edu>, Gioh Kim <gioh.kim@lge.com>,
-	Andrew Morton <akpm@linux-foundation.org>, jack@suse.cz,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-	paulmck@linux.vnet.ibm.com, peterz@infradead.org,
-	adilger.kernel@dilger.ca, minchan@kernel.org, gunho.lee@lge.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-mm@kvack.org, Jan Kara <jack@suse.cz>,
+	linux-fsdevel@vger.kernel.org
+To: Namjae Jeon <namjae.jeon@samsung.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20140905141416.GA1510@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <000801cf6a4a$5d5c2dc0$18148940$@samsung.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Sep 05, 2014 at 10:14:16AM -0400, Theodore Ts'o wrote:
-> On Fri, Sep 05, 2014 at 04:32:48PM +0900, Joonsoo Kim wrote:
-> > I also test another approach, such as allocate freepage in CMA
-> > reserved region as late as possible, which is also similar to your
-> > suggestion and this doesn't works well. When reclaim is started,
-> > too many pages reclaim at once, because lru list has successive pages
-> > in CMA region and these doesn't help kswapd's reclaim. kswapd stop
-> > reclaiming when freepage count is recovered. But, CMA pages isn't
-> > counted for freepage for kswapd because they can't be usable for
-> > unmovable, reclaimable allocation. So kswap reclaim too many pages
-> > at once unnecessarilly.
+[cc linux-fsdevel as a heads-up]
+
+On Thu, May 08, 2014 at 08:16:24AM +0900, Namjae Jeon wrote:
+> When we perform a data integrity sync we tag all the dirty pages with
+> PAGECACHE_TAG_TOWRITE at start of ext4_da_writepages.
+> Later we check for this tag in write_cache_pages_da and creates a
+> struct mpage_da_data containing contiguously indexed pages tagged with this
+> tag and sync these pages with a call to mpage_da_map_and_submit.
+> This process is done in while loop until all the PAGECACHE_TAG_TOWRITE pages
+> are synced. We also do journal start and stop in each iteration.
+> journal_stop could initiate journal commit which would call ext4_writepage
+> which in turn will call ext4_bio_write_page even for delayed OR unwritten
+> buffers. When ext4_bio_write_page is called for such buffers, even though it
+> does not sync them but it clears the PAGECACHE_TAG_TOWRITE of the corresponding
+> page and hence these pages are also not synced by the currently running data
+> integrity sync. We will end up with dirty pages although sync is completed.
 > 
-> Have you considered putting the pages in a CMA region in a separate
-> zone?  After all, that's what we originally did with brain-damaged
-> hardware that could only DMA into the low 16M of memory.  We just
-> reserved a separate zone for that?  That way, we could do
-> zone-directed reclaim and free pages in that zone, if that was what
-> was actually needed.
+> This could cause a potential data loss when the sync call is followed by a
+> truncate_pagecache call, which is exactly the case in collapse_range.
+> (It will cause generic/127 failure in xfstests)
 
-Sorry for long delay. It was long holidays.
+Yes, this is a patch that went into 3.16, but I only just found out
+about it because Brian just found a very similar data corruption bug
+in XFS. i.e. a partial page write was starting writeback and hence
+clearing PAGECACHE_TAG_TOWRITE before the page was fully cleaned and
+hence WB_SYNC_ALL wasn't writing the entire page.
 
-No, I haven't consider it. It sounds good idea to place the pages in a
-CMA region into a separate zone. Perhaps we can remove one of
-migratetype, MIGRATE_CMA, with this way and it would be a good long-term
-architecture for CMA.
+http://oss.sgi.com/pipermail/xfs/2014-September/038150.html
+http://oss.sgi.com/pipermail/xfs/2014-September/038167.html
 
-I don't know exact history and reason why CMA is implemented in current
-form. Ccing some experts in this area.
+IOWs, if a filesystem does write-ahead in ->writepages() or
+relies on the write_cache_pages() layer to reissue dirty pages in
+partial page write situations for data integrity purposes, then it
+needs to be converted to use set_page_writeback_keepwrite() until
+the page is fully clean, at which point it can then use
+set_page_writeback().
 
-Thanks.
+For everyone: if one filesystem is using the generic code
+incorrectly, then it is likely the same or similar bugs exist in
+other filesystems. As a courtesy to your fellow filesystem
+developers, if you find a data corruption bug caused by interactions
+with the generic code can the fixes please be CC'd to linux-fsdevel
+so everyone knows about the issue? This is especially important if
+new interfaces in the generic code have been added to avoid the
+problem.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
