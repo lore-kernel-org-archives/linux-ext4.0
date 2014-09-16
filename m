@@ -1,85 +1,134 @@
-From: "Elliott, Robert (Server Storage)" <Elliott@hp.com>
-Subject: bdev_inode_switch_bdi WARN_ON_ONCE on write_inode_now
-Date: Mon, 15 Sep 2014 23:24:02 +0000
-Message-ID: <94D0CD8314A33A4D9D801C0FE68B402958C8207F@G9W0745.americas.hpqcorp.net>
+From: Li Xi <pkuelelixi@gmail.com>
+Subject: Re: [PATCH v3 1/4] quota: add project quota support
+Date: Tue, 16 Sep 2014 16:15:35 +0800
+Message-ID: <CAPTn0cBXjePDOmT+dr4VOVs1r9sKbFC16pJv1fTc_oHLNYLsDA@mail.gmail.com>
+References: <CAPTn0cAOeQ_nyKx5k+kJOzx17tq+5WtyrMhBE8bpFCKx0UecGw@mail.gmail.com>
+	<20140910164559.GA10507@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-To: "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"tytso@mit.edu" <tytso@mit.edu>,
-	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
-	"Jens Axboe <axboe@kernel.dk> (axboe@kernel.dk)" <axboe@kernel.dk>,
-	Christoph Hellwig <hch@infradead.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Language: en-US
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger@dilger.ca>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"hch@infradead.org" <hch@infradead.org>,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:53494 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752850AbaIPIPg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Sep 2014 04:15:36 -0400
+In-Reply-To: <20140910164559.GA10507@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-After the warning described in
-	"mark_buffer_dirty WARN_ON_ONCE on buffer_uptodate"
+On Thu, Sep 11, 2014 at 12:45 AM, Jan Kara <jack@suse.cz> wrote:
+> On Wed 10-09-14 11:52:35, Li Xi wrote:
+>> Adds general codes to enforces project quota limits
+>>
+>> This patch adds support for a new quota type PRJQUOTA for project quota
+>> enforcement. Also a new method get_projid() is added into dquot_operations
+>> structure.
+>>
+>   One general note:
+>   Your mail client has apparently mangled the patch (replaced tabs with
+> spaces). Please resend patches using git-send-email or some other email
+> client that doesn't do this so that they can be applied cleanly.
+>
+>   Some other comments below.
+>
+>> Signed-off-by: Li Xi <lixi <at> ddn.com>
+>> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+>> ---
+>> Index: linux.git/fs/quota/dquot.c
+>> ===================================================================
+>> --- linux.git.orig/fs/quota/dquot.c
+>> +++ linux.git/fs/quota/dquot.c
+>> @@ -161,6 +161,19 @@ static struct quota_module_name module_n
+>>  /* SLAB cache for dquot structures */
+>>  static struct kmem_cache *dquot_cachep;
+>>
+>> +static inline unsigned long compat_qtype2bits(int type)
+>> +{
+>> +#ifdef CONFIG_QUOTA_PROJECT
+>   I don't find CONFIG_QUOTA_PROJECT all that useful. If someone is building
+> a kernel with CONFIG_QUOTA enabled (i.e., a kernel for a server), he can
+> well spare those few kilobytes for project quota support and it makes the
+> code somewhat nicer. So I would just remove this config option.
+>
+>> +    unsigned long qtype_bits = QUOTA_ALL_BIT;
+>> +#else
+>> +    unsigned long qtype_bits = QUOTA_USR_BIT | QUOTA_GRP_BIT;
+>> +#endif
+>> +    if (type != -1) {
+>> +        qtype_bits = 1 << type;
+>> +    }
+>> +    return qtype_bits;
+>> +}
+>> +
+>>  int register_quota_format(struct quota_format_type *fmt)
+>>  {
+>>      spin_lock(&dq_list_lock);
+>> @@ -250,7 +263,8 @@ struct dqstats dqstats;
+>>  EXPORT_SYMBOL(dqstats);
+>>
+>>  static qsize_t inode_get_rsv_space(struct inode *inode);
+>> -static void __dquot_initialize(struct inode *inode, int type);
+>> +static void __dquot_initialize(struct inode *inode,
+>> +                   unsigned long qtype_bits);
+>   I've noticed you are changing interface of several functions from taking
+> a type number (or -1) to taking a bitmask. I guess it's because of
+> CONFIG_QUOTA_PROJECT or is there also any other reason? If we get rid of
+> that config, we won't need this change either, right?
+>
+> ...
+>> Index: linux.git/include/uapi/linux/quota.h
+>> ===================================================================
+>> --- linux.git.orig/include/uapi/linux/quota.h
+>> +++ linux.git/include/uapi/linux/quota.h
+>> @@ -36,11 +36,12 @@
+>>  #include <linux/errno.h>
+>>  #include <linux/types.h>
+>>
+>> -#define __DQUOT_VERSION__    "dquot_6.5.2"
+>> +#define __DQUOT_VERSION__    "dquot_6.6.0"
+>>
+>> -#define MAXQUOTAS 2
+>> +#define MAXQUOTAS 3
+>   Hum, actually this isn't so simple. MAXQUOTAS is used in several
+> filesystems - ext3, ext4, ocfs2, reiserfs, gfs2 - and just bumping up
+> MAXQUOTAS can have unexpected consequences for them (they won't have
+> properly initialized data structures for new quota type). So what we have
+> to do as a preparatory step is to make these filesystems define their own
+> MAXQUOTAS value (like EXT3_MAXQUOTAS, ...). I'll take care of that.
+Yeah, you are right. It is likely that a new MAXQUOTAS value will hurt other
+file systems. And I saw your patch for it. I will use EXT4_MAXQUOTAS
+in Ext4 instead.
 
-shutting down the system triggered a different WARN_ON_ONCE,
-reporting that write_inode_now failed.
+However, the general codes in fs/quota or head files like quotaops.h use
+MAXQUOTAS heavily too. I guess I have no better choice but replace
+MAXQUOTAS there with a new macro, e.g. MAXQUOTAS_NEW (3). I will handle
+the interfaces carefully so that they remain exactly the same semantics. Do you
+have any better idea?
 
-[22138.654946] EXT4-fs (sdu): previous I/O error to superblock detected
-[22138.657435] Buffer I/O error on dev sdu, logical block 0, lost sync page write
-[22138.660216] EXT4-fs error (device sdu): ext4_put_super:792: Couldn't clean up the journal
-[22138.686148] ------------[ cut here ]------------
-[22138.688406] WARNING: CPU: 0 PID: 15793 at fs/block_dev.c:67 bdev_inode_switch_bdi+0x81/0x90()
-[22138.691568] Modules linked in: ftdi_sio usbserial nfsd nfs_acl exportfs autofs4 rpcsec_gss_krb5 auth_rpcgss nfsv4 nfs fscache lockd sunrpc cpufreq_ondemand pcc_cpufreq dm_mirror dm_region_hash dm_log uinput ipv6 iTCO_wdt iTCO_vendor_support microcode serio_raw pcspkr sb_edac edac_core hpilo hpwdt lpc_ich mfd_core ioatdma dca dm_mod wmi sg tg3 ptp pps_core ext4(E) jbd2(E) mbcache(E) sd_mod(E) crc_t10dif(E) crct10dif_common(E) pata_acpi(E) ata_generic(E) ata_piix(E) hpsa(E) mpt3sas(E) scsi_transport_sas(E) raid_class(E)
-[22138.715231] CPU: 0 PID: 15793 Comm: umount Tainted: G        W   EL 3.17.0-rc4+ #3
-[22138.718904] Hardware name: HP ProLiant DL380p Gen8, BIOS P70 09/08/2013
-[22138.721423]  0000000000000043 ffff8803ea14fda8 ffffffff815a8b3f 0000000000000043
-[22138.725253]  0000000000000000 ffff8803ea14fde8 ffffffff8105267c ffffffff8181ca12
-[22138.728817]  ffff88042e0f75b8 ffff88042e0f7530 ffffffff81a8d9a0 ffff88042c80d000
-[22138.732579] Call Trace:
-[22138.733623]  [<ffffffff815a8b3f>] dump_stack+0x49/0x62
-[22138.735595]  [<ffffffff8105267c>] warn_slowpath_common+0x8c/0xc0
-[22138.737952]  [<ffffffff810526ca>] warn_slowpath_null+0x1a/0x20
-[22138.740080]  [<ffffffff811cfcd1>] bdev_inode_switch_bdi+0x81/0x90
-[22138.742708]  [<ffffffff811d0fbf>] __blkdev_put+0x7f/0x1c0
-[22138.744745]  [<ffffffff815aa519>] ? mutex_unlock+0x9/0x20
-[22138.747487]  [<ffffffff811d1156>] blkdev_put+0x56/0x140
-[22138.749512]  [<ffffffff8119d4fd>] kill_block_super+0x4d/0x80
-[22138.751942]  [<ffffffff8119d804>] deactivate_locked_super+0x54/0x70
-[22138.754315]  [<ffffffff8119e05a>] deactivate_super+0x4a/0x70
-[22138.756435]  [<ffffffff811b9184>] mntput_no_expire+0x94/0xf0
-[22138.759070]  [<ffffffff811bb474>] SyS_umount+0xc4/0x100
-[22138.761175]  [<ffffffff815ad152>] system_call_fastpath+0x16/0x1b
-[22138.763392] ---[ end trace 72065e1b51c7c1cc ]---
+The reason why I replaced the sepcail type number (i.e. -1) with a bitmask is
+that I thought there might be some cases when we want to operate on some
+of the quota types rather than all of them. When the number of quota
+types was 2,
+-1 is alright. But since we are using 3 quota types, it becomes a
+problem. In order
+to keep the compatibility of quota interfaces, we need to pass only
+QUOTA_USR_BIT | QUOTA_GRP_BIT to functions like __dquot_initialize().
+But for ext4, we need to pass QUOTA_ALL_BIT. This is an important use case
+which -1 quota type is not able to satisfy.
 
-That starts in
-SYSCALL_DEFINE2(umount, char __user *, name, int, flags)
-...
-        retval = do_umount(mnt, flags);
-dput_and_out:
-        /* we mustn't call path_put() as that would clear mnt_expiry_mark */
-        dput(path.dentry);
-        mntput_no_expire(mnt);
-out:
-        return retval;
+So, in general, I will:
+1) keep MAXQUOTAS value as 2;
+2) replace MAXQUOTAS in genral codes with MAXQUOTAS_NEW (3);
+3) use EXT4_MAXQUOTAS in Ext4 codes.
 
-and hits the warning in that mntput_no_expire call:
-static void bdev_inode_switch_bdi(struct inode *inode,
-                        struct backing_dev_info *dst)
-...
-	                WARN_ON_ONCE(write_inode_now(inode, true));
+Please let me know if you have any suggestions.
 
-The mntput_no_expire call chain doesn't pass return values 
-back, so umount doesn't report if anything extra went wrong
-in the write_inode_now call; it just returns the result
-from do_umount.  The first problem to the first device
-triggers the WARN_ON_ONCE message, but then it's silent
-for other afflicted devices.
-
-Every afflicted device does get one of these:
-[22141.816183] EXT4-fs error (device sda): ext4_put_super:792: Couldn't clean up the journal
-
-and shutdown was not blocked by these problems.
-
----
-Rob Elliott    HP Server Storage
-
-
+Regards,
+                                                         - Li Xi
