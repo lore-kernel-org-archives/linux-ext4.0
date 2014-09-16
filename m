@@ -1,34 +1,51 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 84201] mount doesn't clear usrjquota / grpjqouta options
-Date: Tue, 16 Sep 2014 20:25:12 +0000
-Message-ID: <bug-84201-13602-cFAA3Yh28Z@https.bugzilla.kernel.org/>
-References: <bug-84201-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 2/2] ext3: Don't check quota format when there are no quota files
+Date: Tue, 16 Sep 2014 22:38:25 +0200
+Message-ID: <1410899905-32290-2-git-send-email-jack@suse.cz>
+References: <1410899905-32290-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	stable@vger.kernel.org
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:57173 "EHLO mail.kernel.org"
+Received: from cantor2.suse.de ([195.135.220.15]:45306 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753853AbaIPUZO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Sep 2014 16:25:14 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 90C4E201ED
-	for <linux-ext4@vger.kernel.org>; Tue, 16 Sep 2014 20:25:13 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id DA36D201B4
-	for <linux-ext4@vger.kernel.org>; Tue, 16 Sep 2014 20:25:12 +0000 (UTC)
-In-Reply-To: <bug-84201-13602@https.bugzilla.kernel.org/>
+	id S1750811AbaIPUia (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Sep 2014 16:38:30 -0400
+In-Reply-To: <1410899905-32290-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=84201
+The check whether quota format is set even though there are no
+quota files with journalled quota is pointless and it actually
+makes it impossible to turn off journalled quotas (as there's
+no way to unset journalled quota format). Just remove the check.
 
---- Comment #9 from Jan Kara <jack@suse.cz> ---
-Created attachment 150581
-  --> https://bugzilla.kernel.org/attachment.cgi?id=150581&action=edit
-[PATCH] ext4: Don't check quota format when there are no quota files
+CC: stable@vger.kernel.org
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext3/super.c | 7 -------
+ 1 file changed, 7 deletions(-)
 
+I'm going to queue this patch unless someone objects.
+
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 622e88249024..2c42e739e3d1 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -1354,13 +1354,6 @@ set_qf_format:
+ 					"not specified.");
+ 			return 0;
+ 		}
+-	} else {
+-		if (sbi->s_jquota_fmt) {
+-			ext3_msg(sb, KERN_ERR, "error: journaled quota format "
+-					"specified with no journaling "
+-					"enabled.");
+-			return 0;
+-		}
+ 	}
+ #endif
+ 	return 1;
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+1.8.1.4
+
