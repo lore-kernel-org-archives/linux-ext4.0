@@ -1,37 +1,36 @@
-From: Christoph Lameter <cl@linux.com>
-Subject: Re: Best way to pin a page in ext4?
-Date: Tue, 16 Sep 2014 13:34:37 -0500 (CDT)
-Message-ID: <alpine.DEB.2.11.1409161330480.21297@gentwo.org>
-References: <20140915185102.0944158037A@closure.thunk.org> <36321733-F488-49E3-8733-C6758F83DFA1@dilger.ca> <20140916180759.GI6205@thunk.org>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Andreas Dilger <adilger@dilger.ca>, linux-mm <linux-mm@kvack.org>,
-    linux-ext4@vger.kernel.org, hughd@google.com,
-    Peter Zijlstra <a.p.zijlstra@chello.nl>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20140916180759.GI6205@thunk.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] ext4: check EA value offset when loading
+Date: Tue, 16 Sep 2014 14:41:16 -0400
+Message-ID: <20140916184116.GJ6205@thunk.org>
+References: <20140914173252.31996.86784.stgit@birch.djwong.org>
+ <20140914173259.31996.39833.stgit@birch.djwong.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:60314 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754221AbaIPSlU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Sep 2014 14:41:20 -0400
+Content-Disposition: inline
+In-Reply-To: <20140914173259.31996.39833.stgit@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 16 Sep 2014, Theodore Ts'o wrote:
+On Sun, Sep 14, 2014 at 10:32:59AM -0700, Darrick J. Wong wrote:
+> When loading extended attributes, check each entry's value offset to
+> make sure it doesn't collide with the entries.
+> 
+> Without this check it is easy to crash the kernel by mounting a
+> malicious FS containing a file with an EA wherein e_value_offs = 0 and
+> e_value_size > 0 and then deleting the EA, which corrupts the name
+> list.
+> 
+> (See the f_ea_value_crash test's FS image in e2fsprogs for an example.)
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-> > It doesn't seem unreasonable to just grab an extra refcount on the pages
-> > when they are first loaded.
->
-> Well yes, but using mlock_vma_page() would be a bit more efficient,
-> and technically, more correct than simply elevating the refcount.
+Thanks, applied.
 
-mlocked pages can be affected by page migration. They are not
-pinned since POSIX only says that the pages must stay in memory. So the OS
-is free to move them around physical memory.
-
-Pinned pages have an elevated refcount. Note also Peter Zijlstra's
-recent work on pinned pages.
-
-https://lkml.org/lkml/2014/5/26/345
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+					- Ted
