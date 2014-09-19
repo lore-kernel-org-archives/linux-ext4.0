@@ -1,39 +1,52 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 28/34] tests: test debugfs punch command
-Date: Fri, 19 Sep 2014 12:26:32 -0400
-Message-ID: <20140919162632.GP26995@thunk.org>
-References: <20140913221112.13646.3873.stgit@birch.djwong.org>
- <20140913221423.13646.84263.stgit@birch.djwong.org>
+Subject: Re: Reserved GDT inode: blocks vs extents
+Date: Fri, 19 Sep 2014 12:36:49 -0400
+Message-ID: <20140919163649.GQ26995@thunk.org>
+References: <BAY406-EAS150EB9E4098E2894ADA30B7FDB40@phx.gbl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: TR Reardon <thomas_reardon@hotmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37796 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:37815 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753398AbaISQ0e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Sep 2014 12:26:34 -0400
+	id S1755848AbaISQgw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 19 Sep 2014 12:36:52 -0400
 Content-Disposition: inline
-In-Reply-To: <20140913221423.13646.84263.stgit@birch.djwong.org>
+In-Reply-To: <BAY406-EAS150EB9E4098E2894ADA30B7FDB40@phx.gbl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Sep 13, 2014 at 03:14:23PM -0700, Darrick J. Wong wrote:
-> Test punching out various parts of sparse files.
+On Fri, Sep 19, 2014 at 11:54:39AM -0400, TR Reardon wrote:
+> Hello all: there's probably a good reason for this, but I'm wondering why inode#7 (reserved GDT blocks) is always created with a block map rather than extent? 
 > 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
->  tests/f_punch/expect          |  143 +++++++++++++++++++++++++++++++++++++++++
->  tests/f_punch/name            |    1 
->  tests/f_punch/script          |  129 +++++++++++++++++++++++++++++++++++++
->  tests/f_punch_bigalloc/expect |  142 +++++++++++++++++++++++++++++++++++++++++
->  tests/f_punch_bigalloc/name   |    1 
->  tests/f_punch_bigalloc/script |  130 +++++++++++++++++++++++++++++++++++++
+>  [see ext2fs_create_resize_inode()]
 
-Even though these tests are using e2fsck, if the primary goal is to
-test debugfs, these should probably renamed d_punch and
-d_punch_bigalloc.
+It's created using an indirect map because the on-line resizing code
+in the kernel relies on it.  It's rather dependent on the structure of
+the indirect block map so that the kernel knows where to fetch the
+necessary blocks in each block group to extend the block group
+descriptor.
+
+So no, we can't change it.
+
+And we do have a solution, namely the meta_bg layout which mostly
+solves the problem, although at the cost of slowing down the mount
+time.
+
+But that may be moot, since one of the things that I've been
+considering is to stop pinning the block group descriptors in memory,
+and just start reading in memory as they are needed.  The rationale is
+that for a 4TB disk, we're burning 8 MB of memory.  And if you have
+two dozen disks attached to your system, then you're burning 192
+megabytes of memory, which starts to fairly significant amounts of
+memory, especially for bookcase NAS servers.
+
+If I would do it all over again, knowing what we know now, I'd
+probably redesign the meta_bg layout somewhat to group block group
+descriptors into chunks.  But it's probably not worth it to add yet
+another block group descriptor layout at this point.
 
 Cheers,
 
-					- Ted
+						- Ted
