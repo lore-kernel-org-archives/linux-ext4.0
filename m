@@ -1,69 +1,53 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 06/34] debugfs: add LIBINTL to debugfs link command
-Date: Fri, 19 Sep 2014 00:46:01 -0400
-Message-ID: <20140919044601.GI26995@thunk.org>
-References: <20140913221112.13646.3873.stgit@birch.djwong.org>
- <20140913221152.13646.7986.stgit@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH 3/4] Fix build failures due to missing $(SYSLIBS)
+Date: Fri, 19 Sep 2014 01:50:57 -0400
+Message-ID: <1411105858-21120-3-git-send-email-tytso@mit.edu>
+References: <1411105858-21120-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36863 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:36939 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752639AbaISEqG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Sep 2014 00:46:06 -0400
-Content-Disposition: inline
-In-Reply-To: <20140913221152.13646.7986.stgit@birch.djwong.org>
+	id S1755615AbaISFvE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 19 Sep 2014 01:51:04 -0400
+In-Reply-To: <1411105858-21120-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Sep 13, 2014 at 03:11:52PM -0700, Darrick J. Wong wrote:
-> Since debugfs now links in the journal code (which in turn depends on
-> internationalization libraries) we must add a linker option to pull
-> that in on Mac OSX.
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Two link lines were missing $(SYSLIBS), which is needed for dietlibc.
 
-The dependency on the internationalization libraries wasn't caused by
-the journal code.  It was caused by create_inode.h pulling in
-nls-enable.h indiscriminately.  The following should fix things (I'll
-check this in alongside some other patches needed to allow e2fsprogs
-to build under dietlibc):
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ lib/ext2fs/Makefile.in | 2 +-
+ misc/Makefile.in       | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/misc/create_inode.c b/misc/create_inode.c
-index 7f57979..cf7c097 100644
---- a/misc/create_inode.c
-+++ b/misc/create_inode.c
-@@ -17,6 +17,7 @@
- #endif
+diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
+index 45e733c..f155233 100644
+--- a/lib/ext2fs/Makefile.in
++++ b/lib/ext2fs/Makefile.in
+@@ -476,7 +476,7 @@ tst_inline: $(srcdir)/inline.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
+ tst_inline_data: inline_data.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) -o tst_inline_data $(srcdir)/inline_data.c $(ALL_CFLAGS) \
+-	-DDEBUG $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR)
++	-DDEBUG $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) $(SYSLIBS)
  
- #include "create_inode.h"
-+#include "nls-enable.h"
+ tst_csum: csum.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR) $(STATIC_LIBE2P) \
+ 		$(top_srcdir)/lib/e2p/e2p.h
+diff --git a/misc/Makefile.in b/misc/Makefile.in
+index 0b59c0c..d4a02d3 100644
+--- a/misc/Makefile.in
++++ b/misc/Makefile.in
+@@ -351,7 +351,7 @@ e2fuzz: $(E2FUZZ_OBJS) $(DEPLIBS) $(DEPLIBBLKID) $(DEPLIBUUID) \
+ 		$(DEPLIBQUOTA) $(LIBEXT2FS)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -o e2fuzz $(E2FUZZ_OBJS) $(LIBS) \
+-		$(LIBBLKID) $(LIBUUID) $(LIBEXT2FS)
++		$(LIBBLKID) $(LIBUUID) $(LIBEXT2FS) $(SYSLIBS)
  
- #if __STDC_VERSION__ < 199901L
- # if __GNUC__ >= 2
-diff --git a/misc/create_inode.h b/misc/create_inode.h
-index 067bf96..145fd57 100644
---- a/misc/create_inode.h
-+++ b/misc/create_inode.h
-@@ -7,7 +7,6 @@
- #include "et/com_err.h"
- #include "e2p/e2p.h"
- #include "ext2fs/ext2fs.h"
--#include "nls-enable.h"
- 
- struct hdlink_s
- {
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 69045b2..f09351d 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -58,6 +58,7 @@ extern int optind;
- #include "quota/quotaio.h"
- #include "mke2fs.h"
- #include "create_inode.h"
-+#include "nls-enable.h"
- 
- #define STRIDE_LENGTH 8
- 
+ filefrag: $(FILEFRAG_OBJS)
+ 	$(E) "	LD $@"
+-- 
+2.1.0
+
