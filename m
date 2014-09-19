@@ -1,65 +1,54 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/4] create_inode: don't indiscriminately #include "nls-enable.h"
-Date: Fri, 19 Sep 2014 01:50:55 -0400
-Message-ID: <1411105858-21120-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 4/4] e2fsck: use ext2fs_get_mem() instad of ext2fs_get_memalign()
+Date: Fri, 19 Sep 2014 01:50:58 -0400
+Message-ID: <1411105858-21120-4-git-send-email-tytso@mit.edu>
+References: <1411105858-21120-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36943 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:36945 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755437AbaISFvE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753906AbaISFvE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 19 Sep 2014 01:51:04 -0400
+In-Reply-To: <1411105858-21120-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The create_inode.h header file is pulled in by debugfs, which is not
-internationalized.  It had no business pulling in nls-enable.h; that
-header file should only be used in specific .c files that support
-internationalization.
+There is no reason to request a aligned buffer in
+check_{inode,block}_bitmap, and this will cause failures for dietlibc,
+which doesn't have support for posix_memalign() or any other way to
+request an aligned memory allocation.  Fortunately, this is only
+needed in very few places where direct I/O is required.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- misc/create_inode.c | 1 +
- misc/create_inode.h | 1 -
- misc/mke2fs.c       | 1 +
- 3 files changed, 2 insertions(+), 1 deletion(-)
+ e2fsck/pass5.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/misc/create_inode.c b/misc/create_inode.c
-index 7f57979..cf7c097 100644
---- a/misc/create_inode.c
-+++ b/misc/create_inode.c
-@@ -17,6 +17,7 @@
- #endif
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index 86ac9fd..8d6032b 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -99,8 +99,7 @@ static void check_inode_bitmap_checksum(e2fsck_t ctx)
+ 		return;
  
- #include "create_inode.h"
-+#include "nls-enable.h"
+ 	nbytes = (size_t)(EXT2_INODES_PER_GROUP(ctx->fs->super) / 8);
+-	retval = ext2fs_get_memalign(ctx->fs->blocksize, ctx->fs->blocksize,
+-				     &buf);
++	retval = ext2fs_get_mem(ctx->fs->blocksize, &buf);
+ 	if (retval) {
+ 		com_err(ctx->program_name, 0, "%s",
+ 		    _("check_inode_bitmap_checksum: Memory allocation error"));
+@@ -155,8 +154,7 @@ static void check_block_bitmap_checksum(e2fsck_t ctx)
+ 		return;
  
- #if __STDC_VERSION__ < 199901L
- # if __GNUC__ >= 2
-diff --git a/misc/create_inode.h b/misc/create_inode.h
-index 067bf96..145fd57 100644
---- a/misc/create_inode.h
-+++ b/misc/create_inode.h
-@@ -7,7 +7,6 @@
- #include "et/com_err.h"
- #include "e2p/e2p.h"
- #include "ext2fs/ext2fs.h"
--#include "nls-enable.h"
- 
- struct hdlink_s
- {
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 69045b2..f09351d 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -58,6 +58,7 @@ extern int optind;
- #include "quota/quotaio.h"
- #include "mke2fs.h"
- #include "create_inode.h"
-+#include "nls-enable.h"
- 
- #define STRIDE_LENGTH 8
- 
+ 	nbytes = (size_t)(EXT2_CLUSTERS_PER_GROUP(ctx->fs->super) / 8);
+-	retval = ext2fs_get_memalign(ctx->fs->blocksize, ctx->fs->blocksize,
+-				     &buf);
++	retval = ext2fs_get_mem(ctx->fs->blocksize, &buf);
+ 	if (retval) {
+ 		com_err(ctx->program_name, 0, "%s",
+ 		    _("check_block_bitmap_checksum: Memory allocation error"));
 -- 
 2.1.0
 
