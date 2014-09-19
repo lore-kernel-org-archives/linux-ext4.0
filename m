@@ -1,53 +1,65 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/4] Fix build failures due to missing $(SYSLIBS)
-Date: Fri, 19 Sep 2014 01:50:57 -0400
-Message-ID: <1411105858-21120-3-git-send-email-tytso@mit.edu>
-References: <1411105858-21120-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/4] create_inode: don't indiscriminately #include "nls-enable.h"
+Date: Fri, 19 Sep 2014 01:50:55 -0400
+Message-ID: <1411105858-21120-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36939 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:36943 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755615AbaISFvE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755437AbaISFvE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 19 Sep 2014 01:51:04 -0400
-In-Reply-To: <1411105858-21120-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Two link lines were missing $(SYSLIBS), which is needed for dietlibc.
+The create_inode.h header file is pulled in by debugfs, which is not
+internationalized.  It had no business pulling in nls-enable.h; that
+header file should only be used in specific .c files that support
+internationalization.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- lib/ext2fs/Makefile.in | 2 +-
- misc/Makefile.in       | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ misc/create_inode.c | 1 +
+ misc/create_inode.h | 1 -
+ misc/mke2fs.c       | 1 +
+ 3 files changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index 45e733c..f155233 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -476,7 +476,7 @@ tst_inline: $(srcdir)/inline.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
- tst_inline_data: inline_data.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_inline_data $(srcdir)/inline_data.c $(ALL_CFLAGS) \
--	-DDEBUG $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR)
-+	-DDEBUG $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) $(SYSLIBS)
+diff --git a/misc/create_inode.c b/misc/create_inode.c
+index 7f57979..cf7c097 100644
+--- a/misc/create_inode.c
++++ b/misc/create_inode.c
+@@ -17,6 +17,7 @@
+ #endif
  
- tst_csum: csum.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR) $(STATIC_LIBE2P) \
- 		$(top_srcdir)/lib/e2p/e2p.h
-diff --git a/misc/Makefile.in b/misc/Makefile.in
-index 0b59c0c..d4a02d3 100644
---- a/misc/Makefile.in
-+++ b/misc/Makefile.in
-@@ -351,7 +351,7 @@ e2fuzz: $(E2FUZZ_OBJS) $(DEPLIBS) $(DEPLIBBLKID) $(DEPLIBUUID) \
- 		$(DEPLIBQUOTA) $(LIBEXT2FS)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) $(ALL_LDFLAGS) -o e2fuzz $(E2FUZZ_OBJS) $(LIBS) \
--		$(LIBBLKID) $(LIBUUID) $(LIBEXT2FS)
-+		$(LIBBLKID) $(LIBUUID) $(LIBEXT2FS) $(SYSLIBS)
+ #include "create_inode.h"
++#include "nls-enable.h"
  
- filefrag: $(FILEFRAG_OBJS)
- 	$(E) "	LD $@"
+ #if __STDC_VERSION__ < 199901L
+ # if __GNUC__ >= 2
+diff --git a/misc/create_inode.h b/misc/create_inode.h
+index 067bf96..145fd57 100644
+--- a/misc/create_inode.h
++++ b/misc/create_inode.h
+@@ -7,7 +7,6 @@
+ #include "et/com_err.h"
+ #include "e2p/e2p.h"
+ #include "ext2fs/ext2fs.h"
+-#include "nls-enable.h"
+ 
+ struct hdlink_s
+ {
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 69045b2..f09351d 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -58,6 +58,7 @@ extern int optind;
+ #include "quota/quotaio.h"
+ #include "mke2fs.h"
+ #include "create_inode.h"
++#include "nls-enable.h"
+ 
+ #define STRIDE_LENGTH 8
+ 
 -- 
 2.1.0
 
