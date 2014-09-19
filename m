@@ -1,41 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 35/34] e2fsck: free bh when descriptor block checksum
- fails
-Date: Thu, 18 Sep 2014 21:46:48 -0400
-Message-ID: <20140919014648.GG26995@thunk.org>
+Subject: Re: [PATCH 36/34] misc: fix Coverity complaints
+Date: Thu, 18 Sep 2014 21:47:58 -0400
+Message-ID: <20140919014758.GH26995@thunk.org>
 References: <20140913221112.13646.3873.stgit@birch.djwong.org>
- <20140914171935.GE10150@birch.djwong.org>
- <5415E85D.4070703@redhat.com>
+ <20140918190902.GH10150@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36708 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:36722 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756460AbaISBqw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Sep 2014 21:46:52 -0400
+	id S1750924AbaISBsB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Sep 2014 21:48:01 -0400
 Content-Disposition: inline
-In-Reply-To: <5415E85D.4070703@redhat.com>
+In-Reply-To: <20140918190902.GH10150@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 14, 2014 at 02:11:25PM -0500, Eric Sandeen wrote:
-> On 9/14/14 12:19 PM, Darrick J. Wong wrote:
-> > Free the buffer head if the journal descriptor block fails checksum
-> > verification.  This has been patched before (see "e2fsck: free bh on
-> > csum verify error in do_one_pass") but apparently the patch was never
-> > committed to jbd2 in the kernel, so when we resync'd the recovery code
-> > with 3.16, the bug came back.  Sigh.
+On Thu, Sep 18, 2014 at 12:09:02PM -0700, Darrick J. Wong wrote:
+> Fix a few problems that Coverity picked up with error handling.
 > 
-> Cool. 
-> 
-> Reviewed-by: Eric Sandeen <sandeen@redhat.com>
-> 
-> thanks for fixing up the kernel side... I hadn't thought about that,
-> obviously.  :(
+> Fixes-Coverity-Bug: 1239278
+> Fixes-Coverity-Bug: 1239279
+> Fixes-Coverity-Bug: 1239280
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
 Applied, thanks.
 
-					- Ted
+				- Ted
