@@ -1,95 +1,138 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 4/5] generic: add mmap write vs truncate/remap test
-Date: Sun, 21 Sep 2014 09:32:09 +1000
-Message-ID: <20140920233209.GJ4267@dastard>
-References: <1410918113-23516-1-git-send-email-david@fromorbit.com>
- <1410918113-23516-5-git-send-email-david@fromorbit.com>
- <541CC790.7060306@sandeen.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@sandeen.net>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] misc: if dlopen() is available, use it to load the libmagic library
+Date: Sun, 21 Sep 2014 01:28:26 -0400
+Message-ID: <1411277306-29807-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:15010 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750912AbaITXcN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 20 Sep 2014 19:32:13 -0400
-Content-Disposition: inline
-In-Reply-To: <541CC790.7060306@sandeen.net>
+Received: from imap.thunk.org ([74.207.234.97]:39333 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751021AbaIUF2h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 21 Sep 2014 01:28:37 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 19, 2014 at 07:17:20PM -0500, Eric Sandeen wrote:
-> On 9/16/14 8:41 PM, Dave Chinner wrote:
-> > This test exposed a problem with mapped writes to the tail page of a
-> > file in XFS and potentially ext4. Eric did all the hard work of
-> > taking the bug report and generating the reproducable test case
-> > on ext4, but I haven't been able to reproduce then problem on ext4.
-> > 
-> > Regardless, make it a generic test so that we can ensure that all
-> > filesystems handle the case correctly.
-> 
-> Oof, kermit on #xfs points out that even this is sufficient to show
-> a problem:
-> 
->  mkfs.ext4 -b 1024 -F empty.img
->   mount -o loop empty.img mnt
->   sync
-> 
-> xfs_io -f -t \
-> -c            "pwrite               0          0x210  "      \
-> -c            "mmap      -rw        0          0xd08  "      \
-> -c            "mwrite    -S         0x50       0x210  0xaf8"  \
-> -c            "truncate                        0x1000"  \
-> mnt/testfile
+This prevents the libmagic library from being a hard dependency; if
+it's not there, we can simply do without it.
 
-That's supposed to SIGBUS. From the mmap man page:
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ configure        |  3 +++
+ configure.in     |  3 +++
+ misc/plausible.c | 56 +++++++++++++++++++++++++++++++++++++++++++++++++-------
+ 3 files changed, 55 insertions(+), 7 deletions(-)
 
-SIGBUS	Attempted  access to a portion of the buffer that does not
-	correspond to the file (for example, beyond the end of the
-	file, including the case where another process has truncated
-	the file).
-
-I'm not sure that can be fixed in the filesystem, though, because
-after a page fault inside the valid file region we can't prevent
-mmap from writing beyond EOF in the same page. It's one of those "we
-can't really do anything sane here" interface problems.
-
-However, the truncate up is supposed to leave the newly exposed
-regions full of zeros and not expose stale data from beyond the old
-EOF. XFS results in the correct output which is:
-
-00000000  cd cd cd cd cd cd cd cd  cd cd cd cd cd cd cd cd |................|
-*
-00000210  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00 |................|
-*
-00001000
-
-Because it zeros allocated space between the old EOF and new EOF on
-truncate up.
-
-What is really interesting is this addition:
-
-xfs_io -f -t \
--c            "pwrite               0          0x210  "      \
--c            "mmap      -rw        0          0xd08  "      \
--c            "mwrite    -S         0x50       0x210  0xaf8"  \
--c            "fsync" \
--c            "truncate                        0x1000"  \
-mnt/testfile
-
-Causes the ext4 data corruption goes away, probably because the act
-of writing the page zeroes the tail blocks beyond EOF before writing
-them. XFS has code to specifically do this in xfs_vm_writepage, and
-I'm pretty sure we got that from ext4. So in the absence of ext4
-zeroing on truncate up, I suspect it needs to write the tail page
-at the old EOF on truncate up just like we have needed to add to
-XFS to solve the other problems...
-
-Cheers,
-
-Dave.
+diff --git a/configure b/configure
+index 7ee6323..2bc1275 100755
+--- a/configure
++++ b/configure
+@@ -13187,6 +13187,9 @@ done
+ 
+ fi
+ 
++if test "$ac_cv_lib_dl_dlopen" = yes ; then
++   MAGIC_LIB=$DLOPEN_LIB
++fi
+ 
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for optreset" >&5
+ $as_echo_n "checking for optreset... " >&6; }
+diff --git a/configure.in b/configure.in
+index 3bd3c20..e809324 100644
+--- a/configure.in
++++ b/configure.in
+@@ -1157,6 +1157,9 @@ dnl See if libmagic exists
+ dnl
+ AC_CHECK_LIB(magic, magic_file, [MAGIC_LIB=-lmagic
+ AC_CHECK_HEADERS([magic.h])])
++if test "$ac_cv_lib_dl_dlopen" = yes ; then
++   MAGIC_LIB=$DLOPEN_LIB
++fi
+ AC_SUBST(MAGIC_LIB)
+ dnl
+ dnl See if optreset exists
+diff --git a/misc/plausible.c b/misc/plausible.c
+index caeb929..aea4fce 100644
+--- a/misc/plausible.c
++++ b/misc/plausible.c
+@@ -36,6 +36,48 @@
+ #include "nls-enable.h"
+ #include "blkid/blkid.h"
+ 
++static magic_t (*dl_magic_open)(int);
++static const char *(*dl_magic_file)(magic_t, const char *);
++static int (*dl_magic_load)(magic_t, const char *);
++static void (*dl_magic_close)(magic_t);
++
++#ifdef HAVE_MAGIC_H
++#ifdef HAVE_DLOPEN
++#include <dlfcn.h>
++
++static void *magic_handle;
++
++static int magic_library_available(void)
++{
++	if (!magic_handle) {
++		magic_handle = dlopen("libmagic.so.1", RTLD_NOW);
++		if (!magic_handle)
++			return 0;
++
++		dl_magic_open = dlsym(magic_handle, "magic_open");
++		dl_magic_file = dlsym(magic_handle, "magic_file");
++		dl_magic_load = dlsym(magic_handle, "magic_load");
++		dl_magic_close = dlsym(magic_handle, "magic_close");
++	}
++
++	if (!dl_magic_open || !dl_magic_file ||
++	    !dl_magic_load || !dl_magic_close)
++		return 0;
++	return 1;
++}
++#else
++static int magic_library_available(void)
++{
++	dl_magic_open = magic_open;
++	dl_magic_file = magic_file;
++	dl_magic_load = magic_load;
++	dl_magic_close = magic_close;
++
++	return 1;
++}
++#endif
++#endif
++
+ static void print_ext2_info(const char *device)
+ 
+ {
+@@ -198,20 +240,20 @@ int check_plausibility(const char *device, int flags, int *ret_is_dev)
+ 	}
+ 
+ #ifdef HAVE_MAGIC_H
+-	if (flags & CHECK_FS_EXIST) {
++	if ((flags & CHECK_FS_EXIST) && magic_library_available()) {
+ 		const char *msg;
+ 		magic_t mag;
+ 
+-		mag = magic_open(MAGIC_RAW | MAGIC_SYMLINK | MAGIC_DEVICES |
+-				 MAGIC_ERROR | MAGIC_NO_CHECK_ELF |
+-				 MAGIC_NO_CHECK_COMPRESS);
+-		magic_load(mag, NULL);
++		mag = dl_magic_open(MAGIC_RAW | MAGIC_SYMLINK | MAGIC_DEVICES |
++				    MAGIC_ERROR | MAGIC_NO_CHECK_ELF |
++				    MAGIC_NO_CHECK_COMPRESS);
++		dl_magic_load(mag, NULL);
+ 
+-		msg = magic_file(mag, device);
++		msg = dl_magic_file(mag, device);
+ 		if (msg && strcmp(msg, "data") && strcmp(msg, "empty"))
+ 			printf(_("%s contains a `%s'\n"), device, msg);
+ 
+-		magic_close(mag);
++		dl_magic_close(mag);
+ 		return 0;
+ 	}
+ #endif
 -- 
-Dave Chinner
-david@fromorbit.com
+2.1.0
+
