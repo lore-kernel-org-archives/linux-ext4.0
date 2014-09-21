@@ -1,54 +1,47 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: resize2fs problem with stride calc
-Date: Sun, 21 Sep 2014 11:13:06 -0500
-Message-ID: <541EF912.7000801@redhat.com>
-References: <BAY179-W85AF983234DB78F07A12EFDB50@phx.gbl>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [RFC] mke2fs -E hash_alg=siphash: any interest?
+Date: Sun, 21 Sep 2014 13:55:15 -0400
+Message-ID: <20140921175515.GA30646@thunk.org>
+References: <20140921095339.9074.qmail@ns.horizon.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-To: TR Reardon <thomas_reardon@hotmail.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: George Spelvin <linux@horizon.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36279 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:39754 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751204AbaIUQNJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 21 Sep 2014 12:13:09 -0400
-In-Reply-To: <BAY179-W85AF983234DB78F07A12EFDB50@phx.gbl>
+	id S1751801AbaIURzW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 21 Sep 2014 13:55:22 -0400
+Content-Disposition: inline
+In-Reply-To: <20140921095339.9074.qmail@ns.horizon.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 9/20/14 3:46 PM, TR Reardon wrote:
-> resize2fs seems to come up with some crazy default stride numbers.
-> This occurs with and without bigalloc.
+On Sun, Sep 21, 2014 at 05:53:39AM -0400, George Spelvin wrote:
 > 
+> Basically, it offers security similar to teahash with a faster, and better
+> studied, primitive designed specifically for this application.
 > 
-> I was testing enabling/disabling 64bit using latest patches from DJW,
-> and noticed that s_raid_stride was being written with nonsensical
-> values, in particular determine_fs_stride() is coming up with overly
-> large values.  The code is old (2006) and lacks comment so I'm not
-> sure what the intended operation is.  Does this just need to be
-> updated for flex_bg?  Should s_raid_stride ever be auto-changed on
-> resize?  If it should change, should stripe also change?
+> I'm thinking of turning this into a patch for ext2utils and fs/ext4.
+> 
+> Could I ask what the general level of interest is?  On a scale of "hell,
+> no, not more support burden!" to "thank you, I've been meaning to find
+> time to add that!"
 
-That old commit says:
+I'm certainly not against adding a new hash function.  The reality is
+that it would be quite a while before we could turn it on by default,
+because of the backwards compatibility concerns.
 
-+               In addition, add code so that resize2fs can automatically
-+               determine the RAID stride parameter that had been
-+               previously used on the filesystem.
+The question I would ask is whether we can show an anctual performance
+improvement with the hash being used in situ.  Let's give it the best
+possible chance of making a difference; let's assume a RAM disk with a
+very metadata intensive benchmark, with journalling turned off.  What
+sort of difference would we see, either in terms of system CPU time,
+wall clock time, etc.?
 
-but a year later, in 2007, this:
+The results of such a benchmark would certainly make a difference in
+how aggressively we might try to phase in a new hash algorithm.
 
-commit 96c6a3acd377698cb99ffd9925bec9b20ca4f6f9
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Fri May 18 22:06:53 2007 -0400
+Cheers,
 
-    Store the RAID stride value in the superblock and take advantage of it
-
-stored it properly in the superblock (this hit e2fsprogs-1.40).
-
-So maybe the whole heuristic could just be removed now, but from a simple
-test, it's working here.
-
-What was the geometry (dumpe2fs -h) of your filesystem before the resize?
-
--Eric
+					- Ted
