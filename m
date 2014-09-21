@@ -1,59 +1,43 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] MCONFIG: allow developers to override CFLAGS
-Date: Sun, 21 Sep 2014 15:37:39 -0400
-Message-ID: <1411328260-8665-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: linux@horizon.com
+Subject: Re: [RFC] mke2fs -E hash_alg=siphash: any interest?
+Date: 21 Sep 2014 17:04:16 -0400
+Message-ID: <20140921210416.27127.qmail@ns.horizon.com>
+References: <20140921175515.GA30646@thunk.org>
+Cc: linux-ext4@vger.kernel.org
+To: linux@horizon.com, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39832 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752715AbaIUThs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 21 Sep 2014 15:37:48 -0400
+Received: from ns.horizon.com ([71.41.210.147]:42400 "HELO ns.horizon.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1751313AbaIUVET (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 21 Sep 2014 17:04:19 -0400
+In-Reply-To: <20140921175515.GA30646@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Move other C compiler flags to ALL_CFLAGS so that CFLAGS only controls
-the debugging and optimization flags.  This allows a developer to
-build with "make CFLAGS=-g" in order to compile w/o optimization.
+> I'm certainly not against adding a new hash function.  The reality is
+> that it would be quite a while before we could turn it on by default,
+> because of the backwards compatibility concerns.
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- MCONFIG.in | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+Well, yes, obviously!  My itch is just that I want to use it myself;
+I prefer it for security and cleanliness reasons.  The benchmarks are
+mostly to prove that it isn't slower.
 
-diff --git a/MCONFIG.in b/MCONFIG.in
-index 4751176..29505da 100644
---- a/MCONFIG.in
-+++ b/MCONFIG.in
-@@ -73,9 +73,9 @@ pkgconfigdir = $(libdir)/pkgconfig
- 
- CC = @CC@
- BUILD_CC = @BUILD_CC@
--CFLAGS = @CFLAGS@ @DEFS@ $(LOCAL_CFLAGS)
-+CFLAGS = @CFLAGS@
- CPPFLAGS = @INCLUDES@
--ALL_CFLAGS = $(CPPFLAGS) $(CFLAGS)
-+ALL_CFLAGS = $(CPPFLAGS) $(CFLAGS) @DEFS@ $(LOCAL_CFLAGS)
- LDFLAGS = @LDFLAGS@
- ALL_LDFLAGS = $(LDFLAGS) @LDFLAG_DYNAMIC@
- LDFLAGS_STATIC = $(LDFLAGS) @LDFLAG_STATIC@
-@@ -197,14 +197,14 @@ WFLAGS=		-std=gnu99 -D_XOPEN_SOURCE=600 -D_GNU_SOURCE \
- 			-UENABLE_NLS
- 
- gcc-wall-new:
--	($(MAKE) CFLAGS="@CFLAGS@ $(WFLAGS)" > /dev/null) 2>&1 | sed -f $(top_srcdir)/util/gcc-wall-cleanup
-+	($(MAKE) CFLAGS="$(ALL_CFLAGS) $(WFLAGS)" > /dev/null) 2>&1 | sed -f $(top_srcdir)/util/gcc-wall-cleanup
- 
- gcc-wall:
- 	$(MAKE) clean > /dev/null
- 	$(MAKE) gcc-wall-new
- 
- static-check:
--	($(MAKE) C=1 V=1 CFLAGS="@CFLAGS@ $(WFLAGS)") 2>&1 | sed -f $(top_srcdir)/util/static-analysis-cleanup
-+	($(MAKE) C=1 V=1 CFLAGS="$(ALL_CFLAGS) $(WFLAGS)") 2>&1 | sed -f $(top_srcdir)/util/static-analysis-cleanup
- 
- static-check-all:
- 	$(MAKE) clean > /dev/null
--- 
-2.1.0
+> The question I would ask is whether we can show an anctual performance
+> improvement with the hash being used in situ.
 
+I quite agree, but I'll have to have a working patch before such
+a test can be made.
+
+One things I'm coming across immediately that I have to ask for
+design guidance on is the hash algorithm number assignment:
+
+- Should I leave room for more hashes with a signed/unsigned distinction,
+  or should I assume that's a historical kludge that won't be perpetuated?
+  SipHash is defined on a byte string, so there isn't really a signed
+  version.
+- Should I use a new EXT2_HASH_SIPHASH_62 = 6, or should I
+  renumber the (internal-only) EXT2_HASH_*_UNSIGNED values and use
+  EXT2_HASH_SIPHASH_4_2 = 4?
+
+None of this is truly final, but it would make my life easier if I
+didn't have to change it on my test filesystems too often.
