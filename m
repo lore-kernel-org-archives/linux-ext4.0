@@ -1,46 +1,51 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Call trace in ext4_es_lru_add on 3.10 stable
-Date: Mon, 22 Sep 2014 12:47:15 -0400
-Message-ID: <20140922164715.GB4572@thunk.org>
-References: <541AD93A.70203@profihost.ag>
- <20140918192131.GD19520@thunk.org>
- <541B32A1.3080706@profihost.ag>
- <20140918194311.GE19520@thunk.org>
- <541FC817.7030401@profihost.ag>
+Subject: Re: [RFC] mke2fs -E hash_alg=siphash: any interest?
+Date: Mon, 22 Sep 2014 13:09:03 -0400
+Message-ID: <20140922170903.GC4572@thunk.org>
+References: <BAY179-W560EC72EB98547138373E3FDB20@phx.gbl>
+ <20140922023105.16748.qmail@ns.horizon.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	"p.herz@profihost.ag >> Philipp Herz - Profihost AG"
-	<p.herz@profihost.ag>, stable@vger.kernel.org
-To: Stefan Priebe <s.priebe@profihost.ag>
-Return-path: <stable-owner@vger.kernel.org>
+Cc: thomas_reardon@hotmail.com, linux-ext4@vger.kernel.org
+To: George Spelvin <linux@horizon.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:41282 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753542AbaIVRJG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 22 Sep 2014 13:09:06 -0400
 Content-Disposition: inline
-In-Reply-To: <541FC817.7030401@profihost.ag>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20140922023105.16748.qmail@ns.horizon.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 22, 2014 at 08:56:23AM +0200, Stefan Priebe wrote:
-> >That's not the whole message; you just weren't able to capture it all.
-> >How are you capturing these messages, by the way?  Serial console?
+On Sun, Sep 21, 2014 at 10:31:05PM -0400, George Spelvin wrote:
 > 
-> Sorry this was an incomplete copy and paste by me.
+> Yes.  It's the standard hash collision attack: if someone can force too
+> many hash collisions, they can force the hash tree to have pessimal
+> performance, including excessive disk space allocation in an attempt to
+> split directory pages.
 > 
-> Here is the complete output:
-> [1578544.839610] BUG: soft lockup - CPU#7 stuck for 22s! [mysqld:29281]
-> [1578544.893450] Modules linked in: nf_conntrack_ipv4 nf_defrag_ipv4
+> In fact, I'm not sure if the code copes with more than 4096 bytes of
+> directory entry with a single hash value or it will cause some sort of
+> error.
 
-OK, thanks, this is a known bug, where when ext4 is under heavy memory
-pressure, we can end up stalling in reclaim.  This message indicates
-that the system got stalled for 22 seconds, which is not good, since
-it impacts the interactivity of your system, and increases the
-long-tail latency of requests to servers running on your system, but
-it doesn't cause any data loss or will cause any of your processes to
-crash or otherwise stop functioning (except for temporarily).
+It does cope correctly, but it means that we degrade to doing a linear
+search.  At one point we had a test where we forced the hash algorithm
+to always return "42" to check those code paths.
 
-It's something that we are working on, and there are patches which
-Zheng Liu submitted that still need a bit of polishing, but I hope to
-have it addressed soon.
+The real problem is that the htree implementation only supports a tree
+dpeth of at most two levels, and it doesn't support collapsing the
+tree to reduce space after deleting a large number of files.
+
+The first would require making a compatibility-impacting change; the
+second one would not necessarily require that, but it's also not
+entirely trivial.  We've gotten away with not making any changes here,
+partially because using a keyed hash allows us to avoid intentional
+attempts to hit those corner cases.
+
+If someone was interested in doing some work in that space, there is
+definitely room where we could improve there.
 
 Cheers,
 
-						- Ted
+					- Ted
