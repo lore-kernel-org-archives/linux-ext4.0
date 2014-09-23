@@ -1,114 +1,89 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/3] ext4: fold ext4_sync_fs_nojournal() into
- ext4_sync_fs()
-Date: Tue, 23 Sep 2014 14:29:56 +0200
-Message-ID: <20140923122956.GF2359@quack.suse.cz>
-References: <1411071989-4974-1-git-send-email-tytso@mit.edu>
+Subject: Re: Call trace in ext4_es_lru_add on 3.10 stable
+Date: Tue, 23 Sep 2014 16:43:40 +0200
+Message-ID: <20140923144340.GI2359@quack.suse.cz>
+References: <20140918192131.GD19520@thunk.org>
+ <541B32A1.3080706@profihost.ag>
+ <20140918194311.GE19520@thunk.org>
+ <541FC817.7030401@profihost.ag>
+ <20140922164715.GB4572@thunk.org>
+ <54206AA2.1050607@profihost.ag>
+ <20140922202004.GF4572@thunk.org>
+ <54212641.9010808@profihost.ag>
+ <20140923094204.GB2359@quack.suse.cz>
+ <54216641.8090608@profihost.ag>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Dexuan Cui <decui@microsoft.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:36818 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754171AbaIWM37 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 23 Sep 2014 08:29:59 -0400
+Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org,
+	"p.herz@profihost.ag >> Philipp Herz - Profihost AG"
+	<p.herz@profihost.ag>, stable@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Stefan Priebe <s.priebe@profihost.ag>
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1411071989-4974-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <54216641.8090608@profihost.ag>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 18-09-14 16:26:27, Ted Tso wrote:
-> This allows us to eliminate duplicate code, and eventually allow us to
-> also fold ext4_sops and ext4_nojournal_sops together.
+On Tue 23-09-14 14:23:29, Stefan Priebe wrote:
 > 
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-  Looks good. You can add:
-Reviewed-by: Jan Kara <jack@suse.cz>
+> Am 23.09.2014 11:42, schrieb Jan Kara:
+> >On Tue 23-09-14 09:50:25, Stefan Priebe - Profihost AG wrote:
+> >>
+> >>Am 22.09.2014 um 22:20 schrieb Theodore Ts'o:
+> >>>On Mon, Sep 22, 2014 at 08:29:54PM +0200, Stefan Priebe wrote:
+> >>>>Hi,
+> >>>>Am 22.09.2014 18:47, schrieb Theodore Ts'o:
+> >>>>>On Mon, Sep 22, 2014 at 08:56:23AM +0200, Stefan Priebe wrote:
+> >>>>>>>That's not the whole message; you just weren't able to capture it all.
+> >>>>>>>How are you capturing these messages, by the way?  Serial console?
+> >>>>>>
+> >>>>>>Sorry this was an incomplete copy and paste by me.
+> >>>>>>
+> >>>>>>Here is the complete output:
+> >>>>>>[1578544.839610] BUG: soft lockup - CPU#7 stuck for 22s! [mysqld:29281]
+> >>>>>>[1578544.893450] Modules linked in: nf_conntrack_ipv4 nf_defrag_ipv4
+> >>>>>
+> >>>>>OK, thanks, this is a known bug, where when ext4 is under heavy memory
+> >>>>>pressure, we can end up stalling in reclaim.  This message indicates
+> >>>>>that the system got stalled for 22 seconds, which is not good, since
+> >>>>>it impacts the interactivity of your system, and increases the
+> >>>>>long-tail latency of requests to servers running on your system, but
+> >>>>>it doesn't cause any data loss or will cause any of your processes to
+> >>>>>crash or otherwise stop functioning (except for temporarily).
+> >>>>>
+> >>>>>It's something that we are working on, and there are patches which
+> >>>>>Zheng Liu submitted that still need a bit of polishing, but I hope to
+> >>>>>have it addressed soon.
+> >>>>
+> >>>>Thanks for your feedback. Will those patches go to stable? Any link to
+> >>>>those patches?
+> >>>
+> >>>I'm not sure they will go to Stable when they are ready, because the
+> >>>patches are somewhat complex and so they may not apply cleanly to much
+> >>>older kernels.
+> >>>
+> >>>The patches under discussion (some have been applied, others hae been
+> >>>waiting for some requested changes) can be found here:
+> >>>
+> >>>http://patchwork.ozlabs.org/patch/377720
+> >>>http://patchwork.ozlabs.org/patch/377721
+> >>>http://patchwork.ozlabs.org/patch/377722
+> >>>http://patchwork.ozlabs.org/patch/377723
+> >>>http://patchwork.ozlabs.org/patch/377724
+> >>>http://patchwork.ozlabs.org/patch/377725
+> >>>http://patchwork.ozlabs.org/patch/377727
+> >>
+> >>hui that's a lot. Are they ALL needed to fix this?
+> >   Yes, all of them are needed.
+> 
+> How can i get notified when they're ready / polished?
+  Watching changes to fs/ext4/extents_status.c is probably the most
+reliable. Or maybe Zheng (Cced) can add you to CC list when submitting the
+patch set next time.
 
 								Honza
-
-> ---
->  fs/ext4/super.c | 36 +++++++++++++-----------------------
->  1 file changed, 13 insertions(+), 23 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 115e27d..4770c98 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -70,7 +70,6 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
->  static void ext4_clear_journal_err(struct super_block *sb,
->  				   struct ext4_super_block *es);
->  static int ext4_sync_fs(struct super_block *sb, int wait);
-> -static int ext4_sync_fs_nojournal(struct super_block *sb, int wait);
->  static int ext4_remount(struct super_block *sb, int *flags, char *data);
->  static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
->  static int ext4_unfreeze(struct super_block *sb);
-> @@ -1131,7 +1130,7 @@ static const struct super_operations ext4_nojournal_sops = {
->  	.dirty_inode	= ext4_dirty_inode,
->  	.drop_inode	= ext4_drop_inode,
->  	.evict_inode	= ext4_evict_inode,
-> -	.sync_fs	= ext4_sync_fs_nojournal,
-> +	.sync_fs	= ext4_sync_fs,
->  	.put_super	= ext4_put_super,
->  	.statfs		= ext4_statfs,
->  	.remount_fs	= ext4_remount,
-> @@ -4718,15 +4717,19 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
->  	 * being sent at the end of the function. But we can skip it if
->  	 * transaction_commit will do it for us.
->  	 */
-> -	target = jbd2_get_latest_transaction(sbi->s_journal);
-> -	if (wait && sbi->s_journal->j_flags & JBD2_BARRIER &&
-> -	    !jbd2_trans_will_send_data_barrier(sbi->s_journal, target))
-> +	if (sbi->s_journal) {
-> +		target = jbd2_get_latest_transaction(sbi->s_journal);
-> +		if (wait && sbi->s_journal->j_flags & JBD2_BARRIER &&
-> +		    !jbd2_trans_will_send_data_barrier(sbi->s_journal, target))
-> +			needs_barrier = true;
-> +
-> +		if (jbd2_journal_start_commit(sbi->s_journal, &target)) {
-> +			if (wait)
-> +				ret = jbd2_log_wait_commit(sbi->s_journal,
-> +							   target);
-> +		}
-> +	} else if (wait && test_opt(sb, BARRIER))
->  		needs_barrier = true;
-> -
-> -	if (jbd2_journal_start_commit(sbi->s_journal, &target)) {
-> -		if (wait)
-> -			ret = jbd2_log_wait_commit(sbi->s_journal, target);
-> -	}
->  	if (needs_barrier) {
->  		int err;
->  		err = blkdev_issue_flush(sb->s_bdev, GFP_KERNEL, NULL);
-> @@ -4737,19 +4740,6 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
->  	return ret;
->  }
->  
-> -static int ext4_sync_fs_nojournal(struct super_block *sb, int wait)
-> -{
-> -	int ret = 0;
-> -
-> -	trace_ext4_sync_fs(sb, wait);
-> -	flush_workqueue(EXT4_SB(sb)->rsv_conversion_wq);
-> -	dquot_writeback_dquots(sb, -1);
-> -	if (wait && test_opt(sb, BARRIER))
-> -		ret = blkdev_issue_flush(sb->s_bdev, GFP_KERNEL, NULL);
-> -
-> -	return ret;
-> -}
-> -
->  /*
->   * LVM calls this function before a (read-only) snapshot is created.  This
->   * gives us a chance to flush the journal completely and mark the fs clean.
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
