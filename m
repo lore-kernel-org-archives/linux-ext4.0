@@ -1,104 +1,80 @@
-From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-Subject: [PATCH] misc/e4defrag: output extent's status(written or unwritten)
-Date: Tue, 23 Sep 2014 18:41:41 +0800
-Message-ID: <1411468901-32210-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
+From: Stefan Priebe <s.priebe@profihost.ag>
+Subject: Re: Call trace in ext4_es_lru_add on 3.10 stable
+Date: Tue, 23 Sep 2014 14:23:29 +0200
+Message-ID: <54216641.8090608@profihost.ag>
+References: <541AD93A.70203@profihost.ag> <20140918192131.GD19520@thunk.org> <541B32A1.3080706@profihost.ag> <20140918194311.GE19520@thunk.org> <541FC817.7030401@profihost.ag> <20140922164715.GB4572@thunk.org> <54206AA2.1050607@profihost.ag> <20140922202004.GF4572@thunk.org> <54212641.9010808@profihost.ag> <20140923094204.GB2359@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <tytso@mit.edu>, <darrick.wong@oracle.com>,
-	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([59.151.112.132]:3551 "EHLO
-	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754381AbaIWKmX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Sep 2014 06:42:23 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	"p.herz@profihost.ag >> Philipp Herz - Profihost AG"
+	<p.herz@profihost.ag>, stable@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <stable-owner@vger.kernel.org>
+In-Reply-To: <20140923094204.GB2359@quack.suse.cz>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Before this patch, the output woulld be(e4defrag -c -v testfile):
-<File>
-[ext 1]:        start 33796:    logical 0:      len 1
-[ext 2]:        start 9267:     logical 1:      len 29
-[ext 3]:        start 9296:     logical 30:     len 1
-[ext 4]:        start 9297:     logical 31:     len 29
-[ext 5]:        start 9326:     logical 60:     len 1
-[ext 6]:        start 9327:     logical 61:     len 29
-...
-[ext 32]:       start 9265:     logical 800:    len 1
-[ext 33]:       start 9266:     logical 900:    len 1
 
- Total/best extents                             33/1
- Average size per extent                        61 KB
- Fragmentation score                            51
- [0-30 no problem: 31-55 a little bit fragmented: 56- needs defrag]
- This file (/mnt/xfstests/scratch/test.10) does not need defragmentation.
- Done.
+Am 23.09.2014 11:42, schrieb Jan Kara:
+> On Tue 23-09-14 09:50:25, Stefan Priebe - Profihost AG wrote:
+>>
+>> Am 22.09.2014 um 22:20 schrieb Theodore Ts'o:
+>>> On Mon, Sep 22, 2014 at 08:29:54PM +0200, Stefan Priebe wrote:
+>>>> Hi,
+>>>> Am 22.09.2014 18:47, schrieb Theodore Ts'o:
+>>>>> On Mon, Sep 22, 2014 at 08:56:23AM +0200, Stefan Priebe wrote:
+>>>>>>> That's not the whole message; you just weren't able to capture it all.
+>>>>>>> How are you capturing these messages, by the way?  Serial console?
+>>>>>>
+>>>>>> Sorry this was an incomplete copy and paste by me.
+>>>>>>
+>>>>>> Here is the complete output:
+>>>>>> [1578544.839610] BUG: soft lockup - CPU#7 stuck for 22s! [mysqld:29281]
+>>>>>> [1578544.893450] Modules linked in: nf_conntrack_ipv4 nf_defrag_ipv4
+>>>>>
+>>>>> OK, thanks, this is a known bug, where when ext4 is under heavy memory
+>>>>> pressure, we can end up stalling in reclaim.  This message indicates
+>>>>> that the system got stalled for 22 seconds, which is not good, since
+>>>>> it impacts the interactivity of your system, and increases the
+>>>>> long-tail latency of requests to servers running on your system, but
+>>>>> it doesn't cause any data loss or will cause any of your processes to
+>>>>> crash or otherwise stop functioning (except for temporarily).
+>>>>>
+>>>>> It's something that we are working on, and there are patches which
+>>>>> Zheng Liu submitted that still need a bit of polishing, but I hope to
+>>>>> have it addressed soon.
+>>>>
+>>>> Thanks for your feedback. Will those patches go to stable? Any link to
+>>>> those patches?
+>>>
+>>> I'm not sure they will go to Stable when they are ready, because the
+>>> patches are somewhat complex and so they may not apply cleanly to much
+>>> older kernels.
+>>>
+>>> The patches under discussion (some have been applied, others hae been
+>>> waiting for some requested changes) can be found here:
+>>>
+>>> http://patchwork.ozlabs.org/patch/377720
+>>> http://patchwork.ozlabs.org/patch/377721
+>>> http://patchwork.ozlabs.org/patch/377722
+>>> http://patchwork.ozlabs.org/patch/377723
+>>> http://patchwork.ozlabs.org/patch/377724
+>>> http://patchwork.ozlabs.org/patch/377725
+>>> http://patchwork.ozlabs.org/patch/377727
+>>
+>> hui that's a lot. Are they ALL needed to fix this?
+>    Yes, all of them are needed.
 
-After this patch, the output would be:
-<File>
-[ext 1]:   start 33796:    logical 0:      len 1   [written]
-[ext 2]:   start 9267:     logical 1:      len 29  [unwritten]
-[ext 3]:   start 9296:     logical 30:     len 1   [written]
-[ext 4]:   start 9297:     logical 31:     len 29  [unwritten]
-[ext 5]:   start 9326:     logical 60:     len 1   [written]
-[ext 6]:   start 9327:     logical 61:     len 29  [unwritten]
-...
-[ext 32]:  start 9265:     logical 800:    len 1   [unwritten]
-[ext 33]:  start 9266:     logical 900:    len 1   [unwritten]
+How can i get notified when they're ready / polished?
 
- Total/best extents                             33/1
- Average size per extent                        61 KB
- Fragmentation score                            51
- [0-30 no problem: 31-55 a little bit fragmented: 56- needs defrag]
- This file (/mnt/xfstests/scratch/test.10) does not need defragmentation.
- Done.
+Stefan
 
-Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
----
- misc/e4defrag.c | 14 ++++++++++----
- 1 file changed, 10 insertions(+), 4 deletions(-)
-
-diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-index d0eac60..b39e263 100644
---- a/misc/e4defrag.c
-+++ b/misc/e4defrag.c
-@@ -129,6 +129,7 @@ struct fiemap_extent_data {
- 	__u64 len;			/* blocks count */
- 	__u64 logical;		/* start logical block number */
- 	ext4_fsblk_t physical;		/* start physical block number */
-+	__u32 fe_flags;		/* FIEMAP_EXTENT_* flags for this extent */
- };
- 
- struct fiemap_extent_list {
-@@ -831,6 +832,7 @@ static int get_file_extents(int fd, struct fiemap_extent_list **ext_list_head)
- 						/ block_size;
- 			ext_list->data.len = ext_buf[i].fe_length
- 						/ block_size;
-+			ext_list->data.fe_flags = ext_buf[i].fe_flags;
- 
- 			ret = insert_extent_by_physical(
- 					ext_list_head, ext_list);
-@@ -1170,12 +1172,16 @@ static int file_statistic(const char *file, const struct stat64 *buf,
- 
- 			/* Print extents info */
- 			do {
-+				char *status = ext_list_tmp->data.fe_flags &
-+					FIEMAP_EXTENT_UNWRITTEN ?
-+					"unwritten" : "written";
- 				count++;
- 				printf("[ext %d]:\tstart %llu:\tlogical "
--						"%llu:\tlen %llu\n", count,
--						ext_list_tmp->data.physical,
--						ext_list_tmp->data.logical,
--						ext_list_tmp->data.len);
-+				       "%llu:\tlen %llu \t[%s]\n", count,
-+				       ext_list_tmp->data.physical,
-+				       ext_list_tmp->data.logical,
-+				       ext_list_tmp->data.len,
-+				       status);
- 				ext_list_tmp = ext_list_tmp->next;
- 			} while (ext_list_tmp != logical_list_head);
- 
--- 
-1.8.2.1
-
+>> No workaround possible?
+>    I don't know about any.
+>
+>> What will Redhat do with their 3.10 RHEL 7 kernel?
+>    Well, I cannot speak for RH guys but for SLES if there's a customer
+> request, we'll just go and backport the patches...
+> 								Honza
+>
