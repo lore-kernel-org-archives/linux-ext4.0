@@ -1,80 +1,90 @@
-From: Stefan Priebe <s.priebe@profihost.ag>
-Subject: Re: Call trace in ext4_es_lru_add on 3.10 stable
-Date: Tue, 23 Sep 2014 14:23:29 +0200
-Message-ID: <54216641.8090608@profihost.ag>
-References: <541AD93A.70203@profihost.ag> <20140918192131.GD19520@thunk.org> <541B32A1.3080706@profihost.ag> <20140918194311.GE19520@thunk.org> <541FC817.7030401@profihost.ag> <20140922164715.GB4572@thunk.org> <54206AA2.1050607@profihost.ag> <20140922202004.GF4572@thunk.org> <54212641.9010808@profihost.ag> <20140923094204.GB2359@quack.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 3/3] ext4: fold ext4_nojournal_sops into ext4_sops
+Date: Tue, 23 Sep 2014 14:31:48 +0200
+Message-ID: <20140923123148.GG2359@quack.suse.cz>
+References: <1411071989-4974-1-git-send-email-tytso@mit.edu>
+ <1411071989-4974-3-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	"p.herz@profihost.ag >> Philipp Herz - Profihost AG"
-	<p.herz@profihost.ag>, stable@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20140923094204.GB2359@quack.suse.cz>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Dexuan Cui <decui@microsoft.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:36844 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751860AbaIWMbv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Sep 2014 08:31:51 -0400
+Content-Disposition: inline
+In-Reply-To: <1411071989-4974-3-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu 18-09-14 16:26:29, Ted Tso wrote:
+> There's no longer any need to have a separate set of super_operations
+> for nojournal mode.
+> 
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+  Nice :) You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Am 23.09.2014 11:42, schrieb Jan Kara:
-> On Tue 23-09-14 09:50:25, Stefan Priebe - Profihost AG wrote:
->>
->> Am 22.09.2014 um 22:20 schrieb Theodore Ts'o:
->>> On Mon, Sep 22, 2014 at 08:29:54PM +0200, Stefan Priebe wrote:
->>>> Hi,
->>>> Am 22.09.2014 18:47, schrieb Theodore Ts'o:
->>>>> On Mon, Sep 22, 2014 at 08:56:23AM +0200, Stefan Priebe wrote:
->>>>>>> That's not the whole message; you just weren't able to capture it all.
->>>>>>> How are you capturing these messages, by the way?  Serial console?
->>>>>>
->>>>>> Sorry this was an incomplete copy and paste by me.
->>>>>>
->>>>>> Here is the complete output:
->>>>>> [1578544.839610] BUG: soft lockup - CPU#7 stuck for 22s! [mysqld:29281]
->>>>>> [1578544.893450] Modules linked in: nf_conntrack_ipv4 nf_defrag_ipv4
->>>>>
->>>>> OK, thanks, this is a known bug, where when ext4 is under heavy memory
->>>>> pressure, we can end up stalling in reclaim.  This message indicates
->>>>> that the system got stalled for 22 seconds, which is not good, since
->>>>> it impacts the interactivity of your system, and increases the
->>>>> long-tail latency of requests to servers running on your system, but
->>>>> it doesn't cause any data loss or will cause any of your processes to
->>>>> crash or otherwise stop functioning (except for temporarily).
->>>>>
->>>>> It's something that we are working on, and there are patches which
->>>>> Zheng Liu submitted that still need a bit of polishing, but I hope to
->>>>> have it addressed soon.
->>>>
->>>> Thanks for your feedback. Will those patches go to stable? Any link to
->>>> those patches?
->>>
->>> I'm not sure they will go to Stable when they are ready, because the
->>> patches are somewhat complex and so they may not apply cleanly to much
->>> older kernels.
->>>
->>> The patches under discussion (some have been applied, others hae been
->>> waiting for some requested changes) can be found here:
->>>
->>> http://patchwork.ozlabs.org/patch/377720
->>> http://patchwork.ozlabs.org/patch/377721
->>> http://patchwork.ozlabs.org/patch/377722
->>> http://patchwork.ozlabs.org/patch/377723
->>> http://patchwork.ozlabs.org/patch/377724
->>> http://patchwork.ozlabs.org/patch/377725
->>> http://patchwork.ozlabs.org/patch/377727
->>
->> hui that's a lot. Are they ALL needed to fix this?
->    Yes, all of them are needed.
+								Honza
 
-How can i get notified when they're ready / polished?
-
-Stefan
-
->> No workaround possible?
->    I don't know about any.
->
->> What will Redhat do with their 3.10 RHEL 7 kernel?
->    Well, I cannot speak for RH guys but for SLES if there's a customer
-> request, we'll just go and backport the patches...
-> 								Honza
->
+> ---
+>  fs/ext4/super.c | 27 +--------------------------
+>  1 file changed, 1 insertion(+), 26 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 921d5b4..e747b97 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1123,27 +1123,6 @@ static const struct super_operations ext4_sops = {
+>  	.bdev_try_to_free_page = bdev_try_to_free_page,
+>  };
+>  
+> -static const struct super_operations ext4_nojournal_sops = {
+> -	.alloc_inode	= ext4_alloc_inode,
+> -	.destroy_inode	= ext4_destroy_inode,
+> -	.write_inode	= ext4_write_inode,
+> -	.dirty_inode	= ext4_dirty_inode,
+> -	.drop_inode	= ext4_drop_inode,
+> -	.evict_inode	= ext4_evict_inode,
+> -	.sync_fs	= ext4_sync_fs,
+> -	.freeze_fs	= ext4_freeze,
+> -	.unfreeze_fs	= ext4_unfreeze,
+> -	.put_super	= ext4_put_super,
+> -	.statfs		= ext4_statfs,
+> -	.remount_fs	= ext4_remount,
+> -	.show_options	= ext4_show_options,
+> -#ifdef CONFIG_QUOTA
+> -	.quota_read	= ext4_quota_read,
+> -	.quota_write	= ext4_quota_write,
+> -#endif
+> -	.bdev_try_to_free_page = bdev_try_to_free_page,
+> -};
+> -
+>  static const struct export_operations ext4_export_ops = {
+>  	.fh_to_dentry = ext4_fh_to_dentry,
+>  	.fh_to_parent = ext4_fh_to_parent,
+> @@ -3941,11 +3920,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  	/*
+>  	 * set up enough so that it can read an inode
+>  	 */
+> -	if (!test_opt(sb, NOLOAD) &&
+> -	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
+> -		sb->s_op = &ext4_sops;
+> -	else
+> -		sb->s_op = &ext4_nojournal_sops;
+> +	sb->s_op = &ext4_sops;
+>  	sb->s_export_op = &ext4_export_ops;
+>  	sb->s_xattr = ext4_xattr_handlers;
+>  #ifdef CONFIG_QUOTA
+> -- 
+> 2.1.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
