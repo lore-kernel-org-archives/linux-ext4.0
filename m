@@ -1,64 +1,98 @@
 From: "George Spelvin" <linux@horizon.com>
-Subject: Re: [PATCH v1 5/10] ext4: Add DX_HASH_SIPHASH24 support
-Date: 23 Sep 2014 16:45:27 -0400
-Message-ID: <20140923204527.20932.qmail@ns.horizon.com>
-References: <0765A511-D5E2-4F00-8F2F-F5A8E76C0B03@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: adilger@dilger.ca, linux@horizon.com
+Subject: [PATCH v1.1 1/10] ext4: Introduce DX_HASH_UNSIGNED_DELTA
+Date: 23 Sep 2014 17:06:08 -0400
+Message-ID: <20140923210608.27396.qmail@ns.horizon.com>
+References: <20140923100352.27027.qmail@ns.horizon.com>
+Cc: linux@horizon.com, tytso@mit.edu
+To: adilger@dilger.ca, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns.horizon.com ([71.41.210.147]:44805 "HELO ns.horizon.com"
+Received: from ns.horizon.com ([71.41.210.147]:39356 "HELO ns.horizon.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1756879AbaIWUp3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 23 Sep 2014 16:45:29 -0400
-In-Reply-To: <0765A511-D5E2-4F00-8F2F-F5A8E76C0B03@dilger.ca>
+	id S1753540AbaIWVGJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Sep 2014 17:06:09 -0400
+In-Reply-To: <20140923100352.27027.qmail@ns.horizon.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks for the feedback!
+The existing hash algorithms each come in signed and unsigned variants,
+with the latter indicated by EXT2_FLAGS_UNSIGNED_HASH.  Internally, ext4
+represents those by adding a delta to the hash algorithm identifier that
+takes them out of the range permitted on disk.
 
-> Simple, except that it introduces a serious bug in the code. It duplicates
-> the previous on-disk encoding of:
->   DX_HASH_LEGACY | DX_HASH_UNSIGNED_DELTA =3D 3
-> 
-> with:
->   DX_HASH_SIPHASH24    3
-> 
-> and that will mean old filesystems would be considered corrupted.
+In the ext4_sb_info, s_def_hash_version is the value that actually
+appears on disk, and s_hash_unsigned is the extra delta that is
+inferred from the flags.
 
-Er... I'll let Ted tell me if I screwed up, but I went through
-the code quite carefully figuring out what value to use, and
-DX_HASH_LEGACY_UNSIGNED is *not* an on-disk encoding.
+It used to be simply the magic value 3, but give it a symbolic name so
+it can be changed freely if more on-disk values are added.
 
-The only on-disk encodings are 0-2, with the "Unsigned delta" being an
-internal-only way of representing EXT2_FLAGS_UNSIGNED_HASH.
+Signed-off-by: George Spelvin <linux@horizon.com>
+---
+This is my draft with clarified comments.  Any better?
 
-You can see all that in patch 1/10, or even more clearly in the first
-hunk of patch 9/10, where e2fsck pass 1 is modified to extend the range
-of legal on-disk values:
+ fs/ext4/ext4.h  | 16 ++++++++++++----
+ fs/ext4/super.c |  7 ++++---
+ 2 files changed, 16 insertions(+), 7 deletions(-)
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 4fc5311..a89e556 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -2228,6 +2228,7 @@ static int handle_htree(e2fsck_t ctx, struct problem_context *pctx,
- 	if ((root->hash_version != EXT2_HASH_LEGACY) &&
- 	    (root->hash_version != EXT2_HASH_HALF_MD4) &&
- 	    (root->hash_version != EXT2_HASH_TEA) &&
-+	    (root->hash_version != EXT2_HASH_SIPHASH24) &&
- 	    fix_problem(ctx, PR_1_HTREE_HASHV, pctx))
- 		return 1;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 1bbe7c31..07b13c7c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1216,7 +1216,7 @@ struct ext4_sb_info {
+ 	u32 s_next_generation;
+ 	u32 s_hash_seed[4];
+ 	int s_def_hash_version;
+-	int s_hash_unsigned;	/* 3 if hash should be signed, 0 if not */
++	int s_hash_unsigned;	/* DX_HASH_UNSIGNED_DELTA, or 0 if signed */
+ 	struct percpu_counter s_freeclusters_counter;
+ 	struct percpu_counter s_freeinodes_counter;
+ 	struct percpu_counter s_dirs_counter;
+@@ -1737,9 +1737,17 @@ static inline __le16 ext4_rec_len_to_disk(unsigned len, unsigned blocksize)
+ #define DX_HASH_LEGACY		0
+ #define DX_HASH_HALF_MD4	1
+ #define DX_HASH_TEA		2
+-#define DX_HASH_LEGACY_UNSIGNED	3
+-#define DX_HASH_HALF_MD4_UNSIGNED	4
+-#define DX_HASH_TEA_UNSIGNED		5
++
++#define DX_HASH_UNSIGNED_DELTA	3 /* One more than ever appears on disk! */
++
++/*
++ * For historical reasons, the first three hash algorithms
++ * have signed and unsigned variants.  The following values
++ * never appear on disk, but are used by the software.
++ */
++#define DX_HASH_LEGACY_UNSIGNED   (DX_HASH_LEGACY   + DX_HASH_UNSIGNED_DELTA)
++#define DX_HASH_HALF_MD4_UNSIGNED (DX_HASH_HALF_MD4 + DX_HASH_UNSIGNED_DELTA)
++#define DX_HASH_TEA_UNSIGNED      (DX_HASH_TEA      + DX_HASH_UNSIGNED_DELTA)
  
-Looks to me like any other value (and in particular, the value 3)
-appearing on disk is an error.
-
-I didn't want to introduce a hole in the on-disk numbering, so
-I bumped up the internal-only values.  Allowing that is what patches
-1 and 6 of the series are for.
-
-I can try clarify the comments if you find it confusing.
-
-Alternatively, with Ted's permission, I can change DX_HASH_UNSIGNED_DELTA
-to 256 (and rename it to show it's a bit flag) so it's obviously not
-representable on disk.
+ static inline u32 ext4_chksum(struct ext4_sb_info *sbi, u32 crc,
+ 			      const void *address, unsigned int length)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 4566c2fe..6eb2c47a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3721,16 +3721,17 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	for (i = 0; i < 4; i++)
+ 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
+ 	sbi->s_def_hash_version = es->s_def_hash_version;
+-	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX)) {
++	if (sbi->s_def_hash_version <= DX_HASH_TEA &&
++	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX)) {
+ 		i = le32_to_cpu(es->s_flags);
+ 		if (i & EXT2_FLAGS_UNSIGNED_HASH)
+-			sbi->s_hash_unsigned = 3;
++			sbi->s_hash_unsigned = DX_HASH_UNSIGNED_DELTA;
+ 		else if ((i & EXT2_FLAGS_SIGNED_HASH) == 0) {
+ #ifdef __CHAR_UNSIGNED__
+ 			if (!(sb->s_flags & MS_RDONLY))
+ 				es->s_flags |=
+ 					cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
+-			sbi->s_hash_unsigned = 3;
++			sbi->s_hash_unsigned = DX_HASH_UNSIGNED_DELTA;
+ #else
+ 			if (!(sb->s_flags & MS_RDONLY))
+ 				es->s_flags |=
 -- 
-	-Colin
+2.1.0
+
