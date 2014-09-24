@@ -1,66 +1,66 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: Unifying XFS_IOC_SWAPEXT and EXT4_IOC_MOV_EXT (was Re: [PATCH 2/3]
-	xfs: Add support IOC_MOV_DATA ioctl)
-Date: Wed, 24 Sep 2014 16:53:49 +0900
-Message-ID: <000001cfd7cc$ad447a00$07cd6e00$@samsung.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] ext4: Fix mmap data corruption when blocksize <
+ pagesize
+Date: Wed, 24 Sep 2014 10:45:19 +0200
+Message-ID: <20140924084519.GA21987@quack.suse.cz>
+References: <1411484603-17756-1-git-send-email-jack@suse.cz>
+ <1411484603-17756-3-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: 'Dave Chinner' <david@fromorbit.com>, 'Theodore Ts'o' <tytso@mit.edu>,
-	'Dmitry Monakhov' <dmonakhov@openvz.org>,
-	'Christoph Hellwig' <hch@infradead.org>,
-	'linux-ext4' <linux-ext4@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, 'Luk?? Czerner' <lczerner@redhat.com>,
-	'Brian Foster' <bfoster@redhat.com>,
-	'Ashish Sangwan' <a.sangwan@samsung.com>, xfs@oss.sgi.com
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-language: ko
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-mm@kvack.org, Dave Chinner <david@fromorbit.com>,
+	linux-ext4@vger.kernel.org, Ted Tso <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>, xfs@oss.sgi.com
+To: linux-fsdevel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1411484603-17756-3-git-send-email-jack@suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Tue 23-09-14 17:03:23, Jan Kara wrote:
+> Use block_create_hole() when hole is being created in a file so that
+> ->page_mkwrite() will get called for the partial tail page if it is
+> mmaped (see the first patch in the series for details).
+  Just out of curiosity I did a change similar to this one for ext4 to XFS
+and indeed it fixed generic/030 test failures for XFS with blocksize 1k.
 
-> 
-> FWIW, what we ideally need for these sorts of defrag programs is
-> per-file freezing. i.e. we freeze the file to be defragged, then do
-> the copy in userspace, swap/move the copied range and then unfreeze
-> it once complete.  That guarantees that the file is not modified in
-> any way while userspace is doing the defrag...
-I am trying to unify xfs_swap extent and ext4 move extent so that both of these 
-could be called via new ioctl mov_data. Both ioctl have different interface
-because  both xfs and ext4 have different way of avoiding change in source file
-while defrag is running. XFS uses xfs_bstat_t while ext4 performs copying of
-data within kernel space after taking mutex lock.
-To make them use same approach, we should use something like file sealing as
-suggessted by you.
-First of all, I am trying to find proper way of sealing file as suggested by
-you. I am considering to use S_IMMUTABLE flag set to avoid file modification
-during defrag. I am thinking of first syncing  dirty pages, then truncating
-page cache pages of inode and lastly setting immutable flag of inode.
-This will block further attempts of modifying the file by opening new file
-pointer but already open file pointer can still change it.
-Although immutable file mean file can not be modified, there is no immutable
-check condition in write path and mmap path.
-I am wondering it is just missing to add immutable check condition or there
-is other reason I am not aware.
+								Honza
 
-Thanks!
-> 
-> Cheers,
-> 
-> Dave.
-> --
-> Dave Chinner
-> david@fromorbit.com
+PS: I forgot to CC xfs list in the original posting. You can find the VFS
+    patch e.g. at http://www.spinics.net/lists/linux-mm/msg78976.html
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/inode.c | 6 +++++-
+>  1 file changed, 5 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 3aa26e9117c4..fdcb007c2c9e 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4536,8 +4536,12 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+>  				ext4_orphan_del(NULL, inode);
+>  				goto err_out;
+>  			}
+> -		} else
+> +		} else {
+> +			loff_t old_size = inode->i_size;
+> +
+>  			i_size_write(inode, attr->ia_size);
+> +			block_create_hole(inode, old_size, inode->i_size);
+> +		}
+>  
+>  		/*
+>  		 * Blocks are going to be removed from the inode. Wait
+> -- 
+> 1.8.1.4
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
