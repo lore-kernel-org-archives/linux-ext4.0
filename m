@@ -1,118 +1,47 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+From: Jan Kara <jack@suse.cz>
 Subject: Re: [PATCH 4/4] Adds ioctl interface support for ext4 project
-Date: Wed, 24 Sep 2014 18:43:05 +0200
-Message-ID: <20140924164305.GD27000@quack.suse.cz>
+Date: Wed, 24 Sep 2014 19:01:05 +0200
+Message-ID: <20140924170105.GE27000@quack.suse.cz>
 References: <1411567470-31799-1-git-send-email-lixi@ddn.com>
  <1411567470-31799-5-git-send-email-lixi@ddn.com>
+ <20140924162507.GC27000@quack.suse.cz>
+ <20140924162634.GA16886@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
-	jack-AlSwsSmVLrQ@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
-	dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org
-To: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: Jan Kara <jack@suse.cz>, Li Xi <pkuelelixi@gmail.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-api@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca,
+	viro@zeniv.linux.org.uk, dmonakhov@openvz.org, xfs@oss.sgi.com
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1411567470-31799-5-git-send-email-lixi-LfVdkaOWEx8@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+In-Reply-To: <20140924162634.GA16886@infradead.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 24-09-14 22:04:30, Li Xi wrote:
-> This patch adds ioctl interface for setting/getting project of ext4.
-  One more thing...
-
-> Signed-off-by: Li Xi <lixi-LfVdkaOWEx8@public.gmane.org>
-> ---
->  Documentation/filesystems/ext4.txt |    4 ++
->  fs/ext4/ext4.h                     |    2 +
->  fs/ext4/ioctl.c                    |   85 ++++++++++++++++++++++++++++++++++++
->  3 files changed, 91 insertions(+), 0 deletions(-)
+On Wed 24-09-14 09:26:34, Christoph Hellwig wrote:
+> On Wed, Sep 24, 2014 at 06:25:07PM +0200, Jan Kara wrote:
+> > On Wed 24-09-14 22:04:30, Li Xi wrote:
+> > > This patch adds ioctl interface for setting/getting project of ext4.
+> >   The patch looks good to me. I was just wondering whether it won't be
+> > useful to add an ioctl() which isn't ext4 specific. We could just extend
+> > ->setattr() to allow setting of project ID (most filesystems would just
+> > return -EOPNOTSUPP but ext4 and xfs could do the right thing) and then call
+> > ->setattr from the generic ioctl. That way userspace won't have to care
+> > about filesystem type when setting project ID... What do others think?
 > 
-> +	case EXT4_IOC_SETPROJECT:
-> +	{
-> +		__u32 projid;
-> +		int err;
-> +		handle_t *handle;
-> +		kprojid_t kprojid;
-> +		struct ext4_iloc iloc;
-> +		struct ext4_inode *raw_inode;
-> +
-> +		struct dquot *transfer_to[EXT4_MAXQUOTAS] = { };
-> +
-> +		/* Make sure caller can change project. */
-> +		if (!capable(CAP_SYS_ADMIN))
-> +			return -EACCES;
-  I realized you forgot to check EXT4_FEATURE_RO_COMPAT_PROJECT here...
-
+> Absolutely.  In general I also wonder why this patch doesn't implement
+> the full XFS API.  Maybe there is a reason it was considered and
+> rejected, but it would be helpful to document why.
+  Do you mean full get/setfsxattr API? That basically contains project ID,
+flags (those that are currently get/set with FS_IOC_GETFLAGS/SETFLAGS), and
+extent size hint right? That seems workable and it would also make setting
+of PROJINHERIT flag fs agnostic. Only we would have to create some generic
+flags namespace and merge into that ext4 flags and have a translation
+function for the old ext4 flags. Also I'm afraid we may quickly run out of
+32 available flags in xflags so we'd need to extend that. But all this
+seems to be doable.
 								Honza
-
-> +
-> +		if (get_user(projid, (__u32 __user *) arg))
-> +			return -EFAULT;
-> +
-> +		kprojid = make_kprojid(&init_user_ns, (projid_t)projid);
-> +
-> +		if (projid_eq(kprojid, EXT4_I(inode)->i_projid))
-> +			return 0;
-> +
-> +		err = mnt_want_write_file(filp);
-> +		if (err)
-> +			return err;
-> +
-> +		err = -EPERM;
-> +		mutex_lock(&inode->i_mutex);
-> +		/* Is it quota file? Do not allow user to mess with it */
-> +		if (IS_NOQUOTA(inode))
-> +			goto project_out;
-> +
-> +		dquot_initialize(inode);
-> +
-> +		handle = ext4_journal_start(inode, EXT4_HT_QUOTA,
-> +			EXT4_QUOTA_INIT_BLOCKS(sb) +
-> +			EXT4_QUOTA_DEL_BLOCKS(sb) + 3);
-> +		if (IS_ERR(handle)) {
-> +			err = PTR_ERR(handle);
-> +			goto project_out;
-> +		}
-> +
-> +		err = ext4_reserve_inode_write(handle, inode, &iloc);
-> +		if (err)
-> +			goto project_stop;
-> +
-> +		raw_inode = ext4_raw_inode(&iloc);
-> +		if ((EXT4_INODE_SIZE(inode->i_sb) <=
-> +		     EXT4_GOOD_OLD_INODE_SIZE) ||
-> +		    (!EXT4_FITS_IN_INODE(raw_inode, ei, i_projid))) {
-> +		    	err = -EFBIG;
-> +		    	goto project_stop;
-> +		}
-> +
-> +		transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(kprojid));
-> +		if (!transfer_to[PRJQUOTA])
-> +			goto project_set;
-> +
-> +		err = __dquot_transfer(inode, transfer_to);
-> +		dqput(transfer_to[PRJQUOTA]);
-> +		if (err)
-> +			goto project_stop;
-> +
-> +project_set:
-> +		EXT4_I(inode)->i_projid = kprojid;
-> +		inode->i_ctime = ext4_current_time(inode);
-> +		err = ext4_mark_iloc_dirty(handle, inode, &iloc);
-> +project_stop:
-> +		ext4_journal_stop(handle);
-> +project_out:
-> +		mutex_unlock(&inode->i_mutex);
-> +		mnt_drop_write_file(filp);
-> +		return err;
-> +	}
->  	default:
->  		return -ENOTTY;
->  	}
-> -- 
-> 1.7.1
-> 
 -- 
-Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Jan Kara <jack@suse.cz>
 SUSE Labs, CR
