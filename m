@@ -1,112 +1,93 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] ext4: Fix mmap data corruption when blocksize <
- pagesize
-Date: Wed, 24 Sep 2014 10:57:24 +0200
-Message-ID: <20140924085724.GA21864@quack.suse.cz>
-References: <1411484603-17756-1-git-send-email-jack@suse.cz>
- <1411484603-17756-3-git-send-email-jack@suse.cz>
- <20140924084519.GA21987@quack.suse.cz>
+From: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Subject: [PATCH v4 0/4] quota: add project quota support
+Date: Wed, 24 Sep 2014 20:23:45 +0800
+Message-ID: <CAPTn0cAZXWZ29_-3nN9t7wsemcnBVUF5SajuQPEwUtmvgAGGCQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="MGYHOYXEY6WxJCY8"
-Cc: linux-mm@kvack.org, Dave Chinner <david@fromorbit.com>,
-	linux-ext4@vger.kernel.org, Ted Tso <tytso@mit.edu>,
-	Jan Kara <jack@suse.cz>, xfs@oss.sgi.com
-To: linux-fsdevel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20140924084519.GA21987@quack.suse.cz>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=UTF-8
+To: "linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+	"viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org" <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	"hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org" <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+	Dmitry Monakhov <dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
+The following patches propose an implementation of project quota
+support for ext4. A project is an aggregate of unrelated inodes
+which might scatter in different directories. Inodes belongs to a
+project possesses a same identification i.e. 'project ID', just
+like every inode has its user/group identification. The following
+patches adds project quota as supplement to the former uer/group
+quota types.
 
---MGYHOYXEY6WxJCY8
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+The semantics of ext4 project quota is consistent with XFS. Each
+directory can have EXT4_INODE_PROJINHERIT flag set. When the
+EXT4_INODE_PROJINHERIT flag of a parent directory is not set, a
+newly created inode under that directory will have a default project
+ID (i.e. 0). And its EXT4_INODE_PROJINHERIT flag is not set either.
+When this flag is set on a directory, following rules will be kept:
 
-On Wed 24-09-14 10:45:19, Jan Kara wrote:
-> On Tue 23-09-14 17:03:23, Jan Kara wrote:
-> > Use block_create_hole() when hole is being created in a file so that
-> > ->page_mkwrite() will get called for the partial tail page if it is
-> > mmaped (see the first patch in the series for details).
->   Just out of curiosity I did a change similar to this one for ext4 to XFS
-> and indeed it fixed generic/030 test failures for XFS with blocksize 1k.
-  Just for reference attached the patch I was testing - I can resend with
-proper changelog etc. if people are fine with this approach.
+1) The newly created inode under that directory will inherit both
+the EXT4_INODE_PROJINHERIT flag and the project ID from its parent
+directory.
 
-								Honza
+2) Hard-linking a inode with different project ID into that directory
+will fail with errno EXDEV.
 
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  fs/ext4/inode.c | 6 +++++-
-> >  1 file changed, 5 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index 3aa26e9117c4..fdcb007c2c9e 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -4536,8 +4536,12 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
-> >  				ext4_orphan_del(NULL, inode);
-> >  				goto err_out;
-> >  			}
-> > -		} else
-> > +		} else {
-> > +			loff_t old_size = inode->i_size;
-> > +
-> >  			i_size_write(inode, attr->ia_size);
-> > +			block_create_hole(inode, old_size, inode->i_size);
-> > +		}
-> >  
-> >  		/*
-> >  		 * Blocks are going to be removed from the inode. Wait
-> > -- 
-> > 1.8.1.4
-> > 
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+3) Renaming a inode with different project ID into that directory
+will fail with errno EXDEV. However, 'mv' command will detect this
+failure and copy the renamed inode to a new inode in the directory.
+Thus, this new inode will inherit both the project ID and
+EXT4_INODE_PROJINHERIT flag.
 
---MGYHOYXEY6WxJCY8
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-xfs-Fix-mmap-data-corruption.patch"
+4) If the project quota of that ID is being enforced, statfs() on
+that directory will take the quotas as another upper limits along
+with the capacity of the file system, i.e. the total block/inode
+number will be the minimum of the quota limits and file system
+capacity.
 
->From ceedc36b1c99c25ebb55c88f6ab059347b52f4ec Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Wed, 24 Sep 2014 10:18:25 +0200
-Subject: [PATCH] xfs: Fix mmap data corruption
+Changelog:
+* v4 <- v3:
+ - Do not check project feature when set/get project ID;
+ - Use EXT4_MAXQUOTAS instead of MAXQUOTAS in ext4 patches;
+ - Remove unnecessary change of fs/quota/dquot.c;
+ - Remove CONFIG_QUOTA_PROJECT.
+* v3 <- v2:
+ - Add EXT4_INODE_PROJINHERIT semantics.
+* v2 <- v1:
+ - Add ioctl interface for setting/getting project;
+ - Add EXT4_FEATURE_RO_COMPAT_PROJECT;
+ - Add get_projid() method in struct dquot_operations;
+ - Add error check of ext4_inode_projid_set/get().
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/xfs/xfs_iops.c | 2 ++
- 1 file changed, 2 insertions(+)
+v3: http://www.spinics.net/lists/linux-ext4/msg45184.html
+v2: http://www.spinics.net/lists/linux-ext4/msg44695.html
+v1: http://article.gmane.org/gmane.comp.file-systems.ext4/45153
 
-diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
-index 72129493e9d3..19ce64bfb4f7 100644
---- a/fs/xfs/xfs_iops.c
-+++ b/fs/xfs/xfs_iops.c
-@@ -848,6 +848,8 @@ xfs_setattr_size(
- 	if (error)
- 		return error;
- 	truncate_setsize(inode, newsize);
-+	if (oldsize < newsize)
-+		block_create_hole(inode, oldsize, newsize);
- 
- 	tp = xfs_trans_alloc(mp, XFS_TRANS_SETATTR_SIZE);
- 	error = xfs_trans_reserve(tp, &M_RES(mp)->tr_itruncate, 0, 0);
--- 
-1.8.1.4
+Any comments or feedbacks are appreciated.
 
+Regards,
+                                         - Li Xi
 
---MGYHOYXEY6WxJCY8--
+Li Xi(4):
+quota: Adds general codes to enforces project quota limits
+ext4: Adds project ID support for ext4
+ext4: Adds project quota support for ext4
+ext4: Adds ioctl interface support for ext4 project
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Documentation/filesystems/ext4.txt |    4 +
+fs/ext4/ext4.h                     |   31 +++++++--
+fs/ext4/ialloc.c                   |    6 ++
+fs/ext4/inode.c                    |   29 ++++++++-
+fs/ext4/ioctl.c                    |   85 ++++++++++++++++++++++++
+fs/ext4/namei.c                    |   10 +++
+fs/ext4/super.c                    |  124 ++++++++++++++++++++++++++++++++---
+fs/quota/dquot.c                   |   16 ++++-
+fs/quota/quota.c                   |    5 +-
+fs/quota/quotaio_v2.h              |    6 +-
+include/linux/quota.h              |    2 +
+include/uapi/linux/quota.h         |    6 +-
+12 files changed, 299 insertions(+), 25 deletions(-)
