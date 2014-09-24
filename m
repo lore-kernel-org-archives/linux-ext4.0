@@ -1,161 +1,42 @@
-From: Li Xi <pkuelelixi@gmail.com>
-Subject: [PATCH 4/4] Adds ioctl interface support for ext4 project
-Date: Wed, 24 Sep 2014 22:04:30 +0800
-Message-ID: <1411567470-31799-5-git-send-email-lixi@ddn.com>
-References: <1411567470-31799-1-git-send-email-lixi@ddn.com>
-To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-api@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca,
-	jack@suse.cz, viro@zeniv.linux.org.uk, hch@infradead.org,
-	dmonakhov@openvz.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v1 5/10] ext4: Add DX_HASH_SIPHASH24 support
+Date: Wed, 24 Sep 2014 11:35:31 -0400
+Message-ID: <20140924153531.GK17784@thunk.org>
+References: <20140924014744.GJ17784@thunk.org>
+ <20140924030828.18454.qmail@ns.horizon.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: adilger@dilger.ca, linux-ext4@vger.kernel.org
+To: George Spelvin <linux@horizon.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f50.google.com ([209.85.220.50]:40360 "EHLO
-	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751990AbaIXOIF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Sep 2014 10:08:05 -0400
-In-Reply-To: <1411567470-31799-1-git-send-email-lixi@ddn.com>
+Received: from imap.thunk.org ([74.207.234.97]:46309 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753739AbaIXPff (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 24 Sep 2014 11:35:35 -0400
+Content-Disposition: inline
+In-Reply-To: <20140924030828.18454.qmail@ns.horizon.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds ioctl interface for setting/getting project of ext4.
+On Tue, Sep 23, 2014 at 11:08:28PM -0400, George Spelvin wrote:
+> > Still, it would probably simpler to not try to assign
+> > DX_HASH_SIPHASH24 to be 6, and to leave better comments about how the
+> > hash values are used.
+> 
+> Is that "not try" supposed to be in there?
 
-Signed-off-by: Li Xi <lixi@ddn.com>
----
- Documentation/filesystems/ext4.txt |    4 ++
- fs/ext4/ext4.h                     |    2 +
- fs/ext4/ioctl.c                    |   85 ++++++++++++++++++++++++++++++++++++
- 3 files changed, 91 insertions(+), 0 deletions(-)
+Sorry, typo.  Yes, it would be better to assign DX_HASH_SIPHASH24 to
+be 6, and not to assign the code points 3, 4, and 5 just to be safe.
 
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index 919a329..9c98e62 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -609,6 +609,10 @@ EXT4_IOC_SWAP_BOOT	      Swap i_blocks and associated attributes
- 			      The data blocks of the previous boot loader
- 			      will be associated with the given inode.
- 
-+ EXT4_IOC_GETPROJECT	      Get project ID associated with inode.
-+
-+ EXT4_IOC_SETPROJECT	      Set Project ID associated with inode.
-+
- ..............................................................................
- 
- References
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index f8be9bf..51946fd 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -617,6 +617,8 @@ enum {
- #define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
- #define EXT4_IOC_SWAP_BOOT		_IO('f', 17)
- #define EXT4_IOC_PRECACHE_EXTENTS	_IO('f', 18)
-+#define EXT4_IOC_GETPROJECT		_IOR('f', 19, long)
-+#define EXT4_IOC_SETPROJECT		_IOW('f', 20, long)
- 
- #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
- /*
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 0f2252e..93b7ff4 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -14,6 +14,8 @@
- #include <linux/compat.h>
- #include <linux/mount.h>
- #include <linux/file.h>
-+#include <linux/quotaops.h>
-+#include <linux/quota.h>
- #include <asm/uaccess.h>
- #include "ext4_jbd2.h"
- #include "ext4.h"
-@@ -611,6 +613,89 @@ resizefs_out:
- 	case EXT4_IOC_PRECACHE_EXTENTS:
- 		return ext4_ext_precache(inode);
- 
-+	case EXT4_IOC_GETPROJECT:
-+	{
-+		__u32 projid;
-+
-+		projid = (__u32)from_kprojid(&init_user_ns,
-+					     EXT4_I(inode)->i_projid);
-+		return put_user(projid, (__u32 __user *) arg);
-+	}
-+	case EXT4_IOC_SETPROJECT:
-+	{
-+		__u32 projid;
-+		int err;
-+		handle_t *handle;
-+		kprojid_t kprojid;
-+		struct ext4_iloc iloc;
-+		struct ext4_inode *raw_inode;
-+
-+		struct dquot *transfer_to[EXT4_MAXQUOTAS] = { };
-+
-+		/* Make sure caller can change project. */
-+		if (!capable(CAP_SYS_ADMIN))
-+			return -EACCES;
-+
-+		if (get_user(projid, (__u32 __user *) arg))
-+			return -EFAULT;
-+
-+		kprojid = make_kprojid(&init_user_ns, (projid_t)projid);
-+
-+		if (projid_eq(kprojid, EXT4_I(inode)->i_projid))
-+			return 0;
-+
-+		err = mnt_want_write_file(filp);
-+		if (err)
-+			return err;
-+
-+		err = -EPERM;
-+		mutex_lock(&inode->i_mutex);
-+		/* Is it quota file? Do not allow user to mess with it */
-+		if (IS_NOQUOTA(inode))
-+			goto project_out;
-+
-+		dquot_initialize(inode);
-+
-+		handle = ext4_journal_start(inode, EXT4_HT_QUOTA,
-+			EXT4_QUOTA_INIT_BLOCKS(sb) +
-+			EXT4_QUOTA_DEL_BLOCKS(sb) + 3);
-+		if (IS_ERR(handle)) {
-+			err = PTR_ERR(handle);
-+			goto project_out;
-+		}
-+
-+		err = ext4_reserve_inode_write(handle, inode, &iloc);
-+		if (err)
-+			goto project_stop;
-+
-+		raw_inode = ext4_raw_inode(&iloc);
-+		if ((EXT4_INODE_SIZE(inode->i_sb) <=
-+		     EXT4_GOOD_OLD_INODE_SIZE) ||
-+		    (!EXT4_FITS_IN_INODE(raw_inode, ei, i_projid))) {
-+		    	err = -EFBIG;
-+		    	goto project_stop;
-+		}
-+
-+		transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(kprojid));
-+		if (!transfer_to[PRJQUOTA])
-+			goto project_set;
-+
-+		err = __dquot_transfer(inode, transfer_to);
-+		dqput(transfer_to[PRJQUOTA]);
-+		if (err)
-+			goto project_stop;
-+
-+project_set:
-+		EXT4_I(inode)->i_projid = kprojid;
-+		inode->i_ctime = ext4_current_time(inode);
-+		err = ext4_mark_iloc_dirty(handle, inode, &iloc);
-+project_stop:
-+		ext4_journal_stop(handle);
-+project_out:
-+		mutex_unlock(&inode->i_mutex);
-+		mnt_drop_write_file(filp);
-+		return err;
-+	}
- 	default:
- 		return -ENOTTY;
- 	}
--- 
-1.7.1
+> BTW, initial benchmarking isn't showing much.  I created a 4 GB file
+> syste, on a RAM disk with -i 1024, and tried the following:
 
+> DEV=/tmp/FS
+> MNT=/mnt
+
+(I assume you're using tmpfs.)  There would be less overhead if you
+actually used a real ramdisk, i.e., /dev/ram0, which might reduce some
+of the variance and increase the percentage of the difference, but
+yeah, it's not that surprising that we're not seeing much difference.
+
+      	       	    	       	    	  - Ted
