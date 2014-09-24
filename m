@@ -1,69 +1,43 @@
-From: Nikitas Angelinas <nikitasangelinas-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH v4 0/4] quota: add project quota support
-Date: Wed, 24 Sep 2014 15:27:52 -0700
-Message-ID: <20140924222752.GA23810@frew4006.xyus.xyratex.com>
-References: <CAPTn0cDFCj7AWjQpOF0brD82XJSSeem5_1aQCE=zQKiaLaeL1g@mail.gmail.com>
- <20140924125206.GA26916@quack.suse.cz>
- <20140924154239.GA11342@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
-	"linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	"viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org" <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	"hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org" <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	Dmitry Monakhov <dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org>
-To: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20140924154239.GA11342-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: "George Spelvin" <linux@horizon.com>
+Subject: Re: [PATCH v1 5/10] ext4: Add DX_HASH_SIPHASH24 support
+Date: 24 Sep 2014 19:31:13 -0400
+Message-ID: <20140924233113.22784.qmail@ns.horizon.com>
+References: <20140924153531.GK17784@thunk.org>
+Cc: adilger@dilger.ca, linux-ext4@vger.kernel.org
+To: linux@horizon.com, tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ns.horizon.com ([71.41.210.147]:61362 "HELO ns.horizon.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1751012AbaIXXbQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 24 Sep 2014 19:31:16 -0400
+In-Reply-To: <20140924153531.GK17784@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 24, 2014 at 11:42:39AM -0400, Theodore Ts'o wrote:
-> On Wed, Sep 24, 2014 at 02:52:06PM +0200, Jan Kara wrote:
-> >   Whitespace got mangled in your patches so much they are hardly readable.
-> > Please resend them so that it is properly preserved. I'm not sure how other
-> > guys using gmail do this so you might need to ask them... Thanks!
-> 
-> And it would be nice if they are chained together so that people with
-> proper mail-threading readers can easily find all of your patches.
-> 
-> Probably the best way to do this is to configure your a local mail
-> transfer agent on your Linux desktop/laptop, and configure it to use
-> smart mail-router with authenticated SMTP to:
-> 
-> Host: smtp.gmail.com
-> Port: 465
-> Authentication: Yes
-> Username: #YOU#@gmail.com
-> Password: #YOUR_PASSWORD#
-> Security: SSL
-> 
-> Then use "git send-email" to post your patches, and it should all be
-> good.
-> 
-> (I'm guessing your cutting and pasting your patches into the mail send
-> window, and that unfortunately tends not to work well.)
-> 
-> Cheers,
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-api" in
-> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-Li Xi,
+>>> Still, it would probably simpler to not try to assign
+>>> DX_HASH_SIPHASH24 to be 6, and to leave better comments about how the
+>>> hash values are used.
+>> 
+>> Is that "not try" supposed to be in there?
+>
+> Sorry, typo.  Yes, it would be better to assign DX_HASH_SIPHASH24 to
+> be 6, and not to assign the code points 3, 4, and 5 just to be safe.
 
+I thought so, I just wanted a retransmit rather than rely on FEC in this
+case. :-)
 
-You can set up Mutt (likely Alpine, maybe others) to work with GMail, if
-you want to; I believe it handles whitespace and patch series well by
-default. There are relevant resources online to assist with the
-configuration, if you need them. It also includes an SMTP feature, if you
-want to make use of it.
+Another option I thought of I'd like to get formally rejected would be
+to consider all future hashes unsigned, so there's a +3 offset between
+the on-disk value and the ext2fs_dirhash parameter.
 
+That keeps the disk numbering clean and preserves the library ABI, but
+(pick any two!) makes the source messier.  (Not as much as you might
+think, because it just requires extening the current kludge, but still...)
 
+> (I assume you're using tmpfs.)  There would be less overhead if you
+> actually used a real ramdisk, i.e., /dev/ram0, which might reduce some
+> of the variance and increase the percentage of the difference, but
+> yeah, it's not that surprising that we're not seeing much difference.
 
-Cheers,
-Nikitas
+Oops, forgot to say that.  Yes, tmpfs.  I didn't realize /dev/ram* had
+less overhead; I'll try that.  Thanks!
