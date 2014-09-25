@@ -1,82 +1,59 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: birth time of a file
-Date: Thu, 25 Sep 2014 09:08:09 +0200
-Message-ID: <3C36B392-FF09-46D1-B7DA-ADF893A56C42@dilger.ca>
-References: <alpine.DEB.2.19.4.1409242257430.9897@trent.utfs.org>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Christian Kujau <lists@nerdbynature.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f174.google.com ([209.85.212.174]:44632 "EHLO
-	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750822AbaIYHIN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Sep 2014 03:08:13 -0400
-Received: by mail-wi0-f174.google.com with SMTP id fb4so8287048wid.1
-        for <linux-ext4@vger.kernel.org>; Thu, 25 Sep 2014 00:08:12 -0700 (PDT)
-In-Reply-To: <alpine.DEB.2.19.4.1409242257430.9897@trent.utfs.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 4/4] Adds ioctl interface support for ext4 project
+Date: Thu, 25 Sep 2014 17:26:40 +1000
+Message-ID: <20140925072640.GF4758@dastard>
+References: <1411567470-31799-1-git-send-email-lixi@ddn.com>
+	<1411567470-31799-5-git-send-email-lixi@ddn.com>
+	<20140924162507.GC27000@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: adilger@dilger.ca, tytso@mit.edu, linux-api@vger.kernel.org,
+	xfs@oss.sgi.com, hch@infradead.org, dmonakhov@openvz.org,
+	viro@zeniv.linux.org.uk, Li Xi <pkuelelixi@gmail.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <20140924162507.GC27000@quack.suse.cz>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-It looks like your filesystem is formatted with 128-byte inodes
-(i.e. ext3) instead of 256-byte inodes (i.e. ext4). The i_crtime is stored
-in this extended space of the inode.  You could verify this with
+On Wed, Sep 24, 2014 at 06:25:07PM +0200, Jan Kara wrote:
+> On Wed 24-09-14 22:04:30, Li Xi wrote:
+> > This patch adds ioctl interface for setting/getting project of ext4.
+>   The patch looks good to me. I was just wondering whether it won't be
+> useful to add an ioctl() which isn't ext4 specific. We could just extend
+> ->setattr() to allow setting of project ID (most filesystems would just
+> return -EOPNOTSUPP but ext4 and xfs could do the right thing) and then call
+> ->setattr from the generic ioctl. That way userspace won't have to care
+> about filesystem type when setting project ID... What do others think?
 
-   dumpe2fs -h /dev/loop0
+I've repeatedly said that these ext4 project ID patches should
+implement the same interfaces as XFS rather than creating a new set
+of incompatible, ext4 specific interfaces to do implement the same
+functionality.
 
-and look for the "Inode size" field. 
+There is no good reason for forcing userspace to re-invent tools
+that already exist just to manage identical functionality in
+different filesystems.
 
-This is a format time option. What is strange is that you have specified mkfs.ext4, so this should be selected automatically. It may be that with very small devices (e.g. floppy size) it defaults to 128-byte inodes. 
+Cheers,
 
-Cheers, Andreas
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
 
-> On Sep 25, 2014, at 8:23, Christian Kujau <lists@nerdbynature.de> wrote:
-> 
-> Hi,
-> 
-> I want to find out the "creation time" or "birth time" of a file. I know, 
-> this comes up every now and then but I could not find any recent or 
-> reliable information, just random posting on the interwebs. Here[0] it is 
-> suggested that coreutils stat(1) cannot display "birth time", although a 
-> commit[1] from 2010 states that birthtime is now supported. But even if 
-> stat(1) cannot display it, debugfs should be able to, but not here:
-> 
-> # mkfs.ext4 /dev/loop0
-> # mount -t ext4 /dev/loop0 /mnt/disk/
-> # mount | tail -1
-> /dev/loop0 on /mnt/disk1 type ext4 (rw,relatime,data=ordered)
-> # touch /mnt/disk/foo
-> # debugfs -R 'stat foo' /dev/loop0
-> debugfs 1.42.12 (29-Aug-2014)
-> Inode: 12   Type: regular    Mode:  0600   Flags: 0x80000
-> Generation: 3547819027    Version: 0x00000001
-> User:     0   Group:     0   Size: 0
-> File ACL: 0    Directory ACL: 0
-> Links: 1   Blockcount: 0
-> Fragment:  Address: 0    Number: 0    Size: 0
-> ctime: 0x5423a873 -- Wed Sep 24 22:30:27 2014
-> atime: 0x5423a873 -- Wed Sep 24 22:30:27 2014
-> mtime: 0x5423a873 -- Wed Sep 24 22:30:27 2014
-> EXTENTS:
-> 
-> 
-> Now, fs/ext4/ext4.h defines i_crtime and it's referenced in ialloc.c and 
-> inode.c, so it seems to be used - but why can't debugfs display it? I 
-> tested this with 3.14, 3.17-rc6 and 3.16 kernels, debugfs just would 
-> not display "crtime".
-> 
-> Thanks,
-> Christian.
-> 
-> [0] https://unix.stackexchange.com/questions/50177/birth-is-empty-on-ext4 
-> [1] http://git.savannah.gnu.org/cgit/coreutils.git/commit/?id=abe5c1f9
-> -- 
-> BOFH excuse #408:
-> 
-> Computers under water due to SYN flooding.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
