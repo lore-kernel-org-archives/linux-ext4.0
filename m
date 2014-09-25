@@ -1,48 +1,49 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/2] ext4: Fix mmap data corruption when blocksize < pagesize
-Date: Thu, 25 Sep 2014 14:41:56 +0200
-Message-ID: <1411648916-16773-3-git-send-email-jack@suse.cz>
-References: <1411648916-16773-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
-	Dave Chinner <david@fromorbit.com>, Ted Tso <tytso@mit.edu>,
-	Jan Kara <jack@suse.cz>
+Subject: [PATCH 0/2 v2] Fix data corruption when blocksize < pagesize for
+	mmapped data
+Date: Thu, 25 Sep 2014 14:41:54 +0200
+Message-ID: <1411648916-16773-1-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40101 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751572AbaIYMmH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Sep 2014 08:42:07 -0400
-In-Reply-To: <1411648916-16773-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Use truncate_isize_extended() when hole is being created in a file so that
-->page_mkwrite() will get called for the partial tail page if it is
-mmaped (see the first patch in the series for details).
+  Hello,
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+  this is a second version of the patches to fix data corruption in mmapped
+data when blocksize < pagesize as tested by xfstests generic/030 test.
+The patchset fixes XFS and ext4. I've checked and btrfs doesn't need fixing
+because it doesn't support blocksize < pagesize. If that's ever going
+to change btrfs will likely need a similar treatment. ocfs2, ext2, ext3 are
+OK since they happily allocate blocks during writeback. For other filesystems
+like gfs2, ubifs, nilfs, ceph,... I'm not sure whether they support blocksize <
+pagesize at all. Interesting is also NFS which may care but I don't understand
+its ->page_mkwrite() handler good enough to judge.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3aa26e9117c4..9e269489e094 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4536,8 +4536,12 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 				ext4_orphan_del(NULL, inode);
- 				goto err_out;
- 			}
--		} else
-+		} else {
-+			loff_t oldsize = inode->i_size;
-+
- 			i_size_write(inode, attr->ia_size);
-+			pagecache_isize_extended(inode, oldsize, inode->i_size);
-+		}
- 
- 		/*
- 		 * Blocks are going to be removed from the inode. Wait
--- 
-1.8.1.4
+Changes since v1:
+- changed helper function name and moved it to mm/truncate.c - I originally
+  thought we can make the helper function update i_size to simplify the
+  interface but it's actually impossible due to generic_write_end() lock
+  ordering constraints.
+- used round_up() instead of ALIGN()
+- taught truncate_setsize() to use the helper function
 
+								Honza
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
