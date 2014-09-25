@@ -1,96 +1,48 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH 3/4] Adds project quota support for ext4
-Date: Thu, 25 Sep 2014 13:55:31 +0200
-Message-ID: <20140925115531.GA15352@quack.suse.cz>
-References: <1411567470-31799-1-git-send-email-lixi@ddn.com>
- <1411567470-31799-4-git-send-email-lixi@ddn.com>
- <20140924173123.GH27000@quack.suse.cz>
- <CAPTn0cB8X3DYprX-oKCu8aV5OLLfJJ2rh9YvMY7re69gi1s-LA@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
-	"linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	"viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org" <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	"hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org" <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	Dmitry Monakhov <dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org>
-To: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <CAPTn0cB8X3DYprX-oKCu8aV5OLLfJJ2rh9YvMY7re69gi1s-LA-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 2/2] ext4: Fix mmap data corruption when blocksize < pagesize
+Date: Thu, 25 Sep 2014 14:41:56 +0200
+Message-ID: <1411648916-16773-3-git-send-email-jack@suse.cz>
+References: <1411648916-16773-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+	Dave Chinner <david@fromorbit.com>, Ted Tso <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:40101 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751572AbaIYMmH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Sep 2014 08:42:07 -0400
+In-Reply-To: <1411648916-16773-1-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 25-09-14 09:28:24, Li Xi wrote:
-> On Thu, Sep 25, 2014 at 1:31 AM, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org> wrote:
-> > On Wed 24-09-14 22:04:29, Li Xi wrote:
-> >> This patch adds mount options for enabling/disabling project quota
-> >> accounting and enforcement. A new specific inode is also used for
-> >> project quota accounting.
-> >   The patch looks mostly fine. A few smaller things below.
-> >
-> > ...
-> >> @@ -1433,6 +1437,8 @@ static const struct mount_opts {
-> >>                                                       MOPT_SET | MOPT_Q},
-> >>       {Opt_grpquota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_GRPQUOTA,
-> >>                                                       MOPT_SET | MOPT_Q},
-> >> +     {Opt_prjquota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_PRJQUOTA,
-> >> +                                                     MOPT_SET | MOPT_Q},
-> >>       {Opt_noquota, (EXT4_MOUNT_QUOTA | EXT4_MOUNT_USRQUOTA |
-> >>                      EXT4_MOUNT_GRPQUOTA), MOPT_CLEAR | MOPT_Q},
-> >   I think you missed to add EXT4_MOUNT_PRJQUOTA to Opt_noquota...
-> >
-> > ...
-> >> @@ -2833,6 +2855,13 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
-> >>                        "without CONFIG_QUOTA");
-> >>               return 0;
-> >>       }
-> >> +     if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT) &&
-> >> +         !readonly) {
-> >> +             ext4_msg(sb, KERN_ERR,
-> >> +                      "Filesystem with project quota feature cannot be"
-> >> +                      "mounted RDWR without CONFIG_QUOTA");
-> >> +             return 0;
-> >> +     }
-> >   Hum, I don't think this is right. EXT4_FEATURE_RO_COMPAT_PROJECT is about
-> > maintaining project IDs not about quota. So it seems perfectly OK to have
-> > EXT4_FEATURE_RO_COMPAT_PROJECT without CONFIG_QUOTA.
-> Ah, I see. This might be my main misunderstanding. I thought it is
-> about maintaining
-> both project IDs and quota. And I misunderstood so that I removed all
-> EXT4_FEATURE_RO_COMPAT_PROJECT checking when set/get project ID.
-> If we only use EXT4_FEATURE_RO_COMPAT_PROJECT to protect imcompatibility
-> of project ID, what about the change of struct ext4_super_block? I am
-> still confused.
-  So my vision is following:
-EXT4_FEATURE_RO_COMPAT_PROJECT feature controls whether project IDs can be
-stored in inode. So you don't allow project ID to be set for a superblock
-without this feature. This is absolutely necessary since otherwise old
-kernel could happily mount filesystem with project IDs set and would just
-overwrite them. The same applies to PROJINHERIT flag.
+Use truncate_isize_extended() when hole is being created in a file so that
+->page_mkwrite() will get called for the partial tail page if it is
+mmaped (see the first patch in the series for details).
 
-Getting of project ID could be easily done without
-EXT4_FEATURE_RO_COMPAT_PROJECT feature (just return 0) but I think
-returning EOPNOTSUPP would be better for userspace programs - they
-can immediatedy distinguish filesystems without project IDs and filesystems
-where just the file doesn't have any project ID set.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-Whether project quota is accounted and enforced is a different matter.
-Without EXT4_FEATURE_RO_COMPAT_QUOTA feature it is userspace which is
-responsible for properly setting up quotas so you can just use
-sb_has_quota_loaded() and similar functions. With
-EXT4_FEATURE_RO_COMPAT_QUOTA, kernel is responsible for setting up quotas
-and we decide whether we should setup project quotas depending on whether
-s_prj_quota_inum is set (tools should then make sure s_prj_quota_inum is
-set only if EXT4_FEATURE_RO_COMPAT_QUOTA and EXT4_FEATURE_RO_COMPAT_PROJECT
-are set but we can assert that in the kernel just to make sure).
-
-Hope this makes things clearer.
-
-								Honza
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3aa26e9117c4..9e269489e094 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4536,8 +4536,12 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 				ext4_orphan_del(NULL, inode);
+ 				goto err_out;
+ 			}
+-		} else
++		} else {
++			loff_t oldsize = inode->i_size;
++
+ 			i_size_write(inode, attr->ia_size);
++			pagecache_isize_extended(inode, oldsize, inode->i_size);
++		}
+ 
+ 		/*
+ 		 * Blocks are going to be removed from the inode. Wait
 -- 
-Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-SUSE Labs, CR
+1.8.1.4
+
