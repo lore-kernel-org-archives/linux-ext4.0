@@ -1,175 +1,69 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/2] vfs: Fix data corruption when blocksize < pagesize for mmaped data
-Date: Thu, 25 Sep 2014 14:41:55 +0200
-Message-ID: <1411648916-16773-2-git-send-email-jack@suse.cz>
-References: <1411648916-16773-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
-	Dave Chinner <david@fromorbit.com>, Ted Tso <tytso@mit.edu>,
-	Jan Kara <jack@suse.cz>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40102 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751595AbaIYMmH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Sep 2014 08:42:07 -0400
-In-Reply-To: <1411648916-16773-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 4/4] Adds ioctl interface support for ext4 project
+Date: Thu, 25 Sep 2014 09:41:37 -0400
+Message-ID: <20140925134136.GE4592@thunk.org>
+References: <1411567470-31799-1-git-send-email-lixi@ddn.com>
+	<1411567470-31799-5-git-send-email-lixi@ddn.com>
+	<20140924162507.GC27000@quack.suse.cz>
+	<20140924162634.GA16886@infradead.org>
+	<20140924170105.GE27000@quack.suse.cz>
+	<20140925075912.GG4758@dastard>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: adilger@dilger.ca, Jan Kara <jack@suse.cz>, linux-api@vger.kernel.org,
+	xfs@oss.sgi.com, Christoph Hellwig <hch@infradead.org>,
+	dmonakhov@openvz.org, viro@zeniv.linux.org.uk,
+	Li Xi <pkuelelixi@gmail.com>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <20140925075912.GG4758@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-->page_mkwrite() is used by filesystems to allocate blocks under a page
-which is becoming writeably mmapped in some process' address space. This
-allows a filesystem to return a page fault if there is not enough space
-available, user exceeds quota or similar problem happens, rather than
-silently discarding data later when writepage is called.
+On Thu, Sep 25, 2014 at 05:59:12PM +1000, Dave Chinner wrote:
+> > Also I'm afraid we may quickly run out of
+> > 32 available flags in xflags so we'd need to extend that. But all this
+> > seems to be doable.
+> 
+> The struct fsxattr was designed to be extensible - it has unused
+> padding and enough space in the flags field to allow us to
+> conditionally use that padding....
 
-However VFS fails to call ->page_mkwrite() in all the cases where
-filesystems need it when blocksize < pagesize. For example when
-blocksize = 1024, pagesize = 4096 the following is problematic:
-  ftruncate(fd, 0);
-  pwrite(fd, buf, 1024, 0);
-  map = mmap(NULL, 1024, PROT_WRITE, MAP_SHARED, fd, 0);
-  map[0] = 'a';       ----> page_mkwrite() for index 0 is called
-  ftruncate(fd, 10000); /* or even pwrite(fd, buf, 1, 10000) */
-  mremap(map, 1024, 10000, 0);
-  map[4095] = 'a';    ----> no page_mkwrite() called
+I agree that it would be useful for ext4 to support as much of the
+XFS_IOC_GETXATTR/XFS_IOC_SETATTR as would make sense for ext4, and to
+use that to set/get the project ID.  (And that we should probably do
+that as a separate set of patches that we could potentially go into
+ext4 ahead of the project quota while it is undergoing testing and
+review.)
 
-At the moment ->page_mkwrite() is called, filesystem can allocate only
-one block for the page because i_size == 1024. Otherwise it would create
-blocks beyond i_size which is generally undesirable. But later at
-->writepage() time, we also need to store data at offset 4095 but we
-don't have block allocated for it.
+A few questions of Dave and other XFS folks:
 
-This patch introduces a helper function filesystems can use to have
-->page_mkwrite() called at all the necessary moments.
+1) If we only implement a partial set of the flags or other
+functionality, are there going to be tools that get confused?  i.e.,
+are there any userspace programs that will test for whether the ioctl
+is supported, and then assume that some minimal set of functionality
+must be implemented?
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/buffer.c        |  3 +++
- include/linux/mm.h |  8 ++++++++
- mm/truncate.c      | 57 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 68 insertions(+)
+2) Unless I'm missing something, there is nothing that enforces that
+fsx_pad must be zero.  I assume that means that the only way you can
+expand use of fields into that space is via a flag bit being consumed?
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 8f05111bbb8b..3ba5a6a1bc5f 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -2080,6 +2080,7 @@ int generic_write_end(struct file *file, struct address_space *mapping,
- 			struct page *page, void *fsdata)
- {
- 	struct inode *inode = mapping->host;
-+	loff_t old_size = inode->i_size;
- 	int i_size_changed = 0;
- 
- 	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
-@@ -2099,6 +2100,8 @@ int generic_write_end(struct file *file, struct address_space *mapping,
- 	unlock_page(page);
- 	page_cache_release(page);
- 
-+	if (old_size < pos)
-+		pagecache_isize_extended(inode, old_size, pos);
- 	/*
- 	 * Don't mark the inode dirty under page lock. First, it unnecessarily
- 	 * makes the holding time of page lock longer. Second, it forces lock
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 8981cc882ed2..f0e53e5a3b17 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1155,6 +1155,14 @@ static inline void unmap_shared_mapping_range(struct address_space *mapping,
- 
- extern void truncate_pagecache(struct inode *inode, loff_t new);
- extern void truncate_setsize(struct inode *inode, loff_t newsize);
-+#ifdef CONFIG_MMU
-+void pagecache_isize_extended(struct inode *inode, loff_t from, loff_t to);
-+#else
-+static inline void pagecache_isize_extended(struct inode *inode, loff_t from,
-+					    loff_t to)
-+{
-+}
-+#endif
- void truncate_pagecache_range(struct inode *inode, loff_t offset, loff_t end);
- int truncate_inode_page(struct address_space *mapping, struct page *page);
- int generic_error_remove_page(struct address_space *mapping, struct page *page);
-diff --git a/mm/truncate.c b/mm/truncate.c
-index 96d167372d89..261eaf6e5a19 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -20,6 +20,7 @@
- #include <linux/buffer_head.h>	/* grr. try_to_release_page,
- 				   do_invalidatepage */
- #include <linux/cleancache.h>
-+#include <linux/rmap.h>
- #include "internal.h"
- 
- static void clear_exceptional_entry(struct address_space *mapping,
-@@ -719,12 +720,68 @@ EXPORT_SYMBOL(truncate_pagecache);
-  */
- void truncate_setsize(struct inode *inode, loff_t newsize)
- {
-+	loff_t oldsize = inode->i_size;
-+
- 	i_size_write(inode, newsize);
-+	if (newsize > oldsize)
-+		pagecache_isize_extended(inode, oldsize, newsize);
- 	truncate_pagecache(inode, newsize);
- }
- EXPORT_SYMBOL(truncate_setsize);
- 
- /**
-+ * pagecache_isize_extended - update pagecache after extension of i_size
-+ * @inode:	inode for which i_size was extended
-+ * @from:	original inode size
-+ * @to:		new inode size
-+ *
-+ * Handle extension of inode size either caused by extending truncate or by
-+ * write starting after current i_size. We mark the page straddling current
-+ * i_size RO so that page_mkwrite() is called on the nearest write access to
-+ * the page.  This way filesystem can be sure that page_mkwrite() is called on
-+ * the page before user writes to the page via mmap after the i_size has been
-+ * changed.
-+ *
-+ * The function must be called after i_size is updated so that page fault
-+ * coming after we unlock the page will already see the new i_size.
-+ * The function must be called while we still hold i_mutex - this not only
-+ * makes sure i_size is stable but also that userspace cannot observe new
-+ * i_size value before we are prepared to store mmap writes at new inode size.
-+ */
-+void pagecache_isize_extended(struct inode *inode, loff_t from, loff_t to)
-+{
-+	int bsize = 1 << inode->i_blkbits;
-+	loff_t rounded_from;
-+	struct page *page;
-+	pgoff_t index;
-+
-+	WARN_ON(!mutex_is_locked(&inode->i_mutex));
-+	WARN_ON(to > inode->i_size);
-+
-+	if (from >= to || bsize == PAGE_CACHE_SIZE)
-+		return;
-+	/* Page straddling @from will not have any hole block created? */
-+	rounded_from = round_up(from, bsize);
-+	if (to <= rounded_from || !(rounded_from & (PAGE_CACHE_SIZE - 1)))
-+		return;
-+
-+	index = from >> PAGE_CACHE_SHIFT;
-+	page = find_lock_page(inode->i_mapping, index);
-+	/* Page not cached? Nothing to do */
-+	if (!page)
-+		return;
-+	/*
-+	 * See clear_page_dirty_for_io() for details why set_page_dirty()
-+	 * is needed.
-+	 */
-+	if (page_mkclean(page))
-+		set_page_dirty(page);
-+	unlock_page(page);
-+	page_cache_release(page);
-+}
-+EXPORT_SYMBOL(pagecache_isize_extended);
-+
-+/**
-  * truncate_pagecache_range - unmap and remove pagecache that is hole-punched
-  * @inode: inode
-  * @lstart: offset of beginning of hole
--- 
-1.8.1.4
+Cheers,
 
+						- Ted
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
