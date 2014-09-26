@@ -1,53 +1,22 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 4/4] Adds ioctl interface support for ext4 project
-Date: Fri, 26 Sep 2014 08:01:28 -0400
-Message-ID: <20140926120128.GA21376@thunk.org>
-References: <1411567470-31799-1-git-send-email-lixi@ddn.com>
- <1411567470-31799-5-git-send-email-lixi@ddn.com>
- <20140924162507.GC27000@quack.suse.cz>
- <20140924162634.GA16886@infradead.org>
- <20140924170105.GE27000@quack.suse.cz>
- <20140925075912.GG4758@dastard>
- <20140925135213.GB15352@quack.suse.cz>
- <20140925224225.GJ4945@dastard>
+From: Finance Department <lucy_dyah@unair.ac.id>
+Subject: Payment
+Date: Fri, 26 Sep 2014 21:51:46 +0700 (WIT)
+Message-ID: <1941748295.3967.1411743106617.JavaMail.root__42982.6874672019$1411743621$gmane$org@pop.unair.ac.id>
+Reply-To: Finance Department <dpfuk@qq.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
-	adilger@dilger.ca, linux-api@vger.kernel.org, xfs@oss.sgi.com,
-	dmonakhov@openvz.org, viro@zeniv.linux.org.uk,
-	Li Xi <pkuelelixi@gmail.com>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20140925224225.GJ4945@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: undisclosed-recipients:;
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from pop.unair.ac.id ([210.57.208.25]:49425 "HELO mail.unair.ac.id"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1754160AbaIZO7g (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Sep 2014 10:59:36 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 26, 2014 at 08:42:25AM +1000, Dave Chinner wrote:
-> Look, I have no problems with extending the existing quota
-> interfaces to support project quotas, but that should be a
-> *secondary* improvement as userspace tools are updated. The
-> primary goal needs to be "works identically to XFS" and so it needs
-> to implement the interfaces that are currently used for management
-> so that we can actually test that it does work identically.
+Dear Recipient,
 
-I think we're getting a bit too hung up on which is the "primary" and
-which is the "secondary" interfaces.  The reality is that we should
-make both interfaces work.  An example of this is how we handle the
-xfs-specific ioctls that are also exposed via the fallocate(2) system
-call.
+You have been awarded the sum of  8,000,000.00 (Eight Million Pounds sterling) with reference number 77100146 by office of the ministry of finance UK.Send us your personal details to deliver your funds.
 
-It's not particularly important to me which is the "primary" interface
-just because it's been around for 10 years.  Which should implement
-*both* so that users are used to using xfs_io(8) or fallocate(1) can
-do what they want.
-
-Similarly, if some users are more used to the quotatools interface
-(which has been around for quite a long time, BTW, if we're trying to
-count primacy by years of availability to Linux users), and some users
-that are used to using xfs_quota, both should work.
-
-Cheers,
-
-						- Ted
+Gloria Peter
