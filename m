@@ -1,50 +1,45 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 1/2] ext4: define MKFS_EXT4_PROG and use it instead of
- "mkfs.ext4" / "mkfs -t ext4"
-Date: Sat, 27 Sep 2014 10:11:41 +1000
-Message-ID: <20140927001141.GI4758@dastard>
-References: <20140907192110.GC1066@thunk.org>
- <1410141968-17551-1-git-send-email-tytso@mit.edu>
- <20140908123528.GK30012@dastard>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH] mke2fs: clarify inline data inode size error message
+Date: Sat, 27 Sep 2014 11:55:15 -0400
+Message-ID: <20140927155515.GA2322@wallace>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: fstests@vger.kernel.org, hch@infradead.org,
-	linux-ext4@vger.kernel.org, wangxg.fnst@cn.fujitsu.com,
-	eguan@redhat.com
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:9492 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755944AbaI0ALo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 26 Sep 2014 20:11:44 -0400
+Received: from mail-qc0-f178.google.com ([209.85.216.178]:41944 "EHLO
+	mail-qc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753015AbaI0PzS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Sep 2014 11:55:18 -0400
+Received: by mail-qc0-f178.google.com with SMTP id x13so7920679qcv.23
+        for <linux-ext4@vger.kernel.org>; Sat, 27 Sep 2014 08:55:18 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20140908123528.GK30012@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 08, 2014 at 10:35:28PM +1000, Dave Chinner wrote:
-> On Sun, Sep 07, 2014 at 10:06:07PM -0400, Theodore Ts'o wrote:
-> > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> > ---
-> >  common/config   | 1 +
-> >  common/rc       | 7 +++++--
-> >  tests/btrfs/012 | 1 -
-> >  tests/ext4/003  | 2 +-
-> >  tests/ext4/306  | 2 +-
-> >  5 files changed, 8 insertions(+), 5 deletions(-)
-> 
-> This throws lots of rejects with all the other patches I've already
-> queued up. Can you rebase it and resend it when I push out my
-> current tree in the morning, Ted?
+The existing error message can be made more helpful by more clearly
+implying the attempt to make a file system with undersized inodes is
+failing and suggesting a corrective action.
 
-Hi Ted,
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ misc/mke2fs.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Can you send an update for this patch if you still need it?
-
-Cheers,
-
-Dave.
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 2bc435b..00bb00d 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -2358,7 +2358,8 @@ profile_error:
+ 	     EXT4_FEATURE_INCOMPAT_INLINE_DATA) &&
+ 	    fs_param.s_inode_size == EXT2_GOOD_OLD_INODE_SIZE) {
+ 		com_err(program_name, 0,
+-			_("inode size is %d, inline data is useless"),
++			_("%d byte inodes are too small for inline data; "
++			  "specify larger size"),
+ 			fs_param.s_inode_size);
+ 		exit(1);
+ 	}
 -- 
-Dave Chinner
-david@fromorbit.com
+1.9.1
+
