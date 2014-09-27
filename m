@@ -1,56 +1,50 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] xfstests-bld: specify inode size in inline test scenario conf
-Date: Fri, 26 Sep 2014 18:16:46 -0400
-Message-ID: <20140926221646.GA20955@wallace>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 1/2] ext4: define MKFS_EXT4_PROG and use it instead of
+ "mkfs.ext4" / "mkfs -t ext4"
+Date: Sat, 27 Sep 2014 10:11:41 +1000
+Message-ID: <20140927001141.GI4758@dastard>
+References: <20140907192110.GC1066@thunk.org>
+ <1410141968-17551-1-git-send-email-tytso@mit.edu>
+ <20140908123528.GK30012@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+Cc: fstests@vger.kernel.org, hch@infradead.org,
+	linux-ext4@vger.kernel.org, wangxg.fnst@cn.fujitsu.com,
+	eguan@redhat.com
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:61677 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755881AbaIZWQ7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Sep 2014 18:16:59 -0400
-Received: by mail-qg0-f50.google.com with SMTP id q107so9512703qgd.23
-        for <linux-ext4@vger.kernel.org>; Fri, 26 Sep 2014 15:16:58 -0700 (PDT)
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:9492 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755944AbaI0ALo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Sep 2014 20:11:44 -0400
 Content-Disposition: inline
+In-Reply-To: <20140908123528.GK30012@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Some xfstests use test file systems that are smaller than 512 MB, and
-per the mke2fs.conf default, contain 128 byte inodes.  These tests
-include xfstests generic/015, generic/077, generic/083, and shared/298.
-All of them fail at mkfs time when run in xfstest-bld's inline test
-scenario because the inline data feature requires a minimum inode size
-of 256 bytes.
+On Mon, Sep 08, 2014 at 10:35:28PM +1000, Dave Chinner wrote:
+> On Sun, Sep 07, 2014 at 10:06:07PM -0400, Theodore Ts'o wrote:
+> > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> > ---
+> >  common/config   | 1 +
+> >  common/rc       | 7 +++++--
+> >  tests/btrfs/012 | 1 -
+> >  tests/ext4/003  | 2 +-
+> >  tests/ext4/306  | 2 +-
+> >  5 files changed, 8 insertions(+), 5 deletions(-)
+> 
+> This throws lots of rejects with all the other patches I've already
+> queued up. Can you rebase it and resend it when I push out my
+> current tree in the morning, Ted?
 
-Fix this problem by specifying an inode size of 256 bytes in the inline
-conf file.  This allows the tester more flexibility than modifying the
-xfstests themselves.
+Hi Ted,
 
-This change also makes it possible to run generic/027 successfully and
-in a reasonable amount of time (less than 20 minutes on one x86-64 VM).
-It also fails silently when mkfs'ing its test file system, but then
-proceeds to run and reports success erroneously.
+Can you send an update for this patch if you still need it?
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- kvm-xfstests/test-appliance/files/root/conf/inline | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Cheers,
 
-diff --git a/kvm-xfstests/test-appliance/files/root/conf/inline b/kvm-xfstests/test-appliance/files/root/conf/inline
-index 52b0609..9ba088f 100644
---- a/kvm-xfstests/test-appliance/files/root/conf/inline
-+++ b/kvm-xfstests/test-appliance/files/root/conf/inline
-@@ -1,7 +1,7 @@
- export FS=ext4
- export TEST_DEV=$VDD
- export TEST_DIR=/vdd
--export MKFS_OPTIONS="-q -O inline_data,metadata_csum,64bit"
-+export MKFS_OPTIONS="-q -I 256 -O inline_data,metadata_csum,64bit"
- export EXT_MOUNT_OPTIONS="-o block_validity"
- TESTNAME="Ext4 4k block w/inline"
- 
+Dave.
 -- 
-1.9.1
-
+Dave Chinner
+david@fromorbit.com
