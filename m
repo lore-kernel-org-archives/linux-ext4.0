@@ -1,34 +1,42 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] ext4: define MKFS_EXT4_PROG and use it instead of
- "mkfs.ext4" / "mkfs -t ext4"
-Date: Sat, 27 Sep 2014 18:12:34 -0400
-Message-ID: <20140927221234.GC11222@thunk.org>
-References: <20140907192110.GC1066@thunk.org>
- <1410141968-17551-1-git-send-email-tytso@mit.edu>
- <20140908123528.GK30012@dastard>
- <20140927001141.GI4758@dastard>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: ext4: 3.17? problems
+Date: Sun, 28 Sep 2014 12:44:56 +0200
+Message-ID: <20140928104456.GA17400@amd>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: fstests@vger.kernel.org, hch@infradead.org,
-	linux-ext4@vger.kernel.org, wangxg.fnst@cn.fujitsu.com,
-	eguan@redhat.com
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:52784 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752581AbaI0WPE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 27 Sep 2014 18:15:04 -0400
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org, tytso@mit.edu,
+	kernel list <linux-kernel@vger.kernel.org>,
+	adilger.kernel@dilger.ca
+To: kernel list <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20140927001141.GI4758@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Sep 27, 2014 at 10:11:41AM +1000, Dave Chinner wrote:
-> 
-> Can you send an update for this patch if you still need it?
+Hi!
 
-Thanks for pinging me; I've been so busy these past few weeks I forgot
-to check to see if the fstests repo had been updated.  I see you did
-so quite a while ago, my bad.
+After update to debian testing, my machine sometimes fails to
+reboot. (aptitude upgrade seems to be the trigger).
 
-   	    	       	       	    	     - Ted
+So I had to hard power-down the machine. That should be perfectly
+safe, as ext4 has a journal, and this is plain SATA disk, right?
+
+On next boot to Debian stable, I got stacktrace, and messages about
+ext4 corruption. Back to Debian testing. systemd ran fsck, determined
+it can't fix it, dropped me into emergency shell, _but mounted the
+filesstem, anyway_. Oops.
+
+Now I'm getting
+
+fsck 1.42.12
+...
+Inodes that were part of a corrupted orphan linked list found <y>
+Deleted inode has zero dtime <y>
+(6 inodes) was part of the orphaned inode list. FIXED.
+Block bitmap differences.
+Free inode counts wrong.
+
+
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
