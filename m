@@ -1,49 +1,56 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: fix return value of ext4_do_update_inode
-Date: Sun, 28 Sep 2014 21:46:53 -0500
-Message-ID: <5428C81D.1060808@redhat.com>
-References: <1411955914-550-1-git-send-email-lixi@ddn.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] mke2fs: clarify inline data inode size error message
+Date: Sun, 28 Sep 2014 22:53:50 -0700
+Message-ID: <20140929055350.GL10150@birch.djwong.org>
+References: <20140927155515.GA2322@wallace>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-To: Li Xi <pkuelelixi@gmail.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, adilger@dilger.ca, jack@suse.cz
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Eric Whitney <enwlinux@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4911 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752727AbaI2CrB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 28 Sep 2014 22:47:01 -0400
-In-Reply-To: <1411955914-550-1-git-send-email-lixi@ddn.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:51892 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751146AbaI2Fx5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Sep 2014 01:53:57 -0400
+Content-Disposition: inline
+In-Reply-To: <20140927155515.GA2322@wallace>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 9/28/14 8:58 PM, Li Xi wrote:
-> When ext4_do_update_inode() gets error from ext4_inode_blocks_set(),
-> error number should be returned.
-
-How strange, it has been missing this error return ever since the
-original commit in 2008.  :)
-
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
-
-> Signed-off-by: Li Xi <lixi@ddn.com>
+On Sat, Sep 27, 2014 at 11:55:15AM -0400, Eric Whitney wrote:
+> The existing error message can be made more helpful by more clearly
+> implying the attempt to make a file system with undersized inodes is
+> failing and suggesting a corrective action.
+> 
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
 > ---
->  fs/ext4/inode.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
+>  misc/mke2fs.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index d5dd7d4..03ddfd7 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4204,7 +4204,8 @@ static int ext4_do_update_inode(handle_t *handle,
->  	EXT4_INODE_SET_XTIME(i_atime, inode, raw_inode);
->  	EXT4_EINODE_SET_XTIME(i_crtime, ei, raw_inode);
->  
-> -	if (ext4_inode_blocks_set(handle, raw_inode, ei)) {
-> +	err = ext4_inode_blocks_set(handle, raw_inode, ei);
-> +	if (err) {
->  		spin_unlock(&ei->i_raw_lock);
->  		goto out_brelse;
->  	}
-> 
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index 2bc435b..00bb00d 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -2358,7 +2358,8 @@ profile_error:
+>  	     EXT4_FEATURE_INCOMPAT_INLINE_DATA) &&
+>  	    fs_param.s_inode_size == EXT2_GOOD_OLD_INODE_SIZE) {
+>  		com_err(program_name, 0,
+> -			_("inode size is %d, inline data is useless"),
+> +			_("%d byte inodes are too small for inline data; "
+> +			  "specify larger size"),
 
+How much larger?  The next larger inode size is 256 bytes, so we ought to tell
+the user that.  ("specify a size at least 256 bytes"?)
+
+--D
+
+>  			fs_param.s_inode_size);
+>  		exit(1);
+>  	}
+> -- 
+> 1.9.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
