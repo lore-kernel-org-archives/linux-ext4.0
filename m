@@ -1,71 +1,241 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 15/34] libext2fs: support BLKZEROOUT/FALLOC_FL_ZERO_RANGE
- in ext2fs_zero_blocks
-Date: Mon, 29 Sep 2014 11:58:44 -0700
-Message-ID: <20140929185844.GM10150@birch.djwong.org>
-References: <20140913221112.13646.3873.stgit@birch.djwong.org>
- <20140913221253.13646.7723.stgit@birch.djwong.org>
- <20140922025109.GF30646@thunk.org>
+Subject: Re: [PATCH v1 4/10] lib/siphash.c: New file
+Date: Mon, 29 Sep 2014 12:12:43 -0700
+Message-ID: <20140929191243.GN10150@birch.djwong.org>
+References: <20140923100214.26896.qmail@ns.horizon.com>
+ <20140923101450.32282.qmail@ns.horizon.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: George Spelvin <linux@horizon.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:19086 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754553AbaI2S6u (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Sep 2014 14:58:50 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:44712 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750906AbaI2TMw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Sep 2014 15:12:52 -0400
 Content-Disposition: inline
-In-Reply-To: <20140922025109.GF30646@thunk.org>
+In-Reply-To: <20140923101450.32282.qmail@ns.horizon.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 21, 2014 at 10:51:09PM -0400, Theodore Ts'o wrote:
-> On Sat, Sep 13, 2014 at 03:12:53PM -0700, Darrick J. Wong wrote:
-> > +#if defined(HAVE_FALLOCATE) && defined(FALLOC_FL_ZERO_RANGE)
-> > +		int flag = FALLOC_FL_ZERO_RANGE;
-> > +		struct stat statbuf;
-> > +
-> > +		/*
-> > +		 * If we're trying to zero a range past the end of the file,
-> > +		 * just use regular fallocate to get there, because zeroing
-> > +		 * a range past EOF does not extend the file.
-> > +		 */
+On Tue, Sep 23, 2014 at 06:14:50AM -0400, George Spelvin wrote:
+> SipHash is a fast keyed hash function for short
+> inputs such as symbol tables and filenames.  It's
+> designed to prevent hash flooding DoS attacks.
 > 
-> If we are operating on a regular file (for example, "mkfs.ext4
-> /tmp/foo.img 64M") we want to keep the file a sparse one; so if we are
-> trying to zero a range past the end of the file, it should be
-> sufficient simply use trucate to set i_size.  In fact, if we can use
-> FALLOC_FL_PUNCH on the regular file, we should try to use that
-> instead, I would think.
+> This implements SipHash-2-4, the high-speed variant.
+> 
+> For now, ext3/4 are the only users, and the way the seed[] array
+> is passed is slightly idiosyncratic for their convenience.
+> 
+> Signed-off-by: George Spelvin <linux@horizon.com>
+> ---
+> If anyone has any better ideas for the seed-passing convention, I'm
+> all ears.  For now, I've left it as is with plenty of warnings.
 
-I thought about making file-backed zero-out a simple truncate/punch operation,
-since it would get us the results we want.  However, I had a look at what the
-kernel's discard and zeroout implementations do for block devices, and came up
-with:
+Could you please make this part of crypto/ so that anyone who wants to improve
+upon the C implementation (Google suggests that SSE/AVX ports are possible) can
+do so easily?
 
-discard: unprovision, may or may not return zeroes
-zeroout: provision, return zeroes
-
-(mkp is thinking about a zeroout that guarantees the zeroes but unprovisions if
-possible a la FS hole punching, but we're not there yet.)
-
-The users of the zero_blocks call (which uses this zeroout primitive) are
-generally looking to clean off blocks in anticipation of them being written in
-the near future so (to me) it makes more sense that after the call completes,
-the block range has storage allocated to it.
-
-Therefore, I took this approach to anticipate the needs of the callers and to
-ensure that the side effects on the storage would be consistent between block
-devices and file images.
-
-(Of course, the user-visible effect is the same between the two approaches so I
-don't really have a problem changing it.)
+This would also make it so that ext4 only loads the algorithm when necessary.
 
 --D
 
 > 
-> 					- Ted
+>  include/linux/cryptohash.h |  19 +++++++
+>  lib/Makefile               |   2 +-
+>  lib/siphash.c              | 131 +++++++++++++++++++++++++++++++++++++++++++++
+>  3 files changed, 151 insertions(+), 1 deletion(-)
+>  create mode 100644 lib/siphash.c
+> 
+> diff --git a/include/linux/cryptohash.h b/include/linux/cryptohash.h
+> index 2cd9f1cf..6b043780 100644
+> --- a/include/linux/cryptohash.h
+> +++ b/include/linux/cryptohash.h
+> @@ -1,6 +1,8 @@
+>  #ifndef __CRYPTOHASH_H
+>  #define __CRYPTOHASH_H
+>  
+> +#include <linux/compiler.h>
+> +
+>  #define SHA_DIGEST_WORDS 5
+>  #define SHA_MESSAGE_BYTES (512 /*bits*/ / 8)
+>  #define SHA_WORKSPACE_WORDS 16
+> @@ -15,4 +17,21 @@ void md5_transform(__u32 *hash, __u32 const *in);
+>  
+>  __u32 half_md4_transform(__u32 buf[4], __u32 const in[8]);
+>  
+> +/*
+> + * Jean-Philippe Aumasson and Daniel J. Bernstein's SipHash-2-4.
+> + *
+> + * Takes an arbitrary-length byte string, returns a 64-bit hash value.
+> + * Extremely fast on 64-bit machines.  Faster than half_md4_transform
+> + * even on 32-bit machines.
+> + *
+> + * The fact that the seed is in the form of 4x32-bit words rather
+> + * 2x64-bit, and NULL is a synonym for all-zero, is a convenience
+> + * to the ext3/ext4 code which is the only current user.
+> + *
+> + * If it's used for internal hashing with a non-public seed, details
+> + * like endianness don't matter.  If it's going to be used for something
+> + * longer-term, please feel free to revise the interface.
+> + */
+> +__u64 __pure siphash24(char const *in, size_t len, __u32 const seed[4]);
+> +
+>  #endif
+> diff --git a/lib/Makefile b/lib/Makefile
+> index f9a647d3..56d0e35b 100644
+> --- a/lib/Makefile
+> +++ b/lib/Makefile
+> @@ -26,7 +26,7 @@ obj-y += bcd.o div64.o sort.o parser.o halfmd4.o debug_locks.o random32.o \
+>  	 bust_spinlocks.o hexdump.o kasprintf.o bitmap.o scatterlist.o \
+>  	 gcd.o lcm.o list_sort.o uuid.o flex_array.o iovec.o clz_ctz.o \
+>  	 bsearch.o find_last_bit.o find_next_bit.o llist.o memweight.o kfifo.o \
+> -	 percpu-refcount.o percpu_ida.o hash.o
+> +	 percpu-refcount.o percpu_ida.o hash.o siphash.o
+>  obj-y += string_helpers.o
+>  obj-$(CONFIG_TEST_STRING_HELPERS) += test-string_helpers.o
+>  obj-y += kstrtox.o
+> diff --git a/lib/siphash.c b/lib/siphash.c
+> new file mode 100644
+> index 00000000..77e8fb4f
+> --- /dev/null
+> +++ b/lib/siphash.c
+> @@ -0,0 +1,131 @@
+> +#include <linux/bitops.h>	/* For rol64 */
+> +#include <linux/cryptohash.h>
+> +#include <asm/byteorder.h>
+> +#include <asm/unaligned.h>
+> +
+> +/* The basic ARX mixing function, taken from Skein */
+> +#define SIP_MIX(a, b, s) ((a) += (b), (b) = rol64(b, s), (b) ^= (a))
+> +
+> +/*
+> + * The complete SipRound.  Note that, when unrolled twice like below,
+> + * the 32-bit rotates drop out on 32-bit machines.
+> + */
+> +#define SIP_ROUND(a, b, c, d) \
+> +	(SIP_MIX(a, b, 13), SIP_MIX(c, d, 16), (a) = rol64(a, 32), \
+> +	 SIP_MIX(c, b, 17), SIP_MIX(a, d, 21), (c) = rol64(c, 32))
+> +
+> +/*
+> + * This is rolled up more than most implementations, resulting in about
+> + * 55% the code size.  Speed is a few precent slower.  A crude benchmark
+> + * (for (i=1; i <= max; i++) for (j = 0; j < 4096-i; j++) hash(buf+j, i);)
+> + * produces the following timings (in usec):
+> + *
+> + *		i386	i386	i386	x86_64	x86_64	x86_64	x86_64
+> + * Length	small	unroll  halfmd4 small	unroll	halfmd4 teahash
+> + * 1..4		   1069	   1029	   1608	    195	    160	    399	    690
+> + * 1..8		   2483	   2381	   3851	    410	    360	    988	   1659
+> + * 1..12           4303	   4152	   6207	    690	    618	   1642	   2690
+> + * 1..16           6122	   5931	   8668	    968	    876	   2363	   3786
+> + * 1..20           8348	   8137	  11245	   1323	   1185	   3162	   5567
+> + * 1..24          10580	  10327	  13935	   1657	   1504	   4066	   7635
+> + * 1..28          13211	  12956	  16803	   2069	   1871	   5028	   9759
+> + * 1..32          15843	  15572	  19725	   2470	   2260	   6084	  11932
+> + * 1..36          18864	  18609	  24259	   2934	   2678	   7566	  14794
+> + * 1..1024      5890194	6130242	10264816 881933	 881244	3617392	7589036
+> + *
+> + * The performance penalty is quite minor, decreasing for long strings,
+> + * and it's significantly faster than half_md4, so I'm going for the
+> + * I-cache win.
+> + */
+> +uint64_t
+> +siphash24(char const *in, size_t len, uint32_t const seed[4])
+> +{
+> +	uint64_t a = 0x736f6d6570736575;	/* somepseu */
+> +	uint64_t b = 0x646f72616e646f6d;	/* dorandom */
+> +	uint64_t c = 0x6c7967656e657261;	/* lygenera */
+> +	uint64_t d = 0x7465646279746573;	/* tedbytes */
+> +	uint64_t m = 0;
+> +	uint8_t padbyte = len;
+> +
+> +	/*
+> +	 * Mix in the 128-bit hash seed.  This is in a format convenient
+> +	 * to the ext3/ext4 code.  Please feel free to adapt the
+> +	 * */
+> +	if (seed) {
+> +		m = seed[2] | (uint64_t)seed[3] << 32;
+> +		b ^= m;
+> +		d ^= m;
+> +		m = seed[0] | (uint64_t)seed[1] << 32;
+> +		/* a ^= m; is done in loop below */
+> +		c ^= m;
+> +	}
+> +
+> +	/*
+> +	 * By using the same SipRound code for all iterations, we
+> +	 * save space, at the expense of some branch prediction.  But
+> +	 * branch prediction is hard because of variable length anyway.
+> +	 */
+> +	len = len/8 + 3;	/* Now number of rounds to perform */
+> +	do {
+> +		a ^= m;
+> +
+> +		switch (--len) {
+> +			unsigned bytes;
+> +
+> +		default:	/* Full words */
+> +			d ^= m = get_unaligned_le64(in);
+> +			in += 8;
+> +			break;
+> +		case 2:		/* Final partial word */
+> +			/*
+> +			 * We'd like to do one 64-bit fetch rather than
+> +			 * mess around with bytes, but reading past the end
+> +			 * might hit a protection boundary.  Fortunately,
+> +			 * we know that protection boundaries are aligned,
+> +			 * so we can consider only three cases:
+> +			 * - The remainder occupies zero words
+> +			 * - The remainder fits into one word
+> +			 * - The remainder straddles two words
+> +			 */
+> +			bytes = padbyte & 7;
+> +
+> +			if (bytes == 0) {
+> +				m = 0;
+> +			} else {
+> +				unsigned offset = (unsigned)(uintptr_t)in & 7;
+> +
+> +				if (offset + bytes <= 8) {
+> +					m = le64_to_cpup((uint64_t const *)
+> +								(in - offset));
+> +					m >>= 8*offset;
+> +				} else {
+> +					m = get_unaligned_le64(in);
+> +				}
+> +				m &= ((uint64_t)1 << 8*bytes) - 1;
+> +			}
+> +			/* Could use | or +, but ^ allows associativity */
+> +			d ^= m ^= (uint64_t)padbyte << 56;
+> +			break;
+> +		case 1:		/* Beginning of finalization */
+> +			m = 0;
+> +			c ^= 0xff;
+> +			/*FALLTHROUGH*/
+> +		case 0:		/* Second half of finalization */
+> +			break;
+> +		}
+> +
+> +		SIP_ROUND(a, b, c, d);
+> +		SIP_ROUND(a, b, c, d);
+> +	} while (len);
+> +
+> +	return a ^ b ^ c ^ d;
+> +}
+> +
+> +#undef SIP_ROUND
+> +#undef SIP_MIX
+> +
+> +/*
+> + * No objection to EXPORT_SYMBOL, but we should probably figure out
+> + * how the seed[] array should work first.  Homework for the first
+> + * person to want to call it from a module!
+> + */
+> -- 
+> 2.1.0
+> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
