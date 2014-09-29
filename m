@@ -1,43 +1,41 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4: 3.17? problems
-Date: Sun, 28 Sep 2014 08:46:58 -0400
-Message-ID: <20140928124658.GB6694@thunk.org>
-References: <20140928104456.GA17400@amd>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: kernel list <linux-kernel@vger.kernel.org>, jack@suse.cz,
-	linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
-To: Pavel Machek <pavel@ucw.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20140928104456.GA17400@amd>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Li Xi <pkuelelixi@gmail.com>
+Subject: [PATCH] ext4: fix return value of ext4_do_update_inode
+Date: Mon, 29 Sep 2014 09:58:34 +0800
+Message-ID: <1411955914-550-1-git-send-email-lixi@ddn.com>
+To: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca,
+	jack@suse.cz
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pd0-f171.google.com ([209.85.192.171]:60459 "EHLO
+	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753310AbaI2CBd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Sep 2014 22:01:33 -0400
+Received: by mail-pd0-f171.google.com with SMTP id ft15so569699pdb.16
+        for <linux-ext4@vger.kernel.org>; Sun, 28 Sep 2014 19:01:32 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 28, 2014 at 12:44:56PM +0200, Pavel Machek wrote:
-> 
-> After update to debian testing, my machine sometimes fails to
-> reboot. (aptitude upgrade seems to be the trigger).
-> 
-> So I had to hard power-down the machine. That should be perfectly
-> safe, as ext4 has a journal, and this is plain SATA disk, right?
-> 
-> On next boot to Debian stable, I got stacktrace, and messages about
-> ext4 corruption. Back to Debian testing. systemd ran fsck, determined
-> it can't fix it, dropped me into emergency shell, _but mounted the
-> filesstem, anyway_. Oops.
+When ext4_do_update_inode() gets error from ext4_inode_blocks_set(),
+error number should be returned.
 
-I've been running 3.17-rc4 plus the ext4 dev patches and due to either
-regressions in i915 or the X server (not sure which) over the last
-couple of weeks, I've had to power-down my system a number of times
-after the system has hung when either shutting down the X server or
-when trying to add or remove an external display.  So I've had to
-unfortunately do a fair number of hard-power-offs on my T540p, and
-I've not noticed any like what you've described.
+Signed-off-by: Li Xi <lixi@ddn.com>
+---
+ fs/ext4/inode.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-Can you give any more details?  Are you using LVM or dm-crypt?  Is
-this repeatable?
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d5dd7d4..03ddfd7 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4204,7 +4204,8 @@ static int ext4_do_update_inode(handle_t *handle,
+ 	EXT4_INODE_SET_XTIME(i_atime, inode, raw_inode);
+ 	EXT4_EINODE_SET_XTIME(i_crtime, ei, raw_inode);
+ 
+-	if (ext4_inode_blocks_set(handle, raw_inode, ei)) {
++	err = ext4_inode_blocks_set(handle, raw_inode, ei);
++	if (err) {
+ 		spin_unlock(&ei->i_raw_lock);
+ 		goto out_brelse;
+ 	}
+-- 
+1.7.1
 
-Cheers,
-
-							- Ted
