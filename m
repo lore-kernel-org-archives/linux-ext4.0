@@ -1,51 +1,43 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: e2fsck not fixing deleted inode referenced errors?
-Date: Tue, 30 Sep 2014 15:54:08 -0400
-Message-ID: <20140930195408.GD17142@thunk.org>
-References: <542AEED4.5050303@bitsync.net>
- <20140930183012.GA9942@birch.djwong.org>
- <542AF9B8.2090800@bitsync.net>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 1/4] Adds general codes to enforces project quota limits
+Date: Tue, 30 Sep 2014 22:07:21 +0200
+Message-ID: <20140930200721.GA6593@quack.suse.cz>
+References: <1411567470-31799-1-git-send-email-lixi@ddn.com>
+ <1411567470-31799-2-git-send-email-lixi@ddn.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	linux-ext4@vger.kernel.org
-To: Zlatko Calusic <zcalusic@bitsync.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57350 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751142AbaI3TyP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 30 Sep 2014 15:54:15 -0400
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
+	jack-AlSwsSmVLrQ@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+	dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org
+To: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <542AF9B8.2090800@bitsync.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1411567470-31799-2-git-send-email-lixi-LfVdkaOWEx8@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Sep 30, 2014 at 08:43:04PM +0200, Zlatko Calusic wrote:
-> Full error message from the kernel log, together with data check I did in
-> the evening:
-> 
-> Sep 29 05:07:51 atlas kernel: ata2.00: exception Emask 0x10 SAct 0x0 SErr
-> 0x4010000 action 0xe frozen
-> Sep 29 05:07:51 atlas kernel: ata2.00: irq_stat 0x00400040, connection
-> status changed
-> Sep 29 05:07:51 atlas kernel: ata2: SError: { PHYRdyChg DevExch }
-> Sep 29 05:07:51 atlas kernel: ata2.00: failed command: FLUSH CACHE EXT
-> Sep 29 05:07:51 atlas kernel: ata2.00: cmd
-> ea/00:00:00:00:00/00:00:00:00:00/a0 tag 0\x0a         res
-> 40/00:f4:e2:7f:14/00:00:3a:00:00/40 Emask 0x10 (ATA bus error)
-> Sep 29 05:07:51 atlas kernel: ata2.00: status: { DRDY }
-> Sep 29 05:07:51 atlas kernel: ata2: hard resetting link
-> Sep 29 05:07:57 atlas kernel: ata2: link is slow to respond, please be
-> patient (ready=0)
-> Sep 29 05:08:00 atlas kernel: ata2: SATA link up 3.0 Gbps (SStatus 123
-> SControl 300)
-> Sep 29 05:08:00 atlas kernel: ata2.00: configured for UDMA/133
-> Sep 29 05:08:00 atlas kernel: ata2.00: retrying FLUSH 0xea Emask 0x10
-> Sep 29 05:08:00 atlas kernel: ata2: EH complete
+On Wed 24-09-14 22:04:27, Li Xi wrote:
+> @@ -1413,6 +1416,15 @@ static void __dquot_initialize(struct inode *inode, int type)
+>  		case GRPQUOTA:
+>  			qid = make_kqid_gid(inode->i_gid);
+>  			break;
+> +		case PRJQUOTA:
+> +			/* Project ID is not supported */
+> +			if (!inode->i_sb->dq_op->get_projid)
+> +				continue;
+> +			rc = inode->i_sb->dq_op->get_projid(inode, &projid);
+> +			if (rc)
+> +				continue;
+> +			qid = make_kqid_projid(projid);
+> +			break;
+  I realized one more thing: We don't want to check ->get_projid() here.
+Rather we should check ->get_projid() when turning quota on in
+quota_quotaon() and return -EINVAL when ->get_projid() isn't set - that way
+user is early notified the fs doesn't support project quotas. Then here
+in __dquot_initialize() we can just check sb_has_quota_active(sb, PRJQUOTA).
 
-That looks really bad; it sounds like you have a hardware error on at
-least one of your disks.  Have you tried running running badblocks on
-both disks to make sure the disk isn't flagging more bad blocks, and
-then resynchronizing the RAID 1 array?   Then try running e2fsck again.
-
-     		     	      		 - Ted
+								Honza
+-- 
+Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+SUSE Labs, CR
