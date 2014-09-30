@@ -1,125 +1,147 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: e2fsck not fixing deleted inode referenced errors?
-Date: Tue, 30 Sep 2014 13:36:22 -0700
-Message-ID: <20140930203622.GC9942@birch.djwong.org>
-References: <542AEED4.5050303@bitsync.net>
- <20140930183012.GA9942@birch.djwong.org>
- <542AF9B8.2090800@bitsync.net>
- <20140930195408.GD17142@thunk.org>
- <542B1220.8020208@bitsync.net>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: Re: ext4: 3.17? problems
+Date: Tue, 30 Sep 2014 23:01:08 +0200
+Message-ID: <20140930210108.GB14283@amd>
+References: <20140929114408.GC2738@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Zlatko Calusic <zcalusic@bitsync.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:34781 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750780AbaI3Ugf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Sep 2014 16:36:35 -0400
+To: Theodore Ts'o <tytso@mit.edu>,
+	kernel list <linux-kernel@vger.kernel.org>, jack@suse.cz,
+	linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <542B1220.8020208@bitsync.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20140929114408.GC2738@quack.suse.cz>
+ <87iok6ojis.fsf@openvz.org>
+ <20140928124658.GB6694@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Sep 30, 2014 at 10:27:12PM +0200, Zlatko Calusic wrote:
-> On 30.09.2014 21:54, Theodore Ts'o wrote:
-> >On Tue, Sep 30, 2014 at 08:43:04PM +0200, Zlatko Calusic wrote:
-> >>Full error message from the kernel log, together with data check I did in
-> >>the evening:
-> >>
-> >>Sep 29 05:07:51 atlas kernel: ata2.00: exception Emask 0x10 SAct 0x0 SErr
-> >>0x4010000 action 0xe frozen
-> >>Sep 29 05:07:51 atlas kernel: ata2.00: irq_stat 0x00400040, connection
-> >>status changed
-> >>Sep 29 05:07:51 atlas kernel: ata2: SError: { PHYRdyChg DevExch }
-> >>Sep 29 05:07:51 atlas kernel: ata2.00: failed command: FLUSH CACHE EXT
-> >>Sep 29 05:07:51 atlas kernel: ata2.00: cmd
-> >>ea/00:00:00:00:00/00:00:00:00:00/a0 tag 0\x0a         res
-> >>40/00:f4:e2:7f:14/00:00:3a:00:00/40 Emask 0x10 (ATA bus error)
-> >>Sep 29 05:07:51 atlas kernel: ata2.00: status: { DRDY }
-> >>Sep 29 05:07:51 atlas kernel: ata2: hard resetting link
-> >>Sep 29 05:07:57 atlas kernel: ata2: link is slow to respond, please be
-> >>patient (ready=0)
-> >>Sep 29 05:08:00 atlas kernel: ata2: SATA link up 3.0 Gbps (SStatus 123
-> >>SControl 300)
-> >>Sep 29 05:08:00 atlas kernel: ata2.00: configured for UDMA/133
-> >>Sep 29 05:08:00 atlas kernel: ata2.00: retrying FLUSH 0xea Emask 0x10
-> >>Sep 29 05:08:00 atlas kernel: ata2: EH complete
-> >
-> >That looks really bad; it sounds like you have a hardware error on at
-> >least one of your disks.  Have you tried running running badblocks on
-> >both disks to make sure the disk isn't flagging more bad blocks, and
-> >then resynchronizing the RAID 1 array?   Then try running e2fsck again.
-> >
+Hi!
+
+
+On Sun 2014-09-28 08:46:58, Theodore Ts'o wrote:
+> On Sun, Sep 28, 2014 at 12:44:56PM +0200, Pavel Machek wrote:
+> > 
+> > After update to debian testing, my machine sometimes fails to
+> > reboot. (aptitude upgrade seems to be the trigger).
+> > 
+> > So I had to hard power-down the machine. That should be perfectly
+> > safe, as ext4 has a journal, and this is plain SATA disk, right?
+> > 
+> > On next boot to Debian stable, I got stacktrace, and messages about
+> > ext4 corruption. Back to Debian testing. systemd ran fsck, determined
+> > it can't fix it, dropped me into emergency shell, _but mounted the
+> > filesstem, anyway_. Oops.
 > 
-> Yep, both disks are pretty old, somewhere at the end of warranty.
-> Yet the interesting thing is that exactly that error (FLUSH CACHE
-> EXT) happened from time to time, say once a year, but never before I
-> got in such trouble that e2fsck wouldn't save the day after one
-> quick run.
-> 
-> I now remember Darrick also asked for smartctl data. Here it is:
-> 
-> /dev/sda
-> ========
-> Power_On_Hours 40984
-> 
-> and only 2 SMART READ/WRITE LOG errors in the log from long time ago...
-> 
-> ATA Error Count: 2
-> Error 1 occurred at disk power-on lifetime: 14493 hours (603 days +
-> 21 hours)
-> Error 2 occurred at disk power-on lifetime: 14493 hours (603 days +
-> 21 hours)
+> I've been running 3.17-rc4 plus the ext4 dev patches and due to either
+> regressions in i915 or the X server (not sure which) over the last
+> couple of weeks, I've had to power-down my system a number of times
+> after the system has hung when either shutting down the X server or
+> when trying to add or remove an external display.  So I've had to
+> unfortunately do a fair number of hard-power-offs on my T540p, and
+> I've not noticed any like what you've described.
 
-Yes, that looks like SMART commands colliding, i.e. not a media error.
+Ok, I'm not 100% sure it was 3.17-rcX... but according to logs, it
+is. 3.17-rc4
 
-> Full: http://pastebin.com/GnQhACXf
-> 
-> /dev/sdb (I believe the disk responsible for the problem)
+> Can you give any more details?  Are you using LVM or dm-crypt?  Is
+> this repeatable?
 
-sysfs will tell you:
+No, I don't think it is repeatable in useful way for debugging, but it
+is not first time it happened here. No LVM or dm-crypt in use.
 
-$ ls /sys/block/sd*
-lrwxrwxrwx 1 root root 0 Sep 30 13:31 /sys/block/sda ->
-../devices/pci0000:00/0000:00:1f.2/ata1/host0/target0:0:0/0:0:0:0/block/sda/
+> > So I had to hard power-down the machine. That should be perfectly
+> > safe, as ext4 has a journal, and this is plain SATA disk, right?
+> > 
+> AFAIU you have some corruption on your fs (the root of cause is unknown
+> at this moment)
+> So you have following stages:
+> 1) fs corruption
+> 2) boot-> mount attempt
+> 3) fsck
+> During (1) Once ext4 driver found this error it will call ext4_error
+> which will tag sb with FS_ERROR flag.
+> During (2) it will found that tag and clear s_orphan which result
+> in complain you have seen  during(3)
 
-                                   ^^^^
+I tried to search syslog, but could not find original messages. It
+happened during shutdown. I guess syslog was already stopped at that
+point..>?
 
-(So on this system, sda is ata1.00.)
+Logs say:
 
-> ========
-> Power_On_Hours 40978
-> 
-> No Errors Logged
-> 
-> Full: http://pastebin.com/nUB2q0Tk
-> 
-> Unless you have other ideas, I will run badblocks. Although, as ext4
-> fs is on /dev/md2, I think I should run it on /dev/md2 only? Do you
-> really mean to run it on /dev/sda2, /dev/sdb2 - underlying devices?
-> I'm not sure how MD would cope with it.
+Sep 28 11:45:38 amd NetworkManager[3422]: <info> Activation (tun0)
+successful, device activated.
+Sep 28 11:45:38 amd nm-dispatcher: Dispatching action 'up' for tun0
+Sep 28 11:45:39 amd systemd[1]: Stopping OpenBSD Secure Shell
+server...
+Sep 28 11:45:39 amd systemd[1]: Starting OpenBSD Secure Shell
+server...
+Sep 28 11:45:39 amd systemd[1]: Started OpenBSD Secure Shell server.
+Sep 28 11:45:41 amd NetworkManager[3422]: <warn> Could not send ARP
+for local address 10.10.0.14: Failed to execute child process
+"/sbin/arping" (No such file or directory)
+Sep 28 11:45:49 amd ntpdate[1413]: adjust time server 193.85.174.5
+offset 0.002797 sec
+Sep 28 12:17:01 amd /USR/SBIN/CRON[3612]: (root) CMD (   cd / &&
+run-parts --report /etc/cron.hourly)
+Sep 28 12:58:12 amd rsyslogd: [origin software="rsyslogd"
+swVersion="8.4.0" x-pid="3380" x-info="http://www.rsyslog.com"] start
+Sep 28 12:58:12 amd systemd[1]: Starting Load Kernel Modules...
+Sep 28 12:58:12 amd systemd[1]: Mounted POSIX Message Queue File
+System.
+Sep 28 12:58:12 amd systemd[1]: Starting udev Kernel Socket.
+Sep 28 12:58:12 amd systemd[1]: Listening on udev Kernel Socket.
+Sep 28 12:58:12 amd systemd[1]: Starting udev Control Socket.
+Sep 28 12:58:12 amd systemd[1]: Listening on udev Control Socket.
+Sep 28 12:58:12 amd systemd[1]: Starting udev Coldplug all Devices...
+Sep 28 12:58:12 amd systemd[1]: Started Set Up Additional Binary
+Formats.
+Sep 28 12:58:12 amd systemd[1]: Starting Dispatch Password Requests to
+Console Directory Watch.
+Sep 28 12:58:12 amd systemd[1]: Started Dispatch Password Requests to
+Console Directory Watch.
+Sep 28 12:58:12 amd systemd[1]: Mounting Debug File System...
+Sep 28 12:58:12 amd kernel: Initializing cgroup subsys cpu
+Sep 28 12:58:12 amd kernel: Linux version 3.17.0-rc4 (pavel@amd) (gcc
+version 4.9.1 (Debian 4.9.1-12) ) #1 SMP Sun Sep 14 21:24:53 CEST 2014
 
-Both drives, individually.
+> > After update to debian testing, my machine sometimes fails to
+> > reboot. (aptitude upgrade seems to be the trigger).
+> > 
+> > So I had to hard power-down the machine. That should be perfectly
+> > safe, as ext4 has a journal, and this is plain SATA disk, right?
+>   Yes, it should be safe.
 
-md should be fine with that, since you're only running the read test.
+Good.
 
-It would be fun to be able to poke around with an 'e2image /dev/md2' file, but
-given the 1TB volume that might be unmanageable.
+> > On next boot to Debian stable, I got stacktrace, and messages about
+> > ext4 corruption. Back to Debian testing. systemd ran fsck, determined
+>   It would be really good to get those messages... Ideally you could also
+> use
+>   e2image -r <partition> | bzip2 -c
+> to store fs metadata before doing anything else with the fs to a usb stick.
+> That is invaluable for future analysis.
 
-> But, I'm pretty sure that it will come out clean. The md check I did
-> last night would surely detected bad blocks if there were any. Or
-> not?
+Too late for that :-(.
 
-Let's hope so, unless it's some weird transient error...
+> > it can't fix it, dropped me into emergency shell, _but mounted the
+> > filesstem, anyway_. Oops.
+>   What kernel versions are you running in Debian testing and stable?
 
---D
-> 
-> Thanks for your help!
-> -- 
-> Zlatko
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Debian testing was 3.17-rc4, AFAICT. For debian stable -- not sure.
+
+> My guess would be that kernel had problems only during orphan inode
+> recovery (i.e. when deleting already deleted files) and we let the mount
+> proceed if this fails because it's a relatively harmless problem.
+
+Is there some phase during shutdown where journalling no longer
+protects fs integrity?
+
+Thanks,
+									Pavel
+
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
