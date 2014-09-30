@@ -1,52 +1,44 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] generic/015: improve error logging
-Date: Tue, 30 Sep 2014 13:06:36 -0400
-Message-ID: <20140930170636.GA5803@wallace>
+From: Zlatko Calusic <zcalusic@bitsync.net>
+Subject: e2fsck not fixing deleted inode referenced errors?
+Date: Tue, 30 Sep 2014 19:56:36 +0200
+Message-ID: <542AEED4.5050303@bitsync.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: fstests@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f170.google.com ([209.85.216.170]:33404 "EHLO
-	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751042AbaI3RGs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Sep 2014 13:06:48 -0400
-Content-Disposition: inline
+Received: from bitsync.net ([80.83.126.10]:53781 "EHLO bitsync.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753841AbaI3SFt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Sep 2014 14:05:49 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-015 currently discards useful diagnostic information should making or
-mounting the scratch file system fail.  This can be captured with minimal
-additional disk space consumption in a manner similar to other xfstests.
-Noted during an ext4 debugging session involving a mkfs failure; small
-ext4 file systems (as used in this test) by default use small inodes that
-are not compatible with the inline data feature.
+Hope this is the right list to ask this question.
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- tests/generic/015 | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+I have an ext4 filesystem that has a few errors like this:
 
-diff --git a/tests/generic/015 b/tests/generic/015
-index 8d3fd5f..4d96b4e 100755
---- a/tests/generic/015
-+++ b/tests/generic/015
-@@ -53,11 +53,12 @@ _supported_os IRIX Linux
- _require_scratch
- _require_no_large_scratch_dev
- 
--_scratch_mkfs_sized `expr 50 \* 1024 \* 1024` >/dev/null 2>&1 \
-+rm -f $seqres.full
-+
-+_scratch_mkfs_sized `expr 50 \* 1024 \* 1024` >>$seqres.full 2>&1 \
-     || _fail "mkfs failed"
--_scratch_mount || _fail "mount failed"
-+_scratch_mount >>$seqres.full 2>&1 || _fail "mount failed"
- out=$SCRATCH_MNT/fillup.$$
--rm -f $seqres.full
- 
- free0=`_free`
- if [ -z "$free0" ]
+Sep 30 19:14:09 atlas kernel: EXT4-fs error (device md2): 
+ext4_lookup:1448: inode #7913865: comm find: deleted inode referenced: 
+7912058
+Sep 30 19:14:09 atlas kernel: EXT4-fs error (device md2): 
+ext4_lookup:1448: inode #7913865: comm find: deleted inode referenced: 
+7912055
+
+Yet, when I run e2fsck -fy on it, I have a clean run, no errors are 
+found and/or fixed. Is this the expected behaviour? What am I supposed 
+to do to get rid of errors like the above?
+
+The filesystem is on a md mirror device, the kernel is 3.17.0-rc7, 
+e2progs 1.42.12-1 (Debian sid). Could md device somehow interfere? I ran 
+md check yesterday, but there were no errors.
+
+BTW, this all started when I got ata2.00: failed command: FLUSH CACHE 
+EXT error yesterday morning. I did several runs of e2fsck before the 
+filesystem came up clean, yet errors like the above are popping constantly.
+
+Thanks for any info. [and please Cc:, I'm not subscribed]
+
 -- 
-1.9.1
+Zlatko
 
