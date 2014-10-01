@@ -1,113 +1,83 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 01/12] quota: Allow each filesystem to specify which quota
-	types it supports
-Date: Wed,  1 Oct 2014 21:31:23 +0200
-Message-ID: <1412191894-9113-2-git-send-email-jack@suse.cz>
+Subject: [PATCH 06/12] ext2: Convert to private i_dquot field
+Date: Wed,  1 Oct 2014 21:31:28 +0200
+Message-ID: <1412191894-9113-7-git-send-email-jack@suse.cz>
 References: <1412191894-9113-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
-	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
-	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
+Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	xfs@oss.sgi.com, cluster-devel@redhat.com,
-	Joel Becker <jlbec@evilplan.org>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, Steven Whitehouse <swhiteho@redhat.com>,
-	ocfs2-devel@oss.oracle.com
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
+	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
+	Dave Kleikamp <shaggy@kernel.org>,
+	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
+	Jan Kara <jack@suse.cz>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <xfs-bounces@oss.sgi.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1412191894-9113-1-git-send-email-jack@suse.cz>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Currently all filesystems supporting VFS quota support user and group
-quotas. With introduction of project quotas this is going to change so
-make sure filesystem isn't called for quota type it doesn't support by
-introduction of a bitmask determining which quota types each filesystem
-supports.
-
+CC: linux-ext4@vger.kernel.org
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/quota/quota.c      | 13 +++++++++++--
- fs/super.c            |  7 +++++++
- include/linux/quota.h |  1 +
- 3 files changed, 19 insertions(+), 2 deletions(-)
+ fs/ext2/ext2.h  |  3 +++
+ fs/ext2/super.c | 13 +++++++++++++
+ 2 files changed, 16 insertions(+)
 
-diff --git a/fs/quota/quota.c b/fs/quota/quota.c
-index 75621649dbd7..0f28eac6e638 100644
---- a/fs/quota/quota.c
-+++ b/fs/quota/quota.c
-@@ -47,8 +47,11 @@ static int check_quotactl_permission(struct super_block *sb, int type, int cmd,
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index d9a17d0b124d..e4279ead4a05 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -689,6 +689,9 @@ struct ext2_inode_info {
+ 	struct mutex truncate_mutex;
+ 	struct inode	vfs_inode;
+ 	struct list_head i_orphan;	/* unlinked but open inodes */
++#ifdef CONFIG_QUOTA
++	struct dquot *i_dquot[MAXQUOTAS];
++#endif
+ };
  
- static void quota_sync_one(struct super_block *sb, void *arg)
- {
--	if (sb->s_qcop && sb->s_qcop->quota_sync)
--		sb->s_qcop->quota_sync(sb, *(int *)arg);
-+	int type = *(int *)arg;
+ /*
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index b88edc05c230..f43b2f28b9bc 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -166,6 +166,10 @@ static struct inode *ext2_alloc_inode(struct super_block *sb)
+ 		return NULL;
+ 	ei->i_block_alloc_info = NULL;
+ 	ei->vfs_inode.i_version = 1;
++#ifdef CONFIG_QUOTA
++	memset(&ei->i_dquot, 0, sizeof(ei->i_dquot));
++#endif
 +
-+	if (sb->s_qcop && sb->s_qcop->quota_sync &&
-+	    (sb->s_dquot.allowed_types & (1 << type)))
-+		sb->s_qcop->quota_sync(sb, type);
+ 	return &ei->vfs_inode;
  }
  
- static int quota_sync_all(int type)
-@@ -297,8 +300,14 @@ static int do_quotactl(struct super_block *sb, int type, int cmd, qid_t id,
+@@ -323,6 +327,13 @@ static const struct super_operations ext2_sops = {
+ #endif
+ };
  
- 	if (type >= (XQM_COMMAND(cmd) ? XQM_MAXQUOTAS : MAXQUOTAS))
- 		return -EINVAL;
-+	/*
-+	 * Quota not supported on this fs? Check this before allowed_types
-+	 * since they needn't be set if quota is not supported.
-+	 */
- 	if (!sb->s_qcop)
- 		return -ENOSYS;
-+	if (!(sb->s_dquot.allowed_types & (1 << type)))
-+		return -EINVAL;
++static const int ext2_inode_fields[IF_FIELD_NR] = {
++#ifdef CONFIG_QUOTA
++	[IF_DQUOTS] = offsetof(struct ext2_inode_info, i_dquot) -
++		      offsetof(struct ext2_inode_info, vfs_inode),
++#endif
++};
++
+ static struct inode *ext2_nfs_get_inode(struct super_block *sb,
+ 		u64 ino, u32 generation)
+ {
+@@ -1090,7 +1101,9 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ #ifdef CONFIG_QUOTA
+ 	sb->dq_op = &dquot_operations;
+ 	sb->s_qcop = &dquot_quotactl_ops;
++	sb_dqopt(sb)->allowed_types = (1 << USRQUOTA) | (1 << GRPQUOTA);
+ #endif
++	sb_init_inode_fields(sb, ext2_inode_fields);
  
- 	ret = check_quotactl_permission(sb, type, cmd, id);
- 	if (ret < 0)
-diff --git a/fs/super.c b/fs/super.c
-index b9a214d2fe98..dc577370f5fd 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -215,6 +215,13 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags)
- 	atomic_set(&s->s_active, 1);
- 	mutex_init(&s->s_vfs_rename_mutex);
- 	lockdep_set_class(&s->s_vfs_rename_mutex, &type->s_vfs_rename_key);
-+	/*
-+	 * For now MAXQUOTAS check in do_quotactl() will limit quota type
-+	 * appropriately. When each fs sets allowed_types, we can remove the
-+	 * line below
-+	 */
-+	s->s_dquot.allowed_types = (1 << USRQUOTA) | (1 << GRPQUOTA) |
-+				   (1 << PRJQUOTA);
- 	mutex_init(&s->s_dquot.dqio_mutex);
- 	mutex_init(&s->s_dquot.dqonoff_mutex);
- 	s->s_maxbytes = MAX_NON_LFS;
-diff --git a/include/linux/quota.h b/include/linux/quota.h
-index 80d345a3524c..91f328971acc 100644
---- a/include/linux/quota.h
-+++ b/include/linux/quota.h
-@@ -388,6 +388,7 @@ static inline void quota_send_warning(struct kqid qid, dev_t dev,
- 
- struct quota_info {
- 	unsigned int flags;			/* Flags for diskquotas on this device */
-+	unsigned int allowed_types;		/* Bitmask of quota types this fs supports */
- 	struct mutex dqio_mutex;		/* lock device while I/O in progress */
- 	struct mutex dqonoff_mutex;		/* Serialize quotaon & quotaoff */
- 	struct inode *files[MAXQUOTAS];		/* inodes of quotafiles */
+ 	root = ext2_iget(sb, EXT2_ROOT_INO);
+ 	if (IS_ERR(root)) {
 -- 
 1.8.1.4
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
