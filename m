@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 11/12] jfs: Convert to private i_dquot field
-Date: Wed,  1 Oct 2014 21:31:33 +0200
-Message-ID: <1412191894-9113-12-git-send-email-jack@suse.cz>
+Subject: [PATCH 09/12] ocfs2: Convert to private i_dquot field
+Date: Wed,  1 Oct 2014 21:31:31 +0200
+Message-ID: <1412191894-9113-10-git-send-email-jack@suse.cz>
 References: <1412191894-9113-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	xfs@oss.sgi.com, cluster-devel@redhat.com,
@@ -18,74 +18,68 @@ In-Reply-To: <1412191894-9113-1-git-send-email-jack@suse.cz>
 Sender: reiserfs-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-CC: Dave Kleikamp <shaggy@kernel.org>
-CC: jfs-discussion@lists.sourceforge.net
+CC: Mark Fasheh <mfasheh@suse.com>
+CC: Joel Becker <jlbec@evilplan.org>
+CC: ocfs2-devel@oss.oracle.com
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jfs/jfs_incore.h |  3 +++
- fs/jfs/super.c      | 13 +++++++++++++
+ fs/ocfs2/inode.h |  4 ++++
+ fs/ocfs2/super.c | 12 ++++++++++++
  2 files changed, 16 insertions(+)
 
-diff --git a/fs/jfs/jfs_incore.h b/fs/jfs/jfs_incore.h
-index cf47f09e8ac8..fa7e795bd8ae 100644
---- a/fs/jfs/jfs_incore.h
-+++ b/fs/jfs/jfs_incore.h
-@@ -94,6 +94,9 @@ struct jfs_inode_info {
- 			unchar _inline_ea[128];	/* 128: inline extended attr */
- 		} link;
- 	} u;
+diff --git a/fs/ocfs2/inode.h b/fs/ocfs2/inode.h
+index a6c991c0fc98..aed65d3aff57 100644
+--- a/fs/ocfs2/inode.h
++++ b/fs/ocfs2/inode.h
+@@ -80,6 +80,10 @@ struct ocfs2_inode_info
+ 	 */
+ 	tid_t i_sync_tid;
+ 	tid_t i_datasync_tid;
++
 +#ifdef CONFIG_QUOTA
 +	struct dquot *i_dquot[MAXQUOTAS];
 +#endif
- 	u32 dev;	/* will die when we get wide dev_t */
- 	struct inode	vfs_inode;
- };
-diff --git a/fs/jfs/super.c b/fs/jfs/super.c
-index adf8cb045b9e..d32b1ee9836d 100644
---- a/fs/jfs/super.c
-+++ b/fs/jfs/super.c
-@@ -54,6 +54,7 @@ static struct kmem_cache *jfs_inode_cachep;
- 
- static const struct super_operations jfs_super_operations;
- static const struct export_operations jfs_export_operations;
-+static const int jfs_inode_fields[IF_FIELD_NR];
- static struct file_system_type jfs_fs_type;
- 
- #define MAX_COMMIT_THREADS 64
-@@ -117,6 +118,9 @@ static struct inode *jfs_alloc_inode(struct super_block *sb)
- 	jfs_inode = kmem_cache_alloc(jfs_inode_cachep, GFP_NOFS);
- 	if (!jfs_inode)
- 		return NULL;
-+#ifdef CONFIG_QUOTA
-+	memset(&jfs_inode->i_dquot, 0, sizeof(jfs_inode->i_dquot));
-+#endif
- 	return &jfs_inode->vfs_inode;
- }
- 
-@@ -537,7 +541,9 @@ static int jfs_fill_super(struct super_block *sb, void *data, int silent)
- #ifdef CONFIG_QUOTA
- 	sb->dq_op = &dquot_operations;
- 	sb->s_qcop = &dquot_quotactl_ops;
-+	sb_dqopt(sb)->allowed_types = (1 << USRQUOTA) | (1 << GRPQUOTA);
- #endif
-+	sb_init_inode_fields(sb, jfs_inode_fields);
- 
- 	/*
- 	 * Initialize direct-mapping inode/address-space
-@@ -857,6 +863,13 @@ static const struct super_operations jfs_super_operations = {
- #endif
  };
  
-+static const int jfs_inode_fields[IF_FIELD_NR] = {
+ /*
+diff --git a/fs/ocfs2/super.c b/fs/ocfs2/super.c
+index ddb662b32447..190dc8620ae0 100644
+--- a/fs/ocfs2/super.c
++++ b/fs/ocfs2/super.c
+@@ -157,6 +157,13 @@ static const struct super_operations ocfs2_sops = {
+ 	.quota_write	= ocfs2_quota_write,
+ };
+ 
++static const int ocfs2_inode_fields[IF_FIELD_NR] = {
 +#ifdef CONFIG_QUOTA
-+	[IF_DQUOTS] = (int)offsetof(struct js_inode_info, i_dquot) -
-+		      (int)offsetof(struct jfs_inode_info, vfs_inode),
++	[IF_DQUOTS] = offsetof(struct ocfs2_inode_info, i_dquot) -
++		      offsetof(struct ocfs2_inode_info, vfs_inode),
 +#endif
 +};
 +
- static const struct export_operations jfs_export_operations = {
- 	.fh_to_dentry	= jfs_fh_to_dentry,
- 	.fh_to_parent	= jfs_fh_to_parent,
+ enum {
+ 	Opt_barrier,
+ 	Opt_err_panic,
+@@ -563,6 +570,9 @@ static struct inode *ocfs2_alloc_inode(struct super_block *sb)
+ 
+ 	oi->i_sync_tid = 0;
+ 	oi->i_datasync_tid = 0;
++#ifdef CONFIG_QUOTA
++	memset(&oi->i_dquot, 0, sizeof(oi->i_dquot));
++#endif
+ 
+ 	jbd2_journal_init_jbd_inode(&oi->ip_jinode, &oi->vfs_inode);
+ 	return &oi->vfs_inode;
+@@ -2069,7 +2079,9 @@ static int ocfs2_initialize_super(struct super_block *sb,
+ 	sb->s_export_op = &ocfs2_export_ops;
+ 	sb->s_qcop = &ocfs2_quotactl_ops;
+ 	sb->dq_op = &ocfs2_quota_operations;
++	sb_dqopt(sb)->allowed_types = (1 << USRQUOTA) | (1 << GRPQUOTA);
+ 	sb->s_xattr = ocfs2_xattr_handlers;
++	sb_init_inode_fields(sb, ocfs2_inode_fields);
+ 	sb->s_time_gran = 1;
+ 	sb->s_flags |= MS_NOATIME;
+ 	/* this is needed to support O_LARGEFILE */
 -- 
 1.8.1.4
 
