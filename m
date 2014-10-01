@@ -1,78 +1,81 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Journal under-reservation bug on first >2G file
-Date: Wed, 01 Oct 2014 09:43:32 -0500
-Message-ID: <542C1314.3030603@redhat.com>
-References: <542B1C38.9010409@redhat.com> <542B1EFC.4050500@redhat.com> <C355A8E9-1799-43AB-9F57-4EFE1BBE3767@dilger.ca> <20141001115320.GA2903@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 85381] New: ext4 & tmpfs: Splicing to regular files doesn't
+ trigger inotify
+Date: Wed, 01 Oct 2014 16:56:36 +0000
+Message-ID: <bug-85381-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35818 "EHLO mx1.redhat.com"
+Received: from mail.kernel.org ([198.145.19.201]:39238 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751214AbaJAOnh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 1 Oct 2014 10:43:37 -0400
-In-Reply-To: <20141001115320.GA2903@thunk.org>
+	id S1751732AbaJAQ4k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 1 Oct 2014 12:56:40 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 2C9F620270
+	for <linux-ext4@vger.kernel.org>; Wed,  1 Oct 2014 16:56:39 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 4FA9B2026D
+	for <linux-ext4@vger.kernel.org>; Wed,  1 Oct 2014 16:56:37 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/1/14 6:53 AM, Theodore Ts'o wrote:
-> On Tue, Sep 30, 2014 at 03:36:17PM -0600, Andreas Dilger wrote:
->>>
->>>  1.5a) Always set the large_file feature with a fresh mkfs, insteadl
->>>        of relying on the accident of the resize inode being > 2G!
->>
->> I think that 1.5a is definitely the way to go for new mke2fs, I'm a
->> bit surprised that we didn't do this for "-t ext4" a long time ago
->> given that we've enabled lots of other features automatically.
-> 
-> Yes, I agree that would be a good thing to do.  I'll make the change
-> to mke2fs.conf.
-> 
->> There shouldn't be any problem to do this retroactively in e2fsck
->> and potentially at mount time for filesystems that already have some
->> features enabled that are post-large_file (e.g. extents, flex_bg, etc.)
->> This definitely would not impose any compatibility issues, because any
->> kernel that supports those features already understands large_file.
-> 
-> That sounds like a plan.  If we only enable it automatically at mount
-> time (iff we mounted the file system read/write) if any of the ext3 or
-> ext4 specific features are enabled, that should be completely safe.
+https://bugzilla.kernel.org/show_bug.cgi?id=85381
 
-Ok, so do that, and don't bump the reservations? I suppose
-the size test & superblock write can be removed, then...
+            Bug ID: 85381
+           Summary: ext4 & tmpfs: Splicing to regular files doesn't
+                    trigger inotify
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.14
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: richardpku@gmail.com
+        Regression: No
 
-This does bug me a little; at one point we were very carefully not
-enabling any new features by mounting with a new kernel; that was
-specific to mounting-ext2-with-ext4 etc, but it still feels slightly
-inconsistent.  Although I guess we enable it today by mounting-and-
-writing-a-big-enough-file.
+* How to reproduce:
 
-Something like this should fix it too, though, with less unexpected
-behind-your-back behavior:
+/tmp % cat a.c
+#define _GNU_SOURCE 1
+#include <limits.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3aa26e9..2f94cd6 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2563,9 +2563,15 @@ retry_grab:
-         * if there is delayed block allocation. But we still need
-         * to journalling the i_disksize update if writes to the end
-         * of file which has an already mapped buffer.
-+        * If this write might need to update the superblock due to the
-+        * filesize adding a new superblock feature flag, add that too.
-         */
- retry_journal:
--       handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, 1);
-+       handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE,
-+                                   EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+                                       EXT4_FEATURE_RO_COMPAT_LARGE_FILE) ?
-+                                   1 : 2);
-+
-        if (IS_ERR(handle)) {
-                page_cache_release(page);
-                return PTR_ERR(handle);
+int main(void)
+{
+        int pipefd[2];
+        pipe(pipefd);
+
+        for (;;) {
+                sleep(1);
+                write(pipefd[1], "Hello world\n", 12);
+                splice(pipefd[0], NULL, 1, NULL, INT_MAX, 0);
+        }
+}
+/tmp % gcc a.c
+/tmp % touch a.txt
+/tmp % ./a.out > a.txt & tail -f a.txt
 
 
--ERic
+* Expected result:
+
+tail prints "Hello world" every second.
+
+
+
+* Actual result:
+
+btrfs: Works as expected;
+ext4/tmpfs: tail blocks on inotify forever and prints nothing.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
