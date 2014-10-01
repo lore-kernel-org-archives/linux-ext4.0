@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 03/12] xfs: Set allowed quota types
-Date: Wed,  1 Oct 2014 21:31:25 +0200
-Message-ID: <1412191894-9113-4-git-send-email-jack@suse.cz>
+Subject: [PATCH 02/12] gfs2: Set allowed quota types
+Date: Wed,  1 Oct 2014 21:31:24 +0200
+Message-ID: <1412191894-9113-3-git-send-email-jack@suse.cz>
 References: <1412191894-9113-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -26,27 +26,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
 Errors-To: jfs-discussion-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-We support user, group, and project quotas. Tell VFS about it.
+We support user and group quotas. Tell vfs about it.
 
-CC: xfs@oss.sgi.com
-CC: Dave Chinner <david@fromorbit.com>
+CC: Steven Whitehouse <swhiteho@redhat.com>
+CC: cluster-devel@redhat.com
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/xfs/xfs_super.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/gfs2/ops_fstype.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-index b194652033cd..b32e998e8cbc 100644
---- a/fs/xfs/xfs_super.c
-+++ b/fs/xfs/xfs_super.c
-@@ -1419,6 +1419,8 @@ xfs_fs_fill_super(
- 	sb->s_export_op = &xfs_export_operations;
- #ifdef CONFIG_XFS_QUOTA
- 	sb->s_qcop = &xfs_quotactl_operations;
-+	sb->s_dquot.allowed_types = (1 << USRQUOTA) | (1 << GRPQUOTA) |
-+				    (1 << PRJQUOTA);
- #endif
- 	sb->s_op = &xfs_super_operations;
+diff --git a/fs/gfs2/ops_fstype.c b/fs/gfs2/ops_fstype.c
+index d3eae244076e..3032e6d069b5 100644
+--- a/fs/gfs2/ops_fstype.c
++++ b/fs/gfs2/ops_fstype.c
+@@ -1083,6 +1083,7 @@ static int fill_super(struct super_block *sb, struct gfs2_args *args, int silent
+ 	sb->s_xattr = gfs2_xattr_handlers;
+ 	sb->s_qcop = &gfs2_quotactl_ops;
+ 	sb_dqopt(sb)->flags |= DQUOT_QUOTA_SYS_FILE;
++	sb_dqopt(sb)->allowed_types = (1 << USRQUOTA) | (1 << GRPQUOTA);
+ 	sb->s_time_gran = 1;
+ 	sb->s_maxbytes = MAX_LFS_FILESIZE;
  
 -- 
 1.8.1.4
