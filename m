@@ -1,81 +1,113 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 85381] New: ext4 & tmpfs: Splicing to regular files doesn't
- trigger inotify
-Date: Wed, 01 Oct 2014 16:56:36 +0000
-Message-ID: <bug-85381-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 01/12] quota: Allow each filesystem to specify which quota
+	types it supports
+Date: Wed,  1 Oct 2014 21:31:23 +0200
+Message-ID: <1412191894-9113-2-git-send-email-jack@suse.cz>
+References: <1412191894-9113-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:39238 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751732AbaJAQ4k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 1 Oct 2014 12:56:40 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 2C9F620270
-	for <linux-ext4@vger.kernel.org>; Wed,  1 Oct 2014 16:56:39 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 4FA9B2026D
-	for <linux-ext4@vger.kernel.org>; Wed,  1 Oct 2014 16:56:37 +0000 (UTC)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
+	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
+	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
+	xfs@oss.sgi.com, cluster-devel@redhat.com,
+	Joel Becker <jlbec@evilplan.org>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, Steven Whitehouse <swhiteho@redhat.com>,
+	ocfs2-devel@oss.oracle.com
+To: linux-fsdevel@vger.kernel.org
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <1412191894-9113-1-git-send-email-jack@suse.cz>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=85381
+Currently all filesystems supporting VFS quota support user and group
+quotas. With introduction of project quotas this is going to change so
+make sure filesystem isn't called for quota type it doesn't support by
+introduction of a bitmask determining which quota types each filesystem
+supports.
 
-            Bug ID: 85381
-           Summary: ext4 & tmpfs: Splicing to regular files doesn't
-                    trigger inotify
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.14
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: richardpku@gmail.com
-        Regression: No
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/quota/quota.c      | 13 +++++++++++--
+ fs/super.c            |  7 +++++++
+ include/linux/quota.h |  1 +
+ 3 files changed, 19 insertions(+), 2 deletions(-)
 
-* How to reproduce:
-
-/tmp % cat a.c
-#define _GNU_SOURCE 1
-#include <limits.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-
-int main(void)
-{
-        int pipefd[2];
-        pipe(pipefd);
-
-        for (;;) {
-                sleep(1);
-                write(pipefd[1], "Hello world\n", 12);
-                splice(pipefd[0], NULL, 1, NULL, INT_MAX, 0);
-        }
-}
-/tmp % gcc a.c
-/tmp % touch a.txt
-/tmp % ./a.out > a.txt & tail -f a.txt
-
-
-* Expected result:
-
-tail prints "Hello world" every second.
-
-
-
-* Actual result:
-
-btrfs: Works as expected;
-ext4/tmpfs: tail blocks on inotify forever and prints nothing.
-
+diff --git a/fs/quota/quota.c b/fs/quota/quota.c
+index 75621649dbd7..0f28eac6e638 100644
+--- a/fs/quota/quota.c
++++ b/fs/quota/quota.c
+@@ -47,8 +47,11 @@ static int check_quotactl_permission(struct super_block *sb, int type, int cmd,
+ 
+ static void quota_sync_one(struct super_block *sb, void *arg)
+ {
+-	if (sb->s_qcop && sb->s_qcop->quota_sync)
+-		sb->s_qcop->quota_sync(sb, *(int *)arg);
++	int type = *(int *)arg;
++
++	if (sb->s_qcop && sb->s_qcop->quota_sync &&
++	    (sb->s_dquot.allowed_types & (1 << type)))
++		sb->s_qcop->quota_sync(sb, type);
+ }
+ 
+ static int quota_sync_all(int type)
+@@ -297,8 +300,14 @@ static int do_quotactl(struct super_block *sb, int type, int cmd, qid_t id,
+ 
+ 	if (type >= (XQM_COMMAND(cmd) ? XQM_MAXQUOTAS : MAXQUOTAS))
+ 		return -EINVAL;
++	/*
++	 * Quota not supported on this fs? Check this before allowed_types
++	 * since they needn't be set if quota is not supported.
++	 */
+ 	if (!sb->s_qcop)
+ 		return -ENOSYS;
++	if (!(sb->s_dquot.allowed_types & (1 << type)))
++		return -EINVAL;
+ 
+ 	ret = check_quotactl_permission(sb, type, cmd, id);
+ 	if (ret < 0)
+diff --git a/fs/super.c b/fs/super.c
+index b9a214d2fe98..dc577370f5fd 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -215,6 +215,13 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags)
+ 	atomic_set(&s->s_active, 1);
+ 	mutex_init(&s->s_vfs_rename_mutex);
+ 	lockdep_set_class(&s->s_vfs_rename_mutex, &type->s_vfs_rename_key);
++	/*
++	 * For now MAXQUOTAS check in do_quotactl() will limit quota type
++	 * appropriately. When each fs sets allowed_types, we can remove the
++	 * line below
++	 */
++	s->s_dquot.allowed_types = (1 << USRQUOTA) | (1 << GRPQUOTA) |
++				   (1 << PRJQUOTA);
+ 	mutex_init(&s->s_dquot.dqio_mutex);
+ 	mutex_init(&s->s_dquot.dqonoff_mutex);
+ 	s->s_maxbytes = MAX_NON_LFS;
+diff --git a/include/linux/quota.h b/include/linux/quota.h
+index 80d345a3524c..91f328971acc 100644
+--- a/include/linux/quota.h
++++ b/include/linux/quota.h
+@@ -388,6 +388,7 @@ static inline void quota_send_warning(struct kqid qid, dev_t dev,
+ 
+ struct quota_info {
+ 	unsigned int flags;			/* Flags for diskquotas on this device */
++	unsigned int allowed_types;		/* Bitmask of quota types this fs supports */
+ 	struct mutex dqio_mutex;		/* lock device while I/O in progress */
+ 	struct mutex dqonoff_mutex;		/* Serialize quotaon & quotaoff */
+ 	struct inode *files[MAXQUOTAS];		/* inodes of quotafiles */
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+1.8.1.4
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
