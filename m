@@ -1,88 +1,106 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 12/12] vfs: Remove i_dquot field from inode
-Date: Wed,  1 Oct 2014 21:31:34 +0200
-Message-ID: <1412191894-9113-13-git-send-email-jack@suse.cz>
+Subject: [PATCH 04/12] fs: Generic infrastructure for optional inode fields
+Date: Wed,  1 Oct 2014 21:31:26 +0200
+Message-ID: <1412191894-9113-5-git-send-email-jack@suse.cz>
 References: <1412191894-9113-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
+	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
+	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
 	xfs@oss.sgi.com, cluster-devel@redhat.com,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
-	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
-	Dave Kleikamp <shaggy@kernel.org>,
-	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
-	Jan Kara <jack@suse.cz>
+	Joel Becker <jlbec@evilplan.org>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, Steven Whitehouse <swhiteho@redhat.com>,
+	ocfs2-devel@oss.oracle.com
 To: linux-fsdevel@vger.kernel.org
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
+Return-path: <xfs-bounces@oss.sgi.com>
 In-Reply-To: <1412191894-9113-1-git-send-email-jack@suse.cz>
-Sender: reiserfs-devel-owner@vger.kernel.org
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-All filesystems using VFS quotas are now converted to use their private
-i_dquot fields. Remove the i_dquot field from generic inode structure.
+There are parts of struct inode which are used only by a few filesystems
+(e.g. i_dquot pointers, i_mapping->private_list, ...). Thus all the
+other filesystems are just wasting memory with these fields. On the
+other hand it isn't simple to just move these fields to filesystem
+specific part of inode because there is generic code which needs to peek
+into the fields and it is cumbersome to provide helpers into which fs
+has to stuff the field it is storing elsewhere.
+
+We create a simple infrastructure which allows for optional inode fields
+stored in the fs-specific part of the inode. Accessing these fields has
+a slightly worse performance as we have to lookup their offset in the
+offset table stored in the superblock but in most cases this is
+acceptable. Notably, this offset-table mechanism is faster than having
+fs-specific hook functions which would need to be called to provide
+pointers to desired fields.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/inode.c         |  3 ---
- fs/super.c         | 10 ----------
- include/linux/fs.h |  3 ---
- 3 files changed, 16 deletions(-)
+ include/linux/fs.h | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
-diff --git a/fs/inode.c b/fs/inode.c
-index 26753ba7b6d6..2ed95f7caa4f 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -143,9 +143,6 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
- 	inode->i_blocks = 0;
- 	inode->i_bytes = 0;
- 	inode->i_generation = 0;
--#ifdef CONFIG_QUOTA
--	memset(&inode->i_dquot, 0, sizeof(inode->i_dquot));
--#endif
- 	inode->i_pipe = NULL;
- 	inode->i_bdev = NULL;
- 	inode->i_cdev = NULL;
-diff --git a/fs/super.c b/fs/super.c
-index 3e70f2e22ea3..b9a214d2fe98 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -215,22 +215,12 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags)
- 	atomic_set(&s->s_active, 1);
- 	mutex_init(&s->s_vfs_rename_mutex);
- 	lockdep_set_class(&s->s_vfs_rename_mutex, &type->s_vfs_rename_key);
--	/*
--	 * For now MAXQUOTAS check in do_quotactl() will limit quota type
--	 * appropriately. When each fs sets allowed_types, we can remove the
--	 * line below
--	 */
--	s->s_dquot.allowed_types = (1 << USRQUOTA) | (1 << GRPQUOTA) |
--				   (1 << PRJQUOTA);
- 	mutex_init(&s->s_dquot.dqio_mutex);
- 	mutex_init(&s->s_dquot.dqonoff_mutex);
- 	s->s_maxbytes = MAX_NON_LFS;
- 	s->s_op = &default_op;
- 	s->s_time_gran = 1000000000;
- 	s->cleancache_poolid = -1;
--#ifdef CONFIG_QUOTA
--	s->s_inode_fields[IF_DQUOTS] = offsetof(struct inode, i_dquot);
--#endif
- 
- 	s->s_shrink.seeks = DEFAULT_SEEKS;
- 	s->s_shrink.scan_objects = super_cache_scan;
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index d49434866da5..fb669113c37c 100644
+index 94187721ad41..977f8fb6ca88 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -595,9 +595,6 @@ struct inode {
- 	const struct file_operations	*i_fop;	/* former ->i_op->default_file_ops */
- 	struct file_lock	*i_flock;
- 	struct address_space	i_data;
--#ifdef CONFIG_QUOTA
--	struct dquot		*i_dquot[MAXQUOTAS];
--#endif
- 	struct list_head	i_devices;
- 	union {
- 		struct pipe_inode_info	*i_pipe;
+@@ -615,6 +615,11 @@ struct inode {
+ 	void			*i_private; /* fs or device private pointer */
+ };
+ 
++/* Optional inode fields (stored in filesystems inode if the fs needs them) */
++enum {
++	IF_FIELD_NR	/* Number of optional inode fields */
++};
++
+ static inline int inode_unhashed(struct inode *inode)
+ {
+ 	return hlist_unhashed(&inode->i_hash);
+@@ -1236,6 +1241,11 @@ struct super_block {
+ 	void 			*s_fs_info;	/* Filesystem private info */
+ 	unsigned int		s_max_links;
+ 	fmode_t			s_mode;
++	/*
++	 * We could have here just a pointer to the offsets array but this
++	 * way we save one dereference when looking up field offsets
++	 */
++	int			s_inode_fields[IF_FIELD_NR];
+ 
+ 	/* Granularity of c/m/atime in ns.
+ 	   Cannot be worse than a second */
+@@ -1286,6 +1296,20 @@ struct super_block {
+ 	struct rcu_head		rcu;
+ };
+ 
++static inline void *inode_field(const struct inode *inode, int field)
++{
++	int offset = inode->i_sb->s_inode_fields[field];
++
++	if (!offset)	/* Field not present? */
++		return NULL;
++	return ((char *)inode) + offset;
++}
++
++static inline void sb_init_inode_fields(struct super_block *sb, int *fields)
++{
++	memcpy(sb->s_inode_fields, fields, sizeof(int) * IF_FIELD_NR);
++}
++
+ extern struct timespec current_fs_time(struct super_block *sb);
+ 
+ /*
 -- 
 1.8.1.4
 
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
