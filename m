@@ -1,85 +1,51 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 3/3] ext4: optimize block allocation on grow indepth
-Date: Wed, 1 Oct 2014 22:52:55 -0400
-Message-ID: <20141002025255.GF16766@thunk.org>
-References: <1411455752-2332-1-git-send-email-dmonakhov@openvz.org>
- <1411455752-2332-3-git-send-email-dmonakhov@openvz.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Journal under-reservation bug on first >2G file
+Date: Thu, 02 Oct 2014 00:49:09 -0500
+Message-ID: <542CE755.9040503@redhat.com>
+References: <542B1C38.9010409@redhat.com> <542B1EFC.4050500@redhat.com> <C355A8E9-1799-43AB-9F57-4EFE1BBE3767@dilger.ca> <20141001115320.GA2903@thunk.org> <542C1314.3030603@redhat.com> <20141001195954.GD2903@thunk.org> <542C65FD.5040405@redhat.com> <20141001224325.GE2903@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60087 "EHLO imap.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:54115 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751182AbaJBCxD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 1 Oct 2014 22:53:03 -0400
-Content-Disposition: inline
-In-Reply-To: <1411455752-2332-3-git-send-email-dmonakhov@openvz.org>
+	id S1751211AbaJBFtM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 2 Oct 2014 01:49:12 -0400
+In-Reply-To: <20141001224325.GE2903@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 23, 2014 at 11:02:32AM +0400, Dmitry Monakhov wrote:
-> It is reasonable to prepent newly created index to older one.
+On 10/1/14 5:43 PM, Theodore Ts'o wrote:
+> On Wed, Oct 01, 2014 at 03:37:17PM -0500, Eric Sandeen wrote:
+>>
+>> Ok.  I guess this is only an issue for ext4 - well, at least this specific
+>> issue.  Delalloc makes it much different than ext2 & ext3, which reserve quite a
+>> lot more.  Whether there's a corner case over there which breaks, I dunno...
+>>
+>> So it seems like the simplest test is simply: Are we RW mounted with delalloc?
+>> And if so, update the feature.  Seems simpler than mucking with "which features
+>> are unique to ext4"
 > 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> I'd do "are we RW mounted with the extents feature".  That way we
+> don't need to worry about someone accidentally mounting a partition
+> meant for Hurd using ext4, which would imply delalloc, and then
+> causing Hurd to no longer be able to deal with the file system.  That
+> *shouldn't* happen, but if someone accidentally mounts the file system
+> with -t ext4, but it seems safer to gate it on the existence of the
+> extents feature.
 
-Thanks, applied with a minor change.
+Problem is, we can hit the same problem with an ext3 filesystem (no
+extents) mounted with -t ext4 (enabling delalloc).
 
-				- Ted
+Ugh.  Can't we just bump the da write reservation to 2 and be done with it? ;)
+(AFAICT the non-delalloc reservations can be wildly overestimated).
 
-commit c69c690d41e6438ef8e3e9b09d9eb4f2fe669be2
-Author: Dmitry Monakhov <dmonakhov@openvz.org>
-Date:   Wed Oct 1 22:52:39 2014 -0400
+Or maybe ext4_journal_extend() when we try to update the superblock?
+It could fail, but it wouldn't be catastrophic if it did, fsck would find
+that the feature is missing...
 
-    ext4: optimize block allocation on grow indepth
-    
-    It is reasonable to prepent newld created index to older one.
-    
-    [ Dropped no longer used function parameter newext. -tytso ]
-    
-    Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+-Eric
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 8170b32..c3ed9af2 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1263,16 +1263,24 @@ cleanup:
-  *   just created block
-  */
- static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
--				 unsigned int flags,
--				 struct ext4_extent *newext)
-+				 unsigned int flags)
- {
- 	struct ext4_extent_header *neh;
- 	struct buffer_head *bh;
--	ext4_fsblk_t newblock;
-+	ext4_fsblk_t newblock, goal = 0;
-+	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
- 	int err = 0;
- 
--	newblock = ext4_ext_new_meta_block(handle, inode, NULL,
--		newext, &err, flags);
-+	/* Try to prepend new index to old one */
-+	if (ext_depth(inode))
-+		goal = ext4_idx_pblock(EXT_FIRST_INDEX(ext_inode_hdr(inode)));
-+	if (goal > le32_to_cpu(es->s_first_data_block)) {
-+		flags |= EXT4_MB_HINT_TRY_GOAL;
-+		goal--;
-+	} else
-+		goal = ext4_inode_to_goal_block(inode);
-+	newblock = ext4_new_meta_blocks(handle, inode, goal, flags,
-+					NULL, &err);
- 	if (newblock == 0)
- 		return err;
- 
-@@ -1373,7 +1381,7 @@ repeat:
- 			err = PTR_ERR(path);
- 	} else {
- 		/* tree is full, time to grow in depth */
--		err = ext4_ext_grow_indepth(handle, inode, mb_flags, newext);
-+		err = ext4_ext_grow_indepth(handle, inode, mb_flags);
- 		if (err)
- 			goto out;
- 
