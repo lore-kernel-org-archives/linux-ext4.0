@@ -1,71 +1,87 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: Journal under-reservation bug on first >2G file
-Date: Thu, 2 Oct 2014 13:26:45 +0200
-Message-ID: <20141002112645.GD19748@quack.suse.cz>
-References: <542B1C38.9010409@redhat.com>
- <542B1EFC.4050500@redhat.com>
- <C355A8E9-1799-43AB-9F57-4EFE1BBE3767@dilger.ca>
- <20141001115320.GA2903@thunk.org>
- <542C1314.3030603@redhat.com>
- <20141001195954.GD2903@thunk.org>
- <542C65FD.5040405@redhat.com>
- <20141001224325.GE2903@thunk.org>
- <542CE755.9040503@redhat.com>
+Subject: Re: [PATCH] ext4: grab missed write_count for EXT4_IOC_SWAP_BOOT
+Date: Thu, 2 Oct 2014 13:40:51 +0200
+Message-ID: <20141002114051.GF19748@quack.suse.cz>
+References: <1412236202-17178-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60246 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:60503 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750987AbaJBL0s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 2 Oct 2014 07:26:48 -0400
+	id S1751159AbaJBLkx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 2 Oct 2014 07:40:53 -0400
 Content-Disposition: inline
-In-Reply-To: <542CE755.9040503@redhat.com>
+In-Reply-To: <1412236202-17178-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 02-10-14 00:49:09, Eric Sandeen wrote:
-> On 10/1/14 5:43 PM, Theodore Ts'o wrote:
-> > On Wed, Oct 01, 2014 at 03:37:17PM -0500, Eric Sandeen wrote:
-> >>
-> >> Ok.  I guess this is only an issue for ext4 - well, at least this specific
-> >> issue.  Delalloc makes it much different than ext2 & ext3, which reserve quite a
-> >> lot more.  Whether there's a corner case over there which breaks, I dunno...
-> >>
-> >> So it seems like the simplest test is simply: Are we RW mounted with delalloc?
-> >> And if so, update the feature.  Seems simpler than mucking with "which features
-> >> are unique to ext4"
-> > 
-> > I'd do "are we RW mounted with the extents feature".  That way we
-> > don't need to worry about someone accidentally mounting a partition
-> > meant for Hurd using ext4, which would imply delalloc, and then
-> > causing Hurd to no longer be able to deal with the file system.  That
-> > *shouldn't* happen, but if someone accidentally mounts the file system
-> > with -t ext4, but it seems safer to gate it on the existence of the
-> > extents feature.
+On Thu 02-10-14 11:50:02, Dmitry Monakhov wrote:
+> Otherwise this provokes complain like follows:
+> WARNING: CPU: 12 PID: 5795 at fs/ext4/ext4_jbd2.c:48 ext4_journal_check_start+0x4e/0xa0()
+> Modules linked in: brd iTCO_wdt lpc_ich mfd_core igb ptp dm_mirror dm_region_hash dm_log dm_mod
+> CPU: 12 PID: 5795 Comm: python Not tainted 3.17.0-rc2-00175-gae5344f #158
+> Hardware name: Intel Corporation W2600CR/W2600CR, BIOS SE5C600.86B.99.99.x028.061320111235 06/13/2011
+>  0000000000000030 ffff8808116cfd28 ffffffff815c7dfc 0000000000000030
+>  0000000000000000 ffff8808116cfd68 ffffffff8106ce8c ffff8808116cfdc8
+>  ffff880813b16000 ffff880806ad6ae8 ffffffff81202008 0000000000000000
+> Call Trace:
+>  [<ffffffff815c7dfc>] dump_stack+0x51/0x6d
+>  [<ffffffff8106ce8c>] warn_slowpath_common+0x8c/0xc0
+>  [<ffffffff81202008>] ? ext4_ioctl+0x9e8/0xeb0
+>  [<ffffffff8106ceda>] warn_slowpath_null+0x1a/0x20
+>  [<ffffffff8122867e>] ext4_journal_check_start+0x4e/0xa0
+>  [<ffffffff81228c10>] __ext4_journal_start_sb+0x90/0x110
+>  [<ffffffff81202008>] ext4_ioctl+0x9e8/0xeb0
+>  [<ffffffff8107b0bd>] ? ptrace_stop+0x24d/0x2f0
+>  [<ffffffff81088530>] ? alloc_pid+0x480/0x480
+>  [<ffffffff8107b1f2>] ? ptrace_do_notify+0x92/0xb0
+>  [<ffffffff81186545>] do_vfs_ioctl+0x4e5/0x550
+>  [<ffffffff815cdbcb>] ? _raw_spin_unlock_irq+0x2b/0x40
+>  [<ffffffff81186603>] SyS_ioctl+0x53/0x80
+>  [<ffffffff815ce2ce>] tracesys+0xd0/0xd5
 > 
-> Problem is, we can hit the same problem with an ext3 filesystem (no
-> extents) mounted with -t ext4 (enabling delalloc).
-> 
-> Ugh.  Can't we just bump the da write reservation to 2 and be done with it? ;)
-> (AFAICT the non-delalloc reservations can be wildly overestimated).
-> 
-> Or maybe ext4_journal_extend() when we try to update the superblock?
-> It could fail, but it wouldn't be catastrophic if it did, fsck would find
-> that the feature is missing...
-  A couple of notes:
-1) Using 2 would be fine. Journal code is clever enough and it returns
-unused handle credits to the transaction so using 2 instead of 1 limits
-only the number of handles in ext4_da_write_begin() running in parallel.
-So I'd frankly just bump the number to 2 (with a comment!) and be done with
-it.
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+  Ah, good spotting. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-2) If we want to optimize a bit, we can check whether the write is going to
-extend beyond 2G and first set the feature in a separate transaction.
+							Honza
 
-								Honza
+> ---
+>  fs/ext4/ioctl.c |   10 +++++++++-
+>  1 files changed, 9 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index 0f2252e..3d5de16 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -532,9 +532,17 @@ group_add_out:
+>  	}
+>  
+>  	case EXT4_IOC_SWAP_BOOT:
+> +	{
+> +		int err;
+>  		if (!(filp->f_mode & FMODE_WRITE))
+>  			return -EBADF;
+> -		return swap_inode_boot_loader(sb, inode);
+> +		err = mnt_want_write_file(filp);
+> +		if (err)
+> +			return err;
+> +		err = swap_inode_boot_loader(sb, inode);
+> +		mnt_drop_write_file(filp);
+> +		return err;
+> +	}
+>  
+>  	case EXT4_IOC_RESIZE_FS: {
+>  		ext4_fsblk_t n_blocks_count;
+> -- 
+> 1.7.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
