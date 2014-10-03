@@ -1,48 +1,42 @@
-From: Artemiy Volkov <artemiyv@acm.org>
-Subject: [PATCH] misc: fix build on absence of magic.h
-Date: Fri,  3 Oct 2014 21:58:38 +1000
-Message-ID: <1412337518-2250-1-git-send-email-artemiyv@acm.org>
-References: <1411277306-29807-1-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, darrick.wong@oracle.com,
-	Artemiy Volkov <artemiyv@acm.org>
-To: tytso@mit.edu
+From: Clemens Gruber <clemens.gruber@pqgruber.com>
+Subject: Fast ext4 cleanup to avoid data loss after power failure
+Date: Fri, 03 Oct 2014 15:09:31 +0200
+Message-ID: <542EA00B.4040401@pqgruber.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f172.google.com ([209.85.192.172]:40031 "EHLO
-	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751282AbaJCL6w (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Oct 2014 07:58:52 -0400
-Received: by mail-pd0-f172.google.com with SMTP id ft15so2546791pdb.3
-        for <linux-ext4@vger.kernel.org>; Fri, 03 Oct 2014 04:58:51 -0700 (PDT)
-In-Reply-To: <1411277306-29807-1-git-send-email-tytso@mit.edu>
+Received: from mail.pqgruber.com ([178.189.19.235]:55044 "EHLO
+	mail.pqgruber.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751462AbaJCNRQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Oct 2014 09:17:16 -0400
+Received: from [10.20.30.14] (chello213047245140.tirol.surfer.at [213.47.245.140])
+	by mail.pqgruber.com (Postfix) with ESMTPSA id F31768946E
+	for <linux-ext4@vger.kernel.org>; Fri,  3 Oct 2014 15:11:21 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If magic.h is not present, there will be unresolved references to the magic_t
-type in plausible.c. Fix that by moving the protecting #ifdef directive.
+Hi,
 
-Signed-off-by: Artemiy Volkov <artemiyv@acm.org>
----
- misc/plausible.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+I am using ext4 as root filesystem of my TQMa28-based board with 2GB eMMC.
+In case of a power failure I have to clean up the filesystem in 1.5 to 2
+seconds, that's how long the caps can sustain the power.
 
-diff --git a/misc/plausible.c b/misc/plausible.c
-index aea4fce..00bc6e2 100644
---- a/misc/plausible.c
-+++ b/misc/plausible.c
-@@ -36,12 +36,12 @@
- #include "nls-enable.h"
- #include "blkid/blkid.h"
- 
-+#ifdef HAVE_MAGIC_H
- static magic_t (*dl_magic_open)(int);
- static const char *(*dl_magic_file)(magic_t, const char *);
- static int (*dl_magic_load)(magic_t, const char *);
- static void (*dl_magic_close)(magic_t);
- 
--#ifdef HAVE_MAGIC_H
- #ifdef HAVE_DLOPEN
- #include <dlfcn.h>
- 
--- 
-1.9.1
+I pass the following rootflags on the kernel cmdline: data=journal,commit=1
+In my user space application I open important files with O_SYNC.
 
+Is there something else I can or should do to avoid data corruption?
+
+I can detect when the power fails over a GPIO line, so I close open file
+descriptors in one important application but doing a "normal"
+poweroff/shutdown takes too long.
+
+What would you do if you had 1.5 seconds until the power is gone?
+
+Maybe a read-only rootfs and a separate small data partition?
+
+Thanks for your help.
+
+Best regards,
+Clemens
