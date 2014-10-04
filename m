@@ -1,78 +1,70 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: ext4 dev branch testing
-Date: Fri, 3 Oct 2014 14:12:06 -0400
-Message-ID: <20141003181205.GA2485@wallace>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Fast ext4 cleanup to avoid data loss after power failure
+Date: Fri, 3 Oct 2014 23:47:07 -0400
+Message-ID: <20141004034707.GA4581@thunk.org>
+References: <542EA00B.4040401@pqgruber.com>
+ <alpine.LFD.2.00.1410031550090.2333@localhost.localdomain>
+ <542EC343.7090905@pqgruber.com>
+ <542EC445.5030503@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+Cc: Clemens Gruber <clemens.gruber@pqgruber.com>,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:45783 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751573AbaJCSMK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Oct 2014 14:12:10 -0400
-Received: by mail-qa0-f53.google.com with SMTP id v10so1179005qac.26
-        for <linux-ext4@vger.kernel.org>; Fri, 03 Oct 2014 11:12:09 -0700 (PDT)
+Received: from imap.thunk.org ([74.207.234.97]:36159 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750823AbaJDDrN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 Oct 2014 23:47:13 -0400
 Content-Disposition: inline
+In-Reply-To: <542EC445.5030503@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've run regression tests on the ext4 kernel dev branch as found on 30
-September on both an x86_64 VM and on ARM (Pandaboard ES).  I used
-xfstest-bld's test infrastructure on my own VM in the x86_64 case, and on the
-bare iron on ARM, running all the usual test scenarios and using the auto
-group.  The same test environments had just been used for 3.17-rc7.
+So long as you aren't dilly-dallying, 1.5 seconds is an huge amount of
+time so long as the application doesn't have to write a huge amount of
+state.  What I would do is to give the application a second time
+budget to shutdown, then use the FIFREEZE ioctl to lock the file
+system into a consistent state, and then wait for the end to come.
 
-In this week's concall, Ted mentioned he had been seeing OOM kills during his
-own testing of the dev branch.  I didn't in either of my runs.  My x86_64 VM
-has 2 GB of memory, while the Pandaboard has 1 GB.
+More generally, it's a good idea to seriously control how much stuff
+you are writing to the eMMC, and to question whether any of it is
+necessary, and if it isn't to ruthless cut it out.
 
-However, I am seeing apparent regressions affecting only the bigalloc and
-bigalloc_1k test scenarios which bisect to:
-713e8dde3e - ext4: fix ZERO_RANGE bug hidden by flag aliasing
+In addition to the write everything to a temporary file, and the fsync
+the changes, and then use an atomic rename to replace the original
+file, an additional design pattern you can use is an application level
+journal.  Just append each thing that needs to be saved to an
+application journal file: "dispensed one shot of whisky"; "entering
+light pour mode for happy hour", etc, with an fsync() after each write
+to the application.  This minimizes the amount of writes you need for
+each application update, and then periodically, you can dump all of
+the state out to the temp file, rename it, and then truncate the
+application journal.
 
-This appears to result in multiple new test failures, including generic/269
-(common to both architectures on bigalloc), and generic/127 (on bigalloc_1k).
-There are also numerous new warnings in the kernel log for a range of tests
-including these two.  These regressions are easily reproducable.
+If you crash, then it's simply a matter of replaying the application
+journal log into your application state when you start up again.
 
-generic/269 fails its post-test fsck with bad i_blocks counts.  generic/127
-does fail on 3.17-rc7, but on the dev branch now also fails its post-test
-fsck with bad i_blocks counts.
+One important thing to remember is that most eMMC are not protected
+against power failure.  So if you are writing to the eMMC flash when
+the power finally fails, the flash translation metadata can get
+corrupted, and you can lose all of your data, or some of your data,
+but it will not be under your control at all.
 
-Here's a typical warning as triggered by ext4/001 on bigalloc:
+Hence my recommendation to give your application a one second time
+budget to quiesce itself, and then to use FIFREEZE --- that way you
+don't have to optimize your system daemons from having a fast shutdown
+sequence.  Or you can have your emergency shutdown program send a kill
+-9 to all processes except itself and init, and then unmount the file
+system --- but FIFREEZE might be easier.  :-)
 
-EXT4-fs warning (device vde): ext4_da_update_reserve_space:343: ext4_da_update_reserve_space: ino 12, used 1 with only 0 reserved data blocks
-------------[ cut here ]------------
-WARNING: CPU: 1 PID: 1315 at fs/ext4/inode.c:344 ext4_da_update_reserve_space+0x180/0x190()
-Modules linked in: quota_v2 quota_tree kvm_intel kvm microcode psmouse serio_raw virtio_balloon i2c_piix4
-CPU: 1 PID: 1315 Comm: xfs_io Not tainted 3.17.0-rc2-ext4dev+ #1
-Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
- 0000000000000009 ffff880025b27b58 ffffffff816ef0b3 0000000000000000
- ffff880025b27b90 ffffffff81056c1d ffff88006f8e6b60 0000000000000001
- 0000000000000000 0000000000000002 ffff88002f4c4000 ffff880025b27ba0
-Call Trace:
- [<ffffffff816ef0b3>] dump_stack+0x45/0x56
- [<ffffffff81056c1d>] warn_slowpath_common+0x7d/0xa0
- [<ffffffff81056cfa>] warn_slowpath_null+0x1a/0x20
- [<ffffffff81259680>] ext4_da_update_reserve_space+0x180/0x190
- [<ffffffff81284ac6>] ext4_ext_map_blocks+0xcf6/0x1130
- [<ffffffff812597e1>] ext4_map_blocks+0x151/0x500
- [<ffffffff8125c847>] ? ext4_writepages+0x417/0xce0
- [<ffffffff8125ca86>] ext4_writepages+0x656/0xce0
- [<ffffffff811a7543>] ? kmem_cache_free+0x93/0x1c0
- [<ffffffff811615c1>] do_writepages+0x21/0x50
- [<ffffffff81156399>] __filemap_fdatawrite_range+0x59/0x60
- [<ffffffff811563ff>] filemap_write_and_wait+0x2f/0x60
- [<ffffffff811cc2ae>] do_vfs_ioctl+0x42e/0x520
- [<ffffffff811cc421>] SyS_ioctl+0x81/0xa0
- [<ffffffff816f8692>] system_call_fastpath+0x16/0x1b
----[ end trace 5d6b10aa9fac8fc0 ]---
+Cheers,
 
-The same warning is triggered by generic/269 on bigalloc and generic/127 on
-bigalloc_1k.
+						- Ted
 
-I'm happy to supply more information if needed.
-
-Thanks,
-Eric
+P.S.  And keeping a read-only root and only having writable state in
+small writable partition is also a good idea.  For bonus points, keep
+*two* copies of the read-only root, so you can update one of the
+roots, reboot into it, and if you can successfuly reboot into it, only
+then do you update the other read-only root.
