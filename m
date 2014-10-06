@@ -1,124 +1,117 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] ext4: add ext4_iget_normal() which is to be used for
- dir tree lookups
-Date: Mon, 6 Oct 2014 17:09:03 +0200
-Message-ID: <20141006150903.GI7526@quack.suse.cz>
-References: <20141005001239.GD27150@sli.dy.fi>
- <1412563682-5720-1-git-send-email-tytso@mit.edu>
- <1412563682-5720-2-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+From: Paul Paulson <paul.paulson@seagate.com>
+Subject: [PATCH] generic/017: skip tests with mkfs failures
+Date: Mon,  6 Oct 2014 13:23:50 -0500
+Message-ID: <1412619830-23088-1-git-send-email-paul.paulson@seagate.com>
+Cc: linux-ext4@vger.kernel.org, Paul Paulson <paul.paulson@seagate.com>
+To: fstests@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:54220 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753350AbaJFPJF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 6 Oct 2014 11:09:05 -0400
-Content-Disposition: inline
-In-Reply-To: <1412563682-5720-2-git-send-email-tytso@mit.edu>
+Received: from mx0a-00003501.pphosted.com ([67.231.144.15]:11210 "EHLO
+	mx0a-00003501.pphosted.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753143AbaJFSi2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Oct 2014 14:38:28 -0400
+Received: from pps.filterd (m0075552.ppops.net [127.0.0.1])
+	by mx0a-00003501.pphosted.com (8.14.5/8.14.5) with SMTP id s96IK1Lu013651
+	for <linux-ext4@vger.kernel.org>; Mon, 6 Oct 2014 14:23:58 -0400
+Received: from pps.reinject (localhost [127.0.0.1])
+	by mx0a-00003501.pphosted.com with ESMTP id 1puy7ggcwq-1
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Mon, 06 Oct 2014 14:23:58 -0400
+Received: from m0075552.ppops.net (m0075552.ppops.net [127.0.0.1])
+	by pps.reinject (8.14.5/8.14.5) with SMTP id s96ILmsf015560
+	for <linux-ext4@vger.kernel.org>; Mon, 6 Oct 2014 14:23:58 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 05-10-14 22:48:02, Ted Tso wrote:
-> If there is a corrupted file system which has directory entries that
-> point at reserved, metadata inodes, prohibit them from being used by
-> treating them the same way we treat Boot Loader inodes --- that is,
-> mark them to be bad inodes.  This prohibits them from being opened,
-> deleted, or modified via chmod, chown, utimes, etc.
-> 
-> In particular, this prevents a corrupted file system which has a
-> directory entry which points at the journal inode from being deleted
-> and being released, after which point Much Hilarity Ensues.
-> 
-> Reported-by: Sami Liedes <sami.liedes@iki.fi>
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> ---
->  fs/ext4/ext4.h  |  1 +
->  fs/ext4/inode.c | 10 ++++++++++
->  fs/ext4/namei.c |  4 ++--
->  fs/ext4/super.c |  2 +-
->  4 files changed, 14 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 1eb5b7b..012e89b 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -2109,6 +2109,7 @@ int do_journal_get_write_access(handle_t *handle,
->  #define CONVERT_INLINE_DATA	 2
->  
->  extern struct inode *ext4_iget(struct super_block *, unsigned long);
-> +extern struct inode *ext4_iget_normal(struct super_block *, unsigned long);
->  extern int  ext4_write_inode(struct inode *, struct writeback_control *);
->  extern int  ext4_setattr(struct dentry *, struct iattr *);
->  extern int  ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 59983b2..437622c 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4104,6 +4104,16 @@ bad_inode:
->  	return ERR_PTR(ret);
->  }
->  
-> +struct inode *ext4_iget_normal(struct super_block *sb, unsigned long ino)
-> +{
-> +	struct inode *ret_inode = ext4_iget(sb, ino);
-> +
-> +	if (ret_inode && !IS_ERR(ret_inode) &&
-> +	    ino < EXT4_FIRST_INO(sb) && ino != EXT4_ROOT_INO)
-> +		make_bad_inode(ret_inode);
-> +	return ret_inode;
-  Hum, why don't we just return an error (like EIO) when invalid inode
-number is passed?
+The mkfs command fails to create ext4 filesystems on partition sizes
+greater than 1998080 MiB when using 1024 byte blocks and the default
+calculation for the number of inodes reserved for the filesystem.
 
-								Honza
-> +}
-> +
->  static int ext4_inode_blocks_set(handle_t *handle,
->  				struct ext4_inode *raw_inode,
->  				struct ext4_inode_info *ei)
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index a2a9d40..7037ecf 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -1417,7 +1417,7 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
->  					 dentry);
->  			return ERR_PTR(-EIO);
->  		}
-> -		inode = ext4_iget(dir->i_sb, ino);
-> +		inode = ext4_iget_normal(dir->i_sb, ino);
->  		if (inode == ERR_PTR(-ESTALE)) {
->  			EXT4_ERROR_INODE(dir,
->  					 "deleted inode referenced: %u",
-> @@ -1450,7 +1450,7 @@ struct dentry *ext4_get_parent(struct dentry *child)
->  		return ERR_PTR(-EIO);
->  	}
->  
-> -	return d_obtain_alias(ext4_iget(child->d_inode->i_sb, ino));
-> +	return d_obtain_alias(ext4_iget_normal(child->d_inode->i_sb, ino));
->  }
->  
->  /*
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 1070d6e..a0811cc 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1001,7 +1001,7 @@ static struct inode *ext4_nfs_get_inode(struct super_block *sb,
->  	 * Currently we don't know the generation for parent directory, so
->  	 * a generation of 0 means "accept any"
->  	 */
-> -	inode = ext4_iget(sb, ino);
-> +	inode = ext4_iget_normal(sb, ino);
->  	if (IS_ERR(inode))
->  		return ERR_CAST(inode);
->  	if (generation && inode->i_generation != generation) {
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The following error message is produced when the maximum number of
+inodes is exceeded:
+
+    "Cannot create filesystem with requested number of inodes while
+     setting up superblock"
+
+The generic/017 test was modified to skip the 1K block size test
+for partitions with an inode count that exceeds the maximum.
+
+The QA output for the test was also changed to a simple pass/fail
+indication to account for a variable number of test iterations.
+---
+ common/config         |  1 +
+ tests/generic/017     | 21 +++++++++++++++++++--
+ tests/generic/017.out |  4 +---
+ 3 files changed, 21 insertions(+), 5 deletions(-)
+
+diff --git a/common/config b/common/config
+index d68d4d0..824985e 100644
+--- a/common/config
++++ b/common/config
+@@ -184,6 +184,7 @@ export LOGGER_PROG="`set_prog_path logger`"
+ export DBENCH_PROG="`set_prog_path dbench`"
+ export DMSETUP_PROG="`set_prog_path dmsetup`"
+ export WIPEFS_PROG="`set_prog_path wipefs`"
++export TUNE2FS_PROG="`set_prog_path tune2fs`"
+ 
+ # Generate a comparable xfsprogs version number in the form of
+ # major * 10000 + minor * 100 + release
+diff --git a/tests/generic/017 b/tests/generic/017
+index 13b7254..eb38d4d 100755
+--- a/tests/generic/017
++++ b/tests/generic/017
+@@ -49,8 +49,16 @@ _do_die_on_error=y
+ testfile=$SCRATCH_MNT/$seq.$$
+ BLOCKS=10240
+ 
+-for (( BSIZE = 1024; BSIZE <= 4096; BSIZE *= 2 )); do
++MAX_INODE_COUNT_1K=127877120
++inode_count=`$TUNE2FS_PROG -l $SCRATCH_DEV | awk '/Inode count:/ { print $3 }'`
++initial_bsize=$(($inode_count <= $MAX_INODE_COUNT_1K ? 1024 : 2048))
+ 
++iterations=0
++passcount=0
++
++for (( BSIZE = $initial_bsize; BSIZE <= 4096; BSIZE *= 2 )); do
++
++	let iterations++
+ 	length=$(($BLOCKS * $BSIZE))
+ 	case $FSTYP in
+ 	xfs)
+@@ -74,7 +82,10 @@ for (( BSIZE = 1024; BSIZE <= 4096; BSIZE *= 2 )); do
+ 	done
+ 
+ 	# Check if 80 extents are present
+-	$XFS_IO_PROG -c "fiemap -v" $testfile | grep "^ *[0-9]*:" |wc -l
++	extents=`$XFS_IO_PROG -c "fiemap -v" $testfile | grep "^ *[0-9]*:" | wc -l`
++	if [ $extents -eq 80 ]; then
++		let passcount++
++	fi
+ 
+ 	_check_scratch_fs
+ 	if [ $? -ne 0 ]; then
+@@ -85,6 +96,12 @@ for (( BSIZE = 1024; BSIZE <= 4096; BSIZE *= 2 )); do
+ 	umount $SCRATCH_MNT
+ done
+ 
++if [ $iterations -gt 0 -a $passcount -eq $iterations ]; then
++	echo pass
++else
++	echo fail
++fi
++
+ # success, all done
+ status=0
+ exit
+diff --git a/tests/generic/017.out b/tests/generic/017.out
+index cc524ac..008ac18 100644
+--- a/tests/generic/017.out
++++ b/tests/generic/017.out
+@@ -1,4 +1,2 @@
+ QA output created by 017
+-80
+-80
+-80
++pass
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.9.1
+
