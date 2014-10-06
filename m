@@ -1,75 +1,107 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4: don't orphan or truncate the boot loader inode
-Date: Sun,  5 Oct 2014 22:48:01 -0400
-Message-ID: <1412563682-5720-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/2] ext4: add ext4_iget_normal() which is to be used for dir tree lookups
+Date: Sun,  5 Oct 2014 22:48:02 -0400
+Message-ID: <1412563682-5720-2-git-send-email-tytso@mit.edu>
 References: <20141005001239.GD27150@sli.dy.fi>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+ <1412563682-5720-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20141005001239.GD27150@sli.dy.fi>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:37565 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751926AbaJFCsJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 Oct 2014 22:48:09 -0400
+In-Reply-To: <1412563682-5720-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The boot loader inode (inode #5) should never be visible in the
-directory hierarchy, but it's possible if the file system is corrupted
-that there will be a directory entry that points at inode #5.  In
-order to avoid accidentally trashing it, when such a directory inode
-is opened, the inode will be marked as a bad inode, so that it's not
-possible to modify (or read) the inode from userspace.
+If there is a corrupted file system which has directory entries that
+point at reserved, metadata inodes, prohibit them from being used by
+treating them the same way we treat Boot Loader inodes --- that is,
+mark them to be bad inodes.  This prohibits them from being opened,
+deleted, or modified via chmod, chown, utimes, etc.
 
-Unfortunately, when we unlink this (invalid/illegal) directory entry,
-we will put the bad inode on the ophan list, and then when try to
-unlink the directory, we don't actually remove the bad inode from the
-orphan list before freeing in-memory inode structure.  This means the
-in-memory orphan list is corrupted, leading to a kernel oops.
-
-In addition, avoid truncating a bad inode in ext4_destroy_inode(),
-since truncating the boot loader inode is not a smart thing to do.
+In particular, this prevents a corrupted file system which has a
+directory entry which points at the journal inode from being deleted
+and being released, after which point Much Hilarity Ensues.
 
 Reported-by: Sami Liedes <sami.liedes@iki.fi>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@vger.kernel.org
 ---
- fs/ext4/inode.c | 7 +++----
- fs/ext4/namei.c | 2 +-
- 2 files changed, 4 insertions(+), 5 deletions(-)
+ fs/ext4/ext4.h  |  1 +
+ fs/ext4/inode.c | 10 ++++++++++
+ fs/ext4/namei.c |  4 ++--
+ fs/ext4/super.c |  2 +-
+ 4 files changed, 14 insertions(+), 3 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 1eb5b7b..012e89b 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2109,6 +2109,7 @@ int do_journal_get_write_access(handle_t *handle,
+ #define CONVERT_INLINE_DATA	 2
+ 
+ extern struct inode *ext4_iget(struct super_block *, unsigned long);
++extern struct inode *ext4_iget_normal(struct super_block *, unsigned long);
+ extern int  ext4_write_inode(struct inode *, struct writeback_control *);
+ extern int  ext4_setattr(struct dentry *, struct iattr *);
+ extern int  ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 41c4f97..59983b2 100644
+index 59983b2..437622c 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -224,16 +224,15 @@ void ext4_evict_inode(struct inode *inode)
- 		goto no_delete;
- 	}
+@@ -4104,6 +4104,16 @@ bad_inode:
+ 	return ERR_PTR(ret);
+ }
  
--	if (!is_bad_inode(inode))
--		dquot_initialize(inode);
-+	if (is_bad_inode(inode))
-+		goto no_delete;
-+	dquot_initialize(inode);
- 
- 	if (ext4_should_order_data(inode))
- 		ext4_begin_ordered_truncate(inode, 0);
- 	truncate_inode_pages_final(&inode->i_data);
- 
- 	WARN_ON(atomic_read(&EXT4_I(inode)->i_ioend_count));
--	if (is_bad_inode(inode))
--		goto no_delete;
- 
- 	/*
- 	 * Protect us against freezing - iput() caller didn't have to have any
++struct inode *ext4_iget_normal(struct super_block *sb, unsigned long ino)
++{
++	struct inode *ret_inode = ext4_iget(sb, ino);
++
++	if (ret_inode && !IS_ERR(ret_inode) &&
++	    ino < EXT4_FIRST_INO(sb) && ino != EXT4_ROOT_INO)
++		make_bad_inode(ret_inode);
++	return ret_inode;
++}
++
+ static int ext4_inode_blocks_set(handle_t *handle,
+ 				struct ext4_inode *raw_inode,
+ 				struct ext4_inode_info *ei)
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 51705f8..a2a9d40 100644
+index a2a9d40..7037ecf 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -2544,7 +2544,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 	int err = 0, rc;
- 	bool dirty = false;
+@@ -1417,7 +1417,7 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
+ 					 dentry);
+ 			return ERR_PTR(-EIO);
+ 		}
+-		inode = ext4_iget(dir->i_sb, ino);
++		inode = ext4_iget_normal(dir->i_sb, ino);
+ 		if (inode == ERR_PTR(-ESTALE)) {
+ 			EXT4_ERROR_INODE(dir,
+ 					 "deleted inode referenced: %u",
+@@ -1450,7 +1450,7 @@ struct dentry *ext4_get_parent(struct dentry *child)
+ 		return ERR_PTR(-EIO);
+ 	}
  
--	if (!sbi->s_journal)
-+	if (!sbi->s_journal || is_bad_inode(inode))
- 		return 0;
+-	return d_obtain_alias(ext4_iget(child->d_inode->i_sb, ino));
++	return d_obtain_alias(ext4_iget_normal(child->d_inode->i_sb, ino));
+ }
  
- 	WARN_ON_ONCE(!(inode->i_state & (I_NEW | I_FREEING)) &&
+ /*
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 1070d6e..a0811cc 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1001,7 +1001,7 @@ static struct inode *ext4_nfs_get_inode(struct super_block *sb,
+ 	 * Currently we don't know the generation for parent directory, so
+ 	 * a generation of 0 means "accept any"
+ 	 */
+-	inode = ext4_iget(sb, ino);
++	inode = ext4_iget_normal(sb, ino);
+ 	if (IS_ERR(inode))
+ 		return ERR_CAST(inode);
+ 	if (generation && inode->i_generation != generation) {
 -- 
 2.1.0
+
