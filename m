@@ -1,39 +1,66 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] ext4: add ext4_iget_normal() which is to be used for
- dir tree lookups
-Date: Mon, 6 Oct 2014 14:55:34 -0400
-Message-ID: <20141006185534.GA7567@thunk.org>
-References: <20141005001239.GD27150@sli.dy.fi>
- <1412563682-5720-1-git-send-email-tytso@mit.edu>
- <1412563682-5720-2-git-send-email-tytso@mit.edu>
- <20141006150903.GI7526@quack.suse.cz>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 03/12] xfs: Set allowed quota types
+Date: Tue, 7 Oct 2014 07:30:28 +1100
+Message-ID: <20141006203028.GB2301@dastard>
+References: <1412191894-9113-1-git-send-email-jack@suse.cz>
+	<1412191894-9113-4-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
+	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
+	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
+	xfs@oss.sgi.com, cluster-devel@redhat.com,
+	Joel Becker <jlbec@evilplan.org>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Steven Whitehouse <swhiteho@redhat.com>,
+	ocfs2-devel@oss.oracle.com
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38816 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753011AbaJFSzh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 6 Oct 2014 14:55:37 -0400
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20141006150903.GI7526@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1412191894-9113-4-git-send-email-jack@suse.cz>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 06, 2014 at 05:09:03PM +0200, Jan Kara wrote:
-> > +	if (ret_inode && !IS_ERR(ret_inode) &&
-> > +	    ino < EXT4_FIRST_INO(sb) && ino != EXT4_ROOT_INO)
-> > +		make_bad_inode(ret_inode);
-> > +	return ret_inode;
->   Hum, why don't we just return an error (like EIO) when invalid inode
-> number is passed?
+On Wed, Oct 01, 2014 at 09:31:25PM +0200, Jan Kara wrote:
+> We support user, group, and project quotas. Tell VFS about it.
+> 
+> CC: xfs@oss.sgi.com
+> CC: Dave Chinner <david@fromorbit.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/xfs/xfs_super.c | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+> index b194652033cd..b32e998e8cbc 100644
+> --- a/fs/xfs/xfs_super.c
+> +++ b/fs/xfs/xfs_super.c
+> @@ -1419,6 +1419,8 @@ xfs_fs_fill_super(
+>  	sb->s_export_op = &xfs_export_operations;
+>  #ifdef CONFIG_XFS_QUOTA
+>  	sb->s_qcop = &xfs_quotactl_operations;
+> +	sb->s_dquot.allowed_types = (1 << USRQUOTA) | (1 << GRPQUOTA) |
+> +				    (1 << PRJQUOTA);
 
-Yeah, I guess we can do that.  We need to support the make_bad_inode()
-for the sake of EXT4_IOC_SWAP_BOOT.  But that code path doesn't need
-to use ext4_iget_normal().  So yeah, in the case of
-ext4_iget_normal(), we should be able to just return -EIO and let the
-userspace fail fast with the open(2) instead of later on with the
-read(2) or write(2) or truncate(2) call.
+Would it be better to define masks for these rather than open
+coding these shifts everywhere?
 
-						- Ted
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
