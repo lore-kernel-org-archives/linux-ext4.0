@@ -1,86 +1,75 @@
-From: =?UTF-8?q?Uwe=20Kleine-K=C3=B6nig?= <u.kleine-koenig@pengutronix.de>
-Subject: [PATCH] vfs: fix compilation for no-MMU configurations
-Date: Sun,  5 Oct 2014 10:58:36 +0200
-Message-ID: <1412499516-12839-1-git-send-email-u.kleine-koenig@pengutronix.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-Cc: kernel@pengutronix.de,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>,
-	Theodore Ts'o <tytso@mit.edu>
-Return-path: <owner-linux-mm@kvack.org>
-Sender: owner-linux-mm@kvack.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 1/2] ext4: don't orphan or truncate the boot loader inode
+Date: Sun,  5 Oct 2014 22:48:01 -0400
+Message-ID: <1412563682-5720-1-git-send-email-tytso@mit.edu>
+References: <20141005001239.GD27150@sli.dy.fi>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+In-Reply-To: <20141005001239.GD27150@sli.dy.fi>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Commit ac4dd23b76ce introduced a new function pagecache_isize_extended.
-In <linux/mm.h> it was declared static inline and empty for no-MMU and
-defined unconditionally in mm/truncate.c which results a compiler
-error:
+The boot loader inode (inode #5) should never be visible in the
+directory hierarchy, but it's possible if the file system is corrupted
+that there will be a directory entry that points at inode #5.  In
+order to avoid accidentally trashing it, when such a directory inode
+is opened, the inode will be marked as a bad inode, so that it's not
+possible to modify (or read) the inode from userspace.
 
-	  CC      mm/truncate.o
-	mm/truncate.c:751:6: error: redefinition of 'pagecache_isize_extended'
-	 void pagecache_isize_extended(struct inode *inode, loff_t from, loff_t =
-to)
-	      ^
-	In file included from mm/truncate.c:13:0:
-	include/linux/mm.h:1161:91: note: previous definition of 'pagecache_isiz=
-e_extended' was here
-	 static inline void pagecache_isize_extended(struct inode *inode, loff_t=
- from,
-												   ^
-	scripts/Makefile.build:257: recipe for target 'mm/truncate.o' failed
+Unfortunately, when we unlink this (invalid/illegal) directory entry,
+we will put the bad inode on the ophan list, and then when try to
+unlink the directory, we don't actually remove the bad inode from the
+orphan list before freeing in-memory inode structure.  This means the
+in-memory orphan list is corrupted, leading to a kernel oops.
 
-(tested with ARCH=3Darm efm32_defconfig).
+In addition, avoid truncating a bad inode in ext4_destroy_inode(),
+since truncating the boot loader inode is not a smart thing to do.
 
-Fixes: ac4dd23b76ce ("vfs: fix data corruption when blocksize < pagesize =
-for mmaped data")
-Signed-off-by: Uwe Kleine-K=C3=B6nig <u.kleine-koenig@pengutronix.de>
+Reported-by: Sami Liedes <sami.liedes@iki.fi>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@vger.kernel.org
 ---
-Hello,
+ fs/ext4/inode.c | 7 +++----
+ fs/ext4/namei.c | 2 +-
+ 2 files changed, 4 insertions(+), 5 deletions(-)
 
-the bad commit sits in
-
-git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git#dev
-
-and is included in next.
-
-Best regards
-Uwe
-
- mm/truncate.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/mm/truncate.c b/mm/truncate.c
-index 261eaf6e5a19..0d9c4ebd5ecc 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -729,6 +729,7 @@ void truncate_setsize(struct inode *inode, loff_t new=
-size)
- }
- EXPORT_SYMBOL(truncate_setsize);
-=20
-+#ifdef CONFIG_MMU
- /**
-  * pagecache_isize_extended - update pagecache after extension of i_size
-  * @inode:	inode for which i_size was extended
-@@ -780,6 +781,7 @@ void pagecache_isize_extended(struct inode *inode, lo=
-ff_t from, loff_t to)
- 	page_cache_release(page);
- }
- EXPORT_SYMBOL(pagecache_isize_extended);
-+#endif
-=20
- /**
-  * truncate_pagecache_range - unmap and remove pagecache that is hole-pu=
-nched
---=20
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 41c4f97..59983b2 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -224,16 +224,15 @@ void ext4_evict_inode(struct inode *inode)
+ 		goto no_delete;
+ 	}
+ 
+-	if (!is_bad_inode(inode))
+-		dquot_initialize(inode);
++	if (is_bad_inode(inode))
++		goto no_delete;
++	dquot_initialize(inode);
+ 
+ 	if (ext4_should_order_data(inode))
+ 		ext4_begin_ordered_truncate(inode, 0);
+ 	truncate_inode_pages_final(&inode->i_data);
+ 
+ 	WARN_ON(atomic_read(&EXT4_I(inode)->i_ioend_count));
+-	if (is_bad_inode(inode))
+-		goto no_delete;
+ 
+ 	/*
+ 	 * Protect us against freezing - iput() caller didn't have to have any
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 51705f8..a2a9d40 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2544,7 +2544,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+ 	int err = 0, rc;
+ 	bool dirty = false;
+ 
+-	if (!sbi->s_journal)
++	if (!sbi->s_journal || is_bad_inode(inode))
+ 		return 0;
+ 
+ 	WARN_ON_ONCE(!(inode->i_state & (I_NEW | I_FREEING)) &&
+-- 
 2.1.0
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
