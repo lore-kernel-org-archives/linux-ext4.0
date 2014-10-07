@@ -1,182 +1,129 @@
 From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-Subject: Re: [PATCH] filefrag: fix wrong extent count calculation when using
- FIBMAP
-Date: Tue, 7 Oct 2014 12:12:44 +0800
-Message-ID: <5433683C.4070807@cn.fujitsu.com>
-References: <5422CAC2.7080409@redhat.com> <1412593539-18328-1-git-send-email-wangxg.fnst@cn.fujitsu.com> <20141007024339.GA10054@birch.djwong.org> <5433630A.5030808@cn.fujitsu.com> <20141007035904.GB10054@birch.djwong.org>
+Subject: [PATCH] ext4: delete useless comments about ext4_move_extents
+Date: Tue, 7 Oct 2014 16:36:30 +0800
+Message-ID: <1412670990-12903-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>, <tytso@mit.edu>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain
+Cc: <tytso@mit.edu>, <dmonakhov@openvz.org>,
+	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([59.151.112.132]:18956 "EHLO
+Received: from cn.fujitsu.com ([59.151.112.132]:15361 "EHLO
 	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750718AbaJGENk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Oct 2014 00:13:40 -0400
-In-Reply-To: <20141007035904.GB10054@birch.djwong.org>
+	with ESMTP id S1753346AbaJGJAE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Oct 2014 05:00:04 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+In patch 'ext4: refactor ext4_move_extents code base',  Dmitry Monakhov has
+refactored ext4_move_extents' implementation, but forgot to update the
+corresponding comments, this patch will try to delete some useless comments.
 
-On 10/07/2014 11:59 AM, Darrick J. Wong wrote:
-> On Tue, Oct 07, 2014 at 11:50:34AM +0800, Xiaoguang Wang wrote:
->> Hi,
->>
->> On 10/07/2014 10:43 AM, Darrick J. Wong wrote:
->>> On Mon, Oct 06, 2014 at 07:05:39PM +0800, Xiaoguang Wang wrote:
->>>> When using FIBMAP and '-e' option is specified, the calculation for fiemap_extent
->>>> is wrong, we wrongly updated fm_ext.fe_logical for every iteration, please see the
->>>> code in the end of 'for' loop in fm_ext.fe_logical().
->>>>
->>>> In an ext2 file system(block size is 1024 bytes),
->>>>   dd if=/dev/zero of=testfile bs=1k count=15
->>>>   Using debugfs, corresponding physical blocks are "2049 2050 2051 2052 2053 2054
->>>> 2055 2056 2057 2058 2059 2060 1025 2061 2062 2063",  1025 is this indirect block.
->>>> Before this patch, filefrag's output would be:
->>>>   filefrag -B -e testfile
->>>>   Filesystem type is: ef53
->>>>   Filesystem cylinder groups approximately 16
->>>>   File size of testfile is 15360 (15 blocks of 1024 bytes)
->>>>    ext:     logical_offset:        physical_offset: length:   expected: flags:
->>>>      0:        1..       2:       2050..      2051:      2:       2051: merged
->>>>      1:        3..       4:       2052..      2053:      2:       2053: merged
->>>>      2:        5..       6:       2054..      2055:      2:       2055: merged
->>>>      3:        7..       8:       2056..      2057:      2:       2057: merged
->>>>      4:        9..      10:       2058..      2059:      2:       2059: merged
->>>>      5:       11..      12:       2060..      2061:      2:       2062: merged
->>>>      6:       13..      14:       2062..      2063:      2:       2063: merged,eof
->>>>      7:       14..      14:       2063..      2063:      1:       2063: merged,eof
->>>> This output is not reasonable.
->>>
->>> It's just plain whacky.  Why would logical offset 14 be listed twice? :)
->>
->> Because of the wrong code :)  It updates fm_ext.fe_logical and fm_ext.fe_physical for every
->> iteration :) and i think the original code is not that readable.
->>>
->>>> Fix this bug and try to make it readable. After this patch, the output would be:
->>>>   ./filefrag -B -e mntpoint/testfile
->>>>   Filesystem type is: ef53
->>>>   Filesystem cylinder groups approximately 16
->>>>   File size of mntpoint/testfile is 15360 (15 blocks of 1024 bytes)
->>>>    ext:     logical_offset:        physical_offset: length:   expected: flags:
->>>>      0:        0..      11:       2049..      2060:     12:       2062: merged
->>>>      1:       12..      14:       2061..      2063:      3:       2063: merged,eof
->>>>   mntpoint/testfile: 2 extents found, perfection would be 1 extent
->>>
->>> Where'd the indirect block end up, if not in the middle of 2049-2063?
->>
->> Indirect block's information is used to judge whether logical region is continuous physically.
->> For example, the above testfile's first indirect block is 1025, and will not shown in the output.
-> 
-> 1025?  Huh.  Is this an old FS, or is there something wrong with the block
-> allocator?
+Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+---
+ fs/ext4/move_extent.c | 59 ++++++---------------------------------------------
+ 1 file changed, 6 insertions(+), 53 deletions(-)
 
-Yeah, it's strange. I created testfile multiple times, data blocks are basically continuous, but
-indirect block always not. It seems that block allocator does not work well.
-I have this test on a 128MB loop device(mkfs to ext2), OS: Fedora 19(3.9.5-301.fc19.x86_64)
-
-Regards,
-Xiaoguang Wang
-
-> 
-> --D
-> 
->>
->>>
->>>> Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
->>>> ---
->>>>  misc/filefrag.c | 37 +++++++++++++++++++++++--------------
->>>>  1 file changed, 23 insertions(+), 14 deletions(-)
->>>>
->>>> diff --git a/misc/filefrag.c b/misc/filefrag.c
->>>> index c1a8684..e9f7e68 100644
->>>> --- a/misc/filefrag.c
->>>> +++ b/misc/filefrag.c
->>>> @@ -315,32 +315,41 @@ static int filefrag_fibmap(int fd, int blk_shift, int *num_extents,
->>>>  			return rc;
->>>>  		if (block == 0)
->>>>  			continue;
->>>> +		count++;
->>>> +
->>>>  		if (*num_extents == 0) {
->>>>  			(*num_extents)++;
->>>>  			if (force_extent) {
->>>>  				print_extent_header();
->>>> +				fm_ext.fe_logical = logical;
->>>>  				fm_ext.fe_physical = block * st->st_blksize;
->>>> +				fm_ext.fe_length = st->st_blksize;
->>>>  			}
->>>> +			last_block = block;
->>>> +			continue;
->>>>  		}
->>>> -		count++;
->>>> -		if (force_extent && last_block != 0 &&
->>>> -		    (block != last_block + 1 ||
->>>> -		     fm_ext.fe_logical + fm_ext.fe_length != logical)) {
->>>> -			print_extent_info(&fm_ext, *num_extents - 1,
->>>> -					  (last_block + 1) * st->st_blksize,
->>>> -					  blk_shift, st);
->>>> -			fm_ext.fe_length = 0;
->>>> -			(*num_extents)++;
->>>> +
->>>> +		if (force_extent) {
->>>> +			if (block != last_block + 1 ||
->>>> +			    fm_ext.fe_length + fm_ext.fe_logical != logical) {
->>>> +				print_extent_info(&fm_ext, *num_extents - 1,
->>>> +						  (last_block + 1) *
->>>> +						  st->st_blksize,
->>>> +						  blk_shift, st);
->>>> +				fm_ext.fe_logical = logical;
->>>> +				fm_ext.fe_physical = block * st->st_blksize;
->>>> +				fm_ext.fe_length = st->st_blksize;
->>>> +				(*num_extents)++;
->>>> +			} else {
->>>> +				fm_ext.fe_length += st->st_blksize;
->>>> +			}
->>>>  		} else if (last_block && (block != last_block + 1)) {
->>>> -			if (verbose)
->>>> +			if (verbose) {
->>>>  				printf("Discontinuity: Block %ld is at %lu (was "
->>>>  				       "%lu)\n", i, block, last_block + 1);
->>>> -			fm_ext.fe_length = 0;
->>>> +			}
->>>
->>> The { } is not needed for a single line if statement.
->>
->> OK, I'll send a new version to remove it, thanks!
->>
->> Regards,
->> Xiaoguang Wang
->>>
->>>>  			(*num_extents)++;
->>>>  		}
->>>> -		fm_ext.fe_logical = logical;
->>>> -		fm_ext.fe_physical = block * st->st_blksize;
->>>> -		fm_ext.fe_length += st->st_blksize;
->>>>  		last_block = block;
->>>
->>> Otherwise, I think this looks decent.
->>>
->>> --D
->>>
->>>>  	}
->>>>  
->>>> -- 
->>>> 1.8.2.1
->>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> .
->>>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> .
-> 
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 5d78063..9f2311b 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -120,33 +120,12 @@ out:
+ }
+ 
+ /**
+- * mext_replace_branches - Replace original extents with new extents
+- *
+- * @handle:		journal handle
+- * @orig_inode:		original inode
+- * @donor_inode:	donor inode
+- * @from:		block offset of orig_inode
+- * @count:		block count to be replaced
+- * @err:		pointer to save return value
+- *
+- * Replace original inode extents and donor inode extents page by page.
+- * We implement this replacement in the following three steps:
+- * 1. Save the block information of original and donor inodes into
+- *    dummy extents.
+- * 2. Change the block information of original inode to point at the
+- *    donor inode blocks.
+- * 3. Change the block information of donor inode to point at the saved
+- *    original inode blocks in the dummy extents.
+- *
+- * Return replaced block count.
+- */
+-
+-/**
+  * mext_page_double_lock - Grab and lock pages on both @inode1 and @inode2
+  *
+  * @inode1:	the inode structure
+  * @inode2:	the inode structure
+- * @index:	page index
++ * @index1:	page index
++ * @index2:	page index
+  * @page:	result page vector
+  *
+  * Grab two locked pages for inode's by inode order
+@@ -266,13 +245,14 @@ out:
+  * @o_filp:			file structure of original file
+  * @donor_inode:		donor inode
+  * @orig_page_offset:		page index on original file
++ * @donor_page_offset:		page index on donor file
+  * @data_offset_in_page:	block index where data swapping starts
+  * @block_len_in_page:		the number of blocks to be swapped
+  * @unwritten:			orig extent is unwritten or not
+  * @err:			pointer to save return value
+  *
+  * Save the data in original inode blocks and replace original inode extents
+- * with donor inode extents by calling mext_replace_branches().
++ * with donor inode extents by calling ext4_swap_extents().
+  * Finally, write out the saved data in new original inode blocks. Return
+  * replaced block count.
+  */
+@@ -551,41 +531,14 @@ mext_check_arguments(struct inode *orig_inode,
+  *
+  * @o_filp:		file structure of the original file
+  * @d_filp:		file structure of the donor file
+- * @orig_start:		start offset in block for orig
+- * @donor_start:	start offset in block for donor
++ * @orig_blk:		start offset in block for orig
++ * @donor_blk:		start offset in block for donor
+  * @len:		the number of blocks to be moved
+  * @moved_len:		moved block length
+  *
+  * This function returns 0 and moved block length is set in moved_len
+  * if succeed, otherwise returns error value.
+  *
+- * Note: ext4_move_extents() proceeds the following order.
+- * 1:ext4_move_extents() calculates the last block number of moving extent
+- *   function by the start block number (orig_start) and the number of blocks
+- *   to be moved (len) specified as arguments.
+- *   If the {orig, donor}_start points a hole, the extent's start offset
+- *   pointed by ext_cur (current extent), holecheck_path, orig_path are set
+- *   after hole behind.
+- * 2:Continue step 3 to step 5, until the holecheck_path points to last_extent
+- *   or the ext_cur exceeds the block_end which is last logical block number.
+- * 3:To get the length of continues area, call mext_next_extent()
+- *   specified with the ext_cur (initial value is holecheck_path) re-cursive,
+- *   until find un-continuous extent, the start logical block number exceeds
+- *   the block_end or the extent points to the last extent.
+- * 4:Exchange the original inode data with donor inode data
+- *   from orig_page_offset to seq_end_page.
+- *   The start indexes of data are specified as arguments.
+- *   That of the original inode is orig_page_offset,
+- *   and the donor inode is also orig_page_offset
+- *   (To easily handle blocksize != pagesize case, the offset for the
+- *   donor inode is block unit).
+- * 5:Update holecheck_path and orig_path to points a next proceeding extent,
+- *   then returns to step 2.
+- * 6:Release holecheck_path, orig_path and set the len to moved_len
+- *   which shows the number of moved blocks.
+- *   The moved_len is useful for the command to calculate the file offset
+- *   for starting next move extent ioctl.
+- * 7:Return 0 on success, or a negative error value on failure.
+  */
+ int
+ ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
+-- 
+1.8.3.1
 
