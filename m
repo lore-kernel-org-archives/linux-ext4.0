@@ -1,68 +1,112 @@
-From: Jan Kara <jack@suse.cz>
+From: Andreas Dilger <adilger@dilger.ca>
 Subject: Re: [PATCH 03/12] xfs: Set allowed quota types
-Date: Tue, 7 Oct 2014 21:29:35 +0200
-Message-ID: <20141007192935.GF30038@quack.suse.cz>
-References: <1412191894-9113-1-git-send-email-jack@suse.cz>
-	<1412191894-9113-4-git-send-email-jack@suse.cz>
-	<20141006203028.GB2301@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Date: Tue, 7 Oct 2014 13:46:20 -0600
+Message-ID: <3391F66C-E2A7-4FC8-8696-3C1600D54DA9@dilger.ca>
+References: <1412191894-9113-1-git-send-email-jack@suse.cz> <1412191894-9113-4-git-send-email-jack@suse.cz> <20141006203028.GB2301@dastard> <20141007192935.GF30038@quack.suse.cz>
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_25A6EF2A-EBB8-4C4D-A067-5217C5746133"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Dave Chinner <david@fromorbit.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	xfs@oss.sgi.com, cluster-devel <cluster-devel@redhat.com>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
+	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
+	Dave Kleikamp <shaggy@kernel.org>,
+	jfs-discussion@lists.sourceforge.net, tytso@mit.edu
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pd0-f178.google.com ([209.85.192.178]:44761 "EHLO
+	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754941AbaJGTp4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Oct 2014 15:45:56 -0400
+Received: by mail-pd0-f178.google.com with SMTP id y10so5644395pdj.9
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Oct 2014 12:45:56 -0700 (PDT)
+In-Reply-To: <20141007192935.GF30038@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+
+--Apple-Mail=_25A6EF2A-EBB8-4C4D-A067-5217C5746133
 Content-Transfer-Encoding: 7bit
-Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
-	Jan Kara <jack@suse.cz>, Jeff Mahoney <jeffm@suse.de>,
-	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
-	xfs@oss.sgi.com, cluster-devel@redhat.com,
-	Joel Becker <jlbec@evilplan.org>, linux-fsdevel@vger.kernel.org,
-	tytso@mit.edu, linux-ext4@vger.kernel.org,
-	Steven Whitehouse <swhiteho@redhat.com>, ocfs2-devel@oss.oracle.com
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <20141006203028.GB2301@dastard>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain;
+	charset=us-ascii
 
-On Tue 07-10-14 07:30:28, Dave Chinner wrote:
-> On Wed, Oct 01, 2014 at 09:31:25PM +0200, Jan Kara wrote:
-> > We support user, group, and project quotas. Tell VFS about it.
-> > 
-> > CC: xfs@oss.sgi.com
-> > CC: Dave Chinner <david@fromorbit.com>
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  fs/xfs/xfs_super.c | 2 ++
-> >  1 file changed, 2 insertions(+)
-> > 
-> > diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-> > index b194652033cd..b32e998e8cbc 100644
-> > --- a/fs/xfs/xfs_super.c
-> > +++ b/fs/xfs/xfs_super.c
-> > @@ -1419,6 +1419,8 @@ xfs_fs_fill_super(
-> >  	sb->s_export_op = &xfs_export_operations;
-> >  #ifdef CONFIG_XFS_QUOTA
-> >  	sb->s_qcop = &xfs_quotactl_operations;
-> > +	sb->s_dquot.allowed_types = (1 << USRQUOTA) | (1 << GRPQUOTA) |
-> > +				    (1 << PRJQUOTA);
-> 
-> Would it be better to define masks for these rather than open
-> coding these shifts everywhere?
-  I can do that. Any suggestion for a name? I was thinking about it for a
-while and couldn't come up with anything satisfactory...
+On Oct 7, 2014, at 1:29 PM, Jan Kara <jack@suse.cz> wrote:
+> On Tue 07-10-14 07:30:28, Dave Chinner wrote:
+>> On Wed, Oct 01, 2014 at 09:31:25PM +0200, Jan Kara wrote:
+>>> We support user, group, and project quotas. Tell VFS about it.
+>>> 
+>>> CC: xfs@oss.sgi.com
+>>> CC: Dave Chinner <david@fromorbit.com>
+>>> Signed-off-by: Jan Kara <jack@suse.cz>
+>>> ---
+>>> fs/xfs/xfs_super.c | 2 ++
+>>> 1 file changed, 2 insertions(+)
+>>> 
+>>> diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+>>> index b194652033cd..b32e998e8cbc 100644
+>>> --- a/fs/xfs/xfs_super.c
+>>> +++ b/fs/xfs/xfs_super.c
+>>> @@ -1419,6 +1419,8 @@ xfs_fs_fill_super(
+>>> 	sb->s_export_op = &xfs_export_operations;
+>>> #ifdef CONFIG_XFS_QUOTA
+>>> 	sb->s_qcop = &xfs_quotactl_operations;
+>>> +	sb->s_dquot.allowed_types = (1 << USRQUOTA) | (1 << GRPQUOTA) |
+>>> +				    (1 << PRJQUOTA);
+>> 
+>> Would it be better to define masks for these rather than open
+>> coding these shifts everywhere?
+>  I can do that. Any suggestion for a name? I was thinking about it for a
+> while and couldn't come up with anything satisfactory...
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Better to have QUOTA at the start, and TYPE in the name, so maybe:
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+enum quota_types {
+	QUOTA_TYPE_USR = 1 << USRQUOTA,
+	QUOTA_TYPE_GRP = 1 << GRPQUOTA,
+	QUOTA_TYPE_PRJ = 1 << PRJQUOTA,
+};
+
+or maybe "enum quota_type_mask" or similar.
+
+I prefer named enums over #defines since this makes it more clear
+when declaring variables like "allowed_types" what valid values are
+instead of just "int" that someone might mistakenly set to USRQUOTA
+directly or something.
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_25A6EF2A-EBB8-4C4D-A067-5217C5746133
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBVDRDDHKl2rkXzB/gAQKQ1hAAlea+fNuBUbta4vk/YkFa/+05+8K9ppKo
+17TxlDnme+uXuvcUBsj8FgS94++A3/oEZusByqm1kznm/ID4fGlEYwOkwnOT6RlG
+ARWksyI/dbrC5WEEw4mWILQJLLxC+nPCj03qM8/oP9jRUNdwvFLPpLVx8nBHHwas
+FCs9Oic2EvDqSV61iqat6k7MHsUuY5yrbHyrqqUtDLHUv82YDCXYAeEvtqKluzC8
+jvyRTvy3PcKyOM3TnaGClrQOE5ncHcrBz99YSK3fcvKCEuII2BNXCRVmfN48T8qm
+X4K7vgoMIF2HDxwnohUJh6FAzERMHbIm1muEN0JChplVi4m5Z63qKvflgqagaKAL
+i4qcFRcH5C4l8OUrJdYdNt23Ka9B2KKW7HLy0b/v6MdbiwjVaC3rRh/h5ZpX2seg
+BLxQtqBkdMf7o1NDpUbWJZuiWNt6tEfUFykGG8wK4toFc/xgQ7kvIWERELUCDOug
+J6kYlxqGZUn208ZJmZg516J38z1VVQr7Xy+bhF9zifZgOqOWuOmRkFtAWnmK7/W8
+3/LYNHpmTJqeQMMz26KWjYr7RqpvLGwsSOa4V8jQC3oBllKJKdm2CUc4G2t/wP38
+MC800equzdJKvF8zoOy1+R8877zLXnrR/UkYrnHxRgEn9sY5Y19bnIH/7PYBpEVj
+k7SxUkGyBdQ=
+=1Ues
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_25A6EF2A-EBB8-4C4D-A067-5217C5746133--
