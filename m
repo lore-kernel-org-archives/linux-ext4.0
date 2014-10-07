@@ -1,45 +1,68 @@
-From: Paul Paulson <paul.paulson@seagate.com>
-Subject: Re: [PATCH] generic/017: skip tests with mkfs failures
-Date: Tue, 7 Oct 2014 13:18:34 -0500
-Message-ID: <CAG4SSaQg_2kZZsHUcO=q4m-P1CsD+ThyPcE58js+3sVWPymYAw@mail.gmail.com>
-References: <1412619830-23088-1-git-send-email-paul.paulson@seagate.com>
-	<20141006232114.GK2301@dastard>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 03/12] xfs: Set allowed quota types
+Date: Tue, 7 Oct 2014 21:29:35 +0200
+Message-ID: <20141007192935.GF30038@quack.suse.cz>
+References: <1412191894-9113-1-git-send-email-jack@suse.cz>
+	<1412191894-9113-4-git-send-email-jack@suse.cz>
+	<20141006203028.GB2301@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: fstests <fstests@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
+	Jan Kara <jack@suse.cz>, Jeff Mahoney <jeffm@suse.de>,
+	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
+	xfs@oss.sgi.com, cluster-devel@redhat.com,
+	Joel Becker <jlbec@evilplan.org>, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, linux-ext4@vger.kernel.org,
+	Steven Whitehouse <swhiteho@redhat.com>, ocfs2-devel@oss.oracle.com
 To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx0a-00003501.pphosted.com ([67.231.144.15]:29453 "EHLO
-	mx0a-00003501.pphosted.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754618AbaJGSSf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Oct 2014 14:18:35 -0400
-Received: from pps.filterd (m0075553.ppops.net [127.0.0.1])
-	by mx0a-00003501.pphosted.com (8.14.5/8.14.5) with SMTP id s97I4Gdk028629
-	for <linux-ext4@vger.kernel.org>; Tue, 7 Oct 2014 14:18:35 -0400
-Received: from mail-qa0-f44.google.com (mail-qa0-f44.google.com [209.85.216.44])
-	by mx0a-00003501.pphosted.com with ESMTP id 1pvm7krbd5-3
-	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Tue, 07 Oct 2014 14:18:34 -0400
-Received: by mail-qa0-f44.google.com with SMTP id x12so4696427qac.31
-        for <linux-ext4@vger.kernel.org>; Tue, 07 Oct 2014 11:18:34 -0700 (PDT)
-In-Reply-To: <20141006232114.GK2301@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <20141006203028.GB2301@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
->> diff --git a/tests/generic/017 b/tests/generic/017
->> index 13b7254..eb38d4d 100755
->> --- a/tests/generic/017
->> +++ b/tests/generic/017
->> @@ -49,8 +49,16 @@ _do_die_on_error=y
->>  testfile=$SCRATCH_MNT/$seq.$$
->>  BLOCKS=10240
->>
->> -for (( BSIZE = 1024; BSIZE <= 4096; BSIZE *= 2 )); do
->> +MAX_INODE_COUNT_1K=127877120
->> +inode_count=`$TUNE2FS_PROG -l $SCRATCH_DEV | awk '/Inode count:/ { print $3 }'`
->> +initial_bsize=$(($inode_count <= $MAX_INODE_COUNT_1K ? 1024 : 2048))
->
-> FWIW, that'll break every filesystem type other than ext4.
-Yes, that was an oversight on my part. The initial_bsize calculation
-should have taken filesystem type into account.
+On Tue 07-10-14 07:30:28, Dave Chinner wrote:
+> On Wed, Oct 01, 2014 at 09:31:25PM +0200, Jan Kara wrote:
+> > We support user, group, and project quotas. Tell VFS about it.
+> > 
+> > CC: xfs@oss.sgi.com
+> > CC: Dave Chinner <david@fromorbit.com>
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> >  fs/xfs/xfs_super.c | 2 ++
+> >  1 file changed, 2 insertions(+)
+> > 
+> > diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+> > index b194652033cd..b32e998e8cbc 100644
+> > --- a/fs/xfs/xfs_super.c
+> > +++ b/fs/xfs/xfs_super.c
+> > @@ -1419,6 +1419,8 @@ xfs_fs_fill_super(
+> >  	sb->s_export_op = &xfs_export_operations;
+> >  #ifdef CONFIG_XFS_QUOTA
+> >  	sb->s_qcop = &xfs_quotactl_operations;
+> > +	sb->s_dquot.allowed_types = (1 << USRQUOTA) | (1 << GRPQUOTA) |
+> > +				    (1 << PRJQUOTA);
+> 
+> Would it be better to define masks for these rather than open
+> coding these shifts everywhere?
+  I can do that. Any suggestion for a name? I was thinking about it for a
+while and couldn't come up with anything satisfactory...
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
