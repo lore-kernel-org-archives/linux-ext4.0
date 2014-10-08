@@ -1,177 +1,81 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] shared/272: fail quickly on mkfs errors and improve
- logging
-Date: Wed, 8 Oct 2014 16:23:11 +1100
-Message-ID: <20141008052311.GI12693@dastard>
-References: <20140930195004.GB5803@wallace>
- <20141003043611.GK24490@dastard>
- <20141007210154.GA25094@wallace>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 03/12] xfs: Set allowed quota types
+Date: Wed, 8 Oct 2014 10:42:51 +0200
+Message-ID: <20141008084251.GB11781@quack.suse.cz>
+References: <1412191894-9113-1-git-send-email-jack@suse.cz>
+ <1412191894-9113-4-git-send-email-jack@suse.cz>
+ <20141006203028.GB2301@dastard>
+ <20141007192935.GF30038@quack.suse.cz>
+ <3391F66C-E2A7-4FC8-8696-3C1600D54DA9@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Eric Whitney <enwlinux@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:57361 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750999AbaJHFXP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Oct 2014 01:23:15 -0400
+Cc: Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	xfs@oss.sgi.com, cluster-devel <cluster-devel@redhat.com>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
+	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
+	Dave Kleikamp <shaggy@kernel.org>,
+	jfs-discussion@lists.sourceforge.net, tytso@mit.edu
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20141007210154.GA25094@wallace>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <3391F66C-E2A7-4FC8-8696-3C1600D54DA9@dilger.ca>
+Sender: reiserfs-devel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 07, 2014 at 05:01:54PM -0400, Eric Whitney wrote:
-> * Dave Chinner <david@fromorbit.com>:
-> > On Tue, Sep 30, 2014 at 03:50:04PM -0400, Eric Whitney wrote:
-> > > 272 will log diagnostic information if it fails to make its scratch file
-> > > system, but the test itself won't fail immediately.  If the scratch
-> > > device had previously contained a valid filesystem, and the attempt to
-> > > make a small scratch file system on it fails, 272 will mount and run on
-> > > the pre-existing file system (as seen during ext4 inline data testing).
-> > > Since 272 tests to ENOSPC, it can take a long time to learn mkfs failed.
-> > > This behavior can also lead to invalid positive test results unless
-> > > 272.full is examined separately.
-> > > 
-> > > Signed-off-by: Eric Whitney <enwlinux@gmail.com>
-> > > ---
-> > >  tests/shared/272 | 7 +++++--
-> > >  1 file changed, 5 insertions(+), 2 deletions(-)
-> > > 
-> > > diff --git a/tests/shared/272 b/tests/shared/272
-> > > index 4417535..9695e59 100755
-> > > --- a/tests/shared/272
-> > > +++ b/tests/shared/272
-> > > @@ -87,8 +87,11 @@ _supported_os Linux
-> > >  _need_to_be_root
-> > >  _require_scratch
-> > >  
-> > > -_scratch_mkfs_sized $((64 * 1024 * 1024)) >> $seqres.full 2>&1
-> > > -_scratch_mount
-> > > +rm -f $seqres.full
-> > > +
-> > > +_scratch_mkfs_sized $((64 * 1024 * 1024)) >> $seqres.full 2>&1 \
-> > > +	|| _fail "mkfs failed"
-> > > +_scratch_mount >> $seqres.full 2>&1 || _fail "mount failed"
-> > 
-> > Let's not have an unending stream of patches to make this same
-> > change to every test that calls _scratch_mkfs or scratch_mount.
+On Tue 07-10-14 13:46:20, Andreas Dilger wrote:
+> On Oct 7, 2014, at 1:29 PM, Jan Kara <jack@suse.cz> wrote:
+> > On Tue 07-10-14 07:30:28, Dave Chinner wrote:
+> >> On Wed, Oct 01, 2014 at 09:31:25PM +0200, Jan Kara wrote:
+> >>> We support user, group, and project quotas. Tell VFS about it.
+> >>> 
+> >>> CC: xfs@oss.sgi.com
+> >>> CC: Dave Chinner <david@fromorbit.com>
+> >>> Signed-off-by: Jan Kara <jack@suse.cz>
+> >>> ---
+> >>> fs/xfs/xfs_super.c | 2 ++
+> >>> 1 file changed, 2 insertions(+)
+> >>> 
+> >>> diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+> >>> index b194652033cd..b32e998e8cbc 100644
+> >>> --- a/fs/xfs/xfs_super.c
+> >>> +++ b/fs/xfs/xfs_super.c
+> >>> @@ -1419,6 +1419,8 @@ xfs_fs_fill_super(
+> >>> 	sb->s_export_op = &xfs_export_operations;
+> >>> #ifdef CONFIG_XFS_QUOTA
+> >>> 	sb->s_qcop = &xfs_quotactl_operations;
+> >>> +	sb->s_dquot.allowed_types = (1 << USRQUOTA) | (1 << GRPQUOTA) |
+> >>> +				    (1 << PRJQUOTA);
+> >> 
+> >> Would it be better to define masks for these rather than open
+> >> coding these shifts everywhere?
+> >  I can do that. Any suggestion for a name? I was thinking about it for a
+> > while and couldn't come up with anything satisfactory...
 > 
-> That's not what I had in mind.
+> Better to have QUOTA at the start, and TYPE in the name, so maybe:
 > 
-> About a half dozen tests don't indicate failure on completion if their
-> initial attempt to create a scratch file system fails.  This set of
-> tests is further distinguished by their use of small scratch file systems
-> less than 512 MB in size.
-
-Right - your *general problem* is _scratch_mkfs_sized failing to
-make a filesystem of the specified size. And so that sort of
-failure should always cause _scratch_mkfs_sized to dump debug to
-$seqres.full and fail the test. So, the generic infrastructure
-should really do that, yes?
-
-> There's an ext4 file system feature which is
-> guaranteed to make that fail unless an option is set externally to xfstests,
-> and it's easy to overlook that requirement (as it has been).  I'd hoped to
-> make it easier to detect these failures without adding ext4-specific noise.
-
-If there is a problem with mkfs.ext4 doing daft things and failing
-randomly (seems to be a recurring theme recently), then
-_scratch_mkfs_ext4 needs to detect and handle those failures
-appropriately.
-
-If we need to fix _scratch_mkfs_xfs then we'll do that too. And if
-we need to check that _scratch_mkfs_sized actually resulted in the
-correct sized filesystem then we should check that in
-_scratch_mkfs_sized, not every test that calls
-_scratch_mkfs_sized....
-
-> I noticed that generic/077 and generic/083 both detected and reported these
-> mkfs failures, and the six tests of interest did not.  I applied the mkfs
-> error handling pattern used by those two (and numerous other) tests in the
-> patches I posted in hopes that represented an acceptable approach.
-
-Many old tests are not consistent in their behaviour and we correct
-those as we fix infrastructure over time. So if we make
-_scratch_mkfs and friends catch failures, dump debug and abort
-tests, then that can be removed from all existing tests....
-
-> > If you need more debug output from them if they fail, please put it
-> > inside the low level _scratch_mkfs_$FSTYP functions themselves, as
-> > they already capture errors and dump debug to $seqres.full.
+> enum quota_types {
+> 	QUOTA_TYPE_USR = 1 << USRQUOTA,
+> 	QUOTA_TYPE_GRP = 1 << GRPQUOTA,
+> 	QUOTA_TYPE_PRJ = 1 << PRJQUOTA,
+> };
 > 
-> I'm aware of that.  We already have what we need.  Unfortunately, generic/015
-> redirects that information to /dev/null.
-
-That's exactly the reason why the generic code should do the right
-thing on failure.
-
-> > And we've had the discussion in the past about failing if
-> > scratch_mkfs fails. It came down on the side of "unless there's a
-> > specific reason for failing the test, it should still run to give us
-> > as much coverage as possible". e.g  a failed mkfs can result in the
-> > test exercising error paths being exercised that wouldn't otherwise
-> > be tested....
+> or maybe "enum quota_type_mask" or similar.
 > 
-> Was the conclusion that the test should also indicate successful execution
-> in this case? 
+> I prefer named enums over #defines since this makes it more clear
+> when declaring variables like "allowed_types" what valid values are
+> instead of just "int" that someone might mistakenly set to USRQUOTA
+> directly or something.
+  OK, QUOTA_TYPE_USR etc. looks good. I'm not so sure about named enum. I'd
+be fine with named enum for USRQUOTA, GRPQUOTA, etc. - i.e., types which
+should have one of the named values but for a bitmask with arbitrary
+combinations of flags it looks confusing to me (although technically
+it would work).
 
-Yes, because if the filesystem behaved correctly then the test
-passed regardless of whether mkfs succeed or not.
-
-> There is another cleaner way to address mkfs failures used in some xfstests -
-> avoid redirecting the output from mkfs, capture it in the test output, and
-> allow it to generate a miscompare with the golden output on error.
-
-Actually, no, we can't, because the output of mkfs.ext4 is not the
-same as the output of mkfs.xfs. And, indeed, the output of mkfs.xfs
-from version 3.0.x is differen to that of 3.2.x, so all we do is
-introduce the need to extensive, complex filtering of mkfs output.
-Much easier to have _scratch_mkfs_$FSTYP handle this and have
-tests redirect/filter the output in a way that is appropriate to the
-scope of the test.
-
-> > The case you have here (filling the fs can take ages) is a good
-> > reason for terminating the test if _scratch_mkfs_sized fails, but in
-> > general we really want the tests to run if at all possible...
-> 
-> Generic/027 is another one - would a mkfs fail fast patch have a chance of
-> acceptance?
-
-My advocacy of the "fix it in generic code" approach should answer
-that question.  i.e. I'm suggesting that we should *always* fail
-tests is _scratch_mkfs and friends fails rather than the current
-"only fail is the test catches failure"...
-
-Yes, there are a few special tests where we actually are testing for
-mkfs failure (e.g xfs/049) but the are old enough that they are
-calling things like "mkfs -t ext2" directly and not using any of the
-generic infrastructure we've built in the years since those tests
-were first written.
-
-It comes down to the fact that I don't like band-aid fixes. Hacking
-band-aids into individual tests to solve an immediate problem is an
-easy, short-term fix. However, it does nothing to address the
-underlying issue and results in having to patch different symptom
-sof the same problem repeatedly.  This is just a waste of time and
-effort. We know there's a general problem, we know how to fix it and
-that it's going to take a little more effort to fix it right now,
-but in the long run it will be less effort than appliying bandaids
-and then having to do major surgery when the band-aids no longer
-stem the bleeding.
-
-Hence I think we should change the default behaviour *of the
-infrastructure* and then fix the isolated fallout that will occur.
-We did this recently with modifying the check harness to run
-_check_scratch_fs after any test that uses the scratch device. We've
-then added _require_scratch_nocheck for the few tests where that is
-not a sane thing thing to do. That change of behaviour has found
-several issues in XFS (both kernel and userspace tools), so it was
-the *right thing to do* even though it has caused use a lot more
-work in the short term...
-
-Cheers,
-
-Dave.
+								Honza
 -- 
-Dave Chinner
-david@fromorbit.com
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
