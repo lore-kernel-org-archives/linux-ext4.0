@@ -1,66 +1,100 @@
-From: Paul Paulson <paul.paulson@seagate.com>
-Subject: Re: [PATCH] generic/017: skip tests with mkfs failures
-Date: Wed, 8 Oct 2014 08:17:41 -0500
-Message-ID: <CAG4SSaTFcfM8KkyJbiCed6URHa3YcMWc84+3toLA12q_V_QtDg@mail.gmail.com>
-References: <1412619830-23088-1-git-send-email-paul.paulson@seagate.com>
-	<20141007005300.GA11741@thunk.org>
-	<CAG4SSaSQt15AOOVR50EruW8sq_9Az3W26z+7pHy-2E9D3gOcgg@mail.gmail.com>
-	<20141008021102.GA20071@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: fstests <fstests@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] resize2fs: fix fs->blocksize dereference after fs has been freed
+Date: Wed,  8 Oct 2014 12:11:01 -0400
+Message-ID: <1412784661-24793-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx0a-00003501.pphosted.com ([67.231.144.15]:56392 "EHLO
-	mx0a-00003501.pphosted.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754563AbaJHNRm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Oct 2014 09:17:42 -0400
-Received: from pps.filterd (m0075550.ppops.net [127.0.0.1])
-	by mx0a-00003501.pphosted.com (8.14.5/8.14.5) with SMTP id s98DHKF8019846
-	for <linux-ext4@vger.kernel.org>; Wed, 8 Oct 2014 09:17:41 -0400
-Received: from mail-qa0-f45.google.com (mail-qa0-f45.google.com [209.85.216.45])
-	by mx0a-00003501.pphosted.com with ESMTP id 1pw4vv8aab-2
-	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Wed, 08 Oct 2014 09:17:41 -0400
-Received: by mail-qa0-f45.google.com with SMTP id s7so5617865qap.4
-        for <linux-ext4@vger.kernel.org>; Wed, 08 Oct 2014 06:17:41 -0700 (PDT)
-In-Reply-To: <20141008021102.GA20071@thunk.org>
+Received: from imap.thunk.org ([74.207.234.97]:42775 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754194AbaJHQLH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 Oct 2014 12:11:07 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 7, 2014 at 9:11 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Tue, Oct 07, 2014 at 01:12:51PM -0500, Paul Paulson wrote:
->> We'd like to run the full test suite using maximum partition sizes on
->> SMR drives for functional and performance evaluation purposes. Since
->> drive capacities are increasing so rapidly it would be nice if mke2fs
->> would support filesystems up to the maximum configurations specified
->> in the Ext4_Disk_Layout document using default filesystem configs. For
->> example, the 127877120 inode limit that we ran into is only 3% of the
->> number of inodes specified in the document (2^32 inodes in a 4 TiB
->> filesystem with 1KiB block sizes for 32-bit mode).
->
-> Sure, but the default file system configs don't include 1k block
-> sizes.  There really is only one reason that I care about the 1k block
-> size --- it's to make it easy to validate on an x86 architecture what
-> happens when a file system with a default 4k block size is mounted on
-> an architectures such as PowerPC or Itanium which has a page size of
-> 16k or 64k.  That is, to test the case where block size < page size.
->
-> But we really don't encourage people use a 1k block size in
-> production.  And while it would make sense from a performance point of
-> view to use a 16k or 64k block size file system on a PowerPC or
-> Itanium system, people who care about making their file system
-> portable across PowerPC and x86 (for example) will need to use a 4k
-> block file system (since Linux doesn't support block size > page
-> size).
->
-> So using a 1k block file system on a terabyte file system is neither
-> the default nor a sane thing to do.  I'll look into making mke2fs
-> handle this case more smoothly, but it's not something that I consider
-> a high priority or something I would encourage as a realstic
-> production use case.
+Commit 77255cf36944b introduced a use after free bug.
 
-Thank you for your informative explanation. It sounds like Dave will
-bring in the patch to eliminate the multiple block size loop so we'll
-just wait for that.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ resize/main.c | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
+
+diff --git a/resize/main.c b/resize/main.c
+index c107028..983d8c2 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -181,6 +181,7 @@ int main (int argc, char ** argv)
+ 	ext2fs_struct_stat st_buf;
+ 	__s64		new_file_size;
+ 	unsigned int	sys_page_size = 4096;
++	unsigned int	blocksize;
+ 	long		sysval;
+ 	int		len, mount_flags;
+ 	char		*mtpt;
+@@ -366,7 +367,8 @@ int main (int argc, char ** argv)
+ 	 * defaults and for making sure the new filesystem doesn't
+ 	 * exceed the partition size.
+ 	 */
+-	retval = ext2fs_get_device_size2(device_name, fs->blocksize,
++	blocksize = fs->blocksize;
++	retval = ext2fs_get_device_size2(device_name, blocksize,
+ 					 &max_size);
+ 	if (retval) {
+ 		com_err(program_name, retval, "%s",
+@@ -386,8 +388,8 @@ int main (int argc, char ** argv)
+ 	} else {
+ 		new_size = max_size;
+ 		/* Round down to an even multiple of a pagesize */
+-		if (sys_page_size > fs->blocksize)
+-			new_size &= ~((sys_page_size / fs->blocksize)-1);
++		if (sys_page_size > blocksize)
++			new_size &= ~((sys_page_size / blocksize)-1);
+ 	}
+ 	if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
+ 				       EXT4_FEATURE_INCOMPAT_64BIT)) {
+@@ -423,7 +425,7 @@ int main (int argc, char ** argv)
+ 	 * automatically extend it in a sparse fashion by writing the
+ 	 * last requested block.
+ 	 */
+-	new_file_size = ((__u64) new_size) * fs->blocksize;
++	new_file_size = ((__u64) new_size) * blocksize;
+ 	if ((__u64) new_file_size >
+ 	    (((__u64) 1) << (sizeof(st_buf.st_size)*8 - 1)) - 1)
+ 		fd = -1;
+@@ -437,13 +439,13 @@ int main (int argc, char ** argv)
+ 		fprintf(stderr, _("The containing partition (or device)"
+ 			" is only %llu (%dk) blocks.\nYou requested a new size"
+ 			" of %llu blocks.\n\n"), max_size,
+-			fs->blocksize / 1024, new_size);
++			blocksize / 1024, new_size);
+ 		exit(1);
+ 	}
+ 	if (new_size == ext2fs_blocks_count(fs->super)) {
+ 		fprintf(stderr, _("The filesystem is already %llu (%dk) "
+ 			"blocks long.  Nothing to do!\n\n"), new_size,
+-			fs->blocksize / 1024);
++			blocksize / 1024);
+ 		exit(0);
+ 	}
+ 	if (mount_flags & EXT2_MF_MOUNTED) {
+@@ -453,7 +455,7 @@ int main (int argc, char ** argv)
+ 		bigalloc_check(fs, force);
+ 		printf(_("Resizing the filesystem on "
+ 			 "%s to %llu (%dk) blocks.\n"),
+-		       device_name, new_size, fs->blocksize / 1024);
++		       device_name, new_size, blocksize / 1024);
+ 		retval = resize_fs(fs, &new_size, flags,
+ 				   ((flags & RESIZE_PERCENT_COMPLETE) ?
+ 				    resize_progress_func : 0));
+@@ -470,7 +472,7 @@ int main (int argc, char ** argv)
+ 		exit(1);
+ 	}
+ 	printf(_("The filesystem on %s is now %llu (%dk) blocks long.\n\n"),
+-	       device_name, new_size, fs->blocksize / 1024);
++	       device_name, new_size, blocksize / 1024);
+ 
+ 	if ((st_buf.st_size > new_file_size) &&
+ 	    (fd > 0)) {
+-- 
+2.1.0
+
