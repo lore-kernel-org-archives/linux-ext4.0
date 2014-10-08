@@ -1,148 +1,66 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 04/12] fs: Generic infrastructure for optional inode fields
-Date: Wed, 8 Oct 2014 10:45:09 +0200
-Message-ID: <20141008084509.GC11781@quack.suse.cz>
-References: <1412191894-9113-1-git-send-email-jack@suse.cz>
-	<1412191894-9113-5-git-send-email-jack@suse.cz>
-	<3BFF1023-E198-4797-A96A-EA158137157E@dilger.ca>
+From: Paul Paulson <paul.paulson@seagate.com>
+Subject: Re: [PATCH] generic/017: skip tests with mkfs failures
+Date: Wed, 8 Oct 2014 08:17:41 -0500
+Message-ID: <CAG4SSaTFcfM8KkyJbiCed6URHa3YcMWc84+3toLA12q_V_QtDg@mail.gmail.com>
+References: <1412619830-23088-1-git-send-email-paul.paulson@seagate.com>
+	<20141007005300.GA11741@thunk.org>
+	<CAG4SSaSQt15AOOVR50EruW8sq_9Az3W26z+7pHy-2E9D3gOcgg@mail.gmail.com>
+	<20141008021102.GA20071@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
-	Jan Kara <jack@suse.cz>, Jeff Mahoney <jeffm@suse.de>,
-	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
-	xfs@oss.sgi.com, cluster-devel@redhat.com,
-	Joel Becker <jlbec@evilplan.org>, linux-fsdevel@vger.kernel.org,
-	tytso@mit.edu, linux-ext4@vger.kernel.org,
-	Steven Whitehouse <swhiteho@redhat.com>, ocfs2-devel@oss.oracle.com
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <3BFF1023-E198-4797-A96A-EA158137157E@dilger.ca>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: fstests <fstests@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx0a-00003501.pphosted.com ([67.231.144.15]:56392 "EHLO
+	mx0a-00003501.pphosted.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754563AbaJHNRm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Oct 2014 09:17:42 -0400
+Received: from pps.filterd (m0075550.ppops.net [127.0.0.1])
+	by mx0a-00003501.pphosted.com (8.14.5/8.14.5) with SMTP id s98DHKF8019846
+	for <linux-ext4@vger.kernel.org>; Wed, 8 Oct 2014 09:17:41 -0400
+Received: from mail-qa0-f45.google.com (mail-qa0-f45.google.com [209.85.216.45])
+	by mx0a-00003501.pphosted.com with ESMTP id 1pw4vv8aab-2
+	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Wed, 08 Oct 2014 09:17:41 -0400
+Received: by mail-qa0-f45.google.com with SMTP id s7so5617865qap.4
+        for <linux-ext4@vger.kernel.org>; Wed, 08 Oct 2014 06:17:41 -0700 (PDT)
+In-Reply-To: <20141008021102.GA20071@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 01-10-14 15:05:46, Andreas Dilger wrote:
-> On Oct 1, 2014, at 1:31 PM, Jan Kara <jack@suse.cz> wrote:
-> > There are parts of struct inode which are used only by a few filesystems
-> > (e.g. i_dquot pointers, i_mapping->private_list, ...). Thus all the
-> > other filesystems are just wasting memory with these fields. On the
-> > other hand it isn't simple to just move these fields to filesystem
-> > specific part of inode because there is generic code which needs to peek
-> > into the fields and it is cumbersome to provide helpers into which fs
-> > has to stuff the field it is storing elsewhere.
-> > 
-> > We create a simple infrastructure which allows for optional inode fields
-> > stored in the fs-specific part of the inode. Accessing these fields has
-> > a slightly worse performance as we have to lookup their offset in the
-> > offset table stored in the superblock but in most cases this is
-> > acceptable. Notably, this offset-table mechanism is faster than having
-> > fs-specific hook functions which would need to be called to provide
-> > pointers to desired fields.
-> > 
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> > include/linux/fs.h | 24 ++++++++++++++++++++++++
-> > 1 file changed, 24 insertions(+)
-> > 
-> > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > index 94187721ad41..977f8fb6ca88 100644
-> > --- a/include/linux/fs.h
-> > +++ b/include/linux/fs.h
-> > @@ -615,6 +615,11 @@ struct inode {
-> > 	void			*i_private; /* fs or device private pointer */
-> > };
-> > 
-> > +/* Optional inode fields (stored in filesystems inode if the fs needs them) */
-> > +enum {
-> 
-> This should be a named enum, like "enum inode_field" or similar, so it
-> can be referenced below.
-> 
-> > +	IF_FIELD_NR	/* Number of optional inode fields */
-> > +};
-> > +
-> > static inline int inode_unhashed(struct inode *inode)
-> > {
-> > 	return hlist_unhashed(&inode->i_hash);
-> > @@ -1236,6 +1241,11 @@ struct super_block {
-> > 	void 			*s_fs_info;	/* Filesystem private info */
-> > 	unsigned int		s_max_links;
-> > 	fmode_t			s_mode;
-> > +	/*
-> > +	 * We could have here just a pointer to the offsets array but this
-> > +	 * way we save one dereference when looking up field offsets
-> > +	 */
-> > +	int			s_inode_fields[IF_FIELD_NR];
-> > 
-> > 	/* Granularity of c/m/atime in ns.
-> > 	   Cannot be worse than a second */
-> > @@ -1286,6 +1296,20 @@ struct super_block {
-> > 	struct rcu_head		rcu;
-> > };
-> > 
-> > +static inline void *inode_field(const struct inode *inode, int field)
-> 
-> This should use "enum inode_field" instead of int, so the compiler could
-> warn about invalid parameter values.  It might make sense to add a check:
-  OK, makes sense.
+On Tue, Oct 7, 2014 at 9:11 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Tue, Oct 07, 2014 at 01:12:51PM -0500, Paul Paulson wrote:
+>> We'd like to run the full test suite using maximum partition sizes on
+>> SMR drives for functional and performance evaluation purposes. Since
+>> drive capacities are increasing so rapidly it would be nice if mke2fs
+>> would support filesystems up to the maximum configurations specified
+>> in the Ext4_Disk_Layout document using default filesystem configs. For
+>> example, the 127877120 inode limit that we ran into is only 3% of the
+>> number of inodes specified in the document (2^32 inodes in a 4 TiB
+>> filesystem with 1KiB block sizes for 32-bit mode).
+>
+> Sure, but the default file system configs don't include 1k block
+> sizes.  There really is only one reason that I care about the 1k block
+> size --- it's to make it easy to validate on an x86 architecture what
+> happens when a file system with a default 4k block size is mounted on
+> an architectures such as PowerPC or Itanium which has a page size of
+> 16k or 64k.  That is, to test the case where block size < page size.
+>
+> But we really don't encourage people use a 1k block size in
+> production.  And while it would make sense from a performance point of
+> view to use a 16k or 64k block size file system on a PowerPC or
+> Itanium system, people who care about making their file system
+> portable across PowerPC and x86 (for example) will need to use a 4k
+> block file system (since Linux doesn't support block size > page
+> size).
+>
+> So using a 1k block file system on a terabyte file system is neither
+> the default nor a sane thing to do.  I'll look into making mke2fs
+> handle this case more smoothly, but it's not something that I consider
+> a high priority or something I would encourage as a realstic
+> production use case.
 
->         if (field < IF_FIELD_NR)
-> 
-> but I'm not sure if the overhead is worthwhile, unless it can always be
-> resolved at compile time.  That might be possible since this is a static
-> inline function.
-  Well, I can stick there BUG_ON(field >= IF_FIELD_NR). That looks like a
-sensible debugging measure with negligible overhead.
-
-								Honza
-> > +{
-> > +	int offset = inode->i_sb->s_inode_fields[field];
-> > +
-> > +	if (!offset)	/* Field not present? */
-> > +		return NULL;
-> 
-> > +	return ((char *)inode) + offset;
-> > +}
-> > +
-> > +static inline void sb_init_inode_fields(struct super_block *sb, int *fields)
-> > +{
-> > +	memcpy(sb->s_inode_fields, fields, sizeof(int) * IF_FIELD_NR);
-> > +}
-> > +
-> > extern struct timespec current_fs_time(struct super_block *sb);
-> > 
-> > /*
-> > -- 
-> > 1.8.1.4
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
-
-
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Thank you for your informative explanation. It sounds like Dave will
+bring in the patch to eliminate the multiple block size loop so we'll
+just wait for that.
