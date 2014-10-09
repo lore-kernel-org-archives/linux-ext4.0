@@ -1,127 +1,187 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: ext4: kernel BUG at fs/ext4/inode.c:2959!
-Date: Thu, 09 Oct 2014 14:06:46 +0400
-Message-ID: <874mvdblqh.fsf@openvz.org>
-References: <54359749.7010208@oracle.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha1; protocol="application/pgp-signature"
-Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	Dave Jones <davej@redhat.com>
-To: Sasha Levin <sasha.levin@oracle.com>,
-	Theodore Ts'o <tytso@mit.edu>, adilger.kernel@dilger.ca
+Subject: [PATCH] ext4: fix race between write and fcntl(F_SETFL)
+Date: Thu,  9 Oct 2014 15:14:47 +0400
+Message-ID: <1412853287-10496-1-git-send-email-dmonakhov@openvz.org>
+Cc: sasha.levin@oracle.com, Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f181.google.com ([209.85.212.181]:37231 "EHLO
-	mail-wi0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750824AbaJIKGz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2014 06:06:55 -0400
-In-Reply-To: <54359749.7010208@oracle.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:20700 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751740AbaJILPC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 9 Oct 2014 07:15:02 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+O_DIRECT flags can be toggeled via fcntl(F_SETFL).
+But this value checked twice inside ext4_file_write_iter() and __generic_file_write()
+which result in BUG_ON (see typical stack trace below)
+In order to fix this we have to use our own copy of __generic_file_write and
+pass o_direct status explicitly.
 
-Sasha Levin <sasha.levin@oracle.com> writes:
-> Hi all,
->
-> While fuzzing with trinity inside a KVM tools guest running the latest -next
-> kernel, I've stumbled on the following spew:
-Indeed this is a pure bug.
-Race between write and fcntl(F_SETFL) which toggling O_DIRECT.
-So even if we started with buffered path we may endup in direct one :)
-See my testcase: http://marc.info/?l=linux-ext4&m=141284883914726&w=2
-Unfortunately f_flags guarded by filp->f_lock so it looks like we
-can not use generic __generic_file_write_iter() and need specific one
-which use precached o_direct status.
->
-> [  409.233952] kernel BUG at fs/ext4/inode.c:2959!
-> [  409.234761] invalid opcode: 0000 [#1] PREEMPT SMP DEBUG_PAGEALLOC KASAN
-> [  409.237192] Dumping ftrace buffer:
-> [  409.238424]    (ftrace buffer empty)
-> [  409.239664] Modules linked in:
-> [  409.240706] CPU: 18 PID: 14016 Comm: trinity-c27 Not tainted 3.17.0-next-20141008-sasha-00051-g78b3c93-dirty #1364
-> [  409.242724] task: ffff88032bb00000 ti: ffff8802e78f8000 task.ti: ffff8802e78f8000
-> [  409.242724] RIP: ext4_direct_IO (fs/ext4/inode.c:2959 fs/ext4/inode.c:3098)
-> [  409.242724] RSP: 0018:ffff8802e78fbb98  EFLAGS: 00010246
-> [  409.242724] RAX: ffffda005cf1f7cf RBX: ffff88015f72f2f0 RCX: 0000000000000007
-> [  409.242724] RDX: dfffe90000000000 RSI: 1ffff1002e58c5ef RDI: ffff8802e78fbe78
-> [  409.242724] RBP: ffff8802e78fbc28 R08: dfffe90000000001 R09: ffff8802e78fbe5f
-> [  409.242724] R10: 1ffff1005cf1f7cb R11: 0000000000000001 R12: ffff8802e78fbe60
-> [  409.242724] R13: 000000000000000d R14: ffff8802e78fbc60 R15: ffff88015f72f2f0
-> [  409.242724] FS:  0000000000798860(0063) GS:ffff880851c00000(0000) knlGS:0000000000000000
-> [  409.242724] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> [  409.242724] CR2: 0000000002bd70f8 CR3: 000000032b542000 CR4: 00000000000006a0
-> [  409.242724] Stack:
-> [  409.242724]  ffff88017380a1e8 0000000000000000 ffff8802e78fbbf8 ffffffff9937c5ff
-> [  409.242724]  ffff88015f72f318 7fffffffffffffff 0000000000000000 ffff8802e78fbe78
-> [  409.242724]  ffff88015f72f2f0 0000000000000000 000000000000000d 000000015f72f2f0
-> [  409.242724] Call Trace:
-> [  409.242724] ? __filemap_fdatawrite_range (mm/filemap.c:288)
-> [  409.242724] generic_file_direct_write (mm/filemap.c:2413)
-> [  409.242724] __generic_file_write_iter (mm/filemap.c:2595)
-> [  409.242724] ext4_file_write_iter (fs/ext4/file.c:176)
-> [  409.242724] ? get_parent_ip (kernel/sched/core.c:2606)
-> [  409.242724] ? iov_iter_init (mm/iov_iter.c:442)
-> [  409.242724] new_sync_write (fs/read_write.c:478)
-> [  409.242724] vfs_write (fs/read_write.c:534)
-> [  409.242724] SyS_pwrite64 (fs/read_write.c:627 fs/read_write.c:614)
-> [  409.242724] tracesys_phase2 (arch/x86/kernel/entry_64.S:529)
-> [ 409.242724] Code: 00 00 65 8b 04 25 58 cb 00 00 a9 ff ff ff 7f 0f 85 94 fb ff ff e8 c1 cf ff ff f6 c4 02 0f 84 86 fb ff ff e9 5d fd ff ff 0f 1f 00 <0f> 0b e8 c9 4c c9 ff 84 c0 0f 84 85 fc ff ff 48 c7 c7 80 63 58
-> All code
-> ========
->    0:	00 00                	add    %al,(%rax)
->    2:	65 8b 04 25 58 cb 00 	mov    %gs:0xcb58,%eax
->    9:	00
->    a:	a9 ff ff ff 7f       	test   $0x7fffffff,%eax
->    f:	0f 85 94 fb ff ff    	jne    0xfffffffffffffba9
->   15:	e8 c1 cf ff ff       	callq  0xffffffffffffcfdb
->   1a:	f6 c4 02             	test   $0x2,%ah
->   1d:	0f 84 86 fb ff ff    	je     0xfffffffffffffba9
->   23:	e9 5d fd ff ff       	jmpq   0xfffffffffffffd85
->   28:	0f 1f 00             	nopl   (%rax)
->   2b:*	0f 0b                	ud2    		<-- trapping instruction
->   2d:	e8 c9 4c c9 ff       	callq  0xffffffffffc94cfb
->   32:	84 c0                	test   %al,%al
->   34:	0f 84 85 fc ff ff    	je     0xfffffffffffffcbf
->   3a:	48 c7 c7 80 63 58 00 	mov    $0x586380,%rdi
->
-> Code starting with the faulting instruction
-> ===========================================
->    0:	0f 0b                	ud2
->    2:	e8 c9 4c c9 ff       	callq  0xffffffffffc94cd0
->    7:	84 c0                	test   %al,%al
->    9:	0f 84 85 fc ff ff    	je     0xfffffffffffffc94
->    f:	48 c7 c7 80 63 58 00 	mov    $0x586380,%rdi
-> [  409.242724] RIP ext4_direct_IO (fs/ext4/inode.c:2959 fs/ext4/inode.c:3098)
-> [  409.242724]  RSP <ffff8802e78fbb98>
->
-> Thanks,
-> Sasha
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+TESTCASE: xfstest:generic/326  (http://patchwork.ozlabs.org/patch/397949/)
 
---=-=-=
-Content-Type: application/pgp-signature
+#TYPICAL STACK TRACE:
+kernel BUG at fs/ext4/inode.c:2960!
+invalid opcode: 0000 [#1] SMP
+Modules linked in: brd iTCO_wdt lpc_ich mfd_core igb ptp dm_mirror dm_region_hash dm_log dm_mod
+CPU: 6 PID: 5505 Comm: aio-dio-fcntl-r Not tainted 3.17.0-rc2-00176-gff5c017 #161
+Hardware name: Intel Corporation W2600CR/W2600CR, BIOS SE5C600.86B.99.99.x028.061320111235 06/13/2011
+task: ffff88080e95a7c0 ti: ffff88080f908000 task.ti: ffff88080f908000
+RIP: 0010:[<ffffffff811fabf2>]  [<ffffffff811fabf2>] ext4_direct_IO+0x162/0x3d0
+RSP: 0018:ffff88080f90bb58  EFLAGS: 00010246
+RAX: 0000000000000400 RBX: ffff88080fdb2a28 RCX: 00000000a802c818
+RDX: 0000040000080000 RSI: ffff88080d8aeb80 RDI: 0000000000000001
+RBP: ffff88080f90bbc8 R08: 0000000000000000 R09: 0000000000001581
+R10: 0000000000000000 R11: 0000000000000000 R12: ffff88080d8aeb80
+R13: ffff88080f90bbf8 R14: ffff88080fdb28c8 R15: ffff88080fdb2a28
+FS:  00007f23b2055700(0000) GS:ffff880818400000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007f23b2045000 CR3: 000000080cedf000 CR4: 00000000000407e0
+Stack:
+ ffff88080f90bb98 0000000000000000 7ffffffffffffffe ffff88080fdb2c30
+ 0000000000000200 0000000000000200 0000000000000001 0000000000000200
+ ffff88080f90bbc8 ffff88080fdb2c30 ffff88080f90be08 0000000000000200
+Call Trace:
+ [<ffffffff8112ca9d>] generic_file_direct_write+0xed/0x180
+ [<ffffffff8112f2b2>] __generic_file_write_iter+0x222/0x370
+ [<ffffffff811f495b>] ext4_file_write_iter+0x34b/0x400
+ [<ffffffff811bd709>] ? aio_run_iocb+0x239/0x410
+ [<ffffffff811bd709>] ? aio_run_iocb+0x239/0x410
+ [<ffffffff810990e5>] ? local_clock+0x25/0x30
+ [<ffffffff810abd94>] ? __lock_acquire+0x274/0x700
+ [<ffffffff811f4610>] ? ext4_unwritten_wait+0xb0/0xb0
+ [<ffffffff811bd756>] aio_run_iocb+0x286/0x410
+ [<ffffffff810990e5>] ? local_clock+0x25/0x30
+ [<ffffffff810ac359>] ? lock_release_holdtime+0x29/0x190
+ [<ffffffff811bc05b>] ? lookup_ioctx+0x4b/0xf0
+ [<ffffffff811bde3b>] do_io_submit+0x55b/0x740
+ [<ffffffff811bdcaa>] ? do_io_submit+0x3ca/0x740
+ [<ffffffff811be030>] SyS_io_submit+0x10/0x20
+ [<ffffffff815ce192>] system_call_fastpath+0x16/0x1b
+Code: 01 48 8b 80 f0 01 00 00 48 8b 18 49 8b 45 10 0f 85 f1 01 00 00 48 03 45 c8 48 3b 43 48 0f 8f e3 01 00 00 49 83 7c 24 18 00 75 04 <0f> 0b eb fe f0 ff 83 ec 01 00 00 49 8b 44 24 18 8b 00 85 c0 89
+RIP  [<ffffffff811fabf2>] ext4_direct_IO+0x162/0x3d0
+ RSP <ffff88080f90bb58>
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
+Reported-by: Sasha Levin <sasha.levin@oracle.com>
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/file.c |   96 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 95 insertions(+), 1 deletions(-)
 
-iQIcBAEBAgAGBQJUNl42AAoJEFzOBSYIXfveNjMQAJvnmPLVV8/0Uhi0xEH9zrUe
-1ezFw9KUXYk0ZQLAoLeBZHZrUk8ZFukgt2xgMEXl4zfYxX03XrrdG5Ku4R4Vbkg7
-JWTK4/tZt0GV3VeJ2jQrnxnPT4mVQqh9dtYAEg/x9PLpcyFAZ5CQSzAKOH29fZZC
-FrvrSwrH11h1iVcT13ZYYUGa2DDvggxAGLeakvVVo3v2mkF6kt8uW4fOXi8ynXjU
-fgKWL04GjhbeDYSZL08ggjV3vOwU1nPuEy55GpVJQjFXrHVL4OJl/p8SYi+x8wnR
-u3ZdLO1rfvTpHOH7Vj50OwYYe2UbcjHQt08QktiAdSirTfv7i0S4eN9RZHEDafBr
-+XrpEH9PuAAOjeezlKV+jZQywAAnrhdBSBTNX5RPA7SGfTDgmZwnBse1wguwLDlA
-NgE9mMijnLPgFjBd1Fn/SvImf4zZhe0v/U6A58eo7mhPsqcI0gVt69CGFwIpXsgR
-i+QvqPpWUtdFvbDa8Cl/jnplerF6EeEP1y01GrmtTtvnE68t/lcbkl2OXzxfZofK
-pfo2qKZJ0Iud7ZvoA8G1OJg492d1SFD1W+Kk/Fu7K/ZwXzAraLAxwW0jf75U+ujM
-gpfHfWqz8SFN7Qdsb6g/iUY1M0/tVOcXHTs6WuYDDcoUik3CLkJVCnx5c+JXh/jX
-EhibDHOx8Tk4gBS/Hp98
-=PVMh
------END PGP SIGNATURE-----
---=-=-=--
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index aca7b24..8477eb2 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -88,6 +88,100 @@ ext4_unaligned_aio(struct inode *inode, struct iov_iter *from, loff_t pos)
+ 	return 0;
+ }
+ 
++/**
++ * copy of __generic_file_write_iter with explicit O_DIRECT status
++ * @iocb:	IO state structure (file, offset, etc.)
++ * @from:	iov_iter with data to write
++ * @direct:	perform O_DIRECT IO
++ */
++static ssize_t
++__ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from, int direct)
++{
++	struct file *file = iocb->ki_filp;
++	struct address_space *mapping = file->f_mapping;
++	struct inode	*inode = mapping->host;
++	loff_t		pos = iocb->ki_pos;
++	ssize_t		written = 0;
++	ssize_t		err;
++	ssize_t		status;
++	size_t		count = iov_iter_count(from);
++
++	/* We can write back this queue in page reclaim */
++	current->backing_dev_info = mapping->backing_dev_info;
++	err = generic_write_checks(file, &pos, &count, S_ISBLK(inode->i_mode));
++	if (err)
++		goto out;
++
++	if (count == 0)
++		goto out;
++
++	iov_iter_truncate(from, count);
++
++	err = file_remove_suid(file);
++	if (err)
++		goto out;
++
++	err = file_update_time(file);
++	if (err)
++		goto out;
++
++	/* coalesce the iovecs and go direct-to-BIO for O_DIRECT */
++	if (unlikely(direct)) {
++		loff_t endbyte;
++
++		written = generic_file_direct_write(iocb, from, pos);
++		if (written < 0 || written == count)
++			goto out;
++
++		/*
++		 * direct-io write to a hole: fall through to buffered I/O
++		 * for completing the rest of the request.
++		 */
++		pos += written;
++		count -= written;
++
++		status = generic_perform_write(file, from, pos);
++		/*
++		 * If generic_perform_write() returned a synchronous error
++		 * then we want to return the number of bytes which were
++		 * direct-written, or the error code if that was zero.  Note
++		 * that this differs from normal direct-io semantics, which
++		 * will return -EFOO even if some bytes were written.
++		 */
++		if (unlikely(status < 0)) {
++			err = status;
++			goto out;
++		}
++		iocb->ki_pos = pos + status;
++		/*
++		 * We need to ensure that the page cache pages are written to
++		 * disk and invalidated to preserve the expected O_DIRECT
++		 * semantics.
++		 */
++		endbyte = pos + status - 1;
++		err = filemap_write_and_wait_range(file->f_mapping, pos,
++						   endbyte);
++		if (err == 0) {
++			written += status;
++			invalidate_mapping_pages(mapping,
++						 pos >> PAGE_CACHE_SHIFT,
++						 endbyte >> PAGE_CACHE_SHIFT);
++		} else {
++			/*
++			 * We don't know how much we wrote, so just return
++			 * the number of bytes which were direct-written
++			 */
++		}
++	} else {
++		written = generic_perform_write(file, from, pos);
++		if (likely(written >= 0))
++			iocb->ki_pos = pos + written;
++	}
++out:
++	current->backing_dev_info = NULL;
++	return written ? written : err;
++}
++
+ static ssize_t
+ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ {
+@@ -172,7 +266,7 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 		}
+ 	}
+ 
+-	ret = __generic_file_write_iter(iocb, from);
++	ret = __ext4_file_write_iter(iocb, from, o_direct);
+ 	mutex_unlock(&inode->i_mutex);
+ 
+ 	if (ret > 0) {
+-- 
+1.7.1
+
