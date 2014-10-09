@@ -1,256 +1,127 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH] add aio/dio regression test race between write and fcntl
-Date: Thu,  9 Oct 2014 13:59:58 +0400
-Message-ID: <1412848798-27033-1-git-send-email-dmonakhov@openvz.org>
-Cc: linux-ext4@vger.kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>
-To: fstests@vger.kernel.org
+Subject: Re: ext4: kernel BUG at fs/ext4/inode.c:2959!
+Date: Thu, 09 Oct 2014 14:06:46 +0400
+Message-ID: <874mvdblqh.fsf@openvz.org>
+References: <54359749.7010208@oracle.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha1; protocol="application/pgp-signature"
+Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	Dave Jones <davej@redhat.com>
+To: Sasha Levin <sasha.levin@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>, adilger.kernel@dilger.ca
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:19749 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751154AbaJIKAQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 9 Oct 2014 06:00:16 -0400
+Received: from mail-wi0-f181.google.com ([209.85.212.181]:37231 "EHLO
+	mail-wi0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750824AbaJIKGz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2014 06:06:55 -0400
+In-Reply-To: <54359749.7010208@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Original report: https://lkml.org/lkml/2014/10/8/545
-perform AIO-DIO and fcntl(F_SETFL) concurently
-Unaligned AIO likely result in synchronization which makes racewindow wider.
+--=-=-=
+Content-Type: text/plain
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- src/aio-dio-regress/aio-dio-fcntl-race.c |  144 ++++++++++++++++++++++++++++++
- tests/generic/326                        |   51 +++++++++++
- tests/generic/326.out                    |    2 +
- tests/generic/group                      |    1 +
- 4 files changed, 198 insertions(+), 0 deletions(-)
- create mode 100644 src/aio-dio-regress/aio-dio-fcntl-race.c
- create mode 100755 tests/generic/326
- create mode 100644 tests/generic/326.out
+Sasha Levin <sasha.levin@oracle.com> writes:
+> Hi all,
+>
+> While fuzzing with trinity inside a KVM tools guest running the latest -next
+> kernel, I've stumbled on the following spew:
+Indeed this is a pure bug.
+Race between write and fcntl(F_SETFL) which toggling O_DIRECT.
+So even if we started with buffered path we may endup in direct one :)
+See my testcase: http://marc.info/?l=linux-ext4&m=141284883914726&w=2
+Unfortunately f_flags guarded by filp->f_lock so it looks like we
+can not use generic __generic_file_write_iter() and need specific one
+which use precached o_direct status.
+>
+> [  409.233952] kernel BUG at fs/ext4/inode.c:2959!
+> [  409.234761] invalid opcode: 0000 [#1] PREEMPT SMP DEBUG_PAGEALLOC KASAN
+> [  409.237192] Dumping ftrace buffer:
+> [  409.238424]    (ftrace buffer empty)
+> [  409.239664] Modules linked in:
+> [  409.240706] CPU: 18 PID: 14016 Comm: trinity-c27 Not tainted 3.17.0-next-20141008-sasha-00051-g78b3c93-dirty #1364
+> [  409.242724] task: ffff88032bb00000 ti: ffff8802e78f8000 task.ti: ffff8802e78f8000
+> [  409.242724] RIP: ext4_direct_IO (fs/ext4/inode.c:2959 fs/ext4/inode.c:3098)
+> [  409.242724] RSP: 0018:ffff8802e78fbb98  EFLAGS: 00010246
+> [  409.242724] RAX: ffffda005cf1f7cf RBX: ffff88015f72f2f0 RCX: 0000000000000007
+> [  409.242724] RDX: dfffe90000000000 RSI: 1ffff1002e58c5ef RDI: ffff8802e78fbe78
+> [  409.242724] RBP: ffff8802e78fbc28 R08: dfffe90000000001 R09: ffff8802e78fbe5f
+> [  409.242724] R10: 1ffff1005cf1f7cb R11: 0000000000000001 R12: ffff8802e78fbe60
+> [  409.242724] R13: 000000000000000d R14: ffff8802e78fbc60 R15: ffff88015f72f2f0
+> [  409.242724] FS:  0000000000798860(0063) GS:ffff880851c00000(0000) knlGS:0000000000000000
+> [  409.242724] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> [  409.242724] CR2: 0000000002bd70f8 CR3: 000000032b542000 CR4: 00000000000006a0
+> [  409.242724] Stack:
+> [  409.242724]  ffff88017380a1e8 0000000000000000 ffff8802e78fbbf8 ffffffff9937c5ff
+> [  409.242724]  ffff88015f72f318 7fffffffffffffff 0000000000000000 ffff8802e78fbe78
+> [  409.242724]  ffff88015f72f2f0 0000000000000000 000000000000000d 000000015f72f2f0
+> [  409.242724] Call Trace:
+> [  409.242724] ? __filemap_fdatawrite_range (mm/filemap.c:288)
+> [  409.242724] generic_file_direct_write (mm/filemap.c:2413)
+> [  409.242724] __generic_file_write_iter (mm/filemap.c:2595)
+> [  409.242724] ext4_file_write_iter (fs/ext4/file.c:176)
+> [  409.242724] ? get_parent_ip (kernel/sched/core.c:2606)
+> [  409.242724] ? iov_iter_init (mm/iov_iter.c:442)
+> [  409.242724] new_sync_write (fs/read_write.c:478)
+> [  409.242724] vfs_write (fs/read_write.c:534)
+> [  409.242724] SyS_pwrite64 (fs/read_write.c:627 fs/read_write.c:614)
+> [  409.242724] tracesys_phase2 (arch/x86/kernel/entry_64.S:529)
+> [ 409.242724] Code: 00 00 65 8b 04 25 58 cb 00 00 a9 ff ff ff 7f 0f 85 94 fb ff ff e8 c1 cf ff ff f6 c4 02 0f 84 86 fb ff ff e9 5d fd ff ff 0f 1f 00 <0f> 0b e8 c9 4c c9 ff 84 c0 0f 84 85 fc ff ff 48 c7 c7 80 63 58
+> All code
+> ========
+>    0:	00 00                	add    %al,(%rax)
+>    2:	65 8b 04 25 58 cb 00 	mov    %gs:0xcb58,%eax
+>    9:	00
+>    a:	a9 ff ff ff 7f       	test   $0x7fffffff,%eax
+>    f:	0f 85 94 fb ff ff    	jne    0xfffffffffffffba9
+>   15:	e8 c1 cf ff ff       	callq  0xffffffffffffcfdb
+>   1a:	f6 c4 02             	test   $0x2,%ah
+>   1d:	0f 84 86 fb ff ff    	je     0xfffffffffffffba9
+>   23:	e9 5d fd ff ff       	jmpq   0xfffffffffffffd85
+>   28:	0f 1f 00             	nopl   (%rax)
+>   2b:*	0f 0b                	ud2    		<-- trapping instruction
+>   2d:	e8 c9 4c c9 ff       	callq  0xffffffffffc94cfb
+>   32:	84 c0                	test   %al,%al
+>   34:	0f 84 85 fc ff ff    	je     0xfffffffffffffcbf
+>   3a:	48 c7 c7 80 63 58 00 	mov    $0x586380,%rdi
+>
+> Code starting with the faulting instruction
+> ===========================================
+>    0:	0f 0b                	ud2
+>    2:	e8 c9 4c c9 ff       	callq  0xffffffffffc94cd0
+>    7:	84 c0                	test   %al,%al
+>    9:	0f 84 85 fc ff ff    	je     0xfffffffffffffc94
+>    f:	48 c7 c7 80 63 58 00 	mov    $0x586380,%rdi
+> [  409.242724] RIP ext4_direct_IO (fs/ext4/inode.c:2959 fs/ext4/inode.c:3098)
+> [  409.242724]  RSP <ffff8802e78fbb98>
+>
+> Thanks,
+> Sasha
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
 
-diff --git a/src/aio-dio-regress/aio-dio-fcntl-race.c b/src/aio-dio-regress/aio-dio-fcntl-race.c
-new file mode 100644
-index 0000000..db012d8
---- /dev/null
-+++ b/src/aio-dio-regress/aio-dio-fcntl-race.c
-@@ -0,0 +1,144 @@
-+/*
-+ * Perform aio writes to file and toggle O_DIRECT flag concurrently
-+ * this may trigger race between file->f_flags read and modification
-+ * unuligned aio allow to makes race window wider.
-+ * Regression test for https://lkml.org/lkml/2014/10/8/545
-+ *
-+ * Copyright (C) 2010 Red Hat, Inc. All Rights reserved.
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2 of the License, or
-+ * (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-+ */
-+#include <sys/stat.h>
-+#include <sys/types.h>
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <unistd.h>
-+#include <libaio.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <time.h>
-+#include <sys/time.h>
-+#include <sys/types.h>
-+#include <sys/wait.h>
-+
-+#define BUF_SIZE	512
-+#define LOOP_SECONDS 10
-+
-+
-+int do_aio_write(int fd, void *buf)
-+{
-+	struct io_context *ctx = NULL;
-+	struct io_event ev;
-+	struct iocb iocb, *iocbs[] = { &iocb };
-+	int err;
-+
-+	err = io_setup(1, &ctx);
-+	if (err) {
-+		if (err == -EAGAIN)
-+			return 0;
-+		fprintf(stderr, "error %s during %s\n",
-+			strerror(-err), "io_setup" );
-+		return 1;
-+	}
-+	io_prep_pwrite(&iocb, fd, buf, BUF_SIZE, BUF_SIZE);
-+	err = io_submit(ctx, 1, iocbs);
-+	if (err != 1) {
-+		fprintf(stderr, "error %s during %s\n",
-+			strerror(-err),
-+			"io_submit");
-+		return 1;
-+	}
-+	err = io_getevents(ctx, 1, 1, &ev, NULL);
-+	if (err != 1) {
-+		fprintf(stderr, "error %s during %s\n",
-+			strerror(-err),
-+			"io_getevents");
-+		return 1;
-+	}
-+	return 0;
-+}
-+
-+int main(int argc, char **argv)
-+{
-+	int flags, fd;
-+	int pid1, pid2 = 0;
-+	int ret1, ret = 0;
-+
-+	struct timeval start, now, delta = { 0, 0 };
-+	if (argc != 2){
-+		printf("Usage %s fname\n", argv[0]);
-+		return 1;
-+	}
-+	fd = open(argv[1], O_CREAT | O_TRUNC | O_RDWR, 0600);
-+	if (fd < 0)
-+		return 1;
-+
-+	pid1 = fork();
-+	if (pid1 < 0)
-+		return 1;
-+
-+	gettimeofday(&start, NULL);
-+	if (pid1 == 0) {
-+		/* child: toggle O_DIRECT*/
-+		flags = fcntl(fd, F_GETFL);
-+		while (1) {
-+			ret = fcntl(fd, F_SETFL, flags | O_DIRECT);
-+			if (ret)
-+				return ret;
-+			ret = fcntl(fd, F_SETFL, flags);
-+			if (ret)
-+				return ret;
-+
-+			gettimeofday(&now, NULL);
-+			timersub(&now, &start, &delta);
-+			if (delta.tv_sec >= LOOP_SECONDS)
-+				break;
-+		}
-+	} else {
-+		/* parent: AIO */
-+		void *buf;
-+		posix_memalign(&buf, BUF_SIZE, BUF_SIZE);
-+		/* Two tasks which performs unaligned aio will be serialized
-+		   which maks race window wider */
-+		pid2 = fork();
-+		if (pid2 < 0)
-+			goto out;
-+		else if (pid2 > 0)
-+			printf("All tasks are spawned\n");
-+
-+		while(1) {
-+			do_aio_write(fd, buf);
-+
-+			gettimeofday(&now, NULL);
-+			timersub(&now, &start, &delta);
-+			if (delta.tv_sec >= LOOP_SECONDS)
-+				break;
-+		}
-+	}
-+out:
-+	/* Parent wait for all others */
-+	if (pid2 > 0){
-+		waitpid(pid1, &ret1, 0);
-+		if (!ret)
-+			ret = ret1;
-+		waitpid(pid2, &ret1, 0);
-+	} else {
-+		waitpid(pid1, &ret1, 0);
-+	}
-+	if (!ret)
-+		ret = ret1;
-+
-+	return ret;
-+}
-diff --git a/tests/generic/326 b/tests/generic/326
-new file mode 100755
-index 0000000..8975a91
---- /dev/null
-+++ b/tests/generic/326
-@@ -0,0 +1,51 @@
-+#! /bin/bash
-+# FS QA Test No. 326
-+#
-+# Run aio-dio-fcntl-race - test aio write race with O_DIRECT toggle
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2009 Dmitry Monakhov.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -f $tmp.*
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# real QA test starts here
-+
-+_supported_fs generic
-+_supported_os Linux
-+_require_test
-+
-+_run_aiodio aio-dio-fcntl-race
-+
-+exit $status
-diff --git a/tests/generic/326.out b/tests/generic/326.out
-new file mode 100644
-index 0000000..a0c44b9
---- /dev/null
-+++ b/tests/generic/326.out
-@@ -0,0 +1,2 @@
-+QA output created by 326
-+All tasks are spawned
-diff --git a/tests/generic/group b/tests/generic/group
-index 799bfd8..4aea4c6 100644
---- a/tests/generic/group
-+++ b/tests/generic/group
-@@ -151,3 +151,4 @@
- 323 auto aio stress
- 324 auto fsr quick
- 325 auto quick data log
-+326 auto quick aio rw stress
--- 
-1.7.1
+--=-=-=
+Content-Type: application/pgp-signature
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQIcBAEBAgAGBQJUNl42AAoJEFzOBSYIXfveNjMQAJvnmPLVV8/0Uhi0xEH9zrUe
+1ezFw9KUXYk0ZQLAoLeBZHZrUk8ZFukgt2xgMEXl4zfYxX03XrrdG5Ku4R4Vbkg7
+JWTK4/tZt0GV3VeJ2jQrnxnPT4mVQqh9dtYAEg/x9PLpcyFAZ5CQSzAKOH29fZZC
+FrvrSwrH11h1iVcT13ZYYUGa2DDvggxAGLeakvVVo3v2mkF6kt8uW4fOXi8ynXjU
+fgKWL04GjhbeDYSZL08ggjV3vOwU1nPuEy55GpVJQjFXrHVL4OJl/p8SYi+x8wnR
+u3ZdLO1rfvTpHOH7Vj50OwYYe2UbcjHQt08QktiAdSirTfv7i0S4eN9RZHEDafBr
++XrpEH9PuAAOjeezlKV+jZQywAAnrhdBSBTNX5RPA7SGfTDgmZwnBse1wguwLDlA
+NgE9mMijnLPgFjBd1Fn/SvImf4zZhe0v/U6A58eo7mhPsqcI0gVt69CGFwIpXsgR
+i+QvqPpWUtdFvbDa8Cl/jnplerF6EeEP1y01GrmtTtvnE68t/lcbkl2OXzxfZofK
+pfo2qKZJ0Iud7ZvoA8G1OJg492d1SFD1W+Kk/Fu7K/ZwXzAraLAxwW0jf75U+ujM
+gpfHfWqz8SFN7Qdsb6g/iUY1M0/tVOcXHTs6WuYDDcoUik3CLkJVCnx5c+JXh/jX
+EhibDHOx8Tk4gBS/Hp98
+=PVMh
+-----END PGP SIGNATURE-----
+--=-=-=--
