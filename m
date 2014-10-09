@@ -1,187 +1,301 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH] ext4: fix race between write and fcntl(F_SETFL)
-Date: Thu,  9 Oct 2014 15:14:47 +0400
-Message-ID: <1412853287-10496-1-git-send-email-dmonakhov@openvz.org>
-Cc: sasha.levin@oracle.com, Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
+From: Wang Shilong <wangshilong1991@gmail.com>
+Subject: Re: [PATCH] add aio/dio regression test race between write and fcntl
+Date: Thu, 9 Oct 2014 22:47:52 +0800
+Message-ID: <B405A248-E89E-4B1F-8007-A56DA4C8E699@gmail.com>
+References: <1412848798-27033-1-git-send-email-dmonakhov@openvz.org>
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:20700 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751740AbaJILPC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 9 Oct 2014 07:15:02 -0400
+Received: from mail-ig0-f181.google.com ([209.85.213.181]:40092 "EHLO
+	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755751AbaJIOsD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2014 10:48:03 -0400
+In-Reply-To: <1412848798-27033-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-O_DIRECT flags can be toggeled via fcntl(F_SETFL).
-But this value checked twice inside ext4_file_write_iter() and __generic_file_write()
-which result in BUG_ON (see typical stack trace below)
-In order to fix this we have to use our own copy of __generic_file_write and
-pass o_direct status explicitly.
+Hi Dmitry Monakhov,
 
-TESTCASE: xfstest:generic/326  (http://patchwork.ozlabs.org/patch/397949/)
+Without applying Ext4 path, i could easily trigger BUG_ON()
+using this test.
 
-#TYPICAL STACK TRACE:
-kernel BUG at fs/ext4/inode.c:2960!
-invalid opcode: 0000 [#1] SMP
-Modules linked in: brd iTCO_wdt lpc_ich mfd_core igb ptp dm_mirror dm_region_hash dm_log dm_mod
-CPU: 6 PID: 5505 Comm: aio-dio-fcntl-r Not tainted 3.17.0-rc2-00176-gff5c017 #161
-Hardware name: Intel Corporation W2600CR/W2600CR, BIOS SE5C600.86B.99.99.x028.061320111235 06/13/2011
-task: ffff88080e95a7c0 ti: ffff88080f908000 task.ti: ffff88080f908000
-RIP: 0010:[<ffffffff811fabf2>]  [<ffffffff811fabf2>] ext4_direct_IO+0x162/0x3d0
-RSP: 0018:ffff88080f90bb58  EFLAGS: 00010246
-RAX: 0000000000000400 RBX: ffff88080fdb2a28 RCX: 00000000a802c818
-RDX: 0000040000080000 RSI: ffff88080d8aeb80 RDI: 0000000000000001
-RBP: ffff88080f90bbc8 R08: 0000000000000000 R09: 0000000000001581
-R10: 0000000000000000 R11: 0000000000000000 R12: ffff88080d8aeb80
-R13: ffff88080f90bbf8 R14: ffff88080fdb28c8 R15: ffff88080fdb2a28
-FS:  00007f23b2055700(0000) GS:ffff880818400000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007f23b2045000 CR3: 000000080cedf000 CR4: 00000000000407e0
-Stack:
- ffff88080f90bb98 0000000000000000 7ffffffffffffffe ffff88080fdb2c30
- 0000000000000200 0000000000000200 0000000000000001 0000000000000200
- ffff88080f90bbc8 ffff88080fdb2c30 ffff88080f90be08 0000000000000200
-Call Trace:
- [<ffffffff8112ca9d>] generic_file_direct_write+0xed/0x180
- [<ffffffff8112f2b2>] __generic_file_write_iter+0x222/0x370
- [<ffffffff811f495b>] ext4_file_write_iter+0x34b/0x400
- [<ffffffff811bd709>] ? aio_run_iocb+0x239/0x410
- [<ffffffff811bd709>] ? aio_run_iocb+0x239/0x410
- [<ffffffff810990e5>] ? local_clock+0x25/0x30
- [<ffffffff810abd94>] ? __lock_acquire+0x274/0x700
- [<ffffffff811f4610>] ? ext4_unwritten_wait+0xb0/0xb0
- [<ffffffff811bd756>] aio_run_iocb+0x286/0x410
- [<ffffffff810990e5>] ? local_clock+0x25/0x30
- [<ffffffff810ac359>] ? lock_release_holdtime+0x29/0x190
- [<ffffffff811bc05b>] ? lookup_ioctx+0x4b/0xf0
- [<ffffffff811bde3b>] do_io_submit+0x55b/0x740
- [<ffffffff811bdcaa>] ? do_io_submit+0x3ca/0x740
- [<ffffffff811be030>] SyS_io_submit+0x10/0x20
- [<ffffffff815ce192>] system_call_fastpath+0x16/0x1b
-Code: 01 48 8b 80 f0 01 00 00 48 8b 18 49 8b 45 10 0f 85 f1 01 00 00 48 03 45 c8 48 3b 43 48 0f 8f e3 01 00 00 49 83 7c 24 18 00 75 04 <0f> 0b eb fe f0 ff 83 ec 01 00 00 49 8b 44 24 18 8b 00 85 c0 89
-RIP  [<ffffffff811fabf2>] ext4_direct_IO+0x162/0x3d0
- RSP <ffff88080f90bb58>
+But after applying the patch, test is eating out memory quickly
+and failed eventually.
 
-Reported-by: Sasha Levin <sasha.levin@oracle.com>
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/file.c |   96 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 95 insertions(+), 1 deletions(-)
+[root@vm01 xfstests-dev]# ./check tests/generic/326
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 vm01 3.17.0-rc5+
+MKFS_OPTIONS  -- /dev/sdc
+MOUNT_OPTIONS -- -o acl,user_xattr /dev/sdc /mnt/scratch
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index aca7b24..8477eb2 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -88,6 +88,100 @@ ext4_unaligned_aio(struct inode *inode, struct iov_iter *from, loff_t pos)
- 	return 0;
- }
- 
-+/**
-+ * copy of __generic_file_write_iter with explicit O_DIRECT status
-+ * @iocb:	IO state structure (file, offset, etc.)
-+ * @from:	iov_iter with data to write
-+ * @direct:	perform O_DIRECT IO
-+ */
-+static ssize_t
-+__ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from, int direct)
-+{
-+	struct file *file = iocb->ki_filp;
-+	struct address_space *mapping = file->f_mapping;
-+	struct inode	*inode = mapping->host;
-+	loff_t		pos = iocb->ki_pos;
-+	ssize_t		written = 0;
-+	ssize_t		err;
-+	ssize_t		status;
-+	size_t		count = iov_iter_count(from);
-+
-+	/* We can write back this queue in page reclaim */
-+	current->backing_dev_info = mapping->backing_dev_info;
-+	err = generic_write_checks(file, &pos, &count, S_ISBLK(inode->i_mode));
-+	if (err)
-+		goto out;
-+
-+	if (count == 0)
-+		goto out;
-+
-+	iov_iter_truncate(from, count);
-+
-+	err = file_remove_suid(file);
-+	if (err)
-+		goto out;
-+
-+	err = file_update_time(file);
-+	if (err)
-+		goto out;
-+
-+	/* coalesce the iovecs and go direct-to-BIO for O_DIRECT */
-+	if (unlikely(direct)) {
-+		loff_t endbyte;
-+
-+		written = generic_file_direct_write(iocb, from, pos);
-+		if (written < 0 || written == count)
-+			goto out;
-+
-+		/*
-+		 * direct-io write to a hole: fall through to buffered I/O
-+		 * for completing the rest of the request.
-+		 */
-+		pos += written;
-+		count -= written;
-+
-+		status = generic_perform_write(file, from, pos);
-+		/*
-+		 * If generic_perform_write() returned a synchronous error
-+		 * then we want to return the number of bytes which were
-+		 * direct-written, or the error code if that was zero.  Note
-+		 * that this differs from normal direct-io semantics, which
-+		 * will return -EFOO even if some bytes were written.
-+		 */
-+		if (unlikely(status < 0)) {
-+			err = status;
-+			goto out;
-+		}
-+		iocb->ki_pos = pos + status;
-+		/*
-+		 * We need to ensure that the page cache pages are written to
-+		 * disk and invalidated to preserve the expected O_DIRECT
-+		 * semantics.
-+		 */
-+		endbyte = pos + status - 1;
-+		err = filemap_write_and_wait_range(file->f_mapping, pos,
-+						   endbyte);
-+		if (err == 0) {
-+			written += status;
-+			invalidate_mapping_pages(mapping,
-+						 pos >> PAGE_CACHE_SHIFT,
-+						 endbyte >> PAGE_CACHE_SHIFT);
-+		} else {
-+			/*
-+			 * We don't know how much we wrote, so just return
-+			 * the number of bytes which were direct-written
-+			 */
-+		}
-+	} else {
-+		written = generic_perform_write(file, from, pos);
-+		if (likely(written >= 0))
-+			iocb->ki_pos = pos + written;
-+	}
-+out:
-+	current->backing_dev_info = NULL;
-+	return written ? written : err;
-+}
-+
- static ssize_t
- ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- {
-@@ -172,7 +266,7 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 		}
- 	}
- 
--	ret = __generic_file_write_iter(iocb, from);
-+	ret = __ext4_file_write_iter(iocb, from, o_direct);
- 	mutex_unlock(&inode->i_mutex);
- 
- 	if (ret > 0) {
--- 
-1.7.1
+generic/326	 - output mismatch (see /root/xfstests-dev/results//generic/326.out.bad)
+    --- tests/generic/326.out	2014-10-09 18:16:44.554059794 -0400
+    +++ /root/xfstests-dev/results//generic/326.out.bad	2014-10-09 18:46:32.199023371 -0400
+    @@ -1,2 +1,286458 @@
+     QA output created by 326
+    +error Cannot allocate memory during io_setup
+    +error Cannot allocate memory during io_setup
+    +error Cannot allocate memory during io_setup
+    +error Cannot allocate memory during io_setup
+    +error Cannot allocate memory during io_setup
+    +error Cannot allocate memory during io_setup
+    ...
+    (Run 'diff -u tests/generic/326.out /root/xfstests-dev/results//generic/326.out.bad'  to see the entire diff)
+Ran: generic/326
+Failures: generic/326
+Failed 1 of 1 tests
+
+
+> Original report: https://lkml.org/lkml/2014/10/8/545
+> perform AIO-DIO and fcntl(F_SETFL) concurently
+> Unaligned AIO likely result in synchronization which makes racewindow wider.
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+> src/aio-dio-regress/aio-dio-fcntl-race.c |  144 ++++++++++++++++++++++++++++++
+> tests/generic/326                        |   51 +++++++++++
+> tests/generic/326.out                    |    2 +
+> tests/generic/group                      |    1 +
+> 4 files changed, 198 insertions(+), 0 deletions(-)
+> create mode 100644 src/aio-dio-regress/aio-dio-fcntl-race.c
+> create mode 100755 tests/generic/326
+> create mode 100644 tests/generic/326.out
+> 
+> diff --git a/src/aio-dio-regress/aio-dio-fcntl-race.c b/src/aio-dio-regress/aio-dio-fcntl-race.c
+> new file mode 100644
+> index 0000000..db012d8
+> --- /dev/null
+> +++ b/src/aio-dio-regress/aio-dio-fcntl-race.c
+> @@ -0,0 +1,144 @@
+> +/*
+> + * Perform aio writes to file and toggle O_DIRECT flag concurrently
+> + * this may trigger race between file->f_flags read and modification
+> + * unuligned aio allow to makes race window wider.
+> + * Regression test for https://lkml.org/lkml/2014/10/8/545
+> + *
+> + * Copyright (C) 2010 Red Hat, Inc. All Rights reserved.
+> + *
+> + * This program is free software; you can redistribute it and/or modify
+> + * it under the terms of the GNU General Public License as published by
+> + * the Free Software Foundation; either version 2 of the License, or
+> + * (at your option) any later version.
+> + *
+> + * This program is distributed in the hope that it will be useful,
+> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
+> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> + * GNU General Public License for more details.
+> + *
+> + * You should have received a copy of the GNU General Public License
+> + * along with this program; if not, write to the Free Software
+> + * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+> + */
+> +#include <sys/stat.h>
+> +#include <sys/types.h>
+> +#include <errno.h>
+> +#include <fcntl.h>
+> +#include <unistd.h>
+> +#include <libaio.h>
+> +#include <stdio.h>
+> +#include <stdlib.h>
+> +#include <time.h>
+> +#include <sys/time.h>
+> +#include <sys/types.h>
+> +#include <sys/wait.h>
+> +
+> +#define BUF_SIZE	512
+> +#define LOOP_SECONDS 10
+> +
+> +
+> +int do_aio_write(int fd, void *buf)
+> +{
+> +	struct io_context *ctx = NULL;
+> +	struct io_event ev;
+> +	struct iocb iocb, *iocbs[] = { &iocb };
+> +	int err;
+> +
+> +	err = io_setup(1, &ctx);
+> +	if (err) {
+> +		if (err == -EAGAIN)
+> +			return 0;
+> +		fprintf(stderr, "error %s during %s\n",
+> +			strerror(-err), "io_setup" );
+> +		return 1;
+> +	}
+> +	io_prep_pwrite(&iocb, fd, buf, BUF_SIZE, BUF_SIZE);
+> +	err = io_submit(ctx, 1, iocbs);
+> +	if (err != 1) {
+> +		fprintf(stderr, "error %s during %s\n",
+> +			strerror(-err),
+> +			"io_submit");
+> +		return 1;
+> +	}
+> +	err = io_getevents(ctx, 1, 1, &ev, NULL);
+> +	if (err != 1) {
+> +		fprintf(stderr, "error %s during %s\n",
+> +			strerror(-err),
+> +			"io_getevents");
+> +		return 1;
+> +	}
+> +	return 0;
+> +}
+> +
+> +int main(int argc, char **argv)
+> +{
+> +	int flags, fd;
+> +	int pid1, pid2 = 0;
+> +	int ret1, ret = 0;
+> +
+> +	struct timeval start, now, delta = { 0, 0 };
+> +	if (argc != 2){
+> +		printf("Usage %s fname\n", argv[0]);
+> +		return 1;
+> +	}
+> +	fd = open(argv[1], O_CREAT | O_TRUNC | O_RDWR, 0600);
+> +	if (fd < 0)
+> +		return 1;
+> +
+> +	pid1 = fork();
+> +	if (pid1 < 0)
+> +		return 1;
+> +
+> +	gettimeofday(&start, NULL);
+> +	if (pid1 == 0) {
+> +		/* child: toggle O_DIRECT*/
+> +		flags = fcntl(fd, F_GETFL);
+> +		while (1) {
+> +			ret = fcntl(fd, F_SETFL, flags | O_DIRECT);
+> +			if (ret)
+> +				return ret;
+> +			ret = fcntl(fd, F_SETFL, flags);
+> +			if (ret)
+> +				return ret;
+> +
+> +			gettimeofday(&now, NULL);
+> +			timersub(&now, &start, &delta);
+> +			if (delta.tv_sec >= LOOP_SECONDS)
+> +				break;
+> +		}
+> +	} else {
+> +		/* parent: AIO */
+> +		void *buf;
+> +		posix_memalign(&buf, BUF_SIZE, BUF_SIZE);
+> +		/* Two tasks which performs unaligned aio will be serialized
+> +		   which maks race window wider */
+> +		pid2 = fork();
+> +		if (pid2 < 0)
+> +			goto out;
+> +		else if (pid2 > 0)
+> +			printf("All tasks are spawned\n");
+> +
+> +		while(1) {
+> +			do_aio_write(fd, buf);
+> +
+> +			gettimeofday(&now, NULL);
+> +			timersub(&now, &start, &delta);
+> +			if (delta.tv_sec >= LOOP_SECONDS)
+> +				break;
+> +		}
+> +	}
+> +out:
+> +	/* Parent wait for all others */
+> +	if (pid2 > 0){
+> +		waitpid(pid1, &ret1, 0);
+> +		if (!ret)
+> +			ret = ret1;
+> +		waitpid(pid2, &ret1, 0);
+> +	} else {
+> +		waitpid(pid1, &ret1, 0);
+> +	}
+> +	if (!ret)
+> +		ret = ret1;
+> +
+> +	return ret;
+> +}
+> diff --git a/tests/generic/326 b/tests/generic/326
+> new file mode 100755
+> index 0000000..8975a91
+> --- /dev/null
+> +++ b/tests/generic/326
+> @@ -0,0 +1,51 @@
+> +#! /bin/bash
+> +# FS QA Test No. 326
+> +#
+> +# Run aio-dio-fcntl-race - test aio write race with O_DIRECT toggle
+> +#
+> +#-----------------------------------------------------------------------
+> +# Copyright (c) 2009 Dmitry Monakhov.  All Rights Reserved.
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License as
+> +# published by the Free Software Foundation.
+> +#
+> +# This program is distributed in the hope that it would be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#
+> +# You should have received a copy of the GNU General Public License
+> +# along with this program; if not, write the Free Software Foundation,
+> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> +#-----------------------------------------------------------------------
+> +#
+> +
+> +seq=`basename $0`
+> +seqres=$RESULT_DIR/$seq
+> +echo "QA output created by $seq"
+> +
+> +here=`pwd`
+> +tmp=/tmp/$$
+> +status=1	# failure is the default!
+> +trap "_cleanup; exit \$status" 0 1 2 3 15
+> +
+> +_cleanup()
+> +{
+> +    cd /
+> +    rm -f $tmp.*
+> +}
+> +
+> +# get standard environment, filters and checks
+> +. ./common/rc
+> +. ./common/filter
+> +
+> +# real QA test starts here
+> +
+> +_supported_fs generic
+> +_supported_os Linux
+> +_require_test
+> +
+> +_run_aiodio aio-dio-fcntl-race
+> +
+> +exit $status
+> diff --git a/tests/generic/326.out b/tests/generic/326.out
+> new file mode 100644
+> index 0000000..a0c44b9
+> --- /dev/null
+> +++ b/tests/generic/326.out
+> @@ -0,0 +1,2 @@
+> +QA output created by 326
+> +All tasks are spawned
+> diff --git a/tests/generic/group b/tests/generic/group
+> index 799bfd8..4aea4c6 100644
+> --- a/tests/generic/group
+> +++ b/tests/generic/group
+> @@ -151,3 +151,4 @@
+> 323 auto aio stress
+> 324 auto fsr quick
+> 325 auto quick data log
+> +326 auto quick aio rw stress
+> -- 
+> 1.7.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+Best Regards,
+Wang Shilong
 
