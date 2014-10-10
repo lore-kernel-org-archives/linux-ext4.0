@@ -1,112 +1,90 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH] ext4: fix race between write and fcntl(F_SETFL)
-Date: Fri, 10 Oct 2014 14:09:44 +0400
-Message-ID: <87zjd4p76f.fsf@openvz.org>
-References: <1412853287-10496-1-git-send-email-dmonakhov@openvz.org> <948E780F-14EB-4E38-9BAC-A5410F339441@dilger.ca> <878uko4b75.fsf@openvz.org> <20141010093934.GA25693@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha1; protocol="application/pgp-signature"
-Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
-	sasha.levin@oracle.com, linux-fsdevel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] block: improve rq_affinity placement
+Date: Fri, 10 Oct 2014 16:23:08 +0200
+Message-ID: <1412951028-4085-4-git-send-email-jack@suse.cz>
+References: <1412951028-4085-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
+	xfs@oss.sgi.com, cluster-devel@redhat.com,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
+	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
+	Dave Kleikamp <shaggy@kernel.org>,
+	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
+	viro@zeniv.linux.org.uk, Shaohua Li <shaohua.li@intel.com>,
+	Jens Axboe <jaxboe@fusionio.com>
+To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f173.google.com ([209.85.212.173]:62241 "EHLO
-	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751306AbaJJKJy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Oct 2014 06:09:54 -0400
-In-Reply-To: <20141010093934.GA25693@quack.suse.cz>
+Received: from cantor2.suse.de ([195.135.220.15]:37104 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752077AbaJJOYF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Oct 2014 10:24:05 -0400
+In-Reply-To: <1412951028-4085-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+From: Shaohua Li <shaohua.li@intel.com>
 
-Jan Kara <jack@suse.cz> writes:
+This patch reverts commit 35ae66e0a09ab70ed(block: Make rq_affinity = 1
+work as expected). The purpose is to avoid an unnecessary IPI.
+Let's take an example. My test box has cpu 0-7, one socket. Say request is
+added from CPU 1, blk_complete_request() occurs at CPU 7. Without the reverted
+patch, softirq will be done at CPU 7. With it, an IPI will be directed to CPU
+0, and softirq will be done at CPU 0. In this case, doing softirq at CPU 0 and
+CPU 7 have no difference from cache sharing point view and we can avoid an
+ipi if doing it in CPU 7.
+An immediate concern is this is just like QUEUE_FLAG_SAME_FORCE, but actually
+not. blk_complete_request() is running in interrupt handler, and currently
+I/O controller doesn't support multiple interrupts (I checked several LSI
+cards and AHCI), so only one CPU can run blk_complete_request(). This is
+still quite different as QUEUE_FLAG_SAME_FORCE.
+Since only one CPU runs softirq, the only difference with below patch is
+softirq not always runs at the first CPU of a group.
 
-> On Fri 10-10-14 11:48:30, Dmitry Monakhov wrote:
->> Andreas Dilger <adilger@dilger.ca> writes:
->>=20
->> > On Oct 9, 2014, at 5:14 AM, Dmitry Monakhov <dmonakhov@openvz.org> wro=
-te:
->> >> O_DIRECT flags can be toggeled via fcntl(F_SETFL).
->> >> But this value checked twice inside ext4_file_write_iter() and __gene=
-ric_file_write()
->> >> which result in BUG_ON (see typical stack trace below)
->> >> In order to fix this we have to use our own copy of __generic_file_wr=
-ite
->> >> and pass o_direct status explicitly.
->> >
->> > This seems like a generic problem that would be better served by fixing
->> > the core code instead of making a private copy of such a large function
->> > for ext4.  I expect other filesystems might have similar issues if the
->> > O_DIRECT state is changed in the middle of IO?
->> >
->> > One option is to flush pending IO on the file if the O_DIRECT flag is
->> > changed in setfl(). This is a bit heavyweight but I can't imagine any
->> > sane app that is changing the O_DIRECT state on a file repeatedly.
->> Agree. In fact there are a lot of other issues there fcntl(F_SETFL)
->> works incorrectly. For example it does not works on stack-fs
->> (ecrypt,unionfs) if you try to add O_APPEND flags it will be directly
->> assigned to virtual file (not lower one). For that reason OpenVZ introdu=
-ced
->> f_op->set_flags in order to support our stackfs (vefs)
->> This is reasonable solution in general so I'll prepare patches for mains=
-tream
->> But this require reasonable time for negotiations with vfs people.
->   Agreed. ->set_flags callback looks reasonable.
-BTW: same crap with fadvise.
->
->> At the same time currently all versions are affected since 69c499d1/2012=
--11-29
->> So we need quick and simple fix for stable releases.
->> From first glance the best fix is to simply deny toggle O_DIRECT on file=
-s.
->> and f_op->check_flags(new_flags) looks like reasonable candidate, *but*
->> this interface is 100% useless because it has no access to file_pointer
->> so we do not know current ->f_flags :)
->   [I've CCed linux-fsdevel since it may indeed affect other filesystems]
->   I don't think you want to just deny toggling O_DIRECT. That's certainly
-> going to break some application (however stupid it may be). Also flushing
-> the IO as Andreas suggests doesn't seem easy because to solve the problem
-> with changing flags in general, you would have to wait for both reads and
-> writes, buffered & direct for the struct file and that's not easily doabl=
-e.
-> What currently seems as the best solution to me is to store f_flags in the
-> iocb and then use that for decisions... However it still seems a bit
-> fragile since people modifying the would would have to have in mind they
-> have to use iocb->f_flags instead of iocb->ki_filp->f_flags
-We can easily serialize AIO,DIO and buf-writers via i_mutex and i_dio_count
-the only non-serialized callers are buffered reads and mmaped files.
-So tend to agree with iocb->f_flags
->
-> 								Honza
-> --=20
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Shaohua Li <shaohua.li@intel.com>
+Signed-off-by: Jens Axboe <jaxboe@fusionio.com>
+---
+ block/blk-softirq.c | 16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
 
---=-=-=
-Content-Type: application/pgp-signature
+diff --git a/block/blk-softirq.c b/block/blk-softirq.c
+index 487addc85bb5..58340d0cb23a 100644
+--- a/block/blk-softirq.c
++++ b/block/blk-softirq.c
+@@ -103,7 +103,7 @@ static struct notifier_block __cpuinitdata blk_cpu_notifier = {
+ 
+ void __blk_complete_request(struct request *req)
+ {
+-	int ccpu, cpu;
++	int ccpu, cpu, group_cpu = NR_CPUS;
+ 	struct request_queue *q = req->q;
+ 	unsigned long flags;
+ 
+@@ -117,12 +117,22 @@ void __blk_complete_request(struct request *req)
+ 	 */
+ 	if (test_bit(QUEUE_FLAG_SAME_COMP, &q->queue_flags) && req->cpu != -1) {
+ 		ccpu = req->cpu;
+-		if (!test_bit(QUEUE_FLAG_SAME_FORCE, &q->queue_flags))
++		if (!test_bit(QUEUE_FLAG_SAME_FORCE, &q->queue_flags)) {
+ 			ccpu = blk_cpu_to_group(ccpu);
++			group_cpu = blk_cpu_to_group(cpu);
++		}
+ 	} else
+ 		ccpu = cpu;
+ 
+-	if (ccpu == cpu) {
++	/*
++	 * If current CPU and requested CPU are in the same group, running
++	 * softirq in current CPU. One might concern this is just like
++	 * QUEUE_FLAG_SAME_FORCE, but actually not. blk_complete_request() is
++	 * running in interrupt handler, and currently I/O controller doesn't
++	 * support multiple interrupts, so current CPU is unique actually. This
++	 * avoids IPI sending from current CPU to the first CPU of a group.
++	 */
++	if (ccpu == cpu || ccpu == group_cpu) {
+ 		struct list_head *list;
+ do_local:
+ 		list = &__get_cpu_var(blk_cpu_done);
+-- 
+1.8.1.4
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQIcBAEBAgAGBQJUN7BoAAoJEFzOBSYIXfveT+UP/j9c019z9dngv+CRTRvol3Bq
-JCs3YZZnIMeCQXrGlpJ91uIL5xpFEwBe/F1KtD9FkE9lmY2OGv4eziLGddJYUGSG
-Z57tbKhbiStefbleo7MaFaEYykSVycB+eRevb450uWhdZsGDXx2/wauzY5GZZw31
-U8cKHe5NAAMeZ9LRFHP44VuUJ5hu38xh+TK4iEjtrueNaKTNYYv0m08tqnbhXLBf
-2ZALfhXnsomGzFlaEfHUFImYuqU5rtdI0/nsfsMBEfzt2xH02HJYxQhUNc+zXaAx
-2YLi68Oq3nTv9IJd8Uudoa8IufwDDh2DIaiHXCuCo5sFQbRfAwSy0Pf5+pqX1MxW
-lCNra/Us7clqCKl6VtoodDRcpg9t3dIrlphfxz8kX60x2dEDkSo5FJiCSYNfVvsH
-IPYABKPs+mbljxr/j7gqui1tLWdspjUWrMqw3vgH++a31WcLfkHVtc1GI+AQvM29
-9QhFYIBnRfuIf7TECz4Md4rpmtQxXiPgbS9HQT8f/s1o765i+iWYZTG8nu2n9ZFZ
-uTHP2LWdgGk8yDBk5pBz21cS+M3X+MX61hJBW6W1UIVHi0C9vq1GcaPOACcLfPsa
-dkJibfuMTphU5yu8hYhTKm7MliHLVqrrT3QNzEbLK8KUJEbqJ8Z0lpYcGvSKhKQE
-6lYeCf/DCqnFevvPDZ9Z
-=lBDW
------END PGP SIGNATURE-----
---=-=-=--
