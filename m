@@ -1,70 +1,194 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Avoid lock inversion between
-	i_mmap_mutex and transaction start
-Date: Fri, 10 Oct 2014 16:23:13 +0200
-Message-ID: <1412951028-4085-9-git-send-email-jack@suse.cz>
+Subject: [PATCH 1/2] vfs: Fix data corruption when
+	blocksize < pagesize for mmaped data
+Date: Fri, 10 Oct 2014 16:23:39 +0200
+Message-ID: <1412951028-4085-35-git-send-email-jack@suse.cz>
 References: <1412951028-4085-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
-        tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
-        Mark Fasheh <mfasheh@suse.com>, Dave Chinner <david@fromorbit.com>,
-        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
-        cluster-devel@redhat.com, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org, Steven Whitehouse <swhiteho@redhat.com>,
-        ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
+	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
+	Mark Fasheh <mfasheh@suse.com>, Dave Chinner <david@fromorbit.com>,
+	reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
+	cluster-devel@redhat.com, Joel Becker <jlbec@evilplan.org>,
+	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
 To: linux-fsdevel@vger.kernel.org
-Return-path: <ocfs2-devel-bounces@oss.oracle.com>
+Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
 In-Reply-To: <1412951028-4085-1-git-send-email-jack@suse.cz>
-List-Unsubscribe: <https://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
-	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
-List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
-List-Post: <mailto:ocfs2-devel@oss.oracle.com>
-List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
-List-Subscribe: <https://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
-	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
-Sender: ocfs2-devel-bounces@oss.oracle.com
-Errors-To: ocfs2-devel-bounces@oss.oracle.com
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=jfs-discussion>
+List-Post: <mailto:jfs-discussion@lists.sourceforge.net>
+List-Help: <mailto:jfs-discussion-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: jfs-discussion-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-When DAX is enabled, it uses i_mmap_mutex as a protection against
-truncate during page fault. This inevitably forces i_mmap_mutex to rank
-outside of a transaction start and thus we have to avoid calling
-pagecache purging operations when transaction is started.
+->page_mkwrite() is used by filesystems to allocate blocks under a page
+which is becoming writeably mmapped in some process' address space. This
+allows a filesystem to return a page fault if there is not enough space
+available, user exceeds quota or similar problem happens, rather than
+silently discarding data later when writepage is called.
+
+However VFS fails to call ->page_mkwrite() in all the cases where
+filesystems need it when blocksize < pagesize. For example when
+blocksize = 1024, pagesize = 4096 the following is problematic:
+  ftruncate(fd, 0);
+  pwrite(fd, buf, 1024, 0);
+  map = mmap(NULL, 1024, PROT_WRITE, MAP_SHARED, fd, 0);
+  map[0] = 'a';       ----> page_mkwrite() for index 0 is called
+  ftruncate(fd, 10000); /* or even pwrite(fd, buf, 1, 10000) */
+  mremap(map, 1024, 10000, 0);
+  map[4095] = 'a';    ----> no page_mkwrite() called
+
+At the moment ->page_mkwrite() is called, filesystem can allocate only
+one block for the page because i_size == 1024. Otherwise it would create
+blocks beyond i_size which is generally undesirable. But later at
+->writepage() time, we also need to store data at offset 4095 but we
+don't have block allocated for it.
+
+This patch introduces a helper function filesystems can use to have
+->page_mkwrite() called at all the necessary moments.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 14 ++++++++++----
- 1 file changed, 10 insertions(+), 4 deletions(-)
+ fs/buffer.c        |  3 +++
+ include/linux/mm.h |  8 ++++++++
+ mm/truncate.c      | 57 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 68 insertions(+)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 8a064734e6eb..494a8645d63e 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3631,13 +3631,19 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
- 	if (IS_SYNC(inode))
- 		ext4_handle_sync(handle);
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 8f05111bbb8b..3ba5a6a1bc5f 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2080,6 +2080,7 @@ int generic_write_end(struct file *file, struct address_space *mapping,
+ 			struct page *page, void *fsdata)
+ {
+ 	struct inode *inode = mapping->host;
++	loff_t old_size = inode->i_size;
+ 	int i_size_changed = 0;
  
--	/* Now release the pages again to reduce race window */
-+	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
-+	ext4_mark_inode_dirty(handle, inode);
-+	ext4_journal_stop(handle);
+ 	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
+@@ -2099,6 +2100,8 @@ int generic_write_end(struct file *file, struct address_space *mapping,
+ 	unlock_page(page);
+ 	page_cache_release(page);
+ 
++	if (old_size < pos)
++		pagecache_isize_extended(inode, old_size, pos);
+ 	/*
+ 	 * Don't mark the inode dirty under page lock. First, it unnecessarily
+ 	 * makes the holding time of page lock longer. Second, it forces lock
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 8981cc882ed2..f0e53e5a3b17 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -1155,6 +1155,14 @@ static inline void unmap_shared_mapping_range(struct address_space *mapping,
+ 
+ extern void truncate_pagecache(struct inode *inode, loff_t new);
+ extern void truncate_setsize(struct inode *inode, loff_t newsize);
++#ifdef CONFIG_MMU
++void pagecache_isize_extended(struct inode *inode, loff_t from, loff_t to);
++#else
++static inline void pagecache_isize_extended(struct inode *inode, loff_t from,
++					    loff_t to)
++{
++}
++#endif
+ void truncate_pagecache_range(struct inode *inode, loff_t offset, loff_t end);
+ int truncate_inode_page(struct address_space *mapping, struct page *page);
+ int generic_error_remove_page(struct address_space *mapping, struct page *page);
+diff --git a/mm/truncate.c b/mm/truncate.c
+index 96d167372d89..261eaf6e5a19 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -20,6 +20,7 @@
+ #include <linux/buffer_head.h>	/* grr. try_to_release_page,
+ 				   do_invalidatepage */
+ #include <linux/cleancache.h>
++#include <linux/rmap.h>
+ #include "internal.h"
+ 
+ static void clear_exceptional_entry(struct address_space *mapping,
+@@ -719,12 +720,68 @@ EXPORT_SYMBOL(truncate_pagecache);
+  */
+ void truncate_setsize(struct inode *inode, loff_t newsize)
+ {
++	loff_t oldsize = inode->i_size;
 +
+ 	i_size_write(inode, newsize);
++	if (newsize > oldsize)
++		pagecache_isize_extended(inode, oldsize, newsize);
+ 	truncate_pagecache(inode, newsize);
+ }
+ EXPORT_SYMBOL(truncate_setsize);
+ 
+ /**
++ * pagecache_isize_extended - update pagecache after extension of i_size
++ * @inode:	inode for which i_size was extended
++ * @from:	original inode size
++ * @to:		new inode size
++ *
++ * Handle extension of inode size either caused by extending truncate or by
++ * write starting after current i_size. We mark the page straddling current
++ * i_size RO so that page_mkwrite() is called on the nearest write access to
++ * the page.  This way filesystem can be sure that page_mkwrite() is called on
++ * the page before user writes to the page via mmap after the i_size has been
++ * changed.
++ *
++ * The function must be called after i_size is updated so that page fault
++ * coming after we unlock the page will already see the new i_size.
++ * The function must be called while we still hold i_mutex - this not only
++ * makes sure i_size is stable but also that userspace cannot observe new
++ * i_size value before we are prepared to store mmap writes at new inode size.
++ */
++void pagecache_isize_extended(struct inode *inode, loff_t from, loff_t to)
++{
++	int bsize = 1 << inode->i_blkbits;
++	loff_t rounded_from;
++	struct page *page;
++	pgoff_t index;
++
++	WARN_ON(!mutex_is_locked(&inode->i_mutex));
++	WARN_ON(to > inode->i_size);
++
++	if (from >= to || bsize == PAGE_CACHE_SIZE)
++		return;
++	/* Page straddling @from will not have any hole block created? */
++	rounded_from = round_up(from, bsize);
++	if (to <= rounded_from || !(rounded_from & (PAGE_CACHE_SIZE - 1)))
++		return;
++
++	index = from >> PAGE_CACHE_SHIFT;
++	page = find_lock_page(inode->i_mapping, index);
++	/* Page not cached? Nothing to do */
++	if (!page)
++		return;
 +	/*
-+	 * Now release the pages again to reduce race window. This has to happen
-+	 * outside of a transaction to avoid lock inversion on i_mmap_mutex
-+	 * when DAX is enabled.
++	 * See clear_page_dirty_for_io() for details why set_page_dirty()
++	 * is needed.
 +	 */
- 	if (last_block_offset > first_block_offset)
- 		truncate_pagecache_range(inode, first_block_offset,
- 					 last_block_offset);
--
--	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
--	ext4_mark_inode_dirty(handle, inode);
-+	goto out_dio;
- out_stop:
- 	ext4_journal_stop(handle);
- out_dio:
++	if (page_mkclean(page))
++		set_page_dirty(page);
++	unlock_page(page);
++	page_cache_release(page);
++}
++EXPORT_SYMBOL(pagecache_isize_extended);
++
++/**
+  * truncate_pagecache_range - unmap and remove pagecache that is hole-punched
+  * @inode: inode
+  * @lstart: offset of beginning of hole
 -- 
 1.8.1.4
+
+
+------------------------------------------------------------------------------
+Meet PCI DSS 3.0 Compliance Requirements with EventLog Analyzer
+Achieve PCI DSS 3.0 Compliant Status with Out-of-the-box PCI DSS Reports
+Are you Audit-Ready for PCI DSS 3.0 Compliance? Download White paper
+Comply to PCI DSS 3.0 Requirement 10 and 11.5 with EventLog Analyzer
+http://pubads.g.doubleclick.net/gampad/clk?id=154622311&iu=/4140/ostg.clktrk
