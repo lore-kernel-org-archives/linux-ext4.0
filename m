@@ -1,101 +1,194 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Speedup WB_SYNC_ALL pass
-Date: Fri, 10 Oct 2014 16:23:20 +0200
-Message-ID: <1412951028-4085-16-git-send-email-jack@suse.cz>
+Subject: [PATCH] block: strict rq_affinity
+Date: Fri, 10 Oct 2014 16:23:10 +0200
+Message-ID: <1412951028-4085-6-git-send-email-jack@suse.cz>
 References: <1412951028-4085-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
-	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
-	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
-	xfs@oss.sgi.com, cluster-devel@redhat.com,
-	Joel Becker <jlbec@evilplan.org>, Jan Kara <jack@suse.cz>,
+Cc: Roland Dreier <roland@purestorage.com>, Dave Kleikamp <shaggy@kernel.org>,
+	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
+	Jeff Mahoney <jeffm@suse.de>, Christoph Hellwig <hch@infradead.org>,
+	Mark Fasheh <mfasheh@suse.com>, Dave Chinner <david@fromorbit.com>,
+	reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
+	cluster-devel@redhat.com, Joel Becker <jlbec@evilplan.org>,
+	Jens Axboe <jaxboe@fusionio.com>, Dan Williams <dan.j.williams@intel.com>,
 	linux-ext4@vger.kernel.org, Steven Whitehouse <swhiteho@redhat.com>,
 	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
 To: linux-fsdevel@vger.kernel.org
-Return-path: <xfs-bounces@oss.sgi.com>
+Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
 In-Reply-To: <1412951028-4085-1-git-send-email-jack@suse.cz>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=jfs-discussion>
+List-Post: <mailto:jfs-discussion@lists.sourceforge.net>
+List-Help: <mailto:jfs-discussion-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: jfs-discussion-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-When doing filesystem wide sync, there's no need to force transaction
-commit (or synchronously write inode buffer) separately for each inode
-because ext4_sync_fs() takes care of forcing commit at the end (VFS
-takes care of flushing buffer cache, respectively). Most of the time
-this slowness doesn't manifest because previous WB_SYNC_NONE writeback
-doesn't leave much to write but when there are processes aggressively
-creating new files and several filesystems to sync, the sync slowness
-can be noticeable. In the following test script sync(1) takes around 6
-minutes when there are two ext4 filesystems mounted on a standard SATA
-drive. After this patch sync takes a couple of seconds so we have about
-two orders of magnitude improvement.
+From: Dan Williams <dan.j.williams@intel.com>
 
-      function run_writers
-      {
-        for (( i = 0; i < 10; i++ )); do
-          mkdir $1/dir$i
-          for (( j = 0; j < 40000; j++ )); do
-            dd if=/dev/zero of=$1/dir$i/$j bs=4k count=4 &>/dev/null
-          done &
-        done
-      }
+Some systems benefit from completions always being steered to the strict
+requester cpu rather than the looser "per-socket" steering that
+blk_cpu_to_group() attempts by default. This is because the first
+CPU in the group mask ends up being completely overloaded with work,
+while the others (including the original submitter) has power left
+to spare.
 
-      for dir in "$@"; do
-        run_writers $dir
-      done
+Allow the strict mode to be set by writing '2' to the sysfs control
+file. This is identical to the scheme used for the nomerges file,
+where '2' is a more aggressive setting than just being turned on.
 
-      sleep 40
-      time sync
+echo 2 > /sys/block/<bdev>/queue/rq_affinity
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: Christoph Hellwig <hch@infradead.org>
+Cc: Roland Dreier <roland@purestorage.com>
+Tested-by: Dave Jiang <dave.jiang@intel.com>
+Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+Signed-off-by: Jens Axboe <jaxboe@fusionio.com>
 ---
- fs/ext4/inode.c | 13 +++++++++++--
- 1 file changed, 11 insertions(+), 2 deletions(-)
+ Documentation/block/queue-sysfs.txt | 10 +++++++---
+ block/blk-core.c                    |  6 ++----
+ block/blk-softirq.c                 | 11 +++++++----
+ block/blk-sysfs.c                   | 13 +++++++++----
+ include/linux/blkdev.h              |  3 ++-
+ 5 files changed, 27 insertions(+), 16 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 6e39895a91b8..7850584b0679 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4443,7 +4443,12 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
- 			return -EIO;
- 		}
+diff --git a/Documentation/block/queue-sysfs.txt b/Documentation/block/queue-sysfs.txt
+index f65274081c8d..d8147b336c35 100644
+--- a/Documentation/block/queue-sysfs.txt
++++ b/Documentation/block/queue-sysfs.txt
+@@ -45,9 +45,13 @@ device.
  
--		if (wbc->sync_mode != WB_SYNC_ALL)
-+		/*
-+		 * No need to force transaction in WB_SYNC_NONE mode. Also
-+		 * ext4_sync_fs() will force the commit after everything is
-+		 * written.
-+		 */
-+		if (wbc->sync_mode != WB_SYNC_ALL || wbc->for_sync)
- 			return 0;
+ rq_affinity (RW)
+ ----------------
+-If this option is enabled, the block layer will migrate request completions
+-to the CPU that originally submitted the request. For some workloads
+-this provides a significant reduction in CPU cycles due to caching effects.
++If this option is '1', the block layer will migrate request completions to the
++cpu "group" that originally submitted the request. For some workloads this
++provides a significant reduction in CPU cycles due to caching effects.
++
++For storage configurations that need to maximize distribution of completion
++processing setting this option to '2' forces the completion to run on the
++requesting cpu (bypassing the "group" aggregation logic).
  
- 		err = ext4_force_commit(inode->i_sb);
-@@ -4453,7 +4458,11 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
- 		err = __ext4_get_inode_loc(inode, &iloc, 0);
- 		if (err)
- 			return err;
--		if (wbc->sync_mode == WB_SYNC_ALL)
-+		/*
-+		 * sync(2) will flush the whole buffer cache. No need to do
-+		 * it here separately for each inode.
-+		 */
-+		if (wbc->sync_mode == WB_SYNC_ALL && !wbc->for_sync)
- 			sync_dirty_buffer(iloc.bh);
- 		if (buffer_req(iloc.bh) && !buffer_uptodate(iloc.bh)) {
- 			EXT4_ERROR_INODE_BLOCK(inode, iloc.bh->b_blocknr,
+ scheduler (RW)
+ --------------
+diff --git a/block/blk-core.c b/block/blk-core.c
+index a56485292062..b3228255304d 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -1279,10 +1279,8 @@ get_rq:
+ 	init_request_from_bio(req, bio);
+ 
+ 	if (test_bit(QUEUE_FLAG_SAME_COMP, &q->queue_flags) ||
+-	    bio_flagged(bio, BIO_CPU_AFFINE)) {
+-		req->cpu = blk_cpu_to_group(get_cpu());
+-		put_cpu();
+-	}
++	    bio_flagged(bio, BIO_CPU_AFFINE))
++		req->cpu = smp_processor_id();
+ 
+ 	plug = current->plug;
+ 	if (plug) {
+diff --git a/block/blk-softirq.c b/block/blk-softirq.c
+index ee9c21602228..475fab809a80 100644
+--- a/block/blk-softirq.c
++++ b/block/blk-softirq.c
+@@ -103,22 +103,25 @@ static struct notifier_block __cpuinitdata blk_cpu_notifier = {
+ 
+ void __blk_complete_request(struct request *req)
+ {
++	int ccpu, cpu, group_cpu = NR_CPUS;
+ 	struct request_queue *q = req->q;
+ 	unsigned long flags;
+-	int ccpu, cpu, group_cpu;
+ 
+ 	BUG_ON(!q->softirq_done_fn);
+ 
+ 	local_irq_save(flags);
+ 	cpu = smp_processor_id();
+-	group_cpu = blk_cpu_to_group(cpu);
+ 
+ 	/*
+ 	 * Select completion CPU
+ 	 */
+-	if (test_bit(QUEUE_FLAG_SAME_COMP, &q->queue_flags) && req->cpu != -1)
++	if (test_bit(QUEUE_FLAG_SAME_COMP, &q->queue_flags) && req->cpu != -1) {
+ 		ccpu = req->cpu;
+-	else
++		if (!test_bit(QUEUE_FLAG_SAME_FORCE, &q->queue_flags)) {
++			ccpu = blk_cpu_to_group(ccpu);
++			group_cpu = blk_cpu_to_group(cpu);
++		}
++	} else
+ 		ccpu = cpu;
+ 
+ 	if (ccpu == cpu || ccpu == group_cpu) {
+diff --git a/block/blk-sysfs.c b/block/blk-sysfs.c
+index d935bd859c87..0ee17b5e7fb6 100644
+--- a/block/blk-sysfs.c
++++ b/block/blk-sysfs.c
+@@ -244,8 +244,9 @@ static ssize_t queue_nomerges_store(struct request_queue *q, const char *page,
+ static ssize_t queue_rq_affinity_show(struct request_queue *q, char *page)
+ {
+ 	bool set = test_bit(QUEUE_FLAG_SAME_COMP, &q->queue_flags);
++	bool force = test_bit(QUEUE_FLAG_SAME_FORCE, &q->queue_flags);
+ 
+-	return queue_var_show(set, page);
++	return queue_var_show(set << force, page);
+ }
+ 
+ static ssize_t
+@@ -257,10 +258,14 @@ queue_rq_affinity_store(struct request_queue *q, const char *page, size_t count)
+ 
+ 	ret = queue_var_store(&val, page, count);
+ 	spin_lock_irq(q->queue_lock);
+-	if (val)
++	if (val) {
+ 		queue_flag_set(QUEUE_FLAG_SAME_COMP, q);
+-	else
+-		queue_flag_clear(QUEUE_FLAG_SAME_COMP,  q);
++		if (val == 2)
++			queue_flag_set(QUEUE_FLAG_SAME_FORCE, q);
++	} else {
++		queue_flag_clear(QUEUE_FLAG_SAME_COMP, q);
++		queue_flag_clear(QUEUE_FLAG_SAME_FORCE, q);
++	}
+ 	spin_unlock_irq(q->queue_lock);
+ #endif
+ 	return ret;
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index c0cd9a2f22ef..0e67c45b3bc9 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -392,7 +392,7 @@ struct request_queue {
+ #define QUEUE_FLAG_ELVSWITCH	6	/* don't use elevator, just do FIFO */
+ #define QUEUE_FLAG_BIDI		7	/* queue supports bidi requests */
+ #define QUEUE_FLAG_NOMERGES     8	/* disable merge attempts */
+-#define QUEUE_FLAG_SAME_COMP	9	/* force complete on same CPU */
++#define QUEUE_FLAG_SAME_COMP	9	/* complete on same CPU-group */
+ #define QUEUE_FLAG_FAIL_IO     10	/* fake timeout */
+ #define QUEUE_FLAG_STACKABLE   11	/* supports request stacking */
+ #define QUEUE_FLAG_NONROT      12	/* non-rotational device (SSD) */
+@@ -402,6 +402,7 @@ struct request_queue {
+ #define QUEUE_FLAG_NOXMERGES   15	/* No extended merges */
+ #define QUEUE_FLAG_ADD_RANDOM  16	/* Contributes to random pool */
+ #define QUEUE_FLAG_SECDISCARD  17	/* supports SECDISCARD */
++#define QUEUE_FLAG_SAME_FORCE  18	/* force complete on same CPU */
+ 
+ #define QUEUE_FLAG_DEFAULT	((1 << QUEUE_FLAG_IO_STAT) |		\
+ 				 (1 << QUEUE_FLAG_STACKABLE)	|	\
 -- 
 1.8.1.4
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+
+------------------------------------------------------------------------------
+Meet PCI DSS 3.0 Compliance Requirements with EventLog Analyzer
+Achieve PCI DSS 3.0 Compliant Status with Out-of-the-box PCI DSS Reports
+Are you Audit-Ready for PCI DSS 3.0 Compliance? Download White paper
+Comply to PCI DSS 3.0 Requirement 10 and 11.5 with EventLog Analyzer
+http://pubads.g.doubleclick.net/gampad/clk?id=154622311&iu=/4140/ostg.clktrk
