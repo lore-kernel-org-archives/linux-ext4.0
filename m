@@ -1,58 +1,69 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [GIT PULL] UDF and quota changes for 3.18-rc1
-Date: Fri, 10 Oct 2014 10:14:13 +0200
-Message-ID: <20141010081413.GC3076@quack.suse.cz>
+Subject: Re: [PATCH] ext4: fix race between write and fcntl(F_SETFL)
+Date: Fri, 10 Oct 2014 11:39:34 +0200
+Message-ID: <20141010093934.GA25693@quack.suse.cz>
+References: <1412853287-10496-1-git-send-email-dmonakhov@openvz.org>
+ <948E780F-14EB-4E38-9BAC-A5410F339441@dilger.ca>
+ <878uko4b75.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
+	sasha.levin@oracle.com, linux-fsdevel@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:58495 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752961AbaJJJjh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Oct 2014 05:39:37 -0400
 Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <878uko4b75.fsf@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello Linus,
+On Fri 10-10-14 11:48:30, Dmitry Monakhov wrote:
+> Andreas Dilger <adilger@dilger.ca> writes:
+> 
+> > On Oct 9, 2014, at 5:14 AM, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
+> >> O_DIRECT flags can be toggeled via fcntl(F_SETFL).
+> >> But this value checked twice inside ext4_file_write_iter() and __generic_file_write()
+> >> which result in BUG_ON (see typical stack trace below)
+> >> In order to fix this we have to use our own copy of __generic_file_write
+> >> and pass o_direct status explicitly.
+> >
+> > This seems like a generic problem that would be better served by fixing
+> > the core code instead of making a private copy of such a large function
+> > for ext4.  I expect other filesystems might have similar issues if the
+> > O_DIRECT state is changed in the middle of IO?
+> >
+> > One option is to flush pending IO on the file if the O_DIRECT flag is
+> > changed in setfl(). This is a bit heavyweight but I can't imagine any
+> > sane app that is changing the O_DIRECT state on a file repeatedly.
+> Agree. In fact there are a lot of other issues there fcntl(F_SETFL)
+> works incorrectly. For example it does not works on stack-fs
+> (ecrypt,unionfs) if you try to add O_APPEND flags it will be directly
+> assigned to virtual file (not lower one). For that reason OpenVZ introduced
+> f_op->set_flags in order to support our stackfs (vefs)
+> This is reasonable solution in general so I'll prepare patches for mainstream
+> But this require reasonable time for negotiations with vfs people.
+  Agreed. ->set_flags callback looks reasonable.
 
-  could you please pull from
+> At the same time currently all versions are affected since 69c499d1/2012-11-29
+> So we need quick and simple fix for stable releases.
+> From first glance the best fix is to simply deny toggle O_DIRECT on files.
+> and f_op->check_flags(new_flags) looks like reasonable candidate, *but*
+> this interface is 100% useless because it has no access to file_pointer
+> so we do not know current ->f_flags :)
+  [I've CCed linux-fsdevel since it may indeed affect other filesystems]
+  I don't think you want to just deny toggling O_DIRECT. That's certainly
+going to break some application (however stupid it may be). Also flushing
+the IO as Andreas suggests doesn't seem easy because to solve the problem
+with changing flags in general, you would have to wait for both reads and
+writes, buffered & direct for the struct file and that's not easily doable.
+What currently seems as the best solution to me is to store f_flags in the
+iocb and then use that for decisions... However it still seems a bit
+fragile since people modifying the would would have to have in mind they
+have to use iocb->f_flags instead of iocb->ki_filp->f_flags
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_linus
-
-to get a few UDF fixes and also a few patches which are preparing
-filesystems for support of project quotas in VFS.
-
-Top of the tree is 6174c2eb8ece. The full shortlog is:
-
-Fabian Frederick (1):
-      udf: remove redundant sys_tz declaration
-
-Jan Kara (6):
-      udf: Fix race between write(2) and close(2)
-      ext3: Don't use MAXQUOTAS value
-      reiserfs: Don't use MAXQUOTAS value
-      ocfs2: Don't use MAXQUOTAS value
-      ocfs2: Back out change to use OCFS2_MAXQUOTAS in ocfs2_setattr()
-      udf: Fix loading of special inodes
-
-The diffstat is
-
- fs/ext3/ext3.h          | 12 +++++++-----
- fs/ext3/super.c         | 14 +++++++-------
- fs/ocfs2/file.c         |  2 +-
- fs/ocfs2/quota.h        |  5 ++++-
- fs/ocfs2/quota_global.c |  4 ++--
- fs/ocfs2/quota_local.c  | 33 +++++++++++++++++----------------
- fs/ocfs2/super.c        | 30 +++++++++++++++++-------------
- fs/reiserfs/reiserfs.h  |  5 ++++-
- fs/reiserfs/super.c     | 16 ++++++++--------
- fs/udf/file.c           |  9 ++++++++-
- fs/udf/inode.c          | 14 +++++++++-----
- fs/udf/super.c          | 10 +++++-----
- fs/udf/udfdecl.h        | 13 ++++++++++++-
- fs/udf/udftime.c        |  2 --
- 14 files changed, 101 insertions(+), 68 deletions(-)
-
-							Thanks
 								Honza
 -- 
 Jan Kara <jack@suse.cz>
