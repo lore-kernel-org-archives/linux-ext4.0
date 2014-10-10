@@ -1,105 +1,101 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] udf: Avoid infinite loop when processing indirect ICBs
-Date: Fri, 10 Oct 2014 16:23:36 +0200
-Message-ID: <1412951028-4085-32-git-send-email-jack@suse.cz>
+Subject: [PATCH] ext4: Speedup WB_SYNC_ALL pass
+Date: Fri, 10 Oct 2014 16:23:20 +0200
+Message-ID: <1412951028-4085-16-git-send-email-jack@suse.cz>
 References: <1412951028-4085-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
+	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
+	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
 	xfs@oss.sgi.com, cluster-devel@redhat.com,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
-	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
-	Dave Kleikamp <shaggy@kernel.org>,
-	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
-	viro@zeniv.linux.org.uk, Jan Kara <jack@suse.cz>
+	Joel Becker <jlbec@evilplan.org>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, Steven Whitehouse <swhiteho@redhat.com>,
+	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <xfs-bounces@oss.sgi.com>
 In-Reply-To: <1412951028-4085-1-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-We did not implement any bound on number of indirect ICBs we follow when
-loading inode. Thus corrupted medium could cause kernel to go into an
-infinite loop, possibly causing a stack overflow.
+When doing filesystem wide sync, there's no need to force transaction
+commit (or synchronously write inode buffer) separately for each inode
+because ext4_sync_fs() takes care of forcing commit at the end (VFS
+takes care of flushing buffer cache, respectively). Most of the time
+this slowness doesn't manifest because previous WB_SYNC_NONE writeback
+doesn't leave much to write but when there are processes aggressively
+creating new files and several filesystems to sync, the sync slowness
+can be noticeable. In the following test script sync(1) takes around 6
+minutes when there are two ext4 filesystems mounted on a standard SATA
+drive. After this patch sync takes a couple of seconds so we have about
+two orders of magnitude improvement.
 
-Fix the possible stack overflow by removing recursion from
-__udf_read_inode() and limit number of indirect ICBs we follow to avoid
-infinite loops.
+      function run_writers
+      {
+        for (( i = 0; i < 10; i++ )); do
+          mkdir $1/dir$i
+          for (( j = 0; j < 40000; j++ )); do
+            dd if=/dev/zero of=$1/dir$i/$j bs=4k count=4 &>/dev/null
+          done &
+        done
+      }
+
+      for dir in "$@"; do
+        run_writers $dir
+      done
+
+      sleep 40
+      time sync
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/udf/inode.c | 35 +++++++++++++++++++++--------------
- 1 file changed, 21 insertions(+), 14 deletions(-)
+ fs/ext4/inode.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
 
-diff --git a/fs/udf/inode.c b/fs/udf/inode.c
-index 68cc7b144c26..a6a40536ebf1 100644
---- a/fs/udf/inode.c
-+++ b/fs/udf/inode.c
-@@ -1270,6 +1270,13 @@ update_time:
- 	return 0;
- }
- 
-+/*
-+ * Maximum length of linked list formed by ICB hierarchy. The chosen number is
-+ * arbitrary - just that we hopefully don't limit any real use of rewritten
-+ * inode on write-once media but avoid looping for too long on corrupted media.
-+ */
-+#define UDF_MAX_ICB_NESTING 1024
-+
- static void __udf_read_inode(struct inode *inode)
- {
- 	struct buffer_head *bh = NULL;
-@@ -1279,7 +1286,9 @@ static void __udf_read_inode(struct inode *inode)
- 	struct udf_inode_info *iinfo = UDF_I(inode);
- 	struct udf_sb_info *sbi = UDF_SB(inode->i_sb);
- 	unsigned int link_count;
-+	unsigned int indirections = 0;
- 
-+reread:
- 	/*
- 	 * Set defaults, but the inode is still incomplete!
- 	 * Note: get_new_inode() sets the following on a new inode:
-@@ -1317,28 +1326,26 @@ static void __udf_read_inode(struct inode *inode)
- 		ibh = udf_read_ptagged(inode->i_sb, &iinfo->i_location, 1,
- 					&ident);
- 		if (ident == TAG_IDENT_IE && ibh) {
--			struct buffer_head *nbh = NULL;
- 			struct kernel_lb_addr loc;
- 			struct indirectEntry *ie;
- 
- 			ie = (struct indirectEntry *)ibh->b_data;
- 			loc = lelb_to_cpu(ie->indirectICB.extLocation);
- 
--			if (ie->indirectICB.extLength &&
--				(nbh = udf_read_ptagged(inode->i_sb, &loc, 0,
--							&ident))) {
--				if (ident == TAG_IDENT_FE ||
--					ident == TAG_IDENT_EFE) {
--					memcpy(&iinfo->i_location,
--						&loc,
--						sizeof(struct kernel_lb_addr));
--					brelse(bh);
--					brelse(ibh);
--					brelse(nbh);
--					__udf_read_inode(inode);
-+			if (ie->indirectICB.extLength) {
-+				brelse(bh);
-+				brelse(ibh);
-+				memcpy(&iinfo->i_location, &loc,
-+				       sizeof(struct kernel_lb_addr));
-+				if (++indirections > UDF_MAX_ICB_NESTING) {
-+					udf_err(inode->i_sb,
-+						"too many ICBs in ICB hierarchy"
-+						" (max %d supported)\n",
-+						UDF_MAX_ICB_NESTING);
-+					make_bad_inode(inode);
- 					return;
- 				}
--				brelse(nbh);
-+				goto reread;
- 			}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 6e39895a91b8..7850584b0679 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4443,7 +4443,12 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 			return -EIO;
  		}
- 		brelse(ibh);
+ 
+-		if (wbc->sync_mode != WB_SYNC_ALL)
++		/*
++		 * No need to force transaction in WB_SYNC_NONE mode. Also
++		 * ext4_sync_fs() will force the commit after everything is
++		 * written.
++		 */
++		if (wbc->sync_mode != WB_SYNC_ALL || wbc->for_sync)
+ 			return 0;
+ 
+ 		err = ext4_force_commit(inode->i_sb);
+@@ -4453,7 +4458,11 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 		err = __ext4_get_inode_loc(inode, &iloc, 0);
+ 		if (err)
+ 			return err;
+-		if (wbc->sync_mode == WB_SYNC_ALL)
++		/*
++		 * sync(2) will flush the whole buffer cache. No need to do
++		 * it here separately for each inode.
++		 */
++		if (wbc->sync_mode == WB_SYNC_ALL && !wbc->for_sync)
+ 			sync_dirty_buffer(iloc.bh);
+ 		if (buffer_req(iloc.bh) && !buffer_uptodate(iloc.bh)) {
+ 			EXT4_ERROR_INODE_BLOCK(inode, iloc.bh->b_blocknr,
 -- 
 1.8.1.4
 
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
