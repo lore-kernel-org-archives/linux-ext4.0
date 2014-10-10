@@ -1,71 +1,82 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/2] ext3: Don't check quota format when
-	there are no quota files
-Date: Fri, 10 Oct 2014 16:23:44 +0200
-Message-ID: <1412951028-4085-40-git-send-email-jack@suse.cz>
+Subject: [PATCH] vfs: Allocate anon_inode_inode in
+	anon_inode_init()
+Date: Fri, 10 Oct 2014 16:23:38 +0200
+Message-ID: <1412951028-4085-34-git-send-email-jack@suse.cz>
 References: <1412951028-4085-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
 Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
-	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
-	Mark Fasheh <mfasheh@suse.com>, Dave Chinner <david@fromorbit.com>,
-	reiserfs-devel@vger.kernel.org, stable@vger.kernel.org,
-	xfs@oss.sgi.com, cluster-devel@redhat.com,
-	Joel Becker <jlbec@evilplan.org>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, Steven Whitehouse <swhiteho@redhat.com>,
-	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
+        tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
+        Dave Chinner <david@fromorbit.com>, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, cluster-devel@redhat.com, Jan Kara <jack@suse.cz>,
+        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        viro@zeniv.linux.org.uk
 To: linux-fsdevel@vger.kernel.org
-Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
+Return-path: <cluster-devel-bounces@redhat.com>
 In-Reply-To: <1412951028-4085-1-git-send-email-jack@suse.cz>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
-	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=jfs-discussion>
-List-Post: <mailto:jfs-discussion@lists.sourceforge.net>
-List-Help: <mailto:jfs-discussion-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
-	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: jfs-discussion-bounces@lists.sourceforge.net
+List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-The check whether quota format is set even though there are no
-quota files with journalled quota is pointless and it actually
-makes it impossible to turn off journalled quotas (as there's
-no way to unset journalled quota format). Just remove the check.
+Currently we allocated anon_inode_inode in anon_inodefs_mount. This is
+somewhat fragile as if that function ever gets called again, it will
+overwrite anon_inode_inode pointer. So move the initialization of
+anon_inode_inode to anon_inode_init().
 
-CC: stable@vger.kernel.org
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext3/super.c | 7 -------
- 1 file changed, 7 deletions(-)
+ fs/anon_inodes.c | 22 +++++++---------------
+ 1 file changed, 7 insertions(+), 15 deletions(-)
 
-I'm going to queue this patch unless someone objects.
-
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 622e88249024..2c42e739e3d1 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -1354,13 +1354,6 @@ set_qf_format:
- 					"not specified.");
- 			return 0;
- 		}
--	} else {
--		if (sbi->s_jquota_fmt) {
--			ext3_msg(sb, KERN_ERR, "error: journaled quota format "
--					"specified with no journaling "
--					"enabled.");
--			return 0;
+diff --git a/fs/anon_inodes.c b/fs/anon_inodes.c
+index 4b4543b8b894..7f34f7702204 100644
+--- a/fs/anon_inodes.c
++++ b/fs/anon_inodes.c
+@@ -41,19 +41,8 @@ static const struct dentry_operations anon_inodefs_dentry_operations = {
+ static struct dentry *anon_inodefs_mount(struct file_system_type *fs_type,
+ 				int flags, const char *dev_name, void *data)
+ {
+-	struct dentry *root;
+-	root = mount_pseudo(fs_type, "anon_inode:", NULL,
++	return mount_pseudo(fs_type, "anon_inode:", NULL,
+ 			&anon_inodefs_dentry_operations, ANON_INODE_FS_MAGIC);
+-	if (!IS_ERR(root)) {
+-		struct super_block *s = root->d_sb;
+-		anon_inode_inode = alloc_anon_inode(s);
+-		if (IS_ERR(anon_inode_inode)) {
+-			dput(root);
+-			deactivate_locked_super(s);
+-			root = ERR_CAST(anon_inode_inode);
 -		}
+-	}
+-	return root;
+ }
+ 
+ static struct file_system_type anon_inode_fs_type = {
+@@ -180,12 +169,15 @@ static int __init anon_inode_init(void)
+ 	anon_inode_mnt = kern_mount(&anon_inode_fs_type);
+ 	if (IS_ERR(anon_inode_mnt)) {
+ 		error = PTR_ERR(anon_inode_mnt);
+-		goto err_unregister_filesystem;
++		goto err_exit;
++	}
++	anon_inode_inode = alloc_anon_inode(anon_inode_mnt->mnt_sb);
++	if (IS_ERR(anon_inode_inode)) {
++		error = PTR_ERR(anon_inode_inode);
++		goto err_exit;
  	}
- #endif
- 	return 1;
+ 	return 0;
+ 
+-err_unregister_filesystem:
+-	unregister_filesystem(&anon_inode_fs_type);
+ err_exit:
+ 	panic(KERN_ERR "anon_inode_init() failed (%d)\n", error);
+ }
 -- 
 1.8.1.4
-
-
-------------------------------------------------------------------------------
-Meet PCI DSS 3.0 Compliance Requirements with EventLog Analyzer
-Achieve PCI DSS 3.0 Compliant Status with Out-of-the-box PCI DSS Reports
-Are you Audit-Ready for PCI DSS 3.0 Compliance? Download White paper
-Comply to PCI DSS 3.0 Requirement 10 and 11.5 with EventLog Analyzer
-http://pubads.g.doubleclick.net/gampad/clk?id=154622311&iu=/4140/ostg.clktrk
