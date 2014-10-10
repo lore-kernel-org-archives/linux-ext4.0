@@ -1,7 +1,8 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/2] printk: Debug patch1
-Date: Fri, 10 Oct 2014 16:23:29 +0200
-Message-ID: <1412951028-4085-25-git-send-email-jack@suse.cz>
+Subject: [PATCH] scsi: Keep interrupts disabled while
+	submitting requests
+Date: Fri, 10 Oct 2014 16:23:33 +0200
+Message-ID: <1412951028-4085-29-git-send-email-jack@suse.cz>
 References: <1412951028-4085-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -27,33 +28,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
 Errors-To: jfs-discussion-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
+scsi_request_fn() can be called from softirq context during IO
+completion. If it enables interrupts there, HW interrupts can interrupt
+softirq processing and queue more IO completion work which can
+eventually lead to softlockup reports because IO completion softirq runs
+for too long. Keep interrupts disabled in scsi_request_fn().
+
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- kernel/printk/printk.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ drivers/scsi/scsi_lib.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/kernel/printk/printk.c b/kernel/printk/printk.c
-index ea2d5f6962ed..a39f4129f848 100644
---- a/kernel/printk/printk.c
-+++ b/kernel/printk/printk.c
-@@ -1718,7 +1718,6 @@ asmlinkage int vprintk_emit(int facility, int level,
+diff --git a/drivers/scsi/scsi_lib.c b/drivers/scsi/scsi_lib.c
+index f7e316368c99..44b867e9adc9 100644
+--- a/drivers/scsi/scsi_lib.c
++++ b/drivers/scsi/scsi_lib.c
+@@ -1481,7 +1481,8 @@ static void scsi_softirq_done(struct request *rq)
+  *
+  * Returns:     Nothing
+  *
+- * Lock status: IO request lock assumed to be held when called.
++ * Lock status: IO request lock assumed to be held when called, interrupts
++ * must be disabled.
+  */
+ static void scsi_request_fn(struct request_queue *q)
+ 	__releases(q->queue_lock)
+@@ -1563,7 +1564,7 @@ static void scsi_request_fn(struct request_queue *q)
+ 		 * XXX(hch): This is rather suboptimal, scsi_dispatch_cmd will
+ 		 *		take the lock again.
+ 		 */
+-		spin_unlock_irq(shost->host_lock);
++		spin_unlock(shost->host_lock);
  
- 	logbuf_cpu = UINT_MAX;
- 	raw_spin_unlock(&logbuf_lock);
--	lockdep_on();
- 	local_irq_restore(flags);
+ 		/*
+ 		 * Finally, initialize any error handling parameters, and set up
+@@ -1575,7 +1576,7 @@ static void scsi_request_fn(struct request_queue *q)
+ 		 * Dispatch the command to the low-level driver.
+ 		 */
+ 		rtn = scsi_dispatch_cmd(cmd);
+-		spin_lock_irq(q->queue_lock);
++		spin_lock(q->queue_lock);
+ 		if (rtn)
+ 			goto out_delay;
+ 	}
+@@ -1583,7 +1584,7 @@ static void scsi_request_fn(struct request_queue *q)
+ 	return;
  
- 	/* If called from the scheduler, we can not call up(). */
-@@ -1738,6 +1737,9 @@ asmlinkage int vprintk_emit(int facility, int level,
- 	if (console_trylock_for_printk())
- 		console_unlock();
- 	preempt_enable();
-+	local_irq_save(flags);
-+	lockdep_on();
-+	local_irq_restore(flags);
+  not_ready:
+-	spin_unlock_irq(shost->host_lock);
++	spin_unlock(shost->host_lock);
  
- 	return printed_len;
- }
+ 	/*
+ 	 * lock q, handle tag, requeue req, and decrement device_busy. We
+@@ -1593,7 +1594,7 @@ static void scsi_request_fn(struct request_queue *q)
+ 	 * cases (host limits or settings) should run the queue at some
+ 	 * later time.
+ 	 */
+-	spin_lock_irq(q->queue_lock);
++	spin_lock(q->queue_lock);
+ 	blk_requeue_request(q, req);
+ 	sdev->device_busy--;
+ out_delay:
 -- 
 1.8.1.4
 
