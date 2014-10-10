@@ -1,84 +1,67 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Fix zeroing of page during writeback
-Date: Fri, 10 Oct 2014 16:23:18 +0200
-Message-ID: <1412951028-4085-14-git-send-email-jack@suse.cz>
+Subject: [PATCH 1/2] ext4: Fix block zeroing when punching
+	holes in indirect block files
+Date: Fri, 10 Oct 2014 16:23:15 +0200
+Message-ID: <1412951028-4085-11-git-send-email-jack@suse.cz>
 References: <1412951028-4085-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
-	xfs@oss.sgi.com, cluster-devel@redhat.com,
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
+	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
+	Mark Fasheh <mfasheh@suse.com>, Dave Chinner <david@fromorbit.com>,
+	reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
+	cluster-devel@redhat.com, Joel Becker <jlbec@evilplan.org>,
+	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
 	Steven Whitehouse <swhiteho@redhat.com>,
-	Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
-	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
-	Dave Kleikamp <shaggy@kernel.org>,
-	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
-	viro@zeniv.linux.org.uk, Jan Kara <jack@suse.cz>,
-	stable@vger.kernel.org
+	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
 In-Reply-To: <1412951028-4085-1-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=jfs-discussion>
+List-Post: <mailto:jfs-discussion@lists.sourceforge.net>
+List-Help: <mailto:jfs-discussion-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: jfs-discussion-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-Tail of a page straddling inode size must be zeroed when being written
-out due to POSIX requirement that modifications of mmaped page beyond
-inode size must not be written to the file. ext4_bio_write_page() did
-this only for blocks fully beyond inode size but didn't properly zero
-blocks partially beyond inode size. Fix this.
+free_holes_block() passed local variable as a block pointer
+to ext4_clear_blocks(). Thus ext4_clear_blocks() zeroed out this local
+variable instead of proper place in inode / indirect block. We later
+zero out proper place in inode / indirect block but don't dirty the
+inode / buffer again which can lead to subtle issues (some changes e.g.
+to inode can be lost).
 
-The problem has been uncovered by mmap_11-4 test in openposix test suite
-(part of LTP).
-
-Reported-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-Fixes: 5a0dc7365c240
-Fixes: bd2d0210cf22f
-CC: stable@vger.kernel.org
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/page-io.c | 24 +++++++++++-------------
- 1 file changed, 11 insertions(+), 13 deletions(-)
+ fs/ext4/indirect.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index c18d95b50540..b936388b834f 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -418,6 +418,17 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	ClearPageError(page);
- 
- 	/*
-+	 * Comments copied from block_write_full_page_endio:
-+	 *
-+	 * The page straddles i_size.  It must be zeroed out on each and every
-+	 * writepage invocation because it may be mmapped.  "A file is mapped
-+	 * in multiples of the page size.  For a file that is not a multiple of
-+	 * the page size, the remaining memory is zeroed when mapped, and
-+	 * writes to that region are not written out to the file."
-+	 */
-+	if (len < PAGE_CACHE_SIZE)
-+		zero_user_segment(page, len, PAGE_CACHE_SIZE);
-+	/*
- 	 * In the first loop we prepare and mark buffers to submit. We have to
- 	 * mark all buffers in the page before submitting so that
- 	 * end_page_writeback() cannot be called from ext4_bio_end_io() when IO
-@@ -428,19 +439,6 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	do {
- 		block_start = bh_offset(bh);
- 		if (block_start >= len) {
--			/*
--			 * Comments copied from block_write_full_page_endio:
--			 *
--			 * The page straddles i_size.  It must be zeroed out on
--			 * each and every writepage invocation because it may
--			 * be mmapped.  "A file is mapped in multiples of the
--			 * page size.  For a file that is not a multiple of
--			 * the  page size, the remaining memory is zeroed when
--			 * mapped, and writes to that region are not written
--			 * out to the file."
--			 */
--			zero_user_segment(page, block_start,
--					  block_start + blocksize);
- 			clear_buffer_dirty(bh);
- 			set_buffer_uptodate(bh);
- 			continue;
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 8a57e9fcd1b9..9d381707a6fc 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -1329,8 +1329,8 @@ static int free_hole_blocks(handle_t *handle, struct inode *inode,
+ 		if (level == 0 ||
+ 		    (bh && all_zeroes((__le32 *)bh->b_data,
+ 				      (__le32 *)bh->b_data + addr_per_block))) {
+-			ext4_free_data(handle, inode, parent_bh, &blk, &blk+1);
+-			*i_data = 0;
++			ext4_free_data(handle, inode, parent_bh,
++				       i_data, i_data + 1);
+ 		}
+ 		brelse(bh);
+ 		bh = NULL;
 -- 
 1.8.1.4
 
+
+------------------------------------------------------------------------------
+Meet PCI DSS 3.0 Compliance Requirements with EventLog Analyzer
+Achieve PCI DSS 3.0 Compliant Status with Out-of-the-box PCI DSS Reports
+Are you Audit-Ready for PCI DSS 3.0 Compliance? Download White paper
+Comply to PCI DSS 3.0 Requirement 10 and 11.5 with EventLog Analyzer
+http://pubads.g.doubleclick.net/gampad/clk?id=154622311&iu=/4140/ostg.clktrk
