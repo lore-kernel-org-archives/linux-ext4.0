@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/2 RESEND] bdi: Fix hung task on sync
-Date: Fri, 10 Oct 2014 16:23:06 +0200
-Message-ID: <1412951028-4085-2-git-send-email-jack@suse.cz>
+Subject: [PATCH] block: free q->flush_rq in blk_init_allocated_queue error paths
+Date: Fri, 10 Oct 2014 16:23:07 +0200
+Message-ID: <1412951028-4085-3-git-send-email-jack@suse.cz>
 References: <1412951028-4085-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	xfs@oss.sgi.com, cluster-devel@redhat.com,
@@ -11,96 +11,61 @@ Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
 	Dave Kleikamp <shaggy@kernel.org>,
 	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
-	viro@zeniv.linux.org.uk, Derek Basehore <dbasehore@chromium.org>,
-	stable@vger.kernel.org, Jan Kara <jack@suse.cz>
+	viro@zeniv.linux.org.uk, Dave Jones <davej@redhat.com>,
+	Dave Jones <davej@fedoraproject.org>,
+	Jens Axboe <axboe@fb.com>,
+	Linus Torvalds <torvalds@linux-foundation.org>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:37109 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753907AbaJJOYF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Oct 2014 10:24:05 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1412951028-4085-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Derek Basehore <dbasehore@chromium.org>
+From: Dave Jones <davej@redhat.com>
 
-bdi_wakeup_thread_delayed() used the mod_delayed_work() function to
-schedule work to writeback dirty inodes. The problem with this is that
-it can delay work that is scheduled for immediate execution, such as the
-work from sync_inodes_sb().  This can happen since mod_delayed_work()
-can now steal work from a work_queue.  This fixes the problem by using
-queue_delayed_work() instead. This is a regression caused by
-839a8e8660b6 "writeback: replace custom worker pool implementation with
-unbound workqueue".
+Commit 7982e90c3a57 ("block: fix q->flush_rq NULL pointer crash on
+dm-mpath flush") moved an allocation to blk_init_allocated_queue(), but
+neglected to free that allocation on the error paths that follow.
 
-The reason that this causes a problem is that laptop-mode will change
-the delay, dirty_writeback_centisecs, to 60000 (10 minutes) by default.
-In the case that bdi_wakeup_thread_delayed() races with
-sync_inodes_sb(), sync will be stopped for 10 minutes and trigger a hung
-task. Even if dirty_writeback_centisecs is not long enough to cause a
-hung task, we still don't want to delay sync for that long.
-
-We fix the problem by using queue_delayed_work() when we want to
-schedule writeback sometime in future. This function doesn't change the
-timer if it is already armed.
-
-For the same reason, we also change bdi_writeback_workfn() to
-immediately queue the work again in the case that the work_list is not
-empty. The same problem can happen if the sync work is run on the rescue
-worker.
-
-Fixes: 839a8e8660b6777e7fe4e80af1a048aebe2b5977
-CC: stable@vger.kernel.org
-Reviewed-by: Tejun Heo <tj@kernel.org>
-Signed-off-by: Derek Basehore <dbasehore@chromium.org>
-Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Dave Jones <davej@fedoraproject.org>
+Acked-by: Mike Snitzer <snitzer@redhat.com>
+Signed-off-by: Jens Axboe <axboe@fb.com>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 ---
- fs/fs-writeback.c | 8 ++++----
- mm/backing-dev.c  | 5 ++++-
- 2 files changed, 8 insertions(+), 5 deletions(-)
+ block/blk-core.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index e0259a163f98..8277b76be983 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -1047,10 +1047,10 @@ void bdi_writeback_workfn(struct work_struct *work)
- 		trace_writeback_pages_written(pages_written);
+diff --git a/block/blk-core.c b/block/blk-core.c
+index 4cd5ffc18442..bfe16d5af9f9 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -713,7 +713,7 @@ blk_init_allocated_queue(struct request_queue *q, request_fn_proc *rfn,
+ 		return NULL;
+ 
+ 	if (blk_init_rl(&q->root_rl, q, GFP_KERNEL))
+-		return NULL;
++		goto fail;
+ 
+ 	q->request_fn		= rfn;
+ 	q->prep_rq_fn		= NULL;
+@@ -737,12 +737,16 @@ blk_init_allocated_queue(struct request_queue *q, request_fn_proc *rfn,
+ 	/* init elevator */
+ 	if (elevator_init(q, NULL)) {
+ 		mutex_unlock(&q->sysfs_lock);
+-		return NULL;
++		goto fail;
  	}
  
--	if (!list_empty(&bdi->work_list) ||
--	    (wb_has_dirty_io(wb) && dirty_writeback_interval))
--		queue_delayed_work(bdi_wq, &wb->dwork,
--			msecs_to_jiffies(dirty_writeback_interval * 10));
-+	if (!list_empty(&bdi->work_list))
-+		mod_delayed_work(bdi_wq, &wb->dwork, 0);
-+	else if (wb_has_dirty_io(wb) && dirty_writeback_interval)
-+		bdi_wakeup_thread_delayed(bdi);
+ 	mutex_unlock(&q->sysfs_lock);
  
- 	current->flags &= ~PF_SWAPWRITE;
+ 	return q;
++
++fail:
++	kfree(q->flush_rq);
++	return NULL;
  }
-diff --git a/mm/backing-dev.c b/mm/backing-dev.c
-index ce682f7a4f29..fab8401fc54e 100644
---- a/mm/backing-dev.c
-+++ b/mm/backing-dev.c
-@@ -288,13 +288,16 @@ int bdi_has_dirty_io(struct backing_dev_info *bdi)
-  * Note, we wouldn't bother setting up the timer, but this function is on the
-  * fast-path (used by '__mark_inode_dirty()'), so we save few context switches
-  * by delaying the wake-up.
-+ *
-+ * We have to be careful not to postpone flush work if it is scheduled for
-+ * earlier. Thus we use queue_delayed_work().
-  */
- void bdi_wakeup_thread_delayed(struct backing_dev_info *bdi)
- {
- 	unsigned long timeout;
+ EXPORT_SYMBOL(blk_init_allocated_queue);
  
- 	timeout = msecs_to_jiffies(dirty_writeback_interval * 10);
--	mod_delayed_work(bdi_wq, &bdi->wb.dwork, timeout);
-+	queue_delayed_work(bdi_wq, &bdi->wb.dwork, timeout);
- }
- 
- /*
 -- 
 1.8.1.4
 
