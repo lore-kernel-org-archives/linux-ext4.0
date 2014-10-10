@@ -1,7 +1,8 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/2 v2] Fix data corruption when blocksize < pagesize for mmapped data
-Date: Fri, 10 Oct 2014 16:23:05 +0200
-Message-ID: <1412951028-4085-1-git-send-email-jack@suse.cz>
+Subject: [PATCH] ext3: Speedup WB_SYNC_ALL pass
+Date: Fri, 10 Oct 2014 16:23:12 +0200
+Message-ID: <1412951028-4085-8-git-send-email-jack@suse.cz>
+References: <1412951028-4085-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	xfs@oss.sgi.com, cluster-devel@redhat.com,
 	Steven Whitehouse <swhiteho@redhat.com>,
@@ -12,32 +13,62 @@ Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
 	viro@zeniv.linux.org.uk, Jan Kara <jack@suse.cz>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:37108 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753565AbaJJOYF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Oct 2014 10:24:05 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1412951028-4085-1-git-send-email-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-  Hello,
+When doing filesystem wide sync, there's no need to force transaction
+commit separately for each inode because ext3_sync_fs() takes care of
+forcing commit at the end. Most of the time this slowness doesn't
+manifest because previous WB_SYNC_NONE writeback doesn't leave much to
+write but when there are processes aggressively creating new files and
+several filesystems to sync, the sync slowness can be noticeable. In the
+following test script sync(1) takes around 6 minutes when there are two
+ext3 filesystems mounted on a standard SATA drive. After this patch sync
+takes a couple of seconds so we have about two orders of magnitude
+improvement.
 
-  this is a second version of the patches to fix data corruption in mmapped
-data when blocksize < pagesize as tested by xfstests generic/030 test.
-The patchset fixes XFS and ext4. I've checked and btrfs doesn't need fixing
-because it doesn't support blocksize < pagesize. If that's ever going
-to change btrfs will likely need a similar treatment. ocfs2, ext2, ext3 are
-OK since they happily allocate blocks during writeback. For other filesystems
-like gfs2, ubifs, nilfs, ceph,... I'm not sure whether they support blocksize <
-pagesize at all. Interesting is also NFS which may care but I don't understand
-its ->page_mkwrite() handler good enough to judge.
+function run_writers
+{
+  for (( i = 0; i < 10; i++ )); do
+    mkdir $1/dir$i
+    for (( j = 0; j < 40000; j++ )); do
+      dd if=/dev/zero of=$1/dir$i/$j bs=4k count=4 &>/dev/null
+    done &
+  done
+}
 
-Changes since v1:
-- changed helper function name and moved it to mm/truncate.c - I originally
-  thought we can make the helper function update i_size to simplify the
-  interface but it's actually impossible due to generic_write_end() lock
-  ordering constraints.
-- used round_up() instead of ALIGN()
-- taught truncate_setsize() to use the helper function
+for dir in "$@"; do
+  run_writers $dir
+done
 
-								Honza
+sleep 40
+time sync
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext3/inode.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 384b6ebb655f..14c2faf3c312 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -3253,7 +3253,12 @@ int ext3_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 		return -EIO;
+ 	}
+ 
+-	if (wbc->sync_mode != WB_SYNC_ALL)
++	/*
++	 * No need to force transaction in WB_SYNC_NONE mode. Also
++	 * ext3_sync_fs() will force the commit after everything is
++	 * written.
++	 */
++	if (wbc->sync_mode != WB_SYNC_ALL || wbc->for_sync)
+ 		return 0;
+ 
+ 	return ext3_force_commit(inode->i_sb);
+-- 
+1.8.1.4
+
