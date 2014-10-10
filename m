@@ -1,7 +1,8 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] writeback: plug writeback at a high level
-Date: Fri, 10 Oct 2014 16:23:41 +0200
-Message-ID: <1412951028-4085-37-git-send-email-jack@suse.cz>
+Subject: [PATCH] sync: don't block the flusher thread
+	waiting on IO
+Date: Fri, 10 Oct 2014 16:23:34 +0200
+Message-ID: <1412951028-4085-30-git-send-email-jack@suse.cz>
 References: <1412951028-4085-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -11,8 +12,9 @@ Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
 	Mark Fasheh <mfasheh@suse.com>, Dave Chinner <david@fromorbit.com>,
 	reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
 	cluster-devel@redhat.com, Joel Becker <jlbec@evilplan.org>,
-	Dave Chinner <dchinner@redhat.com>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, Steven Whitehouse <swhiteho@redhat.com>,
+	Dave Chinner <dchinner@redhat.com>, linux-ext4@vger.kernel.org,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Steven Whitehouse <swhiteho@redhat.com>,
 	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
 To: linux-fsdevel@vger.kernel.org
 Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
@@ -29,79 +31,112 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Dave Chinner <dchinner@redhat.com>
 
-tl;dr: 3 lines of code, 86% better fsmark thoughput consuming 13%
-less CPU and 43% lower runtime.
+When sync does it's WB_SYNC_ALL writeback, it issues data Io and
+then immediately waits for IO completion. This is done in the
+context of the flusher thread, and hence completely ties up the
+flusher thread for the backing device until all the dirty inodes
+have been synced. On filesystems that are dirtying inodes constantly
+and quickly, this means the flusher thread can be tied up for
+minutes per sync call and hence badly affect system level write IO
+performance as the page cache cannot be cleaned quickly.
 
-Doing writeback on lots of little files causes terrible IOPS storms
-because of the per-mapping writeback plugging we do. This
-essentially causes imeediate dispatch of IO for each mapping,
-regardless of the context in which writeback is occurring.
+We already have a wait loop for IO completion for sync(2), so cut
+this out of the flusher thread and delegate it to wait_sb_inodes().
+Hence we can do rapid IO submission, and then wait for it all to
+complete.
 
-IOWs, running a concurrent write-lots-of-small 4k files using fsmark
-on XFS results in a huge number of IOPS being issued for data
-writes.  Metadata writes are sorted and plugged at a high level by
-XFS, so aggregate nicely into large IOs.
+Effect of sync on fsmark before the patch:
 
-However, data writeback IOs are dispatched in individual 4k IOs -
-even when the blocks of two consecutively written files are
-adjacent - because the underlying block device is fast enough not to
-congest on such IO. This behaviour is not SSD related - anything
-with hardware caches is going to see the same benefits as the IO
-rates are limited only by how fast adjacent IOs can be sent to the
-hardware caches for aggregation.
+FSUse%        Count         Size    Files/sec     App Overhead
+.....
+     0       640000         4096      35154.6          1026984
+     0       720000         4096      36740.3          1023844
+     0       800000         4096      36184.6           916599
+     0       880000         4096       1282.7          1054367
+     0       960000         4096       3951.3           918773
+     0      1040000         4096      40646.2           996448
+     0      1120000         4096      43610.1           895647
+     0      1200000         4096      40333.1           921048
 
-Hence the speed of the physical device is irrelevant to this common
-writeback workload (happens every time you untar a tarball!) -
-performance is limited by the overhead of dispatching individual
-IOs from a single writeback thread.
+And a single sync pass took:
 
-Test VM: 16p, 16GB RAM, 2xSSD in RAID0, 500TB sparse XFS filesystem,
-metadata CRCs enabled.
+  real    0m52.407s
+  user    0m0.000s
+  sys     0m0.090s
 
-Test:
+After the patch, there is no impact on fsmark results, and each
+individual sync(2) operation run concurrently with the same fsmark
+workload takes roughly 7s:
 
-$ ./fs_mark  -D  10000  -S0  -n  10000  -s  4096  -L  120  -d
-/mnt/scratch/0  -d  /mnt/scratch/1  -d  /mnt/scratch/2  -d
-/mnt/scratch/3  -d  /mnt/scratch/4  -d  /mnt/scratch/5  -d
-/mnt/scratch/6  -d  /mnt/scratch/7
+  real    0m6.930s
+  user    0m0.000s
+  sys     0m0.039s
 
-Result:
-		wall	sys	create rate	Physical write IO
-		time	CPU	(avg files/s)	 IOPS	Bandwidth
-		-----	-----	-------------	------	---------
-unpatched	5m54s	15m32s	32,500+/-2200	28,000	150MB/s
-patched		3m19s	13m28s	52,900+/-1800	 1,500	280MB/s
-improvement	-43.8%	-13.3%	  +62.7%	-94.6%	+86.6%
+IOWs, sync is 7-8x faster on a busy filesystem and does not have an
+adverse impact on ongoing async data write operations.
 
 Signed-off-by: Dave Chinner <dchinner@redhat.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 ---
- fs/fs-writeback.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ fs/fs-writeback.c         | 9 +++++++--
+ include/linux/writeback.h | 1 +
+ 2 files changed, 8 insertions(+), 2 deletions(-)
 
 diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index 279292ba9403..d935fd3796ba 100644
+index 3be57189efd5..a85ac4e33436 100644
 --- a/fs/fs-writeback.c
 +++ b/fs/fs-writeback.c
-@@ -599,6 +599,9 @@ static long generic_writeback_inodes(struct wb_writeback_work *work)
- 	unsigned long end_time = jiffies + HZ / 10;
- 	long write_chunk;
- 	long wrote = 0;  /* count both pages and inodes */
-+	struct blk_plug plug;
-+
-+	blk_start_plug(&plug);
+@@ -45,6 +45,7 @@ struct wb_writeback_work {
+ 	unsigned int for_kupdate:1;
+ 	unsigned int range_cyclic:1;
+ 	unsigned int for_background:1;
++	unsigned int for_sync:1;	/* sync(2) WB_SYNC_ALL writeback */
+ 	enum wb_reason reason;		/* why was writeback initiated? */
  
- 	spin_lock(&wb->list_lock);
- 	while (1) {
-@@ -688,6 +691,8 @@ static long generic_writeback_inodes(struct wb_writeback_work *work)
- out:
- 	spin_unlock(&wb->list_lock);
+ 	struct list_head list;		/* pending work list */
+@@ -443,9 +444,11 @@ __writeback_single_inode(struct inode *inode, struct writeback_control *wbc)
+ 	/*
+ 	 * Make sure to wait on the data before writing out the metadata.
+ 	 * This is important for filesystems that modify metadata on data
+-	 * I/O completion.
++	 * I/O completion. We don't do it for sync(2) writeback because it has a
++	 * separate, external IO completion path and ->sync_fs for guaranteeing
++	 * inode metadata is written back correctly.
+ 	 */
+-	if (wbc->sync_mode == WB_SYNC_ALL) {
++	if (wbc->sync_mode == WB_SYNC_ALL && !wbc->for_sync) {
+ 		int err = filemap_fdatawait(mapping);
+ 		if (ret == 0)
+ 			ret = err;
+@@ -578,6 +581,7 @@ static long writeback_sb_inodes(struct super_block *sb,
+ 		.tagged_writepages	= work->tagged_writepages,
+ 		.for_kupdate		= work->for_kupdate,
+ 		.for_background		= work->for_background,
++		.for_sync		= work->for_sync,
+ 		.range_cyclic		= work->range_cyclic,
+ 		.range_start		= 0,
+ 		.range_end		= LLONG_MAX,
+@@ -1362,6 +1366,7 @@ void sync_inodes_sb(struct super_block *sb)
+ 		.range_cyclic	= 0,
+ 		.done		= &done,
+ 		.reason		= WB_REASON_SYNC,
++		.for_sync	= 1,
+ 	};
  
-+	blk_finish_plug(&plug);
-+
- 	return wrote;
- }
+ 	/* Nothing to do? */
+diff --git a/include/linux/writeback.h b/include/linux/writeback.h
+index 579a5007c696..abfe11787af3 100644
+--- a/include/linux/writeback.h
++++ b/include/linux/writeback.h
+@@ -78,6 +78,7 @@ struct writeback_control {
+ 	unsigned tagged_writepages:1;	/* tag-and-write to avoid livelock */
+ 	unsigned for_reclaim:1;		/* Invoked from the page allocator */
+ 	unsigned range_cyclic:1;	/* range_start is cyclic */
++	unsigned for_sync:1;		/* sync(2) WB_SYNC_ALL writeback */
+ };
  
+ /*
 -- 
 1.8.1.4
 
