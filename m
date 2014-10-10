@@ -1,74 +1,76 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext3: Speedup WB_SYNC_ALL pass
-Date: Fri, 10 Oct 2014 16:23:12 +0200
-Message-ID: <1412951028-4085-8-git-send-email-jack@suse.cz>
+Subject: [PATCH] ext4: Fix buffer double free in ext4_alloc_branch()
+Date: Fri, 10 Oct 2014 16:23:16 +0200
+Message-ID: <1412951028-4085-12-git-send-email-jack@suse.cz>
 References: <1412951028-4085-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
+	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
+	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
 	xfs@oss.sgi.com, cluster-devel@redhat.com,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
-	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
-	Dave Kleikamp <shaggy@kernel.org>,
-	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
-	viro@zeniv.linux.org.uk, Jan Kara <jack@suse.cz>
+	Joel Becker <jlbec@evilplan.org>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, Steven Whitehouse <swhiteho@redhat.com>,
+	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <xfs-bounces@oss.sgi.com>
 In-Reply-To: <1412951028-4085-1-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-When doing filesystem wide sync, there's no need to force transaction
-commit separately for each inode because ext3_sync_fs() takes care of
-forcing commit at the end. Most of the time this slowness doesn't
-manifest because previous WB_SYNC_NONE writeback doesn't leave much to
-write but when there are processes aggressively creating new files and
-several filesystems to sync, the sync slowness can be noticeable. In the
-following test script sync(1) takes around 6 minutes when there are two
-ext3 filesystems mounted on a standard SATA drive. After this patch sync
-takes a couple of seconds so we have about two orders of magnitude
-improvement.
+Error recovery in ext4_alloc_branch() calls ext4_forget() even for
+buffer corresponding to indirect block it did not allocate. This leads
+to brelse() being called twice for that buffer (once from ext4_forget()
+and once from cleanup in ext4_ind_map_blocks()) leading to buffer use
+count misaccounting. Eventually (but often much later because there
+are other users of the buffer) we will see messages like:
+VFS: brelse: Trying to free free buffer
 
-function run_writers
-{
-  for (( i = 0; i < 10; i++ )); do
-    mkdir $1/dir$i
-    for (( j = 0; j < 40000; j++ )); do
-      dd if=/dev/zero of=$1/dir$i/$j bs=4k count=4 &>/dev/null
-    done &
-  done
-}
+Another manifestation of this problem is an error:
+JBD2 unexpected failure: jbd2_journal_revoke: !buffer_revoked(bh);
+inconsistent data on disk
 
-for dir in "$@"; do
-  run_writers $dir
-done
-
-sleep 40
-time sync
+The fix is easy - don't forget buffer we did not allocate. Also add an
+explanatory comment because the indexing at ext4_alloc_branch() is
+somewhat subtle.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext3/inode.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ fs/ext4/indirect.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index 384b6ebb655f..14c2faf3c312 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -3253,7 +3253,12 @@ int ext3_write_inode(struct inode *inode, struct writeback_control *wbc)
- 		return -EIO;
- 	}
- 
--	if (wbc->sync_mode != WB_SYNC_ALL)
-+	/*
-+	 * No need to force transaction in WB_SYNC_NONE mode. Also
-+	 * ext3_sync_fs() will force the commit after everything is
-+	 * written.
-+	 */
-+	if (wbc->sync_mode != WB_SYNC_ALL || wbc->for_sync)
- 		return 0;
- 
- 	return ext3_force_commit(inode->i_sb);
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 594009f5f523..3b91d240da4d 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -389,7 +389,13 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
+ 	return 0;
+ failed:
+ 	for (; i >= 0; i--) {
+-		if (i != indirect_blks && branch[i].bh)
++		/*
++		 * We want to ext4_forget() only freshly allocated indirect
++		 * blocks.  Buffer for new_blocks[i-1] is at branch[i].bh and
++		 * buffer at branch[0].bh is indirect block / inode already
++		 * existing before ext4_alloc_branch() was called.
++		 */
++		if (i > 0 && i != indirect_blks && branch[i].bh)
+ 			ext4_forget(handle, 1, inode, branch[i].bh,
+ 				    branch[i].bh->b_blocknr);
+ 		ext4_free_blocks(handle, inode, NULL, new_blocks[i],
 -- 
 1.8.1.4
 
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
