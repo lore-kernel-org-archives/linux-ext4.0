@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/2 RESEND] bdi: Avoid oops on device removal
-Date: Fri, 10 Oct 2014 16:23:43 +0200
-Message-ID: <1412951028-4085-39-git-send-email-jack@suse.cz>
+Subject: [PATCH] block: Make rq_affinity = 1 work as expected
+Date: Fri, 10 Oct 2014 16:23:09 +0200
+Message-ID: <1412951028-4085-5-git-send-email-jack@suse.cz>
 References: <1412951028-4085-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	xfs@oss.sgi.com, cluster-devel@redhat.com,
@@ -11,132 +11,71 @@ Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
 	Dave Kleikamp <shaggy@kernel.org>,
 	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
-	viro@zeniv.linux.org.uk, Jan Kara <jack@suse.cz>,
-	stable@vger.kernel.org
+	viro@zeniv.linux.org.uk, Tao Ma <boyu.mt@taobao.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Roland Dreier <roland@purestorage.com>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Jens Axboe <jaxboe@fusionio.com>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:37193 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755103AbaJJOYX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Oct 2014 10:24:23 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1412951028-4085-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-After 839a8e8660b67 "writeback: replace custom worker pool
-implementation with unbound workqueue" when device is removed while we
-are writing to it we crash in bdi_writeback_workfn() ->
-set_worker_desc() because bdi->dev is NULL.  This can happen because
-even though bdi_unregister() cancels all pending flushing work, nothing
-really prevents new ones from being queued from balance_dirty_pages() or
-other places.
+From: Tao Ma <boyu.mt@taobao.com>
 
-Fix the problem by clearing BDI_registered bit in bdi_unregister() and
-checking it before scheduling of any flushing work.
+Commit 5757a6d76c introduced a new rq_affinity = 2 so as to make
+the request completed in the __make_request cpu. But it makes the
+old rq_affinity = 1 not work any more. The root cause is that
+if the 'cpu' and 'req->cpu' is in the same group and cpu != req->cpu,
+ccpu will be the same as group_cpu, so the completion will be
+excuted in the 'cpu' not 'group_cpu'.
 
-Fixes: 839a8e8660b6777e7fe4e80af1a048aebe2b5977
-CC: stable@vger.kernel.org
-Reviewed-by: Tejun Heo <tj@kernel.org>
-Signed-off-by: Jan Kara <jack@suse.cz>
+This patch fix problem by simpling removing group_cpu and the codes
+are more explicit now. If ccpu == cpu, we complete in cpu, otherwise
+we raise_blk_irq to ccpu.
+
+Cc: Christoph Hellwig <hch@infradead.org>
+Cc: Roland Dreier <roland@purestorage.com>
+Cc: Dan Williams <dan.j.williams@intel.com>
+Cc: Jens Axboe <jaxboe@fusionio.com>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+Reviewed-by: Shaohua Li <shaohua.li@intel.com>
+Signed-off-by: Jens Axboe <jaxboe@fusionio.com>
 ---
- fs/fs-writeback.c           | 23 ++++++++++++++++++-----
- include/linux/backing-dev.h |  2 +-
- mm/backing-dev.c            | 13 +++++++++----
- 3 files changed, 28 insertions(+), 10 deletions(-)
+ block/blk-softirq.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
 
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index 8277b76be983..c24e7b8b521b 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -94,16 +94,29 @@ static inline struct inode *wb_inode(struct list_head *head)
- #define CREATE_TRACE_POINTS
- #include <trace/events/writeback.h>
+diff --git a/block/blk-softirq.c b/block/blk-softirq.c
+index 475fab809a80..487addc85bb5 100644
+--- a/block/blk-softirq.c
++++ b/block/blk-softirq.c
+@@ -103,7 +103,7 @@ static struct notifier_block __cpuinitdata blk_cpu_notifier = {
  
-+static void bdi_wakeup_thread(struct backing_dev_info *bdi)
-+{
-+	spin_lock_bh(&bdi->wb_lock);
-+	if (test_bit(BDI_registered, &bdi->state))
-+		mod_delayed_work(bdi_wq, &bdi->wb.dwork, 0);
-+	spin_unlock_bh(&bdi->wb_lock);
-+}
-+
- static void bdi_queue_work(struct backing_dev_info *bdi,
- 			   struct wb_writeback_work *work)
+ void __blk_complete_request(struct request *req)
  {
- 	trace_writeback_queue(bdi, work);
+-	int ccpu, cpu, group_cpu = NR_CPUS;
++	int ccpu, cpu;
+ 	struct request_queue *q = req->q;
+ 	unsigned long flags;
  
- 	spin_lock_bh(&bdi->wb_lock);
-+	if (!test_bit(BDI_registered, &bdi->state)) {
-+		if (work->done)
-+			complete(work->done);
-+		goto out_unlock;
-+	}
- 	list_add_tail(&work->list, &bdi->work_list);
--	spin_unlock_bh(&bdi->wb_lock);
--
- 	mod_delayed_work(bdi_wq, &bdi->wb.dwork, 0);
-+out_unlock:
-+	spin_unlock_bh(&bdi->wb_lock);
- }
- 
- static void
-@@ -119,7 +132,7 @@ __bdi_start_writeback(struct backing_dev_info *bdi, long nr_pages,
- 	work = kzalloc(sizeof(*work), GFP_ATOMIC);
- 	if (!work) {
- 		trace_writeback_nowork(bdi);
--		mod_delayed_work(bdi_wq, &bdi->wb.dwork, 0);
-+		bdi_wakeup_thread(bdi);
- 		return;
- 	}
- 
-@@ -166,7 +179,7 @@ void bdi_start_background_writeback(struct backing_dev_info *bdi)
- 	 * writeback as soon as there is no other work to do.
+@@ -117,14 +117,12 @@ void __blk_complete_request(struct request *req)
  	 */
- 	trace_writeback_wake_background(bdi);
--	mod_delayed_work(bdi_wq, &bdi->wb.dwork, 0);
-+	bdi_wakeup_thread(bdi);
- }
+ 	if (test_bit(QUEUE_FLAG_SAME_COMP, &q->queue_flags) && req->cpu != -1) {
+ 		ccpu = req->cpu;
+-		if (!test_bit(QUEUE_FLAG_SAME_FORCE, &q->queue_flags)) {
++		if (!test_bit(QUEUE_FLAG_SAME_FORCE, &q->queue_flags))
+ 			ccpu = blk_cpu_to_group(ccpu);
+-			group_cpu = blk_cpu_to_group(cpu);
+-		}
+ 	} else
+ 		ccpu = cpu;
  
- /*
-@@ -1025,7 +1038,7 @@ void bdi_writeback_workfn(struct work_struct *work)
- 	current->flags |= PF_SWAPWRITE;
- 
- 	if (likely(!current_is_workqueue_rescuer() ||
--		   list_empty(&bdi->bdi_list))) {
-+		   !test_bit(BDI_registered, &bdi->state))) {
- 		/*
- 		 * The normal path.  Keep writing back @bdi until its
- 		 * work_list is empty.  Note that this path is also taken
-diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
-index 24819001f5c8..e488e9459a93 100644
---- a/include/linux/backing-dev.h
-+++ b/include/linux/backing-dev.h
-@@ -95,7 +95,7 @@ struct backing_dev_info {
- 	unsigned int max_ratio, max_prop_frac;
- 
- 	struct bdi_writeback wb;  /* default writeback info for this bdi */
--	spinlock_t wb_lock;	  /* protects work_list */
-+	spinlock_t wb_lock;	  /* protects work_list & wb.dwork scheduling */
- 
- 	struct list_head work_list;
- 
-diff --git a/mm/backing-dev.c b/mm/backing-dev.c
-index fab8401fc54e..09d9591b7708 100644
---- a/mm/backing-dev.c
-+++ b/mm/backing-dev.c
-@@ -297,7 +297,10 @@ void bdi_wakeup_thread_delayed(struct backing_dev_info *bdi)
- 	unsigned long timeout;
- 
- 	timeout = msecs_to_jiffies(dirty_writeback_interval * 10);
--	queue_delayed_work(bdi_wq, &bdi->wb.dwork, timeout);
-+	spin_lock_bh(&bdi->wb_lock);
-+	if (test_bit(BDI_registered, &bdi->state))
-+		queue_delayed_work(bdi_wq, &bdi->wb.dwork, timeout);
-+	spin_unlock_bh(&bdi->wb_lock);
- }
- 
- /*
-@@ -310,9 +313,6 @@ static void bdi_remove_from_list(struct backing_dev_info *bdi)
- 	spin_unlock_bh(&bdi_lock);
- 
- 	synchronize_rcu_expedited();
+-	if (ccpu == cpu || ccpu == group_cpu) {
++	if (ccpu == cpu) {
+ 		struct list_head *list;
+ do_local:
+ 		list = &__get_cpu_var(blk_cpu_done);
+-- 
+1.8.1.4
+
