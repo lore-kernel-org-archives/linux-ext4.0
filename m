@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 04/12] fs: Generic infrastructure for optional inode fields
-Date: Fri, 10 Oct 2014 16:55:02 +0200
-Message-ID: <1412952910-7142-5-git-send-email-jack@suse.cz>
+Subject: [PATCH 11/12] jfs: Convert to private i_dquot field
+Date: Fri, 10 Oct 2014 16:55:09 +0200
+Message-ID: <1412952910-7142-12-git-send-email-jack@suse.cz>
 References: <1412952910-7142-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	xfs@oss.sgi.com, cluster-devel@redhat.com,
@@ -14,88 +14,82 @@ Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	viro@zeniv.linux.org.uk, Jan Kara <jack@suse.cz>
 To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:38550 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:38588 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754422AbaJJOzT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Oct 2014 10:55:19 -0400
+	id S1754888AbaJJOzV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Oct 2014 10:55:21 -0400
 In-Reply-To: <1412952910-7142-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There are parts of struct inode which are used only by a few filesystems
-(e.g. i_dquot pointers, i_mapping->private_list, ...). Thus all the
-other filesystems are just wasting memory with these fields. On the
-other hand it isn't simple to just move these fields to filesystem
-specific part of inode because there is generic code which needs to peek
-into the fields and it is cumbersome to provide helpers into which fs
-has to stuff the field it is storing elsewhere.
-
-We create a simple infrastructure which allows for optional inode fields
-stored in the fs-specific part of the inode. Accessing these fields has
-a slightly worse performance as we have to lookup their offset in the
-offset table stored in the superblock but in most cases this is
-acceptable. Notably, this offset-table mechanism is faster than having
-fs-specific hook functions which would need to be called to provide
-pointers to desired fields.
-
+CC: Dave Kleikamp <shaggy@kernel.org>
+CC: jfs-discussion@lists.sourceforge.net
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- include/linux/fs.h | 28 ++++++++++++++++++++++++++++
- 1 file changed, 28 insertions(+)
+ fs/jfs/jfs_incore.h |  3 +++
+ fs/jfs/super.c      | 13 +++++++++++++
+ 2 files changed, 16 insertions(+)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 94187721ad41..f2468786a36b 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -615,6 +615,11 @@ struct inode {
- 	void			*i_private; /* fs or device private pointer */
+diff --git a/fs/jfs/jfs_incore.h b/fs/jfs/jfs_incore.h
+index cf47f09e8ac8..fa7e795bd8ae 100644
+--- a/fs/jfs/jfs_incore.h
++++ b/fs/jfs/jfs_incore.h
+@@ -94,6 +94,9 @@ struct jfs_inode_info {
+ 			unchar _inline_ea[128];	/* 128: inline extended attr */
+ 		} link;
+ 	} u;
++#ifdef CONFIG_QUOTA
++	struct dquot *i_dquot[MAXQUOTAS];
++#endif
+ 	u32 dev;	/* will die when we get wide dev_t */
+ 	struct inode	vfs_inode;
+ };
+diff --git a/fs/jfs/super.c b/fs/jfs/super.c
+index adf8cb045b9e..a13727dd3826 100644
+--- a/fs/jfs/super.c
++++ b/fs/jfs/super.c
+@@ -54,6 +54,7 @@ static struct kmem_cache *jfs_inode_cachep;
+ 
+ static const struct super_operations jfs_super_operations;
+ static const struct export_operations jfs_export_operations;
++static const int jfs_inode_fields[IF_FIELD_NR];
+ static struct file_system_type jfs_fs_type;
+ 
+ #define MAX_COMMIT_THREADS 64
+@@ -117,6 +118,9 @@ static struct inode *jfs_alloc_inode(struct super_block *sb)
+ 	jfs_inode = kmem_cache_alloc(jfs_inode_cachep, GFP_NOFS);
+ 	if (!jfs_inode)
+ 		return NULL;
++#ifdef CONFIG_QUOTA
++	memset(&jfs_inode->i_dquot, 0, sizeof(jfs_inode->i_dquot));
++#endif
+ 	return &jfs_inode->vfs_inode;
+ }
+ 
+@@ -537,7 +541,9 @@ static int jfs_fill_super(struct super_block *sb, void *data, int silent)
+ #ifdef CONFIG_QUOTA
+ 	sb->dq_op = &dquot_operations;
+ 	sb->s_qcop = &dquot_quotactl_ops;
++	sb_dqopt(sb)->allowed_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
+ #endif
++	sb_init_inode_fields(sb, jfs_inode_fields);
+ 
+ 	/*
+ 	 * Initialize direct-mapping inode/address-space
+@@ -857,6 +863,13 @@ static const struct super_operations jfs_super_operations = {
+ #endif
  };
  
-+/* Optional inode fields (stored in filesystems inode if the fs needs them) */
-+enum inode_fields {
-+	IF_FIELD_NR	/* Number of optional inode fields */
++static const int jfs_inode_fields[IF_FIELD_NR] = {
++#ifdef CONFIG_QUOTA
++	[IF_DQUOTS] = (int)offsetof(struct jfs_inode_info, i_dquot) -
++		      (int)offsetof(struct jfs_inode_info, vfs_inode),
++#endif
 +};
 +
- static inline int inode_unhashed(struct inode *inode)
- {
- 	return hlist_unhashed(&inode->i_hash);
-@@ -1236,6 +1241,11 @@ struct super_block {
- 	void 			*s_fs_info;	/* Filesystem private info */
- 	unsigned int		s_max_links;
- 	fmode_t			s_mode;
-+	/*
-+	 * We could have here just a pointer to the offsets array but this
-+	 * way we save one dereference when looking up field offsets
-+	 */
-+	int			s_inode_fields[IF_FIELD_NR];
- 
- 	/* Granularity of c/m/atime in ns.
- 	   Cannot be worse than a second */
-@@ -1286,6 +1296,24 @@ struct super_block {
- 	struct rcu_head		rcu;
- };
- 
-+static inline void *inode_field(const struct inode *inode,
-+				enum inode_fields field)
-+{
-+	int offset;
-+
-+	BUG_ON(field >= IF_FIELD_NR);
-+	offset = inode->i_sb->s_inode_fields[field];
-+	if (!offset)	/* Field not present? */
-+		return NULL;
-+	return ((char *)inode) + offset;
-+}
-+
-+static inline void sb_init_inode_fields(struct super_block *sb,
-+					const int *fields)
-+{
-+	memcpy(sb->s_inode_fields, fields, sizeof(int) * IF_FIELD_NR);
-+}
-+
- extern struct timespec current_fs_time(struct super_block *sb);
- 
- /*
+ static const struct export_operations jfs_export_operations = {
+ 	.fh_to_dentry	= jfs_fh_to_dentry,
+ 	.fh_to_parent	= jfs_fh_to_parent,
 -- 
 1.8.1.4
 
