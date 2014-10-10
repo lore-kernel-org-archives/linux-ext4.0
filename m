@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] block: Make rq_affinity = 1 work as expected
-Date: Fri, 10 Oct 2014 16:23:09 +0200
-Message-ID: <1412951028-4085-5-git-send-email-jack@suse.cz>
+Subject: [PATCH 2/2] printk: Debug patch 2
+Date: Fri, 10 Oct 2014 16:23:48 +0200
+Message-ID: <1412951028-4085-44-git-send-email-jack@suse.cz>
 References: <1412951028-4085-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	xfs@oss.sgi.com, cluster-devel@redhat.com,
@@ -11,71 +11,32 @@ Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
 	Dave Kleikamp <shaggy@kernel.org>,
 	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
-	viro@zeniv.linux.org.uk, Tao Ma <boyu.mt@taobao.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Roland Dreier <roland@purestorage.com>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Jens Axboe <jaxboe@fusionio.com>
+	viro@zeniv.linux.org.uk, Jan Kara <jack@suse.cz>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:37190 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755062AbaJJOYU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Oct 2014 10:24:20 -0400
 In-Reply-To: <1412951028-4085-1-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
-
-Commit 5757a6d76c introduced a new rq_affinity = 2 so as to make
-the request completed in the __make_request cpu. But it makes the
-old rq_affinity = 1 not work any more. The root cause is that
-if the 'cpu' and 'req->cpu' is in the same group and cpu != req->cpu,
-ccpu will be the same as group_cpu, so the completion will be
-excuted in the 'cpu' not 'group_cpu'.
-
-This patch fix problem by simpling removing group_cpu and the codes
-are more explicit now. If ccpu == cpu, we complete in cpu, otherwise
-we raise_blk_irq to ccpu.
-
-Cc: Christoph Hellwig <hch@infradead.org>
-Cc: Roland Dreier <roland@purestorage.com>
-Cc: Dan Williams <dan.j.williams@intel.com>
-Cc: Jens Axboe <jaxboe@fusionio.com>
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
-Reviewed-by: Shaohua Li <shaohua.li@intel.com>
-Signed-off-by: Jens Axboe <jaxboe@fusionio.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- block/blk-softirq.c | 8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
+ kernel/printk/printk.c | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
 
-diff --git a/block/blk-softirq.c b/block/blk-softirq.c
-index 475fab809a80..487addc85bb5 100644
---- a/block/blk-softirq.c
-+++ b/block/blk-softirq.c
-@@ -103,7 +103,7 @@ static struct notifier_block __cpuinitdata blk_cpu_notifier = {
+diff --git a/kernel/printk/printk.c b/kernel/printk/printk.c
+index a39f4129f848..00a9ad5c2708 100644
+--- a/kernel/printk/printk.c
++++ b/kernel/printk/printk.c
+@@ -1718,17 +1718,19 @@ asmlinkage int vprintk_emit(int facility, int level,
  
- void __blk_complete_request(struct request *req)
- {
--	int ccpu, cpu, group_cpu = NR_CPUS;
-+	int ccpu, cpu;
- 	struct request_queue *q = req->q;
- 	unsigned long flags;
- 
-@@ -117,14 +117,12 @@ void __blk_complete_request(struct request *req)
- 	 */
- 	if (test_bit(QUEUE_FLAG_SAME_COMP, &q->queue_flags) && req->cpu != -1) {
- 		ccpu = req->cpu;
--		if (!test_bit(QUEUE_FLAG_SAME_FORCE, &q->queue_flags)) {
-+		if (!test_bit(QUEUE_FLAG_SAME_FORCE, &q->queue_flags))
- 			ccpu = blk_cpu_to_group(ccpu);
--			group_cpu = blk_cpu_to_group(cpu);
--		}
- 	} else
- 		ccpu = cpu;
- 
--	if (ccpu == cpu || ccpu == group_cpu) {
-+	if (ccpu == cpu) {
- 		struct list_head *list;
- do_local:
- 		list = &__get_cpu_var(blk_cpu_done);
--- 
-1.8.1.4
-
+ 	logbuf_cpu = UINT_MAX;
+ 	raw_spin_unlock(&logbuf_lock);
+-	local_irq_restore(flags);
+-
+-	/* If called from the scheduler, we can not call up(). */
+-	if (in_sched)
+-		return printed_len;
