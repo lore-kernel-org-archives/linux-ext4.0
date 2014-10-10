@@ -1,8 +1,8 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH RESEND] vfs: Return EINVAL for default
-	SEEK_HOLE, SEEK_DATA implementation
-Date: Fri, 10 Oct 2014 16:23:40 +0200
-Message-ID: <1412951028-4085-36-git-send-email-jack@suse.cz>
+Subject: [PATCH 2/2] ext4: Fix hole punching for files with
+	indirect blocks
+Date: Fri, 10 Oct 2014 16:23:45 +0200
+Message-ID: <1412951028-4085-41-git-send-email-jack@suse.cz>
 References: <1412951028-4085-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -10,10 +10,10 @@ Content-Transfer-Encoding: 7bit
 Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
 	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
 	Mark Fasheh <mfasheh@suse.com>, Dave Chinner <david@fromorbit.com>,
-	reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
-	cluster-devel@redhat.com, Joel Becker <jlbec@evilplan.org>,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Steven Whitehouse <swhiteho@redhat.com>,
+	reiserfs-devel@vger.kernel.org, stable@vger.kernel.org,
+	xfs@oss.sgi.com, cluster-devel@redhat.com,
+	Joel Becker <jlbec@evilplan.org>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, Steven Whitehouse <swhiteho@redhat.com>,
 	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
 To: linux-fsdevel@vger.kernel.org
 Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
@@ -28,84 +28,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
 Errors-To: jfs-discussion-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-Generic implementation of SEEK_HOLE & SEEK_DATA in
-generic_file_llseek_size() and default_llseek() behaved as if everything
-within i_size is data and everything beyond i_size is a hole. That makes
-sense at the first sight (and definitely is a valid implementation of
-the spec) but at the second sight it isn't very useful. If anyone
-bothers with looking for holes / data, he should be better told we don't
-really know so that he can fall back to his chosen backup strategy
-(think of e.g. cp(1)).
+Hole punching code for files with indirect blocks wrongly computed
+number of blocks which need to be cleared when traversing the indirect
+block tree. That could result in punching more blocks than actually
+requested and thus effectively cause a data loss. For example:
 
-This is a userspace API change however the kernel interface is there
-only for two years so hopefully userspace is still prepared to handle
-EINVAL return value.
+fallocate -n -p 10240000 4096
 
+will punch the range 10240000 - 12632064 instead of the range 1024000 -
+10244096. Fix the calculation.
+
+CC: stable@vger.kernel.org
+Fixes: 8bad6fc813a3a5300f51369c39d315679fd88c72
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/read_write.c | 38 ++------------------------------------
- 1 file changed, 2 insertions(+), 36 deletions(-)
+ fs/ext4/indirect.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
-Al, what do you think about this change?
-
-diff --git a/fs/read_write.c b/fs/read_write.c
-index edc5746a902a..71525d75742f 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -111,22 +111,8 @@ generic_file_llseek_size(struct file *file, loff_t offset, int whence,
- 		spin_unlock(&file->f_lock);
- 		return offset;
- 	case SEEK_DATA:
--		/*
--		 * In the generic case the entire file is data, so as long as
--		 * offset isn't at the end of the file then the offset is data.
--		 */
--		if (offset >= eof)
--			return -ENXIO;
--		break;
- 	case SEEK_HOLE:
--		/*
--		 * There is a virtual hole at the end of the file, so as long as
--		 * offset isn't i_size or larger, return i_size.
--		 */
--		if (offset >= eof)
--			return -ENXIO;
--		offset = eof;
--		break;
-+		return -EINVAL;
- 	}
- 
- 	return vfs_setpos(file, offset, maxsize);
-@@ -214,28 +200,8 @@ loff_t default_llseek(struct file *file, loff_t offset, int whence)
- 			offset += file->f_pos;
- 			break;
- 		case SEEK_DATA:
--			/*
--			 * In the generic case the entire file is data, so as
--			 * long as offset isn't at the end of the file then the
--			 * offset is data.
--			 */
--			if (offset >= inode->i_size) {
--				retval = -ENXIO;
--				goto out;
--			}
--			break;
- 		case SEEK_HOLE:
--			/*
--			 * There is a virtual hole at the end of the file, so
--			 * as long as offset isn't i_size or larger, return
--			 * i_size.
--			 */
--			if (offset >= inode->i_size) {
--				retval = -ENXIO;
--				goto out;
--			}
--			offset = inode->i_size;
--			break;
-+			return -EINVAL;
- 	}
- 	retval = -EINVAL;
- 	if (offset >= 0 || unsigned_offsets(file)) {
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 9d381707a6fc..771949c82715 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -1310,16 +1310,24 @@ static int free_hole_blocks(handle_t *handle, struct inode *inode,
+ 		blk = *i_data;
+ 		if (level > 0) {
+ 			ext4_lblk_t first2;
++			ext4_lblk_t count2;
++
+ 			bh = sb_bread(inode->i_sb, le32_to_cpu(blk));
+ 			if (!bh) {
+ 				EXT4_ERROR_INODE_BLOCK(inode, le32_to_cpu(blk),
+ 						       "Read failure");
+ 				return -EIO;
+ 			}
+-			first2 = (first > offset) ? first - offset : 0;
++			if (first > offset) {
++				first2 = first - offset;
++				count2 = count;
++			} else {
++				first2 = 0;
++				count2 = count - (offset - first);
++			}
+ 			ret = free_hole_blocks(handle, inode, bh,
+ 					       (__le32 *)bh->b_data, level - 1,
+-					       first2, count - offset,
++					       first2, count2,
+ 					       inode->i_sb->s_blocksize >> 2);
+ 			if (ret) {
+ 				brelse(bh);
 -- 
 1.8.1.4
 
