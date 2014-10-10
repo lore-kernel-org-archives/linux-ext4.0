@@ -1,8 +1,8 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] quota: Fix race between dqput() and
-	dquot_scan_active()
-Date: Fri, 10 Oct 2014 16:23:32 +0200
-Message-ID: <1412951028-4085-28-git-send-email-jack@suse.cz>
+Subject: [PATCH] ext3: Fix deadlock in data=journal mode
+	when fs is frozen
+Date: Fri, 10 Oct 2014 16:23:11 +0200
+Message-ID: <1412951028-4085-7-git-send-email-jack@suse.cz>
 References: <1412951028-4085-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -28,66 +28,88 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
 Errors-To: jfs-discussion-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-Currently last dqput() can race with dquot_scan_active() causing it to
-call callback for an already deactivated dquot. The race is as follows:
+When ext3 is used in data=journal mode, syncing filesystem makes sure
+all the data is committed in the journal but the data doesn't have to be
+checkpointed. ext3_freeze() then takes care of checkpointing all the
+data so all buffer heads are clean but pages can still have dangling
+dirty bits. So when flusher thread comes later when filesystem is
+frozen, it tries to write back dirty pages, ext3_journalled_writepage()
+tries to start a transaction and hangs waiting for frozen fs causing a
+deadlock because a holder of s_umount semaphore may be waiting for
+flusher thread to complete.
 
-CPU1					CPU2
-  dqput()
-    spin_lock(&dq_list_lock);
-    if (atomic_read(&dquot->dq_count) > 1) {
-     - not taken
-    if (test_bit(DQ_ACTIVE_B, &dquot->dq_flags)) {
-      spin_unlock(&dq_list_lock);
-      ->release_dquot(dquot);
-        if (atomic_read(&dquot->dq_count) > 1)
-         - not taken
-					  dquot_scan_active()
-					    spin_lock(&dq_list_lock);
-					    if (!test_bit(DQ_ACTIVE_B, &dquot->dq_flags))
-					     - not taken
-					    atomic_inc(&dquot->dq_count);
-					    spin_unlock(&dq_list_lock);
-        - proceeds to release dquot
-					    ret = fn(dquot, priv);
-					     - called for inactive dquot
-
-Fix the problem by making sure possible ->release_dquot() is finished by
-the time we call the callback and new calls to it will notice reference
-dquot_scan_active() has taken and bail out.
+The fix is luckily relatively easy. We don't have to start a transaction
+in ext3_journalled_writepage() when a page is just dirty (and doesn't
+have PageChecked set) because in that case all buffers should be already
+mapped (mapping must happen before writing a buffer to the journal) and
+it is enough to write them out. This optimization also solves the deadlock
+because block_write_full_page() will just find out there's no buffer to
+write and do nothing.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/quota/dquot.c | 14 +++++++++++---
- 1 file changed, 11 insertions(+), 3 deletions(-)
+ fs/ext3/inode.c | 33 +++++++++++++++++----------------
+ 1 file changed, 17 insertions(+), 16 deletions(-)
 
-  This is the last patch needed to make ocfs2 quotas rock solid in my testing.
-I will carry it in my tree and push it to Linus soon.
+  JFYI: I've added this patch to my tree.
 
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index 831d49a4111f..cfc8dcc16043 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -581,9 +581,17 @@ int dquot_scan_active(struct super_block *sb,
- 		dqstats_inc(DQST_LOOKUPS);
- 		dqput(old_dquot);
- 		old_dquot = dquot;
--		ret = fn(dquot, priv);
--		if (ret < 0)
--			goto out;
-+		/*
-+		 * ->release_dquot() can be racing with us. Our reference
-+		 * protects us from new calls to it so just wait for any
-+		 * outstanding call and recheck the DQ_ACTIVE_B after that.
-+		 */
-+		wait_on_dquot(dquot);
-+		if (test_bit(DQ_ACTIVE_B, &dquot->dq_flags)) {
-+			ret = fn(dquot, priv);
-+			if (ret < 0)
-+				goto out;
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index f5157d0d1b43..695abe738a24 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -1716,17 +1716,17 @@ static int ext3_journalled_writepage(struct page *page,
+ 	WARN_ON_ONCE(IS_RDONLY(inode) &&
+ 		     !(EXT3_SB(inode->i_sb)->s_mount_state & EXT3_ERROR_FS));
+ 
+-	if (ext3_journal_current_handle())
+-		goto no_write;
+-
+ 	trace_ext3_journalled_writepage(page);
+-	handle = ext3_journal_start(inode, ext3_writepage_trans_blocks(inode));
+-	if (IS_ERR(handle)) {
+-		ret = PTR_ERR(handle);
+-		goto no_write;
+-	}
+-
+ 	if (!page_has_buffers(page) || PageChecked(page)) {
++		if (ext3_journal_current_handle())
++			goto no_write;
++
++		handle = ext3_journal_start(inode,
++					    ext3_writepage_trans_blocks(inode));
++		if (IS_ERR(handle)) {
++			ret = PTR_ERR(handle);
++			goto no_write;
 +		}
- 		spin_lock(&dq_list_lock);
- 		/* We are safe to continue now because our dquot could not
- 		 * be moved out of the inuse list while we hold the reference */
+ 		/*
+ 		 * It's mmapped pagecache.  Add buffers and journal it.  There
+ 		 * doesn't seem much point in redirtying the page here.
+@@ -1749,17 +1749,18 @@ static int ext3_journalled_writepage(struct page *page,
+ 		atomic_set(&EXT3_I(inode)->i_datasync_tid,
+ 			   handle->h_transaction->t_tid);
+ 		unlock_page(page);
++		err = ext3_journal_stop(handle);
++		if (!ret)
++			ret = err;
+ 	} else {
+ 		/*
+-		 * It may be a page full of checkpoint-mode buffers.  We don't
+-		 * really know unless we go poke around in the buffer_heads.
+-		 * But block_write_full_page will do the right thing.
++		 * It is a page full of checkpoint-mode buffers. Go and write
++		 * them. They should have been already mapped when they went
++		 * to the journal so provide NULL get_block function to catch
++		 * errors.
+ 		 */
+-		ret = block_write_full_page(page, ext3_get_block, wbc);
++		ret = block_write_full_page(page, NULL, wbc);
+ 	}
+-	err = ext3_journal_stop(handle);
+-	if (!ret)
+-		ret = err;
+ out:
+ 	return ret;
+ 
 -- 
 1.8.1.4
 
