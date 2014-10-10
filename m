@@ -1,245 +1,54 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 05/12] quota: Use optional inode field for i_dquot pointers
-Date: Fri, 10 Oct 2014 16:55:03 +0200
-Message-ID: <1412952910-7142-6-git-send-email-jack@suse.cz>
-References: <1412952910-7142-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
-	xfs@oss.sgi.com, cluster-devel@redhat.com,
+From: Dave Jones <davej@redhat.com>
+Subject: Re: [PATCH] block: free q->flush_rq in blk_init_allocated_queue
+	error paths
+Date: Fri, 10 Oct 2014 11:19:06 -0400
+Message-ID: <20141010151906.GB8874@redhat.com>
+References: <1412951028-4085-1-git-send-email-jack@suse.cz>
+	<1412951028-4085-3-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
+	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
+	Jens Axboe <axboe@fb.com>, Mark Fasheh <mfasheh@suse.com>,
+	reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
+	cluster-devel@redhat.com, Joel Becker <jlbec@evilplan.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Linus Torvalds <torvalds@linux-foundation.org>,
 	Steven Whitehouse <swhiteho@redhat.com>,
-	Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
-	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
-	Dave Kleikamp <shaggy@kernel.org>,
-	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
-	viro@zeniv.linux.org.uk, Jan Kara <jack@suse.cz>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
-In-Reply-To: <1412952910-7142-1-git-send-email-jack@suse.cz>
-Sender: reiserfs-devel-owner@vger.kernel.org
+	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
+To: Jan Kara <jack@suse.cz>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <1412951028-4085-3-git-send-email-jack@suse.cz>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-i_dquot is a first candidate for using optional inode fields since it is
-used by relatively few filesystems (ext?, ocfs2, jfs, reiserfs). We
-cannot just pass quota pointers from filesystems to quota functions
-because during quotaon and quotaoff we have to traverse list of all
-inodes and manipulate i_dquot pointers for each inode.
+On Fri, Oct 10, 2014 at 04:23:07PM +0200, Jan Kara wrote:
+ > From: Dave Jones <davej@redhat.com>
+ > 
+ > Commit 7982e90c3a57 ("block: fix q->flush_rq NULL pointer crash on
+ > dm-mpath flush") moved an allocation to blk_init_allocated_queue(), but
+ > neglected to free that allocation on the error paths that follow.
+ > 
+ > Signed-off-by: Dave Jones <davej@fedoraproject.org>
+ > Acked-by: Mike Snitzer <snitzer@redhat.com>
+ > Signed-off-by: Jens Axboe <axboe@fb.com>
+ > Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 
-Firstly, we setup optional inode field so that it points at i_dquot
-array in struct inode and convert quota code to use the accessor
-function.
+Um, This got applied months ago.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/quota/dquot.c   | 51 ++++++++++++++++++++++++++++-----------------------
- fs/super.c         |  3 +++
- include/linux/fs.h |  1 +
- 3 files changed, 32 insertions(+), 23 deletions(-)
+	Dave
 
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index f2d0eee9d1f1..ecb8732fe299 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -893,6 +893,11 @@ out:
- }
- EXPORT_SYMBOL(dqget);
- 
-+static inline struct dquot **i_dquot(const struct inode *inode)
-+{
-+	return ((struct dquot **)inode_field(inode, IF_DQUOTS));
-+}
-+
- static int dqinit_needed(struct inode *inode, int type)
- {
- 	int cnt;
-@@ -900,9 +905,9 @@ static int dqinit_needed(struct inode *inode, int type)
- 	if (IS_NOQUOTA(inode))
- 		return 0;
- 	if (type != -1)
--		return !inode->i_dquot[type];
-+		return !i_dquot(inode)[type];
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
--		if (!inode->i_dquot[cnt])
-+		if (!i_dquot(inode)[cnt])
- 			return 1;
- 	return 0;
- }
-@@ -965,9 +970,9 @@ static void add_dquot_ref(struct super_block *sb, int type)
- static void remove_inode_dquot_ref(struct inode *inode, int type,
- 				   struct list_head *tofree_head)
- {
--	struct dquot *dquot = inode->i_dquot[type];
-+	struct dquot *dquot = i_dquot(inode)[type];
- 
--	inode->i_dquot[type] = NULL;
-+	i_dquot(inode)[type] = NULL;
- 	if (!dquot)
- 		return;
- 
-@@ -1402,7 +1407,7 @@ static void __dquot_initialize(struct inode *inode, int type)
- 		 * we check it without locking here to avoid unnecessary
- 		 * dqget()/dqput() calls.
- 		 */
--		if (inode->i_dquot[cnt])
-+		if (i_dquot(inode)[cnt])
- 			continue;
- 		init_needed = 1;
- 
-@@ -1433,8 +1438,8 @@ static void __dquot_initialize(struct inode *inode, int type)
- 		/* We could race with quotaon or dqget() could have failed */
- 		if (!got[cnt])
- 			continue;
--		if (!inode->i_dquot[cnt]) {
--			inode->i_dquot[cnt] = got[cnt];
-+		if (!i_dquot(inode)[cnt]) {
-+			i_dquot(inode)[cnt] = got[cnt];
- 			got[cnt] = NULL;
- 			/*
- 			 * Make quota reservation system happy if someone
-@@ -1442,7 +1447,7 @@ static void __dquot_initialize(struct inode *inode, int type)
- 			 */
- 			rsv = inode_get_rsv_space(inode);
- 			if (unlikely(rsv))
--				dquot_resv_space(inode->i_dquot[cnt], rsv);
-+				dquot_resv_space(i_dquot(inode)[cnt], rsv);
- 		}
- 	}
- out_err:
-@@ -1472,8 +1477,8 @@ static void __dquot_drop(struct inode *inode)
- 
- 	spin_lock(&dq_data_lock);
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
--		put[cnt] = inode->i_dquot[cnt];
--		inode->i_dquot[cnt] = NULL;
-+		put[cnt] = i_dquot(inode)[cnt];
-+		i_dquot(inode)[cnt] = NULL;
- 	}
- 	spin_unlock(&dq_data_lock);
- 	dqput_all(put);
-@@ -1494,7 +1499,7 @@ void dquot_drop(struct inode *inode)
- 	 * add quota pointers back anyway.
- 	 */
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
--		if (inode->i_dquot[cnt])
-+		if (i_dquot(inode)[cnt])
- 			break;
- 	}
- 
-@@ -1595,7 +1600,7 @@ int __dquot_alloc_space(struct inode *inode, qsize_t number, int flags)
- {
- 	int cnt, ret = 0, index;
- 	struct dquot_warn warn[MAXQUOTAS];
--	struct dquot **dquots = inode->i_dquot;
-+	struct dquot **dquots = i_dquot(inode);
- 	int reserve = flags & DQUOT_SPACE_RESERVE;
- 
- 	if (!dquot_active(inode)) {
-@@ -1647,7 +1652,7 @@ int dquot_alloc_inode(const struct inode *inode)
- {
- 	int cnt, ret = 0, index;
- 	struct dquot_warn warn[MAXQUOTAS];
--	struct dquot * const *dquots = inode->i_dquot;
-+	struct dquot * const *dquots = i_dquot(inode);
- 
- 	if (!dquot_active(inode))
- 		return 0;
-@@ -1696,14 +1701,14 @@ int dquot_claim_space_nodirty(struct inode *inode, qsize_t number)
- 	spin_lock(&dq_data_lock);
- 	/* Claim reserved quotas to allocated quotas */
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
--		if (inode->i_dquot[cnt])
--			dquot_claim_reserved_space(inode->i_dquot[cnt],
-+		if (i_dquot(inode)[cnt])
-+			dquot_claim_reserved_space(i_dquot(inode)[cnt],
- 							number);
- 	}
- 	/* Update inode bytes */
- 	inode_claim_rsv_space(inode, number);
- 	spin_unlock(&dq_data_lock);
--	mark_all_dquot_dirty(inode->i_dquot);
-+	mark_all_dquot_dirty(i_dquot(inode));
- 	srcu_read_unlock(&dquot_srcu, index);
- 	return 0;
- }
-@@ -1725,14 +1730,14 @@ void dquot_reclaim_space_nodirty(struct inode *inode, qsize_t number)
- 	spin_lock(&dq_data_lock);
- 	/* Claim reserved quotas to allocated quotas */
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
--		if (inode->i_dquot[cnt])
--			dquot_reclaim_reserved_space(inode->i_dquot[cnt],
-+		if (i_dquot(inode)[cnt])
-+			dquot_reclaim_reserved_space(i_dquot(inode)[cnt],
- 						     number);
- 	}
- 	/* Update inode bytes */
- 	inode_reclaim_rsv_space(inode, number);
- 	spin_unlock(&dq_data_lock);
--	mark_all_dquot_dirty(inode->i_dquot);
-+	mark_all_dquot_dirty(i_dquot(inode));
- 	srcu_read_unlock(&dquot_srcu, index);
- 	return;
- }
-@@ -1745,7 +1750,7 @@ void __dquot_free_space(struct inode *inode, qsize_t number, int flags)
- {
- 	unsigned int cnt;
- 	struct dquot_warn warn[MAXQUOTAS];
--	struct dquot **dquots = inode->i_dquot;
-+	struct dquot **dquots = i_dquot(inode);
- 	int reserve = flags & DQUOT_SPACE_RESERVE, index;
- 
- 	if (!dquot_active(inode)) {
-@@ -1788,7 +1793,7 @@ void dquot_free_inode(const struct inode *inode)
- {
- 	unsigned int cnt;
- 	struct dquot_warn warn[MAXQUOTAS];
--	struct dquot * const *dquots = inode->i_dquot;
-+	struct dquot * const *dquots = i_dquot(inode);
- 	int index;
- 
- 	if (!dquot_active(inode))
-@@ -1865,7 +1870,7 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
- 		if (!sb_has_quota_active(inode->i_sb, cnt))
- 			continue;
- 		is_valid[cnt] = 1;
--		transfer_from[cnt] = inode->i_dquot[cnt];
-+		transfer_from[cnt] = i_dquot(inode)[cnt];
- 		ret = check_idq(transfer_to[cnt], 1, &warn_to[cnt]);
- 		if (ret)
- 			goto over_quota;
-@@ -1901,7 +1906,7 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
- 		dquot_incr_space(transfer_to[cnt], cur_space);
- 		dquot_resv_space(transfer_to[cnt], rsv_space);
- 
--		inode->i_dquot[cnt] = transfer_to[cnt];
-+		i_dquot(inode)[cnt] = transfer_to[cnt];
- 	}
- 	spin_unlock(&dq_data_lock);
- 
-diff --git a/fs/super.c b/fs/super.c
-index c6c9b2de9e31..9ae340f857ee 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -228,6 +228,9 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags)
- 	s->s_op = &default_op;
- 	s->s_time_gran = 1000000000;
- 	s->cleancache_poolid = -1;
-+#ifdef CONFIG_QUOTA
-+	s->s_inode_fields[IF_DQUOTS] = offsetof(struct inode, i_dquot);
-+#endif
- 
- 	s->s_shrink.seeks = DEFAULT_SEEKS;
- 	s->s_shrink.scan_objects = super_cache_scan;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index f2468786a36b..4b7b62543786 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -617,6 +617,7 @@ struct inode {
- 
- /* Optional inode fields (stored in filesystems inode if the fs needs them) */
- enum inode_fields {
-+	IF_DQUOTS,	/* Quota pointers: struct dquot *foo[MAXQUOTAS] */
- 	IF_FIELD_NR	/* Number of optional inode fields */
- };
- 
--- 
-1.8.1.4
-
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
