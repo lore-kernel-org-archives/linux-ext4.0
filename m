@@ -1,60 +1,35 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix reservation overflow in ext4_da_write_begin
-Date: Sat, 11 Oct 2014 19:52:00 -0400
-Message-ID: <20141011235200.GD6262@thunk.org>
-References: <542C7331.4070200@redhat.com>
- <542D6F2A.70006@redhat.com>
- <979DAB3D-0F2D-4CF2-BDF2-EF101713829B@dilger.ca>
+Subject: Re: [PATCH] ext4: delete useless comments about ext4_move_extents
+Date: Sat, 11 Oct 2014 19:57:29 -0400
+Message-ID: <20141011235729.GE6262@thunk.org>
+References: <1412670990-12903-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
+ <878uks8bda.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>,
+	linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:48040 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:48049 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751785AbaJKXwG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 11 Oct 2014 19:52:06 -0400
+	id S1751224AbaJKX5g (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 11 Oct 2014 19:57:36 -0400
 Content-Disposition: inline
-In-Reply-To: <979DAB3D-0F2D-4CF2-BDF2-EF101713829B@dilger.ca>
+In-Reply-To: <878uks8bda.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 02, 2014 at 03:00:23PM -0600, Andreas Dilger wrote:
-> On Oct 2, 2014, at 9:28 AM, Eric Sandeen <sandeen@redhat.com> wrote:
-> > Delalloc write journal reservations only reserve 1 credit,
-> > to update the inode if necessary.  However, it may happen
-> > once in a filesystem's lifetime that a file will cross
-> > the 2G threshold, and require the LARGE_FILE feature to
-> > be set in the superblock as well, if it was not set already.
-> > 
-> > This overruns the transaction reservation, and can be
-> > demonstrated simply on any ext4 filesystem without the LARGE_FILE
-> > feature already set:
-> > 
-> > dd if=/dev/zero of=testfile bs=1 seek=2147483646 count=1 \
-> > 	conv=notrunc of=testfile
-> > sync
-> > dd if=/dev/zero of=testfile bs=1 seek=2147483647 count=1 \
-> > 	conv=notrunc of=testfile
-> > 
-> > leads to:
-> > 
-> > EXT4-fs: ext4_do_update_inode:4296: aborting transaction: error 28 in __ext4_handle_dirty_super
-> > EXT4-fs error (device loop0) in ext4_do_update_inode:4301: error 28
-> > EXT4-fs error (device loop0) in ext4_reserve_inode_write:4757: Readonly filesystem
-> > EXT4-fs error (device loop0) in ext4_dirty_inode:4876: error 28
-> > EXT4-fs error (device loop0) in ext4_da_write_end:2685: error 28
-> > 
-> > Adjust the number of credits based on whether the flag is
-> > already set, and whether the current write may extend past the
-> > LARGE_FILE limit.
-> > 
-> > Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+On Tue, Oct 07, 2014 at 01:42:09PM +0400, Dmitry Monakhov wrote:
+> Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com> writes:
 > 
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> > In patch 'ext4: refactor ext4_move_extents code base',  Dmitry Monakhov has
+> > refactored ext4_move_extents' implementation, but forgot to update the
+> > corresponding comments, this patch will try to delete some useless comments.
+> >
+> > Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+> Ohh, yes thank you.
+> You can add reviewed-by: Dmitry Monakhov <dmonakhov@openvz.org>
 
-Applied, thanks.  I added the likely() qualifer per Andreas'
-suggestion.
+Applied, thanks!!
 
 						- Ted
