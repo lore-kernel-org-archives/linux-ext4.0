@@ -1,105 +1,498 @@
-From: squadra <squadra@gmail.com>
-Subject: Re: power loss protection
-Date: Sun, 12 Oct 2014 19:53:52 +0200
-Message-ID: <CABx==A0U72TayJ9R1ET8-dYke4MYNUZ0E6Fsq9yTjH90JtcUtA@mail.gmail.com>
-References: <5435661D.2040905@powercraft.nl>
-	<08F28BC7-34FD-46BA-9D91-CC7D57A4A4D5@dilger.ca>
-	<20141011231948.GC6262@thunk.org>
-	<543A8B33.7020401@adinet.com.uy>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	EXT3 Users <ext3-users@redhat.com>
-To: Ivan Baldo <ibaldo@adinet.com.uy>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 1/2] ext4: Replace open coded mdata csum feature to helper function
+Date: Sun, 12 Oct 2014 22:49:13 +0400
+Message-ID: <1413139754-17296-1-git-send-email-dmonakhov@openvz.org>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qa0-f52.google.com ([209.85.216.52]:59638 "EHLO
-	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752473AbaJLRxx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 12 Oct 2014 13:53:53 -0400
-Received: by mail-qa0-f52.google.com with SMTP id dc16so3649444qab.11
-        for <linux-ext4@vger.kernel.org>; Sun, 12 Oct 2014 10:53:52 -0700 (PDT)
-In-Reply-To: <543A8B33.7020401@adinet.com.uy>
+Received: from mailhub.sw.ru ([195.214.232.25]:32798 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752458AbaJLStX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 12 Oct 2014 14:49:23 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-dunno about any special tools, but misusing a mysql database could be
-a good check for this. unplug/reset your device while inserts into the
-db are ongoing (dont forget to use innodb for the tables). unplug /
-reset your device, boot it up again and take a look into the mysql
-log. theres a good chance that innodb gets wrecked... sure, this is
-not perfect. but could be a impressive test if it ends like i think.
+Besides the fact that this replacement improves code readability
+it also protects from errors caused direct EXT4_S(sb)->s_es manipulation
+which may result attempt to use uninitialized  csum machinery.
 
-make sure your mysql instance is configured to be "safe":
+#Testcase_BEGIN
+IMG=/dev/ram0
+MNT=/mnt
+mkfs.ext4 $IMG
+mount $IMG $MNT
+#Enable feature directly on disk, on mounted fs
+tune2fs -O metadata_csum  $IMG
+# Provoke metadata update, likey result in OOPS
+touch $MNT/test
+umount $MNT
+#Testcase_END
 
-http://dev.mysql.com/doc/refman/5.1/en/innodb-parameters.html#sysvar_in=
-nodb_flush_method
-http://dev.mysql.com/doc/refman/5.1/en/innodb-parameters.html#sysvar_in=
-nodb_flush_log_at_trx_commit
-
-and enable binlogs + sync binlogs
-
-or in other words: make it as slow as possible :p
-
-On Sun, Oct 12, 2014 at 4:07 PM, Ivan Baldo <ibaldo@adinet.com.uy> wrot=
-e:
->     Hello.
->
-> El 11/10/14 21:19, Theodore Ts'o escribi=C3=B3:
->>
->> If you are running some workload which is constantly calling fsync(2=
-),
->> that will be forcing journal commits, and those turn into cache flus=
-h
->> commands that force all state to stable storage.  Now, if you are
->> using CF cards that aren't guaranteed to have power-loss protection
->> (hint: even most consumer grade SSD's do not have power loss
->> protection --- you have to pay $$$ for enterprise-grade SLC SSD's to
->> have power loss protection --- and I'm guessing most CF cards are so
->> cheap that they won't make guarantees that all of their flash metada=
-ta
->> are saved to stable store on a power loss event) the fact that you a=
-re
->> constantly using fsync(2) may not be providing you with the protecti=
-on
->> you want after a power loss event.
->>
->>
->     This got me worried!
->     How can we test if a device really stores all the data safely aft=
-er a
-> barrier and sudden power loss?
->     Is there a tool for that?
->     I am thinking something along the lines of a tool that does write=
-s with
-> some barriers in between and then I unplug the device and run the sam=
-e tool
-> but in a "check mode" that tells me if the requested data before the =
-barrier
-> is really there.
->     Something sysadmin friendly or maybe even user friendly, but not =
-too
-> hard to use.
->     Thanks for your insight!
->
-> --
-> Ivan Baldo - ibaldo@adinet.com.uy - http://ibaldo.codigolibre.net/
-> From Montevideo, Uruguay, at the south of South America.
-> Freelance programmer and GNU/Linux system administrator, hire me!
-> Alternatives: ibaldo@codigolibre.net - http://go.to/ibaldo
->
-> _______________________________________________
-> Ext3-users mailing list
-> Ext3-users@redhat.com
-> https://www.redhat.com/mailman/listinfo/ext3-users
+# Replacement script
+@@
+expression E;
+@@
+- EXT4_HAS_RO_COMPAT_FEATURE(E, EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
++ ext4_has_metadata_csum(E)
 
 
+https://bugzilla.kernel.org/show_bug.cgi?id=82201
 
---=20
-Sent from the Delta quadrant using Borg technology!
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/bitmap.c  |   12 ++++--------
+ fs/ext4/ext4.h    |    4 ++++
+ fs/ext4/extents.c |    6 ++----
+ fs/ext4/ialloc.c  |    3 +--
+ fs/ext4/inline.c  |    3 +--
+ fs/ext4/inode.c   |    9 +++------
+ fs/ext4/ioctl.c   |    3 +--
+ fs/ext4/mmp.c     |    6 ++----
+ fs/ext4/namei.c   |   39 +++++++++++++--------------------------
+ fs/ext4/resize.c  |    3 +--
+ fs/ext4/super.c   |   24 ++++++++----------------
+ fs/ext4/xattr.c   |    6 ++----
+ 12 files changed, 42 insertions(+), 76 deletions(-)
+
+diff --git a/fs/ext4/bitmap.c b/fs/ext4/bitmap.c
+index 3285aa5..b610779 100644
+--- a/fs/ext4/bitmap.c
++++ b/fs/ext4/bitmap.c
+@@ -24,8 +24,7 @@ int ext4_inode_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
+ 	__u32 provided, calculated;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(sb))
+ 		return 1;
+ 
+ 	provided = le16_to_cpu(gdp->bg_inode_bitmap_csum_lo);
+@@ -46,8 +45,7 @@ void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
+ 	__u32 csum;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(sb))
+ 		return;
+ 
+ 	csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)bh->b_data, sz);
+@@ -65,8 +63,7 @@ int ext4_block_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	int sz = EXT4_CLUSTERS_PER_GROUP(sb) / 8;
+ 
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(sb))
+ 		return 1;
+ 
+ 	provided = le16_to_cpu(gdp->bg_block_bitmap_csum_lo);
+@@ -91,8 +88,7 @@ void ext4_block_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
+ 	__u32 csum;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(sb))
+ 		return;
+ 
+ 	csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)bh->b_data, sz);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 012e89b..121a934 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2337,6 +2337,10 @@ static inline int ext4_has_group_desc_csum(struct super_block *sb)
+ 					  EXT4_FEATURE_RO_COMPAT_METADATA_CSUM);
+ }
+ 
++static inline int ext4_has_metadata_csum(struct super_block *sb)
++{
++	return (EXT4_SB(sb)->s_chksum_driver != NULL);
++}
+ static inline ext4_fsblk_t ext4_blocks_count(struct ext4_super_block *es)
+ {
+ 	return ((ext4_fsblk_t)le32_to_cpu(es->s_blocks_count_hi) << 32) |
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c3ed9af..37043d0 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -73,8 +73,7 @@ static int ext4_extent_block_csum_verify(struct inode *inode,
+ {
+ 	struct ext4_extent_tail *et;
+ 
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(inode->i_sb))
+ 		return 1;
+ 
+ 	et = find_ext4_extent_tail(eh);
+@@ -88,8 +87,7 @@ static void ext4_extent_block_csum_set(struct inode *inode,
+ {
+ 	struct ext4_extent_tail *et;
+ 
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(inode->i_sb))
+ 		return;
+ 
+ 	et = find_ext4_extent_tail(eh);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 5b87fc3..8012a5d 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -1011,8 +1011,7 @@ got:
+ 	spin_unlock(&sbi->s_next_gen_lock);
+ 
+ 	/* Precompute checksum seed for inode metadata */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++	if (ext4_has_metadata_csum(sb)) {
+ 		__u32 csum;
+ 		__le32 inum = cpu_to_le32(inode->i_ino);
+ 		__le32 gen = cpu_to_le32(inode->i_generation);
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 378aadf..3ea6269 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1128,8 +1128,7 @@ static int ext4_finish_convert_inline_dir(handle_t *handle,
+ 	memcpy((void *)de, buf + EXT4_INLINE_DOTDOT_SIZE,
+ 		inline_size - EXT4_INLINE_DOTDOT_SIZE);
+ 
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (ext4_has_metadata_csum(inode->i_sb))
+ 		csum_size = sizeof(struct ext4_dir_entry_tail);
+ 
+ 	inode->i_size = inode->i_sb->s_blocksize;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 0dd9150..e9777f9 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -83,8 +83,7 @@ static int ext4_inode_csum_verify(struct inode *inode, struct ext4_inode *raw,
+ 
+ 	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
+ 	    cpu_to_le32(EXT4_OS_LINUX) ||
+-	    !EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	    !ext4_has_metadata_csum(inode->i_sb))
+ 		return 1;
+ 
+ 	provided = le16_to_cpu(raw->i_checksum_lo);
+@@ -105,8 +104,7 @@ static void ext4_inode_csum_set(struct inode *inode, struct ext4_inode *raw,
+ 
+ 	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
+ 	    cpu_to_le32(EXT4_OS_LINUX) ||
+-	    !EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	    !ext4_has_metadata_csum(inode->i_sb))
+ 		return;
+ 
+ 	csum = ext4_inode_csum(inode, raw, ei);
+@@ -3928,8 +3926,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 		ei->i_extra_isize = 0;
+ 
+ 	/* Precompute checksum seed for inode metadata */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++	if (ext4_has_metadata_csum(sb)) {
+ 		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 		__u32 csum;
+ 		__le32 inum = cpu_to_le32(inode->i_ino);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 3d5de16..bfda18a 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -331,8 +331,7 @@ flags_out:
+ 		if (!inode_owner_or_capable(inode))
+ 			return -EPERM;
+ 
+-		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++		if (ext4_has_metadata_csum(inode->i_sb)) {
+ 			ext4_warning(sb, "Setting inode version is not "
+ 				     "supported with metadata_csum enabled.");
+ 			return -ENOTTY;
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index 32bce84..8313ca3 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -20,8 +20,7 @@ static __le32 ext4_mmp_csum(struct super_block *sb, struct mmp_struct *mmp)
+ 
+ static int ext4_mmp_csum_verify(struct super_block *sb, struct mmp_struct *mmp)
+ {
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(sb))
+ 		return 1;
+ 
+ 	return mmp->mmp_checksum == ext4_mmp_csum(sb, mmp);
+@@ -29,8 +28,7 @@ static int ext4_mmp_csum_verify(struct super_block *sb, struct mmp_struct *mmp)
+ 
+ static void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp)
+ {
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(sb))
+ 		return;
+ 
+ 	mmp->mmp_checksum = ext4_mmp_csum(sb, mmp);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 7037ecf..61756f9 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -124,8 +124,7 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
+ 		       "directory leaf block found instead of index block");
+ 		return ERR_PTR(-EIO);
+ 	}
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) ||
++	if (!ext4_has_metadata_csum(inode->i_sb) ||
+ 	    buffer_verified(bh))
+ 		return bh;
+ 
+@@ -338,8 +337,7 @@ int ext4_dirent_csum_verify(struct inode *inode, struct ext4_dir_entry *dirent)
+ {
+ 	struct ext4_dir_entry_tail *t;
+ 
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(inode->i_sb))
+ 		return 1;
+ 
+ 	t = get_dirent_tail(inode, dirent);
+@@ -360,8 +358,7 @@ static void ext4_dirent_csum_set(struct inode *inode,
+ {
+ 	struct ext4_dir_entry_tail *t;
+ 
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(inode->i_sb))
+ 		return;
+ 
+ 	t = get_dirent_tail(inode, dirent);
+@@ -436,8 +433,7 @@ static int ext4_dx_csum_verify(struct inode *inode,
+ 	struct dx_tail *t;
+ 	int count_offset, limit, count;
+ 
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(inode->i_sb))
+ 		return 1;
+ 
+ 	c = get_dx_countlimit(inode, dirent, &count_offset);
+@@ -466,8 +462,7 @@ static void ext4_dx_csum_set(struct inode *inode, struct ext4_dir_entry *dirent)
+ 	struct dx_tail *t;
+ 	int count_offset, limit, count;
+ 
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(inode->i_sb))
+ 		return;
+ 
+ 	c = get_dx_countlimit(inode, dirent, &count_offset);
+@@ -555,8 +550,7 @@ static inline unsigned dx_root_limit(struct inode *dir, unsigned infosize)
+ 	unsigned entry_space = dir->i_sb->s_blocksize - EXT4_DIR_REC_LEN(1) -
+ 		EXT4_DIR_REC_LEN(2) - infosize;
+ 
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (ext4_has_metadata_csum(dir->i_sb))
+ 		entry_space -= sizeof(struct dx_tail);
+ 	return entry_space / sizeof(struct dx_entry);
+ }
+@@ -565,8 +559,7 @@ static inline unsigned dx_node_limit(struct inode *dir)
+ {
+ 	unsigned entry_space = dir->i_sb->s_blocksize - EXT4_DIR_REC_LEN(0);
+ 
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (ext4_has_metadata_csum(dir->i_sb))
+ 		entry_space -= sizeof(struct dx_tail);
+ 	return entry_space / sizeof(struct dx_entry);
+ }
+@@ -1524,8 +1517,7 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+ 	int	csum_size = 0;
+ 	int	err = 0, i;
+ 
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (ext4_has_metadata_csum(dir->i_sb))
+ 		csum_size = sizeof(struct ext4_dir_entry_tail);
+ 
+ 	bh2 = ext4_append(handle, dir, &newblock);
+@@ -1691,8 +1683,7 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
+ 	int		csum_size = 0;
+ 	int		err;
+ 
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (ext4_has_metadata_csum(inode->i_sb))
+ 		csum_size = sizeof(struct ext4_dir_entry_tail);
+ 
+ 	if (!de) {
+@@ -1759,8 +1750,7 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 	struct fake_dirent *fde;
+ 	int		csum_size = 0;
+ 
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (ext4_has_metadata_csum(inode->i_sb))
+ 		csum_size = sizeof(struct ext4_dir_entry_tail);
+ 
+ 	blocksize =  dir->i_sb->s_blocksize;
+@@ -1877,8 +1867,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 	ext4_lblk_t block, blocks;
+ 	int	csum_size = 0;
+ 
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (ext4_has_metadata_csum(inode->i_sb))
+ 		csum_size = sizeof(struct ext4_dir_entry_tail);
+ 
+ 	sb = dir->i_sb;
+@@ -2142,8 +2131,7 @@ static int ext4_delete_entry(handle_t *handle,
+ 			return err;
+ 	}
+ 
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (ext4_has_metadata_csum(dir->i_sb))
+ 		csum_size = sizeof(struct ext4_dir_entry_tail);
+ 
+ 	BUFFER_TRACE(bh, "get_write_access");
+@@ -2362,8 +2350,7 @@ static int ext4_init_new_dir(handle_t *handle, struct inode *dir,
+ 	int csum_size = 0;
+ 	int err;
+ 
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (ext4_has_metadata_csum(dir->i_sb))
+ 		csum_size = sizeof(struct ext4_dir_entry_tail);
+ 
+ 	if (ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) {
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index bb0e80f..d5afb0a 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -1210,8 +1210,7 @@ static int ext4_set_bitmap_checksums(struct super_block *sb,
+ {
+ 	struct buffer_head *bh;
+ 
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(sb))
+ 		return 0;
+ 
+ 	bh = ext4_get_bitmap(sb, group_data->inode_bitmap);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a0811cc..759f1ca 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -118,8 +118,7 @@ MODULE_ALIAS("ext3");
+ static int ext4_verify_csum_type(struct super_block *sb,
+ 				 struct ext4_super_block *es)
+ {
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(sb))
+ 		return 1;
+ 
+ 	return es->s_checksum_type == EXT4_CRC32C_CHKSUM;
+@@ -140,8 +139,7 @@ static __le32 ext4_superblock_csum(struct super_block *sb,
+ static int ext4_superblock_csum_verify(struct super_block *sb,
+ 				       struct ext4_super_block *es)
+ {
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(sb))
+ 		return 1;
+ 
+ 	return es->s_checksum == ext4_superblock_csum(sb, es);
+@@ -151,8 +149,7 @@ void ext4_superblock_csum_set(struct super_block *sb)
+ {
+ 	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+ 
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(sb))
+ 		return;
+ 
+ 	es->s_checksum = ext4_superblock_csum(sb, es);
+@@ -1989,8 +1986,7 @@ static __le16 ext4_group_desc_csum(struct ext4_sb_info *sbi, __u32 block_group,
+ 	__u16 crc = 0;
+ 	__le32 le_group = cpu_to_le32(block_group);
+ 
+-	if ((sbi->s_es->s_feature_ro_compat &
+-	     cpu_to_le32(EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))) {
++	if (ext4_has_metadata_csum(sbi->s_sb)) {
+ 		/* Use new metadata_csum algorithm */
+ 		__le16 save_csum;
+ 		__u32 csum32;
+@@ -3199,8 +3195,7 @@ static int set_journal_csum_feature_set(struct super_block *sb)
+ 	int compat, incompat;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++	if (ext4_has_metadata_csum(sb)) {
+ 		/* journal checksum v3 */
+ 		compat = 0;
+ 		incompat = JBD2_FEATURE_INCOMPAT_CSUM_V3;
+@@ -3473,8 +3468,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi->s_kbytes_written = le64_to_cpu(es->s_kbytes_written);
+ 
+ 	/* Warn if metadata_csum and gdt_csum are both set. */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
++	if (ext4_has_metadata_csum(sb) &&
+ 	    EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
+ 		ext4_warning(sb, KERN_INFO "metadata_csum and uninit_bg are "
+ 			     "redundant flags; please run fsck.");
+@@ -3488,8 +3482,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	}
+ 
+ 	/* Load the checksum driver */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++	if (ext4_has_metadata_csum(sb)) {
+ 		sbi->s_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
+ 		if (IS_ERR(sbi->s_chksum_driver)) {
+ 			ext4_msg(sb, KERN_ERR, "Cannot load crc32c driver.");
+@@ -3508,8 +3501,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	}
+ 
+ 	/* Precompute checksum seed for all metadata */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (ext4_has_metadata_csum(sb))
+ 		sbi->s_csum_seed = ext4_chksum(sbi, ~0, es->s_uuid,
+ 					       sizeof(es->s_uuid));
+ 
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 42823ab..1e09fc7 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -142,8 +142,7 @@ static int ext4_xattr_block_csum_verify(struct inode *inode,
+ 					sector_t block_nr,
+ 					struct ext4_xattr_header *hdr)
+ {
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
++	if (ext4_has_metadata_csum(inode->i_sb) &&
+ 	    (hdr->h_checksum != ext4_xattr_block_csum(inode, block_nr, hdr)))
+ 		return 0;
+ 	return 1;
+@@ -153,8 +152,7 @@ static void ext4_xattr_block_csum_set(struct inode *inode,
+ 				      sector_t block_nr,
+ 				      struct ext4_xattr_header *hdr)
+ {
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!ext4_has_metadata_csum(inode->i_sb))
+ 		return;
+ 
+ 	hdr->h_checksum = ext4_xattr_block_csum(inode, block_nr, hdr);
+-- 
+1.7.1
+
