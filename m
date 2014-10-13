@@ -1,67 +1,88 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 11/34] dumpe2fs: output cleanup
-Date: Mon, 13 Oct 2014 11:04:33 -0700
-Message-ID: <20141013180433.GF12009@birch.djwong.org>
+Subject: Re: [PATCH 17/34] libext2fs: support allocating uninit blocks in
+ bmap2()
+Date: Mon, 13 Oct 2014 11:34:47 -0700
+Message-ID: <20141013183447.GG12009@birch.djwong.org>
 References: <20140913221112.13646.3873.stgit@birch.djwong.org>
- <20140913221226.13646.37351.stgit@birch.djwong.org>
- <20140919162200.GO26995@thunk.org>
- <20140919200005.GI10150@birch.djwong.org>
+ <20140913221306.13646.36911.stgit@birch.djwong.org>
+ <20141013143526.GE9738@thunk.org>
+ <20141013165653.GC12009@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, TR Reardon <thomas_reardon@hotmail.com>
+Cc: linux-ext4@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:47508 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754102AbaJMSEk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Oct 2014 14:04:40 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:18467 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753225AbaJMSew (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Oct 2014 14:34:52 -0400
 Content-Disposition: inline
-In-Reply-To: <20140919200005.GI10150@birch.djwong.org>
+In-Reply-To: <20141013165653.GC12009@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 19, 2014 at 01:00:05PM -0700, Darrick J. Wong wrote:
-> On Fri, Sep 19, 2014 at 12:22:00PM -0400, Theodore Ts'o wrote:
-> > On Sat, Sep 13, 2014 at 03:12:26PM -0700, Darrick J. Wong wrote:
-> > > Don't display unused inodes twice, and make it clear that we're
-> > > printing a descriptor checksum.
+On Mon, Oct 13, 2014 at 09:56:53AM -0700, Darrick J. Wong wrote:
+> On Mon, Oct 13, 2014 at 10:35:26AM -0400, Theodore Ts'o wrote:
+> > On Sat, Sep 13, 2014 at 03:13:06PM -0700, Darrick J. Wong wrote:
+> > > In order to support fallocate, we need to be able to have
+> > > ext2fs_bmap2() allocate blocks and put them into uninitialized
+> > > extents.  There's a flag to do this in the extent code, but it's not
+> > > exposed to the bmap2 interface, so plumb that in.  Eventually
+> > > fallocate or fuse2fs or somebody will use it.
 > > > 
 > > > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > > Cc: TR Reardon <thomas_reardon@hotmail.com>
+> > > ---
+> > >  lib/ext2fs/bmap.c   |   24 ++++++++++++++++++++++--
+> > >  lib/ext2fs/ext2fs.h |    1 +
+> > >  2 files changed, 23 insertions(+), 2 deletions(-)
+> > > 
+> > > 
+> > > diff --git a/lib/ext2fs/bmap.c b/lib/ext2fs/bmap.c
+> > > index c1d0e6f..a4dc8ef 100644
+> > > --- a/lib/ext2fs/bmap.c
+> > > +++ b/lib/ext2fs/bmap.c
+> > > @@ -72,6 +72,11 @@ static _BMAP_INLINE_ errcode_t block_ind_bmap(ext2_filsys fs, int flags,
+> > >  					    block_buf + fs->blocksize, &b);
+> > >  		if (retval)
+> > >  			return retval;
+> > > +		if (flags & BMAP_UNINIT) {
+> > > +			retval = ext2fs_zero_blocks2(fs, b, 1, NULL, NULL);
+> > > +			if (retval)
+> > > +				return retval;
+> > > +		}
 > > 
-> > One problem with the current output format is that exceeds the 80
-> > character line limit pretty blatently:
-> > 
-> > Group 3: (Blocks 24577-32768) [INODE_UNINIT, BLOCK_UNINIT, ITABLE_ZEROED]
-> >   Checksum 0x5bd9, unused inodes 2048
-> >   Backup superblock at 24577, Group descriptors at 24578-24578
-> >   Reserved GDT blocks at 24579-24833
-> >   Block bitmap at 261 (bg #0 + 260), csum 0x00000000, Inode bitmap at 269 (bg #0 + 268), csum 0x00000000
-> >   Inode table at 1042-1297 (bg #0 + 1041)
-> >   7935 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
-> >   Free blocks: 24834-32768
-> >   Free inodes: 6145-8192
-> > 
-> > If we are printing the checksum, we probably need to insert a line
-> > break and indent before printing the Inode bitmap.  Does that seem
-> > reasonable?
+> > What I think we should do is to have two separate new BMAP_ flags;
+> > BMAP_UNINIT, which sets the uninit bit, and BMAP_ZERO, which requests
+> > that the block be zeroed.  I don't think it should follow that whe you
+> > set the uninit bit via the libext2fs, the block wil automatically be
+> > zeroed.  After all, userspace can't assume that if the uninit bit is
+> > set, that the block will be pre-zeroed, since files fallocated by the
+> > kernel won't meet that guarantee.
 > 
-> Seems fine to me, since other BG fields get their own line anyway.  Do you want
-> me to make a(nother) patch, or have you already fixed this up in git?
+> On an extent based file, we can record the BLOCK_UNINIT status in the extent
+> flags so that subsequent reads return zeroes.  On a block mapped file it's not
+> possible to record the uninitialized status (short of unmapping the block), so
+> here I was trying to emulate the read behavior you'd get with an extent file.
+> 
+> Kernel fallocate() refuses to service non-extent files, so there's not much
+> precedent there unless you want to block BMAP_UNINIT on such files.
+> 
+> So... I agree that BMAP_ZERO would be a useful feature anyway.  My question is,
+> if we pass in a non-extent file with BMAP_UNINIT but not BMAP_ZERO, should we
+> simply return -EINVAL?
 
-Done, but it's a huge patch (~4700 lines) on account of having to change a lot
-of testcases' expect files.
+Never mind, now that I thought more about the implementation, I think we can
+trust callers to DTRT.
 
-I could change the patch to emit the newline before the inode bitmap line only
-if metadata_csum is present.  It would make the output less consistent, though.
-What do you think, Ted?
+Alternately, this enables that fallocate-but-dont-ever-zero use case which
+keeps popping up, so it would seem to have /some/ value to some people.
 
 --D
 
-> 
 > --D
+> 
 > > 
-> > 						- Ted
+> > 					- Ted
 > > --
 > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > > the body of a message to majordomo@vger.kernel.org
