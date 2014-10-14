@@ -1,172 +1,127 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 1/2] xfstests: update 'new' script
-Date: Tue, 14 Oct 2014 17:59:48 +0400
-Message-ID: <1413295189-28530-1-git-send-email-dmonakhov@openvz.org>
-Cc: linux-ext4@vger.kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>
-To: fstests@vger.kernel.org
+Subject: Re: [PATCH] add aio/dio regression test race between write and fcntl V2
+Date: Tue, 14 Oct 2014 18:06:26 +0400
+Message-ID: <87iojmpwyl.fsf@openvz.org>
+References: <1412866642-25191-1-git-send-email-dmonakhov@openvz.org> <20141014051151.GK5267@dastard>
+Mime-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha1; protocol="application/pgp-signature"
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:7058 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755286AbaJNN75 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 Oct 2014 09:59:57 -0400
+Received: from mail-wi0-f176.google.com ([209.85.212.176]:44142 "EHLO
+	mail-wi0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932292AbaJNOGf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Oct 2014 10:06:35 -0400
+In-Reply-To: <20141014051151.GK5267@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-- Update script to support new test cheme tests/$fs_type/$TEST_IDX
-- Try to use first unused ID
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- new |   78 +++++++++++++++++++++++++++++++++++++++++++++++-------------------
- 1 files changed, 55 insertions(+), 23 deletions(-)
+Dave Chinner <david@fromorbit.com> writes:
 
-diff --git a/new b/new
-index f3e6fa1..9fa522e 100755
---- a/new
-+++ b/new
-@@ -32,10 +32,22 @@ _cleanup()
-     :
- }
- 
--if [ ! -f group ]
-+SRC_GROUPS=`find tests -not -path tests -type d -printf "%f "`
-+function usage 
-+{
-+    echo "Usage $0 test_dir"
-+    echo "Available dirs are: $SRC_GROUPS"
-+    exit
-+}
-+
-+[ $# -eq 0 ] && usage
-+tdir=tests/$1
-+shift
-+
-+if [ ! -f $tdir/group ]
- then
--    echo "Creating the group index ..."
--    cat <<'End-of-File' >group
-+    echo "Creating the $tdir/group index ..."
-+    cat <<'End-of-File' >$tdir/group
- # QA groups control
- #
- # define groups and default group owners
-@@ -51,10 +63,10 @@ other		some-user-login
- End-of-File
- fi
- 
--if [ ! -w group ]
-+if [ ! -w $tdir/group ]
- then
--    chmod u+w group
--    echo "Warning: making the index file \"group\" writeable"
-+    chmod u+w $tdir/group
-+    echo "Warning: making the index file \"$tdir/group\" writeable"
- fi
- 
- if make
-@@ -64,13 +76,26 @@ else
-     echo "Warning: make failed -- some tests may be missing"
- fi
- 
--last=`grep '^[0-9][0-9]* ' group | sort | tail -1 | sed -e 's/[ 	].*//'`
--# get rid of leading 0s as can be interpreted as octal
--last=`echo $last | sed 's/^0*//'`
--id=`$AWK_PROG </dev/null 'BEGIN{printf "%03d\n",'$last'+1}'`
-+i=0
-+line=0
-+[ -f "$tdir/group" ] || usage
-+
-+for found in `cat $tdir/group | gawk '{ print $1 }'`
-+do
-+    line=$((line+1))
-+    if [ -z "$found" ] || [ "$found" == "#" ];then
-+	continue
-+    fi
-+    i=$((i+1))
-+    id=`printf "%03d" $i`
-+    if [ "$id" != "$found" ];then
-+	break
-+    fi
-+done
-+
- echo "Next test is $id"
- 
--if [ -f $id ]
-+if [ -f $tdir/$id ]
- then
-     echo "Error: test $id already exists!"
-     _cleanup
-@@ -81,7 +106,7 @@ echo -n "Creating skeletal script for you to edit ..."
- 
- year=`date +%Y`
- 
--cat <<End-of-File >$id
-+cat <<End-of-File >$tdir/$id
- #! /bin/bash
- # FS QA Test No. $id
- #
-@@ -146,11 +171,12 @@ End-of-File
- sleep 2		# latency to read messages to this point
- echo ""
- 
--chmod 755 $id
--${EDITOR-vi} $id
-+chmod 755 $tdir/$id
-+${EDITOR-vi} $tdir/$id
- 
- if [ $# -eq 0 ]
- then
-+
-     while true
-     do
- 	echo -n "Add to group(s) [other] (? for list): "
-@@ -158,12 +184,15 @@ then
- 	[ -z "$ans" ] && ans=other
- 	if [ "X$ans" = "X?" ]
- 	then
--	    $AWK_PROG <group '
--BEGIN		{ text = "# ???" }
--/^[a-z]/	{ printf "%-16.16s %s\n",$1,text; text = "# ???"; next }
--NF < 2		{ next }
--		{ text = $0 }' \
--	    | sort
-+	    for d in $SRC_GROUPS; do
-+		l=$(sed -n < tests/$d/group \
-+		    -e 's/#.*//' \
-+		    -e 's/$/ /' \
-+		    -e 's;\(^[0-9][0-9][0-9]\)\(.*$\);\2;p')
-+		grpl="$grpl $l"
-+	    done
-+	    lst=`for word in $grpl; do echo $word; done | sort| uniq `
-+	    echo $lst
- 	else
- 	    break
- 	fi
-@@ -173,18 +202,21 @@ else
-     #
-     for g in $*
-     do
--	if grep "^$g[ 	]" group >/dev/null
-+	if grep "^$g[ 	]" $tdir/group >/dev/null
- 	then
- 	    :
- 	else
--	    echo "Warning: group \"$g\" not defined in ./group"
-+	    echo "Warning: group \"$g\" not defined in $tdir/group"
- 	fi
-     done
-     ans="$*"
- fi
- 
- echo -n "Adding $id to group index ..."
--echo "$id $ans" >>group
-+head -n $(($line-1)) $tdir/group > /tmp/$$.group
-+echo "$id $ans" >> /tmp/$$.group
-+tail -n +$((line)) $tdir/group >> /tmp/$$.group
-+mv /tmp/$$.group $tdir/group
- echo " done."
- 
- exit 0
--- 
-1.7.1
+> On Thu, Oct 09, 2014 at 06:57:22PM +0400, Dmitry Monakhov wrote:
+>> Original report: https://lkml.org/lkml/2014/10/8/545
+>> perform AIO-DIO and fcntl(F_SETFL) concurently
+>> Unaligned AIO likely result in synchronization which makes racewindow wi=
+der.
+>>=20
+>> changes from v1->v2
+>>  - Properly reuse aio context
+>
+> Couple of things below....
+>
+>>=20
+>> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+>> ---
+>>  src/aio-dio-regress/aio-dio-fcntl-race.c |  148 +++++++++++++++++++++++=
++++++++
+>>  tests/generic/326                        |   51 ++++++++++
+>>  tests/generic/326.out                    |    2 +
+>>  tests/generic/group                      |    1 +
+>>  4 files changed, 202 insertions(+), 0 deletions(-)
+>>  create mode 100644 src/aio-dio-regress/aio-dio-fcntl-race.c
+>>  create mode 100755 tests/generic/326
+>>  create mode 100644 tests/generic/326.out
+>>=20
+>> diff --git a/src/aio-dio-regress/aio-dio-fcntl-race.c b/src/aio-dio-regr=
+ess/aio-dio-fcntl-race.c
+>> new file mode 100644
+>> index 0000000..835dbdf
+>> --- /dev/null
+>> +++ b/src/aio-dio-regress/aio-dio-fcntl-race.c
+>> @@ -0,0 +1,148 @@
+>> +/*
+>> + * Perform aio writes to file and toggle O_DIRECT flag concurrently
+>> + * this may trigger race between file->f_flags read and modification
+>> + * unuligned aio allow to makes race window wider.
+>> + * Regression test for https://lkml.org/lkml/2014/10/8/545
+>> + *
+>> + * Copyright (C) 2010 Red Hat, Inc. All Rights reserved.
+>
+> YOu must have copied the code from somewhere. Can you add a note to
+> say where it came from in the patch description? And if you added
+> any significant modifications, you should add your own copyright to
+> it as well...
+>
+>> diff --git a/tests/generic/326 b/tests/generic/326
+>> new file mode 100755
+>> index 0000000..8975a91
+>> --- /dev/null
+>> +++ b/tests/generic/326
+>> @@ -0,0 +1,51 @@
+>> +#! /bin/bash
+>> +# FS QA Test No. 326
+>
+> Can you rename this to the first unused generic test?
+Ok. I thought that I should use latest_used+1.
+And copy-paste other aio-dio test.
+I've fixed './new' script according to your comments and regenerated the te=
+st
+Please find updated version in your mbox
+Message-Id: <1413295189-28530-1-git-send-email-dmonakhov@openvz.org>
+Message-Id: <1413295189-28530-2-git-send-email-dmonakhov@openvz.org>
+>
+>> +# Run aio-dio-fcntl-race - test aio write race with O_DIRECT toggle
+>> +#
+>> +#-----------------------------------------------------------------------
+>> +# Copyright (c) 2009 Dmitry Monakhov.  All Rights Reserved.
+>
+> 2009 doesn't seem right for a test that was just written...
 
+>
+> Cheers,
+>
+> Dave.
+> --=20
+> Dave Chinner
+> david@fromorbit.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--=-=-=
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQIcBAEBAgAGBQJUPS3iAAoJEFzOBSYIXfvet6kP/3Z/+PCGy4TeINjOaLwEDUIH
+on6gF0QFH9GKwmydGuWX9wqirRAjEu63QVVwbDngYgbyCYz3Xhf0WtbJSxyJTKlU
+BGsOUi1qdA0kALSf7jVtItaZGo5p3lU17P8aXD1y0qSFC0czBZvxw5TPNJ5mF/XK
+YdQ8wGvqFP3sM4Ttz0chu1HiHFLkhi2H9cPoep7Ub0JNsSrcRST2Pjlq6VE674iD
+jJpvt1BQXxHekV9KTManZPAOKxca6dnybrZnpr69wQaT9puVmoqUMcDhZcAR63oY
+crx/sdBbKFD2ks7BiMuHcHiFVkLnxqr3O17454YhYcdRCPSKRRLOKY86BM3f/naq
+sTORPb4MoAEuq3oo/5d8JQuvxGM61jTa+RWm7lyOhXDKNqy57/zweBzWI4hRTOlX
+WWqy5ryywNar0BUFBMIPQ+5W8NoE3cvMZOdmL/ISGcSPwybXud6rL8JeE7uuAMQV
+FJlnipD3c5ycX4xkn7cplKqjIJ3L0SnK9vY95G9BSOxmHpt0KRhCSajTL5f8ikmH
+PvcyAZNeF42iX0FF0pEEMY+L0+BrlLlsGGuzH74S5AuWaQZs6kSqnsXqpDEf4Ipg
+x5y5uNo5yutGiXkEnobLhutU7IbY0PBGnQ0s06UOAMREF39crZ/0wPh4MmCFDSj6
+50zE9WC1hBpQKzasFmH7
+=tUqT
+-----END PGP SIGNATURE-----
+--=-=-=--
