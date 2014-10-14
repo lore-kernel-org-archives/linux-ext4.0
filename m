@@ -1,86 +1,75 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] add aio/dio regression test race between write and fcntl
- V2
-Date: Tue, 14 Oct 2014 16:11:51 +1100
-Message-ID: <20141014051151.GK5267@dastard>
-References: <1412866642-25191-1-git-send-email-dmonakhov@openvz.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: BLKZEROOUT + pread should return zeroes, right?
+Date: Mon, 13 Oct 2014 23:02:42 -0700
+Message-ID: <20141014060242.GA22878@birch.djwong.org>
+References: <20141014030132.GA12013@birch.djwong.org>
+ <20141014042711.GJ5267@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: Jens Axboe <axboe@kernel.dk>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	linux-fsdevel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:56696 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750746AbaJNFL5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 Oct 2014 01:11:57 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:29794 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753243AbaJNGCx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Oct 2014 02:02:53 -0400
 Content-Disposition: inline
-In-Reply-To: <1412866642-25191-1-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <20141014042711.GJ5267@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 09, 2014 at 06:57:22PM +0400, Dmitry Monakhov wrote:
-> Original report: https://lkml.org/lkml/2014/10/8/545
-> perform AIO-DIO and fcntl(F_SETFL) concurently
-> Unaligned AIO likely result in synchronization which makes racewindow wider.
+On Tue, Oct 14, 2014 at 03:27:11PM +1100, Dave Chinner wrote:
+> On Mon, Oct 13, 2014 at 08:01:32PM -0700, Darrick J. Wong wrote:
+> > Hi everyone,
+> > 
+> > What's the intended behavior if I issue BLKZEROOUT against a range of disk
+> > sectors and immediately re-read the sectors into a buffer?
 > 
-> changes from v1->v2
->  - Properly reuse aio context
+> Should return zeros.
+> 
+> [...]
+> 
+> > I boiled the whole thing down into the attached test program, which can
+> > reproduce the symptoms in a few loop iterations.  If I insert "sleep(1);"
+> > before the pread64, I pread zeroes every time; otherwise, I only pread zeroes
+> > part of the time.  If I call "ioctl(fd, BLKFLSBUF);" before the BLKZEROOUT, the
+> > chances of preading zeroes increases dramatically, but is still not 100%.
+> 
+> Hint #1: buffered IO == data in page cache.
+> Hint #2: BLKZEROOUT operates at the bio level.
 
-Couple of things below....
+Yeah, I forgot about that little quirk where the page cache is left in the
+dark.  Thank you for the sanity check, Dave.
+
+> > So, uh, is this a bug?  Or is that just how BLKZEROOUT works?  Or did I fubar
+> > the ioctl call?
+> 
+> Broken usage, IMO. If you are going to use the block layer ioctls to
+> manipulate data int eh block device, you should be using direct Io
+> for all your data IO to the block device. Otherwise, coherency
+> problems occur....
+
+So... if these ioctls require direct IO read and write for any sane use model,
+why doesn't the kernel fail the request if the fd isn't in O_DIRECT mode?  Or,
+if we do want to allow the ioctls to run on an fd that's opened in buffered IO
+mode, can we simply invalidate that part of the page cache after calling
+ZEROOUT?
+
+Something idiotic like fsync_bdev() -> blkdev_issue_zeroout -> invalidate_bdev
+-> invalidate_inode_pages2 seems to smooth things over, but that's a big dumb
+hammer.
+
+Tired of this for now, going to bed.
+
+--D
 
 > 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  src/aio-dio-regress/aio-dio-fcntl-race.c |  148 ++++++++++++++++++++++++++++++
->  tests/generic/326                        |   51 ++++++++++
->  tests/generic/326.out                    |    2 +
->  tests/generic/group                      |    1 +
->  4 files changed, 202 insertions(+), 0 deletions(-)
->  create mode 100644 src/aio-dio-regress/aio-dio-fcntl-race.c
->  create mode 100755 tests/generic/326
->  create mode 100644 tests/generic/326.out
+> Cheers,
 > 
-> diff --git a/src/aio-dio-regress/aio-dio-fcntl-race.c b/src/aio-dio-regress/aio-dio-fcntl-race.c
-> new file mode 100644
-> index 0000000..835dbdf
-> --- /dev/null
-> +++ b/src/aio-dio-regress/aio-dio-fcntl-race.c
-> @@ -0,0 +1,148 @@
-> +/*
-> + * Perform aio writes to file and toggle O_DIRECT flag concurrently
-> + * this may trigger race between file->f_flags read and modification
-> + * unuligned aio allow to makes race window wider.
-> + * Regression test for https://lkml.org/lkml/2014/10/8/545
-> + *
-> + * Copyright (C) 2010 Red Hat, Inc. All Rights reserved.
-
-YOu must have copied the code from somewhere. Can you add a note to
-say where it came from in the patch description? And if you added
-any significant modifications, you should add your own copyright to
-it as well...
-
-> diff --git a/tests/generic/326 b/tests/generic/326
-> new file mode 100755
-> index 0000000..8975a91
-> --- /dev/null
-> +++ b/tests/generic/326
-> @@ -0,0 +1,51 @@
-> +#! /bin/bash
-> +# FS QA Test No. 326
-
-Can you rename this to the first unused generic test?
-
-> +# Run aio-dio-fcntl-race - test aio write race with O_DIRECT toggle
-> +#
-> +#-----------------------------------------------------------------------
-> +# Copyright (c) 2009 Dmitry Monakhov.  All Rights Reserved.
-
-2009 doesn't seem right for a test that was just written...
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+> Dave.
+> -- 
+> Dave Chinner
+> david@fromorbit.com
