@@ -1,38 +1,48 @@
-From: Albino Biasutti Neto <bino@riseup.net>
-Subject: Re: [PATCH 1/2] xfstests: update 'new' script
-Date: Thu, 16 Oct 2014 12:55:10 -0300
-Message-ID: <CA+bYFQaKyNkzCGtTwXcdfn4Nr8LM4LGfQWkzzh54EVAmoMxSGQ@mail.gmail.com>
-References: <1413295189-28530-1-git-send-email-dmonakhov@openvz.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: BLKZEROOUT + pread should return zeroes, right?
+Date: Thu, 16 Oct 2014 13:04:15 -0700
+Message-ID: <20141016200415.GA16637@birch.djwong.org>
+References: <20141014030132.GA12013@birch.djwong.org>
+ <20141014042711.GJ5267@dastard>
+ <20141014060242.GA22878@birch.djwong.org>
+ <20141014063210.GK9738@thunk.org>
+ <20141015012534.GB12013@birch.djwong.org>
+ <yq1iojm6rti.fsf@sermon.lab.mkp.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.riseup.net ([198.252.153.129]:35174 "EHLO mx1.riseup.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751322AbaJPPzM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Oct 2014 11:55:12 -0400
-In-Reply-To: <1413295189-28530-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Dave Chinner <david@fromorbit.com>,
+	Jens Axboe <axboe@kernel.dk>, linux-fsdevel@vger.kernel.org,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Martin K. Petersen" <martin.petersen@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <yq1iojm6rti.fsf@sermon.lab.mkp.net>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-2014-10-14 10:59 GMT-03:00 Dmitry Monakhov <dmonakhov@openvz.org>:
-> - Update script to support new test cheme tests/$fs_type/$TEST_IDX
-> - Try to use first unused ID
->
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  new |   78 +++++++++++++++++++++++++++++++++++++++++++++++-------------------
->  1 files changed, 55 insertions(+), 23 deletions(-)
->
-> -chmod 755 $id
-> -${EDITOR-vi} $id
-> +chmod 755 $tdir/$id
-> +${EDITOR-vi} $tdir/$id
+On Tue, Oct 14, 2014 at 09:32:25PM -0400, Martin K. Petersen wrote:
+> >>>>> "Darrick" == Darrick J Wong <darrick.wong@oracle.com> writes:
+> 
+> Darrick> Well then let's change BLKZEROOUT to require O_DIRECT instead
+> Darrick> of hiding the coherency problem, 
+> 
+> That would break existing users, though.
 
-You could leave only $EDITOR ?
+<shrug> If they're using the existing BLKZEROOUT without O_DIRECT they're
+already broken.
 
-In executing is on user preference.
+But I might as well just fix them quietly.
 
-                          Albino
-                          binoanb.eti.br
+--D
+
+> Darrick> A further optimization to mke2fs would be to detect that we've
+> Darrick> run discard-with-zeroes and therefore can skip issuing
+> Darrick> subsequent zeroouts on the same ranges, but I'm wary that
+> Darrick> discard-zeroes-data does what it purports to do.
+> 
+> It's dubious. I'm working on making sure we only set discard_zeroes_data
+> when the device guarantees it for 3.19.
+> 
+> -- 
+> Martin K. Petersen	Oracle Linux Engineering
