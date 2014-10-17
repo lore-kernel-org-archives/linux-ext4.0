@@ -1,116 +1,196 @@
-From: Dmitry Monakhov <dmonlist@gmail.com>
-Subject: Re: kernel BUG at fs/ext4/inode.c:2982!
-Date: Fri, 17 Oct 2014 02:03:45 +0400
-Message-ID: <87egu7k6ym.fsf@openvz.org>
-References: <20141016055718.GA17655@redhat.com> <871tq8pdh4.fsf@openvz.org> <20141016143346.GA9910@redhat.com> <20141016201504.GA24798@redhat.com>
+From: Eryu Guan <eguan@redhat.com>
+Subject: Re: [PATCH 1/2] xfstests: update 'new' script
+Date: Fri, 17 Oct 2014 15:36:00 +0800
+Message-ID: <20141017073600.GM13912@dhcp-13-216.nay.redhat.com>
+References: <1413295189-28530-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-=-="
-To: Dave Jones <davej@redhat.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20141016201504.GA24798@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:48553 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750835AbaJQHgH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Oct 2014 03:36:07 -0400
+Content-Disposition: inline
+In-Reply-To: <1413295189-28530-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
-Content-Type: multipart/signed; boundary="==-=-=";
-	micalg=pgp-sha1; protocol="application/pgp-signature"
+On Tue, Oct 14, 2014 at 05:59:48PM +0400, Dmitry Monakhov wrote:
+> - Update script to support new test cheme tests/$fs_type/$TEST_IDX
+> - Try to use first unused ID
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  new |   78 +++++++++++++++++++++++++++++++++++++++++++++++-------------------
+>  1 files changed, 55 insertions(+), 23 deletions(-)
+> 
+> diff --git a/new b/new
+> index f3e6fa1..9fa522e 100755
+> --- a/new
+> +++ b/new
+> @@ -32,10 +32,22 @@ _cleanup()
+>      :
+>  }
+>  
+> -if [ ! -f group ]
+> +SRC_GROUPS=`find tests -not -path tests -type d -printf "%f "`
+> +function usage 
 
---==-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Trailing whitespace here.
 
-Dave Jones <davej@redhat.com> writes:
+> +{
+> +    echo "Usage $0 test_dir"
+> +    echo "Available dirs are: $SRC_GROUPS"
+> +    exit
+> +}
+> +
+> +[ $# -eq 0 ] && usage
+> +tdir=tests/$1
+> +shift
+> +
+> +if [ ! -f $tdir/group ]
+>  then
+> -    echo "Creating the group index ..."
+> -    cat <<'End-of-File' >group
+> +    echo "Creating the $tdir/group index ..."
+> +    cat <<'End-of-File' >$tdir/group
+>  # QA groups control
+>  #
+>  # define groups and default group owners
+> @@ -51,10 +63,10 @@ other		some-user-login
+>  End-of-File
+>  fi
+>  
+> -if [ ! -w group ]
+> +if [ ! -w $tdir/group ]
+>  then
+> -    chmod u+w group
+> -    echo "Warning: making the index file \"group\" writeable"
+> +    chmod u+w $tdir/group
+> +    echo "Warning: making the index file \"$tdir/group\" writeable"
+>  fi
+>  
+>  if make
+> @@ -64,13 +76,26 @@ else
+>      echo "Warning: make failed -- some tests may be missing"
+>  fi
+>  
+> -last=`grep '^[0-9][0-9]* ' group | sort | tail -1 | sed -e 's/[ 	].*//'`
+> -# get rid of leading 0s as can be interpreted as octal
+> -last=`echo $last | sed 's/^0*//'`
+> -id=`$AWK_PROG </dev/null 'BEGIN{printf "%03d\n",'$last'+1}'`
+> +i=0
+> +line=0
+> +[ -f "$tdir/group" ] || usage
+> +
+> +for found in `cat $tdir/group | gawk '{ print $1 }'`
+> +do
+> +    line=$((line+1))
+> +    if [ -z "$found" ] || [ "$found" == "#" ];then
+> +	continue
+> +    fi
+> +    i=$((i+1))
+> +    id=`printf "%03d" $i`
+> +    if [ "$id" != "$found" ];then
+> +	break
+> +    fi
+> +done
+> +
 
-> On Thu, Oct 16, 2014 at 10:33:46AM -0400, Dave Jones wrote:
->
->  >  > Try this patch http://www.spinics.net/lists/linux-ext4/msg45683.html
->  >=20
->  > I'll give it a try if I can get it reproducing easily, otherwise I cna=
-'t say
->  > either way whether the patch is doing any good.
->
-> ok, I managed to reproduce it a few times, and then tried again with
-> your patch.  I'm not sure if it's related, but I'm now seeing lockups
-> in ext4.  The process that gets stuck looks like this..
-99.99% this one is not related. This is just one more uncovered one
-by trinity magics. Looks like I've got what is wrong
-lseek SEEK_HOLE/SEEK_DATA try to find block allocated one by one
-instead of using ext4_ext_next_allocated_block() COMMIT c8c0df24
-Plese look an my test below. I'm too tired for today (especially
-after Gone girl the movie). I'll send patch tomorrow.
->
-> trinity-c21     R  running task    13232  9781    831 0x10000004
->  0000000000000000 0000000000000001 0000000000000000 0000000000000000
->  ffff8800c8d333d8 0000000000000000 0000000000000002 00000000cacaa650
->  ffff880217cf7db8 0000000000000000 0000000000000000 ffffffffa929ff8c
-> Call Trace:
->  [<ffffffffa929ff8c>] ? ext4_map_blocks+0x31c/0x560
->  [<ffffffffa929fe75>] ? ext4_map_blocks+0x205/0x560
->  [<ffffffffa92e689c>] ? ext4_es_find_delayed_extent_range+0x48c/0x4e0
->  [<ffffffffa9298fe1>] ? ext4_llseek+0x261/0x3f0
->  [<ffffffffa922e6e9>] ? __fdget_pos+0x49/0x50
->  [<ffffffffa90e484e>] ? rcu_read_lock_held+0x6e/0x80
->  [<ffffffffa920ca44>] ? SyS_lseek+0x94/0xc0
->
-> I've got to run right now, but I'll look into tracing it some more when I=
- get back.
->
-> 	Dave
+If the group file is all in shape and first unused id is the lastid+1,
+the script fails here, ./new btrfs could reproduce this
 
---==-=-=
-Content-Type: application/pgp-signature
+ # ./new btrfs
+ .....
+ Next test is 078
+ Error: test 078 already exists!
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQIcBAEBAgAGBQJUQEDCAAoJEFzOBSYIXfveYnMP/jhrHc5AtCoghjkMwt/2Vq5W
-7c6gTiiAeoRaPqdxhXoya0iGZPwnheQSeChOWoQllgNpu54ZgwhSWMa5sm9/ZXr8
-Zv2z7ZdjXsb1Ld6FPY0t3qL6+rvIqh1FgmOtsIyYprfBpekjXn4jzfXTD5OJf3g5
-wOsindZilPd+BXXKu6yJYGcZ4qNFV63Zf85jAnhbLUaROUVU2CSrQ7nPrx865Nu6
-stgwXExamr4oyBoOMZrjhuRUbq3yb/uXi4Y86G6BnRSIO5MdmgYmDBEqukT9hW2V
-T2zPDqf/jn3idmTolBNGRTZhQzdhuQAEFSh8K72CIVJcvhRbvcNpivVNVft3NXr9
-H7mwH3vyFf2msBbWeAD5WxHRa05oHnqzzVLlz8OW1iRpdj9LbFwa9jKmw9uKnDRv
-iN95S/KlblIMk57S9snTIen43t9DNsHsLv8pdp36k3uNpfbrUG0Re6i0c9XeCNf8
-r5fvTi9iY25/8aEPByZN6YGYVDCzVbyRSP27GBrFfRjX1W+xBoWUqSZMa5oWEvzB
-kQauafQRv98raxT8vemlWmjn+cqHDFB5wrlp8IAV2MCAFvNO+nXGBp1ZhSD+ztpV
-Z7s2XyLS82NNf9em5FUhjXBqQAZvzBhVjoKd9+coYCJFvdD9gLkFYZctmLqrOxct
-glIef+IrwyuX3dqpCdXZ
-=6lIW
------END PGP SIGNATURE-----
---==-=-=--
-
---=-=-=
-Content-Type: text/plain
-Content-Disposition: inline; filename=lseek.c
-
-/*
- * regression test for bug in ext4_seek_data
- *  (C) Dmitry Monakhov 
- * original report https://lkml.org/lkml/2014/10/16/620
- */		
-#define _GNU_SOURCE
-#define _LARGEFILE_SOURCE
-#define _FILE_OFFSET_BITS 64
-#include <sys/types.h>
-#include <unistd.h>
-#include <fcntl.h>
-
-#ifndef SEEK_DATA
-#define SEEK_DATA       3
-#endif
-
-int main(int argc, char **argv)
-{
-        int fd;
-        loff_t size = 1ULL << 40;
-        fd = open("test", O_RDWR|O_CREAT, 0777);
-        ftruncate(fd, size);
-        size = 1ULL << 39;
-	/* Next line will likely spin forever :) */
-        llseek(fd, size, SEEK_DATA);
-        return 0;
-}
-
---=-=-=--
+Thanks,
+Eryu
+>  echo "Next test is $id"
+>  
+> -if [ -f $id ]
+> +if [ -f $tdir/$id ]
+>  then
+>      echo "Error: test $id already exists!"
+>      _cleanup
+> @@ -81,7 +106,7 @@ echo -n "Creating skeletal script for you to edit ..."
+>  
+>  year=`date +%Y`
+>  
+> -cat <<End-of-File >$id
+> +cat <<End-of-File >$tdir/$id
+>  #! /bin/bash
+>  # FS QA Test No. $id
+>  #
+> @@ -146,11 +171,12 @@ End-of-File
+>  sleep 2		# latency to read messages to this point
+>  echo ""
+>  
+> -chmod 755 $id
+> -${EDITOR-vi} $id
+> +chmod 755 $tdir/$id
+> +${EDITOR-vi} $tdir/$id
+>  
+>  if [ $# -eq 0 ]
+>  then
+> +
+>      while true
+>      do
+>  	echo -n "Add to group(s) [other] (? for list): "
+> @@ -158,12 +184,15 @@ then
+>  	[ -z "$ans" ] && ans=other
+>  	if [ "X$ans" = "X?" ]
+>  	then
+> -	    $AWK_PROG <group '
+> -BEGIN		{ text = "# ???" }
+> -/^[a-z]/	{ printf "%-16.16s %s\n",$1,text; text = "# ???"; next }
+> -NF < 2		{ next }
+> -		{ text = $0 }' \
+> -	    | sort
+> +	    for d in $SRC_GROUPS; do
+> +		l=$(sed -n < tests/$d/group \
+> +		    -e 's/#.*//' \
+> +		    -e 's/$/ /' \
+> +		    -e 's;\(^[0-9][0-9][0-9]\)\(.*$\);\2;p')
+> +		grpl="$grpl $l"
+> +	    done
+> +	    lst=`for word in $grpl; do echo $word; done | sort| uniq `
+> +	    echo $lst
+>  	else
+>  	    break
+>  	fi
+> @@ -173,18 +202,21 @@ else
+>      #
+>      for g in $*
+>      do
+> -	if grep "^$g[ 	]" group >/dev/null
+> +	if grep "^$g[ 	]" $tdir/group >/dev/null
+>  	then
+>  	    :
+>  	else
+> -	    echo "Warning: group \"$g\" not defined in ./group"
+> +	    echo "Warning: group \"$g\" not defined in $tdir/group"
+>  	fi
+>      done
+>      ans="$*"
+>  fi
+>  
+>  echo -n "Adding $id to group index ..."
+> -echo "$id $ans" >>group
+> +head -n $(($line-1)) $tdir/group > /tmp/$$.group
+> +echo "$id $ans" >> /tmp/$$.group
+> +tail -n +$((line)) $tdir/group >> /tmp/$$.group
+> +mv /tmp/$$.group $tdir/group
+>  echo " done."
+>  
+>  exit 0
+> -- 
+> 1.7.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
