@@ -1,284 +1,429 @@
-From: Dmitry Monakhov <dmonlist-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Subject: Re: Hang writing to nfs-mounted filesystem from client, all nfsd tasks on server blocked in D
-Date: Fri, 17 Oct 2014 23:12:09 +0400
-Message-ID: <87k33yik8m.fsf@openvz.org>
-References: <544156FE.7070905@windriver.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/12 v2] Moving i_dquot out of struct inode
+Date: Fri, 17 Oct 2014 21:24:28 +0200
+Message-ID: <20141017192428.GA19788@quack.suse.cz>
+References: <1412952910-7142-1-git-send-email-jack@suse.cz>
+ <20141011133452.GA29004@infradead.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha1; protocol="application/pgp-signature"
-To: Chris Friesen <chris.friesen-CWA4WttNNZF54TAoqtyWWQ@public.gmane.org>,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org,
-	adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, linux-rt-users-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <544156FE.7070905-CWA4WttNNZF54TAoqtyWWQ@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
+	xfs@oss.sgi.com, cluster-devel@redhat.com,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
+	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
+	Dave Kleikamp <shaggy@kernel.org>,
+	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
+	viro@zeniv.linux.org.uk
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20141011133452.GA29004@infradead.org>
+Sender: reiserfs-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Sat 11-10-14 06:34:52, Christoph Hellwig wrote:
+> I still very much disagree with the s_inode_fields indirection.  Please
+> find a patch below to remove it, and use a get_dquots super_block
+> operation instead.  This leads to less and better readable code,
+> and serves 4 bytes in every inode in the system.  Additionally the
+  I don't see the 4-bytes per inode saving, what am I missing? Frankly, I
+don't see a difference in readability but since you and Al agree on that I
+concede to your taste :)
 
-Chris Friesen <chris.friesen-CWA4WttNNZF54TAoqtyWWQ@public.gmane.org> writes:
+> indirection could easily be optimized away by directly passing the
+> dquot array in various functions, but for now I'd like to keep it
+> simple.
+  So after I wrote a patch to avoid the indirection in most places (we
+cannot avoid it during quotaon and quotaoff but those are corner cases) I
+also think it's better to leave it for a separate patch series. It's mostly
+trivial but there's lot of churn when functions prototypes change, names
+need to change, etc. and with that I'd probably do other cleanups of the
+quota API towards filesystems (to somewhat reduce number of functions).
 
-> Hi,
->
-> We've run into an odd bug and I'm looking for some advice on how to=20
-> proceed.  Please excuse the cross-posting, I wasn't sure where this=20
-> belongs.  Any guidance would be greatly appreciated.
->
-> The problem we're seeing is that by copying a large (10GB) file to an=20
-> nfs-mounted directory we can cause all the nfsd threads to hang in D=20
-> state on the server.
->
-> Background:
->
-> We've got a couple of systems running 3.4.97, with the "rt120" patch for=
-=20
-> CONFIG_PREEMPT_RT.  On the server we've got an nfs-exported ext4=20
-> filesystem, on top of drbd (used for mirroring over the network via=20
-> protocol C), on top of LVM (simple vg on top of pv, nothing fancy), on=20
-> top of a SATA SSD.
->
-> Stuff we've ruled out:
->
-> With the above system within 1-3 iterations of copying the file we can=20
-> cause a hang.  If we switch to spinning SATA disks we were unable to=20
-> trigger the problem.  However, if we run within virtualbox with virtual=20
-> PIIX4 IDE disks then we can reproduce the problem.  This seems to point=20
-> to a timing issue as opposed to a hardware issue.
->
-> We've confirmed that we can reproduce the problem with drbd out of the=20
-> picture (NFS-exported ext4 on LVM on virtual disks in virtualbox) but it=
-=20
-> takes longer than with the drbd disks.
->
-> We've confirmed that we can reproduce the problem with both "deadline"=20
-> and "noop" I/O schedulers.
->
->
-> Stuff still to try:
->
-> We're working on setting up a minimal test-case with both the RT and=20
-> standard kernels.  As it stands there are a lot of other components=20
-> running that make it harder to rebuild with different kernel options.
->
->
-> Details:
->
-> These are the processes we saw stuck in disk sleep:
->
-> $ ps aux | grep D
-> USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
-> root      1797  4.2  0.0      0     0 ?        D    19:46   9:51 [nfsd]
-> root      1798  4.2  0.0      0     0 ?        D    19:46   9:54 [nfsd]
-> root      1799  4.2  0.0      0     0 ?        D    19:46   9:54 [nfsd]
-> root      1800  4.2  0.0      0     0 ?        D    19:46   9:52 [nfsd]
-> root      1801  4.2  0.0      0     0 ?        D    19:46   9:53 [nfsd]
-> root      1802  4.2  0.0      0     0 ?        D    19:46   9:52 [nfsd]
-> root      1803  4.2  0.0      0     0 ?        D    19:46   9:52 [nfsd]
-> root      1804  4.2  0.0      0     0 ?        D    19:46   9:52 [nfsd]
-> root      5305  0.0  0.0      0     0 ?        D    19:49   0:03=20
-> [jbd2/drbd3-8]
-> root      5634  0.0  0.0      0     0 ?        D    19:49   0:05=20
-> [flush-147:3]
->
-> Most of the nfsd threads are stuck waiting for the mutex on an inode in=20
-> order to do a write to the disk. For example, the traceback for pid 1797=
-=20
-> [nfsd]:
->
-> [<ffffffff8110fd46>] generic_file_aio_write+0x56/0xe0
-> [<ffffffff8120591f>] ext4_file_write+0xbf/0x250
-> [<ffffffff811689ab>] do_sync_readv_writev+0xdb/0x120
-> [<ffffffff81168c94>] do_readv_writev+0xd4/0x1d0
-> [<ffffffff81168dcc>] vfs_writev+0x3c/0x50
-> [<ffffffffa01701b8>] nfsd_vfs_write.isra.12+0xf8/0x2e0 [nfsd]
-> [<ffffffffa0172888>] nfsd_write+0xf8/0x110 [nfsd]
-> [<ffffffffa0178b5f>] nfsd3_proc_write+0x9f/0xe0 [nfsd]
-> [<ffffffffa016cade>] nfsd_dispatch+0xbe/0x1c0 [nfsd]
-> [<ffffffff81871679>] svc_process+0x499/0x790
-> [<ffffffffa016c125>] nfsd+0xc5/0x1a0 [nfsd]
-> [<ffffffff810609bb>] kthread+0xdb/0xe0
-> [<ffffffff8193b904>] kernel_thread_helper+0x4/0x10
->
-> Where generic_file_aio_write() is calling mutex_lock(&inode->i_mutex).
->
-> Looking through the other tracebacks, it appears that pid 1803 [nfsd]=20
-> probably has this mutex. Also, looking at the block_start in=20
-> /proc/1803/sched (, it appears that this was the first process to block:
->
-> se.statistics.block_start          :      13948189.066634
->
-> Its traceback looks like this:
-> [<ffffffff8125dc55>] jbd2_log_wait_commit+0xc5/0x150
-> [<ffffffff8125f628>] jbd2_complete_transaction+0xb8/0xd0
-> [<ffffffff81205dcd>] ext4_sync_file+0x1fd/0x4b0
-> [<ffffffff81197ad5>] generic_write_sync+0x55/0x70
-> [<ffffffff8110fdb6>] generic_file_aio_write+0xc6/0xe0
-> [<ffffffff8120591f>] ext4_file_write+0xbf/0x250
-> [<ffffffff811689ab>] do_sync_readv_writev+0xdb/0x120
-> [<ffffffff81168c94>] do_readv_writev+0xd4/0x1d0
-> [<ffffffff81168dcc>] vfs_writev+0x3c/0x50
-> [<ffffffffa01701b8>] nfsd_vfs_write.isra.12+0xf8/0x2e0 [nfsd]
-> [<ffffffffa0172888>] nfsd_write+0xf8/0x110 [nfsd]
-> [<ffffffffa0178b5f>] nfsd3_proc_write+0x9f/0xe0 [nfsd]
-> [<ffffffffa016cade>] nfsd_dispatch+0xbe/0x1c0 [nfsd]
-> [<ffffffff81871679>] svc_process+0x499/0x790
-> [<ffffffffa016c125>] nfsd+0xc5/0x1a0 [nfsd]
-> [<ffffffff810609bb>] kthread+0xdb/0xe0
-> [<ffffffff8193b904>] kernel_thread_helper+0x4/0x10
->
-> The inode-i_mutex seems to be taken in ext4_sync_file() before the call=20
-> to jbd2_complete_transaction().
->
-> It looks like jbd2_log_wait_commit() has just called schedule() in=20
-> wait_event() in the code below:
->
-> while (tid_gt(tid, journal->j_commit_sequence)) {
-> 	jbd_debug(1, "JBD2: want %d, j_commit_sequence=3D%d\n",
-> 		tid, journal->j_commit_sequence);
-> 	wake_up(&journal->j_wait_commit);
-> 	read_unlock(&journal->j_state_lock);
-> 	wait_event(journal->j_wait_done_commit,
-> 		!tid_gt(tid, journal->j_commit_sequence));
-> 	read_lock(&journal->j_state_lock);
-> }
->
->
-> The kjournald2 thread (pid 5305) blocks significantly later:
-> se.statistics.block_start          :      13953712.751778
->
-> Here is the traceback:
-> [<ffffffff8110e3ae>] sleep_on_page+0xe/0x20
-> [<ffffffff8110e5b8>] wait_on_page_bit+0x78/0x80
-> [<ffffffff8110e81c>] filemap_fdatawait_range+0x10c/0x1b0
-> [<ffffffff8110e8eb>] filemap_fdatawait+0x2b/0x30
-> [<ffffffff8125832c>] jbd2_journal_commit_transaction+0x8dc/0x1a70
-> 	This calls journal_finish_inode_data_buffers which calls
-> 	filemap_fdatawait()
-> [<ffffffff8125ddaf>] kjournald2+0xbf/0x280
-> [<ffffffff810609bb>] kthread+0xdb/0xe0
-> [<ffffffff8193b904>] kernel_thread_helper+0x4/0x10
->
-> It is stuck in jbd2_journal_commit_transaction, apparently waiting for=20
-> inodes to be written to disk? I'm not sure what would be preventing that=
-=20
-> from happening.
->
->
-> One of the nfsd processes is stuck in a different spot:
-> root      1804     2  3 Oct15 ?        00:09:52 [nfsd]
->
-> This is the second process to block:
-> se.statistics.block_start          :      13948189.759783
->
-> And the traceback:
-> [<ffffffff81256f85>] do_get_write_access+0x2b5/0x4e0
-> [<ffffffff81257300>] jbd2_journal_get_write_access+0x30/0x50
-> [<ffffffff8123848e>] __ext4_journal_get_write_access+0x3e/0x80
-> [<ffffffff8123efaf>] ext4_mb_mark_diskspace_used+0xff/0x530
-> [<ffffffff8124074f>] ext4_mb_new_blocks+0x1ef/0x5f0
-> [<ffffffff812361d5>] ext4_ext_map_blocks+0xc05/0x1e60
-> [<ffffffff8120ae15>] ext4_map_blocks+0x1c5/0x270
-> [<ffffffff8120f0dc>] mpage_da_map_and_submit+0xac/0x4c0
-> [<ffffffff8120fd5e>] ext4_da_writepages+0x36e/0x720
-> [<ffffffff8111a5f4>] do_writepages+0x24/0x40
-> [<ffffffff8110f5db>] __filemap_fdatawrite_range+0x5b/0x60
-> [<ffffffff8110f6ea>] filemap_write_and_wait_range+0x5a/0x80
-> [<ffffffff81205c48>] ext4_sync_file+0x78/0x4b0
-> [<ffffffff81197ad5>] generic_write_sync+0x55/0x70
-> [<ffffffff8110fdb6>] generic_file_aio_write+0xc6/0xe0
-> [<ffffffff8120591f>] ext4_file_write+0xbf/0x250
-> [<ffffffff811689ab>] do_sync_readv_writev+0xdb/0x120
-> [<ffffffff81168c94>] do_readv_writev+0xd4/0x1d0
-> [<ffffffff81168dcc>] vfs_writev+0x3c/0x50
-> [<ffffffffa01701b8>] nfsd_vfs_write.isra.12+0xf8/0x2e0 [nfsd]
-> [<ffffffffa0172888>] nfsd_write+0xf8/0x110 [nfsd]
-> [<ffffffffa0178b5f>] nfsd3_proc_write+0x9f/0xe0 [nfsd]
-> [<ffffffffa016cade>] nfsd_dispatch+0xbe/0x1c0 [nfsd]
-> [<ffffffff81871679>] svc_process+0x499/0x790
-> [<ffffffffa016c125>] nfsd+0xc5/0x1a0 [nfsd]
-> [<ffffffff810609bb>] kthread+0xdb/0xe0
-> [<ffffffff8193b904>] kernel_thread_helper+0x4/0x10
->
-> I'm pretty sure it called schedule() below in the code from=20
-> do_get_write_access():
-> if (jh->b_jlist =3D=3D BJ_Shadow) {
-> 	DEFINE_WAIT_BIT(wait, &bh->b_state, BH_Unshadow);
-> 	wait_queue_head_t *wqh;
-> 	wqh =3D bit_waitqueue(&bh->b_state, BH_Unshadow);
-> 	JBUFFER_TRACE(jh, "on shadow: sleep");
-> 	jbd_unlock_bh_state(bh);
-> 	/* commit wakes up all shadow buffers after IO */
-> 	for ( ; ; ) {
-> 		prepare_to_wait(wqh, &wait.wait,
-> 		TASK_UNINTERRUPTIBLE);
-> 		if (jh->b_jlist !=3D BJ_Shadow)
-> 			break;
-> 		schedule();
-> 	}
-> 	finish_wait(wqh, &wait.wait);
-> 	goto repeat;
-> }
->
->
-> And finally, there is a flush stuck as well:
-> root      5634     2  0 Oct15 ?        00:00:05 [flush-147:3]
-Please check that you have this path in your tree
-https://lkml.org/lkml/2014/3/7/612
-There are also other bug which was fixed long time ago which was
-related with incorrect barrier handling. Please disable barriers
-temporarily (mount_opt=3D"-onobarrier") and try to reproduce the issue.
->
-> This is the third process to block:
-> se.statistics.block_start          :      13948189.814929
->
-> And the traceback:
-> [<ffffffff8109cd0c>] rt_down_read+0x2c/0x40
-> [<ffffffff8120ac91>] ext4_map_blocks+0x41/0x270
-> [<ffffffff8120f0dc>] mpage_da_map_and_submit+0xac/0x4c0
-> [<ffffffff8120f9c9>] write_cache_pages_da+0x3f9/0x420
-> [<ffffffff8120fd30>] ext4_da_writepages+0x340/0x720
-> [<ffffffff8111a5f4>] do_writepages+0x24/0x40
-> [<ffffffff81191b71>] writeback_single_inode+0x181/0x4b0
-> [<ffffffff811922a2>] writeback_sb_inodes+0x1b2/0x290
-> [<ffffffff8119241e>] __writeback_inodes_wb+0x9e/0xd0
-> [<ffffffff811928e3>] wb_writeback+0x223/0x3f0
-> [<ffffffff81192b4f>] wb_check_old_data_flush+0x9f/0xb0
-> [<ffffffff8119403f>] wb_do_writeback+0x12f/0x250
-> [<ffffffff811941f4>] bdi_writeback_thread+0x94/0x320
-> [<ffffffff810609bb>] kthread+0xdb/0xe0
-> [<ffffffff8193b904>] kernel_thread_helper+0x4/0x10
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+So I'll just change the patches to use the function call instead of
+indirection table as you suggest.
 
---=-=-=
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQIcBAEBAgAGBQJUQWoJAAoJEFzOBSYIXfvenToP/RASnuqp+QkCb6XDQCrx6ZoD
-XX/NgZGIvjBMEEDPeGipgQOzplU7lNgoeY7uE/9xYYvjK3ZBxqZ/Q6I0Dv4FG0T6
-ge/pcCa5tdckDbKsI5YOrOAeWBpmB5luGACUYeqgJ52PYC7UTAqjrPUCh0r2aABX
-0w+gMx9EbMHUOu/YBqFb/MKyPCa3u0iWIDNEpsdgAPti0HrK/hNLa5TxxCH2rcn5
-PHmx/sSsaZ+MwPgEB6aRLAU84dY7FaHyHesiSDgLDpNfYpQsGjALrEZEB/WBNeD6
-TSbnrkzHexetKAqCUi7AxkylREypePMnW5u8L3+GdFXJQNFFegRZE2x4LDe/SrYe
-Y6tW3nUwc5vWLKlClH/Pr1giW3vfxp3DaCDxnIF+RVNtQ7qzZyFbYtQBtdGxBne0
-awkKXZaVBc1JsB0fuIym6+SlIL1Az5h2HwcGIn64jrn+nG0I4NFz5JZ42XN2+awZ
-DnGOdSnrikG05OlwaaosX88Ix+z+Fc3BUeZPSbO1VqVmWJ9AYkMgAugZ0a4bttZp
-m362CrO7oTpEJ8EnXTX0y9QQoqR9bMVhLLPmNV3FC7rNsKVmI1OpUyN4RBJhLZ5u
-OpBk96NQQzs3mXGnpOmgSTMqTNRp9otW2q/Tdg0XUr3bymH4WXU3NtdCBjNqxp7D
-rTpq8GekRRvjNR/qQpBM
-=dOB0
------END PGP SIGNATURE-----
---=-=-=--
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+> 
+> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> index 47d97af..c330e90 100644
+> --- a/fs/ext2/super.c
+> +++ b/fs/ext2/super.c
+> @@ -307,6 +307,11 @@ static int ext2_show_options(struct seq_file *seq, struct dentry *root)
+>  #ifdef CONFIG_QUOTA
+>  static ssize_t ext2_quota_read(struct super_block *sb, int type, char *data, size_t len, loff_t off);
+>  static ssize_t ext2_quota_write(struct super_block *sb, int type, const char *data, size_t len, loff_t off);
+> +
+> +static struct dquot **ext2_get_dquots(struct inode *inode)
+> +{
+> +	return EXT2_I(inode)->i_dquot;
+> +}
+>  #endif
+>  
+>  static const struct super_operations ext2_sops = {
+> @@ -324,13 +329,7 @@ static const struct super_operations ext2_sops = {
+>  #ifdef CONFIG_QUOTA
+>  	.quota_read	= ext2_quota_read,
+>  	.quota_write	= ext2_quota_write,
+> -#endif
+> -};
+> -
+> -static const int ext2_inode_fields[IF_FIELD_NR] = {
+> -#ifdef CONFIG_QUOTA
+> -	[IF_DQUOTS] = offsetof(struct ext2_inode_info, i_dquot) -
+> -		      offsetof(struct ext2_inode_info, vfs_inode),
+> +	.get_dquots	= ext2_get_dquots,
+>  #endif
+>  };
+>  
+> @@ -1103,7 +1102,6 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+>  	sb->s_qcop = &dquot_quotactl_ops;
+>  	sb_dqopt(sb)->allowed_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
+>  #endif
+> -	sb_init_inode_fields(sb, ext2_inode_fields);
+>  
+>  	root = ext2_iget(sb, EXT2_ROOT_INO);
+>  	if (IS_ERR(root)) {
+> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+> index 9e15262..9ca145d 100644
+> --- a/fs/ext3/super.c
+> +++ b/fs/ext3/super.c
+> @@ -769,6 +769,11 @@ static ssize_t ext3_quota_read(struct super_block *sb, int type, char *data,
+>  static ssize_t ext3_quota_write(struct super_block *sb, int type,
+>  				const char *data, size_t len, loff_t off);
+>  
+> +static struct dquot **ext3_get_dquots(struct inode *inode)
+> +{
+> +	return EXT3_I(inode)->i_dquot;
+> +}
+> +
+>  static const struct dquot_operations ext3_quota_operations = {
+>  	.write_dquot	= ext3_write_dquot,
+>  	.acquire_dquot	= ext3_acquire_dquot,
+> @@ -807,17 +812,11 @@ static const struct super_operations ext3_sops = {
+>  #ifdef CONFIG_QUOTA
+>  	.quota_read	= ext3_quota_read,
+>  	.quota_write	= ext3_quota_write,
+> +	.get_dquots	= ext3_get_dquots,
+>  #endif
+>  	.bdev_try_to_free_page = bdev_try_to_free_page,
+>  };
+>  
+> -static const int ext3_inode_fields[IF_FIELD_NR] = {
+> -#ifdef CONFIG_QUOTA
+> -	[IF_DQUOTS] = (int)offsetof(struct ext3_inode_info, i_dquot) -
+> -		      (int)offsetof(struct ext3_inode_info, vfs_inode),
+> -#endif
+> -};
+> -
+>  static const struct export_operations ext3_export_ops = {
+>  	.fh_to_dentry = ext3_fh_to_dentry,
+>  	.fh_to_parent = ext3_fh_to_parent,
+> @@ -2021,7 +2020,6 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
+>  	sb->dq_op = &ext3_quota_operations;
+>  	sb_dqopt(sb)->allowed_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
+>  #endif
+> -	sb_init_inode_fields(sb, ext3_inode_fields);
+>  	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
+>  	INIT_LIST_HEAD(&sbi->s_orphan); /* unlinked but open files */
+>  	mutex_init(&sbi->s_orphan_lock);
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index ceac3c1..f7d4332 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1072,6 +1072,11 @@ static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
+>  			     unsigned int flags);
+>  static int ext4_enable_quotas(struct super_block *sb);
+>  
+> +static struct dquot **ext4_get_dquots(struct inode *inode)
+> +{
+> +	return EXT4_I(inode)->i_dquot;
+> +}
+> +
+>  static const struct dquot_operations ext4_quota_operations = {
+>  	.get_reserved_space = ext4_get_reserved_space,
+>  	.write_dquot	= ext4_write_dquot,
+> @@ -1140,17 +1145,11 @@ static const struct super_operations ext4_nojournal_sops = {
+>  #ifdef CONFIG_QUOTA
+>  	.quota_read	= ext4_quota_read,
+>  	.quota_write	= ext4_quota_write,
+> +	.get_dquots	= ext4_get_dquots,
+>  #endif
+>  	.bdev_try_to_free_page = bdev_try_to_free_page,
+>  };
+>  
+> -static const int ext4_inode_fields[IF_FIELD_NR] = {
+> -#ifdef CONFIG_QUOTA
+> -	[IF_DQUOTS] = offsetof(struct ext4_inode_info, i_dquot) -
+> -		      offsetof(struct ext4_inode_info, vfs_inode),
+> -#endif
+> -};
+> -
+>  static const struct export_operations ext4_export_ops = {
+>  	.fh_to_dentry = ext4_fh_to_dentry,
+>  	.fh_to_parent = ext4_fh_to_parent,
+> @@ -3926,7 +3925,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  		sb->s_qcop = &ext4_qctl_operations;
+>  	sb_dqopt(sb)->allowed_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
+>  #endif
+> -	sb_init_inode_fields(sb, ext4_inode_fields);
+>  	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
+>  
+>  	INIT_LIST_HEAD(&sbi->s_orphan); /* unlinked but open files */
+> diff --git a/fs/jfs/super.c b/fs/jfs/super.c
+> index a13727d..a7b0447 100644
+> --- a/fs/jfs/super.c
+> +++ b/fs/jfs/super.c
+> @@ -54,7 +54,6 @@ static struct kmem_cache *jfs_inode_cachep;
+>  
+>  static const struct super_operations jfs_super_operations;
+>  static const struct export_operations jfs_export_operations;
+> -static const int jfs_inode_fields[IF_FIELD_NR];
+>  static struct file_system_type jfs_fs_type;
+>  
+>  #define MAX_COMMIT_THREADS 64
+> @@ -543,7 +542,6 @@ static int jfs_fill_super(struct super_block *sb, void *data, int silent)
+>  	sb->s_qcop = &dquot_quotactl_ops;
+>  	sb_dqopt(sb)->allowed_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
+>  #endif
+> -	sb_init_inode_fields(sb, jfs_inode_fields);
+>  
+>  	/*
+>  	 * Initialize direct-mapping inode/address-space
+> @@ -842,6 +840,10 @@ out:
+>  	return len - towrite;
+>  }
+>  
+> +static struct dquot **jfs_get_dquots(struct inode *inode)
+> +{
+> +	return JFS_IP(inode)->i_dquot;
+> +}
+>  #endif
+>  
+>  static const struct super_operations jfs_super_operations = {
+> @@ -860,13 +862,7 @@ static const struct super_operations jfs_super_operations = {
+>  #ifdef CONFIG_QUOTA
+>  	.quota_read	= jfs_quota_read,
+>  	.quota_write	= jfs_quota_write,
+> -#endif
+> -};
+> -
+> -static const int jfs_inode_fields[IF_FIELD_NR] = {
+> -#ifdef CONFIG_QUOTA
+> -	[IF_DQUOTS] = (int)offsetof(struct jfs_inode_info, i_dquot) -
+> -		      (int)offsetof(struct jfs_inode_info, vfs_inode),
+> +	.get_dquots	= jfs_get_dquots,
+>  #endif
+>  };
+>  
+> diff --git a/fs/ocfs2/super.c b/fs/ocfs2/super.c
+> index 5d94b9a..c575bab 100644
+> --- a/fs/ocfs2/super.c
+> +++ b/fs/ocfs2/super.c
+> @@ -143,6 +143,11 @@ static int ocfs2_susp_quotas(struct ocfs2_super *osb, int unsuspend);
+>  static int ocfs2_enable_quotas(struct ocfs2_super *osb);
+>  static void ocfs2_disable_quotas(struct ocfs2_super *osb);
+>  
+> +static struct dquot **ocfs2_get_dquots(struct inode *inode)
+> +{
+> +	return OCFS2_I(inode)->i_dquot;
+> +}
+> +
+>  static const struct super_operations ocfs2_sops = {
+>  	.statfs		= ocfs2_statfs,
+>  	.alloc_inode	= ocfs2_alloc_inode,
+> @@ -155,13 +160,7 @@ static const struct super_operations ocfs2_sops = {
+>  	.show_options   = ocfs2_show_options,
+>  	.quota_read	= ocfs2_quota_read,
+>  	.quota_write	= ocfs2_quota_write,
+> -};
+> -
+> -static const int ocfs2_inode_fields[IF_FIELD_NR] = {
+> -#ifdef CONFIG_QUOTA
+> -	[IF_DQUOTS] = offsetof(struct ocfs2_inode_info, i_dquot) -
+> -		      offsetof(struct ocfs2_inode_info, vfs_inode),
+> -#endif
+> +	.get_dquots	= ocfs2_get_dquots,
+>  };
+>  
+>  enum {
+> @@ -2081,7 +2080,6 @@ static int ocfs2_initialize_super(struct super_block *sb,
+>  	sb->dq_op = &ocfs2_quota_operations;
+>  	sb_dqopt(sb)->allowed_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
+>  	sb->s_xattr = ocfs2_xattr_handlers;
+> -	sb_init_inode_fields(sb, ocfs2_inode_fields);
+>  	sb->s_time_gran = 1;
+>  	sb->s_flags |= MS_NOATIME;
+>  	/* this is needed to support O_LARGEFILE */
+> diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+> index ecb8732..b3af224 100644
+> --- a/fs/quota/dquot.c
+> +++ b/fs/quota/dquot.c
+> @@ -893,9 +893,9 @@ out:
+>  }
+>  EXPORT_SYMBOL(dqget);
+>  
+> -static inline struct dquot **i_dquot(const struct inode *inode)
+> +static inline struct dquot **i_dquot(struct inode *inode)
+>  {
+> -	return ((struct dquot **)inode_field(inode, IF_DQUOTS));
+> +	return inode->i_sb->s_op->get_dquots(inode);
+>  }
+>  
+>  static int dqinit_needed(struct inode *inode, int type)
+> @@ -1648,7 +1648,7 @@ EXPORT_SYMBOL(__dquot_alloc_space);
+>  /*
+>   * This operation can block, but only after everything is updated
+>   */
+> -int dquot_alloc_inode(const struct inode *inode)
+> +int dquot_alloc_inode(struct inode *inode)
+>  {
+>  	int cnt, ret = 0, index;
+>  	struct dquot_warn warn[MAXQUOTAS];
+> @@ -1789,7 +1789,7 @@ EXPORT_SYMBOL(__dquot_free_space);
+>  /*
+>   * This operation can block, but only after everything is updated
+>   */
+> -void dquot_free_inode(const struct inode *inode)
+> +void dquot_free_inode(struct inode *inode)
+>  {
+>  	unsigned int cnt;
+>  	struct dquot_warn warn[MAXQUOTAS];
+> diff --git a/fs/reiserfs/super.c b/fs/reiserfs/super.c
+> index 04babe5..72bdcc8 100644
+> --- a/fs/reiserfs/super.c
+> +++ b/fs/reiserfs/super.c
+> @@ -754,6 +754,11 @@ static ssize_t reiserfs_quota_write(struct super_block *, int, const char *,
+>  				    size_t, loff_t);
+>  static ssize_t reiserfs_quota_read(struct super_block *, int, char *, size_t,
+>  				   loff_t);
+> +
+> +static struct dquot **reiserfs_get_dquots(struct inode *inode)
+> +{
+> +	return REISERFS_I(inode)->i_dquot;
+> +}
+>  #endif
+>  
+>  static const struct super_operations reiserfs_sops = {
+> @@ -772,13 +777,7 @@ static const struct super_operations reiserfs_sops = {
+>  #ifdef CONFIG_QUOTA
+>  	.quota_read = reiserfs_quota_read,
+>  	.quota_write = reiserfs_quota_write,
+> -#endif
+> -};
+> -
+> -static const int reiserfs_inode_fields[IF_FIELD_NR] = {
+> -#ifdef CONFIG_QUOTA
+> -	[IF_DQUOTS] = (int)offsetof(struct reiserfs_inode_info, i_dquot) -
+> -		      (int)offsetof(struct reiserfs_inode_info, vfs_inode),
+> +	.get_dquots = reiserfs_get_dquots,
+>  #endif
+>  };
+>  
+> @@ -1646,7 +1645,6 @@ static int read_super_block(struct super_block *s, int offset)
+>  	s->dq_op = &reiserfs_quota_operations;
+>  	sb_dqopt(s)->allowed_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
+>  #endif
+> -	sb_init_inode_fields(s, reiserfs_inode_fields);
+>  
+>  	/*
+>  	 * new format is limited by the 32 bit wide i_blocks field, want to
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 6a801ca..3e1c596 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -612,12 +612,6 @@ struct inode {
+>  	void			*i_private; /* fs or device private pointer */
+>  };
+>  
+> -/* Optional inode fields (stored in filesystems inode if the fs needs them) */
+> -enum inode_fields {
+> -	IF_DQUOTS,	/* Quota pointers: struct dquot *foo[MAXQUOTAS] */
+> -	IF_FIELD_NR	/* Number of optional inode fields */
+> -};
+> -
+>  static inline int inode_unhashed(struct inode *inode)
+>  {
+>  	return hlist_unhashed(&inode->i_hash);
+> @@ -1239,11 +1233,6 @@ struct super_block {
+>  	void 			*s_fs_info;	/* Filesystem private info */
+>  	unsigned int		s_max_links;
+>  	fmode_t			s_mode;
+> -	/*
+> -	 * We could have here just a pointer to the offsets array but this
+> -	 * way we save one dereference when looking up field offsets
+> -	 */
+> -	int			s_inode_fields[IF_FIELD_NR];
+>  
+>  	/* Granularity of c/m/atime in ns.
+>  	   Cannot be worse than a second */
+> @@ -1294,24 +1283,6 @@ struct super_block {
+>  	struct rcu_head		rcu;
+>  };
+>  
+> -static inline void *inode_field(const struct inode *inode,
+> -				enum inode_fields field)
+> -{
+> -	int offset;
+> -
+> -	BUG_ON(field >= IF_FIELD_NR);
+> -	offset = inode->i_sb->s_inode_fields[field];
+> -	if (!offset)	/* Field not present? */
+> -		return NULL;
+> -	return ((char *)inode) + offset;
+> -}
+> -
+> -static inline void sb_init_inode_fields(struct super_block *sb,
+> -					const int *fields)
+> -{
+> -	memcpy(sb->s_inode_fields, fields, sizeof(int) * IF_FIELD_NR);
+> -}
+> -
+>  extern struct timespec current_fs_time(struct super_block *sb);
+>  
+>  /*
+> @@ -1609,6 +1580,7 @@ struct super_operations {
+>  #ifdef CONFIG_QUOTA
+>  	ssize_t (*quota_read)(struct super_block *, int, char *, size_t, loff_t);
+>  	ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
+> +	struct dquot **(*get_dquots)(struct inode *);
+>  #endif
+>  	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
+>  	long (*nr_cached_objects)(struct super_block *, int);
+> diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
+> index 1d3eee5..f23538a 100644
+> --- a/include/linux/quotaops.h
+> +++ b/include/linux/quotaops.h
+> @@ -64,10 +64,10 @@ void dquot_destroy(struct dquot *dquot);
+>  int __dquot_alloc_space(struct inode *inode, qsize_t number, int flags);
+>  void __dquot_free_space(struct inode *inode, qsize_t number, int flags);
+>  
+> -int dquot_alloc_inode(const struct inode *inode);
+> +int dquot_alloc_inode(struct inode *inode);
+>  
+>  int dquot_claim_space_nodirty(struct inode *inode, qsize_t number);
+> -void dquot_free_inode(const struct inode *inode);
+> +void dquot_free_inode(struct inode *inode);
+>  void dquot_reclaim_space_nodirty(struct inode *inode, qsize_t number);
+>  
+>  int dquot_disable(struct super_block *sb, int type, unsigned int flags);
+> @@ -213,12 +213,12 @@ static inline void dquot_drop(struct inode *inode)
+>  {
+>  }
+>  
+> -static inline int dquot_alloc_inode(const struct inode *inode)
+> +static inline int dquot_alloc_inode(struct inode *inode)
+>  {
+>  	return 0;
+>  }
+>  
+> -static inline void dquot_free_inode(const struct inode *inode)
+> +static inline void dquot_free_inode(struct inode *inode)
+>  {
+>  }
+>  
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
