@@ -1,303 +1,231 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: Re: [PATCH 2/2] add aio/dio regression test race between write and
- fcntl V3
-Date: Fri, 17 Oct 2014 15:48:37 +0800
-Message-ID: <20141017074837.GN13912@dhcp-13-216.nay.redhat.com>
-References: <1413295189-28530-1-git-send-email-dmonakhov@openvz.org>
- <1413295189-28530-2-git-send-email-dmonakhov@openvz.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH 1/2] xfstests: update 'new' script
+Date: Fri, 17 Oct 2014 11:56:33 +0400
+Message-ID: <87wq7zt9hq.fsf@openvz.org>
+References: <1413295189-28530-1-git-send-email-dmonakhov@openvz.org> <20141017073600.GM13912@dhcp-13-216.nay.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha1; protocol="application/pgp-signature"
 Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+To: Eryu Guan <eguan@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62270 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750911AbaJQHso (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 17 Oct 2014 03:48:44 -0400
-Content-Disposition: inline
-In-Reply-To: <1413295189-28530-2-git-send-email-dmonakhov@openvz.org>
+Received: from mail-wi0-f175.google.com ([209.85.212.175]:34555 "EHLO
+	mail-wi0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750729AbaJQH4m (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Oct 2014 03:56:42 -0400
+In-Reply-To: <20141017073600.GM13912@dhcp-13-216.nay.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 14, 2014 at 05:59:49PM +0400, Dmitry Monakhov wrote:
-> Original report: https://lkml.org/lkml/2014/10/8/545
-> perform AIO-DIO and fcntl(F_SETFL) concurently
-> Unaligned AIO likely result in synchronization which makes racewindow wider.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-If you can put patch info here, it'll be helpful, so people would know
-which patch fixes the problem.
+Eryu Guan <eguan@redhat.com> writes:
 
-> 
-> changes from v2->v3
->  - Copyright fixes according to Dave's comments
-> changes from v1->v2
->  - Properly reuse aio context
-> 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  src/aio-dio-regress/aio-dio-fcntl-race.c |  148 ++++++++++++++++++++++++++++++
->  tests/generic/035                        |   50 ++++++++++
->  tests/generic/035.out                    |    2 +
-
-Seems 035 has been taken now..
-
->  tests/generic/group                      |    2 +
->  4 files changed, 202 insertions(+), 0 deletions(-)
->  create mode 100644 src/aio-dio-regress/aio-dio-fcntl-race.c
->  create mode 100755 tests/generic/035
->  create mode 100644 tests/generic/035.out
-> 
-> diff --git a/src/aio-dio-regress/aio-dio-fcntl-race.c b/src/aio-dio-regress/aio-dio-fcntl-race.c
-> new file mode 100644
-> index 0000000..e1c8998
-> --- /dev/null
-> +++ b/src/aio-dio-regress/aio-dio-fcntl-race.c
-> @@ -0,0 +1,148 @@
-> +/*
-> + * Perform aio writes to file and toggle O_DIRECT flag concurrently
-> + * this may trigger race between file->f_flags read and modification
-> + * unuligned aio allow to makes race window wider.
-> + * Regression test for https://lkml.org/lkml/2014/10/8/545
-> + *
-> + * Copyright (c) 2014 Dmitry Monakhov.  All Rights Reserved.
-> + *
-> + * This program is free software; you can redistribute it and/or modify
-> + * it under the terms of the GNU General Public License as published by
-> + * the Free Software Foundation; either version 2 of the License, or
-> + * (at your option) any later version.
-> + *
-> + * This program is distributed in the hope that it will be useful,
-> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
-> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> + * GNU General Public License for more details.
-> + *
-> + * You should have received a copy of the GNU General Public License
-> + * along with this program; if not, write to the Free Software
-> + * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-> + */
-> +#include <sys/stat.h>
-> +#include <sys/types.h>
-> +#include <errno.h>
-> +#include <fcntl.h>
-> +#include <unistd.h>
-> +#include <libaio.h>
-> +#include <stdio.h>
-> +#include <stdlib.h>
-> +#include <time.h>
-> +#include <sys/time.h>
-> +#include <sys/types.h>
-> +#include <sys/wait.h>
-> +
-> +#define BUF_SIZE	512
-> +#define LOOP_SECONDS 10
-> +
-> +
-> +static int do_aio_loop(int fd, void *buf)
-> +{
-> +	int err, ret;
-> +	struct io_context *ctx = NULL;
-> +	struct io_event ev;
-> +	struct iocb iocb, *iocbs[] = { &iocb };
-> +	struct timeval start, now, delta = { 0, 0 };
-> +
-> +	ret = 0;
-> +	err = io_setup(1, &ctx);
-> +	if (err) {
-> +		fprintf(stderr, "error %s during %s\n",
-> +			strerror(-err), "io_setup" );
-> +		return 1;
-> +	}
-> +	while (1) {
-> +		io_prep_pwrite(&iocb, fd, buf, BUF_SIZE, BUF_SIZE);
-> +		err = io_submit(ctx, 1, iocbs);
-> +		if (err != 1) {
-> +			fprintf(stderr, "error %s during %s\n",
-> +				strerror(-err),
-> +				"io_submit");
-> +			ret = 1;
-> +			break;
-> +		}
-> +		err = io_getevents(ctx, 1, 1, &ev, NULL);
-> +		if (err != 1) {
-> +			fprintf(stderr, "error %s during %s\n",
-> +				strerror(-err),
-> +				"io_getevents");
-> +			ret = 1;
-> +			break;
-> +		}
-> +		gettimeofday(&now, NULL);
-> +		timersub(&now, &start, &delta);
-> +		if (delta.tv_sec >= LOOP_SECONDS)
-> +			break;
-> +	}
-> +	io_destroy(ctx);
-> +	return ret;
-> +}
-> +
-> +int main(int argc, char **argv)
-> +{
-> +	int flags, fd;
-> +	int pid1, pid2 = 0;
-> +	int ret1, ret = 0;
-> +
-> +	if (argc != 2){
-> +		printf("Usage %s fname\n", argv[0]);
-> +		return 1;
-> +	}
-> +	fd = open(argv[1], O_CREAT | O_TRUNC | O_RDWR, 0600);
-> +	if (fd < 0)
-> +		return 1;
-> +
-> +	pid1 = fork();
-> +	if (pid1 < 0)
-> +		return 1;
-> +
-> +	if (pid1 == 0) {
-> +		struct timeval start, now, delta = { 0, 0 };
-> +
-> +		gettimeofday(&start, NULL);
-> +
-> +		/* child: toggle O_DIRECT*/
-> +		flags = fcntl(fd, F_GETFL);
-> +		while (1) {
-> +			ret = fcntl(fd, F_SETFL, flags | O_DIRECT);
-> +			if (ret)
-> +				return ret;
-> +			ret = fcntl(fd, F_SETFL, flags);
-> +			if (ret)
-> +				return ret;
-> +
-> +			gettimeofday(&now, NULL);
-> +			timersub(&now, &start, &delta);
-> +			if (delta.tv_sec >= LOOP_SECONDS)
-> +				break;
-> +		}
-> +	} else {
-> +		/* parent: AIO */
-> +		void *buf;
-> +		posix_memalign(&buf, BUF_SIZE, BUF_SIZE);
-> +		/* Two tasks which performs unaligned aio will be serialized
-> +		   which maks race window wider */
-> +		pid2 = fork();
-> +		if (pid2 < 0)
-> +			goto out;
-> +		else if (pid2 > 0)
-> +			printf("All tasks are spawned\n");
-> +
-> +		ret = do_aio_loop(fd, buf);
-> +	}
-> +out:
-> +	/* Parent wait for all others */
-> +	if (pid2 > 0){
-> +		waitpid(pid1, &ret1, 0);
-> +		if (!ret)
-> +			ret = ret1;
-> +		waitpid(pid2, &ret1, 0);
-> +	} else {
-> +		waitpid(pid1, &ret1, 0);
-> +	}
-> +	if (!ret)
-> +		ret = ret1;
-> +
-> +	return ret;
-> +}
-> diff --git a/tests/generic/035 b/tests/generic/035
-> new file mode 100755
-> index 0000000..51b3491
-> --- /dev/null
-> +++ b/tests/generic/035
-> @@ -0,0 +1,50 @@
-> +#! /bin/bash
-> +# FS QA Test No. 035
-> +#
-> +# Run aio-dio-fcntl-race - test aio write race with O_DIRECT toggle
-> +#
-> +#-----------------------------------------------------------------------
-> +# Copyright (c) 2014 Dmitry Monakhov.  All Rights Reserved.
-> +#
-> +# This program is free software; you can redistribute it and/or
-> +# modify it under the terms of the GNU General Public License as
-> +# published by the Free Software Foundation.
-> +#
-> +# This program is distributed in the hope that it would be useful,
-> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
-> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> +# GNU General Public License for more details.
-> +#
-> +# You should have received a copy of the GNU General Public License
-> +# along with this program; if not, write the Free Software Foundation,
-> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-> +#-----------------------------------------------------------------------
-> +
-> +seq=`basename $0`
-> +seqres=$RESULT_DIR/$seq
-> +echo "QA output created by $seq"
-> +
-> +here=`pwd`
-> +tmp=/tmp/$$
-> +status=1	# failure is the default!
-> +trap "_cleanup; exit \$status" 0 1 2 3 15
-> +
-> +_cleanup()
-> +{
-> +    cd /
-> +    rm -f $tmp.*
-> +}
-> +
-> +# get standard environment, filters and checks
-> +. ./common/rc
-> +. ./common/filter
-> +
-> +# real QA test starts here
-> +
-> +_supported_fs generic
-> +_supported_os Linux
-> +_require_test
-> +
-> +_run_aiodio aio-dio-fcntl-race
-> +
-> +exit $status
-> diff --git a/tests/generic/035.out b/tests/generic/035.out
-> new file mode 100644
-> index 0000000..f730e2f
-> --- /dev/null
-> +++ b/tests/generic/035.out
-> @@ -0,0 +1,2 @@
-> +QA output created by 035
-> +All tasks are spawned
-> diff --git a/tests/generic/group b/tests/generic/group
-> index 799bfd8..419379d 100644
-> --- a/tests/generic/group
-> +++ b/tests/generic/group
-> @@ -37,6 +37,7 @@
->  032 auto quick rw
->  033 auto quick rw
->  034 auto quick metadata log
-> +035 auto quick aio rw stress
-
-I'm not sure if 10 seconds could fit the quick group here..
-
->  053 acl repair auto quick
->  062 attr udf auto quick
->  068 other auto freeze dangerous stress
-> @@ -151,3 +152,4 @@
->  323 auto aio stress
->  324 auto fsr quick
->  325 auto quick data log
-> +326 auto quick aio rw stress
-
-Forgot to remove this line.
-
-Otherwise looks good to me.
-
-Reviewed-by: Eryu Guan <eguan@redhat.com>
-
-Thanks,
-Eryu
-> -- 
-> 1.7.1
-> 
+> On Tue, Oct 14, 2014 at 05:59:48PM +0400, Dmitry Monakhov wrote:
+>> - Update script to support new test cheme tests/$fs_type/$TEST_IDX
+>> - Try to use first unused ID
+>>=20
+>> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+>> ---
+>>  new |   78 +++++++++++++++++++++++++++++++++++++++++++++++-------------=
+------
+>>  1 files changed, 55 insertions(+), 23 deletions(-)
+>>=20
+>> diff --git a/new b/new
+>> index f3e6fa1..9fa522e 100755
+>> --- a/new
+>> +++ b/new
+>> @@ -32,10 +32,22 @@ _cleanup()
+>>      :
+>>  }
+>>=20=20
+>> -if [ ! -f group ]
+>> +SRC_GROUPS=3D`find tests -not -path tests -type d -printf "%f "`
+>> +function usage=20
+>
+> Trailing whitespace here.
+>
+>> +{
+>> +    echo "Usage $0 test_dir"
+>> +    echo "Available dirs are: $SRC_GROUPS"
+>> +    exit
+>> +}
+>> +
+>> +[ $# -eq 0 ] && usage
+>> +tdir=3Dtests/$1
+>> +shift
+>> +
+>> +if [ ! -f $tdir/group ]
+>>  then
+>> -    echo "Creating the group index ..."
+>> -    cat <<'End-of-File' >group
+>> +    echo "Creating the $tdir/group index ..."
+>> +    cat <<'End-of-File' >$tdir/group
+>>  # QA groups control
+>>  #
+>>  # define groups and default group owners
+>> @@ -51,10 +63,10 @@ other		some-user-login
+>>  End-of-File
+>>  fi
+>>=20=20
+>> -if [ ! -w group ]
+>> +if [ ! -w $tdir/group ]
+>>  then
+>> -    chmod u+w group
+>> -    echo "Warning: making the index file \"group\" writeable"
+>> +    chmod u+w $tdir/group
+>> +    echo "Warning: making the index file \"$tdir/group\" writeable"
+>>  fi
+>>=20=20
+>>  if make
+>> @@ -64,13 +76,26 @@ else
+>>      echo "Warning: make failed -- some tests may be missing"
+>>  fi
+>>=20=20
+>> -last=3D`grep '^[0-9][0-9]* ' group | sort | tail -1 | sed -e 's/[ 	].*/=
+/'`
+>> -# get rid of leading 0s as can be interpreted as octal
+>> -last=3D`echo $last | sed 's/^0*//'`
+>> -id=3D`$AWK_PROG </dev/null 'BEGIN{printf "%03d\n",'$last'+1}'`
+>> +i=3D0
+>> +line=3D0
+>> +[ -f "$tdir/group" ] || usage
+>> +
+>> +for found in `cat $tdir/group | gawk '{ print $1 }'`
+>> +do
+>> +    line=3D$((line+1))
+>> +    if [ -z "$found" ] || [ "$found" =3D=3D "#" ];then
+>> +	continue
+>> +    fi
+>> +    i=3D$((i+1))
+>> +    id=3D`printf "%03d" $i`
+>> +    if [ "$id" !=3D "$found" ];then
+>> +	break
+>> +    fi
+>> +done
+>> +
+>
+> If the group file is all in shape and first unused id is the lastid+1,
+> the script fails here, ./new btrfs could reproduce this
+>
+Ohh, Indeed. I've missed that case, sorry. Will resend the path shortly.
+>  # ./new btrfs
+>  .....
+>  Next test is 078
+>  Error: test 078 already exists!
+>
+> Thanks,
+> Eryu
+>>  echo "Next test is $id"
+>>=20=20
+>> -if [ -f $id ]
+>> +if [ -f $tdir/$id ]
+>>  then
+>>      echo "Error: test $id already exists!"
+>>      _cleanup
+>> @@ -81,7 +106,7 @@ echo -n "Creating skeletal script for you to edit ..."
+>>=20=20
+>>  year=3D`date +%Y`
+>>=20=20
+>> -cat <<End-of-File >$id
+>> +cat <<End-of-File >$tdir/$id
+>>  #! /bin/bash
+>>  # FS QA Test No. $id
+>>  #
+>> @@ -146,11 +171,12 @@ End-of-File
+>>  sleep 2		# latency to read messages to this point
+>>  echo ""
+>>=20=20
+>> -chmod 755 $id
+>> -${EDITOR-vi} $id
+>> +chmod 755 $tdir/$id
+>> +${EDITOR-vi} $tdir/$id
+>>=20=20
+>>  if [ $# -eq 0 ]
+>>  then
+>> +
+>>      while true
+>>      do
+>>  	echo -n "Add to group(s) [other] (? for list): "
+>> @@ -158,12 +184,15 @@ then
+>>  	[ -z "$ans" ] && ans=3Dother
+>>  	if [ "X$ans" =3D "X?" ]
+>>  	then
+>> -	    $AWK_PROG <group '
+>> -BEGIN		{ text =3D "# ???" }
+>> -/^[a-z]/	{ printf "%-16.16s %s\n",$1,text; text =3D "# ???"; next }
+>> -NF < 2		{ next }
+>> -		{ text =3D $0 }' \
+>> -	    | sort
+>> +	    for d in $SRC_GROUPS; do
+>> +		l=3D$(sed -n < tests/$d/group \
+>> +		    -e 's/#.*//' \
+>> +		    -e 's/$/ /' \
+>> +		    -e 's;\(^[0-9][0-9][0-9]\)\(.*$\);\2;p')
+>> +		grpl=3D"$grpl $l"
+>> +	    done
+>> +	    lst=3D`for word in $grpl; do echo $word; done | sort| uniq `
+>> +	    echo $lst
+>>  	else
+>>  	    break
+>>  	fi
+>> @@ -173,18 +202,21 @@ else
+>>      #
+>>      for g in $*
+>>      do
+>> -	if grep "^$g[ 	]" group >/dev/null
+>> +	if grep "^$g[ 	]" $tdir/group >/dev/null
+>>  	then
+>>  	    :
+>>  	else
+>> -	    echo "Warning: group \"$g\" not defined in ./group"
+>> +	    echo "Warning: group \"$g\" not defined in $tdir/group"
+>>  	fi
+>>      done
+>>      ans=3D"$*"
+>>  fi
+>>=20=20
+>>  echo -n "Adding $id to group index ..."
+>> -echo "$id $ans" >>group
+>> +head -n $(($line-1)) $tdir/group > /tmp/$$.group
+>> +echo "$id $ans" >> /tmp/$$.group
+>> +tail -n +$((line)) $tdir/group >> /tmp/$$.group
+>> +mv /tmp/$$.group $tdir/group
+>>  echo " done."
+>>=20=20
+>>  exit 0
+>> --=20
+>> 1.7.1
+>>=20
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe fstests" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > --
-> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--=-=-=
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQIcBAEBAgAGBQJUQMuxAAoJEFzOBSYIXfveUL8P/2Rsl99XxUzg8naHWKcH2FLE
+KTJj+rhxzuXovb/hwozQguGJ0jEaClxm8Vob+j6lVBEis8Epe2nIeNujIkU1SkB0
+5LY8vC2mcas2ktqk2jxD8wQS+8qxcvodW7dtefzDhFmQeotl/tyZlSRbIhxRQ4mC
+ikpmypC5TkRvVspyKFlzYZ1GxtYKrC2P1ZhEMxAVyRvBhDsPtIAa5APkJYqjn2ch
+m5TSCrErXcvWnqXGjHSo6qxy7kmb8lBMP7pv+OXOQmc4rsofUM3xiJ+M1q9JLKJw
+A9Ks86ssYQ7/WcT6zyuMOVkeIlNMFFV1Y+TGrJw8jDoeD1nj3VXOgR0gp8IV8to2
+Zh0x8cHeT1cKzpM6zn4MPAmmdsotbpvXzcnpEqTbRONzyrX9N/jOlZ66XDFlSnCD
+wnKELUeKkgwNg4ubn0TIXsNf+PoKAfqUh81SJT7L1Cf9WOktXfj/1dyD0z39cmKZ
+rAIIH4rPAmubYFFnXEVW7AwQYArRD955iBuXv+NrCr2lI/xGQxFiQE4Scy2Y3H6E
+Uu9z4fTHfm2/KFml3SkvftMRBnPakdp3XxkbyceCyMqghW5UbnN1Yy0gkbFhPt9d
+F+OyBNo9H55YEFigmpI1jwXP+bS7NjeAyOyuYvneSI4ZPpZ148h1uJxVfubvYvRX
+Z5/ZuWMVsvi1TK7af5DX
+=L6ko
+-----END PGP SIGNATURE-----
+--=-=-=--
