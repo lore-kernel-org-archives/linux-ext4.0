@@ -1,91 +1,48 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 86471] drastic reduction of write performance after the
- termination of mysqld
-Date: Fri, 17 Oct 2014 16:29:29 +0000
-Message-ID: <bug-86471-13602-AW4uRZDgkk@https.bugzilla.kernel.org/>
-References: <bug-86471-13602@https.bugzilla.kernel.org/>
+From: Dave Jones <davej@redhat.com>
+Subject: Re: kernel BUG at fs/ext4/inode.c:2982!
+Date: Fri, 17 Oct 2014 13:27:37 -0400
+Message-ID: <20141017172737.GA2083@redhat.com>
+References: <20141016055718.GA17655@redhat.com>
+ <871tq8pdh4.fsf@openvz.org>
+ <20141016143346.GA9910@redhat.com>
+ <20141016201504.GA24798@redhat.com>
+ <87egu7k6ym.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:36297 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752822AbaJQQ3b convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Oct 2014 12:29:31 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id A47C7200ED
-	for <linux-ext4@vger.kernel.org>; Fri, 17 Oct 2014 16:29:30 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id AB9C42021B
-	for <linux-ext4@vger.kernel.org>; Fri, 17 Oct 2014 16:29:29 +0000 (UTC)
-In-Reply-To: <bug-86471-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonlist@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <87egu7k6ym.fsf@openvz.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D86471
+On Fri, Oct 17, 2014 at 02:03:45AM +0400, Dmitry Monakhov wrote:
+ > Dave Jones <davej@redhat.com> writes:
+ > 
+ > > On Thu, Oct 16, 2014 at 10:33:46AM -0400, Dave Jones wrote:
+ > >
+ > >  >  > Try this patch http://www.spinics.net/lists/linux-ext4/msg45683.html
+ > >  > 
+ > >  > I'll give it a try if I can get it reproducing easily, otherwise I cna't say
+ > >  > either way whether the patch is doing any good.
+ > >
+ > > ok, I managed to reproduce it a few times, and then tried again with
+ > > your patch.  I'm not sure if it's related, but I'm now seeing lockups
+ > > in ext4.  The process that gets stuck looks like this..
+ >
+ > 99.99% this one is not related. This is just one more uncovered one
+ > by trinity magics. Looks like I've got what is wrong
+ > lseek SEEK_HOLE/SEEK_DATA try to find block allocated one by one
+ > instead of using ext4_ext_next_allocated_block() COMMIT c8c0df24
+ > Plese look an my test below. I'm too tired for today (especially
+ > after Gone girl the movie). I'll send patch tomorrow.
 
---- Comment #2 from Markus K=C3=B6nigshaus <m.koenigshaus@wut.de> ---
-Hi Theodore,
+So the good news is that I'm only seeing this 2nd bug now, so it appears
+your patch referenced above does fix it, so it is a good band-aid until
+a more generic solution is found.
 
-even after a very long wait, the performance remain so low. The perform=
-ance is
-also low when you copy files. I have used dd, so I create only reproduc=
-ible
-write access.
-I have now tested the ext3 FS, same result.
+thanks,
 
-After some debugging I found out, there is a delay in start_this_handle=
- (look
-at the timing), with echo 5 > /sys/kernel/debug/jbd/jbd-debug I get:
-
->> before mysqlshutdown:
-=2E..
-[   40.400755] fs/jbd/transaction.c: (journal_stop, 1380): h_ref 2 -> 1
-[   40.400755]=20
-[   40.400765] fs/jbd/transaction.c: (journal_stop, 1384): Handle df03e=
-000
-going down
-[   40.400765]=20
-[   40.400789] fs/jbd/transaction.c: (journal_start, 290): from journal=
-_start
-[   40.400789]=20
-[   40.400801] fs/jbd/transaction.c: (start_this_handle, 110): New hand=
-le
-df03e000 going live.
-[   40.400801]=20
-[   40.400813] fs/jbd/transaction.c: (start_this_handle, 229): Handle d=
-f03e000
-given 14 credits (total 21, free 14286)
-=2E..
-
->> after mysqlshutdown:
-=2E..
-[   61.383886] fs/jbd/transaction.c: (journal_stop, 1380): h_ref 2 -> 1
-[   61.383886]=20
-[   61.383896] fs/jbd/transaction.c: (journal_stop, 1384): Handle df03e=
-000
-going down
-[   61.383896]=20
-[   61.393528] fs/jbd/transaction.c: (start_this_handle, 110): New hand=
-le
-df03e000 going live.
-[   61.393528]=20
-[   61.393541] fs/jbd/transaction.c: (start_this_handle, 229): Handle d=
-f03e000
-given 14 credits (total 21, free 14271)
-=2E..
-
-I try to isolate the problem in more detail next week, I would welcome =
-tips and
-help for my try.
-
-Regards, Markus
-
---=20
-You are receiving this mail because:
-You are watching the assignee of the bug.--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+	Dave
