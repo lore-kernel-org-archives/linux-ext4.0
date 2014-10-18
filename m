@@ -1,55 +1,64 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 06/34] debugfs: add LIBINTL to debugfs link command
-Date: Sat, 18 Oct 2014 12:10:14 -0400
-Message-ID: <20141018161014.GA30124@thunk.org>
+Subject: Re: [PATCH 15/34] libext2fs: support BLKZEROOUT/FALLOC_FL_ZERO_RANGE
+ in ext2fs_zero_blocks
+Date: Sat, 18 Oct 2014 12:32:55 -0400
+Message-ID: <20141018163255.GB30124@thunk.org>
 References: <20140913221112.13646.3873.stgit@birch.djwong.org>
- <20140913221152.13646.7986.stgit@birch.djwong.org>
- <20140919044601.GI26995@thunk.org>
- <20141017210737.GA13081@birch.djwong.org>
+ <20140913221253.13646.7723.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:59255 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:59254 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751330AbaJSLdl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751458AbaJSLdl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 19 Oct 2014 07:33:41 -0400
 Content-Disposition: inline
-In-Reply-To: <20141017210737.GA13081@birch.djwong.org>
+In-Reply-To: <20140913221253.13646.7723.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 17, 2014 at 02:07:37PM -0700, Darrick J. Wong wrote:
+On Sat, Sep 13, 2014 at 03:12:53PM -0700, Darrick J. Wong wrote:
+> Plumb a new call into the IO manager to support translating
+> ext2fs_zero_blocks calls into the equivalent kernel-level BLKZEROOUT
+> ioctl or FALLOC_FL_ZERO_RANGE fallocate flag primitives when possible.
 > 
-> True, but since debugfs pulls in plausible.o which uses _(), it still needs
-> this patch to build on OSX 10.9.5.
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+>  contrib/fallocate.c     |   14 +++++++++
 
-Good point.  I'l fix it this way.  (Basically, it's really pointless
-to link debugfs with LIBINTL since debugfs doesn't have any I18N
-support, and I'd prefer to limit unnecessary bloat.)
+I've separated out the contrib/fallocate change and created a separate
+commit for it, since it really is a separate change.
 
-	     	 	   	 	     - Ted
+What I'd like to see for the zero_blocks change io_manager is:
 
-commit 831aa869e8b1b287ca921e7ae181a4cdca839099
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sat Oct 18 09:13:09 2014 -0400
+(a) if we try to zero a range past the end of the file, we should just
+truncate the file to set i_size.  Similarly, if this is a regular
+file, we should try to use PUNCH_HOLE.  We already try to keep a raw
+file system image file to be sparse, so I don't see any real problems
+with this.
 
-    debugfs: fix build on systems that don't have gettext built-in
-    
-    Debugfs (unlike all of the other programs in e2fsprogs) is not set up
-    to use translated strings.  So when building misc/plausible.c for
-    debugfs, we need to disable NLS.
-    
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+(b) for a block device, if IO_FLAG_DIRECT_IO is set, it shoud be safe
+to try to use te BLKZEROOUT.  If not, we can use
+posix_fadvise(POSIX_FADV_DONTNEED) and verify that this correctly zaps
+the relevant parts of the buffer cache.  If it doesn't do the right
+thing, we can use BLKFLSBUF, which will zap the entire buffer cache
+for the device.  Which is pretty heavy weight, but I really think it
+only makes sense to use zeroout for zeroing the inode table and the
+journal file.
 
-diff --git a/misc/nls-enable.h b/misc/nls-enable.h
-index a91dcc1..2f62c01 100644
---- a/misc/nls-enable.h
-+++ b/misc/nls-enable.h
-@@ -1,4 +1,4 @@
--#ifdef ENABLE_NLS
-+#if defined(ENABLE_NLS) && !defined(DEBUGFS)
- #include <libintl.h>
- #include <locale.h>
- #define _(a) (gettext (a))
+Even if we patch the kernel to make BLKZEROOUT to automatically do
+this, we can't count on it, and in particular if it turns out we have
+to use BLKFLSBUF, we're not going to want to use this for zero'ing a
+single 4k block.  It doesn't happen that often, and I don't think
+there will be much if any measurable difference in performance if we
+use WRITE SAME vs. WRITE for a small region.
+
+Does this make sense?
+
+					- Ted
+
+P.S.  Once we do this, when using mke2fs on a file, we should really
+use punch_hole and disable lazy_itable_init, to save I/O bandwidth on
+VM's running on cloud systems.
