@@ -1,64 +1,44 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 15/34] libext2fs: support BLKZEROOUT/FALLOC_FL_ZERO_RANGE
- in ext2fs_zero_blocks
-Date: Sat, 18 Oct 2014 12:32:55 -0400
-Message-ID: <20141018163255.GB30124@thunk.org>
-References: <20140913221112.13646.3873.stgit@birch.djwong.org>
- <20140913221253.13646.7723.stgit@birch.djwong.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 0/12 v2] Moving i_dquot out of struct inode
+Date: Sun, 19 Oct 2014 07:16:28 -0700
+Message-ID: <20141019141628.GA2485@infradead.org>
+References: <1412952910-7142-1-git-send-email-jack@suse.cz>
+	<20141011133452.GA29004@infradead.org>
+	<20141017192428.GA19788@quack.suse.cz>
+	<20141018151738.GG30355@infradead.org>
+	<20141018192624.GA16478@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:59254 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751458AbaJSLdl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 19 Oct 2014 07:33:41 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: cluster-devel@redhat.com, jfs-discussion@lists.sourceforge.net,
+	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
+	Dave Kleikamp <shaggy@kernel.org>,
+	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
+	xfs@oss.sgi.com, Christoph Hellwig <hch@infradead.org>,
+	Joel Becker <jlbec@evilplan.org>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Steven Whitehouse <swhiteho@redhat.com>,
+	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
+To: Jan Kara <jack@suse.cz>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20140913221253.13646.7723.stgit@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20141018192624.GA16478@quack.suse.cz>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Sep 13, 2014 at 03:12:53PM -0700, Darrick J. Wong wrote:
-> Plumb a new call into the IO manager to support translating
-> ext2fs_zero_blocks calls into the equivalent kernel-level BLKZEROOUT
-> ioctl or FALLOC_FL_ZERO_RANGE fallocate flag primitives when possible.
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
->  contrib/fallocate.c     |   14 +++++++++
+On Sat, Oct 18, 2014 at 09:26:24PM +0200, Jan Kara wrote:
+>   But that was in the superblock, not in the inode...
 
-I've separated out the contrib/fallocate change and created a separate
-commit for it, since it really is a separate change.
+You're right!  Sorry for the confusion.
 
-What I'd like to see for the zero_blocks change io_manager is:
-
-(a) if we try to zero a range past the end of the file, we should just
-truncate the file to set i_size.  Similarly, if this is a regular
-file, we should try to use PUNCH_HOLE.  We already try to keep a raw
-file system image file to be sparse, so I don't see any real problems
-with this.
-
-(b) for a block device, if IO_FLAG_DIRECT_IO is set, it shoud be safe
-to try to use te BLKZEROOUT.  If not, we can use
-posix_fadvise(POSIX_FADV_DONTNEED) and verify that this correctly zaps
-the relevant parts of the buffer cache.  If it doesn't do the right
-thing, we can use BLKFLSBUF, which will zap the entire buffer cache
-for the device.  Which is pretty heavy weight, but I really think it
-only makes sense to use zeroout for zeroing the inode table and the
-journal file.
-
-Even if we patch the kernel to make BLKZEROOUT to automatically do
-this, we can't count on it, and in particular if it turns out we have
-to use BLKFLSBUF, we're not going to want to use this for zero'ing a
-single 4k block.  It doesn't happen that often, and I don't think
-there will be much if any measurable difference in performance if we
-use WRITE SAME vs. WRITE for a small region.
-
-Does this make sense?
-
-					- Ted
-
-P.S.  Once we do this, when using mke2fs on a file, we should really
-use punch_hole and disable lazy_itable_init, to save I/O bandwidth on
-VM's running on cloud systems.
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
