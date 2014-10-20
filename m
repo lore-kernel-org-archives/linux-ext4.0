@@ -1,44 +1,60 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 0/12 v2] Moving i_dquot out of struct inode
-Date: Sun, 19 Oct 2014 07:16:28 -0700
-Message-ID: <20141019141628.GA2485@infradead.org>
-References: <1412952910-7142-1-git-send-email-jack@suse.cz>
-	<20141011133452.GA29004@infradead.org>
-	<20141017192428.GA19788@quack.suse.cz>
-	<20141018151738.GG30355@infradead.org>
-	<20141018192624.GA16478@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: cluster-devel@redhat.com, jfs-discussion@lists.sourceforge.net,
-	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
-	Dave Kleikamp <shaggy@kernel.org>,
-	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
-	xfs@oss.sgi.com, Christoph Hellwig <hch@infradead.org>,
-	Joel Becker <jlbec@evilplan.org>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Steven Whitehouse <swhiteho@redhat.com>,
-	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
-To: Jan Kara <jack@suse.cz>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <20141018192624.GA16478@quack.suse.cz>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+From: Wang Shilong <wangshilong1991@gmail.com>
+Subject: [PATCH] Ext4: update comments that use ext4_delete_inode()
+Date: Mon, 20 Oct 2014 09:28:27 -0400
+Message-ID: <1413811707-2612-1-git-send-email-wangshilong1991@gmail.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pd0-f175.google.com ([209.85.192.175]:58793 "EHLO
+	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750945AbaJTF30 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Oct 2014 01:29:26 -0400
+Received: by mail-pd0-f175.google.com with SMTP id v10so4279897pde.20
+        for <linux-ext4@vger.kernel.org>; Sun, 19 Oct 2014 22:29:26 -0700 (PDT)
+Received: from vm01.localdomain ([223.65.188.229])
+        by mx.google.com with ESMTPSA id zq13sm8058024pab.44.2014.10.19.22.29.24
+        for <linux-ext4@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Sun, 19 Oct 2014 22:29:25 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Oct 18, 2014 at 09:26:24PM +0200, Jan Kara wrote:
->   But that was in the superblock, not in the inode...
+From: Wang Shilong <wshilong@ddn.com>
 
-You're right!  Sorry for the confusion.
+ext4_delete_inode() has been renamed for a long time, update
+comments for this.
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Signed-off-by: Wang Shilong <wshilong@ddn.com>
+---
+ fs/ext4/inode.c   | 2 +-
+ fs/ext4/migrate.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e9777f9..04fd885 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3643,7 +3643,7 @@ out_stop:
+ 	 * If this was a simple ftruncate() and the file will remain alive,
+ 	 * then we need to clear up the orphan record which we created above.
+ 	 * However, if this was a real unlink then we were called by
+-	 * ext4_delete_inode(), and we allow that function to clean up the
++	 * ext4_evict_inode(), and we allow that function to clean up the
+ 	 * orphan info for us.
+ 	 */
+ 	if (inode->i_nlink)
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index a432634..3cb267a 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -592,7 +592,7 @@ err_out:
+ 
+ 	/*
+ 	 * set the  i_blocks count to zero
+-	 * so that the ext4_delete_inode does the
++	 * so that the ext4_evict_inode() does the
+ 	 * right job
+ 	 *
+ 	 * We don't need to take the i_lock because
+-- 
+1.8.3.1
+
