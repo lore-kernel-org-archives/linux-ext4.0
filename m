@@ -1,58 +1,29 @@
-From: Sasha Levin <sasha.levin@oracle.com>
-Subject: [PATCH] fs, jbd: use a more generic hash function
-Date: Tue, 21 Oct 2014 16:43:55 -0400
-Message-ID: <1413924235-26276-1-git-send-email-sasha.levin@oracle.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	a.ryabinin@samsung.com, Sasha Levin <sasha.levin@oracle.com>
-To: akpm@linux-foundation.org, jack@suse.cz
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Denver colorado loan" <sshl@bou.edu.bd>
+Subject: (unknown)
+Date: Wed, 22 Oct 2014 00:47:57 +0600 (BDT)
+Message-ID: <7699.198.7.58.81.1413917277.squirrel@mail.bou.edu.bd>
+Reply-To: singhuah@gmail.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: undisclosed-recipients:;
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from [180.211.206.80] ([180.211.206.80]:43114 "EHLO mail.bou.edu.bd"
+	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S932998AbaJUWRj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Oct 2014 18:17:39 -0400
+Subject: 
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-While the hash function used by the revoke hashtable is good somewhere else,
-it's not really good here.
 
-The default hash shift (8) means that one third of the hashing function
-gets lost (and is undefined anyways (8 - 12 = negative shift)):
 
-	"(block << (hash_shift - 12))) & (table->hash_size - 1)"
 
-Instead, just use the kernel's generic hash function that gets used everywhere
-else.
+We give loan to those in debt, contact us direct in our head office here
+in denver colorado, U.S.A via email singhuah@gmail.com
 
-Signed-off-by: Sasha Levin <sasha.levin@oracle.com>
----
- fs/jbd/revoke.c |    7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
-
-diff --git a/fs/jbd/revoke.c b/fs/jbd/revoke.c
-index 8898bbd..dcead63 100644
---- a/fs/jbd/revoke.c
-+++ b/fs/jbd/revoke.c
-@@ -93,6 +93,7 @@
- #include <linux/bio.h>
- #endif
- #include <linux/log2.h>
-+#include <linux/hash.h>
- 
- static struct kmem_cache *revoke_record_cache;
- static struct kmem_cache *revoke_table_cache;
-@@ -129,15 +130,11 @@ static void flush_descriptor(journal_t *, struct journal_head *, int, int);
- 
- /* Utility functions to maintain the revoke table */
- 
--/* Borrowed from buffer.c: this is a tried and tested block hash function */
- static inline int hash(journal_t *journal, unsigned int block)
- {
- 	struct jbd_revoke_table_s *table = journal->j_revoke;
--	int hash_shift = table->hash_shift;
- 
--	return ((block << (hash_shift - 6)) ^
--		(block >> 13) ^
--		(block << (hash_shift - 12))) & (table->hash_size - 1);
-+	return hash_32(block, table->hash_shift);
- }
- 
- static int insert_revoke_hash(journal_t *journal, unsigned int blocknr,
 -- 
-1.7.10.4
+This message has been scanned for viruses and
+dangerous content by MailScanner, and is
+believed to be clean.
+
