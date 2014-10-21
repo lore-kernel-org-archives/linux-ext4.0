@@ -1,103 +1,86 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 08/12] ext4: Convert to private i_dquot
-	field
-Date: Tue, 21 Oct 2014 16:38:32 +0200
-Message-ID: <1413902316-17997-9-git-send-email-jack@suse.cz>
+Subject: [PATCH 06/12] ext2: Convert to private i_dquot field
+Date: Tue, 21 Oct 2014 16:38:30 +0200
+Message-ID: <1413902316-17997-7-git-send-email-jack@suse.cz>
 References: <1413902316-17997-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
-	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
-	Mark Fasheh <mfasheh@suse.com>, Dave Chinner <david@fromorbit.com>,
-	reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
-	cluster-devel@redhat.com, Joel Becker <jlbec@evilplan.org>,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, hch@lst.de,
+Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
+	xfs@oss.sgi.com, cluster-devel@redhat.com,
 	Steven Whitehouse <swhiteho@redhat.com>,
-	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
+	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
+	Dave Kleikamp <shaggy@kernel.org>,
+	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
+	viro@zeniv.linux.org.uk, hch@lst.de, Jan Kara <jack@suse.cz>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1413902316-17997-1-git-send-email-jack@suse.cz>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
-	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=jfs-discussion>
-List-Post: <mailto:jfs-discussion@lists.sourceforge.net>
-List-Help: <mailto:jfs-discussion-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
-	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: jfs-discussion-bounces@lists.sourceforge.net
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 CC: linux-ext4@vger.kernel.org
-CC: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h  | 4 ++++
- fs/ext4/super.c | 8 ++++++++
- 2 files changed, 12 insertions(+)
+ fs/ext2/ext2.h  |  3 +++
+ fs/ext2/super.c | 10 ++++++++++
+ 2 files changed, 13 insertions(+)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index c55a1faaed58..db3f772e57ae 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -941,6 +941,10 @@ struct ext4_inode_info {
- 	tid_t i_sync_tid;
- 	tid_t i_datasync_tid;
- 
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index d9a17d0b124d..e4279ead4a05 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -689,6 +689,9 @@ struct ext2_inode_info {
+ 	struct mutex truncate_mutex;
+ 	struct inode	vfs_inode;
+ 	struct list_head i_orphan;	/* unlinked but open inodes */
 +#ifdef CONFIG_QUOTA
 +	struct dquot *i_dquot[MAXQUOTAS];
 +#endif
-+
- 	/* Precomputed uuid+inum+igen checksum for seeding inode checksums */
- 	__u32 i_csum_seed;
  };
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 1eda6ab0ef9d..7207799e5939 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -892,6 +892,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	spin_lock_init(&(ei->i_block_reservation_lock));
- #ifdef CONFIG_QUOTA
- 	ei->i_reserved_quota = 0;
-+	memset(&ei->i_dquot, 0, sizeof(ei->i_dquot));
- #endif
- 	ei->jinode = NULL;
- 	INIT_LIST_HEAD(&ei->i_rsv_conversion_list);
-@@ -1068,6 +1069,11 @@ static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
- 			     unsigned int flags);
- static int ext4_enable_quotas(struct super_block *sb);
  
-+static struct dquot **ext4_get_dquots(struct inode *inode)
-+{
-+	return EXT4_I(inode)->i_dquot;
-+}
+ /*
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 170dc41e8bf4..ef2a6cce75d8 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -166,6 +166,10 @@ static struct inode *ext2_alloc_inode(struct super_block *sb)
+ 		return NULL;
+ 	ei->i_block_alloc_info = NULL;
+ 	ei->vfs_inode.i_version = 1;
++#ifdef CONFIG_QUOTA
++	memset(&ei->i_dquot, 0, sizeof(ei->i_dquot));
++#endif
 +
- static const struct dquot_operations ext4_quota_operations = {
- 	.get_reserved_space = ext4_get_reserved_space,
- 	.write_dquot	= ext4_write_dquot,
-@@ -1117,6 +1123,7 @@ static const struct super_operations ext4_sops = {
+ 	return &ei->vfs_inode;
+ }
+ 
+@@ -303,6 +307,10 @@ static int ext2_show_options(struct seq_file *seq, struct dentry *root)
  #ifdef CONFIG_QUOTA
- 	.quota_read	= ext4_quota_read,
- 	.quota_write	= ext4_quota_write,
-+	.get_dquots	= ext4_get_dquots,
+ static ssize_t ext2_quota_read(struct super_block *sb, int type, char *data, size_t len, loff_t off);
+ static ssize_t ext2_quota_write(struct super_block *sb, int type, const char *data, size_t len, loff_t off);
++static struct dquot **ext2_get_dquots(struct inode *inode)
++{
++	return EXT2_I(inode)->i_dquot;
++}
  #endif
- 	.bdev_try_to_free_page = bdev_try_to_free_page,
+ 
+ static const struct super_operations ext2_sops = {
+@@ -320,6 +328,7 @@ static const struct super_operations ext2_sops = {
+ #ifdef CONFIG_QUOTA
+ 	.quota_read	= ext2_quota_read,
+ 	.quota_write	= ext2_quota_write,
++	.get_dquots	= ext2_get_dquots,
+ #endif
  };
-@@ -3928,6 +3935,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		sb->s_qcop = &ext4_qctl_sysfile_operations;
- 	else
- 		sb->s_qcop = &ext4_qctl_operations;
+ 
+@@ -1090,6 +1099,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ #ifdef CONFIG_QUOTA
+ 	sb->dq_op = &dquot_operations;
+ 	sb->s_qcop = &dquot_quotactl_ops;
 +	sb_dqopt(sb)->allowed_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
  #endif
- 	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
  
+ 	root = ext2_iget(sb, EXT2_ROOT_INO);
 -- 
 1.8.1.4
 
-
-------------------------------------------------------------------------------
-Comprehensive Server Monitoring with Site24x7.
-Monitor 10 servers for $9/Month.
-Get alerted through email, SMS, voice calls or mobile push notifications.
-Take corrective actions from your mobile device.
-http://p.sf.net/sfu/Zoho
