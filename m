@@ -1,62 +1,91 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/12 v3] Moving i_dquot out of struct inode
-Date: Tue, 21 Oct 2014 16:38:24 +0200
-Message-ID: <1413902316-17997-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
-	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
-	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
+Subject: [PATCH 07/12] ext3: Convert to private i_dquot field
+Date: Tue, 21 Oct 2014 16:38:31 +0200
+Message-ID: <1413902316-17997-8-git-send-email-jack@suse.cz>
+References: <1413902316-17997-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	xfs@oss.sgi.com, cluster-devel@redhat.com,
-	Joel Becker <jlbec@evilplan.org>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, hch@lst.de,
 	Steven Whitehouse <swhiteho@redhat.com>,
-	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
+	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
+	Dave Kleikamp <shaggy@kernel.org>,
+	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
+	viro@zeniv.linux.org.uk, hch@lst.de, Jan Kara <jack@suse.cz>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <xfs-bounces@oss.sgi.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:51309 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933092AbaJUOiy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Oct 2014 10:38:54 -0400
+In-Reply-To: <1413902316-17997-1-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+CC: linux-ext4@vger.kernel.org
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext3/ext3.h  |  4 ++++
+ fs/ext3/super.c | 10 ++++++++++
+ 2 files changed, 14 insertions(+)
 
-  this patch set moves i_dquot array from struct inode into filesystem private
-part of the inode. Thus filesystems which don't need it save 2 pointers in
-their inodes (would be 3 after we add project quota support into generic
-quota).
+diff --git a/fs/ext3/ext3.h b/fs/ext3/ext3.h
+index fc3cdcf24aed..f483a80b3fe7 100644
+--- a/fs/ext3/ext3.h
++++ b/fs/ext3/ext3.h
+@@ -615,6 +615,10 @@ struct ext3_inode_info {
+ 	atomic_t i_sync_tid;
+ 	atomic_t i_datasync_tid;
+ 
++#ifdef CONFIG_QUOTA
++	struct dquot *i_dquot[MAXQUOTAS];
++#endif
++
+ 	struct inode vfs_inode;
+ };
+ 
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 7015db0bafd1..cfb338cc0263 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -485,6 +485,10 @@ static struct inode *ext3_alloc_inode(struct super_block *sb)
+ 	ei->vfs_inode.i_version = 1;
+ 	atomic_set(&ei->i_datasync_tid, 0);
+ 	atomic_set(&ei->i_sync_tid, 0);
++#ifdef CONFIG_QUOTA
++	memset(&ei->i_dquot, 0, sizeof(ei->i_dquot));
++#endif
++
+ 	return &ei->vfs_inode;
+ }
+ 
+@@ -764,6 +768,10 @@ static ssize_t ext3_quota_read(struct super_block *sb, int type, char *data,
+ 			       size_t len, loff_t off);
+ static ssize_t ext3_quota_write(struct super_block *sb, int type,
+ 				const char *data, size_t len, loff_t off);
++static struct dquot **ext3_get_dquots(struct inode *inode)
++{
++	return EXT3_I(inode)->i_dquot;
++}
+ 
+ static const struct dquot_operations ext3_quota_operations = {
+ 	.write_dquot	= ext3_write_dquot,
+@@ -803,6 +811,7 @@ static const struct super_operations ext3_sops = {
+ #ifdef CONFIG_QUOTA
+ 	.quota_read	= ext3_quota_read,
+ 	.quota_write	= ext3_quota_write,
++	.get_dquots	= ext3_get_dquots,
+ #endif
+ 	.bdev_try_to_free_page = bdev_try_to_free_page,
+ };
+@@ -2008,6 +2017,7 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
+ #ifdef CONFIG_QUOTA
+ 	sb->s_qcop = &ext3_qctl_operations;
+ 	sb->dq_op = &ext3_quota_operations;
++	sb_dqopt(sb)->allowed_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
+ #endif
+ 	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
+ 	INIT_LIST_HEAD(&sbi->s_orphan); /* unlinked but open files */
+-- 
+1.8.1.4
 
-The patch series also contains a change to quotactl so that each filesystem
-can set quota types it supports. This is in the end unrelated change
-(originally it was necessary for i_dquot moving but in the end I changed
-things so that it's not anymore). I can move that into a separate series
-but I was somewhat reluctant to do that since that would mean another 6
-one-line patches to the same files we are changing here...
-
-If people like the patches, I will queue this series into my tree for
-the next merge window. For that I'd prefer to get acks from affected fs
-maintainers (the changes are pretty trivial and I don't feel it's a must but
-still I'd prefer fs maintainers to ack they are aware of the changes).
-
-								Honza
-
-Changes since v1:
-* Inode field names are now named enum
-* Quota type masks now have names like QTYPE_MASK_{USR|GRP|PRJ} instead of
-  opencoding shifts.
-
-Changes since v2:
-* Use ->get_dquots callback instead of inode fields framework
-* rebased on Linus' tree as of 3.18-rc1 + something.
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
