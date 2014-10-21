@@ -1,101 +1,94 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 11/12] jfs: Convert to private i_dquot field
-Date: Tue, 21 Oct 2014 16:38:35 +0200
-Message-ID: <1413902316-17997-12-git-send-email-jack@suse.cz>
+Subject: [PATCH 12/12] vfs: Remove i_dquot field from inode
+Date: Tue, 21 Oct 2014 16:38:36 +0200
+Message-ID: <1413902316-17997-13-git-send-email-jack@suse.cz>
 References: <1413902316-17997-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
-	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
-	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
+Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	xfs@oss.sgi.com, cluster-devel@redhat.com,
-	Dave Kleikamp <dave.kleikamp@oracle.com>,
-	Joel Becker <jlbec@evilplan.org>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, hch@lst.de,
 	Steven Whitehouse <swhiteho@redhat.com>,
-	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
+	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
+	Dave Kleikamp <shaggy@kernel.org>,
+	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
+	viro@zeniv.linux.org.uk, hch@lst.de, Jan Kara <jack@suse.cz>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <xfs-bounces@oss.sgi.com>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
 In-Reply-To: <1413902316-17997-1-git-send-email-jack@suse.cz>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Sender: reiserfs-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-CC: Dave Kleikamp <dave.kleikamp@oracle.com>
-CC: jfs-discussion@lists.sourceforge.net
+All filesystems using VFS quotas are now converted to use their private
+i_dquot fields. Remove the i_dquot field from generic inode structure.
+
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jfs/jfs_incore.h | 3 +++
- fs/jfs/super.c      | 9 +++++++++
- 2 files changed, 12 insertions(+)
+ fs/inode.c         | 3 ---
+ fs/quota/dquot.c   | 3 ---
+ fs/super.c         | 7 -------
+ include/linux/fs.h | 3 ---
+ 4 files changed, 16 deletions(-)
 
-diff --git a/fs/jfs/jfs_incore.h b/fs/jfs/jfs_incore.h
-index cf47f09e8ac8..fa7e795bd8ae 100644
---- a/fs/jfs/jfs_incore.h
-+++ b/fs/jfs/jfs_incore.h
-@@ -94,6 +94,9 @@ struct jfs_inode_info {
- 			unchar _inline_ea[128];	/* 128: inline extended attr */
- 		} link;
- 	} u;
-+#ifdef CONFIG_QUOTA
-+	struct dquot *i_dquot[MAXQUOTAS];
-+#endif
- 	u32 dev;	/* will die when we get wide dev_t */
- 	struct inode	vfs_inode;
- };
-diff --git a/fs/jfs/super.c b/fs/jfs/super.c
-index 93e897e588a8..2a34332e889f 100644
---- a/fs/jfs/super.c
-+++ b/fs/jfs/super.c
-@@ -117,6 +117,9 @@ static struct inode *jfs_alloc_inode(struct super_block *sb)
- 	jfs_inode = kmem_cache_alloc(jfs_inode_cachep, GFP_NOFS);
- 	if (!jfs_inode)
- 		return NULL;
-+#ifdef CONFIG_QUOTA
-+	memset(&jfs_inode->i_dquot, 0, sizeof(jfs_inode->i_dquot));
-+#endif
- 	return &jfs_inode->vfs_inode;
+diff --git a/fs/inode.c b/fs/inode.c
+index 26753ba7b6d6..2ed95f7caa4f 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -143,9 +143,6 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
+ 	inode->i_blocks = 0;
+ 	inode->i_bytes = 0;
+ 	inode->i_generation = 0;
+-#ifdef CONFIG_QUOTA
+-	memset(&inode->i_dquot, 0, sizeof(inode->i_dquot));
+-#endif
+ 	inode->i_pipe = NULL;
+ 	inode->i_bdev = NULL;
+ 	inode->i_cdev = NULL;
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index 8144ff2b561d..5bc5f254ac1f 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -895,9 +895,6 @@ EXPORT_SYMBOL(dqget);
+ 
+ static inline struct dquot **i_dquot(struct inode *inode)
+ {
+-	/* Temporary workaround until all filesystems are converted. */
+-	if (!inode->i_sb->s_op->get_dquots)
+-		return inode->i_dquot;
+ 	return inode->i_sb->s_op->get_dquots(inode);
  }
  
-@@ -537,6 +540,7 @@ static int jfs_fill_super(struct super_block *sb, void *data, int silent)
- #ifdef CONFIG_QUOTA
- 	sb->dq_op = &dquot_operations;
- 	sb->s_qcop = &dquot_quotactl_ops;
-+	sb_dqopt(sb)->allowed_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
- #endif
- 
- 	/*
-@@ -836,6 +840,10 @@ out:
- 	return len - towrite;
- }
- 
-+static struct dquot **jfs_get_dquots(struct inode *inode)
-+{
-+	return JFS_IP(inode)->i_dquot;
-+}
- #endif
- 
- static const struct super_operations jfs_super_operations = {
-@@ -854,6 +862,7 @@ static const struct super_operations jfs_super_operations = {
- #ifdef CONFIG_QUOTA
- 	.quota_read	= jfs_quota_read,
- 	.quota_write	= jfs_quota_write,
-+	.get_dquots	= jfs_get_dquots,
- #endif
- };
- 
+diff --git a/fs/super.c b/fs/super.c
+index 5e70cc327dae..eae088f6aaae 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -218,13 +218,6 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags)
+ 	atomic_set(&s->s_active, 1);
+ 	mutex_init(&s->s_vfs_rename_mutex);
+ 	lockdep_set_class(&s->s_vfs_rename_mutex, &type->s_vfs_rename_key);
+-	/*
+-	 * For now MAXQUOTAS check in do_quotactl() will limit quota type
+-	 * appropriately. When each fs sets allowed_types, we can remove the
+-	 * line below
+-	 */
+-	s->s_dquot.allowed_types = QTYPE_MASK_USR | QTYPE_MASK_GRP |
+-				   QTYPE_MASK_PRJ;
+ 	mutex_init(&s->s_dquot.dqio_mutex);
+ 	mutex_init(&s->s_dquot.dqonoff_mutex);
+ 	s->s_maxbytes = MAX_NON_LFS;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b714e8e0415d..ab3513abf30f 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -593,9 +593,6 @@ struct inode {
+ 	const struct file_operations	*i_fop;	/* former ->i_op->default_file_ops */
+ 	struct file_lock	*i_flock;
+ 	struct address_space	i_data;
+-#ifdef CONFIG_QUOTA
+-	struct dquot		*i_dquot[MAXQUOTAS];
+-#endif
+ 	struct list_head	i_devices;
+ 	union {
+ 		struct pipe_inode_info	*i_pipe;
 -- 
 1.8.1.4
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
