@@ -1,58 +1,56 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: Fix overflow when updating superblock backups
- after resize
-Date: Wed, 22 Oct 2014 17:00:47 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1410221700200.2250@localhost.localdomain>
-References: <1413988148-11433-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	stable@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <1413988148-11433-1-git-send-email-jack@suse.cz>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 2/2] xfstests-bld: test-apliance add costomization options
+Date: Wed, 22 Oct 2014 19:37:40 +0400
+Message-ID: <1413992260-21707-2-git-send-email-dmonakhov@openvz.org>
+References: <1413992260-21707-1-git-send-email-dmonakhov@openvz.org>
+Cc: tytso@mit.edu, Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailhub.sw.ru ([195.214.232.25]:47359 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752278AbaJVPhy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 22 Oct 2014 11:37:54 -0400
+In-Reply-To: <1413992260-21707-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 22 Oct 2014, Jan Kara wrote:
+Add a possibility to customize variables similar to kvm-xfstests/config.custom
+One can add local mirrors to speedup image generation
 
-> Date: Wed, 22 Oct 2014 16:29:08 +0200
-> From: Jan Kara <jack@suse.cz>
-> To: Ted Tso <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
->     stable@vger.kernel.org
-> Subject: [PATCH] ext4: Fix overflow when updating superblock backups after
->     resize
-> 
-> When there are no meta block groups update_backups() will compute the
-> backup block in 32-bit arithmetics thus possibly overflowing the block
-> number and corrupting the filesystem. OTOH filesystems without meta
-> block groups larger than 16 TB should be rare. Fix the problem by doing
-> the counting in 64-bit arithmetics.
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ kvm-xfstests/test-appliance/gen-root-image |    3 +++
+ kvm-xfstests/test-appliance/gen-test-image |    3 +++
+ 2 files changed, 6 insertions(+)
 
-Looks good, thanks.
+diff --git a/kvm-xfstests/test-appliance/gen-root-image b/kvm-xfstests/test-appliance/gen-root-image
+index 977c4c2..516b7b5 100644
+--- a/kvm-xfstests/test-appliance/gen-root-image
++++ b/kvm-xfstests/test-appliance/gen-root-image
+@@ -12,6 +12,9 @@ RAW_ROOT_FS=$DIR/root_fs.raw
+ ROOT_FS=$DIR/root_fs.img
+ COMPAT="-o compat=0.10"
+ 
++if test -f $DIR/config.custom ; then
++   . $DIR/config.custom
++fi
+ 
+ if test $(df -k /tmp | tail -1 | awk '{print $4}') -gt 350000
+ then
+diff --git a/kvm-xfstests/test-appliance/gen-test-image b/kvm-xfstests/test-appliance/gen-test-image
+index ab02592..fde1798 100755
+--- a/kvm-xfstests/test-appliance/gen-test-image
++++ b/kvm-xfstests/test-appliance/gen-test-image
+@@ -8,6 +8,9 @@ TEST_FS=$DIR/test_fs.img
+ TESTDIR=$DIR/testdir
+ COMPAT="-o compat=0.10"
+ 
++if test -f $DIR/config.custom ; then
++   . $DIR/config.custom
++fi
+ 
+ if test $(df -k /tmp | tail -1 | awk '{print $4}') -gt 350000
+ then
+-- 
+1.7.10.4
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-
-> 
-> Coverity-id: 741252
-> CC: stable@vger.kernel.org
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/resize.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index f298c60f907d..ca4588388fc3 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -1081,7 +1081,7 @@ static void update_backups(struct super_block *sb, int blk_off, char *data,
->  			break;
->  
->  		if (meta_bg == 0)
-> -			backup_block = group * bpg + blk_off;
-> +			backup_block = ((ext4_fsblk_t)group) * bpg + blk_off;
->  		else
->  			backup_block = (ext4_group_first_block_no(sb, group) +
->  					ext4_bg_has_super(sb, group));
-> 
