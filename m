@@ -1,41 +1,78 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 86471] drastic reduction of write performance after the
- termination of mysqld
-Date: Wed, 22 Oct 2014 20:22:55 +0000
-Message-ID: <bug-86471-13602-rB1bknwNLA@https.bugzilla.kernel.org/>
-References: <bug-86471-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] xfstests-bld: Split system images in two parts
+Date: Wed, 22 Oct 2014 17:25:35 -0400
+Message-ID: <20141022212535.GC6295@thunk.org>
+References: <1413990417-18285-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, root <root@deb7build>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:42383 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:38068 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932150AbaJVUW6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 22 Oct 2014 16:22:58 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 4BE072026C
-	for <linux-ext4@vger.kernel.org>; Wed, 22 Oct 2014 20:22:57 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id C28F02025B
-	for <linux-ext4@vger.kernel.org>; Wed, 22 Oct 2014 20:22:55 +0000 (UTC)
-In-Reply-To: <bug-86471-13602@https.bugzilla.kernel.org/>
+	id S932399AbaJVVZk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 22 Oct 2014 17:25:40 -0400
+Content-Disposition: inline
+In-Reply-To: <1413990417-18285-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=86471
+This patch is really huge, and unfortunately I've been doing some work
+in parallel that hadn't yet gotten pushed to git.kernel.org, so your
+patches don't apply cleanly any more.
 
---- Comment #4 from Theodore Tso <tytso@mit.edu> ---
-Are you sure this is actually a problem?    Could it just be that when mysqld
-shuts down, it's issuing a huge number of buffered writes which is just taking
-a long, long time to get written out to your eMMC device (which is typically
-very, *very* slow to handle writes).
+In particular, I've already added support for config.custom (ala your
+2/2 patch) to gen-image.  This can be used in conjuction to a
+convenience script which takes the cached packages in
+var.cache.apt.archives and var.lib.apt.lists and create a local
+mirror.
 
-I had suggested using blktrace to see if I/O is going on.   You could also try
-looking using iostat or the dstat program.   If it's just that I/O is still
-happening, then things may be working normally --- just that eMMC might be a
-bad match with a high performance database workload.
+So now after running:
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+# ./gen-image --mirror http://snapshot.debian.org/archive/debian/20141013T184415Z
+% ./create-local-mirror snapshot.debian.org_archive_debian_20141013T184415Z
+
+you can now run the command:
+
+# ./gen-image --mirror file:mirror
+
+without needing access to the network.
+
+> Currently (1) and (2) are combined together to root_fs.img, but
+> it is not always good because (1) is usually very stable, but
+> (2) is not especially in case of xfstests development.
+> This patch split root_fs image in two parts:
+> root_fs.img: contains debian distribution and generic xfstest startup scripts
+> test_fs.img: contains xfstests and xfstest-config  (mounted in /tests)
+
+Adding an extra image file makes life a bit harder for people who
+aren't actually doing xfstests/kvm-xfstests development, since they
+now need to download and install two files.  We also have to worry
+about potential incompatibilities in the future that might arise
+between the generic xfstest starutp scripts (in root_fs.img) and the
+xfstest-config files (in test_fs.img).
+
+So what I suggest instead is that we have a new script, update-image,
+which takes an existing root_fs.img, and installs the updated
+xfstests, the configuration files, and startup files, leaving the
+existing debian base image intact.
+
+The advantage of this is that patch will be much smaller and easier
+for me to review :-), and it also makes life easier for end-users who
+aren't developing, where having a single image is much, much simpler.
+Also, having a single image will also make it simpler to support
+deploying an test image to cloud hosting provider.  (One my side
+project I've been working on is trying to make kvm-xfststs work on
+Google Compute Engine.)
+
+Will creating a new "update-image" script meet your needs of making it
+easier to do xfstests development?  (Actually, what I've done when I'm
+doing xfstests development is I just copy xfstests.tar.gz to the file
+that gets mounted under /vdb, run "./kvm-xfstests maint", and then
+unpack the xfstests.tar.gz file.  Or sometimes I'll just copy the
+modified xfstests scripts /vdb and just install them so I don't have
+to recompile all of the xfstests binaries.)
+
+Cheers,
+
+						- Ted
