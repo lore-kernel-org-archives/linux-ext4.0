@@ -1,84 +1,89 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Bail out from make_indexed_dir() on first error
-Date: Thu, 23 Oct 2014 17:18:53 +0200
-Message-ID: <1414077533-2133-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 86471] drastic reduction of write performance after the
+ termination of mysqld
+Date: Thu, 23 Oct 2014 16:36:01 +0000
+Message-ID: <bug-86471-13602-ApLc0iLpJM@https.bugzilla.kernel.org/>
+References: <bug-86471-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:34727 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.19.201]:39954 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751362AbaJWPS5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 23 Oct 2014 11:18:57 -0400
+	id S1750862AbaJWQgF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Oct 2014 12:36:05 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 168B320256
+	for <linux-ext4@vger.kernel.org>; Thu, 23 Oct 2014 16:36:04 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 497D02024F
+	for <linux-ext4@vger.kernel.org>; Thu, 23 Oct 2014 16:36:02 +0000 (UTC)
+In-Reply-To: <bug-86471-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When ext4_handle_dirty_dx_node() or ext4_handle_dirty_dirent_node()
-fail, there's really something wrong with the fs and there's no point in
-continuing further. Just return error from make_indexed_dir() in that
-case. Also initialize frames array so that if we return early due to
-error, dx_release() doesn't try to dereference uninitialized memory
-(which could happen also due to error in do_split()).
+https://bugzilla.kernel.org/show_bug.cgi?id=3D86471
 
-Coverity-id: 741300
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/namei.c | 28 ++++++++++++++++++----------
- 1 file changed, 18 insertions(+), 10 deletions(-)
+--- Comment #6 from Markus K=C3=B6nigshaus <m.koenigshaus@wut.de> ---
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index adb559de23c1..cec7257aa74a 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1816,31 +1816,39 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 		hinfo.hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
- 	hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
- 	ext4fs_dirhash(name, namelen, &hinfo);
-+	memset(frames, 0, sizeof(frames));
- 	frame = frames;
- 	frame->entries = entries;
- 	frame->at = entries;
- 	frame->bh = bh;
- 	bh = bh2;
- 
--	ext4_handle_dirty_dx_node(handle, dir, frame->bh);
--	ext4_handle_dirty_dirent_node(handle, dir, bh);
-+	retval = ext4_handle_dirty_dx_node(handle, dir, frame->bh);
-+	if (retval)
-+		goto out_frames;	
-+	retval = ext4_handle_dirty_dirent_node(handle, dir, bh);
-+	if (retval)
-+		goto out_frames;	
- 
- 	de = do_split(handle,dir, &bh, frame, &hinfo);
- 	if (IS_ERR(de)) {
--		/*
--		 * Even if the block split failed, we have to properly write
--		 * out all the changes we did so far. Otherwise we can end up
--		 * with corrupted filesystem.
--		 */
--		ext4_mark_inode_dirty(handle, dir);
--		dx_release(frames);
--		return PTR_ERR(de);
-+		retval = PTR_ERR(de);
-+		goto out_frames;
- 	}
- 	dx_release(frames);
- 
- 	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
- 	brelse(bh);
- 	return retval;
-+out_frames:
-+	/*
-+	 * Even if the block split failed, we have to properly write
-+	 * out all the changes we did so far. Otherwise we can end up
-+	 * with corrupted filesystem.
-+	 */
-+	ext4_mark_inode_dirty(handle, dir);
-+	dx_release(frames);
-+	return retval;
- }
- 
- /*
--- 
-1.8.1.4
+I think I have found the error. The kernel calls apparently for the sam=
+e page
+dec_zone_page_state on (page, NR_FILE_DIRTY) twice, which means that th=
+e dirty
+page counter underflows (is getting negative):=20
 
+cat /proc/meminfo=20
+MemTotal:         511492 kB
+MemFree:          406972 kB
+MemAvailable:     450536 kB
+Buffers:            1840 kB
+Cached:            52140 kB
+SwapCached:            0 kB
+Active:            54348 kB
+Inactive:          34456 kB
+Active(anon):      34904 kB
+Inactive(anon):     5440 kB
+Active(file):      19444 kB
+Inactive(file):    29016 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+HighTotal:             0 kB
+HighFree:              0 kB
+LowTotal:         511492 kB
+LowFree:          406972 kB
+SwapTotal:             0 kB
+SwapFree:              0 kB
+>> Dirty:          4294967148 kB
+Writeback:             0 kB
+AnonPages:         34844 kB
+Mapped:            13992 kB
+Shmem:              5520 kB
+Slab:               9196 kB
+SReclaimable:       4976 kB
+SUnreclaim:         4220 kB
+KernelStack:         696 kB
+PageTables:         1024 kB
+NFS_Unstable:          0 kB
+Bounce:                0 kB
+WritebackTmp:          0 kB
+CommitLimit:      255744 kB
+Committed_AS:     365452 kB
+VmallocTotal:     499712 kB
+VmallocUsed:        3512 kB
+VmallocChunk:     495964 kB
+
+The writeback - mechanism thinks that too much pages are dirty and disa=
+bles the
+writeback - cache.
+
+Who can I send this bug?
+Markus
+
+--=20
+You are receiving this mail because:
+You are watching the assignee of the bug.--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
