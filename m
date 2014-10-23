@@ -1,89 +1,119 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 86471] drastic reduction of write performance after the
- termination of mysqld
-Date: Thu, 23 Oct 2014 16:36:01 +0000
-Message-ID: <bug-86471-13602-ApLc0iLpJM@https.bugzilla.kernel.org/>
-References: <bug-86471-13602@https.bugzilla.kernel.org/>
+From: Chris Friesen <chris.friesen@windriver.com>
+Subject: RT/ext4/jbd2 circular dependency (was: Re: Hang writing to nfs-mounted
+ filesystem from client)
+Date: Thu, 23 Oct 2014 11:54:55 -0600
+Message-ID: <544940EF.7090907@windriver.com>
+References: <544156FE.7070905@windriver.com> <54415991.1070907@pavlinux.ru> <CANGgnMbQmsdMDJUx7Bop9Xs=jQMmAJgWRjhXVFUGx-DwF=inYw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:39954 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750862AbaJWQgF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Oct 2014 12:36:05 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 168B320256
-	for <linux-ext4@vger.kernel.org>; Thu, 23 Oct 2014 16:36:04 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 497D02024F
-	for <linux-ext4@vger.kernel.org>; Thu, 23 Oct 2014 16:36:02 +0000 (UTC)
-In-Reply-To: <bug-86471-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	<linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
+	<adilger.kernel@dilger.ca>,
+	rt-users <linux-rt-users@vger.kernel.org>
+To: Austin Schuh <austin@peloton-tech.com>, <pavel@pavlinux.ru>
+Return-path: <linux-rt-users-owner@vger.kernel.org>
+In-Reply-To: <CANGgnMbQmsdMDJUx7Bop9Xs=jQMmAJgWRjhXVFUGx-DwF=inYw@mail.gmail.com>
+Sender: linux-rt-users-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D86471
+On 10/17/2014 12:55 PM, Austin Schuh wrote:
+> Use the 121 patch.  This sounds very similar to the issue that I helped
+> debug with XFS.  There ended up being a deadlock due to a bug in the
+> kernel work queues.  You can search the RT archives for more info.
 
---- Comment #6 from Markus K=C3=B6nigshaus <m.koenigshaus@wut.de> ---
+I can confirm that the problem still shows up with the rt121 patch. (And
+also with Paul Gortmaker's proposed 3.4.103-rt127 patch.)
 
-I think I have found the error. The kernel calls apparently for the sam=
-e page
-dec_zone_page_state on (page, NR_FILE_DIRTY) twice, which means that th=
-e dirty
-page counter underflows (is getting negative):=20
+We added some instrumentation and it looks like we've tracked down the problem.
+Figuring out how to fix it is proving to be tricky.
 
-cat /proc/meminfo=20
-MemTotal:         511492 kB
-MemFree:          406972 kB
-MemAvailable:     450536 kB
-Buffers:            1840 kB
-Cached:            52140 kB
-SwapCached:            0 kB
-Active:            54348 kB
-Inactive:          34456 kB
-Active(anon):      34904 kB
-Inactive(anon):     5440 kB
-Active(file):      19444 kB
-Inactive(file):    29016 kB
-Unevictable:           0 kB
-Mlocked:               0 kB
-HighTotal:             0 kB
-HighFree:              0 kB
-LowTotal:         511492 kB
-LowFree:          406972 kB
-SwapTotal:             0 kB
-SwapFree:              0 kB
->> Dirty:          4294967148 kB
-Writeback:             0 kB
-AnonPages:         34844 kB
-Mapped:            13992 kB
-Shmem:              5520 kB
-Slab:               9196 kB
-SReclaimable:       4976 kB
-SUnreclaim:         4220 kB
-KernelStack:         696 kB
-PageTables:         1024 kB
-NFS_Unstable:          0 kB
-Bounce:                0 kB
-WritebackTmp:          0 kB
-CommitLimit:      255744 kB
-Committed_AS:     365452 kB
-VmallocTotal:     499712 kB
-VmallocUsed:        3512 kB
-VmallocChunk:     495964 kB
+Basically it looks like we have a circular dependency involving the
+inode->i_data_sem rt_mutex, the PG_writeback bit, and the BJ_Shadow list.  It
+goes something like this:
 
-The writeback - mechanism thinks that too much pages are dirty and disa=
-bles the
-writeback - cache.
+jbd2_journal_commit_transaction:
+1) set page for writeback (set PG_writeback bit)
+2) put jbd2 journal head on BJ_Shadow list
+3) sleep on PG_writeback bit waiting for page writeback complete
 
-Who can I send this bug?
-Markus
+ext4_da_writepages:
+1) ext4_map_blocks() acquires inode->i_data_sem for writing
+2) do_get_write_access() sleeps waiting for jbd2 journal head to come off
+the BJ_Shadow list
 
---=20
-You are receiving this mail because:
-You are watching the assignee of the bug.--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+At this point the flush code can't run because it can't acquire
+inode->i_data_sem for reading, so the page will never get written out.
+Deadlock.
+
+
+The following is a more detailed timeline with information from added trace
+events:
+
+ nfsd-2012  [003] ....1..  8612.903541: ext4_map_blocks_down_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.903546: ext4_map_blocks_up_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.903559: ext4_map_blocks_down_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.903565: ext4_map_blocks_up_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.903611: ext4_map_blocks_down_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.903616: ext4_map_blocks_up_write: dev 147,3 ino 2097161
+<...>-5960  [004] ....1..  8612.903628: jbd2_submit_inode_data: dev 147,3 ino 2097160
+<...>-5960  [004] ....111  8612.903651: jbd2_list_add_bjshadow: adding jh ffff880415350000 to transaction ffff880415391180 BJ_Shadow list
+<...>-5960  [004] ....111  8612.903653: jbd2_list_add_bjshadow: adding jh ffff8803eb08dbd0 to transaction ffff880415391180 BJ_Shadow list
+<...>-5960  [004] ....111  8612.903655: jbd2_list_add_bjshadow: adding jh ffff8803eb08d150 to transaction ffff880415391180 BJ_Shadow list
+<...>-5960  [004] ....111  8612.903656: jbd2_list_add_bjshadow: adding jh ffff8803eb08d0e0 to transaction ffff880415391180 BJ_Shadow list
+<...>-5960  [004] ....111  8612.903657: jbd2_list_add_bjshadow: adding jh ffff88031c9449a0 to transaction ffff880415391180 BJ_Shadow list
+ nfsd-2012  [003] ....1..  8612.903658: ext4_map_blocks_down_write: dev 147,3 ino 2097161
+<...>-5960  [004] ....111  8612.903658: jbd2_list_add_bjshadow: adding jh ffff88031c944310 to transaction ffff880415391180 BJ_Shadow list
+ nfsd-2012  [003] ....1..  8612.903665: ext4_map_blocks_up_write: dev 147,3 ino 2097161
+<...>-5960  [004] ....1..  8612.903696: jbd2_finish_inode_data: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.903706: ext4_map_blocks_down_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.903714: ext4_map_blocks_up_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.903802: ext4_map_blocks_down_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.903814: ext4_map_blocks_up_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.903960: ext4_map_blocks_down_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.903983: ext4_map_blocks_up_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.904311: ext4_map_blocks_down_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.904318: ext4_map_blocks_up_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.904331: ext4_map_blocks_down_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.904337: ext4_map_blocks_up_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.904399: ext4_map_blocks_down_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.904408: ext4_map_blocks_up_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.904678: ext4_map_blocks_down_write: dev 147,3 ino 2097161
+ nfsd-2012  [003] ....1..  8612.904772: ext4_map_blocks_up_write: dev 147,3 ino 2097161
+<...>-2015  [007] ....1..  8612.934515: ext4_map_blocks_down_write: dev 147,3 ino 2097161
+<...>-2015  [007] ....1..  8612.934525: jbd2_list_sleep_bjshadow: waiting for jh ffff8803eb08dbd0 from transaction ffff880415391180 to be removed from BJ_Shadow list
+
+
+
+Timeline:
+
+pid 5960 is [jbd2/drbd3-8]
+pid 2015 is [nfsd]
+pid 2012 is [nfsd]
+
+pid 5960:
+8612.903628: jbd2_submit_inode_data for inode 2097160.
+	     This is right before calling journal_submit_inode_data_buffers(), which
+             ends up calling set_page_writeback().
+8612.903653: Add jh ffff8803eb08dbd0 to BJ_Shadow list.
+	     This is in bd2_journal_write_metadata_buffer() right before calling
+             __jbd2_journal_file_buffer().
+8612.903696: This is in journal_finish_inode_data_buffers(), right before calling
+             filemap_fdatawait() which ends up calling wait_on_page_bit(page,
+             PG_writeback)
+<we see no more logs for pid 5960 after this>
+
+
+pid 2015:
+8612.934515: takes write lock on inode->i_data_sem for inode 2097161
+8612.934525: goes to sleep waiting for jh ffff8803eb08dbd0 to be removed from
+             BJ_Shadow list
+<we see no more logs for pid 2015 after this>
+
+pid 2012:
+8617.963896: hits 5-sec retry limit and stops the trace.  This means it blocked
+             trying to get a read lock on inode->i_data_sem for inode 2097161
+             at time 8612.963.
+
+
+Chris
