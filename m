@@ -1,48 +1,38 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Bail early when clearing inode journal flag fails
-Date: Thu, 23 Oct 2014 15:05:43 +0200
-Message-ID: <1414069543-29853-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 86541] (rare) two entries are possible to create in a folder
+Date: Thu, 23 Oct 2014 13:52:47 +0000
+Message-ID: <bug-86541-13602-PuSJzCcArJ@https.bugzilla.kernel.org/>
+References: <bug-86541-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60188 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.19.201]:54980 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755482AbaJWNFt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 23 Oct 2014 09:05:49 -0400
+	id S1755574AbaJWNwu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 23 Oct 2014 09:52:50 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 9CE1A20279
+	for <linux-ext4@vger.kernel.org>; Thu, 23 Oct 2014 13:52:49 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id ADC2C2026C
+	for <linux-ext4@vger.kernel.org>; Thu, 23 Oct 2014 13:52:47 +0000 (UTC)
+In-Reply-To: <bug-86541-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When clearing inode journal flag, we call jbd2_journal_flush() to force
-all the journalled data to their final locations. Currently we ignore
-when this fails and continue clearing inode journal flag. This isn't a
-big problem because when jbd2_journal_flush() fails, journal is likely
-aborted anyway. But it can still lead to somewhat confusing results so
-rather bail out early.
+https://bugzilla.kernel.org/show_bug.cgi?id=86541
 
-Coverity-id: 989044
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+Alan <alan@lxorguk.ukuu.org.uk> changed:
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index e9777f93cf05..3356ab5395f4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4959,7 +4959,12 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
- 	if (val)
- 		ext4_set_inode_flag(inode, EXT4_INODE_JOURNAL_DATA);
- 	else {
--		jbd2_journal_flush(journal);
-+		err = jbd2_journal_flush(journal);
-+		if (err < 0) {
-+			jbd2_journal_unlock_updates(journal);
-+			ext4_inode_resume_unlocked_dio(inode);
-+			return err;
-+		}
- 		ext4_clear_inode_flag(inode, EXT4_INODE_JOURNAL_DATA);
- 	}
- 	ext4_set_aops(inode);
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+          Component|Other                       |ext4
+           Assignee|drivers_other@kernel-bugs.o |fs_ext4@kernel-bugs.osdl.or
+                   |sdl.org                     |g
+            Product|Drivers                     |File System
+
 -- 
-1.8.1.4
-
+You are receiving this mail because:
+You are watching the assignee of the bug.
