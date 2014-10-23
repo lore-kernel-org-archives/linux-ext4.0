@@ -1,38 +1,38 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 86541] (rare) two entries are possible to create in a folder
-Date: Thu, 23 Oct 2014 13:52:47 +0000
-Message-ID: <bug-86541-13602-PuSJzCcArJ@https.bugzilla.kernel.org/>
-References: <bug-86541-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] xfstests-bld: Split system images in two parts
+Date: Thu, 23 Oct 2014 10:06:46 -0400
+Message-ID: <20141023140646.GA14868@thunk.org>
+References: <1413990417-18285-1-git-send-email-dmonakhov@openvz.org>
+ <20141022212535.GC6295@thunk.org>
+ <20141023004812.GA7841@thunk.org>
+ <87d29j10zx.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:54980 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:39233 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755574AbaJWNwu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 23 Oct 2014 09:52:50 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 9CE1A20279
-	for <linux-ext4@vger.kernel.org>; Thu, 23 Oct 2014 13:52:49 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id ADC2C2026C
-	for <linux-ext4@vger.kernel.org>; Thu, 23 Oct 2014 13:52:47 +0000 (UTC)
-In-Reply-To: <bug-86541-13602@https.bugzilla.kernel.org/>
+	id S1756045AbaJWOGu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 23 Oct 2014 10:06:50 -0400
+Content-Disposition: inline
+In-Reply-To: <87d29j10zx.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=86541
+On Thu, Oct 23, 2014 at 03:25:38PM +0400, Dmitry Monakhov wrote:
+> Theodore Ts'o <tytso@mit.edu> writes:
+> 
+> > On Wed, Oct 22, 2014 at 05:25:35PM -0400, Theodore Ts'o wrote:
+> >> So what I suggest instead is that we have a new script, update-image,
+> >> which takes an existing root_fs.img, and installs the updated
+> >> xfstests, the configuration files, and startup files, leaving the
+> >> existing debian base image intact.
+> >
+> > Here's an enhancement to the gen-image script which adds a new
+> > --update option.
+> Yes. This one looke much than mine, than you.
 
-Alan <alan@lxorguk.ukuu.org.uk> changed:
+Great, I've pushed it out to git.kernel.org.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-          Component|Other                       |ext4
-           Assignee|drivers_other@kernel-bugs.o |fs_ext4@kernel-bugs.osdl.or
-                   |sdl.org                     |g
-            Product|Drivers                     |File System
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+							- Ted
