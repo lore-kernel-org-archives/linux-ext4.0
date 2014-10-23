@@ -1,184 +1,169 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 1/2] xfstests: update 'new' script v3
-Date: Thu, 23 Oct 2014 15:08:37 +0400
-Message-ID: <1414062518-30942-1-git-send-email-dmonakhov@openvz.org>
-Cc: linux-ext4@vger.kernel.org, root <root@ts105.qa.sw.ru>
-To: fstests@vger.kernel.org
+Subject: Re: [PATCH 1/2] xfstests-bld: Split system images in two parts
+Date: Thu, 23 Oct 2014 15:25:38 +0400
+Message-ID: <87d29j10zx.fsf@openvz.org>
+References: <1413990417-18285-1-git-send-email-dmonakhov@openvz.org> <20141022212535.GC6295@thunk.org> <20141023004812.GA7841@thunk.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha1; protocol="application/pgp-signature"
+Cc: linux-ext4@vger.kernel.org, root <root@deb7build.openvz.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:20847 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753351AbaJWLIn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 23 Oct 2014 07:08:43 -0400
+Received: from mail-wi0-f176.google.com ([209.85.212.176]:39846 "EHLO
+	mail-wi0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753651AbaJWLZr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Oct 2014 07:25:47 -0400
+Received: by mail-wi0-f176.google.com with SMTP id n3so3343041wiv.3
+        for <linux-ext4@vger.kernel.org>; Thu, 23 Oct 2014 04:25:46 -0700 (PDT)
+In-Reply-To: <20141023004812.GA7841@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: root <root@ts105.qa.sw.ru>
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-- Update script to support new test cheme tests/$fs_type/$TEST_IDX
-- Try to use first unused ID
+Theodore Ts'o <tytso@mit.edu> writes:
 
-changes from v2
-  - gawk->$AWK_PROG
+> On Wed, Oct 22, 2014 at 05:25:35PM -0400, Theodore Ts'o wrote:
+>> So what I suggest instead is that we have a new script, update-image,
+>> which takes an existing root_fs.img, and installs the updated
+>> xfstests, the configuration files, and startup files, leaving the
+>> existing debian base image intact.
+>
+> Here's an enhancement to the gen-image script which adds a new
+> --update option.
+Yes. This one looke much than mine, than you.
+>
+> 					- Ted
+>
+> commit debd9734bc23108f37c6f62914cb5f9e16da20cc
+> Author: Theodore Ts'o <tytso@mit.edu>
+> Date:   Wed Oct 22 20:42:32 2014 -0400
+>
+>     test-appliance: add --update option to the gen-image script
+>=20=20=20=20=20
+>     This allows gen-image to to update the xfstests.tar.gz tarball and the
+>     xfstests driver scripts into an existing root_fs.img file, keeping the
+>     original operating systems files unchanged.  This takes less than 15
+>     seconds, compared to about 90 seconds to do a full gen-image build
+>     using a local disk debian mirror.  It also allows a xfstests developer
+>     to generate new versions of the root_fs.img more simply on a system
+>     that does not have debootstrap installed or has access to a Debian
+>     archive or mirror.
+>=20=20=20=20=20
+>     Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+>
+> diff --git a/kvm-xfstests/test-appliance/gen-image b/kvm-xfstests/test-ap=
+pliance/gen-image
+> index 550d070..27f9d96 100755
+> --- a/kvm-xfstests/test-appliance/gen-image
+> +++ b/kvm-xfstests/test-appliance/gen-image
+> @@ -12,6 +12,7 @@ ROOT_FS=3D$DIR/root_fs.img
+>  COMPAT=3D"-o compat=3D0.10"
+>  SAVE_RAW_ROOT=3Dno
+>  DO_GCE=3Dno
+> +DO_UPDATE=3Dno
+>=20=20
+>  if test -r config.custom ; then
+>     . $(pwd)/config.custom
+> @@ -29,8 +30,11 @@ while [ "$1" !=3D "" ]; do
+>        DO_GCE=3Dyes
+>        SAVE_RAW_ROOT=3Dyes;
+>        ;;
+> +    --update)
+> +      DO_UPDATE=3Dyes
+> +      ;;
+>      *)
+> -      echo "usage: gen-image [--save_raw_root] [--do_gce] [--mirror MIRR=
+OR_LOC]"
+> +      echo "usage: gen-image [--save_raw_root] [--do_gce] [--update] [--=
+mirror MIRROR_LOC]"
+>        exit 1
+>        ;;
+>    esac
+> @@ -42,6 +46,31 @@ then
+>      RAW_ROOT_FS=3D/tmp/root_fs.raw.$$
+>  fi
+>=20=20
+> +update_xfstests()
+> +{
+> +   tar -C $ROOTDIR/root -xf ../../xfstests.tar.gz
+> +   rsync -avH files/* $ROOTDIR
+> +}
+> +
+> +finalize_rootfs()
+> +{
+> +   e2fsck -fyD $RAW_ROOT_FS
+> +   e2fsck -fy -E discard $RAW_ROOT_FS
+> +   qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
+> +}
+> +
+> +mkdir -p $ROOTDIR
+> +if test $DO_UPDATE =3D "yes" ; then
+> +   qemu-img convert -f qcow2 -O raw $ROOT_FS $RAW_ROOT_FS
+> +   mount -t ext4 -o loop $RAW_ROOT_FS $ROOTDIR
+> +   rm -rf $ROOTDIR/xfstests
+> +   update_xfstests
+> +   umount $ROOTDIR
+> +   rmdir $ROOTDIR
+> +   finalize_rootfs
+> +   exit 0
+> +fi
+> +
+>  mkdir -p gce
+>  if test $DO_GCE =3D "yes" ; then
+>      sh get-gce-debs
+> @@ -51,7 +80,6 @@ else
+>      variant=3Dxfstests
+>  fi
+>=20=20
+> -mkdir -p $ROOTDIR
+>  mkdir -p var.cache.apt.archives
+>  mkdir -p var.lib.apt.lists
+>  mkdir -p debs
+> @@ -69,9 +97,7 @@ mount --bind gce $ROOTDIR/gce
+>  mkdir -p $ROOTDIR/imgdir
+>  mount --bind $(dirname $RAW_ROOT_FS) $ROOTDIR/imgdir
+>  debootstrap --variant=3D$variant $ARCH $SUITE $ROOTDIR $MIRROR $DIR/kvm-=
+xfstest.script
+> -cp -r files/* rootdir
+> -echo "untaring xfstests"
+> -tar -C rootdir/root -xf ../../xfstests.tar.gz
+> +update_xfstests
+>  for i in vda vdb vdc vdd vde vdf results
+>  do
+>  	mkdir $ROOTDIR/$i
+> @@ -139,9 +165,7 @@ rmdir $ROOTDIR
+>=20=20
+>  if test $DO_GCE !=3D "yes" ; then
+>     tune2fs -O has_journal $RAW_ROOT_FS
+> -   e2fsck -fyD $RAW_ROOT_FS
+> -   e2fsck -fy -E discard $RAW_ROOT_FS
+> -   qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
+> +   finalize_rootfs
+>  fi
+>=20=20
+>  if test "$SAVE_RAW_ROOT" =3D "yes" ; then
 
-Reviewed-by: Eryu Guan <eguan@redhat.com>
----
- new |   85 ++++++++++++++++++++++++++++++++++++++++++++++++------------------
- 1 files changed, 62 insertions(+), 23 deletions(-)
+--=-=-=
+Content-Type: application/pgp-signature
 
-diff --git a/new b/new
-index f3e6fa1..86f9075 100755
---- a/new
-+++ b/new
-@@ -32,10 +32,22 @@ _cleanup()
-     :
- }
- 
--if [ ! -f group ]
-+SRC_GROUPS=`find tests -not -path tests -type d -printf "%f "`
-+usage()
-+{
-+    echo "Usage $0 test_dir"
-+    echo "Available dirs are: $SRC_GROUPS"
-+    exit
-+}
-+
-+[ $# -eq 0 ] && usage
-+tdir=tests/$1
-+shift
-+
-+if [ ! -f $tdir/group ]
- then
--    echo "Creating the group index ..."
--    cat <<'End-of-File' >group
-+    echo "Creating the $tdir/group index ..."
-+    cat <<'End-of-File' >$tdir/group
- # QA groups control
- #
- # define groups and default group owners
-@@ -51,10 +63,10 @@ other		some-user-login
- End-of-File
- fi
- 
--if [ ! -w group ]
-+if [ ! -w $tdir/group ]
- then
--    chmod u+w group
--    echo "Warning: making the index file \"group\" writeable"
-+    chmod u+w $tdir/group
-+    echo "Warning: making the index file \"$tdir/group\" writeable"
- fi
- 
- if make
-@@ -64,13 +76,33 @@ else
-     echo "Warning: make failed -- some tests may be missing"
- fi
- 
--last=`grep '^[0-9][0-9]* ' group | sort | tail -1 | sed -e 's/[ 	].*//'`
--# get rid of leading 0s as can be interpreted as octal
--last=`echo $last | sed 's/^0*//'`
--id=`$AWK_PROG </dev/null 'BEGIN{printf "%03d\n",'$last'+1}'`
-+i=0
-+line=0
-+eof=1
-+[ -f "$tdir/group" ] || usage
-+
-+for found in `cat $tdir/group | $AWK_PROG '{ print $1 }'`
-+do
-+    line=$((line+1))
-+    if [ -z "$found" ] || [ "$found" == "#" ];then
-+	continue
-+    fi
-+    i=$((i+1))
-+    id=`printf "%03d" $i`
-+    if [ "$id" != "$found" ];then
-+	eof=0
-+	break
-+    fi
-+done
-+if [ $eof -eq 1 ]; then
-+   line=$((line+1))
-+   i=$((i+1))
-+   id=`printf "%03d" $i`
-+fi
-+
- echo "Next test is $id"
- 
--if [ -f $id ]
-+if [ -f $tdir/$id ]
- then
-     echo "Error: test $id already exists!"
-     _cleanup
-@@ -81,7 +113,7 @@ echo -n "Creating skeletal script for you to edit ..."
- 
- year=`date +%Y`
- 
--cat <<End-of-File >$id
-+cat <<End-of-File >$tdir/$id
- #! /bin/bash
- # FS QA Test No. $id
- #
-@@ -146,11 +178,12 @@ End-of-File
- sleep 2		# latency to read messages to this point
- echo ""
- 
--chmod 755 $id
--${EDITOR-vi} $id
-+chmod 755 $tdir/$id
-+${EDITOR-vi} $tdir/$id
- 
- if [ $# -eq 0 ]
- then
-+
-     while true
-     do
- 	echo -n "Add to group(s) [other] (? for list): "
-@@ -158,12 +191,15 @@ then
- 	[ -z "$ans" ] && ans=other
- 	if [ "X$ans" = "X?" ]
- 	then
--	    $AWK_PROG <group '
--BEGIN		{ text = "# ???" }
--/^[a-z]/	{ printf "%-16.16s %s\n",$1,text; text = "# ???"; next }
--NF < 2		{ next }
--		{ text = $0 }' \
--	    | sort
-+	    for d in $SRC_GROUPS; do
-+		l=$(sed -n < tests/$d/group \
-+		    -e 's/#.*//' \
-+		    -e 's/$/ /' \
-+		    -e 's;\(^[0-9][0-9][0-9]\)\(.*$\);\2;p')
-+		grpl="$grpl $l"
-+	    done
-+	    lst=`for word in $grpl; do echo $word; done | sort| uniq `
-+	    echo $lst
- 	else
- 	    break
- 	fi
-@@ -173,18 +209,21 @@ else
-     #
-     for g in $*
-     do
--	if grep "^$g[ 	]" group >/dev/null
-+	if grep "^$g[ 	]" $tdir/group >/dev/null
- 	then
- 	    :
- 	else
--	    echo "Warning: group \"$g\" not defined in ./group"
-+	    echo "Warning: group \"$g\" not defined in $tdir/group"
- 	fi
-     done
-     ans="$*"
- fi
- 
- echo -n "Adding $id to group index ..."
--echo "$id $ans" >>group
-+head -n $(($line-1)) $tdir/group > /tmp/$$.group
-+echo "$id $ans" >> /tmp/$$.group
-+tail -n +$((line)) $tdir/group >> /tmp/$$.group
-+mv /tmp/$$.group $tdir/group
- echo " done."
- 
- exit 0
--- 
-1.7.1
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
 
+iQIcBAEBAgAGBQJUSOWyAAoJEFzOBSYIXfvegMAP/2EiI1baXyxt3qM5XV/j1o/E
+6Q/f4DNILLCMkqHkK0DEY2JpNkol64MLYXrSm56cEHUHFhzPcjGDlKEsnGPgrC70
+3ggb8k9OKiXshZTQ+ha1qXnzqdkfR2hXIK78BWhz2b8QnmUJPPN8z76lhEvuRrXw
+qalhBlLoMD+8UJo3/EfQWl+DdFx6/XZd+Nup5G4rQLfmrDkptgeV6xtKh5Hgrn2y
+uvhdIbmL7XgTqvrXEsxMJp7f1oul/mUE8j7wcdB7DdttGGGtrCn2wyHZ5Sj1FRgb
+Q6raDK1q15rwgfEwMy/gi8P/sEoycrRuAbpEkNm/JMFOj26YSV5ja7gzW4pv/mjO
++vBX8lI48lwBMV48dxQfzSFyVo2s5jTOMccOf0t6io+tZcpBgC0W0bJ/YDFvhnKd
+8HSjGSzRdjeXbUhzQMqQPB6eKNC63E0dmgjVnL2jfZ1oMyvkli0olZ+idmrlAFqs
+Vg4sf/7P0oS83HEd/TaYwL41XtzLWTsz1rQh3HNd/RGnmBeYq0iERj+S+4nQvi3S
+P5yM1jFi3qTb14Leo31ucTgZVZAl7v3qJ+/Dp+La2Go9cn7YfoWZPHhC2kP48MfS
+Igjcr43Nz43rHXKBALAGO0Pm6wxIiC60yyczxgT853z29eH3vXx2wk35TJ0hzZEs
+3HJsN5twH0znV+G/JvnL
+=cb9P
+-----END PGP SIGNATURE-----
+--=-=-=--
