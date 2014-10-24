@@ -1,24 +1,22 @@
-From: "Liliane Bettencourt." <ponce@utm.edu.ec>
-Subject: Please Resend Your Message.
-Date: Fri, 24 Oct 2014 03:29:48 +0100
-Message-ID: <20141024023418.987B2991DE@correo.an.gob.ve>
-Reply-To: hmil@live.in
+From: Finance Department <mulyati@unair.ac.id>
+Subject: Payment
+Date: Fri, 24 Oct 2014 18:59:09 +0700 (WIT)
+Message-ID: <2114940225.3585.1414151949411.JavaMail.root__32409.1738708832$1414155388$gmane$org@pop.unair.ac.id>
+Reply-To: Finance Department <dpfuk@qq.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: Me <ponce@utm.edu.ec>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from correo.an.gob.ve ([190.202.87.219]:51321 "EHLO correo.an.gob.ve"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750780AbaJXElh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Oct 2014 00:41:37 -0400
-Content-Description: Mail message body
+Received: from pop.unair.ac.id ([210.57.208.25]:51621 "HELO mail.unair.ac.id"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1756139AbaJXMzz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Oct 2014 08:55:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I, Liliane authenticate this email to you. You can read about me on: fr.wikipedia.org/wiki/Liliane_Bettencourt I intend to give to you a portion of my Net-worth which I have been banking. Click reply for confirmation and more details.
+Dear Recipient,
 
----
-This email is free from viruses and malware because avast! Antivirus protection is active.
-http://www.avast.com
+You have been awarded the sum of  8,000,000.00 (Eight Million Pounds sterling) with reference number 77100146 by office of the ministry of finance UK.Send us your personal details to deliver your funds.
 
+Gloria Peter
