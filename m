@@ -1,84 +1,156 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 16/39] dumpe2fs: output cleanup
-Date: Sat, 25 Oct 2014 13:58:06 -0700
-Message-ID: <20141025205806.532.96949.stgit@birch.djwong.org>
+Subject: [PATCH 19/39] e2fsck: opportunistically set block_uninit after pass
+ 5
+Date: Sat, 25 Oct 2014 13:58:25 -0700
+Message-ID: <20141025205825.532.62162.stgit@birch.djwong.org>
 References: <20141025205623.532.12119.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, TR Reardon <thomas_reardon@hotmail.com>
+Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:44004 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:44069 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752540AbaJYU6k (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Oct 2014 16:58:40 -0400
+	with ESMTP id S1752818AbaJYU67 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Oct 2014 16:58:59 -0400
 In-Reply-To: <20141025205623.532.12119.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Don't display unused inodes twice, and make it clear that we're
-printing a descriptor checksum.
+At the end of pass5, set block_uninit on any group that's empty.  For
+meta_bg filesystems this might save a small amount of disk accesses at
+load time.
+
+Since it's not an error for the flag not to be set even when it could,
+don't bother if the fs is mounted and we're not fixing anything else.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-Cc: TR Reardon <thomas_reardon@hotmail.com>
 ---
- misc/dumpe2fs.c                 |    8 +++-----
- tests/filter.sed                |    3 ++-
- tests/r_fixup_lastbg_big/expect |    2 ++
- 3 files changed, 7 insertions(+), 6 deletions(-)
+ e2fsck/pass5.c                        |   22 ++++++++++++++++++++++
+ e2fsck/problem.c                      |    5 +++++
+ e2fsck/problem.h                      |    3 +++
+ tests/j_long_trans/expect             |    3 +++
+ tests/j_long_trans_mcsum_32bit/expect |    6 ++++++
+ tests/j_long_trans_mcsum_64bit/expect |    6 ++++++
+ 6 files changed, 45 insertions(+)
 
 
-diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-index f39cb3c..6751bff 100644
---- a/misc/dumpe2fs.c
-+++ b/misc/dumpe2fs.c
-@@ -218,20 +218,18 @@ static void list_desc(ext2_filsys fs, int grp_only)
- 			continue;
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index 1a225fb..92ab633 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -544,6 +544,28 @@ redo_counts:
+ 			} else
+ 				ext2fs_unmark_valid(fs);
  		}
++
++		/*
++		 * Opportunistically set block_uninit if none of the
++		 * blocks are in use.  However, it's not an error if
++		 * the flag could be set but isn't, so don't bother
++		 * the user if the FS is mounted and we haven't fixed
++		 * anything else, to minimize unnecessary reboots.
++		 */
++		if (((ctx->options & E2F_OPT_NO) ||
++		     !(ctx->mount_flags & EXT2_MF_MOUNTED) ||
++		     ext2fs_test_changed(fs)) &&
++		    ext2fs_has_group_desc_csum(fs) &&
++		    !ext2fs_bg_flags_test(fs, g, EXT2_BG_BLOCK_UNINIT) &&
++		    (g != fs->group_desc_count - 1) &&
++		    free_array[g] == fs->super->s_blocks_per_group) {
++			pctx.group = g;
++			if (fix_problem(ctx, PR_5_BLOCK_UNINIT_UNSET, &pctx)) {
++				ext2fs_bg_flags_set(fs, g,
++							EXT2_BG_BLOCK_UNINIT);
++				ext2fs_mark_super_dirty(fs);
++			}
++		}
+ 	}
+ 	free_blocks = EXT2FS_C2B(fs, free_blocks);
+ 	if (free_blocks != ext2fs_free_blocks_count(fs->super)) {
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 9c2b2e6..6a5f814 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1904,6 +1904,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("Unused @i count wrong for @g #%g (%i, counted=%j).\n"),
+ 	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
  
--		printf (_("Group %lu: (Blocks "), i);
-+		printf(_("Group %lu: (Blocks "), i);
- 		print_range(first_block, last_block);
- 		fputs(")", stdout);
--		print_bg_opts(fs, i);
- 		if (ext2fs_has_group_desc_csum(fs)) {
- 			unsigned csum = ext2fs_bg_checksum(fs, i);
- 			unsigned exp_csum = ext2fs_group_desc_csum(fs, i);
++	/* block_uninit flag can be set for group */
++	{ PR_5_BLOCK_UNINIT_UNSET,
++	  N_("BLOCK_UNINIT flag can be set for @g #%g.\n"),
++	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
++
+ 	/* Post-Pass 5 errors */
  
--			printf(_("  Checksum 0x%04x"), csum);
-+			printf(_(" csum 0x%04x"), csum);
- 			if (csum != exp_csum)
- 				printf(_(" (EXPECTED 0x%04x)"), exp_csum);
--			printf(_(", unused inodes %u\n"),
--			       ext2fs_bg_itable_unused(fs, i));
- 		}
-+		print_bg_opts(fs, i);
- 		has_super = ((i==0) || super_blk);
- 		if (has_super) {
- 			printf (_("  %s superblock at "),
-diff --git a/tests/filter.sed b/tests/filter.sed
-index 59fad4e..d9a336c 100644
---- a/tests/filter.sed
-+++ b/tests/filter.sed
-@@ -21,4 +21,5 @@ s/\\015//g
- /Reserved blocks uid:/s/ (user .*)//
- /Reserved blocks gid:/s/ (group .*)//
- /whichever comes first/d
--/^  Checksum /d
-+s/, csum 0x\([0-9a-f]*\)//g
-+s/ csum 0x\([0-9a-f]*\)//g
-diff --git a/tests/r_fixup_lastbg_big/expect b/tests/r_fixup_lastbg_big/expect
-index badf6cf..8f302a3 100644
---- a/tests/r_fixup_lastbg_big/expect
-+++ b/tests/r_fixup_lastbg_big/expect
-@@ -33,6 +33,8 @@ Group 2: (Blocks 16385-24576) [INODE_UNINIT, BLOCK_UNINIT]
-   Free inodes: 833-1248
- Group 3: (Blocks 24577-32768) [INODE_UNINIT]
-   Backup superblock at 24577, Group descriptors at 24578-24578
-+  Reserved GDT blocks at 24579-24656
-+  Block bitmap at 413 (bg #0 + 412)
- Pass 1: Checking inodes, blocks, and sizes
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
+ 	/* Recreate journal if E2F_FLAG_JOURNAL_INODE flag is set */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 6a71fc8..345dd0a 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -1142,6 +1142,9 @@ struct problem_context {
+ /* Unused inode count for group wrong */
+ #define PR_5_UNUSED_INODES_COUNT_GROUP	0x05001C
+ 
++/* Unused inode count for group wrong */
++#define PR_5_BLOCK_UNINIT_UNSET		0x05001D
++
+ /*
+  * Post-Pass 5 errors
+  */
+diff --git a/tests/j_long_trans/expect b/tests/j_long_trans/expect
+index 7638ef1..2cc1dab 100644
+--- a/tests/j_long_trans/expect
++++ b/tests/j_long_trans/expect
+@@ -81,6 +81,9 @@ Fix? yes
+ Free blocks count wrong for group #14 (0, counted=8192).
+ Fix? yes
+ 
++BLOCK_UNINIT flag can be set for group #14.
++Fix? yes
++
+ Free blocks count wrong (247711, counted=255916).
+ Fix? yes
+ 
+diff --git a/tests/j_long_trans_mcsum_32bit/expect b/tests/j_long_trans_mcsum_32bit/expect
+index 0d141c1..39b6e6d 100644
+--- a/tests/j_long_trans_mcsum_32bit/expect
++++ b/tests/j_long_trans_mcsum_32bit/expect
+@@ -117,9 +117,15 @@ Fix? yes
+ Free blocks count wrong for group #17 (0, counted=8192).
+ Fix? yes
+ 
++BLOCK_UNINIT flag can be set for group #17.
++Fix? yes
++
+ Free blocks count wrong for group #18 (0, counted=8192).
+ Fix? yes
+ 
++BLOCK_UNINIT flag can be set for group #18.
++Fix? yes
++
+ Free blocks count wrong (497236, counted=513633).
+ Fix? yes
+ 
+diff --git a/tests/j_long_trans_mcsum_64bit/expect b/tests/j_long_trans_mcsum_64bit/expect
+index 94e9925..edb7776 100644
+--- a/tests/j_long_trans_mcsum_64bit/expect
++++ b/tests/j_long_trans_mcsum_64bit/expect
+@@ -116,9 +116,15 @@ Fix? yes
+ Free blocks count wrong for group #17 (0, counted=8192).
+ Fix? yes
+ 
++BLOCK_UNINIT flag can be set for group #17.
++Fix? yes
++
+ Free blocks count wrong for group #18 (0, counted=8192).
+ Fix? yes
+ 
++BLOCK_UNINIT flag can be set for group #18.
++Fix? yes
++
+ Free blocks count wrong (497218, counted=513615).
+ Fix? yes
+ 
 
