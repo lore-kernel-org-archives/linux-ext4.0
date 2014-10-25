@@ -1,64 +1,114 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 17/39] e2fsck: fix dangling pointer when dir_info array is
- resized
-Date: Sat, 25 Oct 2014 13:58:12 -0700
-Message-ID: <20141025205812.532.67790.stgit@birch.djwong.org>
+Subject: [PATCH 06/39] misc: fix broken libmagic interaction with
+ plausibility check
+Date: Sat, 25 Oct 2014 13:57:01 -0700
+Message-ID: <20141025205701.532.1427.stgit@birch.djwong.org>
 References: <20141025205623.532.12119.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: Sami Liedes <sami.liedes@iki.fi>, linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:44051 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:43768 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752817AbaJYU64 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Oct 2014 16:58:56 -0400
+	with ESMTP id S1752696AbaJYU5g (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Oct 2014 16:57:36 -0400
 In-Reply-To: <20141025205623.532.12119.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-e2fsck uses an array to store directory usage information during pass
-3; the usage context also contains a pointer to the last directory
-looked up.  When expanding the dir_info array, this cache pointer
-needs to be cleared if the array resize changed the pointer location,
-or else we'll later walk off the end of this dead pointer.
+If we get as far as calling libmagic, return the correct error code so
+that mkfs asks for confirmation if libmagic finds something and
+doesn't ask if nothing is found.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-Reported-by: Sami Liedes <sami.liedes@iki.fi>
 ---
- e2fsck/dirinfo.c |    5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ misc/plausible.c                     |    9 ++++++---
+ tests/f_detect_junk/expect           |    6 +++---
+ tests/f_detect_junk/expect.nodebugfs |    4 ++--
+ tests/f_detect_junk/script           |    2 +-
+ 4 files changed, 12 insertions(+), 9 deletions(-)
 
 
-diff --git a/e2fsck/dirinfo.c b/e2fsck/dirinfo.c
-index 4a9019b..dab5a13 100644
---- a/e2fsck/dirinfo.c
-+++ b/e2fsck/dirinfo.c
-@@ -121,7 +121,7 @@ static void setup_db(e2fsck_t ctx)
- void e2fsck_add_dir_info(e2fsck_t ctx, ext2_ino_t ino, ext2_ino_t parent)
- {
- 	struct dir_info_db 	*db;
--	struct dir_info 	*dir, ent;
-+	struct dir_info		*dir, ent, *old_array;
- 	int			i, j;
- 	errcode_t		retval;
- 	unsigned long		old_size;
-@@ -136,6 +136,7 @@ void e2fsck_add_dir_info(e2fsck_t ctx, ext2_ino_t ino, ext2_ino_t parent)
- 	if (ctx->dir_info->count >= ctx->dir_info->size) {
- 		old_size = ctx->dir_info->size * sizeof(struct dir_info);
- 		ctx->dir_info->size += 10;
-+		old_array = ctx->dir_info->array;
- 		retval = ext2fs_resize_mem(old_size, ctx->dir_info->size *
- 					   sizeof(struct dir_info),
- 					   &ctx->dir_info->array);
-@@ -147,6 +148,8 @@ void e2fsck_add_dir_info(e2fsck_t ctx, ext2_ino_t ino, ext2_ino_t parent)
- 			ctx->dir_info->size -= 10;
- 			return;
- 		}
-+		if (old_array != ctx->dir_info->array)
-+			ctx->dir_info->last_lookup = NULL;
- 	}
+diff --git a/misc/plausible.c b/misc/plausible.c
+index 00bc6e2..1848a26 100644
+--- a/misc/plausible.c
++++ b/misc/plausible.c
+@@ -243,6 +243,7 @@ int check_plausibility(const char *device, int flags, int *ret_is_dev)
+ 	if ((flags & CHECK_FS_EXIST) && magic_library_available()) {
+ 		const char *msg;
+ 		magic_t mag;
++		int has_magic = 0;
  
- 	ent.ino = ino;
+ 		mag = dl_magic_open(MAGIC_RAW | MAGIC_SYMLINK | MAGIC_DEVICES |
+ 				    MAGIC_ERROR | MAGIC_NO_CHECK_ELF |
+@@ -250,11 +251,13 @@ int check_plausibility(const char *device, int flags, int *ret_is_dev)
+ 		dl_magic_load(mag, NULL);
+ 
+ 		msg = dl_magic_file(mag, device);
+-		if (msg && strcmp(msg, "data") && strcmp(msg, "empty"))
+-			printf(_("%s contains a `%s'\n"), device, msg);
++		if (msg && strcmp(msg, "data") && strcmp(msg, "empty")) {
++			printf(_("%s contains `%s' data\n"), device, msg);
++			has_magic = 1;
++		}
+ 
+ 		dl_magic_close(mag);
+-		return 0;
++		return !has_magic;
+ 	}
+ #endif
+ 
+diff --git a/tests/f_detect_junk/expect b/tests/f_detect_junk/expect
+index 57f7f89..f3300de 100644
+--- a/tests/f_detect_junk/expect
++++ b/tests/f_detect_junk/expect
+@@ -11,13 +11,13 @@ is corrupt, and you might try running e2fsck with an alternate superblock:
+  or
+     e2fsck -b 32768 <device>
+ 
+-test.img contains a `PNG image data, 148 x 31, 8-bit/color RGBA, non-interlaced'
++test.img contains `PNG image data, 148 x 31, 8-bit/color RGBA, non-interlaced' data
+ *** debugfs
+ test.img: Bad magic number in super-block while opening filesystem
+-test.img contains a `PNG image data, 148 x 31, 8-bit/color RGBA, non-interlaced'
++test.img contains `PNG image data, 148 x 31, 8-bit/color RGBA, non-interlaced' data
+ *** tune2fs
+ ../misc/tune2fs: Bad magic number in super-block while trying to open test.img
+-test.img contains a `PNG image data, 148 x 31, 8-bit/color RGBA, non-interlaced'
++test.img contains `PNG image data, 148 x 31, 8-bit/color RGBA, non-interlaced' data
+ *** mke2fs
+ Creating filesystem with 16384 1k blocks and 4096 inodes
+ Superblock backups stored on blocks: 
+diff --git a/tests/f_detect_junk/expect.nodebugfs b/tests/f_detect_junk/expect.nodebugfs
+index d9281a0..0d4ba54 100644
+--- a/tests/f_detect_junk/expect.nodebugfs
++++ b/tests/f_detect_junk/expect.nodebugfs
+@@ -11,11 +11,11 @@ is corrupt, and you might try running e2fsck with an alternate superblock:
+  or
+     e2fsck -b 32768 <device>
+ 
+-test.img contains a `PNG image data, 148 x 31, 8-bit/color RGBA, non-interlaced'
++test.img contains `PNG image data, 148 x 31, 8-bit/color RGBA, non-interlaced' data
+ *** debugfs
+ *** tune2fs
+ ../misc/tune2fs: Bad magic number in super-block while trying to open test.img
+-test.img contains a `PNG image data, 148 x 31, 8-bit/color RGBA, non-interlaced'
++test.img contains `PNG image data, 148 x 31, 8-bit/color RGBA, non-interlaced' data
+ *** mke2fs
+ Creating filesystem with 16384 1k blocks and 4096 inodes
+ Superblock backups stored on blocks: 
+diff --git a/tests/f_detect_junk/script b/tests/f_detect_junk/script
+index 8409fdd..3aebcd0 100644
+--- a/tests/f_detect_junk/script
++++ b/tests/f_detect_junk/script
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ 
+-if [ "$(grep -c 'define HAVE_MAGIC_H' $test_dir/../../lib/config.h)" -gt 0 ]; then
++if [ "$(grep -c 'define HAVE_MAGIC_H' ../lib/config.h)" -gt 0 ]; then
+ 
+ FSCK_OPT=-fn
+ IMAGE=$test_dir/image.bz2
 
