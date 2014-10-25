@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 33/39] libext2fs: use fallocate for creating journals and
- hugefiles
-Date: Sat, 25 Oct 2014 13:59:56 -0700
-Message-ID: <20141025205956.532.51585.stgit@birch.djwong.org>
+Subject: [PATCH 18/39] e2fsck: opportunistically recalculate unused inode
+ count and inode_uninit after pass 5
+Date: Sat, 25 Oct 2014 13:58:19 -0700
+Message-ID: <20141025205819.532.37434.stgit@birch.djwong.org>
 References: <20141025205623.532.12119.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,317 +10,317 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:44387 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:44043 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752840AbaJYVAb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Oct 2014 17:00:31 -0400
+	with ESMTP id S1752606AbaJYU6x (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Oct 2014 16:58:53 -0400
 In-Reply-To: <20141025205623.532.12119.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use the new fallocate API for creating the journal and the mk_hugefile
-feature.
+At the end of pass5, update the unused inode count to cover any newly
+unused inodes and set inode_uninit if none of the inodes in the group
+are used.  This will save us time on future fsck runs since we don't
+need to scan those inodes any more.
+
+Since it's not an error for the unused inode count to be smaller than
+necessary, don't bother if the fs is mounted and we're not fixing
+anything else.
+
+On an aged filesystem that has experienced at least one massive inode
+die-off, this has been shown to reduce future e2fsck times by around
+10%.  The effect is diluted on less heavily used filesystems.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/mkjournal.c |  134 +++++++-----------------------------------------
- misc/mk_hugefiles.c    |   96 ++++------------------------------
- 2 files changed, 30 insertions(+), 200 deletions(-)
+ e2fsck/pass5.c                          |   38 +++++++++++++++++++++++++++++++
+ e2fsck/problem.c                        |    5 ++++
+ e2fsck/problem.h                        |    3 ++
+ tests/f_bad_bbitmap/expect.1            |    3 ++
+ tests/f_bad_bmap_csum/expect.1          |    3 ++
+ tests/f_bad_gdt_csum/expect.1           |    7 +++++-
+ tests/f_bad_ibitmap/expect.1            |    3 ++
+ tests/f_bad_inode_csum/expect.1         |    3 ++
+ tests/f_idata_and_extents/expect.1      |    3 ++
+ tests/f_illitable_flexbg/expect.1       |   12 ++++++++++
+ tests/f_inlinedata_repair/expect.1      |    3 ++
+ tests/f_invalid_extent_symlink/expect.1 |    3 ++
+ tests/f_jnl_64bit/expect.1              |    6 +++++
+ tests/f_super_bad_csum/expect.1         |    8 +++++--
+ tests/f_unused_itable/expect.1          |    6 +++++
+ 15 files changed, 103 insertions(+), 3 deletions(-)
 
 
-diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-index 2cd7ca5..9378314 100644
---- a/lib/ext2fs/mkjournal.c
-+++ b/lib/ext2fs/mkjournal.c
-@@ -250,89 +250,6 @@ errcode_t ext2fs_zero_blocks(ext2_filsys fs, blk_t blk, int num,
- }
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index 64fb7fe..1a225fb 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -821,6 +821,44 @@ do_counts:
+ 			} else
+ 				ext2fs_unmark_valid(fs);
+ 		}
++
++		/*
++		 * Opportunistically update the unused inodes count
++		 * and set inode_uninit so we can skip scanning unused
++		 * inodes during future fsck runs.  However, it's not
++		 * an error if the unused inode count is smaller
++		 * than necessary, so don't bother the user if FS is
++		 * mounted and we haven't fixed anything else, to
++		 * minimize unnecessary reboots.
++		 */
++		if (((ctx->options & E2F_OPT_NO) ||
++		     !(ctx->mount_flags & EXT2_MF_MOUNTED) ||
++		     ext2fs_test_changed(fs)) &&
++		    ext2fs_has_group_desc_csum(fs) &&
++		    !ext2fs_bg_flags_test(fs, i, EXT2_BG_INODE_UNINIT)) {
++			ext2_ino_t start, end, j;
++
++			start = (fs->super->s_inodes_per_group * i) + 1;
++			end = (fs->super->s_inodes_per_group * (i + 1));
++			pctx.group = i;
++			pctx.ino = ext2fs_bg_itable_unused(fs, i);
++			end -= pctx.ino;
++			for (j = end; j >= start; j--)
++				if (ext2fs_test_inode_bitmap2(ctx->inode_used_map, j))
++					break;
++
++			pctx.ino2 = fs->super->s_inodes_per_group -
++						(j - start + 1);
++			if (pctx.ino != pctx.ino2 &&
++			    fix_problem(ctx, PR_5_UNUSED_INODES_COUNT_GROUP,
++					&pctx)) {
++				if (pctx.ino2 == fs->super->s_inodes_per_group)
++					ext2fs_bg_flags_set(fs, i,
++							EXT2_BG_INODE_UNINIT);
++				ext2fs_bg_itable_unused_set(fs, i, pctx.ino2);
++				ext2fs_mark_super_dirty(fs);
++			}
++		}
+ 	}
+ 	if (free_inodes != fs->super->s_free_inodes_count) {
+ 		pctx.group = -1;
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index a4da64b..9c2b2e6 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1899,6 +1899,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("@g %g @b @B does not match checksum.\n"),
+ 	  PROMPT_FIX, PR_LATCH_BBITMAP | PR_PREEN_OK },
  
++	/* Unused inode count for group wrong */
++	{ PR_5_UNUSED_INODES_COUNT_GROUP,
++	  N_("Unused @i count wrong for @g #%g (%i, counted=%j).\n"),
++	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
++
+ 	/* Post-Pass 5 errors */
+ 
+ 	/* Recreate journal if E2F_FLAG_JOURNAL_INODE flag is set */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 3c28166..6a71fc8 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -1139,6 +1139,9 @@ struct problem_context {
+ /* Block bitmap checksum does not match */
+ #define PR_5_BLOCK_BITMAP_CSUM_INVALID	0x05001B
+ 
++/* Unused inode count for group wrong */
++#define PR_5_UNUSED_INODES_COUNT_GROUP	0x05001C
++
  /*
-- * Helper function for creating the journal using direct I/O routines
-- */
--struct mkjournal_struct {
--	int		num_blocks;
--	int		newblocks;
--	blk64_t		goal;
--	blk64_t		blk_to_zero;
--	int		zero_count;
--	int		flags;
--	char		*buf;
--	errcode_t	err;
--};
--
--static int mkjournal_proc(ext2_filsys	fs,
--			  blk64_t	*blocknr,
--			  e2_blkcnt_t	blockcnt,
--			  blk64_t	ref_block EXT2FS_ATTR((unused)),
--			  int		ref_offset EXT2FS_ATTR((unused)),
--			  void		*priv_data)
--{
--	struct mkjournal_struct *es = (struct mkjournal_struct *) priv_data;
--	blk64_t	new_blk;
--	errcode_t	retval;
--
--	if (*blocknr) {
--		es->goal = *blocknr;
--		return 0;
--	}
--	if (blockcnt &&
--	    (EXT2FS_B2C(fs, es->goal) == EXT2FS_B2C(fs, es->goal+1)))
--		new_blk = es->goal+1;
--	else {
--		es->goal &= ~EXT2FS_CLUSTER_MASK(fs);
--		retval = ext2fs_new_block2(fs, es->goal, 0, &new_blk);
--		if (retval) {
--			es->err = retval;
--			return BLOCK_ABORT;
--		}
--		ext2fs_block_alloc_stats2(fs, new_blk, +1);
--		es->newblocks++;
--	}
--	if (blockcnt >= 0)
--		es->num_blocks--;
--
--	retval = 0;
--	if (blockcnt <= 0)
--		retval = io_channel_write_blk64(fs->io, new_blk, 1, es->buf);
--	else if (!(es->flags & EXT2_MKJOURNAL_LAZYINIT)) {
--		if (es->zero_count) {
--			if ((es->blk_to_zero + es->zero_count == new_blk) &&
--			    (es->zero_count < 1024))
--				es->zero_count++;
--			else {
--				retval = ext2fs_zero_blocks2(fs,
--							     es->blk_to_zero,
--							     es->zero_count,
--							     0, 0);
--				es->zero_count = 0;
--			}
--		}
--		if (es->zero_count == 0) {
--			es->blk_to_zero = new_blk;
--			es->zero_count = 1;
--		}
--	}
--
--	if (blockcnt == 0)
--		memset(es->buf, 0, fs->blocksize);
--
--	if (retval) {
--		es->err = retval;
--		return BLOCK_ABORT;
--	}
--	*blocknr = es->goal = new_blk;
--
--	if (es->num_blocks == 0)
--		return (BLOCK_CHANGED | BLOCK_ABORT);
--	else
--		return BLOCK_CHANGED;
--
--}
--
--/*
-  * Calculate the initial goal block to be roughly at the middle of the
-  * filesystem.  Pick a group that has the largest number of free
-  * blocks.
-@@ -373,7 +290,8 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
- 	errcode_t		retval;
- 	struct ext2_inode	inode;
- 	unsigned long long	inode_size;
--	struct mkjournal_struct	es;
-+	int			falloc_flags = EXT2_FALLOCATE_FORCE_INIT;
-+	blk64_t			zblk;
+  * Post-Pass 5 errors
+  */
+diff --git a/tests/f_bad_bbitmap/expect.1 b/tests/f_bad_bbitmap/expect.1
+index 71ad1bb..af3f632 100644
+--- a/tests/f_bad_bbitmap/expect.1
++++ b/tests/f_bad_bbitmap/expect.1
+@@ -9,6 +9,9 @@ Pass 5: Checking group summary information
+ Block bitmap differences:  -(8--10) -(12--17) -(19--31)
+ Fix? yes
  
- 	if ((retval = ext2fs_create_journal_superblock(fs, num_blocks, flags,
- 						       &buf)))
-@@ -390,40 +308,16 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
- 		goto out2;
- 	}
- 
--	es.num_blocks = num_blocks;
--	es.newblocks = 0;
--	es.buf = buf;
--	es.err = 0;
--	es.flags = flags;
--	es.zero_count = 0;
--	es.goal = (goal != ~0ULL) ? goal : get_midpoint_journal_block(fs);
-+	if (goal == ~0ULL)
-+		goal = get_midpoint_journal_block(fs);
- 
--	if (fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS) {
-+	if (fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS)
- 		inode.i_flags |= EXT4_EXTENTS_FL;
--		if ((retval = ext2fs_write_inode(fs, journal_ino, &inode)))
--			goto out2;
--	}
- 
--	retval = ext2fs_block_iterate3(fs, journal_ino, BLOCK_FLAG_APPEND,
--				       0, mkjournal_proc, &es);
--	if (retval)
--		goto out2;
--	if (es.err) {
--		retval = es.err;
--		goto out2;
--	}
--	if (es.zero_count) {
--		retval = ext2fs_zero_blocks2(fs, es.blk_to_zero,
--					    es.zero_count, 0, 0);
--		if (retval)
--			goto out2;
--	}
--
--	if ((retval = ext2fs_read_inode(fs, journal_ino, &inode)))
--		goto out2;
-+	if (!(flags & EXT2_MKJOURNAL_LAZYINIT))
-+		falloc_flags |= EXT2_FALLOCATE_ZERO_BLOCKS;
- 
- 	inode_size = (unsigned long long)fs->blocksize * num_blocks;
--	ext2fs_iblk_add_blocks(fs, &inode, es.newblocks);
- 	inode.i_mtime = inode.i_ctime = fs->now ? fs->now : time(0);
- 	inode.i_links_count = 1;
- 	inode.i_mode = LINUX_S_IFREG | 0600;
-@@ -431,9 +325,21 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
- 	if (retval)
- 		goto out2;
- 
-+	retval = ext2fs_fallocate(fs, falloc_flags, journal_ino,
-+				  &inode, goal, 0, num_blocks);
-+	if (retval)
-+		goto out2;
++Unused inode count wrong for group #0 (0, counted=117).
++Fix? yes
 +
- 	if ((retval = ext2fs_write_new_inode(fs, journal_ino, &inode)))
- 		goto out2;
--	retval = 0;
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+ test_filesys: 11/128 files (0.0% non-contiguous), 18/512 blocks
+diff --git a/tests/f_bad_bmap_csum/expect.1 b/tests/f_bad_bmap_csum/expect.1
+index ca8f77f..7616751 100644
+--- a/tests/f_bad_bmap_csum/expect.1
++++ b/tests/f_bad_bmap_csum/expect.1
+@@ -6,6 +6,9 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
++Unused inode count wrong for group #0 (0, counted=117).
++Fix? yes
 +
-+	retval = ext2fs_bmap2(fs, journal_ino, &inode, NULL, 0, 0, NULL, &zblk);
-+	if (retval)
-+		goto out2;
+ Inode bitmap differences: Group 0 inode bitmap does not match checksum.
+ FIXED.
+ Block bitmap differences: Group 0 block bitmap does not match checksum.
+diff --git a/tests/f_bad_gdt_csum/expect.1 b/tests/f_bad_gdt_csum/expect.1
+index e14c897..0f496e0 100644
+--- a/tests/f_bad_gdt_csum/expect.1
++++ b/tests/f_bad_gdt_csum/expect.1
+@@ -6,5 +6,10 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
++Unused inode count wrong for group #0 (0, counted=117).
++Fix? yes
 +
-+	retval = io_channel_write_blk64(fs->io, zblk, 1, buf);
-+	if (retval)
-+		goto out2;
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+ test_filesys: 11/128 files (0.0% non-contiguous), 18/512 blocks
+-Exit status is 0
++Exit status is 1
+diff --git a/tests/f_bad_ibitmap/expect.1 b/tests/f_bad_ibitmap/expect.1
+index ea17523..81689e0 100644
+--- a/tests/f_bad_ibitmap/expect.1
++++ b/tests/f_bad_ibitmap/expect.1
+@@ -9,6 +9,9 @@ Pass 5: Checking group summary information
+ Inode bitmap differences:  -(12--32)
+ Fix? yes
  
- 	memcpy(fs->super->s_jnl_blocks, inode.i_block, EXT2_N_BLOCKS*4);
- 	fs->super->s_jnl_blocks[15] = inode.i_size_high;
-diff --git a/misc/mk_hugefiles.c b/misc/mk_hugefiles.c
-index 3e4274c..5ac1114 100644
---- a/misc/mk_hugefiles.c
-+++ b/misc/mk_hugefiles.c
-@@ -258,12 +258,7 @@ static errcode_t mk_hugefile(ext2_filsys fs, blk64_t num,
++Unused inode count wrong for group #0 (0, counted=117).
++Fix? yes
++
  
- {
- 	errcode_t		retval;
--	blk64_t			lblk, bend = 0;
--	__u64			size;
--	blk64_t			left;
--	blk64_t			count = 0;
- 	struct ext2_inode	inode;
--	ext2_extent_handle_t	handle;
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+ test_filesys: 11/128 files (0.0% non-contiguous), 18/512 blocks
+diff --git a/tests/f_bad_inode_csum/expect.1 b/tests/f_bad_inode_csum/expect.1
+index b3c628d..b28a349 100644
+--- a/tests/f_bad_inode_csum/expect.1
++++ b/tests/f_bad_inode_csum/expect.1
+@@ -117,6 +117,9 @@ Fix? yes
+ Free inodes count wrong for group #0 (0, counted=32).
+ Fix? yes
  
- 	retval = ext2fs_new_inode(fs, 0, LINUX_S_IFREG, NULL, ino);
- 	if (retval)
-@@ -283,85 +278,20 @@ static errcode_t mk_hugefile(ext2_filsys fs, blk64_t num,
++Unused inode count wrong for group #0 (0, counted=32).
++Fix? yes
++
+ Free inodes count wrong (0, counted=32).
+ Fix? yes
  
- 	ext2fs_inode_alloc_stats2(fs, *ino, +1, 0);
+diff --git a/tests/f_idata_and_extents/expect.1 b/tests/f_idata_and_extents/expect.1
+index 7f7fbf3..aba063a 100644
+--- a/tests/f_idata_and_extents/expect.1
++++ b/tests/f_idata_and_extents/expect.1
+@@ -26,6 +26,9 @@ Fix? yes
+ Free inodes count wrong for group #0 (105, counted=106).
+ Fix? yes
  
--	retval = ext2fs_extent_open2(fs, *ino, &inode, &handle);
-+	if (EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-+				      EXT3_FEATURE_INCOMPAT_EXTENTS))
-+		inode.i_flags |= EXT4_EXTENTS_FL;
-+	retval = ext2fs_fallocate(fs,
-+				  EXT2_FALLOCATE_FORCE_INIT |
-+				  EXT2_FALLOCATE_ZERO_BLOCKS,
-+				  *ino, &inode, ~0ULL, 0, num);
- 	if (retval)
- 		return retval;
--
--	lblk = 0;
--	left = num ? num : 1;
--	while (left) {
--		blk64_t pblk, end;
--		blk64_t n = left;
--
--		retval =  ext2fs_find_first_zero_block_bitmap2(fs->block_map,
--			goal, ext2fs_blocks_count(fs->super) - 1, &end);
--		if (retval)
--			goto errout;
--		goal = end;
--
--		retval =  ext2fs_find_first_set_block_bitmap2(fs->block_map, goal,
--			       ext2fs_blocks_count(fs->super) - 1, &bend);
--		if (retval == ENOENT) {
--			bend = ext2fs_blocks_count(fs->super);
--			if (num == 0)
--				left = 0;
--		}
--		if (!num || bend - goal < left)
--			n = bend - goal;
--		pblk = goal;
--		if (num)
--			left -= n;
--		goal += n;
--		count += n;
--		ext2fs_block_alloc_stats_range(fs, pblk, n, +1);
--
--		if (zero_hugefile) {
--			blk64_t ret_blk;
--			retval = ext2fs_zero_blocks2(fs, pblk, n,
--						     &ret_blk, NULL);
--
--			if (retval)
--				com_err(program_name, retval,
--					_("while zeroing block %llu "
--					  "for hugefile"), ret_blk);
--		}
--
--		while (n) {
--			blk64_t l = n;
--			struct ext2fs_extent newextent;
--
--			if (l > EXT_INIT_MAX_LEN)
--				l = EXT_INIT_MAX_LEN;
--
--			newextent.e_len = l;
--			newextent.e_pblk = pblk;
--			newextent.e_lblk = lblk;
--			newextent.e_flags = 0;
--
--			retval = ext2fs_extent_insert(handle,
--					EXT2_EXTENT_INSERT_AFTER, &newextent);
--			if (retval)
--				return retval;
--			pblk += l;
--			lblk += l;
--			n -= l;
--		}
--	}
--
--	retval = ext2fs_read_inode(fs, *ino, &inode);
--	if (retval)
--		goto errout;
--
--	retval = ext2fs_iblk_add_blocks(fs, &inode,
--					count / EXT2FS_CLUSTER_RATIO(fs));
--	if (retval)
--		goto errout;
--	size = (__u64) count * fs->blocksize;
--	retval = ext2fs_inode_size_set(fs, &inode, size);
-+	retval = ext2fs_inode_size_set(fs, &inode, num * fs->blocksize);
- 	if (retval)
--		goto errout;
-+		return retval;
++Unused inode count wrong for group #0 (103, counted=105).
++Fix? yes
++
+ Free inodes count wrong (105, counted=106).
+ Fix? yes
  
--	retval = ext2fs_write_new_inode(fs, *ino, &inode);
-+	retval = ext2fs_write_inode(fs, *ino, &inode);
- 	if (retval)
- 		goto errout;
+diff --git a/tests/f_illitable_flexbg/expect.1 b/tests/f_illitable_flexbg/expect.1
+index fa42a0f..04ce65b 100644
+--- a/tests/f_illitable_flexbg/expect.1
++++ b/tests/f_illitable_flexbg/expect.1
+@@ -18,6 +18,18 @@ Pass 5: Checking group summary information
+ Inode bitmap differences:  -(65--128)
+ Fix? yes
  
-@@ -379,13 +309,7 @@ retry:
- 		goto retry;
- 	}
++Unused inode count wrong for group #0 (0, counted=52).
++Fix? yes
++
++Unused inode count wrong for group #1 (0, counted=64).
++Fix? yes
++
++Unused inode count wrong for group #2 (0, counted=64).
++Fix? yes
++
++Unused inode count wrong for group #3 (0, counted=64).
++Fix? yes
++
  
--	if (retval)
--		goto errout;
--
- errout:
--	if (handle)
--		ext2fs_extent_free(handle);
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+ test_filesys: 12/256 files (0.0% non-contiguous), 31163/32768 blocks
+diff --git a/tests/f_inlinedata_repair/expect.1 b/tests/f_inlinedata_repair/expect.1
+index faba192..f7eebd3 100644
+--- a/tests/f_inlinedata_repair/expect.1
++++ b/tests/f_inlinedata_repair/expect.1
+@@ -69,6 +69,9 @@ Pass 5: Checking group summary information
+ Directories count wrong for group #0 (7, counted=8).
+ Fix? yes
+ 
++Unused inode count wrong for group #0 (90, counted=91).
++Fix? yes
++
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+ test_filesys: 28/128 files (0.0% non-contiguous), 18/512 blocks
+diff --git a/tests/f_invalid_extent_symlink/expect.1 b/tests/f_invalid_extent_symlink/expect.1
+index 7bda0b7..cbb2ac5 100644
+--- a/tests/f_invalid_extent_symlink/expect.1
++++ b/tests/f_invalid_extent_symlink/expect.1
+@@ -6,6 +6,9 @@ Clear? yes
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
++Unused inode count wrong for group #0 (4, counted=5).
++Fix? yes
++
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+ test_filesys: 11/16 files (9.1% non-contiguous), 21/100 blocks
+diff --git a/tests/f_jnl_64bit/expect.1 b/tests/f_jnl_64bit/expect.1
+index e360e2f..915076b 100644
+--- a/tests/f_jnl_64bit/expect.1
++++ b/tests/f_jnl_64bit/expect.1
+@@ -7,6 +7,12 @@ Pass 5: Checking group summary information
+ Free blocks count wrong (14059, counted=12712).
+ Fix? yes
+ 
++Unused inode count wrong for group #0 (0, counted=2876).
++Fix? yes
++
++Unused inode count wrong for group #1 (1395, counted=3958).
++Fix? yes
++
+ Free inodes count wrong (8181, counted=6834).
+ Fix? yes
+ 
+diff --git a/tests/f_super_bad_csum/expect.1 b/tests/f_super_bad_csum/expect.1
+index 25ced5c..a606fab 100644
+--- a/tests/f_super_bad_csum/expect.1
++++ b/tests/f_super_bad_csum/expect.1
+@@ -5,8 +5,12 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-Inode bitmap differences: Group 1 inode bitmap does not match checksum.
+-FIXED.
++Unused inode count wrong for group #0 (0, counted=501).
++Fix? yes
++
++Unused inode count wrong for group #1 (0, counted=512).
++Fix? yes
++
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+ test_filesys: 11/1024 files (0.0% non-contiguous), 1557/16384 blocks
+diff --git a/tests/f_unused_itable/expect.1 b/tests/f_unused_itable/expect.1
+index a4da987..fbc6538 100644
+--- a/tests/f_unused_itable/expect.1
++++ b/tests/f_unused_itable/expect.1
+@@ -19,9 +19,15 @@ Pass 5: Checking group summary information
+ Free inodes count wrong for group #0 (53, counted=51).
+ Fix? yes
+ 
++Unused inode count wrong for group #0 (0, counted=51).
++Fix? yes
++
+ Free inodes count wrong for group #1 (64, counted=58).
+ Fix? yes
+ 
++Unused inode count wrong for group #1 (0, counted=58).
++Fix? yes
++
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+ test_filesys: 19/128 files (0.0% non-contiguous), 165/1000 blocks
+
