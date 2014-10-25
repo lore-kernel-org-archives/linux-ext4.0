@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 30/39] libext2fs: find/alloc a range of empty blocks
-Date: Sat, 25 Oct 2014 13:59:36 -0700
-Message-ID: <20141025205936.532.51827.stgit@birch.djwong.org>
+Subject: [PATCH 25/39] libext2fs: support allocating uninit blocks in bmap2()
+Date: Sat, 25 Oct 2014 13:59:04 -0700
+Message-ID: <20141025205904.532.42867.stgit@birch.djwong.org>
 References: <20141025205623.532.12119.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,206 +9,79 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:44251 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:44156 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752839AbaJYVAA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Oct 2014 17:00:00 -0400
+	with ESMTP id S1752819AbaJYU72 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Oct 2014 16:59:28 -0400
 In-Reply-To: <20141025205623.532.12119.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Provide a function that, given a goal pblk and a range, will try to
-find a run of free blocks to satisfy the allocation.  By default the
-function will look anywhere in the filesystem for the run, though this
-can be constrained with optional flags.  One flag indicates that the
-range must start at the goal block; the other flag indicates that we
-should not return a range shorter than len.
+As part of supporting fallocate-like functionality, extend
+ext2fs_bmap() with two flags -- BMAP_UNINIT and BMAP_ZERO.  The first
+will cause it to mark/set a block uninitialized, if it's part of an
+extent based file.  For a block mapped file, the mapping is put in,
+but there is no way to remember the uninitialized status.  The second
+flag causes the block to be zeroed to support the use case of
+emulating uninitialized blocks on a block-map file by zeroing them.
 
-v2: Add a second function to allocate a range of blocks.
+Eventually fallocate or fuse2fs or somebody will use these.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/alloc.c  |  141 +++++++++++++++++++++++++++++++++++++++++++++++++++
- lib/ext2fs/ext2fs.h |   11 ++++
- 2 files changed, 152 insertions(+)
+ lib/ext2fs/bmap.c   |    9 +++++++--
+ lib/ext2fs/ext2fs.h |    2 ++
+ 2 files changed, 9 insertions(+), 2 deletions(-)
 
 
-diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
-index 00cc9ba..45791ff 100644
---- a/lib/ext2fs/alloc.c
-+++ b/lib/ext2fs/alloc.c
-@@ -26,6 +26,16 @@
- #include "ext2_fs.h"
- #include "ext2fs.h"
+diff --git a/lib/ext2fs/bmap.c b/lib/ext2fs/bmap.c
+index c1d0e6f..e936ec1 100644
+--- a/lib/ext2fs/bmap.c
++++ b/lib/ext2fs/bmap.c
+@@ -214,10 +214,13 @@ static errcode_t extent_bmap(ext2_filsys fs, ext2_ino_t ino,
+ 	errcode_t		retval = 0;
+ 	blk64_t			blk64 = 0;
+ 	int			alloc = 0;
++	int			set_flags;
++
++	set_flags = bmap_flags & BMAP_UNINIT ? EXT2_EXTENT_SET_BMAP_UNINIT : 0;
  
-+#define min(a, b) ((a) < (b) ? (a) : (b))
-+
-+#undef DEBUG
-+
-+#ifdef DEBUG
-+# define dbg_printf(f, a...)  do {printf(f, ## a); fflush(stdout); } while (0)
-+#else
-+# define dbg_printf(f, a...)
-+#endif
-+
- /*
-  * Clear the uninit block bitmap flag if necessary
-  */
-@@ -313,3 +323,134 @@ blk64_t ext2fs_find_inode_goal(ext2_filsys fs, ext2_ino_t ino)
- 		group = group & ~((1 << (log_flex)) - 1);
- 	return ext2fs_group_first_block2(fs, group);
- }
-+
-+/*
-+ * Starting at _goal_, scan around the filesystem to find a run of free blocks
-+ * that's at least _len_ blocks long.  Possible flags:
-+ * - EXT2_NEWRANGE_EXACT_GOAL: The range of blocks must start at _goal_.
-+ * - EXT2_NEWRANGE_MIN_LENGTH: do not return a allocation shorter than _len_.
-+ * - EXT2_NEWRANGE_ZERO_BLOCKS: Zero blocks pblk to pblk+plen before returning.
-+ *
-+ * The starting block is returned in _pblk_ and the length is returned via
-+ * _plen_.  The blocks are not marked in the bitmap; the caller must mark
-+ * however much of the returned run they actually use, hopefully via
-+ * ext2fs_block_alloc_stats_range().
-+ *
-+ * This function can return a range that is longer than what was requested.
-+ */
-+errcode_t ext2fs_new_range(ext2_filsys fs, int flags, blk64_t goal,
-+			   blk64_t len, ext2fs_block_bitmap map, blk64_t *pblk,
-+			   blk64_t *plen)
-+{
-+	errcode_t retval;
-+	blk64_t start, end, b;
-+	int looped = 0;
-+	blk64_t max_blocks = ext2fs_blocks_count(fs->super);
-+
-+	dbg_printf("%s: flags=0x%x goal=%llu len=%llu\n", __func__, flags,
-+		   goal, len);
-+	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
-+	if (len == 0 || (flags & ~EXT2_NEWRANGE_ALL_FLAGS))
-+		return EXT2_ET_INVALID_ARGUMENT;
-+	if (!map)
-+		map = fs->block_map;
-+	if (!map)
-+		return EXT2_ET_NO_BLOCK_BITMAP;
-+	if (!goal || goal >= ext2fs_blocks_count(fs->super))
-+		goal = fs->super->s_first_data_block;
-+
-+	start = goal;
-+	while (!looped || start <= goal) {
-+		retval = ext2fs_find_first_zero_block_bitmap2(map, start,
-+							      max_blocks - 1,
-+							      &start);
-+		if (retval == ENOENT) {
-+			/*
-+			 * If there are no free blocks beyond the starting
-+			 * point, try scanning the whole filesystem, unless the
-+			 * user told us only to allocate from _goal_, or if
-+			 * we're already scanning the whole filesystem.
-+			 */
-+			if (flags & EXT2_NEWRANGE_FIXED_GOAL ||
-+			    start == fs->super->s_first_data_block)
-+				goto fail;
-+			start = fs->super->s_first_data_block;
-+			continue;
-+		} else if (retval)
-+			goto errout;
-+
-+		if (flags & EXT2_NEWRANGE_FIXED_GOAL && start != goal)
-+			goto fail;
-+
-+		b = min(start + len - 1, max_blocks - 1);
-+		retval =  ext2fs_find_first_set_block_bitmap2(map, start, b,
-+							      &end);
-+		if (retval == ENOENT)
-+			end = b + 1;
-+		else if (retval)
-+			goto errout;
-+
-+		if (!(flags & EXT2_NEWRANGE_MIN_LENGTH) ||
-+		    (end - start) >= len) {
-+			/* Success! */
-+			*pblk = start;
-+			*plen = end - start;
-+			dbg_printf("%s: new_range goal=%llu--%llu "
-+				   "blk=%llu--%llu %llu\n",
-+				   __func__, goal, goal + len - 1,
-+				   *pblk, *pblk + *plen - 1, *plen);
-+
-+			for (b = start; b < end;
-+			     b += fs->super->s_blocks_per_group)
-+				clear_block_uninit(fs,
-+						ext2fs_group_of_blk2(fs, b));
-+			return 0;
-+		}
-+
-+		if (flags & EXT2_NEWRANGE_FIXED_GOAL)
-+			goto fail;
-+		start = end;
-+		if (start >= max_blocks) {
-+			if (looped)
-+				goto fail;
-+			looped = 1;
-+			start = fs->super->s_first_data_block;
-+		}
-+	}
-+
-+fail:
-+	retval = EXT2_ET_BLOCK_ALLOC_FAIL;
-+errout:
-+	return retval;
-+}
-+
-+errcode_t ext2fs_alloc_range(ext2_filsys fs, int flags, blk64_t goal,
-+			     blk_t len, blk64_t *ret)
-+{
-+	int newr_flags = EXT2_NEWRANGE_MIN_LENGTH;
-+	errcode_t retval;
-+	blk64_t plen;
-+
-+	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
-+	if (len == 0 || (flags & ~EXT2_ALLOCRANGE_ALL_FLAGS))
-+		return EXT2_ET_INVALID_ARGUMENT;
-+
-+	if (flags & EXT2_ALLOCRANGE_FIXED_GOAL)
-+		newr_flags |= EXT2_NEWRANGE_FIXED_GOAL;
-+
-+	retval = ext2fs_new_range(fs, newr_flags, goal, len, NULL, ret, &plen);
-+	if (retval)
-+		return retval;
-+
-+	if (plen < len)
-+		return EXT2_ET_BLOCK_ALLOC_FAIL;
-+
-+	if (flags & EXT2_ALLOCRANGE_ZERO_BLOCKS) {
-+		retval = ext2fs_zero_blocks2(fs, *ret, len, NULL, NULL);
-+		if (retval)
-+			return retval;
-+	}
-+
-+	ext2fs_block_alloc_stats_range(fs, *ret, len, +1);
-+	return retval;
-+}
+ 	if (bmap_flags & BMAP_SET) {
+ 		retval = ext2fs_extent_set_bmap(handle, block,
+-						*phys_blk, 0);
++						*phys_blk, set_flags);
+ 		return retval;
+ 	}
+ 	retval = ext2fs_extent_goto(handle, block);
+@@ -254,7 +257,7 @@ got_block:
+ 		alloc++;
+ 	set_extent:
+ 		retval = ext2fs_extent_set_bmap(handle, block,
+-						blk64, 0);
++						blk64, set_flags);
+ 		if (retval) {
+ 			ext2fs_block_alloc_stats2(fs, blk64, -1);
+ 			return retval;
+@@ -440,6 +443,8 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
+ 	if (retval == 0)
+ 		*phys_blk = blk32;
+ done:
++	if (*phys_blk && retval == 0 && (bmap_flags & BMAP_ZERO))
++		retval = ext2fs_zero_blocks2(fs, *phys_blk, 1, NULL, NULL);
+ 	if (buf)
+ 		ext2fs_free_mem(&buf);
+ 	if (handle)
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 7941c5d..91e1bef 100644
+index 5ecaa85..664c3c0 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -698,6 +698,17 @@ extern void ext2fs_set_alloc_block_callback(ext2_filsys fs,
- 							      blk64_t goal,
- 							      blk64_t *ret));
- blk64_t ext2fs_find_inode_goal(ext2_filsys fs, ext2_ino_t ino);
-+#define EXT2_NEWRANGE_FIXED_GOAL	(0x1)
-+#define EXT2_NEWRANGE_MIN_LENGTH	(0x2)
-+#define EXT2_NEWRANGE_ALL_FLAGS		(0x3)
-+errcode_t ext2fs_new_range(ext2_filsys fs, int flags, blk64_t goal,
-+			   blk64_t len, ext2fs_block_bitmap map, blk64_t *pblk,
-+			   blk64_t *plen);
-+#define EXT2_ALLOCRANGE_FIXED_GOAL	(0x1)
-+#define EXT2_ALLOCRANGE_ZERO_BLOCKS	(0x2)
-+#define EXT2_ALLOCRANGE_ALL_FLAGS	(0x3)
-+errcode_t ext2fs_alloc_range(ext2_filsys fs, int flags, blk64_t goal,
-+			     blk_t len, blk64_t *ret);
+@@ -533,6 +533,8 @@ typedef struct ext2_icount *ext2_icount_t;
+  */
+ #define BMAP_ALLOC	0x0001
+ #define BMAP_SET	0x0002
++#define BMAP_UNINIT	0x0004
++#define BMAP_ZERO	0x0008
  
- /* alloc_sb.c */
- extern int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
+ /*
+  * Returned flags from ext2fs_bmap
 
