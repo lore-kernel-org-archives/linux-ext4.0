@@ -1,58 +1,47 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 02/39] e2fuzz: exercise fuzzed blocks more aggressively
-Date: Sat, 25 Oct 2014 13:56:36 -0700
-Message-ID: <20141025205636.532.23454.stgit@birch.djwong.org>
+Subject: [PATCH 03/39] libext2fs: directory iteration mustn't walk off the
+ buffer end
+Date: Sat, 25 Oct 2014 13:56:42 -0700
+Message-ID: <20141025205642.532.35826.stgit@birch.djwong.org>
 References: <20141025205623.532.12119.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
+Cc: Sami Liedes <sami.liedes@iki.fi>, linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:43622 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:43674 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752690AbaJYU5K (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Oct 2014 16:57:10 -0400
+	with ESMTP id S1752291AbaJYU5T (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Oct 2014 16:57:19 -0400
 In-Reply-To: <20141025205623.532.12119.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Exercise fuzzed metadata blocks more aggressively by expanding up to
-50000 files (instead of just test.1, which might not hit anything).
-Fix a typo while we're at it.
+When we're iterating a directory, the loop control code reads the
+length of the next directory record, failing to account for the fact
+that there must be at least 8 bytes (the minimum size of a directory
+entry) left in the buffer to read the next directory record.  Fix the
+loop conditional so that we don't read off the end of the buffer.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reported-by: Sami Liedes <sami.liedes@iki.fi>
 ---
- misc/e2fuzz.sh |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ lib/ext2fs/dir_iterate.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 
-diff --git a/misc/e2fuzz.sh b/misc/e2fuzz.sh
-index a261d5a..4cb7b61 100755
---- a/misc/e2fuzz.sh
-+++ b/misc/e2fuzz.sh
-@@ -34,7 +34,7 @@ print_help() {
- 	echo "-p:	Use system's mke2fs/e2fsck/tune2fs tools."
- 	echo "-s:	Create FS images of this size. (${SZ})"
- 	echo "-S:	Copy files from this dir. (${SRCDIR})"
--	echo "-x:	Run e2fck at most this many times. (${MAX_FSCK})"
-+	echo "-x:	Run e2fsck at most this many times. (${MAX_FSCK})"
- 	test "${HAS_FUSE2FS}" -gt 0 && echo "-u:	Use fuse2fs instead of the kernel."
- 	exit 0
- }
-@@ -192,12 +192,12 @@ seq 1 "${PASSES}" | while read pass; do
- 		find "${TESTMNT}/test.1/" -type f -size -1048576k -print0 | xargs -0 cat > /dev/null 2>> "${OPS_LOG}"
+diff --git a/lib/ext2fs/dir_iterate.c b/lib/ext2fs/dir_iterate.c
+index 67152cc..9063c17 100644
+--- a/lib/ext2fs/dir_iterate.c
++++ b/lib/ext2fs/dir_iterate.c
+@@ -222,7 +222,7 @@ int ext2fs_process_dir_block(ext2_filsys fs,
+ 					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+ 		csum_size = sizeof(struct ext2_dir_entry_tail);
  
- 		echo "+++ expand"
--		find "${TESTMNT}/test.1/" -type f 2> /dev/null | while read f; do
-+		find "${TESTMNT}/" -type f 2> /dev/null | head -n 50000 | while read f; do
- 			attr -l "$f" > /dev/null 2>> "${OPS_LOG}"
--			mv "$f" "$f.longer" > /dev/null 2>> "${OPS_LOG}"
- 			if [ -f "$f" -a -w "$f" ]; then
- 				dd if=/dev/zero bs="${BLK_SZ}" count=1 >> "$f" 2>> "${OPS_LOG}"
- 			fi
-+			mv "$f" "$f.longer" > /dev/null 2>> "${OPS_LOG}"
- 		done
- 		sync
- 
+-	while (offset < buflen) {
++	while (offset < buflen - 8) {
+ 		dirent = (struct ext2_dir_entry *) (ctx->buf + offset);
+ 		if (ext2fs_get_rec_len(fs, dirent, &rec_len))
+ 			return BLOCK_ABORT;
 
