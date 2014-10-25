@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 09/39] resize2fs: don't exit if shrinking sparse_super2 fs
- to one bg
-Date: Sat, 25 Oct 2014 13:57:21 -0700
-Message-ID: <20141025205721.532.83169.stgit@birch.djwong.org>
+Subject: [PATCH 38/39] fuse2fs: handle 64-bit dates correctly
+Date: Sat, 25 Oct 2014 14:00:30 -0700
+Message-ID: <20141025210030.532.12588.stgit@birch.djwong.org>
 References: <20141025205623.532.12119.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,35 +9,88 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:43831 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:44495 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752725AbaJYU5z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Oct 2014 16:57:55 -0400
+	with ESMTP id S1752879AbaJYVAy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Oct 2014 17:00:54 -0400
 In-Reply-To: <20141025205623.532.12119.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If we're shrinking a sparse_super2 filesystem to a single block group,
-the superblock will be in block 0.  This is perfectly valid (for block
-group 0 with a blocksize > 1024) so don't exit.
+Fix fuse2fs' interpretation of 64-bit date quantities to match the
+kernel.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- resize/resize2fs.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ misc/fuse2fs.c |   31 ++++++++++++++++++++++---------
+ 1 file changed, 22 insertions(+), 9 deletions(-)
 
 
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index b59f482..ff18817 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -2126,7 +2126,7 @@ static errcode_t reserve_sparse_super2_last_group(ext2_resize_t rfs,
- 	if (retval)
- 		return retval;
+diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
+index ec0b743..2746a27 100644
+--- a/misc/fuse2fs.c
++++ b/misc/fuse2fs.c
+@@ -353,15 +353,24 @@ static int __translate_error(ext2_filsys fs, errcode_t err, ext2_ino_t ino,
  
--	if (!sb) {
-+	if (last_bg && !sb) {
- 		fputs(_("Should never happen!  No sb in last super_sparse bg?\n"),
- 		      stderr);
- 		exit(1);
+ static inline __u32 ext4_encode_extra_time(const struct timespec *time)
+ {
+-	return (sizeof(time->tv_sec) > 4 ?
+-		(time->tv_sec >> 32) & EXT4_EPOCH_MASK : 0) |
+-	       ((time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK);
++	__u32 extra = sizeof(time->tv_sec) > 4 ?
++			((time->tv_sec - (__s32)time->tv_sec) >> 32) &
++			EXT4_EPOCH_MASK : 0;
++	return extra | (time->tv_nsec << EXT4_EPOCH_BITS);
+ }
+ 
+ static inline void ext4_decode_extra_time(struct timespec *time, __u32 extra)
+ {
+-	if (sizeof(time->tv_sec) > 4)
+-		time->tv_sec |= (__u64)((extra) & EXT4_EPOCH_MASK) << 32;
++	if (sizeof(time->tv_sec) > 4 && (extra & EXT4_EPOCH_MASK)) {
++		__u64 extra_bits = extra & EXT4_EPOCH_MASK;
++		/*
++		 * Prior to kernel 3.14?, we had a broken decode function,
++		 * wherein we effectively did this:
++		 * if (extra_bits == 3)
++		 *     extra_bits = 0;
++		 */
++		time->tv_sec += extra_bits << 32;
++	}
+ 	time->tv_nsec = ((extra) & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
+ }
+ 
+@@ -387,7 +396,7 @@ do {									       \
+ 	(timespec)->tv_sec = (signed)((raw_inode)->xtime);		       \
+ 	if (EXT4_FITS_IN_INODE(raw_inode, xtime ## _extra))		       \
+ 		ext4_decode_extra_time((timespec),			       \
+-				       raw_inode->xtime ## _extra);	       \
++				       (raw_inode)->xtime ## _extra);	       \
+ 	else								       \
+ 		(timespec)->tv_nsec = 0;				       \
+ } while (0)
+@@ -749,6 +758,7 @@ static int stat_inode(ext2_filsys fs, ext2_ino_t ino, struct stat *statbuf)
+ 	dev_t fakedev = 0;
+ 	errcode_t err;
+ 	int ret = 0;
++	struct timespec tv;
+ 
+ 	memset(&inode, 0, sizeof(inode));
+ 	err = ext2fs_read_inode_full(fs, ino, (struct ext2_inode *)&inode,
+@@ -766,9 +776,12 @@ static int stat_inode(ext2_filsys fs, ext2_ino_t ino, struct stat *statbuf)
+ 	statbuf->st_size = EXT2_I_SIZE(&inode);
+ 	statbuf->st_blksize = fs->blocksize;
+ 	statbuf->st_blocks = blocks_from_inode(fs, &inode);
+-	statbuf->st_atime = inode.i_atime;
+-	statbuf->st_mtime = inode.i_mtime;
+-	statbuf->st_ctime = inode.i_ctime;
++	EXT4_INODE_GET_XTIME(i_atime, &tv, &inode);
++	statbuf->st_atime = tv.tv_sec;
++	EXT4_INODE_GET_XTIME(i_mtime, &tv, &inode);
++	statbuf->st_mtime = tv.tv_sec;
++	EXT4_INODE_GET_XTIME(i_ctime, &tv, &inode);
++	statbuf->st_ctime = tv.tv_sec;
+ 	if (LINUX_S_ISCHR(inode.i_mode) ||
+ 	    LINUX_S_ISBLK(inode.i_mode)) {
+ 		if (inode.i_block[0])
 
