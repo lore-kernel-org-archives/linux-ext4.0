@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 25/39] libext2fs: support allocating uninit blocks in bmap2()
-Date: Sat, 25 Oct 2014 13:59:04 -0700
-Message-ID: <20141025205904.532.42867.stgit@birch.djwong.org>
+Subject: [PATCH 26/39] libext2fs: file IO routines should handle uninit
+ blocks
+Date: Sat, 25 Oct 2014 13:59:10 -0700
+Message-ID: <20141025205910.532.75541.stgit@birch.djwong.org>
 References: <20141025205623.532.12119.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,79 +10,173 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:44156 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:44193 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752819AbaJYU72 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Oct 2014 16:59:28 -0400
+	with ESMTP id S1752819AbaJYU7o (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Oct 2014 16:59:44 -0400
 In-Reply-To: <20141025205623.532.12119.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-As part of supporting fallocate-like functionality, extend
-ext2fs_bmap() with two flags -- BMAP_UNINIT and BMAP_ZERO.  The first
-will cause it to mark/set a block uninitialized, if it's part of an
-extent based file.  For a block mapped file, the mapping is put in,
-but there is no way to remember the uninitialized status.  The second
-flag causes the block to be zeroed to support the use case of
-emulating uninitialized blocks on a block-map file by zeroing them.
-
-Eventually fallocate or fuse2fs or somebody will use these.
+The file IO routines do not handle uninit blocks at all.  The read
+method should check for the uninit flag and return a buffer of zeroes,
+and the write routine should convert unwritten extents.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/bmap.c   |    9 +++++++--
- lib/ext2fs/ext2fs.h |    2 ++
- 2 files changed, 9 insertions(+), 2 deletions(-)
+ lib/ext2fs/fileio.c         |   24 ++++++++++++++++++++++--
+ tests/f_uninit_cat/expect   |  Bin
+ tests/f_uninit_cat/image.gz |  Bin
+ tests/f_uninit_cat/name     |    1 +
+ tests/f_uninit_cat/script   |   37 +++++++++++++++++++++++++++++++++++++
+ 5 files changed, 60 insertions(+), 2 deletions(-)
+ create mode 100644 tests/f_uninit_cat/expect
+ create mode 100644 tests/f_uninit_cat/image.gz
+ create mode 100644 tests/f_uninit_cat/name
+ create mode 100755 tests/f_uninit_cat/script
 
 
-diff --git a/lib/ext2fs/bmap.c b/lib/ext2fs/bmap.c
-index c1d0e6f..e936ec1 100644
---- a/lib/ext2fs/bmap.c
-+++ b/lib/ext2fs/bmap.c
-@@ -214,10 +214,13 @@ static errcode_t extent_bmap(ext2_filsys fs, ext2_ino_t ino,
- 	errcode_t		retval = 0;
- 	blk64_t			blk64 = 0;
- 	int			alloc = 0;
-+	int			set_flags;
+diff --git a/lib/ext2fs/fileio.c b/lib/ext2fs/fileio.c
+index 1d5032a..d0a05d6 100644
+--- a/lib/ext2fs/fileio.c
++++ b/lib/ext2fs/fileio.c
+@@ -123,6 +123,8 @@ errcode_t ext2fs_file_flush(ext2_file_t file)
+ {
+ 	errcode_t	retval;
+ 	ext2_filsys fs;
++	int		ret_flags;
++	blk64_t		dontcare;
+ 
+ 	EXT2_CHECK_MAGIC(file, EXT2_ET_MAGIC_EXT2_FILE);
+ 	fs = file->fs;
+@@ -131,6 +133,22 @@ errcode_t ext2fs_file_flush(ext2_file_t file)
+ 	    !(file->flags & EXT2_FILE_BUF_DIRTY))
+ 		return 0;
+ 
++	/* Is this an uninit block? */
++	if (file->physblock && file->inode.i_flags & EXT4_EXTENTS_FL) {
++		retval = ext2fs_bmap2(fs, file->ino, &file->inode, BMAP_BUFFER,
++				      0, file->blockno, &ret_flags, &dontcare);
++		if (retval)
++			return retval;
++		if (ret_flags & BMAP_RET_UNINIT) {
++			retval = ext2fs_bmap2(fs, file->ino, &file->inode,
++					      BMAP_BUFFER, BMAP_SET,
++					      file->blockno, 0,
++					      &file->physblock);
++			if (retval)
++				return retval;
++		}
++	}
 +
-+	set_flags = bmap_flags & BMAP_UNINIT ? EXT2_EXTENT_SET_BMAP_UNINIT : 0;
+ 	/*
+ 	 * OK, the physical block hasn't been allocated yet.
+ 	 * Allocate it.
+@@ -185,15 +203,17 @@ static errcode_t load_buffer(ext2_file_t file, int dontfill)
+ {
+ 	ext2_filsys	fs = file->fs;
+ 	errcode_t	retval;
++	int		ret_flags;
  
- 	if (bmap_flags & BMAP_SET) {
- 		retval = ext2fs_extent_set_bmap(handle, block,
--						*phys_blk, 0);
-+						*phys_blk, set_flags);
- 		return retval;
- 	}
- 	retval = ext2fs_extent_goto(handle, block);
-@@ -254,7 +257,7 @@ got_block:
- 		alloc++;
- 	set_extent:
- 		retval = ext2fs_extent_set_bmap(handle, block,
--						blk64, 0);
-+						blk64, set_flags);
- 		if (retval) {
- 			ext2fs_block_alloc_stats2(fs, blk64, -1);
+ 	if (!(file->flags & EXT2_FILE_BUF_VALID)) {
+ 		retval = ext2fs_bmap2(fs, file->ino, &file->inode,
+-				     BMAP_BUFFER, 0, file->blockno, 0,
++				     BMAP_BUFFER, 0, file->blockno, &ret_flags,
+ 				     &file->physblock);
+ 		if (retval)
  			return retval;
-@@ -440,6 +443,8 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
- 	if (retval == 0)
- 		*phys_blk = blk32;
- done:
-+	if (*phys_blk && retval == 0 && (bmap_flags & BMAP_ZERO))
-+		retval = ext2fs_zero_blocks2(fs, *phys_blk, 1, NULL, NULL);
- 	if (buf)
- 		ext2fs_free_mem(&buf);
- 	if (handle)
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 5ecaa85..664c3c0 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -533,6 +533,8 @@ typedef struct ext2_icount *ext2_icount_t;
-  */
- #define BMAP_ALLOC	0x0001
- #define BMAP_SET	0x0002
-+#define BMAP_UNINIT	0x0004
-+#define BMAP_ZERO	0x0008
- 
- /*
-  * Returned flags from ext2fs_bmap
+ 		if (!dontfill) {
+-			if (file->physblock) {
++			if (file->physblock &&
++			    !(ret_flags & BMAP_RET_UNINIT)) {
+ 				retval = io_channel_read_blk64(fs->io,
+ 							       file->physblock,
+ 							       1, file->buf);
+diff --git a/tests/f_uninit_cat/expect b/tests/f_uninit_cat/expect
+new file mode 100644
+index 0000000000000000000000000000000000000000..0c0a5cf84cc58483ca33e257259607e4ca54ebbe
+GIT binary patch
+literal 3623
+zcmeH{v2KGf5Qa1J6t`4rrKVs4QNvoLQ-&;^E5{tf3b8An9fdx94LB%6-ypu_bol%I
+zbN}EyCjwT%#}UOzsurZuHPR~_IxSAVb5#S$U!-I|p!pqIOM}8{(*s%KgmnfdX!S27
+zv{Igz7is&6EABXh4H{GeL1?FJuq*F~)@b(w<j!aAEv0I-IddzuN-UE7Ze)klQw1zf
+z*9D9tJZEp&6DX~g-rdU9X-6-wP?Ral@**smY_HP#9k_J_k|0ZJJh-+Y5Zr=OQu*WI
+zzT5W-@CqqUc6h-Kw#pib1XJyFD+TYSVSnstoOY;MdxX!9x0FDZLgoRM0<1<bgJtNx
+zmG9H!`&bOV#$T9q`K)6>#|E(61l{JQn-!~Bkq1RSFzev!`&hG6*uNSB@QW^D#ROsk
+a51YU>R!kr!@URIy?86rqj|s#C7RevINPdd|
+
+literal 0
+HcmV?d00001
+
+diff --git a/tests/f_uninit_cat/image.gz b/tests/f_uninit_cat/image.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..d2ae66cb35f93dd4022e85f8667365487a7b24ea
+GIT binary patch
+literal 1553
+zcmb2|=3wBo77AfvetUOgws4>X!-w+e5!ulJUCtMqn*6x7X0!`+M-&JY2D}M!S)+8+
+zDVJ6IMapY?1&f!@9@sy4qUHCltf(-cFi@sM<Z<;*mRk{C3zur%doRAP`s7{J>E%1$
+zf6YFjs>qO9YUaC2aZcCS-(DQb8_$NVE7;Mo<=)q*|3~ghM6S5L{?7@i*S^PYuMLg<
+z{yO)bMDN+#HZAQNWmni(e$ISz=k4?0&B2S~=hf!a%c;LRqnoqOeE0R(Td}i${(5!v
+zN9*zV=lkXUet4HAR(*B4`0223$*Xyed2c)RXUFctq3v?k4*osNhJB`=>Q$cfF5YY)
+zq&Ig<I|BqHJYRiXzO>c;>t5Mgf0ATh%=q$g`@RWJoj2;Pd;ar6z(>h_e;2CHpSyp1
+zK~2@ae|Oey(P??=HSMlJ&Y}8++jalfhj#s8_ga)C-tdS0iM_&q#-IEr>K*<uf0Cc@
+zA1uVcut9k1xj*G<CR6-R{q_2++YoEG%ju)G)m_7H5^{`CS3sx*%4*qvh1Y5X@893w
+ze(dD=mG_O$YD^1}+TT9sT+6vfTb`$HdzF3Z(w=*|H~uB`<f~6#9=s)v-CcQutl0EN
+zDLbP6mj5|_XrHg$w}ZTW^>6Fj_h@afy|?67dd1pb`uxmif2pqt{Qt!?S^L#|zi0nX
+zFI}X(^4;uQx9mT!qeB0OhF!1kR=hH+G@<KquWi^F`Rv=r-e*s4zxMk7(bMbaFY_=>
+zsFGV7C4lT;jqS<~nYIjGr#U#DKDAdsmKtS`hQMeD44Duxd!&D1J4-kNg8%~n1^y`^
+
+literal 0
+HcmV?d00001
+
+diff --git a/tests/f_uninit_cat/name b/tests/f_uninit_cat/name
+new file mode 100644
+index 0000000..f6b5674
+--- /dev/null
++++ b/tests/f_uninit_cat/name
+@@ -0,0 +1 @@
++cat a file with uninit blocks
+diff --git a/tests/f_uninit_cat/script b/tests/f_uninit_cat/script
+new file mode 100755
+index 0000000..11dbb6e
+--- /dev/null
++++ b/tests/f_uninit_cat/script
+@@ -0,0 +1,37 @@
++#!/bin/bash
++
++if test -x $DEBUGFS_EXE; then
++FSCK_OPT=-fy
++IMAGE=$test_dir/image.gz
++
++gzip -d < $IMAGE > $TMPFILE
++#e2label $TMPFILE test_filesys
++
++# Run fsck to fix things?
++EXP=$test_dir/expect
++OUT=$test_name.log
++rm -rf $test_name.failed $test_name.ok
++
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed > $OUT
++echo "Exit status is $?" >> $OUT
++
++echo "debugfs cat uninit file" >> $OUT
++echo "ex /a" > $TMPFILE.cmd
++echo "cat /a" >> $TMPFILE.cmd
++$DEBUGFS_EXE -w $TMPFILE -f $TMPFILE.cmd >> $OUT.new 2>&1
++echo >> $OUT.new
++sed -f $cmd_dir/filter.sed < $OUT.new >> $OUT
++rm -rf $OUT.new $TMPFILE
++
++# Figure out what happened
++if cmp -s $EXP $OUT; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff -u $EXP $OUT >> $test_name.failed
++fi
++unset EXP OUT FSCK_OPT IMAGE
++else #if test -a -x $DEBUGFS_EXE; then
++        echo "$test_name: $test_description: skipped"
++fi 
 
