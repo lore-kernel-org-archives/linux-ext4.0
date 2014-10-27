@@ -1,155 +1,61 @@
-From: Chris Friesen <chris.friesen@windriver.com>
-Subject: Re: RT/ext4/jbd2 circular dependency
-Date: Mon, 27 Oct 2014 10:22:28 -0600
-Message-ID: <544E7144.4080809@windriver.com>
-References: <544156FE.7070905@windriver.com> <54415991.1070907@pavlinux.ru> <CANGgnMbQmsdMDJUx7Bop9Xs=jQMmAJgWRjhXVFUGx-DwF=inYw@mail.gmail.com> <544940EF.7090907@windriver.com> <alpine.DEB.2.11.1410261516020.5308@nanos>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: Valgrind-detected issues in e2fsck on corrupted filesystems
+Date: Mon, 27 Oct 2014 10:10:00 -0700
+Message-ID: <20141027171000.GA10057@birch.djwong.org>
+References: <20141018232320.GA4392@sli.dy.fi>
+ <20141020205736.GB13081@birch.djwong.org>
+ <20141026104708.GA31873@sli.dy.fi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Austin Schuh <austin@peloton-tech.com>, <pavel@pavlinux.ru>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	<linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
-	<adilger.kernel@dilger.ca>,
-	rt-users <linux-rt-users@vger.kernel.org>
-To: Thomas Gleixner <tglx@linutronix.de>
-Return-path: <linux-rt-users-owner@vger.kernel.org>
-In-Reply-To: <alpine.DEB.2.11.1410261516020.5308@nanos>
-Sender: linux-rt-users-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: Sami Liedes <sami.liedes@iki.fi>, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:35844 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751081AbaJ0RKO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Oct 2014 13:10:14 -0400
+Content-Disposition: inline
+In-Reply-To: <20141026104708.GA31873@sli.dy.fi>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/26/2014 08:25 AM, Thomas Gleixner wrote:
-> On Thu, 23 Oct 2014, Chris Friesen wrote:
->> On 10/17/2014 12:55 PM, Austin Schuh wrote:
->>> Use the 121 patch.  This sounds very similar to the issue that I helped
->>> debug with XFS.  There ended up being a deadlock due to a bug in the
->>> kernel work queues.  You can search the RT archives for more info.
->>
->> I can confirm that the problem still shows up with the rt121 patch. (And
->> also with Paul Gortmaker's proposed 3.4.103-rt127 patch.)
->
->> We added some instrumentation and it looks like we've tracked down the problem.
->> Figuring out how to fix it is proving to be tricky.
->>
->> Basically it looks like we have a circular dependency involving the
->> inode->i_data_sem rt_mutex, the PG_writeback bit, and the BJ_Shadow list.  It
->> goes something like this:
->>
->> jbd2_journal_commit_transaction:
->> 1) set page for writeback (set PG_writeback bit)
->> 2) put jbd2 journal head on BJ_Shadow list
->> 3) sleep on PG_writeback bit waiting for page writeback complete
->>
->> ext4_da_writepages:
->> 1) ext4_map_blocks() acquires inode->i_data_sem for writing
->> 2) do_get_write_access() sleeps waiting for jbd2 journal head to come off
->> the BJ_Shadow list
->>
->> At this point the flush code can't run because it can't acquire
->> inode->i_data_sem for reading, so the page will never get written out.
->> Deadlock.
->
-> Sorry, I really cannot map that sparse description to any code
-> flow. Proper callchains for the involved parts might help to actually
-> understand what you are looking for.
+On Sun, Oct 26, 2014 at 12:47:09PM +0200, Sami Liedes wrote:
+> On Mon, Oct 20, 2014 at 01:57:36PM -0700, Darrick J. Wong wrote:
+> > Thanks for catching these!  I'll have patches out shortly.
+> 
+> Great! With your patches applied I could no longer get any valgrind
+> errors on ext4 during overnight fuzz testing.
+> 
+> Here's one more I found which only shows on ext[23], with or without
+> your recent patches. It seems that the error message "Unexpected block
+> in HTREE directory inode %d (%q)" is printed with uninitialized values
+> for both the %d and the %q conversions.
 
-There are details (stack traces, etc.) in the first message in the thread:
-http://www.spinics.net/lists/linux-rt-users/msg12261.html
+I think the following patch fixes this problem; can you give it a spin?
 
+--D
+---
+From: Darrick J. Wong <darrick.wong@oracle.com>
+Subject: [PATCH] e2fsck: fix reporting of unknown htree block inode number
 
-Originally we had thought that nfsd might have been implicated somehow, 
-but it seems like it was just a trigger (possibly by increasing the rate 
-of sync I/O).
+Sami Liedes reports that e2fsck fails to report the correct directory
+inode number during a pass2 check for unexpected HTREE blocks.
+Provide the inode number in the problem report.
 
-In the interest of full disclosure I should point out that we're using a 
-modified kernel so there is a chance that we have introduced the problem 
-ourselves.  That said, we have not made significant changes to either 
-ext4 or jbd2.  (Just a couple of minor cherry-picked bugfixes.)
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reported-by: Sami Liedes <sami.liedes@iki.fi>
+---
+ e2fsck/pass2.c |    1 +
+ 1 file changed, 1 insertion(+)
 
-
-The relevant code paths are:
-
-Journal commit.  The important thing here is that we set the 
-PG_writeback on a page, put the jbd2 journal head on BJ_Shadow list, 
-then sleep waiting for page writeback complete.  If the page writeback 
-never completes, then the journal head never comes off the BJ_Shadow list.
-
-
-jbd2_journal_commit_transaction
-     journal_submit_data_buffers
-         journal_submit_inode_data_buffers
-             generic_writepages
-                 set_page_writeback(page) [PG_writeback]
-     jbd2_journal_write_metadata_buffer
-         __jbd2_journal_file_buffer(jh_in, transaction, BJ_Shadow);
-
-     journal_finish_inode_data_buffers
-         filemap_fdatawait
-             filemap_fdatawait_range
-                 wait_on_page_writeback(page)
-                     wait_on_page_bit(page, PG_writeback) <--stuck here
-     jbd2_journal_unfile_buffer(journal, jh) [delete from BJ_Shadow list]
-
-
-
-We can get to the code path below a couple of different ways (see 
-further down).  The important stuff here is:
-1) There is a code path that takes i_data_sem and then goes to sleep 
-waiting for the jbd2 journal head to be removed from the BJ_Shadow list. 
-  If the journal head never comes off the list, the sema will never be 
-released.
-2) ext4_map_blocks() always takes a read lock on i_data_sem.  If the 
-sema is held by someone waiting for the journal head to come off the 
-list, it will block.
-
-ext4_da_writepages
-     write_cache_pages_da
-         mpage_da_map_and_submit
-             ext4_map_blocks
-                 down_read((&EXT4_I(inode)->i_data_sem))
-                 up_read((&EXT4_I(inode)->i_data_sem))
-                 down_write((&EXT4_I(inode)->i_data_sem))
-                 ext4_ext_map_blocks
-                     ext4_mb_new_blocks
-                         ext4_mb_mark_diskspace_used
-                             __ext4_journal_get_write_access
-                                 jbd2_journal_get_write_access
-                                     do_get_write_access
-                                         wait on BJ_Shadow list
-
-
-
-One of the ways we end up at ext4_da_writepages() is via the page 
-writeback thread.  If i_data_sem is already held by someone that is 
-sleeping, this can result in pages not getting written out.
-
-bdi_writeback_thread
-     wb_do_writeback
-         wb_check_old_data_flush
-             wb_writeback
-                 __writeback_inodes_wb
-                     writeback_sb_inodes
-                         writeback_single_inode
-                             do_writepages
-                                 ext4_da_writepages
-
-
-Another way to end up at ext4_da_writepages() is via sync writev() 
-calls.  In the traces from my original report this ended up taking the 
-sema and then going to sleep waiting for the journal head to get removed 
-from the BJ_Shadow list.
-
-sys_writev
-     vfs_writev
-         do_readv_writev
-             do_sync_readv_writev
-                 ext4_file_write
-                     generic_file_aio_write
-                         generic_write_sync
-                             ext4_sync_file
-                                 filemap_write_and_wait_range
-                                      __filemap_fdatawrite_range
-                                          do_writepages
-                                              ext4_da_writepages
-
-
-Chris
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index fa17f20..f645229 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -1006,6 +1006,7 @@ inline_read_fail:
+ 	dx_dir = e2fsck_get_dx_dir_info(ctx, ino);
+ 	if (dx_dir && dx_dir->numblocks) {
+ 		if (db->blockcnt >= dx_dir->numblocks) {
++			pctx.dir = ino;
+ 			if (fix_problem(ctx, PR_2_UNEXPECTED_HTREE_BLOCK,
+ 					&pctx)) {
+ 				clear_htree(ctx, ino);
