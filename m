@@ -1,61 +1,47 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: Valgrind-detected issues in e2fsck on corrupted filesystems
-Date: Mon, 27 Oct 2014 10:10:00 -0700
-Message-ID: <20141027171000.GA10057@birch.djwong.org>
-References: <20141018232320.GA4392@sli.dy.fi>
- <20141020205736.GB13081@birch.djwong.org>
- <20141026104708.GA31873@sli.dy.fi>
+From: Chris Friesen <chris.friesen@windriver.com>
+Subject: Re: RT/ext4/jbd2 circular dependency
+Date: Mon, 27 Oct 2014 13:57:14 -0600
+Message-ID: <544EA39A.1080005@windriver.com>
+References: <544156FE.7070905@windriver.com> <54415991.1070907@pavlinux.ru> <CANGgnMbQmsdMDJUx7Bop9Xs=jQMmAJgWRjhXVFUGx-DwF=inYw@mail.gmail.com> <544940EF.7090907@windriver.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Sami Liedes <sami.liedes@iki.fi>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	<linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
+	<adilger.kernel@dilger.ca>,
+	rt-users <linux-rt-users@vger.kernel.org>
+To: Austin Schuh <austin@peloton-tech.com>, <pavel@pavlinux.ru>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:35844 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751081AbaJ0RKO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Oct 2014 13:10:14 -0400
-Content-Disposition: inline
-In-Reply-To: <20141026104708.GA31873@sli.dy.fi>
+Received: from mail1.windriver.com ([147.11.146.13]:57759 "EHLO
+	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751628AbaJ0T65 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Oct 2014 15:58:57 -0400
+In-Reply-To: <544940EF.7090907@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Oct 26, 2014 at 12:47:09PM +0200, Sami Liedes wrote:
-> On Mon, Oct 20, 2014 at 01:57:36PM -0700, Darrick J. Wong wrote:
-> > Thanks for catching these!  I'll have patches out shortly.
-> 
-> Great! With your patches applied I could no longer get any valgrind
-> errors on ext4 during overnight fuzz testing.
-> 
-> Here's one more I found which only shows on ext[23], with or without
-> your recent patches. It seems that the error message "Unexpected block
-> in HTREE directory inode %d (%q)" is printed with uninitialized values
-> for both the %d and the %q conversions.
+On 10/23/2014 11:54 AM, Chris Friesen wrote:
 
-I think the following patch fixes this problem; can you give it a spin?
+> Basically it looks like we have a circular dependency involving the
+> inode->i_data_sem rt_mutex, the PG_writeback bit, and the BJ_Shadow list.  It
+> goes something like this:
+>
+> jbd2_journal_commit_transaction:
+> 1) set page for writeback (set PG_writeback bit)
+> 2) put jbd2 journal head on BJ_Shadow list
+> 3) sleep on PG_writeback bit waiting for page writeback complete
+>
+> ext4_da_writepages:
+> 1) ext4_map_blocks() acquires inode->i_data_sem for writing
+> 2) do_get_write_access() sleeps waiting for jbd2 journal head to come off
+> the BJ_Shadow list
+>
+> At this point the flush code can't run because it can't acquire
+> inode->i_data_sem for reading, so the page will never get written out.
+> Deadlock.
 
---D
----
-From: Darrick J. Wong <darrick.wong@oracle.com>
-Subject: [PATCH] e2fsck: fix reporting of unknown htree block inode number
+Just curious...would we expect lockdep to detect this sort of thing?  I 
+wasn't sure if the introduction of the two wait queues would cause 
+complications.
 
-Sami Liedes reports that e2fsck fails to report the correct directory
-inode number during a pass2 check for unexpected HTREE blocks.
-Provide the inode number in the problem report.
-
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-Reported-by: Sami Liedes <sami.liedes@iki.fi>
----
- e2fsck/pass2.c |    1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-index fa17f20..f645229 100644
---- a/e2fsck/pass2.c
-+++ b/e2fsck/pass2.c
-@@ -1006,6 +1006,7 @@ inline_read_fail:
- 	dx_dir = e2fsck_get_dx_dir_info(ctx, ino);
- 	if (dx_dir && dx_dir->numblocks) {
- 		if (db->blockcnt >= dx_dir->numblocks) {
-+			pctx.dir = ino;
- 			if (fix_problem(ctx, PR_2_UNEXPECTED_HTREE_BLOCK,
- 					&pctx)) {
- 				clear_htree(ctx, ino);
+Chris
