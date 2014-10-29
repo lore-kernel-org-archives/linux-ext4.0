@@ -1,30 +1,30 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Fix oops when loading block bitmap failed
-Date: Tue, 28 Oct 2014 20:33:33 -0400
-Message-ID: <20141029003333.GA23469@thunk.org>
-References: <1414069527-29803-1-git-send-email-jack@suse.cz>
+Subject: Re: [PATCH 1/3] ext4: enable journal checksum when metadata checksum
+ feature enabled
+Date: Tue, 28 Oct 2014 21:58:28 -0400
+Message-ID: <20141029015828.GB23469@thunk.org>
+References: <20141028011916.30103.50751.stgit@birch.djwong.org>
+ <20141028011922.30103.65942.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49695 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:49746 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750858AbaJ2Adj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Oct 2014 20:33:39 -0400
+	id S1751619AbaJ2B6d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Oct 2014 21:58:33 -0400
 Content-Disposition: inline
-In-Reply-To: <1414069527-29803-1-git-send-email-jack@suse.cz>
+In-Reply-To: <20141028011922.30103.65942.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 23, 2014 at 03:05:27PM +0200, Jan Kara wrote:
-> When we fail to load block bitmap in __ext4_new_inode() we will
-> dereference NULL pointer in ext4_journal_get_write_access(). So check
-> for error from ext4_read_block_bitmap().
+On Mon, Oct 27, 2014 at 06:19:22PM -0700, Darrick J. Wong wrote:
+> If metadata checksumming is turned on for the FS, we need to tell the
+> journal to use checksumming too.
 > 
-> Coverity-id: 989065
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Thanks, applied.
+Applied, thanks.
 
 					- Ted
