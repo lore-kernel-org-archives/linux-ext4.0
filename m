@@ -1,117 +1,99 @@
-From: Johan Hovold <johan@kernel.org>
-Subject: Re: NULL derefs after failed suspend (i915, pm, ext4,
-	slub)
-Date: Wed, 29 Oct 2014 08:41:34 +0100
-Message-ID: <20141029074134.GB7841@localhost>
-References: <20141028142910.GU2006@localhost>
- <87zjcgjkti.fsf@intel.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: RCU related deadlock in AIO?   (in 3.18-rc2)
+Date: Wed, 29 Oct 2014 07:06:39 -0400
+Message-ID: <nsxk33jjfsw.fsf@closure.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: linux-pm@vger.kernel.org, intel-gfx@lists.freedesktop.org,
- "Rafael J. Wysocki" <rjw@rjwysocki.net>, Johan Hovold <johan@kernel.org>,
- dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org,
- Pavel Machek <pavel@ucw.cz>, Daniel Vetter <daniel.vetter@intel.com>,
- linux-ext4@vger.kernel.org
-To: Jani Nikula <jani.nikula@linux.intel.com>
-Return-path: <intel-gfx-bounces@lists.freedesktop.org>
-Content-Disposition: inline
-In-Reply-To: <87zjcgjkti.fsf@intel.com>
-List-Unsubscribe: <http://lists.freedesktop.org/mailman/options/intel-gfx>,
- <mailto:intel-gfx-request@lists.freedesktop.org?subject=unsubscribe>
-List-Archive: <http://lists.freedesktop.org/archives/intel-gfx>
-List-Post: <mailto:intel-gfx@lists.freedesktop.org>
-List-Help: <mailto:intel-gfx-request@lists.freedesktop.org?subject=help>
-List-Subscribe: <http://lists.freedesktop.org/mailman/listinfo/intel-gfx>,
- <mailto:intel-gfx-request@lists.freedesktop.org?subject=subscribe>
-Errors-To: intel-gfx-bounces@lists.freedesktop.org
-Sender: "Intel-gfx" <intel-gfx-bounces@lists.freedesktop.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain
+Cc: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+	Zach Brown <zab@zabbo.net>, Benjamin LaHaise <bcrl@kvack.org>
+To: linux-ext4@vger.kernel.org, linux-aio@kvack.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:50380 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932259AbaJ2LGq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Oct 2014 07:06:46 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-T24gVHVlLCBPY3QgMjgsIDIwMTQgYXQgMDU6MDY6MDFQTSArMDIwMCwgSmFuaSBOaWt1bGEgd3Jv
-dGU6Cj4gT24gVHVlLCAyOCBPY3QgMjAxNCwgSm9oYW4gSG92b2xkIDxqb2hhbkBrZXJuZWwub3Jn
-PiB3cm90ZToKPiA+IEhpLCAKPiA+Cj4gPiBJIGhhdmUgaGFkIHNvbWUgcHJvYmxlbXMgd2l0aCBj
-cmFzaGVzIGludm9sdmluZyBzdXNwZW5kLXRvLWRpc2sgYWZ0ZXIKPiA+IHVwZGF0aW5nIHRvIHYz
-LjE2Lgo+ID4KPiA+IEJlbG93IGlzIGEgbG9nIHdpdGggMy4xNi42IGZyb20gYSBmYWlsZWQgc3Vz
-cGVuZCBhdHRlbXB0IGFmdGVyIHdoaWNoIEkKPiA+IGdldCBhIE5VTEwgZGVyZWYgaW4gZXh0NCBj
-b2RlLgo+ID4KPiA+IEEgY291cGxlIG9mIHdlZWtzIGFnbyBJIGdvdCBzb21ldGhpbmcgc2ltaWxh
-ciwgd2l0aCBiYWNrdHJhY2VzIGZyb20gCj4gPiBleHQ0IChleHQ0X2FsbG9jX2lub2RlKSBhbmQg
-TlVMTC1kZXJlZnMgaW4gdmZzICh2ZnNfZ2V0X2F0dHJfbm9zZWMpIHdoZW4KPiA+IHRyeWluZyB0
-byBkbyBJTyBhZnRlciByZXN1bWluZyBmcm9tIHN1c3BlbmQuIFRoYXQgd2FzIHdpdGggMy4xNi4z
-IGFuZCBJCj4gPiB3YXMgaG9waW5nIHRoYXQgd2hhdGV2ZXIgaXQgd2FzIHdvdWxkIGhhdmUgYmVl
-biBmaXhlZCBpbiAzLjE2LjYgKHRoZXJlCj4gPiB3ZXJlIHNvbWUgZXh0NCBlcnJvciBoYW5kbGlu
-ZyBwYXRjaGVzIGluIHRoZXJlKS4gSSBvbmx5IGdvdCBwaG90b3Mgb2YKPiA+IHRob3NlIG9vcHNl
-cyBidXQgaXQgaW52b2x2ZWQga21lbV9jYWNoZV9hbGxvYyAoc2x1YikgYW5kIGEgTlVMTC1kZXJl
-ZiBpbgo+ID4gdmZzX2dldF9hdHRyX25vc2VjLiBJIGNhbiBwdXQgdGhlIHBob3RvcyB1cCBzb21l
-d2hlcmUuIFRoYXQgdGltZSBJIGFsc28KPiA+IGdvdCBiYWNrIHRvIFggYW5kIGNvdWxkIGlzc3Vl
-IGEgZG1lc2cgaW4gYW4geHRlcm0sIGJ1dCBhbnkgcHJvY2VzcyB0cnlpbmcKPiA+IHRvIGRvIElP
-IGRpZWQuCj4gPgo+ID4gU29tZXRoaW5nIHNpbWlsYXIgaGFwcGVuZWQgd2l0aCAzLjE2LjEgYnV0
-IHVuZm9ydHVuYXRlbHkgSSBkbyBub3QgaGF2ZQo+ID4gYW55IGxvZ3MgZnJvbSB0aGF0Lgo+ID4K
-PiA+IEkgYWxzbyBoYXZlIGV4cGVyaWVuY2VkIG9jY2FzaW9uYWwgaGFuZ3MgZHVyaW5nIHN1c3Bl
-bmQsIGJ1dCBJIGJlbGlldmUgSQo+ID4gaGF2ZSBzZWVuIHRoaXMgd2l0aCBvbGRlciBrZXJuZWxz
-IGFzIHdlbGwgc28gbm90IHN1cmUgaWYgcmVsYXRlZC4gU2VlbXMKPiA+IHRvIGJlIG1vcmUgZnJl
-cXVlbnQgd2l0aCAzLjE2Lgo+ID4KPiA+IFRoaXMgaXMgbXkgbWFpbiBtYWNoaW5lIHNvIG5vdCBr
-ZWVuIG9uIHRyeWluZyB0byBiaXNlY3QgdGhpcyBvbiBpdC4KPiA+Cj4gPiBJdCdzIGFuIGk3LTQ3
-NzAgb24gYW4gSW50ZWwgREg4N01DIHVzaW5nIHRoZSBpbnRlZ3JhdGVkIEhEIEdyYXBoaWNzIDQ2
-MDAuCj4gPgo+ID4gSSdtIENDaW5nIHRoZSBJbnRlbCBncmFwaGljcyBndXlzIGR1ZSB0byBzb21l
-IGVycm9ycyBkcm0gZXJyb3JzIGluIHRoZQo+ID4gbG9ncywgYW5kIHJlcG9ydHMgb2Ygb3RoZXIg
-cGVvcGxlIGhhdmluZyBwcm9ibGVtcyBpbnZvbHZpbmcgc3VzcGVuZCBhbmQKPiA+IHRoaXMgZHJp
-dmVyLgo+IAo+IE15IGZpcnN0IHN1Z2dlc3Rpb24gd291bGQgYmUgdG8gdHJ5IHRvIHJlcHJvZHVj
-ZSB0aGUgTlVMTCBkZXJlZiB3aXRob3V0Cj4gaTkxNSBsb2FkZWQsIGFuZCB0cmFjayB0aGUgaXNz
-dWVzIHlvdSBoYXZlIGluZGVwZW5kZW50bHkuCgpJIGFjdHVhbGx5IGRvbid0IHRoaW5rIHRoaXMg
-aXMgaTkxNSByZWxhdGVkLCB0aGUgbmV3IGRybSBlcnJvcnMgYWZ0ZXIKZmFpbGVkIHN1c3BlbmQg
-Y291bGQgcG9zc2libHkganVzdCBiZSBhIHNpZGUgZWZmZWN0IG9mIHdoYXRldmVyIGlzCmNhdXNp
-bmcgdGhlIGFwcGFyZW50IG1lbW9yeSBjb3JydXB0aW9uLiBBcyBJIG1lbnRpb25lZCwgdGhlIGZp
-cnN0IGxvZyBJCmhhdmUgb2YgdGhpcyBkbyBub3Qgc2VlbSB0byBwb2ludCBhdCBpOTE1IChldmVu
-IGlmIGJhY2tsaWdodC1yZXN0b3JlCmhhcHBlbnMgd2hlbiB0YXNrcyBhcmUgcmVzdGFydGVkKS4K
-Cj4gUGxlYXNlIGZpbGUgYW55IGk5MTUgaXNzdWVzIGFnYWluc3QgRFJNL0ludGVsIGF0IFsxXS4K
-CkknbGwgc2VlIGlmIEkgY2FuIGdldCBhcm91bmQgdG8gdGhhdC4gVGhlcmUgYXJlIGJ1ZyByZXBv
-cnRzIGluIHZhcmlvdXMKZGlzdHJvIHRyYWNrZXIgYWJvdXQgdGhlIGludGVsX2RkaV9wbGxfZW5h
-YmxlIHdhcm5pbmcgZGF0aW5nIGJhY2sgdG8KQXByaWwuCgpJdCdzIHRoZXJlIG9uIGV2ZXJ5IHJl
-c3VtZS4gRm9yIGluc3RhbmNlIHRoaXMgbW9ybmluZzoKClsxMDgxMDkuMzI0Mzk4XSBXQVJOSU5H
-OiBDUFU6IDEgUElEOiA3Mjk4IGF0IC9ob21lL2pvaGFuL3NyYy9saW51eC9saW51eC14aS9kcml2
-ZXJzL2dwdS9kcm0vaTkxNS9pbnRlbF9kZGkuYzo5MTEgaW50ZWxfZGRpX3BsbF9lbmFibGUrMHgy
-MzMvMHgyNDAoKQpbMTA4MTA5LjMyNDM5OF0gV1JQTEwxIGFscmVhZHkgZW5hYmxlZApbMTA4MTA5
-LjMyNDM5OV0gTW9kdWxlcyBsaW5rZWQgaW46ClsxMDgxMDkuMzI0NDAwXSBDUFU6IDEgUElEOiA3
-Mjk4IENvbW06IGt3b3JrZXIvdTE2OjggVGFpbnRlZDogRyAgICAgICAgVyAgICAgMy4xNi42ICMx
-ClsxMDgxMDkuMzI0NDAxXSBIYXJkd2FyZSBuYW1lOiAgICAgICAgICAgICAgICAgIC9ESDg3TUMs
-IEJJT1MgTUNIODcxMEguODZBLjAxNTQuMjAxNC4wMTIzLjE1NDIgMDEvMjMvMjAxNApbMTA4MTA5
-LjMyNDQwM10gV29ya3F1ZXVlOiBldmVudHNfdW5ib3VuZCBhc3luY19ydW5fZW50cnlfZm4KWzEw
-ODEwOS4zMjQ0MDVdICAwMDAwMDAwMDAwMDAwMDAwIDAwMDAwMDAwMDAwMDAwMDkgZmZmZmZmZmY4
-MTczOWMwMyBmZmZmODgwNTNlODliYWY4ClsxMDgxMDkuMzI0NDA1XSAgZmZmZmZmZmY4MTA4NTBm
-NiBmZmZmODgwN2ZhZGYwMDAwIDAwMDAwMDAwYjAzNTA2MWYgMDAwMDAwMDAwMDAwMDAwMQpbMTA4
-MTA5LjMyNDQwNl0gIDAwMDAwMDAwMDAwNDYwNDAgZmZmZmZmZmY4MWExMGE0MSBmZmZmZmZmZjgx
-MDg1MWQ1IGZmZmZmZmZmODFhMTBhODMKWzEwODEwOS4zMjQ0MDddIENhbGwgVHJhY2U6ClsxMDgx
-MDkuMzI0NDEwXSAgWzxmZmZmZmZmZjgxNzM5YzAzPl0gPyBkdW1wX3N0YWNrKzB4NDkvMHg2YQpb
-MTA4MTA5LjMyNDQxMl0gIFs8ZmZmZmZmZmY4MTA4NTBmNj5dID8gd2Fybl9zbG93cGF0aF9jb21t
-b24rMHg4Ni8weGIwClsxMDgxMDkuMzI0NDE0XSAgWzxmZmZmZmZmZjgxMDg1MWQ1Pl0gPyB3YXJu
-X3Nsb3dwYXRoX2ZtdCsweDQ1LzB4NTAKWzEwODEwOS4zMjQ0MTVdICBbPGZmZmZmZmZmODE0NDQ1
-YzM+XSA/IGludGVsX2RkaV9wbGxfZW5hYmxlKzB4MjMzLzB4MjQwClsxMDgxMDkuMzI0NDE3XSAg
-WzxmZmZmZmZmZjgxNDIwOGVhPl0gPyBoYXN3ZWxsX2NydGNfbW9kZV9zZXQrMHgxYS8weDMwClsx
-MDgxMDkuMzI0NDE5XSAgWzxmZmZmZmZmZjgxNDJlMTY4Pl0gPyBfX2ludGVsX3NldF9tb2RlKzB4
-NmE4LzB4MTU5MApbMTA4MTA5LjMyNDQyMF0gIFs8ZmZmZmZmZmY4MTQzMzVmNz5dID8gaW50ZWxf
-bW9kZXNldF9zZXR1cF9od19zdGF0ZSsweDgxNy8weGQxMApbMTA4MTA5LjMyNDQyMl0gIFs8ZmZm
-ZmZmZmY4MTNkNGFlOT5dID8gZHJtX21vZGVzZXRfbG9ja19hbGxfY3J0Y3MrMHgzOS8weDUwClsx
-MDgxMDkuMzI0NDI0XSAgWzxmZmZmZmZmZjgxMzI4NTcwPl0gPyBwY2lfcG1fc3VzcGVuZF9ub2ly
-cSsweDFiMC8weDFiMApbMTA4MTA5LjMyNDQyNl0gIFs8ZmZmZmZmZmY4MTNkNzE5ZT5dID8gX19p
-OTE1X2RybV90aGF3KzB4MTFlLzB4MWEwClsxMDgxMDkuMzI0NDI2XSAgWzxmZmZmZmZmZjgxM2Q3
-ODZmPl0gPyBpOTE1X3Jlc3VtZSsweDFmLzB4NDAKWzEwODEwOS4zMjQ0MjhdICBbPGZmZmZmZmZm
-ODE0NzQ5ZWY+XSA/IGRwbV9ydW5fY2FsbGJhY2srMHg0Zi8weDE1MApbMTA4MTA5LjMyNDQyOF0g
-IFs8ZmZmZmZmZmY4MTQ3NTZiMz5dID8gZGV2aWNlX3Jlc3VtZSsweDkzLzB4MWQwClsxMDgxMDku
-MzI0NDI5XSAgWzxmZmZmZmZmZjgxNDc1ODA0Pl0gPyBhc3luY19yZXN1bWUrMHgxNC8weDQwClsx
-MDgxMDkuMzI0NDMwXSAgWzxmZmZmZmZmZjgxMGFhYWJkPl0gPyBhc3luY19ydW5fZW50cnlfZm4r
-MHgyZC8weDEyMApbMTA4MTA5LjMyNDQzM10gIFs8ZmZmZmZmZmY4MTA5ZWI1OD5dID8gcHJvY2Vz
-c19vbmVfd29yaysweDE1OC8weDQxMApbMTA4MTA5LjMyNDQzNF0gIFs8ZmZmZmZmZmY4MTA5ZjM3
-Nj5dID8gd29ya2VyX3RocmVhZCsweDExNi8weDUxMApbMTA4MTA5LjMyNDQzNV0gIFs8ZmZmZmZm
-ZmY4MTBjMTFlYz5dID8gX193YWtlX3VwX2NvbW1vbisweDRjLzB4ODAKWzEwODEwOS4zMjQ0MzZd
-ICBbPGZmZmZmZmZmODEwOWYyNjA+XSA/IGluaXRfcHdxKzB4MTYwLzB4MTYwClsxMDgxMDkuMzI0
-NDM3XSAgWzxmZmZmZmZmZjgxMGE1MzhjPl0gPyBrdGhyZWFkKzB4YmMvMHhlMApbMTA4MTA5LjMy
-NDQzOV0gIFs8ZmZmZmZmZmY4MTBhMDAwMD5dID8gd29ya3F1ZXVlX3N5c2ZzX3JlZ2lzdGVyKzB4
-MTEwLzB4MTUwClsxMDgxMDkuMzI0NDQwXSAgWzxmZmZmZmZmZjgxMGE1MmQwPl0gPyBrdGhyZWFk
-X2ZyZWV6YWJsZV9zaG91bGRfc3RvcCsweDYwLzB4NjAKWzEwODEwOS4zMjQ0NDJdICBbPGZmZmZm
-ZmZmODE3NDFhYWM+XSA/IHJldF9mcm9tX2ZvcmsrMHg3Yy8weGIwClsxMDgxMDkuMzI0NDQzXSAg
-WzxmZmZmZmZmZjgxMGE1MmQwPl0gPyBrdGhyZWFkX2ZyZWV6YWJsZV9zaG91bGRfc3RvcCsweDYw
-LzB4NjAKClRoYW5rcywKSm9oYW4KX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX18KSW50ZWwtZ2Z4IG1haWxpbmcgbGlzdApJbnRlbC1nZnhAbGlzdHMuZnJlZWRl
-c2t0b3Aub3JnCmh0dHA6Ly9saXN0cy5mcmVlZGVza3RvcC5vcmcvbWFpbG1hbi9saXN0aW5mby9p
-bnRlbC1nZngK
+
+I have a vague memory of seeing discussion about a stack trace that
+looks similar to this in the past few weeks.  Does this ring a bell at
+all?
+
+The following hang happened while running xfstests generic/323 under
+ext4 in no-journal mode, running on a 3.18-rc2 kernel.  This is a
+recently added test, to deal with a proble which I thought had already
+been fixed in mainline.
+
+# Run aio-last-ref-held-by-io - last put of ioctx not in process
+# context. We've had a couple of instances in the past where having the
+# last reference to an ioctx be held by the IO (instead of the
+# process) would cause problems (hung system, crashes).
+
+Thanks,
+
+                                                - Ted
+
+generic/323 123s ...	[06:42:18][30020.393779] ------------[ cut here ]------------
+[30020.394962] WARNING: CPU: 1 PID: 0 at /usr/projects/linux/ext4/lib/percpu-refcount.c:151 percpu_ref_switch_to_atomic_rcu+0x9f/0xbc()
+[30020.397073] percpu ref (free_ioctx_reqs) <= 0 (-65534) after switching to atomic
+[30020.397073] Modules linked in:
+[30020.397073] CPU: 1 PID: 0 Comm: swapper/1 Not tainted 3.18.0-rc2-00005-gb790865 #2277
+[30020.401678] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+[30020.402522]  00000000 00000000 f553ff28 c088aba8 f553ff54 f553ff44 c0170af6 00000097
+[30020.406004]  c046cf41 df614874 ca3cd9f8 7fff0004 f553ff5c c0170b38 00000009 f553ff54
+[30020.408552]  c0b9dcf8 f553ff70 f553ff88 c046cf41 c0b9dc8d 00000097 c0b9dcf8 c028233d
+[30020.410484] Call Trace:
+[30020.410828]  [<c088aba8>] dump_stack+0x48/0x60
+[30020.411578]  [<c0170af6>] warn_slowpath_common+0x6c/0x83
+[30020.412701]  [<c046cf41>] ? percpu_ref_switch_to_atomic_rcu+0x9f/0xbc
+[30020.413541]  [<c0170b38>] warn_slowpath_fmt+0x2b/0x2f
+[30020.413715]  [<c046cf41>] percpu_ref_switch_to_atomic_rcu+0x9f/0xbc
+[30020.414267]  [<c028233d>] ? rcu_lock_acquire+0x1c/0x1c
+[30020.415101]  [<c01b767b>] rcu_process_callbacks+0x2b5/0x433
+[30020.415763]  [<c01b767b>] ? rcu_process_callbacks+0x2b5/0x433
+[30020.417024]  [<c046cea2>] ? percpu_ref_reinit+0x50/0x50
+[30020.417273]  [<c0173f8f>] ? __local_bh_disable_ip+0x6e/0x6e
+[30020.417959]  [<c01740fc>] __do_softirq+0x16d/0x376
+[30020.418688]  [<c0173f8f>] ? __local_bh_disable_ip+0x6e/0x6e
+[30020.419324]  [<c01381ec>] do_softirq_own_stack+0x26/0x2c
+[30020.420372]  <IRQ>  [<c01744f9>] irq_exit+0x42/0x8f
+[30020.420796]  [<c0137b94>] do_IRQ+0x89/0x9d
+[30020.421606]  [<c08943f1>] common_interrupt+0x31/0x38
+[30020.422162]  [<c013007b>] ? add_atomic_switch_msr+0x173/0x173
+[30020.422850]  [<c0164b9c>] ? native_safe_halt+0x5/0x7
+[30020.423696]  [<c013dee4>] default_idle+0x22/0x4b
+[30020.424321]  [<c013e49a>] arch_cpu_idle+0xe/0x10
+[30020.424967]  [<c019b7f0>] cpu_startup_entry+0x130/0x250
+[30020.425604]  [<c015a3a3>] start_secondary+0x15d/0x166
+[30020.426333] ---[ end trace 4f7947d25059a4b4 ]---
+[30240.260397] INFO: task aio-last-ref-he:9183 blocked for more than 120 seconds.[30240.261418]       Tainted: G        W      3.18.0-rc2-00005-gb790865 #2277
+[30240.262399] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+[30240.263575]  d7e99e78 00000046 c0f6b280 c0f6b280 a9372026 00001b4d cdfc5800 00001b4d
+[30240.264979]  d9758350 f6250880 d7e99e60 c0192666 000396f0 00000000 a9371bab 00001b4d
+[30240.266194]  a9371cc6 00001b4d a9371bab 00001b4d d97588c4 c0f6b880 00000001 d7e99e8c
+[30240.267449] Call Trace:
+[30240.267795]  [<c0192666>] ? sched_clock_local+0x10/0x10e
+[30240.268515]  [<c019298f>] ? sched_clock_cpu+0xd1/0xec
+[30240.269207]  [<c0192666>] ? sched_clock_local+0x10/0x10e
+[30240.269929]  [<c088fdaf>] schedule+0x5a/0x5c
+[30240.270530]  [<c0892b2b>] schedule_timeout+0x1a/0x9c
+[30240.271245]  [<c01929f4>] ? local_clock+0x18/0x22
+[30240.271890]  [<c01a0085>] ? lock_release_holdtime.part.25+0x60/0x6d
+[30240.272736]  [<c089343b>] ? _raw_spin_unlock_irq+0x27/0x36
+[30240.273480]  [<c01a1a20>] ? trace_hardirqs_on_caller+0x15f/0x17a
+[30240.274329]  [<c01a1a46>] ? trace_hardirqs_on+0xb/0xd
+[30240.275054]  [<c0893440>] ? _raw_spin_unlock_irq+0x2c/0x36
+[30240.275798]  [<c0890584>] __wait_for_common+0xcb/0xf5
+[30240.276485]  [<c0892b11>] ? console_conditional_schedule+0x29/0x29
+[30240.277343]  [<c01909aa>] ? wake_up_state+0x11/0x11
+[30240.278016]  [<c08905c7>] wait_for_completion+0x19/0x1c
+[30240.278727]  [<c0282f60>] SYSC_io_destroy+0x7a/0xaf
+[30240.279409]  [<c08904ea>] ? __wait_for_common+0x31/0xf5
+[30240.280116]  [<c02837dc>] SyS_io_destroy+0x10/0x12
+[30240.280815]  [<c046895a>] ? trace_hardirqs_on_thunk+0xc/0x10
+[30240.281583]  [<c02837dc>] ? SyS_io_destroy+0x10/0x12
+[30240.282271]  [<c0893e2a>] syscall_call+0x7/0x7
+[30240.282881]  [<c0890000>] ? schedule_preempt_disabled+0xd/0x1d
+[30240.283692] no locks held by aio-last-ref-he/9183.
+
