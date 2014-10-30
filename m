@@ -1,34 +1,47 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Make ext4_ext_convert_to_initialized() return
- proper number of blocks
-Date: Thu, 30 Oct 2014 10:45:34 -0400
-Message-ID: <20141030144534.GC31927@thunk.org>
-References: <1413966550-27404-1-git-send-email-jack@suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [v5 1/5] Adds general codes to enforces project quota limits
+Date: Thu, 30 Oct 2014 17:05:43 +0100
+Message-ID: <20141030160543.GG28444@quack.suse.cz>
+References: <1414300973-1118-1-git-send-email-lixi@ddn.com>
+ <1414300973-1118-2-git-send-email-lixi@ddn.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53223 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759987AbaJ3Opj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 30 Oct 2014 10:45:39 -0400
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-api@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca,
+	jack@suse.cz, viro@zeniv.linux.org.uk, hch@infradead.org,
+	dmonakhov@openvz.org
+To: Li Xi <pkuelelixi@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1413966550-27404-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1414300973-1118-2-git-send-email-lixi@ddn.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Oct 22, 2014 at 10:29:10AM +0200, Jan Kara wrote:
-> ext4_ext_convert_to_initialized() can return more blocks than are
-> actually allocated from map->m_lblk in case where initial part of the
-> on-disk extent is zeroed out. Luckily this doesn't have serious
-> consequences because the caller currently uses the return value
-> only to unmap metadata buffers. Anyway this is a data
-> corruption/exposure problem waiting to happen so fix it.
+On Sun 26-10-14 13:22:49, Li Xi wrote:
+> This patch adds support for a new quota type PRJQUOTA for project quota
+> enforcement. Also a new method get_projid() is added into dquot_operations
+> structure.
 > 
-> Coverity-id: 1226848
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Li Xi <lixi@ddn.com>
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+...
+> @@ -72,6 +76,8 @@ static int quota_quotaon(struct super_block *sb, int type, int cmd, qid_t id,
+>  		return sb->s_qcop->quota_on_meta(sb, type, id);
+>  	if (IS_ERR(path))
+>  		return PTR_ERR(path);
+> +	if (type == PRJQUOTA && sb->dq_op->get_projid == NULL)
+> +		return -EOPNOTSUPP;
+>  	return sb->s_qcop->quota_on(sb, type, id, path);
+>  }
+  Checking for ->get_projid() in quota_quotaon() isn't necessary. This will
+be already handled by allowed_qtype bitmask in my patches. But you could
+add a test in vfs_load_quota_inode() just after ->quota_write and
+->quota_read tests. It will be mostly a safety check but I think it's
+worthwhile.
 
-Applied, thanks.
+Otherwise the patch looks fine to me.
 
-					- Ted
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
