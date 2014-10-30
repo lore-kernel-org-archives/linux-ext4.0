@@ -1,47 +1,33 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] jbd2: use a better hash function for the revoke table
-Date: Thu, 30 Oct 2014 10:00:15 -0400
-Message-ID: <1414677615-29296-1-git-send-email-tytso@mit.edu>
-Cc: Andrey Ryabinin <a.ryabinin@samsung.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH] ext4: Bail out from make_indexed_dir() on first error
+Date: Thu, 30 Oct 2014 10:24:05 -0400
+Message-ID: <20141030142405.GA31927@thunk.org>
+References: <1414077533-2133-1-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53085 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:53168 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760280AbaJ3OAW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 30 Oct 2014 10:00:22 -0400
+	id S1757587AbaJ3OYJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 30 Oct 2014 10:24:09 -0400
+Content-Disposition: inline
+In-Reply-To: <1414077533-2133-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The old hash function didn't work well for 64-bit block numbers, and
-used undefined (negative) shift right behavior.  Use the generic
-64-bit hash function instead.
+On Thu, Oct 23, 2014 at 05:18:53PM +0200, Jan Kara wrote:
+> When ext4_handle_dirty_dx_node() or ext4_handle_dirty_dirent_node()
+> fail, there's really something wrong with the fs and there's no point in
+> continuing further. Just return error from make_indexed_dir() in that
+> case. Also initialize frames array so that if we return early due to
+> error, dx_release() doesn't try to dereference uninitialized memory
+> (which could happen also due to error in do_split()).
+> 
+> Coverity-id: 741300
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Reported-by: Andrey Ryabinin <a.ryabinin@samsung.com>
----
- fs/jbd2/revoke.c | 10 ++--------
- 1 file changed, 2 insertions(+), 8 deletions(-)
+Applied, thanks.
 
-diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-index d5e95a1..c6cbaef 100644
---- a/fs/jbd2/revoke.c
-+++ b/fs/jbd2/revoke.c
-@@ -92,6 +92,7 @@
- #include <linux/init.h>
- #include <linux/bio.h>
- #include <linux/log2.h>
-+#include <linux/hash.h>
- #endif
- 
- static struct kmem_cache *jbd2_revoke_record_cache;
-@@ -130,16 +131,9 @@ static void flush_descriptor(journal_t *, struct buffer_head *, int, int);
- 
- /* Utility functions to maintain the revoke table */
- 
--/* Borrowed from buffer.c: this is a tried and tested block hash function */
- static inline int hash(journal_t *journal, unsigned long long block)
- {
--	struct jbd2_revoke_table_s *table = journal->j_revoke;
--	int hash_shift = table->hash_shift;
--	int hash = (int)block ^ (int)((block >> 31) >> 1);
+					- Ted
