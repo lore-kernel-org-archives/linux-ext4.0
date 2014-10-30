@@ -1,59 +1,81 @@
-From: Thomas Gleixner <tglx@linutronix.de>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: RT/ext4/jbd2 circular dependency
-Date: Thu, 30 Oct 2014 22:11:26 +0100 (CET)
-Message-ID: <alpine.DEB.2.11.1410302204570.5308@nanos>
-References: <544156FE.7070905@windriver.com> <54415991.1070907@pavlinux.ru> <CANGgnMbQmsdMDJUx7Bop9Xs=jQMmAJgWRjhXVFUGx-DwF=inYw@mail.gmail.com> <544940EF.7090907@windriver.com> <alpine.DEB.2.11.1410261516020.5308@nanos> <544E7144.4080809@windriver.com>
- <alpine.DEB.2.11.1410291854090.5308@nanos> <54513BDA.1050804@windriver.com> <alpine.DEB.2.11.1410292013510.5308@nanos> <20141029231916.GD5000@thunk.org>
+Date: Thu, 30 Oct 2014 19:24:37 -0400
+Message-ID: <20141030232437.GF31927@thunk.org>
+References: <54415991.1070907@pavlinux.ru>
+ <CANGgnMbQmsdMDJUx7Bop9Xs=jQMmAJgWRjhXVFUGx-DwF=inYw@mail.gmail.com>
+ <544940EF.7090907@windriver.com>
+ <alpine.DEB.2.11.1410261516020.5308@nanos>
+ <544E7144.4080809@windriver.com>
+ <alpine.DEB.2.11.1410291854090.5308@nanos>
+ <54513BDA.1050804@windriver.com>
+ <alpine.DEB.2.11.1410292013510.5308@nanos>
+ <20141029231916.GD5000@thunk.org>
+ <alpine.DEB.2.11.1410302204570.5308@nanos>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Cc: Chris Friesen <chris.friesen@windriver.com>,
 	Austin Schuh <austin@peloton-tech.com>, pavel@pavlinux.ru,
 	"J. Bruce Fields" <bfields@fieldses.org>,
 	linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
 	rt-users <linux-rt-users@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.linutronix.de ([62.245.132.108]:37335 "EHLO
-	Galois.linutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933193AbaJ3VLj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Oct 2014 17:11:39 -0400
-In-Reply-To: <20141029231916.GD5000@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Thomas Gleixner <tglx@linutronix.de>
+Return-path: <linux-rt-users-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.DEB.2.11.1410302204570.5308@nanos>
+Sender: linux-rt-users-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 29 Oct 2014, Theodore Ts'o wrote:
-> On Wed, Oct 29, 2014 at 08:26:36PM +0100, Thomas Gleixner wrote:
-> > > For what it's worth, I'm currently testing a backport of commit b34090e from
-> > > mainline (which in turn required backporting commits e5a120a and f5113ef).  It
-> > > switches from using the BJ_Shadow list to using the BH_Shadow flag on the
-> > > buffer head.  More interestingly, waiters now get woken up from
-> > > journal_end_buffer_io_sync() instead of from
-> > > jbd2_journal_commit_transaction().
-> > > 
-> > > So far this seems to be helping a lot.  It's lasted about 15x as long under
-> > > stress as without the patches.
-> > 
-> > I fear that this is just papering over the problem, but you have to
-> > talk to the jbd2 folks about that.
+On Thu, Oct 30, 2014 at 10:11:26PM +0100, Thomas Gleixner wrote:
 > 
-> No, it's a clean fix for the problem.  The main issue is that what the
-> jbd2 commit was doing was starting inode writeback for those blocks
-> needed to guarantee data=ordered mode (so this is what caused various
-> pages to have writeback page set) as well as starting metadata writes
-> to the commit (which is what caused the shadow bit to be set on the
-> metadata buffers). 
-> 
-> Now that we clear the shadow flag when the metadata writes is
-> complete, the writeback will eventually be allowed to complete and
-> this prevents the deadlock.
+> That's a way better explanation than what I saw in the commit logs and
+> it actually maps to the observed traces and stackdumps.
 
-That's a way better explanation than what I saw in the commit logs and
-it actually maps to the observed traces and stackdumps.
+I can't speak for Jan, but I suspect he didn't realize that there was
+a problem.  The commit description in b34090e5e2 makes it clear that
+the intent was a performance improvement, and not an attempt to fix a
+potential deadlock bug.
 
-Thanks for the clarification! I'm just getting nervous when 'picked
-some backports' magically 'fixes' an issue without a proper
-explanation.
+Looking at the commit history, the problem was introduced in 2.6.27
+(July 2008), in commit c851ed54017373, so this problem wasn't noticed
+in the RHEL 6 and RHEL 7 enterprise linux QA runs, and it wasn't
+noticed in all of the regression testing that we've been doing.
 
-Thanks,
+I've certainly seen this before.  Two years ago we found a bug that
+was only noticed when we deployed ext4 in production at Google, and
+stress tested it at Google scale with the appropriate monitoring
+systems so we could find a bug that had existed since the very
+beginning of ext3, and which had never been noticed in all of the
+enterprise testing done by Red Hat, SuSE, IBM, HP, etc.  Actually, it
+probably was noticed, but never in a reproducible way, and so it was
+probably written off as some kind of flaky hardware induced
+corruption.
 
-       tglx
+The difference is that in this case, it seems that Chris and Kevin was
+able to reproduce the problem reliably.  (It also might be that the RT
+patch kits widens the race window and makes it much more likely to
+trigger.)  Chris or Kevin, if you have time to try to create a
+reliable repro that is small/simple enough that we could propose it as
+an new test to add to xfstests, that would be great.  If you can't,
+that's completely understable.
+
+In the case I described above, it was an extremely hard to hit race
+that only happened under high memory pressure, so we never able to
+create a reliable repro.  Instead we had a theory that was consistent
+pattern of metadata corruption we were seeing, deployed a kernel with
+the fix, and after a few weeks were able to conclude we had finally
+fixed the bug.  Welcome to file system debugging.  :-)
+
+> Thanks for the clarification! I'm just getting nervous when 'picked
+> some backports' magically 'fixes' an issue without a proper
+> explanation.
+
+Well, thanks to Chris for pointing out that b34090e5 seemed to make
+the problem go away.  Once I looked at what that patch changed, it was
+a lot more obvious what might have been going wrong.  It's always
+helpful if you can beek at the answer key, even if it's a only
+potential answer key.  :-)
+
+Cheers,
+
+						- Ted
