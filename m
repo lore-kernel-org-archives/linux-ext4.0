@@ -1,40 +1,56 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: request for info on the list of parameters to tweak for PCIe SSDs
-Date: Fri, 31 Oct 2014 12:22:10 -0400
-Message-ID: <20141031162210.GA19685@thunk.org>
-References: <6891C2FAE3B0F342A5B80AFBDCFB579713AACD3338@BLRX7MCDC204.AMER.DELL.COM>
+Subject: [GIT PULL] ext4 bug fixes for 3.18
+Date: Fri, 31 Oct 2014 17:49:49 -0400
+Message-ID: <20141031214949.GA644@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Lakshmi_Narayanan_Du@Dell.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55275 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752234AbaJaQWN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 31 Oct 2014 12:22:13 -0400
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <6891C2FAE3B0F342A5B80AFBDCFB579713AACD3338@BLRX7MCDC204.AMER.DELL.COM>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Oct 31, 2014 at 04:15:32PM +0530, Lakshmi_Narayanan_Du@Dell.com=
- wrote:
->=20
-> Could you kindly help us with the list of all the ext4 =A0file system
-> parameters , that can be tweaked for the best performance of the
-> PCIe based SSDs ?
+The following changes since commit cac7f2429872d3733dc3f9915857b1691da2eb2f:
 
-The main tuning parameter to use for PCIe based SSD's that I would
-recommend is to use the dioread_nolock mount option.  Most other
-tuning parameters would be very workload and hardware/configuration
-depend.
+  Linux 3.18-rc2 (2014-10-26 16:48:41 -0700)
 
-Cheers,
+are available in the git repository at:
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
+
+for you to fetch changes up to ae9e9c6aeea6f91ccb4fb369d7dd8f1a8b5f6a58:
+
+  ext4: make ext4_ext_convert_to_initialized() return proper number of blocks (2014-10-30 10:53:17 -0400)
+
+----------------------------------------------------------------
+A set of miscellaneous ext4 bug fixes for 3.18.
+
+----------------------------------------------------------------
+Darrick J. Wong (3):
+      ext4: enable journal checksum when metadata checksum feature enabled
+      ext4: disallow changing journal_csum option during remount
+      ext4: remove extent status procfs files if journal load fails
+
+Dmitry Monakhov (1):
+      ext4: prevent bugon on race between write/fcntl
+
+Jan Kara (5):
+      ext4: fix overflow when updating superblock backups after resize
+      ext4: fix oops when loading block bitmap failed
+      ext4: bail out from make_indexed_dir() on first error
+      ext4: bail early when clearing inode journal flag fails
+      ext4: make ext4_ext_convert_to_initialized() return proper number of blocks
+
+Theodore Ts'o (1):
+      jbd2: use a better hash function for the revoke table
+
+ fs/ext4/extents.c |  9 ++++-----
+ fs/ext4/file.c    |  2 +-
+ fs/ext4/ialloc.c  |  4 ++++
+ fs/ext4/inode.c   |  7 ++++++-
+ fs/ext4/namei.c   | 28 ++++++++++++++++++----------
+ fs/ext4/resize.c  |  2 +-
+ fs/ext4/super.c   | 17 +++++++++++++++--
+ fs/jbd2/revoke.c  | 10 ++--------
+ 8 files changed, 51 insertions(+), 28 deletions(-)
