@@ -1,48 +1,103 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: request for info on the list of parameters to tweak for PCIe SSDs
-Date: Tue, 4 Nov 2014 17:36:04 +1100
-Message-ID: <20141104063604.GT16186@dastard>
-References: <6891C2FAE3B0F342A5B80AFBDCFB579713AACD3336@BLRX7MCDC204.AMER.DELL.COM>
- <20141031150257.GC5705@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 10/12] reiserfs: Convert to private i_dquot field
+Date: Tue,  4 Nov 2014 12:19:51 +0100
+Message-ID: <1415099993-18034-11-git-send-email-jack@suse.cz>
+References: <1415099993-18034-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Lakshmi_Narayanan_Du@Dell.com, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:18506 "EHLO
-	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750882AbaKDGgJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Nov 2014 01:36:09 -0500
-Content-Disposition: inline
-In-Reply-To: <20141031150257.GC5705@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
+	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
+	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
+	xfs@oss.sgi.com, cluster-devel@redhat.com,
+	Joel Becker <jlbec@evilplan.org>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, hch@lst.de,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
+To: linux-fsdevel@vger.kernel.org
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <1415099993-18034-1-git-send-email-jack@suse.cz>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Oct 31, 2014 at 11:02:57AM -0400, Theodore Ts'o wrote:
-> On Fri, Oct 31, 2014 at 04:13:38PM +0530, Lakshmi_Narayanan_Du@Dell.c=
-om wrote:
-> > Hi,
-> >=20
-> > Could you kindly help us with the list of all the xfs =A0file syste=
-m parameters , that can be tweaked for the best performance of the PCIe=
- based SSDs ?
->=20
-> Um, wrong mailing list.  :-)
+CC: reiserfs-devel@vger.kernel.org
+CC: Jeff Mahoney <jeffm@suse.de>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/reiserfs/reiserfs.h |  4 ++++
+ fs/reiserfs/super.c    | 11 +++++++++++
+ 2 files changed, 15 insertions(+)
 
-Even on the right mailing list I'll give the same answer:
+diff --git a/fs/reiserfs/reiserfs.h b/fs/reiserfs/reiserfs.h
+index 1894d96ccb7c..bb79cddf0a1f 100644
+--- a/fs/reiserfs/reiserfs.h
++++ b/fs/reiserfs/reiserfs.h
+@@ -97,6 +97,10 @@ struct reiserfs_inode_info {
+ #ifdef CONFIG_REISERFS_FS_XATTR
+ 	struct rw_semaphore i_xattr_sem;
+ #endif
++#ifdef CONFIG_QUOTA
++	struct dquot *i_dquot[MAXQUOTAS];
++#endif
++
+ 	struct inode vfs_inode;
+ };
+ 
+diff --git a/fs/reiserfs/super.c b/fs/reiserfs/super.c
+index f1376c92cf74..ea63ab13ef92 100644
+--- a/fs/reiserfs/super.c
++++ b/fs/reiserfs/super.c
+@@ -594,6 +594,10 @@ static struct inode *reiserfs_alloc_inode(struct super_block *sb)
+ 		return NULL;
+ 	atomic_set(&ei->openers, 0);
+ 	mutex_init(&ei->tailpack);
++#ifdef CONFIG_QUOTA
++	memset(&ei->i_dquot, 0, sizeof(ei->i_dquot));
++#endif
++
+ 	return &ei->vfs_inode;
+ }
+ 
+@@ -750,6 +754,11 @@ static ssize_t reiserfs_quota_write(struct super_block *, int, const char *,
+ 				    size_t, loff_t);
+ static ssize_t reiserfs_quota_read(struct super_block *, int, char *, size_t,
+ 				   loff_t);
++
++static struct dquot **reiserfs_get_dquots(struct inode *inode)
++{
++	return REISERFS_I(inode)->i_dquot;
++}
+ #endif
+ 
+ static const struct super_operations reiserfs_sops = {
+@@ -768,6 +777,7 @@ static const struct super_operations reiserfs_sops = {
+ #ifdef CONFIG_QUOTA
+ 	.quota_read = reiserfs_quota_read,
+ 	.quota_write = reiserfs_quota_write,
++	.get_dquots = reiserfs_get_dquots,
+ #endif
+ };
+ 
+@@ -1633,6 +1643,7 @@ static int read_super_block(struct super_block *s, int offset)
+ #ifdef CONFIG_QUOTA
+ 	s->s_qcop = &reiserfs_qctl_operations;
+ 	s->dq_op = &reiserfs_quota_operations;
++	s->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
+ #endif
+ 
+ 	/*
+-- 
+1.8.1.4
 
-http://xfs.org/index.php/XFS_FAQ#Q:_I_want_to_tune_my_XFS_filesystems_f=
-or_.3Csomething.3E
-
-Cheers,
-
-Dave.
---=20
-Dave Chinner
-david@fromorbit.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
