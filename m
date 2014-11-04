@@ -1,93 +1,62 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 12/12] vfs: Remove i_dquot field from inode
-Date: Tue,  4 Nov 2014 12:19:53 +0100
-Message-ID: <1415099993-18034-13-git-send-email-jack@suse.cz>
-References: <1415099993-18034-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
-	xfs@oss.sgi.com, cluster-devel@redhat.com,
+Subject: [PATCH 0/12 v4] Moving i_dquot out of struct inode
+Date: Tue,  4 Nov 2014 12:19:41 +0100
+Message-ID: <1415099993-18034-1-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
+	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
+	Mark Fasheh <mfasheh@suse.com>, Dave Chinner <david@fromorbit.com>,
+	reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
+	cluster-devel@redhat.com, Joel Becker <jlbec@evilplan.org>,
+	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, hch@lst.de,
 	Steven Whitehouse <swhiteho@redhat.com>,
-	Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
-	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
-	Dave Kleikamp <shaggy@kernel.org>,
-	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
-	viro@zeniv.linux.org.uk, hch@lst.de, Jan Kara <jack@suse.cz>
+	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
 To: linux-fsdevel@vger.kernel.org
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
-In-Reply-To: <1415099993-18034-1-git-send-email-jack@suse.cz>
-Sender: reiserfs-devel-owner@vger.kernel.org
+Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=jfs-discussion>
+List-Post: <mailto:jfs-discussion@lists.sourceforge.net>
+List-Help: <mailto:jfs-discussion-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: jfs-discussion-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-All filesystems using VFS quotas are now converted to use their private
-i_dquot fields. Remove the i_dquot field from generic inode structure.
+  Hello,
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/inode.c         | 3 ---
- fs/quota/dquot.c   | 3 ---
- fs/super.c         | 6 ------
- include/linux/fs.h | 3 ---
- 4 files changed, 15 deletions(-)
+  here is a new version of my patch series which moves i_dquot array from
+struct inode into filesystem private part of the inode. Thus filesystems which
+don't need it save 2 pointers in their inodes (would be 3 after we add project
+quota support into generic quota).
 
-diff --git a/fs/inode.c b/fs/inode.c
-index 26753ba7b6d6..2ed95f7caa4f 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -143,9 +143,6 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
- 	inode->i_blocks = 0;
- 	inode->i_bytes = 0;
- 	inode->i_generation = 0;
--#ifdef CONFIG_QUOTA
--	memset(&inode->i_dquot, 0, sizeof(inode->i_dquot));
--#endif
- 	inode->i_pipe = NULL;
- 	inode->i_bdev = NULL;
- 	inode->i_cdev = NULL;
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index 8144ff2b561d..5bc5f254ac1f 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -895,9 +895,6 @@ EXPORT_SYMBOL(dqget);
- 
- static inline struct dquot **i_dquot(struct inode *inode)
- {
--	/* Temporary workaround until all filesystems are converted. */
--	if (!inode->i_sb->s_op->get_dquots)
--		return inode->i_dquot;
- 	return inode->i_sb->s_op->get_dquots(inode);
- }
- 
-diff --git a/fs/super.c b/fs/super.c
-index 4512281df8ff..eae088f6aaae 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -218,12 +218,6 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags)
- 	atomic_set(&s->s_active, 1);
- 	mutex_init(&s->s_vfs_rename_mutex);
- 	lockdep_set_class(&s->s_vfs_rename_mutex, &type->s_vfs_rename_key);
--	/*
--	 * For now MAXQUOTAS check in do_quotactl() will limit quota type
--	 * appropriately. When each fs sets allowed_types, we can remove the
--	 * line below
--	 */
--	s->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP | QTYPE_MASK_PRJ;
- 	mutex_init(&s->s_dquot.dqio_mutex);
- 	mutex_init(&s->s_dquot.dqonoff_mutex);
- 	s->s_maxbytes = MAX_NON_LFS;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 97b0fec13168..402425688e4a 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -593,9 +593,6 @@ struct inode {
- 	const struct file_operations	*i_fop;	/* former ->i_op->default_file_ops */
- 	struct file_lock	*i_flock;
- 	struct address_space	i_data;
--#ifdef CONFIG_QUOTA
--	struct dquot		*i_dquot[MAXQUOTAS];
--#endif
- 	struct list_head	i_devices;
- 	union {
- 		struct pipe_inode_info	*i_pipe;
--- 
-1.8.1.4
+The patch series also contains a change to quotactl so that each filesystem
+can set quota types it supports. This is in the end unrelated change
+(originally it was necessary for i_dquot moving but in the end I changed
+things so that it's not anymore). I can move that into a separate series
+but I was somewhat reluctant to do that since that would mean another 6
+one-line patches to the same files we are changing here...
 
+If people like the patches, I will queue this series into my tree for
+the next merge window. For that I'd prefer to get acks from affected fs
+maintainers (the changes are pretty trivial and I don't feel it's a must but
+still I'd prefer fs maintainers to ack they are aware of the changes).
+
+								Honza
+
+Changes since v1:
+* Inode field names are now named enum
+* Quota type masks now have names like QTYPE_MASK_{USR|GRP|PRJ} instead of
+  opencoding shifts.
+
+Changes since v2:
+* Use ->get_dquots callback instead of inode fields framework
+* rebased on Linus' tree as of 3.18-rc1 + something.
+
+Changes since v3:
+* Moved bitmask of allowed quota types out of s_dquot into sb itself
+* Removed pointless #ifdef CONFIG_QUOTA from OCFS2
+
+------------------------------------------------------------------------------
