@@ -1,100 +1,93 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 01/12] quota: Remove const from function declarations
-Date: Tue,  4 Nov 2014 12:19:42 +0100
-Message-ID: <1415099993-18034-2-git-send-email-jack@suse.cz>
+Subject: [PATCH 12/12] vfs: Remove i_dquot field from inode
+Date: Tue,  4 Nov 2014 12:19:53 +0100
+Message-ID: <1415099993-18034-13-git-send-email-jack@suse.cz>
 References: <1415099993-18034-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
-	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
-	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
+Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	xfs@oss.sgi.com, cluster-devel@redhat.com,
-	Joel Becker <jlbec@evilplan.org>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, hch@lst.de,
 	Steven Whitehouse <swhiteho@redhat.com>,
-	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
+	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
+	Dave Kleikamp <shaggy@kernel.org>,
+	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
+	viro@zeniv.linux.org.uk, hch@lst.de, Jan Kara <jack@suse.cz>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <xfs-bounces@oss.sgi.com>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
 In-Reply-To: <1415099993-18034-1-git-send-email-jack@suse.cz>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Sender: reiserfs-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-We don't use const through VFS too much so just remove it from quota
-function declarations.
+All filesystems using VFS quotas are now converted to use their private
+i_dquot fields. Remove the i_dquot field from generic inode structure.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/quota/dquot.c         | 4 ++--
- include/linux/quotaops.h | 8 ++++----
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ fs/inode.c         | 3 ---
+ fs/quota/dquot.c   | 3 ---
+ fs/super.c         | 6 ------
+ include/linux/fs.h | 3 ---
+ 4 files changed, 15 deletions(-)
 
+diff --git a/fs/inode.c b/fs/inode.c
+index 26753ba7b6d6..2ed95f7caa4f 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -143,9 +143,6 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
+ 	inode->i_blocks = 0;
+ 	inode->i_bytes = 0;
+ 	inode->i_generation = 0;
+-#ifdef CONFIG_QUOTA
+-	memset(&inode->i_dquot, 0, sizeof(inode->i_dquot));
+-#endif
+ 	inode->i_pipe = NULL;
+ 	inode->i_bdev = NULL;
+ 	inode->i_cdev = NULL;
 diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index 8b663b2d9562..8a6b95e9bf3d 100644
+index 8144ff2b561d..5bc5f254ac1f 100644
 --- a/fs/quota/dquot.c
 +++ b/fs/quota/dquot.c
-@@ -1643,7 +1643,7 @@ EXPORT_SYMBOL(__dquot_alloc_space);
- /*
-  * This operation can block, but only after everything is updated
-  */
--int dquot_alloc_inode(const struct inode *inode)
-+int dquot_alloc_inode(struct inode *inode)
- {
- 	int cnt, ret = 0, index;
- 	struct dquot_warn warn[MAXQUOTAS];
-@@ -1784,7 +1784,7 @@ EXPORT_SYMBOL(__dquot_free_space);
- /*
-  * This operation can block, but only after everything is updated
-  */
--void dquot_free_inode(const struct inode *inode)
-+void dquot_free_inode(struct inode *inode)
- {
- 	unsigned int cnt;
- 	struct dquot_warn warn[MAXQUOTAS];
-diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
-index 1d3eee594cd6..f23538a6e411 100644
---- a/include/linux/quotaops.h
-+++ b/include/linux/quotaops.h
-@@ -64,10 +64,10 @@ void dquot_destroy(struct dquot *dquot);
- int __dquot_alloc_space(struct inode *inode, qsize_t number, int flags);
- void __dquot_free_space(struct inode *inode, qsize_t number, int flags);
+@@ -895,9 +895,6 @@ EXPORT_SYMBOL(dqget);
  
--int dquot_alloc_inode(const struct inode *inode);
-+int dquot_alloc_inode(struct inode *inode);
- 
- int dquot_claim_space_nodirty(struct inode *inode, qsize_t number);
--void dquot_free_inode(const struct inode *inode);
-+void dquot_free_inode(struct inode *inode);
- void dquot_reclaim_space_nodirty(struct inode *inode, qsize_t number);
- 
- int dquot_disable(struct super_block *sb, int type, unsigned int flags);
-@@ -213,12 +213,12 @@ static inline void dquot_drop(struct inode *inode)
+ static inline struct dquot **i_dquot(struct inode *inode)
  {
+-	/* Temporary workaround until all filesystems are converted. */
+-	if (!inode->i_sb->s_op->get_dquots)
+-		return inode->i_dquot;
+ 	return inode->i_sb->s_op->get_dquots(inode);
  }
  
--static inline int dquot_alloc_inode(const struct inode *inode)
-+static inline int dquot_alloc_inode(struct inode *inode)
- {
- 	return 0;
- }
- 
--static inline void dquot_free_inode(const struct inode *inode)
-+static inline void dquot_free_inode(struct inode *inode)
- {
- }
- 
+diff --git a/fs/super.c b/fs/super.c
+index 4512281df8ff..eae088f6aaae 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -218,12 +218,6 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags)
+ 	atomic_set(&s->s_active, 1);
+ 	mutex_init(&s->s_vfs_rename_mutex);
+ 	lockdep_set_class(&s->s_vfs_rename_mutex, &type->s_vfs_rename_key);
+-	/*
+-	 * For now MAXQUOTAS check in do_quotactl() will limit quota type
+-	 * appropriately. When each fs sets allowed_types, we can remove the
+-	 * line below
+-	 */
+-	s->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP | QTYPE_MASK_PRJ;
+ 	mutex_init(&s->s_dquot.dqio_mutex);
+ 	mutex_init(&s->s_dquot.dqonoff_mutex);
+ 	s->s_maxbytes = MAX_NON_LFS;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 97b0fec13168..402425688e4a 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -593,9 +593,6 @@ struct inode {
+ 	const struct file_operations	*i_fop;	/* former ->i_op->default_file_ops */
+ 	struct file_lock	*i_flock;
+ 	struct address_space	i_data;
+-#ifdef CONFIG_QUOTA
+-	struct dquot		*i_dquot[MAXQUOTAS];
+-#endif
+ 	struct list_head	i_devices;
+ 	union {
+ 		struct pipe_inode_info	*i_pipe;
 -- 
 1.8.1.4
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
