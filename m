@@ -1,44 +1,48 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 08/12] ext4: Convert to private i_dquot field
-Date: Tue, 4 Nov 2014 09:24:57 -0500
-Message-ID: <20141104142457.GA31295@thunk.org>
-References: <1415099993-18034-1-git-send-email-jack@suse.cz>
-	<1415099993-18034-9-git-send-email-jack@suse.cz>
+Subject: Re: [PATCH 0/6] RFC: (partially) endian-annotate e2fsprogs
+Date: Tue, 4 Nov 2014 11:34:07 -0500
+Message-ID: <20141104163407.GA30614@thunk.org>
+References: <54497296.8000708@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
-	Jeff Mahoney <jeffm@suse.de>, Mark Fasheh <mfasheh@suse.com>,
-	reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
-	cluster-devel@redhat.com, Joel Becker <jlbec@evilplan.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	hch@lst.de, Steven Whitehouse <swhiteho@redhat.com>,
-	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
-To: Jan Kara <jack@suse.cz>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:38272 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754166AbaKDQeM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Nov 2014 11:34:12 -0500
 Content-Disposition: inline
-In-Reply-To: <1415099993-18034-9-git-send-email-jack@suse.cz>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <54497296.8000708@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 04, 2014 at 12:19:49PM +0100, Jan Kara wrote:
-> CC: linux-ext4@vger.kernel.org
-> CC: "Theodore Ts'o" <tytso@mit.edu>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+On Thu, Oct 23, 2014 at 04:26:46PM -0500, Eric Sandeen wrote:
+> This is really only partial, and in the end didn't spot any
+> actual problems.  And things are a bit odd and tricky, because
+> some structures (superblocks, inodes, etc) are swapped in-place
+> in the same structure (so they can't be easily annotated - 
+> if we wish to, we should define separate on-disk and in-memory
+> structures).
+> 
+> Further, i_block in the inode is sometimes swapped on read, and
+> sometimes not (!), depending on whether it's indirect blocks,
+> extents, or inline data.  So that's still messy too.
+> 
+> So this is really just kind of an RFC; I did it on a whim, and
+> things aren't yet totally sparse-check clean, but figured I'd send
+> it out and see what people think, whether it's worth merging,
+> or working on cleaning up the above issues to make it all tidier.
+> 
+> (sparse is pretty good at looking for casts in and out of blk64_t
+> too, though I haven't looked much at those.)
 
-Acked-by: Theodore Ts'o <tytso@mit.edu>
+I've applied all of these patches, thanks.  I'm not sure how much we
+can clean up some of the rest of the bits without breaking the library
+ABI, and we're not all that sparse-clean to start, so I think it's
+worth merging now.  We can always do more clean ups (both with sparse,
+or gcc-wall, clang, etc.) as people have time.
+
+Thanks!!
 
 						- Ted
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
