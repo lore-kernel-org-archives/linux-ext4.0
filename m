@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 10/12] reiserfs: Convert to private i_dquot field
-Date: Tue,  4 Nov 2014 12:19:51 +0100
-Message-ID: <1415099993-18034-11-git-send-email-jack@suse.cz>
+Subject: [PATCH 01/12] quota: Remove const from function declarations
+Date: Tue,  4 Nov 2014 12:19:42 +0100
+Message-ID: <1415099993-18034-2-git-send-email-jack@suse.cz>
 References: <1415099993-18034-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -28,72 +28,69 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-CC: reiserfs-devel@vger.kernel.org
-CC: Jeff Mahoney <jeffm@suse.de>
+We don't use const through VFS too much so just remove it from quota
+function declarations.
+
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/reiserfs/reiserfs.h |  4 ++++
- fs/reiserfs/super.c    | 11 +++++++++++
- 2 files changed, 15 insertions(+)
+ fs/quota/dquot.c         | 4 ++--
+ include/linux/quotaops.h | 8 ++++----
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/fs/reiserfs/reiserfs.h b/fs/reiserfs/reiserfs.h
-index 1894d96ccb7c..bb79cddf0a1f 100644
---- a/fs/reiserfs/reiserfs.h
-+++ b/fs/reiserfs/reiserfs.h
-@@ -97,6 +97,10 @@ struct reiserfs_inode_info {
- #ifdef CONFIG_REISERFS_FS_XATTR
- 	struct rw_semaphore i_xattr_sem;
- #endif
-+#ifdef CONFIG_QUOTA
-+	struct dquot *i_dquot[MAXQUOTAS];
-+#endif
-+
- 	struct inode vfs_inode;
- };
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index 8b663b2d9562..8a6b95e9bf3d 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -1643,7 +1643,7 @@ EXPORT_SYMBOL(__dquot_alloc_space);
+ /*
+  * This operation can block, but only after everything is updated
+  */
+-int dquot_alloc_inode(const struct inode *inode)
++int dquot_alloc_inode(struct inode *inode)
+ {
+ 	int cnt, ret = 0, index;
+ 	struct dquot_warn warn[MAXQUOTAS];
+@@ -1784,7 +1784,7 @@ EXPORT_SYMBOL(__dquot_free_space);
+ /*
+  * This operation can block, but only after everything is updated
+  */
+-void dquot_free_inode(const struct inode *inode)
++void dquot_free_inode(struct inode *inode)
+ {
+ 	unsigned int cnt;
+ 	struct dquot_warn warn[MAXQUOTAS];
+diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
+index 1d3eee594cd6..f23538a6e411 100644
+--- a/include/linux/quotaops.h
++++ b/include/linux/quotaops.h
+@@ -64,10 +64,10 @@ void dquot_destroy(struct dquot *dquot);
+ int __dquot_alloc_space(struct inode *inode, qsize_t number, int flags);
+ void __dquot_free_space(struct inode *inode, qsize_t number, int flags);
  
-diff --git a/fs/reiserfs/super.c b/fs/reiserfs/super.c
-index f1376c92cf74..ea63ab13ef92 100644
---- a/fs/reiserfs/super.c
-+++ b/fs/reiserfs/super.c
-@@ -594,6 +594,10 @@ static struct inode *reiserfs_alloc_inode(struct super_block *sb)
- 		return NULL;
- 	atomic_set(&ei->openers, 0);
- 	mutex_init(&ei->tailpack);
-+#ifdef CONFIG_QUOTA
-+	memset(&ei->i_dquot, 0, sizeof(ei->i_dquot));
-+#endif
-+
- 	return &ei->vfs_inode;
+-int dquot_alloc_inode(const struct inode *inode);
++int dquot_alloc_inode(struct inode *inode);
+ 
+ int dquot_claim_space_nodirty(struct inode *inode, qsize_t number);
+-void dquot_free_inode(const struct inode *inode);
++void dquot_free_inode(struct inode *inode);
+ void dquot_reclaim_space_nodirty(struct inode *inode, qsize_t number);
+ 
+ int dquot_disable(struct super_block *sb, int type, unsigned int flags);
+@@ -213,12 +213,12 @@ static inline void dquot_drop(struct inode *inode)
+ {
  }
  
-@@ -750,6 +754,11 @@ static ssize_t reiserfs_quota_write(struct super_block *, int, const char *,
- 				    size_t, loff_t);
- static ssize_t reiserfs_quota_read(struct super_block *, int, char *, size_t,
- 				   loff_t);
-+
-+static struct dquot **reiserfs_get_dquots(struct inode *inode)
-+{
-+	return REISERFS_I(inode)->i_dquot;
-+}
- #endif
+-static inline int dquot_alloc_inode(const struct inode *inode)
++static inline int dquot_alloc_inode(struct inode *inode)
+ {
+ 	return 0;
+ }
  
- static const struct super_operations reiserfs_sops = {
-@@ -768,6 +777,7 @@ static const struct super_operations reiserfs_sops = {
- #ifdef CONFIG_QUOTA
- 	.quota_read = reiserfs_quota_read,
- 	.quota_write = reiserfs_quota_write,
-+	.get_dquots = reiserfs_get_dquots,
- #endif
- };
+-static inline void dquot_free_inode(const struct inode *inode)
++static inline void dquot_free_inode(struct inode *inode)
+ {
+ }
  
-@@ -1633,6 +1643,7 @@ static int read_super_block(struct super_block *s, int offset)
- #ifdef CONFIG_QUOTA
- 	s->s_qcop = &reiserfs_qctl_operations;
- 	s->dq_op = &reiserfs_quota_operations;
-+	s->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
- #endif
- 
- 	/*
 -- 
 1.8.1.4
 
