@@ -1,656 +1,1234 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 35/47] resize2fs: convert fs to and from 64bit mode
-Date: Fri, 07 Nov 2014 13:54:33 -0800
-Message-ID: <20141107215433.883.51160.stgit@birch.djwong.org>
+Subject: [PATCH 36/47] tests: test resize2fs 32->64 and 64->32bit conversion
+ code
+Date: Fri, 07 Nov 2014 13:54:39 -0800
+Message-ID: <20141107215439.883.65839.stgit@birch.djwong.org>
 References: <20141107215042.883.49888.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, TR Reardon <thomas_reardon@hotmail.com>
+Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:46435 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753244AbaKGVyj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2014 16:54:39 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:36662 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753244AbaKGVyp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2014 16:54:45 -0500
 In-Reply-To: <20141107215042.883.49888.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-resize2fs does its magic by loading a filesystem, duplicating the
-in-memory image of that fs, moving relevant blocks out of the way of
-whatever new metadata get created, and finally writing everything back
-out to disk.  Enabling 64bit mode enlarges the group descriptors,
-which makes resize2fs a reasonable vehicle for taking care of the rest
-of the bookkeeping requirements, so add to resize2fs the ability to
-convert a filesystem to 64bit mode and back.
-
-v2: Fix a couple of minor resource leaks; make it more explicit to the
-user what we're doing to the fs.
+Add some simple tests to check that flex_bg and meta_bg filesystems
+can be converted between 32 and 64bit layouts.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-Cc: TR Reardon <thomas_reardon@hotmail.com>
 ---
- misc/tune2fs.c                   |    7 +
- resize/main.c                    |   60 ++++++
- resize/resize2fs.8.in            |   18 ++
- resize/resize2fs.c               |  362 ++++++++++++++++++++++++++++++++++++--
- resize/resize2fs.h               |    3 
- tests/t_enable_mcsum_ext3/expect |    1 
- 6 files changed, 428 insertions(+), 23 deletions(-)
+ tests/r_32to64bit/expect             |   94 +++++++++++++++++++++++
+ tests/r_32to64bit/name               |    1 
+ tests/r_32to64bit/script             |   74 ++++++++++++++++++
+ tests/r_32to64bit_expand_full/expect |  139 ++++++++++++++++++++++++++++++++++
+ tests/r_32to64bit_expand_full/name   |    1 
+ tests/r_32to64bit_expand_full/script |   83 ++++++++++++++++++++
+ tests/r_32to64bit_meta/expect        |   80 ++++++++++++++++++++
+ tests/r_32to64bit_meta/name          |    1 
+ tests/r_32to64bit_meta/script        |   74 ++++++++++++++++++
+ tests/r_32to64bit_move_itable/expect |  107 ++++++++++++++++++++++++++
+ tests/r_32to64bit_move_itable/name   |    1 
+ tests/r_32to64bit_move_itable/script |   74 ++++++++++++++++++
+ tests/r_64to32bit/expect             |   98 ++++++++++++++++++++++++
+ tests/r_64to32bit/name               |    1 
+ tests/r_64to32bit/script             |   76 +++++++++++++++++++
+ tests/r_64to32bit_meta/expect        |   80 ++++++++++++++++++++
+ tests/r_64to32bit_meta/name          |    1 
+ tests/r_64to32bit_meta/script        |   76 +++++++++++++++++++
+ 18 files changed, 1061 insertions(+)
+ create mode 100644 tests/r_32to64bit/expect
+ create mode 100644 tests/r_32to64bit/name
+ create mode 100644 tests/r_32to64bit/script
+ create mode 100644 tests/r_32to64bit_expand_full/expect
+ create mode 100644 tests/r_32to64bit_expand_full/name
+ create mode 100644 tests/r_32to64bit_expand_full/script
+ create mode 100644 tests/r_32to64bit_meta/expect
+ create mode 100644 tests/r_32to64bit_meta/name
+ create mode 100644 tests/r_32to64bit_meta/script
+ create mode 100644 tests/r_32to64bit_move_itable/expect
+ create mode 100644 tests/r_32to64bit_move_itable/name
+ create mode 100644 tests/r_32to64bit_move_itable/script
+ create mode 100644 tests/r_64to32bit/expect
+ create mode 100644 tests/r_64to32bit/name
+ create mode 100644 tests/r_64to32bit/script
+ create mode 100644 tests/r_64to32bit_meta/expect
+ create mode 100644 tests/r_64to32bit_meta/name
+ create mode 100644 tests/r_64to32bit_meta/script
 
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 1c83d09..da5030b 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -1121,6 +1121,13 @@ mmp_error:
- 				 "cannot.  Not enabling extents reduces the "
- 				 "coverage of metadata checksumming.  "
- 				 "Re-run with -O extent to rectify.\n"));
-+		if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-+				EXT4_FEATURE_INCOMPAT_64BIT))
-+			printf("%s",
-+			       _("64-bit filesystem support is not enabled.  "
-+				 "The larger fields afforded by this feature "
-+				 "enable full-strength checksumming.  "
-+				 "Run resize2fs -b to rectify.\n"));
- 		rewrite_checksums = 1;
- 		/* metadata_csum supersedes uninit_bg */
- 		fs->super->s_feature_ro_compat &=
-diff --git a/resize/main.c b/resize/main.c
-index e017792..f5cdab9 100644
---- a/resize/main.c
-+++ b/resize/main.c
-@@ -42,7 +42,7 @@ static char *device_name, *io_options;
- static void usage (char *prog)
- {
- 	fprintf (stderr, _("Usage: %s [-d debug_flags] [-f] [-F] [-M] [-P] "
--			   "[-p] device [new_size]\n\n"), prog);
-+			   "[-p] device [-b|-s|new_size]\n\n"), prog);
- 
- 	exit (1);
- }
-@@ -203,7 +203,7 @@ int main (int argc, char ** argv)
- 	if (argc && *argv)
- 		program_name = *argv;
- 
--	while ((c = getopt (argc, argv, "d:fFhMPpS:")) != EOF) {
-+	while ((c = getopt(argc, argv, "d:fFhMPpS:bs")) != EOF) {
- 		switch (c) {
- 		case 'h':
- 			usage(program_name);
-@@ -229,6 +229,12 @@ int main (int argc, char ** argv)
- 		case 'S':
- 			use_stride = atoi(optarg);
- 			break;
-+		case 'b':
-+			flags |= RESIZE_ENABLE_64BIT;
-+			break;
-+		case 's':
-+			flags |= RESIZE_DISABLE_64BIT;
-+			break;
- 		default:
- 			usage(program_name);
- 		}
-@@ -393,6 +399,10 @@ int main (int argc, char ** argv)
- 		if (sys_page_size > blocksize)
- 			new_size &= ~((sys_page_size / blocksize)-1);
- 	}
-+	/* If changing 64bit, don't change the filesystem size. */
-+	if (flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)) {
-+		new_size = ext2fs_blocks_count(fs->super);
+diff --git a/tests/r_32to64bit/expect b/tests/r_32to64bit/expect
+new file mode 100644
+index 0000000..f5fa56b
+--- /dev/null
++++ b/tests/r_32to64bit/expect
+@@ -0,0 +1,94 @@
++resize2fs test
++Creating filesystem with 524288 1k blocks and 65536 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
++
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (16384 blocks): done
++Creating 477 huge file(s) with 1024 blocks each: done
++Writing superblocks and filesystem accounting information:      done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
++resize2fs test.img -b
++Converting the filesystem to 64-bit.
++The filesystem on test.img is now 524288 (1k) blocks long.
++
++Exit status is 0
++Change in FS metadata:
++@@ -2,7 +2,7 @@
++ Last mounted on:          <not available>
++ Filesystem magic number:  0xEF53
++ Filesystem revision #:    1 (dynamic)
++-Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
+++Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
++ Default mount options:    user_xattr acl
++ Filesystem state:         clean
++ Errors behavior:          Continue
++@@ -15,7 +15,8 @@
++ First block:              1
++ Block size:               1024
++ Fragment size:            1024
++-Reserved GDT blocks:      256
+++Group descriptor size:    64
+++Reserved GDT blocks:      254
++ Blocks per group:         8192
++ Fragments per group:      8192
++ Inodes per group:         1024
++@@ -40,16 +41,16 @@
++ 
++ 
++ group:block:super:gdt:bbitmap:ibitmap:itable
++-0:1:1:2-3:260:276:292
++-1:8193:8193:8194-8195:261:277:548
+++0:1:1:2-5:260:276:292
+++1:8193:8193:8194-8197:261:277:548
++ 2:16385:-1:-1:262:278:804
++-3:24577:24577:24578-24579:263:279:1060
+++3:24577:24577:24578-24581:263:279:1060
++ 4:32769:-1:-1:264:280:1316
++-5:40961:40961:40962-40963:265:281:1572
+++5:40961:40961:40962-40965:265:281:1572
++ 6:49153:-1:-1:266:282:1828
++-7:57345:57345:57346-57347:267:283:2084
+++7:57345:57345:57346-57349:267:283:2084
++ 8:65537:-1:-1:268:284:2340
++-9:73729:73729:73730-73731:269:285:2596
+++9:73729:73729:73730-73733:269:285:2596
++ 10:81921:-1:-1:270:286:2852
++ 11:90113:-1:-1:271:287:3108
++ 12:98305:-1:-1:272:288:3364
++@@ -65,9 +66,9 @@
++ 22:180225:-1:-1:131079:131095:132641
++ 23:188417:-1:-1:131080:131096:132897
++ 24:196609:-1:-1:131081:131097:133153
++-25:204801:204801:204802-204803:131082:131098:133409
+++25:204801:204801:204802-204805:131082:131098:133409
++ 26:212993:-1:-1:131083:131099:133665
++-27:221185:221185:221186-221187:131084:131100:133921
+++27:221185:221185:221186-221189:131084:131100:133921
++ 28:229377:-1:-1:131085:131101:134177
++ 29:237569:-1:-1:131086:131102:134433
++ 30:245761:-1:-1:131087:131103:134689
++@@ -89,7 +90,7 @@
++ 46:376833:-1:-1:262159:262175:265761
++ 47:385025:-1:-1:262160:262176:266017
++ 48:393217:-1:-1:393217:393233:393249
++-49:401409:401409:401410-401411:393218:393234:393505
+++49:401409:401409:401410-401413:393218:393234:393505
++ 50:409601:-1:-1:393219:393235:393761
++ 51:417793:-1:-1:393220:393236:394017
++ 52:425985:-1:-1:393221:393237:394273
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
+diff --git a/tests/r_32to64bit/name b/tests/r_32to64bit/name
+new file mode 100644
+index 0000000..fb45fab
+--- /dev/null
++++ b/tests/r_32to64bit/name
+@@ -0,0 +1 @@
++convert flex_bg 32bit fs to 64bit fs
+diff --git a/tests/r_32to64bit/script b/tests/r_32to64bit/script
+new file mode 100644
+index 0000000..de08bfb
+--- /dev/null
++++ b/tests/r_32to64bit/script
+@@ -0,0 +1,74 @@
++if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
++
++FSCK_OPT=-fn
++OUT=$test_name.log
++EXP=$test_dir/expect
++CONF=$TMPFILE.conf
++
++cat > $CONF << ENDL
++[fs_types]
++	ext4h = {
++		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode
++		blocksize = 1024
++		inode_size = 256
++		make_hugefiles = true
++		hugefiles_dir = /
++		hugefiles_slack = 0
++		hugefiles_name = aaaaa
++		hugefiles_digits = 4
++		hugefiles_size = 1M
++		zero_hugefiles = false
 +	}
- 	if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
- 				       EXT4_FEATURE_INCOMPAT_64BIT)) {
- 		/* Take 16T down to 2^32-1 blocks */
-@@ -444,20 +454,58 @@ int main (int argc, char ** argv)
- 			blocksize / 1024, new_size);
- 		exit(1);
- 	}
--	if (new_size == ext2fs_blocks_count(fs->super)) {
-+	if ((flags & RESIZE_DISABLE_64BIT) && (flags & RESIZE_ENABLE_64BIT)) {
-+		fprintf(stderr, _("Cannot set and unset 64bit feature.\n"));
-+		exit(1);
-+	} else if (flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)) {
-+		if (new_size >= (1ULL << 32)) {
-+			fprintf(stderr, _("Cannot change the 64bit feature "
-+				"on a filesystem that is larger than "
-+				"2^32 blocks.\n"));
-+			exit(1);
-+		}
-+		if (mount_flags & EXT2_MF_MOUNTED) {
-+			fprintf(stderr, _("Cannot change the 64bit feature "
-+				"while the filesystem is mounted.\n"));
-+			exit(1);
-+		}
-+		if (flags & RESIZE_ENABLE_64BIT &&
-+		    !EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-+				EXT3_FEATURE_INCOMPAT_EXTENTS)) {
-+			fprintf(stderr, _("Please enable the extents feature "
-+				"with tune2fs before enabling the 64bit "
-+				"feature.\n"));
-+			exit(1);
-+		}
-+	} else if (new_size == ext2fs_blocks_count(fs->super)) {
- 		fprintf(stderr, _("The filesystem is already %llu (%dk) "
- 			"blocks long.  Nothing to do!\n\n"), new_size,
- 			blocksize / 1024);
- 		exit(0);
- 	}
-+	if ((flags & RESIZE_ENABLE_64BIT) &&
-+	    EXT2_HAS_INCOMPAT_FEATURE(fs->super, EXT4_FEATURE_INCOMPAT_64BIT)) {
-+		fprintf(stderr, _("The filesystem is already 64-bit.\n"));
-+		exit(0);
++ENDL
++
++echo "resize2fs test" > $OUT
++
++MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
++rm -rf $CONF
++
++# dump and check
++($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.before
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# resize it
++echo "resize2fs test.img -b" >> $OUT
++$RESIZE2FS -b -f $TMPFILE 2>&1 >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# dump and check
++($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.after
++echo "Change in FS metadata:" >> $OUT
++diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++rm $TMPFILE $OUT.before $OUT.after
++
++#
++# Do the verification
++#
++
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
++mv $OUT.new $OUT
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++fi
++
++unset IMAGE FSCK_OPT OUT EXP CONF
++
++else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
++
+diff --git a/tests/r_32to64bit_expand_full/expect b/tests/r_32to64bit_expand_full/expect
+new file mode 100644
+index 0000000..f9e30f3
+--- /dev/null
++++ b/tests/r_32to64bit_expand_full/expect
+@@ -0,0 +1,139 @@
++resize2fs test
++Creating filesystem with 786432 1k blocks and 98304 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553
++
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (16384 blocks): done
++Creating 727 huge file(s) with 1024 blocks each: done
++Writing superblocks and filesystem accounting information:      done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
++resize2fs -b test.img
++Converting the filesystem to 64-bit.
++The filesystem on test.img is now 786432 (1k) blocks long.
++
++resize2fs test.img
++Resizing the filesystem on test.img to 1179648 (1k) blocks.
++The filesystem on test.img is now 1179648 (1k) blocks long.
++
++Exit status is 0
++Change in FS metadata:
++@@ -1,15 +1,15 @@
++ 
++ group:block:super:gdt:bbitmap:ibitmap:itable
++-0:1:1:2-7:8:9:10
++-1:8193:8193:8194-8199:8200:8201:8202
+++0:1:1:2-10:266:267:268
+++1:8193:8193:8194-8202:8458:8459:8460
++ 2:16385:-1:-1:16385:16386:16387
++-3:24577:24577:24578-24583:24584:24585:24586
+++3:24577:24577:24578-24586:24842:24843:24844
++ 4:32769:-1:-1:32769:32770:32771
++-5:40961:40961:40962-40967:40968:40969:40970
+++5:40961:40961:40962-40970:41226:41227:41228
++ 6:49153:-1:-1:49153:49154:49155
++-7:57345:57345:57346-57351:57352:57353:57354
+++7:57345:57345:57346-57354:57610:57611:57612
++ 8:65537:-1:-1:65537:65538:65539
++-9:73729:73729:73730-73735:73736:73737:73738
+++9:73729:73729:73730-73738:73994:73995:73996
++ 10:81921:-1:-1:81921:81922:81923
++ 11:90113:-1:-1:90113:90114:90115
++ 12:98305:-1:-1:98305:98306:98307
++@@ -25,9 +25,9 @@
++ 22:180225:-1:-1:180225:180226:180227
++ 23:188417:-1:-1:188417:188418:188419
++ 24:196609:-1:-1:196609:196610:196611
++-25:204801:204801:204802-204807:204808:204809:204810
+++25:204801:204801:204802-204810:205066:205067:205068
++ 26:212993:-1:-1:212993:212994:212995
++-27:221185:221185:221186-221191:221192:221193:221194
+++27:221185:221185:221186-221194:221450:221451:221452
++ 28:229377:-1:-1:229377:229378:229379
++ 29:237569:-1:-1:237569:237570:237571
++ 30:245761:-1:-1:245761:245762:245763
++@@ -49,7 +49,7 @@
++ 46:376833:-1:-1:376833:376834:376835
++ 47:385025:-1:-1:385025:385026:385027
++ 48:393217:-1:-1:393217:393218:393219
++-49:401409:401409:401410-401415:401416:401417:401418
+++49:401409:401409:401410-401418:401674:401675:401676
++ 50:409601:-1:-1:409601:409602:409603
++ 51:417793:-1:-1:417793:417794:417795
++ 52:425985:-1:-1:425985:425986:425987
++@@ -81,7 +81,7 @@
++ 78:638977:-1:-1:638977:638978:638979
++ 79:647169:-1:-1:647169:647170:647171
++ 80:655361:-1:-1:655361:655362:655363
++-81:663553:663553:663554-663559:663560:663561:663562
+++81:663553:663553:663554-663562:663818:663819:663820
++ 82:671745:-1:-1:671745:671746:671747
++ 83:679937:-1:-1:679937:679938:679939
++ 84:688129:-1:-1:688129:688130:688131
++@@ -96,3 +96,51 @@
++ 93:761857:-1:-1:761857:761858:761859
++ 94:770049:-1:-1:770049:770050:770051
++ 95:778241:-1:-1:778241:778242:778243
+++96:786433:-1:-1:786433:786434:786435
+++97:794625:-1:-1:794625:794626:794627
+++98:802817:-1:-1:802817:802818:802819
+++99:811009:-1:-1:811009:811010:811011
+++100:819201:-1:-1:819201:819202:819203
+++101:827393:-1:-1:827393:827394:827395
+++102:835585:-1:-1:835585:835586:835587
+++103:843777:-1:-1:843777:843778:843779
+++104:851969:-1:-1:851969:851970:851971
+++105:860161:-1:-1:860161:860162:860163
+++106:868353:-1:-1:868353:868354:868355
+++107:876545:-1:-1:876545:876546:876547
+++108:884737:-1:-1:884737:884738:884739
+++109:892929:-1:-1:892929:892930:892931
+++110:901121:-1:-1:901121:901122:901123
+++111:909313:-1:-1:909313:909314:909315
+++112:917505:-1:-1:917505:917506:917507
+++113:925697:-1:-1:925697:925698:925699
+++114:933889:-1:-1:933889:933890:933891
+++115:942081:-1:-1:942081:942082:942083
+++116:950273:-1:-1:950273:950274:950275
+++117:958465:-1:-1:958465:958466:958467
+++118:966657:-1:-1:966657:966658:966659
+++119:974849:-1:-1:974849:974850:974851
+++120:983041:-1:-1:983041:983042:983043
+++121:991233:-1:-1:991233:991234:991235
+++122:999425:-1:-1:999425:999426:999427
+++123:1007617:-1:-1:1007617:1007618:1007619
+++124:1015809:-1:-1:1015809:1015810:1015811
+++125:1024001:1024001:1024002-1024010:1024011:1024012:1024013
+++126:1032193:-1:-1:1032193:1032194:1032195
+++127:1040385:-1:-1:1040385:1040386:1040387
+++128:1048577:-1:-1:1048577:1048578:1048579
+++129:1056769:-1:-1:1056769:1056770:1056771
+++130:1064961:-1:-1:1064961:1064962:1064963
+++131:1073153:-1:-1:1073153:1073154:1073155
+++132:1081345:-1:-1:1081345:1081346:1081347
+++133:1089537:-1:-1:1089537:1089538:1089539
+++134:1097729:-1:-1:1097729:1097730:1097731
+++135:1105921:-1:-1:1105921:1105922:1105923
+++136:1114113:-1:-1:1114113:1114114:1114115
+++137:1122305:-1:-1:1122305:1122306:1122307
+++138:1130497:-1:-1:1130497:1130498:1130499
+++139:1138689:-1:-1:1138689:1138690:1138691
+++140:1146881:-1:-1:1146881:1146882:1146883
+++141:1155073:-1:-1:1155073:1155074:1155075
+++142:1163265:-1:-1:1163265:1163266:1163267
+++143:1171457:-1:-1:1171457:1171458:1171459
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
+diff --git a/tests/r_32to64bit_expand_full/name b/tests/r_32to64bit_expand_full/name
+new file mode 100644
+index 0000000..2f04601
+--- /dev/null
++++ b/tests/r_32to64bit_expand_full/name
+@@ -0,0 +1 @@
++convert a totally full filesystem to 64bit, then expand
+diff --git a/tests/r_32to64bit_expand_full/script b/tests/r_32to64bit_expand_full/script
+new file mode 100644
+index 0000000..7a57084
+--- /dev/null
++++ b/tests/r_32to64bit_expand_full/script
+@@ -0,0 +1,83 @@
++if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
++
++FSCK_OPT=-fn
++OUT=$test_name.log
++EXP=$test_dir/expect
++CONF=$TMPFILE.conf
++
++#gzip -d < $EXP.gz > $EXP
++
++cat > $CONF << ENDL
++[fs_types]
++	ext4h = {
++		features = has_journal,extent,huge_file,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,^resize_inode,^meta_bg,^flex_bg
++		blocksize = 1024
++		inode_size = 256
++		make_hugefiles = true
++		hugefiles_dir = /
++		hugefiles_slack = 0
++		hugefiles_name = aaaaa
++		hugefiles_digits = 4
++		hugefiles_size = 1M
++		zero_hugefiles = false
 +	}
-+	if ((flags & RESIZE_DISABLE_64BIT) &&
-+	    !EXT2_HAS_INCOMPAT_FEATURE(fs->super, EXT4_FEATURE_INCOMPAT_64BIT)) {
-+		fprintf(stderr, _("The filesystem is already 32-bit.\n"));
-+		exit(0);
++ENDL
++
++echo "resize2fs test" > $OUT
++
++MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 786432 >> $OUT 2>&1
++rm -rf $CONF
++
++# check
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# convert it
++echo "resize2fs -b test.img" >> $OUT
++$RESIZE2FS -b -f $TMPFILE 2>&1 >> $OUT 2>&1
++$DUMPE2FS -g $TMPFILE 2>&1 >> $OUT.before 2> /dev/null
++
++# grow it
++echo "resize2fs test.img" >> $OUT
++dd if=/dev/zero of=$TMPFILE conv=notrunc bs=1 count=1 seek=1207959552 2> /dev/null
++$RESIZE2FS -f $TMPFILE 2>&1 >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# dump and check
++$DUMPE2FS -g $TMPFILE 2>&1 >> $OUT.after 2> /dev/null
++echo "Change in FS metadata:" >> $OUT
++diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++rm $TMPFILE
++
++#
++# Do the verification
++#
++
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
++mv $OUT.new $OUT
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++fi
++
++rm $OUT.before $OUT.after
++
++unset IMAGE FSCK_OPT OUT EXP CONF
++
++else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
++
+diff --git a/tests/r_32to64bit_meta/expect b/tests/r_32to64bit_meta/expect
+new file mode 100644
+index 0000000..0eacd45
+--- /dev/null
++++ b/tests/r_32to64bit_meta/expect
+@@ -0,0 +1,80 @@
++resize2fs test
++Creating filesystem with 524288 1k blocks and 65536 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
++
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (16384 blocks): done
++Creating 479 huge file(s) with 1024 blocks each: done
++Writing superblocks and filesystem accounting information:      done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
++resize2fs test.img -b
++Converting the filesystem to 64-bit.
++The filesystem on test.img is now 524288 (1k) blocks long.
++
++Exit status is 0
++Change in FS metadata:
++@@ -2,7 +2,7 @@
++ Last mounted on:          <not available>
++ Filesystem magic number:  0xEF53
++ Filesystem revision #:    1 (dynamic)
++-Filesystem features:      has_journal ext_attr dir_index filetype meta_bg extent flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
+++Filesystem features:      has_journal ext_attr dir_index filetype meta_bg extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
++ Default mount options:    user_xattr acl
++ Filesystem state:         clean
++ Errors behavior:          Continue
++@@ -10,11 +10,12 @@
++ Inode count:              65536
++ Block count:              524288
++ Reserved block count:     26214
++-Free blocks:              858
+++Free blocks:              852
++ Free inodes:              65046
++ First block:              1
++ Block size:               1024
++ Fragment size:            1024
+++Group descriptor size:    64
++ Blocks per group:         8192
++ Fragments per group:      8192
++ Inodes per group:         1024
++@@ -54,9 +55,9 @@
++ 12:98305:-1:-1:15:31:3107
++ 13:106497:-1:-1:16:32:3363
++ 14:114689:-1:-1:17:33:3619
++-15:122881:-1:-1:18:34:3875
++-16:131073:-1:-1:131073:131089:131105
++-17:139265:-1:-1:131074:131090:131361
+++15:122881:-1:122881:18:34:3875
+++16:131073:-1:131073:135201:131089:131105
+++17:139265:-1:139265:131074:131090:131361
++ 18:147457:-1:-1:131075:131091:131617
++ 19:155649:-1:-1:131076:131092:131873
++ 20:163841:-1:-1:131077:131093:132129
++@@ -86,9 +87,9 @@
++ 44:360449:-1:-1:262158:262174:265250
++ 45:368641:-1:-1:262159:262175:265506
++ 46:376833:-1:-1:262160:262176:265762
++-47:385025:-1:-1:262161:262177:266018
++-48:393217:-1:-1:393217:393233:393249
++-49:401409:401409:-1:393218:393234:393505
+++47:385025:-1:385025:262161:262177:266018
+++48:393217:-1:393217:397345:393233:393249
+++49:401409:401409:401410:393218:393234:393505
++ 50:409601:-1:-1:393219:393235:393761
++ 51:417793:-1:-1:393220:393236:394017
++ 52:425985:-1:-1:393221:393237:394273
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
+diff --git a/tests/r_32to64bit_meta/name b/tests/r_32to64bit_meta/name
+new file mode 100644
+index 0000000..d83492e
+--- /dev/null
++++ b/tests/r_32to64bit_meta/name
+@@ -0,0 +1 @@
++convert meta_bg 32bit fs to 64bit fs
+diff --git a/tests/r_32to64bit_meta/script b/tests/r_32to64bit_meta/script
+new file mode 100644
+index 0000000..25872c4
+--- /dev/null
++++ b/tests/r_32to64bit_meta/script
+@@ -0,0 +1,74 @@
++if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
++
++FSCK_OPT=-fn
++OUT=$test_name.log
++EXP=$test_dir/expect
++CONF=$TMPFILE.conf
++
++cat > $CONF << ENDL
++[fs_types]
++	ext4h = {
++		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,meta_bg,^resize_inode
++		blocksize = 1024
++		inode_size = 256
++		make_hugefiles = true
++		hugefiles_dir = /
++		hugefiles_slack = 0
++		hugefiles_name = aaaaa
++		hugefiles_digits = 4
++		hugefiles_size = 1M
++		zero_hugefiles = false
 +	}
- 	if (mount_flags & EXT2_MF_MOUNTED) {
- 		bigalloc_check(fs, force);
- 		retval = online_resize_fs(fs, mtpt, &new_size, flags);
- 	} else {
- 		bigalloc_check(fs, force);
--		printf(_("Resizing the filesystem on "
--			 "%s to %llu (%dk) blocks.\n"),
--		       device_name, new_size, blocksize / 1024);
-+		if (flags & RESIZE_ENABLE_64BIT)
-+			printf(_("Converting the filesystem to 64-bit.\n"));
-+		else if (flags & RESIZE_DISABLE_64BIT)
-+			printf(_("Converting the filesystem to 32-bit.\n"));
-+		else
-+			printf(_("Resizing the filesystem on "
-+				 "%s to %llu (%dk) blocks.\n"),
-+			       device_name, new_size, blocksize / 1024);
- 		retval = resize_fs(fs, &new_size, flags,
- 				   ((flags & RESIZE_PERCENT_COMPLETE) ?
- 				    resize_progress_func : 0));
-diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
-index 86495c6..0129bfc 100644
---- a/resize/resize2fs.8.in
-+++ b/resize/resize2fs.8.in
-@@ -8,7 +8,7 @@ resize2fs \- ext2/ext3/ext4 file system resizer
- .SH SYNOPSIS
- .B resize2fs
- [
--.B \-fFpPM
-+.B \-fFpPMbs
- ]
- [
- .B \-d
-@@ -86,8 +86,21 @@ to shrink the size of filesystem.  Then you may use
- to shrink the size of the partition.  When shrinking the size of
- the partition, make sure you do not make it smaller than the new size
- of the ext2 filesystem!
-+.PP
-+The
-+.B \-b
-+and
-+.B \-s
-+options enable and disable the 64bit feature, respectively.  The resize2fs
-+program will, of course, take care of resizing the block group descriptors
-+and moving other data blocks out of the way, as needed.  It is not possible
-+to resize the filesystem concurrent with changing the 64bit status.
- .SH OPTIONS
- .TP
-+.B \-b
-+Turns on the 64bit feature, resizes the group descriptors as necessary, and
-+moves other metadata out of the way.
-+.TP
- .B \-d \fIdebug-flags
- Turns on various resize2fs debugging features, if they have been compiled
- into the binary.
-@@ -127,6 +140,9 @@ of what the program is doing.
- .B \-P
- Print the minimum size of the filesystem and exit.
- .TP
-+.B \-s
-+Turns off the 64bit feature and frees blocks that are no longer in use.
-+.TP
- .B \-S \fIRAID-stride
- The
- .B resize2fs
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 0d1f7fa..0787c8a 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -56,6 +56,9 @@ static errcode_t mark_table_blocks(ext2_filsys fs,
- static errcode_t clear_sparse_super2_last_group(ext2_resize_t rfs);
- static errcode_t reserve_sparse_super2_last_group(ext2_resize_t rfs,
- 						 ext2fs_block_bitmap meta_bmap);
-+static errcode_t resize_group_descriptors(ext2_resize_t rfs, blk64_t new_size);
-+static errcode_t move_bg_metadata(ext2_resize_t rfs);
-+static errcode_t zero_high_bits_in_inodes(ext2_resize_t rfs);
- 
- /*
-  * Some helper CPP macros
-@@ -122,13 +125,30 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
- 	if (retval)
- 		goto errout;
- 
-+	init_resource_track(&rtrack, "resize_group_descriptors", fs->io);
-+	retval = resize_group_descriptors(rfs, *new_size);
-+	if (retval)
-+		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
++ENDL
 +
-+	init_resource_track(&rtrack, "move_bg_metadata", fs->io);
-+	retval = move_bg_metadata(rfs);
-+	if (retval)
-+		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
++echo "resize2fs test" > $OUT
 +
-+	init_resource_track(&rtrack, "zero_high_bits_in_metadata", fs->io);
-+	retval = zero_high_bits_in_inodes(rfs);
-+	if (retval)
-+		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
++MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
++rm -rf $CONF
 +
- 	init_resource_track(&rtrack, "adjust_superblock", fs->io);
- 	retval = adjust_superblock(rfs, *new_size);
- 	if (retval)
- 		goto errout;
- 	print_resource_track(rfs, &rtrack, fs->io);
- 
--
- 	init_resource_track(&rtrack, "fix_uninit_block_bitmaps 2", fs->io);
- 	fix_uninit_block_bitmaps(rfs->new_fs);
- 	print_resource_track(rfs, &rtrack, fs->io);
-@@ -235,6 +255,322 @@ errout:
- 	return retval;
- }
- 
-+/* Keep the size of the group descriptor region constant */
-+static void adjust_reserved_gdt_blocks(ext2_filsys old_fs, ext2_filsys fs)
-+{
-+	if ((fs->super->s_feature_compat &
-+	     EXT2_FEATURE_COMPAT_RESIZE_INODE) &&
-+	    (old_fs->desc_blocks != fs->desc_blocks)) {
-+		int new;
++# dump and check
++($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.before
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
 +
-+		new = ((int) fs->super->s_reserved_gdt_blocks) +
-+			(old_fs->desc_blocks - fs->desc_blocks);
-+		if (new < 0)
-+			new = 0;
-+		if (new > (int) fs->blocksize/4)
-+			new = fs->blocksize/4;
-+		fs->super->s_reserved_gdt_blocks = new;
++# resize it
++echo "resize2fs test.img -b" >> $OUT
++$RESIZE2FS -b -f $TMPFILE 2>&1 >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# dump and check
++($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.after
++echo "Change in FS metadata:" >> $OUT
++diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++rm $TMPFILE $OUT.before $OUT.after
++
++#
++# Do the verification
++#
++
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
++mv $OUT.new $OUT
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++fi
++
++unset IMAGE FSCK_OPT OUT EXP CONF
++
++else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
++
+diff --git a/tests/r_32to64bit_move_itable/expect b/tests/r_32to64bit_move_itable/expect
+new file mode 100644
+index 0000000..b51663d
+--- /dev/null
++++ b/tests/r_32to64bit_move_itable/expect
+@@ -0,0 +1,107 @@
++resize2fs test
++Creating filesystem with 786432 1k blocks and 98304 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553
++
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (16384 blocks): done
++Creating 727 huge file(s) with 1024 blocks each: done
++Writing superblocks and filesystem accounting information:      done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
++resize2fs test.img -b
++Converting the filesystem to 64-bit.
++The filesystem on test.img is now 786432 (1k) blocks long.
++
++Exit status is 0
++Change in FS metadata:
++@@ -2,7 +2,7 @@
++ Last mounted on:          <not available>
++ Filesystem magic number:  0xEF53
++ Filesystem revision #:    1 (dynamic)
++-Filesystem features:      has_journal ext_attr dir_index filetype extent sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
+++Filesystem features:      has_journal ext_attr dir_index filetype extent 64bit sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
++ Default mount options:    user_xattr acl
++ Filesystem state:         clean
++ Errors behavior:          Continue
++@@ -10,11 +10,12 @@
++ Inode count:              98304
++ Block count:              786432
++ Reserved block count:     39321
++-Free blocks:              764
+++Free blocks:              734
++ Free inodes:              97566
++ First block:              1
++ Block size:               1024
++ Fragment size:            1024
+++Group descriptor size:    64
++ Blocks per group:         8192
++ Fragments per group:      8192
++ Inodes per group:         1024
++@@ -38,16 +39,16 @@
++ 
++ 
++ group:block:super:gdt:bbitmap:ibitmap:itable
++-0:1:1:2-4:5:6:7
++-1:8193:8193:8194-8196:8197:8198:8199
+++0:1:1:2-7:8:9:10
+++1:8193:8193:8194-8199:8200:8201:8202
++ 2:16385:-1:-1:16385:16386:16387
++-3:24577:24577:24578-24580:24581:24582:24583
+++3:24577:24577:24578-24583:24584:24585:24586
++ 4:32769:-1:-1:32769:32770:32771
++-5:40961:40961:40962-40964:40965:40966:40967
+++5:40961:40961:40962-40967:40968:40969:40970
++ 6:49153:-1:-1:49153:49154:49155
++-7:57345:57345:57346-57348:57349:57350:57351
+++7:57345:57345:57346-57351:57352:57353:57354
++ 8:65537:-1:-1:65537:65538:65539
++-9:73729:73729:73730-73732:73733:73734:73735
+++9:73729:73729:73730-73735:73736:73737:73738
++ 10:81921:-1:-1:81921:81922:81923
++ 11:90113:-1:-1:90113:90114:90115
++ 12:98305:-1:-1:98305:98306:98307
++@@ -63,9 +64,9 @@
++ 22:180225:-1:-1:180225:180226:180227
++ 23:188417:-1:-1:188417:188418:188419
++ 24:196609:-1:-1:196609:196610:196611
++-25:204801:204801:204802-204804:204805:204806:204807
+++25:204801:204801:204802-204807:204808:204809:204810
++ 26:212993:-1:-1:212993:212994:212995
++-27:221185:221185:221186-221188:221189:221190:221191
+++27:221185:221185:221186-221191:221192:221193:221194
++ 28:229377:-1:-1:229377:229378:229379
++ 29:237569:-1:-1:237569:237570:237571
++ 30:245761:-1:-1:245761:245762:245763
++@@ -87,7 +88,7 @@
++ 46:376833:-1:-1:376833:376834:376835
++ 47:385025:-1:-1:385025:385026:385027
++ 48:393217:-1:-1:393217:393218:393219
++-49:401409:401409:401410-401412:401413:401414:401415
+++49:401409:401409:401410-401415:401416:401417:401418
++ 50:409601:-1:-1:409601:409602:409603
++ 51:417793:-1:-1:417793:417794:417795
++ 52:425985:-1:-1:425985:425986:425987
++@@ -119,7 +120,7 @@
++ 78:638977:-1:-1:638977:638978:638979
++ 79:647169:-1:-1:647169:647170:647171
++ 80:655361:-1:-1:655361:655362:655363
++-81:663553:663553:663554-663556:663557:663558:663559
+++81:663553:663553:663554-663559:663560:663561:663562
++ 82:671745:-1:-1:671745:671746:671747
++ 83:679937:-1:-1:679937:679938:679939
++ 84:688129:-1:-1:688129:688130:688131
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
+diff --git a/tests/r_32to64bit_move_itable/name b/tests/r_32to64bit_move_itable/name
+new file mode 100644
+index 0000000..7e6bb25
+--- /dev/null
++++ b/tests/r_32to64bit_move_itable/name
+@@ -0,0 +1 @@
++convert 32bit fs to 64bit fs, forcing inode table move
+diff --git a/tests/r_32to64bit_move_itable/script b/tests/r_32to64bit_move_itable/script
+new file mode 100644
+index 0000000..c188acd
+--- /dev/null
++++ b/tests/r_32to64bit_move_itable/script
+@@ -0,0 +1,74 @@
++if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
++
++FSCK_OPT=-fn
++OUT=$test_name.log
++EXP=$test_dir/expect
++CONF=$TMPFILE.conf
++
++cat > $CONF << ENDL
++[fs_types]
++	ext4h = {
++		features = has_journal,extent,huge_file,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,^resize_inode,^meta_bg,^flex_bg
++		blocksize = 1024
++		inode_size = 256
++		make_hugefiles = true
++		hugefiles_dir = /
++		hugefiles_slack = 0
++		hugefiles_name = aaaaa
++		hugefiles_digits = 4
++		hugefiles_size = 1M
++		zero_hugefiles = false
 +	}
-+}
++ENDL
 +
-+/* Toggle 64bit mode */
-+static errcode_t resize_group_descriptors(ext2_resize_t rfs, blk64_t new_size)
-+{
-+	void *o, *n, *new_group_desc;
-+	dgrp_t i;
-+	int copy_size;
-+	errcode_t retval;
++echo "resize2fs test" > $OUT
 +
-+	if (!(rfs->flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)))
-+		return 0;
++MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 786432 >> $OUT 2>&1
++rm -rf $CONF
 +
-+	if (new_size != ext2fs_blocks_count(rfs->new_fs->super) ||
-+	    ext2fs_blocks_count(rfs->new_fs->super) >= (1ULL << 32) ||
-+	    (rfs->flags & RESIZE_DISABLE_64BIT &&
-+	     rfs->flags & RESIZE_ENABLE_64BIT))
-+		return EXT2_ET_INVALID_ARGUMENT;
++# dump and check
++($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.before
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
 +
-+	if (rfs->flags & RESIZE_DISABLE_64BIT) {
-+		rfs->new_fs->super->s_feature_incompat &=
-+				~EXT4_FEATURE_INCOMPAT_64BIT;
-+		rfs->new_fs->super->s_desc_size = EXT2_MIN_DESC_SIZE;
-+	} else if (rfs->flags & RESIZE_ENABLE_64BIT) {
-+		rfs->new_fs->super->s_feature_incompat |=
-+				EXT4_FEATURE_INCOMPAT_64BIT;
-+		rfs->new_fs->super->s_desc_size = EXT2_MIN_DESC_SIZE_64BIT;
++# convert it
++echo "resize2fs test.img -b" >> $OUT
++$RESIZE2FS -b -f $TMPFILE 2>&1 >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# dump and check
++($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.after
++echo "Change in FS metadata:" >> $OUT
++diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++rm $TMPFILE $OUT.before $OUT.after
++
++#
++# Do the verification
++#
++
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
++mv $OUT.new $OUT
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++fi
++
++unset IMAGE FSCK_OPT OUT EXP CONF
++
++else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
++
+diff --git a/tests/r_64to32bit/expect b/tests/r_64to32bit/expect
+new file mode 100644
+index 0000000..13e94a2
+--- /dev/null
++++ b/tests/r_64to32bit/expect
+@@ -0,0 +1,98 @@
++resize2fs test
++Creating filesystem with 524288 1k blocks and 65536 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
++
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (16384 blocks): done
++Creating 477 huge file(s) with 1024 blocks each: done
++Writing superblocks and filesystem accounting information:      done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
++resize2fs test.img -s
++Converting the filesystem to 32-bit.
++The filesystem on test.img is now 524288 (1k) blocks long.
++
++Exit status is 0
++Change in FS metadata:
++@@ -2,7 +2,7 @@
++ Last mounted on:          <not available>
++ Filesystem magic number:  0xEF53
++ Filesystem revision #:    1 (dynamic)
++-Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
+++Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
++ Default mount options:    user_xattr acl
++ Filesystem state:         clean
++ Errors behavior:          Continue
++@@ -10,12 +10,11 @@
++ Inode count:              65536
++ Block count:              524288
++ Reserved block count:     26214
++-Free blocks:              571
+++Free blocks:              589
++ Free inodes:              65048
++ First block:              1
++ Block size:               1024
++ Fragment size:            1024
++-Group descriptor size:    64
++ Reserved GDT blocks:      256
++ Blocks per group:         8192
++ Fragments per group:      8192
++@@ -41,16 +40,16 @@
++ 
++ 
++ group:block:super:gdt:bbitmap:ibitmap:itable
++-0:1:1:2-5:262:278:294
++-1:8193:8193:8194-8197:263:279:550
+++0:1:1:2-3:262:278:294
+++1:8193:8193:8194-8195:263:279:550
++ 2:16385:-1:-1:264:280:806
++-3:24577:24577:24578-24581:265:281:1062
+++3:24577:24577:24578-24579:265:281:1062
++ 4:32769:-1:-1:266:282:1318
++-5:40961:40961:40962-40965:267:283:1574
+++5:40961:40961:40962-40963:267:283:1574
++ 6:49153:-1:-1:268:284:1830
++-7:57345:57345:57346-57349:269:285:2086
+++7:57345:57345:57346-57347:269:285:2086
++ 8:65537:-1:-1:270:286:2342
++-9:73729:73729:73730-73733:271:287:2598
+++9:73729:73729:73730-73731:271:287:2598
++ 10:81921:-1:-1:272:288:2854
++ 11:90113:-1:-1:273:289:3110
++ 12:98305:-1:-1:274:290:3366
++@@ -66,9 +65,9 @@
++ 22:180225:-1:-1:131079:131095:132641
++ 23:188417:-1:-1:131080:131096:132897
++ 24:196609:-1:-1:131081:131097:133153
++-25:204801:204801:204802-204805:131082:131098:133409
+++25:204801:204801:204802-204803:131082:131098:133409
++ 26:212993:-1:-1:131083:131099:133665
++-27:221185:221185:221186-221189:131084:131100:133921
+++27:221185:221185:221186-221187:131084:131100:133921
++ 28:229377:-1:-1:131085:131101:134177
++ 29:237569:-1:-1:131086:131102:134433
++ 30:245761:-1:-1:131087:131103:134689
++@@ -90,7 +89,7 @@
++ 46:376833:-1:-1:262159:262175:265761
++ 47:385025:-1:-1:262160:262176:266017
++ 48:393217:-1:-1:393217:393233:393249
++-49:401409:401409:401410-401413:393218:393234:393505
+++49:401409:401409:401410-401411:393218:393234:393505
++ 50:409601:-1:-1:393219:393235:393761
++ 51:417793:-1:-1:393220:393236:394017
++ 52:425985:-1:-1:393221:393237:394273
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
+diff --git a/tests/r_64to32bit/name b/tests/r_64to32bit/name
+new file mode 100644
+index 0000000..4c82371
+--- /dev/null
++++ b/tests/r_64to32bit/name
+@@ -0,0 +1 @@
++convert flex_bg 64bit fs to 32bit fs
+diff --git a/tests/r_64to32bit/script b/tests/r_64to32bit/script
+new file mode 100644
+index 0000000..5d959f0
+--- /dev/null
++++ b/tests/r_64to32bit/script
+@@ -0,0 +1,76 @@
++if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
++
++FSCK_OPT=-fn
++OUT=$test_name.log
++EXP=$test_dir/expect
++CONF=$TMPFILE.conf
++
++cat > $CONF << ENDL
++[fs_types]
++	ext4h = {
++		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode,64bit
++		blocksize = 1024
++		inode_size = 256
++		make_hugefiles = true
++		hugefiles_dir = /
++		hugefiles_slack = 0
++		hugefiles_name = aaaaa
++		hugefiles_digits = 4
++		hugefiles_size = 1M
++		zero_hugefiles = false
 +	}
++ENDL
 +
-+	if (EXT2_DESC_SIZE(rfs->old_fs->super) ==
-+	    EXT2_DESC_SIZE(rfs->new_fs->super))
-+		return 0;
++echo "resize2fs test" > $OUT
 +
-+	o = rfs->new_fs->group_desc;
-+	rfs->new_fs->desc_blocks = ext2fs_div_ceil(
-+			rfs->old_fs->group_desc_count,
-+			EXT2_DESC_PER_BLOCK(rfs->new_fs->super));
-+	retval = ext2fs_get_arrayzero(rfs->new_fs->desc_blocks,
-+				      rfs->old_fs->blocksize, &new_group_desc);
-+	if (retval)
-+		return retval;
++MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
++rm -rf $CONF
 +
-+	n = new_group_desc;
++# dump and check
++($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.before
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
 +
-+	if (EXT2_DESC_SIZE(rfs->old_fs->super) <=
-+	    EXT2_DESC_SIZE(rfs->new_fs->super))
-+		copy_size = EXT2_DESC_SIZE(rfs->old_fs->super);
-+	else
-+		copy_size = EXT2_DESC_SIZE(rfs->new_fs->super);
-+	for (i = 0; i < rfs->old_fs->group_desc_count; i++) {
-+		memcpy(n, o, copy_size);
-+		n += EXT2_DESC_SIZE(rfs->new_fs->super);
-+		o += EXT2_DESC_SIZE(rfs->old_fs->super);
++# resize it
++echo "resize2fs test.img -s" >> $OUT
++$RESIZE2FS -s -f $TMPFILE 2>&1 >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# dump and check
++($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.after
++echo "Change in FS metadata:" >> $OUT
++diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++rm $TMPFILE
++
++#
++# Do the verification
++#
++
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
++mv $OUT.new $OUT
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++fi
++
++rm $OUT.before $OUT.after
++
++unset IMAGE FSCK_OPT OUT EXP CONF
++
++else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
++
+diff --git a/tests/r_64to32bit_meta/expect b/tests/r_64to32bit_meta/expect
+new file mode 100644
+index 0000000..d6e2dcc
+--- /dev/null
++++ b/tests/r_64to32bit_meta/expect
+@@ -0,0 +1,80 @@
++resize2fs test
++Creating filesystem with 524288 1k blocks and 65536 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
++
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (16384 blocks): done
++Creating 479 huge file(s) with 1024 blocks each: done
++Writing superblocks and filesystem accounting information:      done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
++resize2fs test.img -s
++Converting the filesystem to 32-bit.
++The filesystem on test.img is now 524288 (1k) blocks long.
++
++Exit status is 0
++Change in FS metadata:
++@@ -2,7 +2,7 @@
++ Last mounted on:          <not available>
++ Filesystem magic number:  0xEF53
++ Filesystem revision #:    1 (dynamic)
++-Filesystem features:      has_journal ext_attr dir_index filetype meta_bg extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
+++Filesystem features:      has_journal ext_attr dir_index filetype meta_bg extent flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
++ Default mount options:    user_xattr acl
++ Filesystem state:         clean
++ Errors behavior:          Continue
++@@ -10,12 +10,11 @@
++ Inode count:              65536
++ Block count:              524288
++ Reserved block count:     26214
++-Free blocks:              852
+++Free blocks:              858
++ Free inodes:              65046
++ First block:              1
++ Block size:               1024
++ Fragment size:            1024
++-Group descriptor size:    64
++ Blocks per group:         8192
++ Fragments per group:      8192
++ Inodes per group:         1024
++@@ -55,9 +54,9 @@
++ 12:98305:-1:-1:15:31:3107
++ 13:106497:-1:-1:16:32:3363
++ 14:114689:-1:-1:17:33:3619
++-15:122881:-1:122881:18:34:3875
++-16:131073:-1:131073:131074:131090:131106
++-17:139265:-1:139265:131075:131091:131362
+++15:122881:-1:-1:18:34:3875
+++16:131073:-1:-1:131074:131090:131106
+++17:139265:-1:-1:131075:131091:131362
++ 18:147457:-1:-1:131076:131092:131618
++ 19:155649:-1:-1:131077:131093:131874
++ 20:163841:-1:-1:131078:131094:132130
++@@ -87,9 +86,9 @@
++ 44:360449:-1:-1:262158:262174:265250
++ 45:368641:-1:-1:262159:262175:265506
++ 46:376833:-1:-1:262160:262176:265762
++-47:385025:-1:385025:262161:262177:266018
++-48:393217:-1:393217:393218:393234:393250
++-49:401409:401409:401410:393219:393235:393506
+++47:385025:-1:-1:262161:262177:266018
+++48:393217:-1:-1:393218:393234:393250
+++49:401409:401409:-1:393219:393235:393506
++ 50:409601:-1:-1:393220:393236:393762
++ 51:417793:-1:-1:393221:393237:394018
++ 52:425985:-1:-1:393222:393238:394274
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
+diff --git a/tests/r_64to32bit_meta/name b/tests/r_64to32bit_meta/name
+new file mode 100644
+index 0000000..e99ed8b
+--- /dev/null
++++ b/tests/r_64to32bit_meta/name
+@@ -0,0 +1 @@
++convert meta_bg 64bit fs to 32bit fs
+diff --git a/tests/r_64to32bit_meta/script b/tests/r_64to32bit_meta/script
+new file mode 100644
+index 0000000..5a02e26
+--- /dev/null
++++ b/tests/r_64to32bit_meta/script
+@@ -0,0 +1,76 @@
++if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
++
++FSCK_OPT=-fn
++OUT=$test_name.log
++EXP=$test_dir/expect
++CONF=$TMPFILE.conf
++
++cat > $CONF << ENDL
++[fs_types]
++	ext4h = {
++		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,meta_bg,^resize_inode,64bit
++		blocksize = 1024
++		inode_size = 256
++		make_hugefiles = true
++		hugefiles_dir = /
++		hugefiles_slack = 0
++		hugefiles_name = aaaaa
++		hugefiles_digits = 4
++		hugefiles_size = 1M
++		zero_hugefiles = false
 +	}
++ENDL
 +
-+	ext2fs_free_mem(&rfs->new_fs->group_desc);
-+	rfs->new_fs->group_desc = new_group_desc;
++echo "resize2fs test" > $OUT
 +
-+	for (i = 0; i < rfs->old_fs->group_desc_count; i++)
-+		ext2fs_group_desc_csum_set(rfs->new_fs, i);
++MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
++rm -rf $CONF
 +
-+	adjust_reserved_gdt_blocks(rfs->old_fs, rfs->new_fs);
++# dump and check
++($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.before
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
 +
-+	return 0;
-+}
++# resize it
++echo "resize2fs test.img -s" >> $OUT
++$RESIZE2FS -s -f $TMPFILE 2>&1 >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
 +
-+/* Move bitmaps/inode tables out of the way. */
-+static errcode_t move_bg_metadata(ext2_resize_t rfs)
-+{
-+	dgrp_t i;
-+	blk64_t b, c, d, old_desc_blocks, new_desc_blocks, j;
-+	ext2fs_block_bitmap old_map, new_map;
-+	int old, new;
-+	errcode_t retval;
-+	int cluster_ratio;
++# dump and check
++($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.after
++echo "Change in FS metadata:" >> $OUT
++diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
 +
-+	if (!(rfs->flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)))
-+		return 0;
++rm $TMPFILE
 +
-+	retval = ext2fs_allocate_block_bitmap(rfs->old_fs, "oldfs", &old_map);
-+	if (retval)
-+		return retval;
++#
++# Do the verification
++#
 +
-+	retval = ext2fs_allocate_block_bitmap(rfs->new_fs, "newfs", &new_map);
-+	if (retval)
-+		goto out;
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
++mv $OUT.new $OUT
 +
-+	if (EXT2_HAS_INCOMPAT_FEATURE(rfs->old_fs->super,
-+				      EXT2_FEATURE_INCOMPAT_META_BG)) {
-+		old_desc_blocks = rfs->old_fs->super->s_first_meta_bg;
-+		new_desc_blocks = rfs->new_fs->super->s_first_meta_bg;
-+	} else {
-+		old_desc_blocks = rfs->old_fs->desc_blocks +
-+				rfs->old_fs->super->s_reserved_gdt_blocks;
-+		new_desc_blocks = rfs->new_fs->desc_blocks +
-+				rfs->new_fs->super->s_reserved_gdt_blocks;
-+	}
++cmp -s $OUT $EXP
++status=$?
 +
-+	/* Construct bitmaps of super/descriptor blocks in old and new fs */
-+	for (i = 0; i < rfs->old_fs->group_desc_count; i++) {
-+		retval = ext2fs_super_and_bgd_loc2(rfs->old_fs, i, &b, &c, &d,
-+						   NULL);
-+		if (retval)
-+			goto out;
-+		if (b)
-+			ext2fs_mark_block_bitmap2(old_map, b);
-+		for (j = 0; c != 0 && j < old_desc_blocks; j++)
-+			ext2fs_mark_block_bitmap2(old_map, c + j);
-+		if (d)
-+			ext2fs_mark_block_bitmap2(old_map, d);
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++fi
 +
-+		retval = ext2fs_super_and_bgd_loc2(rfs->new_fs, i, &b, &c, &d,
-+						   NULL);
-+		if (retval)
-+			goto out;
-+		if (b)
-+			ext2fs_mark_block_bitmap2(new_map, b);
-+		for (j = 0; c != 0 && j < new_desc_blocks; j++)
-+			ext2fs_mark_block_bitmap2(new_map, c + j);
-+		if (d)
-+			ext2fs_mark_block_bitmap2(new_map, d);
-+	}
++rm $OUT.before $OUT.after
 +
-+	cluster_ratio = EXT2FS_CLUSTER_RATIO(rfs->new_fs);
++unset IMAGE FSCK_OPT OUT EXP CONF
 +
-+	/* Find changes in block allocations for bg metadata */
-+	for (b = EXT2FS_B2C(rfs->old_fs,
-+			    rfs->old_fs->super->s_first_data_block);
-+	     b < ext2fs_blocks_count(rfs->new_fs->super);
-+	     b += cluster_ratio) {
-+		old = ext2fs_test_block_bitmap2(old_map, b);
-+		new = ext2fs_test_block_bitmap2(new_map, b);
++else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
 +
-+		if (old && !new) {
-+			/* mark old_map, unmark new_map */
-+			if (cluster_ratio == 1)
-+				ext2fs_unmark_block_bitmap2(
-+						rfs->new_fs->block_map, b);
-+		} else if (!old && new)
-+			; /* unmark old_map, mark new_map */
-+		else {
-+			ext2fs_unmark_block_bitmap2(old_map, b);
-+			ext2fs_unmark_block_bitmap2(new_map, b);
-+		}
-+	}
-+
-+	/*
-+	 * new_map now shows blocks that have been newly allocated.
-+	 * old_map now shows blocks that have been newly freed.
-+	 */
-+
-+	/*
-+	 * Move any conflicting bitmaps and inode tables.  Ensure that we
-+	 * don't try to free clusters associated with bitmaps or tables.
-+	 */
-+	for (i = 0; i < rfs->old_fs->group_desc_count; i++) {
-+		b = ext2fs_block_bitmap_loc(rfs->new_fs, i);
-+		if (ext2fs_test_block_bitmap2(new_map, b))
-+			ext2fs_block_bitmap_loc_set(rfs->new_fs, i, 0);
-+		else if (ext2fs_test_block_bitmap2(old_map, b))
-+			ext2fs_unmark_block_bitmap2(old_map, b);
-+
-+		b = ext2fs_inode_bitmap_loc(rfs->new_fs, i);
-+		if (ext2fs_test_block_bitmap2(new_map, b))
-+			ext2fs_inode_bitmap_loc_set(rfs->new_fs, i, 0);
-+		else if (ext2fs_test_block_bitmap2(old_map, b))
-+			ext2fs_unmark_block_bitmap2(old_map, b);
-+
-+		c = ext2fs_inode_table_loc(rfs->new_fs, i);
-+		for (b = 0;
-+		     b < rfs->new_fs->inode_blocks_per_group;
-+		     b++) {
-+			if (ext2fs_test_block_bitmap2(new_map, b + c))
-+				ext2fs_inode_table_loc_set(rfs->new_fs, i, 0);
-+			else if (ext2fs_test_block_bitmap2(old_map, b + c))
-+				ext2fs_unmark_block_bitmap2(old_map, b + c);
-+		}
-+	}
-+
-+	/* Free unused clusters */
-+	for (b = 0;
-+	     cluster_ratio > 1 && b < ext2fs_blocks_count(rfs->new_fs->super);
-+	     b += cluster_ratio)
-+		if (ext2fs_test_block_bitmap2(old_map, b))
-+			ext2fs_unmark_block_bitmap2(rfs->new_fs->block_map, b);
-+out:
-+	if (old_map)
-+		ext2fs_free_block_bitmap(old_map);
-+	if (new_map)
-+		ext2fs_free_block_bitmap(new_map);
-+	return retval;
-+}
-+
-+/* Zero out the high bits of extent fields */
-+static errcode_t zero_high_bits_in_extents(ext2_filsys fs, ext2_ino_t ino,
-+				 struct ext2_inode *inode)
-+{
-+	ext2_extent_handle_t	handle;
-+	struct ext2fs_extent	extent;
-+	int			op = EXT2_EXTENT_ROOT;
-+	errcode_t		errcode;
-+
-+	if (!(inode->i_flags & EXT4_EXTENTS_FL))
-+		return 0;
-+
-+	errcode = ext2fs_extent_open(fs, ino, &handle);
-+	if (errcode)
-+		return errcode;
-+
-+	while (1) {
-+		errcode = ext2fs_extent_get(handle, op, &extent);
-+		if (errcode)
-+			break;
-+
-+		op = EXT2_EXTENT_NEXT_SIB;
-+
-+		if (extent.e_pblk > (1ULL << 32)) {
-+			extent.e_pblk &= (1ULL << 32) - 1;
-+			errcode = ext2fs_extent_replace(handle, 0, &extent);
-+			if (errcode)
-+				break;
-+		}
-+	}
-+
-+	/* Ok if we run off the end */
-+	if (errcode == EXT2_ET_EXTENT_NO_NEXT)
-+		errcode = 0;
-+	ext2fs_extent_free(handle);
-+	return errcode;
-+}
-+
-+/* Zero out the high bits of inodes. */
-+static errcode_t zero_high_bits_in_inodes(ext2_resize_t rfs)
-+{
-+	ext2_filsys	fs = rfs->old_fs;
-+	int length = EXT2_INODE_SIZE(fs->super);
-+	struct ext2_inode *inode = NULL;
-+	ext2_inode_scan	scan = NULL;
-+	errcode_t	retval;
-+	ext2_ino_t	ino;
-+
-+	if (!(rfs->flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)))
-+		return 0;
-+
-+	if (fs->super->s_creator_os != EXT2_OS_LINUX)
-+		return 0;
-+
-+	retval = ext2fs_open_inode_scan(fs, 0, &scan);
-+	if (retval)
-+		return retval;
-+
-+	retval = ext2fs_get_mem(length, &inode);
-+	if (retval)
-+		goto out;
-+
-+	do {
-+		retval = ext2fs_get_next_inode_full(scan, &ino, inode, length);
-+		if (retval)
-+			goto out;
-+		if (!ino)
-+			break;
-+		if (!ext2fs_test_inode_bitmap2(fs->inode_map, ino))
-+			continue;
-+
-+		/*
-+		 * Here's how we deal with high block number fields:
-+		 *
-+		 *  - i_size_high has been been written out with i_size_lo
-+		 *    since the ext2 days, so no conversion is needed.
-+		 *
-+		 *  - i_blocks_hi is guarded by both the huge_file feature and
-+		 *    inode flags and has always been written out with
-+		 *    i_blocks_lo if the feature is set.  The field is only
-+		 *    ever read if both feature and inode flag are set, so
-+		 *    we don't need to zero it now.
-+		 *
-+		 *  - i_file_acl_high can be uninitialized, so zero it if
-+		 *    it isn't already.
-+		 */
-+		if (inode->osd2.linux2.l_i_file_acl_high) {
-+			inode->osd2.linux2.l_i_file_acl_high = 0;
-+			retval = ext2fs_write_inode_full(fs, ino, inode,
-+							 length);
-+			if (retval)
-+				goto out;
-+		}
-+
-+		retval = zero_high_bits_in_extents(fs, ino, inode);
-+		if (retval)
-+			goto out;
-+	} while (ino);
-+
-+out:
-+	if (inode)
-+		ext2fs_free_mem(&inode);
-+	if (scan)
-+		ext2fs_close_inode_scan(scan);
-+	return retval;
-+}
-+
- /*
-  * Clean up the bitmaps for unitialized bitmaps
-  */
-@@ -459,7 +795,8 @@ retry:
- 	/*
- 	 * Reallocate the group descriptors as necessary.
- 	 */
--	if (old_fs->desc_blocks != fs->desc_blocks) {
-+	if (EXT2_DESC_SIZE(old_fs->super) == EXT2_DESC_SIZE(fs->super) &&
-+	    old_fs->desc_blocks != fs->desc_blocks) {
- 		retval = ext2fs_resize_mem(old_fs->desc_blocks *
- 					   fs->blocksize,
- 					   fs->desc_blocks * fs->blocksize,
-@@ -478,20 +815,11 @@ retry:
- 	 * number of descriptor blocks, then adjust
- 	 * s_reserved_gdt_blocks if possible to avoid needing to move
- 	 * the inode table either now or in the future.
-+	 *
-+	 * Note: If we're converting to 64bit mode, we did this earlier.
- 	 */
--	if ((fs->super->s_feature_compat &
--	     EXT2_FEATURE_COMPAT_RESIZE_INODE) &&
--	    (old_fs->desc_blocks != fs->desc_blocks)) {
--		int new;
--
--		new = ((int) fs->super->s_reserved_gdt_blocks) +
--			(old_fs->desc_blocks - fs->desc_blocks);
--		if (new < 0)
--			new = 0;
--		if (new > (int) fs->blocksize/4)
--			new = fs->blocksize/4;
--		fs->super->s_reserved_gdt_blocks = new;
--	}
-+	if (EXT2_DESC_SIZE(old_fs->super) == EXT2_DESC_SIZE(fs->super))
-+		adjust_reserved_gdt_blocks(old_fs, fs);
- 
- 	if ((fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG) &&
- 	    (fs->super->s_first_meta_bg > fs->desc_blocks)) {
-@@ -1019,7 +1347,9 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
- 	if (retval)
- 		goto errout;
- 
--	if (old_blocks == new_blocks) {
-+	if (EXT2_DESC_SIZE(rfs->old_fs->super) ==
-+	    EXT2_DESC_SIZE(rfs->new_fs->super) &&
-+	    old_blocks == new_blocks) {
- 		retval = 0;
- 		goto errout;
- 	}
-diff --git a/resize/resize2fs.h b/resize/resize2fs.h
-index 7aeab91..829fcd8 100644
---- a/resize/resize2fs.h
-+++ b/resize/resize2fs.h
-@@ -82,6 +82,9 @@ typedef struct ext2_sim_progress *ext2_sim_progmeter;
- #define RESIZE_PERCENT_COMPLETE		0x0100
- #define RESIZE_VERBOSE			0x0200
- 
-+#define RESIZE_ENABLE_64BIT		0x0400
-+#define RESIZE_DISABLE_64BIT		0x0800
-+
- /*
-  * This structure is used for keeping track of how much resources have
-  * been used for a particular resize2fs pass.
-diff --git a/tests/t_enable_mcsum_ext3/expect b/tests/t_enable_mcsum_ext3/expect
-index 1e005bd..5460482 100644
---- a/tests/t_enable_mcsum_ext3/expect
-+++ b/tests/t_enable_mcsum_ext3/expect
-@@ -18,6 +18,7 @@ Pass 5: Checking group summary information
- Exit status is 0
- tune2fs -O metadata_csum test.img
- Extents are not enabled.  The file extent tree can be checksummed, whereas block maps cannot.  Not enabling extents reduces the coverage of metadata checksumming.  Re-run with -O extent to rectify.
-+64-bit filesystem support is not enabled.  The larger fields afforded by this feature enable full-strength checksumming.  Run resize2fs -b to rectify.
- Exit status is 0
- 
- Change in FS metadata:
 
