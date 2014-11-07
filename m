@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 46/47] fuse2fs: handle 64-bit dates correctly
-Date: Fri, 07 Nov 2014 13:55:45 -0800
-Message-ID: <20141107215545.883.38390.stgit@birch.djwong.org>
+Subject: [PATCH 47/47] fuse2fs: implement fallocate
+Date: Fri, 07 Nov 2014 13:55:52 -0800
+Message-ID: <20141107215552.883.67121.stgit@birch.djwong.org>
 References: <20141107215042.883.49888.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,88 +9,89 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:47032 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753143AbaKGVzu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2014 16:55:50 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:37259 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753178AbaKGVz4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2014 16:55:56 -0500
 In-Reply-To: <20141107215042.883.49888.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix fuse2fs' interpretation of 64-bit date quantities to match the
-kernel.
+Use the (new) ext2fs_fallocate() to fallocate file space.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- misc/fuse2fs.c |   31 ++++++++++++++++++++++---------
- 1 file changed, 22 insertions(+), 9 deletions(-)
+ misc/fuse2fs.c |   58 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 57 insertions(+), 1 deletion(-)
 
 
 diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
-index 9d0af5b..022b0ef 100644
+index 022b0ef..679c6e9 100644
 --- a/misc/fuse2fs.c
 +++ b/misc/fuse2fs.c
-@@ -353,15 +353,24 @@ static int __translate_error(ext2_filsys fs, errcode_t err, ext2_ino_t ino,
- 
- static inline __u32 ext4_encode_extra_time(const struct timespec *time)
+@@ -3297,7 +3297,63 @@ out:
+ static int fallocate_helper(struct fuse_file_info *fp, int mode, off_t offset,
+ 			    off_t len)
  {
--	return (sizeof(time->tv_sec) > 4 ?
--		(time->tv_sec >> 32) & EXT4_EPOCH_MASK : 0) |
--	       ((time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK);
-+	__u32 extra = sizeof(time->tv_sec) > 4 ?
-+			((time->tv_sec - (__s32)time->tv_sec) >> 32) &
-+			EXT4_EPOCH_MASK : 0;
-+	return extra | (time->tv_nsec << EXT4_EPOCH_BITS);
- }
- 
- static inline void ext4_decode_extra_time(struct timespec *time, __u32 extra)
- {
--	if (sizeof(time->tv_sec) > 4)
--		time->tv_sec |= (__u64)((extra) & EXT4_EPOCH_MASK) << 32;
-+	if (sizeof(time->tv_sec) > 4 && (extra & EXT4_EPOCH_MASK)) {
-+		__u64 extra_bits = extra & EXT4_EPOCH_MASK;
-+		/*
-+		 * Prior to kernel 3.14?, we had a broken decode function,
-+		 * wherein we effectively did this:
-+		 * if (extra_bits == 3)
-+		 *     extra_bits = 0;
-+		 */
-+		time->tv_sec += extra_bits << 32;
+-	return -EOPNOTSUPP;
++	struct fuse_context *ctxt = fuse_get_context();
++	struct fuse2fs *ff = (struct fuse2fs *)ctxt->private_data;
++	struct fuse2fs_file_handle *fh = (struct fuse2fs_file_handle *)fp->fh;
++	ext2_filsys fs;
++	struct ext2_inode_large inode;
++	blk64_t start, end;
++	__u64 fsize;
++	errcode_t err;
++	int flags;
++
++	FUSE2FS_CHECK_CONTEXT(ff);
++	fs = ff->fs;
++	FUSE2FS_CHECK_MAGIC(fs, fh, FUSE2FS_FILE_MAGIC);
++	start = offset / fs->blocksize;
++	end = (offset + len - 1) / fs->blocksize;
++	dbg_printf("%s: ino=%d mode=0x%x start=%jd end=%llu\n", __func__,
++		   fh->ino, mode, offset / fs->blocksize, end);
++	if (!fs_can_allocate(ff, len / fs->blocksize))
++		return -ENOSPC;
++
++	memset(&inode, 0, sizeof(inode));
++	err = ext2fs_read_inode_full(fs, fh->ino, (struct ext2_inode *)&inode,
++				     sizeof(inode));
++	if (err)
++		return err;
++	fsize = EXT2_I_SIZE(&inode);
++
++	/* Allocate a bunch of blocks */
++	flags = (mode & FL_KEEP_SIZE_FLAG ? 0 :
++			EXT2_FALLOCATE_INIT_BEYOND_EOF);
++	err = ext2fs_fallocate(fs, flags, fh->ino,
++			       (struct ext2_inode *)&inode,
++			       ~0ULL, start, end - start + 1);
++	if (err && err != EXT2_ET_BLOCK_ALLOC_FAIL)
++		return translate_error(fs, fh->ino, err);
++
++	/* Update i_size */
++	if (!(mode & FL_KEEP_SIZE_FLAG)) {
++		if (offset + len > fsize) {
++			err = ext2fs_inode_size_set(fs,
++						(struct ext2_inode *)&inode,
++						offset + len);
++			if (err)
++				return translate_error(fs, fh->ino, err);
++		}
 +	}
- 	time->tv_nsec = ((extra) & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
++
++	err = update_mtime(fs, fh->ino, &inode);
++	if (err)
++		return err;
++
++	err = ext2fs_write_inode_full(fs, fh->ino, (struct ext2_inode *)&inode,
++				      sizeof(inode));
++	if (err)
++		return translate_error(fs, fh->ino, err);
++
++	return err;
  }
  
-@@ -387,7 +396,7 @@ do {									       \
- 	(timespec)->tv_sec = (signed)((raw_inode)->xtime);		       \
- 	if (EXT4_FITS_IN_INODE(raw_inode, xtime ## _extra))		       \
- 		ext4_decode_extra_time((timespec),			       \
--				       raw_inode->xtime ## _extra);	       \
-+				       (raw_inode)->xtime ## _extra);	       \
- 	else								       \
- 		(timespec)->tv_nsec = 0;				       \
- } while (0)
-@@ -749,6 +758,7 @@ static int stat_inode(ext2_filsys fs, ext2_ino_t ino, struct stat *statbuf)
- 	dev_t fakedev = 0;
- 	errcode_t err;
- 	int ret = 0;
-+	struct timespec tv;
- 
- 	memset(&inode, 0, sizeof(inode));
- 	err = ext2fs_read_inode_full(fs, ino, (struct ext2_inode *)&inode,
-@@ -766,9 +776,12 @@ static int stat_inode(ext2_filsys fs, ext2_ino_t ino, struct stat *statbuf)
- 	statbuf->st_size = EXT2_I_SIZE(&inode);
- 	statbuf->st_blksize = fs->blocksize;
- 	statbuf->st_blocks = blocks_from_inode(fs, &inode);
--	statbuf->st_atime = inode.i_atime;
--	statbuf->st_mtime = inode.i_mtime;
--	statbuf->st_ctime = inode.i_ctime;
-+	EXT4_INODE_GET_XTIME(i_atime, &tv, &inode);
-+	statbuf->st_atime = tv.tv_sec;
-+	EXT4_INODE_GET_XTIME(i_mtime, &tv, &inode);
-+	statbuf->st_mtime = tv.tv_sec;
-+	EXT4_INODE_GET_XTIME(i_ctime, &tv, &inode);
-+	statbuf->st_ctime = tv.tv_sec;
- 	if (LINUX_S_ISCHR(inode.i_mode) ||
- 	    LINUX_S_ISBLK(inode.i_mode)) {
- 		if (inode.i_block[0])
+ static errcode_t clean_block_middle(ext2_filsys fs, ext2_ino_t ino,
 
