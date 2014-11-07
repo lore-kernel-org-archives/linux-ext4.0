@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 31/47] libext2fs/e2fsck: provide routines to read-ahead
- metadata
-Date: Fri, 07 Nov 2014 13:54:07 -0800
-Message-ID: <20141107215407.883.32839.stgit@birch.djwong.org>
+Subject: [PATCH 32/47] e2fsck: read-ahead metadata during passes 1, 2, and 4
+Date: Fri, 07 Nov 2014 13:54:14 -0800
+Message-ID: <20141107215413.883.38863.stgit@birch.djwong.org>
 References: <20141107215042.883.49888.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,555 +9,417 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:46233 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:46271 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753115AbaKGVyM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2014 16:54:12 -0500
+	with ESMTP id S1752953AbaKGVyS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2014 16:54:18 -0500
 In-Reply-To: <20141107215042.883.49888.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds to e2fsck the ability to pre-fetch metadata into the
-page cache in the hopes of speeding up fsck runs.  There are two new
-functions -- the first allows a caller to readahead a list of blocks,
-and the second is a helper function that uses that first mechanism to
-load group data (bitmaps, inode tables).
+e2fsck pass1 is modified to use the block group data prefetch function
+to try to fetch the inode tables into the pagecache before it is
+needed.  We iterate through the blockgroups until we have enough inode
+tables that need reading such that we can issue readahead; then we sit
+and wait until the last inode table block read of the last group to
+start fetching the next bunch.
 
-These new e2fsck routines require the addition of a dblist API to
-allow us to iterate a subset of a dblist.  This will enable
-incremental directory block readahead in e2fsck pass 2.
+pass2 is modified to use the dirblock prefetching function to prefetch
+the list of directory blocks that are assembled in pass1.  We use the
+"iterate a subset of a dblist" and avoid copying the dblist.  Directory
+blocks are fetched incrementally as we walk through the directory
+block list.  In previous iterations of this patch we would free the
+directory blocks after processing, but the performance hit to e2fsck
+itself wasn't worth it.  Furthermore, it is anticipated that most
+users will then mount the FS and start using the directories, so they
+may as well remain in the page cache.
 
-There's also a function to estimate the readahead given a FS.
+pass4 is modified to prefetch the block and inode bitmaps in
+anticipation of pass 5, because pass4 is entirely CPU bound.
 
-v2: Add an API to create a dblist with a given number of list elements
-pre-allocated.  This enables us to save ~2ms per call to
-e2fsck_readahead() (assuming a 2MB RA buffer) by not having to
-repeatedly call ext2_resize_mem as we add blocks to the list.
+In general, these mechanisms can decrease fsck time by 10-40%, if the
+host system has sufficient memory and the storage system can provide a
+lot of IOPs.  Pretty much any storage system capable of handling
+multiple IOs in-flight at any time will see a fairly large performance
+boost.  (Single-issue USB mass storage disks seem to suffer badly.)
+
+By default, the readahead buffer size will be set to the size of a block
+group's inode table (which is 2MiB for a regular ext4 FS).  The -E
+readahead_kb= option can be given to specify the amount of memory to
+use for readahead or zero to disable it entirely; or an option can be
+given in e2fsck.conf.
+
+v2: Fix an off-by-one error in the pass1 readahead which made the
+readahead trigger one inode too late if the block groups are full.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- configure           |    2 
- configure.in        |    1 
- e2fsck/Makefile.in  |    9 +-
- e2fsck/e2fsck.h     |   18 ++++
- e2fsck/readahead.c  |  252 +++++++++++++++++++++++++++++++++++++++++++++++++++
- e2fsck/util.c       |   51 ++++++++++
- lib/config.h.in     |    3 +
- lib/ext2fs/dblist.c |   21 ++++
- lib/ext2fs/ext2fs.h |   10 ++
- 9 files changed, 359 insertions(+), 8 deletions(-)
- create mode 100644 e2fsck/readahead.c
+ e2fsck/e2fsck.8.in      |    7 +++++
+ e2fsck/e2fsck.conf.5.in |   15 +++++++++++
+ e2fsck/e2fsck.h         |    3 ++
+ e2fsck/pass1.c          |   65 +++++++++++++++++++++++++++++++++++++++++++++++
+ e2fsck/pass2.c          |   38 +++++++++++++++++++++++++++
+ e2fsck/pass4.c          |    9 +++++++
+ e2fsck/unix.c           |   28 ++++++++++++++++++++
+ lib/ext2fs/ext2fs.h     |    1 +
+ lib/ext2fs/inode.c      |    3 +-
+ 9 files changed, 167 insertions(+), 2 deletions(-)
 
 
-diff --git a/configure b/configure
-index f59d232..fdc93c0 100755
---- a/configure
-+++ b/configure
-@@ -12414,7 +12414,7 @@ fi
- done
- 
- fi
--for ac_header in  	dirent.h 	errno.h 	execinfo.h 	getopt.h 	malloc.h 	mntent.h 	paths.h 	semaphore.h 	setjmp.h 	signal.h 	stdarg.h 	stdint.h 	stdlib.h 	termios.h 	termio.h 	unistd.h 	utime.h 	attr/xattr.h 	linux/falloc.h 	linux/fd.h 	linux/major.h 	linux/loop.h 	net/if_dl.h 	netinet/in.h 	sys/disklabel.h 	sys/disk.h 	sys/file.h 	sys/ioctl.h 	sys/mkdev.h 	sys/mman.h 	sys/mount.h 	sys/prctl.h 	sys/resource.h 	sys/select.h 	sys/socket.h 	sys/sockio.h 	sys/stat.h 	sys/syscall.h 	sys/sysmacros.h 	sys/time.h 	sys/types.h 	sys/un.h 	sys/wait.h
-+for ac_header in  	dirent.h 	errno.h 	execinfo.h 	getopt.h 	malloc.h 	mntent.h 	paths.h 	semaphore.h 	setjmp.h 	signal.h 	stdarg.h 	stdint.h 	stdlib.h 	termios.h 	termio.h 	unistd.h 	utime.h 	attr/xattr.h 	linux/falloc.h 	linux/fd.h 	linux/major.h 	linux/loop.h 	net/if_dl.h 	netinet/in.h 	sys/disklabel.h 	sys/disk.h 	sys/file.h 	sys/ioctl.h 	sys/mkdev.h 	sys/mman.h 	sys/mount.h 	sys/prctl.h 	sys/resource.h 	sys/select.h 	sys/socket.h 	sys/sockio.h 	sys/stat.h 	sys/syscall.h 	sys/sysctl.h 	sys/sysmacros.h 	sys/time.h 	sys/types.h 	sys/un.h 	sys/wait.h
- do :
-   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
- ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
-diff --git a/configure.in b/configure.in
-index 9069234..73cfeb4 100644
---- a/configure.in
-+++ b/configure.in
-@@ -949,6 +949,7 @@ AC_CHECK_HEADERS(m4_flatten([
- 	sys/sockio.h
- 	sys/stat.h
- 	sys/syscall.h
-+	sys/sysctl.h
- 	sys/sysmacros.h
- 	sys/time.h
- 	sys/types.h
-diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
-index d0e64eb..e40e51b 100644
---- a/e2fsck/Makefile.in
-+++ b/e2fsck/Makefile.in
-@@ -62,7 +62,7 @@ OBJS= dict.o unix.o e2fsck.o super.o pass1.o pass1b.o pass2.o \
- 	pass3.o pass4.o pass5.o journal.o badblocks.o util.o dirinfo.o \
- 	dx_dirinfo.o ehandler.o problem.o message.o quota.o recovery.o \
- 	region.o revoke.o ea_refcount.o rehash.o profile.o prof_err.o \
--	logfile.o sigcatcher.o $(MTRACE_OBJ) plausible.o
-+	logfile.o sigcatcher.o $(MTRACE_OBJ) plausible.o readahead.o
- 
- PROFILED_OBJS= profiled/dict.o profiled/unix.o profiled/e2fsck.o \
- 	profiled/super.o profiled/pass1.o profiled/pass1b.o \
-@@ -73,7 +73,8 @@ PROFILED_OBJS= profiled/dict.o profiled/unix.o profiled/e2fsck.o \
- 	profiled/recovery.o profiled/region.o profiled/revoke.o \
- 	profiled/ea_refcount.o profiled/rehash.o profiled/profile.o \
- 	profiled/prof_err.o profiled/logfile.o \
--	profiled/sigcatcher.o profiled/plausible.o
-+	profiled/sigcatcher.o profiled/plausible.o \
-+	profiled/sigcatcher.o profiled/readahead.o
- 
- SRCS= $(srcdir)/e2fsck.c \
- 	$(srcdir)/dict.c \
-@@ -97,6 +98,7 @@ SRCS= $(srcdir)/e2fsck.c \
- 	$(srcdir)/message.c \
- 	$(srcdir)/ea_refcount.c \
- 	$(srcdir)/rehash.c \
-+	$(srcdir)/readahead.c \
- 	$(srcdir)/region.c \
- 	$(srcdir)/profile.c \
- 	$(srcdir)/sigcatcher.c \
-@@ -541,3 +543,6 @@ plausible.o: $(srcdir)/../misc/plausible.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/ext2fs/ext2_err.h \
-  $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-  $(srcdir)/../misc/nls-enable.h $(srcdir)/../misc/plausible.h
-+readahead.o: $(srcdir)/readahead.c $(top_builddir)/lib/config.h \
-+ $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
-+ $(top_builddir)/lib/ext2fs/ext2_err.h $(srcdir)/e2fsck.h prof_err.h
+diff --git a/e2fsck/e2fsck.8.in b/e2fsck/e2fsck.8.in
+index f5ed758..84ae50f 100644
+--- a/e2fsck/e2fsck.8.in
++++ b/e2fsck/e2fsck.8.in
+@@ -207,6 +207,13 @@ option may prevent you from further manual data recovery.
+ .BI nodiscard
+ Do not attempt to discard free blocks and unused inode blocks. This option is
+ exactly the opposite of discard option. This is set as default.
++.TP
++.BI readahead_kb
++Use this many KiB of memory to pre-fetch metadata in the hopes of reducing
++e2fsck runtime.  By default, this is set to the size of a block group's inode
++table (typically 2MiB on a regular ext4 filesystem); if this amount is more
++than 1/100 of total physical memory, readahead is disabled.  Set this to zero
++to disable readahead entirely.
+ .RE
+ .TP
+ .B \-f
+diff --git a/e2fsck/e2fsck.conf.5.in b/e2fsck/e2fsck.conf.5.in
+index 9ebfbbf..e1d0518 100644
+--- a/e2fsck/e2fsck.conf.5.in
++++ b/e2fsck/e2fsck.conf.5.in
+@@ -205,6 +205,21 @@ of that type are squelched.  This can be useful if the console is slow
+ (i.e., connected to a serial port) and so a large amount of output could
+ end up delaying the boot process for a long time (potentially hours).
+ .TP
++.I readahead_mem_pct
++Use this percentage of memory to try to read in metadata blocks ahead of the
++main e2fsck thread.  This should reduce run times, depending on the speed of
++the underlying storage and the amount of free memory.  There is no default, but
++see
++.B readahead_mem_pct
++for more details.
++.TP
++.I readahead_kb
++Use this amount of memory to read in metadata blocks ahead of the main checking
++thread.  Setting this value to zero disables readahead entirely.  By default,
++this is set the size of one block group's inode table (typically 2MiB on a
++regular ext4 filesystem); if this amount is more than 1/100th of total physical
++memory, readahead is disabled.
++.TP
+ .I report_features
+ If this boolean relation is true, e2fsck will print the file system
+ features as part of its verbose reporting (i.e., if the
 diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index 615ad75..0252824 100644
+index 0252824..e359515 100644
 --- a/e2fsck/e2fsck.h
 +++ b/e2fsck/e2fsck.h
-@@ -490,6 +490,23 @@ extern ext2_ino_t e2fsck_get_lost_and_found(e2fsck_t ctx, int fix);
- extern errcode_t e2fsck_adjust_inode_count(e2fsck_t ctx, ext2_ino_t ino,
- 					   int adj);
+@@ -378,6 +378,9 @@ struct e2fsck_struct {
+ 	 */
+ 	void *priv_data;
+ 	ext2fs_block_bitmap block_metadata_map; /* Metadata blocks */
++
++	/* How much are we allowed to readahead? */
++	unsigned long long readahead_kb;
+ };
  
-+/* readahead.c */
-+#define E2FSCK_READA_SUPER	(0x01)
-+#define E2FSCK_READA_GDT	(0x02)
-+#define E2FSCK_READA_BBITMAP	(0x04)
-+#define E2FSCK_READA_IBITMAP	(0x08)
-+#define E2FSCK_READA_ITABLE	(0x10)
-+#define E2FSCK_READA_ALL_FLAGS	(0x1F)
-+errcode_t e2fsck_readahead(ext2_filsys fs, int flags, dgrp_t start,
-+			   dgrp_t ngroups);
-+#define E2FSCK_RA_DBLIST_IGNORE_BLOCKCNT	(0x01)
-+#define E2FSCK_RA_DBLIST_ALL_FLAGS		(0x01)
-+errcode_t e2fsck_readahead_dblist(ext2_filsys fs, int flags,
-+				  ext2_dblist dblist,
-+				  unsigned long long start,
-+				  unsigned long long count);
-+int e2fsck_can_readahead(ext2_filsys fs);
-+unsigned long long e2fsck_guess_readahead(ext2_filsys fs);
- 
- /* region.c */
- extern region_t region_create(region_addr_t min, region_addr_t max);
-@@ -577,6 +594,7 @@ extern errcode_t e2fsck_allocate_subcluster_bitmap(ext2_filsys fs,
- 						   int default_type,
- 						   const char *profile_name,
- 						   ext2fs_block_bitmap *ret);
-+unsigned long long get_memory_size(void);
- 
- /* unix.c */
- extern void e2fsck_clear_progbar(e2fsck_t ctx);
-diff --git a/e2fsck/readahead.c b/e2fsck/readahead.c
-new file mode 100644
-index 0000000..a35f9f8
---- /dev/null
-+++ b/e2fsck/readahead.c
-@@ -0,0 +1,252 @@
-+/*
-+ * readahead.c -- Prefetch filesystem metadata to speed up fsck.
-+ *
-+ * Copyright (C) 2014 Oracle.
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Library
-+ * General Public License, version 2.
-+ * %End-Header%
-+ */
-+
-+#include "config.h"
-+#include <string.h>
-+
-+#include "e2fsck.h"
-+
-+#undef DEBUG
-+
-+#ifdef DEBUG
-+# define dbg_printf(f, a...)  do {printf(f, ## a); fflush(stdout); } while (0)
-+#else
-+# define dbg_printf(f, a...)
-+#endif
-+
-+struct read_dblist {
-+	errcode_t err;
-+	blk64_t run_start;
-+	blk64_t run_len;
-+	int flags;
-+};
-+
-+static int readahead_dir_block(ext2_filsys fs, struct ext2_db_entry2 *db,
-+			       void *priv_data)
-+{
-+	struct read_dblist *pr = priv_data;
-+	e2_blkcnt_t count = (pr->flags & E2FSCK_RA_DBLIST_IGNORE_BLOCKCNT ?
-+			     1 : db->blockcnt);
-+
-+	if (!pr->run_len || db->blk != pr->run_start + pr->run_len) {
-+		if (pr->run_len) {
-+			pr->err = io_channel_cache_readahead(fs->io,
-+							     pr->run_start,
-+							     pr->run_len);
-+			dbg_printf("readahead start=%llu len=%llu err=%d\n",
-+				   pr->run_start, pr->run_len,
-+				   (int)pr->err);
-+		}
-+		pr->run_start = db->blk;
-+		pr->run_len = 0;
-+	}
-+	pr->run_len += count;
-+
-+	return pr->err ? DBLIST_ABORT : 0;
-+}
-+
-+errcode_t e2fsck_readahead_dblist(ext2_filsys fs, int flags,
-+				  ext2_dblist dblist,
-+				  unsigned long long start,
-+				  unsigned long long count)
-+{
-+	errcode_t err;
-+	struct read_dblist pr;
-+
-+	dbg_printf("%s: flags=0x%x\n", __func__, flags);
-+	if (flags & ~E2FSCK_RA_DBLIST_ALL_FLAGS)
-+		return EXT2_ET_INVALID_ARGUMENT;
-+
-+	memset(&pr, 0, sizeof(pr));
-+	pr.flags = flags;
-+	err = ext2fs_dblist_iterate3(dblist, readahead_dir_block, start,
-+				     count, &pr);
-+	if (pr.err)
-+		return pr.err;
-+	if (err)
-+		return err;
-+
-+	if (pr.run_len)
-+		err = io_channel_cache_readahead(fs->io, pr.run_start,
-+						 pr.run_len);
-+
-+	return err;
-+}
-+
-+static errcode_t e2fsck_readahead_bitmap(ext2_filsys fs,
-+					 ext2fs_block_bitmap ra_map)
-+{
-+	blk64_t start, end, out;
-+	errcode_t err;
-+
-+	start = 1;
-+	end = ext2fs_blocks_count(fs->super) - 1;
-+
-+	err = ext2fs_find_first_set_block_bitmap2(ra_map, start, end, &out);
-+	while (err == 0) {
-+		start = out;
-+		err = ext2fs_find_first_zero_block_bitmap2(ra_map, start, end,
-+							   &out);
-+		if (err == ENOENT) {
-+			out = end;
-+			err = 0;
-+		} else if (err)
-+			break;
-+
-+		err = io_channel_cache_readahead(fs->io, start, out - start);
-+		if (err)
-+			break;
-+		start = out;
-+		err = ext2fs_find_first_set_block_bitmap2(ra_map, start, end,
-+							  &out);
-+	}
-+
-+	if (err == ENOENT)
-+		err = 0;
-+
-+	return err;
-+}
-+
-+/* Try not to spew bitmap range errors for readahead */
-+static errcode_t mark_bmap_range(ext2_filsys fs, ext2fs_block_bitmap map,
-+				 blk64_t blk, unsigned int num)
-+{
-+	if (blk >= ext2fs_get_generic_bmap_start(map) &&
-+	    blk + num <= ext2fs_get_generic_bmap_end(map))
-+		ext2fs_mark_block_bitmap_range2(map, blk, num);
-+	else
-+		return EXT2_ET_INVALID_ARGUMENT;
-+	return 0;
-+}
-+
-+static errcode_t mark_bmap(ext2_filsys fs, ext2fs_block_bitmap map, blk64_t blk)
-+{
-+	if (blk >= ext2fs_get_generic_bmap_start(map) &&
-+	    blk <= ext2fs_get_generic_bmap_end(map))
-+		ext2fs_mark_block_bitmap2(map, blk);
-+	else
-+		return EXT2_ET_INVALID_ARGUMENT;
-+	return 0;
-+}
-+
-+errcode_t e2fsck_readahead(ext2_filsys fs, int flags, dgrp_t start,
-+			   dgrp_t ngroups)
-+{
-+	blk64_t		super, old_gdt, new_gdt;
-+	blk_t		blocks;
-+	dgrp_t		i;
-+	ext2fs_block_bitmap		ra_map = NULL;
-+	dgrp_t		end = start + ngroups;
-+	errcode_t	err = 0;
-+
-+	dbg_printf("%s: flags=0x%x start=%d groups=%d\n", __func__, flags,
-+		   start, ngroups);
-+	if (flags & ~E2FSCK_READA_ALL_FLAGS)
-+		return EXT2_ET_INVALID_ARGUMENT;
-+
-+	if (end > fs->group_desc_count)
-+		end = fs->group_desc_count;
-+
-+	if (flags == 0)
-+		return 0;
-+
-+	err = ext2fs_allocate_block_bitmap(fs, "readahead bitmap",
-+					   &ra_map);
-+	if (err)
-+		return err;
-+
-+	for (i = start; i < end; i++) {
-+		err = ext2fs_super_and_bgd_loc2(fs, i, &super, &old_gdt,
-+						&new_gdt, &blocks);
-+		if (err)
-+			break;
-+
-+		if (flags & E2FSCK_READA_SUPER) {
-+			err = mark_bmap(fs, ra_map, super);
-+			if (err)
-+				break;
-+		}
-+
-+		if (flags & E2FSCK_READA_GDT) {
-+			err = mark_bmap_range(fs, ra_map,
-+					      old_gdt ? old_gdt : new_gdt,
-+					      blocks);
-+			if (err)
-+				break;
-+		}
-+
-+		if ((flags & E2FSCK_READA_BBITMAP) &&
-+		    !ext2fs_bg_flags_test(fs, i, EXT2_BG_BLOCK_UNINIT) &&
-+		    ext2fs_bg_free_blocks_count(fs, i) <
-+				fs->super->s_blocks_per_group) {
-+			super = ext2fs_block_bitmap_loc(fs, i);
-+			err = mark_bmap(fs, ra_map, super);
-+			if (err)
-+				break;
-+		}
-+
-+		if ((flags & E2FSCK_READA_IBITMAP) &&
-+		    !ext2fs_bg_flags_test(fs, i, EXT2_BG_INODE_UNINIT) &&
-+		    ext2fs_bg_free_inodes_count(fs, i) <
-+				fs->super->s_inodes_per_group) {
-+			super = ext2fs_inode_bitmap_loc(fs, i);
-+			err = mark_bmap(fs, ra_map, super);
-+			if (err)
-+				break;
-+		}
-+
-+		if ((flags & E2FSCK_READA_ITABLE) &&
-+		    ext2fs_bg_free_inodes_count(fs, i) <
-+				fs->super->s_inodes_per_group) {
-+			super = ext2fs_inode_table_loc(fs, i);
-+			blocks = fs->inode_blocks_per_group -
-+				 (ext2fs_bg_itable_unused(fs, i) *
-+				  EXT2_INODE_SIZE(fs->super) / fs->blocksize);
-+			err = mark_bmap_range(fs, ra_map, super, blocks);
-+			if (err)
-+				break;
-+		}
-+	}
-+
-+	if (!err)
-+		err = e2fsck_readahead_bitmap(fs, ra_map);
-+
-+	ext2fs_free_block_bitmap(ra_map);
-+	return err;
-+}
-+
-+int e2fsck_can_readahead(ext2_filsys fs)
-+{
-+	errcode_t err;
-+
-+	err = io_channel_cache_readahead(fs->io, 0, 1);
-+	dbg_printf("%s: supp=%d\n", __func__, err != EXT2_ET_OP_NOT_SUPPORTED);
-+	return err != EXT2_ET_OP_NOT_SUPPORTED;
-+}
-+
-+unsigned long long e2fsck_guess_readahead(ext2_filsys fs)
-+{
-+	unsigned long long guess;
-+
-+	/*
-+	 * The optimal readahead sizes were experimentally determined by
-+	 * djwong in August 2014.  Setting the RA size to one block group's
-+	 * worth of inode table blocks seems to yield the largest reductions
-+	 * in e2fsck runtime.
-+	 */
-+	guess = fs->blocksize * fs->inode_blocks_per_group;
-+
-+	/* Disable RA if it'd use more 1/100th of RAM. */
-+	if (get_memory_size() > (guess * 100))
-+		return guess / 1024;
-+
-+	return 0;
-+}
-diff --git a/e2fsck/util.c b/e2fsck/util.c
-index 2de45f8..723dafb 100644
---- a/e2fsck/util.c
-+++ b/e2fsck/util.c
-@@ -37,6 +37,10 @@
- #include <errno.h>
- #endif
- 
-+#ifdef HAVE_SYS_SYSCTL_H
-+#include <sys/sysctl.h>
-+#endif
-+
- #include "e2fsck.h"
- 
- extern e2fsck_t e2fsck_global_ctx;   /* Try your very best not to use this! */
-@@ -795,3 +799,50 @@ errcode_t e2fsck_allocate_subcluster_bitmap(ext2_filsys fs, const char *descr,
- 	fs->default_bitmap_type = save_type;
- 	return retval;
- }
-+
-+/* Return memory size in bytes */
-+unsigned long long get_memory_size(void)
-+{
-+#if defined(_SC_PHYS_PAGES)
-+# if defined(_SC_PAGESIZE)
-+	return (unsigned long long)sysconf(_SC_PHYS_PAGES) *
-+	       (unsigned long long)sysconf(_SC_PAGESIZE);
-+# elif defined(_SC_PAGE_SIZE)
-+	return (unsigned long long)sysconf(_SC_PHYS_PAGES) *
-+	       (unsigned long long)sysconf(_SC_PAGE_SIZE);
-+# endif
-+#elif defined(CTL_HW)
-+# if (defined(HW_MEMSIZE) || defined(HW_PHYSMEM64))
-+#  define CTL_HW_INT64
-+# elif (defined(HW_PHYSMEM) || defined(HW_REALMEM))
-+#  define CTL_HW_UINT
-+# endif
-+	int mib[2];
-+
-+	mib[0] = CTL_HW;
-+# if defined(HW_MEMSIZE)
-+	mib[1] = HW_MEMSIZE;
-+# elif defined(HW_PHYSMEM64)
-+	mib[1] = HW_PHYSMEM64;
-+# elif defined(HW_REALMEM)
-+	mib[1] = HW_REALMEM;
-+# elif defined(HW_PYSMEM)
-+	mib[1] = HW_PHYSMEM;
-+# endif
-+# if defined(CTL_HW_INT64)
-+	unsigned long long size = 0;
-+# elif defined(CTL_HW_UINT)
-+	unsigned int size = 0;
-+# endif
-+# if defined(CTL_HW_INT64) || defined(CTL_HW_UINT)
-+	size_t len = sizeof(size);
-+
-+	if (sysctl(mib, 2, &size, &len, NULL, 0) == 0)
-+		return (unsigned long long)size;
-+# endif
-+	return 0;
-+#else
-+# warning "Don't know how to detect memory on your platform?"
-+	return 0;
-+#endif
-+}
-diff --git a/lib/config.h.in b/lib/config.h.in
-index 0db010f..cd7ec90 100644
---- a/lib/config.h.in
-+++ b/lib/config.h.in
-@@ -509,6 +509,9 @@
- /* Define to 1 if you have the <sys/syscall.h> header file. */
- #undef HAVE_SYS_SYSCALL_H
- 
-+/* Define to 1 if you have the <sys/sysctl.h> header file. */
-+#undef HAVE_SYS_SYSCTL_H
-+
- /* Define to 1 if you have the <sys/sysmacros.h> header file. */
- #undef HAVE_SYS_SYSMACROS_H
- 
-diff --git a/lib/ext2fs/dblist.c b/lib/ext2fs/dblist.c
-index 942c4f0..bbdb221 100644
---- a/lib/ext2fs/dblist.c
-+++ b/lib/ext2fs/dblist.c
-@@ -194,20 +194,25 @@ void ext2fs_dblist_sort2(ext2_dblist dblist,
- /*
-  * This function iterates over the directory block list
-  */
--errcode_t ext2fs_dblist_iterate2(ext2_dblist dblist,
-+errcode_t ext2fs_dblist_iterate3(ext2_dblist dblist,
- 				 int (*func)(ext2_filsys fs,
- 					     struct ext2_db_entry2 *db_info,
- 					     void	*priv_data),
-+				 unsigned long long start,
-+				 unsigned long long count,
- 				 void *priv_data)
- {
--	unsigned long long	i;
-+	unsigned long long	i, end;
- 	int		ret;
- 
- 	EXT2_CHECK_MAGIC(dblist, EXT2_ET_MAGIC_DBLIST);
- 
-+	end = start + count;
- 	if (!dblist->sorted)
- 		ext2fs_dblist_sort2(dblist, 0);
--	for (i=0; i < dblist->count; i++) {
-+	if (end > dblist->count)
-+		end = dblist->count;
-+	for (i = start; i < end; i++) {
- 		ret = (*func)(dblist->fs, &dblist->list[i], priv_data);
- 		if (ret & DBLIST_ABORT)
- 			return 0;
-@@ -215,6 +220,16 @@ errcode_t ext2fs_dblist_iterate2(ext2_dblist dblist,
+ /* Used by the region allocation code */
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 4cc58c4..a963849 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -868,6 +868,60 @@ out:
  	return 0;
  }
  
-+errcode_t ext2fs_dblist_iterate2(ext2_dblist dblist,
-+				 int (*func)(ext2_filsys fs,
-+					     struct ext2_db_entry2 *db_info,
-+					     void	*priv_data),
-+				 void *priv_data)
++static void pass1_readahead(e2fsck_t ctx, dgrp_t *group, ext2_ino_t *next_ino)
 +{
-+	return ext2fs_dblist_iterate3(dblist, func, 0, dblist->count,
-+				      priv_data);
++	ext2_ino_t inodes_in_group = 0, inodes_per_block, inodes_per_buffer;
++	dgrp_t start = *group, grp;
++	blk64_t blocks_to_read = 0;
++	errcode_t err = EXT2_ET_INVALID_ARGUMENT;
++
++	if (ctx->readahead_kb == 0)
++		goto out;
++
++	/* Keep iterating groups until we have enough to readahead */
++	inodes_per_block = EXT2_INODES_PER_BLOCK(ctx->fs->super);
++	for (grp = start; grp < ctx->fs->group_desc_count; grp++) {
++		if (ext2fs_bg_flags_test(ctx->fs, grp, EXT2_BG_INODE_UNINIT))
++			continue;
++		inodes_in_group = ctx->fs->super->s_inodes_per_group -
++					ext2fs_bg_itable_unused(ctx->fs, grp);
++		blocks_to_read += (inodes_in_group + inodes_per_block - 1) /
++					inodes_per_block;
++		if (blocks_to_read * ctx->fs->blocksize >
++		    ctx->readahead_kb * 1024)
++			break;
++	}
++
++	err = e2fsck_readahead(ctx->fs, E2FSCK_READA_ITABLE, start,
++			       grp - start + 1);
++	if (err == EAGAIN) {
++		ctx->readahead_kb /= 2;
++		err = 0;
++	}
++
++out:
++	if (err) {
++		/* Error; disable itable readahead */
++		*group = ctx->fs->group_desc_count;
++		*next_ino = ctx->fs->super->s_inodes_count;
++	} else {
++		/*
++		 * Don't do more readahead until we've reached the first inode
++		 * of the last inode scan buffer block for the last group.
++		 */
++		*group = grp + 1;
++		inodes_per_buffer = (ctx->inode_buffer_blocks ?
++				     ctx->inode_buffer_blocks :
++				     EXT2_INODE_SCAN_DEFAULT_BUFFER_BLOCKS) *
++				    ctx->fs->blocksize /
++				    EXT2_INODE_SIZE(ctx->fs->super);
++		inodes_in_group--;
++		*next_ino = inodes_in_group -
++			    (inodes_in_group % inodes_per_buffer) + 1 +
++			    (grp * ctx->fs->super->s_inodes_per_group);
++	}
 +}
 +
- static EXT2_QSORT_TYPE dir_block_cmp2(const void *a, const void *b)
+ void e2fsck_pass1(e2fsck_t ctx)
  {
- 	const struct ext2_db_entry2 *db_a =
+ 	int	i;
+@@ -890,10 +944,19 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 	int		low_dtime_check = 1;
+ 	int		inode_size;
+ 	int		failed_csum = 0;
++	ext2_ino_t	ino_threshold = 0;
++	dgrp_t		ra_group = 0;
+ 
+ 	init_resource_track(&rtrack, ctx->fs->io);
+ 	clear_problem_context(&pctx);
+ 
++	/* If we can do readahead, figure out how many groups to pull in. */
++	if (!e2fsck_can_readahead(ctx->fs))
++		ctx->readahead_kb = 0;
++	else if (ctx->readahead_kb == ~0ULL)
++		ctx->readahead_kb = e2fsck_guess_readahead(ctx->fs);
++	pass1_readahead(ctx, &ra_group, &ino_threshold);
++
+ 	if (!(ctx->options & E2F_OPT_PREEN))
+ 		fix_problem(ctx, PR_1_PASS_HEADER, &pctx);
+ 
+@@ -1073,6 +1136,8 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 		old_op = ehandler_operation(_("getting next inode from scan"));
+ 		pctx.errcode = ext2fs_get_next_inode_full(scan, &ino,
+ 							  inode, inode_size);
++		if (ino > ino_threshold)
++			pass1_readahead(ctx, &ra_group, &ino_threshold);
+ 		ehandler_operation(old_op);
+ 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
+ 			return;
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 7aaebce..cffaac4 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -61,6 +61,9 @@
+  * Keeps track of how many times an inode is referenced.
+  */
+ static void deallocate_inode(e2fsck_t ctx, ext2_ino_t ino, char* block_buf);
++static int check_dir_block2(ext2_filsys fs,
++			   struct ext2_db_entry2 *dir_blocks_info,
++			   void *priv_data);
+ static int check_dir_block(ext2_filsys fs,
+ 			   struct ext2_db_entry2 *dir_blocks_info,
+ 			   void *priv_data);
+@@ -77,6 +80,9 @@ struct check_dir_struct {
+ 	struct problem_context	pctx;
+ 	int	count, max;
+ 	e2fsck_t ctx;
++	unsigned long long list_offset;
++	unsigned long long ra_entries;
++	unsigned long long next_ra_off;
+ };
+ 
+ void e2fsck_pass2(e2fsck_t ctx)
+@@ -96,6 +102,9 @@ void e2fsck_pass2(e2fsck_t ctx)
+ 	int			i, depth;
+ 	problem_t		code;
+ 	int			bad_dir;
++	int (*check_dir_func)(ext2_filsys fs,
++			      struct ext2_db_entry2 *dir_blocks_info,
++			      void *priv_data);
+ 
+ 	init_resource_track(&rtrack, ctx->fs->io);
+ 	clear_problem_context(&cd.pctx);
+@@ -139,6 +148,9 @@ void e2fsck_pass2(e2fsck_t ctx)
+ 	cd.ctx = ctx;
+ 	cd.count = 1;
+ 	cd.max = ext2fs_dblist_count2(fs->dblist);
++	cd.list_offset = 0;
++	cd.ra_entries = ctx->readahead_kb * 1024 / ctx->fs->blocksize;
++	cd.next_ra_off = 0;
+ 
+ 	if (ctx->progress)
+ 		(void) (ctx->progress)(ctx, 2, 0, cd.max);
+@@ -146,7 +158,8 @@ void e2fsck_pass2(e2fsck_t ctx)
+ 	if (fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_DIR_INDEX)
+ 		ext2fs_dblist_sort2(fs->dblist, special_dir_block_cmp);
+ 
+-	cd.pctx.errcode = ext2fs_dblist_iterate2(fs->dblist, check_dir_block,
++	check_dir_func = cd.ra_entries ? check_dir_block2 : check_dir_block;
++	cd.pctx.errcode = ext2fs_dblist_iterate2(fs->dblist, check_dir_func,
+ 						 &cd);
+ 	if (ctx->flags & E2F_FLAG_SIGNAL_MASK || ctx->flags & E2F_FLAG_RESTART)
+ 		return;
+@@ -825,6 +838,29 @@ err:
+ 	return retval;
+ }
+ 
++static int check_dir_block2(ext2_filsys fs,
++			   struct ext2_db_entry2 *db,
++			   void *priv_data)
++{
++	int err;
++	struct check_dir_struct *cd = priv_data;
++
++	if (cd->ra_entries && cd->list_offset >= cd->next_ra_off) {
++		err = e2fsck_readahead_dblist(fs,
++					E2FSCK_RA_DBLIST_IGNORE_BLOCKCNT,
++					fs->dblist,
++					cd->list_offset + cd->ra_entries / 8,
++					cd->ra_entries);
++		if (err)
++			cd->ra_entries = 0;
++		cd->next_ra_off = cd->list_offset + (cd->ra_entries * 7 / 8);
++	}
++
++	err = check_dir_block(fs, db, priv_data);
++	cd->list_offset++;
++	return err;
++}
++
+ static int check_dir_block(ext2_filsys fs,
+ 			   struct ext2_db_entry2 *db,
+ 			   void *priv_data)
+diff --git a/e2fsck/pass4.c b/e2fsck/pass4.c
+index 21d93f0..bc9a2c4 100644
+--- a/e2fsck/pass4.c
++++ b/e2fsck/pass4.c
+@@ -106,6 +106,15 @@ void e2fsck_pass4(e2fsck_t ctx)
+ #ifdef MTRACE
+ 	mtrace_print("Pass 4");
+ #endif
++	/*
++	 * Since pass4 is mostly CPU bound, start readahead of bitmaps
++	 * ahead of pass 5 if we haven't already loaded them.
++	 */
++	if (ctx->readahead_kb &&
++	    (fs->block_map == NULL || fs->inode_map == NULL))
++		e2fsck_readahead(fs, E2FSCK_READA_BBITMAP |
++				     E2FSCK_READA_IBITMAP,
++				 0, fs->group_desc_count);
+ 
+ 	clear_problem_context(&pctx);
+ 
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index 615d690..f3672c0 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -650,6 +650,7 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
+ 	char	*buf, *token, *next, *p, *arg;
+ 	int	ea_ver;
+ 	int	extended_usage = 0;
++	unsigned long long reada_kb;
+ 
+ 	buf = string_copy(ctx, opts, 0);
+ 	for (token = buf; token && *token; token = next) {
+@@ -678,6 +679,15 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
+ 				continue;
+ 			}
+ 			ctx->ext_attr_ver = ea_ver;
++		} else if (strcmp(token, "readahead_kb") == 0) {
++			reada_kb = strtoull(arg, &p, 0);
++			if (*p) {
++				fprintf(stderr, "%s",
++					_("Invalid readahead buffer size.\n"));
++				extended_usage++;
++				continue;
++			}
++			ctx->readahead_kb = reada_kb;
+ 		} else if (strcmp(token, "fragcheck") == 0) {
+ 			ctx->options |= E2F_OPT_FRAGCHECK;
+ 			continue;
+@@ -717,6 +727,7 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
+ 		fputs(("\tjournal_only\n"), stderr);
+ 		fputs(("\tdiscard\n"), stderr);
+ 		fputs(("\tnodiscard\n"), stderr);
++		fputs(("\treadahead_kb=<buffer size>\n"), stderr);
+ 		fputc('\n', stderr);
+ 		exit(1);
+ 	}
+@@ -750,6 +761,7 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
+ #ifdef CONFIG_JBD_DEBUG
+ 	char 		*jbd_debug;
+ #endif
++	unsigned long long phys_mem_kb;
+ 
+ 	retval = e2fsck_allocate_context(&ctx);
+ 	if (retval)
+@@ -777,6 +789,8 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
+ 	else
+ 		ctx->program_name = "e2fsck";
+ 
++	phys_mem_kb = get_memory_size() / 1024;
++	ctx->readahead_kb = ~0ULL;
+ 	while ((c = getopt (argc, argv, "panyrcC:B:dE:fvtFVM:b:I:j:P:l:L:N:SsDk")) != EOF)
+ 		switch (c) {
+ 		case 'C':
+@@ -961,6 +975,20 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
+ 	if (c)
+ 		verbose = 1;
+ 
++	if (ctx->readahead_kb == ~0ULL) {
++		profile_get_integer(ctx->profile, "options",
++				    "readahead_mem_pct", 0, -1, &c);
++		if (c >= 0 && c <= 100)
++			ctx->readahead_kb = phys_mem_kb * c / 100;
++		profile_get_integer(ctx->profile, "options",
++				    "readahead_kb", 0, -1, &c);
++		if (c >= 0)
++			ctx->readahead_kb = c;
++		if (ctx->readahead_kb != ~0ULL &&
++		    ctx->readahead_kb > phys_mem_kb)
++			ctx->readahead_kb = phys_mem_kb;
++	}
++
+ 	/* Turn off discard in read-only mode */
+ 	if ((ctx->options & E2F_OPT_NO) &&
+ 	    (ctx->options & E2F_OPT_DISCARD))
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index c3142f7..34b9132 100644
+index 34b9132..84e4e1f 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -1051,11 +1051,17 @@ extern void ext2fs_dblist_sort2(ext2_dblist dblist,
- extern errcode_t ext2fs_dblist_iterate(ext2_dblist dblist,
- 	int (*func)(ext2_filsys fs, struct ext2_db_entry *db_info,
- 		    void	*priv_data),
--       void *priv_data);
-+	void *priv_data);
- extern errcode_t ext2fs_dblist_iterate2(ext2_dblist dblist,
- 	int (*func)(ext2_filsys fs, struct ext2_db_entry2 *db_info,
- 		    void	*priv_data),
--       void *priv_data);
-+	void *priv_data);
-+extern errcode_t ext2fs_dblist_iterate3(ext2_dblist dblist,
-+	int (*func)(ext2_filsys fs, struct ext2_db_entry2 *db_info,
-+		    void	*priv_data),
-+	unsigned long long start,
-+	unsigned long long count,
-+	void *priv_data);
- extern errcode_t ext2fs_set_dir_block(ext2_dblist dblist, ext2_ino_t ino,
- 				      blk_t blk, int blockcnt);
- extern errcode_t ext2fs_set_dir_block2(ext2_dblist dblist, ext2_ino_t ino,
+@@ -1418,6 +1418,7 @@ extern errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan,
+ 					    ext2_ino_t *ino,
+ 					    struct ext2_inode *inode,
+ 					    int bufsize);
++#define EXT2_INODE_SCAN_DEFAULT_BUFFER_BLOCKS	8
+ extern errcode_t ext2fs_open_inode_scan(ext2_filsys fs, int buffer_blocks,
+ 				  ext2_inode_scan *ret_scan);
+ extern void ext2fs_close_inode_scan(ext2_inode_scan scan);
+diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
+index 4310b82..4b3e14e 100644
+--- a/lib/ext2fs/inode.c
++++ b/lib/ext2fs/inode.c
+@@ -175,7 +175,8 @@ errcode_t ext2fs_open_inode_scan(ext2_filsys fs, int buffer_blocks,
+ 	scan->bytes_left = 0;
+ 	scan->current_group = 0;
+ 	scan->groups_left = fs->group_desc_count - 1;
+-	scan->inode_buffer_blocks = buffer_blocks ? buffer_blocks : 8;
++	scan->inode_buffer_blocks = buffer_blocks ? buffer_blocks :
++				    EXT2_INODE_SCAN_DEFAULT_BUFFER_BLOCKS;
+ 	scan->current_block = ext2fs_inode_table_loc(scan->fs,
+ 						     scan->current_group);
+ 	scan->inodes_left = EXT2_INODES_PER_GROUP(scan->fs->super);
 
