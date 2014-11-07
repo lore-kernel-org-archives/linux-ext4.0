@@ -1,351 +1,132 @@
-From: Milosz Tanski <milosz@adfin.com>
-Subject: Re: [Linux-NTFS-Dev] [PATCH v5 6/7] fs: pass iocb to generic_write_sync
-Date: Thu, 6 Nov 2014 11:14:30 -0500
-Message-ID: <CANP1eJGeEOvLjy_pBKjjobYY1xja9Z4KfvmYfLK3KnswVZdaTA@mail.gmail.com>
-References: <cover.1415220890.git.milosz@adfin.com>
-	<5d53ede333de7cade713190e2b93e2dbadefa260.1415220890.git.milosz@adfin.com>
-	<C2D0BFF1-14C7-47C0-A24D-0F54809EF5D0@cam.ac.uk>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH v3 0/6] ext4: extents status tree shrinker improvement
+Date: Fri, 7 Nov 2014 10:38:40 +0800
+Message-ID: <20141107023840.GA5420@gmail.com>
+References: <1407382553-24256-1-git-send-email-wenqing.lz@taobao.com>
+ <20141020144849.GB4499@thunk.org>
+ <20141021102228.GC2955@quack.suse.cz>
+ <007DCBDA-B924-4B45-887C-5FFFB8749966@alibaba-inc.com>
+ <20141103161046.GA17319@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>, linux-arch@vger.kernel.org,
-	"linux-aio@kvack.org" <linux-aio@kvack.org>, Volker Lendecke <Volker.Lendecke@sernet.de>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-xfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net, Linux API <linux-api@vger.kernel.org>,
-	Christoph Hellwig <hch@infradead.org>, Tejun Heo <tj@kernel.org>, Jeff Moyer <jmoyer@redhat.com>,
-	cluster-devel@redhat.com, Mel Gorman <mgorman@suse.de>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>, Michael Kerrisk <mtk.manpages@gmail.com>,
-	linux-ext4@vger.kernel.org, Christoph Hellwig <hch@lst.de>, linux-btrfs@vger.kernel.org,
-	Al Viro <viro@zeniv.linux.org.uk>
-To: Anton Altaparmakov <aia21@cam.ac.uk>
-Return-path: <owner-linux-aio@kvack.org>
-In-Reply-To: <C2D0BFF1-14C7-47C0-A24D-0F54809EF5D0@cam.ac.uk>
-Sender: owner-linux-aio@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: =?utf-8?B?5YiY5bOlKOaWh+WNvyk=?= <wenqing.lz@alibaba-inc.com>,
+	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	=?utf-8?B?5YiY5bOlKOaWh+WNvyk=?= <wenqing.lz@taobao.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:49364 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751051AbaKGC1f (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2014 21:27:35 -0500
+Received: by mail-pa0-f50.google.com with SMTP id eu11so2498697pac.23
+        for <linux-ext4@vger.kernel.org>; Thu, 06 Nov 2014 18:27:35 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <20141103161046.GA17319@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 6, 2014 at 5:52 AM, Anton Altaparmakov <aia21@cam.ac.uk> wrote:
-> Hi,
->
->> On 5 Nov 2014, at 23:14, Milosz Tanski <milosz@adfin.com> wrote:
->>
->> From: Christoph Hellwig <hch@lst.de>
->>
->> Clean up the generic_write_sync by just passing an iocb and a bytes
->> written / negative errno argument.  In addition to simplifying the
->> callers this also prepares for passing a per-operation O_DSYNC
->> flag.  Two callers didn't quite fit that scheme:
->>
->> - dio_complete didn't both to update ki_pos as we don't need it
->>   on a iocb that is about to be freed, so we had to add it. Additionally
->>   it also synced out written data in the error case, which has been
->>   changed to operate like the other callers.
->> - gfs2 also used generic_write_sync to implement a crude version
->>   of fallocate.  It has been switched to use an open coded variant
->>   instead.
->>
->> Signed-off-by: Christoph Hellwig <hch@lst.de>
->> ---
->> fs/block_dev.c     |  8 +-------
->> fs/btrfs/file.c    |  7 ++-----
->> fs/cifs/file.c     |  8 +-------
->> fs/direct-io.c     |  8 ++------
->> fs/ext4/file.c     |  8 +-------
->> fs/gfs2/file.c     |  9 +++++++--
->> fs/ntfs/file.c     |  8 ++------
->> fs/udf/file.c      | 11 ++---------
->> fs/xfs/xfs_file.c  |  8 +-------
->> include/linux/fs.h |  8 +-------
->> mm/filemap.c       | 30 ++++++++++++++++++++----------
->> 11 files changed, 40 insertions(+), 73 deletions(-)
->>
->> diff --git a/fs/block_dev.c b/fs/block_dev.c
->> index cc9d411..c529b1c 100644
->> --- a/fs/block_dev.c
->> +++ b/fs/block_dev.c
->> @@ -1568,18 +1568,12 @@ static long block_ioctl(struct file *file, unsigned cmd, unsigned long arg)
->>  */
->> ssize_t blkdev_write_iter(struct kiocb *iocb, struct iov_iter *from)
->> {
->> -     struct file *file = iocb->ki_filp;
->>       struct blk_plug plug;
->>       ssize_t ret;
->>
->>       blk_start_plug(&plug);
->>       ret = __generic_file_write_iter(iocb, from);
->> -     if (ret > 0) {
->> -             ssize_t err;
->> -             err = generic_write_sync(file, iocb->ki_pos - ret, ret);
->> -             if (err < 0)
->> -                     ret = err;
->> -     }
->> +     ret = generic_write_sync(iocb, ret);
->>       blk_finish_plug(&plug);
->>       return ret;
->> }
->> diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
->> index a18ceab..4f4a6f7 100644
->> --- a/fs/btrfs/file.c
->> +++ b/fs/btrfs/file.c
->> @@ -1820,11 +1820,8 @@ static ssize_t btrfs_file_write_iter(struct kiocb *iocb,
->>        */
->>       BTRFS_I(inode)->last_trans = root->fs_info->generation + 1;
->>       BTRFS_I(inode)->last_sub_trans = root->log_transid;
->> -     if (num_written > 0) {
->> -             err = generic_write_sync(file, pos, num_written);
->> -             if (err < 0)
->> -                     num_written = err;
->> -     }
->> +
->> +     num_written = generic_write_sync(iocb, num_written);
->>
->>       if (sync)
->>               atomic_dec(&BTRFS_I(inode)->sync_writers);
->> diff --git a/fs/cifs/file.c b/fs/cifs/file.c
->> index c485afa..32359de 100644
->> --- a/fs/cifs/file.c
->> +++ b/fs/cifs/file.c
->> @@ -2706,13 +2706,7 @@ cifs_writev(struct kiocb *iocb, struct iov_iter *from)
->>               rc = __generic_file_write_iter(iocb, from);
->>               mutex_unlock(&inode->i_mutex);
->>
->> -             if (rc > 0) {
->> -                     ssize_t err;
->> -
->> -                     err = generic_write_sync(file, iocb->ki_pos - rc, rc);
->> -                     if (err < 0)
->> -                             rc = err;
->> -             }
->> +             rc = generic_write_sync(iocb, rc);
->>       } else {
->>               mutex_unlock(&inode->i_mutex);
->>       }
->> diff --git a/fs/direct-io.c b/fs/direct-io.c
->> index e181b6b..b72ac83 100644
->> --- a/fs/direct-io.c
->> +++ b/fs/direct-io.c
->> @@ -257,12 +257,8 @@ static ssize_t dio_complete(struct dio *dio, loff_t offset, ssize_t ret,
->>       inode_dio_done(dio->inode);
->>       if (is_async) {
->>               if (dio->rw & WRITE) {
->> -                     int err;
->> -
->> -                     err = generic_write_sync(dio->iocb->ki_filp, offset,
->> -                                              transferred);
->> -                     if (err < 0 && ret > 0)
->> -                             ret = err;
->> +                     dio->iocb->ki_pos = offset + transferred;
->> +                     ret = generic_write_sync(dio->iocb, ret);
->>               }
->>
->>               aio_complete(dio->iocb, ret, 0);
->> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
->> index aca7b24..79b000c 100644
->> --- a/fs/ext4/file.c
->> +++ b/fs/ext4/file.c
->> @@ -175,13 +175,7 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
->>       ret = __generic_file_write_iter(iocb, from);
->>       mutex_unlock(&inode->i_mutex);
->>
->> -     if (ret > 0) {
->> -             ssize_t err;
->> -
->> -             err = generic_write_sync(file, iocb->ki_pos - ret, ret);
->> -             if (err < 0)
->> -                     ret = err;
->> -     }
->> +     ret = generic_write_sync(iocb, ret);
->>       if (o_direct)
->>               blk_finish_plug(&plug);
->>
->> diff --git a/fs/gfs2/file.c b/fs/gfs2/file.c
->> index 80dd44d..3fafeca 100644
->> --- a/fs/gfs2/file.c
->> +++ b/fs/gfs2/file.c
->> @@ -895,8 +895,13 @@ retry:
->>               gfs2_quota_unlock(ip);
->>       }
->>
->> -     if (error == 0)
->> -             error = generic_write_sync(file, pos, count);
->> +     if (error)
->> +             goto out_unlock;
->> +
->> +     if ((file->f_flags & O_DSYNC) || IS_SYNC(file->f_mapping->host)) {
->> +             error = vfs_fsync_range(file, pos, pos + count - 1,
->> +                            (file->f_flags & __O_SYNC) ? 0 : 1);
->> +     }
->>       goto out_unlock;
->>
->> out_trans_fail:
->> diff --git a/fs/ntfs/file.c b/fs/ntfs/file.c
->> index 643faa4..4f3d664 100644
->> --- a/fs/ntfs/file.c
->> +++ b/fs/ntfs/file.c
->> @@ -2127,12 +2127,8 @@ static ssize_t ntfs_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
->>       mutex_lock(&inode->i_mutex);
->>       ret = ntfs_file_aio_write_nolock(iocb, iov, nr_segs, &iocb->ki_pos);
->>       mutex_unlock(&inode->i_mutex);
->> -     if (ret > 0) {
->> -             int err = generic_write_sync(file, iocb->ki_pos - ret, ret);
->> -             if (err < 0)
->> -                     ret = err;
->> -     }
->> -     return ret;
->> +
->> +     return generic_write_sync(iocb, ret);
->> }
->>
->> /**
->> diff --git a/fs/udf/file.c b/fs/udf/file.c
->> index bb15771..1cdabd0 100644
->> --- a/fs/udf/file.c
->> +++ b/fs/udf/file.c
->> @@ -155,16 +155,9 @@ static ssize_t udf_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
->>       retval = __generic_file_write_iter(iocb, from);
->>       mutex_unlock(&inode->i_mutex);
->>
->> -     if (retval > 0) {
->> -             ssize_t err;
->> -
->> +     if (retval > 0)
->>               mark_inode_dirty(inode);
->> -             err = generic_write_sync(file, iocb->ki_pos - retval, retval);
->> -             if (err < 0)
->> -                     retval = err;
->> -     }
->> -
->> -     return retval;
->> +     return generic_write_sync(iocb, retval);
->> }
->>
->> long udf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
->> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
->> index 0655915..a8cab66 100644
->> --- a/fs/xfs/xfs_file.c
->> +++ b/fs/xfs/xfs_file.c
->> @@ -792,14 +792,8 @@ xfs_file_write_iter(
->>               ret = xfs_file_buffered_aio_write(iocb, from);
->>
->>       if (ret > 0) {
->> -             ssize_t err;
->> -
->>               XFS_STATS_ADD(xs_write_bytes, ret);
->> -
->> -             /* Handle various SYNC-type writes */
->> -             err = generic_write_sync(file, iocb->ki_pos - ret, ret);
->> -             if (err < 0)
->> -                     ret = err;
->> +             ret = generic_write_sync(iocb, ret);
->>       }
->>       return ret;
->> }
->> diff --git a/include/linux/fs.h b/include/linux/fs.h
->> index eaebd99..7d0e116 100644
->> --- a/include/linux/fs.h
->> +++ b/include/linux/fs.h
->> @@ -2242,13 +2242,7 @@ extern int filemap_fdatawrite_range(struct address_space *mapping,
->> extern int vfs_fsync_range(struct file *file, loff_t start, loff_t end,
->>                          int datasync);
->> extern int vfs_fsync(struct file *file, int datasync);
->> -static inline int generic_write_sync(struct file *file, loff_t pos, loff_t count)
->> -{
->> -     if (!(file->f_flags & O_DSYNC) && !IS_SYNC(file->f_mapping->host))
->> -             return 0;
->> -     return vfs_fsync_range(file, pos, pos + count - 1,
->> -                            (file->f_flags & __O_SYNC) ? 0 : 1);
->> -}
->> +extern int generic_write_sync(struct kiocb *iocb, loff_t count);
->> extern void emergency_sync(void);
->> extern void emergency_remount(void);
->> #ifdef CONFIG_BLOCK
->> diff --git a/mm/filemap.c b/mm/filemap.c
->> index 09d3af3..6107058 100644
->> --- a/mm/filemap.c
->> +++ b/mm/filemap.c
->> @@ -2664,6 +2664,24 @@ out:
->> }
->> EXPORT_SYMBOL(__generic_file_write_iter);
->>
->> +int generic_write_sync(struct kiocb *iocb, loff_t count)
->> +{
->> +     struct file *file = iocb->ki_filp;
->> +
->> +     if (count > 0 &&
->> +         ((file->f_flags & O_DSYNC) || IS_SYNC(file->f_mapping->host))) {
->> +             bool fdatasync = !(file->f_flags & __O_SYNC);
->> +             ssize_t ret = 0;
->
-> That "= 0" is pointless.  "ret" is overwritten unconditionally on the following line...
+On Mon, Nov 03, 2014 at 05:10:46PM +0100, Jan Kara wrote:
+>   Hello,
+>=20
+> On Tue 21-10-14 23:58:10, =E5=88=98=E5=B3=A5(=E6=96=87=E5=8D=BF) wrot=
+e:
+> > I deeply sorry for this because of my delay work.  I don=E2=80=99t =
+have any objection
+> > for Jan=E2=80=99s suggestions.  Until now there are still some work=
+s that push me
+> > tough, and I can see that I don=E2=80=99t have time to finish it at=
+ this merge
+> > window.  It=E2=80=99s a shame for me!
+> >=20
+> > Jan, I really really appreciate if you are willing to push this pat=
+ch set
+> > to completion.  Thanks!!!
+>   OK, I have updated the patches according to the review I and Ted di=
+d. It
+> survives basic fsstress run. How were you testing your patches? I sho=
+uld
+> probably also gather some statistics etc...
 
-I have fixed this change; it will be in the next patch series / pull
-request. The branch for the pull is at:
-https://bitbucket.org/adfin/linux-fs.git  read_call_6
+Thanks!!
 
->
-> Other than that the NTFS bits are:
->
-> Acked-by: Anton Altaparmakov <anton@tuxera.com>
->
-> Best regards,
->
->         Anton
->
->> +
->> +             ret = vfs_fsync_range(file, iocb->ki_pos - count,
->> +                             iocb->ki_pos - 1, fdatasync);
->> +             if (ret < 0)
->> +                     return ret;
->> +     }
->> +     return count;
->> +}
->> +EXPORT_SYMBOL(generic_write_sync);
->> +
->> /**
->>  * generic_file_write_iter - write data to a file
->>  * @iocb:     IO state structure
->> @@ -2675,22 +2693,14 @@ EXPORT_SYMBOL(__generic_file_write_iter);
->>  */
->> ssize_t generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
->> {
->> -     struct file *file = iocb->ki_filp;
->> -     struct inode *inode = file->f_mapping->host;
->> +     struct inode *inode = iocb->ki_filp->f_mapping->host;
->>       ssize_t ret;
->>
->>       mutex_lock(&inode->i_mutex);
->>       ret = __generic_file_write_iter(iocb, from);
->>       mutex_unlock(&inode->i_mutex);
->>
->> -     if (ret > 0) {
->> -             ssize_t err;
->> -
->> -             err = generic_write_sync(file, iocb->ki_pos - ret, ret);
->> -             if (err < 0)
->> -                     ret = err;
->> -     }
->> -     return ret;
->> +     return generic_write_sync(iocb, ret);
->> }
->> EXPORT_SYMBOL(generic_file_write_iter);
->
-> --
-> Anton Altaparmakov <aia21 at cam.ac.uk> (replace at with @)
-> University of Cambridge Information Services, Roger Needham Building
-> 7 JJ Thomson Avenue, Cambridge, CB3 0RB, UK
->
+Here are my test cases for performance.
+
+case 1:
+  [global]
+  ioengine=3Dpsync
+  bs=3D4k
+  directory=3D/mnt/sda1
+  thread
+  group_reporting
+  fallocate=3D0
+  direct=3D0
+  filesize=3D10g
+  size=3D20g
+  runtime=3D300
+ =20
+  [io]
+  rw=3Drandwrite:32
+  rw_sequencer=3Dsequential
+  numjobs=3D25
+  nrfiles=3D10
+
+case 2:
+  [global]
+  ioengine=3Dpsync
+  bs=3D4k
+  directory=3D/mnt/sda1
+  group_reporting
+  fallocate=3D0
+  direct=3D0
+  filesize=3D10g
+  size=3D20g
+  runtime=3D300
+ =20
+  [io]
+  rw=3Dwrite:4k
+  numjobs=3D15
+  nrfiles=3D20000
+
+=46or getting a really fragmented extent status tree, I will disable
+extent status tree merge as I run these test cases.  The patch looks
+like below:
+
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 09fd576..0946f50 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -351,6 +351,7 @@ static void ext4_es_free_extent(struct inode *inode=
+, struct extent_status *es)
+ static int ext4_es_can_be_merged(struct extent_status *es1,
+ 				 struct extent_status *es2)
+ {
++#if 0
+ 	if (ext4_es_status(es1) !=3D ext4_es_status(es2))
+ 		return 0;
+=20
+@@ -376,6 +377,7 @@ static int ext4_es_can_be_merged(struct extent_stat=
+us *es1,
+ 	/* we need to check delayed extent is without unwritten status */
+ 	if (ext4_es_is_delayed(es1) && !ext4_es_is_unwritten(es1))
+ 		return 1;
++#endif
+=20
+ 	return 0;
+ }
 
 
+In the mean time, the following sysctl parameters are adjusted to keep
+dirty data in memory as much as possible.
 
--- 
-Milosz Tanski
-CTO
-16 East 34th Street, 15th floor
-New York, NY 10016
+sudo sysctl vm.dirty_ratio=3D80
+sudo sysctl vm.dirty_background_ratio=3D60
 
-p: 646-253-9055
-e: milosz@adfin.com
-
+Thanks,
+                                                - Zheng
 --
-To unsubscribe, send a message with 'unsubscribe linux-aio' in
-the body to majordomo@kvack.org.  For more info on Linux AIO,
-see: http://www.kvack.org/aio/
-Don't email: <a href=mailto:"aart@kvack.org">aart@kvack.org</a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
