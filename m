@@ -1,78 +1,66 @@
-From: alex chen <alex.chen@huawei.com>
-Subject: [PATCH] jbd2: finish inode data buffers immediately after submiting
- data buffers
-Date: Fri, 7 Nov 2014 15:06:15 +0800
-Message-ID: <545C6F67.9090600@huawei.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH 00/47] e2fsprogs November 2014 patchbomb
+Date: Fri, 07 Nov 2014 13:50:43 -0800
+Message-ID: <20141107215042.883.49888.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-	Joseph Qi <joseph.qi@huawei.com>,
-	<linux-fsdevel@vger.kernel.org>
-To: <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu, darrick.wong@oracle.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:35067 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751766AbaKGVut (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2014 16:50:49 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-During commit process, journal_finish_inode_data_buffers will flush plug
-list as follow:
-jbd2_journal_commit_transaction
-->journal_finish_inode_data_buffers
-->filemap_fdatawait_range
-->wait_on_page_bit
-->__wait_on_bit
-->sleep_on_page
-->io_schedule
-->blk_flush_plug_list
+Hi all,
 
-When ASYNC_COMMIT feature is set, the journal_finish_inode_data_buffers
-separates the commit blocks from the rest of the journal blocks. So we
-should finish inode data buffers immediately after submiting data
-buffers, this allow most of the journal blocks to be written in a single
-I/O operation and improve journal commit performance.
+This is a revised edition of part 6 of the 2014 e2fsprogs patchset.
+I've fixed a number of bugs discovered since the last patchbomb in
+September, added a couple more e2fsck peformance improvements, and
+revised all the new features for 1.43 per our discussions here.
 
-Signed-off-by: Alex Chen <alex.chen@huawei.com>
----
- fs/jbd2/commit.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+The first nine patches fix various bugs that either I found in the
+library or were reported by users.
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index b73e021..dc33d89 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -555,6 +555,16 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 	if (err)
- 		jbd2_journal_abort(journal, err);
+Patches 10-14 are enhancements to the library -- zero-out support; a
+couple of new API calls to reduce fragmentation when creating files
+and to check extent tree depths; and further modifications to the
+block allocator to reduce fragmentation.
 
-+	err = journal_finish_inode_data_buffers(journal, commit_transaction);
-+	if (err) {
-+		printk(KERN_WARNING
-+			"JBD2: Detected IO errors while flushing file data "
-+		       "on %s\n", journal->j_devname);
-+		if (journal->j_flags & JBD2_ABORT_ON_SYNCDATA_ERR)
-+			jbd2_journal_abort(journal, err);
-+		err = 0;
-+	}
-+
- 	blk_start_plug(&plug);
- 	jbd2_journal_write_revoke_records(journal, commit_transaction,
- 					  &log_bufs, WRITE_SYNC);
-@@ -752,16 +762,6 @@ start_journal_io:
- 		}
- 	}
+Patches 15-30 fix various bugs in the utility programs, some of which
+were reported by users, some of which were found through more fuzzing.
 
--	err = journal_finish_inode_data_buffers(journal, commit_transaction);
--	if (err) {
--		printk(KERN_WARNING
--			"JBD2: Detected IO errors while flushing file data "
--		       "on %s\n", journal->j_devname);
--		if (journal->j_flags & JBD2_ABORT_ON_SYNCDATA_ERR)
--			jbd2_journal_abort(journal, err);
--		err = 0;
--	}
--
- 	/*
- 	 * Get current oldest transaction in the log before we issue flush
- 	 * to the filesystem device. After the flush we can be sure that
--- 
-1.8.4.3
+Patches 31-32 are the same e2fsck metadata readahead patches,
+unchanged from last time.
+
+Patches 33-34 rebuild extent trees.  This can be used to convert
+block mapped files to extent files (-E bmap2extent), and it can also
+detect sparse extent trees that could be reduced in size by either a
+full ETB block or a full level.
+
+Patches 35-36 implement 32 to 64bit conversion in resize2fs; a few
+bugs have been fixed since last time.
+
+Patches 37-43 are new API calls in the library, primarily to support
+the new fallocate feature in patch 41.  This isn't really new; these
+patches have been out for review for quite some time.  There are two
+new patches to add rudimentary tests for fallocate and punch.
+
+Patches 44-47 implement fuse2fs, a FUSE server based on libext2fs.
+Primarily I've been using it to shake out bugs in the library via
+xfstests and the metadata checksumming test program.  It can also be
+used to mount ext4 on any OS supporting FUSE, and it can also mount
+64k-block filesystems on x86, though I'd be wary of using rw mode.
+fuse2fs depends on these new APIs: xattr editing, uninit extent
+handling, and the new fallocate call.
+
+I've tested these e2fsprogs changes against the -next branch as of
+11/05.  The patches have been tested against the 'make check' suite
+and some amount of e2fuzz testing on x86_64, i686, ppc64, and aarch64.
+
+Comments and questions are, as always, welcome.
+
+--D
