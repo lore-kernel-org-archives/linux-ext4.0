@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 05/47] libext2fs: set BLOCK_UNINIT for non-last blockgroups
- if all blocks are free
-Date: Fri, 07 Nov 2014 13:51:14 -0800
-Message-ID: <20141107215114.883.46921.stgit@birch.djwong.org>
+Subject: [PATCH 06/47] libext2fs: don't allow alloc_stats on bad inode/block
+ numbers
+Date: Fri, 07 Nov 2014 13:51:21 -0800
+Message-ID: <20141107215121.883.24372.stgit@birch.djwong.org>
 References: <20141107215042.883.49888.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,42 +10,61 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:35267 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752612AbaKGVvS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2014 16:51:18 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:45061 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752612AbaKGVvb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2014 16:51:31 -0500
 In-Reply-To: <20141107215042.883.49888.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Set BLOCK_UNINIT in any group whose blocks are all unused, so long as
-it isn't the last group.  This helps us speed up future e2fsck runs
-and mounts because we don't need to read or checksum block bitmaps for
-these groups.
+Don't allow callers to feed bad block/inode numbers to
+ext2fs_*_alloc_stats2, because evil callers (<cough>resize2fs<cough>)
+can corrupt library state this way, leading to a crash.
 
-v2: Take care of this in the library, since e2fsck always updates these
-summary counts.
+(There will be a subsequent patch to resize2fs to fix its bad
+behavior.)
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/csum.c |    5 +++++
- 1 file changed, 5 insertions(+)
+ lib/ext2fs/alloc_stats.c |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
 
-diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-index 12f6fe9..6dcefb9 100644
---- a/lib/ext2fs/csum.c
-+++ b/lib/ext2fs/csum.c
-@@ -854,6 +854,11 @@ errcode_t ext2fs_set_gdt_csum(ext2_filsys fs)
- 		__u32 old_unused = ext2fs_bg_itable_unused(fs, i);
- 		__u32 old_flags = ext2fs_bg_flags(fs, i);
- 		__u32 old_free_inodes_count = ext2fs_bg_free_inodes_count(fs, i);
-+		__u32 old_free_blocks_count = ext2fs_bg_free_blocks_count(fs, i);
-+
-+		if (old_free_blocks_count == sb->s_blocks_per_group &&
-+		    i != fs->group_desc_count - 1)
-+			ext2fs_bg_flags_set(fs, i, EXT2_BG_BLOCK_UNINIT);
+diff --git a/lib/ext2fs/alloc_stats.c b/lib/ext2fs/alloc_stats.c
+index 3d3697c..aca5004 100644
+--- a/lib/ext2fs/alloc_stats.c
++++ b/lib/ext2fs/alloc_stats.c
+@@ -20,13 +20,13 @@ void ext2fs_inode_alloc_stats2(ext2_filsys fs, ext2_ino_t ino,
+ {
+ 	int	group = ext2fs_group_of_ino(fs, ino);
  
- 		if (old_free_inodes_count == sb->s_inodes_per_group) {
- 			ext2fs_bg_flags_set(fs, i, EXT2_BG_INODE_UNINIT);
+-#ifndef OMIT_COM_ERR
+ 	if (ino > fs->super->s_inodes_count) {
++#ifndef OMIT_COM_ERR
+ 		com_err("ext2fs_inode_alloc_stats2", 0,
+ 			"Illegal inode number: %lu", (unsigned long) ino);
++#endif
+ 		return;
+ 	}
+-#endif
+ 	if (inuse > 0)
+ 		ext2fs_mark_inode_bitmap2(fs->inode_map, ino);
+ 	else
+@@ -62,13 +62,13 @@ void ext2fs_block_alloc_stats2(ext2_filsys fs, blk64_t blk, int inuse)
+ {
+ 	int	group = ext2fs_group_of_blk2(fs, blk);
+ 
+-#ifndef OMIT_COM_ERR
+ 	if (blk >= ext2fs_blocks_count(fs->super)) {
++#ifndef OMIT_COM_ERR
+ 		com_err("ext2fs_block_alloc_stats", 0,
+ 			"Illegal block number: %lu", (unsigned long) blk);
++#endif
+ 		return;
+ 	}
+-#endif
+ 	if (inuse > 0)
+ 		ext2fs_mark_block_bitmap2(fs->block_map, blk);
+ 	else
 
