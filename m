@@ -1,39 +1,98 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH 0/12 v4] Moving i_dquot out of struct inode
-Date: Sat, 8 Nov 2014 14:21:36 +0100
-Message-ID: <20141108132136.GA22574@lst.de>
-References: <1415099993-18034-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net,
-	tytso@mit.edu, Jeff Mahoney <jeffm@suse.de>,
-	Mark Fasheh <mfasheh@suse.com>, reiserfs-devel@vger.kernel.org,
-	xfs@oss.sgi.com, cluster-devel@redhat.com,
-	Joel Becker <jlbec@evilplan.org>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, hch@lst.de,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	ocfs2-devel@oss.oracle.com, viro@zeniv.linux.org.uk
-To: Jan Kara <jack@suse.cz>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <1415099993-18034-1-git-send-email-jack@suse.cz>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+From: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Subject: [v6 0/4] ext4: add project quota support
+Date: Sun,  9 Nov 2014 01:43:35 +0800
+Message-ID: <1415468619-31851-1-git-send-email-lixi@ddn.com>
+To: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
+	jack-AlSwsSmVLrQ@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+	dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-Looks good,
+The following patches propose an implementation of project quota
+support for ext4. A project is an aggregate of unrelated inodes
+which might scatter in different directories. Inodes that belong
+to the same project possess an identical identification i.e.
+'project ID', just like every inode has its user/group
+identification. The following patches add project quota as
+supplement to the former uer/group quota types.
 
-Acked-by: Christoph Hellwig <hch@lst.de>
+The semantics of ext4 project quota is consistent with XFS. Each
+directory can have EXT4_INODE_PROJINHERIT flag set. When the
+EXT4_INODE_PROJINHERIT flag of a parent directory is not set, a
+newly created inode under that directory will have a default project
+ID (i.e. 0). And its EXT4_INODE_PROJINHERIT flag is not set either.
+When this flag is set on a directory, following rules will be kept:
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+1) The newly created inode under that directory will inherit both
+the EXT4_INODE_PROJINHERIT flag and the project ID from its parent
+directory.
+
+2) Hard-linking a inode with different project ID into that directory
+will fail with errno EXDEV.
+
+3) Renaming a inode with different project ID into that directory
+will fail with errno EXDEV. However, 'mv' command will detect this
+failure and copy the renamed inode to a new inode in the directory.
+Thus, this new inode will inherit both the project ID and
+EXT4_INODE_PROJINHERIT flag.
+
+4) If the project quota of that ID is being enforced, statfs() on
+that directory will take the quotas as another upper limits along
+with the capacity of the file system, i.e. the total block/inode
+number will be the minimum of the quota limits and file system
+capacity.
+
+Changelog:
+* v6 <- v5:
+ - Add project ID check for cross rename;
+ - Remove patch of EXT4_IOC_GETPROJECT/EXT4_IOC_SETPROJECT ioctl
+* v5 <- v4:
+ - Check project feature when set/get project ID;
+ - Do not check project feature for project quota;
+ - Add support of FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR.
+* v4 <- v3:
+ - Do not check project feature when set/get project ID;
+ - Use EXT4_MAXQUOTAS instead of MAXQUOTAS in ext4 patches;
+ - Remove unnecessary change of fs/quota/dquot.c;
+ - Remove CONFIG_QUOTA_PROJECT.
+* v3 <- v2:
+ - Add EXT4_INODE_PROJINHERIT semantics.
+* v2 <- v1:
+ - Add ioctl interface for setting/getting project;
+ - Add EXT4_FEATURE_RO_COMPAT_PROJECT;
+ - Add get_projid() method in struct dquot_operations;
+ - Add error check of ext4_inode_projid_set/get().
+
+v5: http://www.spinics.net/lists/linux-api/msg04840.html
+v4: http://lwn.net/Articles/612972/
+v3: http://www.spinics.net/lists/linux-ext4/msg45184.html
+v2: http://www.spinics.net/lists/linux-ext4/msg44695.html
+v1: http://article.gmane.org/gmane.comp.file-systems.ext4/45153
+
+Any comments or feedbacks are appreciated.
+
+Regards,
+                                         - Li Xi
+
+Li Xi (4):
+  vfs: adds general codes to enforces project quota limits
+  ext4: adds project ID support
+  ext4: adds project quota support
+  ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR interface support
+
+ fs/ext4/ext4.h             |   31 ++++-
+ fs/ext4/ialloc.c           |    6 +
+ fs/ext4/inode.c            |   29 ++++
+ fs/ext4/ioctl.c            |  330 +++++++++++++++++++++++++++++++-------------
+ fs/ext4/namei.c            |   17 +++
+ fs/ext4/super.c            |   96 +++++++++++--
+ fs/quota/dquot.c           |   35 ++++-
+ fs/quota/quota.c           |    8 +-
+ fs/quota/quotaio_v2.h      |    6 +-
+ fs/xfs/xfs_fs.h            |   17 +--
+ include/linux/quota.h      |    2 +
+ include/uapi/linux/fs.h    |   21 +++
+ include/uapi/linux/quota.h |    6 +-
+ 13 files changed, 463 insertions(+), 141 deletions(-)
