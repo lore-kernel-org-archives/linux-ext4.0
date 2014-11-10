@@ -1,46 +1,36 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 1/2] xfstests: update 'new' script v3
-Date: Mon, 10 Nov 2014 12:58:49 +1100
-Message-ID: <20141110015849.GP28565@dastard>
-References: <1414062518-30942-1-git-send-email-dmonakhov@openvz.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/12 v4] Moving i_dquot out of struct inode
+Date: Mon, 10 Nov 2014 10:08:16 +0100
+Message-ID: <20141110090816.GC15948@quack.suse.cz>
+References: <1415099993-18034-1-git-send-email-jack@suse.cz>
+ <20141108132136.GA22574@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:63403 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751746AbaKJB6w (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 9 Nov 2014 20:58:52 -0500
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
+	xfs@oss.sgi.com, cluster-devel@redhat.com,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
+	reiserfs-devel@vger.kernel.org, Jeff Mahoney <jeffm@suse.de>,
+	Dave Kleikamp <shaggy@kernel.org>,
+	jfs-discussion@lists.sourceforge.net, tytso@mit.edu,
+	viro@zeniv.linux.org.uk
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1414062518-30942-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20141108132136.GA22574@lst.de>
+Sender: reiserfs-devel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Dimitry,
-
-On Thu, Oct 23, 2014 at 03:08:37PM +0400, Dmitry Monakhov wrote:
-> From: root <root@ts105.qa.sw.ru>
-
-I think there is a problem with your git repo config....
-
-> - Update script to support new test cheme tests/$fs_type/$TEST_IDX
-> - Try to use first unused ID
+On Sat 08-11-14 14:21:36, Christoph Hellwig wrote:
+> Looks good,
 > 
-> changes from v2
->   - gawk->$AWK_PROG
-> 
-> Reviewed-by: Eryu Guan <eguan@redhat.com>
+> Acked-by: Christoph Hellwig <hch@lst.de>
+  Thanks for review. I'll add the series to my tree and push it in the next
+merge window.
 
-And it's also missing your sign-off.
-
-The previous versions were correctly attributed, I'll pull them from
-those patches, but please be a little more careful about this next
-time...
-
-Cheers,
-
-Dave.
+								Honza
 -- 
-Dave Chinner
-david@fromorbit.com
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
