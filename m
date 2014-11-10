@@ -1,330 +1,380 @@
-From: Milosz Tanski <milosz@adfin.com>
-Subject: [PATCH v6 6/7] fs: pass iocb to generic_write_sync
-Date: Mon, 10 Nov 2014 11:40:29 -0500
-Message-ID: <14017825dfcd83378f28154d44897ef0352de447.1415636409.git.milosz@adfin.com>
-References: <cover.1415636409.git.milosz@adfin.com>
-Cc: Christoph Hellwig <hch@lst.de>,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org,
-	linux-aio@kvack.org,
-	Mel Gorman <mgorman@suse.de>,
-	Volker Lendecke <Volker.Lendecke@sernet.de>,
-	Tejun Heo <tj@kernel.org>,
-	Jeff Moyer <jmoyer@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	linux-api@vger.kernel.org,
-	Michael Kerrisk <mtk.manpages@gmail.com>,
-	linux-arch@vger.kernel.org,
-	linux-btrfs@vger.kernel.org,
-	linux-cifs@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-xfs@vger.kernel.org,
-	cluster-devel@redhat.com
-To: linux-kernel@vger.kernel.org
-Return-path: <owner-linux-aio@kvack.org>
-In-Reply-To: <cover.1415636409.git.milosz@adfin.com>
-In-Reply-To: <cover.1415636409.git.milosz@adfin.com>
-References: <cover.1415636409.git.milosz@adfin.com>
-Sender: owner-linux-aio@kvack.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [v6 2/4] ext4: adds project ID support
+Date: Mon, 10 Nov 2014 15:21:33 -0700
+Message-ID: <C174C64E-66E8-405D-903A-C7C162E23AE4@dilger.ca>
+References: <1415468619-31851-1-git-send-email-lixi@ddn.com> <1415468619-31851-3-git-send-email-lixi@ddn.com>
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_FBCB4B69-B3BD-487E-9660-AE69D2F5AE1C"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, linux-api@vger.kernel.org,
+	tytso@mit.edu, jack@suse.cz, viro@zeniv.linux.org.uk,
+	hch@infradead.org, dmonakhov@openvz.org
+To: Li Xi <pkuelelixi@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1415468619-31851-3-git-send-email-lixi@ddn.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Christoph Hellwig <hch@lst.de>
 
-Clean up the generic_write_sync by just passing an iocb and a bytes
-written / negative errno argument.  In addition to simplifying the
-callers this also prepares for passing a per-operation O_DSYNC
-flag.  Two callers didn't quite fit that scheme:
+--Apple-Mail=_FBCB4B69-B3BD-487E-9660-AE69D2F5AE1C
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
- - dio_complete didn't both to update ki_pos as we don't need it
-   on a iocb that is about to be freed, so we had to add it. Additionally
-   it also synced out written data in the error case, which has been
-   changed to operate like the other callers.
- - gfs2 also used generic_write_sync to implement a crude version
-   of fallocate.  It has been switched to use an open coded variant
-   instead.
+On Nov 8, 2014, at 10:43 AM, Li Xi <pkuelelixi@gmail.com> wrote:
+> This patch adds a new internal field of ext4 inode to save project
+> identifier. Also a new flag EXT4_INODE_PROJINHERIT is added for
+> inheriting project ID from parent directory.
+>=20
+> Signed-off-by: Li Xi <lixi@ddn.com>
+>=20
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index c55a1fa..d30dfa6 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -386,16 +386,18 @@ struct flex_groups {
+> #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for =
+large EA */
+> #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated =
+beyond EOF */
+> #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline =
+data. */
+> +#define EXT4_PROJINHERIT_FL		0x20000000 /* Create with =
+parents projid */
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-[Small change in generic_write_sync() suggested by Anton Altaparmakov]
-Signed-off-by: Milosz Tanski <milosz@adfin.com>
-Acked-by: Steven Whitehouse <swhiteho@redhat.com>
-Acked-by: Anton Altaparmakov <anton@tuxera.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/block_dev.c     |  8 +-------
- fs/btrfs/file.c    |  7 ++-----
- fs/cifs/file.c     |  8 +-------
- fs/direct-io.c     |  8 ++------
- fs/ext4/file.c     |  8 +-------
- fs/gfs2/file.c     |  9 +++++++--
- fs/ntfs/file.c     |  8 ++------
- fs/udf/file.c      | 11 ++---------
- fs/xfs/xfs_file.c  |  8 +-------
- include/linux/fs.h |  8 +-------
- mm/filemap.c       | 31 +++++++++++++++++++++----------
- 11 files changed, 41 insertions(+), 73 deletions(-)
+This should probably be defined in uapi/linux/fs.h:
 
-diff --git a/fs/block_dev.c b/fs/block_dev.c
-index cc9d411..c529b1c 100644
---- a/fs/block_dev.c
-+++ b/fs/block_dev.c
-@@ -1568,18 +1568,12 @@ static long block_ioctl(struct file *file, unsigned cmd, unsigned long arg)
-  */
- ssize_t blkdev_write_iter(struct kiocb *iocb, struct iov_iter *from)
- {
--	struct file *file = iocb->ki_filp;
- 	struct blk_plug plug;
- 	ssize_t ret;
- 
- 	blk_start_plug(&plug);
- 	ret = __generic_file_write_iter(iocb, from);
--	if (ret > 0) {
--		ssize_t err;
--		err = generic_write_sync(file, iocb->ki_pos - ret, ret);
--		if (err < 0)
--			ret = err;
--	}
-+	ret = generic_write_sync(iocb, ret);
- 	blk_finish_plug(&plug);
- 	return ret;
- }
-diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
-index a18ceab..4f4a6f7 100644
---- a/fs/btrfs/file.c
-+++ b/fs/btrfs/file.c
-@@ -1820,11 +1820,8 @@ static ssize_t btrfs_file_write_iter(struct kiocb *iocb,
- 	 */
- 	BTRFS_I(inode)->last_trans = root->fs_info->generation + 1;
- 	BTRFS_I(inode)->last_sub_trans = root->log_transid;
--	if (num_written > 0) {
--		err = generic_write_sync(file, pos, num_written);
--		if (err < 0)
--			num_written = err;
--	}
-+
-+	num_written = generic_write_sync(iocb, num_written);
- 
- 	if (sync)
- 		atomic_dec(&BTRFS_I(inode)->sync_writers);
-diff --git a/fs/cifs/file.c b/fs/cifs/file.c
-index c485afa..32359de 100644
---- a/fs/cifs/file.c
-+++ b/fs/cifs/file.c
-@@ -2706,13 +2706,7 @@ cifs_writev(struct kiocb *iocb, struct iov_iter *from)
- 		rc = __generic_file_write_iter(iocb, from);
- 		mutex_unlock(&inode->i_mutex);
- 
--		if (rc > 0) {
--			ssize_t err;
--
--			err = generic_write_sync(file, iocb->ki_pos - rc, rc);
--			if (err < 0)
--				rc = err;
--		}
-+		rc = generic_write_sync(iocb, rc);
- 	} else {
- 		mutex_unlock(&inode->i_mutex);
- 	}
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index e181b6b..b72ac83 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -257,12 +257,8 @@ static ssize_t dio_complete(struct dio *dio, loff_t offset, ssize_t ret,
- 	inode_dio_done(dio->inode);
- 	if (is_async) {
- 		if (dio->rw & WRITE) {
--			int err;
--
--			err = generic_write_sync(dio->iocb->ki_filp, offset,
--						 transferred);
--			if (err < 0 && ret > 0)
--				ret = err;
-+			dio->iocb->ki_pos = offset + transferred;
-+			ret = generic_write_sync(dio->iocb, ret);
- 		}
- 
- 		aio_complete(dio->iocb, ret, 0);
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index aca7b24..79b000c 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -175,13 +175,7 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	ret = __generic_file_write_iter(iocb, from);
- 	mutex_unlock(&inode->i_mutex);
- 
--	if (ret > 0) {
--		ssize_t err;
--
--		err = generic_write_sync(file, iocb->ki_pos - ret, ret);
--		if (err < 0)
--			ret = err;
--	}
-+	ret = generic_write_sync(iocb, ret);
- 	if (o_direct)
- 		blk_finish_plug(&plug);
- 
-diff --git a/fs/gfs2/file.c b/fs/gfs2/file.c
-index 80dd44d..3fafeca 100644
---- a/fs/gfs2/file.c
-+++ b/fs/gfs2/file.c
-@@ -895,8 +895,13 @@ retry:
- 		gfs2_quota_unlock(ip);
- 	}
- 
--	if (error == 0)
--		error = generic_write_sync(file, pos, count);
-+	if (error)
-+		goto out_unlock;
-+
-+	if ((file->f_flags & O_DSYNC) || IS_SYNC(file->f_mapping->host)) {
-+		error = vfs_fsync_range(file, pos, pos + count - 1,
-+			       (file->f_flags & __O_SYNC) ? 0 : 1);
-+	}
- 	goto out_unlock;
- 
- out_trans_fail:
-diff --git a/fs/ntfs/file.c b/fs/ntfs/file.c
-index 643faa4..4f3d664 100644
---- a/fs/ntfs/file.c
-+++ b/fs/ntfs/file.c
-@@ -2127,12 +2127,8 @@ static ssize_t ntfs_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
- 	mutex_lock(&inode->i_mutex);
- 	ret = ntfs_file_aio_write_nolock(iocb, iov, nr_segs, &iocb->ki_pos);
- 	mutex_unlock(&inode->i_mutex);
--	if (ret > 0) {
--		int err = generic_write_sync(file, iocb->ki_pos - ret, ret);
--		if (err < 0)
--			ret = err;
--	}
--	return ret;
-+
-+	return generic_write_sync(iocb, ret);
- }
- 
- /**
-diff --git a/fs/udf/file.c b/fs/udf/file.c
-index bb15771..1cdabd0 100644
---- a/fs/udf/file.c
-+++ b/fs/udf/file.c
-@@ -155,16 +155,9 @@ static ssize_t udf_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	retval = __generic_file_write_iter(iocb, from);
- 	mutex_unlock(&inode->i_mutex);
- 
--	if (retval > 0) {
--		ssize_t err;
--
-+	if (retval > 0)
- 		mark_inode_dirty(inode);
--		err = generic_write_sync(file, iocb->ki_pos - retval, retval);
--		if (err < 0)
--			retval = err;
--	}
--
--	return retval;
-+	return generic_write_sync(iocb, retval);
- }
- 
- long udf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 0655915..a8cab66 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -792,14 +792,8 @@ xfs_file_write_iter(
- 		ret = xfs_file_buffered_aio_write(iocb, from);
- 
- 	if (ret > 0) {
--		ssize_t err;
--
- 		XFS_STATS_ADD(xs_write_bytes, ret);
--
--		/* Handle various SYNC-type writes */
--		err = generic_write_sync(file, iocb->ki_pos - ret, ret);
--		if (err < 0)
--			ret = err;
-+		ret = generic_write_sync(iocb, ret);
- 	}
- 	return ret;
- }
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index eaebd99..7d0e116 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2242,13 +2242,7 @@ extern int filemap_fdatawrite_range(struct address_space *mapping,
- extern int vfs_fsync_range(struct file *file, loff_t start, loff_t end,
- 			   int datasync);
- extern int vfs_fsync(struct file *file, int datasync);
--static inline int generic_write_sync(struct file *file, loff_t pos, loff_t count)
--{
--	if (!(file->f_flags & O_DSYNC) && !IS_SYNC(file->f_mapping->host))
--		return 0;
--	return vfs_fsync_range(file, pos, pos + count - 1,
--			       (file->f_flags & __O_SYNC) ? 0 : 1);
--}
-+extern int generic_write_sync(struct kiocb *iocb, loff_t count);
- extern void emergency_sync(void);
- extern void emergency_remount(void);
- #ifdef CONFIG_BLOCK
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 09d3af3..535967b 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2664,6 +2664,25 @@ out:
- }
- EXPORT_SYMBOL(__generic_file_write_iter);
- 
-+int generic_write_sync(struct kiocb *iocb, loff_t count)
-+{
-+	struct file *file = iocb->ki_filp;
-+
-+	if (count > 0 &&
-+	    ((file->f_flags & O_DSYNC) || IS_SYNC(file->f_mapping->host))) {
-+		bool fdatasync = !(file->f_flags & __O_SYNC);
-+		ssize_t ret;
-+
-+		ret = vfs_fsync_range(file, iocb->ki_pos - count,
-+				      iocb->ki_pos - 1, fdatasync);
-+		if (ret < 0)
-+			return ret;
-+	}
-+
-+	return count;
-+}
-+EXPORT_SYMBOL(generic_write_sync);
-+
- /**
-  * generic_file_write_iter - write data to a file
-  * @iocb:	IO state structure
-@@ -2675,22 +2694,14 @@ EXPORT_SYMBOL(__generic_file_write_iter);
-  */
- ssize_t generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- {
--	struct file *file = iocb->ki_filp;
--	struct inode *inode = file->f_mapping->host;
-+	struct inode *inode = iocb->ki_filp->f_mapping->host;
- 	ssize_t ret;
- 
- 	mutex_lock(&inode->i_mutex);
- 	ret = __generic_file_write_iter(iocb, from);
- 	mutex_unlock(&inode->i_mutex);
- 
--	if (ret > 0) {
--		ssize_t err;
--
--		err = generic_write_sync(file, iocb->ki_pos - ret, ret);
--		if (err < 0)
--			ret = err;
--	}
--	return ret;
-+	return generic_write_sync(iocb, ret);
- }
- EXPORT_SYMBOL(generic_file_write_iter);
- 
--- 
-1.9.1
+ #define FS_DIRECTIO_FL			0x00100000 /* Use direct i/o */
+ #define FS_NOCOW_FL			0x00800000 /* Do not cow file */
+*/
++#define FS_PROJINHERIT_FL		0x20000000 /* Create with parent =
+projid */
+ #define FS_RESERVED_FL			0x80000000 /* reserved for ext2 =
+lib=20
 
---
-To unsubscribe, send a message with 'unsubscribe linux-aio' in
-the body to majordomo@kvack.org.  For more info on Linux AIO,
-see: http://www.kvack.org/aio/
-Don't email: <a href=mailto:"aart@kvack.org">aart@kvack.org</a>
+and then here in fs/ext4/ext4.h header define it like:
+
+ #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated =
+beyond EOF */
+ #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline =
+data. */
++#define EXT4_PROJINHERIT_FL	FS_PROJINHERIT_FL  /* Create with parent =
+projid */
+
+so it is more clear that it is coming from the VFS definition.  That =
+also
+allows accessing the PROJINHERIT flag with the normal chattr tool.
+
+It wouldn't be a bad idea to add the other values that migrated from
+ext4.h into uapi/linux/fs.h back into ext4.h in a similar manner (e.g.
+FS_DIRECTIO_FL, FS_NOCOW_FL, in a separate patch) so the gaps in these =
+values are explained.
+
+> #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 =
+lib */
+>=20
+> -#define EXT4_FL_USER_VISIBLE		0x004BDFFF /* User visible flags =
+*/
+> -#define EXT4_FL_USER_MODIFIABLE		0x004380FF /* User =
+modifiable flags */
+> +#define EXT4_FL_USER_VISIBLE		0x204BDFFF /* User visible flags =
+*/
+> +#define EXT4_FL_USER_MODIFIABLE		0x204380FF /* User =
+modifiable flags */
+>=20
+> /* Flags that should be inherited by new inodes from their parent. */
+> #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | =
+EXT4_COMPR_FL |\
+> 			   EXT4_SYNC_FL | EXT4_NODUMP_FL | =
+EXT4_NOATIME_FL |\
+> 			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
+> -			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
+> +			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL |\
+> +			   EXT4_PROJINHERIT_FL)
+>=20
+> /* Flags that are appropriate for regular files (all but dir-specific =
+ones). */
+> #define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
+> @@ -443,6 +445,7 @@ enum {
+> 	EXT4_INODE_EA_INODE	=3D 21,	/* Inode used for large EA */
+> 	EXT4_INODE_EOFBLOCKS	=3D 22,	/* Blocks allocated beyond EOF =
+*/
+> 	EXT4_INODE_INLINE_DATA	=3D 28,	/* Data in inode. */
+> +	EXT4_INODE_PROJINHERIT	=3D 29,	/* Create with parents projid */
+> 	EXT4_INODE_RESERVED	=3D 31,	/* reserved for ext4 lib */
+> };
+>=20
+> @@ -694,6 +697,7 @@ struct ext4_inode {
+> 	__le32  i_crtime;       /* File Creation time */
+> 	__le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | =
+epoch) */
+> 	__le32  i_version_hi;	/* high 32 bits for 64-bit version */
+> +	__le32  i_projid;	/* Project ID */
+> };
+>=20
+> struct move_extent {
+> @@ -943,6 +947,7 @@ struct ext4_inode_info {
+>=20
+> 	/* Precomputed uuid+inum+igen checksum for seeding inode =
+checksums */
+> 	__u32 i_csum_seed;
+> +	kprojid_t i_projid;
+> };
+>=20
+> /*
+> @@ -1526,6 +1531,7 @@ static inline void ext4_clear_state_flags(struct =
+ext4_inode_info *ei)
+>  * GDT_CSUM bits are mutually exclusive.
+>  */
+> #define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
+> +#define EXT4_FEATURE_RO_COMPAT_PROJECT		0x1000 /* =
+Project quota */
+>=20
+> #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
+> #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
+> @@ -1575,7 +1581,8 @@ static inline void ext4_clear_state_flags(struct =
+ext4_inode_info *ei)
+> 					 =
+EXT4_FEATURE_RO_COMPAT_HUGE_FILE |\
+> 					 EXT4_FEATURE_RO_COMPAT_BIGALLOC =
+|\
+> 					 =
+EXT4_FEATURE_RO_COMPAT_METADATA_CSUM|\
+> -					 EXT4_FEATURE_RO_COMPAT_QUOTA)
+> +					 EXT4_FEATURE_RO_COMPAT_QUOTA |\
+> +					 EXT4_FEATURE_RO_COMPAT_PROJECT)
+>=20
+> /*
+>  * Default values for user and/or group using reserved blocks
+> @@ -1583,6 +1590,11 @@ static inline void =
+ext4_clear_state_flags(struct ext4_inode_info *ei)
+> #define	EXT4_DEF_RESUID		0
+> #define	EXT4_DEF_RESGID		0
+>=20
+> +/*
+> + * Default project ID
+> + */
+> +#define	EXT4_DEF_PROJID		0
+> +
+> #define EXT4_DEF_INODE_READAHEAD_BLKS	32
+>=20
+> /*
+> @@ -2135,6 +2147,7 @@ extern int ext4_zero_partial_blocks(handle_t =
+*handle, struct inode *inode,
+> 			     loff_t lstart, loff_t lend);
+> extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct =
+vm_fault *vmf);
+> extern qsize_t *ext4_get_reserved_space(struct inode *inode);
+> +extern int ext4_get_projid(struct inode *inode, kprojid_t *projid);
+> extern void ext4_da_update_reserve_space(struct inode *inode,
+> 					int used, int quota_claim);
+>=20
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index ac644c3..fefb948 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -756,6 +756,12 @@ struct inode *__ext4_new_inode(handle_t *handle, =
+struct inode *dir,
+> 		inode->i_gid =3D dir->i_gid;
+> 	} else
+> 		inode_init_owner(inode, dir, mode);
+> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, =
+EXT4_FEATURE_RO_COMPAT_PROJECT) &&
+> +	    ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT)) {
+> +		ei->i_projid =3D EXT4_I(dir)->i_projid;
+> +	} else {
+> +		ei->i_projid =3D make_kprojid(&init_user_ns, =
+EXT4_DEF_PROJID);
+> +	}
+> 	dquot_initialize(inode);
+>=20
+> 	if (!goal)
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 3356ab5..1c440be 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3886,6 +3886,14 @@ static inline void ext4_iget_extra_inode(struct =
+inode *inode,
+> 		EXT4_I(inode)->i_inline_off =3D 0;
+> }
+>=20
+> +int ext4_get_projid(struct inode *inode, kprojid_t *projid)
+> +{
+> +	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb, =
+EXT4_FEATURE_RO_COMPAT_PROJECT))
+> +		return -EOPNOTSUPP;
+> +	*projid =3D EXT4_I(inode)->i_projid;
+> +	return 0;
+> +}
+> +
+> struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+> {
+> 	struct ext4_iloc iloc;
+> @@ -3897,6 +3905,7 @@ struct inode *ext4_iget(struct super_block *sb, =
+unsigned long ino)
+> 	int block;
+> 	uid_t i_uid;
+> 	gid_t i_gid;
+> +	projid_t i_projid;
+>=20
+> 	inode =3D iget_locked(sb, ino);
+> 	if (!inode)
+> @@ -3946,12 +3955,18 @@ struct inode *ext4_iget(struct super_block =
+*sb, unsigned long ino)
+> 	inode->i_mode =3D le16_to_cpu(raw_inode->i_mode);
+> 	i_uid =3D (uid_t)le16_to_cpu(raw_inode->i_uid_low);
+> 	i_gid =3D (gid_t)le16_to_cpu(raw_inode->i_gid_low);
+> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, =
+EXT4_FEATURE_RO_COMPAT_PROJECT))
+> +		i_projid =3D (projid_t)le32_to_cpu(raw_inode->i_projid);
+> +	else
+> +		i_projid =3D EXT4_DEF_PROJID;
+> +
+> 	if (!(test_opt(inode->i_sb, NO_UID32))) {
+> 		i_uid |=3D le16_to_cpu(raw_inode->i_uid_high) << 16;
+> 		i_gid |=3D le16_to_cpu(raw_inode->i_gid_high) << 16;
+> 	}
+> 	i_uid_write(inode, i_uid);
+> 	i_gid_write(inode, i_gid);
+> +	ei->i_projid =3D make_kprojid(&init_user_ns, i_projid);;
+> 	set_nlink(inode, le16_to_cpu(raw_inode->i_links_count));
+>=20
+> 	ext4_clear_state_flags(ei);	/* Only relevant on 32-bit archs =
+*/
+> @@ -4181,6 +4196,7 @@ static int ext4_do_update_inode(handle_t =
+*handle,
+> 	int need_datasync =3D 0, set_large_file =3D 0;
+> 	uid_t i_uid;
+> 	gid_t i_gid;
+> +	projid_t i_projid;
+>=20
+> 	spin_lock(&ei->i_raw_lock);
+>=20
+> @@ -4193,6 +4209,7 @@ static int ext4_do_update_inode(handle_t =
+*handle,
+> 	raw_inode->i_mode =3D cpu_to_le16(inode->i_mode);
+> 	i_uid =3D i_uid_read(inode);
+> 	i_gid =3D i_gid_read(inode);
+> +	i_projid =3D from_kprojid(&init_user_ns, ei->i_projid);
+> 	if (!(test_opt(inode->i_sb, NO_UID32))) {
+> 		raw_inode->i_uid_low =3D =
+cpu_to_le16(low_16_bits(i_uid));
+> 		raw_inode->i_gid_low =3D =
+cpu_to_le16(low_16_bits(i_gid));
+> @@ -4272,6 +4289,18 @@ static int ext4_do_update_inode(handle_t =
+*handle,
+> 		}
+> 	}
+>=20
+> +	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+> +			EXT4_FEATURE_RO_COMPAT_PROJECT) &&
+> +	       i_projid !=3D EXT4_DEF_PROJID);
+> +	if (i_projid !=3D EXT4_DEF_PROJID &&
+> +	    (EXT4_INODE_SIZE(inode->i_sb) <=3D EXT4_GOOD_OLD_INODE_SIZE =
+||
+> +	     (!EXT4_FITS_IN_INODE(raw_inode, ei, i_projid)))) {
+> +		spin_unlock(&ei->i_raw_lock);
+> +		err =3D -EFBIG;
+> +		goto out_brelse;
+> +	}
+> +	raw_inode->i_projid =3D cpu_to_le32(i_projid);
+> +
+> 	ext4_inode_csum_set(inode, raw_inode, ei);
+>=20
+> 	spin_unlock(&ei->i_raw_lock);
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 4262118..160a743 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -2939,6 +2939,11 @@ static int ext4_link(struct dentry *old_dentry,
+> 	if (inode->i_nlink >=3D EXT4_LINK_MAX)
+> 		return -EMLINK;
+>=20
+> +	if ((ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT)) &&
+> +	    (!projid_eq(EXT4_I(dir)->i_projid,
+> +			EXT4_I(old_dentry->d_inode)->i_projid)))
+> +		return -EXDEV;
+> +
+> 	dquot_initialize(dir);
+>=20
+> retry:
+> @@ -3218,6 +3223,11 @@ static int ext4_rename(struct inode *old_dir, =
+struct dentry *old_dentry,
+> 	int credits;
+> 	u8 old_file_type;
+>=20
+> +	if ((ext4_test_inode_flag(new_dir, EXT4_INODE_PROJINHERIT)) &&
+> +	    (!projid_eq(EXT4_I(new_dir)->i_projid,
+> +			EXT4_I(old_dentry->d_inode)->i_projid)))
+> +		return -EXDEV;
+> +
+> 	dquot_initialize(old.dir);
+> 	dquot_initialize(new.dir);
+>=20
+> @@ -3396,6 +3406,13 @@ static int ext4_cross_rename(struct inode =
+*old_dir, struct dentry *old_dentry,
+> 	u8 new_file_type;
+> 	int retval;
+>=20
+> +	if ((ext4_test_inode_flag(new_dir, EXT4_INODE_PROJINHERIT)) &&
+> +	    ((!projid_eq(EXT4_I(new_dir)->i_projid,
+> +			 EXT4_I(old_dentry->d_inode)->i_projid)) ||
+> +	     (!projid_eq(EXT4_I(old_dir)->i_projid,
+> +			 EXT4_I(new_dentry->d_inode)->i_projid))))
+> +		return -EXDEV;
+> +
+> 	dquot_initialize(old.dir);
+> 	dquot_initialize(new.dir);
+>=20
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 2c9e686..d8a348d 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1077,6 +1077,7 @@ static const struct dquot_operations =
+ext4_quota_operations =3D {
+> 	.write_info	=3D ext4_write_info,
+> 	.alloc_dquot	=3D dquot_alloc,
+> 	.destroy_dquot	=3D dquot_destroy,
+> +	.get_projid	=3D ext4_get_projid,
+> };
+>=20
+> static const struct quotactl_ops ext4_qctl_operations =3D {
+> --=20
+> 1.7.1
+>=20
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_FBCB4B69-B3BD-487E-9660-AE69D2F5AE1C
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBVGE6bXKl2rkXzB/gAQJ2Gg//UHUUVSUq+k3OaG0PjAz9Hn9+ROI7QclW
+jJD3Dn27DTlyx1mqK/4Y4+VLlfFPLGBqOzidTa9/XzmlmZK7d0NZkMghXwiNQ5V3
+4gs/XT8VbzCH1pAYA90vCA11frLbEFIpi0Mlv8+btoVgxGleYH+d+USTMRrMZY9X
+EWa/DzqbXVc6pGGMIWwjniia2N3cGyXoU0Q8PhlVyIq4+zqToG7J+ewe15f+pG9E
+g3HhN+TBj/6+8YB80RTford1pSGLRZqwxL9olherueCos6gCaFW4WnyozZE7HHia
+BEWRcFcG7WM4khd8tnIAMQluRP74hONcwzwePKP9PDWz0JIwUJy1Ru1wf3JALCDW
+aU8eL+2MqRS5UetxQsl5lFu8iphwFhqR3WVLBiVsymyhqNVyZLR40NxQxdep36j5
+o44ZHIcSi4WapgXZSj5IfdLbD2XlAsyaxiTC6rlMiiBgcLZjr6VE2BLfIx21lCFW
+vJ/r1uaSSUBQkuyhLt+WLEZzRurnuqJQ73AQFB2Zka08ck6ITYeDg4r3aAKq5Y0Q
+Lmn2L4sP56BkM9dxrmNYpXrbLPr8v1WbTCfoqkQRKBd8cIRDUrt9sqOCesexkRXY
+bzLrLz2BheGIhCH29U8fTmD2nXJ1EgS4TTvRwH7cQEgGBMe7gROt+TiPu59UiTiv
+T3rYr3rogcE=
+=7tHT
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_FBCB4B69-B3BD-487E-9660-AE69D2F5AE1C--
