@@ -1,40 +1,64 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 01/11] xfs: Remove useless test
-Date: Tue, 11 Nov 2014 22:04:15 +0100
-Message-ID: <1415739865-2438-2-git-send-email-jack@suse.cz>
-References: <1415739865-2438-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
-	Jan Kara <jack@suse.cz>
-To: linux-fsdevel@vger.kernel.org
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [v6 4/4] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR
+ interface support
+Date: Wed, 12 Nov 2014 08:58:23 +1100
+Message-ID: <20141111215823.GX23575@dastard>
+References: <1415468619-31851-1-git-send-email-lixi@ddn.com>
+ <1415468619-31851-5-git-send-email-lixi@ddn.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-api@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca,
+	jack@suse.cz, viro@zeniv.linux.org.uk, hch@infradead.org,
+	dmonakhov@openvz.org
+To: Li Xi <pkuelelixi@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:50777 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751598AbaKKVEp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Nov 2014 16:04:45 -0500
-In-Reply-To: <1415739865-2438-1-git-send-email-jack@suse.cz>
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:30128 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751736AbaKKV6n (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Nov 2014 16:58:43 -0500
+Content-Disposition: inline
+In-Reply-To: <1415468619-31851-5-git-send-email-lixi@ddn.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Q_XQUOTARM is never passed to xfs_fs_set_xstate() so remove the test.
+On Sun, Nov 09, 2014 at 01:43:39AM +0800, Li Xi wrote:
+> This patch adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR ioctl interface
+> support for ext4. The interface is kept consistent with
+> XFS_IOC_FSGETXATTR/XFS_IOC_FSGETXATTR.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/xfs/xfs_quotaops.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+I missed somethignthe first time around, and it's to do with
+fsx_flags field and what ext4 is putting in it....
 
-diff --git a/fs/xfs/xfs_quotaops.c b/fs/xfs/xfs_quotaops.c
-index b238027df987..9ad73240ed54 100644
---- a/fs/xfs/xfs_quotaops.c
-+++ b/fs/xfs/xfs_quotaops.c
-@@ -77,7 +77,7 @@ xfs_fs_set_xstate(
- 
- 	if (sb->s_flags & MS_RDONLY)
- 		return -EROFS;
--	if (op != Q_XQUOTARM && !XFS_IS_QUOTA_RUNNING(mp))
-+	if (!XFS_IS_QUOTA_RUNNING(mp))
- 		return -ENOSYS;
- 
- 	if (uflags & FS_QUOTA_UDQ_ACCT)
+> @@ -617,7 +713,45 @@ resizefs_out:
+>  	}
+>  	case EXT4_IOC_PRECACHE_EXTENTS:
+>  		return ext4_ext_precache(inode);
+> +	case EXT4_IOC_FSGETXATTR:
+> +	{
+> +		struct fsxattr fa;
+> +
+> +		memset(&fa, 0, sizeof(struct fsxattr));
+> +
+> +		ext4_get_inode_flags(ei);
+> +		fa.fsx_xflags = ei->i_flags & EXT4_FL_USER_VISIBLE;
+
+You're putting ext4 inode flags in this field. That's not right -
+the flags that are defined for this field are the XFS_XFLAGS_*
+fields, and you need to translate between the ext4 flags and the
+existing falg definitions. Any falg definitions that don't already
+exist that ext4 needs to support need to be added to the XFS_XFLAGS
+definitions.
+
+i.e. this is not a field that has flags defined by ext4 - the
+flags must be the same across all filesystems that implement it, and
+that means ext4 must use the existing definitions where they already
+exist.
+
+Cheers,
+
+Dave.
 -- 
-1.8.1.4
-
+Dave Chinner
+david@fromorbit.com
