@@ -1,73 +1,40 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 02/11] xfs: Remove unused variable in xfs_qm_scall_quotaon()
-Date: Tue, 11 Nov 2014 22:04:16 +0100
-Message-ID: <1415739865-2438-3-git-send-email-jack@suse.cz>
+Subject: [PATCH 01/11] xfs: Remove useless test
+Date: Tue, 11 Nov 2014 22:04:15 +0100
+Message-ID: <1415739865-2438-2-git-send-email-jack@suse.cz>
 References: <1415739865-2438-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>, xfs@oss.sgi.com
+Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+	Jan Kara <jack@suse.cz>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <xfs-bounces@oss.sgi.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:50777 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751598AbaKKVEp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Nov 2014 16:04:45 -0500
 In-Reply-To: <1415739865-2438-1-git-send-email-jack@suse.cz>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-sbflags variable in xfs_qm_scall_quotaon() was practically unused (we
-only set it to constant at one place and used it elsewhere). Remove it.
+Q_XQUOTARM is never passed to xfs_fs_set_xstate() so remove the test.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/xfs/xfs_qm_syscalls.c | 8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+ fs/xfs/xfs_quotaops.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/xfs/xfs_qm_syscalls.c b/fs/xfs/xfs_qm_syscalls.c
-index 80f2d77d929a..5e4944973587 100644
---- a/fs/xfs/xfs_qm_syscalls.c
-+++ b/fs/xfs/xfs_qm_syscalls.c
-@@ -315,7 +315,6 @@ xfs_qm_scall_quotaon(
- {
- 	int		error;
- 	uint		qf;
--	__int64_t	sbflags;
+diff --git a/fs/xfs/xfs_quotaops.c b/fs/xfs/xfs_quotaops.c
+index b238027df987..9ad73240ed54 100644
+--- a/fs/xfs/xfs_quotaops.c
++++ b/fs/xfs/xfs_quotaops.c
+@@ -77,7 +77,7 @@ xfs_fs_set_xstate(
  
- 	flags &= (XFS_ALL_QUOTA_ACCT | XFS_ALL_QUOTA_ENFD);
- 	/*
-@@ -323,8 +322,6 @@ xfs_qm_scall_quotaon(
- 	 */
- 	flags &= ~(XFS_ALL_QUOTA_ACCT);
+ 	if (sb->s_flags & MS_RDONLY)
+ 		return -EROFS;
+-	if (op != Q_XQUOTARM && !XFS_IS_QUOTA_RUNNING(mp))
++	if (!XFS_IS_QUOTA_RUNNING(mp))
+ 		return -ENOSYS;
  
--	sbflags = 0;
--
- 	if (flags == 0) {
- 		xfs_debug(mp, "%s: zero flags, m_qflags=%x",
- 			__func__, mp->m_qflags);
-@@ -371,11 +368,10 @@ xfs_qm_scall_quotaon(
- 	/*
- 	 * There's nothing to change if it's the same.
- 	 */
--	if ((qf & flags) == flags && sbflags == 0)
-+	if ((qf & flags) == flags)
- 		return -EEXIST;
--	sbflags |= XFS_SB_QFLAGS;
- 
--	if ((error = xfs_qm_write_sb_changes(mp, sbflags)))
-+	if ((error = xfs_qm_write_sb_changes(mp, XFS_SB_QFLAGS)))
- 		return error;
- 	/*
- 	 * If we aren't trying to switch on quota enforcement, we are done.
+ 	if (uflags & FS_QUOTA_UDQ_ACCT)
 -- 
 1.8.1.4
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
