@@ -1,61 +1,43 @@
-From: Li Xi <pkuelelixi@gmail.com>
-Subject: Re: [v6 2/4] ext4: adds project ID support
-Date: Tue, 11 Nov 2014 15:34:40 +0800
-Message-ID: <CAPTn0cBYOcsgVmYuhWCZnsf8=t8Hbo+d35PPbn_sUspQAurDmQ@mail.gmail.com>
-References: <1415468619-31851-1-git-send-email-lixi@ddn.com>
-	<1415468619-31851-3-git-send-email-lixi@ddn.com>
-	<20141111042606.GA17027@thunk.org>
+From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+Subject: [PATCH 2/4] e2fsprogs/tune2fs: fix memory leak in inode_scan_and_fix()
+Date: Tue, 11 Nov 2014 14:59:27 +0800
+Message-ID: <1415689169-19393-2-git-send-email-wangxg.fnst@cn.fujitsu.com>
+References: <1415689169-19393-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-	Andreas Dilger <adilger@dilger.ca>, Jan Kara <jack@suse.cz>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"hch@infradead.org" <hch@infradead.org>,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20141111042606.GA17027@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain
+Cc: <tytso@mit.edu>, <darrick.wong@oracle.com>,
+	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cn.fujitsu.com ([59.151.112.132]:7711 "EHLO
+	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751544AbaKKIAg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Nov 2014 03:00:36 -0500
+In-Reply-To: <1415689169-19393-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 11, 2014 at 12:26 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Sun, Nov 09, 2014 at 01:43:37AM +0800, Li Xi wrote:
->> This patch adds a new internal field of ext4 inode to save project
->> identifier. Also a new flag EXT4_INODE_PROJINHERIT is added for
->> inheriting project ID from parent directory.
->
-> What would be the downside of simply always inhereiting the project ID
-> from the parent directory?  I see that if the flag is not set, the
-> project id will be 0 instead.  I'm not sure when that would actually
-> be desirable.
->
-> To the extent that the project ID is designed to implement a quota
-> over a directory extent, the fact that the owner can clear the
-> EXT4_PROJINHERET_FL and then arrange to have the quota charged to
-> project 0 seems to me to be a bug, not a feature.
->
-Yeah, if we only intend to implement quota over directories, always inheriting
-project ID from parent directory is fine. But we want this to be more flexible,
-thus more powerful to enable other use cases. Always inheriting project ID
-from parent means inodes uner the same subtree has the same project ID,
-which might limit some use cases.
+When we use ext2fs_open_inode_scan() to iterate inodes and finish
+jobs, we also need a ext2fs_close_inode_scan(scan) operation, but in
+inode_scan_and_fix(), we forgot to call it, fix this error.
 
-For example, if the administrator wants to track the disk usages of files
-which scatter under different directories yet has similar attributes (e.g.
-the sizes of them are really big), they can use project quota to archive
-this goal. Combining 'find' command with setting project ID is really
-convenient for this use case. And obviously, it wounldn't be possible,
-if we don't have a mutable EXT4_INODE_PROJINHERIT flag.
+Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+---
+ misc/tune2fs.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-Please note that project ID can only be change by administrator,
-which means even the owners of the files can't change the project IDs.
-The idea behinds it is that project quota is a tool for administrators, not
-for common users.
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 7fee870..065b483 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -2147,6 +2147,7 @@ static int inode_scan_and_fix(ext2_filsys fs, ext2fs_block_bitmap bmap)
+ 
+ err_out:
+ 	ext2fs_free_mem(&block_buf);
++	ext2fs_close_inode_scan(scan);
+ 
+ 	return retval;
+ }
+-- 
+1.8.2.1
 
-And EXT4_INODE_PROJINHERIT is introduced into Ext4 in oder to keep
-compatibile with XFS too. Otherwise, they would have different semantics. ;)
-
-Regards,
-                                                - Li Xi
