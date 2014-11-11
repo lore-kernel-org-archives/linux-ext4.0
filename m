@@ -1,97 +1,76 @@
 From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-Subject: [PATCH 1/4] e2fsprogs/libext2fs: replace ext2fs_free_inode_cache() argument
-Date: Tue, 11 Nov 2014 14:59:26 +0800
-Message-ID: <1415689169-19393-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
+Subject: [PATCH 4/4] e2fsprogs/tune2fs: fix memory write overflow
+Date: Tue, 11 Nov 2014 14:59:29 +0800
+Message-ID: <1415689169-19393-4-git-send-email-wangxg.fnst@cn.fujitsu.com>
+References: <1415689169-19393-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: <tytso@mit.edu>, <darrick.wong@oracle.com>,
 	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
 To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([59.151.112.132]:7711 "EHLO
+Received: from cn.fujitsu.com ([59.151.112.132]:64941 "EHLO
 	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751686AbaKKIAh (ORCPT
+	with ESMTP id S1751623AbaKKIAh (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Nov 2014 03:00:37 -0500
+In-Reply-To: <1415689169-19393-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When we call ext2fs_free_inode_cache(fs->icache) to free the inode
-cache, indeed it will not make fs->icache be 0, it just makes the
-local argument icache be 0, after this call, we need another
-'fs->icache = 0' statement. So here we pass the 'ext2_filsys fs' as
-arguments directly, to make the free inode cache operation more natural.
+If we apply this patch 'e2fsprogs/tune2fs: rewrite metadata checksums when resizing inode size',
+we will trigger a segfault, this is because of the inode cache issues.
+
+Firstly we should notice that in expand_inode_table(), we have change the super block's s_inode_size
+to new inode size(for example, 256).
+
+Then we re-compute metadata checksums, see below code flow:
+|-->rewrite_metadata_checksums
+|----->rewrite_inodes
+|-------->ext2fs_write_inode_full
+In ext2fs_write_inode_full(), if an inode cache is hit, the below code will be executed:
+	/* Check to see if the inode cache needs to be updated */
+	if (fs->icache) {
+		for (i=0; i < fs->icache->cache_size; i++) {
+			if (fs->icache->cache[i].ino == ino) {
+				memcpy(fs->icache->cache[i].inode, inode,
+				       (bufsize > length) ? length : bufsize);
+				break;
+			}
+		}
+	}
+
+Before executing rewrite_inodes(), actually the inode in inode cache is allocated by
+old inode size(for example, 128), but here the memcpy will obviously write overflow,
+'(bufsize > length) ? length : bufsize' here will return 256(new inode size), so this is
+wrong, we need to fix this.
+I think we should call ext2fs_free_inode_cache() in expand_inode_table(), to drop the
+inode cache, because inode size has changed, if necessary, we will re-create this inode cache.
+
+Steps to reproduce this bug(apply 'e2fsprogs/tune2fs: rewrite metadata checksums when resizing inode size' first).
+	dd if=/dev/zero of=file.img bs=1M count=128
+	device_name=$(/sbin/losetup -f)
+	/sbin/losetup -f file.img
+	mkfs.ext4 -I 128 -O ^flex_bg $device_name
+	tune2fs -I 256 $device_name
 
 Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
 ---
- lib/ext2fs/ext2fs.h |  2 +-
- lib/ext2fs/freefs.c |  2 +-
- lib/ext2fs/inode.c  | 10 ++++++----
- 3 files changed, 8 insertions(+), 6 deletions(-)
+ misc/tune2fs.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 506d43b..580440f 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1403,7 +1403,7 @@ extern errcode_t ext2fs_inline_data_set(ext2_filsys fs, ext2_ino_t ino,
- /* inode.c */
- extern errcode_t ext2fs_create_inode_cache(ext2_filsys fs,
- 					   unsigned int cache_size);
--extern void ext2fs_free_inode_cache(struct ext2_inode_cache *icache);
-+extern void ext2fs_free_inode_cache(ext2_filsys fs);
- extern errcode_t ext2fs_flush_icache(ext2_filsys fs);
- extern errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan,
- 					    ext2_ino_t *ino,
-diff --git a/lib/ext2fs/freefs.c b/lib/ext2fs/freefs.c
-index ea9742e..9c40c34 100644
---- a/lib/ext2fs/freefs.c
-+++ b/lib/ext2fs/freefs.c
-@@ -52,7 +52,7 @@ void ext2fs_free(ext2_filsys fs)
- 		ext2fs_free_dblist(fs->dblist);
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 91dc7c1..78b3806 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -2244,6 +2244,8 @@ static int expand_inode_table(ext2_filsys fs, unsigned long new_ino_size)
  
- 	if (fs->icache)
--		ext2fs_free_inode_cache(fs->icache);
-+		ext2fs_free_inode_cache(fs);
- 
- 	if (fs->mmp_buf)
- 		ext2fs_free_mem(&fs->mmp_buf);
-diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
-index 4310b82..f938c37 100644
---- a/lib/ext2fs/inode.c
-+++ b/lib/ext2fs/inode.c
-@@ -79,10 +79,13 @@ errcode_t ext2fs_flush_icache(ext2_filsys fs)
- /*
-  * Free the inode cache structure
-  */
--void ext2fs_free_inode_cache(struct ext2_inode_cache *icache)
-+void ext2fs_free_inode_cache(ext2_filsys fs)
- {
- 	int i;
-+	struct ext2_inode_cache *icache = fs->icache;
- 
-+	if (!icache)
-+		return;
- 	if (--icache->refcount)
- 		return;
- 	if (icache->buffer)
-@@ -92,7 +95,7 @@ void ext2fs_free_inode_cache(struct ext2_inode_cache *icache)
- 	if (icache->cache)
- 		ext2fs_free_mem(&icache->cache);
- 	icache->buffer_blk = 0;
--	ext2fs_free_mem(&icache);
-+	ext2fs_free_mem(&fs->icache);
- }
- 
- errcode_t ext2fs_create_inode_cache(ext2_filsys fs, unsigned int cache_size)
-@@ -131,8 +134,7 @@ errcode_t ext2fs_create_inode_cache(ext2_filsys fs, unsigned int cache_size)
- 	ext2fs_flush_icache(fs);
- 	return 0;
- errout:
--	ext2fs_free_inode_cache(fs->icache);
--	fs->icache = 0;
+ 	/* Update the meta data */
+ 	fs->inode_blocks_per_group = new_ino_blks_per_grp;
++
 +	ext2fs_free_inode_cache(fs);
- 	return retval;
- }
+ 	fs->super->s_inode_size = new_ino_size;
  
+ err_out:
 -- 
 1.8.2.1
 
