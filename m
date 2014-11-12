@@ -1,59 +1,42 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 48/47] misc: fix infinite loop when finding the start of the
- hugefile start range
-Date: Wed, 12 Nov 2014 14:43:29 -0800
-Message-ID: <20141112224329.GI10043@birch.djwong.org>
-References: <20141107215042.883.49888.stgit@birch.djwong.org>
+Subject: [PATCH] tests: regression test for resizing inodes on a
+ metadata_csum fs
+Date: Wed, 12 Nov 2014 14:47:53 -0800
+Message-ID: <20141112224753.GJ10043@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu, darrick.wong@oracle.com
+Cc: linux-ext4@vger.kernel.org,
+	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:34806 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752168AbaKLWne convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Nov 2014 17:43:34 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:37450 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751942AbaKLWsD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Nov 2014 17:48:03 -0500
 Content-Disposition: inline
-In-Reply-To: <20141107215042.883.49888.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When looking for the start of the hugefile range, the 'next' variable
-is incorrectly decremented.  If we happened to find a single free
-block, the effect of this decrement is that blk == next, which means
-that we never modify the loop control variable, so get_start_block
-never returns.
+Regression test for a problem inadvertently fixed by the patchset
+"e2fsprogs/tune2fs: fix memory leak in inode_scan_and_fix()" by Xiaoguang Wang.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- misc/mk_hugefiles.c           |    1 -
- tests/m_hugefile_slack/expect |   18 ++++++++++++
- tests/m_hugefile_slack/name   |    1 +
- tests/m_hugefile_slack/script |   61 +++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 80 insertions(+), 1 deletion(-)
- create mode 100644 tests/m_hugefile_slack/expect
- create mode 100644 tests/m_hugefile_slack/name
- create mode 100644 tests/m_hugefile_slack/script
+ tests/t_iexpand_full/expect |   38 +++++++++++++++++++++
+ tests/t_iexpand_full/name   |    1 +
+ tests/t_iexpand_full/script |   79 +++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 118 insertions(+)
+ create mode 100644 tests/t_iexpand_full/expect
+ create mode 100644 tests/t_iexpand_full/name
+ create mode 100644 tests/t_iexpand_full/script
 
-diff --git a/misc/mk_hugefiles.c b/misc/mk_hugefiles.c
-index 3e4274c..230844f 100644
---- a/misc/mk_hugefiles.c
-+++ b/misc/mk_hugefiles.c
-@@ -437,7 +437,6 @@ static blk64_t get_start_block(ext2_filsys fs, blk64_t slack)
- 						blk, last_blk, &next);
- 		if (retval)
- 			next = last_blk;
--		next--;
- 
- 		if (next - blk > slack) {
- 			blk += slack;
-diff --git a/tests/m_hugefile_slack/expect b/tests/m_hugefile_slack/expect
+diff --git a/tests/t_iexpand_full/expect b/tests/t_iexpand_full/expect
 new file mode 100644
-index 0000000..96a628a
+index 0000000..3eb1715
 --- /dev/null
-+++ b/tests/m_hugefile_slack/expect
-@@ -0,0 +1,18 @@
++++ b/tests/t_iexpand_full/expect
+@@ -0,0 +1,38 @@
 +tune2fs test
 +Creating filesystem with 786432 1k blocks and 98304 inodes
 +Superblock backups stored on blocks: 
@@ -72,19 +55,39 @@ index 0000000..96a628a
 +Pass 5: Checking group summary information
 +
 +Exit status is 0
-diff --git a/tests/m_hugefile_slack/name b/tests/m_hugefile_slack/name
++tune2fs -I 256 test.img
++Setting inode size 256
++Exit status is 0
++Change in FS metadata:
++@@ -13 +13 @@
++-Free blocks:              12301
+++Free blocks:              12
++@@ -22 +22 @@
++-Inode blocks per group:   128
+++Inode blocks per group:   256
++@@ -28 +28 @@
++-Inode size:	          128
+++Inode size:	          256
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
+diff --git a/tests/t_iexpand_full/name b/tests/t_iexpand_full/name
 new file mode 100644
-index 0000000..51cef19
+index 0000000..2241b34
 --- /dev/null
-+++ b/tests/m_hugefile_slack/name
++++ b/tests/t_iexpand_full/name
 @@ -0,0 +1 @@
-+trigger infinite loop when creating hugefiles with a lot of slack
-diff --git a/tests/m_hugefile_slack/script b/tests/m_hugefile_slack/script
++expand inodes on a totally full filesystem
+diff --git a/tests/t_iexpand_full/script b/tests/t_iexpand_full/script
 new file mode 100644
-index 0000000..96f5ec5
+index 0000000..9e34090
 --- /dev/null
-+++ b/tests/m_hugefile_slack/script
-@@ -0,0 +1,61 @@
++++ b/tests/t_iexpand_full/script
+@@ -0,0 +1,79 @@
 +if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
 +
 +FSCK_OPT=-fn
@@ -115,7 +118,23 @@ index 0000000..96f5ec5
 +MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h -I 128 $TMPFILE 786432 >> $OUT 2>&1
 +rm -rf $CONF
 +
-+# dump and check. if we get this far, we succeeded...
++# dump and check
++($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2>&1 | sed -f $cmd_dir/filter.sed -e '/^Checksum:.*/d' >> $OUT.before 2> /dev/null
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# convert it
++echo "tune2fs -I 256 test.img" >> $OUT
++dd if=/dev/zero of=$TMPFILE conv=notrunc bs=1 count=1 seek=3221225471 2> /dev/null
++$TUNE2FS -I 256 $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# dump and check
++($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2>&1 | sed -f $cmd_dir/filter.sed -e '/^Checksum:.*/d' >> $OUT.after 2> /dev/null
++echo "Change in FS metadata:" >> $OUT
++diff -u0 $OUT.before $OUT.after | sed -e '/^---.*/d' -e '/^+++.*/d' >> $OUT
 +$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
 +status=$?
 +echo Exit status is $status >> $OUT
@@ -139,6 +158,8 @@ index 0000000..96f5ec5
 +	echo "$test_name: $test_description: failed"
 +	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
 +fi
++
++rm $OUT.before $OUT.after
 +
 +unset IMAGE FSCK_OPT OUT EXP CONF
 +
