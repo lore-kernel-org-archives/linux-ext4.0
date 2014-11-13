@@ -1,169 +1,416 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] tests: regression test for resizing inodes on a
- metadata_csum fs
-Date: Wed, 12 Nov 2014 14:47:53 -0800
-Message-ID: <20141112224753.GJ10043@birch.djwong.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH,RFC] ext4: add lazytime mount option
+Date: Thu, 13 Nov 2014 17:41:50 +1100
+Message-ID: <20141113064150.GI28565@dastard>
+References: <1415765227-9561-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org,
-	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-To: tytso@mit.edu
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:37450 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751942AbaKLWsD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Nov 2014 17:48:03 -0500
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:27100 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751031AbaKMGmc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Nov 2014 01:42:32 -0500
 Content-Disposition: inline
+In-Reply-To: <1415765227-9561-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Regression test for a problem inadvertently fixed by the patchset
-"e2fsprogs/tune2fs: fix memory leak in inode_scan_and_fix()" by Xiaoguang Wang.
+[cc linux-fsdevel]
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- tests/t_iexpand_full/expect |   38 +++++++++++++++++++++
- tests/t_iexpand_full/name   |    1 +
- tests/t_iexpand_full/script |   79 +++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 118 insertions(+)
- create mode 100644 tests/t_iexpand_full/expect
- create mode 100644 tests/t_iexpand_full/name
- create mode 100644 tests/t_iexpand_full/script
+On Tue, Nov 11, 2014 at 11:07:07PM -0500, Theodore Ts'o wrote:
+> Add a new mount option which enables a new "lazytime" mode.  This mode
+> causes atime, mtime, and ctime updates to only be made to the
+> in-memory version of the inode.  The on-disk times will only get
+> updated when (a) when the inode table block for the inode needs to be
+> updated for some non-time related change involving any inode in the
+> block, (b) if userspace calls fsync(), or (c) the refcount on an
+> undeleted inode goes to zero (in most cases, when the last file
+> descriptor assoicated with the inode is closed).
+> 
+> This is legal according to POSIX because there are no guarantees after
+> a crash unless userspace explicitly requests via a fsync(2) call.  So
+> in fact, this a better way of reducing the disk traffic resulting from
+> atime is use lazytime instead of relatime or noatime.  Enabling
+> lazytime and disabling the default realtime will result in fewer extra
+> disk writes, and has the benefits of being POSIX-compliant --- since
+> either noatime and relatime violates POSIX.
+> 
+> The lazytime mode reduces pressure on the journal spinlocks, since
+> time updates resulting from calls to file_update_time() are almost
+> always done using separate jbd2 handles.  For allocating writes, the
+> inode will need to be updated anyway when i_blocks change, and so the
+> mtime updates will be folded into jbd2 handle in the ext4 write path.
+> 
+> In addition, for workloads feature a large number of random write to a
+> preallocated file, the lazytime mount option significantly reduces
+> writes to the inode table.  The repeated 4k writes to a single block
+> will result in undesirable stress on flash devices and SMR disk
+> drives.  Even on conventional HDD's, the repeated writes to the inode
+> table block will trigger Adjacent Track Interference (ATI) remediation
+> latencies, which very negatively impact 99.9 percentile latencies ---
+> which is a very big deal for web serving tiers (for example).
+> 
+> n.b.: because of the many wins of this mode, we may want to enable
+> lazytime updates by default in the future.  If you know of use cases
+> where having inaccurate mtime values after a crash would be extremely
+> problematic, please us know at linux-ext4@vger.kernel.org.
 
-diff --git a/tests/t_iexpand_full/expect b/tests/t_iexpand_full/expect
-new file mode 100644
-index 0000000..3eb1715
---- /dev/null
-+++ b/tests/t_iexpand_full/expect
-@@ -0,0 +1,38 @@
-+tune2fs test
-+Creating filesystem with 786432 1k blocks and 98304 inodes
-+Superblock backups stored on blocks: 
-+	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553
-+
-+Allocating group tables:      done                            
-+Writing inode tables:      done                            
-+Creating journal (16384 blocks): done
-+Creating 6368 huge file(s) with 117 blocks each: done
-+Writing superblocks and filesystem accounting information:      done
-+
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-+tune2fs -I 256 test.img
-+Setting inode size 256
-+Exit status is 0
-+Change in FS metadata:
-+@@ -13 +13 @@
-+-Free blocks:              12301
-++Free blocks:              12
-+@@ -22 +22 @@
-+-Inode blocks per group:   128
-++Inode blocks per group:   256
-+@@ -28 +28 @@
-+-Inode size:	          128
-++Inode size:	          256
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-diff --git a/tests/t_iexpand_full/name b/tests/t_iexpand_full/name
-new file mode 100644
-index 0000000..2241b34
---- /dev/null
-+++ b/tests/t_iexpand_full/name
-@@ -0,0 +1 @@
-+expand inodes on a totally full filesystem
-diff --git a/tests/t_iexpand_full/script b/tests/t_iexpand_full/script
-new file mode 100644
-index 0000000..9e34090
---- /dev/null
-+++ b/tests/t_iexpand_full/script
-@@ -0,0 +1,79 @@
-+if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
-+
-+FSCK_OPT=-fn
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+CONF=$TMPFILE.conf
-+
-+#gzip -d < $EXP.gz > $EXP
-+
-+cat > $CONF << ENDL
-+[fs_types]
-+	ext4h = {
-+		features = has_journal,extent,huge_file,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,^resize_inode,^meta_bg,^flex_bg,metadata_csum,64bit
-+		blocksize = 1024
-+		inode_size = 256
-+		make_hugefiles = true
-+		hugefiles_dir = /
-+		hugefiles_slack = 12000K
-+		hugefiles_name = aaaaa
-+		hugefiles_digits = 4
-+		hugefiles_size = 117K
-+		zero_hugefiles = false
-+	}
-+ENDL
-+
-+echo "tune2fs test" > $OUT
-+
-+MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h -I 128 $TMPFILE 786432 >> $OUT 2>&1
-+rm -rf $CONF
-+
-+# dump and check
-+($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2>&1 | sed -f $cmd_dir/filter.sed -e '/^Checksum:.*/d' >> $OUT.before 2> /dev/null
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+# convert it
-+echo "tune2fs -I 256 test.img" >> $OUT
-+dd if=/dev/zero of=$TMPFILE conv=notrunc bs=1 count=1 seek=3221225471 2> /dev/null
-+$TUNE2FS -I 256 $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+# dump and check
-+($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2>&1 | sed -f $cmd_dir/filter.sed -e '/^Checksum:.*/d' >> $OUT.after 2> /dev/null
-+echo "Change in FS metadata:" >> $OUT
-+diff -u0 $OUT.before $OUT.after | sed -e '/^---.*/d' -e '/^+++.*/d' >> $OUT
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+rm $TMPFILE
-+
-+#
-+# Do the verification
-+#
-+
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
-+mv $OUT.new $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+fi
-+
-+rm $OUT.before $OUT.after
-+
-+unset IMAGE FSCK_OPT OUT EXP CONF
-+
-+else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
-+	echo "$test_name: $test_description: skipped"
-+fi
-+
+I think this needs to a VFS level inode timestamp update option.
+The games ext4 is playing with reference counts inside .drop_inode are
+pretty nasty and could be avoided if this is implemented at the VFs
+level..
+
+I think that the "lazy time update" status should really be tracked
+in the inode->i_state field. Something like lazytime updates do not
+call ->update_inode, nor do they mark the inode dirty, but they do
+update the inode->i_[acm]time fields and set a TIMEDIRTY state flag.
+
+Then when the filesystem next logs or writes the inode it can
+log those fields and clear the TIMEDIRTY flag, or if iput_final()
+sees that flag it can call ->update_time directly to get the
+filesystem to run a transaction to update the timestamps before the
+inode is evicted from cache.
+
+That way the same update semantics can be easily implemented on all
+filesystems, and filesystems that already implement update_time
+should work without any modification at all...
+
+Cheers,
+
+Dave.
+
+> 
+> Google-Bug-Id: 18297052
+> 
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+>  fs/ext4/ext4.h     |  3 +++
+>  fs/ext4/file.c     |  1 +
+>  fs/ext4/fsync.c    |  3 +++
+>  fs/ext4/inode.c    | 62 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+>  fs/ext4/namei.c    |  2 ++
+>  fs/ext4/super.c    | 14 ++++++++++++
+>  fs/ext4/symlink.c  |  2 ++
+>  fs/inode.c         | 36 +++++++++++++++++++++++++++++++
+>  include/linux/fs.h |  2 ++
+>  9 files changed, 124 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index c55a1fa..494c504 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -970,6 +970,7 @@ struct ext4_inode_info {
+>  #define EXT4_MOUNT_ERRORS_MASK		0x00070
+>  #define EXT4_MOUNT_MINIX_DF		0x00080	/* Mimics the Minix statfs */
+>  #define EXT4_MOUNT_NOLOAD		0x00100	/* Don't use existing journal*/
+> +#define EXT4_MOUNT_LAZYTIME		0x00200 /* Update the time lazily */
+>  #define EXT4_MOUNT_DATA_FLAGS		0x00C00	/* Mode for data writes: */
+>  #define EXT4_MOUNT_JOURNAL_DATA		0x00400	/* Write data to journal */
+>  #define EXT4_MOUNT_ORDERED_DATA		0x00800	/* Flush data before commit */
+> @@ -1407,6 +1408,7 @@ enum {
+>  	EXT4_STATE_MAY_INLINE_DATA,	/* may have in-inode data */
+>  	EXT4_STATE_ORDERED_MODE,	/* data=ordered mode */
+>  	EXT4_STATE_EXT_PRECACHED,	/* extents have been precached */
+> +	EXT4_STATE_DIRTY_TIME,		/* the time needs to be updated */
+>  };
+>  
+>  #define EXT4_INODE_BIT_FNS(name, field, offset)				\
+> @@ -2114,6 +2116,7 @@ extern int  ext4_write_inode(struct inode *, struct writeback_control *);
+>  extern int  ext4_setattr(struct dentry *, struct iattr *);
+>  extern int  ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
+>  				struct kstat *stat);
+> +extern int ext4_update_time(struct inode *, struct timespec *, int);
+>  extern void ext4_evict_inode(struct inode *);
+>  extern void ext4_clear_inode(struct inode *);
+>  extern int  ext4_sync_inode(handle_t *, struct inode *);
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index 8131be8..2cf6aaf 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -603,6 +603,7 @@ const struct file_operations ext4_file_operations = {
+>  const struct inode_operations ext4_file_inode_operations = {
+>  	.setattr	= ext4_setattr,
+>  	.getattr	= ext4_getattr,
+> +	.update_time	= ext4_update_time,
+>  	.setxattr	= generic_setxattr,
+>  	.getxattr	= generic_getxattr,
+>  	.listxattr	= ext4_listxattr,
+> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+> index a8bc47f..ba05c83 100644
+> --- a/fs/ext4/fsync.c
+> +++ b/fs/ext4/fsync.c
+> @@ -116,6 +116,9 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+>  	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
+>  	if (ret)
+>  		return ret;
+> +
+> +	if (!datasync && ext4_test_inode_state(inode, EXT4_STATE_DIRTY_TIME))
+> +		ext4_dirty_inode(inode, 0);
+>  	/*
+>  	 * data=writeback,ordered:
+>  	 *  The caller's filemap_fdatawrite()/wait will sync the data.
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 3356ab5..1b5e4bd 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4163,6 +4163,46 @@ static int ext4_inode_blocks_set(handle_t *handle,
+>  }
+>  
+>  /*
+> + * Opportunistically update the other time fields for other inodes in
+> + * the same inode table block.
+> + */
+> +static void ext4_update_other_inodes_time(struct super_block *sb,
+> +					  unsigned long orig_ino, char *buf)
+> +{
+> +	struct ext4_inode_info	*ei;
+> +	struct ext4_inode	*raw_inode;
+> +	unsigned long		ino;
+> +	struct inode		*inode;
+> +	int		i, inodes_per_block = EXT4_SB(sb)->s_inodes_per_block;
+> +	int		inode_size = EXT4_INODE_SIZE(sb);
+> +
+> +	ino = orig_ino & ~(inodes_per_block - 1);
+> +	for (i = 0; i < inodes_per_block; i++, ino++, buf += inode_size) {
+> +		if (ino == orig_ino)
+> +			continue;
+> +		inode = find_active_inode_nowait(sb, ino);
+> +		if (!inode ||
+> +		    !ext4_test_inode_state(inode, EXT4_STATE_DIRTY_TIME)) {
+> +			iput(inode);
+> +			continue;
+> +		}
+> +		raw_inode = (struct ext4_inode *) buf;
+> +		ei = EXT4_I(inode);
+> +
+> +		smp_mb__before_spinlock();
+> +		spin_lock(&ei->i_raw_lock);
+> +		ext4_clear_inode_state(inode, EXT4_STATE_DIRTY_TIME);
+> +		EXT4_INODE_GET_XTIME(i_ctime, inode, raw_inode);
+> +		EXT4_INODE_GET_XTIME(i_mtime, inode, raw_inode);
+> +		EXT4_INODE_GET_XTIME(i_atime, inode, raw_inode);
+> +		EXT4_EINODE_GET_XTIME(i_crtime, ei, raw_inode);
+> +		ext4_inode_csum_set(inode, raw_inode, ei);
+> +		spin_unlock(&ei->i_raw_lock);
+> +		iput(inode);
+> +	}
+> +}
+> +
+> +/*
+>   * Post the struct inode info into an on-disk inode location in the
+>   * buffer-cache.  This gobbles the caller's reference to the
+>   * buffer_head in the inode location struct.
+> @@ -4182,7 +4222,9 @@ static int ext4_do_update_inode(handle_t *handle,
+>  	uid_t i_uid;
+>  	gid_t i_gid;
+>  
+> +	smp_mb__before_spinlock();
+>  	spin_lock(&ei->i_raw_lock);
+> +	ext4_clear_inode_state(inode, EXT4_STATE_DIRTY_TIME);
+>  
+>  	/* For fields not tracked in the in-memory inode,
+>  	 * initialise them to zero for new inodes. */
+> @@ -4273,8 +4315,8 @@ static int ext4_do_update_inode(handle_t *handle,
+>  	}
+>  
+>  	ext4_inode_csum_set(inode, raw_inode, ei);
+> -
+>  	spin_unlock(&ei->i_raw_lock);
+> +	ext4_update_other_inodes_time(inode->i_sb, inode->i_ino, bh->b_data);
+>  
+>  	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+>  	rc = ext4_handle_dirty_metadata(handle, NULL, bh);
+> @@ -4622,6 +4664,24 @@ int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
+>  	return 0;
+>  }
+>  
+> +int ext4_update_time(struct inode *inode, struct timespec *time, int flags)
+> +{
+> +	if (flags & S_ATIME)
+> +		inode->i_atime = *time;
+> +	if (flags & S_VERSION)
+> +		inode_inc_iversion(inode);
+> +	if (flags & S_CTIME)
+> +		inode->i_ctime = *time;
+> +	if (flags & S_MTIME)
+> +		inode->i_mtime = *time;
+> +	if (test_opt(inode->i_sb, LAZYTIME)) {
+> +		smp_wmb();
+> +		ext4_set_inode_state(inode, EXT4_STATE_DIRTY_TIME);
+> +	} else
+> +		mark_inode_dirty_sync(inode);
+> +	return 0;
+> +}
+> +
+>  static int ext4_index_trans_blocks(struct inode *inode, int lblocks,
+>  				   int pextents)
+>  {
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 4262118..f782040 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -3532,6 +3532,7 @@ const struct inode_operations ext4_dir_inode_operations = {
+>  	.tmpfile	= ext4_tmpfile,
+>  	.rename2	= ext4_rename2,
+>  	.setattr	= ext4_setattr,
+> +	.update_time	= ext4_update_time,
+>  	.setxattr	= generic_setxattr,
+>  	.getxattr	= generic_getxattr,
+>  	.listxattr	= ext4_listxattr,
+> @@ -3545,6 +3546,7 @@ const struct inode_operations ext4_special_inode_operations = {
+>  	.setattr	= ext4_setattr,
+>  	.setxattr	= generic_setxattr,
+>  	.getxattr	= generic_getxattr,
+> +	.update_time	= ext4_update_time,
+>  	.listxattr	= ext4_listxattr,
+>  	.removexattr	= generic_removexattr,
+>  	.get_acl	= ext4_get_acl,
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 2c9e686..16c9983 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -910,6 +910,14 @@ static int ext4_drop_inode(struct inode *inode)
+>  	int drop = generic_drop_inode(inode);
+>  
+>  	trace_ext4_drop_inode(inode, drop);
+> +	if (!drop && ext4_test_inode_state(inode, EXT4_STATE_DIRTY_TIME)) {
+> +		atomic_inc(&inode->i_count);
+> +		spin_unlock(&inode->i_lock);
+> +		ext4_dirty_inode(inode, 0);
+> +		spin_lock(&inode->i_lock);
+> +		if (atomic_dec_and_test(&inode->i_count))
+> +			drop = generic_drop_inode(inode);
+> +	}
+>  	return drop;
+>  }
+>  
+> @@ -1142,6 +1150,7 @@ enum {
+>  	Opt_noquota, Opt_barrier, Opt_nobarrier, Opt_err,
+>  	Opt_usrquota, Opt_grpquota, Opt_i_version,
+>  	Opt_stripe, Opt_delalloc, Opt_nodelalloc, Opt_mblk_io_submit,
+> +	Opt_lazytime, Opt_nolazytime,
+>  	Opt_nomblk_io_submit, Opt_block_validity, Opt_noblock_validity,
+>  	Opt_inode_readahead_blks, Opt_journal_ioprio,
+>  	Opt_dioread_nolock, Opt_dioread_lock,
+> @@ -1204,6 +1213,8 @@ static const match_table_t tokens = {
+>  	{Opt_i_version, "i_version"},
+>  	{Opt_stripe, "stripe=%u"},
+>  	{Opt_delalloc, "delalloc"},
+> +	{Opt_lazytime, "lazytime"},
+> +	{Opt_nolazytime, "nolazytime"},
+>  	{Opt_nodelalloc, "nodelalloc"},
+>  	{Opt_removed, "mblk_io_submit"},
+>  	{Opt_removed, "nomblk_io_submit"},
+> @@ -1361,6 +1372,8 @@ static const struct mount_opts {
+>  	 MOPT_EXT4_ONLY | MOPT_SET | MOPT_EXPLICIT},
+>  	{Opt_nodelalloc, EXT4_MOUNT_DELALLOC,
+>  	 MOPT_EXT4_ONLY | MOPT_CLEAR},
+> +	{Opt_lazytime, EXT4_MOUNT_LAZYTIME, MOPT_SET},
+> +	{Opt_nolazytime, EXT4_MOUNT_LAZYTIME, MOPT_CLEAR},
+>  	{Opt_journal_checksum, EXT4_MOUNT_JOURNAL_CHECKSUM,
+>  	 MOPT_EXT4_ONLY | MOPT_SET},
+>  	{Opt_journal_async_commit, (EXT4_MOUNT_JOURNAL_ASYNC_COMMIT |
+> @@ -3514,6 +3527,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  
+>  	/* Set defaults before we parse the mount options */
+>  	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
+> +	set_opt(sb, LAZYTIME);
+>  	set_opt(sb, INIT_INODE_TABLE);
+>  	if (def_mount_opts & EXT4_DEFM_DEBUG)
+>  		set_opt(sb, DEBUG);
+> diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
+> index ff37119..7c92b93 100644
+> --- a/fs/ext4/symlink.c
+> +++ b/fs/ext4/symlink.c
+> @@ -35,6 +35,7 @@ const struct inode_operations ext4_symlink_inode_operations = {
+>  	.follow_link	= page_follow_link_light,
+>  	.put_link	= page_put_link,
+>  	.setattr	= ext4_setattr,
+> +	.update_time	= ext4_update_time,
+>  	.setxattr	= generic_setxattr,
+>  	.getxattr	= generic_getxattr,
+>  	.listxattr	= ext4_listxattr,
+> @@ -45,6 +46,7 @@ const struct inode_operations ext4_fast_symlink_inode_operations = {
+>  	.readlink	= generic_readlink,
+>  	.follow_link	= ext4_follow_link,
+>  	.setattr	= ext4_setattr,
+> +	.update_time	= ext4_update_time,
+>  	.setxattr	= generic_setxattr,
+>  	.getxattr	= generic_getxattr,
+>  	.listxattr	= ext4_listxattr,
+> diff --git a/fs/inode.c b/fs/inode.c
+> index 26753ba..cde073a 100644
+> --- a/fs/inode.c
+> +++ b/fs/inode.c
+> @@ -1280,6 +1280,42 @@ struct inode *ilookup(struct super_block *sb, unsigned long ino)
+>  }
+>  EXPORT_SYMBOL(ilookup);
+>  
+> +/**
+> + * find_active_inode_nowait - find an active inode in the inode cache
+> + * @sb:		super block of file system to search
+> + * @ino:	inode number to search for
+> + *
+> + * Search for an active inode @ino in the inode cache, and if the
+> + * inode is in the cache, the inode is returned with an incremented
+> + * reference count.  If the inode is being freed or is newly
+> + * initialized, return nothing instead of trying to wait for the inode
+> + * initialization or destruction to be complete.
+> + */
+> +struct inode *find_active_inode_nowait(struct super_block *sb,
+> +				       unsigned long ino)
+> +{
+> +	struct hlist_head *head = inode_hashtable + hash(sb, ino);
+> +	struct inode *inode, *ret_inode = NULL;
+> +
+> +	spin_lock(&inode_hash_lock);
+> +	hlist_for_each_entry(inode, head, i_hash) {
+> +		if ((inode->i_ino != ino) ||
+> +		    (inode->i_sb != sb))
+> +			continue;
+> +		spin_lock(&inode->i_lock);
+> +		if ((inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW)) == 0) {
+> +			__iget(inode);
+> +			ret_inode = inode;
+> +		}
+> +		spin_unlock(&inode->i_lock);
+> +		goto out;
+> +	}
+> +out:
+> +	spin_unlock(&inode_hash_lock);
+> +	return ret_inode;
+> +}
+> +EXPORT_SYMBOL(find_active_inode_nowait);
+> +
+>  int insert_inode_locked(struct inode *inode)
+>  {
+>  	struct super_block *sb = inode->i_sb;
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 9ab779e..b5e6b6b 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -2410,6 +2410,8 @@ extern struct inode *ilookup(struct super_block *sb, unsigned long ino);
+>  
+>  extern struct inode * iget5_locked(struct super_block *, unsigned long, int (*test)(struct inode *, void *), int (*set)(struct inode *, void *), void *);
+>  extern struct inode * iget_locked(struct super_block *, unsigned long);
+> +extern struct inode *find_active_inode_nowait(struct super_block *,
+> +					      unsigned long);
+>  extern int insert_inode_locked4(struct inode *, unsigned long, int (*test)(struct inode *, void *), void *);
+>  extern int insert_inode_locked(struct inode *);
+>  #ifdef CONFIG_DEBUG_LOCK_ALLOC
+> -- 
+> 2.1.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+-- 
+Dave Chinner
+david@fromorbit.com
