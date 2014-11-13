@@ -1,48 +1,84 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: RT/ext4/jbd2 circular dependency
-Date: Thu, 13 Nov 2014 20:06:44 +0100
-Message-ID: <20141113190644.GA12075@quack.suse.cz>
-References: <CANGgnMbQmsdMDJUx7Bop9Xs=jQMmAJgWRjhXVFUGx-DwF=inYw@mail.gmail.com>
- <544940EF.7090907@windriver.com>
- <alpine.DEB.2.11.1410261516020.5308@nanos>
- <544E7144.4080809@windriver.com>
- <alpine.DEB.2.11.1410291854090.5308@nanos>
- <54513BDA.1050804@windriver.com>
- <alpine.DEB.2.11.1410292013510.5308@nanos>
- <20141029231916.GD5000@thunk.org>
- <alpine.DEB.2.11.1410302204570.5308@nanos>
- <20141030232437.GF31927@thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH,RFC] ext4: add lazytime mount option
+Date: Fri, 14 Nov 2014 07:48:32 +1100
+Message-ID: <20141113204832.GJ28565@dastard>
+References: <1415765227-9561-1-git-send-email-tytso@mit.edu>
+ <20141113064150.GI28565@dastard>
+ <20141113163511.GA15585@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Thomas Gleixner <tglx@linutronix.de>,
-	Chris Friesen <chris.friesen@windriver.com>,
-	Austin Schuh <austin@peloton-tech.com>, pavel@pavlinux.ru,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-	rt-users <linux-rt-users@vger.kernel.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-rt-users-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20141030232437.GF31927@thunk.org>
-Sender: linux-rt-users-owner@vger.kernel.org
+In-Reply-To: <20141113163511.GA15585@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 30-10-14 19:24:37, Ted Tso wrote:
-> On Thu, Oct 30, 2014 at 10:11:26PM +0100, Thomas Gleixner wrote:
+On Thu, Nov 13, 2014 at 11:35:11AM -0500, Theodore Ts'o wrote:
+> On Thu, Nov 13, 2014 at 05:41:50PM +1100, Dave Chinner wrote:
 > > 
-> > That's a way better explanation than what I saw in the commit logs and
-> > it actually maps to the observed traces and stackdumps.
+> > I think this needs to a VFS level inode timestamp update option.
+> > The games ext4 is playing with reference counts inside .drop_inode are
+> > pretty nasty and could be avoided if this is implemented at the VFs
+> > level..
 > 
-> I can't speak for Jan, but I suspect he didn't realize that there was
-> a problem.  The commit description in b34090e5e2 makes it clear that
-> the intent was a performance improvement, and not an attempt to fix a
-> potential deadlock bug.
-  Yeah, correct. When I wrote b34090e5e2 I did that because I have realized
-that journal reservations would create similar deadlock opportunity as
-Chris has observed. I hadn't realized the problem is already in the code :)
+> I'm happy to implement this at the VFS level, assuming that there are
+> no objections from other file system developers.  I do need to note
+> that one potential downside of this feature is that if an inode stays
+> in the inode cache for potentially a long, long time, and the file is
+> a preallocated file which is updated using random DIO or AIO writes
+> (for example, enterprise database files on a long-running server), and
+> the system crashes, the mtime in memory could potentially out of synch
+> for days, weeks, months, etc.  I'm personally not bothered by this,
+> but I could imagine that some other folks might.
 
-								Honza
+I really don't care what the behaviour is, as long as it's
+*consistent across all filesystems*.
 
+However, we'd be fools to ignore the development of relatime, which
+in it's original form never updated the atime until m/ctime updated.
+3 years after it was introduced, relatime was changed to limit the
+update delay to 24 hours (before it was made the default) so that
+applications that required regular updates to timestamps didn't
+silently stop working.
+
+So perhaps what we should simply define "lazytime" policy to be
+"only update timestamps once a day or whenever the inode is
+otherwise modified, whichever comes first". 
+
+> One other thing we could do at the VFS layer is to change the default
+> from relatime (which is not POSIX compliant) to enabling atime update
+> plus lazytime enabled (which is POSIX compliant).  Would there be
+> consensus in making such a change in the default?
+
+lazytime isn't POSIX compliant as it is implemented in the patch.
+sync() won't write back inodes with lazy timestamp updates as they
+are not tracked in dirty lists or the ext4 journal, therefore a
+crash after a sync() can still lose timestamp updates from before
+the sync() ran.
+
+w.r.t. default behaviour, like relatime, I think this it will be a
+couple of years before we can consider it to be a default.  We'll
+need to shake out it's impact on the Real World first....
+
+> > I think that the "lazy time update" status should really be tracked
+> > in the inode->i_state field. Something like lazytime updates do not
+> > call ->update_inode, nor do they mark the inode dirty, but they do
+> > update the inode->i_[acm]time fields and set a TIMEDIRTY state flag.
+> 
+> It looks like the only file systems that have an update_inode today is
+> btrfs and xfs, and it looks like this change should be fine for both
+> of them, so sure, that sounds workable.
+
+For those that don't implement ->update_time, just calling
+write_inode_now() if the TIMEDIRTY flag set in iput_final()
+should end up doing the right thing, too...
+
+Cheers,
+
+Dave.
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Dave Chinner
+david@fromorbit.com
