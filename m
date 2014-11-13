@@ -1,42 +1,65 @@
-From: Pieter Smith <pieter@boesman.nl>
-Subject: [PATCH 20/56] fs/ext4: support compiling out splice
-Date: Thu, 13 Nov 2014 22:22:57 +0100
-Message-ID: <1415913813-362-21-git-send-email-pieter@boesman.nl>
-References: <pieter@boesman.nl>
- <1415913813-362-1-git-send-email-pieter@boesman.nl>
-Cc: Josh Triplett <josh@joshtriplett.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org (open list:EXT4 FILE SYSTEM),
-	linux-kernel@vger.kernel.org (open list)
-To: pieter@boesman.nl
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1415913813-362-1-git-send-email-pieter@boesman.nl>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH,RFC] ext4: add lazytime mount option
+Date: Thu, 13 Nov 2014 16:34:50 -0500
+Message-ID: <20141113213450.GA28780@thunk.org>
+References: <1415765227-9561-1-git-send-email-tytso@mit.edu>
+ <20141113064150.GI28565@dastard>
+ <20141113163511.GA15585@thunk.org>
+ <20141113204832.GJ28565@dastard>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:57339 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933636AbaKMVex (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Nov 2014 16:34:53 -0500
+Content-Disposition: inline
+In-Reply-To: <20141113204832.GJ28565@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Compile out splice support from ext4 when the splice-family of syscalls is not
-supported by the system (i.e. CONFIG_SYSCALL_SPLICE is undefined).
+On Fri, Nov 14, 2014 at 07:48:32AM +1100, Dave Chinner wrote:
+> However, we'd be fools to ignore the development of relatime, which
+> in it's original form never updated the atime until m/ctime updated.
+> 3 years after it was introduced, relatime was changed to limit the
+> update delay to 24 hours (before it was made the default) so that
+> applications that required regular updates to timestamps didn't
+> silently stop working.
+> 
+> So perhaps what we should simply define "lazytime" policy to be
+> "only update timestamps once a day or whenever the inode is
+> otherwise modified, whichever comes first".
 
-Signed-off-by: Pieter Smith <pieter@boesman.nl>
----
- fs/ext4/file.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Yes, that's reasonable thing to do.  Right after I hit send on my last
+email I thought about adding a tunable that would do this sort of time
+delay, but making it be a hard-coded 24 hours is simpler.
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index aca7b24..c9d2962 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -595,8 +595,8 @@ const struct file_operations ext4_file_operations = {
- 	.open		= ext4_file_open,
- 	.release	= ext4_release_file,
- 	.fsync		= ext4_sync_file,
--	.splice_read	= generic_file_splice_read,
--	.splice_write	= iter_file_splice_write,
-+	SPLICE_READ_INIT(generic_file_splice_read)
-+	SPLICE_WRITE_INIT(iter_file_splice_write)
- 	.fallocate	= ext4_fallocate,
- };
- 
--- 
-1.9.1
+> lazytime isn't POSIX compliant as it is implemented in the patch.
+> sync() won't write back inodes with lazy timestamp updates as they
+> are not tracked in dirty lists or the ext4 journal, therefore a
+> crash after a sync() can still lose timestamp updates from before
+> the sync() ran.
+
+Good point, I had fixed it for fsync(), but not for sync();
+fortunately it's easy enough to make sure this gets fixed if we
+implement it at the VFS Layer.
+
+> w.r.t. default behaviour, like relatime, I think this it will be a
+> couple of years before we can consider it to be a default.  We'll
+> need to shake out it's impact on the Real World first....
+
+Fair enough, although that will only work if distributions actually
+enable it by default so we get that real world experience.  Otherwise,
+we'll not gain any experience wrt to Real World impact.
+
+What I'm thinking about doing is adding a way to enable lazytime via a
+flag in the ext4 superblock, which in turn can be set by tune2fs or
+mke2fs (if so enabled by /etc/mke2fs.conf), so that we _can_ get this
+real world experience.
+
+Cheers,
+
+						- Ted
