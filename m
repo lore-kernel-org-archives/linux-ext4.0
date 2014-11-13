@@ -1,48 +1,40 @@
-From: Steve French <smfrench@gmail.com>
-Subject: xfstest generic/018 and ext4 defrag
-Date: Thu, 13 Nov 2014 15:16:30 -0600
-Message-ID: <CAH2r5mvAGe-N0e2rOsEe4DBT1tRM0Uv8rNQChmQY+d7dkLxR2w@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Pieter Smith <pieter@boesman.nl>
+Subject: [PATCH 18/56] fs/ext2: support compiling out splice
+Date: Thu, 13 Nov 2014 22:22:55 +0100
+Message-ID: <1415913813-362-19-git-send-email-pieter@boesman.nl>
+References: <pieter@boesman.nl>
+ <1415913813-362-1-git-send-email-pieter@boesman.nl>
+Cc: Josh Triplett <josh@joshtriplett.org>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org (open list:EXT2 FILE SYSTEM),
+	linux-kernel@vger.kernel.org (open list)
+To: pieter@boesman.nl
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1415913813-362-1-git-send-email-pieter@boesman.nl>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-I see an earlier thread about ext4 defrag problems causing this
-failure on xfstest generic/018 running on ext4
+Compile out splice support from ext2 when the splice-family of syscalls is not
+supported by the system (i.e. CONFIG_SYSCALL_SPLICE is undefined).
 
-generic/018 1s ... [failed, exit status 1] - output mismatch (see
-/home/sfrench/xfstests/results//generic/018.out.bad)
-    --- tests/generic/018.out 2014-11-13 11:20:05.385406288 -0800
-    +++ /home/sfrench/xfstests/results//generic/018.out.bad 2014-11-13
-12:33:19.317806287 -0800
-    @@ -10,10 +10,5 @@
-     After: 1
-     Write backwards sync, but contiguous - should defrag to 1 extent
-     Before: 10
-    -After: 1
-    -Write backwards sync leaving holes - defrag should do nothing
-    -Before: 16
-    -After: 16
-    ...
+Signed-off-by: Pieter Smith <pieter@boesman.nl>
+---
+ fs/ext2/file.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-but wasn't clear whether it was fixed upstream.  It failed on two out
-of three runs for me on most current ext4.  My test is on most current
-Ubuntu x86_64  (and with 3.18-rc3 kernel)
-I couldn't find version info for e4defrag from the command line but
-other ext4 tools are reasonably recent it seems as Ubuntu packages
-them e.g. EXT2FS Library version 1.42.10, 18-May-2014
-
-Is generic xfstest 18 still broken on ext4?
-
-Also am curious about test generic/026
-
-generic/026  [not run] ext4 does not define maximum ACL count
-
-Is that expected?
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index 7c87b22..8a40d04 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -74,8 +74,8 @@ const struct file_operations ext2_file_operations = {
+ 	.open		= dquot_file_open,
+ 	.release	= ext2_release_file,
+ 	.fsync		= ext2_fsync,
+-	.splice_read	= generic_file_splice_read,
+-	.splice_write	= iter_file_splice_write,
++	SPLICE_READ_INIT(generic_file_splice_read)
++	SPLICE_WRITE_INIT(iter_file_splice_write)
+ };
+ 
+ #ifdef CONFIG_EXT2_FS_XIP
 -- 
-Thanks,
-
-Steve
+1.9.1
