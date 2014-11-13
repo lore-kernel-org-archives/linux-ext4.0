@@ -1,42 +1,38 @@
-From: Pieter Smith <pieter@boesman.nl>
-Subject: [PATCH 19/56] fs/ext3: support compiling out splice
-Date: Thu, 13 Nov 2014 22:22:56 +0100
-Message-ID: <1415913813-362-20-git-send-email-pieter@boesman.nl>
-References: <pieter@boesman.nl>
- <1415913813-362-1-git-send-email-pieter@boesman.nl>
-Cc: Josh Triplett <josh@joshtriplett.org>, Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org (open list:EXT3 FILE SYSTEM),
-	linux-kernel@vger.kernel.org (open list)
-To: pieter@boesman.nl
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1415913813-362-1-git-send-email-pieter@boesman.nl>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: xfstest generic/018 and ext4 defrag
+Date: Thu, 13 Nov 2014 16:58:12 -0500
+Message-ID: <20141113215811.GB28780@thunk.org>
+References: <CAH2r5mvAGe-N0e2rOsEe4DBT1tRM0Uv8rNQChmQY+d7dkLxR2w@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Steve French <smfrench@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:57418 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934261AbaKMV6O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Nov 2014 16:58:14 -0500
+Content-Disposition: inline
+In-Reply-To: <CAH2r5mvAGe-N0e2rOsEe4DBT1tRM0Uv8rNQChmQY+d7dkLxR2w@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Compile out splice support from ext3 when the splice-family of syscalls is not
-supported by the system (i.e. CONFIG_SYSCALL_SPLICE is undefined).
+On Thu, Nov 13, 2014 at 03:16:30PM -0600, Steve French wrote:
+> 
+> Is generic xfstest 18 still broken on ext4?
 
-Signed-off-by: Pieter Smith <pieter@boesman.nl>
----
- fs/ext3/file.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Yes; the e4defrag program has different criteria for decided when to
+defrag a file.  I believe this should be fixed by commit c7c539e8fd86d
+in e2fsprogs, but that's not yet in a released version yet.
 
-diff --git a/fs/ext3/file.c b/fs/ext3/file.c
-index a062fa1..e683870 100644
---- a/fs/ext3/file.c
-+++ b/fs/ext3/file.c
-@@ -62,8 +62,8 @@ const struct file_operations ext3_file_operations = {
- 	.open		= dquot_file_open,
- 	.release	= ext3_release_file,
- 	.fsync		= ext3_sync_file,
--	.splice_read	= generic_file_splice_read,
--	.splice_write	= iter_file_splice_write,
-+	SPLICE_READ_INIT(generic_file_splice_read)
-+	SPLICE_WRITE_INIT(iter_file_splice_write)
- };
- 
- const struct inode_operations ext3_file_inode_operations = {
--- 
-1.9.1
+> Also am curious about test generic/026
+> 
+> generic/026  [not run] ext4 does not define maximum ACL count
+> 
+> Is that expected?
+
+Yes; the test currently is only wired up for jfs and xfs.  (See
+xfstests/common/attr:_acl_get_max).
+
+						- Ted
