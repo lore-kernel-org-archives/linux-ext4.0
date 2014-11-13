@@ -1,84 +1,48 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH,RFC] ext4: add lazytime mount option
-Date: Fri, 14 Nov 2014 07:48:32 +1100
-Message-ID: <20141113204832.GJ28565@dastard>
-References: <1415765227-9561-1-git-send-email-tytso@mit.edu>
- <20141113064150.GI28565@dastard>
- <20141113163511.GA15585@thunk.org>
+From: Steve French <smfrench@gmail.com>
+Subject: xfstest generic/018 and ext4 defrag
+Date: Thu, 13 Nov 2014 15:16:30 -0600
+Message-ID: <CAH2r5mvAGe-N0e2rOsEe4DBT1tRM0Uv8rNQChmQY+d7dkLxR2w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+To: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20141113163511.GA15585@thunk.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Nov 13, 2014 at 11:35:11AM -0500, Theodore Ts'o wrote:
-> On Thu, Nov 13, 2014 at 05:41:50PM +1100, Dave Chinner wrote:
-> > 
-> > I think this needs to a VFS level inode timestamp update option.
-> > The games ext4 is playing with reference counts inside .drop_inode are
-> > pretty nasty and could be avoided if this is implemented at the VFs
-> > level..
-> 
-> I'm happy to implement this at the VFS level, assuming that there are
-> no objections from other file system developers.  I do need to note
-> that one potential downside of this feature is that if an inode stays
-> in the inode cache for potentially a long, long time, and the file is
-> a preallocated file which is updated using random DIO or AIO writes
-> (for example, enterprise database files on a long-running server), and
-> the system crashes, the mtime in memory could potentially out of synch
-> for days, weeks, months, etc.  I'm personally not bothered by this,
-> but I could imagine that some other folks might.
+I see an earlier thread about ext4 defrag problems causing this
+failure on xfstest generic/018 running on ext4
 
-I really don't care what the behaviour is, as long as it's
-*consistent across all filesystems*.
+generic/018 1s ... [failed, exit status 1] - output mismatch (see
+/home/sfrench/xfstests/results//generic/018.out.bad)
+    --- tests/generic/018.out 2014-11-13 11:20:05.385406288 -0800
+    +++ /home/sfrench/xfstests/results//generic/018.out.bad 2014-11-13
+12:33:19.317806287 -0800
+    @@ -10,10 +10,5 @@
+     After: 1
+     Write backwards sync, but contiguous - should defrag to 1 extent
+     Before: 10
+    -After: 1
+    -Write backwards sync leaving holes - defrag should do nothing
+    -Before: 16
+    -After: 16
+    ...
 
-However, we'd be fools to ignore the development of relatime, which
-in it's original form never updated the atime until m/ctime updated.
-3 years after it was introduced, relatime was changed to limit the
-update delay to 24 hours (before it was made the default) so that
-applications that required regular updates to timestamps didn't
-silently stop working.
+but wasn't clear whether it was fixed upstream.  It failed on two out
+of three runs for me on most current ext4.  My test is on most current
+Ubuntu x86_64  (and with 3.18-rc3 kernel)
+I couldn't find version info for e4defrag from the command line but
+other ext4 tools are reasonably recent it seems as Ubuntu packages
+them e.g. EXT2FS Library version 1.42.10, 18-May-2014
 
-So perhaps what we should simply define "lazytime" policy to be
-"only update timestamps once a day or whenever the inode is
-otherwise modified, whichever comes first". 
+Is generic xfstest 18 still broken on ext4?
 
-> One other thing we could do at the VFS layer is to change the default
-> from relatime (which is not POSIX compliant) to enabling atime update
-> plus lazytime enabled (which is POSIX compliant).  Would there be
-> consensus in making such a change in the default?
+Also am curious about test generic/026
 
-lazytime isn't POSIX compliant as it is implemented in the patch.
-sync() won't write back inodes with lazy timestamp updates as they
-are not tracked in dirty lists or the ext4 journal, therefore a
-crash after a sync() can still lose timestamp updates from before
-the sync() ran.
+generic/026  [not run] ext4 does not define maximum ACL count
 
-w.r.t. default behaviour, like relatime, I think this it will be a
-couple of years before we can consider it to be a default.  We'll
-need to shake out it's impact on the Real World first....
-
-> > I think that the "lazy time update" status should really be tracked
-> > in the inode->i_state field. Something like lazytime updates do not
-> > call ->update_inode, nor do they mark the inode dirty, but they do
-> > update the inode->i_[acm]time fields and set a TIMEDIRTY state flag.
-> 
-> It looks like the only file systems that have an update_inode today is
-> btrfs and xfs, and it looks like this change should be fine for both
-> of them, so sure, that sounds workable.
-
-For those that don't implement ->update_time, just calling
-write_inode_now() if the TIMEDIRTY flag set in iput_final()
-should end up doing the right thing, too...
-
-Cheers,
-
-Dave.
+Is that expected?
 -- 
-Dave Chinner
-david@fromorbit.com
+Thanks,
+
+Steve
