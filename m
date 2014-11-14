@@ -1,126 +1,246 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/6 v3] ext4: Extent status tree shrinker improvements
-Date: Fri, 14 Nov 2014 11:45:51 +0100
-Message-ID: <1415961957-21621-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 4/6] ext4: Limit number of scanned extents in status tree shrinker
+Date: Fri, 14 Nov 2014 11:45:55 +0100
+Message-ID: <1415961957-21621-5-git-send-email-jack@suse.cz>
+References: <1415961957-21621-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Zheng Liu <gnehzuil.liu@gmail.com>,
 	Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57401 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:57398 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934432AbaKNKqC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 14 Nov 2014 05:46:02 -0500
+	id S934816AbaKNKqD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 14 Nov 2014 05:46:03 -0500
+In-Reply-To: <1415961957-21621-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+Currently we scan extent status trees of inodes until we reclaim nr_to_scan
+extents. This can however require a lot of scanning when there are lots
+of delayed extents (as those cannot be reclaimed).
 
-  this is the next revision of Zheng's patches for improving latency of ext4
-extent status tree shrinker. Most notably I have modified the patches to
-avoid growing the structure of a cached extent and addressed other feedback
-I and Ted had.
+Change shrinker to work as shrinkers are supposed to and *scan* only
+nr_to_scan extents regardless of how many extents did we actually
+reclaim. We however need to be careful and avoid scanning each status
+tree from the beginning - that could lead to a situation where we would
+not be able to reclaim anything at all when first nr_to_scan extents in
+the tree are always unreclaimable. We remember with each inode offset
+where we stopped scanning and continue from there when we next come
+across the inode.
 
-Here are the measurements of the extent status tree shrinker (done in my
-test VM with 6 CPUs and 2GB of RAM).
+Note that we also need to update places calling __es_shrink() manually
+to pass reasonable nr_to_scan to have a chance of reclaiming anything and
+not just 1.
 
-For my synthetic test maintaing lots of fragmented files the results were
-like:
-Baseline:
-stats:
-  2194 objects
-  1206 reclaimable objects
-  299726/14244181 cache hits/misses
-  7796 ms last sorted interval
-  2002 inodes on lru list
-average:
-  858 us scan time
-  116 shrunk objects
-maximum:
-  601 inode (10 objects, 10 reclaimable)
-  332987 us max scan time
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/ext4.h           |  5 ++-
+ fs/ext4/extents_status.c | 91 +++++++++++++++++++++++++++++++-----------------
+ fs/ext4/super.c          |  1 +
+ 3 files changed, 64 insertions(+), 33 deletions(-)
 
-Patched:
-stats:
-  4351 objects
-  2176 reclaimable objects
-  21183492/2809261 cache hits/misses
-  220 inodes on list
-max nr_to_scan: 128 max inodes walked: 15
-average:
-  148 us scan time
-  125 shrunk objects
-maximum:
-  1494 inode (20 objects, 10 reclaimable)
-  4173 us max scan time
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 653d262e2a34..1515486c671b 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -890,6 +890,9 @@ struct ext4_inode_info {
+ 	struct list_head i_es_list;
+ 	unsigned int i_es_all_nr;	/* protected by i_es_lock */
+ 	unsigned int i_es_shk_nr;	/* protected by i_es_lock */
++	ext4_lblk_t i_es_shrink_lblk;	/* Offset where we start searching for
++					   extents to shrink. Protected by
++					   i_es_lock  */
+ 
+ 	/* ialloc */
+ 	ext4_group_t	i_last_alloc_group;
+@@ -1330,7 +1333,7 @@ struct ext4_sb_info {
+ 
+ 	/* Reclaim extents from extent status tree */
+ 	struct shrinker s_es_shrinker;
+-	struct list_head s_es_list;
++	struct list_head s_es_list;	/* List of inodes with reclaimable extents */
+ 	long s_es_nr_inode;
+ 	struct ext4_es_stats s_es_stats;
+ 	struct mb_cache *s_mb_cache;
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index de2d9d8bf22f..8f2aac4006d2 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -147,8 +147,7 @@ static struct kmem_cache *ext4_es_cachep;
+ static int __es_insert_extent(struct inode *inode, struct extent_status *newes);
+ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 			      ext4_lblk_t end);
+-static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
+-				       int nr_to_scan);
++static int es_reclaim_extents(struct ext4_inode_info *ei, int *nr_to_scan);
+ static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+ 		       struct ext4_inode_info *locked_ei);
+ 
+@@ -716,7 +715,7 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ retry:
+ 	err = __es_insert_extent(inode, &newes);
+ 	if (err == -ENOMEM && __es_shrink(EXT4_SB(inode->i_sb),
+-					  1, EXT4_I(inode)))
++					  128, EXT4_I(inode)))
+ 		goto retry;
+ 	if (err == -ENOMEM && !ext4_es_is_delayed(&newes))
+ 		err = 0;
+@@ -874,7 +873,7 @@ retry:
+ 				es->es_len = orig_es.es_len;
+ 				if ((err == -ENOMEM) &&
+ 				    __es_shrink(EXT4_SB(inode->i_sb),
+-							1, EXT4_I(inode)))
++							128, EXT4_I(inode)))
+ 					goto retry;
+ 				goto out;
+ 			}
+@@ -976,8 +975,6 @@ retry:
+ 	spin_lock(&sbi->s_es_lock);
+ 	nr_to_walk = sbi->s_es_nr_inode;
+ 	while (nr_to_walk-- > 0) {
+-		int shrunk;
+-
+ 		if (list_empty(&sbi->s_es_list)) {
+ 			spin_unlock(&sbi->s_es_lock);
+ 			goto out;
+@@ -985,7 +982,7 @@ retry:
+ 		ei = list_first_entry(&sbi->s_es_list, struct ext4_inode_info,
+ 				      i_es_list);
+ 		/* Move the inode to the tail */
+-		list_move(&ei->i_es_list, sbi->s_es_list.prev);
++		list_move_tail(&ei->i_es_list, &sbi->s_es_list);
+ 
+ 		/*
+ 		 * Normally we try hard to avoid shrinking precached inodes,
+@@ -1007,13 +1004,10 @@ retry:
+ 		 */
+ 		spin_unlock(&sbi->s_es_lock);
+ 
+-		shrunk = __es_try_to_reclaim_extents(ei, nr_to_scan);
++		nr_shrunk += es_reclaim_extents(ei, &nr_to_scan);
+ 		write_unlock(&ei->i_es_lock);
+ 
+-		nr_shrunk += shrunk;
+-		nr_to_scan -= shrunk;
+-
+-		if (nr_to_scan == 0)
++		if (nr_to_scan <= 0)
+ 			goto out;
+ 		spin_lock(&sbi->s_es_lock);
+ 	}
+@@ -1029,7 +1023,7 @@ retry:
+ 	}
+ 
+ 	if (locked_ei && nr_shrunk == 0)
+-		nr_shrunk = __es_try_to_reclaim_extents(locked_ei, nr_to_scan);
++		nr_shrunk = es_reclaim_extents(locked_ei, &nr_to_scan);
+ 
+ out:
+ 	scan_time = ktime_to_ns(ktime_sub(ktime_get(), start_time));
+@@ -1224,27 +1218,33 @@ void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi)
+ 	unregister_shrinker(&sbi->s_es_shrinker);
+ }
+ 
+-static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
+-				       int nr_to_scan)
++/*
++ * Shrink extents in given inode from ei->i_es_shrink_lblk till end. Scan at
++ * most *nr_to_scan extents, update *nr_to_scan accordingly.
++ *
++ * Return 0 if we hit end of tree / interval, 1 if we exhausted nr_to_scan.
++ * Increment *nr_shrunk by the number of reclaimed extents. Also update
++ * ei->i_es_shrink_lblk to where we should continue scanning.
++ */
++static int es_do_reclaim_extents(struct ext4_inode_info *ei, ext4_lblk_t end,
++				 int *nr_to_scan, int *nr_shrunk)
+ {
+ 	struct inode *inode = &ei->vfs_inode;
+ 	struct ext4_es_tree *tree = &ei->i_es_tree;
+-	struct rb_node *node;
+ 	struct extent_status *es;
+-	unsigned long nr_shrunk = 0;
+-	static DEFINE_RATELIMIT_STATE(_rs, DEFAULT_RATELIMIT_INTERVAL,
+-				      DEFAULT_RATELIMIT_BURST);
+-
+-	if (ei->i_es_shk_nr == 0)
+-		return 0;
++	struct rb_node *node;
+ 
+-	if (ext4_test_inode_state(inode, EXT4_STATE_EXT_PRECACHED) &&
+-	    __ratelimit(&_rs))
+-		ext4_warning(inode->i_sb, "forced shrink of precached extents");
++	es = __es_tree_search(&tree->root, ei->i_es_shrink_lblk);
++	if (!es)
++		goto out_wrap;
++	node = &es->rb_node;
++	while (*nr_to_scan > 0) {
++		if (es->es_lblk > end) {
++			ei->i_es_shrink_lblk = end + 1;
++			return 0;
++		}
+ 
+-	node = rb_first(&tree->root);
+-	while (node != NULL) {
+-		es = rb_entry(node, struct extent_status, rb_node);
++		(*nr_to_scan)--;
+ 		node = rb_next(&es->rb_node);
+ 		/*
+ 		 * We can't reclaim delayed extent from status tree because
+@@ -1253,11 +1253,38 @@ static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
+ 		if (!ext4_es_is_delayed(es)) {
+ 			rb_erase(&es->rb_node, &tree->root);
+ 			ext4_es_free_extent(inode, es);
+-			nr_shrunk++;
+-			if (--nr_to_scan == 0)
+-				break;
++			(*nr_shrunk)++;
+ 		}
++		if (!node)
++			goto out_wrap;
++		es = rb_entry(node, struct extent_status, rb_node);
+ 	}
+-	tree->cache_es = NULL;
++	ei->i_es_shrink_lblk = es->es_lblk;
++	return 1;
++out_wrap:
++	ei->i_es_shrink_lblk = 0;
++	return 0;
++}
++
++static int es_reclaim_extents(struct ext4_inode_info *ei, int *nr_to_scan)
++{
++	struct inode *inode = &ei->vfs_inode;
++	int nr_shrunk = 0;
++	ext4_lblk_t start = ei->i_es_shrink_lblk;
++	static DEFINE_RATELIMIT_STATE(_rs, DEFAULT_RATELIMIT_INTERVAL,
++				      DEFAULT_RATELIMIT_BURST);
++
++	if (ei->i_es_shk_nr == 0)
++		return 0;
++
++	if (ext4_test_inode_state(inode, EXT4_STATE_EXT_PRECACHED) &&
++	    __ratelimit(&_rs))
++		ext4_warning(inode->i_sb, "forced shrink of precached extents");
++
++	if (!es_do_reclaim_extents(ei, EXT_MAX_BLOCKS, nr_to_scan, &nr_shrunk) &&
++	    start != 0)
++		es_do_reclaim_extents(ei, start - 1, nr_to_scan, &nr_shrunk);
++
++	ei->i_es_tree.cache_es = NULL;
+ 	return nr_shrunk;
+ }
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index f108d84e7da2..b53c243a142b 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -883,6 +883,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 	INIT_LIST_HEAD(&ei->i_es_list);
+ 	ei->i_es_all_nr = 0;
+ 	ei->i_es_shk_nr = 0;
++	ei->i_es_shrink_lblk = 0;
+ 	ei->i_reserved_data_blocks = 0;
+ 	ei->i_reserved_meta_blocks = 0;
+ 	ei->i_allocated_meta_blocks = 0;
+-- 
+1.8.1.4
 
-Also for Zheng's write fio workload we get noticeable improvements:
-Baseline:
-stats:
-  261094 objects
-  261094 reclaimable objects
-  4030024/1063081 cache hits/misses
-  366508 ms last sorted interval
-  15001 inodes on lru list
-average:
-  330 us scan time
-  125 shrunk objects
-maximum:
-  9217 inode (46 objects, 46 reclaimable)
-  19525 us max scan time
-
-Patched:
-stats:
-  496796 objects
-  466436 reclaimable objects
-  1322023/119385 cache hits/misses
-  14825 inodes on list
-max nr_to_scan: 128 max inodes walked: 3
-average:
-  112 us scan time
-  125 shrunk objects
-maximum:
-  2 inode (87 objects, 87 reclaimable)
-  7158 us max scan time
-
-OTOH I can see a regression in max latency for the randwrite workload:
-Baseline:
-stats:
-  35953 objects
-  33264 reclaimable objects
-  110208/1794665 cache hits/misses
-  56396 ms last sorted interval
-  251 inodes on lru list
-average:
-  286 us scan time
-  125 shrunk objects
-maximum:
-  225 inode (849 objects, 838 reclaimable)
-  4220 us max scan time
-
-Patched
-stats:
-  118256 objects
-stats:
-  193489 objects
-  193489 reclaimable objects
-  1133707/65535 cache hits/misses
-  251 inodes on list
-max nr_to_scan: 128 max inodes walked: 6
-average:
-  180 us scan time
-  125 shrunk objects
-maximum:
-  15123 inode (1931 objects, 1931 reclaimable)
-  6458 us max scan time
-
-  In general you can see there are much more objects cached in the patched
-kernel. This is because of the first patch - we now have all the holes in the
-files cached as well. This is also the reason for the much higher cache hit
-ratio. I'm still somewhat unsatisfied with the worst case latency of the
-shrinker which is in order of miliseconds for all the workloads. I did some
-more instrumentation of the code and the reason for this s_es_lock. Under
-heavy load the wait time for this lock is on average ~100 us (3300 us max).
-I have some ideas how to improve on this but I didn't want to delay posting
-of the series even more...
-
-								Honza
