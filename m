@@ -1,150 +1,167 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 5/6] ext4: Cleanup flag definitions for extent status tree
-Date: Fri, 14 Nov 2014 11:45:56 +0100
-Message-ID: <1415961957-21621-6-git-send-email-jack@suse.cz>
+Subject: [PATCH 6/6] ext4: Introduce aging to extent status tree
+Date: Fri, 14 Nov 2014 11:45:57 +0100
+Message-ID: <1415961957-21621-7-git-send-email-jack@suse.cz>
 References: <1415961957-21621-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Zheng Liu <gnehzuil.liu@gmail.com>,
 	Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57422 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:57421 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935120AbaKNKqF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S935144AbaKNKqF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 14 Nov 2014 05:46:05 -0500
 In-Reply-To: <1415961957-21621-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently flags for extent status tree are defined twice, once shifted
-and once without a being shifted. Consolidate these definitions into one
-place and make some computations automatic to make adding flags less
-error prone. Compiler should be clever enough to figure out these are
-constants and generate the same code.
+Introduce a simple aging to extent status tree. Each extent has a
+REFERENCED bit which gets set when the extent is used. Shrinker then
+skips entries with referenced bit set and clears the bit. Thus
+frequently used extents have higher chances of staying in memory.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/extents_status.c |  2 ++
- fs/ext4/extents_status.h | 58 ++++++++++++++++++++++--------------------------
- 2 files changed, 28 insertions(+), 32 deletions(-)
+ fs/ext4/extents_status.c | 22 +++++++++++++++++-----
+ fs/ext4/extents_status.h | 35 +++++++++++++++++++++++++++++++----
+ 2 files changed, 48 insertions(+), 9 deletions(-)
 
 diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 8f2aac4006d2..30596498ed0b 100644
+index 30596498ed0b..e04d45733976 100644
 --- a/fs/ext4/extents_status.c
 +++ b/fs/ext4/extents_status.c
-@@ -1174,6 +1174,8 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
+@@ -382,7 +382,7 @@ static void ext4_es_free_extent(struct inode *inode, struct extent_status *es)
+ static int ext4_es_can_be_merged(struct extent_status *es1,
+ 				 struct extent_status *es2)
  {
- 	int err;
+-	if (ext4_es_status(es1) != ext4_es_status(es2))
++	if (ext4_es_type(es1) != ext4_es_type(es2))
+ 		return 0;
  
-+	/* Make sure we have enough bits for physical block number */
-+	BUILD_BUG_ON(ES_SHIFT < 48);
- 	INIT_LIST_HEAD(&sbi->s_es_list);
- 	sbi->s_es_nr_inode = 0;
- 	spin_lock_init(&sbi->s_es_lock);
+ 	if (((__u64) es1->es_len) + es2->es_len > EXT_MAX_BLOCKS) {
+@@ -425,6 +425,8 @@ ext4_es_try_to_merge_left(struct inode *inode, struct extent_status *es)
+ 	es1 = rb_entry(node, struct extent_status, rb_node);
+ 	if (ext4_es_can_be_merged(es1, es)) {
+ 		es1->es_len += es->es_len;
++		if (ext4_es_is_referenced(es))
++			ext4_es_set_referenced(es1);
+ 		rb_erase(&es->rb_node, &tree->root);
+ 		ext4_es_free_extent(inode, es);
+ 		es = es1;
+@@ -447,6 +449,8 @@ ext4_es_try_to_merge_right(struct inode *inode, struct extent_status *es)
+ 	es1 = rb_entry(node, struct extent_status, rb_node);
+ 	if (ext4_es_can_be_merged(es, es1)) {
+ 		es->es_len += es1->es_len;
++		if (ext4_es_is_referenced(es1))
++			ext4_es_set_referenced(es);
+ 		rb_erase(node, &tree->root);
+ 		ext4_es_free_extent(inode, es1);
+ 	}
+@@ -813,6 +817,8 @@ out:
+ 		es->es_lblk = es1->es_lblk;
+ 		es->es_len = es1->es_len;
+ 		es->es_pblk = es1->es_pblk;
++		if (!ext4_es_is_referenced(es))
++			ext4_es_set_referenced(es);
+ 		stats->es_stats_cache_hits++;
+ 	} else {
+ 		stats->es_stats_cache_misses++;
+@@ -1252,11 +1258,17 @@ static int es_do_reclaim_extents(struct ext4_inode_info *ei, ext4_lblk_t end,
+ 		 * We can't reclaim delayed extent from status tree because
+ 		 * fiemap, bigallic, and seek_data/hole need to use it.
+ 		 */
+-		if (!ext4_es_is_delayed(es)) {
+-			rb_erase(&es->rb_node, &tree->root);
+-			ext4_es_free_extent(inode, es);
+-			(*nr_shrunk)++;
++		if (ext4_es_is_delayed(es))
++			goto next;
++		if (ext4_es_is_referenced(es)) {
++			ext4_es_clear_referenced(es);
++			goto next;
+ 		}
++
++		rb_erase(&es->rb_node, &tree->root);
++		ext4_es_free_extent(inode, es);
++		(*nr_shrunk)++;
++next:
+ 		if (!node)
+ 			goto out_wrap;
+ 		es = rb_entry(node, struct extent_status, rb_node);
 diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index b0b78b95f481..e86b1f34cfec 100644
+index e86b1f34cfec..691b52613ce4 100644
 --- a/fs/ext4/extents_status.h
 +++ b/fs/ext4/extents_status.h
-@@ -29,25 +29,21 @@
- /*
-  * These flags live in the high bits of extent_status.es_pblk
-  */
--#define ES_SHIFT	60
--
--#define EXTENT_STATUS_WRITTEN	(1 << 3)
--#define EXTENT_STATUS_UNWRITTEN (1 << 2)
--#define EXTENT_STATUS_DELAYED	(1 << 1)
--#define EXTENT_STATUS_HOLE	(1 << 0)
--
--#define EXTENT_STATUS_FLAGS	(EXTENT_STATUS_WRITTEN | \
--				 EXTENT_STATUS_UNWRITTEN | \
--				 EXTENT_STATUS_DELAYED | \
--				 EXTENT_STATUS_HOLE)
-+enum {
-+	ES_WRITTEN_B,
-+	ES_UNWRITTEN_B,
-+	ES_DELAYED_B,
-+	ES_HOLE_B,
-+	ES_FLAGS
-+};
+@@ -34,6 +34,7 @@ enum {
+ 	ES_UNWRITTEN_B,
+ 	ES_DELAYED_B,
+ 	ES_HOLE_B,
++	ES_REFERENCED_B,
+ 	ES_FLAGS
+ };
  
--#define ES_WRITTEN		(1ULL << 63)
--#define ES_UNWRITTEN		(1ULL << 62)
--#define ES_DELAYED		(1ULL << 61)
--#define ES_HOLE			(1ULL << 60)
-+#define ES_SHIFT (sizeof(ext4_fsblk_t)*8 - ES_FLAGS)
-+#define ES_MASK (~((ext4_fsblk_t)0) << ES_SHIFT)
- 
--#define ES_MASK			(ES_WRITTEN | ES_UNWRITTEN | \
--				 ES_DELAYED | ES_HOLE)
-+#define EXTENT_STATUS_WRITTEN	(1 << ES_WRITTEN_B)
-+#define EXTENT_STATUS_UNWRITTEN (1 << ES_UNWRITTEN_B)
-+#define EXTENT_STATUS_DELAYED	(1 << ES_DELAYED_B)
-+#define EXTENT_STATUS_HOLE	(1 << ES_HOLE_B)
+@@ -44,6 +45,12 @@ enum {
+ #define EXTENT_STATUS_UNWRITTEN (1 << ES_UNWRITTEN_B)
+ #define EXTENT_STATUS_DELAYED	(1 << ES_DELAYED_B)
+ #define EXTENT_STATUS_HOLE	(1 << ES_HOLE_B)
++#define EXTENT_STATUS_REFERENCED	(1 << ES_REFERENCED_B)
++
++#define ES_TYPE_MASK	((ext4_fsblk_t)(EXTENT_STATUS_WRITTEN | \
++			  EXTENT_STATUS_UNWRITTEN | \
++			  EXTENT_STATUS_DELAYED | \
++			  EXTENT_STATUS_HOLE) << ES_SHIFT)
  
  struct ext4_sb_info;
  struct ext4_extent;
-@@ -92,29 +88,29 @@ extern void ext4_es_find_delayed_extent_range(struct inode *inode,
- extern int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
- 				 struct extent_status *es);
+@@ -93,24 +100,44 @@ static inline unsigned int ext4_es_status(struct extent_status *es)
+ 	return es->es_pblk >> ES_SHIFT;
+ }
  
-+static inline unsigned int ext4_es_status(struct extent_status *es)
++static inline unsigned int ext4_es_type(struct extent_status *es)
 +{
-+	return es->es_pblk >> ES_SHIFT;
++	return (es->es_pblk & ES_TYPE_MASK) >> ES_SHIFT;
 +}
 +
  static inline int ext4_es_is_written(struct extent_status *es)
  {
--	return (es->es_pblk & ES_WRITTEN) != 0;
-+	return (ext4_es_status(es) & EXTENT_STATUS_WRITTEN) != 0;
+-	return (ext4_es_status(es) & EXTENT_STATUS_WRITTEN) != 0;
++	return (ext4_es_type(es) & EXTENT_STATUS_WRITTEN) != 0;
  }
  
  static inline int ext4_es_is_unwritten(struct extent_status *es)
  {
--	return (es->es_pblk & ES_UNWRITTEN) != 0;
-+	return (ext4_es_status(es) & EXTENT_STATUS_UNWRITTEN) != 0;
+-	return (ext4_es_status(es) & EXTENT_STATUS_UNWRITTEN) != 0;
++	return (ext4_es_type(es) & EXTENT_STATUS_UNWRITTEN) != 0;
  }
  
  static inline int ext4_es_is_delayed(struct extent_status *es)
  {
--	return (es->es_pblk & ES_DELAYED) != 0;
-+	return (ext4_es_status(es) & EXTENT_STATUS_DELAYED) != 0;
+-	return (ext4_es_status(es) & EXTENT_STATUS_DELAYED) != 0;
++	return (ext4_es_type(es) & EXTENT_STATUS_DELAYED) != 0;
  }
  
  static inline int ext4_es_is_hole(struct extent_status *es)
  {
--	return (es->es_pblk & ES_HOLE) != 0;
--}
--
--static inline unsigned int ext4_es_status(struct extent_status *es)
--{
--	return es->es_pblk >> ES_SHIFT;
-+	return (ext4_es_status(es) & EXTENT_STATUS_HOLE) != 0;
+-	return (ext4_es_status(es) & EXTENT_STATUS_HOLE) != 0;
++	return (ext4_es_type(es) & EXTENT_STATUS_HOLE) != 0;
++}
++
++static inline void ext4_es_set_referenced(struct extent_status *es)
++{
++	es->es_pblk |= ((ext4_fsblk_t)EXTENT_STATUS_REFERENCED) << ES_SHIFT;
++}
++
++static inline void ext4_es_clear_referenced(struct extent_status *es)
++{
++	es->es_pblk &= ~(((ext4_fsblk_t)EXTENT_STATUS_REFERENCED) << ES_SHIFT);
++}
++
++static inline int ext4_es_is_referenced(struct extent_status *es)
++{
++	return (ext4_es_status(es) & EXTENT_STATUS_REFERENCED) != 0;
  }
  
  static inline ext4_fsblk_t ext4_es_pblock(struct extent_status *es)
-@@ -134,18 +130,16 @@ static inline void ext4_es_store_pblock(struct extent_status *es,
- static inline void ext4_es_store_status(struct extent_status *es,
- 					unsigned int status)
- {
--	es->es_pblk = (((ext4_fsblk_t)
--			(status & EXTENT_STATUS_FLAGS) << ES_SHIFT) |
--		       (es->es_pblk & ~ES_MASK));
-+	es->es_pblk = (((ext4_fsblk_t)status << ES_SHIFT) & ES_MASK) |
-+		      (es->es_pblk & ~ES_MASK);
- }
- 
- static inline void ext4_es_store_pblock_status(struct extent_status *es,
- 					       ext4_fsblk_t pb,
- 					       unsigned int status)
- {
--	es->es_pblk = (((ext4_fsblk_t)
--			(status & EXTENT_STATUS_FLAGS) << ES_SHIFT) |
--		       (pb & ~ES_MASK));
-+	es->es_pblk = (((ext4_fsblk_t)status << ES_SHIFT) & ES_MASK) |
-+		      (pb & ~ES_MASK);
- }
- 
- extern int ext4_es_register_shrinker(struct ext4_sb_info *sbi);
 -- 
 1.8.1.4
 
