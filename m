@@ -1,157 +1,126 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/6] ext4: Move LRU list handling into extent status code
-Date: Fri, 14 Nov 2014 11:45:53 +0100
-Message-ID: <1415961957-21621-3-git-send-email-jack@suse.cz>
-References: <1415961957-21621-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 0/6 v3] ext4: Extent status tree shrinker improvements
+Date: Fri, 14 Nov 2014 11:45:51 +0100
+Message-ID: <1415961957-21621-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Zheng Liu <gnehzuil.liu@gmail.com>,
 	Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57403 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:57401 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935099AbaKNKqD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 14 Nov 2014 05:46:03 -0500
-In-Reply-To: <1415961957-21621-1-git-send-email-jack@suse.cz>
+	id S934432AbaKNKqC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 14 Nov 2014 05:46:02 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently callers adding extents to extent status tree were responsible
-for adding the inode to LRU list. This is error prone and puts LRU list
-handling in unnecessarily many places.
+  Hello,
 
-Just add inode to LRU automatically when the first non-delay extent is
-added to the tree and remove inode from LRU when the last non-delay
-extent is removed.
+  this is the next revision of Zheng's patches for improving latency of ext4
+extent status tree shrinker. Most notably I have modified the patches to
+avoid growing the structure of a cached extent and addressed other feedback
+I and Ted had.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/extents.c        |  2 --
- fs/ext4/extents_status.c | 10 ++++++----
- fs/ext4/extents_status.h |  2 --
- fs/ext4/inode.c          |  2 --
- fs/ext4/ioctl.c          |  2 --
- fs/ext4/super.c          |  1 -
- 6 files changed, 6 insertions(+), 13 deletions(-)
+Here are the measurements of the extent status tree shrinker (done in my
+test VM with 6 CPUs and 2GB of RAM).
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 0a97e039d0a0..923327719507 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4622,7 +4622,6 @@ out2:
- 
- 	trace_ext4_ext_map_blocks_exit(inode, flags, map,
- 				       err ? err : allocated);
--	ext4_es_lru_add(inode);
- 	return err ? err : allocated;
- }
- 
-@@ -5181,7 +5180,6 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		error = ext4_fill_fiemap_extents(inode, start_blk,
- 						 len_blks, fieinfo);
- 	}
--	ext4_es_lru_add(inode);
- 	return error;
- }
- 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 94e7855ae71b..339a9e1678e6 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -314,7 +314,8 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
- 	 * We don't count delayed extent because we never try to reclaim them
- 	 */
- 	if (!ext4_es_is_delayed(es)) {
--		EXT4_I(inode)->i_es_lru_nr++;
-+		if (!EXT4_I(inode)->i_es_lru_nr++)
-+			ext4_es_lru_add(inode);
- 		percpu_counter_inc(&EXT4_SB(inode->i_sb)->
- 					s_es_stats.es_stats_lru_cnt);
- 	}
-@@ -333,7 +334,8 @@ static void ext4_es_free_extent(struct inode *inode, struct extent_status *es)
- 	/* Decrease the lru counter when this es is not delayed */
- 	if (!ext4_es_is_delayed(es)) {
- 		BUG_ON(EXT4_I(inode)->i_es_lru_nr == 0);
--		EXT4_I(inode)->i_es_lru_nr--;
-+		if (!--EXT4_I(inode)->i_es_lru_nr)
-+			ext4_es_lru_del(inode);
- 		percpu_counter_dec(&EXT4_SB(inode->i_sb)->
- 					s_es_stats.es_stats_lru_cnt);
- 	}
-@@ -1225,7 +1227,7 @@ void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi)
- 	unregister_shrinker(&sbi->s_es_shrinker);
- }
- 
--void ext4_es_lru_add(struct inode *inode)
-+static void ext4_es_lru_add(struct inode *inode)
- {
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-@@ -1241,7 +1243,7 @@ void ext4_es_lru_add(struct inode *inode)
- 	spin_unlock(&sbi->s_es_lru_lock);
- }
- 
--void ext4_es_lru_del(struct inode *inode)
-+static void ext4_es_lru_del(struct inode *inode)
- {
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index efd5f970b501..9b5e7616b116 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -151,7 +151,5 @@ static inline void ext4_es_store_pblock_status(struct extent_status *es,
- 
- extern int ext4_es_register_shrinker(struct ext4_sb_info *sbi);
- extern void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi);
--extern void ext4_es_lru_add(struct inode *inode);
--extern void ext4_es_lru_del(struct inode *inode);
- 
- #endif /* _EXT4_EXTENTS_STATUS_H */
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 69601d288119..e9e580152720 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -491,7 +491,6 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 
- 	/* Lookup extent status tree firstly */
- 	if (ext4_es_lookup_extent(inode, map->m_lblk, &es)) {
--		ext4_es_lru_add(inode);
- 		if (ext4_es_is_written(&es) || ext4_es_is_unwritten(&es)) {
- 			map->m_pblk = ext4_es_pblock(&es) +
- 					map->m_lblk - es.es_lblk;
-@@ -1393,7 +1392,6 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
- 
- 	/* Lookup extent status tree firstly */
- 	if (ext4_es_lookup_extent(inode, iblock, &es)) {
--		ext4_es_lru_add(inode);
- 		if (ext4_es_is_hole(&es)) {
- 			retval = 0;
- 			down_read(&EXT4_I(inode)->i_data_sem);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index bfda18a15592..f58a0d106726 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -78,8 +78,6 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
- 	memswap(&ei1->i_disksize, &ei2->i_disksize, sizeof(ei1->i_disksize));
- 	ext4_es_remove_extent(inode1, 0, EXT_MAX_BLOCKS);
- 	ext4_es_remove_extent(inode2, 0, EXT_MAX_BLOCKS);
--	ext4_es_lru_del(inode1);
--	ext4_es_lru_del(inode2);
- 
- 	isize = i_size_read(inode1);
- 	i_size_write(inode1, i_size_read(inode2));
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 1eda6ab0ef9d..9f052d49553e 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -972,7 +972,6 @@ void ext4_clear_inode(struct inode *inode)
- 	dquot_drop(inode);
- 	ext4_discard_preallocations(inode);
- 	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
--	ext4_es_lru_del(inode);
- 	if (EXT4_I(inode)->jinode) {
- 		jbd2_journal_release_jbd_inode(EXT4_JOURNAL(inode),
- 					       EXT4_I(inode)->jinode);
--- 
-1.8.1.4
+For my synthetic test maintaing lots of fragmented files the results were
+like:
+Baseline:
+stats:
+  2194 objects
+  1206 reclaimable objects
+  299726/14244181 cache hits/misses
+  7796 ms last sorted interval
+  2002 inodes on lru list
+average:
+  858 us scan time
+  116 shrunk objects
+maximum:
+  601 inode (10 objects, 10 reclaimable)
+  332987 us max scan time
 
+Patched:
+stats:
+  4351 objects
+  2176 reclaimable objects
+  21183492/2809261 cache hits/misses
+  220 inodes on list
+max nr_to_scan: 128 max inodes walked: 15
+average:
+  148 us scan time
+  125 shrunk objects
+maximum:
+  1494 inode (20 objects, 10 reclaimable)
+  4173 us max scan time
+
+Also for Zheng's write fio workload we get noticeable improvements:
+Baseline:
+stats:
+  261094 objects
+  261094 reclaimable objects
+  4030024/1063081 cache hits/misses
+  366508 ms last sorted interval
+  15001 inodes on lru list
+average:
+  330 us scan time
+  125 shrunk objects
+maximum:
+  9217 inode (46 objects, 46 reclaimable)
+  19525 us max scan time
+
+Patched:
+stats:
+  496796 objects
+  466436 reclaimable objects
+  1322023/119385 cache hits/misses
+  14825 inodes on list
+max nr_to_scan: 128 max inodes walked: 3
+average:
+  112 us scan time
+  125 shrunk objects
+maximum:
+  2 inode (87 objects, 87 reclaimable)
+  7158 us max scan time
+
+OTOH I can see a regression in max latency for the randwrite workload:
+Baseline:
+stats:
+  35953 objects
+  33264 reclaimable objects
+  110208/1794665 cache hits/misses
+  56396 ms last sorted interval
+  251 inodes on lru list
+average:
+  286 us scan time
+  125 shrunk objects
+maximum:
+  225 inode (849 objects, 838 reclaimable)
+  4220 us max scan time
+
+Patched
+stats:
+  118256 objects
+stats:
+  193489 objects
+  193489 reclaimable objects
+  1133707/65535 cache hits/misses
+  251 inodes on list
+max nr_to_scan: 128 max inodes walked: 6
+average:
+  180 us scan time
+  125 shrunk objects
+maximum:
+  15123 inode (1931 objects, 1931 reclaimable)
+  6458 us max scan time
+
+  In general you can see there are much more objects cached in the patched
+kernel. This is because of the first patch - we now have all the holes in the
+files cached as well. This is also the reason for the much higher cache hit
+ratio. I'm still somewhat unsatisfied with the worst case latency of the
+shrinker which is in order of miliseconds for all the workloads. I did some
+more instrumentation of the code and the reason for this s_es_lock. Under
+heavy load the wait time for this lock is on average ~100 us (3300 us max).
+I have some ideas how to improve on this but I didn't want to delay posting
+of the series even more...
+
+								Honza
