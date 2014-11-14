@@ -1,133 +1,157 @@
-From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-Subject: [PATCH 1/4] tests: regression test for resizing inodes on a metadata_csum fs
-Date: Fri, 14 Nov 2014 17:58:27 +0800
-Message-ID: <1415959107-14267-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <tytso@mit.edu>, <darrick.wong@oracle.com>,
-	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-To: <linux-ext4@vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 2/6] ext4: Move LRU list handling into extent status code
+Date: Fri, 14 Nov 2014 11:45:53 +0100
+Message-ID: <1415961957-21621-3-git-send-email-jack@suse.cz>
+References: <1415961957-21621-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <gnehzuil.liu@gmail.com>,
+	Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([59.151.112.132]:50752 "EHLO
-	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S964989AbaKNKBT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Nov 2014 05:01:19 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:57403 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S935099AbaKNKqD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 14 Nov 2014 05:46:03 -0500
+In-Reply-To: <1415961957-21621-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When using tune2fs to resize inodes,  there is a bug that we do not
-update the block group descriptor and inode checksum, this test is
-written to check whether this bug has been fixed.
+Currently callers adding extents to extent status tree were responsible
+for adding the inode to LRU list. This is error prone and puts LRU list
+handling in unnecessarily many places.
 
-Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+Just add inode to LRU automatically when the first non-delay extent is
+added to the tree and remove inode from LRU when the last non-delay
+extent is removed.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- tests/t_iexpand_csum/expect | 21 ++++++++++++++++
- tests/t_iexpand_csum/name   |  1 +
- tests/t_iexpand_csum/script | 59 +++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 81 insertions(+)
- create mode 100644 tests/t_iexpand_csum/expect
- create mode 100644 tests/t_iexpand_csum/name
- create mode 100644 tests/t_iexpand_csum/script
+ fs/ext4/extents.c        |  2 --
+ fs/ext4/extents_status.c | 10 ++++++----
+ fs/ext4/extents_status.h |  2 --
+ fs/ext4/inode.c          |  2 --
+ fs/ext4/ioctl.c          |  2 --
+ fs/ext4/super.c          |  1 -
+ 6 files changed, 6 insertions(+), 13 deletions(-)
 
-diff --git a/tests/t_iexpand_csum/expect b/tests/t_iexpand_csum/expect
-new file mode 100644
-index 0000000..9cba9dc
---- /dev/null
-+++ b/tests/t_iexpand_csum/expect
-@@ -0,0 +1,21 @@
-+tune2fs -I test
-+Creating filesystem with 786432 1k blocks and 98304 inodes
-+Superblock backups stored on blocks: 
-+	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553
-+
-+Allocating group tables:      done                            
-+Writing inode tables:      done                            
-+Creating journal (16384 blocks): done
-+Writing superblocks and filesystem accounting information:      done
-+
-+Exit status is 0
-+tune2fs -I 256 test.img
-+Setting inode size 256
-+Exit status is 0
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-diff --git a/tests/t_iexpand_csum/name b/tests/t_iexpand_csum/name
-new file mode 100644
-index 0000000..8ac8be3
---- /dev/null
-+++ b/tests/t_iexpand_csum/name
-@@ -0,0 +1 @@
-+expand inodes on a metadata_csum filesystem
-diff --git a/tests/t_iexpand_csum/script b/tests/t_iexpand_csum/script
-new file mode 100644
-index 0000000..a7c6390
---- /dev/null
-+++ b/tests/t_iexpand_csum/script
-@@ -0,0 +1,59 @@
-+if test -x $TUNE2FS -a -x $FSCK; then
-+
-+FSCK_OPT=-fn
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+CONF=$TMPFILE.conf
-+
-+cat > $CONF << ENDL
-+[fs_types]
-+	ext4h = {
-+		features = has_journal,extent,huge_file,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode,^flex_bg,metadata_csum,64bit
-+		blocksize = 1024
-+	}
-+ENDL
-+
-+echo "tune2fs -I test" > $OUT
-+
-+MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h -I 128 $TMPFILE 786432 >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+rm -rf $CONF
-+
-+# expand inode size to 256
-+echo "tune2fs -I 256 test.img" >> $OUT
-+$TUNE2FS -I 256 $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+sed -f $cmd_dir/filter.sed < $OUT > $OUT.new
-+mv $OUT.new $OUT
-+
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+rm $TMPFILE
-+
-+sed -f $cmd_dir/filter.sed  -e 's/test_filesys:.*//g' < $OUT > $OUT.new
-+mv $OUT.new $OUT
-+
-+#
-+# Do the verification
-+#
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+fi
-+
-+unset FSCK_OPT OUT EXP CONF
-+
-+else
-+	echo "$test_name: $test_description: skipped"
-+fi
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 0a97e039d0a0..923327719507 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4622,7 +4622,6 @@ out2:
+ 
+ 	trace_ext4_ext_map_blocks_exit(inode, flags, map,
+ 				       err ? err : allocated);
+-	ext4_es_lru_add(inode);
+ 	return err ? err : allocated;
+ }
+ 
+@@ -5181,7 +5180,6 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 		error = ext4_fill_fiemap_extents(inode, start_blk,
+ 						 len_blks, fieinfo);
+ 	}
+-	ext4_es_lru_add(inode);
+ 	return error;
+ }
+ 
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 94e7855ae71b..339a9e1678e6 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -314,7 +314,8 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
+ 	 * We don't count delayed extent because we never try to reclaim them
+ 	 */
+ 	if (!ext4_es_is_delayed(es)) {
+-		EXT4_I(inode)->i_es_lru_nr++;
++		if (!EXT4_I(inode)->i_es_lru_nr++)
++			ext4_es_lru_add(inode);
+ 		percpu_counter_inc(&EXT4_SB(inode->i_sb)->
+ 					s_es_stats.es_stats_lru_cnt);
+ 	}
+@@ -333,7 +334,8 @@ static void ext4_es_free_extent(struct inode *inode, struct extent_status *es)
+ 	/* Decrease the lru counter when this es is not delayed */
+ 	if (!ext4_es_is_delayed(es)) {
+ 		BUG_ON(EXT4_I(inode)->i_es_lru_nr == 0);
+-		EXT4_I(inode)->i_es_lru_nr--;
++		if (!--EXT4_I(inode)->i_es_lru_nr)
++			ext4_es_lru_del(inode);
+ 		percpu_counter_dec(&EXT4_SB(inode->i_sb)->
+ 					s_es_stats.es_stats_lru_cnt);
+ 	}
+@@ -1225,7 +1227,7 @@ void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi)
+ 	unregister_shrinker(&sbi->s_es_shrinker);
+ }
+ 
+-void ext4_es_lru_add(struct inode *inode)
++static void ext4_es_lru_add(struct inode *inode)
+ {
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+@@ -1241,7 +1243,7 @@ void ext4_es_lru_add(struct inode *inode)
+ 	spin_unlock(&sbi->s_es_lru_lock);
+ }
+ 
+-void ext4_es_lru_del(struct inode *inode)
++static void ext4_es_lru_del(struct inode *inode)
+ {
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index efd5f970b501..9b5e7616b116 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -151,7 +151,5 @@ static inline void ext4_es_store_pblock_status(struct extent_status *es,
+ 
+ extern int ext4_es_register_shrinker(struct ext4_sb_info *sbi);
+ extern void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi);
+-extern void ext4_es_lru_add(struct inode *inode);
+-extern void ext4_es_lru_del(struct inode *inode);
+ 
+ #endif /* _EXT4_EXTENTS_STATUS_H */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 69601d288119..e9e580152720 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -491,7 +491,6 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 
+ 	/* Lookup extent status tree firstly */
+ 	if (ext4_es_lookup_extent(inode, map->m_lblk, &es)) {
+-		ext4_es_lru_add(inode);
+ 		if (ext4_es_is_written(&es) || ext4_es_is_unwritten(&es)) {
+ 			map->m_pblk = ext4_es_pblock(&es) +
+ 					map->m_lblk - es.es_lblk;
+@@ -1393,7 +1392,6 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 
+ 	/* Lookup extent status tree firstly */
+ 	if (ext4_es_lookup_extent(inode, iblock, &es)) {
+-		ext4_es_lru_add(inode);
+ 		if (ext4_es_is_hole(&es)) {
+ 			retval = 0;
+ 			down_read(&EXT4_I(inode)->i_data_sem);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index bfda18a15592..f58a0d106726 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -78,8 +78,6 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
+ 	memswap(&ei1->i_disksize, &ei2->i_disksize, sizeof(ei1->i_disksize));
+ 	ext4_es_remove_extent(inode1, 0, EXT_MAX_BLOCKS);
+ 	ext4_es_remove_extent(inode2, 0, EXT_MAX_BLOCKS);
+-	ext4_es_lru_del(inode1);
+-	ext4_es_lru_del(inode2);
+ 
+ 	isize = i_size_read(inode1);
+ 	i_size_write(inode1, i_size_read(inode2));
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 1eda6ab0ef9d..9f052d49553e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -972,7 +972,6 @@ void ext4_clear_inode(struct inode *inode)
+ 	dquot_drop(inode);
+ 	ext4_discard_preallocations(inode);
+ 	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
+-	ext4_es_lru_del(inode);
+ 	if (EXT4_I(inode)->jinode) {
+ 		jbd2_journal_release_jbd_inode(EXT4_JOURNAL(inode),
+ 					       EXT4_I(inode)->jinode);
 -- 
-1.8.3.1
+1.8.1.4
 
