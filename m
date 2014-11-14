@@ -1,129 +1,133 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 2/2] ext4: fix potential use after free issue while fsresize
-Date: Fri, 14 Nov 2014 13:40:40 +0400
-Message-ID: <1415958040-4393-2-git-send-email-dmonakhov@openvz.org>
-References: <1415958040-4393-1-git-send-email-dmonakhov@openvz.org>
-Cc: tytso@mit.edu, cmm@us.ibm.com,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
+From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+Subject: [PATCH 1/4] tests: regression test for resizing inodes on a metadata_csum fs
+Date: Fri, 14 Nov 2014 17:58:27 +0800
+Message-ID: <1415959107-14267-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: <tytso@mit.edu>, <darrick.wong@oracle.com>,
+	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:34121 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754850AbaKNJk7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 14 Nov 2014 04:40:59 -0500
-In-Reply-To: <1415958040-4393-1-git-send-email-dmonakhov@openvz.org>
+Received: from cn.fujitsu.com ([59.151.112.132]:50752 "EHLO
+	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+	with ESMTP id S964989AbaKNKBT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Nov 2014 05:01:19 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We need some sort of synchronization while updating ->s_group_desc because there
-are a lot of users which can access old ->s_group_desc array after it was released.
-It is reasonable to use lightweight seqcount_t here instead of RCU.
+When using tune2fs to resize inodes,  there is a bug that we do not
+update the block group descriptor and inode checksum, this test is
+written to check whether this bug has been fixed.
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
 ---
- fs/ext4/balloc.c |   14 ++++++++++----
- fs/ext4/ext4.h   |    1 +
- fs/ext4/resize.c |    5 ++++-
- fs/ext4/super.c  |    1 +
- 4 files changed, 16 insertions(+), 5 deletions(-)
+ tests/t_iexpand_csum/expect | 21 ++++++++++++++++
+ tests/t_iexpand_csum/name   |  1 +
+ tests/t_iexpand_csum/script | 59 +++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 81 insertions(+)
+ create mode 100644 tests/t_iexpand_csum/expect
+ create mode 100644 tests/t_iexpand_csum/name
+ create mode 100644 tests/t_iexpand_csum/script
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 83a6f49..4746907 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -280,8 +280,10 @@ struct ext4_group_desc * ext4_get_group_desc(struct super_block *sb,
- {
- 	unsigned int group_desc;
- 	unsigned int offset;
-+	unsigned int seq;
- 	ext4_group_t ngroups = ext4_get_groups_count(sb);
- 	struct ext4_group_desc *desc;
-+	struct buffer_head *gd_bh;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
- 	if (block_group >= ngroups) {
-@@ -293,7 +295,11 @@ struct ext4_group_desc * ext4_get_group_desc(struct super_block *sb,
- 
- 	group_desc = block_group >> EXT4_DESC_PER_BLOCK_BITS(sb);
- 	offset = block_group & (EXT4_DESC_PER_BLOCK(sb) - 1);
--	if (!sbi->s_group_desc[group_desc]) {
-+	do {
-+		seq = read_seqcount_begin(&sbi->s_group_desc_seq);
-+		gd_bh = sbi->s_group_desc[group_desc];
-+	} while (unlikely(read_seqcount_retry(&sbi->s_group_desc_seq, seq)));
-+	if (!gd_bh) {
- 		ext4_error(sb, "Group descriptor not loaded - "
- 			   "block_group = %u, group_desc = %u, desc = %u",
- 			   block_group, group_desc, offset);
-@@ -301,10 +307,10 @@ struct ext4_group_desc * ext4_get_group_desc(struct super_block *sb,
- 	}
- 
- 	desc = (struct ext4_group_desc *)(
--		(__u8 *)sbi->s_group_desc[group_desc]->b_data +
--		offset * EXT4_DESC_SIZE(sb));
-+		(__u8 *)gd_bh->b_data + offset * EXT4_DESC_SIZE(sb));
- 	if (bh)
--		*bh = sbi->s_group_desc[group_desc];
-+		*bh = gd_bh;
+diff --git a/tests/t_iexpand_csum/expect b/tests/t_iexpand_csum/expect
+new file mode 100644
+index 0000000..9cba9dc
+--- /dev/null
++++ b/tests/t_iexpand_csum/expect
+@@ -0,0 +1,21 @@
++tune2fs -I test
++Creating filesystem with 786432 1k blocks and 98304 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553
 +
- 	return desc;
- }
- 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index c55a1fa..2c039d2 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1199,6 +1199,7 @@ struct ext4_sb_info {
- 	struct buffer_head * s_sbh;	/* Buffer containing the super block */
- 	struct ext4_super_block *s_es;	/* Pointer to the super block in the buffer */
- 	struct buffer_head **s_group_desc;
-+	seqcount_t s_group_desc_seq;	/* protects s_group_desc updates */
- 	unsigned int s_mount_opt;
- 	unsigned int s_mount_opt2;
- 	unsigned int s_mount_flags;
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index ca45883..f9ec935 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -854,8 +854,10 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 	memcpy(n_group_desc, o_group_desc,
- 	       EXT4_SB(sb)->s_gdb_count * sizeof(struct buffer_head *));
- 	n_group_desc[gdb_num] = gdb_bh;
-+	write_seqcount_begin(&EXT4_SB(sb)->s_group_desc_seq);
- 	EXT4_SB(sb)->s_group_desc = n_group_desc;
- 	EXT4_SB(sb)->s_gdb_count++;
-+	write_seqcount_end(&EXT4_SB(sb)->s_group_desc_seq);
- 	ext4_kvfree(o_group_desc);
- 
- 	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
-@@ -902,13 +904,14 @@ static int add_new_gdb_meta_bg(struct super_block *sb,
- 			     gdb_num + 1);
- 		return err;
- 	}
--
- 	o_group_desc = EXT4_SB(sb)->s_group_desc;
- 	memcpy(n_group_desc, o_group_desc,
- 	       EXT4_SB(sb)->s_gdb_count * sizeof(struct buffer_head *));
- 	n_group_desc[gdb_num] = gdb_bh;
-+	write_seqcount_begin(&EXT4_SB(sb)->s_group_desc_seq);
- 	EXT4_SB(sb)->s_group_desc = n_group_desc;
- 	EXT4_SB(sb)->s_gdb_count++;
-+	write_seqcount_end(&EXT4_SB(sb)->s_group_desc_seq);
- 	ext4_kvfree(o_group_desc);
- 	BUFFER_TRACE(gdb_bh, "get_write_access");
- 	err = ext4_journal_get_write_access(handle, gdb_bh);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 5f6cab8..722e537 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3872,6 +3872,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
- 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
- 		   EXT4_DESC_PER_BLOCK(sb);
-+	seqcount_init(&sbi->s_group_desc_seq);
- 	sbi->s_group_desc = ext4_kvmalloc(db_count *
- 					  sizeof(struct buffer_head *),
- 					  GFP_KERNEL);
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (16384 blocks): done
++Writing superblocks and filesystem accounting information:      done
++
++Exit status is 0
++tune2fs -I 256 test.img
++Setting inode size 256
++Exit status is 0
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
+diff --git a/tests/t_iexpand_csum/name b/tests/t_iexpand_csum/name
+new file mode 100644
+index 0000000..8ac8be3
+--- /dev/null
++++ b/tests/t_iexpand_csum/name
+@@ -0,0 +1 @@
++expand inodes on a metadata_csum filesystem
+diff --git a/tests/t_iexpand_csum/script b/tests/t_iexpand_csum/script
+new file mode 100644
+index 0000000..a7c6390
+--- /dev/null
++++ b/tests/t_iexpand_csum/script
+@@ -0,0 +1,59 @@
++if test -x $TUNE2FS -a -x $FSCK; then
++
++FSCK_OPT=-fn
++OUT=$test_name.log
++EXP=$test_dir/expect
++CONF=$TMPFILE.conf
++
++cat > $CONF << ENDL
++[fs_types]
++	ext4h = {
++		features = has_journal,extent,huge_file,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode,^flex_bg,metadata_csum,64bit
++		blocksize = 1024
++	}
++ENDL
++
++echo "tune2fs -I test" > $OUT
++
++MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h -I 128 $TMPFILE 786432 >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++rm -rf $CONF
++
++# expand inode size to 256
++echo "tune2fs -I 256 test.img" >> $OUT
++$TUNE2FS -I 256 $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++sed -f $cmd_dir/filter.sed < $OUT > $OUT.new
++mv $OUT.new $OUT
++
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++rm $TMPFILE
++
++sed -f $cmd_dir/filter.sed  -e 's/test_filesys:.*//g' < $OUT > $OUT.new
++mv $OUT.new $OUT
++
++#
++# Do the verification
++#
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++fi
++
++unset FSCK_OPT OUT EXP CONF
++
++else
++	echo "$test_name: $test_description: skipped"
++fi
 -- 
-1.7.1
+1.8.3.1
 
