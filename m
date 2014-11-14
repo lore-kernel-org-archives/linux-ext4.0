@@ -1,39 +1,51 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: xfstests and ext4
-Date: Fri, 14 Nov 2014 11:02:16 +1100
-Message-ID: <20141114000216.GN28565@dastard>
-References: <CAH2r5murzVmOVnRchq=U-jx74U96g7N6Y42CW0iX4HKpWnbmxw@mail.gmail.com>
+From: josh@joshtriplett.org
+Subject: Re: [PATCH 20/56] fs/ext4: support compiling out splice
+Date: Thu, 13 Nov 2014 16:28:50 -0800
+Message-ID: <20141114002850.GA31015@cloud>
+References: <pieter@boesman.nl>
+ <1415913813-362-1-git-send-email-pieter@boesman.nl>
+ <1415913813-362-21-git-send-email-pieter@boesman.nl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	fstests@vger.kernel.org
-To: Steve French <smfrench@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:12703 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933846AbaKNAC6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 Nov 2014 19:02:58 -0500
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	"open list:EXT4 FILE SYSTEM" <linux-ext4@vger.kernel.org>,
+	open list <linux-kernel@vger.kernel.org>
+To: Pieter Smith <pieter@boesman.nl>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CAH2r5murzVmOVnRchq=U-jx74U96g7N6Y42CW0iX4HKpWnbmxw@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1415913813-362-21-git-send-email-pieter@boesman.nl>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Nov 13, 2014 at 05:38:53PM -0600, Steve French wrote:
-> To get xfstests to build on Ubuntu 14.10 and run (after adding various
-> packages I could get all but 11 of the tests to build and run) I had
-> to install the following packages:
+On Thu, Nov 13, 2014 at 10:22:57PM +0100, Pieter Smith wrote:
+> Compile out splice support from ext4 when the splice-family of syscalls is not
+> supported by the system (i.e. CONFIG_SYSCALL_SPLICE is undefined).
 > 
-> sudo apt-get install xfslibs-dev uuid-dev libtool e2fsprogs automake
-> libuuid1 libuuidm-ocaml-dev attr libattr1-dev libacl1-dev libaio-dev
-> xfsprogs libgdbm-dev gawk fio dbench
+> Signed-off-by: Pieter Smith <pieter@boesman.nl>
 
-Documentation patch for the README file?
+See below; you shouldn't need this or similar patches for most
+filesystems at all.
 
-Cheers,
+>  fs/ext4/file.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index aca7b24..c9d2962 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -595,8 +595,8 @@ const struct file_operations ext4_file_operations = {
+>  	.open		= ext4_file_open,
+>  	.release	= ext4_release_file,
+>  	.fsync		= ext4_sync_file,
+> -	.splice_read	= generic_file_splice_read,
+> -	.splice_write	= iter_file_splice_write,
+> +	SPLICE_READ_INIT(generic_file_splice_read)
+> +	SPLICE_WRITE_INIT(iter_file_splice_write)
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+You can just define iter_file_splice_write as NULL when configuring out
+splice.  You could almost do the same for generic_file_splice_read, but
+a couple of implementations of filesystem-specific splice functions
+actually call it; you can make it a no-op static inline, though.
+
+- Josh Triplett
