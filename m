@@ -1,56 +1,86 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext4: don't count external journal blocks as overhead
-Date: Fri, 14 Nov 2014 12:39:47 -0600
-Message-ID: <54664C73.60409@redhat.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH v3 3/3] e2fsprogs/tune2fs: fix memory write overflow
+Date: Fri, 14 Nov 2014 10:58:08 -0800
+Message-ID: <20141114185808.GA11781@birch.djwong.org>
+References: <1415785780-3832-3-git-send-email-wangxg.fnst@cn.fujitsu.com>
+ <1415956537-11212-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
+ <1415956537-11212-3-git-send-email-wangxg.fnst@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60858 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161518AbaKNSju (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 14 Nov 2014 13:39:50 -0500
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sAEIdm5N018976
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-ext4@vger.kernel.org>; Fri, 14 Nov 2014 13:39:49 -0500
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sAEIdlkp028436
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 14 Nov 2014 13:39:48 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:35768 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965567AbaKNS60 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Nov 2014 13:58:26 -0500
+Content-Disposition: inline
+In-Reply-To: <1415956537-11212-3-git-send-email-wangxg.fnst@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This was fixed for ext3 with:
+On Fri, Nov 14, 2014 at 05:15:37PM +0800, Xiaoguang Wang wrote:
+> If we apply this patch 'e2fsprogs/tune2fs: rewrite metadata checksums when resizing inode size',
+> we will trigger a segfault, this is because of the inode cache issues.
+> 
+> Firstly we should notice that in expand_inode_table(), we have change the super block's s_inode_size
+> to new inode size(for example, 256).
+> 
+> Then we re-compute metadata checksums, see below code flow:
+> |-->rewrite_metadata_checksums
+> |----->rewrite_inodes
+> |-------->ext2fs_write_inode_full
+> In ext2fs_write_inode_full(), if an inode cache is hit, the below code will be executed:
+> 	/* Check to see if the inode cache needs to be updated */
+> 	if (fs->icache) {
+> 		for (i=0; i < fs->icache->cache_size; i++) {
+> 			if (fs->icache->cache[i].ino == ino) {
+> 				memcpy(fs->icache->cache[i].inode, inode,
+> 				       (bufsize > length) ? length : bufsize);
+> 				break;
+> 			}
+> 		}
+> 	}
+> 
+> Before executing rewrite_inodes(), actually the inode in inode cache is allocated by
+> old inode size(for example, 128), but here the memcpy will obviously write overflow,
+> '(bufsize > length) ? length : bufsize' here will return 256(new inode size), so this is
+> wrong, we need to fix this.
+> I think we should call ext2fs_free_inode_cache() in expand_inode_table(), to drop the
+> inode cache, because inode size has changed, if necessary, we will re-create this inode cache.
+> 
+> Steps to reproduce this bug(apply 'e2fsprogs/tune2fs: rewrite metadata checksums when resizing inode size' first).
+> 	dd if=/dev/zero of=file.img bs=1M count=128
+> 	device_name=$(/sbin/losetup -f)
+> 	/sbin/losetup -f file.img
+> 	mkfs.ext4 -I 128 -O ^flex_bg $device_name
+> 	tune2fs -I 256 $device_name
+> 
+> Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+>  misc/tune2fs.c | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+> index 91dc7c1..34d2cd9 100644
+> --- a/misc/tune2fs.c
+> +++ b/misc/tune2fs.c
+> @@ -2244,6 +2244,8 @@ static int expand_inode_table(ext2_filsys fs, unsigned long new_ino_size)
+>  
+>  	/* Update the meta data */
+>  	fs->inode_blocks_per_group = new_ino_blks_per_grp;
+> +	ext2fs_free_inode_cache(fs->icache);
+> +	fs->icache = 0;
 
-e6d8fb3 ext3: Count internal journal as bsddf overhead in ext3_statfs
+By the way (and this is a general question, not one specific to just this
+patch), why do some parts of e2fsprogs assign 0 (instead of NULL) to pointers?
 
-but was never fixed for ext4.
+--D
 
-With a large external journal and no used disk blocks, df comes
-out negative without this, as journal blocks are added to the
-overhead & subtracted from used blocks unconditionally.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-ps: since this is stored in the on-disk superblock now, I'm not
-sure how to fix up old filesystems, or if it matters much.
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 2c9e686..9674578 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3338,8 +3338,8 @@ int ext4_calculate_overhead(struct super_block *sb)
- 			memset(buf, 0, PAGE_SIZE);
- 		cond_resched();
- 	}
--	/* Add the journal blocks as well */
--	if (sbi->s_journal)
-+	/* Add the internal journal blocks as well */
-+	if (sbi->s_journal && !sbi->journal_bdev)
- 		overhead += EXT4_NUM_B2C(sbi, sbi->s_journal->j_maxlen);
- 
- 	sbi->s_overhead = overhead;
-
+>  	fs->super->s_inode_size = new_ino_size;
+>  
+>  err_out:
+> -- 
+> 1.8.2.1
+> 
