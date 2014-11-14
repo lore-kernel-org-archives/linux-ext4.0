@@ -1,86 +1,46 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH v3 3/3] e2fsprogs/tune2fs: fix memory write overflow
-Date: Fri, 14 Nov 2014 10:58:08 -0800
-Message-ID: <20141114185808.GA11781@birch.djwong.org>
-References: <1415785780-3832-3-git-send-email-wangxg.fnst@cn.fujitsu.com>
- <1415956537-11212-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
- <1415956537-11212-3-git-send-email-wangxg.fnst@cn.fujitsu.com>
+From: Sami Liedes <sami.liedes@iki.fi>
+Subject: [PATCH] libblkid: avoid 1-byte stack overflow with long partition
+ names
+Date: Sat, 15 Nov 2014 00:34:18 +0200
+Message-ID: <20141114223417.GA2180@sli.dy.fi>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:35768 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965567AbaKNS60 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Nov 2014 13:58:26 -0500
+Received: from gw03.mail.saunalahti.fi ([195.197.172.111]:49275 "EHLO
+	gw03.mail.saunalahti.fi" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1422698AbaKNWeX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Nov 2014 17:34:23 -0500
 Content-Disposition: inline
-In-Reply-To: <1415956537-11212-3-git-send-email-wangxg.fnst@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 14, 2014 at 05:15:37PM +0800, Xiaoguang Wang wrote:
-> If we apply this patch 'e2fsprogs/tune2fs: rewrite metadata checksums when resizing inode size',
-> we will trigger a segfault, this is because of the inode cache issues.
-> 
-> Firstly we should notice that in expand_inode_table(), we have change the super block's s_inode_size
-> to new inode size(for example, 256).
-> 
-> Then we re-compute metadata checksums, see below code flow:
-> |-->rewrite_metadata_checksums
-> |----->rewrite_inodes
-> |-------->ext2fs_write_inode_full
-> In ext2fs_write_inode_full(), if an inode cache is hit, the below code will be executed:
-> 	/* Check to see if the inode cache needs to be updated */
-> 	if (fs->icache) {
-> 		for (i=0; i < fs->icache->cache_size; i++) {
-> 			if (fs->icache->cache[i].ino == ino) {
-> 				memcpy(fs->icache->cache[i].inode, inode,
-> 				       (bufsize > length) ? length : bufsize);
-> 				break;
-> 			}
-> 		}
-> 	}
-> 
-> Before executing rewrite_inodes(), actually the inode in inode cache is allocated by
-> old inode size(for example, 128), but here the memcpy will obviously write overflow,
-> '(bufsize > length) ? length : bufsize' here will return 256(new inode size), so this is
-> wrong, we need to fix this.
-> I think we should call ext2fs_free_inode_cache() in expand_inode_table(), to drop the
-> inode cache, because inode size has changed, if necessary, we will re-create this inode cache.
-> 
-> Steps to reproduce this bug(apply 'e2fsprogs/tune2fs: rewrite metadata checksums when resizing inode size' first).
-> 	dd if=/dev/zero of=file.img bs=1M count=128
-> 	device_name=$(/sbin/losetup -f)
-> 	/sbin/losetup -f file.img
-> 	mkfs.ext4 -I 128 -O ^flex_bg $device_name
-> 	tune2fs -I 256 $device_name
-> 
-> Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
->  misc/tune2fs.c | 2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-> index 91dc7c1..34d2cd9 100644
-> --- a/misc/tune2fs.c
-> +++ b/misc/tune2fs.c
-> @@ -2244,6 +2244,8 @@ static int expand_inode_table(ext2_filsys fs, unsigned long new_ino_size)
->  
->  	/* Update the meta data */
->  	fs->inode_blocks_per_group = new_ino_blks_per_grp;
-> +	ext2fs_free_inode_cache(fs->icache);
-> +	fs->icache = 0;
+The code in probe_all() parses device names from /proc/partitions into
+a char[128] buffer using sscanf() %128[...] format specifier.
 
-By the way (and this is a general question, not one specific to just this
-patch), why do some parts of e2fsprogs assign 0 (instead of NULL) to pointers?
+If the device name is at least 128 bytes long, scanf() will store
+those 128 bytes plus the null byte, overflowing the buffer by a single
+byte. Fix by making the buffers 129 bytes long.
 
---D
+Signed-off-by: Sami Liedes <sami.liedes@iki.fi>
+---
+ lib/blkid/devname.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
->  	fs->super->s_inode_size = new_ino_size;
->  
->  err_out:
-> -- 
-> 1.8.2.1
-> 
+diff --git a/lib/blkid/devname.c b/lib/blkid/devname.c
+index 3e2efa9..58baa29 100644
+--- a/lib/blkid/devname.c
++++ b/lib/blkid/devname.c
+@@ -394,7 +394,7 @@ static int probe_all(blkid_cache cache, int only_if_new)
+ {
+ 	FILE *proc;
+ 	char line[1024];
+-	char ptname0[128], ptname1[128], *ptname = 0;
++	char ptname0[129], ptname1[129], *ptname = 0;
+ 	char *ptnames[2];
+ 	dev_t devs[2];
+ 	int ma, mi;
+-- 
+2.1.3
+
