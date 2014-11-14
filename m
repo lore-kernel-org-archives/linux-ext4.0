@@ -1,74 +1,56 @@
-From: Angelo Dureghello <angelo70@gmail.com>
-Subject: ext4 errors on kernel 3.17.0
-Date: Fri, 14 Nov 2014 17:52:37 +0100
-Message-ID: <54663355.2080903@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] ext4: don't count external journal blocks as overhead
+Date: Fri, 14 Nov 2014 12:39:47 -0600
+Message-ID: <54664C73.60409@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f170.google.com ([209.85.212.170]:42267 "EHLO
-	mail-wi0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1161278AbaKNQwj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Nov 2014 11:52:39 -0500
-Received: by mail-wi0-f170.google.com with SMTP id r20so31260wiv.5
-        for <linux-ext4@vger.kernel.org>; Fri, 14 Nov 2014 08:52:38 -0800 (PST)
-Received: from [192.168.0.2] (host223-233-dynamic.50-79-r.retail.telecomitalia.it. [79.50.233.223])
-        by mx.google.com with ESMTPSA id q10sm40288872wjq.35.2014.11.14.08.52.37
-        for <linux-ext4@vger.kernel.org>
-        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
-        Fri, 14 Nov 2014 08:52:37 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:60858 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1161518AbaKNSju (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 14 Nov 2014 13:39:50 -0500
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sAEIdm5N018976
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-ext4@vger.kernel.org>; Fri, 14 Nov 2014 13:39:49 -0500
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sAEIdlkp028436
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 14 Nov 2014 13:39:48 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dear all,
+This was fixed for ext3 with:
 
-i am running kernel 3.17.0 (migrating from 3.5.1) on an am1808 (arm)
-based custom board, with a microsd card formatted ext4.
+e6d8fb3 ext3: Count internal journal as bsddf overhead in ext3_statfs
 
-Strangely, starting from a new formatted ext4 partition (mkfs.ext4)
-after some files are written from a running application, i getseveral
-errors trying fsck.ext4 or trying to remove the files manually (rm):
+but was never fixed for ext4.
 
+With a large external journal and no used disk blocks, df comes
+out negative without this, as journal blocks are added to the
+overhead & subtracted from used blocks unconditionally.
 
-[root@barix media]# fsck.ext4 /dev/mmcblk0p1
-e2fsck 1.42.4 (12-June-2012)
-ext2fs_check_desc: Corrupt group descriptor: bad block for block bitmap
-fsck.ext4: Group descriptors look bad... trying backup blocks...
-/dev/mmcblk0p1 was not cleanly unmounted, check forced.
-Resize inode not valid.  Recreate<y>? Automount: /dev/mmcblk0p1 inserted
-Automount: DEVICE LOCK found quiting...
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-[root@barix mmcsd0p1]# rm -r soundscape/
-EXT4-fs error (device mmcblk0p1): ext4_lookup:1441: inode #260611: comm 
-rm: 'streams' linked to parent dir
-rm: can't stat 'EXT4-fs warning (device mmcblk0p1): empty_dir:2520: bad 
-directory (dir #260611) - no `.' or `..'
-soundscape/set_1/configuration/streams/streams': Input/output error
-EXT4-fs warning (device mmcblk0p1): empty_dir:2520: bad directory (dir 
-#260618) - no `.' or `..'
-EXT4-fs warning (device mmcblk0p1): empty_dir:2520: bad directory (dir 
-#260615) - no `.' or `..'
-EXT4-fs warning (device mmcblk0p1): empty_dir:2520: bad directory (dir 
-#260616) - no `.' or `..'
-EXT4-fs error (device mmcblk0p1): ext4_lookup:1448: inode #260617: comm 
-rm: deleted inode referenced: 260611
-rm: can't stat 'EXT4-fs warning (device mmcblk0p1): empty_dir:2520: bad 
-directory (dir #260617) - no `.' or `..'
-soundscape/set_1/firmware/streams': Input/output error
-EXT4-fs error (device mmcblk0p1): ext4_lookup:1448: inode #260619: comm 
-rm: deleted inode referenced: 260611
-rm: can't stat 'EXT4-fs warning (device mmcblk0p1): empty_dir:2520: bad 
-directory (dir #260619) - no `.' or `..'
-soundscape/set_1/schedule/streams': Input/output error
-EXT4-fs error (device mmcblk0p1): ext4_lookup:1448: inode #260610: comm 
-rm: deleted inode referenced: 260611
-rm: can't stat 'soundscape/downloads/streams': Input/output error
-rm: can't remove 'soundscape/downloads': Directory not empty
-rm: can't remove 'soundscape': Directory not empty
-[root@barix mmcsd0p1]#
+ps: since this is stored in the on-disk superblock now, I'm not
+sure how to fix up old filesystems, or if it matters much.
 
-I cannot reproduce these errors on kernel 3.5.1.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 2c9e686..9674578 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3338,8 +3338,8 @@ int ext4_calculate_overhead(struct super_block *sb)
+ 			memset(buf, 0, PAGE_SIZE);
+ 		cond_resched();
+ 	}
+-	/* Add the journal blocks as well */
+-	if (sbi->s_journal)
++	/* Add the internal journal blocks as well */
++	if (sbi->s_journal && !sbi->journal_bdev)
+ 		overhead += EXT4_NUM_B2C(sbi, sbi->s_journal->j_maxlen);
+ 
+ 	sbi->s_overhead = overhead;
 
-Every help is very appreciated.
-Angelo
