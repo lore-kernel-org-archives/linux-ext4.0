@@ -1,25 +1,28 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
 Subject: Re: [PATCH,RFC] ext4: add lazytime mount option
-Date: Fri, 14 Nov 2014 14:34:34 +0300
-Message-ID: <87h9y2t3qt.fsf@openvz.org>
+Date: Fri, 14 Nov 2014 14:35:41 +0300
+Message-ID: <87fvdmt3oy.fsf@openvz.org>
 References: <1415765227-9561-1-git-send-email-tytso@mit.edu> <87vbmkpm2p.fsf@openvz.org> <20141113160710.GE5235@thunk.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
+Content-Type: multipart/mixed; boundary="=-=-="
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wg0-f50.google.com ([74.125.82.50]:61718 "EHLO
-	mail-wg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965121AbaKNLev (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Nov 2014 06:34:51 -0500
-Received: by mail-wg0-f50.google.com with SMTP id k14so1097638wgh.23
-        for <linux-ext4@vger.kernel.org>; Fri, 14 Nov 2014 03:34:49 -0800 (PST)
+Received: from mail-wi0-f181.google.com ([209.85.212.181]:47825 "EHLO
+	mail-wi0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934095AbaKNLgA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Nov 2014 06:36:00 -0500
+Received: by mail-wi0-f181.google.com with SMTP id n3so2350541wiv.14
+        for <linux-ext4@vger.kernel.org>; Fri, 14 Nov 2014 03:35:58 -0800 (PST)
 In-Reply-To: <20141113160710.GE5235@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 --=-=-=
+Content-Type: multipart/signed; boundary="==-=-=";
+	micalg=pgp-sha512; protocol="application/pgp-signature"
+
+--==-=-=
 Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
@@ -84,47 +87,48 @@ $ ioping -A  -C -D  -WWW /mnt/f
 >
 > 	Host jira.sw.ru not found: 3(NXDOMAIN)
 Ohh, unfortunetly this host is not visiable from outside.
->
->> > +	if (flags & S_VERSION)
->> > +		inode_inc_iversion(inode);
-> 	  ....
->> Since we want update all in-memory data we also have to explicitly updat=
-e inode->i_version
->> Which was previously updated implicitly here:
->> mark_inode_dirty_sync()
->> ->__mark_inode_dirty
->>   ->ext4_dirty_inode
->>     ->ext4_mark_inode_dirty
->>       ->ext4_mark_iloc_dirty
->>         ->inode_inc_iversion(inode);
->
-> It's not necessary to add a anothre call to inode_inc_version() since
-> we already incremented the i_version if S_VERSION is set, and
-> S_VERSIOn gets set when it's necessary to handle incrementing
-> i_Version.
->
-> The inode_inc_iversion() in mark4_ext4_iloc_dirty() is probably not
-> necessary, since we already should be incrementing i_version whenever
-> ctime and mtime gets updated.  The inode_inc_iversion() there is more
-> of a "belt and suspenders" safety thing, on the theory that the extra
-> bump in i_version won't hurt anything.
->
-> Cheers,
->
-> 					- Ted
 
---=-=-=
+
+
+--==-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1
 
-iQEcBAEBCgAGBQJUZejKAAoJELhyPTmIL6kB0iEH/AnMs4D6IsCYYV7zViBH+CQs
-G9G22fjSbhjg11yoO3YwGNoIYMdOqfHnb8MPokfOuL4QRgKqeyCxXBa+54f6hd9r
-utEvqpa8lZ09BvW9qup2QgYiea49YIbU09COMPDskIK8G4i8Y48tSWHfR2VRk9RT
-s2RCdWm4lGrzYQxCLveyfHo9e6+uamUSTqA+Ly6X7ulW1lmvcjncxeq6A5tYOkNv
-ZbEOSGleY1Tjag/syy1M0rCf+XcBHCgHBcAbp0E9IhKOBgh1IWW/GPU+RE+lmfUK
-rf6fkGE+0kZvpu2jba31DjxTbaLmjJzUDMiv4mZra23oXNjDdSBBy/u+PXajKv4=
-=y6v9
+iQEcBAEBCgAGBQJUZekNAAoJELhyPTmIL6kBgQ0IAK2bE8wLmnGYS5TYOVPTj2IV
+TuIi38Rar4pPw/tKDH6LbdCczOanTYLmtV3reRGQmcPcg6zrv+w2DdJOrv3ktzUw
+mmEif/clibrWUgAHM8n0B+IfY3jTgjEguOXMyFd8ius6Uz59GmVmZMo3jynRcDZy
+QEAFrv5ZEB+LRCJqzKTnuNH+rhCkMiaL5Brj2DEvklo4UScfb6oIHsYfLCeTUNSe
+GH88s2mitxh1hMtKunUuBYd6laHDix7Dbf17xqvkWvSOZzrXBDcC0qWwdbVyezrP
+hre3oCxY/L7fBtAkTntj3Bozb3VkH1grN2w3Tg/kJ8zZ9azcJMbpROzHTPrI47s=
+=wwgh
 -----END PGP SIGNATURE-----
+--==-=-=--
+
+--=-=-=
+Content-Type: text/plain
+Content-Disposition: inline; filename=aio-dio.fio
+
+# Chunk server simupation workload
+
+[global]
+ioengine=libaio
+rw=randwrite
+bs=128k
+size=128m
+directory=/mnt/
+
+[aio-dio-write]
+ioengine=libaio
+iodepth=32
+numjobs=32
+verify=0
+direct=1
+#buffered=1
+bs=64k
+rw=randwrite
+fdatasync=32
+runtime=300
+time_based
 --=-=-=--
