@@ -1,36 +1,49 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 07/11] ext4: Use generic helpers for quotaon and quotaoff
-Date: Tue, 18 Nov 2014 17:07:26 +0100
-Message-ID: <20141118160726.GB29472@quack.suse.cz>
-References: <1415739865-2438-1-git-send-email-jack@suse.cz>
- <1415739865-2438-8-git-send-email-jack@suse.cz>
- <20141113173600.GB31481@infradead.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: xfstests and ext4
+Date: Wed, 19 Nov 2014 07:28:18 +1100
+Message-ID: <20141118202818.GP23575@dastard>
+References: <CAH2r5murzVmOVnRchq=U-jx74U96g7N6Y42CW0iX4HKpWnbmxw@mail.gmail.com>
+ <20141114000216.GN28565@dastard>
+ <CAH2r5mvi2LijxWia2sCf+em7rfPtBn_fg6WKU=aftVUTuzXMgw@mail.gmail.com>
+ <20141117203804.GO23575@dastard>
+ <CAH2r5mti8hVXqmKu9kJg4Xk=5nkESCAQys1BFXhR6JSDVHOTEA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Christoph Hellwig <hch@infradead.org>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	fstests@vger.kernel.org
+To: Steve French <smfrench@gmail.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20141113173600.GB31481@infradead.org>
+In-Reply-To: <CAH2r5mti8hVXqmKu9kJg4Xk=5nkESCAQys1BFXhR6JSDVHOTEA@mail.gmail.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 13-11-14 09:36:00, Christoph Hellwig wrote:
-> >  static const struct quotactl_ops ext4_qctl_sysfile_operations = {
-> > -	.quota_on_meta	= ext4_quota_on_sysfile,
-> > -	.quota_off	= ext4_quota_off_sysfile,
-> > +	.sysquota_on	= dquot_sysquota_on,
-> > +	.sysquota_off	= dquot_sysquota_off,
-> >  	.quota_sync	= dquot_quota_sync,
-> >  	.get_info	= dquot_get_dqinfo,
-> >  	.set_info	= dquot_set_dqinfo,
+On Mon, Nov 17, 2014 at 08:35:39PM -0600, Steve French wrote:
+> On Mon, Nov 17, 2014 at 2:38 PM, Dave Chinner <david@fromorbit.com> wrote:
 > 
-> This vector now only has generic dquot_ methods.  Maybe move the
-> vector to fs/quota/dquot.c and allow multiple filesystems to share it?
-  Right. ocfs2 actually has the same vector now. I'll unify it.
+> > the other as a base64 encoded attachment so can't be quoted and
+> > replied to easily. In future, can you send patches as separate
+> > emails according to:
+> 
+> Yes.  WIll do.  It is a pain in test  VMs to setup git with gmail two
+> phase authentication
+> but doable if I set it up to send mail from a different host.
 
-								Honza
+No need for that. Keep the xfstests source tree on your
+laptop/workstation and do all your edits there. When you've done
+that, simply rsync the tree to the test VM(s) and run "make; ./check
+..." from the shell you are running in the test VM.
+
+That way you can manage the code multiple test VMs run from a single
+source tree, all in one location, and you don't have to worry about
+setting up for mail, backups, losing changes because a test machine
+crash ate your recent changes, accidentally sending changes are
+root, etc...
+
+Cheers,
+
+Dave.
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Dave Chinner
+david@fromorbit.com
