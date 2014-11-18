@@ -1,45 +1,83 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: xfstests and ext4
-Date: Wed, 19 Nov 2014 07:28:18 +1100
-Message-ID: <20141118202818.GP23575@dastard>
-References: <CAH2r5murzVmOVnRchq=U-jx74U96g7N6Y42CW0iX4HKpWnbmxw@mail.gmail.com>
- <20141114000216.GN28565@dastard>
- <CAH2r5mvi2LijxWia2sCf+em7rfPtBn_fg6WKU=aftVUTuzXMgw@mail.gmail.com>
- <20141117203804.GO23575@dastard>
- <CAH2r5mti8hVXqmKu9kJg4Xk=5nkESCAQys1BFXhR6JSDVHOTEA@mail.gmail.com>
+Subject: Re: [PATCH 10/11] quota: Switch ->get_dqblk() and ->set_dqblk() to
+ use bytes as space units
+Date: Wed, 19 Nov 2014 09:29:52 +1100
+Message-ID: <20141118222952.GQ23575@dastard>
+References: <1415739865-2438-1-git-send-email-jack@suse.cz>
+ <1415739865-2438-11-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	fstests@vger.kernel.org
-To: Steve French <smfrench@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:10952 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754767AbaKRWaD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Nov 2014 17:30:03 -0500
 Content-Disposition: inline
-In-Reply-To: <CAH2r5mti8hVXqmKu9kJg4Xk=5nkESCAQys1BFXhR6JSDVHOTEA@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1415739865-2438-11-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 17, 2014 at 08:35:39PM -0600, Steve French wrote:
-> On Mon, Nov 17, 2014 at 2:38 PM, Dave Chinner <david@fromorbit.com> wrote:
+On Tue, Nov 11, 2014 at 10:04:24PM +0100, Jan Kara wrote:
+> Currently ->get_dqblk() and ->set_dqblk() use struct fs_disk_quota which
+> tracks space limits and usage in 512-byte blocks. However VFS quotas
+> track usage in bytes (as some filesystems require that) and we need to
+> somehow pass this information. Upto now it wasn't a problem because we
+> didn't do any unit conversion (thus VFS quota routines happily stuck
+> number of bytes into d_bcount field of struct fd_disk_quota). Only if
+> you tried to use Q_XGETQUOTA or Q_XSETQLIM for VFS quotas (or Q_GETQUOTA
+> / Q_SETQUOTA for XFS quotas), you got bogus results but noone really
+> tried that. But when we want interfaces compatible we need to fix this.
 > 
-> > the other as a base64 encoded attachment so can't be quoted and
-> > replied to easily. In future, can you send patches as separate
-> > emails according to:
-> 
-> Yes.  WIll do.  It is a pain in test  VMs to setup git with gmail two
-> phase authentication
-> but doable if I set it up to send mail from a different host.
+> So we bite the bullet and define another quota structure used for
+> passing information from/to ->get_dqblk()/->set_dqblk. It's somewhat
+> sad we have to have more conversion routines in fs/quota/quota.c but
+> it seems cleaner than overloading e.g. units of d_bcount to bytes.
 
-No need for that. Keep the xfstests source tree on your
-laptop/workstation and do all your edits there. When you've done
-that, simply rsync the tree to the test VM(s) and run "make; ./check
-..." from the shell you are running in the test VM.
+I don't really like the idea of having to copy the dquot information
+an extra time. We now:
 
-That way you can manage the code multiple test VMs run from a single
-source tree, all in one location, and you don't have to worry about
-setting up for mail, backups, losing changes because a test machine
-crash ate your recent changes, accidentally sending changes are
-root, etc...
+	- copy from internal dquot to the new qc_dqblk
+	- copy from the new qc_dqblk to if_dqblk/xfs_dqblk
+	- copy if_dqblk/xfs_dqblk to the user buffer.
+
+That's now three copies, and when we are having to deal with quota
+reports containing hundreds of thousands of dquots that's going to
+hrut performance.
+
+We could probably get away with just one copy by passing a
+filldir()-like context down into the filesystems to format their
+internal dquot information directly into the user buffer in the
+appropriate format. That way fs/quota/quota.c doesn't need
+conversion routines, filesystems can optimise the formating to
+minimise copying, and we can still provide generic routines for
+filesystems using the generic quota infrastructure....
+
+[...]
+
+> @@ -277,10 +287,73 @@ static int quota_getxstatev(struct super_block *sb, void __user *addr)
+>  	return ret;
+>  }
+>  
+> +/* XFS blocks to space conversion */
+> +static u64 xfs_btos(u64 blocks)
+> +{
+> +	return blocks << 9;
+> +}
+> +
+> +/* Space to XFS blocks conversion */
+> +static u64 xfs_stob(u64 space)
+> +{
+> +	return (space + 511) >> 9;
+> +}
+
+Which is just redefining BBTOB() [Basic Blocks to Bytes] and BTOBB()
+with magic numbers and no explanation of what a "block" actually is.
+We already export those macros to userspace, and they are used by
+xfs_quota to convert the block counts to bytes....
 
 Cheers,
 
