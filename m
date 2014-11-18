@@ -1,66 +1,56 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/1] fs-jbd: Deletion of an unnecessary check before the
- function call "iput"
-Date: Tue, 18 Nov 2014 10:16:02 +0100
-Message-ID: <20141118091602.GB19318@quack.suse.cz>
-References: <530C5E18.1020800@users.sourceforge.net>
- <alpine.DEB.2.10.1402251014170.2080@hadrien>
- <530CD2C4.4050903@users.sourceforge.net>
- <alpine.DEB.2.10.1402251840450.7035@hadrien>
- <530CF8FF.8080600@users.sourceforge.net>
- <alpine.DEB.2.02.1402252117150.2047@localhost6.localdomain6>
- <530DD06F.4090703@users.sourceforge.net>
- <alpine.DEB.2.02.1402262129250.2221@localhost6.localdomain6>
- <5317A59D.4@users.sourceforge.net>
- <546927D2.7050709@users.sourceforge.net>
+Subject: Re: [PATCH 04/11] quota: Split ->set_xstate callback into two
+Date: Tue, 18 Nov 2014 17:05:09 +0100
+Message-ID: <20141118160509.GA29472@quack.suse.cz>
+References: <1415739865-2438-1-git-send-email-jack@suse.cz>
+	<1415739865-2438-5-git-send-email-jack@suse.cz>
+	<20141113173416.GA31481@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	kernel-janitors@vger.kernel.org, Coccinelle <cocci@systeme.lip6.fr>
-To: SF Markus Elfring <elfring@users.sourceforge.net>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.cz>, xfs@oss.sgi.com
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <546927D2.7050709@users.sourceforge.net>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20141113173416.GA31481@infradead.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun 16-11-14 23:40:18, SF Markus Elfring wrote:
-> From: Markus Elfring <elfring@users.sourceforge.net>
-> Date: Sun, 16 Nov 2014 23:23:19 +0100
+On Thu 13-11-14 09:34:16, Christoph Hellwig wrote:
+> On Tue, Nov 11, 2014 at 10:04:18PM +0100, Jan Kara wrote:
+> > Split ->set_xstate callback into two callbacks - one for turning quotas
+> > on (->sysquota_on) and one for turning quotas off (->sysquota_off). That
+> > way we don't have to pass quotactl command into the callback which seems
+> > cleaner.
 > 
-> The iput() function tests whether its argument is NULL and then
-> returns immediately. Thus the test around the call is not needed.
+> Yes, I much prefer these to be split.  But the names seem a little odd,
+> why not enable_quota/disable_quota?
+  I wanted to clearly separate this from quota_on() / quota_off() callbacks
+which are for userspace visible quota files. However enable_quota /
+disable_quota sound fine as well.
+ 
+> > +static unsigned int generic_to_xfs_flags(unsigned int uflags)
 > 
-> This issue was detected by using the Coccinelle software.
-> 
-> Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
-> ---
->  fs/jbd/journal.c | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
-  Thanks. Merged into my tree.
+> xfs_quota_flags() ?
+  OK.
 
 								Honza
-
-> 
-> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-> index 06fe11e..32fe03e 100644
-> --- a/fs/jbd/journal.c
-> +++ b/fs/jbd/journal.c
-> @@ -1373,8 +1373,7 @@ int journal_destroy(journal_t *journal)
->  	}
->  	mutex_unlock(&journal->j_checkpoint_mutex);
->  
-> -	if (journal->j_inode)
-> -		iput(journal->j_inode);
-> +	iput(journal->j_inode);
->  	if (journal->j_revoke)
->  		journal_destroy_revoke(journal);
->  	kfree(journal->j_wbuf);
-> -- 
-> 2.1.3
-> 
-> 
+  
+ 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
