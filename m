@@ -1,46 +1,66 @@
-From: Steve French <smfrench@gmail.com>
-Subject: [PATCH] common: update README to list build dependencies
-Date: Mon, 17 Nov 2014 21:49:07 -0600
-Message-ID: <1416282547-7464-1-git-send-email-smfrench@gmail.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Steve French <smfrench@gmail.com>
-To: fstests@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ob0-f169.google.com ([209.85.214.169]:39389 "EHLO
-	mail-ob0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751213AbaKRDtQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Nov 2014 22:49:16 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/1] fs-jbd: Deletion of an unnecessary check before the
+ function call "iput"
+Date: Tue, 18 Nov 2014 10:16:02 +0100
+Message-ID: <20141118091602.GB19318@quack.suse.cz>
+References: <530C5E18.1020800@users.sourceforge.net>
+ <alpine.DEB.2.10.1402251014170.2080@hadrien>
+ <530CD2C4.4050903@users.sourceforge.net>
+ <alpine.DEB.2.10.1402251840450.7035@hadrien>
+ <530CF8FF.8080600@users.sourceforge.net>
+ <alpine.DEB.2.02.1402252117150.2047@localhost6.localdomain6>
+ <530DD06F.4090703@users.sourceforge.net>
+ <alpine.DEB.2.02.1402262129250.2221@localhost6.localdomain6>
+ <5317A59D.4@users.sourceforge.net>
+ <546927D2.7050709@users.sourceforge.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	kernel-janitors@vger.kernel.org, Coccinelle <cocci@systeme.lip6.fr>
+To: SF Markus Elfring <elfring@users.sourceforge.net>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <546927D2.7050709@users.sourceforge.net>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Add sample list of packages (dependencies) required to build XFSTESTS
-and add a step to the instructions to mention creating the test
-user needed for some of the ACL tests.
+On Sun 16-11-14 23:40:18, SF Markus Elfring wrote:
+> From: Markus Elfring <elfring@users.sourceforge.net>
+> Date: Sun, 16 Nov 2014 23:23:19 +0100
+> 
+> The iput() function tests whether its argument is NULL and then
+> returns immediately. Thus the test around the call is not needed.
+> 
+> This issue was detected by using the Coccinelle software.
+> 
+> Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+> ---
+>  fs/jbd/journal.c | 3 +--
+>  1 file changed, 1 insertion(+), 2 deletions(-)
+  Thanks. Merged into my tree.
 
-Signed-off-by: Steve French <smfrench@gmail.com>
----
- README | 6 ++++++
- 1 file changed, 6 insertions(+)
+								Honza
 
-diff --git a/README b/README
-index 8a362bd..0c9449a 100644
---- a/README
-+++ b/README
-@@ -4,8 +4,14 @@ _______________________
- 
- Building Linux:
- 	- cd into the xfstests directory
-+	- install prerequisite packages
-+	  For example, for Ubuntu:
-+		"sudo apt-get install xfslibs-dev uuid-dev libtool e2fsprogs
-+		 automake gcc libuuid1 quota attr libattr1-dev
-+		 libacl1-dev libaio-dev xfsprogs libgdbm-dev gawk fio dbench"
- 	- run make
- 	- run make install
-+	- create fsgqa test user ("sudo useradd fsgqa")
- 	
- Building IRIX:
- 	- cd into the xfstests directory 
+> 
+> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+> index 06fe11e..32fe03e 100644
+> --- a/fs/jbd/journal.c
+> +++ b/fs/jbd/journal.c
+> @@ -1373,8 +1373,7 @@ int journal_destroy(journal_t *journal)
+>  	}
+>  	mutex_unlock(&journal->j_checkpoint_mutex);
+>  
+> -	if (journal->j_inode)
+> -		iput(journal->j_inode);
+> +	iput(journal->j_inode);
+>  	if (journal->j_revoke)
+>  		journal_destroy_revoke(journal);
+>  	kfree(journal->j_wbuf);
+> -- 
+> 2.1.3
+> 
+> 
 -- 
-1.9.1
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
