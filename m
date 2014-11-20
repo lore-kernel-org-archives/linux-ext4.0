@@ -1,60 +1,168 @@
-From: Angelo Dureghello <angelo70@gmail.com>
-Subject: Re: ext4 errors on kernel 3.17.0
-Date: Thu, 20 Nov 2014 12:16:16 +0100
-Message-ID: <546DCD80.5010006@gmail.com>
-References: <54663355.2080903@gmail.com> <546C968C.60908@gmail.com> <20141119135059.GA7131@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext4: kill ext4_kvfree()
+Date: Thu, 20 Nov 2014 14:28:53 +0100
+Message-ID: <20141120132853.GB2330@quack.suse.cz>
+References: <20141120081004.GH7996@ZenIV.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f181.google.com ([209.85.212.181]:41696 "EHLO
-	mail-wi0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751094AbaKTLQT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Nov 2014 06:16:19 -0500
-Received: by mail-wi0-f181.google.com with SMTP id r20so4974966wiv.2
-        for <linux-ext4@vger.kernel.org>; Thu, 20 Nov 2014 03:16:18 -0800 (PST)
-In-Reply-To: <20141119135059.GA7131@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Ted Tso <tytso@mit.edu>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20141120081004.GH7996@ZenIV.linux.org.uk>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Theodore,
+On Thu 20-11-14 08:10:05, Al Viro wrote:
+> Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+  Looks good. Added Ted (ext4 maintainer) to CC.
 
-thanks for the hints
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-well, i have same board with old kernel 3.5.1 perfectly working,
-so i can exclude hardware issues.
-
-Same for card issues, same card moved on kernel 3.5.1 board
-behave correctly.
-
-Strangely, seems i have "write" issues, if i format the card on PC
-and put it back on the soc board, i get no errors on fsck.
-If i format on soc board, and fsck from PC i get errors.
-
-I am now moving the discussion to linux-mmc,
-
-Regards,
-angelo
-
-
-
-
-On 19/11/2014 14:50, Theodore Ts'o wrote:
-> The I/O errors, the "automount: inserted" message, the fact that it
-> shows up on ext3 and ext4, makes it smell very much like a hardware
-> problem (or possibly a mmc device driver problem).  It could be caused
-> by a fake mmc card that (if you bought it from a street vendor or some
-> the micro center discount bin at the checkout counter, try getting a
-> brand name flash from a reputable source --- you get what you pay
-> for).
->
-> It could be caused by flaky hardware, or a MMC drive; it could be
-> caused by an MMC driver problem.  It doesn't seem like it's a file
-> system problem.
->
-> Regards,
->
-> 						- Ted
-
+								Honza
+> ---
+>  fs/ext4/ext4.h    |    1 -
+>  fs/ext4/mballoc.c |    6 +++---
+>  fs/ext4/resize.c  |    6 +++---
+>  fs/ext4/super.c   |   19 +++++--------------
+>  4 files changed, 11 insertions(+), 21 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index c55a1fa..21a3b38 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -2192,7 +2192,6 @@ extern int ext4_calculate_overhead(struct super_block *sb);
+>  extern void ext4_superblock_csum_set(struct super_block *sb);
+>  extern void *ext4_kvmalloc(size_t size, gfp_t flags);
+>  extern void *ext4_kvzalloc(size_t size, gfp_t flags);
+> -extern void ext4_kvfree(void *ptr);
+>  extern int ext4_alloc_flex_bg_array(struct super_block *sb,
+>  				    ext4_group_t ngroup);
+>  extern const char *ext4_decode_error(struct super_block *sb, int errno,
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index dbfe15c..004d0ff 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -2358,7 +2358,7 @@ int ext4_mb_alloc_groupinfo(struct super_block *sb, ext4_group_t ngroups)
+>  	if (sbi->s_group_info) {
+>  		memcpy(new_groupinfo, sbi->s_group_info,
+>  		       sbi->s_group_info_size * sizeof(*sbi->s_group_info));
+> -		ext4_kvfree(sbi->s_group_info);
+> +		kvfree(sbi->s_group_info);
+>  	}
+>  	sbi->s_group_info = new_groupinfo;
+>  	sbi->s_group_info_size = size / sizeof(*sbi->s_group_info);
+> @@ -2495,7 +2495,7 @@ err_freebuddy:
+>  		kfree(sbi->s_group_info[i]);
+>  	iput(sbi->s_buddy_cache);
+>  err_freesgi:
+> -	ext4_kvfree(sbi->s_group_info);
+> +	kvfree(sbi->s_group_info);
+>  	return -ENOMEM;
+>  }
+>  
+> @@ -2708,7 +2708,7 @@ int ext4_mb_release(struct super_block *sb)
+>  			EXT4_DESC_PER_BLOCK_BITS(sb);
+>  		for (i = 0; i < num_meta_group_infos; i++)
+>  			kfree(sbi->s_group_info[i]);
+> -		ext4_kvfree(sbi->s_group_info);
+> +		kvfree(sbi->s_group_info);
+>  	}
+>  	kfree(sbi->s_mb_offsets);
+>  	kfree(sbi->s_mb_maxs);
+> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+> index ca45883..bf76f40 100644
+> --- a/fs/ext4/resize.c
+> +++ b/fs/ext4/resize.c
+> @@ -856,7 +856,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+>  	n_group_desc[gdb_num] = gdb_bh;
+>  	EXT4_SB(sb)->s_group_desc = n_group_desc;
+>  	EXT4_SB(sb)->s_gdb_count++;
+> -	ext4_kvfree(o_group_desc);
+> +	kvfree(o_group_desc);
+>  
+>  	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
+>  	err = ext4_handle_dirty_super(handle, sb);
+> @@ -866,7 +866,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+>  	return err;
+>  
+>  exit_inode:
+> -	ext4_kvfree(n_group_desc);
+> +	kvfree(n_group_desc);
+>  	brelse(iloc.bh);
+>  exit_dind:
+>  	brelse(dind);
+> @@ -909,7 +909,7 @@ static int add_new_gdb_meta_bg(struct super_block *sb,
+>  	n_group_desc[gdb_num] = gdb_bh;
+>  	EXT4_SB(sb)->s_group_desc = n_group_desc;
+>  	EXT4_SB(sb)->s_gdb_count++;
+> -	ext4_kvfree(o_group_desc);
+> +	kvfree(o_group_desc);
+>  	BUFFER_TRACE(gdb_bh, "get_write_access");
+>  	err = ext4_journal_get_write_access(handle, gdb_bh);
+>  	if (unlikely(err))
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 2c9e686..4b79f39 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -176,15 +176,6 @@ void *ext4_kvzalloc(size_t size, gfp_t flags)
+>  	return ret;
+>  }
+>  
+> -void ext4_kvfree(void *ptr)
+> -{
+> -	if (is_vmalloc_addr(ptr))
+> -		vfree(ptr);
+> -	else
+> -		kfree(ptr);
+> -
+> -}
+> -
+>  ext4_fsblk_t ext4_block_bitmap(struct super_block *sb,
+>  			       struct ext4_group_desc *bg)
+>  {
+> @@ -811,8 +802,8 @@ static void ext4_put_super(struct super_block *sb)
+>  
+>  	for (i = 0; i < sbi->s_gdb_count; i++)
+>  		brelse(sbi->s_group_desc[i]);
+> -	ext4_kvfree(sbi->s_group_desc);
+> -	ext4_kvfree(sbi->s_flex_groups);
+> +	kvfree(sbi->s_group_desc);
+> +	kvfree(sbi->s_flex_groups);
+>  	percpu_counter_destroy(&sbi->s_freeclusters_counter);
+>  	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+>  	percpu_counter_destroy(&sbi->s_dirs_counter);
+> @@ -1939,7 +1930,7 @@ int ext4_alloc_flex_bg_array(struct super_block *sb, ext4_group_t ngroup)
+>  		memcpy(new_groups, sbi->s_flex_groups,
+>  		       (sbi->s_flex_groups_allocated *
+>  			sizeof(struct flex_groups)));
+> -		ext4_kvfree(sbi->s_flex_groups);
+> +		kvfree(sbi->s_flex_groups);
+>  	}
+>  	sbi->s_flex_groups = new_groups;
+>  	sbi->s_flex_groups_allocated = size / sizeof(struct flex_groups);
+> @@ -4224,7 +4215,7 @@ failed_mount7:
+>  failed_mount6:
+>  	ext4_mb_release(sb);
+>  	if (sbi->s_flex_groups)
+> -		ext4_kvfree(sbi->s_flex_groups);
+> +		kvfree(sbi->s_flex_groups);
+>  	percpu_counter_destroy(&sbi->s_freeclusters_counter);
+>  	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+>  	percpu_counter_destroy(&sbi->s_dirs_counter);
+> @@ -4253,7 +4244,7 @@ failed_mount3:
+>  failed_mount2:
+>  	for (i = 0; i < db_count; i++)
+>  		brelse(sbi->s_group_desc[i]);
+> -	ext4_kvfree(sbi->s_group_desc);
+> +	kvfree(sbi->s_group_desc);
+>  failed_mount:
+>  	if (sbi->s_chksum_driver)
+>  		crypto_free_shash(sbi->s_chksum_driver);
+> -- 
+> 1.7.10.4
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
