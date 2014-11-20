@@ -1,38 +1,155 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: xfstests and ext4
-Date: Wed, 19 Nov 2014 11:07:25 -0800
-Message-ID: <20141119190725.GA6264@infradead.org>
-References: <CAH2r5murzVmOVnRchq=U-jx74U96g7N6Y42CW0iX4HKpWnbmxw@mail.gmail.com>
- <20141114000216.GN28565@dastard>
- <CAH2r5mvi2LijxWia2sCf+em7rfPtBn_fg6WKU=aftVUTuzXMgw@mail.gmail.com>
- <20141117203804.GO23575@dastard>
- <CAH2r5mti8hVXqmKu9kJg4Xk=5nkESCAQys1BFXhR6JSDVHOTEA@mail.gmail.com>
- <20141118202818.GP23575@dastard>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: ext4: kill ext4_kvfree()
+Date: Thu, 20 Nov 2014 08:10:05 +0000
+Message-ID: <20141120081004.GH7996@ZenIV.linux.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Steve French <smfrench@gmail.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	fstests@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20141118202818.GP23575@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 19, 2014 at 07:28:18AM +1100, Dave Chinner wrote:
-> No need for that. Keep the xfstests source tree on your
-> laptop/workstation and do all your edits there. When you've done
-> that, simply rsync the tree to the test VM(s) and run "make; ./check
-> ..." from the shell you are running in the test VM.
-> 
-> That way you can manage the code multiple test VMs run from a single
-> source tree, all in one location, and you don't have to worry about
-> setting up for mail, backups, losing changes because a test machine
-> crash ate your recent changes, accidentally sending changes are
-> root, etc...
+Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+---
+ fs/ext4/ext4.h    |    1 -
+ fs/ext4/mballoc.c |    6 +++---
+ fs/ext4/resize.c  |    6 +++---
+ fs/ext4/super.c   |   19 +++++--------------
+ 4 files changed, 11 insertions(+), 21 deletions(-)
 
-Or commit them to a local git branch that you can pull from the VMs
-instead of the rsync.  The effect is the same, though.
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index c55a1fa..21a3b38 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2192,7 +2192,6 @@ extern int ext4_calculate_overhead(struct super_block *sb);
+ extern void ext4_superblock_csum_set(struct super_block *sb);
+ extern void *ext4_kvmalloc(size_t size, gfp_t flags);
+ extern void *ext4_kvzalloc(size_t size, gfp_t flags);
+-extern void ext4_kvfree(void *ptr);
+ extern int ext4_alloc_flex_bg_array(struct super_block *sb,
+ 				    ext4_group_t ngroup);
+ extern const char *ext4_decode_error(struct super_block *sb, int errno,
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index dbfe15c..004d0ff 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2358,7 +2358,7 @@ int ext4_mb_alloc_groupinfo(struct super_block *sb, ext4_group_t ngroups)
+ 	if (sbi->s_group_info) {
+ 		memcpy(new_groupinfo, sbi->s_group_info,
+ 		       sbi->s_group_info_size * sizeof(*sbi->s_group_info));
+-		ext4_kvfree(sbi->s_group_info);
++		kvfree(sbi->s_group_info);
+ 	}
+ 	sbi->s_group_info = new_groupinfo;
+ 	sbi->s_group_info_size = size / sizeof(*sbi->s_group_info);
+@@ -2495,7 +2495,7 @@ err_freebuddy:
+ 		kfree(sbi->s_group_info[i]);
+ 	iput(sbi->s_buddy_cache);
+ err_freesgi:
+-	ext4_kvfree(sbi->s_group_info);
++	kvfree(sbi->s_group_info);
+ 	return -ENOMEM;
+ }
+ 
+@@ -2708,7 +2708,7 @@ int ext4_mb_release(struct super_block *sb)
+ 			EXT4_DESC_PER_BLOCK_BITS(sb);
+ 		for (i = 0; i < num_meta_group_infos; i++)
+ 			kfree(sbi->s_group_info[i]);
+-		ext4_kvfree(sbi->s_group_info);
++		kvfree(sbi->s_group_info);
+ 	}
+ 	kfree(sbi->s_mb_offsets);
+ 	kfree(sbi->s_mb_maxs);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index ca45883..bf76f40 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -856,7 +856,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	n_group_desc[gdb_num] = gdb_bh;
+ 	EXT4_SB(sb)->s_group_desc = n_group_desc;
+ 	EXT4_SB(sb)->s_gdb_count++;
+-	ext4_kvfree(o_group_desc);
++	kvfree(o_group_desc);
+ 
+ 	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
+ 	err = ext4_handle_dirty_super(handle, sb);
+@@ -866,7 +866,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	return err;
+ 
+ exit_inode:
+-	ext4_kvfree(n_group_desc);
++	kvfree(n_group_desc);
+ 	brelse(iloc.bh);
+ exit_dind:
+ 	brelse(dind);
+@@ -909,7 +909,7 @@ static int add_new_gdb_meta_bg(struct super_block *sb,
+ 	n_group_desc[gdb_num] = gdb_bh;
+ 	EXT4_SB(sb)->s_group_desc = n_group_desc;
+ 	EXT4_SB(sb)->s_gdb_count++;
+-	ext4_kvfree(o_group_desc);
++	kvfree(o_group_desc);
+ 	BUFFER_TRACE(gdb_bh, "get_write_access");
+ 	err = ext4_journal_get_write_access(handle, gdb_bh);
+ 	if (unlikely(err))
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 2c9e686..4b79f39 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -176,15 +176,6 @@ void *ext4_kvzalloc(size_t size, gfp_t flags)
+ 	return ret;
+ }
+ 
+-void ext4_kvfree(void *ptr)
+-{
+-	if (is_vmalloc_addr(ptr))
+-		vfree(ptr);
+-	else
+-		kfree(ptr);
+-
+-}
+-
+ ext4_fsblk_t ext4_block_bitmap(struct super_block *sb,
+ 			       struct ext4_group_desc *bg)
+ {
+@@ -811,8 +802,8 @@ static void ext4_put_super(struct super_block *sb)
+ 
+ 	for (i = 0; i < sbi->s_gdb_count; i++)
+ 		brelse(sbi->s_group_desc[i]);
+-	ext4_kvfree(sbi->s_group_desc);
+-	ext4_kvfree(sbi->s_flex_groups);
++	kvfree(sbi->s_group_desc);
++	kvfree(sbi->s_flex_groups);
+ 	percpu_counter_destroy(&sbi->s_freeclusters_counter);
+ 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
+@@ -1939,7 +1930,7 @@ int ext4_alloc_flex_bg_array(struct super_block *sb, ext4_group_t ngroup)
+ 		memcpy(new_groups, sbi->s_flex_groups,
+ 		       (sbi->s_flex_groups_allocated *
+ 			sizeof(struct flex_groups)));
+-		ext4_kvfree(sbi->s_flex_groups);
++		kvfree(sbi->s_flex_groups);
+ 	}
+ 	sbi->s_flex_groups = new_groups;
+ 	sbi->s_flex_groups_allocated = size / sizeof(struct flex_groups);
+@@ -4224,7 +4215,7 @@ failed_mount7:
+ failed_mount6:
+ 	ext4_mb_release(sb);
+ 	if (sbi->s_flex_groups)
+-		ext4_kvfree(sbi->s_flex_groups);
++		kvfree(sbi->s_flex_groups);
+ 	percpu_counter_destroy(&sbi->s_freeclusters_counter);
+ 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
+@@ -4253,7 +4244,7 @@ failed_mount3:
+ failed_mount2:
+ 	for (i = 0; i < db_count; i++)
+ 		brelse(sbi->s_group_desc[i]);
+-	ext4_kvfree(sbi->s_group_desc);
++	kvfree(sbi->s_group_desc);
+ failed_mount:
+ 	if (sbi->s_chksum_driver)
+ 		crypto_free_shash(sbi->s_chksum_driver);
+-- 
+1.7.10.4
