@@ -1,7 +1,9 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 0/4] add support for a lazytime mount option
-Date: Fri, 21 Nov 2014 14:59:20 -0500
-Message-ID: <1416599964-21892-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 3/4] vfs: don't let the dirty time inodes get more than a day
+	stale
+Date: Fri, 21 Nov 2014 14:59:23 -0500
+Message-ID: <1416599964-21892-4-git-send-email-tytso@mit.edu>
+References: <1416599964-21892-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -9,6 +11,7 @@ Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Theodore Ts'o <tytso@mit.edu>, linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
 To: linux-fsdevel@vger.kernel.org
 Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <1416599964-21892-1-git-send-email-tytso@mit.edu>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -20,47 +23,70 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-This is an updated version of what had originally been an
-ext4-specific patch which significantly improves performance by lazily
-writing timestamp updates (and in particular, mtime updates) to disk.
-The in-memory timestamps are always correct, but they are only written
-to disk when required for correctness.
+Guarantee that the on-disk timestamps will be no more than 24 hours
+stale.
 
-This provides a huge performance boost for ext4 due to how it handles
-journalling, but it's valuable for all file systems running on flash
-storage or drive-managed SMR disks by reducing the metadata write
-load.  So upon request, I've moved the functionality to the VFS layer.
-Once the /sbin/mount program adds support for MS_LAZYTIME, all file
-systems should be able to benefit from this optimization.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/fs-writeback.c  | 1 +
+ fs/inode.c         | 7 ++++++-
+ include/linux/fs.h | 1 +
+ 3 files changed, 8 insertions(+), 1 deletion(-)
 
-There is still an ext4-specific optimization, which may be applicable
-for other file systems which store more than one inode in a block, but
-it will require file system specific code.  It is purely optional,
-however.
-
-Please note the changes to update_time() and the new write_time() inode
-operations functions, which impact btrfs and xfs.  The changes are
-fairly simple, but I would appreciate confirmation from the btrfs and
-xfs teams that I got things right.   Thanks!!
-
-Theodore Ts'o (4):
-  fs: split update_time() into update_time() and write_time()
-  vfs: add support for a lazytime mount option
-  vfs: don't let the dirty time inodes get more than a day stale
-  ext4: add support for a lazytime mount option
-
- fs/btrfs/inode.c        | 10 ++++++
- fs/ext4/inode.c         | 46 +++++++++++++++++++++++++-
- fs/ext4/super.c         |  9 +++++
- fs/fs-writeback.c       | 39 +++++++++++++++++++++-
- fs/inode.c              | 88 ++++++++++++++++++++++++++++++++++++++++++-------
- fs/proc_namespace.c     |  1 +
- fs/sync.c               |  7 ++++
- fs/xfs/xfs_iops.c       | 39 +++++++++-------------
- include/linux/fs.h      |  5 +++
- include/uapi/linux/fs.h |  1 +
- 10 files changed, 209 insertions(+), 36 deletions(-)
-
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index ce7de22..eb04277 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -1141,6 +1141,7 @@ void __mark_inode_dirty(struct inode *inode, int flags)
+ 	if (flags & (I_DIRTY_SYNC | I_DIRTY_DATASYNC)) {
+ 		trace_writeback_dirty_inode_start(inode, flags);
+ 
++		inode->i_ts_dirty_day = 0;
+ 		if (sb->s_op->dirty_inode)
+ 			sb->s_op->dirty_inode(inode, flags);
+ 
+diff --git a/fs/inode.c b/fs/inode.c
+index 6e91aca..f0d6232 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -1511,6 +1511,7 @@ static int relatime_need_update(struct vfsmount *mnt, struct inode *inode,
+  */
+ static int update_time(struct inode *inode, struct timespec *time, int flags)
+ {
++	int days_since_boot = jiffies / (HZ * 86400);
+ 	int ret;
+ 
+ 	if (inode->i_op->update_time) {
+@@ -1527,12 +1528,16 @@ static int update_time(struct inode *inode, struct timespec *time, int flags)
+ 		if (flags & S_MTIME)
+ 			inode->i_mtime = *time;
+ 	}
+-	if (inode->i_sb->s_flags & MS_LAZYTIME) {
++	if ((inode->i_sb->s_flags & MS_LAZYTIME) &&
++	    (!inode->i_ts_dirty_day ||
++	     inode->i_ts_dirty_day == days_since_boot)) {
+ 		spin_lock(&inode->i_lock);
+ 		inode->i_state |= I_DIRTY_TIME;
+ 		spin_unlock(&inode->i_lock);
++		inode->i_ts_dirty_day = days_since_boot;
+ 		return 0;
+ 	}
++	inode->i_ts_dirty_day = 0;
+ 	if (inode->i_op->write_time)
+ 		return inode->i_op->write_time(inode);
+ 	mark_inode_dirty_sync(inode);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 489b2f2..e3574cd 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -575,6 +575,7 @@ struct inode {
+ 	struct timespec		i_ctime;
+ 	spinlock_t		i_lock;	/* i_blocks, i_bytes, maybe i_size */
+ 	unsigned short          i_bytes;
++	unsigned short		i_ts_dirty_day;
+ 	unsigned int		i_blkbits;
+ 	blkcnt_t		i_blocks;
+ 
 -- 
 2.1.0
 
