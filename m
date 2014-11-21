@@ -1,46 +1,189 @@
 From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH 0/4] ext4: bigalloc partial cluster handling fixes
-Date: Fri, 21 Nov 2014 09:52:47 -0500
-Message-ID: <20141121145247.GA30246@wallace>
+Subject: [PATCH 1/4] ext4: fix partial cluster initialization
+Date: Fri, 21 Nov 2014 09:54:12 -0500
+Message-ID: <20141121145412.GB30246@wallace>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: tytso@mit.edu
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:52889 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755757AbaKUOwy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2014 09:52:54 -0500
-Received: by mail-qg0-f45.google.com with SMTP id f51so3758276qge.32
-        for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2014 06:52:54 -0800 (PST)
+Received: from mail-qg0-f49.google.com ([209.85.192.49]:61904 "EHLO
+	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755321AbaKUOyT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2014 09:54:19 -0500
+Received: by mail-qg0-f49.google.com with SMTP id a108so3753176qge.36
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2014 06:54:18 -0800 (PST)
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Some xfstests that perform hole punching operations fail as a result of
-partial cluster handling bugs when run on bigalloc file systems.  These
-failures are manifested in the form of bad i_blocks values and block
-bitmap differences reported by e2fsck when it is run on the test
-filesystem at the conclusion of these xfstests.  e2fsck typically
-reports that the file system is inconsistent, and messages may appear
-in the kernel log indicating that freed blocks are already on the
-to-be-freed list, a block bitmap is corrupt, etc.  Depending upon the
-bug encountered, both overfreeing and underfreeing of blocks can occur.
+The partial_cluster variable is not always initialized correctly when
+hole punching on bigalloc file systems.  Although commit c06344939422
+("ext4: fix partial cluster handling for bigalloc file systems")
+addressed the case where the right edge of the punched region and the
+next extent to its right were within the same leaf, it didn't handle
+the case where the next extent to its right is in the next leaf.  This
+causes xfstest generic/300 to fail.
 
-Examples of these xfstests include generic/300 and shared/298.  Once
-the first patch in this series is applied, new failures (generic/013,
-for example) may appear and then disappear with successive patch
-applications until all have been applied.
+Fix this by replacing the code in c0634493922 with a more general
+solution that can continue the search for the first cluster to the
+right of the punched region into the next leaf if present.  If found,
+partial_cluster is initialized to this cluster's negative value.
+There's no need to determine if that cluster is actually shared;  we
+simply record it so its blocks won't be freed in the event it does
+happen to be shared.
 
-Eric Whitney (4):
-  ext4: fix partial cluster initialization
-  ext4: fix end of leaf partial cluster handling
-  ext4: miscellaneous partial cluster cleanups
-  ext4: fix end of region partial cluster handling
+Also, minimize the burden on non-bigalloc file systems with some minor
+code simplification.
 
- fs/ext4/extents.c | 169 +++++++++++++++++++++++++++++-------------------------
- 1 file changed, 92 insertions(+), 77 deletions(-)
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ fs/ext4/extents.c | 80 ++++++++++++++++++++++++++++++++-----------------------
+ 1 file changed, 46 insertions(+), 34 deletions(-)
 
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 0b16fb4..57794a7 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2621,27 +2621,6 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 	ex_ee_block = le32_to_cpu(ex->ee_block);
+ 	ex_ee_len = ext4_ext_get_actual_len(ex);
+ 
+-	/*
+-	 * If we're starting with an extent other than the last one in the
+-	 * node, we need to see if it shares a cluster with the extent to
+-	 * the right (towards the end of the file). If its leftmost cluster
+-	 * is this extent's rightmost cluster and it is not cluster aligned,
+-	 * we'll mark it as a partial that is not to be deallocated.
+-	 */
+-
+-	if (ex != EXT_LAST_EXTENT(eh)) {
+-		ext4_fsblk_t current_pblk, right_pblk;
+-		long long current_cluster, right_cluster;
+-
+-		current_pblk = ext4_ext_pblock(ex) + ex_ee_len - 1;
+-		current_cluster = (long long)EXT4_B2C(sbi, current_pblk);
+-		right_pblk = ext4_ext_pblock(ex + 1);
+-		right_cluster = (long long)EXT4_B2C(sbi, right_pblk);
+-		if (current_cluster == right_cluster &&
+-			EXT4_PBLK_COFF(sbi, right_pblk))
+-			*partial_cluster = -right_cluster;
+-	}
+-
+ 	trace_ext4_ext_rm_leaf(inode, start, ex, *partial_cluster);
+ 
+ 	while (ex >= EXT_FIRST_EXTENT(eh) &&
+@@ -2666,14 +2645,16 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 		if (end < ex_ee_block) {
+ 			/*
+ 			 * We're going to skip this extent and move to another,
+-			 * so if this extent is not cluster aligned we have
+-			 * to mark the current cluster as used to avoid
+-			 * accidentally freeing it later on
++			 * so note that its first cluster is in use to avoid
++			 * freeing it when removing blocks.  Eventually, the
++			 * right edge of the truncated/punched region will
++			 * be just to the left.
+ 			 */
+-			pblk = ext4_ext_pblock(ex);
+-			if (EXT4_PBLK_COFF(sbi, pblk))
++			if (sbi->s_cluster_ratio > 1) {
++				pblk = ext4_ext_pblock(ex);
+ 				*partial_cluster =
+-					-((long long)EXT4_B2C(sbi, pblk));
++					-(long long) EXT4_B2C(sbi, pblk);
++			}
+ 			ex--;
+ 			ex_ee_block = le32_to_cpu(ex->ee_block);
+ 			ex_ee_len = ext4_ext_get_actual_len(ex);
+@@ -2819,7 +2800,7 @@ ext4_ext_more_to_rm(struct ext4_ext_path *path)
+ int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
+ 			  ext4_lblk_t end)
+ {
+-	struct super_block *sb = inode->i_sb;
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	int depth = ext_depth(inode);
+ 	struct ext4_ext_path *path = NULL;
+ 	long long partial_cluster = 0;
+@@ -2845,9 +2826,10 @@ again:
+ 	 */
+ 	if (end < EXT_MAX_BLOCKS - 1) {
+ 		struct ext4_extent *ex;
+-		ext4_lblk_t ee_block;
++		ext4_lblk_t ee_block, ex_end, lblk;
++		ext4_fsblk_t pblk;
+ 
+-		/* find extent for this block */
++		/* find extent for or closest extent to this block */
+ 		path = ext4_find_extent(inode, end, NULL, EXT4_EX_NOCACHE);
+ 		if (IS_ERR(path)) {
+ 			ext4_journal_stop(handle);
+@@ -2867,6 +2849,7 @@ again:
+ 		}
+ 
+ 		ee_block = le32_to_cpu(ex->ee_block);
++		ex_end = ee_block + ext4_ext_get_actual_len(ex) - 1;
+ 
+ 		/*
+ 		 * See if the last block is inside the extent, if so split
+@@ -2874,8 +2857,19 @@ again:
+ 		 * tail of the first part of the split extent in
+ 		 * ext4_ext_rm_leaf().
+ 		 */
+-		if (end >= ee_block &&
+-		    end < ee_block + ext4_ext_get_actual_len(ex) - 1) {
++		if (end >= ee_block && end < ex_end) {
++
++			/*
++			 * If we're going to split the extent, note that
++			 * the cluster containing the block after 'end' is
++			 * in use to avoid freeing it when removing blocks.
++			 */
++			if (sbi->s_cluster_ratio > 1) {
++				pblk = ext4_ext_pblock(ex) + end - ee_block + 2;
++				partial_cluster =
++					-(long long) EXT4_B2C(sbi, pblk);
++			}
++
+ 			/*
+ 			 * Split the extent in two so that 'end' is the last
+ 			 * block in the first new extent. Also we should not
+@@ -2886,6 +2880,24 @@ again:
+ 							 end + 1, 1);
+ 			if (err < 0)
+ 				goto out;
++
++		} else if (sbi->s_cluster_ratio > 1 && end >= ex_end) {
++			/*
++			 * If there's an extent to the right its first cluster
++			 * contains the immediate right boundary of the
++			 * truncated/punched region.  Set partial_cluster to
++			 * its negative value so it won't be freed if shared
++			 * with the current extent.  The end < ee_block case
++			 * is handled in ext4_ext_rm_leaf().
++			 */
++			lblk = ex_end + 1;
++			err = ext4_ext_search_right(inode, path, &lblk, &pblk,
++						    &ex);
++			if (err)
++				goto out;
++			if (pblk)
++				partial_cluster =
++					-(long long) EXT4_B2C(sbi, pblk);
+ 		}
+ 	}
+ 	/*
+@@ -3003,8 +3015,8 @@ again:
+ 		int flags = get_default_free_blocks_flags(inode);
+ 
+ 		ext4_free_blocks(handle, inode, NULL,
+-				 EXT4_C2B(EXT4_SB(sb), partial_cluster),
+-				 EXT4_SB(sb)->s_cluster_ratio, flags);
++				 EXT4_C2B(sbi, partial_cluster),
++				 sbi->s_cluster_ratio, flags);
+ 		partial_cluster = 0;
+ 	}
+ 
 -- 
 1.9.1
 
