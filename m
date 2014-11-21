@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 4/4] ext4: add support for a lazytime mount option
-Date: Fri, 21 Nov 2014 14:59:24 -0500
-Message-ID: <1416599964-21892-5-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/4] vfs: add support for a lazytime mount option
+Date: Fri, 21 Nov 2014 14:59:22 -0500
+Message-ID: <1416599964-21892-3-git-send-email-tytso@mit.edu>
 References: <1416599964-21892-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
 	linux-btrfs@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
@@ -11,186 +11,192 @@ In-Reply-To: <1416599964-21892-1-git-send-email-tytso@mit.edu>
 Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Add an optimization for the MS_LAZYTIME mount option so that we will
-opportunistically write out any inodes with the I_DIRTY_TIME flag set
-in a particular inode table block when we need to update some inode in
-that inode table block anyway.
+Add a new mount option which enables a new "lazytime" mode.  This mode
+causes atime, mtime, and ctime updates to only be made to the
+in-memory version of the inode.  The on-disk times will only get
+updated when (a) if the inode needs to be updated for some non-time
+related change, (b) if userspace calls fsync(), syncfs() or sync(), or
+(c) just before an undeleted inode is evicted from memory.
 
-Also add some temporary code so that we can set the lazytime mount
-option without needing a modified /sbin/mount program which can set
-MS_LAZYTIME.  We can eventually make this go away once util-linux has
-added support.
+This is OK according to POSIX because there are no guarantees after a
+crash unless userspace explicitly requests via a fsync(2) call.
+
+For workloads which feature a large number of random write to a
+preallocated file, the lazytime mount option significantly reduces
+writes to the inode table.  The repeated 4k writes to a single block
+will result in undesirable stress on flash devices and SMR disk
+drives.  Even on conventional HDD's, the repeated writes to the inode
+table block will trigger Adjacent Track Interference (ATI) remediation
+latencies, which very negatively impact 99.9 percentile latencies ---
+which is a very big deal for web serving tiers (for example).
 
 Google-Bug-Id: 18297052
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/inode.c    | 46 +++++++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/super.c    |  9 +++++++++
- fs/inode.c         | 36 ++++++++++++++++++++++++++++++++++++
- include/linux/fs.h |  2 ++
- 4 files changed, 92 insertions(+), 1 deletion(-)
+ fs/fs-writeback.c       | 38 +++++++++++++++++++++++++++++++++++++-
+ fs/inode.c              | 18 ++++++++++++++++++
+ fs/proc_namespace.c     |  1 +
+ fs/sync.c               |  7 +++++++
+ include/linux/fs.h      |  1 +
+ include/uapi/linux/fs.h |  1 +
+ 6 files changed, 65 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3356ab5..07ceafb 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4163,6 +4163,49 @@ static int ext4_inode_blocks_set(handle_t *handle,
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index ef9bef1..ce7de22 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -483,7 +483,7 @@ __writeback_single_inode(struct inode *inode, struct writeback_control *wbc)
+ 	if (!mapping_tagged(mapping, PAGECACHE_TAG_DIRTY))
+ 		inode->i_state &= ~I_DIRTY_PAGES;
+ 	dirty = inode->i_state & I_DIRTY;
+-	inode->i_state &= ~(I_DIRTY_SYNC | I_DIRTY_DATASYNC);
++	inode->i_state &= ~(I_DIRTY_SYNC | I_DIRTY_DATASYNC | I_DIRTY_TIME);
+ 	spin_unlock(&inode->i_lock);
+ 	/* Don't write the inode if only I_DIRTY_PAGES was set */
+ 	if (dirty & (I_DIRTY_SYNC | I_DIRTY_DATASYNC)) {
+@@ -1277,6 +1277,41 @@ static void wait_sb_inodes(struct super_block *sb)
+ 	iput(old_inode);
  }
  
- /*
-+ * Opportunistically update the other time fields for other inodes in
-+ * the same inode table block.
++/*
++ * This works like wait_sb_inodes(), but it is called *before* we kick
++ * the bdi so the inodes can get written out.
 + */
-+static void ext4_update_other_inodes_time(struct super_block *sb,
-+					  unsigned long orig_ino, char *buf)
++static void flush_sb_dirty_time(struct super_block *sb)
 +{
-+	struct ext4_inode_info	*ei;
-+	struct ext4_inode	*raw_inode;
-+	unsigned long		ino;
-+	struct inode		*inode;
-+	int		i, inodes_per_block = EXT4_SB(sb)->s_inodes_per_block;
-+	int		inode_size = EXT4_INODE_SIZE(sb);
++	struct inode *inode, *old_inode = NULL;
 +
-+	ino = orig_ino & ~(inodes_per_block - 1);
-+	for (i = 0; i < inodes_per_block; i++, ino++, buf += inode_size) {
-+		if (ino == orig_ino)
-+			continue;
-+		inode = find_active_inode_nowait(sb, ino);
-+		if (!inode ||
-+		    (inode->i_state & I_DIRTY_TIME) == 0) {
-+			iput(inode);
-+			continue;
-+		}
-+		raw_inode = (struct ext4_inode *) buf;
-+		ei = EXT4_I(inode);
++	WARN_ON(!rwsem_is_locked(&sb->s_umount));
++	spin_lock(&inode_sb_list_lock);
++	list_for_each_entry(inode, &sb->s_inodes, i_sb_list) {
++		int dirty_time;
 +
 +		spin_lock(&inode->i_lock);
-+		inode->i_state &= ~I_DIRTY_TIME;
-+		inode->i_ts_dirty_day = 0;
++		if (inode->i_state & (I_FREEING|I_WILL_FREE|I_NEW)) {
++			spin_unlock(&inode->i_lock);
++			continue;
++		}
++		dirty_time = inode->i_state & I_DIRTY_TIME;
++		__iget(inode);
 +		spin_unlock(&inode->i_lock);
++		spin_unlock(&inode_sb_list_lock);
 +
-+		spin_lock(&ei->i_raw_lock);
-+		EXT4_INODE_SET_XTIME(i_ctime, inode, raw_inode);
-+		EXT4_INODE_SET_XTIME(i_mtime, inode, raw_inode);
-+		EXT4_INODE_SET_XTIME(i_atime, inode, raw_inode);
-+		ext4_inode_csum_set(inode, raw_inode, ei);
-+		spin_unlock(&ei->i_raw_lock);
-+		iput(inode);
++		iput(old_inode);
++		old_inode = inode;
++
++		if (dirty_time)
++			mark_inode_dirty(inode);
++		cond_resched();
++		spin_lock(&inode_sb_list_lock);
 +	}
++	spin_unlock(&inode_sb_list_lock);
++	iput(old_inode);
 +}
 +
-+
-+/*
-  * Post the struct inode info into an on-disk inode location in the
-  * buffer-cache.  This gobbles the caller's reference to the
-  * buffer_head in the inode location struct.
-@@ -4273,9 +4316,10 @@ static int ext4_do_update_inode(handle_t *handle,
- 	}
+ /**
+  * writeback_inodes_sb_nr -	writeback dirty inodes from given super_block
+  * @sb: the superblock
+@@ -1388,6 +1423,7 @@ void sync_inodes_sb(struct super_block *sb)
+ 		return;
+ 	WARN_ON(!rwsem_is_locked(&sb->s_umount));
  
- 	ext4_inode_csum_set(inode, raw_inode, ei);
--
- 	spin_unlock(&ei->i_raw_lock);
++	flush_sb_dirty_time(sb);
+ 	bdi_queue_work(sb->s_bdi, &work);
+ 	wait_for_completion(&done);
  
-+	ext4_update_other_inodes_time(inode->i_sb, inode->i_ino, bh->b_data);
-+
- 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
- 	rc = ext4_handle_dirty_metadata(handle, NULL, bh);
- 	if (!err)
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 4b79f39..1ac1914 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1133,6 +1133,7 @@ enum {
- 	Opt_noquota, Opt_barrier, Opt_nobarrier, Opt_err,
- 	Opt_usrquota, Opt_grpquota, Opt_i_version,
- 	Opt_stripe, Opt_delalloc, Opt_nodelalloc, Opt_mblk_io_submit,
-+	Opt_lazytime, Opt_nolazytime,
- 	Opt_nomblk_io_submit, Opt_block_validity, Opt_noblock_validity,
- 	Opt_inode_readahead_blks, Opt_journal_ioprio,
- 	Opt_dioread_nolock, Opt_dioread_lock,
-@@ -1195,6 +1196,8 @@ static const match_table_t tokens = {
- 	{Opt_i_version, "i_version"},
- 	{Opt_stripe, "stripe=%u"},
- 	{Opt_delalloc, "delalloc"},
-+	{Opt_lazytime, "lazytime"},
-+	{Opt_nolazytime, "nolazytime"},
- 	{Opt_nodelalloc, "nodelalloc"},
- 	{Opt_removed, "mblk_io_submit"},
- 	{Opt_removed, "nomblk_io_submit"},
-@@ -1450,6 +1453,12 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 	case Opt_i_version:
- 		sb->s_flags |= MS_I_VERSION;
- 		return 1;
-+	case Opt_lazytime:
-+		sb->s_flags |= MS_LAZYTIME;
-+		return 1;
-+	case Opt_nolazytime:
-+		sb->s_flags &= ~MS_LAZYTIME;
-+		return 1;
- 	}
- 
- 	for (m = ext4_mount_opts; m->token != Opt_err; m++)
 diff --git a/fs/inode.c b/fs/inode.c
-index f0d6232..89cfca7 100644
+index 8f5c4b5..6e91aca 100644
 --- a/fs/inode.c
 +++ b/fs/inode.c
-@@ -1292,6 +1292,42 @@ struct inode *ilookup(struct super_block *sb, unsigned long ino)
- }
- EXPORT_SYMBOL(ilookup);
+@@ -534,6 +534,18 @@ static void evict(struct inode *inode)
+ 	BUG_ON(!(inode->i_state & I_FREEING));
+ 	BUG_ON(!list_empty(&inode->i_lru));
  
-+/**
-+ * find_active_inode_nowait - find an active inode in the inode cache
-+ * @sb:		super block of file system to search
-+ * @ino:	inode number to search for
-+ *
-+ * Search for an active inode @ino in the inode cache, and if the
-+ * inode is in the cache, the inode is returned with an incremented
-+ * reference count.  If the inode is being freed or is newly
-+ * initialized, return nothing instead of trying to wait for the inode
-+ * initialization or destruction to be complete.
-+ */
-+struct inode *find_active_inode_nowait(struct super_block *sb,
-+				       unsigned long ino)
-+{
-+	struct hlist_head *head = inode_hashtable + hash(sb, ino);
-+	struct inode *inode, *ret_inode = NULL;
-+
-+	spin_lock(&inode_hash_lock);
-+	hlist_for_each_entry(inode, head, i_hash) {
-+		if ((inode->i_ino != ino) ||
-+		    (inode->i_sb != sb))
-+			continue;
-+		spin_lock(&inode->i_lock);
-+		if ((inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW)) == 0) {
-+			__iget(inode);
-+			ret_inode = inode;
++	if (inode->i_nlink && inode->i_state & I_DIRTY_TIME) {
++		if (inode->i_op->write_time)
++			inode->i_op->write_time(inode);
++		else if (inode->i_sb->s_op->write_inode) {
++			struct writeback_control wbc = {
++				.sync_mode = WB_SYNC_NONE,
++			};
++			mark_inode_dirty(inode);
++			inode->i_sb->s_op->write_inode(inode, &wbc);
 +		}
-+		spin_unlock(&inode->i_lock);
-+		goto out;
 +	}
-+out:
-+	spin_unlock(&inode_hash_lock);
-+	return ret_inode;
-+}
-+EXPORT_SYMBOL(find_active_inode_nowait);
 +
- int insert_inode_locked(struct inode *inode)
+ 	if (!list_empty(&inode->i_wb_list))
+ 		inode_wb_list_del(inode);
+ 
+@@ -1515,6 +1527,12 @@ static int update_time(struct inode *inode, struct timespec *time, int flags)
+ 		if (flags & S_MTIME)
+ 			inode->i_mtime = *time;
+ 	}
++	if (inode->i_sb->s_flags & MS_LAZYTIME) {
++		spin_lock(&inode->i_lock);
++		inode->i_state |= I_DIRTY_TIME;
++		spin_unlock(&inode->i_lock);
++		return 0;
++	}
+ 	if (inode->i_op->write_time)
+ 		return inode->i_op->write_time(inode);
+ 	mark_inode_dirty_sync(inode);
+diff --git a/fs/proc_namespace.c b/fs/proc_namespace.c
+index 73ca174..f98234a 100644
+--- a/fs/proc_namespace.c
++++ b/fs/proc_namespace.c
+@@ -44,6 +44,7 @@ static int show_sb_opts(struct seq_file *m, struct super_block *sb)
+ 		{ MS_SYNCHRONOUS, ",sync" },
+ 		{ MS_DIRSYNC, ",dirsync" },
+ 		{ MS_MANDLOCK, ",mand" },
++		{ MS_LAZYTIME, ",lazytime" },
+ 		{ 0, NULL }
+ 	};
+ 	const struct proc_fs_info *fs_infop;
+diff --git a/fs/sync.c b/fs/sync.c
+index bdc729d..db7930e 100644
+--- a/fs/sync.c
++++ b/fs/sync.c
+@@ -177,8 +177,15 @@ SYSCALL_DEFINE1(syncfs, int, fd)
+  */
+ int vfs_fsync_range(struct file *file, loff_t start, loff_t end, int datasync)
  {
- 	struct super_block *sb = inode->i_sb;
++	struct inode *inode = file->f_mapping->host;
++
+ 	if (!file->f_op->fsync)
+ 		return -EINVAL;
++	if (!datasync && inode->i_state & I_DIRTY_TIME) {
++		spin_lock(&inode->i_lock);
++		inode->i_state |= I_DIRTY_SYNC;
++		spin_unlock(&inode->i_lock);
++	}
+ 	return file->f_op->fsync(file, start, end, datasync);
+ }
+ EXPORT_SYMBOL(vfs_fsync_range);
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index e3574cd..dbbd642 100644
+index 3633239..489b2f2 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -2413,6 +2413,8 @@ extern struct inode *ilookup(struct super_block *sb, unsigned long ino);
+@@ -1721,6 +1721,7 @@ struct super_operations {
+ #define __I_DIO_WAKEUP		9
+ #define I_DIO_WAKEUP		(1 << I_DIO_WAKEUP)
+ #define I_LINKABLE		(1 << 10)
++#define I_DIRTY_TIME		(1 << 11)
  
- extern struct inode * iget5_locked(struct super_block *, unsigned long, int (*test)(struct inode *, void *), int (*set)(struct inode *, void *), void *);
- extern struct inode * iget_locked(struct super_block *, unsigned long);
-+extern struct inode *find_active_inode_nowait(struct super_block *,
-+					      unsigned long);
- extern int insert_inode_locked4(struct inode *, unsigned long, int (*test)(struct inode *, void *), void *);
- extern int insert_inode_locked(struct inode *);
- #ifdef CONFIG_DEBUG_LOCK_ALLOC
+ #define I_DIRTY (I_DIRTY_SYNC | I_DIRTY_DATASYNC | I_DIRTY_PAGES)
+ 
+diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+index 3735fa0..cc9713a 100644
+--- a/include/uapi/linux/fs.h
++++ b/include/uapi/linux/fs.h
+@@ -90,6 +90,7 @@ struct inodes_stat_t {
+ #define MS_KERNMOUNT	(1<<22) /* this is a kern_mount call */
+ #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
+ #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
++#define MS_LAZYTIME	(1<<25) /* Update the on-disk [acm]times lazily */
+ 
+ /* These sb flags are internal to the kernel */
+ #define MS_NOSEC	(1<<28)
 -- 
 2.1.0
 
