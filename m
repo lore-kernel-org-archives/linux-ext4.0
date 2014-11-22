@@ -1,88 +1,219 @@
-From: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Subject: [v7 5/5] ext4: cleanup inode flag definitions
-Date: Sat, 22 Nov 2014 13:24:55 +0800
-Message-ID: <1416633895-4004-6-git-send-email-lixi@ddn.com>
-References: <1416633895-4004-1-git-send-email-lixi@ddn.com>
-To: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
-	jack-AlSwsSmVLrQ@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
-	dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <1416633895-4004-1-git-send-email-lixi-LfVdkaOWEx8@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH-v2 2/5] vfs: add support for a lazytime mount option
+Date: Sat, 22 Nov 2014 11:54:24 -0500
+Message-ID: <1416675267-2191-3-git-send-email-tytso@mit.edu>
+References: <1416675267-2191-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>, linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
+To: linux-fsdevel@vger.kernel.org
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <1416675267-2191-1-git-send-email-tytso@mit.edu>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-The inode flags defined in uapi/linux/fs.h were migrated from
-ext4.h. This patch changes the inode flag definitions in ext4.h
-to VFS definitions to make the gaps between them clearer.
+Add a new mount option which enables a new "lazytime" mode.  This mode
+causes atime, mtime, and ctime updates to only be made to the
+in-memory version of the inode.  The on-disk times will only get
+updated when (a) if the inode needs to be updated for some non-time
+related change, (b) if userspace calls fsync(), syncfs() or sync(), or
+(c) just before an undeleted inode is evicted from memory.
 
-Signed-off-by: Li Xi <lixi-LfVdkaOWEx8@public.gmane.org>
+This is OK according to POSIX because there are no guarantees after a
+crash unless userspace explicitly requests via a fsync(2) call.
+
+For workloads which feature a large number of random write to a
+preallocated file, the lazytime mount option significantly reduces
+writes to the inode table.  The repeated 4k writes to a single block
+will result in undesirable stress on flash devices and SMR disk
+drives.  Even on conventional HDD's, the repeated writes to the inode
+table block will trigger Adjacent Track Interference (ATI) remediation
+latencies, which very negatively impact 99.9 percentile latencies ---
+which is a very big deal for web serving tiers (for example).
+
+Google-Bug-Id: 18297052
+
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/ext4.h |   50 +++++++++++++++++++++++++-------------------------
- 1 files changed, 25 insertions(+), 25 deletions(-)
+ fs/fs-writeback.c       | 38 +++++++++++++++++++++++++++++++++++++-
+ fs/inode.c              | 20 ++++++++++++++++++++
+ fs/proc_namespace.c     |  1 +
+ fs/sync.c               |  7 +++++++
+ include/linux/fs.h      |  1 +
+ include/uapi/linux/fs.h |  1 +
+ 6 files changed, 67 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 542b388..a3083d5 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -362,33 +362,33 @@ struct flex_groups {
- /*
-  * Inode flags
-  */
--#define	EXT4_SECRM_FL			0x00000001 /* Secure deletion */
--#define	EXT4_UNRM_FL			0x00000002 /* Undelete */
--#define	EXT4_COMPR_FL			0x00000004 /* Compress file */
--#define EXT4_SYNC_FL			0x00000008 /* Synchronous updates */
--#define EXT4_IMMUTABLE_FL		0x00000010 /* Immutable file */
--#define EXT4_APPEND_FL			0x00000020 /* writes to file may only append */
--#define EXT4_NODUMP_FL			0x00000040 /* do not dump file */
--#define EXT4_NOATIME_FL			0x00000080 /* do not update atime */
-+#define	EXT4_SECRM_FL			FS_SECRM_FL        /* Secure deletion */
-+#define	EXT4_UNRM_FL			FS_UNRM_FL         /* Undelete */
-+#define	EXT4_COMPR_FL			FS_COMPR_FL        /* Compress file */
-+#define EXT4_SYNC_FL			FS_SYNC_FL         /* Synchronous updates */
-+#define EXT4_IMMUTABLE_FL		FS_IMMUTABLE_FL    /* Immutable file */
-+#define EXT4_APPEND_FL			FS_APPEND_FL       /* writes to file may only append */
-+#define EXT4_NODUMP_FL			FS_NODUMP_FL       /* do not dump file */
-+#define EXT4_NOATIME_FL			FS_NOATIME_FL      /* do not update atime */
- /* Reserved for compression usage... */
--#define EXT4_DIRTY_FL			0x00000100
--#define EXT4_COMPRBLK_FL		0x00000200 /* One or more compressed clusters */
--#define EXT4_NOCOMPR_FL			0x00000400 /* Don't compress */
--#define EXT4_ECOMPR_FL			0x00000800 /* Compression error */
-+#define EXT4_DIRTY_FL			FS_DIRTY_FL
-+#define EXT4_COMPRBLK_FL		FS_COMPRBLK_FL     /* One or more compressed clusters */
-+#define EXT4_NOCOMPR_FL			FS_NOCOMP_FL       /* Don't compress */
-+#define EXT4_ECOMPR_FL			FS_ECOMPR_FL       /* Compression error */
- /* End compression flags --- maybe not all used */
--#define EXT4_INDEX_FL			0x00001000 /* hash-indexed directory */
--#define EXT4_IMAGIC_FL			0x00002000 /* AFS directory */
--#define EXT4_JOURNAL_DATA_FL		0x00004000 /* file data should be journaled */
--#define EXT4_NOTAIL_FL			0x00008000 /* file tail should not be merged */
--#define EXT4_DIRSYNC_FL			0x00010000 /* dirsync behaviour (directories only) */
--#define EXT4_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
--#define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
--#define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
--#define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
--#define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
--#define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
--#define EXT4_PROJINHERIT_FL		FS_PROJINHERIT_FL /* Create with parents projid */
--#define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
-+#define EXT4_INDEX_FL			FS_INDEX_FL        /* hash-indexed directory */
-+#define EXT4_IMAGIC_FL			FS_IMAGIC_FL       /* AFS directory */
-+#define EXT4_JOURNAL_DATA_FL		FS_JOURNAL_DATA_FL /* file data should be journaled */
-+#define EXT4_NOTAIL_FL			FS_NOTAIL_FL       /* file tail should not be merged */
-+#define EXT4_DIRSYNC_FL			FS_DIRSYNC_FL      /* dirsync behaviour (directories only) */
-+#define EXT4_TOPDIR_FL			FS_TOPDIR_FL       /* Top of directory hierarchies*/
-+#define EXT4_HUGE_FILE_FL               0x00040000         /* Set to each huge file */
-+#define EXT4_EXTENTS_FL			FS_EXTENT_FL       /* Inode uses extents */
-+#define EXT4_EA_INODE_FL	        0x00200000         /* Inode used for large EA */
-+#define EXT4_EOFBLOCKS_FL		0x00400000         /* Blocks allocated beyond EOF */
-+#define EXT4_INLINE_DATA_FL		0x10000000         /* Inode has inline data. */
-+#define EXT4_PROJINHERIT_FL		FS_PROJINHERIT_FL  /* Create with parents projid */
-+#define EXT4_RESERVED_FL		FS_RESERVED_FL     /* reserved for ext4 lib */
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index ef9bef1..ce7de22 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -483,7 +483,7 @@ __writeback_single_inode(struct inode *inode, struct writeback_control *wbc)
+ 	if (!mapping_tagged(mapping, PAGECACHE_TAG_DIRTY))
+ 		inode->i_state &= ~I_DIRTY_PAGES;
+ 	dirty = inode->i_state & I_DIRTY;
+-	inode->i_state &= ~(I_DIRTY_SYNC | I_DIRTY_DATASYNC);
++	inode->i_state &= ~(I_DIRTY_SYNC | I_DIRTY_DATASYNC | I_DIRTY_TIME);
+ 	spin_unlock(&inode->i_lock);
+ 	/* Don't write the inode if only I_DIRTY_PAGES was set */
+ 	if (dirty & (I_DIRTY_SYNC | I_DIRTY_DATASYNC)) {
+@@ -1277,6 +1277,41 @@ static void wait_sb_inodes(struct super_block *sb)
+ 	iput(old_inode);
+ }
  
- #define EXT4_FL_USER_VISIBLE		0x204BDFFF /* User visible flags */
- #define EXT4_FL_USER_MODIFIABLE		0x204380FF /* User modifiable flags */
++/*
++ * This works like wait_sb_inodes(), but it is called *before* we kick
++ * the bdi so the inodes can get written out.
++ */
++static void flush_sb_dirty_time(struct super_block *sb)
++{
++	struct inode *inode, *old_inode = NULL;
++
++	WARN_ON(!rwsem_is_locked(&sb->s_umount));
++	spin_lock(&inode_sb_list_lock);
++	list_for_each_entry(inode, &sb->s_inodes, i_sb_list) {
++		int dirty_time;
++
++		spin_lock(&inode->i_lock);
++		if (inode->i_state & (I_FREEING|I_WILL_FREE|I_NEW)) {
++			spin_unlock(&inode->i_lock);
++			continue;
++		}
++		dirty_time = inode->i_state & I_DIRTY_TIME;
++		__iget(inode);
++		spin_unlock(&inode->i_lock);
++		spin_unlock(&inode_sb_list_lock);
++
++		iput(old_inode);
++		old_inode = inode;
++
++		if (dirty_time)
++			mark_inode_dirty(inode);
++		cond_resched();
++		spin_lock(&inode_sb_list_lock);
++	}
++	spin_unlock(&inode_sb_list_lock);
++	iput(old_inode);
++}
++
+ /**
+  * writeback_inodes_sb_nr -	writeback dirty inodes from given super_block
+  * @sb: the superblock
+@@ -1388,6 +1423,7 @@ void sync_inodes_sb(struct super_block *sb)
+ 		return;
+ 	WARN_ON(!rwsem_is_locked(&sb->s_umount));
+ 
++	flush_sb_dirty_time(sb);
+ 	bdi_queue_work(sb->s_bdi, &work);
+ 	wait_for_completion(&done);
+ 
+diff --git a/fs/inode.c b/fs/inode.c
+index 8f5c4b5..11fe81b 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -534,6 +534,18 @@ static void evict(struct inode *inode)
+ 	BUG_ON(!(inode->i_state & I_FREEING));
+ 	BUG_ON(!list_empty(&inode->i_lru));
+ 
++	if (inode->i_nlink && inode->i_state & I_DIRTY_TIME) {
++		if (inode->i_op->write_time)
++			inode->i_op->write_time(inode);
++		else if (inode->i_sb->s_op->write_inode) {
++			struct writeback_control wbc = {
++				.sync_mode = WB_SYNC_NONE,
++			};
++			mark_inode_dirty(inode);
++			inode->i_sb->s_op->write_inode(inode, &wbc);
++		}
++	}
++
+ 	if (!list_empty(&inode->i_wb_list))
+ 		inode_wb_list_del(inode);
+ 
+@@ -1515,6 +1527,14 @@ static int update_time(struct inode *inode, struct timespec *time, int flags)
+ 		if (flags & S_MTIME)
+ 			inode->i_mtime = *time;
+ 	}
++	if (inode->i_sb->s_flags & MS_LAZYTIME) {
++		if (inode->i_state & I_DIRTY_TIME)
++			return 0;
++		spin_lock(&inode->i_lock);
++		inode->i_state |= I_DIRTY_TIME;
++		spin_unlock(&inode->i_lock);
++		return 0;
++	}
+ 	if (inode->i_op->write_time)
+ 		return inode->i_op->write_time(inode);
+ 	mark_inode_dirty_sync(inode);
+diff --git a/fs/proc_namespace.c b/fs/proc_namespace.c
+index 73ca174..f98234a 100644
+--- a/fs/proc_namespace.c
++++ b/fs/proc_namespace.c
+@@ -44,6 +44,7 @@ static int show_sb_opts(struct seq_file *m, struct super_block *sb)
+ 		{ MS_SYNCHRONOUS, ",sync" },
+ 		{ MS_DIRSYNC, ",dirsync" },
+ 		{ MS_MANDLOCK, ",mand" },
++		{ MS_LAZYTIME, ",lazytime" },
+ 		{ 0, NULL }
+ 	};
+ 	const struct proc_fs_info *fs_infop;
+diff --git a/fs/sync.c b/fs/sync.c
+index bdc729d..db7930e 100644
+--- a/fs/sync.c
++++ b/fs/sync.c
+@@ -177,8 +177,15 @@ SYSCALL_DEFINE1(syncfs, int, fd)
+  */
+ int vfs_fsync_range(struct file *file, loff_t start, loff_t end, int datasync)
+ {
++	struct inode *inode = file->f_mapping->host;
++
+ 	if (!file->f_op->fsync)
+ 		return -EINVAL;
++	if (!datasync && inode->i_state & I_DIRTY_TIME) {
++		spin_lock(&inode->i_lock);
++		inode->i_state |= I_DIRTY_SYNC;
++		spin_unlock(&inode->i_lock);
++	}
+ 	return file->f_op->fsync(file, start, end, datasync);
+ }
+ EXPORT_SYMBOL(vfs_fsync_range);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 3633239..489b2f2 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1721,6 +1721,7 @@ struct super_operations {
+ #define __I_DIO_WAKEUP		9
+ #define I_DIO_WAKEUP		(1 << I_DIO_WAKEUP)
+ #define I_LINKABLE		(1 << 10)
++#define I_DIRTY_TIME		(1 << 11)
+ 
+ #define I_DIRTY (I_DIRTY_SYNC | I_DIRTY_DATASYNC | I_DIRTY_PAGES)
+ 
+diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+index 3735fa0..cc9713a 100644
+--- a/include/uapi/linux/fs.h
++++ b/include/uapi/linux/fs.h
+@@ -90,6 +90,7 @@ struct inodes_stat_t {
+ #define MS_KERNMOUNT	(1<<22) /* this is a kern_mount call */
+ #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
+ #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
++#define MS_LAZYTIME	(1<<25) /* Update the on-disk [acm]times lazily */
+ 
+ /* These sb flags are internal to the kernel */
+ #define MS_NOSEC	(1<<28)
 -- 
-1.7.1
+2.1.0
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
