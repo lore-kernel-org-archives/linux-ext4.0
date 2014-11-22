@@ -1,84 +1,103 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 3/4] vfs: don't let the dirty time inodes get more than a day stale
-Date: Fri, 21 Nov 2014 17:09:49 -0600
-Message-ID: <656297ED-3A8F-4437-8356-950F8C77D9DE@dilger.ca>
-References: <1416599964-21892-1-git-send-email-tytso@mit.edu> <1416599964-21892-4-git-send-email-tytso@mit.edu> <B1759DB3-7D86-499B-BE09-34D9927C75C8@dilger.ca> <20141121213651.GF7112@thunk.org>
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_75E0AF1A-FFD9-42D3-AD1E-9032144F7D7A"; protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f179.google.com ([209.85.192.179]:44838 "EHLO
-	mail-pd0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751097AbaKUXJZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2014 18:09:25 -0500
-Received: by mail-pd0-f179.google.com with SMTP id w10so6209545pde.38
-        for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2014 15:09:25 -0800 (PST)
-In-Reply-To: <20141121213651.GF7112@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Subject: [v7 0/5] ext4: add project quota support
+Date: Sat, 22 Nov 2014 13:24:50 +0800
+Message-ID: <1416633895-4004-1-git-send-email-lixi@ddn.com>
+To: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
+	jack-AlSwsSmVLrQ@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+	dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
+The following patches propose an implementation of project quota
+support for ext4. A project is an aggregate of unrelated inodes
+which might scatter in different directories. Inodes that belong
+to the same project possess an identical identification i.e.
+'project ID', just like every inode has its user/group
+identification. The following patches add project quota as
+supplement to the former uer/group quota types.
 
---Apple-Mail=_75E0AF1A-FFD9-42D3-AD1E-9032144F7D7A
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+The semantics of ext4 project quota is consistent with XFS. Each
+directory can have EXT4_INODE_PROJINHERIT flag set. When the
+EXT4_INODE_PROJINHERIT flag of a parent directory is not set, a
+newly created inode under that directory will have a default project
+ID (i.e. 0). And its EXT4_INODE_PROJINHERIT flag is not set either.
+When this flag is set on a directory, following rules will be kept:
 
+1) The newly created inode under that directory will inherit both
+the EXT4_INODE_PROJINHERIT flag and the project ID from its parent
+directory.
 
-On Nov 21, 2014, at 3:36 PM, Theodore Ts'o <tytso@mit.edu> wrote:
->> and "days_since_boot" should be declared unsigned short so it wraps
->> in the same way as i_ts_dirty_day
->=20
-> Good point, thanks.  This will only be an issue after the system has
-> been up for almost 90 years, but we might as well get it right,
+2) Hard-linking a inode with different project ID into that directory
+will fail with errno EXDEV.
 
-Speaking of stuff in the future, it looks like the patch to fix the
-ext4 dates-beyond-epoch handling hasn't landed yet?
+3) Renaming a inode with different project ID into that directory
+will fail with errno EXDEV. However, 'mv' command will detect this
+failure and copy the renamed inode to a new inode in the directory.
+Thus, this new inode will inherit both the project ID and
+EXT4_INODE_PROJINHERIT flag.
 
-The last email I found related to that is in "[PATCH] fs: ext4: =
-Sign-extend tv_sec after ORing in epoch bits", but the patch that I =
-actually thought was ready to land was "[PATCH v8 1/2] ext4: Fix =
-handling of extended tv_sec (bug 23732)" and the matching e2fsprogs =
-patch:
+4) If the project quota of that ID is being enforced, statfs() on
+that directory will take the quotas as another upper limits along
+with the capacity of the file system, i.e. the total block/inode
+number will be the minimum of the quota limits and file system
+capacity.
 
-http://lkml.org/lkml/2014/2/13/667
-http://lkml.org/lkml/2014/2/13/670
+Changelog:
+* v7 <- v6:
+ - Map ext4 inode flags to xflags of struct fsxattr;
+ - Add patch to cleanup ext4 inode flag definitions
+* v6 <- v5:
+ - Add project ID check for cross rename;
+ - Remove patch of EXT4_IOC_GETPROJECT/EXT4_IOC_SETPROJECT ioctl
+* v5 <- v4:
+ - Check project feature when set/get project ID;
+ - Do not check project feature for project quota;
+ - Add support of FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR.
+* v4 <- v3:
+ - Do not check project feature when set/get project ID;
+ - Use EXT4_MAXQUOTAS instead of MAXQUOTAS in ext4 patches;
+ - Remove unnecessary change of fs/quota/dquot.c;
+ - Remove CONFIG_QUOTA_PROJECT.
+* v3 <- v2:
+ - Add EXT4_INODE_PROJINHERIT semantics.
+* v2 <- v1:
+ - Add ioctl interface for setting/getting project;
+ - Add EXT4_FEATURE_RO_COMPAT_PROJECT;
+ - Add get_projid() method in struct dquot_operations;
+ - Add error check of ext4_inode_projid_set/get().
 
-Would be nice to get them landed, since we have less than 20 years
-left, and at some point there will be embedded systems or VMs using
-ext4 that may live long enough to hit the bug...
+v6: http://www.spinics.net/lists/linux-fsdevel/msg80022.html
+v5: http://www.spinics.net/lists/linux-api/msg04840.html
+v4: http://lwn.net/Articles/612972/
+v3: http://www.spinics.net/lists/linux-ext4/msg45184.html
+v2: http://www.spinics.net/lists/linux-ext4/msg44695.html
+v1: http://article.gmane.org/gmane.comp.file-systems.ext4/45153
 
-Cheers, Andreas
+Any comments or feedbacks are appreciated.
 
+Regards,
+                                         - Li Xi
 
+Li Xi (5):
+  vfs: adds general codes to enforces project quota limits
+  ext4: adds project ID support
+  ext4: adds project quota support
+  ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR interface support
+  ext4: cleanup inode flag definitions
 
-
-
-
---Apple-Mail=_75E0AF1A-FFD9-42D3-AD1E-9032144F7D7A
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBVG/GPXKl2rkXzB/gAQLOew//eEz3nEXSTHxnqszD00WonE1zy0nQzJpz
-HWKM8PwSUp3Cr5tN4RC1AIFFE05cbGoNvAPXFDcvuU0G8YYoOZzyibTwl3i0eKez
-0VTxdM7T/XXMX5Oln+yaWOSoN0p+2rltp1iUl/szVxUGOLDMvI6bTTrQk4zBR77y
-wyH43gAtAwzMr4v2tL8N6iyk5oUvgAiDFE5sDr0isQh1c4EueX8/Zu4FZ9inCbdd
-YD2mYn/kvf+ZJou3/+QI5GoUvNRp37JKS0BxioiximGNPY8TtO5whNuoGlbKwudc
-lPNtpoPxGS3ic3n6VPMGCMuE37GCfax0K2tmo7J0OhGuciqSuvIe3eksHXZ4/hq0
-ewxeBjLANDZLU8rdA6M3QYN/p/Cx2LVq56Ei643eyYuBYoqvPwgR8zAGHuktbCY5
-LKKbtYfJiX/LEcWsWkrrLWMzc0Ji4bELMDa7KNIrhq7fpCLf/m0gbctnOUGqHeJx
-LKtMjbck7K4W6iO6b0Y52rLjFbrKWMmJB9oPUQq86AAdZladPKatkVWzVStd08N5
-ytMbBhPUqfZJHCVP5EvspFvnnD7X10FvN2fVrNJ59C3qqMa7bLR9U4V2+vsy1ot0
-ROE339aS4fKSQgas4vSNmcAqFxyJb9nq5hBQrTYpzo7k3LDgLBwjyyvU8IQ07quj
-2X/oNixDX88=
-=xQi3
------END PGP SIGNATURE-----
-
---Apple-Mail=_75E0AF1A-FFD9-42D3-AD1E-9032144F7D7A--
+ fs/ext4/ext4.h             |  190 +++++++++++++++++++++----
+ fs/ext4/ialloc.c           |    6 +
+ fs/ext4/inode.c            |   29 ++++
+ fs/ext4/ioctl.c            |  330 +++++++++++++++++++++++++++++++-------------
+ fs/ext4/namei.c            |   17 +++
+ fs/ext4/super.c            |   96 +++++++++++--
+ fs/quota/dquot.c           |   35 ++++-
+ fs/quota/quota.c           |    8 +-
+ fs/quota/quotaio_v2.h      |    6 +-
+ fs/xfs/xfs_fs.h            |   47 +++----
+ include/linux/quota.h      |    2 +
+ include/uapi/linux/fs.h    |   59 ++++++++
+ include/uapi/linux/quota.h |    6 +-
+ 13 files changed, 650 insertions(+), 181 deletions(-)
