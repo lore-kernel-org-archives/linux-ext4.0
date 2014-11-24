@@ -1,50 +1,43 @@
 From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: [PATCH v6 6/10] xfstests: generic/039: Delayed allocation insert range
-Date: Mon, 24 Nov 2014 15:16:53 +0900
-Message-ID: <002f01d007ae$3d94cbd0$b8be6370$@samsung.com>
+Subject: [PATCH v6 7/10] xfstests: generic/040: Multi insert range tests
+Date: Mon, 24 Nov 2014 15:16:58 +0900
+Message-ID: <003001d007ae$40a985e0$c1fc91a0$@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>,
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-ext4 <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
 	linux-kernel@vger.kernel.org,
-	Ashish Sangwan <a.sangwan@samsung.com>, xfs@oss.sgi.com
+	Ashish Sangwan <a.sangwan@samsung.com>
 To: Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>
-Return-path: <xfs-bounces@oss.sgi.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-language: ko
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This testcase(039) tries to test various corner cases with delayed extents
+This testcase(040) tries to test various corner cases with pre-existing holes
 for finsert range functionality over different type of extents.
 
 Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
 Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
 ---
- tests/generic/039     | 65 ++++++++++++++++++++++++++++++++++++++++++
- tests/generic/039.out | 78 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/040     | 65 +++++++++++++++++++++++++++++++++++++++++
+ tests/generic/040.out | 80 +++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/generic/group   |  1 +
- 3 files changed, 144 insertions(+)
- create mode 100644 tests/generic/039
- create mode 100644 tests/generic/039.out
+ 3 files changed, 146 insertions(+)
+ create mode 100644 tests/generic/040
+ create mode 100644 tests/generic/040.out
 
-diff --git a/tests/generic/039 b/tests/generic/039
+diff --git a/tests/generic/040 b/tests/generic/040
 new file mode 100644
-index 0000000..3421f93
+index 0000000..df1c92f
 --- /dev/null
-+++ b/tests/generic/039
++++ b/tests/generic/040
 @@ -0,0 +1,65 @@
 +#! /bin/bash
-+# FS QA Test No. generic/039
++# FS QA Test No. generic/040
 +#
-+# Delayed allocation insert range tests
++# Multi insert range tests
 +# This testcase is one of the 4 testcases which tries to
 +# test various corner cases for finsert range functionality over different
 +# type of extents. These tests are based on generic/255 test case.
@@ -101,18 +94,18 @@ index 0000000..3421f93
 +
 +testfile=$TEST_DIR/$seq.$$
 +
-+_test_generic_punch -d falloc fpunch finsert fiemap _filter_hole_fiemap $testfile
++_test_generic_punch -k falloc fpunch finsert fiemap _filter_hole_fiemap $testfile
 +_check_test_fs
 +
 +status=0
 +exit
-diff --git a/tests/generic/039.out b/tests/generic/039.out
+diff --git a/tests/generic/040.out b/tests/generic/040.out
 new file mode 100644
-index 0000000..d1e8320
+index 0000000..c901e10
 --- /dev/null
-+++ b/tests/generic/039.out
-@@ -0,0 +1,78 @@
-+QA output created by 039
++++ b/tests/generic/040.out
+@@ -0,0 +1,80 @@
++QA output created by 040
 +	1. into a hole
 +cf845a781c107ec1346e849c9dd1b7e8
 +	2. into allocated space
@@ -124,46 +117,48 @@ index 0000000..d1e8320
 +0: [0..7]: extent
 +1: [8..23]: hole
 +2: [24..55]: extent
-+cf845a781c107ec1346e849c9dd1b7e8
++22b7303d274481990b5401b6263effe0
 +	4. hole -> data
-+0: [0..31]: hole
-+1: [32..47]: extent
-+2: [48..55]: hole
-+adb08a6d94a3b5eff90fdfebb2366d31
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..55]: extent
++c4fef62ba1de9d91a977cfeec6632f19
 +	5. hole -> unwritten
-+0: [0..31]: hole
-+1: [32..47]: extent
-+2: [48..55]: hole
-+cf845a781c107ec1346e849c9dd1b7e8
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..55]: extent
++1ca74f7572a0f4ab477fdbb5682e5f61
 +	6. data -> hole
 +0: [0..7]: extent
 +1: [8..23]: hole
 +2: [24..31]: extent
-+3: [32..55]: hole
++3: [32..47]: hole
++4: [48..55]: extent
 +be0f35d4292a20040766d87883b0abd1
 +	7. data -> unwritten
 +0: [0..7]: extent
 +1: [8..23]: hole
 +2: [24..47]: extent
 +3: [48..55]: hole
-+be0f35d4292a20040766d87883b0abd1
++bddb1f3895268acce30d516a99cb0f2f
 +	8. unwritten -> hole
 +0: [0..7]: extent
 +1: [8..23]: hole
 +2: [24..31]: extent
-+3: [32..55]: hole
-+cf845a781c107ec1346e849c9dd1b7e8
++3: [32..39]: hole
++4: [40..55]: extent
++f8fc47adc45b7cf72f988b3ddf5bff64
 +	9. unwritten -> data
 +0: [0..7]: extent
 +1: [8..23]: hole
 +2: [24..47]: extent
 +3: [48..55]: hole
-+adb08a6d94a3b5eff90fdfebb2366d31
++c4fef62ba1de9d91a977cfeec6632f19
 +	10. hole -> data -> hole
-+0: [0..39]: hole
-+1: [40..47]: extent
-+2: [48..63]: hole
-+0487b3c52810f994c541aa166215375f
++0: [0..7]: extent
++1: [8..39]: hole
++2: [40..63]: extent
++52af1bfcbf43f28af2328de32e0567e5
 +	11. data -> hole -> data
 +0: [0..7]: extent
 +1: [8..31]: hole
@@ -175,7 +170,7 @@ index 0000000..d1e8320
 +0: [0..7]: extent
 +1: [8..31]: hole
 +2: [32..63]: extent
-+0487b3c52810f994c541aa166215375f
++52af1bfcbf43f28af2328de32e0567e5
 +	13. data -> unwritten -> data
 +0: [0..7]: extent
 +1: [8..31]: hole
@@ -191,21 +186,16 @@ index 0000000..d1e8320
 +1: [16..55]: extent
 +86c9d033be2761385c9cfa203c426bb2
 diff --git a/tests/generic/group b/tests/generic/group
-index 7d6f227..4beb27f 100644
+index 4beb27f..9d5f72d 100644
 --- a/tests/generic/group
 +++ b/tests/generic/group
-@@ -41,6 +41,7 @@
- 036 auto aio rw stress
+@@ -42,6 +42,7 @@
  037 metadata auto quick
  038 auto quick prealloc
-+039 auto quick prealloc
+ 039 auto quick prealloc
++040 auto quick prealloc
  053 acl repair auto quick
  062 attr udf auto quick
  068 other auto freeze dangerous stress
 -- 
 1.7.11-rc0
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
