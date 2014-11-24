@@ -1,42 +1,67 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/4] fs: split update_time() into update_time() and
- write_time()
-Date: Mon, 24 Nov 2014 10:56:58 -0500
-Message-ID: <20141124155658.GA31339@thunk.org>
-References: <1416599964-21892-1-git-send-email-tytso@mit.edu>
- <1416599964-21892-2-git-send-email-tytso@mit.edu>
- <20141124152101.GA12575@infradead.org>
+From: Holger =?iso-8859-1?q?Hoffst=E4tte?=
+	<holger.hoffstaette@googlemail.com>
+Subject: Re: Space Maps?
+Date: Mon, 24 Nov 2014 16:12:51 +0000 (UTC)
+Message-ID: <pan.2014.11.24.16.12.51@googlemail.com>
+References: <pan.2014.11.24.12.43.51@googlemail.com>
+	<20141124153336.GA10992@thunk.org> <547350F3.4050208@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs@oss.sgi.com, linux-btrfs@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20141124152101.GA12575@infradead.org>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from plane.gmane.org ([80.91.229.3]:45187 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751758AbaKXQNG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Nov 2014 11:13:06 -0500
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1XswG7-0000AY-MB
+	for linux-ext4@vger.kernel.org; Mon, 24 Nov 2014 17:13:03 +0100
+Received: from p4ff580e3.dip0.t-ipconnect.de ([79.245.128.227])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Nov 2014 17:13:03 +0100
+Received: from holger.hoffstaette by p4ff580e3.dip0.t-ipconnect.de with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Nov 2014 17:13:03 +0100
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 24, 2014 at 07:21:01AM -0800, Christoph Hellwig wrote:
-> On Fri, Nov 21, 2014 at 02:59:21PM -0500, Theodore Ts'o wrote:
-> > We needed to preserve update_time() because btrfs wants to have a
-> > special btrfs_root_readonly() check; otherwise we could drop the
-> > update_time() inode operation entirely.
-> 
-> Can't btrfs just set the immutable flag on every inode that is read
-> when the root has the BTRFS_ROOT_SUBVOL_RDONLY flag?  That would
-> cut down the places that need this check to the ioctl path so that
-> we prevent users from clearling the immutable flag.
+On Mon, 24 Nov 2014 09:38:27 -0600, Eric Sandeen wrote:
 
-Sounds like a good plan to me, although I'm not sure I understand how
-BTRFS_ROOT_SUBVOL_RDONLY flag works, since I would have thought there
-are all sorts of places in the VFS layer where it is currently
-checking MS_RDONLY and MNT_READONLY and _not_ checking
-BTRFS_ROOT_SUBVOL_RDONLY isn't causing other problems.
+> On 11/24/14 9:33 AM, Theodore Ts'o wrote:
+>> On Mon, Nov 24, 2014 at 12:43:51PM +0000, Holger Hoffst=C3=A4tte wro=
+te:
+>>>
+>>> Cleaning out some old research papers I came again across the propo=
+sal
+>>> for "space maps" in ext4 [1]. What happened to that? Was it rejecte=
+d
+>>> due to too much risk or other technical reasons? The benefits sound
+>>> appealing, so I was wondering if there's something fundamentally wr=
+ong
+>>> with the suggested approach.
+>>=20
+>> No one ever submitted patches.
+>=20
+> Was just checking that too. I'm always mystified by the folks who tak=
+e the
+> time to write & submit & present papers, but don't submit patches.
 
-But unless there's something more subtle going on, it would seem to me
-that setting the immutable flag on each inode would be a better way to
-go in any case.
+Thanks - that's all very sad. The author has a homepage at
+http://saurabh.io/ so maybe someone with a sufficiently large army of
+lawyers can contact him? I couldn't find any code right now either.
 
-					- Ted
+As for the patents - I'm outside the US and the paper explicitly mentio=
+ns
+using Linux' built-in RBTrees instead of AVL and a few othe minor
+differences to ZFS, mostly relating to persisting the maps.
+
+Holger
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
