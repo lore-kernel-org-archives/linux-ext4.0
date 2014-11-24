@@ -1,42 +1,53 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 1/4] fs: split update_time() into update_time() and
-	write_time()
-Date: Mon, 24 Nov 2014 07:21:01 -0800
-Message-ID: <20141124152101.GA12575@infradead.org>
-References: <1416599964-21892-1-git-send-email-tytso@mit.edu>
-	<1416599964-21892-2-git-send-email-tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Space Maps?
+Date: Mon, 24 Nov 2014 10:33:36 -0500
+Message-ID: <20141124153336.GA10992@thunk.org>
+References: <pan.2014.11.24.12.43.51@googlemail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Holger =?iso-8859-1?Q?Hoffst=E4tte?=
+	<holger.hoffstaette@googlemail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:47739 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752062AbaKXPd5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Nov 2014 10:33:57 -0500
 Content-Disposition: inline
-In-Reply-To: <1416599964-21892-2-git-send-email-tytso@mit.edu>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <pan.2014.11.24.12.43.51@googlemail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 21, 2014 at 02:59:21PM -0500, Theodore Ts'o wrote:
-> We needed to preserve update_time() because btrfs wants to have a
-> special btrfs_root_readonly() check; otherwise we could drop the
-> update_time() inode operation entirely.
+On Mon, Nov 24, 2014 at 12:43:51PM +0000, Holger Hoffst=E4tte wrote:
+>=20
+> Cleaning out some old research papers I came again across the proposa=
+l
+> for "space maps" in ext4 [1]. What happened to that? Was it rejected
+> due to too much risk or other technical reasons? The benefits sound
+> appealing, so I was wondering if there's something fundamentally wron=
+g
+> with the suggested approach.
 
-Can't btrfs just set the immutable flag on every inode that is read
-when the root has the BTRFS_ROOT_SUBVOL_RDONLY flag?  That would
-cut down the places that need this check to the ioctl path so that
-we prevent users from clearling the immutable flag.
+No one ever submitted patches. The other issue would be the 71 patents
+which Jeff Bonwick claimed in his blog that Sun filed on technologies
+relating ZFS.  I wouldn't know whether there are any patents that read
+on space maps, because like many companies (due to the United States'
+dysfunctional patent system), my employer doesn't allow me to look at
+patents --- and so I don't want to know (see previous comments about
+the US's dysfunctional patent system).  However, if anyone knows of
+space maps being used in some file system before ZFS, that would
+certainly be interesting and something that I _would_ want to know.
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+There is some thinking about using an in-memory AVL tree to track free
+space, and demand-loading it from the bitmaps, but no one has had the
+time to implement it to date.
+
+Cheers,
+
+					- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
