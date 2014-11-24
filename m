@@ -1,7 +1,7 @@
 From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: [PATCH v6 7/10] xfstests: generic/040: Multi insert range tests
-Date: Mon, 24 Nov 2014 15:16:58 +0900
-Message-ID: <003001d007ae$40a985e0$c1fc91a0$@samsung.com>
+Subject: [PATCH v6 8/10] xfstests: generic/041: Delayed allocation multi insert
+Date: Mon, 24 Nov 2014 15:17:03 +0900
+Message-ID: <003101d007ae$43db3dd0$cb91b970$@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
@@ -15,29 +15,30 @@ Content-language: ko
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This testcase(040) tries to test various corner cases with pre-existing holes
-for finsert range functionality over different type of extents.
+This testcase(041) tries to test various corner cases with delayed extents and
+pre-existing holes for finsert range functionality over different type of
+extents.
 
 Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
 Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
 ---
- tests/generic/040     | 65 +++++++++++++++++++++++++++++++++++++++++
- tests/generic/040.out | 80 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/041     | 65 +++++++++++++++++++++++++++++++++++++++++
+ tests/generic/041.out | 80 +++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/generic/group   |  1 +
  3 files changed, 146 insertions(+)
- create mode 100644 tests/generic/040
- create mode 100644 tests/generic/040.out
+ create mode 100644 tests/generic/041
+ create mode 100644 tests/generic/041.out
 
-diff --git a/tests/generic/040 b/tests/generic/040
+diff --git a/tests/generic/041 b/tests/generic/041
 new file mode 100644
-index 0000000..df1c92f
+index 0000000..abaa2f4
 --- /dev/null
-+++ b/tests/generic/040
++++ b/tests/generic/041
 @@ -0,0 +1,65 @@
 +#! /bin/bash
-+# FS QA Test No. generic/040
++# FS QA Test No. generic/041
 +#
-+# Multi insert range tests
++# Delayed allocation multi insert range tests
 +# This testcase is one of the 4 testcases which tries to
 +# test various corner cases for finsert range functionality over different
 +# type of extents. These tests are based on generic/255 test case.
@@ -94,18 +95,18 @@ index 0000000..df1c92f
 +
 +testfile=$TEST_DIR/$seq.$$
 +
-+_test_generic_punch -k falloc fpunch finsert fiemap _filter_hole_fiemap $testfile
++_test_generic_punch -d -k falloc fpunch finsert fiemap _filter_hole_fiemap $testfile
 +_check_test_fs
 +
 +status=0
 +exit
-diff --git a/tests/generic/040.out b/tests/generic/040.out
+diff --git a/tests/generic/041.out b/tests/generic/041.out
 new file mode 100644
-index 0000000..c901e10
+index 0000000..5fe3c5e
 --- /dev/null
-+++ b/tests/generic/040.out
++++ b/tests/generic/041.out
 @@ -0,0 +1,80 @@
-+QA output created by 040
++QA output created by 041
 +	1. into a hole
 +cf845a781c107ec1346e849c9dd1b7e8
 +	2. into allocated space
@@ -186,14 +187,14 @@ index 0000000..c901e10
 +1: [16..55]: extent
 +86c9d033be2761385c9cfa203c426bb2
 diff --git a/tests/generic/group b/tests/generic/group
-index 4beb27f..9d5f72d 100644
+index 9d5f72d..34e223d 100644
 --- a/tests/generic/group
 +++ b/tests/generic/group
-@@ -42,6 +42,7 @@
- 037 metadata auto quick
+@@ -43,6 +43,7 @@
  038 auto quick prealloc
  039 auto quick prealloc
-+040 auto quick prealloc
+ 040 auto quick prealloc
++041 auto quick prealloc
  053 acl repair auto quick
  062 attr udf auto quick
  068 other auto freeze dangerous stress
