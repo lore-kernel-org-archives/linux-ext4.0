@@ -1,157 +1,164 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 4/7] ext4: Move handling of list of shrinkable inodes into extent status code
-Date: Tue, 25 Nov 2014 15:55:33 +0100
-Message-ID: <1416927336-9328-5-git-send-email-jack@suse.cz>
+Subject: [PATCH 2/7] ext4: cache extent hole in extent status tree for ext4_da_map_blocks()
+Date: Tue, 25 Nov 2014 15:55:31 +0100
+Message-ID: <1416927336-9328-3-git-send-email-jack@suse.cz>
 References: <1416927336-9328-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:42756 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:42755 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751211AbaKYOzs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Nov 2014 09:55:48 -0500
+	id S1751092AbaKYOzr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Nov 2014 09:55:47 -0500
 In-Reply-To: <1416927336-9328-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently callers adding extents to extent status tree were responsible
-for adding the inode to the list of inodes with freeable extents. This
-is error prone and puts list handling in unnecessarily many places.
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-Just add inode to the list automatically when the first non-delay extent
-is added to the tree and remove inode from the list when the last
-non-delay extent is removed.
+Currently extent status tree doesn't cache extent hole when a write
+looks up in extent tree to make sure whether a block has been allocated
+or not.  In this case, we don't put extent hole in extent cache because
+later this extent might be removed and a new delayed extent might be
+added back.  But it will cause a defect when we do a lot of writes.  If
+we don't put extent hole in extent cache, the following writes also need
+to access extent tree to look at whether or not a block has been
+allocated.  It brings a cache miss.  This commit fixes this defect.
+Also if the inode doesn't have any extent, this extent hole will be
+cached as well.
 
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/extents.c        |  2 --
- fs/ext4/extents_status.c | 10 ++++++----
- fs/ext4/extents_status.h |  2 --
- fs/ext4/inode.c          |  2 --
- fs/ext4/ioctl.c          |  2 --
- fs/ext4/super.c          |  1 -
- 6 files changed, 6 insertions(+), 13 deletions(-)
+ fs/ext4/ext4.h              |  4 +---
+ fs/ext4/extents.c           | 31 ++++++++++++++++---------------
+ fs/ext4/inode.c             |  6 ++----
+ include/trace/events/ext4.h |  3 +--
+ 4 files changed, 20 insertions(+), 24 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b28c916340b9..b9e9fdb3793a 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -556,10 +556,8 @@ enum {
+ #define EXT4_GET_BLOCKS_KEEP_SIZE		0x0080
+ 	/* Do not take i_data_sem locking in ext4_map_blocks */
+ #define EXT4_GET_BLOCKS_NO_LOCK			0x0100
+-	/* Do not put hole in extent cache */
+-#define EXT4_GET_BLOCKS_NO_PUT_HOLE		0x0200
+ 	/* Convert written extents to unwritten */
+-#define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0400
++#define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0200
+ 
+ /*
+  * The bit position of these flags must not overlap with any of the
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 60569277584a..293762ec307a 100644
+index d8cd229b5c2b..d0e502da8fbe 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -4618,7 +4618,6 @@ out2:
- 
- 	trace_ext4_ext_map_blocks_exit(inode, flags, map,
- 				       err ? err : allocated);
--	ext4_es_list_add(inode);
- 	return err ? err : allocated;
- }
- 
-@@ -5177,7 +5176,6 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		error = ext4_fill_fiemap_extents(inode, start_blk,
- 						 len_blks, fieinfo);
- 	}
--	ext4_es_list_add(inode);
- 	return error;
- }
- 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 0193ca107396..de2d9d8bf22f 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -298,7 +298,7 @@ out:
- 	trace_ext4_es_find_delayed_extent_range_exit(inode, es);
- }
- 
--void ext4_es_list_add(struct inode *inode)
-+static void ext4_es_list_add(struct inode *inode)
+@@ -2306,16 +2306,16 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
+ 				ext4_lblk_t block)
  {
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-@@ -314,7 +314,7 @@ void ext4_es_list_add(struct inode *inode)
- 	spin_unlock(&sbi->s_es_lock);
+ 	int depth = ext_depth(inode);
+-	unsigned long len = 0;
+-	ext4_lblk_t lblock = 0;
++	ext4_lblk_t len;
++	ext4_lblk_t lblock;
+ 	struct ext4_extent *ex;
++	struct extent_status es;
+ 
+ 	ex = path[depth].p_ext;
+ 	if (ex == NULL) {
+-		/*
+-		 * there is no extent yet, so gap is [0;-] and we
+-		 * don't cache it
+-		 */
++		/* there is no extent yet, so gap is [0;-] */
++		lblock = 0;
++		len = EXT_MAX_BLOCKS;
+ 		ext_debug("cache gap(whole file):");
+ 	} else if (block < le32_to_cpu(ex->ee_block)) {
+ 		lblock = block;
+@@ -2324,9 +2324,6 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
+ 				block,
+ 				le32_to_cpu(ex->ee_block),
+ 				 ext4_ext_get_actual_len(ex));
+-		if (!ext4_find_delalloc_range(inode, lblock, lblock + len - 1))
+-			ext4_es_insert_extent(inode, lblock, len, ~0,
+-					      EXTENT_STATUS_HOLE);
+ 	} else if (block >= le32_to_cpu(ex->ee_block)
+ 			+ ext4_ext_get_actual_len(ex)) {
+ 		ext4_lblk_t next;
+@@ -2340,14 +2337,19 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
+ 				block);
+ 		BUG_ON(next == lblock);
+ 		len = next - lblock;
+-		if (!ext4_find_delalloc_range(inode, lblock, lblock + len - 1))
+-			ext4_es_insert_extent(inode, lblock, len, ~0,
+-					      EXTENT_STATUS_HOLE);
+ 	} else {
+ 		BUG();
+ 	}
+ 
+-	ext_debug(" -> %u:%lu\n", lblock, len);
++	ext4_es_find_delayed_extent_range(inode, lblock, lblock + len - 1, &es);
++	if (es.es_len) {
++		/* There's delayed extent containing lblock? */
++		if (es.es_lblk <= lblock)
++			return;
++		len = min(es.es_lblk - lblock, len);
++	}
++	ext_debug(" -> %u:%u\n", lblock, len);
++	ext4_es_insert_extent(inode, lblock, len, ~0, EXTENT_STATUS_HOLE);
  }
  
--void ext4_es_list_del(struct inode *inode)
-+static void ext4_es_list_del(struct inode *inode)
- {
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-@@ -344,7 +344,8 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
- 	 * We don't count delayed extent because we never try to reclaim them
- 	 */
- 	if (!ext4_es_is_delayed(es)) {
--		EXT4_I(inode)->i_es_shk_nr++;
-+		if (!EXT4_I(inode)->i_es_shk_nr++)
-+			ext4_es_list_add(inode);
- 		percpu_counter_inc(&EXT4_SB(inode->i_sb)->
- 					s_es_stats.es_stats_shk_cnt);
+ /*
+@@ -4354,8 +4356,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 		 * put just found gap into cache to speed up
+ 		 * subsequent requests
+ 		 */
+-		if ((flags & EXT4_GET_BLOCKS_NO_PUT_HOLE) == 0)
+-			ext4_ext_put_gap_in_cache(inode, path, map->m_lblk);
++		ext4_ext_put_gap_in_cache(inode, path, map->m_lblk);
+ 		goto out2;
  	}
-@@ -363,7 +364,8 @@ static void ext4_es_free_extent(struct inode *inode, struct extent_status *es)
- 	/* Decrease the shrink counter when this es is not delayed */
- 	if (!ext4_es_is_delayed(es)) {
- 		BUG_ON(EXT4_I(inode)->i_es_shk_nr == 0);
--		EXT4_I(inode)->i_es_shk_nr--;
-+		if (!--EXT4_I(inode)->i_es_shk_nr)
-+			ext4_es_list_del(inode);
- 		percpu_counter_dec(&EXT4_SB(inode->i_sb)->
- 					s_es_stats.es_stats_shk_cnt);
- 	}
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index 0e6a33e81e5f..b0b78b95f481 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -150,7 +150,5 @@ static inline void ext4_es_store_pblock_status(struct extent_status *es,
  
- extern int ext4_es_register_shrinker(struct ext4_sb_info *sbi);
- extern void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi);
--extern void ext4_es_list_add(struct inode *inode);
--extern void ext4_es_list_del(struct inode *inode);
- 
- #endif /* _EXT4_EXTENTS_STATUS_H */
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index dd21ab011a2a..1ab52bf5698f 100644
+index 08ccb344a46f..d0e9cbb56f94 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -486,7 +486,6 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+@@ -1432,11 +1432,9 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 	if (ext4_has_inline_data(inode))
+ 		retval = 0;
+ 	else if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+-		retval = ext4_ext_map_blocks(NULL, inode, map,
+-					     EXT4_GET_BLOCKS_NO_PUT_HOLE);
++		retval = ext4_ext_map_blocks(NULL, inode, map, 0);
+ 	else
+-		retval = ext4_ind_map_blocks(NULL, inode, map,
+-					     EXT4_GET_BLOCKS_NO_PUT_HOLE);
++		retval = ext4_ind_map_blocks(NULL, inode, map, 0);
  
- 	/* Lookup extent status tree firstly */
- 	if (ext4_es_lookup_extent(inode, map->m_lblk, &es)) {
--		ext4_es_list_add(inode);
- 		if (ext4_es_is_written(&es) || ext4_es_is_unwritten(&es)) {
- 			map->m_pblk = ext4_es_pblock(&es) +
- 					map->m_lblk - es.es_lblk;
-@@ -1388,7 +1387,6 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ add_delayed:
+ 	if (retval == 0) {
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index bb7dcbe99652..cd37a584ee88 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -43,8 +43,7 @@ struct extent_status;
+ 	{ EXT4_GET_BLOCKS_METADATA_NOFAIL,	"METADATA_NOFAIL" },	\
+ 	{ EXT4_GET_BLOCKS_NO_NORMALIZE,		"NO_NORMALIZE" },	\
+ 	{ EXT4_GET_BLOCKS_KEEP_SIZE,		"KEEP_SIZE" },		\
+-	{ EXT4_GET_BLOCKS_NO_LOCK,		"NO_LOCK" },		\
+-	{ EXT4_GET_BLOCKS_NO_PUT_HOLE,		"NO_PUT_HOLE" })
++	{ EXT4_GET_BLOCKS_NO_LOCK,		"NO_LOCK" })
  
- 	/* Lookup extent status tree firstly */
- 	if (ext4_es_lookup_extent(inode, iblock, &es)) {
--		ext4_es_list_add(inode);
- 		if (ext4_es_is_hole(&es)) {
- 			retval = 0;
- 			down_read(&EXT4_I(inode)->i_data_sem);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 7b377c41dd81..f58a0d106726 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -78,8 +78,6 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
- 	memswap(&ei1->i_disksize, &ei2->i_disksize, sizeof(ei1->i_disksize));
- 	ext4_es_remove_extent(inode1, 0, EXT_MAX_BLOCKS);
- 	ext4_es_remove_extent(inode2, 0, EXT_MAX_BLOCKS);
--	ext4_es_list_del(inode1);
--	ext4_es_list_del(inode2);
- 
- 	isize = i_size_read(inode1);
- 	i_size_write(inode1, i_size_read(inode2));
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 6f64086ac495..f108d84e7da2 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -971,7 +971,6 @@ void ext4_clear_inode(struct inode *inode)
- 	dquot_drop(inode);
- 	ext4_discard_preallocations(inode);
- 	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
--	ext4_es_list_del(inode);
- 	if (EXT4_I(inode)->jinode) {
- 		jbd2_journal_release_jbd_inode(EXT4_JOURNAL(inode),
- 					       EXT4_I(inode)->jinode);
+ #define show_mflags(flags) __print_flags(flags, "",	\
+ 	{ EXT4_MAP_NEW,		"N" },			\
 -- 
 1.8.1.4
 
