@@ -1,58 +1,55 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] ext4: fix potential use after free issue while
- fsresize
-Date: Tue, 25 Nov 2014 13:27:22 -0500
-Message-ID: <20141125182722.GE11648@thunk.org>
-References: <1415958040-4393-1-git-send-email-dmonakhov@openvz.org>
- <1415958040-4393-2-git-send-email-dmonakhov@openvz.org>
+Subject: Re: [PATCH 2/4] vfs: add support for a lazytime mount option
+Date: Tue, 25 Nov 2014 14:26:09 -0500
+Message-ID: <20141125192609.GA28449@thunk.org>
+References: <1416599964-21892-1-git-send-email-tytso@mit.edu>
+	<1416599964-21892-3-git-send-email-tytso@mit.edu>
+	<20141125015239.GD27262@dastard> <20141125043335.GF31339@thunk.org>
+	<20141125173040.GD3228@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, cmm@us.ibm.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51140 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751067AbaKYS13 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Nov 2014 13:27:29 -0500
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <1415958040-4393-2-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20141125173040.GD3228@quack.suse.cz>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Nov 14, 2014 at 01:40:40PM +0400, Dmitry Monakhov wrote:
-> We need some sort of synchronization while updating ->s_group_desc because there
-> are a lot of users which can access old ->s_group_desc array after it was released.
-> It is reasonable to use lightweight seqcount_t here instead of RCU.
-> 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+On Tue, Nov 25, 2014 at 06:30:40PM +0100, Jan Kara wrote:
+>   This would be possible and as Boaz says, it might be possible to reuse
+> the same list_head in the inode for this. Getting rid of the full scan of
+> all superblock inodes would be nice (as the scan gets really expensive for
+> large numbers of inodes (think of i_sb_lock contention) and this makes it
+> twice as bad) so I'd prefer to do this if possible.
 
-I'm curious --- under what circumstances did you manage to hit this,
-or was this something that you noticed?
+Fair enough, I'll give this a try.  Personally, I've never been that
+solicitous towards the efficiency of sync, since if you ever use it,
+you tend to destroy performance just because of contention of the disk
+drive head caused by the writeback, never mind the i_sb_lock
+contention.  ("I am sync(2), the destroyer of tail latency SLO's...")
 
-> +	do {
-> +		seq = read_seqcount_begin(&sbi->s_group_desc_seq);
-> +		gd_bh = sbi->s_group_desc[group_desc];
-> +	} while (unlikely(read_seqcount_retry(&sbi->s_group_desc_seq, seq)));
+In fact there has sometimes been discussion about disabling sync(2)
+from non-root users, because the opportunity for mischief when a
+developer logs and types sync out of reflex is too high.  Of course,
+if we ever did this, I'm sure such a patch would never be accepted
+upstream, but that's OK, most people don't seem to care about tail
+latency outside of Facebook and Google anyway....
 
-The problem is that s_group_desc is allocated using ext4_kvmalloc(),
-which means it's possible that it was allocated using vmalloc().
-Which means that it is possible (although unlikely) that the old
-s_group_desc address could become invalidated after the call to
-ext4_kvfree(o_group_desc).
+					- Ted
 
-This will only happen on 32-bit platforms if we get unlucky and the
-kmap region gets recycled right after the vfree(); but we would only
-see the bug in practice if the memory gets kfree'ed gets reused
-immeidately afterwards, and we've been living with this with ext3 for
-a long time.  Don't get me wrong; I'm not saying we should ignore this
-bug, since I certainly agree with you that it is truly a bug.  But if
-we are going to fix it, we should probably fix it all the way, which I
-suspect means we may have to use RCU here.
-
-OTOH, if you are hitting this in live production workloads, then we
-can do the partial fix now, and then fix it all the way up later.  Is
-the RCU mechanism really going to be that ugly?  It's not like we are
-resizing all the time, so we don't need to worry about it being
-heavyweight from a performance point of view, no?
-
-	    	   	       	     	- Ted
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
