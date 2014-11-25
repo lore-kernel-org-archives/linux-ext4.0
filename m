@@ -1,97 +1,50 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH-v3 3/6] vfs: don't let the dirty time inodes get more
-	than a day stale
-Date: Tue, 25 Nov 2014 10:55:22 -0500
-Message-ID: <20141125155522.GH31339@thunk.org>
-References: <1416893674-419-1-git-send-email-tytso@mit.edu>
-	<1416893674-419-4-git-send-email-tytso@mit.edu>
-	<87ioi3iayu.fsf@rasmusvillemoes.dk>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>
-To: Rasmus Villemoes <linux@rasmusvillemoes.dk>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <87ioi3iayu.fsf@rasmusvillemoes.dk>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext4: Forbid journal_async_commit in data=ordered mode
+Date: Tue, 25 Nov 2014 16:56:15 +0100
+Message-ID: <1416930975-13676-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:44107 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750786AbaKYP4W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Nov 2014 10:56:22 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 25, 2014 at 03:58:01PM +0100, Rasmus Villemoes wrote:
-> 
-> I think days_since_boot was a lot clearer than daycode. In any case,
-> please make the comment and the code consistent.
+Option journal_async_commit breaks gurantees of data=ordered mode as it
+sends only a single cache flush after writing a transaction commit
+block. Thus even though the transaction including the commit block is
+fully stored on persistent storage, file data may still linger in drives
+caches and will be lost on power failure. Since all checksums match on
+journal recovery, we replay the transaction thus possibly exposing stale
+user data.
 
-Yeah, I was going back and forth between days since the epoch and days
-since boot, but found it was more efficient to calculate the days
-since boot.  Sure, I'll go back to days_since_boot.
+To fix this data exposure issue, remove the possibility to use
+journal_async_commit in data=ordered mode.
 
-> You should probably divide by the number of seconds in a day, not the
-> number of jiffies in a day.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/super.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-Right, brain hiccup on my part, will fix.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index b53c243a142b..c62445cb01ca 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1701,6 +1701,12 @@ static int parse_options(char *options, struct super_block *sb,
+ 			return 0;
+ 		}
+ 	}
++	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_ORDERED_DATA &&
++	    test_opt(sb, JOURNAL_ASYNC_COMMIT)) {
++		ext4_msg(sb, KERN_ERR, "can't mount with journal_async_commit "
++			 "in data=ordered mode");
++		return 0;
++	}
+ 	return 1;
+ }
+ 
+-- 
+1.8.1.4
 
-> Isn't div_u64 mostly for when the divisor is not known at compile time?
-> Technically, "(u64)uptime.tv_sec / 86400" is of course a u64/u64 division,
-> but the compiler should see that the divisor is only 32 bits and hence
-> should be able to generate code which is at least as efficient as
-> whatever inline asm the arch provides for u64/u32 divisions.
-
-The problem with doing u64/u64 divisions is that the compiler will
-call out to a (non-existent) library function on some architectures.
-For example, try compiling the following using: with "gcc -S -m32
-foo.c"
-
-int main(int argc, char **argv)
-{
-	unsigned long long t = time(0);
-
-	printf("%llu\n", t / 86400);
-}
-
-You will find in the .S file the following:
-
-	...
-	pushl	$0
-	pushl	$86400
-	pushl	%edx
-	pushl	%eax
-	call	__udivdi3
-	...
-
-It will work finn compiling for x86_64, but if you do this and push
-out a git branch, you will soon get a very nice e-mail from the ktest
-bot explaining how you've broken the build on the i386 architecture
-since the kernel doesn't provide __udivdi3.
-	
-Hence if you are doing any kind of divisions involving u64, you have
-to use the functions in include/linux/math64.h, and div_u64 is, per
-math64.h:
-
-/**
- * div_u64 - unsigned 64bit divide with 32bit divisor
- *
- * This is the most common 64bit divide and should be used if possible,
- * as many 32bit archs can optimize this variant better than a full 64bit
- * divide.
- */
-
-Cheers,
-
-					- Ted
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
