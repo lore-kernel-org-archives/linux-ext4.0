@@ -1,128 +1,150 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/7 v4] ext4: Extent status tree shrinker improvements
-Date: Tue, 25 Nov 2014 15:55:29 +0100
-Message-ID: <1416927336-9328-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 6/7] ext4: Cleanup flag definitions for extent status tree
+Date: Tue, 25 Nov 2014 15:55:35 +0100
+Message-ID: <1416927336-9328-7-git-send-email-jack@suse.cz>
+References: <1416927336-9328-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
 	Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:42757 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:42773 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751209AbaKYOzr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Nov 2014 09:55:47 -0500
+	id S1751423AbaKYOzu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Nov 2014 09:55:50 -0500
+In-Reply-To: <1416927336-9328-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+Currently flags for extent status tree are defined twice, once shifted
+and once without a being shifted. Consolidate these definitions into one
+place and make some computations automatic to make adding flags less
+error prone. Compiler should be clever enough to figure out these are
+constants and generate the same code.
 
-  this is the next revision of Zheng's patches for improving latency of ext4
-extent status tree shrinker. Since previous version I have added a fix to a
-bug in ext4_da_map_blocks() which was made more visible by this series and
-also swapped patches 3 & 4 to fix double lock issue that happened when only
-first three patches were applied.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/extents_status.c |  2 ++
+ fs/ext4/extents_status.h | 58 ++++++++++++++++++++++--------------------------
+ 2 files changed, 28 insertions(+), 32 deletions(-)
 
-Here are the measurements of the extent status tree shrinker (done in my
-test VM with 6 CPUs and 2GB of RAM) [they are from the previous version but
-nothing changed for the shrinker in this revision].
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 8f2aac4006d2..30596498ed0b 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -1174,6 +1174,8 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
+ {
+ 	int err;
+ 
++	/* Make sure we have enough bits for physical block number */
++	BUILD_BUG_ON(ES_SHIFT < 48);
+ 	INIT_LIST_HEAD(&sbi->s_es_list);
+ 	sbi->s_es_nr_inode = 0;
+ 	spin_lock_init(&sbi->s_es_lock);
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index b0b78b95f481..e86b1f34cfec 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -29,25 +29,21 @@
+ /*
+  * These flags live in the high bits of extent_status.es_pblk
+  */
+-#define ES_SHIFT	60
+-
+-#define EXTENT_STATUS_WRITTEN	(1 << 3)
+-#define EXTENT_STATUS_UNWRITTEN (1 << 2)
+-#define EXTENT_STATUS_DELAYED	(1 << 1)
+-#define EXTENT_STATUS_HOLE	(1 << 0)
+-
+-#define EXTENT_STATUS_FLAGS	(EXTENT_STATUS_WRITTEN | \
+-				 EXTENT_STATUS_UNWRITTEN | \
+-				 EXTENT_STATUS_DELAYED | \
+-				 EXTENT_STATUS_HOLE)
++enum {
++	ES_WRITTEN_B,
++	ES_UNWRITTEN_B,
++	ES_DELAYED_B,
++	ES_HOLE_B,
++	ES_FLAGS
++};
+ 
+-#define ES_WRITTEN		(1ULL << 63)
+-#define ES_UNWRITTEN		(1ULL << 62)
+-#define ES_DELAYED		(1ULL << 61)
+-#define ES_HOLE			(1ULL << 60)
++#define ES_SHIFT (sizeof(ext4_fsblk_t)*8 - ES_FLAGS)
++#define ES_MASK (~((ext4_fsblk_t)0) << ES_SHIFT)
+ 
+-#define ES_MASK			(ES_WRITTEN | ES_UNWRITTEN | \
+-				 ES_DELAYED | ES_HOLE)
++#define EXTENT_STATUS_WRITTEN	(1 << ES_WRITTEN_B)
++#define EXTENT_STATUS_UNWRITTEN (1 << ES_UNWRITTEN_B)
++#define EXTENT_STATUS_DELAYED	(1 << ES_DELAYED_B)
++#define EXTENT_STATUS_HOLE	(1 << ES_HOLE_B)
+ 
+ struct ext4_sb_info;
+ struct ext4_extent;
+@@ -92,29 +88,29 @@ extern void ext4_es_find_delayed_extent_range(struct inode *inode,
+ extern int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				 struct extent_status *es);
+ 
++static inline unsigned int ext4_es_status(struct extent_status *es)
++{
++	return es->es_pblk >> ES_SHIFT;
++}
++
+ static inline int ext4_es_is_written(struct extent_status *es)
+ {
+-	return (es->es_pblk & ES_WRITTEN) != 0;
++	return (ext4_es_status(es) & EXTENT_STATUS_WRITTEN) != 0;
+ }
+ 
+ static inline int ext4_es_is_unwritten(struct extent_status *es)
+ {
+-	return (es->es_pblk & ES_UNWRITTEN) != 0;
++	return (ext4_es_status(es) & EXTENT_STATUS_UNWRITTEN) != 0;
+ }
+ 
+ static inline int ext4_es_is_delayed(struct extent_status *es)
+ {
+-	return (es->es_pblk & ES_DELAYED) != 0;
++	return (ext4_es_status(es) & EXTENT_STATUS_DELAYED) != 0;
+ }
+ 
+ static inline int ext4_es_is_hole(struct extent_status *es)
+ {
+-	return (es->es_pblk & ES_HOLE) != 0;
+-}
+-
+-static inline unsigned int ext4_es_status(struct extent_status *es)
+-{
+-	return es->es_pblk >> ES_SHIFT;
++	return (ext4_es_status(es) & EXTENT_STATUS_HOLE) != 0;
+ }
+ 
+ static inline ext4_fsblk_t ext4_es_pblock(struct extent_status *es)
+@@ -134,18 +130,16 @@ static inline void ext4_es_store_pblock(struct extent_status *es,
+ static inline void ext4_es_store_status(struct extent_status *es,
+ 					unsigned int status)
+ {
+-	es->es_pblk = (((ext4_fsblk_t)
+-			(status & EXTENT_STATUS_FLAGS) << ES_SHIFT) |
+-		       (es->es_pblk & ~ES_MASK));
++	es->es_pblk = (((ext4_fsblk_t)status << ES_SHIFT) & ES_MASK) |
++		      (es->es_pblk & ~ES_MASK);
+ }
+ 
+ static inline void ext4_es_store_pblock_status(struct extent_status *es,
+ 					       ext4_fsblk_t pb,
+ 					       unsigned int status)
+ {
+-	es->es_pblk = (((ext4_fsblk_t)
+-			(status & EXTENT_STATUS_FLAGS) << ES_SHIFT) |
+-		       (pb & ~ES_MASK));
++	es->es_pblk = (((ext4_fsblk_t)status << ES_SHIFT) & ES_MASK) |
++		      (pb & ~ES_MASK);
+ }
+ 
+ extern int ext4_es_register_shrinker(struct ext4_sb_info *sbi);
+-- 
+1.8.1.4
 
-For my synthetic test maintaing lots of fragmented files the results were
-like:
-Baseline:
-stats:
-  2194 objects
-  1206 reclaimable objects
-  299726/14244181 cache hits/misses
-  7796 ms last sorted interval
-  2002 inodes on lru list
-average:
-  858 us scan time
-  116 shrunk objects
-maximum:
-  601 inode (10 objects, 10 reclaimable)
-  332987 us max scan time
-
-Patched:
-stats:
-  4351 objects
-  2176 reclaimable objects
-  21183492/2809261 cache hits/misses
-  220 inodes on list
-max nr_to_scan: 128 max inodes walked: 15
-average:
-  148 us scan time
-  125 shrunk objects
-maximum:
-  1494 inode (20 objects, 10 reclaimable)
-  4173 us max scan time
-
-Also for Zheng's write fio workload we get noticeable improvements:
-Baseline:
-stats:
-  261094 objects
-  261094 reclaimable objects
-  4030024/1063081 cache hits/misses
-  366508 ms last sorted interval
-  15001 inodes on lru list
-average:
-  330 us scan time
-  125 shrunk objects
-maximum:
-  9217 inode (46 objects, 46 reclaimable)
-  19525 us max scan time
-
-Patched:
-stats:
-  496796 objects
-  466436 reclaimable objects
-  1322023/119385 cache hits/misses
-  14825 inodes on list
-max nr_to_scan: 128 max inodes walked: 3
-average:
-  112 us scan time
-  125 shrunk objects
-maximum:
-  2 inode (87 objects, 87 reclaimable)
-  7158 us max scan time
-
-OTOH I can see a regression in max latency for the randwrite workload:
-Baseline:
-stats:
-  35953 objects
-  33264 reclaimable objects
-  110208/1794665 cache hits/misses
-  56396 ms last sorted interval
-  251 inodes on lru list
-average:
-  286 us scan time
-  125 shrunk objects
-maximum:
-  225 inode (849 objects, 838 reclaimable)
-  4220 us max scan time
-
-Patched
-stats:
-  118256 objects
-stats:
-  193489 objects
-  193489 reclaimable objects
-  1133707/65535 cache hits/misses
-  251 inodes on list
-max nr_to_scan: 128 max inodes walked: 6
-average:
-  180 us scan time
-  125 shrunk objects
-maximum:
-  15123 inode (1931 objects, 1931 reclaimable)
-  6458 us max scan time
-
-  In general you can see there are much more objects cached in the patched
-kernel. This is because of the first patch - we now have all the holes in the
-files cached as well. This is also the reason for the much higher cache hit
-ratio. I'm still somewhat unsatisfied with the worst case latency of the
-shrinker which is in order of miliseconds for all the workloads. I did some
-more instrumentation of the code and the reason for this s_es_lock. Under
-heavy load the wait time for this lock is on average ~100 us (3300 us max).
-I have some ideas how to improve on this but I didn't want to delay posting
-of the series even more...
-
-								Honza
