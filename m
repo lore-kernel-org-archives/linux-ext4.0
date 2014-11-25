@@ -1,115 +1,157 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd2: finish inode data buffers immediately after
- submiting data buffers
-Date: Mon, 24 Nov 2014 13:28:29 +0100
-Message-ID: <20141124122829.GG1888@quack.suse.cz>
-References: <545C6F67.9090600@huawei.com>
- <20141113221539.GA15477@quack.suse.cz>
- <546F0937.8060909@huawei.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, tytso@mit.edu, linux-ext4@vger.kernel.org,
-	Joseph Qi <joseph.qi@huawei.com>, linux-fsdevel@vger.kernel.org
-To: alex chen <alex.chen@huawei.com>
+Subject: [PATCH 4/7] ext4: Move handling of list of shrinkable inodes into extent status code
+Date: Tue, 25 Nov 2014 15:55:33 +0100
+Message-ID: <1416927336-9328-5-git-send-email-jack@suse.cz>
+References: <1416927336-9328-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
+	Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:41920 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:42756 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750844AbaKYOU1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Nov 2014 09:20:27 -0500
-Content-Disposition: inline
-In-Reply-To: <546F0937.8060909@huawei.com>
+	id S1751211AbaKYOzs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Nov 2014 09:55:48 -0500
+In-Reply-To: <1416927336-9328-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 21-11-14 17:43:19, alex chen wrote:
-> Hi, Jan Kara
-> 
-> On 2014/11/14 6:15, Jan Kara wrote:
-> > On Fri 07-11-14 15:06:15, alex chen wrote:
-> >> During commit process, journal_finish_inode_data_buffers will flush plug
-> >> list as follow:
-> >> jbd2_journal_commit_transaction
-> >> ->journal_finish_inode_data_buffers
-> >> ->filemap_fdatawait_range
-> >> ->wait_on_page_bit
-> >> ->__wait_on_bit
-> >> ->sleep_on_page
-> >> ->io_schedule
-> >> ->blk_flush_plug_list
-> >>
-> >> When ASYNC_COMMIT feature is set, the journal_finish_inode_data_buffers
-> >> separates the commit blocks from the rest of the journal blocks. So we
-> >> should finish inode data buffers immediately after submiting data
-> >> buffers, this allow most of the journal blocks to be written in a single
-> >> I/O operation and improve journal commit performance.
-> >   So the combination of ASYNC_COMMIT and data=ordered mode is broken - it
-> > can happen that all journal writes make it to stable storage while data
-> > writes don't on power failure thus exposing stale data on next boot. So
-> > optimizing this combination is futile - we rather have to make sure we
-> > don't allow users to run such combination. I'll look into it tomorrow.
-> > 
-> > 								Honza
-> 
-> Thanks for your replay. In this patch, we will finish inode data buffers
-> immediately after submiting data buffers, then write metadata buffer and
-> journal blocks. So it can't happen that all journal blocks flush to disk
-> while data don't on power failure.
-  It can. Until you flush disk's write caches disk it can happen that the
-IO is lost although it was reported as completed... So in this case,
-although we called journal_finish_inode_data_buffers() data needn't be
-stored on permanent storage until we send a cache flush. And that happens
-only after writing the commit block of the transaction (when async_commit
-is enabled). So the disk is free to first store the commit block of the
-transaction and only after that the data...
+Currently callers adding extents to extent status tree were responsible
+for adding the inode to the list of inodes with freeable extents. This
+is error prone and puts list handling in unnecessarily many places.
 
-								Honza
-> >>
-> >> Signed-off-by: Alex Chen <alex.chen@huawei.com>
-> >> ---
-> >>  fs/jbd2/commit.c | 20 ++++++++++----------
-> >>  1 file changed, 10 insertions(+), 10 deletions(-)
-> >>
-> >> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> >> index b73e021..dc33d89 100644
-> >> --- a/fs/jbd2/commit.c
-> >> +++ b/fs/jbd2/commit.c
-> >> @@ -555,6 +555,16 @@ void jbd2_journal_commit_transaction(journal_t *journal)
-> >>  	if (err)
-> >>  		jbd2_journal_abort(journal, err);
-> >>
-> >> +	err = journal_finish_inode_data_buffers(journal, commit_transaction);
-> >> +	if (err) {
-> >> +		printk(KERN_WARNING
-> >> +			"JBD2: Detected IO errors while flushing file data "
-> >> +		       "on %s\n", journal->j_devname);
-> >> +		if (journal->j_flags & JBD2_ABORT_ON_SYNCDATA_ERR)
-> >> +			jbd2_journal_abort(journal, err);
-> >> +		err = 0;
-> >> +	}
-> >> +
-> >>  	blk_start_plug(&plug);
-> >>  	jbd2_journal_write_revoke_records(journal, commit_transaction,
-> >>  					  &log_bufs, WRITE_SYNC);
-> >> @@ -752,16 +762,6 @@ start_journal_io:
-> >>  		}
-> >>  	}
-> >>
-> >> -	err = journal_finish_inode_data_buffers(journal, commit_transaction);
-> >> -	if (err) {
-> >> -		printk(KERN_WARNING
-> >> -			"JBD2: Detected IO errors while flushing file data "
-> >> -		       "on %s\n", journal->j_devname);
-> >> -		if (journal->j_flags & JBD2_ABORT_ON_SYNCDATA_ERR)
-> >> -			jbd2_journal_abort(journal, err);
-> >> -		err = 0;
-> >> -	}
-> >> -
-> >>  	/*
-> >>  	 * Get current oldest transaction in the log before we issue flush
-> >>  	 * to the filesystem device. After the flush we can be sure that
-> >> -- 
-> >> 1.8.4.3
-> 
+Just add inode to the list automatically when the first non-delay extent
+is added to the tree and remove inode from the list when the last
+non-delay extent is removed.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/extents.c        |  2 --
+ fs/ext4/extents_status.c | 10 ++++++----
+ fs/ext4/extents_status.h |  2 --
+ fs/ext4/inode.c          |  2 --
+ fs/ext4/ioctl.c          |  2 --
+ fs/ext4/super.c          |  1 -
+ 6 files changed, 6 insertions(+), 13 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 60569277584a..293762ec307a 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4618,7 +4618,6 @@ out2:
+ 
+ 	trace_ext4_ext_map_blocks_exit(inode, flags, map,
+ 				       err ? err : allocated);
+-	ext4_es_list_add(inode);
+ 	return err ? err : allocated;
+ }
+ 
+@@ -5177,7 +5176,6 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 		error = ext4_fill_fiemap_extents(inode, start_blk,
+ 						 len_blks, fieinfo);
+ 	}
+-	ext4_es_list_add(inode);
+ 	return error;
+ }
+ 
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 0193ca107396..de2d9d8bf22f 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -298,7 +298,7 @@ out:
+ 	trace_ext4_es_find_delayed_extent_range_exit(inode, es);
+ }
+ 
+-void ext4_es_list_add(struct inode *inode)
++static void ext4_es_list_add(struct inode *inode)
+ {
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+@@ -314,7 +314,7 @@ void ext4_es_list_add(struct inode *inode)
+ 	spin_unlock(&sbi->s_es_lock);
+ }
+ 
+-void ext4_es_list_del(struct inode *inode)
++static void ext4_es_list_del(struct inode *inode)
+ {
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+@@ -344,7 +344,8 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
+ 	 * We don't count delayed extent because we never try to reclaim them
+ 	 */
+ 	if (!ext4_es_is_delayed(es)) {
+-		EXT4_I(inode)->i_es_shk_nr++;
++		if (!EXT4_I(inode)->i_es_shk_nr++)
++			ext4_es_list_add(inode);
+ 		percpu_counter_inc(&EXT4_SB(inode->i_sb)->
+ 					s_es_stats.es_stats_shk_cnt);
+ 	}
+@@ -363,7 +364,8 @@ static void ext4_es_free_extent(struct inode *inode, struct extent_status *es)
+ 	/* Decrease the shrink counter when this es is not delayed */
+ 	if (!ext4_es_is_delayed(es)) {
+ 		BUG_ON(EXT4_I(inode)->i_es_shk_nr == 0);
+-		EXT4_I(inode)->i_es_shk_nr--;
++		if (!--EXT4_I(inode)->i_es_shk_nr)
++			ext4_es_list_del(inode);
+ 		percpu_counter_dec(&EXT4_SB(inode->i_sb)->
+ 					s_es_stats.es_stats_shk_cnt);
+ 	}
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index 0e6a33e81e5f..b0b78b95f481 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -150,7 +150,5 @@ static inline void ext4_es_store_pblock_status(struct extent_status *es,
+ 
+ extern int ext4_es_register_shrinker(struct ext4_sb_info *sbi);
+ extern void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi);
+-extern void ext4_es_list_add(struct inode *inode);
+-extern void ext4_es_list_del(struct inode *inode);
+ 
+ #endif /* _EXT4_EXTENTS_STATUS_H */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index dd21ab011a2a..1ab52bf5698f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -486,7 +486,6 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 
+ 	/* Lookup extent status tree firstly */
+ 	if (ext4_es_lookup_extent(inode, map->m_lblk, &es)) {
+-		ext4_es_list_add(inode);
+ 		if (ext4_es_is_written(&es) || ext4_es_is_unwritten(&es)) {
+ 			map->m_pblk = ext4_es_pblock(&es) +
+ 					map->m_lblk - es.es_lblk;
+@@ -1388,7 +1387,6 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 
+ 	/* Lookup extent status tree firstly */
+ 	if (ext4_es_lookup_extent(inode, iblock, &es)) {
+-		ext4_es_list_add(inode);
+ 		if (ext4_es_is_hole(&es)) {
+ 			retval = 0;
+ 			down_read(&EXT4_I(inode)->i_data_sem);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 7b377c41dd81..f58a0d106726 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -78,8 +78,6 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
+ 	memswap(&ei1->i_disksize, &ei2->i_disksize, sizeof(ei1->i_disksize));
+ 	ext4_es_remove_extent(inode1, 0, EXT_MAX_BLOCKS);
+ 	ext4_es_remove_extent(inode2, 0, EXT_MAX_BLOCKS);
+-	ext4_es_list_del(inode1);
+-	ext4_es_list_del(inode2);
+ 
+ 	isize = i_size_read(inode1);
+ 	i_size_write(inode1, i_size_read(inode2));
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 6f64086ac495..f108d84e7da2 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -971,7 +971,6 @@ void ext4_clear_inode(struct inode *inode)
+ 	dquot_drop(inode);
+ 	ext4_discard_preallocations(inode);
+ 	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
+-	ext4_es_list_del(inode);
+ 	if (EXT4_I(inode)->jinode) {
+ 		jbd2_journal_release_jbd_inode(EXT4_JOURNAL(inode),
+ 					       EXT4_I(inode)->jinode);
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.8.1.4
+
