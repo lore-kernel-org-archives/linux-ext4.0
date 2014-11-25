@@ -1,72 +1,42 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/4] vfs: add support for a lazytime mount option
-Date: Tue, 25 Nov 2014 12:57:16 -0500
-Message-ID: <20141125175716.GC11648@thunk.org>
-References: <1416599964-21892-1-git-send-email-tytso@mit.edu>
-	<1416599964-21892-3-git-send-email-tytso@mit.edu>
-	<20141125015239.GD27262@dastard> <20141125043335.GF31339@thunk.org>
-	<20141125171927.GC3228@quack.suse.cz>
+Subject: Re: [PATCH 1/2] ext4: cleanup GFP flags inside resize path V2
+Date: Tue, 25 Nov 2014 13:08:36 -0500
+Message-ID: <20141125180836.GD11648@thunk.org>
+References: <1415958040-4393-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, cmm@us.ibm.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:51084 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750882AbaKYSIn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Nov 2014 13:08:43 -0500
 Content-Disposition: inline
-In-Reply-To: <20141125171927.GC3228@quack.suse.cz>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1415958040-4393-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 25, 2014 at 06:19:27PM +0100, Jan Kara wrote:
->   Actually, I'd also prefer to do the writing from iput_final(). My main
-> reason is that shrinker starts behaving very differently when you put
-> inodes with I_DIRTY_TIME to the LRU. See inode_lru_isolate() and in
-> particular:
->         /*
->          * Referenced or dirty inodes are still in use. Give them another
->          * pass
->          * through the LRU as we canot reclaim them now.
->          */
->         if (atomic_read(&inode->i_count) ||
->             (inode->i_state & ~I_REFERENCED)) {
->                 list_del_init(&inode->i_lru);
->                 spin_unlock(&inode->i_lock);
->                 this_cpu_dec(nr_unused);
->                 return LRU_REMOVED;
->         }
+On Fri, Nov 14, 2014 at 01:40:39PM +0400, Dmitry Monakhov wrote:
+> We must use GFP_NOFS instead GFP_KERNEL inside ext4_mb_add_groupinfo because resize-path
+> call  it inside journal transaction. Call trace:
+> ioctl
+>  ->ext4_group_add
+>    ->journal_start
+>    ->ext4_setup_new_descs
+>      ->ext4_mb_add_groupinfo -> GFP_KERNEL
+>    ->ext4_flex_group_add
+>      ->ext4_update_super
+>        ->ext4_calculate_overhead  -> GFP_KERNEL
+>    ->journal_stop
+> 
+> Changes from V1:
+>  - Fix up gfp flags for ext4_calculate_overhead
+> 
+> ext4_update_super
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 
-I must be missing something; how would the shirnker behave
-differently?  I_DIRTY_TIME shouldn't have any effect on the shrinker;
-note that I_DIRTY_TIME is *not* part of I_DIRTY, and this was quite
-deliberate, because I didn't want I_DIRTY_TIME to have any affect on
-any of the other parts of the writeback or inode management parts.
+Applied, thanks, with a slightly cleaned up commit description.
 
-> Regarding your concern that we'd write the inode when file is closed -
-> that's not true. We'll write the inode only after corresponding dentry is
-> evicted and thus drops inode reference. That doesn't seem too bad to me.
-
-True, fair enough.  It's not quite so lazy, but it should be close
-enough.
-
-I'm still not seeing the benefit in waiting until the last possible
-minute to write out the timestamps; evict() can block as it is if
-there are any writeback that needs to be completed, and if the
-writeback happens to pages subject to delalloc, the timestamp update
-could happen for free at that point.
-
-      						- Ted
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+	 	      		 	    	   - Ted
