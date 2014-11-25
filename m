@@ -1,19 +1,21 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 4/4] ext4: add support for a lazytime mount option
-Date: Tue, 25 Nov 2014 18:34:26 +0100
-Message-ID: <20141125173426.GF3228@quack.suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/4] vfs: add support for a lazytime mount option
+Date: Tue, 25 Nov 2014 12:57:16 -0500
+Message-ID: <20141125175716.GC11648@thunk.org>
 References: <1416599964-21892-1-git-send-email-tytso@mit.edu>
-	<1416599964-21892-5-git-send-email-tytso@mit.edu>
+	<1416599964-21892-3-git-send-email-tytso@mit.edu>
+	<20141125015239.GD27262@dastard> <20141125043335.GF31339@thunk.org>
+	<20141125171927.GC3228@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Cc: linux-fsdevel@vger.kernel.org,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
-To: Theodore Ts'o <tytso@mit.edu>
+To: Jan Kara <jack@suse.cz>
 Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <1416599964-21892-5-git-send-email-tytso@mit.edu>
+In-Reply-To: <20141125171927.GC3228@quack.suse.cz>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -25,68 +27,44 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 21-11-14 14:59:24, Ted Tso wrote:
-> Add an optimization for the MS_LAZYTIME mount option so that we will
-> opportunistically write out any inodes with the I_DIRTY_TIME flag set
-> in a particular inode table block when we need to update some inode in
-> that inode table block anyway.
-> 
-> Also add some temporary code so that we can set the lazytime mount
-> option without needing a modified /sbin/mount program which can set
-> MS_LAZYTIME.  We can eventually make this go away once util-linux has
-> added support.
-...
-> diff --git a/fs/inode.c b/fs/inode.c
-> index f0d6232..89cfca7 100644
-> --- a/fs/inode.c
-> +++ b/fs/inode.c
-> @@ -1292,6 +1292,42 @@ struct inode *ilookup(struct super_block *sb, unsigned long ino)
->  }
->  EXPORT_SYMBOL(ilookup);
->  
-> +/**
-> + * find_active_inode_nowait - find an active inode in the inode cache
-> + * @sb:		super block of file system to search
-> + * @ino:	inode number to search for
-> + *
-> + * Search for an active inode @ino in the inode cache, and if the
-> + * inode is in the cache, the inode is returned with an incremented
-> + * reference count.  If the inode is being freed or is newly
-> + * initialized, return nothing instead of trying to wait for the inode
-> + * initialization or destruction to be complete.
-> + */
-> +struct inode *find_active_inode_nowait(struct super_block *sb,
-> +				       unsigned long ino)
-> +{
-> +	struct hlist_head *head = inode_hashtable + hash(sb, ino);
-> +	struct inode *inode, *ret_inode = NULL;
-> +
-> +	spin_lock(&inode_hash_lock);
-> +	hlist_for_each_entry(inode, head, i_hash) {
-> +		if ((inode->i_ino != ino) ||
-> +		    (inode->i_sb != sb))
-> +			continue;
-> +		spin_lock(&inode->i_lock);
-> +		if ((inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW)) == 0) {
-> +			__iget(inode);
-> +			ret_inode = inode;
-> +		}
-> +		spin_unlock(&inode->i_lock);
-> +		goto out;
-> +	}
-> +out:
-> +	spin_unlock(&inode_hash_lock);
-> +	return ret_inode;
-> +}
-> +EXPORT_SYMBOL(find_active_inode_nowait);
-> +
-  Please move this function definition into a separate patch so that it
-isn't hidden in an ext4-specific patch. Otherwise it looks good.
+On Tue, Nov 25, 2014 at 06:19:27PM +0100, Jan Kara wrote:
+>   Actually, I'd also prefer to do the writing from iput_final(). My main
+> reason is that shrinker starts behaving very differently when you put
+> inodes with I_DIRTY_TIME to the LRU. See inode_lru_isolate() and in
+> particular:
+>         /*
+>          * Referenced or dirty inodes are still in use. Give them another
+>          * pass
+>          * through the LRU as we canot reclaim them now.
+>          */
+>         if (atomic_read(&inode->i_count) ||
+>             (inode->i_state & ~I_REFERENCED)) {
+>                 list_del_init(&inode->i_lru);
+>                 spin_unlock(&inode->i_lock);
+>                 this_cpu_dec(nr_unused);
+>                 return LRU_REMOVED;
+>         }
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+I must be missing something; how would the shirnker behave
+differently?  I_DIRTY_TIME shouldn't have any effect on the shrinker;
+note that I_DIRTY_TIME is *not* part of I_DIRTY, and this was quite
+deliberate, because I didn't want I_DIRTY_TIME to have any affect on
+any of the other parts of the writeback or inode management parts.
+
+> Regarding your concern that we'd write the inode when file is closed -
+> that's not true. We'll write the inode only after corresponding dentry is
+> evicted and thus drops inode reference. That doesn't seem too bad to me.
+
+True, fair enough.  It's not quite so lazy, but it should be close
+enough.
+
+I'm still not seeing the benefit in waiting until the last possible
+minute to write out the timestamps; evict() can block as it is if
+there are any writeback that needs to be completed, and if the
+writeback happens to pages subject to delalloc, the timestamp update
+could happen for free at that point.
+
+      						- Ted
 
 _______________________________________________
 xfs mailing list
