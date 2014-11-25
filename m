@@ -1,30 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] Ext4: update comments that use ext4_delete_inode()
-Date: Tue, 25 Nov 2014 16:18:59 -0500
-Message-ID: <20141125211859.GC28449@thunk.org>
-References: <1413811707-2612-1-git-send-email-wangshilong1991@gmail.com>
+Subject: Re: [PATCH 2/2] ext4: create nojournal_checksum mount option
+Date: Tue, 25 Nov 2014 16:21:58 -0500
+Message-ID: <20141125212158.GD28449@thunk.org>
+References: <20141021010501.21404.59849.stgit@birch.djwong.org>
+ <20141021010507.21404.59996.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Wang Shilong <wangshilong1991@gmail.com>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51608 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:51621 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751332AbaKYVS7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Nov 2014 16:18:59 -0500
+	id S1750951AbaKYVV7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Nov 2014 16:21:59 -0500
 Content-Disposition: inline
-In-Reply-To: <1413811707-2612-1-git-send-email-wangshilong1991@gmail.com>
+In-Reply-To: <20141021010507.21404.59996.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 20, 2014 at 09:28:27AM -0400, Wang Shilong wrote:
-> From: Wang Shilong <wshilong@ddn.com>
+On Mon, Oct 20, 2014 at 06:05:07PM -0700, Darrick J. Wong wrote:
+> Create a mount option to disable journal checksumming (because the
+> metadata_csum feature turns it on by default now), and fix remount not
+> to allow changing the journal checksumming option, since changing the
+> mount options has no effect on the journal.
 > 
-> ext4_delete_inode() has been renamed for a long time, update
-> comments for this.
-> 
-> Signed-off-by: Wang Shilong <wshilong@ddn.com>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Thanks, applied.
+Applied, thanks.
 
 					- Ted
