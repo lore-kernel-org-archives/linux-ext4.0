@@ -1,81 +1,85 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/6] ext4: cache extent hole in extent status tree for
- ext4_da_map_blocks()
-Date: Tue, 25 Nov 2014 15:57:14 +0100
-Message-ID: <20141125145714.GA3228@quack.suse.cz>
-References: <1415961957-21621-1-git-send-email-jack@suse.cz>
- <1415961957-21621-2-git-send-email-jack@suse.cz>
- <20141123054335.GA4102@thunk.org>
- <20141124093434.GC1888@quack.suse.cz>
+From: Rasmus Villemoes <linux@rasmusvillemoes.dk>
+Subject: Re: [PATCH-v3 3/6] vfs: don't let the dirty time inodes get more than
+	a day stale
+Date: Tue, 25 Nov 2014 15:58:01 +0100
+Message-ID: <87ioi3iayu.fsf@rasmusvillemoes.dk>
+References: <1416893674-419-1-git-send-email-tytso@mit.edu>
+	<1416893674-419-4-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Zheng Liu <gnehzuil.liu@gmail.com>,
-	Zheng Liu <wenqing.lz@taobao.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
+	XFS Developers <xfs@oss.sgi.com>
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:42835 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750860AbaKYO5T (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Nov 2014 09:57:19 -0500
-Content-Disposition: inline
-In-Reply-To: <20141124093434.GC1888@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <1416893674-419-4-git-send-email-tytso@mit.edu> (Theodore Ts'o's
+	message of "Tue, 25 Nov 2014 00:34:31 -0500")
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon 24-11-14 10:34:34, Jan Kara wrote:
-> On Sun 23-11-14 00:43:35, Ted Tso wrote:
-> > On Fri, Nov 14, 2014 at 11:45:52AM +0100, Jan Kara wrote:
-> > > From: Zheng Liu <wenqing.lz@taobao.com>
-> > > 
-> > > Currently extent status tree doesn't cache extent hole when a write
-> > > looks up in extent tree to make sure whether a block has been allocated
-> > > or not.  In this case, we don't put extent hole in extent cache because
-> > > later this extent might be removed and a new delayed extent might be
-> > > added back.  But it will cause a defect when we do a lot of writes.  If
-> > > we don't put extent hole in extent cache, the following writes also need
-> > > to access extent tree to look at whether or not a block has been
-> > > allocated.  It brings a cache miss.  This commit fixes this defect.
-> > > Also if the inode doesn't have any extent, this extent hole will be
-> > > cached as well.
-> > > 
-> > > Cc: "Theodore Ts'o" <tytso@mit.edu>
-> > > Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> > > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> > > Signed-off-by: Jan Kara <jack@suse.cz>
-> > 
-> > This patch (either when applied alone, or as part of the entire patch
-> > series) is causing an xfstests regression test failure:
->   I saw this in my testing as well but when investigating I somehow decided
-> it wasn't my bug and then forgot about it. Anyway, I'll check again and
-> resolve it either way.
-  So it really wasn't my bug but a problem in ext4_da_map_blocks() which
-was made much more visible by this patch. Anyway, I've fixed it and
-resubmitted the series.
+On Tue, Nov 25 2014, Theodore Ts'o <tytso@mit.edu> wrote:
 
-								Honza
+>  static int update_time(struct inode *inode, struct timespec *time, int flags)
+>  {
+> +	struct timespec uptime;
+> +	unsigned short daycode;
+>  	int ret;
+>  
+>  	if (inode->i_op->update_time) {
+> @@ -1525,17 +1527,33 @@ static int update_time(struct inode *inode, struct timespec *time, int flags)
+>  		if (flags & S_CTIME)
+>  			inode->i_ctime = *time;
+>  		if (flags & S_MTIME)
+> -			inode->i_mtime = *time;
+> +		inode->i_mtime = *time;
+>  	}
+> +	/*
+> +	 * If i_ts_dirty_day is zero, then either we have not deferred
+> +	 * timestamp updates, or the system has been up for less than
+> +	 * a day (so days_since_boot is zero), so we defer timestamp
+> +	 * updates in that case and set the I_DIRTY_TIME flag.  If a
+> +	 * day or more has passed, then i_ts_dirty_day will be
+> +	 * different from days_since_boot, and then we should update
+> +	 * the on-disk inode and then we can clear i_ts_dirty_day.
+> +	 */
 
-> > FSTYP         -- ext4
-> > PLATFORM      -- Linux/i686 kvm-xfstests 3.18.0-rc3-00537-g932e3f9
-> > MKFS_OPTIONS  -- -q /dev/vdc
-> > MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdc /vdc
-> > 
-> > ext4/003 4s ...	[00:14:39] [00:14:48] - output mismatch (see /results/results-4k/ext4/003.out.bad)
-> >     --- tests/ext4/003.out	2014-10-31 10:13:03.000000000 -0400
-> >     +++ /results/results-4k/ext4/003.out.bad	2014-11-23 00:14:48.935587897 -0500
-> >     @@ -1,3 +1,3 @@
-> >      QA output created by 003
-> >     -wrote 268435456/268435456 bytes at offset 0
-> >     +wrote 241762304/268435456 bytes at offset 0
-> >      XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-> >     ...
-> >     (Run 'diff -u tests/ext4/003.out /results/results-4k/ext4/003.out.bad'  to see the entire diff)
-> > 
-> > 				- Ted
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+I think days_since_boot was a lot clearer than daycode. In any case,
+please make the comment and the code consistent.
+
+>  	if ((inode->i_sb->s_flags & MS_LAZYTIME) &&
+>  	    !(flags & S_VERSION)) {
+>  		if (inode->i_state & I_DIRTY_TIME)
+>  			return 0;
+> -		spin_lock(&inode->i_lock);
+> -		inode->i_state |= I_DIRTY_TIME;
+> -		spin_unlock(&inode->i_lock);
+> -		return 0;
+> +		get_monotonic_boottime(&uptime);
+> +		daycode = div_u64(uptime.tv_sec, (HZ * 86400));
+
+You should probably divide by the number of seconds in a day, not the
+number of jiffies in a day.
+
+Isn't div_u64 mostly for when the divisor is not known at compile time?
+Technically, "(u64)uptime.tv_sec / 86400" is of course a u64/u64 division,
+but the compiler should see that the divisor is only 32 bits and hence
+should be able to generate code which is at least as efficient as
+whatever inline asm the arch provides for u64/u32 divisions.
+
+
+Rasmus
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
