@@ -1,164 +1,128 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/7] ext4: cache extent hole in extent status tree for ext4_da_map_blocks()
-Date: Tue, 25 Nov 2014 15:55:31 +0100
-Message-ID: <1416927336-9328-3-git-send-email-jack@suse.cz>
-References: <1416927336-9328-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 0/7 v4] ext4: Extent status tree shrinker improvements
+Date: Tue, 25 Nov 2014 15:55:29 +0100
+Message-ID: <1416927336-9328-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:42755 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:42757 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751092AbaKYOzr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751209AbaKYOzr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 25 Nov 2014 09:55:47 -0500
-In-Reply-To: <1416927336-9328-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+  Hello,
 
-Currently extent status tree doesn't cache extent hole when a write
-looks up in extent tree to make sure whether a block has been allocated
-or not.  In this case, we don't put extent hole in extent cache because
-later this extent might be removed and a new delayed extent might be
-added back.  But it will cause a defect when we do a lot of writes.  If
-we don't put extent hole in extent cache, the following writes also need
-to access extent tree to look at whether or not a block has been
-allocated.  It brings a cache miss.  This commit fixes this defect.
-Also if the inode doesn't have any extent, this extent hole will be
-cached as well.
+  this is the next revision of Zheng's patches for improving latency of ext4
+extent status tree shrinker. Since previous version I have added a fix to a
+bug in ext4_da_map_blocks() which was made more visible by this series and
+also swapped patches 3 & 4 to fix double lock issue that happened when only
+first three patches were applied.
 
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/ext4.h              |  4 +---
- fs/ext4/extents.c           | 31 ++++++++++++++++---------------
- fs/ext4/inode.c             |  6 ++----
- include/trace/events/ext4.h |  3 +--
- 4 files changed, 20 insertions(+), 24 deletions(-)
+Here are the measurements of the extent status tree shrinker (done in my
+test VM with 6 CPUs and 2GB of RAM) [they are from the previous version but
+nothing changed for the shrinker in this revision].
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b28c916340b9..b9e9fdb3793a 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -556,10 +556,8 @@ enum {
- #define EXT4_GET_BLOCKS_KEEP_SIZE		0x0080
- 	/* Do not take i_data_sem locking in ext4_map_blocks */
- #define EXT4_GET_BLOCKS_NO_LOCK			0x0100
--	/* Do not put hole in extent cache */
--#define EXT4_GET_BLOCKS_NO_PUT_HOLE		0x0200
- 	/* Convert written extents to unwritten */
--#define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0400
-+#define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0200
- 
- /*
-  * The bit position of these flags must not overlap with any of the
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index d8cd229b5c2b..d0e502da8fbe 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2306,16 +2306,16 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
- 				ext4_lblk_t block)
- {
- 	int depth = ext_depth(inode);
--	unsigned long len = 0;
--	ext4_lblk_t lblock = 0;
-+	ext4_lblk_t len;
-+	ext4_lblk_t lblock;
- 	struct ext4_extent *ex;
-+	struct extent_status es;
- 
- 	ex = path[depth].p_ext;
- 	if (ex == NULL) {
--		/*
--		 * there is no extent yet, so gap is [0;-] and we
--		 * don't cache it
--		 */
-+		/* there is no extent yet, so gap is [0;-] */
-+		lblock = 0;
-+		len = EXT_MAX_BLOCKS;
- 		ext_debug("cache gap(whole file):");
- 	} else if (block < le32_to_cpu(ex->ee_block)) {
- 		lblock = block;
-@@ -2324,9 +2324,6 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
- 				block,
- 				le32_to_cpu(ex->ee_block),
- 				 ext4_ext_get_actual_len(ex));
--		if (!ext4_find_delalloc_range(inode, lblock, lblock + len - 1))
--			ext4_es_insert_extent(inode, lblock, len, ~0,
--					      EXTENT_STATUS_HOLE);
- 	} else if (block >= le32_to_cpu(ex->ee_block)
- 			+ ext4_ext_get_actual_len(ex)) {
- 		ext4_lblk_t next;
-@@ -2340,14 +2337,19 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
- 				block);
- 		BUG_ON(next == lblock);
- 		len = next - lblock;
--		if (!ext4_find_delalloc_range(inode, lblock, lblock + len - 1))
--			ext4_es_insert_extent(inode, lblock, len, ~0,
--					      EXTENT_STATUS_HOLE);
- 	} else {
- 		BUG();
- 	}
- 
--	ext_debug(" -> %u:%lu\n", lblock, len);
-+	ext4_es_find_delayed_extent_range(inode, lblock, lblock + len - 1, &es);
-+	if (es.es_len) {
-+		/* There's delayed extent containing lblock? */
-+		if (es.es_lblk <= lblock)
-+			return;
-+		len = min(es.es_lblk - lblock, len);
-+	}
-+	ext_debug(" -> %u:%u\n", lblock, len);
-+	ext4_es_insert_extent(inode, lblock, len, ~0, EXTENT_STATUS_HOLE);
- }
- 
- /*
-@@ -4354,8 +4356,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 		 * put just found gap into cache to speed up
- 		 * subsequent requests
- 		 */
--		if ((flags & EXT4_GET_BLOCKS_NO_PUT_HOLE) == 0)
--			ext4_ext_put_gap_in_cache(inode, path, map->m_lblk);
-+		ext4_ext_put_gap_in_cache(inode, path, map->m_lblk);
- 		goto out2;
- 	}
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 08ccb344a46f..d0e9cbb56f94 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1432,11 +1432,9 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
- 	if (ext4_has_inline_data(inode))
- 		retval = 0;
- 	else if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
--		retval = ext4_ext_map_blocks(NULL, inode, map,
--					     EXT4_GET_BLOCKS_NO_PUT_HOLE);
-+		retval = ext4_ext_map_blocks(NULL, inode, map, 0);
- 	else
--		retval = ext4_ind_map_blocks(NULL, inode, map,
--					     EXT4_GET_BLOCKS_NO_PUT_HOLE);
-+		retval = ext4_ind_map_blocks(NULL, inode, map, 0);
- 
- add_delayed:
- 	if (retval == 0) {
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index bb7dcbe99652..cd37a584ee88 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -43,8 +43,7 @@ struct extent_status;
- 	{ EXT4_GET_BLOCKS_METADATA_NOFAIL,	"METADATA_NOFAIL" },	\
- 	{ EXT4_GET_BLOCKS_NO_NORMALIZE,		"NO_NORMALIZE" },	\
- 	{ EXT4_GET_BLOCKS_KEEP_SIZE,		"KEEP_SIZE" },		\
--	{ EXT4_GET_BLOCKS_NO_LOCK,		"NO_LOCK" },		\
--	{ EXT4_GET_BLOCKS_NO_PUT_HOLE,		"NO_PUT_HOLE" })
-+	{ EXT4_GET_BLOCKS_NO_LOCK,		"NO_LOCK" })
- 
- #define show_mflags(flags) __print_flags(flags, "",	\
- 	{ EXT4_MAP_NEW,		"N" },			\
--- 
-1.8.1.4
+For my synthetic test maintaing lots of fragmented files the results were
+like:
+Baseline:
+stats:
+  2194 objects
+  1206 reclaimable objects
+  299726/14244181 cache hits/misses
+  7796 ms last sorted interval
+  2002 inodes on lru list
+average:
+  858 us scan time
+  116 shrunk objects
+maximum:
+  601 inode (10 objects, 10 reclaimable)
+  332987 us max scan time
 
+Patched:
+stats:
+  4351 objects
+  2176 reclaimable objects
+  21183492/2809261 cache hits/misses
+  220 inodes on list
+max nr_to_scan: 128 max inodes walked: 15
+average:
+  148 us scan time
+  125 shrunk objects
+maximum:
+  1494 inode (20 objects, 10 reclaimable)
+  4173 us max scan time
+
+Also for Zheng's write fio workload we get noticeable improvements:
+Baseline:
+stats:
+  261094 objects
+  261094 reclaimable objects
+  4030024/1063081 cache hits/misses
+  366508 ms last sorted interval
+  15001 inodes on lru list
+average:
+  330 us scan time
+  125 shrunk objects
+maximum:
+  9217 inode (46 objects, 46 reclaimable)
+  19525 us max scan time
+
+Patched:
+stats:
+  496796 objects
+  466436 reclaimable objects
+  1322023/119385 cache hits/misses
+  14825 inodes on list
+max nr_to_scan: 128 max inodes walked: 3
+average:
+  112 us scan time
+  125 shrunk objects
+maximum:
+  2 inode (87 objects, 87 reclaimable)
+  7158 us max scan time
+
+OTOH I can see a regression in max latency for the randwrite workload:
+Baseline:
+stats:
+  35953 objects
+  33264 reclaimable objects
+  110208/1794665 cache hits/misses
+  56396 ms last sorted interval
+  251 inodes on lru list
+average:
+  286 us scan time
+  125 shrunk objects
+maximum:
+  225 inode (849 objects, 838 reclaimable)
+  4220 us max scan time
+
+Patched
+stats:
+  118256 objects
+stats:
+  193489 objects
+  193489 reclaimable objects
+  1133707/65535 cache hits/misses
+  251 inodes on list
+max nr_to_scan: 128 max inodes walked: 6
+average:
+  180 us scan time
+  125 shrunk objects
+maximum:
+  15123 inode (1931 objects, 1931 reclaimable)
+  6458 us max scan time
+
+  In general you can see there are much more objects cached in the patched
+kernel. This is because of the first patch - we now have all the holes in the
+files cached as well. This is also the reason for the much higher cache hit
+ratio. I'm still somewhat unsatisfied with the worst case latency of the
+shrinker which is in order of miliseconds for all the workloads. I did some
+more instrumentation of the code and the reason for this s_es_lock. Under
+heavy load the wait time for this lock is on average ~100 us (3300 us max).
+I have some ideas how to improve on this but I didn't want to delay posting
+of the series even more...
+
+								Honza
