@@ -1,37 +1,36 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [1/1] fs-ext4: Deletion of an unnecessary check before the
- function call "iput"
-Date: Tue, 25 Nov 2014 20:16:23 -0500
-Message-ID: <20141126011623.GA20977@thunk.org>
-References: <54679938.3020106@users.sourceforge.net>
+Subject: Re: ext4: Forbid journal_async_commit in data=ordered mode
+Date: Tue, 25 Nov 2014 20:20:02 -0500
+Message-ID: <20141126012002.GA28130@thunk.org>
+References: <1416930975-13676-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	kernel-janitors@vger.kernel.org, trivial@kernel.org,
-	Coccinelle <cocci@systeme.lip6.fr>
-To: SF Markus Elfring <elfring@users.sourceforge.net>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51987 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:51995 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751002AbaKZBQf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Nov 2014 20:16:35 -0500
+	id S1750844AbaKZBUJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Nov 2014 20:20:09 -0500
 Content-Disposition: inline
-In-Reply-To: <54679938.3020106@users.sourceforge.net>
+In-Reply-To: <1416930975-13676-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Nov 15, 2014 at 07:19:36PM +0100, SF Markus Elfring wrote:
-> From: Markus Elfring <elfring@users.sourceforge.net>
-> Date: Sat, 15 Nov 2014 19:04:06 +0100
+On Tue, Nov 25, 2014 at 04:56:15PM +0100, Jan Kara wrote:
+> Option journal_async_commit breaks gurantees of data=ordered mode as it
+> sends only a single cache flush after writing a transaction commit
+> block. Thus even though the transaction including the commit block is
+> fully stored on persistent storage, file data may still linger in drives
+> caches and will be lost on power failure. Since all checksums match on
+> journal recovery, we replay the transaction thus possibly exposing stale
+> user data.
 > 
-> The iput() function tests whether its argument is NULL and then
-> returns immediately. Thus the test around the call is not needed.
+> To fix this data exposure issue, remove the possibility to use
+> journal_async_commit in data=ordered mode.
 > 
-> This issue was detected by using the Coccinelle software.
-> 
-> Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Thanks, applied.
+Applied, thanks.
 
 						- Ted
