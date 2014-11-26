@@ -1,62 +1,115 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 3/4] vfs: don't let the dirty time inodes get more than a
- day stale
-Date: Thu, 27 Nov 2014 09:39:01 +1100
-Message-ID: <20141126223901.GF9561@dastard>
-References: <1416599964-21892-1-git-send-email-tytso@mit.edu>
- <1416599964-21892-4-git-send-email-tytso@mit.edu>
- <20141125015332.GE27262@dastard>
- <20141125044508.GG31339@thunk.org>
- <20141125234851.GB9561@dastard>
- <20141126102017.GJ28449@thunk.org>
+Subject: Re: [PATCH-v4 6/7] ext4: add support for a lazytime mount option
+Date: Thu, 27 Nov 2014 09:48:43 +1100
+Message-ID: <20141126224843.GG9561@dastard>
+References: <1416997437-26092-1-git-send-email-tytso@mit.edu>
+	<1416997437-26092-7-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org,
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs@oss.sgi.com, linux-btrfs@vger.kernel.org
+	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
+	XFS Developers <xfs@oss.sgi.com>
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20141126102017.GJ28449@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <1416997437-26092-7-git-send-email-tytso@mit.edu>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 26, 2014 at 05:20:17AM -0500, Theodore Ts'o wrote:
-> On Wed, Nov 26, 2014 at 10:48:51AM +1100, Dave Chinner wrote:
-> > No abuse necessary at all. Just a different inode_dirtied_after()
-> > check is requires if the inode is on the time dirty list in
-> > move_expired_inodes().
+On Wed, Nov 26, 2014 at 05:23:56AM -0500, Theodore Ts'o wrote:
+> Add an optimization for the MS_LAZYTIME mount option so that we will
+> opportunistically write out any inodes with the I_DIRTY_TIME flag set
+> in a particular inode table block when we need to update some inode in
+> that inode table block anyway.
 > 
-> I'm still not sure what you have in mind here.  When would this be
-> checked? 
+> Also add some temporary code so that we can set the lazytime mount
+> option without needing a modified /sbin/mount program which can set
+> MS_LAZYTIME.  We can eventually make this go away once util-linux has
+> added support.
+> 
+> Google-Bug-Id: 18297052
+> 
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+>  fs/ext4/inode.c             | 49 ++++++++++++++++++++++++++++++++++++++++++---
+>  fs/ext4/super.c             |  9 +++++++++
+>  include/trace/events/ext4.h | 30 +++++++++++++++++++++++++++
+>  3 files changed, 85 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 5653fa4..8308c82 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4140,6 +4140,51 @@ static int ext4_inode_blocks_set(handle_t *handle,
+>  }
+>  
+>  /*
+> + * Opportunistically update the other time fields for other inodes in
+> + * the same inode table block.
+> + */
+> +static void ext4_update_other_inodes_time(struct super_block *sb,
+> +					  unsigned long orig_ino, char *buf)
+> +{
+> +	struct ext4_inode_info	*ei;
+> +	struct ext4_inode	*raw_inode;
+> +	unsigned long		ino;
+> +	struct inode		*inode;
+> +	int		i, inodes_per_block = EXT4_SB(sb)->s_inodes_per_block;
+> +	int		inode_size = EXT4_INODE_SIZE(sb);
+> +
+> +	ino = orig_ino & ~(inodes_per_block - 1);
+> +	for (i = 0; i < inodes_per_block; i++, ino++, buf += inode_size) {
+> +		if (ino == orig_ino)
+> +			continue;
+> +		inode = find_active_inode_nowait(sb, ino);
+> +		if (!inode ||
+> +		    (inode->i_state & I_DIRTY_TIME) == 0 ||
+> +		    !spin_trylock(&inode->i_lock)) {
+> +			iput(inode);
+> +			continue;
+> +		}
+> +		inode->i_state &= ~I_DIRTY_TIME;
+> +		inode->i_ts_dirty_day = 0;
+> +		spin_unlock(&inode->i_lock);
+> +		inode_requeue_dirtytime(inode);
+> +
+> +		ei = EXT4_I(inode);
+> +		raw_inode = (struct ext4_inode *) buf;
+> +
+> +		spin_lock(&ei->i_raw_lock);
+> +		EXT4_INODE_SET_XTIME(i_ctime, inode, raw_inode);
+> +		EXT4_INODE_SET_XTIME(i_mtime, inode, raw_inode);
+> +		EXT4_INODE_SET_XTIME(i_atime, inode, raw_inode);
+> +		ext4_inode_csum_set(inode, raw_inode, ei);
+> +		spin_unlock(&ei->i_raw_lock);
+> +		trace_ext4_other_inode_update_time(inode, orig_ino);
+> +		iput(inode);
+> +	}
+> +}
 
-Have you looked at where move_expired_inodes() gets called from?
-It's called periodically from background writeback by queue_io(),
-and sync uses the same infrastructure to expire all inodes on the
-dirty list....
+Am I right in that this now does unlogged timestamp updates of
+inodes? What happens when that buffer gets overwritten by log
+recover after a crash? The timestamp updates get lost?
 
-> It sounds like you want to set a timeout such that when an
-> inode which had its timestamps updated lazily 24 hours earlier, the
-> inode would get written out.  Yes?  But that implies something is
-> going to have to scan the list of inodes on the dirty time list
-> periodically.  When are you proposing that this take place?
+FYI, XFS has had all sorts of nasty log recovery corner cases
+caused by log recovery overwriting non-logged inode updates like
+this. In the past few years we've removed every single non-logged
+inode update "optimisation" so that all changes (including timestamps)
+are transactional so inode state on disk not matching what log
+recovery wrote to disk for all the other inode metadata...
 
-The writeback code already does this for dirty inodes. it does it in
-move_expired_inodes() to move the inodes with i_dirtied_when is
-older than 30s. It's *trivial* to add a time dirty inode list and
-scan that at the same time to pull off inodes that are older than
-24hrs.
-
-> The various approaches that come to mind all seem more complex than
-> what I have in this patch 3 of 4, and I'm not sure it's worth the
-> complexity.
-
-the "once a day" stuff you've added is a horrible, nasty hack. I
-wasn't going to say anything about it (i.e. if you can't say
-anything nice...). The existing dirty inode writeback expiry code
-does *everything* we need already, we just need to plumb in a new
-list and add an expiry check of that list to move inodes to the b_io
-list when they have been timestamp dirty for more than 24 hours...
+Optimistic unlogged inode updates are a slippery slope, and history
+tells me that it doesn't lead to a nice place....
 
 Cheers,
 
@@ -64,3 +117,8 @@ Dave.
 -- 
 Dave Chinner
 david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
