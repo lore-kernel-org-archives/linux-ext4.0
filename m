@@ -1,27 +1,38 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4: possible unsafe locking scenario
-Date: Wed, 26 Nov 2014 10:28:21 -0500
-Message-ID: <20141126152821.GA4004@thunk.org>
-References: <20141126145951.GA2750@swordfish>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH-v4 1/7] vfs: split update_time() into update_time() and
+ write_time()
+Date: Wed, 26 Nov 2014 11:23:28 -0800
+Message-ID: <20141126192328.GA20436@infradead.org>
+References: <1416997437-26092-1-git-send-email-tytso@mit.edu>
+ <1416997437-26092-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Sergey Senozhatsky <sergey.senozhatsky@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
+	XFS Developers <xfs@oss.sgi.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:49757 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750896AbaKZTX2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Nov 2014 14:23:28 -0500
 Content-Disposition: inline
-In-Reply-To: <20141126145951.GA2750@swordfish>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1416997437-26092-2-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 26, 2014 at 11:59:51PM +0900, Sergey Senozhatsky wrote:
-> Hello,
-> 
-> locked spew with the current -next.
+As mentioned last round please move the addition of the is_readonly
+operation to the first thing in the series, so that the ordering makes
+more sense.
 
-Hmm.... what was the system doing at that time?  Is it something that
-reliably reproduces, or is this a one-off?
+Second I think this patch is incorrect for XFS - XFS uses ->update_time
+to set the time stampst in the dinode.  These two need to be coherent
+as we can write out a dirty inode any time, so it needs to have the
+timestamp uptodate.
 
-Thanks,
+Third update_time now calls mark_inode_dirty unconditionally, while
+previously it wasn't called when ->update_time was set.  At least
+for XFS that's a major change in behavior as XFS never used VFS dirty
+tracking for metadata updates.
 
-						- Ted
