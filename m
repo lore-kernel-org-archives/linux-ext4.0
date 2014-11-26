@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH-v4 4/7] vfs: add lazytime tracepoints for better debugging
-Date: Wed, 26 Nov 2014 05:23:54 -0500
-Message-ID: <1416997437-26092-5-git-send-email-tytso@mit.edu>
+Subject: [PATCH-v4 5/7] vfs: add find_active_inode_nowait() function
+Date: Wed, 26 Nov 2014 05:23:55 -0500
+Message-ID: <1416997437-26092-6-git-send-email-tytso@mit.edu>
 References: <1416997437-26092-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -24,54 +24,81 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
+Add a new function find_active_inode_nowait() which will never block.
+If there is an inode being freed or is still being initialized, this
+function will return NULL instead of blocking waiting for an inode to
+be freed or to finish initializing.  Hence, a negative return from
+this function does not mean that inode number is free for use.  It is
+useful for callers that want to opportunistically do some work on an
+inode only if it is present and available in the cache, and where
+blocking is not an option.
+
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/fs-writeback.c | 1 +
- fs/inode.c        | 5 +++++
- 2 files changed, 6 insertions(+)
+ fs/inode.c         | 36 ++++++++++++++++++++++++++++++++++++
+ include/linux/fs.h |  2 ++
+ 2 files changed, 38 insertions(+)
 
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index 529480a..3d87174 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -27,6 +27,7 @@
- #include <linux/backing-dev.h>
- #include <linux/tracepoint.h>
- #include <linux/device.h>
-+#include <trace/events/fs.h>
- #include "internal.h"
- 
- /*
 diff --git a/fs/inode.c b/fs/inode.c
-index 37c0429..b2fea60 100644
+index b2fea60..0b4c6ae 100644
 --- a/fs/inode.c
 +++ b/fs/inode.c
-@@ -20,6 +20,9 @@
- #include <linux/list_lru.h>
- #include "internal.h"
+@@ -1283,6 +1283,42 @@ struct inode *ilookup(struct super_block *sb, unsigned long ino)
+ }
+ EXPORT_SYMBOL(ilookup);
  
-+#define CREATE_TRACE_POINTS
-+#include <trace/events/fs.h>
++/**
++ * find_active_inode_nowait - find an active inode in the inode cache
++ * @sb:		super block of file system to search
++ * @ino:	inode number to search for
++ *
++ * Search for an active inode @ino in the inode cache, and if the
++ * inode is in the cache, the inode is returned with an incremented
++ * reference count.  If the inode is being freed or is newly
++ * initialized, return nothing instead of trying to wait for the inode
++ * initialization or destruction to be complete.
++ */
++struct inode *find_active_inode_nowait(struct super_block *sb,
++				       unsigned long ino)
++{
++	struct hlist_head *head = inode_hashtable + hash(sb, ino);
++	struct inode *inode, *ret_inode = NULL;
 +
- /*
-  * Inode locking rules:
-  *
-@@ -1443,6 +1446,7 @@ retry:
- 				inode->i_op->write_time(inode);
- 			else if (inode->i_sb->s_op->write_inode)
- 				mark_inode_dirty_sync(inode);
-+			trace_fs_lazytime_iput(inode);
- 			goto retry;
- 		}
- 		iput_final(inode);
-@@ -1561,6 +1565,7 @@ static int update_time(struct inode *inode, struct timespec *time, int flags)
- 		inode->i_ts_dirty_day = days_since_boot;
- 		spin_unlock(&inode->i_lock);
- 		inode_requeue_dirtytime(inode);
-+		trace_fs_lazytime_defer(inode);
- 		return 0;
- 	}
- force_dirty:
++	spin_lock(&inode_hash_lock);
++	hlist_for_each_entry(inode, head, i_hash) {
++		if ((inode->i_ino != ino) ||
++		    (inode->i_sb != sb))
++			continue;
++		spin_lock(&inode->i_lock);
++		if ((inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW)) == 0) {
++			__iget(inode);
++			ret_inode = inode;
++		}
++		spin_unlock(&inode->i_lock);
++		goto out;
++	}
++out:
++	spin_unlock(&inode_hash_lock);
++	return ret_inode;
++}
++EXPORT_SYMBOL(find_active_inode_nowait);
++
+ int insert_inode_locked(struct inode *inode)
+ {
+ 	struct super_block *sb = inode->i_sb;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index d0a2181..dc615ec 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2419,6 +2419,8 @@ extern struct inode *ilookup(struct super_block *sb, unsigned long ino);
+ 
+ extern struct inode * iget5_locked(struct super_block *, unsigned long, int (*test)(struct inode *, void *), int (*set)(struct inode *, void *), void *);
+ extern struct inode * iget_locked(struct super_block *, unsigned long);
++extern struct inode *find_active_inode_nowait(struct super_block *,
++					      unsigned long);
+ extern int insert_inode_locked4(struct inode *, unsigned long, int (*test)(struct inode *, void *), void *);
+ extern int insert_inode_locked(struct inode *);
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
 -- 
 2.1.0
 
