@@ -1,108 +1,60 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH-v4 5/7] vfs: add find_active_inode_nowait() function
-Date: Wed, 26 Nov 2014 05:23:55 -0500
-Message-ID: <1416997437-26092-6-git-send-email-tytso@mit.edu>
-References: <1416997437-26092-1-git-send-email-tytso@mit.edu>
+From: Stefan Priebe - Profihost AG <s.priebe@profihost.ag>
+Subject: Re: Call trace in ext4_es_lru_add on 3.10 stable
+Date: Wed, 26 Nov 2014 11:28:26 +0100
+Message-ID: <5475AB4A.2060806@profihost.ag>
+References: <20140918194311.GE19520@thunk.org> <541FC817.7030401@profihost.ag> <20140922164715.GB4572@thunk.org> <54206AA2.1050607@profihost.ag> <20140922202004.GF4572@thunk.org> <54212641.9010808@profihost.ag> <20140923094204.GB2359@quack.suse.cz> <54216641.8090608@profihost.ag> <20140923144340.GI2359@quack.suse.cz> <54758A13.20209@profihost.ag> <20141126082552.GB20176@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=windows-1252
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>
-To: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1416997437-26092-1-git-send-email-tytso@mit.edu>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	"p.herz@profihost.ag >> Philipp Herz - Profihost AG"
+	<p.herz@profihost.ag>, stable@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <stable-owner@vger.kernel.org>
+In-Reply-To: <20141126082552.GB20176@quack.suse.cz>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Add a new function find_active_inode_nowait() which will never block.
-If there is an inode being freed or is still being initialized, this
-function will return NULL instead of blocking waiting for an inode to
-be freed or to finish initializing.  Hence, a negative return from
-this function does not mean that inode number is free for use.  It is
-useful for callers that want to opportunistically do some work on an
-inode only if it is present and available in the cache, and where
-blocking is not an option.
+Am 26.11.2014 um 09:25 schrieb Jan Kara:
+>   Hi,
+> 
+> On Wed 26-11-14 09:06:43, Stefan Priebe - Profihost AG wrote:
+>> i'm still getting a lot of those call traces:
+>> "
+>> Call Trace:
+>>  [<ffffffffa01d7006>] ext4_es_lru_add+0x26/0x80 [ext4]
+>>  [<ffffffffa01d7286>] ext4_es_insert_extent+0x96/0x100 [ext4]
+>>  [<ffffffffa01c3fd3>] ? ext4_find_delalloc_range+0x23/0x60 [ext4]
+>>  [<ffffffffa019b781>] ext4_map_blocks+0x111/0x450 [ext4]
+>>  [<ffffffffa019d167>] _ext4_get_block+0x87/0x190 [ext4]
+>>  [<ffffffffa019d2c6>] ext4_get_block+0x16/0x20 [ext4]
+>>  [<ffffffff8117f73f>] generic_block_bmap+0x3f/0x50
+>>  [<ffffffffa013f4ae>] ? jbd2_journal_file_buffer+0x4e/0x80 [jbd2]
+>>  [<ffffffff810f6242>] ? mapping_tagged+0x12/0x20
+>>  [<ffffffffa019ad71>] ext4_bmap+0x91/0xf0 [ext4]
+>>  [<ffffffff811686de>] bmap+0x1e/0x30
+>>  [<ffffffffa0148063>] jbd2_journal_bmap+0x33/0xb0 [jbd2]
+>>  [<ffffffffa014831d>] jbd2_journal_next_log_block+0x7d/0x90 [jbd2]
+>>  [<ffffffffa0140238>] jbd2_journal_commit_transaction+0x7f8/0x1ae0 [jbd2]
+>>  [<ffffffff81084e13>] ? idle_balance+0xd3/0x110
+>>  [<ffffffff8105a018>] ? lock_timer_base.isra.35+0x38/0x70
+>>  [<ffffffffa014593a>] kjournald2+0xba/0x230 [jbd2]
+>>  [<ffffffff81070360>] ? finish_wait+0x80/0x80
+>>  [<ffffffffa0145880>] ? jbd2_journal_release_jbd_inode+0x130/0x130 [jbd2]
+>>  [<ffffffff8106fb60>] kthread+0xc0/0xd0
+>>  [<ffffffff8106faa0>] ? kthread_create_on_node+0x130/0x130
+>>  [<ffffffff81554c2c>] ret_from_fork+0x7c/0xb0
+>>  [<ffffffff8106faa0>] ? kthread_create_on_node+0x130/0x130
+>> "
+>>
+>> Is there any chance to fix them in vanilla 3.10.61?
+>   Ted is just testing patches to fix these. You are welcome if you can give
+> them a try as well (tarball attached). I'm not sure patches will be
+> backported as far as to 3.10-stable but when the patches get some testing
+> in mainline, I'll be porting them to 3.12-stable for our enterprise
+> kernel...
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/inode.c         | 36 ++++++++++++++++++++++++++++++++++++
- include/linux/fs.h |  2 ++
- 2 files changed, 38 insertions(+)
+Thanks, on which kernel do they apply? They do not apply to a current 3.17.
 
-diff --git a/fs/inode.c b/fs/inode.c
-index b2fea60..0b4c6ae 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -1283,6 +1283,42 @@ struct inode *ilookup(struct super_block *sb, unsigned long ino)
- }
- EXPORT_SYMBOL(ilookup);
- 
-+/**
-+ * find_active_inode_nowait - find an active inode in the inode cache
-+ * @sb:		super block of file system to search
-+ * @ino:	inode number to search for
-+ *
-+ * Search for an active inode @ino in the inode cache, and if the
-+ * inode is in the cache, the inode is returned with an incremented
-+ * reference count.  If the inode is being freed or is newly
-+ * initialized, return nothing instead of trying to wait for the inode
-+ * initialization or destruction to be complete.
-+ */
-+struct inode *find_active_inode_nowait(struct super_block *sb,
-+				       unsigned long ino)
-+{
-+	struct hlist_head *head = inode_hashtable + hash(sb, ino);
-+	struct inode *inode, *ret_inode = NULL;
-+
-+	spin_lock(&inode_hash_lock);
-+	hlist_for_each_entry(inode, head, i_hash) {
-+		if ((inode->i_ino != ino) ||
-+		    (inode->i_sb != sb))
-+			continue;
-+		spin_lock(&inode->i_lock);
-+		if ((inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW)) == 0) {
-+			__iget(inode);
-+			ret_inode = inode;
-+		}
-+		spin_unlock(&inode->i_lock);
-+		goto out;
-+	}
-+out:
-+	spin_unlock(&inode_hash_lock);
-+	return ret_inode;
-+}
-+EXPORT_SYMBOL(find_active_inode_nowait);
-+
- int insert_inode_locked(struct inode *inode)
- {
- 	struct super_block *sb = inode->i_sb;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index d0a2181..dc615ec 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2419,6 +2419,8 @@ extern struct inode *ilookup(struct super_block *sb, unsigned long ino);
- 
- extern struct inode * iget5_locked(struct super_block *, unsigned long, int (*test)(struct inode *, void *), int (*set)(struct inode *, void *), void *);
- extern struct inode * iget_locked(struct super_block *, unsigned long);
-+extern struct inode *find_active_inode_nowait(struct super_block *,
-+					      unsigned long);
- extern int insert_inode_locked4(struct inode *, unsigned long, int (*test)(struct inode *, void *), void *);
- extern int insert_inode_locked(struct inode *);
- #ifdef CONFIG_DEBUG_LOCK_ALLOC
--- 
-2.1.0
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Stefan
