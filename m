@@ -1,76 +1,85 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Call trace in ext4_es_lru_add on 3.10 stable
-Date: Wed, 26 Nov 2014 11:38:28 +0100
-Message-ID: <20141126103828.GF20176@quack.suse.cz>
-References: <20140922164715.GB4572@thunk.org>
- <54206AA2.1050607@profihost.ag>
- <20140922202004.GF4572@thunk.org>
- <54212641.9010808@profihost.ag>
- <20140923094204.GB2359@quack.suse.cz>
- <54216641.8090608@profihost.ag>
- <20140923144340.GI2359@quack.suse.cz>
- <54758A13.20209@profihost.ag>
- <20141126082552.GB20176@quack.suse.cz>
- <5475AB4A.2060806@profihost.ag>
+From: Sergey Senozhatsky <sergey.senozhatsky@gmail.com>
+Subject: ext4: possible unsafe locking scenario
+Date: Wed, 26 Nov 2014 23:59:51 +0900
+Message-ID: <20141126145951.GA2750@swordfish>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org,
-	"p.herz@profihost.ag >> Philipp Herz - Profihost AG"
-	<p.herz@profihost.ag>, stable@vger.kernel.org,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Stefan Priebe - Profihost AG <s.priebe@profihost.ag>
-Return-path: <stable-owner@vger.kernel.org>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <5475AB4A.2060806@profihost.ag>
-Sender: stable-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 26-11-14 11:28:26, Stefan Priebe - Profihost AG wrote:
-> Am 26.11.2014 um 09:25 schrieb Jan Kara:
-> >   Hi,
-> > 
-> > On Wed 26-11-14 09:06:43, Stefan Priebe - Profihost AG wrote:
-> >> i'm still getting a lot of those call traces:
-> >> "
-> >> Call Trace:
-> >>  [<ffffffffa01d7006>] ext4_es_lru_add+0x26/0x80 [ext4]
-> >>  [<ffffffffa01d7286>] ext4_es_insert_extent+0x96/0x100 [ext4]
-> >>  [<ffffffffa01c3fd3>] ? ext4_find_delalloc_range+0x23/0x60 [ext4]
-> >>  [<ffffffffa019b781>] ext4_map_blocks+0x111/0x450 [ext4]
-> >>  [<ffffffffa019d167>] _ext4_get_block+0x87/0x190 [ext4]
-> >>  [<ffffffffa019d2c6>] ext4_get_block+0x16/0x20 [ext4]
-> >>  [<ffffffff8117f73f>] generic_block_bmap+0x3f/0x50
-> >>  [<ffffffffa013f4ae>] ? jbd2_journal_file_buffer+0x4e/0x80 [jbd2]
-> >>  [<ffffffff810f6242>] ? mapping_tagged+0x12/0x20
-> >>  [<ffffffffa019ad71>] ext4_bmap+0x91/0xf0 [ext4]
-> >>  [<ffffffff811686de>] bmap+0x1e/0x30
-> >>  [<ffffffffa0148063>] jbd2_journal_bmap+0x33/0xb0 [jbd2]
-> >>  [<ffffffffa014831d>] jbd2_journal_next_log_block+0x7d/0x90 [jbd2]
-> >>  [<ffffffffa0140238>] jbd2_journal_commit_transaction+0x7f8/0x1ae0 [jbd2]
-> >>  [<ffffffff81084e13>] ? idle_balance+0xd3/0x110
-> >>  [<ffffffff8105a018>] ? lock_timer_base.isra.35+0x38/0x70
-> >>  [<ffffffffa014593a>] kjournald2+0xba/0x230 [jbd2]
-> >>  [<ffffffff81070360>] ? finish_wait+0x80/0x80
-> >>  [<ffffffffa0145880>] ? jbd2_journal_release_jbd_inode+0x130/0x130 [jbd2]
-> >>  [<ffffffff8106fb60>] kthread+0xc0/0xd0
-> >>  [<ffffffff8106faa0>] ? kthread_create_on_node+0x130/0x130
-> >>  [<ffffffff81554c2c>] ret_from_fork+0x7c/0xb0
-> >>  [<ffffffff8106faa0>] ? kthread_create_on_node+0x130/0x130
-> >> "
-> >>
-> >> Is there any chance to fix them in vanilla 3.10.61?
-> >   Ted is just testing patches to fix these. You are welcome if you can give
-> > them a try as well (tarball attached). I'm not sure patches will be
-> > backported as far as to 3.10-stable but when the patches get some testing
-> > in mainline, I'll be porting them to 3.12-stable for our enterprise
-> > kernel...
-> 
-> Thanks, on which kernel do they apply? They do not apply to a current 3.17.
-  They are based on current Linus' git tree. So you have to try something
-like 3.18-rc5 or so.
+Hello,
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+locked spew with the current -next.
+
+[  427.152842] =============================================
+[  427.152843] [ INFO: possible recursive locking detected ]
+[  427.152847] 3.18.0-rc6-next-20141126-dbg-00001-gb80a67f-dirty #402 Not tainted
+[  427.152848] ---------------------------------------------
+[  427.152850] gcc/10495 is trying to acquire lock:
+[  427.152851]  (&ei->i_data_sem){++++..}, at: [<ffffffff8119022f>] ext4_truncate+0x1cc/0x2bc
+[  427.152862] 
+but task is already holding lock:
+[  427.152864]  (&ei->i_data_sem){++++..}, at: [<ffffffff8119022f>] ext4_truncate+0x1cc/0x2bc
+[  427.152868] 
+other info that might help us debug this:
+[  427.152870]  Possible unsafe locking scenario:
+
+[  427.152872]        CPU0
+[  427.152873]        ----
+[  427.152874]   lock(&ei->i_data_sem);
+[  427.152875]   lock(&ei->i_data_sem);
+[  427.152877] 
+ *** DEADLOCK ***
+
+[  427.152879]  May be due to missing lock nesting notation
+
+[  427.152881] 5 locks held by gcc/10495:
+[  427.152883]  #0:  (sb_writers#7){.+.+.+}, at: [<ffffffff81101e62>] mnt_want_write+0x1f/0x46
+[  427.152891]  #1:  (sb_internal){.+.+..}, at: [<ffffffff8119119c>] ext4_evict_inode+0x1cb/0x3d6
+[  427.152897]  #2:  (jbd2_handle){+.+...}, at: [<ffffffff811c4099>] start_this_handle+0x4e0/0x566
+[  427.152902]  #3:  (&ei->i_data_sem){++++..}, at: [<ffffffff8119022f>] ext4_truncate+0x1cc/0x2bc
+[  427.152907]  #4:  (sb_internal){.+.+..}, at: [<ffffffff8119119c>] ext4_evict_inode+0x1cb/0x3d6
+[  427.152911] 
+stack backtrace:
+[  427.152915] CPU: 3 PID: 10495 Comm: gcc Not tainted 3.18.0-rc6-next-20141126-dbg-00001-gb80a67f-dirty #402
+[  427.152917] Hardware name: Acer             Aspire 5741G    /Aspire 5741G    , BIOS V1.20 02/08/2011
+[  427.152919]  ffffffff820f6e40 ffff880061a13908 ffffffff813cd7ff 0000000000000006
+[  427.152922]  ffffffff820f6e40 ffff880061a139d8 ffffffff8106c27d ffff880152eb9c30
+[  427.152925]  ffff880152eb9c30 ffff8800377a2000 ffff88014a6e47d8 0000000000000003
+[  427.152928] Call Trace:
+[  427.152934]  [<ffffffff813cd7ff>] dump_stack+0x4c/0x65
+[  427.152938]  [<ffffffff8106c27d>] __lock_acquire+0x7b5/0x1a17
+[  427.152941]  [<ffffffff8118eff7>] ? ext4_mark_iloc_dirty+0x70c/0x7ab
+[  427.152944]  [<ffffffff8106db62>] lock_acquire+0x4f/0x6e
+[  427.152946]  [<ffffffff8119022f>] ? ext4_truncate+0x1cc/0x2bc
+[  427.152951]  [<ffffffff81058acf>] ? __might_sleep+0xac/0xb4
+[  427.152955]  [<ffffffff813d1695>] down_write+0x3d/0x6d
+[  427.152958]  [<ffffffff8119022f>] ? ext4_truncate+0x1cc/0x2bc
+[  427.152961]  [<ffffffff8119022f>] ext4_truncate+0x1cc/0x2bc
+[  427.152963]  [<ffffffff811912a2>] ext4_evict_inode+0x2d1/0x3d6
+[  427.152967]  [<ffffffff810fd871>] evict+0x102/0x1ad
+[  427.152969]  [<ffffffff810fe490>] ? iput+0x120/0x131
+[  427.152971]  [<ffffffff810fe498>] iput+0x128/0x131
+[  427.152974]  [<ffffffff8118ef21>] ext4_mark_iloc_dirty+0x636/0x7ab
+[  427.152977]  [<ffffffff8118f1a3>] ext4_mark_inode_dirty+0x8a/0x1a2
+[  427.152982]  [<ffffffff811a484a>] __ext4_ext_dirty+0x6d/0x79
+[  427.152985]  [<ffffffff811a731f>] ext4_ext_remove_space+0x858/0xcdc
+[  427.152988]  [<ffffffff811a8cc7>] ext4_ext_truncate+0x9a/0xbe
+[  427.152991]  [<ffffffff81190250>] ext4_truncate+0x1ed/0x2bc
+[  427.152994]  [<ffffffff811912a2>] ext4_evict_inode+0x2d1/0x3d6
+[  427.152996]  [<ffffffff810fd871>] evict+0x102/0x1ad
+[  427.152998]  [<ffffffff8106b837>] ? trace_hardirqs_on_caller+0x180/0x19c
+[  427.153001]  [<ffffffff810fe490>] ? iput+0x120/0x131
+[  427.153003]  [<ffffffff810fe498>] iput+0x128/0x131
+[  427.153007]  [<ffffffff810f4449>] do_unlinkat+0x141/0x213
+[  427.153013]  [<ffffffff8100da89>] ? syscall_trace_enter_phase1+0x112/0x122
+[  427.153018]  [<ffffffff812166db>] ? trace_hardirqs_on_thunk+0x3a/0x3f
+[  427.153021]  [<ffffffff810f4b84>] SyS_unlink+0x11/0x13
+[  427.153025]  [<ffffffff813d34d6>] system_call_fastpath+0x16/0x1b
+
+	-ss
