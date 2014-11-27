@@ -1,52 +1,112 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH-v4 1/7] vfs: split update_time() into update_time() and
- write_time()
-Date: Thu, 27 Nov 2014 15:27:31 -0500
-Message-ID: <20141127202731.GG14091@thunk.org>
+Subject: Re: [PATCH-v4 2/7] vfs: add support for a lazytime mount option
+Date: Thu, 27 Nov 2014 18:00:16 -0500
+Message-ID: <20141127230016.GH14091@thunk.org>
 References: <1416997437-26092-1-git-send-email-tytso@mit.edu>
- <1416997437-26092-2-git-send-email-tytso@mit.edu>
- <20141126192328.GA20436@infradead.org>
- <20141127144116.GA14091@thunk.org>
- <20141127153315.GC14091@thunk.org>
- <20141127164952.GA1622@infradead.org>
+ <1416997437-26092-3-git-send-email-tytso@mit.edu>
+ <20141127131421.GE30152@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
 	XFS Developers <xfs@oss.sgi.com>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20141127164952.GA1622@infradead.org>
-Sender: linux-btrfs-owner@vger.kernel.org
+In-Reply-To: <20141127131421.GE30152@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Nov 27, 2014 at 08:49:52AM -0800, Christoph Hellwig wrote:
-> I don't think this scheme works well.  As mentioned earlier XFS doesn't
-> even use vfs dirty tracking at the moment, so introducing this in a
-> hidden way sounds like a bad idea.  Probably the same for btrfs.
-> 
-> I'd rather keep update_time as-is for now, don't add ->write_time and
-> let btrfs and XFS figure out how to implement the semantics on their
-> own.
+On Thu, Nov 27, 2014 at 02:14:21PM +0100, Jan Kara wrote:
+> * change queue_io() to also call
+> 	moved += move_expired_inodes(&wb->b_dirty_time, &wb->b_io, time + 24hours)
+>   For this you need to tweak move_expired_inodes() to take pointer to
+>   timestamp instead of pointer to work but that's trivial. Also you want
+>   probably leave time ->older_than_this value (i.e. without +24 hours) if
+>   we are doing WB_SYNC_ALL writeback. With this you can remove
+>   flush_sb_dirty_time() completely.
 
-I can do that, but part of the reason why we were doing this rather
-involved set of changes was to allow other file systems to be able to
-take advantage of lazytime.  I suppose there is value in allowing
-other file systems, such as jfs, f2fs, etc., to use it, but still,
-it's a bit of a shame to drop btrfs and xfs support for this feature.
+Well.... it's not quite enough.  The problem is that for ext3 and
+ext4, the actual work of writing the inode happens in dirty_inode(),
+not in write_inode().  Which means we need to do something like this.
 
-I'll note by the way that ext3 and ext4 doesn't really use VFS dirty
-tracking either --- see my other comments about the naming of
-"mark_inode_dirty" being a bit misleading, at least for all/most of
-the major file systems.  The problem seems to be that replacement
-schemes that we've all using are slightly different.  :-/
+I'm not entirely sure whether or not this is too ugly to live;
+personally, I think my hack of handling this in update_time() might be
+preferable....
 
-I suppose should let the btrfs folks decide whether they want to add
-is_readonly() and write_time() function --- or maybe help with the
-cleanup work so that mark_inode_dirty() can reflect an error to its
-callers.   Chris, David, what do you think?
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index b93c529..95a42b3 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -253,7 +253,7 @@ static bool inode_dirtied_after(struct inode *inode, unsigned long t)
+  */
+ static int move_expired_inodes(struct list_head *delaying_queue,
+ 			       struct list_head *dispatch_queue,
+-			       struct wb_writeback_work *work)
++			       unsigned long *older_than_this)
+ {
+ 	LIST_HEAD(tmp);
+ 	struct list_head *pos, *node;
+@@ -264,8 +264,8 @@ static int move_expired_inodes(struct list_head *delaying_queue,
+ 
+ 	while (!list_empty(delaying_queue)) {
+ 		inode = wb_inode(delaying_queue->prev);
+-		if (work->older_than_this &&
+-		    inode_dirtied_after(inode, *work->older_than_this))
++		if (older_than_this &&
++		    inode_dirtied_after(inode, *older_than_this))
+ 			break;
+ 		list_move(&inode->i_wb_list, &tmp);
+ 		moved++;
+@@ -309,9 +309,14 @@ out:
+ static void queue_io(struct bdi_writeback *wb, struct wb_writeback_work *work)
+ {
+ 	int moved;
++	unsigned long one_day_later = jiffies + (HZ * 86400);
++
+ 	assert_spin_locked(&wb->list_lock);
+ 	list_splice_init(&wb->b_more_io, &wb->b_io);
+-	moved = move_expired_inodes(&wb->b_dirty, &wb->b_io, work);
++	moved = move_expired_inodes(&wb->b_dirty, &wb->b_io,
++				    work->older_than_this);
++	moved += move_expired_inodes(&wb->b_dirty_time, &wb->b_io,
++				     &one_day_later);
+ 	trace_writeback_queue_io(wb, work, moved);
+ }
+ 
+@@ -637,6 +642,17 @@ static long writeback_sb_inodes(struct super_block *sb,
+ 		}
+ 
+ 		/*
++		 * If the inode is marked dirty time but is not dirty,
++		 * then at last for ext3 and ext4 we need to call
++		 * mark_inode_dirty_sync in order to get the inode
++		 * timestamp transferred to the on disk inode, since
++		 * write_inode is a no-op for those file systems.  HACK HACK HACK
++		 */
++		if ((inode->i_state & I_DIRTY_TIME) &&
++		    ((inode->i_state & (I_DIRTY_SYNC | I_DIRTY_DATASYNC)) == 0))
++			mark_inode_dirty_sync(inode);
++
++		/*
+ 		 * Don't bother with new inodes or inodes being freed, first
+ 		 * kind does not need periodic writeout yet, and for the latter
+ 		 * kind writeout is handled by the freer.
+@@ -1233,9 +1249,10 @@ void inode_requeue_dirtytime(struct inode *inode)
+ 	spin_lock(&bdi->wb.list_lock);
+ 	spin_lock(&inode->i_lock);
+ 	if ((inode->i_state & I_DIRTY_WB) == 0) {
+-		if (inode->i_state & I_DIRTY_TIME)
++		if (inode->i_state & I_DIRTY_TIME) {
++			inode->dirtied_when = jiffies;
+ 			list_move(&inode->i_wb_list, &bdi->wb.b_dirty_time);
+-		else
++		} else
+ 			list_del_init(&inode->i_wb_list);
+ 	}
+ 	spin_unlock(&inode->i_lock);
 
-		   	  	      	     - Ted
+Comments?
 
+						- Ted
