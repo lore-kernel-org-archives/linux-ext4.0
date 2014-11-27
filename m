@@ -1,84 +1,114 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 2/2] ext4: fix potential use after free issue while fsresize
-Date: Thu, 27 Nov 2014 16:06:35 +0300
-Message-ID: <87vbm0bxno.fsf@openvz.org>
-References: <1415958040-4393-1-git-send-email-dmonakhov@openvz.org> <1415958040-4393-2-git-send-email-dmonakhov@openvz.org> <20141125182722.GE11648@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH-v4 2/7] vfs: add support for a lazytime mount option
+Date: Thu, 27 Nov 2014 14:14:21 +0100
+Message-ID: <20141127131421.GE30152@quack.suse.cz>
+References: <1416997437-26092-1-git-send-email-tytso@mit.edu>
+ <1416997437-26092-3-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
-Cc: linux-ext4@vger.kernel.org, cmm@us.ibm.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
+	XFS Developers <xfs@oss.sgi.com>
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wg0-f42.google.com ([74.125.82.42]:39493 "EHLO
-	mail-wg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750905AbaK0NHE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Nov 2014 08:07:04 -0500
-Received: by mail-wg0-f42.google.com with SMTP id z12so6441498wgg.1
-        for <linux-ext4@vger.kernel.org>; Thu, 27 Nov 2014 05:07:03 -0800 (PST)
-In-Reply-To: <20141125182722.GE11648@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1416997437-26092-3-git-send-email-tytso@mit.edu>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Wed 26-11-14 05:23:52, Ted Tso wrote:
+> Add a new mount option which enables a new "lazytime" mode.  This mode
+> causes atime, mtime, and ctime updates to only be made to the
+> in-memory version of the inode.  The on-disk times will only get
+> updated when (a) if the inode needs to be updated for some non-time
+> related change, (b) if userspace calls fsync(), syncfs() or sync(), or
+> (c) just before an undeleted inode is evicted from memory.
+> 
+> This is OK according to POSIX because there are no guarantees after a
+> crash unless userspace explicitly requests via a fsync(2) call.
+> 
+> For workloads which feature a large number of random write to a
+> preallocated file, the lazytime mount option significantly reduces
+> writes to the inode table.  The repeated 4k writes to a single block
+> will result in undesirable stress on flash devices and SMR disk
+> drives.  Even on conventional HDD's, the repeated writes to the inode
+> table block will trigger Adjacent Track Interference (ATI) remediation
+> latencies, which very negatively impact 99.9 percentile latencies ---
+> which is a very big deal for web serving tiers (for example).
+  So this looks better to me than previous versions but I'm still not 100%
+happy :)
 
-Theodore Ts'o <tytso@mit.edu> writes:
+Looking into the code & your patch I'd prefer to do something like:
+* add support for I_DIRTY_TIME in __mark_inode_dirty() - update_time will
+  call __mark_inode_dirty() with this flag if any of the times was updated.
+  That way we can just remove your ->write_time() callback - filesystems
+  can just handle this in their ->dirty_inode() methods if they wish.
+  __mark_inode_dirty() will take care of moving inode into proper writeback
+  list (i_dirty / i_dirty_time), dirtied_when will be set to current time.
+* change queue_io() to also call
+	moved += move_expired_inodes(&wb->b_dirty_time, &wb->b_io, time + 24hours)
+  For this you need to tweak move_expired_inodes() to take pointer to
+  timestamp instead of pointer to work but that's trivial. Also you want
+  probably leave time ->older_than_this value (i.e. without +24 hours) if
+  we are doing WB_SYNC_ALL writeback. With this you can remove
+  flush_sb_dirty_time() completely.
+* Changes for iput() & fsync stay as they are.
 
-> On Fri, Nov 14, 2014 at 01:40:40PM +0400, Dmitry Monakhov wrote:
->> We need some sort of synchronization while updating ->s_group_desc becau=
-se there
->> are a lot of users which can access old ->s_group_desc array after it wa=
-s released.
->> It is reasonable to use lightweight seqcount_t here instead of RCU.
->>=20
->> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
->
-> I'm curious --- under what circumstances did you manage to hit this,
-> or was this something that you noticed?
->
->> +	do {
->> +		seq =3D read_seqcount_begin(&sbi->s_group_desc_seq);
->> +		gd_bh =3D sbi->s_group_desc[group_desc];
->> +	} while (unlikely(read_seqcount_retry(&sbi->s_group_desc_seq, seq)));
->
-> The problem is that s_group_desc is allocated using ext4_kvmalloc(),
-> which means it's possible that it was allocated using vmalloc().
-> Which means that it is possible (although unlikely) that the old
-> s_group_desc address could become invalidated after the call to
-> ext4_kvfree(o_group_desc).
->
-> This will only happen on 32-bit platforms if we get unlucky and the
-> kmap region gets recycled right after the vfree(); but we would only
-> see the bug in practice if the memory gets kfree'ed gets reused
-> immeidately afterwards, and we've been living with this with ext3 for
-> a long time.  Don't get me wrong; I'm not saying we should ignore this
-> bug, since I certainly agree with you that it is truly a bug.  But if
-> we are going to fix it, we should probably fix it all the way, which I
-> suspect means we may have to use RCU here.
->
-> OTOH, if you are hitting this in live production workloads, then we
-> can do the partial fix now, and then fix it all the way up later.  Is
-> the RCU mechanism really going to be that ugly?  It's not like we are
-> resizing all the time, so we don't need to worry about it being
-> heavyweight from a performance point of view, no?
-I use seqcount_t because Doc/RCU/array.txt state that it is lighter,
-but indeed I've missed vmalloc case so I'll rewrite it to RCU.
->
-> 	    	   	       	     	- Ted
+And this should be all that's necessary. I'm not 100% sure about your dirty
+bits naming changes - let's see how that will look like when the above more
+substantial changes are done.
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+One technical detail below:
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
+> diff --git a/fs/inode.c b/fs/inode.c
+> index 8f5c4b5..9e464cc 100644
+> --- a/fs/inode.c
+> +++ b/fs/inode.c
+> @@ -1430,11 +1430,22 @@ static void iput_final(struct inode *inode)
+>   */
+>  void iput(struct inode *inode)
+>  {
+> -	if (inode) {
+> -		BUG_ON(inode->i_state & I_CLEAR);
+> -
+> -		if (atomic_dec_and_lock(&inode->i_count, &inode->i_lock))
+> -			iput_final(inode);
+> +	if (!inode)
+> +		return;
+> +	BUG_ON(inode->i_state & I_CLEAR);
+  I think we can better handle this without retry at this place like:
+	if (atomic_read(&inode->i_count) == 1 && inode->i_nlink &&
+	    (inode->i_state & I_DIRTY_TIME)) {
+		if (inode->i_op->write_time)
+			inode->i_op->write_time(inode);
+		else if (inode->i_sb->s_op->write_inode)
+			mark_inode_dirty_sync(inode);
+	}
+  Sure it will be one more read of i_count in the fast path but that's IMO
+negligible.
 
-iQEbBAEBCgAGBQJUdyHbAAoJELhyPTmIL6kB5SsH923g725xWXMyc2+5kzBc4PNe
-UeOVUo6LYiOFZyqFzIo0p/Fv/v/sija2kewNleNbico0n0G0S9gjLczrbJzbujvT
-MWYCubrFsCXMmBBcAeyOo2+ZymtpFDkxMiqQeA7ceYp5ngU6jnyqqgu3gA8LswVA
-BO3LfS0G7gCxsRqveag8Q/R8LAgB2hPzB7QmbmH5o0bfhbHg4ciEEWjLGeHW8uEm
-y/yF8lRy/CvkEcLLEvt3UPheRcn8OZ+5Q4CAd757GrN6/JzgBmpmj1lY0uBDI0xA
-J4hk+pq2S41jhR6XcJI94FjI9lTdkLmrBtw4sPwBNUVxbHU7UqI7sFlhIW/SsQ==
-=5Wjh
------END PGP SIGNATURE-----
---=-=-=--
+BTW: Is the test for ->write_inode really needed? We don't do it e.g. in
+update_time().
+
+> +retry:
+> +	if (atomic_dec_and_lock(&inode->i_count, &inode->i_lock)) {
+> +		if (inode->i_nlink && (inode->i_state & I_DIRTY_TIME)) {
+> +			atomic_inc(&inode->i_count);
+> +			inode->i_state &= ~I_DIRTY_TIME;
+> +			spin_unlock(&inode->i_lock);
+> +			if (inode->i_op->write_time)
+> +				inode->i_op->write_time(inode);
+> +			else if (inode->i_sb->s_op->write_inode)
+> +				mark_inode_dirty_sync(inode);
+> +			goto retry;
+> +		}
+> +		iput_final(inode);
+>  	}
+>  }
+>  EXPORT_SYMBOL(iput);
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
