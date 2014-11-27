@@ -1,32 +1,151 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH-v4 1/7] vfs: split update_time() into update_time() and
- write_time()
-Date: Thu, 27 Nov 2014 07:25:04 -0800
-Message-ID: <20141127152504.GA15839@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH-v4 6/7] ext4: add support for a lazytime mount option
+Date: Thu, 27 Nov 2014 10:25:24 -0500
+Message-ID: <20141127152524.GB14091@thunk.org>
 References: <1416997437-26092-1-git-send-email-tytso@mit.edu>
- <1416997437-26092-2-git-send-email-tytso@mit.edu>
- <20141126192328.GA20436@infradead.org>
- <20141127123429.GD30152@quack.suse.cz>
+ <1416997437-26092-7-git-send-email-tytso@mit.edu>
+ <20141126224843.GG9561@dastard>
+ <1A106262-D64C-4493-856F-AAAFC3BE2647@dilger.ca>
+ <20141126233537.GH9561@dastard>
+ <20141127132752.GF30152@quack.suse.cz>
+ <20141127133227.GA11872@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
+Cc: Dave Chinner <david@fromorbit.com>,
+	Andreas Dilger <adilger@dilger.ca>,
 	Linux Filesystem Development List
 	<linux-fsdevel@vger.kernel.org>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
 	XFS Developers <xfs@oss.sgi.com>
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:55320 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750834AbaK0PZf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 27 Nov 2014 10:25:35 -0500
 Content-Disposition: inline
-In-Reply-To: <20141127123429.GD30152@quack.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20141127133227.GA11872@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 27, 2014 at 01:34:29PM +0100, Jan Kara wrote:
->   But Ted changed XFS to copy timestamps to on-disk structure from the
-> in-memory inode fields after VFS updated the timestamps. So the stamps
-> should be coherent AFAICT, shouldn't they?
+This is what I'm currently playing with which I believe fixes the iput()
+problem.  In fs/ext4/inode.c:
 
-Not coherent enough.  We need the XFS ilock to synchronize reading from
-and writing to the time stamps.  update_time() only has i_mutex, which
-we can't take for the transaction commit path.
+struct other_inode {
+	unsigned long		orig_ino;
+	struct ext4_inode	*raw_inode;
+};
+static int other_inode_match(struct inode * inode, unsigned long ino,
+			     void *data);
+
+/*
+ * Opportunistically update the other time fields for other inodes in
+ * the same inode table block.
+ */
+static void ext4_update_other_inodes_time(struct super_block *sb,
+					  unsigned long orig_ino, char *buf)
+{
+	struct other_inode oi;
+	unsigned long ino;
+	int i, inodes_per_block = EXT4_SB(sb)->s_inodes_per_block;
+	int inode_size = EXT4_INODE_SIZE(sb);
+
+	oi.orig_ino = orig_ino;
+	ino = orig_ino & ~(inodes_per_block - 1);
+	for (i = 0; i < inodes_per_block; i++, ino++, buf += inode_size) {
+		if (ino == orig_ino)
+			continue;
+		oi.raw_inode = (struct ext4_inode *) buf;
+		(void) find_inode_nowait(sb, ino, other_inode_match, &oi);
+	}
+}
+
+static int other_inode_match(struct inode * inode, unsigned long ino,
+			     void *data)
+{
+	struct other_inode *oi = (struct other_inode *) data;
+
+	if ((inode->i_ino != ino) ||
+	    (inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW)) ||
+	    ((inode->i_state & I_DIRTY_TIME) == 0))
+		return 0;
+	spin_lock(&inode->i_lock);
+	if (((inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW)) == 0) &&
+	    (inode->i_state & I_DIRTY_TIME)) {
+		struct ext4_inode_info	*ei = EXT4_I(inode);
+
+		inode->i_state &= ~I_DIRTY_TIME;
+		inode->i_ts_dirty_day = 0;
+		spin_unlock(&inode->i_lock);
+		inode_requeue_dirtytime(inode);
+
+		spin_lock(&ei->i_raw_lock);
+		EXT4_INODE_SET_XTIME(i_ctime, inode, oi->raw_inode);
+		EXT4_INODE_SET_XTIME(i_mtime, inode, oi->raw_inode);
+		EXT4_INODE_SET_XTIME(i_atime, inode, oi->raw_inode);
+		ext4_inode_csum_set(inode, oi->raw_inode, ei);
+		spin_unlock(&ei->i_raw_lock);
+		trace_ext4_other_inode_update_time(inode, oi->orig_ino);
+		return -1;
+	}
+	spin_unlock(&inode->i_lock);
+	return -1;
+}
+
+The above uses the following in fs/inode.c (which gets added instead of
+find_active_inode_nowait):
+
+/**
+ * find_inode_nowait - find an inode in the inode cache
+ * @sb:		super block of file system to search
+ * @hashval:	hash value (usually inode number) to search for
+ * @match:	callback used for comparisons between inodes
+ * @data:	opaque data pointer to pass to @match
+ *
+ * Search for the inode specified by @hashval and @data in the inode
+ * cache, where the helper function @match will return 0 if the inode
+ * does not match, 1 if the inode does match, and -1 if the search
+ * should be stopped.  The @match function must be responsible for
+ * taking the i_lock spin_lock and checking i_state for an inode being
+ * freed or being initialized, and incrementing the reference count
+ * before returning 1.  It also must not sleep, since it is called with
+ * the inode_hash_lock spinlock held.
+ *
+ * This is a even more generalized version of ilookup5() when the
+ * function must never block --- find_inode() can block in
+ * __wait_on_freeing_inode() --- or when the caller can not increment
+ * the reference count because the resulting iput() might cause an
+ * inode eviction().  The tradeoff is that the @match funtion must be
+ * very carefully implemented.
+ */
+struct inode *find_inode_nowait(struct super_block *sb,
+				unsigned long hashval,
+				int (*match)(struct inode *, unsigned long,
+					     void *),
+				void *data)
+{
+	struct hlist_head *head = inode_hashtable + hash(sb, hashval);
+	struct inode *inode, *ret_inode = NULL;
+	int mval;
+
+	spin_lock(&inode_hash_lock);
+	hlist_for_each_entry(inode, head, i_hash) {
+		if (inode->i_sb != sb)
+			continue;
+		mval = match(inode, hashval, data);
+		if (mval == 0)
+			continue;
+		if (mval == 1)
+			ret_inode = inode;
+		goto out;
+	}
+out:
+	spin_unlock(&inode_hash_lock);
+	return ret_inode;
+}
+EXPORT_SYMBOL(find_inode_nowait);
+
+Comments?
+
+							- Ted
