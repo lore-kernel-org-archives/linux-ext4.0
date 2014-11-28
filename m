@@ -1,132 +1,109 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH-v5 3/5] vfs: add lazytime tracepoints for better debugging
-Date: Fri, 28 Nov 2014 01:00:09 -0500
-Message-ID: <1417154411-5367-5-git-send-email-tytso@mit.edu>
-References: <1417154411-5367-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH-v5 0/5] add support for a lazytime mount option
+Date: Fri, 28 Nov 2014 01:00:05 -0500
+Message-ID: <1417154411-5367-1-git-send-email-tytso@mit.edu>
 Cc: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>,
 	Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:56306 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751057AbaK1GAW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 28 Nov 2014 01:00:22 -0500
-In-Reply-To: <1417154411-5367-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/fs-writeback.c         |  1 +
- fs/inode.c                |  5 +++++
- include/trace/events/fs.h | 56 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 62 insertions(+)
+This is an updated version of what had originally been an
+ext4-specific patch which significantly improves performance by lazily
+writing timestamp updates (and in particular, mtime updates) to disk.
+The in-memory timestamps are always correct, but they are only written
+to disk when required for correctness.
+
+This provides a huge performance boost for ext4 due to how it handles
+journalling, but it's valuable for all file systems running on flash
+storage or drive-managed SMR disks by reducing the metadata write
+load.  So upon request, I've moved the functionality to the VFS layer.
+Once the /sbin/mount program adds support for MS_LAZYTIME, all file
+systems should be able to benefit from this optimization.
+
+There is still an ext4-specific optimization, which may be applicable
+for other file systems which store more than one inode in a block, but
+it will require file system specific code.  It is purely optional,
+however.
+
+Please note the changes to update_time() and the new write_time() inode
+operations functions, which impact btrfs and xfs.  The changes are
+fairly simple, but I would appreciate confirmation from the btrfs and
+xfs teams that I got things right.   Thanks!!
+
+Changes since -v4:
+   - Fix ext4 optimization so it does not need to increment (and more
+     problematically, decrement) the inode reference count
+   - Per Christoph's suggestion, drop support for btrfs and xfs for now,
+     issues with how btrfs and xfs handle dirty inode tracking.  We can add
+     btrfs and xfs support back later or at the end of this series if we
+     want to revisit this decision.
+   - Miscellaneous cleanups
+
+Changes since -v3:
+   - inodes with I_DIRTY_TIME set are placed on a new bdi list,
+        b_dirty_time.  This allows filesystem-level syncs to more
+        easily iterate over those inodes that need to have their
+        timestamps written to disk.
+   - dirty timestamps will be written out asynchronously on the final
+        iput, instead of when the inode gets evicted.
+   - separate the definition of the new function
+        find_active_inode_nowait() to a separate patch
+   - create separate flag masks: I_DIRTY_WB and I_DIRTY_INODE, which
+       indicate whether the inode needs to be on the write back lists,
+       or whether the inode itself is dirty, while I_DIRTY means any one
+       of the inode dirty flags are set.  This simplifies the fs
+       writeback logic which needs to test for different combinations of
+       the inode dirty flags in different places.
+
+Changes since -v2:
+   - If update_time() updates i_version, it will not use lazytime (i..e,
+       the inode will be marked dirty so the change will be persisted on to
+       disk sooner rather than later).  Yes, this eliminates the
+       benefits of lazytime if the user is experting the file system via
+       NFSv4.  Sad, but NFS's requirements seem to mandate this.
+   - Fix time wrapping bug 49 days after the system boots (on a system
+        with a 32-bit jiffies).   Use get_monotonic_boottime() instead.
+   - Clean up type warning in include/tracing/ext4.h
+   - Added explicit parenthesis for stylistic reasons    
+   - Added an is_readonly() inode operations method so btrfs doesn't
+       have to duplicate code in update_time().
+
+Changes since -v1:
+   - Added explanatory comments in update_time() regarding i_ts_dirty_days
+   - Fix type used for days_since_boot
+   - Improve SMP scalability in update_time and ext4_update_other_inodes_time
+   - Added tracepoints to help test and characterize how often and under
+         what circumstances inodes have their timestamps lazily updated
+
+Theodore Ts'o (5):
+  vfs: add support for a lazytime mount option
+  vfs: don't let the dirty time inodes get more than a day stale
+  vfs: add lazytime tracepoints for better debugging
+  vfs: add find_inode_nowait() function
+  ext4: add optimization for the lazytime mount option
+
+ fs/ext4/inode.c             |  66 +++++++++++++++++++++++--
+ fs/ext4/super.c             |   9 ++++
+ fs/fs-writeback.c           |  66 ++++++++++++++++++++++---
+ fs/inode.c                  | 116 +++++++++++++++++++++++++++++++++++++++++---
+ fs/libfs.c                  |   2 +-
+ fs/logfs/readwrite.c        |   2 +-
+ fs/nfsd/vfs.c               |   2 +-
+ fs/pipe.c                   |   2 +-
+ fs/proc_namespace.c         |   1 +
+ fs/sync.c                   |   8 +++
+ fs/ufs/truncate.c           |   2 +-
+ include/linux/backing-dev.h |   1 +
+ include/linux/fs.h          |  17 ++++++-
+ include/trace/events/ext4.h |  30 ++++++++++++
+ include/trace/events/fs.h   |  56 +++++++++++++++++++++
+ include/uapi/linux/fs.h     |   1 +
+ mm/backing-dev.c            |  10 +++-
+ 17 files changed, 367 insertions(+), 24 deletions(-)
  create mode 100644 include/trace/events/fs.h
 
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index 15dec84..9facc18 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -27,6 +27,7 @@
- #include <linux/backing-dev.h>
- #include <linux/tracepoint.h>
- #include <linux/device.h>
-+#include <trace/events/fs.h>
- #include "internal.h"
- 
- /*
-diff --git a/fs/inode.c b/fs/inode.c
-index 84a5a3d..e062640 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -20,6 +20,9 @@
- #include <linux/list_lru.h>
- #include "internal.h"
- 
-+#define CREATE_TRACE_POINTS
-+#include <trace/events/fs.h>
-+
- /*
-  * Inode locking rules:
-  *
-@@ -1440,6 +1443,7 @@ retry:
- 			inode->i_state &= ~I_DIRTY_TIME;
- 			spin_unlock(&inode->i_lock);
- 			mark_inode_dirty_sync(inode);
-+			trace_fs_lazytime_iput(inode);
- 			goto retry;
- 		}
- 		iput_final(inode);
-@@ -1556,6 +1560,7 @@ static int update_time(struct inode *inode, struct timespec *time, int flags)
- 		inode->i_ts_dirty_day = days_since_boot;
- 		spin_unlock(&inode->i_lock);
- 		inode_requeue_dirtytime(inode);
-+		trace_fs_lazytime_defer(inode);
- 		return 0;
- 	}
- force_dirty:
-diff --git a/include/trace/events/fs.h b/include/trace/events/fs.h
-new file mode 100644
-index 0000000..fa32295
---- /dev/null
-+++ b/include/trace/events/fs.h
-@@ -0,0 +1,56 @@
-+#undef TRACE_SYSTEM
-+#define TRACE_SYSTEM fs
-+
-+#if !defined(_TRACE_FS_H) || defined(TRACE_HEADER_MULTI_READ)
-+#define _TRACE_FS_H
-+
-+#include <linux/tracepoint.h>
-+
-+DECLARE_EVENT_CLASS(fs__inode,
-+	TP_PROTO(struct inode *inode),
-+
-+	TP_ARGS(inode),
-+
-+	TP_STRUCT__entry(
-+		__field(	dev_t,	dev			)
-+		__field(	ino_t,	ino			)
-+		__field(	uid_t,	uid			)
-+		__field(	gid_t,	gid			)
-+		__field(	__u16, mode			)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev	= inode->i_sb->s_dev;
-+		__entry->ino	= inode->i_ino;
-+		__entry->uid	= i_uid_read(inode);
-+		__entry->gid	= i_gid_read(inode);
-+		__entry->mode	= inode->i_mode;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu mode 0%o uid %u gid %u",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino, __entry->mode,
-+		  __entry->uid, __entry->gid)
-+);
-+
-+DEFINE_EVENT(fs__inode, fs_lazytime_defer,
-+	TP_PROTO(struct inode *inode),
-+
-+	TP_ARGS(inode)
-+);
-+
-+DEFINE_EVENT(fs__inode, fs_lazytime_iput,
-+	TP_PROTO(struct inode *inode),
-+
-+	TP_ARGS(inode)
-+);
-+
-+DEFINE_EVENT(fs__inode, fs_lazytime_flush,
-+	TP_PROTO(struct inode *inode),
-+
-+	TP_ARGS(inode)
-+);
-+#endif /* _TRACE_FS_H */
-+
-+/* This part must be outside protection */
-+#include <trace/define_trace.h>
 -- 
 2.1.0
 
