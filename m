@@ -1,78 +1,132 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH] ext4: fix suboptimal seek_{data,hole} extents traversial
-Date: Fri, 28 Nov 2014 18:02:02 +0300
-Message-ID: <873893id1x.fsf@openvz.org>
-References: <87egu7k6ym.fsf@openvz.org> <1413552334-32240-1-git-send-email-dmonakhov@openvz.org> <20141125211433.GB28449@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH-v5 0/5] add support for a lazytime mount option
+Date: Fri, 28 Nov 2014 10:07:08 -0500
+Message-ID: <20141128150708.GJ14091@thunk.org>
+References: <1417154411-5367-1-git-send-email-tytso@mit.edu>
+ <CA+icZUUaXTVKczXHaxJbVgRpd9FaN+csraOsgaqoV72Dc=+OLw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20141125211433.GB28449@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Linux Filesystem Development List
+	<linux-fsdevel@vger.kernel.org>
+To: Sedat Dilek <sedat.dilek@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:57023 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751302AbaK1PHM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 28 Nov 2014 10:07:12 -0500
+Content-Disposition: inline
+In-Reply-To: <CA+icZUUaXTVKczXHaxJbVgRpd9FaN+csraOsgaqoV72Dc=+OLw@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Fri, Nov 28, 2014 at 09:55:19AM +0100, Sedat Dilek wrote:
+> Some questions... on how to test this...
+> 
+> [ Base ]
+> Is this patchset on top of ext4-next (ext4.git#dev)? Might someone
+> test on top of Linux v3.18-rc6 with pulled in ext4.git#dev2?
 
-Theodore Ts'o <tytso@mit.edu> writes:
+Yes and yes.  I've been doing xfstest runs using the dev2 branch, and
+my laptop has been running mainline with the ext4.git#dev plus
+lazytime patches (i.e., ext4.git#dev2) pulled in.
 
-> On Fri, Oct 17, 2014 at 05:25:34PM +0400, Dmitry Monakhov wrote:
->> It is rediculus practice to scan inode block by block, this technique
->> applicable only for old indirect files. This takes signifficant amount
->> of time for really large files. Let's reuse ext4_fiemap which already
->> traverse inode-tree in most optimal meaner.
->>=20
->> TESTCASE:
->> ftruncate64(fd, 0);
->> ftruncate64(fd, 1ULL << 40);
->> /* lseek will spin very long time */
->> lseek64(fd, 0, SEEK_DATA);
->> lseek64(fd, 0, SEEK_HOLE);
->>=20
->>=20
->> Original report: https://lkml.org/lkml/2014/10/16/620
->>=20
->> ##################################
->> BTW: Why do we need i_mutex here?
->>=20
->> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
->
-> Note: this patch causes generic/285 to loop forever in inline-data
-> mode.  My guess is in the special case handling of inline data in
-> ext4_fiemap not playing well with this change, but I haven't had a
-> chance to look deeply into this yet.
-FYI: inline_data feature is fatally broken
+> [ Userland ]
+> Do I need an updated userland (/sbin/mount)? IOW, adding "lazytime" to
+> my ext4-line(s) in /etc/fstab is enough?
 
-1) incorrect lock order (journal_start vs grab_cache_page_write_begin )
-   ext4_da_write_inline_data_begin
-   ->start_journal
-   ->grab_cache_page_write_begin
-     ->pagecache_get_page -> FS_REENTRANCE->DEADLOCK
+There is some temporary infrastructure for ext4 so that adding
+"lazytime" to the ext4 line should be enough.
 
-2) ext4_inline_data_fiemap(0 ignores start and len arguments from ext4_file=
-map()
-   which obviously result in endless loop for anyone who want to use
-   fiemap for inline files (which my patch try to do)
+> [ Benchmarks ]
+> Do you have numbers - how big/fast is the benefit? On a desktop machine?
 
-I'll send patches soon.
->
-> 					- Ted
+For a typical desktop machine workload, I doubt you will notice a
+difference.  The tracepoints allow you to see how much work can get
+delayed.  What I've been doing on my laptop:
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+	for i in / /u1 /build ; do mount -o remount,lazytime $i; done
+	cd /sys/kernel/debug/tracing
+	echo fs:fs_lazytime_defer > set_event
+	echo fs:fs_lazytime_iput > set_event
+	echo fs:fs_lazytime_flush > set_event
+	echo ext4:ext4_other_inode_update_time >> set_event
+	cat trace_pipe
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
+The place where this will show a big benefit is where you are doing
+non-allocating writes to a file --- for example, if you have a large
+database (or possibly a VM image file) where you are sending random
+writes to the file.  Without this patch, every five seconds the
+inode's mtime field will get updated on every write (if you are using
+256 byte inodes, and thus have fine-grained timestamps) or once a
+second (if you are using 128 byte inodes).  These inode timestamp
+updates will be sent to disk once every five seconds, either via
+ext4's journaling mechanisms, or if you are running in no-journal
+mode, via the dirty inode writeback.
 
-iQEcBAEBCgAGBQJUeI5qAAoJELhyPTmIL6kBXuMH/jQrNxh0jAuiyKZ1/nQuD13J
-yIe6t+pOXgmBP2DIqcFRtBKb6YdKsRKulDSjw5KfSOMf7l9ELNTzKdkgjNTdH1gn
-4K5+kjz1Am9p1eX3/rFafLw3f4mEpcww4dzsGLl4sFaAZALomPCGmlNXrXFjlQU2
-FahB9CCbptdhvkNyO0kI/TLnWcHKt7U64ogZryFQfJ3gx5+2mJFxu+t1dk2d8cXi
-EUpaMWpmT5rxLHXWdXbZusdwqi+9AwuMes7aTiB9zIhcCx5HuMFLZ4yOV5maUTcV
-L1sCFHGH2jB1/Ogp8xWXlXZWgrzWtvxkbb1q9eT98Ns8AB8x0h2n7CLZW6wszW8=
-=ZeSd
------END PGP SIGNATURE-----
---=-=-=--
+How does this manifest in numbers?  Well, if you have journalling
+enabled, the metadata updates are journalled, so if you are running a
+sufficiently aggressive workload on a large SMP system, you can see
+the journal lock contention.  If you were to set up a benchmarking
+configuration with a ramdisk on a 16+ core machine, and used a fio job
+writing to a large file on said ramdisk from all the cores in
+parallel, I'm sure you would see the effects.
+
+For people who care about long tail latency, interference effects from
+journal commits (especially if you have other file system traffic
+happening at the same time), or from the journal checkpoint would also
+be measurable.  Dmitry has measured this and had been looking at this
+as a performance bug using some kind of an AIO workload, but I don't
+have more details about this.
+
+If you aren't using the journal, and you care about long tail latency
+very much, it turns out that HDD's do have an effect similar to the
+SSD write disturb effect, where random writes to the same block will
+eventually cause the HDD to need to rewrite a number of tracks around
+a particular area of disk which is constantly getting hammered.  This
+is around 100ms, and is very easily measurable if you have a set up
+that is looking for long-tail latency effects and are trying to
+control them.   (This is what originally inspired this patch set.)
+
+>From my usage on my desktop, looking at the tracepoint data, you will
+also see fs_lazytime_defer traces from relatime updates (where the
+atime is older than a day, or when atime <= mtime), and from compile
+runs where the linker writes the ELF header after writing every thing
+else --- it turns out the libbfd linker has a terrible random write
+pattern, good for stress testing NFS servers and delayed allocation
+algorithms.  :-)
+
+In the latter case, upon closer inspection the mtime in memory is a
+millisecond or so newer than the time on disk (since if you do an
+allocating write which changes i_size or i_blocks, the contents of the
+inode will be sent to disk, including the mtime at the time).
+However, whether you look at the on-disk or in-memory mtime for said
+generated foo.o file, either will be newer than the source foo.c file,
+so even if we crash without the slightly stale mtime not getting saved
+to disk, it shouldn't cause any problem in actual practice.  (The
+safety question has come up in some internal discussions, so I've
+looked at this question fairly carefully.)
+
+[ I can imagine an ext4 optimization where as part of the commit
+  process, we check all of the inode tables about to be commited, and
+  capture the updated inode times from any lazily updated timestamps,
+  which would avoid this issue.  This would be an even more aggressive
+  optimization than what is currently in the patch set which does this
+  whenever an adjacent inode in the same inode table block is updated.
+  I'm not sure trying to do the commit-time optimization is worth it,
+  however. ]
+
+Anyway, the deferred relatime updates are thus the main real benefit
+you would see on a desktop workload (since the mtime updates from the
+final linker write would typically end up in the same commit, so it
+really doesn't avoid a HDD write op).  And while these random writes
+from the relatime updates aren't _nice_ for a SSD in terms of
+performance or write endurance, for most desktop workloads the effect
+isn't going to be great enough to be measurable.  Things might be
+different on a drive-managed SMR disk, or on eMMC flash or SD cards
+with a really crappy flash translation layer, but I haven't had a
+chance to look at the effect on those types of storage media to date.
+
+Cheers,
+
+							- Ted
