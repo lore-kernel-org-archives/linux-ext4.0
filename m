@@ -1,55 +1,99 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH-v4 2/7] vfs: add support for a lazytime mount option
-Date: Fri, 28 Nov 2014 00:36:56 -0500
-Message-ID: <20141128053656.GI14091@thunk.org>
-References: <1416997437-26092-1-git-send-email-tytso@mit.edu>
-	<1416997437-26092-3-git-send-email-tytso@mit.edu>
-	<20141127131421.GE30152@quack.suse.cz>
-	<20141127230016.GH14091@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Subject: [PATCH-v5 2/5] vfs: don't let the dirty time inodes get more than a day stale
+Date: Fri, 28 Nov 2014 01:00:07 -0500
+Message-ID: <1417154411-5367-3-git-send-email-tytso@mit.edu>
+References: <1417154411-5367-1-git-send-email-tytso@mit.edu>
 Cc: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <20141127230016.GH14091@thunk.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+	Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:56305 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751044AbaK1GAW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 28 Nov 2014 01:00:22 -0500
+In-Reply-To: <1417154411-5367-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 27, 2014 at 06:00:16PM -0500, Theodore Ts'o wrote:
-> Well.... it's not quite enough.  The problem is that for ext3 and
-> ext4, the actual work of writing the inode happens in dirty_inode(),
-> not in write_inode().  Which means we need to do something like this.
-> 
-> I'm not entirely sure whether or not this is too ugly to live;
-> personally, I think my hack of handling this in update_time() might be
-> preferable....
+Guarantee that the on-disk timestamps will be no more than 24 hours
+stale.
 
-.... and this doesn't work because it breaks ext3/ext4's transaction
-handling, since the writeback thread could be racing against some
-transactional update of the inode.  So I don't see a way of making the
-queue_io / move_expired_inodes approach to the 24 hour time being
-tractable.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/fs-writeback.c  |  1 +
+ fs/inode.c         | 20 ++++++++++++++++++++
+ include/linux/fs.h |  1 +
+ 3 files changed, 22 insertions(+)
 
-So the alternatives that I can see at this point is either give up on
-the 24 hour timeout, or we fall back to handling this in
-update_time().
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index 518f3bb..15dec84 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -1147,6 +1147,7 @@ void __mark_inode_dirty(struct inode *inode, int flags)
+ 	if (flags & (I_DIRTY_SYNC | I_DIRTY_DATASYNC)) {
+ 		trace_writeback_dirty_inode_start(inode, flags);
+ 
++		inode->i_ts_dirty_day = 0;
+ 		if (sb->s_op->dirty_inode)
+ 			sb->s_op->dirty_inode(inode, flags);
+ 
+diff --git a/fs/inode.c b/fs/inode.c
+index 1ec0629..84a5a3d 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -1507,6 +1507,9 @@ static int relatime_need_update(struct vfsmount *mnt, struct inode *inode,
+  */
+ static int update_time(struct inode *inode, struct timespec *time, int flags)
+ {
++	struct timespec uptime;
++	unsigned short days_since_boot;
++
+ 	if (inode->i_op->update_time)
+ 		return inode->i_op->update_time(inode, time, flags);
+ 
+@@ -1524,6 +1527,22 @@ static int update_time(struct inode *inode, struct timespec *time, int flags)
+ 	    !(inode->i_state & I_DIRTY_WB)) {
+ 		if (inode->i_state & I_DIRTY_TIME)
+ 			return 0;
++		get_monotonic_boottime(&uptime);
++		days_since_boot = div_u64(uptime.tv_sec, 86400);
++		/*
++		 * If i_ts_dirty_day is zero, then either we have not
++		 * deferred timestamp updates, or the system has been
++		 * up for less than a day (so days_since_boot is
++		 * zero), so we can defer timestamp updates in that
++		 * case.  If a day or more has passed, then
++		 * i_ts_dirty_day will be different from
++		 * days_since_boot, and then we should update the
++		 * on-disk inode and then we can clear i_ts_dirty_day.
++		 */
++		if (inode->i_ts_dirty_day &&
++		    (inode->i_ts_dirty_day != days_since_boot))
++			goto force_dirty;
++
+ 		spin_lock(&inode->i_lock);
+ 		if (inode->i_state & I_DIRTY_WB) {
+ 			spin_unlock(&inode->i_lock);
+@@ -1534,6 +1553,7 @@ static int update_time(struct inode *inode, struct timespec *time, int flags)
+ 			return 0;
+ 		}
+ 		inode->i_state |= I_DIRTY_TIME;
++		inode->i_ts_dirty_day = days_since_boot;
+ 		spin_unlock(&inode->i_lock);
+ 		inode_requeue_dirtytime(inode);
+ 		return 0;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 7932482..2b86b5d 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -575,6 +575,7 @@ struct inode {
+ 	struct timespec		i_ctime;
+ 	spinlock_t		i_lock;	/* i_blocks, i_bytes, maybe i_size */
+ 	unsigned short          i_bytes;
++	unsigned short		i_ts_dirty_day;
+ 	unsigned int		i_blkbits;
+ 	blkcnt_t		i_blocks;
+ 
+-- 
+2.1.0
 
-					- Ted
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
