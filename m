@@ -1,63 +1,78 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH-v4 2/7] vfs: add support for a lazytime mount option
-Date: Fri, 28 Nov 2014 13:41:35 +0100
-Message-ID: <20141128124135.GA27902@quack.suse.cz>
-References: <1416997437-26092-1-git-send-email-tytso@mit.edu>
- <1416997437-26092-3-git-send-email-tytso@mit.edu>
- <20141127131421.GE30152@quack.suse.cz>
- <20141127201954.GF14091@thunk.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH] ext4: fix suboptimal seek_{data,hole} extents traversial
+Date: Fri, 28 Nov 2014 18:02:02 +0300
+Message-ID: <873893id1x.fsf@openvz.org>
+References: <87egu7k6ym.fsf@openvz.org> <1413552334-32240-1-git-send-email-dmonakhov@openvz.org> <20141125211433.GB28449@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Linux Filesystem Development List
-	<linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha512; protocol="application/pgp-signature"
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20141127201954.GF14091@thunk.org>
-Sender: linux-btrfs-owner@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20141125211433.GB28449@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 27-11-14 15:19:54, Ted Tso wrote:
-> On Thu, Nov 27, 2014 at 02:14:21PM +0100, Jan Kara wrote:
-> > Looking into the code & your patch I'd prefer to do something like:
-> > * add support for I_DIRTY_TIME in __mark_inode_dirty() - update_time will
-> >   call __mark_inode_dirty() with this flag if any of the times was updated.
-> >   That way we can just remove your ->write_time() callback - filesystems
-> >   can just handle this in their ->dirty_inode() methods if they wish.
-> >   __mark_inode_dirty() will take care of moving inode into proper writeback
-> >   list (i_dirty / i_dirty_time), dirtied_when will be set to current time.
-> 
-> One of the tricky bits about this is that btrfs wants to be able to
-> return an error from write_time() which gets reflected up through
-> update_time() to the callers of file_update_time().  Currently
-> __mark_inode_dirty() and family return a void, and changing this is
-> going to be a bit of a mess, since doing this correctly would require
-> auditing all of the callers of mark_inode_dirty(),
-> mark_inode_dirty_sync(), __mark_inode_dirty(), etc.
-> 
-> Doing this would be a good thing, and eventually I think it would be
-> nice if we could allow the mark_inode_dirty() functions return an
-> error instead of void, but I wonder if that's a cleanup that's better
-> saved for later.  While we were at it, maybe we should rename
-> mark_inode_dirty() to inode_dirty(), since that way we can be sure
-> we've looked at all of the call site of mark_inode_dirty() and friends
-> --- and we have a number of file systems, including btrfs, ext3, and
-> ext4, where mark_inode_dirty() is doing a lot more than just marking
-> the inode is dirty, and the only reason why it's named that is mostly
-> historical.
-  Except that lots of callers of update_time() / file_update_time() just
-ignore the return value anyway. And frankly most of the time it's a
-simplification we can get away with. I agree that ultimately we should
-propagate and handle these errors but as you say above handling errors from
-__mark_inode_dirty() is what we'd really need - that handles the whole
-class of errors. So for now I would be OK, with just ignoring the error
-when updating time stamps.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Theodore Ts'o <tytso@mit.edu> writes:
+
+> On Fri, Oct 17, 2014 at 05:25:34PM +0400, Dmitry Monakhov wrote:
+>> It is rediculus practice to scan inode block by block, this technique
+>> applicable only for old indirect files. This takes signifficant amount
+>> of time for really large files. Let's reuse ext4_fiemap which already
+>> traverse inode-tree in most optimal meaner.
+>>=20
+>> TESTCASE:
+>> ftruncate64(fd, 0);
+>> ftruncate64(fd, 1ULL << 40);
+>> /* lseek will spin very long time */
+>> lseek64(fd, 0, SEEK_DATA);
+>> lseek64(fd, 0, SEEK_HOLE);
+>>=20
+>>=20
+>> Original report: https://lkml.org/lkml/2014/10/16/620
+>>=20
+>> ##################################
+>> BTW: Why do we need i_mutex here?
+>>=20
+>> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+>
+> Note: this patch causes generic/285 to loop forever in inline-data
+> mode.  My guess is in the special case handling of inline data in
+> ext4_fiemap not playing well with this change, but I haven't had a
+> chance to look deeply into this yet.
+FYI: inline_data feature is fatally broken
+
+1) incorrect lock order (journal_start vs grab_cache_page_write_begin )
+   ext4_da_write_inline_data_begin
+   ->start_journal
+   ->grab_cache_page_write_begin
+     ->pagecache_get_page -> FS_REENTRANCE->DEADLOCK
+
+2) ext4_inline_data_fiemap(0 ignores start and len arguments from ext4_file=
+map()
+   which obviously result in endless loop for anyone who want to use
+   fiemap for inline files (which my patch try to do)
+
+I'll send patches soon.
+>
+> 					- Ted
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQEcBAEBCgAGBQJUeI5qAAoJELhyPTmIL6kBXuMH/jQrNxh0jAuiyKZ1/nQuD13J
+yIe6t+pOXgmBP2DIqcFRtBKb6YdKsRKulDSjw5KfSOMf7l9ELNTzKdkgjNTdH1gn
+4K5+kjz1Am9p1eX3/rFafLw3f4mEpcww4dzsGLl4sFaAZALomPCGmlNXrXFjlQU2
+FahB9CCbptdhvkNyO0kI/TLnWcHKt7U64ogZryFQfJ3gx5+2mJFxu+t1dk2d8cXi
+EUpaMWpmT5rxLHXWdXbZusdwqi+9AwuMes7aTiB9zIhcCx5HuMFLZ4yOV5maUTcV
+L1sCFHGH2jB1/Ogp8xWXlXZWgrzWtvxkbb1q9eT98Ns8AB8x0h2n7CLZW6wszW8=
+=ZeSd
+-----END PGP SIGNATURE-----
+--=-=-=--
