@@ -1,145 +1,155 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH-v4 2/7] vfs: add support for a lazytime mount option
-Date: Fri, 28 Nov 2014 17:24:45 +0100
-Message-ID: <20141128162445.GB27902@quack.suse.cz>
-References: <1416997437-26092-1-git-send-email-tytso@mit.edu>
- <1416997437-26092-3-git-send-email-tytso@mit.edu>
- <20141127131421.GE30152@quack.suse.cz>
- <20141127230016.GH14091@thunk.org>
+Subject: Re: [PATCH-v5 0/5] add support for a lazytime mount option
+Date: Fri, 28 Nov 2014 17:32:02 +0100
+Message-ID: <20141128163202.GA738@quack.suse.cz>
+References: <1417154411-5367-1-git-send-email-tytso@mit.edu>
+ <CA+icZUUaXTVKczXHaxJbVgRpd9FaN+csraOsgaqoV72Dc=+OLw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Linux Filesystem Development List
-	<linux-fsdevel@vger.kernel.org>,
+Cc: Theodore Ts'o <tytso@mit.edu>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60575 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751111AbaK1QYv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 28 Nov 2014 11:24:51 -0500
+	Linux Filesystem Development List
+	<linux-fsdevel@vger.kernel.org>
+To: Sedat Dilek <sedat.dilek@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20141127230016.GH14091@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CA+icZUUaXTVKczXHaxJbVgRpd9FaN+csraOsgaqoV72Dc=+OLw@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 27-11-14 18:00:16, Ted Tso wrote:
-> On Thu, Nov 27, 2014 at 02:14:21PM +0100, Jan Kara wrote:
-> > * change queue_io() to also call
-> > 	moved += move_expired_inodes(&wb->b_dirty_time, &wb->b_io, time + 24hours)
-> >   For this you need to tweak move_expired_inodes() to take pointer to
-> >   timestamp instead of pointer to work but that's trivial. Also you want
-> >   probably leave time ->older_than_this value (i.e. without +24 hours) if
-> >   we are doing WB_SYNC_ALL writeback. With this you can remove
-> >   flush_sb_dirty_time() completely.
+On Fri 28-11-14 09:55:19, Sedat Dilek wrote:
+> On Fri, Nov 28, 2014 at 7:00 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> > This is an updated version of what had originally been an
+> > ext4-specific patch which significantly improves performance by lazily
+> > writing timestamp updates (and in particular, mtime updates) to disk.
+> > The in-memory timestamps are always correct, but they are only written
+> > to disk when required for correctness.
+> >
+> > This provides a huge performance boost for ext4 due to how it handles
+> > journalling, but it's valuable for all file systems running on flash
+> > storage or drive-managed SMR disks by reducing the metadata write
+> > load.  So upon request, I've moved the functionality to the VFS layer.
+> > Once the /sbin/mount program adds support for MS_LAZYTIME, all file
+> > systems should be able to benefit from this optimization.
+> >
+> > There is still an ext4-specific optimization, which may be applicable
+> > for other file systems which store more than one inode in a block, but
+> > it will require file system specific code.  It is purely optional,
+> > however.
+> >
+> > Please note the changes to update_time() and the new write_time() inode
+> > operations functions, which impact btrfs and xfs.  The changes are
+> > fairly simple, but I would appreciate confirmation from the btrfs and
+> > xfs teams that I got things right.   Thanks!!
+> >
 > 
-> Well.... it's not quite enough.  The problem is that for ext3 and
-> ext4, the actual work of writing the inode happens in dirty_inode(),
-> not in write_inode().  Which means we need to do something like this.
-  Right, I didn't realize this problem.
-
-> I'm not entirely sure whether or not this is too ugly to live;
-> personally, I think my hack of handling this in update_time() might be
-> preferable....
-  Actually handling the copying of timestamps in __writeback_single_inode()
-would look fine to me. You mention in your next email, calling
-mark_inode_dirty_sync() from flusher may be problematic - why? How is this
-any different from calling mark_inode_dirty_sync() from
-flush_sb_dirty_time()?
-
-I will note that for a while I thought copying the full inode to on-disk
-buffer may be problematic because inode may be in an intermediate state of
-some transactional change. But that isn't an issue - if there's any
-transactional change in progress, it has a handle open and until the
-change is node, thus the buffer with the partial change cannot go to the
-journal (transaction cannot commit) until mark_inode_dirty_sync() copies
-the final state of the inode.
-
-Another solution may be to convey the information that copying of timestamps
-is necessary to ->write_inode method. We could do that via a
-flag bit in writeback_control. Each filesystem can then copy timestamps
-when this bit is set. But calling mark_inode_dirty_sync() from
-__writeback_single_inode() looks simpler to me.
+> Some questions... on how to test this...
+> 
+> [ Base ]
+> Is this patchset on top of ext4-next (ext4.git#dev)? Might someone
+> test on top of Linux v3.18-rc6 with pulled in ext4.git#dev2?
+> 
+> [ Userland ]
+> Do I need an updated userland (/sbin/mount)? IOW, adding "lazytime" to
+> my ext4-line(s) in /etc/fstab is enough?
+> 
+> [ Benchmarks ]
+> Do you have numbers - how big/fast is the benefit? On a desktop machine?
+  Actually a benefit you may notice on a laptop machine is that disk will
+wake up less often. When I was looking for reasons of disk wakeup on a
+desktop machine, some of these were mtime updates of unix socket inodes.
+This patches will make them go away.
 
 								Honza
 
-> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-> index b93c529..95a42b3 100644
-> --- a/fs/fs-writeback.c
-> +++ b/fs/fs-writeback.c
-> @@ -253,7 +253,7 @@ static bool inode_dirtied_after(struct inode *inode, unsigned long t)
->   */
->  static int move_expired_inodes(struct list_head *delaying_queue,
->  			       struct list_head *dispatch_queue,
-> -			       struct wb_writeback_work *work)
-> +			       unsigned long *older_than_this)
->  {
->  	LIST_HEAD(tmp);
->  	struct list_head *pos, *node;
-> @@ -264,8 +264,8 @@ static int move_expired_inodes(struct list_head *delaying_queue,
->  
->  	while (!list_empty(delaying_queue)) {
->  		inode = wb_inode(delaying_queue->prev);
-> -		if (work->older_than_this &&
-> -		    inode_dirtied_after(inode, *work->older_than_this))
-> +		if (older_than_this &&
-> +		    inode_dirtied_after(inode, *older_than_this))
->  			break;
->  		list_move(&inode->i_wb_list, &tmp);
->  		moved++;
-> @@ -309,9 +309,14 @@ out:
->  static void queue_io(struct bdi_writeback *wb, struct wb_writeback_work *work)
->  {
->  	int moved;
-> +	unsigned long one_day_later = jiffies + (HZ * 86400);
-> +
->  	assert_spin_locked(&wb->list_lock);
->  	list_splice_init(&wb->b_more_io, &wb->b_io);
-> -	moved = move_expired_inodes(&wb->b_dirty, &wb->b_io, work);
-> +	moved = move_expired_inodes(&wb->b_dirty, &wb->b_io,
-> +				    work->older_than_this);
-> +	moved += move_expired_inodes(&wb->b_dirty_time, &wb->b_io,
-> +				     &one_day_later);
->  	trace_writeback_queue_io(wb, work, moved);
->  }
->  
-> @@ -637,6 +642,17 @@ static long writeback_sb_inodes(struct super_block *sb,
->  		}
->  
->  		/*
-> +		 * If the inode is marked dirty time but is not dirty,
-> +		 * then at last for ext3 and ext4 we need to call
-> +		 * mark_inode_dirty_sync in order to get the inode
-> +		 * timestamp transferred to the on disk inode, since
-> +		 * write_inode is a no-op for those file systems.  HACK HACK HACK
-> +		 */
-> +		if ((inode->i_state & I_DIRTY_TIME) &&
-> +		    ((inode->i_state & (I_DIRTY_SYNC | I_DIRTY_DATASYNC)) == 0))
-> +			mark_inode_dirty_sync(inode);
-> +
-> +		/*
->  		 * Don't bother with new inodes or inodes being freed, first
->  		 * kind does not need periodic writeout yet, and for the latter
->  		 * kind writeout is handled by the freer.
-> @@ -1233,9 +1249,10 @@ void inode_requeue_dirtytime(struct inode *inode)
->  	spin_lock(&bdi->wb.list_lock);
->  	spin_lock(&inode->i_lock);
->  	if ((inode->i_state & I_DIRTY_WB) == 0) {
-> -		if (inode->i_state & I_DIRTY_TIME)
-> +		if (inode->i_state & I_DIRTY_TIME) {
-> +			inode->dirtied_when = jiffies;
->  			list_move(&inode->i_wb_list, &bdi->wb.b_dirty_time);
-> -		else
-> +		} else
->  			list_del_init(&inode->i_wb_list);
->  	}
->  	spin_unlock(&inode->i_lock);
 > 
-> Comments?
+> Thanks in advance.
 > 
-> 						- Ted
+> - Sedat -
+> 
+> > Changes since -v4:
+> >    - Fix ext4 optimization so it does not need to increment (and more
+> >      problematically, decrement) the inode reference count
+> >    - Per Christoph's suggestion, drop support for btrfs and xfs for now,
+> >      issues with how btrfs and xfs handle dirty inode tracking.  We can add
+> >      btrfs and xfs support back later or at the end of this series if we
+> >      want to revisit this decision.
+> >    - Miscellaneous cleanups
+> >
+> > Changes since -v3:
+> >    - inodes with I_DIRTY_TIME set are placed on a new bdi list,
+> >         b_dirty_time.  This allows filesystem-level syncs to more
+> >         easily iterate over those inodes that need to have their
+> >         timestamps written to disk.
+> >    - dirty timestamps will be written out asynchronously on the final
+> >         iput, instead of when the inode gets evicted.
+> >    - separate the definition of the new function
+> >         find_active_inode_nowait() to a separate patch
+> >    - create separate flag masks: I_DIRTY_WB and I_DIRTY_INODE, which
+> >        indicate whether the inode needs to be on the write back lists,
+> >        or whether the inode itself is dirty, while I_DIRTY means any one
+> >        of the inode dirty flags are set.  This simplifies the fs
+> >        writeback logic which needs to test for different combinations of
+> >        the inode dirty flags in different places.
+> >
+> > Changes since -v2:
+> >    - If update_time() updates i_version, it will not use lazytime (i..e,
+> >        the inode will be marked dirty so the change will be persisted on to
+> >        disk sooner rather than later).  Yes, this eliminates the
+> >        benefits of lazytime if the user is experting the file system via
+> >        NFSv4.  Sad, but NFS's requirements seem to mandate this.
+> >    - Fix time wrapping bug 49 days after the system boots (on a system
+> >         with a 32-bit jiffies).   Use get_monotonic_boottime() instead.
+> >    - Clean up type warning in include/tracing/ext4.h
+> >    - Added explicit parenthesis for stylistic reasons
+> >    - Added an is_readonly() inode operations method so btrfs doesn't
+> >        have to duplicate code in update_time().
+> >
+> > Changes since -v1:
+> >    - Added explanatory comments in update_time() regarding i_ts_dirty_days
+> >    - Fix type used for days_since_boot
+> >    - Improve SMP scalability in update_time and ext4_update_other_inodes_time
+> >    - Added tracepoints to help test and characterize how often and under
+> >          what circumstances inodes have their timestamps lazily updated
+> >
+> > Theodore Ts'o (5):
+> >   vfs: add support for a lazytime mount option
+> >   vfs: don't let the dirty time inodes get more than a day stale
+> >   vfs: add lazytime tracepoints for better debugging
+> >   vfs: add find_inode_nowait() function
+> >   ext4: add optimization for the lazytime mount option
+> >
+> >  fs/ext4/inode.c             |  66 +++++++++++++++++++++++--
+> >  fs/ext4/super.c             |   9 ++++
+> >  fs/fs-writeback.c           |  66 ++++++++++++++++++++++---
+> >  fs/inode.c                  | 116 +++++++++++++++++++++++++++++++++++++++++---
+> >  fs/libfs.c                  |   2 +-
+> >  fs/logfs/readwrite.c        |   2 +-
+> >  fs/nfsd/vfs.c               |   2 +-
+> >  fs/pipe.c                   |   2 +-
+> >  fs/proc_namespace.c         |   1 +
+> >  fs/sync.c                   |   8 +++
+> >  fs/ufs/truncate.c           |   2 +-
+> >  include/linux/backing-dev.h |   1 +
+> >  include/linux/fs.h          |  17 ++++++-
+> >  include/trace/events/ext4.h |  30 ++++++++++++
+> >  include/trace/events/fs.h   |  56 +++++++++++++++++++++
+> >  include/uapi/linux/fs.h     |   1 +
+> >  mm/backing-dev.c            |  10 +++-
+> >  17 files changed, 367 insertions(+), 24 deletions(-)
+> >  create mode 100644 include/trace/events/fs.h
+> >
+> > --
+> > 2.1.0
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
