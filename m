@@ -1,81 +1,73 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH-v4 1/7] vfs: split update_time() into update_time() and
- write_time()
-Date: Mon, 1 Dec 2014 01:28:10 -0800
-Message-ID: <20141201092810.GA5538@infradead.org>
-References: <1416997437-26092-1-git-send-email-tytso@mit.edu>
- <1416997437-26092-2-git-send-email-tytso@mit.edu>
- <20141126192328.GA20436@infradead.org>
- <20141127144116.GA14091@thunk.org>
- <20141127153315.GC14091@thunk.org>
- <20141127164952.GA1622@infradead.org>
- <20141127202731.GG14091@thunk.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH] ext4: fix suboptimal seek_{data,hole} extents traversial
+Date: Mon, 01 Dec 2014 14:25:46 +0300
+Message-ID: <87a937d32d.fsf@openvz.org>
+References: <87egu7k6ym.fsf@openvz.org> <1413552334-32240-1-git-send-email-dmonakhov@openvz.org> <20141125211433.GB28449@thunk.org> <873893id1x.fsf@openvz.org> <20141129175255.GC4362@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha512; protocol="application/pgp-signature"
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:59531 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752738AbaLAJ2L (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Dec 2014 04:28:11 -0500
-Content-Disposition: inline
-In-Reply-To: <20141127202731.GG14091@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20141129175255.GC4362@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Nov 27, 2014 at 03:27:31PM -0500, Theodore Ts'o wrote:
-> I can do that, but part of the reason why we were doing this rather
-> involved set of changes was to allow other file systems to be able to
-> take advantage of lazytime.  I suppose there is value in allowing
-> other file systems, such as jfs, f2fs, etc., to use it, but still,
-> it's a bit of a shame to drop btrfs and xfs support for this feature.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-I want to see xfs and btrfs support, but I think we're running in some
-conceptual problems here.  I don't have the time right now to fully
-review the XFS changes for correctness and test them, and I'd rather
-keep things as-is for a while and then add properly designed and fully
-teste support in rather than something possible broken.
+Theodore Ts'o <tytso@mit.edu> writes:
 
-> I'll note by the way that ext3 and ext4 doesn't really use VFS dirty
-> tracking either --- see my other comments about the naming of
-> "mark_inode_dirty" being a bit misleading, at least for all/most of
-> the major file systems.  The problem seems to be that replacement
-> schemes that we've all using are slightly different.  :-/
+> On Fri, Nov 28, 2014 at 06:02:02PM +0300, Dmitry Monakhov wrote:
+>> FYI: inline_data feature is fatally broken
+>
+> Thanks for finding the bugs!
+>
+>> 2) ext4_inline_data_fiemap(0 ignores start and len arguments from ext4_f=
+ilemap()
+>>    which obviously result in endless loop for anyone who want to use
+>>    fiemap for inline files (which my patch try to do)
+>
+> Would this have been triggered using filefrag?  I just checked and
+> noticed we don't have a filefrag test in xfstests; of course it would
+> be impossible to test other than the filefrag -v command successfully
+> completed, but maybe it might be worth adding such a test.
+This works only because filefrag use big buffer. If one want to call
+fiemap with start !=3D 0 it will loop. So we definitely need a regression
+test for fiemap. I'll do it.
 
-Indeed.  It seems all existing ->dirty_inode instances basically
-just try to work around the problem that the VFS simply updates
-timestamps by writing into the inode without involving the filesystem.
-There are all kinds of bugs in different instances, as well as comments
-mentioning an assumption that this only happens for atime although
-the VFS also dos this "trick" for c/mtime, including a caller from
-the page fault code that the filesystems can't even avoid by providing
-non-default methods everywhere.
+BTW bug can be spotted even in case of filefrag -v:
+#### Create small file with inlined data=20
+# echo test > /mnt/f1
+#### Now boost it's i_size=20=20
+# truncate --size 4096000 /mnt/f1
+# filefrag -v /mnt/f1
+Filesystem cylinder groups approximately 39
+File size of /mnt/f1 is 4096000 (1000 blocks of 4096 bytes)
+ ext:     logical_offset:        physical_offset: length:   expected:
+ flags:
+    0:        0.. 4095999:    2762792..   6858791: 4096000:last,not_aligned=
+,inline,eof
+    /mnt/f1: 1 extent found
+###According to fiemap we are inlined 4Mb data. :)
 
-> I suppose should let the btrfs folks decide whether they want to add
-> is_readonly() and write_time() function --- or maybe help with the
-> cleanup work so that mark_inode_dirty() can reflect an error to its
-> callers.   Chris, David, what do you think?
+At this moment I'm testing my patches, I'll send it today.
+>
+> 	       	     	      	       	      	   - Ted
 
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
-The ->is_readonly method seems like a clear winner to me, I'm all for
-adding it, and thus suggested moving it first in the series.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
 
-I've read a bit more through the series and would like to suggest
-the following approach for the rest:
-
- - convert ext3/4 to use ->update_time instead of the ->dirty_time
-   callout so it gets and exact notifications (preferably the few
-   remaining filesystems as well, although that shouldn't really be a
-   blocker)
- - defer timestamp updates for any filesystems not defining
-   ->update_time (or ->dirty_time for now), and allow filesystems
-   using ->update_time to defer the update as well by calling
-   mark_inode_dirty with the I_DIRTY_TIME flag so that XFS and btrfs
-   don't have to opt-in without testing.
- - Convert xfs, btrfs and the remaining filesystes using ->dirty_inode
-   incrementally.
-
+iQEcBAEBCgAGBQJUfFA6AAoJELhyPTmIL6kBfGMIALqO+os7ix8PBP2dJ+k6z2Gm
+9/FYBxvTlcGFZSJoCXpQ6TicVW2L0Ox/aL0C10HdYN93wMAvvjBJqlf42NdsQgei
+inXxoiZnFWS8SUktLt5+zPSJJUF8UQsCvviclhS/7jTwUAXahcHOaXc+u1itEztX
+AqbwbSTtYsmHFxMQra3x0YYoQ9RyZA/0GO78zjPz8esytBI85D+0Gl1x/ZOKMwE7
+6BfppS3jrFcqJNcK2p9MnikHc/2Um5Xd6k99VdKpc5qlpEId+m1rqtwpXjcACtIz
+BJGq2g6Q/Qqn6LbDEexaiJ7AbGbyvbihna0Dyqqx02Wzwzly1Vzp63HhB/I8vpM=
+=DRVe
+-----END PGP SIGNATURE-----
+--=-=-=--
