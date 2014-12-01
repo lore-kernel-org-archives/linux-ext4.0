@@ -1,60 +1,106 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: inline_data,metadata_csum  a lot of bad csum for directories
-Date: Mon, 01 Dec 2014 17:09:23 +0300
-Message-ID: <877fybcvho.fsf@openvz.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH-v4 1/7] vfs: split update_time() into update_time() and
+ write_time()
+Date: Mon, 1 Dec 2014 10:04:50 -0500
+Message-ID: <20141201150450.GA3337@thunk.org>
+References: <1416997437-26092-1-git-send-email-tytso@mit.edu>
+ <1416997437-26092-2-git-send-email-tytso@mit.edu>
+ <20141126192328.GA20436@infradead.org>
+ <20141127144116.GA14091@thunk.org>
+ <20141127153315.GC14091@thunk.org>
+ <20141127164952.GA1622@infradead.org>
+ <20141127202731.GG14091@thunk.org>
+ <20141201092810.GA5538@infradead.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wg0-f53.google.com ([74.125.82.53]:41640 "EHLO
-	mail-wg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753636AbaLAOJw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Dec 2014 09:09:52 -0500
-Received: by mail-wg0-f53.google.com with SMTP id l18so13998355wgh.26
-        for <linux-ext4@vger.kernel.org>; Mon, 01 Dec 2014 06:09:51 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
+	XFS Developers <xfs@oss.sgi.com>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20141201092810.GA5538@infradead.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Mon, Dec 01, 2014 at 01:28:10AM -0800, Christoph Hellwig wrote:
+> 
+> The ->is_readonly method seems like a clear winner to me, I'm all for
+> adding it, and thus suggested moving it first in the series.
 
+It's a real winner for me as well, but the reason why I dropped it is
+because if btrfs() has to keep its ->update_time function, we wouldn't
+actually have a user for is_readonly().  I suppose we could have
+update_time() call ->is_readonly() and then ->update_time() if they
+exist, but it only seemed to add an extra call and a bit of extra
+overhead without really simplifying things for btrfs.
 
-Ted can you please clarify what is status of inline_data patchset.
-I've enabled inline_data testing in my test environment
-I use xfstest-bld for this purpose, but most test generates a lot of incorr=
-ect
-inode's csum for directories(almost any test which makes/rm
-directories). What I'm doing wrong? Are where any important fix I'm missing=
-?=20
-Please post your test matrix
+If there were other users of ->is_readonly, then it would make sense,
+but it seemed better to move into a separate code refactoring series.
 
-My config:
-e2fsprogs git commit: g210baa5
-ext4.git commit: recent tytso/dev ca83cc75a16f67
-./kvm-xfstests -c inline generic/011  generic/013
-generic/013       [13:51:44]
-[  368.507266] EXT4-fs error (device vdd): ext4_iget:3918: inode #294: comm=
- rm: checksum invalid
-[  368.511098] EXT4-fs error (device vdd): ext4_iget:3918: inode #294: comm=
- rm: checksum invalid
-[  369.098863] EXT4-fs error (device vdd): ext4_iget:3918: inode #2108:comm=
- rm: checksum invalid
+> I've read a bit more through the series and would like to suggest
+> the following approach for the rest:
+> 
+>  - convert ext3/4 to use ->update_time instead of the ->dirty_time
+>    callout so it gets and exact notifications (preferably the few
+>    remaining filesystems as well, although that shouldn't really be a
+>    blocker)
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+We could do that, although ext3/4's ->update_time() would be exactly
+the same as the generic update_time() function, so there would be code
+duplication.  If the goal is to get rid of the magic in
+-->dirty_inode() being used to work around how the VFS makes changes
+to fields that end up in the on-disk inode, we would need to audit a
+lot of extra code paths; at the very least, in how the generic quota
+code handles updates to i_size and i_blocks (for example).
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
+And BTW, we don't actually have a dirty_time() function any more in
+the current patch series.  update_time() is currently looking like
+this:
 
-iQEcBAEBCgAGBQJUfHaUAAoJELhyPTmIL6kBgVsH/2LBXKSYVxN/KcMvCAv+z1co
-r2Xn+/tTgamPKYjBvcSe7VxJ/qyJxe5q2zPI26T52jp6wOq4iVAhPOYuONUGZ+X3
-4tchdyQAJiKfgY6m6cReidCAWWAdA6XdVnnOGjvl11VZuIc7Rn4Fg4ibhC0LfPIJ
-ybe73gispdpmHi+hywWLBg1VGfxHAPUHsF9cczNRVdeqDK9iNXYjBzEsgS6iXbjh
-N1Ay7hMS1OfTy7d+mX35zuHA1gzWOnMvQa6Fnprt72izwC26xCzV4tdlpYYkWDhA
-knzgbrGjghqRCmzFEtn3xc1vr5NFh3pqiZfqPRfPB6RsVpvK4yxdTT/H3wkwP7c=
-=9d99
------END PGP SIGNATURE-----
---=-=-=--
+static int update_time(struct inode *inode, struct timespec *time, int flags)
+{
+	if (inode->i_op->update_time)
+		return inode->i_op->update_time(inode, time, flags);
+
+	if (flags & S_ATIME)
+		inode->i_atime = *time;
+	if (flags & S_VERSION)
+		inode_inc_iversion(inode);
+	if (flags & S_CTIME)
+		inode->i_ctime = *time;
+	if (flags & S_MTIME)
+		inode->i_mtime = *time;
+
+	if ((inode->i_sb->s_flags & MS_LAZYTIME) && !(flags & S_VERSION) &&
+	    !(inode->i_state & I_DIRTY))
+		__mark_inode_dirty(inode, I_DIRTY_TIME);
+	else
+		__mark_inode_dirty(inode, I_DIRTY_SYNC);
+	return 0;
+}
+
+>  - Convert xfs, btrfs and the remaining filesystes using ->dirty_inode
+>    incrementally.
+
+Right, so xfs and btrfs (which are the two file systems that have
+update_time at the moment) can just drop update_time() and then check
+the ->dirty_time() for (flags & I_DIRTY_TIME).  Hmm, I suspect this
+might be better for xfs, yes?
+
+	if ((inode->i_sb->s_flags & MS_LAZYTIME) && !(flags & S_VERSION) &&
+	    !(inode->i_state & I_DIRTY))
+		__mark_inode_dirty(inode, I_DIRTY_TIME);
+	else
+		__mark_inode_dirty(inode, I_DIRTY_SYNC | I_DIRTY_TIME);
+
+XFS doesn't have a ->dirty_time yet, but that way XFS would be able to
+use the I_DIRTY_TIME flag to log the journal timestamps if it so
+desires, and perhaps drop the need for it to use update_time().  (And
+with XFS doing logical journalling, it may be that you might want to
+include the timestamp update in the journal if you have a journal
+transaction open already, so the disk is spun up or likely to be spin
+up anyway, right?)
+
+						- Ted
