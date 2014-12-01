@@ -1,51 +1,52 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: Re: xfstests failures w/ metadata_csum
-Date: Mon, 1 Dec 2014 17:05:34 -0500
-Message-ID: <20141201220534.GA4619@wallace>
-References: <20141201202045.GR10043@birch.djwong.org>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: inline_data,metadata_csum  a lot of bad csum for directories
+Date: Mon, 1 Dec 2014 16:32:02 -0700
+Message-ID: <32FC5424-8CFB-4D12-A201-1BFDD1552460@dilger.ca>
+References: <877fybcvho.fsf@openvz.org>
+Mime-Version: 1.0 (Mac OS X Mail 8.1 \(1993\))
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Transfer-Encoding: 8BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qa0-f54.google.com ([209.85.216.54]:33136 "EHLO
-	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753061AbaLAWFh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Dec 2014 17:05:37 -0500
-Received: by mail-qa0-f54.google.com with SMTP id i13so8079519qae.27
-        for <linux-ext4@vger.kernel.org>; Mon, 01 Dec 2014 14:05:36 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <20141201202045.GR10043@birch.djwong.org>
+Received: from mail-pa0-f42.google.com ([209.85.220.42]:40202 "EHLO
+	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932484AbaLAXcE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Dec 2014 18:32:04 -0500
+Received: by mail-pa0-f42.google.com with SMTP id et14so12076356pad.15
+        for <linux-ext4@vger.kernel.org>; Mon, 01 Dec 2014 15:32:04 -0800 (PST)
+In-Reply-To: <877fybcvho.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* Darrick J. Wong <darrick.wong@oracle.com>:
-> Hi Eric,
+On Dec 1, 2014, at 7:09 AM, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
 > 
-> Could you remind me which xfstests are failing in 3.18-rc3+ with metadata_csum
-> enabled?  I think you said generic/034, generic/321, and generic/322, but were
-> there more?
+> Ted can you please clarify what is status of inline_data patchset.
+> I've enabled inline_data testing in my test environment
 
-Hi Darrick:
+I suspect that since inline_data and metadata_csum were developed
+in isolation, they don't work well together yet.  I believe that
+Darrick is working on fixing some issues in this area.
 
-The other failing test is generic/325 - you've got the others right.  Note that
-I may be an xfstests version ahead of xfstests-bld, so depending on what you're
-running, you may not see all of those.  (Gonna stick closer to xfstests-bld
-from now on.)  The failures are the same in the inline data test scenario.
-
-Thanks for looking at this!
-
-Eric
-
+> I use xfstest-bld for this purpose, but most test generates a lot of incorrect
+> inode's csum for directories(almost any test which makes/rm
+> directories). What I'm doing wrong? Are where any important fix I'm missing? 
+> Please post your test matrix
 > 
-> AFAICT the ext4 mount fails because it can't load the journal, and the journal
-> can't replay because jbd2_descr_block_csum_verify() fails; the 034 test appears
-> to drop all the writes related to the umount.  recovery.c doesn't say anything
-> when the journal descriptor block fails csum verification, though it should.
-> Not sure why we end up with corrupt-looking descriptor blocks.
-> 
-> The reason why this appears in -rc3 is because that's when we added the patch
-> that forces journal_checksum on whenever metadata_csum is on, and I guess
-> few people were testing journal_checksum with xfstests before that.
-> 
-> --D
+> My config:
+> e2fsprogs git commit: g210baa5
+> ext4.git commit: recent tytso/dev ca83cc75a16f67
+> ./kvm-xfstests -c inline generic/011  generic/013
+> generic/013       [13:51:44]
+> [  368.507266] EXT4-fs error (device vdd): ext4_iget:3918: inode #294: comm rm: checksum invalid
+> [  368.511098] EXT4-fs error (device vdd): ext4_iget:3918: inode #294: comm rm: checksum invalid
+> [  369.098863] EXT4-fs error (device vdd): ext4_iget:3918: inode #2108:comm rm: checksum invalid
+
+
+Cheers, Andreas
+
+
+
+
+
