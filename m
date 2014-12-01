@@ -1,43 +1,42 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: Eric Whitney <enwlinux@gmail.com>
 Subject: Re: xfstests failures w/ metadata_csum
-Date: Mon, 1 Dec 2014 14:02:09 -0800
-Message-ID: <20141201220209.GS10043@birch.djwong.org>
+Date: Mon, 1 Dec 2014 17:05:34 -0500
+Message-ID: <20141201220534.GA4619@wallace>
 References: <20141201202045.GR10043@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eric Whitney <enwlinux@gmail.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:22986 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932466AbaLAWCO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Dec 2014 17:02:14 -0500
+Received: from mail-qa0-f54.google.com ([209.85.216.54]:33136 "EHLO
+	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753061AbaLAWFh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Dec 2014 17:05:37 -0500
+Received: by mail-qa0-f54.google.com with SMTP id i13so8079519qae.27
+        for <linux-ext4@vger.kernel.org>; Mon, 01 Dec 2014 14:05:36 -0800 (PST)
 Content-Disposition: inline
 In-Reply-To: <20141201202045.GR10043@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-CRAP.
-
-The real cause of the regression that Eric reported is: The first time we
-enable journal_checksum on a journal, we fail to set the checksum seed because
-the seed calculation is gated on jbd2_journal_has_csum_v2or3() ... before we
-actually set the superblock feature fields!  Yikes!
-
-The fix is to get rid of the braindead check and always calculate the seed.
-
-I will have a regression fix for 3.18-rc7 out shortly.
-
-(I'll also post a patch to complain loudly, but that isn't critical.)
-
---D
-
-On Mon, Dec 01, 2014 at 12:20:45PM -0800, Darrick J. Wong wrote:
+* Darrick J. Wong <darrick.wong@oracle.com>:
 > Hi Eric,
 > 
 > Could you remind me which xfstests are failing in 3.18-rc3+ with metadata_csum
 > enabled?  I think you said generic/034, generic/321, and generic/322, but were
 > there more?
+
+Hi Darrick:
+
+The other failing test is generic/325 - you've got the others right.  Note that
+I may be an xfstests version ahead of xfstests-bld, so depending on what you're
+running, you may not see all of those.  (Gonna stick closer to xfstests-bld
+from now on.)  The failures are the same in the inline data test scenario.
+
+Thanks for looking at this!
+
+Eric
+
 > 
 > AFAICT the ext4 mount fails because it can't load the journal, and the journal
 > can't replay because jbd2_descr_block_csum_verify() fails; the 034 test appears
@@ -50,7 +49,3 @@ On Mon, Dec 01, 2014 at 12:20:45PM -0800, Darrick J. Wong wrote:
 > few people were testing journal_checksum with xfstests before that.
 > 
 > --D
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
