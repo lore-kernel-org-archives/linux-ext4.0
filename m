@@ -1,130 +1,82 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 1/4] ext4: fix potential use after free during resize V2
-Date: Tue, 02 Dec 2014 14:12:45 +0300
-Message-ID: <874mtel2z6.fsf@openvz.org>
-References: <1417518054-21733-1-git-send-email-dmonakhov@openvz.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH-v5 1/5] vfs: add support for a lazytime mount option
+Date: Tue, 2 Dec 2014 13:58:20 +0100
+Message-ID: <20141202125820.GE9092@quack.suse.cz>
+References: <1417154411-5367-1-git-send-email-tytso@mit.edu>
+ <1417154411-5367-2-git-send-email-tytso@mit.edu>
+ <20141128172323.GD738@quack.suse.cz>
+ <20141128181421.GA19461@google.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	xfs@oss.sgi.com
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:57552 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752196AbaLBLNS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Dec 2014 06:13:18 -0500
-Received: by mail-wg0-f44.google.com with SMTP id b13so16699810wgh.17
-        for <linux-ext4@vger.kernel.org>; Tue, 02 Dec 2014 03:13:16 -0800 (PST)
-In-Reply-To: <1417518054-21733-1-git-send-email-dmonakhov@openvz.org>
+Received: from cantor2.suse.de ([195.135.220.15]:35304 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753363AbaLBM6X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Dec 2014 07:58:23 -0500
+Content-Disposition: inline
+In-Reply-To: <20141128181421.GA19461@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Fri 28-11-14 13:14:21, Ted Tso wrote:
+> On Fri, Nov 28, 2014 at 06:23:23PM +0100, Jan Kara wrote:
+> > Hum, when someone calls fsync() for an inode, you likely want to sync
+> > timestamps to disk even if everything else is clean. I think that doing
+> > what you did in last version:
+> > 	dirty = inode->i_state & I_DIRTY_INODE;
+> > 	inode->i_state &= ~I_DIRTY_INODE;
+> > 	spin_unlock(&inode->i_lock);
+> > 	if (dirty & I_DIRTY_TIME)
+> > 		mark_inode_dirty_sync(inode);
+> > looks better to me. IMO when someone calls __writeback_single_inode() we
+> > should write whatever we have...
+> 
+> Yes, but we also have to distinguish between what happens on an
+> fsync() versus what happens on a periodic writeback if I_DIRTY_PAGES
+> (but not I_DIRTY_SYNC or I_DIRTY_DATASYNC) is set.  So there is a
+> check in the fsync() code path to handle the concern you raised above.
+  Ah, this is the thing you have been likely talking about but which I was
+constantly missing in my thoughts. You don't want to write times when inode
+has only dirty pages and timestamps - I was always thinking about a
+situation where inode has only dirty timestamps and not pages. This
+situation also complicates the writeback logic because when inode has dirty
+pages, you need to track it as normal dirty inode for page writeback (with
+dirtied_when correspoding to time when pages were dirtied) but in
+parallel you now need to track the information that inode has timestamps
+that weren't written for X long. And even if we stored how old are
+timestamps it isn't easily possible to keep the list of inodes with just
+dirty timestamps sorted by dirty time. So now I finally understand why you
+did things the way you did them... Sorry for misleading you.
 
-Dmitry Monakhov <dmonakhov@openvz.org> writes:
+So let's restart the design so that things are clear:
+1) We have new inode bit I_DIRTY_TIME. This means that only timestamps in
+the inode have changed. The desired behavior is that inode is with
+I_DIRTY_TIME and without I_DIRTY_SYNC | I_DIRTY_DATASYNC is written by
+background writeback only once per 24 hours. Such inodes do get written by
+sync(2) and fsync(2) calls.
 
-> We need some sort of synchronization while updating ->s_group_desc
-> because there are a lot of users which can access old ->s_group_desc
-> array after it was released.
-This patch supersedes V1 (commit from tytso.git/dev : 6e77765ea74a18a8bbd)
-Patch-set was tested via xfstests-bld -c inline_data -g auto, but
-w/o metadata_csum feature because it triggers another csum related bug which
-should be fixed separately.
->
-> changes from V1:
->   - use RCU instead seqcount
->
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  fs/ext4/balloc.c |   12 ++++++++----
->  fs/ext4/resize.c |    6 ++++--
->  2 files changed, 12 insertions(+), 6 deletions(-)
->
-> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-> index 83a6f49..2d0a0de 100644
-> --- a/fs/ext4/balloc.c
-> +++ b/fs/ext4/balloc.c
-> @@ -282,6 +282,7 @@ struct ext4_group_desc * ext4_get_group_desc(struct s=
-uper_block *sb,
->  	unsigned int offset;
->  	ext4_group_t ngroups =3D ext4_get_groups_count(sb);
->  	struct ext4_group_desc *desc;
-> +	struct buffer_head *gd_bh;
->  	struct ext4_sb_info *sbi =3D EXT4_SB(sb);
->=20=20
->  	if (block_group >=3D ngroups) {
-> @@ -293,7 +294,10 @@ struct ext4_group_desc * ext4_get_group_desc(struct =
-super_block *sb,
->=20=20
->  	group_desc =3D block_group >> EXT4_DESC_PER_BLOCK_BITS(sb);
->  	offset =3D block_group & (EXT4_DESC_PER_BLOCK(sb) - 1);
-> -	if (!sbi->s_group_desc[group_desc]) {
-> +	rcu_read_lock();
-> +	gd_bh =3D *rcu_dereference(sbi->s_group_desc) + group_desc;
-> +	rcu_read_unlock();
-> +	if (!gd_bh) {
->  		ext4_error(sb, "Group descriptor not loaded - "
->  			   "block_group =3D %u, group_desc =3D %u, desc =3D %u",
->  			   block_group, group_desc, offset);
-> @@ -301,10 +305,10 @@ struct ext4_group_desc * ext4_get_group_desc(struct=
- super_block *sb,
->  	}
->=20=20
->  	desc =3D (struct ext4_group_desc *)(
-> -		(__u8 *)sbi->s_group_desc[group_desc]->b_data +
-> -		offset * EXT4_DESC_SIZE(sb));
-> +		(__u8 *)gd_bh->b_data + offset * EXT4_DESC_SIZE(sb));
->  	if (bh)
-> -		*bh =3D sbi->s_group_desc[group_desc];
-> +		*bh =3D gd_bh;
-> +
->  	return desc;
->  }
->=20=20
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index bf76f40..08c2256 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -854,8 +854,9 @@ static int add_new_gdb(handle_t *handle, struct inode=
- *inode,
->  	memcpy(n_group_desc, o_group_desc,
->  	       EXT4_SB(sb)->s_gdb_count * sizeof(struct buffer_head *));
->  	n_group_desc[gdb_num] =3D gdb_bh;
-> -	EXT4_SB(sb)->s_group_desc =3D n_group_desc;
->  	EXT4_SB(sb)->s_gdb_count++;
-> +	rcu_assign_pointer(EXT4_SB(sb)->s_group_desc, n_group_desc);
-> +	synchronize_rcu();
->  	kvfree(o_group_desc);
->=20=20
->  	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
-> @@ -907,8 +908,9 @@ static int add_new_gdb_meta_bg(struct super_block *sb,
->  	memcpy(n_group_desc, o_group_desc,
->  	       EXT4_SB(sb)->s_gdb_count * sizeof(struct buffer_head *));
->  	n_group_desc[gdb_num] =3D gdb_bh;
-> -	EXT4_SB(sb)->s_group_desc =3D n_group_desc;
->  	EXT4_SB(sb)->s_gdb_count++;
-> +	rcu_assign_pointer(EXT4_SB(sb)->s_group_desc, n_group_desc);
-> +	synchronize_rcu();
->  	kvfree(o_group_desc);
->  	BUFFER_TRACE(gdb_bh, "get_write_access");
->  	err =3D ext4_journal_get_write_access(handle, gdb_bh);
-> --=20
-> 1.7.1
+2) Inodes with only I_DIRTY_TIME are tracked in a new dirty list
+b_dirty_time. We use i_wb_list list head for this. Unlike b_dirty list,
+this list isn't kept sorted by dirtied_when. If queue_io() sees for_sync
+bit set in the work item, it will call mark_inode_dirty_sync() for all
+inodes in b_dirty_time before queuing io from b_dirty list. Once per hour
+(or something like that) flusher thread scans the whole b_dirty_time list
+and calls mark_inode_dirty_sync() for all inodes that have too old dirty
+timestamps (to detect this we need a new time stamp in the inode).
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+3) When fsync() sees inode with I_DIRTY_TIME set, it calls
+mark_inode_dirty_sync().
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
+4) When we are dropping last inode reference and inode has I_DIRTY_TIME
+set, we call mark_inode_dirty_sync().
 
-iQEcBAEBCgAGBQJUfZ6uAAoJELhyPTmIL6kBgIcH+QH3++ED2LvXx0dvXwOylmtc
-FcwBe2OeKncevRM5achj0IrKGMPaiuCvItX0/4OHjcwpHfwc/R6SKKktdD0Dj17n
-R8KVdZBD4KJ2OLliYUL38JwjokfqGEh6t55xbJgjyEDVQ7sn7dM8+BQFL7XDUrrP
-M2nCjPB1KlYGZ+Rz3N8CBriMvGPKmCz6zKMzNGmXZu39T3zKS8OYld6h3ByqKyDc
-dotmUzRXXduhq2wDmXiMuCnWri9x9yePSNqCtlxyeL5UAGSaH89c6dlPt+DTECL0
-LanlPsBkwytM28qgbliKRkyNNsylb7tzbXe89/gM0TVtdkOoc1/O9I+pkEQLDQk=
-=IIKQ
------END PGP SIGNATURE-----
---=-=-=--
+And that should be it, right?
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
