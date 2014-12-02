@@ -1,29 +1,22 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH-v4 1/7] vfs: split update_time() into update_time() and
-	write_time()
-Date: Tue, 2 Dec 2014 10:09:12 -0500
-Message-ID: <20141202150912.GA3496@thunk.org>
-References: <1416997437-26092-1-git-send-email-tytso@mit.edu>
-	<1416997437-26092-2-git-send-email-tytso@mit.edu>
-	<20141126192328.GA20436@infradead.org>
-	<20141127144116.GA14091@thunk.org>
-	<20141127153315.GC14091@thunk.org>
-	<20141127164952.GA1622@infradead.org>
-	<20141127202731.GG14091@thunk.org>
-	<20141201092810.GA5538@infradead.org>
-	<20141201150450.GA3337@thunk.org>
-	<20141202092033.GA29712@infradead.org>
+Subject: Re: [PATCH-v5 1/5] vfs: add support for a lazytime mount option
+Date: Tue, 2 Dec 2014 14:23:37 -0500
+Message-ID: <20141202192337.GA13618@thunk.org>
+References: <1417154411-5367-1-git-send-email-tytso@mit.edu>
+	<1417154411-5367-2-git-send-email-tytso@mit.edu>
+	<20141128172323.GD738@quack.suse.cz>
+	<20141128181421.GA19461@google.com>
+	<20141202125820.GE9092@quack.suse.cz>
+	<547DFD24.9070805@plexistor.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>
-To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.cz>, linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
+To: Boaz Harrosh <boaz@plexistor.com>
 Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20141202092033.GA29712@infradead.org>
+In-Reply-To: <547DFD24.9070805@plexistor.com>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -35,40 +28,66 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 02, 2014 at 01:20:33AM -0800, Christoph Hellwig wrote:
-> Why do you need the additional I_DIRTY flag?  A "lesser"
-> __mark_inode_dirty should never override a stronger one.
-
-Agreed, will fix.
-
-> Otherwise this looks fine to me, except that I would split the default
-> implementation into a new generic_update_time helper.
-
-Sure, I can do that.
-
-> > XFS doesn't have a ->dirty_time yet, but that way XFS would be able to
-> > use the I_DIRTY_TIME flag to log the journal timestamps if it so
-> > desires, and perhaps drop the need for it to use update_time().
+On Tue, Dec 02, 2014 at 07:55:48PM +0200, Boaz Harrosh wrote:
 > 
-> We will probably always need a ->update_time to proide proper locking
-> around the timestamp updates.
+> This I do not understand. I thought that I_DIRTY_TIME, and the all
+> lazytime mount option, is only for atime. So if there are dirty
+> pages then there are also m/ctime that changed and surly we want to
+> write these times to disk ASAP.
 
-Couldn't you let the VFS set the inode timesstamps and then have xfs's
-->dirty_time(inode, I_DIRTY_TIME) copy the timestamps to the on-disk
-inode structure under the appropriate lock, or am I missing something?
+What are the situations where you are most concerned about mtime or
+ctime being accurate after a crash?
 
-> In the current from the generic lazytime might even be a loss for XFS as
-> we're already really good at batching updates from multiple inodes in
-> the same cluster for the in-place writeback, so I really don't want
-> to just enable it without those optimizations without a lot of testing.
+I've been running with it on my laptop for a while now, and it's
+certainly not a problem for build trees; remember, whenever you need
+to update the inode to update i_blocks or i_size, the inode (with its
+updated timestamps) will be flushed to disk anyway.
 
-Fair enough; it's not surprising that this might be much more
-effective as an optimization for ext4, for no other reason that
-timestamp updates are so much heavyweight for us.  I suspect that it
-should be a win for btrfs, though, and it should definitely be a win
-for those file systems that don't use journalling at all.
+In actual practice, what happens in a build tree is that when make
+decides that it needs to update a generated file, when the file is
+created as a zero-length inode, m/ctime will be set to the time that
+file is created, which is newer than its source files.  As the file is
+written, the mtime is updated each time that we actually need to do an
+allocating write.  In the case of the linker, it will seek to the
+beginning of the file to update ELF header at the very end of its
+operation, and *that* time will be left stale, such that the in-memory
+mtime is perhaps a millisecond ahead of the on-disk mtime.  But in the
+case of a crash, either time is such that make won't be confused.
 
-    	       	       	    	      		     - Ted
+I'm not aware of an application which is doing a large number of
+non-allocating random writes (for example, such as a database), where
+said database actually cares about mtime being correct.  In fact, most
+databases use fdatasync() to prevent the mtimes from being sync'ed out
+to disk on each transaction, so they don't have guaranteed timestamp
+accuracy after a crash anyway.  The problem is even if the database is
+using fdatasync(), every five seconds we end up updating the mtime
+anyway --- and in the case of ext4, we end up needing to take various
+journal locks which on a sufficiently parallel workload and a
+sufficiently fast disk, can actually cause measurable contention.
+
+Did you have such a use case or application in mind?
+
+> if we are lazytime also with m/ctime then I think I would like an
+> option for only atime lazy. because m/ctime is cardinal to some
+> operations even though I might want atime lazy.
+
+If there's a sufficiently compelling use case where we do actually
+care about mtime/ctime being accurate, and the current semantics don't
+provide enough of a guarantee, it's certainly something we could do.
+I'd rather keep things simple unless it's really there.  (After all,
+we did create the strictatime mount option, but I'm not sure anyone
+every ends up using it.  It woud be a shame if we created a
+strictcmtime, which had the same usage rate.)
+
+I'll also note that if it's only about atime updates, with the default
+relatime mount option, I'm not sure there's enough of a win to hae a
+mode to justify a lazyatime only option.  If you really neeed strict
+c/mtime after a crash, maybe the best thing to do is to just simply
+not use the lazytime mount option and be done with it.
+
+Cheeres,
+
+					- Ted
 
 _______________________________________________
 xfs mailing list
