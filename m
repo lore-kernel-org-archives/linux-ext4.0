@@ -1,82 +1,121 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH-v5 1/5] vfs: add support for a lazytime mount option
-Date: Tue, 2 Dec 2014 13:58:20 +0100
-Message-ID: <20141202125820.GE9092@quack.suse.cz>
-References: <1417154411-5367-1-git-send-email-tytso@mit.edu>
- <1417154411-5367-2-git-send-email-tytso@mit.edu>
- <20141128172323.GD738@quack.suse.cz>
- <20141128181421.GA19461@google.com>
+Subject: Re: [PATCH] badblocks: Limit maximum number of bad blocks
+Date: Tue, 2 Dec 2014 14:45:38 +0100
+Message-ID: <20141202134538.GA13358@quack.suse.cz>
+References: <1410429804-26459-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	xfs@oss.sgi.com
-To: Ted Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:35304 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:36410 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753363AbaLBM6X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Dec 2014 07:58:23 -0500
+	id S1752641AbaLBNpm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Dec 2014 08:45:42 -0500
 Content-Disposition: inline
-In-Reply-To: <20141128181421.GA19461@google.com>
+In-Reply-To: <1410429804-26459-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 28-11-14 13:14:21, Ted Tso wrote:
-> On Fri, Nov 28, 2014 at 06:23:23PM +0100, Jan Kara wrote:
-> > Hum, when someone calls fsync() for an inode, you likely want to sync
-> > timestamps to disk even if everything else is clean. I think that doing
-> > what you did in last version:
-> > 	dirty = inode->i_state & I_DIRTY_INODE;
-> > 	inode->i_state &= ~I_DIRTY_INODE;
-> > 	spin_unlock(&inode->i_lock);
-> > 	if (dirty & I_DIRTY_TIME)
-> > 		mark_inode_dirty_sync(inode);
-> > looks better to me. IMO when someone calls __writeback_single_inode() we
-> > should write whatever we have...
+On Thu 11-09-14 12:03:24, Jan Kara wrote:
+> Currently maximum number of bad blocks is not limited in any way.
+> However our code can really handle at most INT_MAX/2 bad blocks (for
+> larger numbers binary search indexes start overflowing). So report
+> number of bad blocks is just too big instead of plaing segfault.
 > 
-> Yes, but we also have to distinguish between what happens on an
-> fsync() versus what happens on a periodic writeback if I_DIRTY_PAGES
-> (but not I_DIRTY_SYNC or I_DIRTY_DATASYNC) is set.  So there is a
-> check in the fsync() code path to handle the concern you raised above.
-  Ah, this is the thing you have been likely talking about but which I was
-constantly missing in my thoughts. You don't want to write times when inode
-has only dirty pages and timestamps - I was always thinking about a
-situation where inode has only dirty timestamps and not pages. This
-situation also complicates the writeback logic because when inode has dirty
-pages, you need to track it as normal dirty inode for page writeback (with
-dirtied_when correspoding to time when pages were dirtied) but in
-parallel you now need to track the information that inode has timestamps
-that weren't written for X long. And even if we stored how old are
-timestamps it isn't easily possible to keep the list of inodes with just
-dirty timestamps sorted by dirty time. So now I finally understand why you
-did things the way you did them... Sorry for misleading you.
-
-So let's restart the design so that things are clear:
-1) We have new inode bit I_DIRTY_TIME. This means that only timestamps in
-the inode have changed. The desired behavior is that inode is with
-I_DIRTY_TIME and without I_DIRTY_SYNC | I_DIRTY_DATASYNC is written by
-background writeback only once per 24 hours. Such inodes do get written by
-sync(2) and fsync(2) calls.
-
-2) Inodes with only I_DIRTY_TIME are tracked in a new dirty list
-b_dirty_time. We use i_wb_list list head for this. Unlike b_dirty list,
-this list isn't kept sorted by dirtied_when. If queue_io() sees for_sync
-bit set in the work item, it will call mark_inode_dirty_sync() for all
-inodes in b_dirty_time before queuing io from b_dirty list. Once per hour
-(or something like that) flusher thread scans the whole b_dirty_time list
-and calls mark_inode_dirty_sync() for all inodes that have too old dirty
-timestamps (to detect this we need a new time stamp in the inode).
-
-3) When fsync() sees inode with I_DIRTY_TIME set, it calls
-mark_inode_dirty_sync().
-
-4) When we are dropping last inode reference and inode has I_DIRTY_TIME
-set, we call mark_inode_dirty_sync().
-
-And that should be it, right?
+> It won't be too hard to raise the limit but I don't think there's any
+> real use for disks with over 1 billion of bad blocks...
+  Ted, what did happen to this patch? I don't see it in e2fsprogs
+master branch... Thanks.
 
 								Honza
+
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  misc/badblocks.c | 25 ++++++++++++++++++++-----
+>  1 file changed, 20 insertions(+), 5 deletions(-)
+> 
+> diff --git a/misc/badblocks.c b/misc/badblocks.c
+> index e5024f6c67d1..2c28ee00ec15 100644
+> --- a/misc/badblocks.c
+> +++ b/misc/badblocks.c
+> @@ -65,6 +65,9 @@ extern int optind;
+>  #define O_LARGEFILE 0
+>  #endif
+>  
+> +/* Maximum number of bad blocks we support */
+> +#define MAX_BAD_BLOCKS (INT_MAX/2)
+> +
+>  static const char * program_name = "badblocks";
+>  static const char * done_string = N_("done                                                 \n");
+>  
+> @@ -78,7 +81,9 @@ static int t_max;			/* allocated test patterns */
+>  static unsigned int *t_patts;		/* test patterns */
+>  static int use_buffered_io;
+>  static int exclusive_ok;
+> -static unsigned int max_bb;		/* Abort test if more than this number of bad blocks has been encountered */
+> +static unsigned int max_bb = MAX_BAD_BLOCKS;	/* Abort test if more than this
+> +						 * number of bad blocks has been
+> +						 * encountered */
+>  static unsigned int d_flag;		/* delay factor between reads */
+>  static struct timeval time_start;
+>  
+> @@ -526,7 +531,7 @@ static unsigned int test_ro (int dev, blk_t last_block,
+>  		alarm_intr(SIGALRM);
+>  	while (currently_testing < last_block)
+>  	{
+> -		if (max_bb && bb_count >= max_bb) {
+> +		if (bb_count >= max_bb) {
+>  			if (s_flag || v_flag) {
+>  				fputs(_("Too many bad blocks, aborting test\n"), stderr);
+>  			}
+> @@ -633,7 +638,7 @@ static unsigned int test_rw (int dev, blk_t last_block,
+>  
+>  		try = blocks_at_once;
+>  		while (currently_testing < last_block) {
+> -			if (max_bb && bb_count >= max_bb) {
+> +			if (bb_count >= max_bb) {
+>  				if (s_flag || v_flag) {
+>  					fputs(_("Too many bad blocks, aborting test\n"), stderr);
+>  				}
+> @@ -675,7 +680,7 @@ static unsigned int test_rw (int dev, blk_t last_block,
+>  
+>  		try = blocks_at_once;
+>  		while (currently_testing < last_block) {
+> -			if (max_bb && bb_count >= max_bb) {
+> +			if (bb_count >= max_bb) {
+>  				if (s_flag || v_flag) {
+>  					fputs(_("Too many bad blocks, aborting test\n"), stderr);
+>  				}
+> @@ -822,7 +827,7 @@ static unsigned int test_nd (int dev, blk_t last_block,
+>  			alarm_intr(SIGALRM);
+>  
+>  		while (currently_testing < last_block) {
+> -			if (max_bb && bb_count >= max_bb) {
+> +			if (bb_count >= max_bb) {
+>  				if (s_flag || v_flag) {
+>  					fputs(_("Too many bad blocks, aborting test\n"), stderr);
+>  				}
+> @@ -1117,6 +1122,16 @@ int main (int argc, char ** argv)
+>  			break;
+>  		case 'e':
+>  			max_bb = parse_uint(optarg, "max bad block count");
+> +			if (max_bb > MAX_BAD_BLOCKS) {
+> +				com_err (program_name, 0,
+> +					 _("Too big max bad blocks count %u - "
+> +					   "maximum is %u"), max_bb,
+> +					   MAX_BAD_BLOCKS);
+> +				exit (1);
+> +			}
+> +			/* 0 really means unlimited but we cannot do that much... */
+> +			if (max_bb == 0)
+> +				max_bb = MAX_BAD_BLOCKS;
+>  			break;
+>  		case 'd':
+>  			d_flag = parse_uint(optarg, "read delay factor");
+> -- 
+> 1.8.1.4
+> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
