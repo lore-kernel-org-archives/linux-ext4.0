@@ -1,42 +1,34 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: fix regression where we fail to initialize
- checksum seed when loading
-Date: Mon, 1 Dec 2014 22:05:55 -0500
-Message-ID: <20141202030555.GA953@thunk.org>
-References: <20141202002223.GT10043@birch.djwong.org>
+Subject: [GIT PULL] ext4 bug fixes for 3.18
+Date: Mon, 1 Dec 2014 22:43:18 -0500
+Message-ID: <20141202034318.GA13101@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eric Whitney <enwlinux@gmail.com>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33441 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753557AbaLBDIF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 1 Dec 2014 22:08:05 -0500
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20141202002223.GT10043@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 01, 2014 at 04:22:23PM -0800, Darrick J. Wong wrote:
-> When we're enabling journal features, we cannot use the predicate
-> jbd2_journal_has_csum_v2or3() because we haven't yet set the sb
-> feature flag fields!  Moreover, we just finished loading the shash
-> driver, so the test is unnecessary; calculate the seed always.
-> 
-> Without this patch, we fail to initialize the checksum seed the first
-> time we turn on journal_checksum, which means that all journal blocks
-> written during that first mount are corrupt.  Transactions written
-> after the second mount will be fine, since the feature flag will be
-> set in the journal superblock.  xfstests generic/{034,321,322} are the
-> regression tests.
-> 
-> (This is important for 3.18.)
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.coM>
-> Reported-by: Eric Whitney <enwlinux@gmail.com>
+The following changes since commit 0df1f2487d2f0d04703f142813d53615d62a1da4:
 
-Applied, thanks.  I've confirmed this has fixed the xfstests
-regressions, and I'll be sending this to Linus shortly.
+  Linux 3.18-rc3 (2014-11-02 15:01:51 -0800)
 
-	     	      	 	      - Ted
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_urgent
+
+for you to fetch changes up to 32f3869184d498850d36b7e6aa3b9f5260ea648a:
+
+  jbd2: fix regression where we fail to initialize checksum seed when loading (2014-12-01 21:57:06 -0500)
+
+----------------------------------------------------------------
+Fix an ext4 metadata checksum regression introduced in v3.18-rc3.
+
+----------------------------------------------------------------
+Darrick J. Wong (1):
+      jbd2: fix regression where we fail to initialize checksum seed when loading
+
+ fs/jbd2/journal.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
