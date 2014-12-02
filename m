@@ -1,108 +1,131 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH-v6 2/3] vfs: add find_inode_nowait() function
-Date: Mon,  1 Dec 2014 19:29:38 -0500
-Message-ID: <1417480179-26209-3-git-send-email-tytso@mit.edu>
-References: <1417480179-26209-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH-v6 0/3] add support for a lazytime mount option
+Date: Mon,  1 Dec 2014 19:29:36 -0500
+Message-ID: <1417480179-26209-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Theodore Ts'o <tytso@mit.edu>
 To: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33257 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:33259 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753571AbaLBA3s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754026AbaLBA3s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 1 Dec 2014 19:29:48 -0500
-In-Reply-To: <1417480179-26209-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add a new function find_inode_nowait() which is an even more general
-version of ilookup5_nowait().  It is designed for callers which need
-very fine grained control over when the function is allowed to block
-or increment the inode's reference count.
+This is an updated version of what had originally been an
+ext4-specific patch which significantly improves performance by lazily
+writing timestamp updates (and in particular, mtime updates) to disk.
+The in-memory timestamps are always correct, but they are only written
+to disk when required for correctness.
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/inode.c         | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/fs.h |  5 +++++
- 2 files changed, 55 insertions(+)
+This provides a huge performance boost for ext4 due to how it handles
+journalling, but it's valuable for all file systems running on flash
+storage or drive-managed SMR disks by reducing the metadata write
+load.  So upon request, I've moved the functionality to the VFS layer.
+Once the /sbin/mount program adds support for MS_LAZYTIME, all file
+systems should be able to benefit from this optimization.
 
-diff --git a/fs/inode.c b/fs/inode.c
-index ceba9c5..47f5fc1 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -1282,6 +1282,56 @@ struct inode *ilookup(struct super_block *sb, unsigned long ino)
- }
- EXPORT_SYMBOL(ilookup);
- 
-+/**
-+ * find_inode_nowait - find an inode in the inode cache
-+ * @sb:		super block of file system to search
-+ * @hashval:	hash value (usually inode number) to search for
-+ * @match:	callback used for comparisons between inodes
-+ * @data:	opaque data pointer to pass to @match
-+ *
-+ * Search for the inode specified by @hashval and @data in the inode
-+ * cache, where the helper function @match will return 0 if the inode
-+ * does not match, 1 if the inode does match, and -1 if the search
-+ * should be stopped.  The @match function must be responsible for
-+ * taking the i_lock spin_lock and checking i_state for an inode being
-+ * freed or being initialized, and incrementing the reference count
-+ * before returning 1.  It also must not sleep, since it is called with
-+ * the inode_hash_lock spinlock held.
-+ *
-+ * This is a even more generalized version of ilookup5() when the
-+ * function must never block --- find_inode() can block in
-+ * __wait_on_freeing_inode() --- or when the caller can not increment
-+ * the reference count because the resulting iput() might cause an
-+ * inode eviction().  The tradeoff is that the @match funtion must be
-+ * very carefully implemented.
-+ */
-+struct inode *find_inode_nowait(struct super_block *sb,
-+				unsigned long hashval,
-+				int (*match)(struct inode *, unsigned long,
-+					     void *),
-+				void *data)
-+{
-+	struct hlist_head *head = inode_hashtable + hash(sb, hashval);
-+	struct inode *inode, *ret_inode = NULL;
-+	int mval;
-+
-+	spin_lock(&inode_hash_lock);
-+	hlist_for_each_entry(inode, head, i_hash) {
-+		if (inode->i_sb != sb)
-+			continue;
-+		mval = match(inode, hashval, data);
-+		if (mval == 0)
-+			continue;
-+		if (mval == 1)
-+			ret_inode = inode;
-+		goto out;
-+	}
-+out:
-+	spin_unlock(&inode_hash_lock);
-+	return ret_inode;
-+}
-+EXPORT_SYMBOL(find_inode_nowait);
-+
- int insert_inode_locked(struct inode *inode)
- {
- 	struct super_block *sb = inode->i_sb;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index bb4e878..04af12c 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2414,6 +2414,11 @@ extern struct inode *ilookup(struct super_block *sb, unsigned long ino);
- 
- extern struct inode * iget5_locked(struct super_block *, unsigned long, int (*test)(struct inode *, void *), int (*set)(struct inode *, void *), void *);
- extern struct inode * iget_locked(struct super_block *, unsigned long);
-+extern struct inode *find_inode_nowait(struct super_block *,
-+				       unsigned long,
-+				       int (*match)(struct inode *,
-+						    unsigned long, void *),
-+				       void *data);
- extern int insert_inode_locked4(struct inode *, unsigned long, int (*test)(struct inode *, void *), void *);
- extern int insert_inode_locked(struct inode *);
- #ifdef CONFIG_DEBUG_LOCK_ALLOC
+There is still an ext4-specific optimization, which may be applicable
+for other file systems which store more than one inode in a block, but
+it will require file system specific code.  It is purely optional,
+however.
+
+For people interested seeing how timestamp updates are held back, the
+following example commands to enable the tracepoints debugging may be
+helpful:
+
+  mount -o remount,lazytime /
+  cd /sys/kernel/debug/tracing
+  echo 1 > events/writeback/writeback_lazytime/enable
+  echo 1 > events/writeback/writeback_lazytime_iput/enable
+  echo "flags == 2048" > events/writeback/writeback_mark_inode_dirty/filter
+  echo 1 > events/writeback/writeback_mark_inode_dirty/enable
+  echo 1 > events/ext4/ext4_other_inode_update_time/enable
+  cat trace_pipe
+
+You can also see how many lazytime inodes are in memory by looking in
+/sys/kernel/debug/bdi/<bdi>/stats
+
+Changes since -v5:
+   - Tweak move_expired_inodes to handle sync() and syncfs(), and drop
+     flush_sb_dirty_time().
+   - Move logic for handling the b_dirty_time list into
+     __mark_inode_dirty().
+   - Move I_DIRTY back to its original definition, and use I_DIRTY_ALL
+     for I_DIRTY plus I_DIRTY_TIME.
+   - Fold some patches together to make the first patch easier to
+     review (and modify/update).
+   - Use the pre-existing writeback tracepoints instead of creating a new
+     fs tracepoints.
+
+Changes since -v4:
+   - Fix ext4 optimization so it does not need to increment (and more
+     problematically, decrement) the inode reference count
+   - Per Christoph's suggestion, drop support for btrfs and xfs for now,
+     issues with how btrfs and xfs handle dirty inode tracking.  We can add
+     btrfs and xfs support back later or at the end of this series if we
+     want to revisit this decision.
+   - Miscellaneous cleanups
+
+Changes since -v3:
+   - inodes with I_DIRTY_TIME set are placed on a new bdi list,
+        b_dirty_time.  This allows filesystem-level syncs to more
+        easily iterate over those inodes that need to have their
+        timestamps written to disk.
+   - dirty timestamps will be written out asynchronously on the final
+        iput, instead of when the inode gets evicted.
+   - separate the definition of the new function
+        find_active_inode_nowait() to a separate patch
+   - create separate flag masks: I_DIRTY_WB and I_DIRTY_INODE, which
+       indicate whether the inode needs to be on the write back lists,
+       or whether the inode itself is dirty, while I_DIRTY means any one
+       of the inode dirty flags are set.  This simplifies the fs
+       writeback logic which needs to test for different combinations of
+       the inode dirty flags in different places.
+
+Changes since -v2:
+   - If update_time() updates i_version, it will not use lazytime (i..e,
+       the inode will be marked dirty so the change will be persisted on to
+       disk sooner rather than later).  Yes, this eliminates the
+       benefits of lazytime if the user is experting the file system via
+       NFSv4.  Sad, but NFS's requirements seem to mandate this.
+   - Fix time wrapping bug 49 days after the system boots (on a system
+        with a 32-bit jiffies).   Use get_monotonic_boottime() instead.
+   - Clean up type warning in include/tracing/ext4.h
+   - Added explicit parenthesis for stylistic reasons    
+   - Added an is_readonly() inode operations method so btrfs doesn't
+       have to duplicate code in update_time().
+
+Changes since -v1:
+   - Added explanatory comments in update_time() regarding i_ts_dirty_days
+   - Fix type used for days_since_boot
+   - Improve SMP scalability in update_time and ext4_update_other_inodes_time
+   - Added tracepoints to help test and characterize how often and under
+         what circumstances inodes have their timestamps lazily updated
+
+Theodore Ts'o (3):
+  vfs: add support for a lazytime mount option
+  vfs: add find_inode_nowait() function
+  ext4: add optimization for the lazytime mount option
+
+ fs/ext4/inode.c                  | 65 +++++++++++++++++++++++++++++--
+ fs/ext4/super.c                  | 10 +++++
+ fs/fs-writeback.c                | 52 ++++++++++++++++++++-----
+ fs/gfs2/file.c                   |  4 +-
+ fs/inode.c                       | 84 +++++++++++++++++++++++++++++++++++-----
+ fs/jfs/file.c                    |  2 +-
+ fs/libfs.c                       |  2 +-
+ fs/proc_namespace.c              |  1 +
+ fs/sync.c                        |  8 ++++
+ include/linux/backing-dev.h      |  1 +
+ include/linux/fs.h               |  9 +++++
+ include/trace/events/ext4.h      | 30 ++++++++++++++
+ include/trace/events/writeback.h | 53 ++++++++++++++++++++++++-
+ include/uapi/linux/fs.h          |  4 +-
+ mm/backing-dev.c                 | 10 ++++-
+ 15 files changed, 305 insertions(+), 30 deletions(-)
+
 -- 
 2.1.0
 
