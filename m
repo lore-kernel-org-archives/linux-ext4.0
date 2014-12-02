@@ -1,121 +1,64 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] badblocks: Limit maximum number of bad blocks
-Date: Tue, 2 Dec 2014 14:45:38 +0100
-Message-ID: <20141202134538.GA13358@quack.suse.cz>
-References: <1410429804-26459-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH] ext4: ext4_da_convert_inline_data_to_extent drop locked page after error
+Date: Tue,  2 Dec 2014 18:28:20 +0400
+Message-ID: <1417530500-9958-1-git-send-email-dmonakhov@openvz.org>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:36410 "EHLO mx2.suse.de"
+Received: from mailhub.sw.ru ([195.214.232.25]:31394 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752641AbaLBNpm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Dec 2014 08:45:42 -0500
-Content-Disposition: inline
-In-Reply-To: <1410429804-26459-1-git-send-email-jack@suse.cz>
+	id S932292AbaLBO2c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Dec 2014 09:28:32 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 11-09-14 12:03:24, Jan Kara wrote:
-> Currently maximum number of bad blocks is not limited in any way.
-> However our code can really handle at most INT_MAX/2 bad blocks (for
-> larger numbers binary search indexes start overflowing). So report
-> number of bad blocks is just too big instead of plaing segfault.
-> 
-> It won't be too hard to raise the limit but I don't think there's any
-> real use for disks with over 1 billion of bad blocks...
-  Ted, what did happen to this patch? I don't see it in e2fsprogs
-master branch... Thanks.
+Testcase:
+xfstests generic/270
+MKFS_OPTIONS="-q -I 256 -O inline_data,64bit"
 
-								Honza
+Call Trace:
+ [<ffffffff81144c76>] lock_page+0x35/0x39 -------> DEADLOCK
+ [<ffffffff81145260>] pagecache_get_page+0x65/0x15a
+ [<ffffffff811507fc>] truncate_inode_pages_range+0x1db/0x45c
+ [<ffffffff8120ea63>] ? ext4_da_get_block_prep+0x439/0x4b6
+ [<ffffffff811b29b7>] ? __block_write_begin+0x284/0x29c
+ [<ffffffff8120e62a>] ? ext4_change_inode_journal_flag+0x16b/0x16b
+ [<ffffffff81150af0>] truncate_inode_pages+0x12/0x14
+ [<ffffffff81247cb4>] ext4_truncate_failed_write+0x19/0x25
+ [<ffffffff812488cf>] ext4_da_write_inline_data_begin+0x196/0x31c
+ [<ffffffff81210dad>] ext4_da_write_begin+0x189/0x302
+ [<ffffffff810c07ac>] ? trace_hardirqs_on+0xd/0xf
+ [<ffffffff810ddd13>] ? read_seqcount_begin.clone.1+0x9f/0xcc
+ [<ffffffff8114309d>] generic_perform_write+0xc7/0x1c6
+ [<ffffffff810c040e>] ? mark_held_locks+0x59/0x77
+ [<ffffffff811445d1>] __generic_file_write_iter+0x17f/0x1c5
+ [<ffffffff8120726b>] ext4_file_write_iter+0x2a5/0x354
+ [<ffffffff81185656>] ? file_start_write+0x2a/0x2c
+ [<ffffffff8107bcdb>] ? bad_area_nosemaphore+0x13/0x15
+ [<ffffffff811858ce>] new_sync_write+0x8a/0xb2
+ [<ffffffff81186e7b>] vfs_write+0xb5/0x14d
+ [<ffffffff81186ffb>] SyS_write+0x5c/0x8c
+ [<ffffffff816f2529>] system_call_fastpath+0x12/0x17
 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  misc/badblocks.c | 25 ++++++++++++++++++++-----
->  1 file changed, 20 insertions(+), 5 deletions(-)
-> 
-> diff --git a/misc/badblocks.c b/misc/badblocks.c
-> index e5024f6c67d1..2c28ee00ec15 100644
-> --- a/misc/badblocks.c
-> +++ b/misc/badblocks.c
-> @@ -65,6 +65,9 @@ extern int optind;
->  #define O_LARGEFILE 0
->  #endif
->  
-> +/* Maximum number of bad blocks we support */
-> +#define MAX_BAD_BLOCKS (INT_MAX/2)
-> +
->  static const char * program_name = "badblocks";
->  static const char * done_string = N_("done                                                 \n");
->  
-> @@ -78,7 +81,9 @@ static int t_max;			/* allocated test patterns */
->  static unsigned int *t_patts;		/* test patterns */
->  static int use_buffered_io;
->  static int exclusive_ok;
-> -static unsigned int max_bb;		/* Abort test if more than this number of bad blocks has been encountered */
-> +static unsigned int max_bb = MAX_BAD_BLOCKS;	/* Abort test if more than this
-> +						 * number of bad blocks has been
-> +						 * encountered */
->  static unsigned int d_flag;		/* delay factor between reads */
->  static struct timeval time_start;
->  
-> @@ -526,7 +531,7 @@ static unsigned int test_ro (int dev, blk_t last_block,
->  		alarm_intr(SIGALRM);
->  	while (currently_testing < last_block)
->  	{
-> -		if (max_bb && bb_count >= max_bb) {
-> +		if (bb_count >= max_bb) {
->  			if (s_flag || v_flag) {
->  				fputs(_("Too many bad blocks, aborting test\n"), stderr);
->  			}
-> @@ -633,7 +638,7 @@ static unsigned int test_rw (int dev, blk_t last_block,
->  
->  		try = blocks_at_once;
->  		while (currently_testing < last_block) {
-> -			if (max_bb && bb_count >= max_bb) {
-> +			if (bb_count >= max_bb) {
->  				if (s_flag || v_flag) {
->  					fputs(_("Too many bad blocks, aborting test\n"), stderr);
->  				}
-> @@ -675,7 +680,7 @@ static unsigned int test_rw (int dev, blk_t last_block,
->  
->  		try = blocks_at_once;
->  		while (currently_testing < last_block) {
-> -			if (max_bb && bb_count >= max_bb) {
-> +			if (bb_count >= max_bb) {
->  				if (s_flag || v_flag) {
->  					fputs(_("Too many bad blocks, aborting test\n"), stderr);
->  				}
-> @@ -822,7 +827,7 @@ static unsigned int test_nd (int dev, blk_t last_block,
->  			alarm_intr(SIGALRM);
->  
->  		while (currently_testing < last_block) {
-> -			if (max_bb && bb_count >= max_bb) {
-> +			if (bb_count >= max_bb) {
->  				if (s_flag || v_flag) {
->  					fputs(_("Too many bad blocks, aborting test\n"), stderr);
->  				}
-> @@ -1117,6 +1122,16 @@ int main (int argc, char ** argv)
->  			break;
->  		case 'e':
->  			max_bb = parse_uint(optarg, "max bad block count");
-> +			if (max_bb > MAX_BAD_BLOCKS) {
-> +				com_err (program_name, 0,
-> +					 _("Too big max bad blocks count %u - "
-> +					   "maximum is %u"), max_bb,
-> +					   MAX_BAD_BLOCKS);
-> +				exit (1);
-> +			}
-> +			/* 0 really means unlimited but we cannot do that much... */
-> +			if (max_bb == 0)
-> +				max_bb = MAX_BAD_BLOCKS;
->  			break;
->  		case 'd':
->  			d_flag = parse_uint(optarg, "read delay factor");
-> -- 
-> 1.8.1.4
-> 
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/inline.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index d3d8192..8edb224 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -811,6 +811,9 @@ static int ext4_da_convert_inline_data_to_extent(struct address_space *mapping,
+ 	ret = __block_write_begin(page, 0, inline_size,
+ 				  ext4_da_get_block_prep);
+ 	if (ret) {
++		unlock_page(page);
++		page_cache_release(page);
++		page = NULL;
+ 		ext4_truncate_failed_write(inode);
+ 		goto out;
+ 	}
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.1
+
