@@ -1,58 +1,214 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] jbd2: fix regression where we fail to initialize checksum
- seed when loading
-Date: Mon, 1 Dec 2014 16:22:23 -0800
-Message-ID: <20141202002223.GT10043@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eric Whitney <enwlinux@gmail.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH-v6 3/3] ext4: add optimization for the lazytime mount option
+Date: Mon,  1 Dec 2014 19:29:39 -0500
+Message-ID: <1417480179-26209-4-git-send-email-tytso@mit.edu>
+References: <1417480179-26209-1-git-send-email-tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:45295 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932382AbaLBAWd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Dec 2014 19:22:33 -0500
-Content-Disposition: inline
+Received: from imap.thunk.org ([74.207.234.97]:33260 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754130AbaLBA3s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Dec 2014 19:29:48 -0500
+In-Reply-To: <1417480179-26209-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When we're enabling journal features, we cannot use the predicate
-jbd2_journal_has_csum_v2or3() because we haven't yet set the sb
-feature flag fields!  Moreover, we just finished loading the shash
-driver, so the test is unnecessary; calculate the seed always.
+Add an optimization for the MS_LAZYTIME mount option so that we will
+opportunistically write out any inodes with the I_DIRTY_TIME flag set
+in a particular inode table block when we need to update some inode in
+that inode table block anyway.
 
-Without this patch, we fail to initialize the checksum seed the first
-time we turn on journal_checksum, which means that all journal blocks
-written during that first mount are corrupt.  Transactions written
-after the second mount will be fine, since the feature flag will be
-set in the journal superblock.  xfstests generic/{034,321,322} are the
-regression tests.
+Also add some temporary code so that we can set the lazytime mount
+option without needing a modified /sbin/mount program which can set
+MS_LAZYTIME.  We can eventually make this go away once util-linux has
+added support.
 
-(This is important for 3.18.)
+Google-Bug-Id: 18297052
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.coM>
-Reported-by: Eric Whitney <enwlinux@gmail.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/jbd2/journal.c |    5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ fs/ext4/inode.c             | 65 ++++++++++++++++++++++++++++++++++++++++++---
+ fs/ext4/super.c             | 10 +++++++
+ include/trace/events/ext4.h | 30 +++++++++++++++++++++
+ 3 files changed, 102 insertions(+), 3 deletions(-)
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index e4dc747..1df94fa 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1853,13 +1853,12 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 				journal->j_chksum_driver = NULL;
- 				return 0;
- 			}
--		}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5653fa4..6327b28 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4139,6 +4139,65 @@ static int ext4_inode_blocks_set(handle_t *handle,
+ 	return 0;
+ }
  
--		/* Precompute checksum seed for all metadata */
--		if (jbd2_journal_has_csum_v2or3(journal))
-+			/* Precompute checksum seed for all metadata */
- 			journal->j_csum_seed = jbd2_chksum(journal, ~0,
- 							   sb->s_uuid,
- 							   sizeof(sb->s_uuid));
-+		}
++struct other_inode {
++	unsigned long		orig_ino;
++	struct ext4_inode	*raw_inode;
++};
++
++static int other_inode_match(struct inode * inode, unsigned long ino,
++			     void *data)
++{
++	struct other_inode *oi = (struct other_inode *) data;
++
++	if ((inode->i_ino != ino) ||
++	    (inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW |
++			       I_DIRTY_SYNC | I_DIRTY_DATASYNC)) ||
++	    ((inode->i_state & I_DIRTY_TIME) == 0))
++		return 0;
++	spin_lock(&inode->i_lock);
++	if (((inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW |
++				I_DIRTY_SYNC | I_DIRTY_DATASYNC)) == 0) &&
++	    (inode->i_state & I_DIRTY_TIME)) {
++		struct ext4_inode_info	*ei = EXT4_I(inode);
++
++		inode->i_state &= ~I_DIRTY_TIME;
++		spin_unlock(&inode->i_lock);
++
++		spin_lock(&ei->i_raw_lock);
++		EXT4_INODE_SET_XTIME(i_ctime, inode, oi->raw_inode);
++		EXT4_INODE_SET_XTIME(i_mtime, inode, oi->raw_inode);
++		EXT4_INODE_SET_XTIME(i_atime, inode, oi->raw_inode);
++		ext4_inode_csum_set(inode, oi->raw_inode, ei);
++		spin_unlock(&ei->i_raw_lock);
++		trace_ext4_other_inode_update_time(inode, oi->orig_ino);
++		return -1;
++	}
++	spin_unlock(&inode->i_lock);
++	return -1;
++}
++
++/*
++ * Opportunistically update the other time fields for other inodes in
++ * the same inode table block.
++ */
++static void ext4_update_other_inodes_time(struct super_block *sb,
++					  unsigned long orig_ino, char *buf)
++{
++	struct other_inode oi;
++	unsigned long ino;
++	int i, inodes_per_block = EXT4_SB(sb)->s_inodes_per_block;
++	int inode_size = EXT4_INODE_SIZE(sb);
++
++	oi.orig_ino = orig_ino;
++	ino = orig_ino & ~(inodes_per_block - 1);
++	for (i = 0; i < inodes_per_block; i++, ino++, buf += inode_size) {
++		if (ino == orig_ino)
++			continue;
++		oi.raw_inode = (struct ext4_inode *) buf;
++		(void) find_inode_nowait(sb, ino, other_inode_match, &oi);
++	}
++}
++
+ /*
+  * Post the struct inode info into an on-disk inode location in the
+  * buffer-cache.  This gobbles the caller's reference to the
+@@ -4237,7 +4296,6 @@ static int ext4_do_update_inode(handle_t *handle,
+ 		for (block = 0; block < EXT4_N_BLOCKS; block++)
+ 			raw_inode->i_block[block] = ei->i_data[block];
+ 	}
+-
+ 	if (likely(!test_opt2(inode->i_sb, HURD_COMPAT))) {
+ 		raw_inode->i_disk_version = cpu_to_le32(inode->i_version);
+ 		if (ei->i_extra_isize) {
+@@ -4248,10 +4306,11 @@ static int ext4_do_update_inode(handle_t *handle,
+ 				cpu_to_le16(ei->i_extra_isize);
+ 		}
+ 	}
+-
+ 	ext4_inode_csum_set(inode, raw_inode, ei);
+-
+ 	spin_unlock(&ei->i_raw_lock);
++	if (inode->i_sb->s_flags & MS_LAZYTIME)
++		ext4_update_other_inodes_time(inode->i_sb, inode->i_ino,
++					      bh->b_data);
+ 
+ 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+ 	rc = ext4_handle_dirty_metadata(handle, NULL, bh);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 58859bc..5310ec9 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1132,6 +1132,7 @@ enum {
+ 	Opt_noquota, Opt_barrier, Opt_nobarrier, Opt_err,
+ 	Opt_usrquota, Opt_grpquota, Opt_i_version,
+ 	Opt_stripe, Opt_delalloc, Opt_nodelalloc, Opt_mblk_io_submit,
++	Opt_lazytime, Opt_nolazytime,
+ 	Opt_nomblk_io_submit, Opt_block_validity, Opt_noblock_validity,
+ 	Opt_inode_readahead_blks, Opt_journal_ioprio,
+ 	Opt_dioread_nolock, Opt_dioread_lock,
+@@ -1195,6 +1196,8 @@ static const match_table_t tokens = {
+ 	{Opt_i_version, "i_version"},
+ 	{Opt_stripe, "stripe=%u"},
+ 	{Opt_delalloc, "delalloc"},
++	{Opt_lazytime, "lazytime"},
++	{Opt_nolazytime, "nolazytime"},
+ 	{Opt_nodelalloc, "nodelalloc"},
+ 	{Opt_removed, "mblk_io_submit"},
+ 	{Opt_removed, "nomblk_io_submit"},
+@@ -1452,6 +1455,12 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 	case Opt_i_version:
+ 		sb->s_flags |= MS_I_VERSION;
+ 		return 1;
++	case Opt_lazytime:
++		sb->s_flags |= MS_LAZYTIME;
++		return 1;
++	case Opt_nolazytime:
++		sb->s_flags &= ~MS_LAZYTIME;
++		return 1;
  	}
  
- 	/* If enabling v1 checksums, downgrade superblock */
+ 	for (m = ext4_mount_opts; m->token != Opt_err; m++)
+@@ -5013,6 +5022,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 	}
+ #endif
+ 
++	*flags = (*flags & ~MS_LAZYTIME) | (sb->s_flags & MS_LAZYTIME);
+ 	ext4_msg(sb, KERN_INFO, "re-mounted. Opts: %s", orig_data);
+ 	kfree(orig_data);
+ 	return 0;
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 6cfb841..6e5abd6 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -73,6 +73,36 @@ struct extent_status;
+ 	{ FALLOC_FL_ZERO_RANGE,		"ZERO_RANGE"})
+ 
+ 
++TRACE_EVENT(ext4_other_inode_update_time,
++	TP_PROTO(struct inode *inode, ino_t orig_ino),
++
++	TP_ARGS(inode, orig_ino),
++
++	TP_STRUCT__entry(
++		__field(	dev_t,	dev			)
++		__field(	ino_t,	ino			)
++		__field(	ino_t,	orig_ino		)
++		__field(	uid_t,	uid			)
++		__field(	gid_t,	gid			)
++		__field(	__u16, mode			)
++	),
++
++	TP_fast_assign(
++		__entry->orig_ino = orig_ino;
++		__entry->dev	= inode->i_sb->s_dev;
++		__entry->ino	= inode->i_ino;
++		__entry->uid	= i_uid_read(inode);
++		__entry->gid	= i_gid_read(inode);
++		__entry->mode	= inode->i_mode;
++	),
++
++	TP_printk("dev %d,%d orig_ino %lu ino %lu mode 0%o uid %u gid %u",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->orig_ino,
++		  (unsigned long) __entry->ino, __entry->mode,
++		  __entry->uid, __entry->gid)
++);
++
+ TRACE_EVENT(ext4_free_inode,
+ 	TP_PROTO(struct inode *inode),
+ 
+-- 
+2.1.0
+
