@@ -1,109 +1,179 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] ext4/jbd2: fix race condition when initializing the crc32c
- "key"
-Date: Thu, 4 Dec 2014 19:55:39 -0800
-Message-ID: <20141205035539.GF10059@birch.djwong.org>
+From: Namjae Jeon <namjae.jeon@samsung.com>
+Subject: RE: [PATCH v6 2/10] xfs: Add support FALLOC_FL_INSERT_RANGE for
+ fallocate
+Date: Fri, 05 Dec 2014 15:20:28 +0900
+Message-ID: <001d01d01053$907ebf60$b17c3e20$@samsung.com>
+References: <002b01d007ae$319ed0a0$94dc71e0$@samsung.com>
+ <20141202204801.GA44400@bfoster.bfoster>
+ <001c01d00fb4$38029e50$a807daf0$@samsung.com>
+ <20141204134613.GA15457@bfoster.bfoster>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: "Theodore Ts'o" <tytso@mit.edu>, darrick.wong@oracle.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:35700 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933269AbaLED4A (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Dec 2014 22:56:00 -0500
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Cc: 'Theodore Ts'o' <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, 'Ashish Sangwan' <a.sangwan@samsung.com>,
+	linux-fsdevel@vger.kernel.org,
+	'linux-ext4' <linux-ext4@vger.kernel.org>
+To: 'Brian Foster' <bfoster@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-reply-to: <20141204134613.GA15457@bfoster.bfoster>
+Content-language: ko
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-In the patch "ext4: use the shash api correctly for crc32c", we
-attempted to correct for the mis-use of crc32c driver internals by
-using the crypto shash API.  Unfortunately, the setkey function
-modifies state (the key) in the shared s_chksum_driver; then this key
-initializes the on-stack checksum descriptor, which means that we have
-introduced a race condition that corrupts filesystems.
+> >
+> > >
+> > > That said, I wonder whether we even care about a merge in the right
+> > > shift case since we haven't punched a hole in the file and thus have not
+> > > changed the "neighbors" of any of the extents we're shuffling around. I
+> > > would think any extents that are already contiguous as such are already
+> > > a single extent.
+> > yes, in case of insert range it is highly unlikely that a merge is required.
+> > But we have kept this code as part of a generic API for shifting extents.
+> >
+> 
+> I'm not opposed to that in principle, but the right shift is a separate
+> invocation (at least in this incarnation) so it's of no consequence to
+> the left shift if we were to drop it here. As far as I can tell, it's
+> also broken in that if we ever were to hit it, it looks like it would
+> perform a left-shift-merge in the middle of a broader right-shift
+> sequence and probably corrupt the file and cause the insert range to
+> fail.
+> 
+> To fix it, I suspect we'd have to write a new helper to do the
+> right-shift-merge appropriately and then probably want a way to test it.
+> The only thing that comes to mind to accomplish that is to perhaps hook
+> up the bmap split mechanism to an XFS ioctl() such that it could be
+> invoked by xfs_io or some such tool. Unless I'm missing something,
+> that's a bunch of extra work to handle a condition that probably should
+> never occur.
+> 
+> As it is, I'd suggest we drop it, add a small comment as to why there's
+> no merge in that case, and perhaps consider an assert or warn_on_once
+> type sanity check should we come across something unexpected in this
+> codepath (like separate, but contiguous extents).
+Okay, I agree, will drop it and add warn_on_once.
 
-Therefore, duplicate s_chksum_driver on the stack so that we can set
-the key in our own private copy.  The guard for the shash context size
-is a little hacky, but it'll do.  A more "proper" fix would be just to
-put a spinlock around setkey/init, but that seems silly to initialize
-a local context.
+> 
+> > > > +	}
+> > > > +
+> > > > +	/*
+> > > > +	 * Convert to a btree if necessary.
+> > > > +	 */
+> > > > +	if (xfs_bmap_needs_btree(ip, whichfork)) {
+> > > > +		int tmp_logflags; /* partial log flag return val */
+> > > > +
+> > > > +		ASSERT(cur == NULL);
+> > > > +		error = xfs_bmap_extents_to_btree(tp, ip, firstfsb, free_list,
+> > > > +				&cur, 0, &tmp_logflags, whichfork);
+> > > > +		logflags |= tmp_logflags;
+> > > > +	}
+> > >
+> > > Hmm, looks Ok, but it would be nice if we had a test case for this
+> > > convert to btree scenario. I suspect something that falloc's just the
+> > > right number extents for a known fs format and does an insert range
+> > > right in the middle of one would suffice (and probably only require a
+> > > few seconds to run).
+> > Okay, I will prepare a testcase for convert to btree scenario of insert
+> > range.
+> > for collapse range we have generic/017 which tests multiple collapse
+> > calls on same file. I can write same test for insert range which will
+> > insert a single block hole at every alternate block in the file.
+> > Each insert range call will split the extent into 2 extents. This test
+> > need not be fs specfic so can be used for ext4 also.
+> >
+> 
+> That sounds like a nice idea. If you start with 1 or some sufficiently
+> small number of extents, that should catch the inode format conversion
+> induced by insert range at some point.
+> 
+> It might also be interesting to consider following the insert range
+> sequence with collapse range of all/some of the previously inserted
+> ranges. That should give us some test coverage of the collapse extent
+> merge code, if we're lacking that right now.
+Good idea, I will do it.
 
-(You could also just revert the two cleanup patches, since every other
-caller of crc32c makes layout and size assumptions.)
+> 
+> > >
+> > > > +
+> > > > +del_cursor:
+> > > > +	if (cur) {
+> > > > +		cur->bc_private.b.allocated = 0;
+> > > > +		xfs_btree_del_cursor(cur,
+> > > > +				error ? XFS_BTREE_ERROR : XFS_BTREE_NOERROR);
+> > > > +	}
+> > > > +	xfs_trans_log_inode(tp, ip, logflags);
+> > > > +	return error;
+> > > > +}
+> > > > +
+> > > > +int
+> > > > +xfs_bmap_split_extent(
+> > > > +		struct xfs_inode        *ip,
+> > > > +		xfs_fileoff_t           split_fsb)
+> > >
+> > > You can line up the above params with the local vars below.
+> > Okay.
+> >
+> > >
+> > > > +{
+> > > > +	struct xfs_mount        *mp = ip->i_mount;
+> > > > +	struct xfs_trans        *tp;
+> > > > +	struct xfs_bmap_free    free_list;
+> > > > +	xfs_fsblock_t           firstfsb;
+> > > > +	int                     committed;
+> > > > +	int                     error;
+> > > > +
+> > > > +	tp = xfs_trans_alloc(mp, XFS_TRANS_DIOSTRAT);
+> > > > +	error = xfs_trans_reserve(tp, &M_RES(mp)->tr_write,
+> > > > +			XFS_DIOSTRAT_SPACE_RES(mp, 0), 0);
+> > > > +	if (error) {
+> > > > +		xfs_trans_cancel(tp, 0);
+> > > > +		return error;
+> > > > +	}
+> > > > +
+> > > > +	xfs_ilock(ip, XFS_ILOCK_EXCL);
+> > > > +	error = xfs_trans_reserve_quota(tp, mp, ip->i_udquot,
+> > > > +			ip->i_gdquot, ip->i_pdquot,
+> > > > +			XFS_DIOSTRAT_SPACE_RES(mp, 0), 0,
+> > > > +			XFS_QMOPT_RES_REGBLKS);
+> > > > +	if (error)
+> > > > +		goto out;
+> > > > +
+> > > > +	xfs_trans_ijoin(tp, ip, 0);
+> > >
+> > > Might as well transfer the lock to the tp here? That avoids the need for
+> > > the unlocks below. We just need to make sure we order things correctly
+> > > such that the inode is unlocked on error conditions.
+> > Could you elaborate more ? Acutally, I can not find what is problem..
+> >
+> 
+> Oh it's not a problem per se, just an aesthetic suggestion to reduce the
+> lines of code. The third parameter to xfs_trans_ijoin() accepts the lock
+> flags on the inode. This transfers ownership of the ilock to the
+> transaction. The result of this is that the transaction will unlock the
+> inode appropriately (on tp commit or cancel). Check out things like
+> xfs_create() for examples of this usage.
+> 
+> Here, we pass 0 to xfs_trans_ijoin() and unlock the inode explicitly,
+> which is a pattern more typical to tp code that requires the lock held
+> for more than just the tp or submits multiple transactions. E.g.,
+> xfs_itruncate_extents() is an example of this.
+> 
+> To do the former here, we'd just have to be careful that we don't lock
+> the inode and have error conditions that cancel the transaction before
+> the ilock has been transferred (or conversely, do not explicitly unlock
+> the inode after the lock has been transferred).
+Okay, I understood. I will change it.
 
-Test case: run xfstests generic/011 over and over with metadata_csum
-enabled until you hit it.
+Thanks for review and suggestion!
+> 
+> Brian
+> 
+> >
+> > >
+> >
+> > _______________________________________________
+> > xfs mailing list
+> > xfs@oss.sgi.com
+> > http://oss.sgi.com/mailman/listinfo/xfs
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-Reported-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/ext4.h       |   16 +++++++++++++---
- include/linux/jbd2.h |   11 +++++++++--
- 2 files changed, 22 insertions(+), 5 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index da83f20..3e73450 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1777,19 +1777,29 @@ static inline __le16 ext4_rec_len_to_disk(unsigned len, unsigned blocksize)
- #define DX_HASH_HALF_MD4_UNSIGNED	4
- #define DX_HASH_TEA_UNSIGNED		5
- 
-+#define EXT4_MAX_CHECKSUM_SIZE		4
-+
- static inline u32 ext4_chksum(struct ext4_sb_info *sbi, u32 crc,
- 			      const void *address, unsigned int length)
- {
- 	struct {
- 		struct shash_desc shash;
--		char ctx[4];
-+		char ctx[EXT4_MAX_CHECKSUM_SIZE];
- 	} desc;
-+	struct {
-+		struct crypto_shash tfm;
-+		char ctx[EXT4_MAX_CHECKSUM_SIZE];
-+	} shash;
- 	__le32 out_crc;
- 	int err;
- 
--	BUG_ON(crypto_shash_descsize(sbi->s_chksum_driver)!=sizeof(desc.ctx));
-+	BUG_ON(sbi->s_chksum_driver->base.__crt_alg->cra_ctxsize >
-+	       sizeof(shash.ctx));
-+	BUG_ON(crypto_shash_descsize(sbi->s_chksum_driver) >
-+	       sizeof(desc.ctx));
- 
--	desc.shash.tfm = sbi->s_chksum_driver;
-+	shash.tfm = *sbi->s_chksum_driver;
-+	desc.shash.tfm = &shash.tfm;
- 	desc.shash.flags = 0;
- 	out_crc = cpu_to_le32(crc);
- 	crypto_shash_setkey(desc.shash.tfm, (u8 *)&out_crc, sizeof(out_crc));
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index ae365ca..a1ff27c 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1374,13 +1374,20 @@ static inline u32 jbd2_chksum(journal_t *journal, u32 crc,
- 		struct shash_desc shash;
- 		char ctx[JBD_MAX_CHECKSUM_SIZE];
- 	} desc;
-+	struct {
-+		struct crypto_shash tfm;
-+		char ctx[JBD_MAX_CHECKSUM_SIZE];
-+	} shash;
- 	__le32 out_crc;
- 	int err;
- 
-+	BUG_ON(journal->j_chksum_driver->base.__crt_alg->cra_ctxsize >
-+	       sizeof(shash.ctx));
- 	BUG_ON(crypto_shash_descsize(journal->j_chksum_driver) >
--		JBD_MAX_CHECKSUM_SIZE);
-+	       sizeof(desc.ctx));
- 
--	desc.shash.tfm = journal->j_chksum_driver;
-+	shash.tfm = *journal->j_chksum_driver;
-+	desc.shash.tfm = &shash.tfm;
- 	desc.shash.flags = 0;
- 	out_crc = cpu_to_le32(crc);
- 	crypto_shash_setkey(desc.shash.tfm, (u8 *)&out_crc, sizeof(out_crc));
