@@ -1,63 +1,27 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Subject: re: ext4: fix potential use after free during resize
-Date: Sat, 6 Dec 2014 16:53:41 +0300
-Message-ID: <20141206135341.GC17278@mwanda>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Crash in ext4_fill_super in linux-next
+Date: Sat, 6 Dec 2014 11:53:13 -0500
+Message-ID: <20141206165313.GC10309@thunk.org>
+References: <1417812093.4845.3@mail.thefacebook.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: dmonakhov@openvz.org
+Cc: 'linux-ext4' <linux-ext4@vger.kernel.org>,
+	Stephen Rothwell <sfr@canb.auug.org.au>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	Sergey Senozhatsky <sergey.senozhatsky@gmail.com>
+To: Chris Mason <clm@fb.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:22628 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751521AbaLFNxw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 6 Dec 2014 08:53:52 -0500
+Received: from imap.thunk.org ([74.207.234.97]:43314 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750903AbaLFQxV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 6 Dec 2014 11:53:21 -0500
 Content-Disposition: inline
+In-Reply-To: <1417812093.4845.3@mail.thefacebook.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello Dmitry Monakhov,
+Sorry, bad patch, and given my travel schedule I wasn't able to push
+out the ext4 dev branch earlier.  This has been done, so this will get
+picked up in the next linux-next release.
 
-The patch fdfe07398761: "ext4: fix potential use after free during
-resize" from Dec 2, 2014, leads to the following static checker
-warning:
-
-	fs/ext4/balloc.c:300 ext4_get_group_desc()
-	warn: 'gd_bh' can't be NULL.
-
-This is a false positive in Smatch, but I still had a question about the
-code.
-
-fs/ext4/balloc.c
-   295          group_desc = block_group >> EXT4_DESC_PER_BLOCK_BITS(sb);
-   296          offset = block_group & (EXT4_DESC_PER_BLOCK(sb) - 1);
-   297          rcu_read_lock();
-   298          gd_bh = *rcu_dereference(sbi->s_group_desc) + group_desc;
-   299          rcu_read_unlock();
-   300          if (!gd_bh) {
-
-Are you sure you don't want to "*rcu_dereference(sbi->s_group_desc)"
-separate from group_desc?
-
-		gd_bh = *rcu_dereference(sbi->s_group_desc);
-		rcu_read_unlock();
-		if (!gd_bh) {
-			...
-		}
-		gd_bh = (u8 *) + group_desc;
-
-   301                  ext4_error(sb, "Group descriptor not loaded - "
-   302                             "block_group = %u, group_desc = %u, desc = %u",
-   303                             block_group, group_desc, offset);
-                                                ^^^^^^^^^^
-We already know this is zero.
-
-   304                  return NULL;
-   305          }
-   306  
-   307          desc = (struct ext4_group_desc *)(
-   308                  (__u8 *)gd_bh->b_data + offset * EXT4_DESC_SIZE(sb));
-   309          if (bh)
-   310                  *bh = gd_bh;
-
-regards,
-dan carpenter
+						- Ted
