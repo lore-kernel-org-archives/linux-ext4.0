@@ -1,46 +1,26 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v1 4/10] lib/siphash.c: New file
-Date: Mon, 8 Dec 2014 08:16:22 -0500
-Message-ID: <20141208131622.GB5142@thunk.org>
-References: <20140929191243.GN10150@birch.djwong.org>
- <20141206233200.3175.qmail@ns.horizon.com>
+From: christain147@gmail.com
+Subject: Re
+Date: Mon, 08 Dec 2014 08:05:25 -0600
+Message-ID: <SERVER01PB47GRRoALj0003aabb__6889.70177802748$1418051412$gmane$org@mail.besto.be>
+Reply-To: mrsalimqadri@yahoo.com.mx
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: darrick.wong@oracle.com, linux-ext4@vger.kernel.org
-To: George Spelvin <linux@horizon.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: Recipients <christain147@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:45224 "EHLO imap.thunk.org"
+Received: from mail.besto.be ([81.83.12.83]:50274 "EHLO mail.besto.be"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754888AbaLHNQ2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Dec 2014 08:16:28 -0500
-Content-Disposition: inline
-In-Reply-To: <20141206233200.3175.qmail@ns.horizon.com>
+	id S1755909AbaLHPJr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Dec 2014 10:09:47 -0500
+Content-Description: Mail message body
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Dec 06, 2014 at 06:32:00PM -0500, George Spelvin wrote:
-> Well, *that* was a rabbit hole.  It seems like an obviously good idea,
-> but let's just say that crypto/ is non-obvious.  (No, it didn't take me 2
-> months of work; I just got sidetracked a lot because it was discouraging.)
-> But now that my cleanup patches there are getting reviewed, I can answer.
+Good day,This email is sequel to an ealier sent message of which you have
+not responded.I have a personal charity project which I will want you to
+execute on my behalf.Please kindly get back to me with this code
+MHR/3910/2014 .You can reach me on mrsalimqadri@gmail.com .
 
-Yeah, at this point I think we're better off having our own open-coded
-version of siphash.  We have in the past exported the core of a crypto
-hash which could be used by both /dev/random and the version in
-crypto/ with all of the crypto packaging and overhead, but it's
-probably not worth it here --- siphash is much smaller than say, any
-of the SHA algorithms.
+Thank you
 
-(The same is true for our use of crc32c, BTW --- if you can
-demonstrate on a ramdisk --- or a super fast PCIe attached flash, but
-randisks are cheaper --- that there are workloads were we are paying
-for overheads caused by the crypto layer, it might make sense to
-export the crc32c tables, and have an ext4-specific crc32c function.
-OTOH, the main resaon why we probably want to keep on using the
-crypto/ is that we can more easily take advantage of hardware
-acceleration on some platforms, which wouldn't be the case with
-siphash.)
-
-Cheers,
-
-						- Ted
+Salim Qadri
