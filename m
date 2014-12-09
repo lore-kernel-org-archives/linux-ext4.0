@@ -1,88 +1,168 @@
-From: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Subject: [v8 5/5] ext4: cleanup inode flag definitions
-Date: Tue,  9 Dec 2014 13:22:28 +0800
-Message-ID: <1418102548-5469-6-git-send-email-lixi@ddn.com>
-References: <1418102548-5469-1-git-send-email-lixi@ddn.com>
-To: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
-	jack-AlSwsSmVLrQ@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
-	dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <1418102548-5469-1-git-send-email-lixi-LfVdkaOWEx8@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 1/2] ext4/004: Add new resize2fs functional test
+Date: Tue,  9 Dec 2014 23:27:26 +0400
+Message-ID: <1418153247-17435-1-git-send-email-dmonakhov@openvz.org>
+Cc: linux-ext4@vger.kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>
+To: fstests@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailhub.sw.ru ([195.214.232.25]:21323 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751524AbaLIT1g (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Dec 2014 14:27:36 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The inode flags defined in uapi/linux/fs.h were migrated from
-ext4.h. This patch changes the inode flag definitions in ext4.h
-to VFS definitions to make the gaps between them clearer.
+Perform online fs-resize(from 1T to 15T) and check that fs is usable
 
-Signed-off-by: Li Xi <lixi-LfVdkaOWEx8@public.gmane.org>
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/ext4.h |   50 +++++++++++++++++++++++++-------------------------
- 1 files changed, 25 insertions(+), 25 deletions(-)
+ tests/ext4/004     | 100 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/ext4/004.out |  16 +++++++++
+ tests/ext4/group   |   1 +
+ 3 files changed, 117 insertions(+)
+ create mode 100755 tests/ext4/004
+ create mode 100644 tests/ext4/004.out
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 43a2a88..bcc04c0 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -353,33 +353,33 @@ struct flex_groups {
- /*
-  * Inode flags
-  */
--#define	EXT4_SECRM_FL			0x00000001 /* Secure deletion */
--#define	EXT4_UNRM_FL			0x00000002 /* Undelete */
--#define	EXT4_COMPR_FL			0x00000004 /* Compress file */
--#define EXT4_SYNC_FL			0x00000008 /* Synchronous updates */
--#define EXT4_IMMUTABLE_FL		0x00000010 /* Immutable file */
--#define EXT4_APPEND_FL			0x00000020 /* writes to file may only append */
--#define EXT4_NODUMP_FL			0x00000040 /* do not dump file */
--#define EXT4_NOATIME_FL			0x00000080 /* do not update atime */
-+#define	EXT4_SECRM_FL			FS_SECRM_FL        /* Secure deletion */
-+#define	EXT4_UNRM_FL			FS_UNRM_FL         /* Undelete */
-+#define	EXT4_COMPR_FL			FS_COMPR_FL        /* Compress file */
-+#define EXT4_SYNC_FL			FS_SYNC_FL         /* Synchronous updates */
-+#define EXT4_IMMUTABLE_FL		FS_IMMUTABLE_FL    /* Immutable file */
-+#define EXT4_APPEND_FL			FS_APPEND_FL       /* writes to file may only append */
-+#define EXT4_NODUMP_FL			FS_NODUMP_FL       /* do not dump file */
-+#define EXT4_NOATIME_FL			FS_NOATIME_FL      /* do not update atime */
- /* Reserved for compression usage... */
--#define EXT4_DIRTY_FL			0x00000100
--#define EXT4_COMPRBLK_FL		0x00000200 /* One or more compressed clusters */
--#define EXT4_NOCOMPR_FL			0x00000400 /* Don't compress */
--#define EXT4_ECOMPR_FL			0x00000800 /* Compression error */
-+#define EXT4_DIRTY_FL			FS_DIRTY_FL
-+#define EXT4_COMPRBLK_FL		FS_COMPRBLK_FL     /* One or more compressed clusters */
-+#define EXT4_NOCOMPR_FL			FS_NOCOMP_FL       /* Don't compress */
-+#define EXT4_ECOMPR_FL			FS_ECOMPR_FL       /* Compression error */
- /* End compression flags --- maybe not all used */
--#define EXT4_INDEX_FL			0x00001000 /* hash-indexed directory */
--#define EXT4_IMAGIC_FL			0x00002000 /* AFS directory */
--#define EXT4_JOURNAL_DATA_FL		0x00004000 /* file data should be journaled */
--#define EXT4_NOTAIL_FL			0x00008000 /* file tail should not be merged */
--#define EXT4_DIRSYNC_FL			0x00010000 /* dirsync behaviour (directories only) */
--#define EXT4_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
--#define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
--#define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
--#define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
--#define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
--#define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
--#define EXT4_PROJINHERIT_FL		FS_PROJINHERIT_FL /* Create with parents projid */
--#define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
-+#define EXT4_INDEX_FL			FS_INDEX_FL        /* hash-indexed directory */
-+#define EXT4_IMAGIC_FL			FS_IMAGIC_FL       /* AFS directory */
-+#define EXT4_JOURNAL_DATA_FL		FS_JOURNAL_DATA_FL /* file data should be journaled */
-+#define EXT4_NOTAIL_FL			FS_NOTAIL_FL       /* file tail should not be merged */
-+#define EXT4_DIRSYNC_FL			FS_DIRSYNC_FL      /* dirsync behaviour (directories only) */
-+#define EXT4_TOPDIR_FL			FS_TOPDIR_FL       /* Top of directory hierarchies*/
-+#define EXT4_HUGE_FILE_FL               0x00040000         /* Set to each huge file */
-+#define EXT4_EXTENTS_FL			FS_EXTENT_FL       /* Inode uses extents */
-+#define EXT4_EA_INODE_FL	        0x00200000         /* Inode used for large EA */
-+#define EXT4_EOFBLOCKS_FL		0x00400000         /* Blocks allocated beyond EOF */
-+#define EXT4_INLINE_DATA_FL		0x10000000         /* Inode has inline data. */
-+#define EXT4_PROJINHERIT_FL		FS_PROJINHERIT_FL  /* Create with parents projid */
-+#define EXT4_RESERVED_FL		FS_RESERVED_FL     /* reserved for ext4 lib */
- 
- #define EXT4_FL_USER_VISIBLE		0x204BDFFF /* User visible flags */
- #define EXT4_FL_USER_MODIFIABLE		0x204380FF /* User modifiable flags */
+diff --git a/tests/ext4/004 b/tests/ext4/004
+new file mode 100755
+index 0000000..0c54ade
+--- /dev/null
++++ b/tests/ext4/004
+@@ -0,0 +1,100 @@
++#! /bin/bash
++# FS QA Test No. 004
++#
++# Online resize2fs functional test
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2014 Dmitry Monakhov.  All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#-----------------------------------------------------------------------
++#
++
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++
++_cleanup()
++{
++    _scratch_unmount
++}
++
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++
++E2FSCK_PROG="`set_prog_path e2fsck`"
++RESIZE2FS_PROG="`set_prog_path resize2fs`"
++_supported_fs ext4
++_supported_os Linux
++_require_command $MKFS_EXT4_PROG mkfs.ext4
++_require_command $E2FSCK_PROG e2fsck
++_require_command $RESIZE2FS_PROG resize2fs
++_require_scratch
++
++# real QA test starts here
++_scratch_mkfs  >> $seqres.full 2>&1
++_scratch_mount
++mkdir $SCRATCH_MNT/mnt
++touch $SCRATCH_MNT/img
++truncate --size 1G $SCRATCH_MNT/img || _fail "Can not grow $SCRATCH_MNT/img"
++$MKFS_EXT4_PROG -F -b 4096 -i $((1024*1024*64)) $MKFS_OPTIONS -O 64bit $SCRATCH_MNT/img \
++    >> $seqres.full 2>&1 || _fail "$MKFS_EXT4_PROG failed see $seqres.full"
++
++for ((size = 1; size < 16; size++))
++do
++    truncate --size ${size}T $SCRATCH_MNT/img || _fail "Can not grow $SCRATCH_MNT/img file"
++    loop=`_create_loop_device $SCRATCH_MNT/img`
++    _mount -t $FSTYP $MOUNT_OPTIONS $loop $SCRATCH_MNT/mnt
++
++    echo "Resize to ${size}T"
++    $RESIZE2FS_PROG $loop  >> $seqres.full 2>&1 || \
++	_fail "Could not resize FS to $size Tb"
++
++    du -sch $SCRATCH_MNT/img >> $seqres.full
++    # Create space-holders
++    for ((i=0 ; i < 1000;i++))
++    do
++	fallocate -l 1001M $SCRATCH_MNT/mnt/space-$size-$i
++    done
++
++    # Consume all space remaining
++    fallocate -l 1T $SCRATCH_MNT/mnt/space-$size-last 2> /dev/null && \
++	_fail "Too may space consumed"
++
++    # Cut 1Mb for eash space-holders in order to create very fragmented fs
++    for ((i=0 ; i < 1000;i++))
++    do
++	truncate --size 1000M $SCRATCH_MNT/mnt/space-$size-$i
++    done
++
++    out=$SCRATCH_MNT/mnt/fsstress-$size
++    args=`_scale_fsstress_args -p8 -n200 -f setattr=1 $FSSTRESS_AVOID -d $out`
++    echo "Run fsstress $args" >> $seqres.full
++    $FSSTRESS_PROG $args -d $out > /dev/null 2>&1
++
++    du -sch $SCRATCH_MNT/img >> $seqres.full
++    umount $SCRATCH_MNT/mnt || _fail " umount fail"
++    _destroy_loop_device $loop
++    _check_generic_filesystem $SCRATCH_MNT/img
++done
++
++status=0
++exit
+diff --git a/tests/ext4/004.out b/tests/ext4/004.out
+new file mode 100644
+index 0000000..ff2efcf
+--- /dev/null
++++ b/tests/ext4/004.out
+@@ -0,0 +1,16 @@
++QA output created by 004
++Resize to 1T
++Resize to 2T
++Resize to 3T
++Resize to 4T
++Resize to 5T
++Resize to 6T
++Resize to 7T
++Resize to 8T
++Resize to 9T
++Resize to 10T
++Resize to 11T
++Resize to 12T
++Resize to 13T
++Resize to 14T
++Resize to 15T
+diff --git a/tests/ext4/group b/tests/ext4/group
+index aa6a53b..e60d8fb 100644
+--- a/tests/ext4/group
++++ b/tests/ext4/group
+@@ -6,6 +6,7 @@
+ 001 auto prealloc quick
+ 002 auto quick prealloc
+ 003 auto quick
++004 auto ioctl resize
+ 271 auto rw quick
+ 301 aio dangerous ioctl rw stress
+ 302 aio dangerous ioctl rw stress
 -- 
-1.7.1
+1.8.3.1
+
