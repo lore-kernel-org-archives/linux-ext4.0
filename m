@@ -1,37 +1,137 @@
-From: Jessica Kuku <babylove123@mynet.com>
-Subject: Hello
-Date: Mon, 8 Dec 2014 16:29:42 GMT
-Message-ID: <V32VncamegFX3TYhooEIWQ1fIxGDJluk2oyKk4vkhWz0@mynet.com>
-Reply-To: jessykuku10@outlook.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII;
-	format=flowed
-Content-Transfer-Encoding: 7BIT
-To: "linux-ext4" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [190.145.0.50] ([190.145.0.50]:42074 "EHLO reaccionarltda.com"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751197AbaLHQg3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Dec 2014 11:36:29 -0500
-Received: from localhost (localhost.localdomain [127.0.0.1])
-	by reaccionarltda.com (Postfix) with ESMTP id 3E888CEEB6
-	for <linux-ext4@vger.kernel.org>; Mon,  8 Dec 2014 11:30:23 -0500 (COT)
-Received: from reaccionarltda.com ([127.0.0.1])
-	by localhost (reaccionarltda.com [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id leoAwD1wDLXn for <linux-ext4@vger.kernel.org>;
-	Mon,  8 Dec 2014 11:30:23 -0500 (COT)
-Received: from [192.168.1.12] (unknown [41.82.134.55])
-	by reaccionarltda.com (Postfix) with ESMTPA id C50CBCEEC2
-	for <linux-ext4@vger.kernel.org>; Mon,  8 Dec 2014 11:30:19 -0500 (COT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH-v7 0/3] add support for a lazytime mount option
+Date: Mon,  8 Dec 2014 23:04:27 -0500
+Message-ID: <1418097870-8232-1-git-send-email-tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Dear,
+This is an updated version of what had originally been an
+ext4-specific patch which significantly improves performance by lazily
+writing timestamp updates (and in particular, mtime updates) to disk.
+The in-memory timestamps are always correct, but they are only written
+to disk when required for correctness.
 
-May peace be with you. I am Miss Jessica. Actually, We may not known in person but relationship can start like this!. Please, I'm sorry if I am embarrassing you by my gesture.
+This provides a huge performance boost for ext4 due to how it handles
+journalling, but it's valuable for all file systems running on flash
+storage or drive-managed SMR disks by reducing the metadata write
+load.  So upon request, I've moved the functionality to the VFS layer.
+Once the /sbin/mount program adds support for MS_LAZYTIME, all file
+systems should be able to benefit from this optimization.
 
-I really wish to be your friend, learn to know you and to have a place in your heart for an ideal relationship with us. I will be very happy if you contact me for my picture and more about me.
-See you soon?
-Thanks in advance and remain blessed!
-Jessica
+There is still an ext4-specific optimization, which may be applicable
+for other file systems which store more than one inode in a block, but
+it will require file system specific code.  It is purely optional,
+however.
+
+For people interested seeing how timestamp updates are held back, the
+following example commands to enable the tracepoints debugging may be
+helpful:
+
+  mount -o remount,lazytime /
+  cd /sys/kernel/debug/tracing
+  echo 1 > events/writeback/writeback_lazytime/enable
+  echo 1 > events/writeback/writeback_lazytime_iput/enable
+  echo "state & 2048" > events/writeback/writeback_dirty_inode_enqueue/filter
+  echo 1 > events/writeback/writeback_dirty_inode_enqueue/enable
+  echo 1 > events/ext4/ext4_other_inode_update_time/enable
+  cat trace_pipe
+
+You can also see how many lazytime inodes are in memory by looking in
+/sys/kernel/debug/bdi/<bdi>/stats
+
+Changes since -v6:
+   - Add a new tracepoint writeback_dirty_inode_enqueue
+   - Move generic handling of update_time() to generic_update_time(),
+     so filesystems can more easily hook or modify update_time()
+   - The file system's dirty_inode() will now always get called with
+     I_DIRTY_TIME when the inode time is updated.   (I_DIRTY_SYNC will
+     also be set if the inode should be updated right away.)   This allows
+     file systems such as XFS to update its on-disk copy of the inode if
+     I_DIRTY_TIME is set.
+
+Changes since -v5:
+   - Tweak move_expired_inodes to handle sync() and syncfs(), and drop
+     flush_sb_dirty_time().
+   - Move logic for handling the b_dirty_time list into
+     __mark_inode_dirty().
+   - Move I_DIRTY back to its original definition, and use I_DIRTY_ALL
+     for I_DIRTY plus I_DIRTY_TIME.
+   - Fold some patches together to make the first patch easier to
+     review (and modify/update).
+   - Use the pre-existing writeback tracepoints instead of creating a new
+     fs tracepoints.
+
+Changes since -v4:
+   - Fix ext4 optimization so it does not need to increment (and more
+     problematically, decrement) the inode reference count
+   - Per Christoph's suggestion, drop support for btrfs and xfs for now,
+     issues with how btrfs and xfs handle dirty inode tracking.  We can add
+     btrfs and xfs support back later or at the end of this series if we
+     want to revisit this decision.
+   - Miscellaneous cleanups
+
+Changes since -v3:
+   - inodes with I_DIRTY_TIME set are placed on a new bdi list,
+        b_dirty_time.  This allows filesystem-level syncs to more
+        easily iterate over those inodes that need to have their
+        timestamps written to disk.
+   - dirty timestamps will be written out asynchronously on the final
+        iput, instead of when the inode gets evicted.
+   - separate the definition of the new function
+        find_active_inode_nowait() to a separate patch
+   - create separate flag masks: I_DIRTY_WB and I_DIRTY_INODE, which
+       indicate whether the inode needs to be on the write back lists,
+       or whether the inode itself is dirty, while I_DIRTY means any one
+       of the inode dirty flags are set.  This simplifies the fs
+       writeback logic which needs to test for different combinations of
+       the inode dirty flags in different places.
+
+Changes since -v2:
+   - If update_time() updates i_version, it will not use lazytime (i..e,
+       the inode will be marked dirty so the change will be persisted on to
+       disk sooner rather than later).  Yes, this eliminates the
+       benefits of lazytime if the user is experting the file system via
+       NFSv4.  Sad, but NFS's requirements seem to mandate this.
+   - Fix time wrapping bug 49 days after the system boots (on a system
+        with a 32-bit jiffies).   Use get_monotonic_boottime() instead.
+   - Clean up type warning in include/tracing/ext4.h
+   - Added explicit parenthesis for stylistic reasons    
+   - Added an is_readonly() inode operations method so btrfs doesn't
+       have to duplicate code in update_time().
+
+Changes since -v1:
+   - Added explanatory comments in update_time() regarding i_ts_dirty_days
+   - Fix type used for days_since_boot
+   - Improve SMP scalability in update_time and ext4_update_other_inodes_time
+   - Added tracepoints to help test and characterize how often and under
+         what circumstances inodes have their timestamps lazily updated
+
+Theodore Ts'o (3):
+  vfs: add support for a lazytime mount option
+  vfs: add find_inode_nowait() function
+  ext4: add optimization for the lazytime mount option
+
+ fs/ext4/inode.c                  |  71 ++++++++++++++++++++++++--
+ fs/ext4/super.c                  |  10 ++++
+ fs/fs-writeback.c                |  64 ++++++++++++++++++-----
+ fs/gfs2/file.c                   |   4 +-
+ fs/inode.c                       | 106 +++++++++++++++++++++++++++++++++------
+ fs/jfs/file.c                    |   2 +-
+ fs/libfs.c                       |   2 +-
+ fs/proc_namespace.c              |   1 +
+ fs/sync.c                        |   8 +++
+ include/linux/backing-dev.h      |   1 +
+ include/linux/fs.h               |  10 ++++
+ include/trace/events/ext4.h      |  30 +++++++++++
+ include/trace/events/writeback.h |  60 +++++++++++++++++++++-
+ include/uapi/linux/fs.h          |   4 +-
+ mm/backing-dev.c                 |  10 +++-
+ 15 files changed, 344 insertions(+), 39 deletions(-)
+
+-- 
+2.1.0
 
