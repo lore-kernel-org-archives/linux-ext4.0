@@ -1,193 +1,109 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [v8 4/5] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR
- interface support
-Date: Wed, 10 Dec 2014 09:57:58 +1100
-Message-ID: <20141209225758.GB9756@dastard>
-References: <1418102548-5469-1-git-send-email-lixi@ddn.com>
- <1418102548-5469-5-git-send-email-lixi@ddn.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 89511] New: USB-storage mount error
+Date: Wed, 10 Dec 2014 02:35:49 +0000
+Message-ID: <bug-89511-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-api@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca,
-	jack@suse.cz, viro@zeniv.linux.org.uk, hch@infradead.org,
-	dmonakhov@openvz.org
-To: Li Xi <pkuelelixi@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1418102548-5469-5-git-send-email-lixi@ddn.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:44923 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752651AbaLJCfy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Dec 2014 21:35:54 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id D9D01200FF
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Dec 2014 02:35:51 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 79DA22010C
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Dec 2014 02:35:49 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 09, 2014 at 01:22:27PM +0800, Li Xi wrote:
-> This patch adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR ioctl interface
-> support for ext4. The interface is kept consistent with
-> XFS_IOC_FSGETXATTR/XFS_IOC_FSGETXATTR.
-> 
-> Signed-off-by: Li Xi <lixi@ddn.com>
-> ---
->  fs/ext4/ext4.h          |  111 ++++++++++++++++
->  fs/ext4/ioctl.c         |  330 +++++++++++++++++++++++++++++++++--------------
->  fs/xfs/xfs_fs.h         |   47 +++-----
->  include/uapi/linux/fs.h |   58 ++++++++
->  4 files changed, 418 insertions(+), 128 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 136e18c..43a2a88 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -384,6 +384,115 @@ struct flex_groups {
->  #define EXT4_FL_USER_VISIBLE		0x204BDFFF /* User visible flags */
->  #define EXT4_FL_USER_MODIFIABLE		0x204380FF /* User modifiable flags */
->  
-> +/* Transfer internal flags to xflags */
-> +static inline __u32 ext4_iflags_to_xflags(unsigned long iflags)
-> +{
-> +	__u32 xflags = 0;
-> +
-> +	if (iflags & EXT4_SECRM_FL)
-> +		xflags |= FS_XFLAG_SECRM;
-> +	if (iflags & EXT4_UNRM_FL)
-> +		xflags |= FS_XFLAG_UNRM;
-> +	if (iflags & EXT4_COMPR_FL)
-> +		xflags |= FS_XFLAG_COMPR;
-....
+https://bugzilla.kernel.org/show_bug.cgi?id=89511
 
-NACK.
+            Bug ID: 89511
+           Summary: USB-storage mount error
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.2.63
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: itou_jun@infoseek.jp
+        Regression: No
 
-> +	if (iflags & EXT4_SYNC_FL)
-> +		xflags |= FS_XFLAG_SYNC;
-> +	if (iflags & EXT4_IMMUTABLE_FL)
-> +		xflags |= FS_XFLAG_IMMUTABLE;
-> +	if (iflags & EXT4_APPEND_FL)
-> +		xflags |= FS_XFLAG_APPEND;
-> +	if (iflags & EXT4_NODUMP_FL)
-> +		xflags |= FS_XFLAG_NODUMP;
-> +	if (iflags & EXT4_NOATIME_FL)
-> +		xflags |= FS_XFLAG_NOATIME;
+When my USB-storage does mount, it becomes the error.
+It occurs from ver.3.2.63 and does not occur in ver.3.2.62.
+I ride below dmesg.
+It reappears in this series of io data by all means.
+I confirmed that hardware did not have a problem.
+The following changed kernel in menu in the same environment and tested it.
+Because a write is not done to become the read only, please help me.
+Even ext3 format occurs.
+I doubt file system.
+Thank you.
 
-These are OK because they already exist in the interface, but all
-the ext4 specific flags you've added have no place in this patchset.
+=== Linux sv-server 3.2.62 #1 SMP Mon Dec 8 16:11:25 JST 2014 x86_64 GNU/Linux
+===
+[   35.262592] usb 1-1: new high-speed USB device number 2 using ehci_hcd
+[   35.799983] usb 1-1: New USB device found, idVendor=04bb, idProduct=0109
+[   35.799986] usb 1-1: New USB device strings: Mfr=1, Product=2,
+SerialNumber=3
+[   35.799988] usb 1-1: Product: I-O DATA HDZ-UES
+[   35.799990] usb 1-1: Manufacturer: I-O DATA DEVICE INC.
+[   35.799991] usb 1-1: SerialNumber: 0000000075A7
+[   35.842500] Initializing USB Mass Storage driver...
+[   35.842674] scsi3 : usb-storage 1-1:1.0
+[   35.842796] usbcore: registered new interface driver usb-storage
+[   35.842798] USB Mass Storage support registered.
+[   36.849383] scsi 3:0:0:0: Direct-Access     I-O DATA HDZ-UE2.0TS      6706
+PQ: 0 ANSI: 0 CCS
+[   36.851340] sd 3:0:0:0: Attached scsi generic sg2 type 0
+[   36.854356] sd 3:0:0:0: [sdb] 3907092672 512-byte logical blocks: (2.00
+TB/1.81 TiB)
+[   36.859815] sd 3:0:0:0: [sdb] Write Protect is off
+[   36.859819] sd 3:0:0:0: [sdb] Mode Sense: 34 00 00 00
+[   36.865795] sd 3:0:0:0: [sdb] Write cache: enabled, read cache: enabled,
+doesn't support DPO or FUA
+[   36.887806]  sdb: sdb1
+[   36.906185] sd 3:0:0:0: [sdb] Attached SCSI disk
+[   76.056522] EXT4-fs (sdb1): mounted filesystem with ordered data mode. Opts:
+(null)
 
+=== Linux sv-server 3.2.63 #1 SMP Mon Dec 8 18:22:55 JST 2014 x86_64 GNU/Linux
+===
+[   34.436890] usb 1-1: new high-speed USB device number 2 using ehci_hcd
+[   34.918885] usb 1-1: New USB device found, idVendor=04bb, idProduct=0109
+[   34.918888] usb 1-1: New USB device strings: Mfr=1, Product=2,
+SerialNumber=3
+[   34.918890] usb 1-1: Product: I-O DATA HDZ-UES
+[   34.918891] usb 1-1: Manufacturer: I-O DATA DEVICE INC.
+[   34.918893] usb 1-1: SerialNumber: 0000000075A7
+[   35.008643] Initializing USB Mass Storage driver...
+[   35.008951] scsi3 : usb-storage 1-1:1.0
+[   35.009086] usbcore: registered new interface driver usb-storage
+[   35.009087] USB Mass Storage support registered.
+[   36.009158] scsi 3:0:0:0: Direct-Access     I-O DATA HDZ-UE2.0TS      6706
+PQ: 0 ANSI: 0 CCS
+[   36.010859] sd 3:0:0:0: Attached scsi generic sg2 type 0
+[   36.015660] sd 3:0:0:0: [sdb] 3907092672 512-byte logical blocks: (2.00
+TB/1.81 TiB)
+[   36.021098] sd 3:0:0:0: [sdb] Write Protect is off
+[   36.021100] sd 3:0:0:0: [sdb] Mode Sense: 34 00 00 00
+[   36.026572] sd 3:0:0:0: [sdb] Write cache: enabled, read cache: enabled,
+doesn't support DPO or FUA
+[   36.052046]  sdb: sdb1
+[   36.076457] sd 3:0:0:0: [sdb] Attached SCSI disk
+[   57.285934] EXT4-fs (sdb1): mounted filesystem with ordered data mode. Opts:
+(null)
+[   57.418428] end_request: I/O error, dev sdb, sector 0
 
-> +
->  /* Flags that should be inherited by new inodes from their parent. */
->  #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
->  			   EXT4_SYNC_FL | EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
-> @@ -606,6 +715,8 @@ enum {
->  #define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
->  #define EXT4_IOC_SWAP_BOOT		_IO('f', 17)
->  #define EXT4_IOC_PRECACHE_EXTENTS	_IO('f', 18)
-> +#define EXT4_IOC_FSGETXATTR		FS_IOC_FSGETXATTR
-> +#define EXT4_IOC_FSSETXATTR		FS_IOC_FSSETXATTR
-
-NACK. Userspace only needs FS_IOC_FS[GS]ETXATTR so that it works across
-all filesystems. We need to retain XFS_IOC_FS[GS]ETXATTR so we
-don't break existing userspace tools, but we do not need new
-filesystem specific definitions anywhere.
-
-> diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-> index fcbf647..872fed5 100644
-> --- a/include/uapi/linux/fs.h
-> +++ b/include/uapi/linux/fs.h
-> @@ -58,6 +58,62 @@ struct inodes_stat_t {
->  	long dummy[5];		/* padding for sysctl ABI compatibility */
->  };
->  
-> +/*
-> + * Extend attribute flags. These should be or-ed together to figure out what
-> + * is valid.
-> + */
-> +#define FSX_XFLAGS	(1 << 0)
-> +#define FSX_EXTSIZE	(1 << 1)
-> +#define FSX_NEXTENTS	(1 << 2)
-> +#define FSX_PROJID	(1 << 3)
-
-NACK.
-
-I've said this more than once: these are *private to XFS's
-implementation* and are not be part of the user interface. Do not
-move them from their existing location.
-
-
-> +
-> +/*
-> + * Structure for FS_IOC_FSGETXATTR and FS_IOC_FSSETXATTR.
-> + */
-> +struct fsxattr {
-> +	__u32		fsx_xflags;	/* xflags field value (get/set) */
-> +	__u32		fsx_extsize;	/* extsize field value (get/set)*/
-> +	__u32		fsx_nextents;	/* nextents field value (get)	*/
-> +	__u32		fsx_projid;	/* project identifier (get/set) */
-> +	unsigned char	fsx_pad[12];
-> +};
-> +
-> +/*
-> + * Flags for the fsx_xflags field
-> + */
-> +#define FS_XFLAG_REALTIME	0x00000001	/* data in realtime volume */
-> +#define FS_XFLAG_PREALLOC	0x00000002	/* preallocated file extents */
-> +#define FS_XFLAG_SECRM		0x00000004	/* secure deletion */
-
-NACK - ext4 specific.
-
-> +#define FS_XFLAG_IMMUTABLE	0x00000008	/* file cannot be modified */
-> +#define FS_XFLAG_APPEND		0x00000010	/* all writes append */
-> +#define FS_XFLAG_SYNC		0x00000020	/* all writes synchronous */
-> +#define FS_XFLAG_NOATIME	0x00000040	/* do not update access time */
-> +#define FS_XFLAG_NODUMP		0x00000080	/* do not include in backups */
-> +#define FS_XFLAG_RTINHERIT	0x00000100	/* create with rt bit set */
-> +#define FS_XFLAG_PROJINHERIT	0x00000200	/* create with parents projid */
-> +#define FS_XFLAG_NOSYMLINKS	0x00000400	/* disallow symlink creation */
-> +#define FS_XFLAG_EXTSIZE	0x00000800	/* extent size allocator hint */
-> +#define FS_XFLAG_EXTSZINHERIT	0x00001000	/* inherit inode extent size */
-> +#define FS_XFLAG_NODEFRAG	0x00002000  	/* do not defragment */
-> +#define FS_XFLAG_FILESTREAM	0x00004000	/* use filestream allocator */
-
-existing flags.
-
-> +#define FS_XFLAG_UNRM		0x00008000	/* undelete */
-> +#define FS_XFLAG_COMPR		0x00010000	/* compress file */
-> +#define FS_XFLAG_COMPRBLK	0x00020000	/* one or more compressed clusters */
-> +#define FS_XFLAG_NOCOMPR	0x00040000	/* don't compress */
-> +#define FS_XFLAG_ECOMPR		0x00080000	/* compression error */
-> +#define FS_XFLAG_INDEX		0x00100000	/* hash-indexed directory */
-> +#define FS_XFLAG_IMAGIC		0x00200000	/* AFS directory */
-> +#define FS_XFLAG_JOURNAL_DATA	0x00400000	/* file data should be journaled */
-> +#define FS_XFLAG_NOTAIL		0x00800000	/* file tail should not be merged */
-> +#define FS_XFLAG_DIRSYNC	0x01000000	/* dirsync behaviour (directories only) */
-> +#define FS_XFLAG_TOPDIR		0x02000000	/* top of directory hierarchies*/
-> +#define FS_XFLAG_HUGE_FILE	0x04000000	/* set to each huge file */
-> +#define FS_XFLAG_EXTENTS	0x08000000	/* inode uses extents */
-> +#define FS_XFLAG_EA_INODE	0x10000000	/* inode used for large EA */
-> +#define FS_XFLAG_EOFBLOCKS	0x20000000	/* blocks allocated beyond EOF */
-> +#define FS_XFLAG_INLINE_DATA	0x40000000	/* inode has inline data. */
-
-And a bunch more ext4 specific flags that *uses all the remaining
-flag space*.  At minimum, we need to keep space in this existing
-flags field for flags to future indication of how the padding is
-used, so that's yet another NACK.
-
-Further, none of these have any relevance to project quotas so
-should not be a part of this patchset. Nor are they relevant to any
-other filesystem, and many are duplicated by information you can get
-from FIEMAP and other interfaces. NACK, again.
-
-Because I'm getting annoyed at being repeatedly ignored about what
-needs to be done here, I'm now going to shout a bit. DO NOT CHANGE
-THE INTERFACE.  DO NOT ADD any new flags to the interface. DO NOT
-REDEFINE how the interface works. DO NOT "ext4-ise" the interface.
-
-The only changes to the interface code should be moving the XFS
-definitions and renaming them so as to provide the new generic
-ioctl definition as well as the historic XFS definitions. The ext4
-implementation needs to be done in a separate patch to the interface
-rename, and it must only implement the functionality the interface
-already provides. Anything else is outside the scope of this
-patchset and requires separate discussion.
-
-Cheers,
-
-Dave.
 -- 
-Dave Chinner
-david@fromorbit.com
+You are receiving this mail because:
+You are watching the assignee of the bug.
