@@ -1,80 +1,76 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH] fs: make generic_block_fiemap sig-tolerant PING2...
-Date: Wed, 10 Dec 2014 16:49:18 +0300
-Message-ID: <87zjavehsx.fsf@openvz.org>
-References: <1413552269-32203-1-git-send-email-dmonakhov@openvz.org> <871toikt7c.fsf@openvz.org>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: [PATCH] resize2fs: don't require fsck to print min size
+Date: Wed, 10 Dec 2014 09:19:56 -0600
+Message-ID: <5488649C.8020809@sandeen.net>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Al Viro <viro@ZenIV.linux.org.uk>
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <871toikt7c.fsf@openvz.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sandeen.net ([63.231.237.45]:40400 "EHLO sandeen.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757569AbaLJPT7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Dec 2014 10:19:59 -0500
+Received: from liberator.sandeen.net (liberator.sandeen.net [10.0.0.4])
+	(using TLSv1.2 with cipher DHE-RSA-AES128-SHA (128/128 bits))
+	(No client certificate requested)
+	by sandeen.net (Postfix) with ESMTPSA id 52FC560F96A9
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Dec 2014 09:19:58 -0600 (CST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+My previous change ended up requiring that the filesystem
+be fsck'd after the last mount, even if we are only querying
+the minimum size.  This is a bit draconian, and it burned
+the Fedora installer, which wants to calculate minimum size
+for every filesystem in the box at install time, which in turn
+requires a full fsck of every filesystem.
 
+Try this one more time, and separate out the tests to make things
+a bit more clear.  If we're only printing the min size, don't
+require the fsck, as this is a bit less dangerous/critical.
 
-Hello. Someone please take care of this patch.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-W/o that patch unprivileged user may abuse system resources simply by spawn=
-ing
-wast number of unkilable busyloops (works on ext2/ext3):
+diff --git a/resize/main.c b/resize/main.c
+index 983d8c2..d40a741 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -321,10 +321,31 @@ int main (int argc, char ** argv)
+ 	}
+ 	fs->default_bitmap_type = EXT2FS_BMAP64_RBTREE;
+ 
+-	if (!(mount_flags & EXT2_MF_MOUNTED)) {
+-		if (!force && ((fs->super->s_lastcheck < fs->super->s_mtime) ||
+-			       (fs->super->s_state & EXT2_ERROR_FS) ||
+-			       ((fs->super->s_state & EXT2_VALID_FS) == 0))) {
++	/*
++	 * Before acting on an unmounted filesystem, make sure it's ok,
++	 * unless the user is forcing it.
++	 *
++	 * We do ERROR and VALID checks even if we're only printing the
++	 * minimimum size, because traversal of a badly damaged filesystem
++	 * can cause issues as well.  We don't require it to be fscked after
++	 * the last mount time in this case, though, as this is a bit less
++	 * risky.
++	 */
++	if (!force && !(mount_flags & EXT2_MF_MOUNTED)) {
++		int checkit = 0;
++
++		if (fs->super->s_state & EXT2_ERROR_FS)
++			checkit = 1;
++		
++		if ((fs->super->s_state & EXT2_VALID_FS) == 0)
++			checkit = 1;
++
++		if (fs->super->s_lastcheck < fs->super->s_mtime) {
++			if (!print_min_size)
++				checkit = 1;
++		}
++
++		if (checkit) {
+ 			fprintf(stderr,
+ 				_("Please run 'e2fsck -f %s' first.\n\n"),
+ 				device_name);
 
-truncate --size 1T test
-for ((i=3D0;i<1024;i++))
-do
-       filefrag test > /dev/null &
-done
-
-Dmitry Monakhov <dmonakhov@openvz.org> writes:
-> Andrew can you please get this patch. IMHO it is simple and clean.
-> BTW:
->
->> __generic_block_fiemap may spin very long time for large sparse files.
->>
->> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
->> ---
->>  fs/ioctl.c |    5 +++++
->>  1 files changed, 5 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/ioctl.c b/fs/ioctl.c
->> index 8ac3fad..6fbeb68 100644
->> --- a/fs/ioctl.c
->> +++ b/fs/ioctl.c
->> @@ -379,6 +379,11 @@ int __generic_block_fiemap(struct inode *inode,
->>  				past_eof =3D true;
->>  		}
->>  		cond_resched();
->> +		if (fatal_signal_pending(current)) {
->> +			ret =3D -EINTR;
->> +			break;
->> +		}
->> +
->>  	} while (1);
->>=20=20
->>  	/* If ret is 1 then we just hit the end of the extent array */
->> --=20
->> 1.7.1
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQEcBAEBCgAGBQJUiE9eAAoJELhyPTmIL6kBa5wH/2kIcEhdOeo2/zSozyqI3rNi
-2j0y3jeyVLICgfyMu46xkyZyE4aqpMSN/eOmPtQzsnVOOGKiInHMP0x3Lb8ZQrLV
-w6ZzmWq8+62LaJ6INkdLIXHLHsI224GvfiVlfnjxgijvs23m0v1hG6G2Yt27+Vnf
-bCoMINOKVdDpc12auUPWFxmaCepNw80bb68STMs7LXl3uQatt6ait4s4zuEj/x1K
-+pnLFdWQfySDGATvouNfRszNq+n51rV5125uN44v1XhEgcA1X49DOc8YMYEarX7I
-HRZaXWCSZOLkbv/Fow+NVwnIhV/gbyc6dCxF3/hkquQaaKxH4iDhskiIJMHRrww=
-=aLYz
------END PGP SIGNATURE-----
---=-=-=--
