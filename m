@@ -1,109 +1,101 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 4/4] ext4: fix suboptimal seek_{data,hole} extents traversial
-Date: Fri, 12 Dec 2014 11:52:29 +0300
-Message-ID: <878uidgshe.fsf@openvz.org>
-References: <1417518054-21733-1-git-send-email-dmonakhov@openvz.org> <1417518054-21733-4-git-send-email-dmonakhov@openvz.org> <20141211200540.GE31008@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 10/11] quota: Switch ->get_dqblk() and ->set_dqblk() to
+ use bytes as space units
+Date: Fri, 12 Dec 2014 10:52:30 +0100
+Message-ID: <20141212095230.GB4813@quack.suse.cz>
+References: <1415739865-2438-1-git-send-email-jack@suse.cz>
+ <1415739865-2438-11-git-send-email-jack@suse.cz>
+ <20141118222952.GQ23575@dastard>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wg0-f46.google.com ([74.125.82.46]:56566 "EHLO
-	mail-wg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751428AbaLLIxD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Dec 2014 03:53:03 -0500
-Received: by mail-wg0-f46.google.com with SMTP id x13so8523651wgg.5
-        for <linux-ext4@vger.kernel.org>; Fri, 12 Dec 2014 00:53:01 -0800 (PST)
-In-Reply-To: <20141211200540.GE31008@thunk.org>
+Received: from cantor2.suse.de ([195.135.220.15]:47306 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965582AbaLLJwc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Dec 2014 04:52:32 -0500
+Content-Disposition: inline
+In-Reply-To: <20141118222952.GQ23575@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Wed 19-11-14 09:29:52, Dave Chinner wrote:
+> On Tue, Nov 11, 2014 at 10:04:24PM +0100, Jan Kara wrote:
+> > Currently ->get_dqblk() and ->set_dqblk() use struct fs_disk_quota which
+> > tracks space limits and usage in 512-byte blocks. However VFS quotas
+> > track usage in bytes (as some filesystems require that) and we need to
+> > somehow pass this information. Upto now it wasn't a problem because we
+> > didn't do any unit conversion (thus VFS quota routines happily stuck
+> > number of bytes into d_bcount field of struct fd_disk_quota). Only if
+> > you tried to use Q_XGETQUOTA or Q_XSETQLIM for VFS quotas (or Q_GETQUOTA
+> > / Q_SETQUOTA for XFS quotas), you got bogus results but noone really
+> > tried that. But when we want interfaces compatible we need to fix this.
+> > 
+> > So we bite the bullet and define another quota structure used for
+> > passing information from/to ->get_dqblk()/->set_dqblk. It's somewhat
+> > sad we have to have more conversion routines in fs/quota/quota.c but
+> > it seems cleaner than overloading e.g. units of d_bcount to bytes.
+> 
+> I don't really like the idea of having to copy the dquot information
+> an extra time. We now:
+> 
+> 	- copy from internal dquot to the new qc_dqblk
+> 	- copy from the new qc_dqblk to if_dqblk/xfs_dqblk
+> 	- copy if_dqblk/xfs_dqblk to the user buffer.
+> 
+> That's now three copies, and when we are having to deal with quota
+> reports containing hundreds of thousands of dquots that's going to
+> hrut performance.
+> 
+> We could probably get away with just one copy by passing a
+> filldir()-like context down into the filesystems to format their
+> internal dquot information directly into the user buffer in the
+> appropriate format. That way fs/quota/quota.c doesn't need
+> conversion routines, filesystems can optimise the formating to
+> minimise copying, and we can still provide generic routines for
+> filesystems using the generic quota infrastructure....
+  I was thinking about how this would look like. I don't have a problem to
+create a filldir() like callback that will be used for getting quota
+structures. However I don't see how we could reasonably get away with just
+one copy in general - that would mean that the interface functions in
+fs/quota.c (e.g. quota_getquota()) would have to determine whether XFS of
+VFS quota structures are used in the backing filesystem to provide proper
+callback and that's IMO too ugly to live.
 
-Theodore Ts'o <tytso@mit.edu> writes:
+We could definitely reduce the number of copies to two by changing e.g.
+copy_to_xfs_dqblk() to directly use __put_user() instead of first
+formatting proper structure on stack and then using copy_to_user(). However
+I'm not sure whether this will be any real performance win and using
+copy_to_user() seems easier to me...
 
-> Hi Dmitry,
->
-> I only noticed this after I sent the pull request to Linus, but it
-> looks like this patch is triggering regression using the ext3 config:
->
-> ./kvm-xfstests -c ext3 generic/285:
->
-> The failure reported by seek_santy_test is:
->
-> 10. Test a huge file for offset overflow
-> 10.01 SEEK_HOLE expected 65536 or 0, got 0.                       FAIL
-> 10.02 SEEK_HOLE expected 65536 or 0, got 1.                       FAIL
-> 10.03 SEEK_DATA expected 0 or 0, got -1.                          FAIL
-> 10.04 SEEK_DATA expected 1 or 1, got -1.                          FAIL
-> 10.05 SEEK_HOLE expected 0 or 0, got -65536.                      FAIL
-> 10.06 SEEK_DATA expected -65536 or -65536, got -1.                FAIL
-> 10.07 SEEK_DATA expected -65535 or -65535, got -1.                FAIL
-> 10.08 SEEK_DATA expected -65536 or -65536, got -1.                FAIL
->
-> What's strange is that if I run the commands by hand, I get a very
-> different failure:
->
-> root@kvm-xfstests:~# ./xfstests/src/seek_sanity_test /vdd/seek_sanity_tes=
-tfile
-> File system magic#: 0xef53
-> Allocation size: 4096
-> Kernel does not support llseek(2) extensions SEEK_HOLE and/or SEEK_DATA. =
-Aborting.
->
-> Using strace, the problem is that the SEEK_DATA fallocate is failing:
->
-> pwrite64(3, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"..., 8192, 0) =3D 8192
-> ftruncate64(3, 16384)                   =3D 0
-> _llseek(3, 0, 0xbff7fe70, SEEK_DATA)    =3D -1 ENXIO (No such device or a=
-ddress)
-Oh. Indeed That is my mistake.
+Anyway I'll probably try changing number of copies to two and see whether
+there's any measurable impact.
 
-ret =3D ext4_fiemap(inode, &fie, offset, maxsize - offset);
-/* No extents found, EOF */
-if (!fie.fi_extents_mapped) {
-     ret =3D -ENXIO;
-     break;
-  }=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20
-Delalloc case handled incorrectly. Will fix that ASAP.
+> > @@ -277,10 +287,73 @@ static int quota_getxstatev(struct super_block *sb, void __user *addr)
+> >  	return ret;
+> >  }
+> >  
+> > +/* XFS blocks to space conversion */
+> > +static u64 xfs_btos(u64 blocks)
+> > +{
+> > +	return blocks << 9;
+> > +}
+> > +
+> > +/* Space to XFS blocks conversion */
+> > +static u64 xfs_stob(u64 space)
+> > +{
+> > +	return (space + 511) >> 9;
+> > +}
+> 
+> Which is just redefining BBTOB() [Basic Blocks to Bytes] and BTOBB()
+> with magic numbers and no explanation of what a "block" actually is.
+> We already export those macros to userspace, and they are used by
+> xfs_quota to convert the block counts to bytes....
+  Sure, I will use XFS macros.
 
->
-> This fails with commit 14516bb: "ext4: fix suboptimal seek_{data,hole}
-> extents traversial" and succeeds with its immediate predesssor commit.
->
-> I've tried looking at this, but hte fact that I'm seeing different
-> results when I run it by hand (sometimes I can trigger the failure
-> with runtests.sh, usually I can't), means that it appears to be timing
-> dependent.
->
-> Could you take a look?
->
-> Many thanks!!
->
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQEcBAEBCgAGBQJUiqzOAAoJELhyPTmIL6kB5RUIAL5d8j8tLn1+WDeSr30/FjYu
-Ya0J3CxGFd9CyHliSbH9J9mwx/OGyF5eIyNKLgNXHGTIivTF2WTUG5nR6iT+yp7h
-Dyovd95U+whRf+8LjgTaRphot3j8x/bht8x6mRz3IeDTskNm/hKvir2MgvkZCTUb
-eR071WfGC4uY4VrusS73ZobZMNz/zRe8Fe45Rq9sgLkEuId//5pbJcyZd4RjPMxE
-uLHfNJcOhS2ox+Caqr0qqNtFhQYIgO0Pt9oe/RQcaJpW1wauvVDPGeEf2zNdaymC
-LzPKeZBOU8f3Q8SDip4b38IcMXyI/qpwXJRzm86HcNzBlUjfeq7rDXyx+DHS8Qs=
-=kdyd
------END PGP SIGNATURE-----
---=-=-=--
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
