@@ -1,101 +1,77 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 10/11] quota: Switch ->get_dqblk() and ->set_dqblk() to
- use bytes as space units
-Date: Fri, 12 Dec 2014 10:52:30 +0100
-Message-ID: <20141212095230.GB4813@quack.suse.cz>
-References: <1415739865-2438-1-git-send-email-jack@suse.cz>
- <1415739865-2438-11-git-send-email-jack@suse.cz>
- <20141118222952.GQ23575@dastard>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 89621] New: EXT4-fs error (device dm-1):
+ ext4_mb_release_inode_pa:3773: group 24089, free 34, pa_free 32
+Date: Fri, 12 Dec 2014 12:28:11 +0000
+Message-ID: <bug-89621-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47306 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.19.201]:55826 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965582AbaLLJwc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 12 Dec 2014 04:52:32 -0500
-Content-Disposition: inline
-In-Reply-To: <20141118222952.GQ23575@dastard>
+	id S967609AbaLLM2Z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Dec 2014 07:28:25 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 861052010B
+	for <linux-ext4@vger.kernel.org>; Fri, 12 Dec 2014 12:28:20 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id E973720172
+	for <linux-ext4@vger.kernel.org>; Fri, 12 Dec 2014 12:28:11 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 19-11-14 09:29:52, Dave Chinner wrote:
-> On Tue, Nov 11, 2014 at 10:04:24PM +0100, Jan Kara wrote:
-> > Currently ->get_dqblk() and ->set_dqblk() use struct fs_disk_quota which
-> > tracks space limits and usage in 512-byte blocks. However VFS quotas
-> > track usage in bytes (as some filesystems require that) and we need to
-> > somehow pass this information. Upto now it wasn't a problem because we
-> > didn't do any unit conversion (thus VFS quota routines happily stuck
-> > number of bytes into d_bcount field of struct fd_disk_quota). Only if
-> > you tried to use Q_XGETQUOTA or Q_XSETQLIM for VFS quotas (or Q_GETQUOTA
-> > / Q_SETQUOTA for XFS quotas), you got bogus results but noone really
-> > tried that. But when we want interfaces compatible we need to fix this.
-> > 
-> > So we bite the bullet and define another quota structure used for
-> > passing information from/to ->get_dqblk()/->set_dqblk. It's somewhat
-> > sad we have to have more conversion routines in fs/quota/quota.c but
-> > it seems cleaner than overloading e.g. units of d_bcount to bytes.
-> 
-> I don't really like the idea of having to copy the dquot information
-> an extra time. We now:
-> 
-> 	- copy from internal dquot to the new qc_dqblk
-> 	- copy from the new qc_dqblk to if_dqblk/xfs_dqblk
-> 	- copy if_dqblk/xfs_dqblk to the user buffer.
-> 
-> That's now three copies, and when we are having to deal with quota
-> reports containing hundreds of thousands of dquots that's going to
-> hrut performance.
-> 
-> We could probably get away with just one copy by passing a
-> filldir()-like context down into the filesystems to format their
-> internal dquot information directly into the user buffer in the
-> appropriate format. That way fs/quota/quota.c doesn't need
-> conversion routines, filesystems can optimise the formating to
-> minimise copying, and we can still provide generic routines for
-> filesystems using the generic quota infrastructure....
-  I was thinking about how this would look like. I don't have a problem to
-create a filldir() like callback that will be used for getting quota
-structures. However I don't see how we could reasonably get away with just
-one copy in general - that would mean that the interface functions in
-fs/quota.c (e.g. quota_getquota()) would have to determine whether XFS of
-VFS quota structures are used in the backing filesystem to provide proper
-callback and that's IMO too ugly to live.
+https://bugzilla.kernel.org/show_bug.cgi?id=89621
 
-We could definitely reduce the number of copies to two by changing e.g.
-copy_to_xfs_dqblk() to directly use __put_user() instead of first
-formatting proper structure on stack and then using copy_to_user(). However
-I'm not sure whether this will be any real performance win and using
-copy_to_user() seems easier to me...
+            Bug ID: 89621
+           Summary: EXT4-fs error (device dm-1):
+                    ext4_mb_release_inode_pa:3773: group 24089, free 34,
+                    pa_free 32
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.16
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: john@calva.com
+        Regression: No
 
-Anyway I'll probably try changing number of copies to two and see whether
-there's any measurable impact.
+I've been getting this EXT4 error (on an ext3 filesystem) on two virtual
+machines, running Debian kernel 3.16-0.bpo.2-amd64.
 
-> > @@ -277,10 +287,73 @@ static int quota_getxstatev(struct super_block *sb, void __user *addr)
-> >  	return ret;
-> >  }
-> >  
-> > +/* XFS blocks to space conversion */
-> > +static u64 xfs_btos(u64 blocks)
-> > +{
-> > +	return blocks << 9;
-> > +}
-> > +
-> > +/* Space to XFS blocks conversion */
-> > +static u64 xfs_stob(u64 space)
-> > +{
-> > +	return (space + 511) >> 9;
-> > +}
-> 
-> Which is just redefining BBTOB() [Basic Blocks to Bytes] and BTOBB()
-> with magic numbers and no explanation of what a "block" actually is.
-> We already export those macros to userspace, and they are used by
-> xfs_quota to convert the block counts to bytes....
-  Sure, I will use XFS macros.
+The stack is:
 
-								Honza
+Host (3.16): Mdadm raid1
+LVM
+Guest (also 3.16): LVM2 volume, ext3 formatted
+
+[    7.413209] EXT4-fs (dm-4): mounting ext3 file system using the ext4
+subsystem
+[    7.431191] EXT4-fs (dm-4): warning: maximal mount count reached, running
+e2fsck is recommended
+[    7.442501] EXT4-fs (dm-4): mounted filesystem with journalled data mode.
+Opts: data=journal,errors=remount-ro
+...
+[957229.875900] EXT4-fs (dm-4): pa ffff88001f7ff980: logic 0, phys. 9176576,
+len 128
+[957229.878640] EXT4-fs error (device dm-4): ext4_mb_release_inode_pa:3773:
+group 280, free 128, pa_free 127
+[957229.881350] Aborting journal on device dm-4-8.
+[957229.891273] EXT4-fs (dm-4): Remounting filesystem read-only
+[957561.369731] EXT4-fs (dm-4): pa ffff880009f7b028: logic 0, phys. 9192448,
+len 512
+[957561.371926] EXT4-fs error (device dm-4): ext4_mb_release_inode_pa:3773:
+group 280, free 512, pa_free 511
+[957688.608554] EXT4-fs error (device dm-4): ext4_put_super:792: Couldn't clean
+up the journal
+
+This is https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=772848
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
