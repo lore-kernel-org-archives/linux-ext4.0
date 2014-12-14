@@ -1,22 +1,33 @@
-From: luv2charitys@gmail.com
-Subject: charity message
-Date: Sun, 14 Dec 2014 02:03:07 +0000
-Message-ID: <NWISBSrAuWkI3I9zPVP00043937@mail.nwiimi.com>
-Reply-To: paucharity@gmail.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 15/47] misc: don't allow mk_hugefiles unless the fs
+ supports extents
+Date: Sat, 13 Dec 2014 21:51:35 -0500
+Message-ID: <20141214025135.GD29787@thunk.org>
+References: <20141107215042.883.49888.stgit@birch.djwong.org>
+ <20141107215224.883.32873.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.nwiimi.com ([70.62.177.86]:31660 "EHLO mail.nwiimi.com"
+Received: from imap.thunk.org ([74.207.234.97]:54829 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750824AbaLNC2V convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Dec 2014 21:28:21 -0500
-Content-Description: Mail message body
+	id S1750789AbaLNCvm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 13 Dec 2014 21:51:42 -0500
+Content-Disposition: inline
+In-Reply-To: <20141107215224.883.32873.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,this is Mr Paul N,i sent you an email on charity work but i am yet
-to hear fom you,do reply with this code CHA-2015 to my email address
-paulcharity@qq.com  i Look forward to hearing from you this time,God
-bless  Brother Paul 
+On Fri, Nov 07, 2014 at 01:52:24PM -0800, Darrick J. Wong wrote:
+> The current mk_hugefile code in mke2fs doesn't support creating
+> non-extent files, so disable the functionality when we're mkfs'ing
+> without extent support.
+> 
+> The fallocate patches further on will eliminate the need for this.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+
+Applied, thanks.
+
+					- Ted
