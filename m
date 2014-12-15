@@ -1,36 +1,33 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] resize2fs: don't require fsck to print min size
-Date: Sun, 14 Dec 2014 19:12:06 -0500
-Message-ID: <20141215001206.GS29787@thunk.org>
-References: <5488649C.8020809@sandeen.net>
+Subject: Re: badblocks: Limit maximum number of bad blocks
+Date: Sun, 14 Dec 2014 20:55:57 -0500
+Message-ID: <20141215015557.GA19946@thunk.org>
+References: <1410429804-26459-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@sandeen.net>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55732 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:55814 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750939AbaLOAMJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 14 Dec 2014 19:12:09 -0500
+	id S1750868AbaLOB6H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 14 Dec 2014 20:58:07 -0500
 Content-Disposition: inline
-In-Reply-To: <5488649C.8020809@sandeen.net>
+In-Reply-To: <1410429804-26459-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 10, 2014 at 09:19:56AM -0600, Eric Sandeen wrote:
-> My previous change ended up requiring that the filesystem
-> be fsck'd after the last mount, even if we are only querying
-> the minimum size.  This is a bit draconian, and it burned
-> the Fedora installer, which wants to calculate minimum size
-> for every filesystem in the box at install time, which in turn
-> requires a full fsck of every filesystem.
+On Thu, Sep 11, 2014 at 12:03:24PM +0200, Jan Kara wrote:
+> Currently maximum number of bad blocks is not limited in any way.
+> However our code can really handle at most INT_MAX/2 bad blocks (for
+> larger numbers binary search indexes start overflowing). So report
+> number of bad blocks is just too big instead of plain segfaulting.
 > 
-> Try this one more time, and separate out the tests to make things
-> a bit more clear.  If we're only printing the min size, don't
-> require the fsck, as this is a bit less dangerous/critical.
+> It won't be too hard to raise the limit but I don't think there's any
+> real use for disks with over 1 billion of bad blocks...
 > 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Applied with a minor whitespace fixup, thanks.
+Thanks, applied.
 
-				- Ted
+						- Ted
