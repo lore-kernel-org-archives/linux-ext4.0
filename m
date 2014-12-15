@@ -1,29 +1,41 @@
 From: Alexander Tsvetkov <alexander.tsvetkov@oracle.com>
 Subject: Re: max_dir_size_kb option list
-Date: Mon, 15 Dec 2014 19:06:22 +0300
-Message-ID: <548F06FE.9090501@oracle.com>
-References: <548988D2.3030100@oracle.com> <7A899EFD-73A6-4B4E-B061-9773B083AC3A@dilger.ca>
+Date: Mon, 15 Dec 2014 19:06:39 +0300
+Message-ID: <548F070F.2050808@oracle.com>
+References: <548988D2.3030100@oracle.com> <20141212005517.GK24183@dastard>
 Mime-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="------------080409060609090700060305"
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:50588 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750765AbaLOQHH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Dec 2014 11:07:07 -0500
+In-Reply-To: <20141212005517.GK24183@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+This is a multi-part message in MIME format.
+--------------080409060609090700060305
 Content-Type: text/plain; charset=windows-1252; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <fstests-owner@vger.kernel.org>
-In-Reply-To: <7A899EFD-73A6-4B4E-B061-9773B083AC3A@dilger.ca>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
 
-Hello Andreas,
+Hello Dave,
 
 Thank you for the review, I've updated test according to your comments
 
-On 12/12/2014 03:12 AM, Andreas Dilger wrote:
-> On Dec 11, 2014, at 5:06 AM, Alexander Tsvetkov <alexander.tsvetkov@oracle.com> wrote:
+On 12/12/2014 03:55 AM, Dave Chinner wrote:
+> On Thu, Dec 11, 2014 at 03:06:42PM +0300, Alexander Tsvetkov wrote:
 >> Hello,
 >>
->> I've prepared test for xfstests suite that runs some checks for ext4 mount option max_dir_size_kb introduced in Linux Kernel 3.7, could someone please look on it?
-> For future reference, inline patches as plain text are best.
->
+>> I've prepared test for xfstests suite that runs some checks for ext4
+>> mount option max_dir_size_kb introduced in Linux Kernel 3.7, could
+>> someone please look on it?
+>>
+>> Thanks,
+>> Alexander Tsvetkov
 >>  From 21b1da618d0fcb4cd4666d10c41583274ed4eeed Mon Sep 17 00:00:00 2001
 >> From: Alexander Tsvetkov <alexander.tsvetkov@oracle.com>
 >> Date: Wed, 10 Dec 2014 15:31:02 +0300
@@ -72,11 +84,15 @@ On 12/12/2014 03:12 AM, Andreas Dilger wrote:
 >> +
 >> +testdir=$SCRATCH_MNT/testdir
 >> +testfile=$SCRATCH_MNT/testfile
+> Do not call a file on the scratch device "testdir". That name has
+> specific meaning: it's the mount point for the test device. Using
+> the same variable name that differs only different syntax for
+> somethingon the scratch device is not a good idea.
+>
+>
 >> +sdir=`dirname $0`
 >> +sdir=`cd "$sdir"; pwd`
-> Since this script is /bin/bash, I'd recommend to use $(...) instead
-> of `...` for subshells, since the former can be nested, is much easier
-> to see the start/end, and isn't confused for '...' quotes.
+> $here is already set to the current xfstests run location.
 >
 >> +echo "QA output created by $seq"
 >> +echo "Silence is golden"
@@ -91,19 +107,34 @@ On 12/12/2014 03:12 AM, Andreas Dilger wrote:
 >> +      _scratch_unmount
 >> +   fi
 >> +}
+> No. The harness will unmount the scratch device if it was mounted.
+> Unless you need to do specific cleanup fo rthe test, do not modify
+> the standard cleanup function. At minimum, it still needs to remove
+> all the $tmp files created during the test run.
+>
+>
 >> +
 >> +_filter_error() {
 >> +   sed -n -e "s/.*\($1\).*/\"\1\"/p"
 >> +}
+> "_" prefix is reserved for library functions.
+>
+> Comments are generally required to explain the intent of regexs that
+> look like line noise.
+>
+> 8 space tabs.
+>
 >> +
 >> +_clear_testdir() {
 >> +   dirs="$testdir *$"
-> This "*$" looks like a bug.  Do you mean "$*"?
->
 >> +   for i in $dirs; do
 >> +      rm -fr $i/*
 >> +   done
 >> +}
+> I thought this was going to clean up the TEST_DIR, but as per above,
+> it's actually doing stuff to the scratch device. "remove_files()"
+> is good enough....
+>
 >> +
 >> +# $1 - device
 >> +# $2 - options
@@ -113,7 +144,8 @@ On 12/12/2014 03:12 AM, Andreas Dilger wrote:
 >> +   umount $device 1>/dev/null 2>&1
 >> +   mkfs.ext4 $opts $device 1>/dev/null 2>&1
 >> +}
->> +
+> _mkfs_dev
+>
 >> +# $1 - options
 >> +# $2 - mount point
 >> +_make_loopfs() {
@@ -124,6 +156,11 @@ On 12/12/2014 03:12 AM, Andreas Dilger wrote:
 >> +   mkfs.ext4 -O ^dir_index,^has_journal $loopdev 1>/dev/null 2>&1
 >> +   mount -t ext4 $1 $loopdev $2
 >> +}
+> no need to create a loop device. mount -o loop will do what you
+> want. Also, $MKFS_EXT4_PROG (or whatever the var is) shoul dbe used.
+> As should _mount. And 8 space tabs.
+>
+>
 >> +
 >> +# $1 - expected limit after items creation
 >> +# $2 - command to create item
@@ -135,42 +172,18 @@ On 12/12/2014 03:12 AM, Andreas Dilger wrote:
 >> +    sync
 >> +    echo 3 > /proc/sys/vm/drop_caches
 >> +    MAX_INUM=$(((limit*1024*2)/24))
-> (style) spaces around operators, and no need for extra () around
-> multiplication.
->
 >> +    for i in $(seq 0 $MAX_INUM); do
 >> +       tmp_name=`mktemp -u`
-> Is there a reason to use mktemp instead of just some sequential names
-> like item="f.$limit.$i" or similar?  There are several problems with
-> the complexity here that could be avoided.
->
-> - since mktemp is creating temp files in $TMPDIR by default and "-u"
->    is unlinking them, this is doing double the work needed
-> - the "continue" below implies that some items may not be created,
->    due to name collisions (since mktemp doesn't actually see the entries
->    created in the "real" directory), so fewer than $MAX_INUM entries may
->    be created, causing the test to be inconsistent
->
-> This could just be something simple like:
->
->           tmp_name=$(mktemp $dir/f.XXXXXX)
->
-> and if we need to get directory creation involved, then something like:
->
->           [ "$2" = "mkdir" ] && MKTEMP_OPT="-d"
->           tmp_name=$(mktemp $MKTEMP_OPT $dir/f.XXXXXX 2>$tmp.out)
->
-> I see that there are callers of _create_items() that are not "touch"
-> or "mkdir", but I don't think those are adding much value to this
-> test (more on that below).
+applied
+> We use $tmp as the location for temporary files in tests
+mktemp is used to fill test directory up to limit
 >
 >> +       item=`basename $tmp_name`
-> Use $(...), especially since this style is already used here.
->
-applied
 >> +       if [ -e $dir/$item ]; then
 >> +          continue
 >> +       fi
+> Why?
+removed
 >> +       create_cmd="$2 $dir/$item 2>$tmp.out 1>/dev/null"
 >> +       eval "$create_cmd"
 >> +       res=$?
@@ -180,9 +193,18 @@ applied
 >> +             cat $tmp.out2 | tr -d '\n' >> $seqres.full
 >> +          else
 >> +             echo "FAIL! expected ENOSPC" | tee -a $seqres.full
+> _fail?
+this output is supposed to make a test failure, but as I see _fail is rather
+for test setup errors
+>
 >> +          fi
 >> +          break
 >> +      fi
+> This all seems rather convoluted. You're creating a tmp file to
+> capture the error, then if you get an ENOSPC error you dump it to
+> the debug file, otherwise you dump an error message to main output
+> to cause the test to eventually fail?
+agree, I've simplified this part
 >> +   done
 >> +   size=$(stat -c %s $dir)
 >> +   size=$((size/1024))
@@ -200,178 +222,41 @@ applied
 >> +_supported_fs ext4
 >> +_supported_os Linux
 >> +_require_scratch
+> _require_loop
+>
 >> +
 >> +LIMIT1=8
 >> +LIMIT2=16
 >> +
 >> +_make_ext4fs $SCRATCH_DEV "-O ^dir_index,^filetype"
-> It isn't clear why you disable the filetype option?  That has been a
-> standard ext2/3/4 feature for 10+ years, so it doesn't make sense to
-> test without it.
-I tried initially to calculate the number of created items, it was one more
-test pass/fail condition, and wanted to be sure that size of created 
-dentry item
-is based on "ext4_dir_entry" structure. Disabling of dir_index is also 
-related to
-get more predictable behaviour of number of created items to disable htree
-allocations and fill directory up to the maximum items number.At this 
-moment
-it's clear for me that this check is not required for that test.
+> _scratch_mkfs -O ^dir_index,^filetype
+>
+applied
+> Cheers,
+>
+> Dave.
+Thanks,
+Alexander Tsvetkov
 
->
-> It makes sense to test both with and without the dir_index option
-> (this is enabled by default for ext4), but it doesn't make sense to
-> only test with it disabled.
-agree, I've added both test runs with disabled/enabled 'dir_index'
-option. Also added one more test with 1Kb growing limits, because
-max_dir_size_kb is defined with 1Kb resolution.
+--------------080409060609090700060305
+Content-Type: text/x-patch;
+ name="max_dir_size_kb.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="max_dir_size_kb.patch"
 
->   Better to increase the LIMIT1 and LIMIT2
-> values to allow testing with this enabled (e.g. 16 and 32) as well as
-> disabled.
-added test case with increased limit
-
->> +_scratch_mount "-o max_dir_size_kb=$LIMIT1"
->> +mkdir $testdir 2>/dev/null
->> +
->> +echo -e "\nExceed $LIMIT1 Kb limit with new files in testdir/: " >> $seqres.full
->> +_create_items $LIMIT1 "touch"
->> +
->> +echo -e "\nRemount with $LIMIT1 Kb limit,\nnew item in testdir/ should result to ENOSPC: " >>$seqres.full
->> +_scratch_mount "-o remount,max_dir_size_kb=$LIMIT1"
->> +_create_items $LIMIT1 "touch"
->> +
->> +echo -e "\nExceed $LIMIT2 Kb limit with new files in testdir/: " >> $seqres.full
->> +_scratch_mount "-o remount,max_dir_size_kb=$LIMIT2"
->> +_create_items $LIMIT2 "touch"
->> +
->> +echo -e "\nExceed $LIMIT2 Kb limit with new files in testdir2/: " >> $seqres.full
->> +mkdir $SCRATCH_MNT/testdir2 2>/dev/null
->> +_create_items $LIMIT2 "touch" "$SCRATCH_MNT/testdir2"
->> +
->> +echo -e "\nRemount with $LIMIT1 Kb limit,\nnew item in testdir/ should result to ENOSPC: " >> $seqres.full
->> +_scratch_mount "-o remount,max_dir_size_kb=$LIMIT1"
->> +_create_items $LIMIT2 "touch"
->> +echo -e "\nnew item in testdir2/ should result to ENOSPC: " >> $seqres.full
->> +_create_items $LIMIT2 "touch" "$SCRATCH_MNT/testdir2"
->> +_clear_testdir "$SCRATCH_MNT/testdir2"
->> +rmdir $testdir
->> +mkdir $testdir
->> +
->> +echo -e "\nExceed $LIMIT1 Kb directory limit with new subdirectories: " >> $seqres.full
->> +_create_items $LIMIT1 "mkdir"
->> +_clear_testdir
->> +
->> +echo -e "\nExceed $LIMIT1 Kb directory limit with symlinks: " >> $seqres.full
->> +dd if=/dev/urandom of=$testfile bs=1 seek=4096 count=4096 > /dev/null 2>&1
->> +_create_items $LIMIT1 "ln -s $testfile"
->> +_clear_testdir
-> It isn't clear there is any value to test with symlinks, hard links,
-> and FIFOs, since the limit is imposed in the common code for inserting
-> the name into the directory, and it doesn't care what type of inode
-> the name is referencing.
-test was created from "black box" approach, that's why it has some probably
-redundant checks, I've removed these meaningless cases.
-
->> +echo -e "\nExceed $LIMIT1 Kb directory limit with hardlinks: " >> $seqres.full
->> +_create_items $LIMIT1 "ln $testfile"
->> +_clear_testdir
->> +
->> +echo -e "\nExceed $LIMIT1 Kb directory limit with FIFOs: " >> $seqres.full
->> +_create_items $LIMIT1 "mkfifo"
->> +_clear_testdir
->> +
->> +echo -e "\nCreate ext4 fs on testdir/subdir with $LIMIT2 Kb limit," >> $seqres.full
->> +mkdir $testdir/subdir 2>/dev/null
->> +_make_ext4fs $TEST_DEV "-O ^dir_index,^filetype"
->> +mount -t ext4 -o max_dir_size_kb=$LIMIT2 $TEST_DEV $testdir/subdir
->> +
->> +echo "exceed $LIMIT1 Kb limit of testdir/:" >> $seqres.full
->> +_create_items $LIMIT1 "touch"
->> +
->> +echo -e "\nexceed $LIMIT2 Kb limit of testdir/subdir:" >> $seqres.full
->> +_create_items $LIMIT2 "touch" "$testdir/subdir"
->> +
->> +echo -e "\ntestdir/ limit $LIMIT2 Kb, testdir/subdir limit $LIMIT1 Kb," >> $seqres.full
-> I think this message is backward. testdir has a limit of $LIMIT1, and
-> testdir/subdir has a limit of $LIMIT2.
-this is really new test case when directory and subdirectory limits are 
-switched,
-corrected log message.
->> +umount $TEST_DEV 1>/dev/null 2>&1
->> +_scratch_mount "-o remount,max_dir_size_kb=$LIMIT2"
->> +mount -t ext4 -o max_dir_size_kb=$LIMIT1 $TEST_DEV $testdir/subdir
->> +
->> +echo "exceed new $LIMIT2 Kb limit of testdir/ with a set of files:" >> $seqres.full
->> +_create_items $LIMIT2 "touch"
->> +echo -e "\nnew item in testdir/subdir should result to ENOSPC: " >> $seqres.full
->> +_create_items $LIMIT2 "touch" "$testdir/subdir"
->> +
->> +umount $TEST_DEV 1>/dev/null 2>&1
->> +_clear_testdir
->> +
->> +echo -e "\ntestdir/ limit $LIMIT2 Kb, loop fs: testdir/subdir limit $LIMIT1 Kb," >> $seqres.full
->> +mkdir $testdir/subdir
->> +
->> +_make_loopfs "-o max_dir_size_kb=$LIMIT1" "$testdir/subdir"
->> +
->> +echo "exceed $LIMIT1 Kb limit of testdir/subdir with a set of files:" >> $seqres.full
->> +_create_items $LIMIT1 "touch" "$testdir/subdir"
->> +
->> +echo -e "\nexceed $LIMIT2 Kb limit of testdir/ with a set of files:" >> $seqres.full
->> +_create_items $LIMIT2 "touch"
->> +
->> +umount $testdir/subdir
->> +losetup -d $loopdev
->> +_clear_testdir
->> +
->> +# success, all done
->> +status=0
->> +exit 0
->> diff --git a/tests/ext4/309.out b/tests/ext4/309.out
->> new file mode 100755
->> index 0000000..56330d6
->> --- /dev/null
->> +++ b/tests/ext4/309.out
->> @@ -0,0 +1,2 @@
->> +QA output created by 309
->> +Silence is golden
->> diff --git a/tests/ext4/group b/tests/ext4/group
->> index aa6a53b..9bf1061 100644
->> --- a/tests/ext4/group
->> +++ b/tests/ext4/group
->> @@ -14,4 +14,5 @@
->>   305 auto
->>   306 auto rw resize quick
->>   307 auto ioctl rw
->> -308 auto ioctl rw prealloc quick
->> \ No newline at end of file
->> +308 auto ioctl rw prealloc quick
->> +309 auto
->> -- 
->> 1.9.3
->>
->>
-> Cheers, Andreas
->
->
->
->
->
-
- From e30cd49f5ab84c029c0b376e702caeac42f59f49 Mon Sep 17 00:00:00 2001
+>From e30cd49f5ab84c029c0b376e702caeac42f59f49 Mon Sep 17 00:00:00 2001
 From: Alexander Tsvetkov <alexander.tsvetkov@oracle.com>
 Date: Mon, 15 Dec 2014 18:49:42 +0300
 Subject: [PATCH] added test for max_dir_size_kb mount option
 
 ---
-  tests/ext4/309     | 178 
-+++++++++++++++++++++++++++++++++++++++++++++++++++++
-  tests/ext4/309.out |   2 +
-  tests/ext4/group   |   1 +
-  3 files changed, 181 insertions(+)
-  create mode 100755 tests/ext4/309
-  create mode 100755 tests/ext4/309.out
+ tests/ext4/309     | 178 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/ext4/309.out |   2 +
+ tests/ext4/group   |   1 +
+ 3 files changed, 181 insertions(+)
+ create mode 100755 tests/ext4/309
+ create mode 100755 tests/ext4/309.out
 
 diff --git a/tests/ext4/309 b/tests/ext4/309
 new file mode 100755
@@ -422,7 +307,7 @@ index 0000000..34ceb2b
 +    rm -rf $tmp.*
 +}
 +
-+remove_files()
++remove_files() 
 +{
 +   dirs="$testdir $*"
 +   for i in $dirs; do
@@ -433,7 +318,7 @@ index 0000000..34ceb2b
 +# $1 - expected limit after items creation
 +# $2 - command to create item
 +# $3 - where to create (testdir by default)
-+_create_items()
++_create_items() 
 +{
 +    limit=$1
 +    dir=${2:-$testdir}
@@ -446,17 +331,15 @@ index 0000000..34ceb2b
 +       error=$(mktemp $MKTEMP_OPT --tmpdir=$dir 2>&1 >/dev/null)
 +       res=$?
 +       if [ $res -ne 0 ]; then
-+          echo $error >> $seqres.full
-+          [[ ! $error =~ ^.*'No space left on device'$ ]] && echo 
-"FAIL! expected ENOSPC" | tee -a $seqres.full
++          echo $error >> $seqres.full  
++          [[ ! $error =~ ^.*'No space left on device'$ ]] && echo "FAIL! expected ENOSPC" | tee -a $seqres.full
 +          break
 +      fi
 +   done
 +   size=$(stat -c %s $dir)
 +   size=$((size / 1024))
 +   if [ $size -gt $limit ]; then
-+      echo "FAIL! expected dir size: $limit, actually: $size" | tee -a 
-$seqres.full
++      echo "FAIL! expected dir size: $limit, actually: $size" | tee -a $seqres.full
 +   fi
 +}
 +
@@ -471,45 +354,36 @@ $seqres.full
 +   _scratch_mount -o max_dir_size_kb=$LIMIT1
 +   mkdir $testdir
 +
-+   echo -e "\nExceed $LIMIT1 Kb limit with new files in testdir/: " >> 
-$seqres.full
++   echo -e "\nExceed $LIMIT1 Kb limit with new files in testdir/: " >> $seqres.full
 +   _create_items $LIMIT1
 +
-+   echo -e "\nRemount with $LIMIT1 Kb limit,\nnew item in testdir/ 
-should result to ENOSPC: " >>$seqres.full
++   echo -e "\nRemount with $LIMIT1 Kb limit,\nnew item in testdir/ should result to ENOSPC: " >>$seqres.full
 +   _scratch_mount "-o remount,max_dir_size_kb=$LIMIT1"
 +   _create_items $LIMIT1
 +
-+   echo -e "\nExceed $LIMIT2 Kb limit with new files in testdir/: " >> 
-$seqres.full
++   echo -e "\nExceed $LIMIT2 Kb limit with new files in testdir/: " >> $seqres.full
 +   _scratch_mount "-o remount,max_dir_size_kb=$LIMIT2"
 +   _create_items $LIMIT2
 +
-+   echo -e "\nExceed $LIMIT2 Kb limit with new files in testdir2/: " >> 
-$seqres.full
++   echo -e "\nExceed $LIMIT2 Kb limit with new files in testdir2/: " >> $seqres.full
 +   mkdir $SCRATCH_MNT/testdir2 2>/dev/null
 +   _create_items $LIMIT2 "$SCRATCH_MNT/testdir2"
 +
-+   echo -e "\nRemount with $LIMIT1 Kb limit,\nnew item in testdir/ 
-should result to ENOSPC: " >> $seqres.full
++   echo -e "\nRemount with $LIMIT1 Kb limit,\nnew item in testdir/ should result to ENOSPC: " >> $seqres.full
 +   _scratch_mount "-o remount,max_dir_size_kb=$LIMIT1"
 +   _create_items $LIMIT2
-+   echo -e "\nnew item in testdir2/ should result to ENOSPC: " >> 
-$seqres.full
++   echo -e "\nnew item in testdir2/ should result to ENOSPC: " >> $seqres.full
 +   _create_items $LIMIT2 "$SCRATCH_MNT/testdir2"
 +   remove_files "$SCRATCH_MNT/testdir2"
 +   rmdir $testdir
 +   mkdir $testdir
-+   dd if=/dev/urandom of=$testfile bs=1 seek=4096 count=4096 > 
-/dev/null 2>&1
++   dd if=/dev/urandom of=$testfile bs=1 seek=4096 count=4096 > /dev/null 2>&1
 +
-+   echo -e "\nExceed $LIMIT1 Kb directory limit with new 
-subdirectories: " >> $seqres.full
++   echo -e "\nExceed $LIMIT1 Kb directory limit with new subdirectories: " >> $seqres.full
 +   _create_items $LIMIT1 $testdir "mkdir"
 +   remove_files
 +
-+   echo -e "\nCreate ext4 fs on testdir/subdir with $LIMIT2 Kb limit," 
- >> $seqres.full
++   echo -e "\nCreate ext4 fs on testdir/subdir with $LIMIT2 Kb limit," >> $seqres.full
 +   mkdir $testdir/subdir 2>/dev/null
 +   umount $TEST_DEV 1>/dev/null 2>&1
 +   _mkfs_dev $TEST_DEV $MKFS_OPT >>$seqres.full 2>&1
@@ -521,35 +395,29 @@ subdirectories: " >> $seqres.full
 +   echo -e "\nexceed $LIMIT2 Kb limit of testdir/subdir:" >> $seqres.full
 +   _create_items $LIMIT2 "$testdir/subdir"
 +
-+   echo -e "\ntestdir/ limit $LIMIT2 Kb, testdir/subdir limit $LIMIT1 
-Kb," >> $seqres.full
++   echo -e "\ntestdir/ limit $LIMIT2 Kb, testdir/subdir limit $LIMIT1 Kb," >> $seqres.full
 +   umount $TEST_DEV 1>/dev/null 2>&1
 +   _scratch_mount "-o remount,max_dir_size_kb=$LIMIT2"
 +   _mount -o max_dir_size_kb=$LIMIT1 $TEST_DEV $testdir/subdir
 +
-+   echo "exceed new $LIMIT2 Kb limit of testdir/ with a set of files:" 
- >> $seqres.full
++   echo "exceed new $LIMIT2 Kb limit of testdir/ with a set of files:" >> $seqres.full
 +   _create_items $LIMIT2
-+   echo -e "\nnew item in testdir/subdir should result to ENOSPC: " >> 
-$seqres.full
++   echo -e "\nnew item in testdir/subdir should result to ENOSPC: " >> $seqres.full
 +   _create_items $LIMIT2 "$testdir/subdir"
 +
 +   umount $TEST_DEV 1>/dev/null 2>&1
 +   remove_files
 +
-+   echo -e "\nTestdir/ limit $LIMIT2 Kb, loop fs: testdir/subdir limit 
-$LIMIT1 Kb," >> $seqres.full
++   echo -e "\nTestdir/ limit $LIMIT2 Kb, loop fs: testdir/subdir limit $LIMIT1 Kb," >> $seqres.full
 +   mkdir $testdir/subdir
 +
 +   $MKFS_EXT4_PROG -F $MKFS_OPT $testfile 2m >> $seqres.full 2>&1
 +   _mount -o loop,max_dir_size_kb=$LIMIT1 $testfile $testdir/subdir
 +
-+   echo "exceed $LIMIT1 Kb limit of testdir/subdir with a set of 
-files:" >> $seqres.full
++   echo "exceed $LIMIT1 Kb limit of testdir/subdir with a set of files:" >> $seqres.full
 +   _create_items $LIMIT1 "$testdir/subdir"
 +
-+   echo -e "\nexceed $LIMIT2 Kb limit of testdir/ with a set of files:" 
- >> $seqres.full
++   echo -e "\nexceed $LIMIT2 Kb limit of testdir/ with a set of files:" >> $seqres.full
 +   _create_items $LIMIT2
 +
 +   umount -d $testdir/subdir
@@ -568,7 +436,7 @@ files:" >> $seqres.full
 +
 +run_test 8 16
 +run_test 4 32 "-O ^dir_index"
-+run_test 5 11 "-b 1024"
++run_test 5 11 "-b 1024" 
 +
 +# success, all done
 +status=0
@@ -587,13 +455,12 @@ index e7f1f2a..78d643b 100644
 --- a/tests/ext4/group
 +++ b/tests/ext4/group
 @@ -16,3 +16,4 @@
-  306 auto rw resize quick
-  307 auto ioctl rw
-  308 auto ioctl rw prealloc quick
+ 306 auto rw resize quick
+ 307 auto ioctl rw
+ 308 auto ioctl rw prealloc quick
 +309 auto
 -- 
 1.9.3
 
 
-Thanks,
-Alexander Tsvetkov
+--------------080409060609090700060305--
