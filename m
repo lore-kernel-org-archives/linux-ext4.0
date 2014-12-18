@@ -1,93 +1,60 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 2/2] ext4: fix seek_data for indirect layout
-Date: Thu, 18 Dec 2014 19:59:06 +0400
-Message-ID: <1418918346-9546-2-git-send-email-dmonakhov@openvz.org>
-References: <1418918346-9546-1-git-send-email-dmonakhov@openvz.org>
-Cc: tytso@mit.edu, Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
+From: =?UTF-8?B?8J+RviBXYWRl?= <wadetregaskis@google.com>
+Subject: Re: Patch adding e2p_feature_to_string
+Date: Thu, 18 Dec 2014 10:23:15 -0800
+Message-ID: <CAC80aejg3USDDeaVQ-F72aWoAk1daqdpTRCOiOac=GjVsqj6Pg@mail.gmail.com>
+References: <CAC80aehVQyWfkd6X339n2bhkDU574hTMWEKXcxzeJrwP4K8E+A@mail.gmail.com>
+	<7EB7C92E-036C-4460-A132-344C06F83336@dilger.ca>
+	<CAC80aeigBG9vdbG-RY9wV7vezd6uw+XcdnFQ81A7Bkq3pdSWxw@mail.gmail.com>
+	<40442828-1968-444E-AA4E-F0A1D28EC057@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:46171 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751449AbaLRP7U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Dec 2014 10:59:20 -0500
-In-Reply-To: <1418918346-9546-1-git-send-email-dmonakhov@openvz.org>
+Received: from mail-vc0-f181.google.com ([209.85.220.181]:55069 "EHLO
+	mail-vc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751139AbaLRSXQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Dec 2014 13:23:16 -0500
+Received: by mail-vc0-f181.google.com with SMTP id le20so505901vcb.26
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2014 10:23:15 -0800 (PST)
+In-Reply-To: <40442828-1968-444E-AA4E-F0A1D28EC057@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We obtain block mapping info via fiemap, in case of indirect inodes
-it handled via generic_block_fiemap(). That function does not care
-about delayed allocation. So we have to lookup delayed blocks explicitly.
+> I see that now.  That said, your version now does this for _every_ caller
+> of e2p_feature2string(), while the original code only did it in the rare
+> case of an unsupported feature bit set on on a filesystem.  I don't see
+> that as an improvement over the original.
 
-*XFSTEST*
-MKFS_OPTIONS:   -- -q -O ^extents,^flex_bg,^uninit_bg /dev/vdc
-MOUNT_OPTIONS: -- -o acl,user_xattr -o block_validity,nodelalloc /dev/vdc /vdc
-TEST: generic/285
+I do - the existing code is causing data corruption in my use.
 
-tested on following configurations: 4k, 1k, ext3, ext3-1k, ext3-1k-da
+I'm unsure why the string copy is problematic - this doesn't seem to
+be performance-sensitive code.  As far as I could find, all uses of
+this function in the e2fsprogs codebase are just printfing the result,
+in human-readable format.  Or for debugging.  ?
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/file.c |   26 ++++++++++++++++++++++++--
- 1 files changed, 24 insertions(+), 2 deletions(-)
+> One option, maybe not very pretty but not fatally ugly, is to just
+> initialize all of the "unknown" features as static strings.  That ends
+> up being 23 extra "FEATURE_Cnn" strings, 21 extra "FEATURE_Rnn" strings,
+> and 17 extra "FEATURE_Inn" strings.
+>
+> That ends up being less than 1KB of static text, which isn't bad at all.
+>
+> This could potentially speed up e2p_feature2string(), since it could
+> index directly into three different arrays instead of having to scan all
+> of them to find the right f_compat type first.  I'm not sure if it really
+> makes a noticeable difference in the end though.
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 8ec48a4..b0dc982 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -407,14 +407,26 @@ static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
- 	struct inode *inode = file->f_mapping->host;
- 	struct fiemap_extent_info fie;
- 	struct fiemap_extent ext[2];
--	loff_t next;
-+	loff_t next, delayed = offset;
- 	int i, ret = 0;
-+	bool has_delay = false;
- 
- 	mutex_lock(&inode->i_mutex);
- 	if (offset >= inode->i_size) {
- 		mutex_unlock(&inode->i_mutex);
- 		return -ENXIO;
- 	}
-+	/* Explicitly search for delayed blocks for indirect layout because
-+	 * generic_block_fiemap() can not do it for us. */
-+	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
-+	    test_opt(inode->i_sb, DELALLOC) &&
-+	    ext4_find_delayed_pgoff(inode, SEEK_DATA, maxsize, &delayed)) {
-+		if (delayed  == offset)
-+			goto out;
-+		maxsize = delayed;
-+		has_delay = true;
-+	}
-+
- 	fie.fi_flags = 0;
- 	fie.fi_extents_max = 2;
- 	fie.fi_extents_start = (struct fiemap_extent __user *) &ext;
-@@ -432,7 +444,10 @@ static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
- 
- 		/* No extents found, EOF */
- 		if (!fie.fi_extents_mapped) {
--			ret = -ENXIO;
-+			if (has_delay)
-+				offset = delayed;
-+			else
-+				ret = -ENXIO;
- 			break;
- 		}
- 		for (i = 0; i < fie.fi_extents_mapped; i++) {
-@@ -496,6 +511,13 @@ static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
- 	while (1) {
- 		mm_segment_t old_fs = get_fs();
- 
-+		/* Explicitly search for delayed blocks for indirect layout
-+		   because generic_block_fiemap() can not do it for us. */
-+		if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
-+		    test_opt(inode->i_sb, DELALLOC))
-+			ext4_find_delayed_pgoff(inode, SEEK_HOLE, maxsize,
-+						&offset);
-+
- 		fie.fi_extents_mapped = 0;
- 		memset(ext, 0, sizeof(*ext));
- 
--- 
-1.7.1
+I can do either, if you insist.  What would you prefer:
 
+a) Statically defining the various FEATURE_foo strings, as you describe.
+b) Duplicating the implementation of the two functions so that
+e2p_feature2string() can retain its prior behaviour of returning a
+string constant in the common cases.
+
+Or alternatively, I suppose:
+
+c) Use a thread-local internal buffer to return the results, so it's
+at least thread-safe (though still not really safe, since multiple
+calls on one line - e.g. as printf arguments - could still evaluate to
+incorrect results).
