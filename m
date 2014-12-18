@@ -1,37 +1,135 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 89131] Hangs when checking torrent through libtorrent; kernel
- BUG at mm/iov_iter.c:219!
-Date: Thu, 18 Dec 2014 09:49:20 +0000
-Message-ID: <bug-89131-13602-MJkiz0GoEJ@https.bugzilla.kernel.org/>
-References: <bug-89131-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 1/2] ext4: fix seek_data cleanup
+Date: Thu, 18 Dec 2014 19:59:05 +0400
+Message-ID: <1418918346-9546-1-git-send-email-dmonakhov@openvz.org>
+Cc: tytso@mit.edu, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:49795 "EHLO mail.kernel.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:31425 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751808AbaLRJtX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Dec 2014 04:49:23 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 5448920A26
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2014 09:49:22 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id C99CE20A24
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2014 09:49:20 +0000 (UTC)
-In-Reply-To: <bug-89131-13602@https.bugzilla.kernel.org/>
+	id S1751248AbaLRP7U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Dec 2014 10:59:20 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=89131
+- Remove usless condition page_has_buffers(). We already checked that previously.
 
---- Comment #5 from Lubos Dolezel <lubosd@gmail.com> ---
-Sorry for misunderstanding, I was only able to reproduce it with libtorrent.
+- The goal of ext4_find_unwritten_pgoff() is to distinguish uninitialized data
+  from initialized or delayed ones so check (buffer_uptodate() || buffer_unwritten() is
+  not correct. Data is delayed if bh_uptodate && (bh_delayed || bh_async_write)
+- Rename ext4_find_unwritten_pgoff -> ext4_find_delayed_pgoff
+- Fix seek_data/seek_hole for case blk_sz != pg_sz.
 
-Torrent checking resulted in aforementioned BUGs, whereas torrent downloading
-(i.e. write operations) resulted in much more serious problems - e.g. lockups
-in kworker in kthread_data().
+tested on following configurations
+xfstest-blk conf: ext3, ext3-1k, ext3-1k-da, 1k, 4k
+test: generic/285
 
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/file.c |   58 ++++++++++++++++++++++++++++---------------------------
+ 1 files changed, 30 insertions(+), 28 deletions(-)
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 513c12c..8ec48a4 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -273,19 +273,19 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+  * we determine this extent as a data or a hole according to whether the
+  * page cache has data or not.
+  */
+-static int ext4_find_unwritten_pgoff(struct inode *inode, int whence,
+-				     loff_t endoff, loff_t *offset)
++static int ext4_find_delayed_pgoff(struct inode *inode, int whence,
++			   loff_t endoff, loff_t *offset)
+ {
+ 	struct pagevec pvec;
+ 	pgoff_t index;
+ 	pgoff_t end;
+ 	loff_t startoff;
+ 	loff_t lastoff;
++	loff_t last_data;
+ 	int found = 0;
+ 
+ 	startoff = *offset;
+-	lastoff = startoff;
+-
++	last_data = lastoff = startoff;
+ 
+ 	index = startoff >> PAGE_CACHE_SHIFT;
+ 	end = endoff >> PAGE_CACHE_SHIFT;
+@@ -350,30 +350,32 @@ static int ext4_find_unwritten_pgoff(struct inode *inode, int whence,
+ 				unlock_page(page);
+ 				continue;
+ 			}
+-
+-			if (page_has_buffers(page)) {
+-				lastoff = page_offset(page);
+-				bh = head = page_buffers(page);
+-				do {
+-					if (buffer_uptodate(bh) ||
+-					    buffer_unwritten(bh)) {
+-						if (whence == SEEK_DATA)
+-							found = 1;
+-					} else {
+-						if (whence == SEEK_HOLE)
+-							found = 1;
++			lastoff = page_offset(page);
++			bh = head = page_buffers(page);
++			do {
++				if (buffer_uptodate(bh) &&
++				    (buffer_dirty(bh) ||
++				     buffer_async_write(bh))) {
++					last_data = lastoff + bh->b_size;
++					if (whence == SEEK_DATA &&
++					    lastoff + bh->b_size > startoff)
++						found = 1;
++				} else {
++					if (whence == SEEK_HOLE &&
++					    lastoff + bh->b_size > startoff) {
++						lastoff = last_data;
++						found = 1;
+ 					}
+-					if (found) {
+-						*offset = max_t(loff_t,
++				}
++				if (found) {
++					*offset = max_t(loff_t,
+ 							startoff, lastoff);
+-						unlock_page(page);
+-						goto out;
+-					}
+-					lastoff += bh->b_size;
+-					bh = bh->b_this_page;
+-				} while (bh != head);
+-			}
+-
++					unlock_page(page);
++					goto out;
++				}
++				lastoff += bh->b_size;
++				bh = bh->b_this_page;
++			} while (bh != head);
+ 			lastoff = page_offset(page) + PAGE_SIZE;
+ 			unlock_page(page);
+ 		}
+@@ -450,7 +452,7 @@ static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
+ 			 * it will be as a data or a hole according to page
+ 			 * cache that has data or not.
+ 			 */
+-			if (ext4_find_unwritten_pgoff(inode, SEEK_DATA,
++			if (ext4_find_delayed_pgoff(inode, SEEK_DATA,
+ 						      next, &offset))
+ 				goto out;
+ 
+@@ -524,7 +526,7 @@ static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
+ 			 * it will be as a data or a hole according to page
+ 			 * cache that has data or not.
+ 			 */
+-			if (ext4_find_unwritten_pgoff(inode, SEEK_HOLE,
++			if (ext4_find_delayed_pgoff(inode, SEEK_HOLE,
+ 						      next, &offset))
+ 				goto out;
+ 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+1.7.1
+
