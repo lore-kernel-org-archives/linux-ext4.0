@@ -1,134 +1,92 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 1/2] ext4: fix seek_data cleanup
-Date: Thu, 18 Dec 2014 19:59:05 +0400
-Message-ID: <1418918346-9546-1-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 2/2] ext4: fix seek_data for indirect layout
+Date: Thu, 18 Dec 2014 19:59:06 +0400
+Message-ID: <1418918346-9546-2-git-send-email-dmonakhov@openvz.org>
+References: <1418918346-9546-1-git-send-email-dmonakhov@openvz.org>
 Cc: tytso@mit.edu, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:31425 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:46171 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751248AbaLRP7U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751449AbaLRP7U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 18 Dec 2014 10:59:20 -0500
+In-Reply-To: <1418918346-9546-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-- Remove usless condition page_has_buffers(). We already checked that previously.
+We obtain block mapping info via fiemap, in case of indirect inodes
+it handled via generic_block_fiemap(). That function does not care
+about delayed allocation. So we have to lookup delayed blocks explicitly.
 
-- The goal of ext4_find_unwritten_pgoff() is to distinguish uninitialized data
-  from initialized or delayed ones so check (buffer_uptodate() || buffer_unwritten() is
-  not correct. Data is delayed if bh_uptodate && (bh_delayed || bh_async_write)
-- Rename ext4_find_unwritten_pgoff -> ext4_find_delayed_pgoff
-- Fix seek_data/seek_hole for case blk_sz != pg_sz.
+*XFSTEST*
+MKFS_OPTIONS:   -- -q -O ^extents,^flex_bg,^uninit_bg /dev/vdc
+MOUNT_OPTIONS: -- -o acl,user_xattr -o block_validity,nodelalloc /dev/vdc /vdc
+TEST: generic/285
 
-tested on following configurations
-xfstest-blk conf: ext3, ext3-1k, ext3-1k-da, 1k, 4k
-test: generic/285
+tested on following configurations: 4k, 1k, ext3, ext3-1k, ext3-1k-da
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/file.c |   58 ++++++++++++++++++++++++++++---------------------------
- 1 files changed, 30 insertions(+), 28 deletions(-)
+ fs/ext4/file.c |   26 ++++++++++++++++++++++++--
+ 1 files changed, 24 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 513c12c..8ec48a4 100644
+index 8ec48a4..b0dc982 100644
 --- a/fs/ext4/file.c
 +++ b/fs/ext4/file.c
-@@ -273,19 +273,19 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
-  * we determine this extent as a data or a hole according to whether the
-  * page cache has data or not.
-  */
--static int ext4_find_unwritten_pgoff(struct inode *inode, int whence,
--				     loff_t endoff, loff_t *offset)
-+static int ext4_find_delayed_pgoff(struct inode *inode, int whence,
-+			   loff_t endoff, loff_t *offset)
- {
- 	struct pagevec pvec;
- 	pgoff_t index;
- 	pgoff_t end;
- 	loff_t startoff;
- 	loff_t lastoff;
-+	loff_t last_data;
- 	int found = 0;
+@@ -407,14 +407,26 @@ static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
+ 	struct inode *inode = file->f_mapping->host;
+ 	struct fiemap_extent_info fie;
+ 	struct fiemap_extent ext[2];
+-	loff_t next;
++	loff_t next, delayed = offset;
+ 	int i, ret = 0;
++	bool has_delay = false;
  
- 	startoff = *offset;
--	lastoff = startoff;
--
-+	last_data = lastoff = startoff;
+ 	mutex_lock(&inode->i_mutex);
+ 	if (offset >= inode->i_size) {
+ 		mutex_unlock(&inode->i_mutex);
+ 		return -ENXIO;
+ 	}
++	/* Explicitly search for delayed blocks for indirect layout because
++	 * generic_block_fiemap() can not do it for us. */
++	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
++	    test_opt(inode->i_sb, DELALLOC) &&
++	    ext4_find_delayed_pgoff(inode, SEEK_DATA, maxsize, &delayed)) {
++		if (delayed  == offset)
++			goto out;
++		maxsize = delayed;
++		has_delay = true;
++	}
++
+ 	fie.fi_flags = 0;
+ 	fie.fi_extents_max = 2;
+ 	fie.fi_extents_start = (struct fiemap_extent __user *) &ext;
+@@ -432,7 +444,10 @@ static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
  
- 	index = startoff >> PAGE_CACHE_SHIFT;
- 	end = endoff >> PAGE_CACHE_SHIFT;
-@@ -350,30 +350,32 @@ static int ext4_find_unwritten_pgoff(struct inode *inode, int whence,
- 				unlock_page(page);
- 				continue;
- 			}
--
--			if (page_has_buffers(page)) {
--				lastoff = page_offset(page);
--				bh = head = page_buffers(page);
--				do {
--					if (buffer_uptodate(bh) ||
--					    buffer_unwritten(bh)) {
--						if (whence == SEEK_DATA)
--							found = 1;
--					} else {
--						if (whence == SEEK_HOLE)
--							found = 1;
-+			lastoff = page_offset(page);
-+			bh = head = page_buffers(page);
-+			do {
-+				if (buffer_uptodate(bh) &&
-+				    (buffer_dirty(bh) ||
-+				     buffer_async_write(bh))) {
-+					last_data = lastoff + bh->b_size;
-+					if (whence == SEEK_DATA &&
-+					    lastoff + bh->b_size > startoff)
-+						found = 1;
-+				} else {
-+					if (whence == SEEK_HOLE &&
-+					    lastoff + bh->b_size > startoff) {
-+						lastoff = last_data;
-+						found = 1;
- 					}
--					if (found) {
--						*offset = max_t(loff_t,
-+				}
-+				if (found) {
-+					*offset = max_t(loff_t,
- 							startoff, lastoff);
--						unlock_page(page);
--						goto out;
--					}
--					lastoff += bh->b_size;
--					bh = bh->b_this_page;
--				} while (bh != head);
--			}
--
-+					unlock_page(page);
-+					goto out;
-+				}
-+				lastoff += bh->b_size;
-+				bh = bh->b_this_page;
-+			} while (bh != head);
- 			lastoff = page_offset(page) + PAGE_SIZE;
- 			unlock_page(page);
+ 		/* No extents found, EOF */
+ 		if (!fie.fi_extents_mapped) {
+-			ret = -ENXIO;
++			if (has_delay)
++				offset = delayed;
++			else
++				ret = -ENXIO;
+ 			break;
  		}
-@@ -450,7 +452,7 @@ static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
- 			 * it will be as a data or a hole according to page
- 			 * cache that has data or not.
- 			 */
--			if (ext4_find_unwritten_pgoff(inode, SEEK_DATA,
-+			if (ext4_find_delayed_pgoff(inode, SEEK_DATA,
- 						      next, &offset))
- 				goto out;
+ 		for (i = 0; i < fie.fi_extents_mapped; i++) {
+@@ -496,6 +511,13 @@ static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
+ 	while (1) {
+ 		mm_segment_t old_fs = get_fs();
  
-@@ -524,7 +526,7 @@ static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
- 			 * it will be as a data or a hole according to page
- 			 * cache that has data or not.
- 			 */
--			if (ext4_find_unwritten_pgoff(inode, SEEK_HOLE,
-+			if (ext4_find_delayed_pgoff(inode, SEEK_HOLE,
- 						      next, &offset))
- 				goto out;
++		/* Explicitly search for delayed blocks for indirect layout
++		   because generic_block_fiemap() can not do it for us. */
++		if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
++		    test_opt(inode->i_sb, DELALLOC))
++			ext4_find_delayed_pgoff(inode, SEEK_HOLE, maxsize,
++						&offset);
++
+ 		fie.fi_extents_mapped = 0;
+ 		memset(ext, 0, sizeof(*ext));
  
 -- 
 1.7.1
