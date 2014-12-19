@@ -1,50 +1,45 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] fs: make generic_block_fiemap sig-tolerant PING2...
-Date: Fri, 19 Dec 2014 13:33:39 -0800
-Message-ID: <20141219133339.5c8afaa0c47760e9b141df49@linux-foundation.org>
-References: <1413552269-32203-1-git-send-email-dmonakhov@openvz.org>
-	<871toikt7c.fsf@openvz.org>
-	<87zjavehsx.fsf@openvz.org>
-	<20141218151247.b6ccd73351f40db66818c07e@linux-foundation.org>
-	<87egrwf1dd.fsf@openvz.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 89511] USB-storage mount error
+Date: Fri, 19 Dec 2014 22:11:49 +0000
+Message-ID: <bug-89511-13602-zUOtnsbNmi@https.bugzilla.kernel.org/>
+References: <bug-89511-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>, Al Viro <viro@ZenIV.linux.org.uk>,
-	Michael Kerrisk <mtk.manpages@gmail.com>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <87egrwf1dd.fsf@openvz.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:45117 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751355AbaLSWLx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 19 Dec 2014 17:11:53 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 6FED120145
+	for <linux-ext4@vger.kernel.org>; Fri, 19 Dec 2014 22:11:52 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 270E720148
+	for <linux-ext4@vger.kernel.org>; Fri, 19 Dec 2014 22:11:50 +0000 (UTC)
+In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 19 Dec 2014 12:13:50 +0300 Dmitry Monakhov <dmonakhov@openvz.org> wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=89511
 
-> --- a/Documentation/filesystems/fiemap.txt
-> +++ b/Documentation/filesystems/fiemap.txt
-> @@ -196,7 +196,8 @@ struct fiemap_extent_info {
->  };
->  
->  It is intended that the file system should not need to access any of this
-> -structure directly.
-> +structure directly. Filesystem handlers should be tolerant to signals and return
-> +EINTR once fatal signal received.
+--- Comment #19 from Alan Stern <stern@rowland.harvard.edu> ---
+Now I see the problem.  Your drive doesn't like the SYNCHRONIZE CACHE command;
+it responds with an error "Illegal request, invalid operation code".  It does
+this even though it claims to have a write cache and therefore to support
+SYNCHRONIZE CACHE.
 
-Thanks.  I was concerned about userspace effects and back-compatibility
-issues, because I'd misread fatal_signal_pending() as signal_pending().
+In short, the bug is in the drive or in its USB interface.  You may be able to
+work around the bug by doing this before you mount it:
 
-Because it uses fatal_signal_pending(), the effects of this change
-should be indiscernible to userspace, yes?
+   echo 'temporary write through' >/sys/block/sdb/device/scsi_disk/*/cache_type
 
-I'm now wondering if the above doc update is unneeded and incorrect. 
-Is it likely that the fs handler (fiemap_fill_next_extent) will ever
-consume a large amount of time?  If not then we can leave the logic in
-__generic_block_fiemap() and not bother callees.
+I don't know if that command will work with your kernel (it should work with
+3.10 or later).  If it doesn't, try leaving out the word "temporary":
 
+   echo 'write through' >/sys/block/sdb/device/scsi_disk/*/cache_type
 
-
-The fix only addresses filesystems which use generic_block_fiemap(). 
-Presumably ocfs2, btrfs, nilfs2, lustre and xfs remain vulnerable to
-the problem you identified?
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
