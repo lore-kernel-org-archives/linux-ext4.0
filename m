@@ -1,27 +1,26 @@
-From: Jan Kara <jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: ext4_da_update_reserve_space warning with kernel 3.10
-Date: Fri, 19 Dec 2014 11:52:08 +0100
-Message-ID: <20141219105208.GA28890@quack.suse.cz>
+Date: Fri, 19 Dec 2014 07:59:20 -0500
+Message-ID: <20141219125919.GA24572@thunk.org>
 References: <CAHTgTXVNYNRHtDbQ1yGKbhnn-=bCzZFKjqUrW_v5+MokXPRzoQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org
 To: Vinson Lee <vlee@twopensource.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57338 "EHLO mx2.suse.de"
+Received: from imap.thunk.org ([74.207.234.97]:35875 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751681AbaLSKw1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Dec 2014 05:52:27 -0500
+	id S1751819AbaLSM7X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 19 Dec 2014 07:59:23 -0500
 Content-Disposition: inline
 In-Reply-To: <CAHTgTXVNYNRHtDbQ1yGKbhnn-=bCzZFKjqUrW_v5+MokXPRzoQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
-
-On Thu 18-12-14 17:23:22, Vinson Lee wrote:
+On Thu, Dec 18, 2014 at 05:23:22PM -0800, Vinson Lee wrote:
+> Hi.
+> 
 > We're triggering a kernel warning in ext4_da_update_reserve_space on
 > kernels 3.4 and 3.10. We do not have a reproducible test case, but the
 > warning happens more frequently with a slow network.
@@ -29,11 +28,20 @@ On Thu 18-12-14 17:23:22, Vinson Lee wrote:
 > EXT4-fs warning (device sdh1): ext4_da_update_reserve_space:362: ino
 > 1310732, allocated 1 with only 0 reserved metadata blocks (releasing 1
 > blocks with reserved 14 data blocks)
-  Yes, it looks like the problem you referenced below. But we don't plan to
-fix this in 3.10 or even 3.4 stable kernel. The warning is mostly harmless
-and fixing it would require rather intrusive changes to be backported...
 
-								Honza
+Known problem, and fixed in newer kernels.  In fact, the warning is
+harmless with the 3.10 kernels (since it includes commit 27dd4385422)
+which prevents us from failing to be able to allocate metadata blocks.
+In later kernels, as suggested by the commit description, we
+eliminated this particular warning since it was no longer necessary.
+As far as the 3.4 kernel is concerned, you could try backporting
+27dd4385422, although there's a good chance enough stuff has changed
+that the backport might not be at all trivial.
+
+Regards,
+
+					- Ted
+
 
 > ------------[ cut here ]------------
 > WARNING: at fs/ext4/inode.c:363 ext4_da_update_reserve_space+0xe7/0x20c()
@@ -73,6 +81,3 @@ and fixing it would require rather intrusive changes to be backported...
 > 
 > [1] https://bugzilla.kernel.org/show_bug.cgi?id=63511
 > [2] http://lists.openwall.net/linux-ext4/2013/10/23/7
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
