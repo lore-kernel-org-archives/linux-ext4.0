@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 03/31] libext2fs: zero blocks via FALLOC_FL_ZERO_RANGE in
- ext2fs_zero_blocks
-Date: Sat, 20 Dec 2014 13:17:00 -0800
-Message-ID: <20141220211700.25563.35295.stgit@birch.djwong.org>
+Subject: [PATCH 05/31] tune2fs: disable csum verification before resizing
+ inode
+Date: Sat, 20 Dec 2014 13:17:13 -0800
+Message-ID: <20141220211713.25563.2431.stgit@birch.djwong.org>
 References: <20141220211640.25563.80596.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,233 +10,202 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:40398 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752426AbaLTVRF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Dec 2014 16:17:05 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:45074 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752426AbaLTVRX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Dec 2014 16:17:23 -0500
 In-Reply-To: <20141220211640.25563.80596.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Plumb a new call into the IO manager to support translating
-ext2fs_zero_blocks calls into the equivalent FALLOC_FL_ZERO_RANGE
-fallocate flag primitive when possible.  This patch provides _only_
-support for file-based images.
-
-v2: Remove zero-out for block devices until BLKZEROOUT is cleaned up.
+When we're turning on metadata checksumming /and/ resizing the inode
+at the same time, disable checksum verification during the
+resize_inode() call because the subroutines it calls will try to
+verify the checksums (which have not yet been set), causing the
+operation to fail unnecessarily.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/ext2_io.h    |    7 ++++-
- lib/ext2fs/io_manager.c |   11 +++++++
- lib/ext2fs/mkjournal.c  |    5 +++
- lib/ext2fs/test_io.c    |   21 ++++++++++++++
- lib/ext2fs/unix_io.c    |   70 +++++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 113 insertions(+), 1 deletion(-)
+ misc/tune2fs.c               |    7 +++-
+ tests/t_iexpand_mcsum/expect |   54 ++++++++++++++++++++++++++++
+ tests/t_iexpand_mcsum/name   |    1 +
+ tests/t_iexpand_mcsum/script |   80 ++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 141 insertions(+), 1 deletion(-)
+ create mode 100644 tests/t_iexpand_mcsum/expect
+ create mode 100644 tests/t_iexpand_mcsum/name
+ create mode 100644 tests/t_iexpand_mcsum/script
 
 
-diff --git a/lib/ext2fs/ext2_io.h b/lib/ext2fs/ext2_io.h
-index 4c5a5c5..1faa720 100644
---- a/lib/ext2fs/ext2_io.h
-+++ b/lib/ext2fs/ext2_io.h
-@@ -93,7 +93,9 @@ struct struct_io_manager {
- 	errcode_t (*cache_readahead)(io_channel channel,
- 				     unsigned long long block,
- 				     unsigned long long count);
--	long	reserved[15];
-+	errcode_t (*zeroout)(io_channel channel, unsigned long long block,
-+			     unsigned long long count);
-+	long	reserved[14];
- };
- 
- #define IO_FLAG_RW		0x0001
-@@ -125,6 +127,9 @@ extern errcode_t io_channel_write_blk64(io_channel channel,
- extern errcode_t io_channel_discard(io_channel channel,
- 				    unsigned long long block,
- 				    unsigned long long count);
-+extern errcode_t io_channel_zeroout(io_channel channel,
-+				    unsigned long long block,
-+				    unsigned long long count);
- extern errcode_t io_channel_alloc_buf(io_channel channel,
- 				      int count, void *ptr);
- extern errcode_t io_channel_cache_readahead(io_channel io,
-diff --git a/lib/ext2fs/io_manager.c b/lib/ext2fs/io_manager.c
-index dc5888d..c395d61 100644
---- a/lib/ext2fs/io_manager.c
-+++ b/lib/ext2fs/io_manager.c
-@@ -112,6 +112,17 @@ errcode_t io_channel_discard(io_channel channel, unsigned long long block,
- 	return EXT2_ET_UNIMPLEMENTED;
- }
- 
-+errcode_t io_channel_zeroout(io_channel channel, unsigned long long block,
-+			     unsigned long long count)
-+{
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index b510c49..f01b05b 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -2961,8 +2961,13 @@ retry_open:
+ 		 * We want to update group descriptor also
+ 		 * with the new free inode count
+ 		 */
++		if (rewrite_checksums)
++			fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
+ 		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+-		if (resize_inode(fs, new_inode_size) == 0) {
++		retval = resize_inode(fs, new_inode_size);
++		if (rewrite_checksums)
++			fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
++		if (retval == 0) {
+ 			printf(_("Setting inode size %lu\n"),
+ 							new_inode_size);
+ 			rewrite_checksums = 1;
+diff --git a/tests/t_iexpand_mcsum/expect b/tests/t_iexpand_mcsum/expect
+new file mode 100644
+index 0000000..2a6d705
+--- /dev/null
++++ b/tests/t_iexpand_mcsum/expect
+@@ -0,0 +1,54 @@
++tune2fs test
++Creating filesystem with 786432 1k blocks and 98304 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553
 +
-+	if (channel->manager->zeroout)
-+		return (channel->manager->zeroout)(channel, block, count);
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (16384 blocks): done
++Creating 6334 huge file(s) with 117 blocks each: done
++Writing superblocks and filesystem accounting information:      done
 +
-+	return EXT2_ET_UNIMPLEMENTED;
-+}
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
 +
- errcode_t io_channel_alloc_buf(io_channel io, int count, void *ptr)
- {
- 	size_t	size;
-diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-index fcc6741..c42cb98 100644
---- a/lib/ext2fs/mkjournal.c
-+++ b/lib/ext2fs/mkjournal.c
-@@ -170,6 +170,11 @@ errcode_t ext2fs_zero_blocks2(ext2_filsys fs, blk64_t blk, int num,
- 	if (num <= 0)
- 		return 0;
- 
-+	/* Try a zero out command, if supported */
-+	retval = io_channel_zeroout(fs->io, blk, num);
-+	if (retval == 0)
-+		return 0;
++Exit status is 0
++tune2fs -I 256 -O metadata_csum test.img
++Setting inode size 256
 +
- 	/* Allocate the zeroizing buffer if necessary */
- 	if (num > stride_length && stride_length < MAX_STRIDE_LENGTH) {
- 		void *p;
-diff --git a/lib/ext2fs/test_io.c b/lib/ext2fs/test_io.c
-index b03a939..f7c50d1 100644
---- a/lib/ext2fs/test_io.c
-+++ b/lib/ext2fs/test_io.c
-@@ -86,6 +86,7 @@ void (*test_io_cb_write_byte)
- #define TEST_FLAG_SET_OPTION		0x20
- #define TEST_FLAG_DISCARD		0x40
- #define TEST_FLAG_READAHEAD		0x80
-+#define TEST_FLAG_ZEROOUT		0x100
- 
- static void test_dump_block(io_channel channel,
- 			    struct test_private_data *data,
-@@ -507,6 +508,25 @@ static errcode_t test_cache_readahead(io_channel channel,
- 	return retval;
- }
- 
-+static errcode_t test_zeroout(io_channel channel, unsigned long long block,
-+			      unsigned long long count)
-+{
-+	struct test_private_data *data;
-+	errcode_t	retval = 0;
++Please run e2fsck -D on the filesystem.
 +
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+	data = (struct test_private_data *) channel->private_data;
-+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_TEST_IO_CHANNEL);
++Exit status is 0
++Backing up journal inode block information.
 +
-+	if (data->real)
-+		retval = io_channel_zeroout(data->real, block, count);
-+	if (data->flags & TEST_FLAG_ZEROOUT)
-+		fprintf(data->outfile,
-+			"Test_io: zeroout(%llu, %llu) returned %s\n",
-+			block, count, retval ? error_message(retval) : "OK");
-+	return retval;
-+}
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 3A: Optimizing directories
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
 +
- static struct struct_io_manager struct_test_manager = {
- 	.magic		= EXT2_ET_MAGIC_IO_MANAGER,
- 	.name		= "Test I/O Manager",
-@@ -523,6 +543,7 @@ static struct struct_io_manager struct_test_manager = {
- 	.write_blk64	= test_write_blk64,
- 	.discard	= test_discard,
- 	.cache_readahead	= test_cache_readahead,
-+	.zeroout	= test_zeroout,
- };
- 
- io_manager test_io_manager = &struct_test_manager;
-diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
-index c3a8ea5..3408599 100644
---- a/lib/ext2fs/unix_io.c
-+++ b/lib/ext2fs/unix_io.c
-@@ -56,6 +56,9 @@
- #if HAVE_LINUX_FALLOC_H
- #include <linux/falloc.h>
- #endif
-+#if HAVE_STDINT_H
-+#include <stdint.h>
-+#endif
- 
- #if defined(__linux__) && defined(_IO) && !defined(BLKROGET)
- #define BLKROGET   _IO(0x12, 94) /* Get read-only status (0 = read_write).  */
-@@ -987,6 +990,72 @@ unimplemented:
- 	return EXT2_ET_UNIMPLEMENTED;
- }
- 
-+static errcode_t unix_zeroout(io_channel channel, unsigned long long block,
-+			      unsigned long long count)
-+{
-+	struct unix_private_data *data;
-+	int		ret;
 +
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+	data = (struct unix_private_data *) channel->private_data;
-+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
 +
-+	if (getenv("UNIX_IO_NOZEROOUT"))
-+		goto unimplemented;
++Change in FS metadata:
++@@ -5 +5 @@
++-Filesystem features:      has_journal ext_attr dir_index filetype extent 64bit sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
+++Filesystem features:      has_journal ext_attr dir_index filetype extent 64bit sparse_super large_file huge_file dir_nlink extra_isize metadata_csum
++@@ -21 +21 @@
++-Inode blocks per group:   128
+++Inode blocks per group:   256
++@@ -27 +27 @@
++-Inode size:	          128
+++Inode size:	          256
++@@ -30,0 +31 @@
+++Checksum type:            crc32c
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
 +
-+	if (channel->flags & CHANNEL_FLAGS_BLOCK_DEVICE) {
-+		/* Not implemented until the BLKZEROOUT mess is fixed */
-+		goto unimplemented;
-+	} else {
-+		/* Regular file, try to use truncate/punch/zero. */
-+#if defined(HAVE_FALLOCATE) && (defined(FALLOC_FL_ZERO_RANGE) || \
-+	(defined(FALLOC_FL_PUNCH_HOLE) && defined(FALLOC_FL_KEEP_SIZE)))
-+		struct stat statbuf;
++Exit status is 0
+diff --git a/tests/t_iexpand_mcsum/name b/tests/t_iexpand_mcsum/name
+new file mode 100644
+index 0000000..e767715
+--- /dev/null
++++ b/tests/t_iexpand_mcsum/name
+@@ -0,0 +1 @@
++expand inodes and turn on metadata_csum
+diff --git a/tests/t_iexpand_mcsum/script b/tests/t_iexpand_mcsum/script
+new file mode 100644
+index 0000000..aa6592e
+--- /dev/null
++++ b/tests/t_iexpand_mcsum/script
+@@ -0,0 +1,80 @@
++if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
 +
-+		if (count == 0)
-+			return 0;
-+		/*
-+		 * If we're trying to zero a range past the end of the file,
-+		 * extend the file size, then punch (or zero_range) everything.
-+		 */
-+		ret = fstat(data->dev, &statbuf);
-+		if (ret)
-+			goto err;
-+		if (statbuf.st_size < (block + count) * channel->block_size) {
-+			ret = ftruncate(data->dev,
-+					(block + count) * channel->block_size);
-+			if (ret)
-+				goto err;
-+		}
-+#if defined(FALLOC_FL_PUNCH_HOLE) && defined(FALLOC_FL_KEEP_SIZE)
-+		ret = fallocate(data->dev,
-+				FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
-+				(off_t)(block) * channel->block_size,
-+				(off_t)(count) * channel->block_size);
-+		if (ret == 0)
-+			goto err;
-+#endif
-+#ifdef FALLOC_FL_ZERO_RANGE
-+		ret = fallocate(data->dev,
-+				FALLOC_FL_ZERO_RANGE,
-+				(off_t)(block) * channel->block_size,
-+				(off_t)(count) * channel->block_size);
-+#endif
-+#else
-+		goto unimplemented;
-+#endif /* HAVE_FALLOCATE && (ZERO_RANGE || (PUNCH_HOLE && KEEP_SIZE)) */
++FSCK_OPT=-fn
++OUT=$test_name.log
++EXP=$test_dir/expect
++CONF=$TMPFILE.conf
++
++#gzip -d < $EXP.gz > $EXP
++
++cat > $CONF << ENDL
++[fs_types]
++	ext4h = {
++		features = has_journal,extent,huge_file,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,^resize_inode,^meta_bg,^flex_bg,^metadata_csum,64bit
++		blocksize = 1024
++		inode_size = 256
++		make_hugefiles = true
++		hugefiles_dir = /
++		hugefiles_slack = 16000K
++		hugefiles_name = aaaaa
++		hugefiles_digits = 4
++		hugefiles_size = 117K
++		zero_hugefiles = false
 +	}
-+err:
-+	if (ret < 0) {
-+		if (errno == EOPNOTSUPP)
-+			goto unimplemented;
-+		return errno;
-+	}
-+	return 0;
-+unimplemented:
-+	return EXT2_ET_UNIMPLEMENTED;
-+}
++ENDL
 +
- static struct struct_io_manager struct_unix_manager = {
- 	.magic		= EXT2_ET_MAGIC_IO_MANAGER,
- 	.name		= "Unix I/O Manager",
-@@ -1003,6 +1072,7 @@ static struct struct_io_manager struct_unix_manager = {
- 	.write_blk64	= unix_write_blk64,
- 	.discard	= unix_discard,
- 	.cache_readahead	= unix_cache_readahead,
-+	.zeroout	= unix_zeroout,
- };
- 
- io_manager unix_io_manager = &struct_unix_manager;
++echo "tune2fs test" > $OUT
++
++MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h -I 128 $TMPFILE 786432 >> $OUT 2>&1
++rm -rf $CONF
++
++# dump and check
++($DUMPE2FS -h $TMPFILE | grep -v '^Free blocks:'; $DUMPE2FS -g $TMPFILE) 2>&1 | sed -f $cmd_dir/filter.sed -e '/^Checksum:.*/d' >> $OUT.before 2> /dev/null
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# convert it
++echo "tune2fs -I 256 -O metadata_csum test.img" >> $OUT
++dd if=/dev/zero of=$TMPFILE conv=notrunc bs=1 count=1 seek=3221225471 2> /dev/null
++$TUNE2FS -I 256 -O metadata_csum $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++$FSCK -N test_filesys -y -f -D $TMPFILE >> $OUT 2>&1
++
++# dump and check
++($DUMPE2FS -h $TMPFILE | grep -v '^Free blocks:'; $DUMPE2FS -g $TMPFILE) 2>&1 | sed -f $cmd_dir/filter.sed -e '/^Checksum:.*/d' >> $OUT.after 2> /dev/null
++echo "Change in FS metadata:" >> $OUT
++diff -u0 $OUT.before $OUT.after | sed -e '/^---.*/d' -e '/^+++.*/d' >> $OUT
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++rm $TMPFILE
++
++#
++# Do the verification
++#
++
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
++mv $OUT.new $OUT
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++fi
++
++rm $OUT.before $OUT.after
++
++unset IMAGE FSCK_OPT OUT EXP CONF
++
++else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
++
 
