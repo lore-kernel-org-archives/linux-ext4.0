@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 20/31] mke2fs: optionally create undo file
-Date: Sat, 20 Dec 2014 13:19:03 -0800
-Message-ID: <20141220211903.25563.56591.stgit@birch.djwong.org>
+Subject: [PATCH 21/31] debugfs: optionally create undo file
+Date: Sat, 20 Dec 2014 13:19:09 -0800
+Message-ID: <20141220211909.25563.59593.stgit@birch.djwong.org>
 References: <20141220211640.25563.80596.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,44 +9,42 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:40716 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:40725 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751187AbaLTVTJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Dec 2014 16:19:09 -0500
+	with ESMTP id S1752703AbaLTVTO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Dec 2014 16:19:14 -0500
 In-Reply-To: <20141220211640.25563.80596.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Provide the user with an option to create an undo file so that they
-can roll back a failed tuning operation.  Previously, one would be
-created if force_undo was set in the configuration file and a bunch of
-(undocumented) conditions were met.
+can roll back a failed debugfs expedition.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- misc/mke2fs.8.in |   15 +++++++++++++++
- misc/mke2fs.c    |   29 ++++++++++++++++++++++++++---
- 2 files changed, 41 insertions(+), 3 deletions(-)
+ debugfs/debugfs.8.in |   16 +++++++
+ debugfs/debugfs.c    |  108 +++++++++++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 116 insertions(+), 8 deletions(-)
 
 
-diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-index aeb5caf..3230f65 100644
---- a/misc/mke2fs.8.in
-+++ b/misc/mke2fs.8.in
-@@ -117,6 +117,10 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
- .B \-e
- .I errors-behavior
+diff --git a/debugfs/debugfs.8.in b/debugfs/debugfs.8.in
+index 04c280d..81899a3 100644
+--- a/debugfs/debugfs.8.in
++++ b/debugfs/debugfs.8.in
+@@ -31,6 +31,10 @@ request
+ data_source_device
  ]
-+[
+ [
 +.B \-z
 +.I undo_file
 +]
- .I device
- [
- .I fs-size
-@@ -738,6 +742,17 @@ Verbose execution.
- Print the version number of
- .B mke2fs
++[
+ device
+ ]
+ .SH DESCRIPTION
+@@ -130,6 +134,16 @@ and then exit.
+ print the version number of
+ .B debugfs
  and exit.
 +.TP
 +.BI \-z " undo_file"
@@ -54,59 +52,38 @@ index aeb5caf..3230f65 100644
 +an undo file.  This undo file can be used with e2undo(8) to restore the old
 +contents of the file system should something go wrong.  If the empty string is
 +passed as the undo_file argument, the undo file will be written to a file named
-+mke2fs-\fIdevice\fR.e2undo in the directory specified via the
-+\fIE2FSPROGS_UNDO_DIR\fR environment variable or the \fIundo_dir\fR directive
-+in the configuration file.
++resize2fs-\fIdevice\fR.e2undo in the directory specified via the
++\fIE2FSPROGS_UNDO_DIR\fR environment variable.
 +
 +WARNING: The undo file cannot be used to recover from a power or system crash.
- .SH ENVIRONMENT
+ .SH SPECIFYING FILES
+ Many
+ .B debugfs
+@@ -532,7 +546,7 @@ to those inodes.  The
+ flag will enable checking the file type information in the directory
+ entry to make sure it matches the inode's type.
  .TP
- .BI MKE2FS_SYNC
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index aeb852f..c421afb 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -110,6 +110,7 @@ char *journal_device;
- static int sync_kludge;	/* Set using the MKE2FS_SYNC env. option */
- char **fs_types;
- const char *root_dir;  /* Copy files from the specified directory */
-+static char *undo_file;
+-.BI open " [-weficD] [-b blocksize] [-s superblock] device"
++.BI open " [-weficD] [-b blocksize] [-s superblock] [-z undo_file] device"
+ Open a filesystem for editing.  The
+ .I -f
+ flag forces the filesystem to be opened even if there are some unknown
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index fe57366..7576a1a 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -48,12 +48,92 @@ ext2_filsys	current_fs;
+ quota_ctx_t	current_qctx;
+ ext2_ino_t	root, cwd;
  
- static profile_t	profile;
- 
-@@ -129,7 +130,8 @@ static void usage(void)
- 	"[-M last-mounted-directory]\n\t[-O feature[,...]] "
- 	"[-r fs-revision] [-E extended-option[,...]]\n"
- 	"\t[-t fs-type] [-T usage-type ] [-U UUID] [-e errors_behavior]"
--	"[-jnqvDFKSV] device [blocks-count]\n"),
-+	"[-z undo_file]\n"
-+	"\t[-jnqvDFKSV] device [blocks-count]\n"),
- 		program_name);
- 	exit(1);
- }
-@@ -1551,7 +1553,7 @@ profile_error:
- 	}
- 
- 	while ((c = getopt (argc, argv,
--		    "b:ce:g:i:jl:m:no:qr:s:t:d:vC:DE:FG:I:J:KL:M:N:O:R:ST:U:V")) != EOF) {
-+		    "b:ce:g:i:jl:m:no:qr:s:t:d:vC:DE:FG:I:J:KL:M:N:O:R:ST:U:Vz:")) != EOF) {
- 		switch (c) {
- 		case 'b':
- 			blocksize = parse_num_blocks2(optarg, -1);
-@@ -1774,6 +1776,9 @@ profile_error:
- 			/* Print version number and exit */
- 			show_version_only++;
- 			break;
-+		case 'z':
-+			undo_file = optarg;
-+			break;
- 		default:
- 			usage();
- 		}
-@@ -2492,6 +2497,23 @@ static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
- 	char *dev_name, *tmp_name;
- 	int free_tdb_dir = 0;
- 
++static int debugfs_setup_tdb(const char *device_name, char *undo_file,
++			     io_manager *io_ptr)
++{
++	errcode_t retval = ENOMEM;
++	char *tdb_dir = NULL, *tdb_file = NULL;
++	char *dev_name, *tmp_name;
++	int free_tdb_dir = 0;
++
 +	if (undo_file && undo_file[0] != 0) {
 +		if ((unlink(undo_file) < 0) && (errno != ENOENT)) {
 +			retval = errno;
@@ -118,30 +95,160 @@ index aeb852f..c421afb 100644
 +		retval = set_undo_io_backup_file(undo_file);
 +		if (retval)
 +			goto err;
-+		printf(_("Overwriting existing filesystem; this can be undone "
-+			 "using the command:\n"
-+			 "    e2undo %s %s\n\n"), undo_file, name);
++		printf("Overwriting existing filesystem; this can be undone "
++			"using the command:\n"
++			"    e2undo %s %s\n\n",
++			undo_file, device_name);
 +		return 0;
 +	}
 +
- 	/*
- 	 * Configuration via a conf file would be
- 	 * nice
-@@ -2546,6 +2568,7 @@ errout:
- 	if (free_tdb_dir)
- 		free(tdb_dir);
- 	free(tdb_file);
++	/*
++	 * Configuration via a conf file would be
++	 * nice
++	 */
++	tdb_dir = getenv("E2FSPROGS_UNDO_DIR");
++
++	if (tdb_dir == NULL || !strcmp(tdb_dir, "none") || (tdb_dir[0] == 0) ||
++	    access(tdb_dir, W_OK)) {
++		if (free_tdb_dir)
++			free(tdb_dir);
++		return 0;
++	}
++
++	tmp_name = strdup(device_name);
++	if (!tmp_name)
++		goto errout;
++	dev_name = basename(tmp_name);
++	tdb_file = malloc(strlen(tdb_dir) + 8 + strlen(dev_name) + 7 + 1);
++	if (!tdb_file) {
++		free(tmp_name);
++		goto errout;
++	}
++	sprintf(tdb_file, "%s/debugfs-%s.e2undo", tdb_dir, dev_name);
++	free(tmp_name);
++
++	if ((unlink(tdb_file) < 0) && (errno != ENOENT)) {
++		retval = errno;
++		goto errout;
++	}
++
++	set_undo_io_backing_manager(*io_ptr);
++	*io_ptr = undo_io_manager;
++	retval = set_undo_io_backup_file(tdb_file);
++	if (retval)
++		goto errout;
++	printf("Overwriting existing filesystem; this can be undone "
++		"using the command:\n"
++		"    e2undo %s %s\n\n", tdb_file, device_name);
++
++	if (free_tdb_dir)
++		free(tdb_dir);
++	free(tdb_file);
++	return 0;
++
++errout:
++	if (free_tdb_dir)
++		free(tdb_dir);
++	free(tdb_file);
 +err:
- 	com_err(program_name, retval, "%s",
- 		_("while trying to setup undo file\n"));
- 	return retval;
-@@ -2717,7 +2740,7 @@ int main (int argc, char *argv[])
- #endif
- 		io_ptr = unix_io_manager;
++	com_err("debugfs", retval, "while trying to setup undo file\n");
++	return retval;
++}
++
+ static void open_filesystem(char *device, int open_flags, blk64_t superblock,
+ 			    blk64_t blocksize, int catastrophic,
+-			    char *data_filename)
++			    char *data_filename, char *undo_file)
+ {
+ 	int	retval;
+ 	io_channel data_io = 0;
++	io_manager io_ptr = unix_io_manager;
  
--	if (should_do_undo(device_name)) {
-+	if (undo_file != NULL || should_do_undo(device_name)) {
- 		retval = mke2fs_setup_tdb(device_name, &io_ptr);
- 		if (retval)
- 			exit(1);
+ 	if (superblock != 0 && blocksize == 0) {
+ 		com_err(device, 0, "if you specify the superblock, you must also specify the block size");
+@@ -84,8 +164,14 @@ static void open_filesystem(char *device, int open_flags, blk64_t superblock,
+ 	if (catastrophic)
+ 		open_flags |= EXT2_FLAG_SKIP_MMP;
+ 
++	if (undo_file) {
++		retval = debugfs_setup_tdb(device, undo_file, &io_ptr);
++		if (retval)
++			exit(1);
++	}
++
+ 	retval = ext2fs_open(device, open_flags, superblock, blocksize,
+-			     unix_io_manager, &current_fs);
++			     io_ptr, &current_fs);
+ 	if (retval) {
+ 		com_err(device, retval, "while opening filesystem");
+ 		if (retval == EXT2_ET_BAD_MAGIC)
+@@ -136,9 +222,10 @@ void do_open_filesys(int argc, char **argv)
+ 	blk64_t	blocksize = 0;
+ 	int	open_flags = EXT2_FLAG_SOFTSUPP_FEATURES | EXT2_FLAG_64BITS; 
+ 	char	*data_filename = 0;
++	char	*undo_file = NULL;
+ 
+ 	reset_getopt();
+-	while ((c = getopt (argc, argv, "iwfecb:s:d:D")) != EOF) {
++	while ((c = getopt (argc, argv, "iwfecb:s:d:Dz:")) != EOF) {
+ 		switch (c) {
+ 		case 'i':
+ 			open_flags |= EXT2_FLAG_IMAGE_FILE;
+@@ -177,6 +264,9 @@ void do_open_filesys(int argc, char **argv)
+ 			if (err)
+ 				return;
+ 			break;
++		case 'z':
++			undo_file = optarg;
++			break;
+ 		default:
+ 			goto print_usage;
+ 		}
+@@ -188,7 +278,7 @@ void do_open_filesys(int argc, char **argv)
+ 		return;
+ 	open_filesystem(argv[optind], open_flags,
+ 			superblock, blocksize, catastrophic,
+-			data_filename);
++			data_filename, undo_file);
+ 	return;
+ 
+ print_usage:
+@@ -2219,7 +2309,7 @@ int main(int argc, char **argv)
+ 		"Usage: %s [-b blocksize] [-s superblock] [-f cmd_file] "
+ 		"[-R request] [-V] ["
+ #ifndef READ_ONLY
+-		"[-w] "
++		"[-w] [-z undo_file] "
+ #endif
+ 		"[-c] device]";
+ 	int		c;
+@@ -2234,7 +2324,8 @@ int main(int argc, char **argv)
+ #ifdef READ_ONLY
+ 	const char	*opt_string = "nicR:f:b:s:Vd:D";
+ #else
+-	const char	*opt_string = "niwcR:f:b:s:Vd:D";
++	const char	*opt_string = "niwcR:f:b:s:Vd:Dz:";
++	char		*undo_file = NULL;
+ #endif
+ 
+ 	if (debug_prog_name == 0)
+@@ -2291,6 +2382,9 @@ int main(int argc, char **argv)
+ 			fprintf(stderr, "\tUsing %s\n",
+ 				error_message(EXT2_ET_BASE));
+ 			exit(0);
++		case 'z':
++			undo_file = optarg;
++			break;
+ 		default:
+ 			com_err(argv[0], 0, usage, debug_prog_name);
+ 			return 1;
+@@ -2299,7 +2393,7 @@ int main(int argc, char **argv)
+ 	if (optind < argc)
+ 		open_filesystem(argv[optind], open_flags,
+ 				superblock, blocksize, catastrophic,
+-				data_filename);
++				data_filename, undo_file);
+ 
+ 	sci_idx = ss_create_invocation(debug_prog_name, "0.0", (char *) NULL,
+ 				       &debug_cmds, &retval);
 
