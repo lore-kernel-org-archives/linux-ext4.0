@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 11/31] tests: verify proper rebuilding of sparse extent
- trees and block map file conversion
-Date: Sat, 20 Dec 2014 13:17:57 -0800
-Message-ID: <20141220211757.25563.25321.stgit@birch.djwong.org>
+Subject: [PATCH 12/31] undo-io: add new calls to and speed up the undo io
+ manager
+Date: Sat, 20 Dec 2014 13:18:04 -0800
+Message-ID: <20141220211804.25563.63523.stgit@birch.djwong.org>
 References: <20141220211640.25563.80596.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,1388 +10,207 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:40532 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752426AbaLTVSE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Dec 2014 16:18:04 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:45209 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751885AbaLTVSQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Dec 2014 16:18:16 -0500
 In-Reply-To: <20141220211640.25563.80596.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Implement pass-through calls for discard, zero-out, and readahead in
+the IO manager so that we can take advantage of any underlying
+support.
+
+Furthermore, improve tdb write-out speed by disabling locking and only
+fsyncing at the end -- we don't care about locking because having
+multiple writers to the undo file will produce an undo database full
+of garbage blocks; and we only need to fsync at the end because if we
+fail before the end, our undo file will lack the necessary superblock
+data that e2undo requires to do replay safely.  Without this, we call
+fsync four times per tdb update(!)  This reduces the overhead of using
+undo_io while converting a 2TB FS to metadata_csum from 3+ hours to 55
+minutes.
+
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- tests/f_collapse_extent_tree/expect.1       |   18 ++++
- tests/f_collapse_extent_tree/expect.2       |   10 ++
- tests/f_collapse_extent_tree/image.gz       |  Bin
- tests/f_collapse_extent_tree/name           |    1 
- tests/f_collapse_extent_tree/script         |  118 +++++++++++++++++++++++++++
- tests/f_compress_extent_tree_level/expect.1 |   25 ++++++
- tests/f_compress_extent_tree_level/expect.2 |   17 ++++
- tests/f_compress_extent_tree_level/image.gz |  Bin
- tests/f_compress_extent_tree_level/name     |    1 
- tests/f_compress_extent_tree_level/script   |  118 +++++++++++++++++++++++++++
- tests/f_convert_bmap/expect.1               |   26 ++++++
- tests/f_convert_bmap/expect.2               |   10 ++
- tests/f_convert_bmap/image.gz               |  Bin
- tests/f_convert_bmap/name                   |    1 
- tests/f_convert_bmap/script                 |  117 +++++++++++++++++++++++++++
- tests/f_convert_bmap_and_extent/expect.1    |   33 +++++++
- tests/f_convert_bmap_and_extent/expect.2    |   16 ++++
- tests/f_convert_bmap_and_extent/image.gz    |  Bin
- tests/f_convert_bmap_and_extent/name        |    1 
- tests/f_convert_bmap_and_extent/script      |  119 +++++++++++++++++++++++++++
- tests/f_extent_too_deep/expect.1            |   23 +++++
- tests/f_extent_too_deep/expect.2            |   10 ++
- tests/f_extent_too_deep/image.gz            |  Bin
- tests/f_extent_too_deep/name                |    1 
- tests/f_extent_too_deep/script              |  118 +++++++++++++++++++++++++++
- tests/f_opt_extent/expect                   |   55 ++++++++++++
- tests/f_opt_extent/name                     |    1 
- tests/f_opt_extent/script                   |   64 +++++++++++++++
- tests/f_opt_extent_ext3/expect              |   44 ++++++++++
- tests/f_opt_extent_ext3/name                |    1 
- tests/f_opt_extent_ext3/script              |   65 +++++++++++++++
- 31 files changed, 1013 insertions(+)
- create mode 100644 tests/f_collapse_extent_tree/expect.1
- create mode 100644 tests/f_collapse_extent_tree/expect.2
- create mode 100644 tests/f_collapse_extent_tree/image.gz
- create mode 100644 tests/f_collapse_extent_tree/name
- create mode 100644 tests/f_collapse_extent_tree/script
- create mode 100644 tests/f_compress_extent_tree_level/expect.1
- create mode 100644 tests/f_compress_extent_tree_level/expect.2
- create mode 100644 tests/f_compress_extent_tree_level/image.gz
- create mode 100644 tests/f_compress_extent_tree_level/name
- create mode 100644 tests/f_compress_extent_tree_level/script
- create mode 100644 tests/f_convert_bmap/expect.1
- create mode 100644 tests/f_convert_bmap/expect.2
- create mode 100644 tests/f_convert_bmap/image.gz
- create mode 100644 tests/f_convert_bmap/name
- create mode 100644 tests/f_convert_bmap/script
- create mode 100644 tests/f_convert_bmap_and_extent/expect.1
- create mode 100644 tests/f_convert_bmap_and_extent/expect.2
- create mode 100644 tests/f_convert_bmap_and_extent/image.gz
- create mode 100644 tests/f_convert_bmap_and_extent/name
- create mode 100644 tests/f_convert_bmap_and_extent/script
- create mode 100644 tests/f_extent_too_deep/expect.1
- create mode 100644 tests/f_extent_too_deep/expect.2
- create mode 100644 tests/f_extent_too_deep/image.gz
- create mode 100644 tests/f_extent_too_deep/name
- create mode 100644 tests/f_extent_too_deep/script
- create mode 100644 tests/f_opt_extent/expect
- create mode 100644 tests/f_opt_extent/name
- create mode 100644 tests/f_opt_extent/script
- create mode 100644 tests/f_opt_extent_ext3/expect
- create mode 100644 tests/f_opt_extent_ext3/name
- create mode 100644 tests/f_opt_extent_ext3/script
+ lib/ext2fs/tdb.c     |   10 ++++++
+ lib/ext2fs/tdb.h     |    2 +
+ lib/ext2fs/undo_io.c |   87 +++++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 97 insertions(+), 2 deletions(-)
 
 
-diff --git a/tests/f_collapse_extent_tree/expect.1 b/tests/f_collapse_extent_tree/expect.1
-new file mode 100644
-index 0000000..d76880c
---- /dev/null
-+++ b/tests/f_collapse_extent_tree/expect.1
-@@ -0,0 +1,18 @@
-+debugfs: ex /a
-+Level Entries       Logical      Physical Length Flags
-+ 0/ 1   1/  1     0 -     0     9              1
-+ 1/ 1   1/  1     0 -     0    10 -    10      1 
-+Pass 1: Checking inodes, blocks, and sizes
-+Inode 12 extent tree could be shorter.
-+	(level 1 is unnecessary)
-+Fix? yes
-+
-+Pass 1E: Optimizing extent trees
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 12/128 files (0.0% non-contiguous), 19/512 blocks
-+Exit status is 1
-diff --git a/tests/f_collapse_extent_tree/expect.2 b/tests/f_collapse_extent_tree/expect.2
-new file mode 100644
-index 0000000..a1d28b1
---- /dev/null
-+++ b/tests/f_collapse_extent_tree/expect.2
-@@ -0,0 +1,10 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 12/128 files (0.0% non-contiguous), 19/512 blocks
-+Exit status is 0
-+debugfs: ex /a
-+Level Entries       Logical      Physical Length Flags
-+ 0/ 0   1/  1     0 -     0    10 -    10      1 
-diff --git a/tests/f_collapse_extent_tree/image.gz b/tests/f_collapse_extent_tree/image.gz
-new file mode 100644
-index 0000000000000000000000000000000000000000..97036cc597c5d2bcf6da6ffa68039b743b46aa20
-GIT binary patch
-literal 2537
-zcmb2|=3r2~7aqdI{Pxc7?BGBdh6lxY##=IfImEQ^-3nbX`9VZ0->#??lNCe@FW4FQ
-z#YVL}TII*Z*HrHjAfO&wvUze}my@ja$2)hVrIT2)v*+IzulqiySl;uUviknXEiDW(
-zp{IYUa6fd>vO6yD>gk^~J=eHSyKdZJX8c#hmFMiUr|S)uTs`cRwf(*Jw5JI-Ev9#g
-zzx10H^z+x-+1&PezM<j%wN-x#UY^?f?s?&}Z!v%C-)BF5eDl?n_HOO-adCV1e|+^f
-zi)Zq}X`-jCz9%p5SsMMuaQ~#F154Q%4#=Ijd_P(9SoF_&+pXIBr(Hc<aafRvfuW&!
-zy=4ribnWdMatsU%H@<&*|36zXO?crCT?gHin@3zeO5c0DaMs;f`-AOklmETD^R*_D
-z<Gowbo@dFzK=l>@Y`c&Bzwh4l(H_VvIMHLp0;CiE@B>MS|I9!V1gcl=k~>^-C+GRq
-zERBES2J6qaJ*xkI`|HBKUj^>6K=~WTAJ?~oRpKF>ikGbB1<K1<*)cNWQAa>3L0jxv
-z+Ope)Q@;H^{nJEJ_gnqOo+Qus7x`2FDlW?`wQch{Ubb=Tv2VRgcl<QbdwS81f1O)`
-zxz73}p2?fs|I45L_x?U_+1AJMzxKcTu9(hR=B|9cUak6ReWXR?Gy8?^|AIA>)j!SO
-zTl3dGUh~(|qxV1UpRv3(_UHXHezOY~k3TI=558jc%31d7spkCte`^0vE7$)i)8ioE
-m=uzp>5Eu=C(GVC7fzc2c4FPgP;J~%NEDm#Conv57U;qF<XAwLA
-
-literal 0
-HcmV?d00001
-
-diff --git a/tests/f_collapse_extent_tree/name b/tests/f_collapse_extent_tree/name
-new file mode 100644
-index 0000000..83e506f
---- /dev/null
-+++ b/tests/f_collapse_extent_tree/name
-@@ -0,0 +1 @@
-+extent tree can be collapsed one level
-diff --git a/tests/f_collapse_extent_tree/script b/tests/f_collapse_extent_tree/script
-new file mode 100644
-index 0000000..ee18438
---- /dev/null
-+++ b/tests/f_collapse_extent_tree/script
-@@ -0,0 +1,118 @@
-+if [ "$DESCRIPTION"x != x ]; then
-+	test_description="$DESCRIPTION"
-+fi
-+if [ "$IMAGE"x = x ]; then
-+	IMAGE=$test_dir/image.gz
-+fi
-+
-+if [ "$FSCK_OPT"x = x ]; then
-+	FSCK_OPT=-yf
-+fi
-+
-+if [ "$SECOND_FSCK_OPT"x = x ]; then
-+	SECOND_FSCK_OPT=-yf
-+fi
-+
-+if [ "$OUT1"x = x ]; then
-+	OUT1=$test_name.1.log
-+fi
-+
-+if [ "$OUT2"x = x ]; then
-+	OUT2=$test_name.2.log
-+fi
-+
-+if [ "$EXP1"x = x ]; then
-+	if [ -f $test_dir/expect.1.gz ]; then
-+		EXP1=$test_name.1.tmp
-+		gunzip < $test_dir/expect.1.gz > $EXP1
-+	else
-+		EXP1=$test_dir/expect.1
-+	fi
-+fi
-+
-+if [ "$EXP2"x = x ]; then
-+	if [ -f $test_dir/expect.2.gz ]; then
-+		EXP2=$test_name.2.tmp
-+		gunzip < $test_dir/expect.2.gz > $EXP2
-+	else
-+		EXP2=$test_dir/expect.2
-+	fi
-+fi
-+
-+if [ "$SKIP_GUNZIP" != "true" ] ; then
-+	gunzip < $IMAGE > $TMPFILE
-+fi
-+
-+cp /dev/null $OUT1
-+
-+eval $PREP_CMD
-+
-+echo 'ex /a' > $TMPFILE.cmd
-+$DEBUGFS -f $TMPFILE.cmd $TMPFILE > $OUT1.new 2>&1
-+rm -rf $TMPFILE.cmd
-+$FSCK $FSCK_OPT  -N test_filesys $TMPFILE >> $OUT1.new 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT1.new
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT1.new >> $OUT1
-+rm -f $OUT1.new
-+
-+if [ "$ONE_PASS_ONLY" != "true" ]; then
-+	$FSCK $SECOND_FSCK_OPT -N test_filesys $TMPFILE > $OUT2.new 2>&1 
-+	status=$?
-+	echo Exit status is $status >> $OUT2.new
-+	echo 'ex /a' > $TMPFILE.cmd
-+	$DEBUGFS -f $TMPFILE.cmd $TMPFILE >> $OUT2.new 2>&1
-+	rm -rf $TMPFILE.cmd
-+	sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT2.new > $OUT2
-+	rm -f $OUT2.new
-+fi
-+
-+eval $AFTER_CMD
-+
-+if [ "$SKIP_VERIFY" != "true" ] ; then
-+	rm -f $test_name.ok $test_name.failed
-+	cmp -s $OUT1 $EXP1
-+	status1=$?
-+	if [ "$ONE_PASS_ONLY" != "true" ]; then
-+		cmp -s $OUT2 $EXP2
-+		status2=$?
-+	else
-+		status2=0
-+	fi
-+	if [ "$PASS_ZERO" = "true" ]; then
-+		cmp -s $test_name.0.log	$test_dir/expect.0
-+		status3=$?
-+	else
-+		status3=0
-+	fi
-+
-+	if [ -z "$test_description" ] ; then
-+		description="$test_name"
-+	else
-+		description="$test_name: $test_description"
-+	fi
-+
-+	if [ "$status1" -eq 0 -a "$status2" -eq 0 -a "$status3" -eq 0 ] ; then
-+		echo "$description: ok"
-+		touch $test_name.ok
-+	else
-+		echo "$description: failed"
-+		rm -f $test_name.failed
-+		if [ "$PASS_ZERO" = "true" ]; then
-+			diff $DIFF_OPTS $test_dir/expect.0 \
-+				$test_name.0.log >> $test_name.failed
-+		fi
-+		diff $DIFF_OPTS $EXP1 $OUT1 >> $test_name.failed
-+		if [ "$ONE_PASS_ONLY" != "true" ]; then
-+			diff $DIFF_OPTS $EXP2 $OUT2 >> $test_name.failed
-+		fi
-+	fi
-+	rm -f tmp_expect
-+fi
-+
-+if [ "$SKIP_CLEANUP" != "true" ] ; then
-+	unset IMAGE FSCK_OPT SECOND_FSCK_OPT OUT1 OUT2 EXP1 EXP2 
-+	unset SKIP_VERIFY SKIP_CLEANUP SKIP_GUNZIP ONE_PASS_ONLY PREP_CMD
-+	unset DESCRIPTION SKIP_UNLINK AFTER_CMD PASS_ZERO
-+fi
-+
-diff --git a/tests/f_compress_extent_tree_level/expect.1 b/tests/f_compress_extent_tree_level/expect.1
-new file mode 100644
-index 0000000..45dcb39
---- /dev/null
-+++ b/tests/f_compress_extent_tree_level/expect.1
-@@ -0,0 +1,25 @@
-+debugfs: ex /a
-+Level Entries       Logical      Physical Length Flags
-+ 0/ 1   1/  2     0 -    16     9             17
-+ 1/ 1   1/  4     0 -     0    10 -    10      1 
-+ 1/ 1   2/  4    11 -    11   100 -   100      1 
-+ 1/ 1   3/  4    13 -    13   101 -   101      1 
-+ 1/ 1   4/  4    15 -    15   102 -   102      1 
-+ 0/ 1   2/  2    17 -    21    12              5
-+ 1/ 1   1/  3    17 -    17   103 -   103      1 
-+ 1/ 1   2/  3    19 -    19   104 -   104      1 
-+ 1/ 1   3/  3    21 -    21   105 -   105      1 
-+Pass 1: Checking inodes, blocks, and sizes
-+Inode 12 extent tree could be narrower.
-+	(level 1 has unnecessary nodes)
-+Fix? yes
-+
-+Pass 1E: Optimizing extent trees
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 12/128 files (8.3% non-contiguous), 26/512 blocks
-+Exit status is 1
-diff --git a/tests/f_compress_extent_tree_level/expect.2 b/tests/f_compress_extent_tree_level/expect.2
-new file mode 100644
-index 0000000..07d1082
---- /dev/null
-+++ b/tests/f_compress_extent_tree_level/expect.2
-@@ -0,0 +1,17 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 12/128 files (8.3% non-contiguous), 26/512 blocks
-+Exit status is 0
-+debugfs: ex /a
-+Level Entries       Logical      Physical Length Flags
-+ 0/ 1   1/  1     0 -    21     9             22
-+ 1/ 1   1/  7     0 -     0    10 -    10      1 
-+ 1/ 1   2/  7    11 -    11   100 -   100      1 
-+ 1/ 1   3/  7    13 -    13   101 -   101      1 
-+ 1/ 1   4/  7    15 -    15   102 -   102      1 
-+ 1/ 1   5/  7    17 -    17   103 -   103      1 
-+ 1/ 1   6/  7    19 -    19   104 -   104      1 
-+ 1/ 1   7/  7    21 -    21   105 -   105      1 
-diff --git a/tests/f_compress_extent_tree_level/image.gz b/tests/f_compress_extent_tree_level/image.gz
-new file mode 100644
-index 0000000000000000000000000000000000000000..a552a586ce20e4fbc01d6f332ec800c5c5b6011f
-GIT binary patch
-literal 2581
-zcmb2|=3rR!C_IFT`RyHR9}!0hh6gkEYCmX@`O&3zM1osdIA^Jlw(gQiEytLI<J9c9
-z&L3%E^Y!W3JGZlUZ`ds<>4n?Hq`jLtg`|b&q_WGat95BG-FN>tx4!H<U)lS-AJ6lO
-z6&ZG4&Dp8pWHDvdcEgsixcDa#cN4c|Jrj3xXS?6icVxq+qB_I2E!8u;UtfEt{cM|d
-zx!<y9uDd4Byy90XBb_r>eqZ_jr)RIH>*?If{BP|Sv-8%k+sAkPd2;YL_u=Paa{ab8
-z7R65wT$X5aDi6&4{msJ6yZ%?_>ox0_zxZ;6nIVCD%G3ArMBKw){||e0eSc1N>&EnR
-z0t^fcIrZA@uO9}lJ$3)OSwS^W;KBazx_|d&lMDq`Wi#$_4&>npx&GlDckiQ5TVJnz
-zJo$QFjI93l)(@*BAG_wy2C6@>?b21V|Nk$ndG;T~<GcJ?1V}ghv<H$2|M-C<2;?k1
-z7G&FVWc^>G+?H3>jHhdCT>a0f2bmPx&0M7aJXrJFvl^?T|K`LORWSmc@PEdCYgULx
-zh7E5`r)9;j`(JJgG7%fdIpei?Ey$ub7WWu|+Q|hE%FpQb^sPCXXZ5ap`Q=61t^WO#
-zxjHTCMMSQ(lh5g6K|Ejc^Tfly|0w>exlI4=-q>Te9zVFr@rQf!_Dhd`Ua)#xf9CQ1
-zW2IZaKK4Jh|J#3OInf{H^QM12f1&DYykOsxU+Qau|6eK2ar?V@>iYlgPk)$;9sa}r
-zHJ&GZ|LXr;C41uCH=MikZRv}1mHu*%)xaV1=-A3zpVnWgPo1*Aeytb_x&9i}HyQ$?
-fAut*OqaiRF0;3^7AOs$KuVp*dzh0JsL4g4PCSfgc
-
-literal 0
-HcmV?d00001
-
-diff --git a/tests/f_compress_extent_tree_level/name b/tests/f_compress_extent_tree_level/name
-new file mode 100644
-index 0000000..fde4f4a
---- /dev/null
-+++ b/tests/f_compress_extent_tree_level/name
-@@ -0,0 +1 @@
-+compress an extent tree level
-diff --git a/tests/f_compress_extent_tree_level/script b/tests/f_compress_extent_tree_level/script
-new file mode 100644
-index 0000000..ee18438
---- /dev/null
-+++ b/tests/f_compress_extent_tree_level/script
-@@ -0,0 +1,118 @@
-+if [ "$DESCRIPTION"x != x ]; then
-+	test_description="$DESCRIPTION"
-+fi
-+if [ "$IMAGE"x = x ]; then
-+	IMAGE=$test_dir/image.gz
-+fi
-+
-+if [ "$FSCK_OPT"x = x ]; then
-+	FSCK_OPT=-yf
-+fi
-+
-+if [ "$SECOND_FSCK_OPT"x = x ]; then
-+	SECOND_FSCK_OPT=-yf
-+fi
-+
-+if [ "$OUT1"x = x ]; then
-+	OUT1=$test_name.1.log
-+fi
-+
-+if [ "$OUT2"x = x ]; then
-+	OUT2=$test_name.2.log
-+fi
-+
-+if [ "$EXP1"x = x ]; then
-+	if [ -f $test_dir/expect.1.gz ]; then
-+		EXP1=$test_name.1.tmp
-+		gunzip < $test_dir/expect.1.gz > $EXP1
-+	else
-+		EXP1=$test_dir/expect.1
-+	fi
-+fi
-+
-+if [ "$EXP2"x = x ]; then
-+	if [ -f $test_dir/expect.2.gz ]; then
-+		EXP2=$test_name.2.tmp
-+		gunzip < $test_dir/expect.2.gz > $EXP2
-+	else
-+		EXP2=$test_dir/expect.2
-+	fi
-+fi
-+
-+if [ "$SKIP_GUNZIP" != "true" ] ; then
-+	gunzip < $IMAGE > $TMPFILE
-+fi
-+
-+cp /dev/null $OUT1
-+
-+eval $PREP_CMD
-+
-+echo 'ex /a' > $TMPFILE.cmd
-+$DEBUGFS -f $TMPFILE.cmd $TMPFILE > $OUT1.new 2>&1
-+rm -rf $TMPFILE.cmd
-+$FSCK $FSCK_OPT  -N test_filesys $TMPFILE >> $OUT1.new 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT1.new
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT1.new >> $OUT1
-+rm -f $OUT1.new
-+
-+if [ "$ONE_PASS_ONLY" != "true" ]; then
-+	$FSCK $SECOND_FSCK_OPT -N test_filesys $TMPFILE > $OUT2.new 2>&1 
-+	status=$?
-+	echo Exit status is $status >> $OUT2.new
-+	echo 'ex /a' > $TMPFILE.cmd
-+	$DEBUGFS -f $TMPFILE.cmd $TMPFILE >> $OUT2.new 2>&1
-+	rm -rf $TMPFILE.cmd
-+	sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT2.new > $OUT2
-+	rm -f $OUT2.new
-+fi
-+
-+eval $AFTER_CMD
-+
-+if [ "$SKIP_VERIFY" != "true" ] ; then
-+	rm -f $test_name.ok $test_name.failed
-+	cmp -s $OUT1 $EXP1
-+	status1=$?
-+	if [ "$ONE_PASS_ONLY" != "true" ]; then
-+		cmp -s $OUT2 $EXP2
-+		status2=$?
-+	else
-+		status2=0
-+	fi
-+	if [ "$PASS_ZERO" = "true" ]; then
-+		cmp -s $test_name.0.log	$test_dir/expect.0
-+		status3=$?
-+	else
-+		status3=0
-+	fi
-+
-+	if [ -z "$test_description" ] ; then
-+		description="$test_name"
-+	else
-+		description="$test_name: $test_description"
-+	fi
-+
-+	if [ "$status1" -eq 0 -a "$status2" -eq 0 -a "$status3" -eq 0 ] ; then
-+		echo "$description: ok"
-+		touch $test_name.ok
-+	else
-+		echo "$description: failed"
-+		rm -f $test_name.failed
-+		if [ "$PASS_ZERO" = "true" ]; then
-+			diff $DIFF_OPTS $test_dir/expect.0 \
-+				$test_name.0.log >> $test_name.failed
-+		fi
-+		diff $DIFF_OPTS $EXP1 $OUT1 >> $test_name.failed
-+		if [ "$ONE_PASS_ONLY" != "true" ]; then
-+			diff $DIFF_OPTS $EXP2 $OUT2 >> $test_name.failed
-+		fi
-+	fi
-+	rm -f tmp_expect
-+fi
-+
-+if [ "$SKIP_CLEANUP" != "true" ] ; then
-+	unset IMAGE FSCK_OPT SECOND_FSCK_OPT OUT1 OUT2 EXP1 EXP2 
-+	unset SKIP_VERIFY SKIP_CLEANUP SKIP_GUNZIP ONE_PASS_ONLY PREP_CMD
-+	unset DESCRIPTION SKIP_UNLINK AFTER_CMD PASS_ZERO
-+fi
-+
-diff --git a/tests/f_convert_bmap/expect.1 b/tests/f_convert_bmap/expect.1
-new file mode 100644
-index 0000000..7d2ca86
---- /dev/null
-+++ b/tests/f_convert_bmap/expect.1
-@@ -0,0 +1,26 @@
-+debugfs: stat /a
-+Inode: 12   Type: regular    Mode:  0644   Flags: 0x0
-+Generation: 1573716129    Version: 0x00000000:00000001
-+User:     0   Group:     0   Size: 524288
-+File ACL: 0    Directory ACL: 0
-+Links: 1   Blockcount: 1030
-+Fragment:  Address: 0    Number: 0    Size: 0
-+ ctime: 0x5457f87a:62ae2980 -- Mon Nov  3 21:49:46 2014
-+ atime: 0x5457f87a:61ba0598 -- Mon Nov  3 21:49:46 2014
-+ mtime: 0x5457f87a:62ae2980 -- Mon Nov  3 21:49:46 2014
-+crtime: 0x5457f87a:61ba0598 -- Mon Nov  3 21:49:46 2014
-+Size of extra inode fields: 28
-+BLOCKS:
-+(0-11):1025-1036, (IND):24, (12-267):1037-1292, (DIND):25, (IND):41, (268-511):1293-1536
-+TOTAL: 515
-+
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 1E: Optimizing extent trees
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 12/128 files (8.3% non-contiguous), 570/2048 blocks
-+Exit status is 1
-diff --git a/tests/f_convert_bmap/expect.2 b/tests/f_convert_bmap/expect.2
-new file mode 100644
-index 0000000..632d411
---- /dev/null
-+++ b/tests/f_convert_bmap/expect.2
-@@ -0,0 +1,10 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 12/128 files (0.0% non-contiguous), 570/2048 blocks
-+Exit status is 0
-+debugfs: ex /a
-+Level Entries       Logical      Physical Length Flags
-+ 0/ 0   1/  1     0 -   511  1025 -  1536    512 
-diff --git a/tests/f_convert_bmap/image.gz b/tests/f_convert_bmap/image.gz
-new file mode 100644
-index 0000000000000000000000000000000000000000..7c22532397ba8d42e928f75190dc545cae2140cf
-GIT binary patch
-literal 3548
-zcmeH{TTD|27{|LAMF+@(0Tox+B<ivR0l73*3mPNpq{>AKJy;kpC>$)zXsxs>&77h{
-z5d{R1Tf|{+oO3i%(L%x52w{Q@ZBMl=7l%+hhteTCTuLv?;vP1$_wAwI!}sN%d{4js
-zKY#y=D@kV;l8$`5%sjNJl`~FyG$XVKkeS>DH}6f}NR0H7XZeLMHZ~n7S%IBv`1#=N
-zvthAe6*sSJFDc(vQMvN!_C4jFe<j65!*^OUm={)9=G$@69F1o=F+fw#*9&#jyvB6W
-zL}KW^E$$xb{J^bs+dN*RTpr^8kjSR!^SeC_oE_k?>(^gS=<hNObc@YMH>Kvk-p-E5
-z35ksKaBDTb(PT!@CVwq0qb~h&i*n<*7OXbTS(15(N<89733W!X1W$_EjVBkiwdO+O
-zgdm1$#XPIm+f@lYY^0qqFBCAP$X(HIv%QKlVn5zT?)`;ZVOpN;uzxq3w!?I(<aK$X
-zaS!SJe5<2`goNateEzncYj1mM?y%OZ3HI8cvU9NDh)8IB%F@##rq|m2I-85nb<Z2w
-zU2pNJ`vVSvg$htSs_DKP485(ZoNIkL`xm<MpHIzr^#yEhcYn0tc1iSaYjk?luhhO5
-z90Xc?kWFAOAghA2z*hiVg?NKc04W0&pkFFLh%qk{=rBd}kQi-QLIK4oC}Cc{q-zD*
-zP`R6C8NQns<?n~mydY0dt(W*QypVmG06dPE)IW%j((~@|V>qd0P#|_(kwxolh)vP1
-z!4D|7w1*Ax2F-m!!v{D?hY_}Bj_Bhv%&`NoNpo3|U_RQefeE7?I)#|DeuRy`+sqVb
-zhZToacT$fmp+(`UIb^NwAlA&?)i0^me$S019}PlkxcgO2tDz)Rj%kS-d=8m`$kjMO
-z6!SC5aRssfTtZb|mQr*n*h?xr3>3)6@Uzsrhh!CaB~>w;YLUFa>Is<7Q;82Dp_q#3
-z<csQ={t_?rJf<eDT62Ug&tzq~S40U_9La2yoxnS+C+pK1rS8~c>oFl5nU*FALaVW-
-z#5F6(I+7;8h~wM?EMP?P6ssj5Wk)A#L~23336-^o#f*~pqh(kRQDM!sx4^PST@Y4H
-z$d$?>mQGWE>8%_)T$Cn~;8+<UR(9q~qI9L)1bcHnoC0S2?i-o4t{d#wtbKDMepYK!
-z><UbF*FFwcpxc%|-kFy%XsC0WSf9P?uV}qL5AcUQmFdYp`an;>8K9}Er5St++^&Mg
-z!A0OEqvaYnu4F^;aunnuN*<J&rxAkvO3UQwWiHGAd&`@O7ag;OUt9kyt+v8kM|<{I
-zIyy5D-6rU+%SLL#@YyT-x{F^mR@l1kJP-CwGEIen(_^EFs~!aO?fhmP`84O<$bd6b
-zozXVSD_9JACTbIs-$@>k$83X+0lqWGS@2!*G{ZnA+mYmpn#n71w;rbdEhKizylA>_
-zMx@ViZ17o^Z5wioybK<B(`9y+686({S#NlAG;TtcgFgWhA6R-TGwW2%xanw*RK0hH
-z?Vcg(1Qg2i3)j1S%5oZoyZ;f(55(v*iZt4vOKqNzFP<OV(zIHAX4?0IAD46ya1n43
-aa1n43a1r?55SY$(e6qN4MIedv8R-w=i-Ai3
-
-literal 0
-HcmV?d00001
-
-diff --git a/tests/f_convert_bmap/name b/tests/f_convert_bmap/name
-new file mode 100644
-index 0000000..67e0d47
---- /dev/null
-+++ b/tests/f_convert_bmap/name
-@@ -0,0 +1 @@
-+convert blockmap file to extents file
-diff --git a/tests/f_convert_bmap/script b/tests/f_convert_bmap/script
-new file mode 100644
-index 0000000..f6b6f62
---- /dev/null
-+++ b/tests/f_convert_bmap/script
-@@ -0,0 +1,117 @@
-+if [ "$DESCRIPTION"x != x ]; then
-+	test_description="$DESCRIPTION"
-+fi
-+if [ "$IMAGE"x = x ]; then
-+	IMAGE=$test_dir/image.gz
-+fi
-+
-+if [ "$FSCK_OPT"x = x ]; then
-+	FSCK_OPT=-yf
-+fi
-+
-+if [ "$SECOND_FSCK_OPT"x = x ]; then
-+	SECOND_FSCK_OPT=-yf
-+fi
-+
-+if [ "$OUT1"x = x ]; then
-+	OUT1=$test_name.1.log
-+fi
-+
-+if [ "$OUT2"x = x ]; then
-+	OUT2=$test_name.2.log
-+fi
-+
-+if [ "$EXP1"x = x ]; then
-+	if [ -f $test_dir/expect.1.gz ]; then
-+		EXP1=$test_name.1.tmp
-+		gunzip < $test_dir/expect.1.gz > $EXP1
-+	else
-+		EXP1=$test_dir/expect.1
-+	fi
-+fi
-+
-+if [ "$EXP2"x = x ]; then
-+	if [ -f $test_dir/expect.2.gz ]; then
-+		EXP2=$test_name.2.tmp
-+		gunzip < $test_dir/expect.2.gz > $EXP2
-+	else
-+		EXP2=$test_dir/expect.2
-+	fi
-+fi
-+
-+if [ "$SKIP_GUNZIP" != "true" ] ; then
-+	gunzip < $IMAGE > $TMPFILE
-+fi
-+
-+cp /dev/null $OUT1
-+
-+eval $PREP_CMD
-+
-+echo 'stat /a' > $TMPFILE.cmd
-+$DEBUGFS -f $TMPFILE.cmd $TMPFILE > $OUT1.new 2>&1
-+rm -rf $TMPFILE.cmd
-+$TUNE2FS -O extent $TMPFILE >> $OUT1.new 2>&1
-+$FSCK $FSCK_OPT -E bmap2extent -N test_filesys $TMPFILE >> $OUT1.new 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT1.new
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT1.new >> $OUT1
-+rm -f $OUT1.new
-+
-+$FSCK $SECOND_FSCK_OPT -N test_filesys $TMPFILE > $OUT2.new 2>&1 
-+status=$?
-+echo Exit status is $status >> $OUT2.new
-+echo 'ex /a' > $TMPFILE.cmd
-+$DEBUGFS -f $TMPFILE.cmd $TMPFILE >> $OUT2.new 2>&1
-+rm -rf $TMPFILE.cmd
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT2.new > $OUT2
-+rm -f $OUT2.new
-+
-+eval $AFTER_CMD
-+
-+if [ "$SKIP_VERIFY" != "true" ] ; then
-+	rm -f $test_name.ok $test_name.failed
-+	cmp -s $OUT1 $EXP1
-+	status1=$?
-+	if [ "$ONE_PASS_ONLY" != "true" ]; then
-+		cmp -s $OUT2 $EXP2
-+		status2=$?
-+	else
-+		status2=0
-+	fi
-+	if [ "$PASS_ZERO" = "true" ]; then
-+		cmp -s $test_name.0.log	$test_dir/expect.0
-+		status3=$?
-+	else
-+		status3=0
-+	fi
-+
-+	if [ -z "$test_description" ] ; then
-+		description="$test_name"
-+	else
-+		description="$test_name: $test_description"
-+	fi
-+
-+	if [ "$status1" -eq 0 -a "$status2" -eq 0 -a "$status3" -eq 0 ] ; then
-+		echo "$description: ok"
-+		touch $test_name.ok
-+	else
-+		echo "$description: failed"
-+		rm -f $test_name.failed
-+		if [ "$PASS_ZERO" = "true" ]; then
-+			diff $DIFF_OPTS $test_dir/expect.0 \
-+				$test_name.0.log >> $test_name.failed
-+		fi
-+		diff $DIFF_OPTS $EXP1 $OUT1 >> $test_name.failed
-+		if [ "$ONE_PASS_ONLY" != "true" ]; then
-+			diff $DIFF_OPTS $EXP2 $OUT2 >> $test_name.failed
-+		fi
-+	fi
-+	rm -f tmp_expect
-+fi
-+
-+if [ "$SKIP_CLEANUP" != "true" ] ; then
-+	unset IMAGE FSCK_OPT SECOND_FSCK_OPT OUT1 OUT2 EXP1 EXP2 
-+	unset SKIP_VERIFY SKIP_CLEANUP SKIP_GUNZIP ONE_PASS_ONLY PREP_CMD
-+	unset DESCRIPTION SKIP_UNLINK AFTER_CMD PASS_ZERO
-+fi
-+
-diff --git a/tests/f_convert_bmap_and_extent/expect.1 b/tests/f_convert_bmap_and_extent/expect.1
-new file mode 100644
-index 0000000..7af91aa
---- /dev/null
-+++ b/tests/f_convert_bmap_and_extent/expect.1
-@@ -0,0 +1,33 @@
-+debugfs: stat /a
-+Inode: 12   Type: regular    Mode:  0644   Flags: 0x0
-+Generation: 1573716129    Version: 0x00000000:00000001
-+User:     0   Group:     0   Size: 524288
-+File ACL: 0    Directory ACL: 0
-+Links: 1   Blockcount: 1030
-+Fragment:  Address: 0    Number: 0    Size: 0
-+ ctime: 0x5457f87a:62ae2980 -- Mon Nov  3 21:49:46 2014
-+ atime: 0x5457f87a:61ba0598 -- Mon Nov  3 21:49:46 2014
-+ mtime: 0x5457f87a:62ae2980 -- Mon Nov  3 21:49:46 2014
-+crtime: 0x5457f87a:61ba0598 -- Mon Nov  3 21:49:46 2014
-+Size of extra inode fields: 28
-+BLOCKS:
-+(0-11):1025-1036, (IND):24, (12-267):1037-1292, (DIND):25, (IND):41, (268-511):1293-1536
-+TOTAL: 515
-+
-+debugfs: ex /zero
-+Level Entries       Logical      Physical Length Flags
-+ 0/ 1   1/  1     0 -     8    28              9
-+ 1/ 1   1/  4     0 -     0    27 -    27      1 
-+ 1/ 1   2/  4     2 -     2    29 -    29      1 
-+ 1/ 1   3/  4     4 -     4    31 -    31      1 
-+ 1/ 1   4/  4     6 -     6    33 -    33      1 
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 1E: Optimizing extent trees
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 13/128 files (15.4% non-contiguous), 574/2048 blocks
-+Exit status is 1
-diff --git a/tests/f_convert_bmap_and_extent/expect.2 b/tests/f_convert_bmap_and_extent/expect.2
-new file mode 100644
-index 0000000..73765ea
---- /dev/null
-+++ b/tests/f_convert_bmap_and_extent/expect.2
-@@ -0,0 +1,16 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 13/128 files (7.7% non-contiguous), 574/2048 blocks
-+Exit status is 0
-+debugfs: ex /a
-+Level Entries       Logical      Physical Length Flags
-+ 0/ 0   1/  1     0 -   511  1025 -  1536    512 
-+debugfs: ex /zero
-+Level Entries       Logical      Physical Length Flags
-+ 0/ 0   1/  4     0 -     0    27 -    27      1 
-+ 0/ 0   2/  4     2 -     2    29 -    29      1 
-+ 0/ 0   3/  4     4 -     4    31 -    31      1 
-+ 0/ 0   4/  4     6 -     6    33 -    33      1 
-diff --git a/tests/f_convert_bmap_and_extent/image.gz b/tests/f_convert_bmap_and_extent/image.gz
-new file mode 100644
-index 0000000000000000000000000000000000000000..916b493c710843030b453b548be0b6adcd12c48d
-GIT binary patch
-literal 3657
-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
-
-literal 0
-HcmV?d00001
-
-diff --git a/tests/f_convert_bmap_and_extent/name b/tests/f_convert_bmap_and_extent/name
-new file mode 100644
-index 0000000..c9394c6
---- /dev/null
-+++ b/tests/f_convert_bmap_and_extent/name
-@@ -0,0 +1 @@
-+convert blockmap and extents files to extents files
-diff --git a/tests/f_convert_bmap_and_extent/script b/tests/f_convert_bmap_and_extent/script
-new file mode 100644
-index 0000000..203ab25
---- /dev/null
-+++ b/tests/f_convert_bmap_and_extent/script
-@@ -0,0 +1,119 @@
-+if [ "$DESCRIPTION"x != x ]; then
-+	test_description="$DESCRIPTION"
-+fi
-+if [ "$IMAGE"x = x ]; then
-+	IMAGE=$test_dir/image.gz
-+fi
-+
-+if [ "$FSCK_OPT"x = x ]; then
-+	FSCK_OPT=-yf
-+fi
-+
-+if [ "$SECOND_FSCK_OPT"x = x ]; then
-+	SECOND_FSCK_OPT=-yf
-+fi
-+
-+if [ "$OUT1"x = x ]; then
-+	OUT1=$test_name.1.log
-+fi
-+
-+if [ "$OUT2"x = x ]; then
-+	OUT2=$test_name.2.log
-+fi
-+
-+if [ "$EXP1"x = x ]; then
-+	if [ -f $test_dir/expect.1.gz ]; then
-+		EXP1=$test_name.1.tmp
-+		gunzip < $test_dir/expect.1.gz > $EXP1
-+	else
-+		EXP1=$test_dir/expect.1
-+	fi
-+fi
-+
-+if [ "$EXP2"x = x ]; then
-+	if [ -f $test_dir/expect.2.gz ]; then
-+		EXP2=$test_name.2.tmp
-+		gunzip < $test_dir/expect.2.gz > $EXP2
-+	else
-+		EXP2=$test_dir/expect.2
-+	fi
-+fi
-+
-+if [ "$SKIP_GUNZIP" != "true" ] ; then
-+	gunzip < $IMAGE > $TMPFILE
-+fi
-+
-+cp /dev/null $OUT1
-+
-+eval $PREP_CMD
-+
-+echo 'stat /a' > $TMPFILE.cmd
-+echo 'ex /zero' >> $TMPFILE.cmd
-+$DEBUGFS -f $TMPFILE.cmd $TMPFILE > $OUT1.new 2>&1
-+rm -rf $TMPFILE.cmd
-+$TUNE2FS -O extent $TMPFILE >> $OUT1.new 2>&1
-+$FSCK $FSCK_OPT -E bmap2extent -N test_filesys $TMPFILE >> $OUT1.new 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT1.new
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT1.new >> $OUT1
-+rm -f $OUT1.new
-+
-+$FSCK $SECOND_FSCK_OPT -N test_filesys $TMPFILE > $OUT2.new 2>&1 
-+status=$?
-+echo Exit status is $status >> $OUT2.new
-+echo 'ex /a' > $TMPFILE.cmd
-+echo 'ex /zero' >> $TMPFILE.cmd
-+$DEBUGFS -f $TMPFILE.cmd $TMPFILE >> $OUT2.new 2>&1
-+rm -rf $TMPFILE.cmd
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT2.new > $OUT2
-+rm -f $OUT2.new
-+
-+eval $AFTER_CMD
-+
-+if [ "$SKIP_VERIFY" != "true" ] ; then
-+	rm -f $test_name.ok $test_name.failed
-+	cmp -s $OUT1 $EXP1
-+	status1=$?
-+	if [ "$ONE_PASS_ONLY" != "true" ]; then
-+		cmp -s $OUT2 $EXP2
-+		status2=$?
-+	else
-+		status2=0
-+	fi
-+	if [ "$PASS_ZERO" = "true" ]; then
-+		cmp -s $test_name.0.log	$test_dir/expect.0
-+		status3=$?
-+	else
-+		status3=0
-+	fi
-+
-+	if [ -z "$test_description" ] ; then
-+		description="$test_name"
-+	else
-+		description="$test_name: $test_description"
-+	fi
-+
-+	if [ "$status1" -eq 0 -a "$status2" -eq 0 -a "$status3" -eq 0 ] ; then
-+		echo "$description: ok"
-+		touch $test_name.ok
-+	else
-+		echo "$description: failed"
-+		rm -f $test_name.failed
-+		if [ "$PASS_ZERO" = "true" ]; then
-+			diff $DIFF_OPTS $test_dir/expect.0 \
-+				$test_name.0.log >> $test_name.failed
-+		fi
-+		diff $DIFF_OPTS $EXP1 $OUT1 >> $test_name.failed
-+		if [ "$ONE_PASS_ONLY" != "true" ]; then
-+			diff $DIFF_OPTS $EXP2 $OUT2 >> $test_name.failed
-+		fi
-+	fi
-+	rm -f tmp_expect
-+fi
-+
-+if [ "$SKIP_CLEANUP" != "true" ] ; then
-+	unset IMAGE FSCK_OPT SECOND_FSCK_OPT OUT1 OUT2 EXP1 EXP2 
-+	unset SKIP_VERIFY SKIP_CLEANUP SKIP_GUNZIP ONE_PASS_ONLY PREP_CMD
-+	unset DESCRIPTION SKIP_UNLINK AFTER_CMD PASS_ZERO
-+fi
-+
-diff --git a/tests/f_extent_too_deep/expect.1 b/tests/f_extent_too_deep/expect.1
-new file mode 100644
-index 0000000..a595482
---- /dev/null
-+++ b/tests/f_extent_too_deep/expect.1
-@@ -0,0 +1,23 @@
-+debugfs: ex /a
-+Level Entries       Logical      Physical Length Flags
-+ 0/ 7   1/  1     0 -     0    12              1
-+ 1/ 7   1/  1     0 -     0    13              1
-+ 2/ 7   1/  1     0 -     0    14              1
-+ 3/ 7   1/  1     0 -     0    15              1
-+ 4/ 7   1/  1     0 -     0    16              1
-+ 5/ 7   1/  1     0 -     0    17              1
-+ 6/ 7   1/  1     0 -     0     9              1
-+ 7/ 7   1/  1     0 -     0    10 -    10      1 
-+Pass 1: Checking inodes, blocks, and sizes
-+Inode 12 extent tree could be more shallow (7; could be <= 4)
-+Fix? yes
-+
-+Pass 1E: Optimizing extent trees
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 12/128 files (0.0% non-contiguous), 19/512 blocks
-+Exit status is 1
-diff --git a/tests/f_extent_too_deep/expect.2 b/tests/f_extent_too_deep/expect.2
-new file mode 100644
-index 0000000..a1d28b1
---- /dev/null
-+++ b/tests/f_extent_too_deep/expect.2
-@@ -0,0 +1,10 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 12/128 files (0.0% non-contiguous), 19/512 blocks
-+Exit status is 0
-+debugfs: ex /a
-+Level Entries       Logical      Physical Length Flags
-+ 0/ 0   1/  1     0 -     0    10 -    10      1 
-diff --git a/tests/f_extent_too_deep/image.gz b/tests/f_extent_too_deep/image.gz
-new file mode 100644
-index 0000000000000000000000000000000000000000..0f5adff562c7f45f275a4401344e784b6c61ef0b
-GIT binary patch
-literal 2592
-zcmb2|=3wx?6duCF{PymCf8jtGh7aG@g)R_rT-?mre9>1}CPu>N$ctAhoXss6N_=iF
-z5@Jgn)7j0{g?;~U$MjrWSXgN2BJ`haZVz)`*522$TUX9#P_RGs-1*+#-}m|t)ke$R
-z5APFT+7Par(yh|6IP<$^TY&yHb=Pd!4HL>YcLz^?KYf{6a)z0HeXpXe&6y>)!{oHZ
-z{w4_aEWdmEi{rbce>>ZI-7<e&n#^wgT>k9*+V6{hzqYV7kN<!F`meNSFQ+Q6*V|Y3
-z^T*9EtryRSC(q!xs&fB&rR?lflfNCSbM%+z9`NR8Xvm!~b$|P%vOS^yuV3DA=UzC!
-zdV2~70|P_Z{%7a+eb~FD@iQX>LxZgT@4xk?M^bd2d}j)Ap48L(^!o=nzNt^b-j@Bn
-z(tB&}&(}Bi3E1%+uQ+>K4XAm;YM!#Q|M&Ag|6C8`EjZre0W^eR#(!oY`RqTC0D%K#
-zt8|VVNY)>}nWdV0b3e-(v5!&LK$gwTUKeJq&J9t;uwnPp@BiQDA9oI70*csL0e#oU
-z@4*RVe|hm||DC?}r7S>pRms2jtmDcsHU76gI%<N<lAHVgc$tlYDp1LV;#slvAMS%y
-z_mw*UMaTsa{WFiQJUMmS^mV^a|12?_6#qZx;wRgs7w*6M?d&ss>QjkRvd@oR6O=Ze
-zwT(YrEiNVZY2}A3mTiX){VlmTBO>)r|Ir`c-?Qz0^ke$R^}nA_NN3&Vro6gdEo}Aw
-zNd;?G)F0CN>c2B%cHsY<=imQ-{{3@@$#3_+;+waWT&=Ht`+1dYa@5urll#5~9k0rL
-z`R+&5tNm+I=hrV419@x|jE2By2#kinXb6mkz-S22A_Nlt)-hg8%bdf&puhkC@B%oQ
-
-literal 0
-HcmV?d00001
-
-diff --git a/tests/f_extent_too_deep/name b/tests/f_extent_too_deep/name
-new file mode 100644
-index 0000000..7e8654a
---- /dev/null
-+++ b/tests/f_extent_too_deep/name
-@@ -0,0 +1 @@
-+extent tree is deeper than it needs to be
-diff --git a/tests/f_extent_too_deep/script b/tests/f_extent_too_deep/script
-new file mode 100644
-index 0000000..ee18438
---- /dev/null
-+++ b/tests/f_extent_too_deep/script
-@@ -0,0 +1,118 @@
-+if [ "$DESCRIPTION"x != x ]; then
-+	test_description="$DESCRIPTION"
-+fi
-+if [ "$IMAGE"x = x ]; then
-+	IMAGE=$test_dir/image.gz
-+fi
-+
-+if [ "$FSCK_OPT"x = x ]; then
-+	FSCK_OPT=-yf
-+fi
-+
-+if [ "$SECOND_FSCK_OPT"x = x ]; then
-+	SECOND_FSCK_OPT=-yf
-+fi
-+
-+if [ "$OUT1"x = x ]; then
-+	OUT1=$test_name.1.log
-+fi
-+
-+if [ "$OUT2"x = x ]; then
-+	OUT2=$test_name.2.log
-+fi
-+
-+if [ "$EXP1"x = x ]; then
-+	if [ -f $test_dir/expect.1.gz ]; then
-+		EXP1=$test_name.1.tmp
-+		gunzip < $test_dir/expect.1.gz > $EXP1
-+	else
-+		EXP1=$test_dir/expect.1
-+	fi
-+fi
-+
-+if [ "$EXP2"x = x ]; then
-+	if [ -f $test_dir/expect.2.gz ]; then
-+		EXP2=$test_name.2.tmp
-+		gunzip < $test_dir/expect.2.gz > $EXP2
-+	else
-+		EXP2=$test_dir/expect.2
-+	fi
-+fi
-+
-+if [ "$SKIP_GUNZIP" != "true" ] ; then
-+	gunzip < $IMAGE > $TMPFILE
-+fi
-+
-+cp /dev/null $OUT1
-+
-+eval $PREP_CMD
-+
-+echo 'ex /a' > $TMPFILE.cmd
-+$DEBUGFS -f $TMPFILE.cmd $TMPFILE > $OUT1.new 2>&1
-+rm -rf $TMPFILE.cmd
-+$FSCK $FSCK_OPT  -N test_filesys $TMPFILE >> $OUT1.new 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT1.new
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT1.new >> $OUT1
-+rm -f $OUT1.new
-+
-+if [ "$ONE_PASS_ONLY" != "true" ]; then
-+	$FSCK $SECOND_FSCK_OPT -N test_filesys $TMPFILE > $OUT2.new 2>&1 
-+	status=$?
-+	echo Exit status is $status >> $OUT2.new
-+	echo 'ex /a' > $TMPFILE.cmd
-+	$DEBUGFS -f $TMPFILE.cmd $TMPFILE >> $OUT2.new 2>&1
-+	rm -rf $TMPFILE.cmd
-+	sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT2.new > $OUT2
-+	rm -f $OUT2.new
-+fi
-+
-+eval $AFTER_CMD
-+
-+if [ "$SKIP_VERIFY" != "true" ] ; then
-+	rm -f $test_name.ok $test_name.failed
-+	cmp -s $OUT1 $EXP1
-+	status1=$?
-+	if [ "$ONE_PASS_ONLY" != "true" ]; then
-+		cmp -s $OUT2 $EXP2
-+		status2=$?
-+	else
-+		status2=0
-+	fi
-+	if [ "$PASS_ZERO" = "true" ]; then
-+		cmp -s $test_name.0.log	$test_dir/expect.0
-+		status3=$?
-+	else
-+		status3=0
-+	fi
-+
-+	if [ -z "$test_description" ] ; then
-+		description="$test_name"
-+	else
-+		description="$test_name: $test_description"
-+	fi
-+
-+	if [ "$status1" -eq 0 -a "$status2" -eq 0 -a "$status3" -eq 0 ] ; then
-+		echo "$description: ok"
-+		touch $test_name.ok
-+	else
-+		echo "$description: failed"
-+		rm -f $test_name.failed
-+		if [ "$PASS_ZERO" = "true" ]; then
-+			diff $DIFF_OPTS $test_dir/expect.0 \
-+				$test_name.0.log >> $test_name.failed
-+		fi
-+		diff $DIFF_OPTS $EXP1 $OUT1 >> $test_name.failed
-+		if [ "$ONE_PASS_ONLY" != "true" ]; then
-+			diff $DIFF_OPTS $EXP2 $OUT2 >> $test_name.failed
-+		fi
-+	fi
-+	rm -f tmp_expect
-+fi
-+
-+if [ "$SKIP_CLEANUP" != "true" ] ; then
-+	unset IMAGE FSCK_OPT SECOND_FSCK_OPT OUT1 OUT2 EXP1 EXP2 
-+	unset SKIP_VERIFY SKIP_CLEANUP SKIP_GUNZIP ONE_PASS_ONLY PREP_CMD
-+	unset DESCRIPTION SKIP_UNLINK AFTER_CMD PASS_ZERO
-+fi
-+
-diff --git a/tests/f_opt_extent/expect b/tests/f_opt_extent/expect
-new file mode 100644
-index 0000000..6d4863b
---- /dev/null
-+++ b/tests/f_opt_extent/expect
-@@ -0,0 +1,55 @@
-+tune2fs metadata_csum test
-+Creating filesystem with 524288 1k blocks and 65536 inodes
-+Superblock backups stored on blocks: 
-+	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
-+
-+Allocating group tables:      done                            
-+Writing inode tables:      done                            
-+Creating journal (16384 blocks): done
-+Creating 477 huge file(s) with 1024 blocks each: done
-+Writing superblocks and filesystem accounting information:      done
-+
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 3A: Optimizing directories
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+
-+
-+Change in FS metadata:
-+@@ -10,7 +10,7 @@
-+ Inode count:              65536
-+ Block count:              524288
-+ Reserved block count:     26214
-+-Free blocks:              570
-++Free blocks:              567
-+ Free inodes:              65047
-+ First block:              1
-+ Block size:               1024
-+@@ -47,8 +47,8 @@
-+   Block bitmap at 262 (+261)
-+   Inode bitmap at 278 (+277)
-+   Inode table at 294-549 (+293)
-+-  21 free blocks, 535 free inodes, 3 directories, 535 unused inodes
-+-  Free blocks: 4414-4434
-++  18 free blocks, 535 free inodes, 3 directories, 535 unused inodes
-++  Free blocks: 4417-4434
-+   Free inodes: 490-1024
-+ Group 1: (Blocks 8193-16384) [INODE_UNINIT]
-+   Backup superblock at 8193, Group descriptors at 8194-8197
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-diff --git a/tests/f_opt_extent/name b/tests/f_opt_extent/name
-new file mode 100644
-index 0000000..7d4389c
---- /dev/null
-+++ b/tests/f_opt_extent/name
-@@ -0,0 +1 @@
-+optimize extent tree
-diff --git a/tests/f_opt_extent/script b/tests/f_opt_extent/script
-new file mode 100644
-index 0000000..2da5e91
---- /dev/null
-+++ b/tests/f_opt_extent/script
-@@ -0,0 +1,64 @@
-+FSCK_OPT=-fn
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+CONF=$TMPFILE.conf
-+
-+cat > $CONF << ENDL
-+[fs_types]
-+	ext4h = {
-+		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode,64bit,metadata_csum
-+		blocksize = 1024
-+		inode_size = 256
-+		make_hugefiles = true
-+		hugefiles_dir = /xyz
-+		hugefiles_slack = 0
-+		hugefiles_name = aaaaa
-+		hugefiles_digits = 4
-+		hugefiles_size = 1M
-+		zero_hugefiles = false
+diff --git a/lib/ext2fs/tdb.c b/lib/ext2fs/tdb.c
+index 61e30ed..a916768 100644
+--- a/lib/ext2fs/tdb.c
++++ b/lib/ext2fs/tdb.c
+@@ -4138,3 +4138,13 @@ int tdb_reopen_all(int parent_longlived)
+ 
+ 	return 0;
+ }
++
++/**
++ * Flush a database file from the page cache.
++ **/
++int tdb_flush(struct tdb_context *tdb)
++{
++	if (tdb->fd != -1)
++		return fsync(tdb->fd);
++	return 0;
++}
+diff --git a/lib/ext2fs/tdb.h b/lib/ext2fs/tdb.h
+index 732ef0e..6a4086c 100644
+--- a/lib/ext2fs/tdb.h
++++ b/lib/ext2fs/tdb.h
+@@ -129,6 +129,7 @@ typedef struct TDB_DATA {
+ #define tdb_lockall_nonblock ext2fs_tdb_lockall_nonblock
+ #define tdb_lockall_read_nonblock ext2fs_tdb_lockall_read_nonblock
+ #define tdb_lockall_unmark ext2fs_tdb_lockall_unmark
++#define tdb_flush ext2fs_tdb_flush
+ 
+ /* this is the context structure that is returned from a db open */
+ typedef struct tdb_context TDB_CONTEXT;
+@@ -191,6 +192,7 @@ size_t tdb_map_size(struct tdb_context *tdb);
+ int tdb_get_flags(struct tdb_context *tdb);
+ void tdb_enable_seqnum(struct tdb_context *tdb);
+ void tdb_increment_seqnum_nonblock(struct tdb_context *tdb);
++int tdb_flush(struct tdb_context *tdb);
+ 
+ /* Low level locking functions: use with care */
+ int tdb_chainlock(struct tdb_context *tdb, TDB_DATA key);
+diff --git a/lib/ext2fs/undo_io.c b/lib/ext2fs/undo_io.c
+index d6beb02..94317cb 100644
+--- a/lib/ext2fs/undo_io.c
++++ b/lib/ext2fs/undo_io.c
+@@ -37,6 +37,7 @@
+ #if HAVE_SYS_RESOURCE_H
+ #include <sys/resource.h>
+ #endif
++#include <limits.h>
+ 
+ #include "tdb.h"
+ 
+@@ -354,8 +355,12 @@ static errcode_t undo_open(const char *name, int flags, io_channel *channel)
+ 		data->real = 0;
+ 	}
+ 
++	if (data->real)
++		io->flags = (io->flags & ~CHANNEL_FLAGS_DISCARD_ZEROES) |
++			    (data->real->flags & CHANNEL_FLAGS_DISCARD_ZEROES);
++
+ 	/* setup the tdb file */
+-	data->tdb = tdb_open(tdb_file, 0, TDB_CLEAR_IF_FIRST,
++	data->tdb = tdb_open(tdb_file, 0, TDB_CLEAR_IF_FIRST | TDB_NOLOCK | TDB_NOSYNC,
+ 			     O_RDWR | O_CREAT | O_TRUNC | O_EXCL, 0600);
+ 	if (!data->tdb) {
+ 		retval = errno;
+@@ -399,8 +404,10 @@ static errcode_t undo_close(io_channel channel)
+ 		return retval;
+ 	if (data->real)
+ 		retval = io_channel_close(data->real);
+-	if (data->tdb)
++	if (data->tdb) {
++		tdb_flush(data->tdb);
+ 		tdb_close(data->tdb);
 +	}
-+ENDL
+ 	ext2fs_free_mem(&channel->private_data);
+ 	if (channel->name)
+ 		ext2fs_free_mem(&channel->name);
+@@ -510,6 +517,77 @@ static errcode_t undo_write_byte(io_channel channel, unsigned long offset,
+ 	return retval;
+ }
+ 
++static errcode_t undo_discard(io_channel channel, unsigned long long block,
++			      unsigned long long count)
++{
++	struct undo_private_data *data;
++	errcode_t	retval = 0;
++	int icount;
 +
-+echo "tune2fs metadata_csum test" > $OUT
++	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
++	data = (struct undo_private_data *) channel->private_data;
++	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
 +
-+MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
-+rm -rf $CONF
++	if (count > INT_MAX)
++		return EXT2_ET_UNIMPLEMENTED;
++	icount = count;
 +
-+# dump and check
-+$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.before
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
++	/*
++	 * First write the existing content into database
++	 */
++	retval = undo_write_tdb(channel, block, icount);
++	if (retval)
++		return retval;
++	if (data->real)
++		retval = io_channel_discard(data->real, block, count);
 +
-+# check
-+$FSCK -fyD -N test_filesys $TMPFILE >> $OUT 2>&1
++	return retval;
++}
 +
-+# dump and check
-+$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.after
-+echo "Change in FS metadata:" >> $OUT
-+diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
++static errcode_t undo_zeroout(io_channel channel, unsigned long long block,
++			      unsigned long long count)
++{
++	struct undo_private_data *data;
++	errcode_t	retval = 0;
++	int icount;
 +
-+rm $TMPFILE $OUT.before $OUT.after
++	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
++	data = (struct undo_private_data *) channel->private_data;
++	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
 +
-+#
-+# Do the verification
-+#
++	if (count > INT_MAX)
++		return EXT2_ET_UNIMPLEMENTED;
++	icount = count;
 +
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
-+mv $OUT.new $OUT
++	/*
++	 * First write the existing content into database
++	 */
++	retval = undo_write_tdb(channel, block, icount);
++	if (retval)
++		return retval;
++	if (data->real)
++		retval = io_channel_zeroout(data->real, block, count);
 +
-+cmp -s $OUT $EXP
-+status=$?
++	return retval;
++}
 +
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+fi
++static errcode_t undo_cache_readahead(io_channel channel,
++				      unsigned long long block,
++				      unsigned long long count)
++{
++	struct undo_private_data *data;
++	errcode_t	retval = 0;
 +
-+unset IMAGE FSCK_OPT OUT EXP CONF
-diff --git a/tests/f_opt_extent_ext3/expect b/tests/f_opt_extent_ext3/expect
-new file mode 100644
-index 0000000..1761471
---- /dev/null
-+++ b/tests/f_opt_extent_ext3/expect
-@@ -0,0 +1,44 @@
-+rebuild extent metadata_csum test
-+Creating filesystem with 524288 1k blocks and 65536 inodes
-+Superblock backups stored on blocks: 
-+	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
++	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
++	data = (struct undo_private_data *) channel->private_data;
++	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
 +
-+Allocating group tables:      done                            
-+Writing inode tables:      done                            
-+Creating journal (16384 blocks): done
-+mke2fs: Operation not supported for inodes containing extents while creating huge files
-+Writing superblocks and filesystem accounting information:      done
++	if (data->real)
++		retval = io_channel_cache_readahead(data->real, block, count);
 +
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
++	return retval;
++}
 +
-+Exit status is 0
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 3A: Optimizing directories
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+
-+
-+Change in FS metadata:
-+@@ -2,7 +2,7 @@
-+ Last mounted on:          <not available>
-+ Filesystem magic number:  0xEF53
-+ Filesystem revision #:    1 (dynamic)
-+-Filesystem features:      has_journal ext_attr resize_inode dir_index filetype sparse_super large_file huge_file dir_nlink
-++Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent sparse_super large_file huge_file dir_nlink
-+ Default mount options:    user_xattr acl
-+ Filesystem state:         clean
-+ Errors behavior:          Continue
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-diff --git a/tests/f_opt_extent_ext3/name b/tests/f_opt_extent_ext3/name
-new file mode 100644
-index 0000000..b369685
---- /dev/null
-+++ b/tests/f_opt_extent_ext3/name
-@@ -0,0 +1 @@
-+convert ext3 to extent tree
-diff --git a/tests/f_opt_extent_ext3/script b/tests/f_opt_extent_ext3/script
-new file mode 100644
-index 0000000..931eae7
---- /dev/null
-+++ b/tests/f_opt_extent_ext3/script
-@@ -0,0 +1,65 @@
-+FSCK_OPT=-fn
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+CONF=$TMPFILE.conf
-+
-+cat > $CONF << ENDL
-+[fs_types]
-+	ext4h = {
-+		features = has_journal,^extent,huge_file,^flex_bg,^uninit_bg,dir_nlink,^extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode,^64bit,^metadata_csum
-+		blocksize = 1024
-+		inode_size = 256
-+		make_hugefiles = true
-+		hugefiles_dir = /
-+		num_hugefiles = 100
-+		hugefiles_slack = 0
-+		hugefiles_name = aaaaa
-+		hugefiles_digits = 4
-+		hugefiles_size = 1M
-+		zero_hugefiles = false
-+	}
-+ENDL
-+
-+echo "rebuild extent metadata_csum test" > $OUT
-+
-+MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
-+rm -rf $CONF
-+
-+# dump and check
-+$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.before
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+# check
-+$FSCK -fyD -N test_filesys -E bmap2extent $TMPFILE >> $OUT 2>&1
-+
-+# dump and check
-+$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.after
-+echo "Change in FS metadata:" >> $OUT
-+diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+rm $TMPFILE $OUT.before $OUT.after
-+
-+#
-+# Do the verification
-+#
-+
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
-+mv $OUT.new $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+fi
-+
-+unset IMAGE FSCK_OPT OUT EXP CONF
+ /*
+  * Flush data buffers to disk.
+  */
+@@ -522,6 +600,8 @@ static errcode_t undo_flush(io_channel channel)
+ 	data = (struct undo_private_data *) channel->private_data;
+ 	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
+ 
++	if (data->tdb)
++		tdb_flush(data->tdb);
+ 	if (data->real)
+ 		retval = io_channel_flush(data->real);
+ 
+@@ -601,6 +681,9 @@ static struct struct_io_manager struct_undo_manager = {
+ 	.get_stats	= undo_get_stats,
+ 	.read_blk64	= undo_read_blk64,
+ 	.write_blk64	= undo_write_blk64,
++	.discard	= undo_discard,
++	.zeroout	= undo_zeroout,
++	.cache_readahead	= undo_cache_readahead,
+ };
+ 
+ io_manager undo_io_manager = &struct_undo_manager;
 
