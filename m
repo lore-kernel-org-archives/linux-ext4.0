@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 17/31] e2fsck: optionally create an undo file
-Date: Sat, 20 Dec 2014 13:18:43 -0800
-Message-ID: <20141220211843.25563.72323.stgit@birch.djwong.org>
+Subject: [PATCH 18/31] resize2fs: optionally create undo file
+Date: Sat, 20 Dec 2014 13:18:50 -0800
+Message-ID: <20141220211850.25563.30486.stgit@birch.djwong.org>
 References: <20141220211640.25563.80596.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,134 +9,73 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:40661 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752672AbaLTVSu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Dec 2014 16:18:50 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:45290 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751187AbaLTVSz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Dec 2014 16:18:55 -0500
 In-Reply-To: <20141220211640.25563.80596.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Provide the user with an option to create an undo file so that they
-can roll back a failed repair operation.
+can roll back a failed resize operation.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- e2fsck/e2fsck.8.in |   10 +++++
- e2fsck/e2fsck.h    |    3 ++
- e2fsck/unix.c      |  100 +++++++++++++++++++++++++++++++++++++++++++++++++++-
- 3 files changed, 111 insertions(+), 2 deletions(-)
+ resize/main.c         |   97 +++++++++++++++++++++++++++++++++++++++++++++++--
+ resize/resize2fs.8.in |   14 +++++++
+ 2 files changed, 108 insertions(+), 3 deletions(-)
 
 
-diff --git a/e2fsck/e2fsck.8.in b/e2fsck/e2fsck.8.in
-index 0c2725e..11f72f8 100644
---- a/e2fsck/e2fsck.8.in
-+++ b/e2fsck/e2fsck.8.in
-@@ -321,6 +321,16 @@ may not be specified at the same time as the
- or
- .B \-p
- options.
-+.TP
-+.BI \-z " undo_file"
-+Before overwriting a file system block, write the old contents of the block to
-+an undo file.  This undo file can be used with e2undo(8) to restore the old
-+contents of the file system should something go wrong.  If the empty string is
-+passed as the undo_file argument, the undo file will be written to a file named
-+e2fsck-\fIdevice\fR.e2undo in the directory specified via the
-+\fIE2FSPROGS_UNDO_DIR\fR environment variable.
-+
-+WARNING: The undo file cannot be used to recover from a power or system crash.
- .SH EXIT CODE
- The exit code returned by
- .B e2fsck
-diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index 15d968e..04f7bac 100644
---- a/e2fsck/e2fsck.h
-+++ b/e2fsck/e2fsck.h
-@@ -388,6 +388,9 @@ struct e2fsck_struct {
- 	 * Inodes to rebuild extent trees
- 	 */
- 	ext2fs_inode_bitmap inodes_to_rebuild;
-+
-+	/* Undo file */
-+	char *undo_file;
- };
- 
- /* Data structures to evaluate whether an extent tree needs rebuilding. */
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index fe5127a..d9be549 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -45,6 +45,7 @@ extern int optind;
- #ifdef HAVE_DIRENT_H
- #include <dirent.h>
- #endif
+diff --git a/resize/main.c b/resize/main.c
+index c25de61..ea9a91b 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -29,6 +29,7 @@ extern int optind;
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <fcntl.h>
 +#include <libgen.h>
  
  #include "e2p/e2p.h"
- #include "et/com_err.h"
-@@ -75,7 +76,7 @@ static void usage(e2fsck_t ctx)
- 		_("Usage: %s [-panyrcdfvtDFV] [-b superblock] [-B blocksize]\n"
- 		"\t\t[-I inode_buffer_blocks] [-P process_inode_size]\n"
- 		"\t\t[-l|-L bad_blocks_file] [-C fd] [-j external_journal]\n"
--		"\t\t[-E extended-options] device\n"),
-+		"\t\t[-E extended-options] [-z undo_file] device\n"),
- 		ctx->program_name);
  
- 	fprintf(stderr, "%s", _("\nEmergency help:\n"
-@@ -91,6 +92,7 @@ static void usage(e2fsck_t ctx)
- 		" -j external_journal  Set location of the external journal\n"
- 		" -l bad_blocks_file   Add to badblocks list\n"
- 		" -L bad_blocks_file   Set badblocks list\n"
-+		" -z undo_file         Create an undo file\n"
- 		));
+@@ -42,7 +43,8 @@ static char *device_name, *io_options;
+ static void usage (char *prog)
+ {
+ 	fprintf (stderr, _("Usage: %s [-d debug_flags] [-f] [-F] [-M] [-P] "
+-			   "[-p] device [-b|-s|new_size]\n\n"), prog);
++			   "[-p] device [-b|-s|new_size] [-z undo_file]\n\n"),
++		 prog);
  
- 	exit(FSCK_USAGE);
-@@ -795,7 +797,7 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
- 
- 	phys_mem_kb = get_memory_size() / 1024;
- 	ctx->readahead_kb = ~0ULL;
--	while ((c = getopt (argc, argv, "panyrcC:B:dE:fvtFVM:b:I:j:P:l:L:N:SsDk")) != EOF)
-+	while ((c = getopt(argc, argv, "panyrcC:B:dE:fvtFVM:b:I:j:P:l:L:N:SsDkz:")) != EOF)
- 		switch (c) {
- 		case 'C':
- 			ctx->progress = e2fsck_update_progress;
-@@ -927,6 +929,9 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
- 		case 'k':
- 			keep_bad_blocks++;
- 			break;
-+		case 'z':
-+			ctx->undo_file = optarg;
-+			break;
- 		default:
- 			usage(ctx);
- 		}
-@@ -1205,6 +1210,91 @@ check_error:
- 	return retval;
+ 	exit (1);
+ }
+@@ -162,6 +164,86 @@ static void bigalloc_check(ext2_filsys fs, int force)
+ 	}
  }
  
-+static int e2fsck_setup_tdb(e2fsck_t ctx, io_manager *io_ptr)
++static int resize2fs_setup_tdb(const char *device_name, char *undo_file,
++			       io_manager *io_ptr)
 +{
 +	errcode_t retval = ENOMEM;
 +	char *tdb_dir = NULL, *tdb_file = NULL;
 +	char *dev_name, *tmp_name;
 +	int free_tdb_dir = 0;
 +
-+	if (ctx->undo_file && ctx->undo_file[0] != 0) {
-+		if ((unlink(ctx->undo_file) < 0) && (errno != ENOENT)) {
++	if (undo_file && undo_file[0] != 0) {
++		if ((unlink(undo_file) < 0) && (errno != ENOENT)) {
 +			retval = errno;
 +			goto err;
 +		}
 +
 +		set_undo_io_backing_manager(*io_ptr);
 +		*io_ptr = undo_io_manager;
-+		retval = set_undo_io_backup_file(ctx->undo_file);
++		retval = set_undo_io_backup_file(undo_file);
 +		if (retval)
 +			goto err;
 +		printf(_("Overwriting existing filesystem; this can be undone "
 +			 "using the command:\n"
 +			 "    e2undo %s %s\n\n"),
-+			ctx->undo_file, ctx->filesystem_name);
++			undo_file, device_name);
 +		return 0;
 +	}
 +
@@ -145,21 +84,15 @@ index fe5127a..d9be549 100644
 +	 * nice
 +	 */
 +	tdb_dir = getenv("E2FSPROGS_UNDO_DIR");
-+	if (!tdb_dir) {
-+		profile_get_string(ctx->profile, "defaults",
-+				   "undo_dir", 0, "/var/lib/e2fsprogs",
-+				   &tdb_dir);
-+		free_tdb_dir = 1;
-+	}
 +
-+	if (!strcmp(tdb_dir, "none") || (tdb_dir[0] == 0) ||
++	if (tdb_dir == NULL || !strcmp(tdb_dir, "none") || (tdb_dir[0] == 0) ||
 +	    access(tdb_dir, W_OK)) {
 +		if (free_tdb_dir)
 +			free(tdb_dir);
 +		return 0;
 +	}
 +
-+	tmp_name = strdup(ctx->filesystem_name);
++	tmp_name = strdup(device_name);
 +	if (!tmp_name)
 +		goto errout;
 +	dev_name = basename(tmp_name);
@@ -168,7 +101,7 @@ index fe5127a..d9be549 100644
 +		free(tmp_name);
 +		goto errout;
 +	}
-+	sprintf(tdb_file, "%s/e2fsck-%s.e2undo", tdb_dir, dev_name);
++	sprintf(tdb_file, "%s/resize2fs-%s.e2undo", tdb_dir, dev_name);
 +	free(tmp_name);
 +
 +	if ((unlink(tdb_file) < 0) && (errno != ENOENT)) {
@@ -183,7 +116,7 @@ index fe5127a..d9be549 100644
 +		goto errout;
 +	printf(_("Overwriting existing filesystem; this can be undone "
 +		 "using the command:\n"
-+		 "    e2undo %s %s\n\n"), tdb_file, ctx->filesystem_name);
++		 "    e2undo %s %s\n\n"), tdb_file, device_name);
 +
 +	if (free_tdb_dir)
 +		free(tdb_dir);
@@ -195,25 +128,85 @@ index fe5127a..d9be549 100644
 +		free(tdb_dir);
 +	free(tdb_file);
 +err:
-+	com_err(ctx->program_name, retval, "%s",
++	com_err(program_name, retval, "%s",
 +		_("while trying to setup undo file\n"));
 +	return retval;
 +}
 +
- int main (int argc, char *argv[])
+ int main (int argc, char ** argv)
  {
- 	errcode_t	retval = 0, retval2 = 0, orig_retval = 0;
-@@ -1314,6 +1404,12 @@ restart:
- 			flags &= ~EXT2_FLAG_EXCLUSIVE;
- 	}
+ 	errcode_t	retval;
+@@ -186,7 +268,7 @@ int main (int argc, char ** argv)
+ 	unsigned int	blocksize;
+ 	long		sysval;
+ 	int		len, mount_flags;
+-	char		*mtpt;
++	char		*mtpt, *undo_file = NULL;
  
-+	if (ctx->undo_file) {
-+		retval = e2fsck_setup_tdb(ctx, &io_ptr);
+ #ifdef ENABLE_NLS
+ 	setlocale(LC_MESSAGES, "");
+@@ -203,7 +285,7 @@ int main (int argc, char ** argv)
+ 	if (argc && *argv)
+ 		program_name = *argv;
+ 
+-	while ((c = getopt(argc, argv, "d:fFhMPpS:bs")) != EOF) {
++	while ((c = getopt(argc, argv, "d:fFhMPpS:bsz:")) != EOF) {
+ 		switch (c) {
+ 		case 'h':
+ 			usage(program_name);
+@@ -235,6 +317,9 @@ int main (int argc, char ** argv)
+ 		case 's':
+ 			flags |= RESIZE_DISABLE_64BIT;
+ 			break;
++		case 'z':
++			undo_file = optarg;
++			break;
+ 		default:
+ 			usage(program_name);
+ 		}
+@@ -319,6 +404,12 @@ int main (int argc, char ** argv)
+ 
+ 	io_flags |= EXT2_FLAG_64BITS;
+ 
++	if (undo_file) {
++		retval = resize2fs_setup_tdb(device_name, undo_file, &io_ptr);
 +		if (retval)
-+			exit(FSCK_ERROR);
++			exit(1);
 +	}
 +
- 	ctx->openfs_flags = flags;
- 	retval = try_open_fs(ctx, flags, io_ptr, &fs);
- 
+ 	retval = ext2fs_open2(device_name, io_options, io_flags,
+ 			      0, 0, io_ptr, &fs);
+ 	if (retval) {
+diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
+index 0129bfc..d2738e9 100644
+--- a/resize/resize2fs.8.in
++++ b/resize/resize2fs.8.in
+@@ -18,6 +18,10 @@ resize2fs \- ext2/ext3/ext4 file system resizer
+ .B \-S
+ .I RAID-stride
+ ]
++[
++.B \-z
++.I undo_file
++]
+ .I device
+ [
+ .I size
+@@ -149,6 +153,16 @@ The
+ program will heuristically determine the RAID stride that was specified
+ when the filesystem was created.  This option allows the user to
+ explicitly specify a RAID stride setting to be used by resize2fs instead.
++.TP
++.BI \-z " undo_file"
++Before overwriting a file system block, write the old contents of the block to
++an undo file.  This undo file can be used with e2undo(8) to restore the old
++contents of the file system should something go wrong.  If the empty string is
++passed as the undo_file argument, the undo file will be written to a file named
++resize2fs-\fIdevice\fR.e2undo in the directory specified via the
++\fIE2FSPROGS_UNDO_DIR\fR environment variable.
++
++WARNING: The undo file cannot be used to recover from a power or system crash.
+ .SH KNOWN BUGS
+ The minimum size of the filesystem as estimated by resize2fs may be
+ incorrect, especially for filesystems with 1k and 2k blocksizes.
 
