@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 10/31] e2fsck: rebuild sparse extent trees/convert
- non-extent ext3 files
-Date: Sat, 20 Dec 2014 13:17:50 -0800
-Message-ID: <20141220211750.25563.78489.stgit@birch.djwong.org>
+Subject: [PATCH 11/31] tests: verify proper rebuilding of sparse extent
+ trees and block map file conversion
+Date: Sat, 20 Dec 2014 13:17:57 -0800
+Message-ID: <20141220211757.25563.25321.stgit@birch.djwong.org>
 References: <20141220211640.25563.80596.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,1296 +10,1388 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:40509 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:40532 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752426AbaLTVR4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Dec 2014 16:17:56 -0500
+	with ESMTP id S1752426AbaLTVSE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Dec 2014 16:18:04 -0500
 In-Reply-To: <20141220211640.25563.80596.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Teach e2fsck to (re)construct extent trees.  This enables us to do
-either of the following: compress a highly sparse extent tree into
-fewer ETB blocks; or convert a ext3-style block mapped file to an
-extent file.  The reconstruction is performed during pass 1E or 3A,
-as detailed below.
-
-For files that are already extent based, this algorithm will
-automatically run (pending user approval) if pass1 determines either
-(1) that a whole level of extent tree will fit into a higher level of
-the tree; (2) that the size of any level can be reduced by at least
-one ETB block; or (3) the extent tree is unnecessarily deep.  It will
-not run at all if errors are found and the user declines to fix the
-errors.
-
-The option "-E bmap2extent" can be used to force e2fsck to convert all
-block map files to extent trees, and to rebuild all extent files'
-extent trees.  After conversion, files larger than 12 blocks should be
-defragmented to eliminate empty holes where a block lives.
-
-The extent tree constructor is pretty dumb -- it creates a list of
-leaf extents (adjacent extents are collapsed), marks all indirect
-blocks / ETB blocks free, installs a new extent tree root in the
-inode, then loads the leaf extents into the tree.
-
-v2: Account for extent tree block slack that we create when splitting
-a block, so that we don't repeatedly annoy the user to rebuild a tree
-that we can't optimize further.
-
-v3: For any directory being rebuilt during pass 3A, defer any extent
-tree rebuilding until after the rehash.  It's quite possible that the
-act of compressing an aged directory will cause it to shrink far
-enough to enable us to knock a level off the dir's extent tree.
-
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- e2fsck/Makefile.in                     |   16 +
- e2fsck/e2fsck.8.in                     |    3 
- e2fsck/e2fsck.c                        |    4 
- e2fsck/e2fsck.h                        |   35 ++
- e2fsck/extents.c                       |  532 ++++++++++++++++++++++++++++++++
- e2fsck/pass1.c                         |   62 ++++
- e2fsck/problem.c                       |   48 +++
- e2fsck/problem.h                       |   33 ++
- e2fsck/rehash.c                        |   27 +-
- e2fsck/super.c                         |    7 
- e2fsck/unix.c                          |    4 
- tests/f_extent_bad_node/expect.1       |   11 -
- tests/f_extent_bad_node/expect.2       |    2 
- tests/f_extent_int_bad_magic/expect.1  |    5 
- tests/f_extent_leaf_bad_magic/expect.1 |    5 
- tests/f_extent_oobounds/expect.1       |   11 -
- tests/f_extent_oobounds/expect.2       |    2 
- tests/f_extents/expect.1               |    9 +
- 18 files changed, 789 insertions(+), 27 deletions(-)
- create mode 100644 e2fsck/extents.c
+ tests/f_collapse_extent_tree/expect.1       |   18 ++++
+ tests/f_collapse_extent_tree/expect.2       |   10 ++
+ tests/f_collapse_extent_tree/image.gz       |  Bin
+ tests/f_collapse_extent_tree/name           |    1 
+ tests/f_collapse_extent_tree/script         |  118 +++++++++++++++++++++++++++
+ tests/f_compress_extent_tree_level/expect.1 |   25 ++++++
+ tests/f_compress_extent_tree_level/expect.2 |   17 ++++
+ tests/f_compress_extent_tree_level/image.gz |  Bin
+ tests/f_compress_extent_tree_level/name     |    1 
+ tests/f_compress_extent_tree_level/script   |  118 +++++++++++++++++++++++++++
+ tests/f_convert_bmap/expect.1               |   26 ++++++
+ tests/f_convert_bmap/expect.2               |   10 ++
+ tests/f_convert_bmap/image.gz               |  Bin
+ tests/f_convert_bmap/name                   |    1 
+ tests/f_convert_bmap/script                 |  117 +++++++++++++++++++++++++++
+ tests/f_convert_bmap_and_extent/expect.1    |   33 +++++++
+ tests/f_convert_bmap_and_extent/expect.2    |   16 ++++
+ tests/f_convert_bmap_and_extent/image.gz    |  Bin
+ tests/f_convert_bmap_and_extent/name        |    1 
+ tests/f_convert_bmap_and_extent/script      |  119 +++++++++++++++++++++++++++
+ tests/f_extent_too_deep/expect.1            |   23 +++++
+ tests/f_extent_too_deep/expect.2            |   10 ++
+ tests/f_extent_too_deep/image.gz            |  Bin
+ tests/f_extent_too_deep/name                |    1 
+ tests/f_extent_too_deep/script              |  118 +++++++++++++++++++++++++++
+ tests/f_opt_extent/expect                   |   55 ++++++++++++
+ tests/f_opt_extent/name                     |    1 
+ tests/f_opt_extent/script                   |   64 +++++++++++++++
+ tests/f_opt_extent_ext3/expect              |   44 ++++++++++
+ tests/f_opt_extent_ext3/name                |    1 
+ tests/f_opt_extent_ext3/script              |   65 +++++++++++++++
+ 31 files changed, 1013 insertions(+)
+ create mode 100644 tests/f_collapse_extent_tree/expect.1
+ create mode 100644 tests/f_collapse_extent_tree/expect.2
+ create mode 100644 tests/f_collapse_extent_tree/image.gz
+ create mode 100644 tests/f_collapse_extent_tree/name
+ create mode 100644 tests/f_collapse_extent_tree/script
+ create mode 100644 tests/f_compress_extent_tree_level/expect.1
+ create mode 100644 tests/f_compress_extent_tree_level/expect.2
+ create mode 100644 tests/f_compress_extent_tree_level/image.gz
+ create mode 100644 tests/f_compress_extent_tree_level/name
+ create mode 100644 tests/f_compress_extent_tree_level/script
+ create mode 100644 tests/f_convert_bmap/expect.1
+ create mode 100644 tests/f_convert_bmap/expect.2
+ create mode 100644 tests/f_convert_bmap/image.gz
+ create mode 100644 tests/f_convert_bmap/name
+ create mode 100644 tests/f_convert_bmap/script
+ create mode 100644 tests/f_convert_bmap_and_extent/expect.1
+ create mode 100644 tests/f_convert_bmap_and_extent/expect.2
+ create mode 100644 tests/f_convert_bmap_and_extent/image.gz
+ create mode 100644 tests/f_convert_bmap_and_extent/name
+ create mode 100644 tests/f_convert_bmap_and_extent/script
+ create mode 100644 tests/f_extent_too_deep/expect.1
+ create mode 100644 tests/f_extent_too_deep/expect.2
+ create mode 100644 tests/f_extent_too_deep/image.gz
+ create mode 100644 tests/f_extent_too_deep/name
+ create mode 100644 tests/f_extent_too_deep/script
+ create mode 100644 tests/f_opt_extent/expect
+ create mode 100644 tests/f_opt_extent/name
+ create mode 100644 tests/f_opt_extent/script
+ create mode 100644 tests/f_opt_extent_ext3/expect
+ create mode 100644 tests/f_opt_extent_ext3/name
+ create mode 100644 tests/f_opt_extent_ext3/script
 
 
-diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
-index e40e51b..a4413d9 100644
---- a/e2fsck/Makefile.in
-+++ b/e2fsck/Makefile.in
-@@ -62,7 +62,8 @@ OBJS= dict.o unix.o e2fsck.o super.o pass1.o pass1b.o pass2.o \
- 	pass3.o pass4.o pass5.o journal.o badblocks.o util.o dirinfo.o \
- 	dx_dirinfo.o ehandler.o problem.o message.o quota.o recovery.o \
- 	region.o revoke.o ea_refcount.o rehash.o profile.o prof_err.o \
--	logfile.o sigcatcher.o $(MTRACE_OBJ) plausible.o readahead.o
-+	logfile.o sigcatcher.o $(MTRACE_OBJ) plausible.o readahead.o \
-+	extents.o
- 
- PROFILED_OBJS= profiled/dict.o profiled/unix.o profiled/e2fsck.o \
- 	profiled/super.o profiled/pass1.o profiled/pass1b.o \
-@@ -74,7 +75,7 @@ PROFILED_OBJS= profiled/dict.o profiled/unix.o profiled/e2fsck.o \
- 	profiled/ea_refcount.o profiled/rehash.o profiled/profile.o \
- 	profiled/prof_err.o profiled/logfile.o \
- 	profiled/sigcatcher.o profiled/plausible.o \
--	profiled/sigcatcher.o profiled/readahead.o
-+	profiled/sigcatcher.o profiled/readahead.o profiled/extents.o
- 
- SRCS= $(srcdir)/e2fsck.c \
- 	$(srcdir)/dict.c \
-@@ -106,6 +107,7 @@ SRCS= $(srcdir)/e2fsck.c \
- 	prof_err.c \
- 	$(srcdir)/quota.c \
- 	$(srcdir)/../misc/plausible.c \
-+	$(srcdir)/extents.c \
- 	$(MTRACE_SRC)
- 
- all:: profiled $(PROGS) e2fsck $(MANPAGES) $(FMANPAGES)
-@@ -308,6 +310,16 @@ pass1.o: $(srcdir)/pass1.c $(top_builddir)/lib/config.h \
-  $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-  $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-  $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h
-+extents.o: $(srcdir)/extents.c $(top_builddir)/lib/config.h \
-+ $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/et/com_err.h \
-+ $(srcdir)/e2fsck.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
-+ $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
-+ $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
-+ $(top_builddir)/lib/ext2fs/ext2_err.h \
-+ $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-+ $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-+ $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-+ $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h $(srcdir)/dict.h
- pass1b.o: $(srcdir)/pass1b.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/et/com_err.h \
-  $(srcdir)/e2fsck.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
-diff --git a/e2fsck/e2fsck.8.in b/e2fsck/e2fsck.8.in
-index 84ae50f..0c2725e 100644
---- a/e2fsck/e2fsck.8.in
-+++ b/e2fsck/e2fsck.8.in
-@@ -214,6 +214,9 @@ e2fsck runtime.  By default, this is set to the size of a block group's inode
- table (typically 2MiB on a regular ext4 filesystem); if this amount is more
- than 1/100 of total physical memory, readahead is disabled.  Set this to zero
- to disable readahead entirely.
-+.TP
-+.BI bmap2extent
-+Convert block-mapped files to extent-mapped files.
- .RE
- .TP
- .B \-f
-diff --git a/e2fsck/e2fsck.c b/e2fsck/e2fsck.c
-index 7483072..8a7b041 100644
---- a/e2fsck/e2fsck.c
-+++ b/e2fsck/e2fsck.c
-@@ -204,8 +204,8 @@ void e2fsck_free_context(e2fsck_t ctx)
- typedef void (*pass_t)(e2fsck_t ctx);
- 
- static pass_t e2fsck_passes[] = {
--	e2fsck_pass1, e2fsck_pass2, e2fsck_pass3, e2fsck_pass4,
--	e2fsck_pass5, 0 };
-+	e2fsck_pass1, e2fsck_pass1e, e2fsck_pass2, e2fsck_pass3,
-+	e2fsck_pass4, e2fsck_pass5, 0 };
- 
- #define E2F_FLAG_RUN_RETURN	(E2F_FLAG_SIGNAL_MASK|E2F_FLAG_RESTART)
- 
-diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index 33dbcad..15d968e 100644
---- a/e2fsck/e2fsck.h
-+++ b/e2fsck/e2fsck.h
-@@ -167,6 +167,7 @@ struct resource_track {
- #define E2F_OPT_FRAGCHECK	0x0800
- #define E2F_OPT_JOURNAL_ONLY	0x1000 /* only replay the journal */
- #define E2F_OPT_DISCARD		0x2000
-+#define E2F_OPT_CONVERT_BMAP	0x4000 /* convert blockmap to extent */
- 
- /*
-  * E2fsck flags
-@@ -190,6 +191,7 @@ struct resource_track {
- #define E2F_FLAG_EXITING	0x1000 /* E2fsck exiting due to errors */
- #define E2F_FLAG_TIME_INSANE	0x2000 /* Time is insane */
- #define E2F_FLAG_PROBLEMS_FIXED	0x4000 /* At least one problem was fixed */
-+#define E2F_FLAG_ALLOC_OK	0x8000 /* Can we allocate blocks? */
- 
- #define E2F_RESET_FLAGS (E2F_FLAG_TIME_INSANE | E2F_FLAG_PROBLEMS_FIXED)
- 
-@@ -381,6 +383,23 @@ struct e2fsck_struct {
- 
- 	/* How much are we allowed to readahead? */
- 	unsigned long long readahead_kb;
-+
-+	/*
-+	 * Inodes to rebuild extent trees
-+	 */
-+	ext2fs_inode_bitmap inodes_to_rebuild;
-+};
-+
-+/* Data structures to evaluate whether an extent tree needs rebuilding. */
-+struct extent_tree_level {
-+	unsigned int	num_extents;
-+	unsigned int	max_extents;
-+};
-+
-+struct extent_tree_info {
-+	int force_rebuild:1;
-+	ext2_ino_t ino;
-+	struct extent_tree_level	ext_info[MAX_EXTENT_DEPTH_COUNT];
- };
- 
- /* Used by the region allocation code */
-@@ -456,6 +475,19 @@ extern blk64_t ea_refcount_intr_next(ext2_refcount_t refcount, int *ret);
- extern const char *ehandler_operation(const char *op);
- extern void ehandler_init(io_channel channel);
- 
-+/* extents.c */
-+struct problem_context;
-+errcode_t e2fsck_rebuild_extents_later(e2fsck_t ctx, ext2_ino_t ino);
-+int e2fsck_ino_will_be_rebuilt(e2fsck_t ctx, ext2_ino_t ino);
-+void e2fsck_pass1e(e2fsck_t ctx);
-+errcode_t e2fsck_check_rebuild_extents(e2fsck_t ctx, ext2_ino_t ino,
-+				       struct ext2_inode *inode,
-+				       struct problem_context *pctx);
-+errcode_t e2fsck_should_rebuild_extents(e2fsck_t ctx,
-+					struct problem_context *pctx,
-+					struct extent_tree_info *eti,
-+					struct ext2_extent_info *info);
-+
- /* journal.c */
- extern errcode_t e2fsck_check_ext3_journal(e2fsck_t ctx);
- extern errcode_t e2fsck_run_ext3_journal(e2fsck_t ctx);
-@@ -519,7 +551,8 @@ extern int region_allocate(region_t region, region_addr_t start, int n);
- /* rehash.c */
- void e2fsck_rehash_dir_later(e2fsck_t ctx, ext2_ino_t ino);
- int e2fsck_dir_will_be_rehashed(e2fsck_t ctx, ext2_ino_t ino);
--errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino);
-+errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino,
-+			    struct problem_context *pctx);
- void e2fsck_rehash_directories(e2fsck_t ctx);
- 
- /* sigcatcher.c */
-diff --git a/e2fsck/extents.c b/e2fsck/extents.c
+diff --git a/tests/f_collapse_extent_tree/expect.1 b/tests/f_collapse_extent_tree/expect.1
 new file mode 100644
-index 0000000..9c2ae42
+index 0000000..d76880c
 --- /dev/null
-+++ b/e2fsck/extents.c
-@@ -0,0 +1,532 @@
-+/*
-+ * extents.c --- rebuild extent tree
-+ *
-+ * Copyright (C) 2014 Oracle.
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Public
-+ * License, version 2.
-+ * %End-Header%
-+ */
-+
-+#include "config.h"
-+#include <string.h>
-+#include <ctype.h>
-+#include <errno.h>
-+#include "e2fsck.h"
-+#include "problem.h"
-+
-+#undef DEBUG
-+#undef DEBUG_SUMMARY
-+#undef DEBUG_FREE
-+
-+#define NUM_EXTENTS	341	/* about one ETB' worth of extents */
-+
-+static errcode_t e2fsck_rebuild_extents(e2fsck_t ctx, ext2_ino_t ino);
-+
-+/* Schedule an inode to have its extent tree rebuilt during pass 1E. */
-+errcode_t e2fsck_rebuild_extents_later(e2fsck_t ctx, ext2_ino_t ino)
-+{
-+	if (!EXT2_HAS_INCOMPAT_FEATURE(ctx->fs->super,
-+				       EXT3_FEATURE_INCOMPAT_EXTENTS) ||
-+	    (ctx->options & E2F_OPT_NO) ||
-+	    (ino != EXT2_ROOT_INO && ino < ctx->fs->super->s_first_ino))
-+		return 0;
-+
-+	if (ctx->flags & E2F_FLAG_ALLOC_OK)
-+		return e2fsck_rebuild_extents(ctx, ino);
-+
-+	if (!ctx->inodes_to_rebuild)
-+		e2fsck_allocate_inode_bitmap(ctx->fs,
-+					     _("extent rebuild inode map"),
-+					     EXT2FS_BMAP64_RBTREE,
-+					     "inodes_to_rebuild",
-+					     &ctx->inodes_to_rebuild);
-+	if (ctx->inodes_to_rebuild)
-+		ext2fs_mark_inode_bitmap2(ctx->inodes_to_rebuild, ino);
-+	return 0;
-+}
-+
-+/* Ask if an inode will have its extents rebuilt during pass 1E. */
-+int e2fsck_ino_will_be_rebuilt(e2fsck_t ctx, ext2_ino_t ino)
-+{
-+	if (!ctx->inodes_to_rebuild)
-+		return 0;
-+	return ext2fs_test_inode_bitmap2(ctx->inodes_to_rebuild, ino);
-+}
-+
-+struct extent_list {
-+	blk64_t blocks_freed;
-+	struct ext2fs_extent *extents;
-+	unsigned int count;
-+	unsigned int size;
-+	unsigned int ext_read;
-+	errcode_t retval;
-+	ext2_ino_t ino;
-+};
-+
-+static errcode_t load_extents(e2fsck_t ctx, struct extent_list *list)
-+{
-+	ext2_filsys		fs = ctx->fs;
-+	ext2_extent_handle_t	handle;
-+	struct ext2fs_extent	extent;
-+	errcode_t		retval;
-+
-+	retval = ext2fs_extent_open(fs, list->ino, &handle);
-+	if (retval)
-+		return retval;
-+
-+	retval = ext2fs_extent_get(handle, EXT2_EXTENT_ROOT, &extent);
-+	if (retval)
-+		goto out;
-+
-+	do {
-+		if (extent.e_flags & EXT2_EXTENT_FLAGS_SECOND_VISIT)
-+			goto next;
-+
-+		/* Internal node; free it and we'll re-allocate it later */
-+		if (!(extent.e_flags & EXT2_EXTENT_FLAGS_LEAF)) {
-+#if defined(DEBUG) || defined(DEBUG_FREE)
-+			printf("ino=%d free=%llu bf=%llu\n", list->ino,
-+					extent.e_pblk, list->blocks_freed + 1);
-+#endif
-+			list->blocks_freed++;
-+			ext2fs_block_alloc_stats2(fs, extent.e_pblk, -1);
-+			goto next;
-+		}
-+
-+		list->ext_read++;
-+		/* Can we attach it to the previous extent? */
-+		if (list->count) {
-+			struct ext2fs_extent *last = list->extents +
-+						     list->count - 1;
-+			blk64_t end = last->e_len + extent.e_len;
-+
-+			if (last->e_pblk + last->e_len == extent.e_pblk &&
-+			    last->e_lblk + last->e_len == extent.e_lblk &&
-+			    (last->e_flags & EXT2_EXTENT_FLAGS_UNINIT) ==
-+			    (extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT) &&
-+			    end < (1ULL << 32)) {
-+				last->e_len += extent.e_len;
-+#ifdef DEBUG
-+				printf("R: ino=%d len=%u\n", list->ino,
-+						last->e_len);
-+#endif
-+				goto next;
-+			}
-+		}
-+
-+		/* Do we need to expand? */
-+		if (list->count == list->size) {
-+			unsigned int new_size = (list->size + NUM_EXTENTS) *
-+						sizeof(struct ext2fs_extent);
-+			retval = ext2fs_resize_mem(0, new_size, &list->extents);
-+			if (retval)
-+				goto out;
-+			list->size += NUM_EXTENTS;
-+		}
-+
-+		/* Add a new extent */
-+		memcpy(list->extents + list->count, &extent, sizeof(extent));
-+#ifdef DEBUG
-+		printf("R: ino=%d pblk=%llu lblk=%llu len=%u\n", list->ino,
-+				extent.e_pblk, extent.e_lblk, extent.e_len);
-+#endif
-+		list->count++;
-+next:
-+		retval = ext2fs_extent_get(handle, EXT2_EXTENT_NEXT, &extent);
-+	} while (retval == 0);
-+
-+out:
-+	/* Ok if we run off the end */
-+	if (retval == EXT2_ET_EXTENT_NO_NEXT)
-+		retval = 0;
-+	ext2fs_extent_free(handle);
-+	return retval;
-+}
-+
-+static int find_blocks(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
-+		       blk64_t ref_blk, int ref_offset, void *priv_data)
-+{
-+	struct extent_list *list = priv_data;
-+
-+	/* Internal node? */
-+	if (blockcnt < 0) {
-+#if defined(DEBUG) || defined(DEBUG_FREE)
-+		printf("ino=%d free=%llu bf=%llu\n", list->ino, *blocknr,
-+				list->blocks_freed + 1);
-+#endif
-+		list->blocks_freed++;
-+		ext2fs_block_alloc_stats2(fs, *blocknr, -1);
-+		return 0;
-+	}
-+
-+	/* Can we attach it to the previous extent? */
-+	if (list->count) {
-+		struct ext2fs_extent *last = list->extents +
-+					     list->count - 1;
-+		blk64_t end = last->e_len + 1;
-+
-+		if (last->e_pblk + last->e_len == *blocknr &&
-+		    end < (1ULL << 32)) {
-+			last->e_len++;
-+#ifdef DEBUG
-+			printf("R: ino=%d len=%u\n", list->ino, last->e_len);
-+#endif
-+			return 0;
-+		}
-+	}
-+
-+	/* Do we need to expand? */
-+	if (list->count == list->size) {
-+		unsigned int new_size = (list->size + NUM_EXTENTS) *
-+					sizeof(struct ext2fs_extent);
-+		list->retval = ext2fs_resize_mem(0, new_size, &list->extents);
-+		if (list->retval)
-+			return BLOCK_ABORT;
-+		list->size += NUM_EXTENTS;
-+	}
-+
-+	/* Add a new extent */
-+	list->extents[list->count].e_pblk = *blocknr;
-+	list->extents[list->count].e_lblk = blockcnt;
-+	list->extents[list->count].e_len = 1;
-+	list->extents[list->count].e_flags = 0;
-+#ifdef DEBUG
-+	printf("R: ino=%d pblk=%llu lblk=%llu len=%u\n", list->ino, *blocknr,
-+			blockcnt, 1);
-+#endif
-+	list->count++;
-+
-+	return 0;
-+}
-+
-+static errcode_t rebuild_extent_tree(e2fsck_t ctx, struct extent_list *list,
-+				     ext2_ino_t ino)
-+{
-+	struct ext2_inode	inode;
-+	errcode_t		retval;
-+	ext2_extent_handle_t	handle;
-+	unsigned int		i, ext_written;
-+	struct ext2fs_extent	*ex, extent;
-+
-+	list->count = 0;
-+	list->blocks_freed = 0;
-+	list->ino = ino;
-+	list->ext_read = 0;
-+	e2fsck_read_inode(ctx, ino, &inode, "rebuild_extents");
-+
-+	/* Skip deleted inodes and inline data files */
-+	if (inode.i_links_count == 0 ||
-+	    inode.i_flags & EXT4_INLINE_DATA_FL)
-+		return 0;
-+
-+	/* Collect lblk->pblk mappings */
-+	if (inode.i_flags & EXT4_EXTENTS_FL) {
-+		retval = load_extents(ctx, list);
-+		goto extents_loaded;
-+	}
-+
-+	retval = ext2fs_block_iterate3(ctx->fs, ino, BLOCK_FLAG_READ_ONLY, 0,
-+				       find_blocks, list);
-+	if (retval)
-+		goto err;
-+	if (list->retval) {
-+		retval = list->retval;
-+		goto err;
-+	}
-+
-+extents_loaded:
-+	/* Reset extent tree */
-+	inode.i_flags &= ~EXT4_EXTENTS_FL;
-+	memset(inode.i_block, 0, sizeof(inode.i_block));
-+
-+	/* Make a note of freed blocks */
-+	retval = ext2fs_iblk_sub_blocks(ctx->fs, &inode, list->blocks_freed);
-+	if (retval)
-+		goto err;
-+
-+	/* Now stuff extents into the file */
-+	retval = ext2fs_extent_open2(ctx->fs, ino, &inode, &handle);
-+	if (retval)
-+		goto err;
-+
-+	ext_written = 0;
-+	for (i = 0, ex = list->extents; i < list->count; i++, ex++) {
-+		memcpy(&extent, ex, sizeof(struct ext2fs_extent));
-+		extent.e_flags &= EXT2_EXTENT_FLAGS_UNINIT;
-+		if (extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT) {
-+			if (extent.e_len > EXT_UNINIT_MAX_LEN) {
-+				extent.e_len = EXT_UNINIT_MAX_LEN;
-+				ex->e_pblk += EXT_UNINIT_MAX_LEN;
-+				ex->e_lblk += EXT_UNINIT_MAX_LEN;
-+				ex->e_len -= EXT_UNINIT_MAX_LEN;
-+				ex--;
-+				i--;
-+			}
-+		} else {
-+			if (extent.e_len > EXT_INIT_MAX_LEN) {
-+				extent.e_len = EXT_INIT_MAX_LEN;
-+				ex->e_pblk += EXT_INIT_MAX_LEN;
-+				ex->e_lblk += EXT_INIT_MAX_LEN;
-+				ex->e_len -= EXT_INIT_MAX_LEN;
-+				ex--;
-+				i--;
-+			}
-+		}
-+
-+#ifdef DEBUG
-+		printf("W: ino=%d pblk=%llu lblk=%llu len=%u\n", ino,
-+				extent.e_pblk, extent.e_lblk, extent.e_len);
-+#endif
-+		retval = ext2fs_extent_insert(handle, EXT2_EXTENT_INSERT_AFTER,
-+					      &extent);
-+		if (retval)
-+			goto err2;
-+		retval = ext2fs_extent_fix_parents(handle);
-+		if (retval)
-+			goto err2;
-+		ext_written++;
-+	}
-+
-+#if defined(DEBUG) || defined(DEBUG_SUMMARY)
-+	printf("rebuild: ino=%d extents=%d->%d\n", ino, list->ext_read,
-+	       ext_written);
-+#endif
-+	e2fsck_write_inode(ctx, ino, &inode, "rebuild_extents");
-+
-+err2:
-+	ext2fs_extent_free(handle);
-+err:
-+	return retval;
-+}
-+
-+/* Rebuild the extents immediately */
-+static errcode_t e2fsck_rebuild_extents(e2fsck_t ctx, ext2_ino_t ino)
-+{
-+	struct extent_list	list;
-+	errcode_t err;
-+
-+	if (!EXT2_HAS_INCOMPAT_FEATURE(ctx->fs->super,
-+				       EXT3_FEATURE_INCOMPAT_EXTENTS) ||
-+	    (ctx->options & E2F_OPT_NO) ||
-+	    (ino != EXT2_ROOT_INO && ino < ctx->fs->super->s_first_ino))
-+		return 0;
-+
-+	e2fsck_read_bitmaps(ctx);
-+	memset(&list, 0, sizeof(list));
-+	err = ext2fs_get_mem(sizeof(struct ext2fs_extent) * NUM_EXTENTS,
-+				&list.extents);
-+	if (err)
-+		return err;
-+	list.size = NUM_EXTENTS;
-+	err = rebuild_extent_tree(ctx, &list, ino);
-+	ext2fs_free_mem(&list.extents);
-+
-+	return err;
-+}
-+
-+static void rebuild_extents(e2fsck_t ctx, const char *pass_name, int pr_header)
-+{
-+	struct problem_context	pctx;
-+#ifdef RESOURCE_TRACK
-+	struct resource_track	rtrack;
-+#endif
-+	struct extent_list	list;
-+	int			first = 1;
-+	ext2_ino_t		ino = 0;
-+	errcode_t		retval;
-+
-+	if (!EXT2_HAS_INCOMPAT_FEATURE(ctx->fs->super,
-+				       EXT3_FEATURE_INCOMPAT_EXTENTS) ||
-+	    !ext2fs_test_valid(ctx->fs) ||
-+	    ctx->invalid_bitmaps) {
-+		if (ctx->inodes_to_rebuild)
-+			ext2fs_free_inode_bitmap(ctx->inodes_to_rebuild);
-+		ctx->inodes_to_rebuild = NULL;
-+	}
-+
-+	if (ctx->inodes_to_rebuild == NULL)
-+		return;
-+
-+	init_resource_track(&rtrack, ctx->fs->io);
-+	clear_problem_context(&pctx);
-+	e2fsck_read_bitmaps(ctx);
-+
-+	memset(&list, 0, sizeof(list));
-+	retval = ext2fs_get_mem(sizeof(struct ext2fs_extent) * NUM_EXTENTS,
-+				&list.extents);
-+	list.size = NUM_EXTENTS;
-+	while (1) {
-+		retval = ext2fs_find_first_set_inode_bitmap2(
-+				ctx->inodes_to_rebuild, ino + 1,
-+				ctx->fs->super->s_inodes_count, &ino);
-+		if (retval)
-+			break;
-+		pctx.ino = ino;
-+		if (first) {
-+			fix_problem(ctx, pr_header, &pctx);
-+			first = 0;
-+		}
-+		pctx.errcode = rebuild_extent_tree(ctx, &list, ino);
-+		if (pctx.errcode) {
-+			end_problem_latch(ctx, PR_LATCH_OPTIMIZE_EXT);
-+			fix_problem(ctx, PR_1E_OPTIMIZE_EXT_ERR, &pctx);
-+		}
-+		if (ctx->progress && !ctx->progress_fd)
-+			e2fsck_simple_progress(ctx, "Rebuilding extents",
-+					100.0 * (float) ino /
-+					(float) ctx->fs->super->s_inodes_count,
-+					ino);
-+	}
-+	end_problem_latch(ctx, PR_LATCH_OPTIMIZE_EXT);
-+
-+	ext2fs_free_inode_bitmap(ctx->inodes_to_rebuild);
-+	ctx->inodes_to_rebuild = NULL;
-+	ext2fs_free_mem(&list.extents);
-+
-+	print_resource_track(ctx, pass_name, &rtrack, ctx->fs->io);
-+}
-+
-+/* Scan a file to see if we should rebuild its extent tree */
-+errcode_t e2fsck_check_rebuild_extents(e2fsck_t ctx, ext2_ino_t ino,
-+				  struct ext2_inode *inode,
-+				  struct problem_context *pctx)
-+{
-+	struct extent_tree_info	eti;
-+	struct ext2_extent_info	info, top_info;
-+	struct ext2fs_extent	extent;
-+	ext2_extent_handle_t	ehandle;
-+	ext2_filsys		fs = ctx->fs;
-+	errcode_t		retval;
-+
-+	/* block map file and we want extent conversion */
-+	if (!(inode->i_flags & EXT4_EXTENTS_FL) &&
-+	    !(inode->i_flags & EXT4_INLINE_DATA_FL) &&
-+	    (ctx->options & E2F_OPT_CONVERT_BMAP)) {
-+		return e2fsck_rebuild_extents_later(ctx, ino);
-+	}
-+
-+	if (!(inode->i_flags & EXT4_EXTENTS_FL))
-+		return 0;
-+	memset(&eti, 0, sizeof(eti));
-+	eti.ino = ino;
-+
-+	/* Otherwise, go scan the extent tree... */
-+	retval = ext2fs_extent_open2(fs, ino, inode, &ehandle);
-+	if (retval)
-+		return 0;
-+
-+	retval = ext2fs_extent_get_info(ehandle, &top_info);
-+	if (retval)
-+		goto out;
-+
-+	/* Check maximum extent depth */
-+	pctx->ino = ino;
-+	pctx->blk = top_info.max_depth;
-+	pctx->blk2 = ext2fs_max_extent_depth(ehandle);
-+	if (pctx->blk2 < pctx->blk &&
-+	    fix_problem(ctx, PR_1_EXTENT_BAD_MAX_DEPTH, pctx))
-+		eti.force_rebuild = 1;
-+
-+	/* Can we collect extent tree level stats? */
-+	pctx->blk = MAX_EXTENT_DEPTH_COUNT;
-+	if (pctx->blk2 > pctx->blk)
-+		fix_problem(ctx, PR_1E_MAX_EXTENT_TREE_DEPTH, pctx);
-+
-+	retval = ext2fs_extent_get(ehandle, EXT2_EXTENT_ROOT, &extent);
-+	if (retval)
-+		goto out;
-+
-+	do {
-+		retval = ext2fs_extent_get_info(ehandle, &info);
-+		if (retval)
-+			break;
-+
-+		/*
-+		 * If this is the first extent in an extent block that we
-+		 * haven't visited, collect stats on the block.
-+		 */
-+		if (info.curr_entry == 1 &&
-+		    !(extent.e_flags & EXT2_EXTENT_FLAGS_SECOND_VISIT) &&
-+		    !eti.force_rebuild) {
-+			struct extent_tree_level *etl;
-+
-+			etl = eti.ext_info + info.curr_level;
-+			etl->num_extents += info.num_entries;
-+			etl->max_extents += info.max_entries;
-+			/*
-+			 * Implementation wart: Splitting extent blocks when
-+			 * appending will leave the old block with one free
-+			 * entry.  Therefore unless the node is totally full,
-+			 * pretend that a non-root extent block can hold one
-+			 * fewer entry than it actually does, so that we don't
-+			 * repeatedly rebuild the extent tree.
-+			 */
-+			if (info.curr_level &&
-+			    info.num_entries < info.max_entries)
-+				etl->max_extents--;
-+		}
-+
-+		/* Skip to the end of a block of leaf nodes */
-+		if (extent.e_flags & EXT2_EXTENT_FLAGS_LEAF) {
-+			retval = ext2fs_extent_get(ehandle,
-+						    EXT2_EXTENT_LAST_SIB,
-+						    &extent);
-+			if (retval)
-+				break;
-+		}
-+
-+		retval = ext2fs_extent_get(ehandle, EXT2_EXTENT_NEXT, &extent);
-+	} while (retval == 0);
-+out:
-+	ext2fs_extent_free(ehandle);
-+	return e2fsck_should_rebuild_extents(ctx, pctx, &eti, &top_info);
-+}
-+
-+/* Having scanned a file's extent tree, decide if we should rebuild it */
-+errcode_t e2fsck_should_rebuild_extents(e2fsck_t ctx,
-+				   struct problem_context *pctx,
-+				   struct extent_tree_info *eti,
-+				   struct ext2_extent_info *info)
-+{
-+	struct extent_tree_level *ei;
-+	int i, j, op;
-+	unsigned int extents_per_block;
-+
-+	if (eti->force_rebuild)
-+		goto rebuild;
-+
-+	extents_per_block = (ctx->fs->blocksize -
-+			     sizeof(struct ext3_extent_header)) /
-+			    sizeof(struct ext3_extent);
-+	/*
-+	 * If we can consolidate a level or shorten the tree, schedule the
-+	 * extent tree to be rebuilt.
-+	 */
-+	for (i = 0, ei = eti->ext_info; i < info->max_depth + 1; i++, ei++) {
-+		if (ei->max_extents - ei->num_extents > extents_per_block) {
-+			pctx->blk = i;
-+			op = PR_1E_CAN_NARROW_EXTENT_TREE;
-+			goto rebuild;
-+		}
-+		for (j = 0; j < i; j++) {
-+			if (ei->num_extents < eti->ext_info[j].max_extents) {
-+				pctx->blk = i;
-+				op = PR_1E_CAN_COLLAPSE_EXTENT_TREE;
-+				goto rebuild;
-+			}
-+		}
-+	}
-+	return 0;
-+
-+rebuild:
-+	if (eti->force_rebuild || fix_problem(ctx, op, pctx))
-+		return e2fsck_rebuild_extents_later(ctx, eti->ino);
-+	return 0;
-+}
-+
-+void e2fsck_pass1e(e2fsck_t ctx)
-+{
-+	rebuild_extents(ctx, "Pass 1E", PR_1E_PASS_HEADER);
-+}
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 5d53a84..fd10c72 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -56,6 +56,8 @@
- #define _INLINE_ inline
- #endif
- 
-+#undef DEBUG
-+
- static int process_block(ext2_filsys fs, blk64_t	*blocknr,
- 			 e2_blkcnt_t blockcnt, blk64_t ref_blk,
- 			 int ref_offset, void *priv_data);
-@@ -95,6 +97,7 @@ struct process_block_struct {
- 	e2fsck_t	ctx;
- 	blk64_t		bad_ref;
- 	region_t	region;
-+	struct extent_tree_info	eti;
- };
- 
- struct process_inode_block {
-@@ -1805,6 +1808,7 @@ void e2fsck_pass1(e2fsck_t ctx)
- 		}
- 		e2fsck_pass1_dupblocks(ctx, block_buf);
- 	}
-+	ctx->flags |= E2F_FLAG_ALLOC_OK;
- 	ext2fs_free_mem(&inodes_to_process);
- endit:
- 	e2fsck_use_inode_shortcuts(ctx, 0);
-@@ -2429,6 +2433,22 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 	pctx->errcode = ext2fs_extent_get_info(ehandle, &info);
- 	if (pctx->errcode)
- 		return;
-+	if (!pb->eti.force_rebuild) {
-+		struct extent_tree_level *etl;
-+
-+		etl = pb->eti.ext_info + info.curr_level;
-+		etl->num_extents += info.num_entries;
-+		etl->max_extents += info.max_entries;
-+		/*
-+		 * Implementation wart: Splitting extent blocks when appending
-+		 * will leave the old block with one free entry.  Therefore
-+		 * unless the node is totally full, pretend that a non-root
-+		 * extent block can hold one fewer entry than it actually does,
-+		 * so that we don't repeatedly rebuild the extent tree.
-+		 */
-+		if (info.curr_level && info.num_entries < info.max_entries)
-+			etl->max_extents--;
-+	}
- 
- 	pctx->errcode = ext2fs_extent_get(ehandle, EXT2_EXTENT_FIRST_SIB,
- 					  &extent);
-@@ -2765,11 +2785,27 @@ static void check_blocks_extents(e2fsck_t ctx, struct problem_context *pctx,
- 
- 	retval = ext2fs_extent_get_info(ehandle, &info);
- 	if (retval == 0) {
--		if (info.max_depth >= MAX_EXTENT_DEPTH_COUNT)
--			info.max_depth = MAX_EXTENT_DEPTH_COUNT-1;
--		ctx->extent_depth_count[info.max_depth]++;
-+		int max_depth = info.max_depth;
-+
-+		if (max_depth >= MAX_EXTENT_DEPTH_COUNT)
-+			max_depth = MAX_EXTENT_DEPTH_COUNT-1;
-+		ctx->extent_depth_count[max_depth]++;
- 	}
- 
-+	/* Check maximum extent depth */
-+	pctx->blk = info.max_depth;
-+	pctx->blk2 = ext2fs_max_extent_depth(ehandle);
-+	if (pctx->blk2 < pctx->blk &&
-+	    fix_problem(ctx, PR_1_EXTENT_BAD_MAX_DEPTH, pctx))
-+		pb->eti.force_rebuild = 1;
-+
-+	/* Can we collect extent tree level stats? */
-+	pctx->blk = MAX_EXTENT_DEPTH_COUNT;
-+	if (pctx->blk2 > pctx->blk)
-+		fix_problem(ctx, PR_1E_MAX_EXTENT_TREE_DEPTH, pctx);
-+	memset(pb->eti.ext_info, 0, sizeof(pb->eti.ext_info));
-+	pb->eti.ino = pb->ino;
-+
- 	pb->region = region_create(0, info.max_lblk);
- 	if (!pb->region) {
- 		ext2fs_extent_free(ehandle);
-@@ -2792,6 +2828,16 @@ static void check_blocks_extents(e2fsck_t ctx, struct problem_context *pctx,
- 	region_free(pb->region);
- 	pb->region = NULL;
- 	ext2fs_extent_free(ehandle);
-+
-+	/* Rebuild unless it's a dir and we're rehashing it */
-+	if (LINUX_S_ISDIR(inode->i_mode) &&
-+	    e2fsck_dir_will_be_rehashed(ctx, ino))
-+		return;
-+
-+	if (ctx->options & E2F_OPT_CONVERT_BMAP)
-+		e2fsck_rebuild_extents_later(ctx, ino);
++++ b/tests/f_collapse_extent_tree/expect.1
+@@ -0,0 +1,18 @@
++debugfs: ex /a
++Level Entries       Logical      Physical Length Flags
++ 0/ 1   1/  1     0 -     0     9              1
++ 1/ 1   1/  1     0 -     0    10 -    10      1 
++Pass 1: Checking inodes, blocks, and sizes
++Inode 12 extent tree could be shorter.
++	(level 1 is unnecessary)
++Fix? yes
++
++Pass 1E: Optimizing extent trees
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 12/128 files (0.0% non-contiguous), 19/512 blocks
++Exit status is 1
+diff --git a/tests/f_collapse_extent_tree/expect.2 b/tests/f_collapse_extent_tree/expect.2
+new file mode 100644
+index 0000000..a1d28b1
+--- /dev/null
++++ b/tests/f_collapse_extent_tree/expect.2
+@@ -0,0 +1,10 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 12/128 files (0.0% non-contiguous), 19/512 blocks
++Exit status is 0
++debugfs: ex /a
++Level Entries       Logical      Physical Length Flags
++ 0/ 0   1/  1     0 -     0    10 -    10      1 
+diff --git a/tests/f_collapse_extent_tree/image.gz b/tests/f_collapse_extent_tree/image.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..97036cc597c5d2bcf6da6ffa68039b743b46aa20
+GIT binary patch
+literal 2537
+zcmb2|=3r2~7aqdI{Pxc7?BGBdh6lxY##=IfImEQ^-3nbX`9VZ0->#??lNCe@FW4FQ
+z#YVL}TII*Z*HrHjAfO&wvUze}my@ja$2)hVrIT2)v*+IzulqiySl;uUviknXEiDW(
+zp{IYUa6fd>vO6yD>gk^~J=eHSyKdZJX8c#hmFMiUr|S)uTs`cRwf(*Jw5JI-Ev9#g
+zzx10H^z+x-+1&PezM<j%wN-x#UY^?f?s?&}Z!v%C-)BF5eDl?n_HOO-adCV1e|+^f
+zi)Zq}X`-jCz9%p5SsMMuaQ~#F154Q%4#=Ijd_P(9SoF_&+pXIBr(Hc<aafRvfuW&!
+zy=4ribnWdMatsU%H@<&*|36zXO?crCT?gHin@3zeO5c0DaMs;f`-AOklmETD^R*_D
+z<Gowbo@dFzK=l>@Y`c&Bzwh4l(H_VvIMHLp0;CiE@B>MS|I9!V1gcl=k~>^-C+GRq
+zERBES2J6qaJ*xkI`|HBKUj^>6K=~WTAJ?~oRpKF>ikGbB1<K1<*)cNWQAa>3L0jxv
+z+Ope)Q@;H^{nJEJ_gnqOo+Qus7x`2FDlW?`wQch{Ubb=Tv2VRgcl<QbdwS81f1O)`
+zxz73}p2?fs|I45L_x?U_+1AJMzxKcTu9(hR=B|9cUak6ReWXR?Gy8?^|AIA>)j!SO
+zTl3dGUh~(|qxV1UpRv3(_UHXHezOY~k3TI=558jc%31d7spkCte`^0vE7$)i)8ioE
+m=uzp>5Eu=C(GVC7fzc2c4FPgP;J~%NEDm#Conv57U;qF<XAwLA
+
+literal 0
+HcmV?d00001
+
+diff --git a/tests/f_collapse_extent_tree/name b/tests/f_collapse_extent_tree/name
+new file mode 100644
+index 0000000..83e506f
+--- /dev/null
++++ b/tests/f_collapse_extent_tree/name
+@@ -0,0 +1 @@
++extent tree can be collapsed one level
+diff --git a/tests/f_collapse_extent_tree/script b/tests/f_collapse_extent_tree/script
+new file mode 100644
+index 0000000..ee18438
+--- /dev/null
++++ b/tests/f_collapse_extent_tree/script
+@@ -0,0 +1,118 @@
++if [ "$DESCRIPTION"x != x ]; then
++	test_description="$DESCRIPTION"
++fi
++if [ "$IMAGE"x = x ]; then
++	IMAGE=$test_dir/image.gz
++fi
++
++if [ "$FSCK_OPT"x = x ]; then
++	FSCK_OPT=-yf
++fi
++
++if [ "$SECOND_FSCK_OPT"x = x ]; then
++	SECOND_FSCK_OPT=-yf
++fi
++
++if [ "$OUT1"x = x ]; then
++	OUT1=$test_name.1.log
++fi
++
++if [ "$OUT2"x = x ]; then
++	OUT2=$test_name.2.log
++fi
++
++if [ "$EXP1"x = x ]; then
++	if [ -f $test_dir/expect.1.gz ]; then
++		EXP1=$test_name.1.tmp
++		gunzip < $test_dir/expect.1.gz > $EXP1
 +	else
-+		e2fsck_should_rebuild_extents(ctx, pctx, &pb->eti, &info);
- }
- 
- /*
-@@ -2851,6 +2897,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 	pb.ctx = ctx;
- 	pb.inode_modified = 0;
- 	pb.bad_ref = 0;
-+	pb.eti.force_rebuild = 0;
- 	pctx->ino = ino;
- 	pctx->errcode = 0;
- 
-@@ -2914,6 +2961,15 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 						  "check_blocks");
- 			fs->flags = (flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) |
- 				    (fs->flags & ~EXT2_FLAG_IGNORE_CSUM_ERRORS);
++		EXP1=$test_dir/expect.1
++	fi
++fi
 +
-+			if (ctx->options & E2F_OPT_CONVERT_BMAP) {
-+#ifdef DEBUG
-+				printf("bmap rebuild ino=%d\n", ino);
-+#endif
-+				if (!LINUX_S_ISDIR(inode->i_mode) ||
-+				    !e2fsck_dir_will_be_rehashed(ctx, ino))
-+					e2fsck_rebuild_extents_later(ctx, ino);
-+			}
- 		}
- 	}
- 	end_problem_latch(ctx, PR_LATCH_BLOCK);
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index a63e61c..07d79f3 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -1101,6 +1101,11 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("@i %i has a duplicate @x mapping\n\t(logical @b %c, @n physical @b %b, len %N)\n"),
- 	  PROMPT_CLEAR, 0 },
- 
-+	/* Inode extent tree could be more shallow */
-+	{ PR_1_EXTENT_BAD_MAX_DEPTH,
-+	  N_("@i %i @x tree could be more shallow (%b; could be <= %c)\n"),
-+	  PROMPT_FIX, PR_NO_OK | PR_PREEN_NO | PR_PREEN_OK },
-+
- 	/* Pass 1b errors */
- 
- 	/* Pass 1B: Rescan for duplicate/bad blocks */
-@@ -1198,6 +1203,48 @@ static struct e2fsck_problem problem_table[] = {
- 	{ PR_1D_CLONE_ERROR,
- 	  N_("Couldn't clone file: %m\n"), PROMPT_NONE, 0 },
- 
-+	/* Pass 1E Extent tree optimization	*/
-+
-+	/* Pass 1E: Optimizing extent trees */
-+	{ PR_1E_PASS_HEADER,
-+	  N_("Pass 1E: Optimizing @x trees\n"),
-+	  PROMPT_NONE, PR_PREEN_NOMSG },
-+
-+	/* Failed to optimize extent tree */
-+	{ PR_1E_OPTIMIZE_EXT_ERR,
-+	  N_("Failed to optimize @x tree %p (%i): %m\n"),
-+	  PROMPT_NONE, 0 },
-+
-+	/* Optimizing extent trees */
-+	{ PR_1E_OPTIMIZE_EXT_HEADER,
-+	  N_("Optimizing @x trees: "),
-+	  PROMPT_NONE, PR_MSG_ONLY },
-+
-+	/* Rebuilding extent tree %d */
-+	{ PR_1E_OPTIMIZE_EXT,
-+	  " %i",
-+	  PROMPT_NONE, PR_LATCH_OPTIMIZE_EXT | PR_PREEN_NOHDR},
-+
-+	/* Rebuilding extent tree end */
-+	{ PR_1E_OPTIMIZE_EXT_END,
-+	  "\n",
-+	  PROMPT_NONE, PR_PREEN_NOHDR },
-+
-+	/* Internal error: extent tree depth too large */
-+	{ PR_1E_MAX_EXTENT_TREE_DEPTH,
-+	  N_("Internal error: max extent tree depth too large (%b; expected=%c).\n"),
-+	  PROMPT_NONE, PR_FATAL },
-+
-+	/* Inode extent tree could be shorter */
-+	{ PR_1E_CAN_COLLAPSE_EXTENT_TREE,
-+	  N_("@i %i @x tree could be shorter.\n\t(level %b is unnecessary)\n"),
-+	  PROMPT_FIX, PR_NO_OK | PR_PREEN_NO | PR_PREEN_OK },
-+
-+	/* Inode extent tree could be narrower */
-+	{ PR_1E_CAN_NARROW_EXTENT_TREE,
-+	  N_("@i %i @x tree could be narrower.\n\t(level %b has unnecessary nodes)\n"),
-+	  PROMPT_FIX, PR_NO_OK | PR_PREEN_NO | PR_PREEN_OK },
-+
- 	/* Pass 2 errors */
- 
- 	/* Pass 2: Checking directory structure */
-@@ -1946,6 +1993,7 @@ static struct latch_descr pr_latch_info[] = {
- 	{ PR_LATCH_TOOBIG, PR_1_INODE_TOOBIG, 0 },
- 	{ PR_LATCH_OPTIMIZE_DIR, PR_3A_OPTIMIZE_DIR_HEADER, PR_3A_OPTIMIZE_DIR_END },
- 	{ PR_LATCH_BG_CHECKSUM, PR_0_GDT_CSUM_LATCH, 0 },
-+	{ PR_LATCH_OPTIMIZE_EXT, PR_1E_OPTIMIZE_EXT_HEADER, PR_1E_OPTIMIZE_EXT_END },
- 	{ -1, 0, 0 },
- };
- 
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 3c28166..4678b23 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -40,6 +40,7 @@ struct problem_context {
- #define PR_LATCH_TOOBIG	0x0080	/* Latch for file to big errors */
- #define PR_LATCH_OPTIMIZE_DIR 0x0090 /* Latch for optimize directories */
- #define PR_LATCH_BG_CHECKSUM 0x00A0  /* Latch for block group checksums */
-+#define PR_LATCH_OPTIMIZE_EXT 0x00B0  /* Latch for rebuild extents */
- 
- #define PR_LATCH(x)	((((x) & PR_LATCH_MASK) >> 4) - 1)
- 
-@@ -641,6 +642,9 @@ struct problem_context {
- /* leaf extent collision */
- #define PR_1_EXTENT_COLLISION			0x01007D
- 
-+/* extent tree max depth too big */
-+#define PR_1_EXTENT_BAD_MAX_DEPTH		0x01007E
-+
- /*
-  * Pass 1b errors
-  */
-@@ -704,6 +708,33 @@ struct problem_context {
- #define PR_1D_CLONE_ERROR	0x013008
- 
- /*
-+ * Pass 1e --- rebuilding extent trees
-+ */
-+/* Pass 1e: Rebuilding extent trees */
-+#define PR_1E_PASS_HEADER		0x014000
-+
-+/* Error rehash directory */
-+#define PR_1E_OPTIMIZE_EXT_ERR		0x014001
-+
-+/* Rebuilding extent trees */
-+#define PR_1E_OPTIMIZE_EXT_HEADER	0x014002
-+
-+/* Rebuilding extent %d */
-+#define PR_1E_OPTIMIZE_EXT		0x014003
-+
-+/* Rebuilding extent tree end */
-+#define PR_1E_OPTIMIZE_EXT_END		0x014004
-+
-+/* Internal error: extent tree depth too large */
-+#define PR_1E_MAX_EXTENT_TREE_DEPTH	0x014005
-+
-+/* Inode extent tree could be shorter */
-+#define PR_1E_CAN_COLLAPSE_EXTENT_TREE	0x014006
-+
-+/* Inode extent tree could be narrower */
-+#define PR_1E_CAN_NARROW_EXTENT_TREE	0x014007
-+
-+/*
-  * Pass 2 errors
-  */
- 
-@@ -1032,6 +1063,8 @@ struct problem_context {
- /* Rehashing dir end */
- #define PR_3A_OPTIMIZE_DIR_END		0x031005
- 
-+/* Pass 3B is really just 1E */
-+
- /*
-  * Pass 4 errors
-  */
-diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
-index 348923e..dadcfc7 100644
---- a/e2fsck/rehash.c
-+++ b/e2fsck/rehash.c
-@@ -749,11 +749,11 @@ static int write_dir_block(ext2_filsys fs,
- 
- static errcode_t write_directory(e2fsck_t ctx, ext2_filsys fs,
- 				 struct out_dir *outdir,
--				 ext2_ino_t ino, int compress)
-+				 ext2_ino_t ino, struct ext2_inode *inode,
-+				 int compress)
- {
- 	struct write_dir_struct wd;
- 	errcode_t	retval;
--	struct ext2_inode 	inode;
- 
- 	retval = e2fsck_expand_directory(ctx, ino, -1, outdir->num);
- 	if (retval)
-@@ -772,22 +772,23 @@ static errcode_t write_directory(e2fsck_t ctx, ext2_filsys fs,
- 	if (wd.err)
- 		return wd.err;
- 
--	e2fsck_read_inode(ctx, ino, &inode, "rehash_dir");
-+	e2fsck_read_inode(ctx, ino, inode, "rehash_dir");
- 	if (compress)
--		inode.i_flags &= ~EXT2_INDEX_FL;
-+		inode->i_flags &= ~EXT2_INDEX_FL;
- 	else
--		inode.i_flags |= EXT2_INDEX_FL;
--	retval = ext2fs_inode_size_set(fs, &inode,
-+		inode->i_flags |= EXT2_INDEX_FL;
-+	retval = ext2fs_inode_size_set(fs, inode,
- 				       outdir->num * fs->blocksize);
- 	if (retval)
- 		return retval;
--	ext2fs_iblk_sub_blocks(fs, &inode, wd.cleared);
--	e2fsck_write_inode(ctx, ino, &inode, "rehash_dir");
-+	ext2fs_iblk_sub_blocks(fs, inode, wd.cleared);
-+	e2fsck_write_inode(ctx, ino, inode, "rehash_dir");
- 
- 	return 0;
- }
- 
--errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino)
-+errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino,
-+			    struct problem_context *pctx)
- {
- 	ext2_filsys 		fs = ctx->fs;
- 	errcode_t		retval;
-@@ -897,10 +898,14 @@ resort:
- 			goto errout;
- 	}
- 
--	retval = write_directory(ctx, fs, &outdir, ino, fd.compress);
-+	retval = write_directory(ctx, fs, &outdir, ino, &inode, fd.compress);
- 	if (retval)
- 		goto errout;
- 
-+	if (ctx->options & E2F_OPT_CONVERT_BMAP)
-+		retval = e2fsck_rebuild_extents_later(ctx, ino);
++if [ "$EXP2"x = x ]; then
++	if [ -f $test_dir/expect.2.gz ]; then
++		EXP2=$test_name.2.tmp
++		gunzip < $test_dir/expect.2.gz > $EXP2
 +	else
-+		retval = e2fsck_check_rebuild_extents(ctx, ino, &inode, pctx);
- errout:
- 	free(dir_buf);
- 	free(fd.harray);
-@@ -944,7 +949,7 @@ void e2fsck_rehash_directories(e2fsck_t ctx)
- #if 0
- 		fix_problem(ctx, PR_3A_OPTIMIZE_DIR, &pctx);
- #endif
--		pctx.errcode = e2fsck_rehash_dir(ctx, ino);
-+		pctx.errcode = e2fsck_rehash_dir(ctx, ino, &pctx);
- 		if (pctx.errcode) {
- 			end_problem_latch(ctx, PR_LATCH_OPTIMIZE_DIR);
- 			fix_problem(ctx, PR_3A_OPTIMIZE_DIR_ERR, &pctx);
-diff --git a/e2fsck/super.c b/e2fsck/super.c
-index 1e7e749..e64262a 100644
---- a/e2fsck/super.c
-+++ b/e2fsck/super.c
-@@ -606,6 +606,13 @@ void check_super_block(e2fsck_t ctx)
- 		ext2fs_mark_super_dirty(fs);
- 	}
- 
-+	/* Did user ask us to convert files to extents? */
-+	if (ctx->options & E2F_OPT_CONVERT_BMAP) {
-+		fs->super->s_feature_incompat |=
-+			EXT3_FEATURE_INCOMPAT_EXTENTS;
-+		ext2fs_mark_super_dirty(fs);
-+	}
++		EXP2=$test_dir/expect.2
++	fi
++fi
 +
- 	if ((fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG) &&
- 	    (fs->super->s_first_meta_bg > fs->desc_blocks)) {
- 		pctx.group = fs->desc_blocks;
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index f3672c0..fe5127a 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -709,6 +709,9 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
- 			else
- 				ctx->log_fn = string_copy(ctx, arg, 0);
- 			continue;
-+		} else if (strcmp(token, "bmap2extent") == 0) {
-+			ctx->options |= E2F_OPT_CONVERT_BMAP;
-+			continue;
- 		} else {
- 			fprintf(stderr, _("Unknown extended option: %s\n"),
- 				token);
-@@ -728,6 +731,7 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
- 		fputs(("\tdiscard\n"), stderr);
- 		fputs(("\tnodiscard\n"), stderr);
- 		fputs(("\treadahead_kb=<buffer size>\n"), stderr);
-+		fputs(("\tbmap2extent\n"), stderr);
- 		fputc('\n', stderr);
- 		exit(1);
- 	}
-diff --git a/tests/f_extent_bad_node/expect.1 b/tests/f_extent_bad_node/expect.1
-index 0c0bc28..c9643a1 100644
---- a/tests/f_extent_bad_node/expect.1
-+++ b/tests/f_extent_bad_node/expect.1
-@@ -2,8 +2,13 @@ Pass 1: Checking inodes, blocks, and sizes
- Inode 12 has an invalid extent node (blk 22, lblk 0)
- Clear? yes
- 
-+Inode 12 extent tree could be shorter.
-+	(level 1 is unnecessary)
-+Fix? yes
++if [ "$SKIP_GUNZIP" != "true" ] ; then
++	gunzip < $IMAGE > $TMPFILE
++fi
 +
- Inode 12, i_blocks is 16, should be 8.  Fix? yes
- 
-+Pass 1E: Optimizing extent trees
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
-@@ -11,13 +16,13 @@ Pass 5: Checking group summary information
- Block bitmap differences:  -(21--23) -25
- Fix? yes
- 
--Free blocks count wrong for group #0 (71, counted=75).
-+Free blocks count wrong for group #0 (73, counted=77).
- Fix? yes
- 
--Free blocks count wrong (71, counted=75).
-+Free blocks count wrong (73, counted=77).
- Fix? yes
- 
- 
- test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
--test_filesys: 12/16 files (0.0% non-contiguous), 25/100 blocks
-+test_filesys: 12/16 files (0.0% non-contiguous), 23/100 blocks
- Exit status is 1
-diff --git a/tests/f_extent_bad_node/expect.2 b/tests/f_extent_bad_node/expect.2
-index 568c792..b78b193 100644
---- a/tests/f_extent_bad_node/expect.2
-+++ b/tests/f_extent_bad_node/expect.2
-@@ -3,5 +3,5 @@ Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
- Pass 5: Checking group summary information
--test_filesys: 12/16 files (0.0% non-contiguous), 25/100 blocks
-+test_filesys: 12/16 files (0.0% non-contiguous), 23/100 blocks
- Exit status is 0
-diff --git a/tests/f_extent_int_bad_magic/expect.1 b/tests/f_extent_int_bad_magic/expect.1
-index 0e82e2b..3529636 100644
---- a/tests/f_extent_int_bad_magic/expect.1
-+++ b/tests/f_extent_int_bad_magic/expect.1
-@@ -2,8 +2,13 @@ Pass 1: Checking inodes, blocks, and sizes
- Inode 12 has an invalid extent node (blk 1295, lblk 0)
- Clear? yes
- 
-+Inode 12 extent tree could be shorter.
-+	(level 1 is unnecessary)
-+Fix? yes
++cp /dev/null $OUT1
 +
- Inode 12, i_blocks is 712, should be 0.  Fix? yes
- 
-+Pass 1E: Optimizing extent trees
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
-diff --git a/tests/f_extent_leaf_bad_magic/expect.1 b/tests/f_extent_leaf_bad_magic/expect.1
-index 7b6dbf1..ae27ecc 100644
---- a/tests/f_extent_leaf_bad_magic/expect.1
-+++ b/tests/f_extent_leaf_bad_magic/expect.1
-@@ -2,8 +2,13 @@ Pass 1: Checking inodes, blocks, and sizes
- Inode 12 has an invalid extent node (blk 1604, lblk 0)
- Clear? yes
- 
-+Inode 12 extent tree could be shorter.
-+	(level 1 is unnecessary)
-+Fix? yes
++eval $PREP_CMD
 +
- Inode 12, i_blocks is 18, should be 0.  Fix? yes
- 
-+Pass 1E: Optimizing extent trees
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
-diff --git a/tests/f_extent_oobounds/expect.1 b/tests/f_extent_oobounds/expect.1
-index 3164ea0..f0e282e 100644
---- a/tests/f_extent_oobounds/expect.1
-+++ b/tests/f_extent_oobounds/expect.1
-@@ -3,8 +3,13 @@ Inode 12, end of extent exceeds allowed value
- 	(logical block 15, physical block 200, len 30)
- Clear? yes
- 
++echo 'ex /a' > $TMPFILE.cmd
++$DEBUGFS -f $TMPFILE.cmd $TMPFILE > $OUT1.new 2>&1
++rm -rf $TMPFILE.cmd
++$FSCK $FSCK_OPT  -N test_filesys $TMPFILE >> $OUT1.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT1.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT1.new >> $OUT1
++rm -f $OUT1.new
++
++if [ "$ONE_PASS_ONLY" != "true" ]; then
++	$FSCK $SECOND_FSCK_OPT -N test_filesys $TMPFILE > $OUT2.new 2>&1 
++	status=$?
++	echo Exit status is $status >> $OUT2.new
++	echo 'ex /a' > $TMPFILE.cmd
++	$DEBUGFS -f $TMPFILE.cmd $TMPFILE >> $OUT2.new 2>&1
++	rm -rf $TMPFILE.cmd
++	sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT2.new > $OUT2
++	rm -f $OUT2.new
++fi
++
++eval $AFTER_CMD
++
++if [ "$SKIP_VERIFY" != "true" ] ; then
++	rm -f $test_name.ok $test_name.failed
++	cmp -s $OUT1 $EXP1
++	status1=$?
++	if [ "$ONE_PASS_ONLY" != "true" ]; then
++		cmp -s $OUT2 $EXP2
++		status2=$?
++	else
++		status2=0
++	fi
++	if [ "$PASS_ZERO" = "true" ]; then
++		cmp -s $test_name.0.log	$test_dir/expect.0
++		status3=$?
++	else
++		status3=0
++	fi
++
++	if [ -z "$test_description" ] ; then
++		description="$test_name"
++	else
++		description="$test_name: $test_description"
++	fi
++
++	if [ "$status1" -eq 0 -a "$status2" -eq 0 -a "$status3" -eq 0 ] ; then
++		echo "$description: ok"
++		touch $test_name.ok
++	else
++		echo "$description: failed"
++		rm -f $test_name.failed
++		if [ "$PASS_ZERO" = "true" ]; then
++			diff $DIFF_OPTS $test_dir/expect.0 \
++				$test_name.0.log >> $test_name.failed
++		fi
++		diff $DIFF_OPTS $EXP1 $OUT1 >> $test_name.failed
++		if [ "$ONE_PASS_ONLY" != "true" ]; then
++			diff $DIFF_OPTS $EXP2 $OUT2 >> $test_name.failed
++		fi
++	fi
++	rm -f tmp_expect
++fi
++
++if [ "$SKIP_CLEANUP" != "true" ] ; then
++	unset IMAGE FSCK_OPT SECOND_FSCK_OPT OUT1 OUT2 EXP1 EXP2 
++	unset SKIP_VERIFY SKIP_CLEANUP SKIP_GUNZIP ONE_PASS_ONLY PREP_CMD
++	unset DESCRIPTION SKIP_UNLINK AFTER_CMD PASS_ZERO
++fi
++
+diff --git a/tests/f_compress_extent_tree_level/expect.1 b/tests/f_compress_extent_tree_level/expect.1
+new file mode 100644
+index 0000000..45dcb39
+--- /dev/null
++++ b/tests/f_compress_extent_tree_level/expect.1
+@@ -0,0 +1,25 @@
++debugfs: ex /a
++Level Entries       Logical      Physical Length Flags
++ 0/ 1   1/  2     0 -    16     9             17
++ 1/ 1   1/  4     0 -     0    10 -    10      1 
++ 1/ 1   2/  4    11 -    11   100 -   100      1 
++ 1/ 1   3/  4    13 -    13   101 -   101      1 
++ 1/ 1   4/  4    15 -    15   102 -   102      1 
++ 0/ 1   2/  2    17 -    21    12              5
++ 1/ 1   1/  3    17 -    17   103 -   103      1 
++ 1/ 1   2/  3    19 -    19   104 -   104      1 
++ 1/ 1   3/  3    21 -    21   105 -   105      1 
++Pass 1: Checking inodes, blocks, and sizes
 +Inode 12 extent tree could be narrower.
 +	(level 1 has unnecessary nodes)
 +Fix? yes
 +
- Inode 12, i_blocks is 154, should be 94.  Fix? yes
- 
 +Pass 1E: Optimizing extent trees
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
-@@ -12,13 +17,13 @@ Pass 5: Checking group summary information
- Block bitmap differences:  -(200--229)
- Fix? yes
- 
--Free blocks count wrong for group #0 (156, counted=186).
-+Free blocks count wrong for group #0 (158, counted=188).
- Fix? yes
- 
--Free blocks count wrong (156, counted=186).
-+Free blocks count wrong (158, counted=188).
- Fix? yes
- 
- 
- test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
--test_filesys: 12/32 files (8.3% non-contiguous), 70/256 blocks
-+test_filesys: 12/32 files (8.3% non-contiguous), 68/256 blocks
- Exit status is 1
-diff --git a/tests/f_extent_oobounds/expect.2 b/tests/f_extent_oobounds/expect.2
-index 22c4f2c..0729283 100644
---- a/tests/f_extent_oobounds/expect.2
-+++ b/tests/f_extent_oobounds/expect.2
-@@ -3,5 +3,5 @@ Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
- Pass 5: Checking group summary information
--test_filesys: 12/32 files (8.3% non-contiguous), 70/256 blocks
-+test_filesys: 12/32 files (8.3% non-contiguous), 68/256 blocks
- Exit status is 0
-diff --git a/tests/f_extents/expect.1 b/tests/f_extents/expect.1
-index aeebc7b..2751eb9 100644
---- a/tests/f_extents/expect.1
-+++ b/tests/f_extents/expect.1
-@@ -6,6 +6,10 @@ Inode 12 has an invalid extent
- 	(logical block 0, invalid physical block 21994527527949, len 17)
- Clear? yes
- 
-+Inode 12 extent tree could be shorter.
-+	(level 1 is unnecessary)
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 12/128 files (8.3% non-contiguous), 26/512 blocks
++Exit status is 1
+diff --git a/tests/f_compress_extent_tree_level/expect.2 b/tests/f_compress_extent_tree_level/expect.2
+new file mode 100644
+index 0000000..07d1082
+--- /dev/null
++++ b/tests/f_compress_extent_tree_level/expect.2
+@@ -0,0 +1,17 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 12/128 files (8.3% non-contiguous), 26/512 blocks
++Exit status is 0
++debugfs: ex /a
++Level Entries       Logical      Physical Length Flags
++ 0/ 1   1/  1     0 -    21     9             22
++ 1/ 1   1/  7     0 -     0    10 -    10      1 
++ 1/ 1   2/  7    11 -    11   100 -   100      1 
++ 1/ 1   3/  7    13 -    13   101 -   101      1 
++ 1/ 1   4/  7    15 -    15   102 -   102      1 
++ 1/ 1   5/  7    17 -    17   103 -   103      1 
++ 1/ 1   6/  7    19 -    19   104 -   104      1 
++ 1/ 1   7/  7    21 -    21   105 -   105      1 
+diff --git a/tests/f_compress_extent_tree_level/image.gz b/tests/f_compress_extent_tree_level/image.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..a552a586ce20e4fbc01d6f332ec800c5c5b6011f
+GIT binary patch
+literal 2581
+zcmb2|=3rR!C_IFT`RyHR9}!0hh6gkEYCmX@`O&3zM1osdIA^Jlw(gQiEytLI<J9c9
+z&L3%E^Y!W3JGZlUZ`ds<>4n?Hq`jLtg`|b&q_WGat95BG-FN>tx4!H<U)lS-AJ6lO
+z6&ZG4&Dp8pWHDvdcEgsixcDa#cN4c|Jrj3xXS?6icVxq+qB_I2E!8u;UtfEt{cM|d
+zx!<y9uDd4Byy90XBb_r>eqZ_jr)RIH>*?If{BP|Sv-8%k+sAkPd2;YL_u=Paa{ab8
+z7R65wT$X5aDi6&4{msJ6yZ%?_>ox0_zxZ;6nIVCD%G3ArMBKw){||e0eSc1N>&EnR
+z0t^fcIrZA@uO9}lJ$3)OSwS^W;KBazx_|d&lMDq`Wi#$_4&>npx&GlDckiQ5TVJnz
+zJo$QFjI93l)(@*BAG_wy2C6@>?b21V|Nk$ndG;T~<GcJ?1V}ghv<H$2|M-C<2;?k1
+z7G&FVWc^>G+?H3>jHhdCT>a0f2bmPx&0M7aJXrJFvl^?T|K`LORWSmc@PEdCYgULx
+zh7E5`r)9;j`(JJgG7%fdIpei?Ey$ub7WWu|+Q|hE%FpQb^sPCXXZ5ap`Q=61t^WO#
+zxjHTCMMSQ(lh5g6K|Ejc^Tfly|0w>exlI4=-q>Te9zVFr@rQf!_Dhd`Ua)#xf9CQ1
+zW2IZaKK4Jh|J#3OInf{H^QM12f1&DYykOsxU+Qau|6eK2ar?V@>iYlgPk)$;9sa}r
+zHJ&GZ|LXr;C41uCH=MikZRv}1mHu*%)xaV1=-A3zpVnWgPo1*Aeytb_x&9i}HyQ$?
+fAut*OqaiRF0;3^7AOs$KuVp*dzh0JsL4g4PCSfgc
+
+literal 0
+HcmV?d00001
+
+diff --git a/tests/f_compress_extent_tree_level/name b/tests/f_compress_extent_tree_level/name
+new file mode 100644
+index 0000000..fde4f4a
+--- /dev/null
++++ b/tests/f_compress_extent_tree_level/name
+@@ -0,0 +1 @@
++compress an extent tree level
+diff --git a/tests/f_compress_extent_tree_level/script b/tests/f_compress_extent_tree_level/script
+new file mode 100644
+index 0000000..ee18438
+--- /dev/null
++++ b/tests/f_compress_extent_tree_level/script
+@@ -0,0 +1,118 @@
++if [ "$DESCRIPTION"x != x ]; then
++	test_description="$DESCRIPTION"
++fi
++if [ "$IMAGE"x = x ]; then
++	IMAGE=$test_dir/image.gz
++fi
++
++if [ "$FSCK_OPT"x = x ]; then
++	FSCK_OPT=-yf
++fi
++
++if [ "$SECOND_FSCK_OPT"x = x ]; then
++	SECOND_FSCK_OPT=-yf
++fi
++
++if [ "$OUT1"x = x ]; then
++	OUT1=$test_name.1.log
++fi
++
++if [ "$OUT2"x = x ]; then
++	OUT2=$test_name.2.log
++fi
++
++if [ "$EXP1"x = x ]; then
++	if [ -f $test_dir/expect.1.gz ]; then
++		EXP1=$test_name.1.tmp
++		gunzip < $test_dir/expect.1.gz > $EXP1
++	else
++		EXP1=$test_dir/expect.1
++	fi
++fi
++
++if [ "$EXP2"x = x ]; then
++	if [ -f $test_dir/expect.2.gz ]; then
++		EXP2=$test_name.2.tmp
++		gunzip < $test_dir/expect.2.gz > $EXP2
++	else
++		EXP2=$test_dir/expect.2
++	fi
++fi
++
++if [ "$SKIP_GUNZIP" != "true" ] ; then
++	gunzip < $IMAGE > $TMPFILE
++fi
++
++cp /dev/null $OUT1
++
++eval $PREP_CMD
++
++echo 'ex /a' > $TMPFILE.cmd
++$DEBUGFS -f $TMPFILE.cmd $TMPFILE > $OUT1.new 2>&1
++rm -rf $TMPFILE.cmd
++$FSCK $FSCK_OPT  -N test_filesys $TMPFILE >> $OUT1.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT1.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT1.new >> $OUT1
++rm -f $OUT1.new
++
++if [ "$ONE_PASS_ONLY" != "true" ]; then
++	$FSCK $SECOND_FSCK_OPT -N test_filesys $TMPFILE > $OUT2.new 2>&1 
++	status=$?
++	echo Exit status is $status >> $OUT2.new
++	echo 'ex /a' > $TMPFILE.cmd
++	$DEBUGFS -f $TMPFILE.cmd $TMPFILE >> $OUT2.new 2>&1
++	rm -rf $TMPFILE.cmd
++	sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT2.new > $OUT2
++	rm -f $OUT2.new
++fi
++
++eval $AFTER_CMD
++
++if [ "$SKIP_VERIFY" != "true" ] ; then
++	rm -f $test_name.ok $test_name.failed
++	cmp -s $OUT1 $EXP1
++	status1=$?
++	if [ "$ONE_PASS_ONLY" != "true" ]; then
++		cmp -s $OUT2 $EXP2
++		status2=$?
++	else
++		status2=0
++	fi
++	if [ "$PASS_ZERO" = "true" ]; then
++		cmp -s $test_name.0.log	$test_dir/expect.0
++		status3=$?
++	else
++		status3=0
++	fi
++
++	if [ -z "$test_description" ] ; then
++		description="$test_name"
++	else
++		description="$test_name: $test_description"
++	fi
++
++	if [ "$status1" -eq 0 -a "$status2" -eq 0 -a "$status3" -eq 0 ] ; then
++		echo "$description: ok"
++		touch $test_name.ok
++	else
++		echo "$description: failed"
++		rm -f $test_name.failed
++		if [ "$PASS_ZERO" = "true" ]; then
++			diff $DIFF_OPTS $test_dir/expect.0 \
++				$test_name.0.log >> $test_name.failed
++		fi
++		diff $DIFF_OPTS $EXP1 $OUT1 >> $test_name.failed
++		if [ "$ONE_PASS_ONLY" != "true" ]; then
++			diff $DIFF_OPTS $EXP2 $OUT2 >> $test_name.failed
++		fi
++	fi
++	rm -f tmp_expect
++fi
++
++if [ "$SKIP_CLEANUP" != "true" ] ; then
++	unset IMAGE FSCK_OPT SECOND_FSCK_OPT OUT1 OUT2 EXP1 EXP2 
++	unset SKIP_VERIFY SKIP_CLEANUP SKIP_GUNZIP ONE_PASS_ONLY PREP_CMD
++	unset DESCRIPTION SKIP_UNLINK AFTER_CMD PASS_ZERO
++fi
++
+diff --git a/tests/f_convert_bmap/expect.1 b/tests/f_convert_bmap/expect.1
+new file mode 100644
+index 0000000..7d2ca86
+--- /dev/null
++++ b/tests/f_convert_bmap/expect.1
+@@ -0,0 +1,26 @@
++debugfs: stat /a
++Inode: 12   Type: regular    Mode:  0644   Flags: 0x0
++Generation: 1573716129    Version: 0x00000000:00000001
++User:     0   Group:     0   Size: 524288
++File ACL: 0    Directory ACL: 0
++Links: 1   Blockcount: 1030
++Fragment:  Address: 0    Number: 0    Size: 0
++ ctime: 0x5457f87a:62ae2980 -- Mon Nov  3 21:49:46 2014
++ atime: 0x5457f87a:61ba0598 -- Mon Nov  3 21:49:46 2014
++ mtime: 0x5457f87a:62ae2980 -- Mon Nov  3 21:49:46 2014
++crtime: 0x5457f87a:61ba0598 -- Mon Nov  3 21:49:46 2014
++Size of extra inode fields: 28
++BLOCKS:
++(0-11):1025-1036, (IND):24, (12-267):1037-1292, (DIND):25, (IND):41, (268-511):1293-1536
++TOTAL: 515
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 1E: Optimizing extent trees
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 12/128 files (8.3% non-contiguous), 570/2048 blocks
++Exit status is 1
+diff --git a/tests/f_convert_bmap/expect.2 b/tests/f_convert_bmap/expect.2
+new file mode 100644
+index 0000000..632d411
+--- /dev/null
++++ b/tests/f_convert_bmap/expect.2
+@@ -0,0 +1,10 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 12/128 files (0.0% non-contiguous), 570/2048 blocks
++Exit status is 0
++debugfs: ex /a
++Level Entries       Logical      Physical Length Flags
++ 0/ 0   1/  1     0 -   511  1025 -  1536    512 
+diff --git a/tests/f_convert_bmap/image.gz b/tests/f_convert_bmap/image.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..7c22532397ba8d42e928f75190dc545cae2140cf
+GIT binary patch
+literal 3548
+zcmeH{TTD|27{|LAMF+@(0Tox+B<ivR0l73*3mPNpq{>AKJy;kpC>$)zXsxs>&77h{
+z5d{R1Tf|{+oO3i%(L%x52w{Q@ZBMl=7l%+hhteTCTuLv?;vP1$_wAwI!}sN%d{4js
+zKY#y=D@kV;l8$`5%sjNJl`~FyG$XVKkeS>DH}6f}NR0H7XZeLMHZ~n7S%IBv`1#=N
+zvthAe6*sSJFDc(vQMvN!_C4jFe<j65!*^OUm={)9=G$@69F1o=F+fw#*9&#jyvB6W
+zL}KW^E$$xb{J^bs+dN*RTpr^8kjSR!^SeC_oE_k?>(^gS=<hNObc@YMH>Kvk-p-E5
+z35ksKaBDTb(PT!@CVwq0qb~h&i*n<*7OXbTS(15(N<89733W!X1W$_EjVBkiwdO+O
+zgdm1$#XPIm+f@lYY^0qqFBCAP$X(HIv%QKlVn5zT?)`;ZVOpN;uzxq3w!?I(<aK$X
+zaS!SJe5<2`goNateEzncYj1mM?y%OZ3HI8cvU9NDh)8IB%F@##rq|m2I-85nb<Z2w
+zU2pNJ`vVSvg$htSs_DKP485(ZoNIkL`xm<MpHIzr^#yEhcYn0tc1iSaYjk?luhhO5
+z90Xc?kWFAOAghA2z*hiVg?NKc04W0&pkFFLh%qk{=rBd}kQi-QLIK4oC}Cc{q-zD*
+zP`R6C8NQns<?n~mydY0dt(W*QypVmG06dPE)IW%j((~@|V>qd0P#|_(kwxolh)vP1
+z!4D|7w1*Ax2F-m!!v{D?hY_}Bj_Bhv%&`NoNpo3|U_RQefeE7?I)#|DeuRy`+sqVb
+zhZToacT$fmp+(`UIb^NwAlA&?)i0^me$S019}PlkxcgO2tDz)Rj%kS-d=8m`$kjMO
+z6!SC5aRssfTtZb|mQr*n*h?xr3>3)6@Uzsrhh!CaB~>w;YLUFa>Is<7Q;82Dp_q#3
+z<csQ={t_?rJf<eDT62Ug&tzq~S40U_9La2yoxnS+C+pK1rS8~c>oFl5nU*FALaVW-
+z#5F6(I+7;8h~wM?EMP?P6ssj5Wk)A#L~23336-^o#f*~pqh(kRQDM!sx4^PST@Y4H
+z$d$?>mQGWE>8%_)T$Cn~;8+<UR(9q~qI9L)1bcHnoC0S2?i-o4t{d#wtbKDMepYK!
+z><UbF*FFwcpxc%|-kFy%XsC0WSf9P?uV}qL5AcUQmFdYp`an;>8K9}Er5St++^&Mg
+z!A0OEqvaYnu4F^;aunnuN*<J&rxAkvO3UQwWiHGAd&`@O7ag;OUt9kyt+v8kM|<{I
+zIyy5D-6rU+%SLL#@YyT-x{F^mR@l1kJP-CwGEIen(_^EFs~!aO?fhmP`84O<$bd6b
+zozXVSD_9JACTbIs-$@>k$83X+0lqWGS@2!*G{ZnA+mYmpn#n71w;rbdEhKizylA>_
+zMx@ViZ17o^Z5wioybK<B(`9y+686({S#NlAG;TtcgFgWhA6R-TGwW2%xanw*RK0hH
+z?Vcg(1Qg2i3)j1S%5oZoyZ;f(55(v*iZt4vOKqNzFP<OV(zIHAX4?0IAD46ya1n43
+aa1n43a1r?55SY$(e6qN4MIedv8R-w=i-Ai3
+
+literal 0
+HcmV?d00001
+
+diff --git a/tests/f_convert_bmap/name b/tests/f_convert_bmap/name
+new file mode 100644
+index 0000000..67e0d47
+--- /dev/null
++++ b/tests/f_convert_bmap/name
+@@ -0,0 +1 @@
++convert blockmap file to extents file
+diff --git a/tests/f_convert_bmap/script b/tests/f_convert_bmap/script
+new file mode 100644
+index 0000000..f6b6f62
+--- /dev/null
++++ b/tests/f_convert_bmap/script
+@@ -0,0 +1,117 @@
++if [ "$DESCRIPTION"x != x ]; then
++	test_description="$DESCRIPTION"
++fi
++if [ "$IMAGE"x = x ]; then
++	IMAGE=$test_dir/image.gz
++fi
++
++if [ "$FSCK_OPT"x = x ]; then
++	FSCK_OPT=-yf
++fi
++
++if [ "$SECOND_FSCK_OPT"x = x ]; then
++	SECOND_FSCK_OPT=-yf
++fi
++
++if [ "$OUT1"x = x ]; then
++	OUT1=$test_name.1.log
++fi
++
++if [ "$OUT2"x = x ]; then
++	OUT2=$test_name.2.log
++fi
++
++if [ "$EXP1"x = x ]; then
++	if [ -f $test_dir/expect.1.gz ]; then
++		EXP1=$test_name.1.tmp
++		gunzip < $test_dir/expect.1.gz > $EXP1
++	else
++		EXP1=$test_dir/expect.1
++	fi
++fi
++
++if [ "$EXP2"x = x ]; then
++	if [ -f $test_dir/expect.2.gz ]; then
++		EXP2=$test_name.2.tmp
++		gunzip < $test_dir/expect.2.gz > $EXP2
++	else
++		EXP2=$test_dir/expect.2
++	fi
++fi
++
++if [ "$SKIP_GUNZIP" != "true" ] ; then
++	gunzip < $IMAGE > $TMPFILE
++fi
++
++cp /dev/null $OUT1
++
++eval $PREP_CMD
++
++echo 'stat /a' > $TMPFILE.cmd
++$DEBUGFS -f $TMPFILE.cmd $TMPFILE > $OUT1.new 2>&1
++rm -rf $TMPFILE.cmd
++$TUNE2FS -O extent $TMPFILE >> $OUT1.new 2>&1
++$FSCK $FSCK_OPT -E bmap2extent -N test_filesys $TMPFILE >> $OUT1.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT1.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT1.new >> $OUT1
++rm -f $OUT1.new
++
++$FSCK $SECOND_FSCK_OPT -N test_filesys $TMPFILE > $OUT2.new 2>&1 
++status=$?
++echo Exit status is $status >> $OUT2.new
++echo 'ex /a' > $TMPFILE.cmd
++$DEBUGFS -f $TMPFILE.cmd $TMPFILE >> $OUT2.new 2>&1
++rm -rf $TMPFILE.cmd
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT2.new > $OUT2
++rm -f $OUT2.new
++
++eval $AFTER_CMD
++
++if [ "$SKIP_VERIFY" != "true" ] ; then
++	rm -f $test_name.ok $test_name.failed
++	cmp -s $OUT1 $EXP1
++	status1=$?
++	if [ "$ONE_PASS_ONLY" != "true" ]; then
++		cmp -s $OUT2 $EXP2
++		status2=$?
++	else
++		status2=0
++	fi
++	if [ "$PASS_ZERO" = "true" ]; then
++		cmp -s $test_name.0.log	$test_dir/expect.0
++		status3=$?
++	else
++		status3=0
++	fi
++
++	if [ -z "$test_description" ] ; then
++		description="$test_name"
++	else
++		description="$test_name: $test_description"
++	fi
++
++	if [ "$status1" -eq 0 -a "$status2" -eq 0 -a "$status3" -eq 0 ] ; then
++		echo "$description: ok"
++		touch $test_name.ok
++	else
++		echo "$description: failed"
++		rm -f $test_name.failed
++		if [ "$PASS_ZERO" = "true" ]; then
++			diff $DIFF_OPTS $test_dir/expect.0 \
++				$test_name.0.log >> $test_name.failed
++		fi
++		diff $DIFF_OPTS $EXP1 $OUT1 >> $test_name.failed
++		if [ "$ONE_PASS_ONLY" != "true" ]; then
++			diff $DIFF_OPTS $EXP2 $OUT2 >> $test_name.failed
++		fi
++	fi
++	rm -f tmp_expect
++fi
++
++if [ "$SKIP_CLEANUP" != "true" ] ; then
++	unset IMAGE FSCK_OPT SECOND_FSCK_OPT OUT1 OUT2 EXP1 EXP2 
++	unset SKIP_VERIFY SKIP_CLEANUP SKIP_GUNZIP ONE_PASS_ONLY PREP_CMD
++	unset DESCRIPTION SKIP_UNLINK AFTER_CMD PASS_ZERO
++fi
++
+diff --git a/tests/f_convert_bmap_and_extent/expect.1 b/tests/f_convert_bmap_and_extent/expect.1
+new file mode 100644
+index 0000000..7af91aa
+--- /dev/null
++++ b/tests/f_convert_bmap_and_extent/expect.1
+@@ -0,0 +1,33 @@
++debugfs: stat /a
++Inode: 12   Type: regular    Mode:  0644   Flags: 0x0
++Generation: 1573716129    Version: 0x00000000:00000001
++User:     0   Group:     0   Size: 524288
++File ACL: 0    Directory ACL: 0
++Links: 1   Blockcount: 1030
++Fragment:  Address: 0    Number: 0    Size: 0
++ ctime: 0x5457f87a:62ae2980 -- Mon Nov  3 21:49:46 2014
++ atime: 0x5457f87a:61ba0598 -- Mon Nov  3 21:49:46 2014
++ mtime: 0x5457f87a:62ae2980 -- Mon Nov  3 21:49:46 2014
++crtime: 0x5457f87a:61ba0598 -- Mon Nov  3 21:49:46 2014
++Size of extra inode fields: 28
++BLOCKS:
++(0-11):1025-1036, (IND):24, (12-267):1037-1292, (DIND):25, (IND):41, (268-511):1293-1536
++TOTAL: 515
++
++debugfs: ex /zero
++Level Entries       Logical      Physical Length Flags
++ 0/ 1   1/  1     0 -     8    28              9
++ 1/ 1   1/  4     0 -     0    27 -    27      1 
++ 1/ 1   2/  4     2 -     2    29 -    29      1 
++ 1/ 1   3/  4     4 -     4    31 -    31      1 
++ 1/ 1   4/  4     6 -     6    33 -    33      1 
++Pass 1: Checking inodes, blocks, and sizes
++Pass 1E: Optimizing extent trees
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 13/128 files (15.4% non-contiguous), 574/2048 blocks
++Exit status is 1
+diff --git a/tests/f_convert_bmap_and_extent/expect.2 b/tests/f_convert_bmap_and_extent/expect.2
+new file mode 100644
+index 0000000..73765ea
+--- /dev/null
++++ b/tests/f_convert_bmap_and_extent/expect.2
+@@ -0,0 +1,16 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 13/128 files (7.7% non-contiguous), 574/2048 blocks
++Exit status is 0
++debugfs: ex /a
++Level Entries       Logical      Physical Length Flags
++ 0/ 0   1/  1     0 -   511  1025 -  1536    512 
++debugfs: ex /zero
++Level Entries       Logical      Physical Length Flags
++ 0/ 0   1/  4     0 -     0    27 -    27      1 
++ 0/ 0   2/  4     2 -     2    29 -    29      1 
++ 0/ 0   3/  4     4 -     4    31 -    31      1 
++ 0/ 0   4/  4     6 -     6    33 -    33      1 
+diff --git a/tests/f_convert_bmap_and_extent/image.gz b/tests/f_convert_bmap_and_extent/image.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..916b493c710843030b453b548be0b6adcd12c48d
+GIT binary patch
+literal 3657
+zcmeIyTToMX9tUvLscfwayK5@~0__Zy*%bt#ks1VQS!7xUxg-RLBtct56D}f#m|%je
+z4(XO+RzbXANW}$m;UwG+mq0*^Ra<Uj&B>8)$s$(poDBi>PvC?kJG0$K-}i;z!}sAg
+zzo*Z9=jT`PI~P@THFe`A^VGW?Il$%alCvc2Nobha)|k?9a!YJ>-XH&z5>s=9R_{gH
+z=JkvJRiWZw+oAU_2l@M#P_IDM(l-Cwf0$Wym}>Wve?8-$k`pE4^;@Q`4(o`}>MR|w
+z4HS&pOc6U=DwO;|Ui{Y0uAl7Z{hSrj`|?qOM|w{E%;}<nr@|MWujj^gdVW`FE;c_}
+zIbB3d{t)XSn(BDRFBkc`_wl`deKYf>dUe8&ztkCUOE~=ZiD4akDn8#K%q?F0s3_lQ
+z2o$Nhn0rf1-oZM7_`+f1(%mltm^$$DpoK@w-_Hx5y5y`Om3Xgu$Yh!L>f_nNS!{^u
+zEs;3KFFan7jlSFNs`8ol-RSb)IUh05+S;l+BnaR4(%I>l__bIqn%)ukLwTuVpD-kp
+zeCOr;wfXt)Jhzn&c0J3&<`1?X9~*yuK11x+W?JlA%8pyk*HWd?Ctp39w7b`42XEme
+zJjvhZ(8xa7>nMx8|21#J4(ItL_qWC52Z6{_mbONb&FP`{)8rp;8t6SVMJflT>kM)d
+z2htva7`R@`wbC^PO^H5|bHUiMPg%*S(x&Cn!`SV{z6FL=VKZ!pv!^r*tRsj4PKf;8
+zH{D(7ipF5K;k>-G3Dga=7+Zar5_z2AFpwL2d>InOL&F}>ZG?+eH^7SEb2BrsIRL4`
+z{|v{OGZG;kb`s{9DK>)$F7-)D)a2;Pz_5VkLv=+zBB|;aV#85V?+g75xFyJs)LfGH
+zfHlEEpN!z<J8Y&8BUt$r_9HjfC+#5`k2Qcc0bf_o%+M&)P!0xjKbNMz#<_qH#7L<H
+z%~f~;cp-?_!PB$?4F&T7qhxqG)uMiay%8kpx<=(z#D)(Op9x!{sD5gRJ_9@^(uIAa
+z>O}p1@Do85YDb|lJs*q{nZo}5Bvx}Uat&W2z7)cH<nQ721f7w|(!^ulV1%Fvd;2NZ
+z4B22x+ozUW5G(Eq28m>Qw<skVk|9^QsrEim@<1~SK>)686j4w^0nP(9ty-;#*8Aa!
+z+!%Y0BPHCx!V7@a%R5S(=(+U}yJHvf{ANl8@(liKPzHrVPta8Ud*ji|q|W7$sLk6w
+zm(RD%-!uk$h3giPML{ZO>#osvLT<4*_e$N}=EUMH6+zcoyb#fN%Mu@L`(Gh{Yo)WY
+zp>gZxcr+Bw4N4nAx4_3B>TdKeFdL$&P%rp6l*&`V94WnPfr%poSE9|yOY(Lb3s3S!
+zcX2hwj^p~{Fn_9dfntS%*h5;@)Ig^a;?xR0i)`_wx~s+d7|w)I-Kp`xj>2C>_W34D
+znx$AWTokGGrAQzKRtR&<v@m=LTr}$H(i4>dD1|LCw%5^1kSA=5v1u8yvz_Gc>zHHm
+zP52GaOqRQ;W7xFFUN>lvT|A-~#P@?q0n;bB2ww$%BeyZr<B&eGmPvi6ufU&@)t5Ba
+z^znE$cqNF{wJ}pQYE;j`FOpkdpg0CVIax8C9)Q+jBcMjW(LvM9CVd1Z<+63EX+{(B
+z64VI_q{$YQ6}<t<h%BKzD$`HVj@<#R#91jrCNILOfPy$9Jt9-Q#@ay-aZY%<Kb@rv
+zMpwaAg3U<sFvJ2_+uhH+rVqzz0YnrFoAy9MSTC2)NH(b~s5>SGcZfp!KSlIt)oxr#
+z@a^@Yi~*$zN4W|1Mm1zISTHM>!C;ljqYW~woG7w4<Tno(Oqhj4n++bdxsUW5wcdE|
+zNcD0lnj5jBv~2cN@7$gf&uYGy)s*e@>VHsZbe^zt+{$OMTRL&jxt#}gZ{S_z$GMjW
+zFl)~Z*`1HF#wS(_EN==HocWFe&y&j{9`FZeWg|{x$uysZ)CPtNS9*^HF^2S~Of8u~
+ztlj!=;S?xSHThsx=A2uJ=5{;11NUApshAzOeD7G5lfM@J%i4(q<xixB@~&WJy#5La
+zZbaV9^n}`OBHNp1tMA2@OdFTSCgz8Q<-eC~5aX<~foJ1B<#gL|tL^#PYM4joDOHo(
+zu7%p$3bgXf^#i9X9-0lK+d@x<6xRJ?;?;_?$o|_?eS4mo3+X#Nw`i17Hg7}Cndd?Z
+pk+F}bNN+!0->wU+3#<#Q3#<#Q3;h2DCVyPpWW8%MxVU`i@*iE}y4(N&
+
+literal 0
+HcmV?d00001
+
+diff --git a/tests/f_convert_bmap_and_extent/name b/tests/f_convert_bmap_and_extent/name
+new file mode 100644
+index 0000000..c9394c6
+--- /dev/null
++++ b/tests/f_convert_bmap_and_extent/name
+@@ -0,0 +1 @@
++convert blockmap and extents files to extents files
+diff --git a/tests/f_convert_bmap_and_extent/script b/tests/f_convert_bmap_and_extent/script
+new file mode 100644
+index 0000000..203ab25
+--- /dev/null
++++ b/tests/f_convert_bmap_and_extent/script
+@@ -0,0 +1,119 @@
++if [ "$DESCRIPTION"x != x ]; then
++	test_description="$DESCRIPTION"
++fi
++if [ "$IMAGE"x = x ]; then
++	IMAGE=$test_dir/image.gz
++fi
++
++if [ "$FSCK_OPT"x = x ]; then
++	FSCK_OPT=-yf
++fi
++
++if [ "$SECOND_FSCK_OPT"x = x ]; then
++	SECOND_FSCK_OPT=-yf
++fi
++
++if [ "$OUT1"x = x ]; then
++	OUT1=$test_name.1.log
++fi
++
++if [ "$OUT2"x = x ]; then
++	OUT2=$test_name.2.log
++fi
++
++if [ "$EXP1"x = x ]; then
++	if [ -f $test_dir/expect.1.gz ]; then
++		EXP1=$test_name.1.tmp
++		gunzip < $test_dir/expect.1.gz > $EXP1
++	else
++		EXP1=$test_dir/expect.1
++	fi
++fi
++
++if [ "$EXP2"x = x ]; then
++	if [ -f $test_dir/expect.2.gz ]; then
++		EXP2=$test_name.2.tmp
++		gunzip < $test_dir/expect.2.gz > $EXP2
++	else
++		EXP2=$test_dir/expect.2
++	fi
++fi
++
++if [ "$SKIP_GUNZIP" != "true" ] ; then
++	gunzip < $IMAGE > $TMPFILE
++fi
++
++cp /dev/null $OUT1
++
++eval $PREP_CMD
++
++echo 'stat /a' > $TMPFILE.cmd
++echo 'ex /zero' >> $TMPFILE.cmd
++$DEBUGFS -f $TMPFILE.cmd $TMPFILE > $OUT1.new 2>&1
++rm -rf $TMPFILE.cmd
++$TUNE2FS -O extent $TMPFILE >> $OUT1.new 2>&1
++$FSCK $FSCK_OPT -E bmap2extent -N test_filesys $TMPFILE >> $OUT1.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT1.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT1.new >> $OUT1
++rm -f $OUT1.new
++
++$FSCK $SECOND_FSCK_OPT -N test_filesys $TMPFILE > $OUT2.new 2>&1 
++status=$?
++echo Exit status is $status >> $OUT2.new
++echo 'ex /a' > $TMPFILE.cmd
++echo 'ex /zero' >> $TMPFILE.cmd
++$DEBUGFS -f $TMPFILE.cmd $TMPFILE >> $OUT2.new 2>&1
++rm -rf $TMPFILE.cmd
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT2.new > $OUT2
++rm -f $OUT2.new
++
++eval $AFTER_CMD
++
++if [ "$SKIP_VERIFY" != "true" ] ; then
++	rm -f $test_name.ok $test_name.failed
++	cmp -s $OUT1 $EXP1
++	status1=$?
++	if [ "$ONE_PASS_ONLY" != "true" ]; then
++		cmp -s $OUT2 $EXP2
++		status2=$?
++	else
++		status2=0
++	fi
++	if [ "$PASS_ZERO" = "true" ]; then
++		cmp -s $test_name.0.log	$test_dir/expect.0
++		status3=$?
++	else
++		status3=0
++	fi
++
++	if [ -z "$test_description" ] ; then
++		description="$test_name"
++	else
++		description="$test_name: $test_description"
++	fi
++
++	if [ "$status1" -eq 0 -a "$status2" -eq 0 -a "$status3" -eq 0 ] ; then
++		echo "$description: ok"
++		touch $test_name.ok
++	else
++		echo "$description: failed"
++		rm -f $test_name.failed
++		if [ "$PASS_ZERO" = "true" ]; then
++			diff $DIFF_OPTS $test_dir/expect.0 \
++				$test_name.0.log >> $test_name.failed
++		fi
++		diff $DIFF_OPTS $EXP1 $OUT1 >> $test_name.failed
++		if [ "$ONE_PASS_ONLY" != "true" ]; then
++			diff $DIFF_OPTS $EXP2 $OUT2 >> $test_name.failed
++		fi
++	fi
++	rm -f tmp_expect
++fi
++
++if [ "$SKIP_CLEANUP" != "true" ] ; then
++	unset IMAGE FSCK_OPT SECOND_FSCK_OPT OUT1 OUT2 EXP1 EXP2 
++	unset SKIP_VERIFY SKIP_CLEANUP SKIP_GUNZIP ONE_PASS_ONLY PREP_CMD
++	unset DESCRIPTION SKIP_UNLINK AFTER_CMD PASS_ZERO
++fi
++
+diff --git a/tests/f_extent_too_deep/expect.1 b/tests/f_extent_too_deep/expect.1
+new file mode 100644
+index 0000000..a595482
+--- /dev/null
++++ b/tests/f_extent_too_deep/expect.1
+@@ -0,0 +1,23 @@
++debugfs: ex /a
++Level Entries       Logical      Physical Length Flags
++ 0/ 7   1/  1     0 -     0    12              1
++ 1/ 7   1/  1     0 -     0    13              1
++ 2/ 7   1/  1     0 -     0    14              1
++ 3/ 7   1/  1     0 -     0    15              1
++ 4/ 7   1/  1     0 -     0    16              1
++ 5/ 7   1/  1     0 -     0    17              1
++ 6/ 7   1/  1     0 -     0     9              1
++ 7/ 7   1/  1     0 -     0    10 -    10      1 
++Pass 1: Checking inodes, blocks, and sizes
++Inode 12 extent tree could be more shallow (7; could be <= 4)
 +Fix? yes
 +
- Inode 12, i_blocks is 34, should be 0.  Fix? yes
- 
- Inode 13 missing EXTENT_FL, but is in extents format
-@@ -21,6 +25,10 @@ Inode 17 has an invalid extent
- 	(logical block 0, invalid physical block 22011707397135, len 15)
- Clear? yes
- 
-+Inode 17 extent tree could be shorter.
-+	(level 1 is unnecessary)
-+Fix? yes
-+
- Inode 17, i_blocks is 32, should be 0.  Fix? yes
- 
- Error while reading over extent tree in inode 18: Corrupt extent header
-@@ -31,6 +39,7 @@ Inode 18, i_blocks is 2, should be 0.  Fix? yes
- Special (device/socket/fifo) file (inode 19) has extents
- or inline-data flag set.  Clear? yes
- 
 +Pass 1E: Optimizing extent trees
- Pass 2: Checking directory structure
- Entry 'fbad-flag' in / (2) has deleted/unused inode 18.  Clear? yes
- 
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 12/128 files (0.0% non-contiguous), 19/512 blocks
++Exit status is 1
+diff --git a/tests/f_extent_too_deep/expect.2 b/tests/f_extent_too_deep/expect.2
+new file mode 100644
+index 0000000..a1d28b1
+--- /dev/null
++++ b/tests/f_extent_too_deep/expect.2
+@@ -0,0 +1,10 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 12/128 files (0.0% non-contiguous), 19/512 blocks
++Exit status is 0
++debugfs: ex /a
++Level Entries       Logical      Physical Length Flags
++ 0/ 0   1/  1     0 -     0    10 -    10      1 
+diff --git a/tests/f_extent_too_deep/image.gz b/tests/f_extent_too_deep/image.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..0f5adff562c7f45f275a4401344e784b6c61ef0b
+GIT binary patch
+literal 2592
+zcmb2|=3wx?6duCF{PymCf8jtGh7aG@g)R_rT-?mre9>1}CPu>N$ctAhoXss6N_=iF
+z5@Jgn)7j0{g?;~U$MjrWSXgN2BJ`haZVz)`*522$TUX9#P_RGs-1*+#-}m|t)ke$R
+z5APFT+7Par(yh|6IP<$^TY&yHb=Pd!4HL>YcLz^?KYf{6a)z0HeXpXe&6y>)!{oHZ
+z{w4_aEWdmEi{rbce>>ZI-7<e&n#^wgT>k9*+V6{hzqYV7kN<!F`meNSFQ+Q6*V|Y3
+z^T*9EtryRSC(q!xs&fB&rR?lflfNCSbM%+z9`NR8Xvm!~b$|P%vOS^yuV3DA=UzC!
+zdV2~70|P_Z{%7a+eb~FD@iQX>LxZgT@4xk?M^bd2d}j)Ap48L(^!o=nzNt^b-j@Bn
+z(tB&}&(}Bi3E1%+uQ+>K4XAm;YM!#Q|M&Ag|6C8`EjZre0W^eR#(!oY`RqTC0D%K#
+zt8|VVNY)>}nWdV0b3e-(v5!&LK$gwTUKeJq&J9t;uwnPp@BiQDA9oI70*csL0e#oU
+z@4*RVe|hm||DC?}r7S>pRms2jtmDcsHU76gI%<N<lAHVgc$tlYDp1LV;#slvAMS%y
+z_mw*UMaTsa{WFiQJUMmS^mV^a|12?_6#qZx;wRgs7w*6M?d&ss>QjkRvd@oR6O=Ze
+zwT(YrEiNVZY2}A3mTiX){VlmTBO>)r|Ir`c-?Qz0^ke$R^}nA_NN3&Vro6gdEo}Aw
+zNd;?G)F0CN>c2B%cHsY<=imQ-{{3@@$#3_+;+waWT&=Ht`+1dYa@5urll#5~9k0rL
+z`R+&5tNm+I=hrV419@x|jE2By2#kinXb6mkz-S22A_Nlt)-hg8%bdf&puhkC@B%oQ
+
+literal 0
+HcmV?d00001
+
+diff --git a/tests/f_extent_too_deep/name b/tests/f_extent_too_deep/name
+new file mode 100644
+index 0000000..7e8654a
+--- /dev/null
++++ b/tests/f_extent_too_deep/name
+@@ -0,0 +1 @@
++extent tree is deeper than it needs to be
+diff --git a/tests/f_extent_too_deep/script b/tests/f_extent_too_deep/script
+new file mode 100644
+index 0000000..ee18438
+--- /dev/null
++++ b/tests/f_extent_too_deep/script
+@@ -0,0 +1,118 @@
++if [ "$DESCRIPTION"x != x ]; then
++	test_description="$DESCRIPTION"
++fi
++if [ "$IMAGE"x = x ]; then
++	IMAGE=$test_dir/image.gz
++fi
++
++if [ "$FSCK_OPT"x = x ]; then
++	FSCK_OPT=-yf
++fi
++
++if [ "$SECOND_FSCK_OPT"x = x ]; then
++	SECOND_FSCK_OPT=-yf
++fi
++
++if [ "$OUT1"x = x ]; then
++	OUT1=$test_name.1.log
++fi
++
++if [ "$OUT2"x = x ]; then
++	OUT2=$test_name.2.log
++fi
++
++if [ "$EXP1"x = x ]; then
++	if [ -f $test_dir/expect.1.gz ]; then
++		EXP1=$test_name.1.tmp
++		gunzip < $test_dir/expect.1.gz > $EXP1
++	else
++		EXP1=$test_dir/expect.1
++	fi
++fi
++
++if [ "$EXP2"x = x ]; then
++	if [ -f $test_dir/expect.2.gz ]; then
++		EXP2=$test_name.2.tmp
++		gunzip < $test_dir/expect.2.gz > $EXP2
++	else
++		EXP2=$test_dir/expect.2
++	fi
++fi
++
++if [ "$SKIP_GUNZIP" != "true" ] ; then
++	gunzip < $IMAGE > $TMPFILE
++fi
++
++cp /dev/null $OUT1
++
++eval $PREP_CMD
++
++echo 'ex /a' > $TMPFILE.cmd
++$DEBUGFS -f $TMPFILE.cmd $TMPFILE > $OUT1.new 2>&1
++rm -rf $TMPFILE.cmd
++$FSCK $FSCK_OPT  -N test_filesys $TMPFILE >> $OUT1.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT1.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT1.new >> $OUT1
++rm -f $OUT1.new
++
++if [ "$ONE_PASS_ONLY" != "true" ]; then
++	$FSCK $SECOND_FSCK_OPT -N test_filesys $TMPFILE > $OUT2.new 2>&1 
++	status=$?
++	echo Exit status is $status >> $OUT2.new
++	echo 'ex /a' > $TMPFILE.cmd
++	$DEBUGFS -f $TMPFILE.cmd $TMPFILE >> $OUT2.new 2>&1
++	rm -rf $TMPFILE.cmd
++	sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT2.new > $OUT2
++	rm -f $OUT2.new
++fi
++
++eval $AFTER_CMD
++
++if [ "$SKIP_VERIFY" != "true" ] ; then
++	rm -f $test_name.ok $test_name.failed
++	cmp -s $OUT1 $EXP1
++	status1=$?
++	if [ "$ONE_PASS_ONLY" != "true" ]; then
++		cmp -s $OUT2 $EXP2
++		status2=$?
++	else
++		status2=0
++	fi
++	if [ "$PASS_ZERO" = "true" ]; then
++		cmp -s $test_name.0.log	$test_dir/expect.0
++		status3=$?
++	else
++		status3=0
++	fi
++
++	if [ -z "$test_description" ] ; then
++		description="$test_name"
++	else
++		description="$test_name: $test_description"
++	fi
++
++	if [ "$status1" -eq 0 -a "$status2" -eq 0 -a "$status3" -eq 0 ] ; then
++		echo "$description: ok"
++		touch $test_name.ok
++	else
++		echo "$description: failed"
++		rm -f $test_name.failed
++		if [ "$PASS_ZERO" = "true" ]; then
++			diff $DIFF_OPTS $test_dir/expect.0 \
++				$test_name.0.log >> $test_name.failed
++		fi
++		diff $DIFF_OPTS $EXP1 $OUT1 >> $test_name.failed
++		if [ "$ONE_PASS_ONLY" != "true" ]; then
++			diff $DIFF_OPTS $EXP2 $OUT2 >> $test_name.failed
++		fi
++	fi
++	rm -f tmp_expect
++fi
++
++if [ "$SKIP_CLEANUP" != "true" ] ; then
++	unset IMAGE FSCK_OPT SECOND_FSCK_OPT OUT1 OUT2 EXP1 EXP2 
++	unset SKIP_VERIFY SKIP_CLEANUP SKIP_GUNZIP ONE_PASS_ONLY PREP_CMD
++	unset DESCRIPTION SKIP_UNLINK AFTER_CMD PASS_ZERO
++fi
++
+diff --git a/tests/f_opt_extent/expect b/tests/f_opt_extent/expect
+new file mode 100644
+index 0000000..6d4863b
+--- /dev/null
++++ b/tests/f_opt_extent/expect
+@@ -0,0 +1,55 @@
++tune2fs metadata_csum test
++Creating filesystem with 524288 1k blocks and 65536 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
++
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (16384 blocks): done
++Creating 477 huge file(s) with 1024 blocks each: done
++Writing superblocks and filesystem accounting information:      done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 3A: Optimizing directories
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++
++
++Change in FS metadata:
++@@ -10,7 +10,7 @@
++ Inode count:              65536
++ Block count:              524288
++ Reserved block count:     26214
++-Free blocks:              570
+++Free blocks:              567
++ Free inodes:              65047
++ First block:              1
++ Block size:               1024
++@@ -47,8 +47,8 @@
++   Block bitmap at 262 (+261)
++   Inode bitmap at 278 (+277)
++   Inode table at 294-549 (+293)
++-  21 free blocks, 535 free inodes, 3 directories, 535 unused inodes
++-  Free blocks: 4414-4434
+++  18 free blocks, 535 free inodes, 3 directories, 535 unused inodes
+++  Free blocks: 4417-4434
++   Free inodes: 490-1024
++ Group 1: (Blocks 8193-16384) [INODE_UNINIT]
++   Backup superblock at 8193, Group descriptors at 8194-8197
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
+diff --git a/tests/f_opt_extent/name b/tests/f_opt_extent/name
+new file mode 100644
+index 0000000..7d4389c
+--- /dev/null
++++ b/tests/f_opt_extent/name
+@@ -0,0 +1 @@
++optimize extent tree
+diff --git a/tests/f_opt_extent/script b/tests/f_opt_extent/script
+new file mode 100644
+index 0000000..2da5e91
+--- /dev/null
++++ b/tests/f_opt_extent/script
+@@ -0,0 +1,64 @@
++FSCK_OPT=-fn
++OUT=$test_name.log
++EXP=$test_dir/expect
++CONF=$TMPFILE.conf
++
++cat > $CONF << ENDL
++[fs_types]
++	ext4h = {
++		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode,64bit,metadata_csum
++		blocksize = 1024
++		inode_size = 256
++		make_hugefiles = true
++		hugefiles_dir = /xyz
++		hugefiles_slack = 0
++		hugefiles_name = aaaaa
++		hugefiles_digits = 4
++		hugefiles_size = 1M
++		zero_hugefiles = false
++	}
++ENDL
++
++echo "tune2fs metadata_csum test" > $OUT
++
++MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
++rm -rf $CONF
++
++# dump and check
++$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.before
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# check
++$FSCK -fyD -N test_filesys $TMPFILE >> $OUT 2>&1
++
++# dump and check
++$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.after
++echo "Change in FS metadata:" >> $OUT
++diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++rm $TMPFILE $OUT.before $OUT.after
++
++#
++# Do the verification
++#
++
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
++mv $OUT.new $OUT
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++fi
++
++unset IMAGE FSCK_OPT OUT EXP CONF
+diff --git a/tests/f_opt_extent_ext3/expect b/tests/f_opt_extent_ext3/expect
+new file mode 100644
+index 0000000..1761471
+--- /dev/null
++++ b/tests/f_opt_extent_ext3/expect
+@@ -0,0 +1,44 @@
++rebuild extent metadata_csum test
++Creating filesystem with 524288 1k blocks and 65536 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
++
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (16384 blocks): done
++mke2fs: Operation not supported for inodes containing extents while creating huge files
++Writing superblocks and filesystem accounting information:      done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 3A: Optimizing directories
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++
++
++Change in FS metadata:
++@@ -2,7 +2,7 @@
++ Last mounted on:          <not available>
++ Filesystem magic number:  0xEF53
++ Filesystem revision #:    1 (dynamic)
++-Filesystem features:      has_journal ext_attr resize_inode dir_index filetype sparse_super large_file huge_file dir_nlink
+++Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent sparse_super large_file huge_file dir_nlink
++ Default mount options:    user_xattr acl
++ Filesystem state:         clean
++ Errors behavior:          Continue
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
+diff --git a/tests/f_opt_extent_ext3/name b/tests/f_opt_extent_ext3/name
+new file mode 100644
+index 0000000..b369685
+--- /dev/null
++++ b/tests/f_opt_extent_ext3/name
+@@ -0,0 +1 @@
++convert ext3 to extent tree
+diff --git a/tests/f_opt_extent_ext3/script b/tests/f_opt_extent_ext3/script
+new file mode 100644
+index 0000000..931eae7
+--- /dev/null
++++ b/tests/f_opt_extent_ext3/script
+@@ -0,0 +1,65 @@
++FSCK_OPT=-fn
++OUT=$test_name.log
++EXP=$test_dir/expect
++CONF=$TMPFILE.conf
++
++cat > $CONF << ENDL
++[fs_types]
++	ext4h = {
++		features = has_journal,^extent,huge_file,^flex_bg,^uninit_bg,dir_nlink,^extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode,^64bit,^metadata_csum
++		blocksize = 1024
++		inode_size = 256
++		make_hugefiles = true
++		hugefiles_dir = /
++		num_hugefiles = 100
++		hugefiles_slack = 0
++		hugefiles_name = aaaaa
++		hugefiles_digits = 4
++		hugefiles_size = 1M
++		zero_hugefiles = false
++	}
++ENDL
++
++echo "rebuild extent metadata_csum test" > $OUT
++
++MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
++rm -rf $CONF
++
++# dump and check
++$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.before
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# check
++$FSCK -fyD -N test_filesys -E bmap2extent $TMPFILE >> $OUT 2>&1
++
++# dump and check
++$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.after
++echo "Change in FS metadata:" >> $OUT
++diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++rm $TMPFILE $OUT.before $OUT.after
++
++#
++# Do the verification
++#
++
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
++mv $OUT.new $OUT
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++fi
++
++unset IMAGE FSCK_OPT OUT EXP CONF
 
