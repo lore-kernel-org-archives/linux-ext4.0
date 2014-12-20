@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 05/31] tune2fs: disable csum verification before resizing
- inode
-Date: Sat, 20 Dec 2014 13:17:13 -0800
-Message-ID: <20141220211713.25563.2431.stgit@birch.djwong.org>
+Subject: [PATCH 06/31] e2fsck: clear i_block[] when there are too many bad
+ mappings on a special inode
+Date: Sat, 20 Dec 2014 13:17:24 -0800
+Message-ID: <20141220211724.25563.77107.stgit@birch.djwong.org>
 References: <20141220211640.25563.80596.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,202 +10,44 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:45074 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:45086 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752426AbaLTVRX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Dec 2014 16:17:23 -0500
+	with ESMTP id S1752426AbaLTVR3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Dec 2014 16:17:29 -0500
 In-Reply-To: <20141220211640.25563.80596.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When we're turning on metadata checksumming /and/ resizing the inode
-at the same time, disable checksum verification during the
-resize_inode() call because the subroutines it calls will try to
-verify the checksums (which have not yet been set), causing the
-operation to fail unnecessarily.
+If we decide to clear a special inode because of bad mappings, we need
+to zero the i_block array.  The clearing routine depends on setting
+i_links_count to zero to keep us from re-checking the block maps,
+but that field isn't checked for special inodes.  Therefore, if we
+haven't erased the mappings, check_blocks will restart fsck and fsck
+will try to check the blocks again, leading to an infinite loop.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- misc/tune2fs.c               |    7 +++-
- tests/t_iexpand_mcsum/expect |   54 ++++++++++++++++++++++++++++
- tests/t_iexpand_mcsum/name   |    1 +
- tests/t_iexpand_mcsum/script |   80 ++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 141 insertions(+), 1 deletion(-)
- create mode 100644 tests/t_iexpand_mcsum/expect
- create mode 100644 tests/t_iexpand_mcsum/name
- create mode 100644 tests/t_iexpand_mcsum/script
+ e2fsck/pass1.c |    8 ++++++++
+ 1 file changed, 8 insertions(+)
 
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index b510c49..f01b05b 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -2961,8 +2961,13 @@ retry_open:
- 		 * We want to update group descriptor also
- 		 * with the new free inode count
- 		 */
-+		if (rewrite_checksums)
-+			fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
- 		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
--		if (resize_inode(fs, new_inode_size) == 0) {
-+		retval = resize_inode(fs, new_inode_size);
-+		if (rewrite_checksums)
-+			fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
-+		if (retval == 0) {
- 			printf(_("Setting inode size %lu\n"),
- 							new_inode_size);
- 			rewrite_checksums = 1;
-diff --git a/tests/t_iexpand_mcsum/expect b/tests/t_iexpand_mcsum/expect
-new file mode 100644
-index 0000000..2a6d705
---- /dev/null
-+++ b/tests/t_iexpand_mcsum/expect
-@@ -0,0 +1,54 @@
-+tune2fs test
-+Creating filesystem with 786432 1k blocks and 98304 inodes
-+Superblock backups stored on blocks: 
-+	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553
-+
-+Allocating group tables:      done                            
-+Writing inode tables:      done                            
-+Creating journal (16384 blocks): done
-+Creating 6334 huge file(s) with 117 blocks each: done
-+Writing superblocks and filesystem accounting information:      done
-+
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-+tune2fs -I 256 -O metadata_csum test.img
-+Setting inode size 256
-+
-+Please run e2fsck -D on the filesystem.
-+
-+Exit status is 0
-+Backing up journal inode block information.
-+
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 3A: Optimizing directories
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+
-+
-+Change in FS metadata:
-+@@ -5 +5 @@
-+-Filesystem features:      has_journal ext_attr dir_index filetype extent 64bit sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-++Filesystem features:      has_journal ext_attr dir_index filetype extent 64bit sparse_super large_file huge_file dir_nlink extra_isize metadata_csum
-+@@ -21 +21 @@
-+-Inode blocks per group:   128
-++Inode blocks per group:   256
-+@@ -27 +27 @@
-+-Inode size:	          128
-++Inode size:	          256
-+@@ -30,0 +31 @@
-++Checksum type:            crc32c
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-diff --git a/tests/t_iexpand_mcsum/name b/tests/t_iexpand_mcsum/name
-new file mode 100644
-index 0000000..e767715
---- /dev/null
-+++ b/tests/t_iexpand_mcsum/name
-@@ -0,0 +1 @@
-+expand inodes and turn on metadata_csum
-diff --git a/tests/t_iexpand_mcsum/script b/tests/t_iexpand_mcsum/script
-new file mode 100644
-index 0000000..aa6592e
---- /dev/null
-+++ b/tests/t_iexpand_mcsum/script
-@@ -0,0 +1,80 @@
-+if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
-+
-+FSCK_OPT=-fn
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+CONF=$TMPFILE.conf
-+
-+#gzip -d < $EXP.gz > $EXP
-+
-+cat > $CONF << ENDL
-+[fs_types]
-+	ext4h = {
-+		features = has_journal,extent,huge_file,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,^resize_inode,^meta_bg,^flex_bg,^metadata_csum,64bit
-+		blocksize = 1024
-+		inode_size = 256
-+		make_hugefiles = true
-+		hugefiles_dir = /
-+		hugefiles_slack = 16000K
-+		hugefiles_name = aaaaa
-+		hugefiles_digits = 4
-+		hugefiles_size = 117K
-+		zero_hugefiles = false
-+	}
-+ENDL
-+
-+echo "tune2fs test" > $OUT
-+
-+MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h -I 128 $TMPFILE 786432 >> $OUT 2>&1
-+rm -rf $CONF
-+
-+# dump and check
-+($DUMPE2FS -h $TMPFILE | grep -v '^Free blocks:'; $DUMPE2FS -g $TMPFILE) 2>&1 | sed -f $cmd_dir/filter.sed -e '/^Checksum:.*/d' >> $OUT.before 2> /dev/null
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+# convert it
-+echo "tune2fs -I 256 -O metadata_csum test.img" >> $OUT
-+dd if=/dev/zero of=$TMPFILE conv=notrunc bs=1 count=1 seek=3221225471 2> /dev/null
-+$TUNE2FS -I 256 -O metadata_csum $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+$FSCK -N test_filesys -y -f -D $TMPFILE >> $OUT 2>&1
-+
-+# dump and check
-+($DUMPE2FS -h $TMPFILE | grep -v '^Free blocks:'; $DUMPE2FS -g $TMPFILE) 2>&1 | sed -f $cmd_dir/filter.sed -e '/^Checksum:.*/d' >> $OUT.after 2> /dev/null
-+echo "Change in FS metadata:" >> $OUT
-+diff -u0 $OUT.before $OUT.after | sed -e '/^---.*/d' -e '/^+++.*/d' >> $OUT
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+rm $TMPFILE
-+
-+#
-+# Do the verification
-+#
-+
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
-+mv $OUT.new $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+fi
-+
-+rm $OUT.before $OUT.after
-+
-+unset IMAGE FSCK_OPT OUT EXP CONF
-+
-+else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
-+	echo "$test_name: $test_description: skipped"
-+fi
-+
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 5f6e1dc..a861177 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -2862,6 +2862,14 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 	}
+ 
+ 	if (pb.clear) {
++		/*
++		 * If a special inode has such rotten block mappings that we
++		 * want to clear the whole inode, be sure to actually zap
++		 * the block maps because i_links_count isn't checked for
++		 * special inodes, and we'll end up right back here.
++		 */
++		if (ino < EXT2_FIRST_INODE(fs->super))
++			memset(inode->i_block, 0, sizeof(inode->i_block));
+ 		e2fsck_clear_inode(ctx, ino, inode, E2F_FLAG_RESTART,
+ 				   "check_blocks");
+ 		return;
 
