@@ -1,120 +1,76 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 32/31] libext2fs: initialize i_extra_isize when writing EAs
-Date: Mon, 22 Dec 2014 10:53:51 -0800
-Message-ID: <20141222185351.GG5368@birch.djwong.org>
+Subject: [PATCH 33/31] e2fsck: on read error, don't rewrite blocks past the
+ end of the fs
+Date: Mon, 22 Dec 2014 10:55:04 -0800
+Message-ID: <20141222185504.GH5368@birch.djwong.org>
 References: <20141220211640.25563.80596.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:45272 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:45875 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754424AbaLVSx4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Dec 2014 13:53:56 -0500
+	with ESMTP id S1754295AbaLVSzI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Dec 2014 13:55:08 -0500
 Content-Disposition: inline
 In-Reply-To: <20141220211640.25563.80596.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If i_extra_isize is zero when we try to write extended attributes,
-we'll end up writing the EA magic into the i_extra_isize field, which
-causes a subsequent crash on big endian systems (when we try to write
-0xEA02 bytes past the inode!).  Therefore when the field is zero, set
-i_extra_isize to the desired extra_isize size, zero those bytes, and
-write the EAs after the end of the extended inode.
+If e2fsck encounters a read error on a block past the end of the
+filesystem, don't bother trying to "rewrite" the block.  We might
+still want to re-try the read to capture FS data marooned past the end
+of the filesystem, but in that case e2fsck ought to move the block
+back inside the filesystem.
+
+This enables e2fuzz to detect writes past the end of the FS due to
+software bugs.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/ext_attr.c                    |   11 +++++++++++
- tests/f_write_ea_no_extra_isize/expect.1 |   12 ++++++++++++
- tests/f_write_ea_no_extra_isize/expect.2 |    7 +++++++
- tests/f_write_ea_no_extra_isize/image.gz |  Bin
- tests/f_write_ea_no_extra_isize/name     |    1 +
- 5 files changed, 31 insertions(+)
- create mode 100644 tests/f_write_ea_no_extra_isize/expect.1
- create mode 100644 tests/f_write_ea_no_extra_isize/expect.2
- create mode 100644 tests/f_write_ea_no_extra_isize/image.gz
- create mode 100644 tests/f_write_ea_no_extra_isize/name
+ e2fsck/ehandler.c |    5 +++++
+ misc/e2fuzz.sh    |    7 +++++++
+ 2 files changed, 12 insertions(+)
 
-diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index 70bc3f9..551c1f2 100644
---- a/lib/ext2fs/ext_attr.c
-+++ b/lib/ext2fs/ext_attr.c
-@@ -519,6 +519,17 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
- 	if (err)
- 		goto out;
+diff --git a/e2fsck/ehandler.c b/e2fsck/ehandler.c
+index 6dddf9c..71ca301 100644
+--- a/e2fsck/ehandler.c
++++ b/e2fsck/ehandler.c
+@@ -58,6 +58,11 @@ static errcode_t e2fsck_handle_read_error(io_channel channel,
+ 		printf(_("Error reading block %lu (%s).  "), block,
+ 		       error_message(error));
+ 	preenhalt(ctx);
++
++	/* Don't rewrite a block past the end of the FS. */
++	if (block >= ext2fs_blocks_count(fs->super))
++		return 0;
++
+ 	if (ask(ctx, _("Ignore error"), 1)) {
+ 		if (ask(ctx, _("Force rewrite"), 1))
+ 			io_channel_write_blk64(channel, block, count, data);
+diff --git a/misc/e2fuzz.sh b/misc/e2fuzz.sh
+index 4cb7b61..d8d9a82 100755
+--- a/misc/e2fuzz.sh
++++ b/misc/e2fuzz.sh
+@@ -219,6 +219,7 @@ seq 1 "${PASSES}" | while read pass; do
+ 	fi
+ 	if [ "${RUN_FSCK}" -gt 0 ]; then
+ 		cp "${PASS_IMG}" "${FSCK_IMG}"
++		pass_img_sz="$(stat -c '%s' "${PASS_IMG}")"
  
-+	/* If extra_isize isn't set, we need to set it now */
-+	if (inode->i_extra_isize == 0) {
-+		char *p = (char *)inode;
-+		size_t extra = handle->fs->super->s_want_extra_isize;
+ 		seq 1 "${MAX_FSCK}" | while read fsck_pass; do
+ 			echo "++ fsck pass ${fsck_pass}: $(which e2fsck) -fy ${FSCK_IMG} ${EXTENDED_FSCK_OPTS}"
+@@ -250,6 +251,12 @@ seq 1 "${PASSES}" | while read pass; do
+ 					exit 2
+ 				fi
+ 			fi
 +
-+		if (extra == 0)
-+			extra = sizeof(inode->i_extra_isize);
-+		memset(p + EXT2_GOOD_OLD_INODE_SIZE, 0, extra);
-+		inode->i_extra_isize = extra;
-+	}
-+
- 	move_inline_data_to_front(handle);
- 
- 	x = handle->attrs;
-diff --git a/tests/f_write_ea_no_extra_isize/expect.1 b/tests/f_write_ea_no_extra_isize/expect.1
-new file mode 100644
-index 0000000..b7e7438
---- /dev/null
-+++ b/tests/f_write_ea_no_extra_isize/expect.1
-@@ -0,0 +1,12 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Directory inode 12, block #0, offset 4: directory corrupted
-+Salvage? yes
-+
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 12/128 files (0.0% non-contiguous), 17/512 blocks
-+Exit status is 1
-diff --git a/tests/f_write_ea_no_extra_isize/expect.2 b/tests/f_write_ea_no_extra_isize/expect.2
-new file mode 100644
-index 0000000..3b6073e
---- /dev/null
-+++ b/tests/f_write_ea_no_extra_isize/expect.2
-@@ -0,0 +1,7 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 12/128 files (0.0% non-contiguous), 17/512 blocks
-+Exit status is 0
-diff --git a/tests/f_write_ea_no_extra_isize/image.gz b/tests/f_write_ea_no_extra_isize/image.gz
-new file mode 100644
-index 0000000000000000000000000000000000000000..928daff1f344824d357e816883a98b2cdfdaffb3
-GIT binary patch
-literal 2516
-zcmb2|=3qFkI6Z`k`Ry&+Y!OEZh6m-}^`s^_@O3Vjpj4;eVQ?ceQSj)oL#Gnz1=cLm
-zv~lFfFtI=2=98SCs6XwXQ}-6Ju%@X>9fI9126HxlZ#2Be**0UwlghsG_L*~cr<Q$x
-zcJJ<Oj)e8Ibj2!<JPfHhr<Aq!+aA$gzRhQoDpTqfm88@ubyxlMdNpU)@t~~i`mk$S
-zzoVyaURhCSpQJX`e|`A<yOq_6FK*5jUa#jL8+)&B<F~W5)<2(II(+ff@7nX~@@wXt
-zO0r@5^laDG$2W8iznog0p}+h^;VVXl4ZK}{zBqI(?)|f0Y^ht>t&nbG@wbW$3=B7Z
-zzWX-qadqb7_v@K~-2ZzY{r}&1;?u?qJ8lDkN;|V_HErb@zdo&eIeY8H?91Epe8gTW
-z#qp>8%-!w_RG#4e@_o_Y_#Xxt|AD*%>jF1&gXpjJK#~;jC;IEb(o&#~gzJUuETrf}
-zRok%tV=6ElWvesq%s;o>RW(Vqw|cASS<|O4a;NN_xHR?tb)Bt$LbgmbOZ<IUQ%o$p
-zUwq@2A5YK3-Tr^z+swV;J`Rs%pZ#BB`ad`3|E{WQssEz?TR&NG;97*nr}>xXe%f!t
-zxAoKf7Zd(Zk&?Xh?1}x|{r`U+Uwh*Jxur#4xBt=4FJGCGo%NMBXYuokNl*KaC%k*G
-zu}tK){;6+2PXDfdYaO{ZbnaGE_m1*LLtr!nMnhmU1V%$(Gz6#@0(bv1g#8Yk!N8!v
-F003fX5hwrv
-
-literal 0
-HcmV?d00001
-
-diff --git a/tests/f_write_ea_no_extra_isize/name b/tests/f_write_ea_no_extra_isize/name
-new file mode 100644
-index 0000000..200e365
---- /dev/null
-+++ b/tests/f_write_ea_no_extra_isize/name
-@@ -0,0 +1 @@
-+write EA when i_extra_size is zero
++			fsck_img_sz="$(stat -c '%s' "${FSCK_IMG}")"
++			if [ "${fsck_img_sz}" -ne "${pass_img_sz}" ]; then
++				echo "++ fsck image size changed"
++				exit 3
++			fi
+ 		done
+ 		fsck_loop_ret=$?
+ 		if [ "${fsck_loop_ret}" -gt 0 ]; then
