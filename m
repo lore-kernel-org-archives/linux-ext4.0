@@ -1,49 +1,50 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Ext4 tail merging?
-Date: Tue, 23 Dec 2014 15:13:18 -0700
-Message-ID: <C129E0A8-6B8F-45AF-8EC5-33ABEC979C15@dilger.ca>
-References: <5499DFE5.60508@ubuntu.com>
-Mime-Version: 1.0 (Mac OS X Mail 8.1 \(1993\))
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Phillip Susi <psusi@ubuntu.com>
+From: Maxim Malkov <malkov@ispras.ru>
+Subject: Online resizing of filesystem mounted with backup superblock causes
+ corruption
+Date: Wed, 24 Dec 2014 01:32:42 +0300
+Message-ID: <5499ED8A.5010907@ispras.ru>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: Andrey Tsyvarev <tsyvarev@ispras.ru>,
+	Alexey Khoroshilov <khoroshilov@ispras.ru>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f54.google.com ([209.85.220.54]:60434 "EHLO
-	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751499AbaLWWNV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Dec 2014 17:13:21 -0500
-Received: by mail-pa0-f54.google.com with SMTP id fb1so8761767pad.13
-        for <linux-ext4@vger.kernel.org>; Tue, 23 Dec 2014 14:13:21 -0800 (PST)
-In-Reply-To: <5499DFE5.60508@ubuntu.com>
+Received: from mail.ispras.ru ([83.149.199.45]:45190 "EHLO mail.ispras.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751499AbaLWWcq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Dec 2014 17:32:46 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Dec 23, 2014, at 2:34 PM, Phillip Susi <psusi@ubuntu.com> wrote:
-> 
-> Ext4 still does not support tail merging right?  I had a user post
-> this filefrag output and was surprised to see that it says the merged
-> flag is set.  How can this be?
-> 
-> $ filefrag -v /boot/grub/grubenv
-> Filesystem type is: ef53
-> Filesystem cylinder groups approximately 19
-> File size of /boot/grub/grubenv is 1024 (1 block of 4096 bytes)
-> ext: logical_offset: physical_offset: length: expected: flags:
->   0: 0.. 0: 494592.. 494592: 1: merged,eof
-> /boot/grub/grubenv: 1 extent found, perfection would be -1 extent
+# mkfs.ext4 /dev/loop0 100M # adjust if necessary, should be less than
+partition size
 
-"merged" in this context doesn't mean "tail merging" in the sense of Reiserfs.  This just means that the reported "extent" is actually merged
-from a series of contiguous blocks in an ext3 block-mapped file (as
-opposed to an extent-mapped file).
+Superblock backups stored on blocks:
+        8193, 24577, 40961, 57345, 73729
+(pick one)
 
-Note that there is an experimental ext4 feature similar to "tail merging"
-that is being added.  That is "inline data", which stores the data of
-small files or directories directly in the inode as an xattr.
+# mount -t ext4 -o sb=40961 /dev/loop0 /media/
+# resize2fs /dev/loop0
+resize2fs 1.42.12 (29-Aug-2014)
+Filesystem at /dev/loop0 is mounted on /media; on-line resizing required
+old_desc_blocks = 1, new_desc_blocks = 4
 
-Cheers, Andreas
+Now, depending on your luck, various things may happen. resize2fs may hang.
+You might see BUG() in your dmesg. Either way, system will become
+severely corrupted (as indicated by fsck). You won't be able to mount
+it, either.
+
+[ 2669.510800] EXT4-fs (loop0): resizing filesystem from 128000 to
+256000 blocks
+[ 2669.513558] EXT4-fs warning (device loop0): reserve_backup_gdb:969:
+reserved block 32770 not at offset 1
+[ 2669.513569] EXT4-fs (loop0): resized filesystem to 256000
+[ 2669.516328] EXT4-fs warning (device loop0): ext4_group_extend:1734:
+can't shrink FS - resize aborted
 
 
-
-
+-- 
+Maxim Malkov
+Software Engineering Department, ISPRAS 
 
