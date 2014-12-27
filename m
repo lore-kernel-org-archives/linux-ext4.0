@@ -1,36 +1,35 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 89511] USB-storage mount error
-Date: Sat, 27 Dec 2014 13:01:53 +0000
-Message-ID: <bug-89511-13602-hgAJAcNXq6@https.bugzilla.kernel.org/>
-References: <bug-89511-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:37982 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750826AbaL0NB6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 27 Dec 2014 08:01:58 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 389092020E
-	for <linux-ext4@vger.kernel.org>; Sat, 27 Dec 2014 13:01:56 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 8B649201C7
-	for <linux-ext4@vger.kernel.org>; Sat, 27 Dec 2014 13:01:53 +0000 (UTC)
-In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Fabian Frederick <fabf@skynet.be>
+Subject: [PATCH 1/1 linux-next] ext3: destroy sbi mutexes in put_super
+Date: Sat, 27 Dec 2014 16:01:22 +0100
+Message-ID: <1419692482-17658-1-git-send-email-fabf@skynet.be>
+Cc: Fabian Frederick <fabf@skynet.be>, Jan Kara <jack@suse.cz>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=89511
+Signed-off-by: Fabian Frederick <fabf@skynet.be>
+---
+This is untested.
 
---- Comment #30 from Jun Itou <itou_jun@infoseek.jp> ---
-To Alan Stern
+ fs/ext3/super.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-I challenged a compilation of 3.18, but was not able to do it with lack of
-memory.
-I was doing it to check a cross compilation from now on.
-
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 9b4e7d7..d4dbf3c 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -466,6 +466,8 @@ static void ext3_put_super (struct super_block * sb)
+ 	}
+ 	sb->s_fs_info = NULL;
+ 	kfree(sbi->s_blockgroup_lock);
++	mutex_destroy(&sbi->s_orphan_lock);
++	mutex_destroy(&sbi->s_resize_lock);
+ 	kfree(sbi);
+ }
+ 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.1.0
