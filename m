@@ -1,78 +1,25 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 4/4] ext4: fix suboptimal seek_{data,hole} extents
- traversial
-Date: Fri, 2 Jan 2015 15:03:01 -0500
-Message-ID: <20150102200301.GC10927@thunk.org>
-References: <1417518054-21733-1-git-send-email-dmonakhov@openvz.org>
- <1417518054-21733-4-git-send-email-dmonakhov@openvz.org>
- <20141211200540.GE31008@thunk.org>
- <878uidgshe.fsf@openvz.org>
- <20141217035713.GW17575@thunk.org>
- <87y4q6joy4.fsf@openvz.org>
- <20141227153924.GC24553@thunk.org>
- <87tx0f7gel.fsf@openvz.org>
- <20141229041310.GE24553@thunk.org>
+Subject: Re: [PATCH] ext4: remove spurious KERN_INFO from ext4_warning call
+Date: Fri, 2 Jan 2015 16:45:38 -0500
+Message-ID: <20150102214538.GA20340@thunk.org>
+References: <1419532994-5988-1-git-send-email-jwilk@jwilk.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+To: Jakub Wilk <jwilk@jwilk.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49478 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:49577 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751871AbbABUDI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Jan 2015 15:03:08 -0500
+	id S1752496AbbABVpl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Jan 2015 16:45:41 -0500
 Content-Disposition: inline
-In-Reply-To: <20141229041310.GE24553@thunk.org>
+In-Reply-To: <1419532994-5988-1-git-send-email-jwilk@jwilk.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Dec 28, 2014 at 11:13:10PM -0500, Theodore Ts'o wrote:
-> On Sun, Dec 28, 2014 at 10:55:46PM +0400, Dmitry Monakhov wrote:
-> > Yes. I've already sent you updated patches
-> > https://patchwork.ozlabs.org/patch/422594/
-> > https://patchwork.ozlabs.org/patch/422595/
-> 
-> Thanks, this somehow got lost from my inbox.  I'm not sure how it
-> happened, but I do see it in patchwork.
+On Thu, Dec 25, 2014 at 07:43:14PM +0100, Jakub Wilk wrote:
+> Signed-off-by: Jakub Wilk <jwilk@jwilk.net>
 
-I tried applying both of these patches, but I'm still seeing a failure:
+Applied, thanks.
 
-% git log --oneline -2
-e195ba5 ext4: fix seek_data for indirect layout
-dd634e3 ext4: fix seek_data cleanup
-
-# uname -a
-Linux kvm-xfstests 3.18.0-rc3-00003-ge195ba5 #2548 SMP Fri Jan 2 14:35:32 EST 2015 i686 GNU/Linux
-# mke2fs -t ext4 -O ^extent,^flex_bg,^uninit_bg -Fq /dev/vdd
-/dev/vdd contains a ext4 file system
-	 last mounted on /vdd on Fri Jan  2 14:49:58 2015
-# mount -t ext4 -o nodelalloc /dev/vdd /vdd
-# xfstests/src/seek_sanity_test  /vdd/seek_sanity_testfile
-File system magic#: 0xef53
-Allocation size: 4096
-
-...
-10. Test a huge file for offset overflow
-10.01 SEEK_HOLE expected 65536 or 0, got 0.                       FAIL
-10.02 SEEK_HOLE expected 65536 or 0, got 1.                       FAIL
-10.03 SEEK_DATA expected 0 or 0, got -1.                          FAIL
-10.04 SEEK_DATA expected 1 or 1, got -1.                          FAIL
-10.05 SEEK_HOLE expected 0 or 0, got -65536.                      FAIL
-10.06 SEEK_DATA expected -65536 or -65536, got -1.                FAIL
-10.07 SEEK_DATA expected -65535 or -65535, got -1.                FAIL
-10.08 SEEK_DATA expected -65536 or -65536, got -1.                FAIL
-
-I'm getting the exact same failure with a kernel compiled with
-
-# CONFIG_EXT3_FS is not set
-CONFIG_EXT4_USE_FOR_EXT23=y
-
-and then using "mke2fs -t ext3 -Fq /dev/vdd" and "mount -t ext3
-/dev/vdd /vdd" and I'm seeing the same failure.  Which really worries
-me, since that's something that many more users will be using.
-
-At this point I'm beginning to think that we would be better off
-reverting 14516bb7bb6 until we can figure out what is going on.  I'm
-really wondering why you're not seeing this failure, but I am.
-
-       		     	    	       	    - Ted
+					- Ted
