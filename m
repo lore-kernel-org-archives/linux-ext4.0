@@ -1,209 +1,78 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: [PATCH v7 11/11] xfstests: fsx: Add fallocate insert range operation
-Date: Fri, 02 Jan 2015 18:43:07 +0900
-Message-ID: <004901d02670$835ac120$8a104360$@samsung.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 4/4] ext4: fix suboptimal seek_{data,hole} extents
+ traversial
+Date: Fri, 2 Jan 2015 15:03:01 -0500
+Message-ID: <20150102200301.GC10927@thunk.org>
+References: <1417518054-21733-1-git-send-email-dmonakhov@openvz.org>
+ <1417518054-21733-4-git-send-email-dmonakhov@openvz.org>
+ <20141211200540.GE31008@thunk.org>
+ <878uidgshe.fsf@openvz.org>
+ <20141217035713.GW17575@thunk.org>
+ <87y4q6joy4.fsf@openvz.org>
+ <20141227153924.GC24553@thunk.org>
+ <87tx0f7gel.fsf@openvz.org>
+ <20141229041310.GE24553@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Brian Foster <bfoster@redhat.com>, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, Ashish Sangwan <a.sangwan@samsung.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-language: ko
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:49478 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751871AbbABUDI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Jan 2015 15:03:08 -0500
+Content-Disposition: inline
+In-Reply-To: <20141229041310.GE24553@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This commit adds fallocate FALLOC_FL_INSERT_RANGE support for fsx.
+On Sun, Dec 28, 2014 at 11:13:10PM -0500, Theodore Ts'o wrote:
+> On Sun, Dec 28, 2014 at 10:55:46PM +0400, Dmitry Monakhov wrote:
+> > Yes. I've already sent you updated patches
+> > https://patchwork.ozlabs.org/patch/422594/
+> > https://patchwork.ozlabs.org/patch/422595/
+> 
+> Thanks, this somehow got lost from my inbox.  I'm not sure how it
+> happened, but I do see it in patchwork.
 
-Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
----
- ltp/fsx.c | 96 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 94 insertions(+), 2 deletions(-)
+I tried applying both of these patches, but I'm still seeing a failure:
 
-diff --git a/ltp/fsx.c b/ltp/fsx.c
-index 47d3ee8..9dc1655 100644
---- a/ltp/fsx.c
-+++ b/ltp/fsx.c
-@@ -95,7 +95,8 @@ int			logcount = 0;	/* total ops */
- #define OP_PUNCH_HOLE		6
- #define OP_ZERO_RANGE		7
- #define OP_COLLAPSE_RANGE	8
--#define OP_MAX_FULL		9
-+#define OP_INSERT_RANGE	9
-+#define OP_MAX_FULL		10
- 
- /* operation modifiers */
- #define OP_CLOSEOPEN	100
-@@ -145,6 +146,7 @@ int     fallocate_calls = 1;            /* -F flag disables */
- int     punch_hole_calls = 1;           /* -H flag disables */
- int     zero_range_calls = 1;           /* -z flag disables */
- int	collapse_range_calls = 1;	/* -C flag disables */
-+int	insert_range_calls = 1;		/* -i flag disables */
- int 	mapped_reads = 1;		/* -R flag disables it */
- int	fsxgoodfd = 0;
- int	o_direct;			/* -Z */
-@@ -339,6 +341,14 @@ logdump(void)
- 						     lp->args[0] + lp->args[1])
- 				prt("\t******CCCC");
- 			break;
-+		case OP_INSERT_RANGE:
-+			prt("INSERT 0x%x thru 0x%x\t(0x%x bytes)",
-+			    lp->args[0], lp->args[0] + lp->args[1] - 1,
-+			    lp->args[1]);
-+			if (badoff >= lp->args[0] && badoff <
-+						     lp->args[0] + lp->args[1])
-+				prt("\t******CCCC");
-+			break;
- 		case OP_SKIPPED:
- 			prt("SKIPPED (no operation)");
- 			break;
-@@ -1012,6 +1022,59 @@ do_collapse_range(unsigned offset, unsigned length)
- }
- #endif
- 
-+#ifdef FALLOC_FL_INSERT_RANGE
-+void
-+do_insert_range(unsigned offset, unsigned length)
-+{
-+	unsigned end_offset;
-+	int mode = FALLOC_FL_INSERT_RANGE;
-+
-+	if (length == 0) {
-+		if (!quiet && testcalls > simulatedopcount)
-+			prt("skipping zero length insert range\n");
-+		log4(OP_SKIPPED, OP_INSERT_RANGE, offset, length);
-+		return;
-+	}
-+
-+	if ((loff_t)offset >= file_size) {
-+		if (!quiet && testcalls > simulatedopcount)
-+			prt("skipping insert range behind EOF\n");
-+		log4(OP_SKIPPED, OP_INSERT_RANGE, offset, length);
-+		return;
-+	}
-+
-+	log4(OP_INSERT_RANGE, offset, length, 0);
-+
-+	if (testcalls <= simulatedopcount)
-+		return;
-+
-+	end_offset = offset + length;
-+	if ((progressinterval && testcalls % progressinterval == 0) ||
-+	    (debug && (monitorstart == -1 || monitorend == -1 ||
-+		      end_offset <= monitorend))) {
-+		prt("%lu insert\tfrom 0x%x to 0x%x, (0x%x bytes)\n", testcalls,
-+			offset, offset+length, length);
-+	}
-+	if (fallocate(fd, mode, (loff_t)offset, (loff_t)length) == -1) {
-+		prt("insert range: %x to %x\n", offset, length);
-+		prterr("do_insert_range: fallocate");
-+		report_failure(161);
-+	}
-+
-+	memmove(good_buf + end_offset, good_buf + offset,
-+		file_size - offset);
-+	memset(good_buf + offset, '\0', length);
-+	file_size += length;
-+}
-+
-+#else
-+void
-+do_insert_range(unsigned offset, unsigned length)
-+{
-+	return;
-+}
-+#endif
-+
- #ifdef HAVE_LINUX_FALLOC_H
- /* fallocate is basically a no-op unless extending, then a lot like a truncate */
- void
-@@ -1192,6 +1255,12 @@ test(void)
- 			goto out;
- 		}
- 		break;
-+	case OP_INSERT_RANGE:
-+		if (!insert_range_calls) {
-+			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
-+			goto out;
-+		}
-+		break;
- 	}
- 
- 	switch (op) {
-@@ -1244,6 +1313,21 @@ test(void)
- 		}
- 		do_collapse_range(offset, size);
- 		break;
-+	case OP_INSERT_RANGE:
-+		TRIM_OFF_LEN(offset, size, (maxfilelen - 1) - file_size);
-+		offset = offset & ~(block_size - 1);
-+		size = size & ~(block_size - 1);
-+		if (size == 0) {
-+			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
-+			goto out;
-+		}
-+		if (file_size + size > maxfilelen) {
-+			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
-+			goto out;
-+		}
-+
-+		do_insert_range(offset, size);
-+		break;
- 	default:
- 		prterr("test: unknown operation");
- 		report_failure(42);
-@@ -1307,6 +1391,9 @@ usage(void)
- #ifdef FALLOC_FL_COLLAPSE_RANGE
- "	-C: Do not use collapse range calls\n"
- #endif
-+#ifdef FALLOC_FL_INSERT_RANGE
-+"	-i: Do not use insert range calls\n"
-+#endif
- "	-L: fsxLite - no file creations & no file size changes\n\
- 	-N numops: total # operations to do (default infinity)\n\
- 	-O: use oplen (see -o flag) for every op (default random)\n\
-@@ -1493,7 +1580,7 @@ main(int argc, char **argv)
- 
- 	setvbuf(stdout, (char *)0, _IOLBF, 0); /* line buffered stdout */
- 
--	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHzCLN:OP:RS:WZ"))
-+	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHzCiLN:OP:RS:WZ"))
- 	       != EOF)
- 		switch (ch) {
- 		case 'b':
-@@ -1599,6 +1686,9 @@ main(int argc, char **argv)
- 		case 'C':
- 			collapse_range_calls = 0;
- 			break;
-+		case 'i':
-+			insert_range_calls = 0;
-+			break;
- 		case 'L':
- 		        lite = 1;
- 			break;
-@@ -1758,6 +1848,8 @@ main(int argc, char **argv)
- 		zero_range_calls = test_fallocate(FALLOC_FL_ZERO_RANGE);
- 	if (collapse_range_calls)
- 		collapse_range_calls = test_fallocate(FALLOC_FL_COLLAPSE_RANGE);
-+	if (insert_range_calls)
-+		insert_range_calls = test_fallocate(FALLOC_FL_INSERT_RANGE);
- 
- 	while (numops == -1 || numops--)
- 		test();
--- 
-1.7.11-rc0
+% git log --oneline -2
+e195ba5 ext4: fix seek_data for indirect layout
+dd634e3 ext4: fix seek_data cleanup
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+# uname -a
+Linux kvm-xfstests 3.18.0-rc3-00003-ge195ba5 #2548 SMP Fri Jan 2 14:35:32 EST 2015 i686 GNU/Linux
+# mke2fs -t ext4 -O ^extent,^flex_bg,^uninit_bg -Fq /dev/vdd
+/dev/vdd contains a ext4 file system
+	 last mounted on /vdd on Fri Jan  2 14:49:58 2015
+# mount -t ext4 -o nodelalloc /dev/vdd /vdd
+# xfstests/src/seek_sanity_test  /vdd/seek_sanity_testfile
+File system magic#: 0xef53
+Allocation size: 4096
+
+...
+10. Test a huge file for offset overflow
+10.01 SEEK_HOLE expected 65536 or 0, got 0.                       FAIL
+10.02 SEEK_HOLE expected 65536 or 0, got 1.                       FAIL
+10.03 SEEK_DATA expected 0 or 0, got -1.                          FAIL
+10.04 SEEK_DATA expected 1 or 1, got -1.                          FAIL
+10.05 SEEK_HOLE expected 0 or 0, got -65536.                      FAIL
+10.06 SEEK_DATA expected -65536 or -65536, got -1.                FAIL
+10.07 SEEK_DATA expected -65535 or -65535, got -1.                FAIL
+10.08 SEEK_DATA expected -65536 or -65536, got -1.                FAIL
+
+I'm getting the exact same failure with a kernel compiled with
+
+# CONFIG_EXT3_FS is not set
+CONFIG_EXT4_USE_FOR_EXT23=y
+
+and then using "mke2fs -t ext3 -Fq /dev/vdd" and "mount -t ext3
+/dev/vdd /vdd" and I'm seeing the same failure.  Which really worries
+me, since that's something that many more users will be using.
+
+At this point I'm beginning to think that we would be better off
+reverting 14516bb7bb6 until we can figure out what is going on.  I'm
+really wondering why you're not seeing this failure, but I am.
+
+       		     	    	       	    - Ted
