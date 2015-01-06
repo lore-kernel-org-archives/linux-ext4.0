@@ -1,46 +1,60 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 bug fixes for 3.19-rc3
-Date: Mon, 5 Jan 2015 17:54:18 -0500
-Message-ID: <20150105225418.GA1086@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 89511] USB-storage mount error
+Date: Tue, 06 Jan 2015 01:08:04 +0000
+Message-ID: <bug-89511-13602-Nw3PrBWl9z@https.bugzilla.kernel.org/>
+References: <bug-89511-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:52944 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.29.136]:52821 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753097AbbAEWyU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Jan 2015 17:54:20 -0500
-Content-Disposition: inline
+	id S1754039AbbAFBIK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Jan 2015 20:08:10 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 23A7D2034E
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Jan 2015 01:08:07 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 1B5EF2025B
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Jan 2015 01:08:06 +0000 (UTC)
+In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The following changes since commit 50db71abc529c48b21f4c3034d3cff27cfb25795:
+https://bugzilla.kernel.org/show_bug.cgi?id=89511
 
-  ext4: ext4_da_convert_inline_data_to_extent drop locked page after error (2014-12-05 21:37:15 -0500)
+Joel Rees <joel.rees@gmail.com> changed:
 
-are available in the git repository at:
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |joel.rees@gmail.com
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
+--- Comment #38 from Joel Rees <joel.rees@gmail.com> ---
+(I do not have experience with these, just took a break, looked them up, and
+did a little translating this morning after reading Jun's post to debian-user:
 
-for you to fetch changes up to 363307e6e561cde78572fd22e7fd00cd3e5adb02:
+https://lists.debian.org/debian-user/2015/01/msg00121.html  
+)
 
-  ext4: remove spurious KERN_INFO from ext4_warning call (2015-01-02 15:31:14 -0500)
+GLANTANK is a gigabit version of LANTANK. IO-DATA's child company
+Chousensha (Challenger) produced these in response to the Kurobako
+(with which some here may be familiar).
 
-----------------------------------------------------------------
-Revert a potential seek_data/hole regression which shows up when using
-ext4 to handle ext3 file systems, plus two minor bug fixes.
+http://ja.wikipedia.org/wiki/GLAN_Tank
+http://translate.google.co.jp/translate?hl=en&sl=ja&u=http://ja.wikipedia.org/wiki/GLAN_Tank&prev=search
 
-----------------------------------------------------------------
-Jakub Wilk (1):
-      ext4: remove spurious KERN_INFO from ext4_warning call
+http://ja.wikipedia.org/wiki/LAN_Tank
+http://translate.google.co.jp/translate?hl=en&sl=ja&u=http://ja.wikipedia.org/wiki/GLAN_Tank&prev=search
 
-Theodore Ts'o (2):
-      ext4: prevent online resize with backup superblock
-      Revert "ext4: fix suboptimal seek_{data,hole} extents traversial"
+These are customizable NAS units, apparently running a customized
+debian (MAKAI -- MAKe Again ISO Image) internally.
 
- fs/ext4/extents.c |   4 +-
- fs/ext4/file.c    | 220 +++++++++++++++++++++++++++++---------------------------
- fs/ext4/resize.c  |  24 +++----
- fs/ext4/super.c   |   2 +-
- 4 files changed, 129 insertions(+), 121 deletions(-)
+http://makai.sourceforge.jp/wiki/index.php?FrontPage
+http://translate.google.co.jp/translate?hl=en&sl=ja&u=http://ja.wikipedia.org/wiki/GLAN_Tank&prev=search
+
+LANTANK had an SH4 cpu, but the GLANTANK has an ARM (XScale).
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
