@@ -1,52 +1,82 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: [PATCH 45/45] ext2: enable cgroup writeback support
-Date: Tue,  6 Jan 2015 16:26:22 -0500
-Message-ID: <1420579582-8516-46-git-send-email-tj@kernel.org>
-References: <1420579582-8516-1-git-send-email-tj@kernel.org>
-Cc: linux-kernel@vger.kernel.org, jack@suse.cz, hch@infradead.org,
-	hannes@cmpxchg.org, linux-fsdevel@vger.kernel.org,
-	vgoyal@redhat.com, lizefan@huawei.com, cgroups@vger.kernel.org,
-	linux-mm@kvack.org, mhocko@suse.cz, clm@fb.com,
-	fengguang.wu@intel.com, david@fromorbit.com,
-	Tejun Heo <tj@kernel.org>, linux-ext4@vger.kernel.org
-To: axboe@kernel.dk
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [v8 3/5] ext4: adds project quota support
+Date: Tue, 6 Jan 2015 22:52:51 +0100
+Message-ID: <20150106215251.GA30687@quack.suse.cz>
+References: <1418102548-5469-1-git-send-email-lixi@ddn.com>
+ <1418102548-5469-4-git-send-email-lixi@ddn.com>
+ <1D4A37F3-9BA1-42E9-97ED-8F7515FC5E8D@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Li Xi <pkuelelixi@gmail.com>,
+	Linux Filesystem Development List
+	<linux-fsdevel@vger.kernel.org>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	linux-api@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
+	viro@zeniv.linux.org.uk, hch@infradead.org, dmonakhov@openvz.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:49239 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933000AbbAFV1w (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jan 2015 16:27:52 -0500
-In-Reply-To: <1420579582-8516-1-git-send-email-tj@kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:50605 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753780AbbAFVw4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Jan 2015 16:52:56 -0500
+Content-Disposition: inline
+In-Reply-To: <1D4A37F3-9BA1-42E9-97ED-8F7515FC5E8D@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Writeback now supports cgroup writeback and the generic writeback,
-buffer, libfs, and mpage helpers that ext2 uses are all updated to
-work with cgroup writeback.
+On Tue 06-01-15 13:01:21, Andreas Dilger wrote:
+> On Dec 8, 2014, at 10:22 PM, Li Xi <pkuelelixi@gmail.com> wrote:
+> > 
+> > This patch adds mount options for enabling/disabling project quota
+> > accounting and enforcement. A new specific inode is also used for
+> > project quota accounting.
+> 
+> Judy looking through these patches again and saw a minor issue:
+> 
+> > @@ -1128,10 +1128,11 @@ enum {
+> > 	Opt_journal_path, Opt_journal_checksum, Opt_journal_async_commit,
+> > 	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
+> > 	Opt_data_err_abort, Opt_data_err_ignore,
+> > -	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
+> > +	Opt_usrjquota, Opt_grpjquota, Opt_prjjquota,
+> > +	Opt_offusrjquota, Opt_offgrpjquota, Opt_offprjjquota,
+> > 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_jqfmt_vfsv1, Opt_quota,
+> > 	Opt_noquota, Opt_barrier, Opt_nobarrier, Opt_err,
+> > -	Opt_usrquota, Opt_grpquota, Opt_i_version,
+> > +	Opt_usrquota, Opt_grpquota, Opt_prjquota, Opt_i_version,
+> > 	Opt_stripe, Opt_delalloc, Opt_nodelalloc, Opt_mblk_io_submit,
+> > 	Opt_nomblk_io_submit, Opt_block_validity, Opt_noblock_validity,
+> > 	Opt_inode_readahead_blks, Opt_journal_ioprio,
+> > @@ -1183,6 +1184,8 @@ static const match_table_t tokens = {
+> > 	{Opt_usrjquota, "usrjquota=%s"},
+> > 	{Opt_offgrpjquota, "grpjquota="},
+> > 	{Opt_grpjquota, "grpjquota=%s"},
+> > +	{Opt_offprjjquota, "prjjquota="},
+> > +	{Opt_prjjquota, "prjjquota=%s"},
+> 
+> We don't need to be able to specify the project quota inodes on the
+> mount command line.  This was only needed for supporting old (non-
+> journaled) user and group quotas, but there is no chance of having
+> old project quotas.
+> 
+> > 	{Opt_jqfmt_vfsold, "jqfmt=vfsold"},
+> > 	{Opt_jqfmt_vfsv0, "jqfmt=vfsv0"},
+> > 	{Opt_jqfmt_vfsv1, "jqfmt=vfsv1"},
+> > @@ -1190,6 +1193,7 @@ static const match_table_t tokens = {
+> > 	{Opt_noquota, "noquota"},
+> > 	{Opt_quota, "quota"},
+> > 	{Opt_usrquota, "usrquota"},
+> > +	{Opt_prjquota, "prjquota"},
+> 
+> Do we want to allow non-journaled project quota at all?  I don't
+> see that as a benefit, and it was only allowed for user/group
+> quota for compatibility reasons.  Since the project quota support
+> will need an updated e2fsprogs anyway, it may as well be journaled
+> from the start.
+  Yeah, probably you are right that it doesn't make a whole lot of sense to
+support project quotas in user visible files. So these could be removed.
 
-This patch enables cgroup writeback for ext2 by adding
-FS_CGROUP_WRITEBACK to its ->fs_flags.
-
-Signed-off-by: Tejun Heo <tj@kernel.org>
-Cc: Jens Axboe <axboe@kernel.dk>
-Cc: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
----
- fs/ext2/super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index ae55fdd..dc3f27e 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -1546,7 +1546,7 @@ static struct file_system_type ext2_fs_type = {
- 	.name		= "ext2",
- 	.mount		= ext2_mount,
- 	.kill_sb	= kill_block_super,
--	.fs_flags	= FS_REQUIRES_DEV,
-+	.fs_flags	= FS_REQUIRES_DEV | FS_CGROUP_WRITEBACK,
- };
- MODULE_ALIAS_FS("ext2");
- 
+								Honza
 -- 
-2.1.0
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
