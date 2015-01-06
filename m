@@ -1,100 +1,52 @@
-From: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-Subject: Re: [v8 5/5] ext4: cleanup inode flag definitions
-Date: Tue, 6 Jan 2015 13:05:32 -0700
-Message-ID: <CB0855C1-F02D-4C86-BE90-E125801FA322@dilger.ca>
-References: <1418102548-5469-1-git-send-email-lixi@ddn.com> <1418102548-5469-6-git-send-email-lixi@ddn.com>
-Mime-Version: 1.0 (Mac OS X Mail 8.1 \(1993\))
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, jack-AlSwsSmVLrQ@public.gmane.org,
-	viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org
-To: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <1418102548-5469-6-git-send-email-lixi-LfVdkaOWEx8@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Tejun Heo <tj@kernel.org>
+Subject: [PATCH 45/45] ext2: enable cgroup writeback support
+Date: Tue,  6 Jan 2015 16:26:22 -0500
+Message-ID: <1420579582-8516-46-git-send-email-tj@kernel.org>
+References: <1420579582-8516-1-git-send-email-tj@kernel.org>
+Cc: linux-kernel@vger.kernel.org, jack@suse.cz, hch@infradead.org,
+	hannes@cmpxchg.org, linux-fsdevel@vger.kernel.org,
+	vgoyal@redhat.com, lizefan@huawei.com, cgroups@vger.kernel.org,
+	linux-mm@kvack.org, mhocko@suse.cz, clm@fb.com,
+	fengguang.wu@intel.com, david@fromorbit.com,
+	Tejun Heo <tj@kernel.org>, linux-ext4@vger.kernel.org
+To: axboe@kernel.dk
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:49239 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933000AbbAFV1w (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jan 2015 16:27:52 -0500
+In-Reply-To: <1420579582-8516-1-git-send-email-tj@kernel.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Dec 8, 2014, at 10:22 PM, Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wrote:
-> 
-> The inode flags defined in uapi/linux/fs.h were migrated from
-> ext4.h. This patch changes the inode flag definitions in ext4.h
-> to VFS definitions to make the gaps between them clearer.
-> 
-> Signed-off-by: Li Xi <lixi-LfVdkaOWEx8@public.gmane.org>
+Writeback now supports cgroup writeback and the generic writeback,
+buffer, libfs, and mpage helpers that ext2 uses are all updated to
+work with cgroup writeback.
 
-Reviewed-by: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+This patch enables cgroup writeback for ext2 by adding
+FS_CGROUP_WRITEBACK to its ->fs_flags.
 
-> ---
-> fs/ext4/ext4.h |   50 +++++++++++++++++++++++++-------------------------
-> 1 files changed, 25 insertions(+), 25 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 43a2a88..bcc04c0 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -353,33 +353,33 @@ struct flex_groups {
-> /*
->  * Inode flags
->  */
-> -#define	EXT4_SECRM_FL			0x00000001 /* Secure deletion */
-> -#define	EXT4_UNRM_FL			0x00000002 /* Undelete */
-> -#define	EXT4_COMPR_FL			0x00000004 /* Compress file */
-> -#define EXT4_SYNC_FL			0x00000008 /* Synchronous updates */
-> -#define EXT4_IMMUTABLE_FL		0x00000010 /* Immutable file */
-> -#define EXT4_APPEND_FL			0x00000020 /* writes to file may only append */
-> -#define EXT4_NODUMP_FL			0x00000040 /* do not dump file */
-> -#define EXT4_NOATIME_FL			0x00000080 /* do not update atime */
-> +#define	EXT4_SECRM_FL			FS_SECRM_FL        /* Secure deletion */
-> +#define	EXT4_UNRM_FL			FS_UNRM_FL         /* Undelete */
-> +#define	EXT4_COMPR_FL			FS_COMPR_FL        /* Compress file */
-> +#define EXT4_SYNC_FL			FS_SYNC_FL         /* Synchronous updates */
-> +#define EXT4_IMMUTABLE_FL		FS_IMMUTABLE_FL    /* Immutable file */
-> +#define EXT4_APPEND_FL			FS_APPEND_FL       /* writes to file may only append */
-> +#define EXT4_NODUMP_FL			FS_NODUMP_FL       /* do not dump file */
-> +#define EXT4_NOATIME_FL			FS_NOATIME_FL      /* do not update atime */
-> /* Reserved for compression usage... */
-> -#define EXT4_DIRTY_FL			0x00000100
-> -#define EXT4_COMPRBLK_FL		0x00000200 /* One or more compressed clusters */
-> -#define EXT4_NOCOMPR_FL			0x00000400 /* Don't compress */
-> -#define EXT4_ECOMPR_FL			0x00000800 /* Compression error */
-> +#define EXT4_DIRTY_FL			FS_DIRTY_FL
-> +#define EXT4_COMPRBLK_FL		FS_COMPRBLK_FL     /* One or more compressed clusters */
-> +#define EXT4_NOCOMPR_FL			FS_NOCOMP_FL       /* Don't compress */
-> +#define EXT4_ECOMPR_FL			FS_ECOMPR_FL       /* Compression error */
-> /* End compression flags --- maybe not all used */
-> -#define EXT4_INDEX_FL			0x00001000 /* hash-indexed directory */
-> -#define EXT4_IMAGIC_FL			0x00002000 /* AFS directory */
-> -#define EXT4_JOURNAL_DATA_FL		0x00004000 /* file data should be journaled */
-> -#define EXT4_NOTAIL_FL			0x00008000 /* file tail should not be merged */
-> -#define EXT4_DIRSYNC_FL			0x00010000 /* dirsync behaviour (directories only) */
-> -#define EXT4_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
-> -#define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
-> -#define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
-> -#define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
-> -#define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
-> -#define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
-> -#define EXT4_PROJINHERIT_FL		FS_PROJINHERIT_FL /* Create with parents projid */
-> -#define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
-> +#define EXT4_INDEX_FL			FS_INDEX_FL        /* hash-indexed directory */
-> +#define EXT4_IMAGIC_FL			FS_IMAGIC_FL       /* AFS directory */
-> +#define EXT4_JOURNAL_DATA_FL		FS_JOURNAL_DATA_FL /* file data should be journaled */
-> +#define EXT4_NOTAIL_FL			FS_NOTAIL_FL       /* file tail should not be merged */
-> +#define EXT4_DIRSYNC_FL			FS_DIRSYNC_FL      /* dirsync behaviour (directories only) */
-> +#define EXT4_TOPDIR_FL			FS_TOPDIR_FL       /* Top of directory hierarchies*/
-> +#define EXT4_HUGE_FILE_FL               0x00040000         /* Set to each huge file */
-> +#define EXT4_EXTENTS_FL			FS_EXTENT_FL       /* Inode uses extents */
-> +#define EXT4_EA_INODE_FL	        0x00200000         /* Inode used for large EA */
-> +#define EXT4_EOFBLOCKS_FL		0x00400000         /* Blocks allocated beyond EOF */
-> +#define EXT4_INLINE_DATA_FL		0x10000000         /* Inode has inline data. */
-> +#define EXT4_PROJINHERIT_FL		FS_PROJINHERIT_FL  /* Create with parents projid */
-> +#define EXT4_RESERVED_FL		FS_RESERVED_FL     /* reserved for ext4 lib */
-> 
-> #define EXT4_FL_USER_VISIBLE		0x204BDFFF /* User visible flags */
-> #define EXT4_FL_USER_MODIFIABLE		0x204380FF /* User modifiable flags */
-> -- 
-> 1.7.1
-> 
+Signed-off-by: Tejun Heo <tj@kernel.org>
+Cc: Jens Axboe <axboe@kernel.dk>
+Cc: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org
+---
+ fs/ext2/super.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index ae55fdd..dc3f27e 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -1546,7 +1546,7 @@ static struct file_system_type ext2_fs_type = {
+ 	.name		= "ext2",
+ 	.mount		= ext2_mount,
+ 	.kill_sb	= kill_block_super,
+-	.fs_flags	= FS_REQUIRES_DEV,
++	.fs_flags	= FS_REQUIRES_DEV | FS_CGROUP_WRITEBACK,
+ };
+ MODULE_ALIAS_FS("ext2");
+ 
+-- 
+2.1.0
 
-Cheers, Andreas
