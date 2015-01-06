@@ -1,9 +1,9 @@
 From: Brian Foster <bfoster@redhat.com>
-Subject: Re: [PATCH v7 4/11] xfsprogs: xfs_io: add finsert command for insert
-	range via fallocate
-Date: Tue, 6 Jan 2015 13:12:55 -0500
-Message-ID: <20150106181255.GG5874@bfoster.bfoster>
-References: <004201d02670$45154980$cf3fdc80$@samsung.com>
+Subject: Re: [PATCH v7 11/11] xfstests: fsx: Add fallocate insert range
+	operation
+Date: Tue, 6 Jan 2015 13:13:23 -0500
+Message-ID: <20150106181323.GI5874@bfoster.bfoster>
+References: <004901d02670$835ac120$8a104360$@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -13,7 +13,7 @@ Cc: Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
 To: Namjae Jeon <namjae.jeon@samsung.com>
 Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <004201d02670$45154980$cf3fdc80$@samsung.com>
+In-Reply-To: <004901d02670$835ac120$8a104360$@samsung.com>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -25,102 +25,205 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 02, 2015 at 06:41:23PM +0900, Namjae Jeon wrote:
-> Add finsert command for fallocate FALLOC_FL_INSERT_RANGE flag.
+On Fri, Jan 02, 2015 at 06:43:07PM +0900, Namjae Jeon wrote:
+> This commit adds fallocate FALLOC_FL_INSERT_RANGE support for fsx.
 > 
 > Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
 > Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
 > ---
-
-Looks good...
-
-Reviewed-by: Brian Foster <bfoster@redhat.com>
-
->  io/prealloc.c | 39 ++++++++++++++++++++++++++++++++++++++-
->  1 file changed, 38 insertions(+), 1 deletion(-)
+>  ltp/fsx.c | 96 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+>  1 file changed, 94 insertions(+), 2 deletions(-)
 > 
-> diff --git a/io/prealloc.c b/io/prealloc.c
-> index aba6b44..11b1e12 100644
-> --- a/io/prealloc.c
-> +++ b/io/prealloc.c
-> @@ -37,6 +37,10 @@
->  #define FALLOC_FL_ZERO_RANGE 0x10
->  #endif
+> diff --git a/ltp/fsx.c b/ltp/fsx.c
+> index 47d3ee8..9dc1655 100644
+> --- a/ltp/fsx.c
+> +++ b/ltp/fsx.c
+> @@ -95,7 +95,8 @@ int			logcount = 0;	/* total ops */
+>  #define OP_PUNCH_HOLE		6
+>  #define OP_ZERO_RANGE		7
+>  #define OP_COLLAPSE_RANGE	8
+> -#define OP_MAX_FULL		9
+> +#define OP_INSERT_RANGE	9
+> +#define OP_MAX_FULL		10
 >  
-> +#ifndef FALLOC_FL_INSERT_RANGE
-> +#define FALLOC_FL_INSERT_RANGE 0x20
-> +#endif
-> +
->  static cmdinfo_t allocsp_cmd;
->  static cmdinfo_t freesp_cmd;
->  static cmdinfo_t resvsp_cmd;
-> @@ -46,6 +50,7 @@ static cmdinfo_t zero_cmd;
->  static cmdinfo_t falloc_cmd;
->  static cmdinfo_t fpunch_cmd;
->  static cmdinfo_t fcollapse_cmd;
-> +static cmdinfo_t finsert_cmd;
->  static cmdinfo_t fzero_cmd;
->  #endif
->  
-> @@ -169,11 +174,14 @@ fallocate_f(
->  	int		mode = 0;
->  	int		c;
->  
-> -	while ((c = getopt(argc, argv, "ckp")) != EOF) {
-> +	while ((c = getopt(argc, argv, "cikp")) != EOF) {
->  		switch (c) {
->  		case 'c':
->  			mode = FALLOC_FL_COLLAPSE_RANGE;
+>  /* operation modifiers */
+>  #define OP_CLOSEOPEN	100
+> @@ -145,6 +146,7 @@ int     fallocate_calls = 1;            /* -F flag disables */
+>  int     punch_hole_calls = 1;           /* -H flag disables */
+>  int     zero_range_calls = 1;           /* -z flag disables */
+>  int	collapse_range_calls = 1;	/* -C flag disables */
+> +int	insert_range_calls = 1;		/* -i flag disables */
+>  int 	mapped_reads = 1;		/* -R flag disables it */
+>  int	fsxgoodfd = 0;
+>  int	o_direct;			/* -Z */
+> @@ -339,6 +341,14 @@ logdump(void)
+>  						     lp->args[0] + lp->args[1])
+>  				prt("\t******CCCC");
 >  			break;
-> +		case 'i':
-> +			mode = FALLOC_FL_INSERT_RANGE;
+> +		case OP_INSERT_RANGE:
+> +			prt("INSERT 0x%x thru 0x%x\t(0x%x bytes)",
+> +			    lp->args[0], lp->args[0] + lp->args[1] - 1,
+> +			    lp->args[1]);
+> +			if (badoff >= lp->args[0] && badoff <
+> +						     lp->args[0] + lp->args[1])
+> +				prt("\t******CCCC");
 > +			break;
->  		case 'k':
->  			mode = FALLOC_FL_KEEP_SIZE;
+>  		case OP_SKIPPED:
+>  			prt("SKIPPED (no operation)");
 >  			break;
-> @@ -237,6 +245,25 @@ fcollapse_f(
+> @@ -1012,6 +1022,59 @@ do_collapse_range(unsigned offset, unsigned length)
 >  }
+>  #endif
 >  
->  static int
-> +finsert_f(
-> +	int		argc,
-> +	char		**argv)
+> +#ifdef FALLOC_FL_INSERT_RANGE
+> +void
+> +do_insert_range(unsigned offset, unsigned length)
 > +{
-> +	xfs_flock64_t	segment;
-> +	int		mode = FALLOC_FL_INSERT_RANGE;
+> +	unsigned end_offset;
+> +	int mode = FALLOC_FL_INSERT_RANGE;
 > +
-> +	if (!offset_length(argv[1], argv[2], &segment))
-> +		return 0;
-> +
-> +	if (fallocate(file->fd, mode,
-> +			segment.l_start, segment.l_len)) {
-> +		perror("fallocate");
-> +		return 0;
+> +	if (length == 0) {
+> +		if (!quiet && testcalls > simulatedopcount)
+> +			prt("skipping zero length insert range\n");
+> +		log4(OP_SKIPPED, OP_INSERT_RANGE, offset, length);
+> +		return;
 > +	}
-> +	return 0;
+> +
+> +	if ((loff_t)offset >= file_size) {
+> +		if (!quiet && testcalls > simulatedopcount)
+> +			prt("skipping insert range behind EOF\n");
+> +		log4(OP_SKIPPED, OP_INSERT_RANGE, offset, length);
+> +		return;
+> +	}
+> +
+> +	log4(OP_INSERT_RANGE, offset, length, 0);
+> +
+> +	if (testcalls <= simulatedopcount)
+> +		return;
+> +
+> +	end_offset = offset + length;
+> +	if ((progressinterval && testcalls % progressinterval == 0) ||
+> +	    (debug && (monitorstart == -1 || monitorend == -1 ||
+> +		      end_offset <= monitorend))) {
+> +		prt("%lu insert\tfrom 0x%x to 0x%x, (0x%x bytes)\n", testcalls,
+> +			offset, offset+length, length);
+> +	}
+> +	if (fallocate(fd, mode, (loff_t)offset, (loff_t)length) == -1) {
+> +		prt("insert range: %x to %x\n", offset, length);
+> +		prterr("do_insert_range: fallocate");
+> +		report_failure(161);
+> +	}
+> +
+> +	memmove(good_buf + end_offset, good_buf + offset,
+> +		file_size - offset);
+> +	memset(good_buf + offset, '\0', length);
+> +	file_size += length;
 > +}
 > +
-> +static int
->  fzero_f(
->  	int		argc,
->  	char		**argv)
-> @@ -345,6 +372,16 @@ prealloc_init(void)
->  	_("de-allocates space and eliminates the hole by shifting extents");
->  	add_command(&fcollapse_cmd);
->  
-> +	finsert_cmd.name = "finsert";
-> +	finsert_cmd.cfunc = finsert_f;
-> +	finsert_cmd.argmin = 2;
-> +	finsert_cmd.argmax = 2;
-> +	finsert_cmd.flags = CMD_NOMAP_OK | CMD_FOREIGN_OK;
-> +	finsert_cmd.args = _("off len");
-> +	finsert_cmd.oneline =
-> +	_("creates new space for writing within file by shifting extents");
-> +	add_command(&finsert_cmd);
+> +#else
+> +void
+> +do_insert_range(unsigned offset, unsigned length)
+> +{
+> +	return;
+> +}
+> +#endif
 > +
->  	fzero_cmd.name = "fzero";
->  	fzero_cmd.cfunc = fzero_f;
->  	fzero_cmd.argmin = 2;
+>  #ifdef HAVE_LINUX_FALLOC_H
+>  /* fallocate is basically a no-op unless extending, then a lot like a truncate */
+>  void
+> @@ -1192,6 +1255,12 @@ test(void)
+>  			goto out;
+>  		}
+>  		break;
+> +	case OP_INSERT_RANGE:
+> +		if (!insert_range_calls) {
+> +			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
+> +			goto out;
+> +		}
+> +		break;
+>  	}
+>  
+>  	switch (op) {
+> @@ -1244,6 +1313,21 @@ test(void)
+>  		}
+>  		do_collapse_range(offset, size);
+>  		break;
+> +	case OP_INSERT_RANGE:
+> +		TRIM_OFF_LEN(offset, size, (maxfilelen - 1) - file_size);
+
+I see a ton of "skipping insert beyond EOF" messages when I run fsx with
+this patch that boil down to that we trim against the max allowable file
+size increase rather than the current file size. I suspect the intent
+here is to not limit the insert length based on the file size. That
+makes sense, but that causes us to fail to mod the insert offset against
+the file size and thus generate a ton more noise.
+
+Could we either open code the trim to handle the offset/len correctly or
+break up the macro in a way that facilitates doing so? For example, a
+quick solution might be to create TRIM_OFF() and TRIM_LEN() based on the
+associated code in TRIM_OFF_LEN(), redefine TRIM_OFF_LEN() to use the
+new macros, and then the insert range code could do something like:
+
+	TRIM_OFF(offset, file_size - 1);
+	TRIM_LEN(offset, size, maxfilelen - file_size);
+	...
+
+Brian
+
+> +		offset = offset & ~(block_size - 1);
+> +		size = size & ~(block_size - 1);
+> +		if (size == 0) {
+> +			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
+> +			goto out;
+> +		}
+> +		if (file_size + size > maxfilelen) {
+> +			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
+> +			goto out;
+> +		}
+> +
+> +		do_insert_range(offset, size);
+> +		break;
+>  	default:
+>  		prterr("test: unknown operation");
+>  		report_failure(42);
+> @@ -1307,6 +1391,9 @@ usage(void)
+>  #ifdef FALLOC_FL_COLLAPSE_RANGE
+>  "	-C: Do not use collapse range calls\n"
+>  #endif
+> +#ifdef FALLOC_FL_INSERT_RANGE
+> +"	-i: Do not use insert range calls\n"
+> +#endif
+>  "	-L: fsxLite - no file creations & no file size changes\n\
+>  	-N numops: total # operations to do (default infinity)\n\
+>  	-O: use oplen (see -o flag) for every op (default random)\n\
+> @@ -1493,7 +1580,7 @@ main(int argc, char **argv)
+>  
+>  	setvbuf(stdout, (char *)0, _IOLBF, 0); /* line buffered stdout */
+>  
+> -	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHzCLN:OP:RS:WZ"))
+> +	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHzCiLN:OP:RS:WZ"))
+>  	       != EOF)
+>  		switch (ch) {
+>  		case 'b':
+> @@ -1599,6 +1686,9 @@ main(int argc, char **argv)
+>  		case 'C':
+>  			collapse_range_calls = 0;
+>  			break;
+> +		case 'i':
+> +			insert_range_calls = 0;
+> +			break;
+>  		case 'L':
+>  		        lite = 1;
+>  			break;
+> @@ -1758,6 +1848,8 @@ main(int argc, char **argv)
+>  		zero_range_calls = test_fallocate(FALLOC_FL_ZERO_RANGE);
+>  	if (collapse_range_calls)
+>  		collapse_range_calls = test_fallocate(FALLOC_FL_COLLAPSE_RANGE);
+> +	if (insert_range_calls)
+> +		insert_range_calls = test_fallocate(FALLOC_FL_INSERT_RANGE);
+>  
+>  	while (numops == -1 || numops--)
+>  		test();
 > -- 
 > 1.7.11-rc0
 > 
