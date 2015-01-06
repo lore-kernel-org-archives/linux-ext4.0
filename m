@@ -1,121 +1,115 @@
-From: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-Subject: [PATCH] [RESEND]filefrag: fix wrong extent count calculation when using FIBMAP
-Date: Tue, 6 Jan 2015 18:10:39 +0800
-Message-ID: <1420539039-18900-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
+From: Brian Foster <bfoster@redhat.com>
+Subject: Re: [PATCH v7 1/11] fs: Add support FALLOC_FL_INSERT_RANGE for
+	fallocate
+Date: Tue, 6 Jan 2015 11:32:20 -0500
+Message-ID: <20150106163220.GE5874@bfoster.bfoster>
+References: <003f01d02670$27a5e300$76f1a900$@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <tytso@mit.edu>, <darrick.wong@oracle.com>,
-	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([59.151.112.132]:36531 "EHLO
-	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753248AbbAFKP3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jan 2015 05:15:29 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, Ashish Sangwan <a.sangwan@samsung.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>
+To: Namjae Jeon <namjae.jeon@samsung.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <003f01d02670$27a5e300$76f1a900$@samsung.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-When using FIBMAP and '-e' option is specified, the calculation for fiemap_extent
-is wrong, we wrongly updated fm_ext.fe_logical for every iteration, please see the
-code in the end of 'for' loop in fm_ext.fe_logical().
+On Fri, Jan 02, 2015 at 06:40:33PM +0900, Namjae Jeon wrote:
+> FALLOC_FL_INSERT_RANGE command is the opposite command of
+> FALLOC_FL_COLLAPSE_RANGE that is needed for advertisers or someone who want to
+> add some data in the middle of file. FALLOC_FL_INSERT_RANGE will create space
+> for writing new data within a file after shifting extents to right as given
+> length. and this command also has same limitation as FALLOC_FL_COLLAPSE_RANGE,
+> that is block boundary and use ftruncate(2) for crosses EOF.
+> 
+> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+> ---
+>  fs/open.c                   |  8 +++++++-
+>  include/uapi/linux/falloc.h | 15 +++++++++++++++
+>  2 files changed, 22 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/open.c b/fs/open.c
+> index 36662d0..74ed498 100644
+> --- a/fs/open.c
+> +++ b/fs/open.c
+> @@ -232,7 +232,8 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+>  
+>  	/* Return error if mode is not supported */
+>  	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
+> -		     FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_ZERO_RANGE))
+> +		     FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_ZERO_RANGE |
+> +		     FALLOC_FL_INSERT_RANGE))
+>  		return -EOPNOTSUPP;
+>  
+>  	/* Punch hole and zero range are mutually exclusive */
+> @@ -250,6 +251,11 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+>  	    (mode & ~FALLOC_FL_COLLAPSE_RANGE))
+>  		return -EINVAL;
+>  
+> +	/* Insert range should only be used exclusively. */
+> +	if ((mode & FALLOC_FL_INSERT_RANGE) &&
+> +	    (mode & ~FALLOC_FL_INSERT_RANGE))
+> +		return -EINVAL;
+> +
+>  	if (!(file->f_mode & FMODE_WRITE))
+>  		return -EBADF;
+>  
+> diff --git a/include/uapi/linux/falloc.h b/include/uapi/linux/falloc.h
+> index d1197ae..1f20723 100644
+> --- a/include/uapi/linux/falloc.h
+> +++ b/include/uapi/linux/falloc.h
+> @@ -41,4 +41,19 @@
+>   */
+>  #define FALLOC_FL_ZERO_RANGE		0x10
+>  
+> +/*
+> + * FALLOC_FL_INSERT_RANGE is use to insert space within the file size without
 
-In an ext2 file system(block size is 1024 bytes),
-  dd if=/dev/zero of=testfile bs=1k count=15
-  Using debugfs, corresponding physical blocks are "2049 2050 2051 2052 2053 2054
-2055 2056 2057 2058 2059 2060 1025 2061 2062 2063",  1025 is this indirect block.
-Before this patch, filefrag's output would be:
-  filefrag -B -e testfile
-  Filesystem type is: ef53
-  Filesystem cylinder groups approximately 16
-  File size of testfile is 15360 (15 blocks of 1024 bytes)
-   ext:     logical_offset:        physical_offset: length:   expected: flags:
-     0:        1..       2:       2050..      2051:      2:       2051: merged
-     1:        3..       4:       2052..      2053:      2:       2053: merged
-     2:        5..       6:       2054..      2055:      2:       2055: merged
-     3:        7..       8:       2056..      2057:      2:       2057: merged
-     4:        9..      10:       2058..      2059:      2:       2059: merged
-     5:       11..      12:       2060..      2061:      2:       2062: merged
-     6:       13..      14:       2062..      2063:      2:       2063: merged,eof
-     7:       14..      14:       2063..      2063:      1:       2063: merged,eof
-This output is not reasonable.
+				used
 
-Fix this bug and try to make it readable. With this patch, the output would be:
-  ./filefrag -B -e mntpoint/testfile
-  Filesystem type is: ef53
-  Filesystem cylinder groups approximately 16
-  File size of mntpoint/testfile is 15360 (15 blocks of 1024 bytes)
-   ext:     logical_offset:        physical_offset: length:   expected: flags:
-     0:        0..      11:       2049..      2060:     12:       2062: merged
-     1:       12..      14:       2061..      2063:      3:       2063: merged,eof
-  mntpoint/testfile: 2 extents found, perfection would be 1 extent
+> + * overwriting any existing data. The contents of the file beyond offset are
+> + * shifted towards right by len bytes to create a hole.  As such, this
+> + * operation will increase the size of the file by len bytes.
 
-Changes since v1->v2
- - remove the unnecessary {} for if statement.
+I suppose we should split this comment up into a few paragraphs similar
+to the collapse range comment it is based on. That means we split
+here...
 
-Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- misc/filefrag.c | 34 +++++++++++++++++++++-------------
- 1 file changed, 21 insertions(+), 13 deletions(-)
+> + * Different filesystems may implement different limitations on the granularity
+> + * of the operation. Most will limit operations to filesystem block size
+> + * boundaries, but this boundary may be larger or smaller depending on
+> + * the filesystem and/or the configuration of the filesystem or file.
 
-diff --git a/misc/filefrag.c b/misc/filefrag.c
-index c1a8684..76e613f 100644
---- a/misc/filefrag.c
-+++ b/misc/filefrag.c
-@@ -315,32 +315,40 @@ static int filefrag_fibmap(int fd, int blk_shift, int *num_extents,
- 			return rc;
- 		if (block == 0)
- 			continue;
-+		count++;
-+
- 		if (*num_extents == 0) {
- 			(*num_extents)++;
- 			if (force_extent) {
- 				print_extent_header();
-+				fm_ext.fe_logical = logical;
- 				fm_ext.fe_physical = block * st->st_blksize;
-+				fm_ext.fe_length = st->st_blksize;
- 			}
-+			last_block = block;
-+			continue;
- 		}
--		count++;
--		if (force_extent && last_block != 0 &&
--		    (block != last_block + 1 ||
--		     fm_ext.fe_logical + fm_ext.fe_length != logical)) {
--			print_extent_info(&fm_ext, *num_extents - 1,
--					  (last_block + 1) * st->st_blksize,
--					  blk_shift, st);
--			fm_ext.fe_length = 0;
--			(*num_extents)++;
-+
-+		if (force_extent) {
-+			if (block != last_block + 1 ||
-+			    fm_ext.fe_length + fm_ext.fe_logical != logical) {
-+				print_extent_info(&fm_ext, *num_extents - 1,
-+						  (last_block + 1) *
-+						  st->st_blksize,
-+						  blk_shift, st);
-+				fm_ext.fe_logical = logical;
-+				fm_ext.fe_physical = block * st->st_blksize;
-+				fm_ext.fe_length = st->st_blksize;
-+				(*num_extents)++;
-+			} else {
-+				fm_ext.fe_length += st->st_blksize;
-+			}
- 		} else if (last_block && (block != last_block + 1)) {
- 			if (verbose)
- 				printf("Discontinuity: Block %ld is at %lu (was "
- 				       "%lu)\n", i, block, last_block + 1);
--			fm_ext.fe_length = 0;
- 			(*num_extents)++;
- 		}
--		fm_ext.fe_logical = logical;
--		fm_ext.fe_physical = block * st->st_blksize;
--		fm_ext.fe_length += st->st_blksize;
- 		last_block = block;
- 	}
- 
--- 
-1.8.2.1
+... and here.
 
+Otherwise this looks fine to me.
+
+Brian
+
+> + * Attempting to insert space using this flag at OR beyond the end of
+> + * the file is considered an illegal operation - just use ftruncate(2) or
+> + * fallocate(2) with mode 0 for such type of operations.
+> + */
+> +#define FALLOC_FL_INSERT_RANGE		0x20
+> +
+>  #endif /* _UAPI_FALLOC_H_ */
+> -- 
+> 1.7.11-rc0
+> 
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
