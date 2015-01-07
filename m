@@ -1,103 +1,33 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: [PATCH v7 9/11] xfstests: generic/043: Test multiple fallocate
-	insert/collapse range calls
-Date: Wed, 07 Jan 2015 14:50:13 +0900
-Message-ID: <001a01d02a3d$ce7462d0$6b5d2870$@samsung.com>
-References: <004701d02670$73dcb0a0$5b9611e0$@samsung.com>
-	<20150106191010.GJ5874@bfoster.bfoster>
+From: Josh Hunt <johunt@akamai.com>
+Subject: ext4_da_update_reserve_space warning fix not in stable
+Date: Wed, 7 Jan 2015 12:12:59 -0600
+Message-ID: <54AD772B.2050003@akamai.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="utf-8"; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: 'Theodore Ts'o' <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, 'Ashish Sangwan' <a.sangwan@samsung.com>,
-	linux-fsdevel@vger.kernel.org, 'linux-ext4' <linux-ext4@vger.kernel.org>
-To: 'Brian Foster' <bfoster@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-reply-to: <20150106191010.GJ5874@bfoster.bfoster>
-Content-language: ko
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+To: <linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
+	<adilger.kernel@dilger.ca>, <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from prod-mail-xrelay08.akamai.com ([96.6.114.112]:52902 "EHLO
+	prod-mail-xrelay08.akamai.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754144AbbAGSUD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Jan 2015 13:20:03 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> > +
-> > +for (( BSIZE = 1024; BSIZE <= 4096; BSIZE *= 2 )); do
-> > +
-> > +	length=$(($BLOCKS * $BSIZE))
-> > +	case $FSTYP in
-> > +	xfs)
-> > +	_scratch_mkfs -b size=$BSIZE >> $seqres.full 2>&1
-> > +	;;
-> > +	ext4)
-> > +	_scratch_mkfs -b $BSIZE >> $seqres.full 2>&1
-> > +	;;
-> > +	esac
-> 
-> I think we typically try to define things like blocksize in the test
-> configuration. The MKFS_OPTIONS env. var. can be defined with the
-> correct options for the associated fs being tested. That eliminates the
-> need to loop and for the fs-specific _scratch_mkfs calls above.
-Okay, I will change.
-> 
-> > +	_scratch_mount >> $seqres.full 2>&1
-> > +
-> > +	# Write file
-> > +	$XFS_IO_PROG -f -c "pwrite 0 $length" -c fsync $testfile > /dev/null
-> > +
-> > +
-> > +	# Insert alternate blocks
-> 
-> Trailing space in the above comment.
-> 
-> > +	for (( j=0; j < $(($BLOCKS/2)); j++ )); do
-> > +		offset=$((($j*$BSIZE)*2))
-> > +		$XFS_IO_PROG -c "finsert $offset $BSIZE" $testfile > /dev/null
-> > +	done
-> > +
-> > +	# Check if 100 extents are present
-> > +	$XFS_IO_PROG -c "fiemap -v" $testfile | grep "^ *[0-9]*:" |wc -l
-> > +
-> > +	_check_scratch_fs
-> > +	if [ $? -ne 0 ]; then
-> > +		status=1
-> > +		exit
-> > +	fi
-> > +
-> > +	# Collapse alternate blocks
-> 
-> ... and here as well.
-Okay, I wil fix both points.
-> 
-> > +	for (( j=0; j < $(($BLOCKS/2)); j++ )); do
-> > +		offset=$((($j*$BSIZE)))
-> > +		$XFS_IO_PROG -c "fcollapse $offset $BSIZE" $testfile > /dev/null
-> > +	done
-> > +
-> > +	# Check if 1 extents are present
-> > +	$XFS_IO_PROG -c "fiemap -v" $testfile | grep "^ *[0-9]*:" |wc -l
-> > +
-> > +	_check_scratch_fs
-> > +	if [ $? -ne 0 ]; then
-> > +		status=1
-> > +		exit
-> > +	fi
-> > +
-> 
-> Maybe create a copy of the original file before we run through the
-> insert and collapse sequence and cmp the files here as a last step?
-Good idea. I will add your point.
+We are hitting the following warning in the field pretty frequently on 
+the latest 3.10 stable kernel:
+[11708.763067] WARNING: at fs/ext4/inode.c:363 
+ext4_da_update_reserve_space+0x261/0x280 [ext4]()
 
-Thanks for your review!
-> 
-> Brian
+The issue was resolved via "ext4: fix warning in 
+ext4_da_update_reserve_space()" (7d7345322d60ed), but the fix was not 
+submitted as a stable update for 3.10. I was wondering if there's a 
+reason why this was not done, or if it was just overlooked?
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+The patch appears to have a dependency on "quota: provide interface for 
+readding allocated space into reserved space" (1c8924eb106c1ac), so I 
+think both would need to be submitted if you feel it's possible.
+
+Thanks
+Josh
