@@ -1,61 +1,103 @@
 From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: [PATCH v7 11/11] xfstests: fsx: Add fallocate insert range
- operation
-Date: Wed, 07 Jan 2015 14:48:57 +0900
-Message-ID: <001901d02a3d$a10cd9d0$e3268d70$@samsung.com>
-References: <004901d02670$835ac120$8a104360$@samsung.com>
- <20150106181323.GI5874@bfoster.bfoster>
+Subject: RE: [PATCH v7 9/11] xfstests: generic/043: Test multiple fallocate
+	insert/collapse range calls
+Date: Wed, 07 Jan 2015 14:50:13 +0900
+Message-ID: <001a01d02a3d$ce7462d0$6b5d2870$@samsung.com>
+References: <004701d02670$73dcb0a0$5b9611e0$@samsung.com>
+	<20150106191010.GJ5874@bfoster.bfoster>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: 'Dave Chinner' <david@fromorbit.com>,
-	'Theodore Ts'o' <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	'linux-ext4' <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
-	'Ashish Sangwan' <a.sangwan@samsung.com>
+Cc: 'Theodore Ts'o' <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, 'Ashish Sangwan' <a.sangwan@samsung.com>,
+	linux-fsdevel@vger.kernel.org, 'linux-ext4' <linux-ext4@vger.kernel.org>
 To: 'Brian Foster' <bfoster@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-reply-to: <20150106181323.GI5874@bfoster.bfoster>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-reply-to: <20150106191010.GJ5874@bfoster.bfoster>
 Content-language: ko
-Sender: linux-kernel-owner@vger.kernel.org
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-> >  		}
-> >  		break;
-> > +	case OP_INSERT_RANGE:
-> > +		if (!insert_range_calls) {
-> > +			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
-> > +			goto out;
-> > +		}
-> > +		break;
-> >  	}
-> >
-> >  	switch (op) {
-> > @@ -1244,6 +1313,21 @@ test(void)
-> >  		}
-> >  		do_collapse_range(offset, size);
-> >  		break;
-> > +	case OP_INSERT_RANGE:
-> > +		TRIM_OFF_LEN(offset, size, (maxfilelen - 1) - file_size);
+> > +
+> > +for (( BSIZE = 1024; BSIZE <= 4096; BSIZE *= 2 )); do
+> > +
+> > +	length=$(($BLOCKS * $BSIZE))
+> > +	case $FSTYP in
+> > +	xfs)
+> > +	_scratch_mkfs -b size=$BSIZE >> $seqres.full 2>&1
+> > +	;;
+> > +	ext4)
+> > +	_scratch_mkfs -b $BSIZE >> $seqres.full 2>&1
+> > +	;;
+> > +	esac
 > 
-> I see a ton of "skipping insert beyond EOF" messages when I run fsx with
-> this patch that boil down to that we trim against the max allowable file
-> size increase rather than the current file size. I suspect the intent
-> here is to not limit the insert length based on the file size. That
-> makes sense, but that causes us to fail to mod the insert offset against
-> the file size and thus generate a ton more noise.
+> I think we typically try to define things like blocksize in the test
+> configuration. The MKFS_OPTIONS env. var. can be defined with the
+> correct options for the associated fs being tested. That eliminates the
+> need to loop and for the fs-specific _scratch_mkfs calls above.
+Okay, I will change.
 > 
-> Could we either open code the trim to handle the offset/len correctly or
-> break up the macro in a way that facilitates doing so? For example, a
-> quick solution might be to create TRIM_OFF() and TRIM_LEN() based on the
-> associated code in TRIM_OFF_LEN(), redefine TRIM_OFF_LEN() to use the
-> new macros, and then the insert range code could do something like:
+> > +	_scratch_mount >> $seqres.full 2>&1
+> > +
+> > +	# Write file
+> > +	$XFS_IO_PROG -f -c "pwrite 0 $length" -c fsync $testfile > /dev/null
+> > +
+> > +
+> > +	# Insert alternate blocks
 > 
-> 	TRIM_OFF(offset, file_size - 1);
-> 	TRIM_LEN(offset, size, maxfilelen - file_size);
-> 	...
+> Trailing space in the above comment.
 > 
-Okay, I will change it as your suggestion.
+> > +	for (( j=0; j < $(($BLOCKS/2)); j++ )); do
+> > +		offset=$((($j*$BSIZE)*2))
+> > +		$XFS_IO_PROG -c "finsert $offset $BSIZE" $testfile > /dev/null
+> > +	done
+> > +
+> > +	# Check if 100 extents are present
+> > +	$XFS_IO_PROG -c "fiemap -v" $testfile | grep "^ *[0-9]*:" |wc -l
+> > +
+> > +	_check_scratch_fs
+> > +	if [ $? -ne 0 ]; then
+> > +		status=1
+> > +		exit
+> > +	fi
+> > +
+> > +	# Collapse alternate blocks
+> 
+> ... and here as well.
+Okay, I wil fix both points.
+> 
+> > +	for (( j=0; j < $(($BLOCKS/2)); j++ )); do
+> > +		offset=$((($j*$BSIZE)))
+> > +		$XFS_IO_PROG -c "fcollapse $offset $BSIZE" $testfile > /dev/null
+> > +	done
+> > +
+> > +	# Check if 1 extents are present
+> > +	$XFS_IO_PROG -c "fiemap -v" $testfile | grep "^ *[0-9]*:" |wc -l
+> > +
+> > +	_check_scratch_fs
+> > +	if [ $? -ne 0 ]; then
+> > +		status=1
+> > +		exit
+> > +	fi
+> > +
+> 
+> Maybe create a copy of the original file before we run through the
+> insert and collapse sequence and cmp the files here as a last step?
+Good idea. I will add your point.
 
-> Brian
+Thanks for your review!
 > 
+> Brian
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
