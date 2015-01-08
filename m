@@ -1,38 +1,62 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 89511] USB-storage mount error
-Date: Thu, 08 Jan 2015 14:14:56 +0000
-Message-ID: <bug-89511-13602-WQOLsetOEq@https.bugzilla.kernel.org/>
-References: <bug-89511-13602@https.bugzilla.kernel.org/>
+From: Josh Hunt <johunt@akamai.com>
+Subject: Re: ext4_da_update_reserve_space warning fix not in stable
+Date: Thu, 8 Jan 2015 11:58:53 -0600
+Message-ID: <54AEC55D.5020108@akamai.com>
+References: <54AD772B.2050003@akamai.com>
+ <20150107192105.GE2802@quack.suse.cz> <54AD8DDA.6090902@akamai.com>
+ <20150108074856.GA14705@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="windows-1252"; format=flowed
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"tytso@mit.edu" <tytso@mit.edu>,
+	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:44586 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754749AbbAHOPA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Jan 2015 09:15:00 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 4E365203A1
-	for <linux-ext4@vger.kernel.org>; Thu,  8 Jan 2015 14:14:59 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 44B282038D
-	for <linux-ext4@vger.kernel.org>; Thu,  8 Jan 2015 14:14:57 +0000 (UTC)
-In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
+Received: from prod-mail-xrelay07.akamai.com ([72.246.2.115]:17223 "EHLO
+	prod-mail-xrelay07.akamai.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757094AbbAHR66 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Jan 2015 12:58:58 -0500
+In-Reply-To: <20150108074856.GA14705@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=89511
+On 01/08/2015 01:48 AM, Jan Kara wrote:
+> On Wed 07-01-15 13:49:46, Josh Hunt wrote:
+>> On 01/07/2015 01:21 PM, Jan Kara wrote:
+>>> On Wed 07-01-15 12:12:59, Josh Hunt wrote:
+>>>> We are hitting the following warning in the field pretty frequently
+>>>> on the latest 3.10 stable kernel:
+>>>> [11708.763067] WARNING: at fs/ext4/inode.c:363
+>>>> ext4_da_update_reserve_space+0x261/0x280 [ext4]()
+>>>>
+>>>> The issue was resolved via "ext4: fix warning in
+>>>> ext4_da_update_reserve_space()" (7d7345322d60ed), but the fix was
+>>>> not submitted as a stable update for 3.10. I was wondering if
+>>>> there's a reason why this was not done, or if it was just
+>>>> overlooked?
+>>>>
+>>>> The patch appears to have a dependency on "quota: provide interface
+>>>> for readding allocated space into reserved space" (1c8924eb106c1ac),
+>>>> so I think both would need to be submitted if you feel it's
+>>>> possible.
+>>>    Since the problem is relatively harmless, I think we didn't bother
+>>> porting it to 3.10. Feel free to port those two patches to 3.10 and submit
+>>> them to stable@vger.kernel.org.
+>>
+>> Thanks for the reply Jan.
+>>
+>> I've ported them locally to 3.10 and they seem to apply cleanly
+>> as-is. I can submit the request to stable as long as you believe
+>> there's no harm in doing so, or any other dependency which may be
+>> required. My testing of a patched 3.10 with the two above patches
+>> shows the warning no longer triggers as you report in your commit
+>> log.
+>    I'm not aware of any reason why these patches shouldn't be in 3.10 stable
+> so just go ahead. Thanks!
 
---- Comment #42 from Isaka <betazero1991-sh4@yahoo.co.jp> ---
-(In reply to Jun Itou from comment #40)
-> Supplementary.
-> The controller of HDW-UE is D8927GC-002.
-> Associated HP > https://www.workbit.co.jp/products/usat3.html
+It looks like there is a small merge conflict in one of the patches. I 
+will respin it and submit to stable cc'ing you guys.
 
-I removed the printed circuit board in my HDD case.
-My HDD case uses same IDE controller.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Thanks
+Josh
