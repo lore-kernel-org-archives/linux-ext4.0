@@ -1,61 +1,58 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4_da_update_reserve_space warning fix not in stable
-Date: Thu, 8 Jan 2015 08:48:56 +0100
-Message-ID: <20150108074856.GA14705@quack.suse.cz>
-References: <54AD772B.2050003@akamai.com>
- <20150107192105.GE2802@quack.suse.cz>
- <54AD8DDA.6090902@akamai.com>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [v8 2/5] ext4: adds project ID support
+Date: Thu, 8 Jan 2015 09:26:25 +0100
+Message-ID: <20150108082625.GA15339@quack.suse.cz>
+References: <1418102548-5469-1-git-send-email-lixi@ddn.com>
+ <1418102548-5469-3-git-send-email-lixi@ddn.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"tytso@mit.edu" <tytso@mit.edu>,
-	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>
-To: Josh Hunt <johunt@akamai.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60697 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752689AbbAHHtC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Jan 2015 02:49:02 -0500
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
+	jack-AlSwsSmVLrQ@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+	dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org
+To: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <54AD8DDA.6090902@akamai.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1418102548-5469-3-git-send-email-lixi-LfVdkaOWEx8@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 07-01-15 13:49:46, Josh Hunt wrote:
-> On 01/07/2015 01:21 PM, Jan Kara wrote:
-> >On Wed 07-01-15 12:12:59, Josh Hunt wrote:
-> >>We are hitting the following warning in the field pretty frequently
-> >>on the latest 3.10 stable kernel:
-> >>[11708.763067] WARNING: at fs/ext4/inode.c:363
-> >>ext4_da_update_reserve_space+0x261/0x280 [ext4]()
-> >>
-> >>The issue was resolved via "ext4: fix warning in
-> >>ext4_da_update_reserve_space()" (7d7345322d60ed), but the fix was
-> >>not submitted as a stable update for 3.10. I was wondering if
-> >>there's a reason why this was not done, or if it was just
-> >>overlooked?
-> >>
-> >>The patch appears to have a dependency on "quota: provide interface
-> >>for readding allocated space into reserved space" (1c8924eb106c1ac),
-> >>so I think both would need to be submitted if you feel it's
-> >>possible.
-> >   Since the problem is relatively harmless, I think we didn't bother
-> >porting it to 3.10. Feel free to port those two patches to 3.10 and submit
-> >them to stable@vger.kernel.org.
+On Tue 09-12-14 13:22:25, Li Xi wrote:
+> This patch adds a new internal field of ext4 inode to save project
+> identifier. Also a new flag EXT4_INODE_PROJINHERIT is added for
+> inheriting project ID from parent directory.
+  I have noticed one thing you apparently changed in v7 of the patch set.
+See below.
+
+> Signed-off-by: Li Xi <lixi-LfVdkaOWEx8@public.gmane.org>
+> Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> ---
+>  fs/ext4/ext4.h          |   21 +++++++++++++++++----
+>  fs/ext4/ialloc.c        |    6 ++++++
+>  fs/ext4/inode.c         |   29 +++++++++++++++++++++++++++++
+>  fs/ext4/namei.c         |   17 +++++++++++++++++
+>  fs/ext4/super.c         |    1 +
+>  include/uapi/linux/fs.h |    1 +
+>  6 files changed, 71 insertions(+), 4 deletions(-)
 > 
-> Thanks for the reply Jan.
-> 
-> I've ported them locally to 3.10 and they seem to apply cleanly
-> as-is. I can submit the request to stable as long as you believe
-> there's no harm in doing so, or any other dependency which may be
-> required. My testing of a patched 3.10 with the two above patches
-> shows the warning no longer triggers as you report in your commit
-> log.
-  I'm not aware of any reason why these patches shouldn't be in 3.10 stable
-so just go ahead. Thanks!
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 29c43e7..8bd1da9 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -377,16 +377,18 @@ struct flex_groups {
+>  #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
+>  #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
+>  #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
+> +#define EXT4_PROJINHERIT_FL		FS_PROJINHERIT_FL /* Create with parents projid */
+  How did FS_PROJINHERIT_FL get here? There used to be 0x20000000 in older
+version of the patch set which is correct - this definition is defining
+ext4 on-disk format. As such it is an ext4 specific flag and should be
+definined to a fixed constant independed of any other filesystem. It seems
+you are somewhat mixing what is an on-disk format flag value and what is a
+flag value passed from userspace. These two may be different things and you
+need to convert between the values when getting / setting flags...
 
 								Honza
 -- 
-Jan Kara <jack@suse.cz>
+Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 SUSE Labs, CR
