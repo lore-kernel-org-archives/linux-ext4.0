@@ -1,59 +1,39 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [v8 2/5] ext4: adds project ID support
-Date: Thu, 8 Jan 2015 09:51:05 +0100
-Message-ID: <20150108085105.GC14705@quack.suse.cz>
-References: <1418102548-5469-1-git-send-email-lixi@ddn.com>
- <1418102548-5469-3-git-send-email-lixi@ddn.com>
- <0F8FAF43-54EB-4202-8120-C1D70CF330F0@dilger.ca>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 89511] USB-storage mount error
+Date: Thu, 08 Jan 2015 13:01:06 +0000
+Message-ID: <bug-89511-13602-gbIfEPwDzI@https.bugzilla.kernel.org/>
+References: <bug-89511-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Li Xi <pkuelelixi@gmail.com>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-api@vger.kernel.org,
-	tytso@mit.edu, jack@suse.cz, viro@zeniv.linux.org.uk,
-	hch@infradead.org, dmonakhov@openvz.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:33888 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.29.136]:40951 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753594AbbAHIvL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Jan 2015 03:51:11 -0500
-Content-Disposition: inline
-In-Reply-To: <0F8FAF43-54EB-4202-8120-C1D70CF330F0@dilger.ca>
+	id S1755000AbbAHNBL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Jan 2015 08:01:11 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 01AB120397
+	for <linux-ext4@vger.kernel.org>; Thu,  8 Jan 2015 13:01:08 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 402122037D
+	for <linux-ext4@vger.kernel.org>; Thu,  8 Jan 2015 13:01:07 +0000 (UTC)
+In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 07-01-15 16:11:16, Andreas Dilger wrote:
-> On Dec 8, 2014, at 10:22 PM, Li Xi <pkuelelixi@gmail.com> wrote:
-> > This patch adds a new internal field of ext4 inode to save project
-> > identifier. Also a new flag EXT4_INODE_PROJINHERIT is added for
-> > inheriting project ID from parent directory.
-> > 
-> > Signed-off-by: Li Xi <lixi@ddn.com>
-> > Reviewed-by: Jan Kara <jack@suse.cz>
-> > ---
-...
-> > @@ -4249,6 +4266,18 @@ static int ext4_do_update_inode(handle_t *handle,
-> > 		}
-> > 	}
-> > 
-> > +	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-> > +			EXT4_FEATURE_RO_COMPAT_PROJECT) &&
-> > +	       i_projid != EXT4_DEF_PROJID);
-> > +	if (i_projid != EXT4_DEF_PROJID &&
-> > +	    (EXT4_INODE_SIZE(inode->i_sb) <= EXT4_GOOD_OLD_INODE_SIZE ||
-> > +	     (!EXT4_FITS_IN_INODE(raw_inode, ei, i_projid)))) {
-> > +		spin_unlock(&ei->i_raw_lock);
-> > +		err = -EFBIG;
-> 
-> I'm not sure if -EFBIG is the best error case, since that is a common
-> filesystem error.  Maybe -EOVERFLOW would be better?
-  So my thought has been that this is mostly a sanity check and we would
-check in tune2fs whether all inodes have enough space when setting
-EXT4_FEATURE_RO_COMPAT_PROJECT feature... Because sudden errors (regardless
-whether it will be EFBIG or EOVERFLOW) when renaming files will be hard to
-understand for sysadmins IMHO.
+https://bugzilla.kernel.org/show_bug.cgi?id=89511
 
-								Honza
+--- Comment #41 from Jun Itou <itou_jun@infoseek.jp> ---
+Created attachment 162831
+  --> https://bugzilla.kernel.org/attachment.cgi?id=162831&action=edit
+The environment is x86 on VMware.
+
+I tested it in Debian and Fedora.
+I was able to confirm that the malfunction reappeared in us.
+
+The environment is x86 on VMware.
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
