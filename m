@@ -1,110 +1,69 @@
-From: Josh Hunt <johunt@akamai.com>
-Subject: [PATCH] ext4: fix warning in ext4_da_update_reserve_space()
-Date: Thu,  8 Jan 2015 15:48:28 -0500
-Message-ID: <1420750108-11512-1-git-send-email-johunt@akamai.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
-	Josh Hunt <johunt@akamai.com>
-To: stable@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [v8 2/5] ext4: adds project ID support
+Date: Thu, 8 Jan 2015 15:20:21 -0700
+Message-ID: <2EE35986-B398-432E-92D4-EEF875381319@dilger.ca>
+References: <1418102548-5469-1-git-send-email-lixi@ddn.com> <1418102548-5469-3-git-send-email-lixi@ddn.com> <20150108082625.GA15339@quack.suse.cz>
+Mime-Version: 1.0 (Mac OS X Mail 8.1 \(1993\))
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Li Xi <pkuelelixi@gmail.com>,
+	Linux Filesystem Development List
+	<linux-fsdevel@vger.kernel.org>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	linux-api@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Christoph Hellwig <hch@infradead.org>,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from prod-mail-xrelay06.akamai.com ([96.6.114.98]:44547 "EHLO
-	prod-mail-xrelay06.akamai.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752020AbbAHUs3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Jan 2015 15:48:29 -0500
+Received: from mail-pd0-f169.google.com ([209.85.192.169]:50787 "EHLO
+	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752743AbbAHWUY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Jan 2015 17:20:24 -0500
+Received: by mail-pd0-f169.google.com with SMTP id z10so13649856pdj.0
+        for <linux-ext4@vger.kernel.org>; Thu, 08 Jan 2015 14:20:23 -0800 (PST)
+In-Reply-To: <20150108082625.GA15339@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-    Please add the patch below and referenced dependency (0e95c22) to stable
-    3.10.y. The original 7d73453 did not apply cleanly to my 3.10.y so I've
-    backported it here. Its dependency can be cherry-picked.
+On Jan 8, 2015, at 1:26 AM, Jan Kara <jack@suse.cz> wrote:
+> On Tue 09-12-14 13:22:25, Li Xi wrote:
+>> This patch adds a new internal field of ext4 inode to save project
+>> identifier. Also a new flag EXT4_INODE_PROJINHERIT is added for
+>> inheriting project ID from parent directory.
+>  I have noticed one thing you apparently changed in v7 of the patch set.
+> See below.
+> 
+>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+>> index 29c43e7..8bd1da9 100644
+>> --- a/fs/ext4/ext4.h
+>> +++ b/fs/ext4/ext4.h
+>> @@ -377,16 +377,18 @@ struct flex_groups {
+>> #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
+>> #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
+>> #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
+>> +#define EXT4_PROJINHERIT_FL		FS_PROJINHERIT_FL /* Create with parents projid */
+>  How did FS_PROJINHERIT_FL get here? There used to be 0x20000000 in older
+> version of the patch set which is correct - this definition is defining
+> ext4 on-disk format. As such it is an ext4 specific flag and should be
+> definined to a fixed constant independed of any other filesystem. It seems
+> you are somewhat mixing what is an on-disk format flag value and what is a
+> flag value passed from userspace. These two may be different things and
+> you need to convert between the values when getting / setting flags...
 
-    I've gotten approval to submit these to 3.10 stable from Jan and Ted, also
-    cc'd.
-    http://marc.info/?l=linux-ext4&m=142070334408249&w=2
+Currently the EXT4_*_FL and FS_*_FL values are all identical, and there
+is no reason to change that before it is actually needed.  Since the
+FS_PROJINHERIT_FL is used via chattr/lsattr from userspace, this value
+must also be kept the same in the future to avoid API breakage, so there
+is no reason to worry about incompatibilities.
 
-    Thanks
-    Josh
+See also the [v8 5/5] patch, which is changing the EXT4_*_FL values to
+use FS_*_FL constants, where applicable, so that it is more clear that
+these values need to be the same.
 
-    -----
+Cheers, Andreas
 
-    commit 7d7345322d60edb0fa49a64a89b31360f01d09cb upstream
 
-    reaim workfile.dbase test easily triggers warning in
-    ext4_da_update_reserve_space():
 
-    EXT4-fs warning (device ram0): ext4_da_update_reserve_space:365:
-    ino 12, allocated 1 with only 0 reserved metadata blocks (releasing 1
-    blocks with reserved 9 data blocks)
 
-    The problem is that (one of) tests creates file and then randomly writes
-    to it with O_SYNC. That results in writing back pages of the file in
-    random order so we create extents for written blocks say 0, 2, 4, 6, 8
-    - this last allocation also allocates new block for extents. Then we
-    writeout block 1 so we have extents 0-2, 4, 6, 8 and we release
-    indirect extent block because extents fit in the inode again. Then we
-    writeout block 10 and we need to allocate indirect extent block again
-    which triggers the warning because we don't have the reservation
-    anymore.
 
-    Fix the problem by giving back freed metadata blocks resulting from
-    extent merging into inode's reservation pool.
-
-    Cc: <stable@vger.kernel.org> # 3.10.x: 0e95c22: quota: provide interface for readding allocated space into reserved space
-    Cc: <stable@vger.kernel.org> # 3.10.x
-    Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/ext4.h    |    1 +
- fs/ext4/extents.c |    3 ++-
- fs/ext4/mballoc.c |   21 +++++++++++++++++----
- 3 files changed, 20 insertions(+), 5 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e4c4ac0..1a487fb 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -589,6 +589,7 @@ enum {
- #define EXT4_FREE_BLOCKS_NO_QUOT_UPDATE	0x0008
- #define EXT4_FREE_BLOCKS_NOFREE_FIRST_CLUSTER	0x0010
- #define EXT4_FREE_BLOCKS_NOFREE_LAST_CLUSTER	0x0020
-+#define EXT4_FREE_BLOCKS_RESERVE               0x0040
- 
- /*
-  * Flags used by ext4_discard_partial_page_buffers
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 84d817b..7fbd1c5 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1722,7 +1722,8 @@ static void ext4_ext_try_to_merge_up(handle_t *handle,
- 
- 	brelse(path[1].p_bh);
- 	ext4_free_blocks(handle, inode, NULL, blk, 1,
--			 EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
-+			 EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET |
-+			 EXT4_FREE_BLOCKS_RESERVE);
- }
- 
- /*
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 162b80d..df5050f 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4610,6 +4610,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 	struct buffer_head *gd_bh;
- 	ext4_group_t block_group;
- 	struct ext4_sb_info *sbi;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
- 	struct ext4_buddy e4b;
- 	unsigned int count_clusters;
- 	int err = 0;
-@@ -4808,7 +4809,6 @@ do_more:
- 	ext4_block_bitmap_csum_set(sb, block_group, gdp, bitmap_bh);
- 	ext4_group_desc_csum_set(sb, block_group, gdp);
- 	ext4_unlock_group(sb, block_group);
--	percpu_counter_add(&sbi->s_freeclusters_counter, count_clusters);
- 
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
-@@ -4816,10 +4816,23 @@ do_more:
- 			     &sbi->s_flex_groups[flex_group].free_clusters);
- 	}
- 
--	ext4_mb_unload_buddy(&e4b);
