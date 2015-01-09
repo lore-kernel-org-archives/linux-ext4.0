@@ -1,74 +1,78 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [v8 2/5] ext4: adds project ID support
-Date: Fri, 9 Jan 2015 10:47:58 +0100
-Message-ID: <20150109094758.GA2576@quack.suse.cz>
-References: <1418102548-5469-1-git-send-email-lixi@ddn.com>
- <1418102548-5469-3-git-send-email-lixi@ddn.com>
- <20150108082625.GA15339@quack.suse.cz>
- <2EE35986-B398-432E-92D4-EEF875381319@dilger.ca>
+From: Stefan Hajnoczi <stefanha@redhat.com>
+Subject: Re: Can one file system be R/W mounted multiple times in Linux?
+Date: Fri, 9 Jan 2015 12:01:59 +0000
+Message-ID: <20150109120159.GA20300@stefanha-thinkpad.redhat.com>
+References: <F792CF86EFE20D4AB8064279AFBA51C61EA72765@SIXPRD3002MB028.064d.mgd.msft.net>
+ <20150109035123.GG22149@ZenIV.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Li Xi <pkuelelixi@gmail.com>,
-	Linux Filesystem Development List
-	<linux-fsdevel@vger.kernel.org>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	linux-api@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Christoph Hellwig <hch@infradead.org>,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:59060 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932145AbbAIJsB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 9 Jan 2015 04:48:01 -0500
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="J/dobhs11T7y2rNN"
+Cc: Dexuan Cui <decui@microsoft.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"'linux-ext4'" <linux-ext4@vger.kernel.org>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <2EE35986-B398-432E-92D4-EEF875381319@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20150109035123.GG22149@ZenIV.linux.org.uk>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 08-01-15 15:20:21, Andreas Dilger wrote:
-> On Jan 8, 2015, at 1:26 AM, Jan Kara <jack@suse.cz> wrote:
-> > On Tue 09-12-14 13:22:25, Li Xi wrote:
-> >> This patch adds a new internal field of ext4 inode to save project
-> >> identifier. Also a new flag EXT4_INODE_PROJINHERIT is added for
-> >> inheriting project ID from parent directory.
-> >  I have noticed one thing you apparently changed in v7 of the patch set.
-> > See below.
-> > 
-> >> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> >> index 29c43e7..8bd1da9 100644
-> >> --- a/fs/ext4/ext4.h
-> >> +++ b/fs/ext4/ext4.h
-> >> @@ -377,16 +377,18 @@ struct flex_groups {
-> >> #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
-> >> #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
-> >> #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
-> >> +#define EXT4_PROJINHERIT_FL		FS_PROJINHERIT_FL /* Create with parents projid */
-> >  How did FS_PROJINHERIT_FL get here? There used to be 0x20000000 in older
-> > version of the patch set which is correct - this definition is defining
-> > ext4 on-disk format. As such it is an ext4 specific flag and should be
-> > definined to a fixed constant independed of any other filesystem. It seems
-> > you are somewhat mixing what is an on-disk format flag value and what is a
-> > flag value passed from userspace. These two may be different things and
-> > you need to convert between the values when getting / setting flags...
-> 
-> Currently the EXT4_*_FL and FS_*_FL values are all identical, and there
-> is no reason to change that before it is actually needed.  Since the
-> FS_PROJINHERIT_FL is used via chattr/lsattr from userspace, this value
-> must also be kept the same in the future to avoid API breakage, so there
-> is no reason to worry about incompatibilities.
-  Agreed. I was somewhat worried about having on-disk flag defined through
-the external non-ext4 define but you are right that neither can really
-change once we ship a kernel with it.
 
-> See also the [v8 5/5] patch, which is changing the EXT4_*_FL values to
-> use FS_*_FL constants, where applicable, so that it is more clear that
-> these values need to be the same.
-  OK, I've missed that. So if things will be consistent again, I'm fine
-with the change.
+--J/dobhs11T7y2rNN
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+On Fri, Jan 09, 2015 at 03:51:23AM +0000, Al Viro wrote:
+> On Fri, Jan 09, 2015 at 03:44:16AM +0000, Dexuan Cui wrote:
+> > The 'mount' utility allows me to mount 1 file systems multiple times at=
+ different
+> > mount points, like "mount /dev/sdb1 /a; mount /dev/sdb1 /b".
+> >=20
+> > I tried to write from /a and /b at the same time and it seems everythin=
+g is OK
+> > and no data corruption happens.
+> > I tried only  ext4 only.
+> >=20
+> > Can somebody please tell me if this usage is safe?
+>=20
+> Yes.
+
+Can you explain under what conditions mounting the same file system
+twice will work?
+
+I guess the kernel is looking up the block device and then sharing the
+superblock if the file system is already mounted on this block device?
+
+If I use two loop devices for the same underlying storage it does not
+work:
+
+  # mount -o loop /var/tmp/ext4.img /tmp/a
+  # mount -o loop /var/tmp/ext4.img /tmp/b
+  # touch /tmp/a/a
+  # ls /tmp/b
+  lost+found
+  # umount /tmp/a
+  # umount /tmp/b
+  # mount -o loop /var/tmp/ext4.img /tmp/a
+  [1078357.297245] EXT4-fs error (device loop0): ext4_lookup:1441: inode #2=
+: comm ls: deleted inode referenced: 12
+
+Stefan
+
+--J/dobhs11T7y2rNN
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQEcBAEBAgAGBQJUr8M3AAoJEJykq7OBq3PIxP4H/jUWOiquM4ohjJUvt6PGT2aw
+ROTnk8YDVGq8OG2aEh93e8082C7Uaxn1JzF7GYqd3fXNcmUIZ8zthzqNMg8FwJcM
+1ygxvWJb4yLP1b5T+Ky+D12UctHVEPf7ksXcGZpfqEXiIFsOEPQQsYKwY+OwMhVd
+3XyA1kYfVeA/LH5syDUs12txJUD59lxTIt3jPGJxBOOsHWGpOao/aMJEVxNIKuac
+9xQ8k/VYa3jzENy7s+q/w+3W6cd3ZszXp19Eg2DaWsv2lj9eV0BZJUJ3ENrY41Bl
+FpG4m0NRc2/Ig49eqLRPwKI6/a76M/0+j7mCCam77+H0pLRW05SsGq+PUJbkcbw=
+=zJ54
+-----END PGP SIGNATURE-----
+
+--J/dobhs11T7y2rNN--
