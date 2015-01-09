@@ -1,41 +1,83 @@
-From: Johannes Berg <johannes@sipsolutions.net>
-Subject: Re: ext4 wrote extents on ext2 fs?
-Date: Sat, 10 Jan 2015 00:38:35 +0100
-Message-ID: <1420846715.9731.1.camel@sipsolutions.net>
-References: <1420841908.7511.1.camel@sipsolutions.net>
-	 <20150109233009.GB31554@thunk.org>
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: [v8 2/5] ext4: adds project ID support
+Date: Sat, 10 Jan 2015 10:46:27 +1100
+Message-ID: <20150109234627.GN31508@dastard>
+References: <1418102548-5469-1-git-send-email-lixi@ddn.com>
+ <1418102548-5469-3-git-send-email-lixi@ddn.com>
+ <20150108082625.GA15339@quack.suse.cz>
+ <2EE35986-B398-432E-92D4-EEF875381319@dilger.ca>
+ <20150109094758.GA2576@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from s3.sipsolutions.net ([5.9.151.49]:49411 "EHLO sipsolutions.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754855AbbAIXii (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 9 Jan 2015 18:38:38 -0500
-In-Reply-To: <20150109233009.GB31554@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	Linux Filesystem Development List
+	<linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	ext4 development <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	Al Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+	Dmitry Monakhov <dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org>
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20150109094758.GA2576-+0h/O2h83AeN3ZZ/Hiejyg@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2015-01-09 at 18:30 -0500, Theodore Ts'o wrote:
-
-> What I suspect happened is that some kind of garbage --- perhaps
-> simply a single 4k block of 0xFF's --- got written into the inode
-> table.  This would trigger this sort of complaint from e2fsck.
-
-Ok, makes sense. It's a USB flash drive, so perhaps it just messed up
-with its FTL and showed a deleted block in place of the real one.
-
-> > Perhaps this is just a consequence of check ordering though - maybe if
-> > the inode flags get corrupted then the EXTENTS flag is just the first
-> > one that will be tested in the e2fsck code?
+On Fri, Jan 09, 2015 at 10:47:58AM +0100, Jan Kara wrote:
+> On Thu 08-01-15 15:20:21, Andreas Dilger wrote:
+> > On Jan 8, 2015, at 1:26 AM, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org> wrote:
+> > > On Tue 09-12-14 13:22:25, Li Xi wrote:
+> > >> This patch adds a new internal field of ext4 inode to save project
+> > >> identifier. Also a new flag EXT4_INODE_PROJINHERIT is added for
+> > >> inheriting project ID from parent directory.
+> > >  I have noticed one thing you apparently changed in v7 of the patch set.
+> > > See below.
+> > > 
+> > >> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > >> index 29c43e7..8bd1da9 100644
+> > >> --- a/fs/ext4/ext4.h
+> > >> +++ b/fs/ext4/ext4.h
+> > >> @@ -377,16 +377,18 @@ struct flex_groups {
+> > >> #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
+> > >> #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
+> > >> #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
+> > >> +#define EXT4_PROJINHERIT_FL		FS_PROJINHERIT_FL /* Create with parents projid */
+> > >  How did FS_PROJINHERIT_FL get here? There used to be 0x20000000 in older
+> > > version of the patch set which is correct - this definition is defining
+> > > ext4 on-disk format. As such it is an ext4 specific flag and should be
+> > > definined to a fixed constant independed of any other filesystem. It seems
+> > > you are somewhat mixing what is an on-disk format flag value and what is a
+> > > flag value passed from userspace. These two may be different things and
+> > > you need to convert between the values when getting / setting flags...
+> > 
+> > Currently the EXT4_*_FL and FS_*_FL values are all identical, and there
+> > is no reason to change that before it is actually needed.  Since the
+> > FS_PROJINHERIT_FL is used via chattr/lsattr from userspace, this value
+> > must also be kept the same in the future to avoid API breakage, so there
+> > is no reason to worry about incompatibilities.
+>   Agreed. I was somewhat worried about having on-disk flag defined through
+> the external non-ext4 define but you are right that neither can really
+> change once we ship a kernel with it.
 > 
-> Yes, this is one of the first things that e2fsck 1.42.x would test
-> for.
+> > See also the [v8 5/5] patch, which is changing the EXT4_*_FL values to
+> > use FS_*_FL constants, where applicable, so that it is more clear that
+> > these values need to be the same.
+>   OK, I've missed that. So if things will be consistent again, I'm fine
+> with the change.
 
-Thanks for the confirmation.
+Except that I NACK'd that change (i.e patch 4/5) because it's out of
+scope of a "support project quota" patchset. not to mention that it
+is broken because it exhausts the flags space with ext4 specific
+flags and prevents future expansion of the ioctl structure.
 
-Thanks,
-johannes
+Any extension to the ioctl needs to be done in a spearate patch set,
+with separate justification. This patch set should only implement
+the very minimum needed to use the project quota ioctl flags....
 
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
