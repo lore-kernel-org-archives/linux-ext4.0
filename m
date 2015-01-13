@@ -1,7 +1,7 @@
 From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: [PATCH v8 9/11] xfstests: generic/043: Test multiple fallocate insert/collapse range calls
-Date: Wed, 14 Jan 2015 01:05:24 +0900
-Message-ID: <1421165126-3585-10-git-send-email-linkinjeon@gmail.com>
+Subject: [PATCH v8 8/11] xfstests: generic/042: Delayed allocation multi insert
+Date: Wed, 14 Jan 2015 01:05:23 +0900
+Message-ID: <1421165126-3585-9-git-send-email-linkinjeon@gmail.com>
 References: <1421165126-3585-1-git-send-email-linkinjeon@gmail.com>
 Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, a.sangwan@samsung.com,
@@ -15,40 +15,35 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Namjae Jeon <namjae.jeon@samsung.com>
 
-This testcase(043) tries to test finsert range a single alternate block
-mulitiple times and test merge code of collase range.
+This testcase(042) tries to test various corner cases with delayed extents and
+pre-existing holes for finsert range functionality over different type of
+extents.
 
 Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
 Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-Cc: Brian Foster<bfoster@redhat.com>
 ---
-Changelog
-v8:
- - use MKFS_OPTION to use blocksize in configuration and remove loop.
- - remove trailing space.
- - compare original file and test file to check data integrity.
-
- tests/generic/043     |  100 +++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/043.out |    3 ++
+ tests/generic/042     |   65 ++++++++++++++++++++++++++++++++++++++++
+ tests/generic/042.out |   80 +++++++++++++++++++++++++++++++++++++++++++++++++
  tests/generic/group   |    1 +
- 3 files changed, 104 insertions(+)
- create mode 100644 tests/generic/043
- create mode 100644 tests/generic/043.out
+ 3 files changed, 146 insertions(+)
+ create mode 100644 tests/generic/042
+ create mode 100644 tests/generic/042.out
 
-diff --git a/tests/generic/043 b/tests/generic/043
+diff --git a/tests/generic/042 b/tests/generic/042
 new file mode 100644
-index 0000000..a5a2d0b
+index 0000000..ea9fd3c
 --- /dev/null
-+++ b/tests/generic/043
-@@ -0,0 +1,100 @@
++++ b/tests/generic/042
+@@ -0,0 +1,65 @@
 +#! /bin/bash
-+# FS QA Test No. generic/043
++# FS QA Test No. generic/042
 +#
-+# Test multiple fallocate insert/collapse range calls on same file.
-+# Call insert range a single alternate block multiple times until the file
-+# is left with 100 extents and as much number of extents. And Call collapse
-+# range about the previously inserted ranges to test merge code of collapse
-+# range. Also check for data integrity and file system consistency.
++# Delayed allocation multi insert range tests
++# This testcase is one of the 4 testcases which tries to
++# test various corner cases for finsert range functionality over different
++# type of extents. These tests are based on generic/255 test case.
++# For the type of tests, check the description of _test_generic_punch
++# in common/rc.
 +#-----------------------------------------------------------------------
 +# Copyright (c) 2014 Samsung Electronics.  All Rights Reserved.
 +#
@@ -75,90 +70,131 @@ index 0000000..a5a2d0b
 +here=`pwd`
 +tmp=/tmp/$$
 +status=1	# failure is the default!
-+trap "rm -f $tmp.*; exit \$status" 0 1 2 3 15
++
++_cleanup()
++{
++    rm -f $tmp.*
++}
++
++trap "_cleanup ; exit \$status" 0 1 2 3 15
 +
 +# get standard environment, filters and checks
++# we need to include common/punch to get defination fo filter functions
 +. ./common/rc
 +. ./common/filter
++. ./common/punch
 +
 +# real QA test starts here
 +_supported_fs generic
 +_supported_os Linux
 +
-+_require_scratch
++_require_xfs_io_command "fpunch"
++_require_xfs_io_command "falloc"
 +_require_xfs_io_command "fiemap"
 +_require_xfs_io_command "finsert"
-+_require_xfs_io_command "fcollapse"
-+_do_die_on_error=y
-+src=$SCRATCH_MNT/testfile
-+dest=$SCRATCH_MNT/testfile.dest
-+BLOCKS=100
-+BSIZE=`get_block_size $SCRATCH_MNT`
 +
-+_scratch_mkfs MKFS_OPTIONS >> $seqres.full 2>&1
-+_scratch_mount >> $seqres.full 2>&1
-+length=$(($BLOCKS * $BSIZE))
++testfile=$TEST_DIR/$seq.$$
 +
-+# Write file
-+$XFS_IO_PROG -f -c "pwrite 0 $length" -c fsync $src > /dev/null
-+cp $src $dest
++_test_generic_punch -d -k falloc fpunch finsert fiemap _filter_hole_fiemap $testfile
++_check_test_fs
 +
-+# Insert alternate blocks
-+for (( j=0; j < $(($BLOCKS/2)); j++ )); do
-+	offset=$((($j*$BSIZE)*2))
-+	$XFS_IO_PROG -c "finsert $offset $BSIZE" $dest > /dev/null
-+done
-+
-+# Check if 100 extents are present
-+$XFS_IO_PROG -c "fiemap -v" $dest | grep "^ *[0-9]*:" |wc -l
-+
-+_check_scratch_fs
-+if [ $? -ne 0 ]; then
-+	status=1
-+	exit
-+fi
-+
-+# Collapse alternate blocks
-+for (( j=0; j < $(($BLOCKS/2)); j++ )); do
-+	offset=$((($j*$BSIZE)))
-+	$XFS_IO_PROG -c "fcollapse $offset $BSIZE" $dest > /dev/null
-+done
-+
-+# Check if 1 extents are present
-+$XFS_IO_PROG -c "fiemap -v" $dest | grep "^ *[0-9]*:" |wc -l
-+
-+# compare original file and test file.
-+cmp $src $dest || _fail "file bytes check failed"
-+
-+_check_scratch_fs
-+if [ $? -ne 0 ]; then
-+	status=1
-+	exit
-+fi
-+
-+umount $SCRATCH_MNT
-+
-+# success, all done
 +status=0
 +exit
-diff --git a/tests/generic/043.out b/tests/generic/043.out
+diff --git a/tests/generic/042.out b/tests/generic/042.out
 new file mode 100644
-index 0000000..47a66aa
+index 0000000..1618e9d
 --- /dev/null
-+++ b/tests/generic/043.out
-@@ -0,0 +1,3 @@
-+QA output created by 043
-+100
-+1
++++ b/tests/generic/042.out
+@@ -0,0 +1,80 @@
++QA output created by 042
++	1. into a hole
++cf845a781c107ec1346e849c9dd1b7e8
++	2. into allocated space
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..55]: extent
++64e72217eebcbdf31b1b058f9f5f476a
++	3. into unwritten space
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..55]: extent
++22b7303d274481990b5401b6263effe0
++	4. hole -> data
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..55]: extent
++c4fef62ba1de9d91a977cfeec6632f19
++	5. hole -> unwritten
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..55]: extent
++1ca74f7572a0f4ab477fdbb5682e5f61
++	6. data -> hole
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..31]: extent
++3: [32..47]: hole
++4: [48..55]: extent
++be0f35d4292a20040766d87883b0abd1
++	7. data -> unwritten
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..47]: extent
++3: [48..55]: hole
++bddb1f3895268acce30d516a99cb0f2f
++	8. unwritten -> hole
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..31]: extent
++3: [32..39]: hole
++4: [40..55]: extent
++f8fc47adc45b7cf72f988b3ddf5bff64
++	9. unwritten -> data
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..47]: extent
++3: [48..55]: hole
++c4fef62ba1de9d91a977cfeec6632f19
++	10. hole -> data -> hole
++0: [0..7]: extent
++1: [8..39]: hole
++2: [40..63]: extent
++52af1bfcbf43f28af2328de32e0567e5
++	11. data -> hole -> data
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..39]: extent
++3: [40..47]: hole
++4: [48..63]: extent
++e3a8d52acc4d91a8ed19d7b6f4f26a71
++	12. unwritten -> data -> unwritten
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..63]: extent
++52af1bfcbf43f28af2328de32e0567e5
++	13. data -> unwritten -> data
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..63]: extent
++2b22165f4a24a2c36fd05ef00b41df88
++	14. data -> hole @ EOF
++0: [0..23]: extent
++1: [24..39]: hole
++2: [40..55]: extent
++aa0f20d1edcdbce60d8ef82700ba30c3
++	15. data -> hole @ 0
++0: [0..15]: hole
++1: [16..55]: extent
++86c9d033be2761385c9cfa203c426bb2
 diff --git a/tests/generic/group b/tests/generic/group
-index c0944b3..0a10bdd 100644
+index 62660cc..c0944b3 100644
 --- a/tests/generic/group
 +++ b/tests/generic/group
-@@ -45,6 +45,7 @@
+@@ -44,6 +44,7 @@
+ 039 auto quick prealloc
  040 auto quick prealloc
  041 auto quick prealloc
- 042 auto quick prealloc
-+043 auto quick prealloc
++042 auto quick prealloc
  053 acl repair auto quick
  062 attr udf auto quick
  068 other auto freeze dangerous stress
