@@ -1,274 +1,172 @@
-From: Brian Foster <bfoster@redhat.com>
-Subject: Re: [PATCH v8 11/11] xfstests: fsx: Add fallocate insert range
- operation
-Date: Thu, 15 Jan 2015 07:28:56 -0500
-Message-ID: <20150115122856.GB18876@bfoster.bfoster>
-References: <1421165126-3585-1-git-send-email-linkinjeon@gmail.com>
- <1421165126-3585-12-git-send-email-linkinjeon@gmail.com>
- <20150114201610.GA49511@bfoster.bfoster>
- <004201d030ac$01d949f0$058bddd0$@samsung.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: + ext4-add-dax-functionality.patch added to -mm tree
+Date: Thu, 15 Jan 2015 13:41:06 +0100
+Message-ID: <20150115124106.GF12739@quack.suse.cz>
+References: <54b45495.+RptMlNQorYE9TTf%akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "'Namjae Jeon'" <linkinjeon@gmail.com>, david@fromorbit.com,
-	tytso@mit.edu, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, a.sangwan@samsung.com
-To: Namjae Jeon <namjae.jeon@samsung.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: akpm@linux-foundation.org, andreas.dilger@intel.com,
+	axboe@kernel.dk, boaz@plexistor.com, david@fromorbit.com,
+	hch@lst.de, jack@suse.cz, kirill.shutemov@linux.intel.com,
+	mathieu.desnoyers@efficios.com, matthew.r.wilcox@intel.com,
+	rdunlap@infradead.org, tytso@mit.edu, mm-commits@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: ross.zwisler@linux.intel.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:49211 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752505AbbAOMlN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Jan 2015 07:41:13 -0500
 Content-Disposition: inline
-In-Reply-To: <004201d030ac$01d949f0$058bddd0$@samsung.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <54b45495.+RptMlNQorYE9TTf%akpm@linux-foundation.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 15, 2015 at 07:14:11PM +0900, Namjae Jeon wrote:
+On Mon 12-01-15 15:11:17, Andrew Morton wrote:
+> From: Ross Zwisler <ross.zwisler@linux.intel.com>
+> Subject: ext4: add DAX functionality
 > 
-> > >  		}
-> > >  		do_collapse_range(offset, size);
-> > >  		break;
-> > > +	case OP_INSERT_RANGE:
-> > > +		TRIM_OFF(offset, file_size);
-> > > +		TRIM_LEN(offset, size, maxfilelen - file_size);
-> > 
-> > Ugh, I hit a crash down in do_insert_range() due to the memset() on
-> > good_buf going off the end of the buffer. It looks like the TRIM_LEN()
-> > here is not correct and can result in a really large length value.
-> > 
-> > Perhaps something like TRIM_LEN(file_size, length, maxfilelen) is what
-> > we want for insert range ops?
-> Hi Brian,
-> Oops, Sorry about that.
-> And your change is correct.
+> This is a port of the DAX functionality found in the current version of
+> ext2.
 > 
-> Could you review the below updated patch ?
-> 
-
-This one looks good. Also, I ran overnight with the same change and it
-went for 23m ops. Not sure why it ended up stopping as the output files
-compare fine. I'll get it running on another box and see if I can
-repeat.
-
-Reviewed-by: Brian Foster <bfoster@redhat.com>
-
-> Thanks!
-> 
-> ------------------------------------------------------------------------------
-> Subject: [PATCH v9 11/11] xfstests: fsx: Add fallocate insert range operation
-> 
-> This commit adds fallocate FALLOC_FL_INSERT_RANGE support for fsx.
-> 
-> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+> [matthew.r.wilcox@intel.com: heavily tweaked]
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> Reviewed-by: Andreas Dilger <andreas.dilger@intel.com>
+> Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
+> Cc: Boaz Harrosh <boaz@plexistor.com>
+> Cc: Christoph Hellwig <hch@lst.de>
+> Cc: Dave Chinner <david@fromorbit.com>
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: Jens Axboe <axboe@kernel.dk>
+> Cc: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+> Cc: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+> Cc: Randy Dunlap <rdunlap@infradead.org>
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 > ---
->  ltp/fsx.c |  124 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
->  1 files changed, 114 insertions(+), 10 deletions(-)
 > 
-> diff --git a/ltp/fsx.c b/ltp/fsx.c
-> index 3709419..9fed5b2 100644
-> --- a/ltp/fsx.c
-> +++ b/ltp/fsx.c
-> @@ -95,7 +95,8 @@ int			logcount = 0;	/* total ops */
->  #define OP_PUNCH_HOLE		6
->  #define OP_ZERO_RANGE		7
->  #define OP_COLLAPSE_RANGE	8
-> -#define OP_MAX_FULL		9
-> +#define OP_INSERT_RANGE	9
-> +#define OP_MAX_FULL		10
+>  Documentation/filesystems/dax.txt  |    1 
+>  Documentation/filesystems/ext4.txt |    4 +
+>  fs/ext4/ext4.h                     |    6 +
+>  fs/ext4/file.c                     |   50 ++++++++++++++-
+>  fs/ext4/indirect.c                 |   18 +++--
+>  fs/ext4/inode.c                    |   89 ++++++++++++++++++---------
+>  fs/ext4/namei.c                    |   10 ++-
+>  fs/ext4/super.c                    |   39 +++++++++++
+>  8 files changed, 180 insertions(+), 37 deletions(-)
+> 
+> diff -puN Documentation/filesystems/dax.txt~ext4-add-dax-functionality Documentation/filesystems/dax.txt
+> --- a/Documentation/filesystems/dax.txt~ext4-add-dax-functionality
+> +++ a/Documentation/filesystems/dax.txt
+> @@ -73,6 +73,7 @@ or a write()) work correctly.
 >  
->  /* operation modifiers */
->  #define OP_CLOSEOPEN	100
-> @@ -145,6 +146,7 @@ int     fallocate_calls = 1;            /* -F flag disables */
->  int     punch_hole_calls = 1;           /* -H flag disables */
->  int     zero_range_calls = 1;           /* -z flag disables */
->  int	collapse_range_calls = 1;	/* -C flag disables */
-> +int	insert_range_calls = 1;		/* -i flag disables */
->  int 	mapped_reads = 1;		/* -R flag disables it */
->  int	fsxgoodfd = 0;
->  int	o_direct;			/* -Z */
-> @@ -339,6 +341,14 @@ logdump(void)
->  						     lp->args[0] + lp->args[1])
->  				prt("\t******CCCC");
->  			break;
-> +		case OP_INSERT_RANGE:
-> +			prt("INSERT 0x%x thru 0x%x\t(0x%x bytes)",
-> +			    lp->args[0], lp->args[0] + lp->args[1] - 1,
-> +			    lp->args[1]);
-> +			if (badoff >= lp->args[0] && badoff <
-> +						     lp->args[0] + lp->args[1])
-> +				prt("\t******CCCC");
-> +			break;
->  		case OP_SKIPPED:
->  			prt("SKIPPED (no operation)");
->  			break;
-> @@ -1012,6 +1022,59 @@ do_collapse_range(unsigned offset, unsigned length)
->  }
->  #endif
+>  These filesystems may be used for inspiration:
+>  - ext2: the second extended filesystem, see Documentation/filesystems/ext2.txt
+> +- ext4: the fourth extended filesystem, see Documentation/filesystems/ext4.txt
 >  
-> +#ifdef FALLOC_FL_INSERT_RANGE
-> +void
-> +do_insert_range(unsigned offset, unsigned length)
-> +{
-> +	unsigned end_offset;
-> +	int mode = FALLOC_FL_INSERT_RANGE;
+>  
+>  Shortcomings
+> diff -puN Documentation/filesystems/ext4.txt~ext4-add-dax-functionality Documentation/filesystems/ext4.txt
+> --- a/Documentation/filesystems/ext4.txt~ext4-add-dax-functionality
+> +++ a/Documentation/filesystems/ext4.txt
+> @@ -386,6 +386,10 @@ max_dir_size_kb=n	This limits the size o
+>  i_version		Enable 64-bit inode version support. This option is
+>  			off by default.
+>  
+> +dax			Use direct access (no page cache).  See
+> +			Documentation/filesystems/dax.txt.  Note that
+> +			this option is incompatible with data=journal.
 > +
-> +	if (length == 0) {
-> +		if (!quiet && testcalls > simulatedopcount)
-> +			prt("skipping zero length insert range\n");
-> +		log4(OP_SKIPPED, OP_INSERT_RANGE, offset, length);
-> +		return;
-> +	}
-> +
-> +	if ((loff_t)offset >= file_size) {
-> +		if (!quiet && testcalls > simulatedopcount)
-> +			prt("skipping insert range behind EOF\n");
-> +		log4(OP_SKIPPED, OP_INSERT_RANGE, offset, length);
-> +		return;
-> +	}
-> +
-> +	log4(OP_INSERT_RANGE, offset, length, 0);
-> +
-> +	if (testcalls <= simulatedopcount)
-> +		return;
-> +
-> +	end_offset = offset + length;
-> +	if ((progressinterval && testcalls % progressinterval == 0) ||
-> +	    (debug && (monitorstart == -1 || monitorend == -1 ||
-> +		      end_offset <= monitorend))) {
-> +		prt("%lu insert\tfrom 0x%x to 0x%x, (0x%x bytes)\n", testcalls,
-> +			offset, offset+length, length);
-> +	}
-> +	if (fallocate(fd, mode, (loff_t)offset, (loff_t)length) == -1) {
-> +		prt("insert range: %x to %x\n", offset, length);
-> +		prterr("do_insert_range: fallocate");
-> +		report_failure(161);
-> +	}
-> +
-> +	memmove(good_buf + end_offset, good_buf + offset,
-> +		file_size - offset);
-> +	memset(good_buf + offset, '\0', length);
-> +	file_size += length;
-> +}
-> +
+>  Data Mode
+>  =========
+>  There are 3 different data modes:
+> diff -puN fs/ext4/ext4.h~ext4-add-dax-functionality fs/ext4/ext4.h
+> --- a/fs/ext4/ext4.h~ext4-add-dax-functionality
+> +++ a/fs/ext4/ext4.h
+> @@ -965,6 +965,11 @@ struct ext4_inode_info {
+>  #define EXT4_MOUNT_ERRORS_MASK		0x00070
+>  #define EXT4_MOUNT_MINIX_DF		0x00080	/* Mimics the Minix statfs */
+>  #define EXT4_MOUNT_NOLOAD		0x00100	/* Don't use existing journal*/
+> +#ifdef CONFIG_FS_DAX
+> +#define EXT4_MOUNT_DAX			0x00200	/* Direct Access */
 > +#else
-> +void
-> +do_insert_range(unsigned offset, unsigned length)
-> +{
-> +	return;
-> +}
+> +#define EXT4_MOUNT_DAX			0
 > +#endif
-> +
->  #ifdef HAVE_LINUX_FALLOC_H
->  /* fallocate is basically a no-op unless extending, then a lot like a truncate */
->  void
-> @@ -1117,14 +1180,25 @@ docloseopen(void)
->  	}
+  Again, why do you make definition of EXT4_MOUNT_DAX dependent on
+CONFIG_FS_DAX?
+
+> diff -puN fs/ext4/file.c~ext4-add-dax-functionality fs/ext4/file.c
+> --- a/fs/ext4/file.c~ext4-add-dax-functionality
+> +++ a/fs/ext4/file.c
+> @@ -95,7 +95,7 @@ ext4_file_write_iter(struct kiocb *iocb,
+>  	struct inode *inode = file_inode(iocb->ki_filp);
+>  	struct mutex *aio_mutex = NULL;
+>  	struct blk_plug plug;
+> -	int o_direct = file->f_flags & O_DIRECT;
+> +	int o_direct = io_is_direct(file);
+>  	int overwrite = 0;
+>  	size_t length = iov_iter_count(from);
+>  	ssize_t ret;
+> @@ -191,6 +191,27 @@ errout:
+>  	return ret;
 >  }
 >  
-> -#define TRIM_OFF_LEN(off, len, size)	\
-> -do {					\
-> -	if (size)			\
-> -		(off) %= (size);	\
-> -	else				\
-> -		(off) = 0;		\
-> -	if ((off) + (len) > (size))	\
-> -		(len) = (size) - (off);	\
-> +
-> +#define TRIM_OFF(off, size)			\
-> +do {						\
-> +	if (size)				\
-> +		(off) %= (size);		\
-> +	else					\
-> +		(off) = 0;			\
-> +} while (0)
-> +
-> +#define TRIM_LEN(off, len, size)		\
-> +do {						\
-> +	if ((off) + (len) > (size))		\
-> +		(len) = (size) - (off);		\
-> +} while (0)
-> +
-> +#define TRIM_OFF_LEN(off, len, size)		\
-> +do {						\
-> +	TRIM_OFF(off, size);			\
-> +	TRIM_LEN(off, len, size);		\
->  } while (0)
+> +#ifdef CONFIG_FS_DAX
+> +static int ext4_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+> +{
+> +	return dax_fault(vma, vmf, ext4_get_block);
+> +					/* Is this the right get_block? */
+  You can remove the comment. It is the right get_block function.
+
+...
+> diff -puN fs/ext4/inode.c~ext4-add-dax-functionality fs/ext4/inode.c
+> --- a/fs/ext4/inode.c~ext4-add-dax-functionality
+> +++ a/fs/ext4/inode.c
+> @@ -657,6 +657,18 @@ has_zeroout:
+>  	return retval;
+>  }
 >  
->  void
-> @@ -1192,6 +1266,12 @@ test(void)
->  			goto out;
->  		}
->  		break;
-> +	case OP_INSERT_RANGE:
-> +		if (!insert_range_calls) {
-> +			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
-> +			goto out;
+> +static void ext4_end_io_unwritten(struct buffer_head *bh, int uptodate)
+> +{
+> +	struct inode *inode = bh->b_assoc_map->host;
+> +	/* XXX: breaks on 32-bit > 16GB. Is that even supported? */
+  That should be 16 TB if I'm doing the math right - 32-bit block number *
+block size (4k) = 16 TB. And that's the max limit of ext4 (as logical file
+offset in blocks has to fit in 32-bits for ext4). So I think you can just
+remove the comment. But also see comment below.
+
+> +	loff_t offset = (loff_t)(uintptr_t)bh->b_private << inode->i_blkbits;
+> +	int err;
+> +	if (!uptodate)
+> +		return;
+> +	WARN_ON(!buffer_unwritten(bh));
+> +	err = ext4_convert_unwritten_extents(NULL, inode, offset, bh->b_size);
+> +}
+> +
+>  /* Maximum number of blocks we map for direct IO at once. */
+>  #define DIO_MAX_BLOCKS 4096
+>  
+> @@ -694,6 +706,11 @@ static int _ext4_get_block(struct inode
+>  
+>  		map_bh(bh, inode->i_sb, map.m_pblk);
+>  		bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
+> +		if (IS_DAX(inode) && buffer_unwritten(bh) && !io_end) {
+> +			bh->b_assoc_map = inode->i_mapping;
+> +			bh->b_private = (void *)(unsigned long)iblock;
+> +			bh->b_end_io = ext4_end_io_unwritten;
 > +		}
-> +		break;
->  	}
->  
->  	switch (op) {
-> @@ -1244,6 +1324,22 @@ test(void)
->  		}
->  		do_collapse_range(offset, size);
->  		break;
-> +	case OP_INSERT_RANGE:
-> +		TRIM_OFF(offset, file_size);
-> +		TRIM_LEN(file_size, size, maxfilelen);
-> +		offset = offset & ~(block_size - 1);
-> +		size = size & ~(block_size - 1);
-> +		if (size == 0) {
-> +			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
-> +			goto out;
-> +		}
-> +		if (file_size + size > maxfilelen) {
-> +			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
-> +			goto out;
-> +		}
-> +
-> +		do_insert_range(offset, size);
-> +		break;
->  	default:
->  		prterr("test: unknown operation");
->  		report_failure(42);
-> @@ -1307,6 +1403,9 @@ usage(void)
->  #ifdef FALLOC_FL_COLLAPSE_RANGE
->  "	-C: Do not use collapse range calls\n"
->  #endif
-> +#ifdef FALLOC_FL_INSERT_RANGE
-> +"	-i: Do not use insert range calls\n"
-> +#endif
->  "	-L: fsxLite - no file creations & no file size changes\n\
->  	-N numops: total # operations to do (default infinity)\n\
->  	-O: use oplen (see -o flag) for every op (default random)\n\
-> @@ -1493,7 +1592,7 @@ main(int argc, char **argv)
->  
->  	setvbuf(stdout, (char *)0, _IOLBF, 0); /* line buffered stdout */
->  
-> -	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHzCLN:OP:RS:WZ"))
-> +	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHzCiLN:OP:RS:WZ"))
->  	       != EOF)
->  		switch (ch) {
->  		case 'b':
-> @@ -1599,6 +1698,9 @@ main(int argc, char **argv)
->  		case 'C':
->  			collapse_range_calls = 0;
->  			break;
-> +		case 'i':
-> +			insert_range_calls = 0;
-> +			break;
->  		case 'L':
->  		        lite = 1;
->  			break;
-> @@ -1758,6 +1860,8 @@ main(int argc, char **argv)
->  		zero_range_calls = test_fallocate(FALLOC_FL_ZERO_RANGE);
->  	if (collapse_range_calls)
->  		collapse_range_calls = test_fallocate(FALLOC_FL_COLLAPSE_RANGE);
-> +	if (insert_range_calls)
-> +		insert_range_calls = test_fallocate(FALLOC_FL_INSERT_RANGE);
->  
->  	while (numops == -1 || numops--)
->  		test();
-> -- 
-> 1.7.7
-> 
-> 
-> 
+  So why is this needed? It would deserve a comment. It confuses me in
+particular because:
+1) This is a often a phony bh used just as a container for passed data and
+   b_end_io is just ignored.
+2) Even if it was real bh attached to a page, for DAX we don't do any
+   writeback and thus ->b_end_io will never get called?
+3) And if it does get called, you certainly cannot call
+   ext4_convert_unwritten_extents() from softirq context where ->b_end_io
+   gets called.
+
+>  		if (io_end && io_end->flag & EXT4_IO_END_UNWRITTEN)
+>  			set_buffer_defer_completion(bh);
+>  		bh->b_size = inode->i_sb->s_blocksize * map.m_len;
+
+								Honza
