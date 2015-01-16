@@ -1,69 +1,54 @@
-From: kbuild test robot <fengguang.wu@intel.com>
-Subject: [PATCH ext4] ext4 crypto: ext4_fname_decrypt() can be static
-Date: Fri, 16 Jan 2015 10:27:32 +0800
-Message-ID: <20150116022732.GA55041@snb>
-References: <201501161021.CZOoWii2%fengguang.wu@intel.com>
+From: Namjae Jeon <namjae.jeon@samsung.com>
+Subject: RE: [PATCH v8 2/11] xfs: Add support FALLOC_FL_INSERT_RANGE for
+ fallocate
+Date: Fri, 16 Jan 2015 16:26:36 +0900
+Message-ID: <005101d0315d$c31ad6e0$495084a0$@samsung.com>
+References: <1421165126-3585-1-git-send-email-linkinjeon@gmail.com>
+ <1421165126-3585-3-git-send-email-linkinjeon@gmail.com>
+ <20150115122906.GC18876@bfoster.bfoster>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: kbuild-all@01.org, Theodore Ts'o <tytso@mit.edu>,
-	Uday Savagaonkar <savagaon@google.com>,
-	Ildar Muslukhov <ildarm@google.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Michael Halcrow <mhalcrow@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <201501161021.CZOoWii2%fengguang.wu@intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: david@fromorbit.com, tytso@mit.edu, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, a.sangwan@samsung.com
+To: 'Brian Foster' <bfoster@redhat.com>,
+	'Namjae Jeon' <linkinjeon@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailout4.samsung.com ([203.254.224.34]:62055 "EHLO
+	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751569AbbAPH0j (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jan 2015 02:26:39 -0500
+In-reply-to: <20150115122906.GC18876@bfoster.bfoster>
+Content-language: ko
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-fs/ext4/crypto_fname.c:322:5: sparse: symbol 'ext4_fname_decrypt' was not declared. Should it be static?
-fs/ext4/crypto_fname.c:380:5: sparse: symbol 'ext4_fname_encode_digest' was not declared. Should it be static?
-fs/ext4/crypto_fname.c:479:6: sparse: symbol 'ext4_free_fname_crypto_ctx' was not declared. Should it be static?
-fs/ext4/crypto_fname.c:532:30: sparse: symbol 'ext4_alloc_fname_crypto_ctx' was not declared. Should it be static?
+> On Wed, Jan 14, 2015 at 01:05:17AM +0900, Namjae Jeon wrote:
+> > From: Namjae Jeon <namjae.jeon@samsung.com>
+> >
+> > This patch implements fallocate's FALLOC_FL_INSERT_RANGE for XFS.
+> >
+> > 1) Make sure that both offset and len are block size aligned.
+> > 2) Update the i_size of inode by len bytes.
+> > 3) Compute the file's logical block number against offset. If the computed
+> >    block number is not the starting block of the extent, split the extent
+> >    such that the block number is the starting block of the extent.
+> > 4) Shift all the extents which are lying bewteen [offset, last allocated extent]
+> >    towards right by len bytes. This step will make a hole of len bytes
+> >    at offset.
+> >
+> > Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+> > Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+> > Cc: Brian Foster<bfoster@redhat.com>
+> > ---
+> 
+> Fixes look good (I assume nothing else changed between the few nits
+> called out in v7) and survives overnight fsstress and fsx testing
+> without any explosions:
+Yes, I am also running test for long time, If there is any issue, will share.
+Thanks for your review and help :)
+> 
+> Reviewed-by: Brian Foster <bfoster@redhat.com>
+> 
 
-Signed-off-by: Fengguang Wu <fengguang.wu@intel.com>
----
- crypto_fname.c |    8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/fs/ext4/crypto_fname.c b/fs/ext4/crypto_fname.c
-index e1a72d1..4b4b507 100644
---- a/fs/ext4/crypto_fname.c
-+++ b/fs/ext4/crypto_fname.c
-@@ -319,7 +319,7 @@ static int ext4_fname_encrypt(struct ext4_fname_crypto_ctx *ctx,
-  *	Errors are returned as negative numbers.
-  *	We trust the caller to allocate sufficient memory to oname string.
-  */
--int ext4_fname_decrypt(struct ext4_fname_crypto_ctx *ctx,
-+static int ext4_fname_decrypt(struct ext4_fname_crypto_ctx *ctx,
- 		       struct ext4_cstr *oname,
- 		       const struct ext4_cstr *iname)
- {
-@@ -377,7 +377,7 @@ int ext4_fname_decrypt(struct ext4_fname_crypto_ctx *ctx,
-  * Encodes the input digest using characters from the set [a-zA-Z0-9_+].
-  * The encoded string is roughly 4/3 times the size of the input string.
-  */
--int ext4_fname_encode_digest(char *dst, char *src, u32 len)
-+static int ext4_fname_encode_digest(char *dst, char *src, u32 len)
- {
- 	static const char *lookup_table =
- 		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_+";
-@@ -476,7 +476,7 @@ out:
-  *
-  * Frees up a crypto context.
-  */
--void ext4_free_fname_crypto_ctx(struct ext4_fname_crypto_ctx *ctx)
-+static void ext4_free_fname_crypto_ctx(struct ext4_fname_crypto_ctx *ctx)
- {
- 	if (ctx == NULL || IS_ERR(ctx))
- 		return;
-@@ -529,7 +529,7 @@ static struct ext4_fname_crypto_ctx *ext4_search_fname_crypto_ctx(
- /**
-  * ext4_alloc_fname_crypto_ctx() -
-  */
--struct ext4_fname_crypto_ctx *ext4_alloc_fname_crypto_ctx(
-+static struct ext4_fname_crypto_ctx *ext4_alloc_fname_crypto_ctx(
- 	const struct ext4_encryption_key *key)
- {
- 	struct ext4_fname_crypto_ctx *ctx;
