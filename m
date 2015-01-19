@@ -1,26 +1,22 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 01/31] misc: fix clang warnings and a resource leak
-Date: Mon, 19 Jan 2015 16:39:27 -0500
-Message-ID: <20150119213927.GI11708@thunk.org>
-References: <20141220211640.25563.80596.stgit@birch.djwong.org>
- <20141220211647.25563.61104.stgit@birch.djwong.org>
+From: Finance Department <comedor@inavi.gob.ve>
+Subject: Payment
+Date: Mon, 19 Jan 2015 18:38:17 -0430 (VET)
+Message-ID: <456916626.1143982.1421708897866.JavaMail.zimbra__32264.1012179249$1421709113$gmane$org@inavi.gob.ve>
+Reply-To: Finance Department <defnce@qq.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49604 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751469AbbASVjb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Jan 2015 16:39:31 -0500
-Content-Disposition: inline
-In-Reply-To: <20141220211647.25563.61104.stgit@birch.djwong.org>
+Received: from 200-90-17-86.genericrev.cantv.net ([200.90.17.86]:58457 "EHLO
+	correo.inavi.gob.ve" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
+	with ESMTP id S1752025AbbASXLR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Jan 2015 18:11:17 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Dec 20, 2014 at 01:16:47PM -0800, Darrick J. Wong wrote:
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Dear Recipient,
 
-Thanks, applied.
+You have been awarded the sum of  8,000,000.00 (Eight Million Pounds sterling) with reference number 77100146 by office of the ministry of finance UK.Send us your personal details to deliver your funds.
 
-					- Ted
+Gloria Peter
