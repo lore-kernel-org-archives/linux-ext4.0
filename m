@@ -1,58 +1,122 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH] ext4/30[23]: ignore EBUSY error
-Date: Mon, 19 Jan 2015 16:27:41 +0400
-Message-ID: <87sif7arb6.fsf@openvz.org>
-References: <1421650955-29350-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: + ext4-add-dax-functionality.patch added to -mm tree
+Date: Mon, 19 Jan 2015 15:18:58 +0100
+Message-ID: <20150119141858.GF5662@quack.suse.cz>
+References: <54b45495.+RptMlNQorYE9TTf%akpm@linux-foundation.org>
+ <20150115124106.GF12739@quack.suse.cz>
+ <100D68C7BA14664A8938383216E40DE040853440@FMSMSX114.amr.corp.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: tytso@mit.edu, david@fromorbit.com,
-	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-To: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>,
-	fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <fstests-owner@vger.kernel.org>
-In-Reply-To: <1421650955-29350-1-git-send-email-wangxg.fnst@cn.fujitsu.com>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"Dilger, Andreas" <andreas.dilger@intel.com>,
+	"axboe@kernel.dk" <axboe@kernel.dk>,
+	"boaz@plexistor.com" <boaz@plexistor.com>,
+	"david@fromorbit.com" <david@fromorbit.com>,
+	"hch@lst.de" <hch@lst.de>,
+	"kirill.shutemov@linux.intel.com" <kirill.shutemov@linux.intel.com>,
+	"mathieu.desnoyers@efficios.com" <mathieu.desnoyers@efficios.com>,
+	"rdunlap@infradead.org" <rdunlap@infradead.org>,
+	"tytso@mit.edu" <tytso@mit.edu>,
+	"mm-commits@vger.kernel.org" <mm-commits@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Matthew Wilcox <willy@linux.intel.com>, xfs@oss.sgi.com
+To: "Wilcox, Matthew R" <matthew.r.wilcox@intel.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:56160 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751317AbbASOTC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Jan 2015 09:19:02 -0500
+Content-Disposition: inline
+In-Reply-To: <100D68C7BA14664A8938383216E40DE040853440@FMSMSX114.amr.corp.intel.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri 16-01-15 21:16:03, Wilcox, Matthew R wrote:
+> On Mon 12-01-15 15:11:17, Andrew Morton wrote:
+> > > +#ifdef CONFIG_FS_DAX
+> > > +static int ext4_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+> > > +{
+> > > +	return dax_fault(vma, vmf, ext4_get_block);
+> > > +					/* Is this the right get_block? */
+> >   You can remove the comment. It is the right get_block function.
+> 
+> Are you sure it shouldn't be ext4_get_block_write, or _write_nolock?
+> According to the comments, ext4_get_block() doesn't allocate
+> uninitialized extents, which we do want it to do.
+  Hum, so if I understand the code right dax_fault() will allocate a block
+(== page in persistent memory) for a faulted address and will map this
+block directly into process' address space. Thus that block has to be
+zeroed out before the fault finishes no matter what (so that userspace
+doesn't see garbage) - unwritten block handling in the filesystem doesn't
+really matter (and would only cause unnecessary overhead) because of the
+direct mapping of the block to process' address space. So I would think
+that it would be easiest if dax_fault() simply zeroed out blocks which got
+allocated. You could rewrite part of dax_fault() to something like:
 
-Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com> writes:
+	create = !vmf->cow_page && (vmf->flags & FAULT_FLAG_WRITE);
+	error = get_block(inode, block, &bh, create);
+	if (!error && (bh.b_size < PAGE_SIZE))
+		error = -EIO;
+	if (error)
+		goto unlock_page;
 
-Acked-by Dmitry Monakhov <dmonakhov@openvz.org>
-> xfstests ext4/302, ext4/303 are ext4 defragmentation stress test,
-> which will ioctl(EXT4_IOC_MOVE_EXT), so EBUSY is expected to happen,
-> for example, when page's corresponding buffer_head's state is BH_Dirty.
->
-> Signed-off-by: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>
-> ---
->  tests/ext4/302 | 2 ++
->  tests/ext4/303 | 2 ++
->  2 files changed, 4 insertions(+)
->
-> diff --git a/tests/ext4/302 b/tests/ext4/302
-> index 1e90016..c604c8f 100755
-> --- a/tests/ext4/302
-> +++ b/tests/ext4/302
-> @@ -60,6 +60,8 @@ filesize=${FILE_SIZE}
->  size=999G
->  buffered=0
->  fadvise_hint=0
-> +continue_on_error=write
-> +ignore_error=,EBUSY
->  
->  ##########################################
->  # Test2
-> diff --git a/tests/ext4/303 b/tests/ext4/303
-> index 9573872..2d01f0f 100755
-> --- a/tests/ext4/303
-> +++ b/tests/ext4/303
-> @@ -60,6 +60,8 @@ filesize=${FILE_SIZE}
->  size=999G
->  buffered=0
->  fadvise_hint=0
-> +continue_on_error=write
-> +ignore_error=,EBUSY
->  
->  #################################
->  # Test3
-> -- 
-> 1.8.3.1
+	if (buffer_new(&bh)) {
+		count_vm_event(PGMAJFAULT);
+		mem_cgroup_count_vm_event(vma->vm_mm, PGMAJFAULT);
+		major = VM_FAULT_MAJOR;
+		dax_clear_blocks(inode, bh->b_blocknr, PAGE_SIZE);
+	} else if (!buffer_mapped(&bh))
+		return dax_load_hole(mapping, page, vmf);
+
+Note, that we also avoided calling get_block() callback twice on major fault
+as that's relatively expensive due to locking, extent tree lookups, etc.
+
+Also note that ext2 then doesn't have to call dax_clear_blocks() at all if
+I understand the code right.
+
+And with this change to dax_fault() using ext4_get_block() is the right
+function to call. It will just allocate a block if necessary and attach it
+to an appropriate place in the extent tree which is all you need.
+
+> > > @@ -694,6 +706,11 @@ static int _ext4_get_block(struct inode
+> > >  
+> > >  		map_bh(bh, inode->i_sb, map.m_pblk);
+> > >  		bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
+> > > +		if (IS_DAX(inode) && buffer_unwritten(bh) && !io_end) {
+> > > +			bh->b_assoc_map = inode->i_mapping;
+> > > +			bh->b_private = (void *)(unsigned long)iblock;
+> > > +			bh->b_end_io = ext4_end_io_unwritten;
+> > > +		}
+> >   So why is this needed? It would deserve a comment. It confuses me in
+> > particular because:
+> > 1) This is a often a phony bh used just as a container for passed data and
+> >    b_end_io is just ignored.
+> > 2) Even if it was real bh attached to a page, for DAX we don't do any
+> >    writeback and thus ->b_end_io will never get called?
+> > 3) And if it does get called, you certainly cannot call
+> >    ext4_convert_unwritten_extents() from softirq context where ->b_end_io
+> >    gets called.
+> 
+> This got added to fix a problem that Dave Chinner pointed out.  We need
+> the allocated extent to either be zeroed (as ext2 does), or marked as
+> unwritten (ext4, XFS) so that a racing read/page fault doesn't return
+> uninitialized data.  If it's marked as unwritten, we need to convert it
+> to a written extent after we've initialised the contents.  We use the
+> b_end_io() callback to do this, and it's called from the DAX code, not in
+> softirq context.
+  OK, I see. But I didn't find where ->b_end_io gets called from dax code
+(specifically I don't see it anywhere in dax_do_IO() or dax_io()). Can you
+point me please?
+
+Also abusing b_end_io of a phony buffer for that looks ugly to me (we are
+trying to get away from passing phony bh around and this would entangle us
+even more into that mess). Normally I would think that end_io() callback
+passed into dax_do_io() should perform necessary conversions and for
+dax_fault() we could do necessary conversions inside foofs_page_mkwrite()...
+
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
