@@ -1,24 +1,24 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: complain about descriptor block checksum errors
-Date: Mon, 19 Jan 2015 16:11:22 -0500
-Message-ID: <20150119211122.GH11708@thunk.org>
-References: <20150108200334.GB9976@birch.djwong.org>
+Subject: Re: [PATCH 01/31] misc: fix clang warnings and a resource leak
+Date: Mon, 19 Jan 2015 16:39:27 -0500
+Message-ID: <20150119213927.GI11708@thunk.org>
+References: <20141220211640.25563.80596.stgit@birch.djwong.org>
+ <20141220211647.25563.61104.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:49604 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751469AbbASVjb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Jan 2015 16:39:31 -0500
 Content-Disposition: inline
-In-Reply-To: <20150108200334.GB9976@birch.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20141220211647.25563.61104.stgit@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 08, 2015 at 12:03:34PM -0800, Darrick J. Wong wrote:
-> We should complain in dmesg when journal recovery fails on account of
-> the descriptor block being corrupt, so that the diagnostic data can
-> be recovered.
-> 
+On Sat, Dec 20, 2014 at 01:16:47PM -0800, Darrick J. Wong wrote:
 > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
 Thanks, applied.
