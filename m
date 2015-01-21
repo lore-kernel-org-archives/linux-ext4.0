@@ -1,47 +1,56 @@
 From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: [PATCH v9 7/11] xfstests: generic/041: Multi insert range tests
-Date: Thu, 22 Jan 2015 00:12:02 +0900
-Message-ID: <1421853126-4505-8-git-send-email-linkinjeon@gmail.com>
+Subject: [PATCH v9 8/11] xfstests: generic/042: Delayed allocation multi insert
+Date: Thu, 22 Jan 2015 00:12:03 +0900
+Message-ID: <1421853126-4505-9-git-send-email-linkinjeon@gmail.com>
 References: <1421853126-4505-1-git-send-email-linkinjeon@gmail.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, a.sangwan@samsung.com,
-	bfoster@redhat.com, Namjae Jeon <linkinjeon@gmail.com>,
-	Namjae Jeon <namjae.jeon@samsung.com>
-To: david@fromorbit.com, tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f180.google.com ([209.85.192.180]:65305 "EHLO
-	mail-pd0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753908AbbAUPOC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jan 2015 10:14:02 -0500
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Namjae Jeon <linkinjeon@gmail.com>, Namjae Jeon <namjae.jeon@samsung.com>,
+	bfoster@redhat.com, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, a.sangwan@samsung.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: david@fromorbit.com,
+	tytso@mit.edu
+Return-path: <xfs-bounces@oss.sgi.com>
 In-Reply-To: <1421853126-4505-1-git-send-email-linkinjeon@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
 From: Namjae Jeon <namjae.jeon@samsung.com>
 
-This testcase(041) tries to test various corner cases with pre-existing holes
-for finsert range functionality over different type of extents.
+This testcase(042) tries to test various corner cases with delayed extents and
+pre-existing holes for finsert range functionality over different type of
+extents.
 
 Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
 Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
 ---
- tests/generic/041     |   65 ++++++++++++++++++++++++++++++++++++++++
- tests/generic/041.out |   80 +++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/042     |   65 ++++++++++++++++++++++++++++++++++++++++
+ tests/generic/042.out |   80 +++++++++++++++++++++++++++++++++++++++++++++++++
  tests/generic/group   |    1 +
  3 files changed, 146 insertions(+)
- create mode 100644 tests/generic/041
- create mode 100644 tests/generic/041.out
+ create mode 100644 tests/generic/042
+ create mode 100644 tests/generic/042.out
 
-diff --git a/tests/generic/041 b/tests/generic/041
+diff --git a/tests/generic/042 b/tests/generic/042
 new file mode 100644
-index 0000000..29e0f31
+index 0000000..ea9fd3c
 --- /dev/null
-+++ b/tests/generic/041
++++ b/tests/generic/042
 @@ -0,0 +1,65 @@
 +#! /bin/bash
-+# FS QA Test No. generic/041
++# FS QA Test No. generic/042
 +#
-+# Multi insert range tests
++# Delayed allocation multi insert range tests
 +# This testcase is one of the 4 testcases which tries to
 +# test various corner cases for finsert range functionality over different
 +# type of extents. These tests are based on generic/255 test case.
@@ -98,18 +107,18 @@ index 0000000..29e0f31
 +
 +testfile=$TEST_DIR/$seq.$$
 +
-+_test_generic_punch -k falloc fpunch finsert fiemap _filter_hole_fiemap $testfile
++_test_generic_punch -d -k falloc fpunch finsert fiemap _filter_hole_fiemap $testfile
 +_check_test_fs
 +
 +status=0
 +exit
-diff --git a/tests/generic/041.out b/tests/generic/041.out
+diff --git a/tests/generic/042.out b/tests/generic/042.out
 new file mode 100644
-index 0000000..5fe3c5e
+index 0000000..1618e9d
 --- /dev/null
-+++ b/tests/generic/041.out
++++ b/tests/generic/042.out
 @@ -0,0 +1,80 @@
-+QA output created by 041
++QA output created by 042
 +	1. into a hole
 +cf845a781c107ec1346e849c9dd1b7e8
 +	2. into allocated space
@@ -190,17 +199,21 @@ index 0000000..5fe3c5e
 +1: [16..55]: extent
 +86c9d033be2761385c9cfa203c426bb2
 diff --git a/tests/generic/group b/tests/generic/group
-index 518cf49..62660cc 100644
+index 62660cc..c0944b3 100644
 --- a/tests/generic/group
 +++ b/tests/generic/group
-@@ -43,6 +43,7 @@
- 038 auto stress
+@@ -44,6 +44,7 @@
  039 auto quick prealloc
  040 auto quick prealloc
-+041 auto quick prealloc
+ 041 auto quick prealloc
++042 auto quick prealloc
  053 acl repair auto quick
  062 attr udf auto quick
  068 other auto freeze dangerous stress
 -- 
 1.7.9.5
 
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
