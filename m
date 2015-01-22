@@ -1,242 +1,64 @@
-From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: [PATCH v9 11/11] xfstests: fsx: Add fallocate insert range operation
-Date: Thu, 22 Jan 2015 00:12:06 +0900
-Message-ID: <1421853126-4505-12-git-send-email-linkinjeon@gmail.com>
-References: <1421853126-4505-1-git-send-email-linkinjeon@gmail.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, a.sangwan@samsung.com,
-	bfoster@redhat.com, Namjae Jeon <linkinjeon@gmail.com>,
-	Namjae Jeon <namjae.jeon@samsung.com>
-To: david@fromorbit.com, tytso@mit.edu
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1421853126-4505-1-git-send-email-linkinjeon@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Josh Hunt <johunt@akamai.com>
+Subject: Re: [PATCH] ext4: fix warning in ext4_da_update_reserve_space()
+Date: Wed, 21 Jan 2015 21:31:13 -0600
+Message-ID: <54C06F01.7090604@akamai.com>
+References: <1420750108-11512-1-git-send-email-johunt@akamai.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="windows-1252"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"tytso@mit.edu" <tytso@mit.edu>, "jack@suse.cz" <jack@suse.cz>
+To: "stable@vger.kernel.org" <stable@vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+In-Reply-To: <1420750108-11512-1-git-send-email-johunt@akamai.com>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Namjae Jeon <namjae.jeon@samsung.com>
+On 01/08/2015 02:48 PM, Josh Hunt wrote:
+>      Please add the patch below and referenced dependency (0e95c22) to stable
+>      3.10.y. The original 7d73453 did not apply cleanly to my 3.10.y so I've
+>      backported it here. Its dependency can be cherry-picked.
+>
+>      I've gotten approval to submit these to 3.10 stable from Jan and Ted, also
+>      cc'd.
+>      http://marc.info/?l=linux-ext4&m=142070334408249&w=2
+>
+>      Thanks
+>      Josh
+>
+>      -----
+>
+>      commit 7d7345322d60edb0fa49a64a89b31360f01d09cb upstream
+>
+>      reaim workfile.dbase test easily triggers warning in
+>      ext4_da_update_reserve_space():
+>
+>      EXT4-fs warning (device ram0): ext4_da_update_reserve_space:365:
+>      ino 12, allocated 1 with only 0 reserved metadata blocks (releasing 1
+>      blocks with reserved 9 data blocks)
+>
+>      The problem is that (one of) tests creates file and then randomly writes
+>      to it with O_SYNC. That results in writing back pages of the file in
+>      random order so we create extents for written blocks say 0, 2, 4, 6, 8
+>      - this last allocation also allocates new block for extents. Then we
+>      writeout block 1 so we have extents 0-2, 4, 6, 8 and we release
+>      indirect extent block because extents fit in the inode again. Then we
+>      writeout block 10 and we need to allocate indirect extent block again
+>      which triggers the warning because we don't have the reservation
+>      anymore.
+>
+>      Fix the problem by giving back freed metadata blocks resulting from
+>      extent merging into inode's reservation pool.
+>
+>      Cc: <stable@vger.kernel.org> # 3.10.x: 0e95c22: quota: provide interface for readding allocated space into reserved space
+>      Cc: <stable@vger.kernel.org> # 3.10.x
+>      Signed-off-by: Jan Kara <jack@suse.cz>
 
-This commit adds fallocate FALLOC_FL_INSERT_RANGE support for fsx.
+I've just realized the patch dependency I referenced above, 0e95c22, is 
+incorrect. It should have been 1c8924eb106. Sorry for any confusion.
 
-Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-Reviewed-by: Brian Foster <bfoster@redhat.com>
----
-Changelog
-v9:
- - fix crash down due to the memset() on good buf going off
-   the end of the buffer.
+Let me know if I you'd like me to respin the patch with the proper hash 
+information.
 
-v8:
- - create TRIM_OFF() and TRIM_LEN() and redeine redefine TRIM_OFF_LEN().
-
- ltp/fsx.c |  124 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 114 insertions(+), 10 deletions(-)
-
-diff --git a/ltp/fsx.c b/ltp/fsx.c
-index 3709419..9fed5b2 100644
---- a/ltp/fsx.c
-+++ b/ltp/fsx.c
-@@ -95,7 +95,8 @@ int			logcount = 0;	/* total ops */
- #define OP_PUNCH_HOLE		6
- #define OP_ZERO_RANGE		7
- #define OP_COLLAPSE_RANGE	8
--#define OP_MAX_FULL		9
-+#define OP_INSERT_RANGE	9
-+#define OP_MAX_FULL		10
- 
- /* operation modifiers */
- #define OP_CLOSEOPEN	100
-@@ -145,6 +146,7 @@ int     fallocate_calls = 1;            /* -F flag disables */
- int     punch_hole_calls = 1;           /* -H flag disables */
- int     zero_range_calls = 1;           /* -z flag disables */
- int	collapse_range_calls = 1;	/* -C flag disables */
-+int	insert_range_calls = 1;		/* -i flag disables */
- int 	mapped_reads = 1;		/* -R flag disables it */
- int	fsxgoodfd = 0;
- int	o_direct;			/* -Z */
-@@ -339,6 +341,14 @@ logdump(void)
- 						     lp->args[0] + lp->args[1])
- 				prt("\t******CCCC");
- 			break;
-+		case OP_INSERT_RANGE:
-+			prt("INSERT 0x%x thru 0x%x\t(0x%x bytes)",
-+			    lp->args[0], lp->args[0] + lp->args[1] - 1,
-+			    lp->args[1]);
-+			if (badoff >= lp->args[0] && badoff <
-+						     lp->args[0] + lp->args[1])
-+				prt("\t******CCCC");
-+			break;
- 		case OP_SKIPPED:
- 			prt("SKIPPED (no operation)");
- 			break;
-@@ -1012,6 +1022,59 @@ do_collapse_range(unsigned offset, unsigned length)
- }
- #endif
- 
-+#ifdef FALLOC_FL_INSERT_RANGE
-+void
-+do_insert_range(unsigned offset, unsigned length)
-+{
-+	unsigned end_offset;
-+	int mode = FALLOC_FL_INSERT_RANGE;
-+
-+	if (length == 0) {
-+		if (!quiet && testcalls > simulatedopcount)
-+			prt("skipping zero length insert range\n");
-+		log4(OP_SKIPPED, OP_INSERT_RANGE, offset, length);
-+		return;
-+	}
-+
-+	if ((loff_t)offset >= file_size) {
-+		if (!quiet && testcalls > simulatedopcount)
-+			prt("skipping insert range behind EOF\n");
-+		log4(OP_SKIPPED, OP_INSERT_RANGE, offset, length);
-+		return;
-+	}
-+
-+	log4(OP_INSERT_RANGE, offset, length, 0);
-+
-+	if (testcalls <= simulatedopcount)
-+		return;
-+
-+	end_offset = offset + length;
-+	if ((progressinterval && testcalls % progressinterval == 0) ||
-+	    (debug && (monitorstart == -1 || monitorend == -1 ||
-+		      end_offset <= monitorend))) {
-+		prt("%lu insert\tfrom 0x%x to 0x%x, (0x%x bytes)\n", testcalls,
-+			offset, offset+length, length);
-+	}
-+	if (fallocate(fd, mode, (loff_t)offset, (loff_t)length) == -1) {
-+		prt("insert range: %x to %x\n", offset, length);
-+		prterr("do_insert_range: fallocate");
-+		report_failure(161);
-+	}
-+
-+	memmove(good_buf + end_offset, good_buf + offset,
-+		file_size - offset);
-+	memset(good_buf + offset, '\0', length);
-+	file_size += length;
-+}
-+
-+#else
-+void
-+do_insert_range(unsigned offset, unsigned length)
-+{
-+	return;
-+}
-+#endif
-+
- #ifdef HAVE_LINUX_FALLOC_H
- /* fallocate is basically a no-op unless extending, then a lot like a truncate */
- void
-@@ -1117,14 +1180,25 @@ docloseopen(void)
- 	}
- }
- 
--#define TRIM_OFF_LEN(off, len, size)	\
--do {					\
--	if (size)			\
--		(off) %= (size);	\
--	else				\
--		(off) = 0;		\
--	if ((off) + (len) > (size))	\
--		(len) = (size) - (off);	\
-+
-+#define TRIM_OFF(off, size)			\
-+do {						\
-+	if (size)				\
-+		(off) %= (size);		\
-+	else					\
-+		(off) = 0;			\
-+} while (0)
-+
-+#define TRIM_LEN(off, len, size)		\
-+do {						\
-+	if ((off) + (len) > (size))		\
-+		(len) = (size) - (off);		\
-+} while (0)
-+
-+#define TRIM_OFF_LEN(off, len, size)		\
-+do {						\
-+	TRIM_OFF(off, size);			\
-+	TRIM_LEN(off, len, size);		\
- } while (0)
- 
- void
-@@ -1192,6 +1266,12 @@ test(void)
- 			goto out;
- 		}
- 		break;
-+	case OP_INSERT_RANGE:
-+		if (!insert_range_calls) {
-+			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
-+			goto out;
-+		}
-+		break;
- 	}
- 
- 	switch (op) {
-@@ -1244,6 +1324,22 @@ test(void)
- 		}
- 		do_collapse_range(offset, size);
- 		break;
-+	case OP_INSERT_RANGE:
-+		TRIM_OFF(offset, file_size);
-+		TRIM_LEN(file_size, size, maxfilelen);
-+		offset = offset & ~(block_size - 1);
-+		size = size & ~(block_size - 1);
-+		if (size == 0) {
-+			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
-+			goto out;
-+		}
-+		if (file_size + size > maxfilelen) {
-+			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
-+			goto out;
-+		}
-+
-+		do_insert_range(offset, size);
-+		break;
- 	default:
- 		prterr("test: unknown operation");
- 		report_failure(42);
-@@ -1307,6 +1403,9 @@ usage(void)
- #ifdef FALLOC_FL_COLLAPSE_RANGE
- "	-C: Do not use collapse range calls\n"
- #endif
-+#ifdef FALLOC_FL_INSERT_RANGE
-+"	-i: Do not use insert range calls\n"
-+#endif
- "	-L: fsxLite - no file creations & no file size changes\n\
- 	-N numops: total # operations to do (default infinity)\n\
- 	-O: use oplen (see -o flag) for every op (default random)\n\
-@@ -1493,7 +1592,7 @@ main(int argc, char **argv)
- 
- 	setvbuf(stdout, (char *)0, _IOLBF, 0); /* line buffered stdout */
- 
--	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHzCLN:OP:RS:WZ"))
-+	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHzCiLN:OP:RS:WZ"))
- 	       != EOF)
- 		switch (ch) {
- 		case 'b':
-@@ -1599,6 +1698,9 @@ main(int argc, char **argv)
- 		case 'C':
- 			collapse_range_calls = 0;
- 			break;
-+		case 'i':
-+			insert_range_calls = 0;
-+			break;
- 		case 'L':
- 		        lite = 1;
- 			break;
-@@ -1758,6 +1860,8 @@ main(int argc, char **argv)
- 		zero_range_calls = test_fallocate(FALLOC_FL_ZERO_RANGE);
- 	if (collapse_range_calls)
- 		collapse_range_calls = test_fallocate(FALLOC_FL_COLLAPSE_RANGE);
-+	if (insert_range_calls)
-+		insert_range_calls = test_fallocate(FALLOC_FL_INSERT_RANGE);
- 
- 	while (numops == -1 || numops--)
- 		test();
--- 
-1.7.9.5
-
+Thanks
+Josh
