@@ -1,64 +1,101 @@
-From: Josh Hunt <johunt@akamai.com>
-Subject: Re: [PATCH] ext4: fix warning in ext4_da_update_reserve_space()
-Date: Wed, 21 Jan 2015 21:31:13 -0600
-Message-ID: <54C06F01.7090604@akamai.com>
-References: <1420750108-11512-1-git-send-email-johunt@akamai.com>
+From: Michael Kerrisk <mtk.manpages@gmail.com>
+Subject: Re: [PATCH v9 0/11] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
+Date: Thu, 22 Jan 2015 09:16:34 +0100
+Message-ID: <CAHO5Pa3HnzP=KcBQOWDEkBqppMGXJ2kzfNKj21ruQ5SvWnms2g@mail.gmail.com>
+References: <1421853126-4505-1-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="windows-1252"; format=flowed
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"tytso@mit.edu" <tytso@mit.edu>, "jack@suse.cz" <jack@suse.cz>
-To: "stable@vger.kernel.org" <stable@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <1420750108-11512-1-git-send-email-johunt@akamai.com>
-Sender: stable-owner@vger.kernel.org
+Cc: Theodore Ts'o <tytso@mit.edu>, Namjae Jeon <namjae.jeon@samsung.com>,
+	Linux API <linux-api@vger.kernel.org>, bfoster@redhat.com,
+	Linux Kernel <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
+	a.sangwan@samsung.com, Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Namjae Jeon <linkinjeon@gmail.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <1421853126-4505-1-git-send-email-linkinjeon@gmail.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On 01/08/2015 02:48 PM, Josh Hunt wrote:
->      Please add the patch below and referenced dependency (0e95c22) to stable
->      3.10.y. The original 7d73453 did not apply cleanly to my 3.10.y so I've
->      backported it here. Its dependency can be cherry-picked.
->
->      I've gotten approval to submit these to 3.10 stable from Jan and Ted, also
->      cc'd.
->      http://marc.info/?l=linux-ext4&m=142070334408249&w=2
->
->      Thanks
->      Josh
->
->      -----
->
->      commit 7d7345322d60edb0fa49a64a89b31360f01d09cb upstream
->
->      reaim workfile.dbase test easily triggers warning in
->      ext4_da_update_reserve_space():
->
->      EXT4-fs warning (device ram0): ext4_da_update_reserve_space:365:
->      ino 12, allocated 1 with only 0 reserved metadata blocks (releasing 1
->      blocks with reserved 9 data blocks)
->
->      The problem is that (one of) tests creates file and then randomly writes
->      to it with O_SYNC. That results in writing back pages of the file in
->      random order so we create extents for written blocks say 0, 2, 4, 6, 8
->      - this last allocation also allocates new block for extents. Then we
->      writeout block 1 so we have extents 0-2, 4, 6, 8 and we release
->      indirect extent block because extents fit in the inode again. Then we
->      writeout block 10 and we need to allocate indirect extent block again
->      which triggers the warning because we don't have the reservation
->      anymore.
->
->      Fix the problem by giving back freed metadata blocks resulting from
->      extent merging into inode's reservation pool.
->
->      Cc: <stable@vger.kernel.org> # 3.10.x: 0e95c22: quota: provide interface for readding allocated space into reserved space
->      Cc: <stable@vger.kernel.org> # 3.10.x
->      Signed-off-by: Jan Kara <jack@suse.cz>
+[CC += linux-api]
 
-I've just realized the patch dependency I referenced above, 0e95c22, is 
-incorrect. It should have been 1c8924eb106. Sorry for any confusion.
+Hello Namjae
 
-Let me know if I you'd like me to respin the patch with the proper hash 
-information.
+Please, all patches such as this that touch the user-space ABI must CC
+linux-api@. (The kernel source file Documentation/SubmitChecklist
+notes that all Linux kernel patches that change userspace interfaces
+should be CCed to linux-api@vger.kernel.org.  See also
+https://www.kernel.org/doc/man-pages/linux-api-ml.html )
 
-Thanks
-Josh
+Thanks,
+
+Michael
+
+
+On Wed, Jan 21, 2015 at 4:11 PM, Namjae Jeon <linkinjeon@gmail.com> wrote:
+> From: Namjae Jeon <namjae.jeon@samsung.com>
+>
+> In continuation of the work of making the process of non linear editing of
+> media files faster, we introduce here the new flag FALLOC_FL_INSERT_RANGE
+> for fallocate.
+>
+> This flag will work opposite to the FALLOC_FL_COLLAPSE_RANGE flag.
+> As such, specifying FALLOC_FL_INSERT_RANGE flag will create new space inside file
+> by inserting a hole within the range specified by offset and len.
+> User can write new data in this space. e.g. ads.
+> Like collapse range, currently we have the limitation that offset and len should
+> be block size aligned for both XFS and Ext4.
+>
+> The semantics of the flag are :
+> 1) It creates space within file by inserting a hole of  len bytes starting
+>    at offset byte without overwriting any existing data. All the data blocks
+>    from offset to EOF are shifted towards right to make hole space.
+> 2) It should be used exclusively. No other fallocate flag in combination.
+> 3) Offset and length supplied to fallocate should be fs block size aligned
+>    in case of xfs and ext4.
+> 4) Insert range does not work for the case when offset is overlapping/beyond
+>    i_size. If the user wants to insert space at the end of file they are
+>    advised to use either ftruncate(2) or fallocate(2) with mode 0.
+> 5) It increses the size of file by len bytes.
+>
+>
+> Namjae Jeon (11):
+>  fs: Add support FALLOC_FL_INSERT_RANGE for fallocate
+>  xfs: Add support FALLOC_FL_INSERT_RANGE for fallocate
+>  ext4: Add support FALLOC_FL_INSERT_RANGE for fallocate
+>  xfsprogs: xfs_io: add finsert command for insert range via fallocate
+>  xfstests: generic/039: Standard insert range tests
+>  xfstests: generic/040: Delayed allocation insert range
+>  xfstests: generic/041: Multi insert range tests
+>  xfstests: generic/042: Delayed allocation multi insert
+>  xfstests: generic/043: Test multiple fallocate insert/collapse range calls
+>  xfstests: fsstress: Add fallocate insert range operation
+>  xfstests: fsx: Add fallocate insert range operation
+> --
+> 1.7.9.5
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
+
+
+
+-- 
+Michael Kerrisk Linux man-pages maintainer;
+http://www.kernel.org/doc/man-pages/
+Author of "The Linux Programming Interface", http://blog.man7.org/
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
