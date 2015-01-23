@@ -1,108 +1,131 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] ext4: reserve codepoints used by the ext4 encryption
- feature
-Date: Fri, 23 Jan 2015 11:41:25 -0800
-Message-ID: <20150123194125.GC9976@birch.djwong.org>
-References: <1422041781-14062-1-git-send-email-tytso@mit.edu>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [v8 4/5] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR
+ interface support
+Date: Sat, 24 Jan 2015 10:30:26 +1100
+Message-ID: <20150123233026.GP16552@dastard>
+References: <1418102548-5469-1-git-send-email-lixi@ddn.com>
+ <1418102548-5469-5-git-send-email-lixi@ddn.com>
+ <54C11733.7080801@yandex-team.ru>
+ <20150123015307.GD24722@dastard>
+ <54C23751.7000009@yandex-team.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	mhalcrow@google.com, savagaon@google.com, muslukhovi@gmail.com
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:46010 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755150AbbAWTlc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jan 2015 14:41:32 -0500
+Cc: Li Xi <pkuelelixi@gmail.com>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-api@vger.kernel.org,
+	tytso@mit.edu, adilger@dilger.ca, jack@suse.cz,
+	viro@zeniv.linux.org.uk, hch@infradead.org, dmonakhov@openvz.org,
+	"Eric W. Biederman" <ebiederm@xmission.com>
+To: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1422041781-14062-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <54C23751.7000009@yandex-team.ru>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 23, 2015 at 02:36:21PM -0500, Theodore Ts'o wrote:
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> ---
->  fs/ext4/ext4.h | 17 +++++++++++++----
->  1 file changed, 13 insertions(+), 4 deletions(-)
+On Fri, Jan 23, 2015 at 02:58:09PM +0300, Konstantin Khlebnikov wrote:
+> On 23.01.2015 04:53, Dave Chinner wrote:
+> >On Thu, Jan 22, 2015 at 06:28:51PM +0300, Konstantin Khlebnikov wrote:
+> >>>+	kprojid = make_kprojid(&init_user_ns, (projid_t)projid);
+> >>
+> >>Maybe current_user_ns()?
+> >>This code should be user-namespace aware from the beginning.
+> >
+> >No, the code is correct. Project quotas have nothing to do with
+> >UIDs and so should never have been included in the uid/gid
+> >namespace mapping infrastructure in the first place.
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index a75fba6..b7f393d 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -364,7 +364,8 @@ struct flex_groups {
->  #define EXT4_DIRTY_FL			0x00000100
->  #define EXT4_COMPRBLK_FL		0x00000200 /* One or more compressed clusters */
->  #define EXT4_NOCOMPR_FL			0x00000400 /* Don't compress */
-> -#define EXT4_ECOMPR_FL			0x00000800 /* Compression error */
-> +	/* nb: was previously EXT2_ECOMPR_FL */
-> +#define EXT4_ENCRYPT_FL			0x00000800 /* encrypted file */
->  /* End compression flags --- maybe not all used */
->  #define EXT4_INDEX_FL			0x00001000 /* hash-indexed directory */
->  #define EXT4_IMAGIC_FL			0x00002000 /* AFS directory */
-> @@ -421,7 +422,7 @@ enum {
->  	EXT4_INODE_DIRTY	= 8,
->  	EXT4_INODE_COMPRBLK	= 9,	/* One or more compressed clusters */
->  	EXT4_INODE_NOCOMPR	= 10,	/* Don't compress */
-> -	EXT4_INODE_ECOMPR	= 11,	/* Compression error */
-> +	EXT4_INODE_ENCRYPT	= 11,	/* Compression error */
+> Right, but user-namespace provides id mapping for project-id too.
+> This infrastructure adds support for nested project quotas with
+> virtualized ids in sub-containers. I couldn't say that this is
+> must have feature but implementation is trivial because whole
+> infrastructure is already here.
 
-Encryption error?
+This is an extremely common misunderstanding of project IDs. Project
+IDs are completely separate to the UID/GID namespace.  Project
+quotas were originally designed specifically for
+accounting/enforcing quotas in situations where uid/gid
+accounting/enforcing is not possible. This design intent goes back
+25 years - it predates XFS...
 
->  /* End compression flags --- maybe not all used */
->  	EXT4_INODE_INDEX	= 12,	/* hash-indexed directory */
->  	EXT4_INODE_IMAGIC	= 13,	/* AFS directory */
-> @@ -466,7 +467,7 @@ static inline void ext4_check_flag_values(void)
->  	CHECK_FLAG_VALUE(DIRTY);
->  	CHECK_FLAG_VALUE(COMPRBLK);
->  	CHECK_FLAG_VALUE(NOCOMPR);
-> -	CHECK_FLAG_VALUE(ECOMPR);
-> +	CHECK_FLAG_VALUE(ENCRYPT);
->  	CHECK_FLAG_VALUE(INDEX);
->  	CHECK_FLAG_VALUE(IMAGIC);
->  	CHECK_FLAG_VALUE(JOURNAL_DATA);
-> @@ -1043,6 +1044,12 @@ extern void ext4_set_bits(void *bm, int cur, int len);
->  /* Metadata checksum algorithm codes */
->  #define EXT4_CRC32C_CHKSUM		1
->  
-> +/* Encryption algorithms */
-> +#define EXT4_ENCRYPTION_MODE_INVALID		0
-> +#define EXT4_ENCRYPTION_MODE_AES_256_XTS	1
-> +#define EXT4_ENCRYPTION_MODE_AES_256_GCM	2
-> +#define EXT4_ENCRYPTION_MODE_AES_256_CBC	3
-> +
->  /*
->   * Structure of the super block
->   */
-> @@ -1156,7 +1163,8 @@ struct ext4_super_block {
->  	__le32	s_grp_quota_inum;	/* inode for tracking group quota */
->  	__le32	s_overhead_clusters;	/* overhead blocks/clusters in fs */
->  	__le32	s_backup_bgs[2];	/* groups with sparse_super2 SBs */
-> -	__le32	s_reserved[106];	/* Padding to the end of the block */
-> +	__u8	s_encrypt_algos[4];	/* Encryption algorithms in use  */
+IOWs, mapping prids via user namespaces defeats the purpose
+for which prids were originally intended for.
 
-Does this imply that one can have up to 4 algorithms in use at once?
-
-Are there any other disk format changes that the wiki documentation should be
-aware of?
-
---D
-
-> +	__le32	s_reserved[105];	/* Padding to the end of the block */
->  	__le32	s_checksum;		/* crc32c(superblock) */
->  };
->  
-> @@ -1537,6 +1545,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
->  #define EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM	0x2000 /* use crc32c for bg */
->  #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
->  #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
-> +#define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
->  
->  #define EXT2_FEATURE_COMPAT_SUPP	EXT4_FEATURE_COMPAT_EXT_ATTR
->  #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
-> -- 
-> 2.1.0
+> >Point in case: directory subtree quotas can be used as a resource
+> >controller for limiting space usage within separate containers that
+> >share the same underlying (large) filesystem via mount namespaces.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> That's exactly my use-case: 'sub-volumes' for containers with
+> quota for space usage/inodes count.
+
+That doesn't require mapped project IDs. Hard container space limits
+can only be controlled by the init namespace, and because inodes can
+hold only one project ID the current ns cannot be allowed to change
+the project ID on the inode because that allows them to escape the
+resource limits set on the project ID associated with the sub-mount
+set up by the init namespace...
+
+i.e.
+
+/mnt			prid = 0, default for entire fs.
+/mnt/container1/	prid = 1, inherit, 10GB space limit
+/mnt/container2/	prid = 2, inherit, 50GB space limit
+.....
+/mnt/containerN/	prid = N, inherit, 20GB space limit
+
+And you clone the mount namespace for each container so the root is
+at the appropriate /mnt/containerX/.  Now the containers have a
+fixed amount of space they can use in the parent filesystem they
+know nothing about, and it is enforced by directory subquotas
+controlled by the init namespace.  This "fixed amount of space" is
+reflected in the container namespace when "df" is run as it will
+report the project quota space limits. Adding or removing space to a
+container is as simple as changing the project quota limits from the
+init namespace. i.e. an admin operation controlled by the host, not
+the container....
+
+Allowing the container to modify the prid and/or the inherit bit of
+inodes in it's namespace then means the user can define their own
+space usage limits, even turn them off. It's not a resource
+container at that point because the user can define their own
+limits.  Hence, only if the current_ns cannot change project quotas
+will we have a hard fence on space usage that the container *cannot
+exceed*.
+
+Yes, I know there are other use cases for project quotas *within* a
+container as controlled by the user (same as existing project quota
+usages), but we don't have the capability of storing multiple
+project IDs on each inode, nor accounting/enforcement across
+multiple project IDs on an inode. Nor, really, do we want to (on
+disk format changes required) and hence we can have one or the
+other but not both.
+
+Further, in a containerised system, providing the admin with a
+trivial and easy to manage mechanism to provide hard limits on
+shared filesystem space usage of each container is far more
+important than catering to the occasional user who might have a need
+for project quotas inside a container.
+
+These are the points I brought up when I initially reviewed the user
+namespace patches - the userns developer ignored my concerns and the
+code was merged without acknowledging them, let alone addressing
+them.
+
+As we (the XFS guys) have no way of knowing when such a distinction
+should be made, and with the user ns developers being completely
+unresponsive on the subject, we made the decision ourselves.  Our
+only concern was to be consistent, safe and predictable and that
+means we choose to only allow project quotas to be used as an
+external container resource hardwall limit and hence *never* allow
+access to project quotas inside container namespaces.
+
+That's the long and the short of it. project IDs are independent of
+user IDs and they cannot be sanely used both inside and outside user
+namespaces at the same time. Hence they should never have been
+included in the user namespace mappings in the first place.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
