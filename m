@@ -1,86 +1,108 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: reserve codepoints used by the ext4 encryption feature
-Date: Fri, 23 Jan 2015 14:36:21 -0500
-Message-ID: <1422041781-14062-1-git-send-email-tytso@mit.edu>
-Cc: mhalcrow@google.com, savagaon@google.com, muslukhovi@gmail.com,
-	Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] ext4: reserve codepoints used by the ext4 encryption
+ feature
+Date: Fri, 23 Jan 2015 11:41:25 -0800
+Message-ID: <20150123194125.GC9976@birch.djwong.org>
+References: <1422041781-14062-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	mhalcrow@google.com, savagaon@google.com, muslukhovi@gmail.com
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57861 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756466AbbAWTgY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 23 Jan 2015 14:36:24 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:46010 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755150AbbAWTlc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jan 2015 14:41:32 -0500
+Content-Disposition: inline
+In-Reply-To: <1422041781-14062-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/ext4.h | 17 +++++++++++++----
- 1 file changed, 13 insertions(+), 4 deletions(-)
+On Fri, Jan 23, 2015 at 02:36:21PM -0500, Theodore Ts'o wrote:
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+>  fs/ext4/ext4.h | 17 +++++++++++++----
+>  1 file changed, 13 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index a75fba6..b7f393d 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -364,7 +364,8 @@ struct flex_groups {
+>  #define EXT4_DIRTY_FL			0x00000100
+>  #define EXT4_COMPRBLK_FL		0x00000200 /* One or more compressed clusters */
+>  #define EXT4_NOCOMPR_FL			0x00000400 /* Don't compress */
+> -#define EXT4_ECOMPR_FL			0x00000800 /* Compression error */
+> +	/* nb: was previously EXT2_ECOMPR_FL */
+> +#define EXT4_ENCRYPT_FL			0x00000800 /* encrypted file */
+>  /* End compression flags --- maybe not all used */
+>  #define EXT4_INDEX_FL			0x00001000 /* hash-indexed directory */
+>  #define EXT4_IMAGIC_FL			0x00002000 /* AFS directory */
+> @@ -421,7 +422,7 @@ enum {
+>  	EXT4_INODE_DIRTY	= 8,
+>  	EXT4_INODE_COMPRBLK	= 9,	/* One or more compressed clusters */
+>  	EXT4_INODE_NOCOMPR	= 10,	/* Don't compress */
+> -	EXT4_INODE_ECOMPR	= 11,	/* Compression error */
+> +	EXT4_INODE_ENCRYPT	= 11,	/* Compression error */
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index a75fba6..b7f393d 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -364,7 +364,8 @@ struct flex_groups {
- #define EXT4_DIRTY_FL			0x00000100
- #define EXT4_COMPRBLK_FL		0x00000200 /* One or more compressed clusters */
- #define EXT4_NOCOMPR_FL			0x00000400 /* Don't compress */
--#define EXT4_ECOMPR_FL			0x00000800 /* Compression error */
-+	/* nb: was previously EXT2_ECOMPR_FL */
-+#define EXT4_ENCRYPT_FL			0x00000800 /* encrypted file */
- /* End compression flags --- maybe not all used */
- #define EXT4_INDEX_FL			0x00001000 /* hash-indexed directory */
- #define EXT4_IMAGIC_FL			0x00002000 /* AFS directory */
-@@ -421,7 +422,7 @@ enum {
- 	EXT4_INODE_DIRTY	= 8,
- 	EXT4_INODE_COMPRBLK	= 9,	/* One or more compressed clusters */
- 	EXT4_INODE_NOCOMPR	= 10,	/* Don't compress */
--	EXT4_INODE_ECOMPR	= 11,	/* Compression error */
-+	EXT4_INODE_ENCRYPT	= 11,	/* Compression error */
- /* End compression flags --- maybe not all used */
- 	EXT4_INODE_INDEX	= 12,	/* hash-indexed directory */
- 	EXT4_INODE_IMAGIC	= 13,	/* AFS directory */
-@@ -466,7 +467,7 @@ static inline void ext4_check_flag_values(void)
- 	CHECK_FLAG_VALUE(DIRTY);
- 	CHECK_FLAG_VALUE(COMPRBLK);
- 	CHECK_FLAG_VALUE(NOCOMPR);
--	CHECK_FLAG_VALUE(ECOMPR);
-+	CHECK_FLAG_VALUE(ENCRYPT);
- 	CHECK_FLAG_VALUE(INDEX);
- 	CHECK_FLAG_VALUE(IMAGIC);
- 	CHECK_FLAG_VALUE(JOURNAL_DATA);
-@@ -1043,6 +1044,12 @@ extern void ext4_set_bits(void *bm, int cur, int len);
- /* Metadata checksum algorithm codes */
- #define EXT4_CRC32C_CHKSUM		1
- 
-+/* Encryption algorithms */
-+#define EXT4_ENCRYPTION_MODE_INVALID		0
-+#define EXT4_ENCRYPTION_MODE_AES_256_XTS	1
-+#define EXT4_ENCRYPTION_MODE_AES_256_GCM	2
-+#define EXT4_ENCRYPTION_MODE_AES_256_CBC	3
-+
- /*
-  * Structure of the super block
-  */
-@@ -1156,7 +1163,8 @@ struct ext4_super_block {
- 	__le32	s_grp_quota_inum;	/* inode for tracking group quota */
- 	__le32	s_overhead_clusters;	/* overhead blocks/clusters in fs */
- 	__le32	s_backup_bgs[2];	/* groups with sparse_super2 SBs */
--	__le32	s_reserved[106];	/* Padding to the end of the block */
-+	__u8	s_encrypt_algos[4];	/* Encryption algorithms in use  */
-+	__le32	s_reserved[105];	/* Padding to the end of the block */
- 	__le32	s_checksum;		/* crc32c(superblock) */
- };
- 
-@@ -1537,6 +1545,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- #define EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM	0x2000 /* use crc32c for bg */
- #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
- #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
-+#define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
- 
- #define EXT2_FEATURE_COMPAT_SUPP	EXT4_FEATURE_COMPAT_EXT_ATTR
- #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
--- 
-2.1.0
+Encryption error?
 
+>  /* End compression flags --- maybe not all used */
+>  	EXT4_INODE_INDEX	= 12,	/* hash-indexed directory */
+>  	EXT4_INODE_IMAGIC	= 13,	/* AFS directory */
+> @@ -466,7 +467,7 @@ static inline void ext4_check_flag_values(void)
+>  	CHECK_FLAG_VALUE(DIRTY);
+>  	CHECK_FLAG_VALUE(COMPRBLK);
+>  	CHECK_FLAG_VALUE(NOCOMPR);
+> -	CHECK_FLAG_VALUE(ECOMPR);
+> +	CHECK_FLAG_VALUE(ENCRYPT);
+>  	CHECK_FLAG_VALUE(INDEX);
+>  	CHECK_FLAG_VALUE(IMAGIC);
+>  	CHECK_FLAG_VALUE(JOURNAL_DATA);
+> @@ -1043,6 +1044,12 @@ extern void ext4_set_bits(void *bm, int cur, int len);
+>  /* Metadata checksum algorithm codes */
+>  #define EXT4_CRC32C_CHKSUM		1
+>  
+> +/* Encryption algorithms */
+> +#define EXT4_ENCRYPTION_MODE_INVALID		0
+> +#define EXT4_ENCRYPTION_MODE_AES_256_XTS	1
+> +#define EXT4_ENCRYPTION_MODE_AES_256_GCM	2
+> +#define EXT4_ENCRYPTION_MODE_AES_256_CBC	3
+> +
+>  /*
+>   * Structure of the super block
+>   */
+> @@ -1156,7 +1163,8 @@ struct ext4_super_block {
+>  	__le32	s_grp_quota_inum;	/* inode for tracking group quota */
+>  	__le32	s_overhead_clusters;	/* overhead blocks/clusters in fs */
+>  	__le32	s_backup_bgs[2];	/* groups with sparse_super2 SBs */
+> -	__le32	s_reserved[106];	/* Padding to the end of the block */
+> +	__u8	s_encrypt_algos[4];	/* Encryption algorithms in use  */
+
+Does this imply that one can have up to 4 algorithms in use at once?
+
+Are there any other disk format changes that the wiki documentation should be
+aware of?
+
+--D
+
+> +	__le32	s_reserved[105];	/* Padding to the end of the block */
+>  	__le32	s_checksum;		/* crc32c(superblock) */
+>  };
+>  
+> @@ -1537,6 +1545,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+>  #define EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM	0x2000 /* use crc32c for bg */
+>  #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
+>  #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
+> +#define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
+>  
+>  #define EXT2_FEATURE_COMPAT_SUPP	EXT4_FEATURE_COMPAT_EXT_ATTR
+>  #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
+> -- 
+> 2.1.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
