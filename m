@@ -1,107 +1,156 @@
-From: Vasily Tarasov <tarasov@vasily.name>
-Subject: Re: [dm-devel] Some thoughts about providing data block checksumming
- for ext4
-Date: Fri, 23 Jan 2015 11:46:42 -0500
-Message-ID: <CAFTzLMM3CeK=NPcUtCpQyq=m+vT2153XkS95zZuMubnuFZJbiw@mail.gmail.com>
-References: <20141103233308.GA27842@thunk.org>
-	<20141126234706.GN10043@birch.djwong.org>
-	<20141127000722.GA310@redhat.com>
-	<20141127003923.GQ10043@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Mike Snitzer <snitzer@redhat.com>, linux-ext4@vger.kernel.org,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: device-mapper development <dm-devel@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] Reserve the codepoints for the new INCOMPAT feature ENCRYPT
+Date: Fri, 23 Jan 2015 12:57:47 -0500
+Message-ID: <1422035867-28831-1-git-send-email-tytso@mit.edu>
+Cc: mhalcrow@google.com, savagaon@google.com, muslukhovi@gmail.com,
+	Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:38708 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755902AbbAWQqn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jan 2015 11:46:43 -0500
-Received: by mail-qa0-f45.google.com with SMTP id n8so6589201qaq.4
-        for <linux-ext4@vger.kernel.org>; Fri, 23 Jan 2015 08:46:42 -0800 (PST)
-In-Reply-To: <20141127003923.GQ10043@birch.djwong.org>
+Received: from imap.thunk.org ([74.207.234.97]:57688 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754098AbbAWR5w (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 23 Jan 2015 12:57:52 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Darrick,
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ debugfs/set_fields.c        |  2 ++
+ lib/e2p/feature.c           |  2 ++
+ lib/e2p/pf.c                |  2 +-
+ lib/ext2fs/ext2_fs.h        | 13 +++++++++++--
+ lib/ext2fs/ext2fs.h         |  2 +-
+ lib/ext2fs/tst_super_size.c |  3 ++-
+ misc/chattr.1.in            |  4 ++--
+ 7 files changed, 21 insertions(+), 7 deletions(-)
 
-Somehow I missed your posts in November.
+diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
+index 7460c28..60695ad 100644
+--- a/debugfs/set_fields.c
++++ b/debugfs/set_fields.c
+@@ -165,6 +165,8 @@ static struct field_set_info super_fields[] = {
+ 	{ "last_error_block", &set_sb.s_last_error_block, NULL, 8, parse_uint },
+ 	{ "last_error_func", &set_sb.s_last_error_func, NULL, 32, parse_string },
+ 	{ "last_error_line", &set_sb.s_last_error_ino, NULL, 4, parse_uint },
++	{ "encrypt_algos", &set_sb.s_encrypt_algos, NULL, 1, parse_uint,
++	  FLAG_ARRAY, 4 },
+ 	{ 0, 0, 0, 0 }
+ };
+ 
+diff --git a/lib/e2p/feature.c b/lib/e2p/feature.c
+index 6e53cfe..30d2db1 100644
+--- a/lib/e2p/feature.c
++++ b/lib/e2p/feature.c
+@@ -97,6 +97,8 @@ static struct feature feature_list[] = {
+ 			"large_dir"},
+ 	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_INLINE_DATA,
+ 			"inline_data"},
++	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_ENCRYPT,
++			"encrypt"},
+ 	{	0, 0, 0 },
+ };
+ 
+diff --git a/lib/e2p/pf.c b/lib/e2p/pf.c
+index f116ac3..788c445 100644
+--- a/lib/e2p/pf.c
++++ b/lib/e2p/pf.c
+@@ -41,8 +41,8 @@ static struct flags_name flags_array[] = {
+ 	{ EXT2_COMPRBLK_FL, "B", "Compressed_File" },
+ 	{ EXT2_DIRTY_FL, "Z", "Compressed_Dirty_File" },
+ 	{ EXT2_NOCOMPR_FL, "X", "Compression_Raw_Access" },
+-	{ EXT2_ECOMPR_FL, "E", "Compression_Error" },
+ #endif
++	{ EXT4_ENCRYPT_FL, "E", "Encrypted" },
+ 	{ EXT3_JOURNAL_DATA_FL, "j", "Journaled_Data" },
+ 	{ EXT2_INDEX_FL, "I", "Indexed_directory" },
+ 	{ EXT2_NOTAIL_FL, "t", "No_Tailmerging" },
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 2b24080..541bef2 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -307,7 +307,8 @@ struct ext2_dx_tail {
+ #define EXT2_DIRTY_FL			0x00000100
+ #define EXT2_COMPRBLK_FL		0x00000200 /* One or more compressed clusters */
+ #define EXT2_NOCOMPR_FL			0x00000400 /* Access raw compressed data */
+-#define EXT2_ECOMPR_FL			0x00000800 /* Compression error */
++	/* nb: was previously EXT2_ECOMPR_FL */
++#define EXT4_ENCRYPT_FL			0x00000800 /* encrypted file */
+ /* End compression flags --- maybe not all used */
+ #define EXT2_BTREE_FL			0x00001000 /* btree format dir */
+ #define EXT2_INDEX_FL			0x00001000 /* hash-indexed directory */
+@@ -564,6 +565,12 @@ struct ext2_inode_large {
+ /* Metadata checksum algorithms */
+ #define EXT2_CRC32C_CHKSUM		1
+ 
++/* Encryption algorithms */
++#define EXT4_ENCRYPTION_MODE_INVALID		0
++#define EXT4_ENCRYPTION_MODE_AES_256_XTS	1
++#define EXT4_ENCRYPTION_MODE_AES_256_GCM	2
++#define EXT4_ENCRYPTION_MODE_AES_256_CBC	3
++
+ /*
+  * Structure of the super block
+  */
+@@ -675,7 +682,8 @@ struct ext2_super_block {
+ 	__u32	s_grp_quota_inum;	/* inode number of group quota file */
+ 	__u32	s_overhead_blocks;	/* overhead blocks/clusters in fs */
+ 	__u32	s_backup_bgs[2];	/* If sparse_super2 enabled */
+-	__u32   s_reserved[106];        /* Padding to the end of the block */
++	__u8	s_encrypt_algos[4];	/* Encryption algorithms in use  */
++	__u32   s_reserved[105];        /* Padding to the end of the block */
+ 	__u32	s_checksum;		/* crc32c(superblock) */
+ };
+ 
+@@ -761,6 +769,7 @@ struct ext2_super_block {
+ /* 0x2000 was EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM but this was never used */
+ #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
+ #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
++#define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
+ 
+ #define EXT2_FEATURE_COMPAT_SUPP	0
+ #define EXT2_FEATURE_INCOMPAT_SUPP    (EXT2_FEATURE_INCOMPAT_FILETYPE| \
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 42c4ce1..f090df1 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -614,7 +614,7 @@ typedef struct ext2_icount *ext2_icount_t;
+  * These features are only allowed if EXT2_FLAG_SOFTSUPP_FEATURES is passed
+  * to ext2fs_openfs()
+  */
+-#define EXT2_LIB_SOFTSUPP_INCOMPAT	(EXT4_FEATURE_INCOMPAT_INLINE_DATA)
++#define EXT2_LIB_SOFTSUPP_INCOMPAT	(EXT4_FEATURE_INCOMPAT_ENCRYPT)
+ #define EXT2_LIB_SOFTSUPP_RO_COMPAT	(EXT4_FEATURE_RO_COMPAT_REPLICA)
+ 
+ 
+diff --git a/lib/ext2fs/tst_super_size.c b/lib/ext2fs/tst_super_size.c
+index b085bbb..f6c74f7 100644
+--- a/lib/ext2fs/tst_super_size.c
++++ b/lib/ext2fs/tst_super_size.c
+@@ -136,7 +136,8 @@ int main(int argc, char **argv)
+ 	check_field(s_grp_quota_inum, 4);
+ 	check_field(s_overhead_blocks, 4);
+ 	check_field(s_backup_bgs, 8);
+-	check_field(s_reserved, 106 * 4);
++	check_field(s_encrypt_algos, 4);
++	check_field(s_reserved, 105 * 4);
+ 	check_field(s_checksum, 4);
+ 	do_field("Superblock end", 0, 0, cur_offset, 1024);
+ #endif
+diff --git a/misc/chattr.1.in b/misc/chattr.1.in
+index 75b3ed8..33ef9a2 100644
+--- a/misc/chattr.1.in
++++ b/misc/chattr.1.in
+@@ -107,8 +107,8 @@ The 'e' attribute indicates that the file is using extents for mapping
+ the blocks on disk.  It may not be removed using
+ .BR chattr (1).
+ .PP
+-The 'E' attribute is used by the experimental compression patches to
+-indicate that a compressed file has a compression error.  It may not be
++The 'E' attribute is used by the experimental encryption patches to
++indicate that the file has been encrypted.  It may not be
+ set or reset using
+ .BR chattr (1),
+ although it can be displayed by
+-- 
+2.1.0
 
-You're right,  the smaller is the chunk size the larger is the
-metadata - standard dedup problem. The hope is that one recuperates
-the loss of metadata space on better data deduplication ratio, which
-grows as the chunk size decreases.
-
-I find having an "external" B-Tree somewhat more reasonable than
-in-line metadata in dm-dedup (situation is different for dm-checksum,
-though). In dm-dedup we have to allocate blocks on-demand, keep
-reference counters, and garbage collect unused blocks, etc. DM's
-persistent-data library on which we rely helps with this enormously.
-
-Vasily
-
-
-On Wed, Nov 26, 2014 at 7:39 PM, Darrick J. Wong
-<darrick.wong@oracle.com> wrote:
-> On Wed, Nov 26, 2014 at 07:07:22PM -0500, Mike Snitzer wrote:
->> On Wed, Nov 26 2014 at  6:47pm -0500,
->> Darrick J. Wong <darrick.wong@oracle.com> wrote:
->>
->> > Sigh...
->> >
->> > Well, I wrote up a preliminary version of dm-checksum and then
->> > realized that I've pretty much just built a crappier version of
->> > dm-dedupe, but without the dedupe part.  Given that it stores
->> > checksums in a btree which claims to be robust through failures and
->> > gives us automatic deduplication, I wonder if it we could achieve our
->> > aims by modifying dm-dedupe to verify the checksums on the read path?
->> >
->> > I guess it would be interesting to see how bad the performance hit is
->> > with the online dedupe part enabled or disabled.  dm-dedupe v2 went
->> > out on the mailing list last August, which I missed. :(
->> >
->> > Unless... there's a specific reason nobody mentioned dm-dedupe here?
->>
->> As you may have seen in the dm-dedup thread, we need to actively
->> review/test that target
->
-> It was in fact today's exchange on that thread that made me slap myself on
-> the forehead and utter "D'oh!".
->
->> (if your initial review focus is on extending it
->> to _optionally_ verify the checksums on the read path then so be it).
->
-> Yes, sorry, I meant to say "optionally to verify" in there.  Adding a minor
-> feature like that might be a good check to make sure I actually understand
-> what's going on. :)
->
->> See: https://www.redhat.com/archives/dm-devel/2014-November/msg00114.html
->> Specifically, the git branch that builds on v2 based on my initial
->> review of v2:
->>
->> git://git.fsl.cs.stonybrook.edu/scm/git/linux-dmdedup
->> branch: dm-dedup-devel
->>
->> Your help on getting dm-dedup upstream would be very much appreciated.
->
-> <-- reading the OLS paper, as a start.  What happens to the metadata btree if
-> someone sets the chunk size to 4KB?  Will it become ungainly huge?  The thing
-> that I wrote simply wrote a block's worth of checksums inline with the data,
-> which required a certain amount of slicing and dicing of bios but wasn't too
-> horrible with performance.
->
-> --D
->
->>
->> Thanks,
->> Mike
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-> --
-> dm-devel mailing list
-> dm-devel@redhat.com
-> https://www.redhat.com/mailman/listinfo/dm-devel
->
