@@ -1,77 +1,107 @@
-From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Subject: Re: [v8 4/5] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR interface
- support
-Date: Fri, 23 Jan 2015 14:58:09 +0300
-Message-ID: <54C23751.7000009@yandex-team.ru>
-References: <1418102548-5469-1-git-send-email-lixi@ddn.com> <1418102548-5469-5-git-send-email-lixi@ddn.com> <54C11733.7080801@yandex-team.ru> <20150123015307.GD24722@dastard>
+From: Vasily Tarasov <tarasov@vasily.name>
+Subject: Re: [dm-devel] Some thoughts about providing data block checksumming
+ for ext4
+Date: Fri, 23 Jan 2015 11:46:42 -0500
+Message-ID: <CAFTzLMM3CeK=NPcUtCpQyq=m+vT2153XkS95zZuMubnuFZJbiw@mail.gmail.com>
+References: <20141103233308.GA27842@thunk.org>
+	<20141126234706.GN10043@birch.djwong.org>
+	<20141127000722.GA310@redhat.com>
+	<20141127003923.GQ10043@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Li Xi <pkuelelixi@gmail.com>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-api@vger.kernel.org,
-	tytso@mit.edu, adilger@dilger.ca, jack@suse.cz,
-	viro@zeniv.linux.org.uk, hch@infradead.org, dmonakhov@openvz.org,
-	"Eric W. Biederman" <ebiederm@xmission.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20150123015307.GD24722@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Mike Snitzer <snitzer@redhat.com>, linux-ext4@vger.kernel.org,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: device-mapper development <dm-devel@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qa0-f45.google.com ([209.85.216.45]:38708 "EHLO
+	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755902AbbAWQqn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jan 2015 11:46:43 -0500
+Received: by mail-qa0-f45.google.com with SMTP id n8so6589201qaq.4
+        for <linux-ext4@vger.kernel.org>; Fri, 23 Jan 2015 08:46:42 -0800 (PST)
+In-Reply-To: <20141127003923.GQ10043@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 23.01.2015 04:53, Dave Chinner wrote:
-> On Thu, Jan 22, 2015 at 06:28:51PM +0300, Konstantin Khlebnikov wrote:
->> On 09.12.2014 08:22, Li Xi wrote:
->>> +static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
->>> +{
->>> +	struct inode *inode = file_inode(filp);
->>> +	struct super_block *sb = inode->i_sb;
->>> +	struct ext4_inode_info *ei = EXT4_I(inode);
->>> +	int err;
->>> +	handle_t *handle;
->>> +	kprojid_t kprojid;
->>> +	struct ext4_iloc iloc;
->>> +	struct ext4_inode *raw_inode;
->>> +
->>> +	struct dquot *transfer_to[EXT4_MAXQUOTAS] = { };
->>> +
->>> +	/* Make sure caller can change project. */
->>> +	if (!capable(CAP_SYS_ADMIN))
->>> +		return -EACCES;
->>> +
->>> +	if (projid != EXT4_DEF_PROJID
->>> +	    && !EXT4_HAS_RO_COMPAT_FEATURE(sb,
->>> +			EXT4_FEATURE_RO_COMPAT_PROJECT))
->>> +		return -EOPNOTSUPP;
->>> +
->>> +	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
->>> +			EXT4_FEATURE_RO_COMPAT_PROJECT)) {
->>> +		BUG_ON(__kprojid_val(EXT4_I(inode)->i_projid)
->>> +		       != EXT4_DEF_PROJID);
->>> +		if (projid != EXT4_DEF_PROJID)
->>> +			return -EOPNOTSUPP;
->>> +		else
->>> +			return 0;
->>> +	}
->>> +
->>> +	kprojid = make_kprojid(&init_user_ns, (projid_t)projid);
+Hi Darrick,
+
+Somehow I missed your posts in November.
+
+You're right,  the smaller is the chunk size the larger is the
+metadata - standard dedup problem. The hope is that one recuperates
+the loss of metadata space on better data deduplication ratio, which
+grows as the chunk size decreases.
+
+I find having an "external" B-Tree somewhat more reasonable than
+in-line metadata in dm-dedup (situation is different for dm-checksum,
+though). In dm-dedup we have to allocate blocks on-demand, keep
+reference counters, and garbage collect unused blocks, etc. DM's
+persistent-data library on which we rely helps with this enormously.
+
+Vasily
+
+
+On Wed, Nov 26, 2014 at 7:39 PM, Darrick J. Wong
+<darrick.wong@oracle.com> wrote:
+> On Wed, Nov 26, 2014 at 07:07:22PM -0500, Mike Snitzer wrote:
+>> On Wed, Nov 26 2014 at  6:47pm -0500,
+>> Darrick J. Wong <darrick.wong@oracle.com> wrote:
 >>
->> Maybe current_user_ns()?
->> This code should be user-namespace aware from the beginning.
+>> > Sigh...
+>> >
+>> > Well, I wrote up a preliminary version of dm-checksum and then
+>> > realized that I've pretty much just built a crappier version of
+>> > dm-dedupe, but without the dedupe part.  Given that it stores
+>> > checksums in a btree which claims to be robust through failures and
+>> > gives us automatic deduplication, I wonder if it we could achieve our
+>> > aims by modifying dm-dedupe to verify the checksums on the read path?
+>> >
+>> > I guess it would be interesting to see how bad the performance hit is
+>> > with the online dedupe part enabled or disabled.  dm-dedupe v2 went
+>> > out on the mailing list last August, which I missed. :(
+>> >
+>> > Unless... there's a specific reason nobody mentioned dm-dedupe here?
+>>
+>> As you may have seen in the dm-dedup thread, we need to actively
+>> review/test that target
 >
-> No, the code is correct. Project quotas have nothing to do with
-> UIDs and so should never have been included in the uid/gid
-> namespace mapping infrastructure in the first place.
-
-Right, but user-namespace provides id mapping for project-id too.
-This infrastructure adds support for nested project quotas with
-virtualized ids in sub-containers. I couldn't say that this is
-must have feature but implementation is trivial because whole
-infrastructure is already here.
-
+> It was in fact today's exchange on that thread that made me slap myself on
+> the forehead and utter "D'oh!".
 >
-> Point in case: directory subtree quotas can be used as a resource
-> controller for limiting space usage within separate containers that
-> share the same underlying (large) filesystem via mount namespaces.
-
-That's exactly my use-case: 'sub-volumes' for containers with
-quota for space usage/inodes count.
+>> (if your initial review focus is on extending it
+>> to _optionally_ verify the checksums on the read path then so be it).
+>
+> Yes, sorry, I meant to say "optionally to verify" in there.  Adding a minor
+> feature like that might be a good check to make sure I actually understand
+> what's going on. :)
+>
+>> See: https://www.redhat.com/archives/dm-devel/2014-November/msg00114.html
+>> Specifically, the git branch that builds on v2 based on my initial
+>> review of v2:
+>>
+>> git://git.fsl.cs.stonybrook.edu/scm/git/linux-dmdedup
+>> branch: dm-dedup-devel
+>>
+>> Your help on getting dm-dedup upstream would be very much appreciated.
+>
+> <-- reading the OLS paper, as a start.  What happens to the metadata btree if
+> someone sets the chunk size to 4KB?  Will it become ungainly huge?  The thing
+> that I wrote simply wrote a block's worth of checksums inline with the data,
+> which required a certain amount of slicing and dicing of bios but wasn't too
+> horrible with performance.
+>
+> --D
+>
+>>
+>> Thanks,
+>> Mike
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> --
+> dm-devel mailing list
+> dm-devel@redhat.com
+> https://www.redhat.com/mailman/listinfo/dm-devel
+>
