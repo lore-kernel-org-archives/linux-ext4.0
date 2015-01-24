@@ -1,37 +1,32 @@
-From: kbuild test robot <fengguang.wu@intel.com>
-Subject: [ext4:crypto 17/19] fs/ext4/namei.c:2056:5: sparse: symbol
- 'ext4_find_dest_de_crypt' was not declared. Should it be static?
-Date: Sat, 24 Jan 2015 08:33:40 +0800
-Message-ID: <201501240824.lsZlTlwQ%fengguang.wu@intel.com>
+From: "Krause Arno" <oficina@la-oca.com>
+Subject: Darlehen Angebot
+Date: Sat, 24 Jan 2015 03:11:19 +0100
+Message-ID: <cae57c4fcb9d565050de7f1040bc9abc.squirrel__29826.5865807936$1422069072$gmane$org@la-oca.com>
+Reply-To: krause.arno@yahoo.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: kbuild-all@01.org, Theodore Ts'o <tytso@mit.edu>,
-	Uday Savagaonkar <savagaon@google.com>,
-	Ildar Muslukhov <ildarm@google.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Michael Halcrow <mhalcrow@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
-
-tree:   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git crypto
-head:   dfc8aa97bd527d156f6e7ee3f0286af2229be45d
-commit: 2842df91db1447a594331116ee48fbf4647b3dd0 [17/19] ext4 crypto: filename encryption modifications
-reproduce:
-  # apt-get install sparse
-  git checkout 2842df91db1447a594331116ee48fbf4647b3dd0
-  make ARCH=x86_64 allmodconfig
-  make C=1 CF=-D__CHECK_ENDIAN__
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from vl22022.dns-privadas.es ([212.48.80.61]:49987 "EHLO
+	vl22022.dns-privadas.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750820AbbAXDKo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jan 2015 22:10:44 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
-sparse warnings: (new ones prefixed by >>)
 
->> fs/ext4/namei.c:2056:5: sparse: symbol 'ext4_find_dest_de_crypt' was not declared. Should it be static?
 
-Please review and possibly fold the followup patch.
+Guten Morgen
+Sind Sie in Darlehen interessiert?
+Der Preis ist niedrig
+=46=FCr weitere Informationen und Erkl=E4rungen
+Meine E-Mail: info.krause.arno@gmail.com
+Danke
 
----
-0-DAY kernel test infrastructure                Open Source Technology Center
-http://lists.01.org/mailman/listinfo/kbuild                 Intel Corporation
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
