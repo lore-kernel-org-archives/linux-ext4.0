@@ -1,32 +1,32 @@
-From: "Krause Arno" <oficina@la-oca.com>
-Subject: Darlehen Angebot
-Date: Sat, 24 Jan 2015 03:11:19 +0100
-Message-ID: <cae57c4fcb9d565050de7f1040bc9abc.squirrel__29826.5865807936$1422069072$gmane$org@la-oca.com>
-Reply-To: krause.arno@yahoo.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH-v7 1/3] vfs: add support for a lazytime mount option
+Date: Sat, 24 Jan 2015 22:03:52 -0500
+Message-ID: <20150125030352.GB9287@thunk.org>
+References: <1418097870-8232-1-git-send-email-tytso@mit.edu>
+ <1418097870-8232-2-git-send-email-tytso@mit.edu>
+ <87k30ic0lw.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: unlisted-recipients:; (no To-header on input)
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from vl22022.dns-privadas.es ([212.48.80.61]:49987 "EHLO
-	vl22022.dns-privadas.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750820AbbAXDKo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jan 2015 22:10:44 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Dmitry Monakhov <dmonlist@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <87k30ic0lw.fsf@openvz.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Mon, Jan 19, 2015 at 06:21:31PM +0400, Dmitry Monakhov wrote:
+> > +	if (flags & I_DIRTY_INODE)
+> > +		flags &= ~I_DIRTY_TIME;
+> > +	dirtytime = flags & I_DIRTY_TIME;
+> TYPO? 'dirtytime' is always false because you have already cleared that bit.
+> Probably you want to do that: 
+>         dirtytime = flags & I_DIRTY_TIME;
+> 	if (flags & I_DIRTY_INODE)
+> 		flags &= ~I_DIRTY_TIME;
 
+Nice catch; I screwed that up in the -v7 version of the patch.  I've
+fixed it in the -v8 version that I just sent out.
 
-
-Guten Morgen
-Sind Sie in Darlehen interessiert?
-Der Preis ist niedrig
-=46=FCr weitere Informationen und Erkl=E4rungen
-Meine E-Mail: info.krause.arno@gmail.com
-Danke
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+      	    	    	    	   	- Ted
