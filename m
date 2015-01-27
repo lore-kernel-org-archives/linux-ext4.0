@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 04/54] libext2fs: initialize i_extra_isize when writing EAs
-Date: Mon, 26 Jan 2015 23:35:59 -0800
-Message-ID: <20150127073559.13308.75577.stgit@birch.djwong.org>
+Subject: [PATCH 05/54] libext2fs: avoid pointless EA block allocation
+Date: Mon, 26 Jan 2015 23:36:06 -0800
+Message-ID: <20150127073606.13308.68905.stgit@birch.djwong.org>
 References: <20150127073533.13308.44994.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,118 +9,95 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:45150 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752179AbbA0HgE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2015 02:36:04 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:32927 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752481AbbA0HgL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2015 02:36:11 -0500
 In-Reply-To: <20150127073533.13308.44994.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If i_extra_isize is zero when we try to write extended attributes,
-we'll end up writing the EA magic into the i_extra_isize field, which
-causes a subsequent crash on big endian systems (when we try to write
-0xEA02 bytes past the inode!).  Therefore when the field is zero, set
-i_extra_isize to the desired extra_isize size, zero those bytes, and
-write the EAs after the end of the extended inode.
-
-v2: Don't bother if we have 128b inodes, and ensure that the value
-is 32b-aligned so that the EA magic starts on a 32b boundary.
+Use qsort to move the inlinedata attribute to the front of the list
+and the empty entries to the end.  Then we can use handle->count to
+decide if we're done writing xattrs, which helps us to avoid the
+situation where we're midway through the attribute list, so we
+allocate an EA block to store more, but have no idea that there's
+actually nothing left in the list.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/ext_attr.c                    |   12 ++++++++++++
- tests/f_write_ea_no_extra_isize/expect.1 |   12 ++++++++++++
- tests/f_write_ea_no_extra_isize/expect.2 |    7 +++++++
- tests/f_write_ea_no_extra_isize/image.gz |  Bin
- tests/f_write_ea_no_extra_isize/name     |    1 +
- 5 files changed, 32 insertions(+)
- create mode 100644 tests/f_write_ea_no_extra_isize/expect.1
- create mode 100644 tests/f_write_ea_no_extra_isize/expect.2
- create mode 100644 tests/f_write_ea_no_extra_isize/image.gz
- create mode 100644 tests/f_write_ea_no_extra_isize/name
+ lib/ext2fs/ext_attr.c |   40 +++++++++++++++++++++-------------------
+ 1 file changed, 21 insertions(+), 19 deletions(-)
 
 
 diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index 70bc3f9..c6fcf54 100644
+index c6fcf54..e8544dc 100644
 --- a/lib/ext2fs/ext_attr.c
 +++ b/lib/ext2fs/ext_attr.c
-@@ -519,6 +519,18 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
+@@ -254,22 +254,20 @@ static struct ea_name_index ea_names[] = {
+ 	{0, NULL},
+ };
+ 
+-static void move_inline_data_to_front(struct ext2_xattr_handle *h)
++/* Push empty attributes to the end and inlinedata to the front. */
++static int attr_compare(const void *a, const void *b)
+ {
+-	struct ext2_xattr *x;
+-	struct ext2_xattr tmp;
+-
+-	for (x = h->attrs + 1; x < h->attrs + h->length; x++) {
+-		if (!x->name)
+-			continue;
+-
+-		if (strcmp(x->name, "system.data") == 0) {
+-			memcpy(&tmp, x, sizeof(tmp));
+-			memcpy(x, h->attrs, sizeof(tmp));
+-			memcpy(h->attrs, &tmp, sizeof(tmp));
+-			return;
+-		}
+-	}
++	const struct ext2_xattr *xa = a, *xb = b;
++
++	if (xa->name == NULL)
++		return +1;
++	else if (xb->name == NULL)
++		return -1;
++	else if (!strcmp(xa->name, "system.data"))
++		return -1;
++	else if (!strcmp(xb->name, "system.data"))
++		return +1;
++	return 0;
+ }
+ 
+ static const char *find_ea_prefix(int index)
+@@ -531,9 +529,13 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
+ 		inode->i_extra_isize = extra;
+ 	}
+ 
+-	move_inline_data_to_front(handle);
+-
++	/*
++	 * Force the inlinedata attr to the front and the empty entries
++	 * to the end.
++	 */
+ 	x = handle->attrs;
++	qsort(x, handle->length, sizeof(struct ext2_xattr), attr_compare);
++
+ 	/* Does the inode have size for EA? */
+ 	if (EXT2_INODE_SIZE(handle->fs->super) <= EXT2_GOOD_OLD_INODE_SIZE +
+ 						  inode->i_extra_isize +
+@@ -554,11 +556,11 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
  	if (err)
  		goto out;
  
-+	/* If extra_isize isn't set, we need to set it now */
-+	if (inode->i_extra_isize == 0 &&
-+	    EXT2_INODE_SIZE(handle->fs->super) > EXT2_GOOD_OLD_INODE_SIZE) {
-+		char *p = (char *)inode;
-+		size_t extra = handle->fs->super->s_want_extra_isize;
-+
-+		if (extra == 0)
-+			extra = sizeof(__u32);
-+		memset(p + EXT2_GOOD_OLD_INODE_SIZE, 0, extra);
-+		inode->i_extra_isize = extra;
-+	}
-+
- 	move_inline_data_to_front(handle);
++write_ea_block:
+ 	/* Are we done? */
+-	if (x == handle->attrs + handle->length)
++	if (x >= handle->attrs + handle->count)
+ 		goto skip_ea_block;
  
- 	x = handle->attrs;
-diff --git a/tests/f_write_ea_no_extra_isize/expect.1 b/tests/f_write_ea_no_extra_isize/expect.1
-new file mode 100644
-index 0000000..b7e7438
---- /dev/null
-+++ b/tests/f_write_ea_no_extra_isize/expect.1
-@@ -0,0 +1,12 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Directory inode 12, block #0, offset 4: directory corrupted
-+Salvage? yes
-+
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 12/128 files (0.0% non-contiguous), 17/512 blocks
-+Exit status is 1
-diff --git a/tests/f_write_ea_no_extra_isize/expect.2 b/tests/f_write_ea_no_extra_isize/expect.2
-new file mode 100644
-index 0000000..3b6073e
---- /dev/null
-+++ b/tests/f_write_ea_no_extra_isize/expect.2
-@@ -0,0 +1,7 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 12/128 files (0.0% non-contiguous), 17/512 blocks
-+Exit status is 0
-diff --git a/tests/f_write_ea_no_extra_isize/image.gz b/tests/f_write_ea_no_extra_isize/image.gz
-new file mode 100644
-index 0000000000000000000000000000000000000000..928daff1f344824d357e816883a98b2cdfdaffb3
-GIT binary patch
-literal 2516
-zcmb2|=3qFkI6Z`k`Ry&+Y!OEZh6m-}^`s^_@O3Vjpj4;eVQ?ceQSj)oL#Gnz1=cLm
-zv~lFfFtI=2=98SCs6XwXQ}-6Ju%@X>9fI9126HxlZ#2Be**0UwlghsG_L*~cr<Q$x
-zcJJ<Oj)e8Ibj2!<JPfHhr<Aq!+aA$gzRhQoDpTqfm88@ubyxlMdNpU)@t~~i`mk$S
-zzoVyaURhCSpQJX`e|`A<yOq_6FK*5jUa#jL8+)&B<F~W5)<2(II(+ff@7nX~@@wXt
-zO0r@5^laDG$2W8iznog0p}+h^;VVXl4ZK}{zBqI(?)|f0Y^ht>t&nbG@wbW$3=B7Z
-zzWX-qadqb7_v@K~-2ZzY{r}&1;?u?qJ8lDkN;|V_HErb@zdo&eIeY8H?91Epe8gTW
-z#qp>8%-!w_RG#4e@_o_Y_#Xxt|AD*%>jF1&gXpjJK#~;jC;IEb(o&#~gzJUuETrf}
-zRok%tV=6ElWvesq%s;o>RW(Vqw|cASS<|O4a;NN_xHR?tb)Bt$LbgmbOZ<IUQ%o$p
-zUwq@2A5YK3-Tr^z+swV;J`Rs%pZ#BB`ad`3|E{WQssEz?TR&NG;97*nr}>xXe%f!t
-zxAoKf7Zd(Zk&?Xh?1}x|{r`U+Uwh*Jxur#4xBt=4FJGCGo%NMBXYuokNl*KaC%k*G
-zu}tK){;6+2PXDfdYaO{ZbnaGE_m1*LLtr!nMnhmU1V%$(Gz6#@0(bv1g#8Yk!N8!v
-F003fX5hwrv
-
-literal 0
-HcmV?d00001
-
-diff --git a/tests/f_write_ea_no_extra_isize/name b/tests/f_write_ea_no_extra_isize/name
-new file mode 100644
-index 0000000..200e365
---- /dev/null
-+++ b/tests/f_write_ea_no_extra_isize/name
-@@ -0,0 +1 @@
-+write EA when i_extra_size is zero
+-write_ea_block:
+ 	/* Write the EA block */
+ 	err = ext2fs_get_memzero(handle->fs->blocksize, &block_buf);
+ 	if (err)
 
