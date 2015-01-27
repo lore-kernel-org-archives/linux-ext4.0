@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 34/54] libext2fs: support atexit cleanups
-Date: Mon, 26 Jan 2015 23:39:15 -0800
-Message-ID: <20150127073915.13308.44734.stgit@birch.djwong.org>
+Subject: [PATCH 35/54] e2fsck: optionally create an undo file
+Date: Mon, 26 Jan 2015 23:39:22 -0800
+Message-ID: <20150127073922.13308.42287.stgit@birch.djwong.org>
 References: <20150127073533.13308.44994.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,292 +9,209 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:47033 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:47065 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755745AbbA0HjV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2015 02:39:21 -0500
+	with ESMTP id S1753559AbbA0Hj0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2015 02:39:26 -0500
 In-Reply-To: <20150127073533.13308.44994.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use the atexit() function to provide a means for the library to clean
-itself up on program exit.  This will be used by the undo IO manager
-to flush the undo file state to disk if the program should terminate
-without closing the io channel, since most e2fsprogs clients will
-simply exit() when they hit errors.
+Provide the user with an option to create an undo file so that they
+can roll back a failed repair operation.
 
-This won't help for signal termination; client programs must set
-up signal handlers.
+v2: Support reopening undo files.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/Makefile.in |    8 +++
- lib/ext2fs/atexit.c    |  112 ++++++++++++++++++++++++++++++++++++++++++++++++
- lib/ext2fs/ext2fsP.h   |    5 ++
- lib/ext2fs/undo_io.c   |   32 ++++++++++++--
- 4 files changed, 154 insertions(+), 3 deletions(-)
- create mode 100644 lib/ext2fs/atexit.c
+ e2fsck/e2fsck.8.in |   10 +++++
+ e2fsck/e2fsck.h    |    3 ++
+ e2fsck/unix.c      |   96 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 107 insertions(+), 2 deletions(-)
 
 
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index 2706bfa..4b64101 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -57,6 +57,7 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
- 	alloc_sb.o \
- 	alloc_stats.o \
- 	alloc_tables.o \
-+	atexit.o \
- 	badblocks.o \
- 	bb_inode.o \
- 	bitmaps.o \
-@@ -130,6 +131,7 @@ SRCS= ext2_err.c \
- 	$(srcdir)/alloc_sb.c \
- 	$(srcdir)/alloc_stats.c \
- 	$(srcdir)/alloc_tables.c \
-+	$(srcdir)/atexit.c \
- 	$(srcdir)/badblocks.c \
- 	$(srcdir)/bb_compat.c \
- 	$(srcdir)/bb_inode.c \
-@@ -615,6 +617,12 @@ alloc_tables.o: $(srcdir)/alloc_tables.c $(top_builddir)/lib/config.h \
-  $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
-  $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
-  $(srcdir)/ext2_ext_attr.h $(srcdir)/bitops.h $(srcdir)/ext2fsP.h
-+atexit.o: $(srcdir)/atexit.c $(top_builddir)/lib/config.h \
-+ $(top_builddir)/lib/dirpaths.h $(srcdir)/ext2_fs.h \
-+ $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h \
-+ $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
-+ $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
-+ $(srcdir)/ext2_ext_attr.h $(srcdir)/bitops.h $(srcdir)/ext2fsP.h
- badblocks.o: $(srcdir)/badblocks.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(srcdir)/ext2_fs.h \
-  $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fsP.h \
-diff --git a/lib/ext2fs/atexit.c b/lib/ext2fs/atexit.c
-new file mode 100644
-index 0000000..5eba993
---- /dev/null
-+++ b/lib/ext2fs/atexit.c
-@@ -0,0 +1,112 @@
-+/*
-+ * atexit.c --- Clean things up when we exit normally.
-+ *
-+ * Copyright Oracle, 2014
-+ * Author Darrick J. Wong <darrick.wong@oracle.com>
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Library
-+ * General Public License, version 2.
-+ * %End-Header%
-+ */
+diff --git a/e2fsck/e2fsck.8.in b/e2fsck/e2fsck.8.in
+index 6e6a2cd..364c7f1 100644
+--- a/e2fsck/e2fsck.8.in
++++ b/e2fsck/e2fsck.8.in
+@@ -334,6 +334,16 @@ may not be specified at the same time as the
+ or
+ .B \-p
+ options.
++.TP
++.BI \-z " undo_file"
++Before overwriting a file system block, write the old contents of the block to
++an undo file.  This undo file can be used with e2undo(8) to restore the old
++contents of the file system should something go wrong.  If the empty string is
++passed as the undo_file argument, the undo file will be written to a file named
++e2fsck-\fIdevice\fR.e2undo in the directory specified via the
++\fIE2FSPROGS_UNDO_DIR\fR environment variable.
 +
-+#define _LARGEFILE_SOURCE
-+#define _LARGEFILE64_SOURCE
++WARNING: The undo file cannot be used to recover from a power or system crash.
+ .SH EXIT CODE
+ The exit code returned by
+ .B e2fsck
+diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+index 15d968e..04f7bac 100644
+--- a/e2fsck/e2fsck.h
++++ b/e2fsck/e2fsck.h
+@@ -388,6 +388,9 @@ struct e2fsck_struct {
+ 	 * Inodes to rebuild extent trees
+ 	 */
+ 	ext2fs_inode_bitmap inodes_to_rebuild;
 +
-+#include "config.h"
-+#include <stdlib.h>
-+
-+#include "ext2_fs.h"
-+#include "ext2fs.h"
-+#include "ext2fsP.h"
-+
-+struct exit_data {
-+	ext2_exit_fn func;
-+	void *data;
-+};
-+
-+static struct exit_data *items;
-+static size_t nr_items;
-+
-+static void handle_exit(void)
-+{
-+	struct exit_data *ed;
-+
-+	for (ed = items + nr_items - 1; ed >= items; ed--) {
-+		if (ed->func == NULL)
-+			continue;
-+		ed->func(ed->data);
-+	}
-+
-+	ext2fs_free_mem(&items);
-+	nr_items = 0;
-+}
-+
-+/*
-+ * Schedule a function to be called at (normal) program termination.
-+ * If you want this to be called during a signal exit, you must capture
-+ * the signal and call exit() yourself!
-+ */
-+errcode_t ext2fs_add_exit_fn(ext2_exit_fn func, void *data)
-+{
-+	struct exit_data *ed, *free_ed = NULL;
-+	size_t x;
-+	errcode_t ret;
-+
-+	if (func == NULL)
-+		return EXT2_ET_INVALID_ARGUMENT;
-+
-+	for (x = 0, ed = items; x < nr_items; x++, ed++) {
-+		if (ed->func == func && ed->data == data)
-+			return EXT2_ET_FILE_EXISTS;
-+		if (ed->func == NULL)
-+			free_ed = ed;
-+	}
-+
-+	if (free_ed) {
-+		free_ed->func = func;
-+		free_ed->data = data;
-+		return 0;
-+	}
-+
-+	if (nr_items == 0) {
-+		ret = atexit(handle_exit);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	ret = ext2fs_resize_mem(0, (nr_items + 1) * sizeof(struct exit_data),
-+				&items);
-+	if (ret)
-+		return ret;
-+
-+	items[nr_items].func = func;
-+	items[nr_items].data = data;
-+	nr_items++;
-+
-+	return 0;
-+}
-+
-+/* Remove a function from the exit cleanup list. */
-+errcode_t ext2fs_remove_exit_fn(ext2_exit_fn func, void *data)
-+{
-+	struct exit_data *ed;
-+	size_t x;
-+
-+	if (func == NULL)
-+		return EXT2_ET_INVALID_ARGUMENT;
-+
-+	for (x = 0, ed = items; x < nr_items; x++, ed++) {
-+		if (ed->func == NULL)
-+			return 0;
-+		if (ed->func == func && ed->data == data) {
-+			size_t sz = (nr_items - (x + 1)) *
-+				    sizeof(struct exit_data);
-+			memmove(ed, ed + 1, sz);
-+			memset(items + nr_items - 1, 0,
-+			       sizeof(struct exit_data));
-+		}
-+	}
-+
-+	return 0;
-+}
-diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
-index f8c61e6..8de9d33 100644
---- a/lib/ext2fs/ext2fsP.h
-+++ b/lib/ext2fs/ext2fsP.h
-@@ -169,3 +169,8 @@ extern int ext2fs_mem_is_zero(const char *mem, size_t len);
- extern int ext2fs_file_block_offset_too_big(ext2_filsys fs,
- 					    struct ext2_inode *inode,
- 					    blk64_t offset);
-+
-+/* atexit support */
-+typedef void (*ext2_exit_fn)(void *);
-+errcode_t ext2fs_add_exit_fn(ext2_exit_fn fn, void *data);
-+errcode_t ext2fs_remove_exit_fn(ext2_exit_fn fn, void *data);
-diff --git a/lib/ext2fs/undo_io.c b/lib/ext2fs/undo_io.c
-index f1c107a..df26e3e 100644
---- a/lib/ext2fs/undo_io.c
-+++ b/lib/ext2fs/undo_io.c
-@@ -41,6 +41,7 @@
- 
- #include "ext2_fs.h"
- #include "ext2fs.h"
-+#include "ext2fsP.h"
- 
- #ifdef __GNUC__
- #define ATTR(x) __attribute__(x)
-@@ -135,7 +136,7 @@ struct undo_private_data {
- 
- 	ext2fs_block_bitmap written_block_map;
- 	struct struct_ext2_filsys fake_fs;
--
-+	char *tdb_file;
- 	struct undo_header hdr;
++	/* Undo file */
++	char *undo_file;
  };
- #define KEYS_PER_BLOCK(d) (((d)->tdb_data_size / sizeof(struct undo_key)) - 1)
-@@ -662,6 +663,17 @@ out:
+ 
+ /* Data structures to evaluate whether an extent tree needs rebuilding. */
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index b84bffe..d2ef50f 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -45,6 +45,7 @@ extern int optind;
+ #ifdef HAVE_DIRENT_H
+ #include <dirent.h>
+ #endif
++#include <libgen.h>
+ 
+ #include "e2p/e2p.h"
+ #include "et/com_err.h"
+@@ -75,7 +76,7 @@ static void usage(e2fsck_t ctx)
+ 		_("Usage: %s [-panyrcdfvtDFV] [-b superblock] [-B blocksize]\n"
+ 		"\t\t[-I inode_buffer_blocks] [-P process_inode_size]\n"
+ 		"\t\t[-l|-L bad_blocks_file] [-C fd] [-j external_journal]\n"
+-		"\t\t[-E extended-options] device\n"),
++		"\t\t[-E extended-options] [-z undo_file] device\n"),
+ 		ctx->program_name);
+ 
+ 	fprintf(stderr, "%s", _("\nEmergency help:\n"
+@@ -91,6 +92,7 @@ static void usage(e2fsck_t ctx)
+ 		" -j external_journal  Set location of the external journal\n"
+ 		" -l bad_blocks_file   Add to badblocks list\n"
+ 		" -L bad_blocks_file   Set badblocks list\n"
++		" -z undo_file         Create an undo file\n"
+ 		));
+ 
+ 	exit(FSCK_USAGE);
+@@ -795,7 +797,7 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
+ 
+ 	phys_mem_kb = get_memory_size() / 1024;
+ 	ctx->readahead_kb = ~0ULL;
+-	while ((c = getopt (argc, argv, "panyrcC:B:dE:fvtFVM:b:I:j:P:l:L:N:SsDk")) != EOF)
++	while ((c = getopt(argc, argv, "panyrcC:B:dE:fvtFVM:b:I:j:P:l:L:N:SsDkz:")) != EOF)
+ 		switch (c) {
+ 		case 'C':
+ 			ctx->progress = e2fsck_update_progress;
+@@ -927,6 +929,9 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
+ 		case 'k':
+ 			keep_bad_blocks++;
+ 			break;
++		case 'z':
++			ctx->undo_file = optarg;
++			break;
+ 		default:
+ 			usage(ctx);
+ 		}
+@@ -1205,6 +1210,87 @@ check_error:
  	return retval;
  }
  
-+static void undo_atexit(void *p)
++static int e2fsck_setup_tdb(e2fsck_t ctx, io_manager *io_ptr)
 +{
-+	struct undo_private_data *data = p;
-+	errcode_t err;
++	errcode_t retval = ENOMEM;
++	char *tdb_dir = NULL, *tdb_file = NULL;
++	char *dev_name, *tmp_name;
++	int free_tdb_dir = 0;
 +
-+	err = write_undo_indexes(data);
-+	io_channel_close(data->undo_file);
++	/* (re)open a specific undo file */
++	if (ctx->undo_file && ctx->undo_file[0] != 0) {
++		set_undo_io_backing_manager(*io_ptr);
++		*io_ptr = undo_io_manager;
++		retval = set_undo_io_backup_file(ctx->undo_file);
++		if (retval)
++			goto err;
++		printf(_("Overwriting existing filesystem; this can be undone "
++			 "using the command:\n"
++			 "    e2undo %s %s\n\n"),
++			ctx->undo_file, ctx->filesystem_name);
++		return 0;
++	}
 +
-+	com_err(data->tdb_file, err, "while force-closing undo file");
++	/*
++	 * Configuration via a conf file would be
++	 * nice
++	 */
++	tdb_dir = getenv("E2FSPROGS_UNDO_DIR");
++	if (!tdb_dir) {
++		profile_get_string(ctx->profile, "defaults",
++				   "undo_dir", 0, "/var/lib/e2fsprogs",
++				   &tdb_dir);
++		free_tdb_dir = 1;
++	}
++
++	if (!strcmp(tdb_dir, "none") || (tdb_dir[0] == 0) ||
++	    access(tdb_dir, W_OK)) {
++		if (free_tdb_dir)
++			free(tdb_dir);
++		return 0;
++	}
++
++	tmp_name = strdup(ctx->filesystem_name);
++	if (!tmp_name)
++		goto errout;
++	dev_name = basename(tmp_name);
++	tdb_file = malloc(strlen(tdb_dir) + 8 + strlen(dev_name) + 7 + 1);
++	if (!tdb_file) {
++		free(tmp_name);
++		goto errout;
++	}
++	sprintf(tdb_file, "%s/e2fsck-%s.e2undo", tdb_dir, dev_name);
++	free(tmp_name);
++
++	if ((unlink(tdb_file) < 0) && (errno != ENOENT)) {
++		retval = errno;
++		goto errout;
++	}
++
++	set_undo_io_backing_manager(*io_ptr);
++	*io_ptr = undo_io_manager;
++	retval = set_undo_io_backup_file(tdb_file);
++	if (retval)
++		goto errout;
++	printf(_("Overwriting existing filesystem; this can be undone "
++		 "using the command:\n"
++		 "    e2undo %s %s\n\n"), tdb_file, ctx->filesystem_name);
++
++	if (free_tdb_dir)
++		free(tdb_dir);
++	free(tdb_file);
++	return 0;
++
++errout:
++	if (free_tdb_dir)
++		free(tdb_dir);
++	free(tdb_file);
++err:
++	com_err(ctx->program_name, retval, "%s",
++		_("while trying to setup undo file\n"));
++	return retval;
 +}
 +
- static errcode_t undo_open(const char *name, int flags, io_channel *channel)
+ int main (int argc, char *argv[])
  {
- 	io_channel	io = NULL;
-@@ -703,11 +715,16 @@ static errcode_t undo_open(const char *name, int flags, io_channel *channel)
- 		if (retval)
- 			goto cleanup;
+ 	errcode_t	retval = 0, retval2 = 0, orig_retval = 0;
+@@ -1315,6 +1401,12 @@ restart:
+ 	} else
+ 		flags |= EXT2_FLAG_SOFTSUPP_FEATURES;
  
--		undo_fd = ext2fs_open_file(tdb_file, O_RDWR | O_CREAT, 0600);
-+		data->tdb_file = strdup(tdb_file);
-+		if (data->tdb_file == NULL)
-+			goto cleanup;
-+		undo_fd = ext2fs_open_file(data->tdb_file, O_RDWR | O_CREAT,
-+					   0600);
- 		if (undo_fd < 0)
- 			goto cleanup;
++	if (ctx->undo_file) {
++		retval = e2fsck_setup_tdb(ctx, &io_ptr);
++		if (retval)
++			exit(FSCK_ERROR);
++	}
++
+ 	ctx->openfs_flags = flags;
+ 	retval = try_open_fs(ctx, flags, io_ptr, &fs);
  
--		retval = undo_io_backing_manager->open(tdb_file, IO_FLAG_RW,
-+		retval = undo_io_backing_manager->open(data->tdb_file,
-+						       IO_FLAG_RW,
- 						       &data->undo_file);
- 		if (retval)
- 			goto cleanup;
-@@ -732,6 +749,9 @@ static errcode_t undo_open(const char *name, int flags, io_channel *channel)
- 		if (retval)
- 			goto cleanup;
- 	}
-+	retval = ext2fs_add_exit_fn(undo_atexit, data);
-+	if (retval)
-+		goto cleanup;
- 
- 	*channel = io;
- 	if (undo_fd >= 0)
-@@ -739,10 +759,13 @@ static errcode_t undo_open(const char *name, int flags, io_channel *channel)
- 	return retval;
- 
- cleanup:
-+	ext2fs_remove_exit_fn(undo_atexit, data);
- 	if (undo_fd >= 0)
- 		close(undo_fd);
- 	if (data && data->undo_file)
- 		io_channel_close(data->undo_file);
-+	if (data && data->tdb_file)
-+		free(data->tdb_file);
- 	if (data && data->real)
- 		io_channel_close(data->real);
- 	if (data)
-@@ -769,11 +792,14 @@ static errcode_t undo_close(io_channel channel)
- 	err = write_undo_indexes(data);
- 	if (data->real)
- 		retval = io_channel_close(data->real);
-+	if (data->tdb_file)
-+		free(data->tdb_file);
- 	if (data->undo_file)
- 		io_channel_close(data->undo_file);
- 	ext2fs_free_mem(&data->keyb);
- 	if (data->written_block_map)
- 		ext2fs_free_generic_bitmap(data->written_block_map);
-+	ext2fs_remove_exit_fn(undo_atexit, data);
- 	ext2fs_free_mem(&channel->private_data);
- 	if (channel->name)
- 		ext2fs_free_mem(&channel->name);
 
