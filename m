@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 05/54] libext2fs: avoid pointless EA block allocation
-Date: Mon, 26 Jan 2015 23:36:06 -0800
-Message-ID: <20150127073606.13308.68905.stgit@birch.djwong.org>
+Subject: [PATCH 07/54] libext2fs: fix tdb.c mmap leak
+Date: Mon, 26 Jan 2015 23:36:18 -0800
+Message-ID: <20150127073618.13308.18272.stgit@birch.djwong.org>
 References: <20150127073533.13308.44994.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,95 +9,64 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:32927 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:33148 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752481AbbA0HgL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2015 02:36:11 -0500
+	with ESMTP id S1752481AbbA0HgX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2015 02:36:23 -0500
 In-Reply-To: <20150127073533.13308.44994.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use qsort to move the inlinedata attribute to the front of the list
-and the empty entries to the end.  Then we can use handle->count to
-decide if we're done writing xattrs, which helps us to avoid the
-situation where we're midway through the attribute list, so we
-allocate an EA block to store more, but have no idea that there's
-actually nothing left in the list.
+When undoing an expansion of an mmap'd database while cancelling a
+transaction, the tdb code prematurely decreases the variable that
+tracks the file size, which leads to a region leak during the
+subsequent unmap.  Fix this by maintaining a separate counter for the
+region size.
+
+(This is probably unnecessary since e2undo was the only user of tdb
+transactions, but I suppose we could be proactive.)
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/ext_attr.c |   40 +++++++++++++++++++++-------------------
- 1 file changed, 21 insertions(+), 19 deletions(-)
+ lib/ext2fs/tdb.c |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
 
-diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index c6fcf54..e8544dc 100644
---- a/lib/ext2fs/ext_attr.c
-+++ b/lib/ext2fs/ext_attr.c
-@@ -254,22 +254,20 @@ static struct ea_name_index ea_names[] = {
- 	{0, NULL},
+diff --git a/lib/ext2fs/tdb.c b/lib/ext2fs/tdb.c
+index 61e30ed..1d97685 100644
+--- a/lib/ext2fs/tdb.c
++++ b/lib/ext2fs/tdb.c
+@@ -246,6 +246,7 @@ struct tdb_context {
+ 	int page_size;
+ 	int max_dead_records;
+ 	bool have_transaction_lock;
++	tdb_len_t real_map_size; /* how much space has been mapped */
  };
  
--static void move_inline_data_to_front(struct ext2_xattr_handle *h)
-+/* Push empty attributes to the end and inlinedata to the front. */
-+static int attr_compare(const void *a, const void *b)
- {
--	struct ext2_xattr *x;
--	struct ext2_xattr tmp;
--
--	for (x = h->attrs + 1; x < h->attrs + h->length; x++) {
--		if (!x->name)
--			continue;
--
--		if (strcmp(x->name, "system.data") == 0) {
--			memcpy(&tmp, x, sizeof(tmp));
--			memcpy(x, h->attrs, sizeof(tmp));
--			memcpy(h->attrs, &tmp, sizeof(tmp));
--			return;
--		}
--	}
-+	const struct ext2_xattr *xa = a, *xb = b;
-+
-+	if (xa->name == NULL)
-+		return +1;
-+	else if (xb->name == NULL)
-+		return -1;
-+	else if (!strcmp(xa->name, "system.data"))
-+		return -1;
-+	else if (!strcmp(xb->name, "system.data"))
-+		return +1;
-+	return 0;
- }
  
- static const char *find_ea_prefix(int index)
-@@ -531,9 +529,13 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
- 		inode->i_extra_isize = extra;
+@@ -970,9 +971,10 @@ int tdb_munmap(struct tdb_context *tdb)
+ 
+ #ifdef HAVE_MMAP
+ 	if (tdb->map_ptr) {
+-		int ret = munmap(tdb->map_ptr, tdb->map_size);
++		int ret = munmap(tdb->map_ptr, tdb->real_map_size);
+ 		if (ret != 0)
+ 			return ret;
++		tdb->real_map_size = 0;
  	}
+ #endif
+ 	tdb->map_ptr = NULL;
+@@ -995,10 +997,12 @@ void tdb_mmap(struct tdb_context *tdb)
+ 		 */
  
--	move_inline_data_to_front(handle);
--
-+	/*
-+	 * Force the inlinedata attr to the front and the empty entries
-+	 * to the end.
-+	 */
- 	x = handle->attrs;
-+	qsort(x, handle->length, sizeof(struct ext2_xattr), attr_compare);
-+
- 	/* Does the inode have size for EA? */
- 	if (EXT2_INODE_SIZE(handle->fs->super) <= EXT2_GOOD_OLD_INODE_SIZE +
- 						  inode->i_extra_isize +
-@@ -554,11 +556,11 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
- 	if (err)
- 		goto out;
- 
-+write_ea_block:
- 	/* Are we done? */
--	if (x == handle->attrs + handle->length)
-+	if (x >= handle->attrs + handle->count)
- 		goto skip_ea_block;
- 
--write_ea_block:
- 	/* Write the EA block */
- 	err = ext2fs_get_memzero(handle->fs->blocksize, &block_buf);
- 	if (err)
+ 		if (tdb->map_ptr == MAP_FAILED) {
++			tdb->real_map_size = 0;
+ 			tdb->map_ptr = NULL;
+ 			TDB_LOG((tdb, TDB_DEBUG_WARNING, "tdb_mmap failed for size %d (%s)\n",
+ 				 tdb->map_size, strerror(errno)));
+ 		}
++		tdb->real_map_size = tdb->map_size;
+ 	} else {
+ 		tdb->map_ptr = NULL;
+ 	}
 
