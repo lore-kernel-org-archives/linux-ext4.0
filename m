@@ -1,64 +1,274 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 05/54] libext2fs: avoid pointless EA block allocation
-Date: Tue, 27 Jan 2015 11:26:13 -0800
-Message-ID: <20150127192613.GA21455@birch.djwong.org>
+Subject: Re: [PATCH 14/54] e2fsck: fix the journal recreation message
+Date: Tue, 27 Jan 2015 11:37:00 -0800
+Message-ID: <20150127193700.GB21455@birch.djwong.org>
 References: <20150127073533.13308.44994.stgit@birch.djwong.org>
- <20150127073606.13308.68905.stgit@birch.djwong.org>
- <20150127160736.GE2453@thunk.org>
+ <20150127073703.13308.19956.stgit@birch.djwong.org>
+ <20150127180254.GN2453@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:39283 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754939AbbA0T0S (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2015 14:26:18 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:44310 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751897AbbA0ThG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2015 14:37:06 -0500
 Content-Disposition: inline
-In-Reply-To: <20150127160736.GE2453@thunk.org>
+In-Reply-To: <20150127180254.GN2453@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 27, 2015 at 11:07:36AM -0500, Theodore Ts'o wrote:
-> On Mon, Jan 26, 2015 at 11:36:06PM -0800, Darrick J. Wong wrote:
-> > Use qsort to move the inlinedata attribute to the front of the list
-> > and the empty entries to the end.  Then we can use handle->count to
-> > decide if we're done writing xattrs, which helps us to avoid the
-> > situation where we're midway through the attribute list, so we
-> > allocate an EA block to store more, but have no idea that there's
-> > actually nothing left in the list.
+On Tue, Jan 27, 2015 at 01:02:54PM -0500, Theodore Ts'o wrote:
+> On Mon, Jan 26, 2015 at 11:37:03PM -0800, Darrick J. Wong wrote:
+> > When we recreate the journal, don't say that the FS "is now ext3
+> > again", since we could be fixing a damaged ext4 FS journal, which does
+> > not magically convert the FS back to ext3.
 > > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > Fix the po files too, though this string hasn't been translated.
+> > 
 > 
-> Applied, although I wonder if we might want to be a bit more
-> sophisticated about how we handle the order of attributes in the
-> future.  In particular, if we need to spill over into an EA block,
-> there are certain things like the selinux security id that we would
+> So a couple of things.  "Journaled" is spelled with a single 'l':
+> 
+>    http://www.oxforddictionaries.com/definition/english/journal
+> 
+> Also, if you're going to fix the journal recreation message, we should
+> also fix the message which is generated when the journal is removed.
+> 
+> Finally, don't mess with the po files; just before we do a release,
+> we'll regenerate the po template file (e2fsprogs.pot), and there are
+> automated tools that will take care of merging the changes into the
+> .po files.  It's cleaner if we don't modify the po files except via
+> automated tools, when we get updates from the Translation Project:
+> 
+> 	  http://translationproject.org/html/maintainers.html
+> 
+> Here's the patch that I've applied instead.  I ended up simplifying
+> the message because "journal has been re-created - filesystem is
+> journaled again" sounds a like an entry from
+> 
+> http://tvtropes.org/pmwiki/pmwiki.php/Main/DepartmentOfRedundancyDepartment
+> 
+> :-)
 
-Agreed.
+All good points; thank you for making the corrections.
 
-> want to be inline in the inode, and let other xattrs spill over into
-> the EA block.  And of course, if we can manage to fit all of the
-> xattrs into the inode, except for system.data, then we should bail on
-> using the inline data feature at all, and just allocate a normal data
-> block for the data, and not use an EA block for system.data at all.
-
-I've been wondering for a while why there isn't a name index for
-system.data -- doing that would allow 4 more bytes of inline data per
-inode.
-
-> It's much more imporant that we get this sort of stuff right for the
-> kernel implementation, though, and if we occasionally misoptimize
-> things in libext2fs, that's unfortunate, but it's primarily going to
-> be a problem for the FUSE driver...
-
-<shrug> That might (for now) be less of a problem for fuse, since
-libext2fs has inline directories spill over to a block as soon as
-i_block[] fills up... haven't decided if that's a "feature" or a "bug".
-
-(The kernel implementation seems ok with my not-rigorous 3.19 spot
-check.)
+I'll find a place (SUBMITTING-PATCHES?) for leaving a note to leave the po
+files alone, since I wasn't aware of the translation automation.
 
 --D
 > 
 > 					- Ted
+> 
+> 
+> commit 85068f9d86ab70da6d27384210f1c964f8c09f79
+> Author: Darrick J. Wong <darrick.wong@oracle.com>
+> Date:   Mon Jan 26 23:37:03 2015 -0800
+> 
+>     e2fsck: fix message when the journal is deleted and regenerated
+>     
+>     When we recreate the journal, don't say that the FS "is now ext3
+>     again", since we could be fixing a damaged ext4 FS journal, which does
+>     not magically convert the FS back to ext3.
+>     
+>     [ Use "journaled" instead of "journalled", and also fix the message we
+>       print when deleting the journal --Ted ]
+>     
+>     Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+>     Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> 
+> diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+> index 6119cda..9f32095 100644
+> --- a/e2fsck/journal.c
+> +++ b/e2fsck/journal.c
+> @@ -545,8 +545,7 @@ static errcode_t e2fsck_journal_fix_bad_inode(e2fsck_t ctx,
+>  		pctx->ino = sb->s_journal_inum;
+>  		if (fix_problem(ctx, PR_0_JOURNAL_BAD_INODE, pctx)) {
+>  			if (has_journal && sb->s_journal_inum)
+> -				printf("*** ext3 journal has been deleted - "
+> -				       "filesystem is now ext2 only ***\n\n");
+> +				printf("*** journal has been deleted ***\n\n");
+>  			sb->s_feature_compat &= ~EXT3_FEATURE_COMPAT_HAS_JOURNAL;
+>  			sb->s_journal_inum = 0;
+>  			memset(sb->s_jnl_blocks, 0, sizeof(sb->s_jnl_blocks));
+> diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+> index 615d690..96551a1 100644
+> --- a/e2fsck/unix.c
+> +++ b/e2fsck/unix.c
+> @@ -1674,8 +1674,7 @@ print_unsupp_features:
+>  			}
+>  			log_out(ctx, "%s", _(" Done.\n"));
+>  			log_out(ctx, "%s",
+> -				_("\n*** journal has been re-created - "
+> -				  "filesystem is now ext3 again ***\n"));
+> +				_("\n*** journal has been regenerated ***\n"));
+>  		}
+>  	}
+>  no_journal:
+> diff --git a/tests/f_badjour_indblks/expect.1 b/tests/f_badjour_indblks/expect.1
+> index 7ccc59b..cb8054c 100644
+> --- a/tests/f_badjour_indblks/expect.1
+> +++ b/tests/f_badjour_indblks/expect.1
+> @@ -1,7 +1,7 @@
+>  Superblock has an invalid journal (inode 8).
+>  Clear? yes
+>  
+> -*** ext3 journal has been deleted - filesystem is now ext2 only ***
+> +*** journal has been deleted ***
+>  
+>  Adding dirhash hint to filesystem.
+>  
+> @@ -25,7 +25,7 @@ Recreate journal? yes
+>  
+>  Creating journal (1024 blocks):  Done.
+>  
+> -*** journal has been re-created - filesystem is now ext3 again ***
+> +*** journal has been regenerated ***
+>  
+>  test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+>  test_filesys: 11/256 files (0.0% non-contiguous), 1111/8192 blocks
+> diff --git a/tests/f_badjourblks/expect.1 b/tests/f_badjourblks/expect.1
+> index 34c6658..5483a0d 100644
+> --- a/tests/f_badjourblks/expect.1
+> +++ b/tests/f_badjourblks/expect.1
+> @@ -1,7 +1,7 @@
+>  Superblock has an invalid journal (inode 8).
+>  Clear? yes
+>  
+> -*** ext3 journal has been deleted - filesystem is now ext2 only ***
+> +*** journal has been deleted ***
+>  
+>  Pass 1: Checking inodes, blocks, and sizes
+>  Journal inode is not in use, but contains data.  Clear? yes
+> @@ -23,7 +23,7 @@ Recreate journal? yes
+>  
+>  Creating journal (1024 blocks):  Done.
+>  
+> -*** journal has been re-created - filesystem is now ext3 again ***
+> +*** journal has been regenerated ***
+>  
+>  test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+>  test_filesys: 11/256 files (0.0% non-contiguous), 1079/8192 blocks
+> diff --git a/tests/f_jnl_etb_alloc_fail/expect.1 b/tests/f_jnl_etb_alloc_fail/expect.1
+> index 8f4ebbb..243a151 100644
+> --- a/tests/f_jnl_etb_alloc_fail/expect.1
+> +++ b/tests/f_jnl_etb_alloc_fail/expect.1
+> @@ -1,7 +1,7 @@
+>  Superblock has an invalid journal (inode 8).
+>  Clear? yes
+>  
+> -*** ext3 journal has been deleted - filesystem is now ext2 only ***
+> +*** journal has been deleted ***
+>  
+>  Superblock has_journal flag is clear, but a journal is present.
+>  Clear? yes
+> diff --git a/tests/f_miss_journal/expect.1 b/tests/f_miss_journal/expect.1
+> index 6ec8b38..d435952 100644
+> --- a/tests/f_miss_journal/expect.1
+> +++ b/tests/f_miss_journal/expect.1
+> @@ -1,7 +1,7 @@
+>  Superblock has an invalid journal (inode 8).
+>  Clear? yes
+>  
+> -*** ext3 journal has been deleted - filesystem is now ext2 only ***
+> +*** journal has been deleted ***
+>  
+>  Pass 1: Checking inodes, blocks, and sizes
+>  Pass 2: Checking directory structure
+> @@ -21,7 +21,7 @@ Recreate journal? yes
+>  
+>  Creating journal (1024 blocks):  Done.
+>  
+> -*** journal has been re-created - filesystem is now ext3 again ***
+> +*** journal has been regenerated ***
+>  
+>  test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+>  test_filesys: 11/256 files (0.0% non-contiguous), 1079/2048 blocks
+> diff --git a/tests/j_corrupt_sb_magic/expect b/tests/j_corrupt_sb_magic/expect
+> index 2169a15..d1dae88 100644
+> --- a/tests/j_corrupt_sb_magic/expect
+> +++ b/tests/j_corrupt_sb_magic/expect
+> @@ -1,7 +1,7 @@
+>  Superblock has an invalid journal (inode 8).
+>  Clear? yes
+>  
+> -*** ext3 journal has been deleted - filesystem is now ext2 only ***
+> +*** journal has been deleted ***
+>  
+>  Superblock has_journal flag is clear, but a journal is present.
+>  Clear? yes
+> @@ -26,7 +26,7 @@ Recreate journal? yes
+>  
+>  Creating journal (1024 blocks):  Done.
+>  
+> -*** journal has been re-created - filesystem is now ext3 again ***
+> +*** journal has been regenerated ***
+>  
+>  test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+>  test_filesys: 12/128 files (0.0% non-contiguous), 1092/2048 blocks
+> diff --git a/tests/j_long_trans/expect b/tests/j_long_trans/expect
+> index 7638ef1..7a17541 100644
+> --- a/tests/j_long_trans/expect
+> +++ b/tests/j_long_trans/expect
+> @@ -57,7 +57,7 @@ test_filesys: recovering journal
+>  Superblock has an invalid journal (inode 8).
+>  Clear? yes
+>  
+> -*** ext3 journal has been deleted - filesystem is now ext2 only ***
+> +*** journal has been deleted ***
+>  
+>  Resize inode not valid.  Recreate? yes
+>  
+> @@ -100,7 +100,7 @@ Recreate journal? yes
+>  
+>  Creating journal (8192 blocks):  Done.
+>  
+> -*** journal has been re-created - filesystem is now ext3 again ***
+> +*** journal has been regenerated ***
+>  
+>  test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+>  test_filesys: 11/16384 files (0.0% non-contiguous), 14420/262144 blocks
+> diff --git a/tests/j_long_trans_mcsum_32bit/expect b/tests/j_long_trans_mcsum_32bit/expect
+> index 0d141c1..a808d9f 100644
+> --- a/tests/j_long_trans_mcsum_32bit/expect
+> +++ b/tests/j_long_trans_mcsum_32bit/expect
+> @@ -93,7 +93,7 @@ test_filesys: recovering journal
+>  Superblock has an invalid journal (inode 8).
+>  Clear? yes
+>  
+> -*** ext3 journal has been deleted - filesystem is now ext2 only ***
+> +*** journal has been deleted ***
+>  
+>  Resize inode not valid.  Recreate? yes
+>  
+> @@ -139,7 +139,7 @@ Recreate journal? yes
+>  
+>  Creating journal (16384 blocks):  Done.
+>  
+> -*** journal has been re-created - filesystem is now ext3 again ***
+> +*** journal has been regenerated ***
+>  
+>  test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+>  test_filesys: 11/32768 files (0.0% non-contiguous), 27039/524288 blocks
+> diff --git a/tests/j_long_trans_mcsum_64bit/expect b/tests/j_long_trans_mcsum_64bit/expect
+> index 94e9925..76e109a 100644
+> --- a/tests/j_long_trans_mcsum_64bit/expect
+> +++ b/tests/j_long_trans_mcsum_64bit/expect
+> @@ -92,7 +92,7 @@ test_filesys: recovering journal
+>  Superblock has an invalid journal (inode 8).
+>  Clear? yes
+>  
+> -*** ext3 journal has been deleted - filesystem is now ext2 only ***
+> +*** journal has been deleted ***
+>  
+>  Resize inode not valid.  Recreate? yes
+>  
+> @@ -138,7 +138,7 @@ Recreate journal? yes
+>  
+>  Creating journal (16384 blocks):  Done.
+>  
+> -*** journal has been re-created - filesystem is now ext3 again ***
+> +*** journal has been regenerated ***
+>  
+>  test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+>  test_filesys: 11/32768 files (0.0% non-contiguous), 27057/524288 blocks
