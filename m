@@ -1,67 +1,149 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] ext4: support read-only images
-Date: Mon, 26 Jan 2015 23:45:51 -0800
-Message-ID: <20150127074551.GD9976@birch.djwong.org>
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: [v8 4/5] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR
+ interface support
+Date: Tue, 27 Jan 2015 19:02:39 +1100
+Message-ID: <20150127080239.GQ16552@dastard>
+References: <1418102548-5469-1-git-send-email-lixi@ddn.com>
+ <1418102548-5469-5-git-send-email-lixi@ddn.com>
+ <54C11733.7080801@yandex-team.ru>
+ <20150123015307.GD24722@dastard>
+ <54C23751.7000009@yandex-team.ru>
+ <20150123233026.GP16552@dastard>
+ <CALCETrXPCrOTrkoAMuW2os=z6anaEfv4F4D2yDxo6VtCuEtRZw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:38462 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753368AbbA0Hp4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2015 02:45:56 -0500
+Cc: Konstantin Khlebnikov <khlebnikov-XoJtRXgx1JseBXzfvpsJ4g@public.gmane.org>,
+	Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	Linux FS Devel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+	Al Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org,
+	"Eric W. Biederman" <ebiederm-aS9lmoZGLiVWk0Htik3J/w@public.gmane.org>
+To: Andy Lutomirski <luto-kltTT9wpgjJwATOyAt5JVQ@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CALCETrXPCrOTrkoAMuW2os=z6anaEfv4F4D2yDxo6VtCuEtRZw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-Add a rocompat feature, "readonly" to mark a FS image as read-only.
-The feature prevents the kernel and e2fsprogs from changing the image;
-the flag can be toggled by tune2fs.
+On Fri, Jan 23, 2015 at 03:59:04PM -0800, Andy Lutomirski wrote:
+> On Fri, Jan 23, 2015 at 3:30 PM, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org> wrote:
+> > On Fri, Jan 23, 2015 at 02:58:09PM +0300, Konstantin Khlebnikov wrote:
+> >> On 23.01.2015 04:53, Dave Chinner wrote:
+> >> >On Thu, Jan 22, 2015 at 06:28:51PM +0300, Konstantin Khlebnikov wrote:
+> >> >>>+  kprojid = make_kprojid(&init_user_ns, (projid_t)projid);
+> >> >>
+> >> >>Maybe current_user_ns()?
+> >> >>This code should be user-namespace aware from the beginning.
+> >> >
+> >> >No, the code is correct. Project quotas have nothing to do with
+> >> >UIDs and so should never have been included in the uid/gid
+> >> >namespace mapping infrastructure in the first place.
+> >>
+> >> Right, but user-namespace provides id mapping for project-id too.
+> >> This infrastructure adds support for nested project quotas with
+> >> virtualized ids in sub-containers. I couldn't say that this is
+> >> must have feature but implementation is trivial because whole
+> >> infrastructure is already here.
+> >
+> > This is an extremely common misunderstanding of project IDs. Project
+> > IDs are completely separate to the UID/GID namespace.  Project
+> > quotas were originally designed specifically for
+> > accounting/enforcing quotas in situations where uid/gid
+> > accounting/enforcing is not possible. This design intent goes back
+> > 25 years - it predates XFS...
+> >
+> > IOWs, mapping prids via user namespaces defeats the purpose
+> > for which prids were originally intended for.
+> >
+> >> >Point in case: directory subtree quotas can be used as a resource
+> >> >controller for limiting space usage within separate containers that
+> >> >share the same underlying (large) filesystem via mount namespaces.
+> >>
+> >> That's exactly my use-case: 'sub-volumes' for containers with
+> >> quota for space usage/inodes count.
+> >
+> > That doesn't require mapped project IDs. Hard container space limits
+> > can only be controlled by the init namespace, and because inodes can
+> > hold only one project ID the current ns cannot be allowed to change
+> > the project ID on the inode because that allows them to escape the
+> > resource limits set on the project ID associated with the sub-mount
+> > set up by the init namespace...
+> >
+> > i.e.
+> >
+> > /mnt                    prid = 0, default for entire fs.
+> > /mnt/container1/        prid = 1, inherit, 10GB space limit
+> > /mnt/container2/        prid = 2, inherit, 50GB space limit
+> > .....
+> > /mnt/containerN/        prid = N, inherit, 20GB space limit
+> >
+> > And you clone the mount namespace for each container so the root is
+> > at the appropriate /mnt/containerX/.  Now the containers have a
+> > fixed amount of space they can use in the parent filesystem they
+> > know nothing about, and it is enforced by directory subquotas
+> > controlled by the init namespace.  This "fixed amount of space" is
+> > reflected in the container namespace when "df" is run as it will
+> > report the project quota space limits. Adding or removing space to a
+> > container is as simple as changing the project quota limits from the
+> > init namespace. i.e. an admin operation controlled by the host, not
+> > the container....
+> >
+> > Allowing the container to modify the prid and/or the inherit bit of
+> > inodes in it's namespace then means the user can define their own
+> > space usage limits, even turn them off. It's not a resource
+> > container at that point because the user can define their own
+> > limits.  Hence, only if the current_ns cannot change project quotas
+> > will we have a hard fence on space usage that the container *cannot
+> > exceed*.
+> 
+> I think I must be missing something simple here.  In a hypothetical
+> world where the code used nsown_capable, if an admin wants to stick a
+> container in /mnt/container1 with associated prid 1 and a userns,
+> shouldn't it just map only prid 1 into the user ns?  Then a user in
+> that userns can't try to change the prid of a file to 2 because the
+> number "2" is unmapped for that user and translation will fail.
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- fs/ext4/ext4.h  |    1 +
- fs/ext4/super.c |   10 +++++++++-
- 2 files changed, 10 insertions(+), 1 deletion(-)
+You've effectively said "yes, project quotas are enabled, but you
+only have a single ID, it's always turned on and you can't change it
+to anything else.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3950a2f..5cf937d 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1557,6 +1557,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
-  * GDT_CSUM bits are mutually exclusive.
-  */
- #define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
-+#define EXT4_FEATURE_RO_COMPAT_READONLY		0x1000
- 
- #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
- #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 74c5f53..c65dede 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2776,6 +2776,12 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
- 	if (readonly)
- 		return 1;
- 
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_READONLY)) {
-+		ext4_msg(sb, KERN_INFO, "filesystem is read-only");
-+		sb->s_flags |= MS_RDONLY;
-+		return 1;
-+	}
-+
- 	/* Check that feature set is OK for a read-write mount */
- 	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, ~EXT4_FEATURE_RO_COMPAT_SUPP)) {
- 		ext4_msg(sb, KERN_ERR, "couldn't mount RDWR because of "
-@@ -4930,7 +4936,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 				ext4_mark_recovery_complete(sb, es);
- 		} else {
- 			/* Make sure we can mount this feature set readwrite */
--			if (!ext4_feature_set_ok(sb, 0)) {
-+			if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+					EXT4_FEATURE_RO_COMPAT_READONLY) ||
-+			    !ext4_feature_set_ok(sb, 0)) {
- 				err = -EROFS;
- 				goto restore_opts;
- 			}
+So, why do they need to be mapped via user namespaces to enable
+this? Think about it a little harder:
+
+	- Project IDs are not user IDs.
+	- Project IDs are not a security/permission mechanism.
+	- Project quotas only provide a mechanism for
+	  resource usage control.
+
+Think about that last one some more. Perhaps, as a hint, I should
+relate it to control groups? :) i.e:
+
+	- Project quotas can be used as an effective mount ns space
+	  usage controller.
+
+But this can only be safely and reliably by keeping the project IDs
+inaccessible from the containers themselves. I don't see why a
+mechanism that controls the amount of filesystem space used by a
+container should be considered any differently to a memory control
+group that limits the amount of memory the container can use.
+
+However, nobody on the container side of things would answer any of
+my questions about how project quotas were going to be used,
+limited, managed, etc back when we had to make a decision to enable
+XFS user ns support, I did what was needed to support the obvious
+container use case and close any possible loop hole that containers
+might be able to use to subvert that use case.
+
+If we want to do anything different, then there's a *lot* of
+userns aware regression tests needed to be written for xfstests....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
