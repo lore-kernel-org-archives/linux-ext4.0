@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 31/54] undo-io: use a bitmap to track what we've already
- written
-Date: Mon, 26 Jan 2015 23:38:56 -0800
-Message-ID: <20150127073856.13308.93629.stgit@birch.djwong.org>
+Subject: [PATCH 32/54] e2undo: fix memory leaks and tweak the error messages
+ somewhat
+Date: Mon, 26 Jan 2015 23:39:02 -0800
+Message-ID: <20150127073902.13308.86465.stgit@birch.djwong.org>
 References: <20150127073533.13308.44994.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,169 +10,169 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:46878 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:46955 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751984AbbA0HjA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2015 02:39:00 -0500
+	with ESMTP id S1753559AbbA0HjI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2015 02:39:08 -0500
 In-Reply-To: <20150127073533.13308.44994.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It's really inefficient to (ab)use the TDB key store as a bitmap to
-find out if we've already written a block to the undo file, because
-the tdb code is reads the database key btree disk blocks for *every*
-query.  Changing that logic to a bitmap reduces overhead by a large
-margin -- the overhead of using undo_io while converting a 2TB FS to
-metadata_csum is reduced from 55 minutes to 45.
+Fix memory leaks and improve the error messages to make it easier
+to figure out why e2undo went wrong.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/undo_io.c |   69 +++++++++++++++++++++++++++++++++++++-------------
- 1 file changed, 51 insertions(+), 18 deletions(-)
+ misc/e2undo.c |   43 ++++++++++++++++++++++++-------------------
+ 1 file changed, 24 insertions(+), 19 deletions(-)
 
 
-diff --git a/lib/ext2fs/undo_io.c b/lib/ext2fs/undo_io.c
-index 70b90d5..9a01e30 100644
---- a/lib/ext2fs/undo_io.c
-+++ b/lib/ext2fs/undo_io.c
-@@ -70,6 +70,9 @@ struct undo_private_data {
- 
- 	/* to support offset in unix I/O manager */
- 	ext2_loff_t offset;
-+
-+	ext2fs_block_bitmap written_block_map;
-+	struct struct_ext2_filsys fake_fs;
- };
- 
- static io_manager undo_io_backing_manager;
-@@ -164,6 +167,38 @@ static errcode_t write_block_size(TDB_CONTEXT *tdb, int block_size)
- 	return retval;
- }
- 
-+static errcode_t undo_setup_tdb(struct undo_private_data *data)
-+{
-+	errcode_t retval;
-+
-+	if (data->tdb_written == 1)
-+		return 0;
-+
-+	data->tdb_written = 1;
-+
-+	/* Make a bitmap to track what we've written */
-+	memset(&data->fake_fs, 0, sizeof(data->fake_fs));
-+	data->fake_fs.blocksize = data->tdb_data_size;
-+	retval = ext2fs_alloc_generic_bmap(&data->fake_fs,
-+				EXT2_ET_MAGIC_BLOCK_BITMAP64,
-+				EXT2FS_BMAP64_RBTREE,
-+				0, ~1ULL, ~1ULL,
-+				"undo block map", &data->written_block_map);
-+	if (retval)
-+		return retval;
-+
-+	/* Write the blocksize to tdb file */
-+	tdb_transaction_start(data->tdb);
-+	retval = write_block_size(data->tdb,
-+				  data->tdb_data_size);
-+	if (retval) {
-+		tdb_transaction_cancel(data->tdb);
-+		return EXT2_ET_TDB_ERR_IO;
-+	}
-+	tdb_transaction_commit(data->tdb);
-+	return 0;
-+}
-+
- static errcode_t undo_write_tdb(io_channel channel,
- 				unsigned long long block, int count)
- 
-@@ -194,6 +229,10 @@ static errcode_t undo_write_tdb(io_channel channel,
- 		else
- 			size = count * channel->block_size;
+diff --git a/misc/e2undo.c b/misc/e2undo.c
+index a43c26f..d828d3b 100644
+--- a/misc/e2undo.c
++++ b/misc/e2undo.c
+@@ -49,7 +49,7 @@ static int check_filesystem(TDB_CONTEXT *tdb, io_channel channel)
+ 	retval = io_channel_read_blk64(channel, 1, -SUPERBLOCK_SIZE, &super);
+ 	if (retval) {
+ 		com_err(prg_name, retval,
+-			"%s", _("Failed to read the file system data \n"));
++			"%s", _("while reading filesystem superblock."));
+ 		return retval;
  	}
-+
-+	retval = undo_setup_tdb(data);
-+	if (retval)
-+		return retval;
- 	/*
- 	 * Data is stored in tdb database as blocks of tdb_data_size size
- 	 * This helps in efficient lookup further.
-@@ -212,11 +251,14 @@ static errcode_t undo_write_tdb(io_channel channel,
- 		/*
- 		 * Check if we have the record already
- 		 */
--		if (tdb_exists(data->tdb, tdb_key)) {
-+		if (ext2fs_test_block_bitmap2(data->written_block_map,
-+						   block_num)) {
- 			/* Try the next block */
- 			block_num++;
+ 
+@@ -58,16 +58,16 @@ static int check_filesystem(TDB_CONTEXT *tdb, io_channel channel)
+ 	tdb_data = tdb_fetch(tdb, tdb_key);
+ 	if (!tdb_data.dptr) {
+ 		retval = EXT2_ET_TDB_SUCCESS + tdb_error(tdb);
+-		com_err(prg_name, retval,
+-			_("Failed tdb_fetch %s\n"), tdb_errorstr(tdb));
++		com_err(prg_name, retval, "%s",
++			_("while fetching last mount time."));
+ 		return retval;
+ 	}
+ 
+ 	s_mtime = *(__u32 *)tdb_data.dptr;
++	free(tdb_data.dptr);
+ 	if (super.s_mtime != s_mtime) {
+-
+ 		com_err(prg_name, 0,
+-			_("The file system Mount time didn't match %u\n"),
++			_("The filesystem last mount time didn't match %u."),
+ 			s_mtime);
+ 
+ 		return  -1;
+@@ -79,14 +79,14 @@ static int check_filesystem(TDB_CONTEXT *tdb, io_channel channel)
+ 	tdb_data = tdb_fetch(tdb, tdb_key);
+ 	if (!tdb_data.dptr) {
+ 		retval = EXT2_ET_TDB_SUCCESS + tdb_error(tdb);
+-		com_err(prg_name, retval,
+-			_("Failed tdb_fetch %s\n"), tdb_errorstr(tdb));
++		com_err(prg_name, retval, "%s", _("while fetching UUID"));
+ 		return retval;
+ 	}
+ 	memcpy(s_uuid, tdb_data.dptr, sizeof(s_uuid));
++	free(tdb_data.dptr);
+ 	if (memcmp(s_uuid, super.s_uuid, sizeof(s_uuid))) {
+ 		com_err(prg_name, 0, "%s",
+-			_("The file system UUID didn't match \n"));
++			_("The filesystem UUID didn't match."));
+ 		return -1;
+ 	}
+ 
+@@ -104,12 +104,12 @@ static int set_blk_size(TDB_CONTEXT *tdb, io_channel channel)
+ 	tdb_data = tdb_fetch(tdb, tdb_key);
+ 	if (!tdb_data.dptr) {
+ 		retval = EXT2_ET_TDB_SUCCESS + tdb_error(tdb);
+-		com_err(prg_name, retval,
+-			_("Failed tdb_fetch %s\n"), tdb_errorstr(tdb));
++		com_err(prg_name, retval, "%s", _("while fetching block size"));
+ 		return retval;
+ 	}
+ 
+ 	block_size = *(int *)tdb_data.dptr;
++	free(tdb_data.dptr);
+ #ifdef DEBUG
+ 	printf("Block size %d\n", block_size);
+ #endif
+@@ -129,6 +129,7 @@ int main(int argc, char *argv[])
+ 	blk64_t  blk_num;
+ 	char *device_name, *tdb_file;
+ 	io_manager manager = unix_io_manager;
++	void *old_dptr = NULL;
+ 
+ #ifdef ENABLE_NLS
+ 	setlocale(LC_MESSAGES, "");
+@@ -160,20 +161,20 @@ int main(int argc, char *argv[])
+ 
+ 	if (!tdb) {
+ 		com_err(prg_name, errno,
+-				_("Failed tdb_open %s\n"), tdb_file);
++				_("while opening undo file `%s'\n"), tdb_file);
+ 		exit(1);
+ 	}
+ 
+ 	retval = ext2fs_check_if_mounted(device_name, &mount_flags);
+ 	if (retval) {
+ 		com_err(prg_name, retval, _("Error while determining whether "
+-				"%s is mounted.\n"), device_name);
++				"%s is mounted."), device_name);
+ 		exit(1);
+ 	}
+ 
+ 	if (mount_flags & EXT2_MF_MOUNTED) {
+ 		com_err(prg_name, retval, "%s", _("e2undo should only be run "
+-						"on unmounted file system\n"));
++						"on unmounted filesystems"));
+ 		exit(1);
+ 	}
+ 
+@@ -181,7 +182,7 @@ int main(int argc, char *argv[])
+ 				IO_FLAG_EXCLUSIVE | IO_FLAG_RW,  &channel);
+ 	if (retval) {
+ 		com_err(prg_name, retval,
+-				_("Failed to open %s\n"), device_name);
++				_("while opening `%s'"), device_name);
+ 		exit(1);
+ 	}
+ 
+@@ -194,30 +195,34 @@ int main(int argc, char *argv[])
+ 	}
+ 
+ 	for (key = tdb_firstkey(tdb); key.dptr; key = tdb_nextkey(tdb, key)) {
++		free(old_dptr);
++		old_dptr = key.dptr;
+ 		if (!strcmp((char *) key.dptr, (char *) mtime_key) ||
+ 		    !strcmp((char *) key.dptr, (char *) uuid_key) ||
+ 		    !strcmp((char *) key.dptr, (char *) blksize_key)) {
  			continue;
  		}
-+		ext2fs_mark_block_bitmap2(data->written_block_map, block_num);
-+
- 		/*
- 		 * Read one block using the backing I/O manager
- 		 * The backing I/O manager block size may be
-@@ -265,19 +307,7 @@ static errcode_t undo_write_tdb(io_channel channel,
- 		       tdb_data.dptr,
- 		       tdb_data.dsize);
- #endif
--		if (data->tdb_written != 1) {
--			data->tdb_written = 1;
--			/* Write the blocksize to tdb file */
--			retval = write_block_size(data->tdb,
--						  data->tdb_data_size);
--			if (retval) {
--				tdb_transaction_cancel(data->tdb);
--				retval = EXT2_ET_TDB_ERR_IO;
--				free(read_ptr);
--				return retval;
--			}
--		}
--		retval = tdb_store(data->tdb, tdb_key, tdb_data, TDB_INSERT);
-+		retval = tdb_store(data->tdb, tdb_key, tdb_data, TDB_REPLACE);
+ 
++		blk_num = *(blk64_t *)key.dptr;
+ 		data = tdb_fetch(tdb, key);
+ 		if (!data.dptr) {
+-			com_err(prg_name, 0,
+-				_("Failed tdb_fetch %s\n"), tdb_errorstr(tdb));
++			retval = EXT2_ET_TDB_SUCCESS + tdb_error(tdb);
++			com_err(prg_name, retval,
++				_("while fetching block %llu."), blk_num);
+ 			exit(1);
+ 		}
+-		blk_num = *(blk64_t *)key.dptr;
+ 		printf(_("Replayed transaction of size %zd at location %llu\n"),
+ 							data.dsize, blk_num);
+ 		retval = io_channel_write_blk64(channel, blk_num,
+ 						-data.dsize, data.dptr);
++		free(data.dptr);
  		if (retval == -1) {
- 			/*
- 			 * TDB_ERR_EXISTS cannot happen because we
-@@ -345,6 +375,7 @@ static errcode_t undo_open(const char *name, int flags, io_channel *channel)
- 
- 	memset(data, 0, sizeof(struct undo_private_data));
- 	data->magic = EXT2_ET_MAGIC_UNIX_IO_CHANNEL;
-+	data->written_block_map = NULL;
- 
- 	if (undo_io_backing_manager) {
- 		retval = undo_io_backing_manager->open(name, flags,
-@@ -390,7 +421,7 @@ cleanup:
- static errcode_t undo_close(io_channel channel)
- {
- 	struct undo_private_data *data;
--	errcode_t	retval = 0;
-+	errcode_t	err, retval = 0;
- 
- 	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
- 	data = (struct undo_private_data *) channel->private_data;
-@@ -399,20 +430,22 @@ static errcode_t undo_close(io_channel channel)
- 	if (--channel->refcount > 0)
- 		return 0;
- 	/* Before closing write the file system identity */
--	retval = write_file_system_identity(channel, data->tdb);
--	if (retval)
--		return retval;
-+	err = write_file_system_identity(channel, data->tdb);
- 	if (data->real)
- 		retval = io_channel_close(data->real);
- 	if (data->tdb) {
- 		tdb_flush(data->tdb);
- 		tdb_close(data->tdb);
+ 			com_err(prg_name, retval,
+-					_("Failed write %s\n"),
+-					strerror(errno));
++				_("while writing block %llu."), blk_num);
+ 			exit(1);
+ 		}
  	}
-+	if (data->written_block_map)
-+		ext2fs_free_generic_bitmap(data->written_block_map);
- 	ext2fs_free_mem(&channel->private_data);
- 	if (channel->name)
- 		ext2fs_free_mem(&channel->name);
- 	ext2fs_free_mem(&channel);
- 
-+	if (err)
-+		return err;
- 	return retval;
- }
++	free(old_dptr);
+ 	io_channel_close(channel);
+ 	tdb_close(tdb);
  
 
