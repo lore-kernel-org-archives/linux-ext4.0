@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 18/54] e2fsck: improve the inline directory detector
-Date: Mon, 26 Jan 2015 23:37:31 -0800
-Message-ID: <20150127073730.13308.10353.stgit@birch.djwong.org>
+Subject: [PATCH 19/54] e2fsck: salvage under-sized dirents by removing them
+Date: Mon, 26 Jan 2015 23:37:37 -0800
+Message-ID: <20150127073737.13308.74557.stgit@birch.djwong.org>
 References: <20150127073533.13308.44994.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,214 +9,232 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:33792 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753539AbbA0Hhg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2015 02:37:36 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:46093 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753650AbbA0Hhm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2015 02:37:42 -0500
 In-Reply-To: <20150127073533.13308.44994.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Strengthen the checks that guess if the inode we're looking at is an
-inline directory.  The current check sweeps up any inline inode if
-its length is a multiple of four; now we'll at least try to see if
-there's the beginning of a valid directory entry.
+If the directory processing code ends up pointing to a directory entry
+that's so close to the end of the block that there's not even space
+for a rec_len/name_len, just substitute dummy values that will force
+e2fsck to extend the previous entry to cover the remaining space.  We
+can't use the helper methods to extract rec_len because that's reading
+off the end of the buffer.
+
+This isn't an issue with non-inline directories because the directory
+check buffer is zero-extended so that fsck won't blow up.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- e2fsck/pass1.c                      |   23 +++++++++++++++++++++++
- tests/f_inlinedata_repair/expect.1  |   26 +++-----------------------
- tests/f_inlinedata_repair/expect.2  |    2 +-
- tests/f_inlinedir_detector/expect.1 |   20 ++++++++++++++++++++
- tests/f_inlinedir_detector/expect.2 |    7 +++++++
- tests/f_inlinedir_detector/image.gz |  Bin
- tests/f_inlinedir_detector/name     |    1 +
- 7 files changed, 55 insertions(+), 24 deletions(-)
- create mode 100644 tests/f_inlinedir_detector/expect.1
- create mode 100644 tests/f_inlinedir_detector/expect.2
- create mode 100644 tests/f_inlinedir_detector/image.gz
- create mode 100644 tests/f_inlinedir_detector/name
+ e2fsck/pass2.c                       |   49 +++++++++++++++++++++++-----------
+ lib/ext2fs/ext2_fs.h                 |    5 +++
+ tests/f_trunc_dirent_header/expect.1 |   15 ++++++++++
+ tests/f_trunc_dirent_header/expect.2 |    7 +++++
+ tests/f_trunc_dirent_header/image.gz |  Bin
+ tests/f_trunc_dirent_header/name     |    1 +
+ 6 files changed, 60 insertions(+), 17 deletions(-)
+ create mode 100644 tests/f_trunc_dirent_header/expect.1
+ create mode 100644 tests/f_trunc_dirent_header/expect.2
+ create mode 100644 tests/f_trunc_dirent_header/image.gz
+ create mode 100644 tests/f_trunc_dirent_header/name
 
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 69a9ac1..9f22826 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -537,6 +537,9 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
- 			 EXT4_FEATURE_INCOMPAT_INLINE_DATA);
- 	if (inlinedata_fs && (inode->i_flags & EXT4_INLINE_DATA_FL)) {
- 		size_t size;
-+		__u32 dotdot;
-+		unsigned int rec_len;
-+		struct ext2_dir_entry de;
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 26db2e6..78bc24e 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -672,18 +672,29 @@ static void salvage_directory(ext2_filsys fs,
+ 	char	*cp = (char *) dirent;
+ 	int left;
+ 	unsigned int rec_len, prev_rec_len;
+-	unsigned int name_len = ext2fs_dirent_name_len(dirent);
++	unsigned int name_len;
  
- 		if (ext2fs_inline_data_size(ctx->fs, pctx->ino, &size))
- 			return;
-@@ -546,6 +549,26 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
- 		 */
- 		if (size & 3)
- 			return;
-+		/*
-+		 * If the first 10 bytes don't look like a directory entry,
-+		 * it's probably not a directory.
-+		 */
-+		memcpy(&dotdot, inode->i_block, sizeof(dotdot));
-+		memcpy(&de, ((char *)inode->i_block) + EXT4_INLINE_DATA_DOTDOT_SIZE,
-+		       EXT2_DIR_REC_LEN(0));
-+		dotdot = ext2fs_le32_to_cpu(dotdot);
-+		de.inode = ext2fs_le32_to_cpu(de.inode);
-+		de.rec_len = ext2fs_le16_to_cpu(de.rec_len);
-+		ext2fs_get_rec_len(ctx->fs, &de, &rec_len);
-+		if (dotdot >= ctx->fs->super->s_inodes_count ||
-+		    (dotdot < EXT2_FIRST_INO(ctx->fs->super) &&
-+		     dotdot != EXT2_ROOT_INO) ||
-+		    de.inode >= ctx->fs->super->s_inodes_count ||
-+		    (de.inode < EXT2_FIRST_INO(ctx->fs->super) &&
-+		     de.inode != 0) ||
-+		    rec_len > EXT4_MIN_INLINE_DATA_SIZE -
-+			      EXT4_INLINE_DATA_DOTDOT_SIZE)
-+			return;
- 		/* device files never have a "system.data" entry */
- 		goto isdir;
- 	} else if (extent_fs && (inode->i_flags & EXT4_EXTENTS_FL)) {
-diff --git a/tests/f_inlinedata_repair/expect.1 b/tests/f_inlinedata_repair/expect.1
-index faba192..cc220ba 100644
---- a/tests/f_inlinedata_repair/expect.1
-+++ b/tests/f_inlinedata_repair/expect.1
-@@ -8,11 +8,6 @@ Inode 24, i_size is 59, should be 60.  Fix? yes
- Inode 28 is a unknown file type with mode 00 but it looks like it is really a directory.
- Fix? yes
+-	(void) ext2fs_get_rec_len(fs, dirent, &rec_len);
++	/*
++	 * If the space left for the entry is too small to be an entry,
++	 * we can't access dirent's fields, so plumb in the values needed
++	 * so that the previous entry absorbs this one.
++	 */
++	if (block_len - *offset < EXT2_DIR_ENTRY_HEADER_LEN) {
++		name_len = 0;
++		rec_len = block_len - *offset;
++	} else {
++		name_len = ext2fs_dirent_name_len(dirent);
++		(void) ext2fs_get_rec_len(fs, dirent, &rec_len);
++	}
+ 	left = block_len - *offset - rec_len;
  
--Inode 36 is a unknown file type with mode 00 but it looks like it is really a directory.
--Fix? yes
--
--Inode 36, i_size is 5, should be 60.  Fix? yes
--
- Pass 2: Checking directory structure
- Directory inode 20, block #0, offset 4: directory corrupted
- Salvage? yes
-@@ -26,26 +21,16 @@ Salvage? yes
- Directory inode 32, block #0, offset 4: directory corrupted
- Salvage? yes
+ 	/*
+ 	 * Special case of directory entry of size 8: copy what's left
+ 	 * of the directory block up to cover up the invalid hole.
+ 	 */
+-	if ((left >= 12) && (rec_len == 8)) {
+-		memmove(cp, cp+8, left);
+-		memset(cp + left, 0, 8);
++	if ((left >= 12) && (rec_len == EXT2_DIR_ENTRY_HEADER_LEN)) {
++		memmove(cp, cp+EXT2_DIR_ENTRY_HEADER_LEN, left);
++		memset(cp + left, 0, EXT2_DIR_ENTRY_HEADER_LEN);
+ 		return;
+ 	}
+ 	/*
+@@ -692,8 +703,8 @@ static void salvage_directory(ext2_filsys fs,
+ 	 * record length.
+ 	 */
+ 	if ((left < 0) &&
+-	    ((int) rec_len + left > 8) &&
+-	    ((int) name_len + 8 <= (int) rec_len + left) &&
++	    ((int) rec_len + left > EXT2_DIR_ENTRY_HEADER_LEN) &&
++	    ((int) name_len + EXT2_DIR_ENTRY_HEADER_LEN <= (int) rec_len + left) &&
+ 	    dirent->inode <= fs->super->s_inodes_count &&
+ 	    strnlen(dirent->name, name_len) == name_len) {
+ 		(void) ext2fs_set_rec_len(fs, (int) rec_len + left, dirent);
+@@ -928,6 +939,7 @@ static int check_dir_block(ext2_filsys fs,
  
--Entry '..' in ??? (36) has invalid inode #: 1633774699.
--Clear? yes
--
--Directory inode 36, block #0, offset 4: directory corrupted
--Salvage? yes
--
- Symlink /3 (inode #14) is invalid.
- Clear? yes
+ 	ehandler_operation(_("reading directory block"));
+ 	if (inline_data_size) {
++		memset(buf, 0, fs->blocksize - inline_data_size);
+ 		cd->pctx.errcode = ext2fs_inline_data_get(fs, ino, 0, buf, 0);
+ 		if (cd->pctx.errcode)
+ 			goto inline_read_fail;
+@@ -1081,15 +1093,20 @@ skip_checksum:
+ 		problem = 0;
+ 		if (!inline_data_size || dot_state > 1) {
+ 			dirent = (struct ext2_dir_entry *) (buf + offset);
+-			(void) ext2fs_get_rec_len(fs, dirent, &rec_len);
++			/*
++			 * If there's not even space for the entry header,
++			 * force salvaging this dir.
++			 */
++			if (max_block_size - offset < EXT2_DIR_ENTRY_HEADER_LEN)
++				rec_len = EXT2_DIR_REC_LEN(1);
++			else
++				(void) ext2fs_get_rec_len(fs, dirent, &rec_len);
+ 			cd->pctx.dirent = dirent;
+ 			cd->pctx.num = offset;
+-			if (((offset + rec_len) > fs->blocksize) ||
+-			    (inline_data_size > 0 &&
+-			     (offset + rec_len) > inline_data_size) ||
++			if ((offset + rec_len > max_block_size) ||
+ 			    (rec_len < 12) ||
+ 			    ((rec_len % 4) != 0) ||
+-			    ((ext2fs_dirent_name_len(dirent) + 8) > rec_len)) {
++			    ((ext2fs_dirent_name_len(dirent) + EXT2_DIR_ENTRY_HEADER_LEN) > rec_len)) {
+ 				if (fix_problem(ctx, PR_2_DIR_CORRUPTED,
+ 						&cd->pctx)) {
+ #ifdef WORDS_BIGENDIAN
+@@ -1098,7 +1115,7 @@ skip_checksum:
+ 					 * swap routine finds a rec_len that it
+ 					 * doesn't like, it continues
+ 					 * processing the block as if rec_len
+-					 * == 8.  This means that the name
++					 * == EXT2_DIR_ENTRY_HEADER_LEN.  This means that the name
+ 					 * field gets byte swapped, which means
+ 					 * that salvage will not detect the
+ 					 * correct name length (unless the name
+@@ -1112,11 +1129,11 @@ skip_checksum:
+ 					 * the salvaged dirent.
+ 					 */
+ 					int need_reswab = 0;
+-					if (rec_len < 8 || rec_len % 4) {
++					if (rec_len < EXT2_DIR_ENTRY_HEADER_LEN || rec_len % 4) {
+ 						need_reswab = 1;
+ 						ext2fs_dirent_swab_in2(fs,
+-							((char *)dirent) + 8,
+-							max_block_size - offset - 8,
++							((char *)dirent) + EXT2_DIR_ENTRY_HEADER_LEN,
++							max_block_size - offset - EXT2_DIR_ENTRY_HEADER_LEN,
+ 							0);
+ 					}
+ #endif
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 953cbc4..10cb650 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -875,9 +875,12 @@ struct ext2_dir_entry_tail {
+  *
+  * NOTE: It must be a multiple of 4
+  */
++#define EXT2_DIR_ENTRY_HEADER_LEN	8
+ #define EXT2_DIR_PAD			4
+ #define EXT2_DIR_ROUND			(EXT2_DIR_PAD - 1)
+-#define EXT2_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT2_DIR_ROUND) & \
++#define EXT2_DIR_REC_LEN(name_len)	(((name_len) + \
++					  EXT2_DIR_ENTRY_HEADER_LEN + \
++					  EXT2_DIR_ROUND) & \
+ 					 ~EXT2_DIR_ROUND)
  
- Inode 38 (/B) has invalid mode (00).
- Clear? yes
- 
--Entry 'A' in / (2) has an incorrect filetype (was 1, should be 2).
--Fix? yes
-+Inode 36 (/A) has invalid mode (00).
-+Clear? yes
- 
- Pass 3: Checking directory connectivity
--'..' in /A (36) is ??? (1633774699), should be / (2).
--Fix? yes
--
--Error while adjusting inode count on inode 0
- Pass 4: Checking reference counts
- Unattached zero-length inode 22.  Clear? yes
- 
-@@ -63,13 +48,8 @@ Unattached zero-length inode 34.  Clear? yes
- 
- Unattached zero-length inode 35.  Clear? yes
- 
--Inode 36 ref count is 1, should be 2.  Fix? yes
--
- Pass 5: Checking group summary information
--Directories count wrong for group #0 (7, counted=8).
--Fix? yes
--
- 
- test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
--test_filesys: 28/128 files (0.0% non-contiguous), 18/512 blocks
-+test_filesys: 27/128 files (0.0% non-contiguous), 18/512 blocks
- Exit status is 1
-diff --git a/tests/f_inlinedata_repair/expect.2 b/tests/f_inlinedata_repair/expect.2
-index 519f21d..2c400a5 100644
---- a/tests/f_inlinedata_repair/expect.2
-+++ b/tests/f_inlinedata_repair/expect.2
-@@ -3,5 +3,5 @@ Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
- Pass 5: Checking group summary information
--test_filesys: 28/128 files (0.0% non-contiguous), 18/512 blocks
-+test_filesys: 27/128 files (0.0% non-contiguous), 18/512 blocks
- Exit status is 0
-diff --git a/tests/f_inlinedir_detector/expect.1 b/tests/f_inlinedir_detector/expect.1
+ /*
+diff --git a/tests/f_trunc_dirent_header/expect.1 b/tests/f_trunc_dirent_header/expect.1
 new file mode 100644
-index 0000000..72b7519
+index 0000000..33ce473
 --- /dev/null
-+++ b/tests/f_inlinedir_detector/expect.1
-@@ -0,0 +1,20 @@
++++ b/tests/f_trunc_dirent_header/expect.1
+@@ -0,0 +1,15 @@
 +Pass 1: Checking inodes, blocks, and sizes
-+Special (device/socket/fifo) file (inode 12) has extents
-+or inline-data flag set.  Clear? yes
-+
-+Special (device/socket/fifo) inode 12 has non-zero size.  Fix? yes
-+
-+Inode 13 is a named pipe but it looks like it is really a directory.
-+Fix? yes
-+
 +Pass 2: Checking directory structure
-+Entry 'moo' in / (2) has an incorrect filetype (was 1, should be 5).
-+Fix? yes
++Directory inode 15, block #0, offset 4092: directory corrupted
++Salvage? yes
++
++Directory inode 13, block #1, offset 28: directory corrupted
++Salvage? yes
 +
 +Pass 3: Checking directory connectivity
 +Pass 4: Checking reference counts
 +Pass 5: Checking group summary information
 +
 +test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 13/128 files (0.0% non-contiguous), 17/512 blocks
++test_filesys: 32/128 files (0.0% non-contiguous), 18/512 blocks
 +Exit status is 1
-diff --git a/tests/f_inlinedir_detector/expect.2 b/tests/f_inlinedir_detector/expect.2
+diff --git a/tests/f_trunc_dirent_header/expect.2 b/tests/f_trunc_dirent_header/expect.2
 new file mode 100644
-index 0000000..06886a4
+index 0000000..df81c9d
 --- /dev/null
-+++ b/tests/f_inlinedir_detector/expect.2
++++ b/tests/f_trunc_dirent_header/expect.2
 @@ -0,0 +1,7 @@
 +Pass 1: Checking inodes, blocks, and sizes
 +Pass 2: Checking directory structure
 +Pass 3: Checking directory connectivity
 +Pass 4: Checking reference counts
 +Pass 5: Checking group summary information
-+test_filesys: 13/128 files (0.0% non-contiguous), 17/512 blocks
++test_filesys: 32/128 files (0.0% non-contiguous), 18/512 blocks
 +Exit status is 0
-diff --git a/tests/f_inlinedir_detector/image.gz b/tests/f_inlinedir_detector/image.gz
+diff --git a/tests/f_trunc_dirent_header/image.gz b/tests/f_trunc_dirent_header/image.gz
 new file mode 100644
-index 0000000000000000000000000000000000000000..34b4518849cd60d83890b5c69ff6a0aefaa54d57
+index 0000000000000000000000000000000000000000..9c59bf4a9e4e7fa07d501e4445a55d872a2e4715
 GIT binary patch
-literal 2640
-zcmb2|=3qD$xIcu6`R%Rq*)pLr3?IxlYj2y~vTS8L7pwfo71CL^ompDhH082Xu2x-J
-zdNY?<+C0T9M8L30!*$}L`UeZYT#5dA=fTO<wpEvAbG&lg(;;yG4S)2t+=Z$eGk^co
-zx&Qsy**!NOS{vKkJCnz8U~<-GolgSue6PNb<T#p8Yu6Fie%5jSlDcQlZVGJMe&26y
-z@b?Y-ufIFZ_VvgD!}+W7?Rg&_4#}VU>*J*>XC9f)zaRDc)u-$7v6T`#>;B)qdb&Q;
-ze}8fA%k%nvcYY<>ajPFrxp%)TUC#Qc$FG#+YvI8*Pp>gEJW$kFzTa3gt@`tSrI4!4
-zm-i{%skkZ0#K6$te*gIIRS(~vYJR_;mw|!dP36<~|0gS+e(v;tKf`3j^Ut6C`v0(2
-z?aHUJ<uCSKc$Kqfe@veC;z?`EtP-_!>&q8Rn*TcHix4YN=eHf5yKVkYud{pb2go~+
-zoP0|YNHd)O4<bnb8+LD-FP+H@)X^`S??8e^bfr7wf1kf&W8I^!`95Ae$k0~rf7Xrb
-ztAD4y?blhmQ`bB2X5(Xd$zs_%y$Aj$ex4kXGgrp=UuyHj_XmA@wirK_f1?@w^w0Ab
-zJAV4h@!e1U7yR<<gtF>?lmBnJ{WIQH;!xD8^h<^9hDK4o(~o}MSe>}EW9`&3W3jV&
-zg41WOJ?3VuyT$7D#*Jlm>$dy~6+CZx>+Q3mJv%P#y>Rozv8}&P)~Bibe|1^^+cdu=
-zGqU3U7wx>5d*|(Lsn@+%)3)!7yOPE2y?+1hEg!BuTD|$}(I3yU^N&<1%k_R$x)%Pp
-zW=*|7yp`DNyEmiOp7}p@%lm~TcM^Hl|DXGlKl-zE%|G|g_Fv}zx&M3n*URb05AXfN
-mjvg+f{Lv5?4S~@R7!85Z5Eu;sDusZ?U*<Usuk0BZ6c_*iEnI&9
+literal 2873
+zcmb2|=3sa(cRYlN`R$#v{xYdD>>tvXO%PhZn%VvI>ao>rGb$cFVDvxsYHhVp?t%+h
+z-if!j^sW%kx^yW(?;rP9{SQe=UoKQUe0DQCf8UYm$GX{tYtqWyrS9C?!o>f!#_owZ
+z|KT&wroXp2{p@C{6Nf|ST9Mf{EekFF%xX2b{HyZbs$-nmYd<eKf80DvF(+@{FJ11B
+zUkZwr+{ix_mF%CLZp3%LPU?_);huu^)rG%qNiPrEKmX^W<LjsG_nY|jL;2U=^XJz7
+ze)@HOe`#r4<>$3JKCSomRK7VVW1VVJmzrC5PjL0+V19-MmaeDo9oC3Tzy3ed;6}t;
+zv$HMlzQ-ssFfdg7$}KBx+0XZ<|2Q*{`#bLA_y6}MJQZG8sqc_~;&W%`Guu7x&gFF*
+z>z=;ye*WtEv}fJPy~Uf23vI4c-N}*pom6{y`qN@NKSl<IhT4_S72p5ow*Ruz4rtVe
+zGcU?Hf%Jjj^+57LX4sua_uu{d|46yf{_y*scNXi|PwfA;`uVDvzaKYdJ)376boNeq
+zUzqXtI~##K`88?pHlGhS{=W0^)iZzp1(+7s8^oNw^V}V%{7{Bzv3^ge@%N)2v!2D(
+zES$A-y5EsIpC8Vx*%&u}b^Q)$-C6(7^8@W92Fzofeeqi@Q00T0kAww?(Sbva-0_nW
+zd!r&lPyIdpy72OSz54VQSv_ZSzspCysCZBqxrW*LLj9JrHWg+})rn85?%bK1_4(KI
+zt#Lo+#hl;v_snbgH`?XhU(aj5y=Gr&@lXEs{G_*+H@<#7|IhNf=l(za`YfWm_O#aL
+z?O)!f{eSy2`}U`DnK?hx-`~5nI<fBCt2ch@>+knIE_oAu?HW)1Q~h<v9!5+~)QGQ}
+zA$!99@A^N%z3=^w?AmX(^~;W*)zY?Xn~we}JDcqK@A{((t8coi@BWd`dh7G<)1Uc%
+z2LD|T9oz`?$5~}}xu5@@KhS$}|J8o;{r{i-;Xl4Fb?fZ^`)p_Zf4Fh){QpY-e|`ii
+z)cl<P_5STY+#B<OOnsG8`z3x)n`-nwY0)2Vh>+^3`2O0{UNiUW)ld2}J?Z|YplAE1
+zX#9VAWBZyZKlRm5)hmC~)lU5<-TCQ$4@lkrv_*ebgSD<#J5{d@mW=NFwEpP6)TL+k
+zPt*AS7OXR0{nUOruvJxy{**(E-F*BfFddG9(GVC7fzc2c4S~@R7!3hxhrp^=`8(bu
+KePv)!U;qGw8T+09
 
 literal 0
 HcmV?d00001
 
-diff --git a/tests/f_inlinedir_detector/name b/tests/f_inlinedir_detector/name
+diff --git a/tests/f_trunc_dirent_header/name b/tests/f_trunc_dirent_header/name
 new file mode 100644
-index 0000000..3368af5
+index 0000000..e244dbf
 --- /dev/null
-+++ b/tests/f_inlinedir_detector/name
++++ b/tests/f_trunc_dirent_header/name
 @@ -0,0 +1 @@
-+detect inline dirs correctly
++no space for dirent header at end of buf
 
