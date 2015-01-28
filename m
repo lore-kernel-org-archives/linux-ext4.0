@@ -1,88 +1,89 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: Writes blocked on wait_for_stable_page (Writes of less than page
- size sometimes take too long)
-Date: Wed, 28 Jan 2015 13:39:14 -0800
-Message-ID: <20150128213914.GE9976@birch.djwong.org>
-References: <54C93169.3000600@codeaurora.org>
- <54C93811.1040107@codeaurora.org>
+Subject: Re: [PATCH 13/54] e2fsck: on read error, don't rewrite blocks past
+ the end of the fs
+Date: Wed, 28 Jan 2015 15:35:36 -0800
+Message-ID: <20150128233536.GF9976@birch.djwong.org>
+References: <20150127073533.13308.44994.stgit@birch.djwong.org>
+ <20150127073657.13308.5523.stgit@birch.djwong.org>
+ <20150127173507.GM2453@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Nikhilesh Reddy <reddyn@codeaurora.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1050.oracle.com ([141.146.126.70]:46236 "EHLO
+Received: from aserp1050.oracle.com ([141.146.126.70]:46846 "EHLO
 	aserp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752946AbbA2BcR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Jan 2015 20:32:17 -0500
+	with ESMTP id S1756891AbbA2BmI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Jan 2015 20:42:08 -0500
 Received: from aserp1040.oracle.com (aserp1040.oracle.com [141.146.126.69])
-	by aserp1050.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id t0SLdJfi010947
+	by aserp1050.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id t0SNZfEa002944
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 28 Jan 2015 21:39:21 GMT
+	for <linux-ext4@vger.kernel.org>; Wed, 28 Jan 2015 23:35:42 GMT
 Content-Disposition: inline
-In-Reply-To: <54C93811.1040107@codeaurora.org>
+In-Reply-To: <20150127173507.GM2453@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 28, 2015 at 11:27:13AM -0800, Nikhilesh Reddy wrote:
-> Hi
-> I am working on a 64 bit Android device and have been trying to
-> improve performance for stream based data download (for example an
-> ftp)
-> The device has 3GB of ram and the dirty_ratio and
-> dirty_background_ratio are set to 5 and 1 respectively.
+On Tue, Jan 27, 2015 at 12:35:07PM -0500, Theodore Ts'o wrote:
+> On Mon, Jan 26, 2015 at 11:36:57PM -0800, Darrick J. Wong wrote:
+> > If e2fsck encounters a read error on a block past the end of the
+> > filesystem, don't bother trying to "rewrite" the block.  We might
+> > still want to re-try the read to capture FS data marooned past the end
+> > of the filesystem, but in that case e2fsck ought to move the block
+> > back inside the filesystem.
+> > 
+> > This enables e2fuzz to detect writes past the end of the FS due to
+> > software bugs.
+> > 
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 > 
-> Kernel 3.10 , Highmem is not enabled and the backing device is a
-> emmc and checksumming is not enabled
-
-Ok, 3.10 kernel is new enough that stable page writes only apply to
-devices that demand it, and apparently your eMMC demands it.
-
-> I noticed when profiling writes that if we dont use streamed IO (ie.
-> use write of whatever size data was read on the tcp stream) there
-> are some writes that seem to get blocked on
-> wait_for_stable_page.
+> Applied, but if we have a block which is past the end of the file
+> system, why did we try to read it in the first place?
 > 
-> If I force the writes to be buffered in the userspace and ensure
-> writing 4k chunks the writes never seem to stall.
+> Was it because e2fsck was told to ignore a file system inconsistency?
+> Or because e2fsck didn't notice before trying to read a block?  If so,
+> we should look to see if there is some way we could have caught this
+> error in the first place.  So it might be useful to run e2fuzz and
+> call abort() if we try to read past the end of the file system, so we
+> can get a stack dump and understand what happened....
 
-That's consistent with a page being partially dirtied, written out,
-and partially dirtied again before write-out finishes.  If you buffer
-the incoming data such that a page is only dirtied once, you'll never
-notice wait_for_stable_page.
+Ok, so I went a little ways down the path to see what I could see:
 
-Are you explicitly forcing writeout (i.e. fsync()) after every chunk
-arrives?  Or, is the rate of incoming data high enough such that we
-hit either dirty*ratio limit?  It isn't too hard to hit 30MB these
-days.  Why are you lowering the ratios from their defaults?
+print_pathname() will run right into it if we try to display the path
+name and one of the directories on that path happens to have a bad
+directory block pointer, and we haven't yet gotten to fixing the bad
+directory block.  Read errors simply make it print "???", so there's
+no need to abort().
 
-> I noticed there was earlier discussion on this and idea were
-> proposed to use snapshotting of the pages to avoid stalls...
-> For example: https://lwn.net/Articles/546658/
-> 
-> But this seems to only snapshot ext3 ... (unless i misunderstood
-> what the patch is doing)
-> 
-> Is there a similar patch to snapshot the buffers to not stall the
-> writes for ext4?
+The journal code will try to replay the journal without checking block
+boundaries; returning an error (or a zeroed block with no journal
+magic) aborts journal replay like you'd expect.  No need to abort()
+the whole program here either.
 
-No, there is not -- the problem with the snapshot solution is that it
-requires page allocations when the FS is (potentially) trying to
-reclaim memory by writing out dirty pages.
+check_is_really_dir() tries to read a (potentially badly corrupt) file
+to guess if it's a directory before we scan the extent tree for
+invalid blocks.  Hitting a read error here isn't the end of the world
+either.
+
+pass1[b-d] is where things really get tricky -- if pass1 detects that
+an extent block collides with critical metadata, it'll put the ETB on
+the list of blocks to clone, refuse to touch any of the data
+inside that ETB, and restart fsck from the beginning once all the
+critical colliding blocks have been reassigned.  This is to avoid
+corrupting bitmap/inode/group data.  However, in iterating the
+unchecked ETB during that first run through pass 1b, it's possible for
+the block iteration call to try to read garbage contents.
+
+There's possibly more, but so far I've not encountered any scenarios
+where fsck actually does the wrong thing as a result of reading past
+the end of the FS.  It seems that e2fsck will fix pointers to data
+blocks outside the filesystem.  Granted, it "fixes" things by erasing
+them... but so far, I haven't found anything needing a code fix.
 
 --D
 
-> Please let me know.
 > 
-> I would really appreciate any help you can give me.
-> 
-> 
-> -- 
-> Thanks
-> Nikhilesh Reddy
-> 
-> Qualcomm Innovation Center, Inc.
-> The Qualcomm Innovation Center, Inc. is a member of the Code Aurora Forum,
-> a Linux Foundation Collaborative Project.
+>     	  	     	 	    	 - Ted
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
