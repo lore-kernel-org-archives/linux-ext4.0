@@ -1,34 +1,54 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 17/54] e2fsck: inspect inline dir data as two directory
- blocks
-Date: Wed, 28 Jan 2015 10:16:24 -0500
-Message-ID: <20150128151624.GQ2453@thunk.org>
-References: <20150127073533.13308.44994.stgit@birch.djwong.org>
- <20150127073724.13308.48792.stgit@birch.djwong.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 92271] New: Provide a way to really delete files, please
+Date: Thu, 29 Jan 2015 11:47:59 +0000
+Message-ID: <bug-92271-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <gnehzuil.liu@gmail.com>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:42250 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.29.136]:59554 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755214AbbA2CFs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 28 Jan 2015 21:05:48 -0500
-Content-Disposition: inline
-In-Reply-To: <20150127073724.13308.48792.stgit@birch.djwong.org>
+	id S1751941AbbA2LsD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 29 Jan 2015 06:48:03 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id D88A820149
+	for <linux-ext4@vger.kernel.org>; Thu, 29 Jan 2015 11:48:01 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 6FF6D201F4
+	for <linux-ext4@vger.kernel.org>; Thu, 29 Jan 2015 11:47:59 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 26, 2015 at 11:37:24PM -0800, Darrick J. Wong wrote:
-> The design of inline directories (apparently) calls for the i_block[]
-> region and the EA regions to be treated as if they were two separate
-> blocks of dirents.  Effectively this means that it is impossible for a
-> directory entry to straddle both areas.  e2fsck doesn't enforce this,
-> so teach it to do so.  e2fslib already knows to do this....
-> 
-> Cc: Zheng Liu <gnehzuil.liu@gmail.com>
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=92271
 
-Applied, thanks.
+            Bug ID: 92271
+           Summary: Provide a way to really delete files, please
+           Product: File System
+           Version: 2.5
+    Kernel Version: All
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: holler@ahsoftware.de
+        Regression: No
 
-						- Ted
+Filesystems should offer the user a way to really delete files by really
+destroying the contents of a deleted file.
+
+E.g. by overwriting the deleted content or by using "Secure trim".
+
+See here for more elaborate flame:
+
+https://lkml.org/lkml/2015/1/24/41
+
+Thanks in advance.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
