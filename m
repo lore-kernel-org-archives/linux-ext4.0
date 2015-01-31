@@ -1,263 +1,173 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: Writes blocked on wait_for_stable_page (Writes of less than page
- size sometimes take too long)
-Date: Fri, 30 Jan 2015 13:53:32 -0800
-Message-ID: <20150130215332.GA26226@birch.djwong.org>
-References: <54C93169.3000600@codeaurora.org>
- <54C93811.1040107@codeaurora.org>
- <20150128213914.GE9976@birch.djwong.org>
- <54C96F87.7000502@codeaurora.org>
- <54C97262.3010406@codeaurora.org>
- <20150128235705.GI21455@birch.djwong.org>
- <54CBF6E6.3090406@codeaurora.org>
+From: spamerx <spamerx@wp.pl>
+Subject: ext4: protection against hardware failure - device size has changed
+ for usb SD card and cannot fix filesystem afterwards
+Date: Sat, 31 Jan 2015 14:07:55 +0100
+Message-ID: <54CCD3AB.1010205@wp.pl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Nikhilesh Reddy <reddyn@codeaurora.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:44961 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1763197AbbA3Vxi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Jan 2015 16:53:38 -0500
-Content-Disposition: inline
-In-Reply-To: <54CBF6E6.3090406@codeaurora.org>
+Received: from mx3.wp.pl ([212.77.101.10]:21441 "EHLO mx3.wp.pl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751003AbbAaNOi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 31 Jan 2015 08:14:38 -0500
+Received: from 89-68-73-139.dynamic.chello.pl (HELO [192.168.0.11]) (spamerx@[89.68.73.139])
+          (envelope-sender <spamerx@wp.pl>)
+          by smtp.wp.pl (WP-SMTPD) with ECDHE-RSA-AES256-SHA encrypted SMTP
+          for <linux-ext4@vger.kernel.org>; 31 Jan 2015 14:07:55 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 30, 2015 at 01:25:58PM -0800, Nikhilesh Reddy wrote:
-> Thanks so much Darrick for all your help.
-> That patch helped.
-> 
-> I had a bit of a query with respect to stable pages though...
-> 
-> From what I understand only backing devices that need some sort of
-> checksumming seem to need stable pages... AS in regular emmc
-> shouldnt need it correct?
+I came accross strange behavior when trying to check my ext4 filesystem.
+I'm using 4 GB SD card with my Raspberry and it suddenly crashed. So
+when connected with usb reader to another pc I got fancy logs about
+device size in logs. First SD card size was detected correctly (3.99GB),
+then few connectivity errors occurred, and voila - my SD card reported
+1.68 TB capacity. My ext4 partition is sdg2 - whole log is related to
+detecting the same sd card below:
 
-Right.
+Jan 27 18:35:23 byziek kernel: [   56.121960] scsi 10:0:0:0:
+Direct-Access     ChipsBnk SD/MMCReader     4080 PQ: 0 ANSI: 2
+Jan 27 18:35:23 byziek kernel: [   56.126827] sd 10:0:0:0: Attached scsi
+generic sg7 type 0
+Jan 27 18:35:23 byziek kernel: [   56.128453] sd 10:0:0:0: [sdg] 7806976
+512-byte logical blocks: (3.99 GB/3.72 GiB)
+Jan 27 18:35:23 byziek kernel: [   56.129847] sd 10:0:0:0: [sdg] Write
+Protect is off
+Jan 27 18:35:23 byziek kernel: [   56.129854] sd 10:0:0:0: [sdg] Mode
+Sense: 0b 00 00 08
+Jan 27 18:35:23 byziek kernel: [   56.131308] sd 10:0:0:0: [sdg] No
+Caching mode page found
+Jan 27 18:35:23 byziek kernel: [   56.131316] sd 10:0:0:0: [sdg]
+Assuming drive cache: write through
+Jan 27 18:35:23 byziek kernel: [   56.135815] sd 10:0:0:0: [sdg] No
+Caching mode page found
+Jan 27 18:35:23 byziek kernel: [   56.135820] sd 10:0:0:0: [sdg]
+Assuming drive cache: write through
+Jan 27 18:35:23 byziek kernel: [   56.137194]  sdg: sdg1 sdg2
+Jan 27 18:35:23 byziek kernel: [   56.140837] sd 10:0:0:0: [sdg] No
+Caching mode page found
+Jan 27 18:35:23 byziek kernel: [   56.140845] sd 10:0:0:0: [sdg]
+Assuming drive cache: write through
+Jan 27 18:35:23 byziek kernel: [   56.140849] sd 10:0:0:0: [sdg]
+Attached SCSI removable disk
+Jan 27 18:35:33 byziek kernel: [   66.461566] sd 10:0:0:0: [sdg] Media
+Changed
+Jan 27 18:35:33 byziek kernel: [   66.461572] sd 10:0:0:0: [sdg] 
+Result: hostbyte=DID_OK driverbyte=DRIVER_SENSE
+Jan 27 18:35:33 byziek kernel: [   66.461577] sd 10:0:0:0: [sdg]  Sense
+Key : Unit Attention [current]
+Jan 27 18:35:33 byziek kernel: [   66.461582] sd 10:0:0:0: [sdg]  Add.
+Sense: Not ready to ready change, medium may have changed
+Jan 27 18:35:33 byziek kernel: [   66.461589] sd 10:0:0:0: [sdg] CDB:
+Read(10): 28 00 00 76 4e f8 00 00 08 00
+Jan 27 18:35:33 byziek kernel: [   66.461599] end_request: I/O error,
+dev sdg, sector 7753464
+Jan 27 18:35:33 byziek kernel: [   66.461605] Buffer I/O error on device
+sdg2, logical block 950239
+Jan 27 18:35:44 byziek kernel: [   76.645575] sd 10:0:0:0: [sdg] Media
+Changed
+Jan 27 18:35:44 byziek kernel: [   76.645581] sd 10:0:0:0: [sdg] 
+Result: hostbyte=DID_OK driverbyte=DRIVER_SENSE
+Jan 27 18:35:44 byziek kernel: [   76.645586] sd 10:0:0:0: [sdg]  Sense
+Key : Unit Attention [current]
+Jan 27 18:35:44 byziek kernel: [   76.645591] sd 10:0:0:0: [sdg]  Add.
+Sense: Not ready to ready change, medium may have changed
+Jan 27 18:35:44 byziek kernel: [   76.645598] sd 10:0:0:0: [sdg] CDB:
+Read(10): 28 00 00 00 18 b8 00 00 08 00
+Jan 27 18:35:44 byziek kernel: [   76.645608] end_request: I/O error,
+dev sdg, sector 6328
+Jan 27 18:35:44 byziek kernel: [   76.645614] Buffer I/O error on device
+sdg1, logical block 279
+Jan 27 18:35:44 byziek kernel: [   76.647314] sd 10:0:0:0: [sdg]
+3288073216 512-byte logical blocks: (1.68 TB/1.53 TiB)
+Jan 27 18:35:44 byziek kernel: [   76.654827] sd 10:0:0:0: [sdg] No
+Caching mode page found
+Jan 27 18:35:44 byziek kernel: [   76.654835] sd 10:0:0:0: [sdg]
+Assuming drive cache: write through
+Jan 27 18:35:44 byziek kernel: [   76.746816] sd 10:0:0:0: [sdg] No
+Caching mode page found
+Jan 27 18:35:44 byziek kernel: [   76.746822] sd 10:0:0:0: [sdg]
+Assuming drive cache: write through
+Jan 27 18:35:44 byziek kernel: [   76.747709]  sdg: sdg1 sdg2
+Jan 27 18:35:46 byziek kernel: [   78.525565] sd 10:0:0:0: [sdg] Media
+Changed
+Jan 27 18:35:46 byziek kernel: [   78.525571] sd 10:0:0:0: [sdg] 
+Result: hostbyte=DID_OK driverbyte=DRIVER_SENSE
+Jan 27 18:35:46 byziek kernel: [   78.525576] sd 10:0:0:0: [sdg]  Sense
+Key : Unit Attention [current]
+Jan 27 18:35:46 byziek kernel: [   78.525582] sd 10:0:0:0: [sdg]  Add.
+Sense: Not ready to ready change, medium may have changed
+Jan 27 18:35:46 byziek kernel: [   78.525589] sd 10:0:0:0: [sdg] CDB:
+Read(10): 28 00 c3 fc 03 80 00 00 08 00
+Jan 27 18:35:46 byziek kernel: [   78.525598] end_request: I/O error,
+dev sdg, sector 3288073088
+Jan 27 18:35:46 byziek kernel: [   78.525604] Buffer I/O error on device
+sdg, logical block 411009136
+Jan 27 18:35:46 byziek kernel: [   78.533318] sd 10:0:0:0: [sdg] 7806976
+512-byte logical blocks: (3.99 GB/3.72 GiB)
+Jan 27 18:35:46 byziek kernel: [   78.535809] sd 10:0:0:0: [sdg] No
+Caching mode page found
+Jan 27 18:35:46 byziek kernel: [   78.535814] sd 10:0:0:0: [sdg]
+Assuming drive cache: write through
+Jan 27 18:35:46 byziek kernel: [   78.539817] sd 10:0:0:0: [sdg] No
+Caching mode page found
+Jan 27 18:35:46 byziek kernel: [   78.539822] sd 10:0:0:0: [sdg]
+Assuming drive cache: write through
+Jan 27 18:35:46 byziek kernel: [   78.540719]  sdg: sdg1 sdg2
 
-> If not then the below patch would now cause a pass-through rather than
-> wait for writeback and I was wondering  if that could cause corruptions
-> when the same page is dirtied again with writeback in progress.
 
-It looked ok to me and several other reviewers.  On a non-stable-pages device,
-dirtying a page during writeback should be fine since the dirty bit will be
-set and the page will eventually be written back again.
+As a result some directory entries are pointing to blocks which are out
+of disk area. So when I try to fix filesystem with e2fsck i got:
 
-> Also with respect to the flush... since the applications are
-> prettymuch third party I cant really do much there...
+e2fsck 1.42.12 (29-Aug-2014)
+Pass 1: Checking inodes, blocks, and sizes
+Error reading block 8796093119321 (Invalid argument) while reading
+directory block.  Ignore error<y>? no
+Error reading block 2147592353 (Invalid argument) while reading
+directory block.  Ignore error<y>? no
+Error reading block 274878023742 (Invalid argument) while reading
+directory block.  Ignore error<y>? no
+Error reading block 1073851752 (Invalid argument) while reading
+directory block.  Ignore error<y>? no
+Error reading block 274877916439 (Invalid argument) while reading
+directory block.  Ignore error<y>? no
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
 
-There's eatmydata, but that's evil... :)
+       53701 inodes used (23.57%, out of 227824)
+         180 non-contiguous files (0.3%)
+          27 non-contiguous directories (0.1%)
+             # of inodes with ind/dind/tind blocks: 2/1/1
+             Extent depth histogram: 49736/72
+      527274 blocks used (55.49%, out of 950272)
+           0 bad blocks
+         100 large files
 
-> But I was wondering now that there is no contention with the pages
-> after the patch ... if reducing the cache may actually be bad.
-> 
-> Still running metrics so wont know until they are done.
+       40265 regular files
+        6741 directories
+          61 character device files
+          25 block device files
+           1 fifo
+       16928 links
+        6580 symbolic links (3777 fast symbolic links)
+          19 sockets
 
---D
+Block numbers are insane for 4GB filesystem, and e2fsck is unable to fix
+them. Currently working on image copied from SD card to hard disk. While
+trying to fix image with older fsck (1.42.4) image has grown from 4GB to
+~1000GB.
 
-> 
-> 
-> On 01/28/2015 03:57 PM, Darrick J. Wong wrote:
-> >On Wed, Jan 28, 2015 at 03:36:02PM -0800, Nikhilesh Reddy wrote:
-> >>Also can someone please confirm if the following patch  help address
-> >>this issue That I described below?
-> >>
-> >>https://kernel.googlesource.com/pub/scm/linux/kernel/git/tytso/ext4/+/7afe5aa59ed3da7b6161617e7f157c7c680dc41e
-> >>
-> >>Quick Summary:
-> >>
-> >>in the function
-> >>wait_on_page_writeback(page)  inside ext4_da_write_begin seems to
-> >>take long and the process is stuck waiting.
-> >>
-> >>The writeback just seems to take long.. but only when we write to the
-> >>same page over again...
-> >>The grab_cache_page_write_begin gives the same page until we  write
-> >>enough...
-> >>Is there a wait to not wait for the writeback?
-> >
-> >Oh, right.  <smacks head>
-> >
-> >Yes, that wait_for_page_writeback() was replaced with a call to
-> >wait_for_stable_page() upstream, so it'll probably work for your 3.10
-> >kernel.
-> >
-> >(I also wonder why not jump to a newer LTS kernel, but that's neither
-> >here nor there.)
-> >
-> ><more below>
-> >
-> >>On 01/28/2015 03:23 PM, Nikhilesh Reddy wrote:
-> >>>
-> >>>Hi Darrick
-> >>>Thanks so much for your reply.
-> >>>I apologize  the stable  page wait seems to be an odd outlier in that
-> >>>run ... I ran multiple traces again.
-> >>>
-> >>>Please find my answers inline below.
-> >>>
-> >>>On 01/28/2015 01:39 PM, Darrick J. Wong wrote:
-> >>>>On Wed, Jan 28, 2015 at 11:27:13AM -0800, Nikhilesh Reddy wrote:
-> >>>>>Hi
-> >>>>>I am working on a 64 bit Android device and have been trying to
-> >>>>>improve performance for stream based data download (for example an
-> >>>>>ftp)
-> >>>>>The device has 3GB of ram and the dirty_ratio and
-> >>>>>dirty_background_ratio are set to 5 and 1 respectively.
-> >>>>>
-> >>>>>Kernel 3.10 , Highmem is not enabled and the backing device is a
-> >>>>>emmc and checksumming is not enabled
-> >>>>Ok, 3.10 kernel is new enough that stable page writes only apply to
-> >>>>devices that demand it, and apparently your eMMC demands it.
-> >>>I tried checking my logs again .. and yes the stable pages dont apply
-> >>>... that seems to be an odd instance where it took a while.
-> >>>/My apologies.
-> >>>
-> >>>So On running many more trace runs it appears that the wait is actually
-> >>>on in the function
-> >>>
-> >>>wait_on_page_writeback(page) ext4_da_write_begin
-> >>>
-> >>>Snippet below
-> >>>
-> >>>     /*
-> >>>      * grab_cache_page_write_begin() can take a long time if the
-> >>>      * system is thrashing due to memory pressure, or if the page
-> >>>      * is being written back.  So grab it first before we start
-> >>>      * the transaction handle.  This also allows us to allocate
-> >>>      * the page (if needed) without using GFP_NOFS.
-> >>>      */
-> >>>retry_grab:
-> >>>     page = grab_cache_page_write_begin(mapping, index, flags);
-> >>>     if (!page)
-> >>>         return -ENOMEM;
-> >>>     unlock_page(page);
-> >>>
-> >>>retry_journal:
-> >>>     handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, needed_blocks);
-> >>>     if (IS_ERR(handle)) {
-> >>>         page_cache_release(page);
-> >>>         return PTR_ERR(handle);
-> >>>     }
-> >>>
-> >>>     lock_page(page);
-> >>>     if (page->mapping != mapping) {
-> >>>         /* The page got truncated from under us */
-> >>>         unlock_page(page);
-> >>>         page_cache_release(page);
-> >>>         ext4_journal_stop(handle);
-> >>>         goto retry_grab;
-> >>>     }
-> >>>     wait_on_page_writeback(page); <<<<<<<<<<<<<<<<<<This is where the
-> >>>wait is!
-> >>>
-> >>>
-> >>>
-> >>>The writeback just seems to take long.. but only when we write to the
-> >>>same page over again...
-> >>>The grab_cache_page_write_begin gives the same page until we  write
-> >>>enough...
-> >>>
-> >>>Is there a wait to not wait for the writeback?
-> >>>
-> >>>
-> >>>>
-> >>>>>I noticed when profiling writes that if we dont use streamed IO (ie.
-> >>>>>use write of whatever size data was read on the tcp stream) there
-> >>>>>are some writes that seem to get blocked on
-> >>>>>wait_for_stable_page.
-> >>>>>
-> >>>>>If I force the writes to be buffered in the userspace and ensure
-> >>>>>writing 4k chunks the writes never seem to stall.
-> >>>>That's consistent with a page being partially dirtied, written out,
-> >>>>and partially dirtied again before write-out finishes.  If you buffer
-> >>>>the incoming data such that a page is only dirtied once, you'll never
-> >>>>notice wait_for_stable_page.
-> >>>>
-> >>>>Are you explicitly forcing writeout (i.e. fsync()) after every chunk
-> >>>>arrives?  Or, is the rate of incoming data high enough such that we
-> >>>>hit either dirty*ratio limit?  It isn't too hard to hit 30MB these
-> >>>>days.  Why are you lowering the ratios from their defaults?
-> >>
-> >>>Using the higher values seems to cause longer stall ...when we do stall...
-> >>>Smaller values are cause the write out to happen often but each one
-> >>>takes less time.
-> >>>
-> >>>Setting it to the defaults causes a longer stall which seems to be
-> >>>impacting TCP due to the delay in reading.
-> >>>Additional info : dirty_expire_centisecs was set to 200 and the data
-> >>>rate is close to 300Mbps. so yea 30MB should be less than a second.
-> >
-> >Ah, you're concerned about the writeout latency, and it's important
-> >that incoming data end up on flash as quickly as is convenient.  Hm.
-> >
-> >That patch you found will probably get rid of the symptoms; I'd also
-> >suggest fsync()ing after each page boundary instead of lowering the
-> >writeback ratios since that increases the write load systemwide,
-> >which will make the writeouts for your app take more time and wear out
-> >the flash sooner.
-> >
-> >--D
-> >
-> >>>
-> >>>Am I missing something obvious here?
-> >>>
-> >>>Please do let me know.
-> >>>
-> >>>Thanks so much for you help
-> >>>
-> >>>
-> >>>>
-> >>>>>I noticed there was earlier discussion on this and idea were
-> >>>>>proposed to use snapshotting of the pages to avoid stalls...
-> >>>>>For example: https://lwn.net/Articles/546658/
-> >>>>>
-> >>>>>But this seems to only snapshot ext3 ... (unless i misunderstood
-> >>>>>what the patch is doing)
-> >>>>>
-> >>>>>Is there a similar patch to snapshot the buffers to not stall the
-> >>>>>writes for ext4?
-> >>>>No, there is not -- the problem with the snapshot solution is that it
-> >>>>requires page allocations when the FS is (potentially) trying to
-> >>>>reclaim memory by writing out dirty pages.
-> >>>>
-> >>>>--D
-> >>>>
-> >>>>>Please let me know.
-> >>>>>
-> >>>>>I would really appreciate any help you can give me.
-> >>>>>
-> >>>>>
-> >>>>>--
-> >>>>>Thanks
-> >>>>>Nikhilesh Reddy
-> >>>>>
-> >>>>>Qualcomm Innovation Center, Inc.
-> >>>>>The Qualcomm Innovation Center, Inc. is a member of the Code Aurora
-> >>>>>Forum,
-> >>>>>a Linux Foundation Collaborative Project.
-> >>>>>--
-> >>>>>To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> >>>>>the body of a message to majordomo@vger.kernel.org
-> >>>>>More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>>
-> >>>
-> >>
-> >>
-> >>--
-> >>Thanks
-> >>Nikhilesh Reddy
-> >>
-> >>Qualcomm Innovation Center, Inc.
-> >>The Qualcomm Innovation Center, Inc. is a member of the Code Aurora Forum,
-> >>a Linux Foundation Collaborative Project.
-> 
-> 
-> -- 
-> Thanks
-> Nikhilesh Reddy
-> 
-> Qualcomm Innovation Center, Inc.
-> The Qualcomm Innovation Center, Inc. is a member of the Code Aurora Forum,
-> a Linux Foundation Collaborative Project.
+
+Any hint how to approach such problem? e2fsck without force-ing treats
+this filesystem as clean:
+rpi_sdg2: clean, 53701/227824 files, 527274/950272 blocks
+
+Martin
+
+
+
+
