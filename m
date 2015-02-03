@@ -1,58 +1,87 @@
-From: Josh Hunt <johunt@akamai.com>
-Subject: Re: [PATCH] ext4: fix warning in ext4_da_update_reserve_space()
-Date: Tue, 03 Feb 2015 17:15:36 -0600
-Message-ID: <54D15698.5040308@akamai.com>
-References: <1420750108-11512-1-git-send-email-johunt@akamai.com> <20150203225343.GA3539@kroah.com> <54D15252.5000805@akamai.com> <20150203231326.GA3995@kroah.com>
+From: Nikhilesh Reddy <reddyn@codeaurora.org>
+Subject: Re: Writes blocked on wait_for_stable_page (Writes of less than page
+ size sometimes take too long)
+Date: Tue, 03 Feb 2015 15:51:41 -0800
+Message-ID: <54D15F0D.6030109@codeaurora.org>
+References: <54C93169.3000600@codeaurora.org> <54C93811.1040107@codeaurora.org> <20150128213914.GE9976@birch.djwong.org> <54C96F87.7000502@codeaurora.org> <54C97262.3010406@codeaurora.org> <20150128235705.GI21455@birch.djwong.org> <20150201023723.GB3070@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: stable@vger.kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu,
-	jack@suse.cz
-To: Greg KH <gregkh@linuxfoundation.org>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20150203231326.GA3995@kroah.com>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org,
+	"Darrick J. Wong" <darrick.wong@oracle.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp.codeaurora.org ([198.145.11.231]:47234 "EHLO
+	smtp.codeaurora.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756383AbbBCXvn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Feb 2015 18:51:43 -0500
+In-Reply-To: <20150201023723.GB3070@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 02/03/2015 05:13 PM, Greg KH wrote:
-> On Tue, Feb 03, 2015 at 04:57:22PM -0600, Josh Hunt wrote:
->> On 02/03/2015 04:53 PM, Greg KH wrote:
->>> On Thu, Jan 08, 2015 at 03:48:28PM -0500, Josh Hunt wrote:
->>>>      Please add the patch below and referenced dependency (0e95c22) to stable
->>>>      3.10.y.
->>>
->>> There is no such commit "0e95c22" in Linus's tree, do you mean
->>> "1c8924eb106c1ac755d5d35ce9b3ff42e89e2511"?  If so, that doesn't apply
->>> to 3.10 at all, so I can't apply that on, and so, can't apply the patch
->>> below either :(
->>>
->>> Care to provide proper backports of both of them?
->>>
->>> thanks,
->>>
->>> greg k-h
->>>
->>
->> Hey Greg
->>
->> I thought we discussed this already. You've already applied these patches to
->> 3.10.y:
->>
->> https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/commit/?h=linux-3.10.y&id=23d5efc071f5f47257e5b33c41534a30b1099cc3
->>
->> https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/commit/?h=linux-3.10.y&id=4e9eb2afbc494a56e35bf6c1a621f579eb1199b2
->>
->> I messed up the commit id reference in my original submission to you, but
->> sent a followup. Given that both patches are in 3.10.y now I don't think
->> there's anything else to do.
->
-> Ok, that's even better, I like it when I already did something I needed
-> to do :)
->
->> Let me know if you need something else from me.
->
-> As long as it's all ok, I'm happy,
+Thanks so much Darrick and Ted!
+You guys have been a lot of help. I really appreciate it.
 
-I'm happy too :D Thanks!
+On Sat 31 Jan 2015 06:37:23 PM PST, Theodore Ts'o wrote:
+> On Wed, Jan 28, 2015 at 03:57:05PM -0800, Darrick J. Wong wrote:
+>> Yes, that wait_for_page_writeback() was replaced with a call to
+>> wait_for_stable_page() upstream, so it'll probably work for your 3.10
+>> kernel.
+>>
+>> (I also wonder why not jump to a newer LTS kernel, but that's neither
+>> here nor there.)
+>
+> Nikhilesh said that he was using a 64-bit android device.  I'm going
+> to guess it is based off of the AOSP kernel for the Nexus 9, which is
+> a 64-bit android device that uses 3.10 as a base.  It's not *really* a
+> 3.10 kernel, though, becausre it looks like bits and pieces of the VFS
+> was forward ported to a somewhat newer version so they could backport
+> F2FS to the Nexus 9 kernel.  But I'm guessing he's using it because
+> there are device drivers he needs that might not be available without
+> a lot of forward-porting work on a newer kernel.
+>
 
-Josh
+Yes we cant really move to a newer kernel just yet. :)
+
+> If you are interested in trying to use a somewhat newer version of
+> ext4, I just *happen* to have a backport of the 3.18 version of ext4
+> on top of a stock version of 3.10.  You can find it at the
+> backport-to-3.10 branch of the ext4.git tree on git.kernel.org.
+
+Thanks that is awesome... yes...Will look into them.Thanks!
+
+>
+> If you are starting from the AOSP version of the Nexus 9 kernel, the
+> patch series from that branch won't apply 100% cleanly, because of the
+> changes resulting from the F2FS backport.  It's relatively
+> straight-forward though to use the backport-to-3.10 patch series as a
+> model to get a version of 3.18 ext4 on top of the AOSP kernel, though;
+> it's mostly dropping or reworking patches that were no longer
+> necessary thanks to the F2FS backport.
+>
+> If there is interest, I can look into what might be involved in making
+> a git repo of an AOSP kernel with the 3.18 ext4 code backported to it
+> available.
+>
+> I won't give any warrantees, of course, since the AOSP kernel doesn't
+> build on x86 and so I can't easily run regression tests on it.  So if
+> it breaks, you will get to keep both pieces.  I will try to at least
+> look at bug reports, though, and I can say that 3.18 backport on the
+> stock 3.10 kernel survives xfstests much better than the 3.10 version
+> of ext4, since a modern xfstests very quickly caused the stock 3.10
+> kernel to panic.  :-)
+>
+> 						- Ted
+>
+
+Yes I can run testing on my end to make sure everything is good.
+
+Thanks So much once again.
+
+-- 
+Thanks
+Nikhilesh Reddy
+
+Qualcomm Innovation Center, Inc.
+The Qualcomm Innovation Center, Inc. is a member of the Code Aurora Forum,
+a Linux Foundation Collaborative Project.
