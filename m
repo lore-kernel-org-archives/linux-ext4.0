@@ -1,48 +1,52 @@
-From: Oscar Forner Martinez <oscar.forner.martinez@gmail.com>
-Subject: [PATCH] ext4: Fixed two coding style errors, spaces required around =
-Date: Wed,  4 Feb 2015 12:33:46 +0000
-Message-ID: <1423053226-10210-1-git-send-email-oscar.forner.martinez@gmail.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org,
-	Oscar Forner Martinez <oscar.forner.martinez@gmail.com>
-To: linux-kernel@vger.kernel.org
+From: Olaf Hering <olaf@aepfle.de>
+Subject: Re: ext3_dx_add_entry complains about Directory index full
+Date: Wed, 4 Feb 2015 14:52:16 +0100
+Message-ID: <20150204135215.GA15159@aepfle.de>
+References: <20150204090447.GA20003@aepfle.de>
+ <FCD1EFFD-330A-4953-8CF4-AC88D297F433@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-we0-f169.google.com ([74.125.82.169]:48299 "EHLO
-	mail-we0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932801AbbBDMd6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Feb 2015 07:33:58 -0500
+Received: from mo4-p00-ob.smtp.rzone.de ([81.169.146.216]:39506 "EHLO
+	mo4-p00-ob.smtp.rzone.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755422AbbBDN6e (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Feb 2015 08:58:34 -0500
+Content-Disposition: inline
+In-Reply-To: <FCD1EFFD-330A-4953-8CF4-AC88D297F433@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Two lines with assignation without spaces around the =
+On Wed, Feb 04, Andreas Dilger wrote:
 
-Signed-off-by: Oscar Forner Martinez <oscar.forner.martinez@gmail.com>
----
- fs/ext4/ioctl.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+> How many files/subdirs in this directory?  The old ext3 limit was 32000
+> subdirs, which the dir_index fixed, but the new limit is 65000 subdirs
+> without "dir_index" enabled.
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index f58a0d1..60fdc44 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -365,7 +365,7 @@ setversion_out:
- 	}
- 	case EXT4_IOC_GROUP_EXTEND: {
- 		ext4_fsblk_t n_blocks_count;
--		int err, err2=0;
-+		int err, err2 = 0;
- 
- 		err = ext4_resize_begin(sb);
- 		if (err)
-@@ -451,7 +451,7 @@ mext_out:
- 
- 	case EXT4_IOC_GROUP_ADD: {
- 		struct ext4_new_group_data input;
--		int err, err2=0;
-+		int err, err2 = 0;
- 
- 		err = ext4_resize_begin(sb);
- 		if (err)
--- 
-2.2.2
+See below:
 
+> > # for t in d f l ; do echo "type $t: `find /media/BACKUP_OLH_500G/ -xdev -type $t | wc -l`" ; done
+> > type d: 1051396
+> > type f: 20824894
+> > type l: 6876
+
+> The 65000 subdir limit can be exceeded by turning on the "dir_nlink"
+> feature of the filesystem with "tune2fs -O dir_nlink", to allow an
+> "unlimited" number of subdirs (subject to other directory limits, about
+> 10-12M entries for 16-char filenames).
+
+I enabled this using another box, which turned the thing into an ext4
+filesystem. Now ext4_dx_add_entry complains.
+
+> The other potential problem is if you create and delete a large number
+> of files from this directory, then the hash tables can become full and
+> the leaf blocks are imbalanced and some become full even when many others
+> are not (htree only has an average leaf fullness of 3/4 of each block).
+> This could probably happen if you have more than 5M files in a long-lived
+> directory in your backup fs.  This can be fixed (for some time at least)
+> via "e2fsck -fD" on the unmounted filesystem to compact the directories.
+
+Ok, will try that. Thanks.
+
+Olaf
