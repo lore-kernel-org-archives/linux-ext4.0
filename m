@@ -1,130 +1,81 @@
 From: Omar Sandoval <osandov@osandov.com>
-Subject: [PATCH] ext4: fix indirect punch hole corruption
-Date: Thu,  5 Feb 2015 12:50:13 -0800
-Message-ID: <cf81509853ecdbef7d738d8d39abe786f41193ec.1423169101.git.osandov@osandov.com>
-Cc: Chris J Arges <chris.j.arges@canonical.com>,
-	Omar Sandoval <osandov@osandov.com>
-To: "Theodore Ts'o" <tytso@mit.edu>,
+Subject: Re: [PATCH] ext4: fix indirect punch hole corruption
+Date: Thu, 5 Feb 2015 12:56:01 -0800
+Message-ID: <20150205205601.GA5205@mew>
+References: <cf81509853ecdbef7d738d8d39abe786f41193ec.1423169101.git.osandov@osandov.com>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="J/dobhs11T7y2rNN"
+Cc: Chris J Arges <chris.j.arges@canonical.com>
+To: Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	=?UTF-8?q?Luk=C3=A1=C5=A1=20Czerner?= <lczerner@redhat.com>,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:40436 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751278AbbBEUuq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Feb 2015 15:50:46 -0500
-Received: by mail-pa0-f46.google.com with SMTP id lj1so12307452pab.5
-        for <linux-ext4@vger.kernel.org>; Thu, 05 Feb 2015 12:50:46 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <cf81509853ecdbef7d738d8d39abe786f41193ec.1423169101.git.osandov@osandov.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Commit 4f579ae7de56 (ext4: fix punch hole on files with indirect
-mapping) rewrote FALLOC_FL_PUNCH_HOLE for ext4 files with indirect
-mapping. However, the case where the punch happens within one level of
-indirection is incorrect. It assumes that the partial branches returned
-from ext4_find_shared will have the same depth, but this is not
-necessarily the case even when the offsets have the same depth. For
-example, if the last block occurs at the beginning of an indirect group
-(i.e., it has an offset of 0 at the end of the offsets array), then
-ext4_find_shared will return a shallower chain. So, let's handle the
-mismatch and clean up that case. Tested with generic/270, which no
-longer leads to an inconsistent filesystem like before.
 
-Signed-off-by: Omar Sandoval <osandov@osandov.com>
----
- fs/ext4/indirect.c | 61 +++++++++++++++++++++++++++++++-----------------------
- 1 file changed, 35 insertions(+), 26 deletions(-)
+--J/dobhs11T7y2rNN
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 36b3696..e04bbce 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -1434,50 +1434,59 @@ end_range:
- 	 * in punch_hole so we need to point to the next element
- 	 */
- 	partial2->p++;
--	while ((partial > chain) || (partial2 > chain2)) {
--		/* We're at the same block, so we're almost finished */
--		if ((partial->bh && partial2->bh) &&
--		    (partial->bh->b_blocknr == partial2->bh->b_blocknr)) {
--			if ((partial > chain) && (partial2 > chain2)) {
--				ext4_free_branches(handle, inode, partial->bh,
--						   partial->p + 1,
--						   partial2->p,
--						   (chain+n-1) - partial);
--				BUFFER_TRACE(partial->bh, "call brelse");
--				brelse(partial->bh);
--				BUFFER_TRACE(partial2->bh, "call brelse");
--				brelse(partial2->bh);
--			}
-+	while (partial > chain && partial2 > chain2) {
-+		int depth = (chain+n-1) - partial;
-+		int depth2 = (chain2+n2-1) - partial2;
-+
-+		if (partial->bh->b_blocknr == partial2->bh->b_blocknr) {
-+			/*
-+			 * We've converged on the same block. Clear the range,
-+			 * then we're done.
-+			 */
-+			ext4_free_branches(handle, inode, partial->bh,
-+					   partial->p + 1,
-+					   partial2->p,
-+					   (chain+n-1) - partial);
-+			BUFFER_TRACE(partial->bh, "call brelse");
-+			brelse(partial->bh);
-+			BUFFER_TRACE(partial2->bh, "call brelse");
-+			brelse(partial2->bh);
- 			return 0;
- 		}
-+
- 		/*
--		 * Clear the ends of indirect blocks on the shared branch
--		 * at the start of the range
-+		 * The start and end partial branches may not be at the same
-+		 * level even though the punch happened within one level. So, we
-+		 * give them a chance to arrive at the same level, then walk
-+		 * them in step with each other until we converge on the same
-+		 * block.
- 		 */
--		if (partial > chain) {
-+		if (depth <= depth2) {
- 			ext4_free_branches(handle, inode, partial->bh,
--				   partial->p + 1,
--				   (__le32 *)partial->bh->b_data+addr_per_block,
--				   (chain+n-1) - partial);
-+					   partial->p + 1,
-+					   (__le32 *)partial->bh->b_data+addr_per_block,
-+					   (chain+n-1) - partial);
- 			BUFFER_TRACE(partial->bh, "call brelse");
- 			brelse(partial->bh);
- 			partial--;
- 		}
--		/*
--		 * Clear the ends of indirect blocks on the shared branch
--		 * at the end of the range
--		 */
--		if (partial2 > chain2) {
-+		if (depth2 <= depth) {
- 			ext4_free_branches(handle, inode, partial2->bh,
- 					   (__le32 *)partial2->bh->b_data,
- 					   partial2->p,
--					   (chain2+n-1) - partial2);
-+					   (chain2+n2-1) - partial2);
- 			BUFFER_TRACE(partial2->bh, "call brelse");
- 			brelse(partial2->bh);
- 			partial2--;
- 		}
- 	}
- 
-+	/*
-+	 * The punch happened within the same level, so at some point we _must_
-+	 * converge on an indirect block.
-+	 */
-+	BUG_ON(1);
-+
- do_indirects:
- 	/* Kill the remaining (whole) subtrees */
- 	switch (offsets[0]) {
+On Thu, Feb 05, 2015 at 12:50:13PM -0800, Omar Sandoval wrote:
+> Commit 4f579ae7de56 (ext4: fix punch hole on files with indirect
+> mapping) rewrote FALLOC_FL_PUNCH_HOLE for ext4 files with indirect
+> mapping. However, the case where the punch happens within one level of
+> indirection is incorrect. It assumes that the partial branches returned
+> from ext4_find_shared will have the same depth, but this is not
+> necessarily the case even when the offsets have the same depth. For
+> example, if the last block occurs at the beginning of an indirect group
+> (i.e., it has an offset of 0 at the end of the offsets array), then
+> ext4_find_shared will return a shallower chain. So, let's handle the
+> mismatch and clean up that case. Tested with generic/270, which no
+> longer leads to an inconsistent filesystem like before.
+> 
+Ah, forgot to mention that this applies to v3.19-rc7. Additionally,
+I've attached a script which reproduces the issue. You can run
+xfs_io -c fiemap "$FILE" (after an umount/mount of the filesystem just
+be safe) and see that before the fix, a bunch of blocks get swallowed:
+
+/mnt/scratch/test:
+        0: [0..31]: 1026..1057
+        1: [32..127]: 930..1025
+        2: [128..255]: 2114..2241
+        3: [256..511]: 2306..2561
+        4: [512..535]: 2818..2841
+        5: [536..1559]: hole
+
+... but after the fix, the hole is in the right place:
+
+/mnt/scratch/test:
+        0: [0..31]: 1026..1057
+        1: [32..127]: 930..1025
+        2: [128..255]: 2114..2241
+        3: [256..511]: 2306..2561
+        4: [512..791]: 2818..3097
+        5: [792..1047]: hole
+        6: [1048..1559]: 4122..4633
+
+(These examples are from a 1k-block ext3 filesystem with
+CONFIG_EXT4_USE_FOR_EXT23=y).
+
 -- 
-2.2.2
+Omar
 
+--J/dobhs11T7y2rNN
+Content-Type: application/x-sh
+Content-Disposition: attachment; filename="ext4punch.sh"
+Content-Transfer-Encoding: quoted-printable
+
+#!/bin/sh=0A=0Aset -e=0A=0Aif [ $# -ne 2 ]; then=0A	echo "Usage: $0 FILE BL=
+OCK_SIZE" >&2=0A	exit 1=0Afi=0A=0AFILE=3D"$1"=0ABLOCK_SIZE=3D"$2"=0A=0ANDIR=
+=3D12=0AADDRS=3D$(($BLOCK_SIZE / 4))=0A=0A# Fill up the direct blocks and i=
+ndirect block, plus two indirect blocks in the=0A# first doubly-indirect bl=
+ock.=0Add if=3D/dev/zero of=3D"$FILE" bs=3D"$BLOCK_SIZE" count=3D$(($NDIR +=
+ 3 * $ADDRS))=0A=0A# Punch a hole from the middle of the first indirect blo=
+ck in the=0A# doubly-indirect block to the beginning of the second indirect=
+ block.=0Afallocate -p -o $(($BLOCK_SIZE * ($NDIR + $ADDRS + $ADDRS / 2))) =
+-l $((BLOCK_SIZE * ($ADDRS / 2))) "$FILE"=0A
+--J/dobhs11T7y2rNN--
