@@ -1,71 +1,40 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [v8 4/5] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR
- interface support
-Date: Thu, 5 Feb 2015 17:38:15 +0100
-Message-ID: <20150205163815.GK4258@quack.suse.cz>
-References: <54C11733.7080801@yandex-team.ru>
- <20150123015307.GD24722@dastard>
- <54C23751.7000009@yandex-team.ru>
- <20150123233026.GP16552@dastard>
- <CALCETrXPCrOTrkoAMuW2os=z6anaEfv4F4D2yDxo6VtCuEtRZw@mail.gmail.com>
- <20150127080239.GQ16552@dastard>
- <54C76C3D.4070404@yandex-team.ru>
- <20150128003746.GR16552@dastard>
- <54D23919.3000408@yandex-team.ru>
- <20150204225844.GA12722@dastard>
+From: Ramesh M <rameshandram@gmail.com>
+Subject: Directio flags in dd command causes file corruption on ext4 filesystem
+Date: Fri, 6 Feb 2015 00:46:57 +0530
+Message-ID: <CABx-mUmNtkpUJCNRWBieu0B0vgwB5QyoLLmrbkKr6Qo0X7Zx8A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Konstantin Khlebnikov <khlebnikov-XoJtRXgx1JseBXzfvpsJ4g@public.gmane.org>,
-	Andy Lutomirski <luto-kltTT9wpgjJwATOyAt5JVQ@public.gmane.org>,
-	Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	Linux FS Devel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
-	Al Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org,
-	"Eric W. Biederman" <ebiederm-aS9lmoZGLiVWk0Htik3J/w@public.gmane.org>
-To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20150204225844.GA12722@dastard>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ob0-f182.google.com ([209.85.214.182]:50520 "EHLO
+	mail-ob0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751274AbbBETQ6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Feb 2015 14:16:58 -0500
+Received: by mail-ob0-f182.google.com with SMTP id nt9so8771950obb.13
+        for <linux-ext4@vger.kernel.org>; Thu, 05 Feb 2015 11:16:57 -0800 (PST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+Hello All,
 
-> Users have *always* been allowed to set the project ID of
-> their own files. How else are they going to set the project ID on
-> files they create in random directories so to account them to the
-> correct project they are working on?
-> 
-> However, you keep making the assumption that project quotas ==
-> directory subtree quotas.  Project quotas are *not limited* to
-> directory subtrees - the subtree quota implementation is just an
-> implementation that *sets the default project ID* on files as they
-> are created.
-> 
-> e.g. there are production systems out there where project quotas are
-> used to track home directory space usage rather than user quotas.
-> This means users can take actions like "this file actually belongs
-> to project X and it shouldn't be accounted against my home
-> directory". Users can create their own sub directories that account
-> everything by default to project X rather than their own home
-> directory.
-> 
-> Again: project quotas are an *accounting* mechanism, not a security
-> mechanism.
-  OK, but now I got confused ;) So if users can change project ID of files
-they own, what's the point of project quotas? If I need to create a file
-and project quota doesn't allow me, I just set its project ID to some
-random number and I'm done with that... So are really project quotas just
-"advisory" - i.e., all users of a system cooperate so that project X
-doesn't use more space than it should (and project quotas make this
-cooperation somewhat simpler) or is there something which limits which
-project IDs user can set? I didn't find anything...
+I am using linux 3.3.8 kernel on AP and trying to copy  5200  bytes
+of data from AP to USB disk
+( /dev/sda1 -contains ext4 ) using directio method .
 
-								Honza
--- 
-Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-SUSE Labs, CR
+For  example
+  mount  /dev/sda1 /mnt/usb-ext4/
+
+   dd if=inptu.data  of=/mnt/usb-ext4/output.data bs=4096
+conv=notrunc oflag=append,direct
+
+the input.data  file contains know pattern for example 0xaa55. and
+after writing this file from AP to USB disk, randomly  i observed
+that  the output.data  file was corrupted (instead of 0xaa55, zero is
+written in the middle of the output file ) .
+
+is there any patches already available to fix this issue ?
+
+Thanks in advance for your help.
+
+Regards
+Ramesh
