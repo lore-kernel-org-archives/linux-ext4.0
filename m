@@ -1,81 +1,103 @@
-From: Omar Sandoval <osandov@osandov.com>
-Subject: Re: [PATCH] ext4: fix indirect punch hole corruption
-Date: Thu, 5 Feb 2015 12:56:01 -0800
-Message-ID: <20150205205601.GA5205@mew>
-References: <cf81509853ecdbef7d738d8d39abe786f41193ec.1423169101.git.osandov@osandov.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [v8 4/5] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR
+ interface support
+Date: Fri, 6 Feb 2015 08:05:01 +1100
+Message-ID: <20150205210501.GR4251@dastard>
+References: <20150123015307.GD24722@dastard>
+ <54C23751.7000009@yandex-team.ru>
+ <20150123233026.GP16552@dastard>
+ <CALCETrXPCrOTrkoAMuW2os=z6anaEfv4F4D2yDxo6VtCuEtRZw@mail.gmail.com>
+ <20150127080239.GQ16552@dastard>
+ <54C76C3D.4070404@yandex-team.ru>
+ <20150128003746.GR16552@dastard>
+ <54D23919.3000408@yandex-team.ru>
+ <20150204225844.GA12722@dastard>
+ <20150205163815.GK4258@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="J/dobhs11T7y2rNN"
-Cc: Chris J Arges <chris.j.arges@canonical.com>
-To: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <cf81509853ecdbef7d738d8d39abe786f41193ec.1423169101.git.osandov@osandov.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
-
-
---J/dobhs11T7y2rNN
 Content-Type: text/plain; charset=us-ascii
+Cc: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>,
+	Andy Lutomirski <luto@amacapital.net>,
+	Li Xi <pkuelelixi@gmail.com>,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Linux API <linux-api@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger@dilger.ca>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Christoph Hellwig <hch@infradead.org>, dmonakhov@openvz.org,
+	"Eric W. Biederman" <ebiederm@xmission.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:50845 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750857AbbBEVFS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Feb 2015 16:05:18 -0500
 Content-Disposition: inline
+In-Reply-To: <20150205163815.GK4258@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 05, 2015 at 12:50:13PM -0800, Omar Sandoval wrote:
-> Commit 4f579ae7de56 (ext4: fix punch hole on files with indirect
-> mapping) rewrote FALLOC_FL_PUNCH_HOLE for ext4 files with indirect
-> mapping. However, the case where the punch happens within one level of
-> indirection is incorrect. It assumes that the partial branches returned
-> from ext4_find_shared will have the same depth, but this is not
-> necessarily the case even when the offsets have the same depth. For
-> example, if the last block occurs at the beginning of an indirect group
-> (i.e., it has an offset of 0 at the end of the offsets array), then
-> ext4_find_shared will return a shallower chain. So, let's handle the
-> mismatch and clean up that case. Tested with generic/270, which no
-> longer leads to an inconsistent filesystem like before.
+On Thu, Feb 05, 2015 at 05:38:15PM +0100, Jan Kara wrote:
+>   Hello,
 > 
-Ah, forgot to mention that this applies to v3.19-rc7. Additionally,
-I've attached a script which reproduces the issue. You can run
-xfs_io -c fiemap "$FILE" (after an umount/mount of the filesystem just
-be safe) and see that before the fix, a bunch of blocks get swallowed:
+> > Users have *always* been allowed to set the project ID of
+> > their own files. How else are they going to set the project ID on
+> > files they create in random directories so to account them to the
+> > correct project they are working on?
+> > 
+> > However, you keep making the assumption that project quotas ==
+> > directory subtree quotas.  Project quotas are *not limited* to
+> > directory subtrees - the subtree quota implementation is just an
+> > implementation that *sets the default project ID* on files as they
+> > are created.
+> > 
+> > e.g. there are production systems out there where project quotas are
+> > used to track home directory space usage rather than user quotas.
+> > This means users can take actions like "this file actually belongs
+> > to project X and it shouldn't be accounted against my home
+> > directory". Users can create their own sub directories that account
+> > everything by default to project X rather than their own home
+> > directory.
+> > 
+> > Again: project quotas are an *accounting* mechanism, not a security
+> > mechanism.
+>   OK, but now I got confused ;) So if users can change project ID of files
+> they own, what's the point of project quotas? If I need to create a file
+> and project quota doesn't allow me, I just set its project ID to some
+> random number and I'm done with that...
 
-/mnt/scratch/test:
-        0: [0..31]: 1026..1057
-        1: [32..127]: 930..1025
-        2: [128..255]: 2114..2241
-        3: [256..511]: 2306..2561
-        4: [512..535]: 2818..2841
-        5: [536..1559]: hole
+Sure, but the admin is going to notice those random numbers in the
+next quota report they run and then a user is going to get
+re-educated with a clue bat.
 
-... but after the fix, the hole is in the right place:
+> So are really project quotas just
+> "advisory" - i.e., all users of a system cooperate so that project X
+> doesn't use more space than it should (and project quotas make this
+> cooperation somewhat simpler) or is there something which limits which
+> project IDs user can set? I didn't find anything...
 
-/mnt/scratch/test:
-        0: [0..31]: 1026..1057
-        1: [32..127]: 930..1025
-        2: [128..255]: 2114..2241
-        3: [256..511]: 2306..2561
-        4: [512..791]: 2818..3097
-        5: [792..1047]: hole
-        6: [1048..1559]: 4122..4633
+Not directly.  Project quotas have historically been used in tandem
+with user quotas - user quotas cannot be escaped and that puts a
+limit on the shenanigans that users can play with project quota.
 
-(These examples are from a 1k-block ext3 filesystem with
-CONFIG_EXT4_USE_FOR_EXT23=y).
+[ Indeed, Irix only had user and project quotas - it *never* had group
+quotas. e.g. when XFS was ported to Linux the project quota inode
+was re-purposed for group quotas in 2001:
 
+http://oss.sgi.com/cgi-bin/gitweb.cgi?p=archive/xfs-import.git;a=commitdiff;h=749b2bf3ed5ff064efd69370e6b31ea44c4a78a6
+]
+
+However, if you have a fileystem system that users can't directly
+access (e.g. an NFS server) then you can use project quotas as a
+space enforcement mechanism because users can't change the project
+ID on the files on the server. We've used the same model with
+containers - for the host to be able to use project quotas as space
+resource controller, users inside a container must not be able to
+change the project ID of a file....
+
+Cheers,
+
+Dave.
 -- 
-Omar
-
---J/dobhs11T7y2rNN
-Content-Type: application/x-sh
-Content-Disposition: attachment; filename="ext4punch.sh"
-Content-Transfer-Encoding: quoted-printable
-
-#!/bin/sh=0A=0Aset -e=0A=0Aif [ $# -ne 2 ]; then=0A	echo "Usage: $0 FILE BL=
-OCK_SIZE" >&2=0A	exit 1=0Afi=0A=0AFILE=3D"$1"=0ABLOCK_SIZE=3D"$2"=0A=0ANDIR=
-=3D12=0AADDRS=3D$(($BLOCK_SIZE / 4))=0A=0A# Fill up the direct blocks and i=
-ndirect block, plus two indirect blocks in the=0A# first doubly-indirect bl=
-ock.=0Add if=3D/dev/zero of=3D"$FILE" bs=3D"$BLOCK_SIZE" count=3D$(($NDIR +=
- 3 * $ADDRS))=0A=0A# Punch a hole from the middle of the first indirect blo=
-ck in the=0A# doubly-indirect block to the beginning of the second indirect=
- block.=0Afallocate -p -o $(($BLOCK_SIZE * ($NDIR + $ADDRS + $ADDRS / 2))) =
--l $((BLOCK_SIZE * ($ADDRS / 2))) "$FILE"=0A
---J/dobhs11T7y2rNN--
+Dave Chinner
+david@fromorbit.com
