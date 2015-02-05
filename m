@@ -1,216 +1,164 @@
-From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Subject: Re: [v8 4/5] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR interface
- support
-Date: Thu, 05 Feb 2015 12:32:02 +0300
-Message-ID: <54D33892.6090404@yandex-team.ru>
-References: <1418102548-5469-5-git-send-email-lixi@ddn.com> <54C11733.7080801@yandex-team.ru> <20150123015307.GD24722@dastard> <54C23751.7000009@yandex-team.ru> <20150123233026.GP16552@dastard> <CALCETrXPCrOTrkoAMuW2os=z6anaEfv4F4D2yDxo6VtCuEtRZw@mail.gmail.com> <20150127080239.GQ16552@dastard> <54C76C3D.4070404@yandex-team.ru> <20150128003746.GR16552@dastard> <54D23919.3000408@yandex-team.ru> <20150204225844.GA12722@dastard>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 92781] New: mounting via qemu-nbd and killing the process
+ causes kernel BUG at fs/buffer.c:3006
+Date: Thu, 05 Feb 2015 11:03:10 +0000
+Message-ID: <bug-92781-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Andy Lutomirski <luto@amacapital.net>,
-	Li Xi <pkuelelixi@gmail.com>,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Linux API <linux-api@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>, Jan Kara <jack@suse.cz>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Christoph Hellwig <hch@infradead.org>, dmonakhov@openvz.org,
-	"Eric W. Biederman" <ebiederm@xmission.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20150204225844.GA12722@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:33966 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756648AbbBELDP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Feb 2015 06:03:15 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id DCA5020270
+	for <linux-ext4@vger.kernel.org>; Thu,  5 Feb 2015 11:03:12 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id B45D720268
+	for <linux-ext4@vger.kernel.org>; Thu,  5 Feb 2015 11:03:11 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 05.02.2015 01:58, Dave Chinner wrote:
-> On Wed, Feb 04, 2015 at 06:22:01PM +0300, Konstantin Khlebnikov wrote:
->> On 28.01.2015 03:37, Dave Chinner wrote:
->>> On Tue, Jan 27, 2015 at 01:45:17PM +0300, Konstantin Khlebnikov wrote:
->>>> On 27.01.2015 11:02, Dave Chinner wrote:
->>>>> On Fri, Jan 23, 2015 at 03:59:04PM -0800, Andy Lutomirski wrote:
->>>>>> On Fri, Jan 23, 2015 at 3:30 PM, Dave Chinner <david@fromorbit.com> wrote:
->>>>>>> On Fri, Jan 23, 2015 at 02:58:09PM +0300, Konstantin Khlebnikov wrote:
->>>>>>
->>>>>> I think I must be missing something simple here.  In a hypothetical
->>>>>> world where the code used nsown_capable, if an admin wants to stick a
->>>>>> container in /mnt/container1 with associated prid 1 and a userns,
->>>>>> shouldn't it just map only prid 1 into the user ns?  Then a user in
->>>>>> that userns can't try to change the prid of a file to 2 because the
->>>>>> number "2" is unmapped for that user and translation will fail.
->>>>>
->>>>> You've effectively said "yes, project quotas are enabled, but you
->>>>> only have a single ID, it's always turned on and you can't change it
->>>>> to anything else.
->>>>>
->>>>> So, why do they need to be mapped via user namespaces to enable
->>>>> this? Think about it a little harder:
->>>>>
->>>>> 	- Project IDs are not user IDs.
->>>>> 	- Project IDs are not a security/permission mechanism.
->
-> First, I'll just point this out again...
+https://bugzilla.kernel.org/show_bug.cgi?id=92781
 
-Ok, I get it.
+            Bug ID: 92781
+           Summary: mounting via qemu-nbd and killing the process causes
+                    kernel BUG at fs/buffer.c:3006
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.19-rc7
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: james410@cowgill.org.uk
+        Regression: No
 
->>>> This might be useful even without containers : normal user quota has
->>>> two levels and admins might classify users into groups and set group
->>>> quota for them. Project quota is flat and cannot provide any control
->>>> if we want classify projects.
->>>
->>> I don't follow. project ID is exactly what allows you to control
->>> project classification.
->>
->> I mean hierarchy allows to group several projects into one super-project
->> which sums all disk usage and could have its own limit too.
->
-> Yes, I know, but you can also do this resource management from
-> userspace with the existing project quota tools. It's just a matter
-> of layering heirarchical limit management on top of the existing
-> infrastructure.
+Mounting an ext4 image using qmeu-nbd and then killing the nbd process seems to
+cause a kernel bug in the ext4 driver. Also seems to affect the ext2 driver but
+not other filesystems. It affects Debian's 3.2.65 kernel as well. I can
+reproduce this 100% of the time. The 'sleep 1' seems to be important - if you
+remove that line the BUG does not occur (but will if you later run ls /mnt
+manually).
 
-Yes but not in all cases: it's impossible to overcommit disk limits on 
-project level without overcommiting on super-project level.
-Hierarchical quotas can handle this [ hypothetically useful ] use case.
+root@helena-test:~# cat test-nbd 
+#!/bin/sh -ex
+cd /root
+qemu-img create -f qcow2 image.img 1G
+mkfs.ext4 image.img
+modprobe nbd || true
+qemu-nbd -c /dev/nbd0 image.img
+mount /dev/nbd0 /mnt
+killall -KILL qemu-nbd
+sleep 1
+ls /mnt
 
->>
->> For now I'm more interested in participation disk space among services
->> in one system. As I see security model of project quota in XFS almost
->> non-existent for this case: it forbids linking/renaming files between
->> different projects but any unprivileged user might change project id
->> for its own files. That's strange, this operation should be privileged.
->
-> <sigh>
->
-> It's clear you don't understand the design/architecture of project
-> quotas. You've clearly read the code, but you haven't understood
-> the design that lead to the specific implementation in XFS.
->
-> Users have *always* been allowed to set the project ID of
-> their own files. How else are they going to set the project ID on
-> files they create in random directories so to account them to the
-> correct project they are working on?
+root@helena-test:~# ./test-nbd 
++ cd /root
++ qemu-img create -f qcow2 image.img 1G
+Formatting 'image.img', fmt=qcow2 size=1073741824 encryption=off
+cluster_size=65536 lazy_refcounts=off 
++ mkfs.ext4 image.img
+mke2fs 1.42.12 (29-Aug-2014)
 
-In this case project disk limits are almost useless and even dangerous 
-because any unprivileged user could add files into limited project
-witch belongs to other user.
+Filesystem too small for a journal
+Discarding device blocks: done                            
+Creating filesystem with 192 1k blocks and 24 inodes
 
->
-> However, you keep making the assumption that project quotas ==
-> directory subtree quotas.  Project quotas are *not limited* to
-> directory subtrees - the subtree quota implementation is just an
-> implementation that *sets the default project ID* on files as they
-> are created.
->
-> e.g. there are production systems out there where project quotas are
-> used to track home directory space usage rather than user quotas.
-> This means users can take actions like "this file actually belongs
-> to project X and it shouldn't be accounted against my home
-> directory". Users can create their own sub directories that account
-> everything by default to project X rather than their own home
-> directory.
->
-> Again: project quotas are an *accounting* mechanism, not a security
-> mechanism.
->
-> Containers are *security mechanism* and hence we need a security
-> model for container resource controller mechanisms. Project quotas
-> do not provide a directory heirarchy access security model - that's
-> what we use mount namespaces for. The resource controller security
-> model only has to prevent users inside the container from subverting
-> the resource controller mechanism, not anything else.
->
-> Not surprisingly, we've implemented *exactly* the model you are
-> suggesting: that modification of the resource accounting mechanism
-> is a privileged operation that cannot be accessed from within the
-> container. i.e. inside a userns container you can't change the
-> project ID on a file, not even as root.
->
->> Also if user have permission for changing project id he could be
->> permitted to link and rename file into directory with any project
->> id, because he anyway could change project, move, and revert it
->> back.
->
-> You don't appear to understand why XFS forbids linking/renaming
-> across directories different project IDs. Hint: it's resource
-> accounting simplification, *not a security mechanism*.
->
-> Linking is obvious: you can't have the same inode accounted to
-> multiple projects - it belongs to a single project and so can't be
-> accounted to multiple projects. Hence if you want to link across
-> different directory-based project quotas, you have to use symlinks.
->
-> That's much simpler than having to decide what project the inode is
-> accounted to, especially when removing links and link that owns the
-> project ID is removed. How do you even know the link you are
-> removing is the last link in the current project? IOWs, you have to
-> search for the other owners of the inode to determine who the
-> project quota is now accounted to...
+Allocating group tables: done                            
+Writing inode tables: done                            
+Writing superblocks and filesystem accounting information: done
 
-But you have to search hardlinks everywhere (inode owner can hardlink it 
-into any directory where he has write access because project can be 
-changed temporary). And after that you have to search broken symlinks.
-Also symlinks cannot share file between isolated containers which run in 
-chroot while creating hardlinks is still possible but requires some
-extra steps like changing project id or creating temporary directories
-even if you're root.
-
-Not so useful too. Probably that's the reason why this feature seems
-never been implemented anywhere except xfs.
-
-Could we change that? For example by adding flag into quota-info block
-which makes project id more restrictive and useful?
-
->
-> Same for rename: there are a multitude of nasty corner cases when it
-> comes to accounting the quotas correctly. So, either we try to do
-> something complex and likely expensive and buggy, or we can return
-> EXDEV. EXDEV was very carefully chosen here, and it's not for
-> security reasons. It was chosen because applications know that if a
-> rename returns EXDEV, they've got to *copy* the file instead. And,
-> well, that create/write/unlink process results in correct project
-> quota accounting at both the source and destination.
->
-> IOWs: EXDEV not a security mechanism, it's an accounting mechanism.
->
-> If you can implement project quota rename accounting and handle the
-> multiple handlinks problem efficiently, then you can allow those
-> things to be done directly in the filesystem rather than returning
-> EXDEV.
->
->> For me perfect interface looks like couple fcntls for
->> getting/changing project id:
->>
->> int fcntl(fd, F_GET_PROJECT, projid_t *);
->> int fcntl(fd, F_SET_PROJECT, projid_t);
->>
->> F_GET_PROJECT is allowed for everybody
->> F_SET_PROJECT requires CAP_SYS_ADMIN (or maybe CAP_FOWNER?)
->
-> Sure, it's nice, but you're ignoring the entire the point of making
-> FS_IOC_SETXATTR generic: so that the *existing tools* that manage
-> project quotas work on all project quota enabled filesystems.
-> i.e. so that all filesystems *behave the same* and can *run
-> identical regression tests*.
-
-As i see quota tools in xfsprogs checks file-system name and doesn't
-work for anything except "xfs", so we have to patch it anywas.
-xfstests are cool but I think fixing one ioctl isn't a problem.
-Something else?
-
->
-> We do not want different project quota implementations on different
-> filesystems. Like user and group quotas, they need to be
-> consistently implemented across all filesystems. If you want
-> something new, different and incompatible with existing
-> infrastructure, then that's a separate line of development and
-> discussion....
->
-> Cheers,
->
-> Dave.
->
-
++ modprobe nbd
+modprobe: ERROR: ../libkmod/libkmod.c:557 kmod_search_moddep() could not open
+moddep file '/lib/modules/3.19.0-rc7/modules.dep.bin'
++ true
++ qemu-nbd -c /dev/nbd0 image.img
++ mount /dev/nbd0 /mnt
+[   11.972324] EXT4-fs (nbd0): mounted filesystem without journal. Opts: (null)
++ killall -KILL qemu-nbd
+[   11.996675] nbd (pid 1480: qemu-nbd) got signal 9
+[   11.997437] block nbd0: shutting down socket
+[   11.997987] block nbd0: Receive control failed (result -4)
+[   11.999345] block nbd0: queue cleared
++ sleep 1
++ ls /mnt
+[   13.030364] block nbd0: Attempted send on closed socket
+[   13.034188] blk_update_request: I/O error, dev nbd0, sector 8
+[   13.038737] EXT4-fs warning (device nbd0): __ext4_read_dirblock:884: error
+-5 reading directory block (ino 2, block 0)
+[   13.045232] block nbd0: Attempted send on closed socket
+[   13.048804] blk_update_request: I/O error, dev nbd0, sector 72
+[   13.053099] block nbd0: Attempted send on closed socket
+[   13.055493] blk_update_request: I/O error, dev nbd0, sector 70
+[   13.056417] EXT4-fs error (device nbd0): __ext4_get_inode_loc:3769: inode
+#2: block 35: comm ls: unable to read itable block
+[   13.057817] ------------[ cut here ]------------
+[   13.058487] kernel BUG at fs/buffer.c:3006!
+[   13.058797] invalid opcode: 0000 [#1] SMP 
+[   13.058797] CPU: 0 PID: 1489 Comm: ls Not tainted 3.19.0-rc7 #3
+[   13.058797] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS
+1.7.5-20140531_083030-gandalf 04/01/2014
+[   13.058797] task: ffff88003ce3ac10 ti: ffff88003d5e4000 task.ti:
+ffff88003d5e4000
+[   13.058797] RIP: 0010:[<ffffffff8118a480>]  [<ffffffff8118a480>]
+_submit_bh+0x160/0x180
+[   13.058797] RSP: 0000:ffff88003d5e7ba8  EFLAGS: 00010246
+[   13.058797] RAX: 0000000000000005 RBX: ffff88003d22ad68 RCX:
+0000000000000001
+[   13.058797] RDX: 0000000000000000 RSI: ffff88003d22ad68 RDI:
+0000000000000411
+[   13.058797] RBP: ffff88003d5e7bc8 R08: ffffffff81cc75a0 R09:
+00000000000001b7
+[   13.058797] R10: 0000000000000000 R11: 00000000000001b7 R12:
+0000000000000411
+[   13.058797] R13: ffff88003cc43400 R14: 0000000000000002 R15:
+ffff88003d691000
+[   13.058797] FS:  00007f5b0e2f1800(0000) GS:ffff88003fc00000(0000)
+knlGS:0000000000000000
+[   13.058797] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[   13.058797] CR2: 00007f307f381000 CR3: 000000003ce02000 CR4:
+00000000000006f0
+[   13.058797] Stack:
+[   13.058797]  ffff88003d22ad68 0000000000000411 ffff88003cc43400
+0000000000000002
+[   13.058797]  ffff88003d5e7be8 ffffffff8118a9a9 ffffffff81cc75a0
+ffff88003d22ad68
+[   13.058797]  ffff88003d5e7bf8 ffffffff8118aa6e ffff88003d5e7c48
+ffffffff811f02c0
+[   13.058797] Call Trace:
+[   13.058797]  [<ffffffff8118a9a9>] __sync_dirty_buffer+0x59/0x110
+[   13.058797]  [<ffffffff8118aa6e>] sync_dirty_buffer+0xe/0x10
+[   13.058797]  [<ffffffff811f02c0>] ext4_commit_super+0x1b0/0x240
+[   13.058797]  [<ffffffff811f0835>] __ext4_error_inode+0x85/0x150
+[   13.058797]  [<ffffffff811d38b9>] __ext4_get_inode_loc+0x209/0x400
+[   13.058797]  [<ffffffff811d5458>] ext4_get_inode_loc+0x18/0x20
+[   13.058797]  [<ffffffff811d6ebf>] ext4_reserve_inode_write+0x1f/0x90
+[   13.058797]  [<ffffffff811da35b>] ? ext4_dirty_inode+0x3b/0x60
+[   13.058797]  [<ffffffff811d6f78>] ext4_mark_inode_dirty+0x48/0x1f0
+[   13.058797]  [<ffffffff811da35b>] ext4_dirty_inode+0x3b/0x60
+[   13.058797]  [<ffffffff81182a86>] __mark_inode_dirty+0x186/0x290
+[   13.058797]  [<ffffffff811710a9>] update_time+0x79/0xc0
+[   13.058797]  [<ffffffff81172fc6>] touch_atime+0xc6/0x130
+[   13.058797]  [<ffffffff8116b100>] iterate_dir+0xe0/0x130
+[   13.058797]  [<ffffffff8116b25c>] SyS_getdents+0x7c/0xf0
+[   13.058797]  [<ffffffff8116ae10>] ? fillonedir+0xd0/0xd0
+[   13.058797]  [<ffffffff81040d6c>] ? do_page_fault+0xc/0x10
+[   13.058797]  [<ffffffff81729152>] system_call_fastpath+0x12/0x17
+[   13.058797] Code: d8 5b 41 5c 41 5d 41 5e 5d c3 90 40 f6 c7 01 0f 84 0e ff
+ff ff 3e 80 63 01 f7 e9 04 ff ff ff 0f 1f 40 00 0f 0b 66 0f 1f 44 00 00 <0f> 0b
+66 0f 1f 44 00 00 0f 0b 66 0f 1f 44 00 00 0f 0b 66 0f 1f 
+[   13.058797] RIP  [<ffffffff8118a480>] _submit_bh+0x160/0x180
+[   13.058797]  RSP <ffff88003d5e7ba8>
+[   13.094762] ---[ end trace 781a35c72740e2c9 ]---
+Segmentation fault
 
 -- 
-Konstantin
+You are receiving this mail because:
+You are watching the assignee of the bug.
