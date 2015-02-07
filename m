@@ -1,38 +1,38 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16380] ext2/ext4 filesystem "hangs" for a few seconds when
- trying to write a lot of data to a freshly RW mounted FS
-Date: Sat, 07 Feb 2015 10:25:33 +0000
-Message-ID: <bug-16380-13602-nQQ9xgFWUi@https.bugzilla.kernel.org/>
-References: <bug-16380-13602@https.bugzilla.kernel.org/>
+From: Greg KH <gregkh@linuxfoundation.org>
+Subject: Re: [PATCH][request for stable 3.10 inclusion] ext4 CVE-2014-8086
+Date: Sat, 7 Feb 2015 16:51:56 +0800
+Message-ID: <20150207085156.GA20290@kroah.com>
+References: <54D31F09.4010401@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: stable@vger.kernel.org, Li Zefan <lizefan@huawei.com>,
+	linux-ext4@vger.kernel.org, dmonakhov@openvz.org,
+	sasha.levin@oracle.com, tytso@mit.edu
+To: hujianyang <hujianyang@huawei.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:54710 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753605AbbBGKZj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 7 Feb 2015 05:25:39 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 1E28820155
-	for <linux-ext4@vger.kernel.org>; Sat,  7 Feb 2015 10:25:38 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id B77ED201B4
-	for <linux-ext4@vger.kernel.org>; Sat,  7 Feb 2015 10:25:34 +0000 (UTC)
-In-Reply-To: <bug-16380-13602@https.bugzilla.kernel.org/>
+Received: from mail.linuxfoundation.org ([140.211.169.12]:59101 "EHLO
+	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758705AbbBGRII (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Feb 2015 12:08:08 -0500
+Content-Disposition: inline
+In-Reply-To: <54D31F09.4010401@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16380
+On Thu, Feb 05, 2015 at 03:43:05PM +0800, hujianyang wrote:
+> Hi Greg,
+> 
+> The following patch commit a41537e69b4aa43f0fea02498c2595a81267383b
+> 
+> ext4: prevent bugon on race between write/fcntl
+> 
+> fix CVE-2014-8086 in upstream kernel. I wish you could merge this fix
+> into stable 3.10. Since refactoring in ext4, the sending patch is quite
+> different from the patch in upstream kernel.
 
---- Comment #17 from Artem S. Tashkinov <t.artem@mailcity.com> ---
-Created attachment 166031
-  --> https://bugzilla.kernel.org/attachment.cgi?id=166031&action=edit
-Video demonstration
+Before I do that, can you also provide a backport to the 3.14-stable
+kernel tree so that we don't have that tree missing this?
 
-I'm NOT reopening this bug report. I'm merely adding a video clip which
-pertains to it.
+thanks,
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+greg k-h
