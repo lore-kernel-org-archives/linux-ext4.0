@@ -1,70 +1,204 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 93031] root becomes read-only at boot due to
- journal_async_commit in /etc/fstab
-Date: Tue, 10 Feb 2015 16:53:19 +0000
-Message-ID: <bug-93031-13602-JUL5GG9ztn@https.bugzilla.kernel.org/>
-References: <bug-93031-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:41349 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751310AbbBJQxX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Feb 2015 11:53:23 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id EE33220166
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Feb 2015 16:53:21 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 8F95F20172
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Feb 2015 16:53:19 +0000 (UTC)
-In-Reply-To: <bug-93031-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Omar Sandoval <osandov@osandov.com>
+Subject: [PATCH v4] ext4: fix indirect punch hole corruption
+Date: Tue, 10 Feb 2015 13:44:10 -0800
+Message-ID: <bdb70d657b83644c6ee6eaaaf4f95460f937f05c.1423602557.git.osandov@osandov.com>
+References: <20150209212805.GA10892@mew.cs.washington.edu>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Omar Sandoval <osandov@osandov.com>
+To: Chris J Arges <chris.j.arges@canonical.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	=?UTF-8?q?Luk=C3=A1=C5=A1=20Czerner?= <lczerner@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20150209212805.GA10892@mew.cs.washington.edu>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D93031
+Commit 4f579ae7de56 (ext4: fix punch hole on files with indirect
+mapping) rewrote FALLOC_FL_PUNCH_HOLE for ext4 files with indirect
+mapping. However, there are bugs in several corner cases. This fixes 5
+distinct bugs:
 
-Eric Sandeen <sandeen@redhat.com> changed:
+1. When there is at least one entire level of indirection between the
+start and end of the punch range and the end of the punch range is the
+first block of its level, we can't return early; we have to free the
+intervening levels.
 
-           What    |Removed                     |Added
------------------------------------------------------------------------=
------
-                 CC|                            |sandeen@redhat.com
+2. When the end is at a higher level of indirection than the start and
+ext4_find_shared returns a top branch for the end, we still need to free
+the rest of the shared branch it returns; we can't decrement partial2.
 
---- Comment #1 from Eric Sandeen <sandeen@redhat.com> ---
-If you really want that option (which, btw, had been simply ignored on =
-a
-remount, prior to this change) you can add it to the rootflags=3D kerne=
-l
-parameter.
+3. When a punch happens within one level of indirection, we need to
+converge on an indirect block that contains the start and end. However,
+because the branches returned from ext4_find_shared do not necessarily
+start at the same level (e.g., the partial2 chain will be shallower if
+the last block occurs at the beginning of an indirect group), the walk
+of the two chains can end up "missing" each other and freeing a bunch of
+extra blocks in the process. This mismatch can be handled by first
+making sure that the chains are at the same level, then walking them
+together until they converge.
 
-But also:
+4. When the punch happens within one level of indirection and
+ext4_find_shared returns a top branch for the start, we must free it,
+but only if the end does not occur within that branch.
 
-http://marc.info/?l=3Dlinux-ext4&m=3D142358693108213&w=3D2
+5. When the punch happens within one level of indirection and
+ext4_find_shared returns a top branch for the end, then we shouldn't
+free the block referenced by the end of the returned chain (this mirrors
+the different levels case).
 
-[PATCH 2/2, RFC] ext4: ignore journal checksum on remount; don't fail
-
-As of v3.18, ext4 started rejecting a remount which changes the
-journal_checksum option.
-
-Prior to that, it was simply ignored; the problem here is that
-if someone has this in their fstab for the root fs, now the box
-fails to boot properly, because remount of root with the new options
-will fail, and the box proceeds with a readonly root.
-
-I think it is a little nicer behavior to accept the option, but
-warn that it's being ignored, rather than failing the mount,
-but that might be a subjective matter...
-
-Reported-by: C=C3=83=C2=B3nr=C3=83=C2=A4d <conradsand.arma@gmail.com>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Omar Sandoval <osandov@osandov.com>
 ---
+Okay, two more bugfixes folded in, all described in the commit message.
+I'm finally no longer seeing xfstest generic/270 cause corruptions, even
+after running it overnight, so hopefully this is it. Chris, would you
+mind trying this out?
 
---=20
-You are receiving this mail because:
-You are watching the assignee of the bug.--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ fs/ext4/indirect.c | 105 ++++++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 71 insertions(+), 34 deletions(-)
+
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 36b3696..5e7af1c 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -1393,10 +1393,7 @@ end_range:
+ 				 * to free. Everything was covered by the start
+ 				 * of the range.
+ 				 */
+-				return 0;
+-			} else {
+-				/* Shared branch grows from an indirect block */
+-				partial2--;
++				goto do_indirects;
+ 			}
+ 		} else {
+ 			/*
+@@ -1427,56 +1424,96 @@ end_range:
+ 	/* Punch happened within the same level (n == n2) */
+ 	partial = ext4_find_shared(inode, n, offsets, chain, &nr);
+ 	partial2 = ext4_find_shared(inode, n2, offsets2, chain2, &nr2);
+-	/*
+-	 * ext4_find_shared returns Indirect structure which
+-	 * points to the last element which should not be
+-	 * removed by truncate. But this is end of the range
+-	 * in punch_hole so we need to point to the next element
+-	 */
+-	partial2->p++;
+-	while ((partial > chain) || (partial2 > chain2)) {
+-		/* We're at the same block, so we're almost finished */
+-		if ((partial->bh && partial2->bh) &&
+-		    (partial->bh->b_blocknr == partial2->bh->b_blocknr)) {
+-			if ((partial > chain) && (partial2 > chain2)) {
++
++	/* Free top, but only if partial2 isn't its subtree. */
++	if (nr) {
++		int level = min(partial - chain, partial2 - chain2);
++		int i;
++		int subtree = 1;
++
++		for (i = 0; i <= level; i++) {
++			if (offsets[i] != offsets2[i]) {
++				subtree = 0;
++				break;
++			}
++		}
++
++		if (!subtree) {
++			if (partial == chain) {
++				/* Shared branch grows from the inode */
++				ext4_free_branches(handle, inode, NULL,
++						   &nr, &nr+1,
++						   (chain+n-1) - partial);
++				*partial->p = 0;
++			} else {
++				/* Shared branch grows from an indirect block */
++				BUFFER_TRACE(partial->bh, "get_write_access");
+ 				ext4_free_branches(handle, inode, partial->bh,
+-						   partial->p + 1,
+-						   partial2->p,
++						   partial->p,
++						   partial->p+1,
+ 						   (chain+n-1) - partial);
+-				BUFFER_TRACE(partial->bh, "call brelse");
+-				brelse(partial->bh);
+-				BUFFER_TRACE(partial2->bh, "call brelse");
+-				brelse(partial2->bh);
+ 			}
+-			return 0;
+ 		}
++	}
++
++	if (!nr2) {
+ 		/*
+-		 * Clear the ends of indirect blocks on the shared branch
+-		 * at the start of the range
++		 * ext4_find_shared returns Indirect structure which
++		 * points to the last element which should not be
++		 * removed by truncate. But this is end of the range
++		 * in punch_hole so we need to point to the next element
+ 		 */
+-		if (partial > chain) {
++		partial2->p++;
++	}
++
++	while (partial > chain || partial2 > chain2) {
++		int depth = (chain+n-1) - partial;
++		int depth2 = (chain2+n2-1) - partial2;
++
++		if (partial > chain && partial2 > chain2 &&
++		    partial->bh->b_blocknr == partial2->bh->b_blocknr) {
++			/*
++			 * We've converged on the same block. Clear the range,
++			 * then we're done.
++			 */
+ 			ext4_free_branches(handle, inode, partial->bh,
+-				   partial->p + 1,
+-				   (__le32 *)partial->bh->b_data+addr_per_block,
+-				   (chain+n-1) - partial);
++					   partial->p + 1,
++					   partial2->p,
++					   (chain+n-1) - partial);
+ 			BUFFER_TRACE(partial->bh, "call brelse");
+ 			brelse(partial->bh);
+-			partial--;
++			BUFFER_TRACE(partial2->bh, "call brelse");
++			brelse(partial2->bh);
++			return 0;
+ 		}
++
+ 		/*
+-		 * Clear the ends of indirect blocks on the shared branch
+-		 * at the end of the range
++		 * The start and end partial branches may not be at the same
++		 * level even though the punch happened within one level. So, we
++		 * give them a chance to arrive at the same level, then walk
++		 * them in step with each other until we converge on the same
++		 * block.
+ 		 */
+-		if (partial2 > chain2) {
++		if (partial > chain && depth <= depth2) {
++			ext4_free_branches(handle, inode, partial->bh,
++					   partial->p + 1,
++					   (__le32 *)partial->bh->b_data+addr_per_block,
++					   (chain+n-1) - partial);
++			BUFFER_TRACE(partial->bh, "call brelse");
++			brelse(partial->bh);
++			partial--;
++		}
++		if (partial2 > chain2 && depth2 <= depth) {
+ 			ext4_free_branches(handle, inode, partial2->bh,
+ 					   (__le32 *)partial2->bh->b_data,
+ 					   partial2->p,
+-					   (chain2+n-1) - partial2);
++					   (chain2+n2-1) - partial2);
+ 			BUFFER_TRACE(partial2->bh, "call brelse");
+ 			brelse(partial2->bh);
+ 			partial2--;
+ 		}
+ 	}
++	return 0;
+ 
+ do_indirects:
+ 	/* Kill the remaining (whole) subtrees */
+-- 
+2.3.0
