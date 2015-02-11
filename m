@@ -1,204 +1,214 @@
-From: Omar Sandoval <osandov@osandov.com>
-Subject: [PATCH v4] ext4: fix indirect punch hole corruption
-Date: Tue, 10 Feb 2015 13:44:10 -0800
-Message-ID: <bdb70d657b83644c6ee6eaaaf4f95460f937f05c.1423602557.git.osandov@osandov.com>
-References: <20150209212805.GA10892@mew.cs.washington.edu>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Omar Sandoval <osandov@osandov.com>
-To: Chris J Arges <chris.j.arges@canonical.com>,
-	Theodore Ts'o <tytso@mit.edu>,
+From: Chris J Arges <chris.j.arges@canonical.com>
+Subject: Re: [PATCH v4] ext4: fix indirect punch hole corruption
+Date: Tue, 10 Feb 2015 20:59:23 -0600
+Message-ID: <54DAC58B.8030600@canonical.com>
+References: <20150209212805.GA10892@mew.cs.washington.edu> <bdb70d657b83644c6ee6eaaaf4f95460f937f05c.1423602557.git.osandov@osandov.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Omar Sandoval <osandov@osandov.com>, Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	=?UTF-8?q?Luk=C3=A1=C5=A1=20Czerner?= <lczerner@redhat.com>
+	=?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20150209212805.GA10892@mew.cs.washington.edu>
+In-Reply-To: <bdb70d657b83644c6ee6eaaaf4f95460f937f05c.1423602557.git.osandov@osandov.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Commit 4f579ae7de56 (ext4: fix punch hole on files with indirect
-mapping) rewrote FALLOC_FL_PUNCH_HOLE for ext4 files with indirect
-mapping. However, there are bugs in several corner cases. This fixes 5
-distinct bugs:
+On 02/10/2015 03:44 PM, Omar Sandoval wrote:
+> Commit 4f579ae7de56 (ext4: fix punch hole on files with indirect
+> mapping) rewrote FALLOC_FL_PUNCH_HOLE for ext4 files with indirect
+> mapping. However, there are bugs in several corner cases. This fixes 5
+> distinct bugs:
+> 
+> 1. When there is at least one entire level of indirection between the
+> start and end of the punch range and the end of the punch range is the
+> first block of its level, we can't return early; we have to free the
+> intervening levels.
+> 
+> 2. When the end is at a higher level of indirection than the start and
+> ext4_find_shared returns a top branch for the end, we still need to free
+> the rest of the shared branch it returns; we can't decrement partial2.
+> 
+> 3. When a punch happens within one level of indirection, we need to
+> converge on an indirect block that contains the start and end. However,
+> because the branches returned from ext4_find_shared do not necessarily
+> start at the same level (e.g., the partial2 chain will be shallower if
+> the last block occurs at the beginning of an indirect group), the walk
+> of the two chains can end up "missing" each other and freeing a bunch of
+> extra blocks in the process. This mismatch can be handled by first
+> making sure that the chains are at the same level, then walking them
+> together until they converge.
+> 
+> 4. When the punch happens within one level of indirection and
+> ext4_find_shared returns a top branch for the start, we must free it,
+> but only if the end does not occur within that branch.
+> 
+> 5. When the punch happens within one level of indirection and
+> ext4_find_shared returns a top branch for the end, then we shouldn't
+> free the block referenced by the end of the returned chain (this mirrors
+> the different levels case).
+> 
+> Signed-off-by: Omar Sandoval <osandov@osandov.com>
+> ---
+> Okay, two more bugfixes folded in, all described in the commit message.
+> I'm finally no longer seeing xfstest generic/270 cause corruptions, even
+> after running it overnight, so hopefully this is it. Chris, would you
+> mind trying this out?
+>
 
-1. When there is at least one entire level of indirection between the
-start and end of the punch range and the end of the punch range is the
-first block of its level, we can't return early; we have to free the
-intervening levels.
+Omar,
+I've completed 80 iterations of this patch so far without failure!
+Normally failures have occurred between 2-15 runs. Great job, and thanks
+for your persistence in fixing this issue!
 
-2. When the end is at a higher level of indirection than the start and
-ext4_find_shared returns a top branch for the end, we still need to free
-the rest of the shared branch it returns; we can't decrement partial2.
+Tested-by: Chris J Arges <chris.j.arges@canonical.com>
 
-3. When a punch happens within one level of indirection, we need to
-converge on an indirect block that contains the start and end. However,
-because the branches returned from ext4_find_shared do not necessarily
-start at the same level (e.g., the partial2 chain will be shallower if
-the last block occurs at the beginning of an indirect group), the walk
-of the two chains can end up "missing" each other and freeing a bunch of
-extra blocks in the process. This mismatch can be handled by first
-making sure that the chains are at the same level, then walking them
-together until they converge.
 
-4. When the punch happens within one level of indirection and
-ext4_find_shared returns a top branch for the start, we must free it,
-but only if the end does not occur within that branch.
-
-5. When the punch happens within one level of indirection and
-ext4_find_shared returns a top branch for the end, then we shouldn't
-free the block referenced by the end of the returned chain (this mirrors
-the different levels case).
-
-Signed-off-by: Omar Sandoval <osandov@osandov.com>
----
-Okay, two more bugfixes folded in, all described in the commit message.
-I'm finally no longer seeing xfstest generic/270 cause corruptions, even
-after running it overnight, so hopefully this is it. Chris, would you
-mind trying this out?
-
- fs/ext4/indirect.c | 105 ++++++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 71 insertions(+), 34 deletions(-)
-
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 36b3696..5e7af1c 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -1393,10 +1393,7 @@ end_range:
- 				 * to free. Everything was covered by the start
- 				 * of the range.
- 				 */
--				return 0;
--			} else {
--				/* Shared branch grows from an indirect block */
--				partial2--;
-+				goto do_indirects;
- 			}
- 		} else {
- 			/*
-@@ -1427,56 +1424,96 @@ end_range:
- 	/* Punch happened within the same level (n == n2) */
- 	partial = ext4_find_shared(inode, n, offsets, chain, &nr);
- 	partial2 = ext4_find_shared(inode, n2, offsets2, chain2, &nr2);
--	/*
--	 * ext4_find_shared returns Indirect structure which
--	 * points to the last element which should not be
--	 * removed by truncate. But this is end of the range
--	 * in punch_hole so we need to point to the next element
--	 */
--	partial2->p++;
--	while ((partial > chain) || (partial2 > chain2)) {
--		/* We're at the same block, so we're almost finished */
--		if ((partial->bh && partial2->bh) &&
--		    (partial->bh->b_blocknr == partial2->bh->b_blocknr)) {
--			if ((partial > chain) && (partial2 > chain2)) {
-+
-+	/* Free top, but only if partial2 isn't its subtree. */
-+	if (nr) {
-+		int level = min(partial - chain, partial2 - chain2);
-+		int i;
-+		int subtree = 1;
-+
-+		for (i = 0; i <= level; i++) {
-+			if (offsets[i] != offsets2[i]) {
-+				subtree = 0;
-+				break;
-+			}
-+		}
-+
-+		if (!subtree) {
-+			if (partial == chain) {
-+				/* Shared branch grows from the inode */
-+				ext4_free_branches(handle, inode, NULL,
-+						   &nr, &nr+1,
-+						   (chain+n-1) - partial);
-+				*partial->p = 0;
-+			} else {
-+				/* Shared branch grows from an indirect block */
-+				BUFFER_TRACE(partial->bh, "get_write_access");
- 				ext4_free_branches(handle, inode, partial->bh,
--						   partial->p + 1,
--						   partial2->p,
-+						   partial->p,
-+						   partial->p+1,
- 						   (chain+n-1) - partial);
--				BUFFER_TRACE(partial->bh, "call brelse");
--				brelse(partial->bh);
--				BUFFER_TRACE(partial2->bh, "call brelse");
--				brelse(partial2->bh);
- 			}
--			return 0;
- 		}
-+	}
-+
-+	if (!nr2) {
- 		/*
--		 * Clear the ends of indirect blocks on the shared branch
--		 * at the start of the range
-+		 * ext4_find_shared returns Indirect structure which
-+		 * points to the last element which should not be
-+		 * removed by truncate. But this is end of the range
-+		 * in punch_hole so we need to point to the next element
- 		 */
--		if (partial > chain) {
-+		partial2->p++;
-+	}
-+
-+	while (partial > chain || partial2 > chain2) {
-+		int depth = (chain+n-1) - partial;
-+		int depth2 = (chain2+n2-1) - partial2;
-+
-+		if (partial > chain && partial2 > chain2 &&
-+		    partial->bh->b_blocknr == partial2->bh->b_blocknr) {
-+			/*
-+			 * We've converged on the same block. Clear the range,
-+			 * then we're done.
-+			 */
- 			ext4_free_branches(handle, inode, partial->bh,
--				   partial->p + 1,
--				   (__le32 *)partial->bh->b_data+addr_per_block,
--				   (chain+n-1) - partial);
-+					   partial->p + 1,
-+					   partial2->p,
-+					   (chain+n-1) - partial);
- 			BUFFER_TRACE(partial->bh, "call brelse");
- 			brelse(partial->bh);
--			partial--;
-+			BUFFER_TRACE(partial2->bh, "call brelse");
-+			brelse(partial2->bh);
-+			return 0;
- 		}
-+
- 		/*
--		 * Clear the ends of indirect blocks on the shared branch
--		 * at the end of the range
-+		 * The start and end partial branches may not be at the same
-+		 * level even though the punch happened within one level. So, we
-+		 * give them a chance to arrive at the same level, then walk
-+		 * them in step with each other until we converge on the same
-+		 * block.
- 		 */
--		if (partial2 > chain2) {
-+		if (partial > chain && depth <= depth2) {
-+			ext4_free_branches(handle, inode, partial->bh,
-+					   partial->p + 1,
-+					   (__le32 *)partial->bh->b_data+addr_per_block,
-+					   (chain+n-1) - partial);
-+			BUFFER_TRACE(partial->bh, "call brelse");
-+			brelse(partial->bh);
-+			partial--;
-+		}
-+		if (partial2 > chain2 && depth2 <= depth) {
- 			ext4_free_branches(handle, inode, partial2->bh,
- 					   (__le32 *)partial2->bh->b_data,
- 					   partial2->p,
--					   (chain2+n-1) - partial2);
-+					   (chain2+n2-1) - partial2);
- 			BUFFER_TRACE(partial2->bh, "call brelse");
- 			brelse(partial2->bh);
- 			partial2--;
- 		}
- 	}
-+	return 0;
- 
- do_indirects:
- 	/* Kill the remaining (whole) subtrees */
--- 
-2.3.0
+>  fs/ext4/indirect.c | 105 ++++++++++++++++++++++++++++++++++++-----------------
+>  1 file changed, 71 insertions(+), 34 deletions(-)
+> 
+> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+> index 36b3696..5e7af1c 100644
+> --- a/fs/ext4/indirect.c
+> +++ b/fs/ext4/indirect.c
+> @@ -1393,10 +1393,7 @@ end_range:
+>  				 * to free. Everything was covered by the start
+>  				 * of the range.
+>  				 */
+> -				return 0;
+> -			} else {
+> -				/* Shared branch grows from an indirect block */
+> -				partial2--;
+> +				goto do_indirects;
+>  			}
+>  		} else {
+>  			/*
+> @@ -1427,56 +1424,96 @@ end_range:
+>  	/* Punch happened within the same level (n == n2) */
+>  	partial = ext4_find_shared(inode, n, offsets, chain, &nr);
+>  	partial2 = ext4_find_shared(inode, n2, offsets2, chain2, &nr2);
+> -	/*
+> -	 * ext4_find_shared returns Indirect structure which
+> -	 * points to the last element which should not be
+> -	 * removed by truncate. But this is end of the range
+> -	 * in punch_hole so we need to point to the next element
+> -	 */
+> -	partial2->p++;
+> -	while ((partial > chain) || (partial2 > chain2)) {
+> -		/* We're at the same block, so we're almost finished */
+> -		if ((partial->bh && partial2->bh) &&
+> -		    (partial->bh->b_blocknr == partial2->bh->b_blocknr)) {
+> -			if ((partial > chain) && (partial2 > chain2)) {
+> +
+> +	/* Free top, but only if partial2 isn't its subtree. */
+> +	if (nr) {
+> +		int level = min(partial - chain, partial2 - chain2);
+> +		int i;
+> +		int subtree = 1;
+> +
+> +		for (i = 0; i <= level; i++) {
+> +			if (offsets[i] != offsets2[i]) {
+> +				subtree = 0;
+> +				break;
+> +			}
+> +		}
+> +
+> +		if (!subtree) {
+> +			if (partial == chain) {
+> +				/* Shared branch grows from the inode */
+> +				ext4_free_branches(handle, inode, NULL,
+> +						   &nr, &nr+1,
+> +						   (chain+n-1) - partial);
+> +				*partial->p = 0;
+> +			} else {
+> +				/* Shared branch grows from an indirect block */
+> +				BUFFER_TRACE(partial->bh, "get_write_access");
+>  				ext4_free_branches(handle, inode, partial->bh,
+> -						   partial->p + 1,
+> -						   partial2->p,
+> +						   partial->p,
+> +						   partial->p+1,
+>  						   (chain+n-1) - partial);
+> -				BUFFER_TRACE(partial->bh, "call brelse");
+> -				brelse(partial->bh);
+> -				BUFFER_TRACE(partial2->bh, "call brelse");
+> -				brelse(partial2->bh);
+>  			}
+> -			return 0;
+>  		}
+> +	}
+> +
+> +	if (!nr2) {
+>  		/*
+> -		 * Clear the ends of indirect blocks on the shared branch
+> -		 * at the start of the range
+> +		 * ext4_find_shared returns Indirect structure which
+> +		 * points to the last element which should not be
+> +		 * removed by truncate. But this is end of the range
+> +		 * in punch_hole so we need to point to the next element
+>  		 */
+> -		if (partial > chain) {
+> +		partial2->p++;
+> +	}
+> +
+> +	while (partial > chain || partial2 > chain2) {
+> +		int depth = (chain+n-1) - partial;
+> +		int depth2 = (chain2+n2-1) - partial2;
+> +
+> +		if (partial > chain && partial2 > chain2 &&
+> +		    partial->bh->b_blocknr == partial2->bh->b_blocknr) {
+> +			/*
+> +			 * We've converged on the same block. Clear the range,
+> +			 * then we're done.
+> +			 */
+>  			ext4_free_branches(handle, inode, partial->bh,
+> -				   partial->p + 1,
+> -				   (__le32 *)partial->bh->b_data+addr_per_block,
+> -				   (chain+n-1) - partial);
+> +					   partial->p + 1,
+> +					   partial2->p,
+> +					   (chain+n-1) - partial);
+>  			BUFFER_TRACE(partial->bh, "call brelse");
+>  			brelse(partial->bh);
+> -			partial--;
+> +			BUFFER_TRACE(partial2->bh, "call brelse");
+> +			brelse(partial2->bh);
+> +			return 0;
+>  		}
+> +
+>  		/*
+> -		 * Clear the ends of indirect blocks on the shared branch
+> -		 * at the end of the range
+> +		 * The start and end partial branches may not be at the same
+> +		 * level even though the punch happened within one level. So, we
+> +		 * give them a chance to arrive at the same level, then walk
+> +		 * them in step with each other until we converge on the same
+> +		 * block.
+>  		 */
+> -		if (partial2 > chain2) {
+> +		if (partial > chain && depth <= depth2) {
+> +			ext4_free_branches(handle, inode, partial->bh,
+> +					   partial->p + 1,
+> +					   (__le32 *)partial->bh->b_data+addr_per_block,
+> +					   (chain+n-1) - partial);
+> +			BUFFER_TRACE(partial->bh, "call brelse");
+> +			brelse(partial->bh);
+> +			partial--;
+> +		}
+> +		if (partial2 > chain2 && depth2 <= depth) {
+>  			ext4_free_branches(handle, inode, partial2->bh,
+>  					   (__le32 *)partial2->bh->b_data,
+>  					   partial2->p,
+> -					   (chain2+n-1) - partial2);
+> +					   (chain2+n2-1) - partial2);
+>  			BUFFER_TRACE(partial2->bh, "call brelse");
+>  			brelse(partial2->bh);
+>  			partial2--;
+>  		}
+>  	}
+> +	return 0;
+>  
+>  do_indirects:
+>  	/* Kill the remaining (whole) subtrees */
+> 
