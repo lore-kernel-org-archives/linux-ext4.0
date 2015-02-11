@@ -1,115 +1,171 @@
-From: Omar Sandoval <osandov@osandov.com>
-Subject: Re: [PATCH v4] ext4: fix indirect punch hole corruption
-Date: Tue, 10 Feb 2015 19:37:20 -0800
-Message-ID: <20150211033720.GA20820@mew>
-References: <20150209212805.GA10892@mew.cs.washington.edu>
- <bdb70d657b83644c6ee6eaaaf4f95460f937f05c.1423602557.git.osandov@osandov.com>
- <54DAC58B.8030600@canonical.com>
+From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+Subject: [PATCH RFC 3/6] quota: mangle statfs result according to project
+ quota usage and limits
+Date: Wed, 11 Feb 2015 18:11:49 +0300
+Message-ID: <20150211151149.6717.10971.stgit@buzz>
+References: <20150211151146.6717.62017.stgit@buzz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Linux API <linux-api@vger.kernel.org>,
+	containers@lists.linux-foundation.org,
+	Dave Chinner <david@fromorbit.com>,
+	Andy Lutomirski <luto@amacapital.net>,
+	Christoph Hellwig <hch@infradead.org>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	"Eric W. Biederman" <ebiederm@xmission.com>,
+	Li Xi <pkuelelixi@gmail.com>, Theodore Ts'o <tytso@mit.edu>,
+	Al Viro <viro@zeniv.linux.org.uk>
+To: Linux FS Devel <linux-fsdevel@vger.kernel.org>,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Chris J Arges <chris.j.arges@canonical.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:37930 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750728AbbBKDhX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Feb 2015 22:37:23 -0500
-Received: by mail-pa0-f43.google.com with SMTP id fa1so1316397pad.2
-        for <linux-ext4@vger.kernel.org>; Tue, 10 Feb 2015 19:37:22 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <54DAC58B.8030600@canonical.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20150211151146.6717.62017.stgit@buzz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Feb 10, 2015 at 08:59:23PM -0600, Chris J Arges wrote:
-> On 02/10/2015 03:44 PM, Omar Sandoval wrote:
-> > Commit 4f579ae7de56 (ext4: fix punch hole on files with indirect
-> > mapping) rewrote FALLOC_FL_PUNCH_HOLE for ext4 files with indirect
-> > mapping. However, there are bugs in several corner cases. This fixe=
-s 5
-> > distinct bugs:
-> >=20
-> > 1. When there is at least one entire level of indirection between t=
-he
-> > start and end of the punch range and the end of the punch range is =
-the
-> > first block of its level, we can't return early; we have to free th=
-e
-> > intervening levels.
-> >=20
-> > 2. When the end is at a higher level of indirection than the start =
-and
-> > ext4_find_shared returns a top branch for the end, we still need to=
- free
-> > the rest of the shared branch it returns; we can't decrement partia=
-l2.
-> >=20
-> > 3. When a punch happens within one level of indirection, we need to
-> > converge on an indirect block that contains the start and end. Howe=
-ver,
-> > because the branches returned from ext4_find_shared do not necessar=
-ily
-> > start at the same level (e.g., the partial2 chain will be shallower=
- if
-> > the last block occurs at the beginning of an indirect group), the w=
-alk
-> > of the two chains can end up "missing" each other and freeing a bun=
-ch of
-> > extra blocks in the process. This mismatch can be handled by first
-> > making sure that the chains are at the same level, then walking the=
-m
-> > together until they converge.
-> >=20
-> > 4. When the punch happens within one level of indirection and
-> > ext4_find_shared returns a top branch for the start, we must free i=
-t,
-> > but only if the end does not occur within that branch.
-> >=20
-> > 5. When the punch happens within one level of indirection and
-> > ext4_find_shared returns a top branch for the end, then we shouldn'=
-t
-> > free the block referenced by the end of the returned chain (this mi=
-rrors
-> > the different levels case).
-> >=20
-> > Signed-off-by: Omar Sandoval <osandov@osandov.com>
-> > ---
-> > Okay, two more bugfixes folded in, all described in the commit mess=
-age.
-> > I'm finally no longer seeing xfstest generic/270 cause corruptions,=
- even
-> > after running it overnight, so hopefully this is it. Chris, would y=
-ou
-> > mind trying this out?
-> >
->=20
-> Omar,
-> I've completed 80 iterations of this patch so far without failure!
-> Normally failures have occurred between 2-15 runs. Great job, and tha=
-nks
-> for your persistence in fixing this issue!
->=20
-> Tested-by: Chris J Arges <chris.j.arges@canonical.com>
->=20
+This patch updates amount of available space and inodes returned by
+vfs_statfs() according to project quota for this directory.
+This works only if sysctl fs.protected_projects = 1.
 
-Awesome, I was starting to run out of ideas ;) Thanks for all of your
-testing.
+Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+---
+ fs/quota/dquot.c         |   56 ++++++++++++++++++++++++++++++++++++++++++++--
+ fs/statfs.c              |    5 +++-
+ include/linux/quotaops.h |    5 ++++
+ 3 files changed, 63 insertions(+), 3 deletions(-)
 
-Luk=C3=A1=C5=A1, would you like to take a look at this?
-
-Also, Ted and Andreas, would you prefer this all in one patch, or shoul=
-d
-I split out each individual fix into its own patch?
-
-Thanks!
---=20
-Omar
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index afa5f67..e3dfac8 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -65,6 +65,7 @@
+ #include <linux/stat.h>
+ #include <linux/tty.h>
+ #include <linux/file.h>
++#include <linux/statfs.h>
+ #include <linux/slab.h>
+ #include <linux/sysctl.h>
+ #include <linux/init.h>
+@@ -1242,15 +1243,20 @@ static void flush_warnings(struct dquot_warn *warn)
+ 	}
+ }
+ 
+-static int ignore_hardlimit(struct dquot *dquot)
++static bool sb_ignore_hardlimit(struct super_block *sb, int type)
+ {
+-	struct mem_dqinfo *info = &sb_dqopt(dquot->dq_sb)->info[dquot->dq_id.type];
++	struct mem_dqinfo *info = sb_dqinfo(sb, type);
+ 
+ 	return capable(CAP_SYS_RESOURCE) &&
+ 	       (info->dqi_format->qf_fmt_id != QFMT_VFS_OLD ||
+ 		!(info->dqi_flags & DQF_ROOT_SQUASH));
+ }
+ 
++static bool ignore_hardlimit(struct dquot *dquot)
++{
++	return sb_ignore_hardlimit(dquot->dq_sb, dquot->dq_id.type);
++}
++
+ /* needs dq_data_lock */
+ static int check_idq(struct dquot *dquot, qsize_t inodes,
+ 		     struct dquot_warn *warn)
+@@ -2022,6 +2028,52 @@ int dquot_file_open(struct inode *inode, struct file *file)
+ }
+ EXPORT_SYMBOL(dquot_file_open);
+ 
++void dquot_mangle_statfs(const struct path *path, struct kstatfs *buf)
++{
++	struct inode *inode = path->dentry->d_inode;
++	struct super_block *sb = inode->i_sb;
++	u64 blimit = 0, ilimit = 0, busage, iusage;
++	struct dquot **dquots;
++
++	if (!sysctl_protected_projects ||
++	    !sb_has_quota_limits_enabled(sb, PRJQUOTA) ||
++	    sb_ignore_hardlimit(sb, PRJQUOTA))
++		return;
++
++	dquots = i_dquot(inode);
++	if (!dquots[PRJQUOTA])
++		return;
++
++	spin_lock(&dq_data_lock);
++	if (dquots[PRJQUOTA]) {
++		struct mem_dqblk *dm = &(dquots[PRJQUOTA]->dq_dqb);
++
++		blimit = dm->dqb_bsoftlimit ?: dm->dqb_bhardlimit;
++		busage = dm->dqb_curspace + dm->dqb_rsvspace;
++		ilimit = dm->dqb_isoftlimit ?: dm->dqb_ihardlimit;
++		iusage = dm->dqb_curinodes;
++	}
++	spin_unlock(&dq_data_lock);
++
++	if (blimit) {
++		u64 bavail = (blimit <= busage) ? 0 :
++			div64_long(blimit - busage, buf->f_bsize);
++
++		if (buf->f_bavail > bavail)
++			buf->f_bavail = bavail;
++	}
++
++	if (ilimit) {
++		u64 iavail = (ilimit <= iusage) ? 0 : (ilimit - iusage);
++
++		if (buf->f_ffree > iavail) {
++			/* Cut count of "free" inodes but keep "used" */
++			buf->f_files -= buf->f_ffree - iavail;
++			buf->f_ffree = iavail;
++		}
++	}
++}
++
+ /*
+  * Turn quota off on a device. type == -1 ==> quotaoff for all types (umount)
+  */
+diff --git a/fs/statfs.c b/fs/statfs.c
+index 083dc0a..3fa6192 100644
+--- a/fs/statfs.c
++++ b/fs/statfs.c
+@@ -7,6 +7,7 @@
+ #include <linux/statfs.h>
+ #include <linux/security.h>
+ #include <linux/uaccess.h>
++#include <linux/quotaops.h>
+ #include "internal.h"
+ 
+ static int flags_by_mnt(int mnt_flags)
+@@ -68,8 +69,10 @@ int vfs_statfs(struct path *path, struct kstatfs *buf)
+ 	int error;
+ 
+ 	error = statfs_by_dentry(path->dentry, buf);
+-	if (!error)
++	if (!error) {
+ 		buf->f_flags = calculate_f_flags(path->mnt);
++		dquot_mangle_statfs(path, buf);
++	}
+ 	return error;
+ }
+ EXPORT_SYMBOL(vfs_statfs);
+diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
+index ba54745..42fe4d9 100644
+--- a/include/linux/quotaops.h
++++ b/include/linux/quotaops.h
+@@ -85,6 +85,7 @@ int dquot_commit_info(struct super_block *sb, int type);
+ int dquot_mark_dquot_dirty(struct dquot *dquot);
+ 
+ int dquot_file_open(struct inode *inode, struct file *file);
++void dquot_mangle_statfs(const struct path *path, struct kstatfs *buf);
+ 
+ int dquot_enable(struct inode *inode, int type, int format_id,
+ 	unsigned int flags);
+@@ -275,6 +276,10 @@ static inline int dquot_resume(struct super_block *sb, int type)
+ 
+ #define dquot_file_open		generic_file_open
+ 
++static inline void dquot_mangle_statfs(struct path *path, struct kstatfs *buf)
++{
++}
++
+ static inline int dquot_writeback_dquots(struct super_block *sb, int type)
+ {
+ 	return 0;
