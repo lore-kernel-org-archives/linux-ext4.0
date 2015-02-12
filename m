@@ -1,70 +1,199 @@
-From: Sander Eikelenboom <linux@eikelenboom.it>
-Subject: 3.19 + xen-devel: kernel BUG at fs/ext4/page-io.c:85!
-Date: Thu, 12 Feb 2015 09:54:51 +0100
-Message-ID: <1518867277.20150212095451@eikelenboom.it>
+From: Kevin Liao <kevinlia@gmail.com>
+Subject: Re: Possible file system corruption?
+Date: Thu, 12 Feb 2015 18:44:27 +0800
+Message-ID: <CAF_MivEszhM3F2naT8uMVhs5txM-hWPxDeNsbqL1V35_DdbM8A@mail.gmail.com>
+References: <CAF_MivHO0nVcqUTv6M2rMBkAS0pmSGBa-KSurPdbqaN+MGp=iQ@mail.gmail.com>
+ <20150210093949.GA1735@hades.maiolino.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: "xen-devel@lists.xen.org" <xen-devel@lists.xen.org>,
-	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
-To: "David Vrabel" <david.vrabel@citrix.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qg0-f44.google.com ([209.85.192.44]:49984 "EHLO
+	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753387AbbBLKos (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Feb 2015 05:44:48 -0500
+Received: by mail-qg0-f44.google.com with SMTP id j5so7213879qga.3
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Feb 2015 02:44:47 -0800 (PST)
+In-Reply-To: <20150210093949.GA1735@hades.maiolino.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Hi Carlos,
 
-With a 3.19 kernel + xen-devel tree pulled on top i run into this splat below.
-It's on a Xen PV-guest running a postgres database and doing a pg_dump at that
-moment in time, after running for a while (within 2 days or so).
+Thank you for the reply. Today I try to run e2fsck again. This time I'm sure
+I run it in correct volume. I also try to use different backup suprtblock.
+The results are as below:
 
---
-Sander
+e2fsck -fnv /dev/md0
+e2fsck 1.42.12 (29-Aug-2014)
+ext2fs_check_desc: Corrupt group descriptor: bad block for block bitmap
+e2fsck: Group descriptors look bad... trying backup blocks...
+Corruption found in superblock.  (reserved_gdt_blocks = 16384).
 
-[139595.736073] ------------[ cut here ]------------
-[139595.736073] kernel BUG at fs/ext4/page-io.c:85!
-[139595.736073] invalid opcode: 0000 [#1] SMP
-[139595.736073] Modules linked in:
-[139595.736073] CPU: 0 PID: 25632 Comm: pg_dump Not tainted 3.19.0-20150209-doflr-xendevel-edid+ #1
-[139595.736073] task: ffff8800f8fd10c0 ti: ffff88006bc70000 task.ti: ffff88006bc70000
-[139595.736073] RIP: e030:[<ffffffff8126826f>]  [<ffffffff8126826f>] ext4_finish_bio+0x24f/0x260
-[139595.736073] RSP: e02b:ffff8800fac03bc8  EFLAGS: 00010046
-[139595.736073] RAX: 004000000002002c RBX: ffff880060fa6170 RCX: 0000000000000034
-[139595.736073] RDX: 0000000000000000 RSI: ffffea00014a77c0 RDI: ffff8800f9357300
-[139595.736073] RBP: ffff8800fac03c58 R08: 0000000000000009 R09: 0000000000016830
-[139595.736073] R10: ffff8800ff820680 R11: 0000000000000000 R12: 0000000000000000
-[139595.736073] R13: ffff88006bf111a0 R14: 0000000000000000 R15: ffffea0000cd1800
-[139595.736073] FS:  00007f623b3f7720(0000) GS:ffff8800fac00000(0000) knlGS:0000000000000000
-[139595.736073] CS:  e033 DS: 0000 ES: 0000 CR0: 000000008005003b
-[139595.736073] CR2: ffffffffff600400 CR3: 0000000091907000 CR4: 0000000000000660
-[139595.736073] Stack:
-[139595.736073]  ffff8800fac03be8 ffffffff81bc11c2 ffffffff83140070 ffff8800fac03cc6
-[139595.736073]  ffff8800f9357300 00001000244d0001 004000000000002c 0000001700000000
-[139595.736073]  0000000000000000 0000000000000002 ffff8800fac03c98 ffffffff8110582d
-[139595.736073] Call Trace:
-[139595.736073]  <IRQ>
-[139595.736073]  [<ffffffff81bc11c2>] ? _raw_spin_unlock_irqrestore+0x52/0x90
-[139595.736073]  [<ffffffff8110582d>] ? lock_acquire+0xed/0x110
-[139595.736073]  [<ffffffff81268698>] ext4_end_bio+0x58/0x110
-[139595.736073]  [<ffffffff8144dea3>] bio_endio+0x53/0x90
-[139595.736073]  [<ffffffff81453850>] blk_update_request+0x80/0x300
-[139595.736073]  [<ffffffff81453af2>] blk_update_bidi_request+0x22/0x90
-[139595.736073]  [<ffffffff8145451b>] __blk_end_bidi_request+0x1b/0x40
-[139595.736073]  [<ffffffff8145455a>] __blk_end_request_all+0x1a/0x30
-[139595.736073]  [<ffffffff816e59d1>] blkif_interrupt+0x731/0x8c0
-[139595.736073]  [<ffffffff8110f407>] handle_irq_event_percpu+0x47/0x150
-[139595.736073]  [<ffffffff8110f553>] handle_irq_event+0x43/0x70
-[139595.736073]  [<ffffffff811120b6>] handle_edge_irq+0x96/0x110
-[139595.736073]  [<ffffffff8110ec5d>] generic_handle_irq+0x1d/0x40
-[139595.736073]  [<ffffffff8152d22a>] evtchn_fifo_handle_events+0x16a/0x170
-[139595.736073]  [<ffffffff8152a347>] __xen_evtchn_do_upcall+0x47/0x90
-[139595.736073]  [<ffffffff8152bf4f>] xen_evtchn_do_upcall+0x2f/0x50
-[139595.736073]  [<ffffffff81bc310e>] xen_do_hypervisor_callback+0x1e/0x30
-[139595.736073]  <EOI>
-[139595.736073] Code: 45 00 a8 10 75 f6 e9 82 fe ff ff 90 e8 5b 96 e9 ff 48 83 3d cb 78 fc 00 00 74 18 48 8b 7d a0 ff 14 25 28 fb 22 82 e9 1f ff ff ff <0f> 0b 0f 0b 0f 0b 0f 0b 0f 0b 0f 1f 80 00 00 00 00 55 48 89 e5
-[139595.736073] RIP  [<ffffffff8126826f>] ext4_finish_bio+0x24f/0x260
-[139595.736073]  RSP <ffff8800fac03bc8>
-[139595.736073] ---[ end trace cb2ee1cb372ad9b2 ]---
-[139595.736073] Kernel panic - not syncing: Fatal exception in interrupt
-[139595.736073] Kernel Offset: 0x0 from 0xffffffff81000000 (relocation range: 0xffffffff80000000-0xffffffff9fffffff)
+The superblock could not be read or does not describe a valid ext2/ext3/ext4
+filesystem.  If the device is valid and it really contains an ext2/ext3/ext4
+filesystem (and not swap or ufs or something else), then the superblock
+is corrupt, and you might try running e2fsck with an alternate superblock:
+    e2fsck -b 8193 <device>
+ or
+    e2fsck -b 32768 <device>
+
+
+e2fsck -fnv -b 8193 /dev/md0
+e2fsck 1.42.12 (29-Aug-2014)
+e2fsck: Bad magic number in super-block while trying to open /dev/md0
+
+The superblock could not be read or does not describe a valid ext2/ext3/ext4
+filesystem.  If the device is valid and it really contains an ext2/ext3/ext4
+filesystem (and not swap or ufs or something else), then the superblock
+is corrupt, and you might try running e2fsck with an alternate superblock:
+    e2fsck -b 8193 <device>
+ or
+    e2fsck -b 32768 <device>
+
+
+e2fsck -fnv -b 32768 /dev/md0
+e2fsck 1.42.12 (29-Aug-2014)
+Corruption found in superblock.  (reserved_gdt_blocks = 16384).
+
+The superblock could not be read or does not describe a valid ext2/ext3/ext4
+filesystem.  If the device is valid and it really contains an ext2/ext3/ext4
+filesystem (and not swap or ufs or something else), then the superblock
+is corrupt, and you might try running e2fsck with an alternate superblock:
+    e2fsck -b 8193 <device>
+ or
+    e2fsck -b 32768 <device>
+
+It all complains about superblock corrupted. I then use dumpe2fs to check the
+superblock and get the following:
+
+dumpe2fs -h /dev/md0
+dumpe2fs 1.42.12 (29-Aug-2014)
+Filesystem volume name:   <none>
+Last mounted on:          /share/MD0_DATA
+Filesystem UUID:          6c1f5c4f-7185-436f-bc1f-8876a1d524fe
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      has_journal ext_attr filetype extent 64bit flex_bg
+sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
+Filesystem flags:         signed_directory_hash
+Default mount options:    (none)
+Filesystem state:         clean with errors
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              610230272
+Block count:              4881811920
+Reserved block count:     218453
+Free blocks:              1387940253
+Free inodes:              610226921
+First block:              0
+Block size:               4096
+Fragment size:            4096
+Group descriptor size:    64
+Reserved GDT blocks:      16384
+Blocks per group:         32768
+Fragments per group:      32768
+Inodes per group:         4096
+Inode blocks per group:   256
+RAID stride:              1
+Flex block group size:    16
+Filesystem created:       Mon Jan 13 08:40:19 2014
+Last mount time:          Thu Feb 12 10:34:24 2015
+Last write time:          Thu Feb 12 10:35:23 2015
+Mount count:              50
+Maximum mount count:      31
+Last checked:             Tue Jun 17 07:54:54 2014
+Check interval:           15552000 (6 months)
+Next check after:         Sun Dec 14 06:54:54 2014
+Lifetime writes:          15 TB
+Reserved blocks uid:      0 (user unknown)
+Reserved blocks gid:      0 (group unknown)
+First inode:              11
+Inode size:          256
+Required extra isize:     28
+Desired extra isize:      28
+Journal inode:            8
+Default directory hash:   half_md4
+Directory Hash Seed:      a9c4f391-d68d-4886-b7cb-5a804077f823
+Directory Magic Number:   0x0000
+Journal backup:           inode blocks
+FS Error count:           25
+First error time:         Thu Jan  1 12:19:59 2015
+First error function:     ext4_ext_find_extent
+First error line #:       400
+First error inode #:      95223833
+First error block #:      0
+Last error time:          Wed Feb  4 11:57:05 2015
+Last error function:      ext4_ext_find_extent
+Last error line #:        400
+Last error inode #:       95223833
+Last error block #:       0
+Journal features:         journal_incompat_revoke journal_64bit
+Journal size:             128M
+Journal length:           32768
+Journal sequence:         0x00092ac2
+Journal start:            0
+
+I can not see anything wrong (except the error count that was what I already
+knew). That's why I am really confused about why e2fsck report something like
+this.
+
+Kevin
+
+2015-02-10 17:39 GMT+08:00 Carlos Maiolino <cmaiolino@redhat.com>:
+> Hello,
+>
+> I don't work with ext4 for a while, but maybe I can give a few suggestions.
+>
+> first of all, I'd suggest you to run `e2fsck -fnv` and attach the whole output
+> of the command to the e-mail (pastebins are preferred though).
+>
+> Giving the description, I'd say that you might be trying to run e2fsck in a
+> different volume/device that you're actually mounting, but well, that's too soon
+> to say.
+>
+> have you tried to actually run e2fsck specifying a backup superblock?
+>
+> cheers
+>
+> On Mon, Feb 09, 2015 at 07:33:28PM +0800, Kevin Liao wrote:
+>> Hi All,
+>>
+>> Recently whenvevr I try to access one file, I saw the following kernel log:
+>>
+>> "EXT4-fs error (device md0): ext4_ext_find_extent:400: inode #95223833: comm
+>>  fio: bad header/extent: invalid magic - magic e2b6, entries 59156, max
+>>  58100(0), depth 43399(0)"
+>>
+>> inode 95223833 is just the file I want to read. I guess there may be some
+>> corruption in the file system. Therefore I umount it and run e2fsck command
+>> but get the following result:
+>>
+>> "ext2fs_check_desc: Corrupt group descriptor: bad block for block bitmap
+>> ./e2fsck: Group descriptors look bad... trying backup blocks...
+>> Corruption found in superblock. (reserved_gdt_blocks = 16384).
+>>
+>> The superblock could not be read or does not describe a valid ext2/ext3/ext4
+>> filesystem. If the device is valid and it really contains an ext2/ext3/ext4
+>> filesystem (and not swap or ufs or something else), then the superblock
+>> is corrupt, and you might try running e2fsck with an alternate superblock:
+>>     e2fsck -b 8193 <device>
+>>  or
+>>     e2fsck -b 32768 <device>"
+>>
+>> It seems that the superblock is bad, however I can still mount it and access
+>> to other files without error. The kernel version is 3.4.23. Is there anything
+>> I can do to recover the file? Any help is very appreciated. Thank a lot.
+>>
+>> Kevin
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> --
+> Carlos
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
