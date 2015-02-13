@@ -1,47 +1,39 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2, RFC] ext4: ignore journal checksum on remount; don't
- fail
-Date: Thu, 12 Feb 2015 23:09:09 -0500
-Message-ID: <20150213040909.GE2268@thunk.org>
-References: <54DA34BB.8030806@redhat.com>
- <54DA366E.8060109@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 60667] resizing ext4 with small block size corrupts filesystem
+Date: Fri, 13 Feb 2015 14:02:36 +0000
+Message-ID: <bug-60667-13602-clzpHMvzDo@https.bugzilla.kernel.org/>
+References: <bug-60667-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	=?iso-8859-1?B?Q/NucuRk?= <conradsand.arma@gmail.com>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39392 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.29.136]:47787 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752014AbbBMEJM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Feb 2015 23:09:12 -0500
-Content-Disposition: inline
-In-Reply-To: <54DA366E.8060109@redhat.com>
+	id S1752441AbbBMOCk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 Feb 2015 09:02:40 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id ECC2420172
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Feb 2015 14:02:38 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 0B60F20263
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Feb 2015 14:02:37 +0000 (UTC)
+In-Reply-To: <bug-60667-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 10, 2015 at 10:48:46AM -0600, Eric Sandeen wrote:
-> As of v3.18, ext4 started rejecting a remount which changes the
-> journal_checksum option.
->=20
-> Prior to that, it was simply ignored; the problem here is that
-> if someone has this in their fstab for the root fs, now the box
-> fails to boot properly, because remount of root with the new options
-> will fail, and the box proceeds with a readonly root.
->=20
-> I think it is a little nicer behavior to accept the option, but
-> warn that it's being ignored, rather than failing the mount,
-> but that might be a subjective matter...
->=20
-> Reported-by: C=F3nr=E4d <conradsand.arma@gmail.com>
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=60667
 
-Applied, thanks.
+Trevor Jones <trevor.w.jones@gmail.com> changed:
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |RESOLVED
+         Resolution|---                         |CODE_FIX
+
+--- Comment #1 from Trevor Jones <trevor.w.jones@gmail.com> ---
+as of kernel 3.18.2 and e2fstools 1.42.10 this no longer happens.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
