@@ -1,52 +1,41 @@
-From: grantksupport@operamail.com
-Subject: gdisk-created Bios Boot Partition created with NO fs,
- reports fs TYPE=ext4.  Bug/why?
-Date: Sun, 15 Feb 2015 10:38:56 -0800
-Message-ID: <1424025536.1061731.227795501.40064DE9@webmail.messagingengine.com>
+From: Alireza Haghdoost <haghdoost@gmail.com>
+Subject: Re: [LSF/MM TOPIC] - SMR Modifications to EXT4 (and other generic
+ file systems)
+Date: Sun, 15 Feb 2015 14:27:20 -0600
+Message-ID: <CAB-428=Mx8kqym601rHvdbvYkWMbdKYtoJJuAV0EN1U5JU23Mw@mail.gmail.com>
+References: <CAKdFiL6CMHTHWCvSFjFNw6hzvPLDEWWAC-o3wdivq9co7SX1FA@mail.gmail.com>
+ <CAKdFiL6XVxq-mjJd2TMkoEyE4kss5yTfWGKyeY-EZa2NDyLwFw@mail.gmail.com>
+ <03D7D1CF-D733-44E1-9F88-D68878D447BF@dilger.ca> <CAKdFiL6Y0O=WTgaOQB9jaOQyVwRdnsKFc8GmNFL38WP5t-dWcw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out4-smtp.messagingengine.com ([66.111.4.28]:60778 "EHLO
-	out4-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755048AbbBOSi5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 15 Feb 2015 13:38:57 -0500
-Received: from compute4.internal (compute4.nyi.internal [10.202.2.44])
-	by mailout.nyi.internal (Postfix) with ESMTP id 277F52075E
-	for <linux-ext4@vger.kernel.org>; Sun, 15 Feb 2015 13:38:56 -0500 (EST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	Linux Filesystem Development List
+	<linux-fsdevel@vger.kernel.org>
+To: Adrian Palmer <adrian.palmer@seagate.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <CAKdFiL6Y0O=WTgaOQB9jaOQyVwRdnsKFc8GmNFL38WP5t-dWcw@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-I'm not entirely sure this is the right list for this question, but it IS ext4 'involved'.  So ...
+>> I think one of the important design decisions that needs to be made
+>> early on is whether it is possible to directly access some storage
+>> that can be updated with small random writes (either a separate flash
+>> LUN on the device, or a section of the disk that is formatted for 4kB
+>> sectors without SMR write requirements).
+>
+> This would be nice, but I looking more generally to what I call
+> 'single disk' systems.  Several more complicated FSs use a separate
+> flash drive for this purpose, but ext4 expects 1 vdev, and thus only
+> one type of media (agnostic).  We have hybrid HDD that have flash on
+> them, but the lba space isn't separate, so the FS or the DM couldn't
+> very easily treat them as 2 devices.
+>
 
-I create a GPT Bios Boot Partition on a clean disk
+Adrian,
+What if vdev that has been exposed to ext4 composed out of md device
+instead of regular block device ? In other words, how do you see that
+these changes in EXT4 file system apply on software RAID array of SMR
+drives ?
 
-	sgdisk -z /dev/sdc
-	sgdisk -o /dev/sdc
-	sgdisk -n 1:2048:+1M    -t 1:ef02  -c 1:"BIOS Boot"           /dev/sdc
-
-IIUC, at this point, the partition should exist with NO filesystem.
-
-But, if I check with blkid
-
-	blkid /dev/sdc1
-		/dev/sdc1: LABEL="RAID_BOOT" UUID="8a828baa-f315-4456-88d2-ff14849eb705" TYPE="ext4" PARTLABEL="BIOS Boot" PARTUUID="2b3b10b1-a458-481e-872c-bada7d244b13" 
-
-Note that it IDs the filesystem type as
-
-	TYPE="ext4"
-
-Why?
-
-Bios Boot Partition should have NO filesystem.
-
-Is blkid correct?  Is there, or isn't there a fs on that partition?
-
-if there isn't, what's causint the 'false' report?
-
-If there IS, how do I make sure there isn't?
-
-grant
-
+--Alireza
