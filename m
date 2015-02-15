@@ -1,100 +1,65 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: File limit inside a single directory
-Date: Sat, 14 Feb 2015 11:25:08 -0700
-Message-ID: <160BB0B1-21A0-4689-8EF4-DBC3E3D52651@dilger.ca>
-References: <trinity-2286fbea-64f2-4a0a-b0a7-2d7fc4f6f180-1423768604697@3capp-webde-bs55> <54DD0091.1050104@redhat.com> <B52A17D2-8AD8-4427-B1D3-2FE6DE21585B@dilger.ca> <trinity-232bc979-0b76-4776-a65c-b6697428d0a4-1423846162245@3capp-webde-bs16> <54DE3442.90707@redhat.com> <trinity-dc6eb585-f943-49c8-8da6-907e488f6402-1423909029655@3capp-webde-bs16>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "suntrop@web.de" <suntrop@web.de>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] libext2fs: fix potential buffer overflow in closefs()
+Date: Sat, 14 Feb 2015 19:51:37 -0500
+Message-ID: <1423961497-9715-1-git-send-email-tytso@mit.edu>
+Cc: nnk@google.com, keescook@google.com, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f44.google.com ([209.85.220.44]:56988 "EHLO
-	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754218AbbBNSZM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 14 Feb 2015 13:25:12 -0500
-Received: by mail-pa0-f44.google.com with SMTP id kq14so25841977pab.3
-        for <linux-ext4@vger.kernel.org>; Sat, 14 Feb 2015 10:25:11 -0800 (PST)
-In-Reply-To: <trinity-dc6eb585-f943-49c8-8da6-907e488f6402-1423909029655@3capp-webde-bs16>
+Received: from imap.thunk.org ([74.207.234.97]:47092 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754366AbbBOAwI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 14 Feb 2015 19:52:08 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If you are using ext3 then you will get an EMLINK error at 32000 subdir=
-s.=20
-If you are using ext4 with the "dir_nlink" feature enabled then you
-can create several million subdirs if you want.
+The bug fix in f66e6ce4446: "libext2fs: avoid buffer overflow if
+s_first_meta_bg is too big" had a typo in the fix for
+ext2fs_closefs().  In practice most of the security exposure was from
+the openfs path, since this meant if there was a carefully crafted
+file system, buffer overrun would be triggered when the file system was
+opened.
 
-As for performance, if you are not regularly creating and deleting the
-directory I don't think you would even notice the performance differenc=
-e
-of a large directory.  The create and unlink rate get somewhat slower a=
-t
-100k files (from 25k/sec to 10k/sec) and 1M entries or so (to 5k/sec).
-=46or lookups the whole directory will easily fit into cache (at about =
-40MB
-for 1M entries) so the lookup rate is not affected much by size.=20
+However, if corrupted file system didn't trip over some corruption
+check, and then the file system was modified via tune2fs or debugfs,
+such that the superblock was marked dirty and then written out via the
+closefs() path, it's possible that the buffer overrun could be
+triggered when the file system is closed.
 
-Cheers, Andreas
+Also clear up a signed vs unsigned warning while we're at it.
 
-> On Feb 14, 2015, at 03:17, suntrop@web.de wrote:
->=20
-> Sorry for confusion, but now I am confused :-) My setup will be like
-> /files/
-> /files/1/
-> /files/2/
-> /files/3/
-> (...)
-> /files/24244/
-> (...)
-> /files/113524/
->=20
-> Thus all folders reside within the /files/ directory (can't change th=
-at).=20
-> What happens when the max link count reach 32,000 and I create more f=
-olders? Will this result in any errors or problems? I=E2=80=99m using e=
-xt3. Is the only consequence that the links aren=E2=80=99t counting up =
-any more, like ext4?
-> =20
-> =20
->=20
-> Gesendet: Freitag, 13. Februar 2015 um 18:28 Uhr
-> Von: "Eric Sandeen" <sandeen@redhat.com>
-> An: suntrop@web.de, "Andreas Dilger" <adilger@dilger.ca>
-> Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-> Betreff: Re: File limit inside a single directory
->> On 2/13/15 10:49 AM, suntrop@web.de wrote:
->> Thanks guys. I was afraid of having a couple 100K (at most). The
->> server support team told me not to have more than 10 to 20K. There
->> seems to be a misconception (for me and people from the CMS) about
->> the 32K subdirectory limit, but this ins't for files/folders within =
-a
->> single directory but rather nested directories like /1/2/3.../32000
->=20
-> You've confused things a bit here, FWIW.
->=20
-> The 32k (well, 32000 because, sure) limit on ext3 is max link count;
-> each subdirectory increases the link count on its parent, but only
-> its parent. It's not about deep nesting, or about files in a dir.
-> It's only about subdirs in a parent dir.
->=20
-> # mkdir dir
-> # stat dir | grep Links
-> Device: fd06h/64774d Inode: 2490391 Links: 2 // . and .. entries
-> # mkdir dir/subdir1 dir/subdir2 dir/subdir3
-> # stat dir | grep Links
-> Device: fd06h/64774d Inode: 2490391 Links: 5
-> # mkdir dir/subdir1/subsubdir1 dir/subdir1/subsubdir2 dir/subdir1/sub=
-subdir3
-> # stat dir | grep Links
-> Device: fd06h/64774d Inode: 2490391 Links: 5
->=20
-> ext4 bumped that max to 64000, and just stops counting if that number
-> gets exceeded...
->=20
-> -Eric
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks to Nick Kralevich <nnk@google.com> for asking me to look at
+compiler warning in the code in question, which led me to notice the
+bug in f66e6ce4446.
+
+Addresses: CVE-2015-1572
+
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ lib/ext2fs/closefs.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
+index 1f99113..ab5b2fb 100644
+--- a/lib/ext2fs/closefs.c
++++ b/lib/ext2fs/closefs.c
+@@ -287,7 +287,7 @@ errcode_t ext2fs_flush2(ext2_filsys fs, int flags)
+ 	dgrp_t		j;
+ #endif
+ 	char	*group_ptr;
+-	int	old_desc_blocks;
++	blk64_t	old_desc_blocks;
+ 	struct ext2fs_numeric_progress_struct progress;
+ 
+ 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+@@ -346,7 +346,7 @@ errcode_t ext2fs_flush2(ext2_filsys fs, int flags)
+ 	group_ptr = (char *) group_shadow;
+ 	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG) {
+ 		old_desc_blocks = fs->super->s_first_meta_bg;
+-		if (old_desc_blocks > fs->super->s_first_meta_bg)
++		if (old_desc_blocks > fs->desc_blocks)
+ 			old_desc_blocks = fs->desc_blocks;
+ 	} else
+ 		old_desc_blocks = fs->desc_blocks;
+-- 
+2.1.0
+
