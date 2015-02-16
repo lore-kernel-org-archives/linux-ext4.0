@@ -1,7 +1,8 @@
 From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: [PATCH RESEND 5/12] xfstests: generic/042: Standard insert range tests
-Date: Tue, 17 Feb 2015 00:47:52 +0900
-Message-ID: <1424101680-3301-6-git-send-email-linkinjeon@gmail.com>
+Subject: [PATCH RESEND 6/12] xfstests: generic/043: Delayed allocation insert
+	range
+Date: Tue, 17 Feb 2015 00:47:53 +0900
+Message-ID: <1424101680-3301-7-git-send-email-linkinjeon@gmail.com>
 References: <1424101680-3301-1-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -28,60 +29,29 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Namjae Jeon <namjae.jeon@samsung.com>
 
-This testcase(042) tries to test various corner cases for finsert range
-functionality over different type of extents.
+This testcase(043) tries to test various corner cases with delayed extents
+for finsert range functionality over different type of extents.
 
 Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
 Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
 ---
- common/punch          |    5 ++++
- common/rc             |    2 +-
- tests/generic/042     |   65 +++++++++++++++++++++++++++++++++++++++++
- tests/generic/042.out |   78 +++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/043     |   65 +++++++++++++++++++++++++++++++++++++++++
+ tests/generic/043.out |   78 +++++++++++++++++++++++++++++++++++++++++++++++++
  tests/generic/group   |    1 +
- 5 files changed, 150 insertions(+), 1 deletion(-)
- create mode 100644 tests/generic/042
- create mode 100644 tests/generic/042.out
+ 3 files changed, 144 insertions(+)
+ create mode 100644 tests/generic/043
+ create mode 100644 tests/generic/043.out
 
-diff --git a/common/punch b/common/punch
-index 237b4d8..a75f4cf 100644
---- a/common/punch
-+++ b/common/punch
-@@ -527,6 +527,11 @@ _test_generic_punch()
- 		return
- 	fi
- 
-+	# If zero_cmd is finsert, don't check unaligned offsets
-+	if [ "$zero_cmd" == "finsert" ]; then
-+		return
-+	fi
-+
- 	echo "	16. data -> cache cold ->hole"
- 	if [ "$remove_testfile" ]; then
- 		rm -f $testfile
-diff --git a/common/rc b/common/rc
-index 5377ba0..4388e29 100644
---- a/common/rc
-+++ b/common/rc
-@@ -1520,7 +1520,7 @@ _require_xfs_io_command()
- 	"falloc" )
- 		testio=`$XFS_IO_PROG -F -f -c "falloc 0 1m" $testfile 2>&1`
- 		;;
--	"fpunch" | "fcollapse" | "zero" | "fzero" )
-+	"fpunch" | "fcollapse" | "zero" | "fzero" | "finsert" )
- 		testio=`$XFS_IO_PROG -F -f -c "pwrite 0 20k" -c "fsync" \
- 			-c "$command 4k 8k" $testfile 2>&1`
- 		;;
-diff --git a/tests/generic/042 b/tests/generic/042
+diff --git a/tests/generic/043 b/tests/generic/043
 new file mode 100644
-index 0000000..9b83e8d
+index 0000000..e70644d
 --- /dev/null
-+++ b/tests/generic/042
++++ b/tests/generic/043
 @@ -0,0 +1,65 @@
 +#! /bin/bash
-+# FS QA Test No. generic/042
++# FS QA Test No. generic/043
 +#
-+# Standard insert range tests
++# Delayed allocation insert range tests
 +# This testcase is one of the 4 testcases which tries to
 +# test various corner cases for finsert range functionality over different
 +# type of extents. These tests are based on generic/255 test case.
@@ -138,18 +108,18 @@ index 0000000..9b83e8d
 +
 +testfile=$TEST_DIR/$seq.$$
 +
-+_test_generic_punch falloc fpunch finsert fiemap _filter_hole_fiemap $testfile
++_test_generic_punch -d falloc fpunch finsert fiemap _filter_hole_fiemap $testfile
 +_check_test_fs
 +
 +status=0
 +exit
-diff --git a/tests/generic/042.out b/tests/generic/042.out
+diff --git a/tests/generic/043.out b/tests/generic/043.out
 new file mode 100644
-index 0000000..2406d71
+index 0000000..817ed09
 --- /dev/null
-+++ b/tests/generic/042.out
++++ b/tests/generic/043.out
 @@ -0,0 +1,78 @@
-+QA output created by 042
++QA output created by 043
 +	1. into a hole
 +cf845a781c107ec1346e849c9dd1b7e8
 +	2. into allocated space
@@ -228,14 +198,14 @@ index 0000000..2406d71
 +1: [16..55]: extent
 +86c9d033be2761385c9cfa203c426bb2
 diff --git a/tests/generic/group b/tests/generic/group
-index fb67b57..0d41c72 100644
+index 0d41c72..c2156a1 100644
 --- a/tests/generic/group
 +++ b/tests/generic/group
-@@ -44,6 +44,7 @@
- 039 metadata auto quick
+@@ -45,6 +45,7 @@
  040 metadata auto quick
  041 metadata auto quick
-+042 auto quick prealloc
+ 042 auto quick prealloc
++043 auto quick prealloc
  053 acl repair auto quick
  062 attr udf auto quick
  068 other auto freeze dangerous stress
