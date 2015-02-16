@@ -1,83 +1,37 @@
-From: Adrian Palmer <adrian.palmer@seagate.com>
-Subject: Re: [LSF/MM TOPIC] - SMR Modifications to EXT4 (and other generic
- file systems)
-Date: Sun, 15 Feb 2015 22:02:19 -0700
-Message-ID: <CAKdFiL6Gv8OGhoT6hhhAyjpzaWYxdFNMh3u0fnepVo3wh7kTkw@mail.gmail.com>
-References: <CAKdFiL6CMHTHWCvSFjFNw6hzvPLDEWWAC-o3wdivq9co7SX1FA@mail.gmail.com>
-	<CAKdFiL6XVxq-mjJd2TMkoEyE4kss5yTfWGKyeY-EZa2NDyLwFw@mail.gmail.com>
-	<03D7D1CF-D733-44E1-9F88-D68878D447BF@dilger.ca>
-	<CAKdFiL6Y0O=WTgaOQB9jaOQyVwRdnsKFc8GmNFL38WP5t-dWcw@mail.gmail.com>
-	<CAB-428=Mx8kqym601rHvdbvYkWMbdKYtoJJuAV0EN1U5JU23Mw@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 19/54] e2fsck: salvage under-sized dirents by removing
+ them
+Date: Mon, 16 Feb 2015 10:40:42 -0500
+Message-ID: <20150216154042.GD16560@thunk.org>
+References: <20150127073533.13308.44994.stgit@birch.djwong.org>
+ <20150127073737.13308.74557.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	Linux Filesystem Development List
-	<linux-fsdevel@vger.kernel.org>
-To: Alireza Haghdoost <haghdoost@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <CAB-428=Mx8kqym601rHvdbvYkWMbdKYtoJJuAV0EN1U5JU23Mw@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:48758 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753368AbbBPPkq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Feb 2015 10:40:46 -0500
+Content-Disposition: inline
+In-Reply-To: <20150127073737.13308.74557.stgit@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-That is a an issue that is on deck to explore further.  The DM needs
-to manage each disk independently, but aggregate them and present it
-as 1 vdev.  The trick to be figured out is in how it mixes the disks
-in a ZBD aware way.  Stripes of 256Mib are easily handled, but
-impractical.  Stripes of 128k are practical, but not easily handled.
+On Mon, Jan 26, 2015 at 11:37:37PM -0800, Darrick J. Wong wrote:
+> If the directory processing code ends up pointing to a directory entry
+> that's so close to the end of the block that there's not even space
+> for a rec_len/name_len, just substitute dummy values that will force
+> e2fsck to extend the previous entry to cover the remaining space.  We
+> can't use the helper methods to extract rec_len because that's reading
+> off the end of the buffer.
+> 
+> This isn't an issue with non-inline directories because the directory
+> check buffer is zero-extended so that fsck won't blow up.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-I see the changes that we're exploring/implementing as working on both
-an SMR drive and a conventional drive.  ZBD does not require SMR, so
-the superblock and group descriptor changes should not affect
-conventional drives.  In fact, the gd will mark the bg as a
-conventional zone by default, but can still use the ZBD changes
-(forward-write and defragmentation) without the writepointer
-information.
+Applied, thanks.
 
-EXT4 will need to be forward-write only as per SMR/ZBD.  If working
-with a combination of drives with small stripe sizes, re-writes would
-work on one drive (conventional) but not the other (SMR).  The bulk of
-the change would need to be in the DM, and will likely not bleed over
-to the FS.  The exception I can see is that the bg size may need to
-increase to accommodate multiple zones on multiple SMR drives (768MiB
-or 1GiB BGs for RAID5).  The DM would be responsible for aggregating
-the REPORT_ZONE data before presenting it to the FS (which would
-behave as normally expected).  Of note, the standard requires zone
-size as a power of 2, so a 3-disk RAID5 may violate that on
-implementation.  RAID0 has similar constraints, and RAID1 can
-operating in the same paradigm with no changes to zone information.
-
-So, in short, the DM would have to be modified to pass the aggregated
-zone information up to EXT4.  I don't see much divergence in the
-proposed redesign of EXT4.
-
-
-Adrian Palmer
-Firmware Engineer II
-R&D Firmware
-Seagate, Longmont Colorado
-720-684-1307
-
-
-On Sun, Feb 15, 2015 at 1:27 PM, Alireza Haghdoost <haghdoost@gmail.com> wrote:
->>> I think one of the important design decisions that needs to be made
->>> early on is whether it is possible to directly access some storage
->>> that can be updated with small random writes (either a separate flash
->>> LUN on the device, or a section of the disk that is formatted for 4kB
->>> sectors without SMR write requirements).
->>
->> This would be nice, but I looking more generally to what I call
->> 'single disk' systems.  Several more complicated FSs use a separate
->> flash drive for this purpose, but ext4 expects 1 vdev, and thus only
->> one type of media (agnostic).  We have hybrid HDD that have flash on
->> them, but the lba space isn't separate, so the FS or the DM couldn't
->> very easily treat them as 2 devices.
->>
->
-> Adrian,
-> What if vdev that has been exposed to ext4 composed out of md device
-> instead of regular block device ? In other words, how do you see that
-> these changes in EXT4 file system apply on software RAID array of SMR
-> drives ?
->
-> --Alireza
+						- Ted
