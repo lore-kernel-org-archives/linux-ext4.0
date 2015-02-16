@@ -1,64 +1,67 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: gdisk-created Bios Boot Partition created with NO fs, reports fs
- TYPE=ext4.  Bug/why?
-Date: Mon, 16 Feb 2015 10:38:49 -0800
-Message-ID: <20150216183849.GA11031@birch.djwong.org>
-References: <1424025536.1061731.227795501.40064DE9@webmail.messagingengine.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH RESEND 1/12] fs: Add support FALLOC_FL_INSERT_RANGE for
+ fallocate
+Date: Tue, 17 Feb 2015 10:53:47 +1100
+Message-ID: <20150216235346.GD4251@dastard>
+References: <1424101680-3301-1-git-send-email-linkinjeon@gmail.com>
+ <1424101680-3301-2-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: grantksupport@operamail.com
+Cc: tytso@mit.edu, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, a.sangwan@samsung.com, bfoster@redhat.com,
+	mtk.manpages@gmail.com, linux-man@vger.kernel.org,
+	linux-api@vger.kernel.org, Namjae Jeon <namjae.jeon@samsung.com>
+To: Namjae Jeon <linkinjeon@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:47153 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752863AbbBPSi7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Feb 2015 13:38:59 -0500
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:11413 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751038AbbBPXxu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Feb 2015 18:53:50 -0500
 Content-Disposition: inline
-In-Reply-To: <1424025536.1061731.227795501.40064DE9@webmail.messagingengine.com>
+In-Reply-To: <1424101680-3301-2-git-send-email-linkinjeon@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Feb 15, 2015 at 10:38:56AM -0800, grantksupport@operamail.com wrote:
-> I'm not entirely sure this is the right list for this question, but it IS ext4 'involved'.  So ...
+On Tue, Feb 17, 2015 at 12:47:48AM +0900, Namjae Jeon wrote:
+> From: Namjae Jeon <namjae.jeon@samsung.com>
 > 
-> I create a GPT Bios Boot Partition on a clean disk
+> FALLOC_FL_INSERT_RANGE command is the opposite command of
+> FALLOC_FL_COLLAPSE_RANGE that is needed for advertisers or someone who want to
+> add some data in the middle of file. FALLOC_FL_INSERT_RANGE will create space
+> for writing new data within a file after shifting extents to right as given
+> length. and this command also has same limitation as FALLOC_FL_COLLAPSE_RANGE,
+> that is block boundary and use ftruncate(2) for crosses EOF.
 > 
-> 	sgdisk -z /dev/sdc
-> 	sgdisk -o /dev/sdc
-> 	sgdisk -n 1:2048:+1M    -t 1:ef02  -c 1:"BIOS Boot"           /dev/sdc
+> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+> Cc: Brian Foster<bfoster@redhat.com>
+> ---
+>  fs/open.c                   |    8 +++++++-
+>  include/uapi/linux/falloc.h |   17 +++++++++++++++++
+>  2 files changed, 24 insertions(+), 1 deletion(-)
 > 
-> IIUC, at this point, the partition should exist with NO filesystem.
-> 
-> But, if I check with blkid
-> 
-> 	blkid /dev/sdc1
-> 		/dev/sdc1: LABEL="RAID_BOOT" UUID="8a828baa-f315-4456-88d2-ff14849eb705" TYPE="ext4" PARTLABEL="BIOS Boot" PARTUUID="2b3b10b1-a458-481e-872c-bada7d244b13" 
-> 
-> Note that it IDs the filesystem type as
-> 
-> 	TYPE="ext4"
-> 
-> Why?
+> diff --git a/fs/open.c b/fs/open.c
+> index 813be03..762fb45 100644
+> --- a/fs/open.c
+> +++ b/fs/open.c
+> @@ -232,7 +232,8 @@ int vfs_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+>  
+>  	/* Return error if mode is not supported */
+>  	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
+> -		     FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_ZERO_RANGE))
+> +		     FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_ZERO_RANGE |
+> +		     FALLOC_FL_INSERT_RANGE))
+>  		return -EOPNOTSUPP;
 
-Wiping the partition table doesn't erase filesystem superblocks, so if there
-previously was an sdc1 with an ext4 partition and the new sdc1 starts at the
-same offset, the old fs is still accessible.
+Can we create a FALLOC_FL_SUPPORTED_MASK define in falloc.h
+so that we only need to add new flags to the mask in rather than
+change this code every time we add a new flag?
 
-> Bios Boot Partition should have NO filesystem.
-> 
-> Is blkid correct?  Is there, or isn't there a fs on that partition?
-> 
-> if there isn't, what's causint the 'false' report?
-> 
-> If there IS, how do I make sure there isn't?
+Cheers,
 
-wipefs.
-
---D
-> 
-> grant
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
