@@ -1,116 +1,122 @@
-From: Matthew Wilcox <willy@linux.intel.com>
-Subject: Re: + ext4-add-dax-functionality.patch added to -mm tree
-Date: Tue, 17 Feb 2015 08:37:45 -0500
-Message-ID: <20150217133745.GG3364@wil.cx>
-References: <54b45495.+RptMlNQorYE9TTf%akpm@linux-foundation.org>
- <20150115124106.GF12739@quack.suse.cz>
- <100D68C7BA14664A8938383216E40DE040853440@FMSMSX114.amr.corp.intel.com>
- <20150119141858.GF5662@quack.suse.cz>
- <20150217085200.GA23192@quack.suse.cz>
+From: Omar Sandoval <osandov@osandov.com>
+Subject: Re: [PATCH v4] ext4: fix indirect punch hole corruption
+Date: Tue, 17 Feb 2015 10:59:52 -0800
+Message-ID: <20150217185952.GC3297@mew>
+References: <20150209212805.GA10892@mew.cs.washington.edu>
+ <bdb70d657b83644c6ee6eaaaf4f95460f937f05c.1423602557.git.osandov@osandov.com>
+ <54DAC58B.8030600@canonical.com>
+ <20150211033720.GA20820@mew>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
-	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"Dilger, Andreas" <andreas.dilger@intel.com>,
-	"axboe@kernel.dk" <axboe@kernel.dk>,
-	"boaz@plexistor.com" <boaz@plexistor.com>,
-	"david@fromorbit.com" <david@fromorbit.com>,
-	"hch@lst.de" <hch@lst.de>,
-	"kirill.shutemov@linux.intel.com" <kirill.shutemov@linux.intel.com>,
-	"mathieu.desnoyers@efficios.com" <mathieu.desnoyers@efficios.com>,
-	"rdunlap@infradead.org" <rdunlap@infradead.org>,
-	"tytso@mit.edu" <tytso@mit.edu>,
-	"mm-commits@vger.kernel.org" <mm-commits@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Matthew Wilcox <willy@linux.intel.com>, xfs@oss.sgi.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga03.intel.com ([134.134.136.65]:52222 "EHLO mga03.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753963AbbBQNhv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2015 08:37:51 -0500
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20150217085200.GA23192@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20150211033720.GA20820@mew>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Feb 17, 2015 at 09:52:00AM +0100, Jan Kara wrote:
->   Matthew, I think I still didn't see response to this. I think we can
-> fixup things after they are merged (since Andrew sent this patch to Linus)
-> but IMHO it needs some action...
+On Tue, Feb 10, 2015 at 07:37:20PM -0800, Omar Sandoval wrote:
+> On Tue, Feb 10, 2015 at 08:59:23PM -0600, Chris J Arges wrote:
+> > On 02/10/2015 03:44 PM, Omar Sandoval wrote:
+> > > Commit 4f579ae7de56 (ext4: fix punch hole on files with indirect
+> > > mapping) rewrote FALLOC_FL_PUNCH_HOLE for ext4 files with indirec=
+t
+> > > mapping. However, there are bugs in several corner cases. This fi=
+xes 5
+> > > distinct bugs:
+> > >=20
+> > > 1. When there is at least one entire level of indirection between=
+ the
+> > > start and end of the punch range and the end of the punch range i=
+s the
+> > > first block of its level, we can't return early; we have to free =
+the
+> > > intervening levels.
+> > >=20
+> > > 2. When the end is at a higher level of indirection than the star=
+t and
+> > > ext4_find_shared returns a top branch for the end, we still need =
+to free
+> > > the rest of the shared branch it returns; we can't decrement part=
+ial2.
+> > >=20
+> > > 3. When a punch happens within one level of indirection, we need =
+to
+> > > converge on an indirect block that contains the start and end. Ho=
+wever,
+> > > because the branches returned from ext4_find_shared do not necess=
+arily
+> > > start at the same level (e.g., the partial2 chain will be shallow=
+er if
+> > > the last block occurs at the beginning of an indirect group), the=
+ walk
+> > > of the two chains can end up "missing" each other and freeing a b=
+unch of
+> > > extra blocks in the process. This mismatch can be handled by firs=
+t
+> > > making sure that the chains are at the same level, then walking t=
+hem
+> > > together until they converge.
+> > >=20
+> > > 4. When the punch happens within one level of indirection and
+> > > ext4_find_shared returns a top branch for the start, we must free=
+ it,
+> > > but only if the end does not occur within that branch.
+> > >=20
+> > > 5. When the punch happens within one level of indirection and
+> > > ext4_find_shared returns a top branch for the end, then we should=
+n't
+> > > free the block referenced by the end of the returned chain (this =
+mirrors
+> > > the different levels case).
+> > >=20
+> > > Signed-off-by: Omar Sandoval <osandov@osandov.com>
+> > > ---
+> > > Okay, two more bugfixes folded in, all described in the commit me=
+ssage.
+> > > I'm finally no longer seeing xfstest generic/270 cause corruption=
+s, even
+> > > after running it overnight, so hopefully this is it. Chris, would=
+ you
+> > > mind trying this out?
+> > >
+> >=20
+> > Omar,
+> > I've completed 80 iterations of this patch so far without failure!
+> > Normally failures have occurred between 2-15 runs. Great job, and t=
+hanks
+> > for your persistence in fixing this issue!
+> >=20
+> > Tested-by: Chris J Arges <chris.j.arges@canonical.com>
+> >=20
+>=20
+> Awesome, I was starting to run out of ideas ;) Thanks for all of your
+> testing.
+>=20
+> Luk=C3=A1=C5=A1, would you like to take a look at this?
+>=20
+> Also, Ted and Andreas, would you prefer this all in one patch, or sho=
+uld
+> I split out each individual fix into its own patch?
+>=20
+> Thanks!
+> --=20
+> Omar
 
-Sorry, I thought I'd replied to this.
+Hi,
 
-> On Mon 19-01-15 15:18:58, Jan Kara wrote:
-> > On Fri 16-01-15 21:16:03, Wilcox, Matthew R wrote:
-> > > Are you sure it shouldn't be ext4_get_block_write, or _write_nolock?
-> > > According to the comments, ext4_get_block() doesn't allocate
-> > > uninitialized extents, which we do want it to do.
-> >   Hum, so if I understand the code right dax_fault() will allocate a block
-> > (== page in persistent memory) for a faulted address and will map this
-> > block directly into process' address space. Thus that block has to be
-> > zeroed out before the fault finishes no matter what (so that userspace
-> > doesn't see garbage) - unwritten block handling in the filesystem doesn't
-> > really matter (and would only cause unnecessary overhead) because of the
-> > direct mapping of the block to process' address space. So I would think
-> > that it would be easiest if dax_fault() simply zeroed out blocks which got
-> > allocated. You could rewrite part of dax_fault() to something like:
-> > 
-> > 	create = !vmf->cow_page && (vmf->flags & FAULT_FLAG_WRITE);
-> > 	error = get_block(inode, block, &bh, create);
-> > 	if (!error && (bh.b_size < PAGE_SIZE))
-> > 		error = -EIO;
-> > 	if (error)
-> > 		goto unlock_page;
-> > 
-> > 	if (buffer_new(&bh)) {
-> > 		count_vm_event(PGMAJFAULT);
-> > 		mem_cgroup_count_vm_event(vma->vm_mm, PGMAJFAULT);
-> > 		major = VM_FAULT_MAJOR;
-> > 		dax_clear_blocks(inode, bh->b_blocknr, PAGE_SIZE);
-> > 	} else if (!buffer_mapped(&bh))
-> > 		return dax_load_hole(mapping, page, vmf);
-> > 
-> > Note, that we also avoided calling get_block() callback twice on major fault
-> > as that's relatively expensive due to locking, extent tree lookups, etc.
-> > 
-> > Also note that ext2 then doesn't have to call dax_clear_blocks() at all if
-> > I understand the code right.
+I figure things are busy because of the merge window, but I wanted to
+check on the status of this patch. I also have some regression tests fo=
+r
+xfstests ready to go.
 
-I think you've missed the case where we lose power after ext2 has
-allocated the block and before dax_clear_blocks() is called.  After power
-returns, ext4 will show an unwritten extent in the tree, which will be
-zeroed before being handed to a user.  ext2 must have zeroed the block
-before linking it into the inode's data blocks.
-
-I didn't realise that calling get_block() was an expensive operation;
-I'm open to reworking this piece of code to only call it once.
-
-> > > This got added to fix a problem that Dave Chinner pointed out.  We need
-> > > the allocated extent to either be zeroed (as ext2 does), or marked as
-> > > unwritten (ext4, XFS) so that a racing read/page fault doesn't return
-> > > uninitialized data.  If it's marked as unwritten, we need to convert it
-> > > to a written extent after we've initialised the contents.  We use the
-> > > b_end_io() callback to do this, and it's called from the DAX code, not in
-> > > softirq context.
-> >   OK, I see. But I didn't find where ->b_end_io gets called from dax code
-> > (specifically I don't see it anywhere in dax_do_IO() or dax_io()). Can you
-> > point me please?
-
-For faults, we call it in dax_insert_mapping(), the very last thing
-before returning in the fault path.  The normal I/O path gets to use
-the dio_iodone_t for the same purpose.
-
-> > Also abusing b_end_io of a phony buffer for that looks ugly to me (we are
-> > trying to get away from passing phony bh around and this would entangle us
-> > even more into that mess). Normally I would think that end_io() callback
-> > passed into dax_do_io() should perform necessary conversions and for
-> > dax_fault() we could do necessary conversions inside foofs_page_mkwrite()...
-
-Dave sees to be the one trying the hardest to get rid of the phony BHs
-... and it was his idea to (ab)use b_end_io for this.  The problem with
-doing the conversion in ext4_page_mkwrite() is that we don't know at
-that point whether the BH is unwritten or not.
-
-
+Thanks!
+--=20
+Omar
