@@ -1,92 +1,133 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: Allocate entire range in zero range
-Date: Wed, 18 Feb 2015 17:49:28 +0100
-Message-ID: <1424278168-13711-1-git-send-email-lczerner@redhat.com>
-Cc: Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59062 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750851AbbBRQti (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2015 11:49:38 -0500
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t1IGnbex029212
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-ext4@vger.kernel.org>; Wed, 18 Feb 2015 11:49:38 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: + ext4-add-dax-functionality.patch added to -mm tree
+Date: Thu, 19 Feb 2015 08:55:23 +1100
+Message-ID: <20150218215523.GO12722@dastard>
+References: <54b45495.+RptMlNQorYE9TTf%akpm@linux-foundation.org>
+	<20150115124106.GF12739@quack.suse.cz>
+	<100D68C7BA14664A8938383216E40DE040853440@FMSMSX114.amr.corp.intel.com>
+	<20150119141858.GF5662@quack.suse.cz>
+	<20150217085200.GA23192@quack.suse.cz>
+	<20150217133745.GG3364@wil.cx>
+	<20150218104009.GB4614@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: "axboe@kernel.dk" <axboe@kernel.dk>,
+	"boaz@plexistor.com" <boaz@plexistor.com>, xfs@oss.sgi.com,
+	"Dilger, Andreas" <andreas.dilger@intel.com>,
+	"rdunlap@infradead.org" <rdunlap@infradead.org>,
+	"tytso@mit.edu" <tytso@mit.edu>, "hch@lst.de" <hch@lst.de>,
+	"mathieu.desnoyers@efficios.com" <mathieu.desnoyers@efficios.com>,
+	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
+	"mm-commits@vger.kernel.org" <mm-commits@vger.kernel.org>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"kirill.shutemov@linux.intel.com" <kirill.shutemov@linux.intel.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <20150218104009.GB4614@quack.suse.cz>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Currently there is a bug in zero range code which causes zero range
-calls to only allocate block aligned portion of the range, while
-ignoring the rest in some cases.
+On Wed, Feb 18, 2015 at 11:40:09AM +0100, Jan Kara wrote:
+> On Tue 17-02-15 08:37:45, Matthew Wilcox wrote:
+> > On Tue, Feb 17, 2015 at 09:52:00AM +0100, Jan Kara wrote:
+> > > > > This got added to fix a problem that Dave Chinner pointed out.  We need
+> > > > > the allocated extent to either be zeroed (as ext2 does), or marked as
+> > > > > unwritten (ext4, XFS) so that a racing read/page fault doesn't return
+> > > > > uninitialized data.  If it's marked as unwritten, we need to convert it
+> > > > > to a written extent after we've initialised the contents.  We use the
+> > > > > b_end_io() callback to do this, and it's called from the DAX code, not in
+> > > > > softirq context.
+> > > >   OK, I see. But I didn't find where ->b_end_io gets called from dax code
+> > > > (specifically I don't see it anywhere in dax_do_IO() or dax_io()). Can you
+> > > > point me please?
+> > 
+> > For faults, we call it in dax_insert_mapping(), the very last thing
+> > before returning in the fault path.  The normal I/O path gets to use
+> > the dio_iodone_t for the same purpose.
+>   I see. I didn't think of races with reads (hum, I actually wonder whether
+> we don't have this data exposure problem for ext4 for mmapped write into
+> a hole vs direct read as well). So I guess we do need those unwritten
+> extent dances after all (or we would need to have a page covering hole when
+> writing to it via mmap but I guess unwritten extent dances are somewhat
+> more standard).
 
-In some cases, namely if the end of the range is past isize, we do
-attempt to preallocate the last nonaligned block. However this might
-cause kernel to BUG() in some carefully designed zero range requests on
-setups where page size > block size.
+Right, that was the reason for doing it that way - it leveraged all
+the existing methods we have for avoiding data exposure races in
+XFS. but it's also not just for races - it's for ensuring that if we
+crash between the allocation and the write to the persistent store
+we don't expose the underlying contents when the system next comes
+up.
 
-Fix this problem by first preallocating the entire range, including the
-nonaligned edges and converting the written extents to unwritten in the
-next step. This approach will also give us the advantage of having the
-range to be as linearly contiguous as possible.
+These problems were found long ago on XFS and that's one of the
+reasons why all direct IO block allocation uses unwritten extents -
+until the data is on disk there is a window for stale data exposure
+and things like crashing systems running high throughput IO are
+very good at exposing such small windows of exposure. Hence I
+thought it best to have DAX close that hole for everyone.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/extents.c | 31 +++++++++++++++++++------------
- 1 file changed, 19 insertions(+), 12 deletions(-)
+> So in that case you need ext4_get_block_write() in the above call to
+> do_dax_fault() (note that we still do need ext4 version of the fault
+> function like above due to lock ranking and retry on ENOSPC). And please
+> comment about the read races at that call site so that we have that
+> subtlety documented somewhere.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index bed4308..aa52242 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4803,12 +4803,6 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 	else
- 		max_blocks -= lblk;
- 
--	flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT |
--		EXT4_GET_BLOCKS_CONVERT_UNWRITTEN |
--		EXT4_EX_NOCACHE;
--	if (mode & FALLOC_FL_KEEP_SIZE)
--		flags |= EXT4_GET_BLOCKS_KEEP_SIZE;
--
- 	mutex_lock(&inode->i_mutex);
- 
- 	/*
-@@ -4825,15 +4819,28 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 		ret = inode_newsize_ok(inode, new_size);
- 		if (ret)
- 			goto out_mutex;
--		/*
--		 * If we have a partial block after EOF we have to allocate
--		 * the entire block.
--		 */
--		if (partial_end)
--			max_blocks += 1;
- 	}
- 
-+	flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT;
-+	if (mode & FALLOC_FL_KEEP_SIZE)
-+		flags |= EXT4_GET_BLOCKS_KEEP_SIZE;
-+
-+	/* Preallocate the range including the unaligned edges */
-+	if (partial_begin || partial_end) {
-+		ret = ext4_alloc_file_blocks(file,
-+				round_down(offset, 1 << blkbits) >> blkbits,
-+				(round_up((offset + len), 1 << blkbits) -
-+				 round_down(offset, 1 << blkbits)) >> blkbits,
-+				new_size, flags, mode);
-+		if (ret)
-+			goto out_mutex;
-+
-+	}
-+
-+	/* Zero range excluding the unaligned edges */
- 	if (max_blocks > 0) {
-+		flags |= (EXT4_GET_BLOCKS_CONVERT_UNWRITTEN |
-+			  EXT4_EX_NOCACHE);
- 
- 		/* Now release the pages and zero block aligned part of pages*/
- 		truncate_pagecache_range(inode, start, end - 1);
+Actually, I thought it was obvious that  ;)
+
+> 
+> > > > Also abusing b_end_io of a phony buffer for that looks ugly to me (we are
+> > > > trying to get away from passing phony bh around and this would entangle us
+> > > > even more into that mess). Normally I would think that end_io() callback
+> > > > passed into dax_do_io() should perform necessary conversions and for
+> > > > dax_fault() we could do necessary conversions inside foofs_page_mkwrite()...
+> > 
+> > Dave sees to be the one trying the hardest to get rid of the phony BHs
+> > ... and it was his idea to (ab)use b_end_io for this.  The problem with
+> > doing the conversion in ext4_page_mkwrite() is that we don't know at
+> > that point whether the BH is unwritten or not.
+>   I see, thanks for explanation. So it would be enough to pass a bit of
+> information (unwritten / written) to a caller of do_dax_fault() and that
+> can then call conversion function. IMO doing that (either in a return value
+> or in a separate argument of do_dax_fault()) would be cleaner and more
+> readable than playing with b_private and b_end_io... Thoughts?
+
+I'm happy for a better mechanism to be thought up. The current one
+was expedient, but not pretty. The need for the end_io function was
+because unwritten conversion needed to happen after the page was
+zeroed. If we change dax_fault() to also take a "end_io" function
+callback (already takes a get_blocks callback), then we can avoid
+the need to use the phony bh for this purpose. i.e filesystems that
+allocate unwritten extents can pass a completion function
+
+I've got to update the XFS DAX patches I have for the next merge
+cycle, so I'll take another at it when I page that information back
+into my brain.
+
+And speaking of phony BHs, the pnfs block layout changes introduce
+an struct iomap and a "map_blocks" method to the export_ops in
+exportfs.h. This is the model what we should be using instead of
+phony BHs for block mapping/allocation operations...
+
+Cheers,
+
+Dave.
 -- 
-1.8.3.1
+Dave Chinner
+david@fromorbit.com
 
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
