@@ -1,129 +1,95 @@
-From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
-Subject: [3.19 ext4] Significant loss of file I/O reliability under extreme memory pressure.
-Date: Fri, 20 Feb 2015 20:20:40 +0900
-Message-ID: <201502202020.BGG05734.FJOSMLtHFQOFOV@I-love.SAKURA.ne.jp>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: + ext4-add-dax-functionality.patch added to -mm tree
+Date: Fri, 20 Feb 2015 13:05:47 +0100
+Message-ID: <20150220120547.GA6293@quack.suse.cz>
+References: <54b45495.+RptMlNQorYE9TTf%akpm@linux-foundation.org>
+ <20150115124106.GF12739@quack.suse.cz>
+ <100D68C7BA14664A8938383216E40DE040853440@FMSMSX114.amr.corp.intel.com>
+ <20150119141858.GF5662@quack.suse.cz>
+ <20150217085200.GA23192@quack.suse.cz>
+ <20150217133745.GG3364@wil.cx>
+ <20150218104009.GB4614@quack.suse.cz>
+ <20150218215523.GO12722@dastard>
+ <20150219154241.GC22712@quack.suse.cz>
+ <20150219211210.GS12722@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu, adilger.kernel@dilger.ca
+Cc: Jan Kara <jack@suse.cz>, Matthew Wilcox <willy@linux.intel.com>,
+	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
+	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"Dilger, Andreas" <andreas.dilger@intel.com>,
+	"axboe@kernel.dk" <axboe@kernel.dk>,
+	"boaz@plexistor.com" <boaz@plexistor.com>,
+	"hch@lst.de" <hch@lst.de>,
+	"kirill.shutemov@linux.intel.com" <kirill.shutemov@linux.intel.com>,
+	"mathieu.desnoyers@efficios.com" <mathieu.desnoyers@efficios.com>,
+	"rdunlap@infradead.org" <rdunlap@infradead.org>,
+	"tytso@mit.edu" <tytso@mit.edu>,
+	"mm-commits@vger.kernel.org" <mm-commits@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	xfs@oss.sgi.com
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www262.sakura.ne.jp ([202.181.97.72]:64235 "EHLO
-	www262.sakura.ne.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754357AbbBTLUs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Feb 2015 06:20:48 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:56599 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753862AbbBTMFy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Feb 2015 07:05:54 -0500
+Content-Disposition: inline
+In-Reply-To: <20150219211210.GS12722@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello.
+On Fri 20-02-15 08:12:10, Dave Chinner wrote:
+> On Thu, Feb 19, 2015 at 04:42:41PM +0100, Jan Kara wrote:
+> > On Thu 19-02-15 08:55:23, Dave Chinner wrote:
+> > > On Wed, Feb 18, 2015 at 11:40:09AM +0100, Jan Kara wrote:
+> > > > On Tue 17-02-15 08:37:45, Matthew Wilcox wrote:
+> > > > > On Tue, Feb 17, 2015 at 09:52:00AM +0100, Jan Kara wrote:
+> > > > > > > > This got added to fix a problem that Dave Chinner pointed out.  We need
+> > > > > > > > the allocated extent to either be zeroed (as ext2 does), or marked as
+> > > > > > > > unwritten (ext4, XFS) so that a racing read/page fault doesn't return
+> > > > > > > > uninitialized data.  If it's marked as unwritten, we need to convert it
+> > > > > > > > to a written extent after we've initialised the contents.  We use the
+> > > > > > > > b_end_io() callback to do this, and it's called from the DAX code, not in
+> > > > > > > > softirq context.
+> > > > > > >   OK, I see. But I didn't find where ->b_end_io gets called from dax code
+> > > > > > > (specifically I don't see it anywhere in dax_do_IO() or dax_io()). Can you
+> > > > > > > point me please?
+> > > > > 
+> > > > > For faults, we call it in dax_insert_mapping(), the very last thing
+> > > > > before returning in the fault path.  The normal I/O path gets to use
+> > > > > the dio_iodone_t for the same purpose.
+> > > >   I see. I didn't think of races with reads (hum, I actually wonder whether
+> > > > we don't have this data exposure problem for ext4 for mmapped write into
+> > > > a hole vs direct read as well). So I guess we do need those unwritten
+> > > > extent dances after all (or we would need to have a page covering hole when
+> > > > writing to it via mmap but I guess unwritten extent dances are somewhat
+> > > > more standard).
+> > > 
+> > > Right, that was the reason for doing it that way - it leveraged all
+> > > the existing methods we have for avoiding data exposure races in
+> > > XFS. but it's also not just for races - it's for ensuring that if we
+> > > crash between the allocation and the write to the persistent store
+> > > we don't expose the underlying contents when the system next comes
+> > > up.
+> >   Well, ext3/4 handles the crash situation differently - we make sure we
+> > flush data to allocated blocks before committing a transaction that
+> > allocates them. That works perfectly for crashes but doesn't avoid the
+> > race with DIO.
+> 
+> I was talking about direct IO, not buffered IO. DAX is modeled on
+  Ah, OK. For DIO writes ext4 uses unwritten extents as well. But the race
+I was talking about is between mmap allocating write (i.e. going through
+page cache) and DIO read of the same location.
 
-Commit 9879de7373fc (mm: page_alloc: embed OOM killing naturally into
-allocation slowpath) which was merged between 3.19-rc6 and 3.19-rc7 has
-changed the behavior of GFP_NOFS / GFP_NOIO allocations. As a result,
-filesystem error actions (e.g. remount-ro or panic) can now be trivially
-invoked via extreme memory pressure.
+> the direct IO stack, not buffered IO. I did go and look at the ext4
+> IO completion path, and I can see where ext4_end_io_dio() triggers a
+> commit outside of doing unwritten extent conversion. Can you clue me
+> in - IO completion in ext4 is a maze of twisty passages...
+  I don't quite follow you. Why should ext4_end_io_dio() trigger a commit?
 
-I tested how frequent filesystem errors occurs using scripted environment
-on a VM with 4 CPUs / 2048MB RAM / no swap.
-
----------- Testing script start ----------
-#!/bin/sh
-: > ~/trial.log
-for i in `seq 1 100`
-do
-    mkfs.ext4 -q /dev/sdb1 || exit 1
-    mount -o errors=remount-ro /dev/sdb1 /tmp || exit 2
-    chmod 1777 /tmp
-    su - demo -c ~demo/a.out
-    if [ -w /tmp/ ]
-    then
-        echo -n "S" >> ~/trial.log
-    else
-        echo -n "F" >> ~/trial.log
-    fi
-    umount /tmp
-done
----------- Testing script end ----------
-
----------- Source code of ~demo/a.out start ----------
-#define _GNU_SOURCE
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sched.h>
-
-static int file_writer(void *unused)
-{
-        char buffer[128] = { };
-        int fd;
-        snprintf(buffer, sizeof(buffer) - 1, "/tmp/file.%u", getpid());
-        fd = open(buffer, O_WRONLY | O_CREAT, 0600);
-        unlink(buffer);
-        while (write(fd, buffer, 1) == 1 && fsync(fd) == 0);
-        return 0;
-}
-
-static void memory_consumer(void)
-{
-        const int fd = open("/dev/zero", O_RDONLY);
-        unsigned long size;
-        char *buf = NULL;
-        for (size = 1048576; size < 512UL * (1 << 30); size <<= 1) {
-                char *cp = realloc(buf, size);
-                if (!cp) {
-                        size >>= 1;
-                        break;
-                }
-                buf = cp;
-        }
-        read(fd, buf, size); /* Will cause OOM due to overcommit */
-}
-
-int main(int argc, char *argv[])
-{
-        int i;
-        for (i = 0; i < 100; i++) {
-                char *cp = malloc(4 * 1024);
-                if (!cp || clone(file_writer, cp + 4 * 1024,
-                                 CLONE_SIGHAND | CLONE_VM, NULL) == -1)
-                        break;
-        }
-        memory_consumer();
-        while (1)
-                pause();
-        return 0;
-}
----------- Source code of ~demo/a.out end ----------
-
-We can see that filesystem errors are occurring frequently if GFP_NOFS / GFP_NOIO
-allocations give up without retrying. On the other hand, as far as these trials,
-TIF_MEMDIE stall was not observed if GFP_NOFS / GFP_NOIO allocations give up
-without retrying. According to Michal Hocko, this is expected because those
-allocations are with locks held and so the chances to release the lock are
-higher.
-
-  Linux 3.19-rc6 (Console log is http://I-love.SAKURA.ne.jp/tmp/serial-20150219-3.19-rc6.txt.xz )
-
-    0 filesystem errors out of 100 trials. 2 stalls.
-    SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
-
-  Linux 3.19 (Console log is http://I-love.SAKURA.ne.jp/tmp/serial-20150219-3.19.txt.xz )
-
-    44 filesystem errors out of 100 trials. 0 stalls.
-    SSFFSSSFSSSFSFFFFSSFSSFSSSSSSFFFSFSFFSSSSSSFFFFSFSSFFFSSSSFSSFFFFFSSSSSFSSFSFSSFSFFFSFFFFFFFSSSSSSSS
-
-  Linux 3.19 with http://marc.info/?l=linux-mm&m=142418465615672&w=2 applied.
-  (Console log is http://I-love.SAKURA.ne.jp/tmp/serial-20150219-3.19-patched.txt.xz )
-
-    0 filesystem errors out of 100 trials. 2 stalls.
-    SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
-
-I'm posting this result to this ML so that you can start considering what
-the proper fix for ext4 filesystem is. At linux-mm ML, Michal Hocko and
-Dave Chinner are discussing about use of __GFP_NOFAIL. Their discussion
-within http://thread.gmane.org/gmane.linux.kernel.mm/126398 started from
-17 Feb might give you some hints.
-
-Regards.
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
