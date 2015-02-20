@@ -1,98 +1,43 @@
-From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Subject: Re: Documenting MS_LAZYTIME
-Date: Fri, 20 Feb 2015 14:22:07 +0100
-Message-ID: <CAKgNAkj4EtiWpxOPFtfYn4=E1ukLjESwe7yvyNHdp04BP+kj-g@mail.gmail.com>
-References: <CAHO5Pa0k7QkV_6BDjwTVxa7LV9tFyN9nGFFcSvOC6HYO08wfrw@mail.gmail.com>
- <44893EA7-B11A-469A-9911-6CE2E8B26EB4@dilger.ca>
-Reply-To: mtk.manpages@gmail.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>,
-	linux-man <linux-man@vger.kernel.org>,
-	Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux API <linux-api@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f181.google.com ([209.85.217.181]:34106 "EHLO
-	mail-lb0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750780AbbBTNWa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Feb 2015 08:22:30 -0500
-In-Reply-To: <44893EA7-B11A-469A-9911-6CE2E8B26EB4@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Rasmus Villemoes <linux@rasmusvillemoes.dk>
+Subject: [PATCH] ext4: fix transposition typo in format string
+Date: Fri, 20 Feb 2015 15:11:35 +0100
+Message-ID: <1424441495-32581-1-git-send-email-linux@rasmusvillemoes.dk>
+Cc: Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 20 February 2015 at 13:32, Andreas Dilger <adilger@dilger.ca> wrote:
-> On Feb 20, 2015, at 1:50 AM, Michael Kerrisk <mtk.manpages@gmail.com>=
- wrote:
->>
->> Hello Ted,
->>
->> Based on your commit message 0ae45f63d4e, I I wrote the documentatio=
-n
->> below for MS_LAZYTIME, to go into the mount(2) man page. Could you
->> please check it over and let me know if it's accurate. In particular=
-,
->> I added pieces marked with "*" below that were not part of the commi=
-t
->> message and I'd like confirmation that they're accurate.
->>
->> Thanks,
->>
->> Michael
->>
->> [[
->>       MS_LAZYTIME (since Linux 3.20)
->>              Only  update  filetimes (atime, mtime, ctime) on the in=
--
->>              memory version of the file  inode.   The  on-disk  time=
-=E2=80=90
->>              stamps are updated only when:
->>
->>              (a)  the inode needs to be updated for some change unre=
-=E2=80=90
->>                   lated to file timestamps;
->>
->>              (b)  the application  employs  fsync(2),  syncfs(2),  o=
-r
->>                   sync(2);
->>
->>              (c)  an undeleted inode is evicted from memory; or
->>
->> *             (d)  more than 24 hours have passed since the i-node w=
-as
->> *                  written to disk.
->>
->>              This mount option significantly reduces  writes  to  th=
-e
->>              inode  table  for workloads that perform frequent rando=
-m
->>              writes to preallocated files.
->>
->> *             As at Linux 3.20, this option is supported only on ext=
-4.
->
-> I _think_ that the lazytime mount option is generic for all filesyste=
-ms.
-> I believe ext4 has an extra optimization for it, but that's it.
+According to C99, %*.s means the same as %*.0s, in other words, print
+as many spaces as the field width argument says and effectively ignore
+the string argument. That is certainly not what was meant here. The
+kernel's printf implementation, however, treats it as if the . was not
+there, i.e. as %*s. I don't know if de->name is nul-terminated or not,
+but in any case I'm guessing the intention was to use de->name_len as
+precision instead of field width.
 
-Ah yes, looking at the code again, that makes sense. I think you're
-right, and I've struck that last sentence. Thanks, Andreas.
+Signed-off-by: Rasmus Villemoes <linux@rasmusvillemoes.dk>
+---
+If de->name is not guaranteed to be nul-terminated, I suppose this is
+even -stable material.
 
-Cheers,
+ fs/ext4/inline.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Michael
-
-
---=20
-Michael Kerrisk
-Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
-Linux/UNIX System Programming Training: http://man7.org/training/
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 4b143febf21f..8b64d715e476 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -972,7 +972,7 @@ void ext4_show_inline_dir(struct inode *dir, struct buffer_head *bh,
+ 	offset = 0;
+ 	while ((void *)de < dlimit) {
+ 		de_len = ext4_rec_len_from_disk(de->rec_len, inline_size);
+-		trace_printk("de: off %u rlen %u name %*.s nlen %u ino %u\n",
++		trace_printk("de: off %u rlen %u name %.*s nlen %u ino %u\n",
+ 			     offset, de_len, de->name_len, de->name,
+ 			     de->name_len, le32_to_cpu(de->inode));
+ 		if (ext4_check_dir_entry(dir, NULL, de, bh,
+-- 
+2.1.3
