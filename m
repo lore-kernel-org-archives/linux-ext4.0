@@ -1,94 +1,40 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Documenting MS_LAZYTIME
-Date: Fri, 20 Feb 2015 09:49:34 -0600
-Message-ID: <54E7578E.4090809@redhat.com>
-References: <CAHO5Pa0k7QkV_6BDjwTVxa7LV9tFyN9nGFFcSvOC6HYO08wfrw@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 93491] Kernel crashes every 10 minutes. Computer stalls
+Date: Fri, 20 Feb 2015 15:56:41 +0000
+Message-ID: <bug-93491-13602-WKxxGWqz3Y@https.bugzilla.kernel.org/>
+References: <bug-93491-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>, linux-man@vger.kernel.org,
-	Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux API <linux-api@vger.kernel.org>
-To: Michael Kerrisk <mtk.manpages@gmail.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46503 "EHLO mx1.redhat.com"
+Received: from mail.kernel.org ([198.145.29.136]:45341 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751870AbbBTPto (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Feb 2015 10:49:44 -0500
-In-Reply-To: <CAHO5Pa0k7QkV_6BDjwTVxa7LV9tFyN9nGFFcSvOC6HYO08wfrw@mail.gmail.com>
+	id S1753893AbbBTP4p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Feb 2015 10:56:45 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 4BFD52046F
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Feb 2015 15:56:43 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 08CD320460
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Feb 2015 15:56:42 +0000 (UTC)
+In-Reply-To: <bug-93491-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/20/15 2:50 AM, Michael Kerrisk wrote:
-> Hello Ted,
->=20
-> Based on your commit message 0ae45f63d4e, I I wrote the documentation
-> below for MS_LAZYTIME, to go into the mount(2) man page. Could you
-> please check it over and let me know if it's accurate. In particular,
-> I added pieces marked with "*" below that were not part of the commit
-> message and I'd like confirmation that they're accurate.
->=20
-> Thanks,
->=20
-> Michael
->=20
-> [[
->        MS_LAZYTIME (since Linux 3.20)
->               Only  update  filetimes (atime, mtime, ctime) on the in=
--
->               memory version of the file  inode.   The  on-disk  time=
-=E2=80=90
->               stamps are updated only when:
+https://bugzilla.kernel.org/show_bug.cgi?id=93491
 
-"filetimes" and "file inode" seems a bit awkward.  How about:
+--- Comment #7 from Eric Sandeen <sandeen@redhat.com> ---
+sure, let me do that for you....
 
->        MS_LAZYTIME (since Linux 3.20)
->		Reduce on-disk updates of inode timestamps (atime, mtime, ctime)
-> 		by maintaining these changes only in memory, unless:
+the only files which contain "kernel BUG" are "backtrace" and "reason" files,
+and they have no other information:
 
-(maybe I'm bike-shedding too much, if so, sorry).
+$ cat oops-2015-02-19-09:46:07-817-0/reason
+kernel BUG at fs/ext4/mballoc.c:3272!
 
->               (a)  the inode needs to be updated for some change unre=
-=E2=80=90
->                    lated to file timestamps;
->=20
->               (b)  the application  employs  fsync(2),  syncfs(2),  o=
-r
->                    sync(2);
->=20
->               (c)  an undeleted inode is evicted from memory; or
->=20
-> *             (d)  more than 24 hours have passed since the i-node wa=
-s
-> *                  written to disk.
+so there's still not much to go on.  I don't know why abrt didn't capture more.
 
-Please don't use "i-node" - simply "inode" is much more common in the m=
-anpages
-AFAICT.
-
->               This mount option significantly reduces  writes  to  th=
-e
->               inode  table  for workloads that perform frequent rando=
-m
->               writes to preallocated files.
-
-This seems like an overly specific description of a single workload out
-of many which may benefit, but what do others think?  "inode table" is =
-also
-fairly extN-specific.
-
--Eric
-=20
-> *             As at Linux 3.20, this option is supported only on ext4=
-=2E
-> ]]
->=20
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
