@@ -1,43 +1,35 @@
-From: Rasmus Villemoes <linux@rasmusvillemoes.dk>
-Subject: [PATCH] ext4: fix transposition typo in format string
-Date: Fri, 20 Feb 2015 15:11:35 +0100
-Message-ID: <1424441495-32581-1-git-send-email-linux@rasmusvillemoes.dk>
-Cc: Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 93491] Kernel crashes every 10 minutes. Computer stalls
+Date: Fri, 20 Feb 2015 15:16:47 +0000
+Message-ID: <bug-93491-13602-xHkwDfzors@https.bugzilla.kernel.org/>
+References: <bug-93491-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:43188 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754119AbbBTPQy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Feb 2015 10:16:54 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id E88FE201EC
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Feb 2015 15:16:49 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id D23D820396
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Feb 2015 15:16:47 +0000 (UTC)
+In-Reply-To: <bug-93491-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-According to C99, %*.s means the same as %*.0s, in other words, print
-as many spaces as the field width argument says and effectively ignore
-the string argument. That is certainly not what was meant here. The
-kernel's printf implementation, however, treats it as if the . was not
-there, i.e. as %*s. I don't know if de->name is nul-terminated or not,
-but in any case I'm guessing the intention was to use de->name_len as
-precision instead of field width.
+https://bugzilla.kernel.org/show_bug.cgi?id=93491
 
-Signed-off-by: Rasmus Villemoes <linux@rasmusvillemoes.dk>
----
-If de->name is not guaranteed to be nul-terminated, I suppose this is
-even -stable material.
+--- Comment #5 from Eric Sandeen <sandeen@redhat.com> ---
+That's a lot to look through; the first dmesg I grabbed had no oops in it, and
+dropbox is a little tedious to navigate.
 
- fs/ext4/inline.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+If there's an interesting one, can you attach it here?
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 4b143febf21f..8b64d715e476 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -972,7 +972,7 @@ void ext4_show_inline_dir(struct inode *dir, struct buffer_head *bh,
- 	offset = 0;
- 	while ((void *)de < dlimit) {
- 		de_len = ext4_rec_len_from_disk(de->rec_len, inline_size);
--		trace_printk("de: off %u rlen %u name %*.s nlen %u ino %u\n",
-+		trace_printk("de: off %u rlen %u name %.*s nlen %u ino %u\n",
- 			     offset, de_len, de->name_len, de->name,
- 			     de->name_len, le32_to_cpu(de->inode));
- 		if (ext4_check_dir_entry(dir, NULL, de, bh,
 -- 
-2.1.3
+You are receiving this mail because:
+You are watching the assignee of the bug.
