@@ -1,95 +1,67 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: + ext4-add-dax-functionality.patch added to -mm tree
-Date: Fri, 20 Feb 2015 13:05:47 +0100
-Message-ID: <20150220120547.GA6293@quack.suse.cz>
-References: <54b45495.+RptMlNQorYE9TTf%akpm@linux-foundation.org>
- <20150115124106.GF12739@quack.suse.cz>
- <100D68C7BA14664A8938383216E40DE040853440@FMSMSX114.amr.corp.intel.com>
- <20150119141858.GF5662@quack.suse.cz>
- <20150217085200.GA23192@quack.suse.cz>
- <20150217133745.GG3364@wil.cx>
- <20150218104009.GB4614@quack.suse.cz>
- <20150218215523.GO12722@dastard>
- <20150219154241.GC22712@quack.suse.cz>
- <20150219211210.GS12722@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Matthew Wilcox <willy@linux.intel.com>,
-	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
-	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"Dilger, Andreas" <andreas.dilger@intel.com>,
-	"axboe@kernel.dk" <axboe@kernel.dk>,
-	"boaz@plexistor.com" <boaz@plexistor.com>,
-	"hch@lst.de" <hch@lst.de>,
-	"kirill.shutemov@linux.intel.com" <kirill.shutemov@linux.intel.com>,
-	"mathieu.desnoyers@efficios.com" <mathieu.desnoyers@efficios.com>,
-	"rdunlap@infradead.org" <rdunlap@infradead.org>,
-	"tytso@mit.edu" <tytso@mit.edu>,
-	"mm-commits@vger.kernel.org" <mm-commits@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56599 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753862AbbBTMFy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Feb 2015 07:05:54 -0500
-Content-Disposition: inline
-In-Reply-To: <20150219211210.GS12722@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Subject: Re: Documenting MS_LAZYTIME
+Date: Fri, 20 Feb 2015 05:32:58 -0700
+Message-ID: <44893EA7-B11A-469A-9911-6CE2E8B26EB4@dilger.ca>
+References: <CAHO5Pa0k7QkV_6BDjwTVxa7LV9tFyN9nGFFcSvOC6HYO08wfrw@mail.gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2070.6\))
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux btrfs Developers List <linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>, linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Linux-Fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Michael Kerrisk <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <CAHO5Pa0k7QkV_6BDjwTVxa7LV9tFyN9nGFFcSvOC6HYO08wfrw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri 20-02-15 08:12:10, Dave Chinner wrote:
-> On Thu, Feb 19, 2015 at 04:42:41PM +0100, Jan Kara wrote:
-> > On Thu 19-02-15 08:55:23, Dave Chinner wrote:
-> > > On Wed, Feb 18, 2015 at 11:40:09AM +0100, Jan Kara wrote:
-> > > > On Tue 17-02-15 08:37:45, Matthew Wilcox wrote:
-> > > > > On Tue, Feb 17, 2015 at 09:52:00AM +0100, Jan Kara wrote:
-> > > > > > > > This got added to fix a problem that Dave Chinner pointed out.  We need
-> > > > > > > > the allocated extent to either be zeroed (as ext2 does), or marked as
-> > > > > > > > unwritten (ext4, XFS) so that a racing read/page fault doesn't return
-> > > > > > > > uninitialized data.  If it's marked as unwritten, we need to convert it
-> > > > > > > > to a written extent after we've initialised the contents.  We use the
-> > > > > > > > b_end_io() callback to do this, and it's called from the DAX code, not in
-> > > > > > > > softirq context.
-> > > > > > >   OK, I see. But I didn't find where ->b_end_io gets called from dax code
-> > > > > > > (specifically I don't see it anywhere in dax_do_IO() or dax_io()). Can you
-> > > > > > > point me please?
-> > > > > 
-> > > > > For faults, we call it in dax_insert_mapping(), the very last thing
-> > > > > before returning in the fault path.  The normal I/O path gets to use
-> > > > > the dio_iodone_t for the same purpose.
-> > > >   I see. I didn't think of races with reads (hum, I actually wonder whether
-> > > > we don't have this data exposure problem for ext4 for mmapped write into
-> > > > a hole vs direct read as well). So I guess we do need those unwritten
-> > > > extent dances after all (or we would need to have a page covering hole when
-> > > > writing to it via mmap but I guess unwritten extent dances are somewhat
-> > > > more standard).
-> > > 
-> > > Right, that was the reason for doing it that way - it leveraged all
-> > > the existing methods we have for avoiding data exposure races in
-> > > XFS. but it's also not just for races - it's for ensuring that if we
-> > > crash between the allocation and the write to the persistent store
-> > > we don't expose the underlying contents when the system next comes
-> > > up.
-> >   Well, ext3/4 handles the crash situation differently - we make sure we
-> > flush data to allocated blocks before committing a transaction that
-> > allocates them. That works perfectly for crashes but doesn't avoid the
-> > race with DIO.
-> 
-> I was talking about direct IO, not buffered IO. DAX is modeled on
-  Ah, OK. For DIO writes ext4 uses unwritten extents as well. But the race
-I was talking about is between mmap allocating write (i.e. going through
-page cache) and DIO read of the same location.
+On Feb 20, 2015, at 1:50 AM, Michael Kerrisk <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> w=
+rote:
+>=20
+> Hello Ted,
+>=20
+> Based on your commit message 0ae45f63d4e, I I wrote the documentation
+> below for MS_LAZYTIME, to go into the mount(2) man page. Could you
+> please check it over and let me know if it's accurate. In particular,
+> I added pieces marked with "*" below that were not part of the commit
+> message and I'd like confirmation that they're accurate.
+>=20
+> Thanks,
+>=20
+> Michael
+>=20
+> [[
+>       MS_LAZYTIME (since Linux 3.20)
+>              Only  update  filetimes (atime, mtime, ctime) on the in-
+>              memory version of the file  inode.   The  on-disk  time=E2=
+=80=90
+>              stamps are updated only when:
+>=20
+>              (a)  the inode needs to be updated for some change unre=E2=
+=80=90
+>                   lated to file timestamps;
+>=20
+>              (b)  the application  employs  fsync(2),  syncfs(2),  or
+>                   sync(2);
+>=20
+>              (c)  an undeleted inode is evicted from memory; or
+>=20
+> *             (d)  more than 24 hours have passed since the i-node wa=
+s
+> *                  written to disk.
+>=20
+>              This mount option significantly reduces  writes  to  the
+>              inode  table  for workloads that perform frequent random
+>              writes to preallocated files.
+>=20
+> *             As at Linux 3.20, this option is supported only on ext4=
+=2E
 
-> the direct IO stack, not buffered IO. I did go and look at the ext4
-> IO completion path, and I can see where ext4_end_io_dio() triggers a
-> commit outside of doing unwritten extent conversion. Can you clue me
-> in - IO completion in ext4 is a maze of twisty passages...
-  I don't quite follow you. Why should ext4_end_io_dio() trigger a commit?
+I _think_ that the lazytime mount option is generic for all filesystems=
+=2E
+I believe ext4 has an extra optimization for it, but that's it.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Cheers, Andreas
