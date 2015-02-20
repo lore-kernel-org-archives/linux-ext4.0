@@ -1,259 +1,94 @@
-From: Matthew Wilcox <willy@linux.intel.com>
-Subject: Re: + ext4-add-dax-functionality.patch added to -mm tree
-Date: Fri, 20 Feb 2015 17:15:51 -0500
-Message-ID: <20150220221551.GB2780@wil.cx>
-References: <54b45495.+RptMlNQorYE9TTf%akpm@linux-foundation.org>
- <20150115124106.GF12739@quack.suse.cz>
- <100D68C7BA14664A8938383216E40DE040853440@FMSMSX114.amr.corp.intel.com>
- <20150119141858.GF5662@quack.suse.cz>
- <20150217085200.GA23192@quack.suse.cz>
- <20150217133745.GG3364@wil.cx>
- <20150218104009.GB4614@quack.suse.cz>
+From: Darren Hart <dvhart@linux.intel.com>
+Subject: [PATCH RFC] e2fsprogs: Speed up ext2fs_new_block2
+Date: Fri, 20 Feb 2015 15:41:54 -0800
+Message-ID: <54E7C642.3020003@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Matthew Wilcox <willy@linux.intel.com>,
-	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
-	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"Dilger, Andreas" <andreas.dilger@intel.com>,
-	"axboe@kernel.dk" <axboe@kernel.dk>,
-	"boaz@plexistor.com" <boaz@plexistor.com>,
-	"david@fromorbit.com" <david@fromorbit.com>,
-	"hch@lst.de" <hch@lst.de>,
-	"kirill.shutemov@linux.intel.com" <kirill.shutemov@linux.intel.com>,
-	"mathieu.desnoyers@efficios.com" <mathieu.desnoyers@efficios.com>,
-	"rdunlap@infradead.org" <rdunlap@infradead.org>,
-	"tytso@mit.edu" <tytso@mit.edu>,
-	"mm-commits@vger.kernel.org" <mm-commits@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	xfs@oss.sgi.com
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: tytso@mit.edu, darrick.wong@oracle.com,
+	richard.purdie@linuxfoundation.org, liezhi.yang@windriver.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([192.55.52.115]:53252 "EHLO mga14.intel.com"
+Received: from mga03.intel.com ([134.134.136.65]:54567 "EHLO mga03.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754537AbbBTWP5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Feb 2015 17:15:57 -0500
-Content-Disposition: inline
-In-Reply-To: <20150218104009.GB4614@quack.suse.cz>
+	id S1754600AbbBTXl4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Feb 2015 18:41:56 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> So to handle this it can start transaction in ext4_dax_fault() /
-> ext4_dax_mkwrite() if write is requested and call ext4_jbd2_file_inode()
-> after dax_fault() / dax_mkwrite() returns. Complete function will look
-> something like follows:
+Ted and Darrick,
 
-How about this?  I tried to encompass both the unwritten extent conversion
-as well as starting the journal at the right point in the locking hierarchy.
+We're back with a Yocto Project use case. We use mkfs.ext4 to create our
+root filesystems. For one of our larger images including an X desktop
+and an SDK (toolchain, etc.), it took over 8 minutes to complete.
+Richard Purdie noticed most of this time was in ext2fs_new_block2. He
+provided this small hack to test an idea and it has reduced the runtime
+to 35 seconds. The images function as expected.
 
-If we're going to expose do_dax_fault(), I think it needs to be called
-__dax_fault().
+Can you have a look and see if there some value in this approach, or if
+perhaps it might lead to a more appropriate/correct solution?
 
-I decided to return VM_FAULT_RETRY and a new flag VM_FAULT_UNWRITTEN from
-__dax_fault(), rather than convert it to return an errno.
+Thanks!
 
-P.S. I love patches which touch *both* fs.h *and* mm.h.  In case there
-were any files that weren't already being rebuilt.
+Darren
 
-diff --git a/fs/dax.c b/fs/dax.c
-index 556238f..81dbdaa 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -316,7 +316,7 @@ static int dax_insert_mapping(struct inode *inode, struct buffer_head *bh,
- 	return error;
+(What follows is the test patch from Richard for the Yocto Project)
+
+
+The comment to this function says:
+
+"""
+  * Stupid algorithm --- we now just search forward starting from the
+  * goal.  Should put in a smarter one someday....
+"""
+
+This adds in a rather hacky algorthim which starts where we finished
+searching previously using a static variable rather than starting
+from scratch if a hint isn't provided.
+
+This was after noticing that mkfs.ext4 -F X -d Y was spending *lots*
+of time in ext2fs_new_block2 called from ext2fs_bmap from
+ext2fs_file_write().
+
+Numbers wise, this took a core-image-sato-sdk mkfs time from over
+8 minutes to around 35 seconds.
+
+Upstream-Status: Pending
+
+RP 2015/02/20
+
+Index: e2fsprogs-1.42.9/lib/ext2fs/alloc.c
+===================================================================
+--- e2fsprogs-1.42.9.orig/lib/ext2fs/alloc.c
++++ e2fsprogs-1.42.9/lib/ext2fs/alloc.c
+@@ -160,6 +160,8 @@ errcode_t ext2fs_new_inode(ext2_filsys f
+ 	return 0;
  }
- 
--static int do_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
-+int __dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 			get_block_t get_block)
- {
- 	struct file *file = vma->vm_file;
-@@ -329,7 +329,7 @@ static int do_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 	sector_t block;
- 	pgoff_t size;
- 	int error;
--	int major = 0;
-+	int ret = 0;
- 
- 	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
- 	if (vmf->pgoff >= size)
-@@ -367,13 +367,15 @@ static int do_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 		error = -EIO;		/* fs corruption? */
- 	if (error)
- 		goto unlock_page;
-+	if (buffer_unwritten(&bh))
-+		ret |= VM_FAULT_UNWRITTEN;
- 
- 	if (!buffer_mapped(&bh) && !buffer_unwritten(&bh) && !vmf->cow_page) {
- 		if (vmf->flags & FAULT_FLAG_WRITE) {
- 			error = get_block(inode, block, &bh, 1);
- 			count_vm_event(PGMAJFAULT);
- 			mem_cgroup_count_vm_event(vma->vm_mm, PGMAJFAULT);
--			major = VM_FAULT_MAJOR;
-+			ret = VM_FAULT_MAJOR;
- 			if (!error && (bh.b_size < PAGE_SIZE))
- 				error = -EIO;
- 			if (error)
-@@ -407,7 +409,7 @@ static int do_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 	}
- 
- 	/* Check we didn't race with a read fault installing a new page */
--	if (!page && major)
-+	if (!page && (ret & VM_FAULT_MAJOR))
- 		page = find_lock_page(mapping, vmf->pgoff);
- 
- 	if (page) {
-@@ -421,12 +423,14 @@ static int do_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 	error = dax_insert_mapping(inode, &bh, vma, vmf);
- 
-  out:
-+	if (error == -ENOSPC)
-+		return VM_FAULT_RETRY | ret;
- 	if (error == -ENOMEM)
--		return VM_FAULT_OOM | major;
-+		return VM_FAULT_OOM | ret;
- 	/* -EBUSY is fine, somebody else faulted on the same PTE */
- 	if ((error < 0) && (error != -EBUSY))
--		return VM_FAULT_SIGBUS | major;
--	return VM_FAULT_NOPAGE | major;
-+		return VM_FAULT_SIGBUS | ret;
-+	return VM_FAULT_NOPAGE | ret;
- 
-  unlock_page:
- 	if (page) {
-@@ -435,6 +439,7 @@ static int do_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 	}
- 	goto out;
- }
-+EXPORT_SYMBOL_GPL(__dax_fault);
- 
- /**
-  * dax_fault - handle a page fault on a DAX file
-@@ -455,7 +460,7 @@ int dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 		sb_start_pagefault(sb);
- 		file_update_time(vma->vm_file);
- 	}
--	result = do_dax_fault(vma, vmf, get_block);
-+	result = __dax_fault(vma, vmf, get_block);
- 	if (vmf->flags & FAULT_FLAG_WRITE)
- 		sb_end_pagefault(sb);
- 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 4340e38..84b4f1c 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -194,7 +194,58 @@ errout:
- #ifdef CONFIG_FS_DAX
- static int ext4_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
- {
--	return dax_fault(vma, vmf, ext4_get_block_write);
-+	handle_t *handle;
-+	int create = (vmf->flags & FAULT_FLAG_WRITE) && !vmf->cow_page;
-+	struct inode *inode = file_inode(vma->vm_file);
-+	int ret, err = 0;
-+	int retries = 0;
+
++static blk64_t last_goal = 0;
 +
-+	if (create) {
-+		sb_start_pagefault(inode->i_sb);
-+		file_update_time(vma->vm_file);
-+ retry_alloc:
-+		handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE,
-+					ext4_writepage_trans_blocks(inode));
-+		if (IS_ERR(handle)) {
-+			err = PTR_ERR(handle);
-+			goto err;
-+		}
-+	}
+ /*
+  * Stupid algorithm --- we now just search forward starting from the
+  * goal.  Should put in a smarter one someday....
+@@ -170,6 +172,9 @@ errcode_t ext2fs_new_block2(ext2_filsys
+ 	blk64_t	i;
+ 	int	c_ratio;
+
++        if (!goal)
++            goal = last_goal;
 +
-+	ret = __dax_fault(vma, vmf, ext4_get_block);
-+
-+	if (create) {
-+		if (ret & VM_FAULT_UNWRITTEN) {
-+			loff_t offset = (loff_t)vmf->pgoff << PAGE_SHIFT;
-+			err = ext4_convert_unwritten_extents(NULL, inode,
-+							offset, PAGE_SIZE);
-+			ret &= ~VM_FAULT_UNWRITTEN;
-+		}
-+		if (!err &&
-+		    ext4_test_inode_state(inode, EXT4_STATE_ORDERED_MODE))
-+			err = ext4_jbd2_file_inode(handle, inode);
-+
-+		if (err == -ENOSPC) {
-+			ret |= VM_FAULT_RETRY;
-+			err = 0;
-+		}
-+
-+		ext4_journal_stop(handle);
-+		if (err < 0)
-+			goto err;
-+		if ((ret & VM_FAULT_RETRY) &&
-+		    ext4_should_retry_alloc(inode->i_sb, &retries))
-+			goto retry_alloc;
-+		ret &= ~VM_FAULT_RETRY;
-+	}
-+
-+ out:
-+	if (create)
-+		sb_end_pagefault(inode->i_sb);
-+	return ret;
-+ err:
-+	ret = block_page_mkwrite_return(err);
-+	goto out;
- }
- 
- static int ext4_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 85404f1..8f1ea7d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -657,18 +657,6 @@ has_zeroout:
- 	return retval;
- }
- 
--static void ext4_end_io_unwritten(struct buffer_head *bh, int uptodate)
--{
--	struct inode *inode = bh->b_assoc_map->host;
--	/* XXX: breaks on 32-bit > 16GB. Is that even supported? */
--	loff_t offset = (loff_t)(uintptr_t)bh->b_private << inode->i_blkbits;
--	int err;
--	if (!uptodate)
--		return;
--	WARN_ON(!buffer_unwritten(bh));
--	err = ext4_convert_unwritten_extents(NULL, inode, offset, bh->b_size);
--}
--
- /* Maximum number of blocks we map for direct IO at once. */
- #define DIO_MAX_BLOCKS 4096
- 
-@@ -706,11 +694,6 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
- 
- 		map_bh(bh, inode->i_sb, map.m_pblk);
- 		bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
--		if (IS_DAX(inode) && buffer_unwritten(bh) && !io_end) {
--			bh->b_assoc_map = inode->i_mapping;
--			bh->b_private = (void *)(unsigned long)iblock;
--			bh->b_end_io = ext4_end_io_unwritten;
--		}
- 		if (io_end && io_end->flag & EXT4_IO_END_UNWRITTEN)
- 			set_buffer_defer_completion(bh);
- 		bh->b_size = inode->i_sb->s_blocksize * map.m_len;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 239c89c..2af5050 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2597,6 +2597,7 @@ int dax_clear_blocks(struct inode *, sector_t block, long size);
- int dax_zero_page_range(struct inode *, loff_t from, unsigned len, get_block_t);
- int dax_truncate_page(struct inode *, loff_t from, get_block_t);
- int dax_fault(struct vm_area_struct *, struct vm_fault *, get_block_t);
-+int __dax_fault(struct vm_area_struct *, struct vm_fault *, get_block_t);
- int dax_pmd_fault(struct vm_area_struct *, unsigned long addr, pmd_t *,
- 					unsigned int flags, get_block_t);
- #define dax_mkwrite(vma, vmf, gb)	dax_fault(vma, vmf, gb)
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index ceb50ec..ffc9947 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1100,7 +1100,7 @@ static inline int page_mapped(struct page *page)
- #define VM_FAULT_HWPOISON 0x0010	/* Hit poisoned small page */
- #define VM_FAULT_HWPOISON_LARGE 0x0020  /* Hit poisoned large page. Index encoded in upper bits */
- #define VM_FAULT_SIGSEGV 0x0040
+ 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+
+ 	if (!map)
+@@ -194,6 +199,7 @@ errcode_t ext2fs_new_block2(ext2_filsys
+
+ 		if (!ext2fs_fast_test_block_bitmap2(map, i)) {
+ 			*ret = i;
++			last_goal = i;
+ 			return 0;
+ 		}
+ 		i = (i + c_ratio) & ~(c_ratio - 1);
+
+-- 
+Darren Hart
+Intel Open Source Technology Center
