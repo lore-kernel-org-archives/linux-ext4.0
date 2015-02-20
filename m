@@ -1,63 +1,38 @@
-From: Michael Kerrisk <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Subject: Documenting MS_LAZYTIME
-Date: Fri, 20 Feb 2015 09:50:50 +0100
-Message-ID: <CAHO5Pa0k7QkV_6BDjwTVxa7LV9tFyN9nGFFcSvOC6HYO08wfrw@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 93491] Kernel crashes every 10 minutes. Computer stalls
+Date: Fri, 20 Feb 2015 09:10:22 +0000
+Message-ID: <bug-93491-13602-QoxewVbFia@https.bugzilla.kernel.org/>
+References: <bug-93491-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux btrfs Developers List <linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>, linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Linux-Fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Sender: linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:53530 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752999AbbBTJKZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Feb 2015 04:10:25 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 6E8A22037B
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Feb 2015 09:10:24 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id DCBE520377
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Feb 2015 09:10:22 +0000 (UTC)
+In-Reply-To: <bug-93491-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hello Ted,
+https://bugzilla.kernel.org/show_bug.cgi?id=93491
 
-Based on your commit message 0ae45f63d4e, I I wrote the documentation
-below for MS_LAZYTIME, to go into the mount(2) man page. Could you
-please check it over and let me know if it's accurate. In particular,
-I added pieces marked with "*" below that were not part of the commit
-message and I'd like confirmation that they're accurate.
+--- Comment #4 from Ionut Radu <ionut.radu@gmail.com> ---
 
-Thanks,
+Hi Eric,
 
-Michael
+I see there are some oops dumps from abrt. 
+Can you please take a look ?
 
-[[
-       MS_LAZYTIME (since Linux 3.20)
-              Only  update  filetimes (atime, mtime, ctime) on the in-
-              memory version of the file  inode.   The  on-disk  time=E2=
-=80=90
-              stamps are updated only when:
+https://www.dropbox.com/sh/dq0ocnrgocsuuzk/AABpo4_8PJjBFI_X0WBekI7Fa?dl=0
 
-              (a)  the inode needs to be updated for some change unre=E2=
-=80=90
-                   lated to file timestamps;
-
-              (b)  the application  employs  fsync(2),  syncfs(2),  or
-                   sync(2);
-
-              (c)  an undeleted inode is evicted from memory; or
-
-*             (d)  more than 24 hours have passed since the i-node was
-*                  written to disk.
-
-              This mount option significantly reduces  writes  to  the
-              inode  table  for workloads that perform frequent random
-              writes to preallocated files.
-
-*             As at Linux 3.20, this option is supported only on ext4.
-]]
-
---=20
-Michael Kerrisk Linux man-pages maintainer;
-http://www.kernel.org/doc/man-pages/
-Author of "The Linux Programming Interface", http://blog.man7.org/
---
-To unsubscribe from this list: send the line "unsubscribe linux-man" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
