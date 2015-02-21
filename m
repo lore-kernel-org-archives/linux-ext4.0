@@ -1,110 +1,115 @@
-From: Andrew Morton <akpm@linux-foundation.org>
+From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
 Subject: Re: How to handle TIF_MEMDIE stalls?
-Date: Sat, 21 Feb 2015 01:19:07 -0800
-Message-ID: <20150221011907.2d26c979.akpm@linux-foundation.org>
-References: <201502172123.JIE35470.QOLMVOFJSHOFFt@I-love.SAKURA.ne.jp>
-	<20150217125315.GA14287@phnom.home.cmpxchg.org>
-	<20150217225430.GJ4251@dastard>
-	<20150219102431.GA15569@phnom.home.cmpxchg.org>
+Date: Sat, 21 Feb 2015 21:00:05 +0900
+Message-ID: <201502212100.IBG78151.QLHSOMJFVOtFFO@I-love.SAKURA.ne.jp>
+References: <20150219102431.GA15569@phnom.home.cmpxchg.org>
 	<20150219225217.GY12722@dastard>
 	<201502201936.HBH34799.SOLFFFQtHOMOJV@I-love.SAKURA.ne.jp>
 	<20150220231511.GH12722@dastard>
 	<20150221032000.GC7922@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Dave Chinner <david@fromorbit.com>, Tetsuo Handa
- <penguin-kernel@I-love.SAKURA.ne.jp>, hannes@cmpxchg.org, mhocko@suse.cz,
- dchinner@redhat.com, linux-mm@kvack.org, rientjes@google.com,
- oleg@redhat.com, mgorman@suse.de, torvalds@linux-foundation.org,
- xfs@oss.sgi.com, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <owner-linux-mm@kvack.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: david@fromorbit.com, hannes@cmpxchg.org, mhocko@suse.cz,
+	dchinner@redhat.com, linux-mm@kvack.org, rientjes@google.com,
+	oleg@redhat.com, akpm@linux-foundation.org, mgorman@suse.de,
+	torvalds@linux-foundation.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www262.sakura.ne.jp ([202.181.97.72]:39869 "EHLO
+	www262.sakura.ne.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750749AbbBUMAN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Feb 2015 07:00:13 -0500
 In-Reply-To: <20150221032000.GC7922@thunk.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 20 Feb 2015 22:20:00 -0500 "Theodore Ts'o" <tytso@mit.edu> wrote:
+Theodore Ts'o wrote:
+> So at this point, it seems we have two choices.  We can either revert
+> 9879de7373fc, or I can add a whole lot more GFP_FAIL flags to ext4's
+> memory allocations and submit them as stable bug fixes.
 
-> +akpm
+Can you absorb this side effect by simply adding GFP_NOFAIL to only
+ext4's memory allocations? Don't you also depend on lower layers which
+use GFP_NOIO?
 
-I was hoping not to have to read this thread ;)
+BTW, while you are using open-coded GFP_NOFAIL retry loop for GFP_NOFS
+allocation in jbd2, you are already using GFP_NOFAIL for GFP_NOFS
+allocation in jbd. Failure check being there for GFP_NOFAIL seems
+redundant.
 
-afaict there are two (main) issues:
+---------- linux-3.19/fs/jbd2/transaction.c ----------
+257 static int start_this_handle(journal_t *journal, handle_t *handle,
+258                              gfp_t gfp_mask)
+259 {
+260         transaction_t   *transaction, *new_transaction = NULL;
+261         int             blocks = handle->h_buffer_credits;
+262         int             rsv_blocks = 0;
+263         unsigned long ts = jiffies;
+264 
+265         /*
+266          * 1/2 of transaction can be reserved so we can practically handle
+267          * only 1/2 of maximum transaction size per operation
+268          */
+269         if (WARN_ON(blocks > journal->j_max_transaction_buffers / 2)) {
+270                 printk(KERN_ERR "JBD2: %s wants too many credits (%d > %d)\n",
+271                        current->comm, blocks,
+272                        journal->j_max_transaction_buffers / 2);
+273                 return -ENOSPC;
+274         }
+275 
+276         if (handle->h_rsv_handle)
+277                 rsv_blocks = handle->h_rsv_handle->h_buffer_credits;
+278 
+279 alloc_transaction:
+280         if (!journal->j_running_transaction) {
+281                 new_transaction = kmem_cache_zalloc(transaction_cache,
+282                                                     gfp_mask);
+283                 if (!new_transaction) {
+284                         /*
+285                          * If __GFP_FS is not present, then we may be
+286                          * being called from inside the fs writeback
+287                          * layer, so we MUST NOT fail.  Since
+288                          * __GFP_NOFAIL is going away, we will arrange
+289                          * to retry the allocation ourselves.
+290                          */
+291                         if ((gfp_mask & __GFP_FS) == 0) {
+292                                 congestion_wait(BLK_RW_ASYNC, HZ/50);
+293                                 goto alloc_transaction;
+294                         }
+295                         return -ENOMEM;
+296                 }
+297         }
+298 
+299         jbd_debug(3, "New handle %p going live.\n", handle);
+---------- linux-3.19/fs/jbd2/transaction.c ----------
 
-a) whether to oom-kill when __GFP_FS is not set.  The kernel hasn't
-   been doing this for ages and nothing has changed recently.
-
-b) whether to keep looping when __GFP_NOFAIL is not set and __GFP_FS
-   is not set and we can't oom-kill anything (which goes without
-   saying, because __GFP_FS isn't set!).
-
-   And 9879de7373fc ("mm: page_alloc: embed OOM killing naturally
-   into allocation slowpath") somewhat inadvertently changed this policy
-   - the allocation attempt will now promptly return ENOMEM if
-   !__GFP_NOFAIL and !__GFP_FS.
-
-Correct enough?
-
-Question a) seems a bit of red herring and we can park it for now.
-
-
-What I'm not really understanding is why the pre-3.19 implementation
-actually worked.  We've exhausted the free pages, we're not succeeding
-at reclaiming anything, we aren't able to oom-kill anyone.  Yet it
-*does* work - we eventually find that memory and everything proceeds.
-
-How come?  Where did that memory come from?
-
-
-Short term, we need to fix 3.19.x and 3.20 and that appears to be by
-applying Johannes's akpm-doesnt-know-why-it-works patch:
-
---- a/mm/page_alloc.c
-+++ b/mm/page_alloc.c
-@@ -2382,8 +2382,15 @@ __alloc_pages_may_oom(gfp_t gfp_mask, unsigned int order,
- 		if (high_zoneidx < ZONE_NORMAL)
- 			goto out;
- 		/* The OOM killer does not compensate for light reclaim */
--		if (!(gfp_mask & __GFP_FS))
-+		if (!(gfp_mask & __GFP_FS)) {
-+			/*
-+			 * XXX: Page reclaim didn't yield anything,
-+			 * and the OOM killer can't be invoked, but
-+			 * keep looping as per should_alloc_retry().
-+			 */
-+			*did_some_progress = 1;
- 			goto out;
-+		}
- 		/*
- 		 * GFP_THISNODE contains __GFP_NORETRY and we never hit this.
- 		 * Sanity check for bare calls of __GFP_THISNODE, not real OOM.
-
-Have people adequately confirmed that this gets us out of trouble?
-
-
-And yes, I agree that sites such as xfs's kmem_alloc() should be
-passing __GFP_NOFAIL to tell the page allocator what's going on.  I
-don't think it matters a lot whether kmem_alloc() retains its retry
-loop.  If __GFP_NOFAIL is working correctly then it will never loop
-anyway...
-
-
-Also, this:
-
-On Wed, 18 Feb 2015 09:54:30 +1100 Dave Chinner <david@fromorbit.com> wrote:
-
-> Right now, the oom killer is a liability. Over the past 6 months
-> I've slowly had to exclude filesystem regression tests from running
-> on small memory machines because the OOM killer is now so unreliable
-> that it kills the test harness regularly rather than the process
-> generating memory pressure.
-
-David, I did not know this!  If you've been telling us about this then
-perhaps it wasn't loud enough.
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+---------- linux-3.19/fs/jbd/transaction.c ----------
+ 84 static int start_this_handle(journal_t *journal, handle_t *handle)
+ 85 {
+ 86         transaction_t *transaction;
+ 87         int needed;
+ 88         int nblocks = handle->h_buffer_credits;
+ 89         transaction_t *new_transaction = NULL;
+ 90         int ret = 0;
+ 91 
+ 92         if (nblocks > journal->j_max_transaction_buffers) {
+ 93                 printk(KERN_ERR "JBD: %s wants too many credits (%d > %d)\n",
+ 94                        current->comm, nblocks,
+ 95                        journal->j_max_transaction_buffers);
+ 96                 ret = -ENOSPC;
+ 97                 goto out;
+ 98         }
+ 99 
+100 alloc_transaction:
+101         if (!journal->j_running_transaction) {
+102                 new_transaction = kzalloc(sizeof(*new_transaction),
+103                                                 GFP_NOFS|__GFP_NOFAIL);
+104                 if (!new_transaction) {
+105                         ret = -ENOMEM;
+106                         goto out;
+107                 }
+108         }
+109 
+110         jbd_debug(3, "New handle %p going live.\n", handle);
+---------- linux-3.19/fs/jbd/transaction.c ----------
