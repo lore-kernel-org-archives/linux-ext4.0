@@ -1,59 +1,56 @@
-From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
-Subject: Re: How to handle TIF_MEMDIE stalls?
-Date: Sat, 21 Feb 2015 22:48:49 +0900
-Message-ID: <201502212248.DCJ69753.MOJFOtQLFSOVFH@I-love.SAKURA.ne.jp>
-References: <20150219225217.GY12722@dastard>
-	<201502201936.HBH34799.SOLFFFQtHOMOJV@I-love.SAKURA.ne.jp>
-	<20150220231511.GH12722@dastard>
-	<20150221032000.GC7922@thunk.org>
-	<20150221011907.2d26c979.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, david@fromorbit.com, hannes@cmpxchg.org,
-	mhocko@suse.cz, dchinner@redhat.com, linux-mm@kvack.org,
-	rientjes@google.com, oleg@redhat.com, mgorman@suse.de,
-	torvalds@linux-foundation.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org
-To: akpm@linux-foundation.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www262.sakura.ne.jp ([202.181.97.72]:46007 "EHLO
-	www262.sakura.ne.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750964AbbBUNsx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Feb 2015 08:48:53 -0500
-In-Reply-To: <20150221011907.2d26c979.akpm@linux-foundation.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: [PATCH v10 0/12] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
+Date: Sun, 22 Feb 2015 00:45:42 +0900
+Message-ID: <1424533554-28024-1-git-send-email-linkinjeon@gmail.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, a.sangwan@samsung.com,
+	bfoster@redhat.com, mtk.manpages@gmail.com,
+	linux-man@vger.kernel.org, linux-api@vger.kernel.org,
+	Namjae Jeon <linkinjeon@gmail.com>,
+	Namjae Jeon <namjae.jeon@samsung.com>
+To: david@fromorbit.com, tytso@mit.edu
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Andrew Morton wrote:
-> On Fri, 20 Feb 2015 22:20:00 -0500 "Theodore Ts'o" <tytso@mit.edu> wrote:
-> 
-> > +akpm
-> 
-> I was hoping not to have to read this thread ;)
+From: Namjae Jeon <namjae.jeon@samsung.com>
 
-Sorry for getting so complicated.
+In continuation of the work of making the process of non linear editing of
+media files faster, we introduce here the new flag FALLOC_FL_INSERT_RANGE
+for fallocate.
 
-> What I'm not really understanding is why the pre-3.19 implementation
-> actually worked.  We've exhausted the free pages, we're not succeeding
-> at reclaiming anything, we aren't able to oom-kill anyone.  Yet it
-> *does* work - we eventually find that memory and everything proceeds.
-> 
-> How come?  Where did that memory come from?
-> 
+This flag will work opposite to the FALLOC_FL_COLLAPSE_RANGE flag.
+As such, specifying FALLOC_FL_INSERT_RANGE flag will create new space inside file
+by inserting a hole within the range specified by offset and len. 
+User can write new data in this space. e.g. ads.
+Like collapse range, currently we have the limitation that offset and len should
+be block size aligned for both XFS and Ext4.
 
-Even without __GFP_NOFAIL, GFP_NOFS / GFP_NOIO allocations retried forever
-(without invoking the OOM killer) if order <= PAGE_ALLOC_COSTLY_ORDER and
-TIF_MEMDIE is not set. Somebody else volunteered that memory while retrying.
-This implies silent hang-up forever if nobody volunteers memory.
+The semantics of the flag are :
+1) It creates space within file by inserting a hole of  len bytes starting
+   at offset byte without overwriting any existing data. All the data blocks
+   from offset to EOF are shifted towards right to make hole space.
+2) It should be used exclusively. No other fallocate flag in combination.
+3) Offset and length supplied to fallocate should be fs block size aligned
+   in case of xfs and ext4.
+4) Insert range does not work for the case when offset is overlapping/beyond
+   i_size. If the user wants to insert space at the end of file they are
+   advised to use either ftruncate(2) or fallocate(2) with mode 0.
+5) It increses the size of file by len bytes.
 
-> And yes, I agree that sites such as xfs's kmem_alloc() should be
-> passing __GFP_NOFAIL to tell the page allocator what's going on.  I
-> don't think it matters a lot whether kmem_alloc() retains its retry
-> loop.  If __GFP_NOFAIL is working correctly then it will never loop
-> anyway...
 
-Commit 9879de7373fc ("mm: page_alloc: embed OOM killing naturally into
-allocation slowpath") inadvertently changed GFP_NOFS / GFP_NOIO allocations
-not to retry unless __GFP_NOFAIL is specified. Therefore, either applying
-Johannes's akpm-doesnt-know-why-it-works patch or passing __GFP_NOFAIL
-will restore the pre-3.19 behavior (with possibility of silent hang-up).
+Namjae Jeon (12):
+ fs: Add support FALLOC_FL_INSERT_RANGE for fallocate
+ xfs: Add support FALLOC_FL_INSERT_RANGE for fallocate
+ ext4: Add support FALLOC_FL_INSERT_RANGE for fallocate
+ xfsprog: xfsio: update xfs_io manpage for FALLOC_FL_INSERT_RANGE
+ xfstests: generic/042: Standard insert range tests
+ xfstests: generic/043: Delayed allocation insert range
+ xfstests: generic/044: Multi insert range tests
+ xfstests: generic/045: Delayed allocation multi insert
+ xfstests: generic/046: Test multiple fallocate insert/collapse range calls
+ xfstests: fsstress: Add fallocate insert range operation
+ xfstests: fsx: Add fallocate insert range operation
+ manpage: update FALLOC_FL_INSERT_RANGE flag in fallocate
+-- 
+1.7.9.5
