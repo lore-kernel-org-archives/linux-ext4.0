@@ -1,130 +1,98 @@
-From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: [PATCH v10 10/12] xfstests: fsstress: Add fallocate insert range
-	operation
-Date: Sun, 22 Feb 2015 00:45:52 +0900
-Message-ID: <1424533554-28024-11-git-send-email-linkinjeon@gmail.com>
-References: <1424533554-28024-1-git-send-email-linkinjeon@gmail.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: How to handle TIF_MEMDIE stalls?
+Date: Sun, 22 Feb 2015 08:38:07 +1100
+Message-ID: <20150221213807.GI12722@dastard>
+References: <201502172123.JIE35470.QOLMVOFJSHOFFt@I-love.SAKURA.ne.jp>
+ <20150217125315.GA14287@phnom.home.cmpxchg.org>
+ <20150217225430.GJ4251@dastard>
+ <20150219102431.GA15569@phnom.home.cmpxchg.org>
+ <20150219225217.GY12722@dastard>
+ <201502201936.HBH34799.SOLFFFQtHOMOJV@I-love.SAKURA.ne.jp>
+ <20150220231511.GH12722@dastard>
+ <20150221032000.GC7922@thunk.org>
+ <20150221011907.2d26c979.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-man@vger.kernel.org, Namjae Jeon <linkinjeon@gmail.com>,
-	Namjae Jeon <namjae.jeon@samsung.com>, linux-api@vger.kernel.org,
-	bfoster@redhat.com, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, mtk.manpages@gmail.com, a.sangwan@samsung.com,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: david@fromorbit.com,
-	tytso@mit.edu
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1424533554-28024-1-git-send-email-linkinjeon@gmail.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+	hannes@cmpxchg.org, mhocko@suse.cz, dchinner@redhat.com,
+	linux-mm@kvack.org, rientjes@google.com, oleg@redhat.com,
+	mgorman@suse.de, torvalds@linux-foundation.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:39683 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751872AbbBUViM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 21 Feb 2015 16:38:12 -0500
+Content-Disposition: inline
+In-Reply-To: <20150221011907.2d26c979.akpm@linux-foundation.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Namjae Jeon <namjae.jeon@samsung.com>
+On Sat, Feb 21, 2015 at 01:19:07AM -0800, Andrew Morton wrote:
+> On Fri, 20 Feb 2015 22:20:00 -0500 "Theodore Ts'o" <tytso@mit.edu> wrote:
+> 
+> > +akpm
+> 
+> I was hoping not to have to read this thread ;)
 
-This commit adds insert operation support for fsstress, which is
-meant to exercise fallocate FALLOC_FL_INSERT_RANGE support.
+ditto....
 
-Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-Reviewed-by: Brian Foster <bfoster@redhat.com>
----
- ltp/fsstress.c |   19 ++++++++++++++++---
- src/global.h   |    4 ++++
- 2 files changed, 20 insertions(+), 3 deletions(-)
+> And yes, I agree that sites such as xfs's kmem_alloc() should be
+> passing __GFP_NOFAIL to tell the page allocator what's going on.  I
+> don't think it matters a lot whether kmem_alloc() retains its retry
+> loop.  If __GFP_NOFAIL is working correctly then it will never loop
+> anyway...
 
-diff --git a/ltp/fsstress.c b/ltp/fsstress.c
-index b56fe5c..aa3e0c3 100644
---- a/ltp/fsstress.c
-+++ b/ltp/fsstress.c
-@@ -72,6 +72,7 @@ typedef enum {
- 	OP_PUNCH,
- 	OP_ZERO,
- 	OP_COLLAPSE,
-+	OP_INSERT,
- 	OP_READ,
- 	OP_READLINK,
- 	OP_RENAME,
-@@ -170,6 +171,7 @@ void	mknod_f(int, long);
- void	punch_f(int, long);
- void	zero_f(int, long);
- void	collapse_f(int, long);
-+void	insert_f(int, long);
- void	read_f(int, long);
- void	readlink_f(int, long);
- void	rename_f(int, long);
-@@ -209,6 +211,7 @@ opdesc_t	ops[] = {
- 	{ OP_PUNCH, "punch", punch_f, 1, 1 },
- 	{ OP_ZERO, "zero", zero_f, 1, 1 },
- 	{ OP_COLLAPSE, "collapse", collapse_f, 1, 1 },
-+	{ OP_INSERT, "insert", insert_f, 1, 1 },
- 	{ OP_READ, "read", read_f, 1, 0 },
- 	{ OP_READLINK, "readlink", readlink_f, 1, 0 },
- 	{ OP_RENAME, "rename", rename_f, 2, 1 },
-@@ -2176,6 +2179,7 @@ struct print_flags falloc_flags [] = {
- 	{ FALLOC_FL_NO_HIDE_STALE, "NO_HIDE_STALE"},
- 	{ FALLOC_FL_COLLAPSE_RANGE, "COLLAPSE_RANGE"},
- 	{ FALLOC_FL_ZERO_RANGE, "ZERO_RANGE"},
-+	{ FALLOC_FL_INSERT_RANGE, "INSERT_RANGE"},
- 	{ -1, NULL}
- };
- 
-@@ -2227,10 +2231,11 @@ do_fallocate(int opno, long r, int mode)
- 	off %= maxfsize;
- 	len = (off64_t)(random() % (1024 * 1024));
- 	/*
--	 * Collapse range requires off and len to be block aligned, make it
--	 * more likely to be the case.
-+	 * Collapse/insert range requires off and len to be block aligned,
-+	 * make it more likely to be the case.
- 	 */
--	if ((mode & FALLOC_FL_COLLAPSE_RANGE) && (opno % 2)) {
-+	if ((mode & (FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_INSERT_RANGE)) &&
-+		(opno % 2)) {
- 		off = ((off + stb.st_blksize - 1) & ~(stb.st_blksize - 1));
- 		len = ((len + stb.st_blksize - 1) & ~(stb.st_blksize - 1));
- 	}
-@@ -2656,6 +2661,14 @@ collapse_f(int opno, long r)
- }
- 
- void
-+insert_f(int opno, long r)
-+{
-+#ifdef HAVE_LINUX_FALLOC_H
-+	do_fallocate(opno, r, FALLOC_FL_INSERT_RANGE);
-+#endif
-+}
-+
-+void
- read_f(int opno, long r)
- {
- 	char		*buf;
-diff --git a/src/global.h b/src/global.h
-index 8180f66..f63246b 100644
---- a/src/global.h
-+++ b/src/global.h
-@@ -172,6 +172,10 @@
- #define FALLOC_FL_ZERO_RANGE		0x10
- #endif
- 
-+#ifndef FALLOC_FL_INSERT_RANGE
-+#define FALLOC_FL_INSERT_RANGE		0x20
-+#endif
-+
- #endif /* HAVE_LINUX_FALLOC_H */
- 
- #endif /* GLOBAL_H */
+I'm not about to change behaviour "just because". Any sort of change
+like this requires a *lot* of low memory regression testing because
+we'd be replacing long standing known behaviour with behaviour that
+changes without warning. e.g the ext4 low memory failures starting because of
+changes made in 3.19-rc6 due to changes in oom-killer behaviour.
+Those changes *did not affect XFS* and that's the way I'd like
+things to remain.
+
+Put simply: right now I don't trust the mm subsystem to get low memory
+behaviour right, and this thread has done nothing to convince me
+that it's going to improve any time soon.
+
+> Also, this:
+> 
+> On Wed, 18 Feb 2015 09:54:30 +1100 Dave Chinner <david@fromorbit.com> wrote:
+> 
+> > Right now, the oom killer is a liability. Over the past 6 months
+> > I've slowly had to exclude filesystem regression tests from running
+> > on small memory machines because the OOM killer is now so unreliable
+> > that it kills the test harness regularly rather than the process
+> > generating memory pressure.
+> 
+> David, I did not know this!  If you've been telling us about this then
+> perhaps it wasn't loud enough.
+
+IME, such bug reports get ignored.
+
+Instead, over the past few months I have been pointing out bugs and
+problems in the oom-killer in threads like this because it seems to
+be the only way to get any attention to the issues I'm seeing. Bug
+reports simply get ignored.  From this process, I've managed to
+learn that low order memory allocation now never fails (contrary to
+documentation and long standing behavioural expectations) and
+pointed out bugs that cause the oom killer to get invoked when the
+filesystem is saying "I can handle ENOMEM!" (commit 45f87de ("mm:
+get rid of radix tree gfp mask for pagecache_get_page").
+
+And yes, I've definitely mentioned in these discussions that, for
+example, xfstests::generic/224 is triggering the oom killer far more
+often than it used to on my 1GB RAM vm. The only fix that has been
+made recently that's made any difference is 45f87de, so it's a slow
+process of raising awareness and trying to ensure things don't get
+worse before they get better....
+
+Cheers,
+
+Dave.
 -- 
-1.7.9.5
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Dave Chinner
+david@fromorbit.com
