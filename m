@@ -1,126 +1,87 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH RFC] e2fsprogs: Speed up ext2fs_new_block2
-Date: Fri, 20 Feb 2015 19:24:34 -0800
-Message-ID: <20150221032434.GA2762@birch.djwong.org>
-References: <54E7C642.3020003@linux.intel.com>
+From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
+Subject: Re: Documenting MS_LAZYTIME
+Date: Sat, 21 Feb 2015 08:57:05 +0100
+Message-ID: <54E83A51.6000807@gmail.com>
+References: <CAHO5Pa0k7QkV_6BDjwTVxa7LV9tFyN9nGFFcSvOC6HYO08wfrw@mail.gmail.com>
+	<54E7578E.4090809@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
-	richard.purdie@linuxfoundation.org, liezhi.yang@windriver.com
-To: Darren Hart <dvhart@linux.intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:18120 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754931AbbBUDYs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Feb 2015 22:24:48 -0500
-Content-Disposition: inline
-In-Reply-To: <54E7C642.3020003@linux.intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: linux-man@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
+	XFS Developers <xfs@oss.sgi.com>, mtk.manpages@gmail.com,
+	Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>, Theodore Ts'o <tytso@mit.edu>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <54E7578E.4090809@redhat.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Feb 20, 2015 at 03:41:54PM -0800, Darren Hart wrote:
-> Ted and Darrick,
-> 
-> We're back with a Yocto Project use case. We use mkfs.ext4 to create our
-> root filesystems. For one of our larger images including an X desktop
-> and an SDK (toolchain, etc.), it took over 8 minutes to complete.
-> Richard Purdie noticed most of this time was in ext2fs_new_block2. He
-> provided this small hack to test an idea and it has reduced the runtime
-> to 35 seconds. The images function as expected.
-> 
-> Can you have a look and see if there some value in this approach, or if
-> perhaps it might lead to a more appropriate/correct solution?
-> 
-> Thanks!
-> 
-> Darren
-> 
-> (What follows is the test patch from Richard for the Yocto Project)
-> 
-> 
-> The comment to this function says:
-> 
-> """
->   * Stupid algorithm --- we now just search forward starting from the
->   * goal.  Should put in a smarter one someday....
-> """
-> 
-> This adds in a rather hacky algorthim which starts where we finished
-> searching previously using a static variable rather than starting
-> from scratch if a hint isn't provided.
-
-Not a horrible idea, esp. for laying out files one after the other at mkfs time.
-
-> This was after noticing that mkfs.ext4 -F X -d Y was spending *lots*
-> of time in ext2fs_new_block2 called from ext2fs_bmap from
-> ext2fs_file_write().
-
-Yeah, it did.
-
-> Numbers wise, this took a core-image-sato-sdk mkfs time from over
-> 8 minutes to around 35 seconds.
-> 
-> Upstream-Status: Pending
-> 
-> RP 2015/02/20
-> 
-> Index: e2fsprogs-1.42.9/lib/ext2fs/alloc.c
-> ===================================================================
-> --- e2fsprogs-1.42.9.orig/lib/ext2fs/alloc.c
-> +++ e2fsprogs-1.42.9/lib/ext2fs/alloc.c
-
-1.42.9?  That's pretty old. :)
-
-I've patches in -next sitting that make the allocators a bit less stupid.  One
-makes it so that if there's no goal explicitly given, we'll try to start
-allocating in the same block group that the inode lives in.  Some time ago Ted
-also added a bitmap helper function that really sped up file allocations.
-
-Also, could you have a look at patches 42-46 in:
-http://thread.gmane.org/gmane.comp.file-systems.ext4/47584
-since they directly touch pieces that your team seems to want?
-
-For more fun, could you take a look at 47-52?  They provide a fallocate()
-implementation so that you can preallocate the entire file before writing,
-which (if you have big files) avoids having to rewrite the extent tree
-with every new FS block.
-
-> @@ -160,6 +160,8 @@ errcode_t ext2fs_new_inode(ext2_filsys f
->  	return 0;
->  }
-> 
-> +static blk64_t last_goal = 0;
-> +
->  /*
->   * Stupid algorithm --- we now just search forward starting from the
->   * goal.  Should put in a smarter one someday....
-> @@ -170,6 +172,9 @@ errcode_t ext2fs_new_block2(ext2_filsys
->  	blk64_t	i;
->  	int	c_ratio;
-> 
-> +        if (!goal)
-> +            goal = last_goal;
-
-Offhand this doesn't seem like a bad idea to me.
-
-'last_allocated' might be a better name, and if it's not going to be used
-outside the function, it could be a static var inside new_block2().
-
---D
-
-> +
->  	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
-> 
->  	if (!map)
-> @@ -194,6 +199,7 @@ errcode_t ext2fs_new_block2(ext2_filsys
-> 
->  		if (!ext2fs_fast_test_block_bitmap2(map, i)) {
->  			*ret = i;
-> +			last_goal = i;
->  			return 0;
->  		}
->  		i = (i + c_ratio) & ~(c_ratio - 1);
-> 
-> -- 
-> Darren Hart
-> Intel Open Source Technology Center
+T24gMDIvMjAvMjAxNSAwNDo0OSBQTSwgRXJpYyBTYW5kZWVuIHdyb3RlOgo+IE9uIDIvMjAvMTUg
+Mjo1MCBBTSwgTWljaGFlbCBLZXJyaXNrIHdyb3RlOgo+PiBIZWxsbyBUZWQsCj4+Cj4+IEJhc2Vk
+IG9uIHlvdXIgY29tbWl0IG1lc3NhZ2UgMGFlNDVmNjNkNGUsIEkgSSB3cm90ZSB0aGUgZG9jdW1l
+bnRhdGlvbgo+PiBiZWxvdyBmb3IgTVNfTEFaWVRJTUUsIHRvIGdvIGludG8gdGhlIG1vdW50KDIp
+IG1hbiBwYWdlLiBDb3VsZCB5b3UKPj4gcGxlYXNlIGNoZWNrIGl0IG92ZXIgYW5kIGxldCBtZSBr
+bm93IGlmIGl0J3MgYWNjdXJhdGUuIEluIHBhcnRpY3VsYXIsCj4+IEkgYWRkZWQgcGllY2VzIG1h
+cmtlZCB3aXRoICIqIiBiZWxvdyB0aGF0IHdlcmUgbm90IHBhcnQgb2YgdGhlIGNvbW1pdAo+PiBt
+ZXNzYWdlIGFuZCBJJ2QgbGlrZSBjb25maXJtYXRpb24gdGhhdCB0aGV5J3JlIGFjY3VyYXRlLgo+
+Pgo+PiBUaGFua3MsCj4+Cj4+IE1pY2hhZWwKPj4KPj4gW1sKPj4gICAgICAgIE1TX0xBWllUSU1F
+IChzaW5jZSBMaW51eCAzLjIwKQo+PiAgICAgICAgICAgICAgIE9ubHkgIHVwZGF0ZSAgZmlsZXRp
+bWVzIChhdGltZSwgbXRpbWUsIGN0aW1lKSBvbiB0aGUgaW4tCj4+ICAgICAgICAgICAgICAgbWVt
+b3J5IHZlcnNpb24gb2YgdGhlIGZpbGUgIGlub2RlLiAgIFRoZSAgb24tZGlzayAgdGltZeKAkAo+
+PiAgICAgICAgICAgICAgIHN0YW1wcyBhcmUgdXBkYXRlZCBvbmx5IHdoZW46Cj4gCj4gImZpbGV0
+aW1lcyIgYW5kICJmaWxlIGlub2RlIiBzZWVtcyBhIGJpdCBhd2t3YXJkLiAgSG93IGFib3V0Ogo+
+IAo+PiAgICAgICAgTVNfTEFaWVRJTUUgKHNpbmNlIExpbnV4IDMuMjApCj4+IAkJUmVkdWNlIG9u
+LWRpc2sgdXBkYXRlcyBvZiBpbm9kZSB0aW1lc3RhbXBzIChhdGltZSwgbXRpbWUsIGN0aW1lKQo+
+PiAJCWJ5IG1haW50YWluaW5nIHRoZXNlIGNoYW5nZXMgb25seSBpbiBtZW1vcnksIHVubGVzczoK
+PiAKPiAobWF5YmUgSSdtIGJpa2Utc2hlZGRpbmcgdG9vIG11Y2gsIGlmIHNvLCBzb3JyeSkuCgpO
+YWggaXQnJ3MgdGhlIGdvb2Qgc29ydCBvZiBiaWtlc2hlZGRpbmcgOy0pLiAiZmlsZXRpbWVzIiB3
+YXMgYSB3b3Jkby0tSSAKbWVhbnQgInRpbWVzdGFtcHMiLiBJJ3ZlIHRha2VuIHlvdXIgd29yZGlu
+ZyBtb3N0bHkuCgo+IAo+PiAgICAgICAgICAgICAgIChhKSAgdGhlIGlub2RlIG5lZWRzIHRvIGJl
+IHVwZGF0ZWQgZm9yIHNvbWUgY2hhbmdlIHVucmXigJAKPj4gICAgICAgICAgICAgICAgICAgIGxh
+dGVkIHRvIGZpbGUgdGltZXN0YW1wczsKPj4KPj4gICAgICAgICAgICAgICAoYikgIHRoZSBhcHBs
+aWNhdGlvbiAgZW1wbG95cyAgZnN5bmMoMiksICBzeW5jZnMoMiksICBvcgo+PiAgICAgICAgICAg
+ICAgICAgICAgc3luYygyKTsKPj4KPj4gICAgICAgICAgICAgICAoYykgIGFuIHVuZGVsZXRlZCBp
+bm9kZSBpcyBldmljdGVkIGZyb20gbWVtb3J5OyBvcgo+Pgo+PiAqICAgICAgICAgICAgIChkKSAg
+bW9yZSB0aGFuIDI0IGhvdXJzIGhhdmUgcGFzc2VkIHNpbmNlIHRoZSBpLW5vZGUgd2FzCj4+ICog
+ICAgICAgICAgICAgICAgICB3cml0dGVuIHRvIGRpc2suCj4gCj4gUGxlYXNlIGRvbid0IHVzZSAi
+aS1ub2RlIiAtIHNpbXBseSAiaW5vZGUiIGlzIG11Y2ggbW9yZSBjb21tb24gaW4gdGhlIG1hbnBh
+Z2VzCj4gQUZBSUNULgoKWXVwLCB0aGF0IHdhcyBhIHR5cG8uIEZpeGVkLgoKPj4gICAgICAgICAg
+ICAgICBUaGlzIG1vdW50IG9wdGlvbiBzaWduaWZpY2FudGx5IHJlZHVjZXMgIHdyaXRlcyAgdG8g
+IHRoZQo+PiAgICAgICAgICAgICAgIGlub2RlICB0YWJsZSAgZm9yIHdvcmtsb2FkcyB0aGF0IHBl
+cmZvcm0gZnJlcXVlbnQgcmFuZG9tCj4+ICAgICAgICAgICAgICAgd3JpdGVzIHRvIHByZWFsbG9j
+YXRlZCBmaWxlcy4KPiAKPiBUaGlzIHNlZW1zIGxpa2UgYW4gb3Zlcmx5IHNwZWNpZmljIGRlc2Ny
+aXB0aW9uIG9mIGEgc2luZ2xlIHdvcmtsb2FkIG91dAo+IG9mIG1hbnkgd2hpY2ggbWF5IGJlbmVm
+aXQsIGJ1dCB3aGF0IGRvIG90aGVycyB0aGluaz8gIAoKRmFpciBlbm91Z2guIEkgcmV3b3JkZWQg
+dGhhdCB0byBub3RlIGl0IGFzIGFuIGV4YW1wbGUuCgo+ICJpbm9kZSB0YWJsZSIgaXMgYWxzbyBm
+YWlybHkgZXh0Ti1zcGVjaWZpYy4KCkknbGwgYXdhaXQgZnVydGhlciBpbnB1dCBvbiB0aGF0IHBv
+aW50LgoKTm93IHdlIGhhdmU6CgogICAgICAgTVNfTEFaWVRJTUUgKHNpbmNlIExpbnV4IDMuMjAp
+CiAgICAgICAgICAgICAgUmVkdWNlICBvbi1kaXNrICB1cGRhdGVzICBvZiAgaW5vZGUgIHRpbWVz
+dGFtcHMgIChhdGltZSwKICAgICAgICAgICAgICBtdGltZSwgY3RpbWUpIGJ5IG1haW50YWluaW5n
+IHRoZXNlIGNoYW5nZXMgb25seSBpbiAgbWVt4oCQCiAgICAgICAgICAgICAgb3J5LiAgVGhlIG9u
+LWRpc2sgdGltZXN0YW1wcyBhcmUgdXBkYXRlZCBvbmx5IHdoZW46CgogICAgICAgICAgICAgIChh
+KSAgdGhlIGlub2RlIG5lZWRzIHRvIGJlIHVwZGF0ZWQgZm9yIHNvbWUgY2hhbmdlIHVucmXigJAK
+ICAgICAgICAgICAgICAgICAgIGxhdGVkIHRvIGZpbGUgdGltZXN0YW1wczsKCiAgICAgICAgICAg
+ICAgKGIpICB0aGUgYXBwbGljYXRpb24gIGVtcGxveXMgIGZzeW5jKDIpLCAgc3luY2ZzKDIpLCAg
+b3IKICAgICAgICAgICAgICAgICAgIHN5bmMoMik7CgogICAgICAgICAgICAgIChjKSAgYW4gdW5k
+ZWxldGVkIGlub2RlIGlzIGV2aWN0ZWQgZnJvbSBtZW1vcnk7IG9yCgogICAgICAgICAgICAgIChk
+KSAgbW9yZSAgdGhhbiAyNCBob3VycyBoYXZlIHBhc3NlZCBzaW5jZSB0aGUgaW5vZGUgd2FzCiAg
+ICAgICAgICAgICAgICAgICB3cml0dGVuIHRvIGRpc2suCgogICAgICAgICAgICAgIFRoaXMgbW91
+bnQgb3B0aW9uIHNpZ25pZmljYW50bHkgcmVkdWNlcyAgd3JpdGVzICB0byAgdGhlCiAgICAgICAg
+ICAgICAgaW5vZGUgIHRhYmxlICBmb3IgIHNvbWUgd29ya2xvYWRzIChlLmcuLCB3aGVuIHBlcmZv
+cm1pbmcKICAgICAgICAgICAgICBmcmVxdWVudCByYW5kb20gd3JpdGVzIHRvIHByZWFsbG9jYXRl
+ZCBmaWxlcykuCgpDaGVlcnMsCgpNaWNoYWVsCgotLSAKTWljaGFlbCBLZXJyaXNrCkxpbnV4IG1h
+bi1wYWdlcyBtYWludGFpbmVyOyBodHRwOi8vd3d3Lmtlcm5lbC5vcmcvZG9jL21hbi1wYWdlcy8K
+TGludXgvVU5JWCBTeXN0ZW0gUHJvZ3JhbW1pbmcgVHJhaW5pbmc6IGh0dHA6Ly9tYW43Lm9yZy90
+cmFpbmluZy8KCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+CnhmcyBtYWlsaW5nIGxpc3QKeGZzQG9zcy5zZ2kuY29tCmh0dHA6Ly9vc3Muc2dpLmNvbS9tYWls
+bWFuL2xpc3RpbmZvL3hmcwo=
