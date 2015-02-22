@@ -1,25 +1,61 @@
-From: Robert White <rwhite@pobox.com>
-Subject: Re: Documenting MS_LAZYTIME
-Date: Sun, 22 Feb 2015 10:30:15 -0800
-Message-ID: <54EA2037.8000602@pobox.com>
-References: <CAHO5Pa0k7QkV_6BDjwTVxa7LV9tFyN9nGFFcSvOC6HYO08wfrw@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [GIT PULL] ext4 bug fixes for 3.20-rc1
+Date: Sun, 22 Feb 2015 18:01:04 -0500
+Message-ID: <20150222230104.GA16515@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>, linux-man@vger.kernel.org,
-	Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux API <linux-api@vger.kernel.org>
-To: Michael Kerrisk <mtk.manpages@gmail.com>,
-	Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <CAHO5Pa0k7QkV_6BDjwTVxa7LV9tFyN9nGFFcSvOC6HYO08wfrw@mail.gmail.com>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:58976 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752027AbbBVXBH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 22 Feb 2015 18:01:07 -0500
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 02/20/2015 12:50 AM, Michael Kerrisk wrote:
-> *             As at Linux 3.20, this option is supported only on ext4.
+The following changes since commit 3b421b80be635d696848b72d3c7700a0e5ee3414:
 
-"As of Linux 3.20" is more correct.
+  Merge tag 'ext4_for_linus_stable' of git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4 (2015-01-06 14:05:40 -0800)
 
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
+
+for you to fetch changes up to 6f30b7e37a8239f9d27db626a1d3427bc7951908:
+
+  ext4: fix indirect punch hole corruption (2015-02-14 20:08:51 -0500)
+
+----------------------------------------------------------------
+Ext4 bug fixes for 3.20.  We also reserved code points for encryption
+and read-only images (for which the implementation is mostly just the
+reserved code point for a read-only feature :-)
+
+----------------------------------------------------------------
+Darrick J. Wong (2):
+      jbd2: complain about descriptor block checksum errors
+      ext4: support read-only images
+
+Eric Sandeen (2):
+      ext4: remove duplicate remount check for JOURNAL_CHECKSUM change
+      ext4: ignore journal checksum on remount; don't fail
+
+Jan Mrazek (1):
+      ext4: change to use setup_timer() instead of init_timer()
+
+Omar Sandoval (1):
+      ext4: fix indirect punch hole corruption
+
+Theodore Ts'o (1):
+      ext4: reserve codepoints used by the ext4 encryption feature
+
+Xiaoguang Wang (1):
+      ext4: fix mmap data corruption in nodelalloc mode when blocksize < pagesize
+
+ fs/ext4/ext4.h     |  18 ++++++++---
+ fs/ext4/indirect.c | 105 +++++++++++++++++++++++++++++++++++++++++--------------------
+ fs/ext4/inode.c    |   7 +++++
+ fs/ext4/super.c    |  31 ++++++++----------
+ fs/jbd2/recovery.c |   3 ++
+ 5 files changed, 108 insertions(+), 56 deletions(-)
