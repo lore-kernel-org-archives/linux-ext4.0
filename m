@@ -1,61 +1,127 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 bug fixes for 3.20-rc1
-Date: Sun, 22 Feb 2015 18:01:04 -0500
-Message-ID: <20150222230104.GA16515@thunk.org>
+From: Michal Hocko <mhocko@suse.cz>
+Subject: Re: How to handle TIF_MEMDIE stalls?
+Date: Mon, 23 Feb 2015 11:26:33 +0100
+Message-ID: <20150223102633.GC24272@dhcp22.suse.cz>
+References: <201502172123.JIE35470.QOLMVOFJSHOFFt@I-love.SAKURA.ne.jp>
+ <20150217125315.GA14287@phnom.home.cmpxchg.org>
+ <20150217225430.GJ4251@dastard>
+ <20150219102431.GA15569@phnom.home.cmpxchg.org>
+ <20150219225217.GY12722@dastard>
+ <201502201936.HBH34799.SOLFFFQtHOMOJV@I-love.SAKURA.ne.jp>
+ <20150220231511.GH12722@dastard>
+ <20150221032000.GC7922@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: torvalds@linux-foundation.org
+Cc: Dave Chinner <david@fromorbit.com>,
+	Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+	hannes@cmpxchg.org, dchinner@redhat.com, linux-mm@kvack.org,
+	rientjes@google.com, oleg@redhat.com, akpm@linux-foundation.org,
+	mgorman@suse.de, torvalds@linux-foundation.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58976 "EHLO imap.thunk.org"
+Received: from cantor2.suse.de ([195.135.220.15]:38298 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752027AbbBVXBH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 22 Feb 2015 18:01:07 -0500
+	id S1752339AbbBWK0e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Feb 2015 05:26:34 -0500
 Content-Disposition: inline
+In-Reply-To: <20150221032000.GC7922@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The following changes since commit 3b421b80be635d696848b72d3c7700a0e5ee3414:
+On Fri 20-02-15 22:20:00, Theodore Ts'o wrote:
+[...]
+> So based on akpm's sage advise and wisdom, I added back GFP_NOFAIL to
+> ext4/jbd2.
 
-  Merge tag 'ext4_for_linus_stable' of git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4 (2015-01-06 14:05:40 -0800)
+I am currently going through opencoded GFP_NOFAIL allocations and have
+this in my local branch currently. I assume you did the same so I will
+drop mine if you have pushed yours already.
+---
+>From dc49cef75dbd677d5542c9e5bd27bbfab9a7bc3a Mon Sep 17 00:00:00 2001
+From: Michal Hocko <mhocko@suse.cz>
+Date: Fri, 20 Feb 2015 11:32:58 +0100
+Subject: [PATCH] jbd2: revert must-not-fail allocation loops back to
+ GFP_NOFAIL
 
-are available in the git repository at:
+This basically reverts 47def82672b3 (jbd2: Remove __GFP_NOFAIL from jbd2
+layer). The deprecation of __GFP_NOFAIL was a bad choice because it led
+to open coding the endless loop around the allocator rather than
+removing the dependency on the non failing allocation. So the
+deprecation was a clear failure and the reality tells us that
+__GFP_NOFAIL is not even close to go away.
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
+It is still true that __GFP_NOFAIL allocations are generally discouraged
+and new uses should be evaluated and an alternative (pre-allocations or
+reservations) should be considered but it doesn't make any sense to lie
+the allocator about the requirements. Allocator can take steps to help
+making a progress if it knows the requirements.
 
-for you to fetch changes up to 6f30b7e37a8239f9d27db626a1d3427bc7951908:
+Signed-off-by: Michal Hocko <mhocko@suse.cz>
+---
+ fs/jbd2/journal.c     | 11 +----------
+ fs/jbd2/transaction.c | 20 +++++++-------------
+ 2 files changed, 8 insertions(+), 23 deletions(-)
 
-  ext4: fix indirect punch hole corruption (2015-02-14 20:08:51 -0500)
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 1df94fabe4eb..878ed3e761f0 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -371,16 +371,7 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 	 */
+ 	J_ASSERT_BH(bh_in, buffer_jbddirty(bh_in));
+ 
+-retry_alloc:
+-	new_bh = alloc_buffer_head(GFP_NOFS);
+-	if (!new_bh) {
+-		/*
+-		 * Failure is not an option, but __GFP_NOFAIL is going
+-		 * away; so we retry ourselves here.
+-		 */
+-		congestion_wait(BLK_RW_ASYNC, HZ/50);
+-		goto retry_alloc;
+-	}
++	new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
+ 
+ 	/* keep subsequent assertions sane */
+ 	atomic_set(&new_bh->b_count, 1);
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 5f09370c90a8..dac4523fa142 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -278,22 +278,16 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
+ 
+ alloc_transaction:
+ 	if (!journal->j_running_transaction) {
++		/*
++		 * If __GFP_FS is not present, then we may be being called from
++		 * inside the fs writeback layer, so we MUST NOT fail.
++		 */
++		if ((gfp_mask & __GFP_FS) == 0)
++			gfp_mask |= __GFP_NOFAIL;
+ 		new_transaction = kmem_cache_zalloc(transaction_cache,
+ 						    gfp_mask);
+-		if (!new_transaction) {
+-			/*
+-			 * If __GFP_FS is not present, then we may be
+-			 * being called from inside the fs writeback
+-			 * layer, so we MUST NOT fail.  Since
+-			 * __GFP_NOFAIL is going away, we will arrange
+-			 * to retry the allocation ourselves.
+-			 */
+-			if ((gfp_mask & __GFP_FS) == 0) {
+-				congestion_wait(BLK_RW_ASYNC, HZ/50);
+-				goto alloc_transaction;
+-			}
++		if (!new_transaction)
+ 			return -ENOMEM;
+-		}
+ 	}
+ 
+ 	jbd_debug(3, "New handle %p going live.\n", handle);
+-- 
+2.1.4
 
-----------------------------------------------------------------
-Ext4 bug fixes for 3.20.  We also reserved code points for encryption
-and read-only images (for which the implementation is mostly just the
-reserved code point for a read-only feature :-)
-
-----------------------------------------------------------------
-Darrick J. Wong (2):
-      jbd2: complain about descriptor block checksum errors
-      ext4: support read-only images
-
-Eric Sandeen (2):
-      ext4: remove duplicate remount check for JOURNAL_CHECKSUM change
-      ext4: ignore journal checksum on remount; don't fail
-
-Jan Mrazek (1):
-      ext4: change to use setup_timer() instead of init_timer()
-
-Omar Sandoval (1):
-      ext4: fix indirect punch hole corruption
-
-Theodore Ts'o (1):
-      ext4: reserve codepoints used by the ext4 encryption feature
-
-Xiaoguang Wang (1):
-      ext4: fix mmap data corruption in nodelalloc mode when blocksize < pagesize
-
- fs/ext4/ext4.h     |  18 ++++++++---
- fs/ext4/indirect.c | 105 +++++++++++++++++++++++++++++++++++++++++--------------------
- fs/ext4/inode.c    |   7 +++++
- fs/ext4/super.c    |  31 ++++++++----------
- fs/jbd2/recovery.c |   3 ++
- 5 files changed, 108 insertions(+), 56 deletions(-)
+-- 
+Michal Hocko
+SUSE Labs
