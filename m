@@ -1,107 +1,62 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: Make fsync to sync parent dir in no-journal for real this time
-Date: Mon, 23 Feb 2015 14:16:36 +0100
-Message-ID: <1424697396-17248-1-git-send-email-lczerner@redhat.com>
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Frank Mayhar <fmayhar@google.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59878 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751661AbbBWNQm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Feb 2015 08:16:42 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: Documenting MS_LAZYTIME
+Date: Mon, 23 Feb 2015 10:24:54 -0600
+Message-ID: <54EB5456.5030607@redhat.com>
+References: <CAHO5Pa0k7QkV_6BDjwTVxa7LV9tFyN9nGFFcSvOC6HYO08wfrw@mail.gmail.com> <54E7578E.4090809@redhat.com> <20150221025636.GB7922@thunk.org> <54EB1B19.8050808@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: Michael Kerrisk <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux btrfs Developers List <linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>, linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Linux-Fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Austin S Hemmelgarn <ahferroin7-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+Return-path: <linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <54EB1B19.8050808-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Sender: linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-Previously commit 14ece1028b3ed53ffec1b1213ffc6acaf79ad77c added a
-support for for syncing parent directory of newly created inodes to make
-sure that the inode is not lost after a power failure in no-journal
-mode.
+On 2/23/15 6:20 AM, Austin S Hemmelgarn wrote:
+> On 2015-02-20 21:56, Theodore Ts'o wrote:
+>> On Fri, Feb 20, 2015 at 09:49:34AM -0600, Eric Sandeen wrote:
+>>>
+>>>>                This mount option significantly reduces  writes  to  the
+>>>>                inode  table  for workloads that perform frequent random
+>>>>                writes to preallocated files.
+>>>
+>>> This seems like an overly specific description of a single workload out
+>>> of many which may benefit, but what do others think?  "inode table" is also
+>>> fairly extN-specific.
+>>
+>> How about somethign like "This mount significantly reduces writes
+>> needed to update the inode's timestamps, especially mtime and actime.
+>> Examples of workloads where this could be a large win include frequent
+>> random writes to preallocated files, as well as cases where the
+>> MS_STRICTATIME mount option is enabled."?
+>>
+>> (The advantage of MS_STRICTATIME | MS_LAZYTIME is that stat system
+>> calls will return the correctly updated atime, but those atime updates
+>> won't get flushed to disk unless the inode needs to be updated for
+>> file system / data consistency reasons, or when the inode is pushed
+>> out of memory, or when the file system is unmounted.)
+>>
+> If you want to list some specific software, it should help with
+> anything that uses sqlite (which notably includes firefox and
+> chrome), as well as most RDMS software and systemd-journald.
 
-However this does not work in majority of cases, namely:
- - if the directory has inline data
- - if the directory is already indexed
- - if the directory already has at least one block and:
-	- the new entry fits into it
-	- or we've successfully converted it to indexed
+I'm really uneasy with starting to list specific workloads and applications
+here. It's going to get dated quickly, and will lead to endless cargo-cult
+tuning.
 
-So in those cases we might lose the inode entirely even after fsync in
-the no-journal mode. This also includes ext2 default mode obviously.
+I'd strongly prefer to just describe what it does (reduces the number of
+certain metadata writes to disk) and leave it at that....
 
-I've noticed this while running xfstest generic/321 and even though the
-test should fail (we need to run fsck after a crash in no-journal mode)
-I could not find a newly created entries even when if it was fsynced
-before.
+-Eric
 
-Fix this by adjusting the ext4_add_entry() successful exit paths to set
-the inode EXT4_STATE_NEWENTRY so that fsync has the chance to fsync the
-parent directory as well.
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Cc: Frank Mayhar <fmayhar@google.com>
----
- fs/ext4/namei.c | 19 ++++++++++---------
- 1 file changed, 10 insertions(+), 9 deletions(-)
-
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 2291923..25e1e03 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1865,7 +1865,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 			  struct inode *inode)
- {
- 	struct inode *dir = dentry->d_parent->d_inode;
--	struct buffer_head *bh;
-+	struct buffer_head *bh = NULL;
- 	struct ext4_dir_entry_2 *de;
- 	struct ext4_dir_entry_tail *t;
- 	struct super_block *sb;
-@@ -1889,14 +1889,14 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 			return retval;
- 		if (retval == 1) {
- 			retval = 0;
--			return retval;
-+			goto out;
- 		}
- 	}
- 
- 	if (is_dx(dir)) {
- 		retval = ext4_dx_add_entry(handle, dentry, inode);
- 		if (!retval || (retval != ERR_BAD_DX_DIR))
--			return retval;
-+			goto out;
- 		ext4_clear_inode_flag(dir, EXT4_INODE_INDEX);
- 		dx_fallback++;
- 		ext4_mark_inode_dirty(handle, dir);
-@@ -1908,14 +1908,14 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 			return PTR_ERR(bh);
- 
- 		retval = add_dirent_to_buf(handle, dentry, inode, NULL, bh);
--		if (retval != -ENOSPC) {
--			brelse(bh);
--			return retval;
--		}
-+		if (retval != -ENOSPC)
-+			goto out;
- 
- 		if (blocks == 1 && !dx_fallback &&
--		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX))
--			return make_indexed_dir(handle, dentry, inode, bh);
-+		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX)) {
-+			retval = make_indexed_dir(handle, dentry, inode, bh);
-+			goto out;
-+		}
- 		brelse(bh);
- 	}
- 	bh = ext4_append(handle, dir, &block);
-@@ -1931,6 +1931,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 	}
- 
- 	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
-+out:
- 	brelse(bh);
- 	if (retval == 0)
- 		ext4_set_inode_state(inode, EXT4_STATE_NEWENTRY);
--- 
-1.8.3.1
-
+--
+To unsubscribe from this list: send the line "unsubscribe linux-man" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
