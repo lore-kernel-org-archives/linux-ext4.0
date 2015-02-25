@@ -1,223 +1,41 @@
 From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Subject: [PATCH v2] debugfs/set_fields: fix several errors and add assertions
-Date: Wed, 25 Feb 2015 12:47:28 +0300
-Message-ID: <20150225094728.14523.52763.stgit@buzz>
+Subject: How to add new fields into inode?
+Date: Wed, 25 Feb 2015 14:02:13 +0300
+Message-ID: <54EDABB5.5020806@yandex-team.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Transfer-Encoding: 7bit
-To: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: Li Xi <pkuelelixi@gmail.com>
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from forward-corp1g.mail.yandex.net ([95.108.253.251]:38998 "EHLO
+Received: from forward-corp1g.mail.yandex.net ([95.108.253.251]:43288 "EHLO
 	forward-corp1g.mail.yandex.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750761AbbBYJrc (ORCPT
+	by vger.kernel.org with ESMTP id S1751989AbbBYLCQ (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 Feb 2015 04:47:32 -0500
+	Wed, 25 Feb 2015 06:02:16 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix copy-n-paste errors:
-* remove duplicate "lastcheck" and "min_extra_isize"
-* fix pointer for "first_error_line" and "last_error_line"
-* remove superblock field "inodes_count" from inode fields
-* add null-termination for mmp_fields
+Currently I'm working on (yet another attempt of) project id and quota
+for ext4. Obviously I want to add new u32 field into inode for holding
+it's project id.
 
-Add assertions for catching such errors in the future.
-Mark true aliases with flag "FLAG_ALIAS" and suppress assert for them.
+As I see policy for that isn't well defined:
 
-v2: check tables in unit test "debugfs/tst_set_fields"
+Kernel tries to allocate extra space according to sizeof(struct
+ext4_inode). If EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE is set then it takes
+maximum of sizeof, s_want_extra_isize and s_min_extra_isize.
 
-Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
----
- debugfs/Makefile.in  |   11 +++++++-
- debugfs/set_fields.c |   73 +++++++++++++++++++++++++++++++++++++++++++-------
- 2 files changed, 73 insertions(+), 11 deletions(-)
+Libext2fs always allocates space for it's own structure and in some
+cases checks s_want_extra_isize but without checking related feature.
 
-diff --git a/debugfs/Makefile.in b/debugfs/Makefile.in
-index 1a65c13..a768248 100644
---- a/debugfs/Makefile.in
-+++ b/debugfs/Makefile.in
-@@ -151,7 +151,8 @@ uninstall:
- 
- clean::
- 	$(RM) -f $(PROGS) debugfs.8 \#* *.s *.o *.a *~ debug_cmds.c \
--		extent_cmds.c ro_debug_cmds.c core rdebugfs debugfs.static
-+		extent_cmds.c ro_debug_cmds.c core rdebugfs debugfs.static \
-+		tst_set_fields
- 
- mostlyclean: clean
- distclean: clean
-@@ -159,6 +160,14 @@ distclean: clean
- 		$(srcdir)/Makefile.in.old $(srcdir)/recovery.c \
- 		$(srcdir)/revoke.c
- 
-+tst_set_fields: set_fields.c util.c
-+	$(E) "  LD $@"
-+	$(Q) $(CC) $(ALL_CFLAGS) $(ALL_LDFLAGS) $(SYSLIBS) -DUNITTEST \
-+		-o tst_set_fields $(srcdir)/set_fields.c $(srcdir)/util.c $(LIBS)
-+
-+check:: tst_set_fields
-+	$(TESTENV) ./tst_set_fields
-+
- # +++ Dependency line eater +++
- # 
- # Makefile dependencies follow.  This must be the last section in
-diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-index 60695ad..37fd5ec 100644
---- a/debugfs/set_fields.c
-+++ b/debugfs/set_fields.c
-@@ -30,6 +30,7 @@
- #ifdef HAVE_ERRNO_H
- #include <errno.h>
- #endif
-+#include <assert.h>
- #if HAVE_STRINGS_H
- #include <strings.h>
- #endif
-@@ -50,6 +51,7 @@ static ext2_ino_t set_ino;
- static int array_idx;
- 
- #define FLAG_ARRAY	0x0001
-+#define FLAG_ALIAS	0x0002	/* Data intersects with other field */
- 
- struct field_set_info {
- 	const char	*name;
-@@ -110,7 +112,6 @@ static struct field_set_info super_fields[] = {
- 	{ "uuid", &set_sb.s_uuid, NULL, 16, parse_uuid },
- 	{ "volume_name",  &set_sb.s_volume_name, NULL, 16, parse_string },
- 	{ "last_mounted",  &set_sb.s_last_mounted, NULL, 64, parse_string },
--	{ "lastcheck",  &set_sb.s_lastcheck, NULL, 4, parse_uint },
- 	{ "algorithm_usage_bitmap", &set_sb.s_algorithm_usage_bitmap, NULL,
- 		  4, parse_uint },
- 	{ "prealloc_blocks", &set_sb.s_prealloc_blocks, NULL, 1, parse_uint },
-@@ -135,7 +136,6 @@ static struct field_set_info super_fields[] = {
- 	{ "want_extra_isize", &set_sb.s_want_extra_isize, NULL, 2, parse_uint },
- 	{ "flags", &set_sb.s_flags, NULL, 4, parse_uint },
- 	{ "raid_stride", &set_sb.s_raid_stride, NULL, 2, parse_uint },
--	{ "min_extra_isize", &set_sb.s_min_extra_isize, NULL, 4, parse_uint },
- 	{ "mmp_interval", &set_sb.s_mmp_update_interval, NULL, 2, parse_uint },
- 	{ "mmp_block", &set_sb.s_mmp_block, NULL, 8, parse_uint },
- 	{ "raid_stripe_width", &set_sb.s_raid_stripe_width, NULL, 4, parse_uint },
-@@ -159,19 +159,18 @@ static struct field_set_info super_fields[] = {
- 	{ "first_error_ino", &set_sb.s_first_error_ino, NULL, 4, parse_uint },
- 	{ "first_error_block", &set_sb.s_first_error_block, NULL, 8, parse_uint },
- 	{ "first_error_func", &set_sb.s_first_error_func, NULL, 32, parse_string },
--	{ "first_error_line", &set_sb.s_first_error_ino, NULL, 4, parse_uint },
-+	{ "first_error_line", &set_sb.s_first_error_line, NULL, 4, parse_uint },
- 	{ "last_error_time", &set_sb.s_last_error_time, NULL, 4, parse_time },
- 	{ "last_error_ino", &set_sb.s_last_error_ino, NULL, 4, parse_uint },
- 	{ "last_error_block", &set_sb.s_last_error_block, NULL, 8, parse_uint },
- 	{ "last_error_func", &set_sb.s_last_error_func, NULL, 32, parse_string },
--	{ "last_error_line", &set_sb.s_last_error_ino, NULL, 4, parse_uint },
-+	{ "last_error_line", &set_sb.s_last_error_line, NULL, 4, parse_uint },
- 	{ "encrypt_algos", &set_sb.s_encrypt_algos, NULL, 1, parse_uint,
- 	  FLAG_ARRAY, 4 },
- 	{ 0, 0, 0, 0 }
- };
- 
- static struct field_set_info inode_fields[] = {
--	{ "inodes_count", &set_sb.s_inodes_count, NULL, 4, parse_uint },
- 	{ "mode", &set_inode.i_mode, NULL, 2, parse_uint },
- 	{ "uid", &set_inode.i_uid, &set_inode.osd2.linux2.l_i_uid_high,
- 		2, parse_uint },
-@@ -189,7 +188,8 @@ static struct field_set_info inode_fields[] = {
- 	{ "flags", &set_inode.i_flags, NULL, 4, parse_uint },
- 	{ "version", &set_inode.osd1.linux1.l_i_version,
- 		&set_inode.i_version_hi, 4, parse_uint },
--	{ "translator", &set_inode.osd1.hurd1.h_i_translator, NULL, 4, parse_uint },
-+	{ "translator", &set_inode.osd1.hurd1.h_i_translator, NULL,
-+		4, parse_uint, FLAG_ALIAS },
- 	{ "block", &set_inode.i_block[0], NULL, 4, parse_uint, FLAG_ARRAY,
- 	  EXT2_NDIR_BLOCKS },
- 	{ "block[IND]", &set_inode.i_block[EXT2_IND_BLOCK], NULL, 4, parse_uint },
-@@ -199,14 +199,14 @@ static struct field_set_info inode_fields[] = {
- 	/* Special case: i_file_acl_high is 2 bytes */
- 	{ "file_acl", &set_inode.i_file_acl, 
- 		&set_inode.osd2.linux2.l_i_file_acl_high, 6, parse_uint },
--	{ "dir_acl", &set_inode.i_dir_acl, NULL, 4, parse_uint },
-+	{ "dir_acl", &set_inode.i_dir_acl, NULL, 4, parse_uint, FLAG_ALIAS },
- 	{ "faddr", &set_inode.i_faddr, NULL, 4, parse_uint },
--	{ "frag", &set_inode.osd2.hurd2.h_i_frag, NULL, 1, parse_uint },
-+	{ "frag", &set_inode.osd2.hurd2.h_i_frag, NULL, 1, parse_uint, FLAG_ALIAS },
- 	{ "fsize", &set_inode.osd2.hurd2.h_i_fsize, NULL, 1, parse_uint },
- 	{ "checksum", &set_inode.osd2.linux2.l_i_checksum_lo, 
- 		&set_inode.i_checksum_hi, 2, parse_uint },
- 	{ "author", &set_inode.osd2.hurd2.h_i_author, NULL,
--		4, parse_uint },
-+		4, parse_uint, FLAG_ALIAS },
- 	{ "extra_isize", &set_inode.i_extra_isize, NULL,
- 		2, parse_uint },
- 	{ "ctime_extra", &set_inode.i_ctime_extra, NULL,
-@@ -262,7 +262,8 @@ static struct field_set_info ext4_bg_fields[] = {
- };
- 
- static struct field_set_info mmp_fields[] = {
--	{ "clear", &set_mmp.mmp_magic, NULL, sizeof(set_mmp), parse_mmp_clear },
-+	{ "clear", &set_mmp.mmp_magic, NULL, sizeof(set_mmp),
-+		parse_mmp_clear, FLAG_ALIAS },
- 	{ "magic", &set_mmp.mmp_magic, NULL, 4, parse_uint },
- 	{ "seq", &set_mmp.mmp_seq, NULL, 4, parse_uint },
- 	{ "time", &set_mmp.mmp_time, NULL, 8, parse_uint },
-@@ -272,8 +273,60 @@ static struct field_set_info mmp_fields[] = {
- 		parse_string },
- 	{ "check_interval", &set_mmp.mmp_check_interval, NULL, 2, parse_uint },
- 	{ "checksum", &set_mmp.mmp_checksum, NULL, 4, parse_uint },
-+	{ 0, 0, 0, 0 }
- };
- 
-+#ifdef UNITTEST
-+
-+static void do_verify_field_set_info(struct field_set_info *fields,
-+		const void *data, size_t size)
-+{
-+	struct field_set_info *ss, *ss2;
-+	const char *begin = (char *)data;
-+	const char *end = begin + size;
-+
-+	for (ss = fields ; ss->name ; ss++) {
-+		const char *ptr;
-+
-+		/* Check pointers */
-+		ptr = ss->ptr;
-+		assert(!ptr || (ptr >= begin && ptr < end));
-+		ptr = ss->ptr2;
-+		assert(!ptr || (ptr >= begin && ptr < end));
-+
-+		/* Check function */
-+		assert(ss->func);
-+
-+		for (ss2 = fields ; ss2 != ss ; ss2++) {
-+			/* Check duplicate names */
-+			assert(strcmp(ss->name, ss2->name));
-+
-+			if (ss->flags & FLAG_ALIAS || ss2->flags & FLAG_ALIAS)
-+				continue;
-+			/* Check false aliases, might be copy-n-paste error */
-+			assert(!ss->ptr || (ss->ptr != ss2->ptr &&
-+					    ss->ptr != ss2->ptr2));
-+			assert(!ss->ptr2 || (ss->ptr2 != ss2->ptr &&
-+					     ss->ptr2 != ss2->ptr2));
-+		}
-+	}
-+}
-+
-+int main(int argc, char **argv)
-+{
-+	do_verify_field_set_info(super_fields, &set_sb, sizeof(set_sb));
-+	do_verify_field_set_info(inode_fields, &set_inode, sizeof(set_inode));
-+	do_verify_field_set_info(ext2_bg_fields, &set_gd, sizeof(set_gd));
-+	do_verify_field_set_info(ext4_bg_fields, &set_gd4, sizeof(set_gd4));
-+	do_verify_field_set_info(mmp_fields, &set_mmp, sizeof(set_mmp));
-+	return 0;
-+}
-+
-+ext2_filsys current_fs;
-+ext2_ino_t root, cwd;
-+
-+#endif /* UNITTEST */
-+
- static int check_suffix(const char *field)
- {
- 	int len = strlen(field);
+Thus in some cases default extra size of inodes doesn't depend on
+present features and changes if we add new fields into structure.
+For example expected output of some unit tests depends on that value.
 
+Question is: it's ok to waste some bytes for unused fields at the of
+inode or default extra size should depend on actually enabled features?
+
+-- 
+Konstantin
