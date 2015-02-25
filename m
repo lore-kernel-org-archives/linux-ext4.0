@@ -1,57 +1,80 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: Omar Sandoval <osandov@osandov.com>
 Subject: Re: [PATCH] ext4: add regression tests for ^extents punch hole
-Date: Tue, 24 Feb 2015 19:24:37 -0500
-Message-ID: <20150225002437.GB3782@thunk.org>
-References: <4c557308eb4e62752dc8b513495cb6d46ca5775d.1424730653.git.osandov@osandov.com>
- <20150223224620.GL12722@dastard>
- <alpine.LFD.2.00.1502241106110.28736@localhost.localdomain>
- <20150224113108.GA4251@dastard>
- <alpine.LFD.2.00.1502241249300.28736@localhost.localdomain>
- <20150224124938.GB4251@dastard>
+Date: Tue, 24 Feb 2015 19:03:56 -0800
+Message-ID: <20150225030356.GA6880@mew.dhcp4.washington.edu>
+References: <20150224220719.GD4251@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
-	Omar Sandoval <osandov@osandov.com>, fstests@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Eric Sandeen <sandeen@sandeen.net>
 Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20150224124938.GB4251@dastard>
+In-Reply-To: <20150224220719.GD4251@dastard>
+ <alpine.LFD.2.00.1502241538430.5931@localhost.localdomain>
+ <20150225002437.GB3782@thunk.org>
 Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Feb 24, 2015 at 11:49:38PM +1100, Dave Chinner wrote:
-> 
-> Ah, right, I said that was during the discussion about the commit I
-> quoted above. You convinced me that we shouldn't cater for special
-> cases like this and instead iterate mkfs/mount configurations.
-
-I was in favor of iterating over mkfs/mount configurations myself --
-and that's something I do, but it takes around 20 hours to run all of
-the iterations, so it's not something I'm doing _all_ that often.
-
-> I think the test should still be generic and block size independent,
-> but if you want to force ext4 to turn off the extents flag, then
-> use something like this:
-
-I suspect our current generic fsstress and fsx tests would catch this
-already, and what I need to do is to make sure I add ext3/1k to my
-test configurations (currently I test an ext3 configuration, and a 1k
-block configuration, but I don't currently test ext3/1k together).
-That would probably round out my full test iteration to a very
-pleasing 24 hours or so, which is fine, although I wouldn't want it to
-take much longer than that.
+On Tue, Feb 24, 2015 at 07:24:37PM -0500, Theodore Ts'o wrote:
+> I suspect our current generic fsstress and fsx tests would catch this
+> already, and what I need to do is to make sure I add ext3/1k to my
+> test configurations (currently I test an ext3 configuration, and a 1k
+> block configuration, but I don't currently test ext3/1k together).
+> That would probably round out my full test iteration to a very
+> pleasing 24 hours or so, which is fine, although I wouldn't want it t=
+o
+> take much longer than that.
+>=20
+Actually, this issue isn't specific to 1k blocks, so I wouldn't count o=
+n
+it :) That block size in my tests is an artifact of the initial
+reproducer Lukas had (generic/270 on ext3 with 1k blocks). It just so
+happens that the start/len arguments fsstress chooses for punch hole
+operations in that setup straddles the indirect tree levels in the wron=
+g
+ways.
 
 
-> /me shakes his head, wonders how other maintainers stay sane
+On Tue, Feb 24, 2015 at 03:58:06PM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> Omar, can you make the test generic and can this be reproduced on 4k
+> block size ? If not, can you make a generic reproducer which does
+> not depend on the block size ?
+>=20
+> Also if we want to include the special case for ext4, we need to
+> have a function which allows us to alter the mkfs options without
+> completely overriding the user specified options. I think that there
+> is something like that for xfs, Omar can you do that for ext4 as
+> well ?
+>=20
+> Thanks!
+> -Lukas
+>=20
+>=20
+No problem, I'll have a go at it.
 
-They're coming to take me away, ha-haaa.
-They're coming to take me away, ho ho, he he , ha ha,
-To the happy home with trees and flowers and chirping birds
-And basket weavers who sit and smile
-And twiddle their thumbs and toes
-And they're coming to take me away, ha-haaa!
 
-:-)
+On Wed, Feb 25, 2015 at 09:07:19AM +1100, Dave Chinner wrote:
+> It's built into the _scratch_mkfs_xfs wrapper, where if the test
+> supplies extra options and that conflicts with the CLI supplied
+> options it drops the CLI specific options and just uses the test
+> options.
+>=20
+> I've mentioned this specificly in the past, too. i.e. that all
+> _scratch_mkfs_$FSTYP wrappers should be handling CLI vs test
+> specific options like this.... :/
+>=20
+> Cheers,
+>=20
+> Dave.
+>=20
+I'll take that into account.
 
-						- Ted
+
+Thanks, everyone!
+--=20
+Omar
