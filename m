@@ -1,77 +1,87 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: How to add new fields into inode?
-Date: Fri, 27 Feb 2015 00:52:43 -0700
-Message-ID: <38ED78B4-149F-4C6F-A2EC-634C71ED9ADF@dilger.ca>
-References: <54EDABB5.5020806@yandex-team.ru>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2070.6\))
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>, Li Xi <pkuelelixi@gmail.com>
-To: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f42.google.com ([209.85.220.42]:38276 "EHLO
-	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752008AbbB0Hwp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Feb 2015 02:52:45 -0500
-Received: by padbj1 with SMTP id bj1so20779986pad.5
-        for <linux-ext4@vger.kernel.org>; Thu, 26 Feb 2015 23:52:45 -0800 (PST)
-In-Reply-To: <54EDABB5.5020806@yandex-team.ru>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Michael Kerrisk (man-pages)" <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Subject: Re: Documenting MS_LAZYTIME
+Date: Fri, 27 Feb 2015 09:01:10 +0100
+Message-ID: <54F02446.2050008@gmail.com>
+References: <CAHO5Pa0k7QkV_6BDjwTVxa7LV9tFyN9nGFFcSvOC6HYO08wfrw@mail.gmail.com> <54E7578E.4090809@redhat.com> <20150221025636.GB7922@thunk.org> <54EEDE23.6080009@gmail.com> <20150226133113.GD11217@thunk.org> <54EF2161.90607@gmail.com> <20150227000409.GC17174@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux btrfs Developers List <linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>, linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Linux-Fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
+Return-path: <linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20150227000409.GC17174-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
+Sender: linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Feb 25, 2015, at 4:02 AM, Konstantin Khlebnikov <khlebnikov@yandex-team.ru> wrote:
-> 
-> Currently I'm working on (yet another attempt of) project id and quota
-> for ext4. Obviously I want to add new u32 field into inode for holding
-> it's project id.
-> 
-> As I see policy for that isn't well defined:
-> 
-> Kernel tries to allocate extra space according to sizeof(struct
-> ext4_inode). If EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE is set then it takes
-> maximum of sizeof, s_want_extra_isize and s_min_extra_isize.
-> 
-> Libext2fs always allocates space for it's own structure and in some
-> cases checks s_want_extra_isize but without checking related feature.
+On 02/27/2015 01:04 AM, Theodore Ts'o wrote:
+> On Thu, Feb 26, 2015 at 02:36:33PM +0100, Michael Kerrisk (man-pages)=
+ wrote:
+>>
+>>     The disadvantage of MS_STRICTATIME | MS_LAZYTIME is that
+>>     in the case of a system crash, the atime and mtime fields
+>>     on disk might be out of date by at most 24 hours.
+>=20
+> I'd change to "The disadvantage of MS_LAZYTIME is that..."  and
+> perhaps move that so it's clear it applies to any use of MS_LAZYTIME
+> has this as a downside.
+>=20
+> Does that make sense?
 
-That is likely a bug in libext2fs.  This feature was written because
-some people were concerned about requiring extra inode features on a
-filesystem that was upgraded from an older kernel where the reserved
-fields were fewer.  In many cases, it is not critical if some field
-at the end of the inode is present or not, but in other cases (maybe
-project quota?) it is important that there is always space for saving
-this data.
+Thanks, Ted. Got it. So, now we have:
 
-We have a patch for e2fsck which allows expanding the i_extra_size on
-all in-use inodes in the filesystem to ensure that it meets at least
-s_min_extra_isize.  New inodes will always reserve the needed space.
+       MS_LAZYTIME (since Linux 3.20)
+              Reduce  on-disk  updates  of  inode  timestamps  (atime,
+              mtime, ctime) by maintaining these changes only in  mem=E2=
+=80=90
+              ory.  The on-disk timestamps are updated only when:
 
-http://git.hpdd.intel.com/tools/e2fsprogs.git/commitdiff/6a7efec02c4d01b6bd951fef7d1c8c78f0426aa4
-http://git.hpdd.intel.com/tools/e2fsprogs.git/commitdiff/89555784b583ff1dd48e31ff276a4ad0421172b0
+              (a)  the inode needs to be updated for some change unre=E2=
+=80=90
+                   lated to file timestamps;
 
-If there isn't enough space in the inode for the extra bytes, then
-e2fsck will prompt the user to delete an xattr from the inode, or
-abort e2fsck (in a safe manner, nothing will be one in preen mode).
+              (b)  the application  employs  fsync(2),  syncfs(2),  or
+                   sync(2);
 
-> Thus in some cases default extra size of inodes doesn't depend on
-> present features and changes if we add new fields into structure.
-> For example expected output of some unit tests depends on that value.
-> 
-> Question is: it's ok to waste some bytes for unused fields at the of
-> inode or default extra size should depend on actually enabled features?
+              (c)  an undeleted inode is evicted from memory; or
 
-I think it is preferable that the i_extra_size not be larger than what
-is actually used.  If some feature like project quota is enabled on an
-existing filesystem, then e2fsck could be run to expand the inode size
-to the needed size,  It would also be possible for the kernel to grow
-i_extra_size to cover the new field, or return an error to userspace
-at the time the new project quota is being set on the file (either
-explicitly or by rename into a project quota-enabled directory).
+              (d)  more  than 24 hours have passed since the inode was
+                   written to disk.
 
-Cheers, Andreas
+              This mount significantly reduces writes needed to update
+              the  inode's  timestamps,  especially  mtime  and atime.
+              However, in the event of a system crash, the  atime  and
+              mtime  fields  on  disk might be out of date by up to 24
+              hours.
+
+              Examples of workloads where this option could be of sig=E2=
+=80=90
+              nificant  benefit include frequent random writes to pre=E2=
+=80=90
+              allocated files, as well as cases where the  MS_STRICTA=E2=
+=80=90
+              TIME  mount  option  is also enabled.  (The advantage of
+              (MS_STRICTATIME |  MS_LAZYTIME)  is  that  stat(2)  will
+              return  the  correctly  updated  atime,  but  the  atime
+              updates will be flushed to disk only when (1) the  inode
+              needs  to  be  updated for filesystem / data consistency
+              reasons or (2) the inode is pushed out of memory, or (3)
+              the filesystem is unmounted.)
+
+Cheers,
+
+Michael
 
 
-
-
-
+--=20
+Michael Kerrisk
+Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
+Linux/UNIX System Programming Training: http://man7.org/training/
+--
+To unsubscribe from this list: send the line "unsubscribe linux-man" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
