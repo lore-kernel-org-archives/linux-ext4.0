@@ -1,84 +1,239 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: Documenting MS_LAZYTIME
-Date: Fri, 27 Feb 2015 09:51:59 -0800
-Message-ID: <20150227175159.GC11031@birch.djwong.org>
-References: <CAHO5Pa0k7QkV_6BDjwTVxa7LV9tFyN9nGFFcSvOC6HYO08wfrw@mail.gmail.com>
-	<54E7578E.4090809@redhat.com> <20150221025636.GB7922@thunk.org>
-	<54EEDE23.6080009@gmail.com> <20150226133113.GD11217@thunk.org>
-	<54EF2161.90607@gmail.com> <20150227000409.GC17174@thunk.org>
-	<54F02446.2050008@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: linux-man@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Eric Sandeen <sandeen@redhat.com>, Linux API <linux-api@vger.kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>,
-	Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Linux btrfs Developers List <linux-btrfs@vger.kernel.org>
-To: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <54F02446.2050008@gmail.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+From: Omar Sandoval <osandov@osandov.com>
+Subject: [PATCH v2] generic: regression tests for ext4 ^extents punch hole
+Date: Fri, 27 Feb 2015 17:29:06 -0800
+Message-ID: <b4af323097a2bf6b792f1b8bd6beac774a6cf3bf.1425085875.git.osandov@osandov.com>
+Cc: Omar Sandoval <osandov@osandov.com>
+To: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
+	=?UTF-8?q?Luk=C3=A1=C5=A1=20Czerner?= <lczerner@redhat.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Dave Chinner <david@fromorbit.com>,
+	Eric Sandeen <sandeen@sandeen.net>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pa0-f52.google.com ([209.85.220.52]:43063 "EHLO
+	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750831AbbB1B30 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Feb 2015 20:29:26 -0500
+Received: by paceu11 with SMTP id eu11so26852661pac.10
+        for <linux-ext4@vger.kernel.org>; Fri, 27 Feb 2015 17:29:25 -0800 (PST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-T24gRnJpLCBGZWIgMjcsIDIwMTUgYXQgMDk6MDE6MTBBTSArMDEwMCwgTWljaGFlbCBLZXJyaXNr
-IChtYW4tcGFnZXMpIHdyb3RlOgo+IE9uIDAyLzI3LzIwMTUgMDE6MDQgQU0sIFRoZW9kb3JlIFRz
-J28gd3JvdGU6Cj4gPiBPbiBUaHUsIEZlYiAyNiwgMjAxNSBhdCAwMjozNjozM1BNICswMTAwLCBN
-aWNoYWVsIEtlcnJpc2sgKG1hbi1wYWdlcykgd3JvdGU6Cj4gPj4KPiA+PiAgICAgVGhlIGRpc2Fk
-dmFudGFnZSBvZiBNU19TVFJJQ1RBVElNRSB8IE1TX0xBWllUSU1FIGlzIHRoYXQKPiA+PiAgICAg
-aW4gdGhlIGNhc2Ugb2YgYSBzeXN0ZW0gY3Jhc2gsIHRoZSBhdGltZSBhbmQgbXRpbWUgZmllbGRz
-Cj4gPj4gICAgIG9uIGRpc2sgbWlnaHQgYmUgb3V0IG9mIGRhdGUgYnkgYXQgbW9zdCAyNCBob3Vy
-cy4KPiA+IAo+ID4gSSdkIGNoYW5nZSB0byAiVGhlIGRpc2FkdmFudGFnZSBvZiBNU19MQVpZVElN
-RSBpcyB0aGF0Li4uIiAgYW5kCj4gPiBwZXJoYXBzIG1vdmUgdGhhdCBzbyBpdCdzIGNsZWFyIGl0
-IGFwcGxpZXMgdG8gYW55IHVzZSBvZiBNU19MQVpZVElNRQo+ID4gaGFzIHRoaXMgYXMgYSBkb3du
-c2lkZS4KPiA+IAo+ID4gRG9lcyB0aGF0IG1ha2Ugc2Vuc2U/Cj4gCj4gVGhhbmtzLCBUZWQuIEdv
-dCBpdC4gU28sIG5vdyB3ZSBoYXZlOgo+IAo+ICAgICAgICBNU19MQVpZVElNRSAoc2luY2UgTGlu
-dXggMy4yMCkKCiJzaW5jZSBMaW51eCA0LjAiLgoKLS1ECgo+ICAgICAgICAgICAgICAgUmVkdWNl
-ICBvbi1kaXNrICB1cGRhdGVzICBvZiAgaW5vZGUgIHRpbWVzdGFtcHMgIChhdGltZSwKPiAgICAg
-ICAgICAgICAgIG10aW1lLCBjdGltZSkgYnkgbWFpbnRhaW5pbmcgdGhlc2UgY2hhbmdlcyBvbmx5
-IGluICBtZW3igJAKPiAgICAgICAgICAgICAgIG9yeS4gIFRoZSBvbi1kaXNrIHRpbWVzdGFtcHMg
-YXJlIHVwZGF0ZWQgb25seSB3aGVuOgo+IAo+ICAgICAgICAgICAgICAgKGEpICB0aGUgaW5vZGUg
-bmVlZHMgdG8gYmUgdXBkYXRlZCBmb3Igc29tZSBjaGFuZ2UgdW5yZeKAkAo+ICAgICAgICAgICAg
-ICAgICAgICBsYXRlZCB0byBmaWxlIHRpbWVzdGFtcHM7Cj4gCj4gICAgICAgICAgICAgICAoYikg
-IHRoZSBhcHBsaWNhdGlvbiAgZW1wbG95cyAgZnN5bmMoMiksICBzeW5jZnMoMiksICBvcgo+ICAg
-ICAgICAgICAgICAgICAgICBzeW5jKDIpOwo+IAo+ICAgICAgICAgICAgICAgKGMpICBhbiB1bmRl
-bGV0ZWQgaW5vZGUgaXMgZXZpY3RlZCBmcm9tIG1lbW9yeTsgb3IKPiAKPiAgICAgICAgICAgICAg
-IChkKSAgbW9yZSAgdGhhbiAyNCBob3VycyBoYXZlIHBhc3NlZCBzaW5jZSB0aGUgaW5vZGUgd2Fz
-Cj4gICAgICAgICAgICAgICAgICAgIHdyaXR0ZW4gdG8gZGlzay4KPiAKPiAgICAgICAgICAgICAg
-IFRoaXMgbW91bnQgc2lnbmlmaWNhbnRseSByZWR1Y2VzIHdyaXRlcyBuZWVkZWQgdG8gdXBkYXRl
-Cj4gICAgICAgICAgICAgICB0aGUgIGlub2RlJ3MgIHRpbWVzdGFtcHMsICBlc3BlY2lhbGx5ICBt
-dGltZSAgYW5kIGF0aW1lLgo+ICAgICAgICAgICAgICAgSG93ZXZlciwgaW4gdGhlIGV2ZW50IG9m
-IGEgc3lzdGVtIGNyYXNoLCB0aGUgIGF0aW1lICBhbmQKPiAgICAgICAgICAgICAgIG10aW1lICBm
-aWVsZHMgIG9uICBkaXNrIG1pZ2h0IGJlIG91dCBvZiBkYXRlIGJ5IHVwIHRvIDI0Cj4gICAgICAg
-ICAgICAgICBob3Vycy4KPiAKPiAgICAgICAgICAgICAgIEV4YW1wbGVzIG9mIHdvcmtsb2FkcyB3
-aGVyZSB0aGlzIG9wdGlvbiBjb3VsZCBiZSBvZiBzaWfigJAKPiAgICAgICAgICAgICAgIG5pZmlj
-YW50ICBiZW5lZml0IGluY2x1ZGUgZnJlcXVlbnQgcmFuZG9tIHdyaXRlcyB0byBwcmXigJAKPiAg
-ICAgICAgICAgICAgIGFsbG9jYXRlZCBmaWxlcywgYXMgd2VsbCBhcyBjYXNlcyB3aGVyZSB0aGUg
-IE1TX1NUUklDVEHigJAKPiAgICAgICAgICAgICAgIFRJTUUgIG1vdW50ICBvcHRpb24gIGlzIGFs
-c28gZW5hYmxlZC4gIChUaGUgYWR2YW50YWdlIG9mCj4gICAgICAgICAgICAgICAoTVNfU1RSSUNU
-QVRJTUUgfCAgTVNfTEFaWVRJTUUpICBpcyAgdGhhdCAgc3RhdCgyKSAgd2lsbAo+ICAgICAgICAg
-ICAgICAgcmV0dXJuICB0aGUgIGNvcnJlY3RseSAgdXBkYXRlZCAgYXRpbWUsICBidXQgIHRoZSAg
-YXRpbWUKPiAgICAgICAgICAgICAgIHVwZGF0ZXMgd2lsbCBiZSBmbHVzaGVkIHRvIGRpc2sgb25s
-eSB3aGVuICgxKSB0aGUgIGlub2RlCj4gICAgICAgICAgICAgICBuZWVkcyAgdG8gIGJlICB1cGRh
-dGVkIGZvciBmaWxlc3lzdGVtIC8gZGF0YSBjb25zaXN0ZW5jeQo+ICAgICAgICAgICAgICAgcmVh
-c29ucyBvciAoMikgdGhlIGlub2RlIGlzIHB1c2hlZCBvdXQgb2YgbWVtb3J5LCBvciAoMykKPiAg
-ICAgICAgICAgICAgIHRoZSBmaWxlc3lzdGVtIGlzIHVubW91bnRlZC4pCj4gCj4gQ2hlZXJzLAo+
-IAo+IE1pY2hhZWwKPiAKPiAKPiAtLSAKPiBNaWNoYWVsIEtlcnJpc2sKPiBMaW51eCBtYW4tcGFn
-ZXMgbWFpbnRhaW5lcjsgaHR0cDovL3d3dy5rZXJuZWwub3JnL2RvYy9tYW4tcGFnZXMvCj4gTGlu
-dXgvVU5JWCBTeXN0ZW0gUHJvZ3JhbW1pbmcgVHJhaW5pbmc6IGh0dHA6Ly9tYW43Lm9yZy90cmFp
-bmluZy8KPiAtLQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5l
-ICJ1bnN1YnNjcmliZSBsaW51eC1leHQ0IiBpbgo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBt
-YWpvcmRvbW9Admdlci5rZXJuZWwub3JnCj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDov
-L3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sCgpfX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fXwp4ZnMgbWFpbGluZyBsaXN0Cnhmc0Bvc3Muc2dp
-LmNvbQpodHRwOi8vb3NzLnNnaS5jb20vbWFpbG1hbi9saXN0aW5mby94ZnMK
+Linux commit 6f30b7e37a82 (ext4: fix indirect punch hole corruption)
+fixes several bugs in the FALLOC_FL_PUNCH_HOLE implementation for an
+ext4 filesystem with indirect blocks. This is a regression test when run
+on ext4 with 4K blocks and a generic fpunch test on anything else, with
+the advantage that it doesn't depend on falloc like the other fpunch
+tests.
+
+Signed-off-by: Omar Sandoval <osandov@osandov.com>
+---
+Hi, everyone,
+
+Here's another go at this, now as a generic test. It turns out that making the
+output blocksize-independent isn't easy. We can't just scale things linearly
+because the number of blocks in an indirect level is different based on the
+blocksize. So, I just settled on using 4k blocks. If the test is run on ext4
+with a different block size, it doesn't actually test the original bugs, but I
+think that's okay.
+
+I also went for the special case for ext4, because, like Lukas mentioned, I
+don't know how much coverage that code will get otherwise. It looks like
+_scratch_mkfs_ext4 already handles conflicting test options in the same way as
+_scratch_mkfs_xfs.
+
+Summary of changes from v1:
+
+- Move test to generic with special case for ext4
+- Use 4k blocks by default
+
+Thanks!
+
+ tests/generic/080     | 126 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/080.out |  29 ++++++++++++
+ tests/generic/group   |   1 +
+ 3 files changed, 156 insertions(+)
+ create mode 100755 tests/generic/080
+ create mode 100644 tests/generic/080.out
+
+diff --git a/tests/generic/080 b/tests/generic/080
+new file mode 100755
+index 0000000..1e67493
+--- /dev/null
++++ b/tests/generic/080
+@@ -0,0 +1,126 @@
++#! /bin/bash
++# FS QA Test No. 080
++#
++# Test fpunch on an ^extents ext4 filesystem.
++# Regression test for commit:
++# 6f30b7e37a82 (ext4: fix indirect punch hole corruption)
++#
++# The regression is exercised on ext4 when the blocksize is 4K. Otherwise, this
++# is just a generic fpunch test which doesn't depend on falloc.
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2015 Omar Sandoval.  All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#-----------------------------------------------------------------------
++#
++
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
++{
++	cd /
++	rm -f $tmp.*
++}
++
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++. ./common/punch
++
++# The test output depends on this blocksize, but this doesn't have to be the
++# same as the filesystem block size for the test to pass.
++BLOCKSIZE=4096
++NDIR=12
++ADDRS=$((BLOCKSIZE / 4))
++
++_write_blocks()
++{
++	$XFS_IO_PROG -f -c "pwrite $((BLOCKSIZE * $2)) $((BLOCKSIZE * ($3 - $2)))" $SCRATCH_MNT/$1 | _filter_xfs_io
++	_scratch_unmount
++	_scratch_mount
++}
++
++_punch_blocks()
++{
++	$XFS_IO_PROG -c "fpunch $((BLOCKSIZE * $2)) $((BLOCKSIZE * ($3 - $2)))" $SCRATCH_MNT/$1
++}
++
++_check_blocks()
++{
++	$XFS_IO_PROG -c 'fiemap -v' $SCRATCH_MNT/$1 | _filter_hole_fiemap
++	_md5_checksum $SCRATCH_MNT/$1
++}
++
++_supported_fs generic
++_supported_os Linux
++_need_to_be_root
++_require_scratch
++_require_xfs_io_command "fiemap"
++_require_xfs_io_command "fpunch"
++
++rm -f $seqres.full
++
++if [ "$FSTYP" = "ext4" ]; then
++	# Special case to ensure that this configuration gets some coverage.
++	_scratch_mkfs -O ^extents >> $seqres.full 2>&1
++else
++	_scratch_mkfs >> $seqres.full 2>&1
++fi
++_scratch_mount || _fail "couldn't mount fs"
++
++# Bug 1: whole level of indirection is not freed when end is first block of a
++# level.
++_write_blocks testfile1 0 $((NDIR + ADDRS + ADDRS * ADDRS + 4))
++_punch_blocks testfile1 0 $((NDIR + ADDRS + ADDRS * ADDRS))
++_check_blocks testfile1
++
++# Bug 2: end is at higher level than start, end shared branch is not freed.
++_write_blocks testfile2 0 $((NDIR + ADDRS + 2 * ADDRS + 8))
++_punch_blocks testfile2 $((NDIR + ADDRS + 2 * ADDRS)) $((NDIR + ADDRS + 2 * ADDRS + 4))
++_punch_blocks testfile2 0 $((NDIR + ADDRS + 2 * ADDRS + 4))
++_check_blocks testfile2
++
++# Bug 3: start and end are within one level of indirection, extra blocks are
++# freed because partial branches don't converge. (This bug also masks the
++# remaining 2. That is, the test cases for 4 and 5 are also necessarily
++# affected by bug 3.)
++_write_blocks testfile3 0 $((NDIR + ADDRS + 2 * ADDRS))
++_punch_blocks testfile3 $((NDIR + ADDRS + ADDRS / 2)) $((NDIR + ADDRS + ADDRS))
++_check_blocks testfile3
++
++# Bug 4: start and end are within one level of indirection, top of start is not
++# freed.
++_write_blocks testfile4 0 $((NDIR + ADDRS + 8 * ADDRS))
++_punch_blocks testfile4 $((NDIR + ADDRS + ADDRS)) $((NDIR + ADDRS + ADDRS + 4))
++_punch_blocks testfile4 $((NDIR + ADDRS + ADDRS + 4)) $((NDIR + ADDRS + 4 * ADDRS))
++_check_blocks testfile4
++
++# Bug 5: start and end are within one level of indirection, extra blocks beyond
++# end of range are freed when end has top branch.
++_write_blocks testfile5 0 $((NDIR + ADDRS + 4 * ADDRS))
++_punch_blocks testfile5 $((NDIR + ADDRS + 2 * ADDRS)) $((NDIR + ADDRS + 2 * ADDRS + ADDRS / 2))
++_punch_blocks testfile5 $((NDIR + ADDRS + 2)) $((NDIR + ADDRS + 2 * ADDRS + 2))
++_check_blocks testfile5
++
++# success, all done
++status=0
++exit
+diff --git a/tests/generic/080.out b/tests/generic/080.out
+new file mode 100644
+index 0000000..5301f80
+--- /dev/null
++++ b/tests/generic/080.out
+@@ -0,0 +1,29 @@
++QA output created by 080
++wrote 4299227136/4299227136 bytes at offset 0
++XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
++0: [0..8396895]: hole
++1: [8396896..8396927]: extent
++ca385f8981956660e3d698c0ca810e1b
++wrote 12664832/12664832 bytes at offset 0
++XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
++0: [0..24703]: hole
++1: [24704..24735]: extent
++1e2dda6f86f5d983a4a02c64da902fe4
++wrote 12632064/12632064 bytes at offset 0
++XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
++0: [0..12383]: extent
++1: [12384..16479]: hole
++2: [16480..24671]: extent
++e47bb56af5783e0a1022e00b25abefb2
++wrote 37797888/37797888 bytes at offset 0
++XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
++0: [0..16479]: extent
++1: [16480..41055]: hole
++2: [41056..73823]: extent
++337983ee561a9b756d21a29757fb4f62
++wrote 21020672/21020672 bytes at offset 0
++XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
++0: [0..8303]: extent
++1: [8304..28767]: hole
++2: [28768..41055]: extent
++eb0e1b76f866926089efe70d713a938c
+diff --git a/tests/generic/group b/tests/generic/group
+index e5db772..2c717b3 100644
+--- a/tests/generic/group
++++ b/tests/generic/group
+@@ -77,6 +77,7 @@
+ 076 metadata rw udf auto quick stress
+ 077 acl attr auto enospc
+ 079 acl attr ioctl metadata auto quick
++080 auto
+ 083 rw auto enospc stress
+ 088 perms auto quick
+ 089 metadata auto
+-- 
+2.3.1
+
