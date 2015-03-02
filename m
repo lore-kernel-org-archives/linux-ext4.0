@@ -1,182 +1,35 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: Limit number of reserved gdt blocks on small
- fs
-Date: Mon, 2 Mar 2015 18:43:03 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1503021832080.30128@localhost.localdomain>
-References: <1425056428-22598-1-git-send-email-lczerner@redhat.com> <54F48A7F.2090204@redhat.com> <alpine.LFD.2.00.1503021740510.30128@localhost.localdomain> <54F49D6F.7080509@redhat.com>
+From: "Mr. Juan Sebastian Morato" <noreply@popfax.com>
+Subject: Confidential Letter
+Date: Mon, 02 Mar 2015 01:34:36 +0100
+Message-ID: <20150302003446.370893EE0FC__42075.8532280617$1425322696$gmane$org@mail.quartzbg.ro>
+Reply-To: juan_morato@yahoo.es
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-414921804-1425318186=:30128"
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: Recipients <noreply@popfax.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58496 "EHLO mx1.redhat.com"
+Received: from mail.quartzbg.ro ([82.79.64.94]:44684 "EHLO mail.quartzbg.ro"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752254AbbCBRnG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Mar 2015 12:43:06 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t22Hh6nS011390
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-ext4@vger.kernel.org>; Mon, 2 Mar 2015 12:43:06 -0500
-In-Reply-To: <54F49D6F.7080509@redhat.com>
+	id S1753705AbbCBS4x convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Mar 2015 13:56:53 -0500
+Content-Description: Mail message body
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+Dear Friend, 
 
---8323328-414921804-1425318186=:30128
-Content-Type: TEXT/PLAIN; charset=windows-1252
-Content-Transfer-Encoding: 8BIT
+I am Mr. Juan Sebastian Morato, the Auditor General of Unicaja Bank Madrid. In the course of my auditing, I discovered a floating fund in an account, which was opened in 1990 at Cam Bank before it was bought over by Unicaja Group which I am the auditor belonging to a dead foreigner Mr. Kenny who died in 2004. Every effort made to track any member of his family or next of kin has since failed; hence I got in contact with you to stand as his next of kin since you bear the same last name. He died leaving no heir or a will.
 
-On Mon, 2 Mar 2015, Eric Sandeen wrote:
+My intention is to transfer this sum of 5.5M in the aforementioned account to a safe account. I am therefore proposing that you quietly partner with me and provide an account or set up a new one that will serve the purpose of receiving this fund. For your assistance in this venture, I am ready to part with a good percentage of the entire funds. After going through the deceased person's records and files, I discovered that:
 
-> Date: Mon, 02 Mar 2015 11:27:11 -0600
-> From: Eric Sandeen <sandeen@redhat.com>
-> To: Lukáš Czerner <lczerner@redhat.com>
-> Cc: linux-ext4@vger.kernel.org
-> Subject: Re: [PATCH] e2fsprogs: Limit number of reserved gdt blocks on small
->     fs
-> 
-> On 3/2/15 11:08 AM, Lukáš Czerner wrote:
-> > On Mon, 2 Mar 2015, Eric Sandeen wrote:
-> 
-> ...
-> 
-> >> Some extra "making sure" in the above sentence.  ;)
-> > 
-> > Right, I'll fix that.
-> > 
-> >>
-> >>>                    reserved_gdt_blocks is small enough. If the user
-> >>> +	 * specifies non-default values he can still run into this issue
-> >>> +	 * but we do not want to make that mistake by default.
-> >>> +	 *
-> >>> +	 * Magic numbers:
-> >>> +	 * - At block count smaller than 32768, journal will be 1024 block
-> >>> +	 *   blocks long which would not be enough by default.
-> >>> +	 * - 64 reserved gtd blocks is maximum number we can fit into said
-> >>
-> >> gtd?  (gdt?  gdb?)
-> > 
-> > Oh yes...
-> > 
-> > I'll try to use it consistently.
-> 
-> thanks :)
-> 
-> >>
-> >>> +	 *   journal by default (flex_bg_count * 4 + rsv_gdb)
-> >>
-> >> This is a little confusing; "flex_bg_count" isn't a thing, and it seems to
-> >> say that the reserved blocks depend on the number of reserved blocks?
-> > 
-> > Does it ? It says that number of journal credits depend on the
-> > number of reserved gdt blocks, or maybe I am missing something.
-> > 
-> > flex_bg_count is a number of groups in flex group, I'll try to come
-> > up with a better name.
-> 
-> It just looks like a variable name; it's one that doesn't exist, so it's
-> not clear what you're talking about.
-> 
-> >>
-> >> I'm curious, why does this matter only for 1k blocks, and not, say 2k blocks?
-> > 
-> > That's because of the way we compute the number of reserved GDT
-> > blocks. The number of GDT blocks depends on the number of block
-> > groups, which depends on the number of blocks in the file system.
-> > And with 1k file system we have much more blocks. In fact we have:
-> > 
-> > - twice as many blocks as with 2k file system
-> > - four times the block groups
-> > 
-> > And we can also fit only half of the number of group descriptors
-> > into a single block which means that we need twice as many blocks
-> > per block group.
-> > 
-> > Which means that with 1k file system we need 8 times as many gdt
-> > blocks as with 2k fs and 2048 times more gdt blocks as with 4k with
-> > the same setup.
-> > 
-> >>
-> >>> +	 */
-> >>> +	if ((fs->blocksize == 1024) && (ext2fs_blocks_count(sb) < 32768) &&
-> >>> +	    (rsv_gdb > 64))
-> >>> +		rsv_gdb = 64;
-> >>> +
-> >>>  	if (rsv_gdb > EXT2_ADDR_PER_BLOCK(sb))
-> >>>  		rsv_gdb = EXT2_ADDR_PER_BLOCK(sb);
-> >>>  #ifdef RES_GDT_DEBUG
-> >>> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> >>> index aeb852f..e9edd3b 100644
-> >>> --- a/misc/mke2fs.c
-> >>> +++ b/misc/mke2fs.c
-> >>> @@ -3076,6 +3076,34 @@ int main (int argc, char *argv[])
-> >>>  		}
-> >>>  		if (!quiet)
-> >>>  			printf("%s", _("done\n"));
-> >>> +
-> >>> +		/*
-> >>> +		 * In online resize we require a huge number of journal
-> >>> +		 * credits mainly because of the reserved_gdt_blocks. The
-> >>> +		 * exact number of journal credits needed is:
-> >>> +		 * flex_gd->count * 4 + reserved_gdb
-> >>> +		 *
-> >>> +		 * Warn user if we will not have enough credits to resize
-> >>> +		 * the file system online.
-> >>> +		 */
-> >>> +		if (fs_param.s_feature_compat & EXT2_FEATURE_COMPAT_RESIZE_INODE)
-> >>> +		{
-> >>> +			unsigned int credits;
-> >>> +
-> >>> +			/*
-> >>> +			* This is the amount we're allowed to use for a
-> >>> +			* single handle in a transaction
-> >>> +			*/
-> >>> +			journal_blocks /= 8;
-> >>
-> >> This seems a little dangerous; if someone decides to use journal_blocks
-> >> later in the function, it might be unexpectedly smaller.
-> >>
-> >>> +			credits = (1 << fs_param.s_log_groups_per_flex) * 4 +
-> >>> +				  fs->super->s_reserved_gdt_blocks;
-> >>> +			if (credits > journal_blocks) {
-> >>
-> >> so maybe just scale this by 8, i.e. "if (credits > journal_blocks/8)"
-> > 
-> > Fair enough, I'll change that.
-> > 
-> >>
-> >> And actually, I find myself wondering if this same calculation can be used
-> >> in calc_reserved_gdt_blocks, rather than using the magic numbers?
-> > 
-> > Unfortunately it can not. At the time we're calculating number of gdt
-> > blocks we have no idea how big the journal will be.
-> > 
-> > And at the time we already know how big the journal will be we
-> > already have blocks allocated for the resize_inode so we can not
-> > just simply change s_reserved_gdt_blocks here.
-> 
-> Ugh.  That sounds like a mess.
-> 
-> But it feels like we need centralized functions or macros that express the
-> relationships between these values, rather than sprinkling "* 4" and "if 1024"
-> around.  It seems to have the potential to get out of sync, but I've only
-> given it cursory thought...
+(1) No one has operated this account since 2004
+(2) He died without an heir; hence the money has been floating.
+(3) No other person knows about this account and there was no known beneficiary.
 
-Yes, but that would require huge amount of rewrite I think. Mostly
-we're trying to think of the dependencies between various file
-system features and/or parameters. I think it's mostly in main() and
-PRS() functions however this "dependency" is entirely unexpected.
+If I do not remit this money urgently, it would be forfeited and subsequently converted to company's funds, which will benefit only the directors of my firm. This money can be approved to you legally as with all the necessary documentary approvals in your name. However, you would be required to show some proof of claim, which I will provide you with and also guide you on how to make your applications.
 
-I tried to think about a better way where to put it, but this is what
-I came with. However maybe we can determine the journal size by
-ext2fs_default_journal_size() and use the default journal size
-instead ?
+Please do give me a reply on my private e-mail juan.morato1@1email.eu or fax 00 34 917 692 656 so that I can send you detailed information on the modalities of my proposition. I completely trust you to keep this proposition absolutely confidential. Kindly forward your telephone number where I can reach you easily. I look forward to your prompt response.
 
--Lukas
-
-> 
-> -Eric
-> 
---8323328-414921804-1425318186=:30128--
+Best Regards,
+Mr. Juan Sebastian Morato
+Fax: 00 34 917 692 656
