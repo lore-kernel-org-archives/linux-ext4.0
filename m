@@ -1,56 +1,60 @@
-From: Rasmus Villemoes <linux@rasmusvillemoes.dk>
-Subject: Re: [PATCH] ext4: fix transposition typo in format string
-Date: Mon, 02 Mar 2015 10:55:41 +0100
-Message-ID: <878uffhgf6.fsf@rasmusvillemoes.dk>
-References: <1424441495-32581-1-git-send-email-linux@rasmusvillemoes.dk>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Ext4 developers get together planning
+Date: Mon, 02 Mar 2015 10:53:36 -0500
+Message-ID: <nsxbnkb9z0f.fsf@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org, Jun He <jhe@cs.wisc.edu>,
+	Peter Desnoyers <pjd@ccs.neu.edu>,
+	Abutalib Aghayev <agayev@gmail.com>,
+	Daeho Jeong <daeho.jeong@samsung.com>,
+	Jin-Soo Kim <jinsookim@skku.edu>,
+	Jaegeuk Kim <jaegeuk@kernel.org>, Jun He <jhe@cs.wisc.edu>,
+	Timothy R Feldman <timothy.r.feldman@seagate.com>,
+	Adrian Palmer <adrian.palmer@seagate.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f54.google.com ([209.85.215.54]:40178 "EHLO
-	mail-la0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751097AbbCBJzo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Mar 2015 04:55:44 -0500
-Received: by labgd6 with SMTP id gd6so29151843lab.7
-        for <linux-ext4@vger.kernel.org>; Mon, 02 Mar 2015 01:55:43 -0800 (PST)
-In-Reply-To: <1424441495-32581-1-git-send-email-linux@rasmusvillemoes.dk>
-	(Rasmus Villemoes's message of "Fri, 20 Feb 2015 15:11:35 +0100")
+Received: from imap.thunk.org ([74.207.234.97]:44153 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753686AbbCBPyK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Mar 2015 10:54:10 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ping... (maybe I should have used a more dramatic subject - I do think
-this is a real bug, but if not, I'd still like to get an explicit NAK.)
 
-On Fri, Feb 20 2015, Rasmus Villemoes <linux@rasmusvillemoes.dk> wrote:
+Looking at the Vault schedule, it looks like the best time to schedule
+the ext4 developer's workshop will be Wednesday from noon to 3pm (we'll
+meet for lunch and then continue until Jan Kara's ext4 file system
+scalaing talk.
 
-> According to C99, %*.s means the same as %*.0s, in other words, print
-> as many spaces as the field width argument says and effectively ignore
-> the string argument. That is certainly not what was meant here. The
-> kernel's printf implementation, however, treats it as if the . was not
-> there, i.e. as %*s. I don't know if de->name is nul-terminated or not,
-> but in any case I'm guessing the intention was to use de->name_len as
-> precision instead of field width.
->
-> Signed-off-by: Rasmus Villemoes <linux@rasmusvillemoes.dk>
-> ---
-> If de->name is not guaranteed to be nul-terminated, I suppose this is
-> even -stable material.
->
->  fs/ext4/inline.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-> index 4b143febf21f..8b64d715e476 100644
-> --- a/fs/ext4/inline.c
-> +++ b/fs/ext4/inline.c
-> @@ -972,7 +972,7 @@ void ext4_show_inline_dir(struct inode *dir, struct buffer_head *bh,
->  	offset = 0;
->  	while ((void *)de < dlimit) {
->  		de_len = ext4_rec_len_from_disk(de->rec_len, inline_size);
-> -		trace_printk("de: off %u rlen %u name %*.s nlen %u ino %u\n",
-> +		trace_printk("de: off %u rlen %u name %.*s nlen %u ino %u\n",
->  			     offset, de_len, de->name_len, de->name,
->  			     de->name_len, le32_to_cpu(de->inode));
->  		if (ext4_check_dir_entry(dir, NULL, de, bh,
+And then we can pick up Thursday morning starting at 10am and go on
+until Lunch.  (Or we could start at 9am and skip the Sasha Levin's file
+system fuzzing talk, but I suspect some people wouldn't want to miss
+Sasha's talk.)
+
+Does that work for everyone?
+
+Things which I expect will be on the schedule include:
+
+* ext4 encryption progress report (Michael Halcrow, Ted)
+* making ext4 smr friendly (Abutalib, Peter, Ted, Tim, Adrian)
+* improving the ext4 block allocator (Jun He)
+
+Since Jaeguk probably would only be interested in the encryption
+discussions, I'm going to suggest that we schedule the encryption
+discussions for Thursday morning, and the SMR discussions for Wednesday
+afternoon, since our minds will be fresh immediately after the SMR
+discussions on Thursday morning.
+
+What other topics would people like to include?  Please suggest them on
+this e-mail thread.
+
+Finally, if you are planning on attending, please send me a private
+e-mail so I know who to expect.  For those of you coming from academia,
+if you haven't already registered for Vault yet, I've recently received
+from Angela on a few compliementary academic registrations, so please
+contact me if you could use one or two.
+
+Cheers,
+
+                                                - Ted
+
