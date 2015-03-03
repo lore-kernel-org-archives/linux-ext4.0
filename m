@@ -1,64 +1,40 @@
-From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Subject: [PATCH] ext4: fix bh leak on error paths in ext4_rename() and
- ext4_cross_rename()
-Date: Tue, 03 Mar 2015 14:17:19 +0300
-Message-ID: <20150303111719.26916.92177.stgit@buzz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 93491] Kernel crashes every 10 minutes. Computer stalls
+Date: Tue, 03 Mar 2015 18:38:40 +0000
+Message-ID: <bug-93491-13602-U8DaGhVDjC@https.bugzilla.kernel.org/>
+References: <bug-93491-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org
-To: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:40883 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756422AbbCCSio (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Mar 2015 13:38:44 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 5BA0F203B7
+	for <linux-ext4@vger.kernel.org>; Tue,  3 Mar 2015 18:38:43 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id CD423203E9
+	for <linux-ext4@vger.kernel.org>; Tue,  3 Mar 2015 18:38:40 +0000 (UTC)
+In-Reply-To: <bug-93491-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Release references to buffer-heads if ext4_journal_start() fails.
+https://bugzilla.kernel.org/show_bug.cgi?id=93491
 
-Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Fixes: 5b61de757535 ("ext4: start handle at least possible moment when renaming files")
----
- fs/ext4/namei.c |   21 +++++++++++++++------
- 1 file changed, 15 insertions(+), 6 deletions(-)
+Carlos Maiolino <cmaiolino@redhat.com> changed:
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 28fe71a2904c..8110dd20ad3f 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -3264,12 +3264,18 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2);
- 	if (!(flags & RENAME_WHITEOUT)) {
- 		handle = ext4_journal_start(old.dir, EXT4_HT_DIR, credits);
--		if (IS_ERR(handle))
--			return PTR_ERR(handle);
-+		if (IS_ERR(handle)) {
-+			retval = PTR_ERR(handle);
-+			handle = NULL;
-+			goto end_rename;
-+		}
- 	} else {
- 		whiteout = ext4_whiteout_for_rename(&old, credits, &handle);
--		if (IS_ERR(whiteout))
--			return PTR_ERR(whiteout);
-+		if (IS_ERR(whiteout)) {
-+			retval = PTR_ERR(whiteout);
-+			whiteout = NULL;
-+			goto end_rename;
-+		}
- 	}
- 
- 	if (IS_DIRSYNC(old.dir) || IS_DIRSYNC(new.dir))
-@@ -3433,8 +3439,11 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	handle = ext4_journal_start(old.dir, EXT4_HT_DIR,
- 		(2 * EXT4_DATA_TRANS_BLOCKS(old.dir->i_sb) +
- 		 2 * EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2));
--	if (IS_ERR(handle))
--		return PTR_ERR(handle);
-+	if (IS_ERR(handle)) {
-+		retval = PTR_ERR(handle);
-+		handle = NULL;
-+		goto end_rename;
-+	}
- 
- 	if (IS_DIRSYNC(old.dir) || IS_DIRSYNC(new.dir))
- 		ext4_handle_sync(handle);
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |cmaiolino@redhat.com
+
+--- Comment #9 from Carlos Maiolino <cmaiolino@redhat.com> ---
+Can you collect data before the reboot then?
+
+sysrq or serial console maybe?
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
