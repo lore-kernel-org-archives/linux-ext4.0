@@ -1,90 +1,57 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Ext4 developers get together planning
-Date: Mon, 2 Mar 2015 22:20:32 +0100
-Message-ID: <20150302212032.GD19575@quack.suse.cz>
-References: <nsxbnkb9z0f.fsf@closure.thunk.org>
+From: "Michael Kerrisk (man-pages)" <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Subject: Re: Documenting MS_LAZYTIME
+Date: Tue, 03 Mar 2015 08:14:08 +0100
+Message-ID: <54F55F40.6010508@gmail.com>
+References: <CAHO5Pa0k7QkV_6BDjwTVxa7LV9tFyN9nGFFcSvOC6HYO08wfrw@mail.gmail.com> <54E7578E.4090809@redhat.com> <20150221025636.GB7922@thunk.org> <54EEDE23.6080009@gmail.com> <20150226133113.GD11217@thunk.org> <54EF2161.90607@gmail.com> <20150227000409.GC17174@thunk.org> <54F02446.2050008@gmail.com> <20150227175159.GC11031@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Jun He <jhe@cs.wisc.edu>,
-	Peter Desnoyers <pjd@ccs.neu.edu>,
-	Abutalib Aghayev <agayev@gmail.com>,
-	Daeho Jeong <daeho.jeong@samsung.com>,
-	Jin-Soo Kim <jinsookim@skku.edu>,
-	Jaegeuk Kim <jaegeuk@kernel.org>,
-	Timothy R Feldman <timothy.r.feldman@seagate.com>,
-	Adrian Palmer <adrian.palmer@seagate.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:44656 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755378AbbCBVUo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Mar 2015 16:20:44 -0500
-Content-Disposition: inline
-In-Reply-To: <nsxbnkb9z0f.fsf@closure.thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux btrfs Developers List <linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>, linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Linux-Fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20150227175159.GC11031-PTl6brltDGh4DFYR7WNSRA@public.gmane.org>
+Sender: linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon 02-03-15 10:53:36, Ted Tso wrote:
+On 02/27/2015 06:51 PM, Darrick J. Wong wrote:
+> On Fri, Feb 27, 2015 at 09:01:10AM +0100, Michael Kerrisk (man-pages) wrote:
+>> On 02/27/2015 01:04 AM, Theodore Ts'o wrote:
+>>> On Thu, Feb 26, 2015 at 02:36:33PM +0100, Michael Kerrisk (man-pages) wrote:
+>>>>
+>>>>     The disadvantage of MS_STRICTATIME | MS_LAZYTIME is that
+>>>>     in the case of a system crash, the atime and mtime fields
+>>>>     on disk might be out of date by at most 24 hours.
+>>>
+>>> I'd change to "The disadvantage of MS_LAZYTIME is that..."  and
+>>> perhaps move that so it's clear it applies to any use of MS_LAZYTIME
+>>> has this as a downside.
+>>>
+>>> Does that make sense?
+>>
+>> Thanks, Ted. Got it. So, now we have:
+>>
+>>        MS_LAZYTIME (since Linux 3.20)
 > 
-> Looking at the Vault schedule, it looks like the best time to schedule
-> the ext4 developer's workshop will be Wednesday from noon to 3pm (we'll
-> meet for lunch and then continue until Jan Kara's ext4 file system
-> scalaing talk.
-> 
-> And then we can pick up Thursday morning starting at 10am and go on
-> until Lunch.  (Or we could start at 9am and skip the Sasha Levin's file
-> system fuzzing talk, but I suspect some people wouldn't want to miss
-> Sasha's talk.)
-> 
-> Does that work for everyone?
-> 
-> Things which I expect will be on the schedule include:
-> 
-> * ext4 encryption progress report (Michael Halcrow, Ted)
-> * making ext4 smr friendly (Abutalib, Peter, Ted, Tim, Adrian)
-> * improving the ext4 block allocator (Jun He)
-> 
-> Since Jaeguk probably would only be interested in the encryption
-> discussions, I'm going to suggest that we schedule the encryption
-> discussions for Thursday morning, and the SMR discussions for Wednesday
-> afternoon, since our minds will be fresh immediately after the SMR
-> discussions on Thursday morning.
-> 
-> What other topics would people like to include?  Please suggest them on
-> this e-mail thread.
-  I have about 4 bugs we have in ext4 that I didn't get to fixing because
-the fix isn't immediately obvious. Maybe some discussion on these would be
-useful. The issues I'm aware of are:
-1) filling of hole from ext4_page_mkwrite() in nodelalloc mode (or when we
-   are running out of space) can race with DIO read of the same location
-   resulting in DIO read returning uninitialized block data (possible
-   security issue).
+> "since Linux 4.0".
 
-   I think using uninitialized extents is the right solution here if we can
-   but what about indirect mapped files (think of ext2 / ext3 compatibility
-   modes)?
+D'oh! Yes, thanks. Fixed.
 
-2) When doing AIO DIO write we store pointer to ioend structure in the
-   inode. However in dioread_nolock mode, we can run two AIO DIO overwrites
-   in parallel and thus one ioend just overwrites the other resulting in
-   nasty issues. No idea how to best fix this (but I didn't think much
-   about it).
+Cheers,
 
-3) inode->i_writecount >= 1 doesn't actually guarantee that ->release()
-   method will be called (as there are places that increase / decrease
-   i_writecount without actually opening the file). Thus we can leave
-   preallocated blocks in an inode.
+Michael
 
-   Truncating blocks in ext4_clear_inode() isn't completely reliable since
-   filesystem may be remounted R/O by then. We can create our own writer
-   count but that seems like a bit of an overkill...
 
-4) There's the longstanding issue with punch hole racing with page fault
-   that can lead to stale data exposure or fs corruption. Proper fix in mm
-   is tricky and won't happen soon so should we go the way XFS recently
-   went and just create special locking for that withing ext4?
-
-								Honza
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Michael Kerrisk
+Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
+Linux/UNIX System Programming Training: http://man7.org/training/
+--
+To unsubscribe from this list: send the line "unsubscribe linux-man" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
