@@ -1,32 +1,276 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 93491] Kernel crashes every 10 minutes. Computer stalls
-Date: Tue, 03 Mar 2015 19:55:52 +0000
-Message-ID: <bug-93491-13602-Edxo0m7OIE@https.bugzilla.kernel.org/>
-References: <bug-93491-13602@https.bugzilla.kernel.org/>
+From: Sheng Yong <shengyong1@huawei.com>
+Subject: [PATCH 2/2] ext4: remove unused header files
+Date: Wed, 4 Mar 2015 05:52:03 +0000
+Message-ID: <1425448323-220091-2-git-send-email-shengyong1@huawei.com>
+References: <1425448323-220091-1-git-send-email-shengyong1@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain
+Cc: <linux-ext4@vger.kernel.org>
+To: <jack@suse.cz>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:44465 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751589AbbCCTz4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Mar 2015 14:55:56 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id D474220435
-	for <linux-ext4@vger.kernel.org>; Tue,  3 Mar 2015 19:55:54 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id A9F0320434
-	for <linux-ext4@vger.kernel.org>; Tue,  3 Mar 2015 19:55:52 +0000 (UTC)
-In-Reply-To: <bug-93491-13602@https.bugzilla.kernel.org/>
+Received: from szxga02-in.huawei.com ([119.145.14.65]:25071 "EHLO
+	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751195AbbCDFkn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Mar 2015 00:40:43 -0500
+In-Reply-To: <1425448323-220091-1-git-send-email-shengyong1@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=93491
+Remove unused header files and header files which are included in ext4.h.
 
---- Comment #10 from Ionut Radu <ionut.radu@gmail.com> ---
-No, I'm sorry. That's all I can provide.
+Signed-off-by: Sheng Yong <shengyong1@huawei.com>
+---
+ fs/ext4/acl.c            | 5 -----
+ fs/ext4/balloc.c         | 1 -
+ fs/ext4/bitmap.c         | 1 -
+ fs/ext4/block_validity.c | 1 -
+ fs/ext4/dir.c            | 2 --
+ fs/ext4/extents_status.c | 2 --
+ fs/ext4/file.c           | 1 -
+ fs/ext4/fsync.c          | 1 -
+ fs/ext4/hash.c           | 1 -
+ fs/ext4/ialloc.c         | 1 -
+ fs/ext4/inode.c          | 2 --
+ fs/ext4/ioctl.c          | 1 -
+ fs/ext4/namei.c          | 1 -
+ fs/ext4/page-io.c        | 2 --
+ fs/ext4/super.c          | 1 -
+ fs/ext4/symlink.c        | 1 -
+ fs/ext4/xattr.c          | 1 -
+ 17 files changed, 25 deletions(-)
 
+diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+index d40c8db..69b1e73 100644
+--- a/fs/ext4/acl.c
++++ b/fs/ext4/acl.c
+@@ -4,11 +4,6 @@
+  * Copyright (C) 2001-2003 Andreas Gruenbacher, <agruen@suse.de>
+  */
+ 
+-#include <linux/init.h>
+-#include <linux/sched.h>
+-#include <linux/slab.h>
+-#include <linux/capability.h>
+-#include <linux/fs.h>
+ #include "ext4_jbd2.h"
+ #include "ext4.h"
+ #include "xattr.h"
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 83a6f49..9fadcf4 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -14,7 +14,6 @@
+ #include <linux/time.h>
+ #include <linux/capability.h>
+ #include <linux/fs.h>
+-#include <linux/jbd2.h>
+ #include <linux/quotaops.h>
+ #include <linux/buffer_head.h>
+ #include "ext4.h"
+diff --git a/fs/ext4/bitmap.c b/fs/ext4/bitmap.c
+index b610779..4a606afb 100644
+--- a/fs/ext4/bitmap.c
++++ b/fs/ext4/bitmap.c
+@@ -8,7 +8,6 @@
+  */
+ 
+ #include <linux/buffer_head.h>
+-#include <linux/jbd2.h>
+ #include "ext4.h"
+ 
+ unsigned int ext4_count_free(char *bitmap, unsigned int numchars)
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index 41eb9dc..3522340 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -16,7 +16,6 @@
+ #include <linux/swap.h>
+ #include <linux/pagemap.h>
+ #include <linux/blkdev.h>
+-#include <linux/mutex.h>
+ #include <linux/slab.h>
+ #include "ext4.h"
+ 
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index c24143e..9e1e9e7 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -22,10 +22,8 @@
+  */
+ 
+ #include <linux/fs.h>
+-#include <linux/jbd2.h>
+ #include <linux/buffer_head.h>
+ #include <linux/slab.h>
+-#include <linux/rbtree.h>
+ #include "ext4.h"
+ #include "xattr.h"
+ 
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index e04d457..d33d5a6 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -9,12 +9,10 @@
+  *
+  * Ext4 extents status tree core functions.
+  */
+-#include <linux/rbtree.h>
+ #include <linux/list_sort.h>
+ #include <linux/proc_fs.h>
+ #include <linux/seq_file.h>
+ #include "ext4.h"
+-#include "extents_status.h"
+ 
+ #include <trace/events/ext4.h>
+ 
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 33a09da..fcc6c13 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -20,7 +20,6 @@
+ 
+ #include <linux/time.h>
+ #include <linux/fs.h>
+-#include <linux/jbd2.h>
+ #include <linux/mount.h>
+ #include <linux/path.h>
+ #include <linux/aio.h>
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 5b6e9f2..ee0b204 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -26,7 +26,6 @@
+ #include <linux/fs.h>
+ #include <linux/sched.h>
+ #include <linux/writeback.h>
+-#include <linux/jbd2.h>
+ #include <linux/blkdev.h>
+ 
+ #include "ext4.h"
+diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+index 3d586f0..e026aa9 100644
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -10,7 +10,6 @@
+  */
+ 
+ #include <linux/fs.h>
+-#include <linux/jbd2.h>
+ #include <linux/cryptohash.h>
+ #include "ext4.h"
+ 
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index ac644c3..6ab6f63 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -14,7 +14,6 @@
+ 
+ #include <linux/time.h>
+ #include <linux/fs.h>
+-#include <linux/jbd2.h>
+ #include <linux/stat.h>
+ #include <linux/string.h>
+ #include <linux/quotaops.h>
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5cb9a21..ff0c111 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -20,7 +20,6 @@
+ 
+ #include <linux/fs.h>
+ #include <linux/time.h>
+-#include <linux/jbd2.h>
+ #include <linux/highuid.h>
+ #include <linux/pagemap.h>
+ #include <linux/quotaops.h>
+@@ -36,7 +35,6 @@
+ #include <linux/kernel.h>
+ #include <linux/printk.h>
+ #include <linux/slab.h>
+-#include <linux/ratelimit.h>
+ #include <linux/aio.h>
+ #include <linux/bitops.h>
+ 
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index f58a0d1..f1aa32c 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -8,7 +8,6 @@
+  */
+ 
+ #include <linux/fs.h>
+-#include <linux/jbd2.h>
+ #include <linux/capability.h>
+ #include <linux/time.h>
+ #include <linux/compat.h>
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 28fe71a..019d739 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -26,7 +26,6 @@
+ 
+ #include <linux/fs.h>
+ #include <linux/pagemap.h>
+-#include <linux/jbd2.h>
+ #include <linux/time.h>
+ #include <linux/fcntl.h>
+ #include <linux/stat.h>
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index b24a254..5687e47 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -8,7 +8,6 @@
+ 
+ #include <linux/fs.h>
+ #include <linux/time.h>
+-#include <linux/jbd2.h>
+ #include <linux/highuid.h>
+ #include <linux/pagemap.h>
+ #include <linux/quotaops.h>
+@@ -25,7 +24,6 @@
+ #include <linux/kernel.h>
+ #include <linux/slab.h>
+ #include <linux/mm.h>
+-#include <linux/ratelimit.h>
+ 
+ #include "ext4_jbd2.h"
+ #include "xattr.h"
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e061e66..c681352 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -21,7 +21,6 @@
+ #include <linux/fs.h>
+ #include <linux/time.h>
+ #include <linux/vmalloc.h>
+-#include <linux/jbd2.h>
+ #include <linux/slab.h>
+ #include <linux/init.h>
+ #include <linux/blkdev.h>
+diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
+index ff37119..489b343 100644
+--- a/fs/ext4/symlink.c
++++ b/fs/ext4/symlink.c
+@@ -18,7 +18,6 @@
+  */
+ 
+ #include <linux/fs.h>
+-#include <linux/jbd2.h>
+ #include <linux/namei.h>
+ #include "ext4.h"
+ #include "xattr.h"
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 1e09fc7..99a2cf8 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -55,7 +55,6 @@
+ #include <linux/slab.h>
+ #include <linux/mbcache.h>
+ #include <linux/quotaops.h>
+-#include <linux/rwsem.h>
+ #include "ext4_jbd2.h"
+ #include "ext4.h"
+ #include "xattr.h"
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+1.8.3.4
+
