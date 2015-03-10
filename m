@@ -1,41 +1,53 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 94641] Kernel source tarball download incomplete despite
- Firefox report of complete download
-Date: Tue, 10 Mar 2015 18:41:56 +0000
-Message-ID: <bug-94641-13602-MsL2dEgr94@https.bugzilla.kernel.org/>
-References: <bug-94641-13602@https.bugzilla.kernel.org/>
+From: Konstantin Khlebnikov <koct9i@gmail.com>
+Subject: Re: [PATCH RFC v2 2/6] fs: protected project id
+Date: Tue, 10 Mar 2015 21:51:59 +0300
+Message-ID: <CALYGNiP0u51JVtAROdNpK5hYKHrtpT1WSyKS_tqxsTKZ7FWKvw@mail.gmail.com>
+References: <20150310171133.23081.49616.stgit@buzz>
+	<20150310172206.23081.95005.stgit@buzz>
+	<CALCETrXE99fA1kwiXQvL0oTGZXa-nUwKdQ6_GfUPqXjOq8q0ZA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:51863 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752267AbbCJSl6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Mar 2015 14:41:58 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id D316E2022D
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2015 18:41:57 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 7C9402020F
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2015 18:41:56 +0000 (UTC)
-In-Reply-To: <bug-94641-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	Li Xi <pkuelelixi@gmail.com>
+To: Andy Lutomirski <luto@amacapital.net>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <CALCETrXE99fA1kwiXQvL0oTGZXa-nUwKdQ6_GfUPqXjOq8q0ZA@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=94641
+On Tue, Mar 10, 2015 at 8:32 PM, Andy Lutomirski <luto@amacapital.net> wrote:
+> On Tue, Mar 10, 2015 at 10:22 AM, Konstantin Khlebnikov
+> <khlebnikov@yandex-team.ru> wrote:
+>> Historically XFS project id doesn't have any permission control: file owner
+>> is able to set any project id. Later they was sealed with user-namespace:
+>> XFS allows to change it only from init user-ns. That works fine for isolated
+>> containers or if user doesn't have direct access to the filesystem (NFS/FTP).
+>>
+>> This patch adds sysctl fs.protected_projects which makes changing project id
+>> privileged operation which requires CAP_SYS_RESOURCE in current user-namespace.
+>> Thus there are two levels of protection: project id mapping in user-ns defines
+>> set of permitted projects and capability protects operations within this set.
+>
+> If I understand this right, this doesn't work.  If I lack
+> CAP_SYS_RESOURCE but I have two projids mapped, then I can create a
+> new userns, map both projids, and get CAP_SYS_RESOURCE.
 
-Jan Kara <jack@suse.cz> changed:
+Setting project id mapping for nested user-namespace also requires
+this capability in parent namespace. The same as for setting uid/gid
+mapping but without special case for mapping current uid/gid because
+task has no "current" project id.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |jack@suse.cz
+This is mentioned in cover letter but I forget it here. Sorry.
 
---- Comment #1 from Jan Kara <jack@suse.cz> ---
-Can you attach here content of /proc/mounts, df, and /var/log/messages from
-around the time when the problem happened? Also what kernel version do you run
-(uname -a).
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+>
+> --Andy
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
