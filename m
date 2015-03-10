@@ -1,7 +1,8 @@
 From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Subject: [PATCH RFC v2 1/6] fs: vfs ioctls for managing project id
-Date: Tue, 10 Mar 2015 20:22:05 +0300
-Message-ID: <20150310172205.23081.67263.stgit@buzz>
+Subject: [PATCH RFC v2 5/6] ext4: add shortcut for moving files across
+ projects
+Date: Tue, 10 Mar 2015 20:22:11 +0300
+Message-ID: <20150310172210.23081.28245.stgit@buzz>
 References: <20150310171133.23081.49616.stgit@buzz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,191 +18,299 @@ In-Reply-To: <20150310171133.23081.49616.stgit@buzz>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch adds generic vfs interface for project id and
-related super-block methods.
+This patch adds useful optimization for most common case of moving files
+across projects: non-directory inode without extra hardlinks (i_nlink == 1)
+can be moved into different project without making a copy. We just have to
+change project in and reaccount disk usage in one transaction with rename.
 
-Two new ioctls:
-int ioctl(fd, FS_IOC_GETPROJECT, unsigned *project);
-int ioctl(fd, FS_IOC_SETPROJECT, unsigned *project);
+As a result simple recursive 'mv' works much faster: it creates new
+directories but files are moved without copying.
+
+Flag DQUOT_TRANSFER_NOFAIL tells dquot_transfer_project() to move inode
+regardless of quota limits. This is required for moving inode back into
+the old project if rename had failed. This error-path little-bit racy
+(user could use more that quota allows) but there are not so much errors
+which might trigger this path: filesystem corruption or disk failure.
+They seem bigger problem than potential quota abuse.
 
 Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
 ---
- Documentation/filesystems/Locking |    4 +++
- Documentation/filesystems/vfs.txt |    8 +++++
- fs/compat_ioctl.c                 |    2 +
- fs/ioctl.c                        |   58 +++++++++++++++++++++++++++++++++++++
- include/linux/fs.h                |    2 +
- include/uapi/linux/fs.h           |    3 ++
- 6 files changed, 77 insertions(+)
+ fs/ext4/namei.c          |   93 +++++++++++++++++++++++++++++++++++++++++-----
+ fs/ext4/super.c          |    2 -
+ fs/quota/dquot.c         |   16 +++++---
+ include/linux/quotaops.h |   10 ++++-
+ 4 files changed, 103 insertions(+), 18 deletions(-)
 
-diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
-index f91926f2f482..7a01e2b606d0 100644
---- a/Documentation/filesystems/Locking
-+++ b/Documentation/filesystems/Locking
-@@ -126,6 +126,8 @@ prototypes:
- 	ssize_t (*quota_read)(struct super_block *, int, char *, size_t, loff_t);
- 	ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
- 	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
-+	kprojid_t (*get_project) (struct inode *);
-+	int (*set_project) (struct inode *, kprojid_t);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 094f7096a41c..2c738bae7c36 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3029,6 +3029,7 @@ struct ext4_renament {
+ 	struct inode *inode;
+ 	bool is_dir;
+ 	int dir_nlink_delta;
++	bool transfer_project;
  
- locking rules:
- 	All may block [not true, see below]
-@@ -147,6 +149,8 @@ show_options:		no		(namespace_sem)
- quota_read:		no		(see below)
- quota_write:		no		(see below)
- bdev_try_to_free_page:	no		(see below)
-+get_project		no
-+set_project		no		(i_mutex)
+ 	/* entry for "dentry" */
+ 	struct buffer_head *bh;
+@@ -3274,13 +3275,23 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (new.inode && !test_opt(new.dir->i_sb, NO_AUTO_DA_ALLOC))
+ 		ext4_alloc_da_blocks(old.inode);
  
- ->statfs() has s_umount (shared) when called by ustat(2) (native or
- compat), but that's an accident of bad API; s_umount is used to pin
-diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-index 966b22829f3b..aeff3c54021b 100644
---- a/Documentation/filesystems/vfs.txt
-+++ b/Documentation/filesystems/vfs.txt
-@@ -230,6 +230,8 @@ struct super_operations {
-         ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
- 	int (*nr_cached_objects)(struct super_block *);
- 	void (*free_cached_objects)(struct super_block *, int);
-+	kprojid_t (*get_project)(struct inode *);
-+	int (*set_project)(struct inode *, kprojid_t);
- };
++	credits = (2 * EXT4_DATA_TRANS_BLOCKS(old.dir->i_sb) +
++		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2);
++
+ 	if (!ext4_check_project(new.dir, old.inode)) {
+-		retval = -EXDEV;
+-		goto end_rename;
++		/*
++		 * Shortcut for moving files across projects: inode with one
++		 * hardlink can be tranferred as is without making a copy.
++		 */
++		if (!S_ISDIR(old.inode->i_mode) && old.inode->i_nlink == 1) {
++			credits += 2 * EXT4_QUOTA_TRANS_BLOCKS(old.dir->i_sb);
++			old.transfer_project = true;
++		} else {
++			retval = -EXDEV;
++			goto end_rename;
++		}
+ 	}
  
- All methods are called without any locks being held, unless otherwise
-@@ -319,6 +321,12 @@ or bottom half).
- 	implementations will cause holdoff problems due to large scan batch
- 	sizes.
+-	credits = (2 * EXT4_DATA_TRANS_BLOCKS(old.dir->i_sb) +
+-		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2);
+ 	if (!(flags & RENAME_WHITEOUT)) {
+ 		handle = ext4_journal_start(old.dir, EXT4_HT_DIR, credits);
+ 		if (IS_ERR(handle)) {
+@@ -3297,6 +3308,15 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		}
+ 	}
  
-+  get_project: called by the ioctl and quota code to get project id of an inode.
-+	Method should return INVALID_PROJID if feature isn't supported.
++	if (old.transfer_project) {
++		retval = dquot_transfer_project(old.inode,
++				EXT4_I(new.dir)->i_project, 0);
++		if (retval) {
++			old.transfer_project = false;
++			goto end_rename;
++		}
++	}
 +
-+  set_project: called by the ioctl to set project id for an inode.
-+	This is called with i_mutex held.
-+
- Whoever sets up the inode is responsible for filling in the "i_op" field. This
- is a pointer to a "struct inode_operations" which describes the methods that
- can be performed on individual inodes.
-diff --git a/fs/compat_ioctl.c b/fs/compat_ioctl.c
-index afec6450450f..9a24e4038377 100644
---- a/fs/compat_ioctl.c
-+++ b/fs/compat_ioctl.c
-@@ -889,6 +889,8 @@ COMPATIBLE_IOCTL(FIOASYNC)
- COMPATIBLE_IOCTL(FIONBIO)
- COMPATIBLE_IOCTL(FIONREAD)  /* This is also TIOCINQ */
- COMPATIBLE_IOCTL(FS_IOC_FIEMAP)
-+COMPATIBLE_IOCTL(FS_IOC_GETPROJECT)
-+COMPATIBLE_IOCTL(FS_IOC_SETPROJECT)
- /* 0x00 */
- COMPATIBLE_IOCTL(FIBMAP)
- COMPATIBLE_IOCTL(FIGETBSZ)
-diff --git a/fs/ioctl.c b/fs/ioctl.c
-index 5d01d2638ca5..d351576d95c8 100644
---- a/fs/ioctl.c
-+++ b/fs/ioctl.c
-@@ -9,6 +9,7 @@
- #include <linux/capability.h>
- #include <linux/file.h>
- #include <linux/fs.h>
-+#include <linux/mount.h>
- #include <linux/security.h>
- #include <linux/export.h>
- #include <linux/uaccess.h>
-@@ -545,6 +546,57 @@ static int ioctl_fsthaw(struct file *filp)
- 	return thaw_super(sb);
- }
+ 	if (IS_DIRSYNC(old.dir) || IS_DIRSYNC(new.dir))
+ 		ext4_handle_sync(handle);
  
-+static int ioctl_getproject(struct file *filp, projid_t __user *argp)
-+{
-+	struct user_namespace *ns = current_user_ns();
-+	struct inode *inode = file_inode(filp);
-+	struct super_block *sb = inode->i_sb;
-+	kprojid_t kprojid;
-+	projid_t projid;
-+
-+	if (!sb->s_op->get_project)
-+		return -EOPNOTSUPP;
-+	kprojid = sb->s_op->get_project(inode);
-+	if (!projid_valid(kprojid))
-+		return -EOPNOTSUPP;
-+	projid = from_kprojid(ns, kprojid);
-+	if (projid == (projid_t)-1)
-+		return -EACCES;
-+	return put_user(projid, argp);
-+}
-+
-+static int ioctl_setproject(struct file *filp, projid_t __user *argp)
-+{
-+	struct user_namespace *ns = current_user_ns();
-+	struct inode *inode = file_inode(filp);
-+	struct super_block *sb = inode->i_sb;
-+	kprojid_t kprojid;
-+	projid_t projid;
-+	int ret;
-+
-+	if (!sb->s_op->set_project)
-+		return -EOPNOTSUPP;
-+	if (ns != &init_user_ns)
-+		return -EPERM;
-+	ret = get_user(projid, argp);
-+	if (ret)
-+		return ret;
-+	kprojid = make_kprojid(ns, projid);
-+	if (!projid_valid(kprojid))
-+		return -EACCES;
-+	ret = mnt_want_write_file(filp);
-+	if (ret)
-+		return ret;
-+	mutex_lock(&inode->i_mutex);
-+	if (inode_owner_or_capable(inode))
-+		ret = sb->s_op->set_project(inode, kprojid);
-+	else
-+		ret = -EPERM;
-+	mutex_unlock(&inode->i_mutex);
-+	mnt_drop_write_file(filp);
-+	return ret;
-+}
-+
- /*
-  * When you add any new common ioctls to the switches above and below
-  * please update compat_sys_ioctl() too.
-@@ -597,6 +649,12 @@ int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
- 	case FS_IOC_FIEMAP:
- 		return ioctl_fiemap(filp, arg);
+@@ -3355,6 +3375,8 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	 * rename.
+ 	 */
+ 	old.inode->i_ctime = ext4_current_time(old.inode);
++	if (old.transfer_project)
++		EXT4_I(old.inode)->i_project = EXT4_I(new.dir)->i_project;
+ 	ext4_mark_inode_dirty(handle, old.inode);
  
-+	case FS_IOC_GETPROJECT:
-+		return ioctl_getproject(filp, argp);
-+
-+	case FS_IOC_SETPROJECT:
-+		return ioctl_setproject(filp, argp);
-+
- 	case FIGETBSZ:
- 		return put_user(inode->i_sb->s_blocksize, argp);
+ 	if (!whiteout) {
+@@ -3395,6 +3417,9 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	retval = 0;
  
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index b4d71b5e1ff2..42156801739e 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1655,6 +1655,8 @@ struct super_operations {
- 				  struct shrink_control *);
- 	long (*free_cached_objects)(struct super_block *,
- 				    struct shrink_control *);
-+	kprojid_t (*get_project)(struct inode *);
-+	int (*set_project)(struct inode *, kprojid_t);
- };
+ end_rename:
++	if (retval && old.transfer_project)
++		dquot_transfer_project(old.inode, EXT4_I(old.inode)->i_project,
++				       DQUOT_TRANSFER_NOFAIL);
+ 	brelse(old.dir_bh);
+ 	brelse(old.bh);
+ 	brelse(new.bh);
+@@ -3425,6 +3450,7 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	};
+ 	u8 new_file_type;
+ 	int retval;
++	int credits;
  
- /*
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index 9b964a5920af..144426326e15 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -170,6 +170,9 @@ struct inodes_stat_t {
- #define FS_IOC32_GETVERSION		_IOR('v', 1, int)
- #define FS_IOC32_SETVERSION		_IOW('v', 2, int)
+ 	dquot_initialize(old.dir);
+ 	dquot_initialize(new.dir);
+@@ -3455,21 +3481,56 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (!new.bh || le32_to_cpu(new.de->inode) != new.inode->i_ino)
+ 		goto end_rename;
  
-+#define FS_IOC_GETPROJECT		_IOR('f', 20, unsigned)
-+#define FS_IOC_SETPROJECT		_IOW('f', 21, unsigned)
+-	if (!ext4_check_project(new.dir, old.inode) ||
+-	    !ext4_check_project(old.dir, new.inode)) {
+-		retval = -EXDEV;
+-		goto end_rename;
++	credits = 2 * EXT4_DATA_TRANS_BLOCKS(old.dir->i_sb) +
++		  2 * EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2;
 +
- /*
-  * Inode flags (FS_IOC_GETFLAGS / FS_IOC_SETFLAGS)
++	if (!ext4_check_project(new.dir, old.inode)) {
++		if (!S_ISDIR(old.inode->i_mode) && old.inode->i_nlink == 1) {
++			credits += 2 * EXT4_QUOTA_TRANS_BLOCKS(old.dir->i_sb);
++			old.transfer_project = true;
++		} else {
++			retval = -EXDEV;
++			goto end_rename;
++		}
++	}
++
++	if (!ext4_check_project(old.dir, new.inode)) {
++		if (!S_ISDIR(new.inode->i_mode) && new.inode->i_nlink == 1) {
++			credits += 2 * EXT4_QUOTA_TRANS_BLOCKS(old.dir->i_sb);
++			new.transfer_project = true;
++		} else {
++			old.transfer_project = false;
++			retval = -EXDEV;
++			goto end_rename;
++		}
+ 	}
+ 
+-	handle = ext4_journal_start(old.dir, EXT4_HT_DIR,
+-		(2 * EXT4_DATA_TRANS_BLOCKS(old.dir->i_sb) +
+-		 2 * EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2));
++	handle = ext4_journal_start(old.dir, EXT4_HT_DIR, credits);
+ 	if (IS_ERR(handle)) {
+ 		retval = PTR_ERR(handle);
+ 		handle = NULL;
+ 		goto end_rename;
+ 	}
+ 
++	if (old.transfer_project) {
++		retval = dquot_transfer_project(old.inode,
++				EXT4_I(new.dir)->i_project, 0);
++		if (retval) {
++			old.transfer_project = false;
++			new.transfer_project = false;
++			goto end_rename;
++		}
++	}
++
++	if (new.transfer_project) {
++		retval = dquot_transfer_project(new.inode,
++				EXT4_I(old.dir)->i_project, 0);
++		if (retval) {
++			new.transfer_project = false;
++			goto end_rename;
++		}
++	}
++
+ 	if (IS_DIRSYNC(old.dir) || IS_DIRSYNC(new.dir))
+ 		ext4_handle_sync(handle);
+ 
+@@ -3514,6 +3575,10 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	 */
+ 	old.inode->i_ctime = ext4_current_time(old.inode);
+ 	new.inode->i_ctime = ext4_current_time(new.inode);
++	if (old.transfer_project)
++		EXT4_I(old.inode)->i_project = EXT4_I(new.dir)->i_project;
++	if (new.transfer_project)
++		EXT4_I(new.inode)->i_project = EXT4_I(old.dir)->i_project;
+ 	ext4_mark_inode_dirty(handle, old.inode);
+ 	ext4_mark_inode_dirty(handle, new.inode);
+ 
+@@ -3532,6 +3597,12 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	retval = 0;
+ 
+ end_rename:
++	if (retval && old.transfer_project)
++		dquot_transfer_project(old.inode, EXT4_I(old.inode)->i_project,
++				       DQUOT_TRANSFER_NOFAIL);
++	if (retval && new.transfer_project)
++		dquot_transfer_project(new.inode, EXT4_I(new.inode)->i_project,
++				       DQUOT_TRANSFER_NOFAIL);
+ 	brelse(old.dir_bh);
+ 	brelse(new.dir_bh);
+ 	brelse(old.bh);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index c62ed5b554ae..6a6506bce53c 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1062,7 +1062,7 @@ static int ext4_set_project(struct inode *inode, kprojid_t project)
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+-	ret = dquot_transfer_project(inode, project);
++	ret = dquot_transfer_project(inode, project, 0);
+ 	if (ret)
+ 		goto out;
+ 
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index 04c27cdeca05..0b61357554ed 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -1838,7 +1838,8 @@ EXPORT_SYMBOL(dquot_free_inode);
+  * We are holding reference on transfer_from & transfer_to, no need to
+  * protect them by srcu_read_lock().
   */
+-int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
++static int do_dquot_transfer(struct inode *inode,
++		struct dquot **transfer_to, int flags)
+ {
+ 	qsize_t space, cur_space;
+ 	qsize_t rsv_space = 0;
+@@ -1879,10 +1880,10 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+ 		is_valid[cnt] = 1;
+ 		transfer_from[cnt] = i_dquot(inode)[cnt];
+ 		ret = check_idq(transfer_to[cnt], 1, &warn_to[cnt]);
+-		if (ret)
++		if (ret && !(flags & DQUOT_TRANSFER_NOFAIL))
+ 			goto over_quota;
+ 		ret = check_bdq(transfer_to[cnt], space, 0, &warn_to[cnt]);
+-		if (ret)
++		if (ret && !(flags & DQUOT_TRANSFER_NOFAIL))
+ 			goto over_quota;
+ 	}
+ 
+@@ -1932,6 +1933,11 @@ over_quota:
+ 	flush_warnings(warn_to);
+ 	return ret;
+ }
++
++int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
++{
++	return do_dquot_transfer(inode, transfer_to, 0);
++}
+ EXPORT_SYMBOL(__dquot_transfer);
+ 
+ /* Wrapper for transferring ownership of an inode for uid/gid only
+@@ -1960,7 +1966,7 @@ EXPORT_SYMBOL(dquot_transfer);
+ /*
+  * Helper function for transferring inode into another project.
+  */
+-int dquot_transfer_project(struct inode *inode, kprojid_t projid)
++int dquot_transfer_project(struct inode *inode, kprojid_t projid, int flags)
+ {
+ 	struct dquot *transfer_to[MAXQUOTAS] = {};
+ 	struct super_block *sb = inode->i_sb;
+@@ -1969,7 +1975,7 @@ int dquot_transfer_project(struct inode *inode, kprojid_t projid)
+ 	if (!sb_has_quota_active(sb, PRJQUOTA))
+ 		return 0;
+ 	transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(projid));
+-	ret = __dquot_transfer(inode, transfer_to);
++	ret = do_dquot_transfer(inode, transfer_to, flags);
+ 	dqput_all(transfer_to);
+ 	return ret;
+ }
+diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
+index ba54745fe408..810b88c69c5b 100644
+--- a/include/linux/quotaops.h
++++ b/include/linux/quotaops.h
+@@ -9,10 +9,18 @@
+ 
+ #include <linux/fs.h>
+ 
++/*
++ * Flags for functions __dquot_alloc_space() and __dquot_free_space()
++ */
+ #define DQUOT_SPACE_WARN	0x1
+ #define DQUOT_SPACE_RESERVE	0x2
+ #define DQUOT_SPACE_NOFAIL	0x4
+ 
++/*
++ * Flags for functions dquot_transfer_*
++ */
++#define DQUOT_TRANSFER_NOFAIL	0x1
++
+ static inline struct quota_info *sb_dqopt(struct super_block *sb)
+ {
+ 	return &sb->s_dquot;
+@@ -104,7 +112,7 @@ int dquot_set_dqblk(struct super_block *sb, struct kqid id,
+ 
+ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to);
+ int dquot_transfer(struct inode *inode, struct iattr *iattr);
+-int dquot_transfer_project(struct inode *inode, kprojid_t projid);
++int dquot_transfer_project(struct inode *inode, kprojid_t projid, int flags);
+ 
+ static inline struct mem_dqinfo *sb_dqinfo(struct super_block *sb, int type)
+ {
