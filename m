@@ -1,8 +1,7 @@
 From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Subject: [PATCH RFC v2 6/6] ext4: mangle statfs results accourding to
- project quota usage and limits
-Date: Tue, 10 Mar 2015 20:22:12 +0300
-Message-ID: <20150310172212.23081.64204.stgit@buzz>
+Subject: [PATCH RFC v2 1/6] fs: vfs ioctls for managing project id
+Date: Tue, 10 Mar 2015 20:22:05 +0300
+Message-ID: <20150310172205.23081.67263.stgit@buzz>
 References: <20150310171133.23081.49616.stgit@buzz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -18,124 +17,191 @@ In-Reply-To: <20150310171133.23081.49616.stgit@buzz>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch adds helper function dquot_mangle_statfs() which fills statfs
-result with information from project quota counters. XFS does the same
-thing in function xfs_fill_statvfs_from_dquot().
+This patch adds generic vfs interface for project id and
+related super-block methods.
 
-As a result subtree under project quota acts like separate filesystem,
-for example 'df' inside chroot or container will show expected numbers.
+Two new ioctls:
+int ioctl(fd, FS_IOC_GETPROJECT, unsigned *project);
+int ioctl(fd, FS_IOC_SETPROJECT, unsigned *project);
 
 Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
 ---
- fs/ext4/super.c          |    2 +-
- fs/quota/dquot.c         |   51 ++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/quotaops.h |    7 ++++++
- 3 files changed, 59 insertions(+), 1 deletion(-)
+ Documentation/filesystems/Locking |    4 +++
+ Documentation/filesystems/vfs.txt |    8 +++++
+ fs/compat_ioctl.c                 |    2 +
+ fs/ioctl.c                        |   58 +++++++++++++++++++++++++++++++++++++
+ include/linux/fs.h                |    2 +
+ include/uapi/linux/fs.h           |    3 ++
+ 6 files changed, 77 insertions(+)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 6a6506bce53c..09ffa4905651 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5154,7 +5154,7 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
- 	buf->f_fsid.val[0] = fsid & 0xFFFFFFFFUL;
- 	buf->f_fsid.val[1] = (fsid >> 32) & 0xFFFFFFFFUL;
+diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
+index f91926f2f482..7a01e2b606d0 100644
+--- a/Documentation/filesystems/Locking
++++ b/Documentation/filesystems/Locking
+@@ -126,6 +126,8 @@ prototypes:
+ 	ssize_t (*quota_read)(struct super_block *, int, char *, size_t, loff_t);
+ 	ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
+ 	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
++	kprojid_t (*get_project) (struct inode *);
++	int (*set_project) (struct inode *, kprojid_t);
  
--	return 0;
-+	return dquot_mangle_statfs(dentry, buf);
+ locking rules:
+ 	All may block [not true, see below]
+@@ -147,6 +149,8 @@ show_options:		no		(namespace_sem)
+ quota_read:		no		(see below)
+ quota_write:		no		(see below)
+ bdev_try_to_free_page:	no		(see below)
++get_project		no
++set_project		no		(i_mutex)
+ 
+ ->statfs() has s_umount (shared) when called by ustat(2) (native or
+ compat), but that's an accident of bad API; s_umount is used to pin
+diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+index 966b22829f3b..aeff3c54021b 100644
+--- a/Documentation/filesystems/vfs.txt
++++ b/Documentation/filesystems/vfs.txt
+@@ -230,6 +230,8 @@ struct super_operations {
+         ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
+ 	int (*nr_cached_objects)(struct super_block *);
+ 	void (*free_cached_objects)(struct super_block *, int);
++	kprojid_t (*get_project)(struct inode *);
++	int (*set_project)(struct inode *, kprojid_t);
+ };
+ 
+ All methods are called without any locks being held, unless otherwise
+@@ -319,6 +321,12 @@ or bottom half).
+ 	implementations will cause holdoff problems due to large scan batch
+ 	sizes.
+ 
++  get_project: called by the ioctl and quota code to get project id of an inode.
++	Method should return INVALID_PROJID if feature isn't supported.
++
++  set_project: called by the ioctl to set project id for an inode.
++	This is called with i_mutex held.
++
+ Whoever sets up the inode is responsible for filling in the "i_op" field. This
+ is a pointer to a "struct inode_operations" which describes the methods that
+ can be performed on individual inodes.
+diff --git a/fs/compat_ioctl.c b/fs/compat_ioctl.c
+index afec6450450f..9a24e4038377 100644
+--- a/fs/compat_ioctl.c
++++ b/fs/compat_ioctl.c
+@@ -889,6 +889,8 @@ COMPATIBLE_IOCTL(FIOASYNC)
+ COMPATIBLE_IOCTL(FIONBIO)
+ COMPATIBLE_IOCTL(FIONREAD)  /* This is also TIOCINQ */
+ COMPATIBLE_IOCTL(FS_IOC_FIEMAP)
++COMPATIBLE_IOCTL(FS_IOC_GETPROJECT)
++COMPATIBLE_IOCTL(FS_IOC_SETPROJECT)
+ /* 0x00 */
+ COMPATIBLE_IOCTL(FIBMAP)
+ COMPATIBLE_IOCTL(FIGETBSZ)
+diff --git a/fs/ioctl.c b/fs/ioctl.c
+index 5d01d2638ca5..d351576d95c8 100644
+--- a/fs/ioctl.c
++++ b/fs/ioctl.c
+@@ -9,6 +9,7 @@
+ #include <linux/capability.h>
+ #include <linux/file.h>
+ #include <linux/fs.h>
++#include <linux/mount.h>
+ #include <linux/security.h>
+ #include <linux/export.h>
+ #include <linux/uaccess.h>
+@@ -545,6 +546,57 @@ static int ioctl_fsthaw(struct file *filp)
+ 	return thaw_super(sb);
  }
  
- /* Helper function for writing quotas on sync - we need to start transaction
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index 0b61357554ed..b05ebbcb4d5e 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -2025,6 +2025,57 @@ int dquot_file_open(struct inode *inode, struct file *file)
- EXPORT_SYMBOL(dquot_file_open);
++static int ioctl_getproject(struct file *filp, projid_t __user *argp)
++{
++	struct user_namespace *ns = current_user_ns();
++	struct inode *inode = file_inode(filp);
++	struct super_block *sb = inode->i_sb;
++	kprojid_t kprojid;
++	projid_t projid;
++
++	if (!sb->s_op->get_project)
++		return -EOPNOTSUPP;
++	kprojid = sb->s_op->get_project(inode);
++	if (!projid_valid(kprojid))
++		return -EOPNOTSUPP;
++	projid = from_kprojid(ns, kprojid);
++	if (projid == (projid_t)-1)
++		return -EACCES;
++	return put_user(projid, argp);
++}
++
++static int ioctl_setproject(struct file *filp, projid_t __user *argp)
++{
++	struct user_namespace *ns = current_user_ns();
++	struct inode *inode = file_inode(filp);
++	struct super_block *sb = inode->i_sb;
++	kprojid_t kprojid;
++	projid_t projid;
++	int ret;
++
++	if (!sb->s_op->set_project)
++		return -EOPNOTSUPP;
++	if (ns != &init_user_ns)
++		return -EPERM;
++	ret = get_user(projid, argp);
++	if (ret)
++		return ret;
++	kprojid = make_kprojid(ns, projid);
++	if (!projid_valid(kprojid))
++		return -EACCES;
++	ret = mnt_want_write_file(filp);
++	if (ret)
++		return ret;
++	mutex_lock(&inode->i_mutex);
++	if (inode_owner_or_capable(inode))
++		ret = sb->s_op->set_project(inode, kprojid);
++	else
++		ret = -EPERM;
++	mutex_unlock(&inode->i_mutex);
++	mnt_drop_write_file(filp);
++	return ret;
++}
++
+ /*
+  * When you add any new common ioctls to the switches above and below
+  * please update compat_sys_ioctl() too.
+@@ -597,6 +649,12 @@ int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
+ 	case FS_IOC_FIEMAP:
+ 		return ioctl_fiemap(filp, arg);
+ 
++	case FS_IOC_GETPROJECT:
++		return ioctl_getproject(filp, argp);
++
++	case FS_IOC_SETPROJECT:
++		return ioctl_setproject(filp, argp);
++
+ 	case FIGETBSZ:
+ 		return put_user(inode->i_sb->s_blocksize, argp);
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b4d71b5e1ff2..42156801739e 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1655,6 +1655,8 @@ struct super_operations {
+ 				  struct shrink_control *);
+ 	long (*free_cached_objects)(struct super_block *,
+ 				    struct shrink_control *);
++	kprojid_t (*get_project)(struct inode *);
++	int (*set_project)(struct inode *, kprojid_t);
+ };
  
  /*
-+ * Update statfs results accourding to project quota limits.
-+ */
-+int dquot_mangle_statfs(struct dentry *dentry, struct kstatfs *buf)
-+{
-+	u64 blimit = 0, ilimit = 0, busage, iusage, bfree, ifree;
-+	struct inode *inode = dentry->d_inode;
-+	struct super_block *sb = dentry->d_sb;
-+	struct dquot *dquot;
+diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+index 9b964a5920af..144426326e15 100644
+--- a/include/uapi/linux/fs.h
++++ b/include/uapi/linux/fs.h
+@@ -170,6 +170,9 @@ struct inodes_stat_t {
+ #define FS_IOC32_GETVERSION		_IOR('v', 1, int)
+ #define FS_IOC32_SETVERSION		_IOW('v', 2, int)
+ 
++#define FS_IOC_GETPROJECT		_IOR('f', 20, unsigned)
++#define FS_IOC_SETPROJECT		_IOW('f', 21, unsigned)
 +
-+	if (!sb_has_quota_limits_enabled(sb, PRJQUOTA))
-+		return 0;
-+
-+	__dquot_initialize(inode, PRJQUOTA);
-+
-+	spin_lock(&dq_data_lock);
-+	dquot = i_dquot(inode)[PRJQUOTA];
-+	if (dquot) {
-+		struct mem_dqblk *dm = &(dquot->dq_dqb);
-+
-+		blimit = dm->dqb_bsoftlimit ?: dm->dqb_bhardlimit;
-+		busage = dm->dqb_curspace + dm->dqb_rsvspace;
-+		ilimit = dm->dqb_isoftlimit ?: dm->dqb_ihardlimit;
-+		iusage = dm->dqb_curinodes;
-+	}
-+	spin_unlock(&dq_data_lock);
-+
-+	if (blimit) {
-+		blimit = div_u64(blimit, buf->f_bsize);
-+		busage = div_u64(busage, buf->f_bsize);
-+		bfree = (blimit <= busage) ? 0 : (blimit - busage);
-+		if (buf->f_blocks > blimit)
-+			buf->f_blocks = blimit;
-+		if (buf->f_bfree > bfree)
-+			buf->f_bfree = bfree;
-+		if (buf->f_bavail > bfree)
-+			buf->f_bavail = bfree;
-+	}
-+
-+	if (ilimit) {
-+		ifree = (ilimit <= iusage) ? 0 : (ilimit - iusage);
-+		if (buf->f_files > ilimit)
-+			buf->f_files = ilimit;
-+		if (buf->f_ffree > ifree)
-+			buf->f_ffree = ifree;
-+	}
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL(dquot_mangle_statfs);
-+
-+/*
-  * Turn quota off on a device. type == -1 ==> quotaoff for all types (umount)
+ /*
+  * Inode flags (FS_IOC_GETFLAGS / FS_IOC_SETFLAGS)
   */
- int dquot_disable(struct super_block *sb, int type, unsigned int flags)
-diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
-index 810b88c69c5b..cd4c02e3d17e 100644
---- a/include/linux/quotaops.h
-+++ b/include/linux/quotaops.h
-@@ -8,6 +8,7 @@
- #define _LINUX_QUOTAOPS_
- 
- #include <linux/fs.h>
-+#include <linux/statfs.h>
- 
- /*
-  * Flags for functions __dquot_alloc_space() and __dquot_free_space()
-@@ -93,6 +94,7 @@ int dquot_commit_info(struct super_block *sb, int type);
- int dquot_mark_dquot_dirty(struct dquot *dquot);
- 
- int dquot_file_open(struct inode *inode, struct file *file);
-+int dquot_mangle_statfs(struct dentry *dentry, struct kstatfs *buf);
- 
- int dquot_enable(struct inode *inode, int type, int format_id,
- 	unsigned int flags);
-@@ -283,6 +285,11 @@ static inline int dquot_resume(struct super_block *sb, int type)
- 
- #define dquot_file_open		generic_file_open
- 
-+static inline int dquot_mangle_statfs(struct dentry *d, struct kstatfs *buf)
-+{
-+	return 0;
-+}
-+
- static inline int dquot_writeback_dquots(struct super_block *sb, int type)
- {
- 	return 0;
