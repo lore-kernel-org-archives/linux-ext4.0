@@ -1,316 +1,231 @@
 From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Subject: [PATCH RFC v2 5/6] ext4: add shortcut for moving files across
- projects
-Date: Tue, 10 Mar 2015 20:22:11 +0300
-Message-ID: <20150310172210.23081.28245.stgit@buzz>
-References: <20150310171133.23081.49616.stgit@buzz>
+Subject: [PATCH RFC v2 0/6] ext4: yet another project quota
+Date: Tue, 10 Mar 2015 20:22:04 +0300
+Message-ID: <20150310171133.23081.49616.stgit@buzz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
 	Andy Lutomirski <luto@amacapital.net>,
 	linux-kernel@vger.kernel.org, Li Xi <pkuelelixi@gmail.com>
 To: linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
 	Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20150310171133.23081.49616.stgit@buzz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from forward-corp1f.mail.yandex.net ([95.108.130.40]:36375 "EHLO
+	forward-corp1f.mail.yandex.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753215AbbCJRWL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Mar 2015 13:22:11 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds useful optimization for most common case of moving files
-across projects: non-directory inode without extra hardlinks (i_nlink == 1)
-can be moved into different project without making a copy. We just have to
-change project in and reaccount disk usage in one transaction with rename.
+Projects quota allows to enforce disk quota for several subtrees or eve=
+n
+individual files on the filesystem. Each inode is marked with project-i=
+d
+(independently from uid and gid) and accounted into corresponding proje=
+ct
+quota. New files inherits project id from directory where they are crea=
+ted.
 
-As a result simple recursive 'mv' works much faster: it creates new
-directories but files are moved without copying.
+This is must-have feature for deploying lightweight containers.
+Also project quota can tell size of subtree without doing recursive 'du=
+'.
 
-Flag DQUOT_TRANSFER_NOFAIL tells dquot_transfer_project() to move inode
-regardless of quota limits. This is required for moving inode back into
-the old project if rename had failed. This error-path little-bit racy
-(user could use more that quota allows) but there are not so much errors
-which might trigger this path: filesystem corruption or disk failure.
-They seem bigger problem than potential quota abuse.
+This patchset adds project id and quota into ext4.
 
-Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+This time I've prepared patches also for e2fsprogs and quota-tools.
+
+All patches are available at github:
+https://github.com/koct9i/linux --branch project
+https://github.com/koct9i/e2fsprogs --branch project
+https://github.com/koct9i/quota-tools --branch project
+
 ---
- fs/ext4/namei.c          |   93 +++++++++++++++++++++++++++++++++++++++++-----
- fs/ext4/super.c          |    2 -
- fs/quota/dquot.c         |   16 +++++---
- include/linux/quotaops.h |   10 ++++-
- 4 files changed, 103 insertions(+), 18 deletions(-)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 094f7096a41c..2c738bae7c36 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -3029,6 +3029,7 @@ struct ext4_renament {
- 	struct inode *inode;
- 	bool is_dir;
- 	int dir_nlink_delta;
-+	bool transfer_project;
- 
- 	/* entry for "dentry" */
- 	struct buffer_head *bh;
-@@ -3274,13 +3275,23 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	if (new.inode && !test_opt(new.dir->i_sb, NO_AUTO_DA_ALLOC))
- 		ext4_alloc_da_blocks(old.inode);
- 
-+	credits = (2 * EXT4_DATA_TRANS_BLOCKS(old.dir->i_sb) +
-+		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2);
-+
- 	if (!ext4_check_project(new.dir, old.inode)) {
--		retval = -EXDEV;
--		goto end_rename;
-+		/*
-+		 * Shortcut for moving files across projects: inode with one
-+		 * hardlink can be tranferred as is without making a copy.
-+		 */
-+		if (!S_ISDIR(old.inode->i_mode) && old.inode->i_nlink == 1) {
-+			credits += 2 * EXT4_QUOTA_TRANS_BLOCKS(old.dir->i_sb);
-+			old.transfer_project = true;
-+		} else {
-+			retval = -EXDEV;
-+			goto end_rename;
-+		}
- 	}
- 
--	credits = (2 * EXT4_DATA_TRANS_BLOCKS(old.dir->i_sb) +
--		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2);
- 	if (!(flags & RENAME_WHITEOUT)) {
- 		handle = ext4_journal_start(old.dir, EXT4_HT_DIR, credits);
- 		if (IS_ERR(handle)) {
-@@ -3297,6 +3308,15 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		}
- 	}
- 
-+	if (old.transfer_project) {
-+		retval = dquot_transfer_project(old.inode,
-+				EXT4_I(new.dir)->i_project, 0);
-+		if (retval) {
-+			old.transfer_project = false;
-+			goto end_rename;
-+		}
-+	}
-+
- 	if (IS_DIRSYNC(old.dir) || IS_DIRSYNC(new.dir))
- 		ext4_handle_sync(handle);
- 
-@@ -3355,6 +3375,8 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	 * rename.
- 	 */
- 	old.inode->i_ctime = ext4_current_time(old.inode);
-+	if (old.transfer_project)
-+		EXT4_I(old.inode)->i_project = EXT4_I(new.dir)->i_project;
- 	ext4_mark_inode_dirty(handle, old.inode);
- 
- 	if (!whiteout) {
-@@ -3395,6 +3417,9 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	retval = 0;
- 
- end_rename:
-+	if (retval && old.transfer_project)
-+		dquot_transfer_project(old.inode, EXT4_I(old.inode)->i_project,
-+				       DQUOT_TRANSFER_NOFAIL);
- 	brelse(old.dir_bh);
- 	brelse(old.bh);
- 	brelse(new.bh);
-@@ -3425,6 +3450,7 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	};
- 	u8 new_file_type;
- 	int retval;
-+	int credits;
- 
- 	dquot_initialize(old.dir);
- 	dquot_initialize(new.dir);
-@@ -3455,21 +3481,56 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	if (!new.bh || le32_to_cpu(new.de->inode) != new.inode->i_ino)
- 		goto end_rename;
- 
--	if (!ext4_check_project(new.dir, old.inode) ||
--	    !ext4_check_project(old.dir, new.inode)) {
--		retval = -EXDEV;
--		goto end_rename;
-+	credits = 2 * EXT4_DATA_TRANS_BLOCKS(old.dir->i_sb) +
-+		  2 * EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2;
-+
-+	if (!ext4_check_project(new.dir, old.inode)) {
-+		if (!S_ISDIR(old.inode->i_mode) && old.inode->i_nlink == 1) {
-+			credits += 2 * EXT4_QUOTA_TRANS_BLOCKS(old.dir->i_sb);
-+			old.transfer_project = true;
-+		} else {
-+			retval = -EXDEV;
-+			goto end_rename;
-+		}
-+	}
-+
-+	if (!ext4_check_project(old.dir, new.inode)) {
-+		if (!S_ISDIR(new.inode->i_mode) && new.inode->i_nlink == 1) {
-+			credits += 2 * EXT4_QUOTA_TRANS_BLOCKS(old.dir->i_sb);
-+			new.transfer_project = true;
-+		} else {
-+			old.transfer_project = false;
-+			retval = -EXDEV;
-+			goto end_rename;
-+		}
- 	}
- 
--	handle = ext4_journal_start(old.dir, EXT4_HT_DIR,
--		(2 * EXT4_DATA_TRANS_BLOCKS(old.dir->i_sb) +
--		 2 * EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2));
-+	handle = ext4_journal_start(old.dir, EXT4_HT_DIR, credits);
- 	if (IS_ERR(handle)) {
- 		retval = PTR_ERR(handle);
- 		handle = NULL;
- 		goto end_rename;
- 	}
- 
-+	if (old.transfer_project) {
-+		retval = dquot_transfer_project(old.inode,
-+				EXT4_I(new.dir)->i_project, 0);
-+		if (retval) {
-+			old.transfer_project = false;
-+			new.transfer_project = false;
-+			goto end_rename;
-+		}
-+	}
-+
-+	if (new.transfer_project) {
-+		retval = dquot_transfer_project(new.inode,
-+				EXT4_I(old.dir)->i_project, 0);
-+		if (retval) {
-+			new.transfer_project = false;
-+			goto end_rename;
-+		}
-+	}
-+
- 	if (IS_DIRSYNC(old.dir) || IS_DIRSYNC(new.dir))
- 		ext4_handle_sync(handle);
- 
-@@ -3514,6 +3575,10 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	 */
- 	old.inode->i_ctime = ext4_current_time(old.inode);
- 	new.inode->i_ctime = ext4_current_time(new.inode);
-+	if (old.transfer_project)
-+		EXT4_I(old.inode)->i_project = EXT4_I(new.dir)->i_project;
-+	if (new.transfer_project)
-+		EXT4_I(new.inode)->i_project = EXT4_I(old.dir)->i_project;
- 	ext4_mark_inode_dirty(handle, old.inode);
- 	ext4_mark_inode_dirty(handle, new.inode);
- 
-@@ -3532,6 +3597,12 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	retval = 0;
- 
- end_rename:
-+	if (retval && old.transfer_project)
-+		dquot_transfer_project(old.inode, EXT4_I(old.inode)->i_project,
-+				       DQUOT_TRANSFER_NOFAIL);
-+	if (retval && new.transfer_project)
-+		dquot_transfer_project(new.inode, EXT4_I(new.inode)->i_project,
-+				       DQUOT_TRANSFER_NOFAIL);
- 	brelse(old.dir_bh);
- 	brelse(new.dir_bh);
- 	brelse(old.bh);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c62ed5b554ae..6a6506bce53c 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1062,7 +1062,7 @@ static int ext4_set_project(struct inode *inode, kprojid_t project)
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
--	ret = dquot_transfer_project(inode, project);
-+	ret = dquot_transfer_project(inode, project, 0);
- 	if (ret)
- 		goto out;
- 
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index 04c27cdeca05..0b61357554ed 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -1838,7 +1838,8 @@ EXPORT_SYMBOL(dquot_free_inode);
-  * We are holding reference on transfer_from & transfer_to, no need to
-  * protect them by srcu_read_lock().
-  */
--int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
-+static int do_dquot_transfer(struct inode *inode,
-+		struct dquot **transfer_to, int flags)
- {
- 	qsize_t space, cur_space;
- 	qsize_t rsv_space = 0;
-@@ -1879,10 +1880,10 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
- 		is_valid[cnt] = 1;
- 		transfer_from[cnt] = i_dquot(inode)[cnt];
- 		ret = check_idq(transfer_to[cnt], 1, &warn_to[cnt]);
--		if (ret)
-+		if (ret && !(flags & DQUOT_TRANSFER_NOFAIL))
- 			goto over_quota;
- 		ret = check_bdq(transfer_to[cnt], space, 0, &warn_to[cnt]);
--		if (ret)
-+		if (ret && !(flags & DQUOT_TRANSFER_NOFAIL))
- 			goto over_quota;
- 	}
- 
-@@ -1932,6 +1933,11 @@ over_quota:
- 	flush_warnings(warn_to);
- 	return ret;
- }
-+
-+int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
-+{
-+	return do_dquot_transfer(inode, transfer_to, 0);
-+}
- EXPORT_SYMBOL(__dquot_transfer);
- 
- /* Wrapper for transferring ownership of an inode for uid/gid only
-@@ -1960,7 +1966,7 @@ EXPORT_SYMBOL(dquot_transfer);
- /*
-  * Helper function for transferring inode into another project.
-  */
--int dquot_transfer_project(struct inode *inode, kprojid_t projid)
-+int dquot_transfer_project(struct inode *inode, kprojid_t projid, int flags)
- {
- 	struct dquot *transfer_to[MAXQUOTAS] = {};
- 	struct super_block *sb = inode->i_sb;
-@@ -1969,7 +1975,7 @@ int dquot_transfer_project(struct inode *inode, kprojid_t projid)
- 	if (!sb_has_quota_active(sb, PRJQUOTA))
- 		return 0;
- 	transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(projid));
--	ret = __dquot_transfer(inode, transfer_to);
-+	ret = do_dquot_transfer(inode, transfer_to, flags);
- 	dqput_all(transfer_to);
- 	return ret;
- }
-diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
-index ba54745fe408..810b88c69c5b 100644
---- a/include/linux/quotaops.h
-+++ b/include/linux/quotaops.h
-@@ -9,10 +9,18 @@
- 
- #include <linux/fs.h>
- 
-+/*
-+ * Flags for functions __dquot_alloc_space() and __dquot_free_space()
-+ */
- #define DQUOT_SPACE_WARN	0x1
- #define DQUOT_SPACE_RESERVE	0x2
- #define DQUOT_SPACE_NOFAIL	0x4
- 
-+/*
-+ * Flags for functions dquot_transfer_*
-+ */
-+#define DQUOT_TRANSFER_NOFAIL	0x1
-+
- static inline struct quota_info *sb_dqopt(struct super_block *sb)
- {
- 	return &sb->s_dquot;
-@@ -104,7 +112,7 @@ int dquot_set_dqblk(struct super_block *sb, struct kqid id,
- 
- int __dquot_transfer(struct inode *inode, struct dquot **transfer_to);
- int dquot_transfer(struct inode *inode, struct iattr *iattr);
--int dquot_transfer_project(struct inode *inode, kprojid_t projid);
-+int dquot_transfer_project(struct inode *inode, kprojid_t projid, int flags);
- 
- static inline struct mem_dqinfo *sb_dqinfo(struct super_block *sb, int type)
- {
+Porposed behavior is similar to project quota in XFS:
+
+* all inode are marked with project id
+* new files inherits project id from parent directory
+* project quota accounts inodes and enforces limits
+* cross-project link and rename operations are restricted
+
+Differences:
+
+There is no flag similar to XFS_XFLAG_PROJINHERIT (which allows to disa=
+ble
+project id inheritance), instead of that project which userspace sees a=
+s '0'
+(in nested user-name space that might be actually non-zero project) act=
+s as
+default project where restrictions for link/rename are ignored.
+(also see below, in "why new ioctl" part)
+
+This implementation adds shortcut for moving files from one project int=
+o
+another: non-directory inodes with n_link =3D=3D 1 are transferred with=
+out
+copying (XFS in this case returns -EXDEV and userspace have to copy fil=
+e).
+
+In XFS file owner (or process with CAP_FOWNER) can set set any project =
+id,
+XFS permits changing project id only from init user-namespace.
+
+This patchset adds sysctl fs.protected_projects. By default it's 0 and =
+project
+id acts as XFS project. Setting it to 1 makes chaning project id privil=
+iged
+operation which requires CAP_SYS_RESOURCE in current user-namespace, ch=
+anging
+project id mapping for nested user-namespace also requires that capabil=
+ity.
+Thus there are two levels of control: project id mapping in user-ns def=
+ines set
+of permitted projects and capability protects operations within this se=
+t.
+
+I see no problems with supporting all this in XFS, all difference in in=
+terface.
+
+Ext4 layout
+-----------
+
+Project id introduce ro-compatible feature 'project'.
+
+Inode project id is stored in place of obsolete field 'i_faddr' (that t=
+rick was
+suggested by Darrick J. Wong in previous discussions of project quota).
+Linux never used that field and present fsck checks that it contains ze=
+ro.
+
+Quota information is stored in special inode =E2=84=9611 (by default on=
+ly 10 inodes are
+reserved for special usage, I've add option to resize2fs to reserve mor=
+e).
+(see e2fsprogs patches for details) For symmetry with other quotas inod=
+e number
+is stored in superblock.
+
+Project quota supports only modern 'hidden' journaled mode.
+
+Interface
+---------
+
+Interface for changing limits / query current usage is common vfs quota=
+ctl()
+where quotatype =3D PRJQUOTA =3D 2. User can query current state of any=
+ project
+mapped into user-ns, changing of limits requires CAP_SYS_ADMIN in init =
+user-ns.
+
+Two new ioctls for getting / changing inode project id:
+int ioctl(fd, FS_IOC_GETPROJECT, unsigned *project);
+int ioctl(fd, FS_IOC_SETPROJECT, unsigned *project);
+
+They acts as interface for super-block methods get_project / set_projec=
+t
+Generic code checks permissions, does project id translation in user-na=
+mespace
+mapping, grabs write-access to the filesystem, locks i_mutex for set op=
+etaion.
+=46ilesystem method only updates inode and transfers project quota.
+
+No new mount options added. Disk usage tracking is enabled at mount.
+Limits are enabeld later by "quotaon".
+
+(BTW why journalled quota doesn't enable limits right at the time of mo=
+unting?)
+
+Why new ioctls?
+---------------
+
+XFS has it's own interface for that: XFS_IOC_FSGETXATTR / XFS_IOC_FSSET=
+XATTR.
+But it has several flaws and doesn't fit for a role of generic interfac=
+e.
+
+It contains a lot of xfs-specific flags and racy by design: set operati=
+on
+commits all fields at once thus it's used in sequence get-change-set wi=
+thout
+any lock, Concurrent updates from user space will collide.
+
+Also xfs has flag XFS_XFLAG_PROJINHERIT which tells should new files in=
+herit
+project id from parent directory or not. This flag is barely useful and=
+ only
+makes everything complicated. Even tools in xfsprogs don't use it: they=
+ always
+set it together with project id and clears when set project id back to =
+zero.
+
+And the main reason: this compatibility gives nothing. The only user of=
+ xfs
+ioctl which I've found is the xfsprogs. And these tools check filesyste=
+m name
+and don't work anywhere except 'xfs'.
+
+Links
+-----
+
+[1] 2014-12-09  ext4: add project quota support by Li Xi
+http://marc.info/?l=3Dlinux-fsdevel&m=3D141810265603565&w=3D2
+
+[2] 2014-01-28  A draft for making ext4 support project quota by Zheng =
+Liu
+http://marc.info/?l=3Dlinux-ext4&m=3D139089109605795&w=3D2
+
+[3] 2012-07-09  introduce extended inode owner identifier v10 by Dmitry=
+ Monakhov
+http://thread.gmane.org/gmane.linux.file-systems/65752
+
+[4] 2010-02-08  Introduce subtree quota support by Dmitry Monakhov
+http://thread.gmane.org/gmane.comp.file-systems.ext4/17530
+
+
+---
+
+Konstantin Khlebnikov (6):
+      fs: vfs ioctls for managing project id
+      fs: protected project id
+      quota: generic project quota
+      ext4: support project id and project quota
+      ext4: add shortcut for moving files across projects
+      ext4: mangle statfs results accourding to project quota usage and=
+ limits
+
+
+ Documentation/filesystems/Locking |    4 +
+ Documentation/filesystems/vfs.txt |    8 +++
+ Documentation/sysctl/fs.txt       |   16 ++++++
+ fs/compat_ioctl.c                 |    2 +
+ fs/ext4/ext4.h                    |   15 ++++-
+ fs/ext4/ialloc.c                  |    3 +
+ fs/ext4/inode.c                   |   15 +++++
+ fs/ext4/namei.c                   |  102 +++++++++++++++++++++++++++++=
++++++++-
+ fs/ext4/super.c                   |   61 ++++++++++++++++++++--
+ fs/ioctl.c                        |   62 ++++++++++++++++++++++
+ fs/quota/dquot.c                  |   96 +++++++++++++++++++++++++++++=
+++++--
+ fs/quota/quota.c                  |    8 ++-
+ fs/quota/quotaio_v2.h             |    6 +-
+ include/linux/fs.h                |    3 +
+ include/linux/quota.h             |    1=20
+ include/linux/quotaops.h          |   16 ++++++
+ include/uapi/linux/capability.h   |    1=20
+ include/uapi/linux/fs.h           |    3 +
+ include/uapi/linux/quota.h        |    6 +-
+ kernel/sysctl.c                   |    9 +++
+ kernel/user_namespace.c           |    4 +
+ 21 files changed, 416 insertions(+), 25 deletions(-)
+
+--
+Signature
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
