@@ -1,106 +1,73 @@
 From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 32182] EXT4-fs error: bad header/extent
-Date: Thu, 05 Mar 2015 14:32:44 +0000
-Message-ID: <bug-32182-13602-QPT1HpZrnp@https.bugzilla.kernel.org/>
-References: <bug-32182-13602@https.bugzilla.kernel.org/>
+Subject: [Bug 94641] New: Kernel source tarball download incomplete despite
+ Firefox report of complete download
+Date: Tue, 10 Mar 2015 10:32:36 +0000
+Message-ID: <bug-94641-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:46708 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.136]:47208 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756181AbbCEOct (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Mar 2015 09:32:49 -0500
+	id S1750882AbbCJKci (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Mar 2015 06:32:38 -0400
 Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id C8E1C2039C
-	for <linux-ext4@vger.kernel.org>; Thu,  5 Mar 2015 14:32:47 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 545A52037F
-	for <linux-ext4@vger.kernel.org>; Thu,  5 Mar 2015 14:32:45 +0000 (UTC)
-In-Reply-To: <bug-32182-13602@https.bugzilla.kernel.org/>
+	by mail.kernel.org (Postfix) with ESMTP id 2A29D201E4
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2015 10:32:37 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 4E92520148
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2015 10:32:36 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=32182
+https://bugzilla.kernel.org/show_bug.cgi?id=94641
 
-Adam Surak <adam.surak@algolia.com> changed:
+            Bug ID: 94641
+           Summary: Kernel source tarball download incomplete despite
+                    Firefox report of complete download
+           Product: File System
+           Version: 2.5
+    Kernel Version: Linux hal9000 3.13.0-37-generic #64-Ubuntu SMP Mon Sep
+                    22 21:28:38 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext3
+          Assignee: fs_ext3@kernel-bugs.osdl.org
+          Reporter: mdcrawford@gmail.com
+        Regression: No
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |adam.surak@algolia.com
+This may well be a bug in Firefox or some other userspace component, however it
+is serious enough that the kernel developers ought to know about it.
 
---- Comment #16 from Adam Surak <adam.surak@algolia.com> ---
-We experience this problem and the FS remounts to read-only. BuildServer is our
-write heavy application, the server has RAID0 using MD. We have seen this
-problem on servers with Ubuntu kernel (3.13.x) and MD raid (Samsung SSDs) and
-also on servers with OVH custom built kernel (3.10) and LSI HW raid (Intel
-S3500 SSDs) - although we see the issue on the servers with MD raid more often.
+I tried several times to download a Linux kernel tarball; each time Firefox
+reported that the entire file was downloaded, however the file in my filesystem
+was quite a lot shorter than the size reported at kernel.org.
 
-Syslog
-======
-Mar  5 13:30:01 c5-use-1 CRON[12504]: (root) CMD (/usr/bin/run-chef-client.sh)
-Mar  5 13:30:35 c5-use-1 kernel: [10890197.121882] EXT4-fs error (device md3):
-ext4_ext_remove_space:2935: inode #26869814: comm BuildServer: pblk 107512509
-bad header/extent: invalid magic - magic 0, entries 0, max 0(0), depth 0(0)
-Mar  5 13:30:35 c5-use-1 kernel: [10890197.205494] Aborting journal on device
-md3-8.
-Mar  5 13:30:35 c5-use-1 kernel: [10890197.232881] EXT4-fs (md3): Remounting
-filesystem read-only
-Mar  5 13:30:35 c5-use-1 kernel: [10890197.244669] EXT4-fs error (device md3):
-ext4_journal_check_start:56: Detected aborted journal
-Mar  5 13:30:35 c5-use-1 kernel: [10890197.244673] EXT4-fs (md3): Remounting
-filesystem read-only
-Mar  5 13:30:35 c5-use-1 kernel: [10890197.342604] EXT4-fs error (device md3)
-in ext4_ext_remove_space:3006: IO failure
-Mar  5 13:30:35 c5-use-1 kernel: [10890197.398828] EXT4-fs error (device md3)
-in ext4_ext_truncate:4544: IO failure
-Mar  5 13:30:35 c5-use-1 kernel: [10890197.457592] EXT4-fs error (device md3)
-in ext4_reserve_inode_write:4874: Journal has aborted
-Mar  5 13:30:35 c5-use-1 kernel: [10890197.521148] EXT4-fs error (device md3)
-in ext4_truncate:3797: Journal has aborted
-Mar  5 13:30:35 c5-use-1 kernel: [10890197.588798] EXT4-fs error (device md3)
-in ext4_reserve_inode_write:4874: Journal has aborted
-Mar  5 13:30:35 c5-use-1 kernel: [10890197.659161] EXT4-fs error (device md3)
-in ext4_orphan_del:2685: Journal has aborted
-Mar  5 13:30:35 c5-use-1 kernel: [10890197.732682] EXT4-fs error (device md3)
-in ext4_reserve_inode_write:4874: Journal has aborted
-Mar  5 13:31:01 c5-use-1 CRON[13879]: (root) CMD ( /usr/bin/netstat.sh >
-/tmp/netstat.json)
+I speculated that Firefox had a caching bug, and so closed all my tabs one by
+one, then closed the window.  The file was still incomplete.
 
-Debugfs
-=======
-debugfs -R 'stat <26869814>' /dev/md3
-debugfs 1.42.9 (4-Feb-2014)
-Inode: 26869814   Type: regular    Mode:  0644   Flags: 0x80000
-Generation: 2509781484    Version: 0x00000000:00000001
-User:  1001   Group:  1001   Size: 0
-File ACL: 0    Directory ACL: 0
-Links: 0   Blockcount: 816256
-Fragment:  Address: 0    Number: 0    Size: 0
- ctime: 0x54f85a7b:0fc8be80 -- Thu Mar  5 13:30:35 2015
- atime: 0x54ee0aac:127f86a8 -- Wed Feb 25 17:47:24 2015
- mtime: 0x54ee0ab5:693a9f7c -- Wed Feb 25 17:47:33 2015
-crtime: 0x54ee0aac:127f86a8 -- Wed Feb 25 17:47:24 2015
-dtime: 0x0194088b -- Tue Nov  3 11:12:11 1970
-Size of extra inode fields: 28
-EXTENTS:
-(ETB0):107512509
+I launched a new Firefox, retried the download, still incomplete.
 
-uname -a
-========
-Linux c5-use-1 3.13.0-37-generic #64-Ubuntu SMP Mon Sep 22 21:28:38 UTC 2014
-x86_64 x86_64 x86_64 GNU/Linux
+I shut down my box, booted it, then was able to download successfully.
 
-mount
-=====
-/dev/md3 on /home type ext4 (rw,noatime,nodiratime,errors=remount-ro)
+Perhaps the problem has something to do with Hibernate; I do know there were
+some problems in the past with hibernating my motherboard, a SuperMicro
+X7DWA-N.  Under a much earlier kernel, with Fedora 7, while I could go into and
+out of hibernation, after coming out the networking did not work.
 
-I got also SMART output, dumpe2fs, lspci, mdadm, dpkg, dmesg and es2fsck
-outputs but the files are quite extensive so I've put them to
-http://www.surak.eu/fs-ro.tar.gz
+With my present Linux Mint Cinnamon 17.1 64-bit install, I've been using
+hibernation quite a bit.
 
-Let me know if anything more is needed about the config of the server.
+I am just now seeing some evidence that I may have a more serious problem,
+perhaps I have bad memory or something.  I'm going to run Memtest86.
+
+I'm using an AMCC3ware 9690-SA 4-disk RAID5, with battery backup so as to
+enable write caching.
 
 -- 
 You are receiving this mail because:
