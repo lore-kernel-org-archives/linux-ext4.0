@@ -1,236 +1,41 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [RFC] ext4: Add pollable sysfs entry for block threshold
- events
-Date: Wed, 11 Mar 2015 18:49:54 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1503111802160.23678@localhost.localdomain>
-References: <1426068993-1051-1-git-send-email-b.michalska@samsung.com> <1426068993-1051-2-git-send-email-b.michalska@samsung.com> <alpine.LFD.2.00.1503111314230.11156@localhost.localdomain> <55007140.6060700@samsung.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 94641] Kernel source tarball download incomplete despite
+ Firefox report of complete download
+Date: Wed, 11 Mar 2015 21:05:49 +0000
+Message-ID: <bug-94641-13602-fbiLPmclnt@https.bugzilla.kernel.org/>
+References: <bug-94641-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-829963532-1426096198=:23678"
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	kyungmin.park@samsung.com
-To: Beata Michalska <b.michalska@samsung.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <55007140.6060700@samsung.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:49601 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751384AbbCKVFw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Mar 2015 17:05:52 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 4CAEF2041E
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Mar 2015 21:05:51 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 76E87203B0
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Mar 2015 21:05:49 +0000 (UTC)
+In-Reply-To: <bug-94641-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+https://bugzilla.kernel.org/show_bug.cgi?id=94641
 
---8323328-829963532-1426096198=:23678
-Content-Type: TEXT/PLAIN; charset=ISO-8859-2
-Content-Transfer-Encoding: 8BIT
+Calvin Walton <calvin.walton@kepstin.ca> changed:
 
-On Wed, 11 Mar 2015, Beata Michalska wrote:
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |calvin.walton@kepstin.ca
 
-> Date: Wed, 11 Mar 2015 17:45:52 +0100
-> From: Beata Michalska <b.michalska@samsung.com>
-> To: Luká¹ Czerner <lczerner@redhat.com>
-> Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
->     linux-kernel@vger.kernel.org, kyungmin.park@samsung.com
-> Subject: Re: [RFC] ext4: Add pollable sysfs entry for block threshold events
-> 
-> Hi,
-> 
-> On 03/11/2015 03:12 PM, Luká¹ Czerner wrote:
-> > On Wed, 11 Mar 2015, Beata Michalska wrote:
-> > 
-> >> Date: Wed, 11 Mar 2015 11:16:33 +0100
-> >> From: Beata Michalska <b.michalska@samsung.com>
-> >> To: tytso@mit.edu, adilger.kernel@dilger.ca
-> >> Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-> >>     kyungmin.park@samsung.com
-> >> Subject: [RFC] ext4: Add pollable sysfs entry for block threshold events
-> >>
-> >> Add support for pollable sysfs entry for logical blocks
-> >> threshold, allowing the userspace to wait for
-> >> the notification whenever the threshold is reached
-> >> instead of periodically calling the statfs.
-> >> This is supposed to work as a single-shot notifiaction
-> >> to reduce the number of triggered events.
-> > 
-> > Hi,
-> > 
-> > I though you were advocating for a solution independent on the file
-> > system. This is ext4 only solution, but I do not really have
-> > anything against this.
-> > 
-> 
-> I definitely was/am, but again, that would be an ideal case.
-> Until we work out some sensible solution, possibly based on your idea you
-> have mentioned in another thread, I guess we have to stick to
-> what we've got. The ext4 is within our interest, thus the changes proposed.
+--- Comment #2 from Calvin Walton <calvin.walton@kepstin.ca> ---
+The most likely cause is that you're hitting this long-standing Firefox bug:
+https://bugzilla.mozilla.org/show_bug.cgi?id=237623
+(opened 2004, last marked fixed in February, marked as scheduled for FF 39)
 
-I agree, this change seems to be simple enough to serve as
-workaround for ext4 at the moment.
-
-...snip...
-
-> >> @@ -2967,7 +2962,6 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
-> >>  	if (err)
-> >>  		goto out_err;
-> >>  	err = ext4_handle_dirty_metadata(handle, NULL, gdp_bh);
-> >> -
-> > 
-> > No reason to change that.
-> > 
-> >>  out_err:
-> >>  	brelse(bitmap_bh);
-> >>  	return err;
-> >> @@ -4525,8 +4519,8 @@ out:
-> >>  						reserv_clstrs);
-> >>  	}
-> >>  
-> >> +	ext4_block_thres_notify(sbi);
-> > 
-> > I wonder whether it would not be better to have this directly in
-> > ext4_claim_free_clusters() ? Or maybe even better in
-> > ext4_has_free_clusters() where we already have some of the counters
-> > you need ?
-> > 
-> > This would avoid the overhead of calculating this again since especially
-> > the percpu_counter might get quite expensive.
-> > 
-> 
-> The idea was to call the notify once all the necessary arithmetic
-> has been done, to get the most up-to date data. And to limit the
-> number of calls to notify. In both cases: ext4_claim_free_clusters
-> and ext4_has_free_clusters, smth might go wrong afterwards so the counters
-> might get updated thus affecting the final outcome of ext4_block_thres_notify.
-
-Right, we might get memory allocation, error quota enospc and
-possibly more. However before we do, the space is actually already
-reserved and with your approach someone might get ENOSPC (or at
-least cross the threshold) without the notification.
-
-And secondly, consider for example a delayed allocation which will
-never be allocated because if was freed before we manage to do
-that. Similar case, but possibly with a bigger window.
-
-None of it actually matters too much since this is a threshold
-notification and by the time you get the notification the reality
-will be slightly different anyway. However I think that there is a
-big benefit of having this in one place and avoiding gathering all
-the calculations multiple times.
-
-> >> --- a/fs/ext4/super.c
-> >> +++ b/fs/ext4/super.c
-> >> @@ -2558,10 +2558,56 @@ static ssize_t reserved_clusters_store(struct ext4_attr *a,
-> >>  	if (parse_strtoull(buf, -1ULL, &val))
-> >>  		return -EINVAL;
-> >>  	ret = ext4_reserve_clusters(sbi, val);
-> >> -
-> >> +	ext4_block_thres_notify(sbi);
-> > 
-> > I do not think you count in reserved clusters at the moment. But
-> > it's definitely something you should count in.
-> > 
-> 
-> Well, this is the difference between the free and available blocks.
-> AFAIK, the reserved blocks just mark the difference between those two,
-> and they are not being counted in as far as used blocks are being concerned,
-> at least from the user-space perspective, though I might be missing smth here.
-
-See ext4_statfs(). From user-space perspective those are accounted
-towards used blocks. In the same way as blocks reserved for root.
-
-This value (s_resv_clusters) is also taken into account when
-calculating space available for allocation in
-ext4_has_free_clusters().
-
-It might be a bit confusing, but please read ext4 documentation to
-see what reserved_clusters is for.
-
-> 
-> >>  	return ret ? ret : count;
-> >>  }
-> >>  
-> >> +void ext4_block_thres_notify(struct ext4_sb_info *sbi)
-> >> +{
-> >> +	struct ext4_super_block *es = sbi->s_es;
-> >> +	unsigned long long bcount, bfree;
-> >> +
-> >> +	if (!atomic64_read(&sbi->block_thres_event))
-> >> +		/* No limit set -> no notification needed */
-> >> +		return;
-> >> +	/* Verify the limit has not been reached. If so notify the watchers */
-> >> +	bcount = ext4_blocks_count(es) - EXT4_C2B(sbi, sbi->s_overhead);
-> >> +	bfree = percpu_counter_sum_positive(&sbi->s_freeclusters_counter) -
-> >> +		percpu_counter_sum_positive(&sbi->s_dirtyclusters_counter);
-> >> +	bfree = EXT4_C2B(sbi, max_t(s64, bfree, 0));
-> > 
-> > Hmm is it even possible to have s_dirtyclusters_counter higher than
-> > s_freeclusters_counter ? If so, we might have a big problem
-> > somewhere.
-> > 
->  
-> Looking at the code I would agree that this should not happen, though 
-> this precaution is being used by ext4_statfs, so I assume it actually
-> did happen (?).
-
-Maybe, but that was possibly a bug. So if block_thres_event will
-only be writable by root I'd be tempted to put ext4_warning if we
-see this case.
-
-> 
-> >> +
-> >> +	if (bcount - bfree > atomic64_read(&sbi->block_thres_event)) {
-> >> +		sysfs_notify(&sbi->s_kobj, NULL, "block_thres_event");
-> >> +		/* Prevent flooding notifications */
-> >> +		atomic64_set(&sbi->block_thres_event, 0);
-> >> +	}
-> >> +}
-> >> +
-> >> +static ssize_t block_thres_event_show(struct ext4_attr *a,
-> >> +					struct ext4_sb_info *sbi, char *buf)
-> >> +{
-> >> +	return snprintf(buf, PAGE_SIZE, "%llu\n",
-> >> +		atomic64_read(&sbi->block_thres_event));
-> >> +
-> >> +}
-> >> +
-> >> +static ssize_t block_thres_event_store(struct ext4_attr *a,
-> >> +					struct ext4_sb_info *sbi,
-> >> +					const char *buf, size_t count)
-> >> +{
-> >> +	struct ext4_super_block *es = sbi->s_es;
-> >> +	unsigned long long bcount, val;
-> >> +
-> >> +	bcount = ext4_blocks_count(es) - EXT4_C2B(sbi, sbi->s_overhead);
-> > 
-> > Hmm this might get confusing since user would not expect that they
-> > can not set the limit up to the number of block in the file system.
-> > But even if they set it to the value where EXT4_C2B(sbi,
-> > sbi->s_overhead) would come to the play, they would get the
-> > notification immediately right ? So is it really needed ?
-> > 
-> 
-> Is there much sens to set the threshold on the total number of blocks?
-> If there is an overhead - the used blocks will never hit such threshold,
-> would they? The notification gets triggered whenever the number of used blocks
-> exceeds the one specified as threshold, so in order to get it fired
-> we have to be actually using at least that much, so I'm not sure we can get
-> the case when total == used.
-
-That's not the point. s_overhead is number of block that's used by
-static filesystem structures. When it comes to file system block and
-free space calculations people might view this differently (see
-bsddf vs. minixdf) so I'd like to avoid it altogether.
-
-Maybe having the threshold to be in number of free blocks available
-will be a better approach.
-
-Also do you plat to count with number of blocks reserved for root as
-well ? It might be a good idea since regular users can not allocate
-from that pool. Take a look at ext4_has_free_clusters() to see how
-we figure out whether we have enough block for the allocation to
-proceed.
-
-I think you should use the same approach otherwise the notificaion
-might get out of sync with what the filesystem will allow users to
-allocate.
-
-Thanks!
--Lukas
---8323328-829963532-1426096198=:23678--
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
