@@ -1,65 +1,74 @@
-From: Andy Lutomirski <luto@amacapital.net>
-Subject: Re: [PATCH RFC v2 2/6] fs: protected project id
-Date: Tue, 10 Mar 2015 11:57:01 -0700
-Message-ID: <CALCETrUb8JG6P2==M5d=XnhE-6Z04neo+_h3dtTP-ZyCmAkMnQ@mail.gmail.com>
-References: <20150310171133.23081.49616.stgit@buzz> <20150310172206.23081.95005.stgit@buzz>
- <CALCETrXE99fA1kwiXQvL0oTGZXa-nUwKdQ6_GfUPqXjOq8q0ZA@mail.gmail.com> <CALYGNiP0u51JVtAROdNpK5hYKHrtpT1WSyKS_tqxsTKZ7FWKvw@mail.gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: Ext4 developers get together planning
+Date: Tue, 10 Mar 2015 18:37:20 -0700
+Message-ID: <20150311013720.GD11031@birch.djwong.org>
+References: <nsxbnkb9z0f.fsf@closure.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	Li Xi <pkuelelixi@gmail.com>
-To: Konstantin Khlebnikov <koct9i@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CALYGNiP0u51JVtAROdNpK5hYKHrtpT1WSyKS_tqxsTKZ7FWKvw@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Jun He <jhe@cs.wisc.edu>,
+	Peter Desnoyers <pjd@ccs.neu.edu>,
+	Abutalib Aghayev <agayev@gmail.com>,
+	Daeho Jeong <daeho.jeong@samsung.com>,
+	Jin-Soo Kim <jinsookim@skku.edu>,
+	Jaegeuk Kim <jaegeuk@kernel.org>,
+	Timothy R Feldman <timothy.r.feldman@seagate.com>,
+	Adrian Palmer <adrian.palmer@seagate.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:31022 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751500AbbCKBhv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Mar 2015 21:37:51 -0400
+Content-Disposition: inline
+In-Reply-To: <nsxbnkb9z0f.fsf@closure.thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 10, 2015 at 11:51 AM, Konstantin Khlebnikov
-<koct9i@gmail.com> wrote:
-> On Tue, Mar 10, 2015 at 8:32 PM, Andy Lutomirski <luto@amacapital.net> wrote:
->> On Tue, Mar 10, 2015 at 10:22 AM, Konstantin Khlebnikov
->> <khlebnikov@yandex-team.ru> wrote:
->>> Historically XFS project id doesn't have any permission control: file owner
->>> is able to set any project id. Later they was sealed with user-namespace:
->>> XFS allows to change it only from init user-ns. That works fine for isolated
->>> containers or if user doesn't have direct access to the filesystem (NFS/FTP).
->>>
->>> This patch adds sysctl fs.protected_projects which makes changing project id
->>> privileged operation which requires CAP_SYS_RESOURCE in current user-namespace.
->>> Thus there are two levels of protection: project id mapping in user-ns defines
->>> set of permitted projects and capability protects operations within this set.
->>
->> If I understand this right, this doesn't work.  If I lack
->> CAP_SYS_RESOURCE but I have two projids mapped, then I can create a
->> new userns, map both projids, and get CAP_SYS_RESOURCE.
->
-> Setting project id mapping for nested user-namespace also requires
-> this capability in parent namespace. The same as for setting uid/gid
-> mapping but without special case for mapping current uid/gid because
-> task has no "current" project id.
->
-> This is mentioned in cover letter but I forget it here. Sorry.
+Are you all set for the ext4 summit?  What is the dial in number for those of
+us who cannot make it?
 
-Right, sorry.  I'm still used to projid mappings being unprotected.
+--D
 
---Andy
-
->
->>
->> --Andy
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-
--- 
-Andy Lutomirski
-AMA Capital Management, LLC
+On Mon, Mar 02, 2015 at 10:53:36AM -0500, Theodore Ts'o wrote:
+> 
+> Looking at the Vault schedule, it looks like the best time to schedule
+> the ext4 developer's workshop will be Wednesday from noon to 3pm (we'll
+> meet for lunch and then continue until Jan Kara's ext4 file system
+> scalaing talk.
+> 
+> And then we can pick up Thursday morning starting at 10am and go on
+> until Lunch.  (Or we could start at 9am and skip the Sasha Levin's file
+> system fuzzing talk, but I suspect some people wouldn't want to miss
+> Sasha's talk.)
+> 
+> Does that work for everyone?
+> 
+> Things which I expect will be on the schedule include:
+> 
+> * ext4 encryption progress report (Michael Halcrow, Ted)
+> * making ext4 smr friendly (Abutalib, Peter, Ted, Tim, Adrian)
+> * improving the ext4 block allocator (Jun He)
+> 
+> Since Jaeguk probably would only be interested in the encryption
+> discussions, I'm going to suggest that we schedule the encryption
+> discussions for Thursday morning, and the SMR discussions for Wednesday
+> afternoon, since our minds will be fresh immediately after the SMR
+> discussions on Thursday morning.
+> 
+> What other topics would people like to include?  Please suggest them on
+> this e-mail thread.
+> 
+> Finally, if you are planning on attending, please send me a private
+> e-mail so I know who to expect.  For those of you coming from academia,
+> if you haven't already registered for Vault yet, I've recently received
+> from Angela on a few compliementary academic registrations, so please
+> contact me if you could use one or two.
+> 
+> Cheers,
+> 
+>                                                 - Ted
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
