@@ -1,31 +1,21 @@
-From: "pepa6.es@ono.com" <pepa6.es@ono.com>
-Subject: (unknown)
-Date: Thu, 12 Mar 2015 12:49:37 +0100 (CET)
-Message-ID: <13666170.126121426160977904.JavaMail.defaultUser__9416.31935206733$1426162053$gmane$org@defaultHost>
-Reply-To: pepa6.es@ono.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Ext4 Encryption design document
+Date: Thu, 12 Mar 2015 09:42:02 -0400
+Message-ID: <20150312134202.GA11361@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain;charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=us-ascii
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp3.ono.com ([62.42.230.163]:11389 "EHLO smtp3.ono.com"
+Received: from imap.thunk.org ([74.207.234.97]:35637 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751762AbbCLMGE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Mar 2015 08:06:04 -0400
-Subject: 
+	id S964773AbbCLNmE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Mar 2015 09:42:04 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Proposal,
+Per our discussions this morning, here is the ext4 encryption design document
 
-Respond to my personal email;  mrs.zhangxiao1962@outlook.
-com 
+https://docs.google.com/document/d/1ft26lUQyuSpiu6VleP70_npaWdRfXFoNnB8JYnykNTg/edit?usp=sharing
 
-
-Yours Sincerely.
-Mrs. Zhang Xiao (Accounts book Keeper)
-Angang 
-Steel Company Limited
-396 Nan Zhong Hua Lu, Tie Dong District Anshan, 
-Liaoning 114021, China.
-
+						- Ted
