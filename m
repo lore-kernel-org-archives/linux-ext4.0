@@ -1,354 +1,246 @@
 From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Subject: Re: [v9 3/5] ext4: adds project quota support
-Date: Thu, 12 Mar 2015 19:04:31 +0300
-Message-ID: <5501B90F.6050306@yandex-team.ru>
-References: <1426043003-31043-1-git-send-email-lixi@ddn.com> <1426043003-31043-4-git-send-email-lixi@ddn.com> <CALYGNiN1bfStzKTNX+f6uUUNrhzE4qNFRgCWLF0rZxKXAtn9BQ@mail.gmail.com> <A88EFAED-81C2-430E-A225-879D577BE5C4@dilger.ca>
+Subject: [PATCH RFC v1 1/4] resize2fs: allocate ext2_resize_t outside of
+ resize_fs
+Date: Thu, 12 Mar 2015 19:20:12 +0300
+Message-ID: <20150312162012.17173.29592.stgit@buzz>
+References: <20150312161341.17173.96760.stgit@buzz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: Li Xi <pkuelelixi@gmail.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	=?UTF-8?B?0JTQvNC4?= =?UTF-8?B?0YLRgNC40Lkg0JzQvtC90LDRhdC+0LI=?=
-	<dmonakhov@openvz.org>
-To: Andreas Dilger <adilger@dilger.ca>,
-	Konstantin Khlebnikov <koct9i@gmail.com>
+Cc: Li Xi <pkuelelixi@gmail.com>
+To: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from forward-corp1g.mail.yandex.net ([95.108.253.251]:45865 "EHLO
-	forward-corp1g.mail.yandex.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753556AbbCLQEg (ORCPT
+Received: from forward-corp1m.cmail.yandex.net ([5.255.216.100]:46012 "EHLO
+	forward-corp1m.cmail.yandex.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932203AbbCLQUR (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Mar 2015 12:04:36 -0400
-In-Reply-To: <A88EFAED-81C2-430E-A225-879D577BE5C4@dilger.ca>
+	Thu, 12 Mar 2015 12:20:17 -0400
+In-Reply-To: <20150312161341.17173.96760.stgit@buzz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12.03.2015 18:01, Andreas Dilger wrote:
-> Ted, I was looking at ext2_fs.h in the upstream e2fsprogs and see that
-> all of the reserved inodes have already been used. The last reserved
-> inode was "EXT4_REPLICA_INO", so there is no space for the project
-> quota inode.
->
-> This patch is using inode #9 which conflicts with EXT2_EXCLUDE_INO,
-> while the patch from Konstantin is using inode #11 which is not reserved
-> and conflicts with lost+found on most filesystems.
+This structure will be used for passing more parameters into resize_fs().
 
-I want to reserve more special inodes if feature 'project' is enabled
-at mkfs time. Also I add option to 'resize2fs' for relocating first
-inodes on existing filesystem and making them special.
+Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+---
+ resize/main.c      |   22 +++++++++++++++++++---
+ resize/resize2fs.c |   42 ++++++++++++++----------------------------
+ resize/resize2fs.h |    7 +++----
+ 3 files changed, 36 insertions(+), 35 deletions(-)
 
->
-> What is the best road forward here? Should a new inode be allocated
-> and stored into the superblock?
->
-> Cheers, Andreas
->
->> On Mar 11, 2015, at 03:40, Konstantin Khlebnikov <koct9i@gmail.com> wrote:
->>
->>> On Wed, Mar 11, 2015 at 6:03 AM, Li Xi <pkuelelixi@gmail.com> wrote:
->>> This patch adds mount options for enabling/disabling project quota
->>> accounting and enforcement. A new specific inode is also used for
->>> project quota accounting.
->>>
->>> Signed-off-by: Li Xi <lixi@ddn.com>
->>> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
->>> Reviewed-by: Jan Kara <jack@suse.cz>
->>> ---
->>> fs/ext4/ext4.h  |    8 +++-
->>> fs/ext4/super.c |   99 ++++++++++++++++++++++++++++++++++++++++++++++++-------
->>> 2 files changed, 93 insertions(+), 14 deletions(-)
->>>
->>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
->>> index 7acb2da..3443456 100644
->>> --- a/fs/ext4/ext4.h
->>> +++ b/fs/ext4/ext4.h
->>> @@ -208,6 +208,7 @@ struct ext4_io_submit {
->>> #define EXT4_UNDEL_DIR_INO      6      /* Undelete directory inode */
->>> #define EXT4_RESIZE_INO                 7      /* Reserved group descriptors inode */
->>> #define EXT4_JOURNAL_INO        8      /* Journal inode */
->>> +#define EXT4_PRJ_QUOTA_INO      9      /* Project quota inode */
->>
->> This special inode is reserved for:  EXT2_EXCLUDE_INO 9 /* The
->> "exclude" inode, for snapshots */
->> I'm not sure if it's ok to use it for project quota.
->>
->>>
->>> /* First non-reserved inode for old ext4 filesystems */
->>> #define EXT4_GOOD_OLD_FIRST_INO        11
->>> @@ -987,6 +988,7 @@ struct ext4_inode_info {
->>> #define EXT4_MOUNT_DIOREAD_NOLOCK      0x400000 /* Enable support for dio read nolocking */
->>> #define EXT4_MOUNT_JOURNAL_CHECKSUM    0x800000 /* Journal checksums */
->>> #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT        0x1000000 /* Journal Async Commit */
->>> +#define EXT4_MOUNT_PRJQUOTA            0x2000000 /* Project quota support */
->>> #define EXT4_MOUNT_DELALLOC            0x8000000 /* Delalloc support */
->>> #define EXT4_MOUNT_DATA_ERR_ABORT      0x10000000 /* Abort on file data write */
->>> #define EXT4_MOUNT_BLOCK_VALIDITY      0x20000000 /* Block validity checking */
->>> @@ -1169,7 +1171,8 @@ struct ext4_super_block {
->>>         __le32  s_overhead_clusters;    /* overhead blocks/clusters in fs */
->>>         __le32  s_backup_bgs[2];        /* groups with sparse_super2 SBs */
->>>         __u8    s_encrypt_algos[4];     /* Encryption algorithms in use  */
->>> -       __le32  s_reserved[105];        /* Padding to the end of the block */
->>> +       __le32  s_prj_quota_inum;       /* inode for tracking project quota */
->>> +       __le32  s_reserved[104];        /* Padding to the end of the block */
->>>         __le32  s_checksum;             /* crc32c(superblock) */
->>> };
->>>
->>> @@ -1184,7 +1187,7 @@ struct ext4_super_block {
->>> #define EXT4_MF_FS_ABORTED     0x0002  /* Fatal error detected */
->>>
->>> /* Number of quota types we support */
->>> -#define EXT4_MAXQUOTAS 2
->>> +#define EXT4_MAXQUOTAS 3
->>>
->>> /*
->>>   * fourth extended-fs super-block data in memory
->>> @@ -1376,6 +1379,7 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
->>>                 ino == EXT4_BOOT_LOADER_INO ||
->>>                 ino == EXT4_JOURNAL_INO ||
->>>                 ino == EXT4_RESIZE_INO ||
->>> +               ino == EXT4_PRJ_QUOTA_INO ||
->>>                 (ino >= EXT4_FIRST_INO(sb) &&
->>>                  ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
->>> }
->>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->>> index 04c6cc3..e057daa 100644
->>> --- a/fs/ext4/super.c
->>> +++ b/fs/ext4/super.c
->>> @@ -1036,8 +1036,8 @@ static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
->>> }
->>>
->>> #ifdef CONFIG_QUOTA
->>> -#define QTYPE2NAME(t) ((t) == USRQUOTA ? "user" : "group")
->>> -#define QTYPE2MOPT(on, t) ((t) == USRQUOTA?((on)##USRJQUOTA):((on)##GRPJQUOTA))
->>> +static char *quotatypes[] = INITQFNAMES;
->>> +#define QTYPE2NAME(t) (quotatypes[t])
->>>
->>> static int ext4_write_dquot(struct dquot *dquot);
->>> static int ext4_acquire_dquot(struct dquot *dquot);
->>> @@ -1135,7 +1135,8 @@ enum {
->>>         Opt_journal_path, Opt_journal_checksum, Opt_journal_async_commit,
->>>         Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
->>>         Opt_data_err_abort, Opt_data_err_ignore,
->>> -       Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
->>> +       Opt_usrjquota, Opt_grpjquota, Opt_prjjquota,
->>> +       Opt_offusrjquota, Opt_offgrpjquota, Opt_offprjjquota,
->>>         Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_jqfmt_vfsv1, Opt_quota,
->>>         Opt_noquota, Opt_barrier, Opt_nobarrier, Opt_err,
->>>         Opt_usrquota, Opt_grpquota, Opt_i_version,
->>> @@ -1190,6 +1191,8 @@ static const match_table_t tokens = {
->>>         {Opt_usrjquota, "usrjquota=%s"},
->>>         {Opt_offgrpjquota, "grpjquota="},
->>>         {Opt_grpjquota, "grpjquota=%s"},
->>> +       {Opt_prjjquota, "prjjquota"},
->>> +       {Opt_offprjjquota, "offprjjquota"},
->>>         {Opt_jqfmt_vfsold, "jqfmt=vfsold"},
->>>         {Opt_jqfmt_vfsv0, "jqfmt=vfsv0"},
->>>         {Opt_jqfmt_vfsv1, "jqfmt=vfsv1"},
->>> @@ -1412,11 +1415,14 @@ static const struct mount_opts {
->>>         {Opt_grpquota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_GRPQUOTA,
->>>                                                         MOPT_SET | MOPT_Q},
->>>         {Opt_noquota, (EXT4_MOUNT_QUOTA | EXT4_MOUNT_USRQUOTA |
->>> -                      EXT4_MOUNT_GRPQUOTA), MOPT_CLEAR | MOPT_Q},
->>> +                      EXT4_MOUNT_GRPQUOTA | EXT4_MOUNT_PRJQUOTA),
->>> +                                                       MOPT_CLEAR | MOPT_Q},
->>>         {Opt_usrjquota, 0, MOPT_Q},
->>>         {Opt_grpjquota, 0, MOPT_Q},
->>> +       {Opt_prjjquota, 0, MOPT_Q},
->>>         {Opt_offusrjquota, 0, MOPT_Q},
->>>         {Opt_offgrpjquota, 0, MOPT_Q},
->>> +       {Opt_offprjjquota, 0, MOPT_Q},
->>>         {Opt_jqfmt_vfsold, QFMT_VFS_OLD, MOPT_QFMT},
->>>         {Opt_jqfmt_vfsv0, QFMT_VFS_V0, MOPT_QFMT},
->>>         {Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
->>> @@ -1433,16 +1439,25 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
->>>         kuid_t uid;
->>>         kgid_t gid;
->>>         int arg = 0;
->>> -
->>> #ifdef CONFIG_QUOTA
->>> +       char *prj_qf_name = "aquota.project";
->>
->> If you already have inode numer in super-block why do you need this name here?
->> Modern journalled quota is stored in special inodes and invisible from
->> user-space.
->>
->>> +       substring_t prj_qf_string = {
->>> +               .from = prj_qf_name,
->>> +               .to = &prj_qf_name[strlen(prj_qf_name)],
->>> +       };
->>> +
->>>         if (token == Opt_usrjquota)
->>>                 return set_qf_name(sb, USRQUOTA, &args[0]);
->>>         else if (token == Opt_grpjquota)
->>>                 return set_qf_name(sb, GRPQUOTA, &args[0]);
->>> +       else if (token == Opt_prjjquota)
->>> +               return set_qf_name(sb, PRJQUOTA, &prj_qf_string);
->>>         else if (token == Opt_offusrjquota)
->>>                 return clear_qf_name(sb, USRQUOTA);
->>>         else if (token == Opt_offgrpjquota)
->>>                 return clear_qf_name(sb, GRPQUOTA);
->>> +       else if (token == Opt_offprjjquota)
->>> +               return clear_qf_name(sb, PRJQUOTA);
->>> #endif
->>>         switch (token) {
->>>         case Opt_noacl:
->>> @@ -1668,19 +1683,28 @@ static int parse_options(char *options, struct super_block *sb,
->>>         }
->>> #ifdef CONFIG_QUOTA
->>>         if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
->>> -           (test_opt(sb, USRQUOTA) || test_opt(sb, GRPQUOTA))) {
->>> +           (test_opt(sb, USRQUOTA) ||
->>> +            test_opt(sb, GRPQUOTA) ||
->>> +            test_opt(sb, PRJQUOTA))) {
->>>                 ext4_msg(sb, KERN_ERR, "Cannot set quota options when QUOTA "
->>>                          "feature is enabled");
->>>                 return 0;
->>>         }
->>> -       if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
->>> +       if (sbi->s_qf_names[USRQUOTA] ||
->>> +           sbi->s_qf_names[GRPQUOTA] ||
->>> +           sbi->s_qf_names[PRJQUOTA]) {
->>>                 if (test_opt(sb, USRQUOTA) && sbi->s_qf_names[USRQUOTA])
->>>                         clear_opt(sb, USRQUOTA);
->>>
->>>                 if (test_opt(sb, GRPQUOTA) && sbi->s_qf_names[GRPQUOTA])
->>>                         clear_opt(sb, GRPQUOTA);
->>>
->>> -               if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA)) {
->>> +               if (test_opt(sb, PRJQUOTA) && sbi->s_qf_names[PRJQUOTA])
->>> +                       clear_opt(sb, PRJQUOTA);
->>> +
->>> +               if (test_opt(sb, GRPQUOTA) ||
->>> +                   test_opt(sb, USRQUOTA) ||
->>> +                   test_opt(sb, PRJQUOTA)) {
->>>                         ext4_msg(sb, KERN_ERR, "old and new quota "
->>>                                         "format mixing");
->>>                         return 0;
->>> @@ -1740,6 +1764,9 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
->>>
->>>         if (sbi->s_qf_names[GRPQUOTA])
->>>                 seq_printf(seq, ",grpjquota=%s", sbi->s_qf_names[GRPQUOTA]);
->>> +
->>> +       if (sbi->s_qf_names[PRJQUOTA])
->>> +               seq_printf(seq, ",prjjquota=%s", sbi->s_qf_names[PRJQUOTA]);
->>> #endif
->>> }
->>>
->>> @@ -3944,7 +3971,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->>>                 sb->s_qcop = &ext4_qctl_sysfile_operations;
->>>         else
->>>                 sb->s_qcop = &ext4_qctl_operations;
->>> -       sb->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
->>> +       sb->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP | QTYPE_MASK_PRJ;
->>> #endif
->>>         memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
->>>
->>> @@ -5040,6 +5067,46 @@ restore_opts:
->>>         return err;
->>> }
->>>
->>> +static int ext4_statfs_project(struct super_block *sb,
->>> +                              kprojid_t projid, struct kstatfs *buf)
->>> +{
->>> +       struct kqid qid;
->>> +       struct dquot *dquot;
->>> +       u64 limit;
->>> +       u64 curblock;
->>> +
->>> +       qid = make_kqid_projid(projid);
->>> +       dquot = dqget(sb, qid);
->>> +       if (!dquot)
->>> +               return -ESRCH;
->>> +       spin_lock(&dq_data_lock);
->>> +
->>> +       limit = dquot->dq_dqb.dqb_bsoftlimit ?
->>> +               dquot->dq_dqb.dqb_bsoftlimit :
->>> +               dquot->dq_dqb.dqb_bhardlimit;
->>> +       if (limit && buf->f_blocks * buf->f_bsize > limit) {
->>> +               curblock = dquot->dq_dqb.dqb_curspace / buf->f_bsize;
->>> +               buf->f_blocks = limit / buf->f_bsize;
->>> +               buf->f_bfree = buf->f_bavail =
->>> +                       (buf->f_blocks > curblock) ?
->>> +                        (buf->f_blocks - curblock) : 0;
->>> +       }
->>> +
->>> +       limit = dquot->dq_dqb.dqb_isoftlimit ?
->>> +               dquot->dq_dqb.dqb_isoftlimit :
->>> +               dquot->dq_dqb.dqb_ihardlimit;
->>> +       if (limit && buf->f_files > limit) {
->>> +               buf->f_files = limit;
->>> +               buf->f_ffree =
->>> +                       (buf->f_files > dquot->dq_dqb.dqb_curinodes) ?
->>> +                        (buf->f_files - dquot->dq_dqb.dqb_curinodes) : 0;
->>> +       }
->>> +
->>> +       spin_unlock(&dq_data_lock);
->>> +       dqput(dquot);
->>> +       return 0;
->>> +}
->>> +
->>> static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
->>> {
->>>         struct super_block *sb = dentry->d_sb;
->>> @@ -5048,6 +5115,7 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
->>>         ext4_fsblk_t overhead = 0, resv_blocks;
->>>         u64 fsid;
->>>         s64 bfree;
->>> +       struct inode *inode = dentry->d_inode;
->>>         resv_blocks = EXT4_C2B(sbi, atomic64_read(&sbi->s_resv_clusters));
->>>
->>>         if (!test_opt(sb, MINIX_DF))
->>> @@ -5072,6 +5140,9 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
->>>         buf->f_fsid.val[0] = fsid & 0xFFFFFFFFUL;
->>>         buf->f_fsid.val[1] = (fsid >> 32) & 0xFFFFFFFFUL;
->>>
->>> +       if (ext4_test_inode_flag(inode, EXT4_INODE_PROJINHERIT) &&
->>> +           sb_has_quota_limits_enabled(sb, PRJQUOTA))
->>> +               ext4_statfs_project(sb, EXT4_I(inode)->i_projid, buf);
->>>         return 0;
->>> }
->>>
->>> @@ -5152,7 +5223,9 @@ static int ext4_mark_dquot_dirty(struct dquot *dquot)
->>>
->>>         /* Are we journaling quotas? */
->>>         if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) ||
->>> -           sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
->>> +           sbi->s_qf_names[USRQUOTA] ||
->>> +           sbi->s_qf_names[GRPQUOTA] ||
->>> +           sbi->s_qf_names[PRJQUOTA]) {
->>>                 dquot_mark_dquot_dirty(dquot);
->>>                 return ext4_write_dquot(dquot);
->>>         } else {
->>> @@ -5236,7 +5309,8 @@ static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
->>>         struct inode *qf_inode;
->>>         unsigned long qf_inums[EXT4_MAXQUOTAS] = {
->>>                 le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
->>> -               le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
->>> +               le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum),
->>> +               le32_to_cpu(EXT4_SB(sb)->s_es->s_prj_quota_inum)
->>>         };
->>>
->>>         BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA));
->>> @@ -5264,7 +5338,8 @@ static int ext4_enable_quotas(struct super_block *sb)
->>>         int type, err = 0;
->>>         unsigned long qf_inums[EXT4_MAXQUOTAS] = {
->>>                 le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
->>> -               le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
->>> +               le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum),
->>> +               le32_to_cpu(EXT4_SB(sb)->s_es->s_prj_quota_inum)
->>>         };
->>>
->>>         sb_dqopt(sb)->flags |= DQUOT_QUOTA_SYS_FILE;
->>> --
->>> 1.7.1
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+diff --git a/resize/main.c b/resize/main.c
+index c25de61947f3..16f48d438cb0 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -187,6 +187,7 @@ int main (int argc, char ** argv)
+ 	long		sysval;
+ 	int		len, mount_flags;
+ 	char		*mtpt;
++	ext2_resize_t	rfs;
+ 
+ #ifdef ENABLE_NLS
+ 	setlocale(LC_MESSAGES, "");
+@@ -203,6 +204,15 @@ int main (int argc, char ** argv)
+ 	if (argc && *argv)
+ 		program_name = *argv;
+ 
++	/*
++	 * Create the data structure
++	 */
++	retval = ext2fs_get_memzero(sizeof(struct ext2_resize_struct), &rfs);
++	if (retval) {
++		com_err("resize2fs", retval, "can't allocate data structure\n");
++		exit(1);
++	}
++
+ 	while ((c = getopt(argc, argv, "d:fFhMPpS:bs")) != EOF) {
+ 		switch (c) {
+ 		case 'h':
+@@ -526,9 +536,14 @@ int main (int argc, char ** argv)
+ 			printf(_("Resizing the filesystem on "
+ 				 "%s to %llu (%dk) blocks.\n"),
+ 			       device_name, new_size, blocksize / 1024);
+-		retval = resize_fs(fs, &new_size, flags,
+-				   ((flags & RESIZE_PERCENT_COMPLETE) ?
+-				    resize_progress_func : 0));
++
++		rfs->flags = flags;
++		rfs->new_size = new_size;
++		if (flags & RESIZE_PERCENT_COMPLETE)
++			rfs->progress = resize_progress_func;
++
++		retval = resize_fs(fs, rfs);
++		new_size = rfs->new_size;
+ 	}
+ 	free(mtpt);
+ 	if (retval) {
+@@ -562,5 +577,6 @@ int main (int argc, char ** argv)
+ 	if (fd > 0)
+ 		close(fd);
+ 	remove_error_table(&et_ext2_error_table);
++	ext2fs_free_mem(&rfs);
+ 	return (0);
+ }
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 041ff75029b2..dead364bf4bf 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -42,7 +42,7 @@
+ #endif
+ 
+ static void fix_uninit_block_bitmaps(ext2_filsys fs);
+-static errcode_t adjust_superblock(ext2_resize_t rfs, blk64_t new_size);
++static errcode_t adjust_superblock(ext2_resize_t rfs);
+ static errcode_t blocks_to_move(ext2_resize_t rfs);
+ static errcode_t block_mover(ext2_resize_t rfs);
+ static errcode_t inode_scan_and_fix(ext2_resize_t rfs);
+@@ -56,7 +56,7 @@ static errcode_t mark_table_blocks(ext2_filsys fs,
+ static errcode_t clear_sparse_super2_last_group(ext2_resize_t rfs);
+ static errcode_t reserve_sparse_super2_last_group(ext2_resize_t rfs,
+ 						 ext2fs_block_bitmap meta_bmap);
+-static errcode_t resize_group_descriptors(ext2_resize_t rfs, blk64_t new_size);
++static errcode_t resize_group_descriptors(ext2_resize_t rfs);
+ static errcode_t move_bg_metadata(ext2_resize_t rfs);
+ static errcode_t zero_high_bits_in_inodes(ext2_resize_t rfs);
+ 
+@@ -84,28 +84,15 @@ static int lazy_itable_init;
+ /*
+  * This is the top-level routine which does the dirty deed....
+  */
+-errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
+-	    errcode_t (*progress)(ext2_resize_t rfs, int pass,
+-					  unsigned long cur,
+-					  unsigned long max_val))
++errcode_t resize_fs(ext2_filsys fs, ext2_resize_t rfs)
+ {
+-	ext2_resize_t	rfs;
+ 	errcode_t	retval;
+ 	struct resource_track	rtrack, overall_track;
++	int flags = rfs->flags;
+ 
+-	/*
+-	 * Create the data structure
+-	 */
+-	retval = ext2fs_get_mem(sizeof(struct ext2_resize_struct), &rfs);
+-	if (retval)
+-		return retval;
+-
+-	memset(rfs, 0, sizeof(struct ext2_resize_struct));
+-	fs->priv_data = rfs;
+ 	rfs->old_fs = fs;
+-	rfs->flags = flags;
+-	rfs->itable_buf	 = 0;
+-	rfs->progress = progress;
++	fs->priv_data = rfs;
++	rfs->itable_buf = 0;
+ 
+ 	init_resource_track(&overall_track, "overall resize2fs", fs->io);
+ 	init_resource_track(&rtrack, "read_bitmaps", fs->io);
+@@ -126,7 +113,7 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
+ 		goto errout;
+ 
+ 	init_resource_track(&rtrack, "resize_group_descriptors", fs->io);
+-	retval = resize_group_descriptors(rfs, *new_size);
++	retval = resize_group_descriptors(rfs);
+ 	if (retval)
+ 		goto errout;
+ 	print_resource_track(rfs, &rtrack, fs->io);
+@@ -144,7 +131,7 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
+ 	print_resource_track(rfs, &rtrack, fs->io);
+ 
+ 	init_resource_track(&rtrack, "adjust_superblock", fs->io);
+-	retval = adjust_superblock(rfs, *new_size);
++	retval = adjust_superblock(rfs);
+ 	if (retval)
+ 		goto errout;
+ 	print_resource_track(rfs, &rtrack, fs->io);
+@@ -156,7 +143,7 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
+ 	ext2fs_bg_flags_clear(rfs->new_fs, rfs->new_fs->group_desc_count - 1,
+ 			     EXT2_BG_BLOCK_UNINIT);
+ 
+-	*new_size = ext2fs_blocks_count(rfs->new_fs->super);
++	rfs->new_size = ext2fs_blocks_count(rfs->new_fs->super);
+ 
+ 	init_resource_track(&rtrack, "blocks_to_move", fs->io);
+ 	retval = blocks_to_move(rfs);
+@@ -240,7 +227,6 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
+ 		ext2fs_free_block_bitmap(rfs->reserve_blocks);
+ 	if (rfs->move_blocks)
+ 		ext2fs_free_block_bitmap(rfs->move_blocks);
+-	ext2fs_free_mem(&rfs);
+ 
+ 	return 0;
+ 
+@@ -251,7 +237,6 @@ errout:
+ 	}
+ 	if (rfs->itable_buf)
+ 		ext2fs_free_mem(&rfs->itable_buf);
+-	ext2fs_free_mem(&rfs);
+ 	return retval;
+ }
+ 
+@@ -274,7 +259,7 @@ static void adjust_reserved_gdt_blocks(ext2_filsys old_fs, ext2_filsys fs)
+ }
+ 
+ /* Toggle 64bit mode */
+-static errcode_t resize_group_descriptors(ext2_resize_t rfs, blk64_t new_size)
++static errcode_t resize_group_descriptors(ext2_resize_t rfs)
+ {
+ 	void *o, *n, *new_group_desc;
+ 	dgrp_t i;
+@@ -284,7 +269,7 @@ static errcode_t resize_group_descriptors(ext2_resize_t rfs, blk64_t new_size)
+ 	if (!(rfs->flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)))
+ 		return 0;
+ 
+-	if (new_size != ext2fs_blocks_count(rfs->new_fs->super) ||
++	if (rfs->new_size != ext2fs_blocks_count(rfs->new_fs->super) ||
+ 	    ext2fs_blocks_count(rfs->new_fs->super) >= (1ULL << 32) ||
+ 	    (rfs->flags & RESIZE_DISABLE_64BIT &&
+ 	     rfs->flags & RESIZE_ENABLE_64BIT))
+@@ -1006,7 +991,7 @@ errout:
+  * This routine adjusts the superblock and other data structures, both
+  * in disk as well as in memory...
+  */
+-static errcode_t adjust_superblock(ext2_resize_t rfs, blk64_t new_size)
++static errcode_t adjust_superblock(ext2_resize_t rfs)
+ {
+ 	ext2_filsys	fs = rfs->new_fs;
+ 	int		adj = 0;
+@@ -1024,7 +1009,8 @@ static errcode_t adjust_superblock(ext2_resize_t rfs, blk64_t new_size)
+ 	if (retval)
+ 		return retval;
+ 
+-	retval = adjust_fs_info(fs, rfs->old_fs, rfs->reserve_blocks, new_size);
++	retval = adjust_fs_info(fs, rfs->old_fs,
++				rfs->reserve_blocks, rfs->new_size);
+ 	if (retval)
+ 		goto errout;
+ 
+diff --git a/resize/resize2fs.h b/resize/resize2fs.h
+index 829fcd8ea8e1..c5377e2b06c3 100644
+--- a/resize/resize2fs.h
++++ b/resize/resize2fs.h
+@@ -128,6 +128,8 @@ struct ext2_resize_struct {
+ 				    unsigned long cur,
+ 				    unsigned long max);
+ 	void		*prog_data;
++
++	blk64_t		new_size;
+ };
+ 
+ /*
+@@ -141,10 +143,7 @@ struct ext2_resize_struct {
+ 
+ 
+ /* prototypes */
+-extern errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
+-			   errcode_t	(*progress)(ext2_resize_t rfs,
+-					    int pass, unsigned long cur,
+-					    unsigned long max));
++extern errcode_t resize_fs(ext2_filsys fs, ext2_resize_t rfs);
+ 
+ extern errcode_t adjust_fs_info(ext2_filsys fs, ext2_filsys old_fs,
+ 				ext2fs_block_bitmap reserve_blocks,
 
