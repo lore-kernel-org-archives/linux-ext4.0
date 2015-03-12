@@ -1,8 +1,8 @@
 From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Subject: [PATCH RFC v1 4/4] e2fsprogs: add test for mke2fs -E first_inode
- and resize2fs -I
-Date: Thu, 12 Mar 2015 19:20:16 +0300
-Message-ID: <20150312162016.17173.18266.stgit@buzz>
+Subject: [PATCH RFC v1 2/4] resize2fs: add option -I for reserving more
+ special inodes
+Date: Thu, 12 Mar 2015 19:20:13 +0300
+Message-ID: <20150312162013.17173.71244.stgit@buzz>
 References: <20150312161341.17173.96760.stgit@buzz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -12,383 +12,254 @@ To: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
 	Theodore Ts'o <tytso@mit.edu>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from forward-corp1m.cmail.yandex.net ([5.255.216.100]:46031 "EHLO
-	forward-corp1m.cmail.yandex.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932388AbbCLQUV (ORCPT
+Received: from forward-corp1g.mail.yandex.net ([95.108.253.251]:46418 "EHLO
+	forward-corp1g.mail.yandex.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932395AbbCLQUS (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Mar 2015 12:20:21 -0400
+	Thu, 12 Mar 2015 12:20:18 -0400
 In-Reply-To: <20150312161341.17173.96760.stgit@buzz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Test creates new filesystem with 10 special inodes and then reserves next 10.
+Resize2fs relocates last inodes when it shinks filesystem.
+This patch reuses this code for relocating first inodes,
+it adds option '-I' for changing first normal inode.
 
 Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
 ---
- tests/r_resize_special/expect |  292 +++++++++++++++++++++++++++++++++++++++++
- tests/r_resize_special/name   |    1 
- tests/r_resize_special/script |   47 +++++++
- 3 files changed, 340 insertions(+)
- create mode 100644 tests/r_resize_special/expect
- create mode 100644 tests/r_resize_special/name
- create mode 100644 tests/r_resize_special/script
+ resize/main.c         |   38 ++++++++++++++++++++++++++++++++----
+ resize/resize2fs.8.in |    8 ++++++++
+ resize/resize2fs.c    |   52 +++++++++++++++++++++++++++++++++++++++++++++++--
+ resize/resize2fs.h    |    3 +++
+ 4 files changed, 95 insertions(+), 6 deletions(-)
 
-diff --git a/tests/r_resize_special/expect b/tests/r_resize_special/expect
-new file mode 100644
-index 000000000000..8aba1ea0abd5
---- /dev/null
-+++ b/tests/r_resize_special/expect
-@@ -0,0 +1,292 @@
-+mke2fs -E first_inode=11 -q -F -o Linux -b 1024 -g 1024 test.img 16384
-+dumpe2fs test.img
-+Filesystem volume name:   <none>
-+Last mounted on:          <not available>
-+Filesystem magic number:  0xEF53
-+Filesystem revision #:    1 (dynamic)
-+Filesystem features:      ext_attr resize_inode dir_index filetype sparse_super
-+Default mount options:    (none)
-+Filesystem state:         clean
-+Errors behavior:          Continue
-+Filesystem OS type:       Linux
-+Inode count:              4096
-+Block count:              16384
-+Reserved block count:     819
-+Free blocks:              14277
-+Free inodes:              4085
-+First block:              1
-+Block size:               1024
-+Fragment size:            1024
-+Reserved GDT blocks:      256
-+Blocks per group:         1024
-+Fragments per group:      1024
-+Inodes per group:         256
-+Inode blocks per group:   32
-+Mount count:              0
-+Check interval:           15552000 (6 months)
-+Reserved blocks uid:      0
-+Reserved blocks gid:      0
-+First inode:              11
-+Inode size:	          128
-+Default directory hash:   half_md4
+diff --git a/resize/main.c b/resize/main.c
+index 16f48d438cb0..eae7146f41ab 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -41,8 +41,9 @@ static char *device_name, *io_options;
+ 
+ static void usage (char *prog)
+ {
+-	fprintf (stderr, _("Usage: %s [-d debug_flags] [-f] [-F] [-M] [-P] "
+-			   "[-p] device [-b|-s|new_size]\n\n"), prog);
++	fprintf (stderr, _("Usage: %s [-d debug_flags] [-f] [-F] [-M] [-P]"
++			   "[-p] [-I first_inode] device [-b|-s|new_size]\n\n"),
++			prog);
+ 
+ 	exit (1);
+ }
+@@ -213,7 +214,7 @@ int main (int argc, char ** argv)
+ 		exit(1);
+ 	}
+ 
+-	while ((c = getopt(argc, argv, "d:fFhMPpS:bs")) != EOF) {
++	while ((c = getopt(argc, argv, "d:fFhMPpS:bsI:")) != EOF) {
+ 		switch (c) {
+ 		case 'h':
+ 			usage(program_name);
+@@ -245,6 +246,10 @@ int main (int argc, char ** argv)
+ 		case 's':
+ 			flags |= RESIZE_DISABLE_64BIT;
+ 			break;
++		case 'I':
++			flags |= RESIZE_SPECIAL_INODES;
++			rfs->first_ino = atoi(optarg);
++			break;
+ 		default:
+ 			usage(program_name);
+ 		}
+@@ -430,7 +435,8 @@ int main (int argc, char ** argv)
+ 			new_size &= ~((sys_page_size / blocksize)-1);
+ 	}
+ 	/* If changing 64bit, don't change the filesystem size. */
+-	if (flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)) {
++	if (flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT |
++		     RESIZE_SPECIAL_INODES)) {
+ 		new_size = ext2fs_blocks_count(fs->super);
+ 	}
+ 	if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
+@@ -507,6 +513,28 @@ int main (int argc, char ** argv)
+ 				"feature.\n"));
+ 			exit(1);
+ 		}
++	} else if (flags & RESIZE_SPECIAL_INODES) {
++		if (rfs->first_ino > fs->super->s_inodes_count) {
++			fprintf(stderr, _("First inode too big\n"));
++			exit(1);
++		}
++		if (rfs->first_ino < EXT2_FIRST_INO(fs->super)) {
++			fprintf(stderr, _("The filesystem has %d special inodes."
++					  "Reducing isn't supported.\n\n"),
++					EXT2_FIRST_INO(fs->super));
++			exit(1);
++		}
++		if (rfs->first_ino == EXT2_FIRST_INO(fs->super)) {
++			fprintf(stderr, _("The filesystem already has %d "
++					  "special inodes. Nothing to do!\n\n"),
++					EXT2_FIRST_INO(fs->super));
++			exit(0);
++		}
++		if (mount_flags & EXT2_MF_MOUNTED) {
++			fprintf(stderr, _("Cannot change count of special "
++				"inodes while the filesystem is mounted.\n"));
++			exit(1);
++		}
+ 	} else if (new_size == ext2fs_blocks_count(fs->super)) {
+ 		fprintf(stderr, _("The filesystem is already %llu (%dk) "
+ 			"blocks long.  Nothing to do!\n\n"), new_size,
+@@ -532,6 +560,8 @@ int main (int argc, char ** argv)
+ 			printf(_("Converting the filesystem to 64-bit.\n"));
+ 		else if (flags & RESIZE_DISABLE_64BIT)
+ 			printf(_("Converting the filesystem to 32-bit.\n"));
++		else if (flags & RESIZE_SPECIAL_INODES)
++			printf(_("Reserving special inodes.\n"));
+ 		else
+ 			printf(_("Resizing the filesystem on "
+ 				 "%s to %llu (%dk) blocks.\n"),
+diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
+index 0129bfcafa3b..f22563fe07e1 100644
+--- a/resize/resize2fs.8.in
++++ b/resize/resize2fs.8.in
+@@ -18,6 +18,10 @@ resize2fs \- ext2/ext3/ext4 file system resizer
+ .B \-S
+ .I RAID-stride
+ ]
++[
++.B \-I
++.I first-inode
++]
+ .I device
+ [
+ .I size
+@@ -101,6 +105,10 @@ to resize the filesystem concurrent with changing the 64bit status.
+ Turns on the 64bit feature, resizes the group descriptors as necessary, and
+ moves other metadata out of the way.
+ .TP
++.B \-I \fI <first-inode>
++This changes first normal inode and relocates inuse inodes into vacant slots.
++Inodes below that are reserved for internal use. Reducing isn't supported.
++.TP
+ .B \-d \fIdebug-flags
+ Turns on various resize2fs debugging features, if they have been compiled
+ into the binary.
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index dead364bf4bf..2fb653b76dd8 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -48,6 +48,7 @@ static errcode_t block_mover(ext2_resize_t rfs);
+ static errcode_t inode_scan_and_fix(ext2_resize_t rfs);
+ static errcode_t inode_ref_fix(ext2_resize_t rfs);
+ static errcode_t move_itables(ext2_resize_t rfs);
++static errcode_t zero_new_special_inodes(ext2_resize_t rfs);
+ static errcode_t fix_resize_inode(ext2_filsys fs);
+ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
+ static errcode_t fix_sb_journal_backup(ext2_filsys fs);
+@@ -112,6 +113,11 @@ errcode_t resize_fs(ext2_filsys fs, ext2_resize_t rfs)
+ 	if (retval)
+ 		goto errout;
+ 
++	if (flags & RESIZE_SPECIAL_INODES) {
++		ext2fs_update_dynamic_rev(rfs->new_fs);
++		EXT2_SB(rfs->new_fs->super)->s_first_ino = rfs->first_ino;
++	}
 +
+ 	init_resource_track(&rtrack, "resize_group_descriptors", fs->io);
+ 	retval = resize_group_descriptors(rfs);
+ 	if (retval)
+@@ -177,6 +183,12 @@ errcode_t resize_fs(ext2_filsys fs, ext2_resize_t rfs)
+ 		goto errout;
+ 	print_resource_track(rfs, &rtrack, fs->io);
+ 
++	init_resource_track(&rtrack, "zero_new_special_inodes", fs->io);
++	retval = zero_new_special_inodes(rfs);
++	if (retval)
++		goto errout;
++	print_resource_track(rfs, &rtrack, fs->io);
 +
-+Group 0: (Blocks 1-1024)
-+  Primary superblock at 1, Group descriptors at 2-2
-+  Reserved GDT blocks at 3-258
-+  Block bitmap at 259 (+258), Inode bitmap at 260 (+259)
-+  Inode table at 261-292 (+260)
-+  718 free blocks, 245 free inodes, 2 directories
-+  Free blocks: 307-1024
-+  Free inodes: 12-256
-+Group 1: (Blocks 1025-2048)
-+  Backup superblock at 1025, Group descriptors at 1026-1026
-+  Reserved GDT blocks at 1027-1282
-+  Block bitmap at 1283 (+258), Inode bitmap at 1284 (+259)
-+  Inode table at 1285-1316 (+260)
-+  732 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 1317-2048
-+  Free inodes: 257-512
-+Group 2: (Blocks 2049-3072)
-+  Block bitmap at 2049 (+0), Inode bitmap at 2050 (+1)
-+  Inode table at 2051-2082 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 2083-3072
-+  Free inodes: 513-768
-+Group 3: (Blocks 3073-4096)
-+  Backup superblock at 3073, Group descriptors at 3074-3074
-+  Reserved GDT blocks at 3075-3330
-+  Block bitmap at 3331 (+258), Inode bitmap at 3332 (+259)
-+  Inode table at 3333-3364 (+260)
-+  732 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 3365-4096
-+  Free inodes: 769-1024
-+Group 4: (Blocks 4097-5120)
-+  Block bitmap at 4097 (+0), Inode bitmap at 4098 (+1)
-+  Inode table at 4099-4130 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 4131-5120
-+  Free inodes: 1025-1280
-+Group 5: (Blocks 5121-6144)
-+  Backup superblock at 5121, Group descriptors at 5122-5122
-+  Reserved GDT blocks at 5123-5378
-+  Block bitmap at 5379 (+258), Inode bitmap at 5380 (+259)
-+  Inode table at 5381-5412 (+260)
-+  732 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 5413-6144
-+  Free inodes: 1281-1536
-+Group 6: (Blocks 6145-7168)
-+  Block bitmap at 6145 (+0), Inode bitmap at 6146 (+1)
-+  Inode table at 6147-6178 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 6179-7168
-+  Free inodes: 1537-1792
-+Group 7: (Blocks 7169-8192)
-+  Backup superblock at 7169, Group descriptors at 7170-7170
-+  Reserved GDT blocks at 7171-7426
-+  Block bitmap at 7427 (+258), Inode bitmap at 7428 (+259)
-+  Inode table at 7429-7460 (+260)
-+  732 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 7461-8192
-+  Free inodes: 1793-2048
-+Group 8: (Blocks 8193-9216)
-+  Block bitmap at 8193 (+0), Inode bitmap at 8194 (+1)
-+  Inode table at 8195-8226 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 8227-9216
-+  Free inodes: 2049-2304
-+Group 9: (Blocks 9217-10240)
-+  Backup superblock at 9217, Group descriptors at 9218-9218
-+  Reserved GDT blocks at 9219-9474
-+  Block bitmap at 9475 (+258), Inode bitmap at 9476 (+259)
-+  Inode table at 9477-9508 (+260)
-+  732 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 9509-10240
-+  Free inodes: 2305-2560
-+Group 10: (Blocks 10241-11264)
-+  Block bitmap at 10241 (+0), Inode bitmap at 10242 (+1)
-+  Inode table at 10243-10274 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 10275-11264
-+  Free inodes: 2561-2816
-+Group 11: (Blocks 11265-12288)
-+  Block bitmap at 11265 (+0), Inode bitmap at 11266 (+1)
-+  Inode table at 11267-11298 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 11299-12288
-+  Free inodes: 2817-3072
-+Group 12: (Blocks 12289-13312)
-+  Block bitmap at 12289 (+0), Inode bitmap at 12290 (+1)
-+  Inode table at 12291-12322 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 12323-13312
-+  Free inodes: 3073-3328
-+Group 13: (Blocks 13313-14336)
-+  Block bitmap at 13313 (+0), Inode bitmap at 13314 (+1)
-+  Inode table at 13315-13346 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 13347-14336
-+  Free inodes: 3329-3584
-+Group 14: (Blocks 14337-15360)
-+  Block bitmap at 14337 (+0), Inode bitmap at 14338 (+1)
-+  Inode table at 14339-14370 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 14371-15360
-+  Free inodes: 3585-3840
-+Group 15: (Blocks 15361-16383)
-+  Block bitmap at 15361 (+0), Inode bitmap at 15362 (+1)
-+  Inode table at 15363-15394 (+2)
-+  989 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 15395-16383
-+  Free inodes: 3841-4096
-+resize2fs -I 21 test.img
-+Reserving special inodes.
-+The filesystem on test.img is now 16384 (1k) blocks long.
+ 	init_resource_track(&rtrack, "move_itables", fs->io);
+ 	retval = move_itables(rfs);
+ 	if (retval)
+@@ -1963,7 +1975,8 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs)
+ 
+ 	if ((rfs->old_fs->group_desc_count <=
+ 	     rfs->new_fs->group_desc_count) &&
+-	    !rfs->bmap)
++	    !rfs->bmap &&
++	    !(rfs->flags & RESIZE_SPECIAL_INODES))
+ 		return 0;
+ 
+ 	set_com_err_hook(quiet_com_err_proc);
+@@ -2018,7 +2031,11 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs)
+ 			goto errout;
+ 
+ 		new_inode = ino;
+-		if (ino <= start_to_move)
++		if (ino >= EXT2_FIRST_INO(rfs->old_fs->super) &&
++		    ino <  EXT2_FIRST_INO(rfs->new_fs->super)) {
++			ext2fs_inode_alloc_stats2(rfs->new_fs, ino, -1,
++						  pb.is_dir);
++		} else if (ino <= start_to_move)
+ 			goto remap_blocks; /* Don't need to move inode. */
+ 
+ 		/*
+@@ -2552,6 +2569,37 @@ static errcode_t reserve_sparse_super2_last_group(ext2_resize_t rfs,
+ }
+ 
+ /*
++ * Clear new special inodes
++ */
++static errcode_t zero_new_special_inodes(ext2_resize_t rfs)
++{
++	ext2_filsys		fs = rfs->new_fs;
++	int			inode_size;
++	struct ext2_inode	*inode;
++	errcode_t		retval;
++	ext2_ino_t		ino;
 +
-+dumpe2fs test.img
-+Filesystem volume name:   <none>
-+Last mounted on:          <not available>
-+Filesystem magic number:  0xEF53
-+Filesystem revision #:    1 (dynamic)
-+Filesystem features:      ext_attr resize_inode dir_index filetype sparse_super
-+Default mount options:    (none)
-+Filesystem state:         clean
-+Errors behavior:          Continue
-+Filesystem OS type:       Linux
-+Inode count:              4096
-+Block count:              16384
-+Reserved block count:     819
-+Free blocks:              14277
-+Free inodes:              4075
-+First block:              1
-+Block size:               1024
-+Fragment size:            1024
-+Reserved GDT blocks:      256
-+Blocks per group:         1024
-+Fragments per group:      1024
-+Inodes per group:         256
-+Inode blocks per group:   32
-+Mount count:              0
-+Check interval:           15552000 (6 months)
-+Reserved blocks uid:      0
-+Reserved blocks gid:      0
-+First inode:              21
-+Inode size:	          128
-+Default directory hash:   half_md4
++	if (!(rfs->flags & RESIZE_SPECIAL_INODES))
++		return 0;
 +
++	inode_size = EXT2_INODE_SIZE(fs->super);
++	retval = ext2fs_get_memzero(inode_size, &inode);
++	if (retval)
++		return retval;
 +
-+Group 0: (Blocks 1-1024)
-+  Primary superblock at 1, Group descriptors at 2-2
-+  Reserved GDT blocks at 3-258
-+  Block bitmap at 259 (+258), Inode bitmap at 260 (+259)
-+  Inode table at 261-292 (+260)
-+  718 free blocks, 235 free inodes, 2 directories
-+  Free blocks: 307-1024
-+  Free inodes: 22-256
-+Group 1: (Blocks 1025-2048)
-+  Backup superblock at 1025, Group descriptors at 1026-1026
-+  Reserved GDT blocks at 1027-1282
-+  Block bitmap at 1283 (+258), Inode bitmap at 1284 (+259)
-+  Inode table at 1285-1316 (+260)
-+  732 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 1317-2048
-+  Free inodes: 257-512
-+Group 2: (Blocks 2049-3072)
-+  Block bitmap at 2049 (+0), Inode bitmap at 2050 (+1)
-+  Inode table at 2051-2082 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 2083-3072
-+  Free inodes: 513-768
-+Group 3: (Blocks 3073-4096)
-+  Backup superblock at 3073, Group descriptors at 3074-3074
-+  Reserved GDT blocks at 3075-3330
-+  Block bitmap at 3331 (+258), Inode bitmap at 3332 (+259)
-+  Inode table at 3333-3364 (+260)
-+  732 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 3365-4096
-+  Free inodes: 769-1024
-+Group 4: (Blocks 4097-5120)
-+  Block bitmap at 4097 (+0), Inode bitmap at 4098 (+1)
-+  Inode table at 4099-4130 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 4131-5120
-+  Free inodes: 1025-1280
-+Group 5: (Blocks 5121-6144)
-+  Backup superblock at 5121, Group descriptors at 5122-5122
-+  Reserved GDT blocks at 5123-5378
-+  Block bitmap at 5379 (+258), Inode bitmap at 5380 (+259)
-+  Inode table at 5381-5412 (+260)
-+  732 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 5413-6144
-+  Free inodes: 1281-1536
-+Group 6: (Blocks 6145-7168)
-+  Block bitmap at 6145 (+0), Inode bitmap at 6146 (+1)
-+  Inode table at 6147-6178 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 6179-7168
-+  Free inodes: 1537-1792
-+Group 7: (Blocks 7169-8192)
-+  Backup superblock at 7169, Group descriptors at 7170-7170
-+  Reserved GDT blocks at 7171-7426
-+  Block bitmap at 7427 (+258), Inode bitmap at 7428 (+259)
-+  Inode table at 7429-7460 (+260)
-+  732 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 7461-8192
-+  Free inodes: 1793-2048
-+Group 8: (Blocks 8193-9216)
-+  Block bitmap at 8193 (+0), Inode bitmap at 8194 (+1)
-+  Inode table at 8195-8226 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 8227-9216
-+  Free inodes: 2049-2304
-+Group 9: (Blocks 9217-10240)
-+  Backup superblock at 9217, Group descriptors at 9218-9218
-+  Reserved GDT blocks at 9219-9474
-+  Block bitmap at 9475 (+258), Inode bitmap at 9476 (+259)
-+  Inode table at 9477-9508 (+260)
-+  732 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 9509-10240
-+  Free inodes: 2305-2560
-+Group 10: (Blocks 10241-11264)
-+  Block bitmap at 10241 (+0), Inode bitmap at 10242 (+1)
-+  Inode table at 10243-10274 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 10275-11264
-+  Free inodes: 2561-2816
-+Group 11: (Blocks 11265-12288)
-+  Block bitmap at 11265 (+0), Inode bitmap at 11266 (+1)
-+  Inode table at 11267-11298 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 11299-12288
-+  Free inodes: 2817-3072
-+Group 12: (Blocks 12289-13312)
-+  Block bitmap at 12289 (+0), Inode bitmap at 12290 (+1)
-+  Inode table at 12291-12322 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 12323-13312
-+  Free inodes: 3073-3328
-+Group 13: (Blocks 13313-14336)
-+  Block bitmap at 13313 (+0), Inode bitmap at 13314 (+1)
-+  Inode table at 13315-13346 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 13347-14336
-+  Free inodes: 3329-3584
-+Group 14: (Blocks 14337-15360)
-+  Block bitmap at 14337 (+0), Inode bitmap at 14338 (+1)
-+  Inode table at 14339-14370 (+2)
-+  990 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 14371-15360
-+  Free inodes: 3585-3840
-+Group 15: (Blocks 15361-16383)
-+  Block bitmap at 15361 (+0), Inode bitmap at 15362 (+1)
-+  Inode table at 15363-15394 (+2)
-+  989 free blocks, 256 free inodes, 0 directories
-+  Free blocks: 15395-16383
-+  Free inodes: 3841-4096
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 21/4096 files (0.0% non-contiguous), 2107/16384 blocks
-+Exit status is 0
-diff --git a/tests/r_resize_special/name b/tests/r_resize_special/name
-new file mode 100644
-index 000000000000..6ac3f588bee2
---- /dev/null
-+++ b/tests/r_resize_special/name
-@@ -0,0 +1 @@
-+reserve more special inodes in filesystem
-diff --git a/tests/r_resize_special/script b/tests/r_resize_special/script
-new file mode 100644
-index 000000000000..99abaa3f7a36
---- /dev/null
-+++ b/tests/r_resize_special/script
-@@ -0,0 +1,47 @@
-+if test -x $RESIZE2FS_EXE; then
++	for (ino = EXT2_FIRST_INO(rfs->old_fs->super);
++	     ino < EXT2_FIRST_INO(fs->super); ino++) {
++		/* All special inodes are marked as inuse */
++		ext2fs_inode_alloc_stats2(fs, ino, +1, 0);
++		retval = ext2fs_write_inode_full(fs, ino, inode, inode_size);
++		if (retval)
++			break;
++	}
++	ext2fs_free_mem(&inode);
++	return retval;
++}
 +
-+FSCK_OPT=-yf
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+cp /dev/null $OUT
++/*
+  * Fix the resize inode
+  */
+ static errcode_t fix_resize_inode(ext2_filsys fs)
+diff --git a/resize/resize2fs.h b/resize/resize2fs.h
+index c5377e2b06c3..84f83b09f237 100644
+--- a/resize/resize2fs.h
++++ b/resize/resize2fs.h
+@@ -85,6 +85,8 @@ typedef struct ext2_sim_progress *ext2_sim_progmeter;
+ #define RESIZE_ENABLE_64BIT		0x0400
+ #define RESIZE_DISABLE_64BIT		0x0800
+ 
++#define RESIZE_SPECIAL_INODES		0x1000
 +
-+dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-+
-+echo mke2fs -E first_inode=11 -q -F -o Linux -b 1024 -g 1024 test.img 16384 > $OUT
-+$MKE2FS -E first_inode=11 -q -F -o Linux -b 1024 -g 1024 $TMPFILE 16384 2>&1 |
-+	sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" >> $OUT
-+
-+echo dumpe2fs test.img >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed -e '/Block bitmap.*$/N;s/\n  Inode bitmap/, Inode bitmap/g' >> $OUT
-+
-+echo resize2fs -I 21 test.img>> $OUT
-+$RESIZE2FS -I 21 $TMPFILE 2>&1 |
-+	sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" >> $OUT
-+
-+echo dumpe2fs test.img >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed -e '/Block bitmap.*$/N;s/\n  Inode bitmap/, Inode bitmap/g' >> $OUT
-+
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE > $OUT.new 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT.new
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
-+rm -f $OUT.new
-+
-+rm -f $TMPFILE
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+	rm -f $test_name.tmp
-+fi
-+
-+unset IMAGE FSCK_OPT OUT EXP
-+
-+else #if test -x $RESIZE2FS; then
-+	echo "$test_name: $test_description: skipped"
-+fi
+ /*
+  * This structure is used for keeping track of how much resources have
+  * been used for a particular resize2fs pass.
+@@ -130,6 +132,7 @@ struct ext2_resize_struct {
+ 	void		*prog_data;
+ 
+ 	blk64_t		new_size;
++	ext2_ino_t	first_ino;
+ };
+ 
+ /*
 
