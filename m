@@ -1,71 +1,112 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: How is e2fsck's time_fudge supposed to behave?
-Date: Fri, 13 Mar 2015 17:31:18 -0500
-Message-ID: <55036536.5030300@redhat.com>
+From: "Dilger, Andreas" <andreas.dilger@intel.com>
+Subject: Re: Ext4 Encryption design document
+Date: Fri, 13 Mar 2015 23:43:56 +0000
+Message-ID: <D127E653.E5541%andreas.dilger@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54725 "EHLO mx1.redhat.com"
+Received: from mga03.intel.com ([134.134.136.65]:55631 "EHLO mga03.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752047AbbCMWbS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Mar 2015 18:31:18 -0400
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (Postfix) with ESMTPS id 7AE858EB00
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Mar 2015 22:31:18 +0000 (UTC)
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t2DMVHWu009162
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Mar 2015 18:31:18 -0400
+	id S1751826AbbCMXn6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Mar 2015 19:43:58 -0400
+Content-Language: en-US
+Content-ID: <C780A140EE21DA4882DE8A97B6E99D78@intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I'm a little confused by e2fsck's time fudge current behavior, vs its
-apparent intent.
+On 12 Mar 14:42 2015, Theodore Ts'o <tytso@mit.edu> wrote:
+> Per our discussions this morning, here is the ext4 encryption design
+>document
+> 
+> 
+>https://docs.google.com/document/d/1ft26lUQyuSpiu6VleP70_npaWdRfXFoNnB8JYn
+>ykNTg/edit?usp=sharing
 
-We do:
 
-	if ( ... &&
-            fs->super->s_mtime > (__u32) ctx->now) {
-                pctx.num = fs->super->s_mtime;
-                problem = PR_0_FUTURE_SB_LAST_MOUNT;
-                if (fs->super->s_mtime <= (__u32) ctx->now + ctx->time_fudge)
-                        problem = PR_0_FUTURE_SB_LAST_MOUNT_FUDGED;
-                if (fix_problem(ctx, problem, &pctx)) {
-                        fs->super->s_mtime = ctx->now;
-                        fs->flags |= EXT2_FLAG_DIRTY;
-                }
+A few comments on this design:
 
-So if we are inside the time_fudge value we simply change the problem,
-but PR_0_FUTURE_SB_LAST_MOUNT_FUDGED behaves exactly like
-PR_0_FUTURE_SB_LAST_MOUNT, other than the message:
+Protector Format
+> Format			Currently 0
+> Contents Encryption mode	0 = AES-256-XTS
+> Name encryption mode		0 = AES-256-CBC
 
-        /* Last mount time is in the future (fudged) */
-        { PR_0_FUTURE_SB_LAST_MOUNT_FUDGED,
-          N_("@S last mount time is in the future.\n\t(by less than a day, "
-             "probably due to the hardware clock being incorrectly set)  "),
-          PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
+It would be better to keep "0" for "unused" or "invalid", and make the
+first assigned
+value be 1 for all of these fields.  That avoids the problem if this
+structure is used
+uninitialized for some reason (software bug, bad read from disk, memory
+clobbered, etc)
+and it picks the wrong encryption algorithm.
 
-vs:
+Is there enough room to add another 4 bytes of padding before the master
+key descriptor,
+so that it and the following nonce are aligned on an 8-byte boundary and
+the struct size
+is a nice power-of-two value, and there is a bit more room for future
+expansion (e.g.
+number of key descriptors)?
 
-        /* Last mount time is in the future */
-        { PR_0_FUTURE_SB_LAST_MOUNT,
-          N_("@S last mount time (%t,\n\tnow = %T) is in the future.\n"),
-          PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
+In the future, if there are multiple keys attached to a file, how will
+they be stored?
+Will there be an array of key descriptors in this xattr?  Using multiple
+xattrs seems
+wasteful.  Even if this is not being implemented in the first version, it
+makes sense
+to understand what needs to be done to avoid the need for on-disk format
+change later.
 
-So unless I'm missing something, the whole fudge_time dance does nothing
-except change the message, and after reading lots of words in the e2fsck.conf
-manpage ;) this bit seems relevant as to the intent:
+Encryption Policy
+> struct ext4_encryption_policy {
+>       char version;
+>       char contents_encryption_mode;
+>       char filenames_encryption_mode;
+>       char master_key_descriptor[8];
+> } __attribute__((__packed__));
 
-> So by default, we allow the superblock  times  to
-> be  fudged  by  up to 24 hours.
+One byte of padding in there?  The xattr itself will be stored 4-byte
+aligned on disk,
+so leaving out the one byte in the middle of the struct is not saving any
+space.
 
-I had the impression that "allow" meant "ignore" but this still triggers
-exactly the same action and correction.  Is that as intended?
+Background on EXT4 Directories
+> A filename consists of a string of one or more ASCII characters.
 
-I'll send a patch do a printf and take no other action if inside the
-fudge_time window, if that seems like the right thing to do.
+That isn't really true.  A filename is a string of one or more characters
+in some
+user-defined encoding, with the only restriction that the characters '/'
+and '\0' are
+not permissible.  Many users use ext4 with non-ASCII character sets w/o
+problems.
 
-Thanks,
--Eric
+It is great if the output is only ASCII printable characters, but that may
+be difficult
+to do if the filename length is required to be the same as the input name
+length
+(e.g. there are ~253 possible single-character non-ASCII filenames, but
+only about 96
+printable ASCII characters, so these would always result in collisions if
+the filename
+length needs to stay the same).  Is my assumption about the output name
+length wrong?
+
+In further reading, it seems like the encoded output filename would be
+expanded,
+and could be as long as 255 * 4/3 = 340 characters, which will exceed
+f_namelen.
+I'd imagine that the dcache can handle that, but are there problems if
+f_namelen
+is shorter than the returned name, or conversely if f_namelen is increased
+but it
+isn't possible to create a filename that long?
+
+Cheers, Andreas
+-- 
+Andreas Dilger
+
+Lustre Software Architect
+Intel High Performance Data Division
+
+
