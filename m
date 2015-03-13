@@ -1,101 +1,279 @@
-From: Adrian Bridgett <adrian@smop.co.uk>
-Subject: Re: very slow SSD with fsync
-Date: Fri, 13 Mar 2015 19:33:57 +0000
-Message-ID: <55033BA5.9000806@smop.co.uk>
-References: <5502F8A3.4020608@smop.co.uk> <20150313152559.GB21922@thunk.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH RFC v1 2/4] resize2fs: add option -I for reserving more
+ special inodes
+Date: Fri, 13 Mar 2015 13:36:56 -0700
+Message-ID: <20150313203656.GA8898@birch.djwong.org>
+References: <20150312161341.17173.96760.stgit@buzz>
+ <20150312162013.17173.71244.stgit@buzz>
+ <20150312192623.GE11031@birch.djwong.org>
+ <5502C171.2080806@yandex-team.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
+	"Theodore Ts'o" <tytso@mit.edu>, Li Xi <pkuelelixi@gmail.com>
+To: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f177.google.com ([209.85.212.177]:46395 "EHLO
-	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752698AbbCMTeB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Mar 2015 15:34:01 -0400
-Received: by wiwh11 with SMTP id h11so8549259wiw.5
-        for <linux-ext4@vger.kernel.org>; Fri, 13 Mar 2015 12:34:00 -0700 (PDT)
-In-Reply-To: <20150313152559.GB21922@thunk.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:33529 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751055AbbCMUhF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Mar 2015 16:37:05 -0400
+Content-Disposition: inline
+In-Reply-To: <5502C171.2080806@yandex-team.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 13/03/15 15:25, Theodore Ts'o wrote:
-> The obvious thing to do is to try using blktrace to see which I/O
-> operations are triggering the problem.  It may just be that the hard
-> drive's internal FTL metadata is very badly fragmented.
-Damn :-(  Seems a bit odd as it's only a few months old (not used much) 
-and OSX _seems_ fine.
+On Fri, Mar 13, 2015 at 01:52:33PM +0300, Konstantin Khlebnikov wrote:
+> On 12.03.2015 22:26, Darrick J. Wong wrote:
+> >On Thu, Mar 12, 2015 at 07:20:13PM +0300, Konstantin Khlebnikov wrote:
+> >>Resize2fs relocates last inodes when it shinks filesystem.
+> >>This patch reuses this code for relocating first inodes,
+> >>it adds option '-I' for changing first normal inode.
+> >>
+> >>Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+> >>---
+> >>  resize/main.c         |   38 ++++++++++++++++++++++++++++++++----
+> >>  resize/resize2fs.8.in |    8 ++++++++
+> >>  resize/resize2fs.c    |   52 +++++++++++++++++++++++++++++++++++++++++++++++--
+> >>  resize/resize2fs.h    |    3 +++
+> >>  4 files changed, 95 insertions(+), 6 deletions(-)
+> >>
+> >>diff --git a/resize/main.c b/resize/main.c
+> >>index 16f48d438cb0..eae7146f41ab 100644
+> >>--- a/resize/main.c
+> >>+++ b/resize/main.c
+> 
+> -cut
+> 
+> >>@@ -507,6 +513,28 @@ int main (int argc, char ** argv)
+> >>  				"feature.\n"));
+> >>  			exit(1);
+> >>  		}
+> >>+	} else if (flags & RESIZE_SPECIAL_INODES) {
+> >>+		if (rfs->first_ino > fs->super->s_inodes_count) {
+> >
+> >An FS with rfs->first_ino == fs->super->s_inodes_count isn't going to be
+> >very useful... presumably you'd want at least one regular inode, right?
+> 
+> In this case there will be exactly one regular inode:
+> s_inodes_count is index of last inode on the filesystem.
 
-Not quite sure what to look for in blktrace.  I see the sync but the 
-timestamps in blktrace are near instantaneous vs 1.3, 2.2 seconds 
-reported by strace.   Trying a "find" and watching it stall blktrace 
-shows this - which to my amateur eyes shows a 0.5s gap between the read 
-request at 1.815589 and being issued at 2.373.  Two completions being 
-the only occurrence in the middle.  Maybe queue depth was full - but we 
-have a two completions earlier.
+Yes.  Consider, however, that /lost+found is a regular inode, which means that
+you'd have to remove it before you can store a single file on the FS, and fsck
+will be unhappy if there's no /lost+found.
 
+Actually come to think of it, this is resize2fs; the increase in first_ino must
+be less than the free inode count or you'll later run out of inodes while
+moving things around.
 
-   8,0    0      226     1.812363080   271  D  WS 498955904 + 16 (     
-988) [jbd2
-/dm-0-8]
-   8,0    0      227     1.812439052     0  C  WS 498955904 + 16 ( 
-75972) [0]
-   8,4    0      228     1.812456484   271  A FWS 0 + 0 <- (252,0) 0
-   8,0    0      229     1.812456838   271  Q FWS [jbd2/dm-0-8]
-   8,4    0      230     1.812457124   271  A FWS 0 + 0 <- (252,0) 0
-   8,0    0      231     1.812457237   271  Q FWS [jbd2/dm-0-8]
-   8,0    0      232     1.812458007   271  G FWS [jbd2/dm-0-8]
-   8,0    0      233     1.812458478   271  I FWS (     471) [jbd2/dm-0-8]
-   8,0    0      234     1.812465182   271  G FWS [jbd2/dm-0-8]
-   8,0    0      235     1.812465316   271  I FWS (     134) [jbd2/dm-0-8]
-   8,0    0      236     1.815446245     0  C  RM 507106648 + 8 ( 
-3778637) [0]
-   8,4    2       11     1.815585457 31072  A  RM 16875872 + 8 <- 
-(252,0) 1687382
-4
-   8,0    2       12     1.815585633 31072  A  RM 507107680 + 8 <- (8,4) 
-16875872
-   8,0    2       13     1.815586124 31072  Q  RM 507107680 + 8 [find]
-   8,0    2       14     1.815588326 31072  G  RM 507107680 + 8 [find]
-   8,0    2       15     1.815589269 31072  I  RM 507107680 + 8 ( 943) 
-[find]
-   8,0    0      237     1.830102994     0  C  WS 0 (17739914) [0]
-   8,0    0      238     2.373458367     0  C  WS 0 [0]
-   8,0    0      239     2.373469557     0  D  RM 507107680 + 8 
-(557880288) [swap
-per/0]
-   8,4    0      240     2.373486949 15158  A WFS 8724112 + 8 <- (252,0) 
-8722064
-   8,0    0      241     2.373487336 15158  A WFS 498955920 + 8 <- (8,4) 
-8724112
-   8,0    0      242     2.373488480 15158  Q WFS 498955920 + 8 
-[kworker/0:2]
-   8,0    0      243     2.373490158 15158  G WFS 498955920 + 8 
-[kworker/0:2]
-   8,0    0      244     2.373491573 15158  I WFS 498955920 + 8 ( 1415) 
-[kwork
-er/0:2]
-   8,0    0      245     2.373491927 15158  D  WS 498955920 + 8 ( 354) 
-[kworker/0:2]
-   8,0    0      246     2.373596570     0  C  WS 498955920 + 8 ( 
-104643) [0]
-   8,0    0      247     2.375251869     0  C  RM 507107680 + 8 ( 
-1782312) [0]
-   8,4    2       16     2.375452116 31072  A  RM 16875072 + 8 <- 
-(252,0) 16873024
-   8,0    2       17     2.375452283 31072  A  RM 507106880 + 8 <- (8,4) 
-16875072
-   8,0    2       18     2.375452776 31072  Q  RM 507106880 + 8 [find]
+> 
+> >
+> >>+			fprintf(stderr, _("First inode too big\n"));
+> >
+> >"Cannot reserve more than ($s_inodes_count - 1) inodes"?
+> 
+> So, you're suggest to rephrase option as "reserve special inodes"
+> instead of "set first normal inode"?
 
-I'm looking at  'watch -n0 cat  /proc/diskstats |egrep -v "ram|loop"' 
-and it's normally sat down at 0/1 for I/Os in progress (have seen hit 
-100 _briefly_ and then drop just as quickly).
+I was referring to the words 'inode too big', which could be confused for a
+message about the size of the inode itself being too large, instead of the
+first non-reserved inode *number* being too large.
 
-> What model SSD is it, by the way?
-It's the built-in Apple MBP 512GB drive - "APPLE SSD SM0512F" which 
-apparently means Samsung (I've been reading about issues with their 
-840EVO drives...
+Come to think of it, our naming isn't especially consistent -- s_first_ino =>
+'first non-reserved inode' => 'special inodes'.  Ho hum.  Ted, do you care
+about nomenclature?
 
-Thanks once again (and for all your immense work over the many, many years!)
+--D
 
-Adrian
+> 
+> >
+> >>+			exit(1);
+> >>+		}
+> >>+		if (rfs->first_ino < EXT2_FIRST_INO(fs->super)) {
+> >>+			fprintf(stderr, _("The filesystem has %d special inodes."
+> >>+					  "Reducing isn't supported.\n\n"),
+> >>+					EXT2_FIRST_INO(fs->super));
+> >>+			exit(1);
+> >>+		}
+> >>+		if (rfs->first_ino == EXT2_FIRST_INO(fs->super)) {
+> >>+			fprintf(stderr, _("The filesystem already has %d "
+> >>+					  "special inodes. Nothing to do!\n\n"),
+> >>+					EXT2_FIRST_INO(fs->super));
+> >>+			exit(0);
+> >>+		}
+> >>+		if (mount_flags & EXT2_MF_MOUNTED) {
+> >>+			fprintf(stderr, _("Cannot change count of special "
+> >>+				"inodes while the filesystem is mounted.\n"));
+> >>+			exit(1);
+> >>+		}
+> >>  	} else if (new_size == ext2fs_blocks_count(fs->super)) {
+> >>  		fprintf(stderr, _("The filesystem is already %llu (%dk) "
+> >>  			"blocks long.  Nothing to do!\n\n"), new_size,
+> >>@@ -532,6 +560,8 @@ int main (int argc, char ** argv)
+> >>  			printf(_("Converting the filesystem to 64-bit.\n"));
+> >>  		else if (flags & RESIZE_DISABLE_64BIT)
+> >>  			printf(_("Converting the filesystem to 32-bit.\n"));
+> >>+		else if (flags & RESIZE_SPECIAL_INODES)
+> >>+			printf(_("Reserving special inodes.\n"));
+> >>  		else
+> >>  			printf(_("Resizing the filesystem on "
+> >>  				 "%s to %llu (%dk) blocks.\n"),
+> >>diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
+> >>index 0129bfcafa3b..f22563fe07e1 100644
+> >>--- a/resize/resize2fs.8.in
+> >>+++ b/resize/resize2fs.8.in
+> >>@@ -18,6 +18,10 @@ resize2fs \- ext2/ext3/ext4 file system resizer
+> >>  .B \-S
+> >>  .I RAID-stride
+> >>  ]
+> >>+[
+> >>+.B \-I
+> >>+.I first-inode
+> >>+]
+> >>  .I device
+> >>  [
+> >>  .I size
+> >>@@ -101,6 +105,10 @@ to resize the filesystem concurrent with changing the 64bit status.
+> >>  Turns on the 64bit feature, resizes the group descriptors as necessary, and
+> >>  moves other metadata out of the way.
+> >>  .TP
+> >>+.B \-I \fI <first-inode>
+> >>+This changes first normal inode and relocates inuse inodes into vacant slots.
+> >>+Inodes below that are reserved for internal use. Reducing isn't supported.
+> >
+> >"Increases the number of reserved inodes, moving any in-use inodes into vacant
+> >slots."?
+> >
+> >--D
+> >
+> >>+.TP
+> >>  .B \-d \fIdebug-flags
+> >>  Turns on various resize2fs debugging features, if they have been compiled
+> >>  into the binary.
+> >>diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+> >>index dead364bf4bf..2fb653b76dd8 100644
+> >>--- a/resize/resize2fs.c
+> >>+++ b/resize/resize2fs.c
+> >>@@ -48,6 +48,7 @@ static errcode_t block_mover(ext2_resize_t rfs);
+> >>  static errcode_t inode_scan_and_fix(ext2_resize_t rfs);
+> >>  static errcode_t inode_ref_fix(ext2_resize_t rfs);
+> >>  static errcode_t move_itables(ext2_resize_t rfs);
+> >>+static errcode_t zero_new_special_inodes(ext2_resize_t rfs);
+> >>  static errcode_t fix_resize_inode(ext2_filsys fs);
+> >>  static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
+> >>  static errcode_t fix_sb_journal_backup(ext2_filsys fs);
+> >>@@ -112,6 +113,11 @@ errcode_t resize_fs(ext2_filsys fs, ext2_resize_t rfs)
+> >>  	if (retval)
+> >>  		goto errout;
+> >>
+> >>+	if (flags & RESIZE_SPECIAL_INODES) {
+> >>+		ext2fs_update_dynamic_rev(rfs->new_fs);
+> >>+		EXT2_SB(rfs->new_fs->super)->s_first_ino = rfs->first_ino;
+> >>+	}
+> >>+
+> >>  	init_resource_track(&rtrack, "resize_group_descriptors", fs->io);
+> >>  	retval = resize_group_descriptors(rfs);
+> >>  	if (retval)
+> >>@@ -177,6 +183,12 @@ errcode_t resize_fs(ext2_filsys fs, ext2_resize_t rfs)
+> >>  		goto errout;
+> >>  	print_resource_track(rfs, &rtrack, fs->io);
+> >>
+> >>+	init_resource_track(&rtrack, "zero_new_special_inodes", fs->io);
+> >>+	retval = zero_new_special_inodes(rfs);
+> >>+	if (retval)
+> >>+		goto errout;
+> >>+	print_resource_track(rfs, &rtrack, fs->io);
+> >>+
+> >>  	init_resource_track(&rtrack, "move_itables", fs->io);
+> >>  	retval = move_itables(rfs);
+> >>  	if (retval)
+> >>@@ -1963,7 +1975,8 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs)
+> >>
+> >>  	if ((rfs->old_fs->group_desc_count <=
+> >>  	     rfs->new_fs->group_desc_count) &&
+> >>-	    !rfs->bmap)
+> >>+	    !rfs->bmap &&
+> >>+	    !(rfs->flags & RESIZE_SPECIAL_INODES))
+> >>  		return 0;
+> >>
+> >>  	set_com_err_hook(quiet_com_err_proc);
+> >>@@ -2018,7 +2031,11 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs)
+> >>  			goto errout;
+> >>
+> >>  		new_inode = ino;
+> >>-		if (ino <= start_to_move)
+> >>+		if (ino >= EXT2_FIRST_INO(rfs->old_fs->super) &&
+> >>+		    ino <  EXT2_FIRST_INO(rfs->new_fs->super)) {
+> >>+			ext2fs_inode_alloc_stats2(rfs->new_fs, ino, -1,
+> >>+						  pb.is_dir);
+> >>+		} else if (ino <= start_to_move)
+> >>  			goto remap_blocks; /* Don't need to move inode. */
+> >>
+> >>  		/*
+> >>@@ -2552,6 +2569,37 @@ static errcode_t reserve_sparse_super2_last_group(ext2_resize_t rfs,
+> >>  }
+> >>
+> >>  /*
+> >>+ * Clear new special inodes
+> >>+ */
+> >>+static errcode_t zero_new_special_inodes(ext2_resize_t rfs)
+> >>+{
+> >>+	ext2_filsys		fs = rfs->new_fs;
+> >>+	int			inode_size;
+> >>+	struct ext2_inode	*inode;
+> >>+	errcode_t		retval;
+> >>+	ext2_ino_t		ino;
+> >>+
+> >>+	if (!(rfs->flags & RESIZE_SPECIAL_INODES))
+> >>+		return 0;
+> >>+
+> >>+	inode_size = EXT2_INODE_SIZE(fs->super);
+> >>+	retval = ext2fs_get_memzero(inode_size, &inode);
+> >>+	if (retval)
+> >>+		return retval;
+> >>+
+> >>+	for (ino = EXT2_FIRST_INO(rfs->old_fs->super);
+> >>+	     ino < EXT2_FIRST_INO(fs->super); ino++) {
+> >>+		/* All special inodes are marked as inuse */
+> >>+		ext2fs_inode_alloc_stats2(fs, ino, +1, 0);
+> >>+		retval = ext2fs_write_inode_full(fs, ino, inode, inode_size);
+> >>+		if (retval)
+> >>+			break;
+> >>+	}
+> >>+	ext2fs_free_mem(&inode);
+> >>+	return retval;
+> >>+}
+> >>+
+> >>+/*
+> >>   * Fix the resize inode
+> >>   */
+> >>  static errcode_t fix_resize_inode(ext2_filsys fs)
+> >>diff --git a/resize/resize2fs.h b/resize/resize2fs.h
+> >>index c5377e2b06c3..84f83b09f237 100644
+> >>--- a/resize/resize2fs.h
+> >>+++ b/resize/resize2fs.h
+> >>@@ -85,6 +85,8 @@ typedef struct ext2_sim_progress *ext2_sim_progmeter;
+> >>  #define RESIZE_ENABLE_64BIT		0x0400
+> >>  #define RESIZE_DISABLE_64BIT		0x0800
+> >>
+> >>+#define RESIZE_SPECIAL_INODES		0x1000
+> >>+
+> >>  /*
+> >>   * This structure is used for keeping track of how much resources have
+> >>   * been used for a particular resize2fs pass.
+> >>@@ -130,6 +132,7 @@ struct ext2_resize_struct {
+> >>  	void		*prog_data;
+> >>
+> >>  	blk64_t		new_size;
+> >>+	ext2_ino_t	first_ino;
+> >>  };
+> >>
+> >>  /*
+> >>
+> >>--
+> >>To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> >>the body of a message to majordomo@vger.kernel.org
+> >>More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+> -- 
+> Konstantin
