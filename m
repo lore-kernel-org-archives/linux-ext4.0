@@ -1,256 +1,226 @@
-From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Subject: Re: [PATCH RFC v1 2/4] resize2fs: add option -I for reserving more
- special inodes
-Date: Fri, 13 Mar 2015 13:52:33 +0300
-Message-ID: <5502C171.2080806@yandex-team.ru>
-References: <20150312161341.17173.96760.stgit@buzz> <20150312162013.17173.71244.stgit@buzz> <20150312192623.GE11031@birch.djwong.org>
+From: Adrian Bridgett <adrian@smop.co.uk>
+Subject: very slow SSD with fsync
+Date: Fri, 13 Mar 2015 14:48:03 +0000
+Message-ID: <5502F8A3.4020608@smop.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>, Li Xi <pkuelelixi@gmail.com>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from forward-corp1f.mail.yandex.net ([95.108.130.40]:56681 "EHLO
-	forward-corp1f.mail.yandex.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750874AbbCMKwi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Mar 2015 06:52:38 -0400
-In-Reply-To: <20150312192623.GE11031@birch.djwong.org>
+Received: from mail-wg0-f50.google.com ([74.125.82.50]:35287 "EHLO
+	mail-wg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755332AbbCMOsG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Mar 2015 10:48:06 -0400
+Received: by wggy19 with SMTP id y19so23778589wgg.2
+        for <linux-ext4@vger.kernel.org>; Fri, 13 Mar 2015 07:48:04 -0700 (PDT)
+Received: from [192.168.1.12] (188.29.165.45.threembb.co.uk. [188.29.165.45])
+        by mx.google.com with ESMTPSA id gi9sm3083269wib.21.2015.03.13.07.48.03
+        for <linux-ext4@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 13 Mar 2015 07:48:04 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12.03.2015 22:26, Darrick J. Wong wrote:
-> On Thu, Mar 12, 2015 at 07:20:13PM +0300, Konstantin Khlebnikov wrote:
->> Resize2fs relocates last inodes when it shinks filesystem.
->> This patch reuses this code for relocating first inodes,
->> it adds option '-I' for changing first normal inode.
->>
->> Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
->> ---
->>   resize/main.c         |   38 ++++++++++++++++++++++++++++++++----
->>   resize/resize2fs.8.in |    8 ++++++++
->>   resize/resize2fs.c    |   52 +++++++++++++++++++++++++++++++++++++++++++++++--
->>   resize/resize2fs.h    |    3 +++
->>   4 files changed, 95 insertions(+), 6 deletions(-)
->>
->> diff --git a/resize/main.c b/resize/main.c
->> index 16f48d438cb0..eae7146f41ab 100644
->> --- a/resize/main.c
->> +++ b/resize/main.c
+Slow as in sync(1) taking 6 seconds on an idle system, dd-ing from the 
+raw disk drops from 600MB/s to less than 1MB/s.   iotop shows jbd2 often 
+waiting a long time, but _very_ low throughput (KB/s it that).  I've 
+spent a day or so trying everything I can find to identify the cause but 
+I'm completely stuck (even with help from a btrfs guru - he eventually 
+suggested asking here).
 
--cut
+Chrome and dropbox seem to trigger this, I'm just installing a pretty 
+new Macbook Pro (didn't get along with OSX, returning to Linux).  The 
+system was fine, but now seems to be reaaaaalllly slow.  Maybe it's as 
+I've put stuff on, but I think that it's degradation caused by something 
+else.
 
->> @@ -507,6 +513,28 @@ int main (int argc, char ** argv)
->>   				"feature.\n"));
->>   			exit(1);
->>   		}
->> +	} else if (flags & RESIZE_SPECIAL_INODES) {
->> +		if (rfs->first_ino > fs->super->s_inodes_count) {
->
-> An FS with rfs->first_ino == fs->super->s_inodes_count isn't going to be
-> very useful... presumably you'd want at least one regular inode, right?
+The only thing that makes a difference is mounting with barrier=0 but 
+I'd rather not do that of course.  I'm not trying to maximise 
+performance here, just eliminate some nasty buglet/incompatibility.
 
-In this case there will be exactly one regular inode:
-s_inodes_count is index of last inode on the filesystem.
+I've tried:
+- fstrim
+- noncq (just in case)
+- disabling power management (tlp daemon, then turning off tweakables in 
+powertop)
+- latest 3.19.1 ubuntu kernel and also 3.16
+- adding discard to mount options, also taking it away again and just fstrim
+- disabling SMART (saw one report on a normal hard disk after 30mins - 
+note that mine is slow immediately) 
+http://unix.stackexchange.com/questions/165464/calls-to-sync-fsync-slow-down-after-30-minutes-uptime
+- using the tracing framework (thanks to Ted for a comment elsewhere) I 
+traced the slowness to these syncs being very slow (my much older laptop 
+takes 0.05s...)
 
->
->> +			fprintf(stderr, _("First inode too big\n"));
->
-> "Cannot reserve more than ($s_inodes_count - 1) inodes"?
+Disk is EcryptFS on LVM (mounted data=ordered) - Ubuntu defaults. I 
+tried moving dropbox to non-encryptFS and no joy.  My friend suggested 
+that I use LUKS instead but it seems that I'll still have this issue.
 
-So, you're suggest to rephrase option as "reserve special inodes"
-instead of "set first normal inode"?
+I've been using dd|pv for some tests, hdparm shows similar results (this 
+set taken with thunderbird, but no chrome, no dropbox running) - and the 
+cursor locks up every few seconds whilst I'm typing this!)
 
->
->> +			exit(1);
->> +		}
->> +		if (rfs->first_ino < EXT2_FIRST_INO(fs->super)) {
->> +			fprintf(stderr, _("The filesystem has %d special inodes."
->> +					  "Reducing isn't supported.\n\n"),
->> +					EXT2_FIRST_INO(fs->super));
->> +			exit(1);
->> +		}
->> +		if (rfs->first_ino == EXT2_FIRST_INO(fs->super)) {
->> +			fprintf(stderr, _("The filesystem already has %d "
->> +					  "special inodes. Nothing to do!\n\n"),
->> +					EXT2_FIRST_INO(fs->super));
->> +			exit(0);
->> +		}
->> +		if (mount_flags & EXT2_MF_MOUNTED) {
->> +			fprintf(stderr, _("Cannot change count of special "
->> +				"inodes while the filesystem is mounted.\n"));
->> +			exit(1);
->> +		}
->>   	} else if (new_size == ext2fs_blocks_count(fs->super)) {
->>   		fprintf(stderr, _("The filesystem is already %llu (%dk) "
->>   			"blocks long.  Nothing to do!\n\n"), new_size,
->> @@ -532,6 +560,8 @@ int main (int argc, char ** argv)
->>   			printf(_("Converting the filesystem to 64-bit.\n"));
->>   		else if (flags & RESIZE_DISABLE_64BIT)
->>   			printf(_("Converting the filesystem to 32-bit.\n"));
->> +		else if (flags & RESIZE_SPECIAL_INODES)
->> +			printf(_("Reserving special inodes.\n"));
->>   		else
->>   			printf(_("Resizing the filesystem on "
->>   				 "%s to %llu (%dk) blocks.\n"),
->> diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
->> index 0129bfcafa3b..f22563fe07e1 100644
->> --- a/resize/resize2fs.8.in
->> +++ b/resize/resize2fs.8.in
->> @@ -18,6 +18,10 @@ resize2fs \- ext2/ext3/ext4 file system resizer
->>   .B \-S
->>   .I RAID-stride
->>   ]
->> +[
->> +.B \-I
->> +.I first-inode
->> +]
->>   .I device
->>   [
->>   .I size
->> @@ -101,6 +105,10 @@ to resize the filesystem concurrent with changing the 64bit status.
->>   Turns on the 64bit feature, resizes the group descriptors as necessary, and
->>   moves other metadata out of the way.
->>   .TP
->> +.B \-I \fI <first-inode>
->> +This changes first normal inode and relocates inuse inodes into vacant slots.
->> +Inodes below that are reserved for internal use. Reducing isn't supported.
->
-> "Increases the number of reserved inodes, moving any in-use inodes into vacant
-> slots."?
->
-> --D
->
->> +.TP
->>   .B \-d \fIdebug-flags
->>   Turns on various resize2fs debugging features, if they have been compiled
->>   into the binary.
->> diff --git a/resize/resize2fs.c b/resize/resize2fs.c
->> index dead364bf4bf..2fb653b76dd8 100644
->> --- a/resize/resize2fs.c
->> +++ b/resize/resize2fs.c
->> @@ -48,6 +48,7 @@ static errcode_t block_mover(ext2_resize_t rfs);
->>   static errcode_t inode_scan_and_fix(ext2_resize_t rfs);
->>   static errcode_t inode_ref_fix(ext2_resize_t rfs);
->>   static errcode_t move_itables(ext2_resize_t rfs);
->> +static errcode_t zero_new_special_inodes(ext2_resize_t rfs);
->>   static errcode_t fix_resize_inode(ext2_filsys fs);
->>   static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
->>   static errcode_t fix_sb_journal_backup(ext2_filsys fs);
->> @@ -112,6 +113,11 @@ errcode_t resize_fs(ext2_filsys fs, ext2_resize_t rfs)
->>   	if (retval)
->>   		goto errout;
->>
->> +	if (flags & RESIZE_SPECIAL_INODES) {
->> +		ext2fs_update_dynamic_rev(rfs->new_fs);
->> +		EXT2_SB(rfs->new_fs->super)->s_first_ino = rfs->first_ino;
->> +	}
->> +
->>   	init_resource_track(&rtrack, "resize_group_descriptors", fs->io);
->>   	retval = resize_group_descriptors(rfs);
->>   	if (retval)
->> @@ -177,6 +183,12 @@ errcode_t resize_fs(ext2_filsys fs, ext2_resize_t rfs)
->>   		goto errout;
->>   	print_resource_track(rfs, &rtrack, fs->io);
->>
->> +	init_resource_track(&rtrack, "zero_new_special_inodes", fs->io);
->> +	retval = zero_new_special_inodes(rfs);
->> +	if (retval)
->> +		goto errout;
->> +	print_resource_track(rfs, &rtrack, fs->io);
->> +
->>   	init_resource_track(&rtrack, "move_itables", fs->io);
->>   	retval = move_itables(rfs);
->>   	if (retval)
->> @@ -1963,7 +1975,8 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs)
->>
->>   	if ((rfs->old_fs->group_desc_count <=
->>   	     rfs->new_fs->group_desc_count) &&
->> -	    !rfs->bmap)
->> +	    !rfs->bmap &&
->> +	    !(rfs->flags & RESIZE_SPECIAL_INODES))
->>   		return 0;
->>
->>   	set_com_err_hook(quiet_com_err_proc);
->> @@ -2018,7 +2031,11 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs)
->>   			goto errout;
->>
->>   		new_inode = ino;
->> -		if (ino <= start_to_move)
->> +		if (ino >= EXT2_FIRST_INO(rfs->old_fs->super) &&
->> +		    ino <  EXT2_FIRST_INO(rfs->new_fs->super)) {
->> +			ext2fs_inode_alloc_stats2(rfs->new_fs, ino, -1,
->> +						  pb.is_dir);
->> +		} else if (ino <= start_to_move)
->>   			goto remap_blocks; /* Don't need to move inode. */
->>
->>   		/*
->> @@ -2552,6 +2569,37 @@ static errcode_t reserve_sparse_super2_last_group(ext2_resize_t rfs,
->>   }
->>
->>   /*
->> + * Clear new special inodes
->> + */
->> +static errcode_t zero_new_special_inodes(ext2_resize_t rfs)
->> +{
->> +	ext2_filsys		fs = rfs->new_fs;
->> +	int			inode_size;
->> +	struct ext2_inode	*inode;
->> +	errcode_t		retval;
->> +	ext2_ino_t		ino;
->> +
->> +	if (!(rfs->flags & RESIZE_SPECIAL_INODES))
->> +		return 0;
->> +
->> +	inode_size = EXT2_INODE_SIZE(fs->super);
->> +	retval = ext2fs_get_memzero(inode_size, &inode);
->> +	if (retval)
->> +		return retval;
->> +
->> +	for (ino = EXT2_FIRST_INO(rfs->old_fs->super);
->> +	     ino < EXT2_FIRST_INO(fs->super); ino++) {
->> +		/* All special inodes are marked as inuse */
->> +		ext2fs_inode_alloc_stats2(fs, ino, +1, 0);
->> +		retval = ext2fs_write_inode_full(fs, ino, inode, inode_size);
->> +		if (retval)
->> +			break;
->> +	}
->> +	ext2fs_free_mem(&inode);
->> +	return retval;
->> +}
->> +
->> +/*
->>    * Fix the resize inode
->>    */
->>   static errcode_t fix_resize_inode(ext2_filsys fs)
->> diff --git a/resize/resize2fs.h b/resize/resize2fs.h
->> index c5377e2b06c3..84f83b09f237 100644
->> --- a/resize/resize2fs.h
->> +++ b/resize/resize2fs.h
->> @@ -85,6 +85,8 @@ typedef struct ext2_sim_progress *ext2_sim_progmeter;
->>   #define RESIZE_ENABLE_64BIT		0x0400
->>   #define RESIZE_DISABLE_64BIT		0x0800
->>
->> +#define RESIZE_SPECIAL_INODES		0x1000
->> +
->>   /*
->>    * This structure is used for keeping track of how much resources have
->>    * been used for a particular resize2fs pass.
->> @@ -130,6 +132,7 @@ struct ext2_resize_struct {
->>   	void		*prog_data;
->>
->>   	blk64_t		new_size;
->> +	ext2_ino_t	first_ino;
->>   };
->>
->>   /*
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+[13:50]~# hdparm -I /dev/sda
 
+/dev/sda:
 
--- 
-Konstantin
+ATA device, with non-removable media
+     Model Number:       APPLE SSD SM0512F
+     Serial Number:      S1K5NYBF266383
+     Firmware Revision:  UXM2JA1Q
+     Transport:          Serial, ATA8-AST, SATA 1.0a, SATA II 
+Extensions, SATA Rev 2.5, SATA Rev 2.6, SATA Rev 3.0
+Standards:
+     Used: unknown (minor revision code 0x0039)
+     Supported: 8 7 6 5
+     Likely used: 8
+Configuration:
+     Logical        max    current
+     cylinders    16383    16383
+     heads        16    16
+     sectors/track    63    63
+     --
+     CHS current addressable sectors:   16514064
+     LBA    user addressable sectors:  268435455
+     LBA48  user addressable sectors:  977105060
+     Logical  Sector size:                   512 bytes
+     Physical Sector size:                  4096 bytes
+     Logical Sector-0 offset:                  0 bytes
+     device size with M = 1024*1024:      477102 MBytes
+     device size with M = 1000*1000:      500277 MBytes (500 GB)
+     cache/buffer size  = unknown
+     Nominal Media Rotation Rate: Solid State Device
+Capabilities:
+     LBA, IORDY(can be disabled)
+     Queue depth: 32
+     Standby timer values: spec'd by Standard, no device specific minimum
+     R/W multiple sector transfer: Max = 16    Current = 16
+     Recommended acoustic management value: 128, current value: 0
+     DMA: mdma0 mdma1 mdma2 udma0 udma1 udma2 udma3 udma4 udma5 *udma6
+          Cycle time: min=120ns recommended=120ns
+     PIO: pio0 pio1 pio2 pio3 pio4
+          Cycle time: no flow control=120ns  IORDY flow control=120ns
+Commands/features:
+     Enabled    Supported:
+        *    SMART feature set
+             Security Mode feature set
+        *    Power Management feature set
+        *    Write cache
+        *    Look-ahead
+        *    Host Protected Area feature set
+        *    WRITE_BUFFER command
+        *    READ_BUFFER command
+        *    NOP cmd
+        *    DOWNLOAD_MICROCODE
+        *    SET_MAX security extension
+             Automatic Acoustic Management feature set
+        *    48-bit Address feature set
+        *    Device Configuration Overlay feature set
+        *    Mandatory FLUSH_CACHE
+        *    FLUSH_CACHE_EXT
+        *    SMART error logging
+        *    SMART self-test
+        *    General Purpose Logging feature set
+        *    WRITE_{DMA|MULTIPLE}_FUA_EXT
+        *    64-bit World wide name
+        *    {READ,WRITE}_DMA_EXT_GPL commands
+        *    Segmented DOWNLOAD_MICROCODE
+        *    Gen1 signaling speed (1.5Gb/s)
+        *    Gen2 signaling speed (3.0Gb/s)
+        *    Gen3 signaling speed (6.0Gb/s)
+        *    Native Command Queueing (NCQ)
+        *    Phy event counters
+             DMA Setup Auto-Activate optimization
+        *    Software settings preservation
+        *    SET MAX SETPASSWORD/UNLOCK DMA commands
+        *    WRITE BUFFER DMA command
+        *    READ BUFFER DMA command
+        *    Data Set Management TRIM supported (limit 8 blocks)
+Security:
+     Master password revision code = 65534
+         supported
+     not    enabled
+     not    locked
+         frozen
+     not    expired: security count
+         supported: enhanced erase
+     6min for SECURITY ERASE UNIT. 32min for ENHANCED SECURITY ERASE UNIT.
+Logical Unit WWN Device Identifier: 5002538655584d30
+     NAA        : 5
+     IEEE OUI    : 002538
+     Unique ID    : 655584d30
+Integrity word not set (found 0x00bf, expected 0x100a5)
+
+iotop -o -b:
+Total DISK READ :       0.00 B/s | Total DISK WRITE :       0.00 B/s
+Actual DISK READ:       0.00 B/s | Actual DISK WRITE:       0.00 B/s
+   TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN      IO COMMAND
+   184 be/4 root        0.00 B/s    0.00 B/s  0.00 %  0.05 % [kworker/u16:3]
+Total DISK READ :       0.00 B/s | Total DISK WRITE :       0.00 B/s
+Actual DISK READ:       0.00 B/s | Actual DISK WRITE:      11.81 K/s
+   TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN      IO COMMAND
+   275 be/3 root        0.00 B/s    0.00 B/s  0.00 % 99.99 % [jbd2/dm-0-8]
+  4308 be/4 abridget    0.00 B/s    0.00 B/s  0.00 % 99.99 % thunderbird
+Total DISK READ :       0.00 B/s | Total DISK WRITE :       0.00 B/s
+Actual DISK READ:       0.00 B/s | Actual DISK WRITE:       0.00 B/s
+   TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN      IO COMMAND
+   184 be/4 root        0.00 B/s    0.00 B/s  0.00 %  0.07 % [kworker/u16:3]
+Total DISK READ :       0.00 B/s | Total DISK WRITE :      31.33 K/s
+Actual DISK READ:       0.00 B/s | Actual DISK WRITE:       0.00 B/s
+   TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN      IO COMMAND
+   184 be/4 root        0.00 B/s   31.33 K/s  0.00 %  0.00 % [kworker/u16:3]
+Total DISK READ :       0.00 B/s | Total DISK WRITE :       7.70 K/s
+Actual DISK READ:       0.00 B/s | Actual DISK WRITE:       0.00 B/s
+   TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN      IO COMMAND
+   275 be/3 root        0.00 B/s    0.00 B/s  0.00 % 99.99 % [jbd2/dm-0-8]
+   184 be/4 root        0.00 B/s    0.00 B/s  0.00 %  0.04 % [kworker/u16:3]
+  3148 be/4 abridget    0.00 B/s    7.70 K/s  0.00 %  0.00 % upstart --user
+Total DISK READ :       0.00 B/s | Total DISK WRITE :      15.74 K/s
+Actual DISK READ:       0.00 B/s | Actual DISK WRITE:      70.81 K/s
+   TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN      IO COMMAND
+  4308 be/4 abridget    0.00 B/s   15.74 K/s  0.00 %  0.08 % thunderbird
+   275 be/3 root        0.00 B/s    0.00 B/s  0.00 %  0.01 % [jbd2/dm-0-8]
+Total DISK READ :       0.00 B/s | Total DISK WRITE :       0.00 B/s
+Actual DISK READ:       0.00 B/s | Actual DISK WRITE:       0.00 B/s
+   TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN      IO COMMAND
+   184 be/4 root        0.00 B/s    0.00 B/s  0.00 %  0.07 % [kworker/u16:3]
+Total DISK READ :       0.00 B/s | Total DISK WRITE :      42.50 K/s
+Actual DISK READ:       0.00 B/s | Actual DISK WRITE:      42.50 K/s
+   TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN      IO COMMAND
+   275 be/3 root        0.00 B/s   27.04 K/s  0.00 % 99.99 % [jbd2/dm-0-8]
+  4308 be/4 abridget    0.00 B/s   15.45 K/s  0.00 %  0.07 % thunderbird
+Total DISK READ :       0.00 B/s | Total DISK WRITE :       0.00 B/s
+Actual DISK READ:       0.00 B/s | Actual DISK WRITE:       0.00 B/s
+   TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN      IO COMMAND
+   184 be/4 root        0.00 B/s    0.00 B/s  0.00 %  0.06 % [kworker/u16:3]
+Total DISK READ :       0.00 B/s | Total DISK WRITE :      30.87 K/s
+Actual DISK READ:       0.00 B/s | Actual DISK WRITE:     212.24 K/s
+   TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN      IO COMMAND
+   275 be/3 root        0.00 B/s   19.29 K/s  0.00 % 99.99 % [jbd2/dm-0-8]
+  4308 be/4 abridget    0.00 B/s   11.58 K/s  0.00 %  0.00 % thunderbird
+Total DISK READ :       0.00 B/s | Total DISK WRITE :       0.00 B/s
+Actual DISK READ:       0.00 B/s | Actual DISK WRITE:      23.49 K/s
+   TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN      IO COMMAND
+  4308 be/4 abridget    0.00 B/s    0.00 B/s  0.00 % 25.66 % thunderbird
+   184 be/4 root        0.00 B/s    0.00 B/s  0.00 %  0.05 % [kworker/u16:3]
+   275 be/3 root        0.00 B/s    0.00 B/s  0.00 %  0.02 % [jbd2/dm-0-8]
+
+And now (more programs):
+[14:30]~$ sudo mount -o remount,barrier=0 /
+[14:33]~$ sudo hdparm -tT /dev/sda
+/dev/sda:
+  Timing cached reads:   6548 MB in  2.00 seconds = 3275.19 MB/sec
+  Timing buffered disk reads: 2352 MB in  3.00 seconds = 783.92 MB/sec
+
+[14:34]~$ sudo mount -o remount,barrier=1 /
+[14:34]~$ sudo hdparm -tT /dev/sda
+/dev/sda:
+  Timing cached reads:     2 MB in  2.88 seconds = 710.50 kB/sec
+  Timing buffered disk reads:  20 MB in  5.07 seconds =   3.94 MB/sec
+
+[14:34]~$ sudo mount -o remount,barrier=0 /
+[14:35]~$ sudo hdparm -tT /dev/sda
+/dev/sda:
+  Timing cached reads:   17316 MB in  2.00 seconds = 8666.69 MB/sec
+  Timing buffered disk reads: 2368 MB in  3.00 seconds = 789.12 MB/sec
+
