@@ -1,7 +1,7 @@
 From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Subject: [PATCH RFC v1 2/4] e2fsprogs: add project quota support
-Date: Fri, 13 Mar 2015 19:00:08 +0300
-Message-ID: <20150313160008.14281.65535.stgit@buzz>
+Subject: [PATCH RFC v1 3/4] e2fsprogs: add tests for project quota
+Date: Fri, 13 Mar 2015 19:00:10 +0300
+Message-ID: <20150313160010.14281.45379.stgit@buzz>
 References: <20150313155012.14281.80292.stgit@buzz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -11,592 +11,515 @@ To: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
 	Theodore Ts'o <tytso@mit.edu>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from forward-corp1m.cmail.yandex.net ([5.255.216.100]:53558 "EHLO
+Received: from forward-corp1m.cmail.yandex.net ([5.255.216.100]:53563 "EHLO
 	forward-corp1m.cmail.yandex.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756058AbbCMQAP (ORCPT
+	by vger.kernel.org with ESMTP id S1755560AbbCMQAQ (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Mar 2015 12:00:15 -0400
+	Fri, 13 Mar 2015 12:00:16 -0400
 In-Reply-To: <20150313155012.14281.80292.stgit@buzz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds third quota type: project quota.
-
-For symmetry with other quotas inode number is stored in superblock but
-for now project quota supports only modern 'hidden' journal mode in inode 11.
-(non-hidden mode might be useful because if can work without reserved inode)
-
-When feature 'project' is enabled mke2fs automatically enables project quota
-and reserves first 20 inodes for special usage (instead of default 10).
-Changing that reservation unconditionally breaks too much tests where inode
-numbers are present in expected output or even hardcoded: for example in
-"tst_inline_data".
+t_project_1on: enable project quota by resize2fs/tune2fs
+t_project_2off disable project quota by tune2fs
 
 Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
 ---
- debugfs/quota.c      |    8 +++++---
- e2fsck/pass1.c       |    9 ++++++---
- e2fsck/quota.c       |   11 +++++++++++
- e2fsck/unix.c        |   25 ++++++++++++++++---------
- lib/ext2fs/ext2_fs.h |    5 +++++
- lib/quota/mkquota.c  |   42 ++++++++++++++++++++++++++++++++++++------
- lib/quota/quotaio.c  |   23 ++++++++++++++---------
- lib/quota/quotaio.h  |    7 +++++--
- misc/ext4.5.in       |    7 +++++++
- misc/mke2fs.8.in     |    5 ++++-
- misc/mke2fs.c        |   23 +++++++++++++++++++++--
- misc/tune2fs.8.in    |    9 +++++++++
- misc/tune2fs.c       |   49 ++++++++++++++++++++++++++++++++++++++++++++-----
- 13 files changed, 183 insertions(+), 40 deletions(-)
+ tests/m_project/expect.1    |  156 +++++++++++++++++++++++++++++++++++++++++++
+ tests/m_project/script      |    7 ++
+ tests/t_project_1on/expect  |   66 ++++++++++++++++++
+ tests/t_project_1on/name    |    1 
+ tests/t_project_1on/script  |   68 +++++++++++++++++++
+ tests/t_project_2off/expect |   78 ++++++++++++++++++++++
+ tests/t_project_2off/name   |    1 
+ tests/t_project_2off/script |   54 +++++++++++++++
+ 8 files changed, 431 insertions(+)
+ create mode 100644 tests/m_project/expect.1
+ create mode 100644 tests/m_project/script
+ create mode 100644 tests/t_project_1on/expect
+ create mode 100644 tests/t_project_1on/name
+ create mode 100644 tests/t_project_1on/script
+ create mode 100644 tests/t_project_2off/expect
+ create mode 100644 tests/t_project_2off/name
+ create mode 100644 tests/t_project_2off/script
 
-diff --git a/debugfs/quota.c b/debugfs/quota.c
-index 9612f6420cb4..c4449e2d68dd 100644
---- a/debugfs/quota.c
-+++ b/debugfs/quota.c
-@@ -25,7 +25,7 @@ extern char *optarg;
- 
- #include "debugfs.h"
- 
--const char *quota_type[] = { "user", "group", NULL };
-+const char *quota_type[] = { "user", "group", "project", NULL };
- 
- static int load_quota_ctx(char *progname)
- {
-@@ -121,7 +121,8 @@ void do_list_quota(int argc, char *argv[])
- 		return;
- 
- 	printf("%8s   %8s %8s %8s    %8s %8s %8s\n",
--	       (type == 0) ? "user id" : "group id",
-+	       (type == USRQUOTA) ? "user id" :
-+	       (type == GRPQUOTA) ? "group id" : "project",
- 	       "blocks", "quota", "limit", "inodes", "quota", "limit");
- 	qh = current_qctx->quota_file[type];
- 	retval = qh->qh_ops->scan_dquots(qh, list_quota_callback, NULL);
-@@ -155,7 +156,8 @@ void do_get_quota(int argc, char *argv[])
- 		return;
- 
- 	printf("%8s   %8s %8s %8s    %8s %8s %8s\n",
--	       (type == 0) ? "user id" : "group id",
-+	       (type == USRQUOTA) ? "user id" :
-+	       (type == GRPQUOTA) ? "group id" : "project",
- 	       "blocks", "quota", "limit", "inodes", "quota", "limit");
- 
- 	qh = current_qctx->quota_file[type];
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index b5ac4a8587eb..701af354fb24 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -1437,12 +1437,15 @@ void e2fsck_pass1(e2fsck_t ctx)
- 				failed_csum = 0;
- 			}
- 		} else if ((ino == EXT4_USR_QUOTA_INO) ||
--			   (ino == EXT4_GRP_QUOTA_INO)) {
-+			   (ino == EXT4_GRP_QUOTA_INO) ||
-+			   (ino < EXT2_FIRST_INODE(fs->super) &&
-+			    ino == EXT4_PRJ_QUOTA_INO)) {
- 			ext2fs_mark_inode_bitmap2(ctx->inode_used_map, ino);
- 			if ((fs->super->s_feature_ro_compat &
- 					EXT4_FEATURE_RO_COMPAT_QUOTA) &&
--			    ((fs->super->s_usr_quota_inum == ino) ||
--			     (fs->super->s_grp_quota_inum == ino))) {
-+			    ((sb->s_usr_quota_inum == ino) ||
-+			     (sb->s_grp_quota_inum == ino) ||
-+			     (sb->s_prj_quota_inum == ino))) {
- 				if (!LINUX_S_ISREG(inode->i_mode) &&
- 				    fix_problem(ctx, PR_1_QUOTA_BAD_MODE,
- 							&pctx)) {
-diff --git a/e2fsck/quota.c b/e2fsck/quota.c
-index c6bbb9afc47f..86a0031e8139 100644
---- a/e2fsck/quota.c
-+++ b/e2fsck/quota.c
-@@ -88,5 +88,16 @@ void e2fsck_hide_quota(e2fsck_t ctx)
- 		sb->s_grp_quota_inum = EXT4_GRP_QUOTA_INO;
- 	}
- 
-+	pctx.ino = sb->s_prj_quota_inum;
-+	if ((sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_PROJECT) &&
-+	    sb->s_prj_quota_inum &&
-+	    (sb->s_prj_quota_inum != EXT4_PRJ_QUOTA_INO) &&
-+	    (sb->s_first_ino > EXT4_PRJ_QUOTA_INO) &&
-+	    fix_problem(ctx, PR_0_HIDE_QUOTA, &pctx)) {
-+		move_quota_inode(fs, sb->s_prj_quota_inum, EXT4_PRJ_QUOTA_INO,
-+				 PRJQUOTA);
-+		sb->s_prj_quota_inum = EXT4_PRJ_QUOTA_INO;
-+	}
+diff --git a/tests/m_project/expect.1 b/tests/m_project/expect.1
+new file mode 100644
+index 000000000000..e8140f5cc963
+--- /dev/null
++++ b/tests/m_project/expect.1
+@@ -0,0 +1,156 @@
++Creating filesystem with 131072 1k blocks and 32768 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729
 +
- 	return;
- }
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index e6291367db39..5b655502afd1 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -1636,14 +1636,20 @@ print_unsupp_features:
- 		journal_size = -1;
- 
- 	if (sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_QUOTA) {
--		/* Quotas were enabled. Do quota accounting during fsck. */
--		if ((sb->s_usr_quota_inum && sb->s_grp_quota_inum) ||
--		    (!sb->s_usr_quota_inum && !sb->s_grp_quota_inum))
--			qtype = -1;
--		else
--			qtype = sb->s_usr_quota_inum ? USRQUOTA : GRPQUOTA;
--
--		quota_init_context(&ctx->qctx, ctx->fs, qtype);
-+		/*
-+		 * Quotas were enabled. Do quota accounting during fsck.
-+		 * If no quotas in-use then initialize all supported types.
-+		 */
-+		qtype = -2;
-+		if (sb->s_usr_quota_inum)
-+			qtype = USRQUOTA;
-+		if (sb->s_grp_quota_inum)
-+			qtype = (qtype == -2) ? GRPQUOTA : -1;
-+		if (sb->s_prj_quota_inum && EXT2_HAS_RO_COMPAT_FEATURE(sb,
-+						EXT4_FEATURE_RO_COMPAT_PROJECT))
-+			qtype = (qtype == -2) ? PRJQUOTA : -1;
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Writing superblocks and filesystem accounting information:      done
 +
-+		quota_init_context(&ctx->qctx, ctx->fs, qtype < 0 ? -1 : qtype);
- 	}
- 
- 	run_result = e2fsck_run(ctx);
-@@ -1682,7 +1688,8 @@ no_journal:
- 	if (ctx->qctx) {
- 		int i, needs_writeout;
- 		for (i = 0; i < MAXQUOTAS; i++) {
--			if (qtype != -1 && qtype != i)
-+			if ((qtype == -1 && !quota_get_sb_inum(fs, i)) ||
-+			    (qtype >= 0 && qtype != i))
- 				continue;
- 			needs_writeout = 0;
- 			pctx.num = i;
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index 5ff835e60657..77cde1bc009f 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -56,6 +56,11 @@
- /* First non-reserved inode for old ext2 filesystems */
- #define EXT2_GOOD_OLD_FIRST_INO	11
- 
-+#define EXT4_PRJ_QUOTA_INO	11	/* Project quota inode */
++Filesystem features: ext_attr resize_inode dir_index filetype sparse_super quota project
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 21/32768 files (4.8% non-contiguous), 5697/131072 blocks
++Exit status is 0
++Filesystem volume name:   <none>
++Last mounted on:          <not available>
++Filesystem magic number:  0xEF53
++Filesystem revision #:    1 (dynamic)
++Filesystem features:      ext_attr resize_inode dir_index filetype sparse_super quota project
++Default mount options:    (none)
++Filesystem state:         clean
++Errors behavior:          Continue
++Filesystem OS type:       Linux
++Inode count:              32768
++Block count:              131072
++Reserved block count:     6553
++Free blocks:              125375
++Free inodes:              32747
++First block:              1
++Block size:               1024
++Fragment size:            1024
++Reserved GDT blocks:      256
++Blocks per group:         8192
++Fragments per group:      8192
++Inodes per group:         2048
++Inode blocks per group:   256
++Mount count:              0
++Check interval:           15552000 (6 months)
++Reserved blocks uid:      0
++Reserved blocks gid:      0
++First inode:              21
++Inode size:	          128
++Default directory hash:   half_md4
++Project quota inode:      11
 +
-+/* Default first non-reserved inode for new filesystems */
-+#define EXT4_DEFAULT_FIRST_INO	21
 +
- /*
-  * The second extended file system magic number
-  */
-diff --git a/lib/quota/mkquota.c b/lib/quota/mkquota.c
-index 0ece08818906..cb540acf4271 100644
---- a/lib/quota/mkquota.c
-+++ b/lib/quota/mkquota.c
-@@ -84,6 +84,18 @@ int quota_file_exists(ext2_filsys fs, int qtype, int fmt)
- 	return ino;
- }
- 
-+ext2_ino_t quota_get_sb_inum(ext2_filsys fs, int qtype)
-+{
-+	switch (qtype) {
-+	case USRQUOTA:
-+		return fs->super->s_usr_quota_inum;
-+	case GRPQUOTA:
-+		return fs->super->s_grp_quota_inum;
-+	case PRJQUOTA:
-+		return fs->super->s_prj_quota_inum;
-+	}
-+}
++Group 0: (Blocks 1-8192)
++  Primary superblock at 1, Group descriptors at 2-2
++  Reserved GDT blocks at 3-258
++  Block bitmap at 259 (+258), Inode bitmap at 260 (+259)
++  Inode table at 261-516 (+260)
++  7656 free blocks, 2027 free inodes, 2 directories
++  Free blocks: 537-8192
++  Free inodes: 22-2048
++Group 1: (Blocks 8193-16384)
++  Backup superblock at 8193, Group descriptors at 8194-8194
++  Reserved GDT blocks at 8195-8450
++  Block bitmap at 8451 (+258), Inode bitmap at 8452 (+259)
++  Inode table at 8453-8708 (+260)
++  7676 free blocks, 2048 free inodes, 0 directories
++  Free blocks: 8709-16384
++  Free inodes: 2049-4096
++Group 2: (Blocks 16385-24576)
++  Block bitmap at 16385 (+0), Inode bitmap at 16386 (+1)
++  Inode table at 16387-16642 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories
++  Free blocks: 16643-24576
++  Free inodes: 4097-6144
++Group 3: (Blocks 24577-32768)
++  Backup superblock at 24577, Group descriptors at 24578-24578
++  Reserved GDT blocks at 24579-24834
++  Block bitmap at 24835 (+258), Inode bitmap at 24836 (+259)
++  Inode table at 24837-25092 (+260)
++  7676 free blocks, 2048 free inodes, 0 directories
++  Free blocks: 25093-32768
++  Free inodes: 6145-8192
++Group 4: (Blocks 32769-40960)
++  Block bitmap at 32769 (+0), Inode bitmap at 32770 (+1)
++  Inode table at 32771-33026 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories
++  Free blocks: 33027-40960
++  Free inodes: 8193-10240
++Group 5: (Blocks 40961-49152)
++  Backup superblock at 40961, Group descriptors at 40962-40962
++  Reserved GDT blocks at 40963-41218
++  Block bitmap at 41219 (+258), Inode bitmap at 41220 (+259)
++  Inode table at 41221-41476 (+260)
++  7676 free blocks, 2048 free inodes, 0 directories
++  Free blocks: 41477-49152
++  Free inodes: 10241-12288
++Group 6: (Blocks 49153-57344)
++  Block bitmap at 49153 (+0), Inode bitmap at 49154 (+1)
++  Inode table at 49155-49410 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories
++  Free blocks: 49411-57344
++  Free inodes: 12289-14336
++Group 7: (Blocks 57345-65536)
++  Backup superblock at 57345, Group descriptors at 57346-57346
++  Reserved GDT blocks at 57347-57602
++  Block bitmap at 57603 (+258), Inode bitmap at 57604 (+259)
++  Inode table at 57605-57860 (+260)
++  7676 free blocks, 2048 free inodes, 0 directories
++  Free blocks: 57861-65536
++  Free inodes: 14337-16384
++Group 8: (Blocks 65537-73728)
++  Block bitmap at 65537 (+0), Inode bitmap at 65538 (+1)
++  Inode table at 65539-65794 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories
++  Free blocks: 65795-73728
++  Free inodes: 16385-18432
++Group 9: (Blocks 73729-81920)
++  Backup superblock at 73729, Group descriptors at 73730-73730
++  Reserved GDT blocks at 73731-73986
++  Block bitmap at 73987 (+258), Inode bitmap at 73988 (+259)
++  Inode table at 73989-74244 (+260)
++  7676 free blocks, 2048 free inodes, 0 directories
++  Free blocks: 74245-81920
++  Free inodes: 18433-20480
++Group 10: (Blocks 81921-90112)
++  Block bitmap at 81921 (+0), Inode bitmap at 81922 (+1)
++  Inode table at 81923-82178 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories
++  Free blocks: 82179-90112
++  Free inodes: 20481-22528
++Group 11: (Blocks 90113-98304)
++  Block bitmap at 90113 (+0), Inode bitmap at 90114 (+1)
++  Inode table at 90115-90370 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories
++  Free blocks: 90371-98304
++  Free inodes: 22529-24576
++Group 12: (Blocks 98305-106496)
++  Block bitmap at 98305 (+0), Inode bitmap at 98306 (+1)
++  Inode table at 98307-98562 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories
++  Free blocks: 98563-106496
++  Free inodes: 24577-26624
++Group 13: (Blocks 106497-114688)
++  Block bitmap at 106497 (+0), Inode bitmap at 106498 (+1)
++  Inode table at 106499-106754 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories
++  Free blocks: 106755-114688
++  Free inodes: 26625-28672
++Group 14: (Blocks 114689-122880)
++  Block bitmap at 114689 (+0), Inode bitmap at 114690 (+1)
++  Inode table at 114691-114946 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories
++  Free blocks: 114947-122880
++  Free inodes: 28673-30720
++Group 15: (Blocks 122881-131071)
++  Block bitmap at 122881 (+0), Inode bitmap at 122882 (+1)
++  Inode table at 122883-123138 (+2)
++  7933 free blocks, 2048 free inodes, 0 directories
++  Free blocks: 123139-131071
++  Free inodes: 30721-32768
+diff --git a/tests/m_project/script b/tests/m_project/script
+new file mode 100644
+index 000000000000..a420ae523c6b
+--- /dev/null
++++ b/tests/m_project/script
+@@ -0,0 +1,7 @@
++DESCRIPTION="enable project feature on mkfs"
++FS_SIZE=131072
++MKE2FS_OPTS="-O project"
++DUMPE2FS_IGNORE_80COL=1
++export DUMPE2FS_IGNORE_80COL
++. $cmd_dir/run_mke2fs
++unset DUMPE2FS_IGNORE_80COL
+diff --git a/tests/t_project_1on/expect b/tests/t_project_1on/expect
+new file mode 100644
+index 000000000000..adf4aa023b6b
+--- /dev/null
++++ b/tests/t_project_1on/expect
+@@ -0,0 +1,66 @@
++Exit status is 0
++debugfs
++debugfs: write test.img.2 file1
++Allocated inode: 12
++Exit status is 0
++resize2fs -I 21
++Reserving special inodes.
++The filesystem on test.img is now 10000 (4k) blocks long.
 +
- /*
-  * Set the value for reserved quota inode number field in superblock.
-  */
-@@ -91,8 +103,17 @@ void quota_set_sb_inum(ext2_filsys fs, ext2_ino_t ino, int qtype)
- {
- 	ext2_ino_t *inump;
- 
--	inump = (qtype == USRQUOTA) ? &fs->super->s_usr_quota_inum :
--		&fs->super->s_grp_quota_inum;
-+	switch (qtype) {
-+	case USRQUOTA:
-+		inump = &fs->super->s_usr_quota_inum;
-+		break;
-+	case GRPQUOTA:
-+		inump = &fs->super->s_grp_quota_inum;
-+		break;
-+	case PRJQUOTA:
-+		inump = &fs->super->s_prj_quota_inum;
-+		break;
-+	}
- 
- 	log_debug("setting quota ino in superblock: ino=%u, type=%d", ino,
- 		 qtype);
-@@ -110,9 +131,10 @@ errcode_t quota_remove_inode(ext2_filsys fs, int qtype)
- 		log_err("Couldn't read bitmaps: %s", error_message(retval));
- 		return retval;
- 	}
--	qf_ino = (qtype == USRQUOTA) ? fs->super->s_usr_quota_inum :
--		fs->super->s_grp_quota_inum;
++Exit status is 0
++tune2fs -O project
++Exit status is 0
++fsck
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test.img: 22/10016 files (0.0% non-contiguous), 584/10000 blocks
++Exit status is 0
++debugfs list_quota project
++ project     blocks    quota    limit      inodes    quota    limit
++       0    1073152        0        0           3        0        0
++Exit status is 0
++Filesystem volume name:   <none>
++Last mounted on:          <not available>
++Filesystem magic number:  0xEF53
++Filesystem revision #:    1 (dynamic)
++Filesystem features:      ext_attr resize_inode dir_index filetype sparse_super large_file quota project
++Default mount options:    (none)
++Filesystem state:         clean
++Errors behavior:          Continue
++Filesystem OS type:       Linux
++Inode count:              10016
++Block count:              10000
++Reserved block count:     500
++Free blocks:              9416
++Free inodes:              9994
++First block:              0
++Block size:               4096
++Fragment size:            4096
++Reserved GDT blocks:      2
++Blocks per group:         32768
++Fragments per group:      32768
++Inodes per group:         10016
++Inode blocks per group:   313
++Mount count:              0
++Check interval:           15552000 (6 months)
++Reserved blocks uid:      0
++Reserved blocks gid:      0
++First inode:              21
++Inode size:	          128
++Default directory hash:   half_md4
++Project quota inode:      11
 +
-+	qf_ino = quota_get_sb_inum(fs, qtype);
- 	quota_set_sb_inum(fs, 0, qtype);
 +
- 	/* Truncate the inode only if its a reserved one. */
- 	if (qf_ino < EXT2_FIRST_INODE(fs->super))
- 		quota_inode_truncate(fs, qf_ino);
-@@ -232,9 +254,14 @@ static int dict_uint_cmp(const void *a, const void *b)
- 
- static inline qid_t get_qid(struct ext2_inode *inode, int qtype)
- {
--	if (qtype == USRQUOTA)
-+	switch (qtype) {
-+	case USRQUOTA:
- 		return inode_uid(*inode);
--	return inode_gid(*inode);
-+	case GRPQUOTA:
-+		return inode_gid(*inode);
-+	case PRJQUOTA:
-+		return inode->i_project;
-+	}
- }
- 
- static void quota_dnode_free(dnode_t *node,
-@@ -267,6 +294,9 @@ errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs, int qtype)
- 		ctx->quota_file[i] = NULL;
- 		if ((qtype != -1) && (i != qtype))
- 			continue;
-+		if (i == PRJQUOTA && !EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+					EXT4_FEATURE_RO_COMPAT_PROJECT))
-+			continue;
- 		err = ext2fs_get_mem(sizeof(dict_t), &dict);
- 		if (err) {
- 			log_err("Failed to allocate dictionary");
-diff --git a/lib/quota/quotaio.c b/lib/quota/quotaio.c
-index c7e5f87b5a1b..bc055c8ea91f 100644
---- a/lib/quota/quotaio.c
-+++ b/lib/quota/quotaio.c
-@@ -19,7 +19,7 @@
- #include "common.h"
- #include "quotaio.h"
- 
--static const char * const extensions[MAXQUOTAS] = {"user", "group"};
-+static const char * const extensions[MAXQUOTAS] = {"user", "group", "project"};
- static const char * const basenames[] = {
- 	"",		/* undefined */
- 	"quota",	/* QFMT_VFS_OLD */
-@@ -118,7 +118,8 @@ errcode_t quota_inode_truncate(ext2_filsys fs, ext2_ino_t ino)
- 	if ((err = ext2fs_read_inode(fs, ino, &inode)))
- 		return err;
- 
--	if ((ino == EXT4_USR_QUOTA_INO) || (ino == EXT4_GRP_QUOTA_INO)) {
-+	if ((ino == EXT4_USR_QUOTA_INO) || (ino == EXT4_GRP_QUOTA_INO) ||
-+	    (ino == EXT4_PRJ_QUOTA_INO)) {
- 		inode.i_dtime = fs->now ? fs->now : time(0);
- 		if (!ext2fs_inode_has_valid_blocks2(fs, &inode))
- 			return 0;
-@@ -215,12 +216,8 @@ errcode_t quota_file_open(quota_ctx_t qctx, struct quota_handle *h,
- 	if (err)
- 		return err;
- 
--	if (qf_ino == 0) {
--		if (type == USRQUOTA)
--			qf_ino = fs->super->s_usr_quota_inum;
--		else
--			qf_ino = fs->super->s_grp_quota_inum;
--	}
-+	if (qf_ino == 0)
-+		qf_ino = quota_get_sb_inum(fs, type);
- 
- 	log_debug("Opening quota ino=%lu, type=%d", qf_ino, type);
- 	err = ext2fs_file_open(fs, qf_ino, flags, &e2_file);
-@@ -318,19 +315,27 @@ errcode_t quota_file_create(struct quota_handle *h, ext2_filsys fs, int type, in
- {
- 	ext2_file_t e2_file;
- 	int err;
--	unsigned long qf_inum;
-+	ext2_ino_t qf_inum;
- 
- 	if (fmt == -1)
- 		fmt = QFMT_VFS_V1;
- 
- 	h->qh_qf.fs = fs;
++Group 0: (Blocks 0-9999)
++  Primary superblock at 0, Group descriptors at 1-1
++  Reserved GDT blocks at 2-3
++  Block bitmap at 4 (+4)
++  Inode bitmap at 5 (+5)
++  Inode table at 6-318 (+6)
++  9416 free blocks, 9994 free inodes, 2 directories
++  Free blocks: 584-9999
++  Free inodes: 23-10016
++Exit status is 0
+diff --git a/tests/t_project_1on/name b/tests/t_project_1on/name
+new file mode 100644
+index 000000000000..e9113aa7d10f
+--- /dev/null
++++ b/tests/t_project_1on/name
+@@ -0,0 +1 @@
++enable project quota using tune2fs
+diff --git a/tests/t_project_1on/script b/tests/t_project_1on/script
+new file mode 100644
+index 000000000000..798e67c39b71
+--- /dev/null
++++ b/tests/t_project_1on/script
+@@ -0,0 +1,68 @@
++FSCK_OPT=-yf
++OUT=$test_name.log
++EXP=$test_dir/expect
 +
- 	if (type == USRQUOTA)
- 		qf_inum = EXT4_USR_QUOTA_INO;
- 	else if (type == GRPQUOTA)
- 		qf_inum = EXT4_GRP_QUOTA_INO;
-+	else if (type == PRJQUOTA)
-+		qf_inum = EXT4_PRJ_QUOTA_INO;
- 	else
- 		return -1;
- 
-+	if (qf_inum >= EXT2_FIRST_INO(fs->super)) {
-+		log_err("quota inode is not special");
-+		return EXT2_ET_BAD_INODE_NUM;
-+	}
++if [ "$QUOTA" != "y" ]; then
++	echo "$test_name: $test_description: skipped"
++	return 0
++fi
 +
- 	err = ext2fs_read_bitmaps(fs);
- 	if (err)
- 		goto out_err;
-diff --git a/lib/quota/quotaio.h b/lib/quota/quotaio.h
-index 7ca7830e8264..04bec25bae99 100644
---- a/lib/quota/quotaio.h
-+++ b/lib/quota/quotaio.h
-@@ -44,9 +44,10 @@
- 
- typedef int64_t qsize_t;	/* Type in which we store size limitations */
- 
--#define MAXQUOTAS 2
-+#define MAXQUOTAS 3
- #define USRQUOTA 0
- #define GRPQUOTA 1
-+#define PRJQUOTA 2
- 
- typedef struct quota_ctx *quota_ctx_t;
- 
-@@ -61,7 +62,8 @@ struct quota_ctx {
-  */
- #define INITQMAGICS {\
- 	0xd9c01f11,	/* USRQUOTA */\
--	0xd9c01927	/* GRPQUOTA */\
-+	0xd9c01927,	/* GRPQUOTA */\
-+	0xd9c03f14,	/* PRJQUOTA */\
- }
- 
- /* Size of blocks in which are counted size limits in generic utility parts */
-@@ -216,6 +218,7 @@ void quota_release_context(quota_ctx_t *qctx);
- 
- errcode_t quota_remove_inode(ext2_filsys fs, int qtype);
- int quota_file_exists(ext2_filsys fs, int qtype, int fmt);
-+ext2_ino_t quota_get_sb_inum(ext2_filsys fs, int qtype);
- void quota_set_sb_inum(ext2_filsys fs, ext2_ino_t ino, int qtype);
- errcode_t quota_compare_and_update(quota_ctx_t qctx, int qtype,
- 				   int *usage_inconsistent);
-diff --git a/misc/ext4.5.in b/misc/ext4.5.in
-index 19302a7297dd..806b30682638 100644
---- a/misc/ext4.5.in
-+++ b/misc/ext4.5.in
-@@ -253,6 +253,13 @@ the file system using
- and it also speeds up the time required for
- .BR mke2fs (8)
- to create the file system.
-+.TP
-+.B project
-+.br
-+This filesystem feature adds third identificator to inode - "project ID".
-+Projects provides mechanism for aggregating subtrees or individual files
-+scattered across filesystem and enforcing disk quotas for them regardless
-+of users and groups who own them.
- .RE
- .SH MOUNT OPTIONS
- This section describes mount options which are specific to ext2, ext3,
-diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-index d7cafd65ba6f..53055ff033a2 100644
---- a/misc/mke2fs.8.in
-+++ b/misc/mke2fs.8.in
-@@ -379,11 +379,14 @@ command-line option to
- .BR resize2fs (8).
- @QUOTA_MAN_COMMENT@.TP
- @QUOTA_MAN_COMMENT@.BI quotatype
--@QUOTA_MAN_COMMENT@Specify which quota type ('usr' or 'grp') is to be
-+@QUOTA_MAN_COMMENT@Specify which quota type ('usr', 'grp' or 'prj') is to be
- @QUOTA_MAN_COMMENT@initialized. This option has effect only if the
- @QUOTA_MAN_COMMENT@.B quota
- @QUOTA_MAN_COMMENT@feature is set. Without this extended option, the default
- @QUOTA_MAN_COMMENT@behavior is to initialize both user and group quotas.
-+@QUOTA_MAN_COMMENT@If feature
-+@QUOTA_MAN_COMMENT@.B project
-+@QUOTA_MAN_COMMENT@is set then project quota is also initialized by default.
- .RE
- .TP
- .BI \-f " fragment-size"
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 5427305b748d..1e1c569af140 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1029,9 +1029,11 @@ static void parse_extended_opts(struct ext2_super_block *param,
- 				continue;
- 			}
- 			if (!strncmp(arg, "usr", 3)) {
--				quotatype = 0;
-+				quotatype = USRQUOTA;
- 			} else if (!strncmp(arg, "grp", 3)) {
--				quotatype = 1;
-+				quotatype = GRPQUOTA;
-+			} else if (!strncmp(arg, "prj", 3)) {
-+				quotatype = PRJQUOTA;
- 			} else {
- 				fprintf(stderr,
- 					_("Invalid quotatype parameter: %s\n"),
-@@ -2449,6 +2451,23 @@ profile_error:
- 			fs_param.s_backup_bgs[1] = ~0;
- 	}
- 
-+#ifdef CONFIG_QUOTA
-+	if (EXT2_HAS_RO_COMPAT_FEATURE(&fs_param,
-+				EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-+		/* Feature "project" automacally enables project quota */
-+		if (!EXT2_HAS_RO_COMPAT_FEATURE(&fs_param,
-+					EXT4_FEATURE_RO_COMPAT_QUOTA)) {
-+			fs_param.s_feature_ro_compat |=
-+					EXT4_FEATURE_RO_COMPAT_QUOTA;
-+			if (quotatype == -1)
-+				quotatype = PRJQUOTA;
-+		}
-+		/* Reserve special inode for project quota */
-+		if (fs_param.s_first_ino <= EXT4_PRJ_QUOTA_INO)
-+			fs_param.s_first_ino = EXT4_DEFAULT_FIRST_INO;
-+	}
-+#endif
++echo "mke2fs" >> $OUT
++$MKE2FS -q -F -o Linux -b 4096 $TMPFILE 10000 > $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
 +
- 	free(fs_type);
- 	free(usage_types);
- }
-diff --git a/misc/tune2fs.8.in b/misc/tune2fs.8.in
-index 9d1df8242baa..3f65b1d4063b 100644
---- a/misc/tune2fs.8.in
-+++ b/misc/tune2fs.8.in
-@@ -580,6 +580,12 @@ keep a high watermark for the unused inodes in a filesystem, to reduce
- time.  This first e2fsck run after enabling this feature will take the
- full time, but subsequent e2fsck runs will take only a fraction of the
- original time, depending on how full the file system is.
-+.TP
-+.B project
-+Add project ID to inode.
-+@QUOTA_MAN_COMMENT@And project quota if feature
-+@QUOTA_MAN_COMMENT@.B quota
-+@QUOTA_MAN_COMMENT@is enabled.
- .RE
- .IP
- After setting or clearing 
-@@ -622,6 +628,9 @@ Sets/clears user quota inode in the superblock.
- .TP
- .BR [^]grpquota
- Sets/clears group quota inode in the superblock.
-+.TP
-+.BR [^]prjquota
-+Sets/clears project quota inode in the superblock.
- .RE
- .TP
- .BI \-T " time-last-checked"
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 0410d1c11539..8af236395b16 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -95,7 +95,7 @@ static int stride_set, stripe_width_set;
- static char *extended_cmd;
- static unsigned long new_inode_size;
- static char *ext_mount_opts;
--static int usrquota, grpquota;
-+static int usrquota, grpquota, prjquota;
- static int rewrite_checksums;
- static int feature_64bit;
- static int fsck_requested;
-@@ -1303,6 +1303,7 @@ mmp_error:
- 		/* Disable both user quota and group quota by default */
- 		usrquota = QOPT_DISABLE;
- 		grpquota = QOPT_DISABLE;
-+		prjquota = QOPT_DISABLE;
- 	}
- 
- 	if (FEATURE_CHANGED(E2P_FEATURE_RO_INCOMPAT,
-@@ -1317,11 +1318,19 @@ mmp_error:
- 
- 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
- 				EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-+		if (!Q_flag) {
-+			Q_flag = 1;
-+			prjquota = QOPT_ENABLE;
-+		}
- 		sb->s_feature_ro_compat |= EXT4_FEATURE_RO_COMPAT_PROJECT;
- 	}
- 
- 	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
- 				EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-+		if (!Q_flag) {
-+			Q_flag = 1;
-+			prjquota = QOPT_DISABLE;
-+		}
- 		sb->s_feature_ro_compat &= ~EXT4_FEATURE_RO_COMPAT_PROJECT;
- 		/* fsck will reset i_project (i_faddr) for us. */
- 		request_fsck_afterwards(fs);
-@@ -1441,13 +1450,15 @@ static void handle_quota_options(ext2_filsys fs)
- 	quota_ctx_t qctx;
- 	ext2_ino_t qf_ino;
- 
--	if (!usrquota && !grpquota)
-+	if (!usrquota && !grpquota && !prjquota)
- 		/* Nothing to do. */
- 		return;
- 
- 	quota_init_context(&qctx, fs, -1);
- 
--	if (usrquota == QOPT_ENABLE || grpquota == QOPT_ENABLE)
-+	if (usrquota == QOPT_ENABLE ||
-+	    grpquota == QOPT_ENABLE ||
-+	    prjquota == QOPT_ENABLE)
- 		quota_compute_usage(qctx);
- 
- 	if (usrquota == QOPT_ENABLE && !fs->super->s_usr_quota_inum) {
-@@ -1468,13 +1479,25 @@ static void handle_quota_options(ext2_filsys fs)
- 		quota_remove_inode(fs, GRPQUOTA);
- 	}
- 
-+	if (prjquota == QOPT_ENABLE && !fs->super->s_prj_quota_inum) {
-+		if ((qf_ino = quota_file_exists(fs, PRJQUOTA,
-+						QFMT_VFS_V1)) > 0)
-+			quota_update_limits(qctx, qf_ino, PRJQUOTA);
-+		quota_write_inode(qctx, PRJQUOTA);
-+	} else if (prjquota == QOPT_DISABLE) {
-+		quota_remove_inode(fs, PRJQUOTA);
-+	}
++dd if=/dev/zero of=$TMPFILE.2 bs=1048576 count=1 > /dev/null 2>&1
++echo "debugfs" >> $OUT
++cat <<- EOF | $DEBUGFS -w -f /dev/stdin $TMPFILE >> $OUT 2>&1
++	write $TMPFILE.2 file1
++EOF
++status=$?
++echo Exit status is $status >> $OUT
++rm -f $TMPFILE.2
 +
- 	quota_release_context(&qctx);
- 
--	if ((usrquota == QOPT_ENABLE) || (grpquota == QOPT_ENABLE)) {
-+	if ((usrquota == QOPT_ENABLE) ||
-+	    (grpquota == QOPT_ENABLE) ||
-+	    (prjquota == QOPT_ENABLE)) {
- 		fs->super->s_feature_ro_compat |= EXT4_FEATURE_RO_COMPAT_QUOTA;
- 		ext2fs_mark_super_dirty(fs);
- 	} else if (!fs->super->s_usr_quota_inum &&
--		   !fs->super->s_grp_quota_inum) {
-+		   !fs->super->s_grp_quota_inum &&
-+		   !fs->super->s_prj_quota_inum) {
- 		fs->super->s_feature_ro_compat &= ~EXT4_FEATURE_RO_COMPAT_QUOTA;
- 		ext2fs_mark_super_dirty(fs);
- 	}
-@@ -1512,12 +1535,17 @@ static void parse_quota_opts(const char *opts)
- 			grpquota = QOPT_ENABLE;
- 		} else if (strcmp(token, "^grpquota") == 0) {
- 			grpquota = QOPT_DISABLE;
-+		} else if (strcmp(token, "prjquota") == 0) {
-+			prjquota = QOPT_ENABLE;
-+		} else if (strcmp(token, "^prjquota") == 0) {
-+			prjquota = QOPT_DISABLE;
- 		} else {
- 			fputs(_("\nBad quota options specified.\n\n"
- 				"Following valid quota options are available "
- 				"(pass by separating with comma):\n"
- 				"\t[^]usrquota\n"
- 				"\t[^]grpquota\n"
-+				"\t[^]prjquota\n"
- 				"\n\n"), stderr);
- 			free(buf);
- 			exit(1);
-@@ -2945,6 +2973,17 @@ retry_open:
- 			rc = 1;
- 			goto closefs;
- 		}
-+		if (prjquota == QOPT_ENABLE &&
-+		    EXT4_PRJ_QUOTA_INO >= EXT2_FIRST_INO(sb)) {
-+			/*
-+			 * For now it supports only hidden project quota,
-+			 * theoretically we can create 'aquota.project' here.
-+			 */
-+			fputs(_("Special inode for project quota isn't reserved."
-+				"Please reserve it by resize2fs -I 21"), stderr);
-+			rc = 1;
-+			goto closefs;
-+		}
- 		handle_quota_options(fs);
- 	}
- 
++echo "resize2fs -I 21" >> $OUT
++$RESIZE2FS -I 21 $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++echo "tune2fs -O project" >> $OUT
++$TUNE2FS -O project $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++echo "fsck" >> $OUT
++$FSCK $FSCK_OPT $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++echo "debugfs list_quota project" >> $OUT
++$DEBUGFS $TMPFILE -R "list_quota project" >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++$DUMPE2FS $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++rm -f $TMPFILE
++
++#
++# Do the verification
++#
++
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
++mv $OUT.new $OUT
++
++cmp -s $OUT $EXP
++status=$?
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++fi
++
++unset FSCK_OPT OUT EXP
++
+diff --git a/tests/t_project_2off/expect b/tests/t_project_2off/expect
+new file mode 100644
+index 000000000000..6606b305a097
+--- /dev/null
++++ b/tests/t_project_2off/expect
+@@ -0,0 +1,78 @@
++Exit status is 0
++debugfs set_inode_field / project 1
++debugfs: set_inode_field / project 1
++Exit status is 0
++tune2fs -O ^project
++
++Please run e2fsck on the filesystem.
++
++Exit status is 0
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++i_faddr for inode 2 (/) is 1, should be zero.
++Clear? yes
++
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++test.img: ***** FILE SYSTEM WAS MODIFIED *****
++
++          21 inodes used (32.81%, out of 64)
++           0 non-contiguous files (0.0%)
++           0 non-contiguous directories (0.0%)
++             # of inodes with ind/dind/tind blocks: 0/0/0
++          12 blocks used (12.00%, out of 100)
++           0 bad blocks
++           1 large file
++
++           0 regular files
++           2 directories
++           0 character device files
++           0 block device files
++           0 fifos
++           0 links
++           0 symbolic links (0 fast symbolic links)
++           0 sockets
++------------
++           2 files
++Exit status is 1
++Filesystem volume name:   <none>
++Last mounted on:          <not available>
++Filesystem magic number:  0xEF53
++Filesystem revision #:    1 (dynamic)
++Filesystem features:      ext_attr resize_inode dir_index filetype sparse_super large_file
++Default mount options:    (none)
++Filesystem state:         clean
++Errors behavior:          Continue
++Filesystem OS type:       Linux
++Inode count:              64
++Block count:              100
++Reserved block count:     5
++Free blocks:              88
++Free inodes:              43
++First block:              0
++Block size:               4096
++Fragment size:            4096
++Blocks per group:         32768
++Fragments per group:      32768
++Inodes per group:         64
++Inode blocks per group:   2
++Mount count:              0
++Check interval:           15552000 (6 months)
++Reserved blocks uid:      0
++Reserved blocks gid:      0
++First inode:              21
++Inode size:	          128
++Default directory hash:   half_md4
++
++
++Group 0: (Blocks 0-99)
++  Primary superblock at 0, Group descriptors at 1-1
++  Block bitmap at 2 (+2)
++  Inode bitmap at 3 (+3)
++  Inode table at 4-5 (+4)
++  88 free blocks, 43 free inodes, 2 directories
++  Free blocks: 12-99
++  Free inodes: 22-64
++Exit status is 0
+diff --git a/tests/t_project_2off/name b/tests/t_project_2off/name
+new file mode 100644
+index 000000000000..b7e9993d6ddc
+--- /dev/null
++++ b/tests/t_project_2off/name
+@@ -0,0 +1 @@
++disable project quota using tune2fs
+diff --git a/tests/t_project_2off/script b/tests/t_project_2off/script
+new file mode 100644
+index 000000000000..2a36643260e2
+--- /dev/null
++++ b/tests/t_project_2off/script
+@@ -0,0 +1,54 @@
++FSCK_OPT=-yf
++OUT=$test_name.log
++EXP=$test_dir/expect
++
++if [ "$QUOTA" != "y" ]; then
++	echo "$test_name: $test_description: skipped"
++	return 0
++fi
++
++echo "mke2fs -O project" >> $OUT
++$MKE2FS -q -F -o Linux -b 4096 -O project $TMPFILE 100 > $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++echo "debugfs set_inode_field / project 1" >> $OUT
++cat <<- EOF | $DEBUGFS -w -f /dev/stdin $TMPFILE >> $OUT 2>&1
++	set_inode_field / project 1
++EOF
++status=$?
++echo Exit status is $status >> $OUT
++
++echo "tune2fs -O ^project" >> $OUT
++$TUNE2FS -O ^project $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++$FSCK $FSCK_OPT -v $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++$DUMPE2FS $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++rm -f $TMPFILE
++
++#
++# Do the verification
++#
++
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
++mv $OUT.new $OUT
++
++cmp -s $OUT $EXP
++status=$?
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++fi
++
++unset FSCK_OPT OUT EXP
 
