@@ -1,378 +1,295 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [v9 3/5] ext4: adds project quota support
-Date: Mon, 16 Mar 2015 16:33:25 +0100
-Message-ID: <20150316153325.GR4934@quack.suse.cz>
-References: <1426043003-31043-1-git-send-email-lixi@ddn.com>
- <1426043003-31043-4-git-send-email-lixi@ddn.com>
- <CALYGNiN1bfStzKTNX+f6uUUNrhzE4qNFRgCWLF0rZxKXAtn9BQ@mail.gmail.com>
- <A88EFAED-81C2-430E-A225-879D577BE5C4@dilger.ca>
- <20150316144727.GP4934@quack.suse.cz>
- <5506EF69.4020205@yandex-team.ru>
+Subject: Re: [PATCH RFC v2 0/6] ext4: yet another project quota
+Date: Mon, 16 Mar 2015 17:52:28 +0100
+Message-ID: <20150316165228.GT4934@quack.suse.cz>
+References: <20150310171133.23081.49616.stgit@buzz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
-	Konstantin Khlebnikov <koct9i@gmail.com>,
-	Li Xi <pkuelelixi@gmail.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
+	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
 	Theodore Ts'o <tytso@mit.edu>,
-	=?utf-8?B?0JTQvNC40YLRgNC40Lkg0JzQvtC90LDRhdC+0LI=?=
-	<dmonakhov@openvz.org>
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	Andy Lutomirski <luto@amacapital.net>,
+	linux-kernel@vger.kernel.org, Li Xi <pkuelelixi@gmail.com>
 To: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:49252 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:54948 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753508AbbCPPda (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Mar 2015 11:33:30 -0400
+	id S933213AbbCPQwe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Mar 2015 12:52:34 -0400
 Content-Disposition: inline
-In-Reply-To: <5506EF69.4020205@yandex-team.ru>
+In-Reply-To: <20150310171133.23081.49616.stgit@buzz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 16-03-15 17:57:45, Konstantin Khlebnikov wrote:
-> On 16.03.2015 17:47, Jan Kara wrote:
-> >On Thu 12-03-15 11:01:54, Andreas Dilger wrote:
-> >>Ted, I was looking at ext2_fs.h in the upstream e2fsprogs and see that
-> >>all of the reserved inodes have already been used. The last reserved
-> >>inode was "EXT4_REPLICA_INO", so there is no space for the project
-> >>quota inode.
-> >>
-> >>This patch is using inode #9 which conflicts with EXT2_EXCLUDE_INO,
-> >>while the patch from Konstantin is using inode #11 which is not reserved
-> >>and conflicts with lost+found on most filesystems.
-> >>
-> >>What is the best road forward here? Should a new inode be allocated
-> >>and stored into the superblock?
-> >   So my preference would be following:
-> >Repurpose one of EXT2_UNDEL_DIR_INO, EXT2_EXCLUDE_INO, EXT4_REPLICA_INO
-> >since neither of these seems to be getting wide use to be 'system inode
-> >directory'. All new special inodes will be linked into that directory under
-> >appropriate names.
-> >
-> > From kernel side this is rather simple to do. There's some work to be done
-> >on the tools side so that e2fsck knows about this special directory,
-> >tune2fs and mke2fs can work with it etc. Thoughts?
-> 
-> In this case hiding special inodes might be non-trivial.
-> Kernel uses this when inode is accessed from userspace or via NFS
-> export operations:
-> 
-> struct inode *ext4_iget_normal(struct super_block *sb, unsigned long ino)
-> {
-> 	if (ino < EXT4_FIRST_INO(sb) && ino != EXT4_ROOT_INO)
-> 		return ERR_PTR(-EIO);
-> 	return ext4_iget(sb, ino);
-> }
-  Yes, you are right, thanks for reminder. We were actually discussing this
-at ext4 meeting but I forgot about it. We need to also detect whether inode
-is a system file - the simplest solution is an inode flag.
+  Hello,
+
+On Tue 10-03-15 20:22:04, Konstantin Khlebnikov wrote:
+> Projects quota allows to enforce disk quota for several subtrees or e=
+ven
+> individual files on the filesystem. Each inode is marked with project=
+-id
+> (independently from uid and gid) and accounted into corresponding pro=
+ject
+> quota. New files inherits project id from directory where they are cr=
+eated.
+>=20
+> This is must-have feature for deploying lightweight containers.
+> Also project quota can tell size of subtree without doing recursive '=
+du'.
+>=20
+> This patchset adds project id and quota into ext4.
+>=20
+> This time I've prepared patches also for e2fsprogs and quota-tools.
+>=20
+> All patches are available at github:
+> https://github.com/koct9i/linux --branch project
+> https://github.com/koct9i/e2fsprogs --branch project
+> https://github.com/koct9i/quota-tools --branch project
+>
+> Porposed behavior is similar to project quota in XFS:
+>=20
+> * all inode are marked with project id
+> * new files inherits project id from parent directory
+> * project quota accounts inodes and enforces limits
+> * cross-project link and rename operations are restricted
+  Thanks for the patches and sorry for taking a long time to look into
+them. I like your patches and they looks mostly fine to me but can we
+*please* start with making things completely compatible with how XFS wo=
+rks?
+I understand that may seem broken / not useful for your usecase but
+consistency among filesystems is really important.=20
+
+I was talking with Dave Chinner last week and we agreed that the direct=
+ion
+you are changing things makes sense but getting things compatible with =
+how
+they were for 15 years in XFS is an important first step (because there=
+ may
+be people with other usecases depending on the old behavior and they wo=
+uld
+get confused by ext4 behaving differently). After we have compatible co=
+de
+in, we can add your fs.protected_projects thing on top of that (and als=
+o
+support it in XFS to stay compatible).
+
+> Differences:
+>=20
+> There is no flag similar to XFS_XFLAG_PROJINHERIT (which allows to di=
+sable
+> project id inheritance), instead of that project which userspace sees=
+ as '0'
+> (in nested user-name space that might be actually non-zero project) a=
+cts as
+> default project where restrictions for link/rename are ignored.
+> (also see below, in "why new ioctl" part)
+>=20
+> This implementation adds shortcut for moving files from one project i=
+nto
+> another: non-directory inodes with n_link =3D=3D 1 are transferred wi=
+thout
+> copying (XFS in this case returns -EXDEV and userspace have to copy f=
+ile).
+>=20
+> In XFS file owner (or process with CAP_FOWNER) can set set any projec=
+t id,
+> XFS permits changing project id only from init user-namespace.
+>=20
+> This patchset adds sysctl fs.protected_projects. By default it's 0 an=
+d project
+> id acts as XFS project. Setting it to 1 makes chaning project id priv=
+iliged
+> operation which requires CAP_SYS_RESOURCE in current user-namespace, =
+changing
+> project id mapping for nested user-namespace also requires that capab=
+ility.
+> Thus there are two levels of control: project id mapping in user-ns d=
+efines set
+> of permitted projects and capability protects operations within this =
+set.
+>=20
+> I see no problems with supporting all this in XFS, all difference in =
+interface.
+>=20
+> Ext4 layout
+> -----------
+>=20
+> Project id introduce ro-compatible feature 'project'.
+>=20
+> Inode project id is stored in place of obsolete field 'i_faddr' (that=
+ trick was
+> suggested by Darrick J. Wong in previous discussions of project quota=
+).
+> Linux never used that field and present fsck checks that it contains =
+zero.
+>=20
+> Quota information is stored in special inode =E2=84=9611 (by default =
+only 10 inodes are
+> reserved for special usage, I've add option to resize2fs to reserve m=
+ore).
+> (see e2fsprogs patches for details) For symmetry with other quotas in=
+ode number
+> is stored in superblock.
+>=20
+> Project quota supports only modern 'hidden' journaled mode.
+>=20
+> Interface
+> ---------
+>=20
+> Interface for changing limits / query current usage is common vfs quo=
+tactl()
+> where quotatype =3D PRJQUOTA =3D 2. User can query current state of a=
+ny project
+> mapped into user-ns, changing of limits requires CAP_SYS_ADMIN in ini=
+t user-ns.
+>=20
+> Two new ioctls for getting / changing inode project id:
+> int ioctl(fd, FS_IOC_GETPROJECT, unsigned *project);
+> int ioctl(fd, FS_IOC_SETPROJECT, unsigned *project);
+>=20
+> They acts as interface for super-block methods get_project / set_proj=
+ect
+> Generic code checks permissions, does project id translation in user-=
+namespace
+> mapping, grabs write-access to the filesystem, locks i_mutex for set =
+opetaion.
+> Filesystem method only updates inode and transfers project quota.
+>=20
+> No new mount options added. Disk usage tracking is enabled at mount.
+> Limits are enabeld later by "quotaon".
+>=20
+> (BTW why journalled quota doesn't enable limits right at the time of =
+mounting?)
+  Well, mostly historical reasons :) The biggest probably was that to
+properly initialize quotas (or fix them if quota file gets corrupted) y=
+ou
+have to still run quotacheck and for that kernel mustn't touch the file=
+s.
+At the time when I was writing journaled quotas I didn't feel like addi=
+ng
+quotacheck support into e2fsck... We eventually did that anyway for sup=
+port
+of quota in system files but how we did that was actually based on the
+experience I had from the journaled quota lesson ;).
+
+> Why new ioctls?
+> ---------------
+>=20
+> XFS has it's own interface for that: XFS_IOC_FSGETXATTR / XFS_IOC_FSS=
+ETXATTR.
+> But it has several flaws and doesn't fit for a role of generic interf=
+ace.
+>=20
+> It contains a lot of xfs-specific flags and racy by design: set opera=
+tion
+> commits all fields at once thus it's used in sequence get-change-set =
+without
+> any lock, Concurrent updates from user space will collide.
+  Sure but that's the case for generic GETFLAGS / SETFLAGS interface as
+well.
+
+> Also xfs has flag XFS_XFLAG_PROJINHERIT which tells should new files =
+inherit
+> project id from parent directory or not. This flag is barely useful a=
+nd only
+> makes everything complicated. Even tools in xfsprogs don't use it: th=
+ey always
+> set it together with project id and clears when set project id back t=
+o zero.
+  I think this is about balance - adding the support for the PROJINHERI=
+T flag
+costs us close to nothing and we get a compatibility with XFS. So even =
+though
+the usefulness of that flag is doubtful, I think the additional
+compatibility is worth it.
+
+> And the main reason: this compatibility gives nothing. The only user =
+of xfs
+> ioctl which I've found is the xfsprogs. And these tools check filesys=
+tem name
+> and don't work anywhere except 'xfs'.
+  The fact that you didn't find any other user doesn't mean there isn't
+any. And historically if we though "nobody could be relying on this", w=
+e
+were sometimes proven wrong - a few years later when it was *much* more
+painful to make things compatible.
+
+Here we speak about new feature for the filesystem so compatibility
+requirements aren't that strong but still I find the case that the same
+ioctl will just work on ext4 as it does on xfs more appealing than crea=
+ting
+a new simpler generic ioctl. That way userspace doesn't have to care on
+which filesystem it is working or whether the current kernel already
+supports the new ioctl for XFS. So please use the XFS interface is Li X=
+i
+does in his patches.
 
 								Honza
 
-
-> >>>On Mar 11, 2015, at 03:40, Konstantin Khlebnikov <koct9i@gmail.com> wrote:
-> >>>
-> >>>>On Wed, Mar 11, 2015 at 6:03 AM, Li Xi <pkuelelixi@gmail.com> wrote:
-> >>>>This patch adds mount options for enabling/disabling project quota
-> >>>>accounting and enforcement. A new specific inode is also used for
-> >>>>project quota accounting.
-> >>>>
-> >>>>Signed-off-by: Li Xi <lixi@ddn.com>
-> >>>>Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> >>>>Reviewed-by: Jan Kara <jack@suse.cz>
-> >>>>---
-> >>>>fs/ext4/ext4.h  |    8 +++-
-> >>>>fs/ext4/super.c |   99 ++++++++++++++++++++++++++++++++++++++++++++++++-------
-> >>>>2 files changed, 93 insertions(+), 14 deletions(-)
-> >>>>
-> >>>>diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> >>>>index 7acb2da..3443456 100644
-> >>>>--- a/fs/ext4/ext4.h
-> >>>>+++ b/fs/ext4/ext4.h
-> >>>>@@ -208,6 +208,7 @@ struct ext4_io_submit {
-> >>>>#define EXT4_UNDEL_DIR_INO      6      /* Undelete directory inode */
-> >>>>#define EXT4_RESIZE_INO                 7      /* Reserved group descriptors inode */
-> >>>>#define EXT4_JOURNAL_INO        8      /* Journal inode */
-> >>>>+#define EXT4_PRJ_QUOTA_INO      9      /* Project quota inode */
-> >>>
-> >>>This special inode is reserved for:  EXT2_EXCLUDE_INO 9 /* The
-> >>>"exclude" inode, for snapshots */
-> >>>I'm not sure if it's ok to use it for project quota.
-> >>>
-> >>>>
-> >>>>/* First non-reserved inode for old ext4 filesystems */
-> >>>>#define EXT4_GOOD_OLD_FIRST_INO        11
-> >>>>@@ -987,6 +988,7 @@ struct ext4_inode_info {
-> >>>>#define EXT4_MOUNT_DIOREAD_NOLOCK      0x400000 /* Enable support for dio read nolocking */
-> >>>>#define EXT4_MOUNT_JOURNAL_CHECKSUM    0x800000 /* Journal checksums */
-> >>>>#define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT        0x1000000 /* Journal Async Commit */
-> >>>>+#define EXT4_MOUNT_PRJQUOTA            0x2000000 /* Project quota support */
-> >>>>#define EXT4_MOUNT_DELALLOC            0x8000000 /* Delalloc support */
-> >>>>#define EXT4_MOUNT_DATA_ERR_ABORT      0x10000000 /* Abort on file data write */
-> >>>>#define EXT4_MOUNT_BLOCK_VALIDITY      0x20000000 /* Block validity checking */
-> >>>>@@ -1169,7 +1171,8 @@ struct ext4_super_block {
-> >>>>        __le32  s_overhead_clusters;    /* overhead blocks/clusters in fs */
-> >>>>        __le32  s_backup_bgs[2];        /* groups with sparse_super2 SBs */
-> >>>>        __u8    s_encrypt_algos[4];     /* Encryption algorithms in use  */
-> >>>>-       __le32  s_reserved[105];        /* Padding to the end of the block */
-> >>>>+       __le32  s_prj_quota_inum;       /* inode for tracking project quota */
-> >>>>+       __le32  s_reserved[104];        /* Padding to the end of the block */
-> >>>>        __le32  s_checksum;             /* crc32c(superblock) */
-> >>>>};
-> >>>>
-> >>>>@@ -1184,7 +1187,7 @@ struct ext4_super_block {
-> >>>>#define EXT4_MF_FS_ABORTED     0x0002  /* Fatal error detected */
-> >>>>
-> >>>>/* Number of quota types we support */
-> >>>>-#define EXT4_MAXQUOTAS 2
-> >>>>+#define EXT4_MAXQUOTAS 3
-> >>>>
-> >>>>/*
-> >>>>  * fourth extended-fs super-block data in memory
-> >>>>@@ -1376,6 +1379,7 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
-> >>>>                ino == EXT4_BOOT_LOADER_INO ||
-> >>>>                ino == EXT4_JOURNAL_INO ||
-> >>>>                ino == EXT4_RESIZE_INO ||
-> >>>>+               ino == EXT4_PRJ_QUOTA_INO ||
-> >>>>                (ino >= EXT4_FIRST_INO(sb) &&
-> >>>>                 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
-> >>>>}
-> >>>>diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> >>>>index 04c6cc3..e057daa 100644
-> >>>>--- a/fs/ext4/super.c
-> >>>>+++ b/fs/ext4/super.c
-> >>>>@@ -1036,8 +1036,8 @@ static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
-> >>>>}
-> >>>>
-> >>>>#ifdef CONFIG_QUOTA
-> >>>>-#define QTYPE2NAME(t) ((t) == USRQUOTA ? "user" : "group")
-> >>>>-#define QTYPE2MOPT(on, t) ((t) == USRQUOTA?((on)##USRJQUOTA):((on)##GRPJQUOTA))
-> >>>>+static char *quotatypes[] = INITQFNAMES;
-> >>>>+#define QTYPE2NAME(t) (quotatypes[t])
-> >>>>
-> >>>>static int ext4_write_dquot(struct dquot *dquot);
-> >>>>static int ext4_acquire_dquot(struct dquot *dquot);
-> >>>>@@ -1135,7 +1135,8 @@ enum {
-> >>>>        Opt_journal_path, Opt_journal_checksum, Opt_journal_async_commit,
-> >>>>        Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
-> >>>>        Opt_data_err_abort, Opt_data_err_ignore,
-> >>>>-       Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
-> >>>>+       Opt_usrjquota, Opt_grpjquota, Opt_prjjquota,
-> >>>>+       Opt_offusrjquota, Opt_offgrpjquota, Opt_offprjjquota,
-> >>>>        Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_jqfmt_vfsv1, Opt_quota,
-> >>>>        Opt_noquota, Opt_barrier, Opt_nobarrier, Opt_err,
-> >>>>        Opt_usrquota, Opt_grpquota, Opt_i_version,
-> >>>>@@ -1190,6 +1191,8 @@ static const match_table_t tokens = {
-> >>>>        {Opt_usrjquota, "usrjquota=%s"},
-> >>>>        {Opt_offgrpjquota, "grpjquota="},
-> >>>>        {Opt_grpjquota, "grpjquota=%s"},
-> >>>>+       {Opt_prjjquota, "prjjquota"},
-> >>>>+       {Opt_offprjjquota, "offprjjquota"},
-> >>>>        {Opt_jqfmt_vfsold, "jqfmt=vfsold"},
-> >>>>        {Opt_jqfmt_vfsv0, "jqfmt=vfsv0"},
-> >>>>        {Opt_jqfmt_vfsv1, "jqfmt=vfsv1"},
-> >>>>@@ -1412,11 +1415,14 @@ static const struct mount_opts {
-> >>>>        {Opt_grpquota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_GRPQUOTA,
-> >>>>                                                        MOPT_SET | MOPT_Q},
-> >>>>        {Opt_noquota, (EXT4_MOUNT_QUOTA | EXT4_MOUNT_USRQUOTA |
-> >>>>-                      EXT4_MOUNT_GRPQUOTA), MOPT_CLEAR | MOPT_Q},
-> >>>>+                      EXT4_MOUNT_GRPQUOTA | EXT4_MOUNT_PRJQUOTA),
-> >>>>+                                                       MOPT_CLEAR | MOPT_Q},
-> >>>>        {Opt_usrjquota, 0, MOPT_Q},
-> >>>>        {Opt_grpjquota, 0, MOPT_Q},
-> >>>>+       {Opt_prjjquota, 0, MOPT_Q},
-> >>>>        {Opt_offusrjquota, 0, MOPT_Q},
-> >>>>        {Opt_offgrpjquota, 0, MOPT_Q},
-> >>>>+       {Opt_offprjjquota, 0, MOPT_Q},
-> >>>>        {Opt_jqfmt_vfsold, QFMT_VFS_OLD, MOPT_QFMT},
-> >>>>        {Opt_jqfmt_vfsv0, QFMT_VFS_V0, MOPT_QFMT},
-> >>>>        {Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
-> >>>>@@ -1433,16 +1439,25 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
-> >>>>        kuid_t uid;
-> >>>>        kgid_t gid;
-> >>>>        int arg = 0;
-> >>>>-
-> >>>>#ifdef CONFIG_QUOTA
-> >>>>+       char *prj_qf_name = "aquota.project";
-> >>>
-> >>>If you already have inode numer in super-block why do you need this name here?
-> >>>Modern journalled quota is stored in special inodes and invisible from
-> >>>user-space.
-> >>>
-> >>>>+       substring_t prj_qf_string = {
-> >>>>+               .from = prj_qf_name,
-> >>>>+               .to = &prj_qf_name[strlen(prj_qf_name)],
-> >>>>+       };
-> >>>>+
-> >>>>        if (token == Opt_usrjquota)
-> >>>>                return set_qf_name(sb, USRQUOTA, &args[0]);
-> >>>>        else if (token == Opt_grpjquota)
-> >>>>                return set_qf_name(sb, GRPQUOTA, &args[0]);
-> >>>>+       else if (token == Opt_prjjquota)
-> >>>>+               return set_qf_name(sb, PRJQUOTA, &prj_qf_string);
-> >>>>        else if (token == Opt_offusrjquota)
-> >>>>                return clear_qf_name(sb, USRQUOTA);
-> >>>>        else if (token == Opt_offgrpjquota)
-> >>>>                return clear_qf_name(sb, GRPQUOTA);
-> >>>>+       else if (token == Opt_offprjjquota)
-> >>>>+               return clear_qf_name(sb, PRJQUOTA);
-> >>>>#endif
-> >>>>        switch (token) {
-> >>>>        case Opt_noacl:
-> >>>>@@ -1668,19 +1683,28 @@ static int parse_options(char *options, struct super_block *sb,
-> >>>>        }
-> >>>>#ifdef CONFIG_QUOTA
-> >>>>        if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
-> >>>>-           (test_opt(sb, USRQUOTA) || test_opt(sb, GRPQUOTA))) {
-> >>>>+           (test_opt(sb, USRQUOTA) ||
-> >>>>+            test_opt(sb, GRPQUOTA) ||
-> >>>>+            test_opt(sb, PRJQUOTA))) {
-> >>>>                ext4_msg(sb, KERN_ERR, "Cannot set quota options when QUOTA "
-> >>>>                         "feature is enabled");
-> >>>>                return 0;
-> >>>>        }
-> >>>>-       if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
-> >>>>+       if (sbi->s_qf_names[USRQUOTA] ||
-> >>>>+           sbi->s_qf_names[GRPQUOTA] ||
-> >>>>+           sbi->s_qf_names[PRJQUOTA]) {
-> >>>>                if (test_opt(sb, USRQUOTA) && sbi->s_qf_names[USRQUOTA])
-> >>>>                        clear_opt(sb, USRQUOTA);
-> >>>>
-> >>>>                if (test_opt(sb, GRPQUOTA) && sbi->s_qf_names[GRPQUOTA])
-> >>>>                        clear_opt(sb, GRPQUOTA);
-> >>>>
-> >>>>-               if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA)) {
-> >>>>+               if (test_opt(sb, PRJQUOTA) && sbi->s_qf_names[PRJQUOTA])
-> >>>>+                       clear_opt(sb, PRJQUOTA);
-> >>>>+
-> >>>>+               if (test_opt(sb, GRPQUOTA) ||
-> >>>>+                   test_opt(sb, USRQUOTA) ||
-> >>>>+                   test_opt(sb, PRJQUOTA)) {
-> >>>>                        ext4_msg(sb, KERN_ERR, "old and new quota "
-> >>>>                                        "format mixing");
-> >>>>                        return 0;
-> >>>>@@ -1740,6 +1764,9 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
-> >>>>
-> >>>>        if (sbi->s_qf_names[GRPQUOTA])
-> >>>>                seq_printf(seq, ",grpjquota=%s", sbi->s_qf_names[GRPQUOTA]);
-> >>>>+
-> >>>>+       if (sbi->s_qf_names[PRJQUOTA])
-> >>>>+               seq_printf(seq, ",prjjquota=%s", sbi->s_qf_names[PRJQUOTA]);
-> >>>>#endif
-> >>>>}
-> >>>>
-> >>>>@@ -3944,7 +3971,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
-> >>>>                sb->s_qcop = &ext4_qctl_sysfile_operations;
-> >>>>        else
-> >>>>                sb->s_qcop = &ext4_qctl_operations;
-> >>>>-       sb->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
-> >>>>+       sb->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP | QTYPE_MASK_PRJ;
-> >>>>#endif
-> >>>>        memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
-> >>>>
-> >>>>@@ -5040,6 +5067,46 @@ restore_opts:
-> >>>>        return err;
-> >>>>}
-> >>>>
-> >>>>+static int ext4_statfs_project(struct super_block *sb,
-> >>>>+                              kprojid_t projid, struct kstatfs *buf)
-> >>>>+{
-> >>>>+       struct kqid qid;
-> >>>>+       struct dquot *dquot;
-> >>>>+       u64 limit;
-> >>>>+       u64 curblock;
-> >>>>+
-> >>>>+       qid = make_kqid_projid(projid);
-> >>>>+       dquot = dqget(sb, qid);
-> >>>>+       if (!dquot)
-> >>>>+               return -ESRCH;
-> >>>>+       spin_lock(&dq_data_lock);
-> >>>>+
-> >>>>+       limit = dquot->dq_dqb.dqb_bsoftlimit ?
-> >>>>+               dquot->dq_dqb.dqb_bsoftlimit :
-> >>>>+               dquot->dq_dqb.dqb_bhardlimit;
-> >>>>+       if (limit && buf->f_blocks * buf->f_bsize > limit) {
-> >>>>+               curblock = dquot->dq_dqb.dqb_curspace / buf->f_bsize;
-> >>>>+               buf->f_blocks = limit / buf->f_bsize;
-> >>>>+               buf->f_bfree = buf->f_bavail =
-> >>>>+                       (buf->f_blocks > curblock) ?
-> >>>>+                        (buf->f_blocks - curblock) : 0;
-> >>>>+       }
-> >>>>+
-> >>>>+       limit = dquot->dq_dqb.dqb_isoftlimit ?
-> >>>>+               dquot->dq_dqb.dqb_isoftlimit :
-> >>>>+               dquot->dq_dqb.dqb_ihardlimit;
-> >>>>+       if (limit && buf->f_files > limit) {
-> >>>>+               buf->f_files = limit;
-> >>>>+               buf->f_ffree =
-> >>>>+                       (buf->f_files > dquot->dq_dqb.dqb_curinodes) ?
-> >>>>+                        (buf->f_files - dquot->dq_dqb.dqb_curinodes) : 0;
-> >>>>+       }
-> >>>>+
-> >>>>+       spin_unlock(&dq_data_lock);
-> >>>>+       dqput(dquot);
-> >>>>+       return 0;
-> >>>>+}
-> >>>>+
-> >>>>static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
-> >>>>{
-> >>>>        struct super_block *sb = dentry->d_sb;
-> >>>>@@ -5048,6 +5115,7 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
-> >>>>        ext4_fsblk_t overhead = 0, resv_blocks;
-> >>>>        u64 fsid;
-> >>>>        s64 bfree;
-> >>>>+       struct inode *inode = dentry->d_inode;
-> >>>>        resv_blocks = EXT4_C2B(sbi, atomic64_read(&sbi->s_resv_clusters));
-> >>>>
-> >>>>        if (!test_opt(sb, MINIX_DF))
-> >>>>@@ -5072,6 +5140,9 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
-> >>>>        buf->f_fsid.val[0] = fsid & 0xFFFFFFFFUL;
-> >>>>        buf->f_fsid.val[1] = (fsid >> 32) & 0xFFFFFFFFUL;
-> >>>>
-> >>>>+       if (ext4_test_inode_flag(inode, EXT4_INODE_PROJINHERIT) &&
-> >>>>+           sb_has_quota_limits_enabled(sb, PRJQUOTA))
-> >>>>+               ext4_statfs_project(sb, EXT4_I(inode)->i_projid, buf);
-> >>>>        return 0;
-> >>>>}
-> >>>>
-> >>>>@@ -5152,7 +5223,9 @@ static int ext4_mark_dquot_dirty(struct dquot *dquot)
-> >>>>
-> >>>>        /* Are we journaling quotas? */
-> >>>>        if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) ||
-> >>>>-           sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
-> >>>>+           sbi->s_qf_names[USRQUOTA] ||
-> >>>>+           sbi->s_qf_names[GRPQUOTA] ||
-> >>>>+           sbi->s_qf_names[PRJQUOTA]) {
-> >>>>                dquot_mark_dquot_dirty(dquot);
-> >>>>                return ext4_write_dquot(dquot);
-> >>>>        } else {
-> >>>>@@ -5236,7 +5309,8 @@ static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
-> >>>>        struct inode *qf_inode;
-> >>>>        unsigned long qf_inums[EXT4_MAXQUOTAS] = {
-> >>>>                le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
-> >>>>-               le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
-> >>>>+               le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum),
-> >>>>+               le32_to_cpu(EXT4_SB(sb)->s_es->s_prj_quota_inum)
-> >>>>        };
-> >>>>
-> >>>>        BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA));
-> >>>>@@ -5264,7 +5338,8 @@ static int ext4_enable_quotas(struct super_block *sb)
-> >>>>        int type, err = 0;
-> >>>>        unsigned long qf_inums[EXT4_MAXQUOTAS] = {
-> >>>>                le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
-> >>>>-               le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
-> >>>>+               le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum),
-> >>>>+               le32_to_cpu(EXT4_SB(sb)->s_es->s_prj_quota_inum)
-> >>>>        };
-> >>>>
-> >>>>        sb_dqopt(sb)->flags |= DQUOT_QUOTA_SYS_FILE;
-> >>>>--
-> >>>>1.7.1
-> >>>>
-> >>>>--
-> >>>>To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> >>>>the body of a message to majordomo@vger.kernel.org
-> >>>>More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
--- 
+> Links
+> -----
+>=20
+> [1] 2014-12-09  ext4: add project quota support by Li Xi
+> http://marc.info/?l=3Dlinux-fsdevel&m=3D141810265603565&w=3D2
+>=20
+> [2] 2014-01-28  A draft for making ext4 support project quota by Zhen=
+g Liu
+> http://marc.info/?l=3Dlinux-ext4&m=3D139089109605795&w=3D2
+>=20
+> [3] 2012-07-09  introduce extended inode owner identifier v10 by Dmit=
+ry Monakhov
+> http://thread.gmane.org/gmane.linux.file-systems/65752
+>=20
+> [4] 2010-02-08  Introduce subtree quota support by Dmitry Monakhov
+> http://thread.gmane.org/gmane.comp.file-systems.ext4/17530
+>=20
+>=20
+> ---
+>=20
+> Konstantin Khlebnikov (6):
+>       fs: vfs ioctls for managing project id
+>       fs: protected project id
+>       quota: generic project quota
+>       ext4: support project id and project quota
+>       ext4: add shortcut for moving files across projects
+>       ext4: mangle statfs results accourding to project quota usage a=
+nd limits
+>=20
+>=20
+>  Documentation/filesystems/Locking |    4 +
+>  Documentation/filesystems/vfs.txt |    8 +++
+>  Documentation/sysctl/fs.txt       |   16 ++++++
+>  fs/compat_ioctl.c                 |    2 +
+>  fs/ext4/ext4.h                    |   15 ++++-
+>  fs/ext4/ialloc.c                  |    3 +
+>  fs/ext4/inode.c                   |   15 +++++
+>  fs/ext4/namei.c                   |  102 +++++++++++++++++++++++++++=
++++++++++-
+>  fs/ext4/super.c                   |   61 ++++++++++++++++++++--
+>  fs/ioctl.c                        |   62 ++++++++++++++++++++++
+>  fs/quota/dquot.c                  |   96 +++++++++++++++++++++++++++=
+++++++--
+>  fs/quota/quota.c                  |    8 ++-
+>  fs/quota/quotaio_v2.h             |    6 +-
+>  include/linux/fs.h                |    3 +
+>  include/linux/quota.h             |    1=20
+>  include/linux/quotaops.h          |   16 ++++++
+>  include/uapi/linux/capability.h   |    1=20
+>  include/uapi/linux/fs.h           |    3 +
+>  include/uapi/linux/quota.h        |    6 +-
+>  kernel/sysctl.c                   |    9 +++
+>  kernel/user_namespace.c           |    4 +
+>  21 files changed, 416 insertions(+), 25 deletions(-)
+>=20
+> --
+> Signature
+--=20
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
