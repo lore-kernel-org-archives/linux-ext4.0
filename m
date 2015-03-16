@@ -1,153 +1,127 @@
-From: Dmitry Monakhov <dmonlist@gmail.com>
-Subject: Re: very slow SSD with fsync
-Date: Sun, 15 Mar 2015 17:35:03 +0300
-Message-ID: <87vbi2qqg8.fsf@openvz.org>
-References: <5502F8A3.4020608@smop.co.uk> <20150313152559.GB21922@thunk.org> <55033BA5.9000806@smop.co.uk>
-Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
-Cc: linux-ext4@vger.kernel.org
-To: Adrian Bridgett <adrian@smop.co.uk>, Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wg0-f45.google.com ([74.125.82.45]:36036 "EHLO
-	mail-wg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752440AbbCOOgh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 15 Mar 2015 10:36:37 -0400
-Received: by wgra20 with SMTP id a20so21343140wgr.3
-        for <linux-ext4@vger.kernel.org>; Sun, 15 Mar 2015 07:36:35 -0700 (PDT)
-In-Reply-To: <55033BA5.9000806@smop.co.uk>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Omar Sandoval <osandov-nWWhXC5lh1RBDgjK7y7TUQ@public.gmane.org>
+Subject: [RFC PATCH 0/5] Remove rw parameter from direct_IO()
+Date: Mon, 16 Mar 2015 04:33:48 -0700
+Message-ID: <cover.1426502566.git.osandov@osandov.com>
+Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Chris Mason <clm-b10kYP2dOMg@public.gmane.org>,
+	Josef Bacik <jbacik-b10kYP2dOMg@public.gmane.org>, David Sterba <dsterba-AlSwsSmVLrQ@public.gmane.org>,
+	"Yan Zheng" <zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Sage Weil <sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Steve French <sfrench-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>,
+	Boaz Harrosh <ooo-rh7Tgz9RNieUD9Wbbkgo/g@public.gmane.org>,
+	Benny Halevy <bhalevy-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	Jaegeuk Kim <jaegeuk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
+	Changman Lee <cm224.lee-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>,
+	Miklos Szeredi <miklos-sUDqSbJrdHQHWmgEVkV9KA@public.gmane.org>,
+	Steven Whitehouse <swhiteho-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Dave Kleikamp <shaggy-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
+	Oleg Drokin <oleg.drokin-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	Ryusuke Konishi <konishi.ryusuke-Zyj7fXuS5i5L9jVzuh4AOg@public.gmane.org>,
+	Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>,
+	Joel Becker <jlbec-aKy9MeLSZ9dg9hUCZPvPmw@public.gmane.org>,
+	Eric Van Hensbergen <ericvh-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	Ron Minnich <rmin
+To: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	osd-dev-yNzVSZO3znNg9hUCZPvPmw@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	jfs-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, HPDD-discuss-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nilfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, reiserfs-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	v9fs-developer-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Hi,
 
-Adrian Bridgett <adrian@smop.co.uk> writes:
+Al, here's some cleanup that you mentioned back in December that I got
+around to (https://lkml.org/lkml/2014/12/15/28).
 
-> On 13/03/15 15:25, Theodore Ts'o wrote:
->> The obvious thing to do is to try using blktrace to see which I/O
->> operations are triggering the problem.  It may just be that the hard
->> drive's internal FTL metadata is very badly fragmented.
-> Damn :-(  Seems a bit odd as it's only a few months old (not used much)=20
-> and OSX _seems_ fine.
->
-> Not quite sure what to look for in blktrace.  I see the sync but the=20
-> timestamps in blktrace are near instantaneous vs 1.3, 2.2 seconds=20
-> reported by strace.   Trying a "find" and watching it stall blktrace=20
-> shows this - which to my amateur eyes shows a 0.5s gap between the read=20
-> request at 1.815589 and being issued at 2.373.  Two completions being=20
-> the only occurrence in the middle.  Maybe queue depth was full - but we=20
-> have a two completions earlier.
->
->
->    8,0    0      226     1.812363080   271  D  WS 498955904 + 16 (=20=20=
-=20=20=20
-> 988) [jbd2
-> /dm-0-8]
->    8,0    0      227     1.812439052     0  C  WS 498955904 + 16 (=20
-> 75972) [0]
->    8,4    0      228     1.812456484   271  A FWS 0 + 0 <- (252,0) 0
->    8,0    0      229     1.812456838   271  Q FWS [jbd2/dm-0-8]
->    8,4    0      230     1.812457124   271  A FWS 0 + 0 <- (252,0) 0
->    8,0    0      231     1.812457237   271  Q FWS [jbd2/dm-0-8]
->    8,0    0      232     1.812458007   271  G FWS [jbd2/dm-0-8]
->    8,0    0      233     1.812458478   271  I FWS (     471) [jbd2/dm-0-8]
->    8,0    0      234     1.812465182   271  G FWS [jbd2/dm-0-8]
->    8,0    0      235     1.812465316   271  I FWS (     134) [jbd2/dm-0-8]
->    8,0    0      236     1.815446245     0  C  RM 507106648 + 8 (=20
-> 3778637) [0]
->    8,4    2       11     1.815585457 31072  A  RM 16875872 + 8 <-=20
-> (252,0) 1687382
-> 4
->    8,0    2       12     1.815585633 31072  A  RM 507107680 + 8 <- (8,4)=
-=20
-> 16875872
->    8,0    2       13     1.815586124 31072  Q  RM 507107680 + 8 [find]
->    8,0    2       14     1.815588326 31072  G  RM 507107680 + 8 [find]
->    8,0    2       15     1.815589269 31072  I  RM 507107680 + 8 ( 943)=20
-> [find]
->    8,0    0      237     1.830102994     0  C  WS 0 (17739914) [0]
->    8,0    0      238     2.373458367     0  C  WS 0 [0]
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-As far as I can see it stuck on superblock completion which was issued
-as 228'th request. It takes ~500ms to complete it. Tend to agree with
-Ted looks likely your SSD has problems probably with FTL layer.
-In order to check that filesystem is not related with the issye you may try=
- RAW IO:
+In summary, the rw parameter to a_ops->direct_IO() is redundant with
+.type in struct iov_iter. Additionally, rw is inconsistently checked for
+being a WRITE; some filesystems do rw == WRITE, others do rw & WRITE,
+and others do both within the same function :) The distinction is that
+swapout may OR in the ITER_BVEC flag in the rw passed to ->direct_IO(),
+so the two are not equivalent (although this really only happens for
+swap-over-NFS, but it's scary nonetheless). After looking through all of
+these, it definitely looks like every check means for ANY write, not
+just non-kernel writes.
 
-###umount your filesystem. *This is important, otherwise you may corrupt yo=
-ur FS*
-#umount /$YOUR_FS
-### Read and write back your superblock. Second operation should give
-###  you same timings as superblock commit from JBD2=20
-#dd if=3D/dev/$YOUR_DISK of=3Dsuper_block bs=3D4k count=3D4 iflag=3Ddirect
-#dd if=3Dsuper_block of=3D/dev/$YOUR_DISK bs=3D4k count=3D4 conv=3Dfsync,no=
-trunc oflag=3Ddirect
+So, the solution presented here is:
 
-Superblock is most frequently rewritten block in whole disk, so if
-previous filesystem do not issued TRIM requests back to SSD, so it's FTL may
-become very slow. You should try fstrim(8), probably it can helps=20
+- Add a helper, iov_iter_rw(), which always returns either READ or
+  WRITE, no ITER_.* or REQ_.* nonsense mixed in. For consistency, the
+  return value is always checked for equality
+- Get rid of all uses of rw in any implementations of direct_IO,
+  starting with the generic code
+- Nuke the actual parameter and update the documentation
 
->    8,0    0      239     2.373469557     0  D  RM 507107680 + 8=20
-> (557880288) [swap
-> per/0]
->    8,4    0      240     2.373486949 15158  A WFS 8724112 + 8 <- (252,0)=
-=20
-> 8722064
->    8,0    0      241     2.373487336 15158  A WFS 498955920 + 8 <- (8,4)=
-=20
-> 8724112
->    8,0    0      242     2.373488480 15158  Q WFS 498955920 + 8=20
-> [kworker/0:2]
->    8,0    0      243     2.373490158 15158  G WFS 498955920 + 8=20
-> [kworker/0:2]
->    8,0    0      244     2.373491573 15158  I WFS 498955920 + 8 ( 1415)=20
-> [kwork
-> er/0:2]
->    8,0    0      245     2.373491927 15158  D  WS 498955920 + 8 ( 354)=20
-> [kworker/0:2]
->    8,0    0      246     2.373596570     0  C  WS 498955920 + 8 (=20
-> 104643) [0]
->    8,0    0      247     2.375251869     0  C  RM 507107680 + 8 (=20
-> 1782312) [0]
->    8,4    2       16     2.375452116 31072  A  RM 16875072 + 8 <-=20
-> (252,0) 16873024
->    8,0    2       17     2.375452283 31072  A  RM 507106880 + 8 <- (8,4)=
-=20
-> 16875072
->    8,0    2       18     2.375452776 31072  Q  RM 507106880 + 8 [find]
->
-> I'm looking at  'watch -n0 cat  /proc/diskstats |egrep -v "ram|loop"'=20
-> and it's normally sat down at 0/1 for I/Os in progress (have seen hit=20
-> 100 _briefly_ and then drop just as quickly).
->
->> What model SSD is it, by the way?
-> It's the built-in Apple MBP 512GB drive - "APPLE SSD SM0512F" which=20
-> apparently means Samsung (I've been reading about issues with their=20
-> 840EVO drives...
->
-> Thanks once again (and for all your immense work over the many, many year=
-s!)
->
-> Adrian
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I decided to squish all of the filesystems together in patch 4 to avoid
+inundating the mailing lists with 20+ mostly two-line patches, but I can
+split those out if that's any better. Additionally, patch 1 pulls fs.h
+into uio.h, which seems undesirable.
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+These were mostly just compile tested, with a couple of direct I/O
+xfstests run on btrfs as quick sanity check, so getting some more eyes
+on is probably a good thing. They should apply on top of v4.0-rc4.
+Please comment away.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
+Thank you,
 
-iQEcBAEBCgAGBQJVBZiXAAoJELhyPTmIL6kBvfQH+wfr0Q4c756qEGrbhABDcQtF
-jfZ4I76iLgUcjnjR/5byGaufMaylvXHjL/KuWcq62YPvJcekuNyaY3sdOz1YqoXK
-QbmGRhVMv2hcpu0eS2pLd2NR9aFrEXYsc3h6aDIyaVtuKocPqYypaPvp9MWQBojW
-R+Ge6KQd/dwThPYZVVE/1r6OYUuAROZVFBGZnoeAvDeWrqobLZUV56YV/jdxZ/aa
-LKi0dIQfIFABMpfyPo6pWwWGPJMwSYkxNG/LOsb4kIpBgONZfgG7sXQK7SrhBj5M
-E6QEOY1cn5q7ScEkSTZej4gn/7T8fOb2POvwmmMpLCctUnw7lWX9PSogwLyHqtU=
-=nPpx
------END PGP SIGNATURE-----
---=-=-=--
+Omar Sandoval (5):
+  new helper: iov_iter_rw()
+  Remove rw from {,__,do_}blockdev_direct_IO()
+  Remove rw from dax_{do_,}io()
+  direct_IO: use iov_iter_rw() instead of rw everywhere
+  direct_IO: remove rw from a_ops->direct_IO()
+
+ Documentation/filesystems/Locking          |  2 +-
+ Documentation/filesystems/vfs.txt          |  2 +-
+ drivers/staging/lustre/lustre/llite/rw26.c | 22 ++++++++---------
+ fs/9p/vfs_addr.c                           |  2 +-
+ fs/affs/file.c                             |  9 +++----
+ fs/block_dev.c                             |  8 +++---
+ fs/btrfs/inode.c                           | 24 +++++++++---------
+ fs/ceph/addr.c                             |  3 +--
+ fs/cifs/file.c                             |  3 +--
+ fs/dax.c                                   | 27 ++++++++++-----------
+ fs/direct-io.c                             | 39 ++++++++++++++----------------
+ fs/exofs/inode.c                           |  4 +--
+ fs/ext2/inode.c                            | 11 ++++-----
+ fs/ext3/inode.c                            | 14 +++++------
+ fs/ext4/ext4.h                             |  4 +--
+ fs/ext4/indirect.c                         | 25 ++++++++++---------
+ fs/ext4/inode.c                            | 28 ++++++++++-----------
+ fs/f2fs/data.c                             | 22 ++++++++---------
+ fs/fat/inode.c                             |  9 +++----
+ fs/fuse/file.c                             | 16 ++++++------
+ fs/gfs2/aops.c                             | 16 ++++++------
+ fs/hfs/inode.c                             |  8 +++---
+ fs/hfsplus/inode.c                         |  9 +++----
+ fs/jfs/inode.c                             |  8 +++---
+ fs/nfs/direct.c                            |  4 +--
+ fs/nilfs2/inode.c                          | 10 +++-----
+ fs/ocfs2/aops.c                            | 22 +++++++----------
+ fs/reiserfs/inode.c                        |  8 +++---
+ fs/udf/file.c                              |  3 +--
+ fs/udf/inode.c                             |  7 +++---
+ fs/xfs/xfs_aops.c                          | 12 ++++-----
+ include/linux/fs.h                         | 24 +++++++++---------
+ include/linux/nfs_fs.h                     |  2 +-
+ include/linux/uio.h                        | 10 ++++++++
+ mm/filemap.c                               |  4 +--
+ mm/page_io.c                               |  4 +--
+ 36 files changed, 206 insertions(+), 219 deletions(-)
+
+-- 
+2.3.3
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
