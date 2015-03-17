@@ -1,77 +1,76 @@
-From: Omar Sandoval <osandov@osandov.com>
-Subject: Re: [RFC PATCH 1/5] new helper: iov_iter_rw()
-Date: Tue, 17 Mar 2015 03:18:35 -0700
-Message-ID: <20150317101835.GA31649@mew>
-References: <cover.1426502566.git.osandov@osandov.com>
- <34dc78b262546e9343e0ed872232a97f5eaa5f15.1426502566.git.osandov@osandov.com>
- <20150316173605.GX29656@ZenIV.linux.org.uk>
- <20150317093151.GS20767@twin.jikos.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: How is e2fsck's time_fudge supposed to behave?
+Date: Tue, 17 Mar 2015 18:32:27 +0100
+Message-ID: <20150317173227.GB6670@quack.suse.cz>
+References: <55036536.5030300@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-	linux-cifs@vger.kernel.org, osd-dev@open-osd.org,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	fuse-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-	jfs-discussion@lists.sourceforge.net, HPDD-discuss@ml01.01.org,
-	linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-	ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
-	v9fs-developer@lists.sourceforge.net, xfs@oss.sgi.com,
-	linux-kernel@vger.kernel.org
-To: David Sterba <dsterba@suse.cz>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f171.google.com ([209.85.192.171]:35153 "EHLO
-	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753964AbbCQKSi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Mar 2015 06:18:38 -0400
-Received: by pdbop1 with SMTP id op1so5698324pdb.2
-        for <linux-ext4@vger.kernel.org>; Tue, 17 Mar 2015 03:18:37 -0700 (PDT)
+Received: from cantor2.suse.de ([195.135.220.15]:34826 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932501AbbCQRcc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Mar 2015 13:32:32 -0400
 Content-Disposition: inline
-In-Reply-To: <20150317093151.GS20767@twin.jikos.cz>
+In-Reply-To: <55036536.5030300@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 17, 2015 at 10:31:51AM +0100, David Sterba wrote:
-> On Mon, Mar 16, 2015 at 05:36:05PM +0000, Al Viro wrote:
-> > On Mon, Mar 16, 2015 at 04:33:49AM -0700, Omar Sandoval wrote:
-> > > Get either READ or WRITE out of iter->type.
-> > 
-> > Umm...  
-> > 
-> > > + * Get one of READ or WRITE out of iter->type without any other flags OR'd in
-> > > + * with it.
-> > > + */
-> > > +static inline int iov_iter_rw(const struct iov_iter *i)
-> > > +{
-> > > +	return i->type & RW_MASK;
-> > > +}
-> > 
-> > TBH, I would turn that into a macro.  Reason: indirect includes.
+On Fri 13-03-15 17:31:18, Eric Sandeen wrote:
+> I'm a little confused by e2fsck's time fudge current behavior, vs its
+> apparent intent.
 > 
-> Agreed, but the proposed define is rather cryptic and I was not able to
-> understand the meaning on the first glance.
+> We do:
 > 
-> > #define iov_iter_rw(i) ((0 ? (struct iov_iter *)0 : (i))->type & RW_MASK)
+> 	if ( ... &&
+>             fs->super->s_mtime > (__u32) ctx->now) {
+>                 pctx.num = fs->super->s_mtime;
+>                 problem = PR_0_FUTURE_SB_LAST_MOUNT;
+>                 if (fs->super->s_mtime <= (__u32) ctx->now + ctx->time_fudge)
+>                         problem = PR_0_FUTURE_SB_LAST_MOUNT_FUDGED;
+>                 if (fix_problem(ctx, problem, &pctx)) {
+>                         fs->super->s_mtime = ctx->now;
+>                         fs->flags |= EXT2_FLAG_DIRTY;
+>                 }
 > 
-> This worked for me, does not compile with anything else than
-> 'struct iov_iter*' as i:
+> So if we are inside the time_fudge value we simply change the problem,
+> but PR_0_FUTURE_SB_LAST_MOUNT_FUDGED behaves exactly like
+> PR_0_FUTURE_SB_LAST_MOUNT, other than the message:
 > 
-> #define iov_iter_rw(i)	({			\
-> 	struct iov_iter __iter = *(i);		\
-> 	(i)->type & RW_MASK;			\
-> 	})
+>         /* Last mount time is in the future (fudged) */
+>         { PR_0_FUTURE_SB_LAST_MOUNT_FUDGED,
+>           N_("@S last mount time is in the future.\n\t(by less than a day, "
+>              "probably due to the hardware clock being incorrectly set)  "),
+>           PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
 > 
-> The assignment is optimized out.
+> vs:
+> 
+>         /* Last mount time is in the future */
+>         { PR_0_FUTURE_SB_LAST_MOUNT,
+>           N_("@S last mount time (%t,\n\tnow = %T) is in the future.\n"),
+>           PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
+> 
+> So unless I'm missing something, the whole fudge_time dance does nothing
+> except change the message, and after reading lots of words in the e2fsck.conf
+> manpage ;) this bit seems relevant as to the intent:
+> 
+> > So by default, we allow the superblock  times  to
+> > be  fudged  by  up to 24 hours.
+> 
+> I had the impression that "allow" meant "ignore" but this still triggers
+> exactly the same action and correction.  Is that as intended?
+> 
+> I'll send a patch do a printf and take no other action if inside the
+> fudge_time window, if that seems like the right thing to do.
+  The actions became the same after commit
+87aca2ad028b9 (e2fsck: fix last mount time and last write time in preen
+mode). Previously only fudged values were allowed to be fixed in the preen
+mode. The question is whether we now want to change e2fsck to just ignore
+difference within fudge or whether we just stop doing that fudge thing.
+Either makes sense to me...
 
-[-cc individual fs maintainers to avoid all of these email bounces,
-should've looked a bit closer at that get_maintainer.pl output...]
-
-I agree that this is a bit more readable, but it evaluates i twice.
-That's an easy fix, just do __iter.type instead of (i)->type, but
-there's still the possibility of someone passing in something called
-__iter as i, and the fix for that tends to be "add more underscores". At
-the very least, Al's macro could probably use a comment explaining
-what's going on there, though.
-
+								Honza
 -- 
-Omar
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
