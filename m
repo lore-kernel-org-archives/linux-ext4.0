@@ -1,197 +1,133 @@
-From: Li Xi <pkuelelixi@gmail.com>
-Subject: [v10 1/5] vfs: adds general codes to enforces project quota limits
-Date: Thu, 19 Mar 2015 04:04:53 +0900
-Message-ID: <1426705497-22158-2-git-send-email-lixi@ddn.com>
-References: <1426705497-22158-1-git-send-email-lixi@ddn.com>
-To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-api@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca,
-	jack@suse.cz, viro@zeniv.linux.org.uk, hch@infradead.org,
-	dmonakhov@openvz.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1426705497-22158-1-git-send-email-lixi@ddn.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] e2fsck: completely ignore last-mount and last-write within
+ fudge_time
+Date: Wed, 18 Mar 2015 15:15:32 -0500
+Message-ID: <5509DCE4.1010706@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: Jan Kara <jack@suse.cz>
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:41520 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755201AbbCRUPg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Mar 2015 16:15:36 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds support for a new quota type PRJQUOTA for project quota
-enforcement. Also a new method get_projid() is added into dquot_operations
-structure.
+In some cases, particularly with RTC set to localtime, we may have
+timestamps in the superblock off by up to 24 hours.
 
-Signed-off-by: Li Xi <lixi@ddn.com>
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-Reviewed-by: Jan Kara <jack@suse.cz>
+Today, even if accept_time_fudge is set, we find the problem, alert
+the user, fix it, and set E2F_FLAG_PROBLEMS_FIXED in fix_problem().
+
+This flag causes check_if_skip() to return (not exit), and a full
+check ensues.  This will happen on every single boot.
+
+This runs counter to what the man page implies; the text there sounds
+like time offsets of up to 24h will be ignored.  But in truth, the
+only difference accept_time_fudge makes today is to change the message
+presented to the user.  Actual action taken by e2fsck is identical.
+
+So: Change the code so that last-mount and last-write times are
+completely ignored if they are within 24h (the fudge_time), and
+clarify the man page to show that this is the case.
+
+If accept_fudge_time is set to false, ctx->fudge_time will be 0,
+and no leeway will be given.
+
+(As a historical note, both Fedora and OpenSUSE had set
+broken_system_clock to 1 to work around this behavior in the past,
+but that defeated all time-based checks).
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
- fs/quota/dquot.c           |   35 ++++++++++++++++++++++++++++++-----
- fs/quota/quota.c           |    5 ++++-
- fs/quota/quotaio_v2.h      |    6 ++++--
- include/linux/quota.h      |    2 ++
- include/uapi/linux/quota.h |    6 ++++--
- 5 files changed, 44 insertions(+), 10 deletions(-)
 
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index 8f0acef..a02bb68 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -1159,8 +1159,8 @@ static int need_print_warning(struct dquot_warn *warn)
- 			return uid_eq(current_fsuid(), warn->w_dq_id.uid);
- 		case GRPQUOTA:
- 			return in_group_p(warn->w_dq_id.gid);
--		case PRJQUOTA:	/* Never taken... Just make gcc happy */
--			return 0;
-+		case PRJQUOTA:
-+			return 1;
+diff --git a/e2fsck/e2fsck.conf.5.in b/e2fsck/e2fsck.conf.5.in
+index 9ebfbbf..515af37 100644
+--- a/e2fsck/e2fsck.conf.5.in
++++ b/e2fsck/e2fsck.conf.5.in
+@@ -103,6 +103,7 @@ buggy or misconfigured virtualization manager or the
+ installer not having access to a network time server
+ during the installation process.  So by default, we allow
+ the superblock times to be fudged by up to 24 hours.
++No repair action will be taken in this case.
+ This can be disabled by setting
+ .I accept_time_fudge
+ to the
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index a63e61c..c05ba4b 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -383,18 +383,6 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("The test_fs flag is set (and ext4 is available).  "),
+ 	  PROMPT_CLEAR, PR_PREEN_OK },
+ 
+-	/* Last mount time is in the future (fudged) */
+-	{ PR_0_FUTURE_SB_LAST_MOUNT_FUDGED,
+-	  N_("@S last mount time is in the future.\n\t(by less than a day, "
+-	     "probably due to the hardware clock being incorrectly set)  "),
+-	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
+-
+-	/* Last write time is in the future (fudged) */
+-	{ PR_0_FUTURE_SB_LAST_WRITE_FUDGED,
+-	  N_("@S last write time is in the future.\n\t(by less than a day, "
+-	     "probably due to the hardware clock being incorrectly set).  "),
+-	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
+-
+ 	/* Block group checksum (latch question) is invalid. */
+ 	{ PR_0_GDT_CSUM_LATCH,
+ 	  N_("One or more @b @g descriptor checksums are invalid.  "),
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 3c28166..4e8d76e 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -219,11 +219,11 @@ struct problem_context {
+ /* The test_fs filesystem flag is set and ext4 is available */
+ #define PR_0_CLEAR_TESTFS_FLAG			0x00003B
+ 
+-/* Last mount time is in the future (fudged) */
+-#define PR_0_FUTURE_SB_LAST_MOUNT_FUDGED	0x00003C
++/* Last mount time is in the future (fudged) -- NO LONGER USED */
++/* #define PR_0_FUTURE_SB_LAST_MOUNT_FUDGED	0x00003C */
+ 
+-/* Last write time is in the future (fudged) */
+-#define PR_0_FUTURE_SB_LAST_WRITE_FUDGED	0x00003D
++/* Last write time is in the future (fudged) -- NO LONGER USED */
++/* #define PR_0_FUTURE_SB_LAST_WRITE_FUDGED	0x00003D */
+ 
+ /* Block group checksum (latch question) */
+ #define PR_0_GDT_CSUM_LATCH			0x00003E
+diff --git a/e2fsck/super.c b/e2fsck/super.c
+index 1e7e749..4d7a3bf 100644
+--- a/e2fsck/super.c
++++ b/e2fsck/super.c
+@@ -856,11 +856,9 @@ void check_super_block(e2fsck_t ctx)
+ 	 */
+ 	if (!broken_system_clock &&
+ 	    !(ctx->flags & E2F_FLAG_TIME_INSANE) &&
+-	    fs->super->s_mtime > (__u32) ctx->now) {
++	    fs->super->s_mtime > (__u32) ctx->now + ctx->time_fudge) {
+ 		pctx.num = fs->super->s_mtime;
+ 		problem = PR_0_FUTURE_SB_LAST_MOUNT;
+-		if (fs->super->s_mtime <= (__u32) ctx->now + ctx->time_fudge)
+-			problem = PR_0_FUTURE_SB_LAST_MOUNT_FUDGED;
+ 		if (fix_problem(ctx, problem, &pctx)) {
+ 			fs->super->s_mtime = ctx->now;
+ 			fs->flags |= EXT2_FLAG_DIRTY;
+@@ -868,11 +866,9 @@ void check_super_block(e2fsck_t ctx)
  	}
- 	return 0;
- }
-@@ -1399,6 +1399,9 @@ static void __dquot_initialize(struct inode *inode, int type)
- 	/* First get references to structures we might need. */
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
- 		struct kqid qid;
-+		kprojid_t projid;
-+		int rc;
-+
- 		got[cnt] = NULL;
- 		if (type != -1 && cnt != type)
- 			continue;
-@@ -1409,6 +1412,10 @@ static void __dquot_initialize(struct inode *inode, int type)
- 		 */
- 		if (i_dquot(inode)[cnt])
- 			continue;
-+
-+		if (!sb_has_quota_active(sb, cnt))
-+			continue;
-+
- 		init_needed = 1;
- 
- 		switch (cnt) {
-@@ -1418,6 +1425,12 @@ static void __dquot_initialize(struct inode *inode, int type)
- 		case GRPQUOTA:
- 			qid = make_kqid_gid(inode->i_gid);
- 			break;
-+		case PRJQUOTA:
-+			rc = inode->i_sb->dq_op->get_projid(inode, &projid);
-+			if (rc)
-+				continue;
-+			qid = make_kqid_projid(projid);
-+			break;
- 		}
- 		got[cnt] = dqget(sb, qid);
- 	}
-@@ -2161,7 +2174,8 @@ static int vfs_load_quota_inode(struct inode *inode, int type, int format_id,
- 		error = -EROFS;
- 		goto out_fmt;
- 	}
--	if (!sb->s_op->quota_write || !sb->s_op->quota_read) {
-+	if (!sb->s_op->quota_write || !sb->s_op->quota_read ||
-+	    (type == PRJQUOTA && sb->dq_op->get_projid == NULL)) {
- 		error = -EINVAL;
- 		goto out_fmt;
- 	}
-@@ -2402,8 +2416,19 @@ static void do_get_dqblk(struct dquot *dquot, struct fs_disk_quota *di)
- 
- 	memset(di, 0, sizeof(*di));
- 	di->d_version = FS_DQUOT_VERSION;
--	di->d_flags = dquot->dq_id.type == USRQUOTA ?
--			FS_USER_QUOTA : FS_GROUP_QUOTA;
-+	switch (dquot->dq_id.type) {
-+	case USRQUOTA:
-+		di->d_flags = FS_USER_QUOTA;
-+		break;
-+	case GRPQUOTA:
-+		di->d_flags = FS_GROUP_QUOTA;
-+		break;
-+	case PRJQUOTA:
-+		di->d_flags = FS_PROJ_QUOTA;
-+		break;
-+	default:
-+		BUG();
-+	}
- 	di->d_id = from_kqid_munged(current_user_ns(), dquot->dq_id);
- 
- 	spin_lock(&dq_data_lock);
-diff --git a/fs/quota/quota.c b/fs/quota/quota.c
-index 2aa4151..33b30b1 100644
---- a/fs/quota/quota.c
-+++ b/fs/quota/quota.c
-@@ -30,7 +30,10 @@ static int check_quotactl_permission(struct super_block *sb, int type, int cmd,
- 	case Q_XGETQSTATV:
- 	case Q_XQUOTASYNC:
- 		break;
--	/* allow to query information for dquots we "own" */
-+	/*
-+	 * allow to query information for dquots we "own"
-+	 * always allow querying project quota
-+	 */
- 	case Q_GETQUOTA:
- 	case Q_XGETQUOTA:
- 		if ((type == USRQUOTA && uid_eq(current_euid(), make_kuid(current_user_ns(), id))) ||
-diff --git a/fs/quota/quotaio_v2.h b/fs/quota/quotaio_v2.h
-index f1966b4..4e95430 100644
---- a/fs/quota/quotaio_v2.h
-+++ b/fs/quota/quotaio_v2.h
-@@ -13,12 +13,14 @@
-  */
- #define V2_INITQMAGICS {\
- 	0xd9c01f11,	/* USRQUOTA */\
--	0xd9c01927	/* GRPQUOTA */\
-+	0xd9c01927,	/* GRPQUOTA */\
-+	0xd9c03f14,	/* PRJQUOTA */\
- }
- 
- #define V2_INITQVERSIONS {\
- 	1,		/* USRQUOTA */\
--	1		/* GRPQUOTA */\
-+	1,		/* GRPQUOTA */\
-+	1,		/* PRJQUOTA */\
- }
- 
- /* First generic header */
-diff --git a/include/linux/quota.h b/include/linux/quota.h
-index 50978b7..ba51f7e 100644
---- a/include/linux/quota.h
-+++ b/include/linux/quota.h
-@@ -50,6 +50,7 @@
- 
- #undef USRQUOTA
- #undef GRPQUOTA
-+#undef PRJQUOTA
- enum quota_type {
- 	USRQUOTA = 0,		/* element used for user quotas */
- 	GRPQUOTA = 1,		/* element used for group quotas */
-@@ -317,6 +318,7 @@ struct dquot_operations {
- 	/* get reserved quota for delayed alloc, value returned is managed by
- 	 * quota code only */
- 	qsize_t *(*get_reserved_space) (struct inode *);
-+	int (*get_projid) (struct inode *, kprojid_t *);/* Get project ID */
- };
- 
- struct path;
-diff --git a/include/uapi/linux/quota.h b/include/uapi/linux/quota.h
-index 3b6cfbe..b2d9486 100644
---- a/include/uapi/linux/quota.h
-+++ b/include/uapi/linux/quota.h
-@@ -36,11 +36,12 @@
- #include <linux/errno.h>
- #include <linux/types.h>
- 
--#define __DQUOT_VERSION__	"dquot_6.5.2"
-+#define __DQUOT_VERSION__	"dquot_6.6.0"
- 
--#define MAXQUOTAS 2
-+#define MAXQUOTAS 3
- #define USRQUOTA  0		/* element used for user quotas */
- #define GRPQUOTA  1		/* element used for group quotas */
-+#define PRJQUOTA  2		/* element used for project quotas */
- 
- /*
-  * Definitions for the default names of the quotas files.
-@@ -48,6 +49,7 @@
- #define INITQFNAMES { \
- 	"user",    /* USRQUOTA */ \
- 	"group",   /* GRPQUOTA */ \
-+	"project", /* PRJQUOTA */ \
- 	"undefined", \
- };
- 
--- 
-1.7.1
+ 	if (!broken_system_clock &&
+ 	    !(ctx->flags & E2F_FLAG_TIME_INSANE) &&
+-	    fs->super->s_wtime > (__u32) ctx->now) {
++	    fs->super->s_wtime > (__u32) ctx->now + ctx->time_fudge) {
+ 		pctx.num = fs->super->s_wtime;
+ 		problem = PR_0_FUTURE_SB_LAST_WRITE;
+-		if (fs->super->s_wtime <= (__u32) ctx->now + ctx->time_fudge)
+-			problem = PR_0_FUTURE_SB_LAST_WRITE_FUDGED;
+ 		if (fix_problem(ctx, problem, &pctx)) {
+ 			fs->super->s_wtime = ctx->now;
+ 			fs->flags |= EXT2_FLAG_DIRTY;
+
 
