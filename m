@@ -1,55 +1,64 @@
-From: Taesoo Kim <tsgatesv@gmail.com>
-Subject: [PATCH 1/1] jbd2: fix incorrect unlock on j_list_lock
-Date: Tue, 17 Mar 2015 22:08:38 -0400
-Message-ID: <1426644518-29680-1-git-send-email-tsgatesv@gmail.com>
-Cc: taesoo@gatech.edu, changwoo@gatech.edu, sanidhya@gatech.edu,
-	blee@gatech.edu, csong84@gatech.edu,
-	Taesoo Kim <tsgatesv@gmail.com>
-To: tytso@mit.edu, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Subject: re: jbd: Add fixed tracepoints
+Date: Wed, 18 Mar 2015 11:05:33 +0300
+Message-ID: <20150318080532.GA9399@mwanda>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: lczerner@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:34315 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753350AbbCRCJV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Mar 2015 22:09:21 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:51935 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753535AbbCRIFu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Mar 2015 04:05:50 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When 'jh->b_transaction == transaction' (asserted by below)
+Hello Lukas Czerner,
 
-  J_ASSERT_JH(jh, (jh->b_transaction == transaction || ...
+The patch 99cb1a318c37: "jbd: Add fixed tracepoints" from May 23,
+2011, leads to the following static checker warning:
 
-'journal->j_list_lock' will be incorrectly unlocked, since
-the the lock is aquired only at the end of if / else-if
-statements (missing the else case).
+	fs/jbd/commit.c:1016 journal_commit_transaction()
+	warn: 'commit_transaction' was already freed.
 
-Signed-off-by: Taesoo Kim <tsgatesv@gmail.com>
----
- fs/jbd2/transaction.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+fs/jbd/commit.c
+   993          spin_unlock(&journal->j_state_lock);
+   994  
+   995          if (commit_transaction->t_checkpoint_list == NULL &&
+   996              commit_transaction->t_checkpoint_io_list == NULL) {
+   997                  __journal_drop_transaction(journal, commit_transaction);
+                                                            ^^^^^^^^^^^^^^^^^^
+Freed here.
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 5f09370..edb7f59 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1091,6 +1091,7 @@ int jbd2_journal_get_create_access(handle_t *handle, struct buffer_head *bh)
- 		JBUFFER_TRACE(jh, "file as BJ_Reserved");
- 		spin_lock(&journal->j_list_lock);
- 		__jbd2_journal_file_buffer(jh, transaction, BJ_Reserved);
-+		spin_unlock(&journal->j_list_lock);
- 	} else if (jh->b_transaction == journal->j_committing_transaction) {
- 		/* first access by this transaction */
- 		jh->b_modified = 0;
-@@ -1098,8 +1099,8 @@ int jbd2_journal_get_create_access(handle_t *handle, struct buffer_head *bh)
- 		JBUFFER_TRACE(jh, "set next transaction");
- 		spin_lock(&journal->j_list_lock);
- 		jh->b_next_transaction = transaction;
-+		spin_unlock(&journal->j_list_lock);
- 	}
--	spin_unlock(&journal->j_list_lock);
- 	jbd_unlock_bh_state(bh);
+   998          } else {
+   999                  if (journal->j_checkpoint_transactions == NULL) {
+  1000                          journal->j_checkpoint_transactions = commit_transaction;
+  1001                          commit_transaction->t_cpnext = commit_transaction;
+  1002                          commit_transaction->t_cpprev = commit_transaction;
+  1003                  } else {
+  1004                          commit_transaction->t_cpnext =
+  1005                                  journal->j_checkpoint_transactions;
+  1006                          commit_transaction->t_cpprev =
+  1007                                  commit_transaction->t_cpnext->t_cpprev;
+  1008                          commit_transaction->t_cpnext->t_cpprev =
+  1009                                  commit_transaction;
+  1010                          commit_transaction->t_cpprev->t_cpnext =
+  1011                                  commit_transaction;
+  1012                  }
+  1013          }
+  1014          spin_unlock(&journal->j_list_lock);
+  1015  
+  1016          trace_jbd_end_commit(journal, commit_transaction);
+                                              ^^^^^^^^^^^^^^^^^^
+Dereferenced here.
 
- 	/*
---
-2.3.3
+  1017          jbd_debug(1, "JBD: commit %d complete, head %d\n",
+  1018                    journal->j_commit_sequence, journal->j_tail_sequence);
+  1019  
+  1020          wake_up(&journal->j_wait_done_commit);
+  1021  }
 
+regards,
+dan carpenter
