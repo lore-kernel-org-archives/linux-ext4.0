@@ -1,63 +1,55 @@
-From: Al Viro <viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
-Subject: Re: [RFC PATCH 1/5] new helper: iov_iter_rw()
-Date: Tue, 17 Mar 2015 18:19:15 +0000
-Message-ID: <20150317181910.GK29656@ZenIV.linux.org.uk>
-References: <cover.1426502566.git.osandov@osandov.com>
- <34dc78b262546e9343e0ed872232a97f5eaa5f15.1426502566.git.osandov@osandov.com>
- <20150316173605.GX29656@ZenIV.linux.org.uk>
- <20150317093151.GS20767@twin.jikos.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: dsterba-AlSwsSmVLrQ@public.gmane.org, Omar Sandoval <osandov-nWWhXC5lh1RBDgjK7y7TUQ@public.gmane.org>,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	osd-dev-yNzVSZO3znNg9hUCZPvPmw@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	jfs-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, HPDD-discuss-y27Ovi1pjclAfugRpC6u6w@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nilfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, reiserfs-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	v9fs-developer-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Chris Mason <clm-b10kYP2dOMg@public.gmane.org>,
-	Josef Bacik <jbacik-b10kYP2dOMg@public.gmane.org>, Yan Zheng <zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Sage Weil <sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Steve French <sfrench-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>,
-	Boaz Harrosh <ooo-rh7Tgz9RNieUD9Wbbkgo/g@public.gmane.org>,
-	Benny Halevy <bhalevy-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andreas Dilger <
-Return-path: <linux-nilfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20150317093151.GS20767-1ReQVI26iDCaZKY3DrU6dA@public.gmane.org>
-Sender: linux-nilfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Taesoo Kim <tsgatesv@gmail.com>
+Subject: [PATCH 1/1] jbd2: fix incorrect unlock on j_list_lock
+Date: Tue, 17 Mar 2015 22:08:38 -0400
+Message-ID: <1426644518-29680-1-git-send-email-tsgatesv@gmail.com>
+Cc: taesoo@gatech.edu, changwoo@gatech.edu, sanidhya@gatech.edu,
+	blee@gatech.edu, csong84@gatech.edu,
+	Taesoo Kim <tsgatesv@gmail.com>
+To: tytso@mit.edu, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:34315 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753350AbbCRCJV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Mar 2015 22:09:21 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 17, 2015 at 10:31:51AM +0100, David Sterba wrote:
+When 'jh->b_transaction == transaction' (asserted by below)
 
-> Agreed, but the proposed define is rather cryptic and I was not able to
-> understand the meaning on the first glance.
-> 
-> > #define iov_iter_rw(i) ((0 ? (struct iov_iter *)0 : (i))->type & RW_MASK)
-> 
-> This worked for me, does not compile with anything else than
-> 'struct iov_iter*' as i:
-> 
-> #define iov_iter_rw(i)	({			\
-> 	struct iov_iter __iter = *(i);		\
-> 	(i)->type & RW_MASK;			\
-> 	})
-> 
-> The assignment is optimized out.
+  J_ASSERT_JH(jh, (jh->b_transaction == transaction || ...
 
-... and you are getting
-	a) use of rather lousy gccism when plain C would do
-	b) double evaluation since you've got it wrong (should've been
-__iter.type & RW_MASK, if you do it that way).  As it is, if argument has
-any side effects, your variant will trigger those twice - even if the
-destination of the assignment is never used, the side effects remain.
+'journal->j_list_lock' will be incorrectly unlocked, since
+the the lock is aquired only at the end of if / else-if
+statements (missing the else case).
 
-I agree that it could use /* use ?: for typechecking */, but let's not go into
-({...}) land unless we absolutely have to.
+Signed-off-by: Taesoo Kim <tsgatesv@gmail.com>
+---
+ fs/jbd2/transaction.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 5f09370..edb7f59 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1091,6 +1091,7 @@ int jbd2_journal_get_create_access(handle_t *handle, struct buffer_head *bh)
+ 		JBUFFER_TRACE(jh, "file as BJ_Reserved");
+ 		spin_lock(&journal->j_list_lock);
+ 		__jbd2_journal_file_buffer(jh, transaction, BJ_Reserved);
++		spin_unlock(&journal->j_list_lock);
+ 	} else if (jh->b_transaction == journal->j_committing_transaction) {
+ 		/* first access by this transaction */
+ 		jh->b_modified = 0;
+@@ -1098,8 +1099,8 @@ int jbd2_journal_get_create_access(handle_t *handle, struct buffer_head *bh)
+ 		JBUFFER_TRACE(jh, "set next transaction");
+ 		spin_lock(&journal->j_list_lock);
+ 		jh->b_next_transaction = transaction;
++		spin_unlock(&journal->j_list_lock);
+ 	}
+-	spin_unlock(&journal->j_list_lock);
+ 	jbd_unlock_bh_state(bh);
+
+ 	/*
 --
-To unsubscribe from this list: send the line "unsubscribe linux-nilfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+2.3.3
+
