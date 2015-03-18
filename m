@@ -1,81 +1,60 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: re: jbd: Add fixed tracepoints
-Date: Wed, 18 Mar 2015 11:24:45 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1503181124190.23465@localhost.localdomain>
-References: <20150318080532.GA9399@mwanda>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org
-To: Dan Carpenter <dan.carpenter@oracle.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] jbd: Fix possible uninitialized memory access when tracing
+Date: Wed, 18 Mar 2015 11:33:32 +0100
+Message-ID: <1426674812-26883-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46383 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45980 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755130AbbCRKYt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Mar 2015 06:24:49 -0400
-In-Reply-To: <20150318080532.GA9399@mwanda>
+	id S1755345AbbCRKdg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Mar 2015 06:33:36 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (Postfix) with ESMTPS id 691092932F9
+	for <linux-ext4@vger.kernel.org>; Wed, 18 Mar 2015 10:33:36 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 18 Mar 2015, Dan Carpenter wrote:
+Currently in journal_commit_transaction() if trace point
+trace_jbd_end_commit() is enabled, it can access already freed part of
+the memory via commit_transaction because it might have already been
+freed earlier using __journal_drop_transaction().
 
-> Date: Wed, 18 Mar 2015 11:05:33 +0300
-> From: Dan Carpenter <dan.carpenter@oracle.com>
-> To: lczerner@redhat.com
-> Cc: linux-ext4@vger.kernel.org
-> Subject: re: jbd: Add fixed tracepoints
-> 
-> Hello Lukas Czerner,
-> 
-> The patch 99cb1a318c37: "jbd: Add fixed tracepoints" from May 23,
-> 2011, leads to the following static checker warning:
+Fix it by moving the tracepoint before the point where we can free
+commit_transaction and set the commit_transaction to NULL after we free
+it to make such cases easier to detect in the future.
 
-Hi Dan,
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+---
+ fs/jbd/commit.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-thanks for the report. I'll send a fix.
+diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
+index bb217dc..169cf72 100644
+--- a/fs/jbd/commit.c
++++ b/fs/jbd/commit.c
+@@ -991,10 +991,12 @@ restart_loop:
+ 		journal->j_average_commit_time = commit_time;
+ 
+ 	spin_unlock(&journal->j_state_lock);
++	trace_jbd_end_commit(journal, commit_transaction);
+ 
+ 	if (commit_transaction->t_checkpoint_list == NULL &&
+ 	    commit_transaction->t_checkpoint_io_list == NULL) {
+ 		__journal_drop_transaction(journal, commit_transaction);
++		commit_transaction = NULL;
+ 	} else {
+ 		if (journal->j_checkpoint_transactions == NULL) {
+ 			journal->j_checkpoint_transactions = commit_transaction;
+@@ -1013,7 +1015,6 @@ restart_loop:
+ 	}
+ 	spin_unlock(&journal->j_list_lock);
+ 
+-	trace_jbd_end_commit(journal, commit_transaction);
+ 	jbd_debug(1, "JBD: commit %d complete, head %d\n",
+ 		  journal->j_commit_sequence, journal->j_tail_sequence);
+ 
+-- 
+1.8.3.1
 
--Lukas
-
-> 
-> 	fs/jbd/commit.c:1016 journal_commit_transaction()
-> 	warn: 'commit_transaction' was already freed.
-> 
-> fs/jbd/commit.c
->    993          spin_unlock(&journal->j_state_lock);
->    994  
->    995          if (commit_transaction->t_checkpoint_list == NULL &&
->    996              commit_transaction->t_checkpoint_io_list == NULL) {
->    997                  __journal_drop_transaction(journal, commit_transaction);
->                                                             ^^^^^^^^^^^^^^^^^^
-> Freed here.
-> 
->    998          } else {
->    999                  if (journal->j_checkpoint_transactions == NULL) {
->   1000                          journal->j_checkpoint_transactions = commit_transaction;
->   1001                          commit_transaction->t_cpnext = commit_transaction;
->   1002                          commit_transaction->t_cpprev = commit_transaction;
->   1003                  } else {
->   1004                          commit_transaction->t_cpnext =
->   1005                                  journal->j_checkpoint_transactions;
->   1006                          commit_transaction->t_cpprev =
->   1007                                  commit_transaction->t_cpnext->t_cpprev;
->   1008                          commit_transaction->t_cpnext->t_cpprev =
->   1009                                  commit_transaction;
->   1010                          commit_transaction->t_cpprev->t_cpnext =
->   1011                                  commit_transaction;
->   1012                  }
->   1013          }
->   1014          spin_unlock(&journal->j_list_lock);
->   1015  
->   1016          trace_jbd_end_commit(journal, commit_transaction);
->                                               ^^^^^^^^^^^^^^^^^^
-> Dereferenced here.
-> 
->   1017          jbd_debug(1, "JBD: commit %d complete, head %d\n",
->   1018                    journal->j_commit_sequence, journal->j_tail_sequence);
->   1019  
->   1020          wake_up(&journal->j_wait_done_commit);
->   1021  }
-> 
-> regards,
-> dan carpenter
-> 
