@@ -1,75 +1,171 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 56/54] libext2fs: zero hash in ibody extended attributes
-Date: Thu, 19 Mar 2015 14:45:51 -0700
-Message-ID: <20150319214551.GK11031@birch.djwong.org>
+Subject: [PATCH 57/54] e2fsck: convert block-mapped files to extents on
+ bigalloc fs
+Date: Thu, 19 Mar 2015 14:47:21 -0700
+Message-ID: <20150319214721.GL11031@birch.djwong.org>
 References: <20150127073533.13308.44994.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:39736 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:40409 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751203AbbCSVp4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Mar 2015 17:45:56 -0400
+	with ESMTP id S1750969AbbCSVr1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Mar 2015 17:47:27 -0400
 Content-Disposition: inline
 In-Reply-To: <20150127073533.13308.44994.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The kernel never updates the extended attribute hash value for
-attributes stored in the inode.  However, fsck has always checked this
-value (if it's nonzero) and will complain if the hash doesn't match
-the xattr.  Therefore, always zero the hash value when writing to
-in-ibody xattrs to avoid creating "corrupt" attribute errors
-downstream.
+As of v4.0, the Linux kernel won't add blocks to a block-mapped file
+on a bigalloc filesystem.  Therefore, convert any such files or
+directories we find, to prevent fs errors later on.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/ext_attr.c |   12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
+ e2fsck/pass1.c            |   17 +++++++++++++++++
+ e2fsck/problem.c          |    5 +++++
+ e2fsck/problem.h          |    3 +++
+ tests/f_badcluster/expect |   26 +++++++++++++-------------
+ 4 files changed, 38 insertions(+), 13 deletions(-)
 
-diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index df512d8..f8fe691 100644
---- a/lib/ext2fs/ext_attr.c
-+++ b/lib/ext2fs/ext_attr.c
-@@ -434,7 +434,8 @@ static errcode_t write_xattrs_to_buffer(struct ext2_xattr_handle *handle,
- 					struct ext2_xattr **pos,
- 					void *entries_start,
- 					unsigned int storage_size,
--					unsigned int value_offset_correction)
-+					unsigned int value_offset_correction,
-+					int write_hash)
- {
- 	struct ext2_xattr *x = *pos;
- 	struct ext2_ext_attr_entry *e = entries_start;
-@@ -481,7 +482,10 @@ static errcode_t write_xattrs_to_buffer(struct ext2_xattr_handle *handle,
- 		memcpy((void *)e + sizeof(*e), shortname, e->e_name_len);
- 		memcpy(end, x->value, e->e_value_size);
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 19e1f33..308eb79 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -3201,6 +3201,23 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 		pctx->num = 0;
+ 	}
  
--		e->e_hash = ext2fs_ext_attr_hash_entry(e, end);
-+		if (write_hash)
-+			e->e_hash = ext2fs_ext_attr_hash_entry(e, end);
-+		else
-+			e->e_hash = 0;
++	/*
++	 * The kernel gets mad if we ask it to allocate bigalloc clusters to
++	 * a block mapped file, so rebuild it as an extent file.  We can skip
++	 * symlinks because they're never rewritten.
++	 */
++	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++			EXT4_FEATURE_RO_COMPAT_BIGALLOC) &&
++	    (LINUX_S_ISREG(inode->i_mode) || LINUX_S_ISDIR(inode->i_mode)) &&
++	    ext2fs_inode_data_blocks2(fs, inode) > 0 &&
++	    (ino == EXT2_ROOT_INO || ino >= EXT2_FIRST_INO(fs->super)) &&
++	    !(inode->i_flags & (EXT4_EXTENTS_FL | EXT4_INLINE_DATA_FL)) &&
++	    fix_problem(ctx, PR_1_NO_BIGALLOC_BLOCKMAP_FILES, pctx)) {
++		pctx->errcode = e2fsck_rebuild_extents_later(ctx, ino);
++		if (pctx->errcode)
++			goto out;
++	}
++
+ 	if (ctx->dirs_to_hash && pb.is_dir &&
+ 	    !(ctx->lost_and_found && ctx->lost_and_found == ino) &&
+ 	    !(inode->i_flags & EXT2_INDEX_FL) &&
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 7af0b76..df919da 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1111,6 +1111,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("@i %i @x tree could be more shallow (%b; could be <= %c)\n"),
+ 	  PROMPT_FIX, PR_NO_OK | PR_PREEN_NO | PR_PREEN_OK },
  
- 		e = EXT2_EXT_ATTR_NEXT(e);
- 		*(__u32 *)e = 0;
-@@ -553,7 +557,7 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
- 	start = ((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
- 		inode->i_extra_isize + sizeof(__u32);
++	/* Inode extent tree could be more shallow */
++	{ PR_1_NO_BIGALLOC_BLOCKMAP_FILES,
++	  N_("@i %i on bigalloc @f cannot be @b mapped.  "),
++	  PROMPT_FIX, 0 },
++
+ 	/* Pass 1b errors */
  
--	err = write_xattrs_to_buffer(handle, &x, start, storage_size, 0);
-+	err = write_xattrs_to_buffer(handle, &x, start, storage_size, 0, 0);
- 	if (err)
- 		goto out;
+ 	/* Pass 1B: Rescan for duplicate/bad blocks */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index ace8d2f..dc0c18a 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -648,6 +648,9 @@ struct problem_context {
+ /* extent tree max depth too big */
+ #define PR_1_EXTENT_BAD_MAX_DEPTH		0x01007F
  
-@@ -572,7 +576,7 @@ write_ea_block:
- 	start = block_buf + sizeof(struct ext2_ext_attr_header);
++/* bigalloc fs cannot have blockmap files */
++#define PR_1_NO_BIGALLOC_BLOCKMAP_FILES		0x010080
++
+ /*
+  * Pass 1b errors
+  */
+diff --git a/tests/f_badcluster/expect b/tests/f_badcluster/expect
+index b8ce19d..65a1641 100644
+--- a/tests/f_badcluster/expect
++++ b/tests/f_badcluster/expect
+@@ -19,6 +19,8 @@ Inode 18 logical block 3 (physical block 1201) violates cluster allocation rules
+ Will fix in pass 1B.
+ Inode 18, i_blocks is 32, should be 64.  Fix? yes
  
- 	err = write_xattrs_to_buffer(handle, &x, start, storage_size,
--				     (void *)start - block_buf);
-+				     (void *)start - block_buf, 1);
- 	if (err)
- 		goto out2;
++Inode 15 on bigalloc filesystem cannot be block mapped.  Fix? yes
++
  
+ Running additional passes to resolve blocks claimed by more than one inode...
+ Pass 1B: Rescanning for multiply-claimed blocks
+@@ -65,19 +67,20 @@ File /g (inode #18, mod time Tue Jun 17 08:00:50 2014)
+   has 1 multiply-claimed block(s), shared with 0 file(s):
+ Clone multiply-claimed blocks? yes
+ 
++Pass 1E: Optimizing extent trees
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-Free blocks count wrong for group #0 (50, counted=47).
++Free blocks count wrong for group #0 (51, counted=48).
+ Fix? yes
+ 
+-Free blocks count wrong (800, counted=752).
++Free blocks count wrong (816, counted=768).
+ Fix? yes
+ 
+ 
+ test_fs: ***** FILE SYSTEM WAS MODIFIED *****
+-test_fs: 18/128 files (22.2% non-contiguous), 1296/2048 blocks
++test_fs: 18/128 files (22.2% non-contiguous), 1280/2048 blocks
+ Pass 1: Checking inodes, blocks, and sizes
+ Inode 12, i_blocks is 64, should be 32.  Fix? yes
+ 
+@@ -94,21 +97,21 @@ Pass 5: Checking group summary information
+ Block bitmap differences:  -(1168--1200)
+ Fix? yes
+ 
+-Free blocks count wrong for group #0 (47, counted=50).
++Free blocks count wrong for group #0 (48, counted=51).
+ Fix? yes
+ 
+-Free blocks count wrong (752, counted=800).
++Free blocks count wrong (768, counted=816).
+ Fix? yes
+ 
+ 
+ test_fs: ***** FILE SYSTEM WAS MODIFIED *****
+-test_fs: 18/128 files (5.6% non-contiguous), 1248/2048 blocks
++test_fs: 18/128 files (5.6% non-contiguous), 1232/2048 blocks
+ Pass 1: Checking inodes, blocks, and sizes
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_fs: 18/128 files (5.6% non-contiguous), 1248/2048 blocks
++test_fs: 18/128 files (5.6% non-contiguous), 1232/2048 blocks
+ debugfs: stat /a
+ Inode: 12   Type: regular    Mode:  0644   Flags: 0x80000
+ Generation: 1117152157    Version: 0x00000001
+@@ -146,19 +149,16 @@ mtime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
+ EXTENTS:
+ (0-1):1216-1217, (2):1218
+ debugfs: stat /d
+-Inode: 15   Type: regular    Mode:  0644   Flags: 0x0
++Inode: 15   Type: regular    Mode:  0644   Flags: 0x80000
+ Generation: 1117152160    Version: 0x00000001
+ User:     0   Group:     0   Size: 3072
+ File ACL: 0    Directory ACL: 0
+-Links: 1   Blockcount: 32
++Links: 1   Blockcount: 0
+ Fragment:  Address: 0    Number: 0    Size: 0
+ ctime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
+ atime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
+ mtime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
+-BLOCKS:
+-(TIND):1650
+-TOTAL: 1
