@@ -1,61 +1,125 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [v10 4/5] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR
- interface support
-Date: Thu, 19 Mar 2015 10:56:34 +0100
-Message-ID: <20150319095634.GF28368@quack.suse.cz>
-References: <1426705497-22158-1-git-send-email-lixi@ddn.com>
- <1426705497-22158-5-git-send-email-lixi@ddn.com>
+From: Taesoo Kim <taesoo@gatech.edu>
+Subject: Re: [PATCH 1/1] jbd2: fix incorrect unlock on j_list_lock
+Date: Thu, 19 Mar 2015 08:02:43 -0400
+Message-ID: <20150319120243.GG31460@taesoo.org>
+References: <1426644518-29680-1-git-send-email-tsgatesv@gmail.com>
+ <alpine.LFD.2.00.1503181142160.23465@localhost.localdomain>
+ <20150318173931.GJ29195@taesoo.org>
+ <alpine.LFD.2.00.1503191046280.29774@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-api@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca,
-	jack@suse.cz, viro@zeniv.linux.org.uk, hch@infradead.org,
-	dmonakhov@openvz.org
-To: Li Xi <pkuelelixi@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Taesoo Kim <tsgatesv@gmail.com>, tytso@mit.edu,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	changwoo@gatech.edu, sanidhya@gatech.edu, blee@gatech.edu,
+	csong84@gatech.edu
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qg0-f49.google.com ([209.85.192.49]:35592 "EHLO
+	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751292AbbCSMCr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Mar 2015 08:02:47 -0400
 Content-Disposition: inline
-In-Reply-To: <1426705497-22158-5-git-send-email-lixi@ddn.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <alpine.LFD.2.00.1503191046280.29774@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 19-03-15 04:04:56, Li Xi wrote:
-> This patch adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR ioctl interface
-> support for ext4. The interface is kept consistent with
-> XFS_IOC_FSGETXATTR/XFS_IOC_FSGETXATTR.
-  Two more comments below.
+On 03/19/15 at 10:48am, Luk=C3=A1=C5=A1 Czerner wrote:
+> On Wed, 18 Mar 2015, Taesoo Kim wrote:
+>=20
+> > Date: Wed, 18 Mar 2015 13:39:31 -0400
+> > From: Taesoo Kim <taesoo@gatech.edu>
+> > To: Luk=C3=A1=C5=A1 Czerner <lczerner@redhat.com>
+> > Cc: Taesoo Kim <tsgatesv@gmail.com>, tytso@mit.edu,
+> >     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+> >     changwoo@gatech.edu, sanidhya@gatech.edu, blee@gatech.edu,
+> >     csong84@gatech.edu
+> > Subject: Re: [PATCH 1/1] jbd2: fix incorrect unlock on j_list_lock
+> >=20
+> > > The patch looks good, thanks.
+> >=20
+> > Thank you.
+> > =20
+> > > Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+> > >=20
+> > > Btw, were you able to reproduce the problem, or have you seen the
+> > > problem in the wild ? Or did you just spot it in the code ?
+> >=20
+> > We are developing a static checker to spot inconsistent programming
+> > patterns; our first goal is to scan over existing filesystems and
+> > figure out how they are implemented differently (or similarly). We
+> > will report bugs in sequence as soon as our team confirm (just star=
+t
+> > sending patches to other fs).
+>=20
+> And this was found but it ?
 
-> 
-> Signed-off-by: Li Xi <lixi@ddn.com>
-...
-> +static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
-> +{
-> +	struct inode *inode = file_inode(filp);
-> +	struct super_block *sb = inode->i_sb;
-> +	struct ext4_inode_info *ei = EXT4_I(inode);
-> +	int err;
-> +	handle_t *handle;
-> +	kprojid_t kprojid;
-> +	struct ext4_iloc iloc;
-> +	struct ext4_inode *raw_inode;
-> +
-> +	struct dquot *transfer_to[EXT4_MAXQUOTAS] = { };
-> +
-> +	/* Make sure caller can change project. */
-> +	if (!capable(CAP_SYS_ADMIN))
-> +		return -EACCES;
-  Why do you test capabilities here when you already test permission in
-EXT4_IOC_FSSETXATTR? Furthermore this test is too restrictive. Just delete
-it.
+Our current prototype.
+=20
+> But anyway it sounds really interesting, do you have any more
+> information you can share about the project ? Project website,
+> description, or source code would be great :)
 
-...
-> -flags_out:
-> +		err = ext4_ioctl_setflags(inode, flags);
->  		mutex_unlock(&inode->i_mutex);
-> -		mnt_drop_write_file(filp);
-> +		mnt_drop_write(filp->f_path.mnt);
-  Why did you change this? mnt_drop_write_file() should stay here.
+We need 1-2 months to wrap up. I would say, right after the deadline,
+we plan to make the code/result publicly available :)
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Taesoo
+=20
+> Thanks!
+> -Lukas
+>=20
+> >=20
+> > Thanks,
+> > Taesoo
+> >=20
+> > > Thanks!
+> > > -Lukas
+> > >=20
+> > > >=20
+> > > > Signed-off-by: Taesoo Kim <tsgatesv@gmail.com>
+> > > > ---
+> > > >  fs/jbd2/transaction.c | 3 ++-
+> > > >  1 file changed, 2 insertions(+), 1 deletion(-)
+> > > >=20
+> > > > diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> > > > index 5f09370..edb7f59 100644
+> > > > --- a/fs/jbd2/transaction.c
+> > > > +++ b/fs/jbd2/transaction.c
+> > > > @@ -1091,6 +1091,7 @@ int jbd2_journal_get_create_access(handle=
+_t *handle, struct buffer_head *bh)
+> > > >  		JBUFFER_TRACE(jh, "file as BJ_Reserved");
+> > > >  		spin_lock(&journal->j_list_lock);
+> > > >  		__jbd2_journal_file_buffer(jh, transaction, BJ_Reserved);
+> > > > +		spin_unlock(&journal->j_list_lock);
+> > > >  	} else if (jh->b_transaction =3D=3D journal->j_committing_tra=
+nsaction) {
+> > > >  		/* first access by this transaction */
+> > > >  		jh->b_modified =3D 0;
+> > > > @@ -1098,8 +1099,8 @@ int jbd2_journal_get_create_access(handle=
+_t *handle, struct buffer_head *bh)
+> > > >  		JBUFFER_TRACE(jh, "set next transaction");
+> > > >  		spin_lock(&journal->j_list_lock);
+> > > >  		jh->b_next_transaction =3D transaction;
+> > > > +		spin_unlock(&journal->j_list_lock);
+> > > >  	}
+> > > > -	spin_unlock(&journal->j_list_lock);
+> > > >  	jbd_unlock_bh_state(bh);
+> > > >=20
+> > > >  	/*
+> > > > --
+> > > > 2.3.3
+> > > >=20
+> > > > --
+> > > > To unsubscribe from this list: send the line "unsubscribe linux=
+-ext4" in
+> > > > the body of a message to majordomo@vger.kernel.org
+> > > > More majordomo info at  http://vger.kernel.org/majordomo-info.h=
+tml
+> > > >=20
+> >=20
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
