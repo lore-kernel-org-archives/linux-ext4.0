@@ -1,36 +1,61 @@
-From: Adrian Palmer <adrian.palmer@seagate.com>
-Subject: SMRFFS - EXT4, and a few stack changes
-Date: Thu, 19 Mar 2015 09:59:06 -0600
-Message-ID: <CAKdFiL4A0yQBL63XbtG_Dvm_eGB11GDqbDQJRQVC91_HDzrKvQ@mail.gmail.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: Remove useless condition in if statement.
+Date: Thu, 19 Mar 2015 17:24:29 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1503191723590.1399@localhost.localdomain>
+References: <1426555914-731-1-git-send-email-weiyuan.wei@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	fstests@vger.kernel.org, linux-raid@ver.kernel.org,
-	linux-scsi <linux-scsi@vger.kernel.org>,
-	linux-ide@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Wei Yuan <weiyuan.wei@huawei.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:50903 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753067AbbCSQYj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Mar 2015 12:24:39 -0400
+In-Reply-To: <1426555914-731-1-git-send-email-weiyuan.wei@huawei.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all;
+On Tue, 17 Mar 2015, Wei Yuan wrote:
 
-As some have been asking, I've posted some proof-of-concept code at
-(https://github.com/Seagate/SMR_FS-EXT4).
+> Date: Tue, 17 Mar 2015 09:31:54 +0800
+> From: Wei Yuan <weiyuan.wei@huawei.com>
+> To: tytso@mit.edu, adilger.kernel@dilger.ca
+> Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+> Subject: [PATCH] ext4: Remove useless condition in if statement.
+> 
+> In this if statement, the previous condition is useless, the later one has covered it.
 
-Let me know any feedback.  We're in the process of planning out the
-schedule moving forward.
+Looks good, thanks!
 
-I'm spamming everyone because of the extent of the changes we've touched.
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
-I'm also copying the RAID list because I want to start a discussion
-about planning RAID solutions on SMR.
-
-
-
-Adrian Palmer
-Firmware Engineer II
-R&D Firmware
-Seagate, Longmont Colorado
-720-684-1307
-adrian.palmer@seagate.com
+> 
+> Signed-off-by: Weiyuan <weiyuan.wei@huawei.com>
+> ---
+>  fs/ext4/xattr.c | 3 +--
+>  1 file changed, 1 insertion(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 1e09fc7..f2ccad7 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -639,8 +639,7 @@ ext4_xattr_set_entry(struct ext4_xattr_info *i, struct ext4_xattr_search *s)
+>  		free += EXT4_XATTR_LEN(name_len);
+>  	}
+>  	if (i->value) {
+> -		if (free < EXT4_XATTR_SIZE(i->value_len) ||
+> -		    free < EXT4_XATTR_LEN(name_len) +
+> +		if (free < EXT4_XATTR_LEN(name_len) +
+>  			   EXT4_XATTR_SIZE(i->value_len))
+>  			return -ENOSPC;
+>  	}
+> --
+> 2.1.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
