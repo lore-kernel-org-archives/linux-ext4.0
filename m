@@ -1,50 +1,104 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [v10 3/5] ext4: adds project quota support
-Date: Thu, 19 Mar 2015 10:41:10 +0100
-Message-ID: <20150319094110.GE28368@quack.suse.cz>
-References: <1426705497-22158-1-git-send-email-lixi@ddn.com>
- <1426705497-22158-4-git-send-email-lixi@ddn.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 1/1] jbd2: fix incorrect unlock on j_list_lock
+Date: Thu, 19 Mar 2015 10:48:45 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1503191046280.29774@localhost.localdomain>
+References: <1426644518-29680-1-git-send-email-tsgatesv@gmail.com> <alpine.LFD.2.00.1503181142160.23465@localhost.localdomain> <20150318173931.GJ29195@taesoo.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-api@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca,
-	jack@suse.cz, viro@zeniv.linux.org.uk, hch@infradead.org,
-	dmonakhov@openvz.org
-To: Li Xi <pkuelelixi@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47849 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754571AbbCSJlN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Mar 2015 05:41:13 -0400
-Content-Disposition: inline
-In-Reply-To: <1426705497-22158-4-git-send-email-lixi@ddn.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-689013918-1426758533=:29774"
+Cc: Taesoo Kim <tsgatesv@gmail.com>, tytso@mit.edu,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	changwoo@gatech.edu, sanidhya@gatech.edu, blee@gatech.edu,
+	csong84@gatech.edu
+To: Taesoo Kim <taesoo@gatech.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20150318173931.GJ29195@taesoo.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 19-03-15 04:04:55, Li Xi wrote:
-> This patch adds mount options for enabling/disabling project quota
-> accounting and enforcement. A new specific inode is also used for
-> project quota accounting.
-  Here we still don't have resolved the problem that inode number 11 may be
-used. Please note that in the changelog as FIXME so that we don't forget.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-> @@ -987,6 +988,7 @@ struct ext4_inode_info {
->  #define EXT4_MOUNT_DIOREAD_NOLOCK	0x400000 /* Enable support for dio read nolocking */
->  #define EXT4_MOUNT_JOURNAL_CHECKSUM	0x800000 /* Journal checksums */
->  #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async Commit */
-> +#define EXT4_MOUNT_PRJJQUOTA		0x2000000 /* Journaled Project quota */
->  #define EXT4_MOUNT_DELALLOC		0x8000000 /* Delalloc support */
->  #define EXT4_MOUNT_DATA_ERR_ABORT	0x10000000 /* Abort on file data write */
->  #define EXT4_MOUNT_BLOCK_VALIDITY	0x20000000 /* Block validity checking */
-  I'm ok with the fact that you removed support for project quota files not
-in system files. However why do you keep the PRJJQUOTA mount option then?
-Quota tools are clever enough to query kernel for enabled quota without
-checking for mount options these days. So they don't need the mount option
-for anything. And kernel doesn't need the option for anything either
-(usrquota and grpquota mount options are there only for quota in standard
-files case).
+--8323328-689013918-1426758533=:29774
+Content-Type: TEXT/PLAIN; charset=ISO-8859-15
+Content-Transfer-Encoding: 8BIT
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+On Wed, 18 Mar 2015, Taesoo Kim wrote:
+
+> Date: Wed, 18 Mar 2015 13:39:31 -0400
+> From: Taesoo Kim <taesoo@gatech.edu>
+> To: Luká¨ Czerner <lczerner@redhat.com>
+> Cc: Taesoo Kim <tsgatesv@gmail.com>, tytso@mit.edu,
+>     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+>     changwoo@gatech.edu, sanidhya@gatech.edu, blee@gatech.edu,
+>     csong84@gatech.edu
+> Subject: Re: [PATCH 1/1] jbd2: fix incorrect unlock on j_list_lock
+> 
+> > The patch looks good, thanks.
+> 
+> Thank you.
+>  
+> > Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+> > 
+> > Btw, were you able to reproduce the problem, or have you seen the
+> > problem in the wild ? Or did you just spot it in the code ?
+> 
+> We are developing a static checker to spot inconsistent programming
+> patterns; our first goal is to scan over existing filesystems and
+> figure out how they are implemented differently (or similarly). We
+> will report bugs in sequence as soon as our team confirm (just start
+> sending patches to other fs).
+
+And this was found but it ?
+
+But anyway it sounds really interesting, do you have any more
+information you can share about the project ? Project website,
+description, or source code would be great :)
+
+Thanks!
+-Lukas
+
+> 
+> Thanks,
+> Taesoo
+> 
+> > Thanks!
+> > -Lukas
+> > 
+> > > 
+> > > Signed-off-by: Taesoo Kim <tsgatesv@gmail.com>
+> > > ---
+> > >  fs/jbd2/transaction.c | 3 ++-
+> > >  1 file changed, 2 insertions(+), 1 deletion(-)
+> > > 
+> > > diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> > > index 5f09370..edb7f59 100644
+> > > --- a/fs/jbd2/transaction.c
+> > > +++ b/fs/jbd2/transaction.c
+> > > @@ -1091,6 +1091,7 @@ int jbd2_journal_get_create_access(handle_t *handle, struct buffer_head *bh)
+> > >  		JBUFFER_TRACE(jh, "file as BJ_Reserved");
+> > >  		spin_lock(&journal->j_list_lock);
+> > >  		__jbd2_journal_file_buffer(jh, transaction, BJ_Reserved);
+> > > +		spin_unlock(&journal->j_list_lock);
+> > >  	} else if (jh->b_transaction == journal->j_committing_transaction) {
+> > >  		/* first access by this transaction */
+> > >  		jh->b_modified = 0;
+> > > @@ -1098,8 +1099,8 @@ int jbd2_journal_get_create_access(handle_t *handle, struct buffer_head *bh)
+> > >  		JBUFFER_TRACE(jh, "set next transaction");
+> > >  		spin_lock(&journal->j_list_lock);
+> > >  		jh->b_next_transaction = transaction;
+> > > +		spin_unlock(&journal->j_list_lock);
+> > >  	}
+> > > -	spin_unlock(&journal->j_list_lock);
+> > >  	jbd_unlock_bh_state(bh);
+> > > 
+> > >  	/*
+> > > --
+> > > 2.3.3
+> > > 
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > 
+> 
+--8323328-689013918-1426758533=:29774--
