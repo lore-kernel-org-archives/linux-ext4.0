@@ -1,17 +1,21 @@
 From: Chris J Arges <chris.j.arges@canonical.com>
 Subject: [3.17.y-3.19.y][cherry-pick] ext4: fix indirect punch hole corruption
-Date: Fri, 20 Mar 2015 11:05:01 -0500
-Message-ID: <550C452D.4030806@canonical.com>
+Date: Fri, 20 Mar 2015 11:04:11 -0500
+Message-ID: <550C44FB.4010006@canonical.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 7bit
 Cc: Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	linux-ext4@vger.kernel.org, Omar Sandoval <osandov@osandov.com>
-To: stable@vger.kernel.org
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-stable@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from youngberry.canonical.com ([91.189.89.112]:50698 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750990AbbCTQEQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Mar 2015 12:04:16 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 Please include the following commit into 3.17.y, 3.18.y, and 3.19.y
 stable trees.
