@@ -1,582 +1,101 @@
-From: Li Xi <pkuelelixi@gmail.com>
-Subject: [v11 4/5] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR interface support
-Date: Sat, 21 Mar 2015 03:41:29 +0900
-Message-ID: <1426876890-9914-5-git-send-email-lixi@ddn.com>
-References: <1426876890-9914-1-git-send-email-lixi@ddn.com>
-To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-api@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca,
-	jack@suse.cz, viro@zeniv.linux.org.uk, hch@infradead.org,
-	dmonakhov@openvz.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1426876890-9914-1-git-send-email-lixi@ddn.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: fs corruption recovery
+Date: Fri, 20 Mar 2015 11:45:02 -0700
+Message-ID: <20150320184501.GN11031@birch.djwong.org>
+References: <550A1EBF.2030902@linux.vnet.ibm.com>
+ <3D9B0893-DA8D-41D1-8782-BC966B91D44D@dilger.ca>
+ <20150320014708.GA3425@thunk.org>
+ <550BB465.6040601@linux.vnet.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger@dilger.ca>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"jane@us.ibm.com" <jane@us.ibm.com>,
+	"marcel.dufour@ca.ibm.com" <marcel.dufour@ca.ibm.com>
+To: Allison Henderson <achender@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:48089 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750956AbbCTSpM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Mar 2015 14:45:12 -0400
+Content-Disposition: inline
+In-Reply-To: <550BB465.6040601@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR ioctl interface
-support for ext4. The interface is kept consistent with
-XFS_IOC_FSGETXATTR/XFS_IOC_FSGETXATTR.
+On Thu, Mar 19, 2015 at 10:47:17PM -0700, Allison Henderson wrote:
+> On 03/19/2015 06:47 PM, Theodore Ts'o wrote:
+> >On Wed, Mar 18, 2015 at 06:59:52PM -0600, Andreas Dilger wrote:
+> >>I think that running a 17TB filesystem on ext3 is a recipe for disaster.  They should use ext4 for anything larger than 16TB.
+> >
+> >It's not *possible* to have a 17TB file system with ext3.  Something
+> >must be very wrong there.  16TB is the maximum you can have before you
+> >end up overflowing a 32-bit block number.  Unless this is a PowerPC
+> >with a 16K block size or some such?
+> >
+> >If e2fsck is segfaulting, then I would certainly try getting the
+> >latest version of e2fsprogs, just in case the problem isn't just that
+> >it's running out of memory.  Also if recovering customer data is the
+> >most important thing, the first thing they should do is a make image
+> >copy of the file system, since it's possible that incorrect use of
+> >e2fsck, or an old/buggy version of e2fsck could make things work.
 
-Signed-off-by: Li Xi <lixi@ddn.com>
----
- fs/ext4/ext4.h          |    9 ++
- fs/ext4/ioctl.c         |  366 ++++++++++++++++++++++++++++++++++++-----------
- fs/xfs/xfs_fs.h         |   47 +++----
- include/uapi/linux/fs.h |   32 ++++
- 4 files changed, 337 insertions(+), 117 deletions(-)
+...make things *worse*.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 8ddc723..377fec0 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -384,6 +384,13 @@ struct flex_groups {
- #define EXT4_FL_USER_VISIBLE		0x204BDFFF /* User visible flags */
- #define EXT4_FL_USER_MODIFIABLE		0x204380FF /* User modifiable flags */
- 
-+#define EXT4_FL_XFLAG_VISIBLE		(EXT4_SYNC_FL | \
-+					 EXT4_IMMUTABLE_FL | \
-+					 EXT4_APPEND_FL | \
-+					 EXT4_NODUMP_FL | \
-+					 EXT4_NOATIME_FL | \
-+					 EXT4_PROJINHERIT_FL)
-+
- /* Flags that should be inherited by new inodes from their parent. */
- #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
- 			   EXT4_SYNC_FL | EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
-@@ -606,6 +613,8 @@ enum {
- #define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
- #define EXT4_IOC_SWAP_BOOT		_IO('f', 17)
- #define EXT4_IOC_PRECACHE_EXTENTS	_IO('f', 18)
-+#define EXT4_IOC_FSGETXATTR		FS_IOC_FSGETXATTR
-+#define EXT4_IOC_FSSETXATTR		FS_IOC_FSSETXATTR
- 
- #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
- /*
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index f58a0d1..ba8b87d 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -14,6 +14,8 @@
- #include <linux/compat.h>
- #include <linux/mount.h>
- #include <linux/file.h>
-+#include <linux/quotaops.h>
-+#include <linux/quota.h>
- #include <asm/uaccess.h>
- #include "ext4_jbd2.h"
- #include "ext4.h"
-@@ -196,6 +198,222 @@ journal_err_out:
- 	return err;
- }
- 
-+static int ext4_ioctl_setflags(struct inode *inode,
-+			       unsigned int flags)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	handle_t *handle = NULL;
-+	int err = EPERM, migrate = 0;
-+	struct ext4_iloc iloc;
-+	unsigned int oldflags, mask, i;
-+	unsigned int jflag;
-+
-+	/* Is it quota file? Do not allow user to mess with it */
-+	if (IS_NOQUOTA(inode))
-+		goto flags_out;
-+
-+	oldflags = ei->i_flags;
-+
-+	/* The JOURNAL_DATA flag is modifiable only by root */
-+	jflag = flags & EXT4_JOURNAL_DATA_FL;
-+
-+	/*
-+	 * The IMMUTABLE and APPEND_ONLY flags can only be changed by
-+	 * the relevant capability.
-+	 *
-+	 * This test looks nicer. Thanks to Pauline Middelink
-+	 */
-+	if ((flags ^ oldflags) & (EXT4_APPEND_FL | EXT4_IMMUTABLE_FL)) {
-+		if (!capable(CAP_LINUX_IMMUTABLE))
-+			goto flags_out;
-+	}
-+
-+	/*
-+	 * The JOURNAL_DATA flag can only be changed by
-+	 * the relevant capability.
-+	 */
-+	if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
-+		if (!capable(CAP_SYS_RESOURCE))
-+			goto flags_out;
-+	}
-+	if ((flags ^ oldflags) & EXT4_EXTENTS_FL)
-+		migrate = 1;
-+
-+	if (flags & EXT4_EOFBLOCKS_FL) {
-+		/* we don't support adding EOFBLOCKS flag */
-+		if (!(oldflags & EXT4_EOFBLOCKS_FL)) {
-+			err = -EOPNOTSUPP;
-+			goto flags_out;
-+		}
-+	} else if (oldflags & EXT4_EOFBLOCKS_FL)
-+		ext4_truncate(inode);
-+
-+	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
-+	if (IS_ERR(handle)) {
-+		err = PTR_ERR(handle);
-+		goto flags_out;
-+	}
-+	if (IS_SYNC(inode))
-+		ext4_handle_sync(handle);
-+	err = ext4_reserve_inode_write(handle, inode, &iloc);
-+	if (err)
-+		goto flags_err;
-+
-+	for (i = 0, mask = 1; i < 32; i++, mask <<= 1) {
-+		if (!(mask & EXT4_FL_USER_MODIFIABLE))
-+			continue;
-+		if (mask & flags)
-+			ext4_set_inode_flag(inode, i);
-+		else
-+			ext4_clear_inode_flag(inode, i);
-+	}
-+
-+	ext4_set_inode_flags(inode);
-+	inode->i_ctime = ext4_current_time(inode);
-+
-+	err = ext4_mark_iloc_dirty(handle, inode, &iloc);
-+flags_err:
-+	ext4_journal_stop(handle);
-+	if (err)
-+		goto flags_out;
-+
-+	if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL))
-+		err = ext4_change_inode_journal_flag(inode, jflag);
-+	if (err)
-+		goto flags_out;
-+	if (migrate) {
-+		if (flags & EXT4_EXTENTS_FL)
-+			err = ext4_ext_migrate(inode);
-+		else
-+			err = ext4_ind_migrate(inode);
-+	}
-+
-+flags_out:
-+	return err;
-+}
-+
-+static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
-+{
-+	struct inode *inode = file_inode(filp);
-+	struct super_block *sb = inode->i_sb;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	int err;
-+	handle_t *handle;
-+	kprojid_t kprojid;
-+	struct ext4_iloc iloc;
-+	struct ext4_inode *raw_inode;
-+
-+	struct dquot *transfer_to[EXT4_MAXQUOTAS] = { };
-+
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-+		BUG_ON(__kprojid_val(EXT4_I(inode)->i_projid)
-+		       != EXT4_DEF_PROJID);
-+		if (projid != EXT4_DEF_PROJID)
-+			return -EOPNOTSUPP;
-+		else
-+			return 0;
-+	}
-+
-+	kprojid = make_kprojid(&init_user_ns, (projid_t)projid);
-+
-+	if (projid_eq(kprojid, EXT4_I(inode)->i_projid))
-+		return 0;
-+
-+	err = mnt_want_write_file(filp);
-+	if (err)
-+		return err;
-+
-+	err = -EPERM;
-+	mutex_lock(&inode->i_mutex);
-+	/* Is it quota file? Do not allow user to mess with it */
-+	if (IS_NOQUOTA(inode))
-+		goto project_out;
-+
-+	dquot_initialize(inode);
-+
-+	handle = ext4_journal_start(inode, EXT4_HT_QUOTA,
-+		EXT4_QUOTA_INIT_BLOCKS(sb) +
-+		EXT4_QUOTA_DEL_BLOCKS(sb) + 3);
-+	if (IS_ERR(handle)) {
-+		err = PTR_ERR(handle);
-+		goto project_out;
-+	}
-+
-+	err = ext4_reserve_inode_write(handle, inode, &iloc);
-+	if (err)
-+		goto project_stop;
-+
-+	raw_inode = ext4_raw_inode(&iloc);
-+	if ((EXT4_INODE_SIZE(sb) <=
-+	     EXT4_GOOD_OLD_INODE_SIZE) ||
-+	    (!EXT4_FITS_IN_INODE(raw_inode, ei, i_projid))) {
-+	    	err = -EFBIG;
-+	    	goto project_stop;
-+	}
-+
-+	transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(kprojid));
-+	if (!transfer_to[PRJQUOTA])
-+		goto project_set;
-+
-+	err = __dquot_transfer(inode, transfer_to);
-+	dqput(transfer_to[PRJQUOTA]);
-+	if (err)
-+		goto project_stop;
-+
-+project_set:
-+	EXT4_I(inode)->i_projid = kprojid;
-+	inode->i_ctime = ext4_current_time(inode);
-+	err = ext4_mark_iloc_dirty(handle, inode, &iloc);
-+project_stop:
-+	ext4_journal_stop(handle);
-+project_out:
-+	mutex_unlock(&inode->i_mutex);
-+	mnt_drop_write_file(filp);
-+	return err;
-+}
-+
-+/* Transfer internal flags to xflags */
-+static inline __u32 ext4_iflags_to_xflags(unsigned long iflags)
-+{
-+	__u32 xflags = 0;
-+
-+	if (iflags & EXT4_SYNC_FL)
-+		xflags |= FS_XFLAG_SYNC;
-+	if (iflags & EXT4_IMMUTABLE_FL)
-+		xflags |= FS_XFLAG_IMMUTABLE;
-+	if (iflags & EXT4_APPEND_FL)
-+		xflags |= FS_XFLAG_APPEND;
-+	if (iflags & EXT4_NODUMP_FL)
-+		xflags |= FS_XFLAG_NODUMP;
-+	if (iflags & EXT4_NOATIME_FL)
-+		xflags |= FS_XFLAG_NOATIME;
-+	if (iflags & EXT4_PROJINHERIT_FL)
-+		xflags |= FS_XFLAG_PROJINHERIT;
-+	return xflags;
-+}
-+
-+/* Transfer xflags flags to internal */
-+static inline unsigned long ext4_xflags_to_iflags(__u32 xflags)
-+{
-+	unsigned long iflags = 0;
-+
-+	if (xflags & FS_XFLAG_SYNC)
-+		iflags |= EXT4_SYNC_FL;
-+	if (xflags & FS_XFLAG_IMMUTABLE)
-+		iflags |= EXT4_IMMUTABLE_FL;
-+	if (xflags & FS_XFLAG_APPEND)
-+		iflags |= EXT4_APPEND_FL;
-+	if (xflags & FS_XFLAG_NODUMP)
-+		iflags |= EXT4_NODUMP_FL;
-+	if (xflags & FS_XFLAG_NOATIME)
-+		iflags |= EXT4_NOATIME_FL;
-+	if (xflags & FS_XFLAG_PROJINHERIT)
-+		iflags |= EXT4_PROJINHERIT_FL;
-+
-+	return iflags;
-+}
-+
- long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- {
- 	struct inode *inode = file_inode(filp);
-@@ -211,11 +429,7 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 		flags = ei->i_flags & EXT4_FL_USER_VISIBLE;
- 		return put_user(flags, (int __user *) arg);
- 	case EXT4_IOC_SETFLAGS: {
--		handle_t *handle = NULL;
--		int err, migrate = 0;
--		struct ext4_iloc iloc;
--		unsigned int oldflags, mask, i;
--		unsigned int jflag;
-+		int err;
- 
- 		if (!inode_owner_or_capable(inode))
- 			return -EACCES;
-@@ -229,89 +443,8 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 
- 		flags = ext4_mask_flags(inode->i_mode, flags);
- 
--		err = -EPERM;
- 		mutex_lock(&inode->i_mutex);
--		/* Is it quota file? Do not allow user to mess with it */
--		if (IS_NOQUOTA(inode))
--			goto flags_out;
--
--		oldflags = ei->i_flags;
--
--		/* The JOURNAL_DATA flag is modifiable only by root */
--		jflag = flags & EXT4_JOURNAL_DATA_FL;
--
--		/*
--		 * The IMMUTABLE and APPEND_ONLY flags can only be changed by
--		 * the relevant capability.
--		 *
--		 * This test looks nicer. Thanks to Pauline Middelink
--		 */
--		if ((flags ^ oldflags) & (EXT4_APPEND_FL | EXT4_IMMUTABLE_FL)) {
--			if (!capable(CAP_LINUX_IMMUTABLE))
--				goto flags_out;
--		}
--
--		/*
--		 * The JOURNAL_DATA flag can only be changed by
--		 * the relevant capability.
--		 */
--		if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
--			if (!capable(CAP_SYS_RESOURCE))
--				goto flags_out;
--		}
--		if ((flags ^ oldflags) & EXT4_EXTENTS_FL)
--			migrate = 1;
--
--		if (flags & EXT4_EOFBLOCKS_FL) {
--			/* we don't support adding EOFBLOCKS flag */
--			if (!(oldflags & EXT4_EOFBLOCKS_FL)) {
--				err = -EOPNOTSUPP;
--				goto flags_out;
--			}
--		} else if (oldflags & EXT4_EOFBLOCKS_FL)
--			ext4_truncate(inode);
--
--		handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
--		if (IS_ERR(handle)) {
--			err = PTR_ERR(handle);
--			goto flags_out;
--		}
--		if (IS_SYNC(inode))
--			ext4_handle_sync(handle);
--		err = ext4_reserve_inode_write(handle, inode, &iloc);
--		if (err)
--			goto flags_err;
--
--		for (i = 0, mask = 1; i < 32; i++, mask <<= 1) {
--			if (!(mask & EXT4_FL_USER_MODIFIABLE))
--				continue;
--			if (mask & flags)
--				ext4_set_inode_flag(inode, i);
--			else
--				ext4_clear_inode_flag(inode, i);
--		}
--
--		ext4_set_inode_flags(inode);
--		inode->i_ctime = ext4_current_time(inode);
--
--		err = ext4_mark_iloc_dirty(handle, inode, &iloc);
--flags_err:
--		ext4_journal_stop(handle);
--		if (err)
--			goto flags_out;
--
--		if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL))
--			err = ext4_change_inode_journal_flag(inode, jflag);
--		if (err)
--			goto flags_out;
--		if (migrate) {
--			if (flags & EXT4_EXTENTS_FL)
--				err = ext4_ext_migrate(inode);
--			else
--				err = ext4_ind_migrate(inode);
--		}
--
--flags_out:
-+		err = ext4_ioctl_setflags(inode, flags);
- 		mutex_unlock(&inode->i_mutex);
- 		mnt_drop_write_file(filp);
- 		return err;
-@@ -615,7 +748,66 @@ resizefs_out:
- 	}
- 	case EXT4_IOC_PRECACHE_EXTENTS:
- 		return ext4_ext_precache(inode);
-+	case EXT4_IOC_FSGETXATTR:
-+	{
-+		struct fsxattr fa;
- 
-+		memset(&fa, 0, sizeof(struct fsxattr));
-+
-+		ext4_get_inode_flags(ei);
-+		fa.fsx_xflags = ext4_iflags_to_xflags(ei->i_flags & EXT4_FL_USER_VISIBLE);
-+
-+		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+				EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-+			fa.fsx_projid = (__u32)from_kprojid(&init_user_ns,
-+				EXT4_I(inode)->i_projid);
-+		}
-+
-+		if (copy_to_user((struct fsxattr __user *)arg,
-+				 &fa, sizeof(fa)))
-+			return -EFAULT;
-+		return 0;
-+	}
-+	case EXT4_IOC_FSSETXATTR:
-+	{
-+		struct fsxattr fa;
-+		int err;
-+
-+		if (copy_from_user(&fa, (struct fsxattr __user *)arg,
-+				   sizeof(fa)))
-+			return -EFAULT;
-+
-+		/* Make sure caller has proper permission */
-+		if (__kprojid_val(EXT4_I(inode)->i_projid) == fa.fsx_projid) {
-+			if (!inode_owner_or_capable(inode))
-+				return -EACCES;
-+		} else {
-+			if (!capable(CAP_SYS_ADMIN))
-+				return -EACCES;
-+		}
-+
-+		err = mnt_want_write_file(filp);
-+		if (err)
-+			return err;
-+
-+		flags = ext4_xflags_to_iflags(fa.fsx_xflags);
-+		flags = ext4_mask_flags(inode->i_mode, flags);
-+
-+		mutex_lock(&inode->i_mutex);
-+		flags = (ei->i_flags & ~EXT4_FL_XFLAG_VISIBLE) |
-+			 (flags & EXT4_FL_XFLAG_VISIBLE);
-+		err = ext4_ioctl_setflags(inode, flags);
-+		mutex_unlock(&inode->i_mutex);
-+		mnt_drop_write_file(filp);
-+		if (err)
-+			return err;
-+
-+		err = ext4_ioctl_setproject(filp, fa.fsx_projid);
-+		if (err)
-+			return err;
-+
-+		return 0;
-+	}
- 	default:
- 		return -ENOTTY;
- 	}
-diff --git a/fs/xfs/xfs_fs.h b/fs/xfs/xfs_fs.h
-index 18dc721..64c7ae6 100644
---- a/fs/xfs/xfs_fs.h
-+++ b/fs/xfs/xfs_fs.h
-@@ -36,38 +36,25 @@ struct dioattr {
- #endif
- 
- /*
-- * Structure for XFS_IOC_FSGETXATTR[A] and XFS_IOC_FSSETXATTR.
-- */
--#ifndef HAVE_FSXATTR
--struct fsxattr {
--	__u32		fsx_xflags;	/* xflags field value (get/set) */
--	__u32		fsx_extsize;	/* extsize field value (get/set)*/
--	__u32		fsx_nextents;	/* nextents field value (get)	*/
--	__u32		fsx_projid;	/* project identifier (get/set) */
--	unsigned char	fsx_pad[12];
--};
--#endif
--
--/*
-  * Flags for the bs_xflags/fsx_xflags field
-  * There should be a one-to-one correspondence between these flags and the
-  * XFS_DIFLAG_s.
-  */
--#define XFS_XFLAG_REALTIME	0x00000001	/* data in realtime volume */
--#define XFS_XFLAG_PREALLOC	0x00000002	/* preallocated file extents */
--#define XFS_XFLAG_IMMUTABLE	0x00000008	/* file cannot be modified */
--#define XFS_XFLAG_APPEND	0x00000010	/* all writes append */
--#define XFS_XFLAG_SYNC		0x00000020	/* all writes synchronous */
--#define XFS_XFLAG_NOATIME	0x00000040	/* do not update access time */
--#define XFS_XFLAG_NODUMP	0x00000080	/* do not include in backups */
--#define XFS_XFLAG_RTINHERIT	0x00000100	/* create with rt bit set */
--#define XFS_XFLAG_PROJINHERIT	0x00000200	/* create with parents projid */
--#define XFS_XFLAG_NOSYMLINKS	0x00000400	/* disallow symlink creation */
--#define XFS_XFLAG_EXTSIZE	0x00000800	/* extent size allocator hint */
--#define XFS_XFLAG_EXTSZINHERIT	0x00001000	/* inherit inode extent size */
--#define XFS_XFLAG_NODEFRAG	0x00002000  	/* do not defragment */
--#define XFS_XFLAG_FILESTREAM	0x00004000	/* use filestream allocator */
--#define XFS_XFLAG_HASATTR	0x80000000	/* no DIFLAG for this	*/
-+#define XFS_XFLAG_REALTIME	FS_XFLAG_REALTIME	/* data in realtime volume */
-+#define XFS_XFLAG_PREALLOC	FS_XFLAG_PREALLOC	/* preallocated file extents */
-+#define XFS_XFLAG_IMMUTABLE	FS_XFLAG_IMMUTABLE	/* file cannot be modified */
-+#define XFS_XFLAG_APPEND	FS_XFLAG_APPEND		/* all writes append */
-+#define XFS_XFLAG_SYNC		FS_XFLAG_SYNC		/* all writes synchronous */
-+#define XFS_XFLAG_NOATIME	FS_XFLAG_NOATIME	/* do not update access time */
-+#define XFS_XFLAG_NODUMP	FS_XFLAG_NODUMP		/* do not include in backups */
-+#define XFS_XFLAG_RTINHERIT	FS_XFLAG_RTINHERIT	/* create with rt bit set */
-+#define XFS_XFLAG_PROJINHERIT	FS_XFLAG_PROJINHERIT	/* create with parents projid */
-+#define XFS_XFLAG_NOSYMLINKS	FS_XFLAG_NOSYMLINKS	/* disallow symlink creation */
-+#define XFS_XFLAG_EXTSIZE	FS_XFLAG_EXTSIZE	/* extent size allocator hint */
-+#define XFS_XFLAG_EXTSZINHERIT	FS_XFLAG_EXTSZINHERIT	/* inherit inode extent size */
-+#define XFS_XFLAG_NODEFRAG	FS_XFLAG_NODEFRAG  	/* do not defragment */
-+#define XFS_XFLAG_FILESTREAM	FS_XFLAG_FILESTREAM	/* use filestream allocator */
-+#define XFS_XFLAG_HASATTR	FS_XFLAG_HASATTR	/* no DIFLAG for this	*/
- 
- /*
-  * Structure for XFS_IOC_GETBMAP.
-@@ -503,8 +490,8 @@ typedef struct xfs_swapext
- #define XFS_IOC_ALLOCSP		_IOW ('X', 10, struct xfs_flock64)
- #define XFS_IOC_FREESP		_IOW ('X', 11, struct xfs_flock64)
- #define XFS_IOC_DIOINFO		_IOR ('X', 30, struct dioattr)
--#define XFS_IOC_FSGETXATTR	_IOR ('X', 31, struct fsxattr)
--#define XFS_IOC_FSSETXATTR	_IOW ('X', 32, struct fsxattr)
-+#define XFS_IOC_FSGETXATTR	FS_IOC_FSGETXATTR
-+#define XFS_IOC_FSSETXATTR	FS_IOC_FSSETXATTR
- #define XFS_IOC_ALLOCSP64	_IOW ('X', 36, struct xfs_flock64)
- #define XFS_IOC_FREESP64	_IOW ('X', 37, struct xfs_flock64)
- #define XFS_IOC_GETBMAP		_IOWR('X', 38, struct getbmap)
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index fcbf647..69dda62 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -58,6 +58,36 @@ struct inodes_stat_t {
- 	long dummy[5];		/* padding for sysctl ABI compatibility */
- };
- 
-+/*
-+ * Structure for FS_IOC_FSGETXATTR and FS_IOC_FSSETXATTR.
-+ */
-+struct fsxattr {
-+	__u32		fsx_xflags;	/* xflags field value (get/set) */
-+	__u32		fsx_extsize;	/* extsize field value (get/set)*/
-+	__u32		fsx_nextents;	/* nextents field value (get)	*/
-+	__u32		fsx_projid;	/* project identifier (get/set) */
-+	unsigned char	fsx_pad[12];
-+};
-+
-+/*
-+ * Flags for the fsx_xflags field
-+ */
-+#define FS_XFLAG_REALTIME	0x00000001	/* data in realtime volume */
-+#define FS_XFLAG_PREALLOC	0x00000002	/* preallocated file extents */
-+#define FS_XFLAG_IMMUTABLE	0x00000008	/* file cannot be modified */
-+#define FS_XFLAG_APPEND		0x00000010	/* all writes append */
-+#define FS_XFLAG_SYNC		0x00000020	/* all writes synchronous */
-+#define FS_XFLAG_NOATIME	0x00000040	/* do not update access time */
-+#define FS_XFLAG_NODUMP		0x00000080	/* do not include in backups */
-+#define FS_XFLAG_RTINHERIT	0x00000100	/* create with rt bit set */
-+#define FS_XFLAG_PROJINHERIT	0x00000200	/* create with parents projid */
-+#define FS_XFLAG_NOSYMLINKS	0x00000400	/* disallow symlink creation */
-+#define FS_XFLAG_EXTSIZE	0x00000800	/* extent size allocator hint */
-+#define FS_XFLAG_EXTSZINHERIT	0x00001000	/* inherit inode extent size */
-+#define FS_XFLAG_NODEFRAG	0x00002000  	/* do not defragment */
-+#define FS_XFLAG_FILESTREAM	0x00004000	/* use filestream allocator */
-+#define FS_XFLAG_HASATTR	0x80000000	/* no DIFLAG for this */
-+
- 
- #define NR_FILE  8192	/* this can well be larger on a larger system */
- 
-@@ -163,6 +193,8 @@ struct inodes_stat_t {
- #define	FS_IOC_GETVERSION		_IOR('v', 1, long)
- #define	FS_IOC_SETVERSION		_IOW('v', 2, long)
- #define FS_IOC_FIEMAP			_IOWR('f', 11, struct fiemap)
-+#define FS_IOC_FSGETXATTR		_IOR('X', 31, struct fsxattr)
-+#define FS_IOC_FSSETXATTR		_IOW('X', 32, struct fsxattr)
- #define FS_IOC32_GETFLAGS		_IOR('f', 1, int)
- #define FS_IOC32_SETFLAGS		_IOW('f', 2, int)
- #define FS_IOC32_GETVERSION		_IOR('v', 1, int)
--- 
-1.7.1
+> >
+> >In particular, if they are seeing errors with multply claimed inodes,
+> >it's likely that part of the inode table was written to the wrong
+> >place, and sometimes a skilled human being can get more data than
+> >simply using e2fsck -y and praying.  At the end of the day the
+> >question is how much is the customer data work and how much effort is
+> >the customer / IBM willing to invest in trying to get every last bit
+> >of data back?
+> >
+> >						- Ted
+> >
+> 
+> Hi all,
+> 
+> Sorry for the delay, our email servers went down for a bit after I
+> sent the email.  I will work with Marcel to find the block size,
+> page size and arch.  It is my understanding they they have a
 
+Just guessing PPC, in which case you'll really want an e2fsck released after
+the giant heaps of bugfixes I've sent over the last year.  There were a lot
+of bugs that only show up on bigendian systems, which probably don't get
+much testing nowadays.
+
+Even if it's a 17179869184 byte ext3 FS on x86, you're probably still better
+off with a less buggy e2fsck.  There are a number of fixes to prevent the
+crosslinked file fixer and the directory fixer from doing insane things to
+the FS.
+
+> contract with this customer to maintain this data, so there is
+> pressure to recover it. Unfortunately the product mirrored the fs
+> corruption to the back up device before the corruption was
+> discovered.  I've been told that I was the only person they could
+> find left that had some background with ext3/4, so I have an inkling
+
+Yep. ;)
+
+> that the "skilled human being" might end up being me, even though
+> its been a while since I've worked with it. :-) Maybe I could poke
+> into the inode table and see what I can figure out. We will be sure
+> to make image backups though.  Thx a bunch for the feed back, we
+> really appreciate the help!  I will keep folks updated when I have
+> more info.  Thx!
+
+If you have LVM or other volume management, please take a snapshot and fsck the
+snapshot first, so you can capture a log of what happens without blasting away
+at existing data.
+
+--D
+
+> 
+> Allison Henderson
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
