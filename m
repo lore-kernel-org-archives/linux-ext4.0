@@ -1,68 +1,45 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] ext4: fix loss of delalloc extent info in ext4_zero_range()
-Date: Fri, 20 Mar 2015 19:53:50 -0400
-Message-ID: <20150320235350.GA10101@wallace>
+From: Killian De Volder <killian.de.volder@scarlet.be>
+Subject: Re: Recovery after mkfs.ext4 on a ext4
+Date: Sun, 22 Mar 2015 09:19:17 +0100
+Message-ID: <550E7B05.7020703@scarlet.be>
+References: <539D555E.3050707@scarlet.be> <20140615132026.GC2180@thunk.org> <539E019C.6060600@scarlet.be> <20140615214403.GA1420@thunk.org> <53A7C4A1.4000603@scarlet.be> <20140623123758.GA14887@thunk.org> <53A857C0.3060401@scarlet.be> <20140623173151.GD14887@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:34838 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751281AbbCTXxx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Mar 2015 19:53:53 -0400
-Received: by qgew92 with SMTP id w92so31164549qge.2
-        for <linux-ext4@vger.kernel.org>; Fri, 20 Mar 2015 16:53:52 -0700 (PDT)
-Content-Disposition: inline
+Received: from relay6-d.mail.gandi.net ([217.70.183.198]:33592 "EHLO
+	relay6-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751696AbbCVITV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 22 Mar 2015 04:19:21 -0400
+In-Reply-To: <20140623173151.GD14887@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In ext4_zero_range(), removing a file's entire block range from the
-extent status tree removes all records of that file's delalloc extents.
-The delalloc accounting code uses this information, and its loss can
-then lead to accounting errors and kernel warnings at writeback time and
-subsequent file system damage.  This is most noticeable on bigalloc
-file systems where code in ext4_ext_map_blocks() handles cases where
-delalloc extents share clusters with a newly allocated extent.
+On 23-06-14 19:31, Theodore Ts'o wrote:
+>
+> ...
+> We do actually keep a linked list of these inode numbers so we can try
+> to report a directory name so you know which file has been trashed.
+> This happens in pass #2, so the inodes which are invalid are stored in
+> pass #1 and only removed in pass #2.  
+>
+> So if you are seeing gazillions of bad inodes, that could very easily
+> be what's going on.  If so, I can imagine having some mode that we
+> enter after a hundred inodes where we just ask permission to blow away
+> all of the corrupted inodes in pass #1, without waiting until we can
+> give you a proper pathname.
+> ...
+>
+>
+> 						 - Ted
+>
+Been thinking, maybe I should rewrite this code to used linked-arrays ?
+Linked lists are painfully slow on swap. (and cpu too because of all the cache misses)
+Or are we doing a lot of inserts ?
 
-Because we're not deleting a block range and are correctly updating the
-status of its associated extent, there is no need to remove anything
-from the extent status tree.
+Think it might be worth it ? Would take me a week to learn the code in e2fsck though...
+Biggest fear I have is making a mistake in the code that causes silent bugs.
 
-When this patch is combined with an unrelated bug fix for
-ext4_zero_range(), kernel warnings and e2fsck errors reported during
-xfstests runs on bigalloc filesystems are greatly reduced without
-introducing regressions on other xfstests-bld test scenarios.
-
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- fs/ext4/extents.c | 13 -------------
- 1 file changed, 13 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index bed4308..c187cc3 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4847,19 +4847,6 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 					     flags, mode);
- 		if (ret)
- 			goto out_dio;
--		/*
--		 * Remove entire range from the extent status tree.
--		 *
--		 * ext4_es_remove_extent(inode, lblk, max_blocks) is
--		 * NOT sufficient.  I'm not sure why this is the case,
--		 * but let's be conservative and remove the extent
--		 * status tree for the entire inode.  There should be
--		 * no outstanding delalloc extents thanks to the
--		 * filemap_write_and_wait_range() call above.
--		 */
--		ret = ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
--		if (ret)
--			goto out_dio;
- 	}
- 	if (!partial_begin && !partial_end)
- 		goto out_dio;
--- 
-2.1.0
-
+Kind regards, Killian
