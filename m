@@ -1,52 +1,87 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext3: Remove useless condition in if statement.
-Date: Mon, 23 Mar 2015 11:30:44 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1503231130060.1578@localhost.localdomain>
-References: <1426820950-4720-1-git-send-email-weiyuan.wei@huawei.com>
+Subject: Re: [PATCH] ext4: fix loss of delalloc extent info in
+ ext4_zero_range()
+Date: Mon, 23 Mar 2015 11:44:19 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1503231138110.1578@localhost.localdomain>
+References: <20150320235350.GA10101@wallace>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: jack@suse.cz, akpm@linux-foundation.org, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	lizefan@huawei.com
-To: Wei Yuan <weiyuan.wei@huawei.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1426820950-4720-1-git-send-email-weiyuan.wei@huawei.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Eric Whitney <enwlinux@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:59811 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751935AbbCWKoZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Mar 2015 06:44:25 -0400
+In-Reply-To: <20150320235350.GA10101@wallace>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 20 Mar 2015, Wei Yuan wrote:
+On Fri, 20 Mar 2015, Eric Whitney wrote:
 
-> Date: Fri, 20 Mar 2015 11:09:10 +0800
-> From: Wei Yuan <weiyuan.wei@huawei.com>
-> To: jack@suse.cz, akpm@linux-foundation.org, adilger.kernel@dilger.ca
-> Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
->     lczerner@redhat.com, lizefan@huawei.com
-> Subject: [PATCH] ext3: Remove useless condition in if statement.
+> Date: Fri, 20 Mar 2015 19:53:50 -0400
+> From: Eric Whitney <enwlinux@gmail.com>
+> To: linux-ext4@vger.kernel.org
+> Cc: tytso@mit.edu
+> Subject: [PATCH] ext4: fix loss of delalloc extent info in ext4_zero_range()
 > 
-> In this if statement, the previous condition is useless, the later one has covered it.
+> In ext4_zero_range(), removing a file's entire block range from the
+> extent status tree removes all records of that file's delalloc extents.
+> The delalloc accounting code uses this information, and its loss can
+> then lead to accounting errors and kernel warnings at writeback time and
+> subsequent file system damage.  This is most noticeable on bigalloc
+> file systems where code in ext4_ext_map_blocks() handles cases where
+> delalloc extents share clusters with a newly allocated extent.
+> 
+> Because we're not deleting a block range and are correctly updating the
+> status of its associated extent, there is no need to remove anything
+> from the extent status tree.
+> 
+> When this patch is combined with an unrelated bug fix for
+> ext4_zero_range(), kernel warnings and e2fsck errors reported during
+> xfstests runs on bigalloc filesystems are greatly reduced without
+> introducing regressions on other xfstests-bld test scenarios.
 
-Nice that you've send this ext3 counterpart for ext4 patch. Thanks!
+Ah, this is my bad sorry. I didn't realize that we're actually
+relying on the delayed extent information in the extent status tree
+now.
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+However I remember that I've seen some problems when this extent
+removal was not there (see the comment you removed). I am not
+entirely sure anymore what it was all about, but I need to retest
+with your patch.
+
+Thanks!
+-Lukas
 
 > 
-> Signed-off-by: Weiyuan <weiyuan.wei@huawei.com>
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
 > ---
->  fs/ext3/xattr.c | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
+>  fs/ext4/extents.c | 13 -------------
+>  1 file changed, 13 deletions(-)
 > 
-> diff --git a/fs/ext3/xattr.c b/fs/ext3/xattr.c
-> index c6874be..24215dc 100644
-> --- a/fs/ext3/xattr.c
-> +++ b/fs/ext3/xattr.c
-> @@ -546,8 +546,7 @@ ext3_xattr_set_entry(struct ext3_xattr_info *i, struct ext3_xattr_search *s)
->  		free += EXT3_XATTR_LEN(name_len);
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index bed4308..c187cc3 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -4847,19 +4847,6 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+>  					     flags, mode);
+>  		if (ret)
+>  			goto out_dio;
+> -		/*
+> -		 * Remove entire range from the extent status tree.
+> -		 *
+> -		 * ext4_es_remove_extent(inode, lblk, max_blocks) is
+> -		 * NOT sufficient.  I'm not sure why this is the case,
+> -		 * but let's be conservative and remove the extent
+> -		 * status tree for the entire inode.  There should be
+> -		 * no outstanding delalloc extents thanks to the
+> -		 * filemap_write_and_wait_range() call above.
+> -		 */
+> -		ret = ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
+> -		if (ret)
+> -			goto out_dio;
 >  	}
->  	if (i->value) {
-> -		if (free < EXT3_XATTR_SIZE(i->value_len) ||
-> -		    free < EXT3_XATTR_LEN(name_len) +
-> +		if (free < EXT3_XATTR_LEN(name_len) +
->  			   EXT3_XATTR_SIZE(i->value_len))
->  			return -ENOSPC;
->  	}
+>  	if (!partial_begin && !partial_end)
+>  		goto out_dio;
 > 
