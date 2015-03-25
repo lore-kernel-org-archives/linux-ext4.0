@@ -1,71 +1,56 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH v2] ext4: don't release reserved space for previously
- allocated cluster
-Date: Tue, 24 Mar 2015 17:39:29 -0400
-Message-ID: <20150324213929.GB29607@wallace>
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: [PATCH v10 1/12] fs: Add support FALLOC_FL_INSERT_RANGE for
+ fallocate
+Date: Wed, 25 Mar 2015 17:05:52 +1100
+Message-ID: <20150325060552.GY28621@dastard>
+References: <1424533554-28024-1-git-send-email-linkinjeon@gmail.com>
+ <1424533554-28024-2-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:35805 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751777AbbCXVjh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Mar 2015 17:39:37 -0400
-Received: by qgh3 with SMTP id 3so1905890qgh.2
-        for <linux-ext4@vger.kernel.org>; Tue, 24 Mar 2015 14:39:36 -0700 (PDT)
+Cc: tytso-3s7WtUTddSA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, a.sangwan-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org, bfoster-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Namjae Jeon <namjae.jeon-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>
+To: Namjae Jeon <linkinjeon-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1424533554-28024-2-git-send-email-linkinjeon-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-When xfstests' auto group is run on a bigalloc filesystem with a
-4.0-rc3 kernel, e2fsck failures and kernel warnings occur for some
-tests. e2fsck reports incorrect iblocks values, and the warnings
-indicate that the space reserved for delayed allocation is being
-overdrawn at allocation time.
+On Sun, Feb 22, 2015 at 12:45:43AM +0900, Namjae Jeon wrote:
+> From: Namjae Jeon <namjae.jeon-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>
+> 
+> FALLOC_FL_INSERT_RANGE command is the opposite command of
+> FALLOC_FL_COLLAPSE_RANGE that is needed for advertisers or someone who want to
+> add some data in the middle of file. FALLOC_FL_INSERT_RANGE will create space
+> for writing new data within a file after shifting extents to right as given
+> length. and this command also has same limitation as FALLOC_FL_COLLAPSE_RANGE,
+> that is block boundary and use ftruncate(2) for crosses EOF.
+> 
+> Signed-off-by: Namjae Jeon <namjae.jeon-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>
+> Signed-off-by: Ashish Sangwan <a.sangwan-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>
 
-Some of these errors occur because the reserved space is incorrectly
-decreased by one cluster when ext4_ext_map_blocks satisfies an
-allocation request by mapping an unused portion of a previously
-allocated cluster.  Because a cluster's worth of reserved space was
-already released when it was first allocated, it should not be released
-again.
+Folks, I have merged this into the xfs tree for the 4.1 merge
+window. It is under the stable branch "fallocate-insert-range"
+in the tree here:
 
-This patch appears to correct the e2fsck failure reported for
-generic/232 and the kernel warnings produced by ext4/001, generic/009,
-and generic/033.  Failures and warnings for some other tests remain to
-be addressed.
+git://git.kernel.org/pub/scm/linux/kernel/git/dgc/linux-xfs.git
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- fs/ext4/extents.c | 14 +-------------
- 1 file changed, 1 insertion(+), 13 deletions(-)
+an dis currently included in the for-next branch that is included in
+the linux-next tree. I have not included the ext4 kernel support
+patch in this branch (patch 3) because I have not seen any reviews
+from ext4 developers for it.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index bed4308..554190e 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4535,19 +4535,7 @@ got_allocated_blocks:
- 		 */
- 		reserved_clusters = get_reserved_cluster_alloc(inode,
- 						map->m_lblk, allocated);
--		if (map_from_cluster) {
--			if (reserved_clusters) {
--				/*
--				 * We have clusters reserved for this range.
--				 * But since we are not doing actual allocation
--				 * and are simply using blocks from previously
--				 * allocated cluster, we should release the
--				 * reservation and not claim quota.
--				 */
--				ext4_da_update_reserve_space(inode,
--						reserved_clusters, 0);
--			}
--		} else {
-+		if (!map_from_cluster) {
- 			BUG_ON(allocated_clusters < reserved_clusters);
- 			if (reserved_clusters < allocated_clusters) {
- 				struct ext4_inode_info *ei = EXT4_I(inode);
+Ted, if you want to include that patch in you ext4 tree, feel free
+to base it on the above branch, or if you give your  sob or
+reviewed-by ok I can pull it into my tree. I'll leave it up to you
+to determine how you want to deal with this.
+
+Cheers,
+
+Dave.
 -- 
-2.1.0
-
+Dave Chinner
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
