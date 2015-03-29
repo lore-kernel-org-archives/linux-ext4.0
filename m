@@ -1,60 +1,63 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 95571] New: ext4 fs corruption on power-cut while running
- fsstress
-Date: Wed, 25 Mar 2015 15:18:28 +0000
-Message-ID: <bug-95571-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsck: completely ignore last-mount and last-write
+ within fudge_time
+Date: Sat, 28 Mar 2015 22:32:26 -0400
+Message-ID: <20150329023226.GA19097@thunk.org>
+References: <5509DCE4.1010706@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:47451 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:38520 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753662AbbCYPSa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 Mar 2015 11:18:30 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 8CA1F2037D
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2015 15:18:29 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id BC9BE20379
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2015 15:18:28 +0000 (UTC)
+	id S1752332AbbC2Ccd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 28 Mar 2015 22:32:33 -0400
+Content-Disposition: inline
+In-Reply-To: <5509DCE4.1010706@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=95571
+I'm a bit more partial to this method of fixing the issue.
 
-            Bug ID: 95571
-           Summary: ext4 fs corruption on power-cut while running fsstress
-           Product: File System
-           Version: 2.5
-    Kernel Version: 4.0.0-rc3
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: ionut.trandafir12@gmail.com
-        Regression: No
+What do folks think?
 
-Created attachment 172361
-  --> https://bugzilla.kernel.org/attachment.cgi?id=172361&action=edit
-ext4 fs corruption at power cut
+      	       	       	       	      	 - Ted
+					 
+commit f096708126412c0569e40cfbd5740729976bf12a
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sat Mar 28 21:39:54 2015 -0400
 
-I'm using an Ubuntu-13.10 VM for this testing. Kernel 4.0.0-rc3 compiled from
-git and e2fsprogs 1.42.12.
-The steps I run:
- # mkfs.ext4 /dev/sdb1
- # mount -t ext4 -o defaults,barrier=1,noatime /dev/sdb1 /mnt
- # fsstress -w -X -d /mnt/fsstress -l 0 -n 100 -p 100 -s urandom
-Let it run for 10 sec and then poweroff the virtual machine:
- $ vboxmanage controlvm Ubuntu-13.10-server poweroff
-After reboot, I run:
- # fsck.ext4 -vpf /dev/sdb1
-This fails with exit code 4, 2 out of 10 runs. The fail log is attached.
+    e2fsck: use PROMPT_NONE for FUTURE_SB_LAST_*_FUDGED problems
+    
+    This allows us to print a message warning the user that there is
+    something funny going on with their hardware clock (probably time zone
+    issues caused by trying to be compatible with legacy OS's such as
+    Windows), without triggering a full file system check.
+    
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 12cf836..f442a33 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -386,14 +386,14 @@ static struct e2fsck_problem problem_table[] = {
+ 	/* Last mount time is in the future (fudged) */
+ 	{ PR_0_FUTURE_SB_LAST_MOUNT_FUDGED,
+ 	  N_("@S last mount time is in the future.\n\t(by less than a day, "
+-	     "probably due to the hardware clock being incorrectly set)  "),
+-	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
++	     "probably due to the hardware clock being incorrectly set)\n"),
++	  PROMPT_NONE, PR_PREEN_OK | PR_NO_OK },
+ 
+ 	/* Last write time is in the future (fudged) */
+ 	{ PR_0_FUTURE_SB_LAST_WRITE_FUDGED,
+ 	  N_("@S last write time is in the future.\n\t(by less than a day, "
+-	     "probably due to the hardware clock being incorrectly set).  "),
+-	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
++	     "probably due to the hardware clock being incorrectly set)\n"),
++	  PROMPT_NONE, PR_PREEN_OK | PR_NO_OK },
+ 
+ 	/* Block group checksum (latch question) is invalid. */
+ 	{ PR_0_GDT_CSUM_LATCH,
