@@ -1,87 +1,83 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 95861] New: fs/inode.c:509 invalid opcode: 0000 [#1] SMP
-Date: Mon, 30 Mar 2015 17:15:50 +0000
-Message-ID: <bug-95861-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [v10 4/5] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR
+ interface support
+Date: Wed, 1 Apr 2015 09:20:37 +0200
+Message-ID: <20150401072037.GA25311@quack.suse.cz>
+References: <1426705497-22158-1-git-send-email-lixi@ddn.com>
+ <1426705497-22158-5-git-send-email-lixi@ddn.com>
+ <20150319095634.GF28368@quack.suse.cz>
+ <CAPTn0cAkHZ7xhrR2RPpDqffX-Mndt7aPQ-PTHb3tkfCdUWLPBA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:44777 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753023AbbC3RPy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Mar 2015 13:15:54 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 9FC782035B
-	for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2015 17:15:52 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 208C720377
-	for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2015 17:15:51 +0000 (UTC)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger@dilger.ca>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"hch@infradead.org" <hch@infradead.org>,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: Li Xi <pkuelelixi@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <CAPTn0cAkHZ7xhrR2RPpDqffX-Mndt7aPQ-PTHb3tkfCdUWLPBA@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=95861
+On Fri 20-03-15 21:24:07, Li Xi wrote:
+> On Thu, Mar 19, 2015 at 5:56 PM, Jan Kara <jack@suse.cz> wrote:
+> > On Thu 19-03-15 04:04:56, Li Xi wrote:
+> >> This patch adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR ioctl interface
+> >> support for ext4. The interface is kept consistent with
+> >> XFS_IOC_FSGETXATTR/XFS_IOC_FSGETXATTR.
+> >   Two more comments below.
+> >
+> >>
+> >> Signed-off-by: Li Xi <lixi@ddn.com>
+> > ...
+> >> +static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+> >> +{
+> >> +     struct inode *inode = file_inode(filp);
+> >> +     struct super_block *sb = inode->i_sb;
+> >> +     struct ext4_inode_info *ei = EXT4_I(inode);
+> >> +     int err;
+> >> +     handle_t *handle;
+> >> +     kprojid_t kprojid;
+> >> +     struct ext4_iloc iloc;
+> >> +     struct ext4_inode *raw_inode;
+> >> +
+> >> +     struct dquot *transfer_to[EXT4_MAXQUOTAS] = { };
+> >> +
+> >> +     /* Make sure caller can change project. */
+> >> +     if (!capable(CAP_SYS_ADMIN))
+> >> +             return -EACCES;
+> >   Why do you test capabilities here when you already test permission in
+> > EXT4_IOC_FSSETXATTR? Furthermore this test is too restrictive. Just delete
+> > it.
+> It seems we need this restrictive permission. Otherwise the owner of the file
+> can change the project ID to any other project. That means, the owner can
+> walk around the quota limit whenever he/she wants. But I agree checking
+> permission twice is not good.
+  Sorry for a late reply but I was catching up with stuff after a
+conference and then got ill. So I agree that owner of a file can escape
+project quota limit whenever he/she wants by setting project to something
+else. Sadly that's how project quota has been originally designed and how
+it works in XFS for years. So we should start with being compatible with
+this behavior.
 
-            Bug ID: 95861
-           Summary: fs/inode.c:509 invalid opcode: 0000 [#1] SMP
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.19.2
-          Hardware: Intel
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext3
-          Assignee: fs_ext3@kernel-bugs.osdl.org
-          Reporter: ronis@ronispc.chem.mcgill.ca
-        Regression: No
+Konstantin has in his patches patch "fs: protected project id" which
+creates a sysctl which controls whether or not owner is able to set
+arbitrary project id. That is one way to improve the situation so that
+project quotas are usable also in situations where setting project quotas
+to any project by file owner is undesirable. Christoph also had an idea
+that we could allow owner to set project to anything when current project
+is unset (0). Once project is set, only CAP_SYS_ADMIN (maybe better
+capability would be CAP_CHOWN actually) process can change it. We can
+discuss how to change the current XFS model to suit new usecases but IMHO
+we should start the way XFS is...
 
-I was backing up some files onto an external hard drive which is unmounted when
-finished (all this is in a script).  This time, trying to unmount /dev/sdb1
-gave:
-
-[251916.217504] ------------[ cut here ]------------
-[251916.217853] kernel BUG at fs/inode.c:509!
-[251916.218002] invalid opcode: 0000 [#1] SMP 
-[251916.218002] Modules linked in: snd_hda_codec_idt snd_hda_codec_generic
-snd_hda_intel snd_hda_controller snd_hda_codec snd_hwdep autofs4 nfsd lockd
-grace nfs_acl auth_rpcgss sunrpc oid_registry ipv6 nf_conntrack_ipv4
-nf_defrag_ipv4 xt_state nf_conntrack xt_multiport iptable_filter ip_tables fuse
-floppy loop [last unloaded: snd_hwdep]
-[251916.218002] CPU: 0 PID: 23470 Comm: umount Not tainted 3.19.2 #1
-[251916.218002] task: de90a780 ti: c90b2000 task.ti: c90b2000
-[251916.218002] EIP: 0060:[<c1112dd0>] EFLAGS: 00010006 CPU: 0
-[251916.218002] EIP is at clear_inode+0x60/0x80
-[251916.218002] EAX: 00001800 EBX: dab85068 ECX: c90b3e80 EDX: 00000000
-[251916.218002] ESI: dab85104 EDI: c1661100 EBP: de90a780 ESP: c90b3f28
-[251916.218002]  DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
-[251916.218002] CR0: 8005003b CR2: b7396bd4 CR3: 15c74000 CR4: 000007d0
-[251916.218002] Stack:
-[251916.218002]  dab85068 c111387e dab852f4 c90b3f4c ca337460 c111396a ca3373c4
-ca3373c4
-[251916.218002]  c1114426 dab852f4 d46a7ccc ca337400 ca337460 c1661100 c10fe173
-00000083
-[251916.218002]  f544ea00 de90ab48 c10fe437 ca337400 c186c184 c10fe6ca f263b500
-c19473ec
-[251916.218002] Call Trace:
-[251916.218002]  [<c111387e>] ? evict+0x8e/0x150
-[251916.218002]  [<c111396a>] ? dispose_list+0x2a/0x40
-[251916.218002]  [<c1114426>] ? evict_inodes+0x86/0xd0
-[251916.218002]  [<c10fe173>] ? generic_shutdown_super+0x33/0xc0
-[251916.218002]  [<c10fe437>] ? kill_block_super+0x17/0x60
-[251916.218002]  [<c10fe6ca>] ? deactivate_locked_super+0x2a/0x40
-[251916.218002]  [<c1116ca1>] ? cleanup_mnt+0x31/0x80
-[251916.218002]  [<c1051cb9>] ? task_work_run+0x99/0xd0
-[251916.218002]  [<c1002363>] ? do_notify_resume+0x53/0x70
-[251916.218002]  [<c164ad77>] ? work_notifysig+0x24/0x29
-[251916.218002] Code: 39 83 20 01 00 00 75 2b 8b 43 64 a8 20 74 2c a8 40 75 30
-c7 43 64 60 00 00 00 5b c3 8d b4 26 00 00 00 00 0f 0b 8d b6 00 00 00 00 <0f> 0b
-8d b6 00 00 00 00 0f 0b 8d b6 00 00 00 00 0f 0b 8d b6 00
-[251916.218002] EIP: [<c1112dd0>] clear_inode+0x60/0x80 SS:ESP 0068:c90b3f28
-[251916.218002] ---[ end trace d775e62345bf5ab2 ]---
-
+								Honza
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
