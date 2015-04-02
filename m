@@ -1,237 +1,294 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 16/22] ext4 crypto: insert encrypted filenames into a leaf directory block
-Date: Thu,  2 Apr 2015 18:10:53 -0400
-Message-ID: <1428012659-12709-17-git-send-email-tytso@mit.edu>
+Subject: [PATCH 20/22] ext4 crypto: Add symlink encryption
+Date: Thu,  2 Apr 2015 18:10:57 -0400
+Message-ID: <1428012659-12709-21-git-send-email-tytso@mit.edu>
 References: <1428012659-12709-1-git-send-email-tytso@mit.edu>
 Cc: jaegeuk@kernel.org, mhalcrow@google.com,
-	Uday Savagaonkar <savagaon@google.com>,
-	Ildar Muslukhov <ildarm@google.com>,
-	Theodore Ts'o <tytso@mit.edu>
+	Theodore Ts'o <tytso@mit.edu>,
+	Uday Savagaonkar <savagaon@google.com>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:48019 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:48026 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752459AbbDBWNF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752526AbbDBWNF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 2 Apr 2015 18:13:05 -0400
 In-Reply-To: <1428012659-12709-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Michael Halcrow <mhalcrow@google.com>
-
-Change-Id: Iea5da045383d41e3912eed7e63292096c24668e4
+Change-Id: Ic92ebe4c615721650ccaf16b3175c2f4e931af2d
 Signed-off-by: Uday Savagaonkar <savagaon@google.com>
-Signed-off-by: Ildar Muslukhov <ildarm@google.com>
-Signed-off-by: Michael Halcrow <mhalcrow@google.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/ext4.h   |   4 ++-
- fs/ext4/inline.c |  10 ++++--
- fs/ext4/namei.c  | 104 +++++++++++++++++++++++++++++++++++++++++++++++++------
- 3 files changed, 105 insertions(+), 13 deletions(-)
+ fs/ext4/ext4_crypto.h |  20 ++++++++++
+ fs/ext4/namei.c       |  63 +++++++++++++++++++++++++++---
+ fs/ext4/symlink.c     | 104 +++++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 180 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 576321c..421c065 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2122,9 +2122,11 @@ extern int ext4_find_dest_de(struct inode *dir, struct inode *inode,
- 			     void *buf, int buf_size,
- 			     const char *name, int namelen,
- 			     struct ext4_dir_entry_2 **dest_de);
--void ext4_insert_dentry(struct inode *inode,
-+int ext4_insert_dentry(struct inode *dir,
-+			struct inode *inode,
- 			struct ext4_dir_entry_2 *de,
- 			int buf_size,
-+		       const struct qstr *iname,
- 			const char *name, int namelen);
- static inline void ext4_update_dx_flag(struct inode *inode)
- {
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 056ef06..5184111 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -11,11 +11,16 @@
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  * GNU General Public License for more details.
-  */
+diff --git a/fs/ext4/ext4_crypto.h b/fs/ext4/ext4_crypto.h
+index 68e95d8..4597530 100644
+--- a/fs/ext4/ext4_crypto.h
++++ b/fs/ext4/ext4_crypto.h
+@@ -117,4 +117,24 @@ struct ext4_fname_crypto_ctx {
+ 	unsigned ctfm_key_is_ready : 1;
+ };
+ 
++/**
++ * For encrypted symlinks, the ciphertext length is stored at the beginning
++ * of the string in little-endian format.
++ */
++struct ext4_encrypted_symlink_data {
++	__le32 len;
++	char encrypted_path[1];
++} __attribute__((__packed__));
 +
-+#include <linux/fiemap.h>
++/**
++ * This function is used to calculate the disk space required to
++ * store a filename of length l in encrypted symlink format.
++ */
++static inline u32 encrypted_symlink_data_len(u32 l)
++{
++	return ((l + EXT4_CRYPTO_BLOCK_SIZE - 1) / EXT4_CRYPTO_BLOCK_SIZE)
++		* EXT4_CRYPTO_BLOCK_SIZE
++		+ sizeof(struct ext4_encrypted_symlink_data) - 1;
++}
 +
- #include "ext4_jbd2.h"
- #include "ext4.h"
-+#ifdef CONFIG_EXT4_FS_ENCRYPTION
-+#include "ext4_crypto.h"
-+#endif
- #include "xattr.h"
- #include "truncate.h"
--#include <linux/fiemap.h>
- 
- #define EXT4_XATTR_SYSTEM_DATA	"data"
- #define EXT4_MIN_INLINE_DATA_SIZE	((sizeof(__le32) * EXT4_N_BLOCKS))
-@@ -1014,7 +1019,8 @@ static int ext4_add_dirent_to_inline(handle_t *handle,
- 	err = ext4_journal_get_write_access(handle, iloc->bh);
- 	if (err)
- 		return err;
--	ext4_insert_dentry(inode, de, inline_size, name, namelen);
-+	ext4_insert_dentry(dir, inode, de, inline_size, &dentry->d_name,
-+			   name, namelen);
- 
- 	ext4_show_inline_dir(dir, iloc->bh, inline_start, inline_size);
- 
+ #endif	/* _EXT4_CRYPTO_H */
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 57cae22..cbedeb0 100644
+index 80a3979..57db793 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -1663,19 +1663,51 @@ int ext4_find_dest_de(struct inode *dir, struct inode *inode,
- 	return 0;
- }
- 
--void ext4_insert_dentry(struct inode *inode,
--			struct ext4_dir_entry_2 *de,
--			int buf_size,
--			const char *name, int namelen)
-+int ext4_insert_dentry(struct inode *dir,
-+		       struct inode *inode,
-+		       struct ext4_dir_entry_2 *de,
-+		       int buf_size,
-+		       const struct qstr *iname,
-+		       const char *name, int namelen)
- {
- 
- 	int nlen, rlen;
-+	struct ext4_fname_crypto_ctx *ctx = NULL;
-+	struct ext4_str fname_crypto_str = {.name = NULL, .len = 0};
-+	struct ext4_str tmp_str;
-+	int res;
-+
-+	ctx = ext4_get_fname_crypto_ctx(dir, EXT4_NAME_LEN);
-+	if (IS_ERR(ctx))
-+		return -EIO;
-+	/* By default, the input name would be written to the disk */
-+	tmp_str.name = (unsigned char *)name;
-+	tmp_str.len = namelen;
-+	if (ctx != NULL) {
-+		/* Directory is encrypted */
-+		res = ext4_fname_crypto_alloc_buffer(ctx,
-+			&fname_crypto_str.name, &fname_crypto_str.len,
-+			EXT4_NAME_LEN);
-+		if (res < 0) {
-+			ext4_put_fname_crypto_ctx(&ctx);
-+			return -ENOMEM;
-+		}
-+		res = ext4_fname_usr_to_disk(ctx, iname, &fname_crypto_str);
-+		if (res < 0) {
-+			ext4_put_fname_crypto_ctx(&ctx);
-+			ext4_fname_crypto_free_buffer(
-+			    (void **)&fname_crypto_str.name);
-+			return res;
-+		}
-+		tmp_str.name = fname_crypto_str.name;
-+		tmp_str.len = fname_crypto_str.len;
-+	}
- 
- 	nlen = EXT4_DIR_REC_LEN(de->name_len);
- 	rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
- 	if (de->inode) {
- 		struct ext4_dir_entry_2 *de1 =
--				(struct ext4_dir_entry_2 *)((char *)de + nlen);
-+			(struct ext4_dir_entry_2 *)((char *)de + nlen);
- 		de1->rec_len = ext4_rec_len_to_disk(rlen - nlen, buf_size);
- 		de->rec_len = ext4_rec_len_to_disk(nlen, buf_size);
- 		de = de1;
-@@ -1683,9 +1715,14 @@ void ext4_insert_dentry(struct inode *inode,
- 	de->file_type = EXT4_FT_UNKNOWN;
- 	de->inode = cpu_to_le32(inode->i_ino);
- 	ext4_set_de_type(inode->i_sb, de, inode->i_mode);
--	de->name_len = namelen;
--	memcpy(de->name, name, namelen);
-+	de->name_len = tmp_str.len;
-+
-+	memcpy(de->name, tmp_str.name, tmp_str.len);
-+	ext4_put_fname_crypto_ctx(&ctx);
-+	ext4_fname_crypto_free_buffer((void **)&fname_crypto_str.name);
-+	return 0;
- }
-+
- /*
-  * Add a new entry into a directory (leaf) block.  If de is non-NULL,
-  * it points to a directory entry which is guaranteed to be large
-@@ -1722,8 +1759,12 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 		return err;
- 	}
- 
--	/* By now the buffer is marked for journaling */
--	ext4_insert_dentry(inode, de, blocksize, name, namelen);
-+	/* By now the buffer is marked for journaling. Due to crypto operations,
-+	 * the following function call may fail */
-+	err = ext4_insert_dentry(dir, inode, de, blocksize, &dentry->d_name,
-+				 name, namelen);
-+	if (err < 0)
-+		return err;
- 
- 	/*
- 	 * XXX shouldn't update any times until successful
-@@ -1770,7 +1811,26 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	struct dx_hash_info hinfo;
- 	ext4_lblk_t  block;
- 	struct fake_dirent *fde;
--	int		csum_size = 0;
-+	int csum_size = 0;
+@@ -3198,14 +3198,31 @@ static int ext4_symlink(struct inode *dir,
+ 	struct inode *inode;
+ 	int l, err, retries = 0;
+ 	int credits;
++	bool encryption_required = false;
 +#ifdef CONFIG_EXT4_FS_ENCRYPTION
++	int l2;
 +	struct ext4_fname_crypto_ctx *ctx = NULL;
-+	struct ext4_str fname_crypto_str = {.name = NULL, .len = 0};
-+	int res;
-+
-+	ctx = ext4_get_fname_crypto_ctx(dir, EXT4_NAME_LEN);
-+	if (IS_ERR(ctx))
-+		return -1;
-+	if (ctx != NULL) {
-+		/* Allocate buffer to hold maximum name length */
-+		res = ext4_fname_crypto_alloc_buffer(ctx,
-+			&fname_crypto_str.name, &fname_crypto_str.len,
-+			EXT4_NAME_LEN);
-+		if (res < 0) {
-+			ext4_put_fname_crypto_ctx(&ctx);
-+			return -1;
-+		}
-+	}
++	struct qstr istr;
++	struct ext4_str ostr;
++	struct ext4_encrypted_symlink_data *sd = NULL;
++	struct ext4_sb_info *sbi = EXT4_SB(dir->i_sb);
 +#endif
  
- 	if (ext4_has_metadata_csum(inode->i_sb))
- 		csum_size = sizeof(struct ext4_dir_entry_tail);
-@@ -1837,7 +1897,31 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	if (hinfo.hash_version <= DX_HASH_TEA)
- 		hinfo.hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
- 	hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+-	l = strlen(symname)+1;
++	l = strlen(symname) + 1;
 +#ifdef CONFIG_EXT4_FS_ENCRYPTION
-+	if (ctx == NULL) {
-+		/* Directory is not encrypted */
-+		ext4fs_dirhash(name, namelen, &hinfo);
-+	} else {
-+		/* Directory is encrypted */
-+		res = ext4_fname_usr_to_htree(ctx, &dentry->d_name,
-+					      &fname_crypto_str);
-+		if (res < 0) {
-+			ext4_put_fname_crypto_ctx(&ctx);
-+			ext4_fname_crypto_free_buffer(
-+			    (void **)&fname_crypto_str.name);
-+			ext4_mark_inode_dirty(handle, dir);
-+			brelse(bh);
-+			return res;
-+		}
-+		ext4fs_dirhash(fname_crypto_str.name,
-+			       fname_crypto_str.len,
-+			       &hinfo);
-+		ext4_put_fname_crypto_ctx(&ctx);
-+		ext4_fname_crypto_free_buffer((void **)&fname_crypto_str.name);
-+	}
++	l2 = encrypted_symlink_data_len(l - 1);
++	encryption_required = (ext4_encrypted_inode(dir) ||
++			       unlikely(sbi->s_mount_flags &
++					EXT4_MF_TEST_DUMMY_ENCRYPTION));
++	if (encryption_required && l2 > dir->i_sb->s_blocksize)
 +#else
- 	ext4fs_dirhash(name, namelen, &hinfo);
+ 	if (l > dir->i_sb->s_blocksize)
 +#endif
- 	memset(frames, 0, sizeof(frames));
- 	frame = frames;
- 	frame->entries = entries;
+ 		return -ENAMETOOLONG;
+ 
+ 	dquot_initialize(dir);
+ 
+-	if (l > EXT4_N_BLOCKS * 4) {
++	if ((l > EXT4_N_BLOCKS * 4) || encryption_required) {
+ 		/*
+ 		 * For non-fast symlinks, we just allocate inode and put it on
+ 		 * orphan list in the first transaction => we need bitmap,
+@@ -3233,7 +3250,7 @@ retry:
+ 	if (IS_ERR(inode))
+ 		goto out_stop;
+ 
+-	if (l > EXT4_N_BLOCKS * 4) {
++	if ((l > EXT4_N_BLOCKS * 4) || encryption_required) {
+ 		inode->i_op = &ext4_symlink_inode_operations;
+ 		ext4_set_aops(inode);
+ 		/*
+@@ -3251,9 +3268,40 @@ retry:
+ 		ext4_journal_stop(handle);
+ 		if (err)
+ 			goto err_drop_inode;
+-		err = __page_symlink(inode, symname, l, 1);
+-		if (err)
+-			goto err_drop_inode;
++		if (!encryption_required) {
++			err = __page_symlink(inode, symname, l, 1);
++			if (err)
++				goto err_drop_inode;
++		}
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++		else {
++			sd = kmalloc(l2 + 1, GFP_NOFS);
++			if (!sd) {
++				err = -ENOMEM;
++				goto err_drop_inode;
++			}
++			sd->encrypted_path[l2] = '\0';
++			err = ext4_inherit_context(dir, inode);
++			ctx = ext4_get_fname_crypto_ctx(
++				inode, inode->i_sb->s_blocksize);
++			if (IS_ERR_OR_NULL(ctx)) {
++				/* We just set the policy, so ctx should
++				   not be NULL */
++				err = (ctx == NULL) ? -EIO : PTR_ERR(ctx);
++				goto err_drop_inode;
++			}
++			istr.name = (const unsigned char *) symname;
++			istr.len = l - 1;
++			ostr.name = sd->encrypted_path;
++			err = ext4_fname_usr_to_disk(ctx, &istr, &ostr);
++			ext4_put_fname_crypto_ctx(&ctx);
++			if (err < 0)
++				goto err_drop_inode;
++			sd->len = cpu_to_le32(ostr.len);
++			err = __page_symlink(inode, (char *)sd, l2 + 1, 1);
++
++		}
++#endif
+ 		/*
+ 		 * Now inode is being linked into dir (EXT4_DATA_TRANS_BLOCKS
+ 		 * + EXT4_INDEX_EXTRA_TRANS_BLOCKS), inode is also modified
+@@ -3293,6 +3341,9 @@ out_stop:
+ err_drop_inode:
+ 	unlock_new_inode(inode);
+ 	iput(inode);
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++	kfree(sd);
++#endif
+ 	return err;
+ }
+ 
+diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
+index ff37119..d788891 100644
+--- a/fs/ext4/symlink.c
++++ b/fs/ext4/symlink.c
+@@ -22,9 +22,106 @@
+ #include <linux/namei.h>
+ #include "ext4.h"
+ #include "xattr.h"
++#include "ext4_crypto.h"
+ 
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
+ static void *ext4_follow_link(struct dentry *dentry, struct nameidata *nd)
+ {
++	struct page *cpage = NULL;
++	char *caddr, *paddr;
++	struct ext4_str cstr, pstr;
++	struct inode *inode = dentry->d_inode;
++	struct ext4_fname_crypto_ctx *ctx = NULL;
++	struct ext4_encrypted_symlink_data *sd;
++	loff_t size = min(inode->i_size, (loff_t) PAGE_SIZE-1);
++	int res;
++	u32 plen, plen2;
++
++	ctx = ext4_get_fname_crypto_ctx(inode, inode->i_sb->s_blocksize);
++	if (IS_ERR(ctx))
++		return ctx;
++
++	cpage = read_mapping_page(inode->i_mapping, 0, NULL);
++	if (IS_ERR(cpage)) {
++		ext4_put_fname_crypto_ctx(&ctx);
++		return cpage;
++	}
++	caddr = kmap(cpage);
++	caddr[size] = 0;
++
++	if (!ctx) {
++		/* Symlink is unencrypted */
++		plen = strnlen((char *)caddr, inode->i_sb->s_blocksize);
++		plen2 = (plen < inode->i_sb->s_blocksize) ? plen + 1 : plen;
++		paddr = kmalloc(plen2, GFP_NOFS);
++		if (!paddr) {
++			ext4_put_fname_crypto_ctx(&ctx);
++			kunmap(cpage);
++			page_cache_release(cpage);
++			return ERR_PTR(-ENOMEM);
++		}
++		memcpy(paddr, caddr, plen);
++		if (plen < inode->i_sb->s_blocksize)
++			paddr[plen] = '\0';
++	} else {
++		/* Symlink is encrypted */
++		sd = (struct ext4_encrypted_symlink_data *)caddr;
++		cstr.name = sd->encrypted_path;
++		cstr.len  = le32_to_cpu(sd->len);
++		if ((cstr.len + sizeof(struct ext4_encrypted_symlink_data) - 1)
++			> inode->i_sb->s_blocksize) {
++			/* Symlink data on the disk is corrupted */
++			kunmap(cpage);
++			page_cache_release(cpage);
++			return ERR_PTR(-EIO);
++		}
++		plen = (cstr.len < EXT4_FNAME_CRYPTO_DIGEST_SIZE*2)
++			? EXT4_FNAME_CRYPTO_DIGEST_SIZE*2
++			: cstr.len;
++		paddr = kmalloc(plen + 1, GFP_NOFS);
++		if (!paddr) {
++			ext4_put_fname_crypto_ctx(&ctx);
++			kunmap(cpage);
++			page_cache_release(cpage);
++			return ERR_PTR(-ENOMEM);
++		}
++		pstr.name = paddr;
++		res = _ext4_fname_disk_to_usr(ctx, &cstr, &pstr);
++		if (res < 0) {
++			ext4_put_fname_crypto_ctx(&ctx);
++			kunmap(cpage);
++			page_cache_release(cpage);
++			kfree(paddr);
++			return ERR_PTR(res);
++		}
++		/* Null-terminate the name */
++		if (res <= plen)
++			paddr[res] = '\0';
++	}
++	nd_set_link(nd, paddr);
++	ext4_put_fname_crypto_ctx(&ctx);
++	return cpage;
++}
++
++static void ext4_put_link(struct dentry *dentry, struct nameidata *nd,
++			  void *cookie)
++{
++	struct page *page = cookie;
++	char *buf = nd_get_link(nd);
++
++	if (page) {
++		kunmap(page);
++		page_cache_release(page);
++	}
++	if (buf) {
++		nd_set_link(nd, NULL);
++		kfree(buf);
++	}
++}
++#endif
++
++static void *ext4_follow_fast_link(struct dentry *dentry, struct nameidata *nd)
++{
+ 	struct ext4_inode_info *ei = EXT4_I(dentry->d_inode);
+ 	nd_set_link(nd, (char *) ei->i_data);
+ 	return NULL;
+@@ -32,8 +129,13 @@ static void *ext4_follow_link(struct dentry *dentry, struct nameidata *nd)
+ 
+ const struct inode_operations ext4_symlink_inode_operations = {
+ 	.readlink	= generic_readlink,
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++	.follow_link    = ext4_follow_link,
++	.put_link       = ext4_put_link,
++#else
+ 	.follow_link	= page_follow_link_light,
+ 	.put_link	= page_put_link,
++#endif
+ 	.setattr	= ext4_setattr,
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+@@ -43,7 +145,7 @@ const struct inode_operations ext4_symlink_inode_operations = {
+ 
+ const struct inode_operations ext4_fast_symlink_inode_operations = {
+ 	.readlink	= generic_readlink,
+-	.follow_link	= ext4_follow_link,
++	.follow_link    = ext4_follow_fast_link,
+ 	.setattr	= ext4_setattr,
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
 -- 
 2.3.0
 
