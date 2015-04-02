@@ -1,8 +1,8 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 10/35] undo-io: add new calls to and speed up the undo io manager
-Date: Wed, 1 Apr 2015 23:06:11 -0500
-Message-ID: <B42FC5F2-8E81-4F2F-B16C-4029EC8DC0EC@dilger.ca>
-References: <20150402023359.25243.79782.stgit@birch.djwong.org> <20150402023506.25243.44459.stgit@birch.djwong.org>
+Subject: Re: [PATCH 09/35] e2fsck: abort on read error beyond end of FS
+Date: Wed, 1 Apr 2015 23:10:48 -0500
+Message-ID: <745BBE86-C119-4612-B91A-5C8877198C30@dilger.ca>
+References: <20150402023359.25243.79782.stgit@birch.djwong.org> <20150402023500.25243.65825.stgit@birch.djwong.org>
 Mime-Version: 1.0 (1.0)
 Content-Type: text/plain;
 	charset=us-ascii
@@ -11,228 +11,290 @@ Cc: "tytso@mit.edu" <tytso@mit.edu>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yk0-f175.google.com ([209.85.160.175]:36322 "EHLO
-	mail-yk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750747AbbDBEGO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Apr 2015 00:06:14 -0400
-Received: by ykcn8 with SMTP id n8so19201859ykc.3
-        for <linux-ext4@vger.kernel.org>; Wed, 01 Apr 2015 21:06:13 -0700 (PDT)
-In-Reply-To: <20150402023506.25243.44459.stgit@birch.djwong.org>
+Received: from mail-yh0-f44.google.com ([209.85.213.44]:34087 "EHLO
+	mail-yh0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750702AbbDBEKv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Apr 2015 00:10:51 -0400
+Received: by yhla23 with SMTP id a23so3034658yhl.1
+        for <linux-ext4@vger.kernel.org>; Wed, 01 Apr 2015 21:10:51 -0700 (PDT)
+In-Reply-To: <20150402023500.25243.65825.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Doesn't it kind of make e2undo useless if it doesn't work unless
-the overwriting operation completed successfully?
+It isn't clear what the benefit of this patch is?  There are times (e.g. if
+a partition table is broken or if a single-disk filesystem is changed
+to an MD RAID device) that it is useful to run e2fsck on such a filesystem.
 
-Wouldn't it be better to save the superblock at the start, so that
-it is available if the overwriting operation is interrupted?  It seems
-like e2undo would be most useful if e.g. resize2fs was interrupted in
-the middle of some otherwise-corrupting change to the
-filesystem.
-
-While speeding up undo logging is nice, being able to recover your
-filesystem in case of a problem is the primary goal, and that shouldn't be
-forgotten.  Otherwise you may as well not use the undo manager at all. 
+With this patch, it's essentially turning a small error into a fatal one, but
+what is the benefit?
 
 Cheers, Andreas
 
 > On Apr 1, 2015, at 21:35, Darrick J. Wong <darrick.wong@oracle.com> wrote:
 > 
-> Implement pass-through calls for discard, zero-out, and readahead in
-> the IO manager so that we can take advantage of any underlying
-> support.
-> 
-> Furthermore, improve tdb write-out speed by disabling locking and only
-> fsyncing at the end -- we don't care about locking because having
-> multiple writers to the undo file will produce an undo database full
-> of garbage blocks; and we only need to fsync at the end because if we
-> fail before the end, our undo file will lack the necessary superblock
-> data that e2undo requires to do replay safely.  Without this, we call
-> fsync four times per tdb update(!)  This reduces the overhead of using
-> undo_io while converting a 2TB FS to metadata_csum from 3+ hours to 55
-> minutes.
+> Abort if we fail to read a block that's past the end of the FS.
+> Includes a flag to disable the abort behavior for selected parts of
+> the fsck run, so that we don't fail on a busted object prior to fixing
+> it.
 > 
 > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 > ---
-> lib/ext2fs/tdb.c     |   10 ++++++
-> lib/ext2fs/tdb.h     |    2 +
-> lib/ext2fs/undo_io.c |   87 +++++++++++++++++++++++++++++++++++++++++++++++++-
-> 3 files changed, 97 insertions(+), 2 deletions(-)
+> e2fsck/e2fsck.h   |    1 +
+> e2fsck/ehandler.c |    7 +++++--
+> e2fsck/extents.c  |    2 ++
+> e2fsck/journal.c  |    3 +++
+> e2fsck/message.c  |   12 +++++++++++-
+> e2fsck/pass1.c    |   28 ++++++++++++++++------------
+> e2fsck/pass1b.c   |    4 ++++
+> 7 files changed, 42 insertions(+), 15 deletions(-)
 > 
 > 
-> diff --git a/lib/ext2fs/tdb.c b/lib/ext2fs/tdb.c
-> index 1d97685..7317288 100644
-> --- a/lib/ext2fs/tdb.c
-> +++ b/lib/ext2fs/tdb.c
-> @@ -4142,3 +4142,13 @@ int tdb_reopen_all(int parent_longlived)
+> diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+> index 5fda863..453b552 100644
+> --- a/e2fsck/e2fsck.h
+> +++ b/e2fsck/e2fsck.h
+> @@ -193,6 +193,7 @@ struct resource_track {
+> #define E2F_FLAG_TIME_INSANE    0x2000 /* Time is insane */
+> #define E2F_FLAG_PROBLEMS_FIXED    0x4000 /* At least one problem was fixed */
+> #define E2F_FLAG_ALLOC_OK    0x8000 /* Can we allocate blocks? */
+> +#define E2F_FLAG_IGNORE_READ_ERROR 0x10000 /* Don't rewrite read error blocks */
 > 
+> #define E2F_RESET_FLAGS (E2F_FLAG_TIME_INSANE | E2F_FLAG_PROBLEMS_FIXED)
+> 
+> diff --git a/e2fsck/ehandler.c b/e2fsck/ehandler.c
+> index 71ca301..847f8e5 100644
+> --- a/e2fsck/ehandler.c
+> +++ b/e2fsck/ehandler.c
+> @@ -60,8 +60,11 @@ static errcode_t e2fsck_handle_read_error(io_channel channel,
+>    preenhalt(ctx);
+> 
+>    /* Don't rewrite a block past the end of the FS. */
+> -    if (block >= ext2fs_blocks_count(fs->super))
+> -        return 0;
+> +    if (block >= ext2fs_blocks_count(fs->super)) {
+> +        if (ctx->flags & E2F_FLAG_IGNORE_READ_ERROR)
+> +            return 0;
+> +        abort();
+> +    }
+> 
+>    if (ask(ctx, _("Ignore error"), 1)) {
+>        if (ask(ctx, _("Force rewrite"), 1))
+> diff --git a/e2fsck/extents.c b/e2fsck/extents.c
+> index 8465299..cff265a 100644
+> --- a/e2fsck/extents.c
+> +++ b/e2fsck/extents.c
+> @@ -29,6 +29,7 @@ errcode_t e2fsck_rebuild_extents_later(e2fsck_t ctx, ext2_ino_t ino)
+> {
+>    if (!EXT2_HAS_INCOMPAT_FEATURE(ctx->fs->super,
+>                       EXT3_FEATURE_INCOMPAT_EXTENTS) ||
+> +        (ctx->flags & (E2F_FLAG_RESTART_LATER | E2F_FLAG_RESTART)) ||
+>        (ctx->options & E2F_OPT_NO) ||
+>        (ino != EXT2_ROOT_INO && ino < ctx->fs->super->s_first_ino))
+>        return 0;
+> @@ -339,6 +340,7 @@ static void rebuild_extents(e2fsck_t ctx, const char *pass_name, int pr_header)
+> 
+>    if (!EXT2_HAS_INCOMPAT_FEATURE(ctx->fs->super,
+>                       EXT3_FEATURE_INCOMPAT_EXTENTS) ||
+> +        (ctx->flags & (E2F_FLAG_RESTART_LATER | E2F_FLAG_RESTART)) ||
+>        !ext2fs_test_valid(ctx->fs) ||
+>        ctx->invalid_bitmaps) {
+>        if (ctx->inodes_to_rebuild)
+> diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+> index 9f32095..c195797 100644
+> --- a/e2fsck/journal.c
+> +++ b/e2fsck/journal.c
+> @@ -315,6 +315,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
+>    journal->j_inode = NULL;
+>    journal->j_blocksize = ctx->fs->blocksize;
+> 
+> +    ctx->flags |= E2F_FLAG_IGNORE_READ_ERROR;
+>    if (uuid_is_null(sb->s_journal_uuid)) {
+>        if (!sb->s_journal_inum) {
+>            retval = EXT2_ET_BAD_INODE_NUM;
+> @@ -518,9 +519,11 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
+> 
+>    *ret_journal = journal;
+>    e2fsck_use_inode_shortcuts(ctx, 0);
+> +    ctx->flags &= ~E2F_FLAG_IGNORE_READ_ERROR;
 >    return 0;
-> }
-> +
-> +/**
-> + * Flush a database file from the page cache.
-> + **/
-> +int tdb_flush(struct tdb_context *tdb)
-> +{
-> +    if (tdb->fd != -1)
-> +        return fsync(tdb->fd);
-> +    return 0;
-> +}
-> diff --git a/lib/ext2fs/tdb.h b/lib/ext2fs/tdb.h
-> index 732ef0e..6a4086c 100644
-> --- a/lib/ext2fs/tdb.h
-> +++ b/lib/ext2fs/tdb.h
-> @@ -129,6 +129,7 @@ typedef struct TDB_DATA {
-> #define tdb_lockall_nonblock ext2fs_tdb_lockall_nonblock
-> #define tdb_lockall_read_nonblock ext2fs_tdb_lockall_read_nonblock
-> #define tdb_lockall_unmark ext2fs_tdb_lockall_unmark
-> +#define tdb_flush ext2fs_tdb_flush
 > 
-> /* this is the context structure that is returned from a db open */
-> typedef struct tdb_context TDB_CONTEXT;
-> @@ -191,6 +192,7 @@ size_t tdb_map_size(struct tdb_context *tdb);
-> int tdb_get_flags(struct tdb_context *tdb);
-> void tdb_enable_seqnum(struct tdb_context *tdb);
-> void tdb_increment_seqnum_nonblock(struct tdb_context *tdb);
-> +int tdb_flush(struct tdb_context *tdb);
+> errout:
+> +    ctx->flags &= ~E2F_FLAG_IGNORE_READ_ERROR;
+>    e2fsck_use_inode_shortcuts(ctx, 0);
+>    if (dev_fs)
+>        ext2fs_free_mem(&dev_fs);
+> diff --git a/e2fsck/message.c b/e2fsck/message.c
+> index 9c1433f..510f291 100644
+> --- a/e2fsck/message.c
+> +++ b/e2fsck/message.c
+> @@ -199,14 +199,24 @@ static void print_pathname(FILE *f, ext2_filsys fs, ext2_ino_t dir,
+> {
+>    errcode_t    retval = 0;
+>    char        *path;
+> +    e2fsck_t    ctx = fs ? (e2fsck_t) fs->priv_data : NULL;
+> +    int        flags;
 > 
-> /* Low level locking functions: use with care */
-> int tdb_chainlock(struct tdb_context *tdb, TDB_DATA key);
-> diff --git a/lib/ext2fs/undo_io.c b/lib/ext2fs/undo_io.c
-> index d6beb02..94317cb 100644
-> --- a/lib/ext2fs/undo_io.c
-> +++ b/lib/ext2fs/undo_io.c
-> @@ -37,6 +37,7 @@
-> #if HAVE_SYS_RESOURCE_H
-> #include <sys/resource.h>
-> #endif
-> +#include <limits.h>
-> 
-> #include "tdb.h"
-> 
-> @@ -354,8 +355,12 @@ static errcode_t undo_open(const char *name, int flags, io_channel *channel)
->        data->real = 0;
+>    if (!dir && (ino < num_special_inodes)) {
+>        fputs(_(special_inode_name[ino]), f);
+>        return;
 >    }
 > 
-> +    if (data->real)
-> +        io->flags = (io->flags & ~CHANNEL_FLAGS_DISCARD_ZEROES) |
-> +                (data->real->flags & CHANNEL_FLAGS_DISCARD_ZEROES);
-> +
->    /* setup the tdb file */
-> -    data->tdb = tdb_open(tdb_file, 0, TDB_CLEAR_IF_FIRST,
-> +    data->tdb = tdb_open(tdb_file, 0, TDB_CLEAR_IF_FIRST | TDB_NOLOCK | TDB_NOSYNC,
->                 O_RDWR | O_CREAT | O_TRUNC | O_EXCL, 0600);
->    if (!data->tdb) {
->        retval = errno;
-> @@ -399,8 +404,10 @@ static errcode_t undo_close(io_channel channel)
->        return retval;
->    if (data->real)
->        retval = io_channel_close(data->real);
-> -    if (data->tdb)
-> +    if (data->tdb) {
-> +        tdb_flush(data->tdb);
->        tdb_close(data->tdb);
+> -    if (fs)
+> +    if (fs) {
+> +        if (ctx) {
+> +            flags = ctx->flags;
+> +            ctx->flags |= E2F_FLAG_IGNORE_READ_ERROR;
+> +        }
+>        retval = ext2fs_get_pathname(fs, dir, ino, &path);
+> +        if (ctx)
+> +            ctx->flags &= ~E2F_FLAG_IGNORE_READ_ERROR |
+> +                    (flags & E2F_FLAG_IGNORE_READ_ERROR);
 > +    }
->    ext2fs_free_mem(&channel->private_data);
->    if (channel->name)
->        ext2fs_free_mem(&channel->name);
-> @@ -510,6 +517,77 @@ static errcode_t undo_write_byte(io_channel channel, unsigned long offset,
->    return retval;
+>    if (!fs || retval)
+>        fputs("???", f);
+>    else {
+> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+> index 308a95a..760fbde 100644
+> --- a/e2fsck/pass1.c
+> +++ b/e2fsck/pass1.c
+> @@ -510,6 +510,7 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
+>    int            extent_fs;
+>    int            inlinedata_fs;
+> 
+> +    ctx->flags |= E2F_FLAG_IGNORE_READ_ERROR;
+>    /*
+>     * If the mode looks OK, we believe it.  If the first block in
+>     * the i_block array is 0, this cannot be a directory. If the
+> @@ -519,7 +520,7 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
+>     */
+>    if (LINUX_S_ISDIR(inode->i_mode) || LINUX_S_ISREG(inode->i_mode) ||
+>        LINUX_S_ISLNK(inode->i_mode) || inode->i_block[0] == 0)
+> -        return;
+> +        goto out;
+> 
+>    /* 
+>     * Check the block numbers in the i_block array for validity:
+> @@ -552,13 +553,13 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
+>        struct ext2_dir_entry de;
+> 
+>        if (ext2fs_inline_data_size(ctx->fs, pctx->ino, &size))
+> -            return;
+> +            goto out;
+>        /*
+>         * If the size isn't a multiple of 4, it's probably not a
+>         * directory??
+>         */
+>        if (size & 3)
+> -            return;
+> +            goto out;
+>        /*
+>         * If the first 10 bytes don't look like a directory entry,
+>         * it's probably not a directory.
+> @@ -578,14 +579,14 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
+>             de.inode != 0) ||
+>            rec_len > EXT4_MIN_INLINE_DATA_SIZE -
+>                  EXT4_INLINE_DATA_DOTDOT_SIZE)
+> -            return;
+> +            goto out;
+>        /* device files never have a "system.data" entry */
+>        goto isdir;
+>    } else if (extent_fs && (inode->i_flags & EXT4_EXTENTS_FL)) {
+>        /* extent mapped */
+>        if  (ext2fs_bmap2(ctx->fs, pctx->ino, inode, 0, 0, 0, 0,
+>                 &blk))
+> -            return;
+> +            goto out;
+>        /* device files are never extent mapped */
+>        not_device++;
+>    } else {
+> @@ -600,7 +601,7 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
+>                blk >= ext2fs_blocks_count(ctx->fs->super) ||
+>                ext2fs_fast_test_block_bitmap2(ctx->block_found_map,
+>                               blk))
+> -                return;    /* Invalid block, can't be dir */
+> +                goto out;    /* Invalid block, can't be dir */
+>        }
+>        blk = inode->i_block[0];
+>    }
+> @@ -612,45 +613,48 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
+>     */
+>    if ((LINUX_S_ISCHR(inode->i_mode) || LINUX_S_ISBLK(inode->i_mode)) &&
+>        (inode->i_links_count == 1) && !not_device)
+> -        return;
+> +        goto out;
+> 
+>    /* read the first block */
+>    ehandler_operation(_("reading directory block"));
+>    retval = ext2fs_read_dir_block4(ctx->fs, blk, buf, 0, pctx->ino);
+>    ehandler_operation(0);
+>    if (retval)
+> -        return;
+> +        goto out;
+> 
+>    dirent = (struct ext2_dir_entry *) buf;
+>    retval = ext2fs_get_rec_len(ctx->fs, dirent, &rec_len);
+>    if (retval)
+> -        return;
+> +        goto out;
+>    if ((ext2fs_dirent_name_len(dirent) != 1) ||
+>        (dirent->name[0] != '.') ||
+>        (dirent->inode != pctx->ino) ||
+>        (rec_len < 12) ||
+>        (rec_len % 4) ||
+>        (rec_len >= ctx->fs->blocksize - 12))
+> -        return;
+> +        goto out;
+> 
+>    dirent = (struct ext2_dir_entry *) (buf + rec_len);
+>    retval = ext2fs_get_rec_len(ctx->fs, dirent, &rec_len);
+>    if (retval)
+> -        return;
+> +        goto out;
+>    if ((ext2fs_dirent_name_len(dirent) != 2) ||
+>        (dirent->name[0] != '.') ||
+>        (dirent->name[1] != '.') ||
+>        (rec_len < 12) ||
+>        (rec_len % 4))
+> -        return;
+> +        goto out;
+> 
+> isdir:
+> +    ctx->flags &= ~E2F_FLAG_IGNORE_READ_ERROR;
+>    if (fix_problem(ctx, PR_1_TREAT_AS_DIRECTORY, pctx)) {
+>        inode->i_mode = (inode->i_mode & 07777) | LINUX_S_IFDIR;
+>        e2fsck_write_inode_full(ctx, pctx->ino, inode,
+>                    EXT2_INODE_SIZE(ctx->fs->super),
+>                    "check_is_really_dir");
+>    }
+> +out:
+> +    ctx->flags &= ~E2F_FLAG_IGNORE_READ_ERROR;
 > }
 > 
-> +static errcode_t undo_discard(io_channel channel, unsigned long long block,
-> +                  unsigned long long count)
-> +{
-> +    struct undo_private_data *data;
-> +    errcode_t    retval = 0;
-> +    int icount;
-> +
-> +    EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-> +    data = (struct undo_private_data *) channel->private_data;
-> +    EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
-> +
-> +    if (count > INT_MAX)
-> +        return EXT2_ET_UNIMPLEMENTED;
-> +    icount = count;
-> +
-> +    /*
-> +     * First write the existing content into database
-> +     */
-> +    retval = undo_write_tdb(channel, block, icount);
-> +    if (retval)
-> +        return retval;
-> +    if (data->real)
-> +        retval = io_channel_discard(data->real, block, count);
-> +
-> +    return retval;
-> +}
-> +
-> +static errcode_t undo_zeroout(io_channel channel, unsigned long long block,
-> +                  unsigned long long count)
-> +{
-> +    struct undo_private_data *data;
-> +    errcode_t    retval = 0;
-> +    int icount;
-> +
-> +    EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-> +    data = (struct undo_private_data *) channel->private_data;
-> +    EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
-> +
-> +    if (count > INT_MAX)
-> +        return EXT2_ET_UNIMPLEMENTED;
-> +    icount = count;
-> +
-> +    /*
-> +     * First write the existing content into database
-> +     */
-> +    retval = undo_write_tdb(channel, block, icount);
-> +    if (retval)
-> +        return retval;
-> +    if (data->real)
-> +        retval = io_channel_zeroout(data->real, block, count);
-> +
-> +    return retval;
-> +}
-> +
-> +static errcode_t undo_cache_readahead(io_channel channel,
-> +                      unsigned long long block,
-> +                      unsigned long long count)
-> +{
-> +    struct undo_private_data *data;
-> +    errcode_t    retval = 0;
-> +
-> +    EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-> +    data = (struct undo_private_data *) channel->private_data;
-> +    EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
-> +
-> +    if (data->real)
-> +        retval = io_channel_cache_readahead(data->real, block, count);
-> +
-> +    return retval;
-> +}
-> +
-> /*
->  * Flush data buffers to disk.
->  */
-> @@ -522,6 +600,8 @@ static errcode_t undo_flush(io_channel channel)
->    data = (struct undo_private_data *) channel->private_data;
->    EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
+> void e2fsck_setup_tdb_icount(e2fsck_t ctx, int flags,
+> diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
+> index cd967f4..10136a6 100644
+> --- a/e2fsck/pass1b.c
+> +++ b/e2fsck/pass1b.c
+> @@ -234,7 +234,9 @@ void e2fsck_pass1_dupblocks(e2fsck_t ctx, char *block_buf)
+>    dict_set_allocator(&clstr_dict, NULL, cluster_dnode_free, NULL);
 > 
-> +    if (data->tdb)
-> +        tdb_flush(data->tdb);
->    if (data->real)
->        retval = io_channel_flush(data->real);
+>    init_resource_track(&rtrack, ctx->fs->io);
+> +    ctx->flags |= E2F_FLAG_IGNORE_READ_ERROR;
+>    pass1b(ctx, block_buf);
+> +    ctx->flags &= ~E2F_FLAG_IGNORE_READ_ERROR;
+>    print_resource_track(ctx, "Pass 1b", &rtrack, ctx->fs->io);
 > 
-> @@ -601,6 +681,9 @@ static struct struct_io_manager struct_undo_manager = {
->    .get_stats    = undo_get_stats,
->    .read_blk64    = undo_read_blk64,
->    .write_blk64    = undo_write_blk64,
-> +    .discard    = undo_discard,
-> +    .zeroout    = undo_zeroout,
-> +    .cache_readahead    = undo_cache_readahead,
-> };
+>    init_resource_track(&rtrack, ctx->fs->io);
+> @@ -242,7 +244,9 @@ void e2fsck_pass1_dupblocks(e2fsck_t ctx, char *block_buf)
+>    print_resource_track(ctx, "Pass 1c", &rtrack, ctx->fs->io);
 > 
-> io_manager undo_io_manager = &struct_undo_manager;
+>    init_resource_track(&rtrack, ctx->fs->io);
+> +    ctx->flags |= E2F_FLAG_IGNORE_READ_ERROR;
+>    pass1d(ctx, block_buf);
+> +    ctx->flags &= ~E2F_FLAG_IGNORE_READ_ERROR;
+>    print_resource_track(ctx, "Pass 1d", &rtrack, ctx->fs->io);
+> 
+>    /*
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
