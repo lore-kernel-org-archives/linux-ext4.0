@@ -1,81 +1,159 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 5/5] jbd2: Speedup jbd2_journal_dirty_metadata()
-Date: Thu,  2 Apr 2015 15:58:20 +0200
-Message-ID: <1427983100-29889-6-git-send-email-jack@suse.cz>
+Subject: [PATCH 3/5] jbd2: Simplify code flow in do_get_write_access()
+Date: Thu,  2 Apr 2015 15:58:18 +0200
+Message-ID: <1427983100-29889-4-git-send-email-jack@suse.cz>
 References: <1427983100-29889-1-git-send-email-jack@suse.cz>
 Cc: Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51233 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:51224 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753139AbbDBN6a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 2 Apr 2015 09:58:30 -0400
+	id S1752555AbbDBN61 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 2 Apr 2015 09:58:27 -0400
 In-Reply-To: <1427983100-29889-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It is often the case that we mark buffer as having dirty metadata when
-the buffer is already in that state (frequent for bitmaps, inode table
-blocks, superblock). Thus it is unnecessary to contend on grabbing
-journal head reference and bh_state lock. Avoid that by checking whether
-any modification to the buffer is needed before grabbing any locks or
-references.
+Check for the simple case of unjournaled buffer first, handle it and
+bail out. This allows us to remove one if and unindent the difficult case
+by one tab. The result is easier to read.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/transaction.c | 22 ++++++++++++++++------
- 1 file changed, 16 insertions(+), 6 deletions(-)
+ fs/jbd2/transaction.c | 130 +++++++++++++++++++++++---------------------------
+ 1 file changed, 59 insertions(+), 71 deletions(-)
 
 diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index a91f639af6c3..ad10ca8fb9ef 100644
+index 1995ea539e96..5207825d1038 100644
 --- a/fs/jbd2/transaction.c
 +++ b/fs/jbd2/transaction.c
-@@ -1290,8 +1290,6 @@ void jbd2_buffer_abort_trigger(struct journal_head *jh,
- 	triggers->t_abort(triggers, jh2bh(jh));
- }
+@@ -893,6 +893,20 @@ repeat:
+        jh->b_modified = 0;
  
--
--
- /**
-  * int jbd2_journal_dirty_metadata() -  mark a buffer as containing dirty metadata
-  * @handle: transaction to add buffer to.
-@@ -1325,12 +1323,25 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
- 	WARN_ON(!transaction);
- 	if (is_handle_aborted(handle))
- 		return -EROFS;
--	journal = transaction->t_journal;
--	jh = jbd2_journal_grab_journal_head(bh);
--	if (!jh) {
-+	if (!buffer_jbd(bh)) {
- 		ret = -EUCLEAN;
- 		goto out;
- 	}
-+	/*
-+	 * We don't grab jh reference here since the buffer must be part
-+	 * of the running transaction.
+ 	/*
++	 * If the buffer is not journaled right now, we need to make sure it
++	 * doesn't get written to disk before the caller actually commits the
++	 * new data
 +	 */
-+	jh = bh2jh(bh);
-+	J_ASSERT_JH(jh, jh->b_transaction == transaction ||
-+			jh->b_next_transaction == transaction);
-+	if (jh->b_modified == 1) {
-+		/* If it's in our transaction it must be in BJ_Metadata list */
-+		J_ASSERT_JH(jh, jh->b_transaction != transaction ||
-+				jh->b_jlist == BJ_Metadata);
-+		goto out;
++	if (!jh->b_transaction) {
++		JBUFFER_TRACE(jh, "no transaction");
++		J_ASSERT_JH(jh, !jh->b_next_transaction);
++		JBUFFER_TRACE(jh, "file as BJ_Reserved");
++		spin_lock(&journal->j_list_lock);
++		__jbd2_journal_file_buffer(jh, transaction, BJ_Reserved);
++		spin_unlock(&journal->j_list_lock);
++		goto done;
 +	}
-+
-+	journal = transaction->t_journal;
- 	jbd_debug(5, "journal_head %p\n", jh);
- 	JBUFFER_TRACE(jh, "entry");
++	/*
+ 	 * If there is already a copy-out version of this buffer, then we don't
+ 	 * need to make another one
+ 	 */
+@@ -903,84 +917,58 @@ repeat:
+ 		goto done;
+ 	}
  
-@@ -1421,7 +1432,6 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
- 	spin_unlock(&journal->j_list_lock);
- out_unlock_bh:
- 	jbd_unlock_bh_state(bh);
--	jbd2_journal_put_journal_head(jh);
- out:
- 	JBUFFER_TRACE(jh, "exit");
- 	return ret;
--- 
-2.1.4
-
+-	/* Is there data here we need to preserve? */
++	JBUFFER_TRACE(jh, "owned by older transaction");
++	J_ASSERT_JH(jh, jh->b_next_transaction == NULL);
++	J_ASSERT_JH(jh, jh->b_transaction == journal->j_committing_transaction);
+ 
+-	if (jh->b_transaction && jh->b_transaction != transaction) {
+-		JBUFFER_TRACE(jh, "owned by older transaction");
+-		J_ASSERT_JH(jh, jh->b_next_transaction == NULL);
+-		J_ASSERT_JH(jh, jh->b_transaction ==
+-					journal->j_committing_transaction);
++	/*
++	 * There is one case we have to be very careful about.  If the
++	 * committing transaction is currently writing this buffer out to disk
++	 * and has NOT made a copy-out, then we cannot modify the buffer
++	 * contents at all right now.  The essence of copy-out is that it is
++	 * the extra copy, not the primary copy, which gets journaled.  If the
++	 * primary copy is already going to disk then we cannot do copy-out
++	 * here.
++	 */
++	if (buffer_shadow(bh)) {
++		JBUFFER_TRACE(jh, "on shadow: sleep");
++		jbd_unlock_bh_state(bh);
++		wait_on_bit_io(&bh->b_state, BH_Shadow, TASK_UNINTERRUPTIBLE);
++		goto repeat;
++	}
+ 
+-		/* There is one case we have to be very careful about.
+-		 * If the committing transaction is currently writing
+-		 * this buffer out to disk and has NOT made a copy-out,
+-		 * then we cannot modify the buffer contents at all
+-		 * right now.  The essence of copy-out is that it is the
+-		 * extra copy, not the primary copy, which gets
+-		 * journaled.  If the primary copy is already going to
+-		 * disk then we cannot do copy-out here. */
+-
+-		if (buffer_shadow(bh)) {
+-			JBUFFER_TRACE(jh, "on shadow: sleep");
++	/*
++	 * Only do the copy if the currently-owning transaction still needs it.
++	 * If buffer isn't on BJ_Metadata list, the committing transaction is
++	 * past that stage (here we use the fact that BH_Shadow is set under
++	 * bh_state lock together with refiling to BJ_Shadow list and at this
++	 * point we know the buffer doesn't have BH_Shadow set).
++	 *
++	 * Subtle point, though: if this is a get_undo_access, then we will be
++	 * relying on the frozen_data to contain the new value of the
++	 * committed_data record after the transaction, so we HAVE to force the
++	 * frozen_data copy in that case.
++	 */
++	if (jh->b_jlist == BJ_Metadata || force_copy) {
++		JBUFFER_TRACE(jh, "generate frozen data");
++		if (!frozen_buffer) {
++			JBUFFER_TRACE(jh, "allocate memory for buffer");
+ 			jbd_unlock_bh_state(bh);
+-			wait_on_bit_io(&bh->b_state, BH_Shadow,
+-				       TASK_UNINTERRUPTIBLE);
+-			goto repeat;
+-		}
+-
+-		/*
+-		 * Only do the copy if the currently-owning transaction still
+-		 * needs it. If buffer isn't on BJ_Metadata list, the
+-		 * committing transaction is past that stage (here we use the
+-		 * fact that BH_Shadow is set under bh_state lock together with
+-		 * refiling to BJ_Shadow list and at this point we know the
+-		 * buffer doesn't have BH_Shadow set).
+-		 *
+-		 * Subtle point, though: if this is a get_undo_access,
+-		 * then we will be relying on the frozen_data to contain
+-		 * the new value of the committed_data record after the
+-		 * transaction, so we HAVE to force the frozen_data copy
+-		 * in that case.
+-		 */
+-		if (jh->b_jlist == BJ_Metadata || force_copy) {
+-			JBUFFER_TRACE(jh, "generate frozen data");
++			frozen_buffer = jbd2_alloc(jh2bh(jh)->b_size, GFP_NOFS);
+ 			if (!frozen_buffer) {
+-				JBUFFER_TRACE(jh, "allocate memory for buffer");
+-				jbd_unlock_bh_state(bh);
+-				frozen_buffer =
+-					jbd2_alloc(jh2bh(jh)->b_size,
+-							 GFP_NOFS);
+-				if (!frozen_buffer) {
+-					printk(KERN_ERR
+-					       "%s: OOM for frozen_buffer\n",
+-					       __func__);
+-					JBUFFER_TRACE(jh, "oom!");
+-					error = -ENOMEM;
+-					goto out;
+-				}
+-				goto repeat;
++				printk(KERN_ERR "%s: OOM for frozen_buffer\n",
++				       __func__);
++				JBUFFER_TRACE(jh, "oom!");
++				error = -ENOMEM;
++				goto out;
+ 			}
+-			jh->b_frozen_data = frozen_buffer;
+-			frozen_buffer = NULL;
+-			jbd2_freeze_jh_data(jh);
++			goto repeat;
+ 		}
+-		jh->b_next_transaction = transaction;
+-	}
+-
