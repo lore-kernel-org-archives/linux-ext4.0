@@ -1,184 +1,81 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 4/5] jbd2: Speedup jbd2_journal_get_[write|undo]_access()
-Date: Thu,  2 Apr 2015 15:58:19 +0200
-Message-ID: <1427983100-29889-5-git-send-email-jack@suse.cz>
+Subject: [PATCH 5/5] jbd2: Speedup jbd2_journal_dirty_metadata()
+Date: Thu,  2 Apr 2015 15:58:20 +0200
+Message-ID: <1427983100-29889-6-git-send-email-jack@suse.cz>
 References: <1427983100-29889-1-git-send-email-jack@suse.cz>
 Cc: Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51222 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:51233 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752715AbbDBN62 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 2 Apr 2015 09:58:28 -0400
+	id S1753139AbbDBN6a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 2 Apr 2015 09:58:30 -0400
 In-Reply-To: <1427983100-29889-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-jbd2_journal_get_write_access() and jbd2_journal_get_create_access() are
-frequently called for buffers that are already part of the running
-transaction - most frequently it is the case for bitmaps, inode table
-blocks, and superblock. Since in such cases we have nothing to do, it is
-unfortunate we still grab reference to journal head, lock the bh, lock
-bh_state only to find out there's nothing to do.
-
-Improving this is a bit subtle though since until we find out journal
-head is attached to the running transaction, it can disappear from under
-us because checkpointing / commit decided it's no longer needed. We deal
-with this by protecting journal_head slab with RCU. We still have to be
-careful about journal head being freed & reallocated within slab and
-about exposing journal head in consistent state (in particular
-b_modified and b_frozen_data must be in correct state before we allow
-user to touch the buffer).
-
-FIXME: Performance data.
+It is often the case that we mark buffer as having dirty metadata when
+the buffer is already in that state (frequent for bitmaps, inode table
+blocks, superblock). Thus it is unnecessary to contend on grabbing
+journal head reference and bh_state lock. Avoid that by checking whether
+any modification to the buffer is needed before grabbing any locks or
+references.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/journal.c     |  2 +-
- fs/jbd2/transaction.c | 76 ++++++++++++++++++++++++++++++++++++++++++++++++---
- 2 files changed, 73 insertions(+), 5 deletions(-)
+ fs/jbd2/transaction.c | 22 ++++++++++++++++------
+ 1 file changed, 16 insertions(+), 6 deletions(-)
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index b96bd8076b70..f29872ed4097 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -2330,7 +2330,7 @@ static int jbd2_journal_init_journal_head_cache(void)
- 	jbd2_journal_head_cache = kmem_cache_create("jbd2_journal_head",
- 				sizeof(struct journal_head),
- 				0,		/* offset */
--				SLAB_TEMPORARY,	/* flags */
-+				SLAB_TEMPORARY | SLAB_DESTROY_BY_RCU,
- 				NULL);		/* ctor */
- 	retval = 0;
- 	if (!jbd2_journal_head_cache) {
 diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 5207825d1038..a91f639af6c3 100644
+index a91f639af6c3..ad10ca8fb9ef 100644
 --- a/fs/jbd2/transaction.c
 +++ b/fs/jbd2/transaction.c
-@@ -901,6 +901,12 @@ repeat:
- 		JBUFFER_TRACE(jh, "no transaction");
- 		J_ASSERT_JH(jh, !jh->b_next_transaction);
- 		JBUFFER_TRACE(jh, "file as BJ_Reserved");
-+		/*
-+		 * Make sure all stores to jh (b_modified, b_frozen_data) are
-+		 * visible before attaching it to the running transaction.
-+		 * Paired with barrier in jbd2_write_access_granted()
-+		 */
-+		smp_wmb();
- 		spin_lock(&journal->j_list_lock);
- 		__jbd2_journal_file_buffer(jh, transaction, BJ_Reserved);
- 		spin_unlock(&journal->j_list_lock);
-@@ -913,8 +919,7 @@ repeat:
- 	if (jh->b_frozen_data) {
- 		JBUFFER_TRACE(jh, "has frozen data");
- 		J_ASSERT_JH(jh, jh->b_next_transaction == NULL);
--		jh->b_next_transaction = transaction;
--		goto done;
-+		goto attach_next;
- 	}
- 
- 	JBUFFER_TRACE(jh, "owned by older transaction");
-@@ -968,6 +973,13 @@ repeat:
- 		frozen_buffer = NULL;
- 		jbd2_freeze_jh_data(jh);
- 	}
-+attach_next:
-+	/*
-+	 * Make sure all stores to jh (b_modified, b_frozen_data) are visible
-+	 * before attaching it to the running transaction. Paired with barrier
-+	 * in jbd2_write_access_granted()
-+	 */
-+	smp_wmb();
- 	jh->b_next_transaction = transaction;
- 
- done:
-@@ -987,6 +999,55 @@ out:
- 	return error;
+@@ -1290,8 +1290,6 @@ void jbd2_buffer_abort_trigger(struct journal_head *jh,
+ 	triggers->t_abort(triggers, jh2bh(jh));
  }
  
-+/* Fast check whether buffer is already attached to the required transaction */
-+static bool jbd2_write_access_granted(handle_t *handle, struct buffer_head *bh)
-+{
-+	struct journal_head *jh;
-+	bool ret = false;
-+
-+	/* Dirty buffers require special handling... */
-+	if (buffer_dirty(bh))
-+		return false;
-+
-+	/*
-+	 * RCU protects us from dereferencing freed pages. So the checks we do
-+	 * are guaranteed not to oops. However the jh slab object can get freed
-+	 * & reallocated while we work with it. So we have to be careful. When
-+	 * we see jh attached to the running transaction, we know it must stay
-+	 * so until the transaction is committed. Thus jh won't be freed and
-+	 * will be attached to the same bh while we run.  However it can
-+	 * happen jh gets freed, reallocated, and attached to the transaction
-+	 * just after we get pointer to it from bh. So we have to be careful
-+	 * and recheck jh still belongs to our bh before we return success.
-+	 */
-+	rcu_read_lock();
-+	if (!buffer_jbd(bh))
-+		goto out;
-+	/* This should be bh2jh() but that doesn't work with inline functions */
-+	jh = READ_ONCE(bh->b_private);
-+	if (!jh)
-+		goto out;
-+	if (jh->b_transaction != handle->h_transaction &&
-+	    jh->b_next_transaction != handle->h_transaction)
-+		goto out;
-+	/*
-+	 * There are two reasons for the barrier here:
-+	 * 1) Make sure to fetch b_bh after we did previous checks so that we
-+	 * detect when jh went through free, realloc, attach to transaction
-+	 * while we were checking. Paired with implicit barrier in that path.
-+	 * 2) So that access to bh done after jbd2_write_access_granted()
-+	 * doesn't get reordered and see inconsistent state of concurrent
-+	 * do_get_write_access().
-+	 */
-+	smp_mb();
-+	if (unlikely(jh->b_bh != bh))
-+		goto out;
-+	ret = true;
-+out:
-+	rcu_read_unlock();
-+	return ret;
-+}
-+
+-
+-
  /**
-  * int jbd2_journal_get_write_access() - notify intent to modify a buffer for metadata (not data) update.
-  * @handle: transaction to add buffer modifications to
-@@ -1000,9 +1061,13 @@ out:
- 
- int jbd2_journal_get_write_access(handle_t *handle, struct buffer_head *bh)
- {
--	struct journal_head *jh = jbd2_journal_add_journal_head(bh);
-+	struct journal_head *jh;
- 	int rc;
- 
-+	if (jbd2_write_access_granted(handle, bh))
-+		return 0;
+  * int jbd2_journal_dirty_metadata() -  mark a buffer as containing dirty metadata
+  * @handle: transaction to add buffer to.
+@@ -1325,12 +1323,25 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+ 	WARN_ON(!transaction);
+ 	if (is_handle_aborted(handle))
+ 		return -EROFS;
+-	journal = transaction->t_journal;
+-	jh = jbd2_journal_grab_journal_head(bh);
+-	if (!jh) {
++	if (!buffer_jbd(bh)) {
+ 		ret = -EUCLEAN;
+ 		goto out;
+ 	}
++	/*
++	 * We don't grab jh reference here since the buffer must be part
++	 * of the running transaction.
++	 */
++	jh = bh2jh(bh);
++	J_ASSERT_JH(jh, jh->b_transaction == transaction ||
++			jh->b_next_transaction == transaction);
++	if (jh->b_modified == 1) {
++		/* If it's in our transaction it must be in BJ_Metadata list */
++		J_ASSERT_JH(jh, jh->b_transaction != transaction ||
++				jh->b_jlist == BJ_Metadata);
++		goto out;
++	}
 +
-+	jh = jbd2_journal_add_journal_head(bh);
- 	/* We do not want to get caught playing with fields which the
- 	 * log thread also manipulates.  Make sure that the buffer
- 	 * completes any outstanding IO before proceeding. */
-@@ -1133,11 +1198,14 @@ out:
- int jbd2_journal_get_undo_access(handle_t *handle, struct buffer_head *bh)
- {
- 	int err;
--	struct journal_head *jh = jbd2_journal_add_journal_head(bh);
-+	struct journal_head *jh;
- 	char *committed_data = NULL;
- 
++	journal = transaction->t_journal;
+ 	jbd_debug(5, "journal_head %p\n", jh);
  	JBUFFER_TRACE(jh, "entry");
-+	if (jbd2_write_access_granted(handle, bh))
-+		return 0;
  
-+	jh = jbd2_journal_add_journal_head(bh);
- 	/*
- 	 * Do this first --- it can drop the journal lock, so we want to
- 	 * make sure that obtaining the committed_data is done
+@@ -1421,7 +1432,6 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+ 	spin_unlock(&journal->j_list_lock);
+ out_unlock_bh:
+ 	jbd_unlock_bh_state(bh);
+-	jbd2_journal_put_journal_head(jh);
+ out:
+ 	JBUFFER_TRACE(jh, "exit");
+ 	return ret;
 -- 
 2.1.4
 
