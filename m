@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 12/35] undo-io: use a bitmap to track what we've already
- written
-Date: Wed, 01 Apr 2015 19:35:19 -0700
-Message-ID: <20150402023519.25243.93058.stgit@birch.djwong.org>
+Subject: [PATCH 02/35] e2fsck: turn inline data symlink into a fast symlink
+ when possible
+Date: Wed, 01 Apr 2015 19:34:13 -0700
+Message-ID: <20150402023413.25243.97254.stgit@birch.djwong.org>
 References: <20150402023359.25243.79782.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,169 +10,71 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:35543 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:35240 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752745AbbDBCfX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Apr 2015 22:35:23 -0400
+	with ESMTP id S1752364AbbDBCeR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Apr 2015 22:34:17 -0400
 In-Reply-To: <20150402023359.25243.79782.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It's really inefficient to (ab)use the TDB key store as a bitmap to
-find out if we've already written a block to the undo file, because
-the tdb code is reads the database key btree disk blocks for *every*
-query.  Changing that logic to a bitmap reduces overhead by a large
-margin -- the overhead of using undo_io while converting a 2TB FS to
-metadata_csum is reduced from 55 minutes to 45.
+When there's a problem accessing the EA part of an inline data symlink
+and we want to truncate the symlink back to 60 characters (hoping the
+user can re-establish the link later on, apparently) be sure to turn
+off the inline data flag to convert the symlink back to a regular fast
+symlink.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/undo_io.c |   69 +++++++++++++++++++++++++++++++++++++-------------
- 1 file changed, 51 insertions(+), 18 deletions(-)
+ e2fsck/pass1.c                     |    2 ++
+ tests/f_inlinedata_repair/expect.1 |    5 ++++-
+ tests/f_inlinedata_repair/expect.2 |    2 +-
+ 3 files changed, 7 insertions(+), 2 deletions(-)
 
 
-diff --git a/lib/ext2fs/undo_io.c b/lib/ext2fs/undo_io.c
-index 70b90d5..9a01e30 100644
---- a/lib/ext2fs/undo_io.c
-+++ b/lib/ext2fs/undo_io.c
-@@ -70,6 +70,9 @@ struct undo_private_data {
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 791817b..bf95ae1 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -1251,6 +1251,8 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 						ctx->flags |= E2F_FLAG_ABORT;
+ 						goto endit;
+ 					}
++					if (LINUX_S_ISLNK(inode->i_mode))
++						inode->i_flags &= ~EXT4_INLINE_DATA_FL;
+ 					e2fsck_write_inode(ctx, ino, inode,
+ 							   "pass1");
+ 					failed_csum = 0;
+diff --git a/tests/f_inlinedata_repair/expect.1 b/tests/f_inlinedata_repair/expect.1
+index cc220ba..9c84b14 100644
+--- a/tests/f_inlinedata_repair/expect.1
++++ b/tests/f_inlinedata_repair/expect.1
+@@ -21,6 +21,9 @@ Salvage? yes
+ Directory inode 32, block #0, offset 4: directory corrupted
+ Salvage? yes
  
- 	/* to support offset in unix I/O manager */
- 	ext2_loff_t offset;
++Symlink /1 (inode #12) is invalid.
++Clear? yes
 +
-+	ext2fs_block_bitmap written_block_map;
-+	struct struct_ext2_filsys fake_fs;
- };
+ Symlink /3 (inode #14) is invalid.
+ Clear? yes
  
- static io_manager undo_io_backing_manager;
-@@ -164,6 +167,38 @@ static errcode_t write_block_size(TDB_CONTEXT *tdb, int block_size)
- 	return retval;
- }
+@@ -51,5 +54,5 @@ Unattached zero-length inode 35.  Clear? yes
+ Pass 5: Checking group summary information
  
-+static errcode_t undo_setup_tdb(struct undo_private_data *data)
-+{
-+	errcode_t retval;
-+
-+	if (data->tdb_written == 1)
-+		return 0;
-+
-+	data->tdb_written = 1;
-+
-+	/* Make a bitmap to track what we've written */
-+	memset(&data->fake_fs, 0, sizeof(data->fake_fs));
-+	data->fake_fs.blocksize = data->tdb_data_size;
-+	retval = ext2fs_alloc_generic_bmap(&data->fake_fs,
-+				EXT2_ET_MAGIC_BLOCK_BITMAP64,
-+				EXT2FS_BMAP64_RBTREE,
-+				0, ~1ULL, ~1ULL,
-+				"undo block map", &data->written_block_map);
-+	if (retval)
-+		return retval;
-+
-+	/* Write the blocksize to tdb file */
-+	tdb_transaction_start(data->tdb);
-+	retval = write_block_size(data->tdb,
-+				  data->tdb_data_size);
-+	if (retval) {
-+		tdb_transaction_cancel(data->tdb);
-+		return EXT2_ET_TDB_ERR_IO;
-+	}
-+	tdb_transaction_commit(data->tdb);
-+	return 0;
-+}
-+
- static errcode_t undo_write_tdb(io_channel channel,
- 				unsigned long long block, int count)
- 
-@@ -194,6 +229,10 @@ static errcode_t undo_write_tdb(io_channel channel,
- 		else
- 			size = count * channel->block_size;
- 	}
-+
-+	retval = undo_setup_tdb(data);
-+	if (retval)
-+		return retval;
- 	/*
- 	 * Data is stored in tdb database as blocks of tdb_data_size size
- 	 * This helps in efficient lookup further.
-@@ -212,11 +251,14 @@ static errcode_t undo_write_tdb(io_channel channel,
- 		/*
- 		 * Check if we have the record already
- 		 */
--		if (tdb_exists(data->tdb, tdb_key)) {
-+		if (ext2fs_test_block_bitmap2(data->written_block_map,
-+						   block_num)) {
- 			/* Try the next block */
- 			block_num++;
- 			continue;
- 		}
-+		ext2fs_mark_block_bitmap2(data->written_block_map, block_num);
-+
- 		/*
- 		 * Read one block using the backing I/O manager
- 		 * The backing I/O manager block size may be
-@@ -265,19 +307,7 @@ static errcode_t undo_write_tdb(io_channel channel,
- 		       tdb_data.dptr,
- 		       tdb_data.dsize);
- #endif
--		if (data->tdb_written != 1) {
--			data->tdb_written = 1;
--			/* Write the blocksize to tdb file */
--			retval = write_block_size(data->tdb,
--						  data->tdb_data_size);
--			if (retval) {
--				tdb_transaction_cancel(data->tdb);
--				retval = EXT2_ET_TDB_ERR_IO;
--				free(read_ptr);
--				return retval;
--			}
--		}
--		retval = tdb_store(data->tdb, tdb_key, tdb_data, TDB_INSERT);
-+		retval = tdb_store(data->tdb, tdb_key, tdb_data, TDB_REPLACE);
- 		if (retval == -1) {
- 			/*
- 			 * TDB_ERR_EXISTS cannot happen because we
-@@ -345,6 +375,7 @@ static errcode_t undo_open(const char *name, int flags, io_channel *channel)
- 
- 	memset(data, 0, sizeof(struct undo_private_data));
- 	data->magic = EXT2_ET_MAGIC_UNIX_IO_CHANNEL;
-+	data->written_block_map = NULL;
- 
- 	if (undo_io_backing_manager) {
- 		retval = undo_io_backing_manager->open(name, flags,
-@@ -390,7 +421,7 @@ cleanup:
- static errcode_t undo_close(io_channel channel)
- {
- 	struct undo_private_data *data;
--	errcode_t	retval = 0;
-+	errcode_t	err, retval = 0;
- 
- 	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
- 	data = (struct undo_private_data *) channel->private_data;
-@@ -399,20 +430,22 @@ static errcode_t undo_close(io_channel channel)
- 	if (--channel->refcount > 0)
- 		return 0;
- 	/* Before closing write the file system identity */
--	retval = write_file_system_identity(channel, data->tdb);
--	if (retval)
--		return retval;
-+	err = write_file_system_identity(channel, data->tdb);
- 	if (data->real)
- 		retval = io_channel_close(data->real);
- 	if (data->tdb) {
- 		tdb_flush(data->tdb);
- 		tdb_close(data->tdb);
- 	}
-+	if (data->written_block_map)
-+		ext2fs_free_generic_bitmap(data->written_block_map);
- 	ext2fs_free_mem(&channel->private_data);
- 	if (channel->name)
- 		ext2fs_free_mem(&channel->name);
- 	ext2fs_free_mem(&channel);
- 
-+	if (err)
-+		return err;
- 	return retval;
- }
- 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 27/128 files (0.0% non-contiguous), 18/512 blocks
++test_filesys: 26/128 files (0.0% non-contiguous), 18/512 blocks
+ Exit status is 1
+diff --git a/tests/f_inlinedata_repair/expect.2 b/tests/f_inlinedata_repair/expect.2
+index 2c400a5..69d874e 100644
+--- a/tests/f_inlinedata_repair/expect.2
++++ b/tests/f_inlinedata_repair/expect.2
+@@ -3,5 +3,5 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 27/128 files (0.0% non-contiguous), 18/512 blocks
++test_filesys: 26/128 files (0.0% non-contiguous), 18/512 blocks
+ Exit status is 0
 
