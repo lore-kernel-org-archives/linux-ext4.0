@@ -1,159 +1,84 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/5] jbd2: Simplify code flow in do_get_write_access()
-Date: Thu,  2 Apr 2015 15:58:18 +0200
-Message-ID: <1427983100-29889-4-git-send-email-jack@suse.cz>
-References: <1427983100-29889-1-git-send-email-jack@suse.cz>
-Cc: Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Issue in ext4 rename
+Date: Thu, 2 Apr 2015 10:02:58 -0400
+Message-ID: <20150402140258.GC6873@thunk.org>
+References: <551D1EA3.1050202@huawei.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Joseph Qi <joseph.qi@huawei.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51224 "EHLO mx2.suse.de"
+Received: from imap.thunk.org ([74.207.234.97]:47000 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752555AbbDBN61 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 2 Apr 2015 09:58:27 -0400
-In-Reply-To: <1427983100-29889-1-git-send-email-jack@suse.cz>
+	id S1752536AbbDBODC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 2 Apr 2015 10:03:02 -0400
+Content-Disposition: inline
+In-Reply-To: <551D1EA3.1050202@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Check for the simple case of unjournaled buffer first, handle it and
-bail out. This allows us to remove one if and unindent the difficult case
-by one tab. The result is easier to read.
+On Thu, Apr 02, 2015 at 06:49:07PM +0800, Joseph Qi wrote:
+> Hi all,
+> In ext4_rename_delete, it only logs a warning if ext4_delete_entry
+> fails.
+> IMO, it may lead to an inode with two entries (old and new), thus
+> filesystem will be inconsistent.
+> The case is described below:
+> ext4_rename
+> 	--> ext4_journal_start
+> 	--> ext4_add_entry (new)
+> 	--> ext4_rename_delete (old)
+> 		--> ext4_delete_entry
+> 			--> ext4_journal_get_write_access
+> 			*failed* because of -ENOMEM
+> 	--> ext4_journal_stop
+> Does anyone have an idea to resolve this issue?
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/jbd2/transaction.c | 130 +++++++++++++++++++++++---------------------------
- 1 file changed, 59 insertions(+), 71 deletions(-)
+I'm guessing you must be using one of the kernel patches or
+pre-release kernels that is allowing GFP_NOFS allocations to fail.
+Currently in this case, we call ext4_std_error() which will declare
+the file system as inconsistent, and either mark the file system
+read/only, panic the system, or, if the error mode is set to
+"continue" (what I nick name the "don't worry, be happy mode"), the
+error gets ignored.  What I recommend for companies that have a large
+number of disks and don't want to panic the entire system when a disk
+gets marked bad is to have monitoring software which notices when a
+disk gets marked inconsistent (either by scraping dmesg or by sending
+a notification out via a netlink socket[1]), and then instructing the
+cluster file system to declare the disk bad, and to eventually arrange
+to the file system fsck'ed.
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 1995ea539e96..5207825d1038 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -893,6 +893,20 @@ repeat:
-        jh->b_modified = 0;
- 
- 	/*
-+	 * If the buffer is not journaled right now, we need to make sure it
-+	 * doesn't get written to disk before the caller actually commits the
-+	 * new data
-+	 */
-+	if (!jh->b_transaction) {
-+		JBUFFER_TRACE(jh, "no transaction");
-+		J_ASSERT_JH(jh, !jh->b_next_transaction);
-+		JBUFFER_TRACE(jh, "file as BJ_Reserved");
-+		spin_lock(&journal->j_list_lock);
-+		__jbd2_journal_file_buffer(jh, transaction, BJ_Reserved);
-+		spin_unlock(&journal->j_list_lock);
-+		goto done;
-+	}
-+	/*
- 	 * If there is already a copy-out version of this buffer, then we don't
- 	 * need to make another one
- 	 */
-@@ -903,84 +917,58 @@ repeat:
- 		goto done;
- 	}
- 
--	/* Is there data here we need to preserve? */
-+	JBUFFER_TRACE(jh, "owned by older transaction");
-+	J_ASSERT_JH(jh, jh->b_next_transaction == NULL);
-+	J_ASSERT_JH(jh, jh->b_transaction == journal->j_committing_transaction);
- 
--	if (jh->b_transaction && jh->b_transaction != transaction) {
--		JBUFFER_TRACE(jh, "owned by older transaction");
--		J_ASSERT_JH(jh, jh->b_next_transaction == NULL);
--		J_ASSERT_JH(jh, jh->b_transaction ==
--					journal->j_committing_transaction);
-+	/*
-+	 * There is one case we have to be very careful about.  If the
-+	 * committing transaction is currently writing this buffer out to disk
-+	 * and has NOT made a copy-out, then we cannot modify the buffer
-+	 * contents at all right now.  The essence of copy-out is that it is
-+	 * the extra copy, not the primary copy, which gets journaled.  If the
-+	 * primary copy is already going to disk then we cannot do copy-out
-+	 * here.
-+	 */
-+	if (buffer_shadow(bh)) {
-+		JBUFFER_TRACE(jh, "on shadow: sleep");
-+		jbd_unlock_bh_state(bh);
-+		wait_on_bit_io(&bh->b_state, BH_Shadow, TASK_UNINTERRUPTIBLE);
-+		goto repeat;
-+	}
- 
--		/* There is one case we have to be very careful about.
--		 * If the committing transaction is currently writing
--		 * this buffer out to disk and has NOT made a copy-out,
--		 * then we cannot modify the buffer contents at all
--		 * right now.  The essence of copy-out is that it is the
--		 * extra copy, not the primary copy, which gets
--		 * journaled.  If the primary copy is already going to
--		 * disk then we cannot do copy-out here. */
--
--		if (buffer_shadow(bh)) {
--			JBUFFER_TRACE(jh, "on shadow: sleep");
-+	/*
-+	 * Only do the copy if the currently-owning transaction still needs it.
-+	 * If buffer isn't on BJ_Metadata list, the committing transaction is
-+	 * past that stage (here we use the fact that BH_Shadow is set under
-+	 * bh_state lock together with refiling to BJ_Shadow list and at this
-+	 * point we know the buffer doesn't have BH_Shadow set).
-+	 *
-+	 * Subtle point, though: if this is a get_undo_access, then we will be
-+	 * relying on the frozen_data to contain the new value of the
-+	 * committed_data record after the transaction, so we HAVE to force the
-+	 * frozen_data copy in that case.
-+	 */
-+	if (jh->b_jlist == BJ_Metadata || force_copy) {
-+		JBUFFER_TRACE(jh, "generate frozen data");
-+		if (!frozen_buffer) {
-+			JBUFFER_TRACE(jh, "allocate memory for buffer");
- 			jbd_unlock_bh_state(bh);
--			wait_on_bit_io(&bh->b_state, BH_Shadow,
--				       TASK_UNINTERRUPTIBLE);
--			goto repeat;
--		}
--
--		/*
--		 * Only do the copy if the currently-owning transaction still
--		 * needs it. If buffer isn't on BJ_Metadata list, the
--		 * committing transaction is past that stage (here we use the
--		 * fact that BH_Shadow is set under bh_state lock together with
--		 * refiling to BJ_Shadow list and at this point we know the
--		 * buffer doesn't have BH_Shadow set).
--		 *
--		 * Subtle point, though: if this is a get_undo_access,
--		 * then we will be relying on the frozen_data to contain
--		 * the new value of the committed_data record after the
--		 * transaction, so we HAVE to force the frozen_data copy
--		 * in that case.
--		 */
--		if (jh->b_jlist == BJ_Metadata || force_copy) {
--			JBUFFER_TRACE(jh, "generate frozen data");
-+			frozen_buffer = jbd2_alloc(jh2bh(jh)->b_size, GFP_NOFS);
- 			if (!frozen_buffer) {
--				JBUFFER_TRACE(jh, "allocate memory for buffer");
--				jbd_unlock_bh_state(bh);
--				frozen_buffer =
--					jbd2_alloc(jh2bh(jh)->b_size,
--							 GFP_NOFS);
--				if (!frozen_buffer) {
--					printk(KERN_ERR
--					       "%s: OOM for frozen_buffer\n",
--					       __func__);
--					JBUFFER_TRACE(jh, "oom!");
--					error = -ENOMEM;
--					goto out;
--				}
--				goto repeat;
-+				printk(KERN_ERR "%s: OOM for frozen_buffer\n",
-+				       __func__);
-+				JBUFFER_TRACE(jh, "oom!");
-+				error = -ENOMEM;
-+				goto out;
- 			}
--			jh->b_frozen_data = frozen_buffer;
--			frozen_buffer = NULL;
--			jbd2_freeze_jh_data(jh);
-+			goto repeat;
- 		}
--		jh->b_next_transaction = transaction;
--	}
--
+[1] At Google we have a patch which does this; I believe a version of
+the patchd did get sent out to the ext4 list, but the person who
+worked on it never had time to get it properly cleaned up so it could
+get upstreamed, and we got lost in debates about the proper way to
+handle such notifications, should they be done in the VFS, or
+conflated with quota errors, etc.)  And at some point during the
+interface paint-shedding, the debate stalled out.
+
+
+In any case, there was a huge debate at the LSF/MM about this, where
+file system engineers tried to explain to VM folks why in some cases
+backing out of a memory failure is close to impossible, unless you
+want to add a transaction rollback system ala an RDBMS (and suffer the
+complexity and performance penalties of said RDBMS transaction
+rollback mechanism).  You can read more about this at:
+https://lwn.net/Articles/636017/ and https://lwn.net/Articles/636797/.
+
+In the short term my plan was to try to create a wrapper for all
+kmalloc and slab allocation requests which would allow us to track
+memory used, pass in GFP_NOFAIL where necessary, and to loop in cases
+where GFP_NOFAIL requests started failing (because like Dave Chinner,
+I trust VM folks *this* much -->.<---).  In the jbd2 layer, this would
+have to be done via some kind of optional callback system, since I
+don't want to force ocfs2 to have to use this scheme if they don't
+want to.
+
+In the very short term, if you can't figure out how to fix or rollback
+the patch which caused the GFP_NOFS allocations to start failing, you
+could simply replace all instances of GFP_NOFS with
+GFP_NOFS|GFP_NOFAIL in fs/jbd2 and fs/ext4.
+
+Regards,
+
+						- Ted
