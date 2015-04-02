@@ -1,98 +1,282 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 00/22] ext4 encryption patches
-Date: Thu,  2 Apr 2015 18:10:37 -0400
-Message-ID: <1428012659-12709-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 06/22] ext4 crypto: add encryption policy checking
+Date: Thu,  2 Apr 2015 18:10:43 -0400
+Message-ID: <1428012659-12709-7-git-send-email-tytso@mit.edu>
+References: <1428012659-12709-1-git-send-email-tytso@mit.edu>
 Cc: jaegeuk@kernel.org, mhalcrow@google.com,
-	Theodore Ts'o <tytso@mit.edu>
+	Theodore Ts'o <tytso@mit.edu>,
+	Ildar Muslukhov <muslukhovi@gmail.com>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:48030 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:48032 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752576AbbDBWNF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752586AbbDBWNF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 2 Apr 2015 18:13:05 -0400
+In-Reply-To: <1428012659-12709-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Android userspace code to use ext4 encryption have been checked into
-the public AOSP branch.  If all goes well, this feature will hopefully
-(my fingers are crossed, but obviously nothing is guaranteed at this
-point) be included in the 'M' release of Android.
+From: Michael Halcrow <mhalcrow@google.com>
 
-Currently all of the changes are in fs/ext4 but I've been talking to
-Jaegeuk about adopting the same same interfaces (which is essentially
-just two ioctl's to set the encryption policy and to get the
-per-file-system 'salt' for passwords) for f2fs.
+The ext4_crypto.h header will get fleshed out as later patches in this
+patchset add functionality.
 
-As a result, it may be that some of the functions in
-fs/ext4/crypto_*.c will end up getting refactored and moved into some
-fs/*.c so that f2fs can use it as well.  But I'd like to get the basic
-feature into the kernel tree (marked as experimental initially) and
-then do more polishing from there.
-
-There is a design document here.  It should hopefully be mostly up to
-date, but there are a few things that we might end up changing (for
-example, just using CTS all the time for protecting directory file
-names).
-
-https://docs.google.com/document/d/1IsyQ9DU1gA6NUqS0jF4ni_NTvv-b0HfCkRk47Zkd7W0
-
-						- Ted
-
-Michael Halcrow (13):
-  ext4 crypto: export ext4_empty_dir()
-  ext4 crypto: add encryption xattr support
-  ext4 crypto: add encryption policy checking
-  ext4 crypto: add ext4 encryption facilities
-  ext4 crypto: add encryption key management facilities
-  ext4 crypto: inherit encryption policies on inode and directory create
-  ext4 crypto: implement the ext4 encryption write path
-  ext4 crypto: implement the ext4 decryption read path
-  ext4 crypto: filename encryption facilities
-  ext4 crypto: insert encrypted filenames into a leaf directory block
-  ext4 crypto: partial update to namei.c for fname crypto
-  ext4 crypto: filename encryption modifications
-  ext4 crypto: enable filename encryption
-
-Theodore Ts'o (9):
-  ext4: add ext4_mpage_readpages()
-  ext4: reserve codepoints used by the ext4 encryption feature
-  ext4 crypto: add ext4 encryption Kconfig
-  ext4 crypto: add ioctl to set encryption policy
-  ext4 crypto: validate context consistency on lookup
-  ext4: teach ext4_htree_store_dirent() to store decrypted filenames
-  ext4 crypto: Add symlink encryption
-  ext4 crypto: enable encryption feature flag
-  ext4 crypto: add password salt support
-
- fs/ext4/Kconfig         |  20 ++
- fs/ext4/Makefile        |   4 +-
- fs/ext4/crypto.c        | 601 ++++++++++++++++++++++++++++++++++
- fs/ext4/crypto_fname.c  | 831 ++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/crypto_key.c    | 170 ++++++++++
- fs/ext4/crypto_policy.c | 186 +++++++++++
- fs/ext4/dir.c           |  98 +++++-
- fs/ext4/ext4.h          | 153 ++++++++-
- fs/ext4/ext4_crypto.h   | 140 ++++++++
- fs/ext4/extents.c       |   6 +
- fs/ext4/file.c          |  22 +-
- fs/ext4/ialloc.c        |  28 +-
- fs/ext4/inline.c        |  17 +-
- fs/ext4/inode.c         | 127 +++++++-
- fs/ext4/ioctl.c         |  69 ++++
- fs/ext4/namei.c         | 567 +++++++++++++++++++++++++++++----
- fs/ext4/page-io.c       |  46 ++-
- fs/ext4/readpage.c      | 321 +++++++++++++++++++
- fs/ext4/super.c         |  31 +-
- fs/ext4/symlink.c       | 104 +++++-
- fs/ext4/xattr.h         |   3 +
- 21 files changed, 3431 insertions(+), 113 deletions(-)
- create mode 100644 fs/ext4/crypto.c
- create mode 100644 fs/ext4/crypto_fname.c
- create mode 100644 fs/ext4/crypto_key.c
+Change-Id: I550d197184af04ed27e4c3abb759ca188a3f0de0
+Signed-off-by: Michael Halcrow <mhalcrow@google.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Ildar Muslukhov <muslukhovi@gmail.com>
+---
+ fs/ext4/Makefile        |   1 +
+ fs/ext4/crypto_policy.c | 155 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4.h          |   2 +
+ fs/ext4/ext4_crypto.h   |  54 +++++++++++++++++
+ 4 files changed, 212 insertions(+)
  create mode 100644 fs/ext4/crypto_policy.c
  create mode 100644 fs/ext4/ext4_crypto.h
- create mode 100644 fs/ext4/readpage.c
 
+diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+index cd6f50f..3886ee4 100644
+--- a/fs/ext4/Makefile
++++ b/fs/ext4/Makefile
+@@ -12,3 +12,4 @@ ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
+ 
+ ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
+ ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
++ext4-$(CONFIG_EXT4_FS_ENCRYPTION)	+= crypto_policy.o
+diff --git a/fs/ext4/crypto_policy.c b/fs/ext4/crypto_policy.c
+new file mode 100644
+index 0000000..5cb4e74
+--- /dev/null
++++ b/fs/ext4/crypto_policy.c
+@@ -0,0 +1,155 @@
++/*
++ * linux/fs/ext4/crypto_policy.c
++ *
++ * This contains encryption policy functions for ext4
++ *
++ * Written by Michael Halcrow, 2015.
++ */
++
++#include <linux/random.h>
++#include <linux/string.h>
++#include <linux/types.h>
++
++#include "ext4.h"
++#include "xattr.h"
++
++/**
++ * ext4_to_hex() - Converts to hexadecimal characters
++ * @dst: Buffer to take hex character representation of contents of
++ *       src. Must be at least of size (src_size * 2).
++ * @src: Buffer to be converted to a hex string respresentation.
++ * @src_size: Number of bytes to convert.
++ */
++void ext4_to_hex(char *dst, char *src, size_t src_size)
++{
++	int x;
++
++	for (x = 0; x < src_size; x++)
++		sprintf(&dst[x * 2], "%.2x", (unsigned char)src[x]);
++}
++
++/**
++ *
++ */
++static int ext4_inode_has_encryption_context(struct inode *inode)
++{
++	int res = ext4_xattr_get(inode, EXT4_XATTR_INDEX_ENCRYPTION,
++				 EXT4_XATTR_NAME_ENCRYPTION_CONTEXT, NULL, 0);
++	return (res > 0);
++}
++
++/**
++ * ext4_is_encryption_context_consistent_with_policy() - Checks whether the policy is consistent with the encryption context for the inode
++ * @inode:  ...
++ * @policy: ...
++ *
++ * Return ...
++ */
++static int ext4_is_encryption_context_consistent_with_policy(
++	struct inode *inode, const struct ext4_encryption_policy *policy)
++{
++	struct ext4_encryption_context ctx;
++	int res = ext4_xattr_get(inode, EXT4_XATTR_INDEX_ENCRYPTION,
++				 EXT4_XATTR_NAME_ENCRYPTION_CONTEXT, &ctx,
++				 sizeof(ctx));
++	if (res != sizeof(ctx))
++		return 0;
++	return (memcmp(ctx.master_key_descriptor, policy->master_key_descriptor,
++			EXT4_KEY_DESCRIPTOR_SIZE) == 0 &&
++		(ctx.contents_encryption_mode ==
++		 policy->contents_encryption_mode) &&
++		(ctx.filenames_encryption_mode ==
++		 policy->filenames_encryption_mode));
++}
++
++static int ext4_create_encryption_context_from_policy(
++	struct inode *inode, const struct ext4_encryption_policy *policy)
++{
++	struct ext4_encryption_context ctx;
++	int res = 0;
++
++	ctx.format = EXT4_ENCRYPTION_CONTEXT_FORMAT_V0;
++	memcpy(ctx.master_key_descriptor, policy->master_key_descriptor,
++	       EXT4_KEY_DESCRIPTOR_SIZE);
++	ctx.contents_encryption_mode = policy->contents_encryption_mode;
++	ctx.filenames_encryption_mode = policy->filenames_encryption_mode;
++	BUILD_BUG_ON(sizeof(ctx.nonce) != EXT4_KEY_DERIVATION_NONCE_SIZE);
++	get_random_bytes(ctx.nonce, EXT4_KEY_DERIVATION_NONCE_SIZE);
++
++	res = ext4_xattr_set(inode, EXT4_XATTR_INDEX_ENCRYPTION,
++			     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT, &ctx,
++			     sizeof(ctx), 0);
++	if (!res)
++		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
++	return res;
++}
++
++int ext4_process_policy(const struct ext4_encryption_policy *policy,
++			struct inode *inode)
++{
++	int res = 0;
++
++	if (!ext4_inode_has_encryption_context(inode)) {
++		res = ext4_create_encryption_context_from_policy(inode, policy);
++		goto out;
++	}
++
++	if (!ext4_is_encryption_context_consistent_with_policy(inode, policy)) {
++		printk(KERN_WARNING
++		       "%s: Policy inconsistent with encryption context\n",
++		       __func__);
++		res = -EINVAL;
++	}
++out:
++	return res;
++}
++
++int ext4_is_child_context_consistent_with_parent(struct inode *parent,
++						 struct inode *child)
++{
++	struct ext4_encryption_context parent_ctx, child_ctx;
++	int res = ext4_xattr_get(parent, EXT4_XATTR_INDEX_ENCRYPTION,
++				 EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
++				 &parent_ctx, sizeof(parent_ctx));
++
++	if (res != sizeof(parent_ctx))
++		return 0;
++	res = ext4_xattr_get(parent, EXT4_XATTR_INDEX_ENCRYPTION,
++			     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
++			     &child_ctx, sizeof(child_ctx));
++	if (res != sizeof(child_ctx))
++		return 0;
++	return (memcmp(parent_ctx.master_key_descriptor,
++		       child_ctx.master_key_descriptor,
++		       EXT4_KEY_DESCRIPTOR_SIZE) == 0 &&
++		(parent_ctx.contents_encryption_mode ==
++		 child_ctx.contents_encryption_mode) &&
++		(parent_ctx.filenames_encryption_mode ==
++		 child_ctx.filenames_encryption_mode));
++}
++
++/**
++ * ext4_inherit_context() - Sets a child context from its parent
++ * @parent: Parent inode from which the context is inherited.
++ * @child:  Child inode that inherits the context from @parent.
++ *
++ * Return: Zero on success, non-zero otherwise
++ */
++int ext4_inherit_context(struct inode *parent, struct inode *child)
++{
++	struct ext4_encryption_context ctx;
++	int res = ext4_xattr_get(parent, EXT4_XATTR_INDEX_ENCRYPTION,
++				 EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
++				 &ctx, sizeof(ctx));
++
++	if (res != sizeof(ctx))
++		return -ENOENT;
++
++	get_random_bytes(ctx.nonce, EXT4_KEY_DERIVATION_NONCE_SIZE);
++	res = ext4_xattr_set(child, EXT4_XATTR_INDEX_ENCRYPTION,
++			     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT, &ctx,
++			     sizeof(ctx), 0);
++	if (!res)
++		ext4_set_inode_flag(child, EXT4_INODE_ENCRYPT);
++	return res;
++}
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 2f3808e..fd2f3dd 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -588,6 +588,8 @@ enum {
+ #define EXT4_ENCRYPTION_MODE_AES_256_GCM	2
+ #define EXT4_ENCRYPTION_MODE_AES_256_CBC	3
+ 
++#include "ext4_crypto.h"
++
+ /*
+  * ioctl commands
+  */
+diff --git a/fs/ext4/ext4_crypto.h b/fs/ext4/ext4_crypto.h
+new file mode 100644
+index 0000000..984ff38
+--- /dev/null
++++ b/fs/ext4/ext4_crypto.h
+@@ -0,0 +1,54 @@
++/*
++ * linux/fs/ext4/ext4_crypto.h
++ *
++ * This contains encryption header content for ext4
++ *
++ * Written by Michael Halcrow, 2015.
++ */
++
++#ifndef _EXT4_CRYPTO_H
++#define _EXT4_CRYPTO_H
++
++#include <linux/fs.h>
++
++#define EXT4_KEY_DESCRIPTOR_SIZE 8
++
++/* Policy provided via an ioctl on the topmost directory */
++struct ext4_encryption_policy {
++	char version;
++	char contents_encryption_mode;
++	char filenames_encryption_mode;
++	char master_key_descriptor[EXT4_KEY_DESCRIPTOR_SIZE];
++} __attribute__((__packed__));
++
++#define EXT4_ENCRYPTION_CONTEXT_FORMAT_V0 0
++#define EXT4_KEY_DERIVATION_NONCE_SIZE 16
++
++/**
++ * Encryption context for inode
++ *
++ * Protector format:
++ *  1 byte: Protector format (0 = this version)
++ *  1 byte: File contents encryption mode
++ *  1 byte: File names encryption mode
++ *  1 byte: Reserved
++ *  8 bytes: Master Key descriptor
++ *  16 bytes: Encryption Key derivation nonce
++ */
++struct ext4_encryption_context {
++	char format;
++	char contents_encryption_mode;
++	char filenames_encryption_mode;
++	char reserved;
++	char master_key_descriptor[EXT4_KEY_DESCRIPTOR_SIZE];
++	char nonce[EXT4_KEY_DERIVATION_NONCE_SIZE];
++} __attribute__((__packed__));
++
++int ext4_is_child_context_consistent_with_parent(struct inode *parent,
++						 struct inode *child);
++int ext4_inherit_context(struct inode *parent, struct inode *child);
++void ext4_to_hex(char *dst, char *src, size_t src_size);
++int ext4_process_policy(const struct ext4_encryption_policy *policy,
++			struct inode *inode);
++
++#endif	/* _EXT4_CRYPTO_H */
 -- 
 2.3.0
 
