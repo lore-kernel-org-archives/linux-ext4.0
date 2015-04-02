@@ -1,43 +1,96 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/5] jbd2: Simplify error path on allocation failure in do_get_write_access()
-Date: Thu,  2 Apr 2015 15:58:17 +0200
-Message-ID: <1427983100-29889-3-git-send-email-jack@suse.cz>
+Subject: [PATCH 1/5] jbd2: Simplify code flow in do_get_write_access()
+Date: Thu,  2 Apr 2015 15:58:16 +0200
+Message-ID: <1427983100-29889-2-git-send-email-jack@suse.cz>
 References: <1427983100-29889-1-git-send-email-jack@suse.cz>
 Cc: Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51221 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:51225 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753139AbbDBN61 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752986AbbDBN61 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 2 Apr 2015 09:58:27 -0400
 In-Reply-To: <1427983100-29889-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We were acquiring bh_state_lock when allocation of buffer failed in
-do_get_write_access() only to be able to jump to a label that releases
-the lock and does all other checks that don't make sense for this error
-path. Just jump into the right label instead.
+needs_copy is set only in one place in do_get_write_access(), just move
+the frozen buffer copying into that place and factor it out to a
+separate function to make do_get_write_access() slightly more readable.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/transaction.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ fs/jbd2/transaction.c | 49 +++++++++++++++++++++++++------------------------
+ 1 file changed, 25 insertions(+), 24 deletions(-)
 
 diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 2b75f0f109be..1995ea539e96 100644
+index 5f09370c90a8..2b75f0f109be 100644
 --- a/fs/jbd2/transaction.c
 +++ b/fs/jbd2/transaction.c
-@@ -956,8 +956,7 @@ repeat:
- 					       __func__);
- 					JBUFFER_TRACE(jh, "oom!");
- 					error = -ENOMEM;
--					jbd_lock_bh_state(bh);
--					goto done;
-+					goto out;
- 				}
- 				goto repeat;
+@@ -763,6 +763,30 @@ static void warn_dirty_buffer(struct buffer_head *bh)
+ 	       bdevname(bh->b_bdev, b), (unsigned long long)bh->b_blocknr);
+ }
+ 
++/* Call t_frozen trigger and copy buffer data into jh->b_frozen_data. */
++static void jbd2_freeze_jh_data(struct journal_head *jh)
++{
++	struct page *page;
++	int offset;
++	char *source;
++	struct buffer_head *bh = jh2bh(jh);
++
++	J_EXPECT_JH(jh, buffer_uptodate(bh), "Possible IO failure.\n");
++	page = bh->b_page;
++	offset = offset_in_page(bh->b_data);
++	source = kmap_atomic(page);
++	/* Fire data frozen trigger just before we copy the data */
++	jbd2_buffer_frozen_trigger(jh, source + offset, jh->b_triggers);
++	memcpy(jh->b_frozen_data, source + offset, bh->b_size);
++	kunmap_atomic(source);
++
++	/*
++	 * Now that the frozen data is saved off, we need to store any matching
++	 * triggers.
++	 */
++	jh->b_frozen_triggers = jh->b_triggers;
++}
++
+ /*
+  * If the buffer is already part of the current transaction, then there
+  * is nothing we need to do.  If it is already part of a prior
+@@ -782,7 +806,6 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
+ 	journal_t *journal;
+ 	int error;
+ 	char *frozen_buffer = NULL;
+-	int need_copy = 0;
+ 	unsigned long start_lock, time_lock;
+ 
+ 	WARN_ON(!transaction);
+@@ -940,7 +963,7 @@ repeat:
  			}
--- 
-2.1.4
-
+ 			jh->b_frozen_data = frozen_buffer;
+ 			frozen_buffer = NULL;
+-			need_copy = 1;
++			jbd2_freeze_jh_data(jh);
+ 		}
+ 		jh->b_next_transaction = transaction;
+ 	}
+@@ -961,28 +984,6 @@ repeat:
+ 	}
+ 
+ done:
+-	if (need_copy) {
+-		struct page *page;
+-		int offset;
+-		char *source;
+-
+-		J_EXPECT_JH(jh, buffer_uptodate(jh2bh(jh)),
+-			    "Possible IO failure.\n");
+-		page = jh2bh(jh)->b_page;
+-		offset = offset_in_page(jh2bh(jh)->b_data);
+-		source = kmap_atomic(page);
+-		/* Fire data frozen trigger just before we copy the data */
+-		jbd2_buffer_frozen_trigger(jh, source + offset,
+-					   jh->b_triggers);
+-		memcpy(jh->b_frozen_data, source+offset, jh2bh(jh)->b_size);
+-		kunmap_atomic(source);
