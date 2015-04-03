@@ -1,48 +1,130 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Issue in ext4 rename
-Date: Fri, 3 Apr 2015 11:06:00 -0400
-Message-ID: <20150403150600.GC9988@thunk.org>
-References: <551D1EA3.1050202@huawei.com>
- <20150402140258.GC6873@thunk.org>
- <551E6405.8050600@huawei.com>
+Subject: [PATCH -v2] ext4: make fsync to sync parent dir in no-journal for
+ real this time
+Date: Fri, 3 Apr 2015 11:16:14 -0400
+Message-ID: <20150403151614.GD9988@thunk.org>
+References: <1424697396-17248-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Joseph Qi <joseph.qi@huawei.com>
+Cc: linux-ext4@vger.kernel.org, Frank Mayhar <fmayhar@google.com>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49278 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:49299 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752489AbbDCPG3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Apr 2015 11:06:29 -0400
+	id S1752514AbbDCPQR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 Apr 2015 11:16:17 -0400
 Content-Disposition: inline
-In-Reply-To: <551E6405.8050600@huawei.com>
+In-Reply-To: <1424697396-17248-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 03, 2015 at 05:57:25PM +0800, Joseph Qi wrote:
-> Hi Ted,
-> Thanks very much for your quick and detailed reply.
-> Yes, currently it will behave as RO, or PANIC or CONT based on the
-> mounted options.
-> You suggested a way to make sure the allocation cannot fail.
-> I am wondering if we can omit this handle when commit, for example,
-> introducing a way that invalids the handle in jbd2.
-
-Not really, because we've already started modifying data structures at
-this point; hence my comment that in order to do this we would have to
-implement a fairly heavyweight transaction rollback scheme.  For
-eample, we could make every single ext4_journal_get_write_access()
-allocate a 4k page to store a copy of the 4k buffer we were about to
-modify, so in case some other ext4_journal_get_write_access() failed,
-we could roll back the handle.  But that inceases the amount of memory
-required for each transaction by an order of magnitude --- and worse,
-what if some other handle needs to modify the same block?  We couldn't
-let that handle proceed until the first handle was stopped.
-
-So we would trash performance *and* use more memory, making memory
-allocation and memory pressures worse.  In other words, the cure is
-worse than the disease; much worse.
-
-Best regards,
+It turns out this patch was buggy; make_indexed_dir() releases the
+buffer head, so it was missing a "bh = NULL" in a critical place.
+(Note: please try running at least "kvm-xfstests smoke" before
+submitting a patch; it only takes about 30 minutes, and in this case
+generic/006 would have failed very quickly.)
 
 						- Ted
+
+>From e12fb97222fc41e8442896934f76d39ef99b590a Mon Sep 17 00:00:00 2001
+From: Lukas Czerner <lczerner@redhat.com>
+Date: Fri, 3 Apr 2015 10:46:58 -0400
+Subject: [PATCH] ext4: make fsync to sync parent dir in no-journal for real
+ this time
+
+Previously commit 14ece1028b3ed53ffec1b1213ffc6acaf79ad77c added a
+support for for syncing parent directory of newly created inodes to
+make sure that the inode is not lost after a power failure in
+no-journal mode.
+
+However this does not work in majority of cases, namely:
+ - if the directory has inline data
+ - if the directory is already indexed
+ - if the directory already has at least one block and:
+	- the new entry fits into it
+	- or we've successfully converted it to indexed
+
+So in those cases we might lose the inode entirely even after fsync in
+the no-journal mode. This also includes ext2 default mode obviously.
+
+I've noticed this while running xfstest generic/321 and even though the
+test should fail (we need to run fsck after a crash in no-journal mode)
+I could not find a newly created entries even when if it was fsynced
+before.
+
+Fix this by adjusting the ext4_add_entry() successful exit paths to set
+the inode EXT4_STATE_NEWENTRY so that fsync has the chance to fsync the
+parent directory as well.
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Cc: Frank Mayhar <fmayhar@google.com>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/namei.c | 20 +++++++++++---------
+ 1 file changed, 11 insertions(+), 9 deletions(-)
+
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index efb64ae..23a0b9b 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1864,7 +1864,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 			  struct inode *inode)
+ {
+ 	struct inode *dir = dentry->d_parent->d_inode;
+-	struct buffer_head *bh;
++	struct buffer_head *bh = NULL;
+ 	struct ext4_dir_entry_2 *de;
+ 	struct ext4_dir_entry_tail *t;
+ 	struct super_block *sb;
+@@ -1888,14 +1888,14 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 			return retval;
+ 		if (retval == 1) {
+ 			retval = 0;
+-			return retval;
++			goto out;
+ 		}
+ 	}
+ 
+ 	if (is_dx(dir)) {
+ 		retval = ext4_dx_add_entry(handle, dentry, inode);
+ 		if (!retval || (retval != ERR_BAD_DX_DIR))
+-			return retval;
++			goto out;
+ 		ext4_clear_inode_flag(dir, EXT4_INODE_INDEX);
+ 		dx_fallback++;
+ 		ext4_mark_inode_dirty(handle, dir);
+@@ -1907,14 +1907,15 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 			return PTR_ERR(bh);
+ 
+ 		retval = add_dirent_to_buf(handle, dentry, inode, NULL, bh);
+-		if (retval != -ENOSPC) {
+-			brelse(bh);
+-			return retval;
+-		}
++		if (retval != -ENOSPC)
++			goto out;
+ 
+ 		if (blocks == 1 && !dx_fallback &&
+-		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX))
+-			return make_indexed_dir(handle, dentry, inode, bh);
++		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX)) {
++			retval = make_indexed_dir(handle, dentry, inode, bh);
++			bh = NULL; /* make_indexed_dir releases bh */
++			goto out;
++		}
+ 		brelse(bh);
+ 	}
+ 	bh = ext4_append(handle, dir, &block);
+@@ -1930,6 +1931,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 	}
+ 
+ 	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
++out:
+ 	brelse(bh);
+ 	if (retval == 0)
+ 		ext4_set_inode_state(inode, EXT4_STATE_NEWENTRY);
+-- 
+2.3.0
+
