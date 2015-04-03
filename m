@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH 1/1] ext4: better error handling of kstrdup()
-Date: Fri, 3 Apr 2015 00:25:16 -0400
-Message-ID: <20150403042516.GA9988@thunk.org>
+Date: Fri, 3 Apr 2015 01:09:43 -0400
+Message-ID: <20150403050943.GB9988@thunk.org>
 References: <1426886514-23522-1-git-send-email-tsgatesv@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -27,6 +27,8 @@ On Fri, Mar 20, 2015 at 05:21:54PM -0400, Taesoo Kim wrote:
 > 
 > Signed-off-by: Taesoo Kim <tsgatesv@gmail.com>
 
-Applied, thanks.
+Did you test this patch?  If there are no mount options (such as when
+mounting the root file system, data is NULL, so orig_data is NULL),
+and the mount fails.  So a kernel won't boot with this patch applied.
 
 					- Ted
