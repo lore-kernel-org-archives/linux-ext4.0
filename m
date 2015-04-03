@@ -1,130 +1,44 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v2] ext4: make fsync to sync parent dir in no-journal for
- real this time
-Date: Fri, 3 Apr 2015 11:16:14 -0400
-Message-ID: <20150403151614.GD9988@thunk.org>
-References: <1424697396-17248-1-git-send-email-lczerner@redhat.com>
+From: Taesoo Kim <taesoo@gatech.edu>
+Subject: Re: [PATCH 1/1] ext4: better error handling of kstrdup()
+Date: Fri, 3 Apr 2015 13:44:20 -0400
+Message-ID: <20150403174420.GY28537@taesoo.org>
+References: <1426886514-23522-1-git-send-email-tsgatesv@gmail.com>
+ <20150403050943.GB9988@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Frank Mayhar <fmayhar@google.com>
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49299 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752514AbbDCPQR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Apr 2015 11:16:17 -0400
+To: Theodore Ts'o <tytso@mit.edu>, Taesoo Kim <tsgatesv@gmail.com>,
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, changwoo@gatech.edu,
+	sanidhya@gatech.edu, blee@gatech.edu, csong84@gatech.edu
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1424697396-17248-1-git-send-email-lczerner@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20150403050943.GB9988@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-It turns out this patch was buggy; make_indexed_dir() releases the
-buffer head, so it was missing a "bh = NULL" in a critical place.
-(Note: please try running at least "kvm-xfstests smoke" before
-submitting a patch; it only takes about 30 minutes, and in this case
-generic/006 would have failed very quickly.)
+Hi Ted,
 
-						- Ted
+It's my fault. I didn't properly check the case of having data = NULL
+to kstrdup() as my system has long mounting options.. Sorry for the
+trouble. I think there is no clean way to handle this error (better),
+other than implicitly letting kstrdup() fail (and ignore).
 
->From e12fb97222fc41e8442896934f76d39ef99b590a Mon Sep 17 00:00:00 2001
-From: Lukas Czerner <lczerner@redhat.com>
-Date: Fri, 3 Apr 2015 10:46:58 -0400
-Subject: [PATCH] ext4: make fsync to sync parent dir in no-journal for real
- this time
+Taesoo
 
-Previously commit 14ece1028b3ed53ffec1b1213ffc6acaf79ad77c added a
-support for for syncing parent directory of newly created inodes to
-make sure that the inode is not lost after a power failure in
-no-journal mode.
-
-However this does not work in majority of cases, namely:
- - if the directory has inline data
- - if the directory is already indexed
- - if the directory already has at least one block and:
-	- the new entry fits into it
-	- or we've successfully converted it to indexed
-
-So in those cases we might lose the inode entirely even after fsync in
-the no-journal mode. This also includes ext2 default mode obviously.
-
-I've noticed this while running xfstest generic/321 and even though the
-test should fail (we need to run fsck after a crash in no-journal mode)
-I could not find a newly created entries even when if it was fsynced
-before.
-
-Fix this by adjusting the ext4_add_entry() successful exit paths to set
-the inode EXT4_STATE_NEWENTRY so that fsync has the chance to fsync the
-parent directory as well.
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Cc: Frank Mayhar <fmayhar@google.com>
-Cc: stable@vger.kernel.org
----
- fs/ext4/namei.c | 20 +++++++++++---------
- 1 file changed, 11 insertions(+), 9 deletions(-)
-
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index efb64ae..23a0b9b 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1864,7 +1864,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 			  struct inode *inode)
- {
- 	struct inode *dir = dentry->d_parent->d_inode;
--	struct buffer_head *bh;
-+	struct buffer_head *bh = NULL;
- 	struct ext4_dir_entry_2 *de;
- 	struct ext4_dir_entry_tail *t;
- 	struct super_block *sb;
-@@ -1888,14 +1888,14 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 			return retval;
- 		if (retval == 1) {
- 			retval = 0;
--			return retval;
-+			goto out;
- 		}
- 	}
- 
- 	if (is_dx(dir)) {
- 		retval = ext4_dx_add_entry(handle, dentry, inode);
- 		if (!retval || (retval != ERR_BAD_DX_DIR))
--			return retval;
-+			goto out;
- 		ext4_clear_inode_flag(dir, EXT4_INODE_INDEX);
- 		dx_fallback++;
- 		ext4_mark_inode_dirty(handle, dir);
-@@ -1907,14 +1907,15 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 			return PTR_ERR(bh);
- 
- 		retval = add_dirent_to_buf(handle, dentry, inode, NULL, bh);
--		if (retval != -ENOSPC) {
--			brelse(bh);
--			return retval;
--		}
-+		if (retval != -ENOSPC)
-+			goto out;
- 
- 		if (blocks == 1 && !dx_fallback &&
--		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX))
--			return make_indexed_dir(handle, dentry, inode, bh);
-+		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX)) {
-+			retval = make_indexed_dir(handle, dentry, inode, bh);
-+			bh = NULL; /* make_indexed_dir releases bh */
-+			goto out;
-+		}
- 		brelse(bh);
- 	}
- 	bh = ext4_append(handle, dir, &block);
-@@ -1930,6 +1931,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 	}
- 
- 	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
-+out:
- 	brelse(bh);
- 	if (retval == 0)
- 		ext4_set_inode_state(inode, EXT4_STATE_NEWENTRY);
--- 
-2.3.0
-
+On 04/03/15 at 01:09am, Theodore Ts'o wrote:
+> On Fri, Mar 20, 2015 at 05:21:54PM -0400, Taesoo Kim wrote:
+> > Upon memory pressure, kstrdup() might fail and correctly
+> > handle memory error, although current implementation do not
+> > refer orig_data.
+> > 
+> > NOTE. fortunately the correct impl works, other than a
+> > corner case where kstrdup() fails and kzalloc() succeeds;
+> > it might record 'NULL' in the log.
+> > 
+> > Signed-off-by: Taesoo Kim <tsgatesv@gmail.com>
+> 
+> Did you test this patch?  If there are no mount options (such as when
+> mounting the root file system, data is NULL, so orig_data is NULL),
+> and the mount fails.  So a kernel won't boot with this patch applied.
+> 
+> 					- Ted
