@@ -1,47 +1,36 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: [PATCH 49/49] ext2: enable cgroup writeback support
-Date: Mon,  6 Apr 2015 15:58:38 -0400
-Message-ID: <1428350318-8215-50-git-send-email-tj@kernel.org>
-References: <1428350318-8215-1-git-send-email-tj@kernel.org>
-Cc: linux-kernel@vger.kernel.org, jack@suse.cz, hch@infradead.org,
-	hannes@cmpxchg.org, linux-fsdevel@vger.kernel.org,
-	vgoyal@redhat.com, lizefan@huawei.com, cgroups@vger.kernel.org,
-	linux-mm@kvack.org, mhocko@suse.cz, clm@fb.com,
-	fengguang.wu@intel.com, david@fromorbit.com, gthelen@google.com,
-	Tejun Heo <tj@kernel.org>, linux-ext4@vger.kernel.org
-To: axboe@kernel.dk
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1428350318-8215-1-git-send-email-tj@kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jonathan Corbet <corbet@lwn.net>
+Subject: Re: [PATCH 00/22] ext4 encryption patches
+Date: Mon, 6 Apr 2015 22:28:00 +0200
+Message-ID: <20150406222800.62bf4cc3@lwn.net>
+References: <1428012659-12709-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	jaegeuk@kernel.org, mhalcrow@google.com
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from tex.lwn.net ([70.33.254.29]:48013 "EHLO vena.lwn.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752983AbbDFU2I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 6 Apr 2015 16:28:08 -0400
+In-Reply-To: <1428012659-12709-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Writeback now supports cgroup writeback and the generic writeback,
-buffer, libfs, and mpage helpers that ext2 uses are all updated to
-work with cgroup writeback.
+On Thu,  2 Apr 2015 18:10:37 -0400
+Theodore Ts'o <tytso@mit.edu> wrote:
 
-This patch enables cgroup writeback for ext2 by adding
-FS_CGROUP_WRITEBACK to its ->fs_flags.
+> There is a design document here.  It should hopefully be mostly up to
+> date, but there are a few things that we might end up changing (for
+> example, just using CTS all the time for protecting directory file
+> names).
+> 
+> https://docs.google.com/document/d/1IsyQ9DU1gA6NUqS0jF4ni_NTvv-b0HfCkRk47Zkd7W0
 
-Signed-off-by: Tejun Heo <tj@kernel.org>
-Cc: Jens Axboe <axboe@kernel.dk>
-Cc: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
----
- fs/ext2/super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+I just tried to take a look at this, but it tells me that I don't have
+permission to do so.  Presumably that's not what was intended?
 
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index d0e746e..549219d 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -1543,7 +1543,7 @@ static struct file_system_type ext2_fs_type = {
- 	.name		= "ext2",
- 	.mount		= ext2_mount,
- 	.kill_sb	= kill_block_super,
--	.fs_flags	= FS_REQUIRES_DEV,
-+	.fs_flags	= FS_REQUIRES_DEV | FS_CGROUP_WRITEBACK,
- };
- MODULE_ALIAS_FS("ext2");
- 
--- 
-2.1.0
+Thanks,
+
+jon
