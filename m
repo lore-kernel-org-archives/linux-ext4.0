@@ -1,348 +1,157 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 09/35] e2fsck: abort on read error beyond end of FS
-Date: Mon, 6 Apr 2015 11:57:37 -0700
-Message-ID: <20150406185737.GM5519@birch.djwong.org>
-References: <20150402023359.25243.79782.stgit@birch.djwong.org>
- <20150402023500.25243.65825.stgit@birch.djwong.org>
- <745BBE86-C119-4612-B91A-5C8877198C30@dilger.ca>
- <20150402060021.GP11031@birch.djwong.org>
- <10D33B1F-52B7-4242-9A67-FB9E1CE75296@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:42029 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752785AbbDFS5l (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Apr 2015 14:57:41 -0400
-Content-Disposition: inline
-In-Reply-To: <10D33B1F-52B7-4242-9A67-FB9E1CE75296@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jun He <jhe@cs.wisc.edu>
+Subject: [PATCH] ext4 mballoc: fix tail allocation
+Date: Mon,  6 Apr 2015 13:31:41 -0600
+Message-ID: <1428348701-47574-1-git-send-email-jhe@cs.wisc.edu>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Jun He <jhe@cs.wisc.edu>
+To: tytso@mit.edu
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Apr 03, 2015 at 03:11:39PM -0600, Andreas Dilger wrote:
-> On Apr 2, 2015, at 12:00 AM, Darrick J. Wong <darrick.wong@oracle.com> wrote:
-> > On Wed, Apr 01, 2015 at 11:10:48PM -0500, Andreas Dilger wrote:
-> >> It isn't clear what the benefit of this patch is?  There are times (e.g.
-> >> if a partition table is broken or if a single-disk filesystem is changed
-> >> to an MD RAID device) that it is useful to run e2fsck on such a
-> >> filesystem.
-> >> 
-> >> With this patch, it's essentially turning a small error into a fatal one,
-> >> but what is the benefit?
-> > 
-> > This came from a debugging patch I was using to see if I could trick fsck
-> > into using garbage values when it tries to "fix" things.
-> > 
-> > I'm not really sure what the usage scenario is for running fsck on a FS
-> > that's too big for the device containing it -- wouldn't you want fsck to
-> > stop immediately?
-> 
-> As mentioned above, this can happen in some cases, and e2fsck already has
-> a check for it and it will prompt to abort:
-> 
->         { PR_0_FS_SIZE_WRONG,
->           N_("The @f size (according to the @S) is %b @bs\n"
->           "The physical size of the @v is %c @bs\n"
->           "Either the @S or the partition table is likely to be corrupt!\n"),
->           PROMPT_ABORT, 0 },
-> 
-> However, it doesn't _force_ e2fsck to abort, because someone might want to
-> be able to recover from such a situation (e.g. lose a few files that use
-> blocks beyond the end of the device) rather than have an unusable filesystem.
+This patch addresses the tail allocation problem found at paper "Reducing File System Tail Latencies with Chopper". https://www.usenix.org/system/files/conference/fast15/fast15-paper-he.pdf . The paper refers the tail allocation problem as the Special End problem.
 
-Yeah, you're probably right, this is at best a debugging patch.  Let's drop it.
+Here is a description of the problem:
 
---D
+A tail extent is the last extent of a file. The last block of the tail extent corresponds to the last logical block of the file. When a file is closed and the tail extent is being allocated, ext4 marks the allocation request with the hint EXT4_MB_HINT_NOPREALLOC. The intention is to avoid preallocation when we know the file is final (it won't change until the next open.). But the implementation leads to some problems. The following program attacks the problem.
 
-> 
-> Cheers, Andreas
-> 
-> > --D
-> > 
-> >> 
-> >> Cheers, Andreas
-> >> 
-> >>> On Apr 1, 2015, at 21:35, Darrick J. Wong <darrick.wong@oracle.com> wrote:
-> >>> 
-> >>> Abort if we fail to read a block that's past the end of the FS.
-> >>> Includes a flag to disable the abort behavior for selected parts of
-> >>> the fsck run, so that we don't fail on a busted object prior to fixing
-> >>> it.
-> >>> 
-> >>> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> >>> ---
-> >>> e2fsck/e2fsck.h   |    1 +
-> >>> e2fsck/ehandler.c |    7 +++++--
-> >>> e2fsck/extents.c  |    2 ++
-> >>> e2fsck/journal.c  |    3 +++
-> >>> e2fsck/message.c  |   12 +++++++++++-
-> >>> e2fsck/pass1.c    |   28 ++++++++++++++++------------
-> >>> e2fsck/pass1b.c   |    4 ++++
-> >>> 7 files changed, 42 insertions(+), 15 deletions(-)
-> >>> 
-> >>> 
-> >>> diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-> >>> index 5fda863..453b552 100644
-> >>> --- a/e2fsck/e2fsck.h
-> >>> +++ b/e2fsck/e2fsck.h
-> >>> @@ -193,6 +193,7 @@ struct resource_track {
-> >>> #define E2F_FLAG_TIME_INSANE    0x2000 /* Time is insane */
-> >>> #define E2F_FLAG_PROBLEMS_FIXED    0x4000 /* At least one problem was fixed */
-> >>> #define E2F_FLAG_ALLOC_OK    0x8000 /* Can we allocate blocks? */
-> >>> +#define E2F_FLAG_IGNORE_READ_ERROR 0x10000 /* Don't rewrite read error blocks */
-> >>> 
-> >>> #define E2F_RESET_FLAGS (E2F_FLAG_TIME_INSANE | E2F_FLAG_PROBLEMS_FIXED)
-> >>> 
-> >>> diff --git a/e2fsck/ehandler.c b/e2fsck/ehandler.c
-> >>> index 71ca301..847f8e5 100644
-> >>> --- a/e2fsck/ehandler.c
-> >>> +++ b/e2fsck/ehandler.c
-> >>> @@ -60,8 +60,11 @@ static errcode_t e2fsck_handle_read_error(io_channel channel,
-> >>>   preenhalt(ctx);
-> >>> 
-> >>>   /* Don't rewrite a block past the end of the FS. */
-> >>> -    if (block >= ext2fs_blocks_count(fs->super))
-> >>> -        return 0;
-> >>> +    if (block >= ext2fs_blocks_count(fs->super)) {
-> >>> +        if (ctx->flags & E2F_FLAG_IGNORE_READ_ERROR)
-> >>> +            return 0;
-> >>> +        abort();
-> >>> +    }
-> >>> 
-> >>>   if (ask(ctx, _("Ignore error"), 1)) {
-> >>>       if (ask(ctx, _("Force rewrite"), 1))
-> >>> diff --git a/e2fsck/extents.c b/e2fsck/extents.c
-> >>> index 8465299..cff265a 100644
-> >>> --- a/e2fsck/extents.c
-> >>> +++ b/e2fsck/extents.c
-> >>> @@ -29,6 +29,7 @@ errcode_t e2fsck_rebuild_extents_later(e2fsck_t ctx, ext2_ino_t ino)
-> >>> {
-> >>>   if (!EXT2_HAS_INCOMPAT_FEATURE(ctx->fs->super,
-> >>>                      EXT3_FEATURE_INCOMPAT_EXTENTS) ||
-> >>> +        (ctx->flags & (E2F_FLAG_RESTART_LATER | E2F_FLAG_RESTART)) ||
-> >>>       (ctx->options & E2F_OPT_NO) ||
-> >>>       (ino != EXT2_ROOT_INO && ino < ctx->fs->super->s_first_ino))
-> >>>       return 0;
-> >>> @@ -339,6 +340,7 @@ static void rebuild_extents(e2fsck_t ctx, const char *pass_name, int pr_header)
-> >>> 
-> >>>   if (!EXT2_HAS_INCOMPAT_FEATURE(ctx->fs->super,
-> >>>                      EXT3_FEATURE_INCOMPAT_EXTENTS) ||
-> >>> +        (ctx->flags & (E2F_FLAG_RESTART_LATER | E2F_FLAG_RESTART)) ||
-> >>>       !ext2fs_test_valid(ctx->fs) ||
-> >>>       ctx->invalid_bitmaps) {
-> >>>       if (ctx->inodes_to_rebuild)
-> >>> diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-> >>> index 9f32095..c195797 100644
-> >>> --- a/e2fsck/journal.c
-> >>> +++ b/e2fsck/journal.c
-> >>> @@ -315,6 +315,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
-> >>>   journal->j_inode = NULL;
-> >>>   journal->j_blocksize = ctx->fs->blocksize;
-> >>> 
-> >>> +    ctx->flags |= E2F_FLAG_IGNORE_READ_ERROR;
-> >>>   if (uuid_is_null(sb->s_journal_uuid)) {
-> >>>       if (!sb->s_journal_inum) {
-> >>>           retval = EXT2_ET_BAD_INODE_NUM;
-> >>> @@ -518,9 +519,11 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
-> >>> 
-> >>>   *ret_journal = journal;
-> >>>   e2fsck_use_inode_shortcuts(ctx, 0);
-> >>> +    ctx->flags &= ~E2F_FLAG_IGNORE_READ_ERROR;
-> >>>   return 0;
-> >>> 
-> >>> errout:
-> >>> +    ctx->flags &= ~E2F_FLAG_IGNORE_READ_ERROR;
-> >>>   e2fsck_use_inode_shortcuts(ctx, 0);
-> >>>   if (dev_fs)
-> >>>       ext2fs_free_mem(&dev_fs);
-> >>> diff --git a/e2fsck/message.c b/e2fsck/message.c
-> >>> index 9c1433f..510f291 100644
-> >>> --- a/e2fsck/message.c
-> >>> +++ b/e2fsck/message.c
-> >>> @@ -199,14 +199,24 @@ static void print_pathname(FILE *f, ext2_filsys fs, ext2_ino_t dir,
-> >>> {
-> >>>   errcode_t    retval = 0;
-> >>>   char        *path;
-> >>> +    e2fsck_t    ctx = fs ? (e2fsck_t) fs->priv_data : NULL;
-> >>> +    int        flags;
-> >>> 
-> >>>   if (!dir && (ino < num_special_inodes)) {
-> >>>       fputs(_(special_inode_name[ino]), f);
-> >>>       return;
-> >>>   }
-> >>> 
-> >>> -    if (fs)
-> >>> +    if (fs) {
-> >>> +        if (ctx) {
-> >>> +            flags = ctx->flags;
-> >>> +            ctx->flags |= E2F_FLAG_IGNORE_READ_ERROR;
-> >>> +        }
-> >>>       retval = ext2fs_get_pathname(fs, dir, ino, &path);
-> >>> +        if (ctx)
-> >>> +            ctx->flags &= ~E2F_FLAG_IGNORE_READ_ERROR |
-> >>> +                    (flags & E2F_FLAG_IGNORE_READ_ERROR);
-> >>> +    }
-> >>>   if (!fs || retval)
-> >>>       fputs("???", f);
-> >>>   else {
-> >>> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-> >>> index 308a95a..760fbde 100644
-> >>> --- a/e2fsck/pass1.c
-> >>> +++ b/e2fsck/pass1.c
-> >>> @@ -510,6 +510,7 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
-> >>>   int            extent_fs;
-> >>>   int            inlinedata_fs;
-> >>> 
-> >>> +    ctx->flags |= E2F_FLAG_IGNORE_READ_ERROR;
-> >>>   /*
-> >>>    * If the mode looks OK, we believe it.  If the first block in
-> >>>    * the i_block array is 0, this cannot be a directory. If the
-> >>> @@ -519,7 +520,7 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
-> >>>    */
-> >>>   if (LINUX_S_ISDIR(inode->i_mode) || LINUX_S_ISREG(inode->i_mode) ||
-> >>>       LINUX_S_ISLNK(inode->i_mode) || inode->i_block[0] == 0)
-> >>> -        return;
-> >>> +        goto out;
-> >>> 
-> >>>   /* 
-> >>>    * Check the block numbers in the i_block array for validity:
-> >>> @@ -552,13 +553,13 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
-> >>>       struct ext2_dir_entry de;
-> >>> 
-> >>>       if (ext2fs_inline_data_size(ctx->fs, pctx->ino, &size))
-> >>> -            return;
-> >>> +            goto out;
-> >>>       /*
-> >>>        * If the size isn't a multiple of 4, it's probably not a
-> >>>        * directory??
-> >>>        */
-> >>>       if (size & 3)
-> >>> -            return;
-> >>> +            goto out;
-> >>>       /*
-> >>>        * If the first 10 bytes don't look like a directory entry,
-> >>>        * it's probably not a directory.
-> >>> @@ -578,14 +579,14 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
-> >>>            de.inode != 0) ||
-> >>>           rec_len > EXT4_MIN_INLINE_DATA_SIZE -
-> >>>                 EXT4_INLINE_DATA_DOTDOT_SIZE)
-> >>> -            return;
-> >>> +            goto out;
-> >>>       /* device files never have a "system.data" entry */
-> >>>       goto isdir;
-> >>>   } else if (extent_fs && (inode->i_flags & EXT4_EXTENTS_FL)) {
-> >>>       /* extent mapped */
-> >>>       if  (ext2fs_bmap2(ctx->fs, pctx->ino, inode, 0, 0, 0, 0,
-> >>>                &blk))
-> >>> -            return;
-> >>> +            goto out;
-> >>>       /* device files are never extent mapped */
-> >>>       not_device++;
-> >>>   } else {
-> >>> @@ -600,7 +601,7 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
-> >>>               blk >= ext2fs_blocks_count(ctx->fs->super) ||
-> >>>               ext2fs_fast_test_block_bitmap2(ctx->block_found_map,
-> >>>                              blk))
-> >>> -                return;    /* Invalid block, can't be dir */
-> >>> +                goto out;    /* Invalid block, can't be dir */
-> >>>       }
-> >>>       blk = inode->i_block[0];
-> >>>   }
-> >>> @@ -612,45 +613,48 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
-> >>>    */
-> >>>   if ((LINUX_S_ISCHR(inode->i_mode) || LINUX_S_ISBLK(inode->i_mode)) &&
-> >>>       (inode->i_links_count == 1) && !not_device)
-> >>> -        return;
-> >>> +        goto out;
-> >>> 
-> >>>   /* read the first block */
-> >>>   ehandler_operation(_("reading directory block"));
-> >>>   retval = ext2fs_read_dir_block4(ctx->fs, blk, buf, 0, pctx->ino);
-> >>>   ehandler_operation(0);
-> >>>   if (retval)
-> >>> -        return;
-> >>> +        goto out;
-> >>> 
-> >>>   dirent = (struct ext2_dir_entry *) buf;
-> >>>   retval = ext2fs_get_rec_len(ctx->fs, dirent, &rec_len);
-> >>>   if (retval)
-> >>> -        return;
-> >>> +        goto out;
-> >>>   if ((ext2fs_dirent_name_len(dirent) != 1) ||
-> >>>       (dirent->name[0] != '.') ||
-> >>>       (dirent->inode != pctx->ino) ||
-> >>>       (rec_len < 12) ||
-> >>>       (rec_len % 4) ||
-> >>>       (rec_len >= ctx->fs->blocksize - 12))
-> >>> -        return;
-> >>> +        goto out;
-> >>> 
-> >>>   dirent = (struct ext2_dir_entry *) (buf + rec_len);
-> >>>   retval = ext2fs_get_rec_len(ctx->fs, dirent, &rec_len);
-> >>>   if (retval)
-> >>> -        return;
-> >>> +        goto out;
-> >>>   if ((ext2fs_dirent_name_len(dirent) != 2) ||
-> >>>       (dirent->name[0] != '.') ||
-> >>>       (dirent->name[1] != '.') ||
-> >>>       (rec_len < 12) ||
-> >>>       (rec_len % 4))
-> >>> -        return;
-> >>> +        goto out;
-> >>> 
-> >>> isdir:
-> >>> +    ctx->flags &= ~E2F_FLAG_IGNORE_READ_ERROR;
-> >>>   if (fix_problem(ctx, PR_1_TREAT_AS_DIRECTORY, pctx)) {
-> >>>       inode->i_mode = (inode->i_mode & 07777) | LINUX_S_IFDIR;
-> >>>       e2fsck_write_inode_full(ctx, pctx->ino, inode,
-> >>>                   EXT2_INODE_SIZE(ctx->fs->super),
-> >>>                   "check_is_really_dir");
-> >>>   }
-> >>> +out:
-> >>> +    ctx->flags &= ~E2F_FLAG_IGNORE_READ_ERROR;
-> >>> }
-> >>> 
-> >>> void e2fsck_setup_tdb_icount(e2fsck_t ctx, int flags,
-> >>> diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
-> >>> index cd967f4..10136a6 100644
-> >>> --- a/e2fsck/pass1b.c
-> >>> +++ b/e2fsck/pass1b.c
-> >>> @@ -234,7 +234,9 @@ void e2fsck_pass1_dupblocks(e2fsck_t ctx, char *block_buf)
-> >>>   dict_set_allocator(&clstr_dict, NULL, cluster_dnode_free, NULL);
-> >>> 
-> >>>   init_resource_track(&rtrack, ctx->fs->io);
-> >>> +    ctx->flags |= E2F_FLAG_IGNORE_READ_ERROR;
-> >>>   pass1b(ctx, block_buf);
-> >>> +    ctx->flags &= ~E2F_FLAG_IGNORE_READ_ERROR;
-> >>>   print_resource_track(ctx, "Pass 1b", &rtrack, ctx->fs->io);
-> >>> 
-> >>>   init_resource_track(&rtrack, ctx->fs->io);
-> >>> @@ -242,7 +244,9 @@ void e2fsck_pass1_dupblocks(e2fsck_t ctx, char *block_buf)
-> >>>   print_resource_track(ctx, "Pass 1c", &rtrack, ctx->fs->io);
-> >>> 
-> >>>   init_resource_track(&rtrack, ctx->fs->io);
-> >>> +    ctx->flags |= E2F_FLAG_IGNORE_READ_ERROR;
-> >>>   pass1d(ctx, block_buf);
-> >>> +    ctx->flags &= ~E2F_FLAG_IGNORE_READ_ERROR;
-> >>>   print_resource_track(ctx, "Pass 1d", &rtrack, ctx->fs->io);
-> >>> 
-> >>>   /*
-> >>> 
-> >>> --
-> >>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> >>> the body of a message to majordomo@vger.kernel.org
-> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
+/****************************************/
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main(int argc, char **argv)
+{
+    int fd;
+    int size, off;
+    char buf[4096];
+
+    size = 4096;
+
+    fd = open(argv[1], O_WRONLY|O_CREAT);
+    if ( fd == -1 ) {
+        perror("opening file");
+        exit(1);
+    }
+    
+    off = 0;
+    pwrite(fd, buf, size, off);
+    printf("wrote at %d, size %d bytes\n", off, size);
+    fsync(fd);
+
+    off = off + size;
+    pwrite(fd, buf, size, off);
+    printf("wrote at %d, size %d bytes\n", off, size);
+
+    close(fd);
+    sync();
+
+}
+/****************************************/
+
+Mount an ext4 on /mnt/ext4onloop and run the program by 
+$ ./a.out /mnt/ext4onloop/testfile
+
+Check the extents by
+$ filefrag -sv /mnt/ext4onloop/testfile
+Filesystem type is: ef53
+File size of /mnt/ext4onloop/testfile is 8192 (2 blocks, blocksize 4096)
+ ext logical physical expected length flags
+   0       0    33280               1 
+   1       1    33025    33281      1 eof
+/mnt/ext4onloop/testfile: 2 extents found
+
+The first 4KB of the file is forced to disk by fsync() and allocated from a locality group preallocation. The second 4KB of the file is forced to disk by sync() (If you don't call sync(), the effect would be the same as the write back thread will eventually kick it and force the data to disk.). Since the second 4KB is allocated when the file is closed and the extent is the tail extent, it is allocated with the hint EXT4_MB_HINT_NOPREALLOC. This hint prevents the second 4KB from being allocated from locality group preallocation. So the second 4KB is not allocated next to the first 4KB.  
+
+The program above demonstrates the tail allocation problem. The Chopper paper demonstrates that the problem could drag extents of the same file very far (GBs) away from each other. 
+
+The EXT4_MB_HINT_NOPREALLOC hint currently means: 
+1. if there is an i-node preallocation for this file, use it; 
+2. do not use LG (locality group) preallocations, even they are available (I think this is not intended); 
+3. do not create any new preallocations.
+
+EXT4_MB_HINT_NOPREALLOC is not the right hint for tail allocation. What we really want is:
+1. if file is large and there is an i-node preallocation for this file, use it; 
+2. if file is large and there is no i-node preallocation for this file, do not create new inode preallocation. Simply allocate as needed.
+3. if file is small and there is LG preallocations, use it. 
+4. if file is small and there is no LG preallocations, create a LG preallocation and allocate the tail extent from it. LG preallocations are always useful because small files almost always come. In the case that a write back thread writes a lot of new small files, this design will group the small files together and reduce seeks. Also, allocating many small files from LG preallocation space should be faster than allocating them from buddy cache separately. 
+
+To get the correct behaviors:
+
+EXT4_MB_HINT_NOPREALLOC is not the right hint for special end. If we remove current check for tail in ext4_mb_group_or_file() , 1, 3, 4 will be satisfied. Now, we only need to handle the tail of large file (2) by checking tail when normalizing. If it is a tail of large file, we simply do not normalize it. 
+
+The patch with Linux 4.0rc6 has been tested with kvm-xfstests. generic/256 failed. But I wouldn't worry about it because the vanilla kernel also failed...
+
+
+Signed-off-by: Jun He <jhe@cs.wisc.edu>
+
+---
+ fs/ext4/mballoc.c | 26 ++++++++++++++------------
+ 1 file changed, 14 insertions(+), 12 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 8d1e602..49c8547 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3004,7 +3004,7 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+ 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
+ 	int bsbits, max;
+ 	ext4_lblk_t end;
+-	loff_t size, start_off;
++	loff_t size, isize, start_off;
+ 	loff_t orig_size __maybe_unused;
+ 	ext4_lblk_t start;
+ 	struct ext4_inode_info *ei = EXT4_I(ac->ac_inode);
+@@ -3019,8 +3019,7 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+ 	if (unlikely(ac->ac_flags & EXT4_MB_HINT_GOAL_ONLY))
+ 		return;
+ 
+-	/* caller may indicate that preallocation isn't
+-	 * required (it's a tail, for example) */
++	/* caller may indicate that preallocation isn't required */
+ 	if (ac->ac_flags & EXT4_MB_HINT_NOPREALLOC)
+ 		return;
+ 
+@@ -3029,11 +3028,21 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+ 		return ;
+ 	}
+ 
+-	bsbits = ac->ac_sb->s_blocksize_bits;
+-
+ 	/* first, let's learn actual file size
+ 	 * given current request is allocated */
+ 	size = ac->ac_o_ex.fe_logical + EXT4_C2B(sbi, ac->ac_o_ex.fe_len);
++
++	bsbits = ac->ac_sb->s_blocksize_bits;
++	isize = (i_size_read(ac->ac_inode) + ac->ac_sb->s_blocksize - 1)
++		>> bsbits;
++
++	/* don't normalize tail of large files */
++	if ((size == isize) &&
++	    !ext4_fs_is_busy(sbi) &&
++	    (atomic_read(&ac->ac_inode->i_writecount) == 0)) {
++		return;
++	}
++
+ 	size = size << bsbits;
+ 	if (size < i_size_read(ac->ac_inode))
+ 		size = i_size_read(ac->ac_inode);
+@@ -4107,13 +4116,6 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
+ 	isize = (i_size_read(ac->ac_inode) + ac->ac_sb->s_blocksize - 1)
+ 		>> bsbits;
+ 
+-	if ((size == isize) &&
+-	    !ext4_fs_is_busy(sbi) &&
+-	    (atomic_read(&ac->ac_inode->i_writecount) == 0)) {
+-		ac->ac_flags |= EXT4_MB_HINT_NOPREALLOC;
+-		return;
+-	}
+-
+ 	if (sbi->s_mb_group_prealloc <= 0) {
+ 		ac->ac_flags |= EXT4_MB_STREAM_ALLOC;
+ 		return;
+-- 
+1.9.1
