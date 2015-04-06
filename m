@@ -1,157 +1,47 @@
-From: Jun He <jhe@cs.wisc.edu>
-Subject: [PATCH] ext4 mballoc: fix tail allocation
-Date: Mon,  6 Apr 2015 13:31:41 -0600
-Message-ID: <1428348701-47574-1-git-send-email-jhe@cs.wisc.edu>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Jun He <jhe@cs.wisc.edu>
-To: tytso@mit.edu
+From: Tejun Heo <tj@kernel.org>
+Subject: [PATCH 49/49] ext2: enable cgroup writeback support
+Date: Mon,  6 Apr 2015 15:58:38 -0400
+Message-ID: <1428350318-8215-50-git-send-email-tj@kernel.org>
+References: <1428350318-8215-1-git-send-email-tj@kernel.org>
+Cc: linux-kernel@vger.kernel.org, jack@suse.cz, hch@infradead.org,
+	hannes@cmpxchg.org, linux-fsdevel@vger.kernel.org,
+	vgoyal@redhat.com, lizefan@huawei.com, cgroups@vger.kernel.org,
+	linux-mm@kvack.org, mhocko@suse.cz, clm@fb.com,
+	fengguang.wu@intel.com, david@fromorbit.com, gthelen@google.com,
+	Tejun Heo <tj@kernel.org>, linux-ext4@vger.kernel.org
+To: axboe@kernel.dk
 Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1428350318-8215-1-git-send-email-tj@kernel.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch addresses the tail allocation problem found at paper "Reducing File System Tail Latencies with Chopper". https://www.usenix.org/system/files/conference/fast15/fast15-paper-he.pdf . The paper refers the tail allocation problem as the Special End problem.
+Writeback now supports cgroup writeback and the generic writeback,
+buffer, libfs, and mpage helpers that ext2 uses are all updated to
+work with cgroup writeback.
 
-Here is a description of the problem:
+This patch enables cgroup writeback for ext2 by adding
+FS_CGROUP_WRITEBACK to its ->fs_flags.
 
-A tail extent is the last extent of a file. The last block of the tail extent corresponds to the last logical block of the file. When a file is closed and the tail extent is being allocated, ext4 marks the allocation request with the hint EXT4_MB_HINT_NOPREALLOC. The intention is to avoid preallocation when we know the file is final (it won't change until the next open.). But the implementation leads to some problems. The following program attacks the problem.
-
-/****************************************/
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-
-int main(int argc, char **argv)
-{
-    int fd;
-    int size, off;
-    char buf[4096];
-
-    size = 4096;
-
-    fd = open(argv[1], O_WRONLY|O_CREAT);
-    if ( fd == -1 ) {
-        perror("opening file");
-        exit(1);
-    }
-    
-    off = 0;
-    pwrite(fd, buf, size, off);
-    printf("wrote at %d, size %d bytes\n", off, size);
-    fsync(fd);
-
-    off = off + size;
-    pwrite(fd, buf, size, off);
-    printf("wrote at %d, size %d bytes\n", off, size);
-
-    close(fd);
-    sync();
-
-}
-/****************************************/
-
-Mount an ext4 on /mnt/ext4onloop and run the program by 
-$ ./a.out /mnt/ext4onloop/testfile
-
-Check the extents by
-$ filefrag -sv /mnt/ext4onloop/testfile
-Filesystem type is: ef53
-File size of /mnt/ext4onloop/testfile is 8192 (2 blocks, blocksize 4096)
- ext logical physical expected length flags
-   0       0    33280               1 
-   1       1    33025    33281      1 eof
-/mnt/ext4onloop/testfile: 2 extents found
-
-The first 4KB of the file is forced to disk by fsync() and allocated from a locality group preallocation. The second 4KB of the file is forced to disk by sync() (If you don't call sync(), the effect would be the same as the write back thread will eventually kick it and force the data to disk.). Since the second 4KB is allocated when the file is closed and the extent is the tail extent, it is allocated with the hint EXT4_MB_HINT_NOPREALLOC. This hint prevents the second 4KB from being allocated from locality group preallocation. So the second 4KB is not allocated next to the first 4KB.  
-
-The program above demonstrates the tail allocation problem. The Chopper paper demonstrates that the problem could drag extents of the same file very far (GBs) away from each other. 
-
-The EXT4_MB_HINT_NOPREALLOC hint currently means: 
-1. if there is an i-node preallocation for this file, use it; 
-2. do not use LG (locality group) preallocations, even they are available (I think this is not intended); 
-3. do not create any new preallocations.
-
-EXT4_MB_HINT_NOPREALLOC is not the right hint for tail allocation. What we really want is:
-1. if file is large and there is an i-node preallocation for this file, use it; 
-2. if file is large and there is no i-node preallocation for this file, do not create new inode preallocation. Simply allocate as needed.
-3. if file is small and there is LG preallocations, use it. 
-4. if file is small and there is no LG preallocations, create a LG preallocation and allocate the tail extent from it. LG preallocations are always useful because small files almost always come. In the case that a write back thread writes a lot of new small files, this design will group the small files together and reduce seeks. Also, allocating many small files from LG preallocation space should be faster than allocating them from buddy cache separately. 
-
-To get the correct behaviors:
-
-EXT4_MB_HINT_NOPREALLOC is not the right hint for special end. If we remove current check for tail in ext4_mb_group_or_file() , 1, 3, 4 will be satisfied. Now, we only need to handle the tail of large file (2) by checking tail when normalizing. If it is a tail of large file, we simply do not normalize it. 
-
-The patch with Linux 4.0rc6 has been tested with kvm-xfstests. generic/256 failed. But I wouldn't worry about it because the vanilla kernel also failed...
-
-
-Signed-off-by: Jun He <jhe@cs.wisc.edu>
-
+Signed-off-by: Tejun Heo <tj@kernel.org>
+Cc: Jens Axboe <axboe@kernel.dk>
+Cc: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org
 ---
- fs/ext4/mballoc.c | 26 ++++++++++++++------------
- 1 file changed, 14 insertions(+), 12 deletions(-)
+ fs/ext2/super.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 8d1e602..49c8547 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3004,7 +3004,7 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
- 	int bsbits, max;
- 	ext4_lblk_t end;
--	loff_t size, start_off;
-+	loff_t size, isize, start_off;
- 	loff_t orig_size __maybe_unused;
- 	ext4_lblk_t start;
- 	struct ext4_inode_info *ei = EXT4_I(ac->ac_inode);
-@@ -3019,8 +3019,7 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 	if (unlikely(ac->ac_flags & EXT4_MB_HINT_GOAL_ONLY))
- 		return;
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index d0e746e..549219d 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -1543,7 +1543,7 @@ static struct file_system_type ext2_fs_type = {
+ 	.name		= "ext2",
+ 	.mount		= ext2_mount,
+ 	.kill_sb	= kill_block_super,
+-	.fs_flags	= FS_REQUIRES_DEV,
++	.fs_flags	= FS_REQUIRES_DEV | FS_CGROUP_WRITEBACK,
+ };
+ MODULE_ALIAS_FS("ext2");
  
--	/* caller may indicate that preallocation isn't
--	 * required (it's a tail, for example) */
-+	/* caller may indicate that preallocation isn't required */
- 	if (ac->ac_flags & EXT4_MB_HINT_NOPREALLOC)
- 		return;
- 
-@@ -3029,11 +3028,21 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 		return ;
- 	}
- 
--	bsbits = ac->ac_sb->s_blocksize_bits;
--
- 	/* first, let's learn actual file size
- 	 * given current request is allocated */
- 	size = ac->ac_o_ex.fe_logical + EXT4_C2B(sbi, ac->ac_o_ex.fe_len);
-+
-+	bsbits = ac->ac_sb->s_blocksize_bits;
-+	isize = (i_size_read(ac->ac_inode) + ac->ac_sb->s_blocksize - 1)
-+		>> bsbits;
-+
-+	/* don't normalize tail of large files */
-+	if ((size == isize) &&
-+	    !ext4_fs_is_busy(sbi) &&
-+	    (atomic_read(&ac->ac_inode->i_writecount) == 0)) {
-+		return;
-+	}
-+
- 	size = size << bsbits;
- 	if (size < i_size_read(ac->ac_inode))
- 		size = i_size_read(ac->ac_inode);
-@@ -4107,13 +4116,6 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
- 	isize = (i_size_read(ac->ac_inode) + ac->ac_sb->s_blocksize - 1)
- 		>> bsbits;
- 
--	if ((size == isize) &&
--	    !ext4_fs_is_busy(sbi) &&
--	    (atomic_read(&ac->ac_inode->i_writecount) == 0)) {
--		ac->ac_flags |= EXT4_MB_HINT_NOPREALLOC;
--		return;
--	}
--
- 	if (sbi->s_mb_group_prealloc <= 0) {
- 		ac->ac_flags |= EXT4_MB_STREAM_ALLOC;
- 		return;
 -- 
-1.9.1
+2.1.0
