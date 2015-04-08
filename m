@@ -1,47 +1,43 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Subject: Re: [patch] ext4 crypto: testing the wrong variable
-Date: Wed, 8 Apr 2015 15:22:51 +0300
-Message-ID: <20150408122251.GJ10964@mwanda>
-References: <20150408085338.GA8837@mwanda>
- <alpine.DEB.2.10.1504081150401.9503@hadrien>
- <5525162C.3020808@bfs.de>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH 2/2][v2] blk-plug: don't flush nested plug lists
+Date: Wed, 8 Apr 2015 18:13:55 +0200
+Message-ID: <20150408161355.GA16052@lst.de>
+References: <1428347694-17704-1-git-send-email-jmoyer@redhat.com> <1428347694-17704-2-git-send-email-jmoyer@redhat.com> <x49wq1nrcoe.fsf_-_@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Julia Lawall <julia.lawall@lip6.fr>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Michael Halcrow <mhalcrow@google.com>,
+Cc: Jens Axboe <axboe@kernel.dk>, Ming Lei <tom.leiming@gmail.com>,
+	Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
+	Roger Pau Monn?? <roger.pau@citrix.com>,
+	Alasdair Kergon <agk@redhat.com>, Mike Snitzer <snitzer@redhat.com>,
+	Neil Brown <neilb@suse.de>,
+	"Nicholas A. Bellinger" <nab@linux-iscsi.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>, Chris Mason <clm@fb.com>,
+	Josef Bacik <jbacik@fb.com>, David Sterba <dsterba@suse.cz>,
+	Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
-To: walter harms <wharms@bfs.de>
-Return-path: <kernel-janitors-owner@vger.kernel.org>
+	Jaegeuk Kim <jaegeuk@kernel.org>,
+	Changman Lee <cm224.lee@samsung.com>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Rik van Riel <riel@redhat.com>,
+	Johannes Weiner <hannes@cmpxchg.org>, Mel Gorman <mgorman@suse.de>,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	Anna Schumaker <ann
+To: Jeff Moyer <jmoyer@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <5525162C.3020808@bfs.de>
-Sender: kernel-janitors-owner@vger.kernel.org
+In-Reply-To: <x49wq1nrcoe.fsf_-_@segfault.boston.devel.redhat.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 08, 2015 at 01:51:08PM +0200, walter harms wrote:
-> 
-> 
-> Am 08.04.2015 11:51, schrieb Julia Lawall:
-> >>  void ext4_fname_crypto_free_buffer(void **buf)
-> >>  {
-> >> -	if (*buf == NULL || IS_ERR(buf))
-> >> +	if (*buf == NULL || IS_ERR(*buf))
-> > 
-> > Why not use IS_ERR_OR_NULL?
-> > 
-> > julia
-> 
-> 
-> why test *buf == NULL ? xfree() can handle this.
-> 
-> the question is do programm depend on *buf=NULL.
-> In case of IS_ERR(*buf) *buf will be left unchanged
-> and later prgramms may things there is a buffer
-> available ?
+This looks good, but without the blk_finish_plug argument we're bound
+to grow programming mistakes where people forget it.  Any chance we
+could have annotations similar to say rcu_read_lock/rcu_read_unlock
+or the spinlocks so that sparse warns about it?
 
-Good point.  That IS_ERR() check is going to cause all kinds of future
-bugs.
-
-regards,
-dan carpenter
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
