@@ -1,43 +1,200 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH 2/2][v2] blk-plug: don't flush nested plug lists
-Date: Wed, 8 Apr 2015 18:13:55 +0200
-Message-ID: <20150408161355.GA16052@lst.de>
-References: <1428347694-17704-1-git-send-email-jmoyer@redhat.com> <1428347694-17704-2-git-send-email-jmoyer@redhat.com> <x49wq1nrcoe.fsf_-_@segfault.boston.devel.redhat.com>
+From: Jun He <jhe@cs.wisc.edu>
+Subject: Re: [PATCH] ext4 mballoc: fix tail allocation
+Date: Wed, 8 Apr 2015 11:44:58 -0500
+Message-ID: <CABW1wHRLE8MaMZkeowi-5Q1Lq0KWsu3j=kSnYFtBbqbMLNWEig@mail.gmail.com>
+References: <1428348701-47574-1-git-send-email-jhe@cs.wisc.edu>
+ <20150408024439.GA21171@thunk.org> <CABW1wHRCvA0X41+JKY6PAUupnDQABgWuK=7+wZHOyMr0JJubVg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jens Axboe <axboe@kernel.dk>, Ming Lei <tom.leiming@gmail.com>,
-	Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
-	Roger Pau Monn?? <roger.pau@citrix.com>,
-	Alasdair Kergon <agk@redhat.com>, Mike Snitzer <snitzer@redhat.com>,
-	Neil Brown <neilb@suse.de>,
-	"Nicholas A. Bellinger" <nab@linux-iscsi.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>, Chris Mason <clm@fb.com>,
-	Josef Bacik <jbacik@fb.com>, David Sterba <dsterba@suse.cz>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jaegeuk Kim <jaegeuk@kernel.org>,
-	Changman Lee <cm224.lee@samsung.com>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Rik van Riel <riel@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>, Mel Gorman <mgorman@suse.de>,
-	Trond Myklebust <trond.myklebust@primarydata.com>,
-	Anna Schumaker <ann
-To: Jeff Moyer <jmoyer@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <x49wq1nrcoe.fsf_-_@segfault.boston.devel.redhat.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8BIT
+To: "Theodore Ts'o" <tytso@mit.edu>, Jun He <jhe@cs.wisc.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <CABW1wHRCvA0X41+JKY6PAUupnDQABgWuK=7+wZHOyMr0JJubVg@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This looks good, but without the blk_finish_plug argument we're bound
-to grow programming mistakes where people forget it.  Any chance we
-could have annotations similar to say rcu_read_lock/rcu_read_unlock
-or the spinlocks so that sparse warns about it?
+Resending in plain text mode..
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+On Wed, Apr 8, 2015 at 11:24 AM, Jun He <jhe@cs.wisc.edu> wrote:
+>
+> Hi Ted,
+>
+> On Tue, Apr 7, 2015 at 9:44 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+>>
+>> On Mon, Apr 06, 2015 at 01:31:41PM -0600, Jun He wrote:
+>> > This patch addresses the tail allocation problem found at paper "Reducing File System Tail Latencies with Chopper". https://www.usenix.org/system/files/conference/fast15/fast15-paper-he.pdf . The paper refers the tail allocation problem as the Special End problem.
+>>
+>> Hi Jun He,
+>>
+>> Kernel patches should have the commit body line-wrapped at 72 columns
+>> (more or less).  The idea is that the commit should be easily readable
+>> on an 80 column screen, with some extra space left for identation (git
+>> log will ident the commit body by 4 characters).
+>>
+>> > A tail extent is the last extent of a file. The last block of the
+>> > tail extent corresponds to the last logical block of the file. When
+>> > a file is closed and the tail extent is being allocated, ext4 marks
+>> > the allocation request with the hint EXT4_MB_HINT_NOPREALLOC. The
+>> > intention is to avoid preallocation when we know the file is final
+>> > (it won't change until the next open.). But the implementation leads
+>> > to some problems. The following program attacks the problem.
+>>
+>> I think you mean "the following program _demonstrates_ the problem".
+>>
+>>
+>> > EXT4_MB_HINT_NOPREALLOC is not the right hint for special end. If we
+>> > remove current check for tail in ext4_mb_group_or_file() , 1, 3, 4
+>> > will be satisfied. Now, we only need to handle the tail of large
+>> > file (2) by checking tail when normalizing. If it is a tail of large
+>> > file, we simply do not normalize it.
+>>
+>> The problem with skipping the normalization is this also by passes the
+>> goal block optimizations based on pleft, pright, lleft, and lright.
+>
+>
+> Actually bypassing this optimization is OK because similar goal has been set by ext4_ext_find_goal() before. The goal optimization in ext4_mb_normalize_request() is a re-alignment for normalized requests. If ext4 doesn't normalize the request, it won't need to re-align.
+>
+>>
+>> In the case of a small file, it's not always true that you want to
+>> allocate from a LG preallocation.  If there is free space immediately
+>> adjacent to file, we want to use that in preference to the LG
+>> preallocation --- since that would result in a contiguous file.
+>
+>
+> In the current code, the space that is immediately after a small file cannot be used for the same file because EXT4_MB_HINT_NOPREALLOC prevents the tail extent from using it (this is the Special End issues in the Chopper paper). The hint actually makes the file discontiguous. The attached program shows the problem. The patch fixes the problem.
+>
+>>
+>> > +
+>> > +     /* don't normalize tail of large files */
+>> > +     if ((size == isize) &&
+>> > +         !ext4_fs_is_busy(sbi) &&
+>> > +         (atomic_read(&ac->ac_inode->i_writecount) == 0)) {
+>> > +             return;
+>> > +     }
+>>
+>> The comment is a bit misleading; it's not checking for large files at
+>> all.  It also looks like that you copied the ext4_fs_is_busy(sbi) from
+>> the original check.
+>
+>
+> If the execution reaches here, the file must be large -- if it's small, it would have gone out of the ext4_mb_normalize_request() function. It will be clear if the comment states it though.
+>
+> I did just copy ext4_fs_is_busy()..
+>
+>>
+>>
+>> Perhaps it would be helpful to explain the design goal of the original
+>> code.  As originally conceived, the problem we were trying to fix was
+>> that in the case of unpacking a tar file with a large number of small
+>> files, we wanted to make sure all of the files would be packed
+>> togehter, without extra space reserved (caused by the normalization).
+>> This was achieved by disabing the use of the locality group.  The
+>> problem is that if there are a large number of processes writing into
+>> the same block group, this would cause contention, and so in the case
+>> where we had contention, we would use the locality group (since the
+>> whole point was to eliminate the need to constantly take the block
+>> group lock while allocaitng out of the block group; that's why the
+>> locality groups are per-cpu).  That's what the ext4_fs_is_busy() is
+>> all about.  We try to measure contention and disable the optimization
+>> if that was the case.
+>
+>
+> Now I understand ext4_fs_is_busy() is used to detect contention. If there is contention, ext4 uses preallocation to avoid further contentions. If not, ext4 allocates without preallocation to pack files together. But why not just use LG preallocation? It can do both: packing small files together and avoiding contention. The space in LG preallocation is not wasted. It can always be used later. Besides, LG preallocations are created often anyway.
+>
+>>
+>> I suspect we may want to take a step back and what's the best way of
+>> handling all of the high level goals, and refomulate a better strategy:
+>>
+>> 1) If the file doesn't have any blocks allocated yet, and it is closed
+>> by the time we need to allocate all of its blocks (thanks to delayed
+>> allocation), we should allocate exactly the number of blocks needed,
+>> and try to avoid fragmenting free space.
+>>
+>> 2) In the case where we are doing any tails at all, it's a different
+>> optimization altogether, and the main goal should be to make sure the
+>> tail is connected the previous blocks if at all possible.  To the
+>> extent that we have per-CPU LG groups, this can be... problematic.
+>>
+> That's why I suggest always put small files to LG preallocations (and remove scheduler dependency), which allows small files to be contiguous. For large files, tail's goal should be set to the location after the existing extents.
+>
+>> 3) The primary goal of the per-group locality group is to avoid lock
+>> contention when multiple CPU's are trying to access the blocks at the
+>> same time.  Depending on why we are doing block allocation, this may
+>> not be an issue.  We should probably into account why it is we re
+>> doing block allocation at particular moment:
+>>
+>>    *) In the case of delayed allocation w/o fsync(2), the writeback
+>>       will be taking place from the writeback daemon.  In that case,
+>>       all of allocations will be issued from a writeback thread, so
+>>       contention is much less of an issue.  In addition, in the case
+>>       where the entire file has been written within 30 seconds, we
+>>       will be allocating the entire file at once, as described in (1).
+>>       This is a fairly common case, so we should optimize for it.
+>
+> I think currently ext4 handles this fine. One thing that I am worried about is that the write back thread may sit on different CPU every 30 seconds, and use different LG preallocations that may be far away from each other.
+>>
+>>
+>>    *) In the case of block allocations resulting from an fallocate(2),
+>>       we should assume userspace knew what it was doing, and we
+>>       shouldn't try to do any kind of size normalization.  Also,
+>>       fallocate() calls generally don't happen with high frequency, so
+>>       worrying about CPU scalability is probalby not a major issue.
+>
+> I agree.
+>>
+>>
+>>    *) In the case of nodelalloc (or ext3 compatibility mode).  In that
+>>       case, we will be doing lots of singleton allocation, and it's in
+>>       this case where normalization and preallocation is most important.
+>
+> And maybe O_DIRECT mode?
+>>
+>>
+>>    *) The Lustre file calls ext4_map_blocks() directly.  We'll need to
+>>       check with Andreas, but the user is writing a lot of small files
+>>       over Lustre, it may be that lock contention will be an issue,
+>>       and we might want to use LG preallocation groups.
+>
+> Again, I suggest small files always use LG preallocations. Files are packed together and there's little contention.
+>>
+>>
+>>    *) Writes caused by fsync(2).  (For example, from SQLite files.)
+>>       In this case, lock contention might very well be an issue, and
+>>       use of the LG preallocation group some kind of file
+>>       normalization may very well be a good idea.  In fact, we might
+>>       want to have a hueristic which notices files which are written
+>>       using either a slow append or an append followed by an fsync
+>>       workload, and make sure we use an inode perallocation group, and
+>>       in the case of a slow append workload, we might want to hold the
+>>       preallocation over a file close (with some way of releasing
+>>       blocks in an ENOSPC situation).
+>
+> Maybe SQLite can pass a hint to block allocator. Maybe ext4 should predict by previous pattern.
+>>
+>>
+>> Some of the mballoc failure modes which you found in the Chopper paper
+>> was specifically we weren't taking these various different scenarios
+>> into account, and so we used an optimization that worked well when we
+>> were allocating the whole file at a time (thanks to delalloc and
+>> writebacks), and tht hueristic failed miserably in the case of large
+>> files where we happened to be writing a tail.
+>>
+>> So before we start playing with changing hueristics, it would be a
+>> good idea if we make sure the block allocator has enough context so it
+>> understands how it is being called and by whom, and make sure we that
+>> we don't use the wrong hueristic by accident.
+>>
+>> Does this make sense?
+>
+> Yes. I'll keep it in mind while doing my research.
+>
+> Thanks,
+> Jun
+>
+>>
+>>
+>>                                         - Ted
+>
+>
