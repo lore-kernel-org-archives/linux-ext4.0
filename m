@@ -1,54 +1,47 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 01/22] ext4: add ext4_mpage_readpages()
-Date: Tue, 7 Apr 2015 23:04:43 -0400
-Message-ID: <20150408030443.GB21171@thunk.org>
+Subject: Re: [PATCH 00/22] ext4 encryption patches
+Date: Tue, 7 Apr 2015 23:07:48 -0400
+Message-ID: <20150408030748.GC21171@thunk.org>
 References: <1428012659-12709-1-git-send-email-tytso@mit.edu>
- <1428012659-12709-2-git-send-email-tytso@mit.edu>
- <85D94901-4D36-45F3-A57C-0D6010DE18FA@dilger.ca>
+ <20150406222800.62bf4cc3@lwn.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	jaegeuk@kernel.org, mhalcrow@google.com
-To: Andreas Dilger <adilger@dilger.ca>
+To: Jonathan Corbet <corbet@lwn.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55732 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:55740 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751522AbbDHDEs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 Apr 2015 23:04:48 -0400
+	id S1753277AbbDHDHv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 7 Apr 2015 23:07:51 -0400
 Content-Disposition: inline
-In-Reply-To: <85D94901-4D36-45F3-A57C-0D6010DE18FA@dilger.ca>
+In-Reply-To: <20150406222800.62bf4cc3@lwn.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 06, 2015 at 03:08:51PM -0600, Andreas Dilger wrote:
-> On Apr 2, 2015, at 4:10 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> > 
-> > This takes code from fs/mpage.c and optimizes it for ext4.  Its
-> > primary reason is to allow us to more easily add encryption to ext4's
-> > read path in an efficient manner.
-> > 
-> [snip]
-> > diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-> > new file mode 100644
-> > index 0000000..9ca4dfc
-> > --- /dev/null
-> > +++ b/fs/ext4/readpage.c
-> > @@ -0,0 +1,261 @@
-> > +/*
-> > + * linux/fs/ext4/readpage.c
-> > + *
-> > + * This was originally taken from fs/mpage.c
-> > + *
-> > + * The intent is the ext4_mpage_readpages() function here is intended
-> > + * to replace mpage_readpages() in the general case, not just for
-> > + * encrypted files.  It has some limitations (see below), where it
-> > + * will fall back to read_block_full_page(), but these limitations
-> > + * should never be hit when page_size != block_size.
+On Mon, Apr 06, 2015 at 10:28:00PM +0200, Jonathan Corbet wrote:
+> On Thu,  2 Apr 2015 18:10:37 -0400
+> Theodore Ts'o <tytso@mit.edu> wrote:
 > 
-> Shouldn't this be "... should never be hit when page_size == block_size"?
-> Otherwise, we'd hit them almost all the time...
+> > There is a design document here.  It should hopefully be mostly up to
+> > date, but there are a few things that we might end up changing (for
+> > example, just using CTS all the time for protecting directory file
+> > names).
+> > 
+> > https://docs.google.com/document/d/1IsyQ9DU1gA6NUqS0jF4ni_NTvv-b0HfCkRk47Zkd7W0
+> 
+> I just tried to take a look at this, but it tells me that I don't have
+> permission to do so.  Presumably that's not what was intended?
 
-Yes, or maybe "should only be hit when...".  Thanks, good catch.
+Sorry, wrong URL.  It should have been:
 
-          	      	      	      	  - Ted
-				  				  
+https://docs.google.com/document/d/1ft26lUQyuSpiu6VleP70_npaWdRfXFoNnB8JYnykNTg
+
+And Andreas has pointed out there are a few places where it may be
+slightly out of date.  So it's good for checking the general idea, but
+some of the details may not be quite right.  In particular, we are now
+using CTS (Ciphertext Stealing) mode for directory entries, instead of
+the weird thing described in the design doc.
+
+							- Ted
+							
