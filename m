@@ -1,136 +1,138 @@
-From: Jun He <jhe@cs.wisc.edu>
-Subject: ext4 mballoc: unaligned requests could steal space preferred by
- dentries
-Date: Wed, 8 Apr 2015 11:54:00 -0500
-Message-ID: <20150408165400.GD5764@wifi-789.cs.wisc.edu>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH] ext4: minor cleanup of ext4_da_reserve_space()
+Date: Wed, 8 Apr 2015 13:08:53 -0400
+Message-ID: <20150408170853.GA3885@wallace>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	jhe@cs.wisc.edu
-To: tytso@mit.edu
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qc0-f173.google.com ([209.85.216.173]:36310 "EHLO
+	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753727AbbDHRI5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2015 13:08:57 -0400
+Received: by qcgx3 with SMTP id x3so32184305qcg.3
+        for <linux-ext4@vger.kernel.org>; Wed, 08 Apr 2015 10:08:56 -0700 (PDT)
 Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This email is to document a block allocator problem. If someone sees a
-weird behavior, this might help.
+Remove outdated comments and dead code from ext4_da_reserve_space.
+Clean up its trace point, and relocate it to make it more useful.
 
-In ext4, the first block group in a flex bg is usually reserved for
-directory data. Such a policy speeds up commands such as ls and find
-because all the dentries of a flex bg are in one block group. The policy
-is enforced by the following lines in mballoc.c.
+While we're at it, fix a nearby conditional used to determine if
+we have a non-bigalloc file system.  It doesn't match usage elsewhere
+in the code, and misleadingly suggests that an s_cluster_ratio value
+of 0 would be legal.
 
-static int ext4_mb_good_group(struct ext4_allocation_context *ac,
-                ext4_group_t group, int cr)
-{
-...
-     switch (cr) {                                                                      
-     case 0:
-         BUG_ON(ac->ac_2order == 0);
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ fs/ext4/inode.c             | 22 +++++-----------------
+ include/trace/events/ext4.h | 10 ++++------
+ 2 files changed, 9 insertions(+), 23 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 7eb70b7..fecc1d0 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1262,13 +1262,12 @@ static int ext4_journalled_write_end(struct file *file,
+ }
  
-         /* Avoid using the first bg of a flexgroup for data files */                   
-         if ((ac->ac_flags & EXT4_MB_HINT_DATA) &&                                      
-             (flex_size >= EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME) &&                          
-             ((group % flex_size) == 0))
-             return 0;
-...
+ /*
+- * Reserve a single cluster located at lblock
++ * Reserve space for a single cluster
+  */
+-static int ext4_da_reserve_space(struct inode *inode, ext4_lblk_t lblock)
++static int ext4_da_reserve_space(struct inode *inode)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+-	unsigned int md_needed;
+ 	int ret;
+ 
+ 	/*
+@@ -1280,25 +1279,14 @@ static int ext4_da_reserve_space(struct inode *inode, ext4_lblk_t lblock)
+ 	if (ret)
+ 		return ret;
+ 
+-	/*
+-	 * recalculate the amount of metadata blocks to reserve
+-	 * in order to allocate nrblocks
+-	 * worse case is one extent per block
+-	 */
+ 	spin_lock(&ei->i_block_reservation_lock);
+-	/*
+-	 * ext4_calc_metadata_amount() has side effects, which we have
+-	 * to be prepared undo if we fail to claim space.
+-	 */
+-	md_needed = 0;
+-	trace_ext4_da_reserve_space(inode, 0);
+-
+ 	if (ext4_claim_free_clusters(sbi, 1, 0)) {
+ 		spin_unlock(&ei->i_block_reservation_lock);
+ 		dquot_release_reservation_block(inode, EXT4_C2B(sbi, 1));
+ 		return -ENOSPC;
+ 	}
+ 	ei->i_reserved_data_blocks++;
++	trace_ext4_da_reserve_space(inode);
+ 	spin_unlock(&ei->i_block_reservation_lock);
+ 
+ 	return 0;       /* success */
+@@ -1567,9 +1555,9 @@ add_delayed:
+ 		 * then we don't need to reserve it again. However we still need
+ 		 * to reserve metadata for every block we're going to write.
+ 		 */
+-		if (EXT4_SB(inode->i_sb)->s_cluster_ratio <= 1 ||
++		if (EXT4_SB(inode->i_sb)->s_cluster_ratio == 1 ||
+ 		    !ext4_find_delalloc_cluster(inode, map->m_lblk)) {
+-			ret = ext4_da_reserve_space(inode, iblock);
++			ret = ext4_da_reserve_space(inode);
+ 			if (ret) {
+ 				/* not enough space to reserve */
+ 				retval = ret;
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 6e5abd6..6ed16df 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -1185,15 +1185,14 @@ TRACE_EVENT(ext4_da_update_reserve_space,
+ );
+ 
+ TRACE_EVENT(ext4_da_reserve_space,
+-	TP_PROTO(struct inode *inode, int md_needed),
++	TP_PROTO(struct inode *inode),
+ 
+-	TP_ARGS(inode, md_needed),
++	TP_ARGS(inode),
+ 
+ 	TP_STRUCT__entry(
+ 		__field(	dev_t,	dev			)
+ 		__field(	ino_t,	ino			)
+ 		__field(	__u64,	i_blocks		)
+-		__field(	int,	md_needed		)
+ 		__field(	int,	reserved_data_blocks	)
+ 		__field(	int,	reserved_meta_blocks	)
+ 		__field(	__u16,  mode			)
+@@ -1203,18 +1202,17 @@ TRACE_EVENT(ext4_da_reserve_space,
+ 		__entry->dev	= inode->i_sb->s_dev;
+ 		__entry->ino	= inode->i_ino;
+ 		__entry->i_blocks = inode->i_blocks;
+-		__entry->md_needed = md_needed;
+ 		__entry->reserved_data_blocks = EXT4_I(inode)->i_reserved_data_blocks;
+ 		__entry->reserved_meta_blocks = EXT4_I(inode)->i_reserved_meta_blocks;
+ 		__entry->mode	= inode->i_mode;
+ 	),
+ 
+-	TP_printk("dev %d,%d ino %lu mode 0%o i_blocks %llu md_needed %d "
++	TP_printk("dev %d,%d ino %lu mode 0%o i_blocks %llu "
+ 		  "reserved_data_blocks %d reserved_meta_blocks %d",
+ 		  MAJOR(__entry->dev), MINOR(__entry->dev),
+ 		  (unsigned long) __entry->ino,
+ 		  __entry->mode, __entry->i_blocks,
+-		  __entry->md_needed, __entry->reserved_data_blocks,
++		  __entry->reserved_data_blocks,
+ 		  __entry->reserved_meta_blocks)
+ );
+ 
+-- 
+2.1.0
 
-But the policy can be violated when an allocation request size of a file
-is not aligned to 2^n blocks. In other words, if the request size of a
-file is not aligned to 2^n blocks, the request can use the first block
-group of a flex bg and potentially fill up the block group. Then, new
-dentries will have to mix with file data, which hurts performance of
-operations such as ls and find.
-
-The following program attacks the problem.
-
-/***********************************************/
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-
-int main(int argc, char **argv)
-{
-    int fd;
-    int hole, size, off;
-    char buf[4096];
-    char *bigbuf;
-
-    hole = 64*1024;
-    size = 4096;
-
-    fd = open(argv[1], O_WRONLY|O_CREAT);
-    if ( fd == -1 ) {
-        perror("opening file");
-        exit(1);
-    }
-    
-    off = 0;
-    pwrite(fd, buf, size, off);
-    printf("wrote at %d, size %d bytes\n", off, size);
-    fsync(fd);
-
-    off = off + size + hole;
-    pwrite(fd, buf, size, off);
-    printf("wrote at %d, size %d bytes\n", off, size);
-    fsync(fd);
-
-    bigbuf = (char *) malloc(100*1024*1024);
-
-    off = off + size + hole;
-    size = 100*1024*1024;
-    pwrite(fd, bigbuf, size, off);
-    printf("wrote at %d, size %d bytes\n", off, size);
-
-    close(fd);
-    sync();
-
-    free(bigbuf);
-}
-/***********************************************/
-
-Mount an empty ext4 on /mnt/ext4onloop and run the program. Then use
-filefrag to see the extents of /mnt/ext4onloop/testfile.
-
-$ filefrag -sv /mnt/ext4onloop/testfile 
-Filesystem type is: ef53
-File size of /mnt/ext4onloop/testfile is 104996864 (25634 blocks, blocksize 4096)
- ext logical physical expected length flags
-   0       0    33280               1 
-   1      17     8503    33281      1 
-   2      34     8518     8504  22494 
-   3   22528    34816    31012   3106 eof
-/mnt/ext4onloop/testfile: 4 extents found
-
-First write:
-The block of the first write is allocated from locality group
-preallocation at group 1. 
-
-Second write:
-When allocating the block of the second write (the file is now a big
-file > 64KB), the request is normalized to 31 blocks (it was normalized
-to 32 blocks at first. But since the first block of the file already
-exists, the final size is 32-1=31 blocks). 31 is not aligned to 2^n,
-which set initial cr=1 (ext4_mb_regular_allocator()), which effectively
-avoids checking if we are in the first block group of the first flex bg
-in ext4_mb_good_group(). At this time, sbi->s_mb_last_group=0, so we
-start looking for good group from group 0. And we find that group 0 is
-good and then used it. 
-
-Third write:
-The blocks of the third write are allocated close to the block of the
-second write.
-
-The program is to demonstrate that allocation requests that are not
-aligned to 2^n could go to the block group preferred/reserved for
-dentries. Unaligned request can happen when allocating file tail
-(writing a new file without fsync will also make a tail request.) and
-fragmented normalized request (like the second write in the program
-above). Since we look for good group by a for loop (for (i = 0; i <
-ngroups; group++, i++)) in which 'group' can be the first block group of
-a flex bg, the unaligned requests could go to the group pointed by
-'group'.
