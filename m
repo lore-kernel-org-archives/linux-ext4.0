@@ -1,70 +1,122 @@
-From: Sasha Levin <sasha.levin@oracle.com>
-Subject: ext4: WARNING: CPU: 10 PID: 23340 at fs/block_dev.c
-Date: Thu, 09 Apr 2015 10:14:49 -0400
-Message-ID: <55268959.6040507@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Subject: [v12 0/5] ext4: add project quota support
+Date: Fri, 10 Apr 2015 00:14:32 +0900
+Message-ID: <1428592477-8212-1-git-send-email-lixi@ddn.com>
+To: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
+	jack-AlSwsSmVLrQ@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+	dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+The following patches propose an implementation of project quota
+support for ext4. A project is an aggregate of unrelated inodes
+which might scatter in different directories. Inodes that belong
+to the same project possess an identical identification i.e.
+'project ID', just like every inode has its user/group
+identification. The following patches add project quota as
+supplement to the former uer/group quota types.
 
-I was running xfstests on the latest -next kernel directed at an ext4 mount,
-and saw the following on the generic/019 test:
+The semantics of ext4 project quota is consistent with XFS. Each
+directory can have EXT4_INODE_PROJINHERIT flag set. When the
+EXT4_INODE_PROJINHERIT flag of a parent directory is not set, a
+newly created inode under that directory will have a default project
+ID (i.e. 0). And its EXT4_INODE_PROJINHERIT flag is not set either.
+When this flag is set on a directory, following rules will be kept:
 
-[40638.238369] run fstests generic/019 at 2015-04-09 08:20:00
-[40639.320440] kobject: 'sdd' (ffff8837cd5082b0): kobject_release, parent           (null) (delayed 300)
-[40642.328483] kobject: 'sdd' (ffff8837cd5082b0): kobject_cleanup, parent           (null)
-[40642.328494] kobject: 'sdd' (ffff8837cd5082b0): calling ktype release
-[40642.328520] kobject: 'sdd': free name
-[40643.643347] kobject: 'sdd' (ffff88007ade08a8): kobject_uevent_env
-[40643.643364] kobject: 'sdd' (ffff88007ade08a8): fill_kobj_path: path = '/devices/pci0000:00/0000:00:03.2/0000:50:00.0/host0/target0:2:3/0:2:3:0/block/sdd'
-[40643.920368] kobject: 'sdd' (ffff881ff26ee2b0): kobject_add_internal: parent: 'ext4', set: 'ext4'
-[40643.920556] EXT4-fs (sdd): mounted filesystem with ordered data mode. Opts: acl,user_xattr
-[40673.974468] Aborting journal on device sdd-8.
-[40673.974631] Buffer I/O error on dev sdd, logical block 36208640, lost sync page write
-[40673.974726] JBD2: Error -5 detected when updating journal superblock for sdd-8.
-[40673.975282] Buffer I/O error on dev sdd, logical block 0, lost sync page write
-[40673.975373] EXT4-fs error (device sdd): ext4_journal_check_start:56: Detected aborted journal
-[40673.975479] EXT4-fs (sdd): Remounting filesystem read-only
-[40673.975544] EXT4-fs (sdd): previous I/O error to superblock detected
-[40676.771510] kobject: 'sdd' (ffff881ff26ee2b0): kobject_release, parent           (null) (delayed 200)
-[40678.771514] kobject: 'sdd' (ffff881ff26ee2b0): kobject_cleanup, parent           (null)
-[40678.771524] kobject: 'sdd' (ffff881ff26ee2b0): calling ktype release
-[40678.771543] kobject: 'sdd': free name
-[40678.771719] ------------[ cut here ]------------
-[40678.771736] WARNING: CPU: 10 PID: 23340 at fs/block_dev.c:56 __blkdev_put+0x230/0x680()
-[40678.771738] Modules linked in: intel_rapl iosf_mbi x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm ast ttm drm_kms_helper crct10dif_pclmul crc32_pclmul ghash_clmulni_intel aesni_intel drm aes_x86_64 lrw glue_helper ablk_helper cryptd joydev i2c_algo_bit syscopyarea sysfillrect sysimgblt ipmi_si sb_edac edac_core ipmi_msghandler ioatdma shpchp lpc_ich mac_hid btrfs xor mlx4_en vxlan raid6_pq hid_generic usbhid hid ixgbe mlx4_core dca megaraid_sas ahci ptp libahci pps_core mdio
-[40678.771823] CPU: 10 PID: 23340 Comm: umount Not tainted 4.0.0-rc7-next-20150408+ #6
-[40678.771827] Hardware name: Oracle Corporation OVCA X3-2             /ASSY,MOTHERBOARD,1U   , BIOS 17021300 06/19/2012
-[40678.771831]  ffffffff82b1baa0 ffff8837ca757cf8 ffffffff82947148 0000000000000000
-[40678.771837]  0000000000000000 ffff8837ca757d48 ffffffff8115a04a ffff881fdb310740
-[40678.771843]  ffffffff816b1960 ffff881fdb310740 ffff881fdb310580 ffff881fdb310740
-[40678.771850] Call Trace:
-[40678.771860] dump_stack (lib/dump_stack.c:52)
-[40678.771869] warn_slowpath_common (kernel/panic.c:447)
-[40678.771874] ? __blkdev_put (fs/block_dev.c:56 fs/block_dev.c:1491)
-[40678.771879] warn_slowpath_null (kernel/panic.c:481)
-[40678.771884] __blkdev_put (fs/block_dev.c:56 fs/block_dev.c:1491)
-[40678.771889] blkdev_put (fs/block_dev.c:1561)
-[40678.771909] kill_block_super (fs/super.c:1037 (discriminator 8))
-[40678.771914] deactivate_locked_super (fs/super.c:294)
-[40678.771918] deactivate_super (fs/super.c:320)
-[40678.771926] cleanup_mnt (fs/namespace.c:1035)
-[40678.771931] __cleanup_mnt (fs/namespace.c:1043)
-[40678.771941] task_work_run (kernel/task_work.c:125 (discriminator 1))
-[40678.771950] ? trace_hardirqs_on_caller (kernel/locking/lockdep.c:2575 kernel/locking/lockdep.c:2622)
-[40678.771959] do_notify_resume (include/linux/tracehook.h:190 arch/x86/kernel/signal.c:753)
-[40678.771966] int_signal (arch/x86/kernel/entry_64.S:396)
-[40678.771970] ---[ end trace 8a666a17111b188a ]---
+1) The newly created inode under that directory will inherit both
+the EXT4_INODE_PROJINHERIT flag and the project ID from its parent
+directory.
 
-I've verified that the disk is okay, and tried with a different disk. It also reproduces
-every time the test is run.
+2) Hard-linking a inode with different project ID into that directory
+will fail with errno EXDEV.
 
+3) Renaming a inode with different project ID into that directory
+will fail with errno EXDEV. However, 'mv' command will detect this
+failure and copy the renamed inode to a new inode in the directory.
+Thus, this new inode will inherit both the project ID and
+EXT4_INODE_PROJINHERIT flag.
 
-Thanks,
-Sasha
+4) If the project quota of that ID is being enforced, statfs() on
+that directory will take the quotas as another upper limits along
+with the capacity of the file system, i.e. the total block/inode
+number will be the minimum of the quota limits and file system
+capacity.
+
+Changelog:
+* v12 <- v11:
+ - Relax the permission check when setting project ID.
+* v11 <- v10:
+ - Remove project quota mount option;
+ - Fix permission check when setting project ID
+* v10 <- v9:
+ - Remove non-journaled project quota interface;
+ - Only allow admin to read project quota info;
+ - Cleanup FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR interface.
+* v9 <- v8:
+ - Remove non-journaled project quota;
+ - Rebase to newest dev branch of ext4 repository (3.19.0-rc3).
+* v8 <- v7:
+ - Rebase to newest dev branch of ext4 repository (3.18.0_rc3).
+* v7 <- v6:
+ - Map ext4 inode flags to xflags of struct fsxattr;
+ - Add patch to cleanup ext4 inode flag definitions.
+* v6 <- v5:
+ - Add project ID check for cross rename;
+ - Remove patch of EXT4_IOC_GETPROJECT/EXT4_IOC_SETPROJECT ioctl
+* v5 <- v4:
+ - Check project feature when set/get project ID;
+ - Do not check project feature for project quota;
+ - Add support of FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR.
+* v4 <- v3:
+ - Do not check project feature when set/get project ID;
+ - Use EXT4_MAXQUOTAS instead of MAXQUOTAS in ext4 patches;
+ - Remove unnecessary change of fs/quota/dquot.c;
+ - Remove CONFIG_QUOTA_PROJECT.
+* v3 <- v2:
+ - Add EXT4_INODE_PROJINHERIT semantics.
+* v2 <- v1:
+ - Add ioctl interface for setting/getting project;
+ - Add EXT4_FEATURE_RO_COMPAT_PROJECT;
+ - Add get_projid() method in struct dquot_operations;
+ - Add error check of ext4_inode_projid_set/get().
+
+v11: http://www.spinics.net/lists/linux-ext4/msg47450.html
+v10: http://www.spinics.net/lists/linux-ext4/msg47413.html
+v9: http://www.spinics.net/lists/linux-ext4/msg47326.html
+v8: http://www.spinics.net/lists/linux-ext4/msg46545.html
+v7: http://www.spinics.net/lists/linux-fsdevel/msg80404.html
+v6: http://www.spinics.net/lists/linux-fsdevel/msg80022.html
+v5: http://www.spinics.net/lists/linux-api/msg04840.html
+v4: http://lwn.net/Articles/612972/
+v3: http://www.spinics.net/lists/linux-ext4/msg45184.html
+v2: http://www.spinics.net/lists/linux-ext4/msg44695.html
+v1: http://article.gmane.org/gmane.comp.file-systems.ext4/45153
+
+Any comments or feedbacks are appreciated.
+
+Regards,
+                                         - Li Xi
+
+Li Xi (5):
+  vfs: adds general codes to enforces project quota limits
+  ext4: adds project ID support
+  ext4: adds project quota support
+  ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR interface support
+  ext4: cleanup inode flag definitions
+
+ fs/ext4/ext4.h             |   86 +++++++----
+ fs/ext4/ialloc.c           |    5 +
+ fs/ext4/inode.c            |   29 ++++
+ fs/ext4/ioctl.c            |  361 +++++++++++++++++++++++++++++++++-----------
+ fs/ext4/namei.c            |   18 +++
+ fs/ext4/super.c            |   57 +++++++-
+ fs/quota/dquot.c           |   35 ++++-
+ fs/quota/quota.c           |    5 +-
+ fs/quota/quotaio_v2.h      |    6 +-
+ fs/xfs/xfs_fs.h            |   47 ++----
+ include/linux/quota.h      |    2 +
+ include/uapi/linux/fs.h    |   33 ++++
+ include/uapi/linux/quota.h |    6 +-
+ 13 files changed, 527 insertions(+), 163 deletions(-)
