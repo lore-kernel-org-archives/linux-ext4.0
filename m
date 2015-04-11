@@ -1,44 +1,32 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 12/22] ext4 crypto: implement the ext4 encryption write
- path
-Date: Sat, 11 Apr 2015 09:17:07 -0400
-Message-ID: <20150411131707.GF6540@thunk.org>
+Subject: Re: [PATCH 06/22] ext4 crypto: add encryption policy checking
+Date: Sat, 11 Apr 2015 09:18:13 -0400
+Message-ID: <20150411131813.GG6540@thunk.org>
 References: <1428012659-12709-1-git-send-email-tytso@mit.edu>
- <1428012659-12709-13-git-send-email-tytso@mit.edu>
- <6F10E7A2-7D43-4C16-BEED-4568169AA12D@dilger.ca>
+ <1428012659-12709-7-git-send-email-tytso@mit.edu>
+ <6C2E40F9-574A-4EA8-B533-C9D8CCF1C9C3@dilger.ca>
+ <20150411130637.GD6540@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	jaegeuk@kernel.org, mhalcrow@google.com,
-	Ildar Muslukhov <ildarm@google.com>
+	Ildar Muslukhov <muslukhovi@gmail.com>
 To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34141 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:34149 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753843AbbDKNRK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 11 Apr 2015 09:17:10 -0400
+	id S1753700AbbDKNSP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 11 Apr 2015 09:18:15 -0400
 Content-Disposition: inline
-In-Reply-To: <6F10E7A2-7D43-4C16-BEED-4568169AA12D@dilger.ca>
+In-Reply-To: <20150411130637.GD6540@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 09, 2015 at 03:44:35PM -0600, Andreas Dilger wrote:
-> > 
-> > +	/*
-> > +	 * TODO: We don't yet support fallocate with encrypted files.
-> > +	 */
-> > +	if (ext4_encrypted_inode(inode))
-> > +		return -EOPNOTSUPP;
-> 
-> Any plans for this?  Would reading from encrypted files with unwritten
-> extents just generate garbage from urandom if the key wasn't available,
-> or would it still return zero?
+On Sat, Apr 11, 2015 at 09:06:37AM -0400, Theodore Ts'o wrote:
+> As it turns out we're not even using ext4_to_hex() any more, so we can
+> even more simply just delete this whole function.  :-)
 
-This is on my todo list to fix.  It actually mostly works today,
-except for when we write into the middle of an unwritten extent, under
-some circumstances the extent splitting code will simply write zeros
-to some of the unwritten pages to avoid needing to split a leaf node.
-So what we need to do is implement a function which encrypts the zero
-page and writes that out instead of just calling sb_issue_zeroout().
+Whoops, spoke to soon; I'll just add the sprintf call directly into
+fs/ext4/crypto_key.c.
 
-     	 	     	 	    - Ted
+						- Ted
