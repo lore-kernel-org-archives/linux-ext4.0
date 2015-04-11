@@ -1,51 +1,44 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 06/22] ext4 crypto: add encryption policy checking
-Date: Sat, 11 Apr 2015 09:10:52 -0400
-Message-ID: <20150411131052.GE6540@thunk.org>
+Subject: Re: [PATCH 12/22] ext4 crypto: implement the ext4 encryption write
+ path
+Date: Sat, 11 Apr 2015 09:17:07 -0400
+Message-ID: <20150411131707.GF6540@thunk.org>
 References: <1428012659-12709-1-git-send-email-tytso@mit.edu>
- <1428012659-12709-7-git-send-email-tytso@mit.edu>
- <041E1EF0-0767-4CC8-B4BF-9C6552C7E11A@dilger.ca>
+ <1428012659-12709-13-git-send-email-tytso@mit.edu>
+ <6F10E7A2-7D43-4C16-BEED-4568169AA12D@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	jaegeuk@kernel.org, mhalcrow@google.com,
-	Ildar Muslukhov <muslukhovi@gmail.com>
+	Ildar Muslukhov <ildarm@google.com>
 To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34123 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:34141 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752852AbbDKNKz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 11 Apr 2015 09:10:55 -0400
+	id S1753843AbbDKNRK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 11 Apr 2015 09:17:10 -0400
 Content-Disposition: inline
-In-Reply-To: <041E1EF0-0767-4CC8-B4BF-9C6552C7E11A@dilger.ca>
+In-Reply-To: <6F10E7A2-7D43-4C16-BEED-4568169AA12D@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 08, 2015 at 12:07:16PM -0600, Andreas Dilger wrote:
-> > +/* Policy provided via an ioctl on the topmost directory */
-> > +struct ext4_encryption_policy {
-> > +	char version;
-> > +	char contents_encryption_mode;
-> > +	char filenames_encryption_mode;
-> > +	char master_key_descriptor[EXT4_KEY_DESCRIPTOR_SIZE];
-> > +} __attribute__((__packed__));
+On Thu, Apr 09, 2015 at 03:44:35PM -0600, Andreas Dilger wrote:
+> > 
+> > +	/*
+> > +	 * TODO: We don't yet support fallocate with encrypted files.
+> > +	 */
+> > +	if (ext4_encrypted_inode(inode))
+> > +		return -EOPNOTSUPP;
 > 
-> It wouldn't be bad to add a padding byte before master_key_descriptor,
-> even if this is only passed from the ioctl.  That allows casting the
-> key to a numeric value if desired without problems on some arches.
+> Any plans for this?  Would reading from encrypted files with unwritten
+> extents just generate garbage from urandom if the key wasn't available,
+> or would it still return zero?
 
-This data structure is only used for the ioctl interface.  The on-disk
-format is the struct ext4_encryption_context, where we do have the
-padding.
+This is on my todo list to fix.  It actually mostly works today,
+except for when we write into the middle of an unwritten extent, under
+some circumstances the extent splitting code will simply write zeros
+to some of the unwritten pages to avoid needing to split a leaf node.
+So what we need to do is implement a function which encrypts the zero
+page and writes that out instead of just calling sb_issue_zeroout().
 
-> > +#define EXT4_ENCRYPTION_CONTEXT_FORMAT_V0 0
-> 
-> Per comments in the call, it is better not to use "0" as a defined
-> version, since this is much more likely to be seen accidentally
-> (e.g. uninitialized buffer, memory corruption, etc).  Better to
-> start with version 1.
-
-I'll make this change.
-
-						- Ted
-
+     	 	     	 	    - Ted
