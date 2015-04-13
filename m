@@ -1,172 +1,69 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH-v2 18/20] ext4 crypto: enable filename encryption
-Date: Sun, 12 Apr 2015 23:16:34 -0400
-Message-ID: <1428894996-7852-19-git-send-email-tytso@mit.edu>
+Subject: [PATCH-v2 10/20] ext4 crypto: inherit encryption policies on inode and directory create
+Date: Sun, 12 Apr 2015 23:16:26 -0400
+Message-ID: <1428894996-7852-11-git-send-email-tytso@mit.edu>
 References: <1428894996-7852-1-git-send-email-tytso@mit.edu>
-Cc: mhalcrow@google.com, Uday Savagaonkar <savagaon@google.com>,
-	Ildar Muslukhov <ildarm@google.com>,
-	Theodore Ts'o <tytso@mit.edu>
+Cc: mhalcrow@google.com, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35668 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:35657 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753060AbbDMDSP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 12 Apr 2015 23:18:15 -0400
+	id S1752973AbbDMDSO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 12 Apr 2015 23:18:14 -0400
 In-Reply-To: <1428894996-7852-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Michael Halcrow <mhalcrow@google.com>
 
-Change-Id: I1057e08bf05741b963705f2850710ec5d7d8bd72
-Signed-off-by: Uday Savagaonkar <savagaon@google.com>
-Signed-off-by: Ildar Muslukhov <ildarm@google.com>
+Change-Id: Ibeeafc70352b39d1d5b3b17158a41d8fb54ed136
 Signed-off-by: Michael Halcrow <mhalcrow@google.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/dir.c    | 64 +++++++++++++++++++++++++++++++++++++++++++-------------
- fs/ext4/ialloc.c | 21 +++++++++++++++++--
- 2 files changed, 68 insertions(+), 17 deletions(-)
+ fs/ext4/namei.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index f67f955..2b6e0c8 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -110,7 +110,10 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
- 	int err;
- 	struct inode *inode = file_inode(file);
- 	struct super_block *sb = inode->i_sb;
-+	struct buffer_head *bh = NULL;
- 	int dir_has_error = 0;
-+	struct ext4_fname_crypto_ctx *enc_ctx = NULL;
-+	struct ext4_str fname_crypto_str = {.name = NULL, .len = 0};
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 12d2592..262aa1c 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -48,6 +48,8 @@
+ #define NAMEI_RA_BLOCKS  4
+ #define NAMEI_RA_SIZE	     (NAMEI_RA_CHUNKS * NAMEI_RA_BLOCKS)
  
- 	if (is_dx_dir(inode)) {
- 		err = ext4_dx_readdir(file, ctx);
-@@ -127,17 +130,28 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
- 
- 	if (ext4_has_inline_data(inode)) {
- 		int has_inline_data = 1;
--		int ret = ext4_read_inline_dir(file, ctx,
-+		err = ext4_read_inline_dir(file, ctx,
- 					   &has_inline_data);
- 		if (has_inline_data)
--			return ret;
-+			return err;
-+	}
++static int ext4_unlink(struct inode *dir, struct dentry *dentry);
 +
-+	enc_ctx = ext4_get_fname_crypto_ctx(inode, EXT4_NAME_LEN);
-+	if (IS_ERR(enc_ctx))
-+		return PTR_ERR(enc_ctx);
-+	if (enc_ctx) {
-+		err = ext4_fname_crypto_alloc_buffer(enc_ctx, EXT4_NAME_LEN,
-+						     &fname_crypto_str);
-+		if (err < 0) {
-+			ext4_put_fname_crypto_ctx(&enc_ctx);
-+			return err;
+ static struct buffer_head *ext4_append(handle_t *handle,
+ 					struct inode *inode,
+ 					ext4_lblk_t *block)
+@@ -2247,6 +2249,13 @@ retry:
+ 		err = ext4_add_nondir(handle, dentry, inode);
+ 		if (!err && IS_DIRSYNC(dir))
+ 			ext4_handle_sync(handle);
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++		if (!err && ext4_encrypted_inode(dir)) {
++			err = ext4_inherit_context(dir, inode);
++			if (err)
++				ext4_unlink(dir, dentry);
 +		}
- 	}
- 
- 	offset = ctx->pos & (sb->s_blocksize - 1);
- 
- 	while (ctx->pos < inode->i_size) {
- 		struct ext4_map_blocks map;
--		struct buffer_head *bh = NULL;
- 
- 		map.m_lblk = ctx->pos >> EXT4_BLOCK_SIZE_BITS(sb);
- 		map.m_len = 1;
-@@ -180,6 +194,7 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
- 					(unsigned long long)ctx->pos);
- 			ctx->pos += sb->s_blocksize - offset;
- 			brelse(bh);
-+			bh = NULL;
- 			continue;
- 		}
- 		set_buffer_verified(bh);
-@@ -226,25 +241,44 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
- 			offset += ext4_rec_len_from_disk(de->rec_len,
- 					sb->s_blocksize);
- 			if (le32_to_cpu(de->inode)) {
--				if (!dir_emit(ctx, de->name,
--						de->name_len,
--						le32_to_cpu(de->inode),
--						get_dtype(sb, de->file_type))) {
--					brelse(bh);
--					return 0;
-+				if (enc_ctx == NULL) {
-+					/* Directory is not encrypted */
-+					if (!dir_emit(ctx, de->name,
-+					    de->name_len,
-+					    le32_to_cpu(de->inode),
-+					    get_dtype(sb, de->file_type)))
-+						goto done;
-+				} else {
-+					/* Directory is encrypted */
-+					err = ext4_fname_disk_to_usr(enc_ctx,
-+							de, &fname_crypto_str);
-+					if (err < 0)
-+						goto errout;
-+					if (!dir_emit(ctx,
-+					    fname_crypto_str.name, err,
-+					    le32_to_cpu(de->inode),
-+					    get_dtype(sb, de->file_type)))
-+						goto done;
- 				}
- 			}
- 			ctx->pos += ext4_rec_len_from_disk(de->rec_len,
- 						sb->s_blocksize);
- 		}
--		offset = 0;
-+		if ((ctx->pos < inode->i_size) && !dir_relax(inode))
-+			goto done;
- 		brelse(bh);
--		if (ctx->pos < inode->i_size) {
--			if (!dir_relax(inode))
--				return 0;
--		}
-+		bh = NULL;
-+		offset = 0;
- 	}
--	return 0;
-+done:
-+	err = 0;
-+errout:
-+#ifdef CONFIG_EXT4_FS_ENCRYPTION
-+	ext4_put_fname_crypto_ctx(&enc_ctx);
-+	ext4_fname_crypto_free_buffer(&fname_crypto_str);
 +#endif
-+	brelse(bh);
-+	return err;
- }
- 
- static inline int is_32bit_api(void)
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index e554ca3..8f37c9e 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -1034,11 +1034,28 @@ got:
- 	ext4_set_inode_state(inode, EXT4_STATE_NEW);
- 
- 	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
--
+ 	}
+ 	if (handle)
+ 		ext4_journal_stop(handle);
+@@ -2445,6 +2454,13 @@ out_clear_inode:
+ 	d_instantiate(dentry, inode);
+ 	if (IS_DIRSYNC(dir))
+ 		ext4_handle_sync(handle);
 +#ifdef CONFIG_EXT4_FS_ENCRYPTION
-+	if ((sbi->s_file_encryption_mode == EXT4_ENCRYPTION_MODE_INVALID) &&
-+	    (sbi->s_dir_encryption_mode == EXT4_ENCRYPTION_MODE_INVALID)) {
-+		ei->i_inline_off = 0;
-+		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
-+			EXT4_FEATURE_INCOMPAT_INLINE_DATA))
-+			ext4_set_inode_state(inode,
-+			EXT4_STATE_MAY_INLINE_DATA);
-+	} else {
-+		/* Inline data and encryption are incompatible
-+		 * We turn off inline data since encryption is enabled */
-+		ei->i_inline_off = 1;
-+		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
-+			EXT4_FEATURE_INCOMPAT_INLINE_DATA))
-+			ext4_clear_inode_state(inode,
-+			EXT4_STATE_MAY_INLINE_DATA);
++	if (ext4_encrypted_inode(dir)) {
++		err = ext4_inherit_context(dir, inode);
++		if (err)
++			ext4_unlink(dir, dentry);
 +	}
-+#else
- 	ei->i_inline_off = 0;
- 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_INLINE_DATA))
- 		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++#endif
+ 
+ out_stop:
+ 	if (handle)
+-- 
+2.3.0
+
