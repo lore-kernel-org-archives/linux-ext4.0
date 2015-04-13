@@ -1,44 +1,175 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH-v2 09/20] ext4 crypto: validate context consistency on lookup
-Date: Sun, 12 Apr 2015 23:16:25 -0400
-Message-ID: <1428894996-7852-10-git-send-email-tytso@mit.edu>
+Subject: [PATCH-v2 14/20] ext4 crypto: teach ext4_htree_store_dirent() to store decrypted filenames
+Date: Sun, 12 Apr 2015 23:16:30 -0400
+Message-ID: <1428894996-7852-15-git-send-email-tytso@mit.edu>
 References: <1428894996-7852-1-git-send-email-tytso@mit.edu>
 Cc: mhalcrow@google.com, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35614 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:35622 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752676AbbDMDRN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 12 Apr 2015 23:17:13 -0400
+	id S1752751AbbDMDRO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 12 Apr 2015 23:17:14 -0400
 In-Reply-To: <1428894996-7852-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Change-Id: Ifb904b2bec9300b178062ee70cbdfd333f03f865
-Signed-off-by: Michael Halcrow <mhalcrow@google.com>
+For encrypted directories, we need to pass in a separate parameter for
+the decrypted filename, since the directory entry contains the
+encrypted filename.
+
+Change-Id: I2d1a78e65cb81152cae108ce7faadc28b52e0abe
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/namei.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ fs/ext4/dir.c    | 15 ++++++++++-----
+ fs/ext4/ext4.h   |  5 +++--
+ fs/ext4/inline.c |  7 +++++--
+ fs/ext4/namei.c  | 21 +++++++++++++++++----
+ 4 files changed, 35 insertions(+), 13 deletions(-)
 
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index c24143e..f67f955 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -384,10 +384,15 @@ void ext4_htree_free_dir_info(struct dir_private_info *p)
+ 
+ /*
+  * Given a directory entry, enter it into the fname rb tree.
++ *
++ * When filename encryption is enabled, the dirent will hold the
++ * encrypted filename, while the htree will hold decrypted filename.
++ * The decrypted filename is passed in via ent_name.  parameter.
+  */
+ int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
+ 			     __u32 minor_hash,
+-			     struct ext4_dir_entry_2 *dirent)
++			    struct ext4_dir_entry_2 *dirent,
++			    struct ext4_str *ent_name)
+ {
+ 	struct rb_node **p, *parent = NULL;
+ 	struct fname *fname, *new_fn;
+@@ -398,17 +403,17 @@ int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
+ 	p = &info->root.rb_node;
+ 
+ 	/* Create and allocate the fname structure */
+-	len = sizeof(struct fname) + dirent->name_len + 1;
++	len = sizeof(struct fname) + ent_name->len + 1;
+ 	new_fn = kzalloc(len, GFP_KERNEL);
+ 	if (!new_fn)
+ 		return -ENOMEM;
+ 	new_fn->hash = hash;
+ 	new_fn->minor_hash = minor_hash;
+ 	new_fn->inode = le32_to_cpu(dirent->inode);
+-	new_fn->name_len = dirent->name_len;
++	new_fn->name_len = ent_name->len;
+ 	new_fn->file_type = dirent->file_type;
+-	memcpy(new_fn->name, dirent->name, dirent->name_len);
+-	new_fn->name[dirent->name_len] = 0;
++	memcpy(new_fn->name, ent_name->name, ent_name->len);
++	new_fn->name[ent_name->len] = 0;
+ 
+ 	while (*p) {
+ 		parent = *p;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index e44436b..883fcc9 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2129,8 +2129,9 @@ extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
+ 	unlikely(__ext4_check_dir_entry(__func__, __LINE__, (dir), (filp), \
+ 					(de), (bh), (buf), (size), (offset)))
+ extern int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
+-				    __u32 minor_hash,
+-				    struct ext4_dir_entry_2 *dirent);
++				__u32 minor_hash,
++				struct ext4_dir_entry_2 *dirent,
++				struct ext4_str *ent_name);
+ extern void ext4_htree_free_dir_info(struct dir_private_info *p);
+ extern int ext4_find_dest_de(struct inode *dir, struct inode *inode,
+ 			     struct buffer_head *bh,
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 4b143fe..056ef06 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1327,6 +1327,7 @@ int htree_inlinedir_to_tree(struct file *dir_file,
+ 	struct ext4_iloc iloc;
+ 	void *dir_buf = NULL;
+ 	struct ext4_dir_entry_2 fake;
++	struct ext4_str tmp_str;
+ 
+ 	ret = ext4_get_inode_loc(inode, &iloc);
+ 	if (ret)
+@@ -1398,8 +1399,10 @@ int htree_inlinedir_to_tree(struct file *dir_file,
+ 			continue;
+ 		if (de->inode == 0)
+ 			continue;
+-		err = ext4_htree_store_dirent(dir_file,
+-				   hinfo->hash, hinfo->minor_hash, de);
++		tmp_str.name = de->name;
++		tmp_str.len = de->name_len;
++		err = ext4_htree_store_dirent(dir_file, hinfo->hash,
++					      hinfo->minor_hash, de, &tmp_str);
+ 		if (err) {
+ 			count = err;
+ 			goto out;
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 2fb55fd..12d2592 100644
+index 262aa1c..57cae22 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -1418,6 +1418,13 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
- 			return ERR_PTR(-EIO);
- 		}
- 	}
-+	if (ext4_encrypted_inode(dir) &&
-+	    !ext4_is_child_context_consistent_with_parent(dir,
-+							  dentry->d_inode)) {
-+		printk(KERN_ERR "%s: Security warning: Inconsistent contexts\n",
-+		       __func__);
-+		return ERR_PTR(-EINVAL);
-+	}
- 	return d_splice_alias(inode, dentry);
- }
+@@ -880,6 +880,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+ 	struct buffer_head *bh;
+ 	struct ext4_dir_entry_2 *de, *top;
+ 	int err = 0, count = 0;
++	struct ext4_str tmp_str;
  
+ 	dxtrace(printk(KERN_INFO "In htree dirblock_to_tree: block %lu\n",
+ 							(unsigned long)block));
+@@ -906,8 +907,11 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+ 			continue;
+ 		if (de->inode == 0)
+ 			continue;
+-		if ((err = ext4_htree_store_dirent(dir_file,
+-				   hinfo->hash, hinfo->minor_hash, de)) != 0) {
++		tmp_str.name = de->name;
++		tmp_str.len = de->name_len;
++		err = ext4_htree_store_dirent(dir_file,
++			   hinfo->hash, hinfo->minor_hash, de, &tmp_str);
++		if (err != 0) {
+ 			brelse(bh);
+ 			return err;
+ 		}
+@@ -937,6 +941,7 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
+ 	int count = 0;
+ 	int ret, err;
+ 	__u32 hashval;
++	struct ext4_str tmp_str;
+ 
+ 	dxtrace(printk(KERN_DEBUG "In htree_fill_tree, start hash: %x:%x\n",
+ 		       start_hash, start_minor_hash));
+@@ -972,14 +977,22 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
+ 	/* Add '.' and '..' from the htree header */
+ 	if (!start_hash && !start_minor_hash) {
+ 		de = (struct ext4_dir_entry_2 *) frames[0].bh->b_data;
+-		if ((err = ext4_htree_store_dirent(dir_file, 0, 0, de)) != 0)
++		tmp_str.name = de->name;
++		tmp_str.len = de->name_len;
++		err = ext4_htree_store_dirent(dir_file, 0, 0,
++					      de, &tmp_str);
++		if (err != 0)
+ 			goto errout;
+ 		count++;
+ 	}
+ 	if (start_hash < 2 || (start_hash ==2 && start_minor_hash==0)) {
+ 		de = (struct ext4_dir_entry_2 *) frames[0].bh->b_data;
+ 		de = ext4_next_entry(de, dir->i_sb->s_blocksize);
+-		if ((err = ext4_htree_store_dirent(dir_file, 2, 0, de)) != 0)
++		tmp_str.name = de->name;
++		tmp_str.len = de->name_len;
++		err = ext4_htree_store_dirent(dir_file, 2, 0,
++					      de, &tmp_str);
++		if (err != 0)
+ 			goto errout;
+ 		count++;
+ 	}
 -- 
 2.3.0
 
