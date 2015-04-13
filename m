@@ -1,15 +1,15 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH-v2 07/20] ext4 crypto: add ext4 encryption facilities
-Date: Sun, 12 Apr 2015 23:16:23 -0400
-Message-ID: <1428894996-7852-8-git-send-email-tytso@mit.edu>
+Subject: [PATCH-v2 11/20] ext4 crypto: implement the ext4 encryption write path
+Date: Sun, 12 Apr 2015 23:16:27 -0400
+Message-ID: <1428894996-7852-12-git-send-email-tytso@mit.edu>
 References: <1428894996-7852-1-git-send-email-tytso@mit.edu>
 Cc: mhalcrow@google.com, Ildar Muslukhov <ildarm@google.com>,
 	Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35643 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:35642 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752815AbbDMDRo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752805AbbDMDRo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 12 Apr 2015 23:17:44 -0400
 In-Reply-To: <1428894996-7852-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -17,749 +17,342 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 From: Michael Halcrow <mhalcrow@google.com>
 
-On encrypt, we will re-assign the buffer_heads to point to a bounce
-page rather than the control_page (which is the original page to write
-that contains the plaintext). The block I/O occurs against the bounce
-page.  On write completion, we re-assign the buffer_heads to the
-original plaintext page.
+Pulls block_write_begin() into fs/ext4/inode.c because it might need
+to do a low-level read of the existing data, in which case we need to
+decrypt it.
 
-On decrypt, we will attach a read completion callback to the bio
-struct. This read completion will decrypt the read contents in-place
-prior to setting the page up-to-date.
-
-The current encryption mode, AES-256-XTS, lacks cryptographic
-integrity. AES-256-GCM is in-plan, but we will need to devise a
-mechanism for handling the integrity data.
-
-Change-Id: I5ed4c913d49971d7f7e9b10bb4e694df86f960d7
+Change-Id: I2337918809c43e18454a1d5621024d2699a98666
 Signed-off-by: Michael Halcrow <mhalcrow@google.com>
 Signed-off-by: Ildar Muslukhov <ildarm@google.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/Makefile        |   2 +-
- fs/ext4/crypto.c        | 500 ++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/crypto_policy.c |   8 +
- fs/ext4/ext4.h          |  51 +++++
- fs/ext4/ext4_crypto.h   |  55 ++++++
- fs/ext4/super.c         |   8 +
- 6 files changed, 623 insertions(+), 1 deletion(-)
- create mode 100644 fs/ext4/crypto.c
+ fs/ext4/extents.c |   6 +++
+ fs/ext4/ialloc.c  |   5 +++
+ fs/ext4/inode.c   | 113 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/ext4/page-io.c |  46 +++++++++++++++++++---
+ 4 files changed, 164 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index 3886ee4..1b1c561 100644
---- a/fs/ext4/Makefile
-+++ b/fs/ext4/Makefile
-@@ -12,4 +12,4 @@ ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index bed4308..1f1c0ea 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4922,6 +4922,12 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	ext4_lblk_t lblk;
+ 	unsigned int blkbits = inode->i_blkbits;
  
- ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
- ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
--ext4-$(CONFIG_EXT4_FS_ENCRYPTION)	+= crypto_policy.o
-+ext4-$(CONFIG_EXT4_FS_ENCRYPTION)	+= crypto_policy.o crypto.o
-diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-new file mode 100644
-index 0000000..c0b5234
---- /dev/null
-+++ b/fs/ext4/crypto.c
-@@ -0,0 +1,500 @@
-+/*
-+ * linux/fs/ext4/crypto.c
-+ *
-+ * Copyright (C) 2015, Google, Inc.
-+ *
-+ * This contains encryption functions for ext4
-+ *
-+ * Written by Michael Halcrow, 2014.
-+ *
-+ * Filename encryption additions
-+ *	Uday Savagaonkar, 2014
-+ * Encryption policy handling additions
-+ *	Ildar Muslukhov, 2014
-+ *
-+ * This has not yet undergone a rigorous security audit.
-+ *
-+ * The usage of AES-XTS should conform to recommendations in NIST
-+ * Special Publication 800-38E. The usage of AES-GCM should conform to
-+ * the recommendations in NIST Special Publication 800-38D. Further
-+ * guidance for block-oriented storage is in IEEE P1619/D16. The key
-+ * derivation code implements an HKDF (see RFC 5869).
-+ */
-+
-+#include <crypto/hash.h>
-+#include <crypto/sha.h>
-+#include <keys/user-type.h>
-+#include <keys/encrypted-type.h>
-+#include <linux/crypto.h>
-+#include <linux/ecryptfs.h>
-+#include <linux/gfp.h>
-+#include <linux/kernel.h>
-+#include <linux/key.h>
-+#include <linux/list.h>
-+#include <linux/mempool.h>
-+#include <linux/module.h>
-+#include <linux/mutex.h>
-+#include <linux/random.h>
-+#include <linux/scatterlist.h>
-+#include <linux/spinlock_types.h>
-+
-+#include "ext4.h"
-+#include "xattr.h"
-+
-+/* Encryption added and removed here! (L: */
-+
-+static unsigned int num_prealloc_crypto_pages = 32;
-+static unsigned int num_prealloc_crypto_ctxs = 128;
-+
-+module_param(num_prealloc_crypto_pages, uint, 0444);
-+MODULE_PARM_DESC(num_prealloc_crypto_pages,
-+		 "Number of crypto pages to preallocate");
-+module_param(num_prealloc_crypto_ctxs, uint, 0444);
-+MODULE_PARM_DESC(num_prealloc_crypto_ctxs,
-+		 "Number of crypto contexts to preallocate");
-+
-+static mempool_t *ext4_bounce_page_pool;
-+
-+static LIST_HEAD(ext4_free_crypto_ctxs);
-+static DEFINE_SPINLOCK(ext4_crypto_ctx_lock);
-+
-+/**
-+ * ext4_release_crypto_ctx() - Releases an encryption context
-+ * @ctx: The encryption context to release.
-+ *
-+ * If the encryption context was allocated from the pre-allocated pool, returns
-+ * it to that pool. Else, frees it.
-+ *
-+ * If there's a bounce page in the context, this frees that.
-+ */
-+void ext4_release_crypto_ctx(struct ext4_crypto_ctx *ctx)
-+{
-+	unsigned long flags;
-+
-+	if (ctx->bounce_page) {
-+		if (ctx->flags & EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL)
-+			__free_page(ctx->bounce_page);
-+		else
-+			mempool_free(ctx->bounce_page, ext4_bounce_page_pool);
-+		ctx->bounce_page = NULL;
-+	}
-+	ctx->control_page = NULL;
-+	if (ctx->flags & EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL) {
-+		if (ctx->tfm)
-+			crypto_free_tfm(ctx->tfm);
-+		kfree(ctx);
-+	} else {
-+		spin_lock_irqsave(&ext4_crypto_ctx_lock, flags);
-+		list_add(&ctx->free_list, &ext4_free_crypto_ctxs);
-+		spin_unlock_irqrestore(&ext4_crypto_ctx_lock, flags);
-+	}
-+}
-+
-+/**
-+ * ext4_alloc_and_init_crypto_ctx() - Allocates and inits an encryption context
-+ * @mask: The allocation mask.
-+ *
-+ * Return: An allocated and initialized encryption context on success. An error
-+ * value or NULL otherwise.
-+ */
-+static struct ext4_crypto_ctx *ext4_alloc_and_init_crypto_ctx(gfp_t mask)
-+{
-+	struct ext4_crypto_ctx *ctx = kzalloc(sizeof(struct ext4_crypto_ctx),
-+					      mask);
-+
-+	if (!ctx)
-+		return ERR_PTR(-ENOMEM);
-+	return ctx;
-+}
-+
-+/**
-+ * ext4_get_crypto_ctx() - Gets an encryption context
-+ * @inode:       The inode for which we are doing the crypto
-+ *
-+ * Allocates and initializes an encryption context.
-+ *
-+ * Return: An allocated and initialized encryption context on success; error
-+ * value or NULL otherwise.
-+ */
-+struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
-+{
-+	struct ext4_crypto_ctx *ctx = NULL;
-+	int res = 0;
-+	unsigned long flags;
-+	struct ext4_encryption_key *key = &EXT4_I(inode)->i_encryption_key;
-+
-+	if (!ext4_read_workqueue)
-+		ext4_init_crypto();
-+
 +	/*
-+	 * We first try getting the ctx from a free list because in
-+	 * the common case the ctx will have an allocated and
-+	 * initialized crypto tfm, so it's probably a worthwhile
-+	 * optimization. For the bounce page, we first try getting it
-+	 * from the kernel allocator because that's just about as fast
-+	 * as getting it from a list and because a cache of free pages
-+	 * should generally be a "last resort" option for a filesystem
-+	 * to be able to do its job.
++	 * TODO: We don't yet support fallocate with encrypted files.
 +	 */
-+	spin_lock_irqsave(&ext4_crypto_ctx_lock, flags);
-+	ctx = list_first_entry_or_null(&ext4_free_crypto_ctxs,
-+				       struct ext4_crypto_ctx, free_list);
-+	if (ctx)
-+		list_del(&ctx->free_list);
-+	spin_unlock_irqrestore(&ext4_crypto_ctx_lock, flags);
-+	if (!ctx) {
-+		ctx = ext4_alloc_and_init_crypto_ctx(GFP_NOFS);
-+		if (IS_ERR(ctx)) {
-+			res = PTR_ERR(ctx);
-+			goto out;
-+		}
-+		ctx->flags |= EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL;
-+	} else {
-+		ctx->flags &= ~EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL;
-+	}
++	if (ext4_encrypted_inode(inode))
++		return -EOPNOTSUPP;
 +
-+	/* Allocate a new Crypto API context if we don't already have
-+	 * one or if it isn't the right mode. */
-+	BUG_ON(key->mode == EXT4_ENCRYPTION_MODE_INVALID);
-+	if (ctx->tfm && (ctx->mode != key->mode)) {
-+		crypto_free_tfm(ctx->tfm);
-+		ctx->tfm = NULL;
-+		ctx->mode = EXT4_ENCRYPTION_MODE_INVALID;
-+	}
-+	if (!ctx->tfm) {
-+		switch (key->mode) {
-+		case EXT4_ENCRYPTION_MODE_AES_256_XTS:
-+			ctx->tfm = crypto_ablkcipher_tfm(
-+				crypto_alloc_ablkcipher("xts(aes)", 0, 0));
-+			break;
-+		case EXT4_ENCRYPTION_MODE_AES_256_GCM:
-+			/* TODO(mhalcrow): AEAD w/ gcm(aes);
-+			 * crypto_aead_setauthsize() */
-+			ctx->tfm = ERR_PTR(-ENOTSUPP);
-+			break;
-+		default:
-+			BUG();
-+		}
-+		if (IS_ERR_OR_NULL(ctx->tfm)) {
-+			res = PTR_ERR(ctx->tfm);
-+			ctx->tfm = NULL;
-+			goto out;
-+		}
-+		ctx->mode = key->mode;
-+	}
-+	BUG_ON(key->size != ext4_encryption_key_size(key->mode));
+ 	/* Return error if mode is not supported */
+ 	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
+ 		     FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_ZERO_RANGE))
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index ac644c3..e554ca3 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -997,6 +997,11 @@ got:
+ 	ei->i_block_group = group;
+ 	ei->i_last_alloc_group = ~0;
+ 
++	/* If the directory encrypted, then we should encrypt the inode. */
++	if ((S_ISDIR(mode) || S_ISREG(mode) || S_ISLNK(mode)) &&
++	    ext4_encrypted_inode(dir))
++		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
 +
-+	/* There shouldn't be a bounce page attached to the crypto
-+	 * context at this point. */
-+	BUG_ON(ctx->bounce_page);
+ 	ext4_set_inode_flags(inode);
+ 	if (IS_DIRSYNC(inode))
+ 		ext4_handle_sync(handle);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index a68cacc..dcc836c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -41,6 +41,7 @@
+ #include <linux/bitops.h>
+ 
+ #include "ext4_jbd2.h"
++#include "ext4_crypto.h"
+ #include "xattr.h"
+ #include "acl.h"
+ #include "truncate.h"
+@@ -871,6 +872,95 @@ int do_journal_get_write_access(handle_t *handle,
+ 
+ static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
+ 		   struct buffer_head *bh_result, int create);
 +
-+out:
-+	if (res) {
-+		if (!IS_ERR_OR_NULL(ctx))
-+			ext4_release_crypto_ctx(ctx);
-+		ctx = ERR_PTR(res);
-+	}
-+	return ctx;
-+}
-+
-+struct workqueue_struct *ext4_read_workqueue;
-+static DEFINE_MUTEX(crypto_init);
-+
-+/**
-+ * ext4_exit_crypto() - Shutdown the ext4 encryption system
-+ */
-+void ext4_exit_crypto(void)
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
++				  get_block_t *get_block)
 +{
-+	struct ext4_crypto_ctx *pos, *n;
++	unsigned from = pos & (PAGE_CACHE_SIZE - 1);
++	unsigned to = from + len;
++	struct inode *inode = page->mapping->host;
++	unsigned block_start, block_end;
++	sector_t block;
++	int err = 0;
++	unsigned blocksize = inode->i_sb->s_blocksize;
++	unsigned bbits;
++	struct buffer_head *bh, *head, *wait[2], **wait_bh = wait;
++	bool decrypt = false;
 +
-+	list_for_each_entry_safe(pos, n, &ext4_free_crypto_ctxs, free_list) {
-+		if (pos->bounce_page) {
-+			if (pos->flags &
-+			    EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL) {
-+				__free_page(pos->bounce_page);
-+			} else {
-+				mempool_free(pos->bounce_page,
-+					     ext4_bounce_page_pool);
++	BUG_ON(!PageLocked(page));
++	BUG_ON(from > PAGE_CACHE_SIZE);
++	BUG_ON(to > PAGE_CACHE_SIZE);
++	BUG_ON(from > to);
++
++	if (!page_has_buffers(page))
++		create_empty_buffers(page, blocksize, 0);
++	head = page_buffers(page);
++	bbits = ilog2(blocksize);
++	block = (sector_t)page->index << (PAGE_CACHE_SHIFT - bbits);
++
++	for (bh = head, block_start = 0; bh != head || !block_start;
++	    block++, block_start = block_end, bh = bh->b_this_page) {
++		block_end = block_start + blocksize;
++		if (block_end <= from || block_start >= to) {
++			if (PageUptodate(page)) {
++				if (!buffer_uptodate(bh))
++					set_buffer_uptodate(bh);
++			}
++			continue;
++		}
++		if (buffer_new(bh))
++			clear_buffer_new(bh);
++		if (!buffer_mapped(bh)) {
++			WARN_ON(bh->b_size != blocksize);
++			err = get_block(inode, block, bh, 1);
++			if (err)
++				break;
++			if (buffer_new(bh)) {
++				unmap_underlying_metadata(bh->b_bdev,
++							  bh->b_blocknr);
++				if (PageUptodate(page)) {
++					clear_buffer_new(bh);
++					set_buffer_uptodate(bh);
++					mark_buffer_dirty(bh);
++					continue;
++				}
++				if (block_end > to || block_start < from)
++					zero_user_segments(page, to, block_end,
++							   block_start, from);
++				continue;
 +			}
 +		}
-+		if (pos->tfm)
-+			crypto_free_tfm(pos->tfm);
-+		kfree(pos);
-+	}
-+	INIT_LIST_HEAD(&ext4_free_crypto_ctxs);
-+	if (ext4_bounce_page_pool)
-+		mempool_destroy(ext4_bounce_page_pool);
-+	ext4_bounce_page_pool = NULL;
-+	if (ext4_read_workqueue)
-+		destroy_workqueue(ext4_read_workqueue);
-+	ext4_read_workqueue = NULL;
-+}
-+
-+/**
-+ * ext4_init_crypto() - Set up for ext4 encryption.
-+ *
-+ * We only call this when we start accessing encrypted files, since it
-+ * results in memory getting allocated that wouldn't otherwise be used.
-+ *
-+ * Return: Zero on success, non-zero otherwise.
-+ */
-+int ext4_init_crypto(void)
-+{
-+	int i, res;
-+
-+	mutex_lock(&crypto_init);
-+	if (ext4_read_workqueue)
-+		goto already_initialized;
-+	ext4_read_workqueue = alloc_workqueue("ext4_crypto", WQ_HIGHPRI, 0);
-+	if (!ext4_read_workqueue) {
-+		res = -ENOMEM;
-+		goto fail;
-+	}
-+
-+	for (i = 0; i < num_prealloc_crypto_ctxs; i++) {
-+		struct ext4_crypto_ctx *ctx;
-+
-+		ctx = ext4_alloc_and_init_crypto_ctx(GFP_KERNEL);
-+		if (IS_ERR(ctx)) {
-+			res = PTR_ERR(ctx);
-+			goto fail;
++		if (PageUptodate(page)) {
++			if (!buffer_uptodate(bh))
++				set_buffer_uptodate(bh);
++			continue;
 +		}
-+		list_add(&ctx->free_list, &ext4_free_crypto_ctxs);
++		if (!buffer_uptodate(bh) && !buffer_delay(bh) &&
++		    !buffer_unwritten(bh) &&
++		    (block_start < from || block_end > to)) {
++			ll_rw_block(READ, 1, &bh);
++			*wait_bh++ = bh;
++			decrypt = ext4_encrypted_inode(inode) &&
++				S_ISREG(inode->i_mode);
++		}
 +	}
-+
-+	ext4_bounce_page_pool =
-+		mempool_create_page_pool(num_prealloc_crypto_pages, 0);
-+	if (!ext4_bounce_page_pool) {
-+		res = -ENOMEM;
-+		goto fail;
++	/*
++	 * If we issued read requests, let them complete.
++	 */
++	while (wait_bh > wait) {
++		wait_on_buffer(*--wait_bh);
++		if (!buffer_uptodate(*wait_bh))
++			err = -EIO;
 +	}
-+already_initialized:
-+	mutex_unlock(&crypto_init);
-+	return 0;
-+fail:
-+	ext4_exit_crypto();
-+	mutex_unlock(&crypto_init);
-+	return res;
++	if (unlikely(err))
++		page_zero_new_buffers(page, from, to);
++	else if (decrypt)
++		err = ext4_decrypt_one(inode, page);
++	return err;
 +}
++#endif
 +
-+void ext4_restore_control_page(struct page *data_page)
-+{
-+	struct ext4_crypto_ctx *ctx =
-+		(struct ext4_crypto_ctx *)page_private(data_page);
-+
-+	set_page_private(data_page, (unsigned long)NULL);
-+	ClearPagePrivate(data_page);
-+	unlock_page(data_page);
-+	ext4_release_crypto_ctx(ctx);
-+}
-+
-+/**
-+ * ext4_crypt_complete() - The completion callback for page encryption
-+ * @req: The asynchronous encryption request context
-+ * @res: The result of the encryption operation
-+ */
-+static void ext4_crypt_complete(struct crypto_async_request *req, int res)
-+{
-+	struct ext4_completion_result *ecr = req->data;
-+
-+	if (res == -EINPROGRESS)
-+		return;
-+	ecr->res = res;
-+	complete(&ecr->completion);
-+}
-+
-+typedef enum {
-+	EXT4_DECRYPT = 0,
-+	EXT4_ENCRYPT,
-+} ext4_direction_t;
-+
-+static int ext4_page_crypto(struct ext4_crypto_ctx *ctx,
-+			    struct inode *inode,
-+			    ext4_direction_t rw,
-+			    pgoff_t index,
-+			    struct page *src_page,
-+			    struct page *dest_page)
-+
-+{
-+	u8 xts_tweak[EXT4_XTS_TWEAK_SIZE];
-+	struct ablkcipher_request *req = NULL;
-+	DECLARE_EXT4_COMPLETION_RESULT(ecr);
-+	struct scatterlist dst, src;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct crypto_ablkcipher *atfm = __crypto_ablkcipher_cast(ctx->tfm);
-+	int res = 0;
-+
-+	BUG_ON(!ctx->tfm);
-+	BUG_ON(ctx->mode != ei->i_encryption_key.mode);
-+
-+	if (ctx->mode != EXT4_ENCRYPTION_MODE_AES_256_XTS) {
-+		printk_ratelimited(KERN_ERR
-+				   "%s: unsupported crypto algorithm: %d\n",
-+				   __func__, ctx->mode);
-+		return -ENOTSUPP;
-+	}
-+
-+	crypto_ablkcipher_clear_flags(atfm, ~0);
-+	crypto_tfm_set_flags(ctx->tfm, CRYPTO_TFM_REQ_WEAK_KEY);
-+
-+	res = crypto_ablkcipher_setkey(atfm, ei->i_encryption_key.raw,
-+				       ei->i_encryption_key.size);
-+	if (res) {
-+		printk_ratelimited(KERN_ERR
-+				   "%s: crypto_ablkcipher_setkey() failed\n",
-+				   __func__);
-+		return res;
-+	}
-+	req = ablkcipher_request_alloc(atfm, GFP_NOFS);
-+	if (!req) {
-+		printk_ratelimited(KERN_ERR
-+				   "%s: crypto_request_alloc() failed\n",
-+				   __func__);
-+		return -ENOMEM;
-+	}
-+	ablkcipher_request_set_callback(
-+		req, CRYPTO_TFM_REQ_MAY_BACKLOG | CRYPTO_TFM_REQ_MAY_SLEEP,
-+		ext4_crypt_complete, &ecr);
-+
-+	BUILD_BUG_ON(EXT4_XTS_TWEAK_SIZE < sizeof(index));
-+	memcpy(xts_tweak, &index, sizeof(index));
-+	memset(&xts_tweak[sizeof(index)], 0,
-+	       EXT4_XTS_TWEAK_SIZE - sizeof(index));
-+
-+	sg_init_table(&dst, 1);
-+	sg_set_page(&dst, dest_page, PAGE_CACHE_SIZE, 0);
-+	sg_init_table(&src, 1);
-+	sg_set_page(&src, src_page, PAGE_CACHE_SIZE, 0);
-+	ablkcipher_request_set_crypt(req, &src, &dst, PAGE_CACHE_SIZE,
-+				     xts_tweak);
-+	if (rw == EXT4_DECRYPT)
-+		res = crypto_ablkcipher_decrypt(req);
+ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+ 			    loff_t pos, unsigned len, unsigned flags,
+ 			    struct page **pagep, void **fsdata)
+@@ -933,11 +1023,19 @@ retry_journal:
+ 	/* In case writeback began while the page was unlocked */
+ 	wait_for_stable_page(page);
+ 
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++	if (ext4_should_dioread_nolock(inode))
++		ret = ext4_block_write_begin(page, pos, len,
++					     ext4_get_block_write);
 +	else
-+		res = crypto_ablkcipher_encrypt(req);
-+	if (res == -EINPROGRESS || res == -EBUSY) {
-+		BUG_ON(req->base.data != &ecr);
-+		wait_for_completion(&ecr.completion);
-+		res = ecr.res;
-+	}
-+	ablkcipher_request_free(req);
-+	if (res) {
-+		printk_ratelimited(
-+			KERN_ERR
-+			"%s: crypto_ablkcipher_encrypt() returned %d\n",
-+			__func__, res);
-+		return res;
-+	}
-+	return 0;
-+}
++		ret = ext4_block_write_begin(page, pos, len,
++					     ext4_get_block);
++#else
+ 	if (ext4_should_dioread_nolock(inode))
+ 		ret = __block_write_begin(page, pos, len, ext4_get_block_write);
+ 	else
+ 		ret = __block_write_begin(page, pos, len, ext4_get_block);
+-
++#endif
+ 	if (!ret && ext4_should_journal_data(inode)) {
+ 		ret = ext4_walk_page_buffers(handle, page_buffers(page),
+ 					     from, to, NULL,
+@@ -2552,7 +2650,12 @@ retry_journal:
+ 	/* In case writeback began while the page was unlocked */
+ 	wait_for_stable_page(page);
+ 
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++	ret = ext4_block_write_begin(page, pos, len,
++				     ext4_da_get_block_prep);
++#else
+ 	ret = __block_write_begin(page, pos, len, ext4_da_get_block_prep);
++#endif
+ 	if (ret < 0) {
+ 		unlock_page(page);
+ 		ext4_journal_stop(handle);
+@@ -3010,6 +3113,9 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 		get_block_func = ext4_get_block_write;
+ 		dio_flags = DIO_LOCKING;
+ 	}
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++	BUG_ON(ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode));
++#endif
+ 	ret = __blockdev_direct_IO(rw, iocb, inode,
+ 				   inode->i_sb->s_bdev, iter,
+ 				   offset,
+@@ -3073,6 +3179,11 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
+ 	size_t count = iov_iter_count(iter);
+ 	ssize_t ret;
+ 
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode))
++		return 0;
++#endif
 +
-+/**
-+ * ext4_encrypt() - Encrypts a page
-+ * @inode:          The inode for which the encryption should take place
-+ * @plaintext_page: The page to encrypt. Must be locked.
-+ *
-+ * Allocates a ciphertext page and encrypts plaintext_page into it using the ctx
-+ * encryption context.
-+ *
-+ * Called on the page write path.  The caller must call
-+ * ext4_restore_control_page() on the returned ciphertext page to
-+ * release the bounce buffer and the encryption context.
-+ *
-+ * Return: An allocated page with the encrypted content on success. Else, an
-+ * error value or NULL.
-+ */
-+struct page *ext4_encrypt(struct inode *inode,
-+			  struct page *plaintext_page)
-+{
-+	struct ext4_crypto_ctx *ctx;
-+	struct page *ciphertext_page = NULL;
-+	int err;
-+
-+	BUG_ON(!PageLocked(plaintext_page));
-+
-+	ctx = ext4_get_crypto_ctx(inode);
-+	if (IS_ERR(ctx))
-+		return (struct page *) ctx;
-+
-+	/* The encryption operation will require a bounce page. */
-+	ciphertext_page = alloc_page(GFP_NOFS);
-+	if (!ciphertext_page) {
-+		/* This is a potential bottleneck, but at least we'll have
-+		 * forward progress. */
-+		ciphertext_page = mempool_alloc(ext4_bounce_page_pool,
-+						 GFP_NOFS);
-+		if (WARN_ON_ONCE(!ciphertext_page)) {
-+			ciphertext_page = mempool_alloc(ext4_bounce_page_pool,
-+							 GFP_NOFS | __GFP_WAIT);
+ 	/*
+ 	 * If we are doing data journalling we don't support O_DIRECT
+ 	 */
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index b24a254..71fb0e6 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -28,6 +28,7 @@
+ #include <linux/ratelimit.h>
+ 
+ #include "ext4_jbd2.h"
++#include "ext4_crypto.h"
+ #include "xattr.h"
+ #include "acl.h"
+ 
+@@ -69,6 +70,10 @@ static void ext4_finish_bio(struct bio *bio)
+ 
+ 	bio_for_each_segment_all(bvec, bio, i) {
+ 		struct page *page = bvec->bv_page;
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++		struct page *data_page = NULL;
++		struct ext4_crypto_ctx *ctx = NULL;
++#endif
+ 		struct buffer_head *bh, *head;
+ 		unsigned bio_start = bvec->bv_offset;
+ 		unsigned bio_end = bio_start + bvec->bv_len;
+@@ -78,6 +83,15 @@ static void ext4_finish_bio(struct bio *bio)
+ 		if (!page)
+ 			continue;
+ 
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++		if (!page->mapping) {
++			/* The bounce data pages are unmapped. */
++			data_page = page;
++			ctx = (struct ext4_crypto_ctx *)page_private(data_page);
++			page = ctx->control_page;
 +		}
-+		ctx->flags &= ~EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL;
-+	} else {
-+		ctx->flags |= EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL;
-+	}
-+	ctx->bounce_page = ciphertext_page;
-+	ctx->control_page = plaintext_page;
-+	err = ext4_page_crypto(ctx, inode, EXT4_ENCRYPT, plaintext_page->index,
-+			       plaintext_page, ciphertext_page);
-+	if (err) {
-+		ext4_release_crypto_ctx(ctx);
-+		return ERR_PTR(err);
-+	}
-+	SetPagePrivate(ciphertext_page);
-+	set_page_private(ciphertext_page, (unsigned long)ctx);
-+	lock_page(ciphertext_page);
-+	return ciphertext_page;
-+}
-+
-+/**
-+ * ext4_decrypt() - Decrypts a page in-place
-+ * @ctx:  The encryption context.
-+ * @page: The page to decrypt. Must be locked.
-+ *
-+ * Decrypts page in-place using the ctx encryption context.
-+ *
-+ * Called from the read completion callback.
-+ *
-+ * Return: Zero on success, non-zero otherwise.
-+ */
-+int ext4_decrypt(struct ext4_crypto_ctx *ctx, struct page *page)
-+{
-+	BUG_ON(!PageLocked(page));
-+
-+	return ext4_page_crypto(ctx, page->mapping->host,
-+				EXT4_DECRYPT, page->index, page, page);
-+}
-+
-+/*
-+ * Convenience function which takes care of allocating and
-+ * deallocating the encryption context
-+ */
-+int ext4_decrypt_one(struct inode *inode, struct page *page)
-+{
-+	int ret;
-+
-+	struct ext4_crypto_ctx *ctx = ext4_get_crypto_ctx(inode);
-+
-+	if (!ctx)
-+		return -ENOMEM;
-+	ret = ext4_decrypt(ctx, page);
-+	ext4_release_crypto_ctx(ctx);
-+	return ret;
-+}
-+
-+bool ext4_valid_contents_enc_mode(uint32_t mode)
-+{
-+	return (mode == EXT4_ENCRYPTION_MODE_AES_256_XTS);
-+}
-+
-+/**
-+ * ext4_validate_encryption_key_size() - Validate the encryption key size
-+ * @mode: The key mode.
-+ * @size: The key size to validate.
-+ *
-+ * Return: The validated key size for @mode. Zero if invalid.
-+ */
-+uint32_t ext4_validate_encryption_key_size(uint32_t mode, uint32_t size)
-+{
-+	if (size == ext4_encryption_key_size(mode))
-+		return size;
-+	return 0;
-+}
-diff --git a/fs/ext4/crypto_policy.c b/fs/ext4/crypto_policy.c
-index 5cad852..e08b28b 100644
---- a/fs/ext4/crypto_policy.c
-+++ b/fs/ext4/crypto_policy.c
-@@ -52,6 +52,13 @@ static int ext4_create_encryption_context_from_policy(
- 	ctx.format = EXT4_ENCRYPTION_CONTEXT_FORMAT_V1;
- 	memcpy(ctx.master_key_descriptor, policy->master_key_descriptor,
- 	       EXT4_KEY_DESCRIPTOR_SIZE);
-+	if (!ext4_valid_contents_enc_mode(policy->contents_encryption_mode)) {
-+		printk(KERN_WARNING
-+		       "%s: Invalid contents encryption mode %d\n", __func__,
-+			policy->contents_encryption_mode);
-+		res = -EINVAL;
-+		goto out;
-+	}
- 	ctx.contents_encryption_mode = policy->contents_encryption_mode;
- 	ctx.filenames_encryption_mode = policy->filenames_encryption_mode;
- 	BUILD_BUG_ON(sizeof(ctx.nonce) != EXT4_KEY_DERIVATION_NONCE_SIZE);
-@@ -60,6 +67,7 @@ static int ext4_create_encryption_context_from_policy(
- 	res = ext4_xattr_set(inode, EXT4_XATTR_INDEX_ENCRYPTION,
- 			     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT, &ctx,
- 			     sizeof(ctx), 0);
-+out:
- 	if (!res)
- 		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
- 	return res;
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e0956b7..c4a51636 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -951,6 +951,11 @@ struct ext4_inode_info {
- 
- 	/* Precomputed uuid+inum+igen checksum for seeding inode checksums */
- 	__u32 i_csum_seed;
-+
-+#ifdef CONFIG_EXT4_FS_ENCRYPTION
-+	/* Encryption params */
-+	struct ext4_encryption_key i_encryption_key;
-+#endif
- };
- 
- /*
-@@ -1355,6 +1360,12 @@ struct ext4_sb_info {
- 	struct ratelimit_state s_err_ratelimit_state;
- 	struct ratelimit_state s_warning_ratelimit_state;
- 	struct ratelimit_state s_msg_ratelimit_state;
-+
-+#ifdef CONFIG_EXT4_FS_ENCRYPTION
-+	/* Encryption */
-+	uint32_t s_file_encryption_mode;
-+	uint32_t s_dir_encryption_mode;
-+#endif
- };
- 
- static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-@@ -1470,6 +1481,18 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- #define EXT4_SB(sb)	(sb)
- #endif
- 
-+/*
-+ * Returns true if the inode is inode is encrypted
-+ */
-+static inline int ext4_encrypted_inode(struct inode *inode)
-+{
-+#ifdef CONFIG_EXT4_FS_ENCRYPTION
-+	return ext4_test_inode_flag(inode, EXT4_INODE_ENCRYPT);
-+#else
-+	return 0;
-+#endif
-+}
-+
- #define NEXT_ORPHAN(inode) EXT4_I(inode)->i_dtime
- 
- /*
-@@ -2014,6 +2037,34 @@ int ext4_process_policy(const struct ext4_encryption_policy *policy,
- int ext4_get_policy(struct inode *inode,
- 		    struct ext4_encryption_policy *policy);
- 
-+/* crypto.c */
-+bool ext4_valid_contents_enc_mode(uint32_t mode);
-+uint32_t ext4_validate_encryption_key_size(uint32_t mode, uint32_t size);
-+extern struct workqueue_struct *ext4_read_workqueue;
-+struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode);
-+void ext4_release_crypto_ctx(struct ext4_crypto_ctx *ctx);
-+void ext4_restore_control_page(struct page *data_page);
-+struct page *ext4_encrypt(struct inode *inode,
-+			  struct page *plaintext_page);
-+int ext4_decrypt(struct ext4_crypto_ctx *ctx, struct page *page);
-+int ext4_decrypt_one(struct inode *inode, struct page *page);
-+
-+#ifdef CONFIG_EXT4_FS_ENCRYPTION
-+int ext4_init_crypto(void);
-+void ext4_exit_crypto(void);
-+static inline int ext4_sb_has_crypto(struct super_block *sb)
-+{
-+	return EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_ENCRYPT);
-+}
-+#else
-+static inline int ext4_init_crypto(void) { return 0; }
-+static inline void ext4_exit_crypto(void) { }
-+static inline int ext4_sb_has_crypto(struct super_block *sb)
-+{
-+	return 0;
-+}
 +#endif
 +
- /* dir.c */
- extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
- 				  struct file *,
-diff --git a/fs/ext4/ext4_crypto.h b/fs/ext4/ext4_crypto.h
-index a69d2ba..9d5d2e5 100644
---- a/fs/ext4/ext4_crypto.h
-+++ b/fs/ext4/ext4_crypto.h
-@@ -46,4 +46,59 @@ struct ext4_encryption_context {
- 	char nonce[EXT4_KEY_DERIVATION_NONCE_SIZE];
- } __attribute__((__packed__));
- 
-+/* Encryption parameters */
-+#define EXT4_XTS_TWEAK_SIZE 16
-+#define EXT4_AES_128_ECB_KEY_SIZE 16
-+#define EXT4_AES_256_GCM_KEY_SIZE 32
-+#define EXT4_AES_256_CBC_KEY_SIZE 32
-+#define EXT4_AES_256_CTS_KEY_SIZE 32
-+#define EXT4_AES_256_XTS_KEY_SIZE 64
-+#define EXT4_MAX_KEY_SIZE 64
-+
-+struct ext4_encryption_key {
-+	uint32_t mode;
-+	char raw[EXT4_MAX_KEY_SIZE];
-+	uint32_t size;
-+};
-+
-+#define EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL             0x00000001
-+#define EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL     0x00000002
-+
-+struct ext4_crypto_ctx {
-+	struct crypto_tfm *tfm;         /* Crypto API context */
-+	struct page *bounce_page;       /* Ciphertext page on write path */
-+	struct page *control_page;      /* Original page on write path */
-+	struct bio *bio;                /* The bio for this context */
-+	struct work_struct work;        /* Work queue for read complete path */
-+	struct list_head free_list;     /* Free list */
-+	int flags;                      /* Flags */
-+	int mode;                       /* Encryption mode for tfm */
-+};
-+
-+struct ext4_completion_result {
-+	struct completion completion;
-+	int res;
-+};
-+
-+#define DECLARE_EXT4_COMPLETION_RESULT(ecr) \
-+	struct ext4_completion_result ecr = { \
-+		COMPLETION_INITIALIZER((ecr).completion), 0 }
-+
-+static inline int ext4_encryption_key_size(int mode)
-+{
-+	switch (mode) {
-+	case EXT4_ENCRYPTION_MODE_AES_256_XTS:
-+		return EXT4_AES_256_XTS_KEY_SIZE;
-+	case EXT4_ENCRYPTION_MODE_AES_256_GCM:
-+		return EXT4_AES_256_GCM_KEY_SIZE;
-+	case EXT4_ENCRYPTION_MODE_AES_256_CBC:
-+		return EXT4_AES_256_CBC_KEY_SIZE;
-+	case EXT4_ENCRYPTION_MODE_AES_256_CTS:
-+		return EXT4_AES_256_CTS_KEY_SIZE;
-+	default:
-+		BUG();
-+	}
-+	return 0;
-+}
-+
- #endif	/* _EXT4_CRYPTO_H */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 74c5f53..1a44e74 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -893,6 +893,9 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	atomic_set(&ei->i_ioend_count, 0);
- 	atomic_set(&ei->i_unwritten, 0);
- 	INIT_WORK(&ei->i_rsv_conversion_work, ext4_end_io_rsv_work);
+ 		if (error) {
+ 			SetPageError(page);
+ 			set_bit(AS_EIO, &page->mapping->flags);
+@@ -102,8 +116,13 @@ static void ext4_finish_bio(struct bio *bio)
+ 		} while ((bh = bh->b_this_page) != head);
+ 		bit_spin_unlock(BH_Uptodate_Lock, &head->b_state);
+ 		local_irq_restore(flags);
+-		if (!under_io)
++		if (!under_io) {
 +#ifdef CONFIG_EXT4_FS_ENCRYPTION
-+	ei->i_encryption_key.mode = EXT4_ENCRYPTION_MODE_INVALID;
++			if (ctx)
++				ext4_restore_control_page(data_page);
 +#endif
- 
- 	return &ei->vfs_inode;
+ 			end_page_writeback(page);
++		}
+ 	}
  }
-@@ -3439,6 +3442,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	if (sb->s_bdev->bd_part)
- 		sbi->s_sectors_written_start =
- 			part_stat_read(sb->s_bdev->bd_part, sectors[1]);
-+#ifdef CONFIG_EXT4_FS_ENCRYPTION
-+	/* Modes of operations for file and directory encryption. */
-+	sbi->s_file_encryption_mode = EXT4_ENCRYPTION_MODE_AES_256_XTS;
-+	sbi->s_dir_encryption_mode = EXT4_ENCRYPTION_MODE_INVALID;
-+#endif
  
- 	/* Cleanup superblock name */
- 	for (cp = sb->s_id; (cp = strchr(cp, '/'));)
+@@ -378,6 +397,7 @@ static int io_submit_init_bio(struct ext4_io_submit *io,
+ 
+ static int io_submit_add_bh(struct ext4_io_submit *io,
+ 			    struct inode *inode,
++			    struct page *page,
+ 			    struct buffer_head *bh)
+ {
+ 	int ret;
+@@ -391,7 +411,7 @@ submit_and_retry:
+ 		if (ret)
+ 			return ret;
+ 	}
+-	ret = bio_add_page(io->io_bio, bh->b_page, bh->b_size, bh_offset(bh));
++	ret = bio_add_page(io->io_bio, page, bh->b_size, bh_offset(bh));
+ 	if (ret != bh->b_size)
+ 		goto submit_and_retry;
+ 	io->io_next_block++;
+@@ -404,6 +424,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 			struct writeback_control *wbc,
+ 			bool keep_towrite)
+ {
++	struct page *data_page = NULL;
+ 	struct inode *inode = page->mapping->host;
+ 	unsigned block_start, blocksize;
+ 	struct buffer_head *bh, *head;
+@@ -463,19 +484,29 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 		set_buffer_async_write(bh);
+ 	} while ((bh = bh->b_this_page) != head);
+ 
+-	/* Now submit buffers to write */
+ 	bh = head = page_buffers(page);
++
++	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode)) {
++		data_page = ext4_encrypt(inode, page);
++		if (IS_ERR(data_page)) {
++			ret = PTR_ERR(data_page);
++			data_page = NULL;
++			goto out;
++		}
++	}
++
++	/* Now submit buffers to write */
+ 	do {
+ 		if (!buffer_async_write(bh))
+ 			continue;
+-		ret = io_submit_add_bh(io, inode, bh);
++		ret = io_submit_add_bh(io, inode,
++				       data_page ? data_page : page, bh);
+ 		if (ret) {
+ 			/*
+ 			 * We only get here on ENOMEM.  Not much else
+ 			 * we can do but mark the page as dirty, and
+ 			 * better luck next time.
+ 			 */
+-			redirty_page_for_writepage(wbc, page);
+ 			break;
+ 		}
+ 		nr_submitted++;
+@@ -484,6 +515,11 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 
+ 	/* Error stopped previous loop? Clean up buffers... */
+ 	if (ret) {
++	out:
++		if (data_page)
++			ext4_restore_control_page(data_page);
++		printk_ratelimited(KERN_ERR "%s: ret = %d\n", __func__, ret);
++		redirty_page_for_writepage(wbc, page);
+ 		do {
+ 			clear_buffer_async_write(bh);
+ 			bh = bh->b_this_page;
 -- 
 2.3.0
 
