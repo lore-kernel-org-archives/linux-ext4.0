@@ -1,209 +1,420 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH-v2 12/20] ext4 crypto: implement the ext4 decryption read path
-Date: Sun, 12 Apr 2015 23:16:28 -0400
-Message-ID: <1428894996-7852-13-git-send-email-tytso@mit.edu>
+Subject: [PATCH-v2 06/20] ext4 crypto: add encryption policy and password salt support
+Date: Sun, 12 Apr 2015 23:16:22 -0400
+Message-ID: <1428894996-7852-7-git-send-email-tytso@mit.edu>
 References: <1428894996-7852-1-git-send-email-tytso@mit.edu>
-Cc: mhalcrow@google.com, Ildar Muslukhov <ildarm@google.com>,
-	Theodore Ts'o <tytso@mit.edu>
+Cc: mhalcrow@google.com, Theodore Ts'o <tytso@mit.edu>,
+	Ildar Muslukhov <muslukhovi@gmail.com>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35621 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:35659 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752720AbbDMDRO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 12 Apr 2015 23:17:14 -0400
+	id S1753012AbbDMDSO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 12 Apr 2015 23:18:14 -0400
 In-Reply-To: <1428894996-7852-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Michael Halcrow <mhalcrow@google.com>
 
-Change-Id: Ie9c043a132a01da60d1617662cd30307639f5599
+Change-Id: I550d197184af04ed27e4c3abb759ca188a3f0de0
 Signed-off-by: Michael Halcrow <mhalcrow@google.com>
-Signed-off-by: Ildar Muslukhov <ildarm@google.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Ildar Muslukhov <muslukhovi@gmail.com>
 ---
- fs/ext4/file.c     | 19 ++++++++++++++--
- fs/ext4/inode.c    |  8 +++++++
- fs/ext4/readpage.c | 66 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 3 files changed, 90 insertions(+), 3 deletions(-)
+ fs/ext4/Makefile        |   1 +
+ fs/ext4/crypto_policy.c | 156 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4.h          |  15 +++++
+ fs/ext4/ext4_crypto.h   |  49 +++++++++++++++
+ fs/ext4/ioctl.c         |  85 ++++++++++++++++++++++++++
+ 5 files changed, 306 insertions(+)
+ create mode 100644 fs/ext4/crypto_policy.c
+ create mode 100644 fs/ext4/ext4_crypto.h
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 8131be8..756d10f 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -28,6 +28,7 @@
- #include <linux/pagevec.h>
- #include "ext4.h"
- #include "ext4_jbd2.h"
-+#include "ext4_crypto.h"
- #include "xattr.h"
- #include "acl.h"
+diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+index cd6f50f..3886ee4 100644
+--- a/fs/ext4/Makefile
++++ b/fs/ext4/Makefile
+@@ -12,3 +12,4 @@ ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
  
-@@ -200,6 +201,13 @@ static const struct vm_operations_struct ext4_file_vm_ops = {
- 
- static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
- {
-+	struct inode *inode = file->f_mapping->host;
-+
-+	if (ext4_encrypted_inode(inode)) {
-+		int err = ext4_generate_encryption_key(inode);
-+		if (err)
-+			return 0;
-+	}
- 	file_accessed(file);
- 	vma->vm_ops = &ext4_file_vm_ops;
- 	return 0;
-@@ -212,6 +220,7 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 	struct vfsmount *mnt = filp->f_path.mnt;
- 	struct path path;
- 	char buf[64], *cp;
-+	int ret;
- 
- 	if (unlikely(!(sbi->s_mount_flags & EXT4_MF_MNTDIR_SAMPLED) &&
- 		     !(sb->s_flags & MS_RDONLY))) {
-@@ -250,11 +259,17 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 	 * writing and the journal is present
- 	 */
- 	if (filp->f_mode & FMODE_WRITE) {
--		int ret = ext4_inode_attach_jinode(inode);
-+		ret = ext4_inode_attach_jinode(inode);
- 		if (ret < 0)
- 			return ret;
- 	}
--	return dquot_file_open(inode, filp);
-+	ret = dquot_file_open(inode, filp);
-+	if (!ret && ext4_encrypted_inode(inode)) {
-+		ret = ext4_generate_encryption_key(inode);
-+		if (ret)
-+			ret = -EACCES;
-+	}
-+	return ret;
- }
- 
- /*
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index dcc836c..5b6b7b6 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -39,6 +39,7 @@
- #include <linux/ratelimit.h>
- #include <linux/aio.h>
- #include <linux/bitops.h>
-+#include <linux/prefetch.h>
- 
- #include "ext4_jbd2.h"
- #include "ext4_crypto.h"
-@@ -3363,6 +3364,13 @@ static int ext4_block_zero_page_range(handle_t *handle,
- 		/* Uhhuh. Read error. Complain and punt. */
- 		if (!buffer_uptodate(bh))
- 			goto unlock;
-+		if (S_ISREG(inode->i_mode) &&
-+		    ext4_encrypted_inode(inode)) {
-+			/* We expect the key to be set. */
-+			BUG_ON(!ext4_has_encryption_key(inode));
-+			BUG_ON(blocksize != PAGE_CACHE_SIZE);
-+			WARN_ON_ONCE(ext4_decrypt_one(inode, page));
-+		}
- 	}
- 	if (ext4_should_journal_data(inode)) {
- 		BUFFER_TRACE(bh, "get write access");
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index fff9fe6..171b9ac 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -47,6 +47,46 @@
- #include "ext4.h"
- 
- /*
-+ * Call ext4_decrypt on every single page, reusing the encryption
-+ * context.
+ ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
+ ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
++ext4-$(CONFIG_EXT4_FS_ENCRYPTION)	+= crypto_policy.o
+diff --git a/fs/ext4/crypto_policy.c b/fs/ext4/crypto_policy.c
+new file mode 100644
+index 0000000..5cad852
+--- /dev/null
++++ b/fs/ext4/crypto_policy.c
+@@ -0,0 +1,156 @@
++/*
++ * linux/fs/ext4/crypto_policy.c
++ *
++ * Copyright (C) 2015, Google, Inc.
++ *
++ * This contains encryption policy functions for ext4
++ *
++ * Written by Michael Halcrow, 2015.
 + */
-+static void completion_pages(struct work_struct *work)
++
++#include <linux/random.h>
++#include <linux/string.h>
++#include <linux/types.h>
++
++#include "ext4.h"
++#include "xattr.h"
++
++static int ext4_inode_has_encryption_context(struct inode *inode)
 +{
-+#ifdef CONFIG_EXT4_FS_ENCRYPTION
-+	struct ext4_crypto_ctx *ctx =
-+		container_of(work, struct ext4_crypto_ctx, work);
-+	struct bio	*bio	= ctx->bio;
-+	struct bio_vec	*bv;
-+	int		i;
-+
-+	bio_for_each_segment_all(bv, bio, i) {
-+		struct page *page = bv->bv_page;
-+
-+		int ret = ext4_decrypt(ctx, page);
-+		if (ret) {
-+			WARN_ON_ONCE(1);
-+			SetPageError(page);
-+		} else
-+			SetPageUptodate(page);
-+		unlock_page(page);
-+	}
-+	ext4_release_crypto_ctx(ctx);
-+	bio_put(bio);
-+#else
-+	BUG();
-+#endif
-+}
-+
-+static inline bool ext4_bio_encrypted(struct bio *bio)
-+{
-+#ifdef CONFIG_EXT4_FS_ENCRYPTION
-+	return unlikely(bio->bi_private != NULL);
-+#else
-+	return false;
-+#endif
++	int res = ext4_xattr_get(inode, EXT4_XATTR_INDEX_ENCRYPTION,
++				 EXT4_XATTR_NAME_ENCRYPTION_CONTEXT, NULL, 0);
++	return (res > 0);
 +}
 +
 +/*
-  * I/O completion handler for multipage BIOs.
-  *
-  * The mpage code never puts partial pages into a BIO (except for end-of-file).
-@@ -63,6 +103,18 @@ static void mpage_end_io(struct bio *bio, int err)
- 	struct bio_vec *bv;
- 	int i;
- 
-+	if (ext4_bio_encrypted(bio)) {
-+		struct ext4_crypto_ctx *ctx = bio->bi_private;
++ * check whether the policy is consistent with the encryption context
++ * for the inode
++ */
++static int ext4_is_encryption_context_consistent_with_policy(
++	struct inode *inode, const struct ext4_encryption_policy *policy)
++{
++	struct ext4_encryption_context ctx;
++	int res = ext4_xattr_get(inode, EXT4_XATTR_INDEX_ENCRYPTION,
++				 EXT4_XATTR_NAME_ENCRYPTION_CONTEXT, &ctx,
++				 sizeof(ctx));
++	if (res != sizeof(ctx))
++		return 0;
++	return (memcmp(ctx.master_key_descriptor, policy->master_key_descriptor,
++			EXT4_KEY_DESCRIPTOR_SIZE) == 0 &&
++		(ctx.contents_encryption_mode ==
++		 policy->contents_encryption_mode) &&
++		(ctx.filenames_encryption_mode ==
++		 policy->filenames_encryption_mode));
++}
 +
-+		if (err) {
-+			ext4_release_crypto_ctx(ctx);
-+		} else {
-+			INIT_WORK(&ctx->work, completion_pages);
-+			ctx->bio = bio;
-+			queue_work(ext4_read_workqueue, &ctx->work);
-+			return;
-+		}
++static int ext4_create_encryption_context_from_policy(
++	struct inode *inode, const struct ext4_encryption_policy *policy)
++{
++	struct ext4_encryption_context ctx;
++	int res = 0;
++
++	ctx.format = EXT4_ENCRYPTION_CONTEXT_FORMAT_V1;
++	memcpy(ctx.master_key_descriptor, policy->master_key_descriptor,
++	       EXT4_KEY_DESCRIPTOR_SIZE);
++	ctx.contents_encryption_mode = policy->contents_encryption_mode;
++	ctx.filenames_encryption_mode = policy->filenames_encryption_mode;
++	BUILD_BUG_ON(sizeof(ctx.nonce) != EXT4_KEY_DERIVATION_NONCE_SIZE);
++	get_random_bytes(ctx.nonce, EXT4_KEY_DERIVATION_NONCE_SIZE);
++
++	res = ext4_xattr_set(inode, EXT4_XATTR_INDEX_ENCRYPTION,
++			     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT, &ctx,
++			     sizeof(ctx), 0);
++	if (!res)
++		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
++	return res;
++}
++
++int ext4_process_policy(const struct ext4_encryption_policy *policy,
++			struct inode *inode)
++{
++	if (policy->version != 0)
++		return -EINVAL;
++
++	if (!ext4_inode_has_encryption_context(inode)) {
++		if (!ext4_empty_dir(inode))
++			return -ENOTEMPTY;
++		return ext4_create_encryption_context_from_policy(inode,
++								  policy);
 +	}
- 	bio_for_each_segment_all(bv, bio, i) {
- 		struct page *page = bv->bv_page;
- 
-@@ -223,13 +275,25 @@ int ext4_mpage_readpages(struct address_space *mapping,
- 			bio = NULL;
- 		}
- 		if (bio == NULL) {
-+			struct ext4_crypto_ctx *ctx = NULL;
 +
-+			if (ext4_encrypted_inode(inode) &&
-+			    S_ISREG(inode->i_mode)) {
-+				ctx = ext4_get_crypto_ctx(inode);
-+				if (IS_ERR(ctx))
-+					goto set_error_page;
-+			}
- 			bio = bio_alloc(GFP_KERNEL,
- 				min_t(int, nr_pages, bio_get_nr_vecs(bdev)));
--			if (!bio)
-+			if (!bio) {
-+				if (ctx)
-+					ext4_release_crypto_ctx(ctx);
- 				goto set_error_page;
-+			}
- 			bio->bi_bdev = bdev;
- 			bio->bi_iter.bi_sector = blocks[0] << (blkbits - 9);
- 			bio->bi_end_io = mpage_end_io;
-+			bio->bi_private = ctx;
- 		}
++	if (ext4_is_encryption_context_consistent_with_policy(inode, policy))
++		return 0;
++
++	printk(KERN_WARNING "%s: Policy inconsistent with encryption context\n",
++	       __func__);
++	return -EINVAL;
++}
++
++int ext4_get_policy(struct inode *inode, struct ext4_encryption_policy *policy)
++{
++	struct ext4_encryption_context ctx;
++
++	int res = ext4_xattr_get(inode, EXT4_XATTR_INDEX_ENCRYPTION,
++				 EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
++				 &ctx, sizeof(ctx));
++	if (res != sizeof(ctx))
++		return -ENOENT;
++	if (ctx.format != EXT4_ENCRYPTION_CONTEXT_FORMAT_V1)
++		return -EINVAL;
++	policy->version = 0;
++	policy->contents_encryption_mode = ctx.contents_encryption_mode;
++	policy->filenames_encryption_mode = ctx.filenames_encryption_mode;
++	memcpy(&policy->master_key_descriptor, ctx.master_key_descriptor,
++	       EXT4_KEY_DESCRIPTOR_SIZE);
++	return 0;
++}
++
++int ext4_is_child_context_consistent_with_parent(struct inode *parent,
++						 struct inode *child)
++{
++	struct ext4_encryption_context parent_ctx, child_ctx;
++	int res = ext4_xattr_get(parent, EXT4_XATTR_INDEX_ENCRYPTION,
++				 EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
++				 &parent_ctx, sizeof(parent_ctx));
++
++	if (res != sizeof(parent_ctx))
++		return 0;
++	res = ext4_xattr_get(parent, EXT4_XATTR_INDEX_ENCRYPTION,
++			     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
++			     &child_ctx, sizeof(child_ctx));
++	if (res != sizeof(child_ctx))
++		return 0;
++	return (memcmp(parent_ctx.master_key_descriptor,
++		       child_ctx.master_key_descriptor,
++		       EXT4_KEY_DESCRIPTOR_SIZE) == 0 &&
++		(parent_ctx.contents_encryption_mode ==
++		 child_ctx.contents_encryption_mode) &&
++		(parent_ctx.filenames_encryption_mode ==
++		 child_ctx.filenames_encryption_mode));
++}
++
++/**
++ * ext4_inherit_context() - Sets a child context from its parent
++ * @parent: Parent inode from which the context is inherited.
++ * @child:  Child inode that inherits the context from @parent.
++ *
++ * Return: Zero on success, non-zero otherwise
++ */
++int ext4_inherit_context(struct inode *parent, struct inode *child)
++{
++	struct ext4_encryption_context ctx;
++	int res = ext4_xattr_get(parent, EXT4_XATTR_INDEX_ENCRYPTION,
++				 EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
++				 &ctx, sizeof(ctx));
++
++	if (res != sizeof(ctx))
++		return -ENOENT;
++
++	get_random_bytes(ctx.nonce, EXT4_KEY_DERIVATION_NONCE_SIZE);
++	res = ext4_xattr_set(child, EXT4_XATTR_INDEX_ENCRYPTION,
++			     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT, &ctx,
++			     sizeof(ctx), 0);
++	if (!res)
++		ext4_set_inode_flag(child, EXT4_INODE_ENCRYPT);
++	return res;
++}
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 41bb58a..e0956b7 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -589,6 +589,8 @@ enum {
+ #define EXT4_ENCRYPTION_MODE_AES_256_CBC	3
+ #define EXT4_ENCRYPTION_MODE_AES_256_CTS	4
  
- 		length = first_hole << blkbits;
++#include "ext4_crypto.h"
++
+ /*
+  * ioctl commands
+  */
+@@ -610,6 +612,9 @@ enum {
+ #define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
+ #define EXT4_IOC_SWAP_BOOT		_IO('f', 17)
+ #define EXT4_IOC_PRECACHE_EXTENTS	_IO('f', 18)
++#define EXT4_IOC_SET_ENCRYPTION_POLICY	_IOR('f', 19, struct ext4_encryption_policy)
++#define EXT4_IOC_GET_ENCRYPTION_PWSALT	_IOW('f', 20, __u8[16])
++#define EXT4_IOC_GET_ENCRYPTION_POLICY	_IOW('f', 21, struct ext4_encryption_policy)
+ 
+ #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
+ /*
+@@ -1999,6 +2004,16 @@ extern unsigned ext4_free_clusters_after_init(struct super_block *sb,
+ 					      struct ext4_group_desc *gdp);
+ ext4_fsblk_t ext4_inode_to_goal_block(struct inode *);
+ 
++/* crypto_policy.c */
++int ext4_is_child_context_consistent_with_parent(struct inode *parent,
++						 struct inode *child);
++int ext4_inherit_context(struct inode *parent, struct inode *child);
++void ext4_to_hex(char *dst, char *src, size_t src_size);
++int ext4_process_policy(const struct ext4_encryption_policy *policy,
++			struct inode *inode);
++int ext4_get_policy(struct inode *inode,
++		    struct ext4_encryption_policy *policy);
++
+ /* dir.c */
+ extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
+ 				  struct file *,
+diff --git a/fs/ext4/ext4_crypto.h b/fs/ext4/ext4_crypto.h
+new file mode 100644
+index 0000000..a69d2ba
+--- /dev/null
++++ b/fs/ext4/ext4_crypto.h
+@@ -0,0 +1,49 @@
++/*
++ * linux/fs/ext4/ext4_crypto.h
++ *
++ * Copyright (C) 2015, Google, Inc.
++ *
++ * This contains encryption header content for ext4
++ *
++ * Written by Michael Halcrow, 2015.
++ */
++
++#ifndef _EXT4_CRYPTO_H
++#define _EXT4_CRYPTO_H
++
++#include <linux/fs.h>
++
++#define EXT4_KEY_DESCRIPTOR_SIZE 8
++
++/* Policy provided via an ioctl on the topmost directory */
++struct ext4_encryption_policy {
++	char version;
++	char contents_encryption_mode;
++	char filenames_encryption_mode;
++	char master_key_descriptor[EXT4_KEY_DESCRIPTOR_SIZE];
++} __attribute__((__packed__));
++
++#define EXT4_ENCRYPTION_CONTEXT_FORMAT_V1 1
++#define EXT4_KEY_DERIVATION_NONCE_SIZE 16
++
++/**
++ * Encryption context for inode
++ *
++ * Protector format:
++ *  1 byte: Protector format (1 = this version)
++ *  1 byte: File contents encryption mode
++ *  1 byte: File names encryption mode
++ *  1 byte: Reserved
++ *  8 bytes: Master Key descriptor
++ *  16 bytes: Encryption Key derivation nonce
++ */
++struct ext4_encryption_context {
++	char format;
++	char contents_encryption_mode;
++	char filenames_encryption_mode;
++	char reserved;
++	char master_key_descriptor[EXT4_KEY_DESCRIPTOR_SIZE];
++	char nonce[EXT4_KEY_DERIVATION_NONCE_SIZE];
++} __attribute__((__packed__));
++
++#endif	/* _EXT4_CRYPTO_H */
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index f58a0d1..9d2c2c6 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -14,6 +14,7 @@
+ #include <linux/compat.h>
+ #include <linux/mount.h>
+ #include <linux/file.h>
++#include <linux/random.h>
+ #include <asm/uaccess.h>
+ #include "ext4_jbd2.h"
+ #include "ext4.h"
+@@ -196,6 +197,16 @@ journal_err_out:
+ 	return err;
+ }
+ 
++static int uuid_is_zero(__u8 u[16])
++{
++	int	i;
++
++	for (i=0; i < 16; i++)
++		if (u[i])
++			return 0;
++	return 1;
++}
++
+ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ {
+ 	struct inode *inode = file_inode(filp);
+@@ -615,7 +626,78 @@ resizefs_out:
+ 	}
+ 	case EXT4_IOC_PRECACHE_EXTENTS:
+ 		return ext4_ext_precache(inode);
++	case EXT4_IOC_SET_ENCRYPTION_POLICY: {
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++		struct ext4_encryption_policy policy;
++		int err = 0;
++
++		if (copy_from_user(&policy,
++				   (struct ext4_encryption_policy __user *)arg,
++				   sizeof(policy))) {
++			err = -EFAULT;
++			goto encryption_policy_out;
++		}
+ 
++		err = ext4_process_policy(&policy, inode);
++encryption_policy_out:
++		return err;
++#else
++		return -EOPNOTSUPP;
++#endif
++	}
++	case EXT4_IOC_GET_ENCRYPTION_PWSALT: {
++		int err, err2;
++		struct ext4_sb_info *sbi = EXT4_SB(sb);
++		handle_t *handle;
++
++		if (!ext4_sb_has_crypto(sb))
++			return -EOPNOTSUPP;
++		if (uuid_is_zero(sbi->s_es->s_encrypt_pw_salt)) {
++			err = mnt_want_write_file(filp);
++			if (err)
++				return err;
++			handle = ext4_journal_start_sb(sb, EXT4_HT_MISC, 1);
++			if (IS_ERR(handle)) {
++				err = PTR_ERR(handle);
++				goto pwsalt_err_exit;
++			}
++			err = ext4_journal_get_write_access(handle, sbi->s_sbh);
++			if (err)
++				goto pwsalt_err_journal;
++			generate_random_uuid(sbi->s_es->s_encrypt_pw_salt);
++			err = ext4_handle_dirty_metadata(handle, NULL,
++							 sbi->s_sbh);
++		pwsalt_err_journal:
++			err2 = ext4_journal_stop(handle);
++			if (err2 && !err)
++				err = err2;
++		pwsalt_err_exit:
++			mnt_drop_write_file(filp);
++			if (err)
++				return err;
++		}
++		if (copy_to_user((void *) arg, sbi->s_es->s_encrypt_pw_salt,
++				 16))
++			return -EFAULT;
++		return 0;
++	}
++	case EXT4_IOC_GET_ENCRYPTION_POLICY: {
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++		struct ext4_encryption_policy policy;
++		int err = 0;
++
++		if (!ext4_encrypted_inode(inode))
++			return -ENOENT;
++		err = ext4_get_policy(inode, &policy);
++		if (err)
++			return err;
++		if (copy_to_user((void *)arg, &policy, sizeof(policy)))
++			return -EFAULT;
++		return 0;
++#else
++		return -EOPNOTSUPP;
++#endif
++	}
+ 	default:
+ 		return -ENOTTY;
+ 	}
+@@ -680,6 +762,9 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	case FITRIM:
+ 	case EXT4_IOC_RESIZE_FS:
+ 	case EXT4_IOC_PRECACHE_EXTENTS:
++	case EXT4_IOC_SET_ENCRYPTION_POLICY:
++	case EXT4_IOC_GET_ENCRYPTION_PWSALT:
++	case EXT4_IOC_GET_ENCRYPTION_POLICY:
+ 		break;
+ 	default:
+ 		return -ENOIOCTLCMD;
 -- 
 2.3.0
 
