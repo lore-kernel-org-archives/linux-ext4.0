@@ -1,175 +1,209 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH-v2 14/20] ext4 crypto: teach ext4_htree_store_dirent() to store decrypted filenames
-Date: Sun, 12 Apr 2015 23:16:30 -0400
-Message-ID: <1428894996-7852-15-git-send-email-tytso@mit.edu>
+Subject: [PATCH-v2 12/20] ext4 crypto: implement the ext4 decryption read path
+Date: Sun, 12 Apr 2015 23:16:28 -0400
+Message-ID: <1428894996-7852-13-git-send-email-tytso@mit.edu>
 References: <1428894996-7852-1-git-send-email-tytso@mit.edu>
-Cc: mhalcrow@google.com, Theodore Ts'o <tytso@mit.edu>
+Cc: mhalcrow@google.com, Ildar Muslukhov <ildarm@google.com>,
+	Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35622 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:35621 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752751AbbDMDRO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752720AbbDMDRO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 12 Apr 2015 23:17:14 -0400
 In-Reply-To: <1428894996-7852-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-For encrypted directories, we need to pass in a separate parameter for
-the decrypted filename, since the directory entry contains the
-encrypted filename.
+From: Michael Halcrow <mhalcrow@google.com>
 
-Change-Id: I2d1a78e65cb81152cae108ce7faadc28b52e0abe
+Change-Id: Ie9c043a132a01da60d1617662cd30307639f5599
+Signed-off-by: Michael Halcrow <mhalcrow@google.com>
+Signed-off-by: Ildar Muslukhov <ildarm@google.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/dir.c    | 15 ++++++++++-----
- fs/ext4/ext4.h   |  5 +++--
- fs/ext4/inline.c |  7 +++++--
- fs/ext4/namei.c  | 21 +++++++++++++++++----
- 4 files changed, 35 insertions(+), 13 deletions(-)
+ fs/ext4/file.c     | 19 ++++++++++++++--
+ fs/ext4/inode.c    |  8 +++++++
+ fs/ext4/readpage.c | 66 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 90 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index c24143e..f67f955 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -384,10 +384,15 @@ void ext4_htree_free_dir_info(struct dir_private_info *p)
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 8131be8..756d10f 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -28,6 +28,7 @@
+ #include <linux/pagevec.h>
+ #include "ext4.h"
+ #include "ext4_jbd2.h"
++#include "ext4_crypto.h"
+ #include "xattr.h"
+ #include "acl.h"
+ 
+@@ -200,6 +201,13 @@ static const struct vm_operations_struct ext4_file_vm_ops = {
+ 
+ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
+ {
++	struct inode *inode = file->f_mapping->host;
++
++	if (ext4_encrypted_inode(inode)) {
++		int err = ext4_generate_encryption_key(inode);
++		if (err)
++			return 0;
++	}
+ 	file_accessed(file);
+ 	vma->vm_ops = &ext4_file_vm_ops;
+ 	return 0;
+@@ -212,6 +220,7 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 	struct vfsmount *mnt = filp->f_path.mnt;
+ 	struct path path;
+ 	char buf[64], *cp;
++	int ret;
+ 
+ 	if (unlikely(!(sbi->s_mount_flags & EXT4_MF_MNTDIR_SAMPLED) &&
+ 		     !(sb->s_flags & MS_RDONLY))) {
+@@ -250,11 +259,17 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 	 * writing and the journal is present
+ 	 */
+ 	if (filp->f_mode & FMODE_WRITE) {
+-		int ret = ext4_inode_attach_jinode(inode);
++		ret = ext4_inode_attach_jinode(inode);
+ 		if (ret < 0)
+ 			return ret;
+ 	}
+-	return dquot_file_open(inode, filp);
++	ret = dquot_file_open(inode, filp);
++	if (!ret && ext4_encrypted_inode(inode)) {
++		ret = ext4_generate_encryption_key(inode);
++		if (ret)
++			ret = -EACCES;
++	}
++	return ret;
+ }
  
  /*
-  * Given a directory entry, enter it into the fname rb tree.
-+ *
-+ * When filename encryption is enabled, the dirent will hold the
-+ * encrypted filename, while the htree will hold decrypted filename.
-+ * The decrypted filename is passed in via ent_name.  parameter.
-  */
- int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
- 			     __u32 minor_hash,
--			     struct ext4_dir_entry_2 *dirent)
-+			    struct ext4_dir_entry_2 *dirent,
-+			    struct ext4_str *ent_name)
- {
- 	struct rb_node **p, *parent = NULL;
- 	struct fname *fname, *new_fn;
-@@ -398,17 +403,17 @@ int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
- 	p = &info->root.rb_node;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index dcc836c..5b6b7b6 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -39,6 +39,7 @@
+ #include <linux/ratelimit.h>
+ #include <linux/aio.h>
+ #include <linux/bitops.h>
++#include <linux/prefetch.h>
  
- 	/* Create and allocate the fname structure */
--	len = sizeof(struct fname) + dirent->name_len + 1;
-+	len = sizeof(struct fname) + ent_name->len + 1;
- 	new_fn = kzalloc(len, GFP_KERNEL);
- 	if (!new_fn)
- 		return -ENOMEM;
- 	new_fn->hash = hash;
- 	new_fn->minor_hash = minor_hash;
- 	new_fn->inode = le32_to_cpu(dirent->inode);
--	new_fn->name_len = dirent->name_len;
-+	new_fn->name_len = ent_name->len;
- 	new_fn->file_type = dirent->file_type;
--	memcpy(new_fn->name, dirent->name, dirent->name_len);
--	new_fn->name[dirent->name_len] = 0;
-+	memcpy(new_fn->name, ent_name->name, ent_name->len);
-+	new_fn->name[ent_name->len] = 0;
+ #include "ext4_jbd2.h"
+ #include "ext4_crypto.h"
+@@ -3363,6 +3364,13 @@ static int ext4_block_zero_page_range(handle_t *handle,
+ 		/* Uhhuh. Read error. Complain and punt. */
+ 		if (!buffer_uptodate(bh))
+ 			goto unlock;
++		if (S_ISREG(inode->i_mode) &&
++		    ext4_encrypted_inode(inode)) {
++			/* We expect the key to be set. */
++			BUG_ON(!ext4_has_encryption_key(inode));
++			BUG_ON(blocksize != PAGE_CACHE_SIZE);
++			WARN_ON_ONCE(ext4_decrypt_one(inode, page));
++		}
+ 	}
+ 	if (ext4_should_journal_data(inode)) {
+ 		BUFFER_TRACE(bh, "get write access");
+diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+index fff9fe6..171b9ac 100644
+--- a/fs/ext4/readpage.c
++++ b/fs/ext4/readpage.c
+@@ -47,6 +47,46 @@
+ #include "ext4.h"
  
- 	while (*p) {
- 		parent = *p;
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e44436b..883fcc9 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2129,8 +2129,9 @@ extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
- 	unlikely(__ext4_check_dir_entry(__func__, __LINE__, (dir), (filp), \
- 					(de), (bh), (buf), (size), (offset)))
- extern int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
--				    __u32 minor_hash,
--				    struct ext4_dir_entry_2 *dirent);
-+				__u32 minor_hash,
-+				struct ext4_dir_entry_2 *dirent,
-+				struct ext4_str *ent_name);
- extern void ext4_htree_free_dir_info(struct dir_private_info *p);
- extern int ext4_find_dest_de(struct inode *dir, struct inode *inode,
- 			     struct buffer_head *bh,
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 4b143fe..056ef06 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1327,6 +1327,7 @@ int htree_inlinedir_to_tree(struct file *dir_file,
- 	struct ext4_iloc iloc;
- 	void *dir_buf = NULL;
- 	struct ext4_dir_entry_2 fake;
-+	struct ext4_str tmp_str;
+ /*
++ * Call ext4_decrypt on every single page, reusing the encryption
++ * context.
++ */
++static void completion_pages(struct work_struct *work)
++{
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++	struct ext4_crypto_ctx *ctx =
++		container_of(work, struct ext4_crypto_ctx, work);
++	struct bio	*bio	= ctx->bio;
++	struct bio_vec	*bv;
++	int		i;
++
++	bio_for_each_segment_all(bv, bio, i) {
++		struct page *page = bv->bv_page;
++
++		int ret = ext4_decrypt(ctx, page);
++		if (ret) {
++			WARN_ON_ONCE(1);
++			SetPageError(page);
++		} else
++			SetPageUptodate(page);
++		unlock_page(page);
++	}
++	ext4_release_crypto_ctx(ctx);
++	bio_put(bio);
++#else
++	BUG();
++#endif
++}
++
++static inline bool ext4_bio_encrypted(struct bio *bio)
++{
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++	return unlikely(bio->bi_private != NULL);
++#else
++	return false;
++#endif
++}
++
++/*
+  * I/O completion handler for multipage BIOs.
+  *
+  * The mpage code never puts partial pages into a BIO (except for end-of-file).
+@@ -63,6 +103,18 @@ static void mpage_end_io(struct bio *bio, int err)
+ 	struct bio_vec *bv;
+ 	int i;
  
- 	ret = ext4_get_inode_loc(inode, &iloc);
- 	if (ret)
-@@ -1398,8 +1399,10 @@ int htree_inlinedir_to_tree(struct file *dir_file,
- 			continue;
- 		if (de->inode == 0)
- 			continue;
--		err = ext4_htree_store_dirent(dir_file,
--				   hinfo->hash, hinfo->minor_hash, de);
-+		tmp_str.name = de->name;
-+		tmp_str.len = de->name_len;
-+		err = ext4_htree_store_dirent(dir_file, hinfo->hash,
-+					      hinfo->minor_hash, de, &tmp_str);
- 		if (err) {
- 			count = err;
- 			goto out;
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 262aa1c..57cae22 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -880,6 +880,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
- 	struct buffer_head *bh;
- 	struct ext4_dir_entry_2 *de, *top;
- 	int err = 0, count = 0;
-+	struct ext4_str tmp_str;
++	if (ext4_bio_encrypted(bio)) {
++		struct ext4_crypto_ctx *ctx = bio->bi_private;
++
++		if (err) {
++			ext4_release_crypto_ctx(ctx);
++		} else {
++			INIT_WORK(&ctx->work, completion_pages);
++			ctx->bio = bio;
++			queue_work(ext4_read_workqueue, &ctx->work);
++			return;
++		}
++	}
+ 	bio_for_each_segment_all(bv, bio, i) {
+ 		struct page *page = bv->bv_page;
  
- 	dxtrace(printk(KERN_INFO "In htree dirblock_to_tree: block %lu\n",
- 							(unsigned long)block));
-@@ -906,8 +907,11 @@ static int htree_dirblock_to_tree(struct file *dir_file,
- 			continue;
- 		if (de->inode == 0)
- 			continue;
--		if ((err = ext4_htree_store_dirent(dir_file,
--				   hinfo->hash, hinfo->minor_hash, de)) != 0) {
-+		tmp_str.name = de->name;
-+		tmp_str.len = de->name_len;
-+		err = ext4_htree_store_dirent(dir_file,
-+			   hinfo->hash, hinfo->minor_hash, de, &tmp_str);
-+		if (err != 0) {
- 			brelse(bh);
- 			return err;
+@@ -223,13 +275,25 @@ int ext4_mpage_readpages(struct address_space *mapping,
+ 			bio = NULL;
  		}
-@@ -937,6 +941,7 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
- 	int count = 0;
- 	int ret, err;
- 	__u32 hashval;
-+	struct ext4_str tmp_str;
+ 		if (bio == NULL) {
++			struct ext4_crypto_ctx *ctx = NULL;
++
++			if (ext4_encrypted_inode(inode) &&
++			    S_ISREG(inode->i_mode)) {
++				ctx = ext4_get_crypto_ctx(inode);
++				if (IS_ERR(ctx))
++					goto set_error_page;
++			}
+ 			bio = bio_alloc(GFP_KERNEL,
+ 				min_t(int, nr_pages, bio_get_nr_vecs(bdev)));
+-			if (!bio)
++			if (!bio) {
++				if (ctx)
++					ext4_release_crypto_ctx(ctx);
+ 				goto set_error_page;
++			}
+ 			bio->bi_bdev = bdev;
+ 			bio->bi_iter.bi_sector = blocks[0] << (blkbits - 9);
+ 			bio->bi_end_io = mpage_end_io;
++			bio->bi_private = ctx;
+ 		}
  
- 	dxtrace(printk(KERN_DEBUG "In htree_fill_tree, start hash: %x:%x\n",
- 		       start_hash, start_minor_hash));
-@@ -972,14 +977,22 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
- 	/* Add '.' and '..' from the htree header */
- 	if (!start_hash && !start_minor_hash) {
- 		de = (struct ext4_dir_entry_2 *) frames[0].bh->b_data;
--		if ((err = ext4_htree_store_dirent(dir_file, 0, 0, de)) != 0)
-+		tmp_str.name = de->name;
-+		tmp_str.len = de->name_len;
-+		err = ext4_htree_store_dirent(dir_file, 0, 0,
-+					      de, &tmp_str);
-+		if (err != 0)
- 			goto errout;
- 		count++;
- 	}
- 	if (start_hash < 2 || (start_hash ==2 && start_minor_hash==0)) {
- 		de = (struct ext4_dir_entry_2 *) frames[0].bh->b_data;
- 		de = ext4_next_entry(de, dir->i_sb->s_blocksize);
--		if ((err = ext4_htree_store_dirent(dir_file, 2, 0, de)) != 0)
-+		tmp_str.name = de->name;
-+		tmp_str.len = de->name_len;
-+		err = ext4_htree_store_dirent(dir_file, 2, 0,
-+					      de, &tmp_str);
-+		if (err != 0)
- 			goto errout;
- 		count++;
- 	}
+ 		length = first_hole << blkbits;
 -- 
 2.3.0
 
