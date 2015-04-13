@@ -1,86 +1,353 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH-v2 00/20] ext4 encryption patches
-Date: Sun, 12 Apr 2015 23:16:16 -0400
-Message-ID: <1428894996-7852-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH-v2 01/20] ext4 crypto: add ext4_mpage_readpages()
+Date: Sun, 12 Apr 2015 23:16:17 -0400
+Message-ID: <1428894996-7852-2-git-send-email-tytso@mit.edu>
+References: <1428894996-7852-1-git-send-email-tytso@mit.edu>
 Cc: mhalcrow@google.com, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35612 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:35616 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752655AbbDMDRN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752714AbbDMDRN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 12 Apr 2015 23:17:13 -0400
+In-Reply-To: <1428894996-7852-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Changes since the last version of the patches
+This takes code from fs/mpage.c and optimizes it for ext4.  Its
+primary reason is to allow us to more easily add encryption to ext4's
+read path in an efficient manner.
 
-* Filename encryption now uses ciphertext stealing mode, which is more
-  space efficient
-* Fixed a bug when deleting encrypted htree directories w/o the key available
-* Cleaned up comments, copyrights, and whitespace
-* The encryption feature is not advertised via /sys/fs/ext4/features
-* Remove unneeded Kconfig dependencies (CTR, SHA1, SHA512, and HMAC)
-* Cleaned up and refactored the file name and data path crypto code
-* Support encrypted fast symlinks
-* Lots of other cleanups suggested by reviewers (thanks, all!)
-
-Note: this version of the patches requires e2fsprogs commit
-v1.42.12-522-ga672190 or newer.
-
-Michael Halcrow (13):
-  ext4 crypto: export ext4_empty_dir()
-  ext4 crypto: add encryption xattr support
-  ext4 crypto: add encryption policy and password salt support
-  ext4 crypto: add ext4 encryption facilities
-  ext4 crypto: add encryption key management facilities
-  ext4 crypto: inherit encryption policies on inode and directory create
-  ext4 crypto: implement the ext4 encryption write path
-  ext4 crypto: implement the ext4 decryption read path
-  ext4 crypto: filename encryption facilities
-  ext4 crypto: insert encrypted filenames into a leaf directory block
-  ext4 crypto: partial update to namei.c for fname crypto
-  ext4 crypto: filename encryption modifications
-  ext4 crypto: enable filename encryption
-
-Theodore Ts'o (7):
-  ext4 crypto: add ext4_mpage_readpages()
-  ext4 crypto: reserve codepoints used by the ext4 encryption feature
-  ext4 crypto: add ext4 encryption Kconfig
-  ext4 crypto: validate context consistency on lookup
-  ext4 crypto: teach ext4_htree_store_dirent() to store decrypted
-    filenames
-  ext4 crypto: Add symlink encryption
-  ext4 crypto: enable encryption feature flag
-
- fs/ext4/Kconfig         |  17 ++
- fs/ext4/Makefile        |   4 +-
- fs/ext4/crypto.c        | 500 ++++++++++++++++++++++++++++++++++
- fs/ext4/crypto_fname.c  | 709 ++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/crypto_key.c    | 165 +++++++++++
- fs/ext4/crypto_policy.c | 183 +++++++++++++
- fs/ext4/dir.c           |  79 ++++--
- fs/ext4/ext4.h          | 177 +++++++++++-
- fs/ext4/ext4_crypto.h   | 147 ++++++++++
- fs/ext4/extents.c       |   6 +
- fs/ext4/file.c          |  19 +-
- fs/ext4/ialloc.c        |  27 +-
- fs/ext4/inline.c        |  14 +-
- fs/ext4/inode.c         | 130 ++++++++-
- fs/ext4/ioctl.c         |  85 ++++++
- fs/ext4/namei.c         | 563 ++++++++++++++++++++++++++++++++------
- fs/ext4/page-io.c       |  46 +++-
- fs/ext4/readpage.c      | 328 ++++++++++++++++++++++
- fs/ext4/super.c         |  37 ++-
- fs/ext4/symlink.c       | 109 +++++++-
- fs/ext4/xattr.h         |   3 +
- 21 files changed, 3211 insertions(+), 137 deletions(-)
- create mode 100644 fs/ext4/crypto.c
- create mode 100644 fs/ext4/crypto_fname.c
- create mode 100644 fs/ext4/crypto_key.c
- create mode 100644 fs/ext4/crypto_policy.c
- create mode 100644 fs/ext4/ext4_crypto.h
+Change-Id: I0a115e90ab13861ab3e96641a0eb82b951198ecc
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/Makefile   |   2 +-
+ fs/ext4/ext4.h     |   4 +
+ fs/ext4/inode.c    |   4 +-
+ fs/ext4/readpage.c | 264 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 271 insertions(+), 3 deletions(-)
  create mode 100644 fs/ext4/readpage.c
 
+diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+index 0310fec..cd6f50f 100644
+--- a/fs/ext4/Makefile
++++ b/fs/ext4/Makefile
+@@ -8,7 +8,7 @@ ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
+ 		ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
+ 		ext4_jbd2.o migrate.o mballoc.o block_validity.o move_extent.o \
+ 		mmp.o indirect.o extents_status.o xattr.o xattr_user.o \
+-		xattr_trusted.o inline.o
++		xattr_trusted.o inline.o readpage.o
+ 
+ ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
+ ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index a75fba6..06e8add 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2683,6 +2683,10 @@ static inline void ext4_set_de_type(struct super_block *sb,
+ 		de->file_type = ext4_type_by_mode[(mode & S_IFMT)>>S_SHIFT];
+ }
+ 
++/* readpages.c */
++extern int ext4_mpage_readpages(struct address_space *mapping,
++				struct list_head *pages, struct page *page,
++				unsigned nr_pages);
+ 
+ /* symlink.c */
+ extern const struct inode_operations ext4_symlink_inode_operations;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5653fa4..a68cacc 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2798,7 +2798,7 @@ static int ext4_readpage(struct file *file, struct page *page)
+ 		ret = ext4_readpage_inline(inode, page);
+ 
+ 	if (ret == -EAGAIN)
+-		return mpage_readpage(page, ext4_get_block);
++		return ext4_mpage_readpages(page->mapping, NULL, page, 1);
+ 
+ 	return ret;
+ }
+@@ -2813,7 +2813,7 @@ ext4_readpages(struct file *file, struct address_space *mapping,
+ 	if (ext4_has_inline_data(inode))
+ 		return 0;
+ 
+-	return mpage_readpages(mapping, pages, nr_pages, ext4_get_block);
++	return ext4_mpage_readpages(mapping, pages, NULL, nr_pages);
+ }
+ 
+ static void ext4_invalidatepage(struct page *page, unsigned int offset,
+diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+new file mode 100644
+index 0000000..fff9fe6
+--- /dev/null
++++ b/fs/ext4/readpage.c
+@@ -0,0 +1,264 @@
++/*
++ * linux/fs/ext4/readpage.c
++ *
++ * Copyright (C) 2002, Linus Torvalds.
++ * Copyright (C) 2015, Google, Inc.
++ *
++ * This was originally taken from fs/mpage.c
++ *
++ * The intent is the ext4_mpage_readpages() function here is intended
++ * to replace mpage_readpages() in the general case, not just for
++ * encrypted files.  It has some limitations (see below), where it
++ * will fall back to read_block_full_page(), but these limitations
++ * should only be hit when page_size != block_size.
++ *
++ * This will allow us to attach a callback function to support ext4
++ * encryption.
++ *
++ * If anything unusual happens, such as:
++ *
++ * - encountering a page which has buffers
++ * - encountering a page which has a non-hole after a hole
++ * - encountering a page with non-contiguous blocks
++ *
++ * then this code just gives up and calls the buffer_head-based read function.
++ * It does handle a page which has holes at the end - that is a common case:
++ * the end-of-file on blocksize < PAGE_CACHE_SIZE setups.
++ *
++ */
++
++#include <linux/kernel.h>
++#include <linux/export.h>
++#include <linux/mm.h>
++#include <linux/kdev_t.h>
++#include <linux/gfp.h>
++#include <linux/bio.h>
++#include <linux/fs.h>
++#include <linux/buffer_head.h>
++#include <linux/blkdev.h>
++#include <linux/highmem.h>
++#include <linux/prefetch.h>
++#include <linux/mpage.h>
++#include <linux/writeback.h>
++#include <linux/backing-dev.h>
++#include <linux/pagevec.h>
++#include <linux/cleancache.h>
++
++#include "ext4.h"
++
++/*
++ * I/O completion handler for multipage BIOs.
++ *
++ * The mpage code never puts partial pages into a BIO (except for end-of-file).
++ * If a page does not map to a contiguous run of blocks then it simply falls
++ * back to block_read_full_page().
++ *
++ * Why is this?  If a page's completion depends on a number of different BIOs
++ * which can complete in any order (or at the same time) then determining the
++ * status of that page is hard.  See end_buffer_async_read() for the details.
++ * There is no point in duplicating all that complexity.
++ */
++static void mpage_end_io(struct bio *bio, int err)
++{
++	struct bio_vec *bv;
++	int i;
++
++	bio_for_each_segment_all(bv, bio, i) {
++		struct page *page = bv->bv_page;
++
++		if (!err) {
++			SetPageUptodate(page);
++		} else {
++			ClearPageUptodate(page);
++			SetPageError(page);
++		}
++		unlock_page(page);
++	}
++
++	bio_put(bio);
++}
++
++int ext4_mpage_readpages(struct address_space *mapping,
++			 struct list_head *pages, struct page *page,
++			 unsigned nr_pages)
++{
++	struct bio *bio = NULL;
++	unsigned page_idx;
++	sector_t last_block_in_bio = 0;
++
++	struct inode *inode = mapping->host;
++	const unsigned blkbits = inode->i_blkbits;
++	const unsigned blocks_per_page = PAGE_CACHE_SIZE >> blkbits;
++	const unsigned blocksize = 1 << blkbits;
++	sector_t block_in_file;
++	sector_t last_block;
++	sector_t last_block_in_file;
++	sector_t blocks[MAX_BUF_PER_PAGE];
++	unsigned page_block;
++	struct block_device *bdev = inode->i_sb->s_bdev;
++	int length;
++	unsigned relative_block = 0;
++	struct ext4_map_blocks map;
++
++	map.m_pblk = 0;
++	map.m_lblk = 0;
++	map.m_len = 0;
++	map.m_flags = 0;
++
++	for (page_idx = 0; nr_pages; page_idx++, nr_pages--) {
++		int fully_mapped = 1;
++		unsigned first_hole = blocks_per_page;
++
++		prefetchw(&page->flags);
++		if (pages) {
++			page = list_entry(pages->prev, struct page, lru);
++			list_del(&page->lru);
++			if (add_to_page_cache_lru(page, mapping,
++						  page->index, GFP_KERNEL))
++				goto next_page;
++		}
++
++		if (page_has_buffers(page))
++			goto confused;
++
++		block_in_file = (sector_t)page->index << (PAGE_CACHE_SHIFT - blkbits);
++		last_block = block_in_file + nr_pages * blocks_per_page;
++		last_block_in_file = (i_size_read(inode) + blocksize - 1) >> blkbits;
++		if (last_block > last_block_in_file)
++			last_block = last_block_in_file;
++		page_block = 0;
++
++		/*
++		 * Map blocks using the previous result first.
++		 */
++		if ((map.m_flags & EXT4_MAP_MAPPED) &&
++		    block_in_file > map.m_lblk &&
++		    block_in_file < (map.m_lblk + map.m_len)) {
++			unsigned map_offset = block_in_file - map.m_lblk;
++			unsigned last = map.m_len - map_offset;
++
++			for (relative_block = 0; ; relative_block++) {
++				if (relative_block == last) {
++					/* needed? */
++					map.m_flags &= ~EXT4_MAP_MAPPED;
++					break;
++				}
++				if (page_block == blocks_per_page)
++					break;
++				blocks[page_block] = map.m_pblk + map_offset +
++					relative_block;
++				page_block++;
++				block_in_file++;
++			}
++		}
++
++		/*
++		 * Then do more ext4_map_blocks() calls until we are
++		 * done with this page.
++		 */
++		while (page_block < blocks_per_page) {
++			if (block_in_file < last_block) {
++				map.m_lblk = block_in_file;
++				map.m_len = last_block - block_in_file;
++
++				if (ext4_map_blocks(NULL, inode, &map, 0) < 0) {
++				set_error_page:
++					SetPageError(page);
++					zero_user_segment(page, 0,
++							  PAGE_CACHE_SIZE);
++					unlock_page(page);
++					goto next_page;
++				}
++			}
++			if ((map.m_flags & EXT4_MAP_MAPPED) == 0) {
++				fully_mapped = 0;
++				if (first_hole == blocks_per_page)
++					first_hole = page_block;
++				page_block++;
++				block_in_file++;
++				continue;
++			}
++			if (first_hole != blocks_per_page)
++				goto confused;		/* hole -> non-hole */
++
++			/* Contiguous blocks? */
++			if (page_block && blocks[page_block-1] != map.m_pblk-1)
++				goto confused;
++			for (relative_block = 0; ; relative_block++) {
++				if (relative_block == map.m_len) {
++					/* needed? */
++					map.m_flags &= ~EXT4_MAP_MAPPED;
++					break;
++				} else if (page_block == blocks_per_page)
++					break;
++				blocks[page_block] = map.m_pblk+relative_block;
++				page_block++;
++				block_in_file++;
++			}
++		}
++		if (first_hole != blocks_per_page) {
++			zero_user_segment(page, first_hole << blkbits,
++					  PAGE_CACHE_SIZE);
++			if (first_hole == 0) {
++				SetPageUptodate(page);
++				unlock_page(page);
++				goto next_page;
++			}
++		} else if (fully_mapped) {
++			SetPageMappedToDisk(page);
++		}
++		if (fully_mapped && blocks_per_page == 1 &&
++		    !PageUptodate(page) && cleancache_get_page(page) == 0) {
++			SetPageUptodate(page);
++			goto confused;
++		}
++
++		/*
++		 * This page will go to BIO.  Do we need to send this
++		 * BIO off first?
++		 */
++		if (bio && (last_block_in_bio != blocks[0] - 1)) {
++		submit_and_realloc:
++			submit_bio(READ, bio);
++			bio = NULL;
++		}
++		if (bio == NULL) {
++			bio = bio_alloc(GFP_KERNEL,
++				min_t(int, nr_pages, bio_get_nr_vecs(bdev)));
++			if (!bio)
++				goto set_error_page;
++			bio->bi_bdev = bdev;
++			bio->bi_iter.bi_sector = blocks[0] << (blkbits - 9);
++			bio->bi_end_io = mpage_end_io;
++		}
++
++		length = first_hole << blkbits;
++		if (bio_add_page(bio, page, length, 0) < length)
++			goto submit_and_realloc;
++
++		if (((map.m_flags & EXT4_MAP_BOUNDARY) &&
++		     (relative_block == map.m_len)) ||
++		    (first_hole != blocks_per_page)) {
++			submit_bio(READ, bio);
++			bio = NULL;
++		} else
++			last_block_in_bio = blocks[blocks_per_page - 1];
++		goto next_page;
++	confused:
++		if (bio) {
++			submit_bio(READ, bio);
++			bio = NULL;
++		}
++		if (!PageUptodate(page))
++			block_read_full_page(page, ext4_get_block);
++		else
++			unlock_page(page);
++	next_page:
++		if (pages)
++			page_cache_release(page);
++	}
++	BUG_ON(pages && !list_empty(pages));
++	if (bio)
++		submit_bio(READ, bio);
++	return 0;
++}
 -- 
 2.3.0
 
