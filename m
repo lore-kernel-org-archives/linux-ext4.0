@@ -1,55 +1,35 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Is there any reason for us to use EXT4_MAXQUOTAS_INIT_BLOCKS?
-Date: Wed, 15 Apr 2015 11:55:37 -0400
-Message-ID: <20150415155537.GA32494@thunk.org>
+Subject: Re: [patch] ext4 crypto: type bug with encrypted symlinks
+Date: Wed, 15 Apr 2015 12:45:36 -0400
+Message-ID: <20150415164536.GA25331@thunk.org>
+References: <20150415092133.GA9264@mwanda>
+ <1591C866-F48B-4F82-B2D1-7F7180E3EE2A@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40818 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754295AbbDOPzk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 15 Apr 2015 11:55:40 -0400
+Cc: Dan Carpenter <dan.carpenter@oracle.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <kernel-janitors-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1591C866-F48B-4F82-B2D1-7F7180E3EE2A@dilger.ca>
+Sender: kernel-janitors-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-It looks to me like EXT4_MAXQUOTAS_INIT_BLOCKS includes the credits
-neede to set up the quota records.  So if we move the call to
-dquot_initialize(inode) outside of the normal transaction (which we
-should probably do in all cases), that means that we shouldn't ever
-need to use EXT4_MAX_QUOTAS_INIT_BLOCKS.  Is that right?
+On Wed, Apr 15, 2015 at 09:14:17AM -0600, Andreas Dilger wrote:
+> Nak.  ostr.len is the variable being swabbed, and it is a __u32.
 
-The reason why I ask is the following is a easy way to trigger a file
-system problem:
+No, Dan is right; sd->len has been changed to be 16 bits on disk, per
+Andreas' suggestion, and I missed changing the cpu_to_le32() to be
+cpu_to_le16() here.  The fact that the in-memory representation
+happens to be 32-bits doesn't matter, it's the fact that on-disk
+representation is 16-bits which is important here.
 
-mke2fs -Fq -t ext4 -b 4096 /dev/vdc 50M
-mount -t ext4 -o usrquota,grpquota /dev/vdc
-l8=12345678
-l16=$l8$l8
-l32=$l16$l16
-l64=$l32$l32
-dmesg -n 7
-ln -s $l64 /vdc/link
+In practice the filename length can never be larger
+i_sb->s_blocksize(), so we could probably change struct ext4_str to
+use an __u16 --- but at least at one point RISC architectues can
+sometimes handle 32-bit values more efficiently than 16-bit values,
+and it's probably not worth the effort to make the change.
 
-This will result in:
-
-[    5.229165] JBD2: ln wants too many credits (156 > 128)
-[    5.230194] EXT4-fs error (device vdc) in __ext4_new_inode:843: error 28
-
-In other places where we are allocating a new inode (such as mknod),
-we're doing the following:
-
-	credits = EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
-			EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3;
-
-Which is 37 blocks, and I suspect that's still too darned much.  But
-if we don't need to use EXT4_MAXQUOTAS_INIT_BLOCKS in ext4_mknod(), we
-shouldn't be needing it in ext4_symlink(), either.
-
-Am I missing anything?
-
-Thanks,
-
-					- Ted
+    	 	      	    	- Ted
