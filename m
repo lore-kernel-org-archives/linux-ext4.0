@@ -1,43 +1,31 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [patch] ext4 crypto: type bug with encrypted symlinks
-Date: Wed, 15 Apr 2015 09:14:17 -0600
-Message-ID: <1591C866-F48B-4F82-B2D1-7F7180E3EE2A@dilger.ca>
-References: <20150415092133.GA9264@mwanda>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Return-path: <kernel-janitors-owner@vger.kernel.org>
-In-Reply-To: <20150415092133.GA9264@mwanda>
-Sender: kernel-janitors-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Akos Csete <akos.csete@gmail.com>
+Subject: Fsck repair takes very long for 1,761 inodes containing
+ multiply-claimed blocks on ext4
+Date: Wed, 15 Apr 2015 11:18:18 -0400
+Message-ID: <CAD-ux60opdAx0+t3EmwR1GWT6t3rZv7CXhxNNbwQLKX6jz_z7Q@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ob0-f175.google.com ([209.85.214.175]:35049 "EHLO
+	mail-ob0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751424AbbDOPYs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Apr 2015 11:24:48 -0400
+Received: by obbfy7 with SMTP id fy7so23838331obb.2
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2015 08:24:47 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Nak.  ostr.len is the variable being swabbed, and it is a __u32.
+I ran into a very long execution time, approaching 48 hours, with
+e2fsck 1.42.9 when running e2fsck -fyv on a 7.8TB volume after
+fsck.ext4 -nf found 1761 inodes containing multiply-claimed blocks.
+I've been tailing the e2fsck output combined with a timestamp and
+found progress is extremely slow.
+Is this slow processing expected? I checked Ted's response to a 2009
+posting for ext3 with a similar issue where he recommended selectively
+wiping inodes with debugfs clri then restoring files as needed. Are
+there any other options for ext4, perhaps other/faster repair
+alternatives?
 
-Cheers, Andreas
-
-> On Apr 15, 2015, at 03:21, Dan Carpenter <dan.carpenter@oracle.com> wrote:
-> 
-> sd->len is an __le16 and not an __le32.
-> 
-> Fixes: f1195c72c951 ('ext4 crypto: Add symlink encryption')
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-> 
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 69e12ee..5c82a3c 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -3256,7 +3256,7 @@ static int ext4_symlink(struct inode *dir,
->        ext4_put_fname_crypto_ctx(&ctx);
->        if (err < 0)
->            goto err_drop_inode;
-> -        sd->len = cpu_to_le32(ostr.len);
-> +        sd->len = cpu_to_le16(ostr.len);
->        disk_link.name = (char *) sd;
->    }
-> 
+Thanks,
+Akos
