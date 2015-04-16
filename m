@@ -1,94 +1,66 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/5] jbd2: Avoid unnecessary locking when buffer is
- already journaled
-Date: Thu, 16 Apr 2015 12:46:19 +0200
-Message-ID: <20150416104619.GA16510@quack.suse.cz>
-References: <1427983100-29889-1-git-send-email-jack@suse.cz>
- <87a8ydfyk5.fsf@openvz.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Fsck repair takes very long for 1,761 inodes containing
+ multiply-claimed blocks on ext4
+Date: Thu, 16 Apr 2015 11:00:46 -0400
+Message-ID: <20150416150045.GB7445@thunk.org>
+References: <CAD-ux60opdAx0+t3EmwR1GWT6t3rZv7CXhxNNbwQLKX6jz_z7Q@mail.gmail.com>
+ <20150415190614.GA11592@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Ted Tso <tytso@mit.edu>
-To: Dmitry Monakhov <dmonlist@gmail.com>
+Cc: Akos Csete <akos.csete@gmail.com>, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:49454 "EHLO mx2.suse.de"
+Received: from imap.thunk.org ([74.207.234.97]:42687 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757027AbbDPKqZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Apr 2015 06:46:25 -0400
+	id S1754761AbbDPPAs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Apr 2015 11:00:48 -0400
 Content-Disposition: inline
-In-Reply-To: <87a8ydfyk5.fsf@openvz.org>
+In-Reply-To: <20150415190614.GA11592@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 12-04-15 14:09:14, Dmitry Monakhov wrote:
+On Wed, Apr 15, 2015 at 12:06:14PM -0700, Darrick J. Wong wrote:
+> On Wed, Apr 15, 2015 at 11:18:18AM -0400, Akos Csete wrote:
+> > I ran into a very long execution time, approaching 48 hours, with
+> > e2fsck 1.42.9 when running e2fsck -fyv on a 7.8TB volume after
+> > fsck.ext4 -nf found 1761 inodes containing multiply-claimed blocks.
+> > I've been tailing the e2fsck output combined with a timestamp and
+> > found progress is extremely slow.
+> > Is this slow processing expected? I checked Ted's response to a 2009
+> > posting for ext3 with a similar issue where he recommended selectively
+> > wiping inodes with debugfs clri then restoring files as needed. Are
+> > there any other options for ext4, perhaps other/faster repair
+> > alternatives?
 > 
-> Jan Kara <jack@suse.cz> writes:
+> Unfortunately, the multiple-blocks cleaner runs one block at a time and is
+> quite slow.  1.42.12 might improve things somewhat since I cleaned out some of
+> the stranger things it would do, but it's still not fast.
 > 
-> >   Hello,
-> >
-> >   this patch set improves do_get_write_access(), jbd2_journal_get_undo_access(),
-> > and jbd2_journal_dirty_metadata() to be completely lockless in case buffer
-> > is already part of an appropriate journalling list. First three patches
-> > are independent small cleanups so they can go in right away I think.
-> >
-> > The other two patches *should* improve the situation for frequent bitmap
-> > or inode table block updates. But frankly, I haven't been able to come up
-> > with a load where I'd see significant contention on update of a single buffer
-> > (or it's hidden by a larger lock). Similarly we could see improvements when
-> > do_get_write_access() would be waiting for buffer lock because buffer is
-> > being written out by checkpointing code. But again I wasn't able to hit this
-> > reliably.
-> One of most annoying performance issues was unpredictable latency of aio submission
-> This is typical workload on chunk server (object storage, cloud storage,
-> ceph) where one some tasks performs  aio/dio submission and other
-> performs fsync(). Some times we got this io_submit->touch_mtime()->
-> do_get_write_access() observes that jh->b_jlist == BJ_Shadow and wait
-> for transaction commit. So aio-dio submission can block (even if file
-> was previously allocated) for a long time(1-5sec) on ext3/4
-> But this was fixed by 'lazytime' option
-  Yeah, my patches don't really help this particular problem. They help the
-case where buffer already is part of the running transaction but in your
-case we need to move the buffer to the running transaction and that blocks
-on buffer being under IO. There isn't much we can do to improve this (well,
-we could unconditionally create a frozen buffer for journal IO which would
-limit maximum latency but at the cost of memcpy for each journal write so
-throughput would suffer in case of faster storage).
+> (Some day in the future maybe we'll support reflink in which case this whole
+> part of fsck can go away.)
 
-								Honza
-> 
-> #Simplified testcase
-> #BAD workload which provoke endless fsync->commit_transaction
-> while true; do 
->       xfs_io -c "pwrite -b 1M 1M 32M" \
-> 	-f t{1,2,3,5,6,7,8,9,10};
->       xfs_io -c "pwrite -b 1M 1M 1M" -c \
-> 	"fsync" -f -d t11
-> 
-> # Measure aio-dio latency
-> [root@alice Z]# uname -a
-> Linux alice.qa.sw.ru 4.0.0-rc7+ #13 SMP Sun Apr 12 00:34:51 MSK 2015
-> x86_64 x86_64 x86_64 GNU/Linux
-> [root@alice Z]# ioping -A  -C -D  -WWW t
-> 4.0 KiB from t (ext4 /dev/sdb1): request=1 time=441 us
-> ...
-> 4.0 KiB from t (ext4 /dev/sdb1): request=12 time=393 us
-> 4.0 KiB from t (ext4 /dev/sdb1): request=13 time=2.7 s <---- too long
-> 4.0 KiB from t (ext4 /dev/sdb1): request=14 time=397 us
-> 4.0 KiB from t (ext4 /dev/sdb1): request=15 time=398 us
-> ^C
-> --- t (ext4 /dev/sdb1) ioping statistics ---
-> 15 requests completed in 17.2 s, 5 iops, 22.0 KiB/s
-> min/avg/max/mdev = 384 us / 182.2 ms / 2.7 s / 679.1 ms
-> >
-> > Ted, you mentioned at Vault you had a setup where frequent
-> > do_get_write_access() calls were contending in the revoke code. What was the
-> > load exactly? These patches should improve that as well...
-> >
-> > 								Honza
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Actually, reflink won't make the problem go away.  What probably
+*will* make this problem much less of an issue is when the metadata
+checksum code is fully supported with the relesae of e2fsprogs 1.43,
+since the most common cause of the problem is when the storage device
+screws up and stores blocks to the wrong location on disk.
+
+One way of recovering from this is to take the output to date in the
+pass 1b/c/d output, and to examine the inodes which are multiply
+claimed. Either the inodes will look like total garbage, or more
+likely, there will be a contiguous sequence of 16 or 32 inodes which
+look identical to a contiguous sequence of 16 or 32 inodes somewhere
+else.  So the trick is to use debugfs and figure out which contiguous
+set of inodes appear to be correct, by correlating the file names of
+those inodes (assuming the directory can be found) with the inode
+contents and/or types and/or user/gorupownership.  Once you figure out
+which set of 16 or 32 inodes are the bad copy, delete them using
+debugfs's clri command.
+
+The pass1b/c/d algorithsm are O(n**2), and since a chunk of inodes can
+be resolved/eliminated at a time, after you clear up a chunk of the
+inodes, you can rerun e2fsck, and hopefully the next run will take
+less time.  If it still stalls out, you can take the output of e2fsck
+and use it to clear out more inode numbers.
+
+						- Ted
