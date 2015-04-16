@@ -1,49 +1,276 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 crypto: enforce context consistency
-Date: Thu, 16 Apr 2015 02:15:45 -0400
-Message-ID: <20150416061545.GA7445@thunk.org>
-References: <20150415191007.GA32654@mwanda>
+From: Beata Michalska <b.michalska@samsung.com>
+Subject: Re: [RFC 3/4] ext4: Add support for generic FS events
+Date: Thu, 16 Apr 2015 10:02:34 +0200
+Message-ID: <552F6C9A.9050707@samsung.com>
+References: <1429082147-4151-1-git-send-email-b.michalska@samsung.com>
+ <1429082147-4151-4-git-send-email-b.michalska@samsung.com>
+ <20150415191838.GB11592@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41839 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752360AbbDPGPs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Apr 2015 02:15:48 -0400
-Content-Disposition: inline
-In-Reply-To: <20150415191007.GA32654@mwanda>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+ hughd@google.com, lczerner@redhat.com, hch@infradead.org,
+ linux-ext4@vger.kernel.org, linux-mm@kvack.org, kyungmin.park@samsung.com,
+ kmpark@infradead.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-reply-to: <20150415191838.GB11592@birch.djwong.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 15, 2015 at 10:10:07PM +0300, Dan Carpenter wrote:
-> Hello Theodore Ts'o,
+On 04/15/2015 09:18 PM, Darrick J. Wong wrote:
+> On Wed, Apr 15, 2015 at 09:15:46AM +0200, Beata Michalska wrote:
+>> Add support for generic FS events including threshold
+>> notifications, ENOSPC and remount as read-only warnings,
+>> along with generic internal warnings/errors.
+>>
+>> Signed-off-by: Beata Michalska <b.michalska@samsung.com>
+>> ---
+>>  fs/ext4/balloc.c  |   11 +++++++++--
+>>  fs/ext4/ext4.h    |    1 +
+>>  fs/ext4/inode.c   |    2 +-
+>>  fs/ext4/mballoc.c |    6 +++++-
+>>  fs/ext4/resize.c  |    1 +
+>>  fs/ext4/super.c   |   43 +++++++++++++++++++++++++++++++++++++++++++
+>>  6 files changed, 60 insertions(+), 4 deletions(-)
+>>
+>> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+>> index e95b27a..49d2ace 100644
+>> --- a/fs/ext4/balloc.c
+>> +++ b/fs/ext4/balloc.c
+>> @@ -569,6 +569,7 @@ int ext4_claim_free_clusters(struct ext4_sb_info *sbi,
+>>  {
+>>  	if (ext4_has_free_clusters(sbi, nclusters, flags)) {
+>>  		percpu_counter_add(&sbi->s_dirtyclusters_counter, nclusters);
+>> +		fs_event_alloc_space(sbi->s_sb, EXT4_C2B(sbi, nclusters));
+>>  		return 0;
+>>  	} else
+>>  		return -ENOSPC;
+>> @@ -590,9 +591,10 @@ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
+>>  {
+>>  	if (!ext4_has_free_clusters(EXT4_SB(sb), 1, 0) ||
+>>  	    (*retries)++ > 3 ||
+>> -	    !EXT4_SB(sb)->s_journal)
+>> +	    !EXT4_SB(sb)->s_journal) {
+>> +		fs_event_notify(sb, FS_EVENT_WARN, FS_WARN_ENOSPC);
+>>  		return 0;
+>> -
+>> +	}
+>>  	jbd_debug(1, "%s: retrying operation after ENOSPC\n", sb->s_id);
+>>  
+>>  	return jbd2_journal_force_commit_nested(EXT4_SB(sb)->s_journal);
+>> @@ -637,6 +639,11 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+>>  		dquot_alloc_block_nofail(inode,
+>>  				EXT4_C2B(EXT4_SB(inode->i_sb), ar.len));
+>>  	}
+>> +
+>> +	if (*errp == -ENOSPC)
+>> +		fs_event_notify(inode->i_sb, FS_EVENT_WARN,
+>> +				FS_WANR_ENOSPC_META);
+>> +
+>>  	return ret;
+>>  }
+>>  
+>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+>> index 163afe2..7d75ff9 100644
+>> --- a/fs/ext4/ext4.h
+>> +++ b/fs/ext4/ext4.h
+>> @@ -2542,6 +2542,7 @@ void ext4_mark_group_corrupted(struct ext4_sb_info *sbi,
+>>  	if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
+>>  		percpu_counter_sub(&sbi->s_freeclusters_counter, grp->bb_free);
+>>  	set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
+>> +	fs_event_alloc_space(sbi->s_sb, EXT4_C2B(sbi, grp->bb_free));
 > 
-> The patch faac02be2843: "ext4 crypto: enforce context consistency"
-> from Apr 12, 2015, leads to the following static checker warning:
+> While we're adding fs netlink notifications, could we add a message that means
+> "This FS is corrupt, go run fsck"?  A monitoring app could possibly figure
+> this out by a sudden drop in free space accompanied by EIO errors hitting
+> userland apps, but we might as well be explicit about the flaming death. :)
 > 
-> 	fs/ext4/namei.c:1646 ext4_lookup()
-> 	error: 'inode' dereferencing possible ERR_PTR()
+> --D
 > 
-> fs/ext4/namei.c
->   1638                  inode = ext4_iget_normal(dir->i_sb, ino);
->   1639                  if (inode == ERR_PTR(-ESTALE)) {
+
+The notifications sent through this interface can be extended to whatever is needed.
+The are very few basic event codes - among them are FS_ERR_UNKNOWN and FS_ERR_ITERNAL.
+So one can assume that whenever one of those is being triggered - smth wrong is going on.
+So at this point running fsck would be a good idea. If this is not enough, new event
+codes might be introduced. Note that it is also possible for the file systems
+to send their own messages placing within the payload whatever they like.
+This is an early version, so it can definitely be adjusted.
+
+BR
+Beata
+
+>>  }
+>>  
+>>  /*
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index 5cb9a21..2a7af0f 100644
+>> --- a/fs/ext4/inode.c
+>> +++ b/fs/ext4/inode.c
+>> @@ -1238,7 +1238,7 @@ static void ext4_da_release_space(struct inode *inode, int to_free)
+>>  	percpu_counter_sub(&sbi->s_dirtyclusters_counter, to_free);
+>>  
+>>  	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+>> -
+>> +	fs_event_free_space(sbi->s_sb, to_free);
+>>  	dquot_release_reservation_block(inode, EXT4_C2B(sbi, to_free));
+>>  }
+>>  
+>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+>> index 24a4b6d..e6cbbd6 100644
+>> --- a/fs/ext4/mballoc.c
+>> +++ b/fs/ext4/mballoc.c
+>> @@ -4511,6 +4511,9 @@ out:
+>>  		kmem_cache_free(ext4_ac_cachep, ac);
+>>  	if (inquota && ar->len < inquota)
+>>  		dquot_free_block(ar->inode, EXT4_C2B(sbi, inquota - ar->len));
+>> +	if (reserv_clstrs && ar->len < reserv_clstrs)
+>> +		 fs_event_free_space(sbi->s_sb,
+>> +		 	EXT4_C2B(sbi, reserv_clstrs - ar->len));
+>>  	if (!ar->len) {
+>>  		if ((ar->flags & EXT4_MB_DELALLOC_RESERVED) == 0)
+>>  			/* release all the reserved blocks if non delalloc */
+>> @@ -4848,7 +4851,7 @@ do_more:
+>>  	if (!(flags & EXT4_FREE_BLOCKS_NO_QUOT_UPDATE))
+>>  		dquot_free_block(inode, EXT4_C2B(sbi, count_clusters));
+>>  	percpu_counter_add(&sbi->s_freeclusters_counter, count_clusters);
+>> -
+>> +	fs_event_free_space(sb, EXT4_C2B(sbi, count_clusters));
+>>  	ext4_mb_unload_buddy(&e4b);
+>>  
+>>  	/* We dirtied the bitmap block */
+>> @@ -4982,6 +4985,7 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
+>>  	ext4_unlock_group(sb, block_group);
+>>  	percpu_counter_add(&sbi->s_freeclusters_counter,
+>>  			   EXT4_NUM_B2C(sbi, blocks_freed));
+>> +	fs_event_free_space(sb, blocks_freed);
+>>  
+>>  	if (sbi->s_log_groups_per_flex) {
+>>  		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
+>> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+>> index 8a8ec62..dbf08d6 100644
+>> --- a/fs/ext4/resize.c
+>> +++ b/fs/ext4/resize.c
+>> @@ -1378,6 +1378,7 @@ static void ext4_update_super(struct super_block *sb,
+>>  			   EXT4_NUM_B2C(sbi, free_blocks));
+>>  	percpu_counter_add(&sbi->s_freeinodes_counter,
+>>  			   EXT4_INODES_PER_GROUP(sb) * flex_gd->count);
+>> +	fs_event_free_space(sb, free_blocks - reserved_blocks);
+>>  
+>>  	ext4_debug("free blocks count %llu",
+>>  		   percpu_counter_read(&sbi->s_freeclusters_counter));
+>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+>> index e061e66..52091da 100644
+>> --- a/fs/ext4/super.c
+>> +++ b/fs/ext4/super.c
+>> @@ -398,6 +398,7 @@ static void ext4_handle_error(struct super_block *sb)
+>>  	if (test_opt(sb, ERRORS_PANIC))
+>>  		panic("EXT4-fs (device %s): panic forced after error\n",
+>>  			sb->s_id);
+>> +	fs_event_notify(sb, FS_EVENT_ERR, FS_ERR_UNKNOWN);
+>>  }
+>>  
+>>  #define ext4_error_ratelimit(sb)					\
+>> @@ -585,6 +586,8 @@ void __ext4_abort(struct super_block *sb, const char *function,
+>>  		if (EXT4_SB(sb)->s_journal)
+>>  			jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
+>>  		save_error_info(sb, function, line);
+>> +		fs_event_notify(sb, FS_EVENT_ERR, FS_ERR_RO_REMOUT);
+>> +
+>>  	}
+>>  	if (test_opt(sb, ERRORS_PANIC))
+>>  		panic("EXT4-fs panic from previous error\n");
+>> @@ -612,6 +615,8 @@ void __ext4_warning(struct super_block *sb, const char *function,
+>>  	struct va_format vaf;
+>>  	va_list args;
+>>  
+>> +	fs_event_notify(sb, FS_EVENT_WARN, FS_WARN_UNKNOWN);
+>> +
+>>  	if (!___ratelimit(&(EXT4_SB(sb)->s_warning_ratelimit_state),
+>>  			  "EXT4-fs warning"))
+>>  		return;
+>> @@ -1083,6 +1088,13 @@ static const struct quotactl_ops ext4_qctl_operations = {
+>>  };
+>>  #endif
+>>  
+>> +static int ext4_trace_query(struct super_block *sb,
+>> +			    struct fs_trace_sdata *data);
+>> +
+>> +static const struct fs_trace_operations ext4_trace_ops = {
+>> +	.fs_trace_query	= ext4_trace_query,
+>> +};
+>> +
+>>  static const struct super_operations ext4_sops = {
+>>  	.alloc_inode	= ext4_alloc_inode,
+>>  	.destroy_inode	= ext4_destroy_inode,
+>> @@ -3398,11 +3410,20 @@ static int ext4_reserve_clusters(struct ext4_sb_info *sbi, ext4_fsblk_t count)
+>>  {
+>>  	ext4_fsblk_t clusters = ext4_blocks_count(sbi->s_es) >>
+>>  				sbi->s_cluster_bits;
+>> +	ext4_fsblk_t current_resv;
+>>  
+>>  	if (count >= clusters)
+>>  		return -EINVAL;
+>>  
+>> +	current_resv = atomic64_read(&sbi->s_resv_clusters);
+>>  	atomic64_set(&sbi->s_resv_clusters, count);
+>> +
+>> +	if (count > current_resv)
+>> +		fs_event_alloc_space(sbi->s_sb,
+>> +			EXT4_C2B(sbi, count - current_resv));
+>> +	else
+>> +		fs_event_free_space(sbi->s_sb,
+>> +			EXT4_C2B(sbi, current_resv - count));
+>>  	return 0;
+>>  }
+>>  
+>> @@ -3966,6 +3987,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>>  		sb->s_qcop = &ext4_qctl_operations;
+>>  	sb->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
+>>  #endif
+>> +	sb->s_trace_ops = &ext4_trace_ops;
+>> +
+>>  	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
+>>  
+>>  	INIT_LIST_HEAD(&sbi->s_orphan); /* unlinked but open files */
+>> @@ -5438,6 +5461,26 @@ out:
+>>  
+>>  #endif
+>>  
+>> +static int ext4_trace_query(struct super_block *sb, struct fs_trace_sdata *data)
+>> +{
+>> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
+>> +	struct ext4_super_block *es = sbi->s_es;
+>> +	ext4_fsblk_t rsv_blocks;
+>> +
+>> +	data->available_blks =
+>> +		percpu_counter_sum_positive(&sbi->s_freeclusters_counter) -
+>> +		percpu_counter_sum_positive(&sbi->s_dirtyclusters_counter);
+>> +	data->available_blks = EXT4_C2B(sbi, data->available_blks);
+>> +	rsv_blocks = ext4_r_blocks_count(es) +
+>> +		     EXT4_C2B(sbi, atomic64_read(&sbi->s_resv_clusters));
+>> +	if (data->available_blks < rsv_blocks)
+>> +		data->available_blks = 0;
+>> +	else
+>> +		data->available_blks -= rsv_blocks;
+>> +	data->events_cap_mask = FS_EVENTS_ALL;
+>> +	return 0;
+>> +}
+>> +
+>>  static struct dentry *ext4_mount(struct file_system_type *fs_type, int flags,
+>>  		       const char *dev_name, void *data)
+>>  {
+>> -- 
+>> 1.7.9.5
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-> We normally check ext4_iget() against -ESTALE, but then we changed this
-> to ext4_iget_normal() which returns several error values.
 
-Thanks for pointing that out.  That's not quite what had happened.  We
-were using ext4_iget_normal() before (and both ext4_iget() and
-ext4_iget_normal() can return multiple error values), but before we
-fell out to the bottof of the function where we called
-d_splice_alias() which would take care of ERR_PTR versions of inode.
-
-We added some additional code between the ext4_iget_normal() and the
-d_splice_alias() lines, which is what introduced the problem.
-
-I'll take care of fixing it.
-
-Cheers,
-
-						- Ted
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
