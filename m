@@ -1,66 +1,57 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Fsck repair takes very long for 1,761 inodes containing
- multiply-claimed blocks on ext4
-Date: Thu, 16 Apr 2015 11:00:46 -0400
-Message-ID: <20150416150045.GB7445@thunk.org>
-References: <CAD-ux60opdAx0+t3EmwR1GWT6t3rZv7CXhxNNbwQLKX6jz_z7Q@mail.gmail.com>
- <20150415190614.GA11592@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Akos Csete <akos.csete@gmail.com>, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 0/3 RFC] ext4: Speedup orphan file handling
+Date: Thu, 16 Apr 2015 17:42:54 +0200
+Message-ID: <1429198977-5637-1-git-send-email-jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:42687 "EHLO imap.thunk.org"
+Received: from cantor2.suse.de ([195.135.220.15]:38020 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754761AbbDPPAs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Apr 2015 11:00:48 -0400
-Content-Disposition: inline
-In-Reply-To: <20150415190614.GA11592@birch.djwong.org>
+	id S1752644AbbDPPnJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Apr 2015 11:43:09 -0400
+Received: from relay1.suse.de (charybdis-ext.suse.de [195.135.220.254])
+	by mx2.suse.de (Postfix) with ESMTP id D7C73AC92
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Apr 2015 15:43:07 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 15, 2015 at 12:06:14PM -0700, Darrick J. Wong wrote:
-> On Wed, Apr 15, 2015 at 11:18:18AM -0400, Akos Csete wrote:
-> > I ran into a very long execution time, approaching 48 hours, with
-> > e2fsck 1.42.9 when running e2fsck -fyv on a 7.8TB volume after
-> > fsck.ext4 -nf found 1761 inodes containing multiply-claimed blocks.
-> > I've been tailing the e2fsck output combined with a timestamp and
-> > found progress is extremely slow.
-> > Is this slow processing expected? I checked Ted's response to a 2009
-> > posting for ext3 with a similar issue where he recommended selectively
-> > wiping inodes with debugfs clri then restoring files as needed. Are
-> > there any other options for ext4, perhaps other/faster repair
-> > alternatives?
-> 
-> Unfortunately, the multiple-blocks cleaner runs one block at a time and is
-> quite slow.  1.42.12 might improve things somewhat since I cleaned out some of
-> the stranger things it would do, but it's still not fast.
-> 
-> (Some day in the future maybe we'll support reflink in which case this whole
-> part of fsck can go away.)
+  Hello,
 
-Actually, reflink won't make the problem go away.  What probably
-*will* make this problem much less of an issue is when the metadata
-checksum code is fully supported with the relesae of e2fsprogs 1.43,
-since the most common cause of the problem is when the storage device
-screws up and stores blocks to the wrong location on disk.
+orphan inode handling in ext4 is a bottleneck for workloads which heavily
+excercise truncate / unlink of small files as they contend on global
+s_orphan_mutex (when you have fast enough storage). This patch set implements
+new way of handling orphan inodes - instead using a linked list, we store inode
+numbers of orphaned inodes in a file which is possible to implement in a more
+scalable manner than linked list manipulations. See description of patch 2/3
+for more details.
 
-One way of recovering from this is to take the output to date in the
-pass 1b/c/d output, and to examine the inodes which are multiply
-claimed. Either the inodes will look like total garbage, or more
-likely, there will be a contiguous sequence of 16 or 32 inodes which
-look identical to a contiguous sequence of 16 or 32 inodes somewhere
-else.  So the trick is to use debugfs and figure out which contiguous
-set of inodes appear to be correct, by correlating the file names of
-those inodes (assuming the directory can be found) with the inode
-contents and/or types and/or user/gorupownership.  Once you figure out
-which set of 16 or 32 inodes are the bad copy, delete them using
-debugfs's clri command.
+The patch set achieves significant gains both for a micro benchmark stressing
+orphan inode handling (truncating file byte-by-byte, several threads in
+parallel) and for reaim new_fserver workload. As a highlight, microbenchmark
+runtime for 128 threads is reduced from original 160 s down to 71 s, which
+is also the time it takes the benchmark to run when orphan inode handling
+is completely disabled. For full numbers you can check commit logs of
+patches 2/3 and 3/3. You can also check my presentation from Vault at
+http://events.linuxfoundation.org/sites/events/files/slides/ext4-scaling.pdf
+for graphs from tests.
 
-The pass1b/c/d algorithsm are O(n**2), and since a chunk of inodes can
-be resolved/eliminated at a time, after you clear up a chunk of the
-inodes, you can rerun e2fsck, and hopefully the next run will take
-less time.  If it still stalls out, you can take the output of e2fsck
-and use it to clear out more inode numbers.
+I'm happy for any review, thoughts, ideas about the patches.
 
-						- Ted
+The kernel part of the feature is complete, the thing missing is support for
+enabling the feature in mke2fs and tune2fs. Since I need one reserved inode
+(currently that's hacked up and I simply use inode number 12 for simplicity
+of testing) that depends on how exactly we decide to deal with the issue that
+we ran out of old limit on reserved inodes.
+
+1) I can implement support in tune2fs to increase s_first_ino by moving inodes
+   that are allocated in the range we want reserved. Then we can just continue
+   to use reserved inodes as we did previously. I kind of like this for its
+   simplicity, no need for ondisk format change, no need for kernel changes.
+
+2) Implement "system directory" for reserved inodes as we spoke at Ext4 meeting
+   at LSF.
+
+But before I spend time on this, I'd like to hear some thoughts on how to
+deal with reserved inodes from other developers...
+
+								Honza
