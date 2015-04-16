@@ -1,61 +1,49 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [RFC 1/4] fs: Add generic file system event notifications
-Date: Wed, 15 Apr 2015 22:46:23 -0500
-Message-ID: <552F308F.1050505@redhat.com>
-References: <1429082147-4151-1-git-send-email-b.michalska@samsung.com> <1429082147-4151-2-git-send-email-b.michalska@samsung.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ext4 crypto: enforce context consistency
+Date: Thu, 16 Apr 2015 02:15:45 -0400
+Message-ID: <20150416061545.GA7445@thunk.org>
+References: <20150415191007.GA32654@mwanda>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: quoted-printable
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, hughd@google.com,
-        lczerner@redhat.com, hch@infradead.org, linux-ext4@vger.kernel.org,
-        linux-mm@kvack.org, kyungmin.park@samsung.com, kmpark@infradead.org
-To: Beata Michalska <b.michalska@samsung.com>, linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1429082147-4151-2-git-send-email-b.michalska@samsung.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:41839 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752360AbbDPGPs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Apr 2015 02:15:48 -0400
+Content-Disposition: inline
+In-Reply-To: <20150415191007.GA32654@mwanda>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/15/15 2:15 AM, Beata Michalska wrote:
-> Introduce configurable generic interface for file
-> system-wide event notifications to provide file
-> systems with a common way of reporting any potential
-> issues as they emerge.
->=20
-> The notifications are to be issued through generic
-> netlink interface, by a dedicated, for file system
-> events, multicast group. The file systems might as
-> well use this group to send their own custom messages.
+On Wed, Apr 15, 2015 at 10:10:07PM +0300, Dan Carpenter wrote:
+> Hello Theodore Ts'o,
+> 
+> The patch faac02be2843: "ext4 crypto: enforce context consistency"
+> from Apr 12, 2015, leads to the following static checker warning:
+> 
+> 	fs/ext4/namei.c:1646 ext4_lookup()
+> 	error: 'inode' dereferencing possible ERR_PTR()
+> 
+> fs/ext4/namei.c
+>   1638                  inode = ext4_iget_normal(dir->i_sb, ino);
+>   1639                  if (inode == ERR_PTR(-ESTALE)) {
+> 
+> We normally check ext4_iget() against -ESTALE, but then we changed this
+> to ext4_iget_normal() which returns several error values.
 
-...
+Thanks for pointing that out.  That's not quite what had happened.  We
+were using ext4_iget_normal() before (and both ext4_iget() and
+ext4_iget_normal() can return multiple error values), but before we
+fell out to the bottof of the function where we called
+d_splice_alias() which would take care of ERR_PTR versions of inode.
 
-> + 4.3 Threshold notifications:
-> +
-> + #include <linux/fs_event.h>
-> + void fs_event_alloc_space(struct super_block *sb, u64 ncount);
-> + void fs_event_free_space(struct super_block *sb, u64 ncount);
-> +
-> + Each filesystme supporting the treshold notifiactions should call
-> + fs_event_alloc_space/fs_event_free_space repsectively whenever the
-> + ammount of availbale blocks changes.
-> + - sb:     the filesystem's super block
-> + - ncount: number of blocks being acquired/released
+We added some additional code between the ext4_iget_normal() and the
+d_splice_alias() lines, which is what introduced the problem.
 
-so:
+I'll take care of fixing it.
 
-> +void fs_event_alloc_space(struct super_block *sb, u64 ncount)
-> +{
-> +	struct fs_trace_entry *en;
-> +	s64 count;
-> +
-> +	spin_lock(&fs_trace_lock);
+Cheers,
 
-Every allocation/free for every supported filesystem system-wide will be
-serialized on this global spinlock?  That sounds like a non-starter...
-
--Eric
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
+						- Ted
