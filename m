@@ -1,71 +1,65 @@
-From: John Spray <john.spray@redhat.com>
-Subject: Re: [RFC 1/4] fs: Add generic file system event notifications
-Date: Fri, 17 Apr 2015 18:37:47 +0100
-Message-ID: <553144EB.9060701@redhat.com>
-References: <1429082147-4151-1-git-send-email-b.michalska@samsung.com> <1429082147-4151-2-git-send-email-b.michalska@samsung.com> <20150417113110.GD3116@quack.suse.cz> <553104E5.2040704@samsung.com> <55310957.3070101@gmail.com> <55311DE2.9000901@redhat.com> <20150417154351.GA26736@quack.suse.cz> <55312FEA.3030905@redhat.com> <20150417162247.GB27500@quack.suse.cz>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: Use of resize2fs for enabling 64-bit inodes
+Date: Fri, 17 Apr 2015 11:58:49 -0700
+Message-ID: <20150417185849.GD11592@birch.djwong.org>
+References: <20150417161809.GA27500@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Austin S Hemmelgarn <ahferroin7@gmail.com>,
-        Beata Michalska <b.michalska@samsung.com>,
-        linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
-        hughd@google.com, lczerner@redhat.com, hch@infradead.org,
-        linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-        kyungmin.park@samsung.com, kmpark@infradead.org,
-        Linux Filesystem Mailing List <linux-fsdevel@vger.kernel.org>,
-        linux-api@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20150417162247.GB27500@quack.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:27154 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753096AbbDQS6z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Apr 2015 14:58:55 -0400
+Content-Disposition: inline
+In-Reply-To: <20150417161809.GA27500@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Apr 17, 2015 at 06:18:09PM +0200, Jan Kara wrote:
+>   Hello,
+> 
+>   I've noticed that you've implemented enabling 64-bit mode of a filesystem
+> in resize2fs. That is quite logical from the implementation point of view
+> however IMHO it doesn't make too much sense from user point of view.  I'd
 
+I agree it's awkward; right now there's a bandaid that tune2fs -O 64bit will
+tell you how to run resize2fs...
 
-On 17/04/2015 17:22, Jan Kara wrote:
-> On Fri 17-04-15 17:08:10, John Spray wrote:
->> On 17/04/2015 16:43, Jan Kara wrote:
->> In that case I'm confused -- why would ENOSPC be an appropriate use
->> of this interface if the mount being entirely blocked would be
->> inappropriate?  Isn't being unable to service any I/O a more
->> fundamental and severe thing than being up and healthy but full?
->>
->> Were you intending the interface to be exclusively for data
->> integrity issues like checksum failures, rather than more general
->> events about a mount that userspace would probably like to know
->> about?
->    Well, I'm not saying we cannot have those events for fs availability /
-> inavailability. I'm just saying I'd like to see some use for that first.
-> I don't want events to be added just because it's possible...
->
-> For ENOSPC we have thin provisioned storage and the userspace deamon
-> shuffling real storage underneath. So there I know the usecase.
->
+> rather expect that functionality to be in tune2fs. So shouldn't we rather
+> abstract the code into a separate library that would be linked to both
+> resize2fs and tune2fs? Alternatively we could just make tune2fs call
+> resize2fs with appropriate options.
 
-Ah, OK.  So I can think of a couple of use cases:
-  * a cluster scheduling service (think MPI jobs or docker containers) 
-might check for events like this.  If it can see the cluster filesystem 
-is unavailable, then it can avoid scheduling the job, so that the 
-(multi-node) application does not get hung on one node with a bad 
-mount.  If it sees a mount go bad (unavailable, or client evicted) 
-partway through a job, then it can kill -9 the process that was relying 
-on the bad mount, and go run it somewhere else.
-  * Boring but practical case: a nagios health check for checking if 
-mounts are OK.
+...but I've wondered myself why we have two utilities for transforming ext4
+filesystems.  A library would probably be cleaner, but it wouldn't be too
+hard to change existing tune2fs functionality to run (instead of telling
+the user how to run) resize2fs for 64bit conversion.
 
-We don't have to invent these event types now of course, but something 
-to bear in mind.  Hopefully if/when any of the distributed filesystems 
-(Lustre/Ceph/etc) choose to implement this, we can look at making the 
-event types common at that time though.
+I guess one could combine the two into a frankentool that uses argv[0] to
+figure out which half of itself to run, with the tune2fs side being able
+to call into the resize2fs side.  But maybe it's time for the 'high level e2fs
+library' that Ted has been talking about for a while?
 
-BTW in any case an interface for filesystem events to userspace will be 
-a useful addition, thank you!
+> I'm asking because I'm now looking into implementing increasing number of
+> reserved inodes. For that we may need to move some inodes and it would be
+> natural to use code from resize2fs for that. But adding that as an option
+> to resize2fs is just unintuitive from user point of view so I'd like to
+> have some concensus on how we do this... Darrick, Ted, any opinion?
 
-Cheers,
-John
+What do you think of the thread "e2fsprogs: reserve more special inodes" from a
+month or so ago?
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+--D
+
+> 
+> 								Honza
+> 
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
