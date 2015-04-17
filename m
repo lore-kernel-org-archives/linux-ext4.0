@@ -1,90 +1,53 @@
-From: Jan Kara <jack@suse.cz>
+From: John Spray <john.spray-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
 Subject: Re: [RFC 1/4] fs: Add generic file system event notifications
-Date: Fri, 17 Apr 2015 17:43:51 +0200
-Message-ID: <20150417154351.GA26736@quack.suse.cz>
-References: <1429082147-4151-1-git-send-email-b.michalska@samsung.com>
- <1429082147-4151-2-git-send-email-b.michalska@samsung.com>
- <20150417113110.GD3116@quack.suse.cz>
- <553104E5.2040704@samsung.com>
- <55310957.3070101@gmail.com>
- <55311DE2.9000901@redhat.com>
+Date: Fri, 17 Apr 2015 17:08:10 +0100
+Message-ID: <55312FEA.3030905@redhat.com>
+References: <1429082147-4151-1-git-send-email-b.michalska@samsung.com> <1429082147-4151-2-git-send-email-b.michalska@samsung.com> <20150417113110.GD3116@quack.suse.cz> <553104E5.2040704@samsung.com> <55310957.3070101@gmail.com> <55311DE2.9000901@redhat.com> <20150417154351.GA26736@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Austin S Hemmelgarn <ahferroin7@gmail.com>,
-	Beata Michalska <b.michalska@samsung.com>, Jan Kara <jack@suse.cz>,
-	linux-kernel@vger.kernel.org, tytso@mit.edu,
-	adilger.kernel@dilger.ca, hughd@google.com, lczerner@redhat.com,
-	hch@infradead.org, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-	kyungmin.park@samsung.com, kmpark@infradead.org,
-	Linux Filesystem Mailing List <linux-fsdevel@vger.kernel.org>,
-	linux-api@vger.kernel.org
-To: John Spray <john.spray@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <55311DE2.9000901@redhat.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Austin S Hemmelgarn <ahferroin7-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	Beata Michalska <b.michalska-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org,
+	adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, hughd-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org, lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+	kyungmin.park-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org, kmpark-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+	Linux Filesystem Mailing List <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20150417154351.GA26736-+0h/O2h83AeN3ZZ/Hiejyg@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 17-04-15 15:51:14, John Spray wrote:
-> On 17/04/2015 14:23, Austin S Hemmelgarn wrote:
-> >On 2015-04-17 09:04, Beata Michalska wrote:
-> >>On 04/17/2015 01:31 PM, Jan Kara wrote:
-> >>>On Wed 15-04-15 09:15:44, Beata Michalska wrote:
-> >>>...
-> >>>>+static const match_table_t fs_etypes = {
-> >>>>+    { FS_EVENT_INFO,    "info"  },
-> >>>>+    { FS_EVENT_WARN,    "warn"  },
-> >>>>+    { FS_EVENT_THRESH,  "thr"   },
-> >>>>+    { FS_EVENT_ERR,     "err"   },
-> >>>>+    { 0, NULL },
-> >>>>+};
-> >>>   Why are there these generic message types? Threshold
-> >>>messages make good
-> >>>sense to me. But not so much the rest. If they don't have a
-> >>>clear meaning,
-> >>>it will be a mess. So I also agree with a message like -
-> >>>"filesystem has
-> >>>trouble, you should probably unmount and run fsck" - that's fine. But
-> >>>generic "info" or "warning" doesn't really carry any meaning
-> >>>on its own and
-> >>>thus seems pretty useless to me. To explain a bit more, AFAIU this
-> >>>shouldn't be a generic logging interface where something like severity
-> >>>makes sense but rather a relatively specific interface notifying about
-> >>>events in filesystem userspace should know about so I expect
-> >>>relatively low
-> >>>number of types of events, not tens or even hundreds...
-> >>>
-> >>>                                Honza
-> >>
-> >>Getting rid of those would simplify the configuration part, indeed.
-> >>So we would be left with 'generic' and threshold events.
-> >>I guess I've overdone this part.
-> >
-> >For some filesystems, it may make sense to differentiate between a
-> >generic warning and an error.  For BTRFS and ZFS for example, if
-> >there is a csum error on a block, this will get automatically
-> >corrected in many configurations, and won't require anything like
-> >fsck to be run, but monitoring applications will still probably
-> >want to be notified.
-> 
-> Another key differentiation IMHO is between transient errors (like
-> server is unavailable in a distributed filesystem) that will block
-> the filesystem but might clear on their own, vs. permanent errors
-> like unreadable drives that definitely will not clear until the
-> administrator takes some action.  It's usually a reasonable
-> approximation to call transient issues warnings, and permanent
-> issues errors.
-  So you can have events like FS_UNAVAILABLE and FS_AVAILABLE but what use
-would this have? I wouldn't like the interface to be dumping ground for
-random crap - we have dmesg for that :).
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+On 17/04/2015 16:43, Jan Kara wrote:
+> On Fri 17-04-15 15:51:14, John Spray wrote:
+>> On 17/04/2015 14:23, Austin S Hemmelgarn wrote:
+>>
+>>> For some filesystems, it may make sense to differentiate between a
+>>> generic warning and an error.  For BTRFS and ZFS for example, if
+>>> there is a csum error on a block, this will get automatically
+>>> corrected in many configurations, and won't require anything like
+>>> fsck to be run, but monitoring applications will still probably
+>>> want to be notified.
+>> Another key differentiation IMHO is between transient errors (like
+>> server is unavailable in a distributed filesystem) that will block
+>> the filesystem but might clear on their own, vs. permanent errors
+>> like unreadable drives that definitely will not clear until the
+>> administrator takes some action.  It's usually a reasonable
+>> approximation to call transient issues warnings, and permanent
+>> issues errors.
+>    So you can have events like FS_UNAVAILABLE and FS_AVAILABLE but what use
+> would this have? I wouldn't like the interface to be dumping ground for
+> random crap - we have dmesg for that :).
+In that case I'm confused -- why would ENOSPC be an appropriate use of 
+this interface if the mount being entirely blocked would be 
+inappropriate?  Isn't being unable to service any I/O a more fundamental 
+and severe thing than being up and healthy but full?
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Were you intending the interface to be exclusively for data integrity 
+issues like checksum failures, rather than more general events about a 
+mount that userspace would probably like to know about?
+
+John
