@@ -1,109 +1,111 @@
-From: Beata Michalska <b.michalska@samsung.com>
+From: Beata Michalska <b.michalska-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>
 Subject: Re: [RFC 1/4] fs: Add generic file system event notifications
-Date: Fri, 17 Apr 2015 11:10:58 +0200
-Message-ID: <5530CE22.8080903@samsung.com>
+Date: Fri, 17 Apr 2015 11:46:46 +0200
+Message-ID: <5530D686.9080807@samsung.com>
 References: <1429082147-4151-1-git-send-email-b.michalska@samsung.com>
  <1429082147-4151-2-git-send-email-b.michalska@samsung.com>
- <552F308F.1050505@redhat.com> <552F75D6.4030902@samsung.com>
- <alpine.LSU.2.11.1504161229450.17935@eggly.anvils>
+ <55302FFB.4010108@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>, Tim Chen <tim.c.chen@linux.intel.com>,
- linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
- lczerner@redhat.com, hch@infradead.org, linux-ext4@vger.kernel.org,
- linux-mm@kvack.org, kyungmin.park@samsung.com, kmpark@infradead.org,
- Linux Filesystem Mailing List <linux-fsdevel@vger.kernel.org>,
- linux-api@vger.kernel.org
-To: Hugh Dickins <hughd@google.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-reply-to: <alpine.LSU.2.11.1504161229450.17935@eggly.anvils>
-Sender: owner-linux-mm@kvack.org
+Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org,
+	adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, hughd-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org, lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+	kyungmin.park-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org, kmpark-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+	Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+	Linux Filesystem Mailing List <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Heinrich Schuchardt <xypron.glpk-Mmb7MZpHnFY@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-reply-to: <55302FFB.4010108-Mmb7MZpHnFY@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
+
 
 Hi,
 
-On 04/16/2015 10:10 PM, Hugh Dickins wrote:
-> On Thu, 16 Apr 2015, Beata Michalska wrote:
->> On 04/16/2015 05:46 AM, Eric Sandeen wrote:
->>> On 4/15/15 2:15 AM, Beata Michalska wrote:
->>>> Introduce configurable generic interface for file
->>>> system-wide event notifications to provide file
->>>> systems with a common way of reporting any potential
->>>> issues as they emerge.
->>>>
->>>> The notifications are to be issued through generic
->>>> netlink interface, by a dedicated, for file system
->>>> events, multicast group. The file systems might as
->>>> well use this group to send their own custom messages.
->>>
->>> ...
->>>
->>>> + 4.3 Threshold notifications:
->>>> +
->>>> + #include <linux/fs_event.h>
->>>> + void fs_event_alloc_space(struct super_block *sb, u64 ncount);
->>>> + void fs_event_free_space(struct super_block *sb, u64 ncount);
->>>> +
->>>> + Each filesystme supporting the treshold notifiactions should call
->>>> + fs_event_alloc_space/fs_event_free_space repsectively whenever the
->>>> + ammount of availbale blocks changes.
->>>> + - sb:     the filesystem's super block
->>>> + - ncount: number of blocks being acquired/released
->>>
->>> so:
->>>
->>>> +void fs_event_alloc_space(struct super_block *sb, u64 ncount)
->>>> +{
->>>> +	struct fs_trace_entry *en;
->>>> +	s64 count;
->>>> +
->>>> +	spin_lock(&fs_trace_lock);
->>>
->>> Every allocation/free for every supported filesystem system-wide will be
->>> serialized on this global spinlock?  That sounds like a non-starter...
->>>
->>> -Eric
->>>
->> I guess there is a plenty room for improvements as this is an early version.
->> I do agree that this might be a performance bottleneck event though I've tried
->> to keep this to minimum - it's being taken only for hashtable look-up. But still...
->> I was considering placing the trace object within the super_block to skip
->> this look-up part but I'd like to gather more comments, especially on the concept
->> itself.
+On 04/16/2015 11:56 PM, Heinrich Schuchardt wrote:
+> On 15.04.2015 09:15, Beata Michalska wrote:
+>> Introduce configurable generic interface for file
+>> system-wide event notifications to provide file
+>> systems with a common way of reporting any potential
+>> issues as they emerge.
+>>
+>> The notifications are to be issued through generic
+>> netlink interface, by a dedicated, for file system
+>> events, multicast group. The file systems might as
+>> well use this group to send their own custom messages.
+>>
+>> The events have been split into four base categories:
+>> information, warnings, errors and threshold notifications,
+>> with some very basic event types like running out of space
+>> or file system being remounted as read-only.
+>>
+>> Threshold notifications have been included to allow
+>> triggering an event whenever the amount of free space
+>> drops below a certain level - or levels to be more precise
+>> as two of them are being supported: the lower and the upper
+>> range. The notifications work both ways: once the threshold
+>> level has been reached, an event shall be generated whenever
+>> the number of available blocks goes up again re-activating
+>> the threshold.
+>>
+>> The interface has been exposed through a vfs. Once mounted,
+>> it serves as an entry point for the set-up where one can
+>> register for particular file system events.
 > 
-> Sorry, I have no opinion on the netlink fs notifications concept
-> itself, not my area of expertise at all.
+> Having a framework for notification for file systems is a great idea.
+> Your solution covers an important part of the possible application scope.
 > 
-> No doubt you Cc'ed me for tmpfs: I am very glad you're now trying the
-> generic filesystem route, and yes, I'd be happy to have the support
-> in tmpfs, thank you - if it is generally agreed to be suitable for
-> filesystems; but wouldn't want this as a special for tmpfs.
+> Before moving forward I suggest we should analyze if this scope should
+> be enlarged.
 > 
-> However, I must echo Eric's point: please take a look at 7e496299d4d2
-> "tmpfs: make tmpfs scalable with percpu_counter for used blocks":
-> Tim would be unhappy if you added overhead back into that path.
+> Many filesystems are remote (e.g. CIFS/Samba) or distributed over many
+> network nodes (e.g. Lustre). How should file system notification work here?
 > 
-> (And please Cc linux-fsdevel@vger.kernel.org next time you post these.)
+> How will fuse file systems be served?
 > 
-> Hugh
+> The current point of reference is a single mount point.
+> Every time I insert an USB stick several file system may be automounted.
+> I would like to receive events for these automounted file systems.
+> 
+> A similar case arises when starting new virtual machines. How will I
+> receive events on the host system for the file systems of the virtual
+> machines?
+
+> In your implementation events are received via Netlink.
+> Using Netlink for marking mounts for notification would create a much
+> more homogenous interface. So why should we use a virtual file system here?
+> 
+> Best regards
+> 
+> Heinrich Schuchardt
+> 
 > 
 
-Well, the concept of using netlink interface here is just a part of the overall
-idea - so any comments are really welcomed here. The more of them the better solution
-can be worked out, as I believe.
+I'd be more than happy to extend the scope of suggested changes.
+I hope I'll be able to collect more comments - in this way there 
+is a chance we might get here smth that is really useful, for everyone.
 
-As for the possible overhead: this is the last thing I would want, so I'll
-definitely do may best to not to introduce any. I will definitely rework this.
+I've tried to make the interface rather flexible, so that new cases
+can be easily added - so the notification whenever a file system
+is being mounted is definitely doable.
 
-Thanks for Your comments,
+The vfs here merely serves the purpose to configure which type of events
+and for which filesystems are to be issued. Having this done through
+netlink is also an option, though it needs some more thoughts. The way
+notifications are being sent might be extended: so there could be more
+than one option for this. We might also want to consider if we want to
+have this widely available - everything for everyone. (?)
+
+As for the rest, I must admit I'm not really an fs person, so I assume
+there will be more comments and questions like yours. This is also why
+any comments/hints/remarks/doubts/issues etc would me more than just
+welcomed. I'll try to answer them all, though this will require some
+time on my side, thus apologies if I have some delays.
+
+
+I'll get beck to this asap.
 
 BR
 Beata
-
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
