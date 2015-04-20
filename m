@@ -1,71 +1,36 @@
-From: Davide Italiano <dccitaliano@gmail.com>
-Subject: Re: [PATCH] ext4: Move check under lock scope to close a race.
-Date: Mon, 20 Apr 2015 13:50:18 -0700
-Message-ID: <CADob98SWOMMw9rTw+s+-CpayNqiDpENzbhcYzUqp34YC3GtufQ@mail.gmail.com>
-References: <1428468410-12793-1-git-send-email-dccitaliano@gmail.com>
-	<1428468410-12793-2-git-send-email-dccitaliano@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Davide Italiano <dccitaliano@gmail.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f177.google.com ([209.85.212.177]:34978 "EHLO
-	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751997AbbDTUuU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Apr 2015 16:50:20 -0400
-Received: by widdi4 with SMTP id di4so114789182wid.0
-        for <linux-ext4@vger.kernel.org>; Mon, 20 Apr 2015 13:50:19 -0700 (PDT)
-In-Reply-To: <1428468410-12793-2-git-send-email-dccitaliano@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Subject: Re: [v13 2/5] ext4: adds project ID support
+Date: Mon, 20 Apr 2015 17:25:51 -0600
+Message-ID: <60E980ED-C4CF-4558-B0A2-5E5671388BE1@dilger.ca>
+References: <1429493988-16819-1-git-send-email-lixi@ddn.com> <1429493988-16819-3-git-send-email-lixi@ddn.com>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2098\))
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, jack-AlSwsSmVLrQ@public.gmane.org,
+	viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org
+To: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <1429493988-16819-3-git-send-email-lixi-LfVdkaOWEx8@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 7, 2015 at 9:46 PM, Davide Italiano <dccitaliano@gmail.com> wrote:
-> fallocate() checks that the file is extent-based and returns
-> EOPNOTSUPP in case is not. Other tasks can convert from and to
-> indirect and extent so it's safe to check only after grabbing
-> the inode mutex.
->
-> Signed-off-by: Davide Italiano <dccitaliano@gmail.com>
-> ---
->  fs/ext4/extents.c | 16 +++++++++-------
->  1 file changed, 9 insertions(+), 7 deletions(-)
->
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index bed4308..8a9ee08 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4934,13 +4934,6 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->         if (ret)
->                 return ret;
->
-> -       /*
-> -        * currently supporting (pre)allocate mode for extent-based
-> -        * files _only_
-> -        */
-> -       if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
-> -               return -EOPNOTSUPP;
-> -
->         if (mode & FALLOC_FL_COLLAPSE_RANGE)
->                 return ext4_collapse_range(inode, offset, len);
->
-> @@ -4962,6 +4955,15 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->
->         mutex_lock(&inode->i_mutex);
->
-> +       /*
-> +        * currently supporting (pre)allocate mode for extent-based
-> +        * files _only_
-> +        */
-> +       if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
-> +               ret = -EOPNOTSUPP;
-> +               goto out;
-> +       }
-> +
->         if (!(mode & FALLOC_FL_KEEP_SIZE) &&
->              offset + len > i_size_read(inode)) {
->                 new_size = offset + len;
-> --
-> 2.3.4
->
+On Apr 19, 2015, at 7:39 PM, Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wrote:
+> 
+> This patch adds a new internal field of ext4 inode to save project
+> identifier. Also a new flag EXT4_INODE_PROJINHERIT is added for
+> inheriting project ID from parent directory.
+> 
 
-Any comment on this? Is it correct?
+> @@ -3930,12 +3939,18 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+> 	inode->i_mode = le16_to_cpu(raw_inode->i_mode);
+> 	i_uid = (uid_t)le16_to_cpu(raw_inode->i_uid_low);
+> 	i_gid = (gid_t)le16_to_cpu(raw_inode->i_gid_low);
+> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT))
+> +		i_projid = (projid_t)le32_to_cpu(raw_inode->i_projid);
+
+This needs to check if EXT4_PROJID_INHERIT_FL is set, and if i_projid
+fits in i_extra_isize, otherwise it could be accessing a garbage value
+beyond i_extra_isize.
+
+Cheers, Andreas
