@@ -1,221 +1,172 @@
-From: Beata Michalska <b.michalska@samsung.com>
-Subject: Re: [RFC 1/4] fs: Add generic file system event notifications
-Date: Mon, 20 Apr 2015 10:56:24 +0200
-Message-ID: <5534BF38.3090800@samsung.com>
-References: <1429082147-4151-1-git-send-email-b.michalska@samsung.com>
- <1429082147-4151-2-git-send-email-b.michalska@samsung.com>
- <20150417113110.GD3116@quack.suse.cz>
- <067F429D-5480-4449-9141-87B5D9BD1309@dilger.ca>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/3] ext4: Support for checksumming from journal triggers
+Date: Mon, 20 Apr 2015 11:07:20 +0200
+Message-ID: <20150420090720.GB3117@quack.suse.cz>
+References: <1429198977-5637-1-git-send-email-jack@suse.cz>
+ <1429198977-5637-2-git-send-email-jack@suse.cz>
+ <7BED459B-E911-4651-8290-B2DD6D93069E@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, LKML <linux-kernel@vger.kernel.org>,
- Theodore Ts'o <tytso@mit.edu>, Hugh Dickins <hughd@google.com>,
- =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>,
- Christoph Hellwig <hch@infradead.org>, Ext4 <linux-ext4@vger.kernel.org>,
- linux-mm <linux-mm@kvack.org>, kyungmin.park@samsung.com, kmpark@infradead.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
 To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <owner-linux-mm@kvack.org>
-In-reply-to: <067F429D-5480-4449-9141-87B5D9BD1309@dilger.ca>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:39649 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754026AbbDTJH0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Apr 2015 05:07:26 -0400
+Content-Disposition: inline
+In-Reply-To: <7BED459B-E911-4651-8290-B2DD6D93069E@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-
-On 04/18/2015 12:44 AM, Andreas Dilger wrote:
-> On Apr 17, 2015, at 5:31 AM, Jan Kara <jack@suse.cz> wrote:
->> On Wed 15-04-15 09:15:44, Beata Michalska wrote:
->>> Introduce configurable generic interface for file
->>> system-wide event notifications to provide file
->>> systems with a common way of reporting any potential
->>> issues as they emerge.
->>>
->>> The notifications are to be issued through generic
->>> netlink interface, by a dedicated, for file system
->>> events, multicast group. The file systems might as
->>> well use this group to send their own custom messages.
->>>
->>> The events have been split into four base categories:
->>> information, warnings, errors and threshold notifications,
->>> with some very basic event types like running out of space
->>> or file system being remounted as read-only.
->>>
->>> Threshold notifications have been included to allow
->>> triggering an event whenever the amount of free space
->>> drops below a certain level - or levels to be more precise
->>> as two of them are being supported: the lower and the upper
->>> range. The notifications work both ways: once the threshold
->>> level has been reached, an event shall be generated whenever
->>> the number of available blocks goes up again re-activating
->>> the threshold.
->>>
->>> The interface has been exposed through a vfs. Once mounted,
->>> it serves as an entry point for the set-up where one can
->>> register for particular file system events.
->>>
->>> Signed-off-by: Beata Michalska <b.michalska@samsung.com>
->>  Thanks for the patches! Some comments are below.
->>
->>> ---
->>> Documentation/filesystems/events.txt |  254 +++++++++++
->>> fs/Makefile                          |    1 +
->>> fs/events/Makefile                   |    6 +
->>> fs/events/fs_event.c                 |  775 ++++++++++++++++++++++++++++++++++
->>> fs/events/fs_event.h                 |   27 ++
->>> fs/events/fs_event_netlink.c         |   94 +++++
->>> fs/namespace.c                       |    1 +
->>> include/linux/fs.h                   |    6 +-
->>> include/linux/fs_event.h             |   69 +++
->>> include/uapi/linux/fs_event.h        |   62 +++
->>> include/uapi/linux/genetlink.h       |    1 +
->>> net/netlink/genetlink.c              |    7 +-
->>> 12 files changed, 1301 insertions(+), 2 deletions(-)
->>> create mode 100644 Documentation/filesystems/events.txt
->>> create mode 100644 fs/events/Makefile
->>> create mode 100644 fs/events/fs_event.c
->>> create mode 100644 fs/events/fs_event.h
->>> create mode 100644 fs/events/fs_event_netlink.c
->>> create mode 100644 include/linux/fs_event.h
->>> create mode 100644 include/uapi/linux/fs_event.h
->>>
->>> diff --git a/Documentation/filesystems/events.txt b/Documentation/filesystems/events.txt
->>> new file mode 100644
->>> index 0000000..c85dd88
->>> --- /dev/null
->>> +++ b/Documentation/filesystems/events.txt
->>> @@ -0,0 +1,254 @@
->>> +
->>> +	Generic file system event notification interface
->>> +
->>> +Document created 09 April 2015 by Beata Michalska <b.michalska@samsung.com>
->>> +
->>> +1. The reason behind:
->>> +=====================
->>> +
->>> +There are many corner cases when things might get messy with the filesystems.
->>> +And it is not always obvious what and when went wrong. Sometimes you might
->>> +get some subtle hints that there is something going on - but by the time
->>> +you realise it, it might be too late as you are already out-of-space
->>> +or the filesystem has been remounted as read-only (i.e.). The generic
->>> +interface for the filesystem events fills the gap by providing a rather
->>> +easy way of real-time notifications triggered whenever something intreseting
->>> +happens, allowing filesystems to report events in a common way, as they occur.
->>> +
->>> +2. How does it work:
->>> +====================
->>> +
->>> +The interface itself has been exposed as fstrace-type Virtual File System,
->>> +primarily to ease the process of setting up the configuration for the file
->>> +system notifications. So for starters it needs to get mounted (obviously):
->>> +
->>> +	mount -t fstrace none /sys/fs/events
->>> +
->>> +This will unveil the single fstrace filesystem entry - the 'config' file,
->>> +through which the notification are being set-up.
->>> +
->>> +Activating notifications for particular filesystem is as straightforward
->>> +as writing into the 'config' file. Note that by default all events despite
->>> +the actual filesystem type are being disregarded.
->>  Is there a reason to have a special filesystem for this? Do you expect
->> extending it by (many) more files? Why not just creating a file in sysfs or
->> something like that?
->>
->>> +Synopsis of config:
->>> +------------------
->>> +
->>> +	MOUNT EVENT_TYPE [L1] [L2]
->>> +
->>> + MOUNT      : the filesystem's mount point
->>  I'm not quite decided but is mountpoint really the right thing to pass
->> via the interface? They aren't unique (filesystem can be mounted in
->> multiple places) and more importantly can change over time. So won't it be
->> better to pass major:minor over the interface? These are stable, unique to
->> the filesystem, and userspace can easily get them by calling stat(2) on the
->> desired path (or directly from /proc/self/mountinfo). That could be also
->> used as an fs identifier instead of assigned ID (and thus we won't need
->> those events about creation of new trace which look somewhat strange to
->> me).
->>
->> OTOH using major:minor may have issues in container world where processes
->> could watch events from filesystems inaccessible to the container if they
->> guess the device number. So maybe we could use 'path' when creating new
->> trace but I'd still like to use the device number internally and for all
->> outgoing communication because of above mentioned problems with
->> mountpoints.
+On Fri 17-04-15 13:00:32, Andreas Dilger wrote:
+> On Apr 16, 2015, at 9:42 AM, Jan Kara <jack@suse.cz> wrote:
+> > 
+> > JBD2 layer support triggers which are called when journaling layer moves
+> > buffer to a certain state. We can use the frozen trigger, which gets
+> > called when buffer data is frozen and about to be written out to the
+> > journal, to compute block checksums for some buffer types (similarly as
+> > does ocfs2). This avoids unnecessary repeated recomputation of the
+> > checksum (at the cost of larger window where memory corruption won't be
+> > caught by checksumming) and is even necessary when there are
+> > unsynchronized updaters of the checksummed data.
+> > 
+> > So add argument to ext4_journal_get_write_access() and
+> > ext4_journal_get_create_access() which describes buffer type so that
+> > triggers can be set accordingly. This patch is mostly only a change of
+> > prototype of the above mentioned functions and a few small helpers. Real
+> > checksumming will come later.
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> > fs/ext4/ext4.h      | 26 ++++++++++++++++++--
+> > fs/ext4/ext4_jbd2.c | 50 +++++++++++++++++++++++++------------
+> > fs/ext4/ext4_jbd2.h | 18 +++++++++-----
+> > fs/ext4/extents.c   | 10 +++++---
+> > fs/ext4/file.c      |  3 ++-
+> > fs/ext4/ialloc.c    | 15 +++++------
+> > fs/ext4/indirect.c  | 16 ++++++++----
+> > fs/ext4/inline.c    | 19 ++++++++------
+> > fs/ext4/inode.c     | 71 +++++++++++++++++++++++++++++++----------------------
+> > fs/ext4/mballoc.c   | 12 ++++-----
+> > fs/ext4/namei.c     | 39 +++++++++++++++++------------
+> > fs/ext4/resize.c    | 32 ++++++++++++++----------
+> > fs/ext4/super.c     | 16 +++++++++++-
+> > fs/ext4/xattr.c     | 15 +++++++----
+> > 14 files changed, 223 insertions(+), 119 deletions(-)
+> > 
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index f63c3d5805c4..abed83485915 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -1186,6 +1186,24 @@ struct ext4_super_block {
+> > /* Number of quota types we support */
+> > #define EXT4_MAXQUOTAS 2
+> > 
+> > +/* Types of ext4 journal triggers */
+> > +enum ext4_journal_trigger_type {
+> > +	TR_NONE
+> > +};
 > 
-> Please don't make major:minor part of the interface.  That doesn't make
-> sense for network filesystems.  Using the mountpoint to set this up is
-> fine, and really what is expected by userspace tools to monitor a specific
-> mountpoint.  We could use sb->s_id to identify the events.
+> Probably good if this has an EXT4_ prefix to avoid name clashes?
+  OK.
 
-I'm afraid that using the sb->s_id might not be sufficient here.
-The sb->s_id is based either on the backing dev name or the fs type,
-so it will not show the difference between the nodev filesystems (like tmpfs i.e.). 
-It would be better (and more efficient) to have here smth that would enable
-the user space to explicitly determine which fs has triggered the notification.
-(which is why I've used the ids generated for each trace).
-
-
->  
->>> + EVENT_TYPE : type of events to be enabled: info,warn,err,thr;
->>> +              at least one type needs to be specified;
->>> +              note the comma delimiter and lack of spaces between
->>> +	      those options
->>> + L1         : the threshold limit - lower range
->>> + L2         : the threshold limit - upper range
->>> + 	      case enabling threshold notifications the lower level is
->>> +	      mandatory, whereas the upper one remains optional;
->>> +	      note though, that as those refer to the number of available
->>> +	      blocks, the lower level needs to be higher than the upper one
->>> +
->>> +Sample request could look like the follwoing:
->>> +
->>> + echo /sample/mount/point warn,err,thr 710000 500000 > /sys/fs/events/config
->>> +
->>> +Multiple request might be specified provided they are separated with semicolon.
->>  Is this necessary? It somewhat complicates syntax and parsing in kernel
->> and I don't see a need for that. I'd prefer to keep the interface as simple
->> as possible.
->>
->> Also I think that we should make it clear that each event type has
->> different set of arguments. For threshold events they'll be L1 & L2, for
->> other events there may be no arguments, for other events maybe something
->> else...
->>
->> ...
->>> +static const match_table_t fs_etypes = {
->>> +	{ FS_EVENT_INFO,    "info"  },
->>> +	{ FS_EVENT_WARN,    "warn"  },
->>> +	{ FS_EVENT_THRESH,  "thr"   },
->>> +	{ FS_EVENT_ERR,     "err"   },
->>> +	{ 0, NULL },
->>> +};
->>  Why are there these generic message types? Threshold messages make good
->> sense to me. But not so much the rest. If they don't have a clear meaning,
->> it will be a mess. So I also agree with a message like - "filesystem has
->> trouble, you should probably unmount and run fsck" - that's fine. But
->> generic "info" or "warning" doesn't really carry any meaning on its own and
->> thus seems pretty useless to me. To explain a bit more, AFAIU this
->> shouldn't be a generic logging interface where something like severity
->> makes sense but rather a relatively specific interface notifying about
->> events in filesystem userspace should know about so I expect relatively low
->> number of types of events, not tens or even hundreds...
->>
->> 								Honza
->> -- 
->> Jan Kara <jack@suse.cz>
->> SUSE Labs, CR
+> > +
+> > +#define EXT4_JOURNAL_TRIGGER_COUNT TR_NONE
 > 
+> This should just be added after TR_NONE so that it is always correct:
 > 
-> Cheers, Andreas
-> 
-> 
+> enum ext4_journal_trigger_type {
+> 	EXT4_JTR_NONE,
+> 	EXT4_JTR_MAX,
+> };
+  So my idea was that EXT4_JTR_NONE would always be the last one (it has to
+be so that indexing properly works - but that deserves a comment I agree) and
+thus EXT4_JOURNAL_TRIGGER_COUNT is always correct.
 
-BR
-Beata
+> and the s_journal_triggers[] array would use EXT4_JTR_MAX - 1?
+> 
+> > +struct ext4_journal_trigger {
+> > +	struct jbd2_buffer_trigger_type tr_triggers;
+> > +	struct super_block *sb;
+> > +};
+> > +
+> > +static inline struct ext4_journal_trigger *EXT4_TRIGGER(
+> > +				struct jbd2_buffer_trigger_type *trigger)
+> > +{
+> > +	return container_of(trigger, struct ext4_journal_trigger, tr_triggers);
+> > +}
+> > +
+> > /*
+> >  * fourth extended-fs super-block data in memory
+> >  */
+> > @@ -1347,6 +1365,9 @@ struct ext4_sb_info {
+> > 	struct mb_cache *s_mb_cache;
+> > 	spinlock_t s_es_lock ____cacheline_aligned_in_smp;
+> > 
+> > +	/* Journal triggers for checksum computation */
+> > +	struct ext4_journal_trigger s_journal_triggers[EXT4_JOURNAL_TRIGGER_COUNT];
+> > +
+> > 	/* Ratelimit ext4 messages. */
+> > 	struct ratelimit_state s_err_ratelimit_state;
+> > 	struct ratelimit_state s_warning_ratelimit_state;
+> > @@ -2108,13 +2129,14 @@ int ext4_get_block(struct inode *inode, sector_t iblock,
+> > int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+> > 			   struct buffer_head *bh, int create);
+> > int ext4_walk_page_buffers(handle_t *handle,
+> > +		 	   struct inode *inode,
+> > 			   struct buffer_head *head,
+> > 			   unsigned from,
+> > 			   unsigned to,
+> > 			   int *partial,
+> > -			   int (*fn)(handle_t *handle,
+> > +			   int (*fn)(handle_t *handle, struct inode *inode,
+> > 				     struct buffer_head *bh));
+> > -int do_journal_get_write_access(handle_t *handle,
+> > +int do_journal_get_write_access(handle_t *handle, struct inode *inode,
+> > 				struct buffer_head *bh);
+> > #define FALL_BACK_TO_NONDELALLOC 1
+> > #define CONVERT_INLINE_DATA	 2
+> > diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+> > index 3445035c7e01..f5ac40942f5a 100644
+> > --- a/fs/ext4/ext4_jbd2.c
+> > +++ b/fs/ext4/ext4_jbd2.c
+> > @@ -148,19 +148,28 @@ static void ext4_journal_abort_handle(const char *caller, unsigned int line,
+> > }
+> > 
+> > int __ext4_journal_get_write_access(const char *where, unsigned int line,
+> > -				    handle_t *handle, struct buffer_head *bh)
+> > +				    handle_t *handle, struct super_block *sb,
+> > +				    struct buffer_head *bh,
+> > +				    enum ext4_journal_trigger_type trigger_type)
+> > {
+> > -	int err = 0;
+> > +	int err;
+> > 
+> > 	might_sleep();
+> > 
+> > -	if (ext4_handle_valid(handle)) {
+> > -		err = jbd2_journal_get_write_access(handle, bh);
+> > -		if (err)
+> > -			ext4_journal_abort_handle(where, line, __func__, bh,
+> > -						  handle, err);
+> > +	if (!ext4_handle_valid(handle))
+> > +		return 0;
+> > +
+> > +	err = jbd2_journal_get_write_access(handle, bh);
+> > +	if (err) {
+> > +		ext4_journal_abort_handle(where, line, __func__, bh, handle,
+> > +					  err);
+> > +		return err;
+> > 	}
+> > -	return err;
+> > +	if (trigger_type == TR_NONE || !ext4_has_metadata_csum(sb))
+> > +		return 0;
+> 
+> Should this add a check for trigger_type >= EXT4_JTR_MAX?  WARN_ON?
+  OK, I'll add that. Thanks for review.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
