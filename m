@@ -1,118 +1,125 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 changes for 4.1
-Date: Sat, 18 Apr 2015 20:49:46 -0400
-Message-ID: <20150419004946.GA26678@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: torvalds@linux-foundation.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
+From: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Subject: [v13 0/5] ext4: add project quota support
+Date: Mon, 20 Apr 2015 10:39:43 +0900
+Message-ID: <1429493988-16819-1-git-send-email-lixi@ddn.com>
+To: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
+	jack-AlSwsSmVLrQ@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+	dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-The following changes since commit 1efff914afac8a965ad63817ecf8861a927c2ace:
+The following patches propose an implementation of project quota
+support for ext4. A project is an aggregate of unrelated inodes
+which might scatter in different directories. Inodes that belong
+to the same project possess an identical identification i.e.
+'project ID', just like every inode has its user/group
+identification. The following patches add project quota as
+supplement to the former uer/group quota types.
 
-  fs: add dirtytime_expire_seconds sysctl (2015-03-17 12:23:32 -0400)
+The semantics of ext4 project quota is consistent with XFS. Each
+directory can have EXT4_INODE_PROJINHERIT flag set. When the
+EXT4_INODE_PROJINHERIT flag of a parent directory is not set, a
+newly created inode under that directory will have a default project
+ID (i.e. 0). And its EXT4_INODE_PROJINHERIT flag is not set either.
+When this flag is set on a directory, following rules will be kept:
 
-are available in the git repository at:
+1) The newly created inode under that directory will inherit both
+the EXT4_INODE_PROJINHERIT flag and the project ID from its parent
+directory.
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
+2) Hard-linking a inode with different project ID into that directory
+will fail with errno EXDEV.
 
-for you to fetch changes up to 6ddb2447846a8ece111e316a2863c2355023682d:
+3) Renaming a inode with different project ID into that directory
+will fail with errno EXDEV. However, 'mv' command will detect this
+failure and copy the renamed inode to a new inode in the directory.
+Thus, this new inode will inherit both the project ID and
+EXT4_INODE_PROJINHERIT flag.
 
-  ext4 crypto: enable encryption feature flag (2015-04-16 01:56:00 -0400)
+4) If the project quota of that ID is being enforced, statfs() on
+that directory will take the quotas as another upper limits along
+with the capacity of the file system, i.e. the total block/inode
+number will be the minimum of the quota limits and file system
+capacity.
 
-----------------------------------------------------------------
-A few bug fixes and add support for file-system level encryption in ext4.
+Changelog:
+* v13 <- v12:
+ - Update inode size check of project ID.
+* v12 <- v11:
+ - Relax the permission check when setting project ID.
+* v11 <- v10:
+ - Remove project quota mount option;
+ - Fix permission check when setting project ID.
+* v10 <- v9:
+ - Remove non-journaled project quota interface;
+ - Only allow admin to read project quota info;
+ - Cleanup FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR interface.
+* v9 <- v8:
+ - Remove non-journaled project quota;
+ - Rebase to newest dev branch of ext4 repository (3.19.0-rc3).
+* v8 <- v7:
+ - Rebase to newest dev branch of ext4 repository (3.18.0_rc3).
+* v7 <- v6:
+ - Map ext4 inode flags to xflags of struct fsxattr;
+ - Add patch to cleanup ext4 inode flag definitions.
+* v6 <- v5:
+ - Add project ID check for cross rename;
+ - Remove patch of EXT4_IOC_GETPROJECT/EXT4_IOC_SETPROJECT ioctl
+* v5 <- v4:
+ - Check project feature when set/get project ID;
+ - Do not check project feature for project quota;
+ - Add support of FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR.
+* v4 <- v3:
+ - Do not check project feature when set/get project ID;
+ - Use EXT4_MAXQUOTAS instead of MAXQUOTAS in ext4 patches;
+ - Remove unnecessary change of fs/quota/dquot.c;
+ - Remove CONFIG_QUOTA_PROJECT.
+* v3 <- v2:
+ - Add EXT4_INODE_PROJINHERIT semantics.
+* v2 <- v1:
+ - Add ioctl interface for setting/getting project;
+ - Add EXT4_FEATURE_RO_COMPAT_PROJECT;
+ - Add get_projid() method in struct dquot_operations;
+ - Add error check of ext4_inode_projid_set/get().
 
-----------------------------------------------------------------
-Christoph Hellwig (1):
-      ext4: remove block_device_ejected
+v12: http://www.spinics.net/lists/linux-fsdevel/msg84905.html
+v11: http://www.spinics.net/lists/linux-ext4/msg47450.html
+v10: http://www.spinics.net/lists/linux-ext4/msg47413.html
+v9: http://www.spinics.net/lists/linux-ext4/msg47326.html
+v8: http://www.spinics.net/lists/linux-ext4/msg46545.html
+v7: http://www.spinics.net/lists/linux-fsdevel/msg80404.html
+v6: http://www.spinics.net/lists/linux-fsdevel/msg80022.html
+v5: http://www.spinics.net/lists/linux-api/msg04840.html
+v4: http://lwn.net/Articles/612972/
+v3: http://www.spinics.net/lists/linux-ext4/msg45184.html
+v2: http://www.spinics.net/lists/linux-ext4/msg44695.html
+v1: http://article.gmane.org/gmane.comp.file-systems.ext4/45153
 
-Eric Whitney (2):
-      ext4: fix loss of delalloc extent info in ext4_zero_range()
-      ext4: don't release reserved space for previously allocated cluster
+Any comments or feedbacks are appreciated.
 
-Konstantin Khlebnikov (1):
-      ext4: fix bh leak on error paths in ext4_rename() and ext4_cross_rename()
+Regards,
+                                         - Li Xi
 
-Lukas Czerner (2):
-      ext4: allocate entire range in zero range
-      ext4: make fsync to sync parent dir in no-journal for real this time
+Li Xi (5):
+  vfs: adds general codes to enforces project quota limits
+  ext4: adds project ID support
+  ext4: adds project quota support
+  ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR interface support
+  ext4: cleanup inode flag definitions
 
-Maurizio Lombardi (1):
-      ext4: remove unnecessary lock/unlock of i_block_reservation_lock
-
-Michael Halcrow (13):
-      ext4 crypto: export ext4_empty_dir()
-      ext4 crypto: add encryption xattr support
-      ext4 crypto: add encryption policy and password salt support
-      ext4 crypto: add ext4 encryption facilities
-      ext4 crypto: add encryption key management facilities
-      ext4 crypto: inherit encryption policies on inode and directory create
-      ext4 crypto: implement the ext4 encryption write path
-      ext4 crypto: implement the ext4 decryption read path
-      ext4 crypto: filename encryption facilities
-      ext4 crypto: insert encrypted filenames into a leaf directory block
-      ext4 crypto: partial update to namei.c for fname crypto
-      ext4 crypto: filename encryption modifications
-      ext4 crypto: enable filename encryption
-
-Rasmus Villemoes (1):
-      ext4: fix transposition typo in format string
-
-Sheng Yong (1):
-      ext4: remove unused header files
-
-Theodore Ts'o (7):
-      ext4 crypto: add ext4_mpage_readpages()
-      ext4 crypto: reserve codepoints used by the ext4 encryption feature
-      ext4 crypto: add ext4 encryption Kconfig
-      ext4 crypto: enforce context consistency
-      ext4 crypto: teach ext4_htree_store_dirent() to store decrypted filenames
-      ext4 crypto: add symlink encryption
-      ext4 crypto: enable encryption feature flag
-
-Wei Yuan (1):
-      ext4: remove useless condition in if statement.
-
-Xiaoguang Wang (1):
-      ext4: fix comments in ext4_can_extents_be_merged()
-
- fs/ext4/Kconfig          |  17 +++
- fs/ext4/Makefile         |   4 +-
- fs/ext4/acl.c            |   5 -
- fs/ext4/balloc.c         |   3 -
- fs/ext4/bitmap.c         |   1 -
- fs/ext4/block_validity.c |   1 -
- fs/ext4/crypto.c         | 558 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/crypto_fname.c   | 709 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/crypto_key.c     | 165 +++++++++++++++++++++++
- fs/ext4/crypto_policy.c  | 194 +++++++++++++++++++++++++++
- fs/ext4/dir.c            |  81 ++++++++----
- fs/ext4/ext4.h           | 169 ++++++++++++++++++++++--
- fs/ext4/ext4_crypto.h    | 147 +++++++++++++++++++++
- fs/ext4/extents.c        |  81 ++++++------
- fs/ext4/extents_status.c |   2 -
- fs/ext4/file.c           |  19 ++-
- fs/ext4/fsync.c          |   1 -
- fs/ext4/hash.c           |   1 -
- fs/ext4/ialloc.c         |  28 +++-
- fs/ext4/inline.c         |  16 ++-
- fs/ext4/inode.c          | 130 +++++++++++++++++-
- fs/ext4/ioctl.c          |  86 +++++++++++-
- fs/ext4/namei.c          | 637 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------
- fs/ext4/page-io.c        |  47 ++++++-
- fs/ext4/readpage.c       | 328 +++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/super.c          |  56 +++++---
- fs/ext4/symlink.c        |  97 +++++++++++++-
- fs/ext4/xattr.c          |   4 +-
- fs/ext4/xattr.h          |   3 +
- 29 files changed, 3344 insertions(+), 246 deletions(-)
- create mode 100644 fs/ext4/crypto.c
- create mode 100644 fs/ext4/crypto_fname.c
- create mode 100644 fs/ext4/crypto_key.c
- create mode 100644 fs/ext4/crypto_policy.c
- create mode 100644 fs/ext4/ext4_crypto.h
- create mode 100644 fs/ext4/readpage.c
+ fs/ext4/ext4.h             |   86 +++++++----
+ fs/ext4/ialloc.c           |    5 +
+ fs/ext4/inode.c            |   25 +++
+ fs/ext4/ioctl.c            |  364 +++++++++++++++++++++++++++++++++-----------
+ fs/ext4/namei.c            |   18 +++
+ fs/ext4/super.c            |   57 +++++++-
+ fs/quota/dquot.c           |   35 ++++-
+ fs/quota/quota.c           |    5 +-
+ fs/quota/quotaio_v2.h      |    6 +-
+ fs/xfs/xfs_fs.h            |   47 ++----
+ include/linux/quota.h      |    2 +
+ include/uapi/linux/fs.h    |   33 ++++
+ include/uapi/linux/quota.h |    6 +-
+ 13 files changed, 526 insertions(+), 163 deletions(-)
