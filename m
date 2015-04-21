@@ -1,64 +1,39 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 06/35] e2fsck: rebuild sparse extent trees/convert
- non-extent ext3 files
-Date: Tue, 21 Apr 2015 12:33:00 -0400
-Message-ID: <20150421163300.GA14091@thunk.org>
+Subject: Re: [PATCH 10/35] undo-io: add new calls to and speed up the undo io
+ manager
+Date: Tue, 21 Apr 2015 12:48:02 -0400
+Message-ID: <20150421164802.GA31102@thunk.org>
 References: <20150402023359.25243.79782.stgit@birch.djwong.org>
- <20150402023440.25243.95250.stgit@birch.djwong.org>
+ <20150402023506.25243.44459.stgit@birch.djwong.org>
+ <B42FC5F2-8E81-4F2F-B16C-4029EC8DC0EC@dilger.ca>
+ <20150421150012.GI3238@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50643 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:50668 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933107AbbDUQdE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Apr 2015 12:33:04 -0400
+	id S1754819AbbDUQsF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Apr 2015 12:48:05 -0400
 Content-Disposition: inline
-In-Reply-To: <20150402023440.25243.95250.stgit@birch.djwong.org>
+In-Reply-To: <20150421150012.GI3238@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 01, 2015 at 07:34:40PM -0700, Darrick J. Wong wrote:
-> Teach e2fsck to (re)construct extent trees.  This enables us to do
-> either of the following: compress a highly sparse extent tree into
-> fewer ETB blocks; or convert a ext3-style block mapped file to an
-> extent file.  The reconstruction is performed during pass 1E or 3A,
-> as detailed below.
-> 
-> For files that are already extent based, this algorithm will
-> automatically run (pending user approval) if pass1 determines either
-> (1) that a whole level of extent tree will fit into a higher level of
-> the tree; (2) that the size of any level can be reduced by at least
-> one ETB block; or (3) the extent tree is unnecessarily deep.  It will
-> not run at all if errors are found and the user declines to fix the
-> errors.
-> 
-> The option "-E bmap2extent" can be used to force e2fsck to convert all
-> block map files to extent trees, and to rebuild all extent files'
-> extent trees.  After conversion, files larger than 12 blocks should be
-> defragmented to eliminate empty holes where a block lives.
-> 
-> The extent tree constructor is pretty dumb -- it creates a list of
-> leaf extents (adjacent extents are collapsed), marks all indirect
-> blocks / ETB blocks free, installs a new extent tree root in the
-> inode, then loads the leaf extents into the tree.
-> 
-> v2: Account for extent tree block slack that we create when splitting
-> a block, so that we don't repeatedly annoy the user to rebuild a tree
-> that we can't optimize further.
-> 
-> v3: For any directory being rebuilt during pass 3A, defer any extent
-> tree rebuilding until after the rehash.  It's quite possible that the
-> act of compressing an aged directory will cause it to shrink far
-> enough to enable us to knock a level off the dir's extent tree.
-> 
-> v4: Add a fixes_only option (and a E2FSCK_FIXES_ONLY environment
-> variable) that disables optimization activities unless they are
-> required to make the filesystem consistent.
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+On Tue, Apr 21, 2015 at 11:00:12AM -0400, Theodore Ts'o wrote:
+> However, if the user types ^C, or e2fsck crashes out with a call to
+> fatal_error(), we *should* make sure the undo log is in a proper state
+> so it can be replied.
 
-Thanks, applied.
+It looks like the current set of patches are registering an atexit()
+cleanup handler, but there aren't changes to add signal handlers; is
+this correct?
 
-						- Ted
+In the case of e2fsck, we have signal handlers already, but many of
+the other e2fsprogs programs don't have signal handlers and unless I
+missed them when I did a quick scan, it looks like this patch series
+doesn't add any.
+
+					- Ted
