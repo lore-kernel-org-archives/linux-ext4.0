@@ -1,151 +1,212 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/3] ext4: Speedup ext4 orphan inode handling
-Date: Tue, 21 Apr 2015 12:56:13 +0200
-Message-ID: <20150421105613.GF24278@quack.suse.cz>
-References: <1429198977-5637-1-git-send-email-jack@suse.cz>
- <1429198977-5637-3-git-send-email-jack@suse.cz>
- <056F4994-DF7C-4780-A3BD-C2A818BEEE45@dilger.ca>
- <20150420122532.GF3117@quack.suse.cz>
- <05A53E56-0B0A-4741-A542-7C6CDB61729C@dilger.ca>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [v13 1/5] vfs: adds general codes to enforces project quota
+ limits
+Date: Tue, 21 Apr 2015 13:56:24 +0200
+Message-ID: <20150421115624.GG24278@quack.suse.cz>
+References: <1429493988-16819-1-git-send-email-lixi@ddn.com>
+ <1429493988-16819-2-git-send-email-lixi@ddn.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:35093 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751482AbbDUK4T (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Apr 2015 06:56:19 -0400
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
+	jack-AlSwsSmVLrQ@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+	dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org
+To: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <05A53E56-0B0A-4741-A542-7C6CDB61729C@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1429493988-16819-2-git-send-email-lixi-LfVdkaOWEx8@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon 20-04-15 10:35:01, Andreas Dilger wrote:
-> On Apr 20, 2015, at 6:25 AM, Jan Kara <jack@suse.cz> wrote:
-> > On Fri 17-04-15 17:53:03, Andreas Dilger wrote:
-> >> On Apr 16, 2015, at 9:42 AM, Jan Kara <jack@suse.cz> wrote:
-> >>> Signed-off-by: Jan Kara <jack@suse.cz>
-> >>> ---
-> >>> fs/ext4/ext4.h  |  52 +++++++++++--
-> >>> fs/ext4/namei.c |  95 +++++++++++++++++++++--
-> >>> fs/ext4/super.c | 237 ++++++++++++++++++++++++++++++++++++++++++++++++--------
-> >>> 3 files changed, 341 insertions(+), 43 deletions(-)
-> >>> 
-> >>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> >>> index abed83485915..768a8b9ee2f9 100644
-> >>> --- a/fs/ext4/ext4.h
-> >>> +++ b/fs/ext4/ext4.h
-> >>> @@ -208,6 +208,7 @@ struct ext4_io_submit {
-> >>> #define EXT4_UNDEL_DIR_INO	 6	/* Undelete directory inode */
-> >>> #define EXT4_RESIZE_INO		 7	/* Reserved group descriptors inode */
-> >>> #define EXT4_JOURNAL_INO	 8	/* Journal inode */
-> >>> +#define EXT4_ORPHAN_INO		 9	/* Inode with orphan entries */
-> >> 
-> >> Contrary to your patch description that said this was using ino #12,
-> >> this conflicts with EXT2_EXCLUDE_INO for snapshots.  Why not use
-> >> s_last_orphan in the superblock to reference the orphan inode?  Since
-> >> this feature already requires a new EXT2_FEATURE_RO_COMPAT flag, the
-> >> existing orphan inode number could be reused.  See below how this could
-> >> still in the ENOSPC case.
-> > 
-> >  So I think you misunderstood one thing: Orphan file is statically
-> > allocated (when feature gets enabled by mkfs). Kernel doesn't handle
-> > resizing in any way - that way we can assume we modify exactly one block to
-> > add inode to orphan file.
+On Mon 20-04-15 10:39:44, Li Xi wrote:
+> This patch adds support for a new quota type PRJQUOTA for project quota
+> enforcement. Also a new method get_projid() is added into dquot_operations
+> structure.
 > 
-> You are right, I totally didn't notice this was the case.  I thought the
-> orphan inode size would grow as needed by the workload, and the ENOSPC
-> handling would only be used if the filesystem was actually out of space.
-> If we stick with the static orphan inode size, it makes sense to add a
-> comment explaining this clearly.
-  I'll add a comment at ENOSPC handling.
-
-> > If we run out of space in orphan file - but
-> > note that e.g. if you have 128 KB orphan file, it can contain 32768 orphan
-> > entries and you never have that many orphan inodes at once under normal
-> > circumstances - we fall back to old style orphan list. So if you have more
-> > orphan inodes than you expected when creating orphan file, the fs still
-> > handles that gracefully, it just falls back to the old unscalable code.
-> 
-> What I was thinking is that the orphan inode would always be linked from
-> the superblock s_last_orphan if FEATURE_RO_COMPAT_ORPHAN_INODE is set:
-> 
-> ext4_super_block[s_last_orphan] -> orphan_inode[i_dtime] [ ->orphan list ]
-> 
-> Then, if no space is available to grow the orphan inode it would hook
-> orphans off i_dtime from the orphan inode as needed as is done today.
-  But what is the advantage of doing this? It would possibly remove the
-need to increase the number of reserved inodes, that's about it. But it
-would add some special cases to orphan handling instead of just being able
-to use the old code as is. Furthermore the orphan file feature would no
-longer be a compat one AFAIU your proposal. So IMHO increasing the number
-of special inodes and using one of them is the easiest solution.
- 
-> > IMHO adding code to grow orphan file isn't simply worth it (but we can do
-> > it if we decide so in the future). Also we have to keep code to handle old
-> > style orphan list anyway in kernel so the fallback doesn't really incurr
-> > any significant additional complexity.
-> 
-> How big is the orphan file by default?  I'd think it will be a bit tricky
-> to get this right, since it depends on both the size of the filesystem
-> (e.g. you don't want 128KB orphan file on a 1.44MB floppy) and the number
-> of cores.  Given that there is already existing code to handle extending
-> a file easily (e.g. ext4_append()) I don't think that is too hard.  Then
-> the orphan inode will only grow as large as needed.
-  Well, I wouldn't be worried about 1.44MB floppies :) You likely won't
-format them with a journal (and thus orphan file) anyway. I'd base default
-orphan file size just on the fs size. For filesystems in the 'floppy' /
-'small' profile I'd disable the feature by default. There we care more about
-size than about scalability. For filesystems 512 MB large I'd use 128 KB
-orphan file size and growing the orphan file size linearly with fs size
-upto 8 GB where orphan file size will be 2 MB - that's enough for 512 CPUs
-to operate in parallel which should be enough for a few coming years
-(growing orphan file size is easy if you later find out it isn't enough).
-
-> It could also detect SMP collisions by whether the buffer heads are locked
-> already, and then allocate a new block to reduce contention.  That way we
-> get just the right SMP scalability for the system and workload being run.
-  All this is possible but I would like to avoid overengineering it. So I
-would wait until I see users who actually need this. Kernel has orphan file
-under its control and if we later decide kernel should really handle
-growing / shrinking it, we can add that feature without any change to the
-on-disk format.
-
-> >> What do you think about making the on-disk orphan inode numbers store
-> >> 64-bit values?  That would be easy to do now, and would avoid a format
-> >> change in the future if we wanted to use 64-bit inodes.
-> >> 
-> >> That said, if the orphan inode is deleted after orphan recovery (see
-> >> more below) the only thing needed for compatibility is to store the
-> >> inode number size into the orphan inode somewhere so it could be changed.
-> >> Maybe i_version and/or i_generation since they are not directly user
-> >> accessible.
-> > 
-> >  So orphan entry is cleared once inode isn't orphan anymore. So a clean
-> > filesystem currently has completely zeroed out orphan file. Switching to
-> > 64-bit inode numbers would be trivial then and you can just pick the format
-> > of the orphan file based on the 64BIT_INODE incompat feature we'll have to
-> > have in sb anyway. So I don't think we need to do anything in that regard
-> > now.
-> 
-> But if someone wants to enable 64BIT_INODE then they need to set this flag
-> on the superblock, and it would confuse the kernel to thinking that the
-> orphan inode has 64-bit inode numbers, when it still only has 32-bit inodes.
-  So I'm bit confused. When you set 64BIT_INODE flag, you still need to
-walk over all the directory structure and convert all the directories. Also
-you presumably enforce the filesystem is clean. At that point the orphan file
-is full of zeros so when you mount the fs, kernel will just start looking
-at those zeros as 64-bit numbers which is fine. When we have inode number
-size also stored within the orphan file, we have to explicitely convert it.
-
-> It seems safer to store the inode number size with the orphan inode.  One
-> option is to put it in the low byte of the proposed per-block magic, so if
-> the inode number size changes the magic will change as well.
-  So I don't really mind having inode number as a part of magic but I'm
-just wondering about the advantage...
+> Signed-off-by: Li Xi <lixi-LfVdkaOWEx8@public.gmane.org>
+> Signed-off-by: Dmitry Monakhov <dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org>
+> Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+  This patch is now upstream as commit
+847aac644e92e5624f2c153bab409bf713d5ff9a. So you don't have to send it
+in the next posting if you rebase on top of latest Linus' tree.
 
 								Honza
+> ---
+>  fs/quota/dquot.c           |   35 ++++++++++++++++++++++++++++++-----
+>  fs/quota/quota.c           |    5 ++++-
+>  fs/quota/quotaio_v2.h      |    6 ++++--
+>  include/linux/quota.h      |    2 ++
+>  include/uapi/linux/quota.h |    6 ++++--
+>  5 files changed, 44 insertions(+), 10 deletions(-)
+> 
+> diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+> index 8f0acef..a02bb68 100644
+> --- a/fs/quota/dquot.c
+> +++ b/fs/quota/dquot.c
+> @@ -1159,8 +1159,8 @@ static int need_print_warning(struct dquot_warn *warn)
+>  			return uid_eq(current_fsuid(), warn->w_dq_id.uid);
+>  		case GRPQUOTA:
+>  			return in_group_p(warn->w_dq_id.gid);
+> -		case PRJQUOTA:	/* Never taken... Just make gcc happy */
+> -			return 0;
+> +		case PRJQUOTA:
+> +			return 1;
+>  	}
+>  	return 0;
+>  }
+> @@ -1399,6 +1399,9 @@ static void __dquot_initialize(struct inode *inode, int type)
+>  	/* First get references to structures we might need. */
+>  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+>  		struct kqid qid;
+> +		kprojid_t projid;
+> +		int rc;
+> +
+>  		got[cnt] = NULL;
+>  		if (type != -1 && cnt != type)
+>  			continue;
+> @@ -1409,6 +1412,10 @@ static void __dquot_initialize(struct inode *inode, int type)
+>  		 */
+>  		if (i_dquot(inode)[cnt])
+>  			continue;
+> +
+> +		if (!sb_has_quota_active(sb, cnt))
+> +			continue;
+> +
+>  		init_needed = 1;
+>  
+>  		switch (cnt) {
+> @@ -1418,6 +1425,12 @@ static void __dquot_initialize(struct inode *inode, int type)
+>  		case GRPQUOTA:
+>  			qid = make_kqid_gid(inode->i_gid);
+>  			break;
+> +		case PRJQUOTA:
+> +			rc = inode->i_sb->dq_op->get_projid(inode, &projid);
+> +			if (rc)
+> +				continue;
+> +			qid = make_kqid_projid(projid);
+> +			break;
+>  		}
+>  		got[cnt] = dqget(sb, qid);
+>  	}
+> @@ -2161,7 +2174,8 @@ static int vfs_load_quota_inode(struct inode *inode, int type, int format_id,
+>  		error = -EROFS;
+>  		goto out_fmt;
+>  	}
+> -	if (!sb->s_op->quota_write || !sb->s_op->quota_read) {
+> +	if (!sb->s_op->quota_write || !sb->s_op->quota_read ||
+> +	    (type == PRJQUOTA && sb->dq_op->get_projid == NULL)) {
+>  		error = -EINVAL;
+>  		goto out_fmt;
+>  	}
+> @@ -2402,8 +2416,19 @@ static void do_get_dqblk(struct dquot *dquot, struct fs_disk_quota *di)
+>  
+>  	memset(di, 0, sizeof(*di));
+>  	di->d_version = FS_DQUOT_VERSION;
+> -	di->d_flags = dquot->dq_id.type == USRQUOTA ?
+> -			FS_USER_QUOTA : FS_GROUP_QUOTA;
+> +	switch (dquot->dq_id.type) {
+> +	case USRQUOTA:
+> +		di->d_flags = FS_USER_QUOTA;
+> +		break;
+> +	case GRPQUOTA:
+> +		di->d_flags = FS_GROUP_QUOTA;
+> +		break;
+> +	case PRJQUOTA:
+> +		di->d_flags = FS_PROJ_QUOTA;
+> +		break;
+> +	default:
+> +		BUG();
+> +	}
+>  	di->d_id = from_kqid_munged(current_user_ns(), dquot->dq_id);
+>  
+>  	spin_lock(&dq_data_lock);
+> diff --git a/fs/quota/quota.c b/fs/quota/quota.c
+> index 2aa4151..33b30b1 100644
+> --- a/fs/quota/quota.c
+> +++ b/fs/quota/quota.c
+> @@ -30,7 +30,10 @@ static int check_quotactl_permission(struct super_block *sb, int type, int cmd,
+>  	case Q_XGETQSTATV:
+>  	case Q_XQUOTASYNC:
+>  		break;
+> -	/* allow to query information for dquots we "own" */
+> +	/*
+> +	 * allow to query information for dquots we "own"
+> +	 * always allow querying project quota
+> +	 */
+>  	case Q_GETQUOTA:
+>  	case Q_XGETQUOTA:
+>  		if ((type == USRQUOTA && uid_eq(current_euid(), make_kuid(current_user_ns(), id))) ||
+> diff --git a/fs/quota/quotaio_v2.h b/fs/quota/quotaio_v2.h
+> index f1966b4..4e95430 100644
+> --- a/fs/quota/quotaio_v2.h
+> +++ b/fs/quota/quotaio_v2.h
+> @@ -13,12 +13,14 @@
+>   */
+>  #define V2_INITQMAGICS {\
+>  	0xd9c01f11,	/* USRQUOTA */\
+> -	0xd9c01927	/* GRPQUOTA */\
+> +	0xd9c01927,	/* GRPQUOTA */\
+> +	0xd9c03f14,	/* PRJQUOTA */\
+>  }
+>  
+>  #define V2_INITQVERSIONS {\
+>  	1,		/* USRQUOTA */\
+> -	1		/* GRPQUOTA */\
+> +	1,		/* GRPQUOTA */\
+> +	1,		/* PRJQUOTA */\
+>  }
+>  
+>  /* First generic header */
+> diff --git a/include/linux/quota.h b/include/linux/quota.h
+> index 50978b7..ba51f7e 100644
+> --- a/include/linux/quota.h
+> +++ b/include/linux/quota.h
+> @@ -50,6 +50,7 @@
+>  
+>  #undef USRQUOTA
+>  #undef GRPQUOTA
+> +#undef PRJQUOTA
+>  enum quota_type {
+>  	USRQUOTA = 0,		/* element used for user quotas */
+>  	GRPQUOTA = 1,		/* element used for group quotas */
+> @@ -317,6 +318,7 @@ struct dquot_operations {
+>  	/* get reserved quota for delayed alloc, value returned is managed by
+>  	 * quota code only */
+>  	qsize_t *(*get_reserved_space) (struct inode *);
+> +	int (*get_projid) (struct inode *, kprojid_t *);/* Get project ID */
+>  };
+>  
+>  struct path;
+> diff --git a/include/uapi/linux/quota.h b/include/uapi/linux/quota.h
+> index 3b6cfbe..b2d9486 100644
+> --- a/include/uapi/linux/quota.h
+> +++ b/include/uapi/linux/quota.h
+> @@ -36,11 +36,12 @@
+>  #include <linux/errno.h>
+>  #include <linux/types.h>
+>  
+> -#define __DQUOT_VERSION__	"dquot_6.5.2"
+> +#define __DQUOT_VERSION__	"dquot_6.6.0"
+>  
+> -#define MAXQUOTAS 2
+> +#define MAXQUOTAS 3
+>  #define USRQUOTA  0		/* element used for user quotas */
+>  #define GRPQUOTA  1		/* element used for group quotas */
+> +#define PRJQUOTA  2		/* element used for project quotas */
+>  
+>  /*
+>   * Definitions for the default names of the quotas files.
+> @@ -48,6 +49,7 @@
+>  #define INITQFNAMES { \
+>  	"user",    /* USRQUOTA */ \
+>  	"group",   /* GRPQUOTA */ \
+> +	"project", /* PRJQUOTA */ \
+>  	"undefined", \
+>  };
+>  
+> -- 
+> 1.7.1
+> 
 -- 
-Jan Kara <jack@suse.cz>
+Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 SUSE Labs, CR
