@@ -1,48 +1,65 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 03/35] libext2fs/e2fsck: provide routines to read-ahead
- metadata
-Date: Mon, 20 Apr 2015 23:03:40 -0400
-Message-ID: <20150421030340.GD3238@thunk.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 05/35] e2fsck: track directories to be rehashed with a
+ bitmap
+Date: Mon, 20 Apr 2015 21:43:45 -0700
+Message-ID: <20150421044345.GF11592@birch.djwong.org>
 References: <20150402023359.25243.79782.stgit@birch.djwong.org>
- <20150402023419.25243.1245.stgit@birch.djwong.org>
+ <20150402023433.25243.88338.stgit@birch.djwong.org>
+ <20150421022645.GC3238@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49221 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751309AbbDUDDt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Apr 2015 23:03:49 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:20405 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750767AbbDUEnw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Apr 2015 00:43:52 -0400
 Content-Disposition: inline
-In-Reply-To: <20150402023419.25243.1245.stgit@birch.djwong.org>
+In-Reply-To: <20150421022645.GC3238@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 01, 2015 at 07:34:19PM -0700, Darrick J. Wong wrote:
-> This patch adds to e2fsck the ability to pre-fetch metadata into the
-> page cache in the hopes of speeding up fsck runs.  There are two new
-> functions -- the first allows a caller to readahead a list of blocks,
-> and the second is a helper function that uses that first mechanism to
-> load group data (bitmaps, inode tables).
+On Mon, Apr 20, 2015 at 10:26:45PM -0400, Theodore Ts'o wrote:
+> On Wed, Apr 01, 2015 at 07:34:33PM -0700, Darrick J. Wong wrote:
+> > Use a bitmap to track which directories we want to rehash, since
+> > bitmaps will use less memory.  This enables us to clean up the
+> > rehash-all case to use inode_dir_map, and we can free the dirinfo
+> > memory sooner.
+> > 
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 > 
-> These new e2fsck routines require the addition of a dblist API to
-> allow us to iterate a subset of a dblist.  This will enable
-> incremental directory block readahead in e2fsck pass 2.
+> Um, how is it that bitmaps will use less memory?  Directories
+> generally don't use contiguous inode numbers (i.e., it's not that
+> often that inodes N-1. N, and N+1 will all be directoriess), and and
+> the rbtree data structure is going to have more pointer overhead
+> compared with the u32 list.
 > 
-> There's also a function to estimate the readahead given a FS.
+> In the case of the bitarray representation, the memory usage is
+> nr_inodes / 8 in bytes.  The memory usage of the u32 list is (nr_dirs
+> * 4) bytes.  Given that the number of inodes is generally something
+> that we've massively provisioned, that's not all that likely.
 > 
-> v2: Add an API to create a dblist with a given number of list elements
-> pre-allocated.  This enables us to save ~2ms per call to
-> e2fsck_readahead() (assuming a 2MB RA buffer) by not having to
-> repeatedly call ext2_resize_mem as we add blocks to the list.
+> Looking at some files systems I have handy, it's no contest:
 > 
-> v3: Instead of creating dblists of arbitrary size, change the dblist
-> iterator to allow iterating a sub-range.  This eliminates a lot of
-> unnecessary list copying during e2fsck part2.
+> Filesystem	nr_inodes / 8                nr_dirs * 4
+> /dev/sda3	1,176,576                    382,424
+> /dev/heap/u1	  655,360		      63,384
 > 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> 
+> Using inode_dir_map for the rehash-all case is a good idea, but I'm
+> not sure it follows that we should ues a bitmap for the non-rehash-all
+> case.
 
-Thanks, applied.
+Eh, you're right, let's drop this one.  Honestly it's been so long I don't
+remember my motivation for writing this up in the first place.  Thanks for
+pulling in the e2fsck readahead pieces, though!
 
-						- Ted
+--D
+
+> 
+> 					- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
