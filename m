@@ -1,96 +1,139 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: Fix data corruption caused by unwritten and delayed extents
-Date: Wed, 22 Apr 2015 16:06:16 +0200
-Message-ID: <1429711576-15006-1-git-send-email-lczerner@redhat.com>
-Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>,
-	stable@vger.kernel.org
-To: tytso@mit.edu
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
+Subject: [PATCH] generic: test data corruption on ext4 caused by written/delayed extent
+Date: Wed, 22 Apr 2015 16:55:55 +0200
+Message-ID: <1429714555-22133-1-git-send-email-lczerner@redhat.com>
+Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
+To: fstests@vger.kernel.org
+Return-path: <fstests-owner@vger.kernel.org>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Currently it is possible to lose whole file system block worth of data
-when we hit the specific interaction with unwritten and delayed extents
-in status extent tree.
+This test excercises the problem with unwritten and delayed extents
+in ext4 extent status tree where we might in some cases lose a block
+worth of data. Even though this was a ext4 specific problem the
+reproducer can be easily tun on any file system so let's do that just
+in case.
 
-The problem is that when we insert delayed extent into extent status
-tree the only way to get rid of it is when we write out delayed buffer.
-However there is a limitation in the extent status tree implementation
-so that when inserting unwritten extent should there be even a single
-delayed block the whole unwritten extent would be marked as delayed.
-
-At this point, there is no way to get rid of the delayed extents,
-because there are no delayed buffers to write out. So when a we write
-into said unwritten extent we will convert it to written, but it still
-remains delayed.
-
-When we try to write into that block later ext4_da_map_blocks() will set
-the buffer new and delayed and map it to invalid block which causes
-the rest of the block to be zeroed loosing already written data.
-
-For now we can fix this by simply not allowing to set delayed status on
-written extent in the extent status tree. Also add WARN_ON() to make
-sure that we notice if this happens in the future.
-
-This problem can be easily reproduced by running the following xfs_io.
-
-xfs_io -f -c "pwrite -S 0xaa 4096 2048" \
-          -c "falloc 0 131072" \
-          -c "pwrite -S 0xbb 65536 2048" \
-          -c "fsync" /mnt/test/fff
-
-echo 3 > /proc/sys/vm/drop_caches
-xfs_io -c "pwrite -S 0xdd 67584 2048" /mnt/test/fff
-
-This can be theoretically also reproduced by at random by running fsx,
-but it's not very reliable, though on machines with bigger page size
-(like ppc) this can be seen more often (especially xfstest generic/127)
+This tests excercises the problem fixed in kernel with commit
+"ext4: Fix data corruption caused by unwritten and delayed extents"
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Cc: stable@vger.kernel.org
 ---
- fs/ext4/extents_status.c | 8 ++++++++
- fs/ext4/inode.c          | 2 ++
- 2 files changed, 10 insertions(+)
+ tests/generic/082     | 84 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/082.out | 14 +++++++++
+ 2 files changed, 98 insertions(+)
+ create mode 100755 tests/generic/082
+ create mode 100644 tests/generic/082.out
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index d33d5a6..153b877 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -703,6 +703,14 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 
- 	BUG_ON(end < lblk);
- 
-+	if ((status & EXTENT_STATUS_DELAYED) &&
-+	    (status & EXTENT_STATUS_WRITTEN)) {
-+		ext4_warning(inode->i_sb, "Inserting extent [%u/%u] as "
-+				" delayed and written which can potentially "
-+				" cause data loss.\n");
-+		WARN_ON(1);
-+	}
+diff --git a/tests/generic/082 b/tests/generic/082
+new file mode 100755
+index 0000000..2fa22c6
+--- /dev/null
++++ b/tests/generic/082
+@@ -0,0 +1,84 @@
++#! /bin/bash
++# FS QA Test 082
++#
++# This test excercises the problem with unwritten and delayed extents
++# in ext4 extent status tree where we might in some cases lose a block
++# worth of data. Even though this was a ext4 specific problem the
++# reproducer can be easily tun on any file system so let's do that just
++# in case.
++#
++# This tests excercises the problem fixed in kernel with commit
++# "ext4: Fix data corruption caused by unwritten and delayed extents"
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2015 Red Hat, Inc., Lukas Czerner <lczerner@redhat.com>
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#-----------------------------------------------------------------------
++#
 +
- 	newes.es_lblk = lblk;
- 	newes.es_len = len;
- 	ext4_es_store_pblock_status(&newes, pblk, status);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 366476e..07591e4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -531,6 +531,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
- 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
- 		if (!(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
-+		    !(status & EXTENT_STATUS_WRITTEN) &&
- 		    ext4_find_delalloc_range(inode, map->m_lblk,
- 					     map->m_lblk + map->m_len - 1))
- 			status |= EXTENT_STATUS_DELAYED;
-@@ -635,6 +636,7 @@ found:
- 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
- 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
- 		if (!(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
-+		    !(status & EXTENT_STATUS_WRITTEN) &&
- 		    ext4_find_delalloc_range(inode, map->m_lblk,
- 					     map->m_lblk + map->m_len - 1))
- 			status |= EXTENT_STATUS_DELAYED;
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
++{
++	cd /
++	rm -f $tmp.*
++}
++
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++
++# real QA test starts here
++
++# Modify as appropriate.
++_supported_fs generic
++_supported_os IRIX Linux
++_require_test
++
++test_file=${TEST_DIR}/testfile-082
++
++rm -f $test_file
++
++# The first write creates a delayed extent, fallocate creates
++# unwritten extent which will be marked as delayed in ext4
++# extent status tree. Second write will convert unwritten/delayed
++# block into written/delayed.
++$XFS_IO_PROG -f -c "pwrite -S 0xaa 4096 2048" \
++		-c "falloc 0 131072" \
++		-c "pwrite -S 0xbb 65536 2048" \
++		-c "fsync"  $test_file >> $seqres.full 2>&1
++
++# Drop the caches to evict dirty buffers from memory
++echo 3 > /proc/sys/vm/drop_caches
++
++# Write into the second part of the block with 0xbb write from before
++# will create new empty! buffer because the block is still marked as
++# delayed even though it's already written - resulting in
++# overwriting previous data.
++$XFS_IO_PROG -c "pwrite -S 0xdd 67584 2048" $test_file >> $seqres.full 2>&1
++
++# On a faulty ext4 oxbb data will be missing, overwritten by zeroes.
++hexdump -C $test_file
++
++# success, all done
++status=0
++exit
+diff --git a/tests/generic/082.out b/tests/generic/082.out
+new file mode 100644
+index 0000000..ef28b9a
+--- /dev/null
++++ b/tests/generic/082.out
+@@ -0,0 +1,14 @@
++QA output created by 082
++00000000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
++*
++00001000  aa aa aa aa aa aa aa aa  aa aa aa aa aa aa aa aa  |................|
++*
++00001800  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
++*
++00010000  bb bb bb bb bb bb bb bb  bb bb bb bb bb bb bb bb  |................|
++*
++00010800  dd dd dd dd dd dd dd dd  dd dd dd dd dd dd dd dd  |................|
++*
++00011000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
++*
++00020000
 -- 
 1.8.3.1
