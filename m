@@ -1,139 +1,93 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] generic: test data corruption on ext4 caused by written/delayed extent
-Date: Wed, 22 Apr 2015 16:55:55 +0200
-Message-ID: <1429714555-22133-1-git-send-email-lczerner@redhat.com>
-Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
-To: fstests@vger.kernel.org
-Return-path: <fstests-owner@vger.kernel.org>
-Sender: fstests-owner@vger.kernel.org
+From: Li Xi <pkuelelixi@gmail.com>
+Subject: Re: [v13 3/5] ext4: adds project quota support
+Date: Thu, 23 Apr 2015 02:52:21 +0800
+Message-ID: <CAPTn0cCxxaYyoXvDeY36g4Ss-P4JWZnTuAG_nabNWg43NSeREQ@mail.gmail.com>
+References: <1429493988-16819-1-git-send-email-lixi@ddn.com>
+	<1429493988-16819-4-git-send-email-lixi@ddn.com>
+	<000EC725-2B59-42E8-811E-0E41E6EBB306@dilger.ca>
+	<20150421123500.GI24278@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"hch@infradead.org" <hch@infradead.org>,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20150421123500.GI24278@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This test excercises the problem with unwritten and delayed extents
-in ext4 extent status tree where we might in some cases lose a block
-worth of data. Even though this was a ext4 specific problem the
-reproducer can be easily tun on any file system so let's do that just
-in case.
+I agree that we need to deciede which inode numbers to use for special
+system file. Anyway, I will use the first way in the next version of
+patch.
 
-This tests excercises the problem fixed in kernel with commit
-"ext4: Fix data corruption caused by unwritten and delayed extents"
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- tests/generic/082     | 84 +++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/082.out | 14 +++++++++
- 2 files changed, 98 insertions(+)
- create mode 100755 tests/generic/082
- create mode 100644 tests/generic/082.out
-
-diff --git a/tests/generic/082 b/tests/generic/082
-new file mode 100755
-index 0000000..2fa22c6
---- /dev/null
-+++ b/tests/generic/082
-@@ -0,0 +1,84 @@
-+#! /bin/bash
-+# FS QA Test 082
-+#
-+# This test excercises the problem with unwritten and delayed extents
-+# in ext4 extent status tree where we might in some cases lose a block
-+# worth of data. Even though this was a ext4 specific problem the
-+# reproducer can be easily tun on any file system so let's do that just
-+# in case.
-+#
-+# This tests excercises the problem fixed in kernel with commit
-+# "ext4: Fix data corruption caused by unwritten and delayed extents"
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2015 Red Hat, Inc., Lukas Czerner <lczerner@redhat.com>
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+	cd /
-+	rm -f $tmp.*
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# real QA test starts here
-+
-+# Modify as appropriate.
-+_supported_fs generic
-+_supported_os IRIX Linux
-+_require_test
-+
-+test_file=${TEST_DIR}/testfile-082
-+
-+rm -f $test_file
-+
-+# The first write creates a delayed extent, fallocate creates
-+# unwritten extent which will be marked as delayed in ext4
-+# extent status tree. Second write will convert unwritten/delayed
-+# block into written/delayed.
-+$XFS_IO_PROG -f -c "pwrite -S 0xaa 4096 2048" \
-+		-c "falloc 0 131072" \
-+		-c "pwrite -S 0xbb 65536 2048" \
-+		-c "fsync"  $test_file >> $seqres.full 2>&1
-+
-+# Drop the caches to evict dirty buffers from memory
-+echo 3 > /proc/sys/vm/drop_caches
-+
-+# Write into the second part of the block with 0xbb write from before
-+# will create new empty! buffer because the block is still marked as
-+# delayed even though it's already written - resulting in
-+# overwriting previous data.
-+$XFS_IO_PROG -c "pwrite -S 0xdd 67584 2048" $test_file >> $seqres.full 2>&1
-+
-+# On a faulty ext4 oxbb data will be missing, overwritten by zeroes.
-+hexdump -C $test_file
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/generic/082.out b/tests/generic/082.out
-new file mode 100644
-index 0000000..ef28b9a
---- /dev/null
-+++ b/tests/generic/082.out
-@@ -0,0 +1,14 @@
-+QA output created by 082
-+00000000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
-+*
-+00001000  aa aa aa aa aa aa aa aa  aa aa aa aa aa aa aa aa  |................|
-+*
-+00001800  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
-+*
-+00010000  bb bb bb bb bb bb bb bb  bb bb bb bb bb bb bb bb  |................|
-+*
-+00010800  dd dd dd dd dd dd dd dd  dd dd dd dd dd dd dd dd  |................|
-+*
-+00011000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
-+*
-+00020000
--- 
-1.8.3.1
+On Tue, Apr 21, 2015 at 8:35 PM, Jan Kara <jack@suse.cz> wrote:
+> On Mon 20-04-15 17:27:20, Andreas Dilger wrote:
+>> On Apr 19, 2015, at 7:39 PM, Li Xi <pkuelelixi@gmail.com> wrote:
+> ...
+>> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+>> > index 1446c4f..a7acf10 100644
+>> > --- a/fs/ext4/ext4.h
+>> > +++ b/fs/ext4/ext4.h
+>> > @@ -1169,7 +1169,8 @@ struct ext4_super_block {
+>> >     __le32  s_overhead_clusters;    /* overhead blocks/clusters in fs */
+>> >     __le32  s_backup_bgs[2];        /* groups with sparse_super2 SBs */
+>> >     __u8    s_encrypt_algos[4];     /* Encryption algorithms in use  */
+>> > -   __le32  s_reserved[105];        /* Padding to the end of the block */
+>> > +   __le32  s_prj_quota_inum;       /* inode for tracking project quota */
+>> > +   __le32  s_reserved[104];        /* Padding to the end of the block */
+>> >     __le32  s_checksum;             /* crc32c(superblock) */
+>> > };
+>> >
+>> > @@ -1184,7 +1185,7 @@ struct ext4_super_block {
+>> > #define EXT4_MF_FS_ABORTED  0x0002  /* Fatal error detected */
+>> >
+>> > /* Number of quota types we support */
+>> > -#define EXT4_MAXQUOTAS 2
+>> > +#define EXT4_MAXQUOTAS 3
+>> >
+>> > /*
+>> >  * fourth extended-fs super-block data in memory
+>> > @@ -1376,6 +1377,7 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+>> >             ino == EXT4_BOOT_LOADER_INO ||
+>> >             ino == EXT4_JOURNAL_INO ||
+>> >             ino == EXT4_RESIZE_INO ||
+>> > +           ino == le32_to_cpu(EXT4_SB(sb)->s_es->s_prj_quota_inum) ||
+>>
+>> This extra check isn't needed, since s_proj_quota_inum will be a regular
+>> inode number and handled by the checks below.
+>   So I think this needs a final decision from Ted how we handle new system
+> files and use it consistently among all features - project quotas, orphan
+> file, etc. Ted, can you share your thoughts please? Options are:
+>
+> 1) We allocate inodes from normal inode pool and just store their inode
+>    numbers in superblock.
+> + no need to increase number of special inodes
+> - slightly less robust since inode can be anywhere
+> - needs special treatment from fsck to know inode isn't just some lost inode
+> - consumes space in sb for inode numbers
+>
+> 2) Like 1) but also create special "system" directory and attach system
+>    inodes there
+> + fsck just needs to know about the system directory, not about every
+>   special file
+> + no wasted space in sb for every special inode
+> - more code in kernel to implement this
+> - even less robust than 1) - when system directory gets corrupt, we are in
+>   trouble
+>
+> 3) Increase number of special inodes
+> + consistent with what we did upto now
+> + somewhat more robust since inode is in fixed place
+> - tune2fs needs to do quite some work to reserve more inodes
+> - wastes unused special inodes
+>
+>                                                                 Honza
+> --
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
