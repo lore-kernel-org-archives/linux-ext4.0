@@ -1,57 +1,96 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 10/35] undo-io: add new calls to and speed up the undo io
- manager
-Date: Tue, 21 Apr 2015 19:47:44 -0700
-Message-ID: <20150422024744.GG11592@birch.djwong.org>
-References: <20150402023359.25243.79782.stgit@birch.djwong.org>
- <20150402023506.25243.44459.stgit@birch.djwong.org>
- <B42FC5F2-8E81-4F2F-B16C-4029EC8DC0EC@dilger.ca>
- <20150421150012.GI3238@thunk.org>
- <20150421164802.GA31102@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:41162 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754018AbbDVCrt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Apr 2015 22:47:49 -0400
-Content-Disposition: inline
-In-Reply-To: <20150421164802.GA31102@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: Fix data corruption caused by unwritten and delayed extents
+Date: Wed, 22 Apr 2015 16:06:16 +0200
+Message-ID: <1429711576-15006-1-git-send-email-lczerner@redhat.com>
+Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>,
+	stable@vger.kernel.org
+To: tytso@mit.edu
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 21, 2015 at 12:48:02PM -0400, Theodore Ts'o wrote:
-> On Tue, Apr 21, 2015 at 11:00:12AM -0400, Theodore Ts'o wrote:
-> > However, if the user types ^C, or e2fsck crashes out with a call to
-> > fatal_error(), we *should* make sure the undo log is in a proper state
-> > so it can be replied.
-> 
-> It looks like the current set of patches are registering an atexit()
-> cleanup handler, but there aren't changes to add signal handlers; is
-> this correct?
-> 
-> In the case of e2fsck, we have signal handlers already, but many of
-> the other e2fsprogs programs don't have signal handlers and unless I
-> missed them when I did a quick scan, it looks like this patch series
-> doesn't add any.
+Currently it is possible to lose whole file system block worth of data
+when we hit the specific interaction with unwritten and delayed extents
+in status extent tree.
 
-Correct, it does not.  I hadn't made up my mind if I wanted to continue writing
-stuff out if one of the bad signals comes in, but for the specific case of ^C
-it does seem warranted.  I'm also not quite sure when's a good time to install
-our own "default" handler ... I guess each undo io manager could install
-itself via sigaction and store the old pointer for calling later?
+The problem is that when we insert delayed extent into extent status
+tree the only way to get rid of it is when we write out delayed buffer.
+However there is a limitation in the extent status tree implementation
+so that when inserting unwritten extent should there be even a single
+delayed block the whole unwritten extent would be marked as delayed.
 
-WAL could be useful too, but I wouldn't want undo_io and wal_io banging around
-inside libext2fs together.
+At this point, there is no way to get rid of the delayed extents,
+because there are no delayed buffers to write out. So when a we write
+into said unwritten extent we will convert it to written, but it still
+remains delayed.
 
---D
+When we try to write into that block later ext4_da_map_blocks() will set
+the buffer new and delayed and map it to invalid block which causes
+the rest of the block to be zeroed loosing already written data.
 
-> 
-> 					- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+For now we can fix this by simply not allowing to set delayed status on
+written extent in the extent status tree. Also add WARN_ON() to make
+sure that we notice if this happens in the future.
+
+This problem can be easily reproduced by running the following xfs_io.
+
+xfs_io -f -c "pwrite -S 0xaa 4096 2048" \
+          -c "falloc 0 131072" \
+          -c "pwrite -S 0xbb 65536 2048" \
+          -c "fsync" /mnt/test/fff
+
+echo 3 > /proc/sys/vm/drop_caches
+xfs_io -c "pwrite -S 0xdd 67584 2048" /mnt/test/fff
+
+This can be theoretically also reproduced by at random by running fsx,
+but it's not very reliable, though on machines with bigger page size
+(like ppc) this can be seen more often (especially xfstest generic/127)
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/extents_status.c | 8 ++++++++
+ fs/ext4/inode.c          | 2 ++
+ 2 files changed, 10 insertions(+)
+
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index d33d5a6..153b877 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -703,6 +703,14 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 
+ 	BUG_ON(end < lblk);
+ 
++	if ((status & EXTENT_STATUS_DELAYED) &&
++	    (status & EXTENT_STATUS_WRITTEN)) {
++		ext4_warning(inode->i_sb, "Inserting extent [%u/%u] as "
++				" delayed and written which can potentially "
++				" cause data loss.\n");
++		WARN_ON(1);
++	}
++
+ 	newes.es_lblk = lblk;
+ 	newes.es_len = len;
+ 	ext4_es_store_pblock_status(&newes, pblk, status);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 366476e..07591e4 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -531,6 +531,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+ 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+ 		if (!(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
++		    !(status & EXTENT_STATUS_WRITTEN) &&
+ 		    ext4_find_delalloc_range(inode, map->m_lblk,
+ 					     map->m_lblk + map->m_len - 1))
+ 			status |= EXTENT_STATUS_DELAYED;
+@@ -635,6 +636,7 @@ found:
+ 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+ 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+ 		if (!(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
++		    !(status & EXTENT_STATUS_WRITTEN) &&
+ 		    ext4_find_delalloc_range(inode, map->m_lblk,
+ 					     map->m_lblk + map->m_len - 1))
+ 			status |= EXTENT_STATUS_DELAYED;
+-- 
+1.8.3.1
