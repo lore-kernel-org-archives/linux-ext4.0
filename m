@@ -1,156 +1,140 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH v2] generic: test data corruption on ext4 caused by written/delayed extent
-Date: Fri, 24 Apr 2015 13:01:24 +0200
-Message-ID: <1429873284-19315-1-git-send-email-lczerner@redhat.com>
-References: <20150423034909.GS17534@dhcp-13-216.nay.redhat.com>
-Cc: linux-ext4@vger.kernel.org, eguan@redhat.com,
-	Lukas Czerner <lczerner@redhat.com>
-To: fstests@vger.kernel.org
-Return-path: <fstests-owner@vger.kernel.org>
-In-Reply-To: <20150423034909.GS17534@dhcp-13-216.nay.redhat.com>
-Sender: fstests-owner@vger.kernel.org
+From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
+Subject: [RFC v3 24/45] ext4: Add richacl feature flag
+Date: Fri, 24 Apr 2015 13:04:21 +0200
+Message-ID: <1de6ac9cd0a91f7d60da1db2d19cda3dd7f3a7f4.1429868795.git.agruenba@redhat.com>
+References: <cover.1429868795.git.agruenba@redhat.com>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <cover.1429868795.git.agruenba@redhat.com>
+In-Reply-To: <cover.1429868795.git.agruenba@redhat.com>
+References: <cover.1429868795.git.agruenba@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This test exercises the problem with unwritten and delayed extents
-in ext4 extent status tree where we might in some cases lose a block
-worth of data. Even though this was a ext4 specific problem the
-reproducer can be easily tun on any file system so let's do that just
-in case.
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-This tests exercises the problem fixed in kernel with commit
-"ext4: Fix data corruption caused by unwritten and delayed extents"
+This feature flag selects richacl instead of posix acl support on the file
+system. In addition, the "acl" mount option is needed for enabling either of
+the two kinds of acls.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- tests/generic/082     | 85 +++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/082.out | 14 +++++++++
- tests/generic/group   |  1 +
- 3 files changed, 100 insertions(+)
- create mode 100755 tests/generic/082
- create mode 100644 tests/generic/082.out
+ fs/ext4/ext4.h  |  6 ++++--
+ fs/ext4/super.c | 41 ++++++++++++++++++++++++++++++++---------
+ 2 files changed, 36 insertions(+), 11 deletions(-)
 
-diff --git a/tests/generic/082 b/tests/generic/082
-new file mode 100755
-index 0000000..e9bdd11
---- /dev/null
-+++ b/tests/generic/082
-@@ -0,0 +1,85 @@
-+#! /bin/bash
-+# FS QA Test 082
-+#
-+# This test excercises the problem with unwritten and delayed extents
-+# in ext4 extent status tree where we might in some cases lose a block
-+# worth of data. Even though this was a ext4 specific problem the
-+# reproducer can be easily tun on any file system so let's do that just
-+# in case.
-+#
-+# This tests excercises the problem fixed in kernel with commit
-+# "ext4: Fix data corruption caused by unwritten and delayed extents"
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2015 Red Hat, Inc., Lukas Czerner <lczerner@redhat.com>
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index f63c3d5..64187cd 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -978,7 +978,7 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal format */
+ #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
+ #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */
+-#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
++#define EXT4_MOUNT_ACL			0x08000	/* Access Control Lists */
+ #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
+ #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
+ #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+@@ -1552,6 +1552,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
+ #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
+ #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
++#define EXT4_FEATURE_INCOMPAT_RICHACL		0x20000
+ 
+ #define EXT2_FEATURE_COMPAT_SUPP	EXT4_FEATURE_COMPAT_EXT_ATTR
+ #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
+@@ -1576,7 +1577,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ 					 EXT4_FEATURE_INCOMPAT_64BIT| \
+ 					 EXT4_FEATURE_INCOMPAT_FLEX_BG| \
+ 					 EXT4_FEATURE_INCOMPAT_MMP |	\
+-					 EXT4_FEATURE_INCOMPAT_INLINE_DATA)
++					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
++					 EXT4_FEATURE_INCOMPAT_RICHACL)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e061e66..4226898 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1242,6 +1242,27 @@ static ext4_fsblk_t get_sb_block(void **data)
+ 	return sb_block;
+ }
+ 
++static int enable_acl(struct super_block *sb)
 +{
-+	cd /
-+	rm -f $tmp.*
++	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
++	if (test_opt(sb, ACL)) {
++		if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RICHACL)) {
++#ifdef CONFIG_EXT4_FS_RICHACL
++			sb->s_flags |= MS_RICHACL;
++#else
++			return -EOPNOTSUPP;
++#endif
++		} else {
++#ifdef CONFIG_EXT4_FS_POSIX_ACL
++			sb->s_flags |= MS_POSIXACL;
++#else
++			return -EOPNOTSUPP;
++#endif
++		}
++	}
++	return 0;
 +}
 +
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# real QA test starts here
-+
-+# Modify as appropriate.
-+_supported_fs generic
-+_supported_os IRIX Linux
-+_require_test
-+_require_xfs_io_command "falloc"
-+
-+test_file=${TEST_DIR}/testfile-$seq
-+
-+rm -f $test_file
-+
-+# The first write creates a delayed extent, fallocate creates
-+# unwritten extent which will be marked as delayed in ext4
-+# extent status tree. Second write will convert unwritten/delayed
-+# block into written/delayed.
-+$XFS_IO_PROG -f -c "pwrite -S 0xaa 4096 2048" \
-+		-c "falloc 0 131072" \
-+		-c "pwrite -S 0xbb 65536 2048" \
-+		-c "fsync"  $test_file > $seqres.full 2>&1
-+
-+# Drop the caches to evict dirty buffers from memory
-+echo 3 > /proc/sys/vm/drop_caches
-+
-+# Write into the second part of the block with 0xbb write from before
-+# will create new empty! buffer because the block is still marked as
-+# delayed even though it's already written - resulting in
-+# overwriting previous data.
-+$XFS_IO_PROG -c "pwrite -S 0xdd 67584 2048" $test_file >> $seqres.full 2>&1
-+
-+# On a faulty ext4 oxbb data will be missing, overwritten by zeroes.
-+hexdump -C $test_file
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/generic/082.out b/tests/generic/082.out
-new file mode 100644
-index 0000000..ef28b9a
---- /dev/null
-+++ b/tests/generic/082.out
-@@ -0,0 +1,14 @@
-+QA output created by 082
-+00000000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
-+*
-+00001000  aa aa aa aa aa aa aa aa  aa aa aa aa aa aa aa aa  |................|
-+*
-+00001800  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
-+*
-+00010000  bb bb bb bb bb bb bb bb  bb bb bb bb bb bb bb bb  |................|
-+*
-+00010800  dd dd dd dd dd dd dd dd  dd dd dd dd dd dd dd dd  |................|
-+*
-+00011000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
-+*
-+00020000
-diff --git a/tests/generic/group b/tests/generic/group
-index 63b883c..c6ea3d8 100644
---- a/tests/generic/group
-+++ b/tests/generic/group
-@@ -84,6 +84,7 @@
- 079 acl attr ioctl metadata auto quick
- 080 auto quick
- 081 auto quick
-+082 auto prealloc preallocrw quick
- 083 rw auto enospc stress
- 088 perms auto quick
- 089 metadata auto
+ #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
+ static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
+ 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
+@@ -1388,9 +1409,9 @@ static const struct mount_opts {
+ 	 MOPT_NO_EXT2 | MOPT_DATAJ},
+ 	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
+ 	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
+-	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	{Opt_acl, EXT4_MOUNT_ACL, MOPT_SET},
++	{Opt_noacl, EXT4_MOUNT_ACL, MOPT_CLEAR},
+ #else
+ 	{Opt_acl, 0, MOPT_NOSUPPORT},
+ 	{Opt_noacl, 0, MOPT_NOSUPPORT},
+@@ -3538,8 +3559,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		set_opt(sb, NO_UID32);
+ 	/* xattr user namespace & acls are now defaulted on */
+ 	set_opt(sb, XATTR_USER);
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	set_opt(sb, POSIX_ACL);
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	set_opt(sb, ACL);
+ #endif
+ 	/* don't forget to enable journal_csum when metadata_csum is enabled. */
+ 	if (ext4_has_metadata_csum(sb))
+@@ -3620,8 +3641,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 			clear_opt(sb, DELALLOC);
+ 	}
+ 
+-	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
++	err = enable_acl(sb);
++	if (err)
++		goto failed_mount;
+ 
+ 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
+ 	    (EXT4_HAS_COMPAT_FEATURE(sb, ~0U) ||
+@@ -4913,8 +4935,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
+ 		ext4_abort(sb, "Abort forced by user");
+ 
+-	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
++	err = enable_acl(sb);
++	if (err)
++		goto restore_opts;
+ 
+ 	es = sbi->s_es;
+ 
 -- 
-1.8.3.1
+2.1.0
