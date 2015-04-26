@@ -1,45 +1,40 @@
-From: Richard Weinberger <richard.weinberger@gmail.com>
-Subject: Re: planning general storage capacity for y fs
-Date: Sun, 26 Apr 2015 22:45:33 +0200
-Message-ID: <CAFLxGvyJDyN2-WJUkJ9wz5cCDvNjrUsbdpHrN4DH7S1gQoF2Yw@mail.gmail.com>
-References: <006901d08012$3a1f97a0$ae5ec6e0$@codeaurora.org>
+From: "Global Finance" <premier@mail.gov.cn>
+Subject: Are you financially Squeezed?
+Date: Sun, 26 Apr 2015 14:13:13 -0700
+Message-ID: <201504262113.t3QL6MGJ005327@iaccessrealestate.com>
+Reply-To: offsetyourdebt@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
-	linux-ext4@vger.kernel.org, Tanya Brokhman <tlinder@codeaurora.org>
-To: Dolev Raviv <draviv@codeaurora.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vn0-f49.google.com ([209.85.216.49]:44268 "EHLO
-	mail-vn0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750746AbbDZUpe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 26 Apr 2015 16:45:34 -0400
-Received: by vnbg7 with SMTP id g7so9644339vnb.11
-        for <linux-ext4@vger.kernel.org>; Sun, 26 Apr 2015 13:45:34 -0700 (PDT)
-In-Reply-To: <006901d08012$3a1f97a0$ae5ec6e0$@codeaurora.org>
+Received: from s67.n131.n172.n72.static.myhostcenter.com ([72.172.131.67]:53647
+	"EHLO iaccessrealestate.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750761AbbDZVNU convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 26 Apr 2015 17:13:20 -0400
+Received: from [173.208.175.189] (hosted-by.rdparena.com [173.208.175.189] (may be forged))
+	(authenticated bits=0)
+	by iaccessrealestate.com (8.13.1/8.13.1) with ESMTP id t3QL6MGJ005327
+	for <linux-ext4@vger.kernel.org>; Sun, 26 Apr 2015 17:13:19 -0400
+Content-Description: Mail message body
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Apr 26, 2015 at 1:14 PM, Dolev Raviv <draviv@codeaurora.org> wrote:
-> Hi,
-> I'm looking for guidelines for planning storage capacity. I understand it
-> strongly depended on the usage type.
-> I want to know at what point storage fullness is effecting performance in a
-> standard read/write partition. Do different File Systems (UBIFS/EXT4) have
-> different full-free ratio?
-> What about read only fs? Can I plan less free space in such cases?
->
-> I'll appreciate any input on this, for UBIFS specific and fs in general.
+GLOBAL FINANCE 
+10 Upper Bank street, 
+Clifford Chance London, 
+U.K.  
+ 
+ * Are you financially Squeezed? 
+ * Do you seek funds to pay off credits and debts
+ * Do you seek finance to set up your own business?
+ * Are you in need of private or business loans for various purposes? 
+ * Do you seek funding for various other processes? 
+ * Choose between 1 to 10 years to repay. 
+ 
+ We give out loans to all categories of people, firms, companies, schools, industries etc. 
+ we finance your business/homes at very cheap and moderate rates, We are trusted, reliable and dynamic,contact us now.
 
-Not sure if I got your question.
-You want to know how filesystems in general behave when they run out
-of free space?
-The general answer is that they need more effort to find free space.
-
-In case of UBIFS you also have to think of the garbage collector.
-See http://www.linux-mtd.infradead.org/doc/ubifs.html
-At the end of the day you'll have to run benchmarks on your own to
-find out how a specific filesystem behaves on your workload...
-
--- 
-Thanks,
-//richard
+Regards,
+Director Global Finance. 
