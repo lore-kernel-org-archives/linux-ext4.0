@@ -1,40 +1,34 @@
-From: "Global Finance" <premier@mail.gov.cn>
-Subject: Are you financially Squeezed?
-Date: Sun, 26 Apr 2015 14:13:13 -0700
-Message-ID: <201504262113.t3QL6MGJ005327@iaccessrealestate.com>
-Reply-To: offsetyourdebt@gmail.com
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: [v14 3/4] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR
+ interface support
+Date: Mon, 27 Apr 2015 09:20:33 +1000
+Message-ID: <20150426232033.GQ15810@dastard>
+References: <1429728997-21464-1-git-send-email-lixi@ddn.com>
+ <1429728997-21464-4-git-send-email-lixi@ddn.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from s67.n131.n172.n72.static.myhostcenter.com ([72.172.131.67]:53647
-	"EHLO iaccessrealestate.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750761AbbDZVNU convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 26 Apr 2015 17:13:20 -0400
-Received: from [173.208.175.189] (hosted-by.rdparena.com [173.208.175.189] (may be forged))
-	(authenticated bits=0)
-	by iaccessrealestate.com (8.13.1/8.13.1) with ESMTP id t3QL6MGJ005327
-	for <linux-ext4@vger.kernel.org>; Sun, 26 Apr 2015 17:13:19 -0400
-Content-Description: Mail message body
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
+	jack-AlSwsSmVLrQ@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+	dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org
+To: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <1429728997-21464-4-git-send-email-lixi-LfVdkaOWEx8@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-GLOBAL FINANCE 
-10 Upper Bank street, 
-Clifford Chance London, 
-U.K.  
- 
- * Are you financially Squeezed? 
- * Do you seek funds to pay off credits and debts
- * Do you seek finance to set up your own business?
- * Are you in need of private or business loans for various purposes? 
- * Do you seek funding for various other processes? 
- * Choose between 1 to 10 years to repay. 
- 
- We give out loans to all categories of people, firms, companies, schools, industries etc. 
- we finance your business/homes at very cheap and moderate rates, We are trusted, reliable and dynamic,contact us now.
+On Thu, Apr 23, 2015 at 03:56:36AM +0900, Li Xi wrote:
+> This patch adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR ioctl interface
+> support for ext4. The interface is kept consistent with
+> XFS_IOC_FSGETXATTR/XFS_IOC_FSGETXATTR.
 
-Regards,
-Director Global Finance. 
+Have you run this patchthrough XFS testing to make sure everything
+sill works?
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
