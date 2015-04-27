@@ -1,50 +1,77 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: [PATCH] shared/289: do not special-case ext3
-Date: Mon, 27 Apr 2015 19:34:09 +0800
-Message-ID: <1430134449-16060-1-git-send-email-eguan@redhat.com>
-Cc: esandeen@redhat.com, linux-ext4@vger.kernel.org,
-	Eryu Guan <eguan@redhat.com>
-To: fstests@vger.kernel.org
-Return-path: <fstests-owner@vger.kernel.org>
-Sender: fstests-owner@vger.kernel.org
+From: Beata Michalska <b.michalska-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>
+Subject: [RFC v2 0/4] fs: Add generic file system event notifications
+Date: Mon, 27 Apr 2015 13:51:40 +0200
+Message-ID: <1430135504-24334-1-git-send-email-b.michalska@samsung.com>
+Cc: jack-AlSwsSmVLrQ@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
+	hughd-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org, lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+	kyungmin.park-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org, kmpark-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org
+To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-Commit "3574531 xfstests: count journal size in test 289" makes ext3 a
-special case, but now it's not the case anymore after kernel commit
+Hi All,
 
-e6d8fb3 ext3: Count internal journal as bsddf overhead in ext3_statfs
+This series is a follow-up of the RFC patchset for generic filesystem
+events interface [1]. As there have been some rather significant changes
+to the synchronization method being used, more extensive testing (stress
+testing) has been performed (thus the delay).
 
-So just remove the special case, now test passes on both ext3 and ext4,
-also ext3 driven by ext4 module.
+Changes from v1:
+	- Improved synchronization: switched to RCU accompanied with
+	  ref counting mechanism
+	- Limiting scope of supported event types along with default
+	  event codes
+	- Slightly modified configuration (event types followed by arguments
+	  where required)
+	- Updated documentation
+	- Unified naming for netlink attributes
+	- Updated netlink message format to include dev minor:major numbers
+	  despite the filesystem type
+	- Switched to single cmd id for messages
+	- Removed the per-config-entry ids
 
-Signed-off-by: Eryu Guan <eguan@redhat.com>
 ---
- tests/shared/289 | 13 +------------
- 1 file changed, 1 insertion(+), 12 deletions(-)
+[1] https://lkml.org/lkml/2015/4/15/46
+---
 
-diff --git a/tests/shared/289 b/tests/shared/289
-index c53d38c..96c949d 100755
---- a/tests/shared/289
-+++ b/tests/shared/289
-@@ -58,18 +58,7 @@ TOTAL_BLOCKS=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
- FREE_BLOCKS=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
- 		| awk '/Free blocks:/{print $3}'`
- 
--# ext3 doesn't count journal blocks as overhead, ext4 does.
--if [ $FSTYP = "ext3" ]; then
--	JOURNAL_SIZE=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
--		| awk '/Journal size:/{print $3}' | _filter_size_to_bytes`
--	BLOCK_SIZE=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
--		| awk '/Block size:/{print $3}'`
--	JOURNAL_BLOCKS=$(($JOURNAL_SIZE/$BLOCK_SIZE))
--else
--	JOURNAL_BLOCKS=0
--fi
--
--OVERHEAD=$(($TOTAL_BLOCKS-$FREE_BLOCKS-$JOURNAL_BLOCKS))
-+OVERHEAD=$(($TOTAL_BLOCKS-$FREE_BLOCKS))
- 
- #  bsddf|minixdf
- #         Set the behaviour  for  the  statfs  system  call.  The  minixdf
+
+Beata Michalska (4):
+  fs: Add generic file system event notifications
+  ext4: Add helper function to mark group as corrupted
+  ext4: Add support for generic FS events
+  shmem: Add support for generic FS events
+
+ Documentation/filesystems/events.txt |  231 ++++++++++
+ fs/Makefile                          |    1 +
+ fs/events/Makefile                   |    6 +
+ fs/events/fs_event.c                 |  770 ++++++++++++++++++++++++++++++++++
+ fs/events/fs_event.h                 |   25 ++
+ fs/events/fs_event_netlink.c         |   99 +++++
+ fs/ext4/balloc.c                     |   25 +-
+ fs/ext4/ext4.h                       |   10 +
+ fs/ext4/ialloc.c                     |    5 +-
+ fs/ext4/inode.c                      |    2 +-
+ fs/ext4/mballoc.c                    |   17 +-
+ fs/ext4/resize.c                     |    1 +
+ fs/ext4/super.c                      |   39 ++
+ fs/namespace.c                       |    1 +
+ include/linux/fs.h                   |    6 +-
+ include/linux/fs_event.h             |   58 +++
+ include/uapi/linux/fs_event.h        |   54 +++
+ include/uapi/linux/genetlink.h       |    1 +
+ mm/shmem.c                           |   33 +-
+ net/netlink/genetlink.c              |    7 +-
+ 20 files changed, 1357 insertions(+), 34 deletions(-)
+ create mode 100644 Documentation/filesystems/events.txt
+ create mode 100644 fs/events/Makefile
+ create mode 100644 fs/events/fs_event.c
+ create mode 100644 fs/events/fs_event.h
+ create mode 100644 fs/events/fs_event_netlink.c
+ create mode 100644 include/linux/fs_event.h
+ create mode 100644 include/uapi/linux/fs_event.h
+
 -- 
-2.1.0
+1.7.9.5
