@@ -1,89 +1,47 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH v2] e2fsprogs: Limit number of reserved gdt blocks on
- small fs
-Date: Mon, 27 Apr 2015 11:23:19 -0500
-Message-ID: <553E6277.3040800@redhat.com>
-References: <1427280382-31120-1-git-send-email-lczerner@redhat.com> <553ABAF0.2020702@redhat.com> <D2BC34F2-AB5D-4923-A2D6-28CEC2807C9A@dilger.ca> <20150427161451.GA22448@quack.suse.cz>
+From: "U.Mutlu" <for-gmane@mutluit.com>
+Subject: [ext4 crypto] feature request "lockable directories"
+Date: Mon, 27 Apr 2015 23:57:58 +0200
+Message-ID: <553EB0E6.3020607@mutluit.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47452 "EHLO mx1.redhat.com"
+Received: from plane.gmane.org ([80.91.229.3]:43399 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752967AbbD0QXZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Apr 2015 12:23:25 -0400
-In-Reply-To: <20150427161451.GA22448@quack.suse.cz>
+	id S965593AbbD0WAQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Apr 2015 18:00:16 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1Ymr4O-0000Dj-9R
+	for linux-ext4@vger.kernel.org; Tue, 28 Apr 2015 00:00:04 +0200
+Received: from ip4d1523f6.dynamic.kabel-deutschland.de ([77.21.35.246])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2015 00:00:04 +0200
+Received: from for-gmane by ip4d1523f6.dynamic.kabel-deutschland.de with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2015 00:00:04 +0200
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/27/15 11:14 AM, Jan Kara wrote:
-> On Fri 24-04-15 22:25:06, Andreas Dilger wrote:
->> On Apr 24, 2015, at 3:51 PM, Eric Sandeen <sandeen@redhat.com> wrote:
->>> On 3/25/15 5:46 AM, Lukas Czerner wrote:
->>>> Currently we're unable to online resize very small (smaller than 32 MB)
->>>> file systems with 1k block size because there is not enough space in the
->>>> journal to put all the reserved gdt blocks.
->>>
->>> So, I'll get to the patch review if I need to, but this all seemed a little
->>> odd; this is a regression, so do we really need to restrict things at mkfs
->>> time?
->>>
->>> On the userspace side, things were ok until:
->>>
->>> 9f6ba88 resize2fs: add support for new in-kernel online resize ioctl
->>>
->>> and even with that, on the kernelspace side, things were ok until:
->>>
->>> 8f7d89f jbd2: transaction reservation support
->>>
->>> I guess I'm trying to understand why that jbd2 commit regressed this.
->>> I've not been paying enough attention to ext4 lately.  ;)
->>>
->>> I mean, the threshold got chopped in half:
->>>
->>> -       if (nblocks > journal->j_max_transaction_buffers) {
->>> +       /*
->>> +        * 1/2 of transaction can be reserved so we can practically handle
->>> +        * only 1/2 of maximum transaction size per operation
->>> +        */
->>> +       if (WARN_ON(blocks > journal->j_max_transaction_buffers / 2)) {
->>>                printk(KERN_ERR "JBD2: %s wants too many credits (%d > %d)\n",
->>> -                      current->comm, nblocks,
->>> -                      journal->j_max_transaction_buffers);
->>> +                      current->comm, blocks,
->>> +                      journal->j_max_transaction_buffers / 2);
->>>                return -ENOSPC;
->>>        }
->>>
->>> so it's clear why the behavior changed, I guess, but it feels like I
->>> must be missing something here.
->>
->> Is there some way to reserve these journal blocks only in the case of
->> delalloc usage?  This has caused a performance regression with Lustre
->> servers on 3.10 kernels because the journal commits twice as often.
->> We've worked around this for now by doubling the journal size, but it
->> seems a bit of a hack since we can never use the whole journal anymore.
->   Hum, so the above hunk only limits maximum number of credits used by a
-> single handle. Multiple handles can still consume upto maximum transaction
-> size buffers (at least that's the intention :). So I don't see how that can
-> cause the problem you describe.  What can happen though is that there are
-> quite a few outstanding reserved handles and so we have to reserve space
-> for them in the running transaction. Do you use dioread_nolock option? That
-> enables the use of reserved handles in ext4 for conversion of unwritten
-> extents...
+Hi,
+I think an option to lock (and unlock; like locking a door)
+would be a useful feature with encrypted directories.
 
-You're probably asking Andreas, but just in case, for my testcase, it's
-all defaults & standard options.
+By this the user could "lock" a sensitive directory
+and "unlock" it only when needed.
 
-i.e. just this fails, after the above commit, whereas it worked before.
+This could be integrated in an ext4 user tool, or in a new tool, for example
+   lockdir -l mydir   # locking
+   lockdir -u mydir   # unlocking
 
-mkfs.ext4 /dev/sda 20M
-mount /dev/sda /mnt/test
-resize2fs /dev/sda 200M
+A locked directory cannot be accessed.
+Both locking and unlocking shall ask for a password for just that directory.
+The password could be saved in an internal file within the directory,
+and auto-deleted after successful unlocking.
 
--Eric
-
-
+Thx
+Uenal
 
