@@ -1,154 +1,149 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH v3 1/2] generic: test data corruption on ext4 caused by written/delayed extent
-Date: Mon, 27 Apr 2015 16:33:19 +0200
-Message-ID: <1430145200-20230-1-git-send-email-lczerner@redhat.com>
-Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
-To: fstests@vger.kernel.org
-Return-path: <fstests-owner@vger.kernel.org>
-Sender: fstests-owner@vger.kernel.org
+From: Beata Michalska <b.michalska@samsung.com>
+Subject: Re: [RFC v2 1/4] fs: Add generic file system event notifications
+Date: Mon, 27 Apr 2015 17:08:27 +0200
+Message-ID: <553E50EB.3000402@samsung.com>
+References: <1430135504-24334-1-git-send-email-b.michalska@samsung.com>
+ <1430135504-24334-2-git-send-email-b.michalska@samsung.com>
+ <20150427142421.GB21942@kroah.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-api@vger.kernel.org, jack@suse.cz, tytso@mit.edu,
+ adilger.kernel@dilger.ca, hughd@google.com, lczerner@redhat.com,
+ hch@infradead.org, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+ kyungmin.park@samsung.com, kmpark@infradead.org
+To: Greg KH <greg@kroah.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-reply-to: <20150427142421.GB21942@kroah.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-This test exercises the problem with unwritten and delayed extents
-in ext4 extent status tree where we might in some cases lose a block
-worth of data. Even though this was a ext4 specific problem the
-reproducer can be easily tun on any file system so let's do that just
-in case.
+On 04/27/2015 04:24 PM, Greg KH wrote:
+> On Mon, Apr 27, 2015 at 01:51:41PM +0200, Beata Michalska wrote:
+>> Introduce configurable generic interface for file
+>> system-wide event notifications, to provide file
+>> systems with a common way of reporting any potential
+>> issues as they emerge.
+>>
+>> The notifications are to be issued through generic
+>> netlink interface by newly introduced multicast group.
+>>
+>> Threshold notifications have been included, allowing
+>> triggering an event whenever the amount of free space drops
+>> below a certain level - or levels to be more precise as two
+>> of them are being supported: the lower and the upper range.
+>> The notifications work both ways: once the threshold level
+>> has been reached, an event shall be generated whenever
+>> the number of available blocks goes up again re-activating
+>> the threshold.
+>>
+>> The interface has been exposed through a vfs. Once mounted,
+>> it serves as an entry point for the set-up where one can
+>> register for particular file system events.
+>>
+>> Signed-off-by: Beata Michalska <b.michalska@samsung.com>
+>> ---
+>>  Documentation/filesystems/events.txt |  231 ++++++++++
+>>  fs/Makefile                          |    1 +
+>>  fs/events/Makefile                   |    6 +
+>>  fs/events/fs_event.c                 |  770 ++++++++++++++++++++++++++++++++++
+>>  fs/events/fs_event.h                 |   25 ++
+>>  fs/events/fs_event_netlink.c         |   99 +++++
+>>  fs/namespace.c                       |    1 +
+>>  include/linux/fs.h                   |    6 +-
+>>  include/linux/fs_event.h             |   58 +++
+>>  include/uapi/linux/fs_event.h        |   54 +++
+>>  include/uapi/linux/genetlink.h       |    1 +
+>>  net/netlink/genetlink.c              |    7 +-
+>>  12 files changed, 1257 insertions(+), 2 deletions(-)
+>>  create mode 100644 Documentation/filesystems/events.txt
+>>  create mode 100644 fs/events/Makefile
+>>  create mode 100644 fs/events/fs_event.c
+>>  create mode 100644 fs/events/fs_event.h
+>>  create mode 100644 fs/events/fs_event_netlink.c
+>>  create mode 100644 include/linux/fs_event.h
+>>  create mode 100644 include/uapi/linux/fs_event.h
+> 
+> Any reason why you just don't do uevents for the block devices today,
+> and not create a new type of netlink message and userspace tool required
+> to read these?
 
-This tests exercises the problem fixed in kernel with commit
-"ext4: Fix data corruption caused by unwritten and delayed extents"
+The idea here is to have support for filesystems with no backing device as well.
+Parsing the message with libnl is really simple and requires few lines of code
+(sample application has been presented in the initial version of this RFC)
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Reviewed-by: Eryu Guan <eguan@redhat.com>
----
- tests/generic/082     | 85 +++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/082.out | 14 +++++++++
- tests/generic/group   |  1 +
- 3 files changed, 100 insertions(+)
- create mode 100755 tests/generic/082
- create mode 100644 tests/generic/082.out
+> 
+>> --- a/fs/Makefile
+>> +++ b/fs/Makefile
+>> @@ -126,3 +126,4 @@ obj-y				+= exofs/ # Multiple modules
+>>  obj-$(CONFIG_CEPH_FS)		+= ceph/
+>>  obj-$(CONFIG_PSTORE)		+= pstore/
+>>  obj-$(CONFIG_EFIVAR_FS)		+= efivarfs/
+>> +obj-y				+= events/
+> 
+> Always?
+> 
+>> diff --git a/fs/events/Makefile b/fs/events/Makefile
+>> new file mode 100644
+>> index 0000000..58d1454
+>> --- /dev/null
+>> +++ b/fs/events/Makefile
+>> @@ -0,0 +1,6 @@
+>> +#
+>> +# Makefile for the Linux Generic File System Event Interface
+>> +#
+>> +
+>> +obj-y := fs_event.o
+> 
+> Always?  Even if the option is not selected?  Why is everyone forced to
+> always use this code?  Can't you disable it for the "tiny" systems that
+> don't need it?
+> 
 
-diff --git a/tests/generic/082 b/tests/generic/082
-new file mode 100755
-index 0000000..6d3d5df
---- /dev/null
-+++ b/tests/generic/082
-@@ -0,0 +1,85 @@
-+#! /bin/bash
-+# FS QA Test 082
-+#
-+# This test exercises the problem with unwritten and delayed extents
-+# in ext4 extent status tree where we might in some cases lose a block
-+# worth of data. Even though this was a ext4 specific problem the
-+# reproducer can be easily run on any file system so let's do that just
-+# in case.
-+#
-+# This test exercises the problem fixed in kernel with commit
-+# "ext4: Fix data corruption caused by unwritten and delayed extents"
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2015 Red Hat, Inc., Lukas Czerner <lczerner@redhat.com>
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+	cd /
-+	rm -f $tmp.*
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# real QA test starts here
-+
-+# Modify as appropriate.
-+_supported_fs generic
-+_supported_os IRIX Linux
-+_require_test
-+_require_xfs_io_command "falloc"
-+
-+test_file=${TEST_DIR}/testfile-$seq
-+
-+rm -f $test_file
-+
-+# The first write creates a delayed extent, fallocate creates
-+# unwritten extent which will be marked as delayed in ext4
-+# extent status tree. Second write will convert unwritten/delayed
-+# block into written/delayed.
-+$XFS_IO_PROG -f -c "pwrite -S 0xaa 4096 2048" \
-+		-c "falloc 0 131072" \
-+		-c "pwrite -S 0xbb 65536 2048" \
-+		-c "fsync"  $test_file > $seqres.full 2>&1
-+
-+# Drop the caches to evict dirty buffers from memory
-+echo 3 > /proc/sys/vm/drop_caches
-+
-+# Write into the second part of the block with 0xbb write from before
-+# will create new empty! buffer because the block is still marked as
-+# delayed even though it's already written - resulting in
-+# overwriting previous data.
-+$XFS_IO_PROG -c "pwrite -S 0xdd 67584 2048" $test_file >> $seqres.full 2>&1
-+
-+# On a faulty ext4 oxbb data will be missing, overwritten by zeroes.
-+hexdump -C $test_file
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/generic/082.out b/tests/generic/082.out
-new file mode 100644
-index 0000000..ef28b9a
---- /dev/null
-+++ b/tests/generic/082.out
-@@ -0,0 +1,14 @@
-+QA output created by 082
-+00000000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
-+*
-+00001000  aa aa aa aa aa aa aa aa  aa aa aa aa aa aa aa aa  |................|
-+*
-+00001800  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
-+*
-+00010000  bb bb bb bb bb bb bb bb  bb bb bb bb bb bb bb bb  |................|
-+*
-+00010800  dd dd dd dd dd dd dd dd  dd dd dd dd dd dd dd dd  |................|
-+*
-+00011000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
-+*
-+00020000
-diff --git a/tests/generic/group b/tests/generic/group
-index 63b883c..c6ea3d8 100644
---- a/tests/generic/group
-+++ b/tests/generic/group
-@@ -84,6 +84,7 @@
- 079 acl attr ioctl metadata auto quick
- 080 auto quick
- 081 auto quick
-+082 auto prealloc preallocrw quick
- 083 rw auto enospc stress
- 088 perms auto quick
- 089 metadata auto
--- 
-1.8.3.1
+I was considering making it optional and I guess it's worth getting back
+to this idea.
+
+>> +struct fs_trace_entry {
+>> +	atomic_t	 count;
+> 
+> Why not just use a 'struct kref' for your count, which will save a bunch
+> of open-coding of reference counting, and forcing us to audit your code
+> to verify you got all the corner cases correct?  :)
+> 
+>> +	atomic_t	 active;
+>> +	struct super_block *sb;
+
+Not sure if using kref would change much here as the kref would not really
+make it easier to verify those corner cases, unfortunately.
+
+> 
+> Are you properly reference counting this pointer?  I didn't see where
+> that was happening, so I must have missed it.
+> 
+> thanks,
+>
+
+You haven't. And if I haven't missed anything, the sb is being used only
+as long as the super is alive. Most of the code operates on sb only if it
+was explicitly asked to, through call from filesystem. There is also
+a callback notifying of mount being dropped (which proceeds the call to 
+kill_super) that invalidates the object that depends on it.
+Still, it should be explicitly stated that the sb is being used through
+bidding up the s_count counter, though that would require taking the
+sb_lock. AFAIK, one can get the reference to super block but for a particular
+device. Maybe it would be worth having it more generic (?).
+
+
+> greg k-h
+> 
+
+
+BR
+Beata
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
