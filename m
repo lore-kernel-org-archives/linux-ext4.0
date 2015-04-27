@@ -1,117 +1,160 @@
-From: Greg KH <greg@kroah.com>
-Subject: Re: [RFC v2 1/4] fs: Add generic file system event notifications
-Date: Mon, 27 Apr 2015 16:24:21 +0200
-Message-ID: <20150427142421.GB21942@kroah.com>
-References: <1430135504-24334-1-git-send-email-b.michalska@samsung.com>
- <1430135504-24334-2-git-send-email-b.michalska@samsung.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] generic: test bug when zero range is crossing isize
+ within single block
+Date: Mon, 27 Apr 2015 16:27:41 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1504271624500.4586@localhost.localdomain>
+References: <1429886309-30383-1-git-send-email-lczerner@redhat.com> <20150427040803.GB17534@dhcp-13-216.nay.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-api@vger.kernel.org, jack@suse.cz, tytso@mit.edu,
-	adilger.kernel@dilger.ca, hughd@google.com, lczerner@redhat.com,
-	hch@infradead.org, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-	kyungmin.park@samsung.com, kmpark@infradead.org
-To: Beata Michalska <b.michalska@samsung.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <1430135504-24334-2-git-send-email-b.michalska@samsung.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Eryu Guan <eguan@redhat.com>
+Return-path: <fstests-owner@vger.kernel.org>
+In-Reply-To: <20150427040803.GB17534@dhcp-13-216.nay.redhat.com>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Apr 27, 2015 at 01:51:41PM +0200, Beata Michalska wrote:
-> Introduce configurable generic interface for file
-> system-wide event notifications, to provide file
-> systems with a common way of reporting any potential
-> issues as they emerge.
+On Mon, 27 Apr 2015, Eryu Guan wrote:
+
+> Date: Mon, 27 Apr 2015 12:08:03 +0800
+> From: Eryu Guan <eguan@redhat.com>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+> Subject: Re: [PATCH] generic: test bug when zero range is crossing isize
+>     within single block
 > 
-> The notifications are to be issued through generic
-> netlink interface by newly introduced multicast group.
+> On Fri, Apr 24, 2015 at 04:38:29PM +0200, Lukas Czerner wrote:
+> > Exercise the situation that cause ext4 to BUG_ON() when we use
+> > zero range to zero a range which starts within the isize but ends
+> > past the isize but still in the same block. This particular problem
+> > has only been seen on systems with page_size > block_size.
+> > 
+> > This tests exercises the problem fixed in kernel with commit
+> > a94b84e9ea3922220ae8bd654f6cb202904bbcac
+> > ext4: Allocate entire range in zero range
 > 
-> Threshold notifications have been included, allowing
-> triggering an event whenever the amount of free space drops
-> below a certain level - or levels to be more precise as two
-> of them are being supported: the lower and the upper range.
-> The notifications work both ways: once the threshold level
-> has been reached, an event shall be generated whenever
-> the number of available blocks goes up again re-activating
-> the threshold.
+> Seems the commit id is 0f2af21aae11972fa924374ddcf52e88347cf5a8 in Linus tree
+
+Hmm it's a94b84e9ea3922220ae8bd654f6cb202904bbcac on my
+repository, but I might have something custom forgotten there.
+
+Will resend, Thanks.
+
 > 
-> The interface has been exposed through a vfs. Once mounted,
-> it serves as an entry point for the set-up where one can
-> register for particular file system events.
+> Tested with 1k block size ext4 without the kernel patch, ext4 hit BUG_ON
+> as expected. xfs and btrfs passed this test.
 > 
-> Signed-off-by: Beata Michalska <b.michalska@samsung.com>
-> ---
->  Documentation/filesystems/events.txt |  231 ++++++++++
->  fs/Makefile                          |    1 +
->  fs/events/Makefile                   |    6 +
->  fs/events/fs_event.c                 |  770 ++++++++++++++++++++++++++++++++++
->  fs/events/fs_event.h                 |   25 ++
->  fs/events/fs_event_netlink.c         |   99 +++++
->  fs/namespace.c                       |    1 +
->  include/linux/fs.h                   |    6 +-
->  include/linux/fs_event.h             |   58 +++
->  include/uapi/linux/fs_event.h        |   54 +++
->  include/uapi/linux/genetlink.h       |    1 +
->  net/netlink/genetlink.c              |    7 +-
->  12 files changed, 1257 insertions(+), 2 deletions(-)
->  create mode 100644 Documentation/filesystems/events.txt
->  create mode 100644 fs/events/Makefile
->  create mode 100644 fs/events/fs_event.c
->  create mode 100644 fs/events/fs_event.h
->  create mode 100644 fs/events/fs_event_netlink.c
->  create mode 100644 include/linux/fs_event.h
->  create mode 100644 include/uapi/linux/fs_event.h
-
-Any reason why you just don't do uevents for the block devices today,
-and not create a new type of netlink message and userspace tool required
-to read these?
-
-> --- a/fs/Makefile
-> +++ b/fs/Makefile
-> @@ -126,3 +126,4 @@ obj-y				+= exofs/ # Multiple modules
->  obj-$(CONFIG_CEPH_FS)		+= ceph/
->  obj-$(CONFIG_PSTORE)		+= pstore/
->  obj-$(CONFIG_EFIVAR_FS)		+= efivarfs/
-> +obj-y				+= events/
-
-Always?
-
-> diff --git a/fs/events/Makefile b/fs/events/Makefile
-> new file mode 100644
-> index 0000000..58d1454
-> --- /dev/null
-> +++ b/fs/events/Makefile
-> @@ -0,0 +1,6 @@
-> +#
-> +# Makefile for the Linux Generic File System Event Interface
-> +#
-> +
-> +obj-y := fs_event.o
-
-Always?  Even if the option is not selected?  Why is everyone forced to
-always use this code?  Can't you disable it for the "tiny" systems that
-don't need it?
-
-> +struct fs_trace_entry {
-> +	atomic_t	 count;
-
-Why not just use a 'struct kref' for your count, which will save a bunch
-of open-coding of reference counting, and forcing us to audit your code
-to verify you got all the corner cases correct?  :)
-
-> +	atomic_t	 active;
-> +	struct super_block *sb;
-
-Are you properly reference counting this pointer?  I didn't see where
-that was happening, so I must have missed it.
-
-thanks,
-
-greg k-h
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> Reviewed-by: Eryu Guan <eguan@redhat.com>
+> 
+> (with two minor comments inline)
+> 
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > ---
+> >  tests/generic/084     | 60 +++++++++++++++++++++++++++++++++++++++++++++++++++
+> >  tests/generic/084.out |  1 +
+> >  tests/generic/group   |  1 +
+> >  3 files changed, 62 insertions(+)
+> >  create mode 100644 tests/generic/084
+> 
+> Change mode to 755? So git won't report mode chage after running the test
+> 
+> >  create mode 100644 tests/generic/084.out
+> > 
+> > diff --git a/tests/generic/084 b/tests/generic/084
+> > new file mode 100644
+> > index 0000000..5066b14
+> > --- /dev/null
+> > +++ b/tests/generic/084
+> > @@ -0,0 +1,60 @@
+> > +#! /bin/bash
+> > +# FS QA Test 084
+> > +#
+> > +# Exercise the situation that cause ext4 to BUG_ON() when we use
+> > +# zero range to zero a range which starts within the isize but ends
+> > +# past the isize but still in the same block. This particular problem
+> > +# has only been seen on systems with page_size > block_size.
+> > +#
+> > +#-----------------------------------------------------------------------
+> > +# Copyright (c) 2015 Red Hat, Inc., Lukas Czerner <lczerner@redhat.com>
+> > +#
+> > +# This program is free software; you can redistribute it and/or
+> > +# modify it under the terms of the GNU General Public License as
+> > +# published by the Free Software Foundation.
+> > +#
+> > +# This program is distributed in the hope that it would be useful,
+> > +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> > +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> > +# GNU General Public License for more details.
+> > +#
+> > +# You should have received a copy of the GNU General Public License
+> > +# along with this program; if not, write the Free Software Foundation,
+> > +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> > +#-----------------------------------------------------------------------
+> > +#
+> > +
+> > +seq=`basename $0`
+> > +seqres=$RESULT_DIR/$seq
+> > +echo "QA output created by $seq"
+> > +
+> > +here=`pwd`
+> > +tmp=/tmp/$$
+> > +status=1	# failure is the default!
+> > +trap "_cleanup; exit \$status" 0 1 2 3 15
+> > +
+> > +_cleanup()
+> > +{
+> > +	cd /
+> > +	rm -f $tmp.*
+> > +}
+> > +
+> > +# get standard environment, filters and checks
+> > +. ./common/rc
+> > +. ./common/filter
+> > +
+> > +# real QA test starts here
+> > +
+> > +# Modify as appropriate.
+> > +_supported_fs generic
+> > +_supported_os IRIX Linux
+> > +_require_test
+> > +_require_xfs_io_command "fzero"
+> > +
+> > +testfile=$TEST_DIR/$seq.$$
+> > +
+> > +$XFS_IO_PROG -f -c "pwrite 4096 512" -c "fzero 4351 512" $testfile > $seqres.full 2>&1
+> > +
+> > +# success, all done
+> > +status=0
+> > +exit
+> > diff --git a/tests/generic/084.out b/tests/generic/084.out
+> > new file mode 100644
+> > index 0000000..d0aa380
+> > --- /dev/null
+> > +++ b/tests/generic/084.out
+> > @@ -0,0 +1 @@
+> > +QA output created by 084
+> 
+> Add "Silence is golden" to indicate no output from test is expected?
+> 
+> Thanks,
+> Eryu
+> > diff --git a/tests/generic/group b/tests/generic/group
+> > index c6ea3d8..6cb7dc3 100644
+> > --- a/tests/generic/group
+> > +++ b/tests/generic/group
+> > @@ -86,6 +86,7 @@
+> >  081 auto quick
+> >  082 auto prealloc preallocrw quick
+> >  083 rw auto enospc stress
+> > +084 auto prealloc quick
+> >  088 perms auto quick
+> >  089 metadata auto
+> >  091 rw auto quick
+> > -- 
+> > 1.8.3.1
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe fstests" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
