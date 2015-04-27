@@ -1,145 +1,52 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: Re: [PATCH] generic: test bug when zero range is crossing isize
- within single block
-Date: Mon, 27 Apr 2015 12:08:03 +0800
-Message-ID: <20150427040803.GB17534@dhcp-13-216.nay.redhat.com>
-References: <1429886309-30383-1-git-send-email-lczerner@redhat.com>
+From: "Dolev Raviv" <draviv@codeaurora.org>
+Subject: RE: planning general storage capacity for y fs
+Date: Mon, 27 Apr 2015 10:55:51 +0300
+Message-ID: <007201d080bf$96a0e4e0$c3e2aea0$@codeaurora.org>
+References: <006901d08012$3a1f97a0$ae5ec6e0$@codeaurora.org> <CAFLxGvyJDyN2-WJUkJ9wz5cCDvNjrUsbdpHrN4DH7S1gQoF2Yw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <fstests-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1429886309-30383-1-git-send-email-lczerner@redhat.com>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain;
+	charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+Cc: <linux-mtd@lists.infradead.org>, <linux-ext4@vger.kernel.org>,
+	"'Tanya Brokhman'" <tlinder@codeaurora.org>
+To: "'Richard Weinberger'" <richard.weinberger@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp.codeaurora.org ([198.145.29.96]:42764 "EHLO
+	smtp.codeaurora.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752085AbbD0Hz4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Apr 2015 03:55:56 -0400
+In-Reply-To: <CAFLxGvyJDyN2-WJUkJ9wz5cCDvNjrUsbdpHrN4DH7S1gQoF2Yw@mail.gmail.com>
+Content-Language: en-us
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 24, 2015 at 04:38:29PM +0200, Lukas Czerner wrote:
-> Exercise the situation that cause ext4 to BUG_ON() when we use
-> zero range to zero a range which starts within the isize but ends
-> past the isize but still in the same block. This particular problem
-> has only been seen on systems with page_size > block_size.
-> 
-> This tests exercises the problem fixed in kernel with commit
-> a94b84e9ea3922220ae8bd654f6cb202904bbcac
-> ext4: Allocate entire range in zero range
+>On Sun, Apr 26, 2015 at 1:14 PM, Dolev Raviv <draviv@codeaurora.org> wrote:
+>> Hi,
+>> I'm looking for guidelines for planning storage capacity. I understand 
+>> it strongly depended on the usage type.
+>> I want to know at what point storage fullness is effecting performance 
+>> in a standard read/write partition. Do different File Systems 
+>> (UBIFS/EXT4) have different full-free ratio?
+>> What about read only fs? Can I plan less free space in such cases?
+>>
+>> I'll appreciate any input on this, for UBIFS specific and fs in general.
+>
+>Not sure if I got your question.
+>You want to know how filesystems in general behave when they run out of free space?
+>The general answer is that they need more effort to find free space.
+>
+>In case of UBIFS you also have to think of the garbage collector.
+>See http://www.linux-mtd.infradead.org/doc/ubifs.html
+>At the end of the day you'll have to run benchmarks on your own to find out how a specific filesystem behaves on your workload...
+>
 
-Seems the commit id is 0f2af21aae11972fa924374ddcf52e88347cf5a8 in Linus tree
-
-Tested with 1k block size ext4 without the kernel patch, ext4 hit BUG_ON
-as expected. xfs and btrfs passed this test.
-
-Reviewed-by: Eryu Guan <eguan@redhat.com>
-
-(with two minor comments inline)
-
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> ---
->  tests/generic/084     | 60 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  tests/generic/084.out |  1 +
->  tests/generic/group   |  1 +
->  3 files changed, 62 insertions(+)
->  create mode 100644 tests/generic/084
-
-Change mode to 755? So git won't report mode chage after running the test
-
->  create mode 100644 tests/generic/084.out
-> 
-> diff --git a/tests/generic/084 b/tests/generic/084
-> new file mode 100644
-> index 0000000..5066b14
-> --- /dev/null
-> +++ b/tests/generic/084
-> @@ -0,0 +1,60 @@
-> +#! /bin/bash
-> +# FS QA Test 084
-> +#
-> +# Exercise the situation that cause ext4 to BUG_ON() when we use
-> +# zero range to zero a range which starts within the isize but ends
-> +# past the isize but still in the same block. This particular problem
-> +# has only been seen on systems with page_size > block_size.
-> +#
-> +#-----------------------------------------------------------------------
-> +# Copyright (c) 2015 Red Hat, Inc., Lukas Czerner <lczerner@redhat.com>
-> +#
-> +# This program is free software; you can redistribute it and/or
-> +# modify it under the terms of the GNU General Public License as
-> +# published by the Free Software Foundation.
-> +#
-> +# This program is distributed in the hope that it would be useful,
-> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
-> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> +# GNU General Public License for more details.
-> +#
-> +# You should have received a copy of the GNU General Public License
-> +# along with this program; if not, write the Free Software Foundation,
-> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-> +#-----------------------------------------------------------------------
-> +#
-> +
-> +seq=`basename $0`
-> +seqres=$RESULT_DIR/$seq
-> +echo "QA output created by $seq"
-> +
-> +here=`pwd`
-> +tmp=/tmp/$$
-> +status=1	# failure is the default!
-> +trap "_cleanup; exit \$status" 0 1 2 3 15
-> +
-> +_cleanup()
-> +{
-> +	cd /
-> +	rm -f $tmp.*
-> +}
-> +
-> +# get standard environment, filters and checks
-> +. ./common/rc
-> +. ./common/filter
-> +
-> +# real QA test starts here
-> +
-> +# Modify as appropriate.
-> +_supported_fs generic
-> +_supported_os IRIX Linux
-> +_require_test
-> +_require_xfs_io_command "fzero"
-> +
-> +testfile=$TEST_DIR/$seq.$$
-> +
-> +$XFS_IO_PROG -f -c "pwrite 4096 512" -c "fzero 4351 512" $testfile > $seqres.full 2>&1
-> +
-> +# success, all done
-> +status=0
-> +exit
-> diff --git a/tests/generic/084.out b/tests/generic/084.out
-> new file mode 100644
-> index 0000000..d0aa380
-> --- /dev/null
-> +++ b/tests/generic/084.out
-> @@ -0,0 +1 @@
-> +QA output created by 084
-
-Add "Silence is golden" to indicate no output from test is expected?
+Thanks Richard!
+Let me rephrase the question: In the past I knew there was a rule of thumb, 'leave free 30% of the storage space'. Nowadays I couldn't find any reference to this.
+I was wondering, is there a known point in UBIFS (or ext4), where leaving less free storage space, that performance is dropping? Maybe a ratio of free-occupied is not the right way to look at it, but to leave a certain size free (e.g. 50MB)?
 
 Thanks,
-Eryu
-> diff --git a/tests/generic/group b/tests/generic/group
-> index c6ea3d8..6cb7dc3 100644
-> --- a/tests/generic/group
-> +++ b/tests/generic/group
-> @@ -86,6 +86,7 @@
->  081 auto quick
->  082 auto prealloc preallocrw quick
->  083 rw auto enospc stress
-> +084 auto prealloc quick
->  088 perms auto quick
->  089 metadata auto
->  091 rw auto quick
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe fstests" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Dolev
+-- 
+Qualcomm Israel, on behalf of Qualcomm Innovation Center, Inc.
+Qualcomm Innovation Center, Inc. is a member of Code Aurora Forum, a Linux Foundation Collaborative Project
+
