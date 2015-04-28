@@ -1,234 +1,200 @@
-From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Subject: Re: [v14 3/4] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR
- interface support
-Date: Tue, 28 Apr 2015 14:43:31 +1000
-Message-ID: <20150428044331.GV21261@dastard>
-References: <1429728997-21464-1-git-send-email-lixi@ddn.com>
- <1429728997-21464-4-git-send-email-lixi@ddn.com>
- <20150426232033.GQ15810@dastard>
- <CAPTn0cAHOHP060cW8k0-HnyfKdVaUwAVOyLZU43AXtECK6_EaA@mail.gmail.com>
+From: Beata Michalska <b.michalska@samsung.com>
+Subject: Re: [RFC v2 1/4] fs: Add generic file system event notifications
+Date: Tue, 28 Apr 2015 11:05:48 +0200
+Message-ID: <553F4D6C.4060108@samsung.com>
+References: <1430135504-24334-1-git-send-email-b.michalska@samsung.com>
+ <1430135504-24334-2-git-send-email-b.michalska@samsung.com>
+ <20150427142421.GB21942@kroah.com> <553E50EB.3000402@samsung.com>
+ <20150427153711.GA23428@kroah.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
-	"viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org" <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	"hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org" <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	Dmitry Monakhov <dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org>
-To: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <CAPTn0cAHOHP060cW8k0-HnyfKdVaUwAVOyLZU43AXtECK6_EaA-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-api@vger.kernel.org, jack@suse.cz, tytso@mit.edu,
+ adilger.kernel@dilger.ca, hughd@google.com, lczerner@redhat.com,
+ hch@infradead.org, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+ kyungmin.park@samsung.com, kmpark@infradead.org
+To: Greg KH <greg@kroah.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-reply-to: <20150427153711.GA23428@kroah.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 28, 2015 at 10:01:07AM +0800, Li Xi wrote:
-> Hi Dave,
+Hi,
+
+On 04/27/2015 05:37 PM, Greg KH wrote:
+> On Mon, Apr 27, 2015 at 05:08:27PM +0200, Beata Michalska wrote:
+>> On 04/27/2015 04:24 PM, Greg KH wrote:
+>>> On Mon, Apr 27, 2015 at 01:51:41PM +0200, Beata Michalska wrote:
+>>>> Introduce configurable generic interface for file system-wide 
+>>>> event notifications, to provide file systems with a common way
+>>>>  of reporting any potential issues as they emerge.
+>>>> 
+>>>> The notifications are to be issued through generic netlink 
+>>>> interface by newly introduced multicast group.
+>>>> 
+>>>> Threshold notifications have been included, allowing triggering
+>>>> an event whenever the amount of free space drops below a
+>>>> certain level - or levels to be more precise as two of them are
+>>>> being supported: the lower and the upper range. The 
+>>>> notifications work both ways: once the threshold level has been
+>>>> reached, an event shall be generated whenever the number of
+>>>> available blocks goes up again re-activating the threshold.
+>>>> 
+>>>> The interface has been exposed through a vfs. Once mounted, it
+>>>>  serves as an entry point for the set-up where one can register
+>>>>  for particular file system events.
+>>>> 
+>>>> Signed-off-by: Beata Michalska <b.michalska@samsung.com> --- 
+>>>> Documentation/filesystems/events.txt |  231 ++++++++++ 
+>>>> fs/Makefile                          |    1 + 
+>>>> fs/events/Makefile                   |    6 + 
+>>>> fs/events/fs_event.c                 |  770 
+>>>> ++++++++++++++++++++++++++++++++++ fs/events/fs_event.h |   25 
+>>>> ++ fs/events/fs_event_netlink.c         |   99 +++++ 
+>>>> fs/namespace.c                       |    1 + 
+>>>> include/linux/fs.h                   |    6 +- 
+>>>> include/linux/fs_event.h             |   58 +++ 
+>>>> include/uapi/linux/fs_event.h        |   54 +++ 
+>>>> include/uapi/linux/genetlink.h       |    1 + 
+>>>> net/netlink/genetlink.c              |    7 +- 12 files 
+>>>> changed, 1257 insertions(+), 2 deletions(-) create mode 100644
+>>>>  Documentation/filesystems/events.txt create mode 100644 
+>>>> fs/events/Makefile create mode 100644 fs/events/fs_event.c 
+>>>> create mode 100644 fs/events/fs_event.h create mode 100644 
+>>>> fs/events/fs_event_netlink.c create mode 100644 
+>>>> include/linux/fs_event.h create mode 100644 
+>>>> include/uapi/linux/fs_event.h
+>>> 
+>>> Any reason why you just don't do uevents for the block devices 
+>>> today, and not create a new type of netlink message and userspace
+>>> tool required to read these?
+>> 
+>> The idea here is to have support for filesystems with no backing 
+>> device as well. Parsing the message with libnl is really simple and
+>> requires few lines of code (sample application has been presented
+>> in the initial version of this RFC)
 > 
-> I ran xfstests on the kernel with this series of patches.
-> Unfortunately, 5 test suits failed. But I don't think they are caused
-> by this patch. Following is the result. Please let me know if there is
-> any problem about it.
+> I'm not saying it's not "simple" to parse, just that now you are 
+> doing something that requires a different tool.  If you have a block
+>  device, you should be able to emit uevents for it, you don't need a
+>  backing device, we handle virtual filesystems in /sys/block/ just 
+> fine :)
 > 
-> Output of xfstests:
+
+The generic netlink interface is already being used by quota. As this is to
+support file system events, including the threshold notifications, it just
+seemed like a nice extension. I'm not really convinced that the concept here
+goes well with the uevents and it's current usage. On the other hand, GFS2
+already benefits form it. Still the generic netlink seems somehow ... lighter.
+Anyway I'm open to any suggestions :)
+  
+> People already have tools that listen to libudev for system 
+> monitoring and management, why require them to hook up to 
+> yet-another-library?  And what is going to provide the ability for 
+> multiple userspace tools to listen to these netlink messages in case
+>  you have more than one program that wants to watch for these things
+>  (i.e. multiple desktop filesystem monitoring tools, system-health 
+> checkers, etc.)?
 > 
-> FSTYP         -- xfs (non-debug)
-> PLATFORM      -- Linux/x86_64 vm15 4.0.0+
-> MKFS_OPTIONS  -- -f -bsize=4096 /dev/sdb2
-> MOUNT_OPTIONS -- /dev/sdb2 /mnt/scratch
+
+I might be missing smth here, but any application might subscribe to
+the multicast group so I'm not sure I understand your concerns here (?)
+
+>>>> --- a/fs/Makefile +++ b/fs/Makefile @@ -126,3 +126,4 @@ obj-y 
+>>>> += exofs/ # Multiple modules obj-$(CONFIG_CEPH_FS)		+= ceph/ 
+>>>> obj-$(CONFIG_PSTORE)		+= pstore/ obj-$(CONFIG_EFIVAR_FS)		+= 
+>>>> efivarfs/ +obj-y				+= events/
+>>> 
+>>> Always?
+>>> 
+>>>> diff --git a/fs/events/Makefile b/fs/events/Makefile new file 
+>>>> mode 100644 index 0000000..58d1454 --- /dev/null +++ 
+>>>> b/fs/events/Makefile @@ -0,0 +1,6 @@ +# +# Makefile for the 
+>>>> Linux Generic File System Event Interface +# + +obj-y := 
+>>>> fs_event.o
+>>> 
+>>> Always?  Even if the option is not selected?  Why is everyone 
+>>> forced to always use this code?  Can't you disable it for the 
+>>> "tiny" systems that don't need it?
+>>> 
+>> 
+>> I was considering making it optional and I guess it's worth getting
+>> back to this idea.
 > 
-> generic/001 3s ... 2s
-> generic/002 0s ... 0s
-> generic/003 10s ... 10s
-> generic/004     [not run] xfs_io flink support is missing
-> generic/005 0s ... 0s
-> generic/006 1s ... 0s
-> generic/007 0s ... 0s
-> generic/008     [not run] xfs_io fzero support is missing
-> generic/009     [not run] xfs_io fzero support is missing
-> generic/010 1s ... 0s
-> generic/011 1s ... 0s
-> generic/012     [not run] xfs_io fpunch support is missing
-> generic/013 92s ... 90s
-> generic/014 3s ... 3s
-> generic/015 1s ... 1s
-> generic/016     [not run] xfs_io fpunch support is missing
-> generic/017     [not run] xfs_io fiemap support is missing
-> generic/018     [not run] xfs_io fiemap support is missing
+> The "linux-tiny" people will appreciate that :)
+> 
 
-You really need to update your xfsprogs install. You aren't testing
-half of what you need to be testing if you are missing basic
-functionality like fiemap support (which has been in xfs_io since
-2011).
+Consider it done for the next round.
 
-> generic/020 38s ... 31s
-> generic/021     [not run] xfs_io fpunch support is missing
-> generic/022     [not run] xfs_io fpunch support is missing
-> generic/023 1s ... 0s
-> generic/024 1s ... 0s
-> generic/025 0s ... 0s
-> generic/026 0s ... 0s
-> generic/027 57s ... 57s
-> generic/028 5s ... 5s
-> generic/053 1s ... 2s
-> generic/062 1s ... 2s
-> generic/068 60s ... 61s
-> generic/069 4s ... 3s
-> generic/070 13s ... 14s
-> generic/074 164s ... 162s
-> generic/075 87s ... 86s
-> generic/076 1s ... 1s
-> generic/077     [not run] fsgqa user not defined.
+>>>> +struct fs_trace_entry { +	atomic_t	 count;
+>>> 
+>>> Why not just use a 'struct kref' for your count, which will save
+>>>  a bunch of open-coding of reference counting, and forcing us to
+>>>  audit your code to verify you got all the corner cases correct?
+>>>  :)
+>>> 
+>>>> +	atomic_t	 active; +	struct super_block *sb;
+>> 
+>> Not sure if using kref would change much here as the kref would not
+>> really make it easier to verify those corner cases, unfortunately.
+> 
+> Why not, that's the goal of a kref.  Yes, you already did the hard 
+> work, but now you require everyone else to also do the hard work of 
+> trying to audit your code.  That's why we have common functions/data
+>  structures in the kernel, to make long-term maintenance easier.
+> 
+> Please switch to make it so that we "know" you are doing this 
+> correctly.
+> 
 
-ANd if you don't have this user defined, then several quota tests
-don't get run.
+Alright, if this is to make the review any easier I'll do that.
+Still it's gonna be replacing fs_trace_entry_get/put with kref
+and I doubt it will help verifying if the references are being
+acquired / released properly.
 
-> generic/079 1s ... 1s
-> generic/083 36s ... 39s
-> generic/088 1s ... 0s
-> generic/089 4s ... 4s
-> generic/091 62s ... 62s
-> generic/093     [not run] not suitable for this OS: Linux
-> generic/097     [not run] not suitable for this OS: Linux
-> generic/099     [not run] not suitable for this OS: Linux
-> generic/100 12s ... 12s
-> generic/105 0s ... 0s
-> generic/112     [not run] fsx not built with AIO for this platform
-> generic/113     [not run] aio-stress not built for this platform
+>>> Are you properly reference counting this pointer?  I didn't see 
+>>> where that was happening, so I must have missed it.
+>>> 
+>>> thanks,
+>>> 
+>> 
+>> You haven't. And if I haven't missed anything, the sb is being used
+>> only as long as the super is alive.
+> 
+> How do you know that? :)
+> 
+>> Most of the code operates on sb only if it was explicitly asked to,
+>> through call from filesystem. There is also a callback notifying of
+>> mount being dropped (which proceeds the call to kill_super) that
+>> invalidates the object that depends on it. Still, it should be
+>> explicitly stated that the sb is being used through bidding up the
+>> s_count counter, though that would require taking the sb_lock.
+>> AFAIK, one can get the reference to super block but for a
+>> particular device. Maybe it would be worth having it more generic
+>> (?).
+> 
+> Why not just grab a reference to the sb when you save the pointer, 
+> and release it when you are done with it?  That should handle the 
+> lifecycle properly.  It's always a very bad idea to have a pointer to
+> a reference counted object without actually grabbing the reference,
+> as you have no idea what is happening with it behind your back.
+> 
 
-Ouch. There's another whole class of functionality you aren't
-testing.
+Ok, will do.
 
-> generic/299     [not run]  utility required, skipped this test
-> generic/300     [not run] xfs_io fpunch support is missing
-> generic/306     - output mismatch (see
-> /root/work/quota/ext4_inode_field/xfstests.git/results//generic/306.out.bad)
->     --- tests/generic/306.out    2014-07-16 10:19:26.196995657 +0800
->     +++ /root/work/quota/ext4_inode_field/xfstests.git/results//generic/306.out.bad
->    2015-04-27 22:40:13.365445316 +0800
->     @@ -2,11 +2,9 @@
->      == try to create new file
->      touch: cannot touch 'SCRATCH_MNT/this_should_fail': Read-only file system
->      == pwrite to null device
->     -wrote 512/512 bytes at offset 0
->     -XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
->     +xfs_io: specified file ["/mnt/scratch/devnull"] is not on an XFS filesystem
->      == pread from zero device
->     ...
->     (Run 'diff -u tests/generic/306.out
-> /root/work/quota/ext4_inode_field/xfstests.git/results//generic/306.out.bad'
->  to see the entire diff)
+> thanks,
+> 
+> greg k-h
+> 
 
-That's caused by having a very old xfs_io.
+Thanks for your comments so far. Much appreciated.
 
-> xfs/229 134s ... [failed, exit status 23] - output mismatch (see
-> /root/work/quota/ext4_inode_field/xfstests.git/results//xfs/229.out.bad)
->     --- tests/xfs/229.out    2014-07-16 10:19:26.215995657 +0800
->     +++ /root/work/quota/ext4_inode_field/xfstests.git/results//xfs/229.out.bad
->    2015-04-27 23:25:48.709093428 +0800
->     @@ -1,4 +1,31 @@
->      QA output created by 229
->      generating 10 files
->     +Write did not return correct amount
->     +Write did not return correct amount
->     +Write did not return correct amount
->     +Write did not return correct amount
->      comparing files
+BR
+Beata
 
-Can't say that I've seen that one fail for a long time. I can't say
-anything useful about it, however, given how old your xfsprogs
-installation is.
-
->     ...
->     (Run 'diff -u tests/xfs/229.out
-> /root/work/quota/ext4_inode_field/xfstests.git/results//xfs/229.out.bad'
->  to see the entire diff)
-> xfs/238 1s ... 1s
-> xfs/242     [not run] zero command not supported
-> xfs/244 2s ... 2s
-> xfs/250     [failed, exit status 1] - output mismatch (see
-> /root/work/quota/ext4_inode_field/xfstests.git/results//xfs/250.out.bad)
->     --- tests/xfs/250.out    2014-07-16 10:19:26.215995657 +0800
->     +++ /root/work/quota/ext4_inode_field/xfstests.git/results//xfs/250.out.bad
->    2015-04-27 23:26:15.137452337 +0800
->     @@ -11,4 +11,4 @@
->      *** preallocate large file
->      *** unmount loop filesystem
->      *** check loop filesystem
->     -*** done
->     +_check_xfs_filesystem: filesystem on /mnt/test/250.fs is
-> inconsistent (r) (see
-> /root/work/quota/ext4_inode_field/xfstests.git/results//xfs/250.full)
->     ...
->     (Run 'diff -u tests/xfs/250.out
-> /root/work/quota/ext4_inode_field/xfstests.git/results//xfs/250.out.bad'
->  to see the entire diff)
-
-Your xfstests is not up to date. This is fixed by commit ee6ad7f
-("xfs/049: umount -d fails when kernel wins teardown race").
-
-> xfs/301     - output mismatch (see
-> /root/work/quota/ext4_inode_field/xfstests.git/results//xfs/301.out.bad)
->     --- tests/xfs/301.out    2014-07-16 10:19:26.217995657 +0800
->     +++ /root/work/quota/ext4_inode_field/xfstests.git/results//xfs/301.out.bad
->    2015-04-27 23:33:33.629182381 +0800
->     @@ -29,18 +29,21 @@
->      Attribute "attr4" had a 10 byte value for DUMP_DIR/sub/biggg:
->      some_text4
->      EAs on restore
->     +getfattr: /mnt/scratch/restoredir/dumpdir: No such file or directory
->     +getfattr: /mnt/scratch/restoredir/dumpdir: No such file or directory
->      User names
->     -Attribute "attr5" had a 8 byte value for DUMP_DIR/dir:
->     ...
->     (Run 'diff -u tests/xfs/301.out
-
-$ ./lsqa.pl tests/xfs/301
-FS QA Test No. 301
-
-Verify multi-stream xfsdump/restore preserves extended attributes
-
-$
-
-Your xfsdump package is out of date and needs upgrading.
-
-> /root/work/quota/ext4_inode_field/xfstests.git/results//xfs/301.out.bad'
->  to see the entire diff)
-> xfs/302     [failed, exit status 1] - output mismatch (see
-> /root/work/quota/ext4_inode_field/xfstests.git/results//xfs/302.out.bad)
->     --- tests/xfs/302.out    2014-07-16 10:19:26.217995657 +0800
->     +++ /root/work/quota/ext4_inode_field/xfstests.git/results//xfs/302.out.bad
->    2015-04-27 23:33:46.102767709 +0800
->     @@ -1,2 +1,4 @@
->      QA output created by 302
->      Silence is golden.
->     +dump failed
->     +(see /root/work/quota/ext4_inode_field/xfstests.git/results//xfs/302.full
-> for details)
->     ...
->     (Run 'diff -u tests/xfs/302.out
-> /root/work/quota/ext4_inode_field/xfstests.git/results//xfs/302.out.bad'
->  to see the entire diff)
-
-Same again.
-
-You need to upgrade everything to current xfstests/xfsprogs/xfsdump
-and retest *everything*. That means rerunning all your ext4 testing,
-too, because you're not exercising all the cases where the
-interesting accounting bugs lie (i.e. in fallocate operations).
-
-I'd also suggest that you run the tests using MOUNT_OPTIONS="-o
-pquota" after setting up default configurations for TEST_MNT and
-SCRATCH_MNT so that you actually give the project quota code a
-significant amount of work to do, and do the same for ext4,
-otherwise you're not really testing it at all when you run xfstests
-on ext4....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
