@@ -1,81 +1,121 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [e2fsprogs] resizing to minimum was failed since 45a78b
-Date: Wed, 29 Apr 2015 10:29:12 -0400
-Message-ID: <20150429142912.GA18756@thunk.org>
-References: <01cb01d08257$26157350$724059f0$@samsung.com>
+From: Beata Michalska <b.michalska-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>
+Subject: Re: [RFC v2 1/4] fs: Add generic file system event notifications
+Date: Wed, 29 Apr 2015 17:48:14 +0200
+Message-ID: <5540FD3E.9050801@samsung.com>
+References: <553E50EB.3000402@samsung.com> <20150427153711.GA23428@kroah.com>
+ <20150428135653.GD9955@quack.suse.cz> <20150428140936.GA13406@kroah.com>
+ <553F9D56.6030301@samsung.com> <20150428173900.GA16708@kroah.com>
+ <5540822C.10000@samsung.com> <20150429074259.GA31089@quack.suse.cz>
+ <20150429091303.GA4090@kroah.com> <5540BC2A.8010504@samsung.com>
+ <20150429134505.GB15398@kroah.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: darrick.wong@oracle.com, linux-ext4@vger.kernel.org
-To: Chanho Park <chanho61.park@samsung.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35462 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966131AbbD2O3Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Apr 2015 10:29:16 -0400
-Content-Disposition: inline
-In-Reply-To: <01cb01d08257$26157350$724059f0$@samsung.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	tytso-3s7WtUTddSA@public.gmane.org, adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, hughd-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org,
+	lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, kyungmin.park-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org, kmpark-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org
+To: Greg KH <greg-U8xfFu+wG4EAvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-reply-to: <20150429134505.GB15398-U8xfFu+wG4EAvxtiuMwx3w@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 29, 2015 at 05:33:20PM +0900, Chanho Park wrote:
+On 04/29/2015 03:45 PM, Greg KH wrote:
+> On Wed, Apr 29, 2015 at 01:10:34PM +0200, Beata Michalska wrote:
+>>>>> It needs to be done internally by the app but is doable.
+>>>>> The app knows what it is watching, so it can maintain the mappings.
+>>>>> So prior to activating the notifications it can call 'stat' on the mount point.
+>>>>> Stat struct gives the 'st_dev' which is the device id. Same will be reported
+>>>>> within the message payload (through major:minor numbers). So having this,
+>>>>> the app is able to get any other information it needs. 
+>>>>> Note that the events refer to the file system as a whole and they may not
+>>>>> necessarily have anything to do with the actual block device. 
+>>>
+>>> How are you going to show an event for a filesystem that is made up of
+>>> multiple block devices?
+>>
+>> AFAIK, for such filesystems there will be similar case with the anonymous
+>> major:minor numbers - at least the btrfs is doing so. Not sure we can
+>> differentiate here the actual block device. So in this case such events
+>> serves merely as a hint for the userspace.
 > 
-> When I tried to resize a loop ext4 image to minimum, I couldn't get correct
-> result.
+> "hint" seems like this isn't really going to work well.
+> 
+> Do you have userspace code that can properly map this back to the "real"
+> device that is causing problems?  Without that, this doesn't seem all
+> that useful as no one would be able to use those events.
 
-It all depends on your definition of "correct".  I've regretted
-accepting the the patch to implement -M, since in practice almost
-everyone who has been using really shouldn't have been.  It's useful
-for developers who want to stress test resize2fs to make sure it does
-the right thing in corner cases.
+I'm not sure we are on the same page here.
+This is about watching the file system rather than the 'real' device.
+Like the threshold notifications: you would like to know when you
+will be approaching certain level of available space for the tmpfs
+mounted on /tmp.  You do know you are watching the /tmp
+and you know that the dev numbers for this are 0:20 (or so). 
+(either through calling stat on /tmp or through reading the /proc/$$/mountinfo)
+With this interface you can setup threshold levels
+for /tmp. Then, once the limit is reached the event will be
+sent with those anonymous major:minor numbers.
 
-However, it's a *terrible* idea for anyone to use it for __anything__
-else.  The result of using resize2fs -M is a file system where the
-files are highly fragmented.  The first real world use of resizde2fs
--M I was aware of, which was some clever Red Hat release engineer
-which created a huge file system, installed Red Hat on it, compressed
-it down to a minimum size using resize2fs -M, and then burned the
-result on a CD-ROM for use as a bootable Live CD system image.  The
-resulting fragmentation of files as a result of resize2fs -M meant
-that reading certain files from the CD-ROM, which is not known for its
-high seek speeds, was, shall we say, less than optimal.
+I can provide a sample code which will demonstrate how this
+can be achieved.
 
-Because I don't think there are mant (any?) real sane/valid production
-uses of resize2fs -M, my definition of "correct" for resize -M is that
-it doesn't (a) corrupt file systems, or (b) lead to a state when
-resize2fs -M might not be able to make forward progress, leaving to a
-file-system which is half-resized, corrupt, and requiring expert
-surgery from a file system expert to recover.  The reason why I care
-about this is because it's not just used by misguided release
-engineers trying to create file system images from source builds,
-where if there is a corrupted file system, it's not a disaster.
+> 
+>> At this point a user might decide to run some scanning tools.
+> 
+> You can't run a scanning tool on a tmpfs :)
 
-Unfortunately, it's also used by clueless users who usually have _not_
-made a backup before trying to use resize2fs -M to shrink their file
-system before trying to rearrange their LVM volumes.  And users get
-cranky when they lose data.
+I was referring to btrfs here as a filesystem with multiple devices
+and its btrfs device scan :)
+> 
+> So what can a user do with information about one of these "virtual"
+> filesystems that it can't directly see or access?
+> 
+>> We might extend the scope of the
+>> info being sent, though I would consider this as a nice-to-have but not
+>> required for this initial version of notifications. The filesystems
+>> might also want to decide to send their own custom messages so it is
+>> possible for filesystems like btrfs to send more detailed information
+>> using the new genetlink multicast group.
+>>>>   Or you can use /proc/self/mountinfo for the mapping. There you can see
+>>>> device numbers, real device names if applicable and mountpoints. This has
+>>>> the advantage that it works even if filesystem mountpoints change.
+>>>
+>>> Ok, then that brings up my next question, how does this handle
+>>> namespaces?  What namespace is the event being sent in?  block devices
+>>> aren't namespaced, but the mount points are, is that going to cause
+>>> problems?
+>>>
+>>
+>> The path should get resolved properly (as from root level). though I must
+>> admit I'm not sure if there will be no issues when it comes to the network
+>> namespaces. I'll double check it. Any hints though are more than welcomed :)
+> 
+> What is "root level" here?  You can mount things in different namespaces
+> all over the place.
 
-So the bottom line is I care a lot more about data loss than I do
-about shrinking file systems to the absolute minimum size, and I
-personaly don't think it's worth a huge amount of effort to try to
-make the calculation of the minimum size where resize2fs is guaranteed
-to succeed any closer to being exact.
+I was referring here to the mounts visibility and the mount propagation
+which on some distros is set by default with the make-shared option,
+so the mounts created in new namespace are visible outside of it (running
+cat /proc/$$/moutinfo showed the new mounts). Which got me really
+confused, obviously.
 
-That being said, if you are creating a read-only file system for a
-flash image (where seeks are largely free), and you really insist on
-using resize2fs -M, it may be that your best bet is to turn off the
-flex_bg option, since most of the advantages of flex_bg aren't there
-on a read-only flash image (such as might be used for a
-system/firmware image).
+> 
+> This is going to get really complex very quickly :(
 
-Alternatively, if you want to invest effort in trying to make
-resize2fs -M mimum file system size more accurate, feel free to send
-me patches --- plus your proof in terms of code analysis and an
-exhaustive test regime to make sure that it works for a wide variety
-of file system sizes and free space availability pre-resize2fs.
-Personally, I don't think it's a particularly worthwhile use of an
-engineer's time, but if you really have a strong business need for
-this, feel free work on it and send me the results of your efforts.
+It will/is indeed - still I believe it's worth giving it a try.
+I'll try to work out the namespace issue here and get back to you.
 
-Cheers,
+BR
+Beata
+> 
+> I still think you should tie this to an existing sysfs device, which
+> handles the namespace issues for you, and it also handles the fact that
+> userspace can properly identify the device, if at all possible.
+> 
 
-					- Ted
+> thanks,
+> 
+> greg k-h
+> 
