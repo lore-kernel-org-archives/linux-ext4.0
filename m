@@ -1,72 +1,86 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [e2fsprogs] resizing to minimum was failed since 45a78b
-Date: Thu, 30 Apr 2015 11:13:16 -0400
-Message-ID: <20150430151316.GF12374@thunk.org>
-References: <01cb01d08257$26157350$724059f0$@samsung.com>
- <20150429142912.GA18756@thunk.org>
- <012401d0832e$1b353330$519f9990$@samsung.com>
+Subject: Re: [RFC][PATCH] sysrq: Emergency Remount R/O in reverse order
+Date: Thu, 30 Apr 2015 11:31:30 -0400
+Message-ID: <20150430153130.GG12374@thunk.org>
+References: <CAA2m6vfatWKS1CQFpaRbii2AXiZFvQUjVvYhGxWTSpz+2rxDyg@mail.gmail.com>
+ <CAA2m6vdqjzws6UjSZnryFBWrcXiKUz2p2gKjg5LftZsF43jeew@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: darrick.wong@oracle.com, linux-ext4@vger.kernel.org
-To: Chanho Park <chanho61.park@samsung.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37802 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750746AbbD3PNS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 30 Apr 2015 11:13:18 -0400
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Oren Laadan <orenl@cellrox.com>, viro@zeniv.linux.org.uk
+To: Amir Goldstein <amir@cellrox.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <012401d0832e$1b353330$519f9990$@samsung.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CAA2m6vdqjzws6UjSZnryFBWrcXiKUz2p2gKjg5LftZsF43jeew@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 30, 2015 at 07:12:04PM +0900, Chanho Park wrote:
+On Wed, Apr 29, 2015 at 09:33:45PM +0300, Amir Goldstein wrote:
+> Hi Ted,
 > 
-> In my situation, I usually use the "resize2fs -M" when making a tizen
-> platform image. As you know, like android, tizen also uses ext4 filesystem
-> and flash the image from bootloader. Instead of flashing full image size, we
-> only flash shrinked filesystem image to reduce flashing time and want to
-> avoid download huge files. If the partition size is 3GB, we'll make a 3GB
-> loop image and fill files into it. And I shrink the loop image to the
-> minimum size and flash it to my phone. When first booting, the system will
-> do resizing the partition to 3GB original size.
+> Did you see my query about emergency remount of loop mounted ext4?
+> Do you have any insights to share?
 
-What I would recommend is to estimate how big the file system needs to
-doing a "du -s" over the directory that you want to preload onto the
-file system size, add say, 5% or so the file system metadata, and then
-create the file system that way.  If the file system is close enough
-to the right size, then resize2fs -M is much more likely to shrink the
-file system to its minimal size, and also reduce the file
-fragmentation that results from it.  (One of the better uses for using
-resize2fs to slightly shrink a file system was to make room for the
-LVM table at the end of the device, for example.  It's when you try to
-take, say, a 1TB file system and shrink to a few megabytes that
-resize2fs doesn't do a great job, because it really wasn't engineered
-for that use case, and it's hard enough to make sure it does so in a
-efficient and robust manner as it is.)
+Your patch makes sense to me.  Doing the remount-ro in reverse order
+that file systems were mounted sounds like the right thing to do.
 
-You can then take that file system and shrink to a size far larger
-than what it was originally created as --- that works much better than
-taking a large empty file system, shrinking it down to its minimal
-size, and then expanding it to something bigger.  If necessary, you
-can use the "mke2fs -E resize=15T" option to make sure enough metadata
-blocks have been reserved so the file system can be expanded as much
-as you would like.  By default we reserve enough metadata blocks for
-the file system to grow by a factor of a thousand, so if you create a
-super-tiny file system and then expect to grow it to a multi-TB size,
-that mke2fs option will be useful.  It's not strictly necessary for
-ext4 (although it was required for ext3), but it will result in a
-slightly more efficient file system that will mount more quickly under
-ext4.
+I can imagine trying to make ext4 handle the situation where it is
+trying to do an unmount, or remount r/o, and the device has gone
+read-only in a similar situation as one where the device has
+disappeared altogether, but it's not going to solve all possible
+issues.  Trying to unmount or remount r/o the most recently mounted
+file system first is simpler and will solve more problems.
 
-So if your Tizen image is, say, 390 megabytes, I'd suggest creating a
-400 megabyte file system, and load that up with the image.  If you
-then use resize2fs -M, it should shirnk it down to something much
-closer to 390M.
-
-I suspect you will find that the resulting image will be far more
-efficient than trying to start with a 3GB file system, shrink it down
-to 400M, and then expand it backup to 3GB.
-
-Best regards,
+Al?
 
 					- Ted
+
+> >
+> > This change fixes a problem where reboot on Android panics the kernel
+> > almost every time when file systems are mounted over loop devices.
+> >
+> > Android reboot command does:
+> > - sync
+> > - echo u > /proc/sysrq-trigger
+> > - syscall_reboot
+> >
+> > The problem is with sysrq emergency remount R/O trying to remount-ro
+> > in wrong order.
+> > since /data is re-mounted ro before loop devices, loop device
+> > remount-ro fails to flush the journal and panics the kernel:
+> >
+> >   EXT4-fs (loop0): Remounting filesystem read-only
+> >   EXT4-fs (loop0): previous I/O error to superblock detected
+> >   loop: Write error at byte offset 0, length 4096.
+> >   Buffer I/O error on device loop0, logical block 0
+> >   lost page write due to I/O error on loop0
+> >   Kernel panic - not syncing: EXT4-fs panic from previous error
+> >
+> > The fix is quite simple. In do_emergency_remount(), use
+> > list_for_each_entry_reverse() on sb list instead of list_for_each_entry().
+> > It makes a lot of sense to umount the file systems in reverse order in
+> > which they were added to sb list.
+> >
+> > Signed-off-by: Amir Goldstein <amir@cellrox.com>
+> > Acked-by: Oren Laadan <orenl@cellrox.com>
+> > ---
+> >  fs/super.c | 2 +-
+> >  1 file changed, 1 insertion(+), 1 deletion(-)
+> >
+> > diff --git a/fs/super.c b/fs/super.c
+> > index 2b7dc90..f1315e0 100644
+> > --- a/fs/super.c
+> > +++ b/fs/super.c
+> > @@ -774,7 +774,7 @@ static void do_emergency_remount(struct work_struct
+> > *work)
+> >         struct super_block *sb, *p = NULL;
+> >
+> >         spin_lock(&sb_lock);
+> > -       list_for_each_entry(sb, &super_blocks, s_list) {
+> > +       list_for_each_entry_reverse(sb, &super_blocks, s_list) {
+> >                 if (hlist_unhashed(&sb->s_instances))
+> >                         continue;
+> >                 sb->s_count++;
+> > --
+> > 1.8.2
+> >
