@@ -1,58 +1,57 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [v14 3/4] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR
- interface support
-Date: Thu, 30 Apr 2015 08:07:17 +1000
-Message-ID: <20150429220717.GX15810@dastard>
-References: <1429728997-21464-1-git-send-email-lixi@ddn.com>
- <1429728997-21464-4-git-send-email-lixi@ddn.com>
- <20150426232033.GQ15810@dastard>
- <CAPTn0cAHOHP060cW8k0-HnyfKdVaUwAVOyLZU43AXtECK6_EaA@mail.gmail.com>
- <20150428044331.GV21261@dastard>
- <CAPTn0cBymWmQ5JKAPpFzqzivbEpjzY=s+M5O5bCsne7LbEeiLA@mail.gmail.com>
- <20150429075924.GB31089@quack.suse.cz>
- <CAPTn0cDZ3rHBxo2rQCWM=cZsjrL3QJUAkbkaj1ax3b72OUn0Rg@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"hch@infradead.org" <hch@infradead.org>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
-	John Stultz <john.stultz@linaro.org>,
-	Thomas Gleixner <tglx@linutronix.de>
-To: Li Xi <pkuelelixi@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CAPTn0cDZ3rHBxo2rQCWM=cZsjrL3QJUAkbkaj1ax3b72OUn0Rg@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH v2] ext4: Fix growing of tiny filesystems
+Date: Thu, 30 Apr 2015 09:06:01 +0200
+Message-ID: <1430377561-6079-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
+	=?UTF-8?q?Luk=C3=A1=C5=A1=20Czerner?= <lczerner@redhat.com>,
+	Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:50240 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751125AbbD3HGI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 30 Apr 2015 03:06:08 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 29, 2015 at 07:45:40PM +0800, Li Xi wrote:
-> On Wed, Apr 29, 2015 at 3:59 PM, Jan Kara <jack@suse.cz> wrote:
-> >   Hi,
-> >
-> > On Wed 29-04-15 13:49:08, Li Xi wrote:
-> >> Thanks for the advices. I tried to run latest xfstests again. However,
-> >   Dave actually asked you to update 'xfsprogs' not xfstests. Not that
-> > updating xfstests would be a wrong thing to do but you still need to update
-> > xfsprogs for xfstests to be able to run some tests. But that's unrelated to
-> > the oops you reported below.
-> Understood. I updated both xfstests and xfsprogs to the latest version from git
-> repository. However, I didn't update xfsdump because of a build failure caused
-> by missing definitons of 'min' and 'max'
+The estimate of necessary transaction credits in ext4_flex_group_add()
+is too pessimistic. It reserves credit for sb, resize inode, and resize
+inode dindirect block for each group added in a flex group although they
+are always the same block and thus it is enough to account them only
+once. Also the number of modified GDT block is overestimated since we
+fit EXT4_DESC_PER_BLOCK(sb) descriptors in one block.
 
-The /usr/include/xfs header files are stale. Upgrade your
-xfslibs-dev package, if there is one for your distro.
+Make the estimation more precise. That reduces number of requested
+credits enough that we can grow 20 MB filesystem (which has 1 MB
+journal, 79 reserved GDT blocks, and flex group size 16 by default).
 
-And, please, report package build failures to the appropriate list,
-next time, rather than ignoring them?
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/resize.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-Cheers,
-
-Dave.
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 8a8ec6293b19..cf0c472047e3 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -1432,12 +1432,15 @@ static int ext4_flex_group_add(struct super_block *sb,
+ 		goto exit;
+ 	/*
+ 	 * We will always be modifying at least the superblock and  GDT
+-	 * block.  If we are adding a group past the last current GDT block,
++	 * blocks.  If we are adding a group past the last current GDT block,
+ 	 * we will also modify the inode and the dindirect block.  If we
+ 	 * are adding a group with superblock/GDT backups  we will also
+ 	 * modify each of the reserved GDT dindirect blocks.
+ 	 */
+-	credit = flex_gd->count * 4 + reserved_gdb;
++	credit = 3;	/* sb, resize inode, resize inode dindirect */
++	/* GDT blocks */
++	credit += 1 + DIV_ROUND_UP(flex_gd->count, EXT4_DESC_PER_BLOCK(sb));
++	credit += reserved_gdb;	/* Reserved GDT dindirect blocks */
+ 	handle = ext4_journal_start_sb(sb, EXT4_HT_RESIZE, credit);
+ 	if (IS_ERR(handle)) {
+ 		err = PTR_ERR(handle);
 -- 
-Dave Chinner
-david@fromorbit.com
+2.1.4
+
