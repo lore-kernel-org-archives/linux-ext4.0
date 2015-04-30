@@ -1,66 +1,72 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH v2] ext4: Fix growing of tiny filesystems
-Date: Thu, 30 Apr 2015 09:35:22 -0500
-Message-ID: <55423DAA.6020305@redhat.com>
-References: <1430377561-6079-1-git-send-email-jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [e2fsprogs] resizing to minimum was failed since 45a78b
+Date: Thu, 30 Apr 2015 11:13:16 -0400
+Message-ID: <20150430151316.GF12374@thunk.org>
+References: <01cb01d08257$26157350$724059f0$@samsung.com>
+ <20150429142912.GA18756@thunk.org>
+ <012401d0832e$1b353330$519f9990$@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org,
-	=?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
-To: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: darrick.wong@oracle.com, linux-ext4@vger.kernel.org
+To: Chanho Park <chanho61.park@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44090 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:37802 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751159AbbD3Ofb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 30 Apr 2015 10:35:31 -0400
-In-Reply-To: <1430377561-6079-1-git-send-email-jack@suse.cz>
+	id S1750746AbbD3PNS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 30 Apr 2015 11:13:18 -0400
+Content-Disposition: inline
+In-Reply-To: <012401d0832e$1b353330$519f9990$@samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/30/15 2:06 AM, Jan Kara wrote:
-> The estimate of necessary transaction credits in ext4_flex_group_add()
-> is too pessimistic. It reserves credit for sb, resize inode, and resize
-> inode dindirect block for each group added in a flex group although they
-> are always the same block and thus it is enough to account them only
-> once. Also the number of modified GDT block is overestimated since we
-> fit EXT4_DESC_PER_BLOCK(sb) descriptors in one block.
+On Thu, Apr 30, 2015 at 07:12:04PM +0900, Chanho Park wrote:
 > 
-> Make the estimation more precise. That reduces number of requested
-> credits enough that we can grow 20 MB filesystem (which has 1 MB
-> journal, 79 reserved GDT blocks, and flex group size 16 by default).
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> In my situation, I usually use the "resize2fs -M" when making a tizen
+> platform image. As you know, like android, tizen also uses ext4 filesystem
+> and flash the image from bootloader. Instead of flashing full image size, we
+> only flash shrinked filesystem image to reduce flashing time and want to
+> avoid download huge files. If the partition size is 3GB, we'll make a 3GB
+> loop image and fill files into it. And I shrink the loop image to the
+> minimum size and flash it to my phone. When first booting, the system will
+> do resizing the partition to 3GB original size.
 
-Jan, thank you for looking into this and sorting it out.
+What I would recommend is to estimate how big the file system needs to
+doing a "du -s" over the directory that you want to preload onto the
+file system size, add say, 5% or so the file system metadata, and then
+create the file system that way.  If the file system is close enough
+to the right size, then resize2fs -M is much more likely to shrink the
+file system to its minimal size, and also reduce the file
+fragmentation that results from it.  (One of the better uses for using
+resize2fs to slightly shrink a file system was to make room for the
+LVM table at the end of the device, for example.  It's when you try to
+take, say, a 1TB file system and shrink to a few megabytes that
+resize2fs doesn't do a great job, because it really wasn't engineered
+for that use case, and it's hard enough to make sure it does so in a
+efficient and robust manner as it is.)
 
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+You can then take that file system and shrink to a size far larger
+than what it was originally created as --- that works much better than
+taking a large empty file system, shrinking it down to its minimal
+size, and then expanding it to something bigger.  If necessary, you
+can use the "mke2fs -E resize=15T" option to make sure enough metadata
+blocks have been reserved so the file system can be expanded as much
+as you would like.  By default we reserve enough metadata blocks for
+the file system to grow by a factor of a thousand, so if you create a
+super-tiny file system and then expect to grow it to a multi-TB size,
+that mke2fs option will be useful.  It's not strictly necessary for
+ext4 (although it was required for ext3), but it will result in a
+slightly more efficient file system that will mount more quickly under
+ext4.
 
-> ---
->  fs/ext4/resize.c | 7 +++++--
->  1 file changed, 5 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index 8a8ec6293b19..cf0c472047e3 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -1432,12 +1432,15 @@ static int ext4_flex_group_add(struct super_block *sb,
->  		goto exit;
->  	/*
->  	 * We will always be modifying at least the superblock and  GDT
-> -	 * block.  If we are adding a group past the last current GDT block,
-> +	 * blocks.  If we are adding a group past the last current GDT block,
->  	 * we will also modify the inode and the dindirect block.  If we
->  	 * are adding a group with superblock/GDT backups  we will also
->  	 * modify each of the reserved GDT dindirect blocks.
->  	 */
-> -	credit = flex_gd->count * 4 + reserved_gdb;
-> +	credit = 3;	/* sb, resize inode, resize inode dindirect */
-> +	/* GDT blocks */
-> +	credit += 1 + DIV_ROUND_UP(flex_gd->count, EXT4_DESC_PER_BLOCK(sb));
-> +	credit += reserved_gdb;	/* Reserved GDT dindirect blocks */
->  	handle = ext4_journal_start_sb(sb, EXT4_HT_RESIZE, credit);
->  	if (IS_ERR(handle)) {
->  		err = PTR_ERR(handle);
-> 
+So if your Tizen image is, say, 390 megabytes, I'd suggest creating a
+400 megabyte file system, and load that up with the image.  If you
+then use resize2fs -M, it should shirnk it down to something much
+closer to 390M.
 
+I suspect you will find that the resulting image will be far more
+efficient than trying to start with a 3GB file system, shrink it down
+to 400M, and then expand it backup to 3GB.
+
+Best regards,
+
+					- Ted
