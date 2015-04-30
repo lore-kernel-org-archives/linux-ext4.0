@@ -1,316 +1,123 @@
-From: Beata Michalska <b.michalska@samsung.com>
-Subject: Re: [RFC v2 1/4] fs: Add generic file system event notifications
-Date: Thu, 30 Apr 2015 10:21:34 +0200
-Message-ID: <5541E60E.9040103@samsung.com>
-References: <20150428135653.GD9955@quack.suse.cz>
- <20150428140936.GA13406@kroah.com> <553F9D56.6030301@samsung.com>
- <20150428173900.GA16708@kroah.com> <5540822C.10000@samsung.com>
- <20150429074259.GA31089@quack.suse.cz> <20150429091303.GA4090@kroah.com>
- <5540BC2A.8010504@samsung.com> <20150429134505.GB15398@kroah.com>
- <5540FD3E.9050801@samsung.com> <20150429155522.GA14723@kroah.com>
+From: Chanho Park <chanho61.park@samsung.com>
+Subject: RE: [e2fsprogs] resizing to minimum was failed since 45a78b
+Date: Thu, 30 Apr 2015 19:12:04 +0900
+Message-ID: <012401d0832e$1b353330$519f9990$@samsung.com>
+References: <01cb01d08257$26157350$724059f0$@samsung.com>
+ <20150429142912.GA18756@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org, tytso@mit.edu,
- adilger.kernel@dilger.ca, hughd@google.com, lczerner@redhat.com,
- hch@infradead.org, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
- kyungmin.park@samsung.com, kmpark@infradead.org
-To: Greg KH <greg@kroah.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-reply-to: <20150429155522.GA14723@kroah.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: darrick.wong@oracle.com, linux-ext4@vger.kernel.org
+To: 'Theodore Ts'o' <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailout3.samsung.com ([203.254.224.33]:13651 "EHLO
+	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751187AbbD3KMH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Apr 2015 06:12:07 -0400
+Received: from epcpsbgr4.samsung.com
+ (u144.gpu120.samsung.co.kr [203.254.230.144])
+ by mailout3.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
+ 64bit (built May  5 2014))
+ with ESMTP id <0NNM00205704MS00@mailout3.samsung.com> for
+ linux-ext4@vger.kernel.org; Thu, 30 Apr 2015 19:12:04 +0900 (KST)
+In-reply-to: <20150429142912.GA18756@thunk.org>
+Content-language: ko
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 Hi,
 
-On 04/29/2015 05:55 PM, Greg KH wrote:
-> On Wed, Apr 29, 2015 at 05:48:14PM +0200, Beata Michalska wrote:
->> On 04/29/2015 03:45 PM, Greg KH wrote:
->>> On Wed, Apr 29, 2015 at 01:10:34PM +0200, Beata Michalska wrote:
->>>>>>> It needs to be done internally by the app but is doable.
->>>>>>> The app knows what it is watching, so it can maintain the mappings.
->>>>>>> So prior to activating the notifications it can call 'stat' on the mount point.
->>>>>>> Stat struct gives the 'st_dev' which is the device id. Same will be reported
->>>>>>> within the message payload (through major:minor numbers). So having this,
->>>>>>> the app is able to get any other information it needs. 
->>>>>>> Note that the events refer to the file system as a whole and they may not
->>>>>>> necessarily have anything to do with the actual block device. 
->>>>>
->>>>> How are you going to show an event for a filesystem that is made up of
->>>>> multiple block devices?
->>>>
->>>> AFAIK, for such filesystems there will be similar case with the anonymous
->>>> major:minor numbers - at least the btrfs is doing so. Not sure we can
->>>> differentiate here the actual block device. So in this case such events
->>>> serves merely as a hint for the userspace.
->>>
->>> "hint" seems like this isn't really going to work well.
->>>
->>> Do you have userspace code that can properly map this back to the "real"
->>> device that is causing problems?  Without that, this doesn't seem all
->>> that useful as no one would be able to use those events.
->>
->> I'm not sure we are on the same page here.
->> This is about watching the file system rather than the 'real' device.
->> Like the threshold notifications: you would like to know when you
->> will be approaching certain level of available space for the tmpfs
->> mounted on /tmp.  You do know you are watching the /tmp
->> and you know that the dev numbers for this are 0:20 (or so). 
->> (either through calling stat on /tmp or through reading the /proc/$$/mountinfo)
->> With this interface you can setup threshold levels
->> for /tmp. Then, once the limit is reached the event will be
->> sent with those anonymous major:minor numbers.
->>
->> I can provide a sample code which will demonstrate how this
->> can be achieved.
+> -----Original Message-----
+> From: linux-ext4-owner@vger.kernel.org [mailto:linux-ext4-
+> owner@vger.kernel.org] On Behalf Of Theodore Ts'o
+> Sent: Wednesday, April 29, 2015 11:29 PM
+> To: Chanho Park
+> Cc: darrick.wong@oracle.com; linux-ext4@vger.kernel.org
+> Subject: Re: [e2fsprogs] resizing to minimum was failed since 45a78b
 > 
-> Yes, example code would be helpful to understand this, thanks.
+> On Wed, Apr 29, 2015 at 05:33:20PM +0900, Chanho Park wrote:
+> >
+> > When I tried to resize a loop ext4 image to minimum, I couldn't get
+> correct
+> > result.
 > 
-> greg k-h
+> It all depends on your definition of "correct".  I've regretted
+> accepting the the patch to implement -M, since in practice almost
+> everyone who has been using really shouldn't have been.  It's useful
+> for developers who want to stress test resize2fs to make sure it does
+> the right thing in corner cases.
 > 
+> However, it's a *terrible* idea for anyone to use it for __anything__
+> else.  The result of using resize2fs -M is a file system where the
+> files are highly fragmented.  The first real world use of resizde2fs
+> -M I was aware of, which was some clever Red Hat release engineer
+> which created a huge file system, installed Red Hat on it, compressed
+> it down to a minimum size using resize2fs -M, and then burned the
+> result on a CD-ROM for use as a bootable Live CD system image.  The
+> resulting fragmentation of files as a result of resize2fs -M meant
+> that reading certain files from the CD-ROM, which is not known for its
+> high seek speeds, was, shall we say, less than optimal.
+> 
+> Because I don't think there are mant (any?) real sane/valid production
+> uses of resize2fs -M, my definition of "correct" for resize -M is that
+> it doesn't (a) corrupt file systems, or (b) lead to a state when
+> resize2fs -M might not be able to make forward progress, leaving to a
+> file-system which is half-resized, corrupt, and requiring expert
+> surgery from a file system expert to recover.  The reason why I care
+> about this is because it's not just used by misguided release
+> engineers trying to create file system images from source builds,
+> where if there is a corrupted file system, it's not a disaster.
+> 
+> Unfortunately, it's also used by clueless users who usually have _not_
+> made a backup before trying to use resize2fs -M to shrink their file
+> system before trying to rearrange their LVM volumes.  And users get
+> cranky when they lose data.
 
-Below is an absolutely *simplified* sample application. 
-Hope this will be helpful.
+In my situation, I usually use the "resize2fs -M" when making a tizen
+platform image. As you know, like android, tizen also uses ext4 filesystem
+and flash the image from bootloader. Instead of flashing full image size, we
+only flash shrinked filesystem image to reduce flashing time and want to
+avoid download huge files. If the partition size is 3GB, we'll make a 3GB
+loop image and fill files into it. And I shrink the loop image to the
+minimum size and flash it to my phone. When first booting, the system will
+do resizing the partition to 3GB original size.
 
----------------
-#include <netlink/cli/utils.h>
-#include <fs_event.h>
-#include <string.h>
-#include <regex.h>
+> 
+> So the bottom line is I care a lot more about data loss than I do
+> about shrinking file systems to the absolute minimum size, and I
+> personaly don't think it's worth a huge amount of effort to try to
+> make the calculation of the minimum size where resize2fs is guaranteed
+> to succeed any closer to being exact.
+> 
+> That being said, if you are creating a read-only file system for a
+> flash image (where seeks are largely free), and you really insist on
+> using resize2fs -M, it may be that your best bet is to turn off the
+> flex_bg option, since most of the advantages of flex_bg aren't there
+> on a read-only flash image (such as might be used for a
+> system/firmware image).
 
-#define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
-#define LOG(args...) fprintf(stderr, args)
+I could get below result when I turned off flex_bg option.
 
-#define BUFF_SIZE 256
+ls -al foo.img
+-rw-r--r-- 1 root root 390680576 Apr 30 10:02 foo.img
 
-struct list_node {
-	struct list_node *next;
-	struct list_node *prev;
-};
+Like android, a root filesystem of tizen is also read-only, but it's only to
+protect the filesystem from sudden power off. Sometimes it could be
+writeable when installing some system packages and required some system
+actions.
 
-#define MBITS	20
-#define MAKE_DEV(major, minor) \
-	((major) << MBITS | ((minor) & ((1U << MBITS) -1)))
+> 
+> Alternatively, if you want to invest effort in trying to make
+> resize2fs -M mimum file system size more accurate, feel free to send
+> me patches --- plus your proof in terms of code analysis and an
+> exhaustive test regime to make sure that it works for a wide variety
+> of file system sizes and free space availability pre-resize2fs.
+> Personally, I don't think it's a particularly worthwhile use of an
+> engineer's time, but if you really have a strong business need for
+> this, feel free work on it and send me the results of your efforts.
 
-struct mount_data {
-	struct list_node link;
-	dev_t dev;
-	char *dname;
-};
+Okay. I'll investigate it and make a patch if possible :)
 
-static struct list_node mount_list = {&mount_list, &mount_list};
+Best Regards,
+Chanho Park
 
-static void list_add(struct list_node *new_node, struct list_node *head)
-{
-	struct list_node *node;
-
-	node = head->next;
-	head->next = new_node;
-	new_node->prev =  head;
-	new_node->next = node;
-	node->prev = new_node;
-}
-
-static struct mount_data *find_mount(struct list_node *mlist, dev_t dev)
-{
-	struct list_node *node;
-	struct mount_data *mdata;
-
-	for (node = mlist->prev; node != mlist; node = node->prev) {
-		mdata = (char*)node - ((size_t) &((struct mount_data*)0)->link);
-		if (mdata->dev == dev)
-			return mdata;
-	}
-	return NULL;
-}
-
-static void create_mount_base(struct list_node *mlist)
-{
-	FILE *f;
-	char entry[BUFF_SIZE];
-	regex_t  re;
-
-	if (!(f = fopen("/proc/self/mountinfo", "r")))
-		return;
-
-	if (regcomp(&re, "[0-9]*:[0-9]*", REG_EXTENDED))
-		goto leave;
-
-	while (fgets(entry, BUFF_SIZE, f)) {
-		regmatch_t pmatch;
-		int dev_major, dev_minor;
-		char *s;
-
-		if (regexec(&re, entry, 1, &pmatch, 0))
-			continue;
-
-		if (pmatch.rm_so == -1)
-			continue;
-
-		sscanf(entry + pmatch.rm_so, "%d:%d",
-				&dev_major, &dev_minor);
-
-		s = entry + pmatch.rm_eo;
-		s = strtok(++s, " ");
-		if (!s)
-			continue;
-		if (s = strtok(NULL, " ")) {
-			struct mount_data *data = malloc(sizeof(*data));
-			if (!data)
-				continue;
-			data->dev = MAKE_DEV(dev_major, dev_minor);
-			data->dname = strdup(s);
-			list_add(&data->link, mlist);
-		}
-	}
-	regfree(&re);
-leave:
-	close(f);
-	return;
-}
-
-static int parse_event(struct nl_cache_ops *unused, struct genl_cmd *cmd,
-		struct genl_info *info, void *arg)
-{
-	struct mount_data *mdata;
-	int dev_major, dev_minor;
-
-	dev_major = info->attrs[FS_NL_A_DEV_MAJOR]
-		  ? nla_get_u32(info->attrs[FS_NL_A_DEV_MAJOR])
-		  : 0;
-
-	dev_minor = info->attrs[FS_NL_A_DEV_MINOR]
-		  ? nla_get_u32(info->attrs[FS_NL_A_DEV_MINOR])
-		  : 0;
-
-	mdata = find_mount(&mount_list, MAKE_DEV(dev_major, dev_minor));
-	if (!mdata) {
-		LOG("Unable to identify file system\n");
-		return 0;
-	}
-
-	LOG("Notification received for %s \n", mdata->dname);
-	LOG("Event ID: %d\n", nla_get_u32(info->attrs[FS_NL_A_EVENT_ID]));
-	LOG("Owner: %d\n", nla_get_u32(info->attrs[FS_NL_A_CAUSED_ID]));
-	LOG("Threshold data: %llu\n", info->attrs[FS_NL_A_DATA]
-		? nla_get_u64(info->attrs[FS_NL_A_DATA])
-		: 0);
-
-	return 0;
-}
-
-
-static struct genl_cmd cmd[] = {
-	{
-		.c_id = 1 ,
-		.c_name = "event",
-		.c_maxattr = 5,
-		.c_msg_parser = parse_event,
-	},
-};
-
-static struct genl_ops ops = {
-	.o_id = GENL_ID_FS_EVENT,
-	.o_name = "FS_EVENT",
-	.o_hdrsize = 0,
-	.o_cmds = cmd,
-	.o_ncmds = ARRAY_SIZE(cmd),
-};
-
-
-int events_cb(struct nl_msg *msg, void *arg)
-{
-	 return  genl_handle_msg(msg, arg);
-}
-
-int main(int argc, char **argv)
-{
-	struct nl_sock *sock;
-	int ret;
-
-	create_mount_base(&mount_list);
-
-	sock = nl_cli_alloc_socket();
-	nl_socket_set_local_port(sock, 0);
-	nl_socket_disable_seq_check(sock);
-
-	nl_socket_modify_cb(sock, NL_CB_VALID, NL_CB_CUSTOM, events_cb, NULL);
-
-	nl_cli_connect(sock, NETLINK_GENERIC);
-
-	if ((ret = nl_socket_add_membership(sock, GENL_ID_FS_EVENT))) {
-		LOG("Failed to add membership\n");
-		goto leave;
-	}
-
-	if((ret = genl_register_family(&ops))) {
-		LOG("Failed to register protocol family\n");
-		goto leave;
-	}
-
-	if ((ret = genl_ops_resolve(sock, &ops) < 0)) {
-		LOG("Unable to resolve the family name\n");
-		goto leave;
-	}
-
-	if (genl_ctrl_resolve(sock, "FS_EVENT") < 0) {
-		LOG("Failed to resolve the family name\n");
-		goto leave;
-	}
-
-	while (1) {
-		if ((ret = nl_recvmsgs_default(sock)) < 0)
-			LOG("Unable to receive message: %s\n",
-				nl_geterror(ret));
-	}
-
-leave:
-	nl_close(sock);
-	nl_socket_free(sock);
-	return 0;
-}
-
-----------------------------
-The configuration setup for the app:
-# echo /tmp T 50000 10000 > /sys/fs/events/config;
-# echo /opt/usr G T 710000 500000 > /sys/fs/events/config;
-
-(tmpfs and ext4 as the support for those is part of the patchset)
-
-And the output after playing around with the 'dd':
-
-Notification received for /tmp 
-Event ID: 3 				/* FS_THR_LRBELOW */
-Owner: 3128
-Threshold data: 50000
-Notification received for /opt/usr 
-Event ID: 3				/* FS_THR_LRBELOW */
-Owner: 3127
-Threshold data: 710000
-Notification received for /tmp 
-Event ID: 5				/* FS_THR_URBELOW */
-Owner: 3128
-Threshold data: 10000
-Notification received for /opt/usr 
-Event ID: 5				/* FS_THR_URBELOW */
-Owner: 3127
-Threshold data: 500000
-Notification received for /opt/usr 
-Event ID: 1				/* FS_WARN_ENOSPC */
-Owner: 3127
-Threshold data: 0
-Notification received for /opt/usr 
-Event ID: 1				/* FS_WARN_ENOSPC */
-Owner: 3127
-Threshold data: 0
--------------------------
-
-BR
-Beata
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
