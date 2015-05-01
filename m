@@ -1,35 +1,33 @@
-From: "U.Mutlu" <for-gmane@mutluit.com>
-Subject: ext4 non-kernel standalone dev version for testing
-Date: Fri, 01 May 2015 03:29:11 +0200
-Message-ID: <mhukt7$9ce$1@ger.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: fstests@vger.kernel.org
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:52831 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751211AbbEAB3T (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 30 Apr 2015 21:29:19 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1YnzlV-0004CR-0X
-	for linux-ext4@vger.kernel.org; Fri, 01 May 2015 03:29:17 +0200
-Received: from ip4d14b39b.dynamic.kabel-deutschland.de ([77.20.179.155])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Fri, 01 May 2015 03:29:16 +0200
-Received: from for-gmane by ip4d14b39b.dynamic.kabel-deutschland.de with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Fri, 01 May 2015 03:29:16 +0200
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Adir Kuhn <adirkuhn@gmail.com>
+Subject: [PATCH] fs: ext3: super: fixed a space coding style issue
+Date: Fri,  1 May 2015 03:25:27 +0000
+Message-ID: <1430450727-13217-1-git-send-email-adirkuhn@gmail.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Adir Kuhn <adirkuhn@gmail.com>
+To: jack@suse.cz
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
-can the developer-version (ie. that with the crypto extension) be tested 
-outside the kernel?
-Ie. testing with file type filesystem, ie. file.img, on a system with old kernel.
+Fixed a coding style issue
 
-Thx
+Signed-off-by: Adir Kuhn <adirkuhn@gmail.com>
+---
+ fs/ext3/super.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index a9312f0..5ed0044 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -1908,7 +1908,7 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
+ 	sbi->s_mount_state = le16_to_cpu(es->s_state);
+ 	sbi->s_addr_per_block_bits = ilog2(EXT3_ADDR_PER_BLOCK(sb));
+ 	sbi->s_desc_per_block_bits = ilog2(EXT3_DESC_PER_BLOCK(sb));
+-	for (i=0; i < 4; i++)
++	for (i = 0; i < 4; i++)
+ 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
+ 	sbi->s_def_hash_version = es->s_def_hash_version;
+ 	i = le32_to_cpu(es->s_flags);
+-- 
+2.1.4
