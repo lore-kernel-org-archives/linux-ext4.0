@@ -1,58 +1,79 @@
-From: Christian Kujau <lists@nerdbynature.de>
-Subject: Re: large directory entry
-Date: Fri, 1 May 2015 09:59:42 -0700 (PDT)
-Message-ID: <alpine.DEB.2.20.7.1505010923400.29119@trent.utfs.org>
-References: <alpine.DEB.2.20.7.1504301634450.29119@trent.utfs.org> <20150501143147.GB9936@thunk.org>
+From: "U.Mutlu" <for-gmane@mutluit.com>
+Subject: Re: ext4 non-kernel standalone dev version for testing
+Date: Fri, 1 May 2015 20:31:22 +0200
+Message-ID: <mi0gpq$mpk$1@ger.gmane.org>
+References: <mhukt7$9ce$1@ger.gmane.org> <20150501141322.GA9936@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from trent.utfs.org ([94.185.90.103]:57529 "EHLO trent.utfs.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750905AbbEAQ7w (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 May 2015 12:59:52 -0400
-In-Reply-To: <20150501143147.GB9936@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: fstests@vger.kernel.org
+Return-path: <fstests-owner@vger.kernel.org>
+In-Reply-To: <20150501141322.GA9936@thunk.org>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 1 May 2015 at 10:31, Theodore Ts'o wrote:
-> That's simply because shrinking directories while the file system is
-> mounted is... tricky.  At some point we might try to get this
-> supported, but until we do, there are two workarounds:
-> 
-> 1)  Recreate the directory, i.e.,
+Theodore Ts'o wrote on 05/01/2015 04:13 PM:
+> On Fri, May 01, 2015 at 03:29:11AM +0200, U.Mutlu wrote:
+>> can the developer-version (ie. that with the crypto extension) be tested
+>> outside the kernel?
+>> Ie. testing with file type filesystem, ie. file.img, on a system with old kernel.
+>
+> No, but you can test under KVM.  This is how I normally do most of my
+> ext4 development.  Things are a little complicated at the moment
+> because some e2fsprogs changes are needed that aren't in the binaries
+> in the kvm-xfstests image, but I'll try to get a new version sent out
+> soon.
+>
+> 						- Ted
+>
+>
+> Quick start instructions for kvm-xfstests
+...
 
-Yes, I did that and the copy is only 450 KB in size, so this works.
 
-> 2) Run "e2fsck -fD /dev/sdXX" on the device containing /var while
-> the file system is unmounted.
+Thx, but unfortunately the Makefile reports an error:
 
-My /var is on the root disk and a normal fsck has been run during 
-bootup just a few days ago, but without -D, of course.
+...
+checking for attr_list_by_handle in -lhandle... yes
+checking attr/xattr.h usability... no
+checking attr/xattr.h presence... no
+checking for attr/xattr.h... no
 
-> I'm not sure I would call this a bug; it's a long standing proper of
-> ext2/3/4, the BSD FFS, etc., which is directories can't get shurnk by
-> the file system.  At some point the directory had enough files in it
-> that it grew to that size, and once having grown to that size, it
-> won't shirnk on its own.
+FATAL ERROR: attr/xattr.h does not exist.
+Install the extended attributes (attr) development package.
+Alternatively, run "make install-dev" from the attr source.
+Makefile:83: recipe for target 'include/builddefs' failed
+make[1]: *** [include/builddefs] Error 1
+make[1]: Leaving directory '/root/ext4crypto-test/fstests/xfstests-dev'
 
-Yes, I noticed that with smaller sized directory, but somehow this 18 MB 
-directory with "nothing" inside tipped me off.
 
-> It would be possible to enhance ext4 to be able to shrink directories
-> on-line, but it would require adding a new file system (to allow
-> sparse directories), getting a new version of e2fsck, and then writing
-> a bunch of new code, and it's just one of those things we've never
-> gotten around to doing, mainly because for most use cases it rarely
-> hits people, and the fix should be realtive well understood, as
-> various Linux/Unix systems have suffered from this for decades.
+root@c22:/root/ext4crypto-test/fstests/attr# find . -iname "*xattr*" -ls
+35786444    4 -rw-r--r--   1 root     root         2297 May  1 18:52 
+./include/xattr.h
 
-Thanks for the explanation, Ted. I hope the next one asking this will find 
-this in the archives, I somehow didn't :-\
 
-Christian.
--- 
-BOFH excuse #226:
+root@c22:/root/ext4crypto-test/fstests/attr/include# ls -l
+total 60
+lrwxrwxrwx 1 root root    1 May  1 19:46 attr -> .
+-rw-r--r-- 1 root root 7232 May  1 18:52 attributes.h
+-rw-r--r-- 1 root root 2180 May  1 19:46 builddefs
+-rw-r--r-- 1 root root 2155 May  1 18:52 builddefs.in
+-rw-r--r-- 1 root root 4633 May  1 18:52 buildmacros
+-rw-r--r-- 1 root root 1728 May  1 18:52 buildrules
+-rw-r--r-- 1 root root 1344 May  1 19:40 config.h
+-rw-r--r-- 1 root root 1282 May  1 18:52 config.h.in
+-rw-r--r-- 1 root root  846 May  1 18:52 error_context.h
+-rw-r--r-- 1 root root  688 May  1 18:52 libattr.h
+-rw-r--r-- 1 root root  521 May  1 18:52 Makefile
+-rw-r--r-- 1 root root  340 May  1 18:52 misc.h
+-rw-r--r-- 1 root root 1272 May  1 18:52 walk_tree.h
+-rw-r--r-- 1 root root 2297 May  1 18:52 xattr.h
 
-A star wars satellite accidently blew up the WAN.
+
+Where/how should I fix this xattr.h build-bug?
+
+System is debian 8 x86_64, testing in a chrooted environment (lxc app container).
+
+cu
+Uenal
