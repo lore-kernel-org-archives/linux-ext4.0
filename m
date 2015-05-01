@@ -1,89 +1,150 @@
-From: Christian Kujau <lists@nerdbynature.de>
-Subject: large directory entry
-Date: Thu, 30 Apr 2015 22:02:58 -0700 (PDT)
-Message-ID: <alpine.DEB.2.20.7.1504301634450.29119@trent.utfs.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ext4 non-kernel standalone dev version for testing
+Date: Fri, 1 May 2015 10:13:22 -0400
+Message-ID: <20150501141322.GA9936@thunk.org>
+References: <mhukt7$9ce$1@ger.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from trent.utfs.org ([94.185.90.103]:39140 "EHLO trent.utfs.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750786AbbEAFMR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 May 2015 01:12:17 -0400
-Received: from trent.utfs.org (localhost [127.0.0.1])
-	by trent.utfs.org (Postfix) with ESMTP id 6014B3DB57
-	for <linux-ext4@vger.kernel.org>; Fri,  1 May 2015 07:02:59 +0200 (CEST)
-Received: from localhost (localhost [127.0.0.1])
-	by trent.utfs.org (Postfix) with ESMTP id 2F99E3DADD
-	for <linux-ext4@vger.kernel.org>; Fri,  1 May 2015 07:02:59 +0200 (CEST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, fstests@vger.kernel.org
+To: "U.Mutlu" <for-gmane@mutluit.com>
+Return-path: <fstests-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <mhukt7$9ce$1@ger.gmane.org>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+On Fri, May 01, 2015 at 03:29:11AM +0200, U.Mutlu wrote:
+> can the developer-version (ie. that with the crypto extension) be tested
+> outside the kernel?
+> Ie. testing with file type filesystem, ie. file.img, on a system with old kernel.
 
-I have a somewhat larger "directory entry" on this ext4 filesystem, and it 
-takes quite some time to list its contents:
+No, but you can test under KVM.  This is how I normally do most of my
+ext4 development.  Things are a little complicated at the moment
+because some e2fsprogs changes are needed that aren't in the binaries
+in the kvm-xfstests image, but I'll try to get a new version sent out
+soon.
 
-------------------------------------
-# time ls -lah /var/lib/php5
-total 18M
-drwxrwx--T.  6 root     www-data  18M Apr 28 04:41 .
-drwxr-xr-x. 48 root     root     4.0K Apr 28 06:03 ..
-drwxr-xr-x.  5 root     root     4.0K Apr 28 04:41 modules
-drwxr-xr-x.  2 www-data www-data 4.0K Oct  9  2014 owncloud-51d9c764244bc
-drwxr-xr-x.  2 www-data www-data 4.0K Jan  6 23:27 owncloud-oc55674097b9
-drwx-wx-wt.  2 root     root      92K May  1 01:14 sessions
-
-real    0m39.292s
-user    0m0.000s
-sys     0m3.964s
-------------------------------------
-
-Notice the "18M" entry for "." - I realize this is a directory for 
-temporary files, meaning that lots of files are generated here, but
-the server is not _that_ busy; according to lsof(8) no files are
-currently open in /var/lib/php5 and only the "sessions" directory
-contains 100 files, there are far less files below the other directories.
-
-Once the above is run, the next run of "ls" is fast, of course:
-
-------------------------------------
-# time ls -Rl /var/lib/php5 | wc -l
-119
-
-real    0m0.017s
-user    0m0.004s
-sys     0m0.008s
-------------------------------------
-
-There isn't really much content here, copying the structure to a new 
-directory results in ~450 KB of data.
-
-I feel like this is some kind of FAQ, but I could not find anything 
-similar for Ext4. The only similar thing I could think of is an older 
-bug[0] in JFS, where a directory slowly grows when many files are 
-generated & deleted, but I could not reproduce this for Ext4.
-
-The /var/lib/php5 directory from above is located on an Ext4 filesystem 
-from 2010, now running a 3.16 kernel (Debian/jessie, amd64), with the 
-following features as per tune2fs(8):
-
-  Filesystem features:      has_journal ext_attr resize_inode dir_index
-       filetype needs_recovery extent sparse_super large_file uninit_bg
-  Filesystem flags:         signed_directory_hash
-
-Mount options:
-
-  /dev/sda1 on / type ext4 (rw,relatime,data=ordered)
+						- Ted
 
 
-Any pointers what's going on here?
+Quick start instructions for kvm-xfstests
+==========================================
 
-Thanks,
-Christian.
+0.  Make sure qemu with kvm support is installed on your system.
 
-[0] https://bugzilla.kernel.org/show_bug.cgi?id=15154
--- 
-BOFH excuse #268:
+1.  Run the following commands:
 
-Neutrino overload on the nameserver
+    git clone git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git fstests
+    cd fstests/kvm-xfstests
+    wget -O test_appliance/root_fs.img https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386
+
+Substitute "i386" for "x86_64" in the above URL if you want to test
+using a native 64-bit userspace.  It should be possible to use the
+32-bit userspace with a 64-bit kernel, although you may run into some
+rough spots via-a-vis compat ioctls working correctly.  (If you do,
+let me know; those are bugs that should be fixed.  :-)
+
+2.  In the fstests/kvm-xfstests directory, take a look at the "config"
+    file and either edit that file in place, or put override values in
+    ~/.config/kvm-xfstests or config.custom.  The latter is preferred.
+
+3.  Build a kernel with all of the necessary drives for kvm built into
+    the kernel (i.e., no modules!).  There are some sample kernel
+    configs in the kernel-configs directory.
+
+4.  Run "./kvm-xfstests smoke" to do a quick test.  Or "./kvm-xfstests
+    -g auto" to do a full test.  You can also run specific tests on
+    specific configurations, i.e., "./kvm-xfstests -c bigalloc
+    generic/013 generic/127".   To run a shell, use "./kvm-xfstests shell"
+
+For more information, please see:
+
+https://git.kernel.org/cgit/fs/ext2/xfstests-bld.git/tree/kvm-xfstests/README
+
+
+Building a 32-bit kernel
+========================
+
+
+To build a 32-bit kernel, create a /build/ext4 directory (or change
+directory name as you wish) and place a kernel configuration file in
+/build/ext4/.config.  (There are some example config files in the
+kernel-configs directory of the xfstests-bld git repo).  Then run:
+
+make O=/build/ext4 ARCH=i386 -j16 $*
+
+The reason for using a separate build directory is you can maintain a
+separate build directory for 64-bit builds, which you can now build
+using:
+
+make O=/build/ext4-64 ARCH=x86_64 -j16 $*
+
+I generally create shell scripts which look like this:
+
+#!/bin/dash
+cd /usr/projects/linux/ext4
+make O=/build/ext4-64 ARCH=x86_64 -j16 $*
+
+And store them as "make-ext4", "make-ext4-64", "make-ext4-crypto",
+etc., in /usr/projects/linux.  The reason for having the "cd" command
+is so that if you accidentally run "../make-ext4" while you are in the
+/usr/projects/linux/ext4-crypto directory, instead of the
+/usr/projects/linux/ext4 directory (for example), you won't end up
+accidentally contaminating the build directory.
+
+The remote ports feature
+========================
+
+While kvm-xfstests is running, you can telnet to a number of ports
+(which are bound to localhost).  Ports 7500, 7501, and 7502 will
+connect you to a shell prompts while the tests are running (if you
+want to check on /proc/slabinfo, enable tracing, etc.)  You can also
+use these ports in conjuction with "kvm-xfstests shell" if you want
+additional windows to capture traces using ftrace.
+
+You can also access the qemu monitor on port 7498, and you debug the
+kernel using remote gdb on localhost port 7499.  Just run "gdb
+/path/to/vmlinux", and then use the command "target remote
+localhost:7499".  (Pro tip: it's helpful to temporarily add
+"EXTRA_CFLAGS += -O0" to fs/{ext4,jbd2}/Makefile, and to make sure you
+have CONFIG_DEBUG_INFO, CONFIG_DEBUG_INFO_DWARF4, and
+CONFIG_FRAME_POINTER enabled.)
+
+
+Miscellaneous kernel hacking hints
+==================================
+
+The following hints may be useful to folks who are new to kernel
+development.
+
+Using ccache
+------------
+
+Enabling ccache can really help speed up your kernel builds.  I
+strongly recommend it.
+
+Examples of using ftrace
+------------------------
+
+This is an example of how to debug the lazytime feature (which is
+when you mount a file system using -m lazytime using a 4.0-rcX and
+later kernels).
+
+cd /sys/kernel/debug/tracing
+echo 1 > events/writeback/writeback_lazytime/enable
+echo 1 > events/writeback/writeback_lazytime_iput/enable
+echo "state & 2048" > events/writeback/writeback_dirty_inode_enqueue/filter
+echo 1 > events/writeback/writeback_dirty_inode_enqueue/enable
+echo 1 > events/ext4/ext4_other_inode_update_time/enable
+cat trace_pipe
+
+The definition of the tracepoints can be found in
+include/linux/trace/events.  The tracepoints used by ext4 and be found
+in ext4.h, and by jbd2 in the jbd2.h files in that directory, and so
+on.
+
+For more information, please see:
+
+http://lwn.net/Articles/365835/
+http://lwn.net/Articles/366796/
+http://lwn.net/Articles/370423/
