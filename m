@@ -1,31 +1,43 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Move check under lock scope to close a race.
-Date: Sat, 2 May 2015 23:21:45 -0400
-Message-ID: <20150503032145.GF10014@thunk.org>
-References: <1428468410-12793-1-git-send-email-dccitaliano@gmail.com>
- <1428468410-12793-2-git-send-email-dccitaliano@gmail.com>
+Subject: Re: [PATCH v2] ext4: Fix growing of tiny filesystems
+Date: Sun, 3 May 2015 00:00:38 -0400
+Message-ID: <20150503040038.GH10014@thunk.org>
+References: <1430377561-6079-1-git-send-email-jack@suse.cz>
+ <55423DAA.6020305@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Davide Italiano <dccitaliano@gmail.com>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41737 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:41755 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750955AbbECDVr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 2 May 2015 23:21:47 -0400
+	id S1750772AbbECEAn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 3 May 2015 00:00:43 -0400
 Content-Disposition: inline
-In-Reply-To: <1428468410-12793-2-git-send-email-dccitaliano@gmail.com>
+In-Reply-To: <55423DAA.6020305@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 07, 2015 at 09:46:50PM -0700, Davide Italiano wrote:
-> fallocate() checks that the file is extent-based and returns
-> EOPNOTSUPP in case is not. Other tasks can convert from and to
-> indirect and extent so it's safe to check only after grabbing
-> the inode mutex.
+On Thu, Apr 30, 2015 at 09:35:22AM -0500, Eric Sandeen wrote:
+> On 4/30/15 2:06 AM, Jan Kara wrote:
+> > The estimate of necessary transaction credits in ext4_flex_group_add()
+> > is too pessimistic. It reserves credit for sb, resize inode, and resize
+> > inode dindirect block for each group added in a flex group although they
+> > are always the same block and thus it is enough to account them only
+> > once. Also the number of modified GDT block is overestimated since we
+> > fit EXT4_DESC_PER_BLOCK(sb) descriptors in one block.
+> > 
+> > Make the estimation more precise. That reduces number of requested
+> > credits enough that we can grow 20 MB filesystem (which has 1 MB
+> > journal, 79 reserved GDT blocks, and flex group size 16 by default).
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
 > 
-> Signed-off-by: Davide Italiano <dccitaliano@gmail.com>
+> Jan, thank you for looking into this and sorting it out.
+> 
+> Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
-Thanks, applied.
+Applied, thanks.
 
 						- Ted
