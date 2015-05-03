@@ -1,55 +1,68 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 crypto: Do not select from EXT4_FS_ENCRYPTION
-Date: Sun, 3 May 2015 17:11:18 -0400
-Message-ID: <20150503211118.GK10014@thunk.org>
-References: <20150501001855.GA31516@gondor.apana.org.au>
- <554615C6.1060107@iki.fi>
- <20150503175320.GI10014@thunk.org>
- <554668EE.4000808@iki.fi>
+Subject: Re: Null pointer dereference of s_chksum_driver  in ext4_chksum
+Date: Sun, 3 May 2015 17:37:00 -0400
+Message-ID: <20150503213700.GL10014@thunk.org>
+References: <5543D8AB.4030606@codeaurora.org>
+ <5546810E.7070607@codeaurora.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Herbert Xu <herbert@gondor.apana.org.au>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, Michael Halcrow <mhalcrow@google.com>
-To: Anssi Hannula <anssi.hannula@iki.fi>
+Cc: linux-ext4@vger.kernel.org, darrick.wong@oracle.com
+To: Nikhilesh Reddy <reddyn@codeaurora.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:42352 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:42366 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751331AbbECVLV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 3 May 2015 17:11:21 -0400
+	id S1751536AbbECVhC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 3 May 2015 17:37:02 -0400
 Content-Disposition: inline
-In-Reply-To: <554668EE.4000808@iki.fi>
+In-Reply-To: <5546810E.7070607@codeaurora.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, May 03, 2015 at 09:29:02PM +0300, Anssi Hannula wrote:
-> > I believe the situation which is causing concern is when someone wants
-> > to build a kernel where EXT4_FS=y, but they want the cryptographic
-> > algorithms to be modules.  In that case, since EXT4_FS_ENCRYPTION is
-> > 'y', it forces the all of the crypto modules to be built into the
-> > kernel, and so it forecloses that option from someone who is building
-> > or packaging a kernel.
+On Sun, May 03, 2015 at 01:11:58PM -0700, Nikhilesh Reddy wrote:
+> Please find additional details below:
 > 
-> Ah, OK, so not "EXT4 itself as a module" like the commit message said :)
+> This occurred in while de-referencing the sbi->s_chksum_driver member of
+> the superblock info.
 > 
-> For the situation you described I don't see a better solution either.
+> This occurs during a bootup mount
+> 
+>  10.216919:   <6> EXT4-fs (mmcblk0p22): mounted filesystem with ordered
+> data mode. Opts: barrier=1,discard
+>     10.225032:   <6> SELinux: initialized (dev mmcblk0p22, type ext4),
+> uses xattr
+>     10.235901:   <6> EXT4-fs (mmcblk0p29): Ignoring removed
+> nomblk_io_submit option
+>     10.341141:   <6> Unable to handle kernel NULL pointer dereference
+> at virtual address 00000000
 
-Thanks for pointing out problem in the commit message.  I guess I
-wasn't reading all that carefully, but started experimenting, and came
-up with some case where, if they aren't lack _bugs_, do constrain
-flexibility a little.  You are correct that various crypto modules can
-still be built as modules even if ext4 is a module and
-EXT4_FS_ENCRYPTION is 'y'.  The main issue that I was able to find is
-that if ext4 is _not_ a module, then it also forces the crypto modules
-to also be built in.
+I'd have to actually see the full file system to understand what is
+going on, but what I suspect is happening is that the file system has
+been corrupted in at least two different ways.  The first is that
+there the journal inode is corrupted; this is what's causing the call
+to ext4_error_inode() from a call to jbd2_journal_bmap().
 
-(Personally from a performance perspective, I'd always want to make
-the common crypto modules always built in to avoid pressure on the TLB
-cache, but I understand that distributions seem to like to build
-_everything_ as modules (which is one of the reasons why I generally
-don't use distro kernels myself.  :-)
+The *second* thing which is going on is that before we noticed the
+corrupted journal inode, the journal contained a copy of the
+superblock which we replayed that _set_ the metadata checksum feature
+flag.  Since it wasn't set originally when file system was initially
+mounted, s_chksum_driver wasn't initialized, and this cuases the NULL
+pointer deference.
 
-In any case, I'll correct the commit message so that it describes the
-problem which it addresses more clearly.
+Avoiding the kernel crash was fixed by accident in 3.18 with the
+following commit: 9aa5d32ba269 ("Replace open coded mdata csum feature
+to helper function"), since instead of actually checking to see if the
+metadata checksum field is set, it uses as its primary mechanism
+checking to see if s_chksum_driver is non-NULL.  There is a
+WARN_ON_ONCE that will trip in the situation where the feature flag is
+set and s_chksum_driver is NULL, but that really is a "should never
+happen" situation.  The only scenario I can think of where this might
+have happened is the one I described above, where it was enabled by a
+journal replay.
 
-							- Ted
+This should be sufficient to avoid the crash, but I haven't had the
+chance to try creating a file system corrupted the way I conjecture it
+was corrupted, and see whether it we correctly fail the mount (which
+is clearly what should happen if we discover a corrupted journal inode
+while replaying the journal during the mount.)
+
+      		    	    	       - Ted
