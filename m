@@ -1,41 +1,34 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 10/35] undo-io: add new calls to and speed up the undo io
- manager
-Date: Tue, 5 May 2015 10:20:25 -0400
-Message-ID: <20150505142025.GB12468@thunk.org>
-References: <20150402023359.25243.79782.stgit@birch.djwong.org>
- <20150402023506.25243.44459.stgit@birch.djwong.org>
+Subject: Re: e2fsprogs make check fails
+Date: Tue, 5 May 2015 10:11:04 -0400
+Message-ID: <20150505141104.GA12468@thunk.org>
+References: <20150505054818.GI11592@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:45866 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:45850 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S2993156AbbEEOU1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 May 2015 10:20:27 -0400
+	id S2993083AbbEEOLF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 May 2015 10:11:05 -0400
 Content-Disposition: inline
-In-Reply-To: <20150402023506.25243.44459.stgit@birch.djwong.org>
+In-Reply-To: <20150505054818.GI11592@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 01, 2015 at 07:35:06PM -0700, Darrick J. Wong wrote:
-> Implement pass-through calls for discard, zero-out, and readahead in
-> the IO manager so that we can take advantage of any underlying
-> support.
+On Mon, May 04, 2015 at 10:48:18PM -0700, Darrick J. Wong wrote:
 > 
-> Furthermore, improve tdb write-out speed by disabling locking and only
-> fsyncing at the end -- we don't care about locking because having
-> multiple writers to the undo file will produce an undo database full
-> of garbage blocks; and we only need to fsync at the end because if we
-> fail before the end, our undo file will lack the necessary superblock
-> data that e2undo requires to do replay safely.  Without this, we call
-> fsync four times per tdb update(!)  This reduces the overhead of using
-> undo_io while converting a 2TB FS to metadata_csum from 3+ hours to 55
-> minutes.
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> Uhh... I pulled the latest e2fsprogs -next and tried to run 'make check'.
+> I think tst_sha256 (and maybe tst_sha512?) need to be pulled out of the
+> Makefiles
 
-Thanks, applied.
+Oops, sorry, I commented out EXT2FS_SHA256_LENGTH and this caused
+tst_sha256 to fail.  I forgot to do a "make clean; make check" pass,
+forgetting that the dependencies don't always work for the tst_*
+commands.  That's one of those things I should fix...
+
+We are still using sha512 since it's used as part of the password
+string-to-key function.
 
 					- Ted
