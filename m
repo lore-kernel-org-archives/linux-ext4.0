@@ -1,249 +1,36 @@
-From: Beata Michalska <b.michalska@samsung.com>
-Subject: Re: [RFC v2 1/4] fs: Add generic file system event notifications
-Date: Tue, 05 May 2015 14:16:59 +0200
-Message-ID: <5548B4BB.7050503@samsung.com>
-References: <1430135504-24334-2-git-send-email-b.michalska@samsung.com>
- <20150427142421.GB21942@kroah.com> <553E50EB.3000402@samsung.com>
- <20150427153711.GA23428@kroah.com> <20150428135653.GD9955@quack.suse.cz>
- <20150428140936.GA13406@kroah.com> <553F9D56.6030301@samsung.com>
- <20150428173900.GA16708@kroah.com> <5540822C.10000@samsung.com>
- <20150429074259.GA31089@quack.suse.cz> <20150429091303.GA4090@kroah.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Coverity complaints about new crypto code
+Date: Tue, 5 May 2015 08:41:06 -0400
+Message-ID: <20150505124106.GA11805@thunk.org>
+References: <20150505075436.GA11943@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org, tytso@mit.edu,
- adilger.kernel@dilger.ca, hughd@google.com, lczerner@redhat.com,
- hch@infradead.org, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
- kyungmin.park@samsung.com, kmpark@infradead.org
-To: Greg KH <greg@kroah.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-reply-to: <20150429091303.GA4090@kroah.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:45611 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751541AbbEEMlJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 May 2015 08:41:09 -0400
+Content-Disposition: inline
+In-Reply-To: <20150505075436.GA11943@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi again,
+On Tue, May 05, 2015 at 09:54:36AM +0200, Jan Kara wrote:
+> 
+>   Coverity complains about the new ext4 crypto code. The complaint is that
+> ext4_fname_crypto_alloc_buffer() and ext4_fname_crypto_namelen_on_disk()
+> check for ctx being NULL but they dereference it before that check.
+> I've checked and didn't find callers that would actually pass NULL into
+> these functions so do we want to remove the unused check or move the
+> dereference? I think it would be worth cleaning up just that we don't fall
+> into the trap sometime later...
 
-On 04/29/2015 11:13 AM, Greg KH wrote:
-> On Wed, Apr 29, 2015 at 09:42:59AM +0200, Jan Kara wrote:
->> On Wed 29-04-15 09:03:08, Beata Michalska wrote:
->>> On 04/28/2015 07:39 PM, Greg KH wrote:
->>>> On Tue, Apr 28, 2015 at 04:46:46PM +0200, Beata Michalska wrote:
->>>>> On 04/28/2015 04:09 PM, Greg KH wrote:
->>>>>> On Tue, Apr 28, 2015 at 03:56:53PM +0200, Jan Kara wrote:
->>>>>>> On Mon 27-04-15 17:37:11, Greg KH wrote:
->>>>>>>> On Mon, Apr 27, 2015 at 05:08:27PM +0200, Beata Michalska wrote:
->>>>>>>>> On 04/27/2015 04:24 PM, Greg KH wrote:
->>>>>>>>>> On Mon, Apr 27, 2015 at 01:51:41PM +0200, Beata Michalska wrot=
-e:
->>>>>>>>>>> Introduce configurable generic interface for file
->>>>>>>>>>> system-wide event notifications, to provide file
->>>>>>>>>>> systems with a common way of reporting any potential
->>>>>>>>>>> issues as they emerge.
->>>>>>>>>>>
->>>>>>>>>>> The notifications are to be issued through generic
->>>>>>>>>>> netlink interface by newly introduced multicast group.
->>>>>>>>>>>
->>>>>>>>>>> Threshold notifications have been included, allowing
->>>>>>>>>>> triggering an event whenever the amount of free space drops
->>>>>>>>>>> below a certain level - or levels to be more precise as two
->>>>>>>>>>> of them are being supported: the lower and the upper range.
->>>>>>>>>>> The notifications work both ways: once the threshold level
->>>>>>>>>>> has been reached, an event shall be generated whenever
->>>>>>>>>>> the number of available blocks goes up again re-activating
->>>>>>>>>>> the threshold.
->>>>>>>>>>>
->>>>>>>>>>> The interface has been exposed through a vfs. Once mounted,
->>>>>>>>>>> it serves as an entry point for the set-up where one can
->>>>>>>>>>> register for particular file system events.
->>>>>>>>>>>
->>>>>>>>>>> Signed-off-by: Beata Michalska <b.michalska@samsung.com>
->>>>>>>>>>> ---
->>>>>>>>>>>  Documentation/filesystems/events.txt |  231 ++++++++++
->>>>>>>>>>>  fs/Makefile                          |    1 +
->>>>>>>>>>>  fs/events/Makefile                   |    6 +
->>>>>>>>>>>  fs/events/fs_event.c                 |  770 ++++++++++++++++=
-++++++++++++++++++
->>>>>>>>>>>  fs/events/fs_event.h                 |   25 ++
->>>>>>>>>>>  fs/events/fs_event_netlink.c         |   99 +++++
->>>>>>>>>>>  fs/namespace.c                       |    1 +
->>>>>>>>>>>  include/linux/fs.h                   |    6 +-
->>>>>>>>>>>  include/linux/fs_event.h             |   58 +++
->>>>>>>>>>>  include/uapi/linux/fs_event.h        |   54 +++
->>>>>>>>>>>  include/uapi/linux/genetlink.h       |    1 +
->>>>>>>>>>>  net/netlink/genetlink.c              |    7 +-
->>>>>>>>>>>  12 files changed, 1257 insertions(+), 2 deletions(-)
->>>>>>>>>>>  create mode 100644 Documentation/filesystems/events.txt
->>>>>>>>>>>  create mode 100644 fs/events/Makefile
->>>>>>>>>>>  create mode 100644 fs/events/fs_event.c
->>>>>>>>>>>  create mode 100644 fs/events/fs_event.h
->>>>>>>>>>>  create mode 100644 fs/events/fs_event_netlink.c
->>>>>>>>>>>  create mode 100644 include/linux/fs_event.h
->>>>>>>>>>>  create mode 100644 include/uapi/linux/fs_event.h
->>>>>>>>>>
->>>>>>>>>> Any reason why you just don't do uevents for the block devices=
- today,
->>>>>>>>>> and not create a new type of netlink message and userspace too=
-l required
->>>>>>>>>> to read these?
->>>>>>>>>
->>>>>>>>> The idea here is to have support for filesystems with no backin=
-g device as well.
->>>>>>>>> Parsing the message with libnl is really simple and requires fe=
-w lines of code
->>>>>>>>> (sample application has been presented in the initial version o=
-f this RFC)
->>>>>>>>
->>>>>>>> I'm not saying it's not "simple" to parse, just that now you are=
- doing
->>>>>>>> something that requires a different tool.  If you have a block d=
-evice,
->>>>>>>> you should be able to emit uevents for it, you don't need a back=
-ing
->>>>>>>> device, we handle virtual filesystems in /sys/block/ just fine :=
-)
->>>>>>>>
->>>>>>>> People already have tools that listen to libudev for system moni=
-toring
->>>>>>>> and management, why require them to hook up to yet-another-libra=
-ry?  And
->>>>>>>> what is going to provide the ability for multiple userspace tool=
-s to
->>>>>>>> listen to these netlink messages in case you have more than one =
-program
->>>>>>>> that wants to watch for these things (i.e. multiple desktop file=
-system
->>>>>>>> monitoring tools, system-health checkers, etc.)?
->>>>>>>   As much as I understand your concerns I'm not convinced uevent =
-interface
->>>>>>> is a good fit. There are filesystems that don't have underlying b=
-lock
->>>>>>> device - think of e.g. tmpfs or filesystems working directly on t=
-op of
->>>>>>> flash devices.  These still want to send notification to userspac=
-e (one of
->>>>>>> primary motivation for this interfaces was so that tmpfs can noti=
-fy about
->>>>>>> something). And creating some fake nodes in /sys/block for tmpfs =
-and
->>>>>>> similar filesystems seems like doing more harm than good to me...
->>>>>>
->>>>>> If these are "fake" block devices, what's going to be present in t=
-he
->>>>>> block major/minor fields of the netlink message?  For some reason =
-I
->>>>>> thought it was a required field, and because of that, I thought we=
- had a
->>>>>> "real" filesystem somewhere to refer to, otherwise how would users=
-pace
->>>>>> know what filesystem was creating these events?
->>>>>>
->>>>>> What am I missing here?
->>>>>>
->>>>>> confused,
->>>>>>
->>>>>> greg k-h
->>>>>>
->>>>>
->>>>> For those 'fake' block devs, upon mount, get_anon_bdev will assign
->>>>> the major:minor numbers. Userspace might get those through stat.
->>>>
->>>> How can userspace do the mapping backwards from this "anonymous"
->>>> major:minor number for these types of filesystems in such a way that
->>>> they can "know" how to report the block device that is causing the
->>>> event?
->>>>
->>>> thanks,
->>>>
->>>> greg k-h
->>>>
->>>
->>> It needs to be done internally by the app but is doable.
->>> The app knows what it is watching, so it can maintain the mappings.
->>> So prior to activating the notifications it can call 'stat' on the mo=
-unt point.
->>> Stat struct gives the 'st_dev' which is the device id. Same will be r=
-eported
->>> within the message payload (through major:minor numbers). So having t=
-his,
->>> the app is able to get any other information it needs.=20
->>> Note that the events refer to the file system as a whole and they may=
- not
->>> necessarily have anything to do with the actual block device.=20
->=20
-> How are you going to show an event for a filesystem that is made up of
-> multiple block devices?
->=20
->>   Or you can use /proc/self/mountinfo for the mapping. There you can s=
-ee
->> device numbers, real device names if applicable and mountpoints. This =
-has
->> the advantage that it works even if filesystem mountpoints change.
->=20
-> Ok, then that brings up my next question, how does this handle
-> namespaces?  What namespace is the event being sent in?  block devices
-> aren't namespaced, but the mount points are, is that going to cause
-> problems?
->=20
-> thanks,
->=20
-> greg k-h
->=20
+I'm going to be posting a performance patch shortly that drops
+ext4_fname_crypto_ctx entirely (and with it those checks, obviously).
+So that should take care of that.
 
-Getting back to the namespaces ...=20
-In the current state the notifications will be sent to the init network n=
-amespace,
-which means that processes belonging to a different net namespace will no=
-t
-be able to receive them. To be more precise, those processes will not be=20
-able to subscribe to the multicast group, though this can be easily chang=
-ed.
-Furthermore, the notifications might also be sent to specific namespace.
-In this case, the one, with which the trace for the mount point has been =
-registered,
-which as I believe would be the best approach.
+Cheers,
 
-As for the mount namespaces, reading the config file needs to be slightly=
- tweaked,=20
-to hide away all the registered mount points which does not belong to the=
- current
-mount namespace.
-
-Still, there is one possible 'issue' - the private/slave mount points.=20
-As the notifications will be sent to all the listeners (within the same n=
-etns),
-the events might be visible to processes outside the given mount ns.
-This should be limited to only those listeners that share the mount names=
-pace,
-to which such private/slave mount points belong. As using the generic net=
-link
-to filter the outgoing messages is doable (with small changes to current
-implementation), the filters themselves seem rather cumbersome, as they w=
-ould require
-finding the socket=E2=80=99s owner mount namespace, which just doesn't se=
-ems right.
-On the other hand, identifying the file system, which generated the event=
-, will
-not be possible for processes outside such namespace, as device major:min=
-or
-numbers are not bound to any namespace (afaict) so they will not provide =
-any
-valid information. They will remain unresolved.
-
-The best way out here though, is to leave it to userspace to properly set=
-up new namespaces:
-the mount namespace with possible private/slave mounts should have a sepa=
-rate=20
-network namespace to isolate the potential fs events, if required.
-
-
-BR
-Beata
-
-
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
+						- Ted
