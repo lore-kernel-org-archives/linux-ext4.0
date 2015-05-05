@@ -1,301 +1,265 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/4] ext4 crypto: separate kernel and userspace structure for the key
-Date: Tue,  5 May 2015 11:18:13 -0400
-Message-ID: <1430839094-26333-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/4] ext4 crypto: don't allocate a page when encrypting/decrypting file names
+Date: Tue,  5 May 2015 11:18:12 -0400
+Message-ID: <1430839094-26333-2-git-send-email-tytso@mit.edu>
 References: <1430839094-26333-1-git-send-email-tytso@mit.edu>
 Cc: mhalcrow@google.com, savagaon@google.com,
 	Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:45987 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:45989 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S2993353AbbEEPST (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S2993351AbbEEPST (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 5 May 2015 11:18:19 -0400
 In-Reply-To: <1430839094-26333-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use struct ext4_encryption_key only for the master key passed via the
-kernel keyring.
-
-For internal kernel space users, we now use struct ext4_crypt_info.
-This will allow us to put information from the policy structure so we
-can cache it and avoid needing to constantly looking up the extended
-attribute.  We will do this in a spearate patch.  This patch is mostly
-mechnical to make it easier for patch review.
-
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/crypto.c       | 18 +++++++++---------
- fs/ext4/crypto_fname.c | 33 ++++++++++-----------------------
- fs/ext4/crypto_key.c   | 21 +++++++++++----------
- fs/ext4/ext4.h         |  2 +-
- fs/ext4/ext4_crypto.h  | 15 +++++++++++----
- fs/ext4/super.c        |  2 +-
- 6 files changed, 43 insertions(+), 48 deletions(-)
+ fs/ext4/crypto_fname.c | 72 ++++++++++++++------------------------------------
+ fs/ext4/dir.c          |  3 +++
+ fs/ext4/ext4_crypto.h  |  2 --
+ fs/ext4/namei.c        |  4 +++
+ fs/ext4/symlink.c      |  1 +
+ 5 files changed, 28 insertions(+), 54 deletions(-)
 
-diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-index 8ff1527..918200e 100644
---- a/fs/ext4/crypto.c
-+++ b/fs/ext4/crypto.c
-@@ -118,7 +118,7 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
- 	struct ext4_crypto_ctx *ctx = NULL;
- 	int res = 0;
- 	unsigned long flags;
--	struct ext4_encryption_key *key = &EXT4_I(inode)->i_encryption_key;
-+	struct ext4_crypt_info *ci = &EXT4_I(inode)->i_crypt_info;
- 
- 	if (!ext4_read_workqueue)
- 		ext4_init_crypto();
-@@ -152,14 +152,14 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
- 
- 	/* Allocate a new Crypto API context if we don't already have
- 	 * one or if it isn't the right mode. */
--	BUG_ON(key->mode == EXT4_ENCRYPTION_MODE_INVALID);
--	if (ctx->tfm && (ctx->mode != key->mode)) {
-+	BUG_ON(ci->ci_mode == EXT4_ENCRYPTION_MODE_INVALID);
-+	if (ctx->tfm && (ctx->mode != ci->ci_mode)) {
- 		crypto_free_tfm(ctx->tfm);
- 		ctx->tfm = NULL;
- 		ctx->mode = EXT4_ENCRYPTION_MODE_INVALID;
- 	}
- 	if (!ctx->tfm) {
--		switch (key->mode) {
-+		switch (ci->ci_mode) {
- 		case EXT4_ENCRYPTION_MODE_AES_256_XTS:
- 			ctx->tfm = crypto_ablkcipher_tfm(
- 				crypto_alloc_ablkcipher("xts(aes)", 0, 0));
-@@ -177,9 +177,9 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
- 			ctx->tfm = NULL;
- 			goto out;
- 		}
--		ctx->mode = key->mode;
-+		ctx->mode = ci->ci_mode;
- 	}
--	BUG_ON(key->size != ext4_encryption_key_size(key->mode));
-+	BUG_ON(ci->ci_size != ext4_encryption_key_size(ci->ci_mode));
- 
- 	/* There shouldn't be a bounce page attached to the crypto
- 	 * context at this point. */
-@@ -322,7 +322,7 @@ static int ext4_page_crypto(struct ext4_crypto_ctx *ctx,
- 	int res = 0;
- 
- 	BUG_ON(!ctx->tfm);
--	BUG_ON(ctx->mode != ei->i_encryption_key.mode);
-+	BUG_ON(ctx->mode != ei->i_crypt_info.ci_mode);
- 
- 	if (ctx->mode != EXT4_ENCRYPTION_MODE_AES_256_XTS) {
- 		printk_ratelimited(KERN_ERR
-@@ -334,8 +334,8 @@ static int ext4_page_crypto(struct ext4_crypto_ctx *ctx,
- 	crypto_ablkcipher_clear_flags(atfm, ~0);
- 	crypto_tfm_set_flags(ctx->tfm, CRYPTO_TFM_REQ_WEAK_KEY);
- 
--	res = crypto_ablkcipher_setkey(atfm, ei->i_encryption_key.raw,
--				       ei->i_encryption_key.size);
-+	res = crypto_ablkcipher_setkey(atfm, ei->i_crypt_info.ci_raw,
-+				       ei->i_crypt_info.ci_size);
- 	if (res) {
- 		printk_ratelimited(KERN_ERR
- 				   "%s: crypto_ablkcipher_setkey() failed\n",
 diff --git a/fs/ext4/crypto_fname.c b/fs/ext4/crypto_fname.c
-index 23d7f1d..d9f08dd 100644
+index ad5e328..23d7f1d 100644
 --- a/fs/ext4/crypto_fname.c
 +++ b/fs/ext4/crypto_fname.c
-@@ -278,33 +278,24 @@ void ext4_put_fname_crypto_ctx(struct ext4_fname_crypto_ctx **ctx)
+@@ -65,9 +65,9 @@ static int ext4_fname_encrypt(struct ext4_fname_crypto_ctx *ctx,
+ 	struct crypto_ablkcipher *tfm = ctx->ctfm;
+ 	int res = 0;
+ 	char iv[EXT4_CRYPTO_BLOCK_SIZE];
+-	struct scatterlist sg[1];
++	struct scatterlist src_sg, dst_sg;
+ 	int padding = 4 << (ctx->flags & EXT4_POLICY_FLAGS_PAD_MASK);
+-	char *workbuf;
++	char *workbuf, buf[32], *alloc_buf = NULL;
+ 
+ 	if (iname->len <= 0 || iname->len > ctx->lim)
+ 		return -EIO;
+@@ -78,20 +78,27 @@ static int ext4_fname_encrypt(struct ext4_fname_crypto_ctx *ctx,
+ 	ciphertext_len = (ciphertext_len > ctx->lim)
+ 			? ctx->lim : ciphertext_len;
+ 
++	if (ciphertext_len <= sizeof(buf)) {
++		workbuf = buf;
++	} else {
++		alloc_buf = kmalloc(ciphertext_len, GFP_NOFS);
++		if (!alloc_buf)
++			return -ENOMEM;
++		workbuf = alloc_buf;
++	}
++
+ 	/* Allocate request */
+ 	req = ablkcipher_request_alloc(tfm, GFP_NOFS);
+ 	if (!req) {
+ 		printk_ratelimited(
+ 		    KERN_ERR "%s: crypto_request_alloc() failed\n", __func__);
++		kfree(alloc_buf);
+ 		return -ENOMEM;
+ 	}
+ 	ablkcipher_request_set_callback(req,
+ 		CRYPTO_TFM_REQ_MAY_BACKLOG | CRYPTO_TFM_REQ_MAY_SLEEP,
+ 		ext4_dir_crypt_complete, &ecr);
+ 
+-	/* Map the workpage */
+-	workbuf = kmap(ctx->workpage);
+-
+ 	/* Copy the input */
+ 	memcpy(workbuf, iname->name, iname->len);
+ 	if (iname->len < ciphertext_len)
+@@ -101,21 +108,16 @@ static int ext4_fname_encrypt(struct ext4_fname_crypto_ctx *ctx,
+ 	memset(iv, 0, EXT4_CRYPTO_BLOCK_SIZE);
+ 
+ 	/* Create encryption request */
+-	sg_init_table(sg, 1);
+-	sg_set_page(sg, ctx->workpage, PAGE_SIZE, 0);
+-	ablkcipher_request_set_crypt(req, sg, sg, ciphertext_len, iv);
++	sg_init_one(&src_sg, workbuf, ciphertext_len);
++	sg_init_one(&dst_sg, oname->name, ciphertext_len);
++	ablkcipher_request_set_crypt(req, &src_sg, &dst_sg, ciphertext_len, iv);
+ 	res = crypto_ablkcipher_encrypt(req);
+ 	if (res == -EINPROGRESS || res == -EBUSY) {
+ 		BUG_ON(req->base.data != &ecr);
+ 		wait_for_completion(&ecr.completion);
+ 		res = ecr.res;
+ 	}
+-	if (res >= 0) {
+-		/* Copy the result to output */
+-		memcpy(oname->name, workbuf, ciphertext_len);
+-		res = ciphertext_len;
+-	}
+-	kunmap(ctx->workpage);
++	kfree(alloc_buf);
+ 	ablkcipher_request_free(req);
+ 	if (res < 0) {
+ 		printk_ratelimited(
+@@ -139,11 +141,10 @@ static int ext4_fname_decrypt(struct ext4_fname_crypto_ctx *ctx,
+ 	struct ext4_str tmp_in[2], tmp_out[1];
+ 	struct ablkcipher_request *req = NULL;
+ 	DECLARE_EXT4_COMPLETION_RESULT(ecr);
+-	struct scatterlist sg[1];
++	struct scatterlist src_sg, dst_sg;
+ 	struct crypto_ablkcipher *tfm = ctx->ctfm;
+ 	int res = 0;
+ 	char iv[EXT4_CRYPTO_BLOCK_SIZE];
+-	char *workbuf;
+ 
+ 	if (iname->len <= 0 || iname->len > ctx->lim)
+ 		return -EIO;
+@@ -163,31 +164,19 @@ static int ext4_fname_decrypt(struct ext4_fname_crypto_ctx *ctx,
+ 		CRYPTO_TFM_REQ_MAY_BACKLOG | CRYPTO_TFM_REQ_MAY_SLEEP,
+ 		ext4_dir_crypt_complete, &ecr);
+ 
+-	/* Map the workpage */
+-	workbuf = kmap(ctx->workpage);
+-
+-	/* Copy the input */
+-	memcpy(workbuf, iname->name, iname->len);
+-
+ 	/* Initialize IV */
+ 	memset(iv, 0, EXT4_CRYPTO_BLOCK_SIZE);
+ 
+ 	/* Create encryption request */
+-	sg_init_table(sg, 1);
+-	sg_set_page(sg, ctx->workpage, PAGE_SIZE, 0);
+-	ablkcipher_request_set_crypt(req, sg, sg, iname->len, iv);
++	sg_init_one(&src_sg, iname->name, iname->len);
++	sg_init_one(&dst_sg, oname->name, oname->len);
++	ablkcipher_request_set_crypt(req, &src_sg, &dst_sg, iname->len, iv);
+ 	res = crypto_ablkcipher_decrypt(req);
+ 	if (res == -EINPROGRESS || res == -EBUSY) {
+ 		BUG_ON(req->base.data != &ecr);
+ 		wait_for_completion(&ecr.completion);
+ 		res = ecr.res;
+ 	}
+-	if (res >= 0) {
+-		/* Copy the result to output */
+-		memcpy(oname->name, workbuf, iname->len);
+-		res = iname->len;
+-	}
+-	kunmap(ctx->workpage);
+ 	ablkcipher_request_free(req);
+ 	if (res < 0) {
+ 		printk_ratelimited(
+@@ -267,8 +256,6 @@ void ext4_free_fname_crypto_ctx(struct ext4_fname_crypto_ctx *ctx)
+ 		crypto_free_ablkcipher(ctx->ctfm);
+ 	if (ctx->htfm && !IS_ERR(ctx->htfm))
+ 		crypto_free_hash(ctx->htfm);
+-	if (ctx->workpage && !IS_ERR(ctx->workpage))
+-		__free_page(ctx->workpage);
+ 	kfree(ctx);
  }
  
- /**
-- * ext4_search_fname_crypto_ctx() -
-- */
--static struct ext4_fname_crypto_ctx *ext4_search_fname_crypto_ctx(
--		const struct ext4_encryption_key *key)
--{
--	return NULL;
--}
--
--/**
-  * ext4_alloc_fname_crypto_ctx() -
-  */
- struct ext4_fname_crypto_ctx *ext4_alloc_fname_crypto_ctx(
--	const struct ext4_encryption_key *key)
-+	const struct ext4_crypt_info *ci)
- {
- 	struct ext4_fname_crypto_ctx *ctx;
- 
- 	ctx = kmalloc(sizeof(struct ext4_fname_crypto_ctx), GFP_NOFS);
- 	if (ctx == NULL)
- 		return ERR_PTR(-ENOMEM);
--	if (key->mode == EXT4_ENCRYPTION_MODE_INVALID) {
-+	if (ci->ci_mode == EXT4_ENCRYPTION_MODE_INVALID) {
- 		/* This will automatically set key mode to invalid
- 		 * As enum for ENCRYPTION_MODE_INVALID is zero */
--		memset(&ctx->key, 0, sizeof(ctx->key));
-+		memset(&ctx->ci, 0, sizeof(ctx->ci));
- 	} else {
--		memcpy(&ctx->key, key, sizeof(struct ext4_encryption_key));
-+		memcpy(&ctx->ci, ci, sizeof(struct ext4_crypt_info));
- 	}
--	ctx->has_valid_key = (EXT4_ENCRYPTION_MODE_INVALID == key->mode)
-+	ctx->has_valid_key = (EXT4_ENCRYPTION_MODE_INVALID == ci->ci_mode)
- 		? 0 : 1;
+@@ -322,7 +309,6 @@ struct ext4_fname_crypto_ctx *ext4_alloc_fname_crypto_ctx(
  	ctx->ctfm_key_is_ready = 0;
  	ctx->ctfm = NULL;
-@@ -335,21 +326,17 @@ struct ext4_fname_crypto_ctx *ext4_get_fname_crypto_ctx(
- 	if (!ext4_has_encryption_key(inode))
- 		ext4_generate_encryption_key(inode);
+ 	ctx->htfm = NULL;
+-	ctx->workpage = NULL;
+ 	return ctx;
+ }
  
--	/* Get a crypto context based on the key.
--	 * A new context is allocated if no context matches the requested key.
--	 */
--	ctx = ext4_search_fname_crypto_ctx(&(ei->i_encryption_key));
--	if (ctx == NULL)
--		ctx = ext4_alloc_fname_crypto_ctx(&(ei->i_encryption_key));
-+	/* Get a crypto context based on the key. */
-+	ctx = ext4_alloc_fname_crypto_ctx(&(ei->i_crypt_info));
- 	if (IS_ERR(ctx))
- 		return ctx;
- 
- 	ctx->flags = ei->i_crypt_policy_flags;
- 	if (ctx->has_valid_key) {
--		if (ctx->key.mode != EXT4_ENCRYPTION_MODE_AES_256_CTS) {
-+		if (ctx->ci.ci_mode != EXT4_ENCRYPTION_MODE_AES_256_CTS) {
- 			printk_once(KERN_WARNING
- 				    "ext4: unsupported key mode %d\n",
--				    ctx->key.mode);
-+				    ctx->ci.ci_mode);
- 			return ERR_PTR(-ENOKEY);
+@@ -390,24 +376,6 @@ struct ext4_fname_crypto_ctx *ext4_get_fname_crypto_ctx(
+ 			ext4_put_fname_crypto_ctx(&ctx);
+ 			return ERR_PTR(-ENOMEM);
  		}
- 
-@@ -389,7 +376,7 @@ struct ext4_fname_crypto_ctx *ext4_get_fname_crypto_ctx(
- 			 * are pretty weak,
- 			 * we directly use the inode master key */
- 			res = crypto_ablkcipher_setkey(ctx->ctfm,
--					ctx->key.raw, ctx->key.size);
-+					ctx->ci.ci_raw, ctx->ci.ci_size);
- 			if (res) {
- 				ext4_put_fname_crypto_ctx(&ctx);
- 				return ERR_PTR(-EIO);
-diff --git a/fs/ext4/crypto_key.c b/fs/ext4/crypto_key.c
-index 52170d0..ec6635d 100644
---- a/fs/ext4/crypto_key.c
-+++ b/fs/ext4/crypto_key.c
-@@ -91,7 +91,7 @@ out:
- int ext4_generate_encryption_key(struct inode *inode)
- {
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	struct ext4_encryption_key *crypt_key = &ei->i_encryption_key;
-+	struct ext4_crypt_info *crypt_info = &ei->i_crypt_info;
- 	char full_key_descriptor[EXT4_KEY_DESC_PREFIX_SIZE +
- 				 (EXT4_KEY_DESCRIPTOR_SIZE * 2) + 1];
- 	struct key *keyring_key = NULL;
-@@ -112,17 +112,17 @@ int ext4_generate_encryption_key(struct inode *inode)
- 
- 	ei->i_crypt_policy_flags = ctx.flags;
- 	if (S_ISREG(inode->i_mode))
--		crypt_key->mode = ctx.contents_encryption_mode;
-+		crypt_info->ci_mode = ctx.contents_encryption_mode;
- 	else if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
--		crypt_key->mode = ctx.filenames_encryption_mode;
-+		crypt_info->ci_mode = ctx.filenames_encryption_mode;
- 	else {
- 		printk(KERN_ERR "ext4 crypto: Unsupported inode type.\n");
- 		BUG();
- 	}
--	crypt_key->size = ext4_encryption_key_size(crypt_key->mode);
--	BUG_ON(!crypt_key->size);
-+	crypt_info->ci_size = ext4_encryption_key_size(crypt_info->ci_mode);
-+	BUG_ON(!crypt_info->ci_size);
- 	if (DUMMY_ENCRYPTION_ENABLED(sbi)) {
--		memset(crypt_key->raw, 0x42, EXT4_AES_256_XTS_KEY_SIZE);
-+		memset(crypt_info->ci_raw, 0x42, EXT4_AES_256_XTS_KEY_SIZE);
- 		goto out;
- 	}
- 	memcpy(full_key_descriptor, EXT4_KEY_DESC_PREFIX,
-@@ -148,19 +148,20 @@ int ext4_generate_encryption_key(struct inode *inode)
- 	BUILD_BUG_ON(EXT4_AES_128_ECB_KEY_SIZE !=
- 		     EXT4_KEY_DERIVATION_NONCE_SIZE);
- 	BUG_ON(master_key->size != EXT4_AES_256_XTS_KEY_SIZE);
--	res = ext4_derive_key_aes(ctx.nonce, master_key->raw, crypt_key->raw);
-+	res = ext4_derive_key_aes(ctx.nonce, master_key->raw,
-+				  crypt_info->ci_raw);
- out:
- 	if (keyring_key)
- 		key_put(keyring_key);
- 	if (res < 0)
--		crypt_key->mode = EXT4_ENCRYPTION_MODE_INVALID;
-+		crypt_info->ci_mode = EXT4_ENCRYPTION_MODE_INVALID;
- 	return res;
- }
- 
- int ext4_has_encryption_key(struct inode *inode)
- {
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	struct ext4_encryption_key *crypt_key = &ei->i_encryption_key;
-+	struct ext4_crypt_info *crypt_info = &ei->i_crypt_info;
- 
--	return (crypt_key->mode != EXT4_ENCRYPTION_MODE_INVALID);
-+	return (crypt_info->ci_mode != EXT4_ENCRYPTION_MODE_INVALID);
- }
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6bdd69e..e3671c2 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -955,7 +955,7 @@ struct ext4_inode_info {
- 
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
- 	/* Encryption params */
--	struct ext4_encryption_key i_encryption_key;
-+	struct ext4_crypt_info i_crypt_info;
- #endif
- };
- 
+-		if (ctx->workpage == NULL)
+-			ctx->workpage = alloc_page(GFP_NOFS);
+-		if (IS_ERR(ctx->workpage)) {
+-			res = PTR_ERR(ctx->workpage);
+-			printk(
+-			    KERN_DEBUG "%s: error (%d) allocating work page\n",
+-			    __func__, res);
+-			ctx->workpage = NULL;
+-			ext4_put_fname_crypto_ctx(&ctx);
+-			return ERR_PTR(res);
+-		}
+-		if (ctx->workpage == NULL) {
+-			printk(
+-			    KERN_DEBUG "%s: could not allocate work page\n",
+-			    __func__);
+-			ext4_put_fname_crypto_ctx(&ctx);
+-			return ERR_PTR(-ENOMEM);
+-		}
+ 		ctx->lim = max_ciphertext_len;
+ 		crypto_ablkcipher_clear_flags(ctx->ctfm, ~0);
+ 		crypto_tfm_set_flags(crypto_ablkcipher_tfm(ctx->ctfm),
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 5665d82..d799d5d 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -247,9 +247,12 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+ 					    get_dtype(sb, de->file_type)))
+ 						goto done;
+ 				} else {
++					int save_len = fname_crypto_str.len;
++
+ 					/* Directory is encrypted */
+ 					err = ext4_fname_disk_to_usr(enc_ctx,
+ 						NULL, de, &fname_crypto_str);
++					fname_crypto_str.len = save_len;
+ 					if (err < 0)
+ 						goto errout;
+ 					if (!dir_emit(ctx,
 diff --git a/fs/ext4/ext4_crypto.h b/fs/ext4/ext4_crypto.h
-index 552424a..deecbe8 100644
+index d75159c..552424a 100644
 --- a/fs/ext4/ext4_crypto.h
 +++ b/fs/ext4/ext4_crypto.h
-@@ -66,10 +66,17 @@ struct ext4_encryption_context {
- #define EXT4_KEY_DESC_PREFIX "ext4:"
- #define EXT4_KEY_DESC_PREFIX_SIZE 5
+@@ -123,10 +123,8 @@ struct ext4_str {
  
-+/* This is passed in from userspace into the kernel keyring */
- struct ext4_encryption_key {
--	uint32_t mode;
--	char raw[EXT4_MAX_KEY_SIZE];
--	uint32_t size;
-+        __u32 mode;
-+        char raw[EXT4_MAX_KEY_SIZE];
-+        __u32 size;
-+} __attribute__((__packed__));
-+
-+struct ext4_crypt_info {
-+	unsigned char	ci_mode;
-+	unsigned char	ci_size;
-+	char		ci_raw[EXT4_MAX_KEY_SIZE];
- };
- 
- #define EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL             0x00000001
-@@ -125,7 +132,7 @@ struct ext4_fname_crypto_ctx {
+ struct ext4_fname_crypto_ctx {
  	u32 lim;
+-	char tmp_buf[EXT4_CRYPTO_BLOCK_SIZE];
  	struct crypto_ablkcipher *ctfm;
  	struct crypto_hash *htfm;
--	struct ext4_encryption_key key;
-+	struct ext4_crypt_info ci;
+-	struct page *workpage;
+ 	struct ext4_encryption_key key;
  	unsigned flags : 8;
  	unsigned has_valid_key : 1;
- 	unsigned ctfm_key_is_ready : 1;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f06d058..a9ebe3d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -877,7 +877,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	atomic_set(&ei->i_unwritten, 0);
- 	INIT_WORK(&ei->i_rsv_conversion_work, ext4_end_io_rsv_work);
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
--	ei->i_encryption_key.mode = EXT4_ENCRYPTION_MODE_INVALID;
-+	ei->i_crypt_info.ci_mode = EXT4_ENCRYPTION_MODE_INVALID;
- #endif
- 
- 	return &ei->vfs_inode;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 56c60cb..b340643 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -998,6 +998,8 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+ 				   hinfo->hash, hinfo->minor_hash, de,
+ 				   &tmp_str);
+ 		} else {
++			int save_len = fname_crypto_str.len;
++
+ 			/* Directory is encrypted */
+ 			err = ext4_fname_disk_to_usr(ctx, hinfo, de,
+ 						     &fname_crypto_str);
+@@ -1008,6 +1010,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+ 			err = ext4_htree_store_dirent(dir_file,
+ 				   hinfo->hash, hinfo->minor_hash, de,
+ 					&fname_crypto_str);
++			fname_crypto_str.len = save_len;
+ 		}
+ 		if (err != 0) {
+ 			count = err;
+@@ -3126,6 +3129,7 @@ static int ext4_symlink(struct inode *dir,
+ 		istr.name = (const unsigned char *) symname;
+ 		istr.len = len;
+ 		ostr.name = sd->encrypted_path;
++		ostr.len = disk_link.len;
+ 		err = ext4_fname_usr_to_disk(ctx, &istr, &ostr);
+ 		ext4_put_fname_crypto_ctx(&ctx);
+ 		if (err < 0)
+diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
+index 187b789..ca65d45 100644
+--- a/fs/ext4/symlink.c
++++ b/fs/ext4/symlink.c
+@@ -74,6 +74,7 @@ static void *ext4_follow_link(struct dentry *dentry, struct nameidata *nd)
+ 		goto errout;
+ 	}
+ 	pstr.name = paddr;
++	pstr.len = plen;
+ 	res = _ext4_fname_disk_to_usr(ctx, NULL, &cstr, &pstr);
+ 	if (res < 0)
+ 		goto errout;
 -- 
 2.3.0
 
