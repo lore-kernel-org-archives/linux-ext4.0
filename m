@@ -1,43 +1,49 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 07/35] e2fsck: convert block-mapped files to extents on
- bigalloc fs
-Date: Tue, 5 May 2015 15:45:05 -0700
-Message-ID: <20150505224505.GA30577@birch.djwong.org>
-References: <20150402023359.25243.79782.stgit@birch.djwong.org>
- <20150402023446.25243.17421.stgit@birch.djwong.org>
- <20150421143655.GG3238@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 2/2] jbd2: Fix memory leak in jbd2_journal_stop()
+Date: Wed,  6 May 2015 10:05:14 +0200
+Message-ID: <1430899514-19128-2-git-send-email-lczerner@redhat.com>
+References: <1430899514-19128-1-git-send-email-lczerner@redhat.com>
+Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:49798 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965322AbbEEWpK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 May 2015 18:45:10 -0400
-Content-Disposition: inline
-In-Reply-To: <20150421143655.GG3238@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:50684 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751617AbbEFIF3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 May 2015 04:05:29 -0400
+In-Reply-To: <1430899514-19128-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 21, 2015 at 10:36:55AM -0400, Theodore Ts'o wrote:
-> On Wed, Apr 01, 2015 at 07:34:46PM -0700, Darrick J. Wong wrote:
-> > As of v4.0, the Linux kernel won't add blocks to a block-mapped file
-> > on a bigalloc filesystem.  Therefore, convert any such files or
-> > directories we find, to prevent fs errors later on.
-> > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> 
-> Thanks, applied.  I adjusted the e2fsck problem messages a little to
-> compress vertical space, and to remove some gcc-wall warnings.
+Currently in the case that we've got to the jbd2_journal_stop() with
+already sopped handle we might leak the memory previously allocated
+for the reserved handle because we only free the handle structure
+leaving handle->h_rsv_handle intact.
 
-Hmm.  Did this patch fall out somewhere?  I don't see it in this morning's
--next branch.
+Fix it by freeing the handle->h_rsv_handle structure in case we're
+dealing with already stopped handle in jbd2_journal_stop().
 
---D
-> 
-> 	 	  	     	       	    - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/jbd2/transaction.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 34bd0c5..807c378 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1535,8 +1535,11 @@ int jbd2_journal_stop(handle_t *handle)
+ 			jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
+ 							 handle->h_ref);
+ 			return err;
+-		} else
++		} else {
++			if (handle->h_rsv_handle)
++				jbd2_free_handle(handle->h_rsv_handle);
+ 			goto free_and_exit;
++		}
+ 	}
+ 	journal = transaction->t_journal;
+ 
+-- 
+1.8.3.1
+
