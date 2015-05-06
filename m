@@ -1,254 +1,232 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/2] ext4: fix NULL pointer dereference when journal restart fails
-Date: Wed,  6 May 2015 10:05:13 +0200
-Message-ID: <1430899514-19128-1-git-send-email-lczerner@redhat.com>
-Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
-To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59566 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751617AbbEFIFY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 May 2015 04:05:24 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Michael Kerrisk (man-pages)" <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Subject: Re: [PATCH v10 12/12] manpage: update FALLOC_FL_INSERT_RANGE flag
+ in fallocate
+Date: Wed, 06 May 2015 14:43:25 +0200
+Message-ID: <554A0C6D.8070408@gmail.com>
+References: <1424533554-28024-1-git-send-email-linkinjeon@gmail.com> <1424533554-28024-13-git-send-email-linkinjeon@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, a.sangwan-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org, bfoster-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Namjae Jeon <namjae.jeon-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>
+To: Namjae Jeon <linkinjeon-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org,
+	tytso-3s7WtUTddSA@public.gmane.org
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <1424533554-28024-13-git-send-email-linkinjeon-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-Currently when journal restart fails, we'll have the h_transaction of
-the handle set to NULL to indicate that the handle has been effectively
-aborted. However it's not _really_ aborted and we need to treat this
-differently because an abort indicates critical error which might not be
-the case here.
 
-So we handle this situation quietly in the jbd2_journal_stop() and just
-free the handle and exit because everything else has been done before we
-attempted (and failed) to restart the journal.
+Hello Namjae Jeon,
 
-Unfortunately there are a number of problems with that approach
-introduced with commit
+I see that FALLOC_FL_INSERT_RANGE has hit mainline. Could I ask you refresh 
+this patch, please? (Against latest man-pages Git, please, since the current
+patch does not apply cleanly).
 
-41a5b913197c "jbd2: invalidate handle if jbd2_journal_restart()
-fails"
+See some comments below.
 
-First of all in ext4 jbd2_journal_stop() will be called through
-__ext4_journal_stop() where we would try to get a hold of the superblock
-by dereferencing h_transaction which in this case would lead to NULL
-pointer dereference and crash.
+On 02/21/2015 04:45 PM, Namjae Jeon wrote:
+> From: Namjae Jeon <namjae.jeon-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>
+> 
+> Update FALLOC_FL_INSERT_RANGE flag in fallocate.
+> 
+> Signed-off-by: Namjae Jeon <namjae.jeon-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>
+> Signed-off-by: Ashish Sangwan <a.sangwan-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>
+> ---
+>  man2/fallocate.2 |   88 ++++++++++++++++++++++++++++++++++++++++++++++++++----
+>  1 file changed, 82 insertions(+), 6 deletions(-)
+> 
+> diff --git a/man2/fallocate.2 b/man2/fallocate.2
+> index adf42db..9b3c460 100644
+> --- a/man2/fallocate.2
+> +++ b/man2/fallocate.2
+> @@ -8,7 +8,7 @@
+>  .\" 2011-09-19: Added FALLOC_FL_PUNCH_HOLE
+>  .\" 2011-09-19: Substantial restructuring of the page
+>  .\"
+> -.TH FALLOCATE 2 2015-01-22 "Linux" "Linux Programmer's Manual"
+> +.TH FALLOCATE 2 2015-02-14 "Linux" "Linux Programmer's Manual"
 
-In addition we're going to free the handle regardless of the refcount
-which is bad as well, because other's up the call chain will still
-reference the handle so we might potentially reference already freed
-memory.
+No need to update the timestamp on the page. I have scripts
+that do this automatically.
 
-I think that setting the h_transaction to NULL is just a hack and we can
-do this properly by introducing h_stopped flag to the handle structure.
+>  .SH NAME
+>  fallocate \- manipulate file space
+>  .SH SYNOPSIS
+> @@ -225,6 +225,56 @@ XFS (since Linux 3.14)
+>  .IP *
+>  ext4, for extent-based files (since Linux 3.14)
+>  .\" commit b8a8684502a0fc852afa0056c6bb2a9273f6fcc0
+> +.SS Increasing file space
+> +.\" TODO: Mention commit id and supporting Linux version
 
-Now we use h_stopped flag to indicate that the handle has already
-been stopped so there is nothing else to do in jbd2_journal_stop() other
-than decrease the refcount, or free the handle structure (in case refcount
-drops to zero) and exit which exactly fits our case. So if we fail to start
-the handle in jbd2__journal_restart() instead of setting h_transaction to
-NULL we set the h_stopped flag and let the jbd2_journal_stop() deal with
-this.
+Yes, please add the commit ID and "Linux 4.1".
 
-This will also fix the NULL dereference because we no longer free the
-h_transaction.
+> +Specifying the
+> +.BR FALLOC_FL_INSERT_RANGE
+> +flag in
+> +.I mode
+> +will increase the file space by inserting a hole within the file size without
+> +overwriting any existing data. The hole will start at
+                                  ^
+Please start new sentences on new source lines. (Same thing at various 
+lines below.)
 
-Moreover remove all the WARN_ON's when we're dealing with already
-stopped handle. Again the situation is quite similar with the aborted
-handle and it is possible to get an already stopped handle, in this case
-we do not want to emit an backtrace.
+> +.I offset
+> +and continue for
+> +.I len
+> +bytes. For inserting hole inside file, the contents of the file starting at
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/jbd2/transaction.c | 45 ++++++++++++++++++++++++++-------------------
- include/linux/jbd2.h  | 20 +++++++++++++++++++-
- 2 files changed, 45 insertions(+), 20 deletions(-)
+Please start new sentences on new source lines.
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 5f09370..34bd0c5 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -361,6 +361,7 @@ repeat:
- 	handle->h_transaction = transaction;
- 	handle->h_requested_credits = blocks;
- 	handle->h_start_jiffies = jiffies;
-+	handle->h_stopped = 0;
- 	atomic_inc(&transaction->t_updates);
- 	atomic_inc(&transaction->t_handle_count);
- 	jbd_debug(4, "Handle %p given %d credits (total %d, free %lu)\n",
-@@ -551,8 +552,7 @@ int jbd2_journal_extend(handle_t *handle, int nblocks)
- 	int result;
- 	int wanted;
- 
--	WARN_ON(!transaction);
--	if (is_handle_aborted(handle))
-+	if (is_handle_aborted_or_stopped(handle))
- 		return -EROFS;
- 	journal = transaction->t_journal;
- 
-@@ -627,11 +627,10 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, gfp_t gfp_mask)
- 	tid_t		tid;
- 	int		need_to_start, ret;
- 
--	WARN_ON(!transaction);
- 	/* If we've had an abort of any type, don't even think about
- 	 * actually doing the restart! */
--	if (is_handle_aborted(handle))
--		return 0;
-+	if (is_handle_aborted_or_stopped(handle))
-+		return -EROFS;
- 	journal = transaction->t_journal;
- 
- 	/*
-@@ -653,7 +652,7 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, gfp_t gfp_mask)
- 		wake_up(&journal->j_wait_updates);
- 	tid = transaction->t_tid;
- 	spin_unlock(&transaction->t_handle_lock);
--	handle->h_transaction = NULL;
-+	jbd2_journal_stop_handle(handle);
- 	current->journal_info = NULL;
- 
- 	jbd_debug(2, "restarting handle %p\n", handle);
-@@ -785,8 +784,7 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
- 	int need_copy = 0;
- 	unsigned long start_lock, time_lock;
- 
--	WARN_ON(!transaction);
--	if (is_handle_aborted(handle))
-+	if (is_handle_aborted_or_stopped(handle))
- 		return -EROFS;
- 	journal = transaction->t_journal;
- 
-@@ -849,7 +847,7 @@ repeat:
- 	unlock_buffer(bh);
- 
- 	error = -EROFS;
--	if (is_handle_aborted(handle)) {
-+	if (is_handle_aborted_or_stopped(handle)) {
- 		jbd_unlock_bh_state(bh);
- 		goto out;
- 	}
-@@ -1051,9 +1049,8 @@ int jbd2_journal_get_create_access(handle_t *handle, struct buffer_head *bh)
- 	int err;
- 
- 	jbd_debug(5, "journal_head %p\n", jh);
--	WARN_ON(!transaction);
- 	err = -EROFS;
--	if (is_handle_aborted(handle))
-+	if (is_handle_aborted_or_stopped(handle))
- 		goto out;
- 	journal = transaction->t_journal;
- 	err = 0;
-@@ -1266,8 +1263,7 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
- 	struct journal_head *jh;
- 	int ret = 0;
- 
--	WARN_ON(!transaction);
--	if (is_handle_aborted(handle))
-+	if (is_handle_aborted_or_stopped(handle))
- 		return -EROFS;
- 	journal = transaction->t_journal;
- 	jh = jbd2_journal_grab_journal_head(bh);
-@@ -1397,8 +1393,7 @@ int jbd2_journal_forget (handle_t *handle, struct buffer_head *bh)
- 	int err = 0;
- 	int was_modified = 0;
- 
--	WARN_ON(!transaction);
--	if (is_handle_aborted(handle))
-+	if (is_handle_aborted_or_stopped(handle))
- 		return -EROFS;
- 	journal = transaction->t_journal;
- 
-@@ -1530,8 +1525,19 @@ int jbd2_journal_stop(handle_t *handle)
- 	tid_t tid;
- 	pid_t pid;
- 
--	if (!transaction)
--		goto free_and_exit;
-+	if (is_handle_stopped(handle)) {
-+		/*
-+		 * Handle is stopped so there is nothing to do other than
-+		 * decrease a refcount, or free the handle if refcount
-+		 * drops to zero
-+		 */
-+		if (--handle->h_ref > 0) {
-+			jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
-+							 handle->h_ref);
-+			return err;
-+		} else
-+			goto free_and_exit;
-+	}
- 	journal = transaction->t_journal;
- 
- 	J_ASSERT(journal_current_handle() == handle);
-@@ -1665,7 +1671,9 @@ int jbd2_journal_stop(handle_t *handle)
- 
- 	if (handle->h_rsv_handle)
- 		jbd2_journal_free_reserved(handle->h_rsv_handle);
-+
- free_and_exit:
-+	jbd2_journal_stop_handle(handle);
- 	jbd2_free_handle(handle);
- 	return err;
- }
-@@ -2373,8 +2381,7 @@ int jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *jinode)
- 	transaction_t *transaction = handle->h_transaction;
- 	journal_t *journal;
- 
--	WARN_ON(!transaction);
--	if (is_handle_aborted(handle))
-+	if (is_handle_aborted_or_stopped(handle))
- 		return -EROFS;
- 	journal = transaction->t_journal;
- 
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 20e7f78..349975e 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -441,6 +441,7 @@ struct jbd2_journal_handle
- 	unsigned int	h_jdata:	1;	/* force data journaling */
- 	unsigned int	h_reserved:	1;	/* handle with reserved credits */
- 	unsigned int	h_aborted:	1;	/* fatal error on handle */
-+	unsigned int	h_stopped:	1;	/* handle is already stopped */
- 	unsigned int	h_type:		8;	/* for handle statistics */
- 	unsigned int	h_line_no:	16;	/* for handle statistics */
- 
-@@ -1266,18 +1267,35 @@ static inline int is_journal_aborted(journal_t *journal)
- 	return journal->j_flags & JBD2_ABORT;
- }
- 
-+static inline int is_handle_stopped(handle_t *handle)
-+{
-+	return handle->h_stopped;
-+}
-+
- static inline int is_handle_aborted(handle_t *handle)
- {
--	if (handle->h_aborted || !handle->h_transaction)
-+	if (handle->h_aborted)
- 		return 1;
- 	return is_journal_aborted(handle->h_transaction->t_journal);
- }
- 
-+static inline int is_handle_aborted_or_stopped(handle_t *handle)
-+{
-+	if (is_handle_aborted(handle) || is_handle_stopped(handle))
-+		return 1;
-+	return 0;
-+}
-+
- static inline void jbd2_journal_abort_handle(handle_t *handle)
- {
- 	handle->h_aborted = 1;
- }
- 
-+static inline void jbd2_journal_stop_handle(handle_t *handle)
-+{
-+	handle->h_stopped = 1;
-+}
-+
- #endif /* __KERNEL__   */
- 
- /* Comparison functions for transaction IDs: perform comparisons using
+> +.I offset
+> +will be shifted towards right by
+> +.I len
+> +bytes. Inserting a hole inside the file will increase the file size by
+
+Please start new sentences on new source lines.
+
+> +.I len
+> +bytes.
+> +
+> +This mode has the same limitation as
+> +.BR FALLOC_FL_COLLAPSE_RANGE
+> +regarding the
+> +granularity of the operation.
+> +If the granulrity requirements are not met,
+
+Spelling: "granularity"
+
+> +.BR fallocate ()
+> +will fail with the error
+> +.BR EINVAL.
+> +If the
+> +.I offset
+> +overlaps with end of file OR if it is greater than end of file, an error is
+> +returned. For such type of operations, i.e. inserting a hole at the end of
+
+Please start new sentences on new source lines.
+
+> +file,
+> +.BR ftruncate(2)
+> +should be used.
+> +In case
+> +.IR offset + len
+> +exceeds the maximum file size, errno will be set to
+> +.B EFBIG.
+> +
+> +No other flags may be specified in
+> +.IR mode
+> +in conjunction with
+> +.BR FALLOC_FL_INSERT_RANGE .
+> +
+> +As of Linux XXXX,
+> +.\" TODO: Mention commit id and supporting Linux version
+> +.B FALLOC_FL_INSERT_RANGE
+> +is supported by
+> +ext4 (only for extent-based files) and XFS.
+
+Is the ext4 support really there? Grep Linus's current Git, it appears
+that only XFS support is currently there?
+
+> +
+>  .SH RETURN VALUE
+>  On success,
+>  .BR fallocate ()
+> @@ -242,6 +292,12 @@ is not a valid file descriptor, or is not opened for writing.
+>  .IR offset + len
+>  exceeds the maximum file size.
+>  .TP
+> +.B EFBIG
+> +.I mode
+> +is
+> +.BR FALLOC_FL_INSERT_RANGE ,
+> +the current file size+len excceds the maximum file size.
+
+"exceeds"
+
+> +.TP
+>  .B EINTR
+>  A signal was caught during execution.
+>  .TP
+> @@ -270,7 +326,17 @@ reaches or passes the end of the file.
+>  .B EINVAL
+>  .I mode
+>  is
+> -.BR FALLOC_FL_COLLAPSE_RANGE ,
+> +.BR FALLOC_FL_INSERT_RANGE
+> +and the range specified by
+> +.I offset
+> +reaches or passes the end of the file.
+> +.TP
+> +.B EINVAL
+> +.I mode
+> +is
+> +.BR FALLOC_FL_COLLAPSE_RANGE
+> +or
+> +.BR FALLOC_FL_INSERT_RANGE ,
+>  but either
+>  .I offset
+>  or
+> @@ -279,18 +345,24 @@ is not a multiple of the filesystem block size.
+>  .TP
+>  .B EINVAL
+>  .I mode
+> -contains both
+> +contains either of
+>  .B FALLOC_FL_COLLAPSE_RANGE
+> +or
+> +.B FALLOC_FL_INSERT_RANGE
+>  and other flags;
+>  no other flags are permitted with
+> -.BR FALLOC_FL_COLLAPSE_RANGE .
+> +.BR FALLOC_FL_COLLAPSE_RANGE
+> +or
+> +.BR FALLOC_FL_INSERT_RANGE .
+>  .TP
+>  .B EINVAL
+>  .I mode
+>  is
+>  .BR FALLOC_FL_COLLAPSE_RANGE
+>  or
+> -.BR FALLOC_FL_ZERO_RANGE ,
+> +.BR FALLOC_FL_ZERO_RANGE
+> +or
+> +.BR FALLOC_FL_INSERT_RANGE ,
+>  but the file referred to by
+>  .I fd
+>  is not a regular file.
+> @@ -342,6 +414,8 @@ specifies
+>  .BR FALLOC_FL_PUNCH_HOLE
+>  or
+>  .BR FALLOC_FL_COLLAPSE_RANGE
+> +or
+> +.BR FALLOC_FL_INSERT_RANGE
+>  and
+>  the file referred to by
+>  .I fd
+> @@ -360,7 +434,9 @@ refers to a pipe or FIFO.
+>  .B ETXTBSY
+>  .I mode
+>  specifies
+> -.BR FALLOC_FL_COLLAPSE_RANGE ,
+> +.BR FALLOC_FL_COLLAPSE_RANGE
+> +or
+> +.BR FALLOC_FL_INSERT_RANGE ,
+>  but the file referred to by
+>  .IR fd
+>  is currently being executed.
+> 
+
+Thanks,
+
+Michael
+
+
 -- 
-1.8.3.1
-
+Michael Kerrisk
+Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
+Linux/UNIX System Programming Training: http://man7.org/training/
