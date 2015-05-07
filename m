@@ -1,270 +1,117 @@
-From: Beata Michalska <b.michalska@samsung.com>
-Subject: Re: [RFC v2 1/4] fs: Add generic file system event notifications
-Date: Thu, 07 May 2015 13:57:29 +0200
-Message-ID: <554B5329.8040907@samsung.com>
-References: <1430135504-24334-2-git-send-email-b.michalska@samsung.com>
- <20150427142421.GB21942@kroah.com> <553E50EB.3000402@samsung.com>
- <20150427153711.GA23428@kroah.com> <20150428135653.GD9955@quack.suse.cz>
- <20150428140936.GA13406@kroah.com> <553F9D56.6030301@samsung.com>
- <20150428173900.GA16708@kroah.com> <5540822C.10000@samsung.com>
- <20150429074259.GA31089@quack.suse.cz> <20150429091303.GA4090@kroah.com>
- <5548B4BB.7050503@samsung.com>
+From: Dave Jones <davej@codemonkey.org.uk>
+Subject: ext4_es_lookup_extent causing rcu stalls.
+Date: Thu, 7 May 2015 10:35:52 -0400
+Message-ID: <20150507143552.GA19619@codemonkey.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org, tytso@mit.edu,
- adilger.kernel@dilger.ca, hughd@google.com, lczerner@redhat.com,
- hch@infradead.org, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
- kyungmin.park@samsung.com, kmpark@infradead.org
-To: Greg KH <greg@kroah.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-reply-to: <5548B4BB.7050503@samsung.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, paulmck@linux.vnet.ibm.com
+To: Linux Kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+I got similar traces to these from the soft lockup detector until
+I disabled it.  It isn't so easy to disable RCU, so perhaps we could
+do something more creative..
 
-On 05/05/2015 02:16 PM, Beata Michalska wrote:
-> Hi again,
->=20
-> On 04/29/2015 11:13 AM, Greg KH wrote:
->> On Wed, Apr 29, 2015 at 09:42:59AM +0200, Jan Kara wrote:
->>> On Wed 29-04-15 09:03:08, Beata Michalska wrote:
->>>> On 04/28/2015 07:39 PM, Greg KH wrote:
->>>>> On Tue, Apr 28, 2015 at 04:46:46PM +0200, Beata Michalska wrote:
->>>>>> On 04/28/2015 04:09 PM, Greg KH wrote:
->>>>>>> On Tue, Apr 28, 2015 at 03:56:53PM +0200, Jan Kara wrote:
->>>>>>>> On Mon 27-04-15 17:37:11, Greg KH wrote:
->>>>>>>>> On Mon, Apr 27, 2015 at 05:08:27PM +0200, Beata Michalska wrote=
-:
->>>>>>>>>> On 04/27/2015 04:24 PM, Greg KH wrote:
->>>>>>>>>>> On Mon, Apr 27, 2015 at 01:51:41PM +0200, Beata Michalska wro=
-te:
->>>>>>>>>>>> Introduce configurable generic interface for file
->>>>>>>>>>>> system-wide event notifications, to provide file
->>>>>>>>>>>> systems with a common way of reporting any potential
->>>>>>>>>>>> issues as they emerge.
->>>>>>>>>>>>
->>>>>>>>>>>> The notifications are to be issued through generic
->>>>>>>>>>>> netlink interface by newly introduced multicast group.
->>>>>>>>>>>>
->>>>>>>>>>>> Threshold notifications have been included, allowing
->>>>>>>>>>>> triggering an event whenever the amount of free space drops
->>>>>>>>>>>> below a certain level - or levels to be more precise as two
->>>>>>>>>>>> of them are being supported: the lower and the upper range.
->>>>>>>>>>>> The notifications work both ways: once the threshold level
->>>>>>>>>>>> has been reached, an event shall be generated whenever
->>>>>>>>>>>> the number of available blocks goes up again re-activating
->>>>>>>>>>>> the threshold.
->>>>>>>>>>>>
->>>>>>>>>>>> The interface has been exposed through a vfs. Once mounted,
->>>>>>>>>>>> it serves as an entry point for the set-up where one can
->>>>>>>>>>>> register for particular file system events.
->>>>>>>>>>>>
->>>>>>>>>>>> Signed-off-by: Beata Michalska <b.michalska@samsung.com>
->>>>>>>>>>>> ---
->>>>>>>>>>>>  Documentation/filesystems/events.txt |  231 ++++++++++
->>>>>>>>>>>>  fs/Makefile                          |    1 +
->>>>>>>>>>>>  fs/events/Makefile                   |    6 +
->>>>>>>>>>>>  fs/events/fs_event.c                 |  770 +++++++++++++++=
-+++++++++++++++++++
->>>>>>>>>>>>  fs/events/fs_event.h                 |   25 ++
->>>>>>>>>>>>  fs/events/fs_event_netlink.c         |   99 +++++
->>>>>>>>>>>>  fs/namespace.c                       |    1 +
->>>>>>>>>>>>  include/linux/fs.h                   |    6 +-
->>>>>>>>>>>>  include/linux/fs_event.h             |   58 +++
->>>>>>>>>>>>  include/uapi/linux/fs_event.h        |   54 +++
->>>>>>>>>>>>  include/uapi/linux/genetlink.h       |    1 +
->>>>>>>>>>>>  net/netlink/genetlink.c              |    7 +-
->>>>>>>>>>>>  12 files changed, 1257 insertions(+), 2 deletions(-)
->>>>>>>>>>>>  create mode 100644 Documentation/filesystems/events.txt
->>>>>>>>>>>>  create mode 100644 fs/events/Makefile
->>>>>>>>>>>>  create mode 100644 fs/events/fs_event.c
->>>>>>>>>>>>  create mode 100644 fs/events/fs_event.h
->>>>>>>>>>>>  create mode 100644 fs/events/fs_event_netlink.c
->>>>>>>>>>>>  create mode 100644 include/linux/fs_event.h
->>>>>>>>>>>>  create mode 100644 include/uapi/linux/fs_event.h
->>>>>>>>>>>
->>>>>>>>>>> Any reason why you just don't do uevents for the block device=
-s today,
->>>>>>>>>>> and not create a new type of netlink message and userspace to=
-ol required
->>>>>>>>>>> to read these?
->>>>>>>>>>
->>>>>>>>>> The idea here is to have support for filesystems with no backi=
-ng device as well.
->>>>>>>>>> Parsing the message with libnl is really simple and requires f=
-ew lines of code
->>>>>>>>>> (sample application has been presented in the initial version =
-of this RFC)
->>>>>>>>>
->>>>>>>>> I'm not saying it's not "simple" to parse, just that now you ar=
-e doing
->>>>>>>>> something that requires a different tool.  If you have a block =
-device,
->>>>>>>>> you should be able to emit uevents for it, you don't need a bac=
-king
->>>>>>>>> device, we handle virtual filesystems in /sys/block/ just fine =
-:)
->>>>>>>>>
->>>>>>>>> People already have tools that listen to libudev for system mon=
-itoring
->>>>>>>>> and management, why require them to hook up to yet-another-libr=
-ary?  And
->>>>>>>>> what is going to provide the ability for multiple userspace too=
-ls to
->>>>>>>>> listen to these netlink messages in case you have more than one=
- program
->>>>>>>>> that wants to watch for these things (i.e. multiple desktop fil=
-esystem
->>>>>>>>> monitoring tools, system-health checkers, etc.)?
->>>>>>>>   As much as I understand your concerns I'm not convinced uevent=
- interface
->>>>>>>> is a good fit. There are filesystems that don't have underlying =
-block
->>>>>>>> device - think of e.g. tmpfs or filesystems working directly on =
-top of
->>>>>>>> flash devices.  These still want to send notification to userspa=
-ce (one of
->>>>>>>> primary motivation for this interfaces was so that tmpfs can not=
-ify about
->>>>>>>> something). And creating some fake nodes in /sys/block for tmpfs=
- and
->>>>>>>> similar filesystems seems like doing more harm than good to me..=
-.
->>>>>>>
->>>>>>> If these are "fake" block devices, what's going to be present in =
-the
->>>>>>> block major/minor fields of the netlink message?  For some reason=
- I
->>>>>>> thought it was a required field, and because of that, I thought w=
-e had a
->>>>>>> "real" filesystem somewhere to refer to, otherwise how would user=
-space
->>>>>>> know what filesystem was creating these events?
->>>>>>>
->>>>>>> What am I missing here?
->>>>>>>
->>>>>>> confused,
->>>>>>>
->>>>>>> greg k-h
->>>>>>>
->>>>>>
->>>>>> For those 'fake' block devs, upon mount, get_anon_bdev will assign
->>>>>> the major:minor numbers. Userspace might get those through stat.
->>>>>
->>>>> How can userspace do the mapping backwards from this "anonymous"
->>>>> major:minor number for these types of filesystems in such a way tha=
-t
->>>>> they can "know" how to report the block device that is causing the
->>>>> event?
->>>>>
->>>>> thanks,
->>>>>
->>>>> greg k-h
->>>>>
->>>>
->>>> It needs to be done internally by the app but is doable.
->>>> The app knows what it is watching, so it can maintain the mappings.
->>>> So prior to activating the notifications it can call 'stat' on the m=
-ount point.
->>>> Stat struct gives the 'st_dev' which is the device id. Same will be =
-reported
->>>> within the message payload (through major:minor numbers). So having =
-this,
->>>> the app is able to get any other information it needs.=20
->>>> Note that the events refer to the file system as a whole and they ma=
-y not
->>>> necessarily have anything to do with the actual block device.=20
->>
->> How are you going to show an event for a filesystem that is made up of
->> multiple block devices?
->>
->>>   Or you can use /proc/self/mountinfo for the mapping. There you can =
-see
->>> device numbers, real device names if applicable and mountpoints. This=
- has
->>> the advantage that it works even if filesystem mountpoints change.
->>
->> Ok, then that brings up my next question, how does this handle
->> namespaces?  What namespace is the event being sent in?  block devices
->> aren't namespaced, but the mount points are, is that going to cause
->> problems?
->>
->> thanks,
->>
->> greg k-h
->>
->=20
-> Getting back to the namespaces ...=20
-> In the current state the notifications will be sent to the init network=
- namespace,
-> which means that processes belonging to a different net namespace will =
-not
-> be able to receive them. To be more precise, those processes will not b=
-e=20
-> able to subscribe to the multicast group, though this can be easily cha=
-nged.
-> Furthermore, the notifications might also be sent to specific namespace=
-.
-> In this case, the one, with which the trace for the mount point has bee=
-n registered,
-> which as I believe would be the best approach.
->=20
-> As for the mount namespaces, reading the config file needs to be slight=
-ly tweaked,=20
-> to hide away all the registered mount points which does not belong to t=
-he current
-> mount namespace.
->=20
-> Still, there is one possible 'issue' - the private/slave mount points.=20
-> As the notifications will be sent to all the listeners (within the same=
- netns),
-> the events might be visible to processes outside the given mount ns.
-> This should be limited to only those listeners that share the mount nam=
-espace,
-> to which such private/slave mount points belong. As using the generic n=
-etlink
-> to filter the outgoing messages is doable (with small changes to curren=
-t
-> implementation), the filters themselves seem rather cumbersome, as they=
- would require
-> finding the socket=E2=80=99s owner mount namespace, which just doesn't =
-seems right.
-> On the other hand, identifying the file system, which generated the eve=
-nt, will
-> not be possible for processes outside such namespace, as device major:m=
-inor
-> numbers are not bound to any namespace (afaict) so they will not provid=
-e any
-> valid information. They will remain unresolved.
->=20
-> The best way out here though, is to leave it to userspace to properly s=
-etup new namespaces:
-> the mount namespace with possible private/slave mounts should have a se=
-parate=20
-> network namespace to isolate the potential fs events, if required.
->=20
->=20
-> BR
-> Beata
->=20
->=20
->=20
+Traces from 4.1-rc2
 
-I'm not really sure where we are with this RFC now (?).
-Just wanted to let You know I won't be available for the next two weeks,
-in case this comes around.
-
-Best Regards
-Beata
+	Dave
 
 
-
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
+INFO: rcu_sched self-detected stall on CPU
+	5: (6499 ticks this GP) idle=861/140000000000001/0 softirq=18210/18210 fqs=6500 
+	 (t=6500 jiffies g=57760 c=57759 q=0)
+Task dump for CPU 5:
+trinity-c1      R  running task    13136 17998  31742 0x0048000c
+ 0000000000003350 00000000a3d4db28 ffff88043d943d58 ffffffffb30abd15
+ ffffffffb30abc32 0000000000000005 0000000000000000 0000000000000005
+ ffffffffb3c3b080 0000000000000082 ffff88043d943d78 ffffffffb30afaad
+Call Trace:
+ <IRQ>  [<ffffffffb30abd15>] sched_show_task+0x165/0x280
+ [<ffffffffb30abc32>] ? sched_show_task+0x82/0x280
+ [<ffffffffb30afaad>] dump_cpu_task+0x3d/0x50
+ [<ffffffffb30e3af1>] rcu_dump_cpu_stacks+0x91/0xd0
+ [<ffffffffb30ef21c>] rcu_check_callbacks+0x7ec/0xb30
+ [<ffffffffb31080ae>] ? tick_do_update_jiffies64+0xde/0x140
+ [<ffffffffb30f5389>] update_process_times+0x39/0x60
+ [<ffffffffb3107ef5>] tick_sched_handle.isra.20+0x25/0x60
+ [<ffffffffb3108191>] tick_sched_timer+0x41/0x80
+ [<ffffffffb30f643a>] __run_hrtimer+0xba/0x5f0
+ [<ffffffffb3108150>] ? tick_sched_do_timer+0x40/0x40
+ [<ffffffffb30f6e93>] hrtimer_interrupt+0x103/0x230
+ [<ffffffffb30b10e2>] ? vtime_common_account_irq_enter+0x32/0x50
+ [<ffffffffb3034fec>] local_apic_timer_interrupt+0x3c/0x70
+ [<ffffffffb372bf51>] smp_apic_timer_interrupt+0x41/0x60
+ [<ffffffffb372a980>] apic_timer_interrupt+0x70/0x80
+ <EOI>  [<ffffffffb30d19aa>] ? do_raw_read_lock+0x1a/0x50
+ [<ffffffffb37294a3>] _raw_read_lock+0x43/0x50
+ [<ffffffffb329ee3e>] ? ext4_es_lookup_extent+0x5e/0x470
+ [<ffffffffb329ee3e>] ext4_es_lookup_extent+0x5e/0x470
+ [<ffffffffb32561eb>] ext4_map_blocks+0x5b/0x590
+ [<ffffffffb329e81c>] ? ext4_es_find_delayed_extent_range+0x42c/0x480
+ [<ffffffffb324f271>] ext4_llseek+0x271/0x410
+ [<ffffffffb30cb0fd>] ? trace_hardirqs_on+0xd/0x10
+ [<ffffffffb31cd339>] SyS_lseek+0x99/0xc0
+ [<ffffffffb3729b97>] system_call_fastpath+0x12/0x6f
+INFO: rcu_sched detected stalls on CPUs/tasks:
+	(detected by 0, t=6502 jiffies, g=75215, c=75214, q=0)
+All QSes seen, last rcu_sched kthread activity 6502 (4295121467-4295114965), jiffies_till_next_fqs=1, root ->qsmask 0x0
+trinity-c21     R  running task    12768 20468  30399 0x0008000c
+ 00000000000031e0 00000000f34c833f ffff88043d803da8 ffffffffb30abd15
+ ffffffffb30abc32 ffffffffb3c3b500 0000000000001966 ffff88043d817580
+ ffffffffb3c3b080 0000000000000000 ffff88043d803e28 ffffffffb30ef556
+Call Trace:
+ <IRQ>  [<ffffffffb30abd15>] sched_show_task+0x165/0x280
+ [<ffffffffb30abc32>] ? sched_show_task+0x82/0x280
+ [<ffffffffb30ef556>] rcu_check_callbacks+0xb26/0xb30
+ [<ffffffffb30f5389>] update_process_times+0x39/0x60
+ [<ffffffffb3107ef5>] tick_sched_handle.isra.20+0x25/0x60
+ [<ffffffffb3108191>] tick_sched_timer+0x41/0x80
+ [<ffffffffb30f643a>] __run_hrtimer+0xba/0x5f0
+ [<ffffffffb3108150>] ? tick_sched_do_timer+0x40/0x40
+ [<ffffffffb30f6e93>] hrtimer_interrupt+0x103/0x230
+ [<ffffffffb30b10e2>] ? vtime_common_account_irq_enter+0x32/0x50
+ [<ffffffffb3034fec>] local_apic_timer_interrupt+0x3c/0x70
+ [<ffffffffb372bf51>] smp_apic_timer_interrupt+0x41/0x60
+ [<ffffffffb372a980>] apic_timer_interrupt+0x70/0x80
+ <EOI>  [<ffffffffb30cde67>] ? lock_acquire+0xd7/0x270
+ [<ffffffffb329e466>] ? ext4_es_find_delayed_extent_range+0x76/0x480
+ [<ffffffffb372949b>] _raw_read_lock+0x3b/0x50
+ [<ffffffffb329e466>] ? ext4_es_find_delayed_extent_range+0x76/0x480
+ [<ffffffffb329e466>] ext4_es_find_delayed_extent_range+0x76/0x480
+ [<ffffffffb324f291>] ext4_llseek+0x291/0x410
+ [<ffffffffb30cb0fd>] ? trace_hardirqs_on+0xd/0x10
+ [<ffffffffb31cd339>] SyS_lseek+0x99/0xc0
+ [<ffffffffb3729b97>] system_call_fastpath+0x12/0x6f
+rcu_sched kthread starved for 6502 jiffies!
+INFO: rcu_sched detected stalls on CPUs/tasks:
+	(detected by 0, t=26007 jiffies, g=75215, c=75214, q=0)
+All QSes seen, last rcu_sched kthread activity 26007 (4295140972-4295114965), jiffies_till_next_fqs=1, root ->qsmask 0x0
+trinity-c21     R  running task    12768 20468  30399 0x0008000c
+ 00000000000031e0 00000000f34c833f ffff88043d803da8 ffffffffb30abd15
+ ffffffffb30abc32 ffffffffb3c3b500 0000000000006597 ffff88043d817580
+ ffffffffb3c3b080 0000000000000000 ffff88043d803e28 ffffffffb30ef556
+Call Trace:
+ <IRQ>  [<ffffffffb30abd15>] sched_show_task+0x165/0x280
+ [<ffffffffb30abc32>] ? sched_show_task+0x82/0x280
+ [<ffffffffb30ef556>] rcu_check_callbacks+0xb26/0xb30
+ [<ffffffffb30f5389>] update_process_times+0x39/0x60
+ [<ffffffffb3107ef5>] tick_sched_handle.isra.20+0x25/0x60
+ [<ffffffffb3108191>] tick_sched_timer+0x41/0x80
+ [<ffffffffb30f643a>] __run_hrtimer+0xba/0x5f0
+ [<ffffffffb3108150>] ? tick_sched_do_timer+0x40/0x40
+ [<ffffffffb30f6e93>] hrtimer_interrupt+0x103/0x230
+ [<ffffffffb30b10e2>] ? vtime_common_account_irq_enter+0x32/0x50
+ [<ffffffffb3034fec>] local_apic_timer_interrupt+0x3c/0x70
+ [<ffffffffb372bf51>] smp_apic_timer_interrupt+0x41/0x60
+ [<ffffffffb372a980>] apic_timer_interrupt+0x70/0x80
+ <EOI>  [<ffffffffb30dfa5f>] ? debug_lockdep_rcu_enabled+0x2f/0x40
+ [<ffffffffb329e6bd>] ext4_es_find_delayed_extent_range+0x2cd/0x480
+ [<ffffffffb329e40a>] ? ext4_es_find_delayed_extent_range+0x1a/0x480
+ [<ffffffffb324f291>] ext4_llseek+0x291/0x410
+ [<ffffffffb30cb0fd>] ? trace_hardirqs_on+0xd/0x10
+ [<ffffffffb31cd339>] SyS_lseek+0x99/0xc0
+ [<ffffffffb3729b97>] system_call_fastpath+0x12/0x6f
+rcu_sched kthread starved for 26007 jiffies!
