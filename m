@@ -1,31 +1,125 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Fixed two coding style errors, spaces required
- around =
-Date: Tue, 12 May 2015 13:54:06 -0400
-Message-ID: <20150512175406.GA18150@thunk.org>
-References: <1423053226-10210-1-git-send-email-oscar.forner.martinez@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-To: Oscar Forner Martinez <oscar.forner.martinez@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1423053226-10210-1-git-send-email-oscar.forner.martinez@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: [PATCH 1/5] ext4: clean up superblock encryption mode fields
+Date: Tue, 12 May 2015 14:59:48 -0400
+Message-ID: <1431457192-3432-1-git-send-email-tytso@mit.edu>
+Cc: jaegeuk@kernel.org, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:60050 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753481AbbELTAN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 May 2015 15:00:13 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 04, 2015 at 12:33:46PM +0000, Oscar Forner Martinez wrote:
-> Two lines with assignation without spaces around the =
-> 
-> Signed-off-by: Oscar Forner Martinez <oscar.forner.martinez@gmail.com>
+The superblock fields s_file_encryption_mode and s_dir_encryption_mode
+are vestigal, so remove them as a cleanup.  While we're at it, allow
+file systems with both encryption and inline_data enabled at the same
+time to work correctly.  We can't have encrypted inodes with inline
+data, but there's no reason to prohibit unencrypted inodes from using
+the inline data feature.
 
-NACK, we don't generally take code cleanup patches unless it's part of
-changes in that part of the code.  Otherwise, code cleanup patches
-break other people's pending patches which are waiting code review;
-and so "code cleanup" patches end up adding negative, not positive,
-value.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/crypto_policy.c |  9 +++++++--
+ fs/ext4/ext4.h          |  6 ------
+ fs/ext4/ialloc.c        | 19 -------------------
+ fs/ext4/super.c         |  5 -----
+ 4 files changed, 7 insertions(+), 32 deletions(-)
 
-Regards,
+diff --git a/fs/ext4/crypto_policy.c b/fs/ext4/crypto_policy.c
+index 370d3aa..683391f 100644
+--- a/fs/ext4/crypto_policy.c
++++ b/fs/ext4/crypto_policy.c
+@@ -51,6 +51,10 @@ static int ext4_create_encryption_context_from_policy(
+ 	struct ext4_encryption_context ctx;
+ 	int res = 0;
+ 
++	res = ext4_convert_inline_data(inode);
++	if (res)
++		return res;
++
+ 	ctx.format = EXT4_ENCRYPTION_CONTEXT_FORMAT_V1;
+ 	memcpy(ctx.master_key_descriptor, policy->master_key_descriptor,
+ 	       EXT4_KEY_DESCRIPTOR_SIZE);
+@@ -199,8 +203,9 @@ int ext4_inherit_context(struct inode *parent, struct inode *child)
+ 	res = ext4_xattr_set(child, EXT4_XATTR_INDEX_ENCRYPTION,
+ 			     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT, &ctx,
+ 			     sizeof(ctx), 0);
+-	if (!res)
++	if (!res) {
+ 		ext4_set_inode_flag(child, EXT4_INODE_ENCRYPT);
++		ext4_clear_inode_state(child, EXT4_STATE_MAY_INLINE_DATA);
++	}
+ 	return res;
+-
+ }
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 1db3bfa..641b781 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1374,12 +1374,6 @@ struct ext4_sb_info {
+ 	struct ratelimit_state s_err_ratelimit_state;
+ 	struct ratelimit_state s_warning_ratelimit_state;
+ 	struct ratelimit_state s_msg_ratelimit_state;
+-
+-#ifdef CONFIG_EXT4_FS_ENCRYPTION
+-	/* Encryption */
+-	uint32_t s_file_encryption_mode;
+-	uint32_t s_dir_encryption_mode;
+-#endif
+ };
+ 
+ static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 1eaa6cb..ddca169 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -1034,28 +1034,9 @@ got:
+ 	ext4_set_inode_state(inode, EXT4_STATE_NEW);
+ 
+ 	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
+-#ifdef CONFIG_EXT4_FS_ENCRYPTION
+-	if ((sbi->s_file_encryption_mode == EXT4_ENCRYPTION_MODE_INVALID) &&
+-	    (sbi->s_dir_encryption_mode == EXT4_ENCRYPTION_MODE_INVALID)) {
+-		ei->i_inline_off = 0;
+-		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
+-			EXT4_FEATURE_INCOMPAT_INLINE_DATA))
+-			ext4_set_inode_state(inode,
+-			EXT4_STATE_MAY_INLINE_DATA);
+-	} else {
+-		/* Inline data and encryption are incompatible
+-		 * We turn off inline data since encryption is enabled */
+-		ei->i_inline_off = 1;
+-		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
+-			EXT4_FEATURE_INCOMPAT_INLINE_DATA))
+-			ext4_clear_inode_state(inode,
+-			EXT4_STATE_MAY_INLINE_DATA);
+-	}
+-#else
+ 	ei->i_inline_off = 0;
+ 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_INLINE_DATA))
+ 		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
+-#endif
+ 	ret = inode;
+ 	err = dquot_alloc_inode(inode);
+ 	if (err)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ef19bda..79311e0 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3450,11 +3450,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (sb->s_bdev->bd_part)
+ 		sbi->s_sectors_written_start =
+ 			part_stat_read(sb->s_bdev->bd_part, sectors[1]);
+-#ifdef CONFIG_EXT4_FS_ENCRYPTION
+-	/* Modes of operations for file and directory encryption. */
+-	sbi->s_file_encryption_mode = EXT4_ENCRYPTION_MODE_AES_256_XTS;
+-	sbi->s_dir_encryption_mode = EXT4_ENCRYPTION_MODE_INVALID;
+-#endif
+ 
+ 	/* Cleanup superblock name */
+ 	for (cp = sb->s_id; (cp = strchr(cp, '/'));)
+-- 
+2.3.0
 
-					- Ted
