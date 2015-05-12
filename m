@@ -1,124 +1,188 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/5] ext4 crypto: get rid of ci_mode from struct ext4_crypt_info
-Date: Tue, 12 May 2015 14:59:50 -0400
-Message-ID: <1431457192-3432-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 4/5] ext4 crypto: shrink size of the ext4_crypto_ctx structure
+Date: Tue, 12 May 2015 14:59:51 -0400
+Message-ID: <1431457192-3432-4-git-send-email-tytso@mit.edu>
 References: <1431457192-3432-1-git-send-email-tytso@mit.edu>
 Cc: jaegeuk@kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60060 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:60061 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753565AbbELTAb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753571AbbELTAb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 12 May 2015 15:00:31 -0400
 In-Reply-To: <1431457192-3432-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The ci_mode field was superfluous, and getting rid of it gets rid of
-an unused hole in the structure.
+Some fields are only used when the crypto_ctx is being used on the
+read path, some are only used on the write path, and some are only
+used when the structure is on free list.  Optimize memory use by using
+a union.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/crypto.c       | 11 +++++------
- fs/ext4/crypto_fname.c |  4 ++--
- fs/ext4/crypto_key.c   | 11 +++++------
- fs/ext4/ext4_crypto.h  |  1 -
- 4 files changed, 12 insertions(+), 15 deletions(-)
+ fs/ext4/crypto.c      | 28 +++++++++++++---------------
+ fs/ext4/ext4_crypto.h | 21 ++++++++++++++-------
+ fs/ext4/page-io.c     |  2 +-
+ fs/ext4/readpage.c    | 10 +++++-----
+ 4 files changed, 33 insertions(+), 28 deletions(-)
 
 diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-index 1c34f0e..9969d05 100644
+index 9969d05..1484b58 100644
 --- a/fs/ext4/crypto.c
 +++ b/fs/ext4/crypto.c
-@@ -137,14 +137,13 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
+@@ -71,14 +71,14 @@ void ext4_release_crypto_ctx(struct ext4_crypto_ctx *ctx)
+ {
+ 	unsigned long flags;
+ 
+-	if (ctx->bounce_page) {
++	if (ctx->flags & EXT4_WRITE_PATH_FL && ctx->w.bounce_page) {
+ 		if (ctx->flags & EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL)
+-			__free_page(ctx->bounce_page);
++			__free_page(ctx->w.bounce_page);
+ 		else
+-			mempool_free(ctx->bounce_page, ext4_bounce_page_pool);
+-		ctx->bounce_page = NULL;
++			mempool_free(ctx->w.bounce_page, ext4_bounce_page_pool);
++		ctx->w.bounce_page = NULL;
+ 	}
+-	ctx->control_page = NULL;
++	ctx->w.control_page = NULL;
+ 	if (ctx->flags & EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL) {
+ 		if (ctx->tfm)
+ 			crypto_free_tfm(ctx->tfm);
+@@ -134,6 +134,7 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
+ 	} else {
+ 		ctx->flags &= ~EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL;
+ 	}
++	ctx->flags &= ~EXT4_WRITE_PATH_FL;
  
  	/* Allocate a new Crypto API context if we don't already have
  	 * one or if it isn't the right mode. */
--	BUG_ON(ci->ci_mode == EXT4_ENCRYPTION_MODE_INVALID);
--	if (ctx->tfm && (ctx->mode != ci->ci_mode)) {
-+	if (ctx->tfm && (ctx->mode != ci->ci_data_mode)) {
- 		crypto_free_tfm(ctx->tfm);
- 		ctx->tfm = NULL;
- 		ctx->mode = EXT4_ENCRYPTION_MODE_INVALID;
+@@ -165,10 +166,6 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
  	}
- 	if (!ctx->tfm) {
--		switch (ci->ci_mode) {
-+		switch (ci->ci_data_mode) {
- 		case EXT4_ENCRYPTION_MODE_AES_256_XTS:
- 			ctx->tfm = crypto_ablkcipher_tfm(
- 				crypto_alloc_ablkcipher("xts(aes)", 0, 0));
-@@ -162,9 +161,9 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
- 			ctx->tfm = NULL;
- 			goto out;
+ 	BUG_ON(ci->ci_size != ext4_encryption_key_size(ci->ci_data_mode));
+ 
+-	/* There shouldn't be a bounce page attached to the crypto
+-	 * context at this point. */
+-	BUG_ON(ctx->bounce_page);
+-
+ out:
+ 	if (res) {
+ 		if (!IS_ERR_OR_NULL(ctx))
+@@ -189,12 +186,12 @@ void ext4_exit_crypto(void)
+ 	struct ext4_crypto_ctx *pos, *n;
+ 
+ 	list_for_each_entry_safe(pos, n, &ext4_free_crypto_ctxs, free_list) {
+-		if (pos->bounce_page) {
++		if (pos->w.bounce_page) {
+ 			if (pos->flags &
+ 			    EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL) {
+-				__free_page(pos->bounce_page);
++				__free_page(pos->w.bounce_page);
+ 			} else {
+-				mempool_free(pos->bounce_page,
++				mempool_free(pos->w.bounce_page,
+ 					     ext4_bounce_page_pool);
+ 			}
  		}
--		ctx->mode = ci->ci_mode;
-+		ctx->mode = ci->ci_data_mode;
+@@ -425,8 +422,9 @@ struct page *ext4_encrypt(struct inode *inode,
+ 	} else {
+ 		ctx->flags |= EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL;
  	}
--	BUG_ON(ci->ci_size != ext4_encryption_key_size(ci->ci_mode));
-+	BUG_ON(ci->ci_size != ext4_encryption_key_size(ci->ci_data_mode));
- 
- 	/* There shouldn't be a bounce page attached to the crypto
- 	 * context at this point. */
-@@ -321,7 +320,7 @@ static int ext4_page_crypto(struct ext4_crypto_ctx *ctx,
- 	int res = 0;
- 
- 	BUG_ON(!ctx->tfm);
--	BUG_ON(ctx->mode != ei->i_crypt_info->ci_mode);
-+	BUG_ON(ctx->mode != ei->i_crypt_info->ci_data_mode);
- 
- 	if (ctx->mode != EXT4_ENCRYPTION_MODE_AES_256_XTS) {
- 		printk_ratelimited(KERN_ERR
-diff --git a/fs/ext4/crypto_fname.c b/fs/ext4/crypto_fname.c
-index 374d0e7..e63dd29 100644
---- a/fs/ext4/crypto_fname.c
-+++ b/fs/ext4/crypto_fname.c
-@@ -272,9 +272,9 @@ int ext4_setup_fname_crypto(struct inode *inode)
- 	if (!ci || ci->ci_ctfm)
- 		return 0;
- 
--	if (ci->ci_mode != EXT4_ENCRYPTION_MODE_AES_256_CTS) {
-+	if (ci->ci_filename_mode != EXT4_ENCRYPTION_MODE_AES_256_CTS) {
- 		printk_once(KERN_WARNING "ext4: unsupported key mode %d\n",
--			    ci->ci_mode);
-+			    ci->ci_filename_mode);
- 		return -ENOKEY;
+-	ctx->bounce_page = ciphertext_page;
+-	ctx->control_page = plaintext_page;
++	ctx->flags |= EXT4_WRITE_PATH_FL;
++	ctx->w.bounce_page = ciphertext_page;
++	ctx->w.control_page = plaintext_page;
+ 	err = ext4_page_crypto(ctx, inode, EXT4_ENCRYPT, plaintext_page->index,
+ 			       plaintext_page, ciphertext_page);
+ 	if (err) {
+@@ -505,7 +503,7 @@ int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
+ 	} else {
+ 		ctx->flags |= EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL;
  	}
+-	ctx->bounce_page = ciphertext_page;
++	ctx->w.bounce_page = ciphertext_page;
  
-diff --git a/fs/ext4/crypto_key.c b/fs/ext4/crypto_key.c
-index d6abe46..858d7d6 100644
---- a/fs/ext4/crypto_key.c
-+++ b/fs/ext4/crypto_key.c
-@@ -152,14 +152,13 @@ int _ext4_get_encryption_info(struct inode *inode)
- 	memcpy(crypt_info->ci_master_key, ctx.master_key_descriptor,
- 	       sizeof(crypt_info->ci_master_key));
- 	if (S_ISREG(inode->i_mode))
--		crypt_info->ci_mode = ctx.contents_encryption_mode;
-+		crypt_info->ci_size =
-+			ext4_encryption_key_size(crypt_info->ci_data_mode);
- 	else if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
--		crypt_info->ci_mode = ctx.filenames_encryption_mode;
--	else {
--		printk(KERN_ERR "ext4 crypto: Unsupported inode type.\n");
-+		crypt_info->ci_size =
-+			ext4_encryption_key_size(crypt_info->ci_filename_mode);
-+	else
- 		BUG();
--	}
--	crypt_info->ci_size = ext4_encryption_key_size(crypt_info->ci_mode);
- 	BUG_ON(!crypt_info->ci_size);
- 	if (DUMMY_ENCRYPTION_ENABLED(sbi)) {
- 		memset(crypt_info->ci_raw, 0x42, EXT4_AES_256_XTS_KEY_SIZE);
+ 	while (len--) {
+ 		err = ext4_page_crypto(ctx, inode, EXT4_ENCRYPT, lblk,
 diff --git a/fs/ext4/ext4_crypto.h b/fs/ext4/ext4_crypto.h
-index d29687c..69faf0e 100644
+index 69faf0e..c5258f2 100644
 --- a/fs/ext4/ext4_crypto.h
 +++ b/fs/ext4/ext4_crypto.h
-@@ -74,7 +74,6 @@ struct ext4_encryption_key {
- } __attribute__((__packed__));
+@@ -86,16 +86,23 @@ struct ext4_crypt_info {
  
- struct ext4_crypt_info {
--	unsigned char	ci_mode;
- 	unsigned char	ci_size;
- 	char		ci_data_mode;
- 	char		ci_filename_mode;
+ #define EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL             0x00000001
+ #define EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL     0x00000002
++#define EXT4_WRITE_PATH_FL			      0x00000004
+ 
+ struct ext4_crypto_ctx {
+ 	struct crypto_tfm *tfm;         /* Crypto API context */
+-	struct page *bounce_page;       /* Ciphertext page on write path */
+-	struct page *control_page;      /* Original page on write path */
+-	struct bio *bio;                /* The bio for this context */
+-	struct work_struct work;        /* Work queue for read complete path */
+-	struct list_head free_list;     /* Free list */
+-	int flags;                      /* Flags */
+-	int mode;                       /* Encryption mode for tfm */
++	union {
++		struct {
++			struct page *bounce_page;       /* Ciphertext page */
++			struct page *control_page;      /* Original page  */
++		} w;
++		struct {
++			struct bio *bio;
++			struct work_struct work;
++		} r;
++		struct list_head free_list;     /* Free list */
++	};
++	char flags;                      /* Flags */
++	char mode;                       /* Encryption mode for tfm */
+ };
+ 
+ struct ext4_completion_result {
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 5765f88..79636e2 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -84,7 +84,7 @@ static void ext4_finish_bio(struct bio *bio)
+ 			/* The bounce data pages are unmapped. */
+ 			data_page = page;
+ 			ctx = (struct ext4_crypto_ctx *)page_private(data_page);
+-			page = ctx->control_page;
++			page = ctx->w.control_page;
+ 		}
+ #endif
+ 
+diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+index 171b9ac..ec3ef93 100644
+--- a/fs/ext4/readpage.c
++++ b/fs/ext4/readpage.c
+@@ -54,8 +54,8 @@ static void completion_pages(struct work_struct *work)
+ {
+ #ifdef CONFIG_EXT4_FS_ENCRYPTION
+ 	struct ext4_crypto_ctx *ctx =
+-		container_of(work, struct ext4_crypto_ctx, work);
+-	struct bio	*bio	= ctx->bio;
++		container_of(work, struct ext4_crypto_ctx, r.work);
++	struct bio	*bio	= ctx->r.bio;
+ 	struct bio_vec	*bv;
+ 	int		i;
+ 
+@@ -109,9 +109,9 @@ static void mpage_end_io(struct bio *bio, int err)
+ 		if (err) {
+ 			ext4_release_crypto_ctx(ctx);
+ 		} else {
+-			INIT_WORK(&ctx->work, completion_pages);
+-			ctx->bio = bio;
+-			queue_work(ext4_read_workqueue, &ctx->work);
++			INIT_WORK(&ctx->r.work, completion_pages);
++			ctx->r.bio = bio;
++			queue_work(ext4_read_workqueue, &ctx->r.work);
+ 			return;
+ 		}
+ 	}
 -- 
 2.3.0
 
