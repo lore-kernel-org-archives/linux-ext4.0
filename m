@@ -1,131 +1,88 @@
 From: Jaegeuk Kim <jaegeuk@kernel.org>
-Subject: [PATCH 1/3] ext4 crypto: move io_completion work into crypto.c
-Date: Tue, 12 May 2015 14:19:14 -0700
-Message-ID: <1431465556-36626-1-git-send-email-jaegeuk@kernel.org>
+Subject: [PATCH 3/3] ext4 crypto: use inode number for xts_tweak
+Date: Tue, 12 May 2015 14:21:05 -0700
+Message-ID: <1431465665-36803-2-git-send-email-jaegeuk@kernel.org>
+References: <1431465665-36803-1-git-send-email-jaegeuk@kernel.org>
 Cc: Jaegeuk Kim <jaegeuk@kernel.org>
 To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:38416 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.136]:38503 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754110AbbELVUK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 May 2015 17:20:10 -0400
+	id S933135AbbELVVX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 May 2015 17:21:23 -0400
+In-Reply-To: <1431465665-36803-1-git-send-email-jaegeuk@kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In order to use this completion work across the filesystems, it'd be better to
-relocate them into crypto.c.
+This patch was from:
+
+"f2fs crypto: use inode number for xts_tweak
+
+Previoulsy when making xts_tweak, page->index was used.
+But, when it supports fcollapse, the block address was moved, so that we can
+lose the original page->index, which causes decryption failure.
+
+In order to avoid that, let's use the inode->i_ino for xfs_tweak hint."
 
 Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
 ---
- fs/ext4/crypto.c   | 38 ++++++++++++++++++++++++++++++++++++--
- fs/ext4/ext4.h     |  2 +-
- fs/ext4/readpage.c | 35 +----------------------------------
- 3 files changed, 38 insertions(+), 37 deletions(-)
+ fs/ext4/crypto.c | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
 
 diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-index 1484b58..04c620f 100644
+index f265c08..5653646 100644
 --- a/fs/ext4/crypto.c
 +++ b/fs/ext4/crypto.c
-@@ -55,6 +55,9 @@ static mempool_t *ext4_bounce_page_pool;
- static LIST_HEAD(ext4_free_crypto_ctxs);
- static DEFINE_SPINLOCK(ext4_crypto_ctx_lock);
+@@ -337,7 +337,6 @@ typedef enum {
+ static int ext4_page_crypto(struct ext4_crypto_ctx *ctx,
+ 			    struct inode *inode,
+ 			    ext4_direction_t rw,
+-			    pgoff_t index,
+ 			    struct page *src_page,
+ 			    struct page *dest_page)
  
-+static struct workqueue_struct *ext4_read_workqueue;
-+static DEFINE_MUTEX(crypto_init);
-+
- static struct kmem_cache *ext4_crypto_ctx_cachep;
- struct kmem_cache *ext4_crypt_info_cachep;
+@@ -382,10 +381,10 @@ static int ext4_page_crypto(struct ext4_crypto_ctx *ctx,
+ 		req, CRYPTO_TFM_REQ_MAY_BACKLOG | CRYPTO_TFM_REQ_MAY_SLEEP,
+ 		ext4_crypt_complete, &ecr);
  
-@@ -175,8 +178,39 @@ out:
- 	return ctx;
+-	BUILD_BUG_ON(EXT4_XTS_TWEAK_SIZE < sizeof(index));
+-	memcpy(xts_tweak, &index, sizeof(index));
+-	memset(&xts_tweak[sizeof(index)], 0,
+-	       EXT4_XTS_TWEAK_SIZE - sizeof(index));
++	BUILD_BUG_ON(EXT4_XTS_TWEAK_SIZE < sizeof(inode->i_ino));
++	memcpy(xts_tweak, &inode->i_ino, sizeof(inode->i_ino));
++	memset(&xts_tweak[sizeof(inode->i_ino)], 0,
++	       EXT4_XTS_TWEAK_SIZE - sizeof(inode->i_ino));
+ 
+ 	sg_init_table(&dst, 1);
+ 	sg_set_page(&dst, dest_page, PAGE_CACHE_SIZE, 0);
+@@ -459,7 +458,7 @@ struct page *ext4_encrypt(struct inode *inode,
+ 	ctx->flags |= EXT4_WRITE_PATH_FL;
+ 	ctx->w.bounce_page = ciphertext_page;
+ 	ctx->w.control_page = plaintext_page;
+-	err = ext4_page_crypto(ctx, inode, EXT4_ENCRYPT, plaintext_page->index,
++	err = ext4_page_crypto(ctx, inode, EXT4_ENCRYPT,
+ 			       plaintext_page, ciphertext_page);
+ 	if (err) {
+ 		ext4_release_crypto_ctx(ctx);
+@@ -487,7 +486,7 @@ int ext4_decrypt(struct ext4_crypto_ctx *ctx, struct page *page)
+ 	BUG_ON(!PageLocked(page));
+ 
+ 	return ext4_page_crypto(ctx, page->mapping->host,
+-				EXT4_DECRYPT, page->index, page, page);
++				EXT4_DECRYPT, page, page);
  }
  
--struct workqueue_struct *ext4_read_workqueue;
--static DEFINE_MUTEX(crypto_init);
-+/*
-+ * Call ext4_decrypt on every single page, reusing the encryption
-+ * context.
-+ */
-+static void completion_pages(struct work_struct *work)
-+{
-+	struct ext4_crypto_ctx *ctx =
-+		container_of(work, struct ext4_crypto_ctx, r.work);
-+	struct bio *bio = ctx->r.bio;
-+	struct bio_vec *bv;
-+	int i;
-+
-+	bio_for_each_segment_all(bv, bio, i) {
-+		struct page *page = bv->bv_page;
-+
-+		int ret = ext4_decrypt(ctx, page);
-+		if (ret) {
-+			WARN_ON_ONCE(1);
-+			SetPageError(page);
-+		} else
-+			SetPageUptodate(page);
-+		unlock_page(page);
-+	}
-+	ext4_release_crypto_ctx(ctx);
-+	bio_put(bio);
-+}
-+
-+void ext4_end_io_crypto_work(struct ext4_crypto_ctx *ctx, struct bio *bio)
-+{
-+	INIT_WORK(&ctx->r.work, completion_pages);
-+	ctx->r.bio = bio;
-+	queue_work(ext4_read_workqueue, &ctx->r.work);
-+}
+ /*
+@@ -541,7 +540,7 @@ int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
  
- /**
-  * ext4_exit_crypto() - Shutdown the ext4 encryption system
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 550fe95..505bc66 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2062,7 +2062,7 @@ int ext4_get_policy(struct inode *inode,
- extern struct kmem_cache *ext4_crypt_info_cachep;
- bool ext4_valid_contents_enc_mode(uint32_t mode);
- uint32_t ext4_validate_encryption_key_size(uint32_t mode, uint32_t size);
--extern struct workqueue_struct *ext4_read_workqueue;
-+void ext4_end_io_crypto_work(struct ext4_crypto_ctx *ctx, struct bio *bio);
- struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode);
- void ext4_release_crypto_ctx(struct ext4_crypto_ctx *ctx);
- void ext4_restore_control_page(struct page *data_page);
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index ec3ef93..a7b074e 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -46,37 +46,6 @@
+ 	while (len--) {
+ 		err = ext4_page_crypto(ctx, inode, EXT4_ENCRYPT, lblk,
+-				       ZERO_PAGE(0), ciphertext_page);
++				       ciphertext_page);
+ 		if (err)
+ 			goto errout;
  
- #include "ext4.h"
- 
--/*
-- * Call ext4_decrypt on every single page, reusing the encryption
-- * context.
-- */
--static void completion_pages(struct work_struct *work)
--{
--#ifdef CONFIG_EXT4_FS_ENCRYPTION
--	struct ext4_crypto_ctx *ctx =
--		container_of(work, struct ext4_crypto_ctx, r.work);
--	struct bio	*bio	= ctx->r.bio;
--	struct bio_vec	*bv;
--	int		i;
--
--	bio_for_each_segment_all(bv, bio, i) {
--		struct page *page = bv->bv_page;
--
--		int ret = ext4_decrypt(ctx, page);
--		if (ret) {
--			WARN_ON_ONCE(1);
--			SetPageError(page);
--		} else
--			SetPageUptodate(page);
--		unlock_page(page);
--	}
--	ext4_release_crypto_ctx(ctx);
--	bio_put(bio);
--#else
--	BUG();
--#endif
--}
+-- 
+2.1.1
+
