@@ -1,50 +1,36 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: 4.1-rc2 kvm-xfstests regressions for ext3 test config
-Date: Mon, 11 May 2015 17:37:31 -0400
-Message-ID: <20150511213731.GA4012@wallace>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 98091] kernel/sched/core.c:7291 __might_sleep+0x87/0x90()
+Date: Tue, 12 May 2015 00:51:48 +0000
+Message-ID: <bug-98091-13602-3v2sIp6Kgp@https.bugzilla.kernel.org/>
+References: <bug-98091-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, dccitaliano@gmail.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f172.google.com ([209.85.216.172]:36516 "EHLO
-	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751435AbbEKVhf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 May 2015 17:37:35 -0400
-Received: by qcbgy10 with SMTP id gy10so76236703qcb.3
-        for <linux-ext4@vger.kernel.org>; Mon, 11 May 2015 14:37:34 -0700 (PDT)
-Content-Disposition: inline
+Received: from mail.kernel.org ([198.145.29.136]:55649 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751655AbbELAvv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 May 2015 20:51:51 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id C0563203A5
+	for <linux-ext4@vger.kernel.org>; Tue, 12 May 2015 00:51:49 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id F2C3E20390
+	for <linux-ext4@vger.kernel.org>; Tue, 12 May 2015 00:51:48 +0000 (UTC)
+In-Reply-To: <bug-98091-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've got six new test failures in the ext3 test configuration when
-running a 4.1-rc2 kernel on x86_64 with the latest version of
-kvm-xfstests.
+https://bugzilla.kernel.org/show_bug.cgi?id=98091
 
-The new failures include generic/075, generic/091, generic/112,
-generic/127, generic/231, and generic/263.  All also fail on ARM
-(Pandaboard) when running a 4.1-rc2 kernel on bare metal.
+poma <pomidorabelisima@gmail.com> changed:
 
-Reverting an -rc2 patch corrects all these failures:
-ext4: move check under lock scope to close a race (280227a75b56)
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+          Component|ext4                        |MD
+            Product|File System                 |IO/Storage
 
-All the failed tests use fsx, all fail when attempting to perform a
-COLLAPSE_RANGE, and fsx uses this statement to determine whether a
-particular fallocate mode is supported (and then doesn't use it if not):
-
-	if (fallocate(fd, mode, 0, 1) && errno == EOPNOTSUPP)
-
-In -rc1, ext4_fallocate()/extents.c returns EOPNOTSUPP, and in -rc2,
-EINVAL.  What's happened is that we no longer immediately fail a
-COLLAPSE_RANGE request for a block-mapped file with EOPNOTSUPP.  Instead,
-we now first check to see if the COLLAPSE_RANGE request is cluster-aligned
-and sized in ext4_collapse_range()/extents.c, and return EINVAL if not.
-(There's still a check for block-mapped files, but it's applied later in
-ext4_collapse_range().)
-
-I think we'd want to return EOPNOTSUPP first in this case.
-
-Eric
-
-
-
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
