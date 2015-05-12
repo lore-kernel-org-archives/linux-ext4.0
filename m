@@ -1,188 +1,215 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 4/5] ext4 crypto: shrink size of the ext4_crypto_ctx structure
-Date: Tue, 12 May 2015 14:59:51 -0400
-Message-ID: <1431457192-3432-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/5] ext4 crypto: use slab caches
+Date: Tue, 12 May 2015 14:59:49 -0400
+Message-ID: <1431457192-3432-2-git-send-email-tytso@mit.edu>
 References: <1431457192-3432-1-git-send-email-tytso@mit.edu>
 Cc: jaegeuk@kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60061 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:60062 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753571AbbELTAb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753592AbbELTAb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 12 May 2015 15:00:31 -0400
 In-Reply-To: <1431457192-3432-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Some fields are only used when the crypto_ctx is being used on the
-read path, some are only used on the write path, and some are only
-used when the structure is on free list.  Optimize memory use by using
-a union.
+Use slab caches the ext4_crypto_ctx and ext4_crypt_info structures for
+slighly better memory efficiency and debuggability.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/crypto.c      | 28 +++++++++++++---------------
- fs/ext4/ext4_crypto.h | 21 ++++++++++++++-------
- fs/ext4/page-io.c     |  2 +-
- fs/ext4/readpage.c    | 10 +++++-----
- 4 files changed, 33 insertions(+), 28 deletions(-)
+ fs/ext4/crypto.c     | 60 +++++++++++++++++++++++++---------------------------
+ fs/ext4/crypto_key.c | 12 ++++++++---
+ fs/ext4/ext4.h       |  1 +
+ 3 files changed, 39 insertions(+), 34 deletions(-)
 
 diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-index 9969d05..1484b58 100644
+index 3a25aa4..1c34f0e 100644
 --- a/fs/ext4/crypto.c
 +++ b/fs/ext4/crypto.c
-@@ -71,14 +71,14 @@ void ext4_release_crypto_ctx(struct ext4_crypto_ctx *ctx)
- {
- 	unsigned long flags;
+@@ -55,6 +55,9 @@ static mempool_t *ext4_bounce_page_pool;
+ static LIST_HEAD(ext4_free_crypto_ctxs);
+ static DEFINE_SPINLOCK(ext4_crypto_ctx_lock);
  
--	if (ctx->bounce_page) {
-+	if (ctx->flags & EXT4_WRITE_PATH_FL && ctx->w.bounce_page) {
- 		if (ctx->flags & EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL)
--			__free_page(ctx->bounce_page);
-+			__free_page(ctx->w.bounce_page);
- 		else
--			mempool_free(ctx->bounce_page, ext4_bounce_page_pool);
--		ctx->bounce_page = NULL;
-+			mempool_free(ctx->w.bounce_page, ext4_bounce_page_pool);
-+		ctx->w.bounce_page = NULL;
- 	}
--	ctx->control_page = NULL;
-+	ctx->w.control_page = NULL;
++static struct kmem_cache *ext4_crypto_ctx_cachep;
++struct kmem_cache *ext4_crypt_info_cachep;
++
+ /**
+  * ext4_release_crypto_ctx() - Releases an encryption context
+  * @ctx: The encryption context to release.
+@@ -79,7 +82,7 @@ void ext4_release_crypto_ctx(struct ext4_crypto_ctx *ctx)
  	if (ctx->flags & EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL) {
  		if (ctx->tfm)
  			crypto_free_tfm(ctx->tfm);
-@@ -134,6 +134,7 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
+-		kfree(ctx);
++		kmem_cache_free(ext4_crypto_ctx_cachep, ctx);
  	} else {
- 		ctx->flags &= ~EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL;
- 	}
-+	ctx->flags &= ~EXT4_WRITE_PATH_FL;
+ 		spin_lock_irqsave(&ext4_crypto_ctx_lock, flags);
+ 		list_add(&ctx->free_list, &ext4_free_crypto_ctxs);
+@@ -88,23 +91,6 @@ void ext4_release_crypto_ctx(struct ext4_crypto_ctx *ctx)
+ }
  
- 	/* Allocate a new Crypto API context if we don't already have
- 	 * one or if it isn't the right mode. */
-@@ -165,10 +166,6 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
- 	}
- 	BUG_ON(ci->ci_size != ext4_encryption_key_size(ci->ci_data_mode));
- 
--	/* There shouldn't be a bounce page attached to the crypto
--	 * context at this point. */
--	BUG_ON(ctx->bounce_page);
+ /**
+- * ext4_alloc_and_init_crypto_ctx() - Allocates and inits an encryption context
+- * @mask: The allocation mask.
+- *
+- * Return: An allocated and initialized encryption context on success. An error
+- * value or NULL otherwise.
+- */
+-static struct ext4_crypto_ctx *ext4_alloc_and_init_crypto_ctx(gfp_t mask)
+-{
+-	struct ext4_crypto_ctx *ctx = kzalloc(sizeof(struct ext4_crypto_ctx),
+-					      mask);
 -
- out:
- 	if (res) {
- 		if (!IS_ERR_OR_NULL(ctx))
-@@ -189,12 +186,12 @@ void ext4_exit_crypto(void)
- 	struct ext4_crypto_ctx *pos, *n;
+-	if (!ctx)
+-		return ERR_PTR(-ENOMEM);
+-	return ctx;
+-}
+-
+-/**
+  * ext4_get_crypto_ctx() - Gets an encryption context
+  * @inode:       The inode for which we are doing the crypto
+  *
+@@ -121,8 +107,6 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
+ 	struct ext4_crypt_info *ci = EXT4_I(inode)->i_crypt_info;
  
- 	list_for_each_entry_safe(pos, n, &ext4_free_crypto_ctxs, free_list) {
--		if (pos->bounce_page) {
-+		if (pos->w.bounce_page) {
- 			if (pos->flags &
- 			    EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL) {
--				__free_page(pos->bounce_page);
-+				__free_page(pos->w.bounce_page);
- 			} else {
--				mempool_free(pos->bounce_page,
-+				mempool_free(pos->w.bounce_page,
- 					     ext4_bounce_page_pool);
- 			}
+ 	BUG_ON(ci == NULL);
+-	if (!ext4_read_workqueue)
+-		ext4_init_crypto();
+ 
+ 	/*
+ 	 * We first try getting the ctx from a free list because in
+@@ -141,9 +125,9 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
+ 		list_del(&ctx->free_list);
+ 	spin_unlock_irqrestore(&ext4_crypto_ctx_lock, flags);
+ 	if (!ctx) {
+-		ctx = ext4_alloc_and_init_crypto_ctx(GFP_NOFS);
+-		if (IS_ERR(ctx)) {
+-			res = PTR_ERR(ctx);
++		ctx = kmem_cache_zalloc(ext4_crypto_ctx_cachep, GFP_NOFS);
++		if (!ctx) {
++			res = -ENOMEM;
+ 			goto out;
  		}
-@@ -425,8 +422,9 @@ struct page *ext4_encrypt(struct inode *inode,
- 	} else {
- 		ctx->flags |= EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL;
- 	}
--	ctx->bounce_page = ciphertext_page;
--	ctx->control_page = plaintext_page;
-+	ctx->flags |= EXT4_WRITE_PATH_FL;
-+	ctx->w.bounce_page = ciphertext_page;
-+	ctx->w.control_page = plaintext_page;
- 	err = ext4_page_crypto(ctx, inode, EXT4_ENCRYPT, plaintext_page->index,
- 			       plaintext_page, ciphertext_page);
- 	if (err) {
-@@ -505,7 +503,7 @@ int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
- 	} else {
- 		ctx->flags |= EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL;
- 	}
--	ctx->bounce_page = ciphertext_page;
-+	ctx->w.bounce_page = ciphertext_page;
- 
- 	while (len--) {
- 		err = ext4_page_crypto(ctx, inode, EXT4_ENCRYPT, lblk,
-diff --git a/fs/ext4/ext4_crypto.h b/fs/ext4/ext4_crypto.h
-index 69faf0e..c5258f2 100644
---- a/fs/ext4/ext4_crypto.h
-+++ b/fs/ext4/ext4_crypto.h
-@@ -86,16 +86,23 @@ struct ext4_crypt_info {
- 
- #define EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL             0x00000001
- #define EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL     0x00000002
-+#define EXT4_WRITE_PATH_FL			      0x00000004
- 
- struct ext4_crypto_ctx {
- 	struct crypto_tfm *tfm;         /* Crypto API context */
--	struct page *bounce_page;       /* Ciphertext page on write path */
--	struct page *control_page;      /* Original page on write path */
--	struct bio *bio;                /* The bio for this context */
--	struct work_struct work;        /* Work queue for read complete path */
--	struct list_head free_list;     /* Free list */
--	int flags;                      /* Flags */
--	int mode;                       /* Encryption mode for tfm */
-+	union {
-+		struct {
-+			struct page *bounce_page;       /* Ciphertext page */
-+			struct page *control_page;      /* Original page  */
-+		} w;
-+		struct {
-+			struct bio *bio;
-+			struct work_struct work;
-+		} r;
-+		struct list_head free_list;     /* Free list */
-+	};
-+	char flags;                      /* Flags */
-+	char mode;                       /* Encryption mode for tfm */
- };
- 
- struct ext4_completion_result {
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 5765f88..79636e2 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -84,7 +84,7 @@ static void ext4_finish_bio(struct bio *bio)
- 			/* The bounce data pages are unmapped. */
- 			data_page = page;
- 			ctx = (struct ext4_crypto_ctx *)page_private(data_page);
--			page = ctx->control_page;
-+			page = ctx->w.control_page;
+ 		ctx->flags |= EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL;
+@@ -217,7 +201,7 @@ void ext4_exit_crypto(void)
  		}
- #endif
+ 		if (pos->tfm)
+ 			crypto_free_tfm(pos->tfm);
+-		kfree(pos);
++		kmem_cache_free(ext4_crypto_ctx_cachep, pos);
+ 	}
+ 	INIT_LIST_HEAD(&ext4_free_crypto_ctxs);
+ 	if (ext4_bounce_page_pool)
+@@ -226,6 +210,12 @@ void ext4_exit_crypto(void)
+ 	if (ext4_read_workqueue)
+ 		destroy_workqueue(ext4_read_workqueue);
+ 	ext4_read_workqueue = NULL;
++	if (ext4_crypto_ctx_cachep)
++		kmem_cache_destroy(ext4_crypto_ctx_cachep);
++	ext4_crypto_ctx_cachep = NULL;
++	if (ext4_crypt_info_cachep)
++		kmem_cache_destroy(ext4_crypt_info_cachep);
++	ext4_crypt_info_cachep = NULL;
+ }
  
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index 171b9ac..ec3ef93 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -54,8 +54,8 @@ static void completion_pages(struct work_struct *work)
+ /**
+@@ -238,23 +228,31 @@ void ext4_exit_crypto(void)
+  */
+ int ext4_init_crypto(void)
  {
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
- 	struct ext4_crypto_ctx *ctx =
--		container_of(work, struct ext4_crypto_ctx, work);
--	struct bio	*bio	= ctx->bio;
-+		container_of(work, struct ext4_crypto_ctx, r.work);
-+	struct bio	*bio	= ctx->r.bio;
- 	struct bio_vec	*bv;
- 	int		i;
+-	int i, res;
++	int i, res = -ENOMEM;
  
-@@ -109,9 +109,9 @@ static void mpage_end_io(struct bio *bio, int err)
- 		if (err) {
- 			ext4_release_crypto_ctx(ctx);
- 		} else {
--			INIT_WORK(&ctx->work, completion_pages);
--			ctx->bio = bio;
--			queue_work(ext4_read_workqueue, &ctx->work);
-+			INIT_WORK(&ctx->r.work, completion_pages);
-+			ctx->r.bio = bio;
-+			queue_work(ext4_read_workqueue, &ctx->r.work);
- 			return;
+ 	mutex_lock(&crypto_init);
+ 	if (ext4_read_workqueue)
+ 		goto already_initialized;
+ 	ext4_read_workqueue = alloc_workqueue("ext4_crypto", WQ_HIGHPRI, 0);
+-	if (!ext4_read_workqueue) {
+-		res = -ENOMEM;
++	if (!ext4_read_workqueue)
++		goto fail;
++
++	ext4_crypto_ctx_cachep = KMEM_CACHE(ext4_crypto_ctx,
++					    SLAB_RECLAIM_ACCOUNT);
++	if (!ext4_crypto_ctx_cachep)
++		goto fail;
++
++	ext4_crypt_info_cachep = KMEM_CACHE(ext4_crypt_info,
++					    SLAB_RECLAIM_ACCOUNT);
++	if (!ext4_crypt_info_cachep)
+ 		goto fail;
+-	}
+ 
+ 	for (i = 0; i < num_prealloc_crypto_ctxs; i++) {
+ 		struct ext4_crypto_ctx *ctx;
+ 
+-		ctx = ext4_alloc_and_init_crypto_ctx(GFP_KERNEL);
+-		if (IS_ERR(ctx)) {
+-			res = PTR_ERR(ctx);
++		ctx = kmem_cache_zalloc(ext4_crypto_ctx_cachep, GFP_NOFS);
++		if (!ctx) {
++			res = -ENOMEM;
+ 			goto fail;
  		}
- 	}
+ 		list_add(&ctx->free_list, &ext4_free_crypto_ctxs);
+diff --git a/fs/ext4/crypto_key.c b/fs/ext4/crypto_key.c
+index 0075e43..d6abe46 100644
+--- a/fs/ext4/crypto_key.c
++++ b/fs/ext4/crypto_key.c
+@@ -96,7 +96,7 @@ void ext4_free_encryption_info(struct inode *inode)
+ 		key_put(ci->ci_keyring_key);
+ 	crypto_free_ablkcipher(ci->ci_ctfm);
+ 	memzero_explicit(&ci->ci_raw, sizeof(ci->ci_raw));
+-	kfree(ci);
++	kmem_cache_free(ext4_crypt_info_cachep, ci);
+ 	ei->i_crypt_info = NULL;
+ }
+ 
+@@ -113,6 +113,12 @@ int _ext4_get_encryption_info(struct inode *inode)
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	int res;
+ 
++	if (!ext4_read_workqueue) {
++		res = ext4_init_crypto();
++		if (res)
++			return res;
++	}
++
+ 	if (ei->i_crypt_info) {
+ 		if (!ei->i_crypt_info->ci_keyring_key ||
+ 		    key_validate(ei->i_crypt_info->ci_keyring_key) == 0)
+@@ -134,7 +140,7 @@ int _ext4_get_encryption_info(struct inode *inode)
+ 		return -EINVAL;
+ 	res = 0;
+ 
+-	crypt_info = kmalloc(sizeof(struct ext4_crypt_info), GFP_KERNEL);
++	crypt_info = kmem_cache_alloc(ext4_crypt_info_cachep, GFP_KERNEL);
+ 	if (!crypt_info)
+ 		return -ENOMEM;
+ 
+@@ -188,7 +194,7 @@ out:
+ 	if (res < 0) {
+ 		if (res == -ENOKEY)
+ 			res = 0;
+-		kfree(crypt_info);
++		kmem_cache_free(ext4_crypt_info_cachep, crypt_info);
+ 	} else {
+ 		ei->i_crypt_info = crypt_info;
+ 		crypt_info->ci_keyring_key = keyring_key;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 641b781..550fe95 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2059,6 +2059,7 @@ int ext4_get_policy(struct inode *inode,
+ 		    struct ext4_encryption_policy *policy);
+ 
+ /* crypto.c */
++extern struct kmem_cache *ext4_crypt_info_cachep;
+ bool ext4_valid_contents_enc_mode(uint32_t mode);
+ uint32_t ext4_validate_encryption_key_size(uint32_t mode, uint32_t size);
+ extern struct workqueue_struct *ext4_read_workqueue;
 -- 
 2.3.0
 
