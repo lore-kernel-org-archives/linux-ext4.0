@@ -1,40 +1,124 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 5/5] ext4 crypto: require CONFIG_CRYPTO_CTR if ext4 encryption is enabled
-Date: Tue, 12 May 2015 14:59:52 -0400
-Message-ID: <1431457192-3432-5-git-send-email-tytso@mit.edu>
+Subject: [PATCH 3/5] ext4 crypto: get rid of ci_mode from struct ext4_crypt_info
+Date: Tue, 12 May 2015 14:59:50 -0400
+Message-ID: <1431457192-3432-3-git-send-email-tytso@mit.edu>
 References: <1431457192-3432-1-git-send-email-tytso@mit.edu>
 Cc: jaegeuk@kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60053 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:60060 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753553AbbELTA1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 May 2015 15:00:27 -0400
+	id S1753565AbbELTAb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 May 2015 15:00:31 -0400
 In-Reply-To: <1431457192-3432-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On arm64 this is apparently needed for CTS mode to function correctly.
-Otherwise attempts to use CTS return ENOENT.
+The ci_mode field was superfluous, and getting rid of it gets rid of
+an unused hole in the structure.
 
-Change-Id: I732ea9a5157acc76de5b89edec195d0365f4ca63
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/Kconfig | 1 +
- 1 file changed, 1 insertion(+)
+ fs/ext4/crypto.c       | 11 +++++------
+ fs/ext4/crypto_fname.c |  4 ++--
+ fs/ext4/crypto_key.c   | 11 +++++------
+ fs/ext4/ext4_crypto.h  |  1 -
+ 4 files changed, 12 insertions(+), 15 deletions(-)
 
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index 024f228..bf8bc8a 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -72,6 +72,7 @@ config EXT4_ENCRYPTION
- 	select CRYPTO_ECB
- 	select CRYPTO_XTS
- 	select CRYPTO_CTS
-+	select CRYPTO_CTR
- 	select CRYPTO_SHA256
- 	select KEYS
- 	select ENCRYPTED_KEYS
+diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+index 1c34f0e..9969d05 100644
+--- a/fs/ext4/crypto.c
++++ b/fs/ext4/crypto.c
+@@ -137,14 +137,13 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
+ 
+ 	/* Allocate a new Crypto API context if we don't already have
+ 	 * one or if it isn't the right mode. */
+-	BUG_ON(ci->ci_mode == EXT4_ENCRYPTION_MODE_INVALID);
+-	if (ctx->tfm && (ctx->mode != ci->ci_mode)) {
++	if (ctx->tfm && (ctx->mode != ci->ci_data_mode)) {
+ 		crypto_free_tfm(ctx->tfm);
+ 		ctx->tfm = NULL;
+ 		ctx->mode = EXT4_ENCRYPTION_MODE_INVALID;
+ 	}
+ 	if (!ctx->tfm) {
+-		switch (ci->ci_mode) {
++		switch (ci->ci_data_mode) {
+ 		case EXT4_ENCRYPTION_MODE_AES_256_XTS:
+ 			ctx->tfm = crypto_ablkcipher_tfm(
+ 				crypto_alloc_ablkcipher("xts(aes)", 0, 0));
+@@ -162,9 +161,9 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
+ 			ctx->tfm = NULL;
+ 			goto out;
+ 		}
+-		ctx->mode = ci->ci_mode;
++		ctx->mode = ci->ci_data_mode;
+ 	}
+-	BUG_ON(ci->ci_size != ext4_encryption_key_size(ci->ci_mode));
++	BUG_ON(ci->ci_size != ext4_encryption_key_size(ci->ci_data_mode));
+ 
+ 	/* There shouldn't be a bounce page attached to the crypto
+ 	 * context at this point. */
+@@ -321,7 +320,7 @@ static int ext4_page_crypto(struct ext4_crypto_ctx *ctx,
+ 	int res = 0;
+ 
+ 	BUG_ON(!ctx->tfm);
+-	BUG_ON(ctx->mode != ei->i_crypt_info->ci_mode);
++	BUG_ON(ctx->mode != ei->i_crypt_info->ci_data_mode);
+ 
+ 	if (ctx->mode != EXT4_ENCRYPTION_MODE_AES_256_XTS) {
+ 		printk_ratelimited(KERN_ERR
+diff --git a/fs/ext4/crypto_fname.c b/fs/ext4/crypto_fname.c
+index 374d0e7..e63dd29 100644
+--- a/fs/ext4/crypto_fname.c
++++ b/fs/ext4/crypto_fname.c
+@@ -272,9 +272,9 @@ int ext4_setup_fname_crypto(struct inode *inode)
+ 	if (!ci || ci->ci_ctfm)
+ 		return 0;
+ 
+-	if (ci->ci_mode != EXT4_ENCRYPTION_MODE_AES_256_CTS) {
++	if (ci->ci_filename_mode != EXT4_ENCRYPTION_MODE_AES_256_CTS) {
+ 		printk_once(KERN_WARNING "ext4: unsupported key mode %d\n",
+-			    ci->ci_mode);
++			    ci->ci_filename_mode);
+ 		return -ENOKEY;
+ 	}
+ 
+diff --git a/fs/ext4/crypto_key.c b/fs/ext4/crypto_key.c
+index d6abe46..858d7d6 100644
+--- a/fs/ext4/crypto_key.c
++++ b/fs/ext4/crypto_key.c
+@@ -152,14 +152,13 @@ int _ext4_get_encryption_info(struct inode *inode)
+ 	memcpy(crypt_info->ci_master_key, ctx.master_key_descriptor,
+ 	       sizeof(crypt_info->ci_master_key));
+ 	if (S_ISREG(inode->i_mode))
+-		crypt_info->ci_mode = ctx.contents_encryption_mode;
++		crypt_info->ci_size =
++			ext4_encryption_key_size(crypt_info->ci_data_mode);
+ 	else if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
+-		crypt_info->ci_mode = ctx.filenames_encryption_mode;
+-	else {
+-		printk(KERN_ERR "ext4 crypto: Unsupported inode type.\n");
++		crypt_info->ci_size =
++			ext4_encryption_key_size(crypt_info->ci_filename_mode);
++	else
+ 		BUG();
+-	}
+-	crypt_info->ci_size = ext4_encryption_key_size(crypt_info->ci_mode);
+ 	BUG_ON(!crypt_info->ci_size);
+ 	if (DUMMY_ENCRYPTION_ENABLED(sbi)) {
+ 		memset(crypt_info->ci_raw, 0x42, EXT4_AES_256_XTS_KEY_SIZE);
+diff --git a/fs/ext4/ext4_crypto.h b/fs/ext4/ext4_crypto.h
+index d29687c..69faf0e 100644
+--- a/fs/ext4/ext4_crypto.h
++++ b/fs/ext4/ext4_crypto.h
+@@ -74,7 +74,6 @@ struct ext4_encryption_key {
+ } __attribute__((__packed__));
+ 
+ struct ext4_crypt_info {
+-	unsigned char	ci_mode;
+ 	unsigned char	ci_size;
+ 	char		ci_data_mode;
+ 	char		ci_filename_mode;
 -- 
 2.3.0
 
