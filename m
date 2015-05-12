@@ -1,215 +1,131 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/5] ext4 crypto: use slab caches
-Date: Tue, 12 May 2015 14:59:49 -0400
-Message-ID: <1431457192-3432-2-git-send-email-tytso@mit.edu>
-References: <1431457192-3432-1-git-send-email-tytso@mit.edu>
-Cc: jaegeuk@kernel.org, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Subject: [PATCH 1/3] ext4 crypto: move io_completion work into crypto.c
+Date: Tue, 12 May 2015 14:19:14 -0700
+Message-ID: <1431465556-36626-1-git-send-email-jaegeuk@kernel.org>
+Cc: Jaegeuk Kim <jaegeuk@kernel.org>
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60062 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.29.136]:38416 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753592AbbELTAb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 May 2015 15:00:31 -0400
-In-Reply-To: <1431457192-3432-1-git-send-email-tytso@mit.edu>
+	id S1754110AbbELVUK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 May 2015 17:20:10 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use slab caches the ext4_crypto_ctx and ext4_crypt_info structures for
-slighly better memory efficiency and debuggability.
+In order to use this completion work across the filesystems, it'd be better to
+relocate them into crypto.c.
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
 ---
- fs/ext4/crypto.c     | 60 +++++++++++++++++++++++++---------------------------
- fs/ext4/crypto_key.c | 12 ++++++++---
- fs/ext4/ext4.h       |  1 +
- 3 files changed, 39 insertions(+), 34 deletions(-)
+ fs/ext4/crypto.c   | 38 ++++++++++++++++++++++++++++++++++++--
+ fs/ext4/ext4.h     |  2 +-
+ fs/ext4/readpage.c | 35 +----------------------------------
+ 3 files changed, 38 insertions(+), 37 deletions(-)
 
 diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-index 3a25aa4..1c34f0e 100644
+index 1484b58..04c620f 100644
 --- a/fs/ext4/crypto.c
 +++ b/fs/ext4/crypto.c
 @@ -55,6 +55,9 @@ static mempool_t *ext4_bounce_page_pool;
  static LIST_HEAD(ext4_free_crypto_ctxs);
  static DEFINE_SPINLOCK(ext4_crypto_ctx_lock);
  
-+static struct kmem_cache *ext4_crypto_ctx_cachep;
-+struct kmem_cache *ext4_crypt_info_cachep;
++static struct workqueue_struct *ext4_read_workqueue;
++static DEFINE_MUTEX(crypto_init);
 +
- /**
-  * ext4_release_crypto_ctx() - Releases an encryption context
-  * @ctx: The encryption context to release.
-@@ -79,7 +82,7 @@ void ext4_release_crypto_ctx(struct ext4_crypto_ctx *ctx)
- 	if (ctx->flags & EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL) {
- 		if (ctx->tfm)
- 			crypto_free_tfm(ctx->tfm);
--		kfree(ctx);
-+		kmem_cache_free(ext4_crypto_ctx_cachep, ctx);
- 	} else {
- 		spin_lock_irqsave(&ext4_crypto_ctx_lock, flags);
- 		list_add(&ctx->free_list, &ext4_free_crypto_ctxs);
-@@ -88,23 +91,6 @@ void ext4_release_crypto_ctx(struct ext4_crypto_ctx *ctx)
+ static struct kmem_cache *ext4_crypto_ctx_cachep;
+ struct kmem_cache *ext4_crypt_info_cachep;
+ 
+@@ -175,8 +178,39 @@ out:
+ 	return ctx;
  }
  
- /**
-- * ext4_alloc_and_init_crypto_ctx() - Allocates and inits an encryption context
-- * @mask: The allocation mask.
-- *
-- * Return: An allocated and initialized encryption context on success. An error
-- * value or NULL otherwise.
-- */
--static struct ext4_crypto_ctx *ext4_alloc_and_init_crypto_ctx(gfp_t mask)
--{
--	struct ext4_crypto_ctx *ctx = kzalloc(sizeof(struct ext4_crypto_ctx),
--					      mask);
--
--	if (!ctx)
--		return ERR_PTR(-ENOMEM);
--	return ctx;
--}
--
--/**
-  * ext4_get_crypto_ctx() - Gets an encryption context
-  * @inode:       The inode for which we are doing the crypto
-  *
-@@ -121,8 +107,6 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
- 	struct ext4_crypt_info *ci = EXT4_I(inode)->i_crypt_info;
- 
- 	BUG_ON(ci == NULL);
--	if (!ext4_read_workqueue)
--		ext4_init_crypto();
- 
- 	/*
- 	 * We first try getting the ctx from a free list because in
-@@ -141,9 +125,9 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
- 		list_del(&ctx->free_list);
- 	spin_unlock_irqrestore(&ext4_crypto_ctx_lock, flags);
- 	if (!ctx) {
--		ctx = ext4_alloc_and_init_crypto_ctx(GFP_NOFS);
--		if (IS_ERR(ctx)) {
--			res = PTR_ERR(ctx);
-+		ctx = kmem_cache_zalloc(ext4_crypto_ctx_cachep, GFP_NOFS);
-+		if (!ctx) {
-+			res = -ENOMEM;
- 			goto out;
- 		}
- 		ctx->flags |= EXT4_CTX_REQUIRES_FREE_ENCRYPT_FL;
-@@ -217,7 +201,7 @@ void ext4_exit_crypto(void)
- 		}
- 		if (pos->tfm)
- 			crypto_free_tfm(pos->tfm);
--		kfree(pos);
-+		kmem_cache_free(ext4_crypto_ctx_cachep, pos);
- 	}
- 	INIT_LIST_HEAD(&ext4_free_crypto_ctxs);
- 	if (ext4_bounce_page_pool)
-@@ -226,6 +210,12 @@ void ext4_exit_crypto(void)
- 	if (ext4_read_workqueue)
- 		destroy_workqueue(ext4_read_workqueue);
- 	ext4_read_workqueue = NULL;
-+	if (ext4_crypto_ctx_cachep)
-+		kmem_cache_destroy(ext4_crypto_ctx_cachep);
-+	ext4_crypto_ctx_cachep = NULL;
-+	if (ext4_crypt_info_cachep)
-+		kmem_cache_destroy(ext4_crypt_info_cachep);
-+	ext4_crypt_info_cachep = NULL;
- }
- 
- /**
-@@ -238,23 +228,31 @@ void ext4_exit_crypto(void)
-  */
- int ext4_init_crypto(void)
- {
--	int i, res;
-+	int i, res = -ENOMEM;
- 
- 	mutex_lock(&crypto_init);
- 	if (ext4_read_workqueue)
- 		goto already_initialized;
- 	ext4_read_workqueue = alloc_workqueue("ext4_crypto", WQ_HIGHPRI, 0);
--	if (!ext4_read_workqueue) {
--		res = -ENOMEM;
-+	if (!ext4_read_workqueue)
-+		goto fail;
+-struct workqueue_struct *ext4_read_workqueue;
+-static DEFINE_MUTEX(crypto_init);
++/*
++ * Call ext4_decrypt on every single page, reusing the encryption
++ * context.
++ */
++static void completion_pages(struct work_struct *work)
++{
++	struct ext4_crypto_ctx *ctx =
++		container_of(work, struct ext4_crypto_ctx, r.work);
++	struct bio *bio = ctx->r.bio;
++	struct bio_vec *bv;
++	int i;
 +
-+	ext4_crypto_ctx_cachep = KMEM_CACHE(ext4_crypto_ctx,
-+					    SLAB_RECLAIM_ACCOUNT);
-+	if (!ext4_crypto_ctx_cachep)
-+		goto fail;
++	bio_for_each_segment_all(bv, bio, i) {
++		struct page *page = bv->bv_page;
 +
-+	ext4_crypt_info_cachep = KMEM_CACHE(ext4_crypt_info,
-+					    SLAB_RECLAIM_ACCOUNT);
-+	if (!ext4_crypt_info_cachep)
- 		goto fail;
--	}
- 
- 	for (i = 0; i < num_prealloc_crypto_ctxs; i++) {
- 		struct ext4_crypto_ctx *ctx;
- 
--		ctx = ext4_alloc_and_init_crypto_ctx(GFP_KERNEL);
--		if (IS_ERR(ctx)) {
--			res = PTR_ERR(ctx);
-+		ctx = kmem_cache_zalloc(ext4_crypto_ctx_cachep, GFP_NOFS);
-+		if (!ctx) {
-+			res = -ENOMEM;
- 			goto fail;
- 		}
- 		list_add(&ctx->free_list, &ext4_free_crypto_ctxs);
-diff --git a/fs/ext4/crypto_key.c b/fs/ext4/crypto_key.c
-index 0075e43..d6abe46 100644
---- a/fs/ext4/crypto_key.c
-+++ b/fs/ext4/crypto_key.c
-@@ -96,7 +96,7 @@ void ext4_free_encryption_info(struct inode *inode)
- 		key_put(ci->ci_keyring_key);
- 	crypto_free_ablkcipher(ci->ci_ctfm);
- 	memzero_explicit(&ci->ci_raw, sizeof(ci->ci_raw));
--	kfree(ci);
-+	kmem_cache_free(ext4_crypt_info_cachep, ci);
- 	ei->i_crypt_info = NULL;
- }
- 
-@@ -113,6 +113,12 @@ int _ext4_get_encryption_info(struct inode *inode)
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	int res;
- 
-+	if (!ext4_read_workqueue) {
-+		res = ext4_init_crypto();
-+		if (res)
-+			return res;
++		int ret = ext4_decrypt(ctx, page);
++		if (ret) {
++			WARN_ON_ONCE(1);
++			SetPageError(page);
++		} else
++			SetPageUptodate(page);
++		unlock_page(page);
 +	}
++	ext4_release_crypto_ctx(ctx);
++	bio_put(bio);
++}
 +
- 	if (ei->i_crypt_info) {
- 		if (!ei->i_crypt_info->ci_keyring_key ||
- 		    key_validate(ei->i_crypt_info->ci_keyring_key) == 0)
-@@ -134,7 +140,7 @@ int _ext4_get_encryption_info(struct inode *inode)
- 		return -EINVAL;
- 	res = 0;
++void ext4_end_io_crypto_work(struct ext4_crypto_ctx *ctx, struct bio *bio)
++{
++	INIT_WORK(&ctx->r.work, completion_pages);
++	ctx->r.bio = bio;
++	queue_work(ext4_read_workqueue, &ctx->r.work);
++}
  
--	crypt_info = kmalloc(sizeof(struct ext4_crypt_info), GFP_KERNEL);
-+	crypt_info = kmem_cache_alloc(ext4_crypt_info_cachep, GFP_KERNEL);
- 	if (!crypt_info)
- 		return -ENOMEM;
- 
-@@ -188,7 +194,7 @@ out:
- 	if (res < 0) {
- 		if (res == -ENOKEY)
- 			res = 0;
--		kfree(crypt_info);
-+		kmem_cache_free(ext4_crypt_info_cachep, crypt_info);
- 	} else {
- 		ei->i_crypt_info = crypt_info;
- 		crypt_info->ci_keyring_key = keyring_key;
+ /**
+  * ext4_exit_crypto() - Shutdown the ext4 encryption system
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 641b781..550fe95 100644
+index 550fe95..505bc66 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -2059,6 +2059,7 @@ int ext4_get_policy(struct inode *inode,
- 		    struct ext4_encryption_policy *policy);
- 
- /* crypto.c */
-+extern struct kmem_cache *ext4_crypt_info_cachep;
+@@ -2062,7 +2062,7 @@ int ext4_get_policy(struct inode *inode,
+ extern struct kmem_cache *ext4_crypt_info_cachep;
  bool ext4_valid_contents_enc_mode(uint32_t mode);
  uint32_t ext4_validate_encryption_key_size(uint32_t mode, uint32_t size);
- extern struct workqueue_struct *ext4_read_workqueue;
--- 
-2.3.0
-
+-extern struct workqueue_struct *ext4_read_workqueue;
++void ext4_end_io_crypto_work(struct ext4_crypto_ctx *ctx, struct bio *bio);
+ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode);
+ void ext4_release_crypto_ctx(struct ext4_crypto_ctx *ctx);
+ void ext4_restore_control_page(struct page *data_page);
+diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+index ec3ef93..a7b074e 100644
+--- a/fs/ext4/readpage.c
++++ b/fs/ext4/readpage.c
+@@ -46,37 +46,6 @@
+ 
+ #include "ext4.h"
+ 
+-/*
+- * Call ext4_decrypt on every single page, reusing the encryption
+- * context.
+- */
+-static void completion_pages(struct work_struct *work)
+-{
+-#ifdef CONFIG_EXT4_FS_ENCRYPTION
+-	struct ext4_crypto_ctx *ctx =
+-		container_of(work, struct ext4_crypto_ctx, r.work);
+-	struct bio	*bio	= ctx->r.bio;
+-	struct bio_vec	*bv;
+-	int		i;
+-
+-	bio_for_each_segment_all(bv, bio, i) {
+-		struct page *page = bv->bv_page;
+-
+-		int ret = ext4_decrypt(ctx, page);
+-		if (ret) {
+-			WARN_ON_ONCE(1);
+-			SetPageError(page);
+-		} else
+-			SetPageUptodate(page);
+-		unlock_page(page);
+-	}
+-	ext4_release_crypto_ctx(ctx);
+-	bio_put(bio);
+-#else
+-	BUG();
+-#endif
+-}
