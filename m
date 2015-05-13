@@ -1,40 +1,41 @@
-From: "U.Mutlu" <for-gmane@mutluit.com>
-Subject: Htree concept
-Date: Wed, 13 May 2015 17:37:36 +0200
-Message-ID: <mivr40$2lj$1@ger.gmane.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 98091] kernel/sched/core.c:7291 __might_sleep+0x87/0x90()
+Date: Wed, 13 May 2015 15:40:16 +0000
+Message-ID: <bug-98091-13602-9i0m7PwdtI@https.bugzilla.kernel.org/>
+References: <bug-98091-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:55737 "EHLO plane.gmane.org"
+Received: from mail.kernel.org ([198.145.29.136]:45754 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965462AbbEMPhp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 May 2015 11:37:45 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1YsYj8-0004Ko-K8
-	for linux-ext4@vger.kernel.org; Wed, 13 May 2015 17:37:42 +0200
-Received: from ip4d14ab60.dynamic.kabel-deutschland.de ([77.20.171.96])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Wed, 13 May 2015 17:37:42 +0200
-Received: from for-gmane by ip4d14ab60.dynamic.kabel-deutschland.de with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Wed, 13 May 2015 17:37:42 +0200
+	id S965156AbbEMPkT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 May 2015 11:40:19 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 16DA020452
+	for <linux-ext4@vger.kernel.org>; Wed, 13 May 2015 15:40:18 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 46FA620439
+	for <linux-ext4@vger.kernel.org>; Wed, 13 May 2015 15:40:17 +0000 (UTC)
+In-Reply-To: <bug-98091-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-I'm writing a toy-fs, and discover a major shortcoming
-(finding a given child (dir/file) as fast as possible),
-which other developers (ie. ext3/4) had encountered long ago too.
-They introduced HTree. The info on HTree on the web is scarce
-or I couldn't find the right texts/papers yet.
-I wonder how HTree works on a conceptual basis.
-Could a kind soul enligten me pls. TIA.
+https://bugzilla.kernel.org/show_bug.cgi?id=98091
+
+poma <pomidorabelisima@gmail.com> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |RESOLVED
+         Resolution|---                         |DUPLICATE
+
+--- Comment #3 from poma <pomidorabelisima@gmail.com> ---
+
+
+*** This bug has been marked as a duplicate of bug 98191 ***
 
 -- 
-cu
-Uenal
-
+You are receiving this mail because:
+You are watching the assignee of the bug.
