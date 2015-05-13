@@ -1,79 +1,102 @@
-From: "U.Mutlu" <for-gmane@mutluit.com>
-Subject: Re: Htree concept
-Date: Wed, 13 May 2015 19:37:36 +0200
-Message-ID: <mj0250$tvl$1@ger.gmane.org>
-References: <mivr40$2lj$1@ger.gmane.org> <55537BF7.8000602@redhat.com>
- <mj019e$f8f$1@ger.gmane.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH] jbd2: fix r_count overflows leading to buffer overflow in
+ journal recovery
+Date: Wed, 13 May 2015 11:56:46 -0700
+Message-ID: <20150513185646.GE30577@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:35975 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933578AbbEMRhw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 May 2015 13:37:52 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1YsabO-0007bM-9X
-	for linux-ext4@vger.kernel.org; Wed, 13 May 2015 19:37:50 +0200
-Received: from ip4d14ab60.dynamic.kabel-deutschland.de ([77.20.171.96])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Wed, 13 May 2015 19:37:50 +0200
-Received: from for-gmane by ip4d14ab60.dynamic.kabel-deutschland.de with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Wed, 13 May 2015 19:37:50 +0200
-In-Reply-To: <mj019e$f8f$1@ger.gmane.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:20542 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933757AbbEMS4v (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 May 2015 14:56:51 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-U.Mutlu wrote on 05/13/2015 07:22 PM:
-> Eric Sandeen wrote on 05/13/2015 06:29 PM:
->> On 5/13/15 10:37 AM, U.Mutlu wrote:
->>> Hi,
->>> I'm writing a toy-fs, and discover a major shortcoming
->>> (finding a given child (dir/file) as fast as possible),
->>> which other developers (ie. ext3/4) had encountered long ago too.
->>> They introduced HTree. The info on HTree on the web is scarce
->>> or I couldn't find the right texts/papers yet.
->>> I wonder how HTree works on a conceptual basis.
->>> Could a kind soul enligten me pls. TIA.
->>
->> Regarding htree details, did you look at:
->>
->> http://en.wikipedia.org/wiki/HTree
->>
->> which points to:
->>
->> http://ext2.sourceforge.net/2005-ols/paper-html/node3.html
->> and more specifically,
->> http://web.archive.org/web/20131203105316/http://www.linuxshowcase.org/2001/full_papers/phillips/phillips_html/index.html
->>
->>
->> ?
->
-> Thanks, the wiki page and its refs I knew, but needed some more info.
->
-> Ok, it is written that HTree uses 32bit (or 64?) hashes for keys.
-> I wonder if it wouldn't be better if one instead would use that space
-> (32/64 bit) for storing the first n chars of the key (ie. of the dir/file name)
-> and keeping the directory entries in a sorted order on the disk,
-> and then do a bsearch instead of doing sequential table lookup using HTree?
-> I wonder what the "Tree"-part of HTree stand for in this context.
-> Am I right in my assumption that HTree mainly means the hashing mechanism,
-> but does not use any binary search mechanism for searching the key?
+The journal revoke block recovery code does not check r_count for
+sanity, which means that an evil value of r_count could result in
+the kernel reading off the end of the revoke table and into whatever
+garbage lies beyond.  This could crash the kernel, so fix that.
 
-Addendum:
-I think I slowly grasp how HTree works: it keeps a (rb/avl tree)
-b*tree-db (I guess it stores it on disk) of the hashes (as keys).
+However, in testing this fix, I discovered that the code to write
+out the revoke tables also was not correctly checking to see if the
+block was full -- the current offset check is fine so long as the
+revoke table space size is a multiple of the record size, but this
+is not true when either journal_csum_v[23] are set.
 
-In contrast to that here my idea: keep the hdr blocks (ie. where the
-dir/file names are) always in a sorted order. Then a bsearch should be doable.
-This would eliminate the need for any b*tree-db usage.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ fs/jbd2/recovery.c |   10 +++++++++-
+ fs/jbd2/revoke.c   |   18 ++++++++++--------
+ 2 files changed, 19 insertions(+), 9 deletions(-)
 
--- 
-cu
-Uenal
-
-
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index b5128c6..a9079d0 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -842,15 +842,23 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
+ {
+ 	jbd2_journal_revoke_header_t *header;
+ 	int offset, max;
++	int csum_size = 0;
++	__u32 rcount;
+ 	int record_len = 4;
+ 
+ 	header = (jbd2_journal_revoke_header_t *) bh->b_data;
+ 	offset = sizeof(jbd2_journal_revoke_header_t);
+-	max = be32_to_cpu(header->r_count);
++	rcount = be32_to_cpu(header->r_count);
+ 
+ 	if (!jbd2_revoke_block_csum_verify(journal, header))
+ 		return -EINVAL;
+ 
++	if (jbd2_journal_has_csum_v2or3(journal))
++		csum_size = sizeof(struct jbd2_journal_revoke_tail);
++	if (rcount > journal->j_blocksize - csum_size)
++		return -EINVAL;
++	max = rcount;
++
+ 	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
+ 		record_len = 8;
+ 
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index c6cbaef..fd9969d 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -577,7 +577,7 @@ static void write_one_revoke_record(journal_t *journal,
+ {
+ 	int csum_size = 0;
+ 	struct buffer_head *descriptor;
+-	int offset;
++	int sz, offset;
+ 	journal_header_t *header;
+ 
+ 	/* If we are already aborting, this all becomes a noop.  We
+@@ -594,9 +594,14 @@ static void write_one_revoke_record(journal_t *journal,
+ 	if (jbd2_journal_has_csum_v2or3(journal))
+ 		csum_size = sizeof(struct jbd2_journal_revoke_tail);
+ 
++	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
++		sz = 8;
++	else
++		sz = 4;
++
+ 	/* Make sure we have a descriptor with space left for the record */
+ 	if (descriptor) {
+-		if (offset >= journal->j_blocksize - csum_size) {
++		if (offset + sz >= journal->j_blocksize - csum_size) {
+ 			flush_descriptor(journal, descriptor, offset, write_op);
+ 			descriptor = NULL;
+ 		}
+@@ -619,16 +624,13 @@ static void write_one_revoke_record(journal_t *journal,
+ 		*descriptorp = descriptor;
+ 	}
+ 
+-	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT)) {
++	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
+ 		* ((__be64 *)(&descriptor->b_data[offset])) =
+ 			cpu_to_be64(record->blocknr);
+-		offset += 8;
