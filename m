@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 02/14] undo-io: write out index block after every write
-Date: Wed, 13 May 2015 17:21:21 -0700
-Message-ID: <20150514002121.10785.38168.stgit@birch.djwong.org>
+Subject: [PATCH 03/14] misc: fix undo file setup
+Date: Wed, 13 May 2015 17:21:27 -0700
+Message-ID: <20150514002127.10785.17635.stgit@birch.djwong.org>
 References: <20150514002108.10785.85860.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,139 +9,475 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:31888 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934490AbbENAV0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 May 2015 20:21:26 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:22792 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752393AbbENAVc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 May 2015 20:21:32 -0400
 In-Reply-To: <20150514002108.10785.85860.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Write out the undo file's index block after writing a block to the
-undo file.  This ensures that we always have a consistent undo file
-in the page cache, even if the program crashes.  When we fill up a
-key block in the undo file, we'll call fsync to force the whole
-thing to storage; this should happen about every 256 blocks given
-the usual 4K block size.
+Fix Coverity bugs 1297094-1297101 by fixing all the mutations in the
+*_setup_tdb() functions, fixing buffer overflows, and checking
+return values.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/undo_io.c |   47 ++++++++++++++++++++++-------------------------
- 1 file changed, 22 insertions(+), 25 deletions(-)
+ debugfs/debugfs.c |   29 ++++++++++++------------
+ e2fsck/unix.c     |   12 +++++++---
+ misc/e2undo.c     |   64 +++++++++++++++++++++++++++++++++--------------------
+ misc/mke2fs.c     |   12 +++++++---
+ misc/tune2fs.c    |   63 +++++++++++++++++++++++++++++-----------------------
+ resize/main.c     |   29 ++++++++++++------------
+ 6 files changed, 121 insertions(+), 88 deletions(-)
 
 
-diff --git a/lib/ext2fs/undo_io.c b/lib/ext2fs/undo_io.c
-index 4a48193..b9294c3 100644
---- a/lib/ext2fs/undo_io.c
-+++ b/lib/ext2fs/undo_io.c
-@@ -165,7 +165,7 @@ errcode_t set_undo_io_backup_file(char *file_name)
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 4b88f73..c677f5f 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -55,11 +55,12 @@ static int debugfs_setup_tdb(const char *device_name, char *undo_file,
+ 	errcode_t retval = ENOMEM;
+ 	char *tdb_dir = NULL, *tdb_file = NULL;
+ 	char *dev_name, *tmp_name;
+-	int free_tdb_dir = 0;
+ 
+ 	/* (re)open a specific undo file */
+ 	if (undo_file && undo_file[0] != 0) {
+-		set_undo_io_backing_manager(*io_ptr);
++		retval = set_undo_io_backing_manager(*io_ptr);
++		if (retval)
++			goto err;
+ 		*io_ptr = undo_io_manager;
+ 		retval = set_undo_io_backup_file(undo_file);
+ 		if (retval)
+@@ -68,7 +69,7 @@ static int debugfs_setup_tdb(const char *device_name, char *undo_file,
+ 			"using the command:\n"
+ 			"    e2undo %s %s\n\n",
+ 			undo_file, device_name);
+-		return 0;
++		return retval;
+ 	}
+ 
+ 	/*
+@@ -76,19 +77,18 @@ static int debugfs_setup_tdb(const char *device_name, char *undo_file,
+ 	 * nice
+ 	 */
+ 	tdb_dir = getenv("E2FSPROGS_UNDO_DIR");
++	if (!tdb_dir)
++		tdb_dir = "/var/lib/e2fsprogs";
+ 
+-	if (tdb_dir == NULL || !strcmp(tdb_dir, "none") || (tdb_dir[0] == 0) ||
+-	    access(tdb_dir, W_OK)) {
+-		if (free_tdb_dir)
+-			free(tdb_dir);
++	if (!strcmp(tdb_dir, "none") || (tdb_dir[0] == 0) ||
++	    access(tdb_dir, W_OK))
+ 		return 0;
+-	}
+ 
+ 	tmp_name = strdup(device_name);
+ 	if (!tmp_name)
+ 		goto errout;
+ 	dev_name = basename(tmp_name);
+-	tdb_file = malloc(strlen(tdb_dir) + 8 + strlen(dev_name) + 7 + 1);
++	tdb_file = malloc(strlen(tdb_dir) + 9 + strlen(dev_name) + 7 + 1);
+ 	if (!tdb_file) {
+ 		free(tmp_name);
+ 		goto errout;
+@@ -98,10 +98,14 @@ static int debugfs_setup_tdb(const char *device_name, char *undo_file,
+ 
+ 	if ((unlink(tdb_file) < 0) && (errno != ENOENT)) {
+ 		retval = errno;
++		com_err("debugfs", retval,
++			"while trying to delete %s", tdb_file);
+ 		goto errout;
+ 	}
+ 
+-	set_undo_io_backing_manager(*io_ptr);
++	retval = set_undo_io_backing_manager(*io_ptr);
++	if (retval)
++		goto errout;
+ 	*io_ptr = undo_io_manager;
+ 	retval = set_undo_io_backup_file(tdb_file);
+ 	if (retval)
+@@ -110,14 +114,9 @@ static int debugfs_setup_tdb(const char *device_name, char *undo_file,
+ 		"using the command:\n"
+ 		"    e2undo %s %s\n\n", tdb_file, device_name);
+ 
+-	if (free_tdb_dir)
+-		free(tdb_dir);
+ 	free(tdb_file);
  	return 0;
+-
+ errout:
+-	if (free_tdb_dir)
+-		free(tdb_dir);
+ 	free(tdb_file);
+ err:
+ 	com_err("debugfs", retval, "while trying to setup undo file\n");
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index 940ecb4..9ef4b1e 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -1242,7 +1242,9 @@ static int e2fsck_setup_tdb(e2fsck_t ctx, io_manager *io_ptr)
+ 
+ 	/* (re)open a specific undo file */
+ 	if (ctx->undo_file && ctx->undo_file[0] != 0) {
+-		set_undo_io_backing_manager(*io_ptr);
++		retval = set_undo_io_backing_manager(*io_ptr);
++		if (retval)
++			goto err;
+ 		*io_ptr = undo_io_manager;
+ 		retval = set_undo_io_backup_file(ctx->undo_file);
+ 		if (retval)
+@@ -1251,7 +1253,7 @@ static int e2fsck_setup_tdb(e2fsck_t ctx, io_manager *io_ptr)
+ 			 "using the command:\n"
+ 			 "    e2undo %s %s\n\n"),
+ 			ctx->undo_file, ctx->filesystem_name);
+-		return 0;
++		return retval;
+ 	}
+ 
+ 	/*
+@@ -1287,10 +1289,14 @@ static int e2fsck_setup_tdb(e2fsck_t ctx, io_manager *io_ptr)
+ 
+ 	if ((unlink(tdb_file) < 0) && (errno != ENOENT)) {
+ 		retval = errno;
++		com_err(ctx->program_name, retval,
++			_("while trying to delete %s"), tdb_file);
+ 		goto errout;
+ 	}
+ 
+-	set_undo_io_backing_manager(*io_ptr);
++	retval = set_undo_io_backing_manager(*io_ptr);
++	if (retval)
++		goto errout;
+ 	*io_ptr = undo_io_manager;
+ 	retval = set_undo_io_backup_file(tdb_file);
+ 	if (retval)
+diff --git a/misc/e2undo.c b/misc/e2undo.c
+index 3f312c6..6123c48 100644
+--- a/misc/e2undo.c
++++ b/misc/e2undo.c
+@@ -204,29 +204,29 @@ static int e2undo_setup_tdb(const char *name, io_manager *io_ptr)
+ {
+ 	errcode_t retval = 0;
+ 	const char *tdb_dir;
+-	char *tdb_file;
++	char *tdb_file = NULL;
+ 	char *dev_name, *tmp_name;
+ 
+ 	/* (re)open a specific undo file */
+ 	if (undo_file && undo_file[0] != 0) {
+-		set_undo_io_backing_manager(*io_ptr);
++		retval = set_undo_io_backing_manager(*io_ptr);
++		if (retval)
++			goto err;
+ 		*io_ptr = undo_io_manager;
+-		set_undo_io_backup_file(undo_file);
+-		printf(_("To undo the e2undo operation please run "
+-			 "the command\n    e2undo %s %s\n\n"),
++		retval = set_undo_io_backup_file(undo_file);
++		if (retval)
++			goto err;
++		printf(_("Overwriting existing filesystem; this can be undone "
++			 "using the command:\n"
++			 "    e2undo %s %s\n\n"),
+ 			 undo_file, name);
+ 		return retval;
+ 	}
+ 
+-	tmp_name = strdup(name);
+-	if (!tmp_name) {
+-	alloc_fn_fail:
+-		com_err(prg_name, ENOMEM, "%s",
+-			_("Couldn't allocate memory for tdb filename\n"));
+-		return ENOMEM;
+-	}
+-	dev_name = basename(tmp_name);
+-
++	/*
++	 * Configuration via a conf file would be
++	 * nice
++	 */
+ 	tdb_dir = getenv("E2FSPROGS_UNDO_DIR");
+ 	if (!tdb_dir)
+ 		tdb_dir = "/var/lib/e2fsprogs";
+@@ -235,27 +235,43 @@ static int e2undo_setup_tdb(const char *name, io_manager *io_ptr)
+ 	    access(tdb_dir, W_OK))
+ 		return 0;
+ 
+-	tdb_file = malloc(strlen(tdb_dir) + 9 + strlen(dev_name) + 7 + 1);
+-	if (!tdb_file)
+-		goto alloc_fn_fail;
++	tmp_name = strdup(name);
++	if (!tmp_name)
++		goto errout;
++	dev_name = basename(tmp_name);
++	tdb_file = malloc(strlen(tdb_dir) + 8 + strlen(dev_name) + 7 + 1);
++	if (!tdb_file) {
++		free(tmp_name);
++		goto errout;
++	}
+ 	sprintf(tdb_file, "%s/e2undo-%s.e2undo", tdb_dir, dev_name);
++	free(tmp_name);
+ 
+ 	if ((unlink(tdb_file) < 0) && (errno != ENOENT)) {
+ 		retval = errno;
+ 		com_err(prg_name, retval,
+ 			_("while trying to delete %s"), tdb_file);
+-		free(tdb_file);
+-		return retval;
++		goto errout;
+ 	}
+ 
+-	set_undo_io_backing_manager(*io_ptr);
++	retval = set_undo_io_backing_manager(*io_ptr);
++	if (retval)
++		goto errout;
+ 	*io_ptr = undo_io_manager;
+-	set_undo_io_backup_file(tdb_file);
+-	printf(_("To undo the e2undo operation please run "
+-		 "the command\n    e2undo %s %s\n\n"),
++	retval = set_undo_io_backup_file(tdb_file);
++	if (retval)
++		goto errout;
++	printf(_("Overwriting existing filesystem; this can be undone "
++		 "using the command:\n"
++		 "    e2undo %s %s\n\n"),
+ 		 tdb_file, name);
++
+ 	free(tdb_file);
+-	free(tmp_name);
++	return 0;
++errout:
++	free(tdb_file);
++err:
++	com_err(prg_name, retval, "while trying to setup undo file\n");
+ 	return retval;
  }
  
--static errcode_t write_undo_indexes(struct undo_private_data *data)
-+static errcode_t write_undo_indexes(struct undo_private_data *data, int flush)
- {
- 	errcode_t retval;
- 	struct ext2_super_block super;
-@@ -187,9 +187,14 @@ static errcode_t write_undo_indexes(struct undo_private_data *data)
- 						1, data->keyb);
- 		if (retval)
- 			return retval;
--		memset(data->keyb, 0, data->tdb_data_size);
--		data->keys_in_block = 0;
--		data->key_blk_num = data->undo_blk_num;
-+		/* Move on to the next key block if it's full. */
-+		if (data->keys_in_block == KEYS_PER_BLOCK(data)) {
-+			memset(data->keyb, 0, data->tdb_data_size);
-+			data->keys_in_block = 0;
-+			data->key_blk_num = data->undo_blk_num;
-+			data->undo_blk_num++;
-+			flush = 1;
-+		}
- 	}
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 05a16d6..78b1252 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -2500,7 +2500,9 @@ static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
  
- 	/* Prepare superblock for write */
-@@ -230,7 +235,8 @@ static errcode_t write_undo_indexes(struct undo_private_data *data)
- 	if (retval)
- 		goto err_out;
- 
--	retval = io_channel_flush(data->undo_file);
-+	if (flush)
-+		retval = io_channel_flush(data->undo_file);
- err_out:
- 	io_channel_set_blksize(channel, block_size);
- 	return retval;
-@@ -261,7 +267,7 @@ static errcode_t undo_setup_tdb(struct undo_private_data *data)
- 	retval = ext2fs_get_mem(data->tdb_data_size, &data->keyb);
- 	if (retval)
- 		return retval;
--	data->key_blk_num = data->undo_blk_num;
-+	data->key_blk_num = data->first_key_blk;
- 
- 	/* Record block size */
- 	dbg_printf("Undo block size %llu\n", data->tdb_data_size);
-@@ -348,22 +354,6 @@ static errcode_t undo_write_tdb(io_channel channel,
- 		}
- 		ext2fs_mark_block_bitmap2(data->written_block_map, block_num);
- 
--		/* Spit out a key block */
--		if (data->keys_in_block == KEYS_PER_BLOCK(data)) {
--			retval = write_undo_indexes(data);
--			if (retval)
--				return retval;
--			retval = io_channel_write_blk64(data->undo_file,
--							data->key_blk_num, 1,
--							data->keyb);
--			if (retval)
--				return retval;
--		}
--
--		/* Allocate new key block */
--		if (data->keys_in_block == 0)
--			data->undo_blk_num++;
--
- 		/*
- 		 * Read one block using the backing I/O manager
- 		 * The backing I/O manager block size may be
-@@ -458,6 +448,12 @@ static errcode_t undo_write_tdb(io_channel channel,
- 		}
- 		data->undo_blk_num++;
- 		free(read_ptr);
-+
-+		/* Write out the key block */
-+		retval = write_undo_indexes(data, 0);
+ 	/* (re)open a specific undo file */
+ 	if (undo_file && undo_file[0] != 0) {
+-		set_undo_io_backing_manager(*io_ptr);
++		retval = set_undo_io_backing_manager(*io_ptr);
 +		if (retval)
-+			return retval;
-+
- 		/* Next block */
- 		block_num++;
++			goto err;
+ 		*io_ptr = undo_io_manager;
+ 		retval = set_undo_io_backup_file(undo_file);
+ 		if (retval)
+@@ -2508,7 +2510,7 @@ static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
+ 		printf(_("Overwriting existing filesystem; this can be undone "
+ 			 "using the command:\n"
+ 			 "    e2undo %s %s\n\n"), undo_file, name);
+-		return 0;
++		return retval;
  	}
-@@ -668,7 +664,7 @@ static void undo_atexit(void *p)
- 	struct undo_private_data *data = p;
- 	errcode_t err;
  
--	err = write_undo_indexes(data);
-+	err = write_undo_indexes(data, 1);
- 	io_channel_close(data->undo_file);
+ 	/*
+@@ -2544,10 +2546,14 @@ static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
  
- 	com_err(data->tdb_file, err, "while force-closing undo file");
-@@ -707,7 +703,8 @@ static errcode_t undo_open(const char *name, int flags, io_channel *channel)
- 	memset(data, 0, sizeof(struct undo_private_data));
- 	data->magic = EXT2_ET_MAGIC_UNIX_IO_CHANNEL;
- 	data->super_blk_num = 1;
--	data->undo_blk_num = data->first_key_blk = 2;
-+	data->first_key_blk = 2;
-+	data->undo_blk_num = 3;
+ 	if ((unlink(tdb_file) < 0) && (errno != ENOENT)) {
+ 		retval = errno;
++		com_err(program_name, retval,
++			_("while trying to delete %s"), tdb_file);
+ 		goto errout;
+ 	}
  
- 	if (undo_io_backing_manager) {
- 		retval = undo_io_backing_manager->open(name, flags,
-@@ -789,7 +786,7 @@ static errcode_t undo_close(io_channel channel)
- 	/* Before closing write the file system identity */
- 	if (!getenv("UNDO_IO_SIMULATE_UNFINISHED"))
- 		data->hdr.state = ext2fs_cpu_to_le32(E2UNDO_STATE_FINISHED);
--	err = write_undo_indexes(data);
-+	err = write_undo_indexes(data, 1);
- 	ext2fs_remove_exit_fn(undo_atexit, data);
- 	if (data->real)
- 		retval = io_channel_close(data->real);
-
+-	set_undo_io_backing_manager(*io_ptr);
++	retval = set_undo_io_backing_manager(*io_ptr);
++	if (retval)
++		goto errout;
+ 	*io_ptr = undo_io_manager;
+ 	retval = set_undo_io_backup_file(tdb_file);
+ 	if (retval)
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index f97ec25..d2e8b20 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -2529,38 +2529,29 @@ static int tune2fs_setup_tdb(const char *name, io_manager *io_ptr)
+ {
+ 	errcode_t retval = 0;
+ 	const char *tdb_dir;
+-	char *tdb_file;
++	char *tdb_file = NULL;
+ 	char *dev_name, *tmp_name;
+ 
+ 	/* (re)open a specific undo file */
+ 	if (undo_file && undo_file[0] != 0) {
+-		set_undo_io_backing_manager(*io_ptr);
++		retval = set_undo_io_backing_manager(*io_ptr);
++		if (retval)
++			goto err;
+ 		*io_ptr = undo_io_manager;
+-		set_undo_io_backup_file(undo_file);
+-		printf(_("To undo the tune2fs operation please run "
+-			 "the command\n    e2undo %s %s\n\n"),
++		retval = set_undo_io_backup_file(undo_file);
++		if (retval)
++			goto err;
++		printf(_("Overwriting existing filesystem; this can be undone "
++			 "using the command:\n"
++			 "    e2undo %s %s\n\n"),
+ 			 undo_file, name);
+ 		return retval;
+ 	}
+ 
+-#if 0 /* FIXME!! */
+ 	/*
+ 	 * Configuration via a conf file would be
+ 	 * nice
+ 	 */
+-	profile_get_string(profile, "scratch_files",
+-					"directory", 0, 0,
+-					&tdb_dir);
+-#endif
+-	tmp_name = strdup(name);
+-	if (!tmp_name) {
+-	alloc_fn_fail:
+-		com_err(program_name, ENOMEM, "%s",
+-			_("Couldn't allocate memory for tdb filename\n"));
+-		return ENOMEM;
+-	}
+-	dev_name = basename(tmp_name);
+-
+ 	tdb_dir = getenv("E2FSPROGS_UNDO_DIR");
+ 	if (!tdb_dir)
+ 		tdb_dir = "/var/lib/e2fsprogs";
+@@ -2569,27 +2560,43 @@ static int tune2fs_setup_tdb(const char *name, io_manager *io_ptr)
+ 	    access(tdb_dir, W_OK))
+ 		return 0;
+ 
++	tmp_name = strdup(name);
++	if (!tmp_name)
++		goto errout;
++	dev_name = basename(tmp_name);
+ 	tdb_file = malloc(strlen(tdb_dir) + 9 + strlen(dev_name) + 7 + 1);
+-	if (!tdb_file)
+-		goto alloc_fn_fail;
++	if (!tdb_file) {
++		free(tmp_name);
++		goto errout;
++	}
+ 	sprintf(tdb_file, "%s/tune2fs-%s.e2undo", tdb_dir, dev_name);
++	free(tmp_name);
+ 
+ 	if ((unlink(tdb_file) < 0) && (errno != ENOENT)) {
+ 		retval = errno;
+ 		com_err(program_name, retval,
+ 			_("while trying to delete %s"), tdb_file);
+-		free(tdb_file);
+-		return retval;
++		goto errout;
+ 	}
+ 
+-	set_undo_io_backing_manager(*io_ptr);
++	retval = set_undo_io_backing_manager(*io_ptr);
++	if (retval)
++		goto errout;
+ 	*io_ptr = undo_io_manager;
+-	set_undo_io_backup_file(tdb_file);
+-	printf(_("To undo the tune2fs operation please run "
+-		 "the command\n    e2undo %s %s\n\n"),
++	retval = set_undo_io_backup_file(tdb_file);
++	if (retval)
++		goto errout;
++	printf(_("Overwriting existing filesystem; this can be undone "
++		 "using the command:\n"
++		 "    e2undo %s %s\n\n"),
+ 		 tdb_file, name);
++
+ 	free(tdb_file);
+-	free(tmp_name);
++	return 0;
++errout:
++	free(tdb_file);
++err:
++	com_err("tune2fs", retval, "while trying to setup undo file\n");
+ 	return retval;
+ }
+ 
+diff --git a/resize/main.c b/resize/main.c
+index a61943e..9da3a95 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -170,11 +170,12 @@ static int resize2fs_setup_tdb(const char *device_name, char *undo_file,
+ 	errcode_t retval = ENOMEM;
+ 	char *tdb_dir = NULL, *tdb_file = NULL;
+ 	char *dev_name, *tmp_name;
+-	int free_tdb_dir = 0;
+ 
+ 	/* (re)open a specific undo file */
+ 	if (undo_file && undo_file[0] != 0) {
+-		set_undo_io_backing_manager(*io_ptr);
++		retval = set_undo_io_backing_manager(*io_ptr);
++		if (retval)
++			goto err;
+ 		*io_ptr = undo_io_manager;
+ 		retval = set_undo_io_backup_file(undo_file);
+ 		if (retval)
+@@ -183,7 +184,7 @@ static int resize2fs_setup_tdb(const char *device_name, char *undo_file,
+ 			 "using the command:\n"
+ 			 "    e2undo %s %s\n\n"),
+ 			undo_file, device_name);
+-		return 0;
++		return retval;
+ 	}
+ 
+ 	/*
+@@ -191,19 +192,18 @@ static int resize2fs_setup_tdb(const char *device_name, char *undo_file,
+ 	 * nice
+ 	 */
+ 	tdb_dir = getenv("E2FSPROGS_UNDO_DIR");
++	if (!tdb_dir)
++		tdb_dir = "/var/lib/e2fsprogs";
+ 
+-	if (tdb_dir == NULL || !strcmp(tdb_dir, "none") || (tdb_dir[0] == 0) ||
+-	    access(tdb_dir, W_OK)) {
+-		if (free_tdb_dir)
+-			free(tdb_dir);
++	if (!strcmp(tdb_dir, "none") || (tdb_dir[0] == 0) ||
++	    access(tdb_dir, W_OK))
+ 		return 0;
+-	}
+ 
+ 	tmp_name = strdup(device_name);
+ 	if (!tmp_name)
+ 		goto errout;
+ 	dev_name = basename(tmp_name);
+-	tdb_file = malloc(strlen(tdb_dir) + 8 + strlen(dev_name) + 7 + 1);
++	tdb_file = malloc(strlen(tdb_dir) + 11 + strlen(dev_name) + 7 + 1);
+ 	if (!tdb_file) {
+ 		free(tmp_name);
+ 		goto errout;
+@@ -213,10 +213,14 @@ static int resize2fs_setup_tdb(const char *device_name, char *undo_file,
+ 
+ 	if ((unlink(tdb_file) < 0) && (errno != ENOENT)) {
+ 		retval = errno;
++		com_err(program_name, retval,
++			_("while trying to delete %s"), tdb_file);
+ 		goto errout;
+ 	}
+ 
+-	set_undo_io_backing_manager(*io_ptr);
++	retval = set_undo_io_backing_manager(*io_ptr);
++	if (retval)
++		goto errout;
+ 	*io_ptr = undo_io_manager;
+ 	retval = set_undo_io_backup_file(tdb_file);
+ 	if (retval)
+@@ -225,14 +229,9 @@ static int resize2fs_setup_tdb(const char *device_name, char *undo_file,
+ 		 "using the command:\n"
+ 		 "    e2undo %s %s\n\n"), tdb_file, device_name);
+ 
+-	if (free_tdb_dir)
+-		free(tdb_dir);
+ 	free(tdb_file);
+ 	return 0;
