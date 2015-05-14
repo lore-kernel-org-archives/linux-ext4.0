@@ -1,36 +1,38 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: don't save the error information if the block device is read-only
-Date: Thu, 14 May 2015 18:37:59 -0400
-Message-ID: <1431643079-22882-1-git-send-email-tytso@mit.edu>
-Cc: mkayyash@google.com, Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: remove unused function prototype from ext4.h
+Date: Thu, 14 May 2015 18:43:53 -0400
+Message-ID: <1431643433-24741-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37327 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:37364 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964836AbbENWiG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 May 2015 18:38:06 -0400
+	id S965140AbbENWn5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 May 2015 18:43:57 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Google-Bug-Id: 20939131
+The ext4_extent_tree_init() function hasn't been in the ext4 code for
+a long time ago, except in an unused function prototype in ext4.h
+
+Google-Bug-Id: 4530137
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/super.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/ext4/ext4.h | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f06d058..ca9d4a2 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -294,6 +294,8 @@ static void __save_error_info(struct super_block *sb, const char *func,
- 	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
- 
- 	EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
-+	if (bdev_read_only(sb->s_bdev))
-+		return;
- 	es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
- 	es->s_last_error_time = cpu_to_le32(get_seconds());
- 	strncpy(es->s_last_error_func, func, sizeof(es->s_last_error_func));
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 009a059..9a83f14 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2889,7 +2889,6 @@ extern int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 			   struct ext4_map_blocks *map, int flags);
+ extern int ext4_ext_calc_metadata_amount(struct inode *inode,
+ 					 ext4_lblk_t lblocks);
+-extern int ext4_extent_tree_init(handle_t *, struct inode *);
+ extern int ext4_ext_calc_credits_for_single_extent(struct inode *inode,
+ 						   int num,
+ 						   struct ext4_ext_path *path);
 -- 
 2.3.0
 
