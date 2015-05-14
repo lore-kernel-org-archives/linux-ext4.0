@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 08/14] libext2fs: find/alloc a range of empty blocks
-Date: Wed, 13 May 2015 17:22:00 -0700
-Message-ID: <20150514002159.10785.73282.stgit@birch.djwong.org>
+Subject: [PATCH 06/14] e2fsck: convert block-mapped files to extents on
+ bigalloc fs
+Date: Wed, 13 May 2015 17:21:47 -0700
+Message-ID: <20150514002147.10785.14723.stgit@birch.djwong.org>
 References: <20150514002108.10785.85860.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,206 +10,163 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:32054 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934608AbbENAWE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 May 2015 20:22:04 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:22840 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934604AbbENAVv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 May 2015 20:21:51 -0400
 In-Reply-To: <20150514002108.10785.85860.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Provide a function that, given a goal pblk and a range, will try to
-find a run of free blocks to satisfy the allocation.  By default the
-function will look anywhere in the filesystem for the run, though this
-can be constrained with optional flags.  One flag indicates that the
-range must start at the goal block; the other flag indicates that we
-should not return a range shorter than len.
-
-v2: Add a second function to allocate a range of blocks.
+As of v4.0, the Linux kernel won't add blocks to a block-mapped file
+on a bigalloc filesystem.  Therefore, convert any such files or
+directories we find, to prevent fs errors later on.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/alloc.c  |  141 +++++++++++++++++++++++++++++++++++++++++++++++++++
- lib/ext2fs/ext2fs.h |   11 ++++
- 2 files changed, 152 insertions(+)
+ e2fsck/pass1.c            |   17 +++++++++++++++++
+ e2fsck/problem.c          |    5 +++++
+ e2fsck/problem.h          |    3 +++
+ tests/f_badcluster/expect |   26 +++++++++++++-------------
+ 4 files changed, 38 insertions(+), 13 deletions(-)
 
 
-diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
-index 9901ca5..4c3b620 100644
---- a/lib/ext2fs/alloc.c
-+++ b/lib/ext2fs/alloc.c
-@@ -26,6 +26,16 @@
- #include "ext2_fs.h"
- #include "ext2fs.h"
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 5e906c1..e87643a 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -3187,6 +3187,23 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 		pctx->num = 0;
+ 	}
  
-+#define min(a, b) ((a) < (b) ? (a) : (b))
++	/*
++	 * The kernel gets mad if we ask it to allocate bigalloc clusters to
++	 * a block mapped file, so rebuild it as an extent file.  We can skip
++	 * symlinks because they're never rewritten.
++	 */
++	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++			EXT4_FEATURE_RO_COMPAT_BIGALLOC) &&
++	    (LINUX_S_ISREG(inode->i_mode) || LINUX_S_ISDIR(inode->i_mode)) &&
++	    ext2fs_inode_data_blocks2(fs, inode) > 0 &&
++	    (ino == EXT2_ROOT_INO || ino >= EXT2_FIRST_INO(fs->super)) &&
++	    !(inode->i_flags & (EXT4_EXTENTS_FL | EXT4_INLINE_DATA_FL)) &&
++	    fix_problem(ctx, PR_1_NO_BIGALLOC_BLOCKMAP_FILES, pctx)) {
++		pctx->errcode = e2fsck_rebuild_extents_later(ctx, ino);
++		if (pctx->errcode)
++			goto out;
++	}
 +
-+#undef DEBUG
+ 	if (ctx->dirs_to_hash && pb.is_dir &&
+ 	    !(ctx->lost_and_found && ctx->lost_and_found == ino) &&
+ 	    !(inode->i_flags & EXT2_INDEX_FL) &&
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 7e8ac5b..4f4309e 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1106,6 +1106,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("@i %i @x tree could be more shallow (%b; could be <= %c)\n"),
+ 	  PROMPT_FIX, PR_NO_OK | PR_PREEN_NO | PR_PREEN_OK },
+ 
++	/* Inode extent tree could be more shallow */
++	{ PR_1_NO_BIGALLOC_BLOCKMAP_FILES,
++	  N_("@i %i on bigalloc @f cannot be @b mapped.  "),
++	  PROMPT_FIX, 0 },
 +
-+#ifdef DEBUG
-+# define dbg_printf(f, a...)  do {printf(f, ## a); fflush(stdout); } while (0)
-+#else
-+# define dbg_printf(f, a...)
-+#endif
+ 	/* Pass 1b errors */
+ 
+ 	/* Pass 1B: Rescan for duplicate/bad blocks */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 2426021..e0b5d14 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -648,6 +648,9 @@ struct problem_context {
+ /* extent tree max depth too big */
+ #define PR_1_EXTENT_BAD_MAX_DEPTH		0x01007F
+ 
++/* bigalloc fs cannot have blockmap files */
++#define PR_1_NO_BIGALLOC_BLOCKMAP_FILES		0x010080
 +
  /*
-  * Clear the uninit block bitmap flag if necessary
+  * Pass 1b errors
   */
-@@ -346,3 +356,134 @@ no_blocks:
- 		group = group & ~((1 << (log_flex)) - 1);
- 	return ext2fs_group_first_block2(fs, group);
- }
-+
-+/*
-+ * Starting at _goal_, scan around the filesystem to find a run of free blocks
-+ * that's at least _len_ blocks long.  Possible flags:
-+ * - EXT2_NEWRANGE_EXACT_GOAL: The range of blocks must start at _goal_.
-+ * - EXT2_NEWRANGE_MIN_LENGTH: do not return a allocation shorter than _len_.
-+ * - EXT2_NEWRANGE_ZERO_BLOCKS: Zero blocks pblk to pblk+plen before returning.
-+ *
-+ * The starting block is returned in _pblk_ and the length is returned via
-+ * _plen_.  The blocks are not marked in the bitmap; the caller must mark
-+ * however much of the returned run they actually use, hopefully via
-+ * ext2fs_block_alloc_stats_range().
-+ *
-+ * This function can return a range that is longer than what was requested.
-+ */
-+errcode_t ext2fs_new_range(ext2_filsys fs, int flags, blk64_t goal,
-+			   blk64_t len, ext2fs_block_bitmap map, blk64_t *pblk,
-+			   blk64_t *plen)
-+{
-+	errcode_t retval;
-+	blk64_t start, end, b;
-+	int looped = 0;
-+	blk64_t max_blocks = ext2fs_blocks_count(fs->super);
-+
-+	dbg_printf("%s: flags=0x%x goal=%llu len=%llu\n", __func__, flags,
-+		   goal, len);
-+	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
-+	if (len == 0 || (flags & ~EXT2_NEWRANGE_ALL_FLAGS))
-+		return EXT2_ET_INVALID_ARGUMENT;
-+	if (!map)
-+		map = fs->block_map;
-+	if (!map)
-+		return EXT2_ET_NO_BLOCK_BITMAP;
-+	if (!goal || goal >= ext2fs_blocks_count(fs->super))
-+		goal = fs->super->s_first_data_block;
-+
-+	start = goal;
-+	while (!looped || start <= goal) {
-+		retval = ext2fs_find_first_zero_block_bitmap2(map, start,
-+							      max_blocks - 1,
-+							      &start);
-+		if (retval == ENOENT) {
-+			/*
-+			 * If there are no free blocks beyond the starting
-+			 * point, try scanning the whole filesystem, unless the
-+			 * user told us only to allocate from _goal_, or if
-+			 * we're already scanning the whole filesystem.
-+			 */
-+			if (flags & EXT2_NEWRANGE_FIXED_GOAL ||
-+			    start == fs->super->s_first_data_block)
-+				goto fail;
-+			start = fs->super->s_first_data_block;
-+			continue;
-+		} else if (retval)
-+			goto errout;
-+
-+		if (flags & EXT2_NEWRANGE_FIXED_GOAL && start != goal)
-+			goto fail;
-+
-+		b = min(start + len - 1, max_blocks - 1);
-+		retval =  ext2fs_find_first_set_block_bitmap2(map, start, b,
-+							      &end);
-+		if (retval == ENOENT)
-+			end = b + 1;
-+		else if (retval)
-+			goto errout;
-+
-+		if (!(flags & EXT2_NEWRANGE_MIN_LENGTH) ||
-+		    (end - start) >= len) {
-+			/* Success! */
-+			*pblk = start;
-+			*plen = end - start;
-+			dbg_printf("%s: new_range goal=%llu--%llu "
-+				   "blk=%llu--%llu %llu\n",
-+				   __func__, goal, goal + len - 1,
-+				   *pblk, *pblk + *plen - 1, *plen);
-+
-+			for (b = start; b < end;
-+			     b += fs->super->s_blocks_per_group)
-+				clear_block_uninit(fs,
-+						ext2fs_group_of_blk2(fs, b));
-+			return 0;
-+		}
-+
-+		if (flags & EXT2_NEWRANGE_FIXED_GOAL)
-+			goto fail;
-+		start = end;
-+		if (start >= max_blocks) {
-+			if (looped)
-+				goto fail;
-+			looped = 1;
-+			start = fs->super->s_first_data_block;
-+		}
-+	}
-+
-+fail:
-+	retval = EXT2_ET_BLOCK_ALLOC_FAIL;
-+errout:
-+	return retval;
-+}
-+
-+errcode_t ext2fs_alloc_range(ext2_filsys fs, int flags, blk64_t goal,
-+			     blk_t len, blk64_t *ret)
-+{
-+	int newr_flags = EXT2_NEWRANGE_MIN_LENGTH;
-+	errcode_t retval;
-+	blk64_t plen;
-+
-+	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
-+	if (len == 0 || (flags & ~EXT2_ALLOCRANGE_ALL_FLAGS))
-+		return EXT2_ET_INVALID_ARGUMENT;
-+
-+	if (flags & EXT2_ALLOCRANGE_FIXED_GOAL)
-+		newr_flags |= EXT2_NEWRANGE_FIXED_GOAL;
-+
-+	retval = ext2fs_new_range(fs, newr_flags, goal, len, NULL, ret, &plen);
-+	if (retval)
-+		return retval;
-+
-+	if (plen < len)
-+		return EXT2_ET_BLOCK_ALLOC_FAIL;
-+
-+	if (flags & EXT2_ALLOCRANGE_ZERO_BLOCKS) {
-+		retval = ext2fs_zero_blocks2(fs, *ret, len, NULL, NULL);
-+		if (retval)
-+			return retval;
-+	}
-+
-+	ext2fs_block_alloc_stats_range(fs, *ret, len, +1);
-+	return retval;
-+}
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 2039ca0..613f0d1 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -674,6 +674,17 @@ extern void ext2fs_set_alloc_block_callback(ext2_filsys fs,
- 							      blk64_t *ret));
- blk64_t ext2fs_find_inode_goal(ext2_filsys fs, ext2_ino_t ino,
- 			       struct ext2_inode *inode, blk64_t lblk);
-+#define EXT2_NEWRANGE_FIXED_GOAL	(0x1)
-+#define EXT2_NEWRANGE_MIN_LENGTH	(0x2)
-+#define EXT2_NEWRANGE_ALL_FLAGS		(0x3)
-+errcode_t ext2fs_new_range(ext2_filsys fs, int flags, blk64_t goal,
-+			   blk64_t len, ext2fs_block_bitmap map, blk64_t *pblk,
-+			   blk64_t *plen);
-+#define EXT2_ALLOCRANGE_FIXED_GOAL	(0x1)
-+#define EXT2_ALLOCRANGE_ZERO_BLOCKS	(0x2)
-+#define EXT2_ALLOCRANGE_ALL_FLAGS	(0x3)
-+errcode_t ext2fs_alloc_range(ext2_filsys fs, int flags, blk64_t goal,
-+			     blk_t len, blk64_t *ret);
+diff --git a/tests/f_badcluster/expect b/tests/f_badcluster/expect
+index b8ce19d..65a1641 100644
+--- a/tests/f_badcluster/expect
++++ b/tests/f_badcluster/expect
+@@ -19,6 +19,8 @@ Inode 18 logical block 3 (physical block 1201) violates cluster allocation rules
+ Will fix in pass 1B.
+ Inode 18, i_blocks is 32, should be 64.  Fix? yes
  
- /* alloc_sb.c */
- extern int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
-
++Inode 15 on bigalloc filesystem cannot be block mapped.  Fix? yes
++
+ 
+ Running additional passes to resolve blocks claimed by more than one inode...
+ Pass 1B: Rescanning for multiply-claimed blocks
+@@ -65,19 +67,20 @@ File /g (inode #18, mod time Tue Jun 17 08:00:50 2014)
+   has 1 multiply-claimed block(s), shared with 0 file(s):
+ Clone multiply-claimed blocks? yes
+ 
++Pass 1E: Optimizing extent trees
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-Free blocks count wrong for group #0 (50, counted=47).
++Free blocks count wrong for group #0 (51, counted=48).
+ Fix? yes
+ 
+-Free blocks count wrong (800, counted=752).
++Free blocks count wrong (816, counted=768).
+ Fix? yes
+ 
+ 
+ test_fs: ***** FILE SYSTEM WAS MODIFIED *****
+-test_fs: 18/128 files (22.2% non-contiguous), 1296/2048 blocks
++test_fs: 18/128 files (22.2% non-contiguous), 1280/2048 blocks
+ Pass 1: Checking inodes, blocks, and sizes
+ Inode 12, i_blocks is 64, should be 32.  Fix? yes
+ 
+@@ -94,21 +97,21 @@ Pass 5: Checking group summary information
+ Block bitmap differences:  -(1168--1200)
+ Fix? yes
+ 
+-Free blocks count wrong for group #0 (47, counted=50).
++Free blocks count wrong for group #0 (48, counted=51).
+ Fix? yes
+ 
+-Free blocks count wrong (752, counted=800).
++Free blocks count wrong (768, counted=816).
+ Fix? yes
+ 
+ 
+ test_fs: ***** FILE SYSTEM WAS MODIFIED *****
+-test_fs: 18/128 files (5.6% non-contiguous), 1248/2048 blocks
++test_fs: 18/128 files (5.6% non-contiguous), 1232/2048 blocks
+ Pass 1: Checking inodes, blocks, and sizes
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_fs: 18/128 files (5.6% non-contiguous), 1248/2048 blocks
++test_fs: 18/128 files (5.6% non-contiguous), 1232/2048 blocks
+ debugfs: stat /a
+ Inode: 12   Type: regular    Mode:  0644   Flags: 0x80000
+ Generation: 1117152157    Version: 0x00000001
+@@ -146,19 +149,16 @@ mtime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
+ EXTENTS:
+ (0-1):1216-1217, (2):1218
+ debugfs: stat /d
+-Inode: 15   Type: regular    Mode:  0644   Flags: 0x0
++Inode: 15   Type: regular    Mode:  0644   Flags: 0x80000
+ Generation: 1117152160    Version: 0x00000001
+ User:     0   Group:     0   Size: 3072
+ File ACL: 0    Directory ACL: 0
+-Links: 1   Blockcount: 32
++Links: 1   Blockcount: 0
+ Fragment:  Address: 0    Number: 0    Size: 0
+ ctime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
+ atime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
+ mtime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
+-BLOCKS:
+-(TIND):1650
+-TOTAL: 1
