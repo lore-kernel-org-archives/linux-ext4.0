@@ -1,58 +1,43 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Let's get a File & Storage miniconf going at LPC2015!
-Date: Fri, 15 May 2015 13:58:25 -0700
-Message-ID: <20150515205825.GC24967@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>, xfs@oss.sgi.com,
-	device-mapper development <dm-devel@redhat.com>,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
-To: Ric Wheeler <ricwheeler@gmail.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+From: Fabian Frederick <fabf@skynet.be>
+Subject: [PATCH 1/1 linux-next] ext4: fix incorrect type argument
+Date: Fri, 15 May 2015 23:01:13 +0200
+Message-ID: <1431723673-25450-1-git-send-email-fabf@skynet.be>
+Cc: Fabian Frederick <fabf@skynet.be>, "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi again,
+Fix sparse warning introduced in commit
+9bd8212f981e
+("ext4 crypto: add encryption policy and password salt support")
 
-Early registration for this summer's Plumbers in Seattle, Washington ends
-next Friday the 22nd.  With that in mind, I still don't have quite enough
-people listed on the File & Storage miniconf wiki page for the organizers
-to declare us an official miniconference, so if you're planning to go, or
-even think you might go, please take a look at the planning page[1] and
-add your name!
+fs/ext4/ioctl.c:678:35: warning: incorrect type in argument 1
+(different address spaces)
+fs/ext4/ioctl.c:678:35:    expected void [noderef] <asn:1>*to
+fs/ext4/ioctl.c:678:35:    got void *<noident>
 
-At a bare minimum, it seems like we can continue the ongoing discussions
-around SMR exploration; the work going on with persistent memory and how to
-expose it to filesystems and user apps; I see a proposal for the refereed
-talks about the ongoing Open SSD work; and there have been prompts for more
-conversation about rich ACL integration and supporting RDMA in NFS and Samba.
-I think it would also be a good place to talk more about how to better
-accomodate userspace filesystems like Ceph, giving things like the recent
-O_NOMTIME thread, and other things like copy_file_range().
+Signed-off-by: Fabian Frederick <fabf@skynet.be>
+---
+ fs/ext4/ioctl.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-We of course are not limited to just those topics -- if there's something
-you'd really like to discuss with everyone, please add that to the wiki.
-I realize that mid-August is family vacation time for many people, but
-those are the constraints the conference has to work with this year.
-There are fun things to do around Seattle, and that's probably the best
-time of year to visit.
-
---Darrick
-
-[1] http://wiki.linuxplumbersconf.org/2015:file_and_storage_systems
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 2cb9e17..3c5e530 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -675,8 +675,8 @@ encryption_policy_out:
+ 			if (err)
+ 				return err;
+ 		}
+-		if (copy_to_user((void *) arg, sbi->s_es->s_encrypt_pw_salt,
+-				 16))
++		if (copy_to_user((void __user *) arg,
++				 sbi->s_es->s_encrypt_pw_salt, 16))
+ 			return -EFAULT;
+ 		return 0;
+ 	}
+-- 
+2.4.0
