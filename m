@@ -1,43 +1,37 @@
-From: Fabian Frederick <fabf@skynet.be>
-Subject: [PATCH 1/1 linux-next] ext4: fix incorrect type argument
-Date: Fri, 15 May 2015 23:01:13 +0200
-Message-ID: <1431723673-25450-1-git-send-email-fabf@skynet.be>
-Cc: Fabian Frederick <fabf@skynet.be>, "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ext4 lazytime: ctime of some files changed
+Date: Fri, 15 May 2015 19:11:07 -0400
+Message-ID: <20150515231107.GF3901@thunk.org>
+References: <55531AE3.7030704@web.de>
+ <mivtkj$fhi$1@ger.gmane.org>
+ <20150514222044.GA3901@thunk.org>
+ <55560D42.2060402@web.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: =?iso-8859-1?Q?J=F6rg-Volker?= Peetz <jvpeetz@web.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:39488 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S2992815AbbEOXLo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 15 May 2015 19:11:44 -0400
+Content-Disposition: inline
+In-Reply-To: <55560D42.2060402@web.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Fix sparse warning introduced in commit
-9bd8212f981e
-("ext4 crypto: add encryption policy and password salt support")
+On Fri, May 15, 2015 at 05:14:10PM +0200, J=F6rg-Volker Peetz wrote:
+> running nearly two hours without any file timestamp related anomalies=
+ while
+> doing some file activity and a sync from time to time :-)
+> Thanks for caring.
 
-fs/ext4/ioctl.c:678:35: warning: incorrect type in argument 1
-(different address spaces)
-fs/ext4/ioctl.c:678:35:    expected void [noderef] <asn:1>*to
-fs/ext4/ioctl.c:678:35:    got void *<noident>
+Many thanks for the bug report!   :-)
 
-Signed-off-by: Fabian Frederick <fabf@skynet.be>
----
- fs/ext4/ioctl.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 2cb9e17..3c5e530 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -675,8 +675,8 @@ encryption_policy_out:
- 			if (err)
- 				return err;
- 		}
--		if (copy_to_user((void *) arg, sbi->s_es->s_encrypt_pw_salt,
--				 16))
-+		if (copy_to_user((void __user *) arg,
-+				 sbi->s_es->s_encrypt_pw_salt, 16))
- 			return -EFAULT;
- 		return 0;
- 	}
--- 
-2.4.0
+     	    	    	- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
