@@ -1,45 +1,44 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] jbd2: fix r_count overflows leading to buffer
- overflow in journal recovery
-Date: Thu, 14 May 2015 19:12:42 -0400
-Message-ID: <20150514231242.GD3901@thunk.org>
-References: <20150514193424.GG30577@birch.djwong.org>
- <20150514204826.GA17985@quack.suse.cz>
+From: =?windows-1252?Q?J=F6rg-Volker_Peetz?= <jvpeetz@web.de>
+Subject: Re: ext4 lazytime: ctime of some files changed
+Date: Fri, 15 May 2015 09:17:04 +0200
+Message-ID: <55559D70.7070207@web.de>
+References: <55531AE3.7030704@web.de> <mivtkj$fhi$1@ger.gmane.org> <20150514222044.GA3901@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37426 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161021AbbENXMp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 May 2015 19:12:45 -0400
-Content-Disposition: inline
-In-Reply-To: <20150514204826.GA17985@quack.suse.cz>
+Received: from mailout08.t-online.de ([194.25.134.20]:48175 "EHLO
+	mailout08.t-online.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754069AbbEOH0N (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 May 2015 03:26:13 -0400
+In-Reply-To: <20150514222044.GA3901@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 14, 2015 at 10:48:26PM +0200, Jan Kara wrote:
-> On Thu 14-05-15 12:34:24, Darrick J. Wong wrote:
-> > The journal revoke block recovery code does not check r_count for
-> > sanity, which means that an evil value of r_count could result in
-> > the kernel reading off the end of the revoke table and into whatever
-> > garbage lies beyond.  This could crash the kernel, so fix that.
-> > 
-> > However, in testing this fix, I discovered that the code to write
-> > out the revoke tables also was not correctly checking to see if the
-> > block was full -- the current offset check is fine so long as the
-> > revoke table space size is a multiple of the record size, but this
-> > is not true when either journal_csum_v[23] are set.
-> > 
-> > v2: The comparison on the revoke block writer code should allow the
-> > revoke block to become totally full.
-> > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
->   Looks good. You can add:
-> Reviewed-by: Jan Kara <jack@suse.cz>
+Theodore Ts'o wrote on 05/15/2015 00:20:
+> On Wed, May 13, 2015 at 06:20:35PM +0200, J=F6rg-Volker Peetz wrote:
+>>
+>> Thereafter, the two emacs package files again had a wrong mtime (whi=
+ch by the
+>> way shows when I start emacs).
+>>
+>> Could this be due to the lazytime mount option?
+>=20
+> I think I found the problem.  My bad.  Can you verify that this solve=
+s
+> the problem for you?
+>=20
+I'll try the patch today after repairing most of the timestamps from ba=
+ckup to
+have a reference.
+--=20
+Regards,
+J=F6rg.
 
-Thanks, applied.
-
-					- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
