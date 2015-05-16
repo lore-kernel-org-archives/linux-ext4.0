@@ -1,88 +1,55 @@
-From: Holger =?iso-8859-1?q?Hoffst=E4tte?=
-	<holger.hoffstaette@googlemail.com>
-Subject: Re: Lazytime undone by/not working with remount?
-Date: Sat, 16 May 2015 14:26:22 +0000 (UTC)
-Message-ID: <pan.2015.05.16.14.26.22@googlemail.com>
-References: <pan.2015.05.16.11.05.04@googlemail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [GIT PULL] ext4 bug fixes for 4.1-rc4
+Date: Sat, 16 May 2015 18:15:34 -0400
+Message-ID: <20150516221534.GA22778@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:37910 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752156AbbEPO03 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 16 May 2015 10:26:29 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1Ytd2p-0005OB-NZ
-	for linux-ext4@vger.kernel.org; Sat, 16 May 2015 16:26:27 +0200
-Received: from pd953e5c7.dip0.t-ipconnect.de ([217.83.229.199])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Sat, 16 May 2015 16:26:27 +0200
-Received: from holger.hoffstaette by pd953e5c7.dip0.t-ipconnect.de with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Sat, 16 May 2015 16:26:27 +0200
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: torvalds@linux-foundation.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+The following changes since commit 5ebe6afaf0057ac3eaeb98defd5456894b446d22:
 
-(cc: kzak)
+  Linux 4.1-rc2 (2015-05-03 19:22:23 -0700)
 
-On Sat, 16 May 2015 11:05:04 +0000, Holger Hoffst=C3=A4tte wrote:
+are available in the git repository at:
 
-> Hi,
->=20
-> playing with lazytime on 4.0.4-rc1 + yesterday's fencepost patch) I n=
-oticed
-> something odd. Mounting secondary (non-root) partitions with lazytime=
- works
-> fine, but / does not seem to retain the value from fstab - apparently=
- because
-> it is remounted rw during boot, and lazytime gets swallowed/undone.
->=20
-> Same effect when trying to remount manually with lazytime:
->=20
-> tux>findmnt /
-> TARGET SOURCE    FSTYPE OPTIONS
-> /      /dev/sda1 ext4   rw,noatime
->=20
-> tux>mount -o lazytime,remount /=20
->=20
-> tux>dmesg=20
-> [ 5208.482505] EXT4-fs (sda1): re-mounted. Opts: (null)
->=20
-> tux>findmnt /                 =20
-> TARGET SOURCE    FSTYPE OPTIONS
-> /      /dev/sda1 ext4   rw,noatime
->=20
-> tux>mount --version
-> mount from util-linux 2.26.2 (libmount 2.26.0: assert, debug)
->=20
-> Newly mounting unmounted partitions works fine.
->=20
-> Any ideas?
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/for_linus_stable
 
-This turned out to be a regression in util-linux 2.26.x. :-(
-I downgraded to 2.25.2 and behold:
+for you to fetch changes up to b9576fc3624eb9fc88bec0d0ae883fd78be86239:
 
-tux>findmnt /  =20
-TARGET SOURCE    FSTYPE OPTIONS
-/      /dev/sda1 ext4   rw,noatime
+  ext4: fix an ext3 collapse range regression in xfstests (2015-05-15 00:24:10 -0400)
 
-tux>mount -o remount,lazytime /
+----------------------------------------------------------------
+Fix a number of ext4 bugs; the most serious of which is a bug in the
+lazytime mount optimization code where we could end up updating the
+timestamps to the wrong inode.
 
-root>findmnt /                 =20
-TARGET SOURCE    FSTYPE OPTIONS
-/      /dev/sda1 ext4   rw,noatime,lazytime
+----------------------------------------------------------------
+Darrick J. Wong (1):
+      jbd2: fix r_count overflows leading to buffer overflow in journal recovery
 
-Sorry for the noise.
+Eryu Guan (1):
+      ext4: check for zero length extent explicitly
 
-Holger
+Lukas Czerner (1):
+      ext4: fix NULL pointer dereference when journal restart fails
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Theodore Ts'o (4):
+      ext4: fix lazytime optimization
+      ext4: don't save the error information if the block device is read-only
+      ext4: remove unused function prototype from ext4.h
+      ext4: fix an ext3 collapse range regression in xfstests
+
+ fs/ext4/ext4.h        |  1 -
+ fs/ext4/ext4_jbd2.c   |  6 ++++++
+ fs/ext4/extents.c     | 10 +++++++++-
+ fs/ext4/inode.c       |  2 +-
+ fs/ext4/super.c       |  2 ++
+ fs/jbd2/recovery.c    | 10 +++++++++-
+ fs/jbd2/revoke.c      | 18 ++++++++++--------
+ fs/jbd2/transaction.c | 25 ++++++++++++++++---------
+ 8 files changed, 53 insertions(+), 21 deletions(-)
