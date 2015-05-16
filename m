@@ -1,55 +1,29 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 bug fixes for 4.1-rc4
-Date: Sat, 16 May 2015 18:15:34 -0400
-Message-ID: <20150516221534.GA22778@thunk.org>
+Subject: Re: [PATCH 01/14] misc: fix Coverity bugs
+Date: Sat, 16 May 2015 18:36:54 -0400
+Message-ID: <20150516223654.GE2998@thunk.org>
+References: <20150514002108.10785.85860.stgit@birch.djwong.org>
+ <20150514002114.10785.41768.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: torvalds@linux-foundation.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:40671 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750995AbbEPWg5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 16 May 2015 18:36:57 -0400
 Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20150514002114.10785.41768.stgit@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The following changes since commit 5ebe6afaf0057ac3eaeb98defd5456894b446d22:
+On Wed, May 13, 2015 at 05:21:15PM -0700, Darrick J. Wong wrote:
+> Fix Coverity bugs 1297093,1297096, 1297489, 1297491, 1297493, 1297506,
+> 1297507, 1297514, 1297516, and 1297517.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-  Linux 4.1-rc2 (2015-05-03 19:22:23 -0700)
+Thanks, applied.
 
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/for_linus_stable
-
-for you to fetch changes up to b9576fc3624eb9fc88bec0d0ae883fd78be86239:
-
-  ext4: fix an ext3 collapse range regression in xfstests (2015-05-15 00:24:10 -0400)
-
-----------------------------------------------------------------
-Fix a number of ext4 bugs; the most serious of which is a bug in the
-lazytime mount optimization code where we could end up updating the
-timestamps to the wrong inode.
-
-----------------------------------------------------------------
-Darrick J. Wong (1):
-      jbd2: fix r_count overflows leading to buffer overflow in journal recovery
-
-Eryu Guan (1):
-      ext4: check for zero length extent explicitly
-
-Lukas Czerner (1):
-      ext4: fix NULL pointer dereference when journal restart fails
-
-Theodore Ts'o (4):
-      ext4: fix lazytime optimization
-      ext4: don't save the error information if the block device is read-only
-      ext4: remove unused function prototype from ext4.h
-      ext4: fix an ext3 collapse range regression in xfstests
-
- fs/ext4/ext4.h        |  1 -
- fs/ext4/ext4_jbd2.c   |  6 ++++++
- fs/ext4/extents.c     | 10 +++++++++-
- fs/ext4/inode.c       |  2 +-
- fs/ext4/super.c       |  2 ++
- fs/jbd2/recovery.c    | 10 +++++++++-
- fs/jbd2/revoke.c      | 18 ++++++++++--------
- fs/jbd2/transaction.c | 25 ++++++++++++++++---------
- 8 files changed, 53 insertions(+), 21 deletions(-)
+					- Ted
