@@ -1,46 +1,42 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] crypto: allow to assign gfp_t for __crypto_alloc_tfm
-Date: Tue, 19 May 2015 10:39:04 -0400
-Message-ID: <20150519143904.GA25684@thunk.org>
-References: <1432014416-39326-1-git-send-email-jaegeuk@kernel.org>
- <20150519054945.GA28060@gondor.apana.org.au>
- <20150519062430.GA39588@jaegeuk-mac02.hsd1.ca.comcast.net>
- <20150519063211.GA28347@gondor.apana.org.au>
- <20150519065812.GA40012@jaegeuk-mac02.hsd1.ca.comcast.net>
- <20150519065929.GA28610@gondor.apana.org.au>
- <20150519071317.GB40012@jaegeuk-mac02.hsd1.ca.comcast.net>
- <20150519071521.GA28862@gondor.apana.org.au>
- <20150519141430.GD20421@thunk.org>
- <20150519142755.GB32663@gondor.apana.org.au>
+From: Josef Bacik <jbacik@fb.com>
+Subject: [PATCH] ext4: only call ext4_truncate when size <= isize
+Date: Tue, 19 May 2015 11:28:57 -0400
+Message-ID: <1432049337-3520-1-git-send-email-jbacik@fb.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jaegeuk Kim <jaegeuk@kernel.org>, davem@davemloft.net,
-	linux-crypto@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net, ecryptfs@vger.kernel.org,
-	linux-arm-kernel@lists.infradead.org,
-	Steffen Klassert <steffen.klassert@secunet.com>,
-	mhalcrow@google.com
-To: Herbert Xu <herbert@gondor.apana.org.au>
-Return-path: <linux-crypto-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20150519142755.GB32663@gondor.apana.org.au>
-Sender: linux-crypto-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain
+To: <tytso@mit.edu>, <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx0b-00082601.pphosted.com ([67.231.153.30]:22495 "EHLO
+	mx0b-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753683AbbESPaF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 May 2015 11:30:05 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 19, 2015 at 10:27:55PM +0800, Herbert Xu wrote:
-> On Tue, May 19, 2015 at 10:14:30AM -0400, Theodore Ts'o wrote:
-> > 
-> > There can be multiple reads going on in parallel, so we're currently
-> > creating tfm's as necessary.  In fact one of the things that we've
-> 
-> A single tfm is fully-reentrant (as long as you don't change the
-> key).  So multiple reads/writes on a single file can all use one
-> tfm with no locking at all.
+At LSF we decided that if we truncate up from isize we shouldn't trim fallocated
+blocks that were fallocated with KEEP_SIZE and are past the new i_size.  This
+patch fixes ext4 to do this.  Thanks,
 
-Cool, we didn't realize this was the case.  Excellent, this makes life
-much simpler for us!  :-)
+Signed-off-by: Josef Bacik <jbacik@fb.com>
+---
+ fs/ext4/inode.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-Thanks,
-
-					- Ted
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 0554b0b..92174dd 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4640,6 +4640,7 @@ static void ext4_wait_for_tail_page_commit(struct inode *inode)
+ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ {
+ 	struct inode *inode = d_inode(dentry);
++	loff_t oldsize = inode->i_size;
+ 	int error, rc = 0;
+ 	int orphan = 0;
+ 	const unsigned int ia_valid = attr->ia_valid;
+@@ -4727,8 +4728,6 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 				goto err_out;
+ 			}
+ 		} else {
+-			loff_t oldsize = inode->i_size;
