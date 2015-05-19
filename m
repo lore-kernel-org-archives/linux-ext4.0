@@ -1,42 +1,40 @@
-From: Josef Bacik <jbacik@fb.com>
-Subject: [PATCH] ext4: only call ext4_truncate when size <= isize
-Date: Tue, 19 May 2015 11:28:57 -0400
-Message-ID: <1432049337-3520-1-git-send-email-jbacik@fb.com>
+From: Kent Overstreet <kent.overstreet@gmail.com>
+Subject: Re: Let's get a File & Storage miniconf going at LPC2015!
+Date: Tue, 19 May 2015 08:42:00 -0700
+Message-ID: <20150519154200.GA2559@kmo-pixel>
+References: <20150515205825.GC24967@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-To: <tytso@mit.edu>, <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx0b-00082601.pphosted.com ([67.231.153.30]:22495 "EHLO
-	mx0b-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753683AbbESPaF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 May 2015 11:30:05 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ric Wheeler <ricwheeler@gmail.com>,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+	"linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+	device-mapper development <dm-devel@redhat.com>,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+	linux-btrfs@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20150515205825.GC24967@birch.djwong.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-At LSF we decided that if we truncate up from isize we shouldn't trim fallocated
-blocks that were fallocated with KEEP_SIZE and are past the new i_size.  This
-patch fixes ext4 to do this.  Thanks,
+On Fri, May 15, 2015 at 01:58:25PM -0700, Darrick J. Wong wrote:
+> We of course are not limited to just those topics -- if there's something
+> you'd really like to discuss with everyone, please add that to the wiki.
+> I realize that mid-August is family vacation time for many people, but
+> those are the constraints the conference has to work with this year.
+> There are fun things to do around Seattle, and that's probably the best
+> time of year to visit.
 
-Signed-off-by: Josef Bacik <jbacik@fb.com>
----
- fs/ext4/inode.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+It's getting near time for the big bcachefs announcement :)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 0554b0b..92174dd 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4640,6 +4640,7 @@ static void ext4_wait_for_tail_page_commit(struct inode *inode)
- int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- {
- 	struct inode *inode = d_inode(dentry);
-+	loff_t oldsize = inode->i_size;
- 	int error, rc = 0;
- 	int orphan = 0;
- 	const unsigned int ia_valid = attr->ia_valid;
-@@ -4727,8 +4728,6 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 				goto err_out;
- 			}
- 		} else {
--			loff_t oldsize = inode->i_size;
+Also, stable pages - what's been going on there? Last I heard you were talking
+about using the page migration code to do COW, did anything come of that? I just
+added data checksumming/compression to bcachefs, so that's been fresh on my
+mind.
+
+Also, there's probably always going to be situations where we're reading or
+writing to pages user space can stomp on (dio) - IMO we need to add a bio flag
+to annotate this - "if you need this to be stable you have to bounce it".
+Otherwise either filesystems/block drivers are going to be stuck bouncing
+everything, or it'll just (continue to be) buggy.
