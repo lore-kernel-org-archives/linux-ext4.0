@@ -1,52 +1,42 @@
-From: Herbert Xu <herbert@gondor.apana.org.au>
-Subject: Re: [PATCH] crypto: allow to assign gfp_t for __crypto_alloc_tfm
-Date: Wed, 20 May 2015 23:42:05 +0800
-Message-ID: <20150520154205.GA13539@gondor.apana.org.au>
-References: <20150519063211.GA28347@gondor.apana.org.au>
- <20150519065812.GA40012@jaegeuk-mac02.hsd1.ca.comcast.net>
- <20150519065929.GA28610@gondor.apana.org.au>
- <20150519071317.GB40012@jaegeuk-mac02.hsd1.ca.comcast.net>
- <20150519071521.GA28862@gondor.apana.org.au>
- <20150519141430.GD20421@thunk.org>
- <20150519142755.GB32663@gondor.apana.org.au>
- <20150520072118.GN8928@secunet.com>
- <20150520145901.GI2871@thunk.org>
- <CAKv+Gu_TDwaftr=f8yG8Vna8e+PcKGXD-uggP2oB-2Tq7DWMtA@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Unused block group, but all blocks not free?
+Date: Wed, 20 May 2015 12:31:48 -0400
+Message-ID: <20150520163148.GA23989@thunk.org>
+References: <555BDEF4.1020704@ubuntu.com>
+ <20150520151007.GK2871@thunk.org>
+ <555CA52F.3010109@ubuntu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Steffen Klassert <steffen.klassert@secunet.com>,
-	Jaegeuk Kim <jaegeuk@kernel.org>,
-	"David S. Miller" <davem@davemloft.net>,
-	"linux-crypto@vger.kernel.org" <linux-crypto@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	linux-f2fs-devel@lists.sourceforge.net, ecryptfs@vger.kernel.org,
-	"linux-arm-kernel@lists.infradead.org"
-	<linux-arm-kernel@lists.infradead.org>
-To: Ard Biesheuvel <ard.biesheuvel@linaro.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Phil Susi <psusi@ubuntu.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:48123 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753622AbbETQbv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 May 2015 12:31:51 -0400
 Content-Disposition: inline
-In-Reply-To: <CAKv+Gu_TDwaftr=f8yG8Vna8e+PcKGXD-uggP2oB-2Tq7DWMtA@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <555CA52F.3010109@ubuntu.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 20, 2015 at 05:30:14PM +0200, Ard Biesheuvel wrote:
+On Wed, May 20, 2015 at 11:15:59AM -0400, Phil Susi wrote:
+> On 5/20/2015 11:10 AM, Theodore Ts'o wrote:
+> >Have you checked to see if the metadata for other block groups are
+> >taking up space in the block group.  This can happen when using the
+> >flex_bg layout.  (And without flex_bg, then *all* block groups will
+> >always have blocks in use, for their own metadata blocks.)
 > 
-> However, it's quite a can of worms you're opening here. Speed is
-> easily quantified, and it may even be feasible to introduce some kind
-> of boottime benchmark to select the fastest implementation available
-> (like already exists for xor and raid6, for instance).
-> @Herbert: was something like this ever proposed? And would you
-> consider merging it if it were implemented adequately?
+> That was my first thought and no, they aren't.  The metadata is in bg 0 and
+> bg 32, not 25.  Even still, when the metadata is there, shouldn't the
+> allocation bitmap mark those blocks as in use rather than be uninitialized?
 
-Up until now static priorities have been sufficient in selecting
-the best implementation.  However, if you can show us a case where
-a given implementation is slower on one host but faster on another
-then sure we can add a run-time test and priority adjustment for it.
+As an optimization, if we can reconstruct the allocation bitmap from
+the block group descriptors, we'll leave the block allocation bitmap
+uninitialized, so that programs like e2fsck don't have to read the
+bitmap block.  For a mostly empty file system, this optimization is
+quite noticeable.
 
-Cheers,
--- 
-Email: Herbert Xu <herbert@gondor.apana.org.au>
-Home Page: http://gondor.apana.org.au/~herbert/
-PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
+Can you send me a compressed raw e2image of the file system so I can
+take a look?
+
+					- Ted
