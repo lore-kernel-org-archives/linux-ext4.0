@@ -1,53 +1,59 @@
-From: Phillip Susi <psusi@ubuntu.com>
-Subject: Unused block group, but all blocks not free?
-Date: Tue, 19 May 2015 21:10:12 -0400
-Message-ID: <555BDEF4.1020704@ubuntu.com>
+From: Steffen Klassert <steffen.klassert@secunet.com>
+Subject: Re: [PATCH] crypto: allow to assign gfp_t for __crypto_alloc_tfm
+Date: Wed, 20 May 2015 09:21:20 +0200
+Message-ID: <20150520072118.GN8928@secunet.com>
+References: <1432014416-39326-1-git-send-email-jaegeuk@kernel.org>
+ <20150519054945.GA28060@gondor.apana.org.au>
+ <20150519062430.GA39588@jaegeuk-mac02.hsd1.ca.comcast.net>
+ <20150519063211.GA28347@gondor.apana.org.au>
+ <20150519065812.GA40012@jaegeuk-mac02.hsd1.ca.comcast.net>
+ <20150519065929.GA28610@gondor.apana.org.au>
+ <20150519071317.GB40012@jaegeuk-mac02.hsd1.ca.comcast.net>
+ <20150519071521.GA28862@gondor.apana.org.au>
+ <20150519141430.GD20421@thunk.org>
+ <20150519142755.GB32663@gondor.apana.org.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-outbound-snat.email.rr.com ([107.14.166.230]:13302 "EHLO
-	cdptpa-oedge-vip.email.rr.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751866AbbETBKN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 May 2015 21:10:13 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Theodore Ts'o <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>,
+	<davem@davemloft.net>, <linux-crypto@vger.kernel.org>,
+	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+	<linux-f2fs-devel@lists.sourceforge.net>,
+	<ecryptfs@vger.kernel.org>, <linux-arm-kernel@lists.infradead.org>
+To: Herbert Xu <herbert@gondor.apana.org.au>
+Return-path: <linux-crypto-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20150519142755.GB32663@gondor.apana.org.au>
+Sender: linux-crypto-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA512
+On Tue, May 19, 2015 at 10:27:55PM +0800, Herbert Xu wrote:
+> On Tue, May 19, 2015 at 10:14:30AM -0400, Theodore Ts'o wrote:
+> > 
+> > There can be multiple reads going on in parallel, so we're currently
+> > creating tfm's as necessary.  In fact one of the things that we've
+> 
+> A single tfm is fully-reentrant (as long as you don't change the
+> key).  So multiple reads/writes on a single file can all use one
+> tfm with no locking at all.
+> 
+> There should be a single tfm per key.  As your code appears to use
+> one key per inode, that translates to one tfm per inode.
+> 
+> > talked about doing is since there are some ARM cores where their
+> > "hardware acceleration" is slower than optimized software (sigh), and
+> > there are some Android applications (such as Facebook) that read
+> > *vast* quantities of data from flash on startup before painting a
+> > single pixel, that we might want to consider in some cases,
+> > parallelizing the decryption across multiple ARM cores.  Figuring out
+> > when to do this, both in terms of the workload, how many cores to use
+> > to balance off against power utilization, how much (if ever) to use
+> > the hardware "accelerator", and just plain lack of time caused us not
+> > to go down that particular path.
+> 
+> We already have some support for such parallelisation in the form of
+> pcrypt.  It has been used on IPsec and I believe dmcrypt.
 
-I broke out the old e2defrag for an experiment today ( wondering why
-resize2fs refuses to shrink a volume below half its size even though
-it is only 33% used; thought I would try packing all files as far to
-the left as possible and try again ) and it bailed out because the
-free block count listed in the superblock does not match what the
-block allocation bitmaps indicate.  It turns out this is due to some
-block groups that are unused, and thus have uninitialized allocation
-bitmaps, yet somehow claim to not have all of their blocks free.  The
-stats output from debugfs shows this:
-
- Group 25: block bitmap at 524297, inode bitmap at 524313, inode table
-at 528928
-           32383 free blocks, 8192 free inodes, 0 used directories,
-8192 unused inodes
-           [Inode not init, Block not init, Checksum 0x45a8]
-
-
-How on earth can this be?  The block allocation bitmap is
-uninitialized, therefore all bits are assumed to be clear.  Yet the
-free blocks count is only 32383 instead of 32768.  How can a block
-group be totally unused, and yet not have all of its blocks free?
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQEcBAEBCgAGBQJVW970AAoJENRVrw2cjl5RU5cH/2CM88pWTMD52KXWAT+1RfK8
-oTuwSRdIyLlNF63kYicHAyd0TKHJ/qUJwmyZMJUfdDxbraMSYsGNtzUOaaL5hcgJ
-qwJfDXO3UmSLILSt8xGpgBH0TfybPLsBSzzrnyvq1Wk79a2HNAnOzTZJX+g7iDhP
-iePN3QEmG78xYK/V9gsiFO/PFh5KBXjhsdlLHkZgHLKUzWncfEzgtGU8m47PQLWq
-w4NEn+KBXr6k8jxx/btB3halgH0+70eejVNdM34SHx4ZvcckStz71aNT4six3os2
-euOMLMQol8fgKCu/eCRSIT/oruF5F7op467Q3gP3JHp3e7V+21jW8f1ykO9xG8Y=
-=DhLq
------END PGP SIGNATURE-----
+The current pcrypt version is used just for IPsec because it supports
+only AEAD type algorithms and does not support request backlog. But
+I have patches to support ablkcipher algorithms and request backlog.
+I could provide them if there is interest in it.
