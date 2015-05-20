@@ -1,65 +1,53 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: Let's get a File & Storage miniconf going at LPC2015!
-Date: Tue, 19 May 2015 13:10:55 -0700
-Message-ID: <20150519201055.GD27115@birch.djwong.org>
-References: <20150515205825.GC24967@birch.djwong.org>
-	<20150519154200.GA2559@kmo-pixel>
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: Unused block group, but all blocks not free?
+Date: Tue, 19 May 2015 21:10:12 -0400
+Message-ID: <555BDEF4.1020704@ubuntu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <ricwheeler@gmail.com>,
-	"linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-	xfs@oss.sgi.com, device-mapper development <dm-devel@redhat.com>,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
-To: Kent Overstreet <kent.overstreet@gmail.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <20150519154200.GA2559@kmo-pixel>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cdptpa-outbound-snat.email.rr.com ([107.14.166.230]:13302 "EHLO
+	cdptpa-oedge-vip.email.rr.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751866AbbETBKN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 May 2015 21:10:13 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 19, 2015 at 08:42:00AM -0700, Kent Overstreet wrote:
-> On Fri, May 15, 2015 at 01:58:25PM -0700, Darrick J. Wong wrote:
-> > We of course are not limited to just those topics -- if there's something
-> > you'd really like to discuss with everyone, please add that to the wiki.
-> > I realize that mid-August is family vacation time for many people, but
-> > those are the constraints the conference has to work with this year.
-> > There are fun things to do around Seattle, and that's probably the best
-> > time of year to visit.
-> 
-> It's getting near time for the big bcachefs announcement :)
-> 
-> Also, stable pages - what's been going on there? Last I heard you were talking
-> about using the page migration code to do COW, did anything come of that? I just
-> added data checksumming/compression to bcachefs, so that's been fresh on my
-> mind.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
 
-Yeah.  I never figured out a sane way to migrate pages and keep everything
-else happy.  Daniel Phillips is having a go at page forking for tux3; let's
-see if the questions about that get resolved.
+I broke out the old e2defrag for an experiment today ( wondering why
+resize2fs refuses to shrink a volume below half its size even though
+it is only 33% used; thought I would try packing all files as far to
+the left as possible and try again ) and it bailed out because the
+free block count listed in the superblock does not match what the
+block allocation bitmaps indicate.  It turns out this is due to some
+block groups that are unused, and thus have uninitialized allocation
+bitmaps, yet somehow claim to not have all of their blocks free.  The
+stats output from debugfs shows this:
 
-> Also, there's probably always going to be situations where we're reading or
-> writing to pages user space can stomp on (dio) - IMO we need to add a bio flag
-> to annotate this - "if you need this to be stable you have to bounce it".
-> Otherwise either filesystems/block drivers are going to be stuck bouncing
-> everything, or it'll just (continue to be) buggy.
+ Group 25: block bitmap at 524297, inode bitmap at 524313, inode table
+at 528928
+           32383 free blocks, 8192 free inodes, 0 used directories,
+8192 unused inodes
+           [Inode not init, Block not init, Checksum 0x45a8]
 
-Well, for now there's BIO_SNAP_STABLE that forces the block layer to bounce it,
-but right now ext3 is the last user of it, and afaict btrfs is the only other
-FS that takes care of stable pages on its own.
 
---D
+How on earth can this be?  The block allocation bitmap is
+uninitialized, therefore all bits are assumed to be clear.  Yet the
+free blocks count is only 32383 instead of 32768.  How can a block
+group be totally unused, and yet not have all of its blocks free?
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQEcBAEBCgAGBQJVW970AAoJENRVrw2cjl5RU5cH/2CM88pWTMD52KXWAT+1RfK8
+oTuwSRdIyLlNF63kYicHAyd0TKHJ/qUJwmyZMJUfdDxbraMSYsGNtzUOaaL5hcgJ
+qwJfDXO3UmSLILSt8xGpgBH0TfybPLsBSzzrnyvq1Wk79a2HNAnOzTZJX+g7iDhP
+iePN3QEmG78xYK/V9gsiFO/PFh5KBXjhsdlLHkZgHLKUzWncfEzgtGU8m47PQLWq
+w4NEn+KBXr6k8jxx/btB3halgH0+70eejVNdM34SHx4ZvcckStz71aNT4six3os2
+euOMLMQol8fgKCu/eCRSIT/oruF5F7op467Q3gP3JHp3e7V+21jW8f1ykO9xG8Y=
+=DhLq
+-----END PGP SIGNATURE-----
