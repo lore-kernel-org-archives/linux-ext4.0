@@ -1,58 +1,68 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 89621] EXT4-fs error (device dm-1):
- ext4_mb_release_inode_pa:3773: group 24089, free 34, pa_free 32
-Date: Thu, 21 May 2015 19:01:44 +0000
-Message-ID: <bug-89621-13602-ceo13wPcy5@https.bugzilla.kernel.org/>
-References: <bug-89621-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Unused block group, but all blocks not free?
+Date: Thu, 21 May 2015 19:59:40 -0400
+Message-ID: <20150521235940.GB2750@thunk.org>
+References: <555BDEF4.1020704@ubuntu.com>
+ <20150520151007.GK2871@thunk.org>
+ <555CA52F.3010109@ubuntu.com>
+ <20150520163148.GA23989@thunk.org>
+ <555D0541.1000804@ubuntu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Phillip Susi <psusi@ubuntu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:58674 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:51486 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751702AbbEUTBs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 May 2015 15:01:48 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id E7D3420532
-	for <linux-ext4@vger.kernel.org>; Thu, 21 May 2015 19:01:46 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id E261F2052C
-	for <linux-ext4@vger.kernel.org>; Thu, 21 May 2015 19:01:44 +0000 (UTC)
-In-Reply-To: <bug-89621-13602@https.bugzilla.kernel.org/>
+	id S1754061AbbEUX7o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 May 2015 19:59:44 -0400
+Content-Disposition: inline
+In-Reply-To: <555D0541.1000804@ubuntu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=89621
+On Wed, May 20, 2015 at 06:05:53PM -0400, Phillip Susi wrote:
+> On 05/20/2015 12:31 PM, Theodore Ts'o wrote:
+> > As an optimization, if we can reconstruct the allocation bitmap from
+> > the block group descriptors, we'll leave the block allocation bitmap
+> > uninitialized, so that programs like e2fsck don't have to read the
+> > bitmap block.  For a mostly empty file system, this optimization is
+> > quite noticeable.
+> 
+> Ahh, so for block groups that have uninitialized bitmaps, I suppose I'll
+> need to add a check to reconstruct the used blocks from the group
+> descriptor table pointers.
+> 
+> > Can you send me a compressed raw e2image of the file system so I can
+> > take a look?
+> 
+> Here it is.
 
-Michal Cihar <michal@cihar.com> changed:
+Ah, so it's pretty self-explanatory.  From the dumpe2fs of the image:
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |michal@cihar.com
+Group 25: (Blocks 819200-851967) csum 0x45a8 [INODE_UNINIT, BLOCK_UNINIT, ITABLE_ZEROED]
+                  ^^^^^^^^^^^^^
+  Backup superblock at 819200, Group descriptors at 819201-819201
+                       ^^^^^^                       ^^^^^^^^^^^^^
+  Reserved GDT blocks at 819202-819584
+                         ^^^^^^^^^^^^^
+  Block bitmap at 524297 (bg #16 + 9)
+  Inode bitmap at 524313 (bg #16 + 25)
+  Inode table at 528928-529439 (bg #16 + 4640)
+  32383 free blocks, 8192 free inodes, 0 directories, 8192 unused inodes
+  Free blocks: 819585-851967
+  Free inodes: 204801-212992
 
---- Comment #8 from Michal Cihar <michal@cihar.com> ---
-I've seen this several times as well. All cases were after upgrade to Debian
-Jessie with 3.16.0 kernel running in KVM. The host kernel is unchanged, so I'm
-pretty sure the guest kernel is guilty here. The host does LVM + RAID, the
-guest just gets virtio based disk so nothing complex on it's side.
+One of the things which we didn't do as part of flex_bg was to change
+the location of the superblocks that had backup superblock and block
+group descriptor blocks (which perhaps we should have done, but oh,
+well).  There is the sparse_super2 feature which would allow us to
+reduce the number of backup superblocks down to two, one, or zero, but
+that would require people using newer versions of e2fsprogs, so it's
+not something we've enabled yet for wider use (although it is
+something I've been using at $WORK).
 
-The error in my case:
+					- Ted
 
-[149757.256024] EXT4-fs (vda1): pa ffff88001c92bd90: logic 0, phys. 1944064,
-len 64
-[149757.323573] EXT4-fs error (device vda1): ext4_mb_release_inode_pa:3773:
-group 59, free 4, pa_free 2
-[149757.349776] Aborting journal on device vda1-8.
-[149757.386808] EXT4-fs (vda1): Remounting filesystem read-only
-[236229.600081] EXT4-fs (vda1): error count since last fsck: 1
-[236229.600086] EXT4-fs (vda1): initial error at time 1432088178:
-ext4_mb_release_inode_pa:3773
-[236229.600088] EXT4-fs (vda1): last error at time 1432088178:
-ext4_mb_release_inode_pa:3773
 
-I'm not able to reproduce this, but I've already seen the error several times.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
