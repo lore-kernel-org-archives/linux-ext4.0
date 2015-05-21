@@ -1,42 +1,58 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Unused block group, but all blocks not free?
-Date: Wed, 20 May 2015 12:31:48 -0400
-Message-ID: <20150520163148.GA23989@thunk.org>
-References: <555BDEF4.1020704@ubuntu.com>
- <20150520151007.GK2871@thunk.org>
- <555CA52F.3010109@ubuntu.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 89621] EXT4-fs error (device dm-1):
+ ext4_mb_release_inode_pa:3773: group 24089, free 34, pa_free 32
+Date: Thu, 21 May 2015 19:01:44 +0000
+Message-ID: <bug-89621-13602-ceo13wPcy5@https.bugzilla.kernel.org/>
+References: <bug-89621-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Phil Susi <psusi@ubuntu.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:48123 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.29.136]:58674 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753622AbbETQbv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 20 May 2015 12:31:51 -0400
-Content-Disposition: inline
-In-Reply-To: <555CA52F.3010109@ubuntu.com>
+	id S1751702AbbEUTBs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 May 2015 15:01:48 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id E7D3420532
+	for <linux-ext4@vger.kernel.org>; Thu, 21 May 2015 19:01:46 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id E261F2052C
+	for <linux-ext4@vger.kernel.org>; Thu, 21 May 2015 19:01:44 +0000 (UTC)
+In-Reply-To: <bug-89621-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 20, 2015 at 11:15:59AM -0400, Phil Susi wrote:
-> On 5/20/2015 11:10 AM, Theodore Ts'o wrote:
-> >Have you checked to see if the metadata for other block groups are
-> >taking up space in the block group.  This can happen when using the
-> >flex_bg layout.  (And without flex_bg, then *all* block groups will
-> >always have blocks in use, for their own metadata blocks.)
-> 
-> That was my first thought and no, they aren't.  The metadata is in bg 0 and
-> bg 32, not 25.  Even still, when the metadata is there, shouldn't the
-> allocation bitmap mark those blocks as in use rather than be uninitialized?
+https://bugzilla.kernel.org/show_bug.cgi?id=89621
 
-As an optimization, if we can reconstruct the allocation bitmap from
-the block group descriptors, we'll leave the block allocation bitmap
-uninitialized, so that programs like e2fsck don't have to read the
-bitmap block.  For a mostly empty file system, this optimization is
-quite noticeable.
+Michal Cihar <michal@cihar.com> changed:
 
-Can you send me a compressed raw e2image of the file system so I can
-take a look?
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |michal@cihar.com
 
-					- Ted
+--- Comment #8 from Michal Cihar <michal@cihar.com> ---
+I've seen this several times as well. All cases were after upgrade to Debian
+Jessie with 3.16.0 kernel running in KVM. The host kernel is unchanged, so I'm
+pretty sure the guest kernel is guilty here. The host does LVM + RAID, the
+guest just gets virtio based disk so nothing complex on it's side.
+
+The error in my case:
+
+[149757.256024] EXT4-fs (vda1): pa ffff88001c92bd90: logic 0, phys. 1944064,
+len 64
+[149757.323573] EXT4-fs error (device vda1): ext4_mb_release_inode_pa:3773:
+group 59, free 4, pa_free 2
+[149757.349776] Aborting journal on device vda1-8.
+[149757.386808] EXT4-fs (vda1): Remounting filesystem read-only
+[236229.600081] EXT4-fs (vda1): error count since last fsck: 1
+[236229.600086] EXT4-fs (vda1): initial error at time 1432088178:
+ext4_mb_release_inode_pa:3773
+[236229.600088] EXT4-fs (vda1): last error at time 1432088178:
+ext4_mb_release_inode_pa:3773
+
+I'm not able to reproduce this, but I've already seen the error several times.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
