@@ -1,148 +1,77 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] tests: skip large filesystem tests on MacOS
-Date: Fri, 22 May 2015 16:45:59 -0600
-Message-ID: <F0EE3948-8478-49D4-BBBD-89FB96A27C4A@dilger.ca>
-References: <1432334358-6035-1-git-send-email-adilger@dilger.ca>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2098\))
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org
+Subject: [PATCH] misc: fix alignment warnings on ARM
+Date: Fri, 22 May 2015 16:40:51 -0600
+Message-ID: <1432334451-15863-1-git-send-email-adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f178.google.com ([209.85.192.178]:36377 "EHLO
-	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1946049AbbEVWqD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 May 2015 18:46:03 -0400
-Received: by pdfh10 with SMTP id h10so29471892pdf.3
-        for <linux-ext4@vger.kernel.org>; Fri, 22 May 2015 15:46:02 -0700 (PDT)
-In-Reply-To: <1432334358-6035-1-git-send-email-adilger@dilger.ca>
+Received: from smtp-out-05.shaw.ca ([64.59.134.13]:38583 "EHLO
+	smtp-out-05.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756946AbbEVWtB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 May 2015 18:49:01 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On May 22, 2015, at 4:39 PM, Andreas Dilger <adilger@dilger.ca> wrote:
-> 
-> Skip tests that create large filesystem on MacOS, since HFS doesn't
-> have sparse file support and this causes testing to be uninterruptible
-> for minutes while mke2fs is writing to some large non-zero offset and
-> filling up the test filesystem.  Since most testing is done on Linux
-> this shouldn't cause a significant gap in testing coverage.
-> 
-> Tests skipped are d_dumpe2fs_group_only, m_bigjournal, m_hugefile,
-> t_iexpand_full, t_iexpand_mcsum, and t_uninit_bg_rm.
+Some temporary char buffers allocated on the stack are not properly
+aligned when typecast to a structure containing __u32 or __u64 types,
+and this can cause alignment warnings on ARM and other alignment
+sensitive architectures, and potential slowdowns to do fixups.
 
-This patch only applies on master, since these tests are mostly from Darrick's
-patchbomb.  The other two patches can apply equally well to maint and master.
+Fix the buffer alignment to avoid such issues.
 
-Cheers, Andreas
+Addresses: https://bugzilla.redhat.com/show_bug.cgi?id=680090
 
-> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
-> ---
-> tests/d_dumpe2fs_group_only/script |    6 ++++++
-> tests/m_bigjournal/script          |    1 +
-> tests/m_hugefile/script            |    6 ++++++
-> tests/t_iexpand_full/script        |    6 ++++++
-> tests/t_iexpand_mcsum/script       |    5 +++++
-> tests/t_uninit_bg_rm/script        |    6 ++++++
-> 6 files changed, 30 insertions(+), 0 deletions(-)
-> 
-> diff --git a/tests/d_dumpe2fs_group_only/script b/tests/d_dumpe2fs_group_only/script
-> index 127502f..50481f0 100644
-> --- a/tests/d_dumpe2fs_group_only/script
-> +++ b/tests/d_dumpe2fs_group_only/script
-> @@ -1,3 +1,9 @@
-> +if [ $(uname -s) = "Darwin" ]; then
-> +	# creates a 4GB filesystem
-> +	echo "$test_name: $DESCRIPTION: skipped for HFS+ (no sparse files)"
-> +	return 0
-> +fi
-> +
-> if test -x $DEBUGFS_EXE; then
-> 
-> FSCK_OPT=-fy
-> diff --git a/tests/m_bigjournal/script b/tests/m_bigjournal/script
-> index 576d99e..96ea082 100644
-> --- a/tests/m_bigjournal/script
-> +++ b/tests/m_bigjournal/script
-> @@ -4,6 +4,7 @@ DUMPE2FS_IGNORE_80COL=1
-> export DUMPE2FS_IGNORE_80COL
-> MKE2FS_OPTS="-t ext4 -G 512 -N 1280 -J size=5000 -q -E lazy_journal_init,lazy_itable_init,nodiscard"
-> if [ $(uname -s) = "Darwin" ]; then
-> +	# creates a 44GB filesystem
-> 	echo "$test_name: $DESCRIPTION: skipped for HFS+ (no sparse files)"
-> 	return 0
-> fi
-> diff --git a/tests/m_hugefile/script b/tests/m_hugefile/script
-> index 72af8b8..5619f64 100644
-> --- a/tests/m_hugefile/script
-> +++ b/tests/m_hugefile/script
-> @@ -3,6 +3,12 @@ OUT=$test_name.log
-> EXP=$test_dir/expect
-> CONF=$TMPFILE.conf
-> 
-> +if [ $(uname -s) = "Darwin" ]; then
-> +	# creates a 4TB filesystem
-> +	echo "$test_name: $DESCRIPTION: skipped for HFS+ (no sparse files)"
-> +	return 0
-> +fi
-> +
-> #gzip -d < $EXP.gz > $EXP
-> 
-> cat > $CONF << ENDL
-> diff --git a/tests/t_iexpand_full/script b/tests/t_iexpand_full/script
-> index 779c66d..f8565a7 100644
-> --- a/tests/t_iexpand_full/script
-> +++ b/tests/t_iexpand_full/script
-> @@ -1,5 +1,11 @@
-> if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
-> 
-> +if [ $(uname -s) = "Darwin" ]; then
-> +	# creates a 3GB filesystem
-> +	echo "$test_name: $DESCRIPTION: skipped for HFS+ (no sparse files)"
-> +	return 0
-> +fi
-> +
-> FSCK_OPT=-fn
-> OUT=$test_name.log
-> EXP=$test_dir/expect
-> diff --git a/tests/t_iexpand_mcsum/script b/tests/t_iexpand_mcsum/script
-> index 3057dba..4b584d3 100644
-> --- a/tests/t_iexpand_mcsum/script
-> +++ b/tests/t_iexpand_mcsum/script
-> @@ -1,4 +1,9 @@
-> if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
-> +if [ $(uname -s) = "Darwin" ]; then
-> +	# creates a 3GB filesystem
-> +	echo "$test_name: $DESCRIPTION: skipped for HFS+ (no sparse files)"
-> +	return 0
-> +fi
-> 
-> FSCK_OPT=-fn
-> OUT=$test_name.log
-> diff --git a/tests/t_uninit_bg_rm/script b/tests/t_uninit_bg_rm/script
-> index cd397c5..308ef25 100644
-> --- a/tests/t_uninit_bg_rm/script
-> +++ b/tests/t_uninit_bg_rm/script
-> @@ -3,6 +3,12 @@ OUT=$test_name.log
-> FSCK_OPT=-yf
-> EXP=$test_dir/expect
-> 
-> +if [ $(uname -s) = "Darwin" ]; then
-> +	# creates a 10GB filesystem
-> +	echo "$test_name: $DESCRIPTION: skipped for HFS+ (no sparse files)"
-> +	return 0
-> +fi
-> +
-> cp /dev/null $TMPFILE
-> rm -f $OUT.new
-> 
-> -- 
-> 1.7.3.4
-> 
+Reported-by: Gordan Bobic <gordan.bobic@gmail.com>
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+---
+ misc/filefrag.c |    2 +-
+ misc/tune2fs.c  |    6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-
-Cheers, Andreas
-
-
-
-
+diff --git a/misc/filefrag.c b/misc/filefrag.c
+index 3b104c6..46f1218 100644
+--- a/misc/filefrag.c
++++ b/misc/filefrag.c
+@@ -198,7 +198,7 @@ static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
+ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
+ 			   ext2fs_struct_stat *st)
+ {
+-	char buf[16384];
++	__u64 buf[2048];	/* __u64 for proper field alignment */
+ 	struct fiemap *fiemap = (struct fiemap *)buf;
+ 	struct fiemap_extent *fm_ext = &fiemap->fm_extents[0];
+ 	int count = (sizeof(buf) - sizeof(*fiemap)) /
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index d2e8b20..36c2ff7 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -240,7 +240,7 @@ static int remove_journal_device(ext2_filsys fs)
+ {
+ 	char		*journal_path;
+ 	ext2_filsys	jfs;
+-	char		buf[SUPERBLOCK_SIZE];
++	char		buf[SUPERBLOCK_SIZE] __attribute__ ((aligned(8)));
+ 	journal_superblock_t	*jsb;
+ 	int		i, nr_users;
+ 	errcode_t	retval;
+@@ -2609,7 +2609,7 @@ fs_update_journal_user(struct ext2_super_block *sb, __u8 old_uuid[UUID_SIZE])
+ 	__u8 *j_uuid;
+ 	char *journal_path;
+ 	char uuid[UUID_STR_SIZE];
+-	char buf[SUPERBLOCK_SIZE];
++	char buf[SUPERBLOCK_SIZE] __attribute__ ((aligned(8)));
+ 
+ 	if (!(sb->s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL) ||
+ 		uuid_is_null(sb->s_journal_uuid))
+@@ -2964,7 +2964,7 @@ retry_open:
+ 	if (U_flag) {
+ 		int set_csum = 0;
+ 		dgrp_t i;
+-		char buf[SUPERBLOCK_SIZE];
++		char buf[SUPERBLOCK_SIZE] __attribute__ ((aligned(8)));
+ 		__u8 old_uuid[UUID_SIZE];
+ 
+ 		if (ext2fs_has_group_desc_csum(fs)) {
+-- 
+1.7.3.4
 
