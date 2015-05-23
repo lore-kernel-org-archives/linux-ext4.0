@@ -1,81 +1,57 @@
-From: =?windows-1252?Q?J=F6rg-Volker_Peetz?= <jvpeetz@web.de>
-Subject: Re: ext4 lazytime: ctime of some files changed
-Date: Sat, 23 May 2015 15:24:15 +0200
-Message-ID: <55607F7F.1050106@web.de>
-References: <55531AE3.7030704@web.de> <mivtkj$fhi$1@ger.gmane.org> <20150514222044.GA3901@thunk.org> <55560D42.2060402@web.de> <20150515231107.GF3901@thunk.org> <555C4A65.5030100@web.de>
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: Re: Unused block group, but all blocks not free?
+Date: Sat, 23 May 2015 11:39:52 -0400
+Message-ID: <55609F48.2040609@ubuntu.com>
+References: <555BDEF4.1020704@ubuntu.com> <20150520151007.GK2871@thunk.org> <555CA52F.3010109@ubuntu.com> <20150520163148.GA23989@thunk.org> <555D0541.1000804@ubuntu.com> <20150521235940.GB2750@thunk.org> <555E7371.9060207@ubuntu.com> <20150522022837.GC2750@thunk.org> <555F2306.8010607@ubuntu.com> <20150523030553.GD2750@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:49906 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757736AbbEWNY2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 23 May 2015 09:24:28 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1Yw9Pe-00039G-Ar
-	for linux-ext4@vger.kernel.org; Sat, 23 May 2015 15:24:26 +0200
-Received: from p5b0a06df.dip0.t-ipconnect.de ([91.10.6.223])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Sat, 23 May 2015 15:24:26 +0200
-Received: from jvpeetz by p5b0a06df.dip0.t-ipconnect.de with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Sat, 23 May 2015 15:24:26 +0200
-In-Reply-To: <555C4A65.5030100@web.de>
+Received: from cdptpa-outbound-snat.email.rr.com ([107.14.166.225]:29663 "EHLO
+	cdptpa-oedge-vip.email.rr.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1757881AbbEWPj5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 23 May 2015 11:39:57 -0400
+In-Reply-To: <20150523030553.GD2750@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-J=F6rg-Volker Peetz wrote on 05/20/2015 10:48:
-<snip>
-> after a few days of running the patch, I seem to have again two files=
- with
-> changed mtime without touching them (only reading by rsync).
->=20
-<snip>
-I can affirm this error, but am not sure where to hunt.
-I'm using several USB drives in a cycle for backup.
-I have a directory with a file originally older than a few years.
-Mount options are
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
 
-$ grep sda /proc/mounts
-/dev/sda2 /home ext4 rw,lazytime,relatime,nobarrier,errors=3Dremount-ro=
- 0 0
+On 05/22/2015 11:05 PM, Theodore Ts'o wrote:
+> We didn't check e2defrag because I didn't realize you had
+> ressurected it.  (At least when I last looked at it, I was too
+> scared about its error handling, etc., and so I had deliberately
+> declined to try to get it into e2fsprogs as something I wasn't
+> willing to support it.  So you are a braver person than I....)
 
-(using lazytime with relatime).
-As reported, while I started using lazytime, this file's mtime got chan=
-ged.
-I reset the mtime with the "touch -r <intact_copy> <file>" command.
-After a backup to one of the USB drives with something like
+Of course... I rescued it a few years ago after debian removed it (
+before e4defrag was around ) and got it fixed up to work on modern
+filesystems and it's hosted at launchpad.net/e2defrag.  I break it out
+every now and again for performance testing since it does a full
+defrag rather than only files ( maximize large free extents ) and the
+ability to pack files in a specified order, such as the order they are
+read during boot.  Well, that and I still find the ANSI block map just
+as fun to watch as when I first used it in the '90s on a 486 with 2mb
+of ram ;)
 
-$ rsync -acv --exclude-from=3D<file> --delete-excluded <SRC> <DEST_ON_U=
-SB_DRIVE>
-
-the namely file had its mtime changed  on the *source* device (the USB =
-drive has
-an ext4 fs mounted without the lazytime option).
-I reset that again on the source SSD using "touch". Another file in the=
- same was
-also modified.
-
-Next backup on another USB drive, same thing.
-I took a look into the file list on the backup medium before the backup=
-=2E
-There the file also had a different mtime, but not the same mtime the f=
-ile got
-after the backup.
-
-I'm confused.
-Any idea?
---=20
-Regards,
-J=F6rg.
+I really like the algorithm you guys came up with back then for moving
+blocks from where they are to their optimal position in mostly large
+sequential chunks and without having to move them more than once.
+Yea, it's not crash resilient, but it is FAST.
 
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQEcBAEBCgAGBQJVYJ9IAAoJENRVrw2cjl5R5+YIAIjUyZ869wMO1LOMpcmjt0Rs
+XRt2VJHwkT8y1U+STsEeMOOR5TydR+xWyG4ExaoPW+WOzROQNs+vbEH9tQZvBVNm
+e6BLnKPPAYX392Ar3siufF87ivcGlM3SyQxrZgaj+EIlSpVbOVE6pnx2aSLhPhz5
+znXL0sEioK+F/KxHNRfQyAtqPOc/OkJ1l1csanPUJFlEgQEuu4rSgaLvc3e4Y1pO
+M0b09dqQHLJcGOSn+me22laLKAlTxhZWYkRoJrHielgX7sCukYMe5hEu6Nc/Gzt4
+T/rAca/vmM9R5owExrbNydwNExnwZcB0bZT5ZBqU+9U/BwouJalKkGUhsH+zbpE=
+=ahhy
+-----END PGP SIGNATURE-----
