@@ -1,57 +1,42 @@
 From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: Unused block group, but all blocks not free?
-Date: Sat, 23 May 2015 11:39:52 -0400
-Message-ID: <55609F48.2040609@ubuntu.com>
-References: <555BDEF4.1020704@ubuntu.com> <20150520151007.GK2871@thunk.org> <555CA52F.3010109@ubuntu.com> <20150520163148.GA23989@thunk.org> <555D0541.1000804@ubuntu.com> <20150521235940.GB2750@thunk.org> <555E7371.9060207@ubuntu.com> <20150522022837.GC2750@thunk.org> <555F2306.8010607@ubuntu.com> <20150523030553.GD2750@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] Update maximum journal size in tune2fs man page
+Date: Sat, 23 May 2015 16:49:45 -0400
+Message-ID: <1432414185-5997-1-git-send-email-psusi@ubuntu.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-outbound-snat.email.rr.com ([107.14.166.225]:29663 "EHLO
-	cdptpa-oedge-vip.email.rr.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1757881AbbEWPj5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 23 May 2015 11:39:57 -0400
-In-Reply-To: <20150523030553.GD2750@thunk.org>
+Received: from mail-yh0-f43.google.com ([209.85.213.43]:33976 "EHLO
+	mail-yh0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932144AbbEWUtw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 May 2015 16:49:52 -0400
+Received: by yhom41 with SMTP id m41so13282034yho.1
+        for <linux-ext4@vger.kernel.org>; Sat, 23 May 2015 13:49:51 -0700 (PDT)
+Received: from localhost.localdomain (72-238-77-169.res.bhn.net. [72.238.77.169])
+        by mx.google.com with ESMTPSA id v6sm4901501yhc.34.2015.05.23.13.49.49
+        for <linux-ext4@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-SHA bits=128/128);
+        Sat, 23 May 2015 13:49:50 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA512
+The man page for tune2fs still listed the upper limit for
+the journal as 102,400 blocks.
+---
+ misc/tune2fs.8.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-On 05/22/2015 11:05 PM, Theodore Ts'o wrote:
-> We didn't check e2defrag because I didn't realize you had
-> ressurected it.  (At least when I last looked at it, I was too
-> scared about its error handling, etc., and so I had deliberately
-> declined to try to get it into e2fsprogs as something I wasn't
-> willing to support it.  So you are a braver person than I....)
+diff --git a/misc/tune2fs.8.in b/misc/tune2fs.8.in
+index 4373fc4..fcdf668 100644
+--- a/misc/tune2fs.8.in
++++ b/misc/tune2fs.8.in
+@@ -337,7 +337,7 @@ Create a journal stored in the filesystem of size
+ .I journal-size
+ megabytes.   The size of the journal must be at least 1024 filesystem blocks
+ (i.e., 1MB if using 1k blocks, 4MB if using 4k blocks, etc.)
+-and may be no more than 102,400 filesystem blocks.
++and may be no more than 10,240,000 filesystem blocks.
+ There must be enough free space in the filesystem to create a journal of
+ that size.
+ .TP
+-- 
+2.1.4
 
-Of course... I rescued it a few years ago after debian removed it (
-before e4defrag was around ) and got it fixed up to work on modern
-filesystems and it's hosted at launchpad.net/e2defrag.  I break it out
-every now and again for performance testing since it does a full
-defrag rather than only files ( maximize large free extents ) and the
-ability to pack files in a specified order, such as the order they are
-read during boot.  Well, that and I still find the ANSI block map just
-as fun to watch as when I first used it in the '90s on a 486 with 2mb
-of ram ;)
-
-I really like the algorithm you guys came up with back then for moving
-blocks from where they are to their optimal position in mostly large
-sequential chunks and without having to move them more than once.
-Yea, it's not crash resilient, but it is FAST.
-
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQEcBAEBCgAGBQJVYJ9IAAoJENRVrw2cjl5R5+YIAIjUyZ869wMO1LOMpcmjt0Rs
-XRt2VJHwkT8y1U+STsEeMOOR5TydR+xWyG4ExaoPW+WOzROQNs+vbEH9tQZvBVNm
-e6BLnKPPAYX392Ar3siufF87ivcGlM3SyQxrZgaj+EIlSpVbOVE6pnx2aSLhPhz5
-znXL0sEioK+F/KxHNRfQyAtqPOc/OkJ1l1csanPUJFlEgQEuu4rSgaLvc3e4Y1pO
-M0b09dqQHLJcGOSn+me22laLKAlTxhZWYkRoJrHielgX7sCukYMe5hEu6Nc/Gzt4
-T/rAca/vmM9R5owExrbNydwNExnwZcB0bZT5ZBqU+9U/BwouJalKkGUhsH+zbpE=
-=ahhy
------END PGP SIGNATURE-----
