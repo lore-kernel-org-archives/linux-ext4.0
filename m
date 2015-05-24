@@ -1,54 +1,47 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: resize2fs minimum size wrong
-Date: Sat, 23 May 2015 21:34:31 -0400
-Message-ID: <20150524013431.GB3270@thunk.org>
-References: <5560EEB1.8070003@ubuntu.com>
- <20150523233603.GA3270@thunk.org>
- <55611B06.3040608@ubuntu.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Phillip Susi <psusi@ubuntu.com>
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: [PATCH] resize2fs: fix minimum size calculation
+Date: Sat, 23 May 2015 23:02:21 -0400
+Message-ID: <1432436541-16990-1-git-send-email-psusi@ubuntu.com>
+References: <20150524013431.GB3270@thunk.org>
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:54853 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750861AbbEXBeh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 23 May 2015 21:34:37 -0400
-Content-Disposition: inline
-In-Reply-To: <55611B06.3040608@ubuntu.com>
+Received: from mail-yh0-f41.google.com ([209.85.213.41]:33009 "EHLO
+	mail-yh0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751806AbbEXDC1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 May 2015 23:02:27 -0400
+Received: by yhcb70 with SMTP id b70so14509710yhc.0
+        for <linux-ext4@vger.kernel.org>; Sat, 23 May 2015 20:02:26 -0700 (PDT)
+In-Reply-To: <20150524013431.GB3270@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, May 23, 2015 at 08:27:50PM -0400, Phillip Susi wrote:
-> 
-> On 05/23/2015 07:36 PM, Theodore Ts'o wrote:
-> > Figuring out the minimum size in a way where we don't screw up and 
-> > pick a number too _low_ is tricky, because if resize2fs aborts in
-> > the middle, we can end up with a corrupted file system.
-> 
-> Why is it hard?  Why isn't it simply the number of used blocks, or the
-> highest fixed metadata block, whichever is higher?
+The size calculation adds an initial number of block groups needed to hold
+the inodes on the fs, then augments them with additional groups needed to
+reach the minimum number of data blocks, and then calculates the size of
+the last block group ( which should be a fraction of one block group ).  It
+was calculating a last bg size of several block groups because when adding
+the supplementary bgs, it only advanced the position of the start of the
+last group by one group, even though it was adding multiple groups.  Add
+the missing multiplier to move the last bg start position up to the correct
+location, thus computing a proper fractional last bg size.
+---
+ resize/resize2fs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-The amount of space needed for metadata blocks change depending on how
-many block groups you have, and as you shrink the block groups, the
-amount of space you need the metadata blocks shrink.  You might also
-need some of the extra block groups to make sure you have enough
-inodes for all of the inodes in the system.
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 041ff75..3359a8f 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -2870,7 +2870,7 @@ blk64_t calculate_minimum_resize_size(ext2_filsys fs, int flags)
+ 
+ 		/* ok we have to account for the last group */
+ 		overhead = calc_group_overhead(fs, groups-1, old_desc_blocks);
+-		last_start += EXT2_BLOCKS_PER_GROUP(fs->super) - overhead;
++		last_start += (EXT2_BLOCKS_PER_GROUP(fs->super) * extra_grps) - overhead;
+ 
+ 		grp = flex_groups;
+ 		groups += extra_grps;
+-- 
+2.1.4
 
-Also, we can't necessarily use all of the space right away; for
-example, the inode table for block group #25 lives in block group #16.
-If we are shrinking the file system such that block groups #20 through
-#25 will no longer be present, we can't use the inode space for those
-block groups until *after* the resize has completed successfully,
-since we can only free up those blocks after we have made sure we have
-evacuated all of the inodes to other parts of the inode table.
-
-> > I'm going to guess the problem has to do with the reserved space 
-> > needed so that resize works correctly, and the amount of reserved
-> 
-> Reserved for what?
-
-Reserved for additional block group descriptors when we are growing
-the file system.
-
-					- Ted
