@@ -1,281 +1,113 @@
-From: Dmitry Monakhov <dmonlist@gmail.com>
-Subject: Re: [PATCH-v2 08/20] ext4 crypto: add encryption key management facilities
-Date: Wed, 27 May 2015 16:39:57 +0300
-Message-ID: <87382im95e.fsf@openvz.org>
-References: <1428894996-7852-1-git-send-email-tytso@mit.edu> <1428894996-7852-9-git-send-email-tytso@mit.edu>
+From: Rob Harris <rob.harris@gmail.com>
+Subject: Custom driver FS brokenness at 4GB?
+Date: Wed, 27 May 2015 09:56:29 -0400
+Message-ID: <5565CD0D.4080408@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: mhalcrow@google.com, Ildar Muslukhov <muslukhovi@gmail.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Theodore Ts'o <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f181.google.com ([209.85.217.181]:35149 "EHLO
-	mail-lb0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751322AbbE0Nm0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 May 2015 09:42:26 -0400
-Received: by lbbuc2 with SMTP id uc2so7513133lbb.2
-        for <linux-ext4@vger.kernel.org>; Wed, 27 May 2015 06:42:25 -0700 (PDT)
-In-Reply-To: <1428894996-7852-9-git-send-email-tytso@mit.edu>
+Received: from mail-qk0-f169.google.com ([209.85.220.169]:34240 "EHLO
+	mail-qk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751307AbbE0N4b (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 May 2015 09:56:31 -0400
+Received: by qkoo18 with SMTP id o18so5764389qko.1
+        for <linux-ext4@vger.kernel.org>; Wed, 27 May 2015 06:56:30 -0700 (PDT)
+Received: from [10.13.1.157] ([38.103.30.210])
+        by mx.google.com with ESMTPSA id l74sm10251463qgd.7.2015.05.27.06.56.30
+        for <linux-ext4@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 27 May 2015 06:56:30 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Ts'o <tytso@mit.edu> writes:
+Greetings. I have an odd issue and need some ideas of where to go next 
+-- I'm out of hair to rip out.
 
-> From: Michael Halcrow <mhalcrow@google.com>
->
-> Change-Id: I0cb5711a628554d3b05cefd15740d8346115cbaa
-> Signed-off-by: Michael Halcrow <mhalcrow@google.com>
-> Signed-off-by: Ildar Muslukhov <muslukhovi@gmail.com>
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Hi, hope that it is not too late for discussion minor things
+I'm writing a custom block device driver talking to some custom RAID 
+hardware (>32TB) using DMA scatter-gather, with no partitions and am 
+using make_request() to service all the BIO requests to simplify 
+debugging. I have the driver working to the point where using DD against 
+the block device seems to work fine (I'm setting iflag|oflag=direct to 
+ensure it's writing to the disk). I also have the blk_queue set to only 
+request a single 4k I/O per BIO (again to simplify debugging for now.) 
+Also, again to debug, I have a mutex wrapping the entire make_request 
+call to ensure that only a single request is being serviced at a time. 
+So, this should be as "simple" as I can make the environment to debug 
+this problem.
 
-I'm wondering whenever derivation key algo (AEC-CBC) is too weak because allow
- attacker get master key once attacker find key for any inode in a filesystem.
- IMHO sane key derivation should be done via HMAC (HMACSHA256) or any
- other one direction procedure. 
+Once the driver is loaded, when I try to create a file system (ext4 but 
+the same thing happens with xfs) it seems like there is some corruption 
+occurring, but only when I set the sector size of the block device over 
+4GB. For instance, when I set the size to 4G, I can mkfs.ext4, but after 
+2 or 3 mount/umounts the FS refuses to mount anymore and the kernel log 
+complains that the journal is missing. This was discovered running this 
+loop...
 
-Read file connect w/o key. 
-   Currently this is prohibited which breaks a lot of applications. For
-   example my backup scenario looks like rsync like script which copy
-   content of home directory to some archive. Script has no
-   access to my keys, so encrypted files will be backed-up. This is bad.
-   IMHO it is reasonable to allow to read content of the file even w/o key but
-   return encrypted content (as it is stored on disk). This is very
-   similar to what we do with filenames. AFAIU this will no break our
-   security assumptions 'steal once' because even if attacker has access
-   to several versions of the encrypted file this simply equals to
-   several files with same ctx.nonce (effectively equals encrypted file
-   with size = sum of all files)
-   If everybody are ok with that I'll send a draft patch.
-> ---
->  fs/ext4/Makefile      |   2 +-
->  fs/ext4/crypto_key.c  | 162 ++++++++++++++++++++++++++++++++++++++++++++++++++
->  fs/ext4/ext4.h        |  13 ++++
->  fs/ext4/ext4_crypto.h |   3 +
->  4 files changed, 179 insertions(+), 1 deletion(-)
->  create mode 100644 fs/ext4/crypto_key.c
->
-> diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-> index 1b1c561..4e5af21 100644
-> --- a/fs/ext4/Makefile
-> +++ b/fs/ext4/Makefile
-> @@ -12,4 +12,4 @@ ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
->  
->  ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
->  ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
-> -ext4-$(CONFIG_EXT4_FS_ENCRYPTION)	+= crypto_policy.o crypto.o
-> +ext4-$(CONFIG_EXT4_FS_ENCRYPTION)	+= crypto_policy.o crypto.o crypto_key.o
-> diff --git a/fs/ext4/crypto_key.c b/fs/ext4/crypto_key.c
-> new file mode 100644
-> index 0000000..572bd97
-> --- /dev/null
-> +++ b/fs/ext4/crypto_key.c
-> @@ -0,0 +1,162 @@
-> +/*
-> + * linux/fs/ext4/crypto_key.c
-> + *
-> + * Copyright (C) 2015, Google, Inc.
-> + *
-> + * This contains encryption key functions for ext4
-> + *
-> + * Written by Michael Halcrow, Ildar Muslukhov, and Uday Savagaonkar, 2015.
-> + */
-> +
-> +#include <keys/encrypted-type.h>
-> +#include <keys/user-type.h>
-> +#include <linux/random.h>
-> +#include <linux/scatterlist.h>
-> +#include <uapi/linux/keyctl.h>
-> +
-> +#include "ext4.h"
-> +#include "xattr.h"
-> +
-> +static void derive_crypt_complete(struct crypto_async_request *req, int rc)
-> +{
-> +	struct ext4_completion_result *ecr = req->data;
-> +
-> +	if (rc == -EINPROGRESS)
-> +		return;
-> +
-> +	ecr->res = rc;
-> +	complete(&ecr->completion);
-> +}
-> +
-> +/**
-> + * ext4_derive_key_aes() - Derive a key using AES-128-ECB
-> + * @deriving_key: Encryption key used for derivatio.
-> + * @source_key:   Source key to which to apply derivation.
-> + * @derived_key:  Derived key.
-> + *
-> + * Return: Zero on success; non-zero otherwise.
-> + */
-> +static int ext4_derive_key_aes(char deriving_key[EXT4_AES_128_ECB_KEY_SIZE],
-> +			       char source_key[EXT4_AES_256_XTS_KEY_SIZE],
-> +			       char derived_key[EXT4_AES_256_XTS_KEY_SIZE])
-> +{
-> +	int res = 0;
-> +	struct ablkcipher_request *req = NULL;
-> +	DECLARE_EXT4_COMPLETION_RESULT(ecr);
-> +	struct scatterlist src_sg, dst_sg;
-> +	struct crypto_ablkcipher *tfm = crypto_alloc_ablkcipher("ecb(aes)", 0,
-> +								0);
-> +
-> +	if (IS_ERR(tfm)) {
-> +		res = PTR_ERR(tfm);
-> +		tfm = NULL;
-> +		goto out;
-> +	}
-> +	crypto_ablkcipher_set_flags(tfm, CRYPTO_TFM_REQ_WEAK_KEY);
-> +	req = ablkcipher_request_alloc(tfm, GFP_NOFS);
-> +	if (!req) {
-> +		res = -ENOMEM;
-> +		goto out;
-> +	}
-> +	ablkcipher_request_set_callback(req,
-> +			CRYPTO_TFM_REQ_MAY_BACKLOG | CRYPTO_TFM_REQ_MAY_SLEEP,
-> +			derive_crypt_complete, &ecr);
-> +	res = crypto_ablkcipher_setkey(tfm, deriving_key,
-> +				       EXT4_AES_128_ECB_KEY_SIZE);
-> +	if (res < 0)
-> +		goto out;
-> +	sg_init_one(&src_sg, source_key, EXT4_AES_256_XTS_KEY_SIZE);
-> +	sg_init_one(&dst_sg, derived_key, EXT4_AES_256_XTS_KEY_SIZE);
-> +	ablkcipher_request_set_crypt(req, &src_sg, &dst_sg,
-> +				     EXT4_AES_256_XTS_KEY_SIZE, NULL);
-> +	res = crypto_ablkcipher_encrypt(req);
-> +	if (res == -EINPROGRESS || res == -EBUSY) {
-> +		BUG_ON(req->base.data != &ecr);
-> +		wait_for_completion(&ecr.completion);
-> +		res = ecr.res;
-> +	}
-> +
-> +out:
-> +	if (req)
-> +		ablkcipher_request_free(req);
-> +	if (tfm)
-> +		crypto_free_ablkcipher(tfm);
-> +	return res;
-> +}
-> +
-> +/**
-> + * ext4_generate_encryption_key() - generates an encryption key
-> + * @inode: The inode to generate the encryption key for.
-> + */
-> +int ext4_generate_encryption_key(struct inode *inode)
-> +{
-> +	struct ext4_inode_info *ei = EXT4_I(inode);
-> +	struct ext4_encryption_key *crypt_key = &ei->i_encryption_key;
-> +	char full_key_descriptor[EXT4_KEY_DESC_PREFIX_SIZE +
-> +				 (EXT4_KEY_DESCRIPTOR_SIZE * 2) + 1];
-> +	struct key *keyring_key = NULL;
-> +	struct ext4_encryption_key *master_key;
-> +	struct ext4_encryption_context ctx;
-> +	struct user_key_payload *ukp;
-> +	int res = ext4_xattr_get(inode, EXT4_XATTR_INDEX_ENCRYPTION,
-> +				 EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
-> +				 &ctx, sizeof(ctx));
-> +
-> +	if (res != sizeof(ctx)) {
-> +		if (res > 0)
-> +			res = -EINVAL;
-> +		goto out;
-> +	}
-> +	res = 0;
-> +
-> +	memcpy(full_key_descriptor, EXT4_KEY_DESC_PREFIX,
-> +	       EXT4_KEY_DESC_PREFIX_SIZE);
-> +	sprintf(full_key_descriptor + EXT4_KEY_DESC_PREFIX_SIZE,
-> +		"%*phN", EXT4_KEY_DESCRIPTOR_SIZE,
-> +		ctx.master_key_descriptor);
-> +	full_key_descriptor[EXT4_KEY_DESC_PREFIX_SIZE +
-> +			    (2 * EXT4_KEY_DESCRIPTOR_SIZE)] = '\0';
-> +	keyring_key = request_key(&key_type_logon, full_key_descriptor, NULL);
-> +	if (IS_ERR(keyring_key)) {
-> +		res = PTR_ERR(keyring_key);
-> +		keyring_key = NULL;
-> +		goto out;
-> +	}
-> +	BUG_ON(keyring_key->type != &key_type_logon);
-> +	ukp = ((struct user_key_payload *)keyring_key->payload.data);
-> +	if (ukp->datalen != sizeof(struct ext4_encryption_key)) {
-> +		res = -EINVAL;
-> +		goto out;
-> +	}
-> +	master_key = (struct ext4_encryption_key *)ukp->data;
-> +
-> +	if (S_ISREG(inode->i_mode))
-> +		crypt_key->mode = ctx.contents_encryption_mode;
-> +	else if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
-> +		crypt_key->mode = ctx.filenames_encryption_mode;
-> +	else {
-> +		printk(KERN_ERR "ext4 crypto: Unsupported inode type.\n");
-> +		BUG();
-> +	}
-> +	crypt_key->size = ext4_encryption_key_size(crypt_key->mode);
-> +	BUG_ON(!crypt_key->size);
-> +	BUILD_BUG_ON(EXT4_AES_128_ECB_KEY_SIZE !=
-> +		     EXT4_KEY_DERIVATION_NONCE_SIZE);
-> +	BUG_ON(master_key->size != EXT4_AES_256_XTS_KEY_SIZE);
-> +	BUG_ON(crypt_key->size < EXT4_AES_256_CBC_KEY_SIZE);
-> +	res = ext4_derive_key_aes(ctx.nonce, master_key->raw, crypt_key->raw);
-> +out:
-> +	if (keyring_key)
-> +		key_put(keyring_key);
-> +	if (res < 0)
-> +		crypt_key->mode = EXT4_ENCRYPTION_MODE_INVALID;
-> +	return res;
-> +}
-> +
-> +int ext4_has_encryption_key(struct inode *inode)
-> +{
-> +	struct ext4_inode_info *ei = EXT4_I(inode);
-> +	struct ext4_encryption_key *crypt_key = &ei->i_encryption_key;
-> +
-> +	return (crypt_key->mode != EXT4_ENCRYPTION_MODE_INVALID);
-> +}
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index c4a51636..89b999f 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -2065,6 +2065,19 @@ static inline int ext4_sb_has_crypto(struct super_block *sb)
->  }
->  #endif
->  
-> +/* crypto_key.c */
-> +int ext4_generate_encryption_key(struct inode *inode);
-> +
-> +#ifdef CONFIG_EXT4_FS_ENCRYPTION
-> +int ext4_has_encryption_key(struct inode *inode);
-> +#else
-> +static inline int ext4_has_encryption_key(struct inode *inode)
-> +{
-> +	return 0;
-> +}
-> +#endif
-> +
-> +
->  /* dir.c */
->  extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
->  				  struct file *,
-> diff --git a/fs/ext4/ext4_crypto.h b/fs/ext4/ext4_crypto.h
-> index 9d5d2e5..6a7c0c0 100644
-> --- a/fs/ext4/ext4_crypto.h
-> +++ b/fs/ext4/ext4_crypto.h
-> @@ -55,6 +55,9 @@ struct ext4_encryption_context {
->  #define EXT4_AES_256_XTS_KEY_SIZE 64
->  #define EXT4_MAX_KEY_SIZE 64
->  
-> +#define EXT4_KEY_DESC_PREFIX "ext4:"
-> +#define EXT4_KEY_DESC_PREFIX_SIZE 5
-> +
->  struct ext4_encryption_key {
->  	uint32_t mode;
->  	char raw[EXT4_MAX_KEY_SIZE];
-> -- 
-> 2.3.0
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+#!/bin/sh
+COUNT=4032
+
+while [ 1 ] ; do
+
+figlet ${COUNT}
+
+( umount /mnt ; rmmod smc ) || true
+modprobe smc capacity_in_mb=${COUNT} debug=1
+mkfs.ext4 -m 0 /dev/smcd
+
+mount /dev/smcd /mnt
+cp count_512m.dat /mnt/test
+umount /mnt
+mount /dev/smcd /mnt
+umount /mnt
+mount /dev/smcd /mnt
+cmp count_512m.dat /mnt/test
+umount /mnt
+mount /dev/smcd /mnt # ***
+sync
+umount /mnt
+mount /dev/smcd /mnt
+sleep 1
+umount /mnt
+
+COUNT=$(( COUNT + 64 ))
+sleep 1
+
+done
+
+Sometimes I'll get in the kernel log:
+May 27 09:39:01 febtober kernel: [64547.304695] EXT4-fs (smcd): 
+ext4_check_descriptors: Checksum for group 0 failed (7009!=0)
+May 27 09:39:01 febtober kernel: [64547.305744] EXT4-fs (smcd): group 
+descriptors corrupted!
+
+Others I'll get:
+May 27 09:46:49 ryftone-smcdrv kernel: [65014.342850] EXT4-fs (smcd): no 
+journal found
+
+
+I've seen this loop fail as early as COUNT=4096, but as late as 
+COUNT=4220; removing the sync changes the behavior.
+When it fails, it usually does so on the 3rd mount (***).
+FYI, I effectively call: set_capacity( disk, capacity_in_mb * 2048 ); ( 
+2048 * 512b (kernel sector) = 1M )
+
+Another example: if I set the sector count of the disk to 16G, I can run 
+mkfs.ext4 but the first mount fails and I see May 27 09:07:27 febtober 
+kernel: [62653.269387] EXT4-fs (smcd): ext4_check_descriptors: Block 
+bitmap for group 0 not in group (block 4294967295)!
+
+But, again, if I set the sector size < 4G, everything seems fine. I can 
+currently DD read and write across that 4G boundary without issue -- 
+it's ONLY the filesystem accesses. My gut is screaming there's 32/64 bit 
+overflow condition somewhere but for the life of me I can't find it. Is 
+there something I need to set to tell the block layer I have a 64-bit 
+addressible device? set_capacity is always the number of LINUX KERNEL 
+sectors (not what I set blk_queue_logical|physical_block_size to) correct?
+
+I'm currently on 3.16.0 (Ubuntu 14.04.2 LTS) if it matters.
+
+Any help/pointers would be greatly appreciated.
+
+--Rob Harris
+
