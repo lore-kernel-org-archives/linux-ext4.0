@@ -1,108 +1,43 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: Try to initialize all groups we can in case of failure on ppc64
-Date: Wed, 27 May 2015 14:07:03 -0600
-Message-ID: <12CE456E-B9F5-43CC-9CB7-FA07AB8A2CFF@dilger.ca>
-References: <1432722326-25574-1-git-send-email-lczerner@redhat.com> <5565E646.8010202@redhat.com>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2098\))
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 8BIT
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 99051] general protection fault in ext4_htree_store_dirent
+Date: Wed, 27 May 2015 23:08:32 +0000
+Message-ID: <bug-99051-13602-AfeSvZgdES@https.bugzilla.kernel.org/>
+References: <bug-99051-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f174.google.com ([209.85.192.174]:33858 "EHLO
-	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751633AbbE0UHI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 May 2015 16:07:08 -0400
-Received: by pdbki1 with SMTP id ki1so24604579pdb.1
-        for <linux-ext4@vger.kernel.org>; Wed, 27 May 2015 13:07:08 -0700 (PDT)
-In-Reply-To: <5565E646.8010202@redhat.com>
+Received: from mail.kernel.org ([198.145.29.136]:50235 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752310AbbE0XIf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 May 2015 19:08:35 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 4F77C20701
+	for <linux-ext4@vger.kernel.org>; Wed, 27 May 2015 23:08:34 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id DBCBF206F6
+	for <linux-ext4@vger.kernel.org>; Wed, 27 May 2015 23:08:32 +0000 (UTC)
+In-Reply-To: <bug-99051-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On May 27, 2015, at 9:44 AM, Eric Sandeen <sandeen@redhat.com> wrote:
-> 
-> On 5/27/15 5:25 AM, Lukas Czerner wrote:
->> Currently on the machines with page size > block size when initializing
->> block group buddy cache we initialize it for all the block group bitmaps
->> in the page. However in the case of read error, checksum error, or if
->> a single bitmap is in any way corrupted we would fail to initialize all
->> of the bitmaps. This is problematic because we will not have access to
->> the other allocation groups even though those might be perfectly fine
->> and usable.
->> 
->> Fix this by reading all the bitmaps instead of error out on the first
->> problem and simply skip the bitmaps which were either not read properly,
->> or are not valid.
->> 
->> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
->> ---
->> fs/ext4/mballoc.c | 11 ++++++++---
->> 1 file changed, 8 insertions(+), 3 deletions(-)
->> 
->> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
->> index 8d1e602..7e28007 100644
->> --- a/fs/ext4/mballoc.c
->> +++ b/fs/ext4/mballoc.c
->> @@ -882,10 +882,8 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
->> 
->> 	/* wait for I/O completion */
->> 	for (i = 0, group = first_group; i < groups_per_page; i++, group++) {
->> -		if (bh[i] && ext4_wait_block_bitmap(sb, group, bh[i])) {
->> +		if (bh[i] && ext4_wait_block_bitmap(sb, group, bh[i]))
->> 			err = -EIO;
->> -			goto out;
->> -		}
->> 	}
->> 
->> 	first_block = page->index * blocks_per_page;
->> @@ -898,6 +896,13 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
->> 			/* skip initialized uptodate buddy */
->> 			continue;
->> 
->> +		if (!buffer_verified(bh[group - first_group]) ||
->> +		    !buffer_uptodate(bh[group - first_group]))
->> +			/* Skip faulty bitmaps */
->> +			continue;
->> +		else
->> +			err = 0;
->> +
-> 
-> Hm, ext4_wait_block_bitmap() can fail 3 ways (buffer not update, or
-> not verified, but also if ext4_get_group_desc fails), but this only
-> checks 2 of those, right?
-> 
-> If ext4_get_group_desc fails, we'll have a bh which is new, may or
-> may not be uptodate, and ... I guess it won't be verified in that
-> case either, will it.  So that's probably ok.
-> 
-> In fact, is the (!verified) test enough, here? (IOWs, could it
-> possibly be verified, but not uptodate?) 
-> 
-> 
-> In the bigger picture - if the filesystem is corrupt (or the device
-> is bad) in this way, do we really *want* to continue?  What are the
-> consequences of doing so, and have you tested with a filesystem
-> partially-initialized like this?
-> 
-> Thinking more about it ... (sorry for the stream of consciousness
-> here) - if validation fails, encountering this sort of error will
-> trigger remount,ro or panic unless errors=continue, right?  But I
-> guess that's still the default, so maybe we do expect to continue.
-> So I go back to the question of: have you tested with partial init
-> like this, to be sure we don't fall off some cliff later?
+https://bugzilla.kernel.org/show_bug.cgi?id=99051
 
-There is also the check in ext4_validate_block_bitmap() that will
-fail if the bitmap is bad in some way.  At least that is marking
-the bitmap bad in the group descriptor so that it is skipped for
-later allocations.  Probably the same needs to be done here.
+Theodore Tso <tytso@mit.edu> changed:
 
-It also makes sense to fail the mount outright if too many of the
-bitmaps are bad, or only mount it read-only, since it will otherwise
-be unusable.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
 
-Cheers, Andreas
+--- Comment #1 from Theodore Tso <tytso@mit.edu> ---
+The failure is inside kmalloc(), which implies that the internal slab data
+structures were corrupted (i.e., caused by a double free, buffer overrun,
+etc.).  So the bug might not be in ext4 --- it's just that ext4 happened to
+trip over the corrupted data structures.
 
+Can you reproduce the crash at all?
 
-
-
-
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
