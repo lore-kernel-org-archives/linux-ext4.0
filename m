@@ -1,68 +1,47 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: Try to initialize all groups we can in case of failure on ppc64
-Date: Wed, 27 May 2015 12:25:26 +0200
-Message-ID: <1432722326-25574-1-git-send-email-lczerner@redhat.com>
-Cc: Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36737 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752521AbbE0KZd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 May 2015 06:25:33 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t4RAPXdA006712
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-ext4@vger.kernel.org>; Wed, 27 May 2015 06:25:33 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Beata Michalska <b.michalska@samsung.com>
+Subject: Re: [RFC v2 1/4] fs: Add generic file system event notifications
+Date: Wed, 27 May 2015 15:32:24 +0200
+Message-ID: <5565C768.6030906@samsung.com>
+References: <20150428135653.GD9955@quack.suse.cz>
+ <20150428140936.GA13406@kroah.com> <553F9D56.6030301@samsung.com>
+ <20150428173900.GA16708@kroah.com> <5540822C.10000@samsung.com>
+ <20150429074259.GA31089@quack.suse.cz> <20150429091303.GA4090@kroah.com>
+ <5548B4BB.7050503@samsung.com> <554B5329.8040907@samsung.com>
+ <5564A1D4.4040309@samsung.com> <20150527023412.GA20070@kroah.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
+	tytso@mit.edu, adilger.kernel@dilger.ca, hughd@google.com,
+	lczerner@redhat.com, hch@infradead.org, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, kyungmin.park@samsung.com, kmpark@infradead.org
+To: Greg KH <greg@kroah.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-reply-to: <20150527023412.GA20070@kroah.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Currently on the machines with page size > block size when initializing
-block group buddy cache we initialize it for all the block group bitmaps
-in the page. However in the case of read error, checksum error, or if
-a single bitmap is in any way corrupted we would fail to initialize all
-of the bitmaps. This is problematic because we will not have access to
-the other allocation groups even though those might be perfectly fine
-and usable.
+On 05/27/2015 04:34 AM, Greg KH wrote:
+> On Tue, May 26, 2015 at 06:39:48PM +0200, Beata Michalska wrote:
+>> Hi,
+>>
+>> Things has gone a bit quiet thread wise ...
+>> As I believe I've managed to snap back to reality, I was hoping we could continue with this?
+>> I'm not sure if we've got everything cleared up or ... have we reached a dead end?
+>> Please let me know if we can move to the next stage? Or, if there are any showstoppers?
+> 
+> Please resend if you think it's ready and you have addressed the issues
+> raised so far.
+> 
+> thanks,
+> 
+> greg k-h
+> 
 
-Fix this by reading all the bitmaps instead of error out on the first
-problem and simply skip the bitmaps which were either not read properly,
-or are not valid.
+Alright.
+I'm still running some tests so I'll resend it most probably tomorrow
+or on Friday.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/mballoc.c | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 8d1e602..7e28007 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -882,10 +882,8 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 
- 	/* wait for I/O completion */
- 	for (i = 0, group = first_group; i < groups_per_page; i++, group++) {
--		if (bh[i] && ext4_wait_block_bitmap(sb, group, bh[i])) {
-+		if (bh[i] && ext4_wait_block_bitmap(sb, group, bh[i]))
- 			err = -EIO;
--			goto out;
--		}
- 	}
- 
- 	first_block = page->index * blocks_per_page;
-@@ -898,6 +896,13 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 			/* skip initialized uptodate buddy */
- 			continue;
- 
-+		if (!buffer_verified(bh[group - first_group]) ||
-+		    !buffer_uptodate(bh[group - first_group]))
-+			/* Skip faulty bitmaps */
-+			continue;
-+		else
-+			err = 0;
-+
- 		/*
- 		 * data carry information regarding this
- 		 * particular group in the format specified
--- 
-1.8.3.1
-
+Best Regards
+Beata
