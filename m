@@ -1,64 +1,108 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH-v2 08/20] ext4 crypto: add encryption key management
- facilities
-Date: Wed, 27 May 2015 14:37:24 -0400
-Message-ID: <20150527183724.GA18540@thunk.org>
-References: <1428894996-7852-1-git-send-email-tytso@mit.edu>
- <1428894996-7852-9-git-send-email-tytso@mit.edu>
- <87382im95e.fsf@openvz.org>
- <20150527170606.GA31840@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	mhalcrow@google.com, Ildar Muslukhov <muslukhovi@gmail.com>
-To: Dmitry Monakhov <dmonlist@gmail.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ext4: Try to initialize all groups we can in case of failure on ppc64
+Date: Wed, 27 May 2015 14:07:03 -0600
+Message-ID: <12CE456E-B9F5-43CC-9CB7-FA07AB8A2CFF@dilger.ca>
+References: <1432722326-25574-1-git-send-email-lczerner@redhat.com> <5565E646.8010202@redhat.com>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2098\))
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 8BIT
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60928 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753491AbbE0Sh1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 May 2015 14:37:27 -0400
-Content-Disposition: inline
-In-Reply-To: <20150527170606.GA31840@thunk.org>
+Received: from mail-pd0-f174.google.com ([209.85.192.174]:33858 "EHLO
+	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751633AbbE0UHI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 May 2015 16:07:08 -0400
+Received: by pdbki1 with SMTP id ki1so24604579pdb.1
+        for <linux-ext4@vger.kernel.org>; Wed, 27 May 2015 13:07:08 -0700 (PDT)
+In-Reply-To: <5565E646.8010202@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 27, 2015 at 01:06:06PM -0400, Theodore Ts'o wrote:
+On May 27, 2015, at 9:44 AM, Eric Sandeen <sandeen@redhat.com> wrote:
 > 
-> That's not true.  If the attacker finds the encryption key for an
-> inode, and they have the nonce which is stored in file's extended
-> attribute, what the attacker has is a single plaintext/ciphertext
-> pair.  That doesn't imply that they can get the master key; they would
-> still need to do a brute force search on the keyspace try to find the
-> master key.
+> On 5/27/15 5:25 AM, Lukas Czerner wrote:
+>> Currently on the machines with page size > block size when initializing
+>> block group buddy cache we initialize it for all the block group bitmaps
+>> in the page. However in the case of read error, checksum error, or if
+>> a single bitmap is in any way corrupted we would fail to initialize all
+>> of the bitmaps. This is problematic because we will not have access to
+>> the other allocation groups even though those might be perfectly fine
+>> and usable.
+>> 
+>> Fix this by reading all the bitmaps instead of error out on the first
+>> problem and simply skip the bitmaps which were either not read properly,
+>> or are not valid.
+>> 
+>> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+>> ---
+>> fs/ext4/mballoc.c | 11 ++++++++---
+>> 1 file changed, 8 insertions(+), 3 deletions(-)
+>> 
+>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+>> index 8d1e602..7e28007 100644
+>> --- a/fs/ext4/mballoc.c
+>> +++ b/fs/ext4/mballoc.c
+>> @@ -882,10 +882,8 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+>> 
+>> 	/* wait for I/O completion */
+>> 	for (i = 0, group = first_group; i < groups_per_page; i++, group++) {
+>> -		if (bh[i] && ext4_wait_block_bitmap(sb, group, bh[i])) {
+>> +		if (bh[i] && ext4_wait_block_bitmap(sb, group, bh[i]))
+>> 			err = -EIO;
+>> -			goto out;
+>> -		}
+>> 	}
+>> 
+>> 	first_block = page->index * blocks_per_page;
+>> @@ -898,6 +896,13 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+>> 			/* skip initialized uptodate buddy */
+>> 			continue;
+>> 
+>> +		if (!buffer_verified(bh[group - first_group]) ||
+>> +		    !buffer_uptodate(bh[group - first_group]))
+>> +			/* Skip faulty bitmaps */
+>> +			continue;
+>> +		else
+>> +			err = 0;
+>> +
+> 
+> Hm, ext4_wait_block_bitmap() can fail 3 ways (buffer not update, or
+> not verified, but also if ext4_get_group_desc fails), but this only
+> checks 2 of those, right?
+> 
+> If ext4_get_group_desc fails, we'll have a bh which is new, may or
+> may not be uptodate, and ... I guess it won't be verified in that
+> case either, will it.  So that's probably ok.
+> 
+> In fact, is the (!verified) test enough, here? (IOWs, could it
+> possibly be verified, but not uptodate?) 
+> 
+> 
+> In the bigger picture - if the filesystem is corrupt (or the device
+> is bad) in this way, do we really *want* to continue?  What are the
+> consequences of doing so, and have you tested with a filesystem
+> partially-initialized like this?
+> 
+> Thinking more about it ... (sorry for the stream of consciousness
+> here) - if validation fails, encountering this sort of error will
+> trigger remount,ro or panic unless errors=continue, right?  But I
+> guess that's still the default, so maybe we do expect to continue.
+> So I go back to the question of: have you tested with partial init
+> like this, to be sure we don't fall off some cliff later?
 
-So an update, after conferring with Michael Halcrow, who set me
-straight.  I was wrong, because I mixed up which was the deriving key
-and which was the source key.  You're correct; if an attacker could
-get ahold of the per-file key, they could use the nonce to decrypt it
-and obtain the master key.
+There is also the check in ext4_validate_block_bitmap() that will
+fail if the bitmap is bad in some way.  At least that is marking
+the bitmap bad in the group descriptor so that it is skipped for
+later allocations.  Probably the same needs to be done here.
 
-However, there are only two ways to determine the per-file key.  The
-first is a ring 0 compromise, in which case it's likely they could get
-access to the master key, and the second is if there is a practical
-known-plaintext attack on AES, and the attacker has access to the
-block device --- and possibly a chosen-plaintext attack if the
-attacker can control what data is written to the file.  But either
-way, if there is such a crypto-analytic attack on AES, then this is
-going to be least of the whole world's problems.  :-)
+It also makes sense to fail the mount outright if too many of the
+bitmaps are bad, or only mount it read-only, since it will otherwise
+be unusable.
 
-There are alternatives, such as either using the master to encrypt the
-nonce and none+1: (AES-256-ENCRYPT(nonce) || AES-256-ENCRYPT
-(nonce+1)).  But this will be 40% slower than what we are currently
-doing, which is to use AES-256 to encrypt the master key.
+Cheers, Andreas
 
-Or we could use an HMAC, which would be even slower yet, especially
-since many chips have AES acceleration, but few have SHA hardware
-acceleration.
 
-So ultimately, the question is whether we want to make a change (with
-all of the versioning work we would need for backwards compatibility)
-that decreases performance, which will be especially noticeable for
-small files, to protect against a partial Ring 0 compromise when other
-Ring 0 compromise would make us be toast anyway.
 
-						- Ted
+
+
