@@ -1,56 +1,42 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Incompat change: giving inline data four more bytes?
-Date: Tue, 26 May 2015 17:25:43 -0700
-Message-ID: <20150527002543.GC830@birch.djwong.org>
+From: Greg KH <greg@kroah.com>
+Subject: Re: [RFC v2 1/4] fs: Add generic file system event notifications
+Date: Tue, 26 May 2015 19:34:12 -0700
+Message-ID: <20150527023412.GA20070@kroah.com>
+References: <20150428135653.GD9955@quack.suse.cz>
+ <20150428140936.GA13406@kroah.com>
+ <553F9D56.6030301@samsung.com>
+ <20150428173900.GA16708@kroah.com>
+ <5540822C.10000@samsung.com>
+ <20150429074259.GA31089@quack.suse.cz>
+ <20150429091303.GA4090@kroah.com>
+ <5548B4BB.7050503@samsung.com>
+ <554B5329.8040907@samsung.com>
+ <5564A1D4.4040309@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4 <linux-ext4@vger.kernel.org>, tm@tao.ma,
-	gnehzuil.liu@gmail.com, wenqing.lz@taobao.com,
-	"Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:21845 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751434AbbE0AZ5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 May 2015 20:25:57 -0400
+Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
+	tytso@mit.edu, adilger.kernel@dilger.ca, hughd@google.com,
+	lczerner@redhat.com, hch@infradead.org, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, kyungmin.park@samsung.com, kmpark@infradead.org
+To: Beata Michalska <b.michalska@samsung.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <5564A1D4.4040309@samsung.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+On Tue, May 26, 2015 at 06:39:48PM +0200, Beata Michalska wrote:
+> Hi,
+> 
+> Things has gone a bit quiet thread wise ...
+> As I believe I've managed to snap back to reality, I was hoping we could continue with this?
+> I'm not sure if we've got everything cleared up or ... have we reached a dead end?
+> Please let me know if we can move to the next stage? Or, if there are any showstoppers?
 
-[echoing a conversation on today's concall]
+Please resend if you think it's ready and you have addressed the issues
+raised so far.
 
-I'm just curious -- is there a reason why the inline data feature stores the
-data with an xattr of [EXT4_XATTR_INDEX_SYSTEM, "data"] instead of creating a
-new index value to cover "system.data"?  That would allow us to set the namelen
-to zero, which fetches us an extra 4 bytes for inline data storage:
+thanks,
 
-struct ext4_xattr_info i = {
-	.name_index = EXT4_XATTR_INDEX_SYSTEM,
-	.name = EXT4_XATTR_SYSTEM_DATA,
-};
-
-becomes
-
-struct ext4_xattr_info i = {
-	.name_index = EXT4_XATTR_INDEX_SYSTEM_DATA,
-	.name = "",
-};
-
-The hard part, of course, is that inline.c is hardcoded to the xattr key that
-it uses (instead of using "system.data" and letting the key resolver figure it
-out), which makes it harder to switch to the optimized encoding.
-
-On the other hand, since inline data isn't in a released e2fsprogs yet, there
-still aren't very many users of it, so if we're going to make the change we
-ought to do so now while it's still fairly inexpensive to do so.
-
-The biggest problem of course is retrofitting anyone who's been using this
-feature, since old kernels require the larger encoding.  So, who are those
-users, and are you willing to trade some breakage for four more bytes?
-
-It shouldn't be that hard to teach the kernel to look for either encoding of
-the xattr name.  e2fsprogs uses the full string and lets the xattr code
-figure out the encoding.
-
---D
+greg k-h
