@@ -1,157 +1,171 @@
-From: Rob Harris <rob.harris@gmail.com>
-Subject: Re: Custom driver FS brokenness at 4GB?
-Date: Thu, 28 May 2015 14:30:58 -0400
-Message-ID: <55675EE2.80609@gmail.com>
-References: <5565CD0D.4080408@gmail.com> <20150528105931.GA31813@quack.suse.cz> <4DDF59F1-C0CA-43E2-BB66-4868A09C3081@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>, Jan Kara <jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 4/8] ext4 crypto: encrypt tmpfile located in encryption protected directory
+Date: Thu, 28 May 2015 19:47:43 -0400
+Message-ID: <1432856867-5710-4-git-send-email-tytso@mit.edu>
+References: <1432856867-5710-1-git-send-email-tytso@mit.edu>
+Cc: jaegeuk@kernel.org, mhalcrow@google.com,
+	Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f178.google.com ([209.85.220.178]:34976 "EHLO
-	mail-qk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751556AbbE1SbA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 May 2015 14:31:00 -0400
-Received: by qkhq76 with SMTP id q76so2902579qkh.2
-        for <linux-ext4@vger.kernel.org>; Thu, 28 May 2015 11:31:00 -0700 (PDT)
-In-Reply-To: <4DDF59F1-C0CA-43E2-BB66-4868A09C3081@dilger.ca>
+Received: from imap.thunk.org ([74.207.234.97]:35457 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754794AbbE1Xr5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 May 2015 19:47:57 -0400
+In-Reply-To: <1432856867-5710-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks for the pointers everyone. After further testing and code review, 
-I was boneheadedly truncating a u64 to a u32 for the sector address as 
-part of a function signature with an obscured typedef.
+Factor out calls to ext4_inherit_context() and move them to
+__ext4_new_inode(); this fixes a problem where ext4_tmpfile() wasn't
+calling calling ext4_inherit_context(), so the temporary file wasn't
+getting protected.  Since the blocks for the tmpfile could end up on
+disk, they really should be protected if the tmpfile is created within
+the context of an encrypted directory.
 
-*facepalm*
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/ext4.h   |  9 +++++++++
+ fs/ext4/ialloc.c | 26 ++++++++++++++++++++------
+ fs/ext4/namei.c  | 29 +----------------------------
+ 3 files changed, 30 insertions(+), 34 deletions(-)
 
-All seems well now. Thanks for the help!
--R
-
-On 05/28/2015 01:43 PM, Andreas Dilger wrote:
-> On May 28, 2015, at 4:59 AM, Jan Kara <jack@suse.cz> wrote:
->> On Wed 27-05-15 09:56:29, Rob Harris wrote:
->>> Greetings. I have an odd issue and need some ideas of where to go
->>> next -- I'm out of hair to rip out.
->>>
->>> I'm writing a custom block device driver talking to some custom RAID
->>> hardware (>32TB) using DMA scatter-gather, with no partitions and am
->>> using make_request() to service all the BIO requests to simplify
->>> debugging. I have the driver working to the point where using DD
->>> against the block device seems to work fine (I'm setting
->>> iflag|oflag=direct to ensure it's writing to the disk). I also have
->>> the blk_queue set to only request a single 4k I/O per BIO (again to
->>> simplify debugging for now.) Also, again to debug, I have a mutex
->>> wrapping the entire make_request call to ensure that only a single
->>> request is being serviced at a time. So, this should be as "simple"
->>> as I can make the environment to debug this problem.
->>>
->>> Once the driver is loaded, when I try to create a file system (ext4
->>> but the same thing happens with xfs) it seems like there is some
->>> corruption occurring, but only when I set the sector size of the
->>> block device over 4GB. For instance, when I set the size to 4G, I
->>> can mkfs.ext4, but after 2 or 3 mount/umounts the FS refuses to
->>> mount anymore and the kernel log complains that the journal is
->>> missing. This was discovered running this loop...
->>   Hard to tell exactly but with 4GB being 32-bit limit, I would first look
->> for some int / unsigned int number overflow. You could possibly better
->> debug this when writing some pattern via DD that is different for each
->> block to verify that each block indeed lands in the expected location...
-> We have a tool "llverdev" which does exactly this - write a pattern
-> to each block in the block device (or in sparse regions covering the
-> device) with a timestamp and block number to track down sources of
-> block addressing errors:
->
-> http://git.hpdd.intel.com/fs/lustre-release.git/blob/HEAD:/lustre/utils/llverdev.c
->
-> Cheers, Andreas
->
->> 								Honza
->>> #!/bin/sh
->>> COUNT=4032
->>>
->>> while [ 1 ] ; do
->>>
->>> figlet ${COUNT}
->>>
->>> ( umount /mnt ; rmmod smc ) || true
->>> modprobe smc capacity_in_mb=${COUNT} debug=1
->>> mkfs.ext4 -m 0 /dev/smcd
->>>
->>> mount /dev/smcd /mnt
->>> cp count_512m.dat /mnt/test
->>> umount /mnt
->>> mount /dev/smcd /mnt
->>> umount /mnt
->>> mount /dev/smcd /mnt
->>> cmp count_512m.dat /mnt/test
->>> umount /mnt
->>> mount /dev/smcd /mnt # ***
->>> sync
->>> umount /mnt
->>> mount /dev/smcd /mnt
->>> sleep 1
->>> umount /mnt
->>>
->>> COUNT=$(( COUNT + 64 ))
->>> sleep 1
->>>
->>> done
->>>
->>> Sometimes I'll get in the kernel log:
->>> May 27 09:39:01 febtober kernel: [64547.304695] EXT4-fs (smcd):
->>> ext4_check_descriptors: Checksum for group 0 failed (7009!=0)
->>> May 27 09:39:01 febtober kernel: [64547.305744] EXT4-fs (smcd):
->>> group descriptors corrupted!
->>>
->>> Others I'll get:
->>> May 27 09:46:49 ryftone-smcdrv kernel: [65014.342850] EXT4-fs
->>> (smcd): no journal found
->>>
->>>
->>> I've seen this loop fail as early as COUNT=4096, but as late as
->>> COUNT=4220; removing the sync changes the behavior.
->>> When it fails, it usually does so on the 3rd mount (***).
->>> FYI, I effectively call: set_capacity( disk, capacity_in_mb * 2048
->>> ); ( 2048 * 512b (kernel sector) = 1M )
->>>
->>> Another example: if I set the sector count of the disk to 16G, I can
->>> run mkfs.ext4 but the first mount fails and I see May 27 09:07:27
->>> febtober kernel: [62653.269387] EXT4-fs (smcd):
->>> ext4_check_descriptors: Block bitmap for group 0 not in group (block
->>> 4294967295)!
->>>
->>> But, again, if I set the sector size < 4G, everything seems fine. I
->>> can currently DD read and write across that 4G boundary without
->>> issue -- it's ONLY the filesystem accesses. My gut is screaming
->>> there's 32/64 bit overflow condition somewhere but for the life of
->>> me I can't find it. Is there something I need to set to tell the
->>> block layer I have a 64-bit addressible device? set_capacity is
->>> always the number of LINUX KERNEL sectors (not what I set
->>> blk_queue_logical|physical_block_size to) correct?
->>>
->>> I'm currently on 3.16.0 (Ubuntu 14.04.2 LTS) if it matters.
->>>
->>> Any help/pointers would be greatly appreciated.
->>>
->>> --Rob Harris
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> -- 
->> Jan Kara <jack@suse.cz>
->> SUSE Labs, CR
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-> Cheers, Andreas
->
->
->
->
->
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 7435ff2..bd8d32d 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2149,6 +2149,11 @@ static inline int ext4_get_encryption_info(struct inode *inode)
+ 	return 0;
+ }
+ 
++static inline struct ext4_crypt_info *ext4_encryption_info(struct inode *inode)
++{
++	return EXT4_I(inode)->i_crypt_info;
++}
++
+ #else
+ static inline int ext4_has_encryption_key(struct inode *inode)
+ {
+@@ -2158,6 +2163,10 @@ static inline int ext4_get_encryption_info(struct inode *inode)
+ {
+ 	return 0;
+ }
++static inline struct ext4_crypt_info *ext4_encryption_info(struct inode *inode)
++{
++	return NULL;
++}
+ #endif
+ 
+ 
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index ddca169..173c1ae 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -726,11 +726,25 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	ext4_group_t i;
+ 	ext4_group_t flex_group;
+ 	struct ext4_group_info *grp;
++	int encrypt = 0;
+ 
+ 	/* Cannot create files in a deleted directory */
+ 	if (!dir || !dir->i_nlink)
+ 		return ERR_PTR(-EPERM);
+ 
++	if ((ext4_encrypted_inode(dir) ||
++	     DUMMY_ENCRYPTION_ENABLED(EXT4_SB(dir->i_sb))) &&
++	    (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode))) {
++		err = ext4_get_encryption_info(dir);
++		if (err)
++			return ERR_PTR(err);
++		if (ext4_encryption_info(dir) == NULL)
++			return ERR_PTR(-EPERM);
++		if (!handle)
++			nblocks += EXT4_DATA_TRANS_BLOCKS(dir->i_sb);
++		encrypt = 1;
++	}
++
+ 	sb = dir->i_sb;
+ 	ngroups = ext4_get_groups_count(sb);
+ 	trace_ext4_request_inode(dir, mode);
+@@ -996,12 +1010,6 @@ got:
+ 	ei->i_block_group = group;
+ 	ei->i_last_alloc_group = ~0;
+ 
+-	/* If the directory encrypted, then we should encrypt the inode. */
+-	if ((S_ISDIR(mode) || S_ISREG(mode) || S_ISLNK(mode)) &&
+-	    (ext4_encrypted_inode(dir) ||
+-	     DUMMY_ENCRYPTION_ENABLED(sbi)))
+-		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
+-
+ 	ext4_set_inode_flags(inode);
+ 	if (IS_DIRSYNC(inode))
+ 		ext4_handle_sync(handle);
+@@ -1063,6 +1071,12 @@ got:
+ 		ei->i_datasync_tid = handle->h_transaction->t_tid;
+ 	}
+ 
++	if (encrypt) {
++		err = ext4_inherit_context(dir, inode);
++		if (err)
++			goto fail_free_drop;
++	}
++
+ 	err = ext4_mark_inode_dirty(handle, inode);
+ 	if (err) {
+ 		ext4_std_error(sb, err);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 6ab50f8..1e7d65d 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2437,20 +2437,7 @@ retry:
+ 		inode->i_op = &ext4_file_inode_operations;
+ 		inode->i_fop = &ext4_file_operations;
+ 		ext4_set_aops(inode);
+-		err = 0;
+-#ifdef CONFIG_EXT4_FS_ENCRYPTION
+-		if (!err && (ext4_encrypted_inode(dir) ||
+-			     DUMMY_ENCRYPTION_ENABLED(EXT4_SB(dir->i_sb)))) {
+-			err = ext4_inherit_context(dir, inode);
+-			if (err) {
+-				clear_nlink(inode);
+-				unlock_new_inode(inode);
+-				iput(inode);
+-			}
+-		}
+-#endif
+-		if (!err)
+-			err = ext4_add_nondir(handle, dentry, inode);
++		err = ext4_add_nondir(handle, dentry, inode);
+ 		if (!err && IS_DIRSYNC(dir))
+ 			ext4_handle_sync(handle);
+ 	}
+@@ -2631,14 +2618,6 @@ retry:
+ 	err = ext4_init_new_dir(handle, dir, inode);
+ 	if (err)
+ 		goto out_clear_inode;
+-#ifdef CONFIG_EXT4_FS_ENCRYPTION
+-	if (ext4_encrypted_inode(dir) ||
+-	    DUMMY_ENCRYPTION_ENABLED(EXT4_SB(dir->i_sb))) {
+-		err = ext4_inherit_context(dir, inode);
+-		if (err)
+-			goto out_clear_inode;
+-	}
+-#endif
+ 	err = ext4_mark_inode_dirty(handle, inode);
+ 	if (!err)
+ 		err = ext4_add_entry(handle, dentry, inode);
+@@ -3106,12 +3085,6 @@ static int ext4_symlink(struct inode *dir,
+ 			err = -ENOMEM;
+ 			goto err_drop_inode;
+ 		}
+-		err = ext4_inherit_context(dir, inode);
+-		if (err)
+-			goto err_drop_inode;
+-		err = ext4_get_encryption_info(inode);
+-		if (err)
+-			goto err_drop_inode;
+ 		istr.name = (const unsigned char *) symname;
+ 		istr.len = len;
+ 		ostr.name = sd->encrypted_path;
+-- 
+2.3.0
 
