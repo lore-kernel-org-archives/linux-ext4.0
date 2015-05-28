@@ -1,41 +1,125 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 89621] EXT4-fs error (device dm-1):
- ext4_mb_release_inode_pa:3773: group 24089, free 34, pa_free 32
-Date: Thu, 28 May 2015 10:35:19 +0000
-Message-ID: <bug-89621-13602-urca3PJWl1@https.bugzilla.kernel.org/>
-References: <bug-89621-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Custom driver FS brokenness at 4GB?
+Date: Thu, 28 May 2015 12:59:31 +0200
+Message-ID: <20150528105931.GA31813@quack.suse.cz>
+References: <5565CD0D.4080408@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Rob Harris <rob.harris@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:48659 "EHLO mail.kernel.org"
+Received: from cantor2.suse.de ([195.135.220.15]:38166 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751548AbbE1KfW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 May 2015 06:35:22 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 905E22065E
-	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2015 10:35:21 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id E3F5D20644
-	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2015 10:35:19 +0000 (UTC)
-In-Reply-To: <bug-89621-13602@https.bugzilla.kernel.org/>
+	id S1751845AbbE1K7e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 May 2015 06:59:34 -0400
+Content-Disposition: inline
+In-Reply-To: <5565CD0D.4080408@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=89621
+On Wed 27-05-15 09:56:29, Rob Harris wrote:
+> Greetings. I have an odd issue and need some ideas of where to go
+> next -- I'm out of hair to rip out.
+> 
+> I'm writing a custom block device driver talking to some custom RAID
+> hardware (>32TB) using DMA scatter-gather, with no partitions and am
+> using make_request() to service all the BIO requests to simplify
+> debugging. I have the driver working to the point where using DD
+> against the block device seems to work fine (I'm setting
+> iflag|oflag=direct to ensure it's writing to the disk). I also have
+> the blk_queue set to only request a single 4k I/O per BIO (again to
+> simplify debugging for now.) Also, again to debug, I have a mutex
+> wrapping the entire make_request call to ensure that only a single
+> request is being serviced at a time. So, this should be as "simple"
+> as I can make the environment to debug this problem.
+> 
+> Once the driver is loaded, when I try to create a file system (ext4
+> but the same thing happens with xfs) it seems like there is some
+> corruption occurring, but only when I set the sector size of the
+> block device over 4GB. For instance, when I set the size to 4G, I
+> can mkfs.ext4, but after 2 or 3 mount/umounts the FS refuses to
+> mount anymore and the kernel log complains that the journal is
+> missing. This was discovered running this loop...
+  Hard to tell exactly but with 4GB being 32-bit limit, I would first look
+for some int / unsigned int number overflow. You could possibly better
+debug this when writing some pattern via DD that is different for each
+block to verify that each block indeed lands in the expected location...
 
---- Comment #14 from John Hughes <john@calva.com> ---
-And for me its:
-
-Linux olympic 3.16.0-0.bpo.4-amd64 #1 SMP Debian 3.16.7-ckt7-1~bpo70+1
-(2015-04-07) x86_64 GNU/Linux
-
-The last but one backported version for oldstable.  I can update to
-3.16.7-ckt9...
-
-(What a horrid name)
-
+								Honza
+> 
+> #!/bin/sh
+> COUNT=4032
+> 
+> while [ 1 ] ; do
+> 
+> figlet ${COUNT}
+> 
+> ( umount /mnt ; rmmod smc ) || true
+> modprobe smc capacity_in_mb=${COUNT} debug=1
+> mkfs.ext4 -m 0 /dev/smcd
+> 
+> mount /dev/smcd /mnt
+> cp count_512m.dat /mnt/test
+> umount /mnt
+> mount /dev/smcd /mnt
+> umount /mnt
+> mount /dev/smcd /mnt
+> cmp count_512m.dat /mnt/test
+> umount /mnt
+> mount /dev/smcd /mnt # ***
+> sync
+> umount /mnt
+> mount /dev/smcd /mnt
+> sleep 1
+> umount /mnt
+> 
+> COUNT=$(( COUNT + 64 ))
+> sleep 1
+> 
+> done
+> 
+> Sometimes I'll get in the kernel log:
+> May 27 09:39:01 febtober kernel: [64547.304695] EXT4-fs (smcd):
+> ext4_check_descriptors: Checksum for group 0 failed (7009!=0)
+> May 27 09:39:01 febtober kernel: [64547.305744] EXT4-fs (smcd):
+> group descriptors corrupted!
+> 
+> Others I'll get:
+> May 27 09:46:49 ryftone-smcdrv kernel: [65014.342850] EXT4-fs
+> (smcd): no journal found
+> 
+> 
+> I've seen this loop fail as early as COUNT=4096, but as late as
+> COUNT=4220; removing the sync changes the behavior.
+> When it fails, it usually does so on the 3rd mount (***).
+> FYI, I effectively call: set_capacity( disk, capacity_in_mb * 2048
+> ); ( 2048 * 512b (kernel sector) = 1M )
+> 
+> Another example: if I set the sector count of the disk to 16G, I can
+> run mkfs.ext4 but the first mount fails and I see May 27 09:07:27
+> febtober kernel: [62653.269387] EXT4-fs (smcd):
+> ext4_check_descriptors: Block bitmap for group 0 not in group (block
+> 4294967295)!
+> 
+> But, again, if I set the sector size < 4G, everything seems fine. I
+> can currently DD read and write across that 4G boundary without
+> issue -- it's ONLY the filesystem accesses. My gut is screaming
+> there's 32/64 bit overflow condition somewhere but for the life of
+> me I can't find it. Is there something I need to set to tell the
+> block layer I have a 64-bit addressible device? set_capacity is
+> always the number of LINUX KERNEL sectors (not what I set
+> blk_queue_logical|physical_block_size to) correct?
+> 
+> I'm currently on 3.16.0 (Ubuntu 14.04.2 LTS) if it matters.
+> 
+> Any help/pointers would be greatly appreciated.
+> 
+> --Rob Harris
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
