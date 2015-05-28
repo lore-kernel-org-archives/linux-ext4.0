@@ -1,35 +1,34 @@
-From: "ts1@a.56067.net" <ts1@a.56067.net>
-Subject: DESK MOUNT ARMS
-Date: Thu, 28 May 2015 10:46:51 +0800
-Message-ID: <201505281046515367901@a.56067.net>
-Reply-To: dwm1682@163.com
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 89621] EXT4-fs error (device dm-1):
+ ext4_mb_release_inode_pa:3773: group 24089, free 34, pa_free 32
+Date: Thu, 28 May 2015 05:24:35 +0000
+Message-ID: <bug-89621-13602-mYr504uQDf@https.bugzilla.kernel.org/>
+References: <bug-89621-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="GB2312"
-Content-Transfer-Encoding: base64
-To: "linux-ext4" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [118.193.226.56] ([118.193.226.56]:60270 "EHLO a.56067.net"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750812AbbE1C77 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 May 2015 22:59:59 -0400
-Received: from osvxadf (unknown [27.38.9.49])
-	by a.56067.net (Postfix) with ESMTPA id 0DD4CCA4F4
-	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2015 10:44:56 +0800 (CST)
+Received: from mail.kernel.org ([198.145.29.136]:33452 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752044AbbE1FYj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 May 2015 01:24:39 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 97C912073E
+	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2015 05:24:38 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 9EF6520738
+	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2015 05:24:35 +0000 (UTC)
+In-Reply-To: <bug-89621-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-RGVhciBTaXIgb3IgTWFkYW0NCg0KSGVsbG8gYW5kIGhhcHB5IHRvIGNvbnRhY3QgeW91ICEgDQoN
-CldlIHdvdWxkIGxpa2UgdG8gaW50cm91ZGNlIG91ciBjb21wYW55Lk91ciBjb21wYW55IGlzIGEg
-bGFyZ2Ugc2NhbGUgZW50ZXJwcmlzZSxBdWRpby1WaWRlbyBBY2Nlc3NvcmllcyBlbnRlcnByaXNl
-LCBMQ0QgVFYgV2FsbCBNb3VudCwgTENEIHRyb2xsZXksIFByb2plY3RvciBTdGFuZCxNaWNyb3Bo
-b25lIFN0YW5kLENlaWxpbmcgTW91bnQsTGFwdG9wIFN0YW5kLCBNb25pdG9yIFN0YW5kLENhbWVy
-YSBTdGFuZCBhcyB0aGUgbWFpbiBwcm9kdWN0cy4gV2UgY291bGQgc3VwcGx5IGdvb2QgcXVhbGl0
-eSBwcm9kdWN0cyB3aXRoIGNvbXBldGl0aXZlIHByaWNlcy4NCg0KVGhlIGZvbGxvd2luZyBpcyB0
-aGUgcHJvZHVjdCBxdW90YXRpb24gOg0KDQoNCiogVVNEIDAuNjUvUEMgRk9CIFNIRU5aSEVODQoq
-IHBhY2tpbmcgOiA1MFBDUy9DVE4NCiogcHJpY2UgdmFsaWRpdHk6IHdpdGhpbiAzMCBkYXlzIC4N
-CiogcGF5bWVudCB0ZXJtcyA6IFRUIGluIGFkdmFuY2Ugb3IgTEMgYXQgc2lnaHQgLg0KKiBkZWxp
-dmVyeSB0aW1lOiB3aXRoaW4gMzAgZGF5cyAuDQoNCkFueSBmdXRoZXIgaW5mb3JtYXRpb24sIGNv
-bnRhY3QgbWUgZnJlZWx5ICENCg0KR29kIEJsZXNzLA0KDQpSZWJlY2NhIFpoYW5nDQoNCkVtYWls
-OiByZWJlY2NhQGppYXdlaWhhby5jb20NClFROjEwNzEyNzQ2MzkNCndlYjogamlhd2VpaGFvLmNv
-bQ==
+https://bugzilla.kernel.org/show_bug.cgi?id=89621
+
+--- Comment #13 from Michal Cihar <michal@cihar.com> ---
+Sorry for being unclear, in my case it's 3.16.7-ckt9-3~deb8u1, latest version
+available in Debian stable.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
