@@ -1,50 +1,115 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/8] ext4 crypto: make sure the encryption info is initialized on opendir(2)
-Date: Thu, 28 May 2015 19:47:42 -0400
-Message-ID: <1432856867-5710-3-git-send-email-tytso@mit.edu>
-References: <1432856867-5710-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/8] ext4 crypto: fix memory leaks in ext4_encrypted_zeroout
+Date: Thu, 28 May 2015 19:47:40 -0400
+Message-ID: <1432856867-5710-1-git-send-email-tytso@mit.edu>
 Cc: jaegeuk@kernel.org, mhalcrow@google.com,
 	Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35480 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:35459 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754794AbbE1Xs1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 May 2015 19:48:27 -0400
-In-Reply-To: <1432856867-5710-1-git-send-email-tytso@mit.edu>
+	id S1755141AbbE1Xr5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 May 2015 19:47:57 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+ext4_encrypted_zeroout() could end up leaking a bio and bounce page.
+Fortunately it's not used much.  While we're fixing things up,
+refactor out common code into the static function alloc_bounce_page().
+
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/dir.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ fs/ext4/crypto.c | 56 +++++++++++++++++++++++++-------------------------------
+ 1 file changed, 25 insertions(+), 31 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index e11e6ae..f9e1491 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -593,6 +593,13 @@ finished:
+diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+index 68c7ab8..e43ed93 100644
+--- a/fs/ext4/crypto.c
++++ b/fs/ext4/crypto.c
+@@ -324,6 +324,28 @@ static int ext4_page_crypto(struct ext4_crypto_ctx *ctx,
  	return 0;
  }
  
-+static int ext4_dir_open(struct inode * inode, struct file * filp)
++static struct page *alloc_bounce_page(struct ext4_crypto_ctx *ctx)
 +{
-+	if (ext4_encrypted_inode(inode))
-+		return ext4_get_encryption_info(inode) ? -EACCES : 0;
-+	return 0;
++	struct page *ciphertext_page = alloc_page(GFP_NOFS);
++
++	if (!ciphertext_page) {
++		/* This is a potential bottleneck, but at least we'll have
++		 * forward progress. */
++		ciphertext_page = mempool_alloc(ext4_bounce_page_pool,
++						 GFP_NOFS);
++		if (WARN_ON_ONCE(!ciphertext_page)) {
++			ciphertext_page = mempool_alloc(ext4_bounce_page_pool,
++							 GFP_NOFS | __GFP_WAIT);
++		}
++		ctx->flags &= ~EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL;
++	} else {
++		ctx->flags |= EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL;
++	}
++	ctx->flags |= EXT4_WRITE_PATH_FL;
++	ctx->w.bounce_page = ciphertext_page;
++	return ciphertext_page;
 +}
 +
- static int ext4_release_dir(struct inode *inode, struct file *filp)
- {
- 	if (filp->private_data)
-@@ -635,5 +642,6 @@ const struct file_operations ext4_dir_operations = {
- 	.compat_ioctl	= ext4_compat_ioctl,
- #endif
- 	.fsync		= ext4_sync_file,
-+	.open		= ext4_dir_open,
- 	.release	= ext4_release_dir,
- };
+ /**
+  * ext4_encrypt() - Encrypts a page
+  * @inode:          The inode for which the encryption should take place
+@@ -353,22 +375,7 @@ struct page *ext4_encrypt(struct inode *inode,
+ 		return (struct page *) ctx;
+ 
+ 	/* The encryption operation will require a bounce page. */
+-	ciphertext_page = alloc_page(GFP_NOFS);
+-	if (!ciphertext_page) {
+-		/* This is a potential bottleneck, but at least we'll have
+-		 * forward progress. */
+-		ciphertext_page = mempool_alloc(ext4_bounce_page_pool,
+-						 GFP_NOFS);
+-		if (WARN_ON_ONCE(!ciphertext_page)) {
+-			ciphertext_page = mempool_alloc(ext4_bounce_page_pool,
+-							 GFP_NOFS | __GFP_WAIT);
+-		}
+-		ctx->flags &= ~EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL;
+-	} else {
+-		ctx->flags |= EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL;
+-	}
+-	ctx->flags |= EXT4_WRITE_PATH_FL;
+-	ctx->w.bounce_page = ciphertext_page;
++	ciphertext_page = alloc_bounce_page(ctx);
+ 	ctx->w.control_page = plaintext_page;
+ 	err = ext4_page_crypto(ctx, inode, EXT4_ENCRYPT, plaintext_page->index,
+ 			       plaintext_page, ciphertext_page);
+@@ -434,21 +441,7 @@ int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
+ 	if (IS_ERR(ctx))
+ 		return PTR_ERR(ctx);
+ 
+-	ciphertext_page = alloc_page(GFP_NOFS);
+-	if (!ciphertext_page) {
+-		/* This is a potential bottleneck, but at least we'll have
+-		 * forward progress. */
+-		ciphertext_page = mempool_alloc(ext4_bounce_page_pool,
+-						 GFP_NOFS);
+-		if (WARN_ON_ONCE(!ciphertext_page)) {
+-			ciphertext_page = mempool_alloc(ext4_bounce_page_pool,
+-							 GFP_NOFS | __GFP_WAIT);
+-		}
+-		ctx->flags &= ~EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL;
+-	} else {
+-		ctx->flags |= EXT4_BOUNCE_PAGE_REQUIRES_FREE_ENCRYPT_FL;
+-	}
+-	ctx->w.bounce_page = ciphertext_page;
++	ciphertext_page = alloc_bounce_page(ctx);
+ 
+ 	while (len--) {
+ 		err = ext4_page_crypto(ctx, inode, EXT4_ENCRYPT, lblk,
+@@ -470,6 +463,7 @@ int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
+ 			goto errout;
+ 		}
+ 		err = submit_bio_wait(WRITE, bio);
++		bio_put(bio);
+ 		if (err)
+ 			goto errout;
+ 	}
 -- 
 2.3.0
 
