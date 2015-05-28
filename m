@@ -1,37 +1,73 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 89621] EXT4-fs error (device dm-1):
- ext4_mb_release_inode_pa:3773: group 24089, free 34, pa_free 32
-Date: Thu, 28 May 2015 01:22:48 +0000
-Message-ID: <bug-89621-13602-Gk6HE9Q5Js@https.bugzilla.kernel.org/>
-References: <bug-89621-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+From: "=?GBK?B?wfXhvyjOxMfkKQ==?=" <wenqing.lz@alibaba-inc.com>
+Subject: Re: Incompat change: giving inline data four more bytes?
+Date: Thu, 28 May 2015 10:48:21 +0800
+Message-ID: <76A8C7EE-5066-43CB-B87E-007826C407C5@alibaba-inc.com>
+References: <20150527002543.GC830@birch.djwong.org>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2098\))
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4" <linux-ext4@vger.kernel.org>, <tm@tao.ma>,
+	<gnehzuil.liu@gmail.com>,
+	"=?GBK?B?wfXhvyjOxMfkKQ==?=" <wenqing.lz@taobao.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:55377 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751398AbbE1BWw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 May 2015 21:22:52 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 4E7F32046F
-	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2015 01:22:51 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id A151D20738
-	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2015 01:22:49 +0000 (UTC)
-In-Reply-To: <bug-89621-13602@https.bugzilla.kernel.org/>
+Received: from mail113-250.mail.alibaba.com ([205.204.113.250]:37828 "EHLO
+	us-alimail-mta1.hst.scl.en.alidc.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1750812AbbE1CtW convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 May 2015 22:49:22 -0400
+In-Reply-To: <20150527002543.GC830@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=89621
+Hi Darrick,
 
---- Comment #12 from Theodore Tso <tytso@mit.edu> ---
-Ah, never mind; the "debian 3.16.0" kernel is actually based on 3.16.7-ckt9 --
-at least, the latest version of debian 3.16.0.   You'd have to specify exactly
-what version of the "debian 3.16.0" kernel to know for sure.   (But this is why
-many upstream kernel developers don't try to support distro kernels.  It's hard
-to see what commits might or might not be in a particular kernel distro.)
+Yes, The Alibaba uses inline data feature in our system.  We are fine
+with this incompatiable change, and we will handle this change by
+ourselves.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Regards,
+                                                - Zheng
+
+> On May 27, 2015, at 8:25 AM, Darrick J. Wong <darrick.wong@oracle.com> wrote:
+> 
+> Hi all,
+> 
+> [echoing a conversation on today's concall]
+> 
+> I'm just curious -- is there a reason why the inline data feature stores the
+> data with an xattr of [EXT4_XATTR_INDEX_SYSTEM, "data"] instead of creating a
+> new index value to cover "system.data"?  That would allow us to set the namelen
+> to zero, which fetches us an extra 4 bytes for inline data storage:
+> 
+> struct ext4_xattr_info i = {
+> 	.name_index = EXT4_XATTR_INDEX_SYSTEM,
+> 	.name = EXT4_XATTR_SYSTEM_DATA,
+> };
+> 
+> becomes
+> 
+> struct ext4_xattr_info i = {
+> 	.name_index = EXT4_XATTR_INDEX_SYSTEM_DATA,
+> 	.name = "",
+> };
+> 
+> The hard part, of course, is that inline.c is hardcoded to the xattr key that
+> it uses (instead of using "system.data" and letting the key resolver figure it
+> out), which makes it harder to switch to the optimized encoding.
+> 
+> On the other hand, since inline data isn't in a released e2fsprogs yet, there
+> still aren't very many users of it, so if we're going to make the change we
+> ought to do so now while it's still fairly inexpensive to do so.
+> 
+> The biggest problem of course is retrofitting anyone who's been using this
+> feature, since old kernels require the larger encoding.  So, who are those
+> users, and are you willing to trade some breakage for four more bytes?
+> 
+> It shouldn't be that hard to teach the kernel to look for either encoding of
+> the xattr name.  e2fsprogs uses the full string and lets the xattr code
+> figure out the encoding.
+> 
+> --D
+
