@@ -1,29 +1,39 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] ext4 crypto: release crypto resource when module exit
-Date: Sun, 31 May 2015 13:38:31 -0400
-Message-ID: <20150531173831.GD11642@thunk.org>
-References: <002801d099bb$13ec4610$3bc4d230$@samsung.com>
+Subject: Re: generic question: user-only directory w/o root access
+Date: Sun, 31 May 2015 14:59:34 -0400
+Message-ID: <20150531185934.GE11642@thunk.org>
+References: <mkfbkb$fo1$1@ger.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: 'Ext4 Developers List' <linux-ext4@vger.kernel.org>,
-	mhalcrow@google.com, jaegeuk@kernel.org
-To: Chao Yu <chao2.yu@samsung.com>
+Cc: linux-ext4@vger.kernel.org
+To: "U.Mutlu" <for-gmane@mutluit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39427 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:39524 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758526AbbEaRid (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 31 May 2015 13:38:33 -0400
+	id S1751427AbbEaS7h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 31 May 2015 14:59:37 -0400
 Content-Disposition: inline
-In-Reply-To: <002801d099bb$13ec4610$3bc4d230$@samsung.com>
+In-Reply-To: <mkfbkb$fo1$1@ger.gmane.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 29, 2015 at 10:55:37AM +0800, Chao Yu wrote:
-> Crypto resource should be released when ext4 module exits, otherwise
-> it will cause memory leak.
-> 
-> Signed-off-by: Chao Yu <chao2.yu@samsung.com>
+On Sun, May 31, 2015 at 06:07:38PM +0200, U.Mutlu wrote:
+> how can a non-root user have a directory of his own, without any root access?
+> Is this somehow possible, or will it be made possible with the new ext4 (ext5?)?
 
-Thanks, applied.
+You're not going a lot of details about exactly what the use case you
+have in mind; are you talking about a non-root user creating a file
+system which then gets mounted somwhere?  In practice you still need
+root to do the mount, or at the very least to set up the /etc/fstab to
+allow a non-root user to mount a file system at a particular mount
+point.
 
-						- Ted
+If it's the latter which you are envisioning, then the root_owner
+extended option to mke2fs(8) may be what you're looking for.
+
+If it isn't please go into a much greater detail about what exactly it
+is you are trying to do, and why.
+
+Regards,
+
+					- Ted
