@@ -1,35 +1,38 @@
-From: "U.Mutlu" <for-gmane@mutluit.com>
-Subject: generic question: user-only directory w/o root access
-Date: Sun, 31 May 2015 18:07:38 +0200
-Message-ID: <mkfbkb$fo1$1@ger.gmane.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/2] ext4 crypto: fix incorrect release for crypto ctx
+Date: Sun, 31 May 2015 13:36:55 -0400
+Message-ID: <20150531173655.GC11642@thunk.org>
+References: <002901d099bb$656709d0$30351d70$@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: 'Ext4 Developers List' <linux-ext4@vger.kernel.org>,
+	mhalcrow@google.com, jaegeuk@kernel.org
+To: Chao Yu <chao2.yu@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:39704 "EHLO plane.gmane.org"
+Received: from imap.thunk.org ([74.207.234.97]:39416 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758373AbbEaQHs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 31 May 2015 12:07:48 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1Yz5m6-0007NE-LK
-	for linux-ext4@vger.kernel.org; Sun, 31 May 2015 18:07:46 +0200
-Received: from ip4d14aa5f.dynamic.kabel-deutschland.de ([77.20.170.95])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Sun, 31 May 2015 18:07:46 +0200
-Received: from for-gmane by ip4d14aa5f.dynamic.kabel-deutschland.de with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Sun, 31 May 2015 18:07:46 +0200
+	id S1758408AbbEaRhA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 31 May 2015 13:37:00 -0400
+Content-Disposition: inline
+In-Reply-To: <002901d099bb$656709d0$30351d70$@samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
-how can a non-root user have a directory of his own, without any root access?
-Is this somehow possible, or will it be made possible with the new ext4 (ext5?)?
+On Fri, May 29, 2015 at 10:58:09AM +0800, Chao Yu wrote:
+> When ext4 encryption feature is enable, and our crypto resource
+> was allocated, then if we rmmod ext4 module, we will receive a
+> stack backtrace reported in syslog:
+> 
+> The reason is that:
+> 
+> since commit 66de766a0f11
+> ("ext4 crypto: shrink size of the ext4_crypto_ctx structure") is merged,
+> some fields in ext4_crypto_ctx structure are merged into a union as they
+> will never be used simultaneously in write path, read path or on free list.
 
--- 
-Thx
-Uenal
+Thanks for pointing this out; as it turns out "ext4 crypto: shrink
+size of the ext4_crypto_ctx structure" hasn't been merged yet (it's
+still in the ext4 patch queue and the ext4 dev branch), so I'll just
+fix up the commit and update the dev patch.
 
+       	   	      	     	     - Ted
