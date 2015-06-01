@@ -1,47 +1,62 @@
-From: "U.Mutlu" <for-gmane@mutluit.com>
-Subject: Linux unshare -m for per-process private filesystem mount points
-Date: Mon, 1 Jun 2015 03:39:45 +0200
-Message-ID: <mkgd52$qlg$1@ger.gmane.org>
-References: <mkfbkb$fo1$1@ger.gmane.org> <20150531185934.GE11642@thunk.org>
- <mkg2u2$ckm$1@ger.gmane.org> <mkg4kf$429$1@ger.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 1/3] ext4: Verify block bitmap even after fresh initialization
+Date: Mon,  1 Jun 2015 09:54:59 +0200
+Message-ID: <1433145301-14605-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:58006 "EHLO plane.gmane.org"
+Received: from mx1.redhat.com ([209.132.183.28]:37949 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754036AbbFABjx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 31 May 2015 21:39:53 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1YzEhk-0007QI-03
-	for linux-ext4@vger.kernel.org; Mon, 01 Jun 2015 03:39:52 +0200
-Received: from ip4d14aa5f.dynamic.kabel-deutschland.de ([77.20.170.95])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Mon, 01 Jun 2015 03:39:51 +0200
-Received: from for-gmane by ip4d14aa5f.dynamic.kabel-deutschland.de with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Mon, 01 Jun 2015 03:39:51 +0200
-In-Reply-To: <mkg4kf$429$1@ger.gmane.org>
+	id S1750820AbbFAHzI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Jun 2015 03:55:08 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (Postfix) with ESMTPS id 75796B6F57
+	for <linux-ext4@vger.kernel.org>; Mon,  1 Jun 2015 07:55:08 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I just found a cool linux feature which helps me to create private mounts
-where no other user or process can see or access it:
-by using linux namespaces with the tool "unshare" from the pkg linux-utils.
+If we want to rely on the buffer_verified() flag of the block bitmap
+buffer, we have to set it consistently. However currently if we're
+initializing uninitialized block bitmap in
+ext4_read_block_bitmap_nowait() we're not going to set buffer verified
+at all.
 
-It allows, besides other things, per-process private filesystem mount points.
-It also works with truecrypt-mounts.
+We can do this by simply setting the flag on the buffer, but I think
+it's actually better to run ext4_validate_block_bitmap() to make sure
+that what we did in the ext4_init_block_bitmap() is right.
 
-Here's a good basic demo of the idea:
-http://blog.endpoint.com/2012/01/linux-unshare-m-for-per-process-private.html
+So run ext4_validate_block_bitmap() even after the block bitmap
+initialization. Also bail out early from ext4_validate_block_bitmap() if
+we see corrupt bitmap, since we already know it's corrupt and we do not
+need to verify that.
 
-See also: man unshare, man 2 unshare
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/balloc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 955bf49..cd6ea29 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -369,7 +369,7 @@ static void ext4_validate_block_bitmap(struct super_block *sb,
+ 	struct ext4_group_info *grp = ext4_get_group_info(sb, block_group);
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
+-	if (buffer_verified(bh))
++	if (buffer_verified(bh) || EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
+ 		return;
+ 
+ 	ext4_lock_group(sb, block_group);
+@@ -446,7 +446,7 @@ ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group)
+ 		unlock_buffer(bh);
+ 		if (err)
+ 			ext4_error(sb, "Checksum bad for grp %u", block_group);
+-		return bh;
++		goto verify;
+ 	}
+ 	ext4_unlock_group(sb, block_group);
+ 	if (buffer_uptodate(bh)) {
 -- 
-cu
-Uenal
-
+1.8.3.1
 
