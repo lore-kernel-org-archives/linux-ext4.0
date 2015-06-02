@@ -1,70 +1,69 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: only call ext4_truncate when size <= isize
-Date: Tue, 2 Jun 2015 10:08:18 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1506021008030.4950@localhost.localdomain>
-References: <1432049337-3520-1-git-send-email-jbacik@fb.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Josef Bacik <jbacik@fb.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH v2 2/3] ext4: Try to initialize all groups we can in case of failure on ppc64
+Date: Tue,  2 Jun 2015 14:24:49 +0200
+Message-ID: <1433247890-15570-2-git-send-email-lczerner@redhat.com>
+References: <1433247890-15570-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54152 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57838 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754700AbbFBIIY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Jun 2015 04:08:24 -0400
-In-Reply-To: <1432049337-3520-1-git-send-email-jbacik@fb.com>
+	id S1754071AbbFBMYz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Jun 2015 08:24:55 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (Postfix) with ESMTPS id 0F7F819F22F
+	for <linux-ext4@vger.kernel.org>; Tue,  2 Jun 2015 12:24:55 +0000 (UTC)
+In-Reply-To: <1433247890-15570-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 19 May 2015, Josef Bacik wrote:
+Currently on the machines with page size > block size when initializing
+block group buddy cache we initialize it for all the block group bitmaps
+in the page. However in the case of read error, checksum error, or if
+a single bitmap is in any way corrupted we would fail to initialize all
+of the bitmaps. This is problematic because we will not have access to
+the other allocation groups even though those might be perfectly fine
+and usable.
 
-> Date: Tue, 19 May 2015 11:28:57 -0400
-> From: Josef Bacik <jbacik@fb.com>
-> To: tytso@mit.edu, linux-ext4@vger.kernel.org
-> Subject: [PATCH] ext4: only call ext4_truncate when size <= isize
-> 
-> At LSF we decided that if we truncate up from isize we shouldn't trim fallocated
-> blocks that were fallocated with KEEP_SIZE and are past the new i_size.  This
-> patch fixes ext4 to do this.  Thanks,
+Fix this by reading all the bitmaps instead of error out on the first
+problem and simply skip the bitmaps which were either not read properly,
+or are not valid.
 
-Looks good, thanks!
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+v2: remove unnecessary else in condition
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+ fs/ext4/mballoc.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-> 
-> Signed-off-by: Josef Bacik <jbacik@fb.com>
-> ---
->  fs/ext4/inode.c | 5 ++---
->  1 file changed, 2 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 0554b0b..92174dd 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4640,6 +4640,7 @@ static void ext4_wait_for_tail_page_commit(struct inode *inode)
->  int ext4_setattr(struct dentry *dentry, struct iattr *attr)
->  {
->  	struct inode *inode = d_inode(dentry);
-> +	loff_t oldsize = inode->i_size;
->  	int error, rc = 0;
->  	int orphan = 0;
->  	const unsigned int ia_valid = attr->ia_valid;
-> @@ -4727,8 +4728,6 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
->  				goto err_out;
->  			}
->  		} else {
-> -			loff_t oldsize = inode->i_size;
-> -
->  			i_size_write(inode, attr->ia_size);
->  			pagecache_isize_extended(inode, oldsize, inode->i_size);
->  		}
-> @@ -4756,7 +4755,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
->  	 * We want to call ext4_truncate() even if attr->ia_size ==
->  	 * inode->i_size for cases like truncation of fallocated space
->  	 */
-> -	if (attr->ia_valid & ATTR_SIZE)
-> +	if (attr->ia_valid & ATTR_SIZE && attr->ia_size <= oldsize)
->  		ext4_truncate(inode);
->  
->  	if (!rc) {
-> 
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 8d1e602..df02951 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -882,10 +882,8 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ 
+ 	/* wait for I/O completion */
+ 	for (i = 0, group = first_group; i < groups_per_page; i++, group++) {
+-		if (bh[i] && ext4_wait_block_bitmap(sb, group, bh[i])) {
++		if (bh[i] && ext4_wait_block_bitmap(sb, group, bh[i]))
+ 			err = -EIO;
+-			goto out;
+-		}
+ 	}
+ 
+ 	first_block = page->index * blocks_per_page;
+@@ -898,6 +896,11 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ 			/* skip initialized uptodate buddy */
+ 			continue;
+ 
++		if (!buffer_verified(bh[group - first_group]))
++			/* Skip faulty bitmaps */
++			continue;
++		err = 0;
++
+ 		/*
+ 		 * data carry information regarding this
+ 		 * particular group in the format specified
+-- 
+1.8.3.1
+
