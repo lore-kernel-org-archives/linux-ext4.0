@@ -1,133 +1,75 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH v3 3/3] ext4: Return error code from ext4_mb_good_group()
-Date: Tue,  2 Jun 2015 19:30:05 +0200
-Message-ID: <1433266205-24513-3-git-send-email-lczerner@redhat.com>
-References: <1433266205-24513-1-git-send-email-lczerner@redhat.com>
-Cc: Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Junxiao Bi <junxiao.bi@oracle.com>
+Subject: Re: [Ocfs2-devel] ocfs2 inconsistent when updating journal superblock
+ failed
+Date: Wed, 03 Jun 2015 10:40:03 +0800
+Message-ID: <556E6903.9090800@oracle.com>
+References: <556D5FAC.20702@huawei.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+To: Joseph Qi <joseph.qi@huawei.com>,
+	"ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54945 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759547AbbFBRaQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Jun 2015 13:30:16 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (Postfix) with ESMTPS id 9F3742BB3A0
-	for <linux-ext4@vger.kernel.org>; Tue,  2 Jun 2015 17:30:16 +0000 (UTC)
-In-Reply-To: <1433266205-24513-1-git-send-email-lczerner@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:43201 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752478AbbFCCmz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Jun 2015 22:42:55 -0400
+In-Reply-To: <556D5FAC.20702@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently ext4_mb_good_group() only returns 0 or 1 depending on whether
-the allocation group is suitable for use or not. However we might get
-various errors and fail while initializing new group including -EIO
-which would never get propagated up the call chain. This might lead to
-an endless loop at writeback when we're trying to find a good group to
-allocate from and we fail to initialize new group (read error for
-example).
+Hi Joseph,
 
-Fix this by returning proper error code from ext4_mb_good_group() and
-using it in ext4_mb_regular_allocator(). In ext4_mb_regular_allocator()
-we will always return only the first occurred error from
-ext4_mb_good_group() and we only propagate it back  to the caller if we
-do not get any other errors and we fail to allocate any blocks.
+On 06/02/2015 03:47 PM, Joseph Qi wrote:
+> Hi all,
+> If jbd2 has failed to update superblock because of iscsi link down, it
+> may cause ocfs2 inconsistent.
+> 
+> kernel version: 3.0.93
+> dmesg:
+> JBD2: I/O error detected when updating journal superblock for
+> dm-41-36.
+> 
+> Case description:
+> Node 1 was doing the checkpoint of global bitmap.
+> ocfs2_commit_thread
+>   ocfs2_commit_cache
+>     jbd2_journal_flush
+>       jbd2_cleanup_journal_tail
+>         jbd2_journal_update_superblock
+>           sync_dirty_buffer
+>             submit_bh  *failed*
+> Since the error was ignored, jbd2_journal_flush would return 0.
+> Then ocfs2_commit_cache thought it normal, incremented trans id and woke
+> downconvert thread.
+> So node 2 could get the lock because the checkpoint had been done
+> successfully (in fact, bitmap on disk had been updated but journal
+> superblock not). Then node 2 did the update to global bitmap as normal.
+> After a while, node 2 found node 1 down and began the journal recovery.
+> As a result, the new update by node 2 would be overwritten and filesystem
+> became inconsistent.
+If this is the case, this seemed a generic issue. Assume a two node
+cluster, node 1 updated global bitmap, and the transaction for this
+update have been written into node 1's journal. Then node 2 updated
+global bitmap, after that, node 1 crash and node 2 replay node 1's
+journal and will overwrite global bitmap to old one. Do i miss some point?
 
-Note that with other modes than errors=continue, we will fail
-immediately in ext4_mb_good_group() in case of error, however with
-errors=continue we should try to continue using the file system, that's
-why we're not going to fail immediately when we see an error from
-ext4_mb_good_group(), but rather when we fail to find a suitable block
-group to allocate from due to an problem in group initialization.
+Thanks,
+Junxiao.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
----
-v2: nothing changed
-v3: update comments in ext4_mb_good_group()
-
- fs/ext4/mballoc.c | 25 ++++++++++++++++++++-----
- 1 file changed, 20 insertions(+), 5 deletions(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index df02951..78e58f7 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2011,7 +2011,12 @@ void ext4_mb_scan_aligned(struct ext4_allocation_context *ac,
- 	}
- }
- 
--/* This is now called BEFORE we load the buddy bitmap. */
-+/*
-+ * This is now called BEFORE we load the buddy bitmap.
-+ * Returns either 1 or 0 indicating that the group is either suitable
-+ * for the allocation or not. In addition it can also return negative
-+ * error code when something goes wrong.
-+ */
- static int ext4_mb_good_group(struct ext4_allocation_context *ac,
- 				ext4_group_t group, int cr)
- {
-@@ -2034,7 +2039,7 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
- 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
- 		int ret = ext4_mb_init_group(ac->ac_sb, group);
- 		if (ret)
--			return 0;
-+			return ret;
- 	}
- 
- 	fragments = grp->bb_fragments;
-@@ -2081,7 +2086,7 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- {
- 	ext4_group_t ngroups, group, i;
- 	int cr;
--	int err = 0;
-+	int err = 0, first_err = 0;
- 	struct ext4_sb_info *sbi;
- 	struct super_block *sb;
- 	struct ext4_buddy e4b;
-@@ -2148,6 +2153,7 @@ repeat:
- 		group = ac->ac_g_ex.fe_group;
- 
- 		for (i = 0; i < ngroups; group++, i++) {
-+			int ret = 0;
- 			cond_resched();
- 			/*
- 			 * Artificially restricted ngroups for non-extent
-@@ -2157,8 +2163,12 @@ repeat:
- 				group = 0;
- 
- 			/* This now checks without needing the buddy page */
--			if (!ext4_mb_good_group(ac, group, cr))
-+			ret = ext4_mb_good_group(ac, group, cr);
-+			if (ret <= 0) {
-+				if (!first_err)
-+					first_err = ret;
- 				continue;
-+			}
- 
- 			err = ext4_mb_load_buddy(sb, group, &e4b);
- 			if (err)
-@@ -2170,9 +2180,12 @@ repeat:
- 			 * We need to check again after locking the
- 			 * block group
- 			 */
--			if (!ext4_mb_good_group(ac, group, cr)) {
-+			ret = ext4_mb_good_group(ac, group, cr);
-+			if (ret <= 0) {
- 				ext4_unlock_group(sb, group);
- 				ext4_mb_unload_buddy(&e4b);
-+				if (!first_err)
-+					first_err = ret;
- 				continue;
- 			}
- 
-@@ -2219,6 +2232,8 @@ repeat:
- 		}
- 	}
- out:
-+	if (!err && ac->ac_status != AC_STATUS_FOUND && first_err)
-+		err = first_err;
- 	return err;
- }
- 
--- 
-1.8.3.1
+> 
+> I'm not sure if ext4 has the same case (can it be deployed on LUN?).
+> But for ocfs2, I don't think the error can be omitted.
+> Any ideas about this?
+> 
+> Thanks,
+> Joseph
+> 
+> 
+> _______________________________________________
+> Ocfs2-devel mailing list
+> Ocfs2-devel@oss.oracle.com
+> https://oss.oracle.com/mailman/listinfo/ocfs2-devel
+> 
 
