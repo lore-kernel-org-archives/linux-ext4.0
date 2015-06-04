@@ -1,155 +1,69 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: fix reservation release on invalidatepage for
- delalloc fs
-Date: Thu, 4 Jun 2015 11:00:50 +0200
-Message-ID: <20150604090050.GA8016@quack.suse.cz>
-References: <1433406301-29136-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH v2] mke2fs: Fix German translation of mke2fs
+Date: Thu,  4 Jun 2015 11:09:44 +0200
+Message-ID: <1433408984-8704-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:48472 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:49545 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752348AbbFDJAy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Jun 2015 05:00:54 -0400
-Content-Disposition: inline
-In-Reply-To: <1433406301-29136-1-git-send-email-lczerner@redhat.com>
+	id S1751878AbbFDJJx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Jun 2015 05:09:53 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 04-06-15 10:25:01, Lukas Czerner wrote:
-> On delalloc enabled file system on invalidatepage operation
-> in ext4_da_page_release_reservation() we want to clear the delayed
-> buffer and remove the extent covering the delayed buffer from the extent
-> status tree.
-> 
-> However currently there is a bug where on the systems with page size >
-> block size we will always remove extents from the start of the page
-> regardless where the actual delayed buffers are positioned in the page.
-> This leads to the errors like this:
-> 
-> EXT4-fs warning (device loop0): ext4_da_release_space:1225:
-> ext4_da_release_space: ino 13, to_free 1 with only 0 reserved data
-> blocks
-> 
-> This however can cause data loss on writeback time if the file system is
-> in ENOSPC condition because we're releasing reservation for someones
-> else delayed buffer.
-> 
-> Fix this by only removing extents that corresponds to the part of the
-> page we want to invalidate.
-> 
-> This problem is reproducible by the following fio receipt (however I was
-> only able to reproduce it with fio-2.1 or older.
-> 
-> [global]
-> bs=8k
-> iodepth=1024
-> iodepth_batch=60
-> randrepeat=1
-> size=1m
-> directory=/mnt/test
-> numjobs=20
-> [job1]
-> ioengine=sync
-> bs=1k
-> direct=1
-> rw=randread
-> filename=file1:file2
-> [job2]
-> ioengine=libaio
-> rw=randwrite
-> direct=1
-> filename=file1:file2
-> [job3]
-> bs=1k
-> ioengine=posixaio
-> rw=randwrite
-> direct=1
-> filename=file1:file2
-> [job5]
-> bs=1k
-> ioengine=sync
-> rw=randread
-> filename=file1:file2
-> [job7]
-> ioengine=libaio
-> rw=randwrite
-> filename=file1:file2
-> [job8]
-> ioengine=posixaio
-> rw=randwrite
-> filename=file1:file2
-> [job10]
-> ioengine=mmap
-> rw=randwrite
-> bs=1k
-> filename=file1:file2
-> [job11]
-> ioengine=mmap
-> rw=randwrite
-> direct=1
-> filename=file1:file2
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+When a device mke2fs should work on already contains an ext? filesystem=
+,
+mke2fs prints a warning. In German translation the warning doesn't end
+with a date string (which is terminated by a newline) and thus the
+output comes out mangled like:
 
-Looks good. You can add:
+mke2fs 1.42.12 (29-Aug-2014)
+/dev/disk/by-label/WD20_SL12 hat ein ext3-Dateisystem mit Namen
+=E2=80=9EWD20_SL12=E2=80=9C
+        zuletzt auf /WD20_SL12 auf Tue Jan 27 09:01:44 2015
+ eingeh=C3=A4ngtTrotzdem fortfahren? (j,n)
+^^^^^^^^^^^^^ here
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+=46ix the translation to end the printed string with a newline and avoi=
+d
+superfluous space at the beginning of the line.
 
-								Honza
+Reviewed-by: Bernd Schubert <bernd.schubert@fastmail.fm>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ po/de.po | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-> ---
->  fs/ext4/inode.c | 15 ++++++++++++---
->  1 file changed, 12 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 0554b0b..46f4a49 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1342,7 +1342,7 @@ static void ext4_da_page_release_reservation(struct page *page,
->  					     unsigned int offset,
->  					     unsigned int length)
->  {
-> -	int to_release = 0;
-> +	int to_release = 0, contiguous_blks = 0;
->  	struct buffer_head *head, *bh;
->  	unsigned int curr_off = 0;
->  	struct inode *inode = page->mapping->host;
-> @@ -1363,14 +1363,23 @@ static void ext4_da_page_release_reservation(struct page *page,
->  
->  		if ((offset <= curr_off) && (buffer_delay(bh))) {
->  			to_release++;
-> +			contiguous_blks++;
->  			clear_buffer_delay(bh);
-> +		} else if (contiguous_blks) {
-> +			lblk = page->index <<
-> +			       (PAGE_CACHE_SHIFT - inode->i_blkbits);
-> +			lblk += (curr_off >> inode->i_blkbits) -
-> +				contiguous_blks;
-> +			ext4_es_remove_extent(inode, lblk, contiguous_blks);
-> +			contiguous_blks = 0;
->  		}
->  		curr_off = next_off;
->  	} while ((bh = bh->b_this_page) != head);
->  
-> -	if (to_release) {
-> +	if (contiguous_blks) {
->  		lblk = page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
-> -		ext4_es_remove_extent(inode, lblk, to_release);
-> +		lblk += (curr_off >> inode->i_blkbits) - contiguous_blks;
-> +		ext4_es_remove_extent(inode, lblk, contiguous_blks);
->  	}
->  
->  	/* If we have released all the blocks belonging to a cluster, then we
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+  This seems to have fallen throught cracks back in January...
+
+diff --git a/po/de.po b/po/de.po
+index fd96bb17f712..40f3fb439564 100644
+--- a/po/de.po
++++ b/po/de.po
+@@ -5778,9 +5778,11 @@ msgid "Proceed anyway? (y,n) "
+ msgstr "Trotzdem fortfahren? (j,n) "
+=20
+ #: misc/util.c:132
++# The second %s refers to a date string ending with a newline. Make th=
+e
++# translated string end with a newline as well to maintain output comp=
+atibility.
+ #, c-format
+ msgid "\tlast mounted on %s on %s"
+-msgstr "\tzuletzt auf %s auf %s eingeh=C3=A4ngt"
++msgstr "\tzuletzt auf %s am %seingeh=C3=A4ngt.\n"
+=20
+ #: misc/util.c:135
+ #, c-format
+--=20
+2.1.4
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
