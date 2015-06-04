@@ -1,33 +1,53 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: noacl
-Date: Thu, 04 Jun 2015 11:05:21 -0500
-Message-ID: <55707741.7050700@redhat.com>
-References: <CANxXLRbJcK0=nOuWPVm2kaoWmByEuWn0bjNfpmdBFmY04J65+g@mail.gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Please submit specific discussion proposals for the File & Storage
+	miniconf at LPC2015
+Date: Thu, 4 Jun 2015 11:22:20 -0700
+Message-ID: <20150604182220.GA5167@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Tobias Koeck <tobias.koeck@gmail.com>, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40266 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751660AbbFDQFX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Jun 2015 12:05:23 -0400
-In-Reply-To: <CANxXLRbJcK0=nOuWPVm2kaoWmByEuWn0bjNfpmdBFmY04J65+g@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>, xfs@oss.sgi.com,
+	device-mapper development <dm-devel@redhat.com>,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
+To: Ric Wheeler <ricwheeler@gmail.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On 6/4/15 10:50 AM, Tobias Koeck wrote:
-> Hi there,
-> 
-> is there a reason you want to remove the noacl option?
+Hi folks,
 
-I'll answer your question with a question ;)
+Well, we made it!  As of yesterday, the File & Storage systems microconf has
+been approved for Plumbers!  If you're interested in attending, I highly
+recommend that you register[0] immediately, as the earlybird deadline is
+tomorrow, June 5th.
 
-Is there a reason you want to keep the noacl option?
+We have a solid list of discussion ideas on the wiki page[1], and three hours
+in which to conduct those discussions!  If you are interested in leading one of
+the three hourlong sessions, it is now time to submit[2] a specific proposal
+for consideration.  People selected to be session leaders can have their
+registrations changed to the speaker package even after registering.
 
-It (and nouser_xattr) were deprecated because extN were the only
-filesystems which allowed this sort of configuration as a mount
-option, and it seemed to serve no obvious purpose.
+Proposals needn't be strictly limited to the fourteen bullet points on the wiki
+page.  I will try to have the three key discussions lined up by the end of the
+month, so please send in proposals!
 
--Eric
+--Darrick
 
+[0] https://www.regonline.com/register/login.aspx?eventID=1623891&MethodId=0&EventsessionId=
+[1] http://wiki.linuxplumbersconf.org/2015:file_and_storage_systems
+[2] https://linuxplumbersconf.org/2015/ocw/events/LPC2015/proposals
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
