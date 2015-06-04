@@ -1,71 +1,29 @@
-From: Li Xi <pkuelelixi@gmail.com>
-Subject: Re: [v14 3/4] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR
- interface support
-Date: Thu, 4 Jun 2015 23:29:50 +0800
-Message-ID: <CAPTn0cBM5_8TaPzZRqcr_Rk7aHYiErmUdKR69XG55z179p1fZg@mail.gmail.com>
-References: <1429728997-21464-1-git-send-email-lixi@ddn.com>
-	<1429728997-21464-4-git-send-email-lixi@ddn.com>
-	<20150426232033.GQ15810@dastard>
-	<CAPTn0cAHOHP060cW8k0-HnyfKdVaUwAVOyLZU43AXtECK6_EaA@mail.gmail.com>
-	<20150428044331.GV21261@dastard>
-	<CAPTn0cBymWmQ5JKAPpFzqzivbEpjzY=s+M5O5bCsne7LbEeiLA@mail.gmail.com>
-	<20150429075924.GB31089@quack.suse.cz>
-	<CAPTn0cDZ3rHBxo2rQCWM=cZsjrL3QJUAkbkaj1ax3b72OUn0Rg@mail.gmail.com>
-	<20150429220717.GX15810@dastard>
+From: Tobias Koeck <tobias.koeck@gmail.com>
+Subject: noacl
+Date: Thu, 4 Jun 2015 17:50:40 +0200
+Message-ID: <CANxXLRbJcK0=nOuWPVm2kaoWmByEuWn0bjNfpmdBFmY04J65+g@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: Jan Kara <jack@suse.cz>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"hch@infradead.org" <hch@infradead.org>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
-	John Stultz <john.stultz@linaro.org>,
-	Thomas Gleixner <tglx@linutronix.de>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20150429220717.GX15810@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-yk0-f174.google.com ([209.85.160.174]:36820 "EHLO
+	mail-yk0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752081AbbFDPvV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Jun 2015 11:51:21 -0400
+Received: by yked142 with SMTP id d142so15392483yke.3
+        for <linux-ext4@vger.kernel.org>; Thu, 04 Jun 2015 08:51:20 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Hi there,
 
-I tried hard to run xfstests on original linux-4.0. In order to do so,
-I skipped some of the tests which cause kernel crash. However, about
-ten tests were skipped. But the crash seems endless. I was using the
-latest xfstests from git repository. I guess there is some mismatch
-between the versions of XFS and xfstests that I used? Should I use
-some special version of xfstests or XFS? Please advise.
+is there a reason you want to remove the noacl option?
 
-Regards,
-Li Xi
-
-On Thu, Apr 30, 2015 at 6:07 AM, Dave Chinner <david@fromorbit.com> wrote:
-> On Wed, Apr 29, 2015 at 07:45:40PM +0800, Li Xi wrote:
->> On Wed, Apr 29, 2015 at 3:59 PM, Jan Kara <jack@suse.cz> wrote:
->> >   Hi,
->> >
->> > On Wed 29-04-15 13:49:08, Li Xi wrote:
->> >> Thanks for the advices. I tried to run latest xfstests again. However,
->> >   Dave actually asked you to update 'xfsprogs' not xfstests. Not that
->> > updating xfstests would be a wrong thing to do but you still need to update
->> > xfsprogs for xfstests to be able to run some tests. But that's unrelated to
->> > the oops you reported below.
->> Understood. I updated both xfstests and xfsprogs to the latest version from git
->> repository. However, I didn't update xfsdump because of a build failure caused
->> by missing definitons of 'min' and 'max'
->
-> The /usr/include/xfs header files are stale. Upgrade your
-> xfslibs-dev package, if there is one for your distro.
->
-> And, please, report package build failures to the appropriate list,
-> next time, rather than ignoring them?
->
-> Cheers,
->
-> Dave.
-> --
-> Dave Chinner
-> david@fromorbit.com
+Greetings and thanks
+Tobias K=C3=B6ck
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
