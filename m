@@ -1,52 +1,137 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 89511] USB-storage mount error
-Date: Thu, 04 Jun 2015 07:47:54 +0000
-Message-ID: <bug-89511-13602-0tl4oDPvSm@https.bugzilla.kernel.org/>
-References: <bug-89511-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: fix reservation release on invalidatepage for delalloc fs
+Date: Thu,  4 Jun 2015 10:25:01 +0200
+Message-ID: <1433406301-29136-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:54686 "EHLO mail.kernel.org"
+Received: from mx1.redhat.com ([209.132.183.28]:57295 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751386AbbFDHr7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Jun 2015 03:47:59 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id AE350203FB
-	for <linux-ext4@vger.kernel.org>; Thu,  4 Jun 2015 07:47:58 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 7FBBA20254
-	for <linux-ext4@vger.kernel.org>; Thu,  4 Jun 2015 07:47:55 +0000 (UTC)
-In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
+	id S1752472AbbFDIZI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Jun 2015 04:25:08 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (Postfix) with ESMTPS id 5BCF6BF9EF
+	for <linux-ext4@vger.kernel.org>; Thu,  4 Jun 2015 08:25:08 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=89511
+On delalloc enabled file system on invalidatepage operation
+in ext4_da_page_release_reservation() we want to clear the delayed
+buffer and remove the extent covering the delayed buffer from the extent
+status tree.
 
-Markus Rathgeb <maggu2810@gmail.com> changed:
+However currently there is a bug where on the systems with page size >
+block size we will always remove extents from the start of the page
+regardless where the actual delayed buffers are positioned in the page.
+This leads to the errors like this:
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |maggu2810@gmail.com
+EXT4-fs warning (device loop0): ext4_da_release_space:1225:
+ext4_da_release_space: ino 13, to_free 1 with only 0 reserved data
+blocks
 
---- Comment #50 from Markus Rathgeb <maggu2810@gmail.com> ---
-I ran in the same trouble with an old USB case for 2.5'' IDE hard discs.
+This however can cause data loss on writeback time if the file system is
+in ENOSPC condition because we're releasing reservation for someones
+else delayed buffer.
 
-The drive cache_type is set to "write back" if it plugged in.
-The drive is working using if I set the cache type to "temporary write
-through".
+Fix this by only removing extents that corresponds to the part of the
+page we want to invalidate.
 
-So, I think this is the exact same problem discussed here.
+This problem is reproducible by the following fio receipt (however I was
+only able to reproduce it with fio-2.1 or older.
 
-At the moment I tested the workaround using v3.18.2 (gentoo-sources).
-Without the workaround the problem also exists using the Kernel v4.0.4 (used
-gentoo-sources, but I think that should not be related to the problem at all).
+[global]
+bs=8k
+iodepth=1024
+iodepth_batch=60
+randrepeat=1
+size=1m
+directory=/mnt/test
+numjobs=20
+[job1]
+ioengine=sync
+bs=1k
+direct=1
+rw=randread
+filename=file1:file2
+[job2]
+ioengine=libaio
+rw=randwrite
+direct=1
+filename=file1:file2
+[job3]
+bs=1k
+ioengine=posixaio
+rw=randwrite
+direct=1
+filename=file1:file2
+[job5]
+bs=1k
+ioengine=sync
+rw=randread
+filename=file1:file2
+[job7]
+ioengine=libaio
+rw=randwrite
+filename=file1:file2
+[job8]
+ioengine=posixaio
+rw=randwrite
+filename=file1:file2
+[job10]
+ioengine=mmap
+rw=randwrite
+bs=1k
+filename=file1:file2
+[job11]
+ioengine=mmap
+rw=randwrite
+direct=1
+filename=file1:file2
 
-Is there anything I / we can do, to solve this problem at all in the kernel
-space (e.g. if SYNCHRONIZE CACHE command is not working, fallback to write
-through)?
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/inode.c | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 0554b0b..46f4a49 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1342,7 +1342,7 @@ static void ext4_da_page_release_reservation(struct page *page,
+ 					     unsigned int offset,
+ 					     unsigned int length)
+ {
+-	int to_release = 0;
++	int to_release = 0, contiguous_blks = 0;
+ 	struct buffer_head *head, *bh;
+ 	unsigned int curr_off = 0;
+ 	struct inode *inode = page->mapping->host;
+@@ -1363,14 +1363,23 @@ static void ext4_da_page_release_reservation(struct page *page,
+ 
+ 		if ((offset <= curr_off) && (buffer_delay(bh))) {
+ 			to_release++;
++			contiguous_blks++;
+ 			clear_buffer_delay(bh);
++		} else if (contiguous_blks) {
++			lblk = page->index <<
++			       (PAGE_CACHE_SHIFT - inode->i_blkbits);
++			lblk += (curr_off >> inode->i_blkbits) -
++				contiguous_blks;
++			ext4_es_remove_extent(inode, lblk, contiguous_blks);
++			contiguous_blks = 0;
+ 		}
+ 		curr_off = next_off;
+ 	} while ((bh = bh->b_this_page) != head);
+ 
+-	if (to_release) {
++	if (contiguous_blks) {
+ 		lblk = page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
+-		ext4_es_remove_extent(inode, lblk, to_release);
++		lblk += (curr_off >> inode->i_blkbits) - contiguous_blks;
++		ext4_es_remove_extent(inode, lblk, contiguous_blks);
+ 	}
+ 
+ 	/* If we have released all the blocks belonging to a cluster, then we
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+1.8.3.1
+
