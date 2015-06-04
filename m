@@ -1,58 +1,155 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Rules for calling ->releasepage()
-Date: Thu, 4 Jun 2015 03:00:44 -0600
-Message-ID: <75C1F36D-E42F-4897-A1CB-232EA0938F83@dilger.ca>
-References: <20150604083953.GB5923@quack.suse.cz>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2098\))
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: fix reservation release on invalidatepage for
+ delalloc fs
+Date: Thu, 4 Jun 2015 11:00:50 +0200
+Message-ID: <20150604090050.GA8016@quack.suse.cz>
+References: <1433406301-29136-1-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	mfasheh@suse.de, mgorman@suse.de, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20150604083953.GB5923@quack.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:48472 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752348AbbFDJAy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Jun 2015 05:00:54 -0400
+Content-Disposition: inline
+In-Reply-To: <1433406301-29136-1-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Jun 4, 2015, at 2:39 AM, Jan Kara <jack@suse.cz> wrote:
+On Thu 04-06-15 10:25:01, Lukas Czerner wrote:
+> On delalloc enabled file system on invalidatepage operation
+> in ext4_da_page_release_reservation() we want to clear the delayed
+> buffer and remove the extent covering the delayed buffer from the extent
+> status tree.
 > 
->  Hello,
+> However currently there is a bug where on the systems with page size >
+> block size we will always remove extents from the start of the page
+> regardless where the actual delayed buffers are positioned in the page.
+> This leads to the errors like this:
 > 
-> we were recently debugging an issue where customer was hitting
-> warnings in xfs_vm_releasepage() which was complaining that the
-> page it was called for has delay-allocated buffers. After some
-> debugging we realized that indeed try_to_release_page() call from
-> shrink_active_list() can happen for a page in arbitrary state (that
-> call happens only if buffer_heads_over_limit is set so that is
-> the reason why we normally don't see that).
+> EXT4-fs warning (device loop0): ext4_da_release_space:1225:
+> ext4_da_release_space: ino 13, to_free 1 with only 0 reserved data
+> blocks
 > 
-> Hence comes my question: What are the rules for when releasepage()
-> can be called? And what is the expected outcome? We are certainly
-> guaranteed to hold page lock. try_to_release_page() also makes
-> sure the page isn't under writeback.  But what is ->releasepage()
-> supposed to do with a dirty page?
-> Generally IFAIU we aren't supposed to discard dirty data but I
-> wouldn't bet on all filesystems getting it right because the
-> common call paths make sure page is clean. I would almost say we
-> should enforce !PageDirty in try_to_release_page() if it was not
-> for that ext3 nastyness of cleaning buffers under a dirty page -
-> hum, but maybe the right answer for that is ripping ext3 out of
-> tree (which would also allow us to get rid of some code in the
-> blocklayer for bouncing journaled data buffers when stable writes
-> are required).
+> This however can cause data loss on writeback time if the file system is
+> in ENOSPC condition because we're releasing reservation for someones
+> else delayed buffer.
 > 
-> Thoughts?
+> Fix this by only removing extents that corresponds to the part of the
+> page we want to invalidate.
+> 
+> This problem is reproducible by the following fio receipt (however I was
+> only able to reproduce it with fio-2.1 or older.
+> 
+> [global]
+> bs=8k
+> iodepth=1024
+> iodepth_batch=60
+> randrepeat=1
+> size=1m
+> directory=/mnt/test
+> numjobs=20
+> [job1]
+> ioengine=sync
+> bs=1k
+> direct=1
+> rw=randread
+> filename=file1:file2
+> [job2]
+> ioengine=libaio
+> rw=randwrite
+> direct=1
+> filename=file1:file2
+> [job3]
+> bs=1k
+> ioengine=posixaio
+> rw=randwrite
+> direct=1
+> filename=file1:file2
+> [job5]
+> bs=1k
+> ioengine=sync
+> rw=randread
+> filename=file1:file2
+> [job7]
+> ioengine=libaio
+> rw=randwrite
+> filename=file1:file2
+> [job8]
+> ioengine=posixaio
+> rw=randwrite
+> filename=file1:file2
+> [job10]
+> ioengine=mmap
+> rw=randwrite
+> bs=1k
+> filename=file1:file2
+> [job11]
+> ioengine=mmap
+> rw=randwrite
+> direct=1
+> filename=file1:file2
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-I've been an advocate of removing ext3 from the tree for a few years
-already.  It doesn't do anything better than ext4, but it does a lot
-of things worse.  Distros have been using CONFIG_EXT4_USE_FOR_EXT23
-for several years now without problems AFAIK so this is safe even
-if users don't want to upgrade their on-disk features in case they
-want to be able to downgrade to an older kernel.
+Looks good. You can add:
 
-Cheers, Andreas
+Reviewed-by: Jan Kara <jack@suse.cz>
 
+								Honza
 
-
-
-
+> ---
+>  fs/ext4/inode.c | 15 ++++++++++++---
+>  1 file changed, 12 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 0554b0b..46f4a49 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1342,7 +1342,7 @@ static void ext4_da_page_release_reservation(struct page *page,
+>  					     unsigned int offset,
+>  					     unsigned int length)
+>  {
+> -	int to_release = 0;
+> +	int to_release = 0, contiguous_blks = 0;
+>  	struct buffer_head *head, *bh;
+>  	unsigned int curr_off = 0;
+>  	struct inode *inode = page->mapping->host;
+> @@ -1363,14 +1363,23 @@ static void ext4_da_page_release_reservation(struct page *page,
+>  
+>  		if ((offset <= curr_off) && (buffer_delay(bh))) {
+>  			to_release++;
+> +			contiguous_blks++;
+>  			clear_buffer_delay(bh);
+> +		} else if (contiguous_blks) {
+> +			lblk = page->index <<
+> +			       (PAGE_CACHE_SHIFT - inode->i_blkbits);
+> +			lblk += (curr_off >> inode->i_blkbits) -
+> +				contiguous_blks;
+> +			ext4_es_remove_extent(inode, lblk, contiguous_blks);
+> +			contiguous_blks = 0;
+>  		}
+>  		curr_off = next_off;
+>  	} while ((bh = bh->b_this_page) != head);
+>  
+> -	if (to_release) {
+> +	if (contiguous_blks) {
+>  		lblk = page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
+> -		ext4_es_remove_extent(inode, lblk, to_release);
+> +		lblk += (curr_off >> inode->i_blkbits) - contiguous_blks;
+> +		ext4_es_remove_extent(inode, lblk, contiguous_blks);
+>  	}
+>  
+>  	/* If we have released all the blocks belonging to a cluster, then we
+> -- 
+> 1.8.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
