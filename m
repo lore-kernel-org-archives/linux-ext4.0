@@ -1,99 +1,68 @@
-From: Stefan Hajnoczi <stefanha@gmail.com>
-Subject: Re: Re-2: Strange problems with lseek in qemu-img map
-Date: Fri, 5 Jun 2015 15:05:15 +0100
-Message-ID: <20150605140515.GB30104@stefanha-thinkpad.redhat.com>
-References: <00056481.556F34D3@pegasus.munzinger.de>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: generic question: user-only directory w/o root access
+Date: Fri, 5 Jun 2015 10:14:29 -0400
+Message-ID: <20150605141429.GA26550@thunk.org>
+References: <mkfbkb$fo1$1@ger.gmane.org>
+ <20150531185934.GE11642@thunk.org>
+ <mkg2u2$ckm$1@ger.gmane.org>
+ <20150604014452.GA5759@thunk.org>
+ <alpine.LFD.2.00.1506041323280.32156@localhost.localdomain>
+ <mkpjhm$7i5$1@ger.gmane.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="kORqDWCi7qDJ0mEj"
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	qemu-devel@nongnu.org
-To: David Weber <wb@munzinger.de>
-Return-path: <qemu-devel-bounces+gceq-qemu-devel=gmane.org@nongnu.org>
-Content-Disposition: inline
-In-Reply-To: <00056481.556F34D3@pegasus.munzinger.de>
-List-Unsubscribe: <https://lists.nongnu.org/mailman/options/qemu-devel>,
-	<mailto:qemu-devel-request@nongnu.org?subject=unsubscribe>
-List-Archive: <http://lists.nongnu.org/archive/html/qemu-devel>
-List-Post: <mailto:qemu-devel@nongnu.org>
-List-Help: <mailto:qemu-devel-request@nongnu.org?subject=help>
-List-Subscribe: <https://lists.nongnu.org/mailman/listinfo/qemu-devel>,
-	<mailto:qemu-devel-request@nongnu.org?subject=subscribe>
-Errors-To: qemu-devel-bounces+gceq-qemu-devel=gmane.org@nongnu.org
-Sender: qemu-devel-bounces+gceq-qemu-devel=gmane.org@nongnu.org
-List-Id: linux-ext4.vger.kernel.org
-
-
---kORqDWCi7qDJ0mEj
 Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "U.Mutlu" <for-gmane@mutluit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:49527 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1422697AbbFEOOf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 5 Jun 2015 10:14:35 -0400
 Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+In-Reply-To: <mkpjhm$7i5$1@ger.gmane.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 03, 2015 at 03:09:40PM +0000, David Weber wrote:
-> > > I then startet a fedora 22 live system and I saw the same problem. It=
-=20
-> > > happens=20
-> > > on both the ramdisk and a ext4 filesystem.
-> >=20
-> > "it" =3D=3D qemu-img map hangs or takes a very long time?
-> I never waited for it to complete but I guess it just takes very long.
->=20
-> >=20
-> > Can you post a shell script that reproduces this with a ramdisk?  That
-> > seems like the easiest way to get people debugging it.
->=20
-> You can use the following commands.
->=20
-> mkfs.ext4 /dev/ram0
-> mkdir -p /mnt/tmp
-> mount /dev/ram0 /mnt/tmp
-> cd /mnt/tmp
-> qemu-img create test 500G
-> time qemu-img map test
->=20
-> This takes foreover on all my systems.
+On Thu, Jun 04, 2015 at 03:24:06PM +0200, U.Mutlu wrote:
+> I use a truecrypt container with ext2 on it and now use the mentioned
+> private namespace-mount, because only that single application (running
+> under its own user account) shall have access to the mountpoint,
+> root by default has no access to it, and yes as you both pointed out
+> root can overcome this, but then he would need to restart the machine.
+> But then he cannot mount the encrypted volume :-) [not using any automount],
+> so, imo that solution looks to me rock solid, and that was what I was
+> looking for when I started the thread here.
 
-I experience the same thing on Linux 4.1.0-rc5 with ext4 (4 KB file
-system block size, 512B device sector size).
+I wouldn't count out a sufficiently clever root user.  At the very
+minimum, root could replace the kernel and wait for the system to
+reboot under normal circumstances.  The root user could load a kernel
+module (or replace an existing kernel module) that gives him access to
+*any* namespace, or extract *any* key, or read from *any* userspace
+process.
 
-The lseek() calls take *seconds* to complete on a completely empty
-(sparse) 500G file.
+If there are any shared files used by both the container and rest of
+the system (i.e., if the container only contains the data files and
+uses /usr/bin and /bin and /lib from the rest of the system), then
+root could replace one of these executables or shared libaries which
+would then used by the container.  If you are using kvm in the
+"secure" container, root could insert mailware into the kvm binary.
 
-Here is the perf-top(1) output:
+If you are using a secure boot system (i.e., using UEFI bios with your
+own firmware public/private key pair), and then use a kernel signed by
+your BIOS key, and then use signed modules, and then use SELinux to
+try to add more fences to prevent unauthorized changes to binaries,
+you can make things more secure.
 
-  34.08%  [kernel]                         [k] _raw_read_lock
-  21.11%  [kernel]                         [k] ext4_es_lookup_extent
-  20.67%  [kernel]                         [k] ext4_es_find_delayed_extent_=
-range
-   8.68%  [kernel]                         [k] ext4_map_blocks
-   4.99%  [kernel]                         [k] ext4_llseek
-   1.90%  [kernel]                         [k] rb_next
-   0.14%  [kernel]                         [k] __fget
+But your original statement talked about trying to protect against all
+root users, and that's what was so concerning.  Listing all of the
+authorized users may very well be a very large list.  Consider that on
+a Debian system, this includes all of the people authorized to upload
+packages to the debian-security repository (or the equivalent for
+Fedora, SuSE, etc.)
 
-Yikes!
+This is why a lot of people who hear words like "rock solid" will
+start assuming that the speaker either doesn't know what he or she is
+talking about, and/or is a snake oil salesperson.  :-)
 
-The syscall causing this is just:
+Regards,
 
-lseek(7, 0, SEEK_DATA)
-
-Lukas: I've CCed you because you have helped with ext4 issues in the
-past.  Not sure if you have time or if this is your area.
-
-Stefan
-
---kORqDWCi7qDJ0mEj
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQEcBAEBAgAGBQJVcaybAAoJEJykq7OBq3PIQOYIAMnb0Yf4eX/OLXMusRh3N84N
-++ofTdjNQw4Li8GnnWMF7+ugkIaCChkL43UGPZGuTqiI6yUbHVxKZB9l1SUzv2ef
-WZ5W6azIkjvtYtvDcu41YJRPxegSzZw8eQ+KUe739u9XAMfhq714k3yS3pfe1Snn
-bvmVEdut7pyUbkQ4rB8YpNN79Bokccn+O4/4OjVm4wt7I8hIohkAbwraH75YMEW+
-gdSoWSvrQL2K/H+VjnIe1D5WRnp7hl91TBHZgsXPPFvS+ft6rPySCWsPATquImWE
-Gfw7ZL0KRpVQxM2dhg20/2ndkjx/8EhvbcqNq6h5qu4kaGMIVYEQJqenqfj0HYg=
-=DCN1
------END PGP SIGNATURE-----
-
---kORqDWCi7qDJ0mEj--
+						- Ted
