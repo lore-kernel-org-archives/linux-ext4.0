@@ -1,68 +1,50 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: generic question: user-only directory w/o root access
-Date: Fri, 5 Jun 2015 10:14:29 -0400
-Message-ID: <20150605141429.GA26550@thunk.org>
-References: <mkfbkb$fo1$1@ger.gmane.org>
- <20150531185934.GE11642@thunk.org>
- <mkg2u2$ckm$1@ger.gmane.org>
- <20150604014452.GA5759@thunk.org>
- <alpine.LFD.2.00.1506041323280.32156@localhost.localdomain>
- <mkpjhm$7i5$1@ger.gmane.org>
+Subject: Re: Which newer kernel is OK with ext4?
+Date: Fri, 5 Jun 2015 10:30:21 -0400
+Message-ID: <20150605143021.GB26550@thunk.org>
+References: <mknlqf$m5d$1@ger.gmane.org>
+ <20150604020852.GB5759@thunk.org>
+ <mkpljk$al6$1@ger.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: "U.Mutlu" <for-gmane@mutluit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49527 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:49628 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1422697AbbFEOOf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Jun 2015 10:14:35 -0400
+	id S932123AbbFEOaW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 5 Jun 2015 10:30:22 -0400
 Content-Disposition: inline
-In-Reply-To: <mkpjhm$7i5$1@ger.gmane.org>
+In-Reply-To: <mkpljk$al6$1@ger.gmane.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 04, 2015 at 03:24:06PM +0200, U.Mutlu wrote:
-> I use a truecrypt container with ext2 on it and now use the mentioned
-> private namespace-mount, because only that single application (running
-> under its own user account) shall have access to the mountpoint,
-> root by default has no access to it, and yes as you both pointed out
-> root can overcome this, but then he would need to restart the machine.
-> But then he cannot mount the encrypted volume :-) [not using any automount],
-> so, imo that solution looks to me rock solid, and that was what I was
-> looking for when I started the thread here.
+On Thu, Jun 04, 2015 at 03:59:16PM +0200, U.Mutlu wrote:
+> I have many times compiled a kernel and used it successfully,
+> but when I dist-upgraded from Debian 7 to Debian 8 it installed
+> it's own stock kernel maintained by Debian. No problem to switch
+> to a newer kernel from kernel.org, but for me it was unclear
+> if and how the ongoing ext4-developments will have an impact on
+> existing ext4-partitions. Now I think everything is clear, I'll
+> take a newer kernel from kernel.org.
 
-I wouldn't count out a sufficiently clever root user.  At the very
-minimum, root could replace the kernel and wait for the system to
-reboot under normal circumstances.  The root user could load a kernel
-module (or replace an existing kernel module) that gives him access to
-*any* namespace, or extract *any* key, or read from *any* userspace
-process.
+Many Linux kernel developers use at least one or more ext4 file
+systems, and they would be very cranky if things became unstable.  As
+a result, we are regularly running regression tests to make sure we
+don't break ext4 users.
 
-If there are any shared files used by both the container and rest of
-the system (i.e., if the container only contains the data files and
-uses /usr/bin and /bin and /lib from the rest of the system), then
-root could replace one of these executables or shared libaries which
-would then used by the container.  If you are using kvm in the
-"secure" container, root could insert mailware into the kvm binary.
-
-If you are using a secure boot system (i.e., using UEFI bios with your
-own firmware public/private key pair), and then use a kernel signed by
-your BIOS key, and then use signed modules, and then use SELinux to
-try to add more fences to prevent unauthorized changes to binaries,
-you can make things more secure.
-
-But your original statement talked about trying to protect against all
-root users, and that's what was so concerning.  Listing all of the
-authorized users may very well be a very large list.  Consider that on
-a Debian system, this includes all of the people authorized to upload
-packages to the debian-security repository (or the equivalent for
-Fedora, SuSE, etc.)
-
-This is why a lot of people who hear words like "rock solid" will
-start assuming that the speaker either doesn't know what he or she is
-talking about, and/or is a snake oil salesperson.  :-)
+This principle holds true for all open source projects, at those with
+responsible developers.  Emacs is constantly adding features --- would
+that lead you to be concerned after upgrading to Debian 8 that you
+shouldn't use a new release of emacs because it might corrupt your
+source files in the course of using it in normal operations, and send
+e-mail to the emacs developer's list asking if it's safe to use "the
+new emacs"?
 
 Regards,
 
 						- Ted
+
+P.S.  There was a typo in my previous message.  To be clear, 4.0 is
+**NOT** is not a long-term supported kernel.  (My previous e-mail
+omitted the "not".)
