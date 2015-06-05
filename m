@@ -1,91 +1,99 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [v14 3/4] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR interface support
-Date: Fri, 05 Jun 2015 10:45:34 +0300
-Message-ID: <87bngulhsx.fsf@openvz.org>
-References: <1429728997-21464-1-git-send-email-lixi@ddn.com> <1429728997-21464-4-git-send-email-lixi@ddn.com> <20150426232033.GQ15810@dastard> <CAPTn0cAHOHP060cW8k0-HnyfKdVaUwAVOyLZU43AXtECK6_EaA@mail.gmail.com> <20150428044331.GV21261@dastard> <CAPTn0cBymWmQ5JKAPpFzqzivbEpjzY=s+M5O5bCsne7LbEeiLA@mail.gmail.com> <20150429075924.GB31089@quack.suse.cz> <CAPTn0cDZ3rHBxo2rQCWM=cZsjrL3QJUAkbkaj1ax3b72OUn0Rg@mail.gmail.com> <20150429220717.GX15810@dastard> <CAPTn0cBM5_8TaPzZRqcr_Rk7aHYiErmUdKR69XG55z179p1fZg@mail.gmail.com>
+From: Stefan Hajnoczi <stefanha@gmail.com>
+Subject: Re: Re-2: Strange problems with lseek in qemu-img map
+Date: Fri, 5 Jun 2015 15:05:15 +0100
+Message-ID: <20150605140515.GB30104@stefanha-thinkpad.redhat.com>
+References: <00056481.556F34D3@pegasus.munzinger.de>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
-Cc: Jan Kara <jack@suse.cz>,
-	"linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>,
-	"viro\@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"hch\@infradead.org" <hch@infradead.org>,
-	John Stultz <john.stultz@linaro.org>,
-	Thomas Gleixner <tglx@linutronix.de>
-To: Li Xi <pkuelelixi@gmail.com>, Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <CAPTn0cBM5_8TaPzZRqcr_Rk7aHYiErmUdKR69XG55z179p1fZg@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="kORqDWCi7qDJ0mEj"
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	qemu-devel@nongnu.org
+To: David Weber <wb@munzinger.de>
+Return-path: <qemu-devel-bounces+gceq-qemu-devel=gmane.org@nongnu.org>
+Content-Disposition: inline
+In-Reply-To: <00056481.556F34D3@pegasus.munzinger.de>
+List-Unsubscribe: <https://lists.nongnu.org/mailman/options/qemu-devel>,
+	<mailto:qemu-devel-request@nongnu.org?subject=unsubscribe>
+List-Archive: <http://lists.nongnu.org/archive/html/qemu-devel>
+List-Post: <mailto:qemu-devel@nongnu.org>
+List-Help: <mailto:qemu-devel-request@nongnu.org?subject=help>
+List-Subscribe: <https://lists.nongnu.org/mailman/listinfo/qemu-devel>,
+	<mailto:qemu-devel-request@nongnu.org?subject=subscribe>
+Errors-To: qemu-devel-bounces+gceq-qemu-devel=gmane.org@nongnu.org
+Sender: qemu-devel-bounces+gceq-qemu-devel=gmane.org@nongnu.org
 List-Id: linux-ext4.vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
 
-Li Xi <pkuelelixi@gmail.com> writes:
+--kORqDWCi7qDJ0mEj
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-> Hi,
->
-> I tried hard to run xfstests on original linux-4.0. In order to do so,
-> I skipped some of the tests which cause kernel crash. However, about
-> ten tests were skipped. But the crash seems endless. I was using the
-> latest xfstests from git repository. I guess there is some mismatch
-> between the versions of XFS and xfstests that I used? Should I use
-> some special version of xfstests or XFS? Please advise.
-IMHO, the best version of the test is the one which cause a kernel crash.
-So your have got the best one. But as far as Jan already mentioned this
-is likely core mm/timer issue, not XFS specific one.
-Google points me that code affected was changed here https://lkml.org/lkml/2015/3/26/14
-Likely that you can trigger the crush w/o your patches. Is it correct?
-You can try to fix original bug, or simply migrate patches to some
-recent stable kernel version.
+On Wed, Jun 03, 2015 at 03:09:40PM +0000, David Weber wrote:
+> > > I then startet a fedora 22 live system and I saw the same problem. It=
+=20
+> > > happens=20
+> > > on both the ramdisk and a ext4 filesystem.
+> >=20
+> > "it" =3D=3D qemu-img map hangs or takes a very long time?
+> I never waited for it to complete but I guess it just takes very long.
+>=20
+> >=20
+> > Can you post a shell script that reproduces this with a ramdisk?  That
+> > seems like the easiest way to get people debugging it.
+>=20
+> You can use the following commands.
+>=20
+> mkfs.ext4 /dev/ram0
+> mkdir -p /mnt/tmp
+> mount /dev/ram0 /mnt/tmp
+> cd /mnt/tmp
+> qemu-img create test 500G
+> time qemu-img map test
+>=20
+> This takes foreover on all my systems.
 
->
-> Regards,
-> Li Xi
->
-> On Thu, Apr 30, 2015 at 6:07 AM, Dave Chinner <david@fromorbit.com> wrote:
->> On Wed, Apr 29, 2015 at 07:45:40PM +0800, Li Xi wrote:
->>> On Wed, Apr 29, 2015 at 3:59 PM, Jan Kara <jack@suse.cz> wrote:
->>> >   Hi,
->>> >
->>> > On Wed 29-04-15 13:49:08, Li Xi wrote:
->>> >> Thanks for the advices. I tried to run latest xfstests again. However,
->>> >   Dave actually asked you to update 'xfsprogs' not xfstests. Not that
->>> > updating xfstests would be a wrong thing to do but you still need to update
->>> > xfsprogs for xfstests to be able to run some tests. But that's unrelated to
->>> > the oops you reported below.
->>> Understood. I updated both xfstests and xfsprogs to the latest version from git
->>> repository. However, I didn't update xfsdump because of a build failure caused
->>> by missing definitons of 'min' and 'max'
->>
->> The /usr/include/xfs header files are stale. Upgrade your
->> xfslibs-dev package, if there is one for your distro.
->>
->> And, please, report package build failures to the appropriate list,
->> next time, rather than ignoring them?
->>
->> Cheers,
->>
->> Dave.
->> --
->> Dave Chinner
->> david@fromorbit.com
+I experience the same thing on Linux 4.1.0-rc5 with ext4 (4 KB file
+system block size, 512B device sector size).
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+The lseek() calls take *seconds* to complete on a completely empty
+(sparse) 500G file.
+
+Here is the perf-top(1) output:
+
+  34.08%  [kernel]                         [k] _raw_read_lock
+  21.11%  [kernel]                         [k] ext4_es_lookup_extent
+  20.67%  [kernel]                         [k] ext4_es_find_delayed_extent_=
+range
+   8.68%  [kernel]                         [k] ext4_map_blocks
+   4.99%  [kernel]                         [k] ext4_llseek
+   1.90%  [kernel]                         [k] rb_next
+   0.14%  [kernel]                         [k] __fget
+
+Yikes!
+
+The syscall causing this is just:
+
+lseek(7, 0, SEEK_DATA)
+
+Lukas: I've CCed you because you have helped with ext4 issues in the
+past.  Not sure if you have time or if this is your area.
+
+Stefan
+
+--kORqDWCi7qDJ0mEj
+Content-Type: application/pgp-signature
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1
 
-iQEcBAEBCgAGBQJVcVOeAAoJELhyPTmIL6kBo/sH/2kKCuaq/u4C9y2XR62l9wXu
-5Qv/ACsKgo46Bw8n/0t8sQ6/R/m4rJcdDcCAvorNCltIvr2v3MqcyZNzTczhgggT
-zhPhw/VE+6Avks81DeZ2dSp9uzwoiaVRIKbgj7HeFbQmulrm+SJLgMT2m4iJ1y0o
-hTeQJQnta0IhJclde2H0VSBqHwQAbhX0ToZiX+59BaMj2lsDxgmg88tjA0blkYRQ
-WsifELjFFUQrHoDd5UY5k8i8nRqRSvA+YEYGflRvLWxSjNX0HtB5YbXLrlOtbqrm
-A3Sx9d/2OPwbo246oFFddj9Yh7FRPassUxH5nYbnqEgCrFamzjqdUy03dm8FSxE=
-=OzBi
+iQEcBAEBAgAGBQJVcaybAAoJEJykq7OBq3PIQOYIAMnb0Yf4eX/OLXMusRh3N84N
+++ofTdjNQw4Li8GnnWMF7+ugkIaCChkL43UGPZGuTqiI6yUbHVxKZB9l1SUzv2ef
+WZ5W6azIkjvtYtvDcu41YJRPxegSzZw8eQ+KUe739u9XAMfhq714k3yS3pfe1Snn
+bvmVEdut7pyUbkQ4rB8YpNN79Bokccn+O4/4OjVm4wt7I8hIohkAbwraH75YMEW+
+gdSoWSvrQL2K/H+VjnIe1D5WRnp7hl91TBHZgsXPPFvS+ft6rPySCWsPATquImWE
+Gfw7ZL0KRpVQxM2dhg20/2ndkjx/8EhvbcqNq6h5qu4kaGMIVYEQJqenqfj0HYg=
+=DCN1
 -----END PGP SIGNATURE-----
---=-=-=--
+
+--kORqDWCi7qDJ0mEj--
