@@ -1,68 +1,106 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: generic question: user-only directory w/o root access
-Date: Fri, 5 Jun 2015 20:33:23 -0400
-Message-ID: <20150606003323.GC26550@thunk.org>
-References: <mkfbkb$fo1$1@ger.gmane.org>
- <20150531185934.GE11642@thunk.org>
- <mkg2u2$ckm$1@ger.gmane.org>
- <20150604014452.GA5759@thunk.org>
- <alpine.LFD.2.00.1506041323280.32156@localhost.localdomain>
- <mkpjhm$7i5$1@ger.gmane.org>
- <20150605141429.GA26550@thunk.org>
- <mkst24$nbb$1@ger.gmane.org>
+From: Wen Congyang <ghostwcy@gmail.com>
+Subject: Re: Re-2: Strange problems with lseek in qemu-img map
+Date: Sat, 06 Jun 2015 11:53:50 +0800
+Message-ID: <55726ECE.70101@gmail.com>
+References: <00056481.556F34D3@pegasus.munzinger.de>	<20150605140515.GB30104@stefanha-thinkpad.redhat.com>
+	<alpine.LFD.2.00.1506051711390.13926@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "U.Mutlu" <for-gmane@mutluit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50538 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751411AbbFFAd3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Jun 2015 20:33:29 -0400
-Content-Disposition: inline
-In-Reply-To: <mkst24$nbb$1@ger.gmane.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 8bit
+Cc: David Weber <wb@munzinger.de>, linux-ext4@vger.kernel.org,
+	qemu-devel@nongnu.org, wenqing.lz@taobao.com
+To: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>,
+	Stefan Hajnoczi <stefanha@gmail.com>
+Return-path: <qemu-devel-bounces+gceq-qemu-devel=gmane.org@nongnu.org>
+In-Reply-To: <alpine.LFD.2.00.1506051711390.13926@localhost.localdomain>
+List-Unsubscribe: <https://lists.nongnu.org/mailman/options/qemu-devel>,
+	<mailto:qemu-devel-request@nongnu.org?subject=unsubscribe>
+List-Archive: <http://lists.nongnu.org/archive/html/qemu-devel>
+List-Post: <mailto:qemu-devel@nongnu.org>
+List-Help: <mailto:qemu-devel-request@nongnu.org?subject=help>
+List-Subscribe: <https://lists.nongnu.org/mailman/listinfo/qemu-devel>,
+	<mailto:qemu-devel-request@nongnu.org?subject=subscribe>
+Errors-To: qemu-devel-bounces+gceq-qemu-devel=gmane.org@nongnu.org
+Sender: qemu-devel-bounces+gceq-qemu-devel=gmane.org@nongnu.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 05, 2015 at 09:24:51PM +0200, U.Mutlu wrote:
-> true, the dangers and challenges are high. The solution I finally
-> found took me unfortunately a long time to find it, and I know of
-> no other open-source solution to achieve what I described,
-> because of the unfortunate 'root is king and user is nobody' mentality
-> and reality we have.
-> But as described, in some security environments the user needs
-> a truly private space on the system where nobody else has access to.
+At 2015/6/5 23:14, Lukáš Czerner Wrote:
+> On Fri, 5 Jun 2015, Stefan Hajnoczi wrote:
+>
+>> Date: Fri, 5 Jun 2015 15:05:15 +0100
+>> From: Stefan Hajnoczi <stefanha@gmail.com>
+>> To: David Weber <wb@munzinger.de>
+>> Cc: qemu-devel@nongnu.org, linux-ext4@vger.kernel.org,
+>>      Lukas Czerner <lczerner@redhat.com>, wency@cn.fujitsu.com
+>> Subject: Re: [Qemu-devel] Re-2:  Strange problems with lseek in qemu-img map
+>>
+>> On Wed, Jun 03, 2015 at 03:09:40PM +0000, David Weber wrote:
+>>>>> I then startet a fedora 22 live system and I saw the same problem. It
+>>>>> happens
+>>>>> on both the ramdisk and a ext4 filesystem.
+>>>>
+>>>> "it" == qemu-img map hangs or takes a very long time?
+>>> I never waited for it to complete but I guess it just takes very long.
+>>>
+>>>>
+>>>> Can you post a shell script that reproduces this with a ramdisk?  That
+>>>> seems like the easiest way to get people debugging it.
+>>>
+>>> You can use the following commands.
+>>>
+>>> mkfs.ext4 /dev/ram0
+>>> mkdir -p /mnt/tmp
+>>> mount /dev/ram0 /mnt/tmp
+>>> cd /mnt/tmp
+>>> qemu-img create test 500G
+>>> time qemu-img map test
+>>>
+>>> This takes foreover on all my systems.
+>>
+>> I experience the same thing on Linux 4.1.0-rc5 with ext4 (4 KB file
+>> system block size, 512B device sector size).
+>>
+>> The lseek() calls take *seconds* to complete on a completely empty
+>> (sparse) 500G file.
+>>
+>> Here is the perf-top(1) output:
+>>
+>>    34.08%  [kernel]                         [k] _raw_read_lock
+>>    21.11%  [kernel]                         [k] ext4_es_lookup_extent
+>>    20.67%  [kernel]                         [k] ext4_es_find_delayed_extent_range
+>>     8.68%  [kernel]                         [k] ext4_map_blocks
+>>     4.99%  [kernel]                         [k] ext4_llseek
+>>     1.90%  [kernel]                         [k] rb_next
+>>     0.14%  [kernel]                         [k] __fget
+>>
+>> Yikes!
+>>
+>> The syscall causing this is just:
+>>
+>> lseek(7, 0, SEEK_DATA)
+>>
+>> Lukas: I've CCed you because you have helped with ext4 issues in the
+>> past.  Not sure if you have time or if this is your area.
+>>
+>> Stefan
+>
+> Hi,
+>
+> this is definitely an issue with extent status tree and I have not seen
+> it before. I'll look at it first thing next week, but meanwhile I'll
+> add Zheng Liu who is the author of the extent status tree so he
+> might be able to help you.
 
-"where nobody else has access" is impossible on a shared system.
-Period.  There reason why there is no other open-source solution is
-because there *is* no open source solution, period.  You can't have an
-open source solution that perfromances something which is by
-definition impossible.
+It is an known bug, and Dmitry Monakhov tried to fix it:
+http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=14516bb7bb6ffbd49f35389f9ece3b2045ba5815
 
-If someone needs truly private space, the only thing they can do is to
-use their own hardware, purcahsed at a computer store, and then to use
-a system like Tails[1] booted from a read-only USB stick.
+But this patch introduced another problem, and have been reverted.
 
-[1] https://tails.boum.org/
+Thanks
+Wen Congyang
 
-... and even then they have to trust the people who implemented the
-Tails system, and the people who implemented the firmware on the
-computer system, and if the system was shipped to you, you have to
-trust that the NSA hasn't intercepted the hardware and compromised the
-hardware.
-
-[2] http://arstechnica.com/tech-policy/2014/05/photos-of-an-nsa-upgrade-factory-show-cisco-router-getting-implant/
-
-> I think the filesystem could indeed implement such a "user-only" directory,
-> because the FUSE-API wrapper showed me that it is indeed possible
-> to implement that idea. I would suggest to add this feature to ext4,
-> and that new feature could be a real game-changer (yes, I know another
-> bold statement) in IT security.
-
-Sorry, I'm not willing to advertise that a file system has a feature
-which is a pure snake oil --- someone claiming that this can be done
-is making a fradulently untrue statement.
-
-Regards,
-
-						- Ted
+>
+> Regards,
+> -Lukas
+>
+>
