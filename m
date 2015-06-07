@@ -1,48 +1,56 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: only call ext4_truncate when size <= isize
-Date: Sat, 6 Jun 2015 16:20:11 -0400
-Message-ID: <20150606202011.GC15306@thunk.org>
-References: <1432049337-3520-1-git-send-email-jbacik@fb.com>
- <alpine.LFD.2.00.1506021008030.4950@localhost.localdomain>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 89511] USB-storage mount error
+Date: Sun, 07 Jun 2015 10:22:22 +0000
+Message-ID: <bug-89511-13602-IxFzIxiNFV@https.bugzilla.kernel.org/>
+References: <bug-89511-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Josef Bacik <jbacik@fb.com>, linux-ext4@vger.kernel.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51160 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.29.136]:53892 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752875AbbFFU0v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 6 Jun 2015 16:26:51 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1506021008030.4950@localhost.localdomain>
+	id S1751396AbbFGKWd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 7 Jun 2015 06:22:33 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id F1E36205E6
+	for <linux-ext4@vger.kernel.org>; Sun,  7 Jun 2015 10:22:30 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 369E8205C2
+	for <linux-ext4@vger.kernel.org>; Sun,  7 Jun 2015 10:22:29 +0000 (UTC)
+In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 02, 2015 at 10:08:18AM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> On Tue, 19 May 2015, Josef Bacik wrote:
->=20
-> > Date: Tue, 19 May 2015 11:28:57 -0400
-> > From: Josef Bacik <jbacik@fb.com>
-> > To: tytso@mit.edu, linux-ext4@vger.kernel.org
-> > Subject: [PATCH] ext4: only call ext4_truncate when size <=3D isize
-> >=20
-> > At LSF we decided that if we truncate up from isize we shouldn't tr=
-im fallocated
-> > blocks that were fallocated with KEEP_SIZE and are past the new i_s=
-ize.  This
-> > patch fixes ext4 to do this.  Thanks,
->=20
-> Looks good, thanks!
->=20
-> Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=89511
 
-Applied, thanks.
+--- Comment #52 from Markus Rathgeb <maggu2810@gmail.com> ---
+> This is up to the SCSI developers.
 
-					- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+So, could we CC someone?
+
+So, if we keep the current situation everyone who ones such a buggy hardware
+have the following options (IMHO):
+1. create a udev rule, that sets "write through" for this hardware
+2. using non-journal filesystems only
+3. do not use this hardware anymore
+
+But I think all that options are not good ones.
+
+The udev rule will work on my machines then, but a USB drive is designed to be
+mobile. And a mobile storage will be used on other machines, too, without
+change some system stuff on that (missing permissions, ...).
+
+I could understand if someone states that the hardware is buggy and there is
+nothing to do. But I think this does not fit to the Linux Kernel. The kernel is
+filled with a lot workarounds for hardware / implementations that is not
+correct.
+
+Could someone contact a SCSI developer, perhaps that stuff could comment their
+ideas (e.g. for "if SYNCHRONIZE CACHE command is not working, fallback to write
+through" and "what should happen when a drive really does have a write cache
+but doesn't recognize the SYNCHRONIZE CACHE command").
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
