@@ -1,43 +1,39 @@
-From: Michal Hocko <mhocko@suse.cz>
-Subject: Re: [PATCH -resend] jbd2: revert must-not-fail allocation loops back
- to GFP_NOFAIL
-Date: Mon, 8 Jun 2015 17:37:40 +0200
-Message-ID: <20150608153740.GC1390@dhcp22.suse.cz>
-References: <1433770124-19614-1-git-send-email-mhocko@suse.cz>
- <20150608145432.GB19168@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v3 2/3] ext4: Try to initialize all groups we can in case
+ of failure on ppc64
+Date: Mon, 8 Jun 2015 11:39:21 -0400
+Message-ID: <20150608153921.GE19168@thunk.org>
+References: <1433266205-24513-1-git-send-email-lczerner@redhat.com>
+ <1433266205-24513-2-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, David Rientjes <rientjes@google.com>,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	LKML <linux-kernel@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:53095 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751082AbbFHPjZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Jun 2015 11:39:25 -0400
 Content-Disposition: inline
-In-Reply-To: <20150608145432.GB19168@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1433266205-24513-2-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 08-06-15 10:54:32, Theodore Ts'o wrote:
-> On Mon, Jun 08, 2015 at 03:28:44PM +0200, Michal Hocko wrote:
-> > This basically reverts 47def82672b3 (jbd2: Remove __GFP_NOFAIL from jbd2
-> > layer). The deprecation of __GFP_NOFAIL was a bad choice because it led
-> > to open coding the endless loop around the allocator rather than
-> > removing the dependency on the non failing allocation. So the
-> > deprecation was a clear failure and the reality tells us that
-> > __GFP_NOFAIL is not even close to go away.
-> > 
-> > It is still true that __GFP_NOFAIL allocations are generally discouraged
-> > and new uses should be evaluated and an alternative (pre-allocations or
-> > reservations) should be considered but it doesn't make any sense to lie
-> > the allocator about the requirements. Allocator can take steps to help
-> > making a progress if it knows the requirements.
-> > 
-> > Signed-off-by: Michal Hocko <mhocko@suse.cz>
-> > Acked-by: David Rientjes <rientjes@google.com>
+On Tue, Jun 02, 2015 at 07:30:04PM +0200, Lukas Czerner wrote:
+> Currently on the machines with page size > block size when initializing
+> block group buddy cache we initialize it for all the block group bitmaps
+> in the page. However in the case of read error, checksum error, or if
+> a single bitmap is in any way corrupted we would fail to initialize all
+> of the bitmaps. This is problematic because we will not have access to
+> the other allocation groups even though those might be perfectly fine
+> and usable.
 > 
-> Applied, thanks.
+> Fix this by reading all the bitmaps instead of error out on the first
+> problem and simply skip the bitmaps which were either not read properly,
+> or are not valid.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-Thanks!
--- 
-Michal Hocko
-SUSE Labs
+Thanks, applied.
+
+					- Ted
