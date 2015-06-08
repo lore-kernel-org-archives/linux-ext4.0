@@ -1,80 +1,211 @@
-From: "U.Mutlu" <for-gmane@mutluit.com>
-Subject: Re: generic question: user-only directory w/o root access
-Date: Mon, 8 Jun 2015 02:12:38 +0200
-Message-ID: <ml2mlm$uqs$1@ger.gmane.org>
-References: <mkg2u2$ckm$1@ger.gmane.org> <20150604014452.GA5759@thunk.org>
- <alpine.LFD.2.00.1506041323280.32156@localhost.localdomain>
- <mkpjhm$7i5$1@ger.gmane.org> <20150605141429.GA26550@thunk.org>
- <mkst24$nbb$1@ger.gmane.org> <20150606003323.GC26550@thunk.org>
- <mku6uc$kb2$1@ger.gmane.org> <20150606154209.GA15306@thunk.org>
- <mkvbl6$bdr$1@ger.gmane.org> <20150606194843.GB15306@thunk.org>
+From: Joseph Qi <joseph.qi@huawei.com>
+Subject: [PATCH] jbd2: fix ocfs2 corrupt when updating journal superblock
+ fails
+Date: Mon, 8 Jun 2015 09:31:12 +0800
+Message-ID: <5574F060.2080503@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset="ISO-8859-1"
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: <linux-ext4@vger.kernel.org>,
+	"ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	"Junxiao Bi" <junxiao.bi@oracle.com>,
+	jiangyiwen <jiangyiwen@huawei.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:38073 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750788AbbFHAMt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 7 Jun 2015 20:12:49 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1Z1kgI-0007wV-BH
-	for linux-ext4@vger.kernel.org; Mon, 08 Jun 2015 02:12:46 +0200
-Received: from ip4d178d5f.dynamic.kabel-deutschland.de ([77.23.141.95])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Mon, 08 Jun 2015 02:12:46 +0200
-Received: from for-gmane by ip4d178d5f.dynamic.kabel-deutschland.de with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Mon, 08 Jun 2015 02:12:46 +0200
-In-Reply-To: <20150606194843.GB15306@thunk.org>
+Received: from szxga01-in.huawei.com ([58.251.152.64]:8911 "EHLO
+	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750762AbbFHBdO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Jun 2015 21:33:14 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Ts'o wrote on 06/06/2015 09:48 PM:
-> On Sat, Jun 06, 2015 at 07:46:14PM +0200, U.Mutlu wrote:
->> Theodore Ts'o wrote on 06/06/2015 05:42 PM:
->>> On Sat, Jun 06, 2015 at 09:19:40AM +0200, U.Mutlu wrote:
->>>> I posted hello.c (a FUSE demo) in this thread. It is IMO even more secure
->>>> than the private namespace mount method. The simple reason is:
->>>> because granting access to the volume (or to a single dir/file)
->>>> is done inside that user-code itself, ie. the user/owner controls
->>>> whom he actually gives access.
->>>> I'm sorry to say this, but this simply proves your last statement above wrong.
->>>
->>> So the root user ptraces the FUSE daemon, and it's all she wrote.
->>
->> Protection against tracing and debugging:
->> inside the user-application ie. here the FUSE-client,
->> and also inside the FUSE daemon:
->>
->>    ptrace(PT_DENY_ATTACH, 0, 0, 0);
->>
->> Of course one would need to recompile the FUSE daemon.
->> The company can enforce such a security policy.
->
-> And so the root user can install a kernel module which toggles the
-> PT_DENY_ATTACH flag for the FUSE daemon after it's started.  Or it
-> could use a kprobe or jprobe to dynamically patch the ptrace system
-> call to cause it to disregard that flag.  (Or use the ksplice
-> funcionality which would make life even easier.)
+If updating journal superblock fails after journal data has been flushed,
+the error is omitted and this will mislead the caller as a normal case.
+In ocfs2, the checkpoint will be treated successfully and the other node
+can get the lock to update. Since the sb_start is still pointing to the
+old log block, it will rewrite the journal data during journal recovery
+bu the other node. Thus the new updates will be overwritten and ocfs2
+corrupts.
+So we have to return the error, and ocfs2_commit_cache will take care of
+the error and prevent the other node to do update besides recovering
+journal first.
 
-I could be wrong but I think the DENY_ATTACH is under the control
-of the running app itself.
-Not sure if any other process can change that on behalf of the app.
+Reported-by: Yiwen Jiang <jiangyiwen@huawei.com>
+Signed-off-by: Joseph Qi <joseph.qi@huawei.com>
+Tested-by: Yiwen Jiang <jiangyiwen@huawei.com>
+Cc: Junxiao Bi <junxiao.bi@oracle.com>
+Cc: <stable@vger.kernel.org>
+---
+ fs/jbd2/checkpoint.c |  5 ++---
+ fs/jbd2/journal.c    | 37 ++++++++++++++++++++++++++++++-------
+ include/linux/jbd2.h |  4 ++--
+ 3 files changed, 34 insertions(+), 12 deletions(-)
 
->> And while we are at it, I would add a new option to the FUSE daemon,
->> so that the client-app can query it before issuing the mount call,
->> whether it has that protection built in or not, and proceed accordingly...
->> IMO a solvable problem.
->
-> And root can cause the kernel to lie to client applications.
->
-> Next?
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 988b32e..82e5b7d 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -390,7 +390,7 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
+ 	unsigned long	blocknr;
 
-User or his app could check the hash of the kernel file to be sure
-it's still the official kernel.
+ 	if (is_journal_aborted(journal))
+-		return 1;
++		return -EIO;
 
+ 	if (!jbd2_journal_get_log_tail(journal, &first_tid, &blocknr))
+ 		return 1;
+@@ -407,8 +407,7 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
+ 	if (journal->j_flags & JBD2_BARRIER)
+ 		blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
+
+-	__jbd2_update_log_tail(journal, first_tid, blocknr);
+-	return 0;
++	return __jbd2_update_log_tail(journal, first_tid, blocknr);
+ }
+
+
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index b96bd80..6b33a42 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -885,9 +885,10 @@ int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
+  *
+  * Requires j_checkpoint_mutex
+  */
+-void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
++int __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
+ {
+ 	unsigned long freed;
++	int ret;
+
+ 	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
+
+@@ -897,7 +898,10 @@ void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
+ 	 * space and if we lose sb update during power failure we'd replay
+ 	 * old transaction with possibly newly overwritten data.
+ 	 */
+-	jbd2_journal_update_sb_log_tail(journal, tid, block, WRITE_FUA);
++	ret = jbd2_journal_update_sb_log_tail(journal, tid, block, WRITE_FUA);
++	if (ret)
++		goto out;
++
+ 	write_lock(&journal->j_state_lock);
+ 	freed = block - journal->j_tail;
+ 	if (block < journal->j_tail)
+@@ -913,6 +917,9 @@ void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
+ 	journal->j_tail_sequence = tid;
+ 	journal->j_tail = block;
+ 	write_unlock(&journal->j_state_lock);
++
++out:
++	return ret;
+ }
+
+ /*
+@@ -1331,7 +1338,7 @@ static int journal_reset(journal_t *journal)
+ 	return jbd2_journal_start_thread(journal);
+ }
+
+-static void jbd2_write_superblock(journal_t *journal, int write_op)
++static int jbd2_write_superblock(journal_t *journal, int write_op)
+ {
+ 	struct buffer_head *bh = journal->j_sb_buffer;
+ 	journal_superblock_t *sb = journal->j_superblock;
+@@ -1370,7 +1377,10 @@ static void jbd2_write_superblock(journal_t *journal, int write_op)
+ 		printk(KERN_ERR "JBD2: Error %d detected when updating "
+ 		       "journal superblock for %s.\n", ret,
+ 		       journal->j_devname);
++		jbd2_journal_abort(journal, ret);
+ 	}
++
++	return ret;
+ }
+
+ /**
+@@ -1383,10 +1393,11 @@ static void jbd2_write_superblock(journal_t *journal, int write_op)
+  * Update a journal's superblock information about log tail and write it to
+  * disk, waiting for the IO to complete.
+  */
+-void jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
++int jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
+ 				     unsigned long tail_block, int write_op)
+ {
+ 	journal_superblock_t *sb = journal->j_superblock;
++	int ret;
+
+ 	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
+ 	jbd_debug(1, "JBD2: updating superblock (start %lu, seq %u)\n",
+@@ -1395,13 +1406,18 @@ void jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
+ 	sb->s_sequence = cpu_to_be32(tail_tid);
+ 	sb->s_start    = cpu_to_be32(tail_block);
+
+-	jbd2_write_superblock(journal, write_op);
++	ret = jbd2_write_superblock(journal, write_op);
++	if (ret)
++		goto out;
+
+ 	/* Log is no longer empty */
+ 	write_lock(&journal->j_state_lock);
+ 	WARN_ON(!sb->s_sequence);
+ 	journal->j_flags &= ~JBD2_FLUSHED;
+ 	write_unlock(&journal->j_state_lock);
++
++out:
++	return ret;
+ }
+
+ /**
+@@ -1950,7 +1966,13 @@ int jbd2_journal_flush(journal_t *journal)
+ 		return -EIO;
+
+ 	mutex_lock(&journal->j_checkpoint_mutex);
+-	jbd2_cleanup_journal_tail(journal);
++	if (!err) {
++		err = jbd2_cleanup_journal_tail(journal);
++		if (err < 0) {
++			mutex_unlock(&journal->j_checkpoint_mutex);
++			goto out;
++		}
++	}
+
+ 	/* Finally, mark the journal as really needing no recovery.
+ 	 * This sets s_start==0 in the underlying superblock, which is
+@@ -1966,7 +1988,8 @@ int jbd2_journal_flush(journal_t *journal)
+ 	J_ASSERT(journal->j_head == journal->j_tail);
+ 	J_ASSERT(journal->j_tail_sequence == journal->j_transaction_sequence);
+ 	write_unlock(&journal->j_state_lock);
+-	return 0;
++out:
++	return err;
+ }
+
+ /**
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 20e7f78..edb640a 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1035,7 +1035,7 @@ struct buffer_head *jbd2_journal_get_descriptor_buffer(journal_t *journal);
+ int jbd2_journal_next_log_block(journal_t *, unsigned long long *);
+ int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
+ 			      unsigned long *block);
+-void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
++int __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
+ void jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
+
+ /* Commit management */
+@@ -1157,7 +1157,7 @@ extern int	   jbd2_journal_recover    (journal_t *journal);
+ extern int	   jbd2_journal_wipe       (journal_t *, int);
+ extern int	   jbd2_journal_skip_recovery	(journal_t *);
+ extern void	   jbd2_journal_update_sb_errno(journal_t *);
+-extern void	   jbd2_journal_update_sb_log_tail	(journal_t *, tid_t,
++extern int	   jbd2_journal_update_sb_log_tail	(journal_t *, tid_t,
+ 				unsigned long, int);
+ extern void	   __jbd2_journal_abort_hard	(journal_t *);
+ extern void	   jbd2_journal_abort      (journal_t *, int);
+-- 
+1.8.4.3
 
 
