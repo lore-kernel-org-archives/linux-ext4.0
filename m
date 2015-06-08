@@ -1,211 +1,87 @@
-From: Joseph Qi <joseph.qi@huawei.com>
-Subject: [PATCH] jbd2: fix ocfs2 corrupt when updating journal superblock
- fails
-Date: Mon, 8 Jun 2015 09:31:12 +0800
-Message-ID: <5574F060.2080503@huawei.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: generic question: user-only directory w/o root access
+Date: Sun, 7 Jun 2015 23:18:37 -0400
+Message-ID: <20150608031836.GA2842@thunk.org>
+References: <alpine.LFD.2.00.1506041323280.32156@localhost.localdomain>
+ <mkpjhm$7i5$1@ger.gmane.org>
+ <20150605141429.GA26550@thunk.org>
+ <mkst24$nbb$1@ger.gmane.org>
+ <20150606003323.GC26550@thunk.org>
+ <mku6uc$kb2$1@ger.gmane.org>
+ <20150606154209.GA15306@thunk.org>
+ <mkvbl6$bdr$1@ger.gmane.org>
+ <20150606194843.GB15306@thunk.org>
+ <ml2mlm$uqs$1@ger.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>,
-	"ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	"Junxiao Bi" <junxiao.bi@oracle.com>,
-	jiangyiwen <jiangyiwen@huawei.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "U.Mutlu" <for-gmane@mutluit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga01-in.huawei.com ([58.251.152.64]:8911 "EHLO
-	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750762AbbFHBdO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Jun 2015 21:33:14 -0400
+Received: from imap.thunk.org ([74.207.234.97]:52067 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751350AbbFHDSl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 7 Jun 2015 23:18:41 -0400
+Content-Disposition: inline
+In-Reply-To: <ml2mlm$uqs$1@ger.gmane.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If updating journal superblock fails after journal data has been flushed,
-the error is omitted and this will mislead the caller as a normal case.
-In ocfs2, the checkpoint will be treated successfully and the other node
-can get the lock to update. Since the sb_start is still pointing to the
-old log block, it will rewrite the journal data during journal recovery
-bu the other node. Thus the new updates will be overwritten and ocfs2
-corrupts.
-So we have to return the error, and ocfs2_commit_cache will take care of
-the error and prevent the other node to do update besides recovering
-journal first.
+On Mon, Jun 08, 2015 at 02:12:38AM +0200, U.Mutlu wrote:
+> 
+> I could be wrong but I think the DENY_ATTACH is under the control
+> of the running app itself.
+> Not sure if any other process can change that on behalf of the app.
 
-Reported-by: Yiwen Jiang <jiangyiwen@huawei.com>
-Signed-off-by: Joseph Qi <joseph.qi@huawei.com>
-Tested-by: Yiwen Jiang <jiangyiwen@huawei.com>
-Cc: Junxiao Bi <junxiao.bi@oracle.com>
-Cc: <stable@vger.kernel.org>
----
- fs/jbd2/checkpoint.c |  5 ++---
- fs/jbd2/journal.c    | 37 ++++++++++++++++++++++++++++++-------
- include/linux/jbd2.h |  4 ++--
- 3 files changed, 34 insertions(+), 12 deletions(-)
+Nope, the kernel can do anything; and indeed, the DENY_ATTACH flag is
+in the process's task_struct, and the kernel can modify any process's
+task_struct.
 
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index 988b32e..82e5b7d 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -390,7 +390,7 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
- 	unsigned long	blocknr;
+> >And root can cause the kernel to lie to client applications.
+>
+> User or his app could check the hash of the kernel file to be sure
+> it's still the official kernel.
 
- 	if (is_journal_aborted(journal))
--		return 1;
-+		return -EIO;
+The root user can load a kernel module without modifying the kernel
+file.  There is also no way userspace can confirm that a particular
+kernel file corresponds to the kernel file which is currently running.
 
- 	if (!jbd2_journal_get_log_tail(journal, &first_tid, &blocknr))
- 		return 1;
-@@ -407,8 +407,7 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
- 	if (journal->j_flags & JBD2_BARRIER)
- 		blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
+What part of "root can do ***anything***" don't you understand?  There
+are a few things that SELinux can do to control a random root process,
+but the system administrator is still going to have enough power to
+modify SELinux policies, and there is no way userspace can determine
+whether or not the SELinux policies or the kernel is what it should
+be.
 
--	__jbd2_update_log_tail(journal, first_tid, blocknr);
--	return 0;
-+	return __jbd2_update_log_tail(journal, first_tid, blocknr);
- }
+There are a few ways you can control what kernel is running --- this
+is why Microsoft is pushing UEFI, which can control things such that
+the UEFI BIOS will only boot a kernel signed by Microsoft.  But you
+really have to lock down the system, and ultimately you have to trust
+whoever has access to the UEFI keys.  In your original problem
+statement, you said you didn't want to trust the system administrator.
+It's possible to set up a system using UEFI keys that will only boot a
+digitally signed kernel -- but this still has to be set up by the
+system administrator.  And if you purchase a Microsoft Surface device,
+it will be locked down so it will only boot a Microsoft signed
+operating system (and so you can't boot Linux at all, so a number of
+folks don't consider UEFI to be an unalloyed feature).
 
+						- Ted
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index b96bd80..6b33a42 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -885,9 +885,10 @@ int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
-  *
-  * Requires j_checkpoint_mutex
-  */
--void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
-+int __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
- {
- 	unsigned long freed;
-+	int ret;
+P.S.  Before I started working on Linux as my vocation, in a previous
+life I had over a decade's experience working on computer security
+issues.  I was the Tech Lead on the MIT Kerberos v5 development team,
+and the working group chair for the IP Security Working Group and a
+member of the Security Area Directorate at the Internet Engineerint
+Task Force, the standards body for the Internet.  So trust me, I
+really do know what I am talking about.
 
- 	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
+You might also want to read Ken Thompson's (one of the fathers of
+Unix) paper, Reflections on Trusting Trust:
 
-@@ -897,7 +898,10 @@ void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
- 	 * space and if we lose sb update during power failure we'd replay
- 	 * old transaction with possibly newly overwritten data.
- 	 */
--	jbd2_journal_update_sb_log_tail(journal, tid, block, WRITE_FUA);
-+	ret = jbd2_journal_update_sb_log_tail(journal, tid, block, WRITE_FUA);
-+	if (ret)
-+		goto out;
-+
- 	write_lock(&journal->j_state_lock);
- 	freed = block - journal->j_tail;
- 	if (block < journal->j_tail)
-@@ -913,6 +917,9 @@ void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
- 	journal->j_tail_sequence = tid;
- 	journal->j_tail = block;
- 	write_unlock(&journal->j_state_lock);
-+
-+out:
-+	return ret;
- }
+https://www.ece.cmu.edu/~ganger/712.fall02/papers/p761-thompson.pdf
 
- /*
-@@ -1331,7 +1338,7 @@ static int journal_reset(journal_t *journal)
- 	return jbd2_journal_start_thread(journal);
- }
-
--static void jbd2_write_superblock(journal_t *journal, int write_op)
-+static int jbd2_write_superblock(journal_t *journal, int write_op)
- {
- 	struct buffer_head *bh = journal->j_sb_buffer;
- 	journal_superblock_t *sb = journal->j_superblock;
-@@ -1370,7 +1377,10 @@ static void jbd2_write_superblock(journal_t *journal, int write_op)
- 		printk(KERN_ERR "JBD2: Error %d detected when updating "
- 		       "journal superblock for %s.\n", ret,
- 		       journal->j_devname);
-+		jbd2_journal_abort(journal, ret);
- 	}
-+
-+	return ret;
- }
-
- /**
-@@ -1383,10 +1393,11 @@ static void jbd2_write_superblock(journal_t *journal, int write_op)
-  * Update a journal's superblock information about log tail and write it to
-  * disk, waiting for the IO to complete.
-  */
--void jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
-+int jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
- 				     unsigned long tail_block, int write_op)
- {
- 	journal_superblock_t *sb = journal->j_superblock;
-+	int ret;
-
- 	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
- 	jbd_debug(1, "JBD2: updating superblock (start %lu, seq %u)\n",
-@@ -1395,13 +1406,18 @@ void jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
- 	sb->s_sequence = cpu_to_be32(tail_tid);
- 	sb->s_start    = cpu_to_be32(tail_block);
-
--	jbd2_write_superblock(journal, write_op);
-+	ret = jbd2_write_superblock(journal, write_op);
-+	if (ret)
-+		goto out;
-
- 	/* Log is no longer empty */
- 	write_lock(&journal->j_state_lock);
- 	WARN_ON(!sb->s_sequence);
- 	journal->j_flags &= ~JBD2_FLUSHED;
- 	write_unlock(&journal->j_state_lock);
-+
-+out:
-+	return ret;
- }
-
- /**
-@@ -1950,7 +1966,13 @@ int jbd2_journal_flush(journal_t *journal)
- 		return -EIO;
-
- 	mutex_lock(&journal->j_checkpoint_mutex);
--	jbd2_cleanup_journal_tail(journal);
-+	if (!err) {
-+		err = jbd2_cleanup_journal_tail(journal);
-+		if (err < 0) {
-+			mutex_unlock(&journal->j_checkpoint_mutex);
-+			goto out;
-+		}
-+	}
-
- 	/* Finally, mark the journal as really needing no recovery.
- 	 * This sets s_start==0 in the underlying superblock, which is
-@@ -1966,7 +1988,8 @@ int jbd2_journal_flush(journal_t *journal)
- 	J_ASSERT(journal->j_head == journal->j_tail);
- 	J_ASSERT(journal->j_tail_sequence == journal->j_transaction_sequence);
- 	write_unlock(&journal->j_state_lock);
--	return 0;
-+out:
-+	return err;
- }
-
- /**
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 20e7f78..edb640a 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1035,7 +1035,7 @@ struct buffer_head *jbd2_journal_get_descriptor_buffer(journal_t *journal);
- int jbd2_journal_next_log_block(journal_t *, unsigned long long *);
- int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
- 			      unsigned long *block);
--void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
-+int __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
- void jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
-
- /* Commit management */
-@@ -1157,7 +1157,7 @@ extern int	   jbd2_journal_recover    (journal_t *journal);
- extern int	   jbd2_journal_wipe       (journal_t *, int);
- extern int	   jbd2_journal_skip_recovery	(journal_t *);
- extern void	   jbd2_journal_update_sb_errno(journal_t *);
--extern void	   jbd2_journal_update_sb_log_tail	(journal_t *, tid_t,
-+extern int	   jbd2_journal_update_sb_log_tail	(journal_t *, tid_t,
- 				unsigned long, int);
- extern void	   __jbd2_journal_abort_hard	(journal_t *);
- extern void	   jbd2_journal_abort      (journal_t *, int);
--- 
-1.8.4.3
-
-
+... and medidate deeply on what this means.  This shows what can
+happen when the C compiler doesn't do what you think it will do.  The
+fact that you assume the kernel will always do what it documented to
+do, and that it can't be modified to do something different is
+extremely naive.
