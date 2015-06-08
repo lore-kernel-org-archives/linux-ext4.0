@@ -1,59 +1,43 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix reservation release on invalidatepage for
- delalloc fs
-Date: Mon, 8 Jun 2015 11:16:51 -0400
-Message-ID: <20150608151651.GD19168@thunk.org>
-References: <1433406301-29136-1-git-send-email-lczerner@redhat.com>
+From: Michal Hocko <mhocko@suse.cz>
+Subject: Re: [PATCH -resend] jbd2: revert must-not-fail allocation loops back
+ to GFP_NOFAIL
+Date: Mon, 8 Jun 2015 17:37:40 +0200
+Message-ID: <20150608153740.GC1390@dhcp22.suse.cz>
+References: <1433770124-19614-1-git-send-email-mhocko@suse.cz>
+ <20150608145432.GB19168@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53049 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753081AbbFHPQy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Jun 2015 11:16:54 -0400
+Cc: linux-ext4@vger.kernel.org, David Rientjes <rientjes@google.com>,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	LKML <linux-kernel@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1433406301-29136-1-git-send-email-lczerner@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20150608145432.GB19168@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 04, 2015 at 10:25:01AM +0200, Lukas Czerner wrote:
-> On delalloc enabled file system on invalidatepage operation
-> in ext4_da_page_release_reservation() we want to clear the delayed
-> buffer and remove the extent covering the delayed buffer from the extent
-> status tree.
+On Mon 08-06-15 10:54:32, Theodore Ts'o wrote:
+> On Mon, Jun 08, 2015 at 03:28:44PM +0200, Michal Hocko wrote:
+> > This basically reverts 47def82672b3 (jbd2: Remove __GFP_NOFAIL from jbd2
+> > layer). The deprecation of __GFP_NOFAIL was a bad choice because it led
+> > to open coding the endless loop around the allocator rather than
+> > removing the dependency on the non failing allocation. So the
+> > deprecation was a clear failure and the reality tells us that
+> > __GFP_NOFAIL is not even close to go away.
+> > 
+> > It is still true that __GFP_NOFAIL allocations are generally discouraged
+> > and new uses should be evaluated and an alternative (pre-allocations or
+> > reservations) should be considered but it doesn't make any sense to lie
+> > the allocator about the requirements. Allocator can take steps to help
+> > making a progress if it knows the requirements.
+> > 
+> > Signed-off-by: Michal Hocko <mhocko@suse.cz>
+> > Acked-by: David Rientjes <rientjes@google.com>
 > 
-> However currently there is a bug where on the systems with page size >
-> block size we will always remove extents from the start of the page
-> regardless where the actual delayed buffers are positioned in the page.
+> Applied, thanks.
 
-Right, because we end up screwing up the accounting.
-
-> @@ -1363,14 +1363,23 @@ static void ext4_da_page_release_reservation(struct page *page,
->  
->  		if ((offset <= curr_off) && (buffer_delay(bh))) {
->  			to_release++;
-> +			contiguous_blks++;
->  			clear_buffer_delay(bh);
-> +		} else if (contiguous_blks) {
-> +			lblk = page->index <<
-> +			       (PAGE_CACHE_SHIFT - inode->i_blkbits);
-> +			lblk += (curr_off >> inode->i_blkbits) -
-> +				contiguous_blks;
-> +			ext4_es_remove_extent(inode, lblk, contiguous_blks);
-> +			contiguous_blks = 0;
->  		}
->  		curr_off = next_off;
->  	} while ((bh = bh->b_this_page) != head);
-
-Shouldn't we call ext4_es_remove_extent() on the portion of the page
-containing the delayed allocation region, before we clear
-contiguous_blks and resetting lblk?
-
-For example, suppose we had the 4k page with a 1k block size, where
-the first, second, and fourth blocks are delayed allocated.  With this
-patch we will end up only clearing the extent status tree for the
-fourth block, but not the first and second.
-
-       	      	      	  	    - Ted
+Thanks!
+-- 
+Michal Hocko
+SUSE Labs
