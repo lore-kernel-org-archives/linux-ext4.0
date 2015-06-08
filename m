@@ -1,103 +1,41 @@
-From: Michal Hocko <mhocko@suse.cz>
-Subject: [PATCH -resend] jbd2: revert must-not-fail allocation loops back to GFP_NOFAIL
-Date: Mon,  8 Jun 2015 15:28:44 +0200
-Message-ID: <1433770124-19614-1-git-send-email-mhocko@suse.cz>
-Cc: linux-ext4@vger.kernel.org,
-	David Rientjes <rientjes@google.com>,
-	<linux-fsdevel@vger.kernel.org>,
-	<linux-mm@kvack.org>,
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH -resend] jbd2: revert must-not-fail allocation loops back
+ to GFP_NOFAIL
+Date: Mon, 8 Jun 2015 10:54:32 -0400
+Message-ID: <20150608145432.GB19168@thunk.org>
+References: <1433770124-19614-1-git-send-email-mhocko@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, David Rientjes <rientjes@google.com>,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
 	LKML <linux-kernel@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Michal Hocko <mhocko@suse.cz>
 Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1433770124-19614-1-git-send-email-mhocko@suse.cz>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-This basically reverts 47def82672b3 (jbd2: Remove __GFP_NOFAIL from jbd2
-layer). The deprecation of __GFP_NOFAIL was a bad choice because it led
-to open coding the endless loop around the allocator rather than
-removing the dependency on the non failing allocation. So the
-deprecation was a clear failure and the reality tells us that
-__GFP_NOFAIL is not even close to go away.
+On Mon, Jun 08, 2015 at 03:28:44PM +0200, Michal Hocko wrote:
+> This basically reverts 47def82672b3 (jbd2: Remove __GFP_NOFAIL from jbd2
+> layer). The deprecation of __GFP_NOFAIL was a bad choice because it led
+> to open coding the endless loop around the allocator rather than
+> removing the dependency on the non failing allocation. So the
+> deprecation was a clear failure and the reality tells us that
+> __GFP_NOFAIL is not even close to go away.
+> 
+> It is still true that __GFP_NOFAIL allocations are generally discouraged
+> and new uses should be evaluated and an alternative (pre-allocations or
+> reservations) should be considered but it doesn't make any sense to lie
+> the allocator about the requirements. Allocator can take steps to help
+> making a progress if it knows the requirements.
+> 
+> Signed-off-by: Michal Hocko <mhocko@suse.cz>
+> Acked-by: David Rientjes <rientjes@google.com>
 
-It is still true that __GFP_NOFAIL allocations are generally discouraged
-and new uses should be evaluated and an alternative (pre-allocations or
-reservations) should be considered but it doesn't make any sense to lie
-the allocator about the requirements. Allocator can take steps to help
-making a progress if it knows the requirements.
+Applied, thanks.
 
-Signed-off-by: Michal Hocko <mhocko@suse.cz>
-Acked-by: David Rientjes <rientjes@google.com>
----
-
-Hi, 
-this has been posted few months ago
-(http://marc.info/?l=linux-mm&m=142530454419654&w=2) but it hasn't
-gone anywhere so I am reposting. I've just rebased it on top of the
-ext4/for-linus tree. It wasn't clear to me which branch should I use so
-I've just picked this one as it was one of the most recently updated.
-
- fs/jbd2/journal.c     | 11 +----------
- fs/jbd2/transaction.c | 20 +++++++-------------
- 2 files changed, 8 insertions(+), 23 deletions(-)
-
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index b96bd8076b70..0bc333b4a594 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -371,16 +371,7 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
- 	 */
- 	J_ASSERT_BH(bh_in, buffer_jbddirty(bh_in));
- 
--retry_alloc:
--	new_bh = alloc_buffer_head(GFP_NOFS);
--	if (!new_bh) {
--		/*
--		 * Failure is not an option, but __GFP_NOFAIL is going
--		 * away; so we retry ourselves here.
--		 */
--		congestion_wait(BLK_RW_ASYNC, HZ/50);
--		goto retry_alloc;
--	}
-+	new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
- 
- 	/* keep subsequent assertions sane */
- 	atomic_set(&new_bh->b_count, 1);
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index ff2f2e6ad311..799242cecffb 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -278,22 +278,16 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
- 
- alloc_transaction:
- 	if (!journal->j_running_transaction) {
-+		/*
-+		 * If __GFP_FS is not present, then we may be being called from
-+		 * inside the fs writeback layer, so we MUST NOT fail.
-+		 */
-+		if ((gfp_mask & __GFP_FS) == 0)
-+			gfp_mask |= __GFP_NOFAIL;
- 		new_transaction = kmem_cache_zalloc(transaction_cache,
- 						    gfp_mask);
--		if (!new_transaction) {
--			/*
--			 * If __GFP_FS is not present, then we may be
--			 * being called from inside the fs writeback
--			 * layer, so we MUST NOT fail.  Since
--			 * __GFP_NOFAIL is going away, we will arrange
--			 * to retry the allocation ourselves.
--			 */
--			if ((gfp_mask & __GFP_FS) == 0) {
--				congestion_wait(BLK_RW_ASYNC, HZ/50);
--				goto alloc_transaction;
--			}
-+		if (!new_transaction)
- 			return -ENOMEM;
--		}
- 	}
- 
- 	jbd_debug(3, "New handle %p going live.\n", handle);
--- 
-2.1.4
+						- Ted
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
