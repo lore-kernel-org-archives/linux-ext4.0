@@ -1,48 +1,115 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3 3/3] ext4: Return error code from ext4_mb_good_group()
-Date: Mon, 8 Jun 2015 11:42:36 -0400
-Message-ID: <20150608154236.GF19168@thunk.org>
-References: <1433266205-24513-1-git-send-email-lczerner@redhat.com>
- <1433266205-24513-3-git-send-email-lczerner@redhat.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: fix reservation release on invalidatepage for
+ delalloc fs
+Date: Mon, 8 Jun 2015 17:45:08 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1506081729390.1273@localhost.localdomain>
+References: <1433406301-29136-1-git-send-email-lczerner@redhat.com> <20150608151651.GD19168@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53101 "EHLO imap.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:57341 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751746AbbFHPmi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Jun 2015 11:42:38 -0400
-Content-Disposition: inline
-In-Reply-To: <1433266205-24513-3-git-send-email-lczerner@redhat.com>
+	id S1751955AbbFHPpN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Jun 2015 11:45:13 -0400
+In-Reply-To: <20150608151651.GD19168@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 02, 2015 at 07:30:05PM +0200, Lukas Czerner wrote:
-> Currently ext4_mb_good_group() only returns 0 or 1 depending on whether
-> the allocation group is suitable for use or not. However we might get
-> various errors and fail while initializing new group including -EIO
-> which would never get propagated up the call chain. This might lead to
-> an endless loop at writeback when we're trying to find a good group to
-> allocate from and we fail to initialize new group (read error for
-> example).
-> 
-> Fix this by returning proper error code from ext4_mb_good_group() and
-> using it in ext4_mb_regular_allocator(). In ext4_mb_regular_allocator()
-> we will always return only the first occurred error from
-> ext4_mb_good_group() and we only propagate it back  to the caller if we
-> do not get any other errors and we fail to allocate any blocks.
-> 
-> Note that with other modes than errors=continue, we will fail
-> immediately in ext4_mb_good_group() in case of error, however with
-> errors=continue we should try to continue using the file system, that's
-> why we're not going to fail immediately when we see an error from
-> ext4_mb_good_group(), but rather when we fail to find a suitable block
-> group to allocate from due to an problem in group initialization.
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+On Mon, 8 Jun 2015, Theodore Ts'o wrote:
 
-Applied, thanks.
+> Date: Mon, 8 Jun 2015 11:16:51 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org
+> Subject: Re: [PATCH] ext4: fix reservation release on invalidatepage for
+>     delalloc fs
+> 
+> On Thu, Jun 04, 2015 at 10:25:01AM +0200, Lukas Czerner wrote:
+> > On delalloc enabled file system on invalidatepage operation
+> > in ext4_da_page_release_reservation() we want to clear the delayed
+> > buffer and remove the extent covering the delayed buffer from the extent
+> > status tree.
+> > 
+> > However currently there is a bug where on the systems with page size >
+> > block size we will always remove extents from the start of the page
+> > regardless where the actual delayed buffers are positioned in the page.
+> 
+> Right, because we end up screwing up the accounting.
+> 
+> > @@ -1363,14 +1363,23 @@ static void ext4_da_page_release_reservation(struct page *page,
+> >  
+> >  		if ((offset <= curr_off) && (buffer_delay(bh))) {
+> >  			to_release++;
+> > +			contiguous_blks++;
+> >  			clear_buffer_delay(bh);
+> > +		} else if (contiguous_blks) {
+> > +			lblk = page->index <<
+> > +			       (PAGE_CACHE_SHIFT - inode->i_blkbits);
+> > +			lblk += (curr_off >> inode->i_blkbits) -
+> > +				contiguous_blks;
+> > +			ext4_es_remove_extent(inode, lblk, contiguous_blks);
+> > +			contiguous_blks = 0;
+> >  		}
+> >  		curr_off = next_off;
+> >  	} while ((bh = bh->b_this_page) != head);
+> 
+> Shouldn't we call ext4_es_remove_extent() on the portion of the page
+> containing the delayed allocation region, before we clear
+> contiguous_blks and resetting lblk?
 
-						- Ted
+Hi Ted,
+
+right this is the point of the patch.
+
+> 
+> For example, suppose we had the 4k page with a 1k block size, where
+> the first, second, and fourth blocks are delayed allocated.  With this
+> patch we will end up only clearing the extent status tree for the
+> fourth block, but not the first and second.
+
+So when the first and second block are delayed, then the
+
+if ((offset <= curr_off) && (buffer_delay(bh)))
+
+will hit twice which means that we'll have contiguous_blks = 2
+
+Now on the third block this condition will no longer be true
+(because buffer_delay(bh) will be false) and so we will hit
+
+else if (contiguous_blks) {
+
+then lblk will be: start of the page + (curr_off - contiguous_blks).
+curr_off at this point will point at third block (index 2) and
+contiguous_blks is 2. Which means that lblk will point at the start
+of the page - which is exactly right because the first delayed block
+is at the start of the page.
+
+So ext4_es_remove_extent() will remove extent of two blocks starting
+from the end of the page - which means it removes first and second
+delayed block.
+
+Now when we check fourth block the
+
+if ((offset <= curr_off) && (buffer_delay(bh)))
+
+will hit again, leaving contiguous_blks with 1, then we leave the
+while cycle and hit this:
+
+if (contiguous_blks)
+
+removing the extent starting at fourth block in the page removing
+one block (the fourth block in the page).
+
+That's how I wrote the code, but maybe I am missing something ? I am
+a bit tired today already so my explanation is not very good, sorry.
+
+Can you put your question in a form of a patch ?
+
+Thanks!
+-Lukas
+
+> 
+>        	      	      	  	    - Ted
+> 
