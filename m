@@ -1,40 +1,40 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 89511] USB-storage mount error
-Date: Tue, 09 Jun 2015 20:40:33 +0000
-Message-ID: <bug-89511-13602-VvnePeNA11@https.bugzilla.kernel.org/>
-References: <bug-89511-13602@https.bugzilla.kernel.org/>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH v2 0/8] Introduce strreplace
+Date: Tue, 9 Jun 2015 14:02:43 -0700
+Message-ID: <20150609140243.e2ef7e9f22416c82a334f031@linux-foundation.org>
+References: <1433806017-10823-1-git-send-email-linux@rasmusvillemoes.dk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:58650 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753171AbbFIUki (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2015 16:40:38 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 8C10120567
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2015 20:40:37 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 133F720555
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2015 20:40:35 +0000 (UTC)
-In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+	Neil Brown <neilb@suse.de>, "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Steven Rostedt <rostedt@goodmis.org>,
+	Ingo Molnar <mingo@redhat.com>, Joe Perches <joe@perches.com>,
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	linux-kernel@vger.kernel.org, linux-raid@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Rasmus Villemoes <linux@rasmusvillemoes.dk>
+Return-path: <linux-raid-owner@vger.kernel.org>
+In-Reply-To: <1433806017-10823-1-git-send-email-linux@rasmusvillemoes.dk>
+Sender: linux-raid-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=89511
+On Tue,  9 Jun 2015 01:26:48 +0200 Rasmus Villemoes <linux@rasmusvillemoes.dk> wrote:
 
---- Comment #55 from Alan Stern <stern@rowland.harvard.edu> ---
-Created attachment 179321
-  --> https://bugzilla.kernel.org/attachment.cgi?id=179321&action=edit
-Add NO_SYNCHRONIZE_CACHE flag for usb-storage
+> Doing single-character substitution on an entire string is open-coded
+> in a few places, sometimes in a rather suboptimal way. This introduces
+> a trivial helper, strreplace, for this task along with a few example
+> conversions.
+> 
+> Andrew, can I get you to take 1/8 through the mm tree? I'm not sure
+> what the easiest path is for the remaining patches.
 
-This patch will do what Alan suggested.  Isaka and Markus didn't provide the
-"lsusb -v" output for their devices, so I couldn't include them in the patch. 
-However, it should fix the problem for Jun Itou.
+With this sort of thing I grab everything them feed the dependent
+patches to maintainers after the base patch is upstream.
 
-Please let me know if it works.
+Or I merge the dependent patches myself if they were acked.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Or if the dependent patches are simple I'll just merge them anyway,
+shrug.  I'd say these fall into that category.
+
