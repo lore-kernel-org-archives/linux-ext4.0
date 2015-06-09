@@ -1,61 +1,48 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 2/2] ext4: Wait for existing dio workers in ext4_alloc_file_blocks()
-Date: Tue,  9 Jun 2015 08:58:46 +0200
-Message-ID: <1433833126-28575-2-git-send-email-lczerner@redhat.com>
-References: <1433833126-28575-1-git-send-email-lczerner@redhat.com>
-Cc: Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51281 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932348AbbFIG6z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2015 02:58:55 -0400
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (Postfix) with ESMTPS id 79B47AC7C1
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2015 06:58:55 +0000 (UTC)
-In-Reply-To: <1433833126-28575-1-git-send-email-lczerner@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Rasmus Villemoes <linux@rasmusvillemoes.dk>
+Subject: Re: [PATCH v2 0/8] Introduce strreplace
+Date: Tue, 09 Jun 2015 09:25:50 +0200
+Message-ID: <87lhftjqbl.fsf@rasmusvillemoes.dk>
+References: <1433806017-10823-1-git-send-email-linux@rasmusvillemoes.dk>
+	<20150609005554.GP19168@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+	Neil Brown <neilb@suse.de>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Steven Rostedt <rostedt@goodmis.org>,
+	Ingo Molnar <mingo@redhat.com>, Joe Perches <joe@perches.com>,
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	linux-kernel@vger.kernel.org, linux-raid@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-raid-owner@vger.kernel.org>
+In-Reply-To: <20150609005554.GP19168@thunk.org> (Theodore Ts'o's message of
+	"Mon, 8 Jun 2015 20:55:54 -0400")
+Sender: linux-raid-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Currently existing dio workers can jump in and potentially increase
-extent tree depth while we're allocating blocks in
-ext4_alloc_file_blocks(). This may cause us to underestimate the number
-of credits needed for the transaction because the extent tree depth can
-change after our estimation.
+On Tue, Jun 09 2015, Theodore Ts'o <tytso@mit.edu> wrote:
 
-Fix this by waiting for all the existing dio workers in the same way as
-we do it in ext4_punch_hole. We've seen errors caused by this in xfstest
-generic/299, however it's really hard to reproduce.
+> On Tue, Jun 09, 2015 at 01:26:48AM +0200, Rasmus Villemoes wrote:
+>> Doing single-character substitution on an entire string is open-coded
+>> in a few places, sometimes in a rather suboptimal way. This introduces
+>> a trivial helper, strreplace, for this task along with a few example
+>> conversions.
+>> 
+>> Andrew, can I get you to take 1/8 through the mm tree? I'm not sure
+>> what the easiest path is for the remaining patches.
+>
+> This is not super urgent, right?
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/extents.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+Right, not urgent at all.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 13c5ebf..a5f7322 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4678,6 +4678,10 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
- 	if (len <= EXT_UNWRITTEN_MAX_LEN)
- 		flags |= EXT4_GET_BLOCKS_NO_NORMALIZE;
- 
-+	/* Wait all existing dio workers, newcomers will block on i_mutex */
-+	ext4_inode_block_unlocked_dio(inode);
-+	inode_dio_wait(inode);
-+
- 	/*
- 	 * credits to insert 1 extent into extent tree
- 	 */
-@@ -4741,6 +4745,8 @@ retry:
- 		goto retry;
- 	}
- 
-+	ext4_inode_resume_unlocked_dio(inode);
-+
- 	return ret > 0 ? ret2 : ret;
- }
- 
--- 
-1.8.3.1
+> So we could let 1/8 go into mainline, and then the rest of the patches
+> could go in the next release. That would be the simplest, although it
+> would drag out how long it would take for strreplace to be used
+> everywhere.
 
+Sure, though it would be a little weird to have a helper with no users
+until 4.3 comes out.
+
+Rasmus
