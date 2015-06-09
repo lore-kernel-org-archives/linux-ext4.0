@@ -1,49 +1,38 @@
-From: Rasmus Villemoes <linux@rasmusvillemoes.dk>
-Subject: [PATCH v2 8/8] fs/ext4/super.c: Use strreplace in ext4_fill_super
-Date: Tue,  9 Jun 2015 01:26:56 +0200
-Message-ID: <1433806017-10823-9-git-send-email-linux@rasmusvillemoes.dk>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2 0/8] Introduce strreplace
+Date: Mon, 8 Jun 2015 20:55:54 -0400
+Message-ID: <20150609005554.GP19168@thunk.org>
 References: <1433806017-10823-1-git-send-email-linux@rasmusvillemoes.dk>
-Cc: Joe Perches <joe@perches.com>, Al Viro <viro@ZenIV.linux.org.uk>,
-	Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+	Neil Brown <neilb@suse.de>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Steven Rostedt <rostedt@goodmis.org>,
+	Ingo Molnar <mingo@redhat.com>, Joe Perches <joe@perches.com>,
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	linux-kernel@vger.kernel.org, linux-raid@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Rasmus Villemoes <linux@rasmusvillemoes.dk>
+Return-path: <linux-raid-owner@vger.kernel.org>
+Content-Disposition: inline
 In-Reply-To: <1433806017-10823-1-git-send-email-linux@rasmusvillemoes.dk>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-raid-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This makes a very large function a little smaller.
+On Tue, Jun 09, 2015 at 01:26:48AM +0200, Rasmus Villemoes wrote:
+> Doing single-character substitution on an entire string is open-coded
+> in a few places, sometimes in a rather suboptimal way. This introduces
+> a trivial helper, strreplace, for this task along with a few example
+> conversions.
+> 
+> Andrew, can I get you to take 1/8 through the mm tree? I'm not sure
+> what the easiest path is for the remaining patches.
 
-Signed-off-by: Rasmus Villemoes <linux@rasmusvillemoes.dk>
----
-v2: no changes.
+This is not super urgent, right?  So we could let 1/8 go into
+mainline, and then the rest of the patches could go in the next
+release.  That would be the simplest, although it would drag out how
+long it would take for strreplace to be used everywhere.
 
- fs/ext4/super.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index ca9d4a2fed41..5f3c43a66937 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3420,7 +3420,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	unsigned long journal_devnum = 0;
- 	unsigned long def_mount_opts;
- 	struct inode *root;
--	char *cp;
- 	const char *descr;
- 	int ret = -ENOMEM;
- 	int blocksize, clustersize;
-@@ -3456,8 +3455,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- #endif
- 
- 	/* Cleanup superblock name */
--	for (cp = sb->s_id; (cp = strchr(cp, '/'));)
--		*cp = '!';
-+	strreplace(sb->s_id, '/', '!');
- 
- 	/* -EINVAL is default */
- 	ret = -EINVAL;
--- 
-2.1.3
+     	      	       		     	     - Ted
