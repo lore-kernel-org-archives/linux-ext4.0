@@ -1,73 +1,61 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/2] ext4: Recalculate journal credits as inode depth changes
-Date: Tue,  9 Jun 2015 08:58:45 +0200
-Message-ID: <1433833126-28575-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 2/2] ext4: Wait for existing dio workers in ext4_alloc_file_blocks()
+Date: Tue,  9 Jun 2015 08:58:46 +0200
+Message-ID: <1433833126-28575-2-git-send-email-lczerner@redhat.com>
+References: <1433833126-28575-1-git-send-email-lczerner@redhat.com>
 Cc: Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45822 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51281 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752105AbbFIG6x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2015 02:58:53 -0400
+	id S932348AbbFIG6z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2015 02:58:55 -0400
 Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (Postfix) with ESMTPS id 6439EBAEF2
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2015 06:58:53 +0000 (UTC)
+	by mx1.redhat.com (Postfix) with ESMTPS id 79B47AC7C1
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2015 06:58:55 +0000 (UTC)
+In-Reply-To: <1433833126-28575-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently in ext4_alloc_file_blocks() the number of credits is
-calculated only once before we enter the allocation loop. However within
-the allocation loop the extent tree depth can change, hence the number
-of credits needed can increase potentially exceeding the number of credits
-reserved in the handle which can cause journal failures.
+Currently existing dio workers can jump in and potentially increase
+extent tree depth while we're allocating blocks in
+ext4_alloc_file_blocks(). This may cause us to underestimate the number
+of credits needed for the transaction because the extent tree depth can
+change after our estimation.
 
-Fix this by recalculating number of credits when the inode depth
-changes. Note that even though ext4_alloc_file_blocks() is only
-currently used by extent base inodes we will avoid recalculating number
-of credits unnecessarily in the case of indirect based inodes.
+Fix this by waiting for all the existing dio workers in the same way as
+we do it in ext4_punch_hole. We've seen errors caused by this in xfstest
+generic/299, however it's really hard to reproduce.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/extents.c | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ fs/ext4/extents.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index e003a1e..13c5ebf 100644
+index 13c5ebf..a5f7322 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -4663,6 +4663,7 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
- 	int ret = 0;
- 	int ret2 = 0;
- 	int retries = 0;
-+	int depth = 0;
- 	struct ext4_map_blocks map;
- 	unsigned int credits;
- 	loff_t epos;
-@@ -4681,9 +4682,24 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
+@@ -4678,6 +4678,10 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
+ 	if (len <= EXT_UNWRITTEN_MAX_LEN)
+ 		flags |= EXT4_GET_BLOCKS_NO_NORMALIZE;
+ 
++	/* Wait all existing dio workers, newcomers will block on i_mutex */
++	ext4_inode_block_unlocked_dio(inode);
++	inode_dio_wait(inode);
++
+ 	/*
  	 * credits to insert 1 extent into extent tree
  	 */
- 	credits = ext4_chunk_trans_blocks(inode, len);
-+	/*
-+	 * We can only call ext_depth() on extent based inodes
-+	 */
-+	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-+		depth = ext_depth(inode);
-+	else
-+		depth = -1;
+@@ -4741,6 +4745,8 @@ retry:
+ 		goto retry;
+ 	}
  
- retry:
- 	while (ret >= 0 && len) {
-+		/*
-+		 * Recalculate credits when extent tree depth changes.
-+		 */
-+		if (depth >= 0 && depth != ext_depth(inode)) {
-+			credits = ext4_chunk_trans_blocks(inode, len);
-+			depth = ext_depth(inode);
-+		}
++	ext4_inode_resume_unlocked_dio(inode);
 +
- 		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS,
- 					    credits);
- 		if (IS_ERR(handle)) {
+ 	return ret > 0 ? ret2 : ret;
+ }
+ 
 -- 
 1.8.3.1
 
