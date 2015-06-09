@@ -1,93 +1,71 @@
-From: Pavel Machek <pavel@ucw.cz>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [4.1-rc] File was modified, but mtime stayed the same (according
  to unison)
-Date: Tue, 9 Jun 2015 17:34:29 +0200
-Message-ID: <20150609153429.GA704@amd>
+Date: Tue, 9 Jun 2015 12:04:55 -0400
+Message-ID: <20150609160455.GS19168@thunk.org>
 References: <20150609104330.GA29980@amd>
  <20150609151209.GR19168@thunk.org>
+ <20150609153429.GA704@amd>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Theodore Ts'o <tytso@mit.edu>, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org,
+Content-Type: text/plain; charset=us-ascii
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
 	kernel list <linux-kernel@vger.kernel.org>, jack@suse.cz
+To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20150609151209.GR19168@thunk.org>
+In-Reply-To: <20150609153429.GA704@amd>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 2015-06-09 11:12:09, Theodore Ts'o wrote:
-> On Tue, Jun 09, 2015 at 12:43:30PM +0200, Pavel Machek wrote:
-> >=20
-> > Hi!
-> >=20
-> > Today, I got strange warning from unison:
-> >=20
-> > pavel/.config/chromium/Default/Extension State/LOG.old =E2=80=94 tr=
-ansport
-> > failure
-> > =E2=80=A2 The source file /data/pavel/.config/chromium/Default/Exte=
-nsion
-> > State/LOG.old
-> > has been modified but the fast update detection mechanism
-> > failed to detect it.  Try running once with the fastcheck
-> > option set to 'no'.
->=20
-> What does this mean, precisely?  Is Unison checking that files have
-> been modified using some kind of a checksum or file comparison
-> mechanism?  And I assume that the "fast update detection mechanism"
-> using mtime?
+On Tue, Jun 09, 2015 at 05:34:29PM +0200, Pavel Machek wrote:
+> 
+> Ok, I guess mmap() can explain this. So... basically mtime is useless
+> in detecting if file have been updated?
+> 
+> Thats... not welcome.
 
-I believe it is using checksum in the process, yes.=20
+Using mtime to detect if a file has been updated if there is a process
+updating the file at the same time you are trying to take snapshots
+and using mtime is inherently racy.
 
-> And if it has modified, how was it modified (can you do a diff with
-> what the other side of the synchronization setup had for that file),
-> and do you know by which process. and what was it trying to do?  And
-> how is unison being run?
+This was much more obvious for file systems with a one second mtime
+granularity, but because of mmap(2), it's still not true even if you
+have a file system with nanosecond timestamps.
 
-No, sorry, I don't think I can get old version of file.
+> I see that constantly updating on-disk timestamp is not
+> feasible. Could we do something like
+> 
+>   on page_being_mmapped_rw:
+> 	     file.mtime = "future".
+> 
+>   on last_rw_mmap_disappearing:
+>   	     file.mtime = now().
+> 
+>   stat():
+> 	if file.mtime != "future":
+> 		result.mtime = file.mtime
+> 	else:
+> 		result.mtime = now()
+> 
+> ? I see making stat slower is not welcome, but having to read complete
+> files to determine if they were modified is even worse than that...
 
-> One thing that could be going on is that if you have a file which is
-> mmap'ed, the mtime field is set the first time the page is modified
-> (when the page table entry is set to read/write from read-only).  If
-> unison then takes a snapshot of the file, and then file is
-> subsequently modified via a write to the mmap'ed page, the mtime fiel=
-d
-> will not be updated again.  We *could* constantly reset the page tabl=
-e
-> flags but it would be disastrous from a performance standpoint, and i=
-f
-> mmap is involved, Posix does *not* guarantee that mtime field will be
-> set each time a process writes to the mmap'ed segment --- because tha=
-t
-> would be insane.
+Doing this would violate POSIX, and would probably break other
+programs that would be surprised when mtime goes backwards.  I suspect
+a better thing to do is to add a new system call interface which
+allows a userspace process to query whether a file is either (a)
+opened for read, (b) opened for write, and/or (c) mmap'ed.  Not all
+file systems would be able to return this bitfield --- for example, it
+wouldn't be possible to do this for NFS, for example, and it's not
+clear how this should or could work for overlayfs.
 
-Ok, I guess mmap() can explain this. So... basically mtime is useless
-in detecting if file have been updated?
+Unison could then be modified to use this new system call interface,
+so it can take special care if the file is currently opened for write
+or mmap'ed.  Note that because of the mtime granularity issues, which
+can be constrained by the on-disk file system field, as well as the
+granularity of the hardware clocks available to the system, unison
+could get fooled nonetheless.
 
-Thats... not welcome.
+Regards,
 
-I see that constantly updating on-disk timestamp is not
-feasible. Could we do something like
-
-  on page_being_mmapped_rw:
-	     file.mtime =3D "future".
-
-  on last_rw_mmap_disappearing:
-  	     file.mtime =3D now().
-
-  stat():
-	if file.mtime !=3D "future":
-		result.mtime =3D file.mtime
-	else:
-		result.mtime =3D now()
-
-? I see making stat slower is not welcome, but having to read complete
-files to determine if they were modified is even worse than that...
-
-									Pavel
---=20
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses=
-/blog.html
+						- Ted
