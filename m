@@ -1,40 +1,33 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH v2 0/8] Introduce strreplace
-Date: Tue, 9 Jun 2015 14:02:43 -0700
-Message-ID: <20150609140243.e2ef7e9f22416c82a334f031@linux-foundation.org>
-References: <1433806017-10823-1-git-send-email-linux@rasmusvillemoes.dk>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 89511] USB-storage mount error
+Date: Tue, 09 Jun 2015 21:11:09 +0000
+Message-ID: <bug-89511-13602-MpOJ024kUA@https.bugzilla.kernel.org/>
+References: <bug-89511-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-	Neil Brown <neilb@suse.de>, "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Steven Rostedt <rostedt@goodmis.org>,
-	Ingo Molnar <mingo@redhat.com>, Joe Perches <joe@perches.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>,
-	linux-kernel@vger.kernel.org, linux-raid@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Rasmus Villemoes <linux@rasmusvillemoes.dk>
-Return-path: <linux-raid-owner@vger.kernel.org>
-In-Reply-To: <1433806017-10823-1-git-send-email-linux@rasmusvillemoes.dk>
-Sender: linux-raid-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:59508 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751265AbbFIVLN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2015 17:11:13 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 330252056E
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2015 21:11:12 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 4792220555
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2015 21:11:10 +0000 (UTC)
+In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue,  9 Jun 2015 01:26:48 +0200 Rasmus Villemoes <linux@rasmusvillemoes.dk> wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=89511
 
-> Doing single-character substitution on an entire string is open-coded
-> in a few places, sometimes in a rather suboptimal way. This introduces
-> a trivial helper, strreplace, for this task along with a few example
-> conversions.
-> 
-> Andrew, can I get you to take 1/8 through the mm tree? I'm not sure
-> what the easiest path is for the remaining patches.
+--- Comment #56 from Markus Rathgeb <maggu2810@gmail.com> ---
+Will attach the output "lsusb -v" at the end of week (no access to the hw ATM).
+Thank you for your efforts.
 
-With this sort of thing I grab everything them feed the dependent
-patches to maintainers after the base patch is upstream.
-
-Or I merge the dependent patches myself if they were acked.
-
-Or if the dependent patches are simple I'll just merge them anyway,
-shrug.  I'd say these fall into that category.
-
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
