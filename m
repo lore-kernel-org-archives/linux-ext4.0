@@ -1,48 +1,48 @@
-From: Rasmus Villemoes <linux@rasmusvillemoes.dk>
-Subject: Re: [PATCH v2 0/8] Introduce strreplace
-Date: Tue, 09 Jun 2015 09:25:50 +0200
-Message-ID: <87lhftjqbl.fsf@rasmusvillemoes.dk>
-References: <1433806017-10823-1-git-send-email-linux@rasmusvillemoes.dk>
-	<20150609005554.GP19168@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 61601] rootflags=noatime causes kernel panic when booting
+ without initrd.
+Date: Tue, 09 Jun 2015 09:52:17 +0000
+Message-ID: <bug-61601-13602-AOwdtJZsUt@https.bugzilla.kernel.org/>
+References: <bug-61601-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-	Neil Brown <neilb@suse.de>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Steven Rostedt <rostedt@goodmis.org>,
-	Ingo Molnar <mingo@redhat.com>, Joe Perches <joe@perches.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>,
-	linux-kernel@vger.kernel.org, linux-raid@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-raid-owner@vger.kernel.org>
-In-Reply-To: <20150609005554.GP19168@thunk.org> (Theodore Ts'o's message of
-	"Mon, 8 Jun 2015 20:55:54 -0400")
-Sender: linux-raid-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:46009 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752515AbbFIJwW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2015 05:52:22 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id C431520524
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2015 09:52:20 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 9D9ED204DF
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2015 09:52:18 +0000 (UTC)
+In-Reply-To: <bug-61601-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 09 2015, Theodore Ts'o <tytso@mit.edu> wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=61601
 
-> On Tue, Jun 09, 2015 at 01:26:48AM +0200, Rasmus Villemoes wrote:
->> Doing single-character substitution on an entire string is open-coded
->> in a few places, sometimes in a rather suboptimal way. This introduces
->> a trivial helper, strreplace, for this task along with a few example
->> conversions.
->> 
->> Andrew, can I get you to take 1/8 through the mm tree? I'm not sure
->> what the easiest path is for the remaining patches.
->
-> This is not super urgent, right?
+Karol Herbst <linux@karolherbst.de> changed:
 
-Right, not urgent at all.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |linux@karolherbst.de
 
-> So we could let 1/8 go into mainline, and then the rest of the patches
-> could go in the next release. That would be the simplest, although it
-> would drag out how long it would take for strreplace to be used
-> everywhere.
+--- Comment #15 from Karol Herbst <linux@karolherbst.de> ---
+Hi,
 
-Sure, though it would be a little weird to have a helper with no users
-until 4.3 comes out.
+I have the same problem, which is causing me to remount / later in the boot
+process, which increases my boot time by about 12%.
 
-Rasmus
+linux-4.0.5
+fstype=btrfs
+
+Is there any good workaround on kernel level to mount / directly as noatime
+before init gets started?
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
