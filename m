@@ -1,24 +1,41 @@
-From: Salym Senyonga <salymasash.spam@gmail.com>
-Subject: linux-ext Subscription Request
-Date: Wed, 10 Jun 2015 20:25:51 +0300
-Message-ID: <20150610172546.GA5347@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: linux-ext Subscription Request
+Date: Wed, 10 Jun 2015 12:38:50 -0500
+Message-ID: <5578762A.6010005@redhat.com>
+References: <20150610172546.GA5347@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+To: Salym Senyonga <salymasash.spam@gmail.com>,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f181.google.com ([209.85.212.181]:34019 "EHLO
-	mail-wi0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933829AbbFJRZ6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Jun 2015 13:25:58 -0400
-Received: by wibut5 with SMTP id ut5so55458936wib.1
-        for <linux-ext4@vger.kernel.org>; Wed, 10 Jun 2015 10:25:57 -0700 (PDT)
-Received: from gmail.com ([41.77.78.202])
-        by mx.google.com with ESMTPSA id l6sm15468734wjz.4.2015.06.10.10.25.55
-        for <linux-ext4@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Wed, 10 Jun 2015 10:25:56 -0700 (PDT)
-Content-Disposition: inline
+Received: from mx1.redhat.com ([209.132.183.28]:58315 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751003AbbFJRiq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Jun 2015 13:38:46 -0400
+In-Reply-To: <20150610172546.GA5347@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-subscribe linux-ext4
+On 6/10/15 12:25 PM, Salym Senyonga wrote:
+> subscribe linux-ext4
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+http://vger.kernel.org/majordomo-info.html#subscription
+
+Very short Majordomo intro
+
+Send request in email to address <majordomo@vger.kernel.org>
+
+To subscribe a list (``linux-kernel'' is given as an example), use following as the only content of your letter:
+
+    subscribe linux-kernel 
+
+Like via this URL: "subscribe linux-kernel". 
+
+-Eric
+
