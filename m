@@ -1,41 +1,48 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: linux-ext Subscription Request
-Date: Wed, 10 Jun 2015 12:38:50 -0500
-Message-ID: <5578762A.6010005@redhat.com>
-References: <20150610172546.GA5347@gmail.com>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH] xfstests-bld: remove nojournal.exclude
+Date: Wed, 10 Jun 2015 14:16:02 -0400
+Message-ID: <20150610181602.GB23530@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-To: Salym Senyonga <salymasash.spam@gmail.com>,
-	linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58315 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751003AbbFJRiq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Jun 2015 13:38:46 -0400
-In-Reply-To: <20150610172546.GA5347@gmail.com>
+Received: from mail-vn0-f65.google.com ([209.85.216.65]:34707 "EHLO
+	mail-vn0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932676AbbFJS2c (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Jun 2015 14:28:32 -0400
+Received: by vnbf7 with SMTP id f7so5005482vnb.1
+        for <linux-ext4@vger.kernel.org>; Wed, 10 Jun 2015 11:28:31 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 6/10/15 12:25 PM, Salym Senyonga wrote:
-> subscribe linux-ext4
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The xfstests listed in the nojournal.exclude file have all been modified
+so they will only run on a test file system that journals metadata.
+This prevents the spurious test failures previously seen when running
+these tests (including generic/034, generic/311, generic/321,
+generic/322, and generic/325) in the nojournal test configuration.
 
-http://vger.kernel.org/majordomo-info.html#subscription
+Remove nojournal.exclude since it's no longer needed to suppress test
+failure noise.
 
-Very short Majordomo intro
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ kvm-xfstests/test-appliance/files/root/conf/nojournal.exclude | 5 -----
+ 1 file changed, 5 deletions(-)
+ delete mode 100644 kvm-xfstests/test-appliance/files/root/conf/nojournal.exclude
 
-Send request in email to address <majordomo@vger.kernel.org>
-
-To subscribe a list (``linux-kernel'' is given as an example), use following as the only content of your letter:
-
-    subscribe linux-kernel 
-
-Like via this URL: "subscribe linux-kernel". 
-
--Eric
+diff --git a/kvm-xfstests/test-appliance/files/root/conf/nojournal.exclude b/kvm-xfstests/test-appliance/files/root/conf/nojournal.exclude
+deleted file mode 100644
+index 33780bb..0000000
+--- a/kvm-xfstests/test-appliance/files/root/conf/nojournal.exclude
++++ /dev/null
+@@ -1,5 +0,0 @@
+-generic/034
+-generic/311
+-generic/321
+-generic/322
+-generic/325
+-- 
+2.1.4
 
