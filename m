@@ -1,34 +1,73 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 61601] rootflags=noatime causes kernel panic when booting
- without initrd.
-Date: Wed, 10 Jun 2015 16:04:53 +0000
-Message-ID: <bug-61601-13602-dp4isp7GCM@https.bugzilla.kernel.org/>
-References: <bug-61601-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH] jbd2: jbd2_cleanup_journal_tail fix gfp allocation context
+Date: Wed, 10 Jun 2015 20:33:27 +0400
+Message-ID: <1433954007-32588-1-git-send-email-dmonakhov@openvz.org>
+Cc: jack@suse.cz, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:60845 "EHLO mail.kernel.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:25630 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966571AbbFJQE6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Jun 2015 12:04:58 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 45BBB20604
-	for <linux-ext4@vger.kernel.org>; Wed, 10 Jun 2015 16:04:56 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 1BB30205D8
-	for <linux-ext4@vger.kernel.org>; Wed, 10 Jun 2015 16:04:54 +0000 (UTC)
-In-Reply-To: <bug-61601-13602@https.bugzilla.kernel.org/>
+	id S965974AbbFJQdi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Jun 2015 12:33:38 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=61601
+jbd2_cleanup_journal_tail() can be invoked by jbd2__journal_start()
+So allocations should be done with GFP_NOFS
 
---- Comment #17 from Karol Herbst <linux@karolherbst.de> ---
-for obvious reasons "rootflags=noatime" does result in a kernel error as shown
-in the above comments
+[Full stack trace snipped from 3.10-rh7]
+[<ffffffff815c4bd4>] dump_stack+0x19/0x1b
+[<ffffffff8105dba1>] warn_slowpath_common+0x61/0x80
+[<ffffffff8105dcca>] warn_slowpath_null+0x1a/0x20
+[<ffffffff815c2142>] slab_pre_alloc_hook.isra.31.part.32+0x15/0x17
+[<ffffffff8119c045>] kmem_cache_alloc+0x55/0x210
+[<ffffffff811477f5>] ? mempool_alloc_slab+0x15/0x20
+[<ffffffff811477f5>] mempool_alloc_slab+0x15/0x20
+[<ffffffff81147939>] mempool_alloc+0x69/0x170
+[<ffffffff815cb69e>] ? _raw_spin_unlock_irq+0xe/0x20
+[<ffffffff8109160d>] ? finish_task_switch+0x5d/0x150
+[<ffffffff811f1a8e>] bio_alloc_bioset+0x1be/0x2e0
+[<ffffffff8127ee49>] blkdev_issue_flush+0x99/0x120
+[<ffffffffa019a733>] jbd2_cleanup_journal_tail+0x93/0xa0 [jbd2] -->GFP_KERNEL
+[<ffffffffa019aca1>] jbd2_log_do_checkpoint+0x221/0x4a0 [jbd2]
+[<ffffffffa019afc7>] __jbd2_log_wait_for_space+0xa7/0x1e0 [jbd2]
+[<ffffffffa01952d8>] start_this_handle+0x2d8/0x550 [jbd2]
+[<ffffffff811b02a9>] ? __memcg_kmem_put_cache+0x29/0x30
+[<ffffffff8119c120>] ? kmem_cache_alloc+0x130/0x210
+[<ffffffffa019573a>] jbd2__journal_start+0xba/0x190 [jbd2]
+[<ffffffff811532ce>] ? lru_cache_add+0xe/0x10
+[<ffffffffa01c9549>] ? ext4_da_write_begin+0xf9/0x330 [ext4]
+[<ffffffffa01f2c77>] __ext4_journal_start_sb+0x77/0x160 [ext4]
+[<ffffffffa01c9549>] ext4_da_write_begin+0xf9/0x330 [ext4]
+[<ffffffff811446ec>] generic_file_buffered_write_iter+0x10c/0x270
+[<ffffffff81146918>] __generic_file_write_iter+0x178/0x390
+[<ffffffff81146c6b>] __generic_file_aio_write+0x8b/0xb0
+[<ffffffff81146ced>] generic_file_aio_write+0x5d/0xc0
+[<ffffffffa01bf289>] ext4_file_write+0xa9/0x450 [ext4]
+[<ffffffff811c31d9>] ? pipe_read+0x379/0x4f0
+[<ffffffff811b93f0>] do_sync_write+0x90/0xe0
+[<ffffffff811b9b6d>] vfs_write+0xbd/0x1e0
+[<ffffffff811ba5b8>] SyS_write+0x58/0xb0
+[<ffffffff815d4799>] system_call_fastpath+0x16/0x1b
 
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/jbd2/checkpoint.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 988b32e..6b7b73a 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -405,7 +405,7 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
+ 	 * jbd2_cleanup_journal_tail() doesn't get called all that often.
+ 	 */
+ 	if (journal->j_flags & JBD2_BARRIER)
+-		blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
++		blkdev_issue_flush(journal->j_fs_dev, GFP_NOFS, NULL);
+ 
+ 	__jbd2_update_log_tail(journal, first_tid, blocknr);
+ 	return 0;
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+1.7.1
+
