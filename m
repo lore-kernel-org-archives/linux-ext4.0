@@ -1,45 +1,36 @@
-From: Seunghun Lee <waydi1@gmail.com>
-Subject: [PATCH] ext4 crypto: prevent mount when blocksize != pagesize
-Date: Fri, 12 Jun 2015 00:12:47 +0900
-Message-ID: <1434035567-12651-1-git-send-email-waydi1@gmail.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Seunghun Lee <waydi1@gmail.com>
-To: tytso@mit.edu
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 89511] USB-storage mount error
+Date: Thu, 11 Jun 2015 18:22:29 +0000
+Message-ID: <bug-89511-13602-OALDVAyHAB@https.bugzilla.kernel.org/>
+References: <bug-89511-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f194.google.com ([209.85.192.194]:36484 "EHLO
-	mail-pd0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932679AbbFKPNA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Jun 2015 11:13:00 -0400
+Received: from mail.kernel.org ([198.145.29.136]:52724 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753209AbbFKSWe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Jun 2015 14:22:34 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id DF6342063B
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Jun 2015 18:22:32 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 2E7A520634
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Jun 2015 18:22:30 +0000 (UTC)
+In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Encryption mode is unsupported when blocksize != pagesize.
+https://bugzilla.kernel.org/show_bug.cgi?id=89511
 
-Signed-off-by: Seunghun Lee <waydi1@gmail.com>
----
- fs/ext4/super.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+--- Comment #59 from Markus Rathgeb <maggu2810@gmail.com> ---
+Created attachment 179641
+  --> https://bugzilla.kernel.org/attachment.cgi?id=179641&action=edit
+lsusb-verbose-myson-atapi-bridge.txt
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 31e85be..032c9e3 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1583,6 +1583,15 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 			IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, arg);
- 	} else if (token == Opt_test_dummy_encryption) {
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
-+		int blocksize =
-+			BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
-+
-+		if (blocksize != PAGE_CACHE_SIZE) {
-+			ext4_msg(sb, KERN_ERR,
-+				"unsupported blocksize for Test dummy encryption mode");
-+			return -1;
-+		}
-+
- 		sbi->s_mount_flags |= EXT4_MF_TEST_DUMMY_ENCRYPTION;
- 		ext4_msg(sb, KERN_WARNING,
- 			 "Test dummy encryption mode enabled");
+Attached lsusb verbose of the problematic device.
+
 -- 
-2.3.5
-
+You are receiving this mail because:
+You are watching the assignee of the bug.
