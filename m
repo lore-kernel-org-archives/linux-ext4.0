@@ -1,35 +1,45 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4: truncate issue in ext4 encryption.
-Date: Thu, 11 Jun 2015 10:22:47 -0400
-Message-ID: <20150611142247.GL24181@thunk.org>
-References: <5578D184.40808@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Seunghun Lee <waydi1@gmail.com>
+From: Seunghun Lee <waydi1@gmail.com>
+Subject: [PATCH] ext4 crypto: prevent mount when blocksize != pagesize
+Date: Fri, 12 Jun 2015 00:12:47 +0900
+Message-ID: <1434035567-12651-1-git-send-email-waydi1@gmail.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Seunghun Lee <waydi1@gmail.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:59892 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752701AbbFKOWs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Jun 2015 10:22:48 -0400
-Content-Disposition: inline
-In-Reply-To: <5578D184.40808@gmail.com>
+Received: from mail-pd0-f194.google.com ([209.85.192.194]:36484 "EHLO
+	mail-pd0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932679AbbFKPNA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Jun 2015 11:13:00 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 11, 2015 at 09:08:36AM +0900, Seunghun Lee wrote:
-> Hi,
-> 
-> I was running fsstress on encrypted ext4 image,
-> and I hit BUG_ON(blocksize != PAGE_CACHE_SIZE); in __ext4_block_zero_page_range.
-> 
-> It occurs when I'm using filesytem that has small block size(1024 bytes).
+Encryption mode is unsupported when blocksize != pagesize.
 
-Yes, we don't have support for blocksize != pagesize yet.  This should
-have been prevented when the file system was mounted.  I thought we
-had that check, but obviously we had forgotten to add it or it had
-somehow gotten dropped.   Thanks for the bug report.
+Signed-off-by: Seunghun Lee <waydi1@gmail.com>
+---
+ fs/ext4/super.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-Regards,
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 31e85be..032c9e3 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1583,6 +1583,15 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 			IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, arg);
+ 	} else if (token == Opt_test_dummy_encryption) {
+ #ifdef CONFIG_EXT4_FS_ENCRYPTION
++		int blocksize =
++			BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
++
++		if (blocksize != PAGE_CACHE_SIZE) {
++			ext4_msg(sb, KERN_ERR,
++				"unsupported blocksize for Test dummy encryption mode");
++			return -1;
++		}
++
+ 		sbi->s_mount_flags |= EXT4_MF_TEST_DUMMY_ENCRYPTION;
+ 		ext4_msg(sb, KERN_WARNING,
+ 			 "Test dummy encryption mode enabled");
+-- 
+2.3.5
 
-						- Ted
