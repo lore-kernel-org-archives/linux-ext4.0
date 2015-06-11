@@ -1,33 +1,34 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 14/14] misc: add fuse2fs, a FUSE server for e2fsprogs
- (v4.3)
-Date: Wed, 10 Jun 2015 20:13:37 -0400
-Message-ID: <20150611001337.GI24181@thunk.org>
-References: <20150514002108.10785.85860.stgit@birch.djwong.org>
- <20150514002240.10785.35238.stgit@birch.djwong.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 89511] USB-storage mount error
+Date: Thu, 11 Jun 2015 13:56:18 +0000
+Message-ID: <bug-89511-13602-oQPopNy3Ac@https.bugzilla.kernel.org/>
+References: <bug-89511-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58962 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.29.136]:35477 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751767AbbFKCmx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Jun 2015 22:42:53 -0400
-Content-Disposition: inline
-In-Reply-To: <20150514002240.10785.35238.stgit@birch.djwong.org>
+	id S1754743AbbFKN4Y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Jun 2015 09:56:24 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id F3BA620661
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Jun 2015 13:56:21 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id A19A720489
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Jun 2015 13:56:20 +0000 (UTC)
+In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 13, 2015 at 05:22:40PM -0700, Darrick J. Wong wrote:
-> This is the initial implementation of a FUSE server based on
-> e2fsprogs.  The point of this program is to enable ext4 to run on any
-> OS that FUSE supports (and doesn't already have a native driver), such
-> as MacOS X, BSDs, and Windows.  The code requires FUSE API v28, which
-> is available in Linux fuse and osxfuse releases that are available as
-> of August 2013.
+https://bugzilla.kernel.org/show_bug.cgi?id=89511
 
-Thanks, applied.
+--- Comment #58 from Alan Stern <stern@rowland.harvard.edu> ---
+If the "temporary write through" thing doesn't help then the patch I posted
+won't help either.  This means the problem you are experiencing is _not_ the
+same issue as the original one.
 
-						- Ted
-						
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
