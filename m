@@ -1,45 +1,75 @@
-From: Tejun Heo <tj-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Subject: [PATCHSET block/for-4.2/writeback] ext4: implement cgroup writeback support
-Date: Fri, 12 Jun 2015 17:02:21 -0500
-Message-ID: <1434146543-26358-1-git-send-email-tj@kernel.org>
-Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	lizefan-hv44wF8Li93QT0dZR+AlfA@public.gmane.org, cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org,
-	adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org
-Return-path: <cgroups-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Sender: cgroups-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+From: Tejun Heo <tj@kernel.org>
+Subject: [PATCH 2/2] ext4: implement cgroup writeback support
+Date: Fri, 12 Jun 2015 17:02:23 -0500
+Message-ID: <1434146543-26358-3-git-send-email-tj@kernel.org>
+References: <1434146543-26358-1-git-send-email-tj@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	lizefan@huawei.com, cgroups@vger.kernel.org, tytso@mit.edu,
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	Tejun Heo <tj@kernel.org>
+To: axboe@kernel.dk
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1434146543-26358-1-git-send-email-tj@kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+For ordered and writeback data modes, all data IOs go through
+ext4_io_submit.  This patch adds cgroup writeback support by invoking
+wbc_init_bio() from io_submit_init_bio() and wbc_account_io() in
+io_submit_add_bh().  Journal data which is written by jbd2 worker is
+left alone by this patch and will always be written out from the root
+cgroup.
 
-This patchset implements cgroup writeback support for ext4, which is
-enabled for writeback and ordered data modes.  This patchset contains
-the following two patches.
+ext4_fill_super() is updated to set MS_CGROUPWB when data mode is
+either ordered or writeback.  In journaled data mode, most IOs become
+synchronous through the journal and enabling cgroup writeback support
+doesn't make much sense or difference.  Journaled data mode is left
+alone.
 
- 0001-ext4-replace-ext4_io_submit-io_op-with-io_wbc.patch
- 0002-ext4-implement-cgroup-writeback-support.patch
+Lightly tested with sequential data write workload.  Behaves as
+expected.
 
-0001 is a prep patch which replaces io_submit->io_op w/ ->io_wbc.
-0002 implements cgroup writeback support.
+Signed-off-by: Tejun Heo <tj@kernel.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+---
+ fs/ext4/page-io.c | 2 ++
+ fs/ext4/super.c   | 2 ++
+ 2 files changed, 4 insertions(+)
 
-This patchset is on top of
-
- [1] block/for-4.2/writeback
-+[2] [PATCHSET] cgroup, writeback: misc updates for cgroup writeback support
-
-and available on in the following git branch.
-
- git://git.kernel.org/pub/scm/linux/kernel/git/tj/cgroup.git review-cgroup-writeback-ext4
-
-diffstat follows.  Thanks.
-
- fs/ext4/ext4.h    |    2 +-
- fs/ext4/page-io.c |    8 ++++++--
- fs/ext4/super.c   |    2 ++
- 3 files changed, 9 insertions(+), 3 deletions(-)
-
---
-tejun
-
-[1] git://git.kernel.org/pub/scm/linux/kernel/git/axboe/linux-block.git for-4.2/writeback
-[2] http://lkml.kernel.org/g/1434146254-26220-1-git-send-email-tj-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 3f80cb2..c56ba7b 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -383,6 +383,7 @@ static int io_submit_init_bio(struct ext4_io_submit *io,
+ 	bio = bio_alloc(GFP_NOIO, min(nvecs, BIO_MAX_PAGES));
+ 	if (!bio)
+ 		return -ENOMEM;
++	wbc_init_bio(io->io_wbc, bio);
+ 	bio->bi_iter.bi_sector = bh->b_blocknr * (bh->b_size >> 9);
+ 	bio->bi_bdev = bh->b_bdev;
+ 	bio->bi_end_io = ext4_end_bio;
+@@ -411,6 +412,7 @@ static int io_submit_add_bh(struct ext4_io_submit *io,
+ 	ret = bio_add_page(io->io_bio, page, bh->b_size, bh_offset(bh));
+ 	if (ret != bh->b_size)
+ 		goto submit_and_retry;
++	wbc_account_io(io->io_wbc, page, bh->b_size);
+ 	io->io_next_block++;
+ 	return 0;
+ }
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 56b8bb7..a9a3de3 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3623,6 +3623,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		}
+ 		if (test_opt(sb, DELALLOC))
+ 			clear_opt(sb, DELALLOC);
++	} else {
++		sb->s_flags |= MS_CGROUPWB;
+ 	}
+ 
+ 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-- 
+2.4.2
