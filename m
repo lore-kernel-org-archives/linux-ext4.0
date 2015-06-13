@@ -1,68 +1,61 @@
-From: Michal Hocko <mhocko@suse.cz>
-Subject: [PATCH] ext4: replace open coded nofail allocation
-Date: Tue, 23 Jun 2015 11:50:37 +0200
-Message-ID: <1435053037-1451-1-git-send-email-mhocko@suse.cz>
-Cc: linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	<linux-mm@kvack.org>,
-	LKML <linux-kernel@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <owner-linux-mm@kvack.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Herr Martins D Weber" <test@fumeilaistone.cn>
+Subject: Lieber Freund!!!
+Date: Sat, 13 Jun 2015 05:14:03 -0700
+Message-ID: <CA2C27E7-11B9-4C7B-8B69-CD876ABFFA05__43496.5775501498$1435056677$gmane$org@fumeilaistone.cn>
+Reply-To: <martinsdweber@aim.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=Windows-1251
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from [115.29.104.60] ([115.29.104.60]:49258 "HELO fumeilaistone.cn"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with SMTP
+	id S1754578AbbFWKtj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Jun 2015 06:49:39 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-ext4_free_blocks is looping around the allocation request and mimics
-__GFP_NOFAIL behavior without any allocation fallback strategy. Let's
-remove the open coded loop and replace it with __GFP_NOFAIL. Without
-the flag the allocator has no way to find out never-fail requirement
-and cannot help in any way.
+Lieber Freund!!!
 
-Signed-off-by: Michal Hocko <mhocko@suse.cz>
+Ich vermute das diese E-Mail eine ?berraschung f?r Sie sein wird, aber =
+es ist wahr.Ich bin bei einer routinen ?berpr?fung in meiner Bank (Stan=
+dardBank PLC von S?d Afrika) wo ich arbeite, auf einem Konto gesto?en, =
+was nicht in anspruch genommen worden ist, wo derzeit USD$18.5M (Achtze=
+hn Million, F?nf Hundert Tausend, US Dollar)  gutgeschrieben sind.Diese=
+s Konto geh?rte Herrn Manfred Becker, der ein Kunde in unsere Bank war,=
+ der leider verstorben ist. Herrn Manfred Becker war ein geb?rtiger Deu=
+tscher.
+
+Damit es mir m?glich ist dieses Geld $18,500,000 inanspruch zunehmen,be=
+n?tige ich die zusammenarbeit eines Ausl?ndischen Partners wie Sie,den =
+ich als Verwandter und Erbe des verstorbenen Herrn Manfred Becker vorst=
+ellen kann,damit wir das Geld inanspruch nehmen k?nnen. F?r diese Unter=
+st?tzung erhalten Sie 30% der Erbschaftsumme und die restlichen 70% tei=
+le ich mirmit meinen zwei Arbeitskollegen, die mich bei dieser Transakt=
+ion ebenfalls unterst?tzen.
+
+
+Wenn Sie interessiert sind, k?nnen Sie mir bitte eine E-Mail schicken, =
+damit ich Ihnen mehr Details zukommen lassen kann. N.B.BITTE SENDEN SIE=
+ MIR Martins D Weber ANTWORT ZU durch mein E-mail: ( martinsdweber@aim.=
+com ) f?R VERTRAULICHEN GRUND. Schicken Sie keine POST ZU MEINEM B?RO-E=
+-MAIL.(martinsdweber@aim.com )
+
+
+If you understand english,please  kindly reply with english ( martinsdw=
+eber@aim.com )
+
+Mit freundlichen Gr=FC=DFen
+
+Herr Martins D Weber
+
 ---
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
 
-Hi Ted,
-I am sorry for seding these changes one at the time but I haven't found
-a proper way to find all of them automatically. So I am discovering
-them as I check the code due to other reasons.
-
-Thanks!
-
- fs/ext4/mballoc.c | 16 +++++-----------
- 1 file changed, 5 insertions(+), 11 deletions(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 8d1e60214ef0..41260489d3bc 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4800,18 +4800,12 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 		/*
- 		 * blocks being freed are metadata. these blocks shouldn't
- 		 * be used until this transaction is committed
-+		 *
-+		 * We use __GFP_NOFAIL because ext4_free_blocks() is not allowed
-+		 * to fail.
- 		 */
--	retry:
--		new_entry = kmem_cache_alloc(ext4_free_data_cachep, GFP_NOFS);
--		if (!new_entry) {
--			/*
--			 * We use a retry loop because
--			 * ext4_free_blocks() is not allowed to fail.
--			 */
--			cond_resched();
--			congestion_wait(BLK_RW_ASYNC, HZ/50);
--			goto retry;
--		}
-+		new_entry = kmem_cache_alloc(ext4_free_data_cachep,
-+				GFP_NOFS|__GFP_NOFAIL);
- 		new_entry->efd_start_cluster = bit;
- 		new_entry->efd_group = block_group;
- 		new_entry->efd_count = count_clusters;
--- 
-2.1.4
 
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
