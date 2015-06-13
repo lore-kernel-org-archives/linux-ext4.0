@@ -1,73 +1,59 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: [PATCH 1/2] ext4: replace ext4_io_submit->io_op with ->io_wbc
-Date: Fri, 12 Jun 2015 17:02:22 -0500
-Message-ID: <1434146543-26358-2-git-send-email-tj@kernel.org>
-References: <1434146543-26358-1-git-send-email-tj@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	lizefan@huawei.com, cgroups@vger.kernel.org, tytso@mit.edu,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	Tejun Heo <tj@kernel.org>
-To: axboe@kernel.dk
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4 crypto: prevent mount when blocksize != pagesize
+Date: Fri, 12 Jun 2015 23:45:46 -0400
+Message-ID: <20150613034546.GN24181@thunk.org>
+References: <1434035567-12651-1-git-send-email-waydi1@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Seunghun Lee <waydi1@gmail.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1434146543-26358-1-git-send-email-tj@kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1434035567-12651-1-git-send-email-waydi1@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-ext4_io_submit_init() takes the pointer to writeback_control to test
-its sync_mode and determine between WRITE and WRITE_SYNC and records
-the result in ->io_op.  This patch makes it record the pointer
-directly and moves the test to ext4_io_submit().
+On Fri, Jun 12, 2015 at 12:12:47AM +0900, Seunghun Lee wrote:
+> Encryption mode is unsupported when blocksize != pagesize.
+> 
+> Signed-off-by: Seunghun Lee <waydi1@gmail.com>
 
-This doesn't cause any noticeable differences now but having
-writeback_control available throughout IO submission path will be
-depended upon by the planned cgroup writeback support.
+This only checks for blocksize != pagesize in the case where the test
+dummy encryption mount option is given.  We need to check also for the
+case when the file system has the encryption feature set.  So this is
+the better check.
 
-Signed-off-by: Tejun Heo <tj@kernel.org>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org
----
- fs/ext4/ext4.h    | 2 +-
- fs/ext4/page-io.c | 6 ++++--
- 2 files changed, 5 insertions(+), 3 deletions(-)
+						- Ted
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 009a059..74a4923 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -191,7 +191,7 @@ typedef struct ext4_io_end {
- } ext4_io_end_t;
- 
- struct ext4_io_submit {
--	int			io_op;
-+	struct writeback_control *io_wbc;
- 	struct bio		*io_bio;
- 	ext4_io_end_t		*io_end;
- 	sector_t		io_next_block;
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index c5d81e8..3f80cb2 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -357,8 +357,10 @@ void ext4_io_submit(struct ext4_io_submit *io)
- 	struct bio *bio = io->io_bio;
- 
- 	if (bio) {
-+		int io_op = io->io_wbc->sync_mode == WB_SYNC_ALL ?
-+			    WRITE_SYNC : WRITE;
- 		bio_get(io->io_bio);
--		submit_bio(io->io_op, io->io_bio);
-+		submit_bio(io_op, io->io_bio);
- 		bio_put(io->io_bio);
+commit 660947160c07e42b6c5def33a1977da09567ed55
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Fri Jun 12 23:44:33 2015 -0400
+
+    ext4 crypto: fail the mount if blocksize != pagesize
+    
+    We currently don't correctly handle the case where blocksize !=
+    pagesize, so disallow the mount in those cases.
+    
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 31e85be..e13fe40 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4065,7 +4065,15 @@ no_journal:
+ 		}
  	}
- 	io->io_bio = NULL;
-@@ -367,7 +369,7 @@ void ext4_io_submit(struct ext4_io_submit *io)
- void ext4_io_submit_init(struct ext4_io_submit *io,
- 			 struct writeback_control *wbc)
- {
--	io->io_op = (wbc->sync_mode == WB_SYNC_ALL ?  WRITE_SYNC : WRITE);
-+	io->io_wbc = wbc;
- 	io->io_bio = NULL;
- 	io->io_end = NULL;
- }
--- 
-2.4.2
+ 
+-	if (unlikely(sbi->s_mount_flags & EXT4_MF_TEST_DUMMY_ENCRYPTION) &&
++	if ((DUMMY_ENCRYPTION_ENABLED(sbi) ||
++	     EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_ENCRYPT)) &&
++	    (blocksize != PAGE_CACHE_SIZE)) {
++		ext4_msg(sb, KERN_ERR,
++			 "Unsupported blocksize for fs encryption");
++		goto failed_mount_wq;
++	}
++
++	if (DUMMY_ENCRYPTION_ENABLED(sbi) &&
+ 	    !(sb->s_flags & MS_RDONLY) &&
+ 	    !EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_ENCRYPT)) {
+ 		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_ENCRYPT);
