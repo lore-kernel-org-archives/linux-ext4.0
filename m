@@ -1,59 +1,30 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4 crypto: prevent mount when blocksize != pagesize
-Date: Fri, 12 Jun 2015 23:45:46 -0400
-Message-ID: <20150613034546.GN24181@thunk.org>
-References: <1434035567-12651-1-git-send-email-waydi1@gmail.com>
+From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Subject: Re: [PATCH 2/3] vfs, writeback: replace FS_CGROUP_WRITEBACK with
+ MS_CGROUPWB
+Date: Sat, 13 Jun 2015 09:16:08 -0700
+Message-ID: <20150613161608.GA29414@infradead.org>
+References: <1434146254-26220-1-git-send-email-tj@kernel.org>
+ <1434146254-26220-3-git-send-email-tj@kernel.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Seunghun Lee <waydi1@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, lizefan-hv44wF8Li93QT0dZR+AlfA@public.gmane.org,
+	cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Tejun Heo <tj-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Return-path: <cgroups-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <1434035567-12651-1-git-send-email-waydi1@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <1434146254-26220-3-git-send-email-tj-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Sender: cgroups-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 12, 2015 at 12:12:47AM +0900, Seunghun Lee wrote:
-> Encryption mode is unsupported when blocksize != pagesize.
-> 
-> Signed-off-by: Seunghun Lee <waydi1@gmail.com>
+On Fri, Jun 12, 2015 at 04:57:33PM -0500, Tejun Heo wrote:
+> FS_CGROUP_WRITEBACK indicates whether a file_system_type supports
+> cgroup writeback; however, different super_blocks of the same
+> file_system_type may or may not support cgroup writeback depending on
+> filesystem options.  This patch replaces FS_CGROUP_WRITEBACK with a
+> kernel-internal super_block->s_flags MS_CGROUPWB.  The concatenated
+> and abbreviated name is for consistency with other MS_* flags.
 
-This only checks for blocksize != pagesize in the case where the test
-dummy encryption mount option is given.  We need to check also for the
-case when the file system has the encryption feature set.  So this is
-the better check.
-
-						- Ted
-
-commit 660947160c07e42b6c5def33a1977da09567ed55
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Fri Jun 12 23:44:33 2015 -0400
-
-    ext4 crypto: fail the mount if blocksize != pagesize
-    
-    We currently don't correctly handle the case where blocksize !=
-    pagesize, so disallow the mount in those cases.
-    
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 31e85be..e13fe40 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4065,7 +4065,15 @@ no_journal:
- 		}
- 	}
- 
--	if (unlikely(sbi->s_mount_flags & EXT4_MF_TEST_DUMMY_ENCRYPTION) &&
-+	if ((DUMMY_ENCRYPTION_ENABLED(sbi) ||
-+	     EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_ENCRYPT)) &&
-+	    (blocksize != PAGE_CACHE_SIZE)) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "Unsupported blocksize for fs encryption");
-+		goto failed_mount_wq;
-+	}
-+
-+	if (DUMMY_ENCRYPTION_ENABLED(sbi) &&
- 	    !(sb->s_flags & MS_RDONLY) &&
- 	    !EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_ENCRYPT)) {
- 		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_ENCRYPT);
+Nak.  As the uapi part makes it obvious the MS_ namespace is part
+of the userspace ABI.  Please add a new in-kernel flags field instead.
