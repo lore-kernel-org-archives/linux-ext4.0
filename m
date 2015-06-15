@@ -1,36 +1,37 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] ext4: Wait for existing dio workers in
- ext4_alloc_file_blocks()
-Date: Mon, 15 Jun 2015 00:25:54 -0400
-Message-ID: <20150615042554.GH15793@thunk.org>
-References: <1433833126-28575-1-git-send-email-lczerner@redhat.com>
- <1433833126-28575-2-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: Add support FALLOC_FL_INSERT_RANGE for fallocate
+Date: Mon, 15 Jun 2015 00:29:20 -0400
+Message-ID: <20150615042920.GI15793@thunk.org>
+References: <02e401d09475$f5cd47a0$e167d6e0$@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+To: Namjae Jeon <namjae.jeon@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35210 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:35218 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751525AbbFOEZy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Jun 2015 00:25:54 -0400
+	id S1750887AbbFOE3X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Jun 2015 00:29:23 -0400
 Content-Disposition: inline
-In-Reply-To: <1433833126-28575-2-git-send-email-lczerner@redhat.com>
+In-Reply-To: <02e401d09475$f5cd47a0$e167d6e0$@samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 09, 2015 at 08:58:46AM +0200, Lukas Czerner wrote:
-> Currently existing dio workers can jump in and potentially increase
-> extent tree depth while we're allocating blocks in
-> ext4_alloc_file_blocks(). This may cause us to underestimate the number
-> of credits needed for the transaction because the extent tree depth can
-> change after our estimation.
+On Fri, May 22, 2015 at 06:59:14PM +0900, Namjae Jeon wrote:
+> This patch implements fallocate's FALLOC_FL_INSERT_RANGE for Ext4.
 > 
-> Fix this by waiting for all the existing dio workers in the same way as
-> we do it in ext4_punch_hole. We've seen errors caused by this in xfstest
-> generic/299, however it's really hard to reproduce.
+> 1) Make sure that both offset and len are block size aligned.
+> 2) Update the i_size of inode by len bytes.
+> 3) Compute the file's logical block number against offset. If the computed
+>    block number is not the starting block of the extent, split the extent
+>    such that the block number is the starting block of the extent.
+> 4) Shift all the extents which are lying between [offset, last allocated extent]
+>    towards right by len bytes. This step will make a hole of len bytes
+>    at offset.
 > 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
 
 Thanks, applied.
 
