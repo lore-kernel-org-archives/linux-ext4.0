@@ -1,47 +1,40 @@
-From: Tejun Heo <tj-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Subject: Re: [PATCH 2/3] vfs, writeback: replace FS_CGROUP_WRITEBACK with
- MS_CGROUPWB
-Date: Sun, 14 Jun 2015 00:42:36 -0500
-Message-ID: <20150614054236.GA9662@mtj.duckdns.org>
-References: <1434146254-26220-1-git-send-email-tj@kernel.org>
- <1434146254-26220-3-git-send-email-tj@kernel.org>
- <20150613161608.GA29414@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] xfstests-bld: exclude ext4 defrag tests from unsupported
+ configurations
+Date: Sun, 14 Jun 2015 21:14:33 -0400
+Message-ID: <20150615011433.GA15793@thunk.org>
+References: <20150610181319.GA23530@localhost.localdomain>
+ <20150610192810.GB24181@thunk.org>
+ <20150611200051.GA505@localhost.localdomain>
+ <20150612002421.GB505@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, lizefan-hv44wF8Li93QT0dZR+AlfA@public.gmane.org,
-	cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Return-path: <cgroups-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: linux-ext4@vger.kernel.org
+To: Eric Whitney <enwlinux@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:35024 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752472AbbFOBOf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 14 Jun 2015 21:14:35 -0400
 Content-Disposition: inline
-In-Reply-To: <20150613161608.GA29414-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Sender: cgroups-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20150612002421.GB505@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hello, Christoph.
-
-On Sat, Jun 13, 2015 at 09:16:08AM -0700, Christoph Hellwig wrote:
-> On Fri, Jun 12, 2015 at 04:57:33PM -0500, Tejun Heo wrote:
-> > FS_CGROUP_WRITEBACK indicates whether a file_system_type supports
-> > cgroup writeback; however, different super_blocks of the same
-> > file_system_type may or may not support cgroup writeback depending on
-> > filesystem options.  This patch replaces FS_CGROUP_WRITEBACK with a
-> > kernel-internal super_block->s_flags MS_CGROUPWB.  The concatenated
-> > and abbreviated name is for consistency with other MS_* flags.
+On Thu, Jun 11, 2015 at 08:24:21PM -0400, Eric Whitney wrote:
+> Spoke too soon - hit what looks like the old problem on ARM running 4.1-rc7
+> on the ninth trial run.  Various components of the test are left in the 'D'
+> state after a familiar oops - kernel BUG at fs/jbd2/transaction.c:2150 while
+> truncating.
 > 
-> Nak.  As the uapi part makes it obvious the MS_ namespace is part
-> of the userspace ABI.  Please add a new in-kernel flags field instead.
+> I'll see if I can still get the problem to appear on x86_64.
 
-Are MS_ACTIVE and MS_BORN part of userpace ABI?  They seem pretty
-internal.  I don't mind introducing a new internal flag field but it's
-weird to put this single flag there with other internal flags in
-->s_flags.
+I was able to reproduce this on x86_64, after running a kernel build
+on the host as an antogonist.  I'm guessing that the race window is
+pretty narrow, so that's why it wasn't triggering for me easily until
+I had some additional I/O traffic to slow things down further.
 
-Assuming we add a new field, how do sb->s_iflags and SB_I_XXX sound?
-Any better suggestions?
+After some investigation, it looks like this bug has been around since
+2008(!).  I'll send out a fix.
 
-Thanks.
-
--- 
-tejun
+						- Ted
