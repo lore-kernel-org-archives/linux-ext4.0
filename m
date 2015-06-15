@@ -1,37 +1,42 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: Michal Hocko <mhocko@suse.cz>
 Subject: Re: [PATCH] jbd2: get rid of open coded allocation retry loop
-Date: Mon, 15 Jun 2015 15:47:04 -0400
-Message-ID: <20150615194704.GF5003@thunk.org>
+Date: Mon, 15 Jun 2015 21:56:22 +0200
+Message-ID: <20150615195622.GA16138@dhcp22.suse.cz>
 References: <1434377854-17959-1-git-send-email-mhocko@suse.cz>
+ <20150615194704.GF5003@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, LKML <linux-kernel@vger.kernel.org>
-To: Michal Hocko <mhocko@suse.cz>
+To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	LKML <linux-kernel@vger.kernel.org>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1434377854-17959-1-git-send-email-mhocko@suse.cz>
+In-Reply-To: <20150615194704.GF5003@thunk.org>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 15, 2015 at 04:17:34PM +0200, Michal Hocko wrote:
-> insert_revoke_hash does an open coded endless allocation loop if
-> journal_oom_retry is true. It doesn't implement any allocation fallback
-> strategy between the retries, though. The memory allocator doesn't know
-> about the never fail requirement so it cannot potentially help to move
-> on with the allocation (e.g. use memory reserves).
+On Mon 15-06-15 15:47:04, Theodore Ts'o wrote:
+> On Mon, Jun 15, 2015 at 04:17:34PM +0200, Michal Hocko wrote:
+> > insert_revoke_hash does an open coded endless allocation loop if
+> > journal_oom_retry is true. It doesn't implement any allocation fallback
+> > strategy between the retries, though. The memory allocator doesn't know
+> > about the never fail requirement so it cannot potentially help to move
+> > on with the allocation (e.g. use memory reserves).
+> > 
+> > Get rid of the retry loop and use __GFP_NOFAIL instead. We will lose the
+> > debugging message but I am not sure it is anyhow helpful.
+> > 
+> > Do the same for journal_alloc_journal_head which is doing a similar
+> > thing.
+> > 
+> > Signed-off-by: Michal Hocko <mhocko@suse.cz>
 > 
-> Get rid of the retry loop and use __GFP_NOFAIL instead. We will lose the
-> debugging message but I am not sure it is anyhow helpful.
-> 
-> Do the same for journal_alloc_journal_head which is doing a similar
-> thing.
-> 
-> Signed-off-by: Michal Hocko <mhocko@suse.cz>
+> Thanks, applied.
 
-Thanks, applied.
-
-					- Ted
+Thanks!
+-- 
+Michal Hocko
+SUSE Labs
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
