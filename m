@@ -1,41 +1,40 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix race between truncate and
- __ext4_journalled_writepage()
-Date: Mon, 15 Jun 2015 15:37:55 -0400
-Message-ID: <20150615193755.GE5003@thunk.org>
-References: <20150615011433.GA15793@thunk.org>
- <1434331430-23125-1-git-send-email-tytso@mit.edu>
- <20150615123352.GD4368@quack.suse.cz>
- <20150615130611.GJ15793@thunk.org>
- <20150615170325.GA2381@quack.suse.cz>
+Subject: Re: [PATCH] jbd2: get rid of open coded allocation retry loop
+Date: Mon, 15 Jun 2015 15:47:04 -0400
+Message-ID: <20150615194704.GF5003@thunk.org>
+References: <1434377854-17959-1-git-send-email-mhocko@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	enwlinux@gmail.com, stable@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <stable-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, LKML <linux-kernel@vger.kernel.org>
+To: Michal Hocko <mhocko@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20150615170325.GA2381@quack.suse.cz>
-Sender: stable-owner@vger.kernel.org
+In-Reply-To: <1434377854-17959-1-git-send-email-mhocko@suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 15, 2015 at 07:03:25PM +0200, Jan Kara wrote:
->   I think that fully switching lock ordering for data=journal mode back to
-> page lock -> transaction start (which is what you effectively do when you
-> never drop page lock in ->writepage) is rather error prone. We'd have to be
-> careful to avoid lock inversion also for places like ->write_begin,
-> ->releasepage, ->invalidatepage etc. For example ext4_write_begin() will
-> currently call lock_page() with transaction started which could deadlock
-> against journalled writepage you suggest. So effectively we'd have to
-> completely separate aops for data=journal mode. Doable but I'm not sure
-> it's worth it.
+On Mon, Jun 15, 2015 at 04:17:34PM +0200, Michal Hocko wrote:
+> insert_revoke_hash does an open coded endless allocation loop if
+> journal_oom_retry is true. It doesn't implement any allocation fallback
+> strategy between the retries, though. The memory allocator doesn't know
+> about the never fail requirement so it cannot potentially help to move
+> on with the allocation (e.g. use memory reserves).
+> 
+> Get rid of the retry loop and use __GFP_NOFAIL instead. We will lose the
+> debugging message but I am not sure it is anyhow helpful.
+> 
+> Do the same for journal_alloc_journal_head which is doing a similar
+> thing.
+> 
+> Signed-off-by: Michal Hocko <mhocko@suse.cz>
 
-Good point.  OTOH, things are kind of fragile with respect to
-ext4_write_begin() in data=journal mode, as you've pointed out.  But
-it's not causing any problems as far as we know, so so I'll use the
-patch which you ack'ed and maybe later on, we can figure out a better
-way to clean this up.
+Thanks, applied.
 
-Thanks,
+					- Ted
 
-						- Ted
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
