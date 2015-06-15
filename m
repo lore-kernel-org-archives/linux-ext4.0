@@ -1,223 +1,100 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH RESEND] jbd2: fix ocfs2 corrupt when updating journal
- superblock fails
-Date: Mon, 15 Jun 2015 15:08:44 +0200
-Message-ID: <20150615130844.GF4368@quack.suse.cz>
-References: <557E703D.2060709@huawei.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	"ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>,
-	Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	Junxiao Bi <junxiao.bi@oracle.com>,
-	jiangyiwen <jiangyiwen@huawei.com>, linux-fsdevel@vger.kernel.org
-To: Joseph Qi <joseph.qi@huawei.com>
+From: Michal Hocko <mhocko@suse.cz>
+Subject: [PATCH] jbd2: get rid of open coded allocation retry loop
+Date: Mon, 15 Jun 2015 16:17:34 +0200
+Message-ID: <1434377854-17959-1-git-send-email-mhocko@suse.cz>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, LKML <linux-kernel@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <557E703D.2060709@huawei.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 15-06-15 14:27:09, Joseph Qi wrote:
-> If updating journal superblock fails after journal data has been flushed,
-> the error is omitted and this will mislead the caller as a normal case.
-> In ocfs2, the checkpoint will be treated successfully and the other node
-> can get the lock to update. Since the sb_start is still pointing to the
-> old log block, it will rewrite the journal data during journal recovery
-> by the other node. Thus the new updates will be overwritten and ocfs2
-> corrupts.
-> So in above case we have to return the error, and ocfs2_commit_cache will
-> take care of the error and prevent the other node to do update first.
-> And only after recovering journal it can do the new updates.
-> 
-> The issue discussion mail can be found at:
-> https://oss.oracle.com/pipermail/ocfs2-devel/2015-June/010856.html
-> http://comments.gmane.org/gmane.comp.file-systems.ext4/48841
-> 
-> Reported-by: Yiwen Jiang <jiangyiwen@huawei.com>
-> Signed-off-by: Joseph Qi <joseph.qi@huawei.com>
-> Tested-by: Yiwen Jiang <jiangyiwen@huawei.com>
-> Cc: Junxiao Bi <junxiao.bi@oracle.com>
-> Cc: <stable@vger.kernel.org>
-  The patch looks good but it seems to be against relatively old kernel
-version. Can you please rebase your patch against current kernel? Thanks!
+insert_revoke_hash does an open coded endless allocation loop if
+journal_oom_retry is true. It doesn't implement any allocation fallback
+strategy between the retries, though. The memory allocator doesn't know
+about the never fail requirement so it cannot potentially help to move
+on with the allocation (e.g. use memory reserves).
 
-								Honza
+Get rid of the retry loop and use __GFP_NOFAIL instead. We will lose the
+debugging message but I am not sure it is anyhow helpful.
 
-> ---
->  fs/jbd2/checkpoint.c |  5 ++---
->  fs/jbd2/journal.c    | 37 ++++++++++++++++++++++++++++++-------
->  include/linux/jbd2.h |  4 ++--
->  3 files changed, 34 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-> index 988b32e..82e5b7d 100644
-> --- a/fs/jbd2/checkpoint.c
-> +++ b/fs/jbd2/checkpoint.c
-> @@ -390,7 +390,7 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
->  	unsigned long	blocknr;
-> 
->  	if (is_journal_aborted(journal))
-> -		return 1;
-> +		return -EIO;
-> 
->  	if (!jbd2_journal_get_log_tail(journal, &first_tid, &blocknr))
->  		return 1;
-> @@ -407,8 +407,7 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
->  	if (journal->j_flags & JBD2_BARRIER)
->  		blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
-> 
-> -	__jbd2_update_log_tail(journal, first_tid, blocknr);
-> -	return 0;
-> +	return __jbd2_update_log_tail(journal, first_tid, blocknr);
->  }
-> 
-> 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index b96bd80..6b33a42 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -885,9 +885,10 @@ int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
->   *
->   * Requires j_checkpoint_mutex
->   */
-> -void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
-> +int __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
->  {
->  	unsigned long freed;
-> +	int ret;
-> 
->  	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
-> 
-> @@ -897,7 +898,10 @@ void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
->  	 * space and if we lose sb update during power failure we'd replay
->  	 * old transaction with possibly newly overwritten data.
->  	 */
-> -	jbd2_journal_update_sb_log_tail(journal, tid, block, WRITE_FUA);
-> +	ret = jbd2_journal_update_sb_log_tail(journal, tid, block, WRITE_FUA);
-> +	if (ret)
-> +		goto out;
-> +
->  	write_lock(&journal->j_state_lock);
->  	freed = block - journal->j_tail;
->  	if (block < journal->j_tail)
-> @@ -913,6 +917,9 @@ void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
->  	journal->j_tail_sequence = tid;
->  	journal->j_tail = block;
->  	write_unlock(&journal->j_state_lock);
-> +
-> +out:
-> +	return ret;
->  }
-> 
->  /*
-> @@ -1331,7 +1338,7 @@ static int journal_reset(journal_t *journal)
->  	return jbd2_journal_start_thread(journal);
->  }
-> 
-> -static void jbd2_write_superblock(journal_t *journal, int write_op)
-> +static int jbd2_write_superblock(journal_t *journal, int write_op)
->  {
->  	struct buffer_head *bh = journal->j_sb_buffer;
->  	journal_superblock_t *sb = journal->j_superblock;
-> @@ -1370,7 +1377,10 @@ static void jbd2_write_superblock(journal_t *journal, int write_op)
->  		printk(KERN_ERR "JBD2: Error %d detected when updating "
->  		       "journal superblock for %s.\n", ret,
->  		       journal->j_devname);
-> +		jbd2_journal_abort(journal, ret);
->  	}
-> +
-> +	return ret;
->  }
-> 
->  /**
-> @@ -1383,10 +1393,11 @@ static void jbd2_write_superblock(journal_t *journal, int write_op)
->   * Update a journal's superblock information about log tail and write it to
->   * disk, waiting for the IO to complete.
->   */
-> -void jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
-> +int jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
->  				     unsigned long tail_block, int write_op)
->  {
->  	journal_superblock_t *sb = journal->j_superblock;
-> +	int ret;
-> 
->  	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
->  	jbd_debug(1, "JBD2: updating superblock (start %lu, seq %u)\n",
-> @@ -1395,13 +1406,18 @@ void jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
->  	sb->s_sequence = cpu_to_be32(tail_tid);
->  	sb->s_start    = cpu_to_be32(tail_block);
-> 
-> -	jbd2_write_superblock(journal, write_op);
-> +	ret = jbd2_write_superblock(journal, write_op);
-> +	if (ret)
-> +		goto out;
-> 
->  	/* Log is no longer empty */
->  	write_lock(&journal->j_state_lock);
->  	WARN_ON(!sb->s_sequence);
->  	journal->j_flags &= ~JBD2_FLUSHED;
->  	write_unlock(&journal->j_state_lock);
-> +
-> +out:
-> +	return ret;
->  }
-> 
->  /**
-> @@ -1950,7 +1966,13 @@ int jbd2_journal_flush(journal_t *journal)
->  		return -EIO;
-> 
->  	mutex_lock(&journal->j_checkpoint_mutex);
-> -	jbd2_cleanup_journal_tail(journal);
-> +	if (!err) {
-> +		err = jbd2_cleanup_journal_tail(journal);
-> +		if (err < 0) {
-> +			mutex_unlock(&journal->j_checkpoint_mutex);
-> +			goto out;
-> +		}
-> +	}
-> 
->  	/* Finally, mark the journal as really needing no recovery.
->  	 * This sets s_start==0 in the underlying superblock, which is
-> @@ -1966,7 +1988,8 @@ int jbd2_journal_flush(journal_t *journal)
->  	J_ASSERT(journal->j_head == journal->j_tail);
->  	J_ASSERT(journal->j_tail_sequence == journal->j_transaction_sequence);
->  	write_unlock(&journal->j_state_lock);
-> -	return 0;
-> +out:
-> +	return err;
->  }
-> 
->  /**
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index 20e7f78..edb640a 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -1035,7 +1035,7 @@ struct buffer_head *jbd2_journal_get_descriptor_buffer(journal_t *journal);
->  int jbd2_journal_next_log_block(journal_t *, unsigned long long *);
->  int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
->  			      unsigned long *block);
-> -void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
-> +int __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
->  void jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
-> 
->  /* Commit management */
-> @@ -1157,7 +1157,7 @@ extern int	   jbd2_journal_recover    (journal_t *journal);
->  extern int	   jbd2_journal_wipe       (journal_t *, int);
->  extern int	   jbd2_journal_skip_recovery	(journal_t *);
->  extern void	   jbd2_journal_update_sb_errno(journal_t *);
-> -extern void	   jbd2_journal_update_sb_log_tail	(journal_t *, tid_t,
-> +extern int	   jbd2_journal_update_sb_log_tail	(journal_t *, tid_t,
->  				unsigned long, int);
->  extern void	   __jbd2_journal_abort_hard	(journal_t *);
->  extern void	   jbd2_journal_abort      (journal_t *, int);
-> -- 
-> 1.8.4.3
-> 
-> 
+Do the same for journal_alloc_journal_head which is doing a similar
+thing.
+
+Signed-off-by: Michal Hocko <mhocko@suse.cz>
+---
+
+Hi,
+While looking at something unrelated I have encountered the following
+two open coded endless loops around allocation request. I have converted
+them to use __GFP_NOFAIL in lines of http://marc.info/?l=linux-mm&m=143377014630186&w=2.
+
+journal_oom_retry is hardcoded to 1 and used only at a single place in
+jbd2 code so I guess it is just a left over. Nevertheless, I have kept
+it there because I do not understand its historical purpose. Anyway
+it seems like removing it would allow some more clean ups because
+insert_revoke_hash doesn't have any other failure modes (same applies to
+jbd2_journal_set_revoke). Let me know if you would be interested in
+such a cleanup.
+
+Thanks!
+
+ fs/jbd2/journal.c |  6 ++----
+ fs/jbd2/revoke.c  | 15 +++++----------
+ 2 files changed, 7 insertions(+), 14 deletions(-)
+
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index b96bd8076b70..218414703f11 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2362,10 +2362,8 @@ static struct journal_head *journal_alloc_journal_head(void)
+ 	if (!ret) {
+ 		jbd_debug(1, "out of memory for journal_head\n");
+ 		pr_notice_ratelimited("ENOMEM in %s, retrying.\n", __func__);
+-		while (!ret) {
+-			yield();
+-			ret = kmem_cache_zalloc(jbd2_journal_head_cache, GFP_NOFS);
+-		}
++		ret = kmem_cache_zalloc(jbd2_journal_head_cache,
++				GFP_NOFS | __GFP_NOFAIL);
+ 	}
+ 	return ret;
+ }
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index c6cbaef2bda1..f9eb93e1b3cb 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -141,11 +141,13 @@ static int insert_revoke_hash(journal_t *journal, unsigned long long blocknr,
+ {
+ 	struct list_head *hash_list;
+ 	struct jbd2_revoke_record_s *record;
++	gfp_t gfp_mask = GFP_NOFS;
+ 
+-repeat:
+-	record = kmem_cache_alloc(jbd2_revoke_record_cache, GFP_NOFS);
++	if (journal_oom_retry)
++		gfp_mask |= __GFP_NOFAIL;
++	record = kmem_cache_alloc(jbd2_revoke_record_cache, gfp_mask);
+ 	if (!record)
+-		goto oom;
++		return -ENOMEM;
+ 
+ 	record->sequence = seq;
+ 	record->blocknr = blocknr;
+@@ -154,13 +156,6 @@ static int insert_revoke_hash(journal_t *journal, unsigned long long blocknr,
+ 	list_add(&record->hash, hash_list);
+ 	spin_unlock(&journal->j_revoke_lock);
+ 	return 0;
+-
+-oom:
+-	if (!journal_oom_retry)
+-		return -ENOMEM;
+-	jbd_debug(1, "ENOMEM in %s, retrying\n", __func__);
+-	yield();
+-	goto repeat;
+ }
+ 
+ /* Find a revoke record in the journal's hash table. */
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+2.1.4
+
