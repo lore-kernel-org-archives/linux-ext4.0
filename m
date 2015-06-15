@@ -1,100 +1,92 @@
-From: Michal Hocko <mhocko@suse.cz>
-Subject: [PATCH] jbd2: get rid of open coded allocation retry loop
-Date: Mon, 15 Jun 2015 16:17:34 +0200
-Message-ID: <1434377854-17959-1-git-send-email-mhocko@suse.cz>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, LKML <linux-kernel@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [RFC] keyctl {clear,revoke} serialization with key-users
+Date: Mon, 15 Jun 2015 18:51:28 +0300
+Message-ID: <87ioapt1fj.fsf@openvz.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha512; protocol="application/pgp-signature"
+Cc: ext4 development <linux-ext4@vger.kernel.org>, dhowells@redhat.com
+To: keyrings@linux-nfs.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:34900 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755187AbbFOPyN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Jun 2015 11:54:13 -0400
+Received: by lbbwc1 with SMTP id wc1so4442495lbb.2
+        for <linux-ext4@vger.kernel.org>; Mon, 15 Jun 2015 08:54:12 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-insert_revoke_hash does an open coded endless allocation loop if
-journal_oom_retry is true. It doesn't implement any allocation fallback
-strategy between the retries, though. The memory allocator doesn't know
-about the never fail requirement so it cannot potentially help to move
-on with the allocation (e.g. use memory reserves).
-
-Get rid of the retry loop and use __GFP_NOFAIL instead. We will lose the
-debugging message but I am not sure it is anyhow helpful.
-
-Do the same for journal_alloc_journal_head which is doing a similar
-thing.
-
-Signed-off-by: Michal Hocko <mhocko@suse.cz>
----
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
 Hi,
-While looking at something unrelated I have encountered the following
-two open coded endless loops around allocation request. I have converted
-them to use __GFP_NOFAIL in lines of http://marc.info/?l=linux-mm&m=143377014630186&w=2.
+I'm not an expert in security/keyring stuff but I want to solve an
+issue which originally comes from ext4 in most convenient way
 
-journal_oom_retry is hardcoded to 1 and used only at a single place in
-jbd2 code so I guess it is just a left over. Nevertheless, I have kept
-it there because I do not understand its historical purpose. Anyway
-it seems like removing it would allow some more clean ups because
-insert_revoke_hash doesn't have any other failure modes (same applies to
-jbd2_journal_set_revoke). Let me know if you would be interested in
-such a cleanup.
+Description:
+ext4 now use security/key infrastructure for data encryption (keytype =3D '=
+logon')
+see: https://github.com/torvalds/linux/blob/master/fs/ext4/crypto_key.c
+There are use-cases where key added and removed dynamically
+#################
+# User login and add user's key
+e4crypt add_key -S /home/$USER  # analog of keyctl add $SOME_ARG
+# some activity
+echo test > /home/$USER/my_file
+#Logout
+keyctl clear @s
+############
+But currently there is not synchronization between 'keyctl clear' and dirty=
+ page
+buffers write-back, which result in data loss(because key no longer availab=
+le).
+There are several ways to synchronize key-management with key-usage
+1) ext4 specific way via userspace
+   add 'del_key' command to e4crypto which will do:
+       ioctl(ext4_del_key)          # sync and invalidate all inodes which =
+referees given key
+       keyctl(KEYCTL_INVALIDATE,..) # wipe key from kernel
+2) Generic keyring way:
+   Add kernel API to register event listeners for a key so any subsystem
+   may listen for such events and performs necessary actions once it happen.
+   For example:
+   key =3D request_key(....)
+   notify_changes_key(key, event_mask, my_callback)
 
-Thanks!
 
- fs/jbd2/journal.c |  6 ++----
- fs/jbd2/revoke.c  | 15 +++++----------
- 2 files changed, 7 insertions(+), 14 deletions(-)
+   keyring_clear() {
+   for_each_listener{
+        notify_key(callback, KEY_CLEAR)
+   }
+=20=20=20
+First one is easy and clean also it preserves original keyring management a=
+ssumptions,
+but second one is more generic (since other fs will likely to implement
+encryption in near future), the only visible changes of second option
+is that callbacks must be synchronous so 'keyctl clear @s' may takes
+long time. IMHO such implicit synchronization is good for 99% use-cases,
+the only exception is 'emergency key clear' case where we do not
+care about data consistency but do care about key to be wiped ASAP.
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index b96bd8076b70..218414703f11 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -2362,10 +2362,8 @@ static struct journal_head *journal_alloc_journal_head(void)
- 	if (!ret) {
- 		jbd_debug(1, "out of memory for journal_head\n");
- 		pr_notice_ratelimited("ENOMEM in %s, retrying.\n", __func__);
--		while (!ret) {
--			yield();
--			ret = kmem_cache_zalloc(jbd2_journal_head_cache, GFP_NOFS);
--		}
-+		ret = kmem_cache_zalloc(jbd2_journal_head_cache,
-+				GFP_NOFS | __GFP_NOFAIL);
- 	}
- 	return ret;
- }
-diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-index c6cbaef2bda1..f9eb93e1b3cb 100644
---- a/fs/jbd2/revoke.c
-+++ b/fs/jbd2/revoke.c
-@@ -141,11 +141,13 @@ static int insert_revoke_hash(journal_t *journal, unsigned long long blocknr,
- {
- 	struct list_head *hash_list;
- 	struct jbd2_revoke_record_s *record;
-+	gfp_t gfp_mask = GFP_NOFS;
- 
--repeat:
--	record = kmem_cache_alloc(jbd2_revoke_record_cache, GFP_NOFS);
-+	if (journal_oom_retry)
-+		gfp_mask |= __GFP_NOFAIL;
-+	record = kmem_cache_alloc(jbd2_revoke_record_cache, gfp_mask);
- 	if (!record)
--		goto oom;
-+		return -ENOMEM;
- 
- 	record->sequence = seq;
- 	record->blocknr = blocknr;
-@@ -154,13 +156,6 @@ static int insert_revoke_hash(journal_t *journal, unsigned long long blocknr,
- 	list_add(&record->hash, hash_list);
- 	spin_unlock(&journal->j_revoke_lock);
- 	return 0;
--
--oom:
--	if (!journal_oom_retry)
--		return -ENOMEM;
--	jbd_debug(1, "ENOMEM in %s, retrying\n", __func__);
--	yield();
--	goto repeat;
- }
- 
- /* Find a revoke record in the journal's hash table. */
--- 
-2.1.4
+I would like to implement second option. Please rise your objections if any.
 
+
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQEcBAEBCgAGBQJVfvSAAAoJELhyPTmIL6kB+gQH/3CBVSENczNF8i/cUu3VNXYz
+EEoL0g6+BNCXEQbyJjKcnE8dtsTj/FA5/OkorCMXmNkRIXuWDn0cAGRru1XVGtPE
+BKVthTSeiYwTW9nZa47Dwt74y2y/JwtgreulE16QnPhowEmtgNDg/L6EmrCIVJSY
+Ic9wquZw0FcZSpj1eCorfg+bFft4N4z2sTPmEN5FYZpxzSbnUqG9e2jlkLbau57L
++drvrlDWDJucR/Xx6vlpWUaKa3BgnLDlKvxWie3gej1WHAvhEA+4WjOli9P5vyWE
+ubDDNixbK0i4s9BEKFD4qBPje2Bq1+JPehPSBReKq/IYNv4C+v+HkRQVpvm4KfY=
+=wA5I
+-----END PGP SIGNATURE-----
+--=-=-=--
