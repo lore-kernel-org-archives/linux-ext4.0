@@ -1,92 +1,62 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [RFC] keyctl {clear,revoke} serialization with key-users
-Date: Mon, 15 Jun 2015 18:51:28 +0300
-Message-ID: <87ioapt1fj.fsf@openvz.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: fix race between truncate and
+ __ext4_journalled_writepage()
+Date: Mon, 15 Jun 2015 19:03:25 +0200
+Message-ID: <20150615170325.GA2381@quack.suse.cz>
+References: <20150615011433.GA15793@thunk.org>
+ <1434331430-23125-1-git-send-email-tytso@mit.edu>
+ <20150615123352.GD4368@quack.suse.cz>
+ <20150615130611.GJ15793@thunk.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
-Cc: ext4 development <linux-ext4@vger.kernel.org>, dhowells@redhat.com
-To: keyrings@linux-nfs.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:34900 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755187AbbFOPyN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Jun 2015 11:54:13 -0400
-Received: by lbbwc1 with SMTP id wc1so4442495lbb.2
-        for <linux-ext4@vger.kernel.org>; Mon, 15 Jun 2015 08:54:12 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	enwlinux@gmail.com, stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20150615130611.GJ15793@thunk.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Mon 15-06-15 09:06:11, Ted Tso wrote:
+> On Mon, Jun 15, 2015 at 02:33:52PM +0200, Jan Kara wrote:
+> >   Yeah, that's nasty. Thanks for debugging this! However I think your fix
+> > reintroduces the original deadlock issues. do_journal_get_write_access()
+> > can end up blocking waiting for jbd2 thread to finish a commit while jbd2
+> > thread may be blocked waiting for the page to be unlocked.
+> > 
+> > After some thought I don't think the deadlock is real since
+> > do_journal_get_write_access() will currently only block if a buffer is
+> > under writeout to the journal and at that point we don't wait for page
+> > locks anymore. Also ext4_write_begin() does the same in data=journal mode
+> > and we haven't observed deadlocks so far. But still things look really
+> > fragile here.
+> 
+> The reason why there are no deadlocks is the writeback in the commit
+> thread happens when the inode gets written back --- but that only
+> happens for data=ordered inodes, not data=journalled mode.  I was a
+> little worried about what might happen when after the 'j' chattr
+> attribute gets set on an inode, and the inode was still on the ordered
+> flush list.
+> 
+> Hmm... I think we could also maybe fix this by having
+> ext4_change_inode_journal_flag() force a journal commit before setting
+> the JOURNAL_DATA flag.  If we did that, we could just avoid dropping
+> the page_lock in __ext4_journalled_writepage() altogether.
+> 
+> What do you think?
+  I think that fully switching lock ordering for data=journal mode back to
+page lock -> transaction start (which is what you effectively do when you
+never drop page lock in ->writepage) is rather error prone. We'd have to be
+careful to avoid lock inversion also for places like ->write_begin,
+->releasepage, ->invalidatepage etc. For example ext4_write_begin() will
+currently call lock_page() with transaction started which could deadlock
+against journalled writepage you suggest. So effectively we'd have to
+completely separate aops for data=journal mode. Doable but I'm not sure
+it's worth it.
 
-Hi,
-I'm not an expert in security/keyring stuff but I want to solve an
-issue which originally comes from ext4 in most convenient way
-
-Description:
-ext4 now use security/key infrastructure for data encryption (keytype =3D '=
-logon')
-see: https://github.com/torvalds/linux/blob/master/fs/ext4/crypto_key.c
-There are use-cases where key added and removed dynamically
-#################
-# User login and add user's key
-e4crypt add_key -S /home/$USER  # analog of keyctl add $SOME_ARG
-# some activity
-echo test > /home/$USER/my_file
-#Logout
-keyctl clear @s
-############
-But currently there is not synchronization between 'keyctl clear' and dirty=
- page
-buffers write-back, which result in data loss(because key no longer availab=
-le).
-There are several ways to synchronize key-management with key-usage
-1) ext4 specific way via userspace
-   add 'del_key' command to e4crypto which will do:
-       ioctl(ext4_del_key)          # sync and invalidate all inodes which =
-referees given key
-       keyctl(KEYCTL_INVALIDATE,..) # wipe key from kernel
-2) Generic keyring way:
-   Add kernel API to register event listeners for a key so any subsystem
-   may listen for such events and performs necessary actions once it happen.
-   For example:
-   key =3D request_key(....)
-   notify_changes_key(key, event_mask, my_callback)
-
-
-   keyring_clear() {
-   for_each_listener{
-        notify_key(callback, KEY_CLEAR)
-   }
-=20=20=20
-First one is easy and clean also it preserves original keyring management a=
-ssumptions,
-but second one is more generic (since other fs will likely to implement
-encryption in near future), the only visible changes of second option
-is that callbacks must be synchronous so 'keyctl clear @s' may takes
-long time. IMHO such implicit synchronization is good for 99% use-cases,
-the only exception is 'emergency key clear' case where we do not
-care about data consistency but do care about key to be wiped ASAP.
-
-I would like to implement second option. Please rise your objections if any.
-
-
-
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQEcBAEBCgAGBQJVfvSAAAoJELhyPTmIL6kB+gQH/3CBVSENczNF8i/cUu3VNXYz
-EEoL0g6+BNCXEQbyJjKcnE8dtsTj/FA5/OkorCMXmNkRIXuWDn0cAGRru1XVGtPE
-BKVthTSeiYwTW9nZa47Dwt74y2y/JwtgreulE16QnPhowEmtgNDg/L6EmrCIVJSY
-Ic9wquZw0FcZSpj1eCorfg+bFft4N4z2sTPmEN5FYZpxzSbnUqG9e2jlkLbau57L
-+drvrlDWDJucR/Xx6vlpWUaKa3BgnLDlKvxWie3gej1WHAvhEA+4WjOli9P5vyWE
-ubDDNixbK0i4s9BEKFD4qBPje2Bq1+JPehPSBReKq/IYNv4C+v+HkRQVpvm4KfY=
-=wA5I
------END PGP SIGNATURE-----
---=-=-=--
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
