@@ -1,56 +1,41 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 14/14] misc: add fuse2fs, a FUSE server for e2fsprogs
- (v4.3)
-Date: Mon, 15 Jun 2015 15:21:45 -0400
-Message-ID: <20150615192145.GD5003@thunk.org>
-References: <20150514002108.10785.85860.stgit@birch.djwong.org>
- <20150514002240.10785.35238.stgit@birch.djwong.org>
- <20150611001337.GI24181@thunk.org>
- <20150615183705.GC7063@birch.djwong.org>
+Subject: Re: [PATCH] ext4: fix race between truncate and
+ __ext4_journalled_writepage()
+Date: Mon, 15 Jun 2015 15:37:55 -0400
+Message-ID: <20150615193755.GE5003@thunk.org>
+References: <20150615011433.GA15793@thunk.org>
+ <1434331430-23125-1-git-send-email-tytso@mit.edu>
+ <20150615123352.GD4368@quack.suse.cz>
+ <20150615130611.GJ15793@thunk.org>
+ <20150615170325.GA2381@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36628 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751479AbbFOTVr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Jun 2015 15:21:47 -0400
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	enwlinux@gmail.com, stable@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20150615183705.GC7063@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20150615170325.GA2381@quack.suse.cz>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 15, 2015 at 11:37:05AM -0700, Darrick J. Wong wrote:
-> On Wed, Jun 10, 2015 at 08:13:37PM -0400, Theodore Ts'o wrote:
-> > On Wed, May 13, 2015 at 05:22:40PM -0700, Darrick J. Wong wrote:
-> > > This is the initial implementation of a FUSE server based on
-> > > e2fsprogs.  The point of this program is to enable ext4 to run on any
-> > > OS that FUSE supports (and doesn't already have a native driver), such
-> > > as MacOS X, BSDs, and Windows.  The code requires FUSE API v28, which
-> > > is available in Linux fuse and osxfuse releases that are available as
-> > > of August 2013.
-> > 
-> > Thanks, applied.
-> 
-> Hi Ted,
-> 
-> There's a merge error with this patch; the commit in -next removes all
-> the Makefile dependencies from misc/Makefile.in, whereas the patch
-> adds entries for {journal,revoke,recovery}.o.
-> 
-> This breaks a clean build because make doesn't know that it has
-> to generate profile.h for mke2fs.c.
+On Mon, Jun 15, 2015 at 07:03:25PM +0200, Jan Kara wrote:
+>   I think that fully switching lock ordering for data=journal mode back to
+> page lock -> transaction start (which is what you effectively do when you
+> never drop page lock in ->writepage) is rather error prone. We'd have to be
+> careful to avoid lock inversion also for places like ->write_begin,
+> ->releasepage, ->invalidatepage etc. For example ext4_write_begin() will
+> currently call lock_page() with transaction started which could deadlock
+> against journalled writepage you suggest. So effectively we'd have to
+> completely separate aops for data=journal mode. Doable but I'm not sure
+> it's worth it.
 
-It wasn't caused by a merge error; this patch added
-$(srcdir)/do_journal.c to SRCS (I'm guessing this was a cut and paste
-error), and this caused the "make depend" to blow out, and this caused
-the Makefile to lose all of its dependencies.  (To be fair, one of my
-commits, 81f95d43d: "libext2fs, libe2p, misc: git rid of jfs_user.h"
-also had a bug which caused "make depend" to fail as well.)
+Good point.  OTOH, things are kind of fragile with respect to
+ext4_write_begin() in data=journal mode, as you've pointed out.  But
+it's not causing any problems as far as we know, so so I'll use the
+patch which you ack'ed and maybe later on, we can figure out a better
+way to clean this up.
 
-Anyway, I'll check in a fix.  Thanks for the report!
+Thanks,
 
 						- Ted
-
-P.S.  Could you take a look at my reply to your patch #16/14?
