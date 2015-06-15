@@ -1,32 +1,37 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: jbd2_cleanup_journal_tail fix gfp allocation
- context
-Date: Mon, 15 Jun 2015 00:19:03 -0400
-Message-ID: <20150615041903.GF15793@thunk.org>
-References: <1433954007-32588-1-git-send-email-dmonakhov@openvz.org>
+Subject: Re: [PATCH 1/2] ext4: Recalculate journal credits as inode depth
+ changes
+Date: Mon, 15 Jun 2015 00:22:56 -0400
+Message-ID: <20150615042256.GG15793@thunk.org>
+References: <1433833126-28575-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jack@suse.cz
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35189 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:35203 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751109AbbFOETH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Jun 2015 00:19:07 -0400
+	id S1751238AbbFOEW5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Jun 2015 00:22:57 -0400
 Content-Disposition: inline
-In-Reply-To: <1433954007-32588-1-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <1433833126-28575-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 10, 2015 at 08:33:27PM +0400, Dmitry Monakhov wrote:
-> jbd2_cleanup_journal_tail() can be invoked by jbd2__journal_start()
-> So allocations should be done with GFP_NOFS
->
-> [Full stack trace snipped from 3.10-rh7]
-> ....
+On Tue, Jun 09, 2015 at 08:58:45AM +0200, Lukas Czerner wrote:
+> Currently in ext4_alloc_file_blocks() the number of credits is
+> calculated only once before we enter the allocation loop. However within
+> the allocation loop the extent tree depth can change, hence the number
+> of credits needed can increase potentially exceeding the number of credits
+> reserved in the handle which can cause journal failures.
 > 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> Fix this by recalculating number of credits when the inode depth
+> changes. Note that even though ext4_alloc_file_blocks() is only
+> currently used by extent base inodes we will avoid recalculating number
+> of credits unnecessarily in the case of indirect based inodes.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
 Thanks, applied.
 
-						- Ted
+					- Ted
