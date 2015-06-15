@@ -1,55 +1,125 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH 2/3] vfs, writeback: replace FS_CGROUP_WRITEBACK with
- MS_CGROUPWB
-Date: Mon, 15 Jun 2015 13:39:49 +0200
-Message-ID: <20150615113949.GC4368@quack.suse.cz>
-References: <1434146254-26220-1-git-send-email-tj@kernel.org>
- <1434146254-26220-3-git-send-email-tj@kernel.org>
- <20150613161608.GA29414@infradead.org>
- <20150614054236.GA9662@mtj.duckdns.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: fix race between truncate and
+ __ext4_journalled_writepage()
+Date: Mon, 15 Jun 2015 14:33:52 +0200
+Message-ID: <20150615123352.GD4368@quack.suse.cz>
+References: <20150615011433.GA15793@thunk.org>
+ <1434331430-23125-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	lizefan-hv44wF8Li93QT0dZR+AlfA@public.gmane.org, cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Tejun Heo <tj-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Return-path: <cgroups-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	enwlinux@gmail.com, jack@suse.cz, stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20150614054236.GA9662-qYNAdHglDFBN0TnZuCh8vA@public.gmane.org>
-Sender: cgroups-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+In-Reply-To: <1434331430-23125-1-git-send-email-tytso@mit.edu>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun 14-06-15 00:42:36, Tejun Heo wrote:
-> Hello, Christoph.
+On Sun 14-06-15 21:23:50, Ted Tso wrote:
+> The commit cf108bca465d: "ext4: Invert the locking order of page_lock
+> and transaction start" caused __ext4_journalled_writepage() to drop
+> the page lock before the page was written back, as part of changing
+> the locking order to jbd2_journal_start -> page_lock.  However, this
+> introduced a potential race if there was a truncate racing with the
+> data=journalled writeback mode.
 > 
-> On Sat, Jun 13, 2015 at 09:16:08AM -0700, Christoph Hellwig wrote:
-> > On Fri, Jun 12, 2015 at 04:57:33PM -0500, Tejun Heo wrote:
-> > > FS_CGROUP_WRITEBACK indicates whether a file_system_type supports
-> > > cgroup writeback; however, different super_blocks of the same
-> > > file_system_type may or may not support cgroup writeback depending on
-> > > filesystem options.  This patch replaces FS_CGROUP_WRITEBACK with a
-> > > kernel-internal super_block->s_flags MS_CGROUPWB.  The concatenated
-> > > and abbreviated name is for consistency with other MS_* flags.
-> > 
-> > Nak.  As the uapi part makes it obvious the MS_ namespace is part
-> > of the userspace ABI.  Please add a new in-kernel flags field instead.
+> Fix this by grabbing the page lock after starting the journal handle,
+> and then checking to see if page had gotten truncated out from under
+> us.
 > 
-> Are MS_ACTIVE and MS_BORN part of userpace ABI?  They seem pretty
-> internal.  I don't mind introducing a new internal flag field but it's
-> weird to put this single flag there with other internal flags in
-> ->s_flags.
-  So you are right that there are other internal flags allocated from the
-top of the i_flags field, however we are pretty much running out of the
-flags available for the ABI so it's better to move internal flags elsewhere
-as that's simpler than creating a new ABI for mount...
+> This fixes a number of different crashes or BUG_ON's when running
+> xfstests generic/086 in data=journalled mode, including:
+> 
+> jbd2_journal_dirty_metadata: vdc-8: bad jh for block 84434: transaction (ec90434
+> ransaction (  (null), 0), jh->b_next_transaction (  (null), 0), jlist 0
+> 
+> 	      	      	  - and -
+> 
+> kernel BUG at /usr/projects/linux/ext4/fs/jbd2/transaction.c:2200!
+  Yeah, that's nasty. Thanks for debugging this! However I think your fix
+reintroduces the original deadlock issues. do_journal_get_write_access()
+can end up blocking waiting for jbd2 thread to finish a commit while jbd2
+thread may be blocked waiting for the page to be unlocked.
 
-> Assuming we add a new field, how do sb->s_iflags and SB_I_XXX sound?
-> Any better suggestions?
-  Looks good to me.
+After some thought I don't think the deadlock is real since
+do_journal_get_write_access() will currently only block if a buffer is
+under writeout to the journal and at that point we don't wait for page
+locks anymore. Also ext4_write_begin() does the same in data=journal mode
+and we haven't observed deadlocks so far. But still things look really
+fragile here.
+
+A clean fix for these problems would be to implement
+ext4_journalled_writepages() which will start a transaction and then
+writeback a bunch of pages. Similarly for write_begin() case we could start
+the transaction in ext4_write() (and loop there since a single write may
+need to be split among several transactions). However this is relatively
+extensive work given how rarely the code is used...
+
+So for now, feel free to add:
+Acked-by: Jan Kara <jack@suse.cz>
+
+to the patch.
 
 								Honza
+
+> ---
+>  fs/ext4/inode.c | 23 +++++++++++++++++++----
+>  1 file changed, 19 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 0554b0b..263a46c 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1701,19 +1701,32 @@ static int __ext4_journalled_writepage(struct page *page,
+>  		ext4_walk_page_buffers(handle, page_bufs, 0, len,
+>  				       NULL, bget_one);
+>  	}
+> -	/* As soon as we unlock the page, it can go away, but we have
+> -	 * references to buffers so we are safe */
+> +	/*
+> +	 * We need to release the page lock before we start the
+> +	 * journal, so grab a reference so the page won't disappear
+> +	 * out from under us.
+> +	 */
+> +	get_page(page);
+>  	unlock_page(page);
+>  
+>  	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE,
+>  				    ext4_writepage_trans_blocks(inode));
+>  	if (IS_ERR(handle)) {
+>  		ret = PTR_ERR(handle);
+> -		goto out;
+> +		put_page(page);
+> +		goto out_no_pagelock;
+>  	}
+> -
+>  	BUG_ON(!ext4_handle_valid(handle));
+>  
+> +	lock_page(page);
+> +	put_page(page);
+> +	if (page->mapping != mapping) {
+> +		/* The page got truncated from under us */
+> +		ext4_journal_stop(handle);
+> +		ret = 0;
+> +		goto out;
+> +	}
+> +
+>  	if (inline_data) {
+>  		BUFFER_TRACE(inode_bh, "get write access");
+>  		ret = ext4_journal_get_write_access(handle, inode_bh);
+> @@ -1739,6 +1752,8 @@ static int __ext4_journalled_writepage(struct page *page,
+>  				       NULL, bput_one);
+>  	ext4_set_inode_state(inode, EXT4_STATE_JDATA);
+>  out:
+> +	unlock_page(page);
+> +out_no_pagelock:
+>  	brelse(inode_bh);
+>  	return ret;
+>  }
+> -- 
+> 2.3.0
+> 
 -- 
-Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Jan Kara <jack@suse.cz>
 SUSE Labs, CR
