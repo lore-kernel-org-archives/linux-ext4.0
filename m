@@ -1,172 +1,112 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: Re: [PATCH] ext4: fix race between truncate and
- __ext4_journalled_writepage()
-Date: Tue, 16 Jun 2015 15:29:20 -0400
-Message-ID: <20150616192920.GA23675@localhost.localdomain>
-References: <20150615011433.GA15793@thunk.org>
- <1434331430-23125-1-git-send-email-tytso@mit.edu>
- <20150615203907.GA2306@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	jack@suse.cz, stable@vger.kernel.org
-To: Eric Whitney <enwlinux@gmail.com>
-Return-path: <stable-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20150615203907.GA2306@localhost.localdomain>
-Sender: stable-owner@vger.kernel.org
+From: Tejun Heo <tj-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Subject: [PATCH 2/3] vfs, writeback: replace FS_CGROUP_WRITEBACK with SB_I_CGROUPWB
+Date: Tue, 16 Jun 2015 18:48:31 -0400
+Message-ID: <1434494912-31043-3-git-send-email-tj@kernel.org>
+References: <1434494912-31043-1-git-send-email-tj@kernel.org>
+Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	lizefan-hv44wF8Li93QT0dZR+AlfA@public.gmane.org, cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, hannes-druUgvl0LCNAfugRpC6u6w@public.gmane.org,
+	kernel-team-b10kYP2dOMg@public.gmane.org, Tejun Heo <tj-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
+	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org
+Return-path: <cgroups-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <1434494912-31043-1-git-send-email-tj-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Sender: cgroups-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-* Eric Whitney <enwlinux@gmail.com>:
-> * Theodore Ts'o <tytso@mit.edu>:
-> > The commit cf108bca465d: "ext4: Invert the locking order of page_lock
-> > and transaction start" caused __ext4_journalled_writepage() to drop
-> > the page lock before the page was written back, as part of changing
-> > the locking order to jbd2_journal_start -> page_lock.  However, this
-> > introduced a potential race if there was a truncate racing with the
-> > data=journalled writeback mode.
-> > 
-> > Fix this by grabbing the page lock after starting the journal handle,
-> > and then checking to see if page had gotten truncated out from under
-> > us.
-> > 
-> > This fixes a number of different crashes or BUG_ON's when running
-> > xfstests generic/086 in data=journalled mode, including:
-> > 
-> > jbd2_journal_dirty_metadata: vdc-8: bad jh for block 84434: transaction (ec90434
-> > ransaction (  (null), 0), jh->b_next_transaction (  (null), 0), jlist 0
-> > 
-> > 	      	      	  - and -
-> > 
-> > kernel BUG at /usr/projects/linux/ext4/fs/jbd2/transaction.c:2200!
-> >     ...
-> > Call Trace:
-> >  [<c02b2ded>] ? __ext4_journalled_invalidatepage+0x117/0x117
-> >  [<c02b2de5>] __ext4_journalled_invalidatepage+0x10f/0x117
-> >  [<c02b2ded>] ? __ext4_journalled_invalidatepage+0x117/0x117
-> >  [<c027d883>] ? lock_buffer+0x36/0x36
-> >  [<c02b2dfa>] ext4_journalled_invalidatepage+0xd/0x22
-> >  [<c0229139>] do_invalidatepage+0x22/0x26
-> >  [<c0229198>] truncate_inode_page+0x5b/0x85
-> >  [<c022934b>] truncate_inode_pages_range+0x156/0x38c
-> >  [<c0229592>] truncate_inode_pages+0x11/0x15
-> >  [<c022962d>] truncate_pagecache+0x55/0x71
-> >  [<c02b913b>] ext4_setattr+0x4a9/0x560
-> >  [<c01ca542>] ? current_kernel_time+0x10/0x44
-> >  [<c026c4d8>] notify_change+0x1c7/0x2be
-> >  [<c0256a00>] do_truncate+0x65/0x85
-> >  [<c0226f31>] ? file_ra_state_init+0x12/0x29
-> > 
-> > 	      	      	  - and -
-> > 
-> > WARNING: CPU: 1 PID: 1331 at /usr/projects/linux/ext4/fs/jbd2/transaction.c:1396
-> > irty_metadata+0x14a/0x1ae()
-> >     ...
-> > Call Trace:
-> >  [<c01b879f>] ? console_unlock+0x3a1/0x3ce
-> >  [<c082cbb4>] dump_stack+0x48/0x60
-> >  [<c0178b65>] warn_slowpath_common+0x89/0xa0
-> >  [<c02ef2cf>] ? jbd2_journal_dirty_metadata+0x14a/0x1ae
-> >  [<c0178bef>] warn_slowpath_null+0x14/0x18
-> >  [<c02ef2cf>] jbd2_journal_dirty_metadata+0x14a/0x1ae
-> >  [<c02d8615>] __ext4_handle_dirty_metadata+0xd4/0x19d
-> >  [<c02b2f44>] write_end_fn+0x40/0x53
-> >  [<c02b4a16>] ext4_walk_page_buffers+0x4e/0x6a
-> >  [<c02b59e7>] ext4_writepage+0x354/0x3b8
-> >  [<c02b2f04>] ? mpage_release_unused_pages+0xd4/0xd4
-> >  [<c02b1b21>] ? wait_on_buffer+0x2c/0x2c
-> >  [<c02b5a4b>] ? ext4_writepage+0x3b8/0x3b8
-> >  [<c02b5a5b>] __writepage+0x10/0x2e
-> >  [<c0225956>] write_cache_pages+0x22d/0x32c
-> >  [<c02b5a4b>] ? ext4_writepage+0x3b8/0x3b8
-> >  [<c02b6ee8>] ext4_writepages+0x102/0x607
-> >  [<c019adfe>] ? sched_clock_local+0x10/0x10e
-> >  [<c01a8a7c>] ? __lock_is_held+0x2e/0x44
-> >  [<c01a8ad5>] ? lock_is_held+0x43/0x51
-> >  [<c0226dff>] do_writepages+0x1c/0x29
-> >  [<c0276bed>] __writeback_single_inode+0xc3/0x545
-> >  [<c0277c07>] writeback_sb_inodes+0x21f/0x36d
-> >     ...
-> > 
-> > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> > Cc: stable@vger.kernel.org
-> > ---
-> >  fs/ext4/inode.c | 23 +++++++++++++++++++----
-> >  1 file changed, 19 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index 0554b0b..263a46c 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -1701,19 +1701,32 @@ static int __ext4_journalled_writepage(struct page *page,
-> >  		ext4_walk_page_buffers(handle, page_bufs, 0, len,
-> >  				       NULL, bget_one);
-> >  	}
-> > -	/* As soon as we unlock the page, it can go away, but we have
-> > -	 * references to buffers so we are safe */
-> > +	/*
-> > +	 * We need to release the page lock before we start the
-> > +	 * journal, so grab a reference so the page won't disappear
-> > +	 * out from under us.
-> > +	 */
-> > +	get_page(page);
-> >  	unlock_page(page);
-> >  
-> >  	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE,
-> >  				    ext4_writepage_trans_blocks(inode));
-> >  	if (IS_ERR(handle)) {
-> >  		ret = PTR_ERR(handle);
-> > -		goto out;
-> > +		put_page(page);
-> > +		goto out_no_pagelock;
-> >  	}
-> > -
-> >  	BUG_ON(!ext4_handle_valid(handle));
-> >  
-> > +	lock_page(page);
-> > +	put_page(page);
-> > +	if (page->mapping != mapping) {
-> > +		/* The page got truncated from under us */
-> > +		ext4_journal_stop(handle);
-> > +		ret = 0;
-> > +		goto out;
-> > +	}
-> > +
-> >  	if (inline_data) {
-> >  		BUFFER_TRACE(inode_bh, "get write access");
-> >  		ret = ext4_journal_get_write_access(handle, inode_bh);
-> > @@ -1739,6 +1752,8 @@ static int __ext4_journalled_writepage(struct page *page,
-> >  				       NULL, bput_one);
-> >  	ext4_set_inode_state(inode, EXT4_STATE_JDATA);
-> >  out:
-> > +	unlock_page(page);
-> > +out_no_pagelock:
-> >  	brelse(inode_bh);
-> >  	return ret;
-> >  }
-> > -- 
-> > 2.3.0
-> >
-> 
-> This patch looks promising.  I'm running a 1000 trial stress test on a
-> Pandaboard where I've generally been able to force a couple of manifestations
-> of this bug to appear within 5 to 10 runs.  Applied to 4.1-rc7, it's passed
-> 135 trials cleanly.  The full series will complete sometime tomorrow.
-> 
-> I was also able to reproduce the problem on x86_64 pretty consistently in
-> four runs or less on 4.1-rc7;  I'm planning a stress test there as well once
-> -rc8 regression is complete.
-> 
+FS_CGROUP_WRITEBACK indicates whether a file_system_type supports
+cgroup writeback; however, different super_blocks of the same
+file_system_type may or may not support cgroup writeback depending on
+filesystem options.  This patch replaces FS_CGROUP_WRITEBACK with a
+per-super_block flag.
 
-1000 consecutive runs of generic/068 on the data_journal test case have
-completed successfully on an x86_64 guest and a Pandaboard running a
-4.1-rc7 kernel with this patch.  That's a couple of orders of magnitude more
-runs than have previously completed without hangs on these test system
-configurations, so
+super_block->s_flags carries some internal flags in the high bits but
+it's exposd to userland through uapi header and running out of space
+anyway.  This patch adds a new field super_block->s_iflags to carry
+kernel-internal flags.  It is currently only used by the new
+SB_I_CGROUPWB flag whose concatenated and abbreviated name is for
+consistency with other super_block flags.
 
-Tested-by: Eric Whitney <enwlinux@gmail.com>
+ext2_fill_super() is updated to set SB_I_CGROUPWB.
 
-if useful at this point.
+v2: Added super_block->s_iflags instead of stealing another high bit
+    from sb->s_flags as suggested by Christoph and Jan.
 
-Eric
+Signed-off-by: Tejun Heo <tj-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Cc: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Cc: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+---
+ fs/ext2/super.c             | 3 ++-
+ include/linux/backing-dev.h | 2 +-
+ include/linux/fs.h          | 4 +++-
+ 3 files changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 549219d..900e19c 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -882,6 +882,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+ 		((EXT2_SB(sb)->s_mount_opt & EXT2_MOUNT_POSIX_ACL) ?
+ 		 MS_POSIXACL : 0);
++	sb->s_iflags |= SB_I_CGROUPWB;
+ 
+ 	if (le32_to_cpu(es->s_rev_level) == EXT2_GOOD_OLD_REV &&
+ 	    (EXT2_HAS_COMPAT_FEATURE(sb, ~0U) ||
+@@ -1543,7 +1544,7 @@ static struct file_system_type ext2_fs_type = {
+ 	.name		= "ext2",
+ 	.mount		= ext2_mount,
+ 	.kill_sb	= kill_block_super,
+-	.fs_flags	= FS_REQUIRES_DEV | FS_CGROUP_WRITEBACK,
++	.fs_flags	= FS_REQUIRES_DEV,
+ };
+ MODULE_ALIAS_FS("ext2");
+ 
+diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
+index dfce808..a13181a 100644
+--- a/include/linux/backing-dev.h
++++ b/include/linux/backing-dev.h
+@@ -260,7 +260,7 @@ static inline bool inode_cgwb_enabled(struct inode *inode)
+ 
+ 	return bdi_cap_account_dirty(bdi) &&
+ 		(bdi->capabilities & BDI_CAP_CGROUP_WRITEBACK) &&
+-		(inode->i_sb->s_type->fs_flags & FS_CGROUP_WRITEBACK);
++		(inode->i_sb->s_iflags & SB_I_CGROUPWB);
+ }
+ 
+ /**
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b5e1dcf..2c5e33a 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1241,6 +1241,8 @@ struct mm_struct;
+ #define UMOUNT_NOFOLLOW	0x00000008	/* Don't follow symlink on umount */
+ #define UMOUNT_UNUSED	0x80000000	/* Flag guaranteed to be unused */
+ 
++/* sb->s_iflags */
++#define SB_I_CGROUPWB	0x00000001	/* cgroup-aware writeback enabled */
+ 
+ /* Possible states of 'frozen' field */
+ enum {
+@@ -1279,6 +1281,7 @@ struct super_block {
+ 	const struct quotactl_ops	*s_qcop;
+ 	const struct export_operations *s_export_op;
+ 	unsigned long		s_flags;
++	unsigned long		s_iflags;	/* internal SB_I_* flags */
+ 	unsigned long		s_magic;
+ 	struct dentry		*s_root;
+ 	struct rw_semaphore	s_umount;
+@@ -1912,7 +1915,6 @@ struct file_system_type {
+ #define FS_HAS_SUBTYPE		4
+ #define FS_USERNS_MOUNT		8	/* Can be mounted by userns root */
+ #define FS_USERNS_DEV_MOUNT	16 /* A userns mount does not imply MNT_NODEV */
+-#define FS_CGROUP_WRITEBACK	32	/* Supports cgroup-aware writeback */
+ #define FS_RENAME_DOES_D_MOVE	32768	/* FS will handle d_move() during rename() internally. */
+ 	struct dentry *(*mount) (struct file_system_type *, int,
+ 		       const char *, void *);
+-- 
+2.4.3
