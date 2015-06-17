@@ -1,36 +1,74 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 89511] USB-storage mount error
-Date: Wed, 17 Jun 2015 17:05:20 +0000
-Message-ID: <bug-89511-13602-LYZgeCkqva@https.bugzilla.kernel.org/>
-References: <bug-89511-13602@https.bugzilla.kernel.org/>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] ext4: make online defrag error reporting consistent
+Date: Wed, 17 Jun 2015 10:15:32 -0700
+Message-ID: <20150617171532.GE7063@birch.djwong.org>
+References: <20150617164035.GA1746@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Eric Whitney <enwlinux@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:54023 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753338AbbFQRFX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Jun 2015 13:05:23 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 6C4F02082B
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2015 17:05:22 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id E786320838
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2015 17:05:20 +0000 (UTC)
-In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
+Received: from aserp1040.oracle.com ([141.146.126.69]:20200 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757413AbbFQRPg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Jun 2015 13:15:36 -0400
+Content-Disposition: inline
+In-Reply-To: <20150617164035.GA1746@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=89511
+On Wed, Jun 17, 2015 at 12:40:35PM -0400, Eric Whitney wrote:
+> Make the error reporting behavior resulting from the unsupported use
+> of online defrag on files with data journaling enabled consistent with
+> that implemented for bigalloc file systems. Difference found with
+> ext4/308.
+> 
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> ---
+>  fs/ext4/move_extent.c | 10 +++++++---
+>  1 file changed, 7 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+> index 8c04afb..fb6f117 100644
+> --- a/fs/ext4/move_extent.c
+> +++ b/fs/ext4/move_extent.c
+> @@ -571,12 +571,16 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
+>  			orig_inode->i_ino, donor_inode->i_ino);
+>  		return -EINVAL;
+>  	}
+> -	/* TODO: This is non obvious task to swap blocks for inodes with full
+> -	   jornaling enabled */
+> +
+> +	/* TODO: it's not obvious how to swap blocks for inodes with full
+> +	   journaling enabled */
+>  	if (ext4_should_journal_data(orig_inode) ||
+>  	    ext4_should_journal_data(donor_inode)) {
+> -		return -EINVAL;
+> +		ext4_msg(orig_inode->i_sb, KERN_ERR,
+> +			 "Online defrag not supported with data journaling");
+> +		return -EOPNOTSUPP;
+>  	}
+> +
 
---- Comment #61 from Markus Rathgeb <maggu2810@gmail.com> ---
-Which version this patch was created for?
-Current git? A RC?
-Could you give me a commit / tag?
+One minor nit: If it's solely the donor_inode that's data=journal (i.e. we
+didn't mount with data=journal and only the donor inode is chattr +j), the
+inode number reported in the message will be inaccurate.
 
-Would like to give you feedback, if this is working (I know, it should).
+I'm not sure why you'd chattr +j only the donor inode, so in practice this
+isn't likely to occur.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Other than that,
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+
+--D
+
+>  	/* Protect orig and donor inodes against a truncate */
+>  	lock_two_nondirectories(orig_inode, donor_inode);
+>  
+> -- 
+> 2.1.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
