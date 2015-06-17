@@ -1,69 +1,90 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 89511] USB-storage mount error
-Date: Wed, 17 Jun 2015 17:54:29 +0000
-Message-ID: <bug-89511-13602-F8pLiI9GhE@https.bugzilla.kernel.org/>
-References: <bug-89511-13602@https.bugzilla.kernel.org/>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: Re: [PATCH] ext4: make online defrag error reporting consistent
+Date: Wed, 17 Jun 2015 14:02:42 -0400
+Message-ID: <20150617180242.GB1746@localhost.localdomain>
+References: <20150617164035.GA1746@localhost.localdomain>
+ <20150617171532.GE7063@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:57084 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752442AbbFQRyd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Jun 2015 13:54:33 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 9B4D320876
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2015 17:54:31 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id ED7D920861
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2015 17:54:29 +0000 (UTC)
-In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
+Received: from mail-qk0-f176.google.com ([209.85.220.176]:34478 "EHLO
+	mail-qk0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755607AbbFQSCT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Jun 2015 14:02:19 -0400
+Received: by qkeo142 with SMTP id o142so13438338qke.1
+        for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2015 11:02:19 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20150617171532.GE7063@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=89511
+* Darrick J. Wong <darrick.wong@oracle.com>:
+> On Wed, Jun 17, 2015 at 12:40:35PM -0400, Eric Whitney wrote:
+> > Make the error reporting behavior resulting from the unsupported use
+> > of online defrag on files with data journaling enabled consistent with
+> > that implemented for bigalloc file systems. Difference found with
+> > ext4/308.
+> > 
+> > Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> > ---
+> >  fs/ext4/move_extent.c | 10 +++++++---
+> >  1 file changed, 7 insertions(+), 3 deletions(-)
+> > 
+> > diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+> > index 8c04afb..fb6f117 100644
+> > --- a/fs/ext4/move_extent.c
+> > +++ b/fs/ext4/move_extent.c
+> > @@ -571,12 +571,16 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
+> >  			orig_inode->i_ino, donor_inode->i_ino);
+> >  		return -EINVAL;
+> >  	}
+> > -	/* TODO: This is non obvious task to swap blocks for inodes with full
+> > -	   jornaling enabled */
+> > +
+> > +	/* TODO: it's not obvious how to swap blocks for inodes with full
+> > +	   journaling enabled */
+> >  	if (ext4_should_journal_data(orig_inode) ||
+> >  	    ext4_should_journal_data(donor_inode)) {
+> > -		return -EINVAL;
+> > +		ext4_msg(orig_inode->i_sb, KERN_ERR,
+> > +			 "Online defrag not supported with data journaling");
+> > +		return -EOPNOTSUPP;
+> >  	}
+> > +
+> 
+> One minor nit: If it's solely the donor_inode that's data=journal (i.e. we
+> didn't mount with data=journal and only the donor inode is chattr +j), the
+> inode number reported in the message will be inaccurate.
+> 
+> I'm not sure why you'd chattr +j only the donor inode, so in practice this
+> isn't likely to occur.
+> 
+> Other than that,
+> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+> 
 
---- Comment #63 from Markus Rathgeb <maggu2810@gmail.com> ---
-Created attachment 180211
-  --> https://bugzilla.kernel.org/attachment.cgi?id=180211&action=edit
-linux-4.0.5-gentoo-fix-some-synchronized-cache-broken-scsi-devices.patch
+The message reports the file system's device rather than an inode number
+in this case.  Code above this snippet verified that the original and
+donor inodes were from the same file system, so hopefully the reported
+device will be correct even if only the donor inode is chattr +j.
+Unless I'm missing something, of course...
 
-Thank you! It is working now.
-
-
-Jun 17 19:49:14 m3800 kernel: usb 1-3: new high-speed USB device number 7 using
-xhci_hcd
-Jun 17 19:49:14 m3800 kernel: usb 1-3: New USB device found, idVendor=04cf,
-idProduct=8818
-Jun 17 19:49:14 m3800 kernel: usb 1-3: New USB device strings: Mfr=1,
-Product=2, SerialNumber=3
-Jun 17 19:49:14 m3800 kernel: usb 1-3: Product: USB Mass Storage Device
-Jun 17 19:49:14 m3800 kernel: usb 1-3: Manufacturer: Myson Century, Inc.
-Jun 17 19:49:14 m3800 kernel: usb 1-3: SerialNumber: 100
-Jun 17 19:49:14 m3800 kernel: usb-storage 1-3:1.0: USB Mass Storage device
-detected
-Jun 17 19:49:14 m3800 kernel: usb-storage 1-3:1.0: Quirks match for vid 04cf
-pid 8818: 10000000
-Jun 17 19:49:14 m3800 kernel: scsi host7: usb-storage 1-3:1.0
-Jun 17 19:49:15 m3800 kernel: scsi 7:0:0:0: Direct-Access     SAMSUNG  MP0804H 
-        UE10 PQ: 0 ANSI: 0 CCS
-Jun 17 19:49:15 m3800 kernel: sd 7:0:0:0: Attached scsi generic sg1 type 0
-Jun 17 19:49:15 m3800 kernel: sd 7:0:0:0: [sdb] 156368016 512-byte logical
-blocks: (80.0 GB/74.5 GiB)
-Jun 17 19:49:15 m3800 kernel: sd 7:0:0:0: [sdb] Write Protect is off
-Jun 17 19:49:15 m3800 kernel: sd 7:0:0:0: [sdb] Mode Sense: 00 14 00 00
-Jun 17 19:49:15 m3800 kernel:  sdb: sdb1 sdb2
-Jun 17 19:49:15 m3800 kernel: sd 7:0:0:0: [sdb] Attached SCSI disk
+Thanks for the review!
+Eric
 
 
-# cat /sys/block/sdb/device/scsi_disk/*/cache_type
-write through
-
-
-Would be great to get that upstream.
-I have to change the magic number of the flag.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+> --D
+> 
+> >  	/* Protect orig and donor inodes against a truncate */
+> >  	lock_two_nondirectories(orig_inode, donor_inode);
+> >  
+> > -- 
+> > 2.1.4
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
