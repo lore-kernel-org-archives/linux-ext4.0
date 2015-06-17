@@ -1,77 +1,36 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: [PATCH 2/2] ext4: implement cgroup writeback support
-Date: Tue, 16 Jun 2015 18:53:13 -0400
-Message-ID: <1434495193-31182-3-git-send-email-tj@kernel.org>
-References: <1434495193-31182-1-git-send-email-tj@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	lizefan@huawei.com, cgroups@vger.kernel.org, hannes@cmpxchg.org,
-	kernel-team@fb.com, tytso@mit.edu, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, Tejun Heo <tj@kernel.org>
-To: axboe@kernel.dk
+From: Leon Romanovsky <leon@leon.nu>
+Subject: Re: [RFC v3 4/4] shmem: Add support for generic FS events
+Date: Wed, 17 Jun 2015 09:08:41 +0300
+Message-ID: <CALq1K=L-DWP5avgXtc0p5=D_M8tXm+Y45DphP7G9QBYo-5sXFA@mail.gmail.com>
+References: <1434460173-18427-1-git-send-email-b.michalska@samsung.com> <1434460173-18427-5-git-send-email-b.michalska@samsung.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	Linux-FSDevel <linux-fsdevel@vger.kernel.org>,
+	linux-api@vger.kernel.org, Greg Kroah <greg@kroah.com>,
+	jack@suse.cz, tytso@mit.edu, adilger.kernel@dilger.ca,
+	Hugh Dickins <hughd@google.com>, lczerner@redhat.com,
+	hch@infradead.org, linux-ext4@vger.kernel.org,
+	Linux-MM <linux-mm@kvack.org>, kyungmin.park@samsung.com,
+	kmpark@infradead.org
+To: Beata Michalska <b.michalska@samsung.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1434495193-31182-1-git-send-email-tj@kernel.org>
+In-Reply-To: <1434460173-18427-5-git-send-email-b.michalska@samsung.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-For ordered and writeback data modes, all data IOs go through
-ext4_io_submit.  This patch adds cgroup writeback support by invoking
-wbc_init_bio() from io_submit_init_bio() and wbc_account_io() in
-io_submit_add_bh().  Journal data which is written by jbd2 worker is
-left alone by this patch and will always be written out from the root
-cgroup.
+>         }
+> -       if (error == -ENOSPC && !once++) {
+> +       if (error == -ENOSPC) {
+> +               if (!once++) {
+>                 info = SHMEM_I(inode);
+>                 spin_lock(&info->lock);
+>                 shmem_recalc_inode(inode);
+>                 spin_unlock(&info->lock);
+>                 goto repeat;
+> +               } else {
+> +                       fs_event_notify(inode->i_sb, FS_WARN_ENOSPC);
+> +               }
+>         }
 
-ext4_fill_super() is updated to set MS_CGROUPWB when data mode is
-either ordered or writeback.  In journaled data mode, most IOs become
-synchronous through the journal and enabling cgroup writeback support
-doesn't make much sense or difference.  Journaled data mode is left
-alone.
-
-Lightly tested with sequential data write workload.  Behaves as
-expected.
-
-v2: Updated for MS_CGROUPWB -> SB_I_CGROUPWB.
-
-Signed-off-by: Tejun Heo <tj@kernel.org>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org
----
- fs/ext4/page-io.c | 2 ++
- fs/ext4/super.c   | 2 ++
- 2 files changed, 4 insertions(+)
-
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 3f80cb2..c56ba7b 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -383,6 +383,7 @@ static int io_submit_init_bio(struct ext4_io_submit *io,
- 	bio = bio_alloc(GFP_NOIO, min(nvecs, BIO_MAX_PAGES));
- 	if (!bio)
- 		return -ENOMEM;
-+	wbc_init_bio(io->io_wbc, bio);
- 	bio->bi_iter.bi_sector = bh->b_blocknr * (bh->b_size >> 9);
- 	bio->bi_bdev = bh->b_bdev;
- 	bio->bi_end_io = ext4_end_bio;
-@@ -411,6 +412,7 @@ static int io_submit_add_bh(struct ext4_io_submit *io,
- 	ret = bio_add_page(io->io_bio, page, bh->b_size, bh_offset(bh));
- 	if (ret != bh->b_size)
- 		goto submit_and_retry;
-+	wbc_account_io(io->io_wbc, page, bh->b_size);
- 	io->io_next_block++;
- 	return 0;
- }
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 56b8bb7..3ad1eb4 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3623,6 +3623,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		}
- 		if (test_opt(sb, DELALLOC))
- 			clear_opt(sb, DELALLOC);
-+	} else {
-+		sb->s_iflags |= SB_I_CGROUPWB;
- 	}
- 
- 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
--- 
-2.4.3
+Very minor remark, please fix indentation.
