@@ -1,56 +1,69 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] ext4: make online defrag error reporting consistent
-Date: Wed, 17 Jun 2015 12:40:35 -0400
-Message-ID: <20150617164035.GA1746@localhost.localdomain>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 4/5] jbd2: Speedup jbd2_journal_get_[write|undo]_access()
+Date: Wed, 17 Jun 2015 18:56:46 +0200
+Message-ID: <20150617165646.GG1614@quack.suse.cz>
+References: <1427983100-29889-1-git-send-email-jack@suse.cz>
+ <1427983100-29889-5-git-send-email-jack@suse.cz>
+ <20150608164726.GM19168@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f178.google.com ([209.85.216.178]:33531 "EHLO
-	mail-qc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754990AbbFQQkN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Jun 2015 12:40:13 -0400
-Received: by qcbfz6 with SMTP id fz6so15428640qcb.0
-        for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2015 09:40:12 -0700 (PDT)
+Received: from cantor2.suse.de ([195.135.220.15]:40105 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753711AbbFQQ4v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 17 Jun 2015 12:56:51 -0400
 Content-Disposition: inline
+In-Reply-To: <20150608164726.GM19168@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Make the error reporting behavior resulting from the unsupported use
-of online defrag on files with data journaling enabled consistent with
-that implemented for bigalloc file systems. Difference found with
-ext4/308.
+On Mon 08-06-15 12:47:26, Ted Tso wrote:
+> On Thu, Apr 02, 2015 at 03:58:19PM +0200, Jan Kara wrote:
+> > jbd2_journal_get_write_access() and jbd2_journal_get_create_access() are
+> > frequently called for buffers that are already part of the running
+> > transaction - most frequently it is the case for bitmaps, inode table
+> > blocks, and superblock. Since in such cases we have nothing to do, it is
+> > unfortunate we still grab reference to journal head, lock the bh, lock
+> > bh_state only to find out there's nothing to do.
+> > 
+> > Improving this is a bit subtle though since until we find out journal
+> > head is attached to the running transaction, it can disappear from under
+> > us because checkpointing / commit decided it's no longer needed. We deal
+> > with this by protecting journal_head slab with RCU. We still have to be
+> > careful about journal head being freed & reallocated within slab and
+> > about exposing journal head in consistent state (in particular
+> > b_modified and b_frozen_data must be in correct state before we allow
+> > user to touch the buffer).
+> > 
+> > FIXME: Performance data.
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> 
+> Applied, so we can start getting some testing on this patch.  Did you
+> ever get performance data?
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- fs/ext4/move_extent.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+Yes. Here are results for reaim fserver workload for 32 core machine with
+128 GB of ram with ext4 on ramdisk:
+Procs Vanilla    Patched
+1      20420.688  21155.556
+21     49684.704 178934.074
+41     84630.364 196647.482
+61    106344.284 204831.652
+81    120751.370 214842.428
+101   131585.450 208761.832
+121   138092.078 212741.648
+141   142271.578 212118.502
+161   146008.364 213731.388
+181   149569.494 216121.444
 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 8c04afb..fb6f117 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -571,12 +571,16 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
- 			orig_inode->i_ino, donor_inode->i_ino);
- 		return -EINVAL;
- 	}
--	/* TODO: This is non obvious task to swap blocks for inodes with full
--	   jornaling enabled */
-+
-+	/* TODO: it's not obvious how to swap blocks for inodes with full
-+	   journaling enabled */
- 	if (ext4_should_journal_data(orig_inode) ||
- 	    ext4_should_journal_data(donor_inode)) {
--		return -EINVAL;
-+		ext4_msg(orig_inode->i_sb, KERN_ERR,
-+			 "Online defrag not supported with data journaling");
-+		return -EOPNOTSUPP;
- 	}
-+
- 	/* Protect orig and donor inodes against a truncate */
- 	lock_two_nondirectories(orig_inode, donor_inode);
- 
+Numbers are operations per second so larger is better. You can see that
+for 21 processes we get increase by 260% in the number operations. Also the
+total maximum of operations the machine is able to achieve increases by
+44% because of overall lower CPU overhead.
+
+								Honza
 -- 
-2.1.4
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
