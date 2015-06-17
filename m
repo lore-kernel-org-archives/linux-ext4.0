@@ -1,242 +1,148 @@
-From: Leon Romanovsky <leon@leon.nu>
-Subject: Re: [RFC v3 3/4] ext4: Add support for generic FS events
-Date: Wed, 17 Jun 2015 09:15:24 +0300
-Message-ID: <CALq1K=KUOmV21djY4d818744WaKSqH7Bbvwu4SHJxgWYR4nUkA@mail.gmail.com>
-References: <1434460173-18427-1-git-send-email-b.michalska@samsung.com> <1434460173-18427-4-git-send-email-b.michalska@samsung.com>
+From: Beata Michalska <b.michalska@samsung.com>
+Subject: Re: [RFC v3 1/4] fs: Add generic file system event notifications
+Date: Wed, 17 Jun 2015 11:22:49 +0200
+Message-ID: <55813C69.2040401@samsung.com>
+References: <1434460173-18427-1-git-send-email-b.michalska@samsung.com>
+ <1434460173-18427-2-git-send-email-b.michalska@samsung.com>
+ <20150616162147.GA17109@ZenIV.linux.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	Linux-FSDevel <linux-fsdevel@vger.kernel.org>, linux-api <linux-api@vger.kernel.org>,
-	Greg Kroah <greg@kroah.com>, jack <jack@suse.cz>, tytso <tytso@mit.edu>,
-	"adilger.kernel" <adilger.kernel@dilger.ca>, Hugh Dickins <hughd@google.com>,
-	lczerner <lczerner@redhat.com>, hch <hch@infradead.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, Linux-MM <linux-mm@kvack.org>,
-	"kyungmin.park" <kyungmin.park@samsung.com>, kmpark <kmpark@infradead.org>
-To: Beata Michalska <b.michalska@samsung.com>
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-api@vger.kernel.org, greg@kroah.com, jack@suse.cz, tytso@mit.edu,
+ adilger.kernel@dilger.ca, hughd@google.com, lczerner@redhat.com,
+ hch@infradead.org, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+ kyungmin.park@samsung.com, kmpark@infradead.org
+To: Al Viro <viro@ZenIV.linux.org.uk>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1434460173-18427-4-git-send-email-b.michalska@samsung.com>
+In-reply-to: <20150616162147.GA17109@ZenIV.linux.org.uk>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jun 16, 2015 at 4:09 PM, Beata Michalska
-<b.michalska@samsung.com> wrote:
-> Add support for generic FS events including threshold
-> notifications, ENOSPC and remount as read-only warnings,
-> along with generic internal warnings/errors.
->
-> Signed-off-by: Beata Michalska <b.michalska@samsung.com>
-> ---
->  fs/ext4/balloc.c  |   10 ++++++++--
->  fs/ext4/ext4.h    |    1 +
->  fs/ext4/inode.c   |    2 +-
->  fs/ext4/mballoc.c |    6 +++++-
->  fs/ext4/resize.c  |    1 +
->  fs/ext4/super.c   |   39 +++++++++++++++++++++++++++++++++++++++
->  6 files changed, 55 insertions(+), 4 deletions(-)
->
-> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-> index e95b27a..a48450f 100644
-> --- a/fs/ext4/balloc.c
-> +++ b/fs/ext4/balloc.c
-> @@ -569,6 +569,7 @@ int ext4_claim_free_clusters(struct ext4_sb_info *sbi,
->  {
->         if (ext4_has_free_clusters(sbi, nclusters, flags)) {
->                 percpu_counter_add(&sbi->s_dirtyclusters_counter, nclusters);
-> +               fs_event_alloc_space(sbi->s_sb, EXT4_C2B(sbi, nclusters));
->                 return 0;
->         } else
->                 return -ENOSPC;
-Do you need to add "fs_event_notify(sb, FS_WARN_ENOSPC);" here too?
+Hi,
 
-> @@ -590,9 +591,10 @@ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
->  {
->         if (!ext4_has_free_clusters(EXT4_SB(sb), 1, 0) ||
->             (*retries)++ > 3 ||
-> -           !EXT4_SB(sb)->s_journal)
-> +           !EXT4_SB(sb)->s_journal) {
-> +               fs_event_notify(sb, FS_WARN_ENOSPC);
->                 return 0;
-> -
-> +       }
->         jbd_debug(1, "%s: retrying operation after ENOSPC\n", sb->s_id);
+On 06/16/2015 06:21 PM, Al Viro wrote:
+> On Tue, Jun 16, 2015 at 03:09:30PM +0200, Beata Michalska wrote:
+>> Introduce configurable generic interface for file
+>> system-wide event notifications, to provide file
+>> systems with a common way of reporting any potential
+>> issues as they emerge.
+>>
+>> The notifications are to be issued through generic
+>> netlink interface by newly introduced multicast group.
+>>
+>> Threshold notifications have been included, allowing
+>> triggering an event whenever the amount of free space drops
+>> below a certain level - or levels to be more precise as two
+>> of them are being supported: the lower and the upper range.
+>> The notifications work both ways: once the threshold level
+>> has been reached, an event shall be generated whenever
+>> the number of available blocks goes up again re-activating
+>> the threshold.
+>>
+>> The interface has been exposed through a vfs. Once mounted,
+>> it serves as an entry point for the set-up where one can
+>> register for particular file system events.
+> 
+> Hmm...
+> 
+> 1) what happens if two processes write to that file at the same time,
+> trying to create an entry for the same fs?  WARN_ON() and fail for one
+> of them if they race?
 >
->         return jbd2_journal_force_commit_nested(EXT4_SB(sb)->s_journal);
-> @@ -637,6 +639,10 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
->                 dquot_alloc_block_nofail(inode,
->                                 EXT4_C2B(EXT4_SB(inode->i_sb), ar.len));
->         }
-> +
-> +       if (*errp == -ENOSPC)
-> +               fs_event_notify(inode->i_sb, FS_WARN_ENOSPC_META);
-> +
->         return ret;
->  }
->
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 163afe2..7d75ff9 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -2542,6 +2542,7 @@ void ext4_mark_group_corrupted(struct ext4_sb_info *sbi,
->         if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
->                 percpu_counter_sub(&sbi->s_freeclusters_counter, grp->bb_free);
->         set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
-> +       fs_event_alloc_space(sbi->s_sb, EXT4_C2B(sbi, grp->bb_free));
->  }
->
->  /*
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 5cb9a21..2a7af0f 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1238,7 +1238,7 @@ static void ext4_da_release_space(struct inode *inode, int to_free)
->         percpu_counter_sub(&sbi->s_dirtyclusters_counter, to_free);
->
->         spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-> -
-> +       fs_event_free_space(sbi->s_sb, to_free);
->         dquot_release_reservation_block(inode, EXT4_C2B(sbi, to_free));
->  }
->
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 24a4b6d..c2df6f0 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -4511,6 +4511,9 @@ out:
->                 kmem_cache_free(ext4_ac_cachep, ac);
->         if (inquota && ar->len < inquota)
->                 dquot_free_block(ar->inode, EXT4_C2B(sbi, inquota - ar->len));
-> +       if (reserv_clstrs && ar->len < reserv_clstrs)
-> +               fs_event_free_space(sbi->s_sb,
-> +                       EXT4_C2B(sbi, reserv_clstrs - ar->len));
->         if (!ar->len) {
->                 if ((ar->flags & EXT4_MB_DELALLOC_RESERVED) == 0)
->                         /* release all the reserved blocks if non delalloc */
-> @@ -4848,7 +4851,7 @@ do_more:
->         if (!(flags & EXT4_FREE_BLOCKS_NO_QUOT_UPDATE))
->                 dquot_free_block(inode, EXT4_C2B(sbi, count_clusters));
->         percpu_counter_add(&sbi->s_freeclusters_counter, count_clusters);
-> -
-> +       fs_event_free_space(sb, EXT4_C2B(sbi, count_clusters));
->         ext4_mb_unload_buddy(&e4b);
->
->         /* We dirtied the bitmap block */
-> @@ -4982,6 +4985,7 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
->         ext4_unlock_group(sb, block_group);
->         percpu_counter_add(&sbi->s_freeclusters_counter,
->                            EXT4_NUM_B2C(sbi, blocks_freed));
-> +       fs_event_free_space(sb, blocks_freed);
->
->         if (sbi->s_log_groups_per_flex) {
->                 ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index 8a8ec62..dbf08d6 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -1378,6 +1378,7 @@ static void ext4_update_super(struct super_block *sb,
->                            EXT4_NUM_B2C(sbi, free_blocks));
->         percpu_counter_add(&sbi->s_freeinodes_counter,
->                            EXT4_INODES_PER_GROUP(sb) * flex_gd->count);
-> +       fs_event_free_space(sb, free_blocks - reserved_blocks);
->
->         ext4_debug("free blocks count %llu",
->                    percpu_counter_read(&sbi->s_freeclusters_counter));
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index e061e66..108b667 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -585,6 +585,8 @@ void __ext4_abort(struct super_block *sb, const char *function,
->                 if (EXT4_SB(sb)->s_journal)
->                         jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
->                 save_error_info(sb, function, line);
-> +               fs_event_notify(sb, FS_ERR_REMOUNT_RO);
-> +
->         }
->         if (test_opt(sb, ERRORS_PANIC))
->                 panic("EXT4-fs panic from previous error\n");
-> @@ -1083,6 +1085,12 @@ static const struct quotactl_ops ext4_qctl_operations = {
->  };
->  #endif
->
-> +static void ext4_trace_query(struct super_block *sb, u64 *ncount);
-> +
-> +static const struct fs_trace_operations ext4_trace_ops = {
-> +       .query  = ext4_trace_query,
-> +};
-> +
->  static const struct super_operations ext4_sops = {
->         .alloc_inode    = ext4_alloc_inode,
->         .destroy_inode  = ext4_destroy_inode,
-> @@ -3398,11 +3406,20 @@ static int ext4_reserve_clusters(struct ext4_sb_info *sbi, ext4_fsblk_t count)
->  {
->         ext4_fsblk_t clusters = ext4_blocks_count(sbi->s_es) >>
->                                 sbi->s_cluster_bits;
-> +       ext4_fsblk_t current_resv;
->
->         if (count >= clusters)
->                 return -EINVAL;
->
-> +       current_resv = atomic64_read(&sbi->s_resv_clusters);
->         atomic64_set(&sbi->s_resv_clusters, count);
-> +
-> +       if (count > current_resv)
-> +               fs_event_alloc_space(sbi->s_sb,
-> +                       EXT4_C2B(sbi, count - current_resv));
-> +       else
-> +               fs_event_free_space(sbi->s_sb,
-> +                       EXT4_C2B(sbi, current_resv - count));
->         return 0;
->  }
->
-> @@ -3966,6 +3983,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->                 sb->s_qcop = &ext4_qctl_operations;
->         sb->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
->  #endif
-> +       sb->s_etrace.ops = &ext4_trace_ops;
-> +       sb->s_etrace.events_cap_mask = FS_EVENTS_ALL;
-> +
->         memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
->
->         INIT_LIST_HEAD(&sbi->s_orphan); /* unlinked but open files */
-> @@ -5438,6 +5458,25 @@ out:
->
->  #endif
->
-> +static void ext4_trace_query(struct super_block *sb, u64 *ncount)
-> +{
-> +       struct ext4_sb_info *sbi = EXT4_SB(sb);
-> +       struct ext4_super_block *es = sbi->s_es;
-> +       ext4_fsblk_t rsv_blocks;
-> +       ext4_fsblk_t nblocks;
-> +
-> +       nblocks = percpu_counter_sum_positive(&sbi->s_freeclusters_counter) -
-> +               percpu_counter_sum_positive(&sbi->s_dirtyclusters_counter);
-> +       nblocks = EXT4_C2B(sbi, nblocks);
-> +       rsv_blocks = ext4_r_blocks_count(es) +
-> +                    EXT4_C2B(sbi, atomic64_read(&sbi->s_resv_clusters));
-> +       if (nblocks < rsv_blocks)
-> +               nblocks = 0;
-> +       else
-> +               nblocks -= rsv_blocks;
-> +       *ncount = nblocks;
-> +}
-> +
->  static struct dentry *ext4_mount(struct file_system_type *fs_type, int flags,
->                        const char *dev_name, void *data)
->  {
-> --
-> 1.7.9.5
->
-> --
-> To unsubscribe, send a message with 'unsubscribe linux-mm' in
-> the body to majordomo@kvack.org.  For more info on Linux MM,
-> see: http://www.linux-mm.org/ .
-> Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+
+There are some limits here - I admit. The entries in the config file
+
+might be overwritten at any time - there is no support for multiple 
+
+config entries for the same mounted fs. This is mainly due to the threshold
+
+notifications: handling potentially numerous threshold limits each time
+
+the number of available blocks changes didn't seem like a good idea.
+
+So this is more like a global config, resembling sysfs fs-related tune options.
 
 
+> 2) what happens if fs is mounted more than once (e.g. in different
+> namespaces, or bound at different mountpoints, or just plain mounted
+> several times in different places) and we add an event for each?
+> More specifically, what should happen when one of those gets unmounted?
+> 
 
--- 
-Leon Romanovsky | Independent Linux Consultant
-        www.leon.nu | leon@leon.nu
+Each write to that file is being handled within the current namespace.
+Setting up an entry for a mount point from a different mnt namespace
+needs switching to that ns. As for bound mounts: the entry exists
+
+until the mount point it has been registered with is detached. 
+The events can only be registered for one of the mount points,
+as they are tied with the super
+ block - so one cannot have a separate
+config entry for each bound mounts.
+
+
+> 3) what's the meaning of ->active?  Is that "fs_drop_trace_entry() hadn't
+> been called yet" flag?  Unless I'm misreading it, we can very well get
+> explicit removal race with umount, resulting in cleanup_mnt() returning
+> from fs_event_mount_dropped() before the first process (i.e. write
+> asking to remove that entry) gets around to its deactivate_super(),
+> ending up with umount(2) on a filesystem that isn't mounted anywhere
+> else reporting success to userland before the actual fs shutdown, which
+> is not a nice thing to do...
+> 
+
+The 'active' means simply that the entry for a given mounted fs
+is still
+ valid in a way that the events are still required: the entry
+in the config file
+ has not been removed. When the trace is
+ being removed
+- it's 'active' filed gets invalidated to mark that the events for related
+fs are no longer needed. deactivate_super() should get called only once,
+dropping the
+ reference acquired while creating the entry (fs_new_trace_entry).
+
+While in fs_drop_trace_entry, lock is being held (in both cases: unmount and
+explicit 
+entry removal). The fs_drop_trace_entry will silently skip all
+the clean-up if the 
+entry is inactive. I might be missing smth here - though.
+If so,I would really appreciate some more of your comments.
+
+> 4) test in fs_event_mount_dropped() looks very odd - by that point we
+> are absolutely guaranteed to have ->mnt_ns == NULL.  What's that supposed
+> to do?
+>
+
+I have totally missed the fact that the mnt namespace pointer is invalidated
+
+during unmount_tree - cannot really explain why that did happen. So thank You
+
+for pointing that out. 
+	This should be simply checking if it's still valid.
+ This verification is
+needed in case the mount that is being detached is not
+ the one the events have
+been registered with as they refer to fs not a particular
+ mount point. This is
+the case with the mnt namespaces: let's assume one registers
+ for events for
+particular mounted fs in an init mnt namespace, then the new mnt
+ namespace is
+being created with shared moutn points being cloned: so the same
+ mount point
+exists in both namespaces. Now if this mnt point gets detached:
+ either through
+umount or during the mnt namespace being swept out - the entry
+ in the init mnt
+namespace should remain untouched - same applies the other way round.
+ 
+> 
+> Al, trying to figure out the lifetime rules in all of that...
+> 
+
+Best Regards
+Beata
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
