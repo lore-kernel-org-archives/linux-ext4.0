@@ -1,50 +1,190 @@
-From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: [PATCH] resize2fs: fix minimum size calculation
-Date: Wed, 17 Jun 2015 20:55:39 -0400
-Message-ID: <5582170B.9000607@ubuntu.com>
-References: <20150524013431.GB3270@thunk.org> <1432436541-16990-1-git-send-email-psusi@ubuntu.com>
+From: Beata Michalska <b.michalska@samsung.com>
+Subject: Re: [RFC v3 1/4] fs: Add generic file system event notifications
+Date: Thu, 18 Jun 2015 10:25:08 +0200
+Message-ID: <55828064.5040301@samsung.com>
+References: <1434460173-18427-1-git-send-email-b.michalska@samsung.com>
+ <1434460173-18427-2-git-send-email-b.michalska@samsung.com>
+ <20150617230605.GK10224@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-outbound-snat.email.rr.com ([107.14.166.231]:17467 "EHLO
-	cdptpa-oedge-vip.email.rr.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751614AbbFRA6s (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Jun 2015 20:58:48 -0400
-In-Reply-To: <1432436541-16990-1-git-send-email-psusi@ubuntu.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-api@vger.kernel.org, greg@kroah.com, jack@suse.cz,
+	tytso@mit.edu, adilger.kernel@dilger.ca, hughd@google.com,
+	lczerner@redhat.com, hch@infradead.org, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, kyungmin.park@samsung.com, kmpark@infradead.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-reply-to: <20150617230605.GK10224@dastard>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA512
+Hi,
 
-On 05/23/2015 11:02 PM, Phillip Susi wrote:
-> The size calculation adds an initial number of block groups needed
-> to hold the inodes on the fs, then augments them with additional
-> groups needed to reach the minimum number of data blocks, and then
-> calculates the size of the last block group ( which should be a
-> fraction of one block group ).  It was calculating a last bg size
-> of several block groups because when adding the supplementary bgs,
-> it only advanced the position of the start of the last group by one
-> group, even though it was adding multiple groups.  Add the missing
-> multiplier to move the last bg start position up to the correct 
-> location, thus computing a proper fractional last bg size.
+On 06/18/2015 01:06 AM, Dave Chinner wrote:
+> On Tue, Jun 16, 2015 at 03:09:30PM +0200, Beata Michalska wrote:
+>> Introduce configurable generic interface for file
+>> system-wide event notifications, to provide file
+>> systems with a common way of reporting any potential
+>> issues as they emerge.
+>>
+>> The notifications are to be issued through generic
+>> netlink interface by newly introduced multicast group.
+>>
+>> Threshold notifications have been included, allowing
+>> triggering an event whenever the amount of free space drops
+>> below a certain level - or levels to be more precise as two
+>> of them are being supported: the lower and the upper range.
+>> The notifications work both ways: once the threshold level
+>> has been reached, an event shall be generated whenever
+>> the number of available blocks goes up again re-activating
+>> the threshold.
+>>
+>> The interface has been exposed through a vfs. Once mounted,
+>> it serves as an entry point for the set-up where one can
+>> register for particular file system events.
+>>
+>> Signed-off-by: Beata Michalska <b.michalska@samsung.com>
+> 
+> This has massive scalability problems:
+> 
+>> + 4.3 Threshold notifications:
+>> +
+>> + #include <linux/fs_event.h>
+>> + void fs_event_alloc_space(struct super_block *sb, u64 ncount);
+>> + void fs_event_free_space(struct super_block *sb, u64 ncount);
+>> +
+>> + Each filesystme supporting the threshold notifications should call
+>> + fs_event_alloc_space/fs_event_free_space respectively whenever the
+>> + amount of available blocks changes.
+>> + - sb:     the filesystem's super block
+>> + - ncount: number of blocks being acquired/released
+> 
+> ... here.
+> 
+>> + Note that to properly handle the threshold notifications the fs events
+>> + interface needs to be kept up to date by the filesystems. Each should
+>> + register fs_trace_operations to enable querying the current number of
+>> + available blocks.
+> 
+> Have you noticed that the filesystems have percpu counters for
+> tracking global space usage? There's good reason for that - taking a
+> spinlock in such a hot accounting path causes severe contention.
+> 
+>> +static void fs_event_send(struct fs_trace_entry *en, unsigned int event_id)
+>> +{
+>> +	size_t size = nla_total_size(sizeof(u32)) * 2 +
+>> +		      nla_total_size(sizeof(u64));
+>> +
+>> +	fs_netlink_send_event(size, event_id, create_common_msg, en);
+>> +}
+>> +
+>> +static void fs_event_send_thresh(struct fs_trace_entry *en,
+>> +				  unsigned int event_id)
+>> +{
+>> +	size_t size = nla_total_size(sizeof(u32)) * 2 +
+>> +		      nla_total_size(sizeof(u64)) * 2;
+>> +
+>> +	fs_netlink_send_event(size, event_id, create_thresh_msg, en);
+>> +}
+>> +
+>> +void fs_event_notify(struct super_block *sb, unsigned int event_id)
+>> +{
+>> +	struct fs_trace_entry *en;
+>> +
+>> +	en = fs_trace_entry_get_rcu(sb);
+>> +	if (!en)
+>> +		return;
+>> +
+>> +	spin_lock(&en->lock);
+>> +	if (atomic_read(&en->active) && (en->notify & FS_EVENT_GENERIC))
+>> +		fs_event_send(en, event_id);
+>> +	spin_unlock(&en->lock);
+>> +	fs_trace_entry_put(en);
+>> +}
+>> +EXPORT_SYMBOL(fs_event_notify);
+>> +
+>> +void fs_event_alloc_space(struct super_block *sb, u64 ncount)
+>> +{
+>> +	struct fs_trace_entry *en;
+>> +	s64 count;
+>> +
+>> +	en = fs_trace_entry_get_rcu(sb);
+>> +	if (!en)
+>> +		return;
+> 
+> Adds an atomic write to get the trace entry,
+> 
+>> +	spin_lock(&en->lock);
+> 
+> a spin lock to lock the entry,
+> 
+> 
+>> +	if (!atomic_read(&en->active) || !(en->notify & FS_EVENT_THRESH))
+>> +		goto leave;
+>> +	/*
+>> +	 * we shouldn't drop below 0 here,
+>> +	 * unless there is a sync issue somewhere (?)
+>> +	 */
+>> +	count = en->th.avail_space - ncount;
+>> +	en->th.avail_space = count < 0 ? 0 : count;
+>> +
+>> +	if (en->th.avail_space > en->th.lrange)
+>> +		/* Not 'even' close - leave */
+>> +		goto leave;
+>> +
+>> +	if (en->th.avail_space > en->th.urange) {
+>> +		/* Close enough - the lower range has been reached */
+>> +		if (!(en->th.state & THRESH_LR_BEYOND)) {
+>> +			/* Send notification */
+>> +			fs_event_send_thresh(en, FS_THR_LRBELOW);
+>> +			en->th.state &= ~THRESH_LR_BELOW;
+>> +			en->th.state |= THRESH_LR_BEYOND;
+>> +		}
+>> +		goto leave;
+> 
+> Then puts the entire netlink send path inside this spinlock, which
+> includes memory allocation and all sorts of non-filesystem code
+> paths. And it may be inside critical filesystem locks as well....
+> 
+> Apart from the serialisation problem of the locking, adding
+> memory allocation and the network send path to filesystem code
+> that is effectively considered "innermost" filesystem code is going
+> to have all sorts of problems for various filesystems. In the XFS
+> case, we simply cannot execute this sort of function in the places
+> where we update global space accounting.
+> 
+> As it is, I think the basic concept of separate tracking of free
+> space if fundamentally flawed. What I think needs to be done is that
+> filesystems need access to the thresholds for events, and then the
+> filesystems call fs_event_send_thresh() themselves from appropriate
+> contexts (ie. without compromising locking, scalability, memory
+> allocation recursion constraints, etc).
+> 
+> e.g. instead of tracking every change in free space, a filesystem
+> might execute this once every few seconds from a workqueue:
+> 
+> 	event = fs_event_need_space_warning(sb, <fs_free_space>)
+> 	if (event)
+> 		fs_event_send_thresh(sb, event);
+> 
+> User still gets warnings about space usage, but there's no runtime
+> overhead or problems with lock/memory allocation contexts, etc.
+> 
+> Cheers,
+> 
+> Dave.
+> 
 
-Bump.
+Having fs to keep a firm hand on thresholds limits would indeed be
+far more sane approach though that would require each fs to
+add support for that and handle most of it on their own. Avoiding
+this was the main rationale behind this rfc.
+
+If fs people agree to that, I'll be more than willing to drop this
+in favour of the per-fs tracking solution. 
+Personally, I hope they will.
 
 
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQEcBAEBCgAGBQJVghcLAAoJENRVrw2cjl5Rc40H/3S52xJvxPV0f9cpXZT1qNLe
-KEOi3O8B8FxQdfi3e3DjOk7OVl9t0wB+pob1QrOb8COp8wWEYr0dvQbq+fMLFOCx
-8QehpD+q+0O9ZiptcNvhPEa65vNXTWE9Mo+nnK/eSPm+wXJ/XfGISIQfy7U0qzXP
-ZJ0rsyqpFqkJKBOBIh3P9vxxaR+wDM+KuRERk0nc/shnH6Yg5Ud2PUzd+ZmGSYHY
-DPxT0Gde3T/9whLOMBaD8NSTyqG5zPASBybqqqKHyeasAuWUqGEO8G79KsZvaeJ5
-3LCG92vWO6wt7jQPzgf95Z6uj4CHVVufqA7DQwKKDgIE1JGFq7C76/pwfAranG0=
-=nqrK
------END PGP SIGNATURE-----
+Best Regards
+Beata 
