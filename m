@@ -1,207 +1,131 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 4/5] jbd2: Speedup jbd2_journal_get_[write|undo]_access()
-Date: Thu, 18 Jun 2015 10:52:35 +0200
-Message-ID: <20150618085235.GB21820@quack.suse.cz>
-References: <1427983100-29889-1-git-send-email-jack@suse.cz>
- <1427983100-29889-5-git-send-email-jack@suse.cz>
- <20150608164726.GM19168@thunk.org>
- <20150617165646.GG1614@quack.suse.cz>
- <CAA1ppbhojR0aaDr-BUWQLWQDo5+sO9Tc6b=Dxf5XrRAr2DT0oQ@mail.gmail.com>
+From: Nikolay Borisov <n.borisov@siteground.com>
+Subject: LOCKDEP warning around ext4_iget
+Date: Thu, 18 Jun 2015 11:58:47 +0300
+Message-ID: <55828847.5010700@siteground.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="J/dobhs11T7y2rNN"
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Jerry Lee <jerrylee@qnap.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:50848 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752368AbbFRIwl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Jun 2015 04:52:41 -0400
-Content-Disposition: inline
-In-Reply-To: <CAA1ppbhojR0aaDr-BUWQLWQDo5+sO9Tc6b=Dxf5XrRAr2DT0oQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Marian Marinov <mm@1h.com>
+To: "Linux-Kernel@Vger. Kernel. Org" <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+Hello,
 
---J/dobhs11T7y2rNN
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+During a debugging session of my local code I encountered the following
+lockdep splat but my machine did not deadlock, on subsequent repeats of
+the same operations that led to this splat (enqueuing my rcu callback) I
+couldn't reproduce it:
+=================================
+[ INFO: inconsistent lock state ]
+4.0.0-fmon+ #189 Not tainted
+---------------------------------
+inconsistent {SOFTIRQ-ON-W} -> {IN-SOFTIRQ-W} usage.
+ksoftirqd/0/3 [HC0[0]:SC1[1]:HE1:SE0] takes:
+ (&sb->s_type->i_lock_key#16){+.?...}, at: [<ffffffff81207a7e>]
+fsnotify_find_inode_mark+0x2e/0x60
+{SOFTIRQ-ON-W} state was registered at:
+  [<ffffffff810a7c20>] mark_irqflags+0x110/0x170
+  [<ffffffff810a93d2>] __lock_acquire+0x292/0x560
+  [<ffffffff810a9869>] lock_acquire+0x1c9/0x230
+  [<ffffffff8161f788>] _raw_spin_lock+0x38/0x50
+  [<ffffffff811e1711>] iget_locked+0x111/0x1f0
+  [<ffffffff81259031>] ext4_iget+0x41/0xaf0
+  [<ffffffff8126efef>] ext4_get_journal+0x3f/0x130
+  [<ffffffff812723b7>] ext4_load_journal+0x167/0x3d0
+  [<ffffffff8127c07f>] ext4_fill_super+0x137f/0x2090
+  [<ffffffff811c627a>] mount_bdev+0x17a/0x200
+  [<ffffffff8126bac5>] ext4_mount+0x15/0x20
+  [<ffffffff811c5e8d>] mount_fs+0x8d/0x180
+  [<ffffffff811e8299>] vfs_kern_mount+0x79/0x160
+  [<ffffffff811e90e0>] do_new_mount+0xd0/0x1d0
+  [<ffffffff811e9645>] do_mount+0x165/0x230
+  [<ffffffff811e9798>] SyS_mount+0x88/0xc0
+  [<ffffffff81620609>] system_call_fastpath+0x12/0x17
+irq event stamp: 231650
+hardirqs last  enabled at (231650): [<ffffffff811a50ad>] kfree+0x20d/0x2a0
+hardirqs last disabled at (231649): [<ffffffff811a507f>] kfree+0x1df/0x2a0
+softirqs last  enabled at (231572): [<ffffffff810592ce>] __do_softirq+0x47e/0x580
+softirqs last disabled at (231577): [<ffffffff810593f5>]
+run_ksoftirqd+0x25/0x90
 
-On Thu 18-06-15 15:59:33, Jerry Lee wrote:
-> Hi:
-> 
-> I found that there may be a typo in the attached patch 5/5:
-> 
-> +        /*
-> +         * If it's in our transaction it must be in BJ_Metadata list.
-> +         * The assertion is unreliable since we may see jh in
-> +         * inconsistent state unless we grab bh_state lock. But this
-> +         * is crutial to catch bugs so let's do a reliable check until
-> +         * the lockless handling is fully proven.
-> +         */
-> +        if (jh->b_transaction == transaction &&
-> +            jh->b_jlist != BJ_Metadata) {
-> +            jbd_lock_bh_state(bh);
-> +            J_ASSERT_JH(jh, jh->b_transaction != transaction ||
-> +                    jh->b_jlist == BJ_Metadata);
-> +            jbd_lock_bh_state(bh);
-> ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> +        }
-> +        goto out;
-> 
-> Does the highlight part should be "jbd_unlock_bh_state(bh)"?
-  Yeah, thanks for catching this. I was apparently pretty lucky in this
-passing all the tests... Attached is the new version of the patch.
+other info that might help us debug this:
+ Possible unsafe locking scenario:
 
-								Honza
+       CPU0
+       ----
+  lock(&sb->s_type->i_lock_key#16);
+  <Interrupt>
+    lock(&sb->s_type->i_lock_key#16);
 
-> On Thu, Jun 18, 2015 at 12:56 AM, Jan Kara <jack@suse.cz> wrote:
-> 
-> > On Mon 08-06-15 12:47:26, Ted Tso wrote:
-> > > On Thu, Apr 02, 2015 at 03:58:19PM +0200, Jan Kara wrote:
-> > > > jbd2_journal_get_write_access() and jbd2_journal_get_create_access()
-> > are
-> > > > frequently called for buffers that are already part of the running
-> > > > transaction - most frequently it is the case for bitmaps, inode table
-> > > > blocks, and superblock. Since in such cases we have nothing to do, it
-> > is
-> > > > unfortunate we still grab reference to journal head, lock the bh, lock
-> > > > bh_state only to find out there's nothing to do.
-> > > >
-> > > > Improving this is a bit subtle though since until we find out journal
-> > > > head is attached to the running transaction, it can disappear from
-> > under
-> > > > us because checkpointing / commit decided it's no longer needed. We
-> > deal
-> > > > with this by protecting journal_head slab with RCU. We still have to be
-> > > > careful about journal head being freed & reallocated within slab and
-> > > > about exposing journal head in consistent state (in particular
-> > > > b_modified and b_frozen_data must be in correct state before we allow
-> > > > user to touch the buffer).
-> > > >
-> > > > FIXME: Performance data.
-> > > >
-> > > > Signed-off-by: Jan Kara <jack@suse.cz>
-> > >
-> > > Applied, so we can start getting some testing on this patch.  Did you
-> > > ever get performance data?
-> >
-> > Yes. Here are results for reaim fserver workload for 32 core machine with
-> > 128 GB of ram with ext4 on ramdisk:
-> > Procs Vanilla    Patched
-> > 1      20420.688  21155.556
-> > 21     49684.704 178934.074
-> > 41     84630.364 196647.482
-> > 61    106344.284 204831.652
-> > 81    120751.370 214842.428
-> > 101   131585.450 208761.832
-> > 121   138092.078 212741.648
-> > 141   142271.578 212118.502
-> > 161   146008.364 213731.388
-> > 181   149569.494 216121.444
-> >
-> > Numbers are operations per second so larger is better. You can see that
-> > for 21 processes we get increase by 260% in the number operations. Also the
-> > total maximum of operations the machine is able to achieve increases by
-> > 44% because of overall lower CPU overhead.
-> >
-> >                                                                 Honza
-> > --
-> > Jan Kara <jack@suse.cz>
-> > SUSE Labs, CR
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+ *** DEADLOCK ***
 
---J/dobhs11T7y2rNN
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0005-jbd2-Speedup-jbd2_journal_dirty_metadata.patch"
+1 lock held by ksoftirqd/0/3:
+ #0:  (rcu_callback){......}, at: [<ffffffff810be940>]
+rcu_do_batch+0x180/0x410
 
->From a19a4452879743eb7c8db593adbf60fc9ff0427c Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Wed, 18 Mar 2015 14:29:13 +0100
-Subject: [PATCH 5/5] jbd2: Speedup jbd2_journal_dirty_metadata()
+stack backtrace:
+CPU: 0 PID: 3 Comm: ksoftirqd/0 Not tainted 4.0.0-fmon+ #189
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS
+rel-1.8.1-0-g4adadbd-20150316_085822-nilsson.home.kraxel.org 04/01/2014
+ ffff88000655a600 ffff8800065779e8 ffffffff816190ab 0000000000000000
+ ffffffff819f3668 ffff880006577a48 ffffffff810a6aee 0000000000000001
+ ffffffff00000001 ffff880000000000 0000000081e4d528 0000000000000001
+Call Trace:
+ [<ffffffff816190ab>] dump_stack+0x4f/0x6c
+ [<ffffffff810a6aee>] print_usage_bug+0x1be/0x1f0
+ [<ffffffff810a71b0>] ? print_circular_bug+0x150/0x150
+ [<ffffffff810a7799>] mark_lock_irq+0xd9/0x2a0
+ [<ffffffff810a7a73>] mark_lock+0x113/0x1b0
+ [<ffffffff810a7ba5>] mark_irqflags+0x95/0x170
+ [<ffffffff810a93d2>] __lock_acquire+0x292/0x560
+ [<ffffffff8114d34d>] ? free_one_page+0x27d/0x360
+ [<ffffffff810a9869>] lock_acquire+0x1c9/0x230
+ [<ffffffff81207a7e>] ? fsnotify_find_inode_mark+0x2e/0x60
+ [<ffffffff8114fb95>] ? __free_pages_ok+0xe5/0x110
+ [<ffffffff81208e60>] ? filemon_dirtycount_show+0x50/0x50
+ [<ffffffff8161f788>] _raw_spin_lock+0x38/0x50
+ [<ffffffff81207a7e>] ? fsnotify_find_inode_mark+0x2e/0x60
+ [<ffffffff81207a7e>] fsnotify_find_inode_mark+0x2e/0x60
+ [<ffffffff8120a109>] dnotify_flush+0x49/0x130
+ [<ffffffff81208e60>] ? filemon_dirtycount_show+0x50/0x50
+ [<ffffffff811bf4b6>] filp_close+0x66/0x90
+ [<ffffffff81208e7d>] filemon_free_dir_entry_rcu+0x1d/0x30
+ [<ffffffff81208e60>] ? filemon_dirtycount_show+0x50/0x50
+ [<ffffffff810be9ae>] rcu_do_batch+0x1ee/0x410
+ [<ffffffff810be940>] ? rcu_do_batch+0x180/0x410
+ [<ffffffff810bd495>] ? note_gp_changes+0x95/0xf0
+ [<ffffffff810bed21>] __rcu_process_callbacks+0x151/0x190
+ [<ffffffff810bff38>] rcu_process_callbacks+0x178/0x320
+ [<ffffffff8105909e>] __do_softirq+0x24e/0x580
+ [<ffffffff8107c8c0>] ? smpboot_create_threads+0x80/0x80
+ [<ffffffff810593f5>] run_ksoftirqd+0x25/0x90
+ [<ffffffff8107cab1>] smpboot_thread_fn+0x1f1/0x200
+ [<ffffffff81078710>] kthread+0x110/0x120
+ [<ffffffff81078600>] ? __init_kthread_worker+0x70/0x70
+ [<ffffffff81620558>] ret_from_fork+0x58/0x90
+ [<ffffffff81078600>] ? __init_kthread_worker+0x70/0x70
 
-It is often the case that we mark buffer as having dirty metadata when
-the buffer is already in that state (frequent for bitmaps, inode table
-blocks, superblock). Thus it is unnecessary to contend on grabbing
-journal head reference and bh_state lock. Avoid that by checking whether
-any modification to the buffer is needed before grabbing any locks or
-references.
+I'm having a hard time debugging the first backtrace, particularly what
+does the "inconsistent {SOFTIRQ-ON-W} -> {IN-SOFTIRQ-W} usage." and
+following lines are trying to tell me? The bottom backtrace indicates
+that my custom rcu callback was executing at the time, here is the code
+for that:
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/jbd2/transaction.c | 33 +++++++++++++++++++++++++++------
- 1 file changed, 27 insertions(+), 6 deletions(-)
+static void filemon_free_dir_entry_rcu(struct rcu_head *head)
+{
+        struct filemon_dir_entry *entry = container_of(head,
+					struct filemon_dir_entry,
+                                                       rcu);
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index a91f639af6c3..5887c880422b 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1290,8 +1290,6 @@ void jbd2_buffer_abort_trigger(struct journal_head *jh,
- 	triggers->t_abort(triggers, jh2bh(jh));
- }
- 
--
--
- /**
-  * int jbd2_journal_dirty_metadata() -  mark a buffer as containing dirty metadata
-  * @handle: transaction to add buffer to.
-@@ -1325,12 +1323,36 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
- 	WARN_ON(!transaction);
- 	if (is_handle_aborted(handle))
- 		return -EROFS;
--	journal = transaction->t_journal;
--	jh = jbd2_journal_grab_journal_head(bh);
--	if (!jh) {
-+	if (!buffer_jbd(bh)) {
- 		ret = -EUCLEAN;
- 		goto out;
- 	}
-+	/*
-+	 * We don't grab jh reference here since the buffer must be part
-+	 * of the running transaction.
-+	 */
-+	jh = bh2jh(bh);
-+	J_ASSERT_JH(jh, jh->b_transaction == transaction ||
-+			jh->b_next_transaction == transaction);
-+	if (jh->b_modified == 1) {
-+		/*
-+		 * If it's in our transaction it must be in BJ_Metadata list.
-+		 * The assertion is unreliable since we may see jh in
-+		 * inconsistent state unless we grab bh_state lock. But this
-+		 * is crutial to catch bugs so let's do a reliable check until
-+		 * the lockless handling is fully proven.
-+		 */
-+		if (jh->b_transaction == transaction &&
-+		    jh->b_jlist != BJ_Metadata) {
-+			jbd_lock_bh_state(bh);
-+			J_ASSERT_JH(jh, jh->b_transaction != transaction ||
-+					jh->b_jlist == BJ_Metadata);
-+			jbd_unlock_bh_state(bh);
-+		}
-+		goto out;
-+	}
-+
-+	journal = transaction->t_journal;
- 	jbd_debug(5, "journal_head %p\n", jh);
- 	JBUFFER_TRACE(jh, "entry");
- 
-@@ -1421,7 +1443,6 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
- 	spin_unlock(&journal->j_list_lock);
- out_unlock_bh:
- 	jbd_unlock_bh_state(bh);
--	jbd2_journal_put_journal_head(jh);
- out:
- 	JBUFFER_TRACE(jh, "exit");
- 	return ret;
--- 
-2.1.4
+        filp_close(entry->file, NULL);
+        kfree(entry);
+}
 
-
---J/dobhs11T7y2rNN--
+Pretty straightforward and I don't see how this code has anything to do
+with ext4 or with superblock locking. I've tested this on a single core
+QEMU, with SMP enabled in the kernel. Is it possible I've hit some 
+lingering issue ? The version used is kernel 4.0.0 with my custom code, 
+but I have never touched any ext4 code. Any pointer as to what 
+might be the root cause?
