@@ -1,121 +1,370 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [RFC] keyctl {clear,revoke} serialization with key-users
-Date: Thu, 18 Jun 2015 13:43:11 +0300
-Message-ID: <87zj3xpa9s.fsf@openvz.org>
-References: <87ioapt1fj.fsf@openvz.org> <29565.1434557922@warthog.procyon.org.uk>
+From: Kinglong Mee <kinglongmee@gmail.com>
+Subject: Re: [RFC v3 1/4] fs: Add generic file system event notifications
+Date: Thu, 18 Jun 2015 19:17:21 +0800
+Message-ID: <5582A8C1.3000002@gmail.com>
+References: <1434460173-18427-1-git-send-email-b.michalska@samsung.com> <1434460173-18427-2-git-send-email-b.michalska@samsung.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
-Cc: dhowells@redhat.com, keyrings@linux-nfs.org,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: David Howells <dhowells@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f176.google.com ([209.85.217.176]:32770 "EHLO
-	mail-lb0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753428AbbFRKp6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2015 06:45:58 -0400
-Received: by lbbvz5 with SMTP id vz5so1417243lbb.0
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2015 03:45:56 -0700 (PDT)
-In-Reply-To: <29565.1434557922@warthog.procyon.org.uk>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: greg@kroah.com, jack@suse.cz, tytso@mit.edu,
+ adilger.kernel@dilger.ca, hughd@google.com, lczerner@redhat.com,
+ hch@infradead.org, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+ kyungmin.park@samsung.com, kmpark@infradead.org, kinglongmee@gmail.com
+To: Beata Michalska <b.michalska@samsung.com>,
+ linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-api@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1434460173-18427-2-git-send-email-b.michalska@samsung.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On 6/16/2015 9:09 PM, Beata Michalska wrote:
+> Introduce configurable generic interface for file
+> system-wide event notifications, to provide file
+> systems with a common way of reporting any potential
+> issues as they emerge.
+... snip ...
+> +
+> +Sample request could look like the following:
+> +
+> + echo /sample/mount/point G T 710000 500000 > /sys/fs/events/config
+> +
+> +Multiple request might be specified provided they are separated with semicolon.
+> +
+> +The configuration itself might be modified at any time. One can add/remove
+> +particular event types for given fielsystem, modify the threshold levels,
+> +and remove single or all entries from the 'config' file.
+> +
+> + - Adding new event type:
+> +
+> + $ echo MOUNT EVENT_TYPE > /sys/fs/events/config
+> +
+> +(Note that is is enough to provide the event type to be enabled without
 
-David Howells <dhowells@redhat.com> writes:
+Should be "Note that it is ... " here ?
 
-> Dmitry Monakhov <dmonakhov@openvz.org> wrote:
->
->> But currently there is not synchronization between 'keyctl clear' and di=
-rty
->> page buffers write-back, which result in data loss(because key no longer
->> available).
->
-> The way fs/afs/ deals with this is to attach the key to the pending write=
-back
-> record.  However, this would also benefit from writeback being triggered =
-at
-> key invalidation.
->
->> But currently there is not synchronization between 'keyctl clear' and di=
-rty
->> page buffers write-back, which result in data loss(because key no longer
->> available).
->>
->> There are several ways to synchronize key-management with key-usage
->> 1) ext4 specific way via userspace
->>    add 'del_key' command to e4crypto which will do:
->>        ioctl(ext4_del_key)          # sync and invalidate all inodes whi=
-ch referees given key
->>        keyctl(KEYCTL_INVALIDATE,..) # wipe key from kernel
->
-> I'm not keen on this because it's too easy to bypass half the process and=
- miss
-> the ioctl.
->
->> 2) Generic keyring way:
->>    Add kernel API to register event listeners for a key so any subsystem
->>    may listen for such events and performs necessary actions once it hap=
-pen.
->>    For example:
->>    key =3D request_key(....)
->>    notify_changes_key(key, event_mask, my_callback)
->>=20
->>=20
->>    keyring_clear() {
->>    for_each_listener{
->>         notify_key(callback, KEY_CLEAR)
->>    }
->>=20=20=20=20
->> First one is easy and clean also it preserves original keyring management
->> assumptions, but second one is more generic (since other fs will likely =
-to
->> implement encryption in near future), the only visible changes of second
->> option is that callbacks must be synchronous so 'keyctl clear @s' may ta=
-kes
->> long time. IMHO such implicit synchronization is good for 99% use-cases,=
- the
->> only exception is 'emergency key clear' case where we do not care about =
-data
->> consistency but do care about key to be wiped ASAP.
->>=20
->> I would like to implement second option. Please rise your objections if =
-any.
->
-> I agree that the second is the best option.  It's something I thought abo=
-ut
-> originally for keys that are tied to some sort of removable hardware but I
-> never actually implemented.
->
-> I would suggest that you consider driving the notification from the
-> gc.
-AFAIU it is too late to perform notifications from GS because key is
-already tagged as INVALIDATED or DEAD so key_validate() will fail.
+> +the already set ones.)
+> +
+> + - Removing event type:
+> +
+> + $ echo '!MOUNT EVENT_TYPE' > /sys/fs/events/config
+> +
+> + - Updating threshold limits:
+> +
+> + $ echo MOUNT T L1 L2 > /sys/fs/events/config
+> +
+> + - Removing single entry:
+> +
+> + $ echo '!MOUNT' > /sys/fs/events/config
+> +
+> + - Removing all entries:
+> +
+> + $ echo > /sys/fs/events/config
+> +
+> +Reading the file will list all registered entries with their current set-up
+> +along with some additional info like the filesystem type and the backing device
+> +name if available.
+> +
+> +Final, though a very important note on the configuration: when and if the
+> +actual events are being triggered falls way beyond the scope of the generic
+> +filesystem events interface. It is up to a particular filesystem
+> +implementation which events are to be supported - if any at all. So if
+> +given filesystem does not support the event notifications, an attempt to
+> +enable those through 'config' file will fail.
+> +
+> +
+> +3. The generic netlink interface support:
+> +=========================================
+> +
+> +Whenever an event notification is triggered (by given filesystem) the current
+> +configuration is being validated to decide whether a userpsace notification
+> +should be launched. If there has been no request (in a mean of 'config' file
+> +entry) for given event, one will be silently disregarded. If, on the other
+> +hand, someone is 'watching' given filesystem for specific events, a generic
+> +netlink message will be sent. A dedicated multicast group has been provided
+> +solely for this purpose so in order to receive such notifications, one should
+> +subscribe to this new multicast group. As for now only the init network
+> +namespace is being supported.
+> +
+> +3.1 Message format
+> +
+> +The FS_NL_C_EVENT shall be stored within the generic netlink message header
+> +as the command field. The message payload will provide more detailed info:
+> +the backing device major and minor numbers, the event code and the id of
+> +the process which action led to the event occurrence. In case of threshold
+> +notifications, the current number of available blocks will be included
+> +in the payload as well.
+> +
+> +
+> +	 0                   1                   2                   3
+> +	 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+> +	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+> +	|	            NETLINK MESSAGE HEADER			|
+> +	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+> +	| 		GENERIC NETLINK MESSAGE HEADER   		|
+> +	| 	   (with FS_NL_C_EVENT as genlmsghdr cdm field)		|
 
-BTW: I try to find synchronous way to clear a key the one which
-explicitly wait for scheduled gc work to complete. But I can not find it.
-Please guide me.
->It might not be entirely practical though and might be better off done fro=
-m a
-> separate work item.
-I'll try to implement this case.
->
-> David
+cmd, not cdm.
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+> +	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+> +	| 	      Optional user specific message header		|
+> +	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+> +	|		   GENERIC MESSAGE PAYLOAD:			|
+> +	+---------------------------------------------------------------+
+> +	| 		  FS_NL_A_EVENT_ID  (NLA_U32)			|
+> +	+---------------------------------------------------------------+
+> +	|	  	  FS_NL_A_DEV_MAJOR (NLA_U32)			|
+> +	+---------------------------------------------------------------+
+> +	| 	  	  FS_NL_A_DEV_MINOR (NLA_U32) 			|
+> +	+---------------------------------------------------------------+
+> +	|  		  FS_NL_A_CAUSED_ID (NLA_U32)			|
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
+Should be NLA_U64 ? The following uses as, 
 
-iQEcBAEBCgAGBQJVgqC/AAoJELhyPTmIL6kBvO0H/RxvU79Ruf9DcjyO2pOkLoLJ
-uRR3maPIlLrJze1hL34nH+H7eUH5SIr2yBIQbnfJLGombI1ewL4TprZDtokcZi6R
-mCTHvCLpO9PNZ8K0MQIrd6my67wkdnXcbTMjh8cDzoXgk5rKziLXhUkKg57D+l8e
-F6XST6ZYhyk3/4InUf13jN05HnRfok80QhkFkNPOiYeLBQlwpkshfI/UDSLaFfJn
-jvpncmivqju3YxnvSzYdUnv00dzS18IellCZr6kHISPPK+SAijgkuhQwg2AD0UCr
-uB/+T3ty5ldSqFdpPgw2DRxicot+njTByE2+wjO/n48isgZEZWj+1gtUj8Q77N4=
-=p39E
------END PGP SIGNATURE-----
---=-=-=--
++	if (nla_put_u64(skb, FS_NL_A_CAUSED_ID, pid_vnr(task_pid(current))))
++		return -EINVAL;
+
+Also, I'd like FS_NL_A_CAUSED_PID than FS_NL_A_CAUSED_ID.
+
+> +	+---------------------------------------------------------------+
+> +	|  		    FS_NL_A_DATA (NLA_U64)			|
+> +	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+> +
+> +
+> +The above figure is based on:
+> + http://www.linuxfoundation.org/collaborate/workgroups/networking/generic_netlink_howto#Message_Format
+> +
+> +
+... snip... 
+> +	seq_putc(m, ' ');
+> +	if (sb->s_op->show_devname) {
+> +		sb->s_op->show_devname(m, en->mnt_path.mnt->mnt_root);
+> +	} else {
+> +		seq_escape(m, r_mnt->mnt_devname ? r_mnt->mnt_devname : "none",
+> +				" \t\n\\");
+> +	}
+> +	seq_puts(m, " (");
+> +
+> +	nmask = en->notify;
+> +	for (match = fs_etypes; match->pattern; ++match) {
+> +		if (match->token & nmask) {
+> +			seq_puts(m, match->pattern);
+
+Print here is better.
+
+if (match->pattern & FS_EVENT_THRESH)
+	seq_printf(m, " %llu %llu", en->th.lrange, en->th.urange);
+
+> +			nmask &= ~match->token;
+> +			if (nmask)
+> +				seq_putc(m, ',');
+> +		}
+> +	}
+> +	seq_printf(m, " %llu %llu", en->th.lrange, en->th.urange);
+
+Don't print the lrange/urange (always be zero) when without FS_EVENT_THRESH.
+
+> +	seq_puts(m, ")\n");
+> +	return 0;
+> +}
+> +
+> +static const struct seq_operations fs_trace_seq_ops = {
+> +	.start	= fs_trace_seq_start,
+> +	.next	= fs_trace_seq_next,
+> +	.stop	= fs_trace_seq_stop,
+> +	.show	= fs_trace_seq_show,
+> +};
+> +
+> +static int fs_trace_open(struct inode *inode, struct file *file)
+> +{
+> +	return seq_open(file, &fs_trace_seq_ops);
+> +}
+> +
+> +static const struct file_operations fs_trace_fops = {
+> +	.owner		= THIS_MODULE,
+> +	.open		= fs_trace_open,
+> +	.write		= fs_trace_write,
+> +	.read		= seq_read,
+> +	.llseek		= seq_lseek,
+> +	.release	= seq_release,
+> +};
+> +
+> +static int fs_trace_init(void)
+> +{
+> +	fs_trace_cachep = KMEM_CACHE(fs_trace_entry, 0);
+> +	if (!fs_trace_cachep)
+> +		return -EINVAL;
+> +	init_waitqueue_head(&trace_wq);
+> +	return 0;
+> +}
+> +
+> +/* VFS support */
+> +static int fs_trace_fill_super(struct super_block *sb, void *data, int silen)
+> +{
+> +	int ret;
+> +	static struct tree_descr desc[] = {
+> +		[2] = {
+> +			.name	= "config",
+> +			.ops	= &fs_trace_fops,
+> +			.mode	= S_IWUSR | S_IRUGO,
+> +		},
+> +		{""},
+> +	};
+> +
+> +	ret = simple_fill_super(sb, 0x7246332, desc);
+> +	return !ret ? fs_trace_init() : ret;
+> +}
+> +
+> +static struct dentry *fs_trace_do_mount(struct file_system_type *fs_type,
+> +		 int ntype, const char *dev_name, void *data)
+> +{
+> +	return mount_single(fs_type, ntype, data, fs_trace_fill_super);
+> +}
+> +
+> +static void fs_trace_kill_super(struct super_block *sb)
+> +{
+> +	/*
+> +	 * The rcu_barrier here will/should make sure all call_rcu
+> +	 * callbacks are completed - still there might be some active
+> +	 * trace objects in use which can make calling the
+> +	 * kmem_cache_destroy unsafe. So we wait until all traces
+> +	 * are finally released.
+> +	 */
+> +	fs_remove_all_traces();
+> +	rcu_barrier();
+> +	wait_event(trace_wq, !atomic_read(&stray_traces));
+> +
+> +	kmem_cache_destroy(fs_trace_cachep);
+> +	kill_litter_super(sb);
+> +}
+> +
+> +static struct kset	*fs_trace_kset;
+> +
+> +static struct file_system_type fs_trace_fstype = {
+> +	.name		= "fstrace",
+> +	.mount		= fs_trace_do_mount,
+> +	.kill_sb	= fs_trace_kill_super,
+> +};
+> +
+> +static void __init fs_trace_vfs_init(void)
+> +{
+> +	fs_trace_kset = kset_create_and_add("events", NULL, fs_kobj);
+> +
+> +	if (!fs_trace_kset)
+> +		return;
+> +
+> +	if (!register_filesystem(&fs_trace_fstype)) {
+> +		if (!fs_event_netlink_register())
+> +			return;
+> +		unregister_filesystem(&fs_trace_fstype);
+> +	}
+> +	kset_unregister(fs_trace_kset);
+> +}
+> +
+> +static int __init fs_trace_evens_init(void)
+> +{
+> +	fs_trace_vfs_init();
+> +	return 0;
+> +};
+> +module_init(fs_trace_evens_init);
+> +
+> diff --git a/fs/events/fs_event.h b/fs/events/fs_event.h
+> new file mode 100644
+> index 0000000..23f24c8
+> --- /dev/null
+> +++ b/fs/events/fs_event.h
+> @@ -0,0 +1,22 @@
+> +/*
+> + * Copyright(c) 2015 Samsung Electronics. All rights reserved.
+> + *
+> + * This program is free software; you can redistribute it and/or modify it
+> + * under the terms of the GNU General Public License version 2.
+> + *
+> + * The full GNU General Public License is included in this distribution in the
+> + * file called COPYING.
+> + *
+> + * This program is distributed in the hope that it will be useful, but WITHOUT
+> + * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+> + * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+> + * more details.
+> + */
+> +
+> +#ifndef __GENERIC_FS_EVENTS_H
+> +#define __GENERIC_FS_EVENTS_H
+> +
+> +int  fs_event_netlink_register(void);
+> +void fs_event_netlink_unregister(void);
+> +
+> +#endif /* __GENERIC_FS_EVENTS_H */
+> diff --git a/fs/events/fs_event_netlink.c b/fs/events/fs_event_netlink.c
+> new file mode 100644
+> index 0000000..0c97eb7
+> --- /dev/null
+> +++ b/fs/events/fs_event_netlink.c
+> @@ -0,0 +1,104 @@
+> +/*
+> + * Copyright(c) 2015 Samsung Electronics. All rights reserved.
+> + *
+> + * This program is free software; you can redistribute it and/or modify it
+> + * under the terms of the GNU General Public License version 2.
+> + *
+> + * The full GNU General Public License is included in this distribution in the
+> + * file called COPYING.
+> + *
+> + * This program is distributed in the hope that it will be useful, but WITHOUT
+> + * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+> + * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+> + * more details.
+> + */
+> +#include <linux/fs.h>
+> +#include <linux/init.h>
+> +#include <linux/kernel.h>
+> +#include <linux/sched.h>
+> +#include <linux/slab.h>
+> +#include <net/netlink.h>
+> +#include <net/genetlink.h>
+> +#include "fs_event.h"
+> +
+> +static const struct genl_multicast_group fs_event_mcgroups[] = {
+> +	{ .name = FS_EVENTS_MCAST_GRP_NAME, },
+> +};
+> +
+> +static struct genl_family fs_event_family = {
+> +	.id		= GENL_ID_GENERATE,
+> +	.name		= FS_EVENTS_FAMILY_NAME,
+> +	.version	= 1,
+> +	.maxattr	= FS_NL_A_MAX,
+> +	.mcgrps		= fs_event_mcgroups,
+> +	.n_mcgrps	= ARRAY_SIZE(fs_event_mcgroups),
+> +};
+> +
+> +int fs_netlink_send_event(size_t size, unsigned int event_id,
+> +			  int (*compose_msg)(struct sk_buff *skb,  void *data),
+> +			  void *cbdata)
+> +{
+> +	static atomic_t seq;
+> +	struct sk_buff *skb;
+> +	void *msg_head;
+> +	int ret = 0;
+> +
+> +	if (!size || !compose_msg)
+> +		return -EINVAL;
+> +
+> +	/* Skip if there are no listeners */
+> +	if (!genl_has_listeners(&fs_event_family, &init_net, 0))
+> +		return 0;
+> +
+> +	if (event_id != FS_EVENT_NONE)
+> +		size += nla_total_size(sizeof(u32));
+> +	size += nla_total_size(sizeof(u64));
+
+What is this for ?
+
+thanks
+Kinglong Mee
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
