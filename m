@@ -1,190 +1,207 @@
-From: Beata Michalska <b.michalska@samsung.com>
-Subject: Re: [RFC v3 1/4] fs: Add generic file system event notifications
-Date: Thu, 18 Jun 2015 10:25:08 +0200
-Message-ID: <55828064.5040301@samsung.com>
-References: <1434460173-18427-1-git-send-email-b.michalska@samsung.com>
- <1434460173-18427-2-git-send-email-b.michalska@samsung.com>
- <20150617230605.GK10224@dastard>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 4/5] jbd2: Speedup jbd2_journal_get_[write|undo]_access()
+Date: Thu, 18 Jun 2015 10:52:35 +0200
+Message-ID: <20150618085235.GB21820@quack.suse.cz>
+References: <1427983100-29889-1-git-send-email-jack@suse.cz>
+ <1427983100-29889-5-git-send-email-jack@suse.cz>
+ <20150608164726.GM19168@thunk.org>
+ <20150617165646.GG1614@quack.suse.cz>
+ <CAA1ppbhojR0aaDr-BUWQLWQDo5+sO9Tc6b=Dxf5XrRAr2DT0oQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-api@vger.kernel.org, greg@kroah.com, jack@suse.cz,
-	tytso@mit.edu, adilger.kernel@dilger.ca, hughd@google.com,
-	lczerner@redhat.com, hch@infradead.org, linux-ext4@vger.kernel.org,
-	linux-mm@kvack.org, kyungmin.park@samsung.com, kmpark@infradead.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-reply-to: <20150617230605.GK10224@dastard>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
-
-Hi,
-
-On 06/18/2015 01:06 AM, Dave Chinner wrote:
-> On Tue, Jun 16, 2015 at 03:09:30PM +0200, Beata Michalska wrote:
->> Introduce configurable generic interface for file
->> system-wide event notifications, to provide file
->> systems with a common way of reporting any potential
->> issues as they emerge.
->>
->> The notifications are to be issued through generic
->> netlink interface by newly introduced multicast group.
->>
->> Threshold notifications have been included, allowing
->> triggering an event whenever the amount of free space drops
->> below a certain level - or levels to be more precise as two
->> of them are being supported: the lower and the upper range.
->> The notifications work both ways: once the threshold level
->> has been reached, an event shall be generated whenever
->> the number of available blocks goes up again re-activating
->> the threshold.
->>
->> The interface has been exposed through a vfs. Once mounted,
->> it serves as an entry point for the set-up where one can
->> register for particular file system events.
->>
->> Signed-off-by: Beata Michalska <b.michalska@samsung.com>
-> 
-> This has massive scalability problems:
-> 
->> + 4.3 Threshold notifications:
->> +
->> + #include <linux/fs_event.h>
->> + void fs_event_alloc_space(struct super_block *sb, u64 ncount);
->> + void fs_event_free_space(struct super_block *sb, u64 ncount);
->> +
->> + Each filesystme supporting the threshold notifications should call
->> + fs_event_alloc_space/fs_event_free_space respectively whenever the
->> + amount of available blocks changes.
->> + - sb:     the filesystem's super block
->> + - ncount: number of blocks being acquired/released
-> 
-> ... here.
-> 
->> + Note that to properly handle the threshold notifications the fs events
->> + interface needs to be kept up to date by the filesystems. Each should
->> + register fs_trace_operations to enable querying the current number of
->> + available blocks.
-> 
-> Have you noticed that the filesystems have percpu counters for
-> tracking global space usage? There's good reason for that - taking a
-> spinlock in such a hot accounting path causes severe contention.
-> 
->> +static void fs_event_send(struct fs_trace_entry *en, unsigned int event_id)
->> +{
->> +	size_t size = nla_total_size(sizeof(u32)) * 2 +
->> +		      nla_total_size(sizeof(u64));
->> +
->> +	fs_netlink_send_event(size, event_id, create_common_msg, en);
->> +}
->> +
->> +static void fs_event_send_thresh(struct fs_trace_entry *en,
->> +				  unsigned int event_id)
->> +{
->> +	size_t size = nla_total_size(sizeof(u32)) * 2 +
->> +		      nla_total_size(sizeof(u64)) * 2;
->> +
->> +	fs_netlink_send_event(size, event_id, create_thresh_msg, en);
->> +}
->> +
->> +void fs_event_notify(struct super_block *sb, unsigned int event_id)
->> +{
->> +	struct fs_trace_entry *en;
->> +
->> +	en = fs_trace_entry_get_rcu(sb);
->> +	if (!en)
->> +		return;
->> +
->> +	spin_lock(&en->lock);
->> +	if (atomic_read(&en->active) && (en->notify & FS_EVENT_GENERIC))
->> +		fs_event_send(en, event_id);
->> +	spin_unlock(&en->lock);
->> +	fs_trace_entry_put(en);
->> +}
->> +EXPORT_SYMBOL(fs_event_notify);
->> +
->> +void fs_event_alloc_space(struct super_block *sb, u64 ncount)
->> +{
->> +	struct fs_trace_entry *en;
->> +	s64 count;
->> +
->> +	en = fs_trace_entry_get_rcu(sb);
->> +	if (!en)
->> +		return;
-> 
-> Adds an atomic write to get the trace entry,
-> 
->> +	spin_lock(&en->lock);
-> 
-> a spin lock to lock the entry,
-> 
-> 
->> +	if (!atomic_read(&en->active) || !(en->notify & FS_EVENT_THRESH))
->> +		goto leave;
->> +	/*
->> +	 * we shouldn't drop below 0 here,
->> +	 * unless there is a sync issue somewhere (?)
->> +	 */
->> +	count = en->th.avail_space - ncount;
->> +	en->th.avail_space = count < 0 ? 0 : count;
->> +
->> +	if (en->th.avail_space > en->th.lrange)
->> +		/* Not 'even' close - leave */
->> +		goto leave;
->> +
->> +	if (en->th.avail_space > en->th.urange) {
->> +		/* Close enough - the lower range has been reached */
->> +		if (!(en->th.state & THRESH_LR_BEYOND)) {
->> +			/* Send notification */
->> +			fs_event_send_thresh(en, FS_THR_LRBELOW);
->> +			en->th.state &= ~THRESH_LR_BELOW;
->> +			en->th.state |= THRESH_LR_BEYOND;
->> +		}
->> +		goto leave;
-> 
-> Then puts the entire netlink send path inside this spinlock, which
-> includes memory allocation and all sorts of non-filesystem code
-> paths. And it may be inside critical filesystem locks as well....
-> 
-> Apart from the serialisation problem of the locking, adding
-> memory allocation and the network send path to filesystem code
-> that is effectively considered "innermost" filesystem code is going
-> to have all sorts of problems for various filesystems. In the XFS
-> case, we simply cannot execute this sort of function in the places
-> where we update global space accounting.
-> 
-> As it is, I think the basic concept of separate tracking of free
-> space if fundamentally flawed. What I think needs to be done is that
-> filesystems need access to the thresholds for events, and then the
-> filesystems call fs_event_send_thresh() themselves from appropriate
-> contexts (ie. without compromising locking, scalability, memory
-> allocation recursion constraints, etc).
-> 
-> e.g. instead of tracking every change in free space, a filesystem
-> might execute this once every few seconds from a workqueue:
-> 
-> 	event = fs_event_need_space_warning(sb, <fs_free_space>)
-> 	if (event)
-> 		fs_event_send_thresh(sb, event);
-> 
-> User still gets warnings about space usage, but there's no runtime
-> overhead or problems with lock/memory allocation contexts, etc.
-> 
-> Cheers,
-> 
-> Dave.
-> 
-
-Having fs to keep a firm hand on thresholds limits would indeed be
-far more sane approach though that would require each fs to
-add support for that and handle most of it on their own. Avoiding
-this was the main rationale behind this rfc.
-
-If fs people agree to that, I'll be more than willing to drop this
-in favour of the per-fs tracking solution. 
-Personally, I hope they will.
+Content-Type: multipart/mixed; boundary="J/dobhs11T7y2rNN"
+Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+To: Jerry Lee <jerrylee@qnap.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:50848 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752368AbbFRIwl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Jun 2015 04:52:41 -0400
+Content-Disposition: inline
+In-Reply-To: <CAA1ppbhojR0aaDr-BUWQLWQDo5+sO9Tc6b=Dxf5XrRAr2DT0oQ@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
-Best Regards
-Beata 
+--J/dobhs11T7y2rNN
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+On Thu 18-06-15 15:59:33, Jerry Lee wrote:
+> Hi:
+> 
+> I found that there may be a typo in the attached patch 5/5:
+> 
+> +        /*
+> +         * If it's in our transaction it must be in BJ_Metadata list.
+> +         * The assertion is unreliable since we may see jh in
+> +         * inconsistent state unless we grab bh_state lock. But this
+> +         * is crutial to catch bugs so let's do a reliable check until
+> +         * the lockless handling is fully proven.
+> +         */
+> +        if (jh->b_transaction == transaction &&
+> +            jh->b_jlist != BJ_Metadata) {
+> +            jbd_lock_bh_state(bh);
+> +            J_ASSERT_JH(jh, jh->b_transaction != transaction ||
+> +                    jh->b_jlist == BJ_Metadata);
+> +            jbd_lock_bh_state(bh);
+> ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> +        }
+> +        goto out;
+> 
+> Does the highlight part should be "jbd_unlock_bh_state(bh)"?
+  Yeah, thanks for catching this. I was apparently pretty lucky in this
+passing all the tests... Attached is the new version of the patch.
+
+								Honza
+
+> On Thu, Jun 18, 2015 at 12:56 AM, Jan Kara <jack@suse.cz> wrote:
+> 
+> > On Mon 08-06-15 12:47:26, Ted Tso wrote:
+> > > On Thu, Apr 02, 2015 at 03:58:19PM +0200, Jan Kara wrote:
+> > > > jbd2_journal_get_write_access() and jbd2_journal_get_create_access()
+> > are
+> > > > frequently called for buffers that are already part of the running
+> > > > transaction - most frequently it is the case for bitmaps, inode table
+> > > > blocks, and superblock. Since in such cases we have nothing to do, it
+> > is
+> > > > unfortunate we still grab reference to journal head, lock the bh, lock
+> > > > bh_state only to find out there's nothing to do.
+> > > >
+> > > > Improving this is a bit subtle though since until we find out journal
+> > > > head is attached to the running transaction, it can disappear from
+> > under
+> > > > us because checkpointing / commit decided it's no longer needed. We
+> > deal
+> > > > with this by protecting journal_head slab with RCU. We still have to be
+> > > > careful about journal head being freed & reallocated within slab and
+> > > > about exposing journal head in consistent state (in particular
+> > > > b_modified and b_frozen_data must be in correct state before we allow
+> > > > user to touch the buffer).
+> > > >
+> > > > FIXME: Performance data.
+> > > >
+> > > > Signed-off-by: Jan Kara <jack@suse.cz>
+> > >
+> > > Applied, so we can start getting some testing on this patch.  Did you
+> > > ever get performance data?
+> >
+> > Yes. Here are results for reaim fserver workload for 32 core machine with
+> > 128 GB of ram with ext4 on ramdisk:
+> > Procs Vanilla    Patched
+> > 1      20420.688  21155.556
+> > 21     49684.704 178934.074
+> > 41     84630.364 196647.482
+> > 61    106344.284 204831.652
+> > 81    120751.370 214842.428
+> > 101   131585.450 208761.832
+> > 121   138092.078 212741.648
+> > 141   142271.578 212118.502
+> > 161   146008.364 213731.388
+> > 181   149569.494 216121.444
+> >
+> > Numbers are operations per second so larger is better. You can see that
+> > for 21 processes we get increase by 260% in the number operations. Also the
+> > total maximum of operations the machine is able to achieve increases by
+> > 44% because of overall lower CPU overhead.
+> >
+> >                                                                 Honza
+> > --
+> > Jan Kara <jack@suse.cz>
+> > SUSE Labs, CR
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+
+--J/dobhs11T7y2rNN
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment; filename="0005-jbd2-Speedup-jbd2_journal_dirty_metadata.patch"
+
+>From a19a4452879743eb7c8db593adbf60fc9ff0427c Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Wed, 18 Mar 2015 14:29:13 +0100
+Subject: [PATCH 5/5] jbd2: Speedup jbd2_journal_dirty_metadata()
+
+It is often the case that we mark buffer as having dirty metadata when
+the buffer is already in that state (frequent for bitmaps, inode table
+blocks, superblock). Thus it is unnecessary to contend on grabbing
+journal head reference and bh_state lock. Avoid that by checking whether
+any modification to the buffer is needed before grabbing any locks or
+references.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/transaction.c | 33 +++++++++++++++++++++++++++------
+ 1 file changed, 27 insertions(+), 6 deletions(-)
+
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index a91f639af6c3..5887c880422b 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1290,8 +1290,6 @@ void jbd2_buffer_abort_trigger(struct journal_head *jh,
+ 	triggers->t_abort(triggers, jh2bh(jh));
+ }
+ 
+-
+-
+ /**
+  * int jbd2_journal_dirty_metadata() -  mark a buffer as containing dirty metadata
+  * @handle: transaction to add buffer to.
+@@ -1325,12 +1323,36 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+ 	WARN_ON(!transaction);
+ 	if (is_handle_aborted(handle))
+ 		return -EROFS;
+-	journal = transaction->t_journal;
+-	jh = jbd2_journal_grab_journal_head(bh);
+-	if (!jh) {
++	if (!buffer_jbd(bh)) {
+ 		ret = -EUCLEAN;
+ 		goto out;
+ 	}
++	/*
++	 * We don't grab jh reference here since the buffer must be part
++	 * of the running transaction.
++	 */
++	jh = bh2jh(bh);
++	J_ASSERT_JH(jh, jh->b_transaction == transaction ||
++			jh->b_next_transaction == transaction);
++	if (jh->b_modified == 1) {
++		/*
++		 * If it's in our transaction it must be in BJ_Metadata list.
++		 * The assertion is unreliable since we may see jh in
++		 * inconsistent state unless we grab bh_state lock. But this
++		 * is crutial to catch bugs so let's do a reliable check until
++		 * the lockless handling is fully proven.
++		 */
++		if (jh->b_transaction == transaction &&
++		    jh->b_jlist != BJ_Metadata) {
++			jbd_lock_bh_state(bh);
++			J_ASSERT_JH(jh, jh->b_transaction != transaction ||
++					jh->b_jlist == BJ_Metadata);
++			jbd_unlock_bh_state(bh);
++		}
++		goto out;
++	}
++
++	journal = transaction->t_journal;
+ 	jbd_debug(5, "journal_head %p\n", jh);
+ 	JBUFFER_TRACE(jh, "entry");
+ 
+@@ -1421,7 +1443,6 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+ 	spin_unlock(&journal->j_list_lock);
+ out_unlock_bh:
+ 	jbd_unlock_bh_state(bh);
+-	jbd2_journal_put_journal_head(jh);
+ out:
+ 	JBUFFER_TRACE(jh, "exit");
+ 	return ret;
+-- 
+2.1.4
+
+
+--J/dobhs11T7y2rNN--
