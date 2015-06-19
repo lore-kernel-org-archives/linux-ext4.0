@@ -1,145 +1,57 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: fix reservation release on invalidatepage for
- delalloc fs
-Date: Fri, 19 Jun 2015 09:53:44 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1506190953120.14650@localhost.localdomain>
-References: <1433406301-29136-1-git-send-email-lczerner@redhat.com> <20150608151651.GD19168@thunk.org> <alpine.LFD.2.00.1506081729390.1273@localhost.localdomain>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH] jbd2: fix ocfs2 corrupt when updating
+ journal superblock fails
+Date: Fri, 19 Jun 2015 10:48:31 -0400
+Message-ID: <20150619144831.GL4076@thunk.org>
+References: <5574F060.2080503@huawei.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1692286947-1434700429=:14650"
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60810 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754059AbbFSHxv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Jun 2015 03:53:51 -0400
-In-Reply-To: <alpine.LFD.2.00.1506081729390.1273@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Mark Fasheh <mfasheh@suse.com>, linux-ext4@vger.kernel.org,
+        "ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>
+To: Joseph Qi <joseph.qi@huawei.com>
+Return-path: <ocfs2-devel-bounces@oss.oracle.com>
+Content-Disposition: inline
+In-Reply-To: <5574F060.2080503@huawei.com>
+List-Unsubscribe: <https://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
+List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
+List-Post: <mailto:ocfs2-devel@oss.oracle.com>
+List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
+List-Subscribe: <https://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
+Sender: ocfs2-devel-bounces@oss.oracle.com
+Errors-To: ocfs2-devel-bounces@oss.oracle.com
+List-Id: linux-ext4.vger.kernel.org
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+This patch caused test ext4/306 to fail, because it caused resize2fs
+to fail.  The problem is that jbd2_cleanup_journal_tail() will return
+1 if there is nothing to cleanup, and a negative error number if there
+is an error.  Unfortunately, this patch hunk:
 
---8323328-1692286947-1434700429=:14650
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
+On Mon, Jun 08, 2015 at 09:31:12AM +0800, Joseph Qi wrote:
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index b96bd80..6b33a42 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -1950,7 +1966,13 @@ int jbd2_journal_flush(journal_t *journal)
+>  		return -EIO;
+> 
+>  	mutex_lock(&journal->j_checkpoint_mutex);
+> -	jbd2_cleanup_journal_tail(journal);
+> +	if (!err) {
+> +		err = jbd2_cleanup_journal_tail(journal);
+> +		if (err < 0) {
+> +			mutex_unlock(&journal->j_checkpoint_mutex);
+> +			goto out;
+> +		}
+> +	}
 
-On Mon, 8 Jun 2015, Luká¨ Czerner wrote:
+... would let the non-negative return value leak out to
+jbd2_journal_flush(), and its callers are *not* prepared to handle the
+non-negative return value (since jbd2_journal_flush wasn't doing this
+before.)
 
-> Date: Mon, 8 Jun 2015 17:45:08 +0200 (CEST)
-> From: Luká¨ Czerner <lczerner@redhat.com>
-> To: Theodore Ts'o <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org
-> Subject: Re: [PATCH] ext4: fix reservation release on invalidatepage for
->     delalloc fs
-> 
-> On Mon, 8 Jun 2015, Theodore Ts'o wrote:
-> 
-> > Date: Mon, 8 Jun 2015 11:16:51 -0400
-> > From: Theodore Ts'o <tytso@mit.edu>
-> > To: Lukas Czerner <lczerner@redhat.com>
-> > Cc: linux-ext4@vger.kernel.org
-> > Subject: Re: [PATCH] ext4: fix reservation release on invalidatepage for
-> >     delalloc fs
-> > 
-> > On Thu, Jun 04, 2015 at 10:25:01AM +0200, Lukas Czerner wrote:
-> > > On delalloc enabled file system on invalidatepage operation
-> > > in ext4_da_page_release_reservation() we want to clear the delayed
-> > > buffer and remove the extent covering the delayed buffer from the extent
-> > > status tree.
-> > > 
-> > > However currently there is a bug where on the systems with page size >
-> > > block size we will always remove extents from the start of the page
-> > > regardless where the actual delayed buffers are positioned in the page.
-> > 
-> > Right, because we end up screwing up the accounting.
-> > 
-> > > @@ -1363,14 +1363,23 @@ static void ext4_da_page_release_reservation(struct page *page,
-> > >  
-> > >  		if ((offset <= curr_off) && (buffer_delay(bh))) {
-> > >  			to_release++;
-> > > +			contiguous_blks++;
-> > >  			clear_buffer_delay(bh);
-> > > +		} else if (contiguous_blks) {
-> > > +			lblk = page->index <<
-> > > +			       (PAGE_CACHE_SHIFT - inode->i_blkbits);
-> > > +			lblk += (curr_off >> inode->i_blkbits) -
-> > > +				contiguous_blks;
-> > > +			ext4_es_remove_extent(inode, lblk, contiguous_blks);
-> > > +			contiguous_blks = 0;
-> > >  		}
-> > >  		curr_off = next_off;
-> > >  	} while ((bh = bh->b_this_page) != head);
-> > 
-> > Shouldn't we call ext4_es_remove_extent() on the portion of the page
-> > containing the delayed allocation region, before we clear
-> > contiguous_blks and resetting lblk?
-> 
-> Hi Ted,
-> 
-> right this is the point of the patch.
-> 
-> > 
-> > For example, suppose we had the 4k page with a 1k block size, where
-> > the first, second, and fourth blocks are delayed allocated.  With this
-> > patch we will end up only clearing the extent status tree for the
-> > fourth block, but not the first and second.
-> 
-> So when the first and second block are delayed, then the
-> 
-> if ((offset <= curr_off) && (buffer_delay(bh)))
-> 
-> will hit twice which means that we'll have contiguous_blks = 2
-> 
-> Now on the third block this condition will no longer be true
-> (because buffer_delay(bh) will be false) and so we will hit
-> 
-> else if (contiguous_blks) {
-> 
-> then lblk will be: start of the page + (curr_off - contiguous_blks).
-> curr_off at this point will point at third block (index 2) and
-> contiguous_blks is 2. Which means that lblk will point at the start
-> of the page - which is exactly right because the first delayed block
-> is at the start of the page.
-> 
-> So ext4_es_remove_extent() will remove extent of two blocks starting
-> from the end of the page - which means it removes first and second
-> delayed block.
-> 
-> Now when we check fourth block the
-> 
-> if ((offset <= curr_off) && (buffer_delay(bh)))
-> 
-> will hit again, leaving contiguous_blks with 1, then we leave the
-> while cycle and hit this:
-> 
-> if (contiguous_blks)
-> 
-> removing the extent starting at fourth block in the page removing
-> one block (the fourth block in the page).
-> 
-> That's how I wrote the code, but maybe I am missing something ? I am
-> a bit tired today already so my explanation is not very good, sorry.
-> 
-> Can you put your question in a form of a patch ?
-> 
-> Thanks!
-> -Lukas
+I've fixed this by adding a "err = 0;" after the if statement.
 
-Hi Ted,
-
-can you take a second look at the patch ?
-
-Thanks!
--Lukas
-
-> 
-> > 
-> >        	      	      	  	    - Ted
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
---8323328-1692286947-1434700429=:14650--
+          	   	   	    	 - Ted
