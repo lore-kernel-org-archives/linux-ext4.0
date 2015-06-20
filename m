@@ -1,50 +1,36 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [e2fsprogs] rename configure.in to configure.ac
-Date: Sat, 20 Jun 2015 15:21:01 -0400
-Message-ID: <20150620192101.GG29480@thunk.org>
-References: <1432546352-1855-1-git-send-email-vapier@gentoo.org>
- <20150608145922.GA15795@thunk.org>
- <20150608155606.GD13517@vapier>
+Subject: Re: [PATCH] Update maximum journal size in tune2fs man page
+Date: Sat, 20 Jun 2015 15:43:37 -0400
+Message-ID: <20150620194337.GH29480@thunk.org>
+References: <1432414185-5997-1-git-send-email-psusi@ubuntu.com>
+ <55821752.7090901@ubuntu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Phillip Susi <psusi@ubuntu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46621 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:46635 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755219AbbFTTVD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 20 Jun 2015 15:21:03 -0400
+	id S932170AbbFTTnj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 20 Jun 2015 15:43:39 -0400
 Content-Disposition: inline
-In-Reply-To: <20150608155606.GD13517@vapier>
+In-Reply-To: <55821752.7090901@ubuntu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 08, 2015 at 11:56:06AM -0400, Mike Frysinger wrote:
-> On 08 Jun 2015 10:59, Theodore Ts'o wrote:
-> > On Mon, May 25, 2015 at 05:32:32AM -0400, Mike Frysinger wrote:
-> > > Newer versions of autotools have started warning when using the old
-> > > configure.in name.
-> > 
-> > Note that I ship a version of configure (and keep one checked in to
-> > git) because I do not trust the autoconf maintainers' ability to
-> > maintain backwards compatibility, having gotten badly burned in the
-> > past.  I am currently using autoconf 2.69, and people who try to rerun
-> > autoconf on some other version of autoconf are venturing into
-> > unsupported territory.  It may work; it may screw up in amazing ways.
-> > Some autoconf macro may silently assume that some feature is present
-> > when it is not, or vice versa.
-> > 
-> > And if it breaks, you get to keep both pieces.  :-)
+On Wed, Jun 17, 2015 at 08:56:50PM -0400, Phillip Susi wrote:
+> -----BEGIN PGP SIGNED MESSAGE-----
+> Hash: SHA512
 > 
-> that's fine, but it doesn't really matter to this patch -- it should be 
-> configure.ac and not configure.in.  the version of autoconf you're using 
-> certainly supports the newer name.
+> On 05/23/2015 04:49 PM, Phillip Susi wrote:
+> > The man page for tune2fs still listed the upper limit for the 
+> > journal as 102,400 blocks.
+> 
+> Bump.
 
-This patch breaks the automatic rebuild of configure if the
-configure.ac/configure.in file is modified.  I've fixed it up by
-adding the necessary change to MCONFIG.in.
+BTW, your patch was missing a Signed-off-by.  The change was small enough
+that I let it go this time.
 
-						- Ted
-
-       	   	     
+				- Ted
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
