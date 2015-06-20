@@ -1,37 +1,39 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] mke2fs: prompt for user verification for "-S"
-Date: Fri, 19 Jun 2015 21:38:18 -0400
-Message-ID: <20150620013818.GC29480@thunk.org>
-References: <1432334588-18387-1-git-send-email-adilger@dilger.ca>
+Subject: Re: [PATCH v2] debugfs/set_fields: fix several errors and add
+ assertions
+Date: Fri, 19 Jun 2015 22:01:58 -0400
+Message-ID: <20150620020158.GD29480@thunk.org>
+References: <20150225094728.14523.52763.stgit@buzz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
+	"Darrick J. Wong" <darrick.wong@oracle.com>
+To: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46034 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:46049 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752394AbbFTBiT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Jun 2015 21:38:19 -0400
+	id S1753429AbbFTCCC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 19 Jun 2015 22:02:02 -0400
 Content-Disposition: inline
-In-Reply-To: <1432334588-18387-1-git-send-email-adilger@dilger.ca>
+In-Reply-To: <20150225094728.14523.52763.stgit@buzz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 22, 2015 at 04:43:08PM -0600, Andreas Dilger wrote:
-> Prompt for user verification before rewriting the filesystem
-> superblocks using the "-S" (super-only) option.  This should
-> not normally be used at all, so adding the extra verification
-> will probably save a few user filesystems in the future.  Since
-> this is something that should only be done in rare cases under
-> user supervision, wait for user input rather than proceeding
-> automatically after a timeout.
+On Wed, Feb 25, 2015 at 12:47:28PM +0300, Konstantin Khlebnikov wrote:
+> Fix copy-n-paste errors:
+> * remove duplicate "lastcheck" and "min_extra_isize"
+> * fix pointer for "first_error_line" and "last_error_line"
+> * remove superblock field "inodes_count" from inode fields
+> * add null-termination for mmp_fields
 > 
-> Update the mke2fs man page to more fully explain the many
-> dangers of this option.
+> Add assertions for catching such errors in the future.
+> Mark true aliases with flag "FLAG_ALIAS" and suppress assert for them.
 > 
-> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+> v2: check tables in unit test "debugfs/tst_set_fields"
+> 
+> Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
 
-Applied, thanks.
+Applied, thanks.   Apologies for the delay.
 
 					- Ted
 --
