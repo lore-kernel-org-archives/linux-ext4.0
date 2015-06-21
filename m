@@ -1,57 +1,71 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 89511] USB-storage mount error
-Date: Sun, 21 Jun 2015 08:59:21 +0000
-Message-ID: <bug-89511-13602-MgzssKS1hn@https.bugzilla.kernel.org/>
-References: <bug-89511-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v2] debugfs/set_fields: fix several errors and add assertions
+Date: Sun, 21 Jun 2015 15:15:16 -0600
+Message-ID: <9E0F67A4-4D7E-4954-A64A-CB4B641FEAF8@dilger.ca>
+References: <20150225094728.14523.52763.stgit@buzz> <20150620020158.GD29480@thunk.org> <CALYGNiPG5c_QVVKPgc6gFM59Styx2Lxn97SMPB=38JWYzgp0NQ@mail.gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2098\))
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Konstantin Khlebnikov <khlebnikov@yandex-team.ru>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>, Li Xi <lixi@ddn.com>
+To: Konstantin Khlebnikov <koct9i@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:45926 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752302AbbFUI71 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 21 Jun 2015 04:59:27 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id D496C20702
-	for <linux-ext4@vger.kernel.org>; Sun, 21 Jun 2015 08:59:25 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id EA8AB206DD
-	for <linux-ext4@vger.kernel.org>; Sun, 21 Jun 2015 08:59:22 +0000 (UTC)
-In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
+Received: from mail-pd0-f176.google.com ([209.85.192.176]:35674 "EHLO
+	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751713AbbFUVPs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Jun 2015 17:15:48 -0400
+Received: by pdbci14 with SMTP id ci14so66371064pdb.2
+        for <linux-ext4@vger.kernel.org>; Sun, 21 Jun 2015 14:15:47 -0700 (PDT)
+In-Reply-To: <CALYGNiPG5c_QVVKPgc6gFM59Styx2Lxn97SMPB=38JWYzgp0NQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=89511
 
---- Comment #66 from Matt <vickm78@hotmail.com> ---
-Success! The patch, as is, allowed me to mount and write to my device without
-any further commands. Test system: Debian Stable (Jessie) on kernel 3.16.0
+> On Jun 20, 2015, at 6:30 AM, Konstantin Khlebnikov <koct9i@gmail.com> wrote:
+> 
+> On Sat, Jun 20, 2015 at 5:01 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+>> On Wed, Feb 25, 2015 at 12:47:28PM +0300, Konstantin Khlebnikov wrote:
+>>> Fix copy-n-paste errors:
+>>> * remove duplicate "lastcheck" and "min_extra_isize"
+>>> * fix pointer for "first_error_line" and "last_error_line"
+>>> * remove superblock field "inodes_count" from inode fields
+>>> * add null-termination for mmp_fields
+>>> 
+>>> Add assertions for catching such errors in the future.
+>>> Mark true aliases with flag "FLAG_ALIAS" and suppress assert for them.
+>>> 
+>>> v2: check tables in unit test "debugfs/tst_set_fields"
+>>> 
+>>> Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+>> 
+>> Applied, thanks.   Apologies for the delay.
+> 
+> No problem. Thanks.
+> 
+> I have a somehow related question: do you interested in project quota in ext4?
+> 
+> It seems I could revisit that task once again.
+> This time I could make it completely compatible with XFS. Looks like
+> last time all objections were about my attempt of making overall
+> behaviour more useful.
 
-dmesg extract, no errors appearing after creating a new file on the drive:
+There are a recent set of ext4 project quota patches from Li Xi posted
+to the list that are already compatible with XFS.  All that is needed
+to get them landed is some testing with xfstests to ensure they really
+work with the XFS utilities.
 
-usb-storage 2-2:1.0: USB Mass Storage device detected
-[ 1058.208203] usb-storage 2-2:1.0: Quirks match for vid 0bc2 pid 3332: 8000000
-[ 1058.208238] scsi6 : usb-storage 2-2:1.0
-[ 1058.208397] usbcore: registered new interface driver usb-storage
-[ 1059.208931] scsi 6:0:0:0: Direct-Access     Seagate  External         SG12
-PQ: 0 ANSI: 4
-[ 1059.209348] sd 6:0:0:0: Attached scsi generic sg3 type 0
-[ 1059.209805] sd 6:0:0:0: [sdc] 732566642 4096-byte logical blocks: (3.00
-TB/2.72 TiB)
-[ 1059.210542] sd 6:0:0:0: [sdc] Write Protect is off
-[ 1059.210548] sd 6:0:0:0: [sdc] Mode Sense: 1c 00 00 00
-[ 1059.211414] sd 6:0:0:0: [sdc] 732566642 4096-byte logical blocks: (3.00
-TB/2.72 TiB)
-[ 1059.236569]  sdc: sdc1
-[ 1059.237668] sd 6:0:0:0: [sdc] 732566642 4096-byte logical blocks: (3.00
-TB/2.72 TiB)
-[ 1059.238421] sd 6:0:0:0: [sdc] Attached SCSI disk
+Rather than having two competing sets of project quota patches for ext4
+it would be better to get this first set of patches landed, and then if
+you want to enhance their functionality it can be done on top of those
+patches.
 
-Thank you!
+Cheers, Andreas
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+
+
+
+
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
