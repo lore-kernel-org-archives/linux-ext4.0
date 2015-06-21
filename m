@@ -1,145 +1,57 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: prevent ext4_quota_write() from failing due to ENOSPC
-Date: Sun, 21 Jun 2015 01:27:42 -0400
-Message-ID: <1434864462-24300-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 89511] USB-storage mount error
+Date: Sun, 21 Jun 2015 08:59:21 +0000
+Message-ID: <bug-89511-13602-MgzssKS1hn@https.bugzilla.kernel.org/>
+References: <bug-89511-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46929 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.29.136]:45926 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751466AbbFUF1s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 21 Jun 2015 01:27:48 -0400
+	id S1752302AbbFUI71 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 21 Jun 2015 04:59:27 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id D496C20702
+	for <linux-ext4@vger.kernel.org>; Sun, 21 Jun 2015 08:59:25 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id EA8AB206DD
+	for <linux-ext4@vger.kernel.org>; Sun, 21 Jun 2015 08:59:22 +0000 (UTC)
+In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In order to prevent quota block tracking to be inaccurate when
-ext4_quota_write() fails with ENOSPC, we make two changes.  The quota
-file can now use the reserved block (since the quota file is arguably
-file system metadata), and ext4_quota_write() now uses
-ext4_should_retry_alloc() to retry the block allocation after a commit
-has completed and released some blocks for allocation.
+https://bugzilla.kernel.org/show_bug.cgi?id=89511
 
-This fixes failures of xfstests generic/270:
+--- Comment #66 from Matt <vickm78@hotmail.com> ---
+Success! The patch, as is, allowed me to mount and write to my device without
+any further commands. Test system: Debian Stable (Jessie) on kernel 3.16.0
 
-Quota error (device vdc): write_blk: dquota write failed
-Quota error (device vdc): qtree_write_dquot: Error -28 occurred while creating quota
+dmesg extract, no errors appearing after creating a new file on the drive:
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/extents.c  |  2 ++
- fs/ext4/indirect.c |  2 ++
- fs/ext4/inode.c    | 10 +++++-----
- fs/ext4/namei.c    |  2 +-
- fs/ext4/super.c    |  8 +++++++-
- 5 files changed, 17 insertions(+), 7 deletions(-)
+usb-storage 2-2:1.0: USB Mass Storage device detected
+[ 1058.208203] usb-storage 2-2:1.0: Quirks match for vid 0bc2 pid 3332: 8000000
+[ 1058.208238] scsi6 : usb-storage 2-2:1.0
+[ 1058.208397] usbcore: registered new interface driver usb-storage
+[ 1059.208931] scsi 6:0:0:0: Direct-Access     Seagate  External         SG12
+PQ: 0 ANSI: 4
+[ 1059.209348] sd 6:0:0:0: Attached scsi generic sg3 type 0
+[ 1059.209805] sd 6:0:0:0: [sdc] 732566642 4096-byte logical blocks: (3.00
+TB/2.72 TiB)
+[ 1059.210542] sd 6:0:0:0: [sdc] Write Protect is off
+[ 1059.210548] sd 6:0:0:0: [sdc] Mode Sense: 1c 00 00 00
+[ 1059.211414] sd 6:0:0:0: [sdc] 732566642 4096-byte logical blocks: (3.00
+TB/2.72 TiB)
+[ 1059.236569]  sdc: sdc1
+[ 1059.237668] sd 6:0:0:0: [sdc] 732566642 4096-byte logical blocks: (3.00
+TB/2.72 TiB)
+[ 1059.238421] sd 6:0:0:0: [sdc] Attached SCSI disk
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 338473b..a1a54f5 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4456,6 +4456,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 		ar.flags |= EXT4_MB_HINT_NOPREALLOC;
- 	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
- 		ar.flags |= EXT4_MB_DELALLOC_RESERVED;
-+	if (flags & EXT4_GET_BLOCKS_METADATA_NOFAIL)
-+		ar.flags |= EXT4_MB_USE_RESERVED;
- 	newblock = ext4_mb_new_blocks(handle, &ar, &err);
- 	if (!newblock)
- 		goto out2;
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 9588240..9962d57 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -576,6 +576,8 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
- 		ar.flags = EXT4_MB_HINT_DATA;
- 	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
- 		ar.flags |= EXT4_MB_DELALLOC_RESERVED;
-+	if (flags & EXT4_GET_BLOCKS_METADATA_NOFAIL)
-+		ar.flags |= EXT4_MB_USE_RESERVED;
- 
- 	ar.goal = ext4_find_goal(inode, map->m_lblk, partial);
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 263a46c..e8a67b8 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -731,18 +731,18 @@ int ext4_get_block(struct inode *inode, sector_t iblock,
-  * `handle' can be NULL if create is zero
-  */
- struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
--				ext4_lblk_t block, int create)
-+				ext4_lblk_t block, int map_flags)
- {
- 	struct ext4_map_blocks map;
- 	struct buffer_head *bh;
-+	int create = map_flags & EXT4_GET_BLOCKS_CREATE;
- 	int err;
- 
- 	J_ASSERT(handle != NULL || create == 0);
- 
- 	map.m_lblk = block;
- 	map.m_len = 1;
--	err = ext4_map_blocks(handle, inode, &map,
--			      create ? EXT4_GET_BLOCKS_CREATE : 0);
-+	err = ext4_map_blocks(handle, inode, &map, map_flags);
- 
- 	if (err == 0)
- 		return create ? ERR_PTR(-ENOSPC) : NULL;
-@@ -788,11 +788,11 @@ errout:
- }
- 
- struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
--			       ext4_lblk_t block, int create)
-+			       ext4_lblk_t block, int map_flags)
- {
- 	struct buffer_head *bh;
- 
--	bh = ext4_getblk(handle, inode, block, create);
-+	bh = ext4_getblk(handle, inode, block, map_flags);
- 	if (IS_ERR(bh))
- 		return bh;
- 	if (!bh || buffer_uptodate(bh))
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 5e7676f..e230b31 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -61,7 +61,7 @@ static struct buffer_head *ext4_append(handle_t *handle,
- 
- 	*block = inode->i_size >> inode->i_sb->s_blocksize_bits;
- 
--	bh = ext4_bread(handle, inode, *block, 1);
-+	bh = ext4_bread(handle, inode, *block, EXT4_GET_BLOCKS_CREATE);
- 	if (IS_ERR(bh))
- 		return bh;
- 	inode->i_size += inode->i_sb->s_blocksize;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 2858ac0..bd4df9d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5438,6 +5438,7 @@ static ssize_t ext4_quota_write(struct super_block *sb, int type,
- 	struct inode *inode = sb_dqopt(sb)->files[type];
- 	ext4_lblk_t blk = off >> EXT4_BLOCK_SIZE_BITS(sb);
- 	int err, offset = off & (sb->s_blocksize - 1);
-+	int retries = 0;
- 	struct buffer_head *bh;
- 	handle_t *handle = journal_current_handle();
- 
-@@ -5458,7 +5459,12 @@ static ssize_t ext4_quota_write(struct super_block *sb, int type,
- 		return -EIO;
- 	}
- 
--	bh = ext4_bread(handle, inode, blk, 1);
-+	do {
-+		bh = ext4_bread(handle, inode, blk,
-+				EXT4_GET_BLOCKS_CREATE |
-+				EXT4_GET_BLOCKS_METADATA_NOFAIL);
-+	} while (IS_ERR(bh) && (PTR_ERR(bh) == -ENOSPC) &&
-+		 ext4_should_retry_alloc(inode->i_sb, &retries));
- 	if (IS_ERR(bh))
- 		return PTR_ERR(bh);
- 	if (!bh)
+Thank you!
+
 -- 
-2.3.0
-
+You are receiving this mail because:
+You are watching the assignee of the bug.
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
