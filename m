@@ -1,61 +1,68 @@
-From: "Herr Martins D Weber" <test@fumeilaistone.cn>
-Subject: Lieber Freund!!!
-Date: Sat, 13 Jun 2015 05:14:03 -0700
-Message-ID: <CA2C27E7-11B9-4C7B-8B69-CD876ABFFA05__43496.5775501498$1435056677$gmane$org@fumeilaistone.cn>
-Reply-To: <martinsdweber@aim.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: prevent ext4_quota_write() from failing due to
+ ENOSPC
+Date: Tue, 23 Jun 2015 10:25:45 -0400
+Message-ID: <20150623142545.GA11771@thunk.org>
+References: <1434864462-24300-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=Windows-1251
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [115.29.104.60] ([115.29.104.60]:49258 "HELO fumeilaistone.cn"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-	id S1754578AbbFWKtj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Jun 2015 06:49:39 -0400
+Received: from imap.thunk.org ([74.207.234.97]:50520 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932882AbbFWOZr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Jun 2015 10:25:47 -0400
+Content-Disposition: inline
+In-Reply-To: <1434864462-24300-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Lieber Freund!!!
+On Sun, Jun 21, 2015 at 01:27:42AM -0400, Theodore Ts'o wrote:
+> In order to prevent quota block tracking to be inaccurate when
+> ext4_quota_write() fails with ENOSPC, we make two changes.  The quota
+> file can now use the reserved block (since the quota file is arguably
+> file system metadata), and ext4_quota_write() now uses
+> ext4_should_retry_alloc() to retry the block allocation after a commit
+> has completed and released some blocks for allocation.
+> 
+> This fixes failures of xfstests generic/270:
+> 
+> Quota error (device vdc): write_blk: dquota write failed
+> Quota error (device vdc): qtree_write_dquot: Error -28 occurred while creating quota
+> 
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-Ich vermute das diese E-Mail eine ?berraschung f?r Sie sein wird, aber =
-es ist wahr.Ich bin bei einer routinen ?berpr?fung in meiner Bank (Stan=
-dardBank PLC von S?d Afrika) wo ich arbeite, auf einem Konto gesto?en, =
-was nicht in anspruch genommen worden ist, wo derzeit USD$18.5M (Achtze=
-hn Million, F?nf Hundert Tausend, US Dollar)  gutgeschrieben sind.Diese=
-s Konto geh?rte Herrn Manfred Becker, der ein Kunde in unsere Bank war,=
- der leider verstorben ist. Herrn Manfred Becker war ein geb?rtiger Deu=
-tscher.
+This patch significantly reduces the incidence of generic/270 failing,
+but it doesn't completely eliminate them, especially when using a 1k
+block size.  This makes sense, because what this generic/270 does is
+to chown files to random uid's using an ENOSPC hitter as an
+antagonist.  This means the quota system needs to allocate a huge
+number of blocks, and with a 1k block, it's doing 4x the number
+allocations.
 
-Damit es mir m?glich ist dieses Geld $18,500,000 inanspruch zunehmen,be=
-n?tige ich die zusammenarbeit eines Ausl?ndischen Partners wie Sie,den =
-ich als Verwandter und Erbe des verstorbenen Herrn Manfred Becker vorst=
-ellen kann,damit wir das Geld inanspruch nehmen k?nnen. F?r diese Unter=
-st?tzung erhalten Sie 30% der Erbschaftsumme und die restlichen 70% tei=
-le ich mirmit meinen zwei Arbeitskollegen, die mich bei dieser Transakt=
-ion ebenfalls unterst?tzen.
+Something we could do that would help this situation is if there was
+an interface in the quota system that initialized the quota records
+for a particular uid or gid, which we could call from ext4_setattr()
+or ext4_open() *before* we actually need to allocate a block quota
+record for the file.
 
+(We do check the error return from dquot_transfer() and abort if it
+fails, but either the allocation qtree_write_dquot() isn't getting
+perculated all the way up to dquot_transfer(), or the quota mismatch
+is taking place because we're doing the chown on an empty file, and
+then when we subsequently write to the file, that's when the quota
+record is created and by the time we try to resolve the quota file
+update, it's too late to back out the delayed allocation write.)
 
-Wenn Sie interessiert sind, k?nnen Sie mir bitte eine E-Mail schicken, =
-damit ich Ihnen mehr Details zukommen lassen kann. N.B.BITTE SENDEN SIE=
- MIR Martins D Weber ANTWORT ZU durch mein E-mail: ( martinsdweber@aim.=
-com ) f?R VERTRAULICHEN GRUND. Schicken Sie keine POST ZU MEINEM B?RO-E=
--MAIL.(martinsdweber@aim.com )
+Jan, does that make sense to you as a way to solve this issue?
 
+     	       	    	     	 - Ted
 
-If you understand english,please  kindly reply with english ( martinsdw=
-eber@aim.com )
+P.S.  BTW, have you had a chance to take a look at the various
+competing project quota patches and do you have an opinion about their
+disposition?  Project quota hasn't been high priority for me, to be
+honest, but there are people who seem to care about it, and I've been
+waiting to see what you think about the patchsets from Li Xi and
+Konstantin Khlebnikov.  Thanks!!
 
-Mit freundlichen Gr=FC=DFen
-
-Herr Martins D Weber
-
----
-This email has been checked for viruses by Avast antivirus software.
-https://www.avast.com/antivirus
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
