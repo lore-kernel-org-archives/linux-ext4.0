@@ -1,243 +1,244 @@
-From: Mingming Cao <mingming.cao@oracle.com>
-Subject: Re: [RFC 1/2] btree header
-Date: Tue, 23 Jun 2015 22:14:19 -0600
-Message-ID: <558A2E9B.6080808@oracle.com>
-References: <1435029878-4517-1-git-send-email-mingming.cao@oracle.com> <1435029878-4517-2-git-send-email-mingming.cao@oracle.com> <20150623193333.GA10037@birch.djwong.org>
+From: Beata Michalska <b.michalska@samsung.com>
+Subject: Re: [RFC v3 1/4] fs: Add generic file system event notifications
+Date: Wed, 24 Jun 2015 17:31:06 +0200
+Message-ID: <558ACD3A.2020508@samsung.com>
+References: <1434460173-18427-1-git-send-email-b.michalska@samsung.com>
+ <1434460173-18427-2-git-send-email-b.michalska@samsung.com>
+ <87oak5ebmx.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=gbk
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1050.oracle.com ([141.146.126.70]:38104 "EHLO
-	aserp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750882AbbFXKHn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Jun 2015 06:07:43 -0400
-Received: from aserp1040.oracle.com (aserp1040.oracle.com [141.146.126.69])
-	by aserp1050.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id t5O4FOtT002119
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2015 04:15:25 GMT
-Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
-	by aserp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id t5O4EOqt012470
-	(version=TLSv1 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2015 04:14:24 GMT
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-	by aserv0022.oracle.com (8.13.8/8.13.8) with ESMTP id t5O4EOUr012717
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
-	for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2015 04:14:24 GMT
-Received: from abhmp0018.oracle.com (abhmp0018.oracle.com [141.146.116.24])
-	by aserv0121.oracle.com (8.13.8/8.13.8) with ESMTP id t5O4EOIB028463
-	for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2015 04:14:24 GMT
-In-Reply-To: <20150623193333.GA10037@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-api@vger.kernel.org, greg@kroah.com, jack@suse.cz, tytso@mit.edu,
+ adilger.kernel@dilger.ca, hughd@google.com, lczerner@redhat.com,
+ hch@infradead.org, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+ kyungmin.park@samsung.com, kmpark@infradead.org
+To: Dmitry Monakhov <dmonlist@gmail.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-reply-to: <87oak5ebmx.fsf@openvz.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 06/23/2015 01:33 PM, Darrick J. Wong wrote:
-> On Mon, Jun 22, 2015 at 08:24:37PM -0700, mingming cao wrote:
->> ---
->>  ext4_btree.h | 146 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
->>  1 file changed, 146 insertions(+)
->>  create mode 100644 ext4_btree.h
+On 06/24/2015 10:47 AM, Dmitry Monakhov wrote:
+> Beata Michalska <b.michalska@samsung.com> writes:
+> 
+>> Introduce configurable generic interface for file
+>> system-wide event notifications, to provide file
+>> systems with a common way of reporting any potential
+>> issues as they emerge.
 >>
->> diff --git a/ext4_btree.h b/ext4_btree.h
+>> The notifications are to be issued through generic
+>> netlink interface by newly introduced multicast group.
+>>
+>> Threshold notifications have been included, allowing
+>> triggering an event whenever the amount of free space drops
+>> below a certain level - or levels to be more precise as two
+>> of them are being supported: the lower and the upper range.
+>> The notifications work both ways: once the threshold level
+>> has been reached, an event shall be generated whenever
+>> the number of available blocks goes up again re-activating
+>> the threshold.
+>>
+>> The interface has been exposed through a vfs. Once mounted,
+>> it serves as an entry point for the set-up where one can
+>> register for particular file system events.
+>>
+>> Signed-off-by: Beata Michalska <b.michalska@samsung.com>
+>> ---
+>>  Documentation/filesystems/events.txt |  232 ++++++++++
+>>  fs/Kconfig                           |    2 +
+>>  fs/Makefile                          |    1 +
+>>  fs/events/Kconfig                    |    7 +
+>>  fs/events/Makefile                   |    5 +
+>>  fs/events/fs_event.c                 |  809 ++++++++++++++++++++++++++++++++++
+>>  fs/events/fs_event.h                 |   22 +
+>>  fs/events/fs_event_netlink.c         |  104 +++++
+>>  fs/namespace.c                       |    1 +
+>>  include/linux/fs.h                   |    6 +-
+>>  include/linux/fs_event.h             |   72 +++
+>>  include/uapi/linux/Kbuild            |    1 +
+>>  include/uapi/linux/fs_event.h        |   58 +++
+>>  13 files changed, 1319 insertions(+), 1 deletion(-)
+>>  create mode 100644 Documentation/filesystems/events.txt
+>>  create mode 100644 fs/events/Kconfig
+>>  create mode 100644 fs/events/Makefile
+>>  create mode 100644 fs/events/fs_event.c
+>>  create mode 100644 fs/events/fs_event.h
+>>  create mode 100644 fs/events/fs_event_netlink.c
+>>  create mode 100644 include/linux/fs_event.h
+>>  create mode 100644 include/uapi/linux/fs_event.h
+>>
+>> diff --git a/Documentation/filesystems/events.txt b/Documentation/filesystems/events.txt
 >> new file mode 100644
->> index 0000000..efd5ce3
+>> index 0000000..c2e6227
 >> --- /dev/null
->> +++ b/ext4_btree.h
->> @@ -0,0 +1,146 @@
->> +/*
->> + * copyright (C) 2015 Oracle.  All rights reserved.
->> + *
->> + * This program is free software; you can redistribute it and/or
->> + * modify it under the terms of the GNU General Public
->> + * License v2 as published by the Free Software Foundation.
->> + *
->> + * This program is distributed in the hope that it will be useful,
->> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
->> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
->> + * General Public License for more details.
->> + *
->> + * You should have received a copy of the GNU General Public
->> + * License along with this program; if not, write to the
->> + * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
->> + * Boston, MA 021110-1307, USA.
->> + */
+>> +++ b/Documentation/filesystems/events.txt
+>> @@ -0,0 +1,232 @@
 >> +
->> +#ifndef EXT4_BTREE_H
->> +#define EXT4_BTREE_H
+>> +	Generic file system event notification interface
 >> +
->> +/*
->> + * This btree geometry structure is used to defines how the btree block
->> + * layout for different type of btrees. This is used to implement a generic
->> + * btree implementation. The record length, value lenth, etc, are variable
->> + * based on different btree type, like reflink btree, and other btree use cases.
->> + */
->> +struct ext4_btree_geo {
->> +	__le16 node_len;
->> +	__le16 header_len;
->> +	__le16 key_len;
->> +	__le16 val_len;
->> +	__le16 rec_len;
-> (I wonder if these four _len values could be u8, but whatever...)
+>> +Document created 23 April 2015 by Beata Michalska <b.michalska@samsung.com>
+>> +
+>> +1. The reason behind:
+>> +=====================
+>> +
+>> +There are many corner cases when things might get messy with the filesystems.
+>> +And it is not always obvious what and when went wrong. Sometimes you might
+>> +get some subtle hints that there is something going on - but by the time
+>> +you realise it, it might be too late as you are already out-of-space
+>> +or the filesystem has been remounted as read-only (i.e.). The generic
+>> +interface for the filesystem events fills the gap by providing a rather
+>> +easy way of real-time notifications triggered whenever something interesting
+>> +happens, allowing filesystems to report events in a common way, as they occur.
+>> +
+>> +2. How does it work:
+>> +====================
+>> +
+>> +The interface itself has been exposed as fstrace-type Virtual File System,
+>> +primarily to ease the process of setting up the configuration for the
+>> +notifications. So for starters, it needs to get mounted (obviously):
+>> +
+>> +	mount -t fstrace none /sys/fs/events
+>> +
+>> +This will unveil the single fstrace filesystem entry - the 'config' file,
+>> +through which the notification are being set-up.
+>> +
+>> +Activating notifications for particular filesystem is as straightforward
+>> +as writing into the 'config' file. Note that by default all events, despite
+>> +the actual filesystem type, are being disregarded.
+>> +
+>> +Synopsis of config:
+>> +------------------
+>> +
+>> +	MOUNT EVENT_TYPE [L1] [L2]
+>> +
+>> + MOUNT      : the filesystem's mount point
+>> + EVENT_TYPE : event types - currently two of them are being supported:
+>> +
+>> +	      * generic events ("G") covering most common warnings
+>> +	      and errors that might be reported by any filesystem;
+>> +	      this option does not take any arguments;
+>> +
+>> +	      * threshold notifications ("T") - events sent whenever
+>> +	      the amount of available space drops below certain level;
+>> +	      it is possible to specify two threshold levels though
+>> +	      only one is required to properly setup the notifications;
+>> +	      as those refer to the number of available blocks, the lower
+>> +	      level [L1] needs to be higher than the upper one [L2]
+>> +
+>> +Sample request could look like the following:
+>> +
+>> + echo /sample/mount/point G T 710000 500000 > /sys/fs/events/config
+>> +
+>> +Multiple request might be specified provided they are separated with semicolon.
+>> +
+>> +The configuration itself might be modified at any time. One can add/remove
+>> +particular event types for given fielsystem, modify the threshold levels,
+>> +and remove single or all entries from the 'config' file.
+>> +
+>> + - Adding new event type:
+>> +
+>> + $ echo MOUNT EVENT_TYPE > /sys/fs/events/config
+>> +
+>> +(Note that is is enough to provide the event type to be enabled without
+>> +the already set ones.)
+>> +
+>> + - Removing event type:
+>> +
+>> + $ echo '!MOUNT EVENT_TYPE' > /sys/fs/events/config
+>> +
+>> + - Updating threshold limits:
+>> +
+>> + $ echo MOUNT T L1 L2 > /sys/fs/events/config
+>> +
+>> + - Removing single entry:
+>> +
+>> + $ echo '!MOUNT' > /sys/fs/events/config
+>> +
+>> + - Removing all entries:
+>> +
+>> + $ echo > /sys/fs/events/config
+>> +
+>> +Reading the file will list all registered entries with their current set-up
+>> +along with some additional info like the filesystem type and the backing device
+>> +name if available.
+>> +
+>> +Final, though a very important note on the configuration: when and if the
+>> +actual events are being triggered falls way beyond the scope of the generic
+>> +filesystem events interface. It is up to a particular filesystem
+>> +implementation which events are to be supported - if any at all. So if
+>> +given filesystem does not support the event notifications, an attempt to
+>> +enable those through 'config' file will fail.
+>> +
+>> +
+>> +3. The generic netlink interface support:
+>> +=========================================
+>> +
+>> +Whenever an event notification is triggered (by given filesystem) the current
+>> +configuration is being validated to decide whether a userpsace notification
+>> +should be launched. If there has been no request (in a mean of 'config' file
+>> +entry) for given event, one will be silently disregarded. If, on the other
+>> +hand, someone is 'watching' given filesystem for specific events, a generic
+>> +netlink message will be sent. A dedicated multicast group has been provided
+>> +solely for this purpose so in order to receive such notifications, one should
+>> +subscribe to this new multicast group. As for now only the init network
+>> +namespace is being supported.
+>> +
+>> +3.1 Message format
+>> +
+>> +The FS_NL_C_EVENT shall be stored within the generic netlink message header
+>> +as the command field. The message payload will provide more detailed info:
+>> +the backing device major and minor numbers, the event code and the id of
+>> +the process which action led to the event occurrence. In case of threshold
+>> +notifications, the current number of available blocks will be included
+>> +in the payload as well.
+>> +
+>> +
+>> +	 0                   1                   2                   3
+>> +	 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+>> +	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+>> +	|	            NETLINK MESSAGE HEADER			|
+>> +	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+>> +	| 		GENERIC NETLINK MESSAGE HEADER   		|
+>> +	| 	   (with FS_NL_C_EVENT as genlmsghdr cdm field)		|
+>> +	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+>> +	| 	      Optional user specific message header		|
+>> +	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+>> +	|		   GENERIC MESSAGE PAYLOAD:			|
+>> +	+---------------------------------------------------------------+
+>> +	| 		  FS_NL_A_EVENT_ID  (NLA_U32)			|
+>> +	+---------------------------------------------------------------+
+>> +	|	  	  FS_NL_A_DEV_MAJOR (NLA_U32)			|
+>> +	+---------------------------------------------------------------+
+>> +	| 	  	  FS_NL_A_DEV_MINOR (NLA_U32) 			|
+> 
+...
 
-okay...
+>> +
+>> +static int create_common_msg(struct sk_buff *skb, void *data)
+>> +{
+>> +	struct fs_trace_entry *en = (struct fs_trace_entry *)data;
+>> +	struct super_block *sb = en->sb;
+>> +
+>> +	if (nla_put_u32(skb, FS_NL_A_DEV_MAJOR, MAJOR(sb->s_dev))
+>> +	||  nla_put_u32(skb, FS_NL_A_DEV_MINOR, MINOR(sb->s_dev)))
+>> +		return -EINVAL;
+> What about diskless(nfs,cifs,etc) filesystem? btrfs also has no
+> valid sb->s_dev  
 
->
->> +	__le16 max_pairs;
->> +	__le16 max_records;
->> +};
-> Does this geometry structure live on disk?  The __le prefix suggests that it
-> does, but the only definition of one of these is the in-core ref_btree_geo,
-> which means that u16 is sufficient.
+Those are using the anon ids, generated by get_anon_bdev
+(through set_anon_super). This id will be visible in
+/proc/self/mountinfo or through stat. i.e:
 
-At the beginning since the prototype is a in memory btree, the geometry structure was not on disk, and declared globally. So I had those values to be u8 before... but I am planning to store those layout info on disk... that's why here I made change to __le, but hasnt really update the rest of code to reflect the geo is stored on disk yet. One question I have is whethere to store the geometry structure into the btree block header. Maybe only for index node...
->
-> Given that the ext4_btree_geo seems to contain all the incore info about the
-> btree you're working with, it ought to know about the magic number so that it
-> can compare with whatever it reads off disk.
-Good point, it should know the magic number to compare with the header, if we decide to keep the geometry incore only.... I started to wonder if we really need to store geometry info on disk...
+30 22 0:21 / /root/fake_fs/btrfs rw,realtime - btrfs /dev/loop4 rw,nospace_cache
 
-> (Thinking ahead to when we have multiple btrees with different record
-> definitions and magic numbers.)
-Agree...
 
->> +
->> +/*
->> + * Every btree block starts from a header structure, including the index node
->> + * and the leaf node.
->> + * The index btree node started from this header structure, followed by 
->> + * (key,value) pairs
->> + * Index node:
->> + * ---------------------------------------------------------------------------
->> + * |header| key | key | key | key|...........| value | value | value | value |
->> + * |--------------------------------------------------------------------------
->> + *
->> + * And the leaf node begins with ext4_btree_header, and followed by records.
->> + * leaf node
->> + * * ------------------------------------------------------------------------
->> + * |header| rec | rec | rec | rec |...........| rec | rec | rec | rec | rec |
->> + * |-------------------------------------------------------------------------
->> + */
->> +
->> +#define REF_BTREE_MAGIC  0x52454642 /* "REFB" magic number for refcount btree */
->> +
->> +struct ext4_btree_header {
->> +	__le32	btree_magic;	/* type of btree */
->> +	__le32	btree_generation; /* generation for this type of btree */
->> +	__le32	btree_level;	/* the level of this node in the tree */
->> +	__le32	btree_numkeys;	/* # of records for leaf node*/
->> +	__le32	btree_padding1;
-> I think this padding field results in a hidden u32 gap here?
+Best Regards
+Beata
 
-Sorry that was a mistake. I added generation but forget to remove this padding.
->> +	__le64	btree_blockno;	/* remember the blk# of this node */
-> (Unfortunate that you have to burn all 64 bits for all btrees, but I remembered
-> that ext4 lets you set flexbg size to 2^31.  Oh well.)
 
-true... though this block no is
->> +	__le64	btree_leftsib;	/* used for fast search sibling nodes */
->> +	__le64	btree_rightsib; 
->> +	__le64	btree_crc;	/* this node checksums */
-> Future proofing, I guess?  Since we don't use 64-bit crcs right now.
-
-yes... that was the intention... I guess that is a little overkill for now.
-> If you decide that we only need 32 bits for a crc, you could make btree_level a
-> u16 (since max levels is 8), numkeys a u16, and store the crc32 after that.
-> Then this on-disk header would only be 40 bytes, instead of 64 bytes.
-
-Sounds good to me .. make it more packed...
-> (Hmm.  Maybe you were trying to make things align to a 64B cacheline?)
->
->> +	__le64	btree_padding2;
->> +};
->> +
->> +# define EXT4_BLOCK_SIZE	4096
-> Shouldn't this be the FS blocksize?  It'll waste a lot of space on a 64k block
-> filesystem (reduced fanout opportunities as well as 60K of empty space in each
-> tree node) and I'm not sure what happens with 1k blocks.
-
-Again, sorry this is me being lazy in the prototype here. I will fix it properly with filesystem blocksize ...
-
->> +#define EXT4_BTREE_HEADER_SIZE	sizeof(struct ext4_btree_header)
->> +#define EXT4_BTREE_NODESIZE	EXT4_BLOCK_SIZE	
->> +
->> +struct ext4_btree_key {
->> +	__le64		blockno;
->> +};
->> +#define EXT4_BTREE_KEY_SIZE	sizeof(struct ext4_btree_key)
->> +
->> +struct ext4_btree_val {
->> +	__le64		blockno;
->> +};
->> +#define EXT4_BTREE_VAL_SIZE	sizeof(struct ext4_btree_val)
->> +
->> +struct ext4_btree_rec {
->> +	struct ext4_btree_key	key;
->> +	__le32			len;
->> +	__le32			ref_count;
->> +};
-> Hm.  Looking forward to having btrees to track things other than refcount, I
-> imagine it'll become necessary to parameterize the record definition for each
-> type of btree?
->
-totally agree. Will need to make it more generic by adding interface to define different type of btree, with own record_data structure and let the btree user to pass those info into the generic code..
-
-> (Though, I guess this record format works well enough for the inode and block
-> bitmaps, and maybe that's as far as you want to go...)
-
-for reflink, block allocation, yes. But I like to make the code more generic if possible
->> +#define EXT4_BTREE_REC_SIZE	sizeof(struct ext4_btree_rec)
->> +
->> +#define EXT4_BTREE_MAX_KEY_VAL_PAIRS \
->> +	((EXT4_BTREE_NODESIZE - EXT4_BTREE_HEADER_SIZE) / \
->> +	 (EXT4_BTREE_KEY_SIZE + EXT4_BTREE_VAL_SIZE))
->> +
->> +#define EXT4_BTREE_MIN_KEY_VAL_PAIRS \
->> +        (EXT4_BTREE_MAX_KEY_VAL_PAIRS / 2)
->> +
->> +#define EXT4_BTREE_MAX_RECS \
->> +	((EXT4_BTREE_NODESIZE - EXT4_BTREE_HEADER_SIZE) / \
->> +	  EXT4_BTREE_REC_SIZE)
->> +
->> +#define EXT4_BTREE_MIN_RECS \
->> +	(EXT4_BTREE_MAX_RECS / 2)
->> +
->> +#define EXT4_BTREE_MAX_LEVELS		8
->> +
->> +
->> +/* Index node */
->> +struct ext4_btree_index_node {
->> +	struct ext4_btree_header	node_header;
->> +	struct ext4_btree_key		key[EXT4_BTREE_MAX_KEY_VAL_PAIRS];
->> +	struct ext4_btree_val		val[EXT4_BTREE_MAX_KEY_VAL_PAIRS];
-> (Changing EXT4_BTREE_NODESIZE to depend on the FS blocksize makes it impossible
-> to use arrays here, oh well...)
-
-Hmm.. okay, probably a pointer here.
->> +};
->> +
->> +/* Record Node */
->> +struct ext4_btree_leaf_node {
->> +	struct ext4_btree_header	node_header;
->> +	struct ext4_btree_rec		rec[EXT4_BTREE_MAX_RECS];
->> +};
->> +
->> +struct ext4_btree_node {
->> +	struct ext4_btree_header	node_header;
->> +};
->> +
->> +struct ext4_btree_root {
->> +	struct ext4_btree_node *node;
->> +	struct ext4_btree_geo	geo;
->> +};
->> +
->> +#define ext4_btree_trace printf
-> printk?
->
-> --D
-
-:) this was done in the user-space first. When the code finally all move to kernel will be something like printk
-
-Thanks a lot , for your review and comments!:)
-
-Mingming
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
