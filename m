@@ -1,251 +1,152 @@
-From: Steve French <smfrench@gmail.com>
-Subject: Re: [RFC v3 1/4] fs: Add generic file system event notifications
-Date: Wed, 24 Jun 2015 11:26:27 -0500
-Message-ID: <CAH2r5msAncF_KOxK-Wt_sZs-fOOMRh7KMqVJ80MK=KimUC7NLg@mail.gmail.com>
-References: <1434460173-18427-1-git-send-email-b.michalska@samsung.com>
- <1434460173-18427-2-git-send-email-b.michalska@samsung.com>
- <87oak5ebmx.fsf@openvz.org> <558ACD3A.2020508@samsung.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [GIT PULL] ext4 changes for 4.2-rc1
+Date: Wed, 24 Jun 2015 23:46:26 -0400
+Message-ID: <20150625034626.GA21682@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Dmitry Monakhov <dmonlist@gmail.com>,
-	LKML <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	"linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-	Greg Kroah-Hartman <greg@kroah.com>, Jan Kara <jack@suse.cz>,
-	"Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
-	hughd@google.com, lczerner@redhat.com,
-	Christoph Hellwig <hch@infradead.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>, kyungmin.park@samsung.com,
-	kmpark@infradead.org
-To: Beata Michalska <b.michalska@samsung.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <558ACD3A.2020508@samsung.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 24, 2015 at 10:31 AM, Beata Michalska
-<b.michalska@samsung.com> wrote:
-> On 06/24/2015 10:47 AM, Dmitry Monakhov wrote:
->> Beata Michalska <b.michalska@samsung.com> writes:
->>
->>> Introduce configurable generic interface for file
->>> system-wide event notifications, to provide file
->>> systems with a common way of reporting any potential
->>> issues as they emerge.
->>>
->>> The notifications are to be issued through generic
->>> netlink interface by newly introduced multicast group.
->>>
->>> Threshold notifications have been included, allowing
->>> triggering an event whenever the amount of free space drops
->>> below a certain level - or levels to be more precise as two
->>> of them are being supported: the lower and the upper range.
->>> The notifications work both ways: once the threshold level
->>> has been reached, an event shall be generated whenever
->>> the number of available blocks goes up again re-activating
->>> the threshold.
->>>
->>> The interface has been exposed through a vfs. Once mounted,
->>> it serves as an entry point for the set-up where one can
->>> register for particular file system events.
->>>
->>> Signed-off-by: Beata Michalska <b.michalska@samsung.com>
->>> ---
->>>  Documentation/filesystems/events.txt |  232 ++++++++++
->>>  fs/Kconfig                           |    2 +
->>>  fs/Makefile                          |    1 +
->>>  fs/events/Kconfig                    |    7 +
->>>  fs/events/Makefile                   |    5 +
->>>  fs/events/fs_event.c                 |  809 ++++++++++++++++++++++++++++++++++
->>>  fs/events/fs_event.h                 |   22 +
->>>  fs/events/fs_event_netlink.c         |  104 +++++
->>>  fs/namespace.c                       |    1 +
->>>  include/linux/fs.h                   |    6 +-
->>>  include/linux/fs_event.h             |   72 +++
->>>  include/uapi/linux/Kbuild            |    1 +
->>>  include/uapi/linux/fs_event.h        |   58 +++
->>>  13 files changed, 1319 insertions(+), 1 deletion(-)
->>>  create mode 100644 Documentation/filesystems/events.txt
->>>  create mode 100644 fs/events/Kconfig
->>>  create mode 100644 fs/events/Makefile
->>>  create mode 100644 fs/events/fs_event.c
->>>  create mode 100644 fs/events/fs_event.h
->>>  create mode 100644 fs/events/fs_event_netlink.c
->>>  create mode 100644 include/linux/fs_event.h
->>>  create mode 100644 include/uapi/linux/fs_event.h
->>>
->>> diff --git a/Documentation/filesystems/events.txt b/Documentation/filesystems/events.txt
->>> new file mode 100644
->>> index 0000000..c2e6227
->>> --- /dev/null
->>> +++ b/Documentation/filesystems/events.txt
->>> @@ -0,0 +1,232 @@
->>> +
->>> +    Generic file system event notification interface
->>> +
->>> +Document created 23 April 2015 by Beata Michalska <b.michalska@samsung.com>
->>> +
->>> +1. The reason behind:
->>> +=====================
->>> +
->>> +There are many corner cases when things might get messy with the filesystems.
->>> +And it is not always obvious what and when went wrong. Sometimes you might
->>> +get some subtle hints that there is something going on - but by the time
->>> +you realise it, it might be too late as you are already out-of-space
->>> +or the filesystem has been remounted as read-only (i.e.). The generic
->>> +interface for the filesystem events fills the gap by providing a rather
->>> +easy way of real-time notifications triggered whenever something interesting
->>> +happens, allowing filesystems to report events in a common way, as they occur.
->>> +
->>> +2. How does it work:
->>> +====================
->>> +
->>> +The interface itself has been exposed as fstrace-type Virtual File System,
->>> +primarily to ease the process of setting up the configuration for the
->>> +notifications. So for starters, it needs to get mounted (obviously):
->>> +
->>> +    mount -t fstrace none /sys/fs/events
->>> +
->>> +This will unveil the single fstrace filesystem entry - the 'config' file,
->>> +through which the notification are being set-up.
->>> +
->>> +Activating notifications for particular filesystem is as straightforward
->>> +as writing into the 'config' file. Note that by default all events, despite
->>> +the actual filesystem type, are being disregarded.
->>> +
->>> +Synopsis of config:
->>> +------------------
->>> +
->>> +    MOUNT EVENT_TYPE [L1] [L2]
->>> +
->>> + MOUNT      : the filesystem's mount point
->>> + EVENT_TYPE : event types - currently two of them are being supported:
->>> +
->>> +          * generic events ("G") covering most common warnings
->>> +          and errors that might be reported by any filesystem;
->>> +          this option does not take any arguments;
->>> +
->>> +          * threshold notifications ("T") - events sent whenever
->>> +          the amount of available space drops below certain level;
->>> +          it is possible to specify two threshold levels though
->>> +          only one is required to properly setup the notifications;
->>> +          as those refer to the number of available blocks, the lower
->>> +          level [L1] needs to be higher than the upper one [L2]
->>> +
->>> +Sample request could look like the following:
->>> +
->>> + echo /sample/mount/point G T 710000 500000 > /sys/fs/events/config
->>> +
->>> +Multiple request might be specified provided they are separated with semicolon.
->>> +
->>> +The configuration itself might be modified at any time. One can add/remove
->>> +particular event types for given fielsystem, modify the threshold levels,
->>> +and remove single or all entries from the 'config' file.
->>> +
->>> + - Adding new event type:
->>> +
->>> + $ echo MOUNT EVENT_TYPE > /sys/fs/events/config
->>> +
->>> +(Note that is is enough to provide the event type to be enabled without
->>> +the already set ones.)
->>> +
->>> + - Removing event type:
->>> +
->>> + $ echo '!MOUNT EVENT_TYPE' > /sys/fs/events/config
->>> +
->>> + - Updating threshold limits:
->>> +
->>> + $ echo MOUNT T L1 L2 > /sys/fs/events/config
->>> +
->>> + - Removing single entry:
->>> +
->>> + $ echo '!MOUNT' > /sys/fs/events/config
->>> +
->>> + - Removing all entries:
->>> +
->>> + $ echo > /sys/fs/events/config
->>> +
->>> +Reading the file will list all registered entries with their current set-up
->>> +along with some additional info like the filesystem type and the backing device
->>> +name if available.
->>> +
->>> +Final, though a very important note on the configuration: when and if the
->>> +actual events are being triggered falls way beyond the scope of the generic
->>> +filesystem events interface. It is up to a particular filesystem
->>> +implementation which events are to be supported - if any at all. So if
->>> +given filesystem does not support the event notifications, an attempt to
->>> +enable those through 'config' file will fail.
->>> +
->>> +
->>> +3. The generic netlink interface support:
->>> +=========================================
->>> +
->>> +Whenever an event notification is triggered (by given filesystem) the current
->>> +configuration is being validated to decide whether a userpsace notification
->>> +should be launched. If there has been no request (in a mean of 'config' file
->>> +entry) for given event, one will be silently disregarded. If, on the other
->>> +hand, someone is 'watching' given filesystem for specific events, a generic
->>> +netlink message will be sent. A dedicated multicast group has been provided
->>> +solely for this purpose so in order to receive such notifications, one should
->>> +subscribe to this new multicast group. As for now only the init network
->>> +namespace is being supported.
->>> +
->>> +3.1 Message format
->>> +
->>> +The FS_NL_C_EVENT shall be stored within the generic netlink message header
->>> +as the command field. The message payload will provide more detailed info:
->>> +the backing device major and minor numbers, the event code and the id of
->>> +the process which action led to the event occurrence. In case of threshold
->>> +notifications, the current number of available blocks will be included
->>> +in the payload as well.
->>> +
->>> +
->>> +     0                   1                   2                   3
->>> +     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
->>> +    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
->>> +    |                   NETLINK MESSAGE HEADER                      |
->>> +    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
->>> +    |               GENERIC NETLINK MESSAGE HEADER                  |
->>> +    |          (with FS_NL_C_EVENT as genlmsghdr cdm field)         |
->>> +    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
->>> +    |             Optional user specific message header             |
->>> +    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
->>> +    |                  GENERIC MESSAGE PAYLOAD:                     |
->>> +    +---------------------------------------------------------------+
->>> +    |                 FS_NL_A_EVENT_ID  (NLA_U32)                   |
->>> +    +---------------------------------------------------------------+
->>> +    |                 FS_NL_A_DEV_MAJOR (NLA_U32)                   |
->>> +    +---------------------------------------------------------------+
->>> +    |                 FS_NL_A_DEV_MINOR (NLA_U32)                   |
->>
-> ...
->
->>> +
->>> +static int create_common_msg(struct sk_buff *skb, void *data)
->>> +{
->>> +    struct fs_trace_entry *en = (struct fs_trace_entry *)data;
->>> +    struct super_block *sb = en->sb;
->>> +
->>> +    if (nla_put_u32(skb, FS_NL_A_DEV_MAJOR, MAJOR(sb->s_dev))
->>> +    ||  nla_put_u32(skb, FS_NL_A_DEV_MINOR, MINOR(sb->s_dev)))
->>> +            return -EINVAL;
->> What about diskless(nfs,cifs,etc) filesystem? btrfs also has no
->> valid sb->s_dev
+The following changes since commit e26081808edadfd257c6c9d81014e3b25e9a6118:
 
-And note that filesystem notifications and also file/directory change
-notification are particularly useful in the case of a a network file
-system (and heavily used by Windows desktop, Mac etc.) since when a
-file is shared a user may not necessarily know that a file (or file
-system as a whole) changed via another client (or on the server, or on
-the server via a different protocol  e.g.SMB3 vs NFSv4), but is more
-likely to know about local changes to the same file.   In some sense
-the users of mounts on network file systems get more benefit from
-notifications than a mount on a local file system would.
+  Linux 4.1-rc4 (2015-05-18 10:13:47 -0700)
 
+are available in the git repository at:
 
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
 
--- 
-Thanks,
+for you to fetch changes up to a2fd66d069d86d793e9d39d4079b96f46d13f237:
 
-Steve
+  ext4: set lazytime on remount if MS_LAZYTIME is set by mount (2015-06-23 11:03:54 -0400)
+
+----------------------------------------------------------------
+A very large number of cleanups and bug fixes --- in particular for
+the ext4 encryption patches, which is a new feature added in the last
+merge window.  Also fix a number of long-standing xfstest failures.
+(Quota writes failing due to ENOSPC, a race between truncate and
+writepage in data=journalled mode that was causing generic/068 to
+fail, and other corner cases.)
+
+Also add support for FALLOC_FL_INSERT_RANGE, and improve jbd2
+performance eliminating locking when a buffer is modified more than
+once during a transaction (which is very common for allocation
+bitmaps, for example), in which case the state of the journalled
+buffer head doesn't need to change.
+
+----------------------------------------------------------------
+Andreas Dilger (1):
+      ext4: improve warning directory handling messages
+
+Chao Yu (1):
+      ext4 crypto: release crypto resource on module exit
+
+Darrick J. Wong (1):
+      ext4: don't retry file block mapping on bigalloc fs with non-extent file
+
+David Moore (1):
+      ext4: BUG_ON assertion repeated for inode1, not done for inode2
+
+Dmitry Monakhov (1):
+      jbd2: use GFP_NOFS in jbd2_cleanup_journal_tail()
+
+Eric Whitney (2):
+      ext4: minor cleanup of ext4_da_reserve_space()
+      ext4: make online defrag error reporting consistent
+
+Fabian Frederick (3):
+      ext4 crypto: fix sparse warnings in fs/ext4/ioctl.c
+      ext4: use swap() in memswap()
+      ext4: use swap() in mext_page_double_lock()
+
+Jan Kara (5):
+      jbd2: simplify code flow in do_get_write_access()
+      jbd2: simplify error path on allocation failure in do_get_write_access()
+      jbd2: more simplifications in do_get_write_access()
+      jbd2: speedup jbd2_journal_get_[write|undo]_access()
+      jbd2: speedup jbd2_journal_dirty_metadata()
+
+Josef Bacik (1):
+      ext4: only call ext4_truncate when size <= isize
+
+Joseph Qi (1):
+      jbd2: fix ocfs2 corrupt when updating journal superblock fails
+
+Lukas Czerner (5):
+      ext4: verify block bitmap even after fresh initialization
+      ext4: try to initialize all groups we can in case of failure on ppc64
+      ext4: return error code from ext4_mb_good_group()
+      ext4: recalculate journal credits as inode depth changes
+      ext4: wait for existing dio workers in ext4_alloc_file_blocks()
+
+Michal Hocko (2):
+      jbd2: revert must-not-fail allocation loops back to GFP_NOFAIL
+      jbd2: get rid of open coded allocation retry loop
+
+Namjae Jeon (1):
+      ext4: Add support FALLOC_FL_INSERT_RANGE for fallocate
+
+Rasmus Villemoes (1):
+      ext4: mballoc: avoid 20-argument function call
+
+Theodore Ts'o (26):
+      ext4 crypto: optimize filename encryption
+      ext4 crypto: don't allocate a page when encrypting/decrypting file names
+      ext4 crypto: separate kernel and userspace structure for the key
+      ext4 crypto: reorganize how we store keys in the inode
+      ext4: clean up superblock encryption mode fields
+      ext4 crypto: use slab caches
+      ext4 crypto: get rid of ci_mode from struct ext4_crypt_info
+      ext4 crypto: shrink size of the ext4_crypto_ctx structure
+      ext4 crypto: require CONFIG_CRYPTO_CTR if ext4 encryption is enabled
+      ext4 crypto: use per-inode tfm structure
+      ext4 crypto: fix memory leaks in ext4_encrypted_zeroout
+      ext4 crypto: set up encryption info for new inodes in ext4_inherit_context()
+      ext4 crypto: make sure the encryption info is initialized on opendir(2)
+      ext4 crypto: encrypt tmpfile located in encryption protected directory
+      ext4 crypto: enforce crypto policy restrictions on cross-renames
+      ext4 crypto: policies may only be set on directories
+      ext4 crypto: clean up error handling in ext4_fname_setup_filename
+      ext4 crypto: allocate the right amount of memory for the on-disk symlink
+      ext4 crypto: handle unexpected lack of encryption keys
+      ext4 crypto: allocate bounce pages using GFP_NOWAIT
+      ext4 crypto: fix ext4_get_crypto_ctx()'s calling convention in ext4_decrypt_one
+      ext4 crypto: fail the mount if blocksize != pagesize
+      ext4: fix race between truncate and __ext4_journalled_writepage()
+      ext4: call sync_blockdev() before invalidate_bdev() in put_super()
+      ext4: prevent ext4_quota_write() from failing due to ENOSPC
+      ext4: set lazytime on remount if MS_LAZYTIME is set by mount
+
+ fs/ext4/Kconfig             |   1 +
+ fs/ext4/balloc.c            |   4 +-
+ fs/ext4/crypto.c            | 211 +++++++++------------------
+ fs/ext4/crypto_fname.c      | 490 ++++++++++++++++-----------------------------------------------
+ fs/ext4/crypto_key.c        | 152 ++++++++++++++++----
+ fs/ext4/crypto_policy.c     |  87 +++++++-----
+ fs/ext4/dir.c               |  29 ++--
+ fs/ext4/ext4.h              | 159 ++++++++++++++-------
+ fs/ext4/ext4_crypto.h       |  51 +++----
+ fs/ext4/extents.c           | 339 +++++++++++++++++++++++++++++++++++++-------
+ fs/ext4/file.c              |  19 +--
+ fs/ext4/ialloc.c            |  45 +++---
+ fs/ext4/indirect.c          |   4 +-
+ fs/ext4/inline.c            |  31 ++--
+ fs/ext4/inode.c             |  93 ++++++------
+ fs/ext4/ioctl.c             |  11 +-
+ fs/ext4/mballoc.c           |  43 ++++--
+ fs/ext4/move_extent.c       |  19 +--
+ fs/ext4/namei.c             | 542 ++++++++++++++++++++++++++++++----------------------------------------
+ fs/ext4/page-io.c           |   2 +-
+ fs/ext4/readpage.c          |  10 +-
+ fs/ext4/super.c             |  60 ++++++--
+ fs/ext4/symlink.c           |  16 +--
+ fs/jbd2/checkpoint.c        |   7 +-
+ fs/jbd2/journal.c           |  57 +++++---
+ fs/jbd2/revoke.c            |  15 +-
+ fs/jbd2/transaction.c       | 303 ++++++++++++++++++++++++---------------
+ include/linux/jbd2.h        |   4 +-
+ include/trace/events/ext4.h |  35 ++++-
+ 29 files changed, 1486 insertions(+), 1353 deletions(-)
