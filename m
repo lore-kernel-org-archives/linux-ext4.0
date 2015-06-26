@@ -1,27 +1,27 @@
-From: Holger =?iso-8859-1?q?Hoffst=E4tte?=
-	<holger.hoffstaette@googlemail.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [GIT PULL] ext4 changes for 4.2-rc1
-Date: Thu, 25 Jun 2015 15:37:14 +0000 (UTC)
-Message-ID: <pan.2015.06.25.15.37.14@googlemail.com>
+Date: Thu, 25 Jun 2015 22:19:29 -0400
+Message-ID: <20150626021929.GA552@thunk.org>
 References: <20150625034626.GA21682@thunk.org>
+ <20150625045430.GG14324@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-Cc: linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: torvalds@linux-foundation.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20150625045430.GG14324@thunk.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 24 Jun 2015 23:46:26 -0400, Theodore Ts'o wrote:
+    [ I renamed "ext4_follow_link()" to "ext4_encrypted_follow_link()" in
+      the merge resolution, to make it clear that that function is _only_
+      used for encrypted symlinks.  The function doesn't actually work for
+      non-encrypted symlinks at all, and they use the generic helpers
+		                                                   - Linus ]
 
->   ext4: set lazytime on remount if MS_LAZYTIME is set by mount
+Thanks, that was on my todo list as a cleanup patch after the merge window closed...
 
-I was wondering what had happened to this bug and was about to ask, just as I
-saw this. It applies cleanly to 4.1 and does the trick - just tested with
-util-linux-2.16.2. My / now properly shows lazytime after remount, so
-Thank You and:
+:-)
 
-Tested-By: Holger Hoffstaette <holger.hoffstaette@googlemail.com>
-
--h
+	     	       	    	      	      - Ted
