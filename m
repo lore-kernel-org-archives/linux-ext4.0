@@ -1,63 +1,46 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [GIT PULL] ext4 changes for 4.2-rc1
-Date: Sat, 27 Jun 2015 00:02:37 -0400
-Message-ID: <20150627040237.GC474@thunk.org>
-References: <20150625034626.GA21682@thunk.org>
- <CA+55aFwXgrcfqN2f7R8PbcDr9yiWXv4cicKmKfQFxR_KsHaiwQ@mail.gmail.com>
+From: Mohammed El-Shaban <moha_elsharoyality@hotmail.com>
+Subject: PROJECT FUNDING/DEBT FINANCING
+Date: Sat, 27 Jun 2015 10:22:02 +0100
+Message-ID: <20150627092918.DB150C52E2__15879.7280783348$1435397875$gmane$org@hdx6145.nexio.info>
+Reply-To: moha_elsharoyality@hotmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CA+55aFwXgrcfqN2f7R8PbcDr9yiWXv4cicKmKfQFxR_KsHaiwQ@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: Recipients <moha_elsharoyality@hotmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from hdx6145.nexio.info ([95.128.74.145]:48428 "EHLO
+	hdx6145.nexio.info" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752262AbbF0Jg2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Jun 2015 05:36:28 -0400
+Content-Description: Mail message body
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 26, 2015 at 08:05:48PM -0700, Linus Torvalds wrote:
-> On Wed, Jun 24, 2015 at 8:46 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> >
-> > A very large number of cleanups and bug fixes --- in particular for
-> > the ext4 encryption patches, which is a new feature added in the last
-> > merge window.  Also fix a number of long-standing xfstest failures.
-> > (Quota writes failing due to ENOSPC, a race between truncate and
-> > writepage in data=journalled mode that was causing generic/068 to
-> > fail, and other corner cases.)
-> >
-> > Also add support for FALLOC_FL_INSERT_RANGE, and improve jbd2
-> > performance eliminating locking when a buffer is modified more than
-> > once during a transaction (which is very common for allocation
-> > bitmaps, for example), in which case the state of the journalled
-> > buffer head doesn't need to change.
-> 
-> I think this is very broken.
-> 
-> I just got this while compiling:
-> 
->    ------------[ cut here ]------------
->    kernel BUG at fs/jbd2/transaction.c:1325!
-> ...
->
-> The most obvious candidate for a culprit would seem to be
-> 
->    2143c1965a76 "jbd2: speedup jbd2_journal_dirty_metadata()"
-> 
-> which is the commit that introduced the assert that triggers. Ted? Jan?
+Greetings,
 
-I would tend to agree.  The weird thing though is that I haven't seen
-this problem myself, despite running multiple regression tests before
-I sent the pull request, as well as running it on my laptop and doing
-kernel compiles with make -j16 and reading e-mail (I'm typing this
-e-mail on a 4.1 kernel merged with the ext4 patches for this merge
-window, so I have this commit running in my development laptop, and it
-hasn't triggered for me).
+We are an Investment company that invites you to partner with us and benefit in 
 
-All of this being said, my suggestion would be to revert it for now
-and we'll investigate more closely for the next merge window.  This is
-just a performance improvement, and so better safe than sorry.  Jan,
-do you agree?
+our new Loan and Project funding program. We offer flexible loans and funding for 
 
-							- Ted
-							
+various projects by passing the usual rigorous procedures.This Funding program 
+
+allows a client to enjoy low interest payback for as low as 3 - 4% per annum for a 
+
+period of 7-8 years. We can approve a loan/funding for up to USD 500,000,000.00 or 
+
+more depending on the nature of business. We are currently funding for:
+
+* Starting up a Franchise
+* Business Acquisition
+* Business Expansion
+* Commercial Real Estate purchase
+* Contract Execution
+
+We are open to having a good business relationship with you. If you think you have 
+
+a solid background and idea of making good profit in any venture, please do not 
+
+hesitate to contact us for possible business co-operation.
+
+Sincerely,
+El-Shaban
