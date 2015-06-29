@@ -1,46 +1,56 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [GIT PULL] ext4 changes for 4.2-rc1
-Date: Mon, 29 Jun 2015 10:27:03 +0200
-Message-ID: <20150629082703.GB11013@quack.suse.cz>
-References: <20150625034626.GA21682@thunk.org>
- <CA+55aFwXgrcfqN2f7R8PbcDr9yiWXv4cicKmKfQFxR_KsHaiwQ@mail.gmail.com>
- <20150627040237.GC474@thunk.org>
- <20150627140743.GF474@thunk.org>
+From: Michal Hocko <mhocko@suse.cz>
+Subject: Re: Lockup in wait_transaction_locked under memory pressure
+Date: Mon, 29 Jun 2015 10:32:43 +0200
+Message-ID: <20150629083243.GB28471@dhcp22.suse.cz>
+References: <558BD507.9070002@kyup.com>
+ <20150625112116.GC17237@dhcp22.suse.cz>
+ <558BE96E.7080101@kyup.com>
+ <20150625115025.GD17237@dhcp22.suse.cz>
+ <20150625133138.GH14324@thunk.org>
+ <558C06F7.9050406@kyup.com>
+ <20150625140510.GI17237@dhcp22.suse.cz>
+ <558C116E.2070204@kyup.com>
+ <20150625151842.GK17237@dhcp22.suse.cz>
+ <558C1DCE.1010705@kyup.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Jan Kara <jack@suse.cz>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Marian Marinov <mm@1h.com>
+To: Nikolay Borisov <kernel@kyup.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:35480 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753029AbbF2Icq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Jun 2015 04:32:46 -0400
 Content-Disposition: inline
-In-Reply-To: <20150627140743.GF474@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <558C1DCE.1010705@kyup.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 27-06-15 10:07:43, Ted Tso wrote:
-> On Sat, Jun 27, 2015 at 12:02:37AM -0400, Theodore Ts'o wrote:
-> > 
-> > I would tend to agree.  The weird thing though is that I haven't seen
-> > this problem myself, despite running multiple regression tests before
-> > I sent the pull request, as well as running it on my laptop and doing
-> > kernel compiles with make -j16 and reading e-mail (I'm typing this
-> > e-mail on a 4.1 kernel merged with the ext4 patches for this merge
-> > window, so I have this commit running in my development laptop, and it
-> > hasn't triggered for me).
+On Thu 25-06-15 18:27:10, Nikolay Borisov wrote:
 > 
-> Update: I've been able to reproduce the crash using a post merge
-> kernel (of course, I had to use CONFIG_SLUB since CONFIG_SLAB is
-> busted) a single time.  Unfortunately, I've not been able to reproduce
-> it reliably so I can't speak to whether reverting 2143c1965a76 will
-> fix things.  But it does seem very likely.
+> 
+> On 06/25/2015 06:18 PM, Michal Hocko wrote:
+> > On Thu 25-06-15 17:34:22, Nikolay Borisov wrote:
+> >> On 06/25/2015 05:05 PM, Michal Hocko wrote:
+> >>> On Thu 25-06-15 16:49:43, Nikolay Borisov wrote:
+> >>> [...]
+> >>>> How would you advise to rectify such situation?
+> >>>
+> >>> As I've said. Check the oom victim traces and see if it is holding any
+> >>> of those locks.
+> >>
+> >> As mentioned previously all OOM traces are identical to the one I've
+> >> sent - OOM being called form the page fault path.
+> >  
+> > By identical you mean that all of them kill the same task? Or just that
+> > the path is same (which wouldn't be surprising as this is the only path
+> > which triggers memcg oom killer)?
+> 
+> The code path is the same, the tasks being killed are different
 
-Sure, I agree with the revert Linus did. That's the best we can do now.
-I'm now trying to figure out what could have gone wrong.
-
-								Honza
-
+Is the OOM killer triggered only for a singe memcg or others misbehave
+as well?
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Michal Hocko
+SUSE Labs
