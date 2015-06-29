@@ -1,68 +1,52 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [GIT PULL] ext4 changes for 4.2-rc1
-Date: Mon, 29 Jun 2015 11:04:37 +0200
-Message-ID: <20150629090437.GD11013@quack.suse.cz>
-References: <20150625034626.GA21682@thunk.org>
- <CA+55aFwXgrcfqN2f7R8PbcDr9yiWXv4cicKmKfQFxR_KsHaiwQ@mail.gmail.com>
- <20150627040237.GC474@thunk.org>
- <20150627140743.GF474@thunk.org>
+From: Nikolay Borisov <kernel@kyup.com>
+Subject: Re: Lockup in wait_transaction_locked under memory pressure
+Date: Mon, 29 Jun 2015 12:07:54 +0300
+Message-ID: <55910AEA.2030205@kyup.com>
+References: <558BD507.9070002@kyup.com> <20150625112116.GC17237@dhcp22.suse.cz> <558BE96E.7080101@kyup.com> <20150625115025.GD17237@dhcp22.suse.cz> <20150625133138.GH14324@thunk.org> <558C06F7.9050406@kyup.com> <20150625140510.GI17237@dhcp22.suse.cz> <558C116E.2070204@kyup.com> <20150625151842.GK17237@dhcp22.suse.cz> <558C1DCE.1010705@kyup.com> <20150629083243.GB28471@dhcp22.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Jan Kara <jack@suse.cz>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20150627140743.GF474@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Marian Marinov <mm@1h.com>
+To: Michal Hocko <mhocko@suse.cz>, Nikolay Borisov <kernel@kyup.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.siteground.com ([67.19.240.234]:56787 "EHLO
+	mail.siteground.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753440AbbF2JH5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jun 2015 05:07:57 -0400
+In-Reply-To: <20150629083243.GB28471@dhcp22.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 27-06-15 10:07:43, Ted Tso wrote:
-> On Sat, Jun 27, 2015 at 12:02:37AM -0400, Theodore Ts'o wrote:
-> > 
-> > I would tend to agree.  The weird thing though is that I haven't seen
-> > this problem myself, despite running multiple regression tests before
-> > I sent the pull request, as well as running it on my laptop and doing
-> > kernel compiles with make -j16 and reading e-mail (I'm typing this
-> > e-mail on a 4.1 kernel merged with the ext4 patches for this merge
-> > window, so I have this commit running in my development laptop, and it
-> > hasn't triggered for me).
+
+
+On 06/29/2015 11:32 AM, Michal Hocko wrote:
+> On Thu 25-06-15 18:27:10, Nikolay Borisov wrote:
+>>
+>>
+>> On 06/25/2015 06:18 PM, Michal Hocko wrote:
+>>> On Thu 25-06-15 17:34:22, Nikolay Borisov wrote:
+>>>> On 06/25/2015 05:05 PM, Michal Hocko wrote:
+>>>>> On Thu 25-06-15 16:49:43, Nikolay Borisov wrote:
+>>>>> [...]
+>>>>>> How would you advise to rectify such situation?
+>>>>>
+>>>>> As I've said. Check the oom victim traces and see if it is holding any
+>>>>> of those locks.
+>>>>
+>>>> As mentioned previously all OOM traces are identical to the one I've
+>>>> sent - OOM being called form the page fault path.
+>>>  
+>>> By identical you mean that all of them kill the same task? Or just that
+>>> the path is same (which wouldn't be surprising as this is the only path
+>>> which triggers memcg oom killer)?
+>>
+>> The code path is the same, the tasks being killed are different
 > 
-> Update: I've been able to reproduce the crash using a post merge
-> kernel (of course, I had to use CONFIG_SLUB since CONFIG_SLAB is
-> busted) a single time.  Unfortunately, I've not been able to reproduce
-> it reliably so I can't speak to whether reverting 2143c1965a76 will
-> fix things.  But it does seem very likely.
+> Is the OOM killer triggered only for a singe memcg or others misbehave
+> as well?
 
-BTW, what did you use to trigger the error for you? The ext4 path where the
-assertion triggered for Linus is definitely correct so the assertion
-failure was a false positive. Since we don't hold proper locks when doing
-the assertion, we likely saw an intermediate state where we raced with
-__jbd2_journal_refile_buffer() called from jbd2 thread which was doing
-
-        jh->b_transaction = jh->b_next_transaction;
-        jh->b_next_transaction = NULL;
-
-and we saw NULL in b_next_transaction but old content in b_transaction.
-Originally I didn't think that's really possible but on a second thought
-don't know how I came to that conclusion :-|. Looking at the disassemly of
-__jbd2_journal_refile_buffer() I see my compiler compiled the above as:
-
-mov    0x30(%rbx),%rax  b_next_transaction -> rax
-movq   $0x0,0x30(%rbx)  NULL -> b_next_transaction
-mov    %rax,0x28(%rbx)  rax -> b_transaction
-
-So even the compiler decided to reorder the stores to memory and I'm not
-even speaking of what the CPU could have done with the stores or loads
-from the assertion.
-
-I will fix the assertion in the same way the second assertion in
-jbd2_journal_dirty_metadata() was fixed - take the necessary locks if it
-seems the assertion is violated to make sure we don't see false positives.
-
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Generally OOM would be triggered for whichever memcg runs out of
+resources but so far I've only observed that the D state issue happens
+in a single containers. However, this in turn might affect other
+processes if they try to sleep on the same jbd2 journal .
