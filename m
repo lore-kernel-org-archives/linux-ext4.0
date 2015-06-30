@@ -1,77 +1,69 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Lockup in wait_transaction_locked under memory pressure
-Date: Mon, 29 Jun 2015 23:02:07 -0400
-Message-ID: <20150630030207.GB14839@thunk.org>
-References: <558BD447.1010503@kyup.com>
- <558BD507.9070002@kyup.com>
- <20150625112116.GC17237@dhcp22.suse.cz>
- <558BE96E.7080101@kyup.com>
- <20150625115025.GD17237@dhcp22.suse.cz>
- <20150625133138.GH14324@thunk.org>
- <5591097D.6010602@kyup.com>
- <20150629093640.GD28471@dhcp22.suse.cz>
- <20150630015206.GL22807@dastard>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [RFC 00/11] xfstests: test the btrfs/xfs reflink/dedupe ioctls
+Date: Mon, 29 Jun 2015 21:15:20 -0700
+Message-ID: <20150630041519.2476.23059.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Michal Hocko <mhocko@suse.cz>, Nikolay Borisov <kernel@kyup.com>,
-	linux-ext4@vger.kernel.org, Marian Marinov <mm@1h.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60566 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753485AbbF3DDQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Jun 2015 23:03:16 -0400
-Content-Disposition: inline
-In-Reply-To: <20150630015206.GL22807@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, fstests@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
+To: david@fromorbit.com, darrick.wong@oracle.com
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jun 30, 2015 at 11:52:06AM +1000, Dave Chinner wrote:
-> Yes, and looks at the caller path....
-> 
-> > >  #8 [ffff88177374af50] shrink_inactive_list at ffffffff81135845
-> > >  #9 [ffff88177374b060] shrink_lruvec at ffffffff81135ead
-> > > #10 [ffff88177374b150] shrink_zone at ffffffff811360c3
-> > > #11 [ffff88177374b220] shrink_zones at ffffffff81136eff
-> > > #12 [ffff88177374b2a0] do_try_to_free_pages at ffffffff8113712f
-> > > #13 [ffff88177374b300] try_to_free_mem_cgroup_pages at ffffffff811372be
-> > > #14 [ffff88177374b380] try_charge at ffffffff81189423
-> > > #15 [ffff88177374b430] mem_cgroup_try_charge at ffffffff8118c6f5
-> > > #16 [ffff88177374b470] __add_to_page_cache_locked at ffffffff8112137d
-> > > #17 [ffff88177374b4e0] add_to_page_cache_lru at ffffffff81121618
-> > > #18 [ffff88177374b510] pagecache_get_page at ffffffff8112170b
-> > > #19 [ffff88177374b560] grow_dev_page at ffffffff811c8297
-> > > #20 [ffff88177374b5c0] __getblk_slow at ffffffff811c91d6
-> > > #21 [ffff88177374b600] __getblk_gfp at ffffffff811c92c1
-> > > #22 [ffff88177374b630] ext4_ext_grow_indepth at ffffffff8124565c
-> > > #23 [ffff88177374b690] ext4_ext_create_new_leaf at ffffffff81246ca8
-> > > #24 [ffff88177374b6e0] ext4_ext_insert_extent at ffffffff81246f09
-> > > #25 [ffff88177374b750] ext4_ext_map_blocks at ffffffff8124a848
-> > > #26 [ffff88177374b870] ext4_map_blocks at ffffffff8121a5b7
-> > > #27 [ffff88177374b910] mpage_map_one_extent at ffffffff8121b1fa
-> > > #28 [ffff88177374b950] mpage_map_and_submit_extent at ffffffff8121f07b
-> > > #29 [ffff88177374b9b0] ext4_writepages at ffffffff8121f6d5
-> > > #30 [ffff88177374bb20] do_writepages at ffffffff8112c490
-> > > #31 [ffff88177374bb30] __filemap_fdatawrite_range at ffffffff81120199
-> > > #32 [ffff88177374bb80] filemap_flush at ffffffff8112041c
-> 
-> That's a potential self deadlocking path, isn't it? i.e. the
-> writeback path has been entered, may hold pages locked in the
-> current bio being built (waiting for submission), then memory
-> reclaim has been entered while trying to map more contiguous blocks
-> to submit, and that waits on page IO to complete on a page in a bio
-> that ext4 hasn't yet submitted?
-> 
-> i.e. shouldn't ext4 be doing GFP_NOFS allocations all through this
-> writeback path?
+Hi all,
 
-All of the direct allocations in fs/ext4/extents.c are using GFP_NOFS.
-The problem is that we're calling sb_getblk(), which does _not_ set
-GFP_NOFS.  What we need to do is to add a sb_getblk_gfp() inline
-function in include/linux/buffer_head.h, and use that in
-fs/ext4/extents.c.
+This is a RFC-quality pass at making xfstests perform more rigorous
+testing of the btrfs/xfs file clone, reflink, and dedupe ioctls.
+There are now tests of the basic functionality of the three ioctls;
+tests to ensure that the filesystem exhibits the expected copy on
+write semantics; tests to try to suss out race conditions in the new
+write paths; tests to ensure that the ioctls peform basic disk
+accounting correctly; tests of the interaction between reflink and the
+various fallocate verbs (allocate, punch, collapse, insert zeroes);
+and some attempts to test the upper limits of reflinking.  The first
+patch in the series adds fuzz testing to ext4 and XFS; aside from
+being first in line, it isn't tied to any of the reflink
+functionality.
 
-Thanks for pointing that out!  I'll create a patch as soon as I get
-back from vacation.
+To run these tests, you'll have to patch xfsprogs to have reflink and
+dedupe support[1]; the patch ought to apply fairly cleanly against the
+upstream git.  They should more or less work with the btrfs that
+appears in 4.1, though if you want to test the XFS implementation,
+you're going to have to apply a lot of patches to the kernel and
+xfsprogs.  See the cover letters[2][3] for those patchsets for more
+information.
 
-       	   	    	 	     	      - Ted
+Known issues: 
+ * I think the race checks for dedupe could be a little sharper at
+   finding mistakes.
+ * I started the numbering really high to prevent the tests from
+   colliding with whatever new tests might arrive; this will require
+   some intervention to fix.
+ * When ext4 gains reflink support, it shouldn't be difficult to make
+   these tests run on it.  The patch set is based on the current
+   xfstest master on kernel.org.
+ * If the copy_file_range syscall ever comes around, we'll have to
+   adapt xfs_io to use that in addition to the btrfs ioctls.
+
+Comments and questions are, as always, welcome.
+
+--D
+
+[1] http://djwong.org/docs/03-xfs_io-reflink-and-dedupe.patch
+[2] See thread "[RFC 00/15] xfsprogs: support the reflink btree" dated today.
+[3] http://oss.sgi.com/archives/xfs/2015-06/msg00407.html
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
