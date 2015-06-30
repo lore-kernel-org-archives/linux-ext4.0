@@ -1,273 +1,53 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 11/11] reflink: test what happens when we hit resource limits
-Date: Mon, 29 Jun 2015 21:16:35 -0700
-Message-ID: <20150630041635.2476.40863.stgit@birch.djwong.org>
-References: <20150630041519.2476.23059.stgit@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, fstests@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
-To: david@fromorbit.com, darrick.wong@oracle.com
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20150630041519.2476.23059.stgit@birch.djwong.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+From: Nikolay Borisov <kernel@kyup.com>
+Subject: [PATCH 2/2] ext4: make use of sb_getblk_gfp
+Date: Tue, 30 Jun 2015 09:26:49 +0300
+Message-ID: <1435645609-20387-2-git-send-email-kernel@kyup.com>
+References: <1435645609-20387-1-git-send-email-kernel@kyup.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: tytso@mit.edu, adilger.kernel@dilger.ca
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1435645609-20387-1-git-send-email-kernel@kyup.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Switch ext4 to using sb_getblk_gfp with GFP_NOFS added, this fixes
+possible deadlocks in the page writeback path.
+
+Signed-off-by: Nikolay Borisov <kernel@kyup.com>
 ---
- tests/generic/840     |  107 +++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/840.out |    0 
- tests/generic/841     |   87 ++++++++++++++++++++++++++++++++++++++++
- tests/generic/841.out |    5 ++
- tests/generic/group   |    2 +
- 5 files changed, 201 insertions(+)
- create mode 100755 tests/generic/840
- create mode 100644 tests/generic/840.out
- create mode 100755 tests/generic/841
- create mode 100644 tests/generic/841.out
+ fs/ext4/extents.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-
-diff --git a/tests/generic/840 b/tests/generic/840
-new file mode 100755
-index 0000000..498e3a2
---- /dev/null
-+++ b/tests/generic/840
-@@ -0,0 +1,107 @@
-+#! /bin/bash
-+# FS QA Test No. 840
-+#
-+# Try to hit the maximum reference count (eek!)
-+#
-+# This test runs extremely slowly, so it's not automatically run anywhere.
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2015, Oracle and/or its affiliates.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1    # failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -rf $tmp.* $TESTDIR1
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+. ./common/attr
-+
-+# real QA test starts here
-+_require_test
-+_require_scratch
-+_require_scratch_reflink
-+_require_test_reflink
-+_supported_os Linux
-+
-+_require_xfs_io_command "reflink"
-+_require_xfs_io_command "fiemap"
-+_require_cp_reflink
-+
-+rm -f $seqres.full
-+
-+echo "Format and mount"
-+_scratch_mkfs > $seqres.full 2>&1
-+_scratch_mount >> $seqres.full 2>&1
-+
-+TESTDIR=$SCRATCH_MNT/test-$seq
-+rm -rf $TESTDIR
-+mkdir $TESTDIR
-+
-+# Well let's hope the maximum reflink count is (less than (ha!)) 2^32...
-+
-+echo "Create a one block file"
-+BLKSZ="$(stat -f $TESTDIR -c '%S')"
-+$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $BLKSZ" $TESTDIR/file1 >> $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x62 0 $BLKSZ" $TESTDIR/file2 >> $seqres.full
-+
-+$XFS_IO_PROG -f -c "reflink $TESTDIR/file1 0 0 $BLKSZ" $TESTDIR/file2 >> $seqres.full
-+
-+nr=32
-+fnr=18
-+for i in $(seq 0 $fnr); do
-+	echo " ++ Reflink size $i, $(( (2 ** i) * BLKSZ)) bytes" | tee -a $seqres.full
-+	$XFS_IO_PROG -f -c "reflink $TESTDIR/file1 0 $(( (2 ** i) * BLKSZ)) $(( (2 ** i) * BLKSZ ))" $TESTDIR/file1 >> $seqres.full || break
-+done
-+
-+nrf=$((nr - fnr))
-+echo "Clone $((2 ** nrf)) files"
-+for i in $(seq 0 $((2 ** nrf)) ); do
-+	cp --reflink=always $TESTDIR/file1 $TESTDIR/file1-$i
-+done
-+
-+echo "Check scratch fs"
-+umount $SCRATCH_MNT
-+$XFS_DB_PROG -c 'agf 0' -c 'addr rlroot' -c p $SCRATCH_DEV
-+_check_scratch_fs
-+
-+echo "Remove big file and recheck"
-+_scratch_mount >> $seqres.full 2>&1
-+#rm -rf $TESTDIR/file1
-+umount $SCRATCH_MNT
-+_check_scratch_fs
-+
-+echo "Remove all files and recheck"
-+_scratch_mount >> $seqres.full 2>&1
-+#rm -rf $TESTDIR/file2
-+umount $SCRATCH_MNT
-+_check_scratch_fs
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/generic/840.out b/tests/generic/840.out
-new file mode 100644
-index 0000000..e69de29
-diff --git a/tests/generic/841 b/tests/generic/841
-new file mode 100755
-index 0000000..3bf025c
---- /dev/null
-+++ b/tests/generic/841
-@@ -0,0 +1,87 @@
-+#! /bin/bash
-+# FS QA Test No. 841
-+#
-+# Try to run out of space while cloning?
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2015, Oracle and/or its affiliates.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1    # failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -rf $tmp.* $TESTDIR1
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+. ./common/attr
-+
-+# real QA test starts here
-+_require_test
-+_require_scratch
-+_require_scratch_reflink
-+_require_test_reflink
-+_supported_os Linux
-+
-+_require_xfs_io_command "reflink"
-+_require_xfs_io_command "fiemap"
-+_require_cp_reflink
-+
-+rm -f $seqres.full
-+
-+echo "Format and mount"
-+_scratch_mkfs > $seqres.full 2>&1
-+_scratch_mount >> $seqres.full 2>&1
-+
-+TESTDIR=$SCRATCH_MNT/test-$seq
-+rm -rf $TESTDIR
-+mkdir $TESTDIR
-+
-+BLKSZ="$(stat -f $TESTDIR -c '%S')"
-+NR_FREE="$(stat -f -c '%f' $TESTDIR)"
-+echo "Create a big file"
-+touch $TESTDIR/file0 $TESTDIR/file1
-+$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((BLKSZ * NR_FREE))" $TESTDIR/bigfile >> $seqres.full 2>&1
-+sz="$(stat -c '%s' $TESTDIR/bigfile)"
-+sync
-+
-+blks="$((sz / BLKSZ))"
-+echo "Try to reflink"
-+seq 0 $blks | while read lblk; do
-+	fname="$TESTDIR/file$((lblk % 2))"
-+	out="$($XFS_IO_PROG -f -c "reflink $TESTDIR/bigfile $((lblk * BLKSZ)) $((lblk * BLKSZ)) $BLKSZ" $fname 2>&1)"
-+	echo "$out" >> $seqres.full
-+	test "$out" = "reflink: No space left on device" && break
-+done
-+
-+echo "Check scratch fs"
-+umount $SCRATCH_MNT
-+_check_scratch_fs
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/generic/841.out b/tests/generic/841.out
-new file mode 100644
-index 0000000..33c46fd
---- /dev/null
-+++ b/tests/generic/841.out
-@@ -0,0 +1,5 @@
-+QA output created by 841
-+Format and mount
-+Create a big file
-+Try to reflink
-+Check scratch fs
-diff --git a/tests/generic/group b/tests/generic/group
-index af22ccb..b4cb2b7 100644
---- a/tests/generic/group
-+++ b/tests/generic/group
-@@ -234,3 +234,5 @@
- 837 auto quick clone
- 838 auto quick clone
- 839 auto quick clone
-+840
-+841 auto quick clone
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index e003a1e..87ba10d 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -503,7 +503,7 @@ __read_extent_tree_block(const char *function, unsigned int line,
+ 	struct buffer_head		*bh;
+ 	int				err;
+ 
+-	bh = sb_getblk(inode->i_sb, pblk);
++	bh = sb_getblk_gfp(inode->i_sb, pblk, __GFP_MOVABLE | GFP_NOFS);
+ 	if (unlikely(!bh))
+ 		return ERR_PTR(-ENOMEM);
+ 
+@@ -1088,7 +1088,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 		err = -EIO;
+ 		goto cleanup;
+ 	}
+-	bh = sb_getblk(inode->i_sb, newblock);
++	bh = sb_getblk_gfp(inode->i_sb, newblock, __GFP_MOVABLE | GFP_NOFS);
+ 	if (unlikely(!bh)) {
+ 		err = -ENOMEM;
+ 		goto cleanup;
+@@ -1282,7 +1282,7 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+ 	if (newblock == 0)
+ 		return err;
+ 
+-	bh = sb_getblk(inode->i_sb, newblock);
++	bh = sb_getblk_gfp(inode->i_sb, newblock, __GFP_MOVABLE | GFP_NOFS);
+ 	if (unlikely(!bh))
+ 		return -ENOMEM;
+ 	lock_buffer(bh);
+-- 
+1.7.1
