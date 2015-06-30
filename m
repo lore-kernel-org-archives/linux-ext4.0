@@ -1,53 +1,47 @@
 From: Nikolay Borisov <kernel@kyup.com>
-Subject: [PATCH 2/2] ext4: make use of sb_getblk_gfp
-Date: Tue, 30 Jun 2015 09:26:49 +0300
-Message-ID: <1435645609-20387-2-git-send-email-kernel@kyup.com>
-References: <1435645609-20387-1-git-send-email-kernel@kyup.com>
+Subject: [PATCH 1/2] bufferhead: Add _gfp version for sb_getblk()
+Date: Tue, 30 Jun 2015 09:26:48 +0300
+Message-ID: <1435645609-20387-1-git-send-email-kernel@kyup.com>
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: tytso@mit.edu, adilger.kernel@dilger.ca
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1435645609-20387-1-git-send-email-kernel@kyup.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Switch ext4 to using sb_getblk_gfp with GFP_NOFS added, this fixes
-possible deadlocks in the page writeback path.
+sb_getblk() is used during ext4 (and possibly other FSes) writeback
+paths. Sometimes such path require allocating memory and guaranteeing
+that such allocation won't block. Currently, however, there is no way
+to provide user flags for sb_getblk which could lead to deadlocks.
+
+This patch implements a sb_getblk_gfp with the only difference it can
+accept user-provided GFP flags.
 
 Signed-off-by: Nikolay Borisov <kernel@kyup.com>
 ---
- fs/ext4/extents.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index e003a1e..87ba10d 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -503,7 +503,7 @@ __read_extent_tree_block(const char *function, unsigned int line,
- 	struct buffer_head		*bh;
- 	int				err;
+As per the discussion in this thread (http://marc.info/?l=linux-ext4&m=143563347324528&w=2)
+here are the patches which hopefully implement Ted's suggestion. 
+
+ include/linux/buffer_head.h |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 73b4522..e6797de 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -317,6 +317,13 @@ sb_getblk(struct super_block *sb, sector_t block)
+ 	return __getblk_gfp(sb->s_bdev, block, sb->s_blocksize, __GFP_MOVABLE);
+ }
  
--	bh = sb_getblk(inode->i_sb, pblk);
-+	bh = sb_getblk_gfp(inode->i_sb, pblk, __GFP_MOVABLE | GFP_NOFS);
- 	if (unlikely(!bh))
- 		return ERR_PTR(-ENOMEM);
- 
-@@ -1088,7 +1088,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 		err = -EIO;
- 		goto cleanup;
- 	}
--	bh = sb_getblk(inode->i_sb, newblock);
-+	bh = sb_getblk_gfp(inode->i_sb, newblock, __GFP_MOVABLE | GFP_NOFS);
- 	if (unlikely(!bh)) {
- 		err = -ENOMEM;
- 		goto cleanup;
-@@ -1282,7 +1282,7 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
- 	if (newblock == 0)
- 		return err;
- 
--	bh = sb_getblk(inode->i_sb, newblock);
-+	bh = sb_getblk_gfp(inode->i_sb, newblock, __GFP_MOVABLE | GFP_NOFS);
- 	if (unlikely(!bh))
- 		return -ENOMEM;
- 	lock_buffer(bh);
++
++static inline struct buffer_head *
++sb_getblk_gfp(struct super_block *sb, sector_t block, gfp_t gfp)
++{
++	return __getblk_gfp(sb->s_bdev, block, sb->s_blocksize, gfp);
++}
++
+ static inline struct buffer_head *
+ sb_find_get_block(struct super_block *sb, sector_t block)
+ {
 -- 
 1.7.1
