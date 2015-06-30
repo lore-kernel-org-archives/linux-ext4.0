@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 01/11] fuzz XFS and ext4 filesystems
-Date: Mon, 29 Jun 2015 21:15:27 -0700
-Message-ID: <20150630041527.2476.31622.stgit@birch.djwong.org>
+Subject: [PATCH 02/11] move btrfs reflink tests to generic
+Date: Mon, 29 Jun 2015 21:15:34 -0700
+Message-ID: <20150630041534.2476.92290.stgit@birch.djwong.org>
 References: <20150630041519.2476.23059.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -22,43 +22,439 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-Introduce tests for XFS and ext4 which format a filesystem, populate
-it, then uses blocktrash and e2fuzz to corrupt the metadata.  The FS
-is remounted, modified, and unmounted.  Following that, xfs_repair or
-e2fsck are run until it no longer finds errors to correct, after which
-the FS is mounted yet again and exercised to see if there are any
-errors remaining.
+Move the cp --reflink tests from btrfs/ to generic/ since xfs now
+supports that ioctl.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- tests/ext4/700     |  208 +++++++++++++++++++++++++++++++++++++++++++++++++
- tests/ext4/700.out |    3 +
- tests/ext4/group   |    1 
- tests/xfs/700      |  219 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/xfs/700.out  |    3 +
- tests/xfs/group    |    1 
- 6 files changed, 435 insertions(+)
- create mode 100755 tests/ext4/700
- create mode 100644 tests/ext4/700.out
- create mode 100755 tests/xfs/700
- create mode 100644 tests/xfs/700.out
+ tests/btrfs/026       |   92 -----------------------------------------
+ tests/btrfs/026.out   |   16 -------
+ tests/btrfs/027       |  109 -------------------------------------------------
+ tests/btrfs/027.out   |   25 -----------
+ tests/btrfs/028       |   83 -------------------------------------
+ tests/btrfs/028.out   |    7 ---
+ tests/btrfs/group     |    3 -
+ tests/generic/800     |   92 +++++++++++++++++++++++++++++++++++++++++
+ tests/generic/800.out |   16 +++++++
+ tests/generic/801     |  109 +++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/801.out |   25 +++++++++++
+ tests/generic/802     |   83 +++++++++++++++++++++++++++++++++++++
+ tests/generic/802.out |    7 +++
+ tests/generic/group   |    3 +
+ 14 files changed, 335 insertions(+), 335 deletions(-)
+ delete mode 100755 tests/btrfs/026
+ delete mode 100644 tests/btrfs/026.out
+ delete mode 100755 tests/btrfs/027
+ delete mode 100644 tests/btrfs/027.out
+ delete mode 100755 tests/btrfs/028
+ delete mode 100644 tests/btrfs/028.out
+ create mode 100755 tests/generic/800
+ create mode 100644 tests/generic/800.out
+ create mode 100755 tests/generic/801
+ create mode 100644 tests/generic/801.out
+ create mode 100755 tests/generic/802
+ create mode 100644 tests/generic/802.out
 
 
-diff --git a/tests/ext4/700 b/tests/ext4/700
+diff --git a/tests/btrfs/026 b/tests/btrfs/026
+deleted file mode 100755
+index 7559ca2..0000000
+--- a/tests/btrfs/026
++++ /dev/null
+@@ -1,92 +0,0 @@
+-#! /bin/bash
+-# FS QA Test No. 026
+-#
+-# Tests file clone functionality of btrfs ("reflinks"):
+-#   - Reflink a file
+-#   - Reflink the reflinked file
+-#   - Modify the original file
+-#   - Modify the reflinked file
+-#
+-#-----------------------------------------------------------------------
+-# Copyright (c) 2014, Oracle and/or its affiliates.  All Rights Reserved.
+-#
+-# This program is free software; you can redistribute it and/or
+-# modify it under the terms of the GNU General Public License as
+-# published by the Free Software Foundation.
+-#
+-# This program is distributed in the hope that it would be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-# GNU General Public License for more details.
+-#
+-# You should have received a copy of the GNU General Public License
+-# along with this program; if not, write the Free Software Foundation,
+-# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-#-----------------------------------------------------------------------
+-#
+-
+-seq=`basename $0`
+-seqres=$RESULT_DIR/$seq
+-echo "QA output created by $seq"
+-
+-here=`pwd`
+-tmp=/tmp/$$
+-status=1    # failure is the default!
+-trap "_cleanup; exit \$status" 0 1 2 3 15
+-
+-_cleanup()
+-{
+-    cd /
+-    rm -f $tmp.*
+-}
+-
+-# get standard environment, filters and checks
+-. common/rc
+-. common/filter
+-
+-# real QA test starts here
+-_supported_fs btrfs
+-_supported_os Linux
+-
+-_require_xfs_io_command "fiemap"
+-_require_cp_reflink
+-_require_test
+-
+-TESTDIR1=$TEST_DIR/test-$seq
+-rm -rf $TESTDIR1
+-mkdir $TESTDIR1
+-
+-_checksum_files() {
+-    for F in original copy1 copy2
+-    do
+-        md5sum $TESTDIR1/$F | _filter_test_dir
+-    done
+-}
+-
+-rm -f $seqres.full
+-
+-echo "Create the original file and reflink to copy1, copy2"
+-$XFS_IO_PROG -f -c 'pwrite -S 0x61 0 9000' $TESTDIR1/original \
+-    >> $seqres.full 2>&1
+-cp --reflink $TESTDIR1/original $TESTDIR1/copy1
+-cp --reflink $TESTDIR1/copy1 $TESTDIR1/copy2
+-_verify_reflink $TESTDIR1/original $TESTDIR1/copy1
+-_verify_reflink $TESTDIR1/original $TESTDIR1/copy2
+-echo "Original md5sums:"
+-_checksum_files
+-
+-echo "Overwrite original file with new data"
+-$XFS_IO_PROG -c 'pwrite -S 0x62 0 9000' $TESTDIR1/original \
+-    >> $seqres.full 2>&1
+-echo "md5sums after overwriting original:"
+-_checksum_files
+-
+-echo "Overwrite copy1 with different new data"
+-$XFS_IO_PROG -c 'pwrite -S 0x63 0 9000' $TESTDIR1/copy1 \
+-    >> $seqres.full 2>&1
+-echo "md5sums after overwriting copy1:"
+-_checksum_files
+-
+-# success, all done
+-status=0
+-exit
+diff --git a/tests/btrfs/026.out b/tests/btrfs/026.out
+deleted file mode 100644
+index 3b90ff0..0000000
+--- a/tests/btrfs/026.out
++++ /dev/null
+@@ -1,16 +0,0 @@
+-QA output created by 026
+-Create the original file and reflink to copy1, copy2
+-Original md5sums:
+-42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-026/original
+-42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-026/copy1
+-42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-026/copy2
+-Overwrite original file with new data
+-md5sums after overwriting original:
+-4a847a25439532bf48b68c9e9536ed5b  TEST_DIR/test-026/original
+-42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-026/copy1
+-42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-026/copy2
+-Overwrite copy1 with different new data
+-md5sums after overwriting copy1:
+-4a847a25439532bf48b68c9e9536ed5b  TEST_DIR/test-026/original
+-e271cd47d9f62ebc96cb4e67ae4d16db  TEST_DIR/test-026/copy1
+-42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-026/copy2
+diff --git a/tests/btrfs/027 b/tests/btrfs/027
+deleted file mode 100755
+index d2b812b..0000000
+--- a/tests/btrfs/027
++++ /dev/null
+@@ -1,109 +0,0 @@
+-#! /bin/bash
+-# FS QA Test No. 027
+-#
+-# Tests file clone functionality of btrfs ("reflinks") on directory
+-# trees.
+-#   - Create directory and subdirectory, each having one file
+-#   - Create 2 recursive reflinked copies of the tree
+-#   - Modify the original files
+-#   - Modify one of the copies
+-#
+-#-----------------------------------------------------------------------
+-# Copyright (c) 2014, Oracle and/or its affiliates.  All Rights Reserved.
+-#
+-# This program is free software; you can redistribute it and/or
+-# modify it under the terms of the GNU General Public License as
+-# published by the Free Software Foundation.
+-#
+-# This program is distributed in the hope that it would be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-# GNU General Public License for more details.
+-#
+-# You should have received a copy of the GNU General Public License
+-# along with this program; if not, write the Free Software Foundation,
+-# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-#-----------------------------------------------------------------------
+-
+-seq=`basename $0`
+-seqres=$RESULT_DIR/$seq
+-echo "QA output created by $seq"
+-
+-here=`pwd`
+-tmp=/tmp/$$
+-status=1    # failure is the default!
+-trap "_cleanup; exit \$status" 0 1 2 3 15
+-
+-_cleanup()
+-{
+-    cd /
+-    rm -f $tmp.*
+-}
+-
+-# get standard environment, filters and checks
+-. common/rc
+-. common/filter
+-
+-# real QA test starts here
+-_supported_fs btrfs
+-_supported_os Linux
+-
+-_require_xfs_io_command "fiemap"
+-_require_cp_reflink
+-_require_test
+-
+-TESTDIR1=$TEST_DIR/test-$seq
+-rm -rf $TESTDIR1
+-mkdir $TESTDIR1
+-
+-_checksum_files() {
+-    for F in original/file1 original/subdir/file2 \
+-                 copy1/file1 copy1/subdir/file2 \
+-                 copy2/file1 copy2/subdir/file2
+-        do
+-            md5sum $TESTDIR1/$F | _filter_test_dir
+-        done
+-}
+-
+-rm -f $seqres.full
+-
+-mkdir $TESTDIR1/original
+-mkdir $TESTDIR1/original/subdir
+-
+-echo "Create the original files and reflink dirs"
+-$XFS_IO_PROG -f -c 'pwrite -S 0x61 0 9000' $TESTDIR1/original/file1 \
+-    >> $seqres.full 2>&1
+-$XFS_IO_PROG -f -c 'pwrite -S 0x62 0 11000' \
+-    $TESTDIR1/original/subdir/file2 >> $seqres.full 2>&1
+-cp --recursive --reflink $TESTDIR1/original $TESTDIR1/copy1
+-cp --recursive --reflink $TESTDIR1/copy1 $TESTDIR1/copy2
+-
+-_verify_reflink $TESTDIR1/original/file1 $TESTDIR1/copy1/file1
+-_verify_reflink $TESTDIR1/original/subdir/file2 \
+-    $TESTDIR1/copy1/subdir/file2
+-_verify_reflink $TESTDIR1/original/file1 $TESTDIR1/copy2/file1
+-_verify_reflink $TESTDIR1/original/subdir/file2 \
+-    $TESTDIR1/copy2/subdir/file2
+-
+-echo "Original md5sums:"
+-_checksum_files
+-
+-echo "Overwrite original/file1 and original/subdir/file2 with new data"
+-$XFS_IO_PROG -c 'pwrite -S 0x63 0 13000' $TESTDIR1/original/file1 \
+-    >> $seqres.full 2>&1
+-$XFS_IO_PROG -c 'pwrite -S 0x64 5000 1000' \
+-    $TESTDIR1/original/subdir/file2 >> $seqres.full 2>&1
+-echo "md5sums now:"
+-_checksum_files
+-
+-echo "Overwrite copy1/file1 and copy1/subdir/file2 with new data"
+-$XFS_IO_PROG -c 'pwrite -S 0x65 0 9000' $TESTDIR1/copy1/file1 \
+-    >> $seqres.full 2>&1
+-$XFS_IO_PROG -c 'pwrite -S 0x66 5000 25000' \
+-    $TESTDIR1/copy1/subdir/file2 >> $seqres.full 2>&1
+-echo "md5sums now:"
+-_checksum_files
+-
+-# success, all done
+-status=0
+-exit
+diff --git a/tests/btrfs/027.out b/tests/btrfs/027.out
+deleted file mode 100644
+index 7b7e3bb..0000000
+--- a/tests/btrfs/027.out
++++ /dev/null
+@@ -1,25 +0,0 @@
+-QA output created by 027
+-Create the original files and reflink dirs
+-Original md5sums:
+-42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-027/original/file1
+-ca390545f0aedb54b808d6128c56a7dd  TEST_DIR/test-027/original/subdir/file2
+-42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-027/copy1/file1
+-ca390545f0aedb54b808d6128c56a7dd  TEST_DIR/test-027/copy1/subdir/file2
+-42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-027/copy2/file1
+-ca390545f0aedb54b808d6128c56a7dd  TEST_DIR/test-027/copy2/subdir/file2
+-Overwrite original/file1 and original/subdir/file2 with new data
+-md5sums now:
+-260f6785c0537fd12582dcae28a3c1a9  TEST_DIR/test-027/original/file1
+-b8d91fb600f6f2191f2ba66665374860  TEST_DIR/test-027/original/subdir/file2
+-42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-027/copy1/file1
+-ca390545f0aedb54b808d6128c56a7dd  TEST_DIR/test-027/copy1/subdir/file2
+-42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-027/copy2/file1
+-ca390545f0aedb54b808d6128c56a7dd  TEST_DIR/test-027/copy2/subdir/file2
+-Overwrite copy1/file1 and copy1/subdir/file2 with new data
+-md5sums now:
+-260f6785c0537fd12582dcae28a3c1a9  TEST_DIR/test-027/original/file1
+-b8d91fb600f6f2191f2ba66665374860  TEST_DIR/test-027/original/subdir/file2
+-b20229a003e3985c4b0e6806abcd6642  TEST_DIR/test-027/copy1/file1
+-b815b24069db14e0a3a07169fd563e93  TEST_DIR/test-027/copy1/subdir/file2
+-42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-027/copy2/file1
+-ca390545f0aedb54b808d6128c56a7dd  TEST_DIR/test-027/copy2/subdir/file2
+diff --git a/tests/btrfs/028 b/tests/btrfs/028
+deleted file mode 100755
+index 7193337..0000000
+--- a/tests/btrfs/028
++++ /dev/null
+@@ -1,83 +0,0 @@
+-#! /bin/bash
+-# FS QA Test No. 028
+-#
+-# Moving and deleting cloned ("reflinked") files on btrfs:
+-#   - Create a file and a reflink
+-#   - Move both to a directory
+-#   - Delete the original (moved) file, check that the copy still exists.
+-#
+-#-----------------------------------------------------------------------
+-# Copyright (c) 2014, Oracle and/or its affiliates.  All Rights Reserved.
+-#
+-# This program is free software; you can redistribute it and/or
+-# modify it under the terms of the GNU General Public License as
+-# published by the Free Software Foundation.
+-#
+-# This program is distributed in the hope that it would be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-# GNU General Public License for more details.
+-#
+-# You should have received a copy of the GNU General Public License
+-# along with this program; if not, write the Free Software Foundation,
+-# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-#-----------------------------------------------------------------------
+-
+-seq=`basename $0`
+-seqres=$RESULT_DIR/$seq
+-echo "QA output created by $seq"
+-
+-here=`pwd`
+-tmp=/tmp/$$
+-status=1    # failure is the default!
+-trap "_cleanup; exit \$status" 0 1 2 3 15
+-
+-_cleanup()
+-{
+-    cd /
+-    rm -f $tmp.*
+-}
+-
+-# get standard environment, filters and checks
+-. ./common/rc
+-. ./common/filter
+-
+-# real QA test starts here
+-_supported_fs btrfs
+-_supported_os Linux
+-
+-_require_xfs_io_command "fiemap"
+-_require_cp_reflink
+-_require_test
+-
+-rm -f $seqres.full
+-
+-TESTDIR1=$TEST_DIR/test-$seq
+-rm -rf $TESTDIR1
+-mkdir $TESTDIR1
+-
+-echo "Create the original files and reflink dirs"
+-$XFS_IO_PROG -f -c 'pwrite -S 0x61 0 9000' $TESTDIR1/original \
+-    >> $seqres.full
+-cp --reflink $TESTDIR1/original $TESTDIR1/copy
+-
+-_verify_reflink $TESTDIR1/original $TESTDIR1/copy
+-
+-echo "Move orig & reflink copy to subdir and md5sum:"
+-mkdir $TESTDIR1/subdir
+-mv $TESTDIR1/original $TESTDIR1/subdir/original_moved
+-mv $TESTDIR1/copy $TESTDIR1/subdir/copy_moved
+-_verify_reflink $TESTDIR1/subdir/original_moved \
+-    $TESTDIR1/subdir/copy_moved
+-
+-md5sum $TESTDIR1/subdir/original_moved | _filter_test_dir
+-md5sum $TESTDIR1/subdir/copy_moved | _filter_test_dir
+-
+-echo "remove orig from subdir and md5sum reflink copy:"
+-rm $TESTDIR1/subdir/original_moved
+-md5sum $TESTDIR1/subdir/copy_moved | _filter_test_dir
+-rm -rf $TESTDIR1/subdir
+-
+-# success, all done
+-status=0
+-exit
+diff --git a/tests/btrfs/028.out b/tests/btrfs/028.out
+deleted file mode 100644
+index f683fce..0000000
+--- a/tests/btrfs/028.out
++++ /dev/null
+@@ -1,7 +0,0 @@
+-QA output created by 028
+-Create the original files and reflink dirs
+-Move orig & reflink copy to subdir and md5sum:
+-42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-028/subdir/original_moved
+-42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-028/subdir/copy_moved
+-remove orig from subdir and md5sum reflink copy:
+-42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-028/subdir/copy_moved
+diff --git a/tests/btrfs/group b/tests/btrfs/group
+index ffe18bf..f69aa6e 100644
+--- a/tests/btrfs/group
++++ b/tests/btrfs/group
+@@ -28,9 +28,6 @@
+ 023 auto
+ 024 auto quick compress
+ 025 auto quick send clone
+-026 auto quick clone
+-027 auto quick clone
+-028 auto quick clone
+ 029 auto quick clone
+ 030 auto quick send
+ 031 auto quick subvol clone
+diff --git a/tests/generic/800 b/tests/generic/800
 new file mode 100755
-index 0000000..21de274
+index 0000000..a71f11a
 --- /dev/null
-+++ b/tests/ext4/700
-@@ -0,0 +1,208 @@
++++ b/tests/generic/800
+@@ -0,0 +1,92 @@
 +#! /bin/bash
-+# FS QA Test No. 700
++# FS QA Test No. 800
 +#
-+# Create and populate an ext4 filesystem, fuzz the metadata, then see how
-+# the kernel reacts, how e2fsck fares in fixing the mess, and then
-+# try more kernel accesses to see if it really fixed things.
++# Tests file clone functionality of btrfs ("reflinks"):
++#   - Reflink a file
++#   - Reflink the reflinked file
++#   - Modify the original file
++#   - Modify the reflinked file
 +#
 +#-----------------------------------------------------------------------
-+# Copyright (c) 2015 Oracle, Inc.  All Rights Reserved.
++# Copyright (c) 2014, Oracle and/or its affiliates.  All Rights Reserved.
 +#
 +# This program is free software; you can redistribute it and/or
 +# modify it under the terms of the GNU General Public License as
@@ -81,216 +477,105 @@ index 0000000..21de274
 +
 +here=`pwd`
 +tmp=/tmp/$$
-+status=1	# failure is the default!
++status=1    # failure is the default!
 +trap "_cleanup; exit \$status" 0 1 2 3 15
 +
 +_cleanup()
 +{
 +    cd /
-+    #rm -f $tmp.*
++    rm -f $tmp.*
 +}
 +
 +# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+. ./common/attr
-+
-+if [ ! -x "$(which e2fuzz)" ]; then
-+	_notrun "Couldn't find e2fuzz"
-+fi
++. common/rc
++. common/filter
 +
 +# real QA test starts here
-+_supported_fs ext4
++_supported_fs btrfs
 +_supported_os Linux
 +
-+_require_scratch
-+_require_attrs
++_require_xfs_io_command "fiemap"
++_require_cp_reflink
++_require_test
 +
-+rm -f $seqres.full
-+echo "See interesting results in $seqres.full" | sed -e "s,$RESULT_DIR,RESULT_DIR,g"
-+SRCDIR=`pwd`
-+test -z "${FUZZ_ARGS}" && FUZZ_ARGS="-b 32 -v"
-+test -z "${FSCK_PASSES}" && FSCK_PASSES=10
-+BLK_SZ=4096
++TESTDIR1=$TEST_DIR/test-$seq
++rm -rf $TESTDIR1
++mkdir $TESTDIR1
 +
-+echo "fuzzing ext4 with FUZZ_ARGS=$FUZZ_ARGS and FSCK_PASSES=$FSCK_PASSES" > $seqres.full
-+
-+echo "+ create scratch fs" >> $seqres.full
-+_scratch_mkfs_ext4 >> $seqres.full 2>&1
-+
-+echo "+ populate fs image" >> $seqres.full
-+_scratch_mount >> $seqres.full 2>&1
-+
-+echo "+ check fs creation" >> $seqres.full
-+dumpe2fs -h "${SCRATCH_DEV}" >> $seqres.full 2>&1
-+
-+SRC_SZ="$(du -ks "${SRCDIR}" | cut -f 1)"
-+FS_SZ="$(( $(stat -f "${SCRATCH_MNT}" -c '%a * %S') / 1024 ))"
-+NR="$(( (FS_SZ * 6 / 10) / SRC_SZ ))"
-+if [ "${NR}" -lt 1 ]; then
-+	NR=1
-+fi
-+
-+echo "+ make some copies" >> $seqres.full
-+seq 1 "${NR}" | while read nr; do
-+	cp -pRdu "${SRCDIR}" "${SCRATCH_MNT}/test.${nr}" >> $seqres.full 2>&1
-+done
-+umount "${SCRATCH_MNT}" >> $seqres.full 2>&1
-+
-+echo "+ check fs" >> $seqres.full
-+_check_scratch_fs >> $seqres.full 2>&1
-+
-+echo "++ corrupt image" >> $seqres.full
-+e2fuzz ${FUZZ_ARGS} ${SCRATCH_DEV} >> $seqres.full 2>&1
-+
-+echo "++ mount image" >> $seqres.full
-+_scratch_mount >> $seqres.full 2>&1
-+
-+echo "+++ ls -laR" >> $seqres.full
-+ls -laR "${SCRATCH_MNT}/test.1/" >/dev/null 2>&1
-+
-+echo "+++ cat files" >> $seqres.full
-+(find "${SCRATCH_MNT}/test.1/" -type f -size -1048576k -print0 | xargs -0 cat) >/dev/null 2>&1
-+
-+echo "+++ expand" >> $seqres.full
-+find "${SCRATCH_MNT}/" -type f 2> /dev/null | head -n 50000 | while read f; do
-+	attr -l "$f" > /dev/null 2>&1
-+	if [ -f "$f" -a -w "$f" ]; then
-+		dd if=/dev/zero bs="${BLK_SZ}" count=1 >> "$f" 2>/dev/null
-+	fi
-+	mv "$f" "$f.longer" > /dev/null 2>/dev/null
-+done
-+sync
-+
-+echo "+++ create files" >> $seqres.full
-+cp -pRdu "${SRCDIR}" "${SCRATCH_MNT}/test.moo" > /dev/null 2>&1
-+sync
-+
-+echo "+++ remove files" >> $seqres.full
-+rm -rf "${SCRATCH_MNT}/test.moo" > /dev/null 2>&1
-+rm -rf "${SCRATCH_MNT}/test.1" > /dev/null 2>&1
-+umount "${SCRATCH_MNT}"
-+
-+_fsck_pass() {
-+	fsck_pass="$1"
-+
-+	FSCK_LOG="${tmp}-fuzz-${fsck_pass}.log"
-+	echo "++ fsck pass ${fsck_pass}" > "${FSCK_LOG}"
-+	e2fsck -f -y "${SCRATCH_DEV}"
-+	res=$?
-+	if [ "${res}" -eq 0 ]; then
-+		echo "++ allegedly fixed, reverify" >> "${FSCK_LOG}"
-+		_check_scratch_fs -n >> "${FSCK_LOG}" 2>&1
-+		res=$?
-+	fi
-+	echo "++ fsck returns ${res}" >> "${FSCK_LOG}"
-+	if [ "${res}" -eq 0 ]; then
-+		echo "++ fsck thinks we are done" >> "${FSCK_LOG}"
-+		cat "${FSCK_LOG}"
-+		return 0
-+	elif [ "${fsck_pass}" -eq "${FSCK_PASSES}" ]; then
-+		echo "++ fsck did not fix in ${FSCK_PASSES} passes." >> "${FSCK_LOG}"
-+		cat "${FSCK_LOG}"
-+		return 0
-+	fi
-+	cat "${FSCK_LOG}"
-+	if [ "${fsck_pass}" -gt 1 ]; then
-+		cmp -s "${tmp}-fuzz-$((fsck_pass - 1)).log" "${FSCK_LOG}"
-+		if [ $? -eq 0 ]; then
-+			echo "++ fsck makes no progress"
-+			return 2
-+		fi
-+	fi
-+	return 1
++_checksum_files() {
++    for F in original copy1 copy2
++    do
++        md5sum $TESTDIR1/$F | _filter_test_dir
++    done
 +}
 +
-+# repair in a loop...
-+for p in $(seq 1 "${FSCK_PASSES}"); do
-+	_fsck_pass "$p" >> $seqres.full 2>&1 && break
-+done
-+echo "+ fsck loop returns ${fsck_loop_ret}" >> $seqres.full
++rm -f $seqres.full
 +
-+echo "++ check fs for round 2" >> $seqres.full
-+_check_scratch_fs >> $seqres.full 2>&1
++echo "Create the original file and reflink to copy1, copy2"
++$XFS_IO_PROG -f -c 'pwrite -S 0x61 0 9000' $TESTDIR1/original \
++    >> $seqres.full 2>&1
++cp --reflink $TESTDIR1/original $TESTDIR1/copy1
++cp --reflink $TESTDIR1/copy1 $TESTDIR1/copy2
++_verify_reflink $TESTDIR1/original $TESTDIR1/copy1
++_verify_reflink $TESTDIR1/original $TESTDIR1/copy2
++echo "Original md5sums:"
++_checksum_files
 +
-+ROUND2_LOG="${tmp}-round2-${fsck_pass}.log"
-+echo "++ mount image (2)" >> $ROUND2_LOG
-+_scratch_mount >> $ROUND2_LOG 2>&1
++echo "Overwrite original file with new data"
++$XFS_IO_PROG -c 'pwrite -S 0x62 0 9000' $TESTDIR1/original \
++    >> $seqres.full 2>&1
++echo "md5sums after overwriting original:"
++_checksum_files
 +
-+echo "++ chattr -R -i" >> $ROUND2_LOG
-+chattr -R -f -i "${SCRATCH_MNT}/" > /dev/null 2>> $ROUND2_LOG
++echo "Overwrite copy1 with different new data"
++$XFS_IO_PROG -c 'pwrite -S 0x63 0 9000' $TESTDIR1/copy1 \
++    >> $seqres.full 2>&1
++echo "md5sums after overwriting copy1:"
++_checksum_files
 +
-+echo "++ ls -laR (2)" >> $ROUND2_LOG
-+ls -laR "${SCRATCH_MNT}/" > /dev/null 2>> $ROUND2_LOG
-+
-+echo "++ cat files (2)" >> $ROUND2_LOG
-+(find "${SCRATCH_MNT}/" -type f -size -1048576k -print0 | xargs -0 cat > /dev/null) 2>> $ROUND2_LOG
-+
-+echo "++ expand (2)" >> $ROUND2_LOG
-+(find "${SCRATCH_MNT}/" -type f 2> /dev/null | head -n 50000 | while read f; do
-+	attr -l "$f" > /dev/null
-+	if [ -f "$f" -a -w "$f" ]; then
-+		dd if=/dev/zero bs="${BLK_SZ}" count=1 >> "$f" 2> /dev/null
-+	fi
-+	mv "$f" "$f.longer" > /dev/null
-+done) 2>> $ROUND2_LOG
-+sync
-+
-+echo "++ create files (2)" >> $ROUND2_LOG
-+cp -pRdu "${SRCDIR}" "${SCRATCH_MNT}/test.oom" >> $ROUND2_LOG 2>&1
-+sync
-+
-+echo "++ remove files (2)" >> $ROUND2_LOG
-+rm -rf "${SCRATCH_MNT}/test.oom" >> $ROUND2_LOG 2>&1
-+
-+umount "${SCRATCH_MNT}" >> $ROUND2_LOG 2>&1
-+
-+cat "$ROUND2_LOG" >> $seqres.full
-+
-+echo "++ check fs (2)" >> $seqres.full
-+_check_scratch_fs >> $seqres.full 2>&1
-+
-+egrep -q '(did not fix|makes no progress)' $seqres.full && echo "e2fsck failed" | tee -a $seqres.full
-+if [ "$(wc -l < "$ROUND2_LOG")" -ne 7 ]; then
-+	echo "e2fsck did not fix everything" | tee -a $seqres.full
-+fi
-+echo "finished fuzzing" | tee -a "$seqres.full"
-+
++# success, all done
 +status=0
 +exit
-diff --git a/tests/ext4/700.out b/tests/ext4/700.out
+diff --git a/tests/generic/800.out b/tests/generic/800.out
 new file mode 100644
-index 0000000..c0a16f6
+index 0000000..6978d71
 --- /dev/null
-+++ b/tests/ext4/700.out
-@@ -0,0 +1,3 @@
-+QA output created by 700
-+See interesting results in RESULT_DIR/700.full
-+finished fuzzing
-diff --git a/tests/ext4/group b/tests/ext4/group
-index e7f1f2a..4cbc753 100644
---- a/tests/ext4/group
-+++ b/tests/ext4/group
-@@ -16,3 +16,4 @@
- 306 auto rw resize quick
- 307 auto ioctl rw
- 308 auto ioctl rw prealloc quick
-+700 fuzzers
-diff --git a/tests/xfs/700 b/tests/xfs/700
++++ b/tests/generic/800.out
+@@ -0,0 +1,16 @@
++QA output created by 800
++Create the original file and reflink to copy1, copy2
++Original md5sums:
++42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-800/original
++42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-800/copy1
++42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-800/copy2
++Overwrite original file with new data
++md5sums after overwriting original:
++4a847a25439532bf48b68c9e9536ed5b  TEST_DIR/test-800/original
++42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-800/copy1
++42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-800/copy2
++Overwrite copy1 with different new data
++md5sums after overwriting copy1:
++4a847a25439532bf48b68c9e9536ed5b  TEST_DIR/test-800/original
++e271cd47d9f62ebc96cb4e67ae4d16db  TEST_DIR/test-800/copy1
++42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-800/copy2
+diff --git a/tests/generic/801 b/tests/generic/801
 new file mode 100755
-index 0000000..05fba25
+index 0000000..b21c44b
 --- /dev/null
-+++ b/tests/xfs/700
-@@ -0,0 +1,219 @@
++++ b/tests/generic/801
+@@ -0,0 +1,109 @@
 +#! /bin/bash
-+# FS QA Test No. 700
++# FS QA Test No. 801
 +#
-+# Create and populate an XFS filesystem, fuzz the metadata, then see how
-+# the kernel reacts, how xfs_repair fares in fixing the mess, and then
-+# try more kernel accesses to see if it really fixed things.
++# Tests file clone functionality of btrfs ("reflinks") on directory
++# trees.
++#   - Create directory and subdirectory, each having one file
++#   - Create 2 recursive reflinked copies of the tree
++#   - Modify the original files
++#   - Modify one of the copies
 +#
 +#-----------------------------------------------------------------------
-+# Copyright (c) 2015 Oracle, Inc.  All Rights Reserved.
++# Copyright (c) 2014, Oracle and/or its affiliates.  All Rights Reserved.
 +#
 +# This program is free software; you can redistribute it and/or
 +# modify it under the terms of the GNU General Public License as
@@ -305,7 +590,6 @@ index 0000000..05fba25
 +# along with this program; if not, write the Free Software Foundation,
 +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 +#-----------------------------------------------------------------------
-+#
 +
 +seq=`basename $0`
 +seqres=$RESULT_DIR/$seq
@@ -313,212 +597,226 @@ index 0000000..05fba25
 +
 +here=`pwd`
 +tmp=/tmp/$$
-+status=1	# failure is the default!
++status=1    # failure is the default!
 +trap "_cleanup; exit \$status" 0 1 2 3 15
 +
 +_cleanup()
 +{
 +    cd /
-+    #rm -f $tmp.*
++    rm -f $tmp.*
++}
++
++# get standard environment, filters and checks
++. common/rc
++. common/filter
++
++# real QA test starts here
++_supported_fs btrfs
++_supported_os Linux
++
++_require_xfs_io_command "fiemap"
++_require_cp_reflink
++_require_test
++
++TESTDIR1=$TEST_DIR/test-$seq
++rm -rf $TESTDIR1
++mkdir $TESTDIR1
++
++_checksum_files() {
++    for F in original/file1 original/subdir/file2 \
++                 copy1/file1 copy1/subdir/file2 \
++                 copy2/file1 copy2/subdir/file2
++        do
++            md5sum $TESTDIR1/$F | _filter_test_dir
++        done
++}
++
++rm -f $seqres.full
++
++mkdir $TESTDIR1/original
++mkdir $TESTDIR1/original/subdir
++
++echo "Create the original files and reflink dirs"
++$XFS_IO_PROG -f -c 'pwrite -S 0x61 0 9000' $TESTDIR1/original/file1 \
++    >> $seqres.full 2>&1
++$XFS_IO_PROG -f -c 'pwrite -S 0x62 0 11000' \
++    $TESTDIR1/original/subdir/file2 >> $seqres.full 2>&1
++cp --recursive --reflink $TESTDIR1/original $TESTDIR1/copy1
++cp --recursive --reflink $TESTDIR1/copy1 $TESTDIR1/copy2
++
++_verify_reflink $TESTDIR1/original/file1 $TESTDIR1/copy1/file1
++_verify_reflink $TESTDIR1/original/subdir/file2 \
++    $TESTDIR1/copy1/subdir/file2
++_verify_reflink $TESTDIR1/original/file1 $TESTDIR1/copy2/file1
++_verify_reflink $TESTDIR1/original/subdir/file2 \
++    $TESTDIR1/copy2/subdir/file2
++
++echo "Original md5sums:"
++_checksum_files
++
++echo "Overwrite original/file1 and original/subdir/file2 with new data"
++$XFS_IO_PROG -c 'pwrite -S 0x63 0 13000' $TESTDIR1/original/file1 \
++    >> $seqres.full 2>&1
++$XFS_IO_PROG -c 'pwrite -S 0x64 5000 1000' \
++    $TESTDIR1/original/subdir/file2 >> $seqres.full 2>&1
++echo "md5sums now:"
++_checksum_files
++
++echo "Overwrite copy1/file1 and copy1/subdir/file2 with new data"
++$XFS_IO_PROG -c 'pwrite -S 0x65 0 9000' $TESTDIR1/copy1/file1 \
++    >> $seqres.full 2>&1
++$XFS_IO_PROG -c 'pwrite -S 0x66 5000 25000' \
++    $TESTDIR1/copy1/subdir/file2 >> $seqres.full 2>&1
++echo "md5sums now:"
++_checksum_files
++
++# success, all done
++status=0
++exit
+diff --git a/tests/generic/801.out b/tests/generic/801.out
+new file mode 100644
+index 0000000..b8225cc
+--- /dev/null
++++ b/tests/generic/801.out
+@@ -0,0 +1,25 @@
++QA output created by 801
++Create the original files and reflink dirs
++Original md5sums:
++42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-801/original/file1
++ca390545f0aedb54b808d6128c56a7dd  TEST_DIR/test-801/original/subdir/file2
++42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-801/copy1/file1
++ca390545f0aedb54b808d6128c56a7dd  TEST_DIR/test-801/copy1/subdir/file2
++42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-801/copy2/file1
++ca390545f0aedb54b808d6128c56a7dd  TEST_DIR/test-801/copy2/subdir/file2
++Overwrite original/file1 and original/subdir/file2 with new data
++md5sums now:
++260f6785c0537fd12582dcae28a3c1a9  TEST_DIR/test-801/original/file1
++b8d91fb600f6f2191f2ba66665374860  TEST_DIR/test-801/original/subdir/file2
++42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-801/copy1/file1
++ca390545f0aedb54b808d6128c56a7dd  TEST_DIR/test-801/copy1/subdir/file2
++42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-801/copy2/file1
++ca390545f0aedb54b808d6128c56a7dd  TEST_DIR/test-801/copy2/subdir/file2
++Overwrite copy1/file1 and copy1/subdir/file2 with new data
++md5sums now:
++260f6785c0537fd12582dcae28a3c1a9  TEST_DIR/test-801/original/file1
++b8d91fb600f6f2191f2ba66665374860  TEST_DIR/test-801/original/subdir/file2
++b20229a003e3985c4b0e6806abcd6642  TEST_DIR/test-801/copy1/file1
++b815b24069db14e0a3a07169fd563e93  TEST_DIR/test-801/copy1/subdir/file2
++42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-801/copy2/file1
++ca390545f0aedb54b808d6128c56a7dd  TEST_DIR/test-801/copy2/subdir/file2
+diff --git a/tests/generic/802 b/tests/generic/802
+new file mode 100755
+index 0000000..afd8513
+--- /dev/null
++++ b/tests/generic/802
+@@ -0,0 +1,83 @@
++#! /bin/bash
++# FS QA Test No. 802
++#
++# Moving and deleting cloned ("reflinked") files on btrfs:
++#   - Create a file and a reflink
++#   - Move both to a directory
++#   - Delete the original (moved) file, check that the copy still exists.
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2014, Oracle and/or its affiliates.  All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#-----------------------------------------------------------------------
++
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1    # failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
++{
++    cd /
++    rm -f $tmp.*
 +}
 +
 +# get standard environment, filters and checks
 +. ./common/rc
 +. ./common/filter
-+. ./common/attr
 +
 +# real QA test starts here
-+_supported_fs xfs
++_supported_fs btrfs
 +_supported_os Linux
 +
-+_require_scratch
-+#_require_xfs_crc	# checksum not required, but you probably want it anyway...
-+#_require_xfs_mkfs_crc
-+_require_attrs
++_require_xfs_io_command "fiemap"
++_require_cp_reflink
++_require_test
 +
 +rm -f $seqres.full
-+echo "See interesting results in $seqres.full" | sed -e "s,$RESULT_DIR,RESULT_DIR,g"
-+SRCDIR=`pwd`
-+test -z "${FUZZ_ARGS}" && FUZZ_ARGS="-3 -n 32"
-+test -z "${FSCK_PASSES}" && FSCK_PASSES=10
-+BLK_SZ=4096
 +
-+echo "fuzzing xfs with FUZZ_ARGS=$FUZZ_ARGS and FSCK_PASSES=$FSCK_PASSES" > $seqres.full
++TESTDIR1=$TEST_DIR/test-$seq
++rm -rf $TESTDIR1
++mkdir $TESTDIR1
 +
-+echo "+ create scratch fs" >> $seqres.full
-+_scratch_mkfs_xfs >> $seqres.full 2>&1
++echo "Create the original files and reflink dirs"
++$XFS_IO_PROG -f -c 'pwrite -S 0x61 0 9000' $TESTDIR1/original \
++    >> $seqres.full
++cp --reflink $TESTDIR1/original $TESTDIR1/copy
 +
-+echo "+ populate fs image" >> $seqres.full
-+_scratch_mount >> $seqres.full 2>&1
++_verify_reflink $TESTDIR1/original $TESTDIR1/copy
 +
-+echo "+ check fs creation" >> $seqres.full
-+xfs_info "${SCRATCH_MNT}" >> $seqres.full 2>&1
++echo "Move orig & reflink copy to subdir and md5sum:"
++mkdir $TESTDIR1/subdir
++mv $TESTDIR1/original $TESTDIR1/subdir/original_moved
++mv $TESTDIR1/copy $TESTDIR1/subdir/copy_moved
++_verify_reflink $TESTDIR1/subdir/original_moved \
++    $TESTDIR1/subdir/copy_moved
 +
-+SRC_SZ="$(du -ks "${SRCDIR}" | cut -f 1)"
-+FS_SZ="$(( $(stat -f "${SCRATCH_MNT}" -c '%a * %S') / 1024 ))"
-+NR="$(( (FS_SZ * 6 / 10) / SRC_SZ ))"
-+if [ "${NR}" -lt 1 ]; then
-+	NR=1
-+fi
++md5sum $TESTDIR1/subdir/original_moved | _filter_test_dir
++md5sum $TESTDIR1/subdir/copy_moved | _filter_test_dir
 +
-+echo "+ make some copies" >> $seqres.full
-+seq 1 "${NR}" | while read nr; do
-+	cp -pRdu "${SRCDIR}" "${SCRATCH_MNT}/test.${nr}" >> $seqres.full 2>&1
-+done
-+umount "${SCRATCH_MNT}" >> $seqres.full 2>&1
++echo "remove orig from subdir and md5sum reflink copy:"
++rm $TESTDIR1/subdir/original_moved
++md5sum $TESTDIR1/subdir/copy_moved | _filter_test_dir
++rm -rf $TESTDIR1/subdir
 +
-+echo "+ check fs" >> $seqres.full
-+_scratch_xfs_repair >> $seqres.full 2>&1
-+
-+echo "++ corrupt image" >> $seqres.full
-+xfs_db -x -c blockget -c "blocktrash ${FUZZ_ARGS}" "${SCRATCH_DEV}" >> $seqres.full 2>&1
-+
-+echo "++ mount image" >> $seqres.full
-+_scratch_mount >> $seqres.full 2>&1
-+
-+echo "+++ ls -laR" >> $seqres.full
-+ls -laR "${SCRATCH_MNT}/test.1/" >/dev/null 2>&1
-+
-+echo "+++ cat files" >> $seqres.full
-+(find "${SCRATCH_MNT}/test.1/" -type f -size -1048576k -print0 | xargs -0 cat) >/dev/null 2>&1
-+
-+echo "+++ expand" >> $seqres.full
-+find "${SCRATCH_MNT}/" -type f 2> /dev/null | head -n 50000 | while read f; do
-+	attr -l "$f" > /dev/null 2>&1
-+	if [ -f "$f" -a -w "$f" ]; then
-+		dd if=/dev/zero bs="${BLK_SZ}" count=1 >> "$f" 2>/dev/null
-+	fi
-+	mv "$f" "$f.longer" > /dev/null 2>/dev/null
-+done
-+sync
-+
-+echo "+++ create files" >> $seqres.full
-+cp -pRdu "${SRCDIR}" "${SCRATCH_MNT}/test.moo" > /dev/null 2>&1
-+sync
-+
-+echo "+++ remove files" >> $seqres.full
-+rm -rf "${SCRATCH_MNT}/test.moo" > /dev/null 2>&1
-+rm -rf "${SCRATCH_MNT}/test.1" > /dev/null 2>&1
-+umount "${SCRATCH_MNT}"
-+
-+_fsck_pass() {
-+	fsck_pass="$1"
-+
-+	FSCK_LOG="${tmp}-fuzz-${fsck_pass}.log"
-+	echo "++ fsck pass ${fsck_pass}" > "${FSCK_LOG}"
-+	_scratch_xfs_repair >> "${FSCK_LOG}" 2>&1
-+	res=$?
-+	if [ "${res}" -eq 0 ]; then
-+		echo "++ allegedly fixed, reverify" >> "${FSCK_LOG}"
-+		_scratch_xfs_repair -n >> "${FSCK_LOG}" 2>&1
-+		res=$?
-+	fi
-+	echo "++ fsck returns ${res}" >> "${FSCK_LOG}"
-+	if [ "${res}" -eq 0 ]; then
-+		echo "++ fsck thinks we are done" >> "${FSCK_LOG}"
-+		cat "${FSCK_LOG}"
-+		return 0
-+	elif [ "${res}" -eq 2 ]; then
-+		# replay log?
-+		echo "+++ replaying log" >> "${FSCK_LOG}"
-+		_scratch_mount >> "${FSCK_LOG}" 2>&1
-+		res=$?
-+		echo "+++ mount returns ${res}" >> "${FSCK_LOG}"
-+		if [ "${res}" -gt 0 ]; then
-+			echo "+++ zeroing log" >> "${FSCK_LOG}"
-+			_scratch_xfs_repair -L >> "${FSCK_LOG}" 2>&1
-+			echo "+++ returns $?" >> "${FSCK_LOG}"
-+		else
-+			umount "${SCRATCH_MNT}" >> "${FSCK_LOG}" 2>&1
-+		fi
-+	elif [ "${fsck_pass}" -eq "${FSCK_PASSES}" ]; then
-+		echo "++ fsck did not fix in ${FSCK_PASSES} passes." >> "${FSCK_LOG}"
-+		cat "${FSCK_LOG}"
-+		return 0
-+	fi
-+	cat "${FSCK_LOG}"
-+	if [ "${fsck_pass}" -gt 1 ]; then
-+		cmp -s "${tmp}-fuzz-$((fsck_pass - 1)).log" "${FSCK_LOG}"
-+		if [ $? -eq 0 ]; then
-+			echo "++ fsck makes no progress"
-+			return 2
-+		fi
-+	fi
-+	return 1
-+}
-+
-+# repair in a loop...
-+for p in $(seq 1 "${FSCK_PASSES}"); do
-+	_fsck_pass "$p" >> $seqres.full 2>&1 && break
-+done
-+echo "+ fsck loop returns ${fsck_loop_ret}" >> $seqres.full
-+
-+echo "++ check fs for round 2" >> $seqres.full
-+_scratch_xfs_repair >> $seqres.full 2>&1
-+
-+ROUND2_LOG="${tmp}-round2-${fsck_pass}.log"
-+echo "++ mount image (2)" >> $ROUND2_LOG
-+_scratch_mount >> $ROUND2_LOG 2>&1
-+
-+echo "++ chattr -R -i" >> $ROUND2_LOG
-+chattr -R -f -i "${SCRATCH_MNT}/" > /dev/null 2>> $ROUND2_LOG
-+
-+echo "++ ls -laR (2)" >> $ROUND2_LOG
-+ls -laR "${SCRATCH_MNT}/" > /dev/null 2>> $ROUND2_LOG
-+
-+echo "++ cat files (2)" >> $ROUND2_LOG
-+(find "${SCRATCH_MNT}/" -type f -size -1048576k -print0 | xargs -0 cat > /dev/null) 2>> $ROUND2_LOG
-+
-+echo "++ expand (2)" >> $ROUND2_LOG
-+(find "${SCRATCH_MNT}/" -type f 2> /dev/null | head -n 50000 | while read f; do
-+	attr -l "$f" > /dev/null
-+	if [ -f "$f" -a -w "$f" ]; then
-+		dd if=/dev/zero bs="${BLK_SZ}" count=1 >> "$f" 2> /dev/null
-+	fi
-+	mv "$f" "$f.longer" > /dev/null
-+done) 2>> $ROUND2_LOG
-+sync
-+
-+echo "++ create files (2)" >> $ROUND2_LOG
-+cp -pRdu "${SRCDIR}" "${SCRATCH_MNT}/test.oom" >> $ROUND2_LOG 2>&1
-+sync
-+
-+echo "++ remove files (2)" >> $ROUND2_LOG
-+rm -rf "${SCRATCH_MNT}/test.oom" >> $ROUND2_LOG 2>&1
-+
-+umount "${SCRATCH_MNT}" >> $ROUND2_LOG 2>&1
-+
-+cat "$ROUND2_LOG" >> $seqres.full
-+
-+echo "++ check fs (2)" >> $seqres.full
-+_scratch_xfs_repair >> $seqres.full 2>&1
-+
-+egrep -q '(did not fix|makes no progress)' $seqres.full && echo "xfs_repair failed" | tee -a $seqres.full
-+if [ "$(wc -l < "$ROUND2_LOG")" -ne 7 ]; then
-+	echo "xfs_repair did not fix everything" | tee -a $seqres.full
-+fi
-+echo "finished fuzzing" | tee -a "$seqres.full"
-+
++# success, all done
 +status=0
 +exit
-diff --git a/tests/xfs/700.out b/tests/xfs/700.out
+diff --git a/tests/generic/802.out b/tests/generic/802.out
 new file mode 100644
-index 0000000..c0a16f6
+index 0000000..c20e16e
 --- /dev/null
-+++ b/tests/xfs/700.out
-@@ -0,0 +1,3 @@
-+QA output created by 700
-+See interesting results in RESULT_DIR/700.full
-+finished fuzzing
-diff --git a/tests/xfs/group b/tests/xfs/group
-index 848a1bd..c12b90a 100644
---- a/tests/xfs/group
-+++ b/tests/xfs/group
-@@ -192,3 +192,4 @@
- 303 auto quick quota
- 304 auto quick quota
- 305 auto quota
-+700 fuzzers
++++ b/tests/generic/802.out
+@@ -0,0 +1,7 @@
++QA output created by 802
++Create the original files and reflink dirs
++Move orig & reflink copy to subdir and md5sum:
++42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-802/subdir/original_moved
++42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-802/subdir/copy_moved
++remove orig from subdir and md5sum reflink copy:
++42d69d1a6d333a7ebdf64792a555e392  TEST_DIR/test-802/subdir/copy_moved
+diff --git a/tests/generic/group b/tests/generic/group
+index 0c8964c..433ac30 100644
+--- a/tests/generic/group
++++ b/tests/generic/group
+@@ -194,3 +194,6 @@
+ 323 auto aio stress
+ 324 auto fsr quick
+ 325 auto quick data log
++800 auto quick clone
++801 auto quick clone
++802 auto quick clone
 
 _______________________________________________
 xfs mailing list
