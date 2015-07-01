@@ -1,54 +1,65 @@
-From: Rik van Riel <riel@redhat.com>
-Subject: Re: [PATCH] mm, vmscan: Do not wait for page writeback for GFP_NOFS
- allocations
-Date: Wed, 01 Jul 2015 10:30:36 -0400
-Message-ID: <5593F98C.4010406@redhat.com>
-References: <1435677437-16717-1-git-send-email-mhocko@suse.cz> <20150701061731.GB6286@dhcp22.suse.cz> <20150701133715.GA6287@dhcp22.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 51/51] ext2: enable cgroup writeback support
+Date: Wed, 1 Jul 2015 21:29:12 +0200
+Message-ID: <20150701192912.GN7252@quack.suse.cz>
+References: <1432329245-5844-1-git-send-email-tj@kernel.org>
+ <1432329245-5844-52-git-send-email-tj@kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: Dave Chinner <david@fromorbit.com>, "Theodore Ts'o" <tytso@mit.edu>,
-        Marian Marinov <mm@1h.com>, Hugh Dickins <hughd@google.com>,
-        linux-mm@kvack.org, LKML <linux-kernel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org
-To: Michal Hocko <mhocko@suse.cz>, Nikolay Borisov <kernel@kyup.com>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: axboe@kernel.dk, linux-kernel@vger.kernel.org, jack@suse.cz,
+	hch@infradead.org, hannes@cmpxchg.org,
+	linux-fsdevel@vger.kernel.org, vgoyal@redhat.com,
+	lizefan@huawei.com, cgroups@vger.kernel.org, linux-mm@kvack.org,
+	mhocko@suse.cz, clm@fb.com, fengguang.wu@intel.com,
+	david@fromorbit.com, gthelen@google.com, khlebnikov@yandex-team.ru,
+	linux-ext4@vger.kernel.org
+To: Tejun Heo <tj@kernel.org>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20150701133715.GA6287@dhcp22.suse.cz>
+Content-Disposition: inline
+In-Reply-To: <1432329245-5844-52-git-send-email-tj@kernel.org>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 07/01/2015 09:37 AM, Michal Hocko wrote:
-
-> Fix this issue by limiting the wait to reclaim triggered by __GFP_FS
-> allocations to make sure we are not called from filesystem paths which
-> might be doing exactly this kind of IO optimizations. The page fault
-> path, which is the only path that triggers memcg oom killer since 3.12,
-> shouldn't require GFP_NOFS and so we shouldn't reintroduce the premature
-> OOM killer issue which was originally addressed by the heuristic.
+On Fri 22-05-15 17:14:05, Tejun Heo wrote:
+> Writeback now supports cgroup writeback and the generic writeback,
+> buffer, libfs, and mpage helpers that ext2 uses are all updated to
+> work with cgroup writeback.
 > 
-> As per David Chinner the xfs is doing similar thing since 2.6.15 already
-> so ext4 is not the only affected filesystem. Moreover he notes:
-> : For example: IO completion might require unwritten extent conversion
-> : which executes filesystem transactions and GFP_NOFS allocations. The
-> : writeback flag on the pages can not be cleared until unwritten
-> : extent conversion completes. Hence memory reclaim cannot wait on
-> : page writeback to complete in GFP_NOFS context because it is not
-> : safe to do so, memcg reclaim or otherwise.
+> This patch enables cgroup writeback for ext2 by adding
+> FS_CGROUP_WRITEBACK to its ->fs_flags.
+> 
+> Signed-off-by: Tejun Heo <tj@kernel.org>
+> Cc: Jens Axboe <axboe@kernel.dk>
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: linux-ext4@vger.kernel.org
 
-I remember fixing something like this back in the 2.2
-days. Funny how these bugs keep coming back.
+Hallelujah!
 
-> Cc: stable # 3.6+
-> Fixes: c3b94f44fcb0 ("memcg: further prevent OOM with too many dirty pages")
-> Reported-by: Nikolay Borisov <kernel@kyup.com>
-> Signed-off-by: Michal Hocko <mhocko@suse.cz>
+Reviewed-by: Jan Kara <jack@suse.com>
 
-Reviewed-by: Rik van Riel <riel@redhat.com>
-
+> ---
+>  fs/ext2/super.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> index d0e746e..549219d 100644
+> --- a/fs/ext2/super.c
+> +++ b/fs/ext2/super.c
+> @@ -1543,7 +1543,7 @@ static struct file_system_type ext2_fs_type = {
+>  	.name		= "ext2",
+>  	.mount		= ext2_mount,
+>  	.kill_sb	= kill_block_super,
+> -	.fs_flags	= FS_REQUIRES_DEV,
+> +	.fs_flags	= FS_REQUIRES_DEV | FS_CGROUP_WRITEBACK,
+>  };
+>  MODULE_ALIAS_FS("ext2");
+>  
+> -- 
+> 2.4.0
+> 
 -- 
-All rights reversed
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
