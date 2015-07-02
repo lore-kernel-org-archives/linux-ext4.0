@@ -1,50 +1,39 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: Re: [PATCH 51/51] ext2: enable cgroup writeback support
-Date: Wed, 1 Jul 2015 23:08:28 -0400
-Message-ID: <20150702030828.GO26440@mtj.duckdns.org>
-References: <1432329245-5844-1-git-send-email-tj@kernel.org>
- <1432329245-5844-52-git-send-email-tj@kernel.org>
- <20150701192912.GN7252@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: axboe@kernel.dk, linux-kernel@vger.kernel.org, hch@infradead.org,
-	hannes@cmpxchg.org, linux-fsdevel@vger.kernel.org,
-	vgoyal@redhat.com, lizefan@huawei.com, cgroups@vger.kernel.org,
-	linux-mm@kvack.org, mhocko@suse.cz, clm@fb.com,
-	fengguang.wu@intel.com, david@fromorbit.com, gthelen@google.com,
-	khlebnikov@yandex-team.ru, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20150701192912.GN7252@quack.suse.cz>
-Sender: owner-linux-mm@kvack.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: fix fencepost error in lazytime optimization
+Date: Wed,  1 Jul 2015 23:38:08 -0400
+Message-ID: <1435808288-20665-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jul 01, 2015 at 09:29:12PM +0200, Jan Kara wrote:
-> On Fri 22-05-15 17:14:05, Tejun Heo wrote:
-> > Writeback now supports cgroup writeback and the generic writeback,
-> > buffer, libfs, and mpage helpers that ext2 uses are all updated to
-> > work with cgroup writeback.
-> > 
-> > This patch enables cgroup writeback for ext2 by adding
-> > FS_CGROUP_WRITEBACK to its ->fs_flags.
-> > 
-> > Signed-off-by: Tejun Heo <tj@kernel.org>
-> > Cc: Jens Axboe <axboe@kernel.dk>
-> > Cc: Jan Kara <jack@suse.cz>
-> > Cc: linux-ext4@vger.kernel.org
-> 
-> Hallelujah!
-> 
-> Reviewed-by: Jan Kara <jack@suse.com>
+Commit 8f4d8558391: "ext4: fix lazytime optimization" was not a
+complete fix.  In the case where the inode number is a multiple of 16,
+and we could still end up updating an inode with dirty timestamps
+written to the wrong inode on disk.  Oops.
 
-Hooray!  Thanks a lot for going through all the patches!  :)
+This can be easily reproduced by using generic/005 with a file system
+with metadata_csum and lazytime enabled.
 
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/inode.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e057c6f..0b4dd57 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4348,7 +4348,7 @@ static void ext4_update_other_inodes_time(struct super_block *sb,
+ 	int inode_size = EXT4_INODE_SIZE(sb);
+ 
+ 	oi.orig_ino = orig_ino;
+-	ino = (orig_ino & ~(inodes_per_block - 1)) + 1;
++	ino = ((orig_ino - 1) & ~(inodes_per_block - 1)) + 1;
+ 	for (i = 0; i < inodes_per_block; i++, ino++, buf += inode_size) {
+ 		if (ino == orig_ino)
+ 			continue;
 -- 
-tejun
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+2.3.0
