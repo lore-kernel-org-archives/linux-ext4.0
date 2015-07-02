@@ -1,26 +1,33 @@
-From: "ts2@a.tangchengxiang.com" <ts2@a.tangchengxiang.com>
-Subject: MICROPHONES
-Date: Thu, 2 Jul 2015 16:16:24 +0800
-Message-ID: <201507021616242047901@a.tangchengxiang.com>
-Reply-To: dwm1682@163.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/2] ext4: make use of sb_getblk_gfp
+Date: Thu, 2 Jul 2015 10:17:54 -0400
+Message-ID: <20150702141754.GA9456@thunk.org>
+References: <1435645609-20387-1-git-send-email-kernel@kyup.com>
+ <1435645609-20387-2-git-send-email-kernel@kyup.com>
+ <20150702061427.GB3108@thunk.org>
+ <5594D742.6040202@kyup.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="GB2312"
-Content-Transfer-Encoding: base64
-To: "linux-ext4" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [122.10.82.207] ([122.10.82.207]:2964 "HELO
-	a.tangchengxiang.com" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
-	with SMTP id S1752963AbbGBIVg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Jul 2015 04:21:36 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Nikolay Borisov <kernel@kyup.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <5594D742.6040202@kyup.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-RGVhciBTaXIvTWFkYW0sDQoNCkdyZWV0aW5ncyENCg0KV2UgYXJlIG1hbnVmYWN0dXJlciBvZiBM
-Q0QgV2FsbCBNb3VudCwgQ2FtZXJhIE1vdW50LENhbWVyYSBNaWNyb3Bob25lcywgVFYgTW91bnRp
-bmdzLCBMYXB0b3AgU3RhbmQuICBXZWxjb21lIHRvIGNvbnRhY3QgdXMgZm9yIGFueSBpbmZvcm1h
-dGlvbiBvZiBvdXIgcHJvZHVjdHMuDQpDdXN0b21pemVkIHByb2R1Y3RzIGFsc28gYWNjZXB0YWJs
-ZSwgcGxlYXNlIHNlbmQgdXMgeW91ciBkZXZlbG9wbWVudCBpZGVhIG9ubHkuDQpMb29rIGZvcndh
-cmQgdG8gc3RhcnQgY29vcGVyYXRpb24gcmVsYXRpb25zaGlwIHdpdGggeW91Lg0KDQpTaW5jZXJl
-bHkgeW91cnMsDQpNcy4gWmhhbmcNCkhvbWVwYWdlOiB3d3cuamlhd2VpaGFvLmNvbSANClNreXBl
-OiByZWJlY2NhMzA3NjE5
+On Thu, Jul 02, 2015 at 09:16:34AM +0300, Nikolay Borisov wrote:
+> 
+> Just a question that popped to my mind after discussing with a colleague
+> - Is GFP_NOFS enough here or should it be GFP_NOIO? Presumably the
+> latter is a stronger guarantee that we are not going to hit any
+> fs/writeback related code?
+
+GFP_NOFS is fine here; file system code calls the I/O codepaths, but
+device driver code doesn't call fs code.  Put another way, if there
+are pages that are backed by a block device, which can be cleaned
+without going through the FS code paths, it's fine to let that happen
+while we are inside file system code.
+
+						- Ted
