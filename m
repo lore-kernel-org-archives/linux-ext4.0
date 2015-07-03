@@ -1,70 +1,67 @@
-From: Matthew Wilcox <matthew.r.wilcox@intel.com>
-Subject: [PATCH] ext4: Return the length of a hole from get_block
-Date: Fri,  3 Jul 2015 11:15:11 -0400
-Message-ID: <1435936511-17705-1-git-send-email-matthew.r.wilcox@intel.com>
-Cc: Matthew Wilcox <willy@linux.intel.com>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
+From: Eryu Guan <guaneryu@gmail.com>
+Subject: [PATCH 0/2] fix ext4 i_blocks corruption in generic/269
+Date: Sat,  4 Jul 2015 00:51:49 +0800
+Message-ID: <1435942311-2337-1-git-send-email-guaneryu@gmail.com>
+Cc: Eryu Guan <guaneryu@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:27407 "EHLO mga02.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754599AbbGCPPa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Jul 2015 11:15:30 -0400
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:32829 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752219AbbGCQyZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Jul 2015 12:54:25 -0400
+Received: by wiwl6 with SMTP id l6so232022787wiw.0
+        for <linux-ext4@vger.kernel.org>; Fri, 03 Jul 2015 09:54:24 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Matthew Wilcox <willy@linux.intel.com>
+I find generic/269 fails on ext4 because of i_blocks corruption like
 
-Currently, if ext4's get_block encounters a hole, it does not modify the
-buffer_head.  That's fine for many callers, but for DAX, it's useful to
-know how large the hole is.  XFS already returns the length of the hole,
-so this improvement should not confuse any callers.
+e2fsck 1.42.12 (29-Aug-2014)
+Pass 1: Checking inodes, blocks, and sizes
+Inode 4802, i_blocks is 280, should be 248.  Fix? no
 
-Signed-off-by: Matthew Wilcox <willy@linux.intel.com>
----
- fs/ext4/ext4.h  | 6 ++++--
- fs/ext4/inode.c | 6 +++++-
- 2 files changed, 9 insertions(+), 3 deletions(-)
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9a83f14..7b7c097 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -154,12 +154,14 @@ struct ext4_allocation_request {
-  * well as to store the information returned by ext4_map_blocks().  It
-  * takes less room on the stack than a struct buffer_head.
-  */
-+#define EXT4_MAP_UPTODATE	(1 << BH_Uptodate)
- #define EXT4_MAP_NEW		(1 << BH_New)
- #define EXT4_MAP_MAPPED		(1 << BH_Mapped)
- #define EXT4_MAP_UNWRITTEN	(1 << BH_Unwritten)
- #define EXT4_MAP_BOUNDARY	(1 << BH_Boundary)
--#define EXT4_MAP_FLAGS		(EXT4_MAP_NEW | EXT4_MAP_MAPPED |\
--				 EXT4_MAP_UNWRITTEN | EXT4_MAP_BOUNDARY)
-+#define EXT4_MAP_FLAGS		(EXT4_MAP_UPTODATE | EXT4_MAP_NEW | \
-+				 EXT4_MAP_MAPPED | EXT4_MAP_UNWRITTEN | \
-+				 EXT4_MAP_BOUNDARY)
- 
- struct ext4_map_blocks {
- 	ext4_fsblk_t m_pblk;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9b46f6f..0fc49ac 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -494,7 +494,11 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 				retval = map->m_len;
- 			map->m_len = retval;
- 		} else if (ext4_es_is_delayed(&es) || ext4_es_is_hole(&es)) {
--			retval = 0;
-+			map->m_flags |= EXT4_MAP_UPTODATE;
-+			retval = es.es_len - (map->m_lblk - es.es_lblk);
-+			if (retval > map->m_len)
-+				retval = map->m_len;
-+			map->m_len = retval;
- 		} else {
- 			BUG_ON(1);
- 		}
+ext4.img: ********** WARNING: Filesystem still has errors **********
+
+ext4.img: 32752/32768 files (12.0% non-contiguous), 128483/131072 blocks
+
+and find that it has something to do with the setattr and write
+operations in fsstress, with delalloc enabled.
+
+This can be reproduced more reliably by
+
+  # disable all other operations except create/mkdir/write/setattr
+  # the "-M 524288" restricts the setflags ioctl to EXT4_EXTENTS_FL
+  export FSSTRESS_AVOID="-fallocsp=0 -fattr_remove=0 -fattr_set=0 \
+  -fbulkstat=0 -fbulkstat1=0 -fchown=0 -fdread=0 -fdwrite=0 \
+  -ffallocate=0 -ffiemap=0 -ffreesp=0 -fgetattr=0 -fgetdents=0 \
+  -flink=0 -fmknod=0 -fpunch=0 -fzero=0 -fcollapse=0 -finsert=0 \
+  -fread=0 -freadlink=0 -frename=0 -fresvsp=0 -frmdir=0 -fsetxattr=0 \
+  -fstat=0 -fsymlink=0 -ftruncate=0 -funlink=0 -funresvsp=0 \
+  -fsetattr=5 -M 524288"
+  while ./check generic/269; do : ; done
+
+And a simplified reproducer is
+
+  xfs_io -fc "pwrite 4k 4k" -c "fsync" /mnt/ext4/testfile
+  chattr -e /mnt/ext4/testfile
+  xfs_io -c "pwrite 0 4k" /mnt/ext4/testfile
+  umount /mnt/ext4
+  e2fsck -nf /dev/<device>
+
+More details please see the commit log in patches.
+
+Eryu Guan (2):
+  ext4: be more strict when migrating to non-extent based file
+  ext4: reserve hole in the migration to non-extent based file
+
+ fs/ext4/migrate.c | 17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
+
 -- 
-2.1.4
+1.8.3.1
 
