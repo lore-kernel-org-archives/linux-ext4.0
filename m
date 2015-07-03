@@ -1,85 +1,102 @@
-From: Eryu Guan <guaneryu@gmail.com>
-Subject: [PATCH 2/2] ext4: reserve hole in the migration to non-extent based file
-Date: Sat,  4 Jul 2015 00:51:51 +0800
-Message-ID: <1435942311-2337-3-git-send-email-guaneryu@gmail.com>
-References: <1435942311-2337-1-git-send-email-guaneryu@gmail.com>
-Cc: Eryu Guan <guaneryu@gmail.com>
-To: linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.com>
+Subject: [PATCH] jbd2: Speedup jbd2_journal_dirty_metadata()
+Date: Fri,  3 Jul 2015 19:37:12 +0200
+Message-ID: <1435945032-17253-1-git-send-email-jack@suse.com>
+Cc: linux-ext4@vger.kernel.org, Ming Lei <tom.leiming@gmail.com>,
+	Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f171.google.com ([209.85.212.171]:33389 "EHLO
-	mail-wi0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754956AbbGCQ4o (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Jul 2015 12:56:44 -0400
-Received: by wiwl6 with SMTP id l6so232068232wiw.0
-        for <linux-ext4@vger.kernel.org>; Fri, 03 Jul 2015 09:56:43 -0700 (PDT)
-In-Reply-To: <1435942311-2337-1-git-send-email-guaneryu@gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:44864 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755044AbbGCRhV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 Jul 2015 13:37:21 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently in ext4_ind_migrate() hole is not reserved, a following
-delayed allocation write to the "hole" would reclaim the same data
-blocks again and results in fs corruption.
+From: Jan Kara <jack@suse.cz>
 
-  # assmuing 4k block size ext4, with delalloc enabled
-  # skip the first block and write to the second block
-  xfs_io -fc "pwrite 4k 4k" -c "fsync" /mnt/ext4/testfile
+It is often the case that we mark buffer as having dirty metadata when
+the buffer is already in that state (frequent for bitmaps, inode table
+blocks, superblock). Thus it is unnecessary to contend on grabbing
+journal head reference and bh_state lock. Avoid that by checking whether
+any modification to the buffer is needed before grabbing any locks or
+references.
 
-  # converting to indirect-mapped file, which would move the data blocks
-  # to the beginning of the file, but extent status cache still marks
-  # that region as a hole
-  chattr -e /mnt/ext4/testfile
-
-  # delayed allocation writes to the "hole", reclaim the same data block
-  # again, results in i_blocks corruption
-  xfs_io -c "pwrite 0 4k" /mnt/ext4/testfile
-  umount /mnt/ext4
-  e2fsck -nf /dev/sda6
-  ...
-  Inode 53, i_blocks is 16, should be 8.  Fix? no
-  ...
-
-Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/migrate.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+ fs/jbd2/transaction.c | 38 ++++++++++++++++++++++++++++++++------
+ 1 file changed, 32 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 3651141..10824b0 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -620,7 +620,7 @@ int ext4_ind_migrate(struct inode *inode)
- 	struct ext4_inode_info		*ei = EXT4_I(inode);
- 	struct ext4_extent		*ex;
- 	unsigned int			i, len;
--	ext4_lblk_t			end;
-+	ext4_lblk_t			start, end;
- 	ext4_fsblk_t			blk;
- 	handle_t			*handle;
- 	int				ret;
-@@ -659,11 +659,12 @@ int ext4_ind_migrate(struct inode *inode)
- 		goto errout;
- 	}
- 	if (eh->eh_entries == 0)
--		blk = len = 0;
-+		blk = len = start = end = 0;
- 	else {
- 		len = le16_to_cpu(ex->ee_len);
- 		blk = ext4_ext_pblock(ex);
--		end = le32_to_cpu(ex->ee_block) + len - 1;
-+		start = le32_to_cpu(ex->ee_block);
-+		end = start + len - 1;
- 		if (end >= EXT4_NDIR_BLOCKS) {
- 			ret = -EOPNOTSUPP;
- 			goto errout;
-@@ -672,7 +673,7 @@ int ext4_ind_migrate(struct inode *inode)
+  Ted, this is the speedup patch with fixed assertion. It survived several
+hours of beating with xfstests generic/269. Ming Lei, can you verify this
+patch passes testing on your machine as well? Thanks!
+
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index f3d06174b051..546ce0e76605 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1280,8 +1280,6 @@ void jbd2_buffer_abort_trigger(struct journal_head *jh,
+ 	triggers->t_abort(triggers, jh2bh(jh));
+ }
  
- 	ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS);
- 	memset(ei->i_data, 0, sizeof(ei->i_data));
--	for (i=0; i < len; i++)
-+	for (i = start; i <= end; i++)
- 		ei->i_data[i] = cpu_to_le32(blk++);
- 	ext4_mark_inode_dirty(handle, inode);
- errout:
+-
+-
+ /**
+  * int jbd2_journal_dirty_metadata() -  mark a buffer as containing dirty metadata
+  * @handle: transaction to add buffer to.
+@@ -1314,12 +1312,41 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+ 
+ 	if (is_handle_aborted(handle))
+ 		return -EROFS;
+-	journal = transaction->t_journal;
+-	jh = jbd2_journal_grab_journal_head(bh);
+-	if (!jh) {
++	if (!buffer_jbd(bh)) {
+ 		ret = -EUCLEAN;
+ 		goto out;
+ 	}
++	/*
++	 * We don't grab jh reference here since the buffer must be part
++	 * of the running transaction.
++	 */
++	jh = bh2jh(bh);
++	/*
++	 * This and the following assertions are unreliable since we may see jh
++	 * in inconsistent state unless we grab bh_state lock. But this is
++	 * crutial to catch bugs so let's do a reliable check until the
++	 * lockless handling is fully proven.
++	 */
++	if (jh->b_transaction != transaction &&
++	    jh->b_next_transaction != transaction) {
++		jbd_lock_bh_state(bh);
++		J_ASSERT_JH(jh, jh->b_transaction == transaction ||
++				jh->b_next_transaction == transaction);
++		jbd_unlock_bh_state(bh);
++	}
++	if (jh->b_modified == 1) {
++		/* If it's in our transaction it must be in BJ_Metadata list. */
++		if (jh->b_transaction == transaction &&
++		    jh->b_jlist != BJ_Metadata) {
++			jbd_lock_bh_state(bh);
++			J_ASSERT_JH(jh, jh->b_transaction != transaction ||
++					jh->b_jlist == BJ_Metadata);
++			jbd_unlock_bh_state(bh);
++		}
++		goto out;
++	}
++
++	journal = transaction->t_journal;
+ 	jbd_debug(5, "journal_head %p\n", jh);
+ 	JBUFFER_TRACE(jh, "entry");
+ 
+@@ -1410,7 +1437,6 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+ 	spin_unlock(&journal->j_list_lock);
+ out_unlock_bh:
+ 	jbd_unlock_bh_state(bh);
+-	jbd2_journal_put_journal_head(jh);
+ out:
+ 	JBUFFER_TRACE(jh, "exit");
+ 	return ret;
 -- 
-1.8.3.1
+2.1.4
 
