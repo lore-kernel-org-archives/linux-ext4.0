@@ -1,39 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2 3/6] ext4: Use ext4_get_block_write() for DAX
-Date: Fri, 3 Jul 2015 15:07:03 -0400
-Message-ID: <20150703190703.GK9456@thunk.org>
-References: <1435934443-17090-1-git-send-email-matthew.r.wilcox@intel.com>
- <1435934443-17090-4-git-send-email-matthew.r.wilcox@intel.com>
- <20150703183027.GH9456@thunk.org>
- <20150703184824.GA13681@linux.intel.com>
+Subject: Re: [PATCH] ext4: fix reservation release on invalidatepage for
+ delalloc fs
+Date: Fri, 3 Jul 2015 21:17:34 -0400
+Message-ID: <20150704011734.GN9456@thunk.org>
+References: <1433406301-29136-1-git-send-email-lczerner@redhat.com>
+ <20150608151651.GD19168@thunk.org>
+ <alpine.LFD.2.00.1506081729390.1273@localhost.localdomain>
+ <alpine.LFD.2.00.1506190953120.14650@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: Matthew Wilcox <willy@linux.intel.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:39450 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755070AbbGDBRh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 Jul 2015 21:17:37 -0400
 Content-Disposition: inline
-In-Reply-To: <20150703184824.GA13681@linux.intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <alpine.LFD.2.00.1506190953120.14650@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 03, 2015 at 02:48:24PM -0400, Matthew Wilcox wrote:
-> 
-> At boot, I "modprobe pmem".
+Sorry for not getting back to this patch earlier.  When I took another
+look at it, I realized I misunderstood what was going on.  The patch
+looks correct, and I've added it to the ext4.git tree as part of bug
+fixes that I'll send out to Linus for 4.2.
 
-Is there a reason why it's important to build and load pmem as a
-module?  If I use CONFIG_BLK_DEV_PMEM=y (which is more convenient
-given how I launch my KVM test appliance), should I expect any
-problems?
+Thanks,
 
-I assume that this won't detect any bugs caused by missing CLFLUSH
-instructions, but I assume that when using NVM as a block device, this
-isn't much of an issue, as long as we don't care about torn writes?
-(How using NVM with metdata checksums, or any checksums for that
-matter, seems to be an interesting question --- how do we recover from
-a checksum failure after a power failure?)
-
-					- Ted
+						- Ted
