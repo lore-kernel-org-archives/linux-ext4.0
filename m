@@ -1,36 +1,145 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] ext4: reserve hole in the migration to non-extent
- based file
-Date: Sat, 4 Jul 2015 00:33:29 -0400
-Message-ID: <20150704043329.GS9456@thunk.org>
-References: <1435942311-2337-1-git-send-email-guaneryu@gmail.com>
- <1435942311-2337-3-git-send-email-guaneryu@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eryu Guan <guaneryu@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39540 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751244AbbGDEda (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 4 Jul 2015 00:33:30 -0400
-Content-Disposition: inline
-In-Reply-To: <1435942311-2337-3-git-send-email-guaneryu@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Eryu Guan <eguan@redhat.com>
+Subject: [PATCH] ext4: test migration to non-extent based file format
+Date: Sun,  5 Jul 2015 00:08:58 +0800
+Message-ID: <1436026138-4278-1-git-send-email-eguan@redhat.com>
+Cc: linux-ext4@vger.kernel.org, Eryu Guan <eguan@redhat.com>
+To: fstests@vger.kernel.org
+Return-path: <fstests-owner@vger.kernel.org>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Applied, although I reworded the commit description a little:
+On unpatched kernel, converting file with a hole at the beginning to
+non-extent based format results in ext4 i_blocks corruption. Add a new
+regression test case for it.
 
+These two commits fixed the corruption:
+ext4: be more strict when migrating to non-extent based file
 ext4: correctly migrate a file with a hole at the beginning
 
-Currently ext4_ind_migrate() doesn't correctly handle a file which
-contains a hole at the beginning of the file.  This caused the migration
-to be done incorrectly, and then if there is a subsequent following
-delayed allocation write to the "hole", this would reclaim the same data
-blocks again and results in fs corruption.
+Signed-off-by: Eryu Guan <eguan@redhat.com>
+---
 
-...
+Note that this patch applies cleanly only after my patch:
+generic/081: wait for lv to be settled before creating fs on it
 
-Thanks!!
+ common/config    |  1 +
+ tests/ext4/005   | 83 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/ext4/group |  1 +
+ 3 files changed, 85 insertions(+)
+ create mode 100755 tests/ext4/005
 
-					- Ted
+diff --git a/common/config b/common/config
+index 73da60a..dca7aad 100644
+--- a/common/config
++++ b/common/config
+@@ -191,6 +191,7 @@ export WIPEFS_PROG="`set_prog_path wipefs`"
+ export DUMP_PROG="`set_prog_path dump`"
+ export RESTORE_PROG="`set_prog_path restore`"
+ export LVM_PROG="`set_prog_path lvm`"
++export CHATTR_PROG="`set_prog_path chattr`"
+ 
+ # use 'udevadm settle' or 'udevsettle' to wait for lv to be settled.
+ # newer systems have udevadm command but older systems like RHEL5 don't.
+diff --git a/tests/ext4/005 b/tests/ext4/005
+new file mode 100755
+index 0000000..1028bf3
+--- /dev/null
++++ b/tests/ext4/005
+@@ -0,0 +1,83 @@
++#! /bin/bash
++# FS QA Test 005
++#
++# Test corruption issue in converting file with a hole at the beginning to
++# non-extent based format
++#
++# These two commits fixed the corruption:
++# ext4: be more strict when migrating to non-extent based file
++# ext4: correctly migrate a file with a hole at the beginning
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2015 Red Hat Inc.  All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#-----------------------------------------------------------------------
++#
++
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
++{
++	cd /
++	rm -f $tmp.*
++}
++
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++
++# real QA test starts here
++_supported_fs ext4
++_supported_os Linux
++_require_scratch
++_require_command "$CHATTR_PROG" chattr
++
++rm -f $seqres.full
++
++echo "Silence is golden"
++
++_scratch_mkfs >>$seqres.full 2>&1
++_scratch_mount
++
++testfile=$SCRATCH_MNT/$seq.attrtest
++touch $testfile
++$CHATTR_PROG -e $testfile >>$seqres.full 2>&1
++if [ $? -ne 0 ]; then
++	_notrun "Clearing extent flag not supported, old chattr and/or kernel?"
++fi
++
++rm -f $testfile
++# skip the first 4k and write to the second 4k, leave the first 4k as a hole
++$XFS_IO_PROG -fc "pwrite 4k 4k" -c "fsync" $testfile >>$seqres.full 2>&1
++
++# convert to non-extent based file format, buggy ext4 moves the data blocks to
++# the beginning of the file, but extent status cache still marks that region as
++# a hole
++$CHATTR_PROG -e $testfile >>$seqres.full 2>&1
++
++# delayed allocation writes to the "hole", reclaim the same data block again,
++# results in i_blocks corruption
++$XFS_IO_PROG -c "pwrite 0 4k" $testfile >>$seqres.full 2>&1
++
++# success, all done
++status=0
++exit
+diff --git a/tests/ext4/group b/tests/ext4/group
+index e7f1f2a..96218b7 100644
+--- a/tests/ext4/group
++++ b/tests/ext4/group
+@@ -7,6 +7,7 @@
+ 002 auto quick prealloc
+ 003 auto quick
+ 004 auto dump
++005 auto quick metadata ioctl rw
+ 271 auto rw quick
+ 301 aio dangerous ioctl rw stress
+ 302 aio dangerous ioctl rw stress
+-- 
+1.8.3.1
