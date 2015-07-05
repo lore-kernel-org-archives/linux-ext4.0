@@ -1,27 +1,34 @@
-From: "t0021@centurylink.net" <t0021@centurylink.net>
-Subject: Re:
-Date: Sun, 5 Jul 2015 12:38:35 -0400 (EDT)
-Message-ID: <228843168.13407652.1436114315788.JavaMail.root__45434.7191415311$1436114420$gmane$org@centurylink.net>
-References: <CAHxZcryF7pNoENh8vpo-uvcEo5HYA5XgkZFWrLEHM5Hhf5ay+Q@mail.gmail.com>
-Reply-To: amalallamonte1114@outlook.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: replace open coded nofail allocation
+Date: Sun, 5 Jul 2015 17:06:00 -0400
+Message-ID: <20150705210600.GD8628@thunk.org>
+References: <1435053037-1451-1-git-send-email-mhocko@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-To: info@live.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.centurylink.net ([205.219.233.9]:60675 "EHLO
-	smtp.centurylink.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750985AbbGEQi6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Jul 2015 12:38:58 -0400
-In-Reply-To: <CAHxZcryF7pNoENh8vpo-uvcEo5HYA5XgkZFWrLEHM5Hhf5ay+Q@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, LKML <linux-kernel@vger.kernel.org>
+To: Michal Hocko <mhocko@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1435053037-1451-1-git-send-email-mhocko@suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Tue, Jun 23, 2015 at 11:50:37AM +0200, Michal Hocko wrote:
+> ext4_free_blocks is looping around the allocation request and mimics
+> __GFP_NOFAIL behavior without any allocation fallback strategy. Let's
+> remove the open coded loop and replace it with __GFP_NOFAIL. Without
+> the flag the allocator has no way to find out never-fail requirement
+> and cannot help in any way.
+> 
+> Signed-off-by: Michal Hocko <mhocko@suse.cz>
 
------ Original Message -----
+Thanks, applied.
 
+					- Ted
 
-I NEED YOUR HELP
-
-=========================
-
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
