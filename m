@@ -1,145 +1,47 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: [PATCH] ext4: test migration to non-extent based file format
-Date: Sun,  5 Jul 2015 00:08:58 +0800
-Message-ID: <1436026138-4278-1-git-send-email-eguan@redhat.com>
-Cc: linux-ext4@vger.kernel.org, Eryu Guan <eguan@redhat.com>
-To: fstests@vger.kernel.org
-Return-path: <fstests-owner@vger.kernel.org>
-Sender: fstests-owner@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH -v2] ext4: fix fencepost error in lazytime optimization
+Date: Sat,  4 Jul 2015 22:41:06 -0400
+Message-ID: <1436064066-22403-1-git-send-email-tytso@mit.edu>
+References: <mn5vitbh@ger.gmane.org>
+Cc: jvpeetz@web.de, Theodore Ts'o <tytso@mit.edu>,
+	stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+In-Reply-To: <mn5vitbh@ger.gmane.org>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On unpatched kernel, converting file with a hole at the beginning to
-non-extent based format results in ext4 i_blocks corruption. Add a new
-regression test case for it.
+Commit 8f4d8558391: "ext4: fix lazytime optimization" was not a
+complete fix.  In the case where the inode number is a multiple of 16,
+and we could still end up updating an inode with dirty timestamps
+written to the wrong inode on disk.  Oops.
 
-These two commits fixed the corruption:
-ext4: be more strict when migrating to non-extent based file
-ext4: correctly migrate a file with a hole at the beginning
+This can be easily reproduced by using generic/005 with a file system
+with metadata_csum and lazytime enabled.
 
-Signed-off-by: Eryu Guan <eguan@redhat.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@vger.kernel.org
 ---
+ fs/ext4/inode.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-Note that this patch applies cleanly only after my patch:
-generic/081: wait for lv to be settled before creating fs on it
-
- common/config    |  1 +
- tests/ext4/005   | 83 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/ext4/group |  1 +
- 3 files changed, 85 insertions(+)
- create mode 100755 tests/ext4/005
-
-diff --git a/common/config b/common/config
-index 73da60a..dca7aad 100644
---- a/common/config
-+++ b/common/config
-@@ -191,6 +191,7 @@ export WIPEFS_PROG="`set_prog_path wipefs`"
- export DUMP_PROG="`set_prog_path dump`"
- export RESTORE_PROG="`set_prog_path restore`"
- export LVM_PROG="`set_prog_path lvm`"
-+export CHATTR_PROG="`set_prog_path chattr`"
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e057c6f..4ad73d3 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4348,7 +4348,12 @@ static void ext4_update_other_inodes_time(struct super_block *sb,
+ 	int inode_size = EXT4_INODE_SIZE(sb);
  
- # use 'udevadm settle' or 'udevsettle' to wait for lv to be settled.
- # newer systems have udevadm command but older systems like RHEL5 don't.
-diff --git a/tests/ext4/005 b/tests/ext4/005
-new file mode 100755
-index 0000000..1028bf3
---- /dev/null
-+++ b/tests/ext4/005
-@@ -0,0 +1,83 @@
-+#! /bin/bash
-+# FS QA Test 005
-+#
-+# Test corruption issue in converting file with a hole at the beginning to
-+# non-extent based format
-+#
-+# These two commits fixed the corruption:
-+# ext4: be more strict when migrating to non-extent based file
-+# ext4: correctly migrate a file with a hole at the beginning
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2015 Red Hat Inc.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+	cd /
-+	rm -f $tmp.*
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# real QA test starts here
-+_supported_fs ext4
-+_supported_os Linux
-+_require_scratch
-+_require_command "$CHATTR_PROG" chattr
-+
-+rm -f $seqres.full
-+
-+echo "Silence is golden"
-+
-+_scratch_mkfs >>$seqres.full 2>&1
-+_scratch_mount
-+
-+testfile=$SCRATCH_MNT/$seq.attrtest
-+touch $testfile
-+$CHATTR_PROG -e $testfile >>$seqres.full 2>&1
-+if [ $? -ne 0 ]; then
-+	_notrun "Clearing extent flag not supported, old chattr and/or kernel?"
-+fi
-+
-+rm -f $testfile
-+# skip the first 4k and write to the second 4k, leave the first 4k as a hole
-+$XFS_IO_PROG -fc "pwrite 4k 4k" -c "fsync" $testfile >>$seqres.full 2>&1
-+
-+# convert to non-extent based file format, buggy ext4 moves the data blocks to
-+# the beginning of the file, but extent status cache still marks that region as
-+# a hole
-+$CHATTR_PROG -e $testfile >>$seqres.full 2>&1
-+
-+# delayed allocation writes to the "hole", reclaim the same data block again,
-+# results in i_blocks corruption
-+$XFS_IO_PROG -c "pwrite 0 4k" $testfile >>$seqres.full 2>&1
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/ext4/group b/tests/ext4/group
-index e7f1f2a..96218b7 100644
---- a/tests/ext4/group
-+++ b/tests/ext4/group
-@@ -7,6 +7,7 @@
- 002 auto quick prealloc
- 003 auto quick
- 004 auto dump
-+005 auto quick metadata ioctl rw
- 271 auto rw quick
- 301 aio dangerous ioctl rw stress
- 302 aio dangerous ioctl rw stress
+ 	oi.orig_ino = orig_ino;
+-	ino = (orig_ino & ~(inodes_per_block - 1)) + 1;
++	/*
++	 * Calculate the first inode in the inode table block.  Inode
++	 * numbers are one-based.  That is, the first inode in a block
++	 * (assuming 4k blocks and 256 byte inodes) is (n*16 + 1).
++	 */
++	ino = ((orig_ino - 1) & ~(inodes_per_block - 1)) + 1;
+ 	for (i = 0; i < inodes_per_block; i++, ino++, buf += inode_size) {
+ 		if (ino == orig_ino)
+ 			continue;
 -- 
-1.8.3.1
+2.3.0
