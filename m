@@ -1,34 +1,57 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: replace open coded nofail allocation
-Date: Sun, 5 Jul 2015 17:06:00 -0400
-Message-ID: <20150705210600.GD8628@thunk.org>
-References: <1435053037-1451-1-git-send-email-mhocko@suse.cz>
+Subject: [GIT PULL] ext4 bug fixes for 4.2-rc2
+Date: Sun, 5 Jul 2015 17:53:12 -0400
+Message-ID: <20150705215312.GE8628@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, LKML <linux-kernel@vger.kernel.org>
-To: Michal Hocko <mhocko@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1435053037-1451-1-git-send-email-mhocko@suse.cz>
-Sender: owner-linux-mm@kvack.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jun 23, 2015 at 11:50:37AM +0200, Michal Hocko wrote:
-> ext4_free_blocks is looping around the allocation request and mimics
-> __GFP_NOFAIL behavior without any allocation fallback strategy. Let's
-> remove the open coded loop and replace it with __GFP_NOFAIL. Without
-> the flag the allocator has no way to find out never-fail requirement
-> and cannot help in any way.
-> 
-> Signed-off-by: Michal Hocko <mhocko@suse.cz>
+The following changes since commit a2fd66d069d86d793e9d39d4079b96f46d13f237:
 
-Thanks, applied.
+  ext4: set lazytime on remount if MS_LAZYTIME is set by mount (2015-06-23 11:03:54 -0400)
 
-					- Ted
+are available in the git repository at:
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
+
+for you to fetch changes up to 7444a072c387a93ebee7066e8aee776954ab0e41:
+
+  ext4: replace open coded nofail allocation in ext4_free_blocks() (2015-07-05 12:33:44 -0400)
+
+----------------------------------------------------------------
+Bug fixes (all for stable kernels) for ext4:
+  * address corner cases for indirect blocks->extent migration
+  * fix reserved block accounting invalidate_page when
+	page_size != block_size (i.e., ppc or 1k block size file systems)
+  * fix deadlocks when a memcg is under heavy memory pressure
+  * fix fencepost error in lazytime optimization
+
+----------------------------------------------------------------
+Eryu Guan (2):
+      ext4: be more strict when migrating to non-extent based file
+      ext4: correctly migrate a file with a hole at the beginning
+
+Lukas Czerner (1):
+      ext4: fix reservation release on invalidatepage for delalloc fs
+
+Michal Hocko (1):
+      ext4: replace open coded nofail allocation in ext4_free_blocks()
+
+Nikolay Borisov (2):
+      bufferhead: Add _gfp version for sb_getblk()
+      ext4: avoid deadlocks in the writeback path by using sb_getblk_gfp
+
+Theodore Ts'o (1):
+      ext4: fix fencepost error in lazytime optimization
+
+ fs/ext4/extents.c           |  6 +++---
+ fs/ext4/inode.c             | 22 ++++++++++++++++++----
+ fs/ext4/mballoc.c           | 16 +++++-----------
+ fs/ext4/migrate.c           | 17 ++++++++++++++---
+ include/linux/buffer_head.h |  7 +++++++
+ 5 files changed, 47 insertions(+), 21 deletions(-)
