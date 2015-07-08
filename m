@@ -1,20 +1,20 @@
-From: Joe Perches <joe@perches.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 Subject: Re: [PATCH] ext4 crypto: remove unneeded assignation
-Date: Wed, 08 Jul 2015 12:55:39 -0700
-Message-ID: <1436385339.2682.93.camel@perches.com>
+Date: Wed, 8 Jul 2015 13:01:08 -0700
+Message-ID: <20150708200108.GC10037@birch.djwong.org>
 References: <1436385075-22559-1-git-send-email-laurent.navet@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Laurent Navet <laurent.navet@gmail.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
 In-Reply-To: <1436385075-22559-1-git-send-email-laurent.navet@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2015-07-08 at 21:51 +0200, Laurent Navet wrote:
+On Wed, Jul 08, 2015 at 09:51:15PM +0200, Laurent Navet wrote:
 > Return value of ext4_derive_key_aes() is stored but never used before
 > being overwritten.
 > Also fix coverity CID 1309760.
@@ -36,11 +36,17 @@ On Wed, 2015-07-08 at 21:51 +0200, Laurent Navet wrote:
 > +	ext4_derive_key_aes(ctx.nonce, master_key->raw,
 >  				  raw_key);
 
-More likely this should be:
+I don't think it's a good idea to drop the error code on the floor and keep
+going as if nothing bad had happened.
 
-	res = ext4_derive_key_aes(,,,);
-	if (res)
-		goto out;
+--D
 
 >  got_key:
 >  	ctfm = crypto_alloc_ablkcipher(cipher_str, 0, 0);
+> -- 
+> 2.1.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
