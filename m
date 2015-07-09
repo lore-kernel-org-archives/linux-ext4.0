@@ -1,52 +1,30 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] ext4 crypto: remove unneeded assignation
-Date: Wed, 8 Jul 2015 13:01:08 -0700
-Message-ID: <20150708200108.GC10037@birch.djwong.org>
-References: <1436385075-22559-1-git-send-email-laurent.navet@gmail.com>
+From: "ts1@a.qukunming.com" <ts1@a.qukunming.com>
+Subject: DSLR CAMERA MICROPHONES
+Date: Thu, 9 Jul 2015 10:30:46 +0800
+Message-ID: <201507091030463487888@a.qukunming.com>
+Reply-To: dwm1682@163.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Laurent Navet <laurent.navet@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1436385075-22559-1-git-send-email-laurent.navet@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain;
+	charset="GB2312"
+Content-Transfer-Encoding: base64
+To: "linux-ext4" <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from [103.228.131.119] ([103.228.131.119]:52462 "EHLO
+	a.qukunming.com" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
+	with ESMTP id S1751683AbbGIDpn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jul 2015 23:45:43 -0400
+Received: from xyzzaabbf (unknown [27.38.9.38])
+	by a.qukunming.com (Postfix) with ESMTPA id EC204EC6D
+	for <linux-ext4@vger.kernel.org>; Thu,  9 Jul 2015 10:29:35 +0800 (CST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 08, 2015 at 09:51:15PM +0200, Laurent Navet wrote:
-> Return value of ext4_derive_key_aes() is stored but never used before
-> being overwritten.
-> Also fix coverity CID 1309760.
-> 
-> Signed-off-by: Laurent Navet <laurent.navet@gmail.com>
-> ---
->  fs/ext4/crypto_key.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/crypto_key.c b/fs/ext4/crypto_key.c
-> index 442d24e..92f9172 100644
-> --- a/fs/ext4/crypto_key.c
-> +++ b/fs/ext4/crypto_key.c
-> @@ -218,7 +218,7 @@ retry:
->  	BUILD_BUG_ON(EXT4_AES_128_ECB_KEY_SIZE !=
->  		     EXT4_KEY_DERIVATION_NONCE_SIZE);
->  	BUG_ON(master_key->size != EXT4_AES_256_XTS_KEY_SIZE);
-> -	res = ext4_derive_key_aes(ctx.nonce, master_key->raw,
-> +	ext4_derive_key_aes(ctx.nonce, master_key->raw,
->  				  raw_key);
-
-I don't think it's a good idea to drop the error code on the floor and keep
-going as if nothing bad had happened.
-
---D
-
->  got_key:
->  	ctfm = crypto_alloc_ablkcipher(cipher_str, 0, 0);
-> -- 
-> 2.1.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+RGVhciBTaXJzLA0KDQpIYXBweSB0byBjb250YWN0IHlvdSAhIA0KDQpXZSB3b3VsZCBsaWtlIHRv
+IGludHJvZHVjZSBvdXIgY29tcGFueSBhcyBhIGxhcmdlIHNjYWxlIEF1ZGlvLVZpZGVvIEFjY2Vz
+c29yaWVzIGVudGVycHJpc2UsIExDRCBUViBXYWxsIE1vdW50cywgTENEIHRyb2xsZXksIFByb2pl
+Y3RvciBTdGFuZHMsTWljcm9waG9uZSBTdGFuZHMsQ2VpbGluZyBNb3VudCxMYXB0b3AgU3RhbmRz
+LCBNb25pdG9yIFN0YW5kcyxDYW1lcmEgU3RhbmRzLCBDYW1lcmEgTWljcm9waG9uZXMgYXMgdGhl
+IG1haW4gcHJvZHVjdC4gV2UgY291bGQgc3VwcGx5IGdvb2QgcXVhbGl0eSBwcm9kdWN0cyB3aXRo
+IGNvbXBldGl0aXZlIHByaWNlLg0KDQpXZWxjb21lIHRvIGNvbnRhY3QgdXMgZm9yIG1vcmUgaW5m
+b3JtYXRpb24uDQoNCkJlc3Qgd2lzaGVzDQpSZWJlY2NhIFpoYW5nDQpFbWFpbDpkd20xNjgyQDE2
+My5jb20NCndlYjogamlhd2VpaGFvLmNvbQ==
