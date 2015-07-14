@@ -1,65 +1,89 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Return the length of a hole from get_block
-Date: Tue, 14 Jul 2015 11:02:46 +0200
-Message-ID: <20150714090246.GA24369@quack.suse.cz>
-References: <1435936511-17705-1-git-send-email-matthew.r.wilcox@intel.com>
- <20150713151610.GC17075@quack.suse.cz>
- <20150713152615.GH13681@linux.intel.com>
-Mime-Version: 1.0
+From: Alexey Lyashkov <alexey.lyashkov@gmail.com>
+Subject: debugfs: fix debugfs dump for a hashed directory
+Date: Tue, 14 Jul 2015 15:33:14 +0300
+Message-ID: <5398A7F7-DB88-4604-9ED5-96FF262117EC@gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2098\))
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: Matthew Wilcox <willy@linux.intel.com>
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40729 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752619AbbGNJCt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 Jul 2015 05:02:49 -0400
-Content-Disposition: inline
-In-Reply-To: <20150713152615.GH13681@linux.intel.com>
+Received: from mail-qk0-f196.google.com ([209.85.220.196]:33326 "EHLO
+	mail-qk0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751905AbbGNMdZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Jul 2015 08:33:25 -0400
+Received: by qkdy129 with SMTP id y129so567444qkd.0
+        for <linux-ext4@vger.kernel.org>; Tue, 14 Jul 2015 05:33:25 -0700 (PDT)
+Received: from c-46-246-9-239.ip4.frootvpn.com ([46.246.9.239])
+        by smtp.gmail.com with ESMTPSA id n6sm379883qhb.16.2015.07.14.05.33.23
+        for <linux-ext4@vger.kernel.org>
+        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
+        Tue, 14 Jul 2015 05:33:24 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 13-07-15 11:26:15, Matthew Wilcox wrote:
-> On Mon, Jul 13, 2015 at 05:16:10PM +0200, Jan Kara wrote:
-> > On Fri 03-07-15 11:15:11, Matthew Wilcox wrote:
-> > > From: Matthew Wilcox <willy@linux.intel.com>
-> > > 
-> > > Currently, if ext4's get_block encounters a hole, it does not modify the
-> > > buffer_head.  That's fine for many callers, but for DAX, it's useful to
-> > > know how large the hole is.  XFS already returns the length of the hole,
-> > > so this improvement should not confuse any callers.
-> > > 
-> > > Signed-off-by: Matthew Wilcox <willy@linux.intel.com>
-> > 
-> > So I'm somewhat wondering: What is the reason of BH_Uptodate flag being
-> > set? I can see the XFS sets it in some cases as well but the use of the
-> > flag isn't really clear to me...
-> 
-> No clue.  I'm just following the documentation in buffer.c:
-> 
->  * NOTE! All mapped/uptodate combinations are valid:
->  *
->  *      Mapped  Uptodate        Meaning
->  *
->  *      No      No              "unknown" - must do get_block()
->  *      No      Yes             "hole" - zero-filled
->  *      Yes     No              "allocated" - allocated on disk, not read in
->  *      Yes     Yes             "valid" - allocated and up-to-date in memory.
+debugfs produce wrong output for a htree command in some cases.
+sync a htree structures with in kernel implementation.
 
-OK, but that speaks about buffer head attached to a page. get_block()
-callback gets a temporary bh (at least in some cases) only so that it can
-communicate result of block mapping. And BH_Uptodate should be set only if
-data in the buffer is properly filled (which cannot be the case for
-temporary bh which doesn't have *any* data) and it simply isn't the case
-even for bh attached to a page because ext4 get_block() functions don't
-touch bh->b_data at all. So I just wouldn't set BH_Uptodate in get_block()
-at all..
+---
+ debugfs/htree.c      |  6 +++---
+ lib/ext2fs/ext2_fs.h | 14 ++++++++++++++
+ lib/ext2fs/ext2fs.h  |  2 +-
+ 3 files changed, 18 insertions(+), 4 deletions(-)
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+diff --git a/debugfs/htree.c b/debugfs/htree.c
+index 24f8250..d47793a 100644
+--- a/debugfs/htree.c
++++ b/debugfs/htree.c
+@@ -185,7 +185,7 @@ static void htree_dump_int_block(ext2_filsys fs, ext2_ino_t ino,
+ 	}
+ 
+ 	htree_dump_int_node(fs, ino, inode, rootnode,
+-			    (struct ext2_dx_entry *) (buf+8),
++			    ((struct ext2_dx_node *)buf)->entries,
+ 			    cbuf, level);
+ errout:
+ 	free(cbuf);
+@@ -244,7 +244,7 @@ void do_htree_dump(int argc, char *argv[])
+ 		goto errout;
+ 	}
+ 
+-	rootnode = (struct ext2_dx_root_info *) (buf + 24);
++	rootnode = get_ext2_dx_root_info(current_fs, buf);
+ 
+ 	fprintf(pager, "Root node dump:\n");
+ 	fprintf(pager, "\t Reserved zero: %u\n", rootnode->reserved_zero);
+@@ -253,7 +253,7 @@ void do_htree_dump(int argc, char *argv[])
+ 	fprintf(pager, "\t Indirect levels: %d\n", rootnode->indirect_levels);
+ 	fprintf(pager, "\t Flags: %d\n", rootnode->unused_flags);
+ 
+-	ent = (struct ext2_dx_entry *) (buf + 24 + rootnode->info_length);
++	ent = (struct ext2_dx_entry *) ((char *)rootnode + rootnode->info_length);
+ 
+ 	htree_dump_int_node(current_fs, ino, &inode, rootnode, ent,
+ 			    buf + current_fs->blocksize,
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 8965f4c..d1397db 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -235,6 +235,20 @@ struct ext2_dx_countlimit {
+ 	__u16 count;
+ };
+ 
++struct fake_dirent
++{
++	__u32 inode;
++	__u16 rec_len;
++	__u8 name_len;
++	__u8 file_type;
++};
++
++struct ext2_dx_node
++{
++	struct fake_dirent fake;
++	struct ext2_dx_entry	entries[0];
++};
++
+ 
+ /*
+  * Macro-instructions used to manage group descriptors
+
