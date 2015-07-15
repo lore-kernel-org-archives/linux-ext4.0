@@ -1,82 +1,35 @@
-From: Eryu Guan <guaneryu@gmail.com>
-Subject: [BUG] infinite loop when unmounting ext3/4
-Date: Wed, 15 Jul 2015 22:30:31 +0800
-Message-ID: <20150715143031.GB18016@dhcp-13-216.nay.redhat.com>
+From: Jens Axboe <axboe@kernel.dk>
+Subject: Re: [PATCH 0/3] Remove ext3 filesystem driver
+Date: Wed, 15 Jul 2015 08:47:49 -0600
+Message-ID: <55A67295.3070509@kernel.dk>
+References: <1436955987-7305-1-git-send-email-jack@suse.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: joseph.qi@huawei.com
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f53.google.com ([209.85.220.53]:36846 "EHLO
-	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752409AbbGOObl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jul 2015 10:31:41 -0400
-Received: by pachj5 with SMTP id hj5so25191654pac.3
-        for <linux-ext4@vger.kernel.org>; Wed, 15 Jul 2015 07:31:41 -0700 (PDT)
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Ted Tso <tytso@mit.edu>
+To: Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1436955987-7305-1-git-send-email-jack@suse.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+On 07/15/2015 04:26 AM, Jan Kara wrote:
+>    Hello,
+>
+>    so I have created this patch set which removes ext3 driver (and some related support
+> code) from the kernel. See changelog of patch 2/3 for more details. If noone objects,
+> I will queue the series in my tree for the next merge window.
+>
+> Jens, are you OK with me merging patch 3/3 or do you want me to send it to you once
+> the first two patches get merged?
 
-I found an infinite loop when unmounting a known bad ext3 image (using
-ext4 driver) with 4.2-rc1 kernel.
+You can merge that one, will be easier than splitting. Add my acked-by 
+to the patch.
 
-The fs image can be found here
-https://bugzilla.kernel.org/show_bug.cgi?id=10882#c1
 
-Reproduce steps:
-  mount -o loop ext3.img /mnt/ext3
-  rm -rf /mnt/ext3/{dev,proc,sys}
-  umount /mnt/ext3	# never return
+-- 
+Jens Axboe
 
-And this issue was introduced by
-6f6a6fd jbd2: fix ocfs2 corrupt when updating journal superblock fails
-
-It's looping in
-fs/jbd2/journal.c:jbd2_journal_destroy()
-...
-1693         while (journal->j_checkpoint_transactions != NULL) {                                                                             
-1694                 spin_unlock(&journal->j_list_lock);                                                                                      
-1695                 mutex_lock(&journal->j_checkpoint_mutex);                                                                                
-1696                 jbd2_log_do_checkpoint(journal);                                                                                         
-1697                 mutex_unlock(&journal->j_checkpoint_mutex);                                                                              
-1698                 spin_lock(&journal->j_list_lock);                                                                                        
-1699         }
-...
-
-Because jbd2_cleanup_journal_tail() is returning -EIO on aborted journal
-now instead of 1, and jbd2_log_do_checkpoint() won't cleanup
-journal->j_checkpoint_transactions in this while loop.
-
-A quick hack would be
-
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index 4227dc4..1b2ea47 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -220,11 +220,13 @@ int jbd2_log_do_checkpoint(journal_t *journal)
-         * don't need checkpointing, just eliminate them from the
-         * journal straight away.
-         */
--       result = jbd2_cleanup_journal_tail(journal);
--       trace_jbd2_checkpoint(journal, result);
--       jbd_debug(1, "cleanup_journal_tail returned %d\n", result);
--       if (result <= 0)
--               return result;
-+       if (!is_journal_aborted(journal)) {
-+               result = jbd2_cleanup_journal_tail(journal);
-+               trace_jbd2_checkpoint(journal, result);
-+               jbd_debug(1, "cleanup_journal_tail returned %d\n", result);
-+               if (result <= 0)
-+                       return result;
-+       }
- 
-        /*
-         * OK, we need to start writing disk blocks.  Take one transaction
-
-to restore the old behavior (continue on aborted journal). Maybe someone
-has a better fix.
-
-Thanks,
-Eryu
