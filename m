@@ -1,100 +1,220 @@
-From: Austin S Hemmelgarn <ahferroin7@gmail.com>
-Subject: Re: [PATCH 2/3] fs: Remove ext3 filesystem driver
-Date: Wed, 15 Jul 2015 13:35:09 -0400
-Message-ID: <55A699CD.5090304@gmail.com>
-References: <1436955987-7305-1-git-send-email-jack@suse.com>	<1436955987-7305-3-git-send-email-jack@suse.com> <20150715095822.f994bc58.akpm@linux-foundation.org>
+From: Dave Kleikamp <dave.kleikamp@oracle.com>
+Subject: Re: [PATCH 5/6] jfs: Handle error from dquot_initialize()
+Date: Wed, 15 Jul 2015 12:35:58 -0500
+Message-ID: <55A699FE.5010204@oracle.com>
+References: <1436964152-11203-1-git-send-email-jack@suse.com>
+ <1436964152-11203-6-git-send-email-jack@suse.com>
+ <55A69708.1040503@oracle.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha1; boundary="------------ms090702000606080902040007"
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jens Axboe <axboe@kernel.dk>, Ted Tso <tytso@mit.edu>,
-	Jan Kara <jack@suse.cz>
-To: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20150715095822.f994bc58.akpm@linux-foundation.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+	Mark Fasheh <mfasheh@suse.com>,
+	Dave Kleikamp <shaggy@kernel.org>,
+	jfs-discussion@lists.sourceforge.net,
+	reiserfs-devel@vger.kernel.org
+To: Jan Kara <jack@suse.com>, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <55A69708.1040503@oracle.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is a cryptographically signed message in MIME format.
+On 07/15/2015 12:23 PM, Dave Kleikamp wrote:
+> On 07/15/2015 07:42 AM, Jan Kara wrote:
+>> dquot_initialize() can now return error. Handle it where possible.
+> 
+> Looks good to me.
 
---------------ms090702000606080902040007
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: quoted-printable
+No, I take that back. Reviewing this I found an existing problem with
+the error paths in jfs_rename, and your patch adds to the problem. See
+below.
 
-On 2015-07-15 12:58, Andrew Morton wrote:
-> Also, what's the status of ext4's data=3Djournal?  It's the hardest ext=
-3
-> mode for the rest of the kernel to support and I suspect hardly anyone
-> uses it.
-I use it, as do some other people I know, but only for stuff that pretty =
+> 
+>> Signed-off-by: Jan Kara <jack@suse.com>
+> Reviewed-by: Dave Kleikamp <dave.kleikamp@oracle.com>
+> 
+>> ---
+>>  fs/jfs/file.c      |  7 +++++--
+>>  fs/jfs/jfs_inode.c |  4 +++-
+>>  fs/jfs/namei.c     | 53 +++++++++++++++++++++++++++++++++++++++--------------
+>>  3 files changed, 47 insertions(+), 17 deletions(-)
+>>
+>> diff --git a/fs/jfs/file.c b/fs/jfs/file.c
+>> index e98d39d75cf4..34ad63ea0280 100644
+>> --- a/fs/jfs/file.c
+>> +++ b/fs/jfs/file.c
+>> @@ -107,8 +107,11 @@ int jfs_setattr(struct dentry *dentry, struct iattr *iattr)
+>>  	if (rc)
+>>  		return rc;
+>>  
+>> -	if (is_quota_modification(inode, iattr))
+>> -		dquot_initialize(inode);
+>> +	if (is_quota_modification(inode, iattr)) {
+>> +		rc = dquot_initialize(inode);
+>> +		if (rc)
+>> +			return rc;
+>> +	}
+>>  	if ((iattr->ia_valid & ATTR_UID && !uid_eq(iattr->ia_uid, inode->i_uid)) ||
+>>  	    (iattr->ia_valid & ATTR_GID && !gid_eq(iattr->ia_gid, inode->i_gid))) {
+>>  		rc = dquot_transfer(inode, iattr);
+>> diff --git a/fs/jfs/jfs_inode.c b/fs/jfs/jfs_inode.c
+>> index 6b0f816201a2..cf7936fe2e68 100644
+>> --- a/fs/jfs/jfs_inode.c
+>> +++ b/fs/jfs/jfs_inode.c
+>> @@ -109,7 +109,9 @@ struct inode *ialloc(struct inode *parent, umode_t mode)
+>>  	/*
+>>  	 * Allocate inode to quota.
+>>  	 */
+>> -	dquot_initialize(inode);
+>> +	rc = dquot_initialize(inode);
+>> +	if (rc)
+>> +		goto fail_drop;
+>>  	rc = dquot_alloc_inode(inode);
+>>  	if (rc)
+>>  		goto fail_drop;
+>> diff --git a/fs/jfs/namei.c b/fs/jfs/namei.c
+>> index e33be921aa41..fb28ce85aa52 100644
+>> --- a/fs/jfs/namei.c
+>> +++ b/fs/jfs/namei.c
+>> @@ -86,7 +86,9 @@ static int jfs_create(struct inode *dip, struct dentry *dentry, umode_t mode,
+>>  
+>>  	jfs_info("jfs_create: dip:0x%p name:%pd", dip, dentry);
+>>  
+>> -	dquot_initialize(dip);
+>> +	rc = dquot_initialize(dip);
+>> +	if (rc)
+>> +		goto out1;
+>>  
+>>  	/*
+>>  	 * search parent directory for entry/freespace
+>> @@ -218,7 +220,9 @@ static int jfs_mkdir(struct inode *dip, struct dentry *dentry, umode_t mode)
+>>  
+>>  	jfs_info("jfs_mkdir: dip:0x%p name:%pd", dip, dentry);
+>>  
+>> -	dquot_initialize(dip);
+>> +	rc = dquot_initialize(dip);
+>> +	if (rc)
+>> +		goto out1;
+>>  
+>>  	/*
+>>  	 * search parent directory for entry/freespace
+>> @@ -355,8 +359,12 @@ static int jfs_rmdir(struct inode *dip, struct dentry *dentry)
+>>  	jfs_info("jfs_rmdir: dip:0x%p name:%pd", dip, dentry);
+>>  
+>>  	/* Init inode for quota operations. */
+>> -	dquot_initialize(dip);
+>> -	dquot_initialize(ip);
+>> +	rc = dquot_initialize(dip);
+>> +	if (rc)
+>> +		goto out;
+>> +	rc = dquot_initialize(ip);
+>> +	if (rc)
+>> +		goto out;
+>>  
+>>  	/* directory must be empty to be removed */
+>>  	if (!dtEmpty(ip)) {
+>> @@ -483,8 +491,12 @@ static int jfs_unlink(struct inode *dip, struct dentry *dentry)
+>>  	jfs_info("jfs_unlink: dip:0x%p name:%pd", dip, dentry);
+>>  
+>>  	/* Init inode for quota operations. */
+>> -	dquot_initialize(dip);
+>> -	dquot_initialize(ip);
+>> +	rc = dquot_initialize(dip);
+>> +	if (rc)
+>> +		goto out;
+>> +	rc = dquot_initialize(ip);
+>> +	if (rc)
+>> +		goto out;
+>>  
+>>  	if ((rc = get_UCSname(&dname, dentry)))
+>>  		goto out;
+>> @@ -799,7 +811,9 @@ static int jfs_link(struct dentry *old_dentry,
+>>  
+>>  	jfs_info("jfs_link: %pd %pd", old_dentry, dentry);
+>>  
+>> -	dquot_initialize(dir);
+>> +	rc = dquot_initialize(dir);
+>> +	if (rc)
+>> +		goto out;
+>>  
+>>  	tid = txBegin(ip->i_sb, 0);
+>>  
+>> @@ -810,7 +824,7 @@ static int jfs_link(struct dentry *old_dentry,
+>>  	 * scan parent directory for entry/freespace
+>>  	 */
+>>  	if ((rc = get_UCSname(&dname, dentry)))
+>> -		goto out;
+>> +		goto out_tx;
+>>  
+>>  	if ((rc = dtSearch(dir, &dname, &ino, &btstack, JFS_CREATE)))
+>>  		goto free_dname;
+>> @@ -842,12 +856,13 @@ static int jfs_link(struct dentry *old_dentry,
+>>        free_dname:
+>>  	free_UCSname(&dname);
+>>  
+>> -      out:
+>> +      out_tx:
+>>  	txEnd(tid);
+>>  
+>>  	mutex_unlock(&JFS_IP(ip)->commit_mutex);
+>>  	mutex_unlock(&JFS_IP(dir)->commit_mutex);
+>>  
+>> +      out:
+>>  	jfs_info("jfs_link: rc:%d", rc);
+>>  	return rc;
+>>  }
+>> @@ -891,7 +906,9 @@ static int jfs_symlink(struct inode *dip, struct dentry *dentry,
+>>  
+>>  	jfs_info("jfs_symlink: dip:0x%p name:%s", dip, name);
+>>  
+>> -	dquot_initialize(dip);
+>> +	rc = dquot_initialize(dip);
+>> +	if (rc)
+>> +		goto out1;
+>>  
+>>  	ssize = strlen(name) + 1;
+>>  
+>> @@ -1082,8 +1099,12 @@ static int jfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+>>  
+>>  	jfs_info("jfs_rename: %pd %pd", old_dentry, new_dentry);
+>>  
+>> -	dquot_initialize(old_dir);
+>> -	dquot_initialize(new_dir);
+>> +	rc = dquot_initialize(old_dir);
+>> +	if (rc)
+>> +		goto out1;
+>> +	rc = dquot_initialize(new_dir);
+>> +	if (rc)
+>> +		goto out1;
 
-much needs to be 100% guaranteed to be consistent after a power failure. =
+out1: conditionally calls IWRITE_UNLOCK after checking new_ip, which
+would here be uninitialized. That IWRITE_UNLOCK needs to be in another
+place anyway. I'll send a patch that fixes that and then adjust your
+patch on top of that.
 
-  It is _very_ slow, but it does work correctly based on my recent=20
-experience.
-
-
-
---------------ms090702000606080902040007
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIGuDCC
-BrQwggScoAMCAQICAxBuVTANBgkqhkiG9w0BAQ0FADB5MRAwDgYDVQQKEwdSb290IENBMR4w
-HAYDVQQLExVodHRwOi8vd3d3LmNhY2VydC5vcmcxIjAgBgNVBAMTGUNBIENlcnQgU2lnbmlu
-ZyBBdXRob3JpdHkxITAfBgkqhkiG9w0BCQEWEnN1cHBvcnRAY2FjZXJ0Lm9yZzAeFw0xNTAz
-MjUxOTM0MzhaFw0xNTA5MjExOTM0MzhaMGMxGDAWBgNVBAMTD0NBY2VydCBXb1QgVXNlcjEj
-MCEGCSqGSIb3DQEJARYUYWhmZXJyb2luN0BnbWFpbC5jb20xIjAgBgkqhkiG9w0BCQEWE2Fo
-ZW1tZWxnQG9oaW9ndC5jb20wggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCdD/zW
-2rRAFCLnDfXpWxU1+ODqRVUgzHvrRO7ADUxRo1CBDc3JSX5TIW2OGmQ3DAKGOACp8Z0sgxMc
-B05tzAZ/M7m4jajVrwwdVCdrwVGxTdAai7Kwg4ZCVfyMVhcwo8R2eW3QahBx34G0RKumK9sZ
-ZQSQ+zULAzpY6uz7T1sAk/erMoivRXF6u8WvOsLkOD1F/Xyv1ZccSUG5YeDgZgc0nZUBvyIp
-zXSHjgWerFkrxEM3y2z/Ff3eL1sgGYecV/I1F+I5S01V7Kclt/qRW10c/4JEGRcI1FmrJBPu
-BtMYPbg/3Y9LZROYN+mVIFxZxOfrmjfFZ96xt/TaMXo8vcEKtWcNEjhGBjEbfMUEm4aq8ygQ
-4MuEcpJc8DJCHBkg2KBk13DkbU2qNepTD6Uip1C+g+KMr0nd6KOJqSH27ZuNY4xqV4hIxFHp
-ex0zY7mq6fV2o6sKBGQzRdI20FDYmNjsLJwjH6qJ8laxFphZnPRpBThmu0AjuBWE72GnI1oA
-aO+bs92MQGJernt7hByCnDO82W/ykbVz+Ge3Sax8NY0m2Xdvp6WFDY/PjD9CdaJ9nwQGsUSa
-N54lrZ2qMTeCI9Vauwf6U69BA42xgk65VvxvTNqji+tZ4aZbarZ7el2/QDHOb/rRwlCFplS/
-z4l1f1nOrE6bnDl5RBJyW3zi74P6GwIDAQABo4IBWTCCAVUwDAYDVR0TAQH/BAIwADBWBglg
-hkgBhvhCAQ0ESRZHVG8gZ2V0IHlvdXIgb3duIGNlcnRpZmljYXRlIGZvciBGUkVFIGhlYWQg
-b3ZlciB0byBodHRwOi8vd3d3LkNBY2VydC5vcmcwDgYDVR0PAQH/BAQDAgOoMEAGA1UdJQQ5
-MDcGCCsGAQUFBwMEBggrBgEFBQcDAgYKKwYBBAGCNwoDBAYKKwYBBAGCNwoDAwYJYIZIAYb4
-QgQBMDIGCCsGAQUFBwEBBCYwJDAiBggrBgEFBQcwAYYWaHR0cDovL29jc3AuY2FjZXJ0Lm9y
-ZzAxBgNVHR8EKjAoMCagJKAihiBodHRwOi8vY3JsLmNhY2VydC5vcmcvcmV2b2tlLmNybDA0
-BgNVHREELTArgRRhaGZlcnJvaW43QGdtYWlsLmNvbYETYWhlbW1lbGdAb2hpb2d0LmNvbTAN
-BgkqhkiG9w0BAQ0FAAOCAgEAGvl7xb42JMRH5D/vCIDYvFY3dR2FPd5kmOqpKU/fvQ8ovmJa
-p5N/FDrsCL+YdslxPY+AAn78PYmL5pFHTdRadT++07DPIMtQyy2qd+XRmz6zP8Il7vGcEDmO
-WmMLYMq4xV9s/N7t7JJp6ftdIYUcoTVChUgilDaRWMLidtslCdRsBVfUjPb1bF5Ua31diKDP
-e0M9/e2CU36rbcTtiNCXhptMigzuL3zJXUf2B9jyUV8pnqNEQH36fqJ7YTBLcpq3aYa2XbAH
-Hgx9GehJBIqwspDmhPCFZ/QmqUXCkt+XfvinQ2NzKR6P3+OdYbwqzVX8BdMeojh7Ig8x/nIx
-mQ+/ufstL1ZYp0bg13fyK/hPYSIBpayaC76vzWovkIm70DIDRIFLi20p/qTd7rfDYy831Hjm
-+lDdCECF9bIXEWFk33kA97dgQIMbf5chEmlFg8S0e4iw7LMjvRqMX3eCD8GJ2+oqyZUwzZxy
-S0Mx+rBld5rrN7LsXwZ671HsGqNeYbYeU25e7t7/Gcc6Bd/kPfA+adEuUGFcvUKH3trDYqNq
-6mOkAd8WO/mQadlc3ztS++XDMhmIpfBre9MPAr6usqf+wc+R8Nk9KLK39kEgrqVfzc/fgf8L
-MaD4rHnusdg4gca6Yi+kNrm99anw7SwaBrBvULYBp7ixNRUhaYiNW4YjTrYxggShMIIEnQIB
-ATCBgDB5MRAwDgYDVQQKEwdSb290IENBMR4wHAYDVQQLExVodHRwOi8vd3d3LmNhY2VydC5v
-cmcxIjAgBgNVBAMTGUNBIENlcnQgU2lnbmluZyBBdXRob3JpdHkxITAfBgkqhkiG9w0BCQEW
-EnN1cHBvcnRAY2FjZXJ0Lm9yZwIDEG5VMAkGBSsOAwIaBQCgggH1MBgGCSqGSIb3DQEJAzEL
-BgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTE1MDcxNTE3MzUwOVowIwYJKoZIhvcNAQkE
-MRYEFERw9UOS8b/ZWtF8JeJncJhE9fUOMGwGCSqGSIb3DQEJDzFfMF0wCwYJYIZIAWUDBAEq
-MAsGCWCGSAFlAwQBAjAKBggqhkiG9w0DBzAOBggqhkiG9w0DAgICAIAwDQYIKoZIhvcNAwIC
-AUAwBwYFKw4DAgcwDQYIKoZIhvcNAwICASgwgZEGCSsGAQQBgjcQBDGBgzCBgDB5MRAwDgYD
-VQQKEwdSb290IENBMR4wHAYDVQQLExVodHRwOi8vd3d3LmNhY2VydC5vcmcxIjAgBgNVBAMT
-GUNBIENlcnQgU2lnbmluZyBBdXRob3JpdHkxITAfBgkqhkiG9w0BCQEWEnN1cHBvcnRAY2Fj
-ZXJ0Lm9yZwIDEG5VMIGTBgsqhkiG9w0BCRACCzGBg6CBgDB5MRAwDgYDVQQKEwdSb290IENB
-MR4wHAYDVQQLExVodHRwOi8vd3d3LmNhY2VydC5vcmcxIjAgBgNVBAMTGUNBIENlcnQgU2ln
-bmluZyBBdXRob3JpdHkxITAfBgkqhkiG9w0BCQEWEnN1cHBvcnRAY2FjZXJ0Lm9yZwIDEG5V
-MA0GCSqGSIb3DQEBAQUABIICACBrRPkNWjEFZ51XFYD4AidS7kPOLtvdyGYu5TmlQI3g0erT
-PpBXB78WUccv9GlTwfeKj0i1pFwmqYbWbf1uaDjI2sWmnDeGBmNQ/5nmnm01qcGh3uO0AjCs
-19RoDrJ3pnpDKFICwYWNk+Aq4yRU17K93j8KRuunpXoxH7WOdjlk43vVJrq6U+p19j1bOopg
-QzZUKbz7x+PQYSslubC3sHiQKpLbH8Ck67rAjSjaHMBSP/SDvequXsXMUhPvkfiF1L40v1sW
-YL/IZ8T3GCIzVr5HSyw37Y6oWBchDLGVqix3n0yu1mHvPLfkrzqPTcNRAHS1fCHpRuJt/Ojn
-yYi/Mt+HNrlAj3Lzw1L2lCaAkqEy0Nzv8zM56lKV7PXE8AwJO2+13+qdfBLkhYA+2f4UP1Nv
-RLArhXSwTdrC/EHVZrtApoIZzFFUX0bl0FZwoQMOdb+KighUItkywBWReysVk/q+pVDB1DKd
-ZFmfZstCJ05INlfxRle8xAJsLVL2yjSKg+FhDdbDVGXR+FHfi5oycO4cshSPbbEIcvNQu0Wj
-8kGgE1QHYtYW/DKk62bpA2IzzSUP9igXvmEvuouT8lnAAZD1EdNq/9uOYd+7sk7+nEGGzxLG
-RypWSs9fT16ymN3VStZPRoKvn5DEvyMOmJZDICkagkB5WPWAk5pXhcn/Aq9sAAAAAAAA
---------------ms090702000606080902040007--
+>>  
+>>  	old_ip = d_inode(old_dentry);
+>>  	new_ip = d_inode(new_dentry);
+>> @@ -1130,7 +1151,9 @@ static int jfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+>>  	} else if (new_ip) {
+>>  		IWRITE_LOCK(new_ip, RDWRLOCK_NORMAL);
+>>  		/* Init inode for quota operations. */
+>> -		dquot_initialize(new_ip);
+>> +		rc = dquot_initialize(new_ip);
+>> +		if (rc)
+>> +			goto out3;
+>>  	}
+>>  
+>>  	/*
+>> @@ -1354,7 +1377,9 @@ static int jfs_mknod(struct inode *dir, struct dentry *dentry,
+>>  
+>>  	jfs_info("jfs_mknod: %pd", dentry);
+>>  
+>> -	dquot_initialize(dir);
+>> +	rc = dquot_initialize(dir);
+>> +	if (rc)
+>> +		goto out;
+>>  
+>>  	if ((rc = get_UCSname(&dname, dentry)))
+>>  		goto out;
+>>
