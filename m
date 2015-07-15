@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.com>
-Subject: [PATCH 6/6] reiserfs: Handle error from dquot_initialize()
-Date: Wed, 15 Jul 2015 14:42:32 +0200
-Message-ID: <1436964152-11203-7-git-send-email-jack@suse.com>
+Subject: [PATCH 5/6] jfs: Handle error from dquot_initialize()
+Date: Wed, 15 Jul 2015 14:42:31 +0200
+Message-ID: <1436964152-11203-6-git-send-email-jack@suse.com>
 References: <1436964152-11203-1-git-send-email-jack@suse.com>
 Cc: linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
 	Mark Fasheh <mfasheh@suse.com>,
@@ -9,186 +9,192 @@ Cc: linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
 	jfs-discussion@lists.sourceforge.net,
 	reiserfs-devel@vger.kernel.org, Jan Kara <jack@suse.com>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1436964152-11203-1-git-send-email-jack@suse.com>
-Sender: reiserfs-devel-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 dquot_initialize() can now return error. Handle it where possible.
 
 Signed-off-by: Jan Kara <jack@suse.com>
 ---
- fs/reiserfs/inode.c |  7 ++++--
- fs/reiserfs/namei.c | 63 ++++++++++++++++++++++++++++++++++++++++-------------
- 2 files changed, 53 insertions(+), 17 deletions(-)
+ fs/jfs/file.c      |  7 +++++--
+ fs/jfs/jfs_inode.c |  4 +++-
+ fs/jfs/namei.c     | 53 +++++++++++++++++++++++++++++++++++++++--------------
+ 3 files changed, 47 insertions(+), 17 deletions(-)
 
-diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c
-index f6f2fbad9777..3d8e7e671d5b 100644
---- a/fs/reiserfs/inode.c
-+++ b/fs/reiserfs/inode.c
-@@ -3319,8 +3319,11 @@ int reiserfs_setattr(struct dentry *dentry, struct iattr *attr)
- 	/* must be turned off for recursive notify_change calls */
- 	ia_valid = attr->ia_valid &= ~(ATTR_KILL_SUID|ATTR_KILL_SGID);
+diff --git a/fs/jfs/file.c b/fs/jfs/file.c
+index e98d39d75cf4..34ad63ea0280 100644
+--- a/fs/jfs/file.c
++++ b/fs/jfs/file.c
+@@ -107,8 +107,11 @@ int jfs_setattr(struct dentry *dentry, struct iattr *iattr)
+ 	if (rc)
+ 		return rc;
  
--	if (is_quota_modification(inode, attr))
+-	if (is_quota_modification(inode, iattr))
 -		dquot_initialize(inode);
-+	if (is_quota_modification(inode, attr)) {
-+		error = dquot_initialize(inode);
-+		if (error)
-+			return error;
++	if (is_quota_modification(inode, iattr)) {
++		rc = dquot_initialize(inode);
++		if (rc)
++			return rc;
 +	}
- 	reiserfs_write_lock(inode->i_sb);
- 	if (attr->ia_valid & ATTR_SIZE) {
- 		/*
-diff --git a/fs/reiserfs/namei.c b/fs/reiserfs/namei.c
-index b55a074653d7..5f1c9c29eb8c 100644
---- a/fs/reiserfs/namei.c
-+++ b/fs/reiserfs/namei.c
-@@ -613,8 +613,7 @@ static int new_inode_init(struct inode *inode, struct inode *dir, umode_t mode)
- 	 * we have to set uid and gid here
- 	 */
- 	inode_init_owner(inode, dir, mode);
--	dquot_initialize(inode);
--	return 0;
-+	return dquot_initialize(inode);
- }
- 
- static int reiserfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
-@@ -633,12 +632,18 @@ static int reiserfs_create(struct inode *dir, struct dentry *dentry, umode_t mod
- 	struct reiserfs_transaction_handle th;
- 	struct reiserfs_security_handle security;
- 
--	dquot_initialize(dir);
-+	retval = dquot_initialize(dir);
-+	if (retval)
-+		return retval;
- 
- 	if (!(inode = new_inode(dir->i_sb))) {
- 		return -ENOMEM;
- 	}
--	new_inode_init(inode, dir, mode);
-+	retval = new_inode_init(inode, dir, mode);
-+	if (retval) {
-+		drop_new_inode(inode);
-+		return retval;
-+	}
- 
- 	jbegin_count += reiserfs_cache_default_acl(dir);
- 	retval = reiserfs_security_init(dir, inode, &dentry->d_name, &security);
-@@ -710,12 +715,18 @@ static int reiserfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode
- 	if (!new_valid_dev(rdev))
- 		return -EINVAL;
- 
--	dquot_initialize(dir);
-+	retval = dquot_initialize(dir);
-+	if (retval)
-+		return retval;
- 
- 	if (!(inode = new_inode(dir->i_sb))) {
- 		return -ENOMEM;
- 	}
--	new_inode_init(inode, dir, mode);
-+	retval = new_inode_init(inode, dir, mode);
-+	if (retval) {
-+		drop_new_inode(inode);
-+		return retval;
-+	}
- 
- 	jbegin_count += reiserfs_cache_default_acl(dir);
- 	retval = reiserfs_security_init(dir, inode, &dentry->d_name, &security);
-@@ -787,7 +798,9 @@ static int reiserfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode
- 	    2 * (REISERFS_QUOTA_INIT_BLOCKS(dir->i_sb) +
- 		 REISERFS_QUOTA_TRANS_BLOCKS(dir->i_sb));
- 
--	dquot_initialize(dir);
-+	retval = dquot_initialize(dir);
-+	if (retval)
-+		return retval;
- 
- #ifdef DISPLACE_NEW_PACKING_LOCALITIES
+ 	if ((iattr->ia_valid & ATTR_UID && !uid_eq(iattr->ia_uid, inode->i_uid)) ||
+ 	    (iattr->ia_valid & ATTR_GID && !gid_eq(iattr->ia_gid, inode->i_gid))) {
+ 		rc = dquot_transfer(inode, iattr);
+diff --git a/fs/jfs/jfs_inode.c b/fs/jfs/jfs_inode.c
+index 6b0f816201a2..cf7936fe2e68 100644
+--- a/fs/jfs/jfs_inode.c
++++ b/fs/jfs/jfs_inode.c
+@@ -109,7 +109,9 @@ struct inode *ialloc(struct inode *parent, umode_t mode)
  	/*
-@@ -800,7 +813,11 @@ static int reiserfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode
- 	if (!(inode = new_inode(dir->i_sb))) {
- 		return -ENOMEM;
- 	}
--	new_inode_init(inode, dir, mode);
-+	retval = new_inode_init(inode, dir, mode);
-+	if (retval) {
-+		drop_new_inode(inode);
-+		return retval;
-+	}
+ 	 * Allocate inode to quota.
+ 	 */
+-	dquot_initialize(inode);
++	rc = dquot_initialize(inode);
++	if (rc)
++		goto fail_drop;
+ 	rc = dquot_alloc_inode(inode);
+ 	if (rc)
+ 		goto fail_drop;
+diff --git a/fs/jfs/namei.c b/fs/jfs/namei.c
+index e33be921aa41..fb28ce85aa52 100644
+--- a/fs/jfs/namei.c
++++ b/fs/jfs/namei.c
+@@ -86,7 +86,9 @@ static int jfs_create(struct inode *dip, struct dentry *dentry, umode_t mode,
  
- 	jbegin_count += reiserfs_cache_default_acl(dir);
- 	retval = reiserfs_security_init(dir, inode, &dentry->d_name, &security);
-@@ -899,7 +916,9 @@ static int reiserfs_rmdir(struct inode *dir, struct dentry *dentry)
- 	    JOURNAL_PER_BALANCE_CNT * 2 + 2 +
- 	    4 * REISERFS_QUOTA_TRANS_BLOCKS(dir->i_sb);
+ 	jfs_info("jfs_create: dip:0x%p name:%pd", dip, dentry);
+ 
+-	dquot_initialize(dip);
++	rc = dquot_initialize(dip);
++	if (rc)
++		goto out1;
+ 
+ 	/*
+ 	 * search parent directory for entry/freespace
+@@ -218,7 +220,9 @@ static int jfs_mkdir(struct inode *dip, struct dentry *dentry, umode_t mode)
+ 
+ 	jfs_info("jfs_mkdir: dip:0x%p name:%pd", dip, dentry);
+ 
+-	dquot_initialize(dip);
++	rc = dquot_initialize(dip);
++	if (rc)
++		goto out1;
+ 
+ 	/*
+ 	 * search parent directory for entry/freespace
+@@ -355,8 +359,12 @@ static int jfs_rmdir(struct inode *dip, struct dentry *dentry)
+ 	jfs_info("jfs_rmdir: dip:0x%p name:%pd", dip, dentry);
+ 
+ 	/* Init inode for quota operations. */
+-	dquot_initialize(dip);
+-	dquot_initialize(ip);
++	rc = dquot_initialize(dip);
++	if (rc)
++		goto out;
++	rc = dquot_initialize(ip);
++	if (rc)
++		goto out;
+ 
+ 	/* directory must be empty to be removed */
+ 	if (!dtEmpty(ip)) {
+@@ -483,8 +491,12 @@ static int jfs_unlink(struct inode *dip, struct dentry *dentry)
+ 	jfs_info("jfs_unlink: dip:0x%p name:%pd", dip, dentry);
+ 
+ 	/* Init inode for quota operations. */
+-	dquot_initialize(dip);
+-	dquot_initialize(ip);
++	rc = dquot_initialize(dip);
++	if (rc)
++		goto out;
++	rc = dquot_initialize(ip);
++	if (rc)
++		goto out;
+ 
+ 	if ((rc = get_UCSname(&dname, dentry)))
+ 		goto out;
+@@ -799,7 +811,9 @@ static int jfs_link(struct dentry *old_dentry,
+ 
+ 	jfs_info("jfs_link: %pd %pd", old_dentry, dentry);
  
 -	dquot_initialize(dir);
-+	retval = dquot_initialize(dir);
-+	if (retval)
-+		return retval;
++	rc = dquot_initialize(dir);
++	if (rc)
++		goto out;
  
- 	reiserfs_write_lock(dir->i_sb);
- 	retval = journal_begin(&th, dir->i_sb, jbegin_count);
-@@ -985,7 +1004,9 @@ static int reiserfs_unlink(struct inode *dir, struct dentry *dentry)
- 	int jbegin_count;
- 	unsigned long savelink;
+ 	tid = txBegin(ip->i_sb, 0);
  
--	dquot_initialize(dir);
-+	retval = dquot_initialize(dir);
-+	if (retval)
-+		return retval;
+@@ -810,7 +824,7 @@ static int jfs_link(struct dentry *old_dentry,
+ 	 * scan parent directory for entry/freespace
+ 	 */
+ 	if ((rc = get_UCSname(&dname, dentry)))
+-		goto out;
++		goto out_tx;
  
- 	inode = d_inode(dentry);
+ 	if ((rc = dtSearch(dir, &dname, &ino, &btstack, JFS_CREATE)))
+ 		goto free_dname;
+@@ -842,12 +856,13 @@ static int jfs_link(struct dentry *old_dentry,
+       free_dname:
+ 	free_UCSname(&dname);
  
-@@ -1095,12 +1116,18 @@ static int reiserfs_symlink(struct inode *parent_dir,
- 	    2 * (REISERFS_QUOTA_INIT_BLOCKS(parent_dir->i_sb) +
- 		 REISERFS_QUOTA_TRANS_BLOCKS(parent_dir->i_sb));
+-      out:
++      out_tx:
+ 	txEnd(tid);
  
--	dquot_initialize(parent_dir);
-+	retval = dquot_initialize(parent_dir);
-+	if (retval)
-+		return retval;
+ 	mutex_unlock(&JFS_IP(ip)->commit_mutex);
+ 	mutex_unlock(&JFS_IP(dir)->commit_mutex);
  
- 	if (!(inode = new_inode(parent_dir->i_sb))) {
- 		return -ENOMEM;
- 	}
--	new_inode_init(inode, parent_dir, mode);
-+	retval = new_inode_init(inode, parent_dir, mode);
-+	if (retval) {
-+		drop_new_inode(inode);
-+		return retval;
-+	}
++      out:
+ 	jfs_info("jfs_link: rc:%d", rc);
+ 	return rc;
+ }
+@@ -891,7 +906,9 @@ static int jfs_symlink(struct inode *dip, struct dentry *dentry,
  
- 	retval = reiserfs_security_init(parent_dir, inode, &dentry->d_name,
- 					&security);
-@@ -1184,7 +1211,9 @@ static int reiserfs_link(struct dentry *old_dentry, struct inode *dir,
- 	    JOURNAL_PER_BALANCE_CNT * 3 +
- 	    2 * REISERFS_QUOTA_TRANS_BLOCKS(dir->i_sb);
+ 	jfs_info("jfs_symlink: dip:0x%p name:%s", dip, name);
  
--	dquot_initialize(dir);
-+	retval = dquot_initialize(dir);
-+	if (retval)
-+		return retval;
+-	dquot_initialize(dip);
++	rc = dquot_initialize(dip);
++	if (rc)
++		goto out1;
  
- 	reiserfs_write_lock(dir->i_sb);
- 	if (inode->i_nlink >= REISERFS_LINK_MAX) {
-@@ -1308,8 +1337,12 @@ static int reiserfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	    JOURNAL_PER_BALANCE_CNT * 3 + 5 +
- 	    4 * REISERFS_QUOTA_TRANS_BLOCKS(old_dir->i_sb);
+ 	ssize = strlen(name) + 1;
+ 
+@@ -1082,8 +1099,12 @@ static int jfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 
+ 	jfs_info("jfs_rename: %pd %pd", old_dentry, new_dentry);
  
 -	dquot_initialize(old_dir);
 -	dquot_initialize(new_dir);
-+	retval = dquot_initialize(old_dir);
-+	if (retval)
-+		return retval;
-+	retval = dquot_initialize(new_dir);
-+	if (retval)
-+		return retval;
++	rc = dquot_initialize(old_dir);
++	if (rc)
++		goto out1;
++	rc = dquot_initialize(new_dir);
++	if (rc)
++		goto out1;
  
- 	old_inode = d_inode(old_dentry);
- 	new_dentry_inode = d_inode(new_dentry);
+ 	old_ip = d_inode(old_dentry);
+ 	new_ip = d_inode(new_dentry);
+@@ -1130,7 +1151,9 @@ static int jfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	} else if (new_ip) {
+ 		IWRITE_LOCK(new_ip, RDWRLOCK_NORMAL);
+ 		/* Init inode for quota operations. */
+-		dquot_initialize(new_ip);
++		rc = dquot_initialize(new_ip);
++		if (rc)
++			goto out3;
+ 	}
+ 
+ 	/*
+@@ -1354,7 +1377,9 @@ static int jfs_mknod(struct inode *dir, struct dentry *dentry,
+ 
+ 	jfs_info("jfs_mknod: %pd", dentry);
+ 
+-	dquot_initialize(dir);
++	rc = dquot_initialize(dir);
++	if (rc)
++		goto out;
+ 
+ 	if ((rc = get_UCSname(&dname, dentry)))
+ 		goto out;
 -- 
 2.1.4
 
