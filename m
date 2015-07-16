@@ -1,93 +1,108 @@
-From: Joseph Qi <joseph.qi@huawei.com>
-Subject: Re: [BUG] infinite loop when unmounting ext3/4
-Date: Thu, 16 Jul 2015 14:18:16 +0800
-Message-ID: <55A74CA8.9070902@huawei.com>
-References: <20150715143031.GB18016@dhcp-13-216.nay.redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: Return the length of a hole from get_block
+Date: Thu, 16 Jul 2015 09:08:34 +0200
+Message-ID: <20150716070834.GB22847@quack.suse.cz>
+References: <1435936511-17705-1-git-send-email-matthew.r.wilcox@intel.com>
+ <20150713151610.GC17075@quack.suse.cz>
+ <20150713152615.GH13681@linux.intel.com>
+ <20150714090246.GA24369@quack.suse.cz>
+ <20150714134851.GK13681@linux.intel.com>
+ <20150715095903.GE22609@quack.suse.cz>
+ <20150716014647.GK7943@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>, "Theodore Ts'o" <tytso@mit.edu>
-To: Eryu Guan <guaneryu@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Matthew Wilcox <willy@linux.intel.com>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga02-in.huawei.com ([119.145.14.65]:25706 "EHLO
-	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751572AbbGPGSa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Jul 2015 02:18:30 -0400
-In-Reply-To: <20150715143031.GB18016@dhcp-13-216.nay.redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:42228 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752840AbbGPHIk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Jul 2015 03:08:40 -0400
+Content-Disposition: inline
+In-Reply-To: <20150716014647.GK7943@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I got the problem.
-I am not sure why old code uses "result <= 0" even if
-it won't return negative value. Could we use "result == 0" instead of
-"result <= 0"?
+On Thu 16-07-15 11:46:47, Dave Chinner wrote:
+> On Wed, Jul 15, 2015 at 11:59:03AM +0200, Jan Kara wrote:
+> > On Tue 14-07-15 09:48:51, Matthew Wilcox wrote:
+> > > On Tue, Jul 14, 2015 at 11:02:46AM +0200, Jan Kara wrote:
+> > > > On Mon 13-07-15 11:26:15, Matthew Wilcox wrote:
+> > > > > On Mon, Jul 13, 2015 at 05:16:10PM +0200, Jan Kara wrote:
+> > > > > > On Fri 03-07-15 11:15:11, Matthew Wilcox wrote:
+> > > > > > > From: Matthew Wilcox <willy@linux.intel.com>
+> > > > > > > 
+> > > > > > > Currently, if ext4's get_block encounters a hole, it does not modify the
+> > > > > > > buffer_head.  That's fine for many callers, but for DAX, it's useful to
+> > > > > > > know how large the hole is.  XFS already returns the length of the hole,
+> > > > > > > so this improvement should not confuse any callers.
+> > > > > > > 
+> > > > > > > Signed-off-by: Matthew Wilcox <willy@linux.intel.com>
+> > > > > > 
+> > > > > > So I'm somewhat wondering: What is the reason of BH_Uptodate flag being
+> > > > > > set? I can see the XFS sets it in some cases as well but the use of the
+> > > > > > flag isn't really clear to me...
+> > > > > 
+> > > > > No clue.  I'm just following the documentation in buffer.c:
+> > > > > 
+> > > > >  * NOTE! All mapped/uptodate combinations are valid:
+> > > > >  *
+> > > > >  *      Mapped  Uptodate        Meaning
+> > > > >  *
+> > > > >  *      No      No              "unknown" - must do get_block()
+> > > > >  *      No      Yes             "hole" - zero-filled
+> > > > >  *      Yes     No              "allocated" - allocated on disk, not read in
+> > > > >  *      Yes     Yes             "valid" - allocated and up-to-date in memory.
+> > > > 
+> > > > OK, but that speaks about buffer head attached to a page. get_block()
+> > > > callback gets a temporary bh (at least in some cases) only so that it can
+> > > > communicate result of block mapping. And BH_Uptodate should be set only if
+> > > > data in the buffer is properly filled (which cannot be the case for
+> > > > temporary bh which doesn't have *any* data) and it simply isn't the case
+> > > > even for bh attached to a page because ext4 get_block() functions don't
+> > > > touch bh->b_data at all. So I just wouldn't set BH_Uptodate in get_block()
+> > > > at all..
+> > > 
+> > > OK, but how should DAX then distinguish between an old-style filesystem
+> > > (like current ext4) which reports "unknown" and leaves b_size untouched
+> > > when it encounters a hole, versus a new-style filesystem (XFS, ext4 with
+> > > this patch) which wants to report the size of a hole in b_size?  The use
+> > > of Uptodate currently distinguishes the two cases.
+> > > 
+> > > Plus, why would you want bh's to be treated differently, depending on
+> > > whether they're stack-based or attached to a page?  That seems even more
+> > > confusing than bh's already are.
+> > 
+> > Well, you may want to treat them differently because they *are* different.
+> > For example touching b_size of page-attached buffer_head is a no-go.
+> > get_block() interface is abusing buffer_head structure for historical
+> > reasons.
+> > 
+> > Seeing you have hit issues with using buffer_head for passing mapping
+> > information I agree with Dave that we should convert DAX code to use
+> > iomaps instead of cluttering get_block() via buffer_head further. You can
+> > lift struct iomap from include/linux/exportfs.h (and related constant
+> > definitions) and use it for passing map information. It should be quite
+> > straightforward and simple now that DAX doesn't have many users. We will
+> > have:
+> > 
+> > typedef int (iomap_fn_t)(struct inode *inode, loff_t offset, u64 length,
+> > 			 bool create, struct iomap *iomap);
+> > 
+> > and DAX functions will take this instead of get_block_t. Adding a wrapper
+> > to ext4_map_blocks() to work as iomap_fn_t is pretty straightforward as
+> > well.
+> 
+> I've got one of them sitting around in a multipage write patchset
+> somewhere. See below.
 
-On 2015/7/15 22:30, Eryu Guan wrote:
-> Hi all,
-> 
-> I found an infinite loop when unmounting a known bad ext3 image (using
-> ext4 driver) with 4.2-rc1 kernel.
-> 
-> The fs image can be found here
-> https://bugzilla.kernel.org/show_bug.cgi?id=10882#c1
-> 
-> Reproduce steps:
->   mount -o loop ext3.img /mnt/ext3
->   rm -rf /mnt/ext3/{dev,proc,sys}
->   umount /mnt/ext3	# never return
-> 
-> And this issue was introduced by
-> 6f6a6fd jbd2: fix ocfs2 corrupt when updating journal superblock fails
-> 
-> It's looping in
-> fs/jbd2/journal.c:jbd2_journal_destroy()
-> ...
-> 1693         while (journal->j_checkpoint_transactions != NULL) {                                                                             
-> 1694                 spin_unlock(&journal->j_list_lock);                                                                                      
-> 1695                 mutex_lock(&journal->j_checkpoint_mutex);                                                                                
-> 1696                 jbd2_log_do_checkpoint(journal);                                                                                         
-> 1697                 mutex_unlock(&journal->j_checkpoint_mutex);                                                                              
-> 1698                 spin_lock(&journal->j_list_lock);                                                                                        
-> 1699         }
-> ...
-> 
-> Because jbd2_cleanup_journal_tail() is returning -EIO on aborted journal
-> now instead of 1, and jbd2_log_do_checkpoint() won't cleanup
-> journal->j_checkpoint_transactions in this while loop.
-> 
-> A quick hack would be
-> 
-> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-> index 4227dc4..1b2ea47 100644
-> --- a/fs/jbd2/checkpoint.c
-> +++ b/fs/jbd2/checkpoint.c
-> @@ -220,11 +220,13 @@ int jbd2_log_do_checkpoint(journal_t *journal)
->          * don't need checkpointing, just eliminate them from the
->          * journal straight away.
->          */
-> -       result = jbd2_cleanup_journal_tail(journal);
-> -       trace_jbd2_checkpoint(journal, result);
-> -       jbd_debug(1, "cleanup_journal_tail returned %d\n", result);
-> -       if (result <= 0)
-> -               return result;
-> +       if (!is_journal_aborted(journal)) {
-> +               result = jbd2_cleanup_journal_tail(journal);
-> +               trace_jbd2_checkpoint(journal, result);
-> +               jbd_debug(1, "cleanup_journal_tail returned %d\n", result);
-> +               if (result <= 0)
-> +                       return result;
-> +       }
->  
->         /*
->          * OK, we need to start writing disk blocks.  Take one transaction
-> 
-> to restore the old behavior (continue on aborted journal). Maybe someone
-> has a better fix.
-> 
-> Thanks,
-> Eryu
-> 
-> .
-> 
+Yeah, but Matthew actually doesn't need your patch. Your patch converts
+fs/buffer.c so that iomap interface works with buffer heads but Matthew can
+convert *just* the DAX code because that is standalone and doesn't need
+buffer heads at all. So that is even simpler.
 
-
+								Honza
