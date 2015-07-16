@@ -1,30 +1,65 @@
-From: "ts1@a.qukunming.com" <ts1@a.qukunming.com>
-Subject: LED WALL MOUNT
-Date: Thu, 16 Jul 2015 16:26:26 +0800
-Message-ID: <201507161626263244455@a.qukunming.com>
-Reply-To: dwm1682@163.com
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/3] Remove ext3 filesystem driver
+Date: Thu, 16 Jul 2015 10:53:47 +0200
+Message-ID: <20150716085347.GG22847@quack.suse.cz>
+References: <1436955987-7305-1-git-send-email-jack@suse.com>
+ <20150715141836.GA18400@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="GB2312"
-Content-Transfer-Encoding: base64
-To: "linux-ext4" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [103.228.131.119] ([103.228.131.119]:52249 "EHLO
-	a.qukunming.com" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
-	with ESMTP id S1754930AbbGPI41 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Jul 2015 04:56:27 -0400
-Received: from ghiijk (unknown [27.38.9.18])
-	by a.qukunming.com (Postfix) with ESMTPA id 4F3EFEEDE
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2015 16:25:03 +0800 (CST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jens Axboe <axboe@kernel.dk>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20150715141836.GA18400@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-RGVhciBTaXJzLA0KDQpIYXBweSB0byBjb250YWN0IHlvdSAhIA0KDQpXZSB3b3VsZCBsaWtlIHRv
-IGludHJvZHVjZSBvdXIgY29tcGFueSBhcyBhIGxhcmdlIHNjYWxlIEF1ZGlvLVZpZGVvIEFjY2Vz
-c29yaWVzIGVudGVycHJpc2UsIExDRCBUViBXYWxsIE1vdW50cywgTENEIHRyb2xsZXksIFByb2pl
-Y3RvciBTdGFuZHMsTWljcm9waG9uZSBTdGFuZHMsQ2VpbGluZyBNb3VudCxMYXB0b3AgU3RhbmRz
-LCBNb25pdG9yIFN0YW5kcyxDYW1lcmEgU3RhbmRzLCBDYW1lcmEgTWljcm9waG9uZXMgYXMgdGhl
-IG1haW4gcHJvZHVjdC4gV2UgY291bGQgc3VwcGx5IGdvb2QgcXVhbGl0eSBwcm9kdWN0cyB3aXRo
-IGNvbXBldGl0aXZlIHByaWNlLg0KDQpXZWxjb21lIHRvIGNvbnRhY3QgdXMgZm9yIG1vcmUgaW5m
-b3JtYXRpb24uDQoNCkJlc3Qgd2lzaGVzDQpSZWJlY2NhIFpoYW5nDQpFbWFpbDpkd20xNjgyQDE2
-My5jb20NCndlYjogamlhd2VpaGFvLmNvbQ==
+On Wed 15-07-15 10:18:36, Ted Tso wrote:
+> On Wed, Jul 15, 2015 at 12:26:24PM +0200, Jan Kara wrote:
+> > 
+> >   so I have created this patch set which removes ext3 driver (and some related support
+> > code) from the kernel. See changelog of patch 2/3 for more details. If noone objects,
+> > I will queue the series in my tree for the next merge window.
+> > 
+> > Jens, are you OK with me merging patch 3/3 or do you want me to send it to you once
+> > the first two patches get merged?
+> > 
+> > Ted, this also touches ext4 driver so that it always handles ext3 filesystems so ack
+> > from you would be nice.
+> 
+> Got tired of maintaining ext3, eh?   :-)
+
+Not really. Maintaining ext3 has been pretty low-effort in last years. But
+the releasepage trouble has made me reconsider whether it's worth keeping
+ext3 codebase and I just came to conclusion that it may be the right time
+to drop it.
+
+> As a minor nit, I wonder if it's worth while to put in some hackery in
+> fs/Kconfig so that if someone only has CONFIG_FS_EXT3 defined, but not
+> CONFIG_FS_EXT4 defined, that it will automatically enable
+> CONFIG_FS_EXT4 instead?  Otherwise someone upgrading their kernel
+> might accidentally end up getting a non-functional kernel.
+> 
+> i.e., something like this? (not tested!)
+> 
+> config FS_EXT3
+>        def_bool n
+>        select FS_EXT4
+
+Good point. Will add something like this, although the config will have to
+have some prompt for this to work...
+
+> In any case, since the 2/3 patch didn't hit the list, here's my:
+> 
+> Acked-by: Theodore Ts'o <tytso@mit.edu>
+
+Thanks.
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
