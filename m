@@ -1,8 +1,7 @@
 From: Jan Kara <jack@suse.com>
-Subject: [PATCH 4/4] ext4: Improve ext4 Kconfig test
-Date: Thu, 16 Jul 2015 11:53:06 +0200
-Message-ID: <1437040386-31148-5-git-send-email-jack@suse.com>
-References: <1437040386-31148-1-git-send-email-jack@suse.com>
+Subject: [PATCH 0/4 v2] Remove ext3 filesystem driver
+Date: Thu, 16 Jul 2015 11:53:02 +0200
+Message-ID: <1437040386-31148-1-git-send-email-jack@suse.com>
 Cc: linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@linux-foundation.org>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -10,42 +9,22 @@ Cc: linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
 	Jan Kara <jack@suse.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1437040386-31148-1-git-send-email-jack@suse.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Now that ext4 driver must be used to access ext3 filesystems, improve
-the Kconfig help text to better explain that using ext4 driver to access
-the filesystem is fully compatible with the old ext3 driver.
+  Hello,
 
-Signed-off-by: Jan Kara <jack@suse.com>
----
- fs/ext4/Kconfig | 13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+  here is the second iteration of my patches to remove ext3 filesystem driver.
+Changes since the first version are:
+* Regenerated the patch removing ext3 (using git format-patch -D) so that it's
+  not so huge
+* Added Kconfig option handling so that old configs with EXT3_FS set but not
+  EXT4_FS set still result in a kernel supporting ext3 filesystem
+* Created a patch updating ext4 Kconfig entry to assure users their old ext3
+  filesystems stay on-disk format compatible
+* Added acks
 
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index 219a190ccae9..47728da7702c 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -49,12 +49,13 @@ config EXT4_FS
- 	  up fsck time.  For more information, please see the web pages at
- 	  http://ext4.wiki.kernel.org.
- 
--	  The ext4 filesystem will support mounting an ext3
--	  filesystem; while there will be some performance gains from
--	  the delayed allocation and inode table readahead, the best
--	  performance gains will require enabling ext4 features in the
--	  filesystem, or formatting a new filesystem as an ext4
--	  filesystem initially.
-+	  The ext4 filesystem supports mounting an ext3 filesystem; while there
-+	  are some performance gains from the delayed allocation and inode
-+	  table readahead, the best performance gains require enabling ext4
-+	  features in the filesystem using tune2fs, or formatting a new
-+	  filesystem as an ext4 filesystem initially. Without explicit enabling
-+	  of ext4 features, the on disk filesystem format stays fully backward
-+	  compatible.
- 
- 	  To compile this file system support as a module, choose M here. The
- 	  module will be called ext4.
--- 
-2.1.4
+If there won't be further objections, I will queue the series in my tree for
+the next merge window.
+
+								Honza
