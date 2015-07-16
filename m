@@ -1,63 +1,91 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/3] Remove ext3 filesystem driver
-Date: Thu, 16 Jul 2015 10:53:47 +0200
-Message-ID: <20150716085347.GG22847@quack.suse.cz>
+Subject: Re: [PATCH 2/3] fs: Remove ext3 filesystem driver
+Date: Thu, 16 Jul 2015 11:41:01 +0200
+Message-ID: <20150716094101.GI22847@quack.suse.cz>
 References: <1436955987-7305-1-git-send-email-jack@suse.com>
- <20150715141836.GA18400@thunk.org>
+ <1436955987-7305-3-git-send-email-jack@suse.com>
+ <20150715095822.f994bc58.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jens Axboe <axboe@kernel.dk>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+	Jens Axboe <axboe@kernel.dk>, Ted Tso <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20150715141836.GA18400@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20150715095822.f994bc58.akpm@linux-foundation.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 15-07-15 10:18:36, Ted Tso wrote:
-> On Wed, Jul 15, 2015 at 12:26:24PM +0200, Jan Kara wrote:
+On Wed 15-07-15 09:58:22, Andrew Morton wrote:
+> On Wed, 15 Jul 2015 12:26:26 +0200 Jan Kara <jack@suse.com> wrote:
+> 
+> > From: Jan Kara <jack@suse.cz>
 > > 
-> >   so I have created this patch set which removes ext3 driver (and some related support
-> > code) from the kernel. See changelog of patch 2/3 for more details. If noone objects,
-> > I will queue the series in my tree for the next merge window.
-> > 
-> > Jens, are you OK with me merging patch 3/3 or do you want me to send it to you once
-> > the first two patches get merged?
-> > 
-> > Ted, this also touches ext4 driver so that it always handles ext3 filesystems so ack
-> > from you would be nice.
+> > The functionality of ext3 is fully supported by ext4 driver. Major
+> > distributions (SUSE, RedHat) already use ext4 driver to handle ext3
+> > filesystems for quite some time. There is some ugliness in mm resulting
+> > from jbd cleaning buffers in a dirty page without cleaning page dirty
+> > bit and also support for buffer bouncing in the block layer when stable
+> > pages are required is there only because of jbd. So let's remove the
+> > ext3 driver.
 > 
-> Got tired of maintaining ext3, eh?   :-)
+> Does this imply that ext4 doesn't do the
+> secretly-clean-the-page-via-buffers thing?  If so, how?
 
-Not really. Maintaining ext3 has been pretty low-effort in last years. But
-the releasepage trouble has made me reconsider whether it's worth keeping
-ext3 codebase and I just came to conclusion that it may be the right time
-to drop it.
+The biggest offender which was cleaning pages via buffers was JBD commit
+code writing back data=ordered buffers. I have modified JBD2 to do this
+via generic_writepages() instead of through buffer heads (which required
+locking overhaul in JBD2). So JBD2 doesn't do this for quite a few years.
 
-> As a minor nit, I wonder if it's worth while to put in some hackery in
-> fs/Kconfig so that if someone only has CONFIG_FS_EXT3 defined, but not
-> CONFIG_FS_EXT4 defined, that it will automatically enable
-> CONFIG_FS_EXT4 instead?  Otherwise someone upgrading their kernel
-> might accidentally end up getting a non-functional kernel.
+That being said, JBD2 checkpointing code will still clean pages via buffer
+heads so blockdev mapping may still have silently cleaned pages. And in
+data=journal mode this can be the case even for other mappings. In these
+cases, locking isn't luckily an issue and fixing this is relatively
+straightforward. I'm just looking for an elegant way to do this inside JBD2
+- I'm hoping for something better than just get page from bh, lock it and
+call clear_page_dirty_for_io() and ->writepage(). It works but looks
+ugly...
+
+> The comment in shrink_page_list() says the blockdev mapping will do
+> this as well, although I can't imagine how - there's no means of
+> getting to those buffer_heads except via the page.  So maybe the "even
+> if the page is PageDirty()" is no longer true.  It was added by:
 > 
-> i.e., something like this? (not tested!)
+> commit 493f4988d640a73337df91f2c63e94c78ecd5e97
+> Author: Andrew Morton <akpm@zip.com.au>
+> Date:   Mon Jun 17 20:20:53 2002 -0700
 > 
-> config FS_EXT3
->        def_bool n
->        select FS_EXT4
-
-Good point. Will add something like this, although the config will have to
-have some prompt for this to work...
-
-> In any case, since the 2/3 patch didn't hit the list, here's my:
+>     [PATCH] allow GFP_NOFS allocators to perform swapcache writeout
+>     
+>     One weakness which was introduced when the buffer LRU went away was
+>     that GFP_NOFS allocations became equivalent to GFP_NOIO.  Because all
+>     writeback goes via writepage/writepages, which requires entry into the
+>     filesystem.
+>     
+>     However now that swapout no longer calls bmap(), we can honour
+>     GFP_NOFS's intent for swapcache pages.  So if the allocation request
+>     specifies __GFP_IO and !__GFP_FS, we can wait on swapcache pages and we
+>     can perform swapcache writeout.
+>     
+>     This should strengthen the VM somewhat.
 > 
-> Acked-by: Theodore Ts'o <tytso@mit.edu>
+> I wonder what I was thinking.
 
-Thanks.
+Well, e.g. sync_mapping_buffers() from fs/buffer.c will write out buffer
+heads without cleaning the page. So does the checkpointing code in
+JBD/JBD2. So for blockdev mappings, this really happens rather frequently
+I'd say.
+
+> Also, what's the status of ext4's data=journal?  It's the hardest ext3
+> mode for the rest of the kernel to support and I suspect hardly anyone
+> uses it.
+
+As this thread shows, there are people using it (and I occasionally see bug
+reports for it as well). It would simplify things if we could get rid of it
+but I don't think it's currently an option...
 
 								Honza
 -- 
