@@ -1,28 +1,24 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: Re: [PATCHSET v2 block/for-4.2/writeback] ext4: implement cgroup
- writeback support
-Date: Fri, 17 Jul 2015 11:20:24 -0400
-Message-ID: <20150717152024.GC15934@mtj.duckdns.org>
-References: <1434495193-31182-1-git-send-email-tj@kernel.org>
- <20150712180520.GE18734@mtj.duckdns.org>
- <20150717013731.GF22531@thunk.org>
+From: "GORDON CHANG" <formacion@reddesolidaridadpopular.org>
+Subject: MESSAGE
+Date: Sat, 18 Jul 2015 00:56:05 +0800
+Message-ID: <20150717165752.7CA735B9F2__49256.9983391606$1437156633$gmane$org@spinoza.libradmin.org>
+Reply-To: <gordch101@yahoo.com.hk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, axboe@kernel.dk,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	lizefan@huawei.com, cgroups@vger.kernel.org, hannes@cmpxchg.org,
-	kernel-team@fb.com, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20150717013731.GF22531@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain;
+	charset="_iso-2022-jp$ESC"
+Content-Transfer-Encoding: 7bit
+To: undisclosed-recipients:;
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from libradmin.org ([91.121.146.153]:52689 "EHLO
+	spinoza.libradmin.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751901AbbGQSIx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jul 2015 14:08:53 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 16, 2015 at 09:37:31PM -0400, Theodore Ts'o wrote:
-> I'll take them through the ext4 tree.
+Hello,
+I have a sensitive message which I believe will be of mutual business benefit to us. Due to the sensitive nature of this message, I want you to please confirm your name and email so that I can be sure that email delivery is to the correct recipient.
 
-Great, thanks!
+Thank you.
 
--- 
-tejun
+Gordon.
