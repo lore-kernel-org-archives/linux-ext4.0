@@ -1,73 +1,47 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4 crypto: use a jbd2 transaction when adding a crypto policy
-Date: Sat, 18 Jul 2015 08:50:29 -0400
-Message-ID: <1437223830-28205-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/2] ext4 crypto: check for too-short encrypted file names
+Date: Sat, 18 Jul 2015 08:50:30 -0400
+Message-ID: <1437223830-28205-2-git-send-email-tytso@mit.edu>
+References: <1437223830-28205-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47735 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:47737 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750980AbbGRMug (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751343AbbGRMug (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 18 Jul 2015 08:50:36 -0400
+In-Reply-To: <1437223830-28205-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Start a jbd2 transaction, and mark the inode dirty on the inode under
-that transaction after setting the encrypt flag.  Otherwise if the
-directory isn't modified after setting the crypto policy, the
-encrypted flag might not survive the inode getting pushed out from
-memory, or the the file system getting unmounted and remounted.
+An encrypted file name should never be shorter than an 16 bytes, the
+AES block size.  The 3.10 crypto layer will oops and crash the kernel
+if ciphertext shorter than the block size is passed to it.
+
+Fortunately, in modern kernels the crypto layer will not crash the
+kernel in this scenario, but nevertheless, it represents a corrupted
+directory, and we should detect it and mark the file system as
+corrupted so that e2fsck can fix this.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/crypto_policy.c | 17 +++++++++++++++--
- 1 file changed, 15 insertions(+), 2 deletions(-)
+ fs/ext4/crypto_fname.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/ext4/crypto_policy.c b/fs/ext4/crypto_policy.c
-index 02c4e5d..a640ec2 100644
---- a/fs/ext4/crypto_policy.c
-+++ b/fs/ext4/crypto_policy.c
-@@ -12,6 +12,7 @@
- #include <linux/string.h>
- #include <linux/types.h>
- 
-+#include "ext4_jbd2.h"
- #include "ext4.h"
- #include "xattr.h"
- 
-@@ -49,7 +50,8 @@ static int ext4_create_encryption_context_from_policy(
- 	struct inode *inode, const struct ext4_encryption_policy *policy)
- {
- 	struct ext4_encryption_context ctx;
--	int res = 0;
-+	handle_t *handle;
-+	int res, res2;
- 
- 	res = ext4_convert_inline_data(inode);
- 	if (res)
-@@ -78,11 +80,22 @@ static int ext4_create_encryption_context_from_policy(
- 	BUILD_BUG_ON(sizeof(ctx.nonce) != EXT4_KEY_DERIVATION_NONCE_SIZE);
- 	get_random_bytes(ctx.nonce, EXT4_KEY_DERIVATION_NONCE_SIZE);
- 
-+	handle = ext4_journal_start(inode, EXT4_HT_MISC,
-+				    ext4_jbd2_credits_xattr(inode));
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
- 	res = ext4_xattr_set(inode, EXT4_XATTR_INDEX_ENCRYPTION,
- 			     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT, &ctx,
- 			     sizeof(ctx), 0);
--	if (!res)
-+	if (!res) {
- 		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
-+		res = ext4_mark_inode_dirty(handle, inode);
-+		if (res)
-+			EXT4_ERROR_INODE(inode, "Failed to mark inode dirty");
+diff --git a/fs/ext4/crypto_fname.c b/fs/ext4/crypto_fname.c
+index 7dc4eb5..86ee996 100644
+--- a/fs/ext4/crypto_fname.c
++++ b/fs/ext4/crypto_fname.c
+@@ -329,6 +329,10 @@ int _ext4_fname_disk_to_usr(struct inode *inode,
+ 			return oname->len;
+ 		}
+ 	}
++	if (iname->len < EXT4_CRYPTO_BLOCK_SIZE) {
++		EXT4_ERROR_INODE(inode, "encrypted inode too small");
++		return -EUCLEAN;
 +	}
-+	res2 = ext4_journal_stop(handle);
-+	if (!res)
-+		res = res2;
- 	return res;
- }
+ 	if (EXT4_I(inode)->i_crypt_info)
+ 		return ext4_fname_decrypt(inode, iname, oname);
  
 -- 
 2.3.0
