@@ -1,66 +1,50 @@
 From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 89511] USB-storage mount error
-Date: Wed, 22 Jul 2015 17:39:01 +0000
-Message-ID: <bug-89511-13602-QcCOzWBXE4@https.bugzilla.kernel.org/>
-References: <bug-89511-13602@https.bugzilla.kernel.org/>
+Subject: [Bug 60786] xfstest generic/068 failure - kernel BUG at
+ fs/jbd2/transaction.c:2143!
+Date: Wed, 22 Jul 2015 18:32:22 +0000
+Message-ID: <bug-60786-13602-pouXR36vtQ@https.bugzilla.kernel.org/>
+References: <bug-60786-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:33001 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.136]:36603 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754481AbbGVRjG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 22 Jul 2015 13:39:06 -0400
+	id S1751697AbbGVSc0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 22 Jul 2015 14:32:26 -0400
 Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 6C9BA2051A
-	for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2015 17:39:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3436F206DB
+	for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2015 18:32:25 +0000 (UTC)
 Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id A0C3020667
-	for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2015 17:39:01 +0000 (UTC)
-In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
+	by mail.kernel.org (Postfix) with ESMTP id 29E71206D0
+	for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2015 18:32:23 +0000 (UTC)
+In-Reply-To: <bug-60786-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=89511
+https://bugzilla.kernel.org/show_bug.cgi?id=60786
 
-Dan Williams <dcbw@redhat.com> changed:
+Eric Whitney <enwlinux@gmail.com> changed:
 
            What    |Removed                     |Added
 ----------------------------------------------------------------------------
-                 CC|                            |dcbw@redhat.com
+             Status|NEW                         |RESOLVED
+         Resolution|---                         |CODE_FIX
 
---- Comment #68 from Dan Williams <dcbw@redhat.com> ---
-I have a drive with this problem and I tested 4.0.8 with this hunk added to the
-patch above.
+--- Comment #2 from Eric Whitney <enwlinux@gmail.com> ---
+A patch included in 4.2-rc1 has resolved this problem: "ext4: fix race between
+truncate and __ext4_journalled_writepage()" (bdf96838aea6)
 
-UNUSUAL_DEV(  0x0bc2, 0x0888, 0x0000, 0x0000,
-              "Seagate",
-              "USB 2.0 Pocket Hard Drive",
-              USB_SC_DEVICE, USB_PR_DEVICE, NULL,
-              US_FL_NO_SYNCHRONIZE_CACHE),
+The method used to force the bug to occur in the past was to make repeated runs
+of generic/068 on a test filesystem mounted with the data=journal option.  The
+test system would typically hang with a few tens of runs at the most.
 
-I don't have the linux-usb thread around so I can reply to
-http://www.spinics.net/lists/linux-usb/msg126364.html, but here's the result
-of:
+1000 test runs completed normally both on x86_64 and 32 bit ARM running 4.2-rc1
+kernels.  Regular regression runs containing generic/068 have also completed
+normally using 4.2-rc2 and -rc3 kernels on the same architectures.
 
-[dcbw@localhost ~]$ sudo hdparm -W 0 --prefer-ata12 /dev/sdb
-
-/dev/sdb:
- setting drive write-caching to 0 (off)
-SG_IO: bad/missing sense data, sb[]:  70 00 05 00 00 00 00 0a 00 00 00 00 20 00
-00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-SG_IO: bad/missing sense data, sb[]:  70 00 05 00 00 00 00 0a 00 00 00 00 20 00
-00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-SG_IO: bad/missing sense data, sb[]:  70 00 05 00 00 00 00 0a 00 00 00 00 20 00
-00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-SG_IO: bad/missing sense data, sb[]:  70 00 05 00 00 00 00 0a 00 00 00 00 20 00
-00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-SG_IO: bad/missing sense data, sb[]:  70 00 05 00 00 00 00 0a 00 00 00 00 20 00
-00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
- write-caching = not supported
-
-What was the upstream resolution on this one?
+Bugzilla #60788 describes the same bug.
 
 -- 
 You are receiving this mail because:
