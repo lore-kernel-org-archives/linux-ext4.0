@@ -1,9 +1,9 @@
 From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: [PATCH 1/2] ext4: replace ext4_io_submit->io_op with ->io_wbc
-Date: Tue, 21 Jul 2015 23:56:09 -0400
-Message-ID: <20150722035609.GC2944@thunk.org>
+Subject: Re: [PATCH 2/2] ext4: implement cgroup writeback support
+Date: Tue, 21 Jul 2015 23:56:20 -0400
+Message-ID: <20150722035620.GD2944@thunk.org>
 References: <1434495193-31182-1-git-send-email-tj@kernel.org>
- <1434495193-31182-2-git-send-email-tj@kernel.org>
+ <1434495193-31182-3-git-send-email-tj@kernel.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
@@ -13,19 +13,28 @@ Cc: axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org, linux-kernel-u79uwXL29TY76Z2r
 To: Tejun Heo <tj-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
 Return-path: <cgroups-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <1434495193-31182-2-git-send-email-tj-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+In-Reply-To: <1434495193-31182-3-git-send-email-tj-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
 Sender: cgroups-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jun 16, 2015 at 06:53:12PM -0400, Tejun Heo wrote:
-> ext4_io_submit_init() takes the pointer to writeback_control to test
-> its sync_mode and determine between WRITE and WRITE_SYNC and records
-> the result in ->io_op.  This patch makes it record the pointer
-> directly and moves the test to ext4_io_submit().
+On Tue, Jun 16, 2015 at 06:53:13PM -0400, Tejun Heo wrote:
+> For ordered and writeback data modes, all data IOs go through
+> ext4_io_submit.  This patch adds cgroup writeback support by invoking
+> wbc_init_bio() from io_submit_init_bio() and wbc_account_io() in
+> io_submit_add_bh().  Journal data which is written by jbd2 worker is
+> left alone by this patch and will always be written out from the root
+> cgroup.
 > 
-> This doesn't cause any noticeable differences now but having
-> writeback_control available throughout IO submission path will be
-> depended upon by the planned cgroup writeback support.
+> ext4_fill_super() is updated to set MS_CGROUPWB when data mode is
+> either ordered or writeback.  In journaled data mode, most IOs become
+> synchronous through the journal and enabling cgroup writeback support
+> doesn't make much sense or difference.  Journaled data mode is left
+> alone.
+> 
+> Lightly tested with sequential data write workload.  Behaves as
+> expected.
+> 
+> v2: Updated for MS_CGROUPWB -> SB_I_CGROUPWB.
 > 
 > Signed-off-by: Tejun Heo <tj-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
 > Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
