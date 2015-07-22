@@ -1,68 +1,158 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/4 v2] e2fsprogs: Support for orphan file feature
-Date: Wed, 22 Jul 2015 11:18:35 +0200
-Message-ID: <20150722091835.GD17243@quack.suse.cz>
-References: <1432626669-6643-1-git-send-email-jack@suse.cz>
- <CAP9B-Qnk1UGSvmaMQdixwNLZRN7L4xW2xWYY6vX877t5uHSr-Q@mail.gmail.com>
+From: Bartlomiej Zolnierkiewicz <b.zolnierkie@samsung.com>
+Subject: Re: [RFC v3 2/4] ext4: Add helper function to mark group as corrupted
+Date: Wed, 22 Jul 2015 12:40:03 +0200
+Message-ID: <3417027.tdShitEpvE@amdc1976>
+References: <1434460173-18427-1-git-send-email-b.michalska@samsung.com>
+ <1434460173-18427-3-git-send-email-b.michalska@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Ted Tso <tytso@mit.edu>
-To: Shilong Wang <wangshilong1991@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:58949 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932539AbbGVJSl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 22 Jul 2015 05:18:41 -0400
-Content-Disposition: inline
-In-Reply-To: <CAP9B-Qnk1UGSvmaMQdixwNLZRN7L4xW2xWYY6vX877t5uHSr-Q@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: 7Bit
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-api@vger.kernel.org, greg@kroah.com, jack@suse.cz,
+ adilger.kernel@dilger.ca, hughd@google.com, lczerner@redhat.com,
+ hch@infradead.org, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+ kyungmin.park@samsung.com, kmpark@infradead.org
+To: Beata Michalska <b.michalska@samsung.com>, tytso@mit.edu
+Return-path: <owner-linux-mm@kvack.org>
+In-reply-to: <1434460173-18427-3-git-send-email-b.michalska@samsung.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-  Hi,
 
-On Wed 22-07-15 17:05:28, Shilong Wang wrote:
-> 2015-05-26 15:51 GMT+08:00 Jan Kara <jack@suse.cz>:
-> 
-> >   Hello,
-> >
-> >   this is the second version of support for orphan file feature in
-> > e2fsprogs.
-> > Since v1, I have finished and debugged e2fsck support, fixed a couple of
-> > issues
-> > in mke2fs and tune2fs and also incorporated changes resulting from the
-> > review.
-> > The only unresolved issue I'm aware of is which reserved inode will we use
-> > for
-> > this feature.
-> >
-> > If nobody speaks up, I will pick up patches from Konstantin to support
-> > increasing number of reserved inodes (he implemented it in resize2fs, I
-> > will
-> > move it to tune2fs by moving some resize2fs functionality to libext2fs).
-> > That
-> > will practically remove the current limitation of the number of reserved
-> 
-> inodes.
-> >
-> 
-> 
-> Any progress about this?  More reserved inodes are also needed  by project
-> quota.
-> BTW, i noticed if i extend s_first_ino, many e2fsprogs tests will fail
-> because
-> tests results reiled on previous confirmed system inodes, any idea about
-> this?
+Hi,
 
-Yes, I'm working on this on-and-off for some time. I already have separated
-functionality to move blocks and to move inodes from resize2fs into
-libext2fs. So the hardest part is hopefully done. But it needs testing and
-I need to figure out whether some group accounting parts also don't need to
-be moved into libext2fs as they may be needed in more places. So overall
-it's about one or two days of work to finish this but I get preempted by
-other stuff...
+On Tuesday, June 16, 2015 03:09:31 PM Beata Michalska wrote:
+> Add ext4_mark_group_corrupted helper function to
+> simplify the code and to keep the logic in one place.
+> 
+> Signed-off-by: Beata Michalska <b.michalska@samsung.com>
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+This small cleanup patch is not really required for your
+notifications framework to work and it seems to be a good
+change on its own.  Maybe it can be merged independently of
+other patches?  Ted, what is your opinion on it?
+
+Best regards,
+--
+Bartlomiej Zolnierkiewicz
+Samsung R&D Institute Poland
+Samsung Electronics
+
+> ---
+>  fs/ext4/balloc.c  |   15 +++------------
+>  fs/ext4/ext4.h    |    9 +++++++++
+>  fs/ext4/ialloc.c  |    5 +----
+>  fs/ext4/mballoc.c |   11 ++---------
+>  4 files changed, 15 insertions(+), 25 deletions(-)
+> 
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index 83a6f49..e95b27a 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -193,10 +193,7 @@ static int ext4_init_block_bitmap(struct super_block *sb,
+>  	 * essentially implementing a per-group read-only flag. */
+>  	if (!ext4_group_desc_csum_verify(sb, block_group, gdp)) {
+>  		grp = ext4_get_group_info(sb, block_group);
+> -		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
+> -			percpu_counter_sub(&sbi->s_freeclusters_counter,
+> -					   grp->bb_free);
+> -		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
+> +		ext4_mark_group_corrupted(sbi, grp);
+>  		if (!EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) {
+>  			int count;
+>  			count = ext4_free_inodes_count(sb, gdp);
+> @@ -379,20 +376,14 @@ static void ext4_validate_block_bitmap(struct super_block *sb,
+>  		ext4_unlock_group(sb, block_group);
+>  		ext4_error(sb, "bg %u: block %llu: invalid block bitmap",
+>  			   block_group, blk);
+> -		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
+> -			percpu_counter_sub(&sbi->s_freeclusters_counter,
+> -					   grp->bb_free);
+> -		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
+> +		ext4_mark_group_corrupted(sbi, grp);
+>  		return;
+>  	}
+>  	if (unlikely(!ext4_block_bitmap_csum_verify(sb, block_group,
+>  			desc, bh))) {
+>  		ext4_unlock_group(sb, block_group);
+>  		ext4_error(sb, "bg %u: bad block bitmap checksum", block_group);
+> -		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
+> -			percpu_counter_sub(&sbi->s_freeclusters_counter,
+> -					   grp->bb_free);
+> -		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
+> +		ext4_mark_group_corrupted(sbi, grp);
+>  		return;
+>  	}
+>  	set_buffer_verified(bh);
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index f63c3d5..163afe2 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -2535,6 +2535,15 @@ static inline spinlock_t *ext4_group_lock_ptr(struct super_block *sb,
+>  	return bgl_lock_ptr(EXT4_SB(sb)->s_blockgroup_lock, group);
+>  }
+>  
+> +static inline
+> +void ext4_mark_group_corrupted(struct ext4_sb_info *sbi,
+> +				struct ext4_group_info *grp)
+> +{
+> +	if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
+> +		percpu_counter_sub(&sbi->s_freeclusters_counter, grp->bb_free);
+> +	set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
+> +}
+> +
+>  /*
+>   * Returns true if the filesystem is busy enough that attempts to
+>   * access the block group locks has run into contention.
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index ac644c3..ebe0499 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -79,10 +79,7 @@ static unsigned ext4_init_inode_bitmap(struct super_block *sb,
+>  	if (!ext4_group_desc_csum_verify(sb, block_group, gdp)) {
+>  		ext4_error(sb, "Checksum bad for group %u", block_group);
+>  		grp = ext4_get_group_info(sb, block_group);
+> -		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
+> -			percpu_counter_sub(&sbi->s_freeclusters_counter,
+> -					   grp->bb_free);
+> -		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
+> +		ext4_mark_group_corrupted(sbi, grp);
+>  		if (!EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) {
+>  			int count;
+>  			count = ext4_free_inodes_count(sb, gdp);
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 8d1e602..24a4b6d 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -760,10 +760,7 @@ void ext4_mb_generate_buddy(struct super_block *sb,
+>  		 * corrupt and update bb_free using bitmap value
+>  		 */
+>  		grp->bb_free = free;
+> -		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
+> -			percpu_counter_sub(&sbi->s_freeclusters_counter,
+> -					   grp->bb_free);
+> -		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
+> +		ext4_mark_group_corrupted(sbi, grp);
+>  	}
+>  	mb_set_largest_free_order(sb, grp);
+>  
+> @@ -1448,12 +1445,8 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+>  				      "freeing already freed block "
+>  				      "(bit %u); block bitmap corrupt.",
+>  				      block);
+> -		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(e4b->bd_info))
+> -			percpu_counter_sub(&sbi->s_freeclusters_counter,
+> -					   e4b->bd_info->bb_free);
+>  		/* Mark the block group as corrupt. */
+> -		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
+> -			&e4b->bd_info->bb_state);
+> +		ext4_mark_group_corrupted(sbi, e4b->bd_info);
+>  		mb_regenerate_buddy(e4b);
+>  		goto done;
+>  	}
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
