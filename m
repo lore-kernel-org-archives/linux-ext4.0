@@ -1,59 +1,52 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 16/14] libext2fs: require the inline data xattr on all
- inline data files
-Date: Thu, 23 Jul 2015 14:12:21 -0700
-Message-ID: <20150723211221.GD10037@birch.djwong.org>
-References: <20150514002108.10785.85860.stgit@birch.djwong.org>
- <20150605013856.GA7063@birch.djwong.org>
- <20150611001530.GK24181@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Eryu Guan <guaneryu@gmail.com>
+Subject: [PATCH] ext4: update c/mtime on truncate up
+Date: Fri, 24 Jul 2015 14:56:38 +0800
+Message-ID: <1437720998-1208-1-git-send-email-guaneryu@gmail.com>
+Cc: Eryu Guan <guaneryu@gmail.com>, Zirong Lang <zorro.lang@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:28393 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753635AbbGWVMY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Jul 2015 17:12:24 -0400
-Content-Disposition: inline
-In-Reply-To: <20150611001530.GK24181@thunk.org>
+Received: from mail-pd0-f174.google.com ([209.85.192.174]:34441 "EHLO
+	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753571AbbGXG6A (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Jul 2015 02:58:00 -0400
+Received: by pdbbh15 with SMTP id bh15so9123156pdb.1
+        for <linux-ext4@vger.kernel.org>; Thu, 23 Jul 2015 23:58:00 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 10, 2015 at 08:15:30PM -0400, Theodore Ts'o wrote:
-> On Thu, Jun 04, 2015 at 06:38:56PM -0700, Darrick J. Wong wrote:
-> > Turns out that the kernel requires the inline data xattr to exist for
-> > all inline data files, even if the inline data size is zero.
-> > Therefore, never delete the xattr key, and teach e2fsck always to look
-> > for it.
-> > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> 
-> It seems reasonable to have e2fsck look for this case, but I wonder if
-> it might be better to fix it by changing the kernel and e2fsck and
-> libext2fs's punch function to clear the inline data flag when it
-> removes the inline data xattr, and to do so if the xattr data size is
-> zero.
+Commit 3da40c7b0898 ("ext4: only call ext4_truncate when size <= isize")
+introduced a bug that c/mtime is not updated on truncate up.
 
-It would be much cleaner to do so, however... I tried doing this and found that
-existing kernels expect to be able to maintain a pointer to the value area(!)
-and barf when they don't find an xattr, even if it's empty.  I suspect the
-proper fix is to remove the shortcut and use the xattr fetch functions (since
-the rest of the inline data code uses them) and maybe do the 'system.data' name
-compression (and feature flag...) at the same time.
+Fix the issue by setting c/mtime explicitly in the truncate up case.
 
-That is to say, if we bother changing anything at all.  There's nothing
-seriously wrong with the (weird) way it is now, and this patch exists to codify
-that weird way into e2fsprogs so future programmers won't screw up the hidden
-requirement about the xattr existence.
+Note that ftruncate(2) is not affected, so you won't see this bug using
+truncate(1) and xfs_io(1).
 
-<shrug>
+Signed-off-by: Zirong Lang <zorro.lang@gmail.com>
+Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+---
+ fs/ext4/inode.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
---D
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index cecf9aa..2442eb0 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4725,6 +4725,14 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 				error = ext4_orphan_add(handle, inode);
+ 				orphan = 1;
+ 			}
++			/*
++			 * Update c/mtime on truncate up, ext4_truncate() will
++			 * update c/mtime in shrink case below
++			 */
++			if (!shrink) {
++				inode->i_mtime = ext4_current_time(inode);
++				inode->i_ctime = inode->i_mtime;
++			}
+ 			down_write(&EXT4_I(inode)->i_data_sem);
+ 			EXT4_I(inode)->i_disksize = attr->ia_size;
+ 			rc = ext4_mark_inode_dirty(handle, inode);
+-- 
+1.8.3.1
 
-> 
-> 							- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
