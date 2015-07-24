@@ -1,32 +1,52 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Subject: [patch] ext4: memory leak on error in ext4_symlink()
-Date: Fri, 24 Jul 2015 14:05:33 +0300
-Message-ID: <20150724110533.GA14424@mwanda>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: Re: two fsck.ext4's needed to clean filesystem
+Date: Fri, 24 Jul 2015 16:27:42 +0200
+Message-ID: <20150724142742.GA21571@amd>
+References: <20150722141806.GA21181@amd>
+ <20150722142159.GA21742@amd>
+ <55AFC5BD.9000001@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>
-Return-path: <kernel-janitors-owner@vger.kernel.org>
+Cc: tytso@mit.edu, jack@suse.com, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:60122 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750976AbbGXO1o (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Jul 2015 10:27:44 -0400
 Content-Disposition: inline
-Sender: kernel-janitors-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <55AFC5BD.9000001@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-We should release "sd" before returning.
+Hi!
 
-Fixes: 0fa12ad1b285 ('ext4: Handle error from dquot_initialize()')
-Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+> >> Is that considered ok? Should fsck restart itself or report
+> >> 'filesystem still has errors' in this case?
+> 
+> It should.
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index d3ff837..9f61e76 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -3084,7 +3084,7 @@ static int ext4_symlink(struct inode *dir,
- 
- 	err = dquot_initialize(dir);
- 	if (err)
--		return err;
-+		goto err_free_sd;
- 
- 	if ((disk_link.len > EXT4_N_BLOCKS * 4)) {
- 		/*
+Ok, good.
+
+> > delme.fsck.damaged: ***** FILE SYSTEM WAS MODIFIED *****
+> > delme.fsck.damaged: 2053/25064 files (0.2% non-contiguous),
+> > 97826/100000 blocks
+> > Fsck lied about its success (result = 1)
+> > pavel@amd:~/misc$ cp delme.fsck.original-damaged delme.report-2
+> > 
+> > (I can make the images public. Yes, it is artificial test.)
+> 
+> Please do - you're right, it should fix it on the first pass.
+
+I put them on
+
+http://atrey.karlin.mff.cuni.cz/~pavel/outgoing/delme.report-1
+http://atrey.karlin.mff.cuni.cz/~pavel/outgoing/delme.report-2
+
+. Let me know if you can reproduce it.
+
+Thanks and best regards,
+									Pavel
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
