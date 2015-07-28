@@ -1,38 +1,40 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: remove filemap_fdatawrite() when synchronizing a
- data journaled file
-Date: Tue, 28 Jul 2015 08:07:13 -0400
-Message-ID: <20150728120712.GH2851@thunk.org>
-References: <1046256826.88691438049846580.JavaMail.weblogic@epmlwas02d>
+Subject: Re: [BUG] infinite loop when unmounting ext3/4
+Date: Tue, 28 Jul 2015 15:04:13 -0400
+Message-ID: <20150728190413.GM2851@thunk.org>
+References: <20150715143031.GB18016@dhcp-13-216.nay.redhat.com>
+ <55A74CA8.9070902@huawei.com>
+ <20150720072356.GC18016@dhcp-13-216.nay.redhat.com>
+ <20150723204155.GA7814@quack.suse.cz>
+ <20150727195440.GA22077@quack.suse.cz>
+ <20150728071502.GF18016@dhcp-13-216.nay.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, daehojng@gmail.com
-To: Daeho Jeong <daeho.jeong@samsung.com>
+Cc: Jan Kara <jack@suse.cz>, Joseph Qi <joseph.qi@huawei.com>,
+	linux-ext4@vger.kernel.org
+To: Eryu Guan <guaneryu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58414 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:36411 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752846AbbG1MHP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Jul 2015 08:07:15 -0400
+	id S1752650AbbG1TET (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Jul 2015 15:04:19 -0400
 Content-Disposition: inline
-In-Reply-To: <1046256826.88691438049846580.JavaMail.weblogic@epmlwas02d>
+In-Reply-To: <20150728071502.GF18016@dhcp-13-216.nay.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 28, 2015 at 02:17:26AM +0000, Daeho Jeong wrote:
-> When fsync() system call is executed, all data of the file should be written on the storage.
-> But, in a case of that the file is operated in data journal mode, the data doesn't need to be
-> flushed out and waited for its I/O completion. Moreover, by invoking filemap_fdatawrite()
-> function on the data journaled file, ext4_sync_file() suffers from an unnecessary delay
-> which is caused by flushing out and waiting for the I/O completion of a ton of newly-dirtied
-> pages which were dirtied by the previous commit.
+On Tue, Jul 28, 2015 at 03:15:26PM +0800, Eryu Guan wrote:
+> > > To fix the issue you've reported, we just need to teach
+> > > jbd2_log_do_checkpoint() to cleanup all the buffers in the transactions
+> > > when the journal is aborted so that journal_destroy() can proceed. I can
+> > > have a look at it sometime next week unless someone beats me to it.
+> > 
+> > OK, attached is the patch that fixes the issue for me. Ted, can you please
+> > pick it up? Thanks!
+> 
+> I confirmed that the attached patch fixed the infinite loop on aborted
+> journal. Thanks!
 
-No, this patch is incorrect.  Data journalling works by having the
-buffers getting dirtied, and that doesn't happen until we call
-filemap_fdatawrite_range().  It's true that we don't have to call
-filemap_write_and_wait_range(), but simply skipping the writeback
-entirely will cause data writes to get lost after an fsync() if we
-crash immediately afterwards.
+Applied, thanks.
 
-I'm guessing you didn't actually test this patch for correctness?
-
-    	     	 		      	   	 - Ted
+						- Ted
