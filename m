@@ -1,62 +1,53 @@
-From: Daeho Jeong <daeho.jeong@samsung.com>
-Subject: [PATCH] ext4: remove filemap_fdatawrite() when synchronizing a data
- journaled file
-Date: Tue, 28 Jul 2015 02:17:27 +0000 (GMT)
-Message-ID: <1046256826.88691438049846580.JavaMail.weblogic@epmlwas02d>
-Reply-To: daeho.jeong@samsung.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: generic/064 test failures on ext4 (4.2-rc*)
+Date: Mon, 27 Jul 2015 23:09:13 -0400
+Message-ID: <20150728030913.GC2851@thunk.org>
+References: <20150727190957.GA1606@localhost.localdomain>
+ <20150727215129.GH3902@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: base64
-To: "tytso@mit.edu" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	daehojng@gmail.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout3.samsung.com ([203.254.224.33]:50592 "EHLO
-	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754483AbbG1CRn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Jul 2015 22:17:43 -0400
-Received: from epcpsbgr4.samsung.com
- (u144.gpu120.samsung.co.kr [203.254.230.144])
- by mailout3.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
- 64bit (built May  5 2014))
- with ESMTP id <0NS60116WEDHM050@mailout3.samsung.com> for
- linux-ext4@vger.kernel.org; Tue, 28 Jul 2015 11:17:42 +0900 (KST)
-MIME-version: 1.0
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Whitney <enwlinux@gmail.com>, namjae.jeon@samsung.com,
+	a.sangwan@samsung.com, linux-ext4@vger.kernel.org,
+	fstests@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <fstests-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20150727215129.GH3902@dastard>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-V2hlbiBmc3luYygpIHN5c3RlbSBjYWxsIGlzIGV4ZWN1dGVkLCBhbGwgZGF0YSBvZiB0aGUgZmls
-ZSBzaG91bGQgYmUgd3JpdHRlbiBvbiB0aGUgc3RvcmFnZS4NCkJ1dCwgaW4gYSBjYXNlIG9mIHRo
-YXQgdGhlIGZpbGUgaXMgb3BlcmF0ZWQgaW4gZGF0YSBqb3VybmFsIG1vZGUsIHRoZSBkYXRhIGRv
-ZXNuJ3QgbmVlZCB0byBiZQ0KZmx1c2hlZCBvdXQgYW5kIHdhaXRlZCBmb3IgaXRzIEkvTyBjb21w
-bGV0aW9uLiBNb3Jlb3ZlciwgYnkgaW52b2tpbmcgZmlsZW1hcF9mZGF0YXdyaXRlKCkNCmZ1bmN0
-aW9uIG9uIHRoZSBkYXRhIGpvdXJuYWxlZCBmaWxlLCBleHQ0X3N5bmNfZmlsZSgpIHN1ZmZlcnMg
-ZnJvbSBhbiB1bm5lY2Vzc2FyeSBkZWxheQ0Kd2hpY2ggaXMgY2F1c2VkIGJ5IGZsdXNoaW5nIG91
-dCBhbmQgd2FpdGluZyBmb3IgdGhlIEkvTyBjb21wbGV0aW9uIG9mIGEgdG9uIG9mIG5ld2x5LWRp
-cnRpZWQNCnBhZ2VzIHdoaWNoIHdlcmUgZGlydGllZCBieSB0aGUgcHJldmlvdXMgY29tbWl0Lg0K
-DQpTaWduZWQtb2ZmLWJ5OiBEYWVobyBKZW9uZyA8ZGFlaG8uamVvbmdAc2Ftc3VuZy5jb20+DQot
-LS0NCiBmcy9leHQ0L2ZzeW5jLmMgfCAgIDExICsrKysrLS0tLS0tDQogMSBmaWxlIGNoYW5nZWQs
-IDUgaW5zZXJ0aW9ucygrKSwgNiBkZWxldGlvbnMoLSkNCmRpZmYgLS1naXQgYS9mcy9leHQ0L2Zz
-eW5jLmMgYi9mcy9leHQ0L2ZzeW5jLmMNCmluZGV4IDg4NTAyNTQuLmUwZmFiZjcgMTAwNjQ0DQot
-LS0gYS9mcy9leHQ0L2ZzeW5jLmMNCisrKyBiL2ZzL2V4dDQvZnN5bmMuYw0KQEAgLTExMiw5ICsx
-MTIsNiBAQCBpbnQgZXh0NF9zeW5jX2ZpbGUoc3RydWN0IGZpbGUgKmZpbGUsIGxvZmZfdCBzdGFy
-dCwgbG9mZl90IGVuZCwgaW50IGRhdGFzeW5jKQ0KICAgZ290byBvdXQ7DQogIH0NCiANCi0gcmV0
-ID0gZmlsZW1hcF93cml0ZV9hbmRfd2FpdF9yYW5nZShpbm9kZS0+aV9tYXBwaW5nLCBzdGFydCwg
-ZW5kKTsNCi0gaWYgKHJldCkNCi0gIHJldHVybiByZXQ7DQogIC8qDQogICAqIGRhdGE9d3JpdGVi
-YWNrLG9yZGVyZWQ6DQogICAqICBUaGUgY2FsbGVyJ3MgZmlsZW1hcF9mZGF0YXdyaXRlKCkvd2Fp
-dCB3aWxsIHN5bmMgdGhlIGRhdGEuDQpAQCAtMTI1LDEzICsxMjIsMTUgQEAgaW50IGV4dDRfc3lu
-Y19maWxlKHN0cnVjdCBmaWxlICpmaWxlLCBsb2ZmX3Qgc3RhcnQsIGxvZmZfdCBlbmQsIGludCBk
-YXRhc3luYykNCiAgICogIGZpbGVtYXBfZmRhdGF3cml0ZSB3b24ndCBkbyBhbnl0aGluZyAodGhl
-IGJ1ZmZlcnMgYXJlIGNsZWFuKS4NCiAgICogIGV4dDRfZm9yY2VfY29tbWl0IHdpbGwgd3JpdGUg
-dGhlIGZpbGUgZGF0YSBpbnRvIHRoZSBqb3VybmFsIGFuZA0KICAgKiAgd2lsbCB3YWl0IG9uIHRo
-YXQuDQotICAqICBmaWxlbWFwX2ZkYXRhd2FpdCgpIHdpbGwgZW5jb3VudGVyIGEgdG9uIG9mIG5l
-d2x5LWRpcnRpZWQgcGFnZXMNCi0gICogICh0aGV5IHdlcmUgZGlydGllZCBieSBjb21taXQpLiAg
-QnV0IHRoYXQncyBPSyAtIHRoZSBibG9ja3MgYXJlDQotICAqICBzYWZlIGluLWpvdXJuYWwsIHdo
-aWNoIGlzIGFsbCBmc3luYygpIG5lZWRzIHRvIGVuc3VyZS4NCiAgICovDQogIGlmIChleHQ0X3No
-b3VsZF9qb3VybmFsX2RhdGEoaW5vZGUpKSB7DQogICByZXQgPSBleHQ0X2ZvcmNlX2NvbW1pdChp
-bm9kZS0+aV9zYik7DQogICBnb3RvIG91dDsNCisgfSBlbHNlIHsNCisgIHJldCA9IGZpbGVtYXBf
-d3JpdGVfYW5kX3dhaXRfcmFuZ2UoaW5vZGUtPmlfbWFwcGluZywNCisgICAgICAgICBzdGFydCwg
-ZW5kKTsNCisgIGlmIChyZXQpDQorICAgcmV0dXJuIHJldDsNCiAgfQ0KIA0KICBjb21taXRfdGlk
-ID0gZGF0YXN5bmMgPyBlaS0+aV9kYXRhc3luY190aWQgOiBlaS0+aV9zeW5jX3RpZDsNCi0tIA0K
-MS43LjkuNQ==
+On Tue, Jul 28, 2015 at 07:51:29AM +1000, Dave Chinner wrote:
+> The block layout outside the insert range should not be modified at
+> all, so if inserting 100 holes results in more data extents that the
+> expected 100, then there's something wrong before we start inserting
+> holes.  e.g. maybe the source file had two extents rather than 1.
+> Can you confirm that this is occurring?
 
+Yes, that's what is going on.  If delayed allocation is disabled (as
+it is in some configuration scenarios), ext4's block allocator doesn't
+do as well, and in some cases it will pick a starting block number for
+the file that ends up splitting the initial file across block groups'
+meta data blocks.
 
+> Really, the number of extents or holes at the intermediate stage
+> doesn't matter. What matters is that after collapsing the holes back
+> out of the file, then number of extents is identical to the original
+> file (i.e. that fcollapse() undoes finsert() exactly).
+
+Yup.
+
+> So changing this code to use _within_tolerance to say that 100 >=
+> num_extents >= 105 is ok would probably be better:
+> 
+> 	_within_tolerance "Extent count" $nextents 100 0 5%
+> 
+> This will output a standard pass/fail message rather than an exact
+> count.  This allows some wiggle room for filesystem configurations
+> that have unexpected non-contiguous baseline allocation behaviour to
+> pass the test.
+
+Works for me.
+
+Thanks,
+
+					- Ted
