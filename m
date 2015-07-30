@@ -1,96 +1,24 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH v2] jbd2: Limit number of reserved credits
-Date: Fri, 31 Jul 2015 17:11:34 +0200
-Message-ID: <1438355494-10566-1-git-send-email-lczerner@redhat.com>
-Cc: jack@suse.cz, Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Subject: Klientskie bazi tel +79133913837 Email: nonen22pp@gmail.com Yznaite podrobnee!!!
+Date: Fri, 31 Jul 2015 03:34:50 +0600
+Message-ID: <C23830BCDB0F21924E4B02BF7B777E0F@vger.kernel.org>
+Reply-To: "linux-ext4@vger.kernel.org" <nonen22pp@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain;
+	format=flowed;
+	charset="utf-8";
+	reply-type=original
+Content-Transfer-Encoding: 7bit
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34888 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753304AbbGaPLm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 31 Jul 2015 11:11:42 -0400
+Received: from static.vdc.vn ([123.30.211.95]:50716 "EHLO mail.dongsukien.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1750982AbbGaSiq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 31 Jul 2015 14:38:46 -0400
+Received: from 123.30.211.95 (localhost [IPv6:::1])
+	by mail.dongsukien.com (Postfix) with SMTP id 842784EBFD
+	for <linux-ext4@vger.kernel.org>; Fri, 31 Jul 2015 04:35:07 +0700 (ICT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently there is no limitation on number of reserved credits we can
-ask for. If we ask for more reserved credits than 1/2 of maximum
-transaction size, or if total number of credits exceeds the maximum
-transaction size per operation (which is currently only possible with
-the former) we will spin forever in start_this_handle().
-
-Fix this by adding this limitation at the start of start_this_handle().
-
-This patch also removes the credit limitation 1/2 of maximum transaction
-size, since we really only want to limit the number of reserved credits.
-There is not much point to limit the credits if there is still space in
-the journal.
-
-This accidentally also fixes the online resize, where due to the
-limitation of the journal credits we're unable to grow file systems with
-1k block size and size between 16M and 32M. It has been partially fixed
-by 2c869b262a10ca99cb866d04087d75311587a30c, but not entirely.
-
-Thanks Jan Kara for helping me getting the correct fix.
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
-v2: added wait event Jan suggested
-
- fs/jbd2/transaction.c | 36 +++++++++++++++++++++++++++---------
- 1 file changed, 27 insertions(+), 9 deletions(-)
-
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index f3d0617..f8183d4 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -204,6 +204,20 @@ static int add_transaction_credits(journal_t *journal, int blocks,
- 		 * attach this handle to a new transaction.
- 		 */
- 		atomic_sub(total, &t->t_outstanding_credits);
-+
-+		/*
-+		 * Is the number of reserved credits in the current transaction too
-+		 * big to fit this handle? Wait until reserved credits are freed.
-+		 */
-+		if (atomic_read(&journal->j_reserved_credits) + total >
-+		    journal->j_max_transaction_buffers) {
-+			read_unlock(&journal->j_state_lock);
-+			wait_event(journal->j_wait_reserved,
-+				   atomic_read(&journal->j_reserved_credits) + total <=
-+				   journal->j_max_transaction_buffers);
-+			return 1;
-+		}
-+
- 		wait_transaction_locked(journal);
- 		return 1;
- 	}
-@@ -262,20 +276,24 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
- 	int		rsv_blocks = 0;
- 	unsigned long ts = jiffies;
- 
-+	if (handle->h_rsv_handle)
-+		rsv_blocks = handle->h_rsv_handle->h_buffer_credits;
-+
- 	/*
--	 * 1/2 of transaction can be reserved so we can practically handle
--	 * only 1/2 of maximum transaction size per operation
-+	 * Limit the number of reserved credits to 1/2 of maximum transaction
-+	 * size and limit the number of total credits to not exceed maximum
-+	 * transaction size per operation.
- 	 */
--	if (WARN_ON(blocks > journal->j_max_transaction_buffers / 2)) {
--		printk(KERN_ERR "JBD2: %s wants too many credits (%d > %d)\n",
--		       current->comm, blocks,
--		       journal->j_max_transaction_buffers / 2);
-+	if ((rsv_blocks > journal->j_max_transaction_buffers / 2) ||
-+	    (rsv_blocks + blocks > journal->j_max_transaction_buffers)) {
-+		printk(KERN_ERR "JBD2: %s wants too many credits "
-+		       "credits:%d rsv_credits:%d max:%d\n",
-+		       current->comm, blocks, rsv_blocks,
-+		       journal->j_max_transaction_buffers);
-+		WARN_ON(1);
- 		return -ENOSPC;
- 	}
- 
--	if (handle->h_rsv_handle)
--		rsv_blocks = handle->h_rsv_handle->h_buffer_credits;
+Klientskie bazi tel +79133913837 Email: nonen22pp@gmail.com Yznaite podrobnee!!!
