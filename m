@@ -1,77 +1,182 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] jbd2: Limit number of reserved credits
-Date: Fri, 31 Jul 2015 10:04:23 +0200
-Message-ID: <1438329863-26422-1-git-send-email-lczerner@redhat.com>
-Cc: Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org, jack@suse.cz
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34879 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750982AbbGaIEk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 31 Jul 2015 04:04:40 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Viresh Kumar <viresh.kumar@linaro.org>
+Subject: [PATCH 12/15] fs: Drop unlikely before IS_ERR(_OR_NULL)
+Date: Fri, 31 Jul 2015 14:08:32 +0530
+Message-ID: <4fd8dd8ed76901a89d6cd17e50ac585ea929f1fb.1438331416.git.viresh.kumar@linaro.org>
+References: <cover.1438331416.git.viresh.kumar@linaro.org>
+Cc: linaro-kernel@lists.linaro.org, linux-kernel@vger.kernel.org,
+	Viresh Kumar <viresh.kumar@linaro.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Anna Schumaker <anna.schumaker@netapp.com>,
+	Boaz Harrosh <ooo@electrozaur.com>,
+	Christoph Hellwig <hch@lst.de>,
+	David Howells <dhowells@redhat.com>,
+	ecryptfs@vger.kernel.org (open list:ECRYPT FILE SYSTEM),
+	"Eric W. Biederman" <ebiederm@xmission.com>,
+	Fabian Frederick <fabf@skynet.be>,
+	Joe Perches <joe@perches.com>,
+	linux-cifs@vger.kernel.org (open list:COMMON INTERNET FILE SYSTEM
+	(CIFS)), linux-ext4@vger.kernel.org (open list:EXT4 FILE SYSTEM),
+	linux-fsdevel@vger.kernel.org (open list:FILESYSTEMS (VFS and
+	infrastructure)),
+	linux-nfs@vger.kernel.org (open list:NFS, SUNRPC, AND LOCKD CLIENTS),
+	Peng Tao <tao.peng@primarydata.com>,
+	Petr Vandrovec <petr@vandrovec.name>,
+	samba-technical@
+To: akpm@linux-foundation.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <cover.1438331416.git.viresh.kumar@linaro.org>
+In-Reply-To: <cover.1438331416.git.viresh.kumar@linaro.org>
+References: <cover.1438331416.git.viresh.kumar@linaro.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Currently there is no limitation on number of reserved credits we can
-ask for. If we ask for more reserved credits than 1/2 of maximum
-transaction size, or if total number of credits exceeds the maximum
-transaction size per operation (which is currently only possible with
-the former) we will spin forever in start_this_handle().
+IS_ERR(_OR_NULL) already contain an 'unlikely' compiler flag and there
+is no need to do that again from its callers. Drop it.
 
-Fix this by adding this limitation at the start of start_this_handle().
-
-This patch also removes the credit limitation 1/2 of maximum transaction
-size, since we really only want to limit the number of reserved credits.
-There is not much point to limit the credits if there is still space in
-the journal.
-
-This accidentally also fixes the online resize, where due to the
-limitation of the journal credits we're unable to grow file systems with
-1k block size and size between 16M and 32M. It has been partially fixed
-by 2c869b262a10ca99cb866d04087d75311587a30c, but not entirely.
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
 ---
+ fs/cifs/readdir.c            | 2 +-
+ fs/ecryptfs/inode.c          | 2 +-
+ fs/ext4/extents.c            | 6 +++---
+ fs/ext4/namei.c              | 2 +-
+ fs/namei.c                   | 4 ++--
+ fs/ncpfs/dir.c               | 2 +-
+ fs/nfs/objlayout/objio_osd.c | 2 +-
+ fs/proc/proc_sysctl.c        | 2 +-
+ 8 files changed, 11 insertions(+), 11 deletions(-)
 
-Honzo I think that this should be enough to remove the limitation of 1/2 of
-maximum transaction size for regular credits, but I might be missing
-something, please let me know. Also do you have any specific test case to
-exercise transaction reservation support - I've only ran xfstests.
-
- fs/jbd2/transaction.c | 22 +++++++++++++---------
- 1 file changed, 13 insertions(+), 9 deletions(-)
-
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index f3d0617..491a328 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -262,20 +262,24 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
- 	int		rsv_blocks = 0;
- 	unsigned long ts = jiffies;
+diff --git a/fs/cifs/readdir.c b/fs/cifs/readdir.c
+index b1eede3678a9..0557c45e9c33 100644
+--- a/fs/cifs/readdir.c
++++ b/fs/cifs/readdir.c
+@@ -84,7 +84,7 @@ cifs_prime_dcache(struct dentry *parent, struct qstr *name,
+ 	cifs_dbg(FYI, "%s: for %s\n", __func__, name->name);
  
-+	if (handle->h_rsv_handle)
-+		rsv_blocks = handle->h_rsv_handle->h_buffer_credits;
-+
- 	/*
--	 * 1/2 of transaction can be reserved so we can practically handle
--	 * only 1/2 of maximum transaction size per operation
-+	 * Limit the number of reserved credits to 1/2 of maximum transaction
-+	 * size and limit the number of total credits to not exceed maximum
-+	 * transaction size per operation.
- 	 */
--	if (WARN_ON(blocks > journal->j_max_transaction_buffers / 2)) {
--		printk(KERN_ERR "JBD2: %s wants too many credits (%d > %d)\n",
--		       current->comm, blocks,
--		       journal->j_max_transaction_buffers / 2);
-+	if ((rsv_blocks > journal->j_max_transaction_buffers / 2) ||
-+	    (rsv_blocks + blocks > journal->j_max_transaction_buffers)) {
-+		printk(KERN_ERR "JBD2: %s wants too many credits "
-+		       "credits:%d rsv_credits:%d max:%d\n",
-+		       current->comm, blocks, rsv_blocks,
-+		       journal->j_max_transaction_buffers);
-+		WARN_ON(1);
- 		return -ENOSPC;
- 	}
+ 	dentry = d_hash_and_lookup(parent, name);
+-	if (unlikely(IS_ERR(dentry)))
++	if (IS_ERR(dentry))
+ 		return;
  
--	if (handle->h_rsv_handle)
--		rsv_blocks = handle->h_rsv_handle->h_buffer_credits;
+ 	if (dentry) {
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index 3c4db1172d22..e2e47ba5d313 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -270,7 +270,7 @@ ecryptfs_create(struct inode *directory_inode, struct dentry *ecryptfs_dentry,
+ 
+ 	ecryptfs_inode = ecryptfs_do_create(directory_inode, ecryptfs_dentry,
+ 					    mode);
+-	if (unlikely(IS_ERR(ecryptfs_inode))) {
++	if (IS_ERR(ecryptfs_inode)) {
+ 		ecryptfs_printk(KERN_WARNING, "Failed to create file in"
+ 				"lower filesystem\n");
+ 		rc = PTR_ERR(ecryptfs_inode);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 2553aa8b608d..799f01714767 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -899,7 +899,7 @@ ext4_find_extent(struct inode *inode, ext4_lblk_t block,
+ 
+ 		bh = read_extent_tree_block(inode, path[ppos].p_block, --i,
+ 					    flags);
+-		if (unlikely(IS_ERR(bh))) {
++		if (IS_ERR(bh)) {
+ 			ret = PTR_ERR(bh);
+ 			goto err;
+ 		}
+@@ -5792,7 +5792,7 @@ ext4_swap_extents(handle_t *handle, struct inode *inode1,
+ 		int split = 0;
+ 
+ 		path1 = ext4_find_extent(inode1, lblk1, NULL, EXT4_EX_NOCACHE);
+-		if (unlikely(IS_ERR(path1))) {
++		if (IS_ERR(path1)) {
+ 			*erp = PTR_ERR(path1);
+ 			path1 = NULL;
+ 		finish:
+@@ -5800,7 +5800,7 @@ ext4_swap_extents(handle_t *handle, struct inode *inode1,
+ 			goto repeat;
+ 		}
+ 		path2 = ext4_find_extent(inode2, lblk2, NULL, EXT4_EX_NOCACHE);
+-		if (unlikely(IS_ERR(path2))) {
++		if (IS_ERR(path2)) {
+ 			*erp = PTR_ERR(path2);
+ 			path2 = NULL;
+ 			goto finish;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 011dcfb5cce3..0554e4be1fb8 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1429,7 +1429,7 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
+ 				}
+ 				num++;
+ 				bh = ext4_getblk(NULL, dir, b++, 0);
+-				if (unlikely(IS_ERR(bh))) {
++				if (IS_ERR(bh)) {
+ 					if (ra_max == 0) {
+ 						ret = bh;
+ 						goto cleanup_and_exit;
+diff --git a/fs/namei.c b/fs/namei.c
+index ae4e4c18b2ac..04fdec230c45 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -1942,7 +1942,7 @@ static int link_path_walk(const char *name, struct nameidata *nd)
+ 		if (err) {
+ 			const char *s = get_link(nd);
+ 
+-			if (unlikely(IS_ERR(s)))
++			if (IS_ERR(s))
+ 				return PTR_ERR(s);
+ 			err = 0;
+ 			if (unlikely(!s)) {
+@@ -3351,7 +3351,7 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
+ 		return ERR_PTR(-ELOOP);
+ 
+ 	filename = getname_kernel(name);
+-	if (unlikely(IS_ERR(filename)))
++	if (IS_ERR(filename))
+ 		return ERR_CAST(filename);
+ 
+ 	set_nameidata(&nd, -1, filename);
+diff --git a/fs/ncpfs/dir.c b/fs/ncpfs/dir.c
+index 93575e91a7aa..356816e7bc90 100644
+--- a/fs/ncpfs/dir.c
++++ b/fs/ncpfs/dir.c
+@@ -597,7 +597,7 @@ ncp_fill_cache(struct file *file, struct dir_context *ctx,
+ 	qname.name = __name;
+ 
+ 	newdent = d_hash_and_lookup(dentry, &qname);
+-	if (unlikely(IS_ERR(newdent)))
++	if (IS_ERR(newdent))
+ 		goto end_advance;
+ 	if (!newdent) {
+ 		newdent = d_alloc(dentry, &qname);
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 5aaed363556a..5c0c6b58157f 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -124,7 +124,7 @@ objio_alloc_deviceid_node(struct nfs_server *server, struct pnfs_device *pdev,
+ 
+ retry_lookup:
+ 	od = osduld_info_lookup(&odi);
+-	if (unlikely(IS_ERR(od))) {
++	if (IS_ERR(od)) {
+ 		err = PTR_ERR(od);
+ 		dprintk("%s: osduld_info_lookup => %d\n", __func__, err);
+ 		if (err == -ENODEV && retry_flag) {
+diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
+index fdda62e6115e..fe5b6e6c4671 100644
+--- a/fs/proc/proc_sysctl.c
++++ b/fs/proc/proc_sysctl.c
+@@ -948,7 +948,7 @@ static struct ctl_dir *get_subdir(struct ctl_dir *dir,
+ found:
+ 	subdir->header.nreg++;
+ failed:
+-	if (unlikely(IS_ERR(subdir))) {
++	if (IS_ERR(subdir)) {
+ 		pr_err("sysctl could not get directory: ");
+ 		sysctl_print_dir(dir);
+ 		pr_cont("/%*.*s %ld\n",
+-- 
+2.4.0
+
