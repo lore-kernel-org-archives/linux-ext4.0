@@ -1,54 +1,119 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: generic/064 test failures on ext4 (4.2-rc*)
-Date: Mon, 03 Aug 2015 11:01:46 +0900
-Message-ID: <04d101d0cd90$5ac2b980$10482c80$@samsung.com>
-References: <20150727190957.GA1606@localhost.localdomain>
- <20150727215129.GH3902@dastard> <20150728030913.GC2851@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2] jbd2: Limit number of reserved credits
+Date: Mon, 3 Aug 2015 12:54:34 +0200
+Message-ID: <20150803105434.GA9657@quack.suse.cz>
+References: <1438355494-10566-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: 'Eric Whitney' <enwlinux@gmail.com>, a.sangwan@samsung.com,
-	linux-ext4@vger.kernel.org, fstests@vger.kernel.org
-To: 'Theodore Ts'o' <tytso@mit.edu>,
-	'Dave Chinner' <david@fromorbit.com>
-Return-path: <fstests-owner@vger.kernel.org>
-In-reply-to: <20150728030913.GC2851@thunk.org>
-Content-language: ko
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:37897 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751773AbbHCKyk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Aug 2015 06:54:40 -0400
+Content-Disposition: inline
+In-Reply-To: <1438355494-10566-1-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Fri 31-07-15 17:11:34, Lukas Czerner wrote:
+> Currently there is no limitation on number of reserved credits we can
+> ask for. If we ask for more reserved credits than 1/2 of maximum
+> transaction size, or if total number of credits exceeds the maximum
+> transaction size per operation (which is currently only possible with
+> the former) we will spin forever in start_this_handle().
+> 
+> Fix this by adding this limitation at the start of start_this_handle().
+> 
+> This patch also removes the credit limitation 1/2 of maximum transaction
+> size, since we really only want to limit the number of reserved credits.
+> There is not much point to limit the credits if there is still space in
+> the journal.
+> 
+> This accidentally also fixes the online resize, where due to the
+> limitation of the journal credits we're unable to grow file systems with
+> 1k block size and size between 16M and 32M. It has been partially fixed
+> by 2c869b262a10ca99cb866d04087d75311587a30c, but not entirely.
+> 
+> Thanks Jan Kara for helping me getting the correct fix.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+> v2: added wait event Jan suggested
 
-Sorry for late response.
-I am on vacation. I will check this issue as soon as getting back.
+The patch looks good. You can add:
 
-Thanks!
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-> Yes, that's what is going on.  If delayed allocation is disabled (as
-> it is in some configuration scenarios), ext4's block allocator doesn't
-> do as well, and in some cases it will pick a starting block number for
-> the file that ends up splitting the initial file across block groups'
-> meta data blocks.
+								Honza
+
 > 
-> > Really, the number of extents or holes at the intermediate stage
-> > doesn't matter. What matters is that after collapsing the holes back
-> > out of the file, then number of extents is identical to the original
-> > file (i.e. that fcollapse() undoes finsert() exactly).
+>  fs/jbd2/transaction.c | 36 +++++++++++++++++++++++++++---------
+>  1 file changed, 27 insertions(+), 9 deletions(-)
 > 
-> Yup.
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index f3d0617..f8183d4 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -204,6 +204,20 @@ static int add_transaction_credits(journal_t *journal, int blocks,
+>  		 * attach this handle to a new transaction.
+>  		 */
+>  		atomic_sub(total, &t->t_outstanding_credits);
+> +
+> +		/*
+> +		 * Is the number of reserved credits in the current transaction too
+> +		 * big to fit this handle? Wait until reserved credits are freed.
+> +		 */
+> +		if (atomic_read(&journal->j_reserved_credits) + total >
+> +		    journal->j_max_transaction_buffers) {
+> +			read_unlock(&journal->j_state_lock);
+> +			wait_event(journal->j_wait_reserved,
+> +				   atomic_read(&journal->j_reserved_credits) + total <=
+> +				   journal->j_max_transaction_buffers);
+> +			return 1;
+> +		}
+> +
+>  		wait_transaction_locked(journal);
+>  		return 1;
+>  	}
+> @@ -262,20 +276,24 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
+>  	int		rsv_blocks = 0;
+>  	unsigned long ts = jiffies;
+>  
+> +	if (handle->h_rsv_handle)
+> +		rsv_blocks = handle->h_rsv_handle->h_buffer_credits;
+> +
+>  	/*
+> -	 * 1/2 of transaction can be reserved so we can practically handle
+> -	 * only 1/2 of maximum transaction size per operation
+> +	 * Limit the number of reserved credits to 1/2 of maximum transaction
+> +	 * size and limit the number of total credits to not exceed maximum
+> +	 * transaction size per operation.
+>  	 */
+> -	if (WARN_ON(blocks > journal->j_max_transaction_buffers / 2)) {
+> -		printk(KERN_ERR "JBD2: %s wants too many credits (%d > %d)\n",
+> -		       current->comm, blocks,
+> -		       journal->j_max_transaction_buffers / 2);
+> +	if ((rsv_blocks > journal->j_max_transaction_buffers / 2) ||
+> +	    (rsv_blocks + blocks > journal->j_max_transaction_buffers)) {
+> +		printk(KERN_ERR "JBD2: %s wants too many credits "
+> +		       "credits:%d rsv_credits:%d max:%d\n",
+> +		       current->comm, blocks, rsv_blocks,
+> +		       journal->j_max_transaction_buffers);
+> +		WARN_ON(1);
+>  		return -ENOSPC;
+>  	}
+>  
+> -	if (handle->h_rsv_handle)
+> -		rsv_blocks = handle->h_rsv_handle->h_buffer_credits;
+> -
+>  alloc_transaction:
+>  	if (!journal->j_running_transaction) {
+>  		/*
+> -- 
+> 1.8.3.1
 > 
-> > So changing this code to use _within_tolerance to say that 100 >=
-> > num_extents >= 105 is ok would probably be better:
-> >
-> > 	_within_tolerance "Extent count" $nextents 100 0 5%
-> >
-> > This will output a standard pass/fail message rather than an exact
-> > count.  This allows some wiggle room for filesystem configurations
-> > that have unexpected non-contiguous baseline allocation behaviour to
-> > pass the test.
-> 
-> Works for me.
-> 
-> Thanks,
-> 
-> 					- Ted
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
