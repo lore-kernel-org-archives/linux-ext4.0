@@ -1,369 +1,224 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Yet another ext4/jbd2 lockup
-Date: Mon, 3 Aug 2015 17:15:25 +0200
-Message-ID: <20150803151525.GE9657@quack.suse.cz>
-References: <55B8D61E.7090609@kyup.com>
+From: Hugh Dickins <hughd@google.com>
+Subject: Re: [PATCH] mm, vmscan: Do not wait for page writeback for GFP_NOFS
+ allocations
+Date: Mon, 3 Aug 2015 23:32:00 -0700 (PDT)
+Message-ID: <alpine.LSU.2.11.1508032227050.5070@eggly.anvils>
+References: <1435677437-16717-1-git-send-email-mhocko@suse.cz> <20150701061731.GB6286@dhcp22.suse.cz> <20150701133715.GA6287@dhcp22.suse.cz> <20150702142551.GB9456@thunk.org> <20150702151321.GE12547@dhcp22.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Marian Marinov <mm@1h.com>
-To: Nikolay Borisov <kernel@kyup.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:58426 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751947AbbHCPPb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Aug 2015 11:15:31 -0400
-Content-Disposition: inline
-In-Reply-To: <55B8D61E.7090609@kyup.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+    Theodore Ts'o <tytso@mit.edu>, Nikolay Borisov <kernel@kyup.com>,
+    Johannes Weiner <hannes@cmpxchg.org>,
+    Andrew Morton <akpm@linux-foundation.org>,
+    Dave Chinner <david@fromorbit.com>, Marian Marinov <mm@1h.com>,
+    Hugh Dickins <hughd@google.com>, linux-mm@kvack.org,
+    LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+To: Michal Hocko <mhocko@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20150702151321.GE12547@dhcp22.suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-  Hello,
+Hi Michal,
 
-On Wed 29-07-15 16:33:18, Nikolay Borisov wrote:
-> Again, I have come up against a rather annoying ext4/jbd2 
-> lock and I'm not sure it's the same issue as the last one 
-> I posted (http://marc.info/?l=linux-ext4&m=143522748527527&w=2). 
-> Again, all of this is happening on an 3.12.28 kernel. I did grep for
-> the ext4 commits that have come afterwards but none of them allude to
-> fixing something similar. This time the blocked process is an rsync 
-> which has been running OUTSIDE of a container e.g. in the / cgroup 
-> but it was copying stuff from a dm-thin volume acting as the root 
-> device for a cgroup: 
+On Thu, 2 Jul 2015, Michal Hocko wrote:
+> On Thu 02-07-15 10:25:51, Theodore Ts'o wrote:
+> > On Wed, Jul 01, 2015 at 03:37:15PM +0200, Michal Hocko wrote:
+> From: Michal Hocko <mhocko@suse.cz>
+> Date: Thu, 2 Jul 2015 17:05:05 +0200
+> Subject: [PATCH] mm, vmscan: Do not wait for page writeback for GFP_NOFS
+>  allocations
 > 
-> rsync           D ffffffff81622100     0 33158      1 0x00000004
->  ffff882ad6257b18 0000000000000086 ffff883cfb3e5280 0000000000011640
->  ffff882ad6257fd8 ffff882ad6256010 0000000000011640 0000000000011640
->  ffff882ad6257fd8 0000000000011640 ffff881fd3213180 ffff883cfb3e5280
-> Call Trace:
->  [<ffffffff81573f24>] schedule+0x24/0x70
->  [<ffffffff8122f64c>] wait_transaction_locked+0x7c/0xb0
->  [<ffffffff81097a70>] ? wake_up_bit+0x40/0x40
->  [<ffffffff8122faf2>] start_this_handle+0x2c2/0x660
->  [<ffffffff8116a8fd>] ? d_rehash+0x1d/0x30
->  [<ffffffff8113b7f5>] ? kmem_cache_alloc+0xb5/0x150
->  [<ffffffff81230229>] jbd2__journal_start+0x109/0x1b0
->  [<ffffffff8120fe31>] __ext4_journal_start_sb+0x61/0xb0
->  [<ffffffff811ebbe7>] __ext4_new_inode+0x5b7/0x1330
->  [<ffffffff8115db8e>] ? __lookup_hash+0x1e/0x40
->  [<ffffffff811fb7ec>] ext4_mkdir+0x18c/0x400
->  [<ffffffff8115de05>] ? generic_permission+0xc5/0x230
->  [<ffffffff8115f018>] vfs_mkdir+0xb8/0x100
->  [<ffffffff811614e2>] SyS_mkdirat+0xb2/0x100
->  [<ffffffff8115dc44>] SyS_mkdir+0x14/0x20
->  [<ffffffff815763a2>] system_call_fastpath+0x16/0x1b
+> Nikolay has reported a hang when a memcg reclaim got stuck with the
+> following backtrace...
 
-So this is waiting to start a new transaction in the journal.
+Sorry, I couldn't manage more than to ignore you when you Cc'ed me on
+this a month ago.  Dave's perfectly correct, we had ourselves come to
+notice that recently: although in an ideal world a filesystem would
+only mark PageWriteback once the IO is all ready to go, in the real
+world that's not quite so, and a memory allocation may stand between.
+Which leaves my v3.6 c3b94f44fcb0 in danger of deadlocking.
 
-> Sampling echo "w" > /proc/sysrq-trigger I found some other 
+And suddenly now, in v4.2-rc or perhaps in v4.1 also, that has started
+hitting me too (I don't know which release Nicolay noticed this on).
+And it has become urgent to fix: I've added Linus to the Cc because
+I believe his comment in the rc5 announcement, "There's also a pending
+question about some of the VM changes", reflects this.  Twice when I
+was trying to verify fixes to the dcache issue which came up at the
+end of last week, I was frustrated by unrelated hangs in my load.
+The first time I didn't recognize it, but the second time I did,
+and then came to realize that your patch is just what is needed.
 
-You can just attach full output from the above command. That way we can be
-sure we see all the pieces...
+But I have modified it a little, I don't think you'll mind.  As you
+suggested yourself, I actually prefer to test may_enter_fs there, rather
+than __GFP_FS: not a big deal, I certainly wouldn't want to delay the
+fix if someone thinks differently; but I tend to feel that may_enter_fs
+is what we already use for such decisions there, so better to use it.
+(And the SwapCache case immune to ext4 or xfs IO submission pattern.)
 
-> blocked process which might be related to the issue. In particular: 
-> 
-> jbd2/dm-24-8    D 0000000000000000     0 31263      2 0x00000000
->  ffff882af46df9f8 0000000000000046 ffff882643db0000 0000000000011640
->  ffff882af46dffd8 ffff882af46de010 0000000000011640 0000000000011640
->  ffff882af46dffd8 0000000000011640 ffff8827c519ca40 ffff882643db0000
-> Call Trace:
->  [<ffffffff810f4fc0>] ? __lock_page+0x70/0x70
->  [<ffffffff81573f24>] schedule+0x24/0x70
->  [<ffffffff81573ff7>] io_schedule+0x87/0xd0
->  [<ffffffff810f4fc9>] sleep_on_page+0x9/0x10
->  [<ffffffff81571a45>] __wait_on_bit_lock+0x55/0xb0
->  [<ffffffff810f4b0a>] ? find_get_pages_tag+0xca/0x170
->  [<ffffffff810f4fb2>] __lock_page+0x62/0x70
->  [<ffffffff81097af0>] ? wake_atomic_t_function+0x40/0x40
->  [<ffffffff81101c30>] ? pagevec_lookup_tag+0x20/0x30
->  [<ffffffff810fffe1>] write_cache_pages+0x391/0x470
->  [<ffffffff810fec20>] ? set_page_dirty+0x60/0x60
->  [<ffffffff8110010c>] generic_writepages+0x4c/0x70
->  [<ffffffff81231b0b>] jbd2_journal_commit_transaction+0x41b/0x1790
->  [<ffffffff81083be7>] ? lock_timer_base+0x37/0x70
->  [<ffffffff81235d12>] kjournald2+0xc2/0x250
->  [<ffffffff81097a70>] ? wake_up_bit+0x40/0x40
->  [<ffffffff81235c50>] ? commit_timeout+0x10/0x10
->  [<ffffffff81097456>] kthread+0xc6/0xd0
->  [<ffffffff81097390>] ? kthread_freezable_should_stop+0x60/0x60
->  [<ffffffff815762fc>] ret_from_fork+0x7c/0xb0
->  [<ffffffff81097390>] ? kthread_freezable_should_stop+0x60/0x60
+I've fixed up the patch and updated the comments, since Tejun has
+meanwhile introduced sane_reclaim(sc) - I'm staying on in the insane
+asylum for now (and sane_reclaim is clearly unaffected by the change).
 
-So jbd2 thread is waiting for page lock. Interesting...
+I've omitted your hunk unindenting Case 3 wait_on_page_writeback(page):
+I prefer your style too, but thought it better to minimize the patch,
+especially if this is heading to the stables.  (I was tempted to add in
+my unlock_page there, that we discussed once before: but again thought
+it better to minimize the fix - it is "selfish" not to unlock_page,
+but I think that anything heading for deadlock on the locked page would
+in other circumstances be heading for deadlock on the writeback page -
+I've never found that change critical.)
 
-> kworker/u81:90  D 0000000000000000     0 36695      2 0x00000000
-> Workqueue: writeback bdi_writeback_workfn (flush-253:24)
->  ffff880155ee7888 0000000000000046 ffff881ea1a71080 0000000000011640
->  ffff880155ee7fd8 ffff880155ee6010 0000000000011640 0000000000011640
->  ffff880155ee7fd8 0000000000011640 ffff882119215ac0 ffff881ea1a71080
-> Call Trace:
->  [<ffffffff81573f24>] schedule+0x24/0x70
->  [<ffffffff81235bc5>] jbd2_log_wait_commit+0xb5/0x130
->  [<ffffffff81097a70>] ? wake_up_bit+0x40/0x40
->  [<ffffffff810a04ce>] ? __wake_up+0x4e/0x70
->  [<ffffffff8122f43b>] jbd2_journal_stop+0x1bb/0x2c0
->  [<ffffffff8120fda8>] __ext4_journal_stop+0x78/0xa0
->  [<ffffffff811f366f>] ext4_writepages+0x45f/0xa50
->  [<ffffffff8110014b>] do_writepages+0x1b/0x30
->  [<ffffffff811794cd>] __writeback_single_inode+0x3d/0x130
->  [<ffffffff8117a637>] writeback_sb_inodes+0x207/0x3f0
->  [<ffffffff8117a8b6>] __writeback_inodes_wb+0x96/0xc0
->  [<ffffffff8117aabb>] wb_writeback+0x1db/0x1f0
->  [<ffffffff8117ac61>] wb_do_writeback+0x191/0x1a0
->  [<ffffffff8117ace8>] bdi_writeback_workfn+0x78/0x1b0
->  [<ffffffff810a4312>] ? wake_up_process+0x22/0x40
->  [<ffffffff8109078b>] process_one_work+0x13b/0x460
->  [<ffffffff81091a09>] worker_thread+0x119/0x3f0
->  [<ffffffff810918f0>] ? manage_workers+0x2c0/0x2c0
->  [<ffffffff81097456>] kthread+0xc6/0xd0
->  [<ffffffff81097390>] ? kthread_freezable_should_stop+0x60/0x60
->  [<ffffffff815762fc>] ret_from_fork+0x7c/0xb0
->  [<ffffffff81097390>] ? kthread_freezable_should_stop+0x60/0x60
+And I've done quite a bit of testing.  The loads that hung at the
+weekend have been running nicely for 24 hours now, no problem with the
+writeback hang and no problem with the dcache ENOTDIR issue.  Though
+I've no idea of what recent VM change turned this into a hot issue.
 
-And this is likely the culprit - flusher thread is waiting for journal
-commit from jbd2_journal_stop() at which point it may be holding page locks
-which are blocking jbd2 thread. Now waiting from transaction commit from
-jbd2_journal_stop() is really unexpected. That happens only if the
-handle was a sync one and the only way I can see handle becoming a sync one
-from a writeback path is when this would be the first file over 4 GB in the
-filesystem which looks really unlikely... Can you post output of dumpe2fs
-for the filesystem? Thanks!
+And more testing on the history of it, considering your stable 3.6+
+designation that I wasn't satisfied with.  Getting out that USB stick
+again, I find that 3.6, 3.7 and 3.8 all OOM if their __GFP_IO test
+is updated to a may_enter_fs test; but something happened in 3.9
+to make it and subsequent releases safe with the may_enter_fs test.
+You can certainly argue that the remote chance of a deadlock is
+worse than the fair chance of a spurious OOM; but if you insist
+on 3.6+, then I think it would have to go back even further,
+because we marked that commit for stable itself.  I suggest 3.9+.
 
-								Honza
 
-> Basically dm-24 is the device this rsync was syncing from  and the 
-> kworker is running as part of writeback for the same device 
-> (253:24 is the major:minor for this particular device). 
-> Furthermore, I see there have been a number of "sync" executed and 
-> their stack traces look like the following: 
-> 
-> sync            D ffffffff81622100     0 17596  17532 0x00000000
->  ffff8827cf1fdd78 0000000000000086 ffff88348291b9c0 0000000000011640
->  ffff8827cf1fdfd8 ffff8827cf1fc010 0000000000011640 0000000000011640
->  ffff8827cf1fdfd8 0000000000011640 ffff881fd32118c0 ffff88348291b9c0
-> Call Trace:
->  [<ffffffff81573f24>] schedule+0x24/0x70
->  [<ffffffff81571955>] schedule_timeout+0x185/0x1c0
->  [<ffffffff810904c2>] ? __queue_delayed_work+0x82/0x150
->  [<ffffffff81574984>] wait_for_completion+0x94/0x100
->  [<ffffffff810a42d0>] ? try_to_wake_up+0x2b0/0x2b0
->  [<ffffffff81179a28>] ? bdi_queue_work+0x48/0xb0
->  [<ffffffff8117e830>] ? fdatawrite_one_bdev+0x20/0x20
->  [<ffffffff81179c56>] sync_inodes_sb+0xa6/0x1c0
->  [<ffffffff8117e830>] ? fdatawrite_one_bdev+0x20/0x20
->  [<ffffffff8117e845>] sync_inodes_one_sb+0x15/0x20
->  [<ffffffff81157b29>] iterate_supers+0xa9/0xe0
->  [<ffffffff8117e880>] sys_sync+0x30/0x90
->  [<ffffffff815763a2>] system_call_fastpath+0x16/0x1b
-> 
-> I believe it is this sync which has triggered the bdi_writeback_workfn 
-> for the particular dm device. Essentially what I gather is that the 
-> rsync is locked since it wants to do some filesystem activity, hence 
-> it wants to start a transaction but it's blocked due to an unfinished 
-> transaction - presumably the one from the writeback path. However, 
-> the writeback is blocked in jbd2_log_wait_commit, waiting for its 
-> own transaction to complete and it is not progressing due to some 
-> reason. There hasn't been any OOM messages for the container in 
-> question and the global OOM killer hasn't triggered. The memory 
-> state of the machine when this was observed. There still some 
-> memory: 
-> 
-> SysRq : Show Memory
-> Mem-Info:
-> Node 0 DMA per-cpu:
-> CPU    0: hi:    0, btch:   1 usd:   0
-> CPU    1: hi:    0, btch:   1 usd:   0
-> CPU    2: hi:    0, btch:   1 usd:   0
-> CPU    3: hi:    0, btch:   1 usd:   0
-> CPU    4: hi:    0, btch:   1 usd:   0
-> CPU    5: hi:    0, btch:   1 usd:   0
-> CPU    6: hi:    0, btch:   1 usd:   0
-> CPU    7: hi:    0, btch:   1 usd:   0
-> CPU    8: hi:    0, btch:   1 usd:   0
-> CPU    9: hi:    0, btch:   1 usd:   0
-> CPU   10: hi:    0, btch:   1 usd:   0
-> CPU   11: hi:    0, btch:   1 usd:   0
-> CPU   12: hi:    0, btch:   1 usd:   0
-> CPU   13: hi:    0, btch:   1 usd:   0
-> CPU   14: hi:    0, btch:   1 usd:   0
-> CPU   15: hi:    0, btch:   1 usd:   0
-> CPU   16: hi:    0, btch:   1 usd:   0
-> CPU   17: hi:    0, btch:   1 usd:   0
-> CPU   18: hi:    0, btch:   1 usd:   0
-> CPU   19: hi:    0, btch:   1 usd:   0
-> CPU   20: hi:    0, btch:   1 usd:   0
-> CPU   21: hi:    0, btch:   1 usd:   0
-> CPU   22: hi:    0, btch:   1 usd:   0
-> CPU   23: hi:    0, btch:   1 usd:   0
-> CPU   24: hi:    0, btch:   1 usd:   0
-> CPU   25: hi:    0, btch:   1 usd:   0
-> CPU   26: hi:    0, btch:   1 usd:   0
-> CPU   27: hi:    0, btch:   1 usd:   0
-> CPU   28: hi:    0, btch:   1 usd:   0
-> CPU   29: hi:    0, btch:   1 usd:   0
-> CPU   30: hi:    0, btch:   1 usd:   0
-> CPU   31: hi:    0, btch:   1 usd:   0
-> CPU   32: hi:    0, btch:   1 usd:   0
-> CPU   33: hi:    0, btch:   1 usd:   0
-> CPU   34: hi:    0, btch:   1 usd:   0
-> CPU   35: hi:    0, btch:   1 usd:   0
-> CPU   36: hi:    0, btch:   1 usd:   0
-> CPU   37: hi:    0, btch:   1 usd:   0
-> CPU   38: hi:    0, btch:   1 usd:   0
-> CPU   39: hi:    0, btch:   1 usd:   0
-> Node 0 DMA32 per-cpu:
-> CPU    0: hi:  186, btch:  31 usd: 177
-> CPU    1: hi:  186, btch:  31 usd: 129
-> CPU    2: hi:  186, btch:  31 usd: 145
-> CPU    3: hi:  186, btch:  31 usd:  60
-> CPU    4: hi:  186, btch:  31 usd: 105
-> CPU    5: hi:  186, btch:  31 usd:  96
-> CPU    6: hi:  186, btch:  31 usd:  71
-> CPU    7: hi:  186, btch:  31 usd:  53
-> CPU    8: hi:  186, btch:  31 usd: 121
-> CPU    9: hi:  186, btch:  31 usd: 171
-> CPU   10: hi:  186, btch:  31 usd:  77
-> CPU   11: hi:  186, btch:  31 usd:   0
-> CPU   12: hi:  186, btch:  31 usd:   0
-> CPU   13: hi:  186, btch:  31 usd:   0
-> CPU   14: hi:  186, btch:  31 usd:  29
-> CPU   15: hi:  186, btch:  31 usd:  36
-> CPU   16: hi:  186, btch:  31 usd:   0
-> CPU   17: hi:  186, btch:  31 usd:   0
-> CPU   18: hi:  186, btch:  31 usd:   0
-> CPU   19: hi:  186, btch:  31 usd:  22
-> CPU   20: hi:  186, btch:  31 usd:  76
-> CPU   21: hi:  186, btch:  31 usd: 161
-> CPU   22: hi:  186, btch:  31 usd:  73
-> CPU   23: hi:  186, btch:  31 usd:  78
-> CPU   24: hi:  186, btch:  31 usd: 125
-> CPU   25: hi:  186, btch:  31 usd:  73
-> CPU   26: hi:  186, btch:  31 usd:  72
-> CPU   27: hi:  186, btch:  31 usd:  38
-> CPU   28: hi:  186, btch:  31 usd: 118
-> CPU   29: hi:  186, btch:  31 usd:  63
-> CPU   30: hi:  186, btch:  31 usd:   0
-> CPU   31: hi:  186, btch:  31 usd:   0
-> CPU   32: hi:  186, btch:  31 usd:   0
-> CPU   33: hi:  186, btch:  31 usd:   0
-> CPU   34: hi:  186, btch:  31 usd:   0
-> CPU   35: hi:  186, btch:  31 usd:   0
-> CPU   36: hi:  186, btch:  31 usd:   0
-> CPU   37: hi:  186, btch:  31 usd:   0
-> CPU   38: hi:  186, btch:  31 usd:   0
-> CPU   39: hi:  186, btch:  31 usd:   0
-> Node 0 Normal per-cpu:
-> CPU    0: hi:  186, btch:  31 usd: 188
-> CPU    1: hi:  186, btch:  31 usd: 174
-> CPU    2: hi:  186, btch:  31 usd: 116
-> CPU    3: hi:  186, btch:  31 usd:  96
-> CPU    4: hi:  186, btch:  31 usd: 169
-> CPU    5: hi:  186, btch:  31 usd: 137
-> CPU    6: hi:  186, btch:  31 usd: 102
-> CPU    7: hi:  186, btch:  31 usd:  96
-> CPU    8: hi:  186, btch:  31 usd: 149
-> CPU    9: hi:  186, btch:  31 usd: 203
-> CPU   10: hi:  186, btch:  31 usd: 179
-> CPU   11: hi:  186, btch:  31 usd: 181
-> CPU   12: hi:  186, btch:  31 usd: 159
-> CPU   13: hi:  186, btch:  31 usd: 160
-> CPU   14: hi:  186, btch:  31 usd: 179
-> CPU   15: hi:  186, btch:  31 usd: 158
-> CPU   16: hi:  186, btch:  31 usd: 180
-> CPU   17: hi:  186, btch:  31 usd: 155
-> CPU   18: hi:  186, btch:  31 usd: 156
-> CPU   19: hi:  186, btch:  31 usd: 173
-> CPU   20: hi:  186, btch:  31 usd: 161
-> CPU   21: hi:  186, btch:  31 usd: 163
-> CPU   22: hi:  186, btch:  31 usd: 123
-> CPU   23: hi:  186, btch:  31 usd: 157
-> CPU   24: hi:  186, btch:  31 usd:  19
-> CPU   25: hi:  186, btch:  31 usd: 159
-> CPU   26: hi:  186, btch:  31 usd: 176
-> CPU   27: hi:  186, btch:  31 usd: 140
-> CPU   28: hi:  186, btch:  31 usd: 180
-> CPU   29: hi:  186, btch:  31 usd: 169
-> CPU   30: hi:  186, btch:  31 usd: 158
-> CPU   31: hi:  186, btch:  31 usd: 181
-> CPU   32: hi:  186, btch:  31 usd: 181
-> CPU   33: hi:  186, btch:  31 usd: 159
-> CPU   34: hi:  186, btch:  31 usd: 168
-> CPU   35: hi:  186, btch:  31 usd: 173
-> CPU   36: hi:  186, btch:  31 usd: 161
-> CPU   37: hi:  186, btch:  31 usd: 179
-> CPU   38: hi:  186, btch:  31 usd: 184
-> CPU   39: hi:  186, btch:  31 usd: 182
-> Node 1 Normal per-cpu:
-> CPU    0: hi:  186, btch:  31 usd: 164
-> CPU    1: hi:  186, btch:  31 usd: 167
-> CPU    2: hi:  186, btch:  31 usd: 160
-> CPU    3: hi:  186, btch:  31 usd: 171
-> CPU    4: hi:  186, btch:  31 usd: 175
-> CPU    5: hi:  186, btch:  31 usd: 184
-> CPU    6: hi:  186, btch:  31 usd: 169
-> CPU    7: hi:  186, btch:  31 usd: 159
-> CPU    8: hi:  186, btch:  31 usd: 171
-> CPU    9: hi:  186, btch:  31 usd: 185
-> CPU   10: hi:  186, btch:  31 usd:  86
-> CPU   11: hi:  186, btch:  31 usd:  73
-> CPU   12: hi:  186, btch:  31 usd:  29
-> CPU   13: hi:  186, btch:  31 usd:  62
-> CPU   14: hi:  186, btch:  31 usd:  91
-> CPU   15: hi:  186, btch:  31 usd: 114
-> CPU   16: hi:  186, btch:  31 usd:  69
-> CPU   17: hi:  186, btch:  31 usd: 117
-> CPU   18: hi:  186, btch:  31 usd:  17
-> CPU   19: hi:  186, btch:  31 usd:  20
-> CPU   20: hi:  186, btch:  31 usd: 163
-> CPU   21: hi:  186, btch:  31 usd: 161
-> CPU   22: hi:  186, btch:  31 usd: 175
-> CPU   23: hi:  186, btch:  31 usd: 172
-> CPU   24: hi:  186, btch:  31 usd: 177
-> CPU   25: hi:  186, btch:  31 usd: 171
-> CPU   26: hi:  186, btch:  31 usd: 157
-> CPU   27: hi:  186, btch:  31 usd: 171
-> CPU   28: hi:  186, btch:  31 usd: 182
-> CPU   29: hi:  186, btch:  31 usd: 183
-> CPU   30: hi:  186, btch:  31 usd:  40
-> CPU   31: hi:  186, btch:  31 usd: 157
-> CPU   32: hi:  186, btch:  31 usd:  76
-> CPU   33: hi:  186, btch:  31 usd: 157
-> CPU   34: hi:  186, btch:  31 usd:  63
-> CPU   35: hi:  186, btch:  31 usd:  62
-> CPU   36: hi:  186, btch:  31 usd:  58
-> CPU   37: hi:  186, btch:  31 usd:  36
-> CPU   38: hi:  186, btch:  31 usd:  19
-> CPU   39: hi:  186, btch:  31 usd:  47
-> active_anon:6762239 inactive_anon:12245334 isolated_anon:0
->  active_file:10705451 inactive_file:11321321 isolated_file:0
->  unevictable:5516901 dirty:457441 writeback:0 unstable:0
->  free:1028680 slab_reclaimable:3791349 slab_unreclaimable:13461537
->  mapped:1567688 shmem:904717 pagetables:362061 bounce:0
->  free_cma:0
-> Node 0 DMA free:15532kB min:8kB low:8kB high:12kB active_anon:0kB inactive_anon:0kB active_file:0kB inactive_file:0kB unevictable:0kB isolated(anon):0kB isolated(file):0kB present:15976kB managed:15892kB mlocked:0kB dirty:0kB writeback:0kB mapped:0kB shmem:0kB slab_reclaimable:0kB slab_unreclaimable:0kB kernel_stack:0kB pagetables:0kB unstable:0kB bounce:0kB free_cma:0kB writeback_tmp:0kB pages_scanned:0 all_unreclaimable? yes
-> lowmem_reserve[]: 0 1668 128642 128642
-> Node 0 DMA32 free:509204kB min:1164kB low:1452kB high:1744kB active_anon:6016kB inactive_anon:13164kB active_file:2584kB inactive_file:5756kB unevictable:1112kB isolated(anon):0kB isolated(file):0kB present:2045980kB managed:1708904kB mlocked:1224kB dirty:20kB writeback:0kB mapped:4164kB shmem:3900kB slab_reclaimable:463020kB slab_unreclaimable:671072kB kernel_stack:1224kB pagetables:4268kB unstable:0kB bounce:0kB free_cma:0kB writeback_tmp:0kB pages_scanned:0 all_unreclaimable? no
-> lowmem_reserve[]: 0 0 126973 126973
-> Node 0 Normal free:189488kB min:88804kB low:111004kB high:133204kB active_anon:16411204kB inactive_anon:24056744kB active_file:19949588kB inactive_file:22435040kB unevictable:8645768kB isolated(anon):0kB isolated(file):0kB present:132120576kB managed:130020968kB mlocked:8657300kB dirty:1773000kB writeback:0kB mapped:2878728kB shmem:1624252kB slab_reclaimable:6834156kB slab_unreclaimable:29014116kB kernel_stack:65736kB pagetables:711944kB unstable:0kB bounce:0kB free_cma:0kB writeback_tmp:0kB pages_scanned:0 all_unreclaimable? no
-> lowmem_reserve[]: 0 0 0 0
-> Node 1 Normal free:3393536kB min:90240kB low:112800kB high:135360kB active_anon:10638288kB inactive_anon:24911428kB active_file:22869632kB inactive_file:22844488kB unevictable:13420724kB isolated(anon):0kB isolated(file):0kB present:134217728kB managed:132117884kB mlocked:13427472kB dirty:56744kB writeback:0kB mapped:3387860kB shmem:1990716kB slab_reclaimable:7868220kB slab_unreclaimable:24160960kB kernel_stack:90600kB pagetables:731280kB unstable:0kB bounce:0kB free_cma:0kB writeback_tmp:0kB pages_scanned:0 all_unreclaimable? no
-> lowmem_reserve[]: 0 0 0 0
-> Node 0 DMA: 1*4kB (U) 1*8kB (U) 0*16kB 1*32kB (U) 0*64kB 1*128kB (U) 0*256kB 0*512kB 1*1024kB (U) 1*2048kB (U) 3*4096kB (MR) = 15532kB
-> Node 0 DMA32: 612*4kB (UEM) 1081*8kB (UEM) 295*16kB (UEM) 412*32kB (UEM) 288*64kB (UEM) 118*128kB (UEM) 63*256kB (UEM) 49*512kB (UEM) 30*1024kB (UEM) 29*2048kB (UEM) 77*4096kB (UMR) = 509256kB
-> Node 0 Normal: 44891*4kB (UE) 0*8kB 0*16kB 5*32kB (R) 4*64kB (R) 2*128kB (R) 1*256kB (R) 1*512kB (R) 1*1024kB (R) 0*2048kB 1*4096kB (R) = 186124kB
-> Node 1 Normal: 467218*4kB (UEM) 145540*8kB (UEM) 18995*16kB (UEM) 1482*32kB (UMR) 5*64kB (R) 1*128kB (R) 2*256kB (R) 1*512kB (R) 1*1024kB (R) 0*2048kB 1*4096kB (R) = 3391128kB
-> 23967743 total pagecache pages
-> 1034858 pages in swap cache
-> Swap cache stats: add 154167590, delete 153132732, find 2698616740/2708213552
-> Free swap  = 16464476kB
-> Total swap = 41943036kB
-> 67100065 pages RAM
-> 0 pages HighMem/MovableOnly
-> 524961 pages reserved
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+[PATCH] mm, vmscan: Do not wait for page writeback for GFP_NOFS allocations
+
+From: Michal Hocko <mhocko@suse.cz>
+
+Nikolay has reported a hang when a memcg reclaim got stuck with the
+following backtrace:
+PID: 18308  TASK: ffff883d7c9b0a30  CPU: 1   COMMAND: "rsync"
+ #0 [ffff88177374ac60] __schedule at ffffffff815ab152
+ #1 [ffff88177374acb0] schedule at ffffffff815ab76e
+ #2 [ffff88177374acd0] schedule_timeout at ffffffff815ae5e5
+ #3 [ffff88177374ad70] io_schedule_timeout at ffffffff815aad6a
+ #4 [ffff88177374ada0] bit_wait_io at ffffffff815abfc6
+ #5 [ffff88177374adb0] __wait_on_bit at ffffffff815abda5
+ #6 [ffff88177374ae00] wait_on_page_bit at ffffffff8111fd4f
+ #7 [ffff88177374ae50] shrink_page_list at ffffffff81135445
+ #8 [ffff88177374af50] shrink_inactive_list at ffffffff81135845
+ #9 [ffff88177374b060] shrink_lruvec at ffffffff81135ead
+ #10 [ffff88177374b150] shrink_zone at ffffffff811360c3
+ #11 [ffff88177374b220] shrink_zones at ffffffff81136eff
+ #12 [ffff88177374b2a0] do_try_to_free_pages at ffffffff8113712f
+ #13 [ffff88177374b300] try_to_free_mem_cgroup_pages at ffffffff811372be
+ #14 [ffff88177374b380] try_charge at ffffffff81189423
+ #15 [ffff88177374b430] mem_cgroup_try_charge at ffffffff8118c6f5
+ #16 [ffff88177374b470] __add_to_page_cache_locked at ffffffff8112137d
+ #17 [ffff88177374b4e0] add_to_page_cache_lru at ffffffff81121618
+ #18 [ffff88177374b510] pagecache_get_page at ffffffff8112170b
+ #19 [ffff88177374b560] grow_dev_page at ffffffff811c8297
+ #20 [ffff88177374b5c0] __getblk_slow at ffffffff811c91d6
+ #21 [ffff88177374b600] __getblk_gfp at ffffffff811c92c1
+ #22 [ffff88177374b630] ext4_ext_grow_indepth at ffffffff8124565c
+ #23 [ffff88177374b690] ext4_ext_create_new_leaf at ffffffff81246ca8
+ #24 [ffff88177374b6e0] ext4_ext_insert_extent at ffffffff81246f09
+ #25 [ffff88177374b750] ext4_ext_map_blocks at ffffffff8124a848
+ #26 [ffff88177374b870] ext4_map_blocks at ffffffff8121a5b7
+ #27 [ffff88177374b910] mpage_map_one_extent at ffffffff8121b1fa
+ #28 [ffff88177374b950] mpage_map_and_submit_extent at ffffffff8121f07b
+ #29 [ffff88177374b9b0] ext4_writepages at ffffffff8121f6d5
+ #30 [ffff88177374bb20] do_writepages at ffffffff8112c490
+ #31 [ffff88177374bb30] __filemap_fdatawrite_range at ffffffff81120199
+ #32 [ffff88177374bb80] filemap_flush at ffffffff8112041c
+ #33 [ffff88177374bb90] ext4_alloc_da_blocks at ffffffff81219da1
+ #34 [ffff88177374bbb0] ext4_rename at ffffffff81229b91
+ #35 [ffff88177374bcd0] ext4_rename2 at ffffffff81229e32
+ #36 [ffff88177374bce0] vfs_rename at ffffffff811a08a5
+ #37 [ffff88177374bd60] SYSC_renameat2 at ffffffff811a3ffc
+ #38 [ffff88177374bf60] sys_renameat2 at ffffffff811a408e
+ #39 [ffff88177374bf70] sys_rename at ffffffff8119e51e
+ #40 [ffff88177374bf80] system_call_fastpath at ffffffff815afa89
+
+Dave Chinner has properly pointed out that this is a deadlock in the
+reclaim code because ext4 doesn't submit pages which are marked by
+PG_writeback right away. The heuristic was introduced by e62e384e9da8
+("memcg: prevent OOM with too many dirty pages") and it was applied
+only when may_enter_fs was specified. The code has been changed by
+c3b94f44fcb0 ("memcg: further prevent OOM with too many dirty pages")
+which has removed the __GFP_FS restriction with a reasoning that we
+do not get into the fs code. But this is not sufficient apparently
+because the fs doesn't necessarily submit pages marked PG_writeback
+for IO right away.
+
+ext4_bio_write_page calls io_submit_add_bh but that doesn't necessarily
+submit the bio. Instead it tries to map more pages into the bio and
+mpage_map_one_extent might trigger memcg charge which might end up
+waiting on a page which is marked PG_writeback but hasn't been submitted
+yet so we would end up waiting for something that never finishes.
+
+Fix this issue by replacing __GFP_IO by may_enter_fs check (for case 2)
+before we go to wait on the writeback. The page fault path, which is the
+only path that triggers memcg oom killer since 3.12, shouldn't require
+GFP_NOFS and so we shouldn't reintroduce the premature OOM killer issue
+which was originally addressed by the heuristic.
+
+As per David Chinner the xfs is doing similar thing since 2.6.15 already
+so ext4 is not the only affected filesystem. Moreover he notes:
+: For example: IO completion might require unwritten extent conversion
+: which executes filesystem transactions and GFP_NOFS allocations. The
+: writeback flag on the pages can not be cleared until unwritten
+: extent conversion completes. Hence memory reclaim cannot wait on
+: page writeback to complete in GFP_NOFS context because it is not
+: safe to do so, memcg reclaim or otherwise.
+
+Cc: stable@vger.kernel.org # 3.9+
+[tytso@mit.edu: corrected the control flow]
+Fixes: c3b94f44fcb0 ("memcg: further prevent OOM with too many dirty pages")
+Reported-by: Nikolay Borisov <kernel@kyup.com>
+Signed-off-by: Michal Hocko <mhocko@suse.cz>
+Signed-off-by: Hugh Dickins <hughd@google.com>
+---
+
+ mm/vmscan.c |   16 ++++++----------
+ 1 file changed, 6 insertions(+), 10 deletions(-)
+
+--- 4.2-rc5/mm/vmscan.c	2015-07-05 19:25:02.856131170 -0700
++++ linux/mm/vmscan.c	2015-08-02 21:24:03.000614050 -0700
+@@ -973,22 +973,18 @@ static unsigned long shrink_page_list(st
+ 		 *    caller can stall after page list has been processed.
+ 		 *
+ 		 * 2) Global or new memcg reclaim encounters a page that is
+-		 *    not marked for immediate reclaim or the caller does not
+-		 *    have __GFP_IO. In this case mark the page for immediate
++		 *    not marked for immediate reclaim, or the caller does not
++		 *    have __GFP_FS (or __GFP_IO if it's simply going to swap,
++		 *    not to fs). In this case mark the page for immediate
+ 		 *    reclaim and continue scanning.
+ 		 *
+-		 *    __GFP_IO is checked  because a loop driver thread might
++		 *    Require may_enter_fs because we would wait on fs, which
++		 *    may not have submitted IO yet. And the loop driver might
+ 		 *    enter reclaim, and deadlock if it waits on a page for
+ 		 *    which it is needed to do the write (loop masks off
+ 		 *    __GFP_IO|__GFP_FS for this reason); but more thought
+ 		 *    would probably show more reasons.
+ 		 *
+-		 *    Don't require __GFP_FS, since we're not going into the
+-		 *    FS, just waiting on its writeback completion. Worryingly,
+-		 *    ext4 gfs2 and xfs allocate pages with
+-		 *    grab_cache_page_write_begin(,,AOP_FLAG_NOFS), so testing
+-		 *    may_enter_fs here is liable to OOM on them.
+-		 *
+ 		 * 3) Legacy memcg encounters a page that is not already marked
+ 		 *    PageReclaim. memcg does not have any dirty pages
+ 		 *    throttling so we could easily OOM just because too many
+@@ -1005,7 +1001,7 @@ static unsigned long shrink_page_list(st
+ 
+ 			/* Case 2 above */
+ 			} else if (sane_reclaim(sc) ||
+-			    !PageReclaim(page) || !(sc->gfp_mask & __GFP_IO)) {
++			    !PageReclaim(page) || !may_enter_fs) {
+ 				/*
+ 				 * This is slightly racy - end_page_writeback()
+ 				 * might have just cleared PageReclaim, then
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
