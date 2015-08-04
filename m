@@ -1,189 +1,94 @@
-From: David Muchene <david.muchene@avid.com>
-Subject: Fsync Performance
-Date: Tue, 4 Aug 2015 19:06:13 +0000
-Message-ID: <CD10AD6FBDAE574A973D585BD95C239A4769527A@WAL-MBS02.global.avidww.com>
+From: Hugh Dickins <hughd@google.com>
+Subject: Re: [PATCH] mm, vmscan: Do not wait for page writeback for GFP_NOFS
+ allocations
+Date: Tue, 4 Aug 2015 14:32:33 -0700 (PDT)
+Message-ID: <alpine.LSU.2.11.1508041414170.31462@eggly.anvils>
+References: <1435677437-16717-1-git-send-email-mhocko@suse.cz> <20150701061731.GB6286@dhcp22.suse.cz> <20150701133715.GA6287@dhcp22.suse.cz> <20150702142551.GB9456@thunk.org> <20150702151321.GE12547@dhcp22.suse.cz> <alpine.LSU.2.11.1508032227050.5070@eggly.anvils>
+ <20150804095158.GE18509@dhcp22.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1.bemta7.messagelabs.com ([216.82.254.108]:25905 "EHLO
-	mail1.bemta7.messagelabs.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751667AbbHDTN5 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Aug 2015 15:13:57 -0400
-Content-Language: en-US
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Hugh Dickins <hughd@google.com>,
+    Linus Torvalds <torvalds@linux-foundation.org>,
+    Theodore Ts'o <tytso@mit.edu>, Nikolay Borisov <kernel@kyup.com>,
+    Johannes Weiner <hannes@cmpxchg.org>,
+    Andrew Morton <akpm@linux-foundation.org>,
+    Dave Chinner <david@fromorbit.com>, Marian Marinov <mm@1h.com>,
+    linux-mm@kvack.org, LKML <linux-kernel@vger.kernel.org>,
+    linux-ext4@vger.kernel.org
+To: Michal Hocko <mhocko@kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20150804095158.GE18509@dhcp22.suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Tue, 4 Aug 2015, Michal Hocko wrote:
+> On Mon 03-08-15 23:32:00, Hugh Dickins wrote:
+> [...]
+> > But I have modified it a little, I don't think you'll mind.  As you
+> > suggested yourself, I actually prefer to test may_enter_fs there, rather
+> > than __GFP_FS: not a big deal, I certainly wouldn't want to delay the
+> > fix if someone thinks differently; but I tend to feel that may_enter_fs
+> > is what we already use for such decisions there, so better to use it.
+> > (And the SwapCache case immune to ext4 or xfs IO submission pattern.)
+> 
+> I am not opposed. This is closer to what we had before.
 
-Hi,
-I'm not sure if this is the place to ask this, if it isn't I apologize.=
- We are occasionally seeing fsync take a very long time (sometimes upwa=
-rds of 3s). We decided to run some fio tests and use systemtap to deter=
-mine if the disks were the cause of the problem. One of the results fro=
-m the tests is that there occasionally there is a significant differenc=
-e between time spent doing io, and the total time to complete the fsync=
-=2E Is there an explanation to this difference, or is the systemtap scr=
-ipt bogus? If it is in fact the driver/disks that is taking a long time=
-, does anyone have any suggestions as to how I'd debug that? I apprecia=
-te any help you can provide (even if it's pointing me to the relevant d=
-ocuments).=20
+Yes, it is what you had there before.
 
-System Config:
-Debian Wheezy,
-3.2.6 Kernel,=20
-Seagate SSDs=A0 ST200FM0073=20
-Mount options=A0=A0 (rw,relatime,user_xattr,barrier=3D1,data=3Dordered)
+> 
+> [...]
+> > (I was tempted to add in
+> > my unlock_page there, that we discussed once before: but again thought
+> > it better to minimize the fix - it is "selfish" not to unlock_page,
+> > but I think that anything heading for deadlock on the locked page would
+> > in other circumstances be heading for deadlock on the writeback page -
+> > I've never found that change critical.)
+> 
+> I agree. It would deserve a separate patch.
 
+I'll send one day, but not for v4.2.
 
-fio=A0 --time_based --thinktime=3D125000 --rw=3Drandwrite --write_lat_l=
-og=3D./throwaway/sm_sd --name=3Dsm_sd --fsync=3D20 --buffered=3D1 --thi=
-nktime_blocks=3D20 --rate_iops=3D20 --direct=3D0 --filename=3D/avid/mnt=
-/storagemanager0/sm_sd_test --per_job_logs=3D1 --bs=3D4k --output=3D./t=
-hrowaway/sm_sd --ioengine=3Dlibaio --runtime=3D36000 --iodepth=3D20 --l=
-og_avg_msec=3D1000 --size=3D1024m
+> 
+> > And I've done quite a bit of testing.  The loads that hung at the
+> > weekend have been running nicely for 24 hours now, no problem with the
+> > writeback hang and no problem with the dcache ENOTDIR issue.  Though
+> > I've no idea of what recent VM change turned this into a hot issue.
+> > 
+> > And more testing on the history of it, considering your stable 3.6+
+> > designation that I wasn't satisfied with.  Getting out that USB stick
+> > again, I find that 3.6, 3.7 and 3.8 all OOM if their __GFP_IO test
+> > is updated to a may_enter_fs test; but something happened in 3.9
+> > to make it and subsequent releases safe with the may_enter_fs test.
+> 
+> Interesting. I would have guessed that 3.12 would make a difference (as
+> mentioned in the changelog). Why would 3.9 make a difference is not
+> entirely clear to me.
 
-fio=A0 --time_based --thinktime=3D16000000 --rw=3Drandwrite --write_lat=
-_log=3D./throwaway/sd_sm --name=3Dsd_sm --fsync=3D25 --buffered=3D1 --t=
-hinktime_blocks=3D25 --rate_iops=3D25 --direct=3D0 --filename=3D/avid/m=
-nt/systemdirector/sm_sd_test --per_job_logs=3D1 --bs=3D128k --output=3D=
-=2E/throwaway/sd_sm --ioengine=3Dlibaio --runtime=3D36000 --iodepth=3D2=
-0 --log_avg_msec=3D1000 --size=3D1024m
+Nor to me.  You were right to single out 3.12 in the changelog, but
+clearly some earlier change in 3.9 altered the delicate balance on this.
+It was unambiguous, so a bisection between 3.8 and 3.9 should easily
+find it.  Yet, somehow, that's not very high on my TODO list...
 
+It would be more interesting to find why this deadlock has become so
+much more visible just now.  But that would be a difficult bisection,
+taking many days, of restarts after wrong decisions.  Again, not
+something I'll get into.
 
-Results
------------------------------------------------------------------------=
-----
-Sync Time(uS),=A0=A0 Max IO Time (uS), =A0=A0 Total IO time (us)
-=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 13801,=A0=A0=A0 =A0=A0=A0=A0=A0=A0=A0=A0=A0=
-=A0=A0 =A0=A0=A0 4402, =A0=A0 =A0=A0=A0=A0 =A0=A0=A0 4522
-=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 13923,=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=
-=A0 =A0=A0=A0=A0=A0=A0=A0=A0=A0 0,=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0=
- =A0=A0=A0 0
-=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 348697,=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=
-=A0=A0=A0 88261, =A0=A0=A0=A0=A0=A0=A0=A0=A0 88375
-=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 254846,=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
-=A0=A0=A0=A0=A0 170582,=A0=A0=A0=A0=A0=A0 170723
-=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 318862,=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
-=A0=A0=A0=A0=A0=A0 317069,=A0=A0=A0=A0=A0=A0=A0 317593
+> 
+> > You can certainly argue that the remote chance of a deadlock is
+> > worse than the fair chance of a spurious OOM; but if you insist
+> > on 3.6+, then I think it would have to go back even further,
+> > because we marked that commit for stable itself.  I suggest 3.9+.
+> 
+> Agreed and thanks!
 
-///////////////////////////////////////////////////////////////////////=
-//////////////////////////////////////////////////////////////////test_=
-sync.stp///////////////////////////////////////////////////////////////=
-///////////////////////////////////////////////////////////////////////=
-//////
-global sync_start =3D 0=20
-//submission, io-starting, and io completion...
-global sync_blocks_start=20
-global sync_blocks_end
-global PROCNAME =3D "fio"
-global sync_beg =3D 0
-global sync_end =3D 0
-global wrt_beg=A0 =3D 0
-global wrt_end=A0 =3D 0
-global fm_beg=A0=A0 =3D 0
-global fm_end=A0=A0 =3D 0
-global thresh =3D 10000
-global max_iotime =3D 0
-global first_io =3D 0
-global last_io =3D 0
+Thanks so much for getting back to us on it so very promptly.
+I'll detach the patch, unchanged, and send direct to Linus now.
 
-
-function get_next:long(bio:long)%{
-=A0=A0=A0 THIS->__retvalue =3D (long)((struct bio*)((long)THIS->bio))->=
-bi_next;
-=A0=A0=A0=20
-%}
-
-function iter_bio(bio){
-=A0=A0=A0 bio_itr =3D bio;
-=A0=A0=A0 printf("bio list: [");
-=A0=A0=A0 while(bio_itr !=3D NULL){
-=A0=A0=A0 =A0=A0=A0 printf("%p, ",bio_itr);
-=A0=A0=A0 =A0=A0=A0 bio_itr =3D get_next(bio_itr);
-=A0=A0=A0 }
-=A0=A0=A0 printf("]\n");
-}
-=A0=A0=A0=20
-
-probe kernel.function("blk_dequeue_request"){
-=A0=A0=A0 if(sync_start =3D=3D 1 && execname() =3D=3D PROCNAME){=A0=A0=A0=
-=20
-=A0=A0=A0 =A0=A0=A0 sync_blocks_start[$rq->bio] =3D gettimeofday_us();
-=A0=A0=A0 =A0=A0=A0 if(first_io =3D=3D 0){=20
-=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 first_io =3D sync_blocks_start[$rq->bio];
-=A0=A0=A0 =A0=A0=A0 }
-=A0=A0=A0 }
-}
-
-
-probe kernel.function("blk_account_io_completion"){
-=A0=A0=A0 if(sync_start =3D=3D 1 && ($req->bio in sync_blocks_start)){
-=A0=A0=A0 =A0=A0=A0 sync_blocks_end[$req->bio] =3D gettimeofday_us();=A0=
-=A0=A0=20
-=A0=A0=A0 =A0=A0=A0 iotime =3D sync_blocks_end[$req->bio] - sync_blocks=
-_start[$req->bio];
-=A0=A0=A0 =A0=A0=A0 if(iotime > max_iotime){
-=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 max_iotime =3D iotime;
-=A0=A0=A0 =A0=A0=A0 }
-=A0=A0=A0 =A0=A0=A0 last_io =3D sync_blocks_end[$req->bio];
-=A0=A0=A0 }
-}
-
-probe syscall.fsync{
-=A0=A0=A0 if(execname() =3D=3D PROCNAME){
-=A0=A0=A0 =A0=A0=A0 sync_start =3D 1;
-=A0=A0=A0 =A0=A0=A0 sync_beg =3D gettimeofday_us();
-=A0=A0=A0 =A0=A0=A0 //printf("sync start: %d\n",gettimeofday_us());
-=A0=A0=A0 }
-}
-=A0
-probe syscall.fsync.return{
-=A0=A0=A0 if(execname() =3D=3D PROCNAME){
-=A0=A0=A0 =A0=A0=A0 sync_start =3D 0;
-=A0=A0=A0 =A0=A0=A0 sync_end =3D gettimeofday_us();
-=A0=A0=A0 =A0=A0=A0 total_iotime =3D last_io - first_io;
-=A0=A0=A0 =A0=A0=A0 =A0=A0=A0=20
-=A0=A0=A0 =A0=A0=A0 delete sync_blocks_start;
-=A0=A0=A0 =A0=A0=A0 delete sync_blocks_end;
-=A0=A0=A0=A0=A0=A0=A0 if((sync_end-sync_beg) > thresh){
-=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 printf("%d,%d,%d %d,%d, %d, %d\n", sync_b=
-eg,sync_end,first_io, last_io, sync_end-sync_beg, max_iotime, total_iot=
-ime);
-=A0=A0=A0=A0=A0=A0=A0 }
-=A0=A0=A0 =A0=A0=A0 last_io =3D first_io =3D 0;
-=A0=A0=A0 =A0=A0=A0 sync_end =3D 0;
-=A0=A0=A0 =A0=A0=A0 max_iotime =3D 0;
-=A0=A0=A0 }
-}
-
-probe kernel.function("do_writepages") {
-=A0=A0=A0 if(execname() =3D=3D PROCNAME){
-=A0=A0=A0=A0=A0=A0=A0 wrt_beg =3D gettimeofday_us();
-=A0=A0=A0 }
-}
-
-probe kernel.function("filemap_write_and_wait_range"){
-=A0=A0=A0 if(execname() =3D=3D PROCNAME){
-=A0=A0=A0=A0=A0=A0=A0 fm_beg =3D gettimeofday_us();
-=A0=A0=A0 }
-}
-
-probe kernel.function("filemap_write_and_wait_range").return{
-=A0=A0=A0 if(execname() =3D=3D PROCNAME){
-=A0=A0=A0=A0=A0=A0=A0 fm_end =3D gettimeofday_us();
-=A0=A0=A0 }
-}
-
-probe kernel.function("do_writepages").return{
-=A0=A0=A0 if(execname() =3D=3D PROCNAME){
-=A0=A0=A0=A0=A0=A0=A0 wrt_end =3D gettimeofday_us();
-=A0=A0=A0 }
-}
+Hugh
 
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
