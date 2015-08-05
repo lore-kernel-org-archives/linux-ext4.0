@@ -1,7 +1,7 @@
 From: mhocko@kernel.org
-Subject: [RFC 7/8] btrfs: Prevent from early transaction abort
-Date: Wed,  5 Aug 2015 11:51:23 +0200
-Message-ID: <1438768284-30927-8-git-send-email-mhocko@kernel.org>
+Subject: [RFC 5/8] ext4: Do not fail journal due to block allocator
+Date: Wed,  5 Aug 2015 11:51:21 +0200
+Message-ID: <1438768284-30927-6-git-send-email-mhocko@kernel.org>
 References: <1438768284-30927-1-git-send-email-mhocko@kernel.org>
 Cc: <linux-mm@kvack.org>,
 	<linux-fsdevel@vger.kernel.org>,
@@ -22,96 +22,112 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Michal Hocko <mhocko@suse.com>
 
-Btrfs relies on GFP_NOFS allocation when commiting the transaction but
-since "mm: page_alloc: do not lock up GFP_NOFS allocations upon OOM"
-those allocations are allowed to fail which can lead to a pre-mature
-transaction abort:
+Since "mm: page_alloc: do not lock up GFP_NOFS allocations upon OOM"
+memory allocator doesn't endlessly loop to satisfy low-order allocations
+and instead fails them to allow callers to handle them gracefully.
 
-[   55.328093] Call Trace:
-[   55.328890]  [<ffffffff8154e6f0>] dump_stack+0x4f/0x7b
-[   55.330518]  [<ffffffff8108fa28>] ? console_unlock+0x334/0x363
-[   55.332738]  [<ffffffff8110873e>] __alloc_pages_nodemask+0x81d/0x8d4
-[   55.334910]  [<ffffffff81100752>] pagecache_get_page+0x10e/0x20c
-[   55.336844]  [<ffffffffa007d916>] alloc_extent_buffer+0xd0/0x350 [btrfs]
-[   55.338973]  [<ffffffffa0059d8c>] btrfs_find_create_tree_block+0x15/0x17 [btrfs]
-[   55.341329]  [<ffffffffa004f728>] btrfs_alloc_tree_block+0x18c/0x405 [btrfs]
-[   55.343566]  [<ffffffffa003fa34>] split_leaf+0x1e4/0x6a6 [btrfs]
-[   55.345577]  [<ffffffffa0040567>] btrfs_search_slot+0x671/0x831 [btrfs]
-[   55.347679]  [<ffffffff810682d7>] ? get_parent_ip+0xe/0x3e
-[   55.349434]  [<ffffffffa0041cb2>] btrfs_insert_empty_items+0x5d/0xa8 [btrfs]
-[   55.351681]  [<ffffffffa004ecfb>] __btrfs_run_delayed_refs+0x7a6/0xf35 [btrfs]
-[   55.353979]  [<ffffffffa00512ea>] btrfs_run_delayed_refs+0x6e/0x226 [btrfs]
-[   55.356212]  [<ffffffffa0060e21>] ? start_transaction+0x192/0x534 [btrfs]
-[   55.358378]  [<ffffffffa0060e21>] ? start_transaction+0x192/0x534 [btrfs]
-[   55.360626]  [<ffffffffa0060221>] btrfs_commit_transaction+0x4c/0xaba [btrfs]
-[   55.362894]  [<ffffffffa0060e21>] ? start_transaction+0x192/0x534 [btrfs]
-[   55.365221]  [<ffffffffa0073428>] btrfs_sync_file+0x29c/0x310 [btrfs]
-[   55.367273]  [<ffffffff81186808>] vfs_fsync_range+0x8f/0x9e
-[   55.369047]  [<ffffffff81186833>] vfs_fsync+0x1c/0x1e
-[   55.370654]  [<ffffffff81186869>] do_fsync+0x34/0x4e
-[   55.372246]  [<ffffffff81186ab3>] SyS_fsync+0x10/0x14
-[   55.373851]  [<ffffffff81554f97>] system_call_fastpath+0x12/0x6f
-[   55.381070] BTRFS: error (device hdb1) in btrfs_run_delayed_refs:2821: errno=-12 Out of memory
-[   55.382431] BTRFS warning (device hdb1): Skipping commit of aborted transaction.
-[   55.382433] BTRFS warning (device hdb1): cleanup_transaction:1692: Aborting unused transaction(IO failure).
-[   55.384280] ------------[ cut here ]------------
-[   55.384312] WARNING: CPU: 0 PID: 3010 at fs/btrfs/delayed-ref.c:438 btrfs_select_ref_head+0xd9/0xfe [btrfs]()
-[...]
-[   55.384337] Call Trace:
-[   55.384353]  [<ffffffff8154e6f0>] dump_stack+0x4f/0x7b
-[   55.384357]  [<ffffffff8107f717>] ? down_trylock+0x2d/0x37
-[   55.384359]  [<ffffffff81046977>] warn_slowpath_common+0xa1/0xbb
-[   55.384398]  [<ffffffffa00a1d6b>] ? btrfs_select_ref_head+0xd9/0xfe [btrfs]
-[   55.384400]  [<ffffffff81046a34>] warn_slowpath_null+0x1a/0x1c
-[   55.384423]  [<ffffffffa00a1d6b>] btrfs_select_ref_head+0xd9/0xfe [btrfs]
-[   55.384446]  [<ffffffffa004e5f7>] ? __btrfs_run_delayed_refs+0xa2/0xf35 [btrfs]
-[   55.384455]  [<ffffffffa004e600>] __btrfs_run_delayed_refs+0xab/0xf35 [btrfs]
-[   55.384476]  [<ffffffffa00512ea>] btrfs_run_delayed_refs+0x6e/0x226 [btrfs]
-[   55.384499]  [<ffffffffa0060e21>] ? start_transaction+0x192/0x534 [btrfs]
-[   55.384521]  [<ffffffffa0060e21>] ? start_transaction+0x192/0x534 [btrfs]
-[   55.384543]  [<ffffffffa0060221>] btrfs_commit_transaction+0x4c/0xaba [btrfs]
-[   55.384565]  [<ffffffffa0060e21>] ? start_transaction+0x192/0x534 [btrfs]
-[   55.384588]  [<ffffffffa0073428>] btrfs_sync_file+0x29c/0x310 [btrfs]
-[   55.384591]  [<ffffffff81186808>] vfs_fsync_range+0x8f/0x9e
-[   55.384592]  [<ffffffff81186833>] vfs_fsync+0x1c/0x1e
-[   55.384593]  [<ffffffff81186869>] do_fsync+0x34/0x4e
-[   55.384594]  [<ffffffff81186ab3>] SyS_fsync+0x10/0x14
-[   55.384595]  [<ffffffff81554f97>] system_call_fastpath+0x12/0x6f
-[...]
-[   55.384608] ---[ end trace c29799da1d4dd621 ]---
-[   55.437323] BTRFS info (device hdb1): forced readonly
-[   55.438815] BTRFS info (device hdb1): delayed_refs has NO entry
+Some of the callers are not yet prepared for this behavior though. ext4
+block allocator relies solely on GFP_NOFS allocation requests and
+allocation failures lead to aborting yournal too easily:
 
-Fix this by reintroducing the no-fail behavior of this allocation path
-with the explicit __GFP_NOFAIL.
+[  345.028333] oom-trash: page allocation failure: order:0, mode:0x50
+[  345.028336] CPU: 1 PID: 8334 Comm: oom-trash Tainted: G        W       4.0.0-nofs3-00006-gdfe9931f5f68 #588
+[  345.028337] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.8.1-20150428_134905-gandalf 04/01/2014
+[  345.028339]  0000000000000000 ffff880005a17708 ffffffff81538a54 ffffffff8107a40f
+[  345.028341]  0000000000000050 ffff880005a17798 ffffffff810fe854 0000000180000000
+[  345.028342]  0000000000000046 0000000000000000 ffffffff81a52100 0000000000000246
+[  345.028343] Call Trace:
+[  345.028348]  [<ffffffff81538a54>] dump_stack+0x4f/0x7b
+[  345.028370]  [<ffffffff810fe854>] warn_alloc_failed+0x12a/0x13f
+[  345.028373]  [<ffffffff81101bd2>] __alloc_pages_nodemask+0x7f3/0x8aa
+[  345.028375]  [<ffffffff810f9933>] pagecache_get_page+0x12a/0x1c9
+[  345.028390]  [<ffffffffa005bc64>] ext4_mb_load_buddy+0x220/0x367 [ext4]
+[  345.028414]  [<ffffffffa006014f>] ext4_free_blocks+0x522/0xa4c [ext4]
+[  345.028425]  [<ffffffffa0054e14>] ext4_ext_remove_space+0x833/0xf22 [ext4]
+[  345.028434]  [<ffffffffa005677e>] ext4_ext_truncate+0x8c/0xb0 [ext4]
+[  345.028441]  [<ffffffffa00342bf>] ext4_truncate+0x20b/0x38d [ext4]
+[  345.028462]  [<ffffffffa003573c>] ext4_evict_inode+0x32b/0x4c1 [ext4]
+[  345.028464]  [<ffffffff8116d04f>] evict+0xa0/0x148
+[  345.028466]  [<ffffffff8116dca8>] iput+0x1a1/0x1f0
+[  345.028468]  [<ffffffff811697b4>] __dentry_kill+0x136/0x1a6
+[  345.028470]  [<ffffffff81169a3e>] dput+0x21a/0x243
+[  345.028472]  [<ffffffff81157cda>] __fput+0x184/0x19b
+[  345.028473]  [<ffffffff81157d29>] ____fput+0xe/0x10
+[  345.028475]  [<ffffffff8105a05f>] task_work_run+0x8a/0xa1
+[  345.028477]  [<ffffffff810452f0>] do_exit+0x3c6/0x8dc
+[  345.028482]  [<ffffffff8104588a>] do_group_exit+0x4d/0xb2
+[  345.028483]  [<ffffffff8104eeeb>] get_signal+0x5b1/0x5f5
+[  345.028488]  [<ffffffff81002202>] do_signal+0x28/0x5d0
+[...]
+[  345.028624] EXT4-fs error (device hdb1) in ext4_free_blocks:4879: Out of memory
+[  345.033097] Aborting journal on device hdb1-8.
+[  345.036339] EXT4-fs (hdb1): Remounting filesystem read-only
+[  345.036344] EXT4-fs error (device hdb1) in ext4_reserve_inode_write:4834: Journal has aborted
+[  345.036766] EXT4-fs error (device hdb1) in ext4_reserve_inode_write:4834: Journal has aborted
+[  345.038583] EXT4-fs error (device hdb1) in ext4_ext_remove_space:3048: Journal has aborted
+[  345.049115] EXT4-fs error (device hdb1) in ext4_ext_truncate:4669: Journal has aborted
+[  345.050434] EXT4-fs error (device hdb1) in ext4_reserve_inode_write:4834: Journal has aborted
+[  345.053064] EXT4-fs error (device hdb1) in ext4_truncate:3668: Journal has aborted
+[  345.053582] EXT4-fs error (device hdb1) in ext4_reserve_inode_write:4834: Journal has aborted
+[  345.053946] EXT4-fs error (device hdb1) in ext4_orphan_del:2686: Journal has aborted
+[  345.055367] EXT4-fs error (device hdb1) in ext4_reserve_inode_write:4834: Journal has aborted
+
+The failure is really premature because GFP_NOFS allocation context is
+very restricted - especially in the fs metadata heavy loads. Before we
+go with a more sofisticated solution, let's simply imitate the previous
+behavior of non-failing NOFS allocation and use __GFP_NOFAIL for the
+buddy block allocator. I wasn't able to trigger the issue with this
+patch anymore.
 
 Signed-off-by: Michal Hocko <mhocko@suse.com>
 ---
- fs/btrfs/extent_io.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/mballoc.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
-index c374e1e71e5f..88fad7051e38 100644
---- a/fs/btrfs/extent_io.c
-+++ b/fs/btrfs/extent_io.c
-@@ -4607,7 +4607,7 @@ __alloc_extent_buffer(struct btrfs_fs_info *fs_info, u64 start,
- {
- 	struct extent_buffer *eb = NULL;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 5b1613a54307..e6361622bfd5 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -992,7 +992,8 @@ static int ext4_mb_get_buddy_page_lock(struct super_block *sb,
+ 	block = group * 2;
+ 	pnum = block / blocks_per_page;
+ 	poff = block % blocks_per_page;
+-	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
++	page = find_or_create_page(inode->i_mapping, pnum,
++				   GFP_NOFS|__GFP_NOFAIL);
+ 	if (!page)
+ 		return -ENOMEM;
+ 	BUG_ON(page->mapping != inode->i_mapping);
+@@ -1006,7 +1007,8 @@ static int ext4_mb_get_buddy_page_lock(struct super_block *sb,
  
--	eb = kmem_cache_zalloc(extent_buffer_cache, GFP_NOFS);
-+	eb = kmem_cache_zalloc(extent_buffer_cache, GFP_NOFS|__GFP_NOFAIL);
- 	if (eb == NULL)
- 		return NULL;
- 	eb->start = start;
-@@ -4867,7 +4867,7 @@ struct extent_buffer *alloc_extent_buffer(struct btrfs_fs_info *fs_info,
- 		return NULL;
- 
- 	for (i = 0; i < num_pages; i++, index++) {
--		p = find_or_create_page(mapping, index, GFP_NOFS);
-+		p = find_or_create_page(mapping, index, GFP_NOFS|__GFP_NOFAIL);
- 		if (!p)
- 			goto free_eb;
- 
+ 	block++;
+ 	pnum = block / blocks_per_page;
+-	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
++	page = find_or_create_page(inode->i_mapping, pnum,
++				   GFP_NOFS|__GFP_NOFAIL);
+ 	if (!page)
+ 		return -ENOMEM;
+ 	BUG_ON(page->mapping != inode->i_mapping);
+@@ -1158,7 +1160,8 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
+ 			 * wait for it to initialize.
+ 			 */
+ 			page_cache_release(page);
+-		page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
++		page = find_or_create_page(inode->i_mapping, pnum,
++					   GFP_NOFS|__GFP_NOFAIL);
+ 		if (page) {
+ 			BUG_ON(page->mapping != inode->i_mapping);
+ 			if (!PageUptodate(page)) {
+@@ -1194,7 +1197,8 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
+ 	if (page == NULL || !PageUptodate(page)) {
+ 		if (page)
+ 			page_cache_release(page);
+-		page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
++		page = find_or_create_page(inode->i_mapping, pnum,
++					   GFP_NOFS|__GFP_NOFAIL);
+ 		if (page) {
+ 			BUG_ON(page->mapping != inode->i_mapping);
+ 			if (!PageUptodate(page)) {
 -- 
 2.5.0
 
