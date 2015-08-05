@@ -1,54 +1,92 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Fsync Performance
-Date: Tue, 4 Aug 2015 21:59:42 -0400
-Message-ID: <20150805015942.GA3432@thunk.org>
-References: <CD10AD6FBDAE574A973D585BD95C239A4769527A@WAL-MBS02.global.avidww.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: David Muchene <david.muchene@avid.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41188 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751382AbbHEB7p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Aug 2015 21:59:45 -0400
-Content-Disposition: inline
-In-Reply-To: <CD10AD6FBDAE574A973D585BD95C239A4769527A@WAL-MBS02.global.avidww.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: mhocko@kernel.org
+Subject: [RFC 0/8] Allow GFP_NOFS allocation to fail
+Date: Wed,  5 Aug 2015 11:51:16 +0200
+Message-ID: <1438768284-30927-1-git-send-email-mhocko@kernel.org>
+Cc: <linux-mm@kvack.org>,
+	<linux-fsdevel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+	Dave Chinner <david@fromorbit.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.cz>
+To: LKML <linux-kernel@vger.kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Aug 04, 2015 at 07:06:13PM +0000, David Muchene wrote:
-> 
-> I'm not sure if this is the place to ask this, if it isn't I
-> apologize. We are occasionally seeing fsync take a very long time
-> (sometimes upwards of 3s). We decided to run some fio tests and use
-> systemtap to determine if the disks were the cause of the
-> problem. One of the results from the tests is that there
-> occasionally there is a significant difference between time spent
-> doing io, and the total time to complete the fsync. Is there an
-> explanation to this difference, or is the systemtap script bogus? If
-> it is in fact the driver/disks that is taking a long time, does
-> anyone have any suggestions as to how I'd debug that? I appreciate
-> any help you can provide (even if it's pointing me to the relevant
-> documents).
+Hi,
+small GFP_NOFS, like GFP_KERNEL, allocations have not been not failing
+traditionally even though their reclaim capabilities are restricted
+because the VM code cannot recurse into filesystems to clean dirty
+pages. At the same time these allocation requests do not allow to
+trigger the OOM killer because that would lead to pre-mature OOM killing
+during heavy fs metadata workloads.
 
-You haven't specified which functions you are including as meaning
-"time spent doing I/O", but I suspect what you are seeing is the
-difference between the time to send the data blocks to the disk, and
-(a) time to complete the journal commit and (b) the time for the SSD
-to confirm that the data and metadata blocks sent to the device have
-been written to stable store (so they will survive a power failure)[1].
+This leaves the VM code in an unfortunate situation where GFP_NOFS
+requests is looping inside the allocator relying on somebody else to
+make a progress on its behalf. This is prone to deadlocks when the
+request is holding resources which are necessary for other task to make
+a progress and release memory (e.g. OOM victim is blocked on the lock
+held by the NONFS request). Another drawback is that the caller of
+the allocator cannot define any fallback strategy because the request
+doesn't fail.
 
-[1] Note that not all SSD's, especially if they are non-enterprise
-SSD's, are rated to be safe against power failures.
+As the VM cannot do much about these requests we should face the reality
+and allow those allocations to fail. Johannes has already posted the
+patch which does that (http://marc.info/?l=linux-mm&m=142726428514236&w=2)
+but the discussion died pretty quickly.
 
-You may be able to avoid the need to complete the journal commit if
-all of the writes to the file are non-allocating writes (i.e., the
-blocks were allocated and initialized by prewriting the blocks if the
-blocks were allocated using fallocate), and you use fdatasync(2)
-instead of fsync(2).  (If there is no need to update the file system
-metadata blocks in order to guarantee that the blocks can be read
-after a power failure, fdatasync will omit updating the inode
-mtime/ctime fields to the device.)
+I was playing with this patch and xfs, ext[34] and btrfs for a while to
+see what is the effect under heavy memory pressure. As expected this led
+to some fallouts.
+My test consisted of a simple memory hog which allocates a lot of
+anonymous memory and writes to a fs mainly to trigger a fs activity on
+exit. In parallel there is a parallel fs metadata load (multiple tasks
+creating thousands of empty files and directories). All is running
+in a VM with small amount of memory to emulate an under provisioned
+system. The metadata load is triggering a sufficient load to invoke the
+direct reclaim even without the memory hog. The memory hog forks several
+tasks sharing the VM and OOM killer manages to kill it without locking
+up the system (this was based on the test case from Tetsuo Handa -
+http://www.spinics.net/lists/linux-fsdevel/msg82958.html - I just didn't
+want to kill my machine ;)).
+With all the patches applied none of the 4 filesystems gets aborted
+transactions and RO remount (well xfs didn't need any special
+treatment). This is obviously not sufficient to claim that failing
+GFP_NOFS is OK now but I think it is a good start for the further
+discussion. I would be grateful if FS people could have a look at those
+patches.  I have simply used __GFP_NOFAIL in the critical paths. This
+might be not the best strategy but it sounds like a good first step.
 
-						- Ted
+The first patch in the series also allows __GFP_NOFAIL allocations to
+access memory reserves when the system is OOM which should help those
+requests to make a forward progress - especially in combination with
+GFP_NOFS.
+
+The second patch tries to address a potential pre-mature OOM killer from
+the page fault path. I have posted it separately but it didn't get much
+traction.
+
+The third patch allows GFP_NOFS to fail and I believe it should see much
+more testing coverage. It would be really great if it could sit in the
+mmotm tree for few release cycles so that we can catch more fallouts.
+
+The rest are the FS specific patches to fortify allocations
+requests which are really needed to finish transactions without RO
+remounts. There might be more needed but my test case survives with
+these in place.
+They would obviously need some rewording if they are going to be applied
+even without Patch3 and I will do that if respective maintainers will
+take them. Ext3 and JBD are going away soon so they might be dropped but
+they have been in the tree while I was testing so I've kept them.
+
+Thoughts? Opinions?
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
