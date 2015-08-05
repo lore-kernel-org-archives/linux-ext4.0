@@ -1,7 +1,7 @@
 From: mhocko@kernel.org
-Subject: [RFC 1/8] mm, oom: Give __GFP_NOFAIL allocations access to memory reserves
-Date: Wed,  5 Aug 2015 11:51:17 +0200
-Message-ID: <1438768284-30927-2-git-send-email-mhocko@kernel.org>
+Subject: [RFC 3/8] mm: page_alloc: do not lock up GFP_NOFS allocations upon OOM
+Date: Wed,  5 Aug 2015 11:51:19 +0200
+Message-ID: <1438768284-30927-4-git-send-email-mhocko@kernel.org>
 References: <1438768284-30927-1-git-send-email-mhocko@kernel.org>
 Cc: <linux-mm@kvack.org>,
 	<linux-fsdevel@vger.kernel.org>,
@@ -20,48 +20,43 @@ In-Reply-To: <1438768284-30927-1-git-send-email-mhocko@kernel.org>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Michal Hocko <mhocko@suse.com>
+From: Johannes Weiner <hannes@cmpxchg.org>
 
-__GFP_NOFAIL is a big hammer used to ensure that the allocation
-request can never fail. This is a strong requirement and as such
-it also deserves a special treatment when the system is OOM. The
-primary problem here is that the allocation request might have
-come with some locks held and the oom victim might be blocked
-on the same locks. This is basically an OOM deadlock situation.
+GFP_NOFS allocations are not allowed to invoke the OOM killer since
+their reclaim abilities are severely diminished.  However, without the
+OOM killer available there is no hope of progress once the reclaimable
+pages have been exhausted.
 
-This patch tries to reduce the risk of such a deadlocks by giving
-__GFP_NOFAIL allocations a special treatment and let them dive into
-memory reserves after oom killer invocation. This should help them
-to make a progress and release resources they are holding. The OOM
-victim should compensate for the reserves consumption.
+Don't risk hanging these allocations.  Leave it to the allocation site
+to implement the fallback policy for failing allocations.
 
+Signed-off-by: Johannes Weiner <hannes@cmpxchg.org>
 Signed-off-by: Michal Hocko <mhocko@suse.com>
 ---
- mm/page_alloc.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+ mm/page_alloc.c | 9 +--------
+ 1 file changed, 1 insertion(+), 8 deletions(-)
 
 diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 1f9ffbb087cb..ee69c338ca2a 100644
+index ee69c338ca2a..024d45d51700 100644
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -2732,8 +2732,16 @@ __alloc_pages_may_oom(gfp_t gfp_mask, unsigned int order,
- 	}
- 	/* Exhausted what can be done so it's blamo time */
- 	if (out_of_memory(ac->zonelist, gfp_mask, order, ac->nodemask, false)
--			|| WARN_ON_ONCE(gfp_mask & __GFP_NOFAIL))
-+			|| WARN_ON_ONCE(gfp_mask & __GFP_NOFAIL)) {
- 		*did_some_progress = 1;
-+
-+		if (gfp_mask & __GFP_NOFAIL) {
-+			page = get_page_from_freelist(gfp_mask, order,
-+					ALLOC_NO_WATERMARKS|ALLOC_CPUSET, ac);
-+			WARN_ONCE(!page, "Unable to fullfil gfp_nofail allocation."
-+				    " Consider increasing min_free_kbytes.\n");
-+		}
-+	}
- out:
- 	mutex_unlock(&oom_lock);
- 	return page;
+@@ -2715,15 +2715,8 @@ __alloc_pages_may_oom(gfp_t gfp_mask, unsigned int order,
+ 		if (ac->high_zoneidx < ZONE_NORMAL)
+ 			goto out;
+ 		/* The OOM killer does not compensate for IO-less reclaim */
+-		if (!(gfp_mask & __GFP_FS)) {
+-			/*
+-			 * XXX: Page reclaim didn't yield anything,
+-			 * and the OOM killer can't be invoked, but
+-			 * keep looping as per tradition.
+-			 */
+-			*did_some_progress = 1;
++		if (!(gfp_mask & __GFP_FS))
+ 			goto out;
+-		}
+ 		if (pm_suspended_storage())
+ 			goto out;
+ 		/* The OOM killer may not free memory on a specific node */
 -- 
 2.5.0
 
