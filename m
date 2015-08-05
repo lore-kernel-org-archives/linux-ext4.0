@@ -1,37 +1,39 @@
-From: Albino B Neto <bino@riseup.net>
-Subject: Re: Fsync Performance
-Date: Wed, 5 Aug 2015 12:14:38 -0300
-Message-ID: <CAMu38xJti1rty0Mnh=YZ07VsqKNTUWStbyy8=cLc=K3vfOQf2A@mail.gmail.com>
-References: <CD10AD6FBDAE574A973D585BD95C239A476955B1@WAL-MBS02.global.avidww.com>
+From: David Sterba <dsterba@suse.com>
+Subject: Re: [RFC 7/8] btrfs: Prevent from early transaction abort
+Date: Wed, 5 Aug 2015 18:31:54 +0200
+Message-ID: <20150805163154.GA31669@twin.jikos.cz>
+References: <1438768284-30927-1-git-send-email-mhocko@kernel.org>
+ <1438768284-30927-8-git-send-email-mhocko@kernel.org>
+Reply-To: dsterba@suse.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: David Muchene <david.muchene@avid.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.riseup.net ([198.252.153.129]:53267 "EHLO mx1.riseup.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751940AbbHEPOk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Aug 2015 11:14:40 -0400
-Received: from cotinga.riseup.net (unknown [10.0.1.161])
-	(using TLSv1 with cipher ECDHE-RSA-AES256-SHA (256/256 bits))
-	(Client CN "*.riseup.net", Issuer "COMODO RSA Domain Validation Secure Server CA" (verified OK))
-	by mx1.riseup.net (Postfix) with ESMTPS id 3C43140BFE
-	for <linux-ext4@vger.kernel.org>; Wed,  5 Aug 2015 15:14:39 +0000 (UTC)
-Received: by qgeh16 with SMTP id h16so31886490qge.3
-        for <linux-ext4@vger.kernel.org>; Wed, 05 Aug 2015 08:14:38 -0700 (PDT)
-In-Reply-To: <CD10AD6FBDAE574A973D585BD95C239A476955B1@WAL-MBS02.global.avidww.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+	Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.cz>, Michal Hocko <mhocko@suse.com>
+To: mhocko@kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1438768284-30927-8-git-send-email-mhocko@kernel.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-2015-08-05 11:37 GMT-03:00 David Muchene <david.muchene@avid.com>:
-> Hi,
-> Thanks for responding.
+On Wed, Aug 05, 2015 at 11:51:23AM +0200, mhocko@kernel.org wrote:
+> From: Michal Hocko <mhocko@suse.com>
+... 
+> Fix this by reintroducing the no-fail behavior of this allocation path
+> with the explicit __GFP_NOFAIL.
+> 
+> Signed-off-by: Michal Hocko <mhocko@suse.com>
 
-You broken the thread [0]
+Reviewed-by: David Sterba <dsterba@suse.com>
 
-0 - http://www.spinics.net/lists/linux-ext4/msg48670.html
-
--- 
-Albino B Neto
-twitter.com/b1n0anb
-"Debian. Freedom to code. Code to freedom!" faw
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
