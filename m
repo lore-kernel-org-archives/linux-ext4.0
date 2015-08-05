@@ -1,7 +1,7 @@
 From: mhocko@kernel.org
-Subject: [RFC 4/8] jbd, jbd2: Do not fail journal because of frozen_buffer allocation failure
-Date: Wed,  5 Aug 2015 11:51:20 +0200
-Message-ID: <1438768284-30927-5-git-send-email-mhocko@kernel.org>
+Subject: [RFC 6/8] ext3: Do not abort journal prematurely
+Date: Wed,  5 Aug 2015 11:51:22 +0200
+Message-ID: <1438768284-30927-7-git-send-email-mhocko@kernel.org>
 References: <1438768284-30927-1-git-send-email-mhocko@kernel.org>
 Cc: <linux-mm@kvack.org>,
 	<linux-fsdevel@vger.kernel.org>,
@@ -22,84 +22,38 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Michal Hocko <mhocko@suse.com>
 
-Journal transaction might fail prematurely because the frozen_buffer
-is allocated by GFP_NOFS request:
-[   72.440013] do_get_write_access: OOM for frozen_buffer
-[   72.440014] EXT4-fs: ext4_reserve_inode_write:4729: aborting transaction: Out of memory in __ext4_journal_get_write_access
-[   72.440015] EXT4-fs error (device sda1) in ext4_reserve_inode_write:4735: Out of memory
-(...snipped....)
-[   72.495559] do_get_write_access: OOM for frozen_buffer
-[   72.495560] EXT4-fs: ext4_reserve_inode_write:4729: aborting transaction: Out of memory in __ext4_journal_get_write_access
-[   72.496839] do_get_write_access: OOM for frozen_buffer
-[   72.496841] EXT4-fs: ext4_reserve_inode_write:4729: aborting transaction: Out of memory in __ext4_journal_get_write_access
-[   72.505766] Aborting journal on device sda1-8.
-[   72.505851] EXT4-fs (sda1): Remounting filesystem read-only
+journal_get_undo_access is relying on GFP_NOFS allocation yet it is
+essential for the journal transaction:
 
-This wasn't a problem until "mm: page_alloc: do not lock up GFP_NOFS
-allocations upon OOM" because small GPF_NOFS allocations never failed.
-This allocation seems essential for the journal and GFP_NOFS is too
-restrictive to the memory allocator so let's use __GFP_NOFAIL here to
-emulate the previous behavior.
+[   83.256914] journal_get_undo_access: No memory for committed data
+[   83.258022] EXT3-fs: ext3_free_blocks_sb: aborting transaction: Out
+of memory in __ext3_journal_get_undo_access
+[   83.259785] EXT3-fs (hdb1): error in ext3_free_blocks_sb: Out of
+memory
+[   83.267130] Aborting journal on device hdb1.
+[   83.292308] EXT3-fs (hdb1): error: ext3_journal_start_sb: Detected
+aborted journal
+[   83.293630] EXT3-fs (hdb1): error: remounting filesystem read-only
 
-jbd code has the very same issue so let's do the same there as well.
+Since "mm: page_alloc: do not lock up GFP_NOFS allocations upon OOM"
+these allocation requests are allowed to fail so we need to use
+__GFP_NOFAIL to imitate the previous behavior.
 
 Signed-off-by: Michal Hocko <mhocko@suse.com>
 ---
- fs/jbd/transaction.c  | 11 +----------
- fs/jbd2/transaction.c | 14 +++-----------
- 2 files changed, 4 insertions(+), 21 deletions(-)
+ fs/jbd/transaction.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
-index 1695ba8334a2..bf7474deda2f 100644
+index bf7474deda2f..6c60376a29bc 100644
 --- a/fs/jbd/transaction.c
 +++ b/fs/jbd/transaction.c
-@@ -673,16 +673,7 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
- 				jbd_unlock_bh_state(bh);
- 				frozen_buffer =
- 					jbd_alloc(jh2bh(jh)->b_size,
--							 GFP_NOFS);
--				if (!frozen_buffer) {
--					printk(KERN_ERR
--					       "%s: OOM for frozen_buffer\n",
--					       __func__);
--					JBUFFER_TRACE(jh, "oom!");
--					error = -ENOMEM;
--					jbd_lock_bh_state(bh);
--					goto done;
--				}
-+							 GFP_NOFS|__GFP_NOFAIL);
- 				goto repeat;
- 			}
- 			jh->b_frozen_data = frozen_buffer;
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index ff2f2e6ad311..bff071e21553 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -923,16 +923,7 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
- 				jbd_unlock_bh_state(bh);
- 				frozen_buffer =
- 					jbd2_alloc(jh2bh(jh)->b_size,
--							 GFP_NOFS);
--				if (!frozen_buffer) {
--					printk(KERN_ERR
--					       "%s: OOM for frozen_buffer\n",
--					       __func__);
--					JBUFFER_TRACE(jh, "oom!");
--					error = -ENOMEM;
--					jbd_lock_bh_state(bh);
--					goto done;
--				}
-+							 GFP_NOFS|__GFP_NOFAIL);
- 				goto repeat;
- 			}
- 			jh->b_frozen_data = frozen_buffer;
-@@ -1157,7 +1148,8 @@ int jbd2_journal_get_undo_access(handle_t *handle, struct buffer_head *bh)
+@@ -887,7 +887,7 @@ int journal_get_undo_access(handle_t *handle, struct buffer_head *bh)
  
  repeat:
  	if (!jh->b_committed_data) {
--		committed_data = jbd2_alloc(jh2bh(jh)->b_size, GFP_NOFS);
-+		committed_data = jbd2_alloc(jh2bh(jh)->b_size,
-+					    GFP_NOFS|__GFP_NOFAIL);
+-		committed_data = jbd_alloc(jh2bh(jh)->b_size, GFP_NOFS);
++		committed_data = jbd_alloc(jh2bh(jh)->b_size, GFP_NOFS | __GFP_NOFAIL);
  		if (!committed_data) {
  			printk(KERN_ERR "%s: No memory for committed data\n",
  				__func__);
