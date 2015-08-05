@@ -1,157 +1,54 @@
-From: Hugh Dickins <hughd@google.com>
-Subject: [PATCH] mm, vmscan: Do not wait for page writeback for GFP_NOFS
- allocations
-Date: Tue, 4 Aug 2015 14:36:58 -0700 (PDT)
-Message-ID: <alpine.LSU.2.11.1508041433460.31462@eggly.anvils>
-References: <1435677437-16717-1-git-send-email-mhocko@suse.cz> <20150701061731.GB6286@dhcp22.suse.cz> <20150701133715.GA6287@dhcp22.suse.cz> <20150702142551.GB9456@thunk.org> <20150702151321.GE12547@dhcp22.suse.cz> <alpine.LSU.2.11.1508032227050.5070@eggly.anvils>
- <20150804095158.GE18509@dhcp22.suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Fsync Performance
+Date: Tue, 4 Aug 2015 21:59:42 -0400
+Message-ID: <20150805015942.GA3432@thunk.org>
+References: <CD10AD6FBDAE574A973D585BD95C239A4769527A@WAL-MBS02.global.avidww.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Michal Hocko <mhocko@kernel.org>, Hugh Dickins <hughd@google.com>,
-    Theodore Ts'o <tytso@mit.edu>, Nikolay Borisov <kernel@kyup.com>,
-    Johannes Weiner <hannes@cmpxchg.org>,
-    Andrew Morton <akpm@linux-foundation.org>,
-    Dave Chinner <david@fromorbit.com>, Marian Marinov <mm@1h.com>,
-    linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-    linux-ext4@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20150804095158.GE18509@dhcp22.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: David Muchene <david.muchene@avid.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:41188 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751382AbbHEB7p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Aug 2015 21:59:45 -0400
+Content-Disposition: inline
+In-Reply-To: <CD10AD6FBDAE574A973D585BD95C239A4769527A@WAL-MBS02.global.avidww.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Michal Hocko <mhocko@suse.cz>
+On Tue, Aug 04, 2015 at 07:06:13PM +0000, David Muchene wrote:
+> 
+> I'm not sure if this is the place to ask this, if it isn't I
+> apologize. We are occasionally seeing fsync take a very long time
+> (sometimes upwards of 3s). We decided to run some fio tests and use
+> systemtap to determine if the disks were the cause of the
+> problem. One of the results from the tests is that there
+> occasionally there is a significant difference between time spent
+> doing io, and the total time to complete the fsync. Is there an
+> explanation to this difference, or is the systemtap script bogus? If
+> it is in fact the driver/disks that is taking a long time, does
+> anyone have any suggestions as to how I'd debug that? I appreciate
+> any help you can provide (even if it's pointing me to the relevant
+> documents).
 
-Nikolay has reported a hang when a memcg reclaim got stuck with the
-following backtrace:
-PID: 18308  TASK: ffff883d7c9b0a30  CPU: 1   COMMAND: "rsync"
- #0 [ffff88177374ac60] __schedule at ffffffff815ab152
- #1 [ffff88177374acb0] schedule at ffffffff815ab76e
- #2 [ffff88177374acd0] schedule_timeout at ffffffff815ae5e5
- #3 [ffff88177374ad70] io_schedule_timeout at ffffffff815aad6a
- #4 [ffff88177374ada0] bit_wait_io at ffffffff815abfc6
- #5 [ffff88177374adb0] __wait_on_bit at ffffffff815abda5
- #6 [ffff88177374ae00] wait_on_page_bit at ffffffff8111fd4f
- #7 [ffff88177374ae50] shrink_page_list at ffffffff81135445
- #8 [ffff88177374af50] shrink_inactive_list at ffffffff81135845
- #9 [ffff88177374b060] shrink_lruvec at ffffffff81135ead
- #10 [ffff88177374b150] shrink_zone at ffffffff811360c3
- #11 [ffff88177374b220] shrink_zones at ffffffff81136eff
- #12 [ffff88177374b2a0] do_try_to_free_pages at ffffffff8113712f
- #13 [ffff88177374b300] try_to_free_mem_cgroup_pages at ffffffff811372be
- #14 [ffff88177374b380] try_charge at ffffffff81189423
- #15 [ffff88177374b430] mem_cgroup_try_charge at ffffffff8118c6f5
- #16 [ffff88177374b470] __add_to_page_cache_locked at ffffffff8112137d
- #17 [ffff88177374b4e0] add_to_page_cache_lru at ffffffff81121618
- #18 [ffff88177374b510] pagecache_get_page at ffffffff8112170b
- #19 [ffff88177374b560] grow_dev_page at ffffffff811c8297
- #20 [ffff88177374b5c0] __getblk_slow at ffffffff811c91d6
- #21 [ffff88177374b600] __getblk_gfp at ffffffff811c92c1
- #22 [ffff88177374b630] ext4_ext_grow_indepth at ffffffff8124565c
- #23 [ffff88177374b690] ext4_ext_create_new_leaf at ffffffff81246ca8
- #24 [ffff88177374b6e0] ext4_ext_insert_extent at ffffffff81246f09
- #25 [ffff88177374b750] ext4_ext_map_blocks at ffffffff8124a848
- #26 [ffff88177374b870] ext4_map_blocks at ffffffff8121a5b7
- #27 [ffff88177374b910] mpage_map_one_extent at ffffffff8121b1fa
- #28 [ffff88177374b950] mpage_map_and_submit_extent at ffffffff8121f07b
- #29 [ffff88177374b9b0] ext4_writepages at ffffffff8121f6d5
- #30 [ffff88177374bb20] do_writepages at ffffffff8112c490
- #31 [ffff88177374bb30] __filemap_fdatawrite_range at ffffffff81120199
- #32 [ffff88177374bb80] filemap_flush at ffffffff8112041c
- #33 [ffff88177374bb90] ext4_alloc_da_blocks at ffffffff81219da1
- #34 [ffff88177374bbb0] ext4_rename at ffffffff81229b91
- #35 [ffff88177374bcd0] ext4_rename2 at ffffffff81229e32
- #36 [ffff88177374bce0] vfs_rename at ffffffff811a08a5
- #37 [ffff88177374bd60] SYSC_renameat2 at ffffffff811a3ffc
- #38 [ffff88177374bf60] sys_renameat2 at ffffffff811a408e
- #39 [ffff88177374bf70] sys_rename at ffffffff8119e51e
- #40 [ffff88177374bf80] system_call_fastpath at ffffffff815afa89
+You haven't specified which functions you are including as meaning
+"time spent doing I/O", but I suspect what you are seeing is the
+difference between the time to send the data blocks to the disk, and
+(a) time to complete the journal commit and (b) the time for the SSD
+to confirm that the data and metadata blocks sent to the device have
+been written to stable store (so they will survive a power failure)[1].
 
-Dave Chinner has properly pointed out that this is a deadlock in the
-reclaim code because ext4 doesn't submit pages which are marked by
-PG_writeback right away. The heuristic was introduced by e62e384e9da8
-("memcg: prevent OOM with too many dirty pages") and it was applied
-only when may_enter_fs was specified. The code has been changed by
-c3b94f44fcb0 ("memcg: further prevent OOM with too many dirty pages")
-which has removed the __GFP_FS restriction with a reasoning that we
-do not get into the fs code. But this is not sufficient apparently
-because the fs doesn't necessarily submit pages marked PG_writeback
-for IO right away.
+[1] Note that not all SSD's, especially if they are non-enterprise
+SSD's, are rated to be safe against power failures.
 
-ext4_bio_write_page calls io_submit_add_bh but that doesn't necessarily
-submit the bio. Instead it tries to map more pages into the bio and
-mpage_map_one_extent might trigger memcg charge which might end up
-waiting on a page which is marked PG_writeback but hasn't been submitted
-yet so we would end up waiting for something that never finishes.
+You may be able to avoid the need to complete the journal commit if
+all of the writes to the file are non-allocating writes (i.e., the
+blocks were allocated and initialized by prewriting the blocks if the
+blocks were allocated using fallocate), and you use fdatasync(2)
+instead of fsync(2).  (If there is no need to update the file system
+metadata blocks in order to guarantee that the blocks can be read
+after a power failure, fdatasync will omit updating the inode
+mtime/ctime fields to the device.)
 
-Fix this issue by replacing __GFP_IO by may_enter_fs check (for case 2)
-before we go to wait on the writeback. The page fault path, which is the
-only path that triggers memcg oom killer since 3.12, shouldn't require
-GFP_NOFS and so we shouldn't reintroduce the premature OOM killer issue
-which was originally addressed by the heuristic.
-
-As per David Chinner the xfs is doing similar thing since 2.6.15 already
-so ext4 is not the only affected filesystem. Moreover he notes:
-: For example: IO completion might require unwritten extent conversion
-: which executes filesystem transactions and GFP_NOFS allocations. The
-: writeback flag on the pages can not be cleared until unwritten
-: extent conversion completes. Hence memory reclaim cannot wait on
-: page writeback to complete in GFP_NOFS context because it is not
-: safe to do so, memcg reclaim or otherwise.
-
-Cc: stable@vger.kernel.org # 3.9+
-[tytso@mit.edu: corrected the control flow]
-Fixes: c3b94f44fcb0 ("memcg: further prevent OOM with too many dirty pages")
-Reported-by: Nikolay Borisov <kernel@kyup.com>
-Signed-off-by: Michal Hocko <mhocko@suse.cz>
-Signed-off-by: Hugh Dickins <hughd@google.com>
----
-
- mm/vmscan.c |   16 ++++++----------
- 1 file changed, 6 insertions(+), 10 deletions(-)
-
---- 4.2-rc5/mm/vmscan.c	2015-07-05 19:25:02.856131170 -0700
-+++ linux/mm/vmscan.c	2015-08-02 21:24:03.000614050 -0700
-@@ -973,22 +973,18 @@ static unsigned long shrink_page_list(st
- 		 *    caller can stall after page list has been processed.
- 		 *
- 		 * 2) Global or new memcg reclaim encounters a page that is
--		 *    not marked for immediate reclaim or the caller does not
--		 *    have __GFP_IO. In this case mark the page for immediate
-+		 *    not marked for immediate reclaim, or the caller does not
-+		 *    have __GFP_FS (or __GFP_IO if it's simply going to swap,
-+		 *    not to fs). In this case mark the page for immediate
- 		 *    reclaim and continue scanning.
- 		 *
--		 *    __GFP_IO is checked  because a loop driver thread might
-+		 *    Require may_enter_fs because we would wait on fs, which
-+		 *    may not have submitted IO yet. And the loop driver might
- 		 *    enter reclaim, and deadlock if it waits on a page for
- 		 *    which it is needed to do the write (loop masks off
- 		 *    __GFP_IO|__GFP_FS for this reason); but more thought
- 		 *    would probably show more reasons.
- 		 *
--		 *    Don't require __GFP_FS, since we're not going into the
--		 *    FS, just waiting on its writeback completion. Worryingly,
--		 *    ext4 gfs2 and xfs allocate pages with
--		 *    grab_cache_page_write_begin(,,AOP_FLAG_NOFS), so testing
--		 *    may_enter_fs here is liable to OOM on them.
--		 *
- 		 * 3) Legacy memcg encounters a page that is not already marked
- 		 *    PageReclaim. memcg does not have any dirty pages
- 		 *    throttling so we could easily OOM just because too many
-@@ -1005,7 +1001,7 @@ static unsigned long shrink_page_list(st
- 
- 			/* Case 2 above */
- 			} else if (sane_reclaim(sc) ||
--			    !PageReclaim(page) || !(sc->gfp_mask & __GFP_IO)) {
-+			    !PageReclaim(page) || !may_enter_fs) {
- 				/*
- 				 * This is slightly racy - end_page_writeback()
- 				 * might have just cleared PageReclaim, then
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+						- Ted
