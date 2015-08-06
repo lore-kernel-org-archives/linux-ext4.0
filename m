@@ -1,37 +1,55 @@
-From: ryding <ryan.ding@oracle.com>
-Subject: question about append direct io
-Date: Thu, 06 Aug 2015 17:26:44 +0800
-Message-ID: <55C32854.1050501@oracle.com>
+From: Michal Hocko <mhocko@kernel.org>
+Subject: Re: [RFC 0/8] Allow GFP_NOFS allocation to fail
+Date: Thu, 6 Aug 2015 16:34:48 +0200
+Message-ID: <20150806143447.GD12827@dhcp22.suse.cz>
+References: <1438768284-30927-1-git-send-email-mhocko@kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:18821 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754899AbbHFJ1r (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Aug 2015 05:27:47 -0400
-Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
-	by userp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id t769Rkql009226
-	(version=TLSv1 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2015 09:27:47 GMT
-Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
-	by userv0021.oracle.com (8.13.8/8.13.8) with ESMTP id t769RkWL030753
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
-	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2015 09:27:46 GMT
-Received: from abhmp0013.oracle.com (abhmp0013.oracle.com [141.146.116.19])
-	by aserv0122.oracle.com (8.13.8/8.13.8) with ESMTP id t769Rksh010689
-	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2015 09:27:46 GMT
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Johannes Weiner <hannes@cmpxchg.org>,
+	Dave Chinner <david@fromorbit.com>,
+	Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+On Wed 05-08-15 20:58:25, Andreas Dilger wrote:
+> On Aug 5, 2015, at 3:51 AM, mhocko@kernel.org wrote:
+[...]
+> > The rest are the FS specific patches to fortify allocations
+> > requests which are really needed to finish transactions without RO
+> > remounts. There might be more needed but my test case survives with
+> > these in place.
+> 
+> Wouldn't it make more sense to order the fs-specific patches _before_
+> the "GFP_NOFS can fail" patch (#3), so that once that patch is applied
+> all known failures have already been fixed?  Otherwise it could show
+> test failures during bisection that would be confusing.
 
-Sorry for bothering.
+As I write below. If maintainers consider them useful even when GFP_NOFS
+doesn't fail I will reword them and resend. But you cannot fix the world
+without breaking it first in this case ;)
+ 
+> > They would obviously need some rewording if they are going to be
+> > applied even without Patch3 and I will do that if respective
+> > maintainers will take them. Ext3 and JBD are going away soon so they
+> > might be dropped but they have been in the tree while I was testing
+> > so I've kept them.
 
-I see ext4 add inode to orphan when doing append direct io. Is this used 
-to roll back the old isize when a crash is happened during the direct 
-io? Is there other purpose to do so?
+-- 
+Michal Hocko
+SUSE Labs
 
-Thanks,
-Ryan
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
