@@ -1,55 +1,89 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [RFC 0/8] Allow GFP_NOFS allocation to fail
-Date: Thu, 6 Aug 2015 16:34:48 +0200
-Message-ID: <20150806143447.GD12827@dhcp22.suse.cz>
-References: <1438768284-30927-1-git-send-email-mhocko@kernel.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: don't manipulate recovery flag when freezing no-journal
+ fs
+Date: Thu, 06 Aug 2015 11:10:58 -0700
+Message-ID: <55C3A332.30408@redhat.com>
+References: <55C28AA6.6070606@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Johannes Weiner <hannes@cmpxchg.org>,
-	Dave Chinner <david@fromorbit.com>,
-	Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: Stu Mark <smark@datto.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:58194 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753693AbbHFSL6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Aug 2015 14:11:58 -0400
+In-Reply-To: <55C28AA6.6070606@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 05-08-15 20:58:25, Andreas Dilger wrote:
-> On Aug 5, 2015, at 3:51 AM, mhocko@kernel.org wrote:
-[...]
-> > The rest are the FS specific patches to fortify allocations
-> > requests which are really needed to finish transactions without RO
-> > remounts. There might be more needed but my test case survives with
-> > these in place.
+On 8/5/15 3:13 PM, Eric Sandeen wrote:
+> At some point along this sequence of changes:
 > 
-> Wouldn't it make more sense to order the fs-specific patches _before_
-> the "GFP_NOFS can fail" patch (#3), so that once that patch is applied
-> all known failures have already been fixed?  Otherwise it could show
-> test failures during bisection that would be confusing.
+> f6e63f9 ext4: fold ext4_nojournal_sops into ext4_sops
+> bb04457 ext4: support freezing ext2 (nojournal) file systems
+> 9ca9238 ext4: Use separate super_operations structure for no_journal filesystems
+> 
+> ext4 started setting needs_recovery on filesystems without journals
+> when they are unfrozen.  This makes no sense, and in fact confuses
+> blkid to the point where it doesn't recognize the filesystem at all.
+> 
+> (freeze ext2; unfreeze ext2; run blkid; see no output; run dumpe2fs,
+> see needs_recovery set on fs w/ no journal).
+> 
+> To fix this, don't manipulate the INCOMPAT_RECOVER feature on
+> filesystems without journals.
 
-As I write below. If maintainers consider them useful even when GFP_NOFS
-doesn't fail I will reword them and resend. But you cannot fix the world
-without breaking it first in this case ;)
- 
-> > They would obviously need some rewording if they are going to be
-> > applied even without Patch3 and I will do that if respective
-> > maintainers will take them. Ext3 and JBD are going away soon so they
-> > might be dropped but they have been in the tree while I was testing
-> > so I've kept them.
+Ted, if this passes review you might cc: stable on the commit as well.
 
--- 
-Michal Hocko
-SUSE Labs
+Thanks,
+-Eric
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> Reported-by: Stu Mark <smark@datto.com>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
+> 
+> Note, is there a reason that in ext4_freeze, if journal_flush
+> fails, we skip the ext4_commit_super call?  I didn't change that
+> here, but it seems odd.
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 58987b5..e7b345d 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -4833,10 +4833,11 @@ static int ext4_freeze(struct super_block *sb)
+>  		error = jbd2_journal_flush(journal);
+>  		if (error < 0)
+>  			goto out;
+> +
+> +		/* Journal blocked and flushed, clear needs_recovery flag. */
+> +		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+>  	}
+>  
+> -	/* Journal blocked and flushed, clear needs_recovery flag. */
+> -	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+>  	error = ext4_commit_super(sb, 1);
+>  out:
+>  	if (journal)
+> @@ -4854,8 +4855,11 @@ static int ext4_unfreeze(struct super_block *sb)
+>  	if (sb->s_flags & MS_RDONLY)
+>  		return 0;
+>  
+> -	/* Reset the needs_recovery flag before the fs is unlocked. */
+> -	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+> +	if (EXT4_SB(sb)->s_journal) {
+> +		/* Reset the needs_recovery flag before the fs is unlocked. */
+> +		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+> +	}
+> +
+>  	ext4_commit_super(sb, 1);
+>  	return 0;
+>  }
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
