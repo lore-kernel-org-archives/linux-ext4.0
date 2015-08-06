@@ -1,75 +1,37 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext4: don't manipulate recovery flag when freezing no-journal
- fs
-Date: Wed, 05 Aug 2015 15:13:58 -0700
-Message-ID: <55C28AA6.6070606@redhat.com>
+From: ryding <ryan.ding@oracle.com>
+Subject: question about append direct io
+Date: Thu, 06 Aug 2015 17:26:44 +0800
+Message-ID: <55C32854.1050501@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: Stu Mark <smark@datto.com>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39171 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754520AbbHEWN7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Aug 2015 18:13:59 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:18821 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754899AbbHFJ1r (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Aug 2015 05:27:47 -0400
+Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
+	by userp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id t769Rkql009226
+	(version=TLSv1 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2015 09:27:47 GMT
+Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
+	by userv0021.oracle.com (8.13.8/8.13.8) with ESMTP id t769RkWL030753
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2015 09:27:46 GMT
+Received: from abhmp0013.oracle.com (abhmp0013.oracle.com [141.146.116.19])
+	by aserv0122.oracle.com (8.13.8/8.13.8) with ESMTP id t769Rksh010689
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2015 09:27:46 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-At some point along this sequence of changes:
+Hi all,
 
-f6e63f9 ext4: fold ext4_nojournal_sops into ext4_sops
-bb04457 ext4: support freezing ext2 (nojournal) file systems
-9ca9238 ext4: Use separate super_operations structure for no_journal filesystems
+Sorry for bothering.
 
-ext4 started setting needs_recovery on filesystems without journals
-when they are unfrozen.  This makes no sense, and in fact confuses
-blkid to the point where it doesn't recognize the filesystem at all.
+I see ext4 add inode to orphan when doing append direct io. Is this used 
+to roll back the old isize when a crash is happened during the direct 
+io? Is there other purpose to do so?
 
-(freeze ext2; unfreeze ext2; run blkid; see no output; run dumpe2fs,
-see needs_recovery set on fs w/ no journal).
-
-To fix this, don't manipulate the INCOMPAT_RECOVER feature on
-filesystems without journals.
-
-Reported-by: Stu Mark <smark@datto.com>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-Note, is there a reason that in ext4_freeze, if journal_flush
-fails, we skip the ext4_commit_super call?  I didn't change that
-here, but it seems odd.
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 58987b5..e7b345d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4833,10 +4833,11 @@ static int ext4_freeze(struct super_block *sb)
- 		error = jbd2_journal_flush(journal);
- 		if (error < 0)
- 			goto out;
-+
-+		/* Journal blocked and flushed, clear needs_recovery flag. */
-+		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 	}
- 
--	/* Journal blocked and flushed, clear needs_recovery flag. */
--	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 	error = ext4_commit_super(sb, 1);
- out:
- 	if (journal)
-@@ -4854,8 +4855,11 @@ static int ext4_unfreeze(struct super_block *sb)
- 	if (sb->s_flags & MS_RDONLY)
- 		return 0;
- 
--	/* Reset the needs_recovery flag before the fs is unlocked. */
--	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
-+	if (EXT4_SB(sb)->s_journal) {
-+		/* Reset the needs_recovery flag before the fs is unlocked. */
-+		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
-+	}
-+
- 	ext4_commit_super(sb, 1);
- 	return 0;
- }
-
+Thanks,
+Ryan
