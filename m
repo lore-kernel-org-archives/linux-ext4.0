@@ -1,150 +1,199 @@
 From: Jan Kara <jack@suse.com>
-Subject: [PATCH 01/19] ext2fs: Move function to initialize uninitialized bitmaps to libext2fs
-Date: Fri,  7 Aug 2015 12:51:11 +0200
-Message-ID: <1438944689-24562-2-git-send-email-jack@suse.com>
+Subject: [PATCH 04/19] ext2fs: Implement ext2fs_allocate_group_table2()
+Date: Fri,  7 Aug 2015 12:51:14 +0200
+Message-ID: <1438944689-24562-5-git-send-email-jack@suse.com>
 References: <1438944689-24562-1-git-send-email-jack@suse.com>
 Cc: Ted Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	Jan Kara <jack@suse.cz>
+	Jan Kara <jack@suse.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:39097 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:39104 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752518AbbHGKvm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752181AbbHGKvm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 7 Aug 2015 06:51:42 -0400
 In-Reply-To: <1438944689-24562-1-git-send-email-jack@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Kara <jack@suse.cz>
+Implement ext2fs_allocate_group_table2() which marks blocks also in
+fs->block_map unconditionally and which always updates allocation
+statistics.
 
-We will need to initialize uninitialized bitmaps both from resize2fs and
-tune2fs. Move the function that does this to libext2fs so that code can
-be shared.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Jan Kara <jack@suse.com>
 ---
- lib/ext2fs/bitops.h       |  1 +
- lib/ext2fs/gen_bitmap64.c | 33 +++++++++++++++++++++++++++++++++
- resize/resize2fs.c        | 38 ++------------------------------------
- 3 files changed, 36 insertions(+), 36 deletions(-)
+ lib/ext2fs/alloc_tables.c | 93 ++++++++++++++++++++++++++++++++++-------------
+ lib/ext2fs/ext2fs.h       |  7 ++++
+ 2 files changed, 74 insertions(+), 26 deletions(-)
 
-diff --git a/lib/ext2fs/bitops.h b/lib/ext2fs/bitops.h
-index bc596087d2a7..0699a00fcec4 100644
---- a/lib/ext2fs/bitops.h
-+++ b/lib/ext2fs/bitops.h
-@@ -211,6 +211,7 @@ extern errcode_t ext2fs_find_first_zero_generic_bmap(ext2fs_generic_bitmap bitma
- extern errcode_t ext2fs_find_first_set_generic_bmap(ext2fs_generic_bitmap bitmap,
- 						    __u64 start, __u64 end,
- 						    __u64 *out);
-+extern void ext2fs_init_uninit_block_bitmaps(ext2_filsys fs);
- 
- /*
-  * The inline routines themselves...
-diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
-index 3fc734981c18..34122cfa8901 100644
---- a/lib/ext2fs/gen_bitmap64.c
-+++ b/lib/ext2fs/gen_bitmap64.c
-@@ -905,3 +905,36 @@ errcode_t ext2fs_find_first_set_generic_bmap(ext2fs_generic_bitmap bitmap,
- 
- 	return ENOENT;
+diff --git a/lib/ext2fs/alloc_tables.c b/lib/ext2fs/alloc_tables.c
+index 3e1952fa63e8..9eedd7712be9 100644
+--- a/lib/ext2fs/alloc_tables.c
++++ b/lib/ext2fs/alloc_tables.c
+@@ -81,19 +81,59 @@ static blk64_t flexbg_offset(ext2_filsys fs, dgrp_t group, blk64_t start_blk,
+ 	return first_free;
  }
-+
-+/*
-+ * Initialize all unintialized block bitmaps
-+ */
-+void ext2fs_init_uninit_block_bitmaps(ext2_filsys fs)
+ 
+-errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+-				      ext2fs_block_bitmap bmap)
++static void update_block_bitmap_stats(ext2_filsys fs, blk64_t blk, int len,
++				      unsigned long flags)
 +{
-+	blk64_t		blk, lblk;
-+	dgrp_t		g;
-+	int		i;
++	if (flags & EXT2FS_ALLOC_TABLE_UPDATE_STATS) {
++		ext2fs_block_alloc_stats_range(fs, blk, len, +1);
++		if (!(flags & EXT2FS_ALLOC_TABLE_SET_BLOCK_BITMAP))
++			ext2fs_unmark_block_bitmap_range2(fs->block_map, blk,
++							  len);
++	} else if (flags & EXT2FS_ALLOC_TABLE_SET_BLOCK_BITMAP) {
++		dgrp_t g, end;
 +
-+	if (!ext2fs_has_group_desc_csum(fs))
-+		return;
-+
-+	for (g = 0; g < fs->group_desc_count; g++) {
-+		if (!(ext2fs_bg_flags_test(fs, g, EXT2_BG_BLOCK_UNINIT)))
-+			continue;
-+
-+		blk = ext2fs_group_first_block2(fs, g);
-+		lblk = ext2fs_group_last_block2(fs, g);
-+		ext2fs_unmark_block_bitmap_range2(fs->block_map, blk,
-+						  lblk - blk + 1);
-+
-+		ext2fs_reserve_super_and_bgd(fs, g, fs->block_map);
-+		ext2fs_mark_block_bitmap2(fs->block_map,
-+					  ext2fs_block_bitmap_loc(fs, g));
-+		ext2fs_mark_block_bitmap2(fs->block_map,
-+					  ext2fs_inode_bitmap_loc(fs, g));
-+		for (i = 0, blk = ext2fs_inode_table_loc(fs, g);
-+		     i < (unsigned int) fs->inode_blocks_per_group;
-+		     i++, blk++)
-+			ext2fs_mark_block_bitmap2(fs->block_map, blk);
++		ext2fs_mark_block_bitmap_range2(fs->block_map, blk, len);
++		/*
++		 * It's an overkill to assume more than two groups can be
++		 * touched but the code is easy to understand this way.
++		 */
++		end = ext2fs_group_of_blk2(fs, blk + len - 1);
++		for (g = ext2fs_group_of_blk2(fs, blk); g <= end; g++) {
++			if (ext2fs_bg_flags_test(fs, g, EXT2_BG_BLOCK_UNINIT)) {
++				ext2fs_bg_flags_clear(fs, g,
++						      EXT2_BG_BLOCK_UNINIT);
++				ext2fs_group_desc_csum_set(fs, g);
++			}
++		}
 +	}
 +}
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 041ff75029b2..02f7d754d316 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -41,7 +41,6 @@
- #define RESIZE2FS_DEBUG
- #endif
++
++/*
++ * Allocate group metadata (bitmaps, inode table) if not present. If
++ * reserve_bmap is set, we use that as a bitmap of blocks free for allocation
++ * (and update used blocks there as well as in fs->block_map).
++ */
++errcode_t ext2fs_allocate_group_table2(ext2_filsys fs, dgrp_t group,
++				       ext2fs_block_bitmap reserve_bmap,
++				       unsigned long flags)
+ {
+ 	errcode_t	retval;
+ 	blk64_t		group_blk, start_blk, last_blk, new_blk;
+ 	dgrp_t		last_grp = 0;
+ 	int		rem_grps = 0, flexbg_size = 0, table_offset = 0;
++	ext2fs_block_bitmap bmap;
  
--static void fix_uninit_block_bitmaps(ext2_filsys fs);
- static errcode_t adjust_superblock(ext2_resize_t rfs, blk64_t new_size);
- static errcode_t blocks_to_move(ext2_resize_t rfs);
- static errcode_t block_mover(ext2_resize_t rfs);
-@@ -119,7 +118,7 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
- 	ext2fs_flush(fs);
+ 	group_blk = ext2fs_group_first_block2(fs, group);
+ 	last_blk = ext2fs_group_last_block2(fs, group);
  
- 	init_resource_track(&rtrack, "fix_uninit_block_bitmaps 1", fs->io);
--	fix_uninit_block_bitmaps(fs);
-+	ext2fs_init_uninit_block_bitmaps(fs);
- 	print_resource_track(rfs, &rtrack, fs->io);
- 	retval = ext2fs_dup_handle(fs, &rfs->new_fs);
- 	if (retval)
-@@ -150,7 +149,7 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
- 	print_resource_track(rfs, &rtrack, fs->io);
+-	if (!bmap)
++	if (reserve_bmap == fs->block_map)
++		reserve_bmap = NULL;
++
++	if (!reserve_bmap) {
+ 		bmap = fs->block_map;
++		flags |= EXT2FS_ALLOC_TABLE_SET_BLOCK_BITMAP;
++	} else
++		bmap = reserve_bmap;
  
- 	init_resource_track(&rtrack, "fix_uninit_block_bitmaps 2", fs->io);
--	fix_uninit_block_bitmaps(rfs->new_fs);
-+	ext2fs_init_uninit_block_bitmaps(rfs->new_fs);
- 	print_resource_track(rfs, &rtrack, fs->io);
- 	/* Clear the block bitmap uninit flag for the last block group */
- 	ext2fs_bg_flags_clear(rfs->new_fs, rfs->new_fs->group_desc_count - 1,
-@@ -571,39 +570,6 @@ out:
- 	return retval;
+ 	if (EXT2_HAS_INCOMPAT_FEATURE(fs->super,
+ 				      EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
+@@ -153,15 +193,10 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+ 					last_blk, 1, bmap, &new_blk);
+ 		if (retval)
+ 			return retval;
+-		ext2fs_mark_block_bitmap2(bmap, new_blk);
+ 		ext2fs_block_bitmap_loc_set(fs, group, new_blk);
+-		if (flexbg_size) {
+-			dgrp_t gr = ext2fs_group_of_blk2(fs, new_blk);
+-			ext2fs_bg_free_blocks_count_set(fs, gr, ext2fs_bg_free_blocks_count(fs, gr) - 1);
+-			ext2fs_free_blocks_count_add(fs->super, -1);
+-			ext2fs_bg_flags_clear(fs, gr, EXT2_BG_BLOCK_UNINIT);
+-			ext2fs_group_desc_csum_set(fs, gr);
+-		}
++		update_block_bitmap_stats(fs, new_blk, 1, flags);
++		if (reserve_bmap)
++			ext2fs_mark_block_bitmap2(bmap, new_blk);
+ 	}
+ 
+ 	if (flexbg_size) {
+@@ -186,15 +221,10 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+ 					 last_blk, 1, bmap, &new_blk);
+ 		if (retval)
+ 			return retval;
+-		ext2fs_mark_block_bitmap2(bmap, new_blk);
+ 		ext2fs_inode_bitmap_loc_set(fs, group, new_blk);
+-		if (flexbg_size) {
+-			dgrp_t gr = ext2fs_group_of_blk2(fs, new_blk);
+-			ext2fs_bg_free_blocks_count_set(fs, gr, ext2fs_bg_free_blocks_count(fs, gr) - 1);
+-			ext2fs_free_blocks_count_add(fs->super, -1);
+-			ext2fs_bg_flags_clear(fs, gr, EXT2_BG_BLOCK_UNINIT);
+-			ext2fs_group_desc_csum_set(fs, gr);
+-		}
++		update_block_bitmap_stats(fs, new_blk, 1, flags);
++		if (reserve_bmap)
++			ext2fs_mark_block_bitmap2(bmap, new_blk);
+ 	}
+ 
+ 	/*
+@@ -223,18 +253,29 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+ 						bmap, &new_blk);
+ 		if (retval)
+ 			return retval;
+-		if (flexbg_size)
+-			ext2fs_block_alloc_stats_range(fs, new_blk,
+-				       fs->inode_blocks_per_group, +1);
+-		else
+-			ext2fs_mark_block_bitmap_range2(fs->block_map,
+-					new_blk, fs->inode_blocks_per_group);
+ 		ext2fs_inode_table_loc_set(fs, group, new_blk);
++		update_block_bitmap_stats(fs, new_blk,
++					  fs->inode_blocks_per_group, flags);
++		if (reserve_bmap)
++			ext2fs_mark_block_bitmap_range2(bmap,
++					new_blk, fs->inode_blocks_per_group);
+ 	}
+ 	ext2fs_group_desc_csum_set(fs, group);
+ 	return 0;
  }
  
--/*
-- * Clean up the bitmaps for unitialized bitmaps
-- */
--static void fix_uninit_block_bitmaps(ext2_filsys fs)
--{
--	blk64_t		blk, lblk;
--	dgrp_t		g;
--	int		i;
--
--	if (!ext2fs_has_group_desc_csum(fs))
--		return;
--
--	for (g=0; g < fs->group_desc_count; g++) {
--		if (!(ext2fs_bg_flags_test(fs, g, EXT2_BG_BLOCK_UNINIT)))
--			continue;
--
--		blk = ext2fs_group_first_block2(fs, g);
--		lblk = ext2fs_group_last_block2(fs, g);
--		ext2fs_unmark_block_bitmap_range2(fs->block_map, blk,
--						  lblk - blk + 1);
--
--		ext2fs_reserve_super_and_bgd(fs, g, fs->block_map);
--		ext2fs_mark_block_bitmap2(fs->block_map,
--					  ext2fs_block_bitmap_loc(fs, g));
--		ext2fs_mark_block_bitmap2(fs->block_map,
--					  ext2fs_inode_bitmap_loc(fs, g));
--		for (i = 0, blk = ext2fs_inode_table_loc(fs, g);
--		     i < (unsigned int) fs->inode_blocks_per_group;
--		     i++, blk++)
--			ext2fs_mark_block_bitmap2(fs->block_map, blk);
--	}
--}
++errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
++				      ext2fs_block_bitmap bmap)
++{
++	unsigned long flags = 0;
++
++	if (EXT2_HAS_INCOMPAT_FEATURE(fs->super,
++                                      EXT4_FEATURE_INCOMPAT_FLEX_BG))
++		flags |= EXT2FS_ALLOC_TABLE_UPDATE_STATS;
++
++	return ext2fs_allocate_group_table2(fs, group, bmap, flags);
++}
++
+ errcode_t ext2fs_allocate_tables(ext2_filsys fs)
+ {
+ 	errcode_t	retval;
+@@ -248,7 +289,7 @@ errcode_t ext2fs_allocate_tables(ext2_filsys fs)
+ 	for (i = 0; i < fs->group_desc_count; i++) {
+ 		if (fs->progress_ops && fs->progress_ops->update)
+ 			(fs->progress_ops->update)(fs, &progress, i);
+-		retval = ext2fs_allocate_group_table(fs, i, fs->block_map);
++		retval = ext2fs_allocate_group_table(fs, i, 0);
+ 		if (retval)
+ 			return retval;
+ 	}
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 13cbe567b19c..3eda8d1f4ad3 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -713,6 +713,13 @@ void ext2fs_block_alloc_stats_range(ext2_filsys fs, blk64_t blk,
+ extern errcode_t ext2fs_allocate_tables(ext2_filsys fs);
+ extern errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+ 					     ext2fs_block_bitmap bmap);
++/* Update allocation statistics */
++#define EXT2FS_ALLOC_TABLE_UPDATE_STATS		0x0001
++/* Set fs->block_map in addition to provided bmap */
++#define EXT2FS_ALLOC_TABLE_SET_BLOCK_BITMAP	0x0002
++extern errcode_t ext2fs_allocate_group_table2(ext2_filsys fs, dgrp_t group,
++					      ext2fs_block_bitmap bmap,
++					      unsigned long flags);
+ 
+ /* badblocks.c */
+ extern errcode_t ext2fs_u32_list_create(ext2_u32_list *ret, int size);
+-- 
+2.1.4
+
