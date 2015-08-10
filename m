@@ -1,41 +1,68 @@
-From: Alexey Lyashkov <alexey.lyashkov@gmail.com>
-Subject: Re: [PATCH 13/19] tune2fs: Add support for changing number of reserved inodes
-Date: Sat, 8 Aug 2015 10:45:00 +0300
-Message-ID: <9A74D391-E8E3-42A1-9319-5A0B54BDBC5F@gmail.com>
-References: <1438944689-24562-1-git-send-email-jack@suse.com> <1438944689-24562-14-git-send-email-jack@suse.com>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2102\))
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Ted Tso <tytso@mit.edu>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>
-To: Jan Kara <jack@suse.com>
+From: Daeho Jeong <daeho.jeong@samsung.com>
+Subject: [PATCH] ext4, jbd2: ensure entering into panic after recording an
+ error in JBD2 superblock
+Date: Mon, 10 Aug 2015 05:44:49 +0000 (GMT)
+Message-ID: <302309021.645571439185489165.JavaMail.weblogic@epmlwas07d>
+Reply-To: daeho.jeong@samsung.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: base64
+Cc: "daehojng@gmail.com" <daehojng@gmail.com>,
+	=?utf-8?Q?=EC=A0=95=EB=8C=80=ED=98=B8?= <daeho.jeong@samsung.com>
+To: "tytso@mit.edu" <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:33438 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752749AbbHHHpG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Aug 2015 03:45:06 -0400
-Received: by lbbyj8 with SMTP id yj8so71861430lbb.0
-        for <linux-ext4@vger.kernel.org>; Sat, 08 Aug 2015 00:45:03 -0700 (PDT)
-In-Reply-To: <1438944689-24562-14-git-send-email-jack@suse.com>
+Received: from mailout3.samsung.com ([203.254.224.33]:48242 "EHLO
+	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752724AbbHJFov (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Aug 2015 01:44:51 -0400
+Received: from epcpsbgr3.samsung.com
+ (u143.gpu120.samsung.co.kr [203.254.230.143])
+ by mailout3.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
+ 64bit (built May  5 2014))
+ with ESMTP id <0NSU030R6QMP2Y40@mailout3.samsung.com> for
+ linux-ext4@vger.kernel.org; Mon, 10 Aug 2015 14:44:49 +0900 (KST)
+MIME-version: 1.0
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+SWYgYSBFWFQ0IGZpbGVzeXN0ZW0gdXRpbGl6ZXMgSkJEMiBqb3VybmFsaW5nIGFuZCBhbiBlcnJv
+ciBvY2N1cnMsIHRoZSBqb3VybmFsaW5nDQp3aWxsIGJlIGFib3J0ZWQgZmlyc3QgYW5kIHRoZSBl
+cnJvciBudW1iZXIgd2lsbCBiZSByZWNvcmRlZCBpbnRvIEpCRDIgc3VwZXJibG9jaw0KYW5kLCBm
+aW5hbGx5LCB0aGUgc3lzdGVtIHdpbGwgZW50ZXIgaW50byB0aGUgcGFuaWMgc3RhdGUgaW4gImVy
+cm9ycz1wYW5pYyIgb3B0aW9uLg0KQnV0LCBpbiB0aGUgcmFyZSBjYXNlLCB0aGlzIHNlcXVlbmNl
+IGlzIGxpdHRsZSB0d2lzdGVkIGxpa2UgdGhlIGJlbG93IGZpZ3VyZSBhbmQNCml0IHdpbGwgaGFw
+cGVuIHRoYXQgdGhlIHN5c3RlbSBlbnRlcnMgaW50byBwYW5pYyBzdGF0ZSwgd2hpY2ggbWVhbnMg
+dGhlIHN5c3RlbQ0KcmVzZXQgaW4gbW9iaWxlIGVudmlyb25tZW50LCBiZWZvcmUgY29tcGxldGlv
+biBvZiByZWNvcmRpbmcgYW4gZXJyb3IgaW4gdGhlDQpqb3VybmFsIHN1cGVyYmxvY2suIEluIHRo
+aXMgY2FzZSwgZTJmc2NrIGNhbm5vdCByZWNvZ25pemUgdGhhdCB0aGUgZmlsZXN5c3RlbQ0KZmFp
+bHVyZSBvY2N1cmVkIGluIHRoZSBwcmV2aW91cyBydW4gYW5kIHRoZSBjb3JydXB0aW9uIHdvdWxk
+bid0IGJlIGZpeGVkLg0KDQpUYXNrIEEgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgVGFzayBCDQpleHQ0X2hhbmRsZV9lcnJvcigpDQotPiBqYmQyX2pvdXJu
+YWxfYWJvcnQoKQ0KICAtPiBfX2pvdXJuYWxfYWJvcnRfc29mdCgpDQogICAgLT4gX19qYmQyX2pv
+dXJuYWxfYWJvcnRfaGFyZCgpDQogICAgfCAtPiBqb3VybmFsLT5qX2ZsYWdzIHw9IEpCRDJfQUJP
+UlQ7DQogICAgfCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgIF9fZXh0NF9hYm9ydCgpDQogICAgfCAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgIC0+IGpiZDJfam91cm5hbF9hYm9ydCgpDQogICAgfCAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgLT4g
+X19qb3VybmFsX2Fib3J0X3NvZnQoKQ0KICAgIHwgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICB8ICAgLT4gaWYgKGpvdXJuYWwtPmpfZmxhZ3MgJiBK
+QkQyX0FCT1JUKQ0KICAgIHwgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICB8ICAgICAgICAgICByZXR1cm47DQogICAgfCAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC0+IHBhbmljKCkNCiAgICAtPiBq
+YmQyX2pvdXJuYWxfdXBkYXRlX3NiX2Vycm5vKCkNCg0KVGVzdGVkLWJ5OiBIb2JpbiBXb28gPGhv
+YmluLndvb0BzYW1zdW5nLmNvbT4NClNpZ25lZC1vZmYtYnk6IERhZWhvIEplb25nIDxkYWVoby5q
+ZW9uZ0BzYW1zdW5nLmNvbT4NClNpZ25lZC1vZmYtYnk6IFlvdW5namluIEdpbCA8eW91bmdqaW4u
+Z2lsQHNhbXN1bmcuY29tPg0KLS0tDQogZnMvamJkMi9qb3VybmFsLmMgfCAgICA0ICsrLS0NCiAx
+IGZpbGUgY2hhbmdlZCwgMiBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0t
+Z2l0IGEvZnMvamJkMi9qb3VybmFsLmMgYi9mcy9qYmQyL2pvdXJuYWwuYw0KaW5kZXggYjk2YmQ4
+MC4uYjI2NWZkOCAxMDA2NDQNCi0tLSBhL2ZzL2piZDIvam91cm5hbC5jDQorKysgYi9mcy9qYmQy
+L2pvdXJuYWwuYw0KQEAgLTIwNTEsMTAgKzIwNTEsMTAgQEAgc3RhdGljIHZvaWQgX19qb3VybmFs
+X2Fib3J0X3NvZnQgKGpvdXJuYWxfdCAqam91cm5hbCwgaW50IGVycm5vKQ0KICAgICAgICBpZiAo
+IWpvdXJuYWwtPmpfZXJybm8pDQogICAgICAgICAgICAgICAgam91cm5hbC0+al9lcnJubyA9IGVy
+cm5vOw0KDQotICAgICAgIF9famJkMl9qb3VybmFsX2Fib3J0X2hhcmQoam91cm5hbCk7DQotDQog
+ICAgICAgIGlmIChlcnJubykNCiAgICAgICAgICAgICAgICBqYmQyX2pvdXJuYWxfdXBkYXRlX3Ni
+X2Vycm5vKGpvdXJuYWwpOw0KKw0KKyAgICAgICBfX2piZDJfam91cm5hbF9hYm9ydF9oYXJkKGpv
+dXJuYWwpOw0KIH0NCg0KIC8qKg==
 
-> On Aug 7, 2015, at 1:51 PM, Jan Kara <jack@suse.com> wrote:
-> 
-> Signed-off-by: Jan Kara <jack@suse.com>
-> ---
-> 
-> +			new_first_ino = strtoul(arg, &p, 0);
-> +			if (*p) {
-> +				fprintf(stderr,
-> +					_("Invalid number of reserved inodes "
-> +					  "%s\n"),
-> +					arg);
-> +				r_usage++;
-> +				continue;
-> +			}
-> 
 
-this check invalid - you need check an errno for ERANGE also. 
-add check against maximal number inodes on FS is also good.
