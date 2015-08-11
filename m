@@ -1,93 +1,56 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: don't manipulate recovery flag when freezing
- no-journal fs
-Date: Tue, 11 Aug 2015 21:22:37 +0200
-Message-ID: <20150811192237.GE2659@quack.suse.cz>
-References: <55C28AA6.6070606@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: A question about EXT4_INODE_JOURNAL_DATA flag with delalloc
+Date: Tue, 11 Aug 2015 16:00:15 -0400
+Message-ID: <20150811200015.GC20658@thunk.org>
+References: <854180411.692591439262776858.JavaMail.weblogic@epmlwas07d>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Stu Mark <smark@datto.com>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"daehojng@gmail.com" <daehojng@gmail.com>
+To: Daeho Jeong <daeho.jeong@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:43048 "EHLO mx2.suse.de"
+Received: from imap.thunk.org ([74.207.234.97]:53303 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752128AbbHKTWm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Aug 2015 15:22:42 -0400
+	id S932241AbbHKUAS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Aug 2015 16:00:18 -0400
 Content-Disposition: inline
-In-Reply-To: <55C28AA6.6070606@redhat.com>
+In-Reply-To: <854180411.692591439262776858.JavaMail.weblogic@epmlwas07d>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 05-08-15 15:13:58, Eric Sandeen wrote:
-> At some point along this sequence of changes:
+On Tue, Aug 11, 2015 at 03:12:56AM +0000, Daeho Jeong wrote:
+> Hi, I am seeing in the ext4_change_inode_flag() function and found a patch to allocate
+> physical blocks for delalloc blocks in that function.
+> (=> http://repo.or.cz/w/ext4-patch-queue.git/blob/20f7782b1f50eb1d5cba5e085d01fbce89fce881:/allocate-delalloc-blocks-before-changing-journal-mode)
 > 
-> f6e63f9 ext4: fold ext4_nojournal_sops into ext4_sops
-> bb04457 ext4: support freezing ext2 (nojournal) file systems
-> 9ca9238 ext4: Use separate super_operations structure for no_journal filesystems
+> I think this is an idea to resolve kernel OOPS concerned with enabling/disabling
+> data journaling of a file in delayed allocation mode. Actually, I want to utilize per file
+> data journaling with delayed allocation, so this patch seemed to be very helpful for me.
 > 
-> ext4 started setting needs_recovery on filesystems without journals
-> when they are unfrozen.  This makes no sense, and in fact confuses
-> blkid to the point where it doesn't recognize the filesystem at all.
+> But, after 1 month from when the patch was applied, another patch was submitted
+> and EXT4_INODE_JOURNAL_DATA flag with delalloc was ignored.
+> (=> http://repo.or.cz/w/ext4-patch-queue.git/blob/17f3a9c17473d0b5925118a75ba7363c79e3fdc3:/ignore-JOURNAL_DATA-flag-with-delalloc)
 > 
-> (freeze ext2; unfreeze ext2; run blkid; see no output; run dumpe2fs,
-> see needs_recovery set on fs w/ no journal).
+> I don't understand the reason of that EXT4_INODE_JOURNAL_DATA flag with delalloc was
+> ignored because I think the previous patch can handle the problem which the above URL describes.
 > 
-> To fix this, don't manipulate the INCOMPAT_RECOVER feature on
-> filesystems without journals.
-> 
-> Reported-by: Stu Mark <smark@datto.com>
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> Am I missing something and could you share your idea about this? :-)
 
-The patch looks good. You can add:
+For doing code archeology, it's generally better to use the git
+commits of the patches as they landed in the mainline kernel.  The two
+commits you are talking about are 3d2b15826282 and 2aff57b0c052, and
+it does appear that the earlier patch may have addressed the issue
+that was solved by disabling support of the per-file data journalling
+flag if delalloc is enabled at the file system level.
 
-Reviewed-by: Jan Kara <jack@suse.com>
+It may be possible to make small change to allow a single file to be
+in data journalling mode (where delayed allocation would be disabled
+for that file), while allowing the rest of the file system to be using
+delalloc.  If you are courious, I'd suggest making that change and
+then running xfstests and see if it triggers any regressions.
 
-								Honza
+Cheers,
 
-> ---
-> 
-> Note, is there a reason that in ext4_freeze, if journal_flush
-> fails, we skip the ext4_commit_super call?  I didn't change that
-> here, but it seems odd.
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 58987b5..e7b345d 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -4833,10 +4833,11 @@ static int ext4_freeze(struct super_block *sb)
->  		error = jbd2_journal_flush(journal);
->  		if (error < 0)
->  			goto out;
-> +
-> +		/* Journal blocked and flushed, clear needs_recovery flag. */
-> +		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
->  	}
->  
-> -	/* Journal blocked and flushed, clear needs_recovery flag. */
-> -	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
->  	error = ext4_commit_super(sb, 1);
->  out:
->  	if (journal)
-> @@ -4854,8 +4855,11 @@ static int ext4_unfreeze(struct super_block *sb)
->  	if (sb->s_flags & MS_RDONLY)
->  		return 0;
->  
-> -	/* Reset the needs_recovery flag before the fs is unlocked. */
-> -	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
-> +	if (EXT4_SB(sb)->s_journal) {
-> +		/* Reset the needs_recovery flag before the fs is unlocked. */
-> +		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
-> +	}
-> +
->  	ext4_commit_super(sb, 1);
->  	return 0;
->  }
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+						- Ted
+
+
