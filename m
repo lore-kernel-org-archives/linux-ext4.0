@@ -1,94 +1,48 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [patch] ext4: simplify some code in read_mmp_block()
-Date: Mon, 10 Aug 2015 17:07:47 -0600
-Message-ID: <3FC4DED5-76F2-45DE-8E01-8796850CB120@dilger.ca>
-References: <20150810213416.GB31724@mwanda>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2102\))
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Return-path: <kernel-janitors-owner@vger.kernel.org>
-In-Reply-To: <20150810213416.GB31724@mwanda>
-Sender: kernel-janitors-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Daeho Jeong <daeho.jeong@samsung.com>
+Subject: A question about EXT4_INODE_JOURNAL_DATA flag with delalloc
+Date: Tue, 11 Aug 2015 03:12:56 +0000 (GMT)
+Message-ID: <854180411.692591439262776858.JavaMail.weblogic@epmlwas07d>
+Reply-To: daeho.jeong@samsung.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: base64
+Cc: "daehojng@gmail.com" <daehojng@gmail.com>,
+	=?utf-8?Q?=EC=A0=95=EB=8C=80=ED=98=B8?= <daeho.jeong@samsung.com>
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailout3.samsung.com ([203.254.224.33]:48456 "EHLO
+	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933326AbbHKDND (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Aug 2015 23:13:03 -0400
+Received: from epcpsbgr3.samsung.com
+ (u143.gpu120.samsung.co.kr [203.254.230.143])
+ by mailout3.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
+ 64bit (built May  5 2014))
+ with ESMTP id <0NSW00J0FE9L3KA0@mailout3.samsung.com> for
+ linux-ext4@vger.kernel.org; Tue, 11 Aug 2015 12:12:57 +0900 (KST)
+MIME-version: 1.0
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-
-> On Aug 10, 2015, at 3:34 PM, Dan Carpenter <dan.carpenter@oracle.com> wrote:
-> 
-> My static checker complains because it is not necessary to test
-> "if (*bh)" when we just tested "if (!*bh)" on the lines before.
-> We can remove the condition and pull everything in one indent level.
-> 
-> Then we have another "if (unlikely(!*bh))" check and the only way that
-> can be true is if the "if (!buffer_uptodate(*bh))" condition was true so
-> we can combine them together.
-> 
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-> 
-> diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-> index 8313ca3..736f12e 100644
-> --- a/fs/ext4/mmp.c
-> +++ b/fs/ext4/mmp.c
-> @@ -80,18 +80,15 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
-> 	if (!*bh)
-> 		*bh = sb_getblk(sb, mmp_block);
-> 	if (!*bh)
-> 		return -ENOMEM;
-
-It may also be clearer if the second "if (!*bh)" check were below
-the first one, like:
-
-	if (!*bh) {
-		*bh = sb_getblk(sb, mmp_block);
-		if (!*bh)
-			return -ENOMEM;
-	}
-
-That moves the second check out-of-line since it can only happen if
-the first one is already true.
-
-That said, it looks like this second "if (!*bh)" check was added
-later on in commit 860d21e2 and the original logic made sense when
-it was written, so that the ext4_warning() message below would get
-printed in this case.  Otherwise the mount can fail without any
-message being printed on the console at all. Other ext4 mount
-failures print error messages, so this should be done here also.
-
-> -	if (*bh) {
-> -		get_bh(*bh);
-> -		lock_buffer(*bh);
-> -		(*bh)->b_end_io = end_buffer_read_sync;
-> -		submit_bh(READ_SYNC | REQ_META | REQ_PRIO, *bh);
-> -		wait_on_buffer(*bh);
-> -		if (!buffer_uptodate(*bh)) {
-> -			brelse(*bh);
-> -			*bh = NULL;
-> -		}
-> -	}
-> -	if (unlikely(!*bh)) {
-> +
-> +	get_bh(*bh);
-> +	lock_buffer(*bh);
-> +	(*bh)->b_end_io = end_buffer_read_sync;
-> +	submit_bh(READ_SYNC | REQ_META | REQ_PRIO, *bh);
-> +	wait_on_buffer(*bh);
-> +	if (!buffer_uptodate(*bh)) {
-> +		brelse(*bh);
-> +		*bh = NULL;
-> 		ext4_warning(sb, "Error while reading MMP block %llu",
-> 			     mmp_block);
-> 		return -EIO;
-
-Maybe it would be better to move the ext4_warning() to the end of the
-function and then set rc in the failure cases with a goto err: and
-print the message only once?
-
-Cheers, Andreas
-
-
-
+SGksIEkgYW0gc2VlaW5nIGluIHRoZSBleHQ0X2NoYW5nZV9pbm9kZV9mbGFnKCkgZnVuY3Rpb24g
+YW5kIGZvdW5kIGEgcGF0Y2ggdG8gYWxsb2NhdGUNCnBoeXNpY2FsIGJsb2NrcyBmb3IgZGVsYWxs
+b2MgYmxvY2tzIGluIHRoYXQgZnVuY3Rpb24uDQooPT4gaHR0cDovL3JlcG8ub3IuY3ovdy9leHQ0
+LXBhdGNoLXF1ZXVlLmdpdC9ibG9iLzIwZjc3ODJiMWY1MGViMWQ1Y2JhNWUwODVkMDFmYmNlODlm
+Y2U4ODE6L2FsbG9jYXRlLWRlbGFsbG9jLWJsb2Nrcy1iZWZvcmUtY2hhbmdpbmctam91cm5hbC1t
+b2RlKQ0KDQpJIHRoaW5rIHRoaXMgaXMgYW4gaWRlYSB0byByZXNvbHZlIGtlcm5lbCBPT1BTIGNv
+bmNlcm5lZCB3aXRoIGVuYWJsaW5nL2Rpc2FibGluZw0KZGF0YSBqb3VybmFsaW5nIG9mIGEgZmls
+ZSBpbiBkZWxheWVkIGFsbG9jYXRpb24gbW9kZS4gQWN0dWFsbHksIEkgd2FudCB0byB1dGlsaXpl
+IHBlciBmaWxlDQpkYXRhIGpvdXJuYWxpbmcgd2l0aCBkZWxheWVkIGFsbG9jYXRpb24sIHNvIHRo
+aXMgcGF0Y2ggc2VlbWVkIHRvIGJlIHZlcnkgaGVscGZ1bCBmb3IgbWUuDQoNCkJ1dCwgYWZ0ZXIg
+MSBtb250aCBmcm9tIHdoZW4gdGhlIHBhdGNoIHdhcyBhcHBsaWVkLCBhbm90aGVyIHBhdGNoIHdh
+cyBzdWJtaXR0ZWQNCmFuZCBFWFQ0X0lOT0RFX0pPVVJOQUxfREFUQSBmbGFnIHdpdGggZGVsYWxs
+b2Mgd2FzIGlnbm9yZWQuDQooPT4gaHR0cDovL3JlcG8ub3IuY3ovdy9leHQ0LXBhdGNoLXF1ZXVl
+LmdpdC9ibG9iLzE3ZjNhOWMxNzQ3M2QwYjU5MjUxMThhNzViYTczNjNjNzllM2ZkYzM6L2lnbm9y
+ZS1KT1VSTkFMX0RBVEEtZmxhZy13aXRoLWRlbGFsbG9jKQ0KDQpJIGRvbid0IHVuZGVyc3RhbmQg
+dGhlIHJlYXNvbiBvZiB0aGF0IEVYVDRfSU5PREVfSk9VUk5BTF9EQVRBIGZsYWcgd2l0aCBkZWxh
+bGxvYyB3YXMNCmlnbm9yZWQgYmVjYXVzZSBJIHRoaW5rIHRoZSBwcmV2aW91cyBwYXRjaCBjYW4g
+aGFuZGxlIHRoZSBwcm9ibGVtIHdoaWNoIHRoZSBhYm92ZSBVUkwgZGVzY3JpYmVzLg0KDQpBbSBJ
+IG1pc3Npbmcgc29tZXRoaW5nIGFuZCBjb3VsZCB5b3Ugc2hhcmUgeW91ciBpZGVhIGFib3V0IHRo
+aXM/IDotKQ0K
 
 
