@@ -1,64 +1,93 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 89621] EXT4-fs error (device dm-1):
- ext4_mb_release_inode_pa:3773: group 24089, free 34, pa_free 32
-Date: Tue, 11 Aug 2015 18:16:09 +0000
-Message-ID: <bug-89621-13602-VvjMyunzWm@https.bugzilla.kernel.org/>
-References: <bug-89621-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: don't manipulate recovery flag when freezing
+ no-journal fs
+Date: Tue, 11 Aug 2015 21:22:37 +0200
+Message-ID: <20150811192237.GE2659@quack.suse.cz>
+References: <55C28AA6.6070606@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Stu Mark <smark@datto.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:51797 "EHLO mail.kernel.org"
+Received: from mx2.suse.de ([195.135.220.15]:43048 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752390AbbHKSQN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Aug 2015 14:16:13 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 6504E202E9
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Aug 2015 18:16:12 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 734FC205F7
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Aug 2015 18:16:09 +0000 (UTC)
-In-Reply-To: <bug-89621-13602@https.bugzilla.kernel.org/>
+	id S1752128AbbHKTWm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Aug 2015 15:22:42 -0400
+Content-Disposition: inline
+In-Reply-To: <55C28AA6.6070606@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=89621
+On Wed 05-08-15 15:13:58, Eric Sandeen wrote:
+> At some point along this sequence of changes:
+> 
+> f6e63f9 ext4: fold ext4_nojournal_sops into ext4_sops
+> bb04457 ext4: support freezing ext2 (nojournal) file systems
+> 9ca9238 ext4: Use separate super_operations structure for no_journal filesystems
+> 
+> ext4 started setting needs_recovery on filesystems without journals
+> when they are unfrozen.  This makes no sense, and in fact confuses
+> blkid to the point where it doesn't recognize the filesystem at all.
+> 
+> (freeze ext2; unfreeze ext2; run blkid; see no output; run dumpe2fs,
+> see needs_recovery set on fs w/ no journal).
+> 
+> To fix this, don't manipulate the INCOMPAT_RECOVER feature on
+> filesystems without journals.
+> 
+> Reported-by: Stu Mark <smark@datto.com>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
---- Comment #17 from Theodore Tso <tytso@mit.edu> ---
-John, are you willing to give us a lot more details about your set up?  
-Hardware, software, details of the host OS, details of the guest OS, what is
-the workload where the problem is happening, etc?
+The patch looks good. You can add:
 
-And it might be helpful if you opened a separate bug which we use exclusively
-for tracking your particular issue.   One of the things which is often
-disastrous, and why I've largely given up on Ubuntu's launchpad, is when
-multiple people assume that the problem that they are seeing is the same as
-everyone else's. when in fact they could be separate bugs, or one of the bugs
-could be a hardware problem, etc.
+Reviewed-by: Jan Kara <jack@suse.com>
 
-Then when one person doesn't give details about their hardware because they saw
-someone else already had, it makes finding the problems even harder.
+								Honza
 
-One thing to keep in mind when we are talking about problems found in the guest
-OS is that misconfigurations at the host OS level can be indistinguishable from
-hardware problems.   So for example, depending on the caching policy used by
-KVM in the host OS issues, it may be that cache flush commands in the guest OS
-don't peculate down all the way down to the actual hardware platters.   Thus,
-after a power fail event, even if everything is configured correctly at the
-guest OS, it can result in an inconsistent file system image because the KVM /
-the host OS didn't make sure everything got pushed to the disk after a journal
-commit.
-
-So knowing whether or not were any shutdowns caused either by KVM crashing, or
-the host OS crashing, or the guest OS crashing, is all very important in trying
-to debug things, because the error message reported simply means that there was
-an inconsistency detected in the allocation bitmaps.   This can be caused by
-any number of things --- which is why doctors hate it when someone asks them
-what's wrong because "I have a cough" at a social occasion, and then someone
-else chimes in, "well, my grandfather had a cough right before he was diagnosed
-with terminal lung cancer"...
-
+> ---
+> 
+> Note, is there a reason that in ext4_freeze, if journal_flush
+> fails, we skip the ext4_commit_super call?  I didn't change that
+> here, but it seems odd.
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 58987b5..e7b345d 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -4833,10 +4833,11 @@ static int ext4_freeze(struct super_block *sb)
+>  		error = jbd2_journal_flush(journal);
+>  		if (error < 0)
+>  			goto out;
+> +
+> +		/* Journal blocked and flushed, clear needs_recovery flag. */
+> +		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+>  	}
+>  
+> -	/* Journal blocked and flushed, clear needs_recovery flag. */
+> -	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+>  	error = ext4_commit_super(sb, 1);
+>  out:
+>  	if (journal)
+> @@ -4854,8 +4855,11 @@ static int ext4_unfreeze(struct super_block *sb)
+>  	if (sb->s_flags & MS_RDONLY)
+>  		return 0;
+>  
+> -	/* Reset the needs_recovery flag before the fs is unlocked. */
+> -	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+> +	if (EXT4_SB(sb)->s_journal) {
+> +		/* Reset the needs_recovery flag before the fs is unlocked. */
+> +		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+> +	}
+> +
+>  	ext4_commit_super(sb, 1);
+>  	return 0;
+>  }
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
