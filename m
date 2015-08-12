@@ -1,118 +1,117 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: fsync stuck at jbd2_log_wait_commit on NVMe devices
-Date: Wed, 12 Aug 2015 18:34:56 -0400
-Message-ID: <20150812223456.GC3373@thunk.org>
-References: <COL130-W652BF73D365EBB4F3DDF69D67E0@phx.gbl>
- <20150812183750.GB3373@thunk.org>
- <COL130-W95F37DFE0CBD0ED0680AABD67E0@phx.gbl>
- <COL130-W3988F47C3C020C3E2D5C38D67E0@phx.gbl>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 102751] New: infinite loop in jbd2_journal_destroy()
+Date: Wed, 12 Aug 2015 22:38:22 +0000
+Message-ID: <bug-102751-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Roy Yang <bsdnet@outlook.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55718 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.29.136]:53197 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750856AbbHLWe7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Aug 2015 18:34:59 -0400
-Content-Disposition: inline
-In-Reply-To: <COL130-W3988F47C3C020C3E2D5C38D67E0@phx.gbl>
+	id S1751746AbbHLWi0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Aug 2015 18:38:26 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 91492206D5
+	for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2015 22:38:25 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id AF055205EC
+	for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2015 22:38:23 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 12, 2015 at 02:43:22PM -0700, Roy Yang wrote:
-> Hi Ted, 
-> 
->     I got some JBD2 tracing log by running our test program, most of them will take 10 seconds or so.  Compared to the normal system, this test only takes 2 seconds.
->     We saw the spike of running, but checking with kernel source. I don't get  what it means.  Any insights?
+https://bugzilla.kernel.org/show_bug.cgi?id=102751
 
-You need to get the trace on your normal system --- a system when
-under load, you are seeing the long times for a journal commit to
-complete.  The jbd2_run_stats gives us critical insight into what
-might be going wrong --- but just as it doesn't help much to use a
-diagnostic tool on a pet dog when you are trying to determine why the
-child is running a fever, it doesn't help much to take traces on a
-test program/system when we're trying to actually debug why your
-production server is having trouble....
+            Bug ID: 102751
+           Summary: infinite loop in jbd2_journal_destroy()
+           Product: File System
+           Version: 2.5
+    Kernel Version: 4.1.5
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: mihai.dontu@gmail.com
+        Regression: No
 
+While watching a video from a removable disk (USB), the connecting cable failed
+(too much use) and I had to unplug it. I noticed, however, that vlc has started
+consuming 100% CPU time while being zombie. An Alt+SysReq+l showed this:
 
->            <...>-220601 [015] .... 181555.139321: jbd2_run_stats: dev 259,3 tid 1064541 wait 0 request_delay 0 running 0 locked 0 flushing 0 logging 0 handle_count 4 blocks 1 blocks_logged 2
+NMI backtrace for cpu 2
+CPU: 2 PID: 17378 Comm: vlc Tainted: G           O    4.1.5-gentoo #1
+Hardware name: Dell Inc. Latitude E7440/07F3F4, BIOS A15 05/19/2015
+task: ffff88029d050000 ti: ffff8802cd80c000 task.ti: ffff8802cd80c000
+RIP: 0010:[<ffffffff8cec3320>]  [<ffffffff8cec3320>] mutex_unlock+0x10/0x20
+RSP: 0018:ffff8802cd80fcd0  EFLAGS: 00000202
+RAX: 00000000fffffffb RBX: ffff880084068000 RCX: 0000000000000000
+RDX: 0000000080000001 RSI: 0000000000000000 RDI: ffff8800840680e8
+RBP: ffff8802cd80fd38 R08: 000000000000000a R09: 00000000000004b0
+R10: 0000000000017e98 R11: 00000000000004b0 R12: ffff880084068398
+R13: ffff8800840680e8 R14: ffff8802cd80fcf0 R15: ffff8800840680a0
+FS:  00007fa8ac663700(0000) GS:ffff88041eb00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007f5b3e946000 CR3: 000000000d80d000 CR4: 00000000001426e0
+Stack:
+ ffffffff8c3d1318 ffff880200000000 ffff88029d050000 ffffffff8c179cc0
+ ffff8802cd80fcf0 ffff8802cd80fcf0 0000000028b119c8 ffff88015d99c400
+ ffff88008406c000 ffff880185940400 ffff880084068800 ffff88029d050000
+Call Trace:
+ [<ffffffff8c3d1318>] ? jbd2_journal_destroy+0x138/0x240
+ [<ffffffff8c179cc0>] ? wake_atomic_t_function+0x60/0x60
+ [<ffffffff8c38f0e7>] ext4_put_super+0x67/0x360
+ [<ffffffff8c29d726>] generic_shutdown_super+0x76/0x100
+ [<ffffffff8c29dae7>] kill_block_super+0x27/0x80
+ [<ffffffff8c29de59>] deactivate_locked_super+0x49/0x80
+ [<ffffffff8c29e2cc>] deactivate_super+0x6c/0x80
+ [<ffffffff8c2bc033>] cleanup_mnt+0x43/0xa0
+ [<ffffffff8c2bc0e2>] __cleanup_mnt+0x12/0x20
+ [<ffffffff8c153804>] task_work_run+0xd4/0xf0
+ [<ffffffff8c139174>] do_exit+0x2f4/0xb90
+ [<ffffffff8c1d381c>] ? __audit_syscall_entry+0xac/0x100
+ [<ffffffff8c05f745>] ? do_audit_syscall_entry+0x55/0x80
+ [<ffffffff8c139a9b>] do_group_exit+0x3b/0xb0
+ [<ffffffff8c139b24>] SyS_exit_group+0x14/0x20
+ [<ffffffff8cec59db>] system_call_fastpath+0x16/0x6e
+Code: ff 4c 89 e7 e8 d2 1e 00 00 5b 41 5c 5d c3 0f 1f 00 66 2e 0f 1f 84 00 00
+00 00 00 0f 1f 44 00 00 48 c7 47 18 00 00 00 00 f0 ff 07 <7f> 0a 55 48 89 e5 e8
+95 ff ff ff 5d c3 0f 1f 00 0f 1f 44 00 00
 
-There will be one of these trace points emitted for each jd2
-transaction commit.  Most of the fields, with the exception of the
-last three (handle_count, blocks, and blocks logged) are in units of
-1000 HZ "jiffies.  So for example, if you don't have any fsync()'s,
-transactions by default will run for 5 seconds before being committed,
-so the "running" time will be a bit larger than 5000 jiffies (the
-timer goes off at 5 seconds, but there may be some delay before the
-jbd2 kernel thread gets scheduled):
+and perf top (first 9 lines):
 
-     jbd2/sda3-8-275   [003] ...2 70449.637938: jbd2_run_stats: dev 8,3 tid 789663 wait 0 request_delay 0 running 5030 locked 0 flushing 0 logging 0 handle_count 18 blocks 5 blocks_logged 6
+  18.08%  [kernel]  [k] _raw_spin_lock
+  17.97%  [kernel]  [k] mutex_lock
+  15.36%  [kernel]  [k] mutex_unlock
+  10.89%  [kernel]  [k] _raw_spin_unlock
+   6.49%  [kernel]  [k] jbd2_log_do_checkpoint
+   6.16%  [kernel]  [k] preempt_count_add
+   4.53%  [kernel]  [k] jbd2_cleanup_journal_tail
+   3.96%  [kernel]  [k] preempt_count_sub
+   3.21%  [kernel]  [k] jbd2_journal_destroy
 
-The "wait" field indicates the maximum time that a handle associated
-with a transaction had to wait before it could get started.  Typically
-this is because we couldn't start a new transactions because the old
-transaction was still in the process of being committed.
+Looking at the code it would seem that I've hit a race in:
 
-The "request_delay" field indicates delay between when transaction
-commit was requested (typically due to an fsync), and when the jbd2
-kernel thread actually started working on the commit.  (Again, all time
-fields are in units of jiffies, so you can read the integer in
-milliseconds --> 5030 jiffies === 5030 milliseconds == 5.03 seconds.
+  while (journal->j_checkpoint_transactions != NULL) { ... }
 
-The "running" field indicates how long transaction was running; as
-mentioned above, this will typically be around 5000 jiffies unless
-your workload was doing fsync()'s, or if the transaction was big
-enough that it was forced to close because journal space reasons.
+because it's waiting for a transaction that cannot take place:
 
-The "locked" field indicates how long it takes for all of the pending
-handles to be completed.  When the jbd2 layer starts working on the
-commit, the first thing it does is lock down the transaction so no new
-handles can be started.  It then waits for all curently started
-handles can complete.  While we are waiting for handles to close, no
-other handles can be started (see discussion of the maximum wait time
-above).  We try to keep handle processing time as short as possible
-(for example, by prefetching blocks before starting a handle), but
-there are cases where this is not possible, or at least not easy.
-Analysis of the jbd2_handle_stats trances can help identify
-longer-running handles.  If these long-running handles happen right
-before journal commit (and for a workload that is overly fsync-happy,
-that may be most handles), they can prolong how long a journal commit
-stays in the "locked" phase.
+Buffer I/O error on dev dm-1, logical block 243826688, lost sync page write
+JBD2: Error -5 detected when updating journal superblock for dm-1-8.
+Aborting journal on device dm-1-8.
+Buffer I/O error on dev dm-1, logical block 243826688, lost sync page write
+JBD2: Error -5 detected when updating journal superblock for dm-1-8.
 
-The "flushing" field indicates how long the transaction commit spent
-writing out data blocks.  We only need to write out data blocks in
-data=ordered mode associated with inodes which have new blocks
-allocated during the last transaction.
+Maybe the loop should be abandoned on jbd2_log_do_checkpoint() error?
 
-The "logging" field indicates how long it took to write out the blocks
-that are actually written to the journal.  The number of blocks
-actually written are reflected in the "blocks" and "blocks_logged"
-fields, where the "blocks_logged" fields includes the overhead blocks
-(jbd2 descriptor blocks, jbd2 revoke blocks, etc.)
+The USB failure happened several times before, but I've never seen vlc get
+stuck. This also means that I'm unlikely to be able to reproduce this. :-(
 
-The "handle_count" field indicates how many handles are associated
-with a particular transaction.  In general each simple system call
-(chmod, creat, chown, symlink, read, etc.) that modifies the file
-system requires at most a single handle.  The big exception to this
-rule of thumb is the truncate(2) and unlink(2) system calls, which may
-require multiple handles in order to complete.  The truncate() and
-unlink system calls are also the ones which tend to hold a handle open
-for longer-than-average amounts of time.
+One more detail: the ext4 filesystem sits on top a LUKS device.
 
-By the way, this is why calling truncate() and doing block allocations
-and doing fsync() a lot is *not* free.  If you are purchasing $$$ NVME
-storage, in general it's a wise idea for your application to simply do
-non-allocating writes (i.e., overwriting previous blocks in a
-preallocated file), and tracking which blocks are used for what in
-your application, instead of trying to ask general purpose file system
-code to do this for you.  If you can used a specialized data structure
-(say, a circular buffer) and manage the head and tail pointers
-yourself, it will almost always require much less overhead than what
-the file system will have to do since the file system doesn't have the
-advantage of specialized knowledge of exactly what your requirements
-might be for your workload.
-
-Regards,
-
-						- Ted
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
