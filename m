@@ -1,149 +1,153 @@
-From: Roy Yang <bsdnet@outlook.com>
-Subject: RE: fsync stuck at jbd2_log_wait_commit on NVMe devices
-Date: Wed, 12 Aug 2015 14:43:22 -0700
-Message-ID: <COL130-W3988F47C3C020C3E2D5C38D67E0@phx.gbl>
-References: <COL130-W652BF73D365EBB4F3DDF69D67E0@phx.gbl>,<20150812183750.GB3373@thunk.org>,<COL130-W95F37DFE0CBD0ED0680AABD67E0@phx.gbl>
+From: Johan Harvyl <johan@harvyl.se>
+Subject: Re: resize2fs: Should never happen: resize inode corrupt! - lost
+ key inodes
+Date: Thu, 13 Aug 2015 00:00:50 +0200
+Message-ID: <55CBC212.6000507@harvyl.se>
+References: <55CA3BDE.7020401@harvyl.se> <20150811224718.GD20658@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from col004-omc3s15.hotmail.com ([65.55.34.153]:54016 "EHLO
-	COL004-OMC3S15.hotmail.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751083AbbHLVnW convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Aug 2015 17:43:22 -0400
-In-Reply-To: <COL130-W95F37DFE0CBD0ED0680AABD67E0@phx.gbl>
+Received: from mail-la0-f47.google.com ([209.85.215.47]:36764 "EHLO
+	mail-la0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750826AbbHLWAy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Aug 2015 18:00:54 -0400
+Received: by lagz9 with SMTP id z9so16607061lag.3
+        for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2015 15:00:52 -0700 (PDT)
+In-Reply-To: <20150811224718.GD20658@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,=A0
+On 2015-08-12 00:47, Theodore Ts'o wrote:
+> On Tue, Aug 11, 2015 at 08:15:58PM +0200, Johan Harvyl wrote:
+>> I recently attempted an operation I have done many many times before, add a
+>> drive to a raid array followed by offline resize2fs to expand the ext4fs on
+>> it.
+> If you've read the old threads, you'll note that online resize is
+> actually safer (has proven to have had less bugs) than offline
+> resize, at least with respect to big ext4 file systems.  :-/
+Hi,
 
-=A0 =A0 I got some JBD2 tracing log by running our test program, most o=
-f them will take 10 seconds or so. =A0Compared to the normal system, th=
-is test only takes 2 seconds.
-=A0 =A0 We saw the spike of running, but checking with kernel source. I=
- don't get =A0what it means. =A0Any insights?
+Thank you for you quick respone.
 
-=A0 =A0 =A0 =A0 =A0 =A0<...>-220601 [015] .... 181555.139321: jbd2_run_=
-stats: dev 259,3 tid 1064541 wait 0 request_delay 0 running 0 locked 0 =
-flushing 0 logging 0 handle_count 4 blocks 1 blocks_logged 2
-=A0=A0 =A0 =A0 =A0 =A0 <...>-220601 [015] .... 181555.141161: jbd2_run_=
-stats: dev 259,3 tid 1064542 wait 0 request_delay 0 running 0 locked 0 =
-flushing 0 logging 0 handle_count 4 blocks 1 blocks_logged 2
-=A0=A0 =A0 =A0 =A0 =A0 <...>-220601 [015] .... 181555.143399: jbd2_run_=
-stats: dev 259,3 tid 1064543 wait 0 request_delay 0 running 1 locked 0 =
-flushing 0 logging 0 handle_count 4 blocks 3 blocks_logged 4
-=A0=A0 =A0 =A0 =A0 =A0 <...>-220601 [015] .... 181555.143710: jbd2_run_=
-stats: dev 259,3 tid 1064544 wait 0 request_delay 0 running 0 locked 0 =
-flushing 0 logging 0 handle_count 4 blocks 1 blocks_logged 2
-=A0=A0 =A0 =A0 =A0 =A0 <...>-220601 [015] .... 181555.143840: jbd2_run_=
-stats: dev 259,3 tid 1064545 wait 0 request_delay 0 running 0 locked 0 =
-flushing 0 logging 0 handle_count 1 blocks 4 blocks_logged 5
-=A0=A0 =A0 =A0 =A0 =A0 <...>-220601 [015] .... 181555.176298: jbd2_run_=
-stats: dev 259,3 tid 1064546 wait 0 request_delay 0 running 32 locked 0=
- flushing 0 logging 0 handle_count 31 blocks 5 blocks_logged 6
-=A0jbd2/nvme0n1p1--964 =A0 [014] .... 181555.189997: jbd2_run_stats: de=
-v 259,1 tid 293294 wait 0 request_delay 0 running 5000 locked 0 flushin=
-g 0 logging 0 handle_count 15613 blocks 4 blocks_logged 5
-=A0=A0 =A0 =A0 =A0 =A0 <...>-220601 [015] .... 181556.126407: jbd2_run_=
-stats: dev 259,3 tid 1064547 wait 0 request_delay 0 running 929 locked =
-0 flushing 0 logging 0 handle_count 30 blocks 3 blocks_logged 4
-=A0=A0 =A0 =A0 =A0 =A0 <...>-220601 [014] .... 181556.159874: jbd2_run_=
-stats: dev 259,3 tid 1064548 wait 0 request_delay 0 running 10 locked 0=
- flushing 0 logging 0 handle_count 29 blocks 1 blocks_logged 2
-=A0=A0 =A0 =A0 =A0 =A0 <...>-220601 [000] .... 181557.123872: jbd2_run_=
-stats: dev 259,3 tid 1064549 wait 0 request_delay 0 running 941 locked =
-0 flushing 0 logging 0 handle_count 30 blocks 3 blocks_logged 4
-=A0=A0 =A0 =A0 =A0 =A0 <...>-220601 [015] .... 181558.135168: jbd2_run_=
-stats: dev 259,3 tid 1064550 wait 0 request_delay 1 running 1 locked 0 =
-flushing 0 logging 0 handle_count 8 blocks 6 blocks_logged 7
-=A0=A0 =A0 =A0 =A0 =A0 <...>-220601 [015] .... 181558.138895: jbd2_run_=
-stats: dev 259,3 tid 1064551 wait 0 request_delay 0 running 0 locked 0 =
-flushing 0 logging 0 handle_count 1 blocks 4 blocks_logged 5
-=A0=A0 =A0 =A0 =A0 =A0 <...>-220601 [015] .... 181558.139091: jbd2_run_=
-stats: dev 259,3 tid 1064552 wait 0 request_delay 0 running 0 locked 0 =
-flushing 0 logging 1 handle_count 2 blocks 4 blocks_logged 5
-=A0=A0 =A0 =A0 =A0 =A0 <...>-220601 [015] .... 181558.139886: jbd2_run_=
-stats: dev 259,3 tid 1064553 wait 0 request_delay 0 running 0 locked 0 =
-flushing 0 logging 0 handle_count 12 blocks 6 blocks_logged 7
-=A0=A0 =A0 =A0 =A0 =A0 <...>-220601 [015] .... 181558.147189: jbd2_run_=
-stats: dev 259,3 tid 1064554 wait 0 request_delay 0 running 0 locked 0 =
-flushing 0 logging 0 handle_count 1 blocks 4 blocks_logged 5
+I did notice posts about online resizes being safer, which frankly 
+surprised me, I would have expected
+the opposite.
 
-=A0 =A0Thanks,
-=A0 =A0 Roy
+I would like to try my best, with your guidance, to track down how I 
+ended up in this state, if nothing
+else to avoid others ending up in the same situation.
 
-----------------------------------------
-> From: bsdnet@outlook.com
-> To: tytso@mit.edu
-> CC: linux-ext4@vger.kernel.org
-> Subject: RE: fsync stuck at jbd2_log_wait_commit on NVMe devices
-> Date: Wed, 12 Aug 2015 12:28:10 -0700
+The filesystem was originally created (with -O 64bit) on a 4*4TB device, 
+so slightly under
+16 power-of-2 TB using mke2fs 1.42.10.
+
+I did not manually add the resize_inode feature flag at that time, but 
+it is possible that I could
+have added it later with tune2fs although I can neither remember doing 
+so nor think of a reason
+I would have. Could any of the e2fsprogs have added the resize_inode 
+flag automatically, for instance
+when it was expanded the first time, from just below 16 TB to just below 
+20 TB?
+
+When should this incompatibility of feature flags have been discovered, 
+was it wrong to even end up
+in a state where it was enabled on a >16 TB filesystem? Should it have 
+been caught in a sanity before
+performing the offline resize?
+
+> I'm not aware of any offline resize with 1.42.13, but it sounds like
+> you were originally using mke2fs and resize2fs 1.42.10, which did have
+> some bugs, and so the question is what sort of might it might have
+> left things.
+What kind of bugs are we talking about, mke2fs? resize2fs? e2fsck? Any 
+specific commits of interest?
+I scanned the git log -p --full-history v1.42.10..v1.42.13 -- resize/ 
+and nothing really jumped out at me...
+
+Are you thinking the fs was actually put into a bad state already when 
+it was first expanded from 16 TB
+to 20 TB with resize2fs 1.42.10 although it did not show at the time?
+
+Can you think of why it would zero out the first thousands of inodes, 
+like the root inode, lost+found
+and so on? I am thinking that would help me assess the potential damage 
+to the files. Could I perhaps
+expect the same kind of zeroed out blocks at regular intervals all over 
+the device?
+
+> It looks like you were resizing the file system from 18TB to 22TB.
+perhaps not important, but to be clear, 20 TB -> 24 TB
+> There shouldn't have been a resize inode if the file system was larger
+> than 16TB, and so it sounds like is that was what tickled this error message:
+And judging by the error and the code leading up to that error, my guess 
+is there never was a resize inode
+on that filesystem even though the feature flag was for some reason set.
+>> # resize2fs /dev/md0
+>> Should never happen: resize inode corrupt!
+> This was after most of the resize work has been done, so the question
+> is what we need to do to get your file system up and running again.
 >
-> Hi Ted,
+> What does "e2fsck -fn /dev/md0" report?
+
+Since the journal inode (as well as the root inode) have been zeroed out 
+in the resize process it exits
+immediately with:
+e2fsck 1.42.13 (17-May-2015)
+ext2fs_check_desc: Corrupt group descriptor: bad block for inode table
+e2fsck: Group descriptors look bad... trying backup blocks...
+Superblock has an invalid journal (inode 8).
+Clear? no
+
+e2fsck: Illegal inode number while checking ext3 journal for /dev/md0
+
+/dev/md0: ********** WARNING: Filesystem still has errors **********
+#
+
+
+
+I built the v1.42.13 tag with the fatal error removed hoping it would 
+continue and I ended up with:
+# ./e2fsck/e2fsck -fn /dev/md0
+e2fsck 1.42.13 (17-May-2015)
+ext2fs_check_desc: Corrupt group descriptor: bad block for inode table
+./e2fsck/e2fsck: Group descriptors look bad... trying backup blocks...
+Superblock has an invalid journal (inode 8).
+Clear? no
+
+./e2fsck/e2fsck: Illegal inode number while checking ext3 journal for 
+/dev/md0
+Resize inode not valid.  Recreate? no
+....
+
+Many hours later I checked the progress as it had not completed and it 
+was still utilizing
+100% of one core:
+25544 root      20   0   78208  70700   2424 R  93.8  0.3 791:14.82 e2fsck
+
+iotop/iostat indicated no significant disk activity on the device in 
+question. I have not had time yet
+to debug where it was stuck. An e2fsck -fn on that device, when it was 
+still healthy, would typically
+take an hour or two, not 10+ h.
+
 >
-> I will collect some info about jbd2 and get back to this list.
+> Hopefully "e2fsck -fy /dev/md0" will fix things for you, but if you
+> haven't made backups, we should be careful before we move forward.
 >
-> To answer your questions, our workload is mostly sequential writes fr=
-om a couple of daemons.
-> Every second, we will create 6 to 10 files, and write around 8M bytes=
- into them. We only
-> do extend or truncate when needed, but I am sure we rarely do this on=
- NVMe devices.
+> 							- Ted
 >
-> Reading the kernel document, I also see ext4 ordered option will comb=
-ine metadata and data blocks
-> for journaling. If the data block is big, and the workload is heavy, =
-will JBD2 be soaked?
->
-> Thanks,
->
-> Roy
->
-> ----------------------------------------
->> Date: Wed, 12 Aug 2015 14:37:50 -0400
->> From: tytso@mit.edu
->> To: bsdnet@outlook.com
->> CC: linux-ext4@vger.kernel.org
->> Subject: Re: fsync stuck at jbd2_log_wait_commit on NVMe devices
->>
->> Hi Roy,
->>
->> My suggestion is to collect information from the jbd2_run_stats and
->> jbd2_checkpoint_stats tracepoints.
->>
->> cd /sys/kernel/debug/tracing
->> echo 1> events/jbd2/jbd2_run_stats/enable
->> echo 1> events/jbd2/jbd2_checkpoint_stats/enable
->> cat trace_pipe> /tmp/traces &
->> tail -f /tmp/traces
->>
->> The jbd2_handle_stats tracepoint can be informative, but it's also f=
-ar
->> more voluminous.
->>
->> That will give us a hint where things are getting bottlenecked.
->>
->> What sort of workload is your application doing? Is it just primaril=
-y
->> doing random writes into a preallocated file? Is it creating or
->> deleting files? Extending or truncating files? etc.
->>
->> - Ted
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
-" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at http://vger.kernel.org/majordomo-info.html
- 		 	   		  --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I have backups of the most important things, but before trying something 
+that actually modifies
+the fs I would like to do as thorough analysis as I can of what happened 
+in order to avoid repeats
+for myself and others as I believe there is a bug in at least one of the 
+e2fsprogs that allowed for this
+to happen.
+
+thanks,
+-johan
+
