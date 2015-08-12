@@ -1,40 +1,41 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: fsync stuck at jbd2_log_wait_commit on NVMe devices
-Date: Wed, 12 Aug 2015 14:37:50 -0400
-Message-ID: <20150812183750.GB3373@thunk.org>
-References: <COL130-W652BF73D365EBB4F3DDF69D67E0@phx.gbl>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 102731] I have a cough.
+Date: Wed, 12 Aug 2015 18:53:17 +0000
+Message-ID: <bug-102731-13602-k8oMHcziu2@https.bugzilla.kernel.org/>
+References: <bug-102731-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Roy Yang <bsdnet@outlook.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55372 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.29.136]:43587 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751137AbbHLShw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Aug 2015 14:37:52 -0400
-Content-Disposition: inline
-In-Reply-To: <COL130-W652BF73D365EBB4F3DDF69D67E0@phx.gbl>
+	id S1750771AbbHLSxU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Aug 2015 14:53:20 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 3F798205B3
+	for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2015 18:53:19 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id BE25B2052D
+	for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2015 18:53:17 +0000 (UTC)
+In-Reply-To: <bug-102731-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Roy,
+https://bugzilla.kernel.org/show_bug.cgi?id=102731
 
-My suggestion is to collect information from the jbd2_run_stats and
-jbd2_checkpoint_stats tracepoints.
+Theodore Tso <tytso@mit.edu> changed:
 
-cd /sys/kernel/debug/tracing
-echo 1 > events/jbd2/jbd2_run_stats/enable
-echo 1 > events/jbd2/jbd2_checkpoint_stats/enable
-cat trace_pipe > /tmp/traces &
-tail -f /tmp/traces
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
 
-The jbd2_handle_stats tracepoint can be informative, but it's also far
-more voluminous.
+--- Comment #4 from Theodore Tso <tytso@mit.edu> ---
+Can you upload your kernel .config file so I can try to replicate your
+environment as closely as possible?
 
-That will give us a hint where things are getting bottlenecked.
+-- Ted
 
-What sort of workload is your application doing?  Is it just primarily
-doing random writes into a preallocated file?  Is it creating or
-deleting files?  Extending or truncating files?   etc.
-
-	 	 	      		 - Ted
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
