@@ -1,50 +1,63 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: fsync stuck at jbd2_log_wait_commit on NVMe devices
-Date: Thu, 13 Aug 2015 09:09:53 -0400
-Message-ID: <20150813130953.GA26095@thunk.org>
-References: <COL130-W652BF73D365EBB4F3DDF69D67E0@phx.gbl>
- <20150812183750.GB3373@thunk.org>
- <COL130-W95F37DFE0CBD0ED0680AABD67E0@phx.gbl>
- <COL130-W3988F47C3C020C3E2D5C38D67E0@phx.gbl>
- <20150812223456.GC3373@thunk.org>
- <COL130-W737C0A6D747C8E035546EED67E0@phx.gbl>
+Subject: Re: resize2fs: Should never happen: resize inode corrupt! - lost key
+ inodes
+Date: Thu, 13 Aug 2015 09:27:16 -0400
+Message-ID: <20150813132716.GB26095@thunk.org>
+References: <55CA3BDE.7020401@harvyl.se>
+ <20150811224718.GD20658@thunk.org>
+ <55CBC212.6000507@harvyl.se>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Roy Yang <bsdnet@outlook.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Johan Harvyl <johan@harvyl.se>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:56712 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:56751 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751692AbbHMNJ4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 Aug 2015 09:09:56 -0400
+	id S1752371AbbHMN1S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Aug 2015 09:27:18 -0400
 Content-Disposition: inline
-In-Reply-To: <COL130-W737C0A6D747C8E035546EED67E0@phx.gbl>
+In-Reply-To: <55CBC212.6000507@harvyl.se>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 12, 2015 at 04:34:17PM -0700, Roy Yang wrote:
-> Hi Ted,=A0
->=20
-> =A0 =A0Appreciate your time, and will get the log from normal work lo=
-ad.
->=20
-> =A0 =A0BTW, the previous JBD2 log is from the node which is in bad st=
-ate.=A0
-> =A0 Normal node finish within 3 seconds; while on this node, it takes=
- 10 seconds.
+On Thu, Aug 13, 2015 at 12:00:50AM +0200, Johan Harvyl wrote:
 
-Ah, you didn't say that.
+> >I'm not aware of any offline resize with 1.42.13, but it sounds like
+> >you were originally using mke2fs and resize2fs 1.42.10, which did have
+> >some bugs, and so the question is what sort of might it might have
+> >left things.
+> What kind of bugs are we talking about, mke2fs? resize2fs? e2fsck? Any
+> specific commits of interest?
 
-If this is a node in a bad state, and we're not seeing any real delays
-from the jbd2 logs, then it sounds very much like the problem is a
-hardware issue (or maybe an NVMe device driver issue).  You might want
-to use blktrace to see how long the underlying I/O operations are
-taking to complete.
+I suspect it was caused by a bug in resize2fs 1.42.10.  The problem is
+that off-line resize2fs is much more powerful; it can handle moving
+file system metadata blocks around, so it can grow file systems in
+cases which aren't supported by online resize --- and it can shrink
+file systems when online resize doesn't support any kind of file
+system shrink.  As such, the code is a lot more complicated, whereas
+the online resize code is much simpler, and ultimately, much more
+robust.
+
+> Can you think of why it would zero out the first thousands of
+> inodes, like the root inode, lost+found and so on? I am thinking
+> that would help me assess the potential damage to the files. Could I
+> perhaps expect the same kind of zeroed out blocks at regular
+> intervals all over the device?
+
+I didn't realize that the first thousands of inodes had been zeroed;
+either you didn't mention this earier or I had missed that from your
+e-mail.  I suspect the resize inode before the resize was pretty
+terribly corrupted, but in a way that e2fsck didn't complain.
+
+I'll have to try to reproduce the problem based how you originally
+created and grew the file system and see if I can somehow reproduce
+the problem.  Obviously e2fsck and resize2fs should be changed to make
+this operation much more robust.  If you can tell me the exact
+original size (just under 16TB is probably good enough, but if you
+know the exact starting size, that might be helpful), and then steps
+by which the file system was grown, and which version of e2fsprogs was
+installed at the time, that would be quite helpful.
+
+Thanks,
 
 						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
