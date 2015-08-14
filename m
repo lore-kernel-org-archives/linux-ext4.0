@@ -1,115 +1,47 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [patch 1/2 v2] ext4: simplify some code in read_mmp_block()
-Date: Fri, 14 Aug 2015 11:03:46 -0600
-Message-ID: <6D4783E5-BFDB-42E0-800A-DFD18B3E7A64@dilger.ca>
-References: <20150814094701.GA14179@mwanda>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2102\))
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [Bug 101011] Kernel Oops when disconnecting a mounted ext4 usb
+ stick
+Date: Fri, 14 Aug 2015 14:39:31 -0400
+Message-ID: <20150814183931.GA3050@thunk.org>
+References: <bug-101011-11613@https.bugzilla.kernel.org/>
+ <bug-101011-11613-PGvplgVz20@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	kernel-janitors@vger.kernel.org
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Return-path: <kernel-janitors-owner@vger.kernel.org>
-In-Reply-To: <20150814094701.GA14179@mwanda>
-Sender: kernel-janitors-owner@vger.kernel.org
+Cc: linux-scsi@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Christoph Hellwig <hch@lst.de>
+To: bugzilla-daemon@bugzilla.kernel.org
+Return-path: <linux-scsi-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <bug-101011-11613-PGvplgVz20@https.bugzilla.kernel.org/>
+Sender: linux-scsi-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-
-> On Aug 14, 2015, at 3:47 AM, Dan Carpenter <dan.carpenter@oracle.com> wrote:
+On Fri, Aug 14, 2015 at 11:02:14AM +0000, bugzilla-daemon@bugzilla.kernel.org wrote:
+> https://bugzilla.kernel.org/show_bug.cgi?id=101011
 > 
-> My static check complains because we have:
-> 
-> 	if (!*bh)
-> 		return -ENOMEM;
-> 	if (*bh) {
-> 
-> The second check is unnecessary.
-> 
-> I've simplified this code by moving the "if (!*bh)" checks around.  Also
-> Andreas Dilger says we should probably print a warning if sb_getblk()
-> fails.
-> 
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+> I can also confirm that this bug is present in latest stable kernel (4.1.5) and
+> reverting commit from comment 6 seems to fix it.
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Christoph,
 
-> ---
-> v2: move the code around even more, add a warning message
-> 
-> diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-> index 8313ca3..0880ec9 100644
-> --- a/fs/ext4/mmp.c
-> +++ b/fs/ext4/mmp.c
-> @@ -69,6 +69,7 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
-> 			  ext4_fsblk_t mmp_block)
-> {
-> 	struct mmp_struct *mmp;
-> +	int ret;
-> 
-> 	if (*bh)
-> 		clear_buffer_uptodate(*bh);
-> @@ -76,25 +77,24 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
-> 	/* This would be sb_bread(sb, mmp_block), except we need to be sure
-> 	 * that the MD RAID device cache has been bypassed, and that the read
-> 	 * is not blocked in the elevator. */
-> -	if (!*bh)
-> +	if (!*bh) {
-> 		*bh = sb_getblk(sb, mmp_block);
-> -	if (!*bh)
-> -		return -ENOMEM;
-> -	if (*bh) {
-> -		get_bh(*bh);
-> -		lock_buffer(*bh);
-> -		(*bh)->b_end_io = end_buffer_read_sync;
-> -		submit_bh(READ_SYNC | REQ_META | REQ_PRIO, *bh);
-> -		wait_on_buffer(*bh);
-> -		if (!buffer_uptodate(*bh)) {
-> -			brelse(*bh);
-> -			*bh = NULL;
-> +		if (!*bh) {
-> +			ret = -ENOMEM;
-> +			goto warn_exit;
-> 		}
-> 	}
-> -	if (unlikely(!*bh)) {
-> -		ext4_warning(sb, "Error while reading MMP block %llu",
-> -			     mmp_block);
-> -		return -EIO;
-> +
-> +	get_bh(*bh);
-> +	lock_buffer(*bh);
-> +	(*bh)->b_end_io = end_buffer_read_sync;
-> +	submit_bh(READ_SYNC | REQ_META | REQ_PRIO, *bh);
-> +	wait_on_buffer(*bh);
-> +	if (!buffer_uptodate(*bh)) {
-> +		brelse(*bh);
-> +		*bh = NULL;
-> +		ret = -EIO;
-> +		goto warn_exit;
-> 	}
-> 
-> 	mmp = (struct mmp_struct *)((*bh)->b_data);
-> @@ -103,6 +103,10 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
-> 		return -EINVAL;
-> 
-> 	return 0;
-> +
-> +warn_exit:
-> +	ext4_warning(sb, "Error while reading MMP block %llu", mmp_block);
+I've since gotten two reports from users that reverting your commit:
+"08439fec266c3: ext4: remove block_device_ejected" fixes a crash when
+a USB stick is yanked from their system.  Looking at the reported
+stack dump, it looks like the crash is happening in
+account_page_dirtied() when it updates some bdi-specific statistics.
 
-It wouldn't be terrible to include the error in this message, but
-since it will also be returned to userspace it isn't critical.
+I haven't been paying attention to the recent changes in how bdi gets
+torn down after the device gets removed, and in fact finding the
+recent changes wasn't obvioius enough after doing a brief search, but
+it seems to me that if reverting this patch is making any kind of
+differences, then the assertion in the commit description:
 
-> +	return ret;
-> }
-> 
-> /*
+    bdi->dev now never goes away, so this function became useless.
 
+it implies that bdi->dev *does* become NULL, and checking for this is
+useful.  In any case, I don't see any harm in reverting this commit;
+what do you think?
 
-Cheers, Andreas
+Thanks,
 
-
-
-
-
+					- Ted
