@@ -1,20 +1,30 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [Bug 101011] Kernel Oops when disconnecting a mounted ext4 usb
-	stick
-Date: Sat, 15 Aug 2015 10:19:02 +0200
-Message-ID: <20150815081902.GA20587@lst.de>
-References: <bug-101011-11613@https.bugzilla.kernel.org/> <bug-101011-11613-PGvplgVz20@https.bugzilla.kernel.org/> <20150814183931.GA3050@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 101011] Kernel Oops when disconnecting a mounted ext4 usb stick
+Date: Sat, 15 Aug 2015 08:19:05 +0000
+Message-ID: <bug-101011-13602-ImjCg0ZXwJ@https.bugzilla.kernel.org/>
+References: <bug-101011-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, bugzilla-daemon@bugzilla.kernel.org,
-	linux-scsi@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Tejun Heo <tj@kernel.org>
-Return-path: <linux-scsi-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20150814183931.GA3050@thunk.org>
-Sender: linux-scsi-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:35843 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751324AbbHOITJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 15 Aug 2015 04:19:09 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id CB8162067D
+	for <linux-ext4@vger.kernel.org>; Sat, 15 Aug 2015 08:19:08 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 4007D20657
+	for <linux-ext4@vger.kernel.org>; Sat, 15 Aug 2015 08:19:06 +0000 (UTC)
+In-Reply-To: <bug-101011-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=101011
+
+--- Comment #9 from Christoph Hellwig <hch@lst.de> ---
 Hi Ted,
 
 
@@ -27,3 +37,7 @@ As I won't have time to look into it ASAP I'd suggest to revert my
 patch for now.  In the long run I really don't want to have these
 checks spread over file system so I plan to look into it once I
 get a few spare hours.
+
+-- 
+You are receiving this mail because:
+You are on the CC list for the bug.
