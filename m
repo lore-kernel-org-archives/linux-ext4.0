@@ -1,23 +1,30 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [Bug 101011] Kernel Oops when disconnecting a mounted ext4 usb
- stick
-Date: Sun, 16 Aug 2015 09:38:00 -0400
-Message-ID: <20150816133800.GC3825@thunk.org>
-References: <bug-101011-11613@https.bugzilla.kernel.org/>
- <bug-101011-11613-PGvplgVz20@https.bugzilla.kernel.org/>
- <20150814183931.GA3050@thunk.org>
- <20150815081902.GA20587@lst.de>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 101011] Kernel Oops when disconnecting a mounted ext4 usb stick
+Date: Sun, 16 Aug 2015 13:38:08 +0000
+Message-ID: <bug-101011-13602-Ut7OZbr8rk@https.bugzilla.kernel.org/>
+References: <bug-101011-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: bugzilla-daemon@bugzilla.kernel.org, linux-scsi@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Tejun Heo <tj@kernel.org>
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <linux-scsi-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20150815081902.GA20587@lst.de>
-Sender: linux-scsi-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:40011 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751697AbbHPNiM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 16 Aug 2015 09:38:12 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 99FE92060F
+	for <linux-ext4@vger.kernel.org>; Sun, 16 Aug 2015 13:38:10 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id BBD452054C
+	for <linux-ext4@vger.kernel.org>; Sun, 16 Aug 2015 13:38:08 +0000 (UTC)
+In-Reply-To: <bug-101011-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=101011
+
+--- Comment #10 from Theodore Tso <tytso@mit.edu> ---
 On Sat, Aug 15, 2015 at 10:19:02AM +0200, Christoph Hellwig wrote:
 > 
 > sorry for the delay - I saw the mail Jan Cc'ed me on yesterday.  After
@@ -35,4 +42,8 @@ Thanks, I'll revert the patch.
 I suspect we should add an ioctl to simulate a USB device unplug using
 the loopback block device, so we can add a test to xfstests.
 
-    	     	   	      	     	 - Ted
+                                            - Ted
+
+-- 
+You are receiving this mail because:
+You are on the CC list for the bug.
