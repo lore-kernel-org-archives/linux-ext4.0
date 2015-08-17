@@ -1,68 +1,91 @@
-From: Felipe Balbi <balbi@ti.com>
-Subject: Please revert 08439fec266c3cc5702953b4f54bdf5649357de0
-Date: Mon, 17 Aug 2015 14:45:03 -0500
-Message-ID: <20150817194502.GC16201@saruman.tx.rr.com>
-Reply-To: <balbi@ti.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] ext4: ratelimit the file system mounted message
+Date: Tue, 18 Aug 2015 09:07:52 +1000
+Message-ID: <20150817230752.GB3902@dastard>
+References: <1439665197-10766-1-git-send-email-tytso@mit.edu>
+ <20150817011215.GA714@dastard>
+ <20150817145056.GC27202@thunk.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="xesSdrSSBC0PokLI"
-Cc: Nishanth Menon <nm@ti.com>
-To: "Theodore Ts'o" <tytso@mit.edu>, Christoph Hellwig <hch@lst.de>,
-	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-	Greg KH <gregkh@linuxfoundation.org>, <stable@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Eryu Guan <eguan@redhat.com>, fstests@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: stable-owner@vger.kernel.org
+In-Reply-To: <20150817145056.GC27202@thunk.org>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
---xesSdrSSBC0PokLI
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+[cc fstests@vger.kernel.org as we are talking about the test rather
+than the kernel behaviour. ]
 
-Hi Theodore,
+On Mon, Aug 17, 2015 at 10:50:56AM -0400, Theodore Ts'o wrote:
+> On Mon, Aug 17, 2015 at 11:12:15AM +1000, Dave Chinner wrote:
+> > On Sat, Aug 15, 2015 at 02:59:57PM -0400, Theodore Ts'o wrote:
+> > > The xfstests ext4/305 will mount and unmount the same file system over
+> > > 4,000 times, and each one of these will cause a system log message.
+> > > Ratelimit this message since if we are getting more than a few dozen
+> > > of these messages, they probably aren't going to be helpful.
+> > 
+> > Perhaps you should look at fixing the test or making it a more
+> > targetted reproducer. Tests that do "loop doing something basic
+> > while looping doing something else basic for X minutes to try to
+> > trip a race condition" aren't very good regression tests....
+> 
+> The problem what we are specifically testing is a race where one
+> process is reading from a proc fs file while the file system is being
+> unmounted:
 
-as you already know, commit 08439fec266c (ext4: remove
-block_device_ejected) caused a regression for (at least) USB attached
-storage devices.
+*nod*. It's like trying to swat a fly with a sledge hammer: if you
+get lucky you might shave the fly, but most of the time you're going
+to miss.
 
-You provided a fix for the regression by reverting that commit in
-b9e43f49f672 (Revert "ext4: remove block_device_ejected"). This
-revert is, currently, on linux-next but broken commit is part of
-v4.1-final and, thus, part of v4.1 LTS.
+> I don't see a better way of doing the test off the top of my head,
+> though.... and to be honest I'm not sure how much value the test
+> really has, since it's the sort of thing that can easily be checked by
+> inspection, and it seems rather unlikely we would regress here.
 
-Could you please mark your revert for v4.1+ stable ? If it's not too
-late to get it in v4.2-final, that would be great, otherwise we a Cc
-stable would suffice anyway.
+Yup. A lot of regression tests get written to tick a process box
+(i.e. did we fix regression X?), not because they provide on-going
+value to prevent future regressions. I try to push back against
+tests that won't provide us with useful protection against future
+regressions....
 
-In summary, commit 08439fec266c needs to be reverted on both v4.1-stable
-and v4.2.
+FWIW, if we need to trigger a specific race in XFS for testing
+purposes we've historically added debug code to add a delay in the
+kernel code to allow the race condition to trigger. e.g.
+tests/xfs/051 pokes a sysfs entry that only exists on
+CONFIG_XFS_DEBUG=y builds to delay log recovery so that we can
+trigger IO errors via dm-flakey while log recovery is being
+performed.
 
-Thanks
+> BTW, out of curiosity I reverted 9559996 and tried running ext4/305
+> many times, on a variety of different VM's ranging from 1 to 8 CPU's,
+> and using both a SSD and a laptop HDD.
+> 
+> In all cases, ext3/305 reliably reproduced the failure within 30
+> mount/unmount cycles, and in most cases, under a dozen cycles.  (i.e.,
+> under two seconds, and usually in a fraction of a second).  So I'm not
+> entirely sure why the test was written to run the loop for 3 minutes
+> and thousands of mount/unmount cycles.
 
---=20
-balbi
+There were lots of tests being written at the time that used a 3
+minute timeout. It's another of those red flags that I tend to
+push back on these days, and this is an example of why - usually the
+problem can be hit very quickly, or the test is extremely unreliable
+and long runtime is the only way to trigger the race. Hence
+running for X minutes doesn't really prove anything....
 
---xesSdrSSBC0PokLI
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
+> Eryu, you wrote the test; any thoughts?  At the very least I'd suggest
+> cutting the test down so that it runs for at most 2 seconds, if for no
+> other reason than to speed up regression test runs.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
+Rather than time limiting, how about bounding the number of
+mount/unmount cycles?
 
-iQIcBAEBAgAGBQJV0jm+AAoJEIaOsuA1yqREuGoQAIe/3BQ7shjRXrmXwi++lrwL
-Cun+HBxVhUF59QAjIPWDUmoLKKocr0ooHruocOTSUzr+YKmX+FtXiZQSrC7rm4br
-QgCHbB/kR2m4yo87iCkLg43B8KD4xaDs4nvYwy2gunHPQvBDPAcxJWFODCWthZ4v
-DKB3YR7bbzo6qc8ZwFXjnM8iSNE8EegthMlDBZEeI/Lg2HxsRZGL8yn9x+o+rkWW
-T77KoIw1ciMUgiUqQz/zsdufX7qMrKX13n9vMTNyA+VIWhCCEw1y64ML79O+1UXV
-DdgWgsc+wYxSBjzOCvvOOOIbX4/3ZywCHRt8zKkgW4Krn/kOuiKPNWWAoAUnHZAK
-JEfPtup8kkY35GPwCP96deRMpGrdIe4kYI+EYs32l3KiwWIMezO+ZVN66YBSw2iq
-I/MTrPOSLYIIXAKhPDMJxQG7Xe0gYRX/16J0YyV1uMuZfGASYqu9VVbyW3oTkXxD
-l9a10TEeYuyzWdvvmJeqUwBDkxlUH+V9s//rgoxmr2/vBShtfwd73gtWMNGnCkHn
-69OhXaEuVlIj/qXHTbegcHCtR8rKPJCOx74Z33bfIRvfzxZ+QPurXTAAFPI0i3J+
-f3ZXbQ4xNG5ymJwkOrQDPy4sILdOwNAGDXoTp0FTrclGwAqCxSfBYjLRXX7hnU7f
-k72VgEKhHEg4nJfLXsu8
-=w3aw
------END PGP SIGNATURE-----
+Cheers,
 
---xesSdrSSBC0PokLI--
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
