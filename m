@@ -1,49 +1,37 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 101011] Kernel Oops when disconnecting a mounted ext4 usb stick
-Date: Sun, 16 Aug 2015 13:38:08 +0000
-Message-ID: <bug-101011-13602-Ut7OZbr8rk@https.bugzilla.kernel.org/>
-References: <bug-101011-13602@https.bugzilla.kernel.org/>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] ext4: ratelimit the file system mounted message
+Date: Mon, 17 Aug 2015 11:12:15 +1000
+Message-ID: <20150817011215.GA714@dastard>
+References: <1439665197-10766-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:40011 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751697AbbHPNiM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 16 Aug 2015 09:38:12 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 99FE92060F
-	for <linux-ext4@vger.kernel.org>; Sun, 16 Aug 2015 13:38:10 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id BBD452054C
-	for <linux-ext4@vger.kernel.org>; Sun, 16 Aug 2015 13:38:08 +0000 (UTC)
-In-Reply-To: <bug-101011-13602@https.bugzilla.kernel.org/>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:50132 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752634AbbHQBNU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 16 Aug 2015 21:13:20 -0400
+Content-Disposition: inline
+In-Reply-To: <1439665197-10766-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=101011
+On Sat, Aug 15, 2015 at 02:59:57PM -0400, Theodore Ts'o wrote:
+> The xfstests ext4/305 will mount and unmount the same file system over
+> 4,000 times, and each one of these will cause a system log message.
+> Ratelimit this message since if we are getting more than a few dozen
+> of these messages, they probably aren't going to be helpful.
 
---- Comment #10 from Theodore Tso <tytso@mit.edu> ---
-On Sat, Aug 15, 2015 at 10:19:02AM +0200, Christoph Hellwig wrote:
-> 
-> sorry for the delay - I saw the mail Jan Cc'ed me on yesterday.  After
-> my changes it should not go away and I had tested the original eject
-> test that it indeed didn't.  Either I forgot a case, or the major
-> writeback Tejun did a little later regressed it.
-> 
-> As I won't have time to look into it ASAP I'd suggest to revert my
-> patch for now.  In the long run I really don't want to have these
-> checks spread over file system so I plan to look into it once I
-> get a few spare hours.
+Perhaps you should look at fixing the test or making it a more
+targetted reproducer. Tests that do "loop doing something basic
+while looping doing something else basic for X minutes to try to
+trip a race condition" aren't very good regression tests....
 
-Thanks, I'll revert the patch.
+Cheers,
 
-I suspect we should add an ioctl to simulate a USB device unplug using
-the loopback block device, so we can add a test to xfstests.
-
-                                            - Ted
-
+Dave.
 -- 
-You are receiving this mail because:
-You are on the CC list for the bug.
+Dave Chinner
+david@fromorbit.com
