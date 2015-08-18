@@ -1,148 +1,77 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [RFC -v2 7/8] btrfs: Prevent from early transaction abort
-Date: Tue, 18 Aug 2015 13:01:52 +0200
-Message-ID: <20150818110151.GI5033@dhcp22.suse.cz>
-References: <1438768284-30927-1-git-send-email-mhocko@kernel.org>
- <1438768284-30927-8-git-send-email-mhocko@kernel.org>
- <20150818104031.GF5033@dhcp22.suse.cz>
+From: Felipe Balbi <balbi@ti.com>
+Subject: Re: Please revert 08439fec266c3cc5702953b4f54bdf5649357de0
+Date: Tue, 18 Aug 2015 10:19:19 -0500
+Message-ID: <20150818151919.GE9143@saruman.tx.rr.com>
+References: <20150817194502.GC16201@saruman.tx.rr.com>
+ <20150818005437.GA7535@thunk.org>
+Reply-To: <balbi@ti.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-	Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Jan Kara <jack@suse.cz>
-To: LKML <linux-kernel@vger.kernel.org>
-Return-path: <owner-linux-mm@kvack.org>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="RpqchZ26BWispMcB"
+To: "Theodore Ts'o" <tytso@mit.edu>, Felipe Balbi <balbi@ti.com>,
+	Christoph Hellwig <hch@lst.de>, <linux-ext4@vger.kernel.org>,
+	<linux-kernel@vger.kernel.org>,
+	Greg KH <gregkh@linuxfoundation.org>, <stable@vger.kernel.org>,
+	Nishanth Menon <nm@ti.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20150818104031.GF5033@dhcp22.suse.cz>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <20150818005437.GA7535@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 18-08-15 12:40:31, Michal Hocko wrote:
-[...]
-> @@ -4867,9 +4865,7 @@ struct extent_buffer *alloc_extent_buffer(struct btrfs_fs_info *fs_info,
->  		return NULL;
->  
->  	for (i = 0; i < num_pages; i++, index++) {
-> -		p = find_or_create_page(mapping, index, GFP_NOFS);
-> -		if (!p)
-> -			goto free_eb;
-> +		p = find_or_create_page(mapping, index, GFP_NOFS|__GFP_NOFAIL);
->  
->  		spin_lock(&mapping->private_lock);
->  		if (PagePrivate(p)) {
+--RpqchZ26BWispMcB
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Same here. find_or_create_page might return NULL.
----
->From f430e5f54367b8815e1099f26fedd2873b597a07 Mon Sep 17 00:00:00 2001
-From: Michal Hocko <mhocko@suse.com>
-Date: Wed, 15 Jul 2015 19:27:06 +0200
-Subject: [PATCH] btrfs: Prevent from early transaction abort
+On Mon, Aug 17, 2015 at 08:54:37PM -0400, Theodore Ts'o wrote:
+> On Mon, Aug 17, 2015 at 02:45:03PM -0500, Felipe Balbi wrote:
+> > Hi Theodore,
+> >=20
+> > as you already know, commit 08439fec266c (ext4: remove
+> > block_device_ejected) caused a regression for (at least) USB attached
+> > storage devices.
+> >=20
+> > You provided a fix for the regression by reverting that commit in
+> > b9e43f49f672 (Revert "ext4: remove block_device_ejected"). This
+> > revert is, currently, on linux-next but broken commit is part of
+> > v4.1-final and, thus, part of v4.1 LTS.
+> >=20
+> > Could you please mark your revert for v4.1+ stable ? If it's not too
+> > late to get it in v4.2-final, that would be great, otherwise we a Cc
+> > stable would suffice anyway.
+> >=20
+> > In summary, commit 08439fec266c needs to be reverted on both v4.1-stable
+> > and v4.2.
+>=20
+> Already done.  See the latest version of the dev branch.  I noticed
+> this morning that I needed to mark it for stable, and took care of it.
 
-Btrfs relies on GFP_NOFS allocation when commiting the transaction but
-since "mm: page_alloc: do not lock up GFP_NOFS allocations upon OOM"
-those allocations are allowed to fail which can lead to a pre-mature
-transaction abort:
+cool, thanks
 
-[   55.328093] Call Trace:
-[   55.328890]  [<ffffffff8154e6f0>] dump_stack+0x4f/0x7b
-[   55.330518]  [<ffffffff8108fa28>] ? console_unlock+0x334/0x363
-[   55.332738]  [<ffffffff8110873e>] __alloc_pages_nodemask+0x81d/0x8d4
-[   55.334910]  [<ffffffff81100752>] pagecache_get_page+0x10e/0x20c
-[   55.336844]  [<ffffffffa007d916>] alloc_extent_buffer+0xd0/0x350 [btrfs]
-[   55.338973]  [<ffffffffa0059d8c>] btrfs_find_create_tree_block+0x15/0x17 [btrfs]
-[   55.341329]  [<ffffffffa004f728>] btrfs_alloc_tree_block+0x18c/0x405 [btrfs]
-[   55.343566]  [<ffffffffa003fa34>] split_leaf+0x1e4/0x6a6 [btrfs]
-[   55.345577]  [<ffffffffa0040567>] btrfs_search_slot+0x671/0x831 [btrfs]
-[   55.347679]  [<ffffffff810682d7>] ? get_parent_ip+0xe/0x3e
-[   55.349434]  [<ffffffffa0041cb2>] btrfs_insert_empty_items+0x5d/0xa8 [btrfs]
-[   55.351681]  [<ffffffffa004ecfb>] __btrfs_run_delayed_refs+0x7a6/0xf35 [btrfs]
-[   55.353979]  [<ffffffffa00512ea>] btrfs_run_delayed_refs+0x6e/0x226 [btrfs]
-[   55.356212]  [<ffffffffa0060e21>] ? start_transaction+0x192/0x534 [btrfs]
-[   55.358378]  [<ffffffffa0060e21>] ? start_transaction+0x192/0x534 [btrfs]
-[   55.360626]  [<ffffffffa0060221>] btrfs_commit_transaction+0x4c/0xaba [btrfs]
-[   55.362894]  [<ffffffffa0060e21>] ? start_transaction+0x192/0x534 [btrfs]
-[   55.365221]  [<ffffffffa0073428>] btrfs_sync_file+0x29c/0x310 [btrfs]
-[   55.367273]  [<ffffffff81186808>] vfs_fsync_range+0x8f/0x9e
-[   55.369047]  [<ffffffff81186833>] vfs_fsync+0x1c/0x1e
-[   55.370654]  [<ffffffff81186869>] do_fsync+0x34/0x4e
-[   55.372246]  [<ffffffff81186ab3>] SyS_fsync+0x10/0x14
-[   55.373851]  [<ffffffff81554f97>] system_call_fastpath+0x12/0x6f
-[   55.381070] BTRFS: error (device hdb1) in btrfs_run_delayed_refs:2821: errno=-12 Out of memory
-[   55.382431] BTRFS warning (device hdb1): Skipping commit of aborted transaction.
-[   55.382433] BTRFS warning (device hdb1): cleanup_transaction:1692: Aborting unused transaction(IO failure).
-[   55.384280] ------------[ cut here ]------------
-[   55.384312] WARNING: CPU: 0 PID: 3010 at fs/btrfs/delayed-ref.c:438 btrfs_select_ref_head+0xd9/0xfe [btrfs]()
-[...]
-[   55.384337] Call Trace:
-[   55.384353]  [<ffffffff8154e6f0>] dump_stack+0x4f/0x7b
-[   55.384357]  [<ffffffff8107f717>] ? down_trylock+0x2d/0x37
-[   55.384359]  [<ffffffff81046977>] warn_slowpath_common+0xa1/0xbb
-[   55.384398]  [<ffffffffa00a1d6b>] ? btrfs_select_ref_head+0xd9/0xfe [btrfs]
-[   55.384400]  [<ffffffff81046a34>] warn_slowpath_null+0x1a/0x1c
-[   55.384423]  [<ffffffffa00a1d6b>] btrfs_select_ref_head+0xd9/0xfe [btrfs]
-[   55.384446]  [<ffffffffa004e5f7>] ? __btrfs_run_delayed_refs+0xa2/0xf35 [btrfs]
-[   55.384455]  [<ffffffffa004e600>] __btrfs_run_delayed_refs+0xab/0xf35 [btrfs]
-[   55.384476]  [<ffffffffa00512ea>] btrfs_run_delayed_refs+0x6e/0x226 [btrfs]
-[   55.384499]  [<ffffffffa0060e21>] ? start_transaction+0x192/0x534 [btrfs]
-[   55.384521]  [<ffffffffa0060e21>] ? start_transaction+0x192/0x534 [btrfs]
-[   55.384543]  [<ffffffffa0060221>] btrfs_commit_transaction+0x4c/0xaba [btrfs]
-[   55.384565]  [<ffffffffa0060e21>] ? start_transaction+0x192/0x534 [btrfs]
-[   55.384588]  [<ffffffffa0073428>] btrfs_sync_file+0x29c/0x310 [btrfs]
-[   55.384591]  [<ffffffff81186808>] vfs_fsync_range+0x8f/0x9e
-[   55.384592]  [<ffffffff81186833>] vfs_fsync+0x1c/0x1e
-[   55.384593]  [<ffffffff81186869>] do_fsync+0x34/0x4e
-[   55.384594]  [<ffffffff81186ab3>] SyS_fsync+0x10/0x14
-[   55.384595]  [<ffffffff81554f97>] system_call_fastpath+0x12/0x6f
-[...]
-[   55.384608] ---[ end trace c29799da1d4dd621 ]---
-[   55.437323] BTRFS info (device hdb1): forced readonly
-[   55.438815] BTRFS info (device hdb1): delayed_refs has NO entry
+--=20
+balbi
 
-Fix this by reintroducing the no-fail behavior of this allocation path
-with the explicit __GFP_NOFAIL.
+--RpqchZ26BWispMcB
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
 
-Signed-off-by: Michal Hocko <mhocko@suse.com>
----
- fs/btrfs/extent_io.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
 
-diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
-index c374e1e71e5f..f4d6eea975d7 100644
---- a/fs/btrfs/extent_io.c
-+++ b/fs/btrfs/extent_io.c
-@@ -4607,9 +4607,7 @@ __alloc_extent_buffer(struct btrfs_fs_info *fs_info, u64 start,
- {
- 	struct extent_buffer *eb = NULL;
- 
--	eb = kmem_cache_zalloc(extent_buffer_cache, GFP_NOFS);
--	if (eb == NULL)
--		return NULL;
-+	eb = kmem_cache_zalloc(extent_buffer_cache, GFP_NOFS|__GFP_NOFAIL);
- 	eb->start = start;
- 	eb->len = len;
- 	eb->fs_info = fs_info;
-@@ -4867,7 +4865,7 @@ struct extent_buffer *alloc_extent_buffer(struct btrfs_fs_info *fs_info,
- 		return NULL;
- 
- 	for (i = 0; i < num_pages; i++, index++) {
--		p = find_or_create_page(mapping, index, GFP_NOFS);
-+		p = find_or_create_page(mapping, index, GFP_NOFS|__GFP_NOFAIL);
- 		if (!p)
- 			goto free_eb;
- 
--- 
-2.5.0
+iQIcBAEBAgAGBQJV00z3AAoJEIaOsuA1yqREPnoQAI0OLEYU8jJZQlOIQQSU7QG6
+AquOGkskaNQdJXNZ482UZmoynBaNaNx5NlY3Kip78MLa68GKbNACe3Og7PtRrZ+f
+sWjBPJyrh+NYUJneHnW5KA7RMKMD87HEphS/npHZTTMfc5imHrOHeJt7NTC3/yUx
+v8gIMFb4/+Sf0gih4yZrqYrHdRFIjCuV+eI4Zwup+xxRc+tPfIAxqVU0Oa8vNqNf
+8eyvpvYrkQhGeaXpNT8NT/XYpZ4b0Y/j3ecNi7AtEb0aBZfmEx5oZL7J254nTU6x
+bc+O+5Tqgrps61+WaKyq0UhE12/Eq+Vg0w2LtMIog4LQZzIMR4Fr07K48TOBOeTn
+6ESd4Rd/ij83ag9QhBKonIN8QlLCrouG2txOyLneisXsGYtQ+iSrFvoV5GU5L+TX
+JTVrNSnOA7p/0fRWdKjKSWjemGHeX5vzoR7UZHP+Z2FYz7wbx9hi3O8oNTlz/g/u
+X1k+8WXY0uG5x6vMo6XpOuaRcNA2Fm/mEwAIRepbk4XDu7RdlGQ+WExEavEDVikX
+d3xukPDHr7kq3pEWsrm3jBTxSptsc4aPStOGCIBejhN4j+T6E/5aTVXi1RcfnGtk
+96dLF5tNjwfI3tJp+dYzi4eo+BcujqIkQ+J2PXsRPxtLiKIcmHVa+HZzAPlCwxXj
+nzHqA5oVYNnyUWRRE6gm
+=Lfcs
+-----END PGP SIGNATURE-----
 
--- 
-Michal Hocko
-SUSE Labs
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+--RpqchZ26BWispMcB--
