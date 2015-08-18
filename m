@@ -1,77 +1,44 @@
-From: Felipe Balbi <balbi@ti.com>
-Subject: Re: Please revert 08439fec266c3cc5702953b4f54bdf5649357de0
-Date: Tue, 18 Aug 2015 10:19:19 -0500
-Message-ID: <20150818151919.GE9143@saruman.tx.rr.com>
-References: <20150817194502.GC16201@saruman.tx.rr.com>
- <20150818005437.GA7535@thunk.org>
-Reply-To: <balbi@ti.com>
+From: Chris Mason <clm@fb.com>
+Subject: Re: [RFC -v2 7/8] btrfs: Prevent from early transaction abort
+Date: Tue, 18 Aug 2015 13:11:44 -0400
+Message-ID: <20150818171144.GA5206@ret.DHCP.TheFacebook.com>
+References: <1438768284-30927-1-git-send-email-mhocko@kernel.org>
+ <1438768284-30927-8-git-send-email-mhocko@kernel.org>
+ <20150818104031.GF5033@dhcp22.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="RpqchZ26BWispMcB"
-To: "Theodore Ts'o" <tytso@mit.edu>, Felipe Balbi <balbi@ti.com>,
-	Christoph Hellwig <hch@lst.de>, <linux-ext4@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>,
-	Greg KH <gregkh@linuxfoundation.org>, <stable@vger.kernel.org>,
-	Nishanth Menon <nm@ti.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Cc: LKML <linux-kernel@vger.kernel.org>, <linux-mm@kvack.org>,
+        <linux-fsdevel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Tetsuo Handa
+	<penguin-kernel@I-love.SAKURA.ne.jp>,
+        Dave Chinner <david@fromorbit.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        <linux-btrfs@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+        Jan Kara <jack@suse.cz>
+To: Michal Hocko <mhocko@kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20150818005437.GA7535@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20150818104031.GF5033@dhcp22.suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
---RpqchZ26BWispMcB
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+On Tue, Aug 18, 2015 at 12:40:32PM +0200, Michal Hocko wrote:
+> From: Michal Hocko <mhocko@suse.com>
+> 
+> Btrfs relies on GFP_NOFS allocation when commiting the transaction but
+> since "mm: page_alloc: do not lock up GFP_NOFS allocations upon OOM"
+> those allocations are allowed to fail which can lead to a pre-mature
+> transaction abort:
 
-On Mon, Aug 17, 2015 at 08:54:37PM -0400, Theodore Ts'o wrote:
-> On Mon, Aug 17, 2015 at 02:45:03PM -0500, Felipe Balbi wrote:
-> > Hi Theodore,
-> >=20
-> > as you already know, commit 08439fec266c (ext4: remove
-> > block_device_ejected) caused a regression for (at least) USB attached
-> > storage devices.
-> >=20
-> > You provided a fix for the regression by reverting that commit in
-> > b9e43f49f672 (Revert "ext4: remove block_device_ejected"). This
-> > revert is, currently, on linux-next but broken commit is part of
-> > v4.1-final and, thus, part of v4.1 LTS.
-> >=20
-> > Could you please mark your revert for v4.1+ stable ? If it's not too
-> > late to get it in v4.2-final, that would be great, otherwise we a Cc
-> > stable would suffice anyway.
-> >=20
-> > In summary, commit 08439fec266c needs to be reverted on both v4.1-stable
-> > and v4.2.
->=20
-> Already done.  See the latest version of the dev branch.  I noticed
-> this morning that I needed to mark it for stable, and took care of it.
+I can either put the btrfs nofail ones on my pull for Linus, or you can
+add my sob and send as one unit.  Just let me know how you'd rather do
+it.
 
-cool, thanks
+-chris
 
---=20
-balbi
-
---RpqchZ26BWispMcB
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQIcBAEBAgAGBQJV00z3AAoJEIaOsuA1yqREPnoQAI0OLEYU8jJZQlOIQQSU7QG6
-AquOGkskaNQdJXNZ482UZmoynBaNaNx5NlY3Kip78MLa68GKbNACe3Og7PtRrZ+f
-sWjBPJyrh+NYUJneHnW5KA7RMKMD87HEphS/npHZTTMfc5imHrOHeJt7NTC3/yUx
-v8gIMFb4/+Sf0gih4yZrqYrHdRFIjCuV+eI4Zwup+xxRc+tPfIAxqVU0Oa8vNqNf
-8eyvpvYrkQhGeaXpNT8NT/XYpZ4b0Y/j3ecNi7AtEb0aBZfmEx5oZL7J254nTU6x
-bc+O+5Tqgrps61+WaKyq0UhE12/Eq+Vg0w2LtMIog4LQZzIMR4Fr07K48TOBOeTn
-6ESd4Rd/ij83ag9QhBKonIN8QlLCrouG2txOyLneisXsGYtQ+iSrFvoV5GU5L+TX
-JTVrNSnOA7p/0fRWdKjKSWjemGHeX5vzoR7UZHP+Z2FYz7wbx9hi3O8oNTlz/g/u
-X1k+8WXY0uG5x6vMo6XpOuaRcNA2Fm/mEwAIRepbk4XDu7RdlGQ+WExEavEDVikX
-d3xukPDHr7kq3pEWsrm3jBTxSptsc4aPStOGCIBejhN4j+T6E/5aTVXi1RcfnGtk
-96dLF5tNjwfI3tJp+dYzi4eo+BcujqIkQ+J2PXsRPxtLiKIcmHVa+HZzAPlCwxXj
-nzHqA5oVYNnyUWRRE6gm
-=Lfcs
------END PGP SIGNATURE-----
-
---RpqchZ26BWispMcB--
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
