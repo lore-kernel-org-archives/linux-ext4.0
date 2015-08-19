@@ -1,44 +1,27 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 103111] auto_da_alloc mount option not working
-Date: Wed, 19 Aug 2015 16:13:38 +0000
-Message-ID: <bug-103111-13602-YqaTeZcFnx@https.bugzilla.kernel.org/>
-References: <bug-103111-13602@https.bugzilla.kernel.org/>
+From: christain147@gmail.com
+Subject: Re:
+Date: Wed, 19 Aug 2015 07:01:18 -0600
+Message-ID: <20150819124832.32AEC5A7509__3245.3863685534$1440001322$gmane$org@mail.holatours.com>
+Reply-To: admin@ukchambs.co.uk
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: Recipients <christain147@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:43825 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751804AbbHSQNk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Aug 2015 12:13:40 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id CE265207BB
-	for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2015 16:13:39 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 6B368207B7
-	for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2015 16:13:38 +0000 (UTC)
-In-Reply-To: <bug-103111-13602@https.bugzilla.kernel.org/>
+Received: from mail.holatours.com ([190.167.194.126]:58579 "EHLO
+	mail.holatours.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751371AbbHSQTo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Aug 2015 12:19:44 -0400
+Content-Description: Mail message body
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=103111
+Good day,hoping you read this email and respond to me in good time.I do not intend to solicit for funds but  your time and energy in using my own resources to assist the less privileged.I am medically confined at the moment hence I request your indulgence.
+I will give you a comprehensive brief once I hear from you.
 
-Eric Sandeen <sandeen@redhat.com> changed:
+Please forward your response to my private email address:
+gudworks104@yahoo.com
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |sandeen@redhat.com
+Thanks and reply.
 
---- Comment #1 from Eric Sandeen <sandeen@redhat.com> ---
-2.6.39 is 4 years old at this point.  Have you tested upstream?
-
-> Actual results: File is having zero-length after abnormal reboot(power outage).
-
-How long after your sample code runs do you cut the power?
-
-Which "file?"  Do you see "example.txt" or "example.txt1" post-reboot?
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Robert Grondahl
