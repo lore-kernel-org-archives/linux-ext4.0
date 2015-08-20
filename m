@@ -1,41 +1,202 @@
-From: Mark Singer <MSinger@napavalley.edu>
-Subject: (unknown)
-Date: Thu, 20 Aug 2015 00:12:49 -0700
-Message-ID: <66EA9C2C53B30B46B1D28150E6EB8FB5015BB1A6902C__30401.6695743941$1440055218$gmane$org@mail.napavalley.edu>
+From: Steve French <smfrench@gmail.com>
+Subject: Re: [PATCH V1 Resend 07/10] fs: Drop unlikely before IS_ERR(_OR_NULL)
+Date: Thu, 20 Aug 2015 11:08:53 -0500
+Message-ID: <CAH2r5mvUC2WO6sVqhe_QCgiCJbRbahDsSj=-Uzk7LB_peTqjLQ@mail.gmail.com>
+References: <cover.1439375087.git.viresh.kumar@linaro.org> <2efb962cb72884f625116cba24fc4fb203c6621f.1439375087.git.viresh.kumar@linaro.org>
+ <20150812142815.27968b32@tlielax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: unlisted-recipients:; (no To-header on input)
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.napavalley.edu ([209.129.252.13]:17286 "EHLO
-	mail.napavalley.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751161AbbHTHSU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Aug 2015 03:18:20 -0400
-Subject: 
-Content-Language: en-US
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: Viresh Kumar <viresh.kumar@linaro.org>,
+	Boaz Harrosh <ooo@electrozaur.com>,
+	=?UTF-8?Q?open_list=3ANFS=2C_Peng_Tao_=3Ctao=2Epeng=40primarydata=2Ecom=3E=2C_Petr_Van?=
+	 =?UTF-8?Q?drovec_=3Cpetr=40vandrovec=2Ename=3E=2C_samba=2Dtechnical=40lists=2Esamba=2Eor?=
+	 =?UTF-8?Q?g_moderated_list=3ACOMMON_INTERNET_FILE_SYSTEM_CIFS=2C_Steve_Fre?=
+	 =?UTF-8?Q?nch_=3Csfrench=40samba=2Eorg=3E=2C_Theodore_Ts=27o_=3Ctytso=40mit=2Eedu=3E=2C_Tom_?=
+	 =?UTF-8?Q?Haynes_=3Cloghyr=40primarydata=2Ecom=3E=2C_Trond_Myklebust_=3Ctrond=2Emykl?=
+	 =?UTF-8?Q?ebust=40primarydata=2Ecom=3E=2C_Tyler_Hicks_=3Ctyhicks=40canonical=2Ecom=3E=2C?=
+	 =?UTF-8?Q?_Weston_Andros_Adamson_=3Cdros=40primarydata=2Ecom=3E?=
+	<linux-nfs@vger.kernel.org>, linaro-kernel@lists.linaro.org,
+	Jiri Kosina <trivial@kernel.org>,
+	"open list:COMMON INTERNET FILE SYSTEM CIFS"
+	<linux-cifs@vger.kernel.org>,
+	"open list:ECRYPT FILE SYSTEM" <e
+To: Jeff Layton <jlayton@poochiereds.net>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20150812142815.27968b32@tlielax.poochiereds.net>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
+
+On Wed, Aug 12, 2015 at 1:28 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
+> On Wed, 12 Aug 2015 15:59:44 +0530
+> Viresh Kumar <viresh.kumar@linaro.org> wrote:
+>
+>> IS_ERR(_OR_NULL) already contain an 'unlikely' compiler flag and there
+>> is no need to do that again from its callers. Drop it.
+>>
+>> Reviewed-by: David Howells <dhowells@redhat.com>
+>> Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+>> ---
+>>  fs/cifs/readdir.c            | 2 +-
+>>  fs/ecryptfs/inode.c          | 2 +-
+>>  fs/ext4/extents.c            | 6 +++---
+>>  fs/ext4/namei.c              | 2 +-
+>>  fs/namei.c                   | 4 ++--
+>>  fs/ncpfs/dir.c               | 2 +-
+>>  fs/nfs/objlayout/objio_osd.c | 2 +-
+>>  fs/proc/proc_sysctl.c        | 2 +-
+>>  8 files changed, 11 insertions(+), 11 deletions(-)
+>>
+>> diff --git a/fs/cifs/readdir.c b/fs/cifs/readdir.c
+>> index b1eede3678a9..0557c45e9c33 100644
+>> --- a/fs/cifs/readdir.c
+>> +++ b/fs/cifs/readdir.c
+>> @@ -84,7 +84,7 @@ cifs_prime_dcache(struct dentry *parent, struct qstr *name,
+>>       cifs_dbg(FYI, "%s: for %s\n", __func__, name->name);
+>>
+>>       dentry = d_hash_and_lookup(parent, name);
+>> -     if (unlikely(IS_ERR(dentry)))
+>> +     if (IS_ERR(dentry))
+>>               return;
+>>
+>>       if (dentry) {
+>> diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+>> index 3c4db1172d22..e2e47ba5d313 100644
+>> --- a/fs/ecryptfs/inode.c
+>> +++ b/fs/ecryptfs/inode.c
+>> @@ -270,7 +270,7 @@ ecryptfs_create(struct inode *directory_inode, struct dentry *ecryptfs_dentry,
+>>
+>>       ecryptfs_inode = ecryptfs_do_create(directory_inode, ecryptfs_dentry,
+>>                                           mode);
+>> -     if (unlikely(IS_ERR(ecryptfs_inode))) {
+>> +     if (IS_ERR(ecryptfs_inode)) {
+>>               ecryptfs_printk(KERN_WARNING, "Failed to create file in"
+>>                               "lower filesystem\n");
+>>               rc = PTR_ERR(ecryptfs_inode);
+>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+>> index 2553aa8b608d..799f01714767 100644
+>> --- a/fs/ext4/extents.c
+>> +++ b/fs/ext4/extents.c
+>> @@ -899,7 +899,7 @@ ext4_find_extent(struct inode *inode, ext4_lblk_t block,
+>>
+>>               bh = read_extent_tree_block(inode, path[ppos].p_block, --i,
+>>                                           flags);
+>> -             if (unlikely(IS_ERR(bh))) {
+>> +             if (IS_ERR(bh)) {
+>>                       ret = PTR_ERR(bh);
+>>                       goto err;
+>>               }
+>> @@ -5792,7 +5792,7 @@ ext4_swap_extents(handle_t *handle, struct inode *inode1,
+>>               int split = 0;
+>>
+>>               path1 = ext4_find_extent(inode1, lblk1, NULL, EXT4_EX_NOCACHE);
+>> -             if (unlikely(IS_ERR(path1))) {
+>> +             if (IS_ERR(path1)) {
+>>                       *erp = PTR_ERR(path1);
+>>                       path1 = NULL;
+>>               finish:
+>> @@ -5800,7 +5800,7 @@ ext4_swap_extents(handle_t *handle, struct inode *inode1,
+>>                       goto repeat;
+>>               }
+>>               path2 = ext4_find_extent(inode2, lblk2, NULL, EXT4_EX_NOCACHE);
+>> -             if (unlikely(IS_ERR(path2))) {
+>> +             if (IS_ERR(path2)) {
+>>                       *erp = PTR_ERR(path2);
+>>                       path2 = NULL;
+>>                       goto finish;
+>> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+>> index 9f61e7679a6d..f12b277ad2af 100644
+>> --- a/fs/ext4/namei.c
+>> +++ b/fs/ext4/namei.c
+>> @@ -1429,7 +1429,7 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
+>>                               }
+>>                               num++;
+>>                               bh = ext4_getblk(NULL, dir, b++, 0);
+>> -                             if (unlikely(IS_ERR(bh))) {
+>> +                             if (IS_ERR(bh)) {
+>>                                       if (ra_max == 0) {
+>>                                               ret = bh;
+>>                                               goto cleanup_and_exit;
+>> diff --git a/fs/namei.c b/fs/namei.c
+>> index cacc51ddcf54..67d419e55547 100644
+>> --- a/fs/namei.c
+>> +++ b/fs/namei.c
+>> @@ -1942,7 +1942,7 @@ static int link_path_walk(const char *name, struct nameidata *nd)
+>>               if (err) {
+>>                       const char *s = get_link(nd);
+>>
+>> -                     if (unlikely(IS_ERR(s)))
+>> +                     if (IS_ERR(s))
+>>                               return PTR_ERR(s);
+>>                       err = 0;
+>>                       if (unlikely(!s)) {
+>> @@ -3430,7 +3430,7 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
+>>               return ERR_PTR(-ELOOP);
+>>
+>>       filename = getname_kernel(name);
+>> -     if (unlikely(IS_ERR(filename)))
+>> +     if (IS_ERR(filename))
+>>               return ERR_CAST(filename);
+>>
+>>       set_nameidata(&nd, -1, filename);
+>> diff --git a/fs/ncpfs/dir.c b/fs/ncpfs/dir.c
+>> index 93575e91a7aa..356816e7bc90 100644
+>> --- a/fs/ncpfs/dir.c
+>> +++ b/fs/ncpfs/dir.c
+>> @@ -597,7 +597,7 @@ ncp_fill_cache(struct file *file, struct dir_context *ctx,
+>>       qname.name = __name;
+>>
+>>       newdent = d_hash_and_lookup(dentry, &qname);
+>> -     if (unlikely(IS_ERR(newdent)))
+>> +     if (IS_ERR(newdent))
+>>               goto end_advance;
+>>       if (!newdent) {
+>>               newdent = d_alloc(dentry, &qname);
+>> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+>> index 5aaed363556a..5c0c6b58157f 100644
+>> --- a/fs/nfs/objlayout/objio_osd.c
+>> +++ b/fs/nfs/objlayout/objio_osd.c
+>> @@ -124,7 +124,7 @@ objio_alloc_deviceid_node(struct nfs_server *server, struct pnfs_device *pdev,
+>>
+>>  retry_lookup:
+>>       od = osduld_info_lookup(&odi);
+>> -     if (unlikely(IS_ERR(od))) {
+>> +     if (IS_ERR(od)) {
+>>               err = PTR_ERR(od);
+>>               dprintk("%s: osduld_info_lookup => %d\n", __func__, err);
+>>               if (err == -ENODEV && retry_flag) {
+>> diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
+>> index fdda62e6115e..fe5b6e6c4671 100644
+>> --- a/fs/proc/proc_sysctl.c
+>> +++ b/fs/proc/proc_sysctl.c
+>> @@ -948,7 +948,7 @@ static struct ctl_dir *get_subdir(struct ctl_dir *dir,
+>>  found:
+>>       subdir->header.nreg++;
+>>  failed:
+>> -     if (unlikely(IS_ERR(subdir))) {
+>> +     if (IS_ERR(subdir)) {
+>>               pr_err("sysctl could not get directory: ");
+>>               sysctl_print_dir(dir);
+>>               pr_cont("/%*.*s %ld\n",
+>
+> Looks fine to me. You can add:
+>
+>     Reviewed-by: Jeff Layton <jlayton@poochiereds.net>
+>
+> ...but the problem is that you have a patch here that touches several
+> different filesystems. You'll have to find someone willing to take it
+> into some overarching tree (Al's perhaps, or maybe Andrew's?), or break
+> it up into several per-fs patches and shepherd it into different
+> maintainers' trees.
+
+Reviewed-by: Steve French <smfrench@gmail.com>
+
+Do you want me to merge the fs/cifs part of this independently (into
+cifs-2.6.git staging tree) or are you going to merge all of this
+(which changes multiple fs) at one time through someone else's tree?
 
 
 
+-- 
+Thanks,
 
-Do you need an investor?
-Our investors fund project and business. We also give out loan/credit t=
-o any individual and company at 3% interest rate yearly. For more infor=
-mation, Contact us via Email: devonfps@gmail.com=20
-
-If you need an investor or quick funding, forward your response ONLY to=
- this E-mail: devonfps@gmail.com=20
-=2E...
-Haben Sie einen Investor brauchen?
-Unsere Investoren Fonds Projekt- und Gesch=E4fts. Wir geben auch Darleh=
-en / Kredite an jeden einzelnen und Unternehmen bei 3% Zinsen j=E4hrlic=
-h. F=FCr weitere Informationen, kontaktieren Sie uns per E-Mail: devonf=
-ps@gmail.com=20
-
-Wenn Sie ein Investor oder schnelle Finanzierung ben=F6tigen, senden Si=
-e Ihre Antwort nur auf diese E-mail: devonfps@gmail.com --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Steve
