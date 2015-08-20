@@ -1,34 +1,41 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 103111] auto_da_alloc mount option not working
-Date: Thu, 20 Aug 2015 05:54:04 +0000
-Message-ID: <bug-103111-13602-uzjJQAVTHN@https.bugzilla.kernel.org/>
-References: <bug-103111-13602@https.bugzilla.kernel.org/>
+From: Mark Singer <MSinger@napavalley.edu>
+Subject: (unknown)
+Date: Thu, 20 Aug 2015 00:12:49 -0700
+Message-ID: <66EA9C2C53B30B46B1D28150E6EB8FB5015BB1A6902C__30401.6695743941$1440055218$gmane$org@mail.napavalley.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:43532 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750714AbbHTFyI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Aug 2015 01:54:08 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 1C8672045A
-	for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2015 05:54:07 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id C5A772053A
-	for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2015 05:54:04 +0000 (UTC)
-In-Reply-To: <bug-103111-13602@https.bugzilla.kernel.org/>
+Received: from mail.napavalley.edu ([209.129.252.13]:17286 "EHLO
+	mail.napavalley.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751161AbbHTHSU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Aug 2015 03:18:20 -0400
+Subject: 
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=103111
 
---- Comment #4 from Rakesh <patelrakeshcomp@gmail.com> ---
-Created attachment 185311
-  --> https://bugzilla.kernel.org/attachment.cgi?id=185311&action=edit
-Sample code
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+
+Do you need an investor?
+Our investors fund project and business. We also give out loan/credit t=
+o any individual and company at 3% interest rate yearly. For more infor=
+mation, Contact us via Email: devonfps@gmail.com=20
+
+If you need an investor or quick funding, forward your response ONLY to=
+ this E-mail: devonfps@gmail.com=20
+=2E...
+Haben Sie einen Investor brauchen?
+Unsere Investoren Fonds Projekt- und Gesch=E4fts. Wir geben auch Darleh=
+en / Kredite an jeden einzelnen und Unternehmen bei 3% Zinsen j=E4hrlic=
+h. F=FCr weitere Informationen, kontaktieren Sie uns per E-Mail: devonf=
+ps@gmail.com=20
+
+Wenn Sie ein Investor oder schnelle Finanzierung ben=F6tigen, senden Si=
+e Ihre Antwort nur auf diese E-mail: devonfps@gmail.com --
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
