@@ -1,32 +1,28 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 103111] auto_da_alloc mount option not working
-Date: Fri, 21 Aug 2015 18:36:08 +0000
-Message-ID: <bug-103111-13602-8RMDqDhIuM@https.bugzilla.kernel.org/>
-References: <bug-103111-13602@https.bugzilla.kernel.org/>
+From: Maria-Elisabeth Schaeffler <ayazdani@fdsindia.co.in>
+Subject: FINANCIAL GIFT
+Date: Fri, 21 Aug 2015 20:41:24 +0200
+Message-ID: <20150821184304.8F56CB3CB6__44694.5054959089$1440185306$gmane$org@mail.ricohidc.com>
+Reply-To: mariaelisabethscha@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: Recipients <ayazdani@fdsindia.co.in>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:55014 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751344AbbHUSgM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Aug 2015 14:36:12 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 92AE520489
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Aug 2015 18:36:11 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 056B920495
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Aug 2015 18:36:09 +0000 (UTC)
-In-Reply-To: <bug-103111-13602@https.bugzilla.kernel.org/>
+Received: from mail.uniglobeatb.co.in ([103.16.140.19]:50717 "EHLO
+	mail.ricohidc.com" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
+	with ESMTP id S1752022AbbHUT04 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Aug 2015 15:26:56 -0400
+Content-Description: Mail message body
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=103111
+I intend to give to you a portion of my Wealth as a free-will financial donation to you. Respond now to partake.
 
---- Comment #9 from Rakesh <patelrakeshcomp@gmail.com> ---
-Ok Eric. I will check for v4.x.x and updates you.
+Regards
+Maria-Elisabeth Schaeffler
+Email:mariaelisabt@outlook.com
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+---
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
+
