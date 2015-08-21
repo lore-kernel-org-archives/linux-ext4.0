@@ -1,51 +1,54 @@
-From: Viresh Kumar <viresh.kumar-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org>
-Subject: Re: [PATCH V1 Resend 07/10] fs: Drop unlikely before IS_ERR(_OR_NULL)
-Date: Thu, 20 Aug 2015 21:44:16 +0530
-Message-ID: <20150820161416.GC4159@linux>
-References: <cover.1439375087.git.viresh.kumar@linaro.org>
- <2efb962cb72884f625116cba24fc4fb203c6621f.1439375087.git.viresh.kumar@linaro.org>
- <20150812142815.27968b32@tlielax.poochiereds.net>
- <CAH2r5mvUC2WO6sVqhe_QCgiCJbRbahDsSj=-Uzk7LB_peTqjLQ@mail.gmail.com>
+From: "Ki'Sak" <kisak42@gmail.com>
+Subject: Fwd: Bulk block to filename lookups on an incomplete dd copy
+Date: Thu, 20 Aug 2015 22:02:01 -0400
+Message-ID: <CAL=yMgUZyGSMKL88Li=fpcOYijSe1eC0G9nmuyPMGiapqpmkjA@mail.gmail.com>
+References: <CAL=yMgWXEqTj4ZAb2UdL8PCkeKjy=0mb95eVF+qukkOU=GF2Vw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	Boaz Harrosh <ooo-rh7Tgz9RNieUD9Wbbkgo/g@public.gmane.org>,
-	"open list:NFS, Peng Tao <tao.peng-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>, Petr Vandrovec
-	<petr-vPk2MGR0e28uaRcfnNAh7A@public.gmane.org>, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org moderated
-	list:COMMON INTERNET FILE SYSTEM CIFS, Steve French <sfrench-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>,
-	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Tom Haynes <loghyr-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>, Tyler Hicks
-	<tyhicks-Z7WLFzj8eWMS+FvcfC7Uqw@public.gmane.org>, Weston Andros Adamson <dros-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>"
-	<linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linaro-kernel-cunTk1MwBs8s++Sfvej+rw@public.gmane.org,
-	Jiri Kosina <trivial-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
-	"open list:COMMON INTERNET FILE SYSTEM CIFS"
-	<linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"open list:ECRYPT FILE SYSTEM" <ecryptfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>,
-	David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	"open list:FILESYSTEMS VFS and infrastructure"
-	<linux-fsde
-To: Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <CAH2r5mvUC2WO6sVqhe_QCgiCJbRbahDsSj=-Uzk7LB_peTqjLQ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-wi0-f173.google.com ([209.85.212.173]:37844 "EHLO
+	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752177AbbHUCCD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Aug 2015 22:02:03 -0400
+Received: by widdq5 with SMTP id dq5so4283295wid.0
+        for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2015 19:02:02 -0700 (PDT)
+In-Reply-To: <CAL=yMgWXEqTj4ZAb2UdL8PCkeKjy=0mb95eVF+qukkOU=GF2Vw@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 20-08-15, 11:08, Steve French wrote:
-> Reviewed-by: Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-> 
-> Do you want me to merge the fs/cifs part of this independently (into
-> cifs-2.6.git staging tree) or are you going to merge all of this
-> (which changes multiple fs) at one time through someone else's tree?
+Good day,
 
-The plan is to merge via Trivial tree, but the Maintainer isn't
-responding yet :)
+About a month ago I did an emergency dd copy of my 2TB home folder
+drive, which I was able to salvage about 2/3's of the contents before
+the source drive completely failed. In the post-mortum I have a
+separate recovery drive with untouched data from the incident and a
+replacement which is installed and in use. To mitigate spreading
+filesystem damage from the incomplete copy, I have rsync'd the
+contents from the recovery drive to the replacement drive.
 
--- 
-viresh
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+In the last week I've been looking into what is needed to generate a
+manifest of damaged files from a block range. For the most part, I
+have intact superblocks on the recovery drive and have been looking
+for a reliable method of finding what files were allocated to the
+uncopied area. Unfortunately, I am faced with an unreasonable initial
+need of scanning about 157 million 4k blocks. I'm looking at up to 40
+minutes to icheck 1000 blocks if all the blocks are empty. I have
+found that testb and the block bitmap are cheap, but is unreliable in
+my scenario, where some random samplings I did revealed the block not
+marked in use in the bitmap, but had inodes pointing to it.
+
+>From what I can tell, I'm hitting a slow path (high cpu) when there is
+an error with reading extents on empty blocks and was wondering if you
+had any insight into reducing the processing cost of icheck with empty
+block, which is averaging about 2.5 seconds or if I've missed
+something fundimental in my approach.
+
+I've thrown together a script at
+https://github.com/Tele42/ext4scan/blob/master/ext4scan.sh for
+posterity.
+
+Thank you for your time,
+Tele42
+
+PS. Sorry for double sending this to Mr. Ts'o.
