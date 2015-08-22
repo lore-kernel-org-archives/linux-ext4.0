@@ -1,28 +1,22 @@
-From: Maria-Elisabeth Schaeffler <ayazdani@fdsindia.co.in>
-Subject: FINANCIAL GIFT
-Date: Fri, 21 Aug 2015 20:41:24 +0200
-Message-ID: <20150821184304.8F56CB3CB6__44694.5054959089$1440185306$gmane$org@mail.ricohidc.com>
-Reply-To: mariaelisabethscha@gmail.com
+From: Tim Baumgarten <TBaumgarten@azgfd.gov>
+Subject: RE: Visa Debit Card Pay-Out
+Date: Sat, 22 Aug 2015 19:38:20 +0000
+Message-ID: <EEBC900A9D98E247AB5DC2033B31C6AF2FFB6507__20193.3071636178$1440272689$gmane$org@phx-exch-mb1.ad.gf.state.us>
+References: <EEBC900A9D98E247AB5DC2033B31C6AF2FF6C295@phx-exch-mb1.ad.gf.state.us>,<EEBC900A9D98E247AB5DC2033B31C6AF2FF8BECB@phx-exch-mb1.ad.gf.state.us>,<EEBC900A9D98E247AB5DC2033B31C6AF2FF8C2A6@phx-exch-mb1.ad.gf.state.us>,<EEBC900A9D98E247AB5DC2033B31C6AF2FF95E8B@phx-exch-mb1.ad.gf.state.us>,<EEBC900A9D98E247AB5DC2033B31C6AF2FF9C9F1@phx-exch-mb1.ad.gf.state.us>,<EEBC900A9D98E247AB5DC2033B31C6AF2FF9D6C4@phx-exch-mb1.ad.gf.state.us>,<EEBC900A9D98E247AB5DC2033B31C6AF2FFA1653@phx-exch-mb1.ad.gf.state.us>,<EEBC900A9D98E247AB5DC2033B31C6AF2FFA643A@phx-exch-mb1.ad.gf.state.us>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7BIT
-To: Recipients <ayazdani@fdsindia.co.in>
+To: Tim Baumgarten <TBaumgarten@azgfd.gov>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.uniglobeatb.co.in ([103.16.140.19]:50717 "EHLO
-	mail.ricohidc.com" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
-	with ESMTP id S1752022AbbHUT04 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Aug 2015 15:26:56 -0400
-Content-Description: Mail message body
+Received: from phx-ex2003.azgfd.gov ([159.87.24.3]:45360 "EHLO
+	phx-exch-hc1.ad.gf.state.us" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751330AbbHVTn1 convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 22 Aug 2015 15:43:27 -0400
+In-Reply-To: <EEBC900A9D98E247AB5DC2033B31C6AF2FFA643A@phx-exch-mb1.ad.gf.state.us>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I intend to give to you a portion of my Wealth as a free-will financial donation to you. Respond now to partake.
 
-Regards
-Maria-Elisabeth Schaeffler
-Email:mariaelisabt@outlook.com
-
----
-This email has been checked for viruses by Avast antivirus software.
-https://www.avast.com/antivirus
-
+Your name and email was randomly picked by Visa Debit Card Europe Inc. in our Barclay premier league 2015/2016 season prize pay-out promo. Please contact the Coordinator @barclaypremiershipinc2015@hotmail.com.
