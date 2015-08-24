@@ -1,51 +1,42 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [RFC 4/8] jbd, jbd2: Do not fail journal because of
- frozen_buffer allocation failure
-Date: Mon, 24 Aug 2015 14:06:04 +0200
-Message-ID: <20150824120604.GM17078@dhcp22.suse.cz>
-References: <1438768284-30927-1-git-send-email-mhocko@kernel.org>
- <1438768284-30927-5-git-send-email-mhocko@kernel.org>
- <xr93twsdwui3.fsf@gthelen.mtv.corp.google.com>
- <20150812091411.GB14940@dhcp22.suse.cz>
- <20150815135422.GA2976@thunk.org>
+From: Sander Smeenk <ssmeenk@freshdot.net>
+Subject: Re: ext4 metadata corruption bug bites again
+Date: Mon, 24 Aug 2015 15:14:06 +0200
+Message-ID: <20150824131406.GE20572@dot.dmz.freshdot.net>
+References: <20150821094534.GD20572@dot.dmz.freshdot.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Greg Thelen <gthelen@google.com>, LKML <linux-kernel@vger.kernel.org>,
-	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-	Dave Chinner <david@fromorbit.com>, linux-btrfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <owner-linux-mm@kvack.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from dot.freshdot.net ([213.154.236.176]:36189 "EHLO
+	dot.freshdot.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754136AbbHXNwS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Aug 2015 09:52:18 -0400
 Content-Disposition: inline
-In-Reply-To: <20150815135422.GA2976@thunk.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20150821094534.GD20572@dot.dmz.freshdot.net>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+Quoting Sander Smeenk (ssmeenk@freshdot.net):
 
-On Sat 15-08-15 09:54:22, Theodore Ts'o wrote:
-> On Wed, Aug 12, 2015 at 11:14:11AM +0200, Michal Hocko wrote:
-> > > Is this "if (!committed_data) {" check now dead code?
-> > > 
-> > > I also see other similar suspected dead sites in the rest of the series.
-> > 
-> > You are absolutely right. I have updated the patches.
-> 
-> Have you sent out an updated version of these patches?  Maybe I missed
-> it, but I don't think I saw them.
+> | [000d00h01m43s] EXT4-fs error (device vdb): ext4_mb_generate_buddy:757:
+> |   group 79842, block bitmap and bg descriptor inconsistent: 10073 vs 10071
+> |   free clusters
+> | [000d00h01m43s] Aborting journal on device vdb-8.
 
-would you be interested in these two patches sent with rephrased
-changelog to not depend on the patch which allows GFP_NOFS to fail? The
-way this has been handled for btrfs...
+Today it went again:
+
+[000d05h26m50s] EXT4-fs error (device vdb): ext4_mb_generate_buddy:757: group 45706, block bitmap and bg descriptor inconsistent: 1769 vs 1768 free clusters
+[000d05h26m50s] Aborting journal on device vdb-8.
+[000d05h26m50s] EXT4-fs (vdb): Remounting filesystem read-only
+[000d05h16m42s] EXT4-fs (vdb): pa ffff88003527fc30: logic 331144, phys.  1363269705, len 511
+[000d05h16m42s] EXT4-fs error (device vdb): ext4_mb_release_inode_pa:3772: group 41603, free 511, pa_free 507
+[000d05h16m42s] EXT4-fs (vdb): pa ffff88002ed668f0: logic 286160, phys.  1362907136, len 511
+[000d05h16m42s] EXT4-fs error (device vdb): ext4_mb_release_inode_pa:3772: group 41592, free 511, pa_free 503
+
+I'm now running 3.19.8-ckt4 with WARN_ON(1); inserted in the above
+mentioned error situations.
+
+-Sndr.
 -- 
-Michal Hocko
-SUSE Labs
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+| Do pilots take crash-courses?
+| 4096R/20CC6CD2 - 6D40 1A20 B9AA 87D4 84C7  FBD6 F3A9 9442 20CC 6CD2
