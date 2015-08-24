@@ -1,22 +1,55 @@
-From: Tim Baumgarten <TBaumgarten@azgfd.gov>
-Subject: RE: Visa Debit Card Pay-Out
-Date: Sat, 22 Aug 2015 19:38:20 +0000
-Message-ID: <EEBC900A9D98E247AB5DC2033B31C6AF2FFB6507__20193.3071636178$1440272689$gmane$org@phx-exch-mb1.ad.gf.state.us>
-References: <EEBC900A9D98E247AB5DC2033B31C6AF2FF6C295@phx-exch-mb1.ad.gf.state.us>,<EEBC900A9D98E247AB5DC2033B31C6AF2FF8BECB@phx-exch-mb1.ad.gf.state.us>,<EEBC900A9D98E247AB5DC2033B31C6AF2FF8C2A6@phx-exch-mb1.ad.gf.state.us>,<EEBC900A9D98E247AB5DC2033B31C6AF2FF95E8B@phx-exch-mb1.ad.gf.state.us>,<EEBC900A9D98E247AB5DC2033B31C6AF2FF9C9F1@phx-exch-mb1.ad.gf.state.us>,<EEBC900A9D98E247AB5DC2033B31C6AF2FF9D6C4@phx-exch-mb1.ad.gf.state.us>,<EEBC900A9D98E247AB5DC2033B31C6AF2FFA1653@phx-exch-mb1.ad.gf.state.us>,<EEBC900A9D98E247AB5DC2033B31C6AF2FFA643A@phx-exch-mb1.ad.gf.state.us>
+From: Karel Zak <kzak@redhat.com>
+Subject: Re: nolazytime remount
+Date: Mon, 24 Aug 2015 11:29:00 +0200
+Message-ID: <20150824092900.GN1689@ws.net.home>
+References: <20150819082144.GB1689@ws.net.home>
+ <20150819141516.GD8806@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: Tim Baumgarten <TBaumgarten@azgfd.gov>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from phx-ex2003.azgfd.gov ([159.87.24.3]:45360 "EHLO
-	phx-exch-hc1.ad.gf.state.us" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751330AbbHVTn1 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 22 Aug 2015 15:43:27 -0400
-In-Reply-To: <EEBC900A9D98E247AB5DC2033B31C6AF2FFA643A@phx-exch-mb1.ad.gf.state.us>
-Content-Language: en-US
+Received: from mx1.redhat.com ([209.132.183.28]:42283 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933605AbbHXJ3D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Aug 2015 05:29:03 -0400
+Content-Disposition: inline
+In-Reply-To: <20150819141516.GD8806@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Aug 19, 2015 at 02:15:16PM +0000, tytso@mit.edu wrote:
+> I *think* the number of people who would want to disable lazytime is
+> smaller, which why I made the decision that I did, so my thinking was
+> to leave it this way until the next version of Debian stable ships,
+> and then change the kernel to allow the newer versions of mount to
+> disable lazytime at that point.
 
-Your name and email was randomly picked by Visa Debit Card Europe Inc. in our Barclay premier league 2015/2016 season prize pay-out promo. Please contact the Coordinator @barclaypremiershipinc2015@hotmail.com.
+Yes, I think the long term solution is to support MS_LAZYTIME flags
+only and remove "[no]lazytime" strings from ext4 mount options parser.
+
+> I suppose I could set up make this be switchable, so people could
+> specify ext4.support_older_mount=1 on the boot command-line option,
+> but this seems really ugly, and then people would need to remember to
+> remove said ugly command-line option from their grub config file when
+> they update to a newer mount command.
+
+It seems like over-engineering to introduce another comman-line option
+to fix the current mount option. It would be better to keep it simple
+and stupid :-)
+
+If you want to make it configurable than use #ifdef and kconfig --
+then distros like Debian may enable the obsolete string-based
+"lazytime".
+
+I don't think we have to support all permutation without kernel
+recompilation, the important is to support generic use-cases and allow
+to distros to compose and distribute consistent stuff. The current
+situation when you have new kernel, new mount(8), but you cannot
+"-o remount,nolazytime" is bad.
+
+    Karel
+
+-- 
+ Karel Zak  <kzak@redhat.com>
+ http://karelzak.blogspot.com
