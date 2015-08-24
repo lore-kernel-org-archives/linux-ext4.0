@@ -1,55 +1,52 @@
-From: Karel Zak <kzak@redhat.com>
-Subject: Re: nolazytime remount
-Date: Mon, 24 Aug 2015 11:29:00 +0200
-Message-ID: <20150824092900.GN1689@ws.net.home>
-References: <20150819082144.GB1689@ws.net.home>
- <20150819141516.GD8806@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 103421] New: kernel panic during system resume
+Date: Mon, 24 Aug 2015 10:35:23 +0000
+Message-ID: <bug-103421-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42283 "EHLO mx1.redhat.com"
+Received: from mail.kernel.org ([198.145.29.136]:56018 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933605AbbHXJ3D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Aug 2015 05:29:03 -0400
-Content-Disposition: inline
-In-Reply-To: <20150819141516.GD8806@thunk.org>
+	id S1752649AbbHXKf0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Aug 2015 06:35:26 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 1C4D32071C
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Aug 2015 10:35:25 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 937672070C
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Aug 2015 10:35:23 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 19, 2015 at 02:15:16PM +0000, tytso@mit.edu wrote:
-> I *think* the number of people who would want to disable lazytime is
-> smaller, which why I made the decision that I did, so my thinking was
-> to leave it this way until the next version of Debian stable ships,
-> and then change the kernel to allow the newer versions of mount to
-> disable lazytime at that point.
+https://bugzilla.kernel.org/show_bug.cgi?id=103421
 
-Yes, I think the long term solution is to support MS_LAZYTIME flags
-only and remove "[no]lazytime" strings from ext4 mount options parser.
+            Bug ID: 103421
+           Summary: kernel panic during system resume
+           Product: File System
+           Version: 2.5
+    Kernel Version: kernel-4.1.5-200.fc22.x86_64
+          Hardware: x86-64
+                OS: Linux
+              Tree: Fedora
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: kparal@redhat.com
+        Regression: No
 
-> I suppose I could set up make this be switchable, so people could
-> specify ext4.support_older_mount=1 on the boot command-line option,
-> but this seems really ugly, and then people would need to remember to
-> remove said ugly command-line option from their grub config file when
-> they update to a newer mount command.
+Created attachment 185621
+  --> https://bugzilla.kernel.org/attachment.cgi?id=185621&action=edit
+kernel panic screenshot
 
-It seems like over-engineering to introduce another comman-line option
-to fix the current mount option. It would be better to keep it simple
-and stupid :-)
-
-If you want to make it configurable than use #ifdef and kconfig --
-then distros like Debian may enable the obsolete string-based
-"lazytime".
-
-I don't think we have to support all permutation without kernel
-recompilation, the important is to support generic use-cases and allow
-to distros to compose and distribute consistent stuff. The current
-situation when you have new kernel, new mount(8), but you cannot
-"-o remount,nolazytime" is bad.
-
-    Karel
+This kernel panic appeared on my screen during system resume. I'm using Fedora
+22. I contains many ext4 words, so I assumed it could be related to it. I had
+to hard reboot the system, not even sysrq worked (IIRC). I can't easily
+reproduce it.
 
 -- 
- Karel Zak  <kzak@redhat.com>
- http://karelzak.blogspot.com
+You are receiving this mail because:
+You are watching the assignee of the bug.
