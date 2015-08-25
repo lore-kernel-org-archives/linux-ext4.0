@@ -1,76 +1,52 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 103111] auto_da_alloc mount option not working
-Date: Tue, 25 Aug 2015 18:05:08 +0000
-Message-ID: <bug-103111-13602-p1cj6XgNGT@https.bugzilla.kernel.org/>
-References: <bug-103111-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: Running fsck of huge ext4 partition takes weeks
+Date: Tue, 25 Aug 2015 13:43:46 -0600
+Message-ID: <28A25D6A-DA5A-42D2-9BFE-9F6C95B51BE7@dilger.ca>
+References: <CAETWcfs0iLzwPmg-JY5B79rme+g0Zi2VMYoNHm+4_Pc_yRR-kQ@mail.gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org
+To: Alexander Afonyashin <a.afonyashin@madnet-team.ru>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:45206 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755561AbbHYSFN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Aug 2015 14:05:13 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id C462F20887
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2015 18:05:11 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 591382086C
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2015 18:05:09 +0000 (UTC)
-In-Reply-To: <bug-103111-13602@https.bugzilla.kernel.org/>
+Received: from mail-pa0-f54.google.com ([209.85.220.54]:34587 "EHLO
+	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755943AbbHYTnu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Aug 2015 15:43:50 -0400
+Received: by pabzx8 with SMTP id zx8so43018010pab.1
+        for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2015 12:43:49 -0700 (PDT)
+In-Reply-To: <CAETWcfs0iLzwPmg-JY5B79rme+g0Zi2VMYoNHm+4_Pc_yRR-kQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=103111
+On Aug 25, 2015, at 9:30 AM, Alexander Afonyashin <a.afonyashin@madnet-team.ru> wrote:
+> 
+> Hi,
+> 
+> Recently I had to run fsck on 47TB ext4 partition backed by hardware
+> RAID6 (LSI MegaRAID SAS 2108). Right now over 2 weeks passed but fsck
+> is not finished yet. It occupies 30GB RSS, almost 35GB VSS and eats
+> 100% of single CPU. It detected errors (and fixed them) but doesn't
+> finish yet.
+> 
+> Rescue disc is based on Debian 7.8.
+> kernel: 4.1.4-5
+> e2fsprogs: 1.42.5-1.1+deb7u1
+> 
+> Any suggestions?
 
---- Comment #11 from Eric Sandeen <sandeen@redhat.com> ---
-IOWS, it handles these two cases:
+Usually the only reason for e2fsck to run so long is because of
+duplicate block pass 1b/1c.
 
-fd = open("foo.new")
-write(fd,..)
-close(fd)
-rename("foo.new", "foo") // syncs out foo.new if it has delalloc blocks
+Having some of the actual output of e2fsck would allow us to give
+some useful advice.
 
-and
+The only thing I can offer is for you to run "strace -p <e2fsck_pid>"
+and/or "ltrace -p <e2fsck_pid>" to see what it is doing.
 
-fd = open("foo", O_TRUNC)
-write(fd,..)
-close(fd) // syncs out foo if "foo" had blocks prior to the O_TRUNC truncate
-
-Your testcase does this if foo.new doesn't already exist:
-
-fd = open("foo.new", O_TRUNC) // if foo.new has no blocks, O_TRUNC does nothing
-rename("foo.new", "foo") // foo.new has no delalloc blocks, does nothing
-write(fd)
-close(fd) 
-
-If "foo.new" does exist, 
-
-fd = open("foo.new", O_TRUNC) // if foo.new has blocks, sets da_alloc flag
-rename("foo.new", "foo") // foo.new has no delalloc blocks, does nothing
-write(fd)
-close(fd) // syncs out the data
-
-IOWS, if example.txt starts with allocated blocks, this:
-
-# rm example.txt1
-# echo foobar > example.txt
-# sync
-# ./testcase
-
-works as you hope, because testcase does:
-
-fd = open("example.txt", O_TRUNC) // example.txt has blocks, sets da_alloc flag
-rename("example.txt", "example.txt1") // "example.txt" no has delalloc blocks
-nothing happens
-write(fd) // now we have delalloc blocks
-close(fd) // syncs out the data
+Cheers, Andreas
 
 
-So it's not that the heuristic is broken; your testcase just doesn't
-necessarily meet the conditions of the heuristic.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+
+
