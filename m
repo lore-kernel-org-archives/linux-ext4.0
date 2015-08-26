@@ -1,1360 +1,1967 @@
 From: Jan Kara <jack@suse.com>
-Subject: [PATCH 14/21] mke2fs, tune2fs: Tests for handling reserved_inodes option
-Date: Wed, 26 Aug 2015 18:22:29 +0200
-Message-ID: <1440606156-5754-15-git-send-email-jack@suse.com>
+Subject: [PATCH 12/21] libext2fs: Bump default number of reserved inodes to 64
+Date: Wed, 26 Aug 2015 18:22:27 +0200
+Message-ID: <1440606156-5754-13-git-send-email-jack@suse.com>
 References: <1440606156-5754-1-git-send-email-jack@suse.com>
 Cc: Ted Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	Jan Kara <jack@suse.com>
+	Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33581 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:33574 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756953AbbHZQW5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1756951AbbHZQW5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 26 Aug 2015 12:22:57 -0400
 In-Reply-To: <1440606156-5754-1-git-send-email-jack@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Jan Kara <jack@suse.com>
----
- tests/m_reserved_inodes/expect.1             | 837 +++++++++++++++++++++++++++
- tests/m_reserved_inodes/script               |   7 +
- tests/t_reserved_inodes_decrease/expect      |  68 +++
- tests/t_reserved_inodes_decrease/name        |   1 +
- tests/t_reserved_inodes_decrease/script      |  71 +++
- tests/t_reserved_inodes_increase/expect      |  59 ++
- tests/t_reserved_inodes_increase/name        |   1 +
- tests/t_reserved_inodes_increase/script      |  71 +++
- tests/t_reserved_inodes_increase_csum/expect |  60 ++
- tests/t_reserved_inodes_increase_csum/name   |   1 +
- tests/t_reserved_inodes_increase_csum/script |  71 +++
- 11 files changed, 1247 insertions(+)
- create mode 100644 tests/m_reserved_inodes/expect.1
- create mode 100644 tests/m_reserved_inodes/script
- create mode 100644 tests/t_reserved_inodes_decrease/expect
- create mode 100644 tests/t_reserved_inodes_decrease/name
- create mode 100644 tests/t_reserved_inodes_decrease/script
- create mode 100644 tests/t_reserved_inodes_increase/expect
- create mode 100644 tests/t_reserved_inodes_increase/name
- create mode 100644 tests/t_reserved_inodes_increase/script
- create mode 100644 tests/t_reserved_inodes_increase_csum/expect
- create mode 100644 tests/t_reserved_inodes_increase_csum/name
- create mode 100644 tests/t_reserved_inodes_increase_csum/script
+From: Jan Kara <jack@suse.cz>
 
-diff --git a/tests/m_reserved_inodes/expect.1 b/tests/m_reserved_inodes/expect.1
-new file mode 100644
-index 000000000000..6cd183170b6e
---- /dev/null
-+++ b/tests/m_reserved_inodes/expect.1
-@@ -0,0 +1,837 @@
-+Creating filesystem with 131072 1k blocks and 8192 inodes
-+Superblock backups stored on blocks: 
-+	1025, 3073, 5121, 7169, 9217, 25601, 27649, 50177, 82945, 128001
+We ran out of reserved inodes so bump the default number of reserved
+inodes to 64 to get some breathing space. Otherwise we have to do a full
+fs scan when increasing number of reserved inodes when some feature
+needing another reserved inode is enabled. This consumes 13.5 KB on a
+filesystem which is negligible these days.
+
+Also update expected output for e2fsprogs tests since the number of used
+inodes changes (yes, I went through all changed outputs and verified
+that the changes are there only because of changed number of reserved
+inodes).
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ lib/ext2fs/initialize.c                            |  8 ++++-
+ misc/mke2fs.8.in                                   |  8 ++---
+ tests/d_dumpe2fs_group_only/expect                 |  2 +-
+ tests/d_loaddump/expect                            |  4 +--
+ tests/d_xattr_edits/expect                         |  2 +-
+ tests/f_create_symlinks/expect                     | 12 +++----
+ tests/f_dup_resize/expect.1                        |  6 ++--
+ tests/f_dup_resize/expect.2                        |  2 +-
+ tests/f_extent_oobounds/expect.1                   | 12 +++----
+ tests/f_extent_oobounds/expect.2                   |  2 +-
+ tests/f_mmp_garbage/expect.1                       |  2 +-
+ tests/f_mmp_garbage/expect.2                       |  2 +-
+ tests/f_opt_extent/expect                          |  8 ++---
+ tests/f_resize_inode/expect                        | 20 +++++------
+ tests/j_ext_long_revoke_trans/expect               |  4 +--
+ tests/j_ext_long_trans/expect                      | 10 +++---
+ tests/j_long_revoke_trans/expect                   |  4 +--
+ tests/j_long_revoke_trans_mcsum_32bit/expect       |  4 +--
+ tests/j_long_revoke_trans_mcsum_64bit/expect       |  4 +--
+ tests/j_long_trans/expect                          | 10 +++---
+ tests/j_long_trans_mcsum_32bit/expect              | 10 +++---
+ tests/j_long_trans_mcsum_64bit/expect              | 10 +++---
+ tests/j_short_revoke_trans/expect                  |  4 +--
+ tests/j_short_revoke_trans_mcsum_64bit/expect      |  4 +--
+ tests/j_short_trans/expect                         |  6 ++--
+ tests/j_short_trans_64bit/expect                   |  6 ++--
+ tests/j_short_trans_mcsum_64bit/expect             |  6 ++--
+ tests/j_short_trans_old_csum/expect                |  6 ++--
+ tests/j_short_trans_open_recover/expect            |  6 ++--
+ tests/j_short_trans_recover/expect                 |  6 ++--
+ tests/j_short_trans_recover_mcsum_64bit/expect     |  6 ++--
+ tests/j_short_uncommitted_trans/expect             |  4 +--
+ tests/j_short_uncommitted_trans_mcsum_64bit/expect |  4 +--
+ tests/m_64bit_flexbg/expect.1                      | 10 +++---
+ tests/m_dasd_bs/expect.1                           | 10 +++---
+ tests/m_desc_size_128/expect.1                     | 10 +++---
+ tests/m_extent_journal/expect.1                    | 10 +++---
+ tests/m_large_file/expect.1                        | 24 ++++++-------
+ tests/m_meta_bg/expect.1                           | 10 +++---
+ tests/m_minrootdir/expect                          | 42 +++++++++++-----------
+ tests/m_mmp/expect.1                               | 10 +++---
+ tests/m_no_opt/expect.1                            | 10 +++---
+ tests/m_raid_opt/expect.1                          | 10 +++---
+ tests/m_root_owner/expect.1                        | 10 +++---
+ tests/m_rootdir/expect                             | 10 +++---
+ tests/m_std/expect.1                               | 10 +++---
+ tests/m_uninit/expect.1                            | 10 +++---
+ tests/r_fixup_lastbg/expect                        |  2 +-
+ tests/r_fixup_lastbg_big/expect                    |  2 +-
+ tests/r_resize_inode/expect                        | 30 ++++++++--------
+ tests/t_32to64bit_meta/expect                      |  2 +-
+ tests/t_32to64bit_move_itable/expect               |  2 +-
+ tests/t_64to32bit/expect                           |  2 +-
+ tests/t_64to32bit_meta/expect                      |  2 +-
+ tests/t_disable_mcsum_noinitbg/expect              |  6 ++--
+ tests/t_enable_mcsum/expect                        |  8 ++---
+ tests/t_enable_mcsum_ext3/expect                   |  4 +--
+ tests/t_enable_mcsum_initbg/expect                 |  8 ++---
+ tests/t_uninit_bg_rm/expect                        |  4 +--
+ 59 files changed, 234 insertions(+), 228 deletions(-)
+
+diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
+index 75fbf8ee0061..23432571dac6 100644
+--- a/lib/ext2fs/initialize.c
++++ b/lib/ext2fs/initialize.c
+@@ -81,6 +81,12 @@ static unsigned int calc_reserved_gdt_blocks(ext2_filsys fs)
+ 	return rsv_gdb;
+ }
+ 
++/*
++ * Default for the first inode available for allocation (the previous ones are
++ * reserved for system files).
++ */
++#define EXT2_DEF_FIRST_INO 64
 +
-+Allocating group tables:        done                            
-+Writing inode tables:        done                            
-+Writing superblocks and filesystem accounting information:        done
-+
-+Filesystem features: ext_attr resize_inode dir_index filetype sparse_super
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 78/8192 files (0.0% non-contiguous), 4166/131072 blocks
-+Exit status is 0
-+Filesystem volume name:   <none>
-+Last mounted on:          <not available>
-+Filesystem magic number:  0xEF53
-+Filesystem revision #:    1 (dynamic)
-+Filesystem features:      ext_attr resize_inode dir_index filetype sparse_super
-+Default mount options:    (none)
-+Filesystem state:         clean
-+Errors behavior:          Continue
-+Filesystem OS type:       Linux
-+Inode count:              8192
-+Block count:              131072
-+Reserved block count:     6553
-+Free blocks:              126906
-+Free inodes:              8114
-+First block:              1
-+Block size:               1024
-+Fragment size:            1024
-+Reserved GDT blocks:      256
-+Blocks per group:         1024
-+Fragments per group:      1024
-+Inodes per group:         64
-+Inode blocks per group:   8
-+Mount count:              0
-+Check interval:           15552000 (6 months)
-+Reserved blocks uid:      0
-+Reserved blocks gid:      0
-+First inode:              78
-+Inode size:	          128
-+Default directory hash:   half_md4
-+
-+
-+Group 0: (Blocks 1-1024)
-+  Primary superblock at 1, Group descriptors at 2-5
-+  Reserved GDT blocks at 6-261
-+  Block bitmap at 262 (+261), Inode bitmap at 263 (+262)
-+  Inode table at 264-271 (+263)
-+  751 free blocks, 0 free inodes, 1 directories
-+  Free blocks: 274-1024
+ errcode_t ext2fs_initialize(const char *name, int flags,
+ 			    struct ext2_super_block *param,
+ 			    io_manager manager, ext2_filsys *ret_fs)
+@@ -186,7 +192,7 @@ errcode_t ext2fs_initialize(const char *name, int flags,
+ 
+ 	set_field(s_rev_level, EXT2_GOOD_OLD_REV);
+ 	if (super->s_rev_level >= EXT2_DYNAMIC_REV) {
+-		set_field(s_first_ino, EXT2_GOOD_OLD_FIRST_INO);
++		set_field(s_first_ino, EXT2_DEF_FIRST_INO);
+ 		set_field(s_inode_size, EXT2_GOOD_OLD_INODE_SIZE);
+ 		if (super->s_inode_size >= sizeof(struct ext2_inode_large)) {
+ 			int extra_isize = sizeof(struct ext2_inode_large) -
+diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
+index 4165c0a9d051..1a13e1a5b835 100644
+--- a/misc/mke2fs.8.in
++++ b/misc/mke2fs.8.in
+@@ -386,10 +386,10 @@ Do not attempt to discard blocks at mkfs time.
+ @QUOTA_MAN_COMMENT@behavior is to initialize both user and group quotas.
+ .TP
+ .BI reserved_inodes= number
+-Specify the number of inodes reserved for system files. This number must be
+-at least 10. Currently 10 is enough but future features may require additional
+-reserved inodes. Reserving more inodes after the file system is created
+-requires full file system scan which can take a long time.
++Specify the number of inodes reserved for system files. This number must be at
++least 10, default is 64. Currently 10 is enough but future features may require
++additional reserved inodes. Reserving more inodes after the file system is
++created requires full file system scan which can take a long time.
+ .RE
+ .TP
+ .BI \-f " fragment-size"
+diff --git a/tests/d_dumpe2fs_group_only/expect b/tests/d_dumpe2fs_group_only/expect
+index 78f97a2bafcc..ea8b8310719b 100644
+--- a/tests/d_dumpe2fs_group_only/expect
++++ b/tests/d_dumpe2fs_group_only/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/262144 files (0.0% non-contiguous), 51278/1048576 blocks
++test_filesys: 64/262144 files (0.0% non-contiguous), 51278/1048576 blocks
+ Exit status is 0
+ dumpe2fs output
+ 
+diff --git a/tests/d_loaddump/expect b/tests/d_loaddump/expect
+index f70df88d2263..6d39cbe0408a 100644
+--- a/tests/d_loaddump/expect
++++ b/tests/d_loaddump/expect
+@@ -2,7 +2,7 @@ debugfs load/dump test
+ mke2fs -Fq -b 1024 test.img 512
+ Exit status is 0
+ debugfs -R ''write d_loaddump.tmp test_data'' -w test.img
+-Allocated inode: 12
++Allocated inode: 65
+ Exit status is 0
+ e2fsck -yf -N test_filesys
+ Pass 1: Checking inodes, blocks, and sizes
+@@ -10,7 +10,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 12/64 files (0.0% non-contiguous), 158/512 blocks
++test_filesys: 65/72 files (0.0% non-contiguous), 159/512 blocks
+ Exit status is 0
+ debugfs -R ''dump test_data d_loaddump.ver.tmp'' test.img
+ Exit status is 0
+diff --git a/tests/d_xattr_edits/expect b/tests/d_xattr_edits/expect
+index 4db54142b5fc..d729e264b736 100644
+--- a/tests/d_xattr_edits/expect
++++ b/tests/d_xattr_edits/expect
+@@ -46,5 +46,5 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/64 files (0.0% non-contiguous), 29/512 blocks
++test_filesys: 64/72 files (0.0% non-contiguous), 30/512 blocks
+ Exit status is 0
+diff --git a/tests/f_create_symlinks/expect b/tests/f_create_symlinks/expect
+index 47fa46827f6e..aab2f8615ff6 100644
+--- a/tests/f_create_symlinks/expect
++++ b/tests/f_create_symlinks/expect
+@@ -4,7 +4,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/128 files (0.0% non-contiguous), 441/1024 blocks
++test_filesys: 64/128 files (0.0% non-contiguous), 441/1024 blocks
+ Exit status is 0
+ debugfs -R "symlink /l_30 /xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" test.img
+ debugfs -R "symlink /l_70 /xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" test.img
+@@ -17,7 +17,7 @@ debugfs -R "symlink /l_1500 /xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ ext2fs_symlink: Invalid argument passed to ext2 library while creating symlink "l_1500"
+ symlink: Invalid argument passed to ext2 library 
+ debugfs -R "stat /l_30" test.img
+-Inode: 12   Type: symlink    Mode:  0777   Flags: 0x0
++Inode: 65   Type: symlink    Mode:  0777   Flags: 0x0
+ Generation: 0    Version: 0x00000000:00000000
+ User:     0   Group:     0   Size: 31
+ File ACL: 0    Directory ACL: 0
+@@ -26,7 +26,7 @@ Fragment:  Address: 0    Number: 0    Size: 0
+ Size of extra inode fields: 28
+ Fast link dest: "/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+ debugfs -R "stat /l_70" test.img
+-Inode: 13   Type: symlink    Mode:  0777   Flags: 0x10000000
++Inode: 66   Type: symlink    Mode:  0777   Flags: 0x10000000
+ Generation: 0    Version: 0x00000000:00000000
+ User:     0   Group:     0   Size: 71
+ File ACL: 0    Directory ACL: 0
+@@ -37,7 +37,7 @@ Extended attributes:
+   system.data (11)
+ Fast link dest: "/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+ debugfs -R "stat /l_500" test.img
+-Inode: 14   Type: symlink    Mode:  0777   Flags: 0x80000
++Inode: 67   Type: symlink    Mode:  0777   Flags: 0x80000
+ Generation: 0    Version: 0x00000000:00000000
+ User:     0   Group:     0   Size: 501
+ File ACL: 0    Directory ACL: 0
+@@ -47,7 +47,7 @@ Size of extra inode fields: 28
+ EXTENTS:
+ (0):153
+ debugfs -R "stat /l_1023" test.img
+-Inode: 15   Type: symlink    Mode:  0777   Flags: 0x80000
++Inode: 68   Type: symlink    Mode:  0777   Flags: 0x80000
+ Generation: 0    Version: 0x00000000:00000000
+ User:     0   Group:     0   Size: 1024
+ File ACL: 0    Directory ACL: 0
+@@ -65,5 +65,5 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 15/128 files (0.0% non-contiguous), 443/1024 blocks
++test_filesys: 68/128 files (0.0% non-contiguous), 443/1024 blocks
+ Exit status is 0
+diff --git a/tests/f_dup_resize/expect.1 b/tests/f_dup_resize/expect.1
+index aaf7769cbcd7..f7e46cf54824 100644
+--- a/tests/f_dup_resize/expect.1
++++ b/tests/f_dup_resize/expect.1
+@@ -5,12 +5,12 @@ Pass 1: Checking inodes, blocks, and sizes
+ Running additional passes to resolve blocks claimed by more than one inode...
+ Pass 1B: Rescanning for multiply-claimed blocks
+ Multiply-claimed block(s) in inode 7: 4--7
+-Multiply-claimed block(s) in inode 12: 4--7
++Multiply-claimed block(s) in inode 65: 4--7
+ Pass 1C: Scanning directories for inodes with multiply-claimed blocks
+ Pass 1D: Reconciling multiply-claimed blocks
+ (There are 1 inodes containing multiply-claimed blocks.)
+ 
+-File /debugfs (inode #12, mod time Mon Apr 11 00:00:00 2005) 
++File /debugfs (inode #65, mod time Mon Apr 11 00:00:00 2005) 
+   has 4 multiply-claimed block(s), shared with 1 file(s):
+ 	<The group descriptor inode> (inode #7, mod time Mon Apr 11 06:13:20 2005)
+ Clone multiply-claimed blocks? yes
+@@ -30,5 +30,5 @@ Fix? yes
+ 
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 12/2560 files (8.3% non-contiguous), 485/10240 blocks
++test_filesys: 65/2560 files (1.5% non-contiguous), 485/10240 blocks
+ Exit status is 1
+diff --git a/tests/f_dup_resize/expect.2 b/tests/f_dup_resize/expect.2
+index 198acb958f5c..a3c97a77108c 100644
+--- a/tests/f_dup_resize/expect.2
++++ b/tests/f_dup_resize/expect.2
+@@ -3,5 +3,5 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 12/2560 files (8.3% non-contiguous), 485/10240 blocks
++test_filesys: 65/2560 files (1.5% non-contiguous), 485/10240 blocks
+ Exit status is 0
+diff --git a/tests/f_extent_oobounds/expect.1 b/tests/f_extent_oobounds/expect.1
+index 59e1952cc695..fb4789026acc 100644
+--- a/tests/f_extent_oobounds/expect.1
++++ b/tests/f_extent_oobounds/expect.1
+@@ -1,11 +1,11 @@
+ Pass 1: Checking inodes, blocks, and sizes
+-Inode 12, end of extent exceeds allowed value
++Inode 65, end of extent exceeds allowed value
+ 	(logical block 15, physical block 200, len 30)
+ Clear? yes
+ 
+-Inode 12 extent tree (at (level 1) could be narrower.  Fix? yes
++Inode 65 extent tree (at (level 1) could be narrower.  Fix? yes
+ 
+-Inode 12, i_blocks is 154, should be 94.  Fix? yes
++Inode 65, i_blocks is 154, should be 94.  Fix? yes
+ 
+ Pass 1E: Optimizing extent trees
+ Pass 2: Checking directory structure
+@@ -15,13 +15,13 @@ Pass 5: Checking group summary information
+ Block bitmap differences:  -(200--229)
+ Fix? yes
+ 
+-Free blocks count wrong for group #0 (158, counted=188).
++Free blocks count wrong for group #0 (158, counted=183).
+ Fix? yes
+ 
+-Free blocks count wrong (158, counted=188).
++Free blocks count wrong (158, counted=183).
+ Fix? yes
+ 
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 12/32 files (8.3% non-contiguous), 68/256 blocks
++test_filesys: 65/72 files (1.5% non-contiguous), 73/256 blocks
+ Exit status is 1
+diff --git a/tests/f_extent_oobounds/expect.2 b/tests/f_extent_oobounds/expect.2
+index 072928316833..8a48f36bfa8c 100644
+--- a/tests/f_extent_oobounds/expect.2
++++ b/tests/f_extent_oobounds/expect.2
+@@ -3,5 +3,5 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 12/32 files (8.3% non-contiguous), 68/256 blocks
++test_filesys: 65/72 files (1.5% non-contiguous), 73/256 blocks
+ Exit status is 0
+diff --git a/tests/f_mmp_garbage/expect.1 b/tests/f_mmp_garbage/expect.1
+index a8add10175d0..b0904fa61dfc 100644
+--- a/tests/f_mmp_garbage/expect.1
++++ b/tests/f_mmp_garbage/expect.1
+@@ -5,5 +5,5 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/64 files (0.0% non-contiguous), 13/100 blocks
++test_filesys: 64/96 files (0.0% non-contiguous), 14/100 blocks
+ Exit status is 0
+diff --git a/tests/f_mmp_garbage/expect.2 b/tests/f_mmp_garbage/expect.2
+index 66300025e546..e6df796c08b3 100644
+--- a/tests/f_mmp_garbage/expect.2
++++ b/tests/f_mmp_garbage/expect.2
+@@ -3,5 +3,5 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/64 files (0.0% non-contiguous), 13/100 blocks
++test_filesys: 64/96 files (0.0% non-contiguous), 14/100 blocks
+ Exit status is 0
+diff --git a/tests/f_opt_extent/expect b/tests/f_opt_extent/expect
+index 6d4863b51b2b..e9413b1c441d 100644
+--- a/tests/f_opt_extent/expect
++++ b/tests/f_opt_extent/expect
+@@ -32,18 +32,18 @@ Change in FS metadata:
+  Reserved block count:     26214
+ -Free blocks:              570
+ +Free blocks:              567
+- Free inodes:              65047
++ Free inodes:              64994
+  First block:              1
+  Block size:               1024
+ @@ -47,8 +47,8 @@
+    Block bitmap at 262 (+261)
+    Inode bitmap at 278 (+277)
+    Inode table at 294-549 (+293)
+--  21 free blocks, 535 free inodes, 3 directories, 535 unused inodes
++-  21 free blocks, 482 free inodes, 3 directories, 482 unused inodes
+ -  Free blocks: 4414-4434
+-+  18 free blocks, 535 free inodes, 3 directories, 535 unused inodes
+++  18 free blocks, 482 free inodes, 3 directories, 482 unused inodes
+ +  Free blocks: 4417-4434
+-   Free inodes: 490-1024
++   Free inodes: 543-1024
+  Group 1: (Blocks 8193-16384) [INODE_UNINIT]
+    Backup superblock at 8193, Group descriptors at 8194-8197
+ Pass 1: Checking inodes, blocks, and sizes
+diff --git a/tests/f_resize_inode/expect b/tests/f_resize_inode/expect
+index db57ed651ab0..d3c6ae27d767 100644
+--- a/tests/f_resize_inode/expect
++++ b/tests/f_resize_inode/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/4096 files (0.0% non-contiguous), 2107/16384 blocks
++test_filesys: 64/4096 files (0.0% non-contiguous), 2107/16384 blocks
+ Exit status is 0
+ -----------------------------------------------
+  
+@@ -33,14 +33,14 @@ Fix? yes
+ 
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/4096 files (0.0% non-contiguous), 2107/16384 blocks
++test_filesys: 64/4096 files (0.0% non-contiguous), 2107/16384 blocks
+ Exit status is 1
+ Pass 1: Checking inodes, blocks, and sizes
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/4096 files (0.0% non-contiguous), 2107/16384 blocks
++test_filesys: 64/4096 files (0.0% non-contiguous), 2107/16384 blocks
+ Exit status is 0
+ -----------------------------------------------
+  
+@@ -61,14 +61,14 @@ Fix? yes
+ 
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/4096 files (0.0% non-contiguous), 2107/16384 blocks
++test_filesys: 64/4096 files (0.0% non-contiguous), 2107/16384 blocks
+ Exit status is 1
+ Pass 1: Checking inodes, blocks, and sizes
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/4096 files (0.0% non-contiguous), 2107/16384 blocks
++test_filesys: 64/4096 files (0.0% non-contiguous), 2107/16384 blocks
+ Exit status is 0
+ -----------------------------------------------
+  
+@@ -89,14 +89,14 @@ Fix? yes
+ 
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/4096 files (0.0% non-contiguous), 2107/16384 blocks
++test_filesys: 64/4096 files (0.0% non-contiguous), 2107/16384 blocks
+ Exit status is 1
+ Pass 1: Checking inodes, blocks, and sizes
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/4096 files (0.0% non-contiguous), 2107/16384 blocks
++test_filesys: 64/4096 files (0.0% non-contiguous), 2107/16384 blocks
+ Exit status is 0
+ -----------------------------------------------
+  
+@@ -111,7 +111,7 @@ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/4096 files (0.0% non-contiguous), 2107/16384 blocks
++test_filesys: 64/4096 files (0.0% non-contiguous), 2107/16384 blocks
+ Exit status is 1
+ -----------------------------------------------
+  
+@@ -148,12 +148,12 @@ Fix? yes
+ 
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/4096 files (0.0% non-contiguous), 763/16384 blocks
++test_filesys: 64/4096 files (0.0% non-contiguous), 763/16384 blocks
+ Exit status is 1
+ Pass 1: Checking inodes, blocks, and sizes
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/4096 files (0.0% non-contiguous), 763/16384 blocks
++test_filesys: 64/4096 files (0.0% non-contiguous), 763/16384 blocks
+ Exit status is 0
+diff --git a/tests/j_ext_long_revoke_trans/expect b/tests/j_ext_long_revoke_trans/expect
+index ed198725ff05..80c703c3a05e 100644
+--- a/tests/j_ext_long_revoke_trans/expect
++++ b/tests/j_ext_long_revoke_trans/expect
+@@ -20,7 +20,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 6239/262144 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 6239/262144 blocks
+ Exit status is 0
+ debugfs write journal
+ debugfs: logdump -c
+@@ -87,5 +87,5 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 6239/262144 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 6239/262144 blocks
+ Exit status is 0
+diff --git a/tests/j_ext_long_trans/expect b/tests/j_ext_long_trans/expect
+index d379610e7c2a..8aac7a6ec6b7 100644
+--- a/tests/j_ext_long_trans/expect
++++ b/tests/j_ext_long_trans/expect
+@@ -20,7 +20,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 6239/262144 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 6239/262144 blocks
+ Exit status is 0
+ debugfs write journal
+ debugfs: logdump -c
+@@ -86,19 +86,19 @@ Fix? yes
+ Free blocks count wrong (255903, counted=255916).
+ Fix? yes
+ 
+-Inode bitmap differences:  +1 +(3--10)
++Inode bitmap differences:  +1 +(3--63)
+ Fix? yes
+ 
+-Free inodes count wrong for group #0 (500, counted=501).
++Free inodes count wrong for group #0 (447, counted=448).
+ Fix? yes
+ 
+ Directories count wrong for group #0 (3, counted=2).
+ Fix? yes
+ 
+-Free inodes count wrong (16372, counted=16373).
++Free inodes count wrong (16319, counted=16320).
+ Fix? yes
+ 
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/16384 files (0.0% non-contiguous), 6228/262144 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 6228/262144 blocks
+ Exit status is 1
+diff --git a/tests/j_long_revoke_trans/expect b/tests/j_long_revoke_trans/expect
+index c0730e609383..c499f724ae9d 100644
+--- a/tests/j_long_revoke_trans/expect
++++ b/tests/j_long_revoke_trans/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 14431/262144 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 14431/262144 blocks
+ Exit status is 0
+ debugfs write journal
+ debugfs: logdump -c
+@@ -77,5 +77,5 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 14431/262144 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 14431/262144 blocks
+ Exit status is 0
+diff --git a/tests/j_long_revoke_trans_mcsum_32bit/expect b/tests/j_long_revoke_trans_mcsum_32bit/expect
+index 664a301d0dae..8e8d6ab021de 100644
+--- a/tests/j_long_revoke_trans_mcsum_32bit/expect
++++ b/tests/j_long_revoke_trans_mcsum_32bit/expect
+@@ -13,7 +13,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/32768 files (0.0% non-contiguous), 27050/524288 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 27050/524288 blocks
+ Exit status is 0
+ Journal features:         (none)
+ debugfs write journal
+@@ -113,5 +113,5 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/32768 files (0.0% non-contiguous), 27050/524288 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 27050/524288 blocks
+ Exit status is 0
+diff --git a/tests/j_long_revoke_trans_mcsum_64bit/expect b/tests/j_long_revoke_trans_mcsum_64bit/expect
+index 29dc407d1269..76baf1a2641f 100644
+--- a/tests/j_long_revoke_trans_mcsum_64bit/expect
++++ b/tests/j_long_revoke_trans_mcsum_64bit/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/32768 files (0.0% non-contiguous), 27068/524288 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 27068/524288 blocks
+ Exit status is 0
+ Journal features:         (none)
+ debugfs write journal
+@@ -128,5 +128,5 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/32768 files (0.0% non-contiguous), 27068/524288 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 27068/524288 blocks
+ Exit status is 0
+diff --git a/tests/j_long_trans/expect b/tests/j_long_trans/expect
+index 7a175414be5f..991cea18a6bd 100644
+--- a/tests/j_long_trans/expect
++++ b/tests/j_long_trans/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 14431/262144 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 14431/262144 blocks
+ Exit status is 0
+ debugfs write journal
+ debugfs: logdump -c
+@@ -84,16 +84,16 @@ Fix? yes
+ Free blocks count wrong (247711, counted=255916).
+ Fix? yes
+ 
+-Inode bitmap differences:  +1 +(3--10)
++Inode bitmap differences:  +1 +(3--63)
+ Fix? yes
+ 
+-Free inodes count wrong for group #0 (500, counted=501).
++Free inodes count wrong for group #0 (447, counted=448).
+ Fix? yes
+ 
+ Directories count wrong for group #0 (3, counted=2).
+ Fix? yes
+ 
+-Free inodes count wrong (16372, counted=16373).
++Free inodes count wrong (16319, counted=16320).
+ Fix? yes
+ 
+ Recreate journal? yes
+@@ -103,5 +103,5 @@ Creating journal (8192 blocks):  Done.
+ *** journal has been regenerated ***
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/16384 files (0.0% non-contiguous), 14420/262144 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 14420/262144 blocks
+ Exit status is 1
+diff --git a/tests/j_long_trans_mcsum_32bit/expect b/tests/j_long_trans_mcsum_32bit/expect
+index a808d9f4d706..ef4969a04dcb 100644
+--- a/tests/j_long_trans_mcsum_32bit/expect
++++ b/tests/j_long_trans_mcsum_32bit/expect
+@@ -13,7 +13,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/32768 files (0.0% non-contiguous), 27050/524288 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 27050/524288 blocks
+ Exit status is 0
+ Journal features:         (none)
+ debugfs write journal
+@@ -123,16 +123,16 @@ Fix? yes
+ Free blocks count wrong (497236, counted=513633).
+ Fix? yes
+ 
+-Inode bitmap differences:  +1 +(3--10)
++Inode bitmap differences:  +1 +(3--63)
+ Fix? yes
+ 
+-Free inodes count wrong for group #0 (500, counted=501).
++Free inodes count wrong for group #0 (447, counted=448).
+ Fix? yes
+ 
+ Directories count wrong for group #0 (3, counted=2).
+ Fix? yes
+ 
+-Free inodes count wrong (32756, counted=32757).
++Free inodes count wrong (32703, counted=32704).
+ Fix? yes
+ 
+ Recreate journal? yes
+@@ -142,5 +142,5 @@ Creating journal (16384 blocks):  Done.
+ *** journal has been regenerated ***
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/32768 files (0.0% non-contiguous), 27039/524288 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 27039/524288 blocks
+ Exit status is 1
+diff --git a/tests/j_long_trans_mcsum_64bit/expect b/tests/j_long_trans_mcsum_64bit/expect
+index 76e109a42102..27d38cf7d12b 100644
+--- a/tests/j_long_trans_mcsum_64bit/expect
++++ b/tests/j_long_trans_mcsum_64bit/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/32768 files (0.0% non-contiguous), 27068/524288 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 27068/524288 blocks
+ Exit status is 0
+ Journal features:         (none)
+ debugfs write journal
+@@ -122,16 +122,16 @@ Fix? yes
+ Free blocks count wrong (497218, counted=513615).
+ Fix? yes
+ 
+-Inode bitmap differences:  +1 +(3--10)
++Inode bitmap differences:  +1 +(3--63)
+ Fix? yes
+ 
+-Free inodes count wrong for group #0 (500, counted=501).
++Free inodes count wrong for group #0 (447, counted=448).
+ Fix? yes
+ 
+ Directories count wrong for group #0 (3, counted=2).
+ Fix? yes
+ 
+-Free inodes count wrong (32756, counted=32757).
++Free inodes count wrong (32703, counted=32704).
+ Fix? yes
+ 
+ Recreate journal? yes
+@@ -141,5 +141,5 @@ Creating journal (16384 blocks):  Done.
+ *** journal has been regenerated ***
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/32768 files (0.0% non-contiguous), 27057/524288 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 27057/524288 blocks
+ Exit status is 1
+diff --git a/tests/j_short_revoke_trans/expect b/tests/j_short_revoke_trans/expect
+index e83c5ea8414d..dd6104ded65d 100644
+--- a/tests/j_short_revoke_trans/expect
++++ b/tests/j_short_revoke_trans/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 5164/65536 blocks
+ Exit status is 0
+ debugfs write journal
+ debugfs: logdump -c
+@@ -28,5 +28,5 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 5164/65536 blocks
+ Exit status is 0
+diff --git a/tests/j_short_revoke_trans_mcsum_64bit/expect b/tests/j_short_revoke_trans_mcsum_64bit/expect
+index 2b0eeb3676ef..542ec17b49af 100644
+--- a/tests/j_short_revoke_trans_mcsum_64bit/expect
++++ b/tests/j_short_revoke_trans_mcsum_64bit/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/32768 files (0.0% non-contiguous), 6353/131072 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 6353/131072 blocks
+ Exit status is 0
+ Journal features:         (none)
+ debugfs write journal
+@@ -30,5 +30,5 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/32768 files (0.0% non-contiguous), 6353/131072 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 6353/131072 blocks
+ Exit status is 0
+diff --git a/tests/j_short_trans/expect b/tests/j_short_trans/expect
+index bcc8fe82a57a..fda0c1ebdef9 100644
+--- a/tests/j_short_trans/expect
++++ b/tests/j_short_trans/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 5164/65536 blocks
+ Exit status is 0
+ debugfs write journal
+ debugfs: logdump -c
+@@ -29,10 +29,10 @@ Pass 5: Checking group summary information
+ Block bitmap differences:  +(0--1050) +(32768--36880)
+ Fix? yes
+ 
+-Inode bitmap differences:  +(1--11)
++Inode bitmap differences:  +(1--64)
+ Fix? yes
+ 
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 5164/65536 blocks
+ Exit status is 1
+diff --git a/tests/j_short_trans_64bit/expect b/tests/j_short_trans_64bit/expect
+index f9971eba383a..9833b848a037 100644
+--- a/tests/j_short_trans_64bit/expect
++++ b/tests/j_short_trans_64bit/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 5196/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 5196/65536 blocks
+ Exit status is 0
+ Journal features:         (none)
+ debugfs write journal
+@@ -31,10 +31,10 @@ Pass 5: Checking group summary information
+ Block bitmap differences:  +(0--1066) +(32768--36896)
+ Fix? yes
+ 
+-Inode bitmap differences:  +(1--11)
++Inode bitmap differences:  +(1--64)
+ Fix? yes
+ 
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/16384 files (0.0% non-contiguous), 5196/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 5196/65536 blocks
+ Exit status is 1
+diff --git a/tests/j_short_trans_mcsum_64bit/expect b/tests/j_short_trans_mcsum_64bit/expect
+index d876ff095542..bc0fd309454b 100644
+--- a/tests/j_short_trans_mcsum_64bit/expect
++++ b/tests/j_short_trans_mcsum_64bit/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/32768 files (0.0% non-contiguous), 6353/131072 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 6353/131072 blocks
+ Exit status is 0
+ Journal features:         (none)
+ debugfs write journal
+@@ -31,10 +31,10 @@ Pass 5: Checking group summary information
+ Block bitmap differences:  +(0--65) +(67--69) +(71--584) +(1097--2126) +(65536--69631) +(98304--98368)
+ Fix? yes
+ 
+-Inode bitmap differences:  +(1--11)
++Inode bitmap differences:  +(1--64)
+ Fix? yes
+ 
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/32768 files (0.0% non-contiguous), 6353/131072 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 6353/131072 blocks
+ Exit status is 1
+diff --git a/tests/j_short_trans_old_csum/expect b/tests/j_short_trans_old_csum/expect
+index 29ac27fb3c9c..9d9148bed943 100644
+--- a/tests/j_short_trans_old_csum/expect
++++ b/tests/j_short_trans_old_csum/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 5164/65536 blocks
+ Exit status is 0
+ Journal features:         (none)
+ debugfs write journal
+@@ -31,10 +31,10 @@ Pass 5: Checking group summary information
+ Block bitmap differences:  +(0--1050) +(32768--36880)
+ Fix? yes
+ 
+-Inode bitmap differences:  +(1--11)
++Inode bitmap differences:  +(1--64)
+ Fix? yes
+ 
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 5164/65536 blocks
+ Exit status is 1
+diff --git a/tests/j_short_trans_open_recover/expect b/tests/j_short_trans_open_recover/expect
+index be6e363dc8ac..6673ccea503a 100644
+--- a/tests/j_short_trans_open_recover/expect
++++ b/tests/j_short_trans_open_recover/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 5164/65536 blocks
+ Exit status is 0
+ debugfs write journal
+ debugfs: logdump -c
+@@ -34,10 +34,10 @@ Pass 5: Checking group summary information
+ Block bitmap differences:  +(0--1050) +(32768--36880)
+ Fix? yes
+ 
+-Inode bitmap differences:  +(1--11)
++Inode bitmap differences:  +(1--64)
+ Fix? yes
+ 
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 5164/65536 blocks
+ Exit status is 1
+diff --git a/tests/j_short_trans_recover/expect b/tests/j_short_trans_recover/expect
+index 75867337fafd..b0eecef78cd6 100644
+--- a/tests/j_short_trans_recover/expect
++++ b/tests/j_short_trans_recover/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 5164/65536 blocks
+ Exit status is 0
+ debugfs write journal
+ debugfs: logdump -c
+@@ -31,10 +31,10 @@ Pass 5: Checking group summary information
+ Block bitmap differences:  +(0--1050) +(32768--36880)
+ Fix? yes
+ 
+-Inode bitmap differences:  +(1--11)
++Inode bitmap differences:  +(1--64)
+ Fix? yes
+ 
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 5164/65536 blocks
+ Exit status is 1
+diff --git a/tests/j_short_trans_recover_mcsum_64bit/expect b/tests/j_short_trans_recover_mcsum_64bit/expect
+index 9cc330978560..02decee3c0c7 100644
+--- a/tests/j_short_trans_recover_mcsum_64bit/expect
++++ b/tests/j_short_trans_recover_mcsum_64bit/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/32768 files (0.0% non-contiguous), 6353/131072 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 6353/131072 blocks
+ Exit status is 0
+ Journal features:         (none)
+ debugfs write journal
+@@ -33,10 +33,10 @@ Pass 5: Checking group summary information
+ Block bitmap differences:  +(0--65) +(67--69) +(71--584) +(1097--2126) +(65536--69631) +(98304--98368)
+ Fix? yes
+ 
+-Inode bitmap differences:  +(1--11)
++Inode bitmap differences:  +(1--64)
+ Fix? yes
+ 
+ 
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 11/32768 files (0.0% non-contiguous), 6353/131072 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 6353/131072 blocks
+ Exit status is 1
+diff --git a/tests/j_short_uncommitted_trans/expect b/tests/j_short_uncommitted_trans/expect
+index dedddb5b373a..db8a18f7a85d 100644
+--- a/tests/j_short_uncommitted_trans/expect
++++ b/tests/j_short_uncommitted_trans/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 5164/65536 blocks
+ Exit status is 0
+ debugfs write journal
+ debugfs: logdump -c
+@@ -22,5 +22,5 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 5164/65536 blocks
+ Exit status is 0
+diff --git a/tests/j_short_uncommitted_trans_mcsum_64bit/expect b/tests/j_short_uncommitted_trans_mcsum_64bit/expect
+index 3effc94fec5d..2504838fc963 100644
+--- a/tests/j_short_uncommitted_trans_mcsum_64bit/expect
++++ b/tests/j_short_uncommitted_trans_mcsum_64bit/expect
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/32768 files (0.0% non-contiguous), 6353/131072 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 6353/131072 blocks
+ Exit status is 0
+ Journal features:         (none)
+ debugfs write journal
+@@ -24,5 +24,5 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/32768 files (0.0% non-contiguous), 6353/131072 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 6353/131072 blocks
+ Exit status is 0
+diff --git a/tests/m_64bit_flexbg/expect.1 b/tests/m_64bit_flexbg/expect.1
+index cfa3bc9bf336..1d731def1699 100644
+--- a/tests/m_64bit_flexbg/expect.1
++++ b/tests/m_64bit_flexbg/expect.1
+@@ -10,7 +10,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/128 files (0.0% non-contiguous), 42/1024 blocks
++test_filesys: 64/128 files (0.0% non-contiguous), 42/1024 blocks
+ Exit status is 0
+ Filesystem volume name:   <none>
+ Last mounted on:          <not available>
+@@ -25,7 +25,7 @@ Inode count:              128
+ Block count:              1024
+ Reserved block count:     51
+ Free blocks:              982
+-Free inodes:              117
++Free inodes:              64
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -40,7 +40,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          128
+ Default directory hash:   half_md4
+ 
+@@ -51,6 +51,6 @@ Group 0: (Blocks 1-1023)
+   Block bitmap at 10 (+9)
+   Inode bitmap at 26 (+25)
+   Inode table at 42-57 (+41)
+-  982 free blocks, 117 free inodes, 2 directories
++  982 free blocks, 64 free inodes, 2 directories
+   Free blocks: 24-25, 28-41, 58-1023
+-  Free inodes: 12-128
++  Free inodes: 65-128
+diff --git a/tests/m_dasd_bs/expect.1 b/tests/m_dasd_bs/expect.1
+index 0e55e8f7e127..14808ed41b2c 100644
+--- a/tests/m_dasd_bs/expect.1
++++ b/tests/m_dasd_bs/expect.1
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 1104/32768 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 1104/32768 blocks
+ Exit status is 0
+ Filesystem volume name:   <none>
+ Last mounted on:          <not available>
+@@ -27,7 +27,7 @@ Inode count:              16384
+ Block count:              32768
+ Reserved block count:     1638
+ Free blocks:              31664
+-Free inodes:              16373
++Free inodes:              16320
+ First block:              0
+ Block size:               2048
+ Fragment size:            2048
+@@ -40,7 +40,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          128
+ Default directory hash:   half_md4
+ 
+@@ -51,9 +51,9 @@ Group 0: (Blocks 0-16383)
+   Block bitmap at 33 (+33)
+   Inode bitmap at 34 (+34)
+   Inode table at 35-546 (+35)
+-  15827 free blocks, 8181 free inodes, 2 directories
++  15827 free blocks, 8128 free inodes, 2 directories
+   Free blocks: 557-16383
+-  Free inodes: 12-8192
++  Free inodes: 65-8192
+ Group 1: (Blocks 16384-32767)
+   Backup superblock at 16384, Group descriptors at 16385-16385
+   Reserved GDT blocks at 16386-16416
+diff --git a/tests/m_desc_size_128/expect.1 b/tests/m_desc_size_128/expect.1
+index 5a7da87b72d1..9b6f5647df92 100644
+--- a/tests/m_desc_size_128/expect.1
++++ b/tests/m_desc_size_128/expect.1
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/8192 files (0.0% non-contiguous), 4298/131072 blocks
++test_filesys: 64/8192 files (0.0% non-contiguous), 4298/131072 blocks
+ Exit status is 0
+ Filesystem volume name:   <none>
+ Last mounted on:          <not available>
+@@ -27,7 +27,7 @@ Inode count:              8192
+ Block count:              131072
+ Reserved block count:     6553
+ Free blocks:              126774
+-Free inodes:              8181
++Free inodes:              8128
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -41,7 +41,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          128
+ Default directory hash:   half_md4
+ 
+@@ -51,9 +51,9 @@ Group 0: (Blocks 1-1024)
+   Reserved GDT blocks at 18-273
+   Block bitmap at 274 (+273), Inode bitmap at 275 (+274)
+   Inode table at 276-283 (+275)
+-  727 free blocks, 53 free inodes, 2 directories
++  727 free blocks, 0 free inodes, 2 directories
+   Free blocks: 298-1024
+-  Free inodes: 12-64
 +  Free inodes: 
-+Group 1: (Blocks 1025-2048)
-+  Backup superblock at 1025, Group descriptors at 1026-1029
-+  Reserved GDT blocks at 1030-1285
-+  Block bitmap at 1286 (+261), Inode bitmap at 1287 (+262)
-+  Inode table at 1288-1295 (+263)
-+  741 free blocks, 50 free inodes, 1 directories
-+  Free blocks: 1308-2048
-+  Free inodes: 79-128
-+Group 2: (Blocks 2049-3072)
-+  Block bitmap at 2049 (+0), Inode bitmap at 2050 (+1)
-+  Inode table at 2051-2058 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 2059-3072
-+  Free inodes: 129-192
-+Group 3: (Blocks 3073-4096)
-+  Backup superblock at 3073, Group descriptors at 3074-3077
-+  Reserved GDT blocks at 3078-3333
-+  Block bitmap at 3334 (+261), Inode bitmap at 3335 (+262)
-+  Inode table at 3336-3343 (+263)
-+  753 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 3344-4096
-+  Free inodes: 193-256
-+Group 4: (Blocks 4097-5120)
-+  Block bitmap at 4097 (+0), Inode bitmap at 4098 (+1)
-+  Inode table at 4099-4106 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 4107-5120
-+  Free inodes: 257-320
-+Group 5: (Blocks 5121-6144)
-+  Backup superblock at 5121, Group descriptors at 5122-5125
-+  Reserved GDT blocks at 5126-5381
-+  Block bitmap at 5382 (+261), Inode bitmap at 5383 (+262)
-+  Inode table at 5384-5391 (+263)
-+  753 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 5392-6144
-+  Free inodes: 321-384
-+Group 6: (Blocks 6145-7168)
-+  Block bitmap at 6145 (+0), Inode bitmap at 6146 (+1)
-+  Inode table at 6147-6154 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 6155-7168
-+  Free inodes: 385-448
-+Group 7: (Blocks 7169-8192)
-+  Backup superblock at 7169, Group descriptors at 7170-7173
-+  Reserved GDT blocks at 7174-7429
-+  Block bitmap at 7430 (+261), Inode bitmap at 7431 (+262)
-+  Inode table at 7432-7439 (+263)
-+  753 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 7440-8192
-+  Free inodes: 449-512
-+Group 8: (Blocks 8193-9216)
-+  Block bitmap at 8193 (+0), Inode bitmap at 8194 (+1)
-+  Inode table at 8195-8202 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 8203-9216
-+  Free inodes: 513-576
-+Group 9: (Blocks 9217-10240)
-+  Backup superblock at 9217, Group descriptors at 9218-9221
-+  Reserved GDT blocks at 9222-9477
-+  Block bitmap at 9478 (+261), Inode bitmap at 9479 (+262)
-+  Inode table at 9480-9487 (+263)
-+  753 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 9488-10240
-+  Free inodes: 577-640
-+Group 10: (Blocks 10241-11264)
-+  Block bitmap at 10241 (+0), Inode bitmap at 10242 (+1)
-+  Inode table at 10243-10250 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 10251-11264
-+  Free inodes: 641-704
-+Group 11: (Blocks 11265-12288)
-+  Block bitmap at 11265 (+0), Inode bitmap at 11266 (+1)
-+  Inode table at 11267-11274 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 11275-12288
-+  Free inodes: 705-768
-+Group 12: (Blocks 12289-13312)
-+  Block bitmap at 12289 (+0), Inode bitmap at 12290 (+1)
-+  Inode table at 12291-12298 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 12299-13312
-+  Free inodes: 769-832
-+Group 13: (Blocks 13313-14336)
-+  Block bitmap at 13313 (+0), Inode bitmap at 13314 (+1)
-+  Inode table at 13315-13322 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 13323-14336
-+  Free inodes: 833-896
-+Group 14: (Blocks 14337-15360)
-+  Block bitmap at 14337 (+0), Inode bitmap at 14338 (+1)
-+  Inode table at 14339-14346 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 14347-15360
-+  Free inodes: 897-960
-+Group 15: (Blocks 15361-16384)
-+  Block bitmap at 15361 (+0), Inode bitmap at 15362 (+1)
-+  Inode table at 15363-15370 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 15371-16384
-+  Free inodes: 961-1024
-+Group 16: (Blocks 16385-17408)
-+  Block bitmap at 16385 (+0), Inode bitmap at 16386 (+1)
-+  Inode table at 16387-16394 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 16395-17408
-+  Free inodes: 1025-1088
-+Group 17: (Blocks 17409-18432)
-+  Block bitmap at 17409 (+0), Inode bitmap at 17410 (+1)
-+  Inode table at 17411-17418 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 17419-18432
-+  Free inodes: 1089-1152
-+Group 18: (Blocks 18433-19456)
-+  Block bitmap at 18433 (+0), Inode bitmap at 18434 (+1)
-+  Inode table at 18435-18442 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 18443-19456
-+  Free inodes: 1153-1216
-+Group 19: (Blocks 19457-20480)
-+  Block bitmap at 19457 (+0), Inode bitmap at 19458 (+1)
-+  Inode table at 19459-19466 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 19467-20480
-+  Free inodes: 1217-1280
-+Group 20: (Blocks 20481-21504)
-+  Block bitmap at 20481 (+0), Inode bitmap at 20482 (+1)
-+  Inode table at 20483-20490 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 20491-21504
-+  Free inodes: 1281-1344
-+Group 21: (Blocks 21505-22528)
-+  Block bitmap at 21505 (+0), Inode bitmap at 21506 (+1)
-+  Inode table at 21507-21514 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 21515-22528
-+  Free inodes: 1345-1408
-+Group 22: (Blocks 22529-23552)
-+  Block bitmap at 22529 (+0), Inode bitmap at 22530 (+1)
-+  Inode table at 22531-22538 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 22539-23552
-+  Free inodes: 1409-1472
-+Group 23: (Blocks 23553-24576)
-+  Block bitmap at 23553 (+0), Inode bitmap at 23554 (+1)
-+  Inode table at 23555-23562 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 23563-24576
-+  Free inodes: 1473-1536
-+Group 24: (Blocks 24577-25600)
-+  Block bitmap at 24577 (+0), Inode bitmap at 24578 (+1)
-+  Inode table at 24579-24586 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 24587-25600
-+  Free inodes: 1537-1600
-+Group 25: (Blocks 25601-26624)
-+  Backup superblock at 25601, Group descriptors at 25602-25605
-+  Reserved GDT blocks at 25606-25861
-+  Block bitmap at 25862 (+261), Inode bitmap at 25863 (+262)
-+  Inode table at 25864-25871 (+263)
-+  753 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 25872-26624
-+  Free inodes: 1601-1664
-+Group 26: (Blocks 26625-27648)
-+  Block bitmap at 26625 (+0), Inode bitmap at 26626 (+1)
-+  Inode table at 26627-26634 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 26635-27648
-+  Free inodes: 1665-1728
-+Group 27: (Blocks 27649-28672)
-+  Backup superblock at 27649, Group descriptors at 27650-27653
-+  Reserved GDT blocks at 27654-27909
-+  Block bitmap at 27910 (+261), Inode bitmap at 27911 (+262)
-+  Inode table at 27912-27919 (+263)
-+  753 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 27920-28672
-+  Free inodes: 1729-1792
-+Group 28: (Blocks 28673-29696)
-+  Block bitmap at 28673 (+0), Inode bitmap at 28674 (+1)
-+  Inode table at 28675-28682 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 28683-29696
-+  Free inodes: 1793-1856
-+Group 29: (Blocks 29697-30720)
-+  Block bitmap at 29697 (+0), Inode bitmap at 29698 (+1)
-+  Inode table at 29699-29706 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 29707-30720
-+  Free inodes: 1857-1920
-+Group 30: (Blocks 30721-31744)
-+  Block bitmap at 30721 (+0), Inode bitmap at 30722 (+1)
-+  Inode table at 30723-30730 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 30731-31744
-+  Free inodes: 1921-1984
-+Group 31: (Blocks 31745-32768)
-+  Block bitmap at 31745 (+0), Inode bitmap at 31746 (+1)
-+  Inode table at 31747-31754 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 31755-32768
-+  Free inodes: 1985-2048
-+Group 32: (Blocks 32769-33792)
-+  Block bitmap at 32769 (+0), Inode bitmap at 32770 (+1)
-+  Inode table at 32771-32778 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 32779-33792
-+  Free inodes: 2049-2112
-+Group 33: (Blocks 33793-34816)
-+  Block bitmap at 33793 (+0), Inode bitmap at 33794 (+1)
-+  Inode table at 33795-33802 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 33803-34816
-+  Free inodes: 2113-2176
-+Group 34: (Blocks 34817-35840)
-+  Block bitmap at 34817 (+0), Inode bitmap at 34818 (+1)
-+  Inode table at 34819-34826 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 34827-35840
-+  Free inodes: 2177-2240
-+Group 35: (Blocks 35841-36864)
-+  Block bitmap at 35841 (+0), Inode bitmap at 35842 (+1)
-+  Inode table at 35843-35850 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 35851-36864
-+  Free inodes: 2241-2304
-+Group 36: (Blocks 36865-37888)
-+  Block bitmap at 36865 (+0), Inode bitmap at 36866 (+1)
-+  Inode table at 36867-36874 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 36875-37888
-+  Free inodes: 2305-2368
-+Group 37: (Blocks 37889-38912)
-+  Block bitmap at 37889 (+0), Inode bitmap at 37890 (+1)
-+  Inode table at 37891-37898 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 37899-38912
-+  Free inodes: 2369-2432
-+Group 38: (Blocks 38913-39936)
-+  Block bitmap at 38913 (+0), Inode bitmap at 38914 (+1)
-+  Inode table at 38915-38922 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 38923-39936
-+  Free inodes: 2433-2496
-+Group 39: (Blocks 39937-40960)
-+  Block bitmap at 39937 (+0), Inode bitmap at 39938 (+1)
-+  Inode table at 39939-39946 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 39947-40960
-+  Free inodes: 2497-2560
-+Group 40: (Blocks 40961-41984)
-+  Block bitmap at 40961 (+0), Inode bitmap at 40962 (+1)
-+  Inode table at 40963-40970 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 40971-41984
-+  Free inodes: 2561-2624
-+Group 41: (Blocks 41985-43008)
-+  Block bitmap at 41985 (+0), Inode bitmap at 41986 (+1)
-+  Inode table at 41987-41994 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 41995-43008
-+  Free inodes: 2625-2688
-+Group 42: (Blocks 43009-44032)
-+  Block bitmap at 43009 (+0), Inode bitmap at 43010 (+1)
-+  Inode table at 43011-43018 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 43019-44032
-+  Free inodes: 2689-2752
-+Group 43: (Blocks 44033-45056)
-+  Block bitmap at 44033 (+0), Inode bitmap at 44034 (+1)
-+  Inode table at 44035-44042 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 44043-45056
-+  Free inodes: 2753-2816
-+Group 44: (Blocks 45057-46080)
-+  Block bitmap at 45057 (+0), Inode bitmap at 45058 (+1)
-+  Inode table at 45059-45066 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 45067-46080
-+  Free inodes: 2817-2880
-+Group 45: (Blocks 46081-47104)
-+  Block bitmap at 46081 (+0), Inode bitmap at 46082 (+1)
-+  Inode table at 46083-46090 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 46091-47104
-+  Free inodes: 2881-2944
-+Group 46: (Blocks 47105-48128)
-+  Block bitmap at 47105 (+0), Inode bitmap at 47106 (+1)
-+  Inode table at 47107-47114 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 47115-48128
-+  Free inodes: 2945-3008
-+Group 47: (Blocks 48129-49152)
-+  Block bitmap at 48129 (+0), Inode bitmap at 48130 (+1)
-+  Inode table at 48131-48138 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 48139-49152
-+  Free inodes: 3009-3072
-+Group 48: (Blocks 49153-50176)
-+  Block bitmap at 49153 (+0), Inode bitmap at 49154 (+1)
-+  Inode table at 49155-49162 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 49163-50176
-+  Free inodes: 3073-3136
-+Group 49: (Blocks 50177-51200)
-+  Backup superblock at 50177, Group descriptors at 50178-50181
-+  Reserved GDT blocks at 50182-50437
-+  Block bitmap at 50438 (+261), Inode bitmap at 50439 (+262)
-+  Inode table at 50440-50447 (+263)
-+  753 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 50448-51200
-+  Free inodes: 3137-3200
-+Group 50: (Blocks 51201-52224)
-+  Block bitmap at 51201 (+0), Inode bitmap at 51202 (+1)
-+  Inode table at 51203-51210 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 51211-52224
-+  Free inodes: 3201-3264
-+Group 51: (Blocks 52225-53248)
-+  Block bitmap at 52225 (+0), Inode bitmap at 52226 (+1)
-+  Inode table at 52227-52234 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 52235-53248
-+  Free inodes: 3265-3328
-+Group 52: (Blocks 53249-54272)
-+  Block bitmap at 53249 (+0), Inode bitmap at 53250 (+1)
-+  Inode table at 53251-53258 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 53259-54272
-+  Free inodes: 3329-3392
-+Group 53: (Blocks 54273-55296)
-+  Block bitmap at 54273 (+0), Inode bitmap at 54274 (+1)
-+  Inode table at 54275-54282 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 54283-55296
-+  Free inodes: 3393-3456
-+Group 54: (Blocks 55297-56320)
-+  Block bitmap at 55297 (+0), Inode bitmap at 55298 (+1)
-+  Inode table at 55299-55306 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 55307-56320
-+  Free inodes: 3457-3520
-+Group 55: (Blocks 56321-57344)
-+  Block bitmap at 56321 (+0), Inode bitmap at 56322 (+1)
-+  Inode table at 56323-56330 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 56331-57344
-+  Free inodes: 3521-3584
-+Group 56: (Blocks 57345-58368)
-+  Block bitmap at 57345 (+0), Inode bitmap at 57346 (+1)
-+  Inode table at 57347-57354 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 57355-58368
-+  Free inodes: 3585-3648
-+Group 57: (Blocks 58369-59392)
-+  Block bitmap at 58369 (+0), Inode bitmap at 58370 (+1)
-+  Inode table at 58371-58378 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 58379-59392
-+  Free inodes: 3649-3712
-+Group 58: (Blocks 59393-60416)
-+  Block bitmap at 59393 (+0), Inode bitmap at 59394 (+1)
-+  Inode table at 59395-59402 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 59403-60416
-+  Free inodes: 3713-3776
-+Group 59: (Blocks 60417-61440)
-+  Block bitmap at 60417 (+0), Inode bitmap at 60418 (+1)
-+  Inode table at 60419-60426 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 60427-61440
-+  Free inodes: 3777-3840
-+Group 60: (Blocks 61441-62464)
-+  Block bitmap at 61441 (+0), Inode bitmap at 61442 (+1)
-+  Inode table at 61443-61450 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 61451-62464
-+  Free inodes: 3841-3904
-+Group 61: (Blocks 62465-63488)
-+  Block bitmap at 62465 (+0), Inode bitmap at 62466 (+1)
-+  Inode table at 62467-62474 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 62475-63488
-+  Free inodes: 3905-3968
-+Group 62: (Blocks 63489-64512)
-+  Block bitmap at 63489 (+0), Inode bitmap at 63490 (+1)
-+  Inode table at 63491-63498 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 63499-64512
-+  Free inodes: 3969-4032
-+Group 63: (Blocks 64513-65536)
-+  Block bitmap at 64513 (+0), Inode bitmap at 64514 (+1)
-+  Inode table at 64515-64522 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 64523-65536
-+  Free inodes: 4033-4096
-+Group 64: (Blocks 65537-66560)
-+  Block bitmap at 65537 (+0), Inode bitmap at 65538 (+1)
-+  Inode table at 65539-65546 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 65547-66560
-+  Free inodes: 4097-4160
-+Group 65: (Blocks 66561-67584)
-+  Block bitmap at 66561 (+0), Inode bitmap at 66562 (+1)
-+  Inode table at 66563-66570 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 66571-67584
-+  Free inodes: 4161-4224
-+Group 66: (Blocks 67585-68608)
-+  Block bitmap at 67585 (+0), Inode bitmap at 67586 (+1)
-+  Inode table at 67587-67594 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 67595-68608
-+  Free inodes: 4225-4288
-+Group 67: (Blocks 68609-69632)
-+  Block bitmap at 68609 (+0), Inode bitmap at 68610 (+1)
-+  Inode table at 68611-68618 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 68619-69632
-+  Free inodes: 4289-4352
-+Group 68: (Blocks 69633-70656)
-+  Block bitmap at 69633 (+0), Inode bitmap at 69634 (+1)
-+  Inode table at 69635-69642 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 69643-70656
-+  Free inodes: 4353-4416
-+Group 69: (Blocks 70657-71680)
-+  Block bitmap at 70657 (+0), Inode bitmap at 70658 (+1)
-+  Inode table at 70659-70666 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 70667-71680
-+  Free inodes: 4417-4480
-+Group 70: (Blocks 71681-72704)
-+  Block bitmap at 71681 (+0), Inode bitmap at 71682 (+1)
-+  Inode table at 71683-71690 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 71691-72704
-+  Free inodes: 4481-4544
-+Group 71: (Blocks 72705-73728)
-+  Block bitmap at 72705 (+0), Inode bitmap at 72706 (+1)
-+  Inode table at 72707-72714 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 72715-73728
-+  Free inodes: 4545-4608
-+Group 72: (Blocks 73729-74752)
-+  Block bitmap at 73729 (+0), Inode bitmap at 73730 (+1)
-+  Inode table at 73731-73738 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 73739-74752
-+  Free inodes: 4609-4672
-+Group 73: (Blocks 74753-75776)
-+  Block bitmap at 74753 (+0), Inode bitmap at 74754 (+1)
-+  Inode table at 74755-74762 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 74763-75776
-+  Free inodes: 4673-4736
-+Group 74: (Blocks 75777-76800)
-+  Block bitmap at 75777 (+0), Inode bitmap at 75778 (+1)
-+  Inode table at 75779-75786 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 75787-76800
-+  Free inodes: 4737-4800
-+Group 75: (Blocks 76801-77824)
-+  Block bitmap at 76801 (+0), Inode bitmap at 76802 (+1)
-+  Inode table at 76803-76810 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 76811-77824
-+  Free inodes: 4801-4864
-+Group 76: (Blocks 77825-78848)
-+  Block bitmap at 77825 (+0), Inode bitmap at 77826 (+1)
-+  Inode table at 77827-77834 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 77835-78848
-+  Free inodes: 4865-4928
-+Group 77: (Blocks 78849-79872)
-+  Block bitmap at 78849 (+0), Inode bitmap at 78850 (+1)
-+  Inode table at 78851-78858 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 78859-79872
-+  Free inodes: 4929-4992
-+Group 78: (Blocks 79873-80896)
-+  Block bitmap at 79873 (+0), Inode bitmap at 79874 (+1)
-+  Inode table at 79875-79882 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 79883-80896
-+  Free inodes: 4993-5056
-+Group 79: (Blocks 80897-81920)
-+  Block bitmap at 80897 (+0), Inode bitmap at 80898 (+1)
-+  Inode table at 80899-80906 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 80907-81920
-+  Free inodes: 5057-5120
-+Group 80: (Blocks 81921-82944)
-+  Block bitmap at 81921 (+0), Inode bitmap at 81922 (+1)
-+  Inode table at 81923-81930 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 81931-82944
-+  Free inodes: 5121-5184
-+Group 81: (Blocks 82945-83968)
-+  Backup superblock at 82945, Group descriptors at 82946-82949
-+  Reserved GDT blocks at 82950-83205
-+  Block bitmap at 83206 (+261), Inode bitmap at 83207 (+262)
-+  Inode table at 83208-83215 (+263)
-+  753 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 83216-83968
-+  Free inodes: 5185-5248
-+Group 82: (Blocks 83969-84992)
-+  Block bitmap at 83969 (+0), Inode bitmap at 83970 (+1)
-+  Inode table at 83971-83978 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 83979-84992
-+  Free inodes: 5249-5312
-+Group 83: (Blocks 84993-86016)
-+  Block bitmap at 84993 (+0), Inode bitmap at 84994 (+1)
-+  Inode table at 84995-85002 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 85003-86016
-+  Free inodes: 5313-5376
-+Group 84: (Blocks 86017-87040)
-+  Block bitmap at 86017 (+0), Inode bitmap at 86018 (+1)
-+  Inode table at 86019-86026 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 86027-87040
-+  Free inodes: 5377-5440
-+Group 85: (Blocks 87041-88064)
-+  Block bitmap at 87041 (+0), Inode bitmap at 87042 (+1)
-+  Inode table at 87043-87050 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 87051-88064
-+  Free inodes: 5441-5504
-+Group 86: (Blocks 88065-89088)
-+  Block bitmap at 88065 (+0), Inode bitmap at 88066 (+1)
-+  Inode table at 88067-88074 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 88075-89088
-+  Free inodes: 5505-5568
-+Group 87: (Blocks 89089-90112)
-+  Block bitmap at 89089 (+0), Inode bitmap at 89090 (+1)
-+  Inode table at 89091-89098 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 89099-90112
-+  Free inodes: 5569-5632
-+Group 88: (Blocks 90113-91136)
-+  Block bitmap at 90113 (+0), Inode bitmap at 90114 (+1)
-+  Inode table at 90115-90122 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 90123-91136
-+  Free inodes: 5633-5696
-+Group 89: (Blocks 91137-92160)
-+  Block bitmap at 91137 (+0), Inode bitmap at 91138 (+1)
-+  Inode table at 91139-91146 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 91147-92160
-+  Free inodes: 5697-5760
-+Group 90: (Blocks 92161-93184)
-+  Block bitmap at 92161 (+0), Inode bitmap at 92162 (+1)
-+  Inode table at 92163-92170 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 92171-93184
-+  Free inodes: 5761-5824
-+Group 91: (Blocks 93185-94208)
-+  Block bitmap at 93185 (+0), Inode bitmap at 93186 (+1)
-+  Inode table at 93187-93194 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 93195-94208
-+  Free inodes: 5825-5888
-+Group 92: (Blocks 94209-95232)
-+  Block bitmap at 94209 (+0), Inode bitmap at 94210 (+1)
-+  Inode table at 94211-94218 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 94219-95232
-+  Free inodes: 5889-5952
-+Group 93: (Blocks 95233-96256)
-+  Block bitmap at 95233 (+0), Inode bitmap at 95234 (+1)
-+  Inode table at 95235-95242 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 95243-96256
-+  Free inodes: 5953-6016
-+Group 94: (Blocks 96257-97280)
-+  Block bitmap at 96257 (+0), Inode bitmap at 96258 (+1)
-+  Inode table at 96259-96266 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 96267-97280
-+  Free inodes: 6017-6080
-+Group 95: (Blocks 97281-98304)
-+  Block bitmap at 97281 (+0), Inode bitmap at 97282 (+1)
-+  Inode table at 97283-97290 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 97291-98304
-+  Free inodes: 6081-6144
-+Group 96: (Blocks 98305-99328)
-+  Block bitmap at 98305 (+0), Inode bitmap at 98306 (+1)
-+  Inode table at 98307-98314 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 98315-99328
-+  Free inodes: 6145-6208
-+Group 97: (Blocks 99329-100352)
-+  Block bitmap at 99329 (+0), Inode bitmap at 99330 (+1)
-+  Inode table at 99331-99338 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 99339-100352
-+  Free inodes: 6209-6272
-+Group 98: (Blocks 100353-101376)
-+  Block bitmap at 100353 (+0), Inode bitmap at 100354 (+1)
-+  Inode table at 100355-100362 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 100363-101376
-+  Free inodes: 6273-6336
-+Group 99: (Blocks 101377-102400)
-+  Block bitmap at 101377 (+0), Inode bitmap at 101378 (+1)
-+  Inode table at 101379-101386 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 101387-102400
-+  Free inodes: 6337-6400
-+Group 100: (Blocks 102401-103424)
-+  Block bitmap at 102401 (+0), Inode bitmap at 102402 (+1)
-+  Inode table at 102403-102410 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 102411-103424
-+  Free inodes: 6401-6464
-+Group 101: (Blocks 103425-104448)
-+  Block bitmap at 103425 (+0), Inode bitmap at 103426 (+1)
-+  Inode table at 103427-103434 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 103435-104448
-+  Free inodes: 6465-6528
-+Group 102: (Blocks 104449-105472)
-+  Block bitmap at 104449 (+0), Inode bitmap at 104450 (+1)
-+  Inode table at 104451-104458 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 104459-105472
-+  Free inodes: 6529-6592
-+Group 103: (Blocks 105473-106496)
-+  Block bitmap at 105473 (+0), Inode bitmap at 105474 (+1)
-+  Inode table at 105475-105482 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 105483-106496
-+  Free inodes: 6593-6656
-+Group 104: (Blocks 106497-107520)
-+  Block bitmap at 106497 (+0), Inode bitmap at 106498 (+1)
-+  Inode table at 106499-106506 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 106507-107520
-+  Free inodes: 6657-6720
-+Group 105: (Blocks 107521-108544)
-+  Block bitmap at 107521 (+0), Inode bitmap at 107522 (+1)
-+  Inode table at 107523-107530 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 107531-108544
-+  Free inodes: 6721-6784
-+Group 106: (Blocks 108545-109568)
-+  Block bitmap at 108545 (+0), Inode bitmap at 108546 (+1)
-+  Inode table at 108547-108554 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 108555-109568
-+  Free inodes: 6785-6848
-+Group 107: (Blocks 109569-110592)
-+  Block bitmap at 109569 (+0), Inode bitmap at 109570 (+1)
-+  Inode table at 109571-109578 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 109579-110592
-+  Free inodes: 6849-6912
-+Group 108: (Blocks 110593-111616)
-+  Block bitmap at 110593 (+0), Inode bitmap at 110594 (+1)
-+  Inode table at 110595-110602 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 110603-111616
-+  Free inodes: 6913-6976
-+Group 109: (Blocks 111617-112640)
-+  Block bitmap at 111617 (+0), Inode bitmap at 111618 (+1)
-+  Inode table at 111619-111626 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 111627-112640
-+  Free inodes: 6977-7040
-+Group 110: (Blocks 112641-113664)
-+  Block bitmap at 112641 (+0), Inode bitmap at 112642 (+1)
-+  Inode table at 112643-112650 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 112651-113664
-+  Free inodes: 7041-7104
-+Group 111: (Blocks 113665-114688)
-+  Block bitmap at 113665 (+0), Inode bitmap at 113666 (+1)
-+  Inode table at 113667-113674 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 113675-114688
-+  Free inodes: 7105-7168
-+Group 112: (Blocks 114689-115712)
-+  Block bitmap at 114689 (+0), Inode bitmap at 114690 (+1)
-+  Inode table at 114691-114698 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 114699-115712
-+  Free inodes: 7169-7232
-+Group 113: (Blocks 115713-116736)
-+  Block bitmap at 115713 (+0), Inode bitmap at 115714 (+1)
-+  Inode table at 115715-115722 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 115723-116736
-+  Free inodes: 7233-7296
-+Group 114: (Blocks 116737-117760)
-+  Block bitmap at 116737 (+0), Inode bitmap at 116738 (+1)
-+  Inode table at 116739-116746 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 116747-117760
-+  Free inodes: 7297-7360
-+Group 115: (Blocks 117761-118784)
-+  Block bitmap at 117761 (+0), Inode bitmap at 117762 (+1)
-+  Inode table at 117763-117770 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 117771-118784
-+  Free inodes: 7361-7424
-+Group 116: (Blocks 118785-119808)
-+  Block bitmap at 118785 (+0), Inode bitmap at 118786 (+1)
-+  Inode table at 118787-118794 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 118795-119808
-+  Free inodes: 7425-7488
-+Group 117: (Blocks 119809-120832)
-+  Block bitmap at 119809 (+0), Inode bitmap at 119810 (+1)
-+  Inode table at 119811-119818 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 119819-120832
-+  Free inodes: 7489-7552
-+Group 118: (Blocks 120833-121856)
-+  Block bitmap at 120833 (+0), Inode bitmap at 120834 (+1)
-+  Inode table at 120835-120842 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 120843-121856
-+  Free inodes: 7553-7616
-+Group 119: (Blocks 121857-122880)
-+  Block bitmap at 121857 (+0), Inode bitmap at 121858 (+1)
-+  Inode table at 121859-121866 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 121867-122880
-+  Free inodes: 7617-7680
-+Group 120: (Blocks 122881-123904)
-+  Block bitmap at 122881 (+0), Inode bitmap at 122882 (+1)
-+  Inode table at 122883-122890 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 122891-123904
-+  Free inodes: 7681-7744
-+Group 121: (Blocks 123905-124928)
-+  Block bitmap at 123905 (+0), Inode bitmap at 123906 (+1)
-+  Inode table at 123907-123914 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 123915-124928
-+  Free inodes: 7745-7808
-+Group 122: (Blocks 124929-125952)
-+  Block bitmap at 124929 (+0), Inode bitmap at 124930 (+1)
-+  Inode table at 124931-124938 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 124939-125952
-+  Free inodes: 7809-7872
-+Group 123: (Blocks 125953-126976)
-+  Block bitmap at 125953 (+0), Inode bitmap at 125954 (+1)
-+  Inode table at 125955-125962 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 125963-126976
-+  Free inodes: 7873-7936
-+Group 124: (Blocks 126977-128000)
-+  Block bitmap at 126977 (+0), Inode bitmap at 126978 (+1)
-+  Inode table at 126979-126986 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 126987-128000
-+  Free inodes: 7937-8000
-+Group 125: (Blocks 128001-129024)
-+  Backup superblock at 128001, Group descriptors at 128002-128005
-+  Reserved GDT blocks at 128006-128261
-+  Block bitmap at 128262 (+261), Inode bitmap at 128263 (+262)
-+  Inode table at 128264-128271 (+263)
-+  753 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 128272-129024
-+  Free inodes: 8001-8064
-+Group 126: (Blocks 129025-130048)
-+  Block bitmap at 129025 (+0), Inode bitmap at 129026 (+1)
-+  Inode table at 129027-129034 (+2)
-+  1014 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 129035-130048
-+  Free inodes: 8065-8128
-+Group 127: (Blocks 130049-131071)
-+  Block bitmap at 130049 (+0), Inode bitmap at 130050 (+1)
-+  Inode table at 130051-130058 (+2)
-+  1013 free blocks, 64 free inodes, 0 directories
-+  Free blocks: 130059-131071
-+  Free inodes: 8129-8192
-diff --git a/tests/m_reserved_inodes/script b/tests/m_reserved_inodes/script
-new file mode 100644
-index 000000000000..070c08a07d6f
---- /dev/null
-+++ b/tests/m_reserved_inodes/script
-@@ -0,0 +1,7 @@
-+DESCRIPTION="set number of reserved inodes on mkfs"
-+FS_SIZE=131072
-+DUMPE2FS_IGNORE_80COL=1
-+export DUMPE2FS_IGNORE_80COL
-+MKE2FS_OPTS="-b 1024 -g 1024 -N 8192 -E reserved_inodes=77"
-+. $cmd_dir/run_mke2fs
-+unset DUMPE2FS_IGNORE_80COL
-diff --git a/tests/t_reserved_inodes_decrease/expect b/tests/t_reserved_inodes_decrease/expect
-new file mode 100644
-index 000000000000..fe6ace681018
---- /dev/null
-+++ b/tests/t_reserved_inodes_decrease/expect
-@@ -0,0 +1,68 @@
-+tune2fs reserved_inodes decreasing test
-+Creating filesystem with 524288 1k blocks and 65536 inodes
-+Superblock backups stored on blocks: 
-+	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
-+
-+Allocating group tables:      done                            
-+Writing inode tables:      done                            
-+Creating journal (16384 blocks): done
-+Creating 477 huge file(s) with 1024 blocks each: done
-+Writing superblocks and filesystem accounting information:      done
-+
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-+tune2fs -E reserved_inodes=64 test.img
-+Exit status is 0
-+
-+Change in FS metadata:
-+@@ -11,7 +11,7 @@
-+ Block count:              524288
-+ Reserved block count:     26214
-+ Free blocks:              588
-+-Free inodes:              64929
-++Free inodes:              64993
-+ First block:              1
-+ Block size:               1024
-+ Fragment size:            1024
-+@@ -25,7 +25,7 @@
-+ Check interval:           0 (<none>)
-+ Reserved blocks uid:      0
-+ Reserved blocks gid:      0
-+-First inode:              129
-++First inode:              65
-+ Inode size:	          256
-+ Required extra isize:     28
-+ Desired extra isize:      28
-+@@ -45,7 +45,7 @@
-+   Block bitmap at 260 (+259)
-+   Inode bitmap at 276 (+275)
-+   Inode table at 292-547 (+291)
-+-  21 free blocks, 417 free inodes, 3 directories, 417 unused inodes
-++  21 free blocks, 481 free inodes, 3 directories, 417 unused inodes
-+   Free blocks: 4412-4432
-+   Free inodes: 608-1024
-+ Group 1: (Blocks 8193-16384) [INODE_UNINIT]
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+Inode bitmap differences:  -(65--128)
-+Fix? no
-+
-+Free inodes count wrong for group #0 (481, counted=417).
-+Fix? no
-+
-+Free inodes count wrong (64993, counted=64929).
-+Fix? no
-+
-+
-+
-+
-+
-+Exit status is 4
-diff --git a/tests/t_reserved_inodes_decrease/name b/tests/t_reserved_inodes_decrease/name
-new file mode 100644
-index 000000000000..8f9e66179e4a
---- /dev/null
-+++ b/tests/t_reserved_inodes_decrease/name
-@@ -0,0 +1 @@
-+test decreasing number of reserved inodes
-diff --git a/tests/t_reserved_inodes_decrease/script b/tests/t_reserved_inodes_decrease/script
-new file mode 100644
-index 000000000000..0e91558ed612
---- /dev/null
-+++ b/tests/t_reserved_inodes_decrease/script
-@@ -0,0 +1,71 @@
-+FSCK_OPT=-fn
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+CONF=$TMPFILE.conf
-+
-+cat > $CONF << ENDL
-+[fs_types]
-+	ext4h = {
-+		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode
-+		options = reserved_inodes=128
-+		blocksize = 1024
-+		inode_size = 256
-+		make_hugefiles = true
-+		hugefiles_dir = /xyz
-+		hugefiles_slack = 0
-+		hugefiles_name = aaaaa
-+		hugefiles_digits = 4
-+		hugefiles_size = 1M
-+		zero_hugefiles = false
-+	}
-+ENDL
-+
-+echo "tune2fs reserved_inodes decreasing test" > $OUT
-+
-+MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
-+rm -rf $CONF
-+
-+# dump and check
-+$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.before
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+# increase number of reserved inodes
-+echo "tune2fs -E reserved_inodes=64 test.img" >> $OUT
-+$TUNE2FS -E reserved_inodes=64 $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+# check
-+$FSCK -yD -N test_filesys $TMPFILE >> $OUT 2>&1
-+
-+# dump and check
-+$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.after
-+echo "Change in FS metadata:" >> $OUT
-+diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+rm $TMPFILE $OUT.before $OUT.after
-+
-+#
-+# Do the verification
-+#
-+
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
-+mv $OUT.new $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+fi
-+
-+unset IMAGE FSCK_OPT OUT EXP CONF
-diff --git a/tests/t_reserved_inodes_increase/expect b/tests/t_reserved_inodes_increase/expect
-new file mode 100644
-index 000000000000..1e15df1b1a23
---- /dev/null
-+++ b/tests/t_reserved_inodes_increase/expect
-@@ -0,0 +1,59 @@
-+tune2fs reserved_inodes increasing test
-+Creating filesystem with 524288 1k blocks and 65536 inodes
-+Superblock backups stored on blocks: 
-+	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
-+
-+Allocating group tables:      done                            
-+Writing inode tables:      done                            
-+Creating journal (16384 blocks): done
-+Creating 477 huge file(s) with 1024 blocks each: done
-+Writing superblocks and filesystem accounting information:      done
-+
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-+tune2fs -E reserved_inodes=128 test.img
-+Exit status is 0
-+
-+Change in FS metadata:
-+@@ -11,7 +11,7 @@
-+ Block count:              524288
-+ Reserved block count:     26214
-+ Free blocks:              588
-+-Free inodes:              64993
-++Free inodes:              64929
-+ First block:              1
-+ Block size:               1024
-+ Fragment size:            1024
-+@@ -25,7 +25,7 @@
-+ Check interval:           0 (<none>)
-+ Reserved blocks uid:      0
-+ Reserved blocks gid:      0
-+-First inode:              65
-++First inode:              129
-+ Inode size:	          256
-+ Required extra isize:     28
-+ Desired extra isize:      28
-+@@ -45,9 +45,9 @@
-+   Block bitmap at 260 (+259)
-+   Inode bitmap at 276 (+275)
-+   Inode table at 292-547 (+291)
-+-  21 free blocks, 481 free inodes, 3 directories, 481 unused inodes
-++  21 free blocks, 417 free inodes, 3 directories, 417 unused inodes
-+   Free blocks: 4412-4432
-+-  Free inodes: 544-1024
-++  Free inodes: 608-1024
-+ Group 1: (Blocks 8193-16384) [INODE_UNINIT]
-+   Backup superblock at 8193, Group descriptors at 8194-8195
-+   Reserved GDT blocks at 8196-8451
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-diff --git a/tests/t_reserved_inodes_increase/name b/tests/t_reserved_inodes_increase/name
-new file mode 100644
-index 000000000000..66fa663cce18
---- /dev/null
-+++ b/tests/t_reserved_inodes_increase/name
-@@ -0,0 +1 @@
-+test increasing number of reserved inodes
-diff --git a/tests/t_reserved_inodes_increase/script b/tests/t_reserved_inodes_increase/script
-new file mode 100644
-index 000000000000..e75baa2a06fd
---- /dev/null
-+++ b/tests/t_reserved_inodes_increase/script
-@@ -0,0 +1,71 @@
-+FSCK_OPT=-fn
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+CONF=$TMPFILE.conf
-+
-+cat > $CONF << ENDL
-+[fs_types]
-+	ext4h = {
-+		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode
-+		options = reserved_inodes=64
-+		blocksize = 1024
-+		inode_size = 256
-+		make_hugefiles = true
-+		hugefiles_dir = /xyz
-+		hugefiles_slack = 0
-+		hugefiles_name = aaaaa
-+		hugefiles_digits = 4
-+		hugefiles_size = 1M
-+		zero_hugefiles = false
-+	}
-+ENDL
-+
-+echo "tune2fs reserved_inodes increasing test" > $OUT
-+
-+MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
-+rm -rf $CONF
-+
-+# dump and check
-+$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.before
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+# increase number of reserved inodes
-+echo "tune2fs -E reserved_inodes=128 test.img" >> $OUT
-+$TUNE2FS -E reserved_inodes=128 $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+# check
-+$FSCK -yD -N test_filesys $TMPFILE >> $OUT 2>&1
-+
-+# dump and check
-+$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.after
-+echo "Change in FS metadata:" >> $OUT
-+diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+rm $TMPFILE $OUT.before $OUT.after
-+
-+#
-+# Do the verification
-+#
-+
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
-+mv $OUT.new $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+fi
-+
-+unset IMAGE FSCK_OPT OUT EXP CONF
-diff --git a/tests/t_reserved_inodes_increase_csum/expect b/tests/t_reserved_inodes_increase_csum/expect
-new file mode 100644
-index 000000000000..2b18f8ddc3fd
---- /dev/null
-+++ b/tests/t_reserved_inodes_increase_csum/expect
-@@ -0,0 +1,60 @@
-+tune2fs reserved_inodes increasing test
-+64-bit filesystem support is not enabled.  The larger fields afforded by this feature enable full-strength checksumming.  Pass -O 64bit to rectify.
-+Creating filesystem with 524288 1k blocks and 65536 inodes
-+Superblock backups stored on blocks: 
-+	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
-+
-+Allocating group tables:      done                            
-+Writing inode tables:      done                            
-+Creating journal (16384 blocks): done
-+Creating 477 huge file(s) with 1024 blocks each: done
-+Writing superblocks and filesystem accounting information:      done
-+
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-+tune2fs -E reserved_inodes=128 test.img
-+Exit status is 0
-+
-+Change in FS metadata:
-+@@ -11,7 +11,7 @@
-+ Block count:              524288
-+ Reserved block count:     26214
-+ Free blocks:              588
-+-Free inodes:              64993
-++Free inodes:              64929
-+ First block:              1
-+ Block size:               1024
-+ Fragment size:            1024
-+@@ -25,7 +25,7 @@
-+ Check interval:           0 (<none>)
-+ Reserved blocks uid:      0
-+ Reserved blocks gid:      0
-+-First inode:              65
-++First inode:              129
-+ Inode size:	          256
-+ Required extra isize:     28
-+ Desired extra isize:      28
-+@@ -46,9 +46,9 @@
-+   Block bitmap at 260 (+259)
-+   Inode bitmap at 276 (+275)
-+   Inode table at 292-547 (+291)
-+-  21 free blocks, 481 free inodes, 3 directories, 481 unused inodes
-++  21 free blocks, 417 free inodes, 3 directories, 417 unused inodes
-+   Free blocks: 4412-4432
-+-  Free inodes: 544-1024
-++  Free inodes: 608-1024
-+ Group 1: (Blocks 8193-16384) [INODE_UNINIT]
-+   Backup superblock at 8193, Group descriptors at 8194-8195
-+   Reserved GDT blocks at 8196-8451
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-diff --git a/tests/t_reserved_inodes_increase_csum/name b/tests/t_reserved_inodes_increase_csum/name
-new file mode 100644
-index 000000000000..f9da1331a093
---- /dev/null
-+++ b/tests/t_reserved_inodes_increase_csum/name
-@@ -0,0 +1 @@
-+test increasing number of reserved inodes on fs with metadata_csum
-diff --git a/tests/t_reserved_inodes_increase_csum/script b/tests/t_reserved_inodes_increase_csum/script
-new file mode 100644
-index 000000000000..a4dbe369e4c6
---- /dev/null
-+++ b/tests/t_reserved_inodes_increase_csum/script
-@@ -0,0 +1,71 @@
-+FSCK_OPT=-fn
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+CONF=$TMPFILE.conf
-+
-+cat > $CONF << ENDL
-+[fs_types]
-+	ext4h = {
-+		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode,metadata_csum
-+		options = reserved_inodes=64
-+		blocksize = 1024
-+		inode_size = 256
-+		make_hugefiles = true
-+		hugefiles_dir = /xyz
-+		hugefiles_slack = 0
-+		hugefiles_name = aaaaa
-+		hugefiles_digits = 4
-+		hugefiles_size = 1M
-+		zero_hugefiles = false
-+	}
-+ENDL
-+
-+echo "tune2fs reserved_inodes increasing test" > $OUT
-+
-+MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
-+rm -rf $CONF
-+
-+# dump and check
-+$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.before
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+# increase number of reserved inodes
-+echo "tune2fs -E reserved_inodes=128 test.img" >> $OUT
-+$TUNE2FS -E reserved_inodes=128 $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+# check
-+$FSCK -yD -N test_filesys $TMPFILE >> $OUT 2>&1
-+
-+# dump and check
-+$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.after
-+echo "Change in FS metadata:" >> $OUT
-+diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+rm $TMPFILE $OUT.before $OUT.after
-+
-+#
-+# Do the verification
-+#
-+
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
-+mv $OUT.new $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+fi
-+
-+unset IMAGE FSCK_OPT OUT EXP CONF
+ Group 1: (Blocks 1025-2048)
+   Backup superblock at 1025, Group descriptors at 1026-1041
+   Reserved GDT blocks at 1042-1297
+diff --git a/tests/m_extent_journal/expect.1 b/tests/m_extent_journal/expect.1
+index 34e8a80d353d..f3a74084a270 100644
+--- a/tests/m_extent_journal/expect.1
++++ b/tests/m_extent_journal/expect.1
+@@ -13,7 +13,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 7460/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 7460/65536 blocks
+ Exit status is 0
+ Filesystem volume name:   <none>
+ Last mounted on:          <not available>
+@@ -28,7 +28,7 @@ Inode count:              16384
+ Block count:              65536
+ Reserved block count:     3276
+ Free blocks:              58076
+-Free inodes:              16373
++Free inodes:              16320
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -41,7 +41,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          128
+ Journal inode:            8
+ Default directory hash:   half_md4
+@@ -58,9 +58,9 @@ Group 0: (Blocks 1-8192)
+   Reserved GDT blocks at 3-257
+   Block bitmap at 258 (+257), Inode bitmap at 259 (+258)
+   Inode table at 260-515 (+259)
+-  7663 free blocks, 2037 free inodes, 2 directories
++  7663 free blocks, 1984 free inodes, 2 directories
+   Free blocks: 530-8192
+-  Free inodes: 12-2048
++  Free inodes: 65-2048
+ Group 1: (Blocks 8193-16384)
+   Backup superblock at 8193, Group descriptors at 8194-8194
+   Reserved GDT blocks at 8195-8449
+diff --git a/tests/m_large_file/expect.1 b/tests/m_large_file/expect.1
+index 4acca41ce520..840c2fe934b1 100644
+--- a/tests/m_large_file/expect.1
++++ b/tests/m_large_file/expect.1
+@@ -1,4 +1,4 @@
+-Creating filesystem with 16384 4k blocks and 64 inodes
++Creating filesystem with 16384 4k blocks and 80 inodes
+ 
+ Allocating group tables:    done                            
+ Writing inode tables:    done                            
+@@ -10,7 +10,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/64 files (0.0% non-contiguous), 17/16384 blocks
++test_filesys: 64/80 files (0.0% non-contiguous), 18/16384 blocks
+ Exit status is 0
+ Filesystem volume name:   <none>
+ Last mounted on:          <not available>
+@@ -21,24 +21,24 @@ Default mount options:    (none)
+ Filesystem state:         clean
+ Errors behavior:          Continue
+ Filesystem OS type:       Linux
+-Inode count:              64
++Inode count:              80
+ Block count:              16384
+ Reserved block count:     819
+-Free blocks:              16367
+-Free inodes:              53
++Free blocks:              16366
++Free inodes:              16
+ First block:              0
+ Block size:               4096
+ Fragment size:            4096
+ Reserved GDT blocks:      3
+ Blocks per group:         32768
+ Fragments per group:      32768
+-Inodes per group:         64
+-Inode blocks per group:   4
++Inodes per group:         80
++Inode blocks per group:   5
+ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          256
+ Required extra isize:     28
+ Desired extra isize:      28
+@@ -50,7 +50,7 @@ Group 0: (Blocks 0-16383)
+   Reserved GDT blocks at 2-4
+   Block bitmap at 5 (+5)
+   Inode bitmap at 6 (+6)
+-  Inode table at 7-10 (+7)
+-  16367 free blocks, 53 free inodes, 2 directories
+-  Free blocks: 17-16383
+-  Free inodes: 12-64
++  Inode table at 7-11 (+7)
++  16366 free blocks, 16 free inodes, 2 directories
++  Free blocks: 18-16383
++  Free inodes: 65-80
+diff --git a/tests/m_meta_bg/expect.1 b/tests/m_meta_bg/expect.1
+index 7df4230ca0bd..568c43514780 100644
+--- a/tests/m_meta_bg/expect.1
++++ b/tests/m_meta_bg/expect.1
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/32768 files (0.0% non-contiguous), 4389/131072 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 4389/131072 blocks
+ Exit status is 0
+ Filesystem volume name:   <none>
+ Last mounted on:          <not available>
+@@ -27,7 +27,7 @@ Inode count:              32768
+ Block count:              131072
+ Reserved block count:     6553
+ Free blocks:              126683
+-Free inodes:              32757
++Free inodes:              32704
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -39,7 +39,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          128
+ Default directory hash:   half_md4
+ 
+@@ -48,9 +48,9 @@ Group 0: (Blocks 1-1024)
+   Primary superblock at 1, Group descriptor at 2
+   Block bitmap at 3 (+2), Inode bitmap at 4 (+3)
+   Inode table at 5-36 (+4)
+-  975 free blocks, 245 free inodes, 2 directories
++  975 free blocks, 192 free inodes, 2 directories
+   Free blocks: 50-1024
+-  Free inodes: 12-256
++  Free inodes: 65-256
+ Group 1: (Blocks 1025-2048)
+   Backup superblock at 1025, Group descriptor at 1026
+   Block bitmap at 1027 (+2), Inode bitmap at 1028 (+3)
+diff --git a/tests/m_minrootdir/expect b/tests/m_minrootdir/expect
+index 41a713fd02ca..953df9b2db0f 100644
+--- a/tests/m_minrootdir/expect
++++ b/tests/m_minrootdir/expect
+@@ -12,7 +12,7 @@ Inode count:              1024
+ Block count:              16384
+ Reserved block count:     819
+ Free blocks:              16065
+-Free inodes:              1006
++Free inodes:              953
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -26,7 +26,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          256
+ Required extra isize:     28
+ Desired extra isize:      28
+@@ -39,9 +39,9 @@ Group 0: (Blocks 1-8192)
+   Block bitmap at 3 (+2)
+   Inode bitmap at 5 (+4)
+   Inode table at 7-134 (+6)
+-  7876 free blocks, 494 free inodes, 4 directories, 494 unused inodes
++  7876 free blocks, 441 free inodes, 4 directories, 441 unused inodes
+   Free blocks: 317-8192
+-  Free inodes: 19-512
++  Free inodes: 72-512
+ Group 1: (Blocks 8193-16383) [INODE_UNINIT]
+   Backup superblock at 8193, Group descriptors at 8194-8194
+   Block bitmap at 4 (bg #0 + 3)
+@@ -105,11 +105,11 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test.img: 18/1024 files (0.0% non-contiguous), 319/16384 blocks
++test.img: 71/1024 files (0.0% non-contiguous), 319/16384 blocks
+ minify fs
+ Setting reserved blocks percentage to 0% (0 blocks)
+-Resizing the filesystem on test.img to 338 (1k) blocks.
+-The filesystem on test.img is now 338 (1k) blocks long.
++Resizing the filesystem on test.img to 352 (1k) blocks.
++The filesystem on test.img is now 352 (1k) blocks long.
+ 
+ Filesystem volume name:   <none>
+ Last mounted on:          <not available>
+@@ -121,10 +121,10 @@ Filesystem state:         clean
+ Errors behavior:          Continue
+ Filesystem OS type:       Linux
+ Inode count:              512
+-Block count:              338
++Block count:              352
+ Reserved block count:     0
+-Free blocks:              151
+-Free inodes:              494
++Free blocks:              165
++Free inodes:              441
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -138,7 +138,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          256
+ Required extra isize:     28
+ Desired extra isize:      28
+@@ -146,20 +146,20 @@ Default directory hash:   half_md4
+ Checksum type:            crc32c
+ 
+ 
+-Group 0: (Blocks 1-337)
++Group 0: (Blocks 1-351)
+   Primary superblock at 1, Group descriptors at 2-2
+   Block bitmap at 3 (+2)
+   Inode bitmap at 5 (+4)
+   Inode table at 7-134 (+6)
+-  151 free blocks, 494 free inodes, 4 directories, 494 unused inodes
+-  Free blocks: 4, 6, 135-262, 317-337
+-  Free inodes: 19-512
++  165 free blocks, 441 free inodes, 4 directories, 441 unused inodes
++  Free blocks: 4, 6, 135-262, 317-351
++  Free inodes: 72-512
+ Pass 1: Checking inodes, blocks, and sizes
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test.img: 18/512 files (0.0% non-contiguous), 187/338 blocks
++test.img: 71/512 files (0.0% non-contiguous), 187/352 blocks
+ minify fs (2)
+ Setting reserved blocks percentage to 0% (0 blocks)
+ Resizing the filesystem on test.img to 188 (1k) blocks.
+@@ -178,7 +178,7 @@ Inode count:              512
+ Block count:              188
+ Reserved block count:     0
+ Free blocks:              1
+-Free inodes:              494
++Free inodes:              441
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -192,7 +192,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          256
+ Required extra isize:     28
+ Desired extra isize:      28
+@@ -205,12 +205,12 @@ Group 0: (Blocks 1-187)
+   Block bitmap at 3 (+2)
+   Inode bitmap at 5 (+4)
+   Inode table at 7-134 (+6)
+-  1 free blocks, 494 free inodes, 4 directories, 494 unused inodes
++  1 free blocks, 441 free inodes, 4 directories, 441 unused inodes
+   Free blocks: 187
+-  Free inodes: 19-512
++  Free inodes: 72-512
+ Pass 1: Checking inodes, blocks, and sizes
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test.img: 18/512 files (5.6% non-contiguous), 187/188 blocks
++test.img: 71/512 files (1.4% non-contiguous), 187/188 blocks
+diff --git a/tests/m_mmp/expect.1 b/tests/m_mmp/expect.1
+index a1452e6ba795..396e608dd02b 100644
+--- a/tests/m_mmp/expect.1
++++ b/tests/m_mmp/expect.1
+@@ -13,7 +13,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/65536 files (0.0% non-contiguous), 2093/65536 blocks
++test_filesys: 64/65536 files (0.0% non-contiguous), 2093/65536 blocks
+ Exit status is 0
+ Filesystem volume name:   <none>
+ Last mounted on:          <not available>
+@@ -28,7 +28,7 @@ Inode count:              65536
+ Block count:              65536
+ Reserved block count:     3276
+ Free blocks:              63443
+-Free inodes:              65525
++Free inodes:              65472
+ First block:              0
+ Block size:               4096
+ Fragment size:            4096
+@@ -41,7 +41,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          128
+ Default directory hash:   half_md4
+ MMP block number:         1049
+@@ -54,9 +54,9 @@ Group 0: (Blocks 0-32767)
+   Block bitmap at 17 (+17)
+   Inode bitmap at 18 (+18)
+   Inode table at 19-1042 (+19)
+-  31718 free blocks, 32757 free inodes, 2 directories
++  31718 free blocks, 32704 free inodes, 2 directories
+   Free blocks: 1050-32767
+-  Free inodes: 12-32768
++  Free inodes: 65-32768
+ Group 1: (Blocks 32768-65535)
+   Backup superblock at 32768, Group descriptors at 32769-32769
+   Reserved GDT blocks at 32770-32784
+diff --git a/tests/m_no_opt/expect.1 b/tests/m_no_opt/expect.1
+index 58b311c4eddf..4a9733735d47 100644
+--- a/tests/m_no_opt/expect.1
++++ b/tests/m_no_opt/expect.1
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 2094/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 2094/65536 blocks
+ Exit status is 0
+ Filesystem volume name:   <none>
+ Last mounted on:          <not available>
+@@ -27,7 +27,7 @@ Inode count:              16384
+ Block count:              65536
+ Reserved block count:     3276
+ Free blocks:              63442
+-Free inodes:              16373
++Free inodes:              16320
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -39,7 +39,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          128
+ Default directory hash:   half_md4
+ 
+@@ -48,9 +48,9 @@ Group 0: (Blocks 1-8192)
+   Primary superblock at 1, Group descriptors at 2-2
+   Block bitmap at 3 (+2), Inode bitmap at 4 (+3)
+   Inode table at 5-260 (+4)
+-  7919 free blocks, 2037 free inodes, 2 directories
++  7919 free blocks, 1984 free inodes, 2 directories
+   Free blocks: 274-8192
+-  Free inodes: 12-2048
++  Free inodes: 65-2048
+ Group 1: (Blocks 8193-16384)
+   Backup superblock at 8193, Group descriptors at 8194-8194
+   Block bitmap at 8195 (+2), Inode bitmap at 8196 (+3)
+diff --git a/tests/m_raid_opt/expect.1 b/tests/m_raid_opt/expect.1
+index 0fccb7cadcbc..8385089d01d0 100644
+--- a/tests/m_raid_opt/expect.1
++++ b/tests/m_raid_opt/expect.1
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/32768 files (0.0% non-contiguous), 7238/131072 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 7238/131072 blocks
+ Exit status is 0
+ Filesystem volume name:   <none>
+ Last mounted on:          <not available>
+@@ -27,7 +27,7 @@ Inode count:              32768
+ Block count:              131072
+ Reserved block count:     6553
+ Free blocks:              123834
+-Free inodes:              32757
++Free inodes:              32704
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -41,7 +41,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          128
+ Default directory hash:   half_md4
+ 
+@@ -51,9 +51,9 @@ Group 0: (Blocks 1-1024)
+   Reserved GDT blocks at 6-261
+   Block bitmap at 294 (+293), Inode bitmap at 295 (+294)
+   Inode table at 262-293 (+261)
+-  715 free blocks, 245 free inodes, 2 directories
++  715 free blocks, 192 free inodes, 2 directories
+   Free blocks: 310-1024
+-  Free inodes: 12-256
++  Free inodes: 65-256
+ Group 1: (Blocks 1025-2048)
+   Backup superblock at 1025, Group descriptors at 1026-1029
+   Reserved GDT blocks at 1030-1285
+diff --git a/tests/m_root_owner/expect.1 b/tests/m_root_owner/expect.1
+index 30d119e22c99..7a83f962c869 100644
+--- a/tests/m_root_owner/expect.1
++++ b/tests/m_root_owner/expect.1
+@@ -10,7 +10,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/128 files (0.0% non-contiguous), 38/1024 blocks
++test_filesys: 64/128 files (0.0% non-contiguous), 38/1024 blocks
+ Exit status is 0
+ Filesystem volume name:   <none>
+ Last mounted on:          <not available>
+@@ -25,7 +25,7 @@ Inode count:              128
+ Block count:              1024
+ Reserved block count:     51
+ Free blocks:              986
+-Free inodes:              117
++Free inodes:              64
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -38,7 +38,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          128
+ Default directory hash:   half_md4
+ 
+@@ -49,6 +49,6 @@ Group 0: (Blocks 1-1023)
+   Block bitmap at 6 (+5)
+   Inode bitmap at 7 (+6)
+   Inode table at 8-23 (+7)
+-  986 free blocks, 117 free inodes, 2 directories
++  986 free blocks, 64 free inodes, 2 directories
+   Free blocks: 38-1023
+-  Free inodes: 12-128
++  Free inodes: 65-128
+diff --git a/tests/m_rootdir/expect b/tests/m_rootdir/expect
+index a5314f14366f..cc150d234fb1 100644
+--- a/tests/m_rootdir/expect
++++ b/tests/m_rootdir/expect
+@@ -11,7 +11,7 @@ Inode count:              1024
+ Block count:              16384
+ Reserved block count:     819
+ Free blocks:              14786
+-Free inodes:              1005
++Free inodes:              952
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -26,7 +26,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          256
+ Required extra isize:     28
+ Desired extra isize:      28
+@@ -47,9 +47,9 @@ Group 0: (Blocks 1-8192)
+   Block bitmap at 130 (+129)
+   Inode bitmap at 132 (+131)
+   Inode table at 134-261 (+133)
+-  7748 free blocks, 493 free inodes, 4 directories, 493 unused inodes
++  7748 free blocks, 440 free inodes, 4 directories, 440 unused inodes
+   Free blocks: 445-8192
+-  Free inodes: 20-512
++  Free inodes: 73-512
+ Group 1: (Blocks 8193-16383) [INODE_UNINIT]
+   Backup superblock at 8193, Group descriptors at 8194-8194
+   Reserved GDT blocks at 8195-8321
+@@ -114,4 +114,4 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test.img: 19/1024 files (0.0% non-contiguous), 1598/16384 blocks
++test.img: 72/1024 files (0.0% non-contiguous), 1598/16384 blocks
+diff --git a/tests/m_std/expect.1 b/tests/m_std/expect.1
+index b05031f8e315..8661e6978354 100644
+--- a/tests/m_std/expect.1
++++ b/tests/m_std/expect.1
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 3364/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 3364/65536 blocks
+ Exit status is 0
+ Filesystem volume name:   <none>
+ Last mounted on:          <not available>
+@@ -27,7 +27,7 @@ Inode count:              16384
+ Block count:              65536
+ Reserved block count:     3276
+ Free blocks:              62172
+-Free inodes:              16373
++Free inodes:              16320
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -40,7 +40,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          128
+ Default directory hash:   half_md4
+ 
+@@ -50,9 +50,9 @@ Group 0: (Blocks 1-8192)
+   Reserved GDT blocks at 3-257
+   Block bitmap at 258 (+257), Inode bitmap at 259 (+258)
+   Inode table at 260-515 (+259)
+-  7663 free blocks, 2037 free inodes, 2 directories
++  7663 free blocks, 1984 free inodes, 2 directories
+   Free blocks: 530-8192
+-  Free inodes: 12-2048
++  Free inodes: 65-2048
+ Group 1: (Blocks 8193-16384)
+   Backup superblock at 8193, Group descriptors at 8194-8194
+   Reserved GDT blocks at 8195-8449
+diff --git a/tests/m_uninit/expect.1 b/tests/m_uninit/expect.1
+index e886dfbf1373..3e2ead292009 100644
+--- a/tests/m_uninit/expect.1
++++ b/tests/m_uninit/expect.1
+@@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/32768 files (0.0% non-contiguous), 5691/131072 blocks
++test_filesys: 64/32768 files (0.0% non-contiguous), 5691/131072 blocks
+ Exit status is 0
+ Filesystem volume name:   <none>
+ Last mounted on:          <not available>
+@@ -27,7 +27,7 @@ Inode count:              32768
+ Block count:              131072
+ Reserved block count:     6553
+ Free blocks:              125381
+-Free inodes:              32757
++Free inodes:              32704
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -40,7 +40,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          128
+ Default directory hash:   half_md4
+ 
+@@ -50,9 +50,9 @@ Group 0: (Blocks 1-8192) [ITABLE_ZEROED]
+   Reserved GDT blocks at 3-258
+   Block bitmap at 259 (+258), Inode bitmap at 260 (+259)
+   Inode table at 261-516 (+260)
+-  7662 free blocks, 2037 free inodes, 2 directories, 2037 unused inodes
++  7662 free blocks, 1984 free inodes, 2 directories, 1984 unused inodes
+   Free blocks: 531-8192
+-  Free inodes: 12-2048
++  Free inodes: 65-2048
+ Group 1: (Blocks 8193-16384) [INODE_UNINIT, BLOCK_UNINIT, ITABLE_ZEROED]
+   Backup superblock at 8193, Group descriptors at 8194-8194
+   Reserved GDT blocks at 8195-8450
+diff --git a/tests/r_fixup_lastbg/expect b/tests/r_fixup_lastbg/expect
+index 96b154a94078..64e227c89d4d 100644
+--- a/tests/r_fixup_lastbg/expect
++++ b/tests/r_fixup_lastbg/expect
+@@ -36,4 +36,4 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test.img: 11/1248 files (0.0% non-contiguous), 1517/20004 blocks
++test.img: 64/1248 files (0.0% non-contiguous), 1517/20004 blocks
+diff --git a/tests/r_fixup_lastbg_big/expect b/tests/r_fixup_lastbg_big/expect
+index edaabaf00d91..43a21b2b9987 100644
+--- a/tests/r_fixup_lastbg_big/expect
++++ b/tests/r_fixup_lastbg_big/expect
+@@ -42,4 +42,4 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test.img: 11/2080 files (0.0% non-contiguous), 1809/40000 blocks
++test.img: 64/2080 files (0.0% non-contiguous), 1809/40000 blocks
+diff --git a/tests/r_resize_inode/expect b/tests/r_resize_inode/expect
+index ba1647ea72c2..4594bc190e55 100644
+--- a/tests/r_resize_inode/expect
++++ b/tests/r_resize_inode/expect
+@@ -8,7 +8,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/16384 files (0.0% non-contiguous), 4513/65536 blocks
++test_filesys: 64/16384 files (0.0% non-contiguous), 4513/65536 blocks
+ Exit status is 0
+ dumpe2fs test.img
+ Filesystem volume name:   <none>
+@@ -24,7 +24,7 @@ Inode count:              16384
+ Block count:              65536
+ Reserved block count:     3276
+ Free blocks:              61023
+-Free inodes:              16373
++Free inodes:              16320
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -37,7 +37,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          128
+ Default directory hash:   half_md4
+ 
+@@ -47,9 +47,9 @@ Group 0: (Blocks 1-1024)
+   Reserved GDT blocks at 4-258
+   Block bitmap at 259 (+258), Inode bitmap at 260 (+259)
+   Inode table at 261-292 (+260)
+-  718 free blocks, 245 free inodes, 2 directories
++  718 free blocks, 192 free inodes, 2 directories
+   Free blocks: 307-1024
+-  Free inodes: 12-256
++  Free inodes: 65-256
+ Group 1: (Blocks 1025-2048)
+   Backup superblock at 1025, Group descriptors at 1026-1027
+   Reserved GDT blocks at 1028-1282
+@@ -455,7 +455,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/4096 files (0.0% non-contiguous), 2107/16384 blocks
++test_filesys: 64/4096 files (0.0% non-contiguous), 2107/16384 blocks
+ Exit status is 0
+ dumpe2fs test.img
+ Filesystem volume name:   <none>
+@@ -471,7 +471,7 @@ Inode count:              4096
+ Block count:              16384
+ Reserved block count:     819
+ Free blocks:              14277
+-Free inodes:              4085
++Free inodes:              4032
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -484,7 +484,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          128
+ Default directory hash:   half_md4
+ 
+@@ -494,9 +494,9 @@ Group 0: (Blocks 1-1024)
+   Reserved GDT blocks at 3-258
+   Block bitmap at 260 (+259), Inode bitmap at 261 (+260)
+   Inode table at 262-293 (+261)
+-  718 free blocks, 245 free inodes, 2 directories
++  718 free blocks, 192 free inodes, 2 directories
+   Free blocks: 259, 308-1024
+-  Free inodes: 12-256
++  Free inodes: 65-256
+ Group 1: (Blocks 1025-2048)
+   Backup superblock at 1025, Group descriptors at 1026-1026
+   Reserved GDT blocks at 1027-1282
+@@ -609,7 +609,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/41472 files (0.0% non-contiguous), 8361/165536 blocks
++test_filesys: 64/41472 files (0.0% non-contiguous), 8361/165536 blocks
+ Exit status is 0
+ dumpe2fs test.img
+ Filesystem volume name:   <none>
+@@ -625,7 +625,7 @@ Inode count:              41472
+ Block count:              165536
+ Reserved block count:     8274
+ Free blocks:              157175
+-Free inodes:              41461
++Free inodes:              41408
+ First block:              1
+ Block size:               1024
+ Fragment size:            1024
+@@ -638,7 +638,7 @@ Mount count:              0
+ Check interval:           15552000 (6 months)
+ Reserved blocks uid:      0
+ Reserved blocks gid:      0
+-First inode:              11
++First inode:              64
+ Inode size:	          128
+ Default directory hash:   half_md4
+ 
+@@ -648,9 +648,9 @@ Group 0: (Blocks 1-1024)
+   Reserved GDT blocks at 8-258
+   Block bitmap at 260 (+259), Inode bitmap at 261 (+260)
+   Inode table at 262-293 (+261)
+-  718 free blocks, 245 free inodes, 2 directories
++  718 free blocks, 192 free inodes, 2 directories
+   Free blocks: 259, 308-1024
+-  Free inodes: 12-256
++  Free inodes: 65-256
+ Group 1: (Blocks 1025-2048)
+   Backup superblock at 1025, Group descriptors at 1026-1031
+   Reserved GDT blocks at 1032-1282
+diff --git a/tests/t_32to64bit_meta/expect b/tests/t_32to64bit_meta/expect
+index 28e328c524a8..eb5b79e1fe9a 100644
+--- a/tests/t_32to64bit_meta/expect
++++ b/tests/t_32to64bit_meta/expect
+@@ -34,7 +34,7 @@ Change in FS metadata:
+  Reserved block count:     26214
+ -Free blocks:              858
+ +Free blocks:              852
+- Free inodes:              65046
++ Free inodes:              64993
+  First block:              1
+  Block size:               1024
+  Fragment size:            1024
+diff --git a/tests/t_32to64bit_move_itable/expect b/tests/t_32to64bit_move_itable/expect
+index e4fa55432bb3..4f9aa9ef7922 100644
+--- a/tests/t_32to64bit_move_itable/expect
++++ b/tests/t_32to64bit_move_itable/expect
+@@ -34,7 +34,7 @@ Change in FS metadata:
+  Reserved block count:     39321
+ -Free blocks:              764
+ +Free blocks:              734
+- Free inodes:              97566
++ Free inodes:              97513
+  First block:              1
+  Block size:               1024
+  Fragment size:            1024
+diff --git a/tests/t_64to32bit/expect b/tests/t_64to32bit/expect
+index 6d8ff8011a7c..2af0227b891e 100644
+--- a/tests/t_64to32bit/expect
++++ b/tests/t_64to32bit/expect
+@@ -34,7 +34,7 @@ Change in FS metadata:
+  Reserved block count:     26214
+ -Free blocks:              571
+ +Free blocks:              589
+- Free inodes:              65048
++ Free inodes:              64995
+  First block:              1
+  Block size:               1024
+  Fragment size:            1024
+diff --git a/tests/t_64to32bit_meta/expect b/tests/t_64to32bit_meta/expect
+index d6e2dccc894b..7e40a99ae8ec 100644
+--- a/tests/t_64to32bit_meta/expect
++++ b/tests/t_64to32bit_meta/expect
+@@ -37,7 +37,7 @@ Change in FS metadata:
+  Reserved block count:     26214
+ -Free blocks:              852
+ +Free blocks:              858
+- Free inodes:              65046
++ Free inodes:              64993
+  First block:              1
+  Block size:               1024
+  Fragment size:            1024
+diff --git a/tests/t_disable_mcsum_noinitbg/expect b/tests/t_disable_mcsum_noinitbg/expect
+index a022631d1706..3c405e770767 100644
+--- a/tests/t_disable_mcsum_noinitbg/expect
++++ b/tests/t_disable_mcsum_noinitbg/expect
+@@ -40,10 +40,10 @@ Change in FS metadata:
+    Block bitmap at 262 (+261)
+    Inode bitmap at 278 (+277)
+    Inode table at 294-549 (+293)
+--  21 free blocks, 536 free inodes, 2 directories, 536 unused inodes
+-+  21 free blocks, 536 free inodes, 2 directories
++-  21 free blocks, 483 free inodes, 2 directories, 483 unused inodes
+++  21 free blocks, 483 free inodes, 2 directories
+    Free blocks: 4413-4433
+-   Free inodes: 489-1024
++   Free inodes: 542-1024
+ -Group 1: (Blocks 8193-16384) [INODE_UNINIT]
+ +Group 1: (Blocks 8193-16384)
+    Backup superblock at 8193, Group descriptors at 8194-8197
+diff --git a/tests/t_enable_mcsum/expect b/tests/t_enable_mcsum/expect
+index 2ee3c279c42b..6ed16ded0798 100644
+--- a/tests/t_enable_mcsum/expect
++++ b/tests/t_enable_mcsum/expect
+@@ -47,7 +47,7 @@ Change in FS metadata:
+  Reserved block count:     26214
+ -Free blocks:              571
+ +Free blocks:              568
+- Free inodes:              65048
++ Free inodes:              64995
+  First block:              1
+  Block size:               1024
+ @@ -33,6 +33,7 @@
+@@ -62,11 +62,11 @@ Change in FS metadata:
+    Block bitmap at 262 (+261)
+    Inode bitmap at 278 (+277)
+    Inode table at 294-549 (+293)
+--  21 free blocks, 536 free inodes, 2 directories, 536 unused inodes
++-  21 free blocks, 483 free inodes, 2 directories, 483 unused inodes
+ -  Free blocks: 4413-4433
+-+  18 free blocks, 536 free inodes, 2 directories, 536 unused inodes
+++  18 free blocks, 483 free inodes, 2 directories, 483 unused inodes
+ +  Free blocks: 4413, 4417-4433
+-   Free inodes: 489-1024
++   Free inodes: 542-1024
+  Group 1: (Blocks 8193-16384) [INODE_UNINIT]
+    Backup superblock at 8193, Group descriptors at 8194-8197
+ Pass 1: Checking inodes, blocks, and sizes
+diff --git a/tests/t_enable_mcsum_ext3/expect b/tests/t_enable_mcsum_ext3/expect
+index 5460482a0d6d..fae36821fea9 100644
+--- a/tests/t_enable_mcsum_ext3/expect
++++ b/tests/t_enable_mcsum_ext3/expect
+@@ -49,9 +49,9 @@ Change in FS metadata:
+    Reserved GDT blocks at 4-259
+    Block bitmap at 260 (+259)
+ @@ -45,7 +46,7 @@
+-   7789 free blocks, 1013 free inodes, 2 directories
++   7789 free blocks, 960 free inodes, 2 directories
+    Free blocks: 404-8192
+-   Free inodes: 12-1024
++   Free inodes: 65-1024
+ -Group 1: (Blocks 8193-16384)
+ +Group 1: (Blocks 8193-16384) [ITABLE_ZEROED]
+    Backup superblock at 8193, Group descriptors at 8194-8195
+diff --git a/tests/t_enable_mcsum_initbg/expect b/tests/t_enable_mcsum_initbg/expect
+index d3b444436f84..c13c9785dffd 100644
+--- a/tests/t_enable_mcsum_initbg/expect
++++ b/tests/t_enable_mcsum_initbg/expect
+@@ -47,7 +47,7 @@ Change in FS metadata:
+  Reserved block count:     26214
+ -Free blocks:              571
+ +Free blocks:              568
+- Free inodes:              65048
++ Free inodes:              64995
+  First block:              1
+  Block size:               1024
+ @@ -33,6 +33,7 @@
+@@ -69,11 +69,11 @@ Change in FS metadata:
+    Block bitmap at 262 (+261)
+    Inode bitmap at 278 (+277)
+    Inode table at 294-549 (+293)
+--  21 free blocks, 536 free inodes, 2 directories
++-  21 free blocks, 483 free inodes, 2 directories
+ -  Free blocks: 4413-4433
+-+  18 free blocks, 536 free inodes, 2 directories, 536 unused inodes
+++  18 free blocks, 483 free inodes, 2 directories, 483 unused inodes
+ +  Free blocks: 4413, 4417-4433
+-   Free inodes: 489-1024
++   Free inodes: 542-1024
+ -Group 1: (Blocks 8193-16384)
+ +Group 1: (Blocks 8193-16384) [INODE_UNINIT, ITABLE_ZEROED]
+    Backup superblock at 8193, Group descriptors at 8194-8197
+diff --git a/tests/t_uninit_bg_rm/expect b/tests/t_uninit_bg_rm/expect
+index 61e9eaa88219..ac8b68ee93bf 100644
+--- a/tests/t_uninit_bg_rm/expect
++++ b/tests/t_uninit_bg_rm/expect
+@@ -7,7 +7,7 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/65536 files (0.0% non-contiguous), 52294/1048576 blocks
++test_filesys: 64/65536 files (0.0% non-contiguous), 52294/1048576 blocks
+  
+ mke2fs -q -t ext4 -O bigalloc -F -o Linux -b 1024 -C 8192 test.img 10G
+ tune2fs -f -O ^uninit_bg test.img
+@@ -18,4 +18,4 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 11/655360 files (0.0% non-contiguous), 199864/10485760 blocks
++test_filesys: 64/655360 files (0.0% non-contiguous), 199864/10485760 blocks
 -- 
 2.1.4
 
