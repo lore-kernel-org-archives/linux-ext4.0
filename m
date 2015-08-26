@@ -1,1281 +1,910 @@
 From: Jan Kara <jack@suse.com>
-Subject: [PATCH 08/21] tests: Convert tests for 64bit feature to use tune2fs
-Date: Wed, 26 Aug 2015 18:22:23 +0200
-Message-ID: <1440606156-5754-9-git-send-email-jack@suse.com>
+Subject: [PATCH 14/21] mke2fs, tune2fs: Tests for handling reserved_inodes option
+Date: Wed, 26 Aug 2015 18:22:29 +0200
+Message-ID: <1440606156-5754-15-git-send-email-jack@suse.com>
 References: <1440606156-5754-1-git-send-email-jack@suse.com>
 Cc: Ted Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>,
 	Jan Kara <jack@suse.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33573 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:33581 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756924AbbHZQW4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Aug 2015 12:22:56 -0400
+	id S1756953AbbHZQW5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Aug 2015 12:22:57 -0400
 In-Reply-To: <1440606156-5754-1-git-send-email-jack@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Convert tests which test various functionality regarding 64bit feature
-to use tune2fs to enable / disable it. We also update the expected
-outputs since location of some group metadata is different.
-
 Signed-off-by: Jan Kara <jack@suse.com>
 ---
- tests/r_32to64bit/expect                    |  94 -------------------
- tests/r_32to64bit/name                      |   1 -
- tests/r_32to64bit/script                    |  74 ---------------
- tests/r_32to64bit_expand_full/expect        | 139 ----------------------------
- tests/r_32to64bit_expand_full/name          |   1 -
- tests/r_32to64bit_expand_full/script        |  83 -----------------
- tests/r_32to64bit_meta/expect               |  80 ----------------
- tests/r_32to64bit_meta/name                 |   1 -
- tests/r_32to64bit_meta/script               |  74 ---------------
- tests/r_32to64bit_move_itable/expect        | 107 ---------------------
- tests/r_32to64bit_move_itable/name          |   1 -
- tests/r_32to64bit_move_itable/script        |  74 ---------------
- tests/r_64to32bit/expect                    |  98 --------------------
- tests/r_64to32bit/name                      |   1 -
- tests/r_64to32bit/script                    |  76 ---------------
- tests/r_64to32bit_meta/expect               |  80 ----------------
- tests/r_64to32bit_meta/name                 |   1 -
- tests/r_64to32bit_meta/script               |  76 ---------------
- tests/t_32to64bit/expect                    |  91 ++++++++++++++++++
- tests/t_32to64bit/name                      |   1 +
- tests/t_32to64bit/script                    |  74 +++++++++++++++
- tests/t_32to64bit_expand_full/expect        | 136 +++++++++++++++++++++++++++
- tests/t_32to64bit_expand_full/name          |   1 +
- tests/t_32to64bit_expand_full/script        |  83 +++++++++++++++++
- tests/t_32to64bit_meta/expect               |  77 +++++++++++++++
- tests/t_32to64bit_meta/name                 |   1 +
- tests/t_32to64bit_meta/script               |  74 +++++++++++++++
- tests/t_32to64bit_move_itable/expect        | 104 +++++++++++++++++++++
- tests/t_32to64bit_move_itable/name          |   1 +
- tests/t_32to64bit_move_itable/script        |  74 +++++++++++++++
- tests/t_64to32bit/expect                    |  95 +++++++++++++++++++
- tests/t_64to32bit/name                      |   1 +
- tests/t_64to32bit/script                    |  76 +++++++++++++++
- tests/t_64to32bit_meta/expect               |  80 ++++++++++++++++
- tests/t_64to32bit_meta/name                 |   1 +
- tests/t_64to32bit_meta/script               |  76 +++++++++++++++
- tests/u_onefile_bad/script                  |  10 +-
- tests/u_revert_64bitmcsum_onefile/script    |  10 +-
- tests/u_revert_all_onefile/script           |  10 +-
- tests/u_revert_upgrade_to_64bitmcsum/script |  14 +--
- 40 files changed, 1068 insertions(+), 1083 deletions(-)
- delete mode 100644 tests/r_32to64bit/expect
- delete mode 100644 tests/r_32to64bit/name
- delete mode 100644 tests/r_32to64bit/script
- delete mode 100644 tests/r_32to64bit_expand_full/expect
- delete mode 100644 tests/r_32to64bit_expand_full/name
- delete mode 100644 tests/r_32to64bit_expand_full/script
- delete mode 100644 tests/r_32to64bit_meta/expect
- delete mode 100644 tests/r_32to64bit_meta/name
- delete mode 100644 tests/r_32to64bit_meta/script
- delete mode 100644 tests/r_32to64bit_move_itable/expect
- delete mode 100644 tests/r_32to64bit_move_itable/name
- delete mode 100644 tests/r_32to64bit_move_itable/script
- delete mode 100644 tests/r_64to32bit/expect
- delete mode 100644 tests/r_64to32bit/name
- delete mode 100644 tests/r_64to32bit/script
- delete mode 100644 tests/r_64to32bit_meta/expect
- delete mode 100644 tests/r_64to32bit_meta/name
- delete mode 100644 tests/r_64to32bit_meta/script
- create mode 100644 tests/t_32to64bit/expect
- create mode 100644 tests/t_32to64bit/name
- create mode 100644 tests/t_32to64bit/script
- create mode 100644 tests/t_32to64bit_expand_full/expect
- create mode 100644 tests/t_32to64bit_expand_full/name
- create mode 100644 tests/t_32to64bit_expand_full/script
- create mode 100644 tests/t_32to64bit_meta/expect
- create mode 100644 tests/t_32to64bit_meta/name
- create mode 100644 tests/t_32to64bit_meta/script
- create mode 100644 tests/t_32to64bit_move_itable/expect
- create mode 100644 tests/t_32to64bit_move_itable/name
- create mode 100644 tests/t_32to64bit_move_itable/script
- create mode 100644 tests/t_64to32bit/expect
- create mode 100644 tests/t_64to32bit/name
- create mode 100644 tests/t_64to32bit/script
- create mode 100644 tests/t_64to32bit_meta/expect
- create mode 100644 tests/t_64to32bit_meta/name
- create mode 100644 tests/t_64to32bit_meta/script
+ tests/m_reserved_inodes/expect.1             | 837 +++++++++++++++++++++++++++
+ tests/m_reserved_inodes/script               |   7 +
+ tests/t_reserved_inodes_decrease/expect      |  68 +++
+ tests/t_reserved_inodes_decrease/name        |   1 +
+ tests/t_reserved_inodes_decrease/script      |  71 +++
+ tests/t_reserved_inodes_increase/expect      |  59 ++
+ tests/t_reserved_inodes_increase/name        |   1 +
+ tests/t_reserved_inodes_increase/script      |  71 +++
+ tests/t_reserved_inodes_increase_csum/expect |  60 ++
+ tests/t_reserved_inodes_increase_csum/name   |   1 +
+ tests/t_reserved_inodes_increase_csum/script |  71 +++
+ 11 files changed, 1247 insertions(+)
+ create mode 100644 tests/m_reserved_inodes/expect.1
+ create mode 100644 tests/m_reserved_inodes/script
+ create mode 100644 tests/t_reserved_inodes_decrease/expect
+ create mode 100644 tests/t_reserved_inodes_decrease/name
+ create mode 100644 tests/t_reserved_inodes_decrease/script
+ create mode 100644 tests/t_reserved_inodes_increase/expect
+ create mode 100644 tests/t_reserved_inodes_increase/name
+ create mode 100644 tests/t_reserved_inodes_increase/script
+ create mode 100644 tests/t_reserved_inodes_increase_csum/expect
+ create mode 100644 tests/t_reserved_inodes_increase_csum/name
+ create mode 100644 tests/t_reserved_inodes_increase_csum/script
 
-diff --git a/tests/r_32to64bit/expect b/tests/r_32to64bit/expect
-deleted file mode 100644
-index f5fa56bc39f7..000000000000
---- a/tests/r_32to64bit/expect
-+++ /dev/null
-@@ -1,94 +0,0 @@
--resize2fs test
--Creating filesystem with 524288 1k blocks and 65536 inodes
--Superblock backups stored on blocks: 
--	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
--
--Allocating group tables:      done                            
--Writing inode tables:      done                            
--Creating journal (16384 blocks): done
--Creating 477 huge file(s) with 1024 blocks each: done
--Writing superblocks and filesystem accounting information:      done
--
--Pass 1: Checking inodes, blocks, and sizes
--Pass 2: Checking directory structure
--Pass 3: Checking directory connectivity
--Pass 4: Checking reference counts
--Pass 5: Checking group summary information
--
--Exit status is 0
--resize2fs test.img -b
--Converting the filesystem to 64-bit.
--The filesystem on test.img is now 524288 (1k) blocks long.
--
--Exit status is 0
--Change in FS metadata:
--@@ -2,7 +2,7 @@
-- Last mounted on:          <not available>
-- Filesystem magic number:  0xEF53
-- Filesystem revision #:    1 (dynamic)
---Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
--+Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-- Default mount options:    user_xattr acl
-- Filesystem state:         clean
-- Errors behavior:          Continue
--@@ -15,7 +15,8 @@
-- First block:              1
-- Block size:               1024
-- Fragment size:            1024
---Reserved GDT blocks:      256
--+Group descriptor size:    64
--+Reserved GDT blocks:      254
-- Blocks per group:         8192
-- Fragments per group:      8192
-- Inodes per group:         1024
--@@ -40,16 +41,16 @@
-- 
-- 
-- group:block:super:gdt:bbitmap:ibitmap:itable
---0:1:1:2-3:260:276:292
---1:8193:8193:8194-8195:261:277:548
--+0:1:1:2-5:260:276:292
--+1:8193:8193:8194-8197:261:277:548
-- 2:16385:-1:-1:262:278:804
---3:24577:24577:24578-24579:263:279:1060
--+3:24577:24577:24578-24581:263:279:1060
-- 4:32769:-1:-1:264:280:1316
---5:40961:40961:40962-40963:265:281:1572
--+5:40961:40961:40962-40965:265:281:1572
-- 6:49153:-1:-1:266:282:1828
---7:57345:57345:57346-57347:267:283:2084
--+7:57345:57345:57346-57349:267:283:2084
-- 8:65537:-1:-1:268:284:2340
---9:73729:73729:73730-73731:269:285:2596
--+9:73729:73729:73730-73733:269:285:2596
-- 10:81921:-1:-1:270:286:2852
-- 11:90113:-1:-1:271:287:3108
-- 12:98305:-1:-1:272:288:3364
--@@ -65,9 +66,9 @@
-- 22:180225:-1:-1:131079:131095:132641
-- 23:188417:-1:-1:131080:131096:132897
-- 24:196609:-1:-1:131081:131097:133153
---25:204801:204801:204802-204803:131082:131098:133409
--+25:204801:204801:204802-204805:131082:131098:133409
-- 26:212993:-1:-1:131083:131099:133665
---27:221185:221185:221186-221187:131084:131100:133921
--+27:221185:221185:221186-221189:131084:131100:133921
-- 28:229377:-1:-1:131085:131101:134177
-- 29:237569:-1:-1:131086:131102:134433
-- 30:245761:-1:-1:131087:131103:134689
--@@ -89,7 +90,7 @@
-- 46:376833:-1:-1:262159:262175:265761
-- 47:385025:-1:-1:262160:262176:266017
-- 48:393217:-1:-1:393217:393233:393249
---49:401409:401409:401410-401411:393218:393234:393505
--+49:401409:401409:401410-401413:393218:393234:393505
-- 50:409601:-1:-1:393219:393235:393761
-- 51:417793:-1:-1:393220:393236:394017
-- 52:425985:-1:-1:393221:393237:394273
--Pass 1: Checking inodes, blocks, and sizes
--Pass 2: Checking directory structure
--Pass 3: Checking directory connectivity
--Pass 4: Checking reference counts
--Pass 5: Checking group summary information
--
--Exit status is 0
-diff --git a/tests/r_32to64bit/name b/tests/r_32to64bit/name
-deleted file mode 100644
-index fb45faba6468..000000000000
---- a/tests/r_32to64bit/name
-+++ /dev/null
-@@ -1 +0,0 @@
--convert flex_bg 32bit fs to 64bit fs
-diff --git a/tests/r_32to64bit/script b/tests/r_32to64bit/script
-deleted file mode 100644
-index de08bfb6422a..000000000000
---- a/tests/r_32to64bit/script
-+++ /dev/null
-@@ -1,74 +0,0 @@
--if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
--
--FSCK_OPT=-fn
--OUT=$test_name.log
--EXP=$test_dir/expect
--CONF=$TMPFILE.conf
--
--cat > $CONF << ENDL
--[fs_types]
--	ext4h = {
--		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode
--		blocksize = 1024
--		inode_size = 256
--		make_hugefiles = true
--		hugefiles_dir = /
--		hugefiles_slack = 0
--		hugefiles_name = aaaaa
--		hugefiles_digits = 4
--		hugefiles_size = 1M
--		zero_hugefiles = false
--	}
--ENDL
--
--echo "resize2fs test" > $OUT
--
--MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
--rm -rf $CONF
--
--# dump and check
--($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.before
--$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--# resize it
--echo "resize2fs test.img -b" >> $OUT
--$RESIZE2FS -b -f $TMPFILE 2>&1 >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--# dump and check
--($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.after
--echo "Change in FS metadata:" >> $OUT
--diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
--$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--rm $TMPFILE $OUT.before $OUT.after
--
--#
--# Do the verification
--#
--
--sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
--mv $OUT.new $OUT
--
--cmp -s $OUT $EXP
--status=$?
--
--if [ "$status" = 0 ] ; then
--	echo "$test_name: $test_description: ok"
--	touch $test_name.ok
--else
--	echo "$test_name: $test_description: failed"
--	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
--fi
--
--unset IMAGE FSCK_OPT OUT EXP CONF
--
--else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
--	echo "$test_name: $test_description: skipped"
--fi
--
-diff --git a/tests/r_32to64bit_expand_full/expect b/tests/r_32to64bit_expand_full/expect
-deleted file mode 100644
-index f9e30f34b8e7..000000000000
---- a/tests/r_32to64bit_expand_full/expect
-+++ /dev/null
-@@ -1,139 +0,0 @@
--resize2fs test
--Creating filesystem with 786432 1k blocks and 98304 inodes
--Superblock backups stored on blocks: 
--	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553
--
--Allocating group tables:      done                            
--Writing inode tables:      done                            
--Creating journal (16384 blocks): done
--Creating 727 huge file(s) with 1024 blocks each: done
--Writing superblocks and filesystem accounting information:      done
--
--Pass 1: Checking inodes, blocks, and sizes
--Pass 2: Checking directory structure
--Pass 3: Checking directory connectivity
--Pass 4: Checking reference counts
--Pass 5: Checking group summary information
--
--Exit status is 0
--resize2fs -b test.img
--Converting the filesystem to 64-bit.
--The filesystem on test.img is now 786432 (1k) blocks long.
--
--resize2fs test.img
--Resizing the filesystem on test.img to 1179648 (1k) blocks.
--The filesystem on test.img is now 1179648 (1k) blocks long.
--
--Exit status is 0
--Change in FS metadata:
--@@ -1,15 +1,15 @@
-- 
-- group:block:super:gdt:bbitmap:ibitmap:itable
---0:1:1:2-7:8:9:10
---1:8193:8193:8194-8199:8200:8201:8202
--+0:1:1:2-10:266:267:268
--+1:8193:8193:8194-8202:8458:8459:8460
-- 2:16385:-1:-1:16385:16386:16387
---3:24577:24577:24578-24583:24584:24585:24586
--+3:24577:24577:24578-24586:24842:24843:24844
-- 4:32769:-1:-1:32769:32770:32771
---5:40961:40961:40962-40967:40968:40969:40970
--+5:40961:40961:40962-40970:41226:41227:41228
-- 6:49153:-1:-1:49153:49154:49155
---7:57345:57345:57346-57351:57352:57353:57354
--+7:57345:57345:57346-57354:57610:57611:57612
-- 8:65537:-1:-1:65537:65538:65539
---9:73729:73729:73730-73735:73736:73737:73738
--+9:73729:73729:73730-73738:73994:73995:73996
-- 10:81921:-1:-1:81921:81922:81923
-- 11:90113:-1:-1:90113:90114:90115
-- 12:98305:-1:-1:98305:98306:98307
--@@ -25,9 +25,9 @@
-- 22:180225:-1:-1:180225:180226:180227
-- 23:188417:-1:-1:188417:188418:188419
-- 24:196609:-1:-1:196609:196610:196611
---25:204801:204801:204802-204807:204808:204809:204810
--+25:204801:204801:204802-204810:205066:205067:205068
-- 26:212993:-1:-1:212993:212994:212995
---27:221185:221185:221186-221191:221192:221193:221194
--+27:221185:221185:221186-221194:221450:221451:221452
-- 28:229377:-1:-1:229377:229378:229379
-- 29:237569:-1:-1:237569:237570:237571
-- 30:245761:-1:-1:245761:245762:245763
--@@ -49,7 +49,7 @@
-- 46:376833:-1:-1:376833:376834:376835
-- 47:385025:-1:-1:385025:385026:385027
-- 48:393217:-1:-1:393217:393218:393219
---49:401409:401409:401410-401415:401416:401417:401418
--+49:401409:401409:401410-401418:401674:401675:401676
-- 50:409601:-1:-1:409601:409602:409603
-- 51:417793:-1:-1:417793:417794:417795
-- 52:425985:-1:-1:425985:425986:425987
--@@ -81,7 +81,7 @@
-- 78:638977:-1:-1:638977:638978:638979
-- 79:647169:-1:-1:647169:647170:647171
-- 80:655361:-1:-1:655361:655362:655363
---81:663553:663553:663554-663559:663560:663561:663562
--+81:663553:663553:663554-663562:663818:663819:663820
-- 82:671745:-1:-1:671745:671746:671747
-- 83:679937:-1:-1:679937:679938:679939
-- 84:688129:-1:-1:688129:688130:688131
--@@ -96,3 +96,51 @@
-- 93:761857:-1:-1:761857:761858:761859
-- 94:770049:-1:-1:770049:770050:770051
-- 95:778241:-1:-1:778241:778242:778243
--+96:786433:-1:-1:786433:786434:786435
--+97:794625:-1:-1:794625:794626:794627
--+98:802817:-1:-1:802817:802818:802819
--+99:811009:-1:-1:811009:811010:811011
--+100:819201:-1:-1:819201:819202:819203
--+101:827393:-1:-1:827393:827394:827395
--+102:835585:-1:-1:835585:835586:835587
--+103:843777:-1:-1:843777:843778:843779
--+104:851969:-1:-1:851969:851970:851971
--+105:860161:-1:-1:860161:860162:860163
--+106:868353:-1:-1:868353:868354:868355
--+107:876545:-1:-1:876545:876546:876547
--+108:884737:-1:-1:884737:884738:884739
--+109:892929:-1:-1:892929:892930:892931
--+110:901121:-1:-1:901121:901122:901123
--+111:909313:-1:-1:909313:909314:909315
--+112:917505:-1:-1:917505:917506:917507
--+113:925697:-1:-1:925697:925698:925699
--+114:933889:-1:-1:933889:933890:933891
--+115:942081:-1:-1:942081:942082:942083
--+116:950273:-1:-1:950273:950274:950275
--+117:958465:-1:-1:958465:958466:958467
--+118:966657:-1:-1:966657:966658:966659
--+119:974849:-1:-1:974849:974850:974851
--+120:983041:-1:-1:983041:983042:983043
--+121:991233:-1:-1:991233:991234:991235
--+122:999425:-1:-1:999425:999426:999427
--+123:1007617:-1:-1:1007617:1007618:1007619
--+124:1015809:-1:-1:1015809:1015810:1015811
--+125:1024001:1024001:1024002-1024010:1024011:1024012:1024013
--+126:1032193:-1:-1:1032193:1032194:1032195
--+127:1040385:-1:-1:1040385:1040386:1040387
--+128:1048577:-1:-1:1048577:1048578:1048579
--+129:1056769:-1:-1:1056769:1056770:1056771
--+130:1064961:-1:-1:1064961:1064962:1064963
--+131:1073153:-1:-1:1073153:1073154:1073155
--+132:1081345:-1:-1:1081345:1081346:1081347
--+133:1089537:-1:-1:1089537:1089538:1089539
--+134:1097729:-1:-1:1097729:1097730:1097731
--+135:1105921:-1:-1:1105921:1105922:1105923
--+136:1114113:-1:-1:1114113:1114114:1114115
--+137:1122305:-1:-1:1122305:1122306:1122307
--+138:1130497:-1:-1:1130497:1130498:1130499
--+139:1138689:-1:-1:1138689:1138690:1138691
--+140:1146881:-1:-1:1146881:1146882:1146883
--+141:1155073:-1:-1:1155073:1155074:1155075
--+142:1163265:-1:-1:1163265:1163266:1163267
--+143:1171457:-1:-1:1171457:1171458:1171459
--Pass 1: Checking inodes, blocks, and sizes
--Pass 2: Checking directory structure
--Pass 3: Checking directory connectivity
--Pass 4: Checking reference counts
--Pass 5: Checking group summary information
--
--Exit status is 0
-diff --git a/tests/r_32to64bit_expand_full/name b/tests/r_32to64bit_expand_full/name
-deleted file mode 100644
-index 2f046011bcf8..000000000000
---- a/tests/r_32to64bit_expand_full/name
-+++ /dev/null
-@@ -1 +0,0 @@
--convert a totally full filesystem to 64bit, then expand
-diff --git a/tests/r_32to64bit_expand_full/script b/tests/r_32to64bit_expand_full/script
-deleted file mode 100644
-index 7a570841a350..000000000000
---- a/tests/r_32to64bit_expand_full/script
-+++ /dev/null
-@@ -1,83 +0,0 @@
--if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
--
--FSCK_OPT=-fn
--OUT=$test_name.log
--EXP=$test_dir/expect
--CONF=$TMPFILE.conf
--
--#gzip -d < $EXP.gz > $EXP
--
--cat > $CONF << ENDL
--[fs_types]
--	ext4h = {
--		features = has_journal,extent,huge_file,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,^resize_inode,^meta_bg,^flex_bg
--		blocksize = 1024
--		inode_size = 256
--		make_hugefiles = true
--		hugefiles_dir = /
--		hugefiles_slack = 0
--		hugefiles_name = aaaaa
--		hugefiles_digits = 4
--		hugefiles_size = 1M
--		zero_hugefiles = false
--	}
--ENDL
--
--echo "resize2fs test" > $OUT
--
--MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 786432 >> $OUT 2>&1
--rm -rf $CONF
--
--# check
--$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--# convert it
--echo "resize2fs -b test.img" >> $OUT
--$RESIZE2FS -b -f $TMPFILE 2>&1 >> $OUT 2>&1
--$DUMPE2FS -g $TMPFILE 2>&1 >> $OUT.before 2> /dev/null
--
--# grow it
--echo "resize2fs test.img" >> $OUT
--dd if=/dev/zero of=$TMPFILE conv=notrunc bs=1 count=1 seek=1207959552 2> /dev/null
--$RESIZE2FS -f $TMPFILE 2>&1 >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--# dump and check
--$DUMPE2FS -g $TMPFILE 2>&1 >> $OUT.after 2> /dev/null
--echo "Change in FS metadata:" >> $OUT
--diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
--$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--rm $TMPFILE
--
--#
--# Do the verification
--#
--
--sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
--mv $OUT.new $OUT
--
--cmp -s $OUT $EXP
--status=$?
--
--if [ "$status" = 0 ] ; then
--	echo "$test_name: $test_description: ok"
--	touch $test_name.ok
--else
--	echo "$test_name: $test_description: failed"
--	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
--fi
--
--rm $OUT.before $OUT.after
--
--unset IMAGE FSCK_OPT OUT EXP CONF
--
--else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
--	echo "$test_name: $test_description: skipped"
--fi
--
-diff --git a/tests/r_32to64bit_meta/expect b/tests/r_32to64bit_meta/expect
-deleted file mode 100644
-index 0eacd45037e4..000000000000
---- a/tests/r_32to64bit_meta/expect
-+++ /dev/null
-@@ -1,80 +0,0 @@
--resize2fs test
--Creating filesystem with 524288 1k blocks and 65536 inodes
--Superblock backups stored on blocks: 
--	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
--
--Allocating group tables:      done                            
--Writing inode tables:      done                            
--Creating journal (16384 blocks): done
--Creating 479 huge file(s) with 1024 blocks each: done
--Writing superblocks and filesystem accounting information:      done
--
--Pass 1: Checking inodes, blocks, and sizes
--Pass 2: Checking directory structure
--Pass 3: Checking directory connectivity
--Pass 4: Checking reference counts
--Pass 5: Checking group summary information
--
--Exit status is 0
--resize2fs test.img -b
--Converting the filesystem to 64-bit.
--The filesystem on test.img is now 524288 (1k) blocks long.
--
--Exit status is 0
--Change in FS metadata:
--@@ -2,7 +2,7 @@
-- Last mounted on:          <not available>
-- Filesystem magic number:  0xEF53
-- Filesystem revision #:    1 (dynamic)
---Filesystem features:      has_journal ext_attr dir_index filetype meta_bg extent flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
--+Filesystem features:      has_journal ext_attr dir_index filetype meta_bg extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-- Default mount options:    user_xattr acl
-- Filesystem state:         clean
-- Errors behavior:          Continue
--@@ -10,11 +10,12 @@
-- Inode count:              65536
-- Block count:              524288
-- Reserved block count:     26214
---Free blocks:              858
--+Free blocks:              852
-- Free inodes:              65046
-- First block:              1
-- Block size:               1024
-- Fragment size:            1024
--+Group descriptor size:    64
-- Blocks per group:         8192
-- Fragments per group:      8192
-- Inodes per group:         1024
--@@ -54,9 +55,9 @@
-- 12:98305:-1:-1:15:31:3107
-- 13:106497:-1:-1:16:32:3363
-- 14:114689:-1:-1:17:33:3619
---15:122881:-1:-1:18:34:3875
---16:131073:-1:-1:131073:131089:131105
---17:139265:-1:-1:131074:131090:131361
--+15:122881:-1:122881:18:34:3875
--+16:131073:-1:131073:135201:131089:131105
--+17:139265:-1:139265:131074:131090:131361
-- 18:147457:-1:-1:131075:131091:131617
-- 19:155649:-1:-1:131076:131092:131873
-- 20:163841:-1:-1:131077:131093:132129
--@@ -86,9 +87,9 @@
-- 44:360449:-1:-1:262158:262174:265250
-- 45:368641:-1:-1:262159:262175:265506
-- 46:376833:-1:-1:262160:262176:265762
---47:385025:-1:-1:262161:262177:266018
---48:393217:-1:-1:393217:393233:393249
---49:401409:401409:-1:393218:393234:393505
--+47:385025:-1:385025:262161:262177:266018
--+48:393217:-1:393217:397345:393233:393249
--+49:401409:401409:401410:393218:393234:393505
-- 50:409601:-1:-1:393219:393235:393761
-- 51:417793:-1:-1:393220:393236:394017
-- 52:425985:-1:-1:393221:393237:394273
--Pass 1: Checking inodes, blocks, and sizes
--Pass 2: Checking directory structure
--Pass 3: Checking directory connectivity
--Pass 4: Checking reference counts
--Pass 5: Checking group summary information
--
--Exit status is 0
-diff --git a/tests/r_32to64bit_meta/name b/tests/r_32to64bit_meta/name
-deleted file mode 100644
-index d83492eae8cf..000000000000
---- a/tests/r_32to64bit_meta/name
-+++ /dev/null
-@@ -1 +0,0 @@
--convert meta_bg 32bit fs to 64bit fs
-diff --git a/tests/r_32to64bit_meta/script b/tests/r_32to64bit_meta/script
-deleted file mode 100644
-index 25872c4d4c45..000000000000
---- a/tests/r_32to64bit_meta/script
-+++ /dev/null
-@@ -1,74 +0,0 @@
--if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
--
--FSCK_OPT=-fn
--OUT=$test_name.log
--EXP=$test_dir/expect
--CONF=$TMPFILE.conf
--
--cat > $CONF << ENDL
--[fs_types]
--	ext4h = {
--		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,meta_bg,^resize_inode
--		blocksize = 1024
--		inode_size = 256
--		make_hugefiles = true
--		hugefiles_dir = /
--		hugefiles_slack = 0
--		hugefiles_name = aaaaa
--		hugefiles_digits = 4
--		hugefiles_size = 1M
--		zero_hugefiles = false
--	}
--ENDL
--
--echo "resize2fs test" > $OUT
--
--MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
--rm -rf $CONF
--
--# dump and check
--($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.before
--$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--# resize it
--echo "resize2fs test.img -b" >> $OUT
--$RESIZE2FS -b -f $TMPFILE 2>&1 >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--# dump and check
--($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.after
--echo "Change in FS metadata:" >> $OUT
--diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
--$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--rm $TMPFILE $OUT.before $OUT.after
--
--#
--# Do the verification
--#
--
--sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
--mv $OUT.new $OUT
--
--cmp -s $OUT $EXP
--status=$?
--
--if [ "$status" = 0 ] ; then
--	echo "$test_name: $test_description: ok"
--	touch $test_name.ok
--else
--	echo "$test_name: $test_description: failed"
--	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
--fi
--
--unset IMAGE FSCK_OPT OUT EXP CONF
--
--else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
--	echo "$test_name: $test_description: skipped"
--fi
--
-diff --git a/tests/r_32to64bit_move_itable/expect b/tests/r_32to64bit_move_itable/expect
-deleted file mode 100644
-index b51663d5f86d..000000000000
---- a/tests/r_32to64bit_move_itable/expect
-+++ /dev/null
-@@ -1,107 +0,0 @@
--resize2fs test
--Creating filesystem with 786432 1k blocks and 98304 inodes
--Superblock backups stored on blocks: 
--	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553
--
--Allocating group tables:      done                            
--Writing inode tables:      done                            
--Creating journal (16384 blocks): done
--Creating 727 huge file(s) with 1024 blocks each: done
--Writing superblocks and filesystem accounting information:      done
--
--Pass 1: Checking inodes, blocks, and sizes
--Pass 2: Checking directory structure
--Pass 3: Checking directory connectivity
--Pass 4: Checking reference counts
--Pass 5: Checking group summary information
--
--Exit status is 0
--resize2fs test.img -b
--Converting the filesystem to 64-bit.
--The filesystem on test.img is now 786432 (1k) blocks long.
--
--Exit status is 0
--Change in FS metadata:
--@@ -2,7 +2,7 @@
-- Last mounted on:          <not available>
-- Filesystem magic number:  0xEF53
-- Filesystem revision #:    1 (dynamic)
---Filesystem features:      has_journal ext_attr dir_index filetype extent sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
--+Filesystem features:      has_journal ext_attr dir_index filetype extent 64bit sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-- Default mount options:    user_xattr acl
-- Filesystem state:         clean
-- Errors behavior:          Continue
--@@ -10,11 +10,12 @@
-- Inode count:              98304
-- Block count:              786432
-- Reserved block count:     39321
---Free blocks:              764
--+Free blocks:              734
-- Free inodes:              97566
-- First block:              1
-- Block size:               1024
-- Fragment size:            1024
--+Group descriptor size:    64
-- Blocks per group:         8192
-- Fragments per group:      8192
-- Inodes per group:         1024
--@@ -38,16 +39,16 @@
-- 
-- 
-- group:block:super:gdt:bbitmap:ibitmap:itable
---0:1:1:2-4:5:6:7
---1:8193:8193:8194-8196:8197:8198:8199
--+0:1:1:2-7:8:9:10
--+1:8193:8193:8194-8199:8200:8201:8202
-- 2:16385:-1:-1:16385:16386:16387
---3:24577:24577:24578-24580:24581:24582:24583
--+3:24577:24577:24578-24583:24584:24585:24586
-- 4:32769:-1:-1:32769:32770:32771
---5:40961:40961:40962-40964:40965:40966:40967
--+5:40961:40961:40962-40967:40968:40969:40970
-- 6:49153:-1:-1:49153:49154:49155
---7:57345:57345:57346-57348:57349:57350:57351
--+7:57345:57345:57346-57351:57352:57353:57354
-- 8:65537:-1:-1:65537:65538:65539
---9:73729:73729:73730-73732:73733:73734:73735
--+9:73729:73729:73730-73735:73736:73737:73738
-- 10:81921:-1:-1:81921:81922:81923
-- 11:90113:-1:-1:90113:90114:90115
-- 12:98305:-1:-1:98305:98306:98307
--@@ -63,9 +64,9 @@
-- 22:180225:-1:-1:180225:180226:180227
-- 23:188417:-1:-1:188417:188418:188419
-- 24:196609:-1:-1:196609:196610:196611
---25:204801:204801:204802-204804:204805:204806:204807
--+25:204801:204801:204802-204807:204808:204809:204810
-- 26:212993:-1:-1:212993:212994:212995
---27:221185:221185:221186-221188:221189:221190:221191
--+27:221185:221185:221186-221191:221192:221193:221194
-- 28:229377:-1:-1:229377:229378:229379
-- 29:237569:-1:-1:237569:237570:237571
-- 30:245761:-1:-1:245761:245762:245763
--@@ -87,7 +88,7 @@
-- 46:376833:-1:-1:376833:376834:376835
-- 47:385025:-1:-1:385025:385026:385027
-- 48:393217:-1:-1:393217:393218:393219
---49:401409:401409:401410-401412:401413:401414:401415
--+49:401409:401409:401410-401415:401416:401417:401418
-- 50:409601:-1:-1:409601:409602:409603
-- 51:417793:-1:-1:417793:417794:417795
-- 52:425985:-1:-1:425985:425986:425987
--@@ -119,7 +120,7 @@
-- 78:638977:-1:-1:638977:638978:638979
-- 79:647169:-1:-1:647169:647170:647171
-- 80:655361:-1:-1:655361:655362:655363
---81:663553:663553:663554-663556:663557:663558:663559
--+81:663553:663553:663554-663559:663560:663561:663562
-- 82:671745:-1:-1:671745:671746:671747
-- 83:679937:-1:-1:679937:679938:679939
-- 84:688129:-1:-1:688129:688130:688131
--Pass 1: Checking inodes, blocks, and sizes
--Pass 2: Checking directory structure
--Pass 3: Checking directory connectivity
--Pass 4: Checking reference counts
--Pass 5: Checking group summary information
--
--Exit status is 0
-diff --git a/tests/r_32to64bit_move_itable/name b/tests/r_32to64bit_move_itable/name
-deleted file mode 100644
-index 7e6bb254831a..000000000000
---- a/tests/r_32to64bit_move_itable/name
-+++ /dev/null
-@@ -1 +0,0 @@
--convert 32bit fs to 64bit fs, forcing inode table move
-diff --git a/tests/r_32to64bit_move_itable/script b/tests/r_32to64bit_move_itable/script
-deleted file mode 100644
-index c188acdc31aa..000000000000
---- a/tests/r_32to64bit_move_itable/script
-+++ /dev/null
-@@ -1,74 +0,0 @@
--if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
--
--FSCK_OPT=-fn
--OUT=$test_name.log
--EXP=$test_dir/expect
--CONF=$TMPFILE.conf
--
--cat > $CONF << ENDL
--[fs_types]
--	ext4h = {
--		features = has_journal,extent,huge_file,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,^resize_inode,^meta_bg,^flex_bg
--		blocksize = 1024
--		inode_size = 256
--		make_hugefiles = true
--		hugefiles_dir = /
--		hugefiles_slack = 0
--		hugefiles_name = aaaaa
--		hugefiles_digits = 4
--		hugefiles_size = 1M
--		zero_hugefiles = false
--	}
--ENDL
--
--echo "resize2fs test" > $OUT
--
--MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 786432 >> $OUT 2>&1
--rm -rf $CONF
--
--# dump and check
--($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.before
--$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--# convert it
--echo "resize2fs test.img -b" >> $OUT
--$RESIZE2FS -b -f $TMPFILE 2>&1 >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--# dump and check
--($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.after
--echo "Change in FS metadata:" >> $OUT
--diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
--$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--rm $TMPFILE $OUT.before $OUT.after
--
--#
--# Do the verification
--#
--
--sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
--mv $OUT.new $OUT
--
--cmp -s $OUT $EXP
--status=$?
--
--if [ "$status" = 0 ] ; then
--	echo "$test_name: $test_description: ok"
--	touch $test_name.ok
--else
--	echo "$test_name: $test_description: failed"
--	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
--fi
--
--unset IMAGE FSCK_OPT OUT EXP CONF
--
--else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
--	echo "$test_name: $test_description: skipped"
--fi
--
-diff --git a/tests/r_64to32bit/expect b/tests/r_64to32bit/expect
-deleted file mode 100644
-index 13e94a2d2894..000000000000
---- a/tests/r_64to32bit/expect
-+++ /dev/null
-@@ -1,98 +0,0 @@
--resize2fs test
--Creating filesystem with 524288 1k blocks and 65536 inodes
--Superblock backups stored on blocks: 
--	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
--
--Allocating group tables:      done                            
--Writing inode tables:      done                            
--Creating journal (16384 blocks): done
--Creating 477 huge file(s) with 1024 blocks each: done
--Writing superblocks and filesystem accounting information:      done
--
--Pass 1: Checking inodes, blocks, and sizes
--Pass 2: Checking directory structure
--Pass 3: Checking directory connectivity
--Pass 4: Checking reference counts
--Pass 5: Checking group summary information
--
--Exit status is 0
--resize2fs test.img -s
--Converting the filesystem to 32-bit.
--The filesystem on test.img is now 524288 (1k) blocks long.
--
--Exit status is 0
--Change in FS metadata:
--@@ -2,7 +2,7 @@
-- Last mounted on:          <not available>
-- Filesystem magic number:  0xEF53
-- Filesystem revision #:    1 (dynamic)
---Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
--+Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-- Default mount options:    user_xattr acl
-- Filesystem state:         clean
-- Errors behavior:          Continue
--@@ -10,12 +10,11 @@
-- Inode count:              65536
-- Block count:              524288
-- Reserved block count:     26214
---Free blocks:              571
--+Free blocks:              589
-- Free inodes:              65048
-- First block:              1
-- Block size:               1024
-- Fragment size:            1024
---Group descriptor size:    64
-- Reserved GDT blocks:      256
-- Blocks per group:         8192
-- Fragments per group:      8192
--@@ -41,16 +40,16 @@
-- 
-- 
-- group:block:super:gdt:bbitmap:ibitmap:itable
---0:1:1:2-5:262:278:294
---1:8193:8193:8194-8197:263:279:550
--+0:1:1:2-3:262:278:294
--+1:8193:8193:8194-8195:263:279:550
-- 2:16385:-1:-1:264:280:806
---3:24577:24577:24578-24581:265:281:1062
--+3:24577:24577:24578-24579:265:281:1062
-- 4:32769:-1:-1:266:282:1318
---5:40961:40961:40962-40965:267:283:1574
--+5:40961:40961:40962-40963:267:283:1574
-- 6:49153:-1:-1:268:284:1830
---7:57345:57345:57346-57349:269:285:2086
--+7:57345:57345:57346-57347:269:285:2086
-- 8:65537:-1:-1:270:286:2342
---9:73729:73729:73730-73733:271:287:2598
--+9:73729:73729:73730-73731:271:287:2598
-- 10:81921:-1:-1:272:288:2854
-- 11:90113:-1:-1:273:289:3110
-- 12:98305:-1:-1:274:290:3366
--@@ -66,9 +65,9 @@
-- 22:180225:-1:-1:131079:131095:132641
-- 23:188417:-1:-1:131080:131096:132897
-- 24:196609:-1:-1:131081:131097:133153
---25:204801:204801:204802-204805:131082:131098:133409
--+25:204801:204801:204802-204803:131082:131098:133409
-- 26:212993:-1:-1:131083:131099:133665
---27:221185:221185:221186-221189:131084:131100:133921
--+27:221185:221185:221186-221187:131084:131100:133921
-- 28:229377:-1:-1:131085:131101:134177
-- 29:237569:-1:-1:131086:131102:134433
-- 30:245761:-1:-1:131087:131103:134689
--@@ -90,7 +89,7 @@
-- 46:376833:-1:-1:262159:262175:265761
-- 47:385025:-1:-1:262160:262176:266017
-- 48:393217:-1:-1:393217:393233:393249
---49:401409:401409:401410-401413:393218:393234:393505
--+49:401409:401409:401410-401411:393218:393234:393505
-- 50:409601:-1:-1:393219:393235:393761
-- 51:417793:-1:-1:393220:393236:394017
-- 52:425985:-1:-1:393221:393237:394273
--Pass 1: Checking inodes, blocks, and sizes
--Pass 2: Checking directory structure
--Pass 3: Checking directory connectivity
--Pass 4: Checking reference counts
--Pass 5: Checking group summary information
--
--Exit status is 0
-diff --git a/tests/r_64to32bit/name b/tests/r_64to32bit/name
-deleted file mode 100644
-index 4c8237111295..000000000000
---- a/tests/r_64to32bit/name
-+++ /dev/null
-@@ -1 +0,0 @@
--convert flex_bg 64bit fs to 32bit fs
-diff --git a/tests/r_64to32bit/script b/tests/r_64to32bit/script
-deleted file mode 100644
-index 5d959f03a6d9..000000000000
---- a/tests/r_64to32bit/script
-+++ /dev/null
-@@ -1,76 +0,0 @@
--if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
--
--FSCK_OPT=-fn
--OUT=$test_name.log
--EXP=$test_dir/expect
--CONF=$TMPFILE.conf
--
--cat > $CONF << ENDL
--[fs_types]
--	ext4h = {
--		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode,64bit
--		blocksize = 1024
--		inode_size = 256
--		make_hugefiles = true
--		hugefiles_dir = /
--		hugefiles_slack = 0
--		hugefiles_name = aaaaa
--		hugefiles_digits = 4
--		hugefiles_size = 1M
--		zero_hugefiles = false
--	}
--ENDL
--
--echo "resize2fs test" > $OUT
--
--MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
--rm -rf $CONF
--
--# dump and check
--($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.before
--$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--# resize it
--echo "resize2fs test.img -s" >> $OUT
--$RESIZE2FS -s -f $TMPFILE 2>&1 >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--# dump and check
--($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.after
--echo "Change in FS metadata:" >> $OUT
--diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
--$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--rm $TMPFILE
--
--#
--# Do the verification
--#
--
--sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
--mv $OUT.new $OUT
--
--cmp -s $OUT $EXP
--status=$?
--
--if [ "$status" = 0 ] ; then
--	echo "$test_name: $test_description: ok"
--	touch $test_name.ok
--else
--	echo "$test_name: $test_description: failed"
--	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
--fi
--
--rm $OUT.before $OUT.after
--
--unset IMAGE FSCK_OPT OUT EXP CONF
--
--else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
--	echo "$test_name: $test_description: skipped"
--fi
--
-diff --git a/tests/r_64to32bit_meta/expect b/tests/r_64to32bit_meta/expect
-deleted file mode 100644
-index d6e2dccc894b..000000000000
---- a/tests/r_64to32bit_meta/expect
-+++ /dev/null
-@@ -1,80 +0,0 @@
--resize2fs test
--Creating filesystem with 524288 1k blocks and 65536 inodes
--Superblock backups stored on blocks: 
--	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
--
--Allocating group tables:      done                            
--Writing inode tables:      done                            
--Creating journal (16384 blocks): done
--Creating 479 huge file(s) with 1024 blocks each: done
--Writing superblocks and filesystem accounting information:      done
--
--Pass 1: Checking inodes, blocks, and sizes
--Pass 2: Checking directory structure
--Pass 3: Checking directory connectivity
--Pass 4: Checking reference counts
--Pass 5: Checking group summary information
--
--Exit status is 0
--resize2fs test.img -s
--Converting the filesystem to 32-bit.
--The filesystem on test.img is now 524288 (1k) blocks long.
--
--Exit status is 0
--Change in FS metadata:
--@@ -2,7 +2,7 @@
-- Last mounted on:          <not available>
-- Filesystem magic number:  0xEF53
-- Filesystem revision #:    1 (dynamic)
---Filesystem features:      has_journal ext_attr dir_index filetype meta_bg extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
--+Filesystem features:      has_journal ext_attr dir_index filetype meta_bg extent flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-- Default mount options:    user_xattr acl
-- Filesystem state:         clean
-- Errors behavior:          Continue
--@@ -10,12 +10,11 @@
-- Inode count:              65536
-- Block count:              524288
-- Reserved block count:     26214
---Free blocks:              852
--+Free blocks:              858
-- Free inodes:              65046
-- First block:              1
-- Block size:               1024
-- Fragment size:            1024
---Group descriptor size:    64
-- Blocks per group:         8192
-- Fragments per group:      8192
-- Inodes per group:         1024
--@@ -55,9 +54,9 @@
-- 12:98305:-1:-1:15:31:3107
-- 13:106497:-1:-1:16:32:3363
-- 14:114689:-1:-1:17:33:3619
---15:122881:-1:122881:18:34:3875
---16:131073:-1:131073:131074:131090:131106
---17:139265:-1:139265:131075:131091:131362
--+15:122881:-1:-1:18:34:3875
--+16:131073:-1:-1:131074:131090:131106
--+17:139265:-1:-1:131075:131091:131362
-- 18:147457:-1:-1:131076:131092:131618
-- 19:155649:-1:-1:131077:131093:131874
-- 20:163841:-1:-1:131078:131094:132130
--@@ -87,9 +86,9 @@
-- 44:360449:-1:-1:262158:262174:265250
-- 45:368641:-1:-1:262159:262175:265506
-- 46:376833:-1:-1:262160:262176:265762
---47:385025:-1:385025:262161:262177:266018
---48:393217:-1:393217:393218:393234:393250
---49:401409:401409:401410:393219:393235:393506
--+47:385025:-1:-1:262161:262177:266018
--+48:393217:-1:-1:393218:393234:393250
--+49:401409:401409:-1:393219:393235:393506
-- 50:409601:-1:-1:393220:393236:393762
-- 51:417793:-1:-1:393221:393237:394018
-- 52:425985:-1:-1:393222:393238:394274
--Pass 1: Checking inodes, blocks, and sizes
--Pass 2: Checking directory structure
--Pass 3: Checking directory connectivity
--Pass 4: Checking reference counts
--Pass 5: Checking group summary information
--
--Exit status is 0
-diff --git a/tests/r_64to32bit_meta/name b/tests/r_64to32bit_meta/name
-deleted file mode 100644
-index e99ed8b8d1b2..000000000000
---- a/tests/r_64to32bit_meta/name
-+++ /dev/null
-@@ -1 +0,0 @@
--convert meta_bg 64bit fs to 32bit fs
-diff --git a/tests/r_64to32bit_meta/script b/tests/r_64to32bit_meta/script
-deleted file mode 100644
-index 5a02e2664393..000000000000
---- a/tests/r_64to32bit_meta/script
-+++ /dev/null
-@@ -1,76 +0,0 @@
--if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
--
--FSCK_OPT=-fn
--OUT=$test_name.log
--EXP=$test_dir/expect
--CONF=$TMPFILE.conf
--
--cat > $CONF << ENDL
--[fs_types]
--	ext4h = {
--		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,meta_bg,^resize_inode,64bit
--		blocksize = 1024
--		inode_size = 256
--		make_hugefiles = true
--		hugefiles_dir = /
--		hugefiles_slack = 0
--		hugefiles_name = aaaaa
--		hugefiles_digits = 4
--		hugefiles_size = 1M
--		zero_hugefiles = false
--	}
--ENDL
--
--echo "resize2fs test" > $OUT
--
--MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
--rm -rf $CONF
--
--# dump and check
--($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.before
--$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--# resize it
--echo "resize2fs test.img -s" >> $OUT
--$RESIZE2FS -s -f $TMPFILE 2>&1 >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--# dump and check
--($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.after
--echo "Change in FS metadata:" >> $OUT
--diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
--$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
--status=$?
--echo Exit status is $status >> $OUT
--
--rm $TMPFILE
--
--#
--# Do the verification
--#
--
--sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
--mv $OUT.new $OUT
--
--cmp -s $OUT $EXP
--status=$?
--
--if [ "$status" = 0 ] ; then
--	echo "$test_name: $test_description: ok"
--	touch $test_name.ok
--else
--	echo "$test_name: $test_description: failed"
--	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
--fi
--
--rm $OUT.before $OUT.after
--
--unset IMAGE FSCK_OPT OUT EXP CONF
--
--else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
--	echo "$test_name: $test_description: skipped"
--fi
--
-diff --git a/tests/t_32to64bit/expect b/tests/t_32to64bit/expect
+diff --git a/tests/m_reserved_inodes/expect.1 b/tests/m_reserved_inodes/expect.1
 new file mode 100644
-index 000000000000..4b030e4b22cd
+index 000000000000..6cd183170b6e
 --- /dev/null
-+++ b/tests/t_32to64bit/expect
-@@ -0,0 +1,91 @@
-+tune2fs test
++++ b/tests/m_reserved_inodes/expect.1
+@@ -0,0 +1,837 @@
++Creating filesystem with 131072 1k blocks and 8192 inodes
++Superblock backups stored on blocks: 
++	1025, 3073, 5121, 7169, 9217, 25601, 27649, 50177, 82945, 128001
++
++Allocating group tables:        done                            
++Writing inode tables:        done                            
++Writing superblocks and filesystem accounting information:        done
++
++Filesystem features: ext_attr resize_inode dir_index filetype sparse_super
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 78/8192 files (0.0% non-contiguous), 4166/131072 blocks
++Exit status is 0
++Filesystem volume name:   <none>
++Last mounted on:          <not available>
++Filesystem magic number:  0xEF53
++Filesystem revision #:    1 (dynamic)
++Filesystem features:      ext_attr resize_inode dir_index filetype sparse_super
++Default mount options:    (none)
++Filesystem state:         clean
++Errors behavior:          Continue
++Filesystem OS type:       Linux
++Inode count:              8192
++Block count:              131072
++Reserved block count:     6553
++Free blocks:              126906
++Free inodes:              8114
++First block:              1
++Block size:               1024
++Fragment size:            1024
++Reserved GDT blocks:      256
++Blocks per group:         1024
++Fragments per group:      1024
++Inodes per group:         64
++Inode blocks per group:   8
++Mount count:              0
++Check interval:           15552000 (6 months)
++Reserved blocks uid:      0
++Reserved blocks gid:      0
++First inode:              78
++Inode size:	          128
++Default directory hash:   half_md4
++
++
++Group 0: (Blocks 1-1024)
++  Primary superblock at 1, Group descriptors at 2-5
++  Reserved GDT blocks at 6-261
++  Block bitmap at 262 (+261), Inode bitmap at 263 (+262)
++  Inode table at 264-271 (+263)
++  751 free blocks, 0 free inodes, 1 directories
++  Free blocks: 274-1024
++  Free inodes: 
++Group 1: (Blocks 1025-2048)
++  Backup superblock at 1025, Group descriptors at 1026-1029
++  Reserved GDT blocks at 1030-1285
++  Block bitmap at 1286 (+261), Inode bitmap at 1287 (+262)
++  Inode table at 1288-1295 (+263)
++  741 free blocks, 50 free inodes, 1 directories
++  Free blocks: 1308-2048
++  Free inodes: 79-128
++Group 2: (Blocks 2049-3072)
++  Block bitmap at 2049 (+0), Inode bitmap at 2050 (+1)
++  Inode table at 2051-2058 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 2059-3072
++  Free inodes: 129-192
++Group 3: (Blocks 3073-4096)
++  Backup superblock at 3073, Group descriptors at 3074-3077
++  Reserved GDT blocks at 3078-3333
++  Block bitmap at 3334 (+261), Inode bitmap at 3335 (+262)
++  Inode table at 3336-3343 (+263)
++  753 free blocks, 64 free inodes, 0 directories
++  Free blocks: 3344-4096
++  Free inodes: 193-256
++Group 4: (Blocks 4097-5120)
++  Block bitmap at 4097 (+0), Inode bitmap at 4098 (+1)
++  Inode table at 4099-4106 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 4107-5120
++  Free inodes: 257-320
++Group 5: (Blocks 5121-6144)
++  Backup superblock at 5121, Group descriptors at 5122-5125
++  Reserved GDT blocks at 5126-5381
++  Block bitmap at 5382 (+261), Inode bitmap at 5383 (+262)
++  Inode table at 5384-5391 (+263)
++  753 free blocks, 64 free inodes, 0 directories
++  Free blocks: 5392-6144
++  Free inodes: 321-384
++Group 6: (Blocks 6145-7168)
++  Block bitmap at 6145 (+0), Inode bitmap at 6146 (+1)
++  Inode table at 6147-6154 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 6155-7168
++  Free inodes: 385-448
++Group 7: (Blocks 7169-8192)
++  Backup superblock at 7169, Group descriptors at 7170-7173
++  Reserved GDT blocks at 7174-7429
++  Block bitmap at 7430 (+261), Inode bitmap at 7431 (+262)
++  Inode table at 7432-7439 (+263)
++  753 free blocks, 64 free inodes, 0 directories
++  Free blocks: 7440-8192
++  Free inodes: 449-512
++Group 8: (Blocks 8193-9216)
++  Block bitmap at 8193 (+0), Inode bitmap at 8194 (+1)
++  Inode table at 8195-8202 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 8203-9216
++  Free inodes: 513-576
++Group 9: (Blocks 9217-10240)
++  Backup superblock at 9217, Group descriptors at 9218-9221
++  Reserved GDT blocks at 9222-9477
++  Block bitmap at 9478 (+261), Inode bitmap at 9479 (+262)
++  Inode table at 9480-9487 (+263)
++  753 free blocks, 64 free inodes, 0 directories
++  Free blocks: 9488-10240
++  Free inodes: 577-640
++Group 10: (Blocks 10241-11264)
++  Block bitmap at 10241 (+0), Inode bitmap at 10242 (+1)
++  Inode table at 10243-10250 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 10251-11264
++  Free inodes: 641-704
++Group 11: (Blocks 11265-12288)
++  Block bitmap at 11265 (+0), Inode bitmap at 11266 (+1)
++  Inode table at 11267-11274 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 11275-12288
++  Free inodes: 705-768
++Group 12: (Blocks 12289-13312)
++  Block bitmap at 12289 (+0), Inode bitmap at 12290 (+1)
++  Inode table at 12291-12298 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 12299-13312
++  Free inodes: 769-832
++Group 13: (Blocks 13313-14336)
++  Block bitmap at 13313 (+0), Inode bitmap at 13314 (+1)
++  Inode table at 13315-13322 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 13323-14336
++  Free inodes: 833-896
++Group 14: (Blocks 14337-15360)
++  Block bitmap at 14337 (+0), Inode bitmap at 14338 (+1)
++  Inode table at 14339-14346 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 14347-15360
++  Free inodes: 897-960
++Group 15: (Blocks 15361-16384)
++  Block bitmap at 15361 (+0), Inode bitmap at 15362 (+1)
++  Inode table at 15363-15370 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 15371-16384
++  Free inodes: 961-1024
++Group 16: (Blocks 16385-17408)
++  Block bitmap at 16385 (+0), Inode bitmap at 16386 (+1)
++  Inode table at 16387-16394 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 16395-17408
++  Free inodes: 1025-1088
++Group 17: (Blocks 17409-18432)
++  Block bitmap at 17409 (+0), Inode bitmap at 17410 (+1)
++  Inode table at 17411-17418 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 17419-18432
++  Free inodes: 1089-1152
++Group 18: (Blocks 18433-19456)
++  Block bitmap at 18433 (+0), Inode bitmap at 18434 (+1)
++  Inode table at 18435-18442 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 18443-19456
++  Free inodes: 1153-1216
++Group 19: (Blocks 19457-20480)
++  Block bitmap at 19457 (+0), Inode bitmap at 19458 (+1)
++  Inode table at 19459-19466 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 19467-20480
++  Free inodes: 1217-1280
++Group 20: (Blocks 20481-21504)
++  Block bitmap at 20481 (+0), Inode bitmap at 20482 (+1)
++  Inode table at 20483-20490 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 20491-21504
++  Free inodes: 1281-1344
++Group 21: (Blocks 21505-22528)
++  Block bitmap at 21505 (+0), Inode bitmap at 21506 (+1)
++  Inode table at 21507-21514 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 21515-22528
++  Free inodes: 1345-1408
++Group 22: (Blocks 22529-23552)
++  Block bitmap at 22529 (+0), Inode bitmap at 22530 (+1)
++  Inode table at 22531-22538 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 22539-23552
++  Free inodes: 1409-1472
++Group 23: (Blocks 23553-24576)
++  Block bitmap at 23553 (+0), Inode bitmap at 23554 (+1)
++  Inode table at 23555-23562 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 23563-24576
++  Free inodes: 1473-1536
++Group 24: (Blocks 24577-25600)
++  Block bitmap at 24577 (+0), Inode bitmap at 24578 (+1)
++  Inode table at 24579-24586 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 24587-25600
++  Free inodes: 1537-1600
++Group 25: (Blocks 25601-26624)
++  Backup superblock at 25601, Group descriptors at 25602-25605
++  Reserved GDT blocks at 25606-25861
++  Block bitmap at 25862 (+261), Inode bitmap at 25863 (+262)
++  Inode table at 25864-25871 (+263)
++  753 free blocks, 64 free inodes, 0 directories
++  Free blocks: 25872-26624
++  Free inodes: 1601-1664
++Group 26: (Blocks 26625-27648)
++  Block bitmap at 26625 (+0), Inode bitmap at 26626 (+1)
++  Inode table at 26627-26634 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 26635-27648
++  Free inodes: 1665-1728
++Group 27: (Blocks 27649-28672)
++  Backup superblock at 27649, Group descriptors at 27650-27653
++  Reserved GDT blocks at 27654-27909
++  Block bitmap at 27910 (+261), Inode bitmap at 27911 (+262)
++  Inode table at 27912-27919 (+263)
++  753 free blocks, 64 free inodes, 0 directories
++  Free blocks: 27920-28672
++  Free inodes: 1729-1792
++Group 28: (Blocks 28673-29696)
++  Block bitmap at 28673 (+0), Inode bitmap at 28674 (+1)
++  Inode table at 28675-28682 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 28683-29696
++  Free inodes: 1793-1856
++Group 29: (Blocks 29697-30720)
++  Block bitmap at 29697 (+0), Inode bitmap at 29698 (+1)
++  Inode table at 29699-29706 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 29707-30720
++  Free inodes: 1857-1920
++Group 30: (Blocks 30721-31744)
++  Block bitmap at 30721 (+0), Inode bitmap at 30722 (+1)
++  Inode table at 30723-30730 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 30731-31744
++  Free inodes: 1921-1984
++Group 31: (Blocks 31745-32768)
++  Block bitmap at 31745 (+0), Inode bitmap at 31746 (+1)
++  Inode table at 31747-31754 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 31755-32768
++  Free inodes: 1985-2048
++Group 32: (Blocks 32769-33792)
++  Block bitmap at 32769 (+0), Inode bitmap at 32770 (+1)
++  Inode table at 32771-32778 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 32779-33792
++  Free inodes: 2049-2112
++Group 33: (Blocks 33793-34816)
++  Block bitmap at 33793 (+0), Inode bitmap at 33794 (+1)
++  Inode table at 33795-33802 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 33803-34816
++  Free inodes: 2113-2176
++Group 34: (Blocks 34817-35840)
++  Block bitmap at 34817 (+0), Inode bitmap at 34818 (+1)
++  Inode table at 34819-34826 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 34827-35840
++  Free inodes: 2177-2240
++Group 35: (Blocks 35841-36864)
++  Block bitmap at 35841 (+0), Inode bitmap at 35842 (+1)
++  Inode table at 35843-35850 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 35851-36864
++  Free inodes: 2241-2304
++Group 36: (Blocks 36865-37888)
++  Block bitmap at 36865 (+0), Inode bitmap at 36866 (+1)
++  Inode table at 36867-36874 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 36875-37888
++  Free inodes: 2305-2368
++Group 37: (Blocks 37889-38912)
++  Block bitmap at 37889 (+0), Inode bitmap at 37890 (+1)
++  Inode table at 37891-37898 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 37899-38912
++  Free inodes: 2369-2432
++Group 38: (Blocks 38913-39936)
++  Block bitmap at 38913 (+0), Inode bitmap at 38914 (+1)
++  Inode table at 38915-38922 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 38923-39936
++  Free inodes: 2433-2496
++Group 39: (Blocks 39937-40960)
++  Block bitmap at 39937 (+0), Inode bitmap at 39938 (+1)
++  Inode table at 39939-39946 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 39947-40960
++  Free inodes: 2497-2560
++Group 40: (Blocks 40961-41984)
++  Block bitmap at 40961 (+0), Inode bitmap at 40962 (+1)
++  Inode table at 40963-40970 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 40971-41984
++  Free inodes: 2561-2624
++Group 41: (Blocks 41985-43008)
++  Block bitmap at 41985 (+0), Inode bitmap at 41986 (+1)
++  Inode table at 41987-41994 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 41995-43008
++  Free inodes: 2625-2688
++Group 42: (Blocks 43009-44032)
++  Block bitmap at 43009 (+0), Inode bitmap at 43010 (+1)
++  Inode table at 43011-43018 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 43019-44032
++  Free inodes: 2689-2752
++Group 43: (Blocks 44033-45056)
++  Block bitmap at 44033 (+0), Inode bitmap at 44034 (+1)
++  Inode table at 44035-44042 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 44043-45056
++  Free inodes: 2753-2816
++Group 44: (Blocks 45057-46080)
++  Block bitmap at 45057 (+0), Inode bitmap at 45058 (+1)
++  Inode table at 45059-45066 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 45067-46080
++  Free inodes: 2817-2880
++Group 45: (Blocks 46081-47104)
++  Block bitmap at 46081 (+0), Inode bitmap at 46082 (+1)
++  Inode table at 46083-46090 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 46091-47104
++  Free inodes: 2881-2944
++Group 46: (Blocks 47105-48128)
++  Block bitmap at 47105 (+0), Inode bitmap at 47106 (+1)
++  Inode table at 47107-47114 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 47115-48128
++  Free inodes: 2945-3008
++Group 47: (Blocks 48129-49152)
++  Block bitmap at 48129 (+0), Inode bitmap at 48130 (+1)
++  Inode table at 48131-48138 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 48139-49152
++  Free inodes: 3009-3072
++Group 48: (Blocks 49153-50176)
++  Block bitmap at 49153 (+0), Inode bitmap at 49154 (+1)
++  Inode table at 49155-49162 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 49163-50176
++  Free inodes: 3073-3136
++Group 49: (Blocks 50177-51200)
++  Backup superblock at 50177, Group descriptors at 50178-50181
++  Reserved GDT blocks at 50182-50437
++  Block bitmap at 50438 (+261), Inode bitmap at 50439 (+262)
++  Inode table at 50440-50447 (+263)
++  753 free blocks, 64 free inodes, 0 directories
++  Free blocks: 50448-51200
++  Free inodes: 3137-3200
++Group 50: (Blocks 51201-52224)
++  Block bitmap at 51201 (+0), Inode bitmap at 51202 (+1)
++  Inode table at 51203-51210 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 51211-52224
++  Free inodes: 3201-3264
++Group 51: (Blocks 52225-53248)
++  Block bitmap at 52225 (+0), Inode bitmap at 52226 (+1)
++  Inode table at 52227-52234 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 52235-53248
++  Free inodes: 3265-3328
++Group 52: (Blocks 53249-54272)
++  Block bitmap at 53249 (+0), Inode bitmap at 53250 (+1)
++  Inode table at 53251-53258 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 53259-54272
++  Free inodes: 3329-3392
++Group 53: (Blocks 54273-55296)
++  Block bitmap at 54273 (+0), Inode bitmap at 54274 (+1)
++  Inode table at 54275-54282 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 54283-55296
++  Free inodes: 3393-3456
++Group 54: (Blocks 55297-56320)
++  Block bitmap at 55297 (+0), Inode bitmap at 55298 (+1)
++  Inode table at 55299-55306 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 55307-56320
++  Free inodes: 3457-3520
++Group 55: (Blocks 56321-57344)
++  Block bitmap at 56321 (+0), Inode bitmap at 56322 (+1)
++  Inode table at 56323-56330 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 56331-57344
++  Free inodes: 3521-3584
++Group 56: (Blocks 57345-58368)
++  Block bitmap at 57345 (+0), Inode bitmap at 57346 (+1)
++  Inode table at 57347-57354 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 57355-58368
++  Free inodes: 3585-3648
++Group 57: (Blocks 58369-59392)
++  Block bitmap at 58369 (+0), Inode bitmap at 58370 (+1)
++  Inode table at 58371-58378 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 58379-59392
++  Free inodes: 3649-3712
++Group 58: (Blocks 59393-60416)
++  Block bitmap at 59393 (+0), Inode bitmap at 59394 (+1)
++  Inode table at 59395-59402 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 59403-60416
++  Free inodes: 3713-3776
++Group 59: (Blocks 60417-61440)
++  Block bitmap at 60417 (+0), Inode bitmap at 60418 (+1)
++  Inode table at 60419-60426 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 60427-61440
++  Free inodes: 3777-3840
++Group 60: (Blocks 61441-62464)
++  Block bitmap at 61441 (+0), Inode bitmap at 61442 (+1)
++  Inode table at 61443-61450 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 61451-62464
++  Free inodes: 3841-3904
++Group 61: (Blocks 62465-63488)
++  Block bitmap at 62465 (+0), Inode bitmap at 62466 (+1)
++  Inode table at 62467-62474 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 62475-63488
++  Free inodes: 3905-3968
++Group 62: (Blocks 63489-64512)
++  Block bitmap at 63489 (+0), Inode bitmap at 63490 (+1)
++  Inode table at 63491-63498 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 63499-64512
++  Free inodes: 3969-4032
++Group 63: (Blocks 64513-65536)
++  Block bitmap at 64513 (+0), Inode bitmap at 64514 (+1)
++  Inode table at 64515-64522 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 64523-65536
++  Free inodes: 4033-4096
++Group 64: (Blocks 65537-66560)
++  Block bitmap at 65537 (+0), Inode bitmap at 65538 (+1)
++  Inode table at 65539-65546 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 65547-66560
++  Free inodes: 4097-4160
++Group 65: (Blocks 66561-67584)
++  Block bitmap at 66561 (+0), Inode bitmap at 66562 (+1)
++  Inode table at 66563-66570 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 66571-67584
++  Free inodes: 4161-4224
++Group 66: (Blocks 67585-68608)
++  Block bitmap at 67585 (+0), Inode bitmap at 67586 (+1)
++  Inode table at 67587-67594 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 67595-68608
++  Free inodes: 4225-4288
++Group 67: (Blocks 68609-69632)
++  Block bitmap at 68609 (+0), Inode bitmap at 68610 (+1)
++  Inode table at 68611-68618 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 68619-69632
++  Free inodes: 4289-4352
++Group 68: (Blocks 69633-70656)
++  Block bitmap at 69633 (+0), Inode bitmap at 69634 (+1)
++  Inode table at 69635-69642 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 69643-70656
++  Free inodes: 4353-4416
++Group 69: (Blocks 70657-71680)
++  Block bitmap at 70657 (+0), Inode bitmap at 70658 (+1)
++  Inode table at 70659-70666 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 70667-71680
++  Free inodes: 4417-4480
++Group 70: (Blocks 71681-72704)
++  Block bitmap at 71681 (+0), Inode bitmap at 71682 (+1)
++  Inode table at 71683-71690 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 71691-72704
++  Free inodes: 4481-4544
++Group 71: (Blocks 72705-73728)
++  Block bitmap at 72705 (+0), Inode bitmap at 72706 (+1)
++  Inode table at 72707-72714 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 72715-73728
++  Free inodes: 4545-4608
++Group 72: (Blocks 73729-74752)
++  Block bitmap at 73729 (+0), Inode bitmap at 73730 (+1)
++  Inode table at 73731-73738 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 73739-74752
++  Free inodes: 4609-4672
++Group 73: (Blocks 74753-75776)
++  Block bitmap at 74753 (+0), Inode bitmap at 74754 (+1)
++  Inode table at 74755-74762 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 74763-75776
++  Free inodes: 4673-4736
++Group 74: (Blocks 75777-76800)
++  Block bitmap at 75777 (+0), Inode bitmap at 75778 (+1)
++  Inode table at 75779-75786 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 75787-76800
++  Free inodes: 4737-4800
++Group 75: (Blocks 76801-77824)
++  Block bitmap at 76801 (+0), Inode bitmap at 76802 (+1)
++  Inode table at 76803-76810 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 76811-77824
++  Free inodes: 4801-4864
++Group 76: (Blocks 77825-78848)
++  Block bitmap at 77825 (+0), Inode bitmap at 77826 (+1)
++  Inode table at 77827-77834 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 77835-78848
++  Free inodes: 4865-4928
++Group 77: (Blocks 78849-79872)
++  Block bitmap at 78849 (+0), Inode bitmap at 78850 (+1)
++  Inode table at 78851-78858 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 78859-79872
++  Free inodes: 4929-4992
++Group 78: (Blocks 79873-80896)
++  Block bitmap at 79873 (+0), Inode bitmap at 79874 (+1)
++  Inode table at 79875-79882 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 79883-80896
++  Free inodes: 4993-5056
++Group 79: (Blocks 80897-81920)
++  Block bitmap at 80897 (+0), Inode bitmap at 80898 (+1)
++  Inode table at 80899-80906 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 80907-81920
++  Free inodes: 5057-5120
++Group 80: (Blocks 81921-82944)
++  Block bitmap at 81921 (+0), Inode bitmap at 81922 (+1)
++  Inode table at 81923-81930 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 81931-82944
++  Free inodes: 5121-5184
++Group 81: (Blocks 82945-83968)
++  Backup superblock at 82945, Group descriptors at 82946-82949
++  Reserved GDT blocks at 82950-83205
++  Block bitmap at 83206 (+261), Inode bitmap at 83207 (+262)
++  Inode table at 83208-83215 (+263)
++  753 free blocks, 64 free inodes, 0 directories
++  Free blocks: 83216-83968
++  Free inodes: 5185-5248
++Group 82: (Blocks 83969-84992)
++  Block bitmap at 83969 (+0), Inode bitmap at 83970 (+1)
++  Inode table at 83971-83978 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 83979-84992
++  Free inodes: 5249-5312
++Group 83: (Blocks 84993-86016)
++  Block bitmap at 84993 (+0), Inode bitmap at 84994 (+1)
++  Inode table at 84995-85002 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 85003-86016
++  Free inodes: 5313-5376
++Group 84: (Blocks 86017-87040)
++  Block bitmap at 86017 (+0), Inode bitmap at 86018 (+1)
++  Inode table at 86019-86026 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 86027-87040
++  Free inodes: 5377-5440
++Group 85: (Blocks 87041-88064)
++  Block bitmap at 87041 (+0), Inode bitmap at 87042 (+1)
++  Inode table at 87043-87050 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 87051-88064
++  Free inodes: 5441-5504
++Group 86: (Blocks 88065-89088)
++  Block bitmap at 88065 (+0), Inode bitmap at 88066 (+1)
++  Inode table at 88067-88074 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 88075-89088
++  Free inodes: 5505-5568
++Group 87: (Blocks 89089-90112)
++  Block bitmap at 89089 (+0), Inode bitmap at 89090 (+1)
++  Inode table at 89091-89098 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 89099-90112
++  Free inodes: 5569-5632
++Group 88: (Blocks 90113-91136)
++  Block bitmap at 90113 (+0), Inode bitmap at 90114 (+1)
++  Inode table at 90115-90122 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 90123-91136
++  Free inodes: 5633-5696
++Group 89: (Blocks 91137-92160)
++  Block bitmap at 91137 (+0), Inode bitmap at 91138 (+1)
++  Inode table at 91139-91146 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 91147-92160
++  Free inodes: 5697-5760
++Group 90: (Blocks 92161-93184)
++  Block bitmap at 92161 (+0), Inode bitmap at 92162 (+1)
++  Inode table at 92163-92170 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 92171-93184
++  Free inodes: 5761-5824
++Group 91: (Blocks 93185-94208)
++  Block bitmap at 93185 (+0), Inode bitmap at 93186 (+1)
++  Inode table at 93187-93194 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 93195-94208
++  Free inodes: 5825-5888
++Group 92: (Blocks 94209-95232)
++  Block bitmap at 94209 (+0), Inode bitmap at 94210 (+1)
++  Inode table at 94211-94218 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 94219-95232
++  Free inodes: 5889-5952
++Group 93: (Blocks 95233-96256)
++  Block bitmap at 95233 (+0), Inode bitmap at 95234 (+1)
++  Inode table at 95235-95242 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 95243-96256
++  Free inodes: 5953-6016
++Group 94: (Blocks 96257-97280)
++  Block bitmap at 96257 (+0), Inode bitmap at 96258 (+1)
++  Inode table at 96259-96266 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 96267-97280
++  Free inodes: 6017-6080
++Group 95: (Blocks 97281-98304)
++  Block bitmap at 97281 (+0), Inode bitmap at 97282 (+1)
++  Inode table at 97283-97290 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 97291-98304
++  Free inodes: 6081-6144
++Group 96: (Blocks 98305-99328)
++  Block bitmap at 98305 (+0), Inode bitmap at 98306 (+1)
++  Inode table at 98307-98314 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 98315-99328
++  Free inodes: 6145-6208
++Group 97: (Blocks 99329-100352)
++  Block bitmap at 99329 (+0), Inode bitmap at 99330 (+1)
++  Inode table at 99331-99338 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 99339-100352
++  Free inodes: 6209-6272
++Group 98: (Blocks 100353-101376)
++  Block bitmap at 100353 (+0), Inode bitmap at 100354 (+1)
++  Inode table at 100355-100362 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 100363-101376
++  Free inodes: 6273-6336
++Group 99: (Blocks 101377-102400)
++  Block bitmap at 101377 (+0), Inode bitmap at 101378 (+1)
++  Inode table at 101379-101386 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 101387-102400
++  Free inodes: 6337-6400
++Group 100: (Blocks 102401-103424)
++  Block bitmap at 102401 (+0), Inode bitmap at 102402 (+1)
++  Inode table at 102403-102410 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 102411-103424
++  Free inodes: 6401-6464
++Group 101: (Blocks 103425-104448)
++  Block bitmap at 103425 (+0), Inode bitmap at 103426 (+1)
++  Inode table at 103427-103434 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 103435-104448
++  Free inodes: 6465-6528
++Group 102: (Blocks 104449-105472)
++  Block bitmap at 104449 (+0), Inode bitmap at 104450 (+1)
++  Inode table at 104451-104458 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 104459-105472
++  Free inodes: 6529-6592
++Group 103: (Blocks 105473-106496)
++  Block bitmap at 105473 (+0), Inode bitmap at 105474 (+1)
++  Inode table at 105475-105482 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 105483-106496
++  Free inodes: 6593-6656
++Group 104: (Blocks 106497-107520)
++  Block bitmap at 106497 (+0), Inode bitmap at 106498 (+1)
++  Inode table at 106499-106506 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 106507-107520
++  Free inodes: 6657-6720
++Group 105: (Blocks 107521-108544)
++  Block bitmap at 107521 (+0), Inode bitmap at 107522 (+1)
++  Inode table at 107523-107530 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 107531-108544
++  Free inodes: 6721-6784
++Group 106: (Blocks 108545-109568)
++  Block bitmap at 108545 (+0), Inode bitmap at 108546 (+1)
++  Inode table at 108547-108554 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 108555-109568
++  Free inodes: 6785-6848
++Group 107: (Blocks 109569-110592)
++  Block bitmap at 109569 (+0), Inode bitmap at 109570 (+1)
++  Inode table at 109571-109578 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 109579-110592
++  Free inodes: 6849-6912
++Group 108: (Blocks 110593-111616)
++  Block bitmap at 110593 (+0), Inode bitmap at 110594 (+1)
++  Inode table at 110595-110602 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 110603-111616
++  Free inodes: 6913-6976
++Group 109: (Blocks 111617-112640)
++  Block bitmap at 111617 (+0), Inode bitmap at 111618 (+1)
++  Inode table at 111619-111626 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 111627-112640
++  Free inodes: 6977-7040
++Group 110: (Blocks 112641-113664)
++  Block bitmap at 112641 (+0), Inode bitmap at 112642 (+1)
++  Inode table at 112643-112650 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 112651-113664
++  Free inodes: 7041-7104
++Group 111: (Blocks 113665-114688)
++  Block bitmap at 113665 (+0), Inode bitmap at 113666 (+1)
++  Inode table at 113667-113674 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 113675-114688
++  Free inodes: 7105-7168
++Group 112: (Blocks 114689-115712)
++  Block bitmap at 114689 (+0), Inode bitmap at 114690 (+1)
++  Inode table at 114691-114698 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 114699-115712
++  Free inodes: 7169-7232
++Group 113: (Blocks 115713-116736)
++  Block bitmap at 115713 (+0), Inode bitmap at 115714 (+1)
++  Inode table at 115715-115722 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 115723-116736
++  Free inodes: 7233-7296
++Group 114: (Blocks 116737-117760)
++  Block bitmap at 116737 (+0), Inode bitmap at 116738 (+1)
++  Inode table at 116739-116746 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 116747-117760
++  Free inodes: 7297-7360
++Group 115: (Blocks 117761-118784)
++  Block bitmap at 117761 (+0), Inode bitmap at 117762 (+1)
++  Inode table at 117763-117770 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 117771-118784
++  Free inodes: 7361-7424
++Group 116: (Blocks 118785-119808)
++  Block bitmap at 118785 (+0), Inode bitmap at 118786 (+1)
++  Inode table at 118787-118794 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 118795-119808
++  Free inodes: 7425-7488
++Group 117: (Blocks 119809-120832)
++  Block bitmap at 119809 (+0), Inode bitmap at 119810 (+1)
++  Inode table at 119811-119818 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 119819-120832
++  Free inodes: 7489-7552
++Group 118: (Blocks 120833-121856)
++  Block bitmap at 120833 (+0), Inode bitmap at 120834 (+1)
++  Inode table at 120835-120842 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 120843-121856
++  Free inodes: 7553-7616
++Group 119: (Blocks 121857-122880)
++  Block bitmap at 121857 (+0), Inode bitmap at 121858 (+1)
++  Inode table at 121859-121866 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 121867-122880
++  Free inodes: 7617-7680
++Group 120: (Blocks 122881-123904)
++  Block bitmap at 122881 (+0), Inode bitmap at 122882 (+1)
++  Inode table at 122883-122890 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 122891-123904
++  Free inodes: 7681-7744
++Group 121: (Blocks 123905-124928)
++  Block bitmap at 123905 (+0), Inode bitmap at 123906 (+1)
++  Inode table at 123907-123914 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 123915-124928
++  Free inodes: 7745-7808
++Group 122: (Blocks 124929-125952)
++  Block bitmap at 124929 (+0), Inode bitmap at 124930 (+1)
++  Inode table at 124931-124938 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 124939-125952
++  Free inodes: 7809-7872
++Group 123: (Blocks 125953-126976)
++  Block bitmap at 125953 (+0), Inode bitmap at 125954 (+1)
++  Inode table at 125955-125962 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 125963-126976
++  Free inodes: 7873-7936
++Group 124: (Blocks 126977-128000)
++  Block bitmap at 126977 (+0), Inode bitmap at 126978 (+1)
++  Inode table at 126979-126986 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 126987-128000
++  Free inodes: 7937-8000
++Group 125: (Blocks 128001-129024)
++  Backup superblock at 128001, Group descriptors at 128002-128005
++  Reserved GDT blocks at 128006-128261
++  Block bitmap at 128262 (+261), Inode bitmap at 128263 (+262)
++  Inode table at 128264-128271 (+263)
++  753 free blocks, 64 free inodes, 0 directories
++  Free blocks: 128272-129024
++  Free inodes: 8001-8064
++Group 126: (Blocks 129025-130048)
++  Block bitmap at 129025 (+0), Inode bitmap at 129026 (+1)
++  Inode table at 129027-129034 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 129035-130048
++  Free inodes: 8065-8128
++Group 127: (Blocks 130049-131071)
++  Block bitmap at 130049 (+0), Inode bitmap at 130050 (+1)
++  Inode table at 130051-130058 (+2)
++  1013 free blocks, 64 free inodes, 0 directories
++  Free blocks: 130059-131071
++  Free inodes: 8129-8192
+diff --git a/tests/m_reserved_inodes/script b/tests/m_reserved_inodes/script
+new file mode 100644
+index 000000000000..070c08a07d6f
+--- /dev/null
++++ b/tests/m_reserved_inodes/script
+@@ -0,0 +1,7 @@
++DESCRIPTION="set number of reserved inodes on mkfs"
++FS_SIZE=131072
++DUMPE2FS_IGNORE_80COL=1
++export DUMPE2FS_IGNORE_80COL
++MKE2FS_OPTS="-b 1024 -g 1024 -N 8192 -E reserved_inodes=77"
++. $cmd_dir/run_mke2fs
++unset DUMPE2FS_IGNORE_80COL
+diff --git a/tests/t_reserved_inodes_decrease/expect b/tests/t_reserved_inodes_decrease/expect
+new file mode 100644
+index 000000000000..fe6ace681018
+--- /dev/null
++++ b/tests/t_reserved_inodes_decrease/expect
+@@ -0,0 +1,68 @@
++tune2fs reserved_inodes decreasing test
 +Creating filesystem with 524288 1k blocks and 65536 inodes
 +Superblock backups stored on blocks: 
 +	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
@@ -1293,94 +922,69 @@ index 000000000000..4b030e4b22cd
 +Pass 5: Checking group summary information
 +
 +Exit status is 0
-+tune2fs -O 64bit test.img
++tune2fs -E reserved_inodes=64 test.img
 +Exit status is 0
++
 +Change in FS metadata:
-+@@ -2,7 +2,7 @@
-+ Last mounted on:          <not available>
-+ Filesystem magic number:  0xEF53
-+ Filesystem revision #:    1 (dynamic)
-+-Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-++Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-+ Default mount options:    user_xattr acl
-+ Filesystem state:         clean
-+ Errors behavior:          Continue
-+@@ -15,7 +15,8 @@
++@@ -11,7 +11,7 @@
++ Block count:              524288
++ Reserved block count:     26214
++ Free blocks:              588
++-Free inodes:              64929
+++Free inodes:              64993
 + First block:              1
 + Block size:               1024
 + Fragment size:            1024
-+-Reserved GDT blocks:      256
-++Group descriptor size:    64
-++Reserved GDT blocks:      254
-+ Blocks per group:         8192
-+ Fragments per group:      8192
-+ Inodes per group:         1024
-+@@ -40,16 +41,16 @@
-+ 
-+ 
-+ group:block:super:gdt:bbitmap:ibitmap:itable
-+-0:1:1:2-3:260:276:292
-+-1:8193:8193:8194-8195:261:277:548
-++0:1:1:2-5:260:276:292
-++1:8193:8193:8194-8197:261:277:548
-+ 2:16385:-1:-1:262:278:804
-+-3:24577:24577:24578-24579:263:279:1060
-++3:24577:24577:24578-24581:263:279:1060
-+ 4:32769:-1:-1:264:280:1316
-+-5:40961:40961:40962-40963:265:281:1572
-++5:40961:40961:40962-40965:265:281:1572
-+ 6:49153:-1:-1:266:282:1828
-+-7:57345:57345:57346-57347:267:283:2084
-++7:57345:57345:57346-57349:267:283:2084
-+ 8:65537:-1:-1:268:284:2340
-+-9:73729:73729:73730-73731:269:285:2596
-++9:73729:73729:73730-73733:269:285:2596
-+ 10:81921:-1:-1:270:286:2852
-+ 11:90113:-1:-1:271:287:3108
-+ 12:98305:-1:-1:272:288:3364
-+@@ -65,9 +66,9 @@
-+ 22:180225:-1:-1:131079:131095:132641
-+ 23:188417:-1:-1:131080:131096:132897
-+ 24:196609:-1:-1:131081:131097:133153
-+-25:204801:204801:204802-204803:131082:131098:133409
-++25:204801:204801:204802-204805:131082:131098:133409
-+ 26:212993:-1:-1:131083:131099:133665
-+-27:221185:221185:221186-221187:131084:131100:133921
-++27:221185:221185:221186-221189:131084:131100:133921
-+ 28:229377:-1:-1:131085:131101:134177
-+ 29:237569:-1:-1:131086:131102:134433
-+ 30:245761:-1:-1:131087:131103:134689
-+@@ -89,7 +90,7 @@
-+ 46:376833:-1:-1:262159:262175:265761
-+ 47:385025:-1:-1:262160:262176:266017
-+ 48:393217:-1:-1:393217:393233:393249
-+-49:401409:401409:401410-401411:393218:393234:393505
-++49:401409:401409:401410-401413:393218:393234:393505
-+ 50:409601:-1:-1:393219:393235:393761
-+ 51:417793:-1:-1:393220:393236:394017
-+ 52:425985:-1:-1:393221:393237:394273
++@@ -25,7 +25,7 @@
++ Check interval:           0 (<none>)
++ Reserved blocks uid:      0
++ Reserved blocks gid:      0
++-First inode:              129
+++First inode:              65
++ Inode size:	          256
++ Required extra isize:     28
++ Desired extra isize:      28
++@@ -45,7 +45,7 @@
++   Block bitmap at 260 (+259)
++   Inode bitmap at 276 (+275)
++   Inode table at 292-547 (+291)
++-  21 free blocks, 417 free inodes, 3 directories, 417 unused inodes
+++  21 free blocks, 481 free inodes, 3 directories, 417 unused inodes
++   Free blocks: 4412-4432
++   Free inodes: 608-1024
++ Group 1: (Blocks 8193-16384) [INODE_UNINIT]
 +Pass 1: Checking inodes, blocks, and sizes
 +Pass 2: Checking directory structure
 +Pass 3: Checking directory connectivity
 +Pass 4: Checking reference counts
 +Pass 5: Checking group summary information
++Inode bitmap differences:  -(65--128)
++Fix? no
 +
-+Exit status is 0
-diff --git a/tests/t_32to64bit/name b/tests/t_32to64bit/name
++Free inodes count wrong for group #0 (481, counted=417).
++Fix? no
++
++Free inodes count wrong (64993, counted=64929).
++Fix? no
++
++
++
++
++
++Exit status is 4
+diff --git a/tests/t_reserved_inodes_decrease/name b/tests/t_reserved_inodes_decrease/name
 new file mode 100644
-index 000000000000..fb45faba6468
+index 000000000000..8f9e66179e4a
 --- /dev/null
-+++ b/tests/t_32to64bit/name
++++ b/tests/t_reserved_inodes_decrease/name
 @@ -0,0 +1 @@
-+convert flex_bg 32bit fs to 64bit fs
-diff --git a/tests/t_32to64bit/script b/tests/t_32to64bit/script
++test decreasing number of reserved inodes
+diff --git a/tests/t_reserved_inodes_decrease/script b/tests/t_reserved_inodes_decrease/script
 new file mode 100644
-index 000000000000..695208cc7ec3
+index 000000000000..0e91558ed612
 --- /dev/null
-+++ b/tests/t_32to64bit/script
-@@ -0,0 +1,74 @@
-+if test -x $DEBUGFS_EXE; then
-+
++++ b/tests/t_reserved_inodes_decrease/script
+@@ -0,0 +1,71 @@
 +FSCK_OPT=-fn
 +OUT=$test_name.log
 +EXP=$test_dir/expect
@@ -1390,10 +994,11 @@ index 000000000000..695208cc7ec3
 +[fs_types]
 +	ext4h = {
 +		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode
++		options = reserved_inodes=128
 +		blocksize = 1024
 +		inode_size = 256
 +		make_hugefiles = true
-+		hugefiles_dir = /
++		hugefiles_dir = /xyz
 +		hugefiles_slack = 0
 +		hugefiles_name = aaaaa
 +		hugefiles_digits = 4
@@ -1402,433 +1007,28 @@ index 000000000000..695208cc7ec3
 +	}
 +ENDL
 +
-+echo "tune2fs test" > $OUT
++echo "tune2fs reserved_inodes decreasing test" > $OUT
 +
 +MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
 +rm -rf $CONF
 +
 +# dump and check
-+($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.before
++$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.before
 +$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
 +status=$?
 +echo Exit status is $status >> $OUT
 +
-+# resize it
-+echo "tune2fs -O 64bit test.img" >> $OUT
-+$TUNE2FS -O 64bit $TMPFILE 2>&1 >> $OUT 2>&1
++# increase number of reserved inodes
++echo "tune2fs -E reserved_inodes=64 test.img" >> $OUT
++$TUNE2FS -E reserved_inodes=64 $TMPFILE >> $OUT 2>&1
 +status=$?
 +echo Exit status is $status >> $OUT
-+
-+# dump and check
-+($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.after
-+echo "Change in FS metadata:" >> $OUT
-+diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+rm $TMPFILE $OUT.before $OUT.after
-+
-+#
-+# Do the verification
-+#
-+
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
-+mv $OUT.new $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+fi
-+
-+unset IMAGE FSCK_OPT OUT EXP CONF
-+
-+else # if test -x $DEBUGFS_EXE; then
-+	echo "$test_name: $test_description: skipped"
-+fi
-+
-diff --git a/tests/t_32to64bit_expand_full/expect b/tests/t_32to64bit_expand_full/expect
-new file mode 100644
-index 000000000000..2093c1df2e46
---- /dev/null
-+++ b/tests/t_32to64bit_expand_full/expect
-@@ -0,0 +1,136 @@
-+tune2fs test
-+Creating filesystem with 786432 1k blocks and 98304 inodes
-+Superblock backups stored on blocks: 
-+	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553
-+
-+Allocating group tables:      done                            
-+Writing inode tables:      done                            
-+Creating journal (16384 blocks): done
-+Creating 727 huge file(s) with 1024 blocks each: done
-+Writing superblocks and filesystem accounting information:      done
-+
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-+tune2fs -O 64bit test.img
-+resize2fs test.img
-+Resizing the filesystem on test.img to 1179648 (1k) blocks.
-+The filesystem on test.img is now 1179648 (1k) blocks long.
-+
-+Exit status is 0
-+Change in FS metadata:
-+@@ -1,15 +1,15 @@
-+ 
-+ group:block:super:gdt:bbitmap:ibitmap:itable
-+-0:1:1:2-7:8:9:10
-+-1:8193:8193:8194-8199:8200:8201:8202
-++0:1:1:2-10:266:267:268
-++1:8193:8193:8194-8202:8458:8459:8460
-+ 2:16385:-1:-1:16385:16386:16387
-+-3:24577:24577:24578-24583:24584:24585:24586
-++3:24577:24577:24578-24586:24842:24843:24844
-+ 4:32769:-1:-1:32769:32770:32771
-+-5:40961:40961:40962-40967:40968:40969:40970
-++5:40961:40961:40962-40970:41226:41227:41228
-+ 6:49153:-1:-1:49153:49154:49155
-+-7:57345:57345:57346-57351:57352:57353:57354
-++7:57345:57345:57346-57354:57610:57611:57612
-+ 8:65537:-1:-1:65537:65538:65539
-+-9:73729:73729:73730-73735:73736:73737:73738
-++9:73729:73729:73730-73738:73994:73995:73996
-+ 10:81921:-1:-1:81921:81922:81923
-+ 11:90113:-1:-1:90113:90114:90115
-+ 12:98305:-1:-1:98305:98306:98307
-+@@ -25,9 +25,9 @@
-+ 22:180225:-1:-1:180225:180226:180227
-+ 23:188417:-1:-1:188417:188418:188419
-+ 24:196609:-1:-1:196609:196610:196611
-+-25:204801:204801:204802-204807:204808:204809:204810
-++25:204801:204801:204802-204810:205066:205067:205068
-+ 26:212993:-1:-1:212993:212994:212995
-+-27:221185:221185:221186-221191:221192:221193:221194
-++27:221185:221185:221186-221194:221450:221451:221452
-+ 28:229377:-1:-1:229377:229378:229379
-+ 29:237569:-1:-1:237569:237570:237571
-+ 30:245761:-1:-1:245761:245762:245763
-+@@ -49,7 +49,7 @@
-+ 46:376833:-1:-1:376833:376834:376835
-+ 47:385025:-1:-1:385025:385026:385027
-+ 48:393217:-1:-1:393217:393218:393219
-+-49:401409:401409:401410-401415:401416:401417:401418
-++49:401409:401409:401410-401418:401674:401675:401676
-+ 50:409601:-1:-1:409601:409602:409603
-+ 51:417793:-1:-1:417793:417794:417795
-+ 52:425985:-1:-1:425985:425986:425987
-+@@ -81,7 +81,7 @@
-+ 78:638977:-1:-1:638977:638978:638979
-+ 79:647169:-1:-1:647169:647170:647171
-+ 80:655361:-1:-1:655361:655362:655363
-+-81:663553:663553:663554-663559:663560:663561:663562
-++81:663553:663553:663554-663562:663818:663819:663820
-+ 82:671745:-1:-1:671745:671746:671747
-+ 83:679937:-1:-1:679937:679938:679939
-+ 84:688129:-1:-1:688129:688130:688131
-+@@ -96,3 +96,51 @@
-+ 93:761857:-1:-1:761857:761858:761859
-+ 94:770049:-1:-1:770049:770050:770051
-+ 95:778241:-1:-1:778241:778242:778243
-++96:786433:-1:-1:786433:786434:786435
-++97:794625:-1:-1:794625:794626:794627
-++98:802817:-1:-1:802817:802818:802819
-++99:811009:-1:-1:811009:811010:811011
-++100:819201:-1:-1:819201:819202:819203
-++101:827393:-1:-1:827393:827394:827395
-++102:835585:-1:-1:835585:835586:835587
-++103:843777:-1:-1:843777:843778:843779
-++104:851969:-1:-1:851969:851970:851971
-++105:860161:-1:-1:860161:860162:860163
-++106:868353:-1:-1:868353:868354:868355
-++107:876545:-1:-1:876545:876546:876547
-++108:884737:-1:-1:884737:884738:884739
-++109:892929:-1:-1:892929:892930:892931
-++110:901121:-1:-1:901121:901122:901123
-++111:909313:-1:-1:909313:909314:909315
-++112:917505:-1:-1:917505:917506:917507
-++113:925697:-1:-1:925697:925698:925699
-++114:933889:-1:-1:933889:933890:933891
-++115:942081:-1:-1:942081:942082:942083
-++116:950273:-1:-1:950273:950274:950275
-++117:958465:-1:-1:958465:958466:958467
-++118:966657:-1:-1:966657:966658:966659
-++119:974849:-1:-1:974849:974850:974851
-++120:983041:-1:-1:983041:983042:983043
-++121:991233:-1:-1:991233:991234:991235
-++122:999425:-1:-1:999425:999426:999427
-++123:1007617:-1:-1:1007617:1007618:1007619
-++124:1015809:-1:-1:1015809:1015810:1015811
-++125:1024001:1024001:1024002-1024010:1024011:1024012:1024013
-++126:1032193:-1:-1:1032193:1032194:1032195
-++127:1040385:-1:-1:1040385:1040386:1040387
-++128:1048577:-1:-1:1048577:1048578:1048579
-++129:1056769:-1:-1:1056769:1056770:1056771
-++130:1064961:-1:-1:1064961:1064962:1064963
-++131:1073153:-1:-1:1073153:1073154:1073155
-++132:1081345:-1:-1:1081345:1081346:1081347
-++133:1089537:-1:-1:1089537:1089538:1089539
-++134:1097729:-1:-1:1097729:1097730:1097731
-++135:1105921:-1:-1:1105921:1105922:1105923
-++136:1114113:-1:-1:1114113:1114114:1114115
-++137:1122305:-1:-1:1122305:1122306:1122307
-++138:1130497:-1:-1:1130497:1130498:1130499
-++139:1138689:-1:-1:1138689:1138690:1138691
-++140:1146881:-1:-1:1146881:1146882:1146883
-++141:1155073:-1:-1:1155073:1155074:1155075
-++142:1163265:-1:-1:1163265:1163266:1163267
-++143:1171457:-1:-1:1171457:1171458:1171459
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-diff --git a/tests/t_32to64bit_expand_full/name b/tests/t_32to64bit_expand_full/name
-new file mode 100644
-index 000000000000..2f046011bcf8
---- /dev/null
-+++ b/tests/t_32to64bit_expand_full/name
-@@ -0,0 +1 @@
-+convert a totally full filesystem to 64bit, then expand
-diff --git a/tests/t_32to64bit_expand_full/script b/tests/t_32to64bit_expand_full/script
-new file mode 100644
-index 000000000000..603c5818c1c3
---- /dev/null
-+++ b/tests/t_32to64bit_expand_full/script
-@@ -0,0 +1,83 @@
-+if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
-+
-+FSCK_OPT=-fn
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+CONF=$TMPFILE.conf
-+
-+#gzip -d < $EXP.gz > $EXP
-+
-+cat > $CONF << ENDL
-+[fs_types]
-+	ext4h = {
-+		features = has_journal,extent,huge_file,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,^resize_inode,^meta_bg,^flex_bg
-+		blocksize = 1024
-+		inode_size = 256
-+		make_hugefiles = true
-+		hugefiles_dir = /
-+		hugefiles_slack = 0
-+		hugefiles_name = aaaaa
-+		hugefiles_digits = 4
-+		hugefiles_size = 1M
-+		zero_hugefiles = false
-+	}
-+ENDL
-+
-+echo "tune2fs test" > $OUT
-+
-+MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 786432 >> $OUT 2>&1
-+rm -rf $CONF
 +
 +# check
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+# convert it
-+echo "tune2fs -O 64bit test.img" >> $OUT
-+$TUNE2FS -O 64bit $TMPFILE 2>&1 >> $OUT 2>&1
-+$DUMPE2FS -g $TMPFILE 2>&1 >> $OUT.before 2> /dev/null
-+
-+# grow it
-+echo "resize2fs test.img" >> $OUT
-+dd if=/dev/zero of=$TMPFILE conv=notrunc bs=1 count=1 seek=1207959552 2> /dev/null
-+$RESIZE2FS -f $TMPFILE 2>&1 >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
++$FSCK -yD -N test_filesys $TMPFILE >> $OUT 2>&1
 +
 +# dump and check
-+$DUMPE2FS -g $TMPFILE 2>&1 >> $OUT.after 2> /dev/null
-+echo "Change in FS metadata:" >> $OUT
-+diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+rm $TMPFILE
-+
-+#
-+# Do the verification
-+#
-+
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
-+mv $OUT.new $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+fi
-+
-+rm $OUT.before $OUT.after
-+
-+unset IMAGE FSCK_OPT OUT EXP CONF
-+
-+else #if test -x $RESIZE2FS_EXE -a -x $DEBUGFS_EXE; then
-+	echo "$test_name: $test_description: skipped"
-+fi
-+
-diff --git a/tests/t_32to64bit_meta/expect b/tests/t_32to64bit_meta/expect
-new file mode 100644
-index 000000000000..28e328c524a8
---- /dev/null
-+++ b/tests/t_32to64bit_meta/expect
-@@ -0,0 +1,77 @@
-+tune2fs test
-+Creating filesystem with 524288 1k blocks and 65536 inodes
-+Superblock backups stored on blocks: 
-+	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
-+
-+Allocating group tables:      done                            
-+Writing inode tables:      done                            
-+Creating journal (16384 blocks): done
-+Creating 479 huge file(s) with 1024 blocks each: done
-+Writing superblocks and filesystem accounting information:      done
-+
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-+tune2fs -O 64bit test.img
-+Exit status is 0
-+Change in FS metadata:
-+@@ -2,7 +2,7 @@
-+ Last mounted on:          <not available>
-+ Filesystem magic number:  0xEF53
-+ Filesystem revision #:    1 (dynamic)
-+-Filesystem features:      has_journal ext_attr dir_index filetype meta_bg extent flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-++Filesystem features:      has_journal ext_attr dir_index filetype meta_bg extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-+ Default mount options:    user_xattr acl
-+ Filesystem state:         clean
-+ Errors behavior:          Continue
-+@@ -10,11 +10,12 @@
-+ Inode count:              65536
-+ Block count:              524288
-+ Reserved block count:     26214
-+-Free blocks:              858
-++Free blocks:              852
-+ Free inodes:              65046
-+ First block:              1
-+ Block size:               1024
-+ Fragment size:            1024
-++Group descriptor size:    64
-+ Blocks per group:         8192
-+ Fragments per group:      8192
-+ Inodes per group:         1024
-+@@ -54,9 +55,9 @@
-+ 12:98305:-1:-1:15:31:3107
-+ 13:106497:-1:-1:16:32:3363
-+ 14:114689:-1:-1:17:33:3619
-+-15:122881:-1:-1:18:34:3875
-+-16:131073:-1:-1:131073:131089:131105
-+-17:139265:-1:-1:131074:131090:131361
-++15:122881:-1:122881:18:34:3875
-++16:131073:-1:131073:135201:131089:131105
-++17:139265:-1:139265:131074:131090:131361
-+ 18:147457:-1:-1:131075:131091:131617
-+ 19:155649:-1:-1:131076:131092:131873
-+ 20:163841:-1:-1:131077:131093:132129
-+@@ -86,9 +87,9 @@
-+ 44:360449:-1:-1:262158:262174:265250
-+ 45:368641:-1:-1:262159:262175:265506
-+ 46:376833:-1:-1:262160:262176:265762
-+-47:385025:-1:-1:262161:262177:266018
-+-48:393217:-1:-1:393217:393233:393249
-+-49:401409:401409:-1:393218:393234:393505
-++47:385025:-1:385025:262161:262177:266018
-++48:393217:-1:393217:397345:393233:393249
-++49:401409:401409:401410:393218:393234:393505
-+ 50:409601:-1:-1:393219:393235:393761
-+ 51:417793:-1:-1:393220:393236:394017
-+ 52:425985:-1:-1:393221:393237:394273
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-diff --git a/tests/t_32to64bit_meta/name b/tests/t_32to64bit_meta/name
-new file mode 100644
-index 000000000000..d83492eae8cf
---- /dev/null
-+++ b/tests/t_32to64bit_meta/name
-@@ -0,0 +1 @@
-+convert meta_bg 32bit fs to 64bit fs
-diff --git a/tests/t_32to64bit_meta/script b/tests/t_32to64bit_meta/script
-new file mode 100644
-index 000000000000..9b02266e64c6
---- /dev/null
-+++ b/tests/t_32to64bit_meta/script
-@@ -0,0 +1,74 @@
-+if test -x $DEBUGFS_EXE; then
-+
-+FSCK_OPT=-fn
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+CONF=$TMPFILE.conf
-+
-+cat > $CONF << ENDL
-+[fs_types]
-+	ext4h = {
-+		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,meta_bg,^resize_inode
-+		blocksize = 1024
-+		inode_size = 256
-+		make_hugefiles = true
-+		hugefiles_dir = /
-+		hugefiles_slack = 0
-+		hugefiles_name = aaaaa
-+		hugefiles_digits = 4
-+		hugefiles_size = 1M
-+		zero_hugefiles = false
-+	}
-+ENDL
-+
-+echo "tune2fs test" > $OUT
-+
-+MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
-+rm -rf $CONF
-+
-+# dump and check
-+($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.before
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+# resize it
-+echo "tune2fs -O 64bit test.img" >> $OUT
-+$TUNE2FS -O 64bit $TMPFILE 2>&1 >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+# dump and check
-+($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.after
++$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.after
 +echo "Change in FS metadata:" >> $OUT
 +diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
 +$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
@@ -1856,215 +1056,13 @@ index 000000000000..9b02266e64c6
 +fi
 +
 +unset IMAGE FSCK_OPT OUT EXP CONF
-+
-+else #if test -x $DEBUGFS_EXE; then
-+	echo "$test_name: $test_description: skipped"
-+fi
-+
-diff --git a/tests/t_32to64bit_move_itable/expect b/tests/t_32to64bit_move_itable/expect
+diff --git a/tests/t_reserved_inodes_increase/expect b/tests/t_reserved_inodes_increase/expect
 new file mode 100644
-index 000000000000..e4fa55432bb3
+index 000000000000..1e15df1b1a23
 --- /dev/null
-+++ b/tests/t_32to64bit_move_itable/expect
-@@ -0,0 +1,104 @@
-+tune2fs test
-+Creating filesystem with 786432 1k blocks and 98304 inodes
-+Superblock backups stored on blocks: 
-+	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553
-+
-+Allocating group tables:      done                            
-+Writing inode tables:      done                            
-+Creating journal (16384 blocks): done
-+Creating 727 huge file(s) with 1024 blocks each: done
-+Writing superblocks and filesystem accounting information:      done
-+
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-+tune2fs -O 64bit test.img
-+Exit status is 0
-+Change in FS metadata:
-+@@ -2,7 +2,7 @@
-+ Last mounted on:          <not available>
-+ Filesystem magic number:  0xEF53
-+ Filesystem revision #:    1 (dynamic)
-+-Filesystem features:      has_journal ext_attr dir_index filetype extent sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-++Filesystem features:      has_journal ext_attr dir_index filetype extent 64bit sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-+ Default mount options:    user_xattr acl
-+ Filesystem state:         clean
-+ Errors behavior:          Continue
-+@@ -10,11 +10,12 @@
-+ Inode count:              98304
-+ Block count:              786432
-+ Reserved block count:     39321
-+-Free blocks:              764
-++Free blocks:              734
-+ Free inodes:              97566
-+ First block:              1
-+ Block size:               1024
-+ Fragment size:            1024
-++Group descriptor size:    64
-+ Blocks per group:         8192
-+ Fragments per group:      8192
-+ Inodes per group:         1024
-+@@ -38,16 +39,16 @@
-+ 
-+ 
-+ group:block:super:gdt:bbitmap:ibitmap:itable
-+-0:1:1:2-4:5:6:7
-+-1:8193:8193:8194-8196:8197:8198:8199
-++0:1:1:2-7:8:9:10
-++1:8193:8193:8194-8199:8200:8201:8202
-+ 2:16385:-1:-1:16385:16386:16387
-+-3:24577:24577:24578-24580:24581:24582:24583
-++3:24577:24577:24578-24583:24584:24585:24586
-+ 4:32769:-1:-1:32769:32770:32771
-+-5:40961:40961:40962-40964:40965:40966:40967
-++5:40961:40961:40962-40967:40968:40969:40970
-+ 6:49153:-1:-1:49153:49154:49155
-+-7:57345:57345:57346-57348:57349:57350:57351
-++7:57345:57345:57346-57351:57352:57353:57354
-+ 8:65537:-1:-1:65537:65538:65539
-+-9:73729:73729:73730-73732:73733:73734:73735
-++9:73729:73729:73730-73735:73736:73737:73738
-+ 10:81921:-1:-1:81921:81922:81923
-+ 11:90113:-1:-1:90113:90114:90115
-+ 12:98305:-1:-1:98305:98306:98307
-+@@ -63,9 +64,9 @@
-+ 22:180225:-1:-1:180225:180226:180227
-+ 23:188417:-1:-1:188417:188418:188419
-+ 24:196609:-1:-1:196609:196610:196611
-+-25:204801:204801:204802-204804:204805:204806:204807
-++25:204801:204801:204802-204807:204808:204809:204810
-+ 26:212993:-1:-1:212993:212994:212995
-+-27:221185:221185:221186-221188:221189:221190:221191
-++27:221185:221185:221186-221191:221192:221193:221194
-+ 28:229377:-1:-1:229377:229378:229379
-+ 29:237569:-1:-1:237569:237570:237571
-+ 30:245761:-1:-1:245761:245762:245763
-+@@ -87,7 +88,7 @@
-+ 46:376833:-1:-1:376833:376834:376835
-+ 47:385025:-1:-1:385025:385026:385027
-+ 48:393217:-1:-1:393217:393218:393219
-+-49:401409:401409:401410-401412:401413:401414:401415
-++49:401409:401409:401410-401415:401416:401417:401418
-+ 50:409601:-1:-1:409601:409602:409603
-+ 51:417793:-1:-1:417793:417794:417795
-+ 52:425985:-1:-1:425985:425986:425987
-+@@ -119,7 +120,7 @@
-+ 78:638977:-1:-1:638977:638978:638979
-+ 79:647169:-1:-1:647169:647170:647171
-+ 80:655361:-1:-1:655361:655362:655363
-+-81:663553:663553:663554-663556:663557:663558:663559
-++81:663553:663553:663554-663559:663560:663561:663562
-+ 82:671745:-1:-1:671745:671746:671747
-+ 83:679937:-1:-1:679937:679938:679939
-+ 84:688129:-1:-1:688129:688130:688131
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-diff --git a/tests/t_32to64bit_move_itable/name b/tests/t_32to64bit_move_itable/name
-new file mode 100644
-index 000000000000..7e6bb254831a
---- /dev/null
-+++ b/tests/t_32to64bit_move_itable/name
-@@ -0,0 +1 @@
-+convert 32bit fs to 64bit fs, forcing inode table move
-diff --git a/tests/t_32to64bit_move_itable/script b/tests/t_32to64bit_move_itable/script
-new file mode 100644
-index 000000000000..b0ac6e1d375d
---- /dev/null
-+++ b/tests/t_32to64bit_move_itable/script
-@@ -0,0 +1,74 @@
-+if test -x $DEBUGFS_EXE; then
-+
-+FSCK_OPT=-fn
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+CONF=$TMPFILE.conf
-+
-+cat > $CONF << ENDL
-+[fs_types]
-+	ext4h = {
-+		features = has_journal,extent,huge_file,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,^resize_inode,^meta_bg,^flex_bg
-+		blocksize = 1024
-+		inode_size = 256
-+		make_hugefiles = true
-+		hugefiles_dir = /
-+		hugefiles_slack = 0
-+		hugefiles_name = aaaaa
-+		hugefiles_digits = 4
-+		hugefiles_size = 1M
-+		zero_hugefiles = false
-+	}
-+ENDL
-+
-+echo "tune2fs test" > $OUT
-+
-+MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 786432 >> $OUT 2>&1
-+rm -rf $CONF
-+
-+# dump and check
-+($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.before
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+# convert it
-+echo "tune2fs -O 64bit test.img" >> $OUT
-+$TUNE2FS -O 64bit $TMPFILE 2>&1 >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+# dump and check
-+($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.after
-+echo "Change in FS metadata:" >> $OUT
-+diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
-+$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT
-+
-+rm $TMPFILE $OUT.before $OUT.after
-+
-+#
-+# Do the verification
-+#
-+
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
-+mv $OUT.new $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+fi
-+
-+unset IMAGE FSCK_OPT OUT EXP CONF
-+
-+else #if -x $DEBUGFS_EXE; then
-+	echo "$test_name: $test_description: skipped"
-+fi
-+
-diff --git a/tests/t_64to32bit/expect b/tests/t_64to32bit/expect
-new file mode 100644
-index 000000000000..6d8ff8011a7c
---- /dev/null
-+++ b/tests/t_64to32bit/expect
-@@ -0,0 +1,95 @@
-+tune2fs test
++++ b/tests/t_reserved_inodes_increase/expect
+@@ -0,0 +1,59 @@
++tune2fs reserved_inodes increasing test
 +Creating filesystem with 524288 1k blocks and 65536 inodes
 +Superblock backups stored on blocks: 
 +	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
@@ -2082,76 +1080,40 @@ index 000000000000..6d8ff8011a7c
 +Pass 5: Checking group summary information
 +
 +Exit status is 0
-+tune2fs test.img -s
++tune2fs -E reserved_inodes=128 test.img
 +Exit status is 0
++
 +Change in FS metadata:
-+@@ -2,7 +2,7 @@
-+ Last mounted on:          <not available>
-+ Filesystem magic number:  0xEF53
-+ Filesystem revision #:    1 (dynamic)
-+-Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-++Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-+ Default mount options:    user_xattr acl
-+ Filesystem state:         clean
-+ Errors behavior:          Continue
-+@@ -10,12 +10,11 @@
-+ Inode count:              65536
++@@ -11,7 +11,7 @@
 + Block count:              524288
 + Reserved block count:     26214
-+-Free blocks:              571
-++Free blocks:              589
-+ Free inodes:              65048
++ Free blocks:              588
++-Free inodes:              64993
+++Free inodes:              64929
 + First block:              1
 + Block size:               1024
 + Fragment size:            1024
-+-Group descriptor size:    64
-+ Reserved GDT blocks:      256
-+ Blocks per group:         8192
-+ Fragments per group:      8192
-+@@ -41,16 +40,16 @@
-+ 
-+ 
-+ group:block:super:gdt:bbitmap:ibitmap:itable
-+-0:1:1:2-5:262:278:294
-+-1:8193:8193:8194-8197:263:279:550
-++0:1:1:2-3:262:278:294
-++1:8193:8193:8194-8195:263:279:550
-+ 2:16385:-1:-1:264:280:806
-+-3:24577:24577:24578-24581:265:281:1062
-++3:24577:24577:24578-24579:265:281:1062
-+ 4:32769:-1:-1:266:282:1318
-+-5:40961:40961:40962-40965:267:283:1574
-++5:40961:40961:40962-40963:267:283:1574
-+ 6:49153:-1:-1:268:284:1830
-+-7:57345:57345:57346-57349:269:285:2086
-++7:57345:57345:57346-57347:269:285:2086
-+ 8:65537:-1:-1:270:286:2342
-+-9:73729:73729:73730-73733:271:287:2598
-++9:73729:73729:73730-73731:271:287:2598
-+ 10:81921:-1:-1:272:288:2854
-+ 11:90113:-1:-1:273:289:3110
-+ 12:98305:-1:-1:274:290:3366
-+@@ -66,9 +65,9 @@
-+ 22:180225:-1:-1:131079:131095:132641
-+ 23:188417:-1:-1:131080:131096:132897
-+ 24:196609:-1:-1:131081:131097:133153
-+-25:204801:204801:204802-204805:131082:131098:133409
-++25:204801:204801:204802-204803:131082:131098:133409
-+ 26:212993:-1:-1:131083:131099:133665
-+-27:221185:221185:221186-221189:131084:131100:133921
-++27:221185:221185:221186-221187:131084:131100:133921
-+ 28:229377:-1:-1:131085:131101:134177
-+ 29:237569:-1:-1:131086:131102:134433
-+ 30:245761:-1:-1:131087:131103:134689
-+@@ -90,7 +89,7 @@
-+ 46:376833:-1:-1:262159:262175:265761
-+ 47:385025:-1:-1:262160:262176:266017
-+ 48:393217:-1:-1:393217:393233:393249
-+-49:401409:401409:401410-401413:393218:393234:393505
-++49:401409:401409:401410-401411:393218:393234:393505
-+ 50:409601:-1:-1:393219:393235:393761
-+ 51:417793:-1:-1:393220:393236:394017
-+ 52:425985:-1:-1:393221:393237:394273
++@@ -25,7 +25,7 @@
++ Check interval:           0 (<none>)
++ Reserved blocks uid:      0
++ Reserved blocks gid:      0
++-First inode:              65
+++First inode:              129
++ Inode size:	          256
++ Required extra isize:     28
++ Desired extra isize:      28
++@@ -45,9 +45,9 @@
++   Block bitmap at 260 (+259)
++   Inode bitmap at 276 (+275)
++   Inode table at 292-547 (+291)
++-  21 free blocks, 481 free inodes, 3 directories, 481 unused inodes
+++  21 free blocks, 417 free inodes, 3 directories, 417 unused inodes
++   Free blocks: 4412-4432
++-  Free inodes: 544-1024
+++  Free inodes: 608-1024
++ Group 1: (Blocks 8193-16384) [INODE_UNINIT]
++   Backup superblock at 8193, Group descriptors at 8194-8195
++   Reserved GDT blocks at 8196-8451
 +Pass 1: Checking inodes, blocks, and sizes
 +Pass 2: Checking directory structure
 +Pass 3: Checking directory connectivity
@@ -2159,21 +1121,19 @@ index 000000000000..6d8ff8011a7c
 +Pass 5: Checking group summary information
 +
 +Exit status is 0
-diff --git a/tests/t_64to32bit/name b/tests/t_64to32bit/name
+diff --git a/tests/t_reserved_inodes_increase/name b/tests/t_reserved_inodes_increase/name
 new file mode 100644
-index 000000000000..4c8237111295
+index 000000000000..66fa663cce18
 --- /dev/null
-+++ b/tests/t_64to32bit/name
++++ b/tests/t_reserved_inodes_increase/name
 @@ -0,0 +1 @@
-+convert flex_bg 64bit fs to 32bit fs
-diff --git a/tests/t_64to32bit/script b/tests/t_64to32bit/script
++test increasing number of reserved inodes
+diff --git a/tests/t_reserved_inodes_increase/script b/tests/t_reserved_inodes_increase/script
 new file mode 100644
-index 000000000000..dd01a9c1cfd8
+index 000000000000..e75baa2a06fd
 --- /dev/null
-+++ b/tests/t_64to32bit/script
-@@ -0,0 +1,76 @@
-+if test -x $DEBUGFS_EXE; then
-+
++++ b/tests/t_reserved_inodes_increase/script
+@@ -0,0 +1,71 @@
 +FSCK_OPT=-fn
 +OUT=$test_name.log
 +EXP=$test_dir/expect
@@ -2182,11 +1142,12 @@ index 000000000000..dd01a9c1cfd8
 +cat > $CONF << ENDL
 +[fs_types]
 +	ext4h = {
-+		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode,64bit
++		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode
++		options = reserved_inodes=64
 +		blocksize = 1024
 +		inode_size = 256
 +		make_hugefiles = true
-+		hugefiles_dir = /
++		hugefiles_dir = /xyz
 +		hugefiles_slack = 0
 +		hugefiles_name = aaaaa
 +		hugefiles_digits = 4
@@ -2195,32 +1156,35 @@ index 000000000000..dd01a9c1cfd8
 +	}
 +ENDL
 +
-+echo "tune2fs test" > $OUT
++echo "tune2fs reserved_inodes increasing test" > $OUT
 +
 +MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
 +rm -rf $CONF
 +
 +# dump and check
-+($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.before
++$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.before
 +$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
 +status=$?
 +echo Exit status is $status >> $OUT
 +
-+# resize it
-+echo "tune2fs test.img -s" >> $OUT
-+$TUNE2FS -O ^64bit $TMPFILE 2>&1 >> $OUT 2>&1
++# increase number of reserved inodes
++echo "tune2fs -E reserved_inodes=128 test.img" >> $OUT
++$TUNE2FS -E reserved_inodes=128 $TMPFILE >> $OUT 2>&1
 +status=$?
 +echo Exit status is $status >> $OUT
 +
++# check
++$FSCK -yD -N test_filesys $TMPFILE >> $OUT 2>&1
++
 +# dump and check
-+($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.after
++$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.after
 +echo "Change in FS metadata:" >> $OUT
 +diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
 +$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
 +status=$?
 +echo Exit status is $status >> $OUT
 +
-+rm $TMPFILE
++rm $TMPFILE $OUT.before $OUT.after
 +
 +#
 +# Do the verification
@@ -2240,21 +1204,15 @@ index 000000000000..dd01a9c1cfd8
 +	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
 +fi
 +
-+rm $OUT.before $OUT.after
-+
 +unset IMAGE FSCK_OPT OUT EXP CONF
-+
-+else #if test -x $DEBUGFS_EXE; then
-+	echo "$test_name: $test_description: skipped"
-+fi
-+
-diff --git a/tests/t_64to32bit_meta/expect b/tests/t_64to32bit_meta/expect
+diff --git a/tests/t_reserved_inodes_increase_csum/expect b/tests/t_reserved_inodes_increase_csum/expect
 new file mode 100644
-index 000000000000..d6e2dccc894b
+index 000000000000..2b18f8ddc3fd
 --- /dev/null
-+++ b/tests/t_64to32bit_meta/expect
-@@ -0,0 +1,80 @@
-+resize2fs test
++++ b/tests/t_reserved_inodes_increase_csum/expect
+@@ -0,0 +1,60 @@
++tune2fs reserved_inodes increasing test
++64-bit filesystem support is not enabled.  The larger fields afforded by this feature enable full-strength checksumming.  Pass -O 64bit to rectify.
 +Creating filesystem with 524288 1k blocks and 65536 inodes
 +Superblock backups stored on blocks: 
 +	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
@@ -2262,7 +1220,7 @@ index 000000000000..d6e2dccc894b
 +Allocating group tables:      done                            
 +Writing inode tables:      done                            
 +Creating journal (16384 blocks): done
-+Creating 479 huge file(s) with 1024 blocks each: done
++Creating 477 huge file(s) with 1024 blocks each: done
 +Writing superblocks and filesystem accounting information:      done
 +
 +Pass 1: Checking inodes, blocks, and sizes
@@ -2272,61 +1230,40 @@ index 000000000000..d6e2dccc894b
 +Pass 5: Checking group summary information
 +
 +Exit status is 0
-+resize2fs test.img -s
-+Converting the filesystem to 32-bit.
-+The filesystem on test.img is now 524288 (1k) blocks long.
-+
++tune2fs -E reserved_inodes=128 test.img
 +Exit status is 0
++
 +Change in FS metadata:
-+@@ -2,7 +2,7 @@
-+ Last mounted on:          <not available>
-+ Filesystem magic number:  0xEF53
-+ Filesystem revision #:    1 (dynamic)
-+-Filesystem features:      has_journal ext_attr dir_index filetype meta_bg extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-++Filesystem features:      has_journal ext_attr dir_index filetype meta_bg extent flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-+ Default mount options:    user_xattr acl
-+ Filesystem state:         clean
-+ Errors behavior:          Continue
-+@@ -10,12 +10,11 @@
-+ Inode count:              65536
++@@ -11,7 +11,7 @@
 + Block count:              524288
 + Reserved block count:     26214
-+-Free blocks:              852
-++Free blocks:              858
-+ Free inodes:              65046
++ Free blocks:              588
++-Free inodes:              64993
+++Free inodes:              64929
 + First block:              1
 + Block size:               1024
 + Fragment size:            1024
-+-Group descriptor size:    64
-+ Blocks per group:         8192
-+ Fragments per group:      8192
-+ Inodes per group:         1024
-+@@ -55,9 +54,9 @@
-+ 12:98305:-1:-1:15:31:3107
-+ 13:106497:-1:-1:16:32:3363
-+ 14:114689:-1:-1:17:33:3619
-+-15:122881:-1:122881:18:34:3875
-+-16:131073:-1:131073:131074:131090:131106
-+-17:139265:-1:139265:131075:131091:131362
-++15:122881:-1:-1:18:34:3875
-++16:131073:-1:-1:131074:131090:131106
-++17:139265:-1:-1:131075:131091:131362
-+ 18:147457:-1:-1:131076:131092:131618
-+ 19:155649:-1:-1:131077:131093:131874
-+ 20:163841:-1:-1:131078:131094:132130
-+@@ -87,9 +86,9 @@
-+ 44:360449:-1:-1:262158:262174:265250
-+ 45:368641:-1:-1:262159:262175:265506
-+ 46:376833:-1:-1:262160:262176:265762
-+-47:385025:-1:385025:262161:262177:266018
-+-48:393217:-1:393217:393218:393234:393250
-+-49:401409:401409:401410:393219:393235:393506
-++47:385025:-1:-1:262161:262177:266018
-++48:393217:-1:-1:393218:393234:393250
-++49:401409:401409:-1:393219:393235:393506
-+ 50:409601:-1:-1:393220:393236:393762
-+ 51:417793:-1:-1:393221:393237:394018
-+ 52:425985:-1:-1:393222:393238:394274
++@@ -25,7 +25,7 @@
++ Check interval:           0 (<none>)
++ Reserved blocks uid:      0
++ Reserved blocks gid:      0
++-First inode:              65
+++First inode:              129
++ Inode size:	          256
++ Required extra isize:     28
++ Desired extra isize:      28
++@@ -46,9 +46,9 @@
++   Block bitmap at 260 (+259)
++   Inode bitmap at 276 (+275)
++   Inode table at 292-547 (+291)
++-  21 free blocks, 481 free inodes, 3 directories, 481 unused inodes
+++  21 free blocks, 417 free inodes, 3 directories, 417 unused inodes
++   Free blocks: 4412-4432
++-  Free inodes: 544-1024
+++  Free inodes: 608-1024
++ Group 1: (Blocks 8193-16384) [INODE_UNINIT]
++   Backup superblock at 8193, Group descriptors at 8194-8195
++   Reserved GDT blocks at 8196-8451
 +Pass 1: Checking inodes, blocks, and sizes
 +Pass 2: Checking directory structure
 +Pass 3: Checking directory connectivity
@@ -2334,21 +1271,19 @@ index 000000000000..d6e2dccc894b
 +Pass 5: Checking group summary information
 +
 +Exit status is 0
-diff --git a/tests/t_64to32bit_meta/name b/tests/t_64to32bit_meta/name
+diff --git a/tests/t_reserved_inodes_increase_csum/name b/tests/t_reserved_inodes_increase_csum/name
 new file mode 100644
-index 000000000000..e99ed8b8d1b2
+index 000000000000..f9da1331a093
 --- /dev/null
-+++ b/tests/t_64to32bit_meta/name
++++ b/tests/t_reserved_inodes_increase_csum/name
 @@ -0,0 +1 @@
-+convert meta_bg 64bit fs to 32bit fs
-diff --git a/tests/t_64to32bit_meta/script b/tests/t_64to32bit_meta/script
++test increasing number of reserved inodes on fs with metadata_csum
+diff --git a/tests/t_reserved_inodes_increase_csum/script b/tests/t_reserved_inodes_increase_csum/script
 new file mode 100644
-index 000000000000..478709e0c3c1
+index 000000000000..a4dbe369e4c6
 --- /dev/null
-+++ b/tests/t_64to32bit_meta/script
-@@ -0,0 +1,76 @@
-+if -x $DEBUGFS_EXE; then
-+
++++ b/tests/t_reserved_inodes_increase_csum/script
+@@ -0,0 +1,71 @@
 +FSCK_OPT=-fn
 +OUT=$test_name.log
 +EXP=$test_dir/expect
@@ -2357,11 +1292,12 @@ index 000000000000..478709e0c3c1
 +cat > $CONF << ENDL
 +[fs_types]
 +	ext4h = {
-+		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,meta_bg,^resize_inode,64bit
++		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode,metadata_csum
++		options = reserved_inodes=64
 +		blocksize = 1024
 +		inode_size = 256
 +		make_hugefiles = true
-+		hugefiles_dir = /
++		hugefiles_dir = /xyz
 +		hugefiles_slack = 0
 +		hugefiles_name = aaaaa
 +		hugefiles_digits = 4
@@ -2370,32 +1306,35 @@ index 000000000000..478709e0c3c1
 +	}
 +ENDL
 +
-+echo "tune2fs test" > $OUT
++echo "tune2fs reserved_inodes increasing test" > $OUT
 +
 +MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 524288 >> $OUT 2>&1
 +rm -rf $CONF
 +
 +# dump and check
-+($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.before
++$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.before
 +$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
 +status=$?
 +echo Exit status is $status >> $OUT
 +
-+# resize it
-+echo "tune2fs test.img -s" >> $OUT
-+$TUNE2FS -O ^64bit $TMPFILE 2>&1 >> $OUT 2>&1
++# increase number of reserved inodes
++echo "tune2fs -E reserved_inodes=128 test.img" >> $OUT
++$TUNE2FS -E reserved_inodes=128 $TMPFILE >> $OUT 2>&1
 +status=$?
 +echo Exit status is $status >> $OUT
 +
++# check
++$FSCK -yD -N test_filesys $TMPFILE >> $OUT 2>&1
++
 +# dump and check
-+($DUMPE2FS -h $TMPFILE; $DUMPE2FS -g $TMPFILE) 2> /dev/null | sed -f $cmd_dir/filter.sed > $OUT.after
++$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.after
 +echo "Change in FS metadata:" >> $OUT
 +diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
 +$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
 +status=$?
 +echo Exit status is $status >> $OUT
 +
-+rm $TMPFILE
++rm $TMPFILE $OUT.before $OUT.after
 +
 +#
 +# Do the verification
@@ -2415,139 +1354,7 @@ index 000000000000..478709e0c3c1
 +	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
 +fi
 +
-+rm $OUT.before $OUT.after
-+
 +unset IMAGE FSCK_OPT OUT EXP CONF
-+
-+else #if test -x $DEBUGFS_EXE; then
-+	echo "$test_name: $test_description: skipped"
-+fi
-+
-diff --git a/tests/u_onefile_bad/script b/tests/u_onefile_bad/script
-index 60c9a2e64a26..090deb619e6f 100644
---- a/tests/u_onefile_bad/script
-+++ b/tests/u_onefile_bad/script
-@@ -1,7 +1,7 @@
- test_description="check that we cant append a bad undo file"
--if test -x $RESIZE2FS_EXE -a -x $E2UNDO_EXE; then
-+if -x $E2UNDO_EXE; then
- 
--TDB_FILE=${TMPDIR:-/tmp}/resize2fs-$(basename $TMPFILE).e2undo
-+TDB_FILE=${TMPDIR:-/tmp}/tune2fs-$(basename $TMPFILE).e2undo
- OUT=$test_name.log
- rm -f $TDB_FILE >/dev/null 2>&1
- fail=0
-@@ -41,10 +41,10 @@ if [ "$(echo "${features}" | grep "metadata_csum" -c)" -gt 0 ] || [ "$(echo "${f
- fi
- $FSCK -f -n $TMPFILE >> $OUT 2>&1 || fail=1
- 
--echo using resize2fs to test e2undo >> $OUT
--$RESIZE2FS -z $TDB_FILE.1 -b $TMPFILE >> $OUT 2>&1
-+echo using tune2fs to test e2undo >> $OUT
-+$TUNE2FS -z $TDB_FILE.1 -O 64bit $TMPFILE >> $OUT 2>&1
- crc2=`$CRCSUM $TMPFILE`
--echo $CRCSUM after resize2fs $crc2 >> $OUT
-+echo $CRCSUM after tune2fs $crc2 >> $OUT
- features="$($DUMPE2FS -h $TMPFILE 2> /dev/null | grep 'Filesystem features:')"
- if [ "$(echo "${features}" | grep "metadata_csum" -c)" -gt 0 ] || [ "$(echo "${features}" | grep 64bit -c)" -lt 1 ]; then
- 	echo "FS features: ${features}" >> $OUT
-diff --git a/tests/u_revert_64bitmcsum_onefile/script b/tests/u_revert_64bitmcsum_onefile/script
-index f1d7c2bc9d3f..ae80ecd5c3c6 100644
---- a/tests/u_revert_64bitmcsum_onefile/script
-+++ b/tests/u_revert_64bitmcsum_onefile/script
-@@ -1,7 +1,7 @@
- test_description="convert fs to 64bit,metadata_csum and revert as one undo file"
--if test -x $RESIZE2FS_EXE -a -x $E2UNDO_EXE; then
-+if test -x $E2UNDO_EXE; then
- 
--TDB_FILE=${TMPDIR:-/tmp}/resize2fs-$(basename $TMPFILE).e2undo
-+TDB_FILE=${TMPDIR:-/tmp}/tune2fs-$(basename $TMPFILE).e2undo
- OUT=$test_name.log
- rm -f $TDB_FILE >/dev/null 2>&1
- fail=0
-@@ -41,10 +41,10 @@ if [ "$(echo "${features}" | grep "metadata_csum" -c)" -gt 0 ] || [ "$(echo "${f
- fi
- $FSCK -f -n $TMPFILE >> $OUT 2>&1 || fail=1
- 
--echo using resize2fs to test e2undo >> $OUT
--$RESIZE2FS -z $TDB_FILE.1 -b $TMPFILE >> $OUT 2>&1
-+echo using tune2fs to test e2undo >> $OUT
-+$TUNE2FS -z $TDB_FILE.1 -O 64bit $TMPFILE >> $OUT 2>&1
- crc2=`$CRCSUM $TMPFILE`
--echo $CRCSUM after resize2fs $crc2 >> $OUT
-+echo $CRCSUM after tune2fs $crc2 >> $OUT
- features="$($DUMPE2FS -h $TMPFILE 2> /dev/null | grep 'Filesystem features:')"
- if [ "$(echo "${features}" | grep "metadata_csum" -c)" -gt 0 ] || [ "$(echo "${features}" | grep 64bit -c)" -lt 1 ]; then
- 	echo "FS features: ${features}" >> $OUT
-diff --git a/tests/u_revert_all_onefile/script b/tests/u_revert_all_onefile/script
-index 27b3b23557fa..c748b81ee275 100644
---- a/tests/u_revert_all_onefile/script
-+++ b/tests/u_revert_all_onefile/script
-@@ -1,7 +1,7 @@
- test_description="convert fs to 64bit,metadata_csum and revert as one undo file"
--if test -x $RESIZE2FS_EXE -a -x $E2UNDO_EXE; then
-+if test -x $E2UNDO_EXE; then
- 
--TDB_FILE=${TMPDIR:-/tmp}/resize2fs-$(basename $TMPFILE).e2undo
-+TDB_FILE=${TMPDIR:-/tmp}/tune2fs-$(basename $TMPFILE).e2undo
- OUT=$test_name.log
- rm -f $TDB_FILE >/dev/null 2>&1
- fail=0
-@@ -41,10 +41,10 @@ if [ "$(echo "${features}" | grep "metadata_csum" -c)" -gt 0 ] || [ "$(echo "${f
- fi
- $FSCK -f -n $TMPFILE >> $OUT 2>&1 || fail=1
- 
--echo using resize2fs to test e2undo >> $OUT
--$RESIZE2FS -z $TDB_FILE.0 -b $TMPFILE >> $OUT 2>&1
-+echo using tune2fs to test e2undo >> $OUT
-+$TUNE2FS -z $TDB_FILE.0 -O 64bit $TMPFILE >> $OUT 2>&1
- crc2=`$CRCSUM $TMPFILE`
--echo $CRCSUM after resize2fs $crc2 >> $OUT
-+echo $CRCSUM after tune2fs $crc2 >> $OUT
- features="$($DUMPE2FS -h $TMPFILE 2> /dev/null | grep 'Filesystem features:')"
- if [ "$(echo "${features}" | grep "metadata_csum" -c)" -gt 0 ] || [ "$(echo "${features}" | grep 64bit -c)" -lt 1 ]; then
- 	echo "FS features: ${features}" >> $OUT
-diff --git a/tests/u_revert_upgrade_to_64bitmcsum/script b/tests/u_revert_upgrade_to_64bitmcsum/script
-index 6120d00f6386..3e1817e32eb5 100644
---- a/tests/u_revert_upgrade_to_64bitmcsum/script
-+++ b/tests/u_revert_upgrade_to_64bitmcsum/script
-@@ -1,7 +1,7 @@
- test_description="convert fs to 64bit,metadata_csum and revert both changes"
--if test -x $RESIZE2FS_EXE -a -x $E2UNDO_EXE; then
-+if test -x $E2UNDO_EXE; then
- 
--TDB_FILE=${TMPDIR:-/tmp}/resize2fs-$(basename $TMPFILE).e2undo
-+TDB_FILE=${TMPDIR:-/tmp}/tune2fs-$(basename $TMPFILE).e2undo
- OUT=$test_name.log
- rm -f $TDB_FILE >/dev/null 2>&1
- fail=0
-@@ -41,10 +41,10 @@ if [ "$(echo "${features}" | grep "metadata_csum" -c)" -gt 0 ] || [ "$(echo "${f
- fi
- $FSCK -f -n $TMPFILE >> $OUT 2>&1 || fail=1
- 
--echo using resize2fs to test e2undo >> $OUT
--$RESIZE2FS -z $TDB_FILE.1 -b $TMPFILE >> $OUT 2>&1
-+echo using tune2fs to test e2undo >> $OUT
-+$TUNE2FS -z $TDB_FILE.1 -O 64bit $TMPFILE >> $OUT 2>&1
- crc2=`$CRCSUM $TMPFILE`
--echo $CRCSUM after resize2fs $crc2 >> $OUT
-+echo $CRCSUM after tune2fs $crc2 >> $OUT
- features="$($DUMPE2FS -h $TMPFILE 2> /dev/null | grep 'Filesystem features:')"
- if [ "$(echo "${features}" | grep "metadata_csum" -c)" -gt 0 ] || [ "$(echo "${features}" | grep 64bit -c)" -lt 1 ]; then
- 	echo "FS features: ${features}" >> $OUT
-@@ -101,10 +101,10 @@ if [ "$(echo "${features}" | grep "metadata_csum" -c)" -gt 0 ] || [ "$(echo "${f
- fi
- $FSCK -f -n $TMPFILE >> $OUT 2>&1 || fail=1
- 
--echo roll back resize2fs >> $OUT
-+echo roll back tune2fs >> $OUT
- $E2UNDO $TDB_FILE.1 $TMPFILE  >> $OUT 2>&1
- crc1_2=`$CRCSUM $TMPFILE`
--echo $CRCSUM after e2undo resize2fs $crc1_2 >> $OUT
-+echo $CRCSUM after e2undo tune2fs $crc1_2 >> $OUT
- features="$($DUMPE2FS -h $TMPFILE 2> /dev/null | grep 'Filesystem features:')"
- if [ "$(echo "${features}" | grep "metadata_csum" -c)" -gt 0 ] || [ "$(echo "${features}" | grep 64bit -c)" -gt 0 ]; then
- 	echo "FS features: ${features}" >> $OUT
 -- 
 2.1.4
 
