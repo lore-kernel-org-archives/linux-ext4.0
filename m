@@ -1,60 +1,109 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: errors following ext3 to ext4 conversion
-Date: Wed, 26 Aug 2015 21:15:36 -0700
-Message-ID: <20150827041536.GH10037@birch.djwong.org>
-References: <55DE5F79.4010004@yale.edu>
- <20150827033949.GA12151@thunk.org>
- <55DE8771.9050109@redhat.com>
+From: Alexander Afonyashin <a.afonyashin@madnet-team.ru>
+Subject: Re: Running fsck of huge ext4 partition takes weeks
+Date: Thu, 27 Aug 2015 08:28:04 +0300
+Message-ID: <CAETWcfti7NL3N96K1pEAX9ezKUrZn0QeGTwjn0qUni0u6i=Gcg@mail.gmail.com>
+References: <CAETWcfs0iLzwPmg-JY5B79rme+g0Zi2VMYoNHm+4_Pc_yRR-kQ@mail.gmail.com>
+ <28A25D6A-DA5A-42D2-9BFE-9F6C95B51BE7@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Chris Hunter <chris.hunter@yale.edu>,
-	linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:18868 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752799AbbH0EPm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Aug 2015 00:15:42 -0400
-Content-Disposition: inline
-In-Reply-To: <55DE8771.9050109@redhat.com>
+Received: from mail-oi0-f49.google.com ([209.85.218.49]:33436 "EHLO
+	mail-oi0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750709AbbH0F2o (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Aug 2015 01:28:44 -0400
+Received: by oieu205 with SMTP id u205so5223311oie.0
+        for <linux-ext4@vger.kernel.org>; Wed, 26 Aug 2015 22:28:44 -0700 (PDT)
+In-Reply-To: <28A25D6A-DA5A-42D2-9BFE-9F6C95B51BE7@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 26, 2015 at 10:43:45PM -0500, Eric Sandeen wrote:
-> On 8/26/15 10:39 PM, Theodore Ts'o wrote:
-> 
-> > Merely turning on the extents feature doesn't actually convert any
-> > files to use extents.  So if e2fsck is showing errors like this:
-> > 
-> >> e2fsck shows a variety of errors:
-> >> Pass 1: Checking inodes, blocks, and sizes
-> >> Inode 118843400, end of extent exceeds allowed value
-> >>         (logical block 1409, physical block 3803034390, len 976)
-> >> Inode 118843400, end of extent exceeds allowed value
-> >>         (logical block 2385, physical block 3803056554, len 4294966945)
-> > 
-> > This suggests that the file system was likely corrupted before you
-> > tried converting the file system, since there should not have been any
-> > extent-mapped files in an ext3 file system.
-> 
-> Hm, do we not require a freshly-fsck'd fs (tm) prior to a conversion attempt,
-> like we do (I think) for resize?
+Hi,
 
-tune2fs is not as strict as resize2fs; iirc resize whines if it finds ERROR
-status, lack of VALID status, or it having been too long since the last fsck,
-whereas tune2fs only cares that the fs is marked VALID.
+The last output (2 days ago) from fsck:
 
-(Scary, if you think about it...)
+[skipped]
+Block #524296 (1235508688) causes directory to be too big.  CLEARED.
+Block #524297 (4003498426) causes directory to be too big.  CLEARED.
+Block #524298 (3113378389) causes directory to be too big.  CLEARED.
+Block #524299 (1368545889) causes directory to be too big.  CLEARED.
+Too many illegal blocks in inode 4425477.
+Clear inode? yes
 
---D
+---------------------------
+iostat output:
 
-> 
-> That might be a good idea ...
-> 
-> -Eric
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+           0.00    0.00    0.00   14.52    0.00   85.48
+
+Device:         rrqm/s   wrqm/s     r/s     w/s    rkB/s    wkB/s
+avgrq-sz avgqu-sz   await r_await w_await  svctm  %util
+loop0             0.00     0.00    2.00    0.00    12.00     0.00
+12.00     0.09   46.00   46.00    0.00  46.00   9.20
+sda               0.00     0.00   87.00    0.00   348.00     0.00
+8.00     1.00   11.86   11.86    0.00  11.45  99.60
+
+---------------------------
+strace ouput:
+
+root@rescue ~ # strace -f -t -p 4779
+Process 4779 attached - interrupt to quit
+07:26:54 lseek(4, 14154266963968, SEEK_SET) = 14154266963968
+07:26:54 read(4,
+"\277\224\312\371\302\356\tJC{P\244#3\"2P\327*2Q5\372\206\262\20\\\373\226\262\21\316"...,
+4096) = 4096
+07:27:02 lseek(4, 1408506736640, SEEK_SET) = 1408506736640
+07:27:02 read(4,
+"\352\3041\345\1\337p\263l;\354\377E[\17\350\235\260\r\344\265\337\3655\223E\216\226\376\263!\n"...,
+4096) = 4096
+07:27:08 lseek(4, 5948177264640, SEEK_SET) = 5948177264640
+07:27:08 read(4,
+"\321}\226m;1\253Z\301f\205\235\25\201\334?\311AQN(\22!\23{\345\214Vi\240=y"...,
+4096) = 4096
+07:27:10 brk(0x8cf18e000)               = 0x8cf18e000
+07:27:14 lseek(4, 6408024879104, SEEK_SET) = 6408024879104
+07:27:14 read(4,
+"\254n\fn\r\302$\t\213\231\256\2774\326\34\364\fY\v\365`*Br\354X\7T3J\243K"...,
+4096) = 4096
+07:27:21 lseek(4, 8640894586880, SEEK_SET) = 8640894586880
+07:27:21 read(4,
+"3\372\24\357\3579\254\31\214L\rYrurj\376\250\352%\2\242\255\252\22\347XU\327\235\362\337"...,
+4096) = 4096
+^CProcess 4779 detached
+
+Regards,
+Alexander
+
+On Tue, Aug 25, 2015 at 10:43 PM, Andreas Dilger <adilger@dilger.ca> wrote:
+> On Aug 25, 2015, at 9:30 AM, Alexander Afonyashin <a.afonyashin@madnet-team.ru> wrote:
+>>
+>> Hi,
+>>
+>> Recently I had to run fsck on 47TB ext4 partition backed by hardware
+>> RAID6 (LSI MegaRAID SAS 2108). Right now over 2 weeks passed but fsck
+>> is not finished yet. It occupies 30GB RSS, almost 35GB VSS and eats
+>> 100% of single CPU. It detected errors (and fixed them) but doesn't
+>> finish yet.
+>>
+>> Rescue disc is based on Debian 7.8.
+>> kernel: 4.1.4-5
+>> e2fsprogs: 1.42.5-1.1+deb7u1
+>>
+>> Any suggestions?
+>
+> Usually the only reason for e2fsck to run so long is because of
+> duplicate block pass 1b/1c.
+>
+> Having some of the actual output of e2fsck would allow us to give
+> some useful advice.
+>
+> The only thing I can offer is for you to run "strace -p <e2fsck_pid>"
+> and/or "ltrace -p <e2fsck_pid>" to see what it is doing.
+>
+> Cheers, Andreas
+>
+>
+>
+>
+>
