@@ -1,89 +1,103 @@
-From: Andreas Dilger <adilger@dilger.ca>
+From: Chris Hunter <chris.hunter@yale.edu>
 Subject: Re: errors following ext3 to ext4 conversion
-Date: Fri, 28 Aug 2015 10:09:46 -0600
-Message-ID: <A66286AB-1DB5-4747-A1EB-0CE8C5CE0C1A@dilger.ca>
-References: <55DE5F79.4010004@yale.edu>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
+Date: Fri, 28 Aug 2015 12:23:54 -0400
+Message-ID: <55E08B1A.6020503@yale.edu>
+References: <55DE5F79.4010004@yale.edu> <20150827033949.GA12151@thunk.org>
+ <55DE8771.9050109@redhat.com> <20150827041536.GH10037@birch.djwong.org>
+ <20150827185845.GB3357@thunk.org> <55DF64CC.8060201@yale.edu>
+ <20150827224652.GA5945@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Chris Hunter <chris.hunter@yale.edu>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:35869 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752567AbbH1QJn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Aug 2015 12:09:43 -0400
-Received: by padhm10 with SMTP id hm10so11323073pad.3
-        for <linux-ext4@vger.kernel.org>; Fri, 28 Aug 2015 09:09:43 -0700 (PDT)
-In-Reply-To: <55DE5F79.4010004@yale.edu>
+Received: from vm-emlprdomg-03.its.yale.edu ([130.132.50.161]:39727 "EHLO
+	vm-emlprdomg-03.its.yale.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751505AbbH1QX5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 28 Aug 2015 12:23:57 -0400
+In-Reply-To: <20150827224652.GA5945@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Aug 26, 2015, at 6:53 PM, Chris Hunter <chris.hunter@yale.edu> wrote:
-> 
-> I attempted to convert ext3 to  ext4 filesystem. I am using e2fsprogs (1.42.12.wc1 (15-Sep-2014)).
+Hi Theodore,
 
-This is the Lustre-patched e2fsprogs.
+You are correct there were human errors in these filesystem changes (eg. 
+insufficient pre-checks/validation). I don't expect the software to 
+compensate for poor planning.
+For future reference, I desire a better understanding of risks involved 
+in using tune2fs. I incorrectly assumed that tune2fs doesn't "do" 
+anything until a filesystem is mounted.
+Assuming you start with a clean filesystem, which tune2fs commands are 
+the most dangerous ? which are the safest ?
 
-When was this filesystem formatted, since Lustre itself has been using
-an ext4 format for a long time already (extents, uninit_bg, dir_index)
-so unless it was something really ancient, these features should have
-been on already.  Was there some prior corruption that started you
-down this road?
-
-> I ran command tune2fs tune2fs -O extents,uninit_bg,dir_index /dev/DEV -o acl,user_xattr /dev/DEV.
-> I then encountered errors (below) when running read-only e2fsck. I have not mounted the filesystem.
-> Is it possible to backout the ext3/ext4 changes ?
-> Do tune2fs changes take effect immediately or next time filesystem is mounted?
-> 
-> 
-> e2fsck shows a variety of errors:
-> Pass 1: Checking inodes, blocks, and sizes
-> Inode 118843400, end of extent exceeds allowed value
->        (logical block 1409, physical block 3803034390, len 976)
-> Inode 118843400, end of extent exceeds allowed value
->        (logical block 2385, physical block 3803056554, len 4294966945)
-
-This is a bit strange, because the end of the first extent (1409 + 976)
-matches the start of the next one (2385) so that should be correct?
-Definitely the "4294966945" (= 0xfffffea1 = -351) length is incorrect
-and the victim of some corruption.  It isn't even some random bit flip
-so I have no idea how "-351" got in there.
-
-> Inode 118843400, i_size is 8331264, should be 5771264.  Fix? no
-> Inode 118843400, i_blocks is 16328, should be 11312.  Fix? no
-
-It looks like you've lost an even 2500KB = 625 blocks, or 5016 blocks off the end of this directory, depending whether i_size or i_blocks
-should be trusted.
-
-> (...)
-> 
-> Pass 2: Checking directory structure
-> Problem in HTREE directory inode 118843400 (/O/0/d0): bad block number 2030.
-> Problem in HTREE directory inode 118843400 (/O/0/d0): bad block number 2031.
-> Problem in HTREE directory inode 118843400 (/O/0/d0): bad block number 2032.
-> Problem in HTREE directory inode 118843400 (/O/0/d0): bad block number 2033.
-
-This looks like a Lustre OST filesystem layout.  Are the other d*
-directories also corrupted?
-
-> Pass 4: Checking reference counts
-> Unattached inode 26
-> Unattached inode 27
-> Unattached inode 28
-> 
-> regards,
-> chris hunter
-> chris.hunter@yale.edu
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+thanks,
+chris hunter
+chris.hunter@yale.edu
+"Experience is the teacher of all things." Julius Caesar
 
 
-Cheers, Andreas
-
-
-
-
-
+On 08/27/2015 06:46 PM, Theodore Ts'o wrote:
+> On Thu, Aug 27, 2015 at 03:28:12PM -0400, Chris Hunter wrote:
+>> Hi,
+>> Thanks for the response. As Theodore pointed out, the filesystem already had
+>> extents. I ran the tune2fs command on a filesystem that had previously been
+>> converted from ext3 to ext4. I undid features (via tune2fs -O ^<flag>) but
+>> the read-only fsck errors persist.
+>
+> Woah!  If the file system already had been converted from ext3 to
+> ext4, why were you running the tune2fs command in the first place?  I
+> had thought the tune2fs command was your _attempt_ to convert the
+> filesystem from ext3 to ext4.  It was on that basis that I suggested
+> that you use the "tune2fs -O ^<flag>" command to revert those changes.
+>
+>> Can you elaborate on the risky tune2fs options. I assume you mean changes
+>> that can't be undone ? or  unsafe ?
+>
+> There are commands to change the inode size (for example) that need to
+> allocate more blocks and then rewrite the inode table.  These commands
+> are risky if your file system was corrupted before you attempt to run
+> the tune2fs command.  For similar reasons, resize2fs forces you to do
+> a a read/write check of the file system (so that the last fsck time
+> can be updated, so resize2fs can *verify* that you ran the e2fsck
+> command, intsead of lazily claiming you did when you didn't :-)
+> *before* you run resize2fs.
+>
+> The main issue here is that you want to make sure the file system is
+> in a stable state *before* you try to make involved changes.  At this
+> point, I'm confused about what flags you had set on your file system
+> before you ran your tune2fs command, so it's hard to know what to
+> suggest.  But it's highly likely that no matter what was going on, the
+> fact that your file system was corrupted has nothing to do with the
+> tune2fs command.  The tune2fs -O command only flips a few bits in the
+> superblock.  It's highly likely that your file system was corrupted
+> *before* you ran the tune2fs command.
+>
+> It's for that reason that it's tempting to require an e2fsck before
+> running a tune2fs -O command.  Unfortunately, in the past we've
+> allowed this even for mounted file systems, and if you know what you
+> are doing, and your file system is in a sane state, it's awfully
+> convenient to turn on certain features even while the file system is
+> mounted.
+>
+> The problem is that if you are an enterprise distribution who has to
+> pay for staffing a help desk, or you're someone who's trying to help
+> someone who is asking for advice on linux-ext4, it's awfully tempting
+> to assume that we have to assume that users are idiots.  And sometimes
+> it's not that they are, but because of ambiguities in bug reports.
+> For example, what was the state of your file system before you ran the
+> tune2fs command.  Was it a stock ext3 file system, or had you already
+> converted it to ext4.  If so, how?  Was the file system mounted at any
+> of these steps?  (Running e2fsck on a mounted file system is often
+> going to lead to misleading file system problem reports.)
+>
+> So people who do this a lot often feel that tools have to be dumbed
+> down, because otherwise it becomes a support nightmare....
+>
+> BTW, this is probably a good time to ask if your backups are up to
+> date.  Because regardless of what happened, it's likely you will have
+> suffered at least some data loss...
+>
+> 						- Ted
+>
