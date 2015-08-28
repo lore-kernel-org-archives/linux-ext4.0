@@ -1,76 +1,89 @@
-From: Alexander Afonyashin <a.afonyashin@madnet-team.ru>
-Subject: Re: Running fsck of huge ext4 partition takes weeks
-Date: Fri, 28 Aug 2015 10:56:44 +0300
-Message-ID: <CAETWcfuDjBC+qgd30v3f9_tGYn1HjBCB00gdFnaTmzt_5GAV3A@mail.gmail.com>
-References: <CAETWcfs0iLzwPmg-JY5B79rme+g0Zi2VMYoNHm+4_Pc_yRR-kQ@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: errors following ext3 to ext4 conversion
+Date: Fri, 28 Aug 2015 10:09:46 -0600
+Message-ID: <A66286AB-1DB5-4747-A1EB-0CE8C5CE0C1A@dilger.ca>
+References: <55DE5F79.4010004@yale.edu>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org
+To: Chris Hunter <chris.hunter@yale.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ob0-f179.google.com ([209.85.214.179]:35677 "EHLO
-	mail-ob0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751112AbbH1H5Y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Aug 2015 03:57:24 -0400
-Received: by obbwr7 with SMTP id wr7so36529409obb.2
-        for <linux-ext4@vger.kernel.org>; Fri, 28 Aug 2015 00:57:23 -0700 (PDT)
-In-Reply-To: <CAETWcfs0iLzwPmg-JY5B79rme+g0Zi2VMYoNHm+4_Pc_yRR-kQ@mail.gmail.com>
+Received: from mail-pa0-f43.google.com ([209.85.220.43]:35869 "EHLO
+	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752567AbbH1QJn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Aug 2015 12:09:43 -0400
+Received: by padhm10 with SMTP id hm10so11323073pad.3
+        for <linux-ext4@vger.kernel.org>; Fri, 28 Aug 2015 09:09:43 -0700 (PDT)
+In-Reply-To: <55DE5F79.4010004@yale.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Aug 26, 2015, at 6:53 PM, Chris Hunter <chris.hunter@yale.edu> wrote:
+> 
+> I attempted to convert ext3 to  ext4 filesystem. I am using e2fsprogs (1.42.12.wc1 (15-Sep-2014)).
 
-A brief story of problem.
+This is the Lustre-patched e2fsprogs.
 
-- hardware raid6 became partially degraded because one of disks failed
-(slot0 - mention it) as controller said
-- provider was asked to replace the failed drive (hot-swap)
-- while it was performing the task, the 2nd disk (slot4) has failed
-and raid became degraded (fully)
-- so provider was asked to replace 2nd disk too
-- I don't know what exactly happened (and how) but they replace disk
-in slot4 with disk from slot0 (see below - it's really looks like
-this) and inserted new disk into slot0
-- system not booted due to 'no partitions' found (gpt)
-- I booted from rescue disk and found the cool thing:
+When was this filesystem formatted, since Lustre itself has been using
+an ext4 format for a long time already (extents, uninit_bg, dir_index)
+so unless it was something really ancient, these features should have
+been on already.  Was there some prior corruption that started you
+down this road?
 
-1st LBA sector (GPT master sector) of LD0 (there was only one logical
-disk configured on controller) moved 1MB from start of logical disk.
-Paying attention that the strip size is 256K - this looks logical. In
-fact, controller holds raid metadata info on drives so the order which
-they are inserted into slots should not be a difference.I had
-experience with LSI controllers and it was so all the time. But this
-time it failed to recognize that disk was simply moved from one slot
-to another (may be due to the fact it has marked disk as failed - but
-suddenly it returned to life). I don't know if there's a bug in
-firmware or something else happened but when disk was placed back into
-original slot0 (keeping slot4 open) - GPT partition map has returned.
+> I ran command tune2fs tune2fs -O extents,uninit_bg,dir_index /dev/DEV -o acl,user_xattr /dev/DEV.
+> I then encountered errors (below) when running read-only e2fsck. I have not mounted the filesystem.
+> Is it possible to backout the ext3/ext4 changes ?
+> Do tune2fs changes take effect immediately or next time filesystem is mounted?
+> 
+> 
+> e2fsck shows a variety of errors:
+> Pass 1: Checking inodes, blocks, and sizes
+> Inode 118843400, end of extent exceeds allowed value
+>        (logical block 1409, physical block 3803034390, len 976)
+> Inode 118843400, end of extent exceeds allowed value
+>        (logical block 2385, physical block 3803056554, len 4294966945)
 
-But ... It seems that automatic rebuild had been started since first
-disk's replacement. And did its job.
+This is a bit strange, because the end of the first extent (1409 + 976)
+matches the start of the next one (2385) so that should be correct?
+Definitely the "4294966945" (= 0xfffffea1 = -351) length is incorrect
+and the victim of some corruption.  It isn't even some random bit flip
+so I have no idea how "-351" got in there.
 
-So I have partially broken ext4 that wish to fix.
+> Inode 118843400, i_size is 8331264, should be 5771264.  Fix? no
+> Inode 118843400, i_blocks is 16328, should be 11312.  Fix? no
 
-P.S. Raid hardware (performed by controller) rebuild process has been
-completed without errors.
+It looks like you've lost an even 2500KB = 625 blocks, or 5016 blocks off the end of this directory, depending whether i_size or i_blocks
+should be trusted.
 
-Regards,
-Alexander
+> (...)
+> 
+> Pass 2: Checking directory structure
+> Problem in HTREE directory inode 118843400 (/O/0/d0): bad block number 2030.
+> Problem in HTREE directory inode 118843400 (/O/0/d0): bad block number 2031.
+> Problem in HTREE directory inode 118843400 (/O/0/d0): bad block number 2032.
+> Problem in HTREE directory inode 118843400 (/O/0/d0): bad block number 2033.
 
-On Tue, Aug 25, 2015 at 6:30 PM, Alexander Afonyashin
-<a.afonyashin@madnet-team.ru> wrote:
-> Hi,
->
-> Recently I had to run fsck on 47TB ext4 partition backed by hardware
-> RAID6 (LSI MegaRAID SAS 2108). Right now over 2 weeks passed but fsck
-> is not finished yet. It occupies 30GB RSS, almost 35GB VSS and eats
-> 100% of single CPU. It detected errors (and fixed them) but doesn't
-> finish yet.
->
-> Rescue disc is based on Debian 7.8.
-> kernel: 4.1.4-5
-> e2fsprogs: 1.42.5-1.1+deb7u1
->
-> Any suggestions?
->
-> Regards,
-> Alexander Afonyashin
+This looks like a Lustre OST filesystem layout.  Are the other d*
+directories also corrupted?
+
+> Pass 4: Checking reference counts
+> Unattached inode 26
+> Unattached inode 27
+> Unattached inode 28
+> 
+> regards,
+> chris hunter
+> chris.hunter@yale.edu
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+Cheers, Andreas
+
+
+
+
+
