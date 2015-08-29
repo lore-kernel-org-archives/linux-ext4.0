@@ -1,76 +1,67 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: errors following ext3 to ext4 conversion
-Date: Fri, 28 Aug 2015 14:32:13 -0400
-Message-ID: <20150828183213.GC10211@thunk.org>
-References: <55DE5F79.4010004@yale.edu>
- <20150827033949.GA12151@thunk.org>
- <55DE8771.9050109@redhat.com>
- <20150827041536.GH10037@birch.djwong.org>
- <20150827185845.GB3357@thunk.org>
- <55DF64CC.8060201@yale.edu>
- <20150827224652.GA5945@thunk.org>
- <55E08B1A.6020503@yale.edu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 103111] auto_da_alloc mount option not working
+Date: Sat, 29 Aug 2015 03:25:15 +0000
+Message-ID: <bug-103111-13602-0pGHXtrvYz@https.bugzilla.kernel.org/>
+References: <bug-103111-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Chris Hunter <chris.hunter@yale.edu>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:52951 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.29.136]:52272 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751787AbbH1ScP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 28 Aug 2015 14:32:15 -0400
-Content-Disposition: inline
-In-Reply-To: <55E08B1A.6020503@yale.edu>
+	id S1751564AbbH2DZU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 28 Aug 2015 23:25:20 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 3973720A4B
+	for <linux-ext4@vger.kernel.org>; Sat, 29 Aug 2015 03:25:19 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 765FF20A50
+	for <linux-ext4@vger.kernel.org>; Sat, 29 Aug 2015 03:25:16 +0000 (UTC)
+In-Reply-To: <bug-103111-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 28, 2015 at 12:23:54PM -0400, Chris Hunter wrote:
-> Hi Theodore,
-> 
-> You are correct there were human errors in these filesystem changes (eg.
-> insufficient pre-checks/validation). I don't expect the software to
-> compensate for poor planning.
-> For future reference, I desire a better understanding of risks involved in
-> using tune2fs. I incorrectly assumed that tune2fs doesn't "do" anything
-> until a filesystem is mounted.
-> Assuming you start with a clean filesystem, which tune2fs commands are the
-> most dangerous ? which are the safest ?
+https://bugzilla.kernel.org/show_bug.cgi?id=103111
 
-In the e2fsprogs 1.42.x series (which is what you are using), the only
-really "dangerous" option is "tune2fs -I", which changes the inode
-size and require moving blocks around and which could potentially
-cause data loss if you lose power while the tune2fs command is
-running.
+Theodore Tso <tytso@mit.edu> changed:
 
-You're posting on the ext4 developer's mailing list, and there have
-been discussions to add more "resize2fs-like" features to tune2fs in
-the 1.43 development branch of e2fsprogs.  For the *most* part the
-commands in tune2fs are "safe" in that they don't touch anything other
-than the superblock --- although if the file system is mounted, they
-can result in changes right away.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
 
-The one command which can have more traps for the unwary is "tune2fs
--O".  It only modifies the superblock, but in some cases, tune2fs will
-ask you to run e2fsck afterwards.  We do try to mask out the dangerous
-options --- for example, we don't allow you to turn off the extents
-option, since that cause problems.  Someone who accidentally enabled
-the extents flag on a file system that previously didn't, and while it
-is unmounted, can turn it off using debugfs but that _is_ dangerous so
-we don't allow tune2fs to do so.
+--- Comment #14 from Theodore Tso <tytso@mit.edu> ---
+Rakesh, if you are aware of truly broken programs that rename first and then
+write to the file (which means that they will lose data if they crash after the
+rename), let me know.  The hueristics were designed to catch the most common
+cases of application brain-damage, to it:
 
-So we do try to make tune2fs safer for non-experts.  In this
-particular case, I got a bit frustrated because we got the typical bug
-report, and I apologize for my tone.  For some reason, users tend not
-to give us relevant information (such as this is a Lustre disk) as
-background context, and in some cases, outright *wrong* information
-(that this was an ext3 file system that you were converting to ext4;
-from what you've said later, apparently this was already had some ext4
-features because it was used as a part of Lustre).  This is the sort
-of thing that gives support engineers nightmares, and it's why develop
-people like myself who are developers sometimes don't make good
-support engineers --- we don't have the protective assumptions from
-long experience that everything a user asking for help tells us may be
-lies.  :-)
+1)  write foo.new
+2)  fail to use fsync(2) as they should
+3)  close the file descriptor for foo.new
+4)  rename foo.new to foo
 
-						- Ted
-						
+The fact that we also catch the case of
+
+1)  truncate a file containing data down to zero
+2)  write a new version of the file, and hope you don't crash right after 1
+
+Was because, if I recall correctly, both GNOME and KDE had something like this
+in their library functions and a lot of programs were calling it.   ***Sigh***
+
+I believe their excuse was that it was too hard to copy the ACL's and xattr's
+from foo to foo.new, and by using a truncate, they wouldn't have to do all of
+that hard work to read the acl and xattr's from the old file, and set them on
+foo.new before doing the rename.
+
+One especially brilliant application was rewriting the config file after each
+time the window was moved a pixel or two, so that the window location could be
+saved.   So if you dragged the window around, the file would get written dozens
+if not hundreds of times.
+
+Just in case you ever wondered why many file system developers don't trust
+application / desktop programmers....
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
