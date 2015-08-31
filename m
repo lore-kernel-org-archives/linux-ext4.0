@@ -1,46 +1,74 @@
-From: Raymond Jennings <shentino@gmail.com>
-Subject: Re: [GIT PULL] Ext3 removal, quota & udf fixes
-Date: Mon, 31 Aug 2015 15:31:58 -0700
-Message-ID: <55E4D5DE.2030709@gmail.com>
-References: <20150831061920.GA2751@quack.suse.cz>
- <CA+55aFweA1J+a5MYxgWDOAg0p+UdqfP+Z1aFKs1c8n0hWUiBDw@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: LKML <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-	Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CA+55aFweA1J+a5MYxgWDOAg0p+UdqfP+Z1aFKs1c8n0hWUiBDw@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] fs/ext4: fix potential endless loop in ext4_mb_discard_group_preallocations()
+Date: Mon, 31 Aug 2015 16:34:36 -0600
+Message-ID: <0E3B5981-84C9-474C-91C2-311CB8B85C24@dilger.ca>
+References: <1441013790-87948-1-git-send-email-zhenzhang.zhang@huawei.com> <55E42270.9040503@huawei.com>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: "tytso@mit.edu" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	adilger.kernel@dilger.ca,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Zhang Zhen <zhenzhang.zhang@huawei.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pa0-f48.google.com ([209.85.220.48]:35647 "EHLO
+	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754746AbbHaWek convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Aug 2015 18:34:40 -0400
+Received: by pacdd16 with SMTP id dd16so152794986pac.2
+        for <linux-ext4@vger.kernel.org>; Mon, 31 Aug 2015 15:34:40 -0700 (PDT)
+In-Reply-To: <55E42270.9040503@huawei.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 08/31/15 14:37, Linus Torvalds wrote:
-> On Sun, Aug 30, 2015 at 11:19 PM, Jan Kara <jack@suse.cz> wrote:
->> The biggest change in the pull is the removal of ext3 filesystem driver
->> (~28k lines removed).
-> I really am not ready to just remove ext3 without a lot of good
-> arguments. There might well be people who this use ext3 as ext3, and
-> don't want to update. I want more a rationale for removal than "ext4
-> can read old ext3 filesystems".
-I actually would agree that having two drivers for the same filesystem 
-is redundant and unneeded code duplication.
+On Aug 31, 2015, at 3:46 AM, Zhang Zhen <zhenzhang.zhang@huawei.com> wrote:
+> 
+> In ext4_mb_discard_group_preallocations(), if free is always less
+> than needed, and some PAs are always used in every loop, it will
+> be endless loop.
+> 
+> Here we pick a random value to limit the max number of loop.
+> 
+> Signed-off-by: Zhang Zhen <zhenzhang.zhang@huawei.com>
+> ---
+> fs/ext4/mballoc.c | 7 +++++--
+> 1 file changed, 5 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 34b610e..553fbde 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -3836,6 +3836,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
+> 	int err;
+> 	int busy = 0;
+> 	int free = 0;
+> +	int tried = 0;
+> 
+> 	mb_debug(1, "discard preallocation for group %u\n", group);
+> 
+> @@ -3886,9 +3887,11 @@ repeat:
+> 		list_add(&pa->u.pa_tmp_list, &list);
+> 	}
+> 
+> -	/* if we still need more blocks and some PAs were used, try again */
+> -	if (free < needed && busy) {
+> +	/* if we still need more blocks and some PAs were used, try again,
+> +	   here 20 is a ramdon value. */
 
-That said, I wouldn't mind myself if the ext4 driver were given a very 
-grueling regression test to make sure it can actually handle old ext3 
-systems as well as the ext3 driver can.  Just gutting an entire driver 
-because another driver can handle it only makes sense if nothing can go 
-wrong and the potential for causing regressions is quite obvious.
+(typo) s/ramdon/random/
 
-I think also that we should remove the ext2 driver before we remove the 
-ext3 driver.
+> +	if (free < needed && busy && tried < 20) {
+> 		busy = 0;
+> +		tried++;
+> 		ext4_unlock_group(sb, group);
+> 		cond_resched();
+> 		goto repeat;
 
-My two cents.
->                    Linus
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+Looks OK otherwise.
+
+Cheers, Andreas
+
+
+
+
+
