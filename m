@@ -1,107 +1,84 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [GIT PULL] Ext3 removal, quota & udf fixes
-Date: Mon, 31 Aug 2015 22:53:35 -0400
-Message-ID: <20150901025335.GF7642@thunk.org>
-References: <20150831061920.GA2751@quack.suse.cz>
- <CA+55aFweA1J+a5MYxgWDOAg0p+UdqfP+Z1aFKs1c8n0hWUiBDw@mail.gmail.com>
- <55E4D5DE.2030709@gmail.com>
- <CA+55aFz+n6uE7hRB=2mxeLiaVK8qTwjfSU_f_sAMY7kK0AG0sg@mail.gmail.com>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: Running fsck of huge ext4 partition takes weeks
+Date: Mon, 31 Aug 2015 21:19:51 -0600
+Message-ID: <EDB725A6-436E-4B98-8EBF-DAB1E4E68FE4@dilger.ca>
+References: <CAETWcfs0iLzwPmg-JY5B79rme+g0Zi2VMYoNHm+4_Pc_yRR-kQ@mail.gmail.com> <28A25D6A-DA5A-42D2-9BFE-9F6C95B51BE7@dilger.ca> <CAETWcfti7NL3N96K1pEAX9ezKUrZn0QeGTwjn0qUni0u6i=Gcg@mail.gmail.com> <CAETWcfvtjF6bh_V64LgJ1QCyW=OKjzvV+HT5zFTThS574rWfgA@mail.gmail.com> <20150827190548.GC3357@thunk.org> <CAETWcftzdWdjzVQnP-rD-o0iEFLgZFQeLx++90ZyQZiaFJB0kw@mail.gmail.com> <20150828175325.GB10211@thunk.org> <CAETWcfsK2tPf0RrAFnHfOYxHxV7X9pwMeKwqToVnnzEz+6sw0w@mail.gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
 Content-Type: text/plain; charset=us-ascii
-Cc: Raymond Jennings <shentino@gmail.com>, Jan Kara <jack@suse.cz>,
-	LKML <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CA+55aFz+n6uE7hRB=2mxeLiaVK8qTwjfSU_f_sAMY7kK0AG0sg@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: 8BIT
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Alexander Afonyashin <a.afonyashin@madnet-team.ru>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pa0-f42.google.com ([209.85.220.42]:35444 "EHLO
+	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755187AbbIADTz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Aug 2015 23:19:55 -0400
+Received: by pacdd16 with SMTP id dd16so160197818pac.2
+        for <linux-ext4@vger.kernel.org>; Mon, 31 Aug 2015 20:19:55 -0700 (PDT)
+In-Reply-To: <CAETWcfsK2tPf0RrAFnHfOYxHxV7X9pwMeKwqToVnnzEz+6sw0w@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 31, 2015 at 03:39:38PM -0700, Linus Torvalds wrote:
+On Aug 31, 2015, at 1:20 AM, Alexander Afonyashin <a.afonyashin@madnet-team.ru> wrote:
 > 
-> That's not my only worry. Things like "can you go back to ext3-only"
-> is an issue too - I don't think that's been a big priority for ext4
-> any more, and if there are any existing hold-outs that still use ext3,
-> they may want to be able to go back to old kernels.
+> Hi,
+> 
+> Running fsck from e2fsprogs-1.42.13 results in SIGKILL:
+> 
+> Inode 4425496 is too big.  Truncate? yes
+> 
+> Block #524289 (103743230) causes directory to be too big.  CLEARED.
+> Block #524290 (3236857350) causes directory to be too big.  CLEARED.
+> Block #524291 (3625464338) causes directory to be too big.  CLEARED.
+> Block #524292 (1370882069) causes directory to be too big.  CLEARED.
+> Block #524293 (3868016883) causes directory to be too big.  CLEARED.
+> Block #524294 (3919147116) causes directory to be too big.  CLEARED.
+> Block #524295 (279419478) causes directory to be too big.  CLEARED.
+> Block #524296 (194746972) causes directory to be too big.  CLEARED.
+> Block #524297 (1695856868) causes directory to be too big.  CLEARED.
+> Block #524298 (587425254) causes directory to be too big.  CLEARED.
+> Block #524299 (142614537) causes directory to be too big.  CLEARED.
+> Too many illegal blocks in inode 4425496.
+> Clear inode? yes
+> 
+> Inode 4425357 has compression flag set on filesystem without
+> compression support.  Clear? yes
+> 
+> Warning... fsck.ext4 for device /dev/sda3 exited with signal 9.
+> root@rescue ~ # e2fsprogs-1.42.13/build/misc/fsck -v -y /dev/sda3
 
-Yes, you can go back to ext3-only.  In fact, we do *not* automatically
-upgrade the file system to use ext4-specific features.
+Hmm, the "fsck" command is just a wrapper, and it is not necessarily
+calling the e2fsck command from your build tree.  You should run:
 
-> So it's not just a "you can use ext4 instead" issue. Can you do that
-> *without* then forcing an upgrade forever on that partition? I'm not
-> sure the ext4 people are really even willing to guarantee that kind of
-> backwards compatibility.
+   e2fsprogs-1.42.13/build/e2fsck/e2fsck -fy /dev/sda3
 
-Actually, we do guarantee this.  It's considered poor form to
-automatically change the superblock to add new file system features in
-a way that would break the ability for the user to roll back to an
-older kernel.  This isn't just for ext3->ext4, but for new ext4
-features such as metadata checksumming.  The user has to explicitly
-enable the feature using "tune2fs -O new_feature /dev/sdXX".
+That said, if you are having problems with the e2fsck, could you
+run it under gdb to see where it is failing?  Signal 9 is SIGKILL
+which means that the process was killed by some external signal?
 
-A file system with ext3-only features is part of regression test
-suites.  I also test an ext3 file system that has been converted to
-ext4 using the tune2fs command, data=journal, nojournal, new
-experimental features such as inline data, etc., etc.:
+> Regards,
+> Alexander
+> 
+> On Fri, Aug 28, 2015 at 8:53 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+>> If dumpe2fs is hanging as well, it's likely that the problem may be at
+>> the hardware level.  You might want to check dmesg or the kernel log
+>> to see if there are any I/O errors being reported from hard drive.
+>> What might be happening is that when a program (such as e2fsck or
+>> dumpe2fs) tries to read from a specific part of the hard drive, the
+>> hard drive is retrying a large number of times because the hard drive
+>> head or platter surface has gotten damaged in some way.
+>> 
+>> It might also be a good idea to check the S.M.A.R.T. status using the
+>> smartctl program.
+>> 
+>> Cheers,
+>> 
+>>                                                - Ted
 
-BEGIN TEST 4k: Ext4 4k block Mon Aug 24 23:01:09 EDT 2015
-BEGIN TEST 1k: Ext4 1k block Mon Aug 24 23:47:13 EDT 2015
-BEGIN TEST ext3: Ext4 4k block emulating ext3 Tue Aug 25 00:40:19 EDT 2015
-BEGIN TEST nojournal: Ext4 4k block w/ no journal Tue Aug 25 01:23:16 EDT 2015
-BEGIN TEST ext3conv: Ext4 4k block w/nodelalloc and no flex_bg Tue Aug 25 02:04:52 EDT 2015
-BEGIN TEST dioread_nolock: Ext4 4k block w/dioread_nolock Tue Aug 25 02:48:32 EDT 2015
-BEGIN TEST data_journal: Ext4 4k block w/data=journal Tue Aug 25 03:34:30 EDT 2015
-BEGIN TEST inline: Ext4 4k block w/inline Tue Aug 25 04:36:47 EDT 2015
-BEGIN TEST bigalloc: Ext4 4k block w/bigalloc Tue Aug 25 05:22:08 EDT 2015
-BEGIN TEST bigalloc_1k: Ext4 1k block w/bigalloc Tue Aug 25 06:20:54 EDT 2015
 
-I fire off the test suite using a single command: "gce-xfstests full"
-which launches the regression test into the cloud (approximate cost
-using Google Compute Engine: $1.50, at retail rates), and then 7-8
-hours later, the results get e-mailed to me.  These tests get run
-regularly during the development cycle, and I always do at least one
-full test run before I send you each pull request.
+Cheers, Andreas
 
-So supporting and continuing to do regression testing for ext3 is
-something we're doing today and I am willing to commit to continue to
-do.
 
-> I could be ok with removing ext3 in theory, but I haven't seen a lot
-> of rationale for it, and I don't know if there are still users who may
-> have their own good reasons to stay with ext3. Maybe there has been
-> lots of discussion about this on fsdevel (which I don't follow), and
-> I'm just lacking the background, but if so I want to see that
-> background. Not just a oneliner description that basically says
-> "remove ext3 support".
 
-The main rationale is that two code bases is harder to support than
-one.  When bugs get fixed in ext4, they don't necessarily get
-back-propagated to ext3 except for a manual process where Jan notices
-that a bug fixed in ext4 is also in ext3, and he manually ports the
-patch over.
 
-Both Red Hat and SuSE, as well as Debian and Ubuntu, are using ext4
-with CONFIG_EXT4_USE_FOR_EXT23 for a couple of years now to support
-ext2 and ext3 file systems.  So with the exception of some really
-ancient enterprise Linux distros, and people who are manually
-configuring their systems, very few people are likely using ext3 code
-base, which means the chances that it bitrots increases.  Basically,
-it's only been Jan's tireless work that has kept that from happening,
-given that all of the major distro's have been using ext4 to support
-ext2 and ext3 file systems.
 
-Given that all of the major distributions are using ext4 to support
-ext3, full backwards compatibility support for ext3 is something we
-support today and will have to continue supporting regardless of
-whether or not ext3 gets removed from the kernel sources.
-
-Cheers,
-
-						- Ted
-
-P.S.  Even though most distributions are also using ext4 to support
-ext2, I don't support removing ext2 at this time.  Like minix, it's a
-simple file system that can be easily used by others to understand
-what's needed to create a new file system.  
