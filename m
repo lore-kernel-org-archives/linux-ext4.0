@@ -1,40 +1,61 @@
-From: Andreas Dilger <adilger@dilger.ca>
+From: Raymond Jennings <shentino@gmail.com>
 Subject: Re: [GIT PULL] Ext3 removal, quota & udf fixes
-Date: Mon, 31 Aug 2015 18:23:01 -0600
-Message-ID: <4D95B36D-5AB6-4CF6-8BCA-03E0562F3ED3@dilger.ca>
-References: <20150831061920.GA2751@quack.suse.cz> <CA+55aFweA1J+a5MYxgWDOAg0p+UdqfP+Z1aFKs1c8n0hWUiBDw@mail.gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Jan Kara <jack@suse.cz>, LKML <linux-kernel@vger.kernel.org>,
+Date: Mon, 31 Aug 2015 17:24:28 -0700
+Message-ID: <55E4F03C.1010708@gmail.com>
+References: <20150831061920.GA2751@quack.suse.cz>
+ <CA+55aFweA1J+a5MYxgWDOAg0p+UdqfP+Z1aFKs1c8n0hWUiBDw@mail.gmail.com>
+ <55E4D5DE.2030709@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: LKML <linux-kernel@vger.kernel.org>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+	Jan Kara <jack@suse.cz>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CA+55aFweA1J+a5MYxgWDOAg0p+UdqfP+Z1aFKs1c8n0hWUiBDw@mail.gmail.com>
+In-Reply-To: <55E4D5DE.2030709@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Aug 31, 2015, at 3:37 PM, Linus Torvalds <torvalds@linux-foundation.org> wrote:
-> 
-> On Sun, Aug 30, 2015 at 11:19 PM, Jan Kara <jack@suse.cz> wrote:
->> 
->> The biggest change in the pull is the removal of ext3 filesystem driver
->> (~28k lines removed).
-> 
-> I really am not ready to just remove ext3 without a lot of good
-> arguments. There might well be people who this use ext3 as ext3, and
-> don't want to update. I want more a rationale for removal than "ext4
-> can read old ext3 filesystems".
+On 08/31/15 15:31, Raymond Jennings wrote:
+> On 08/31/15 14:37, Linus Torvalds wrote:
+>> On Sun, Aug 30, 2015 at 11:19 PM, Jan Kara <jack@suse.cz> wrote:
+>>> The biggest change in the pull is the removal of ext3 filesystem driver
+>>> (~28k lines removed).
+>> I really am not ready to just remove ext3 without a lot of good
+>> arguments. There might well be people who this use ext3 as ext3, and
+>> don't want to update. I want more a rationale for removal than "ext4
+>> can read old ext3 filesystems".
+> I actually would agree that having two drivers for the same filesystem 
+> is redundant and unneeded code duplication.
+>
+> That said, I wouldn't mind myself if the ext4 driver were given a very 
+> grueling regression test to make sure it can actually handle old ext3 
+> systems as well as the ext3 driver can.  Just gutting an entire driver 
+> because another driver can handle it only makes sense if nothing can 
+> go wrong and the potential for causing regressions is quite obvious.
+>
+> I think also that we should remove the ext2 driver before we remove 
+> the ext3 driver.
+>
+> My two cents.
+Just to ask a general opinion:
 
-The ext4 code can read and write ext3 filesystems without any
-compatibility issues (i.e. none of the ext4-specific features are
-enabled automatically) and have been doing so for all RHEL and SLES
-users for the past several years via the CONFIG_EXT4_USE_FOR_EXT23
-option (added in commit 24b58424 in 2009).  It looks like the same
-for Ubuntu since early 2014 also.
+Am I right that it's ok for kernel code to be organized how we (the 
+developers) see fit as long as we don't break userspace or hardware in 
+the process?
 
-The ext4-specific features either need to be enabled specifically
-via tune2fs (if possible) or at mkfs time.
+So long as we function properly, should userspace care about how our 
+source code is structured?
 
-Cheers, Andreas
+I'm thinking yes, but it might be fruitful to see an answer archived on 
+the list.
+>>                    Linus
+>> -- 
+>> To unsubscribe from this list: send the line "unsubscribe 
+>> linux-kernel" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at http://vger.kernel.org/majordomo-info.html
+>> Please read the FAQ at  http://www.tux.org/lkml/
+>
