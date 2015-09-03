@@ -1,44 +1,59 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Documenting the ext3 -> ext4 transition
-Date: Thu, 3 Sep 2015 15:12:00 -0600
-Message-ID: <FDEAB7F2-10F9-451F-ABBE-BBAA37FC4193@dilger.ca>
-References: <20150903191644.GC10390@birch.djwong.org>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [GIT PULL] Ext3 removal, quota & udf fixes
+Date: Thu, 3 Sep 2015 14:49:24 -0700
+Message-ID: <20150903214924.GB10391@birch.djwong.org>
+References: <20150831061920.GA2751@quack.suse.cz>
+ <CA+55aFweA1J+a5MYxgWDOAg0p+UdqfP+Z1aFKs1c8n0hWUiBDw@mail.gmail.com>
+ <20150902165201.GW12432@techsingularity.net>
+ <20150902184522.GA10390@birch.djwong.org>
+ <CA+55aFy4LZP3_eNq=tBjkbPaVVRuQxuXRXV=+yLsvqzD9jXqyA@mail.gmail.com>
+ <CAMu38xLf-b_re4vCFuZP3i6sR5gVZE25Wak4+s1KNd6heSST6A@mail.gmail.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f54.google.com ([209.85.220.54]:35783 "EHLO
-	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752760AbbICVMF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Sep 2015 17:12:05 -0400
-Received: by pacfv12 with SMTP id fv12so1778765pac.2
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Sep 2015 14:12:04 -0700 (PDT)
-In-Reply-To: <20150903191644.GC10390@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	Mel Gorman <mgorman@techsingularity.net>,
+	Jan Kara <jack@suse.cz>, LKML <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: Albino B Neto <bino@riseup.net>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <CAMu38xLf-b_re4vCFuZP3i6sR5gVZE25Wak4+s1KNd6heSST6A@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sep 3, 2015, at 1:16 PM, Darrick J. Wong <darrick.wong@oracle.com> wrote:
+On Thu, Sep 03, 2015 at 08:28:38AM -0300, Albino B Neto wrote:
+> 2015-09-02 20:47 GMT-03:00 Linus Torvalds <torvalds@linux-foundation.org>:
+> > On Wed, Sep 2, 2015 at 11:45 AM, Darrick J. Wong
+> > <darrick.wong@oracle.com> wrote:
+> >> Yes, that would be a bug.
+> >
+> > So the thing I'm happy to see is that the ext4 developers seem to
+> > unanimously agree that maintaining ext3 compatibility is part of their
+> > job, and nobody seems to be arguing for keeping ext3 around. As long
+> > as any possible regressions from ext3 removal have a clear "yup, it's
+> > on us" from the ext4 people,  I don't mind removing it. I was
+> > expecting ext4 people to not be thrilled about supporting possible
+> > legacy cases.
 > 
-> Hi all,
+> Good.
 > 
-> Now that ext3.ko is going away, Ted and I talked about having a wiki
-> page to talk about the transition (to using ext4.ko for ext3 FS) and
-> potential upgrade paths.  There already was a section in the HOWTO,
-> but I promoted it to its own page and a link from the front page:
+> The future of ext4 ? Are you (developers) write other file system ?
+
+Well I was working on a new one called EXT3000 with all new servos, but then I
+had to reuse the start and stop controls for something else and now the whole
+thing is SOL.  I guess I'll go watch a movie instead.
+
+;)
+
+--D
+
 > 
-> Please take a look and suggest/make changes:
-> 
-> https://ext4.wiki.kernel.org/index.php/UpgradeToExt4
-
-I thought is that ext3 had dir_index enabled by default, so it isn't
-totally correct that this feature needs to be enabled when upgrading
-from ext3 to ext4.
-
-Cheers, Andreas
-
-
-
-
-
+> -- 
+> Albino B Neto
+> www.bino.us
+> "Debian. Freedom to code. Code to freedom!" faw
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
