@@ -1,46 +1,45 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH] libext2fs: fix tst_badblocks buffer overrun
-Date: Wed,  9 Sep 2015 18:01:29 -0600
-Message-ID: <1441843289-30064-1-git-send-email-adilger@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
-To: tytso@mit.edu
+From: Chris Hunter <chris.hunter@yale.edu>
+Subject: e2fsck discrepancy with debugfs stat ?
+Date: Thu, 10 Sep 2015 23:03:57 -0400
+Message-ID: <55F2449D.9090000@yale.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-so.shaw.ca ([64.59.136.137]:46507 "EHLO
-	smtp-out-so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751861AbbIJAJk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Sep 2015 20:09:40 -0400
+Received: from vm-emlprdomg-09.its.yale.edu ([130.132.50.188]:54513 "EHLO
+	vm-emlprdomg-09.its.yale.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751270AbbIKDD7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Sep 2015 23:03:59 -0400
+Received: from localhost.localdomain ([172.28.220.38])
+	(authenticated bits=0)
+	by vm-emlprdomg-09.its.yale.edu (8.15.0.59/8.14.7) with ESMTPSA id t8B33vYQ016612
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2015 23:03:58 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The test2[] array is not 0-terminated and the create_test_list() for
-loop does not terminate properly at the end of this array, but
-continues until it hits the 0 at the end of test3[].
+Hi,
+Are there scenarios where e2fsck will report a deleted/unused inode but 
+debugfs is able to read the inode structure ?
 
-Reported-by: Hanno Boeck <hanno@hboeck.de>
-Addresses: https://bugzilla.kernel.org/show_bug.cgi?id=104311
-Signed-off-by: Andreas Dilger <adilger@dilger.ca>
----
- lib/ext2fs/tst_badblocks.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Some details:
+I am using lustre version of e2fsprogs (1.42.12.wc1). When I run e2fsck 
+in nofix/dry-run mode on a blockdev, I receive errors about unused inodes.
+eg)
+ > $ e2fsck -nfv <DEV>
+> e2fsck 1.42.12.wc1 (15-Sep-2014)
+> Warning: skipping journal recovery because doing a read-only filesystem check.
+> Pass 1: Checking inodes, blocks, and sizes
+> Pass 2: Checking directory structure
+> Entry '131249395' in /O/0/d19 (118843419) has deleted/unused inode 5671802.  Clear? no
+etc...
 
-diff --git a/lib/ext2fs/tst_badblocks.c b/lib/ext2fs/tst_badblocks.c
-index 3b39ef1..c685f33 100644
---- a/lib/ext2fs/tst_badblocks.c
-+++ b/lib/ext2fs/tst_badblocks.c
-@@ -30,11 +30,11 @@
- #define DEL_BLK	0x0002
- 
- blk_t test1[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0 };
--blk_t test2[] = { 11, 10, 9, 8, 7, 6, 5, 4, 3, 3, 2, 1 };
-+blk_t test2[] = { 11, 10, 9, 8, 7, 6, 5, 4, 3, 3, 2, 1, 0 };
- blk_t test3[] = { 3, 1, 4, 5, 9, 2, 7, 10, 5, 6, 10, 8, 0 };
- blk_t test4[] = { 20, 50, 12, 17, 13, 2, 66, 23, 56, 0 };
- blk_t test4a[] = {
-- 	20, 1,
-+	20, 1,
- 	50, 1,
- 	3, 0,
- 	17, 1,
--- 
-1.8.0
+However when I run command debugfs -c -R "stat /O/0/d19/131249395" 
+<DEV>, I can retrieve inode contents. Further debugfs "dump" will 
+successfully pull the contents (980 bytes) of the file entry.
 
+thanks,
+chris hunter
+chris.hunter@yale.edu
