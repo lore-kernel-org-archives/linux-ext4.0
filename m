@@ -1,161 +1,127 @@
-From: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Subject: [v15 2/4] ext4: adds project quota support
-Date: Sun, 13 Sep 2015 21:20:31 +0900
-Message-ID: <1442146833-13652-3-git-send-email-lixi@ddn.com>
-References: <1442146833-13652-1-git-send-email-lixi@ddn.com>
-To: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
-	jack-AlSwsSmVLrQ@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
-	dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <1442146833-13652-1-git-send-email-lixi-LfVdkaOWEx8@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+From: Julia Lawall <Julia.Lawall-L2FTfq7BK8M@public.gmane.org>
+Subject: [PATCH 00/39] drop null test before destroy functions
+Date: Sun, 13 Sep 2015 14:14:53 +0200
+Message-ID: <1442146532-9100-1-git-send-email-Julia.Lawall@lip6.fr>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-usb-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, kvm-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	kernel-janitors-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, HPDD-discuss-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+	linux-mtd-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org,
+	Carolyn Wyborny <carolyn.wyborny-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
+	ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, devel-gWbeCf7V1WCQmaza687I9mD2FQJk+8+b@public.gmane.org,
+	linux-nilfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Don Skidmore <donald.c.skidmore-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
+	linux-atm-general-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	Jesse Brandeburg <jesse.brandeburg-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
+	cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Matthew Vick <matthew.vick-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
+	intel-wired-lan-qjLDD68F18P21nG7glBr7A@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Mitch Williams <mitch.a.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
+	Chao Yu <chao2.yu-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>, linux-raid-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-bcache-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Shannon Nelson <shannon.nelson-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, linux-kernel-u79uwXL29TaqPxH82wqD4g@public.gmane.org
+To: iommu-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org, dccp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	dri-devel-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org, intel-gfx-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org,
+	ecryptfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, dmaengine-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <iommu-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+List-Unsubscribe: <https://lists.linuxfoundation.org/mailman/options/iommu>,
+	<mailto:iommu-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.linuxfoundation.org/pipermail/iommu/>
+List-Post: <mailto:iommu-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+List-Help: <mailto:iommu-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.linuxfoundation.org/mailman/listinfo/iommu>,
+	<mailto:iommu-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=subscribe>
+Sender: iommu-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
+Errors-To: iommu-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch adds mount options for enabling/disabling project quota
-accounting and enforcement. A new specific inode is also used for
-project quota accounting.
+Recent commits to kernel/git/torvalds/linux.git have made the following
+functions able to tolerate NULL arguments:
 
-Signed-off-by: Li Xi <lixi-LfVdkaOWEx8@public.gmane.org>
-Signed-off-by: Dmitry Monakhov <dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org>
-Reviewed-by: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+kmem_cache_destroy (commit 3942d29918522)
+mempool_destroy (commit 4e3ca3e033d1)
+dma_pool_destroy (commit 44d7175da6ea)
+
+These patches remove the associated NULL tests for the files that I found
+easy to compile test.  If these changes are OK, I will address the
+remainder later.
+
 ---
- fs/ext4/ext4.h  |    5 ++-
- fs/ext4/super.c |   56 ++++++++++++++++++++++++++++++++++++++++++++++++++----
- 2 files changed, 54 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 96d6e4c..9efbb4b 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1184,7 +1184,8 @@ struct ext4_super_block {
- 	__u8	s_encrypt_algos[4];	/* Encryption algorithms in use  */
- 	__u8	s_encrypt_pw_salt[16];	/* Salt used for string2key algorithm */
- 	__le32	s_lpf_ino;		/* Location of the lost+found inode */
--	__le32	s_reserved[100];	/* Padding to the end of the block */
-+	__le32	s_prj_quota_inum;	/* inode for tracking project quota */
-+	__le32	s_reserved[99];		/* Padding to the end of the block */
- 	__le32	s_checksum;		/* crc32c(superblock) */
- };
- 
-@@ -1207,7 +1208,7 @@ struct ext4_super_block {
- #endif
- 
- /* Number of quota types we support */
--#define EXT4_MAXQUOTAS 2
-+#define EXT4_MAXQUOTAS 3
- 
- /*
-  * fourth extended-fs super-block data in memory
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d07445e..4040263 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1063,8 +1063,8 @@ static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
- }
- 
- #ifdef CONFIG_QUOTA
--#define QTYPE2NAME(t) ((t) == USRQUOTA ? "user" : "group")
--#define QTYPE2MOPT(on, t) ((t) == USRQUOTA?((on)##USRJQUOTA):((on)##GRPJQUOTA))
-+static char *quotatypes[] = INITQFNAMES;
-+#define QTYPE2NAME(t) (quotatypes[t])
- 
- static int ext4_write_dquot(struct dquot *dquot);
- static int ext4_acquire_dquot(struct dquot *dquot);
-@@ -4012,7 +4012,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		sb->s_qcop = &dquot_quotactl_sysfile_ops;
- 	else
- 		sb->s_qcop = &ext4_qctl_operations;
--	sb->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
-+	sb->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP | QTYPE_MASK_PRJ;
- #endif
- 	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
- 
-@@ -5145,6 +5145,46 @@ restore_opts:
- 	return err;
- }
- 
-+static int ext4_statfs_project(struct super_block *sb,
-+			       kprojid_t projid, struct kstatfs *buf)
-+{
-+	struct kqid qid;
-+	struct dquot *dquot;
-+	u64 limit;
-+	u64 curblock;
-+
-+	qid = make_kqid_projid(projid);
-+	dquot = dqget(sb, qid);
-+	if (!dquot)
-+		return -ESRCH;
-+	spin_lock(&dq_data_lock);
-+
-+	limit = dquot->dq_dqb.dqb_bsoftlimit ?
-+		dquot->dq_dqb.dqb_bsoftlimit :
-+		dquot->dq_dqb.dqb_bhardlimit;
-+	if (limit && buf->f_blocks * buf->f_bsize > limit) {
-+		curblock = dquot->dq_dqb.dqb_curspace / buf->f_bsize;
-+		buf->f_blocks = limit / buf->f_bsize;
-+		buf->f_bfree = buf->f_bavail =
-+			(buf->f_blocks > curblock) ?
-+			 (buf->f_blocks - curblock) : 0;
-+	}
-+
-+	limit = dquot->dq_dqb.dqb_isoftlimit ?
-+		dquot->dq_dqb.dqb_isoftlimit :
-+		dquot->dq_dqb.dqb_ihardlimit;
-+	if (limit && buf->f_files > limit) {
-+		buf->f_files = limit;
-+		buf->f_ffree =
-+			(buf->f_files > dquot->dq_dqb.dqb_curinodes) ?
-+			 (buf->f_files - dquot->dq_dqb.dqb_curinodes) : 0;
-+	}
-+
-+	spin_unlock(&dq_data_lock);
-+	dqput(dquot);
-+	return 0;
-+}
-+
- static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
- {
- 	struct super_block *sb = dentry->d_sb;
-@@ -5153,6 +5193,7 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
- 	ext4_fsblk_t overhead = 0, resv_blocks;
- 	u64 fsid;
- 	s64 bfree;
-+	struct inode *inode = dentry->d_inode;
- 	resv_blocks = EXT4_C2B(sbi, atomic64_read(&sbi->s_resv_clusters));
- 
- 	if (!test_opt(sb, MINIX_DF))
-@@ -5177,6 +5218,9 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
- 	buf->f_fsid.val[0] = fsid & 0xFFFFFFFFUL;
- 	buf->f_fsid.val[1] = (fsid >> 32) & 0xFFFFFFFFUL;
- 
-+	if (ext4_test_inode_flag(inode, EXT4_INODE_PROJINHERIT) &&
-+	    sb_has_quota_limits_enabled(sb, PRJQUOTA))
-+		ext4_statfs_project(sb, EXT4_I(inode)->i_projid, buf);
- 	return 0;
- }
- 
-@@ -5341,7 +5385,8 @@ static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
- 	struct inode *qf_inode;
- 	unsigned long qf_inums[EXT4_MAXQUOTAS] = {
- 		le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
--		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
-+		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum),
-+		le32_to_cpu(EXT4_SB(sb)->s_es->s_prj_quota_inum)
- 	};
- 
- 	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA));
-@@ -5369,7 +5414,8 @@ static int ext4_enable_quotas(struct super_block *sb)
- 	int type, err = 0;
- 	unsigned long qf_inums[EXT4_MAXQUOTAS] = {
- 		le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
--		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
-+		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum),
-+		le32_to_cpu(EXT4_SB(sb)->s_es->s_prj_quota_inum)
- 	};
- 
- 	sb_dqopt(sb)->flags |= DQUOT_QUOTA_SYS_FILE;
--- 
-1.7.1
+ arch/x86/kvm/mmu.c                                 |    6 --
+ block/bio-integrity.c                              |    7 --
+ block/bio.c                                        |    7 --
+ block/blk-core.c                                   |    3 -
+ block/elevator.c                                   |    3 -
+ drivers/atm/he.c                                   |    7 --
+ drivers/block/aoe/aoedev.c                         |    3 -
+ drivers/block/drbd/drbd_main.c                     |   21 ++-----
+ drivers/block/pktcdvd.c                            |    3 -
+ drivers/block/rbd.c                                |    6 --
+ drivers/dma/dmaengine.c                            |    6 --
+ drivers/firmware/google/gsmi.c                     |    3 -
+ drivers/gpu/drm/i915/i915_dma.c                    |   19 ++----
+ drivers/iommu/amd_iommu_init.c                     |    7 --
+ drivers/md/bcache/bset.c                           |    3 -
+ drivers/md/bcache/request.c                        |    3 -
+ drivers/md/bcache/super.c                          |    9 +--
+ drivers/md/dm-bufio.c                              |    3 -
+ drivers/md/dm-cache-target.c                       |    3 -
+ drivers/md/dm-crypt.c                              |    6 --
+ drivers/md/dm-io.c                                 |    3 -
+ drivers/md/dm-log-userspace-base.c                 |    3 -
+ drivers/md/dm-region-hash.c                        |    4 -
+ drivers/md/dm.c                                    |   13 +---
+ drivers/md/multipath.c                             |    3 -
+ drivers/md/raid1.c                                 |    6 --
+ drivers/md/raid10.c                                |    9 +--
+ drivers/md/raid5.c                                 |    3 -
+ drivers/mtd/nand/nandsim.c                         |    3 -
+ drivers/mtd/ubi/attach.c                           |    4 -
+ drivers/net/ethernet/intel/ixgbe/ixgbe_fcoe.c      |    3 -
+ drivers/staging/lustre/lustre/llite/super25.c      |   16 +----
+ drivers/staging/lustre/lustre/obdclass/genops.c    |   24 ++------
+ drivers/staging/lustre/lustre/obdclass/lu_object.c |    6 --
+ drivers/staging/rdma/hfi1/user_sdma.c              |    3 -
+ drivers/thunderbolt/ctl.c                          |    3 -
+ drivers/usb/gadget/udc/bdc/bdc_core.c              |    3 -
+ drivers/usb/gadget/udc/gr_udc.c                    |    3 -
+ drivers/usb/gadget/udc/mv_u3d_core.c               |    3 -
+ drivers/usb/gadget/udc/mv_udc_core.c               |    3 -
+ drivers/usb/host/fotg210-hcd.c                     |   12 +---
+ drivers/usb/host/fusbh200-hcd.c                    |   12 +---
+ drivers/usb/host/whci/init.c                       |    3 -
+ drivers/usb/host/xhci-mem.c                        |   12 +---
+ fs/btrfs/backref.c                                 |    3 -
+ fs/btrfs/delayed-inode.c                           |    3 -
+ fs/btrfs/delayed-ref.c                             |   12 +---
+ fs/btrfs/disk-io.c                                 |    3 -
+ fs/btrfs/extent_io.c                               |    6 --
+ fs/btrfs/extent_map.c                              |    3 -
+ fs/btrfs/file.c                                    |    3 -
+ fs/btrfs/inode.c                                   |   18 ++----
+ fs/btrfs/ordered-data.c                            |    3 -
+ fs/dlm/memory.c                                    |    6 --
+ fs/ecryptfs/main.c                                 |    3 -
+ fs/ext4/crypto.c                                   |    9 +--
+ fs/ext4/extents_status.c                           |    3 -
+ fs/ext4/mballoc.c                                  |    3 -
+ fs/f2fs/crypto.c                                   |    9 +--
+ fs/gfs2/main.c                                     |   29 ++--------
+ fs/jbd2/journal.c                                  |   15 +----
+ fs/jbd2/revoke.c                                   |   12 +---
+ fs/jbd2/transaction.c                              |    6 --
+ fs/jffs2/malloc.c                                  |   27 +++------
+ fs/nfsd/nfscache.c                                 |    6 --
+ fs/nilfs2/super.c                                  |   12 +---
+ fs/ocfs2/dlm/dlmlock.c                             |    3 -
+ fs/ocfs2/dlm/dlmmaster.c                           |   16 +----
+ fs/ocfs2/super.c                                   |   18 ++----
+ fs/ocfs2/uptodate.c                                |    3 -
+ lib/debugobjects.c                                 |    3 -
+ net/core/sock.c                                    |   12 +---
+ net/dccp/ackvec.c                                  |   12 +---
+ net/dccp/ccid.c                                    |    3 -
+ net/sunrpc/sched.c                                 |   12 +---
+ 75 files changed, 180 insertions(+), 381 deletions(-)
