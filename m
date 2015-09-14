@@ -1,86 +1,86 @@
-From: Julia Lawall <Julia.Lawall@lip6.fr>
-Subject: [PATCH 07/39] fs: ext4: drop null test before destroy functions
-Date: Sun, 13 Sep 2015 14:15:00 +0200
-Message-ID: <1442146532-9100-8-git-send-email-Julia.Lawall@lip6.fr>
-References: <1442146532-9100-1-git-send-email-Julia.Lawall@lip6.fr>
-Cc: sergey.senozhatsky@gmail.com, kernel-janitors@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1442146532-9100-1-git-send-email-Julia.Lawall@lip6.fr>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Sander Smeenk <ssmeenk@freshdot.net>
+Subject: Re: ext4 metadata corruption bug bites again
+Date: Mon, 14 Sep 2015 10:05:52 +0200
+Message-ID: <20150914080552.GE1883@dot.dmz.freshdot.net>
+References: <20150821094534.GD20572@dot.dmz.freshdot.net>
+ <20150824131406.GE20572@dot.dmz.freshdot.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from dot.freshdot.net ([213.154.236.176]:51833 "EHLO
+	dot.freshdot.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752227AbbINIWS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Sep 2015 04:22:18 -0400
+Content-Disposition: inline
+In-Reply-To: <20150824131406.GE20572@dot.dmz.freshdot.net>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Remove unneeded NULL test.
+Quoting Sander Smeenk (ssmeenk@freshdot.net):
 
-The semantic patch that makes this change is as follows:
-(http://coccinelle.lip6.fr/)
+> I'm now running 3.19.8-ckt4 with WARN_ON(1); inserted in the above
+> mentioned error situations.
 
-// <smpl>
-@@ expression x; @@
--if (x != NULL)
-  \(kmem_cache_destroy\|mempool_destroy\|dma_pool_destroy\)(x);
-// </smpl>
 
-Signed-off-by: Julia Lawall <Julia.Lawall@lip6.fr>
+And today the system went RO again. Now i have the WARN_ON(1) output:
+| EXT4-fs (vdb): pa ffff880016544888: logic 982168, phys. 2469410748, len 104
+| EXT4-fs error (device vdb): ext4_mb_release_inode_pa:3773: group 75360, free 38, pa_free 36
+| Aborting journal on device vdb-8.
+| EXT4-fs (vdb): Remounting filesystem read-only
+| ------------[ cut here ]------------
+| WARNING: CPU: 1 PID: 1706 at fs/ext4/mballoc.c:3774 ext4_mb_release_inode_pa.isra.27+0x1cb/0x2c0()
+| Modules linked in: nf_conntrack_ipv6 nf_defrag_ipv6 ip6table_filter xt_tcpudp ip6_tables
+|     nf_conntrack_ipv4 nf_defrag_ipv4 xt_conntrack nf_conntrack iptable_filter ip_tables
+|     x_tables cirrus ttm drm_kms_helper drm kvm_intel kvm ppdev syscopyarea sysfillrect
+|     8250_fintek serio_raw i2c_piix4 sysimgblt pvpanic parport_pc mac_hid nfsd auth_rpcgss nfs_acl
+|     lockd grace sunrpc lp parport autofs4 psmouse floppy pata_acpi
+| CPU: 1 PID: 1706 Comm: deluged Not tainted 3.19.8-ckt4 #1
+| Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+|  ffffffff81ab4fef ffff8800da1bb978 ffffffff817c3760 0000000000000007
+|  0000000000000000 ffff8800da1bb9b8 ffffffff8107696a ffff8800da1bb9a8
+|  0000000000000026 0000000000003825 0000000000003824 ffff880016544888
+| Call Trace:
+|  [<ffffffff817c3760>] dump_stack+0x45/0x57
+|  [<ffffffff8107696a>] warn_slowpath_common+0x8a/0xc0
+|  [<ffffffff81076a5a>] warn_slowpath_null+0x1a/0x20
+|  [<ffffffff812b01bb>] ext4_mb_release_inode_pa.isra.27+0x1cb/0x2c0
+|  [<ffffffff812739df>] ? ext4_read_block_bitmap_nowait+0x26f/0x5f0
+|  [<ffffffff812b3c6a>] ext4_discard_preallocations+0x30a/0x490
+|  [<ffffffff8127b578>] ext4_da_update_reserve_space+0x178/0x1b0
+|  [<ffffffff812a9129>] ext4_ext_map_blocks+0xcd9/0xe50
+|  [<ffffffff8127b6d9>] ext4_map_blocks+0x129/0x570
+|  [<ffffffff8127e89d>] ? ext4_writepages+0x35d/0xca0
+|  [<ffffffff812ab3a9>] ? __ext4_journal_start_sb+0x69/0xe0
+|  [<ffffffff8127eac2>] ext4_writepages+0x582/0xca0
+|  [<ffffffff81187a4e>] do_writepages+0x1e/0x30
+|  [<ffffffff8117bbe9>] __filemap_fdatawrite_range+0x59/0x60
+|  [<ffffffff8117bc4c>] filemap_write_and_wait+0x2c/0x60
+|  [<ffffffff8120903d>] do_vfs_ioctl+0x3fd/0x4e0
+|  [<ffffffff812091a1>] SyS_ioctl+0x81/0xa0
+|  [<ffffffff817ca84d>] system_call_fastpath+0x16/0x1b
+| ---[ end trace c7de4d0d78cb95b6 ]---
+| EXT4-fs error (device vdb) in ext4_writepages:2412: IO failure
+| EXT4-fs (vdb): ext4_writepages: jbd2_start: 9223372036854775751 pages, ino 84149503; err -30
 
----
- fs/ext4/crypto.c         |    9 +++------
- fs/ext4/extents_status.c |    3 +--
- fs/ext4/mballoc.c        |    3 +--
- 3 files changed, 5 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 26724ae..42096d3 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -161,8 +161,7 @@ int __init ext4_init_es(void)
- 
- void ext4_exit_es(void)
- {
--	if (ext4_es_cachep)
--		kmem_cache_destroy(ext4_es_cachep);
-+	kmem_cache_destroy(ext4_es_cachep);
- }
- 
- void ext4_es_init_tree(struct ext4_es_tree *tree)
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 34b610e..b5adfb9 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2520,8 +2520,7 @@ static void ext4_groupinfo_destroy_slabs(void)
- 	int i;
- 
- 	for (i = 0; i < NR_GRPINFO_CACHES; i++) {
--		if (ext4_groupinfo_caches[i])
--			kmem_cache_destroy(ext4_groupinfo_caches[i]);
-+		kmem_cache_destroy(ext4_groupinfo_caches[i]);
- 		ext4_groupinfo_caches[i] = NULL;
- 	}
- }
-diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-index 4573155..e4d6d30 100644
---- a/fs/ext4/crypto.c
-+++ b/fs/ext4/crypto.c
-@@ -153,17 +153,14 @@ void ext4_exit_crypto(void)
- 	list_for_each_entry_safe(pos, n, &ext4_free_crypto_ctxs, free_list)
- 		kmem_cache_free(ext4_crypto_ctx_cachep, pos);
- 	INIT_LIST_HEAD(&ext4_free_crypto_ctxs);
--	if (ext4_bounce_page_pool)
--		mempool_destroy(ext4_bounce_page_pool);
-+	mempool_destroy(ext4_bounce_page_pool);
- 	ext4_bounce_page_pool = NULL;
- 	if (ext4_read_workqueue)
- 		destroy_workqueue(ext4_read_workqueue);
- 	ext4_read_workqueue = NULL;
--	if (ext4_crypto_ctx_cachep)
--		kmem_cache_destroy(ext4_crypto_ctx_cachep);
-+	kmem_cache_destroy(ext4_crypto_ctx_cachep);
- 	ext4_crypto_ctx_cachep = NULL;
--	if (ext4_crypt_info_cachep)
--		kmem_cache_destroy(ext4_crypt_info_cachep);
-+	kmem_cache_destroy(ext4_crypt_info_cachep);
- 	ext4_crypt_info_cachep = NULL;
- }
- 
+After this, the system started logging:
+| EXT4-fs error (device vdb): ext4_find_extent:900: inode #84149503: comm deluged: 
+|    pblk 225181822 bad header/extent: invalid magic - magic 53fd, entries 37907, max 27407(0), depth 50401(0)
+
+
+Ran e2fsck and got:
+| Pass 5: Checking group summary information
+| Block bitmap differences:   +(1431556444--1431556445) +(2469410748-2469410749)
+| Free blocks count wrong (134030133, counted=57970467).
+| Free inodes count wrong (670746893, counted=670746452).
+
+
+All fixed and system is running again.
+
+
+HTH,
+-Sander.
+-- 
+| Why does your nose run, and your feet smell?
+| 4096R/20CC6CD2 - 6D40 1A20 B9AA 87D4 84C7  FBD6 F3A9 9442 20CC 6CD2
