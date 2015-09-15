@@ -1,56 +1,48 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [GIT PULL] Ext3 removal, quota & udf fixes
-Date: Tue, 15 Sep 2015 07:31:20 +0200
-Message-ID: <20150915053120.GC2392@quack.suse.cz>
-References: <20150831061920.GA2751@quack.suse.cz>
- <CA+55aFweA1J+a5MYxgWDOAg0p+UdqfP+Z1aFKs1c8n0hWUiBDw@mail.gmail.com>
- <20150902165201.GW12432@techsingularity.net>
- <20150902184522.GA10390@birch.djwong.org>
- <CA+55aFy4LZP3_eNq=tBjkbPaVVRuQxuXRXV=+yLsvqzD9jXqyA@mail.gmail.com>
+From: Nikhilesh Reddy <reddyn@codeaurora.org>
+Subject: Using Cache barriers in lieu of REQ_FLUSH | REQ_FUA for emmc 5.1
+ (jdec spec JESD84-B51)
+Date: Tue, 15 Sep 2015 16:17:46 -0700
+Message-ID: <55F8A71A.3030001@codeaurora.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	Mel Gorman <mgorman@techsingularity.net>,
-	Jan Kara <jack@suse.cz>, LKML <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CA+55aFy4LZP3_eNq=tBjkbPaVVRuQxuXRXV=+yLsvqzD9jXqyA@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp.codeaurora.org ([198.145.29.96]:41189 "EHLO
+	smtp.codeaurora.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750764AbbIOXRy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Sep 2015 19:17:54 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 02-09-15 16:47:24, Linus Torvalds wrote:
-> On Wed, Sep 2, 2015 at 11:45 AM, Darrick J. Wong
-> <darrick.wong@oracle.com> wrote:
-> > On Wed, Sep 02, 2015 at 05:52:01PM +0100, Mel Gorman wrote:
-> >> On the flip side, there does not appear to be any good reason for
-> >> keeping the ext3 driver around because if there ever is a case where an
-> >> old kernel is required to mount an ext3 filesystem then it appears the
-> >> ext4 developers would consider it a bug.
-> >
-> > Yes, that would be a bug.
-> 
-> So the thing I'm happy to see is that the ext4 developers seem to
-> unanimously agree that maintaining ext3 compatibility is part of their
-> job, and nobody seems to be arguing for keeping ext3 around. As long
-> as any possible regressions from ext3 removal have a clear "yup, it's
-> on us" from the ext4 people,  I don't mind removing it. I was
-> expecting ext4 people to not be thrilled about supporting possible
-> legacy cases.
-> 
-> As a result, I'm personally convinced. I'll get around to the
-> filesystem pulls tomorrow unless something unexpected happens, and
-> expect to pull Jan's ext3-removal tree unless somebody suddenly speaks
-> up.
+Hi
 
-Thanks for pulling. Next time I will do a better job when writing a
-changelog for such large change. We were discussing this on and off for
-last two years with other ext4 developers so when I finally decided the
-time for removal has come, it felt obvious to me...
+The eMMC 5.1 spec defines cache "barrier" capability of the eMMC device 
+as defined in JESD84-B51
 
-								Honza
+I was wondering if there were any downsides to replacing the 
+WRITE_FLUSH_FUA	 with the cache barrier?
+
+I understand that REQ_FLUSH is used to ensure that the current cache be 
+flushed to prevent any reordering but I dont seem to be clear on why
+REQ_FUA is used.
+Can someone please help me understand this part?
+
+But as far as I understand it ... the cache barriers can be used to 
+replace all the flush requests.
+
+Please let me know if there is any downside to this ?
+
+I know there there was a big decision in 2010 
+https://lwn.net/Articles/400541/
+and http://lwn.net/Articles/399148/
+to remove the software based barrier support... but with the hardware 
+supporting "barriers" is there a downside to using them to replace the 
+flushes?
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Thanks
+Nikhilesh Reddy
+
+Qualcomm Innovation Center, Inc.
+The Qualcomm Innovation Center, Inc. is a member of the Code Aurora Forum,
+a Linux Foundation Collaborative Project.
