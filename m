@@ -1,48 +1,47 @@
-From: Nikhilesh Reddy <reddyn@codeaurora.org>
-Subject: Using Cache barriers in lieu of REQ_FLUSH | REQ_FUA for emmc 5.1
- (jdec spec JESD84-B51)
-Date: Tue, 15 Sep 2015 16:17:46 -0700
-Message-ID: <55F8A71A.3030001@codeaurora.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 104661] New: file is not showing any content
+Date: Wed, 16 Sep 2015 09:14:09 +0000
+Message-ID: <bug-104661-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.codeaurora.org ([198.145.29.96]:41189 "EHLO
-	smtp.codeaurora.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750764AbbIOXRy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Sep 2015 19:17:54 -0400
+Received: from mail.kernel.org ([198.145.29.136]:50588 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752640AbbIPJOM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Sep 2015 05:14:12 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 9B7FD20898
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2015 09:14:11 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 2E40220886
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2015 09:14:10 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi
+https://bugzilla.kernel.org/show_bug.cgi?id=104661
 
-The eMMC 5.1 spec defines cache "barrier" capability of the eMMC device 
-as defined in JESD84-B51
+            Bug ID: 104661
+           Summary: file is not showing any content
+           Product: File System
+           Version: 2.5
+    Kernel Version: 4.1
+          Hardware: IA-64
+                OS: Linux
+              Tree: Fedora
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: bindupulikanti@gmail.com
+        Regression: No
 
-I was wondering if there were any downsides to replacing the 
-WRITE_FLUSH_FUA	 with the cache barrier?
+Created attachment 187731
+  --> https://bugzilla.kernel.org/attachment.cgi?id=187731&action=edit
+attached the file of not showing the content
 
-I understand that REQ_FLUSH is used to ensure that the current cache be 
-flushed to prevent any reordering but I dont seem to be clear on why
-REQ_FUA is used.
-Can someone please help me understand this part?
-
-But as far as I understand it ... the cache barriers can be used to 
-replace all the flush requests.
-
-Please let me know if there is any downside to this ?
-
-I know there there was a big decision in 2010 
-https://lwn.net/Articles/400541/
-and http://lwn.net/Articles/399148/
-to remove the software based barrier support... but with the hardware 
-supporting "barriers" is there a downside to using them to replace the 
-flushes?
 -- 
-Thanks
-Nikhilesh Reddy
-
-Qualcomm Innovation Center, Inc.
-The Qualcomm Innovation Center, Inc. is a member of the Code Aurora Forum,
-a Linux Foundation Collaborative Project.
+You are receiving this mail because:
+You are watching the assignee of the bug.
