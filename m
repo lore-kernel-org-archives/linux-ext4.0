@@ -1,35 +1,83 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 102731] I have a cough.
-Date: Wed, 16 Sep 2015 14:09:15 +0000
-Message-ID: <bug-102731-13602-9EvhyNDVdD@https.bugzilla.kernel.org/>
-References: <bug-102731-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] fs/ext4: fix potential endless loop in
+ ext4_mb_discard_group_preallocations()
+Date: Wed, 16 Sep 2015 21:45:10 +0200
+Message-ID: <20150916194510.GC29530@quack.suse.cz>
+References: <1441013790-87948-1-git-send-email-zhenzhang.zhang@huawei.com>
+ <55E42270.9040503@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "tytso@mit.edu" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	adilger.kernel@dilger.ca,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Zhang Zhen <zhenzhang.zhang@huawei.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:39643 "EHLO mail.kernel.org"
+Received: from mx2.suse.de ([195.135.220.15]:59707 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752255AbbIPOJS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Sep 2015 10:09:18 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id C25F6207C0
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2015 14:09:17 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id E474C2086A
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2015 14:09:15 +0000 (UTC)
-In-Reply-To: <bug-102731-13602@https.bugzilla.kernel.org/>
+	id S1751689AbbIPTpO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Sep 2015 15:45:14 -0400
+Content-Disposition: inline
+In-Reply-To: <55E42270.9040503@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=102731
+On Mon 31-08-15 17:46:24, Zhang Zhen wrote:
+> In ext4_mb_discard_group_preallocations(), if free is always less than needed,
+> and some PAs are always used in every loop, it will be endless loop.
+> 
+> Here we pick a random value to limit the max number of loop.
 
---- Comment #12 from John Hughes <john@calva.com> ---
-Ok, as of a few minutes ago I am running the Debian 3.16 kernel again, with all
-the mdadm devices unmirrored.
+Were you able to trigger this in practice or is it just a theoretical
+concern?
 
-More news if I see the problem again.
+My slight concern is that in theory we could prematurely declare ENOSPC
+with this patch since ext4_mb_discard_preallocations() doesn't reliably
+discard all the preallocations anymore. But probably that's acceptable.
+But we should add a comment before ext4_mb_discard_group_preallocations()
+saying that the functions needn't free all the preallocations.
 
+								Honza
+> 
+> Signed-off-by: Zhang Zhen <zhenzhang.zhang@huawei.com>
+> ---
+>  fs/ext4/mballoc.c | 7 +++++--
+>  1 file changed, 5 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 34b610e..553fbde 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -3836,6 +3836,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
+>  	int err;
+>  	int busy = 0;
+>  	int free = 0;
+> +	int tried = 0;
+> 
+>  	mb_debug(1, "discard preallocation for group %u\n", group);
+> 
+> @@ -3886,9 +3887,11 @@ repeat:
+>  		list_add(&pa->u.pa_tmp_list, &list);
+>  	}
+> 
+> -	/* if we still need more blocks and some PAs were used, try again */
+> -	if (free < needed && busy) {
+> +	/* if we still need more blocks and some PAs were used, try again,
+> +	   here 20 is a ramdon value. */
+> +	if (free < needed && busy && tried < 20) {
+>  		busy = 0;
+> +		tried++;
+>  		ext4_unlock_group(sb, group);
+>  		cond_resched();
+>  		goto repeat;
+> -- 
+> 1.9.1
+> 
+> 
+> .
+> 
+> 
+> 
+> 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
