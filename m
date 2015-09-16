@@ -1,83 +1,39 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] fs/ext4: fix potential endless loop in
- ext4_mb_discard_group_preallocations()
-Date: Wed, 16 Sep 2015 21:45:10 +0200
-Message-ID: <20150916194510.GC29530@quack.suse.cz>
-References: <1441013790-87948-1-git-send-email-zhenzhang.zhang@huawei.com>
- <55E42270.9040503@huawei.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 104661] file is not showing any content
+Date: Wed, 16 Sep 2015 19:53:49 +0000
+Message-ID: <bug-104661-13602-0csz6Np1KU@https.bugzilla.kernel.org/>
+References: <bug-104661-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "tytso@mit.edu" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	adilger.kernel@dilger.ca,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Zhang Zhen <zhenzhang.zhang@huawei.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:59707 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.29.136]:60772 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751689AbbIPTpO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Sep 2015 15:45:14 -0400
-Content-Disposition: inline
-In-Reply-To: <55E42270.9040503@huawei.com>
+	id S1752349AbbIPTxw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Sep 2015 15:53:52 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 45CE8207EF
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2015 19:53:51 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id C9AB52083D
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2015 19:53:49 +0000 (UTC)
+In-Reply-To: <bug-104661-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 31-08-15 17:46:24, Zhang Zhen wrote:
-> In ext4_mb_discard_group_preallocations(), if free is always less than needed,
-> and some PAs are always used in every loop, it will be endless loop.
-> 
-> Here we pick a random value to limit the max number of loop.
+https://bugzilla.kernel.org/show_bug.cgi?id=104661
 
-Were you able to trigger this in practice or is it just a theoretical
-concern?
+Eric Sandeen <sandeen@redhat.com> changed:
 
-My slight concern is that in theory we could prematurely declare ENOSPC
-with this patch since ext4_mb_discard_preallocations() doesn't reliably
-discard all the preallocations anymore. But probably that's acceptable.
-But we should add a comment before ext4_mb_discard_group_preallocations()
-saying that the functions needn't free all the preallocations.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |sandeen@redhat.com
 
-								Honza
-> 
-> Signed-off-by: Zhang Zhen <zhenzhang.zhang@huawei.com>
-> ---
->  fs/ext4/mballoc.c | 7 +++++--
->  1 file changed, 5 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 34b610e..553fbde 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -3836,6 +3836,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
->  	int err;
->  	int busy = 0;
->  	int free = 0;
-> +	int tried = 0;
-> 
->  	mb_debug(1, "discard preallocation for group %u\n", group);
-> 
-> @@ -3886,9 +3887,11 @@ repeat:
->  		list_add(&pa->u.pa_tmp_list, &list);
->  	}
-> 
-> -	/* if we still need more blocks and some PAs were used, try again */
-> -	if (free < needed && busy) {
-> +	/* if we still need more blocks and some PAs were used, try again,
-> +	   here 20 is a ramdon value. */
-> +	if (free < needed && busy && tried < 20) {
->  		busy = 0;
-> +		tried++;
->  		ext4_unlock_group(sb, group);
->  		cond_resched();
->  		goto repeat;
-> -- 
-> 1.9.1
-> 
-> 
-> .
-> 
-> 
-> 
-> 
+--- Comment #1 from Eric Sandeen <sandeen@redhat.com> ---
+This bug makes no sense to me.  You've attached a simple C file which does no
+filesysem IO.  How is this related to filesystems?
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
