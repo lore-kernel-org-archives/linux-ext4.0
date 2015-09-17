@@ -1,111 +1,88 @@
-From: Andrey Konovalov <andreyknvl@google.com>
-Subject: User-memory-access in ext4_orphan_del
-Date: Thu, 17 Sep 2015 15:01:24 +0200
-Message-ID: <CAAeHK+ww-PunDvAZqScLbFYiG=4jTt7cQTLEo+oDGzeQPY+oOg@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] resize2fs: clear uninit BG if allocating from new group
+Date: Thu, 17 Sep 2015 17:42:18 -0500
+Message-ID: <55FB41CA.8010003@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Dmitry Vyukov <dvyukov@google.com>,
-	Alexander Potapenko <glider@google.com>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:49726 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752451AbbIQWmY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Sep 2015 18:42:24 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (Postfix) with ESMTPS id 25DBDC07585F
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2015 22:42:24 +0000 (UTC)
+Received: from Liberator.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t8HMgMEc028244
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2015 18:42:23 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
+If resize2fs_get_alloc_block() allocates from a BLOCK_UNINIT
+group, nothing clears the UNINIT flag, so it is skipped when we
+go to write out modified bitmaps.  This leads to post-resize2fs
+e2fsck errors; used blocks in UNINIT groups, not marked in the
+block bitmap.
 
-While fuzzing the kernel (d25ed277fbd) with KASAN and Trinity I got
-the report below.
+This shamelessly cuts & pastes clear_block_uninit() into
+resize2fs.c, and my problem goes away.
 
-This report is followed by:
-kernel BUG at fs/buffer.c:3025
-BUG: KASan: use after free in mutex_optimistic_spin
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-Crash log is here:
-https://gist.github.com/xairy/3b7fcf1cd2541c64c8d1
+I've kind of lost the thread on resize2fs lately, so maybe this is
+a hack job?  At least it highlights the issue, even if it's not
+quite right.  Passes "make check" here and seems ok to me...
 
-Here is another crash log that I got in a separate run (starts with
-kernel BUG at fs/ext4/ext4.h:2610!), but it seems somewhat similar:
-https://gist.github.com/xairy/6ab010c20eb437ec23af
+Thanks,
+-Eric
 
-==================================================================
-BUG: KASan: user-memory-access on address dead000000000108
-Write of size 8 by task rs:main Q:Reg/2999
-CPU: 0 PID: 2999 Comm: rs:main Q:Reg Not tainted 4.3.0-rc1-kasan #9
-Hardware name: Red Hat KVM, BIOS 0.5.1 01/01/2007
- ffff880034067990 ffff880034507a40 ffffffff814a3aac 0000000000000297
- ffff880034507a60 ffffffff812107a9 ffff8800340679d0 dead000000000200
- ffff880034507a98 ffffffff8120f1ca dead000000000108 ffff880034507a98
-Call Trace:
- [<ffffffff814a3aac>] dump_stack+0x44/0x58 lib/dump_stack.c:15
- [<ffffffff812107a9>] kasan_report_user_access+0x89/0xb0 ??:0
- [<ffffffff8120f1ca>] __asan_store8+0x8a/0xa0 ??:0
- [<     inline     >] ? __list_del include/linux/list.h:89
- [<     inline     >] ? __list_del_entry include/linux/list.h:102
- [<     inline     >] ? list_del_init include/linux/list.h:145
- [<ffffffff812e8874>] ? ext4_orphan_del+0x114/0x3a0 fs/ext4/namei.c:2859
- [<     inline     >] __list_del include/linux/list.h:89
- [<     inline     >] __list_del_entry include/linux/list.h:102
- [<     inline     >] list_del_init include/linux/list.h:145
- [<ffffffff812e8874>] ext4_orphan_del+0x114/0x3a0 fs/ext4/namei.c:2859
- [<ffffffff812d89cc>] ext4_truncate+0x50c/0x640 fs/ext4/inode.c:3797
- [<ffffffff812d9248>] ext4_da_write_begin+0x228/0x3a0 fs/ext4/truncate.h:14
- [<ffffffff811a1e62>] generic_perform_write+0x112/0x2e0 mm/filemap.c:2476
- [<ffffffff811a49f3>] __generic_file_write_iter+0x253/0x2f0 mm/filemap.c:2622
- [<ffffffff81115e9a>] ? get_futex_key_refs.isra.12+0x1a/0x50 kernel/futex.c:399
- [<     inline     >] ? iov_iter_truncate include/linux/uio.h:136
- [<ffffffff811a236e>] ? generic_write_checks+0x12e/0x210 mm/filemap.c:2333
- [<ffffffff812c95ab>] ext4_file_write_iter+0x16b/0x5f0 file.c:0
- [<ffffffff811165fc>] ? futex_wake+0x8c/0x1d0 kernel/futex.c:611
- [<ffffffff814be772>] ? iov_iter_init+0x82/0xc0 ??:0
- [<ffffffff81217818>] __vfs_write+0x128/0x170 ??:0
- [<ffffffff812180ab>] vfs_write+0xeb/0x250 ??:0
- [<ffffffff81219283>] SyS_write+0x53/0xb0 ??:0
- [<ffffffff81d4ed62>] tracesys_phase2+0x84/0x89 arch/x86/entry/entry_64.S:269
-==================================================================
-general protection fault: 0000 [#1] SMP KASAN
-Modules linked in:
-CPU: 0 PID: 2999 Comm: rs:main Q:Reg Not tainted 4.3.0-rc1-kasan #9
-Hardware name: Red Hat KVM, BIOS 0.5.1 01/01/2007
-task: ffff880033d75940 ti: ffff880034500000 task.ti: ffff880034500000
-RIP: 0010:[<ffffffff812e887b>]  [<ffffffff812e887b>] ext4_orphan_del+0x11b/0x3a0
-RSP: 0018:ffff880034507aa8  EFLAGS: 00010297
-RAX: dead000000000100 RBX: ffff8800340679d0 RCX: 0000000000000042
-RDX: 1ffffffff04a6bd0 RSI: 0000000000000297 RDI: dead000000000200
-RBP: ffff880034507b30 R08: 000000000000003d R09: 000000000000003d
-R10: ffffffff824c057b R11: 3d3d3d3d3d3d3d3d R12: dead000000000200
-R13: ffff880034ac40c0 R14: 0000000000000000 R15: ffff880034067990
-FS:  00007f8731819700(0000) GS:ffff880036400000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007fffc6cbdfc8 CR3: 0000000032b96000 CR4: 00000000000006f0
-DR0: 00007f0dd31d7000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000600
-Stack:
- ffff8800340679f8 ffff880034ac42d0 dead000000000200 ffff880034067910
- dead000000000100 ffff880034216b80 ffff8800341f9238 0000000000000b00
- ffff880000000002 ffff8800341f9238 0000000000000b00 ffff880000000002
-Call Trace:
- [<ffffffff812d89cc>] ext4_truncate+0x50c/0x640 fs/ext4/inode.c:3797
- [<ffffffff812d9248>] ext4_da_write_begin+0x228/0x3a0 fs/ext4/truncate.h:14
- [<ffffffff811a1e62>] generic_perform_write+0x112/0x2e0 mm/filemap.c:2476
- [<ffffffff811a49f3>] __generic_file_write_iter+0x253/0x2f0 mm/filemap.c:2622
- [<ffffffff81115e9a>] ? get_futex_key_refs.isra.12+0x1a/0x50 kernel/futex.c:399
- [<     inline     >] ? iov_iter_truncate include/linux/uio.h:136
- [<ffffffff811a236e>] ? generic_write_checks+0x12e/0x210 mm/filemap.c:2333
- [<ffffffff812c95ab>] ext4_file_write_iter+0x16b/0x5f0 file.c:0
- [<ffffffff811165fc>] ? futex_wake+0x8c/0x1d0 kernel/futex.c:611
- [<ffffffff814be772>] ? iov_iter_init+0x82/0xc0 ??:0
- [<ffffffff81217818>] __vfs_write+0x128/0x170 ??:0
- [<ffffffff812180ab>] vfs_write+0xeb/0x250 ??:0
- [<ffffffff81219283>] SyS_write+0x53/0xb0 ??:0
- [<ffffffff81d4ed62>] tracesys_phase2+0x84/0x89 arch/x86/entry/entry_64.S:269
-Code: ff 48 8b 43 c0 49 8d 7c 24 08 48 89 45 98 e8 9d 6c f2 ff 48 8b
-45 98 4c 8b 63 c8 48 8d 78 08 e8 cc 68 f2 ff 48 8b 45 98 4c 89 e7 <4c>
-89 60 08 e8 bc 68 f2 ff 48 8b 45 98 45 85 f6 49 89 04 24 4c
-RIP  [<     inline     >] __list_del include/linux/list.h:90
-RIP  [<     inline     >] __list_del_entry include/linux/list.h:102
-RIP  [<     inline     >] list_del_init include/linux/list.h:145
-RIP  [<ffffffff812e887b>] ext4_orphan_del+0x11b/0x3a0 fs/ext4/namei.c:2859
- RSP <ffff880034507aa8>
----[ end trace 73c806d9f233bae7 ]---
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 07c6a0c..0f202bd 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -1614,12 +1614,27 @@ static blk64_t get_new_block(ext2_resize_t rfs)
+ 	}
+ }
+ 
++static void clear_block_uninit(ext2_filsys fs, dgrp_t group)
++{
++	if (!ext2fs_has_group_desc_csum(fs) ||
++	    !(ext2fs_bg_flags_test(fs, group, EXT2_BG_BLOCK_UNINIT)))
++		return;
++
++	/* uninit block bitmaps are now initialized in read_bitmaps() */
++
++	ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
++	ext2fs_group_desc_csum_set(fs, group);
++	ext2fs_mark_super_dirty(fs);
++	ext2fs_mark_bb_dirty(fs);
++}
++
+ static errcode_t resize2fs_get_alloc_block(ext2_filsys fs,
+ 					   blk64_t goal EXT2FS_ATTR((unused)),
+ 					   blk64_t *ret)
+ {
+ 	ext2_resize_t rfs = (ext2_resize_t) fs->priv_data;
+ 	blk64_t blk;
++	int group;
+ 
+ 	blk = get_new_block(rfs);
+ 	if (!blk)
+@@ -1632,6 +1647,12 @@ static errcode_t resize2fs_get_alloc_block(ext2_filsys fs,
+ 
+ 	ext2fs_mark_block_bitmap2(rfs->old_fs->block_map, blk);
+ 	ext2fs_mark_block_bitmap2(rfs->new_fs->block_map, blk);
++
++	group = ext2fs_group_of_blk2(rfs->old_fs, blk);
++	clear_block_uninit(rfs->old_fs, group);
++	group = ext2fs_group_of_blk2(rfs->new_fs, blk);
++	clear_block_uninit(rfs->new_fs, group);
++
+ 	*ret = (blk64_t) blk;
+ 	return 0;
+ }
+
