@@ -1,717 +1,97 @@
-From: Johan Harvyl <johan@harvyl.se>
-Subject: Re: resize2fs: Should never happen: resize inode corrupt! - lost key
- inodes
-Date: Fri, 18 Sep 2015 20:26:36 +0200
-Message-ID: <55FC575C.40205@harvyl.se>
-References: <55CA3BDE.7020401@harvyl.se> <20150811224718.GD20658@thunk.org>
- <55CBC212.6000507@harvyl.se> <20150813132716.GB26095@thunk.org>
- <55CCDE20.3010108@harvyl.se> <55E8C6AC.5000308@harvyl.se>
- <55F3FE07.9030807@harvyl.se> <55F73DAD.6020807@harvyl.se>
- <55F85B90.3000709@harvyl.se> <B9C846A3-35D0-480C-9888-3F46E8A9C6A5@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 7bit
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH e2fsprogs] subst: use 0644 perms
+Date: Fri, 18 Sep 2015 14:36:34 -0600
+Message-ID: <E6355B76-4796-4AFE-B971-CC544331DEB8@dilger.ca>
+References: <1442562858-862-1-git-send-email-vapier@gentoo.org> <E093072B-F995-496D-BE3D-B14EB5A1C27A@dilger.ca> <20150918180824.GE2213@vapier.lan>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
 Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>, Theodore Ts'o <tytso@mit.edu>
+To: Mike Frysinger <vapier@gentoo.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f194.google.com ([209.85.217.194]:36784 "EHLO
-	mail-lb0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752078AbbIRS0p (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Sep 2015 14:26:45 -0400
-Received: by lbbti1 with SMTP id ti1so3206732lbb.3
-        for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2015 11:26:43 -0700 (PDT)
-In-Reply-To: <B9C846A3-35D0-480C-9888-3F46E8A9C6A5@dilger.ca>
+Received: from mail-pa0-f42.google.com ([209.85.220.42]:33716 "EHLO
+	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751659AbbIRUgk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Sep 2015 16:36:40 -0400
+Received: by pacex6 with SMTP id ex6so59966325pac.0
+        for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2015 13:36:39 -0700 (PDT)
+In-Reply-To: <20150918180824.GE2213@vapier.lan>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Sep 18, 2015, at 12:08 PM, Mike Frysinger <vapier@gentoo.org> wrote:
+> 
+> On 18 Sep 2015 10:52, Andreas Dilger wrote:
+>> On Sep 18, 2015, at 01:54, Mike Frysinger <vapier@gentoo.org> wrote:
+>>> When running on NFS, opening files with 0444 perms for writing can
+>>> sometimes fail.  Since there's no real reason for these files to be
+>>> read-only, give the owner write permission.
+>> 
+>> Actually, there IS a reason for subst to make these files read-only. They are auto-generated and any edits to these files can be overwritten and lost if their origin files are modified. 
+>> 
+>> I'd lost edits to these auto generated files many time because they are the ones that "tags" or "cscope" will jump to when searching for symbols. 
+>> 
+>> There really isn't any reason for them to be writable, so the fact that you are getting an error trying to open them for writing is a hint that you are doing, or going to do, the wrong thing and the read-only nature of the file is preventing you from going down the wrong path. 
+> 
+> I think you misread my report.  this has nothing to do with people
+> trying to modify the files after the fact.  NFS can (and sometimes
+> does) throw an error at the time of the *open* call even if the file
+> doesn't exist.
 
-I should have thought of that, but unfortunately it will not allow me to 
-do so.
+Seems like a bug in NFS.  At least I know the POSIX test suite requires
+that to work (we had similar problems with Lustre that had to be fixed many years ago).  In fact, there is a special check for this in knfsd:
 
-# MKE2FS_CONFIG=/root/elatest/out/etc/mke2fs.conf 
-/root/elatest/out/sbin/mkfs.ext4 /dev/md0 -m 0 -b 1024 -O 64bit 3906887168k
-mke2fs 1.43-WIP (18-May-2015)
-Warning: specified blocksize 1024 is less than device physical 
-sectorsize 4096
-/dev/md0: Cannot create filesystem with requested number of inodes while 
-setting up superblock
-#
 
-Instead, I stuck to the 1k blocks and divided by four again...
-# MKE2FS_CONFIG=/root/elatest/out/etc/mke2fs.conf 
-/root/elatest/out/sbin/mkfs.ext4 /dev/md0 -m 0 -b 1024 -i 262144 -O 
-64bit 976721792k
-mke2fs 1.43-WIP (18-May-2015)
-Warning: specified blocksize 1024 is less than device physical 
-sectorsize 4096
-Creating filesystem with 976721792 1k blocks and 3815328 inodes
-Filesystem UUID: 2626eb2a-0691-48b2-a64c-2f4802437166
-Superblock backups stored on blocks:
-         8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553,
-         1024001, 1990657, 2809857, 5120001, 5971969, 17915905, 19668993,
-         25600001, 53747713, 128000001, 137682945, 161243137, 483729409,
-         640000001, 963780609
+nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
+                                        struct dentry *dentry, int acc)
+{
+    :
+    :
 
-Allocating group tables: done
-Writing inode tables: done
-Creating journal (32768 blocks): done
-Writing superblocks and filesystem accounting information: done
+    /*
+     * The file owner always gets access permission for accesses that
+     * would normally be checked at open time. This is to make
+     * file access work even when the client has done a fchmod(fd, 0).
+     *
+     * However, `cp foo bar' should fail nevertheless when bar is
+     * readonly. A sensible way to do this might be to reject all
+     * attempts to truncate a read-only file, because a creat() call
+     * always implies file truncation.
+     * ... but this isn't really fair.  A process may reasonably call
+     * ftruncate on an open file descriptor on a file with perm 000.
+     * We must trust the client to do permission checking - using "ACCESS"
+     * with NFSv3.
+     */
+    if ((acc & NFSD_MAY_OWNER_OVERRIDE) &&
+        uid_eq(inode->i_uid, current_fsuid()))
+            return 0;
+    :
+    :
+}
 
-...e2fsck is ok here...
+Might be something that needs to be pursued with the kernel NFS folks?
+That said, I'm not against fixing subst so that it works on your system.
 
-Now for a proportional resize, i.e. + 25 %:
-# MKE2FS_CONFIG=/root/elatest/out/etc/mke2fs.conf 
-/root/elatest/out/sbin/resize2fs -p /dev/md0 1220902240k
-resize2fs 1.43-WIP (18-May-2015)
-Resizing the filesystem on /dev/md0 to 1220902240 (1k) blocks.
-Begin pass 2 (max = 14)
-Relocating blocks XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-Begin pass 3 (max = 119229)
-Scanning inode table XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-Begin pass 5 (max = 16)
-Moving inode table XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-The filesystem on /dev/md0 is now 1220902240 (1k) blocks long.
+> if you want to try to "protect" people, then it needs to be a chmod
+> after all the data has been written & closed.
 
-Already after the first resize the fs seems much more corrupted and in a 
-different way than my original report.
-Below are a few of the errors, there are many many pages of them.
+It that case, please update your patch to include something like:
 
-This appears to be completely reproducible. I'll try to shrink things 
-further. Using 4k blocks instead of 1k it does not reproduce.
+                        if (verbose)
+                                printf("Creating or replacing %s.\n", outfn);
++                       /* Avoid accidentally editing generated file. */
++                       (void)fchmod(out, 0444);
+                        fclose(out);
+                        if (old)
+                                fclose(old);
 
--johan
+>  this is how it used to
+> behave, but commit 2873927d15ffb9ee9ed0e2700791a0e519c715aa changed it.
 
-# MKE2FS_CONFIG=/root/elatest/out/etc/mke2fs.conf 
-/root/elatest/out/sbin/e2fsck -fnv /dev/md0 2>&1 |less
-e2fsck 1.43-WIP (18-May-2015)
-Pass 1: Checking inodes, blocks, and sizes
-Inode 13 passes checks, but checksum does not match inode.  Fix? no
 
-Deleted inode 14 has zero dtime.  Fix? no
-...
-Inode 1024 passes checks, but checksum does not match inode.  Fix? no
-
-Inode 1437 seems to contain garbage.  Clear? no
-
-Inode 1437 is in use, but has dtime set.  Fix? no
-
-Inode 1437 has a extra size (1656) which is invalid
-Fix? no
-
-Inode 1437 has INDEX_FL flag set but is not a directory.
-Clear HTree index? no
-...
-Illegal block #11 (2674298790) in inode 1442.  IGNORED.
-Illegal block number passed to ext2fs_test_block_bitmap #1906002301 for 
-metadata block map
-Too many illegal blocks in inode 1442.
-Clear inode? no
-
-Suppress messages? no
-
-Illegal indirect block (1906002301) in inode 1442.  IGNORED.
-Illegal block number passed to ext2fs_test_block_bitmap #3316469983 for 
-metadata block map
+Cheers, Andreas
 
 
 
 
-On 2015-09-17 03:21, Andreas Dilger wrote:
-> If you add "-b 1024" to the mke2fs command line to use 1KB instead of 4KB blocks, and reduce the sizes by a factor of 4 does the problem still happen? That would make it easier for someone else to test, since it would only need a 4-5TB disk instead of a 19Tb array.
->
-> Cheers, Andreas
->
->> On Sep 15, 2015, at 11:55, Johan Harvyl <johan@harvyl.se> wrote:
->>
->> I have now been able to reproduce the issue that resize2fs corrupts at least the root, resize and journal
->> inodes with versions 1.42.13 and the more recent commit 956b0f1 of e2fsprogs.
->>
->> Note that older versions of e2fsprogs need *not* be involved, 1.42.13 and newer also have issues.
->>
->> Please advice on things I can try to narrow down the root cause of what has to be an e2fsprogs bug. In
->> particular it would be very useful to reproduce it faster, running through the mkfs and two resize steps
->> takes around ten minutes so iterative testing is a slow and I do not really have much of clue what steps
->> would be more likely to overwrite the inodes.
->>
->> At some point I would like to return this array to service but I am not really comfortable creating a
->> new ext4 filesystem on it without first understanding how it can become corrupted without even
->> mounting the file system.
->>
->> For 1.42.13:
->> # mkfs.ext4 /dev/md0 -i 262144 -m 0 -O 64bit 15627548672k
->> # resize2fs -p /dev/md0 19534435840k
->> # resize2fs -p /dev/md0
->> # e2fsck -fn /dev/md0
->> e2fsck 1.42.13 (17-May-2015)
->> ext2fs_check_desc: Corrupt group descriptor: bad block for inode table
->> e2fsck: Group descriptors look bad... trying backup blocks...
->> Superblock has an invalid journal (inode 8).
->> Clear? no
->>
->> e2fsck: Illegal inode number while checking ext3 journal for /dev/md0
->>
->> /dev/md0: ********** WARNING: Filesystem still has errors **********
->>
->>
->> or for 956b0f1:
->> # MKE2FS_CONFIG=/root/elatest/out/etc/mke2fs.conf /root/elatest/out/sbin/mkfs.ext4 /dev/md0 -i 262144 -m 0 -O 64bit 15627548672k
->> # MKE2FS_CONFIG=/root/elatest/out/etc/mke2fs.conf /root/elatest/out/sbin/resize2fs -p /dev/md0 19534435840k
->> # MKE2FS_CONFIG=/root/elatest/out/etc/mke2fs.conf /root/elatest/out/sbin/resize2fs -p /dev/md0
->> # MKE2FS_CONFIG=/root/elatest/out/etc/mke2fs.conf /root/elatest/out/sbin/e2fsck -fn /dev/md0
->> e2fsck 1.43-WIP (18-May-2015)
->> ext2fs_open2: Superblock checksum does not match superblock
->> /root/elatest/out/sbin/e2fsck: Superblock invalid, trying backup blocks...
->> Superblock has an invalid journal (inode 8).
->> Clear? no
->>
->> /root/elatest/out/sbin/e2fsck: Illegal inode number while checking ext3 journal for /dev/md0
->>
->> /dev/md0: ********** WARNING: Filesystem still has errors **********
->>
->> # MKE2FS_CONFIG=/root/elatest/out/etc/mke2fs.conf /root/elatest/out/sbin/debugfs -c /dev/md0
->> debugfs 1.43-WIP (18-May-2015)
->> /dev/md0: Superblock checksum does not match superblock while opening filesystem
->> debugfs:  stat <2>
->> stat: Filesystem not open
->>
->> # debugfs -c /dev/md0
->> debugfs 1.42.13 (17-May-2015)
->> /dev/md0: catastrophic mode - not reading inode or group bitmaps
->> debugfs:  stat <2>
->> Inode: 2   Type: bad type    Mode:  0004   Flags: 0x1
->> Generation: 1    Version: 0x00000001
->> User:  9440   Group:     0   Size: 618659860
->> File ACL: 1    Directory ACL: 0
->> Links: 0   Blockcount: 724107776
->> Fragment:  Address: 0    Number: 0    Size: 0
->> ctime: 0x02008000 -- Sun Jan 24 18:46:40 1971
->> atime: 0x24e000a0 -- Wed Aug  9 12:00:00 1989
->> mtime: 0x00030000 -- Sat Jan  3 07:36:48 1970
->> Size of extra inode fields: 6
->> BLOCKS:
->> (0):1, (6):618659845 .... and it goes on...
->>
->>> On 2015-09-14 23:35, Johan Harvyl wrote:
->>> In an attempt to further isolate what versions of e2fsprogs, at a commit level, that are
->>> needed to reproduce the bad behavior I tried my own step-by-step, initially with a much
->>> higher -i 16777216 to mkfs.ext4 in the hope that fewer inodes would make all the
->>> operations run faster.
->>>
->>> When I was unable to reproduce with -i 16777216 instead, I switched back to exactly
->>> what I reproduced with the first time, and I *still* did not get the "Should never happen:
->>> resize inode corrupt!".
->>>
->>> The only reasonable explanation I can come up with to this is that something is not being
->>> initialized properly that resize2fs expects to be initialized. I have no indications of any
->>> issues with any hardware or the underlying md block.
->>>
->>> What I did however notice is that I can have the same kind of filesystem corruption
->>> *without* seeing the "Should never happen: resize inode corrupt!" message using the
->>> following sequence, and this *is* reproducible one time after another:
->>>
->>> # MKE2FS_CONFIG=/root/e10/out/etc/mke2fs.conf /root/e10/out/sbin/mkfs.ext4 /dev/md0 -i 262144 -m 0 -O 64bit 15627548672k
->>> # e2fsck -fy /dev/md0 (using 1.42.13)
->>> # resize2fs -p /dev/md0 19534435840k (using 1.42.13)
->>> # resize2fs -p /dev/md0 (using 1.42.13)
->>> # e2fsck -fn /dev/md0
->>> e2fsck 1.42.13 (17-May-2015)
->>> ext2fs_check_desc: Corrupt group descriptor: bad block for inode table
->>> e2fsck: Group descriptors look bad... trying backup blocks...
->>> Superblock has an invalid journal (inode 8).
->>> Clear? no
->>>
->>> e2fsck: Illegal inode number while checking ext3 journal for /dev/md0
->>>
->>> At this point the root inode is also bad and this fails:
->>> # mount /dev/md0 /mnt/loop -o ro,noload
->>> mount: mount /dev/md0 on /mnt/loop failed: Stale file handle
->>> [3766493.732188] EXT4-fs (md0): get root inode failed
->>> [3766493.732190] EXT4-fs (md0): mount failed
->>>
->>> Note that only versions 1.42.10 and 1.42.13 are involved now, 1.42.12 is not needed.
->>>
->>> Kernel is the debian:
->>> ii  linux-image-4.0.0-2-amd64      4.0.8-2 amd64 Linux 4.0 for 64-bit PCs
->>>
->>> For the record I also tried a more recent e2fsprogs for the resize (instead of 1.42.13),
->>> locally built from:
->>> 956b0f1 Merge branch 'maint' into next
->>> and I could still reproduce it on the first attempt.
->>>
->>> More verbose logs follows.
->>>
->>> Does anyone else have some kind of testbed to test the same sequence of commands?
->>>
->>> ===
->>>
->>> # MKE2FS_CONFIG=/root/e10/out/etc/mke2fs.conf /root/e10/out/sbin/mkfs.ext4 /dev/md0 -i 262144 -m 0 -O 64bit 15627548672k
->>> mke2fs 1.42.10 (18-May-2014)
->>> /dev/md0 contains a ext4 file system
->>>         last mounted on Sun Sep 13 22:19:28 2015
->>> Proceed anyway? (y,n) y
->>> Creating filesystem with 3906887168 4k blocks and 61045248 inodes
->>> Filesystem UUID: e263356e-4fe4-4e9b-bd0c-8edc2c411735
->>> Superblock backups stored on blocks:
->>>         32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208,
->>>         4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968,
->>>         102400000, 214990848, 512000000, 550731776, 644972544, 1934917632,
->>>         2560000000, 3855122432
->>>
->>> Allocating group tables: done
->>> Writing inode tables: done
->>> Creating journal (32768 blocks): done
->>> Writing superblocks and filesystem accounting information: done
->>>
->>> # e2fsck -fy /dev/md0
->>> e2fsck 1.42.13 (17-May-2015)
->>> Pass 1: Checking inodes, blocks, and sizes
->>> Pass 2: Checking directory structure
->>> Pass 3: Checking directory connectivity
->>> Pass 4: Checking reference counts
->>> Pass 5: Checking group summary information
->>> Free blocks count wrong (512088558484167, counted=3902749383).
->>> Fix? yes
->>>
->>>
->>> /dev/md0: ***** FILE SYSTEM WAS MODIFIED *****
->>> /dev/md0: 11/61045248 files (0.0% non-contiguous), 4137785/3906887168 blocks
->>>
->>> # resize2fs -p /dev/md0 19534435840k
->>> resize2fs 1.42.13 (17-May-2015)
->>> Resizing the filesystem on /dev/md0 to 4883608960 (4k) blocks.
->>> Begin pass 2 (max = 6)
->>> Relocating blocks XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
->>> Begin pass 3 (max = 119229)
->>> Scanning inode table XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
->>> Begin pass 5 (max = 8)
->>> Moving inode table XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
->>> The filesystem on /dev/md0 is now 4883608960 (4k) blocks long.
->>>
->>> # resize2fs -p /dev/md0
->>> resize2fs 1.42.13 (17-May-2015)
->>> Resizing the filesystem on /dev/md0 to 5860330752 (4k) blocks.
->>> Begin pass 2 (max = 6)
->>> Relocating blocks XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
->>> Begin pass 3 (max = 149036)
->>> Scanning inode table XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
->>> Begin pass 5 (max = 14)
->>> Moving inode table XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
->>> The filesystem on /dev/md0 is now 5860330752 (4k) blocks long.
->>>
->>> # e2fsck -fn /dev/md0
->>> e2fsck 1.42.13 (17-May-2015)
->>> ext2fs_check_desc: Corrupt group descriptor: bad block for inode table
->>> e2fsck: Group descriptors look bad... trying backup blocks...
->>> Superblock has an invalid journal (inode 8).
->>> Clear? no
->>>
->>> e2fsck: Illegal inode number while checking ext3 journal for /dev/md0
->>>
->>>> On 2015-09-12 12:27, Johan Harvyl wrote:
->>>> Hi,
->>>>
->>>> I have now evacuated the data on the filesystem and I *did* manage to recreate the
->>>> "Should never happen: resize inode corrupt!" using the versions of e2fsprogs I believe I was using at the time.
->>>>
->>>> The vast majority of the data that I was able to checksum was ok.
->>>>
->>>> For me I guess the way forward should be to recreate the fs with 1.42.13 and stick to online resize
->>>> from now on, correct?
->>>>
->>>> Are there any feature flags that I should not use when expanding file systems or any that I must use?
->>>>
->>>> -johan
->>>>
->>>>
->>>> Here is a step by step of what I did to reproduce
->>>>
->>>> I have built the following two versions of e2fsprogs (configure, make, make install, nothing else):
->>>> 421d693 (HEAD) libext2fs: fix potential buffer overflow in closefs()
->>>> 6a3741a (tag: v1.42.12) Update release notes, etc. for final 1.42.12 release
->>>>
->>>> 9779e29 (HEAD, tag: v1.42.10) Update release notes, etc. for final 1.42.10 release
->>>>
->>>> ===
->>>>
->>>> First build the fs with 1.42.10 with the exact number of blocks I originally had.
->>>>
->>>> # MKE2FS_CONFIG=/root/e10/out/etc/mke2fs.conf /root/e10/out/sbin/mkfs.ext4 /dev/md0 -i 262144 -m 0 -O 64bit 15627548672k
->>>> mke2fs 1.42.10 (18-May-2014)
->>>> /dev/md0 contains a ext4 file system
->>>>         created on Sat Sep 12 11:23:02 2015
->>>> Proceed anyway? (y,n) y
->>>> Creating filesystem with 3906887168 4k blocks and 61045248 inodes
->>>> Filesystem UUID: d00e9e59-3756-4e59-9539-bc00fe2446b5
->>>> Superblock backups stored on blocks:
->>>>         32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208,
->>>>         4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968,
->>>>         102400000, 214990848, 512000000, 550731776, 644972544, 1934917632,
->>>>         2560000000, 3855122432
->>>>
->>>> Allocating group tables: done
->>>> Writing inode tables: done
->>>> Creating journal (32768 blocks): done
->>>> Writing superblocks and filesystem accounting information: done
->>>>
->>>>  From dumpe2fs I observe:
->>>> 1) the fs features match what I had on my broken fs
->>>> 2) the number of free blocks is 512088558484167 which is clearly wrong.
->>>>
->>>> # e2fsck -fnv /dev/md0
->>>> e2fsck 1.42.13 (17-May-2015)
->>>> Pass 1: Checking inodes, blocks, and sizes
->>>> Pass 2: Checking directory structure
->>>> Pass 3: Checking directory connectivity
->>>> Pass 4: Checking reference counts
->>>> Pass 5: Checking group summary information
->>>> Free blocks count wrong (512088558484167, counted=3902749383).
->>>> Fix? no
->>>>
->>>> So the initial fs created by 1.42.10 appear to be bad.
->>>>
->>>> Filesystem volume name:   <none>
->>>> Last mounted on:          <not available>
->>>> Filesystem UUID: d00e9e59-3756-4e59-9539-bc00fe2446b5
->>>> Filesystem magic number:  0xEF53
->>>> Filesystem revision #:    1 (dynamic)
->>>> Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
->>>> Filesystem flags:         signed_directory_hash
->>>> Default mount options:    user_xattr acl
->>>> Filesystem state:         clean
->>>> Errors behavior:          Continue
->>>> Filesystem OS type:       Linux
->>>> Inode count:              61045248
->>>> Block count:              3906887168
->>>> Reserved block count:     0
->>>> Free blocks:              512088558484167
->>>> Free inodes:              61045237
->>>> First block:              0
->>>> Block size:               4096
->>>> Fragment size:            4096
->>>> Group descriptor size:    64
->>>> Reserved GDT blocks:      185
->>>> Blocks per group:         32768
->>>> Fragments per group:      32768
->>>> Inodes per group:         512
->>>> Inode blocks per group:   32
->>>> Flex block group size:    16
->>>> Filesystem created:       Sat Sep 12 11:27:55 2015
->>>> Last mount time:          n/a
->>>> Last write time:          Sat Sep 12 11:27:55 2015
->>>> Mount count:              0
->>>> Maximum mount count:      -1
->>>> Last checked:             Sat Sep 12 11:27:55 2015
->>>> Check interval:           0 (<none>)
->>>> Lifetime writes:          158 MB
->>>> Reserved blocks uid:      0 (user root)
->>>> Reserved blocks gid:      0 (group root)
->>>> First inode:              11
->>>> Inode size:               256
->>>> Required extra isize:     28
->>>> Desired extra isize:      28
->>>> Journal inode:            8
->>>> Default directory hash:   half_md4
->>>> Directory Hash Seed: f252a723-7016-43d1-97f8-579062a215e1
->>>> Journal backup:           inode blocks
->>>> Journal features:         (none)
->>>> Journal size:             128M
->>>> Journal length:           32768
->>>> Journal sequence:         0x00000001
->>>> Journal start:            0
->>>>
->>>>
->>>>
->>>> The next step is resizing + 4 TB with 1.42.12.
->>>> # MKE2FS_CONFIG=/root/e12/out/etc/mke2fs.conf /root/e12/out/sbin/resize2fs -p /dev/md0 19534435840k
->>>> resize2fs 1.42.12 (29-Aug-2014)
->>>> <and nothing more>
->>>> It did *not* print the "Resizing the filesystem on /dev/md0 to 4883608960 (4k) blocks." that it should have.
->>>>
->>>> I let it run for 90+ minutes sampling CPU and IO usage with iotop from time to time. It was using more or less 100% CPU and no visible io.
->>>>
->>>> So, I let e2fsck fix the free block count and re-did the resize:
->>>> # e2fsck -f /dev/md0
->>>> e2fsck 1.42.13 (17-May-2015)
->>>> Pass 1: Checking inodes, blocks, and sizes
->>>> Pass 2: Checking directory structure
->>>> Pass 3: Checking directory connectivity
->>>> Pass 4: Checking reference counts
->>>> Pass 5: Checking group summary information
->>>> Free blocks count wrong (512088558484167, counted=3902749383).
->>>> Fix<y>? yes
->>>>
->>>> /dev/md0: ***** FILE SYSTEM WAS MODIFIED *****
->>>> /dev/md0: 11/61045248 files (0.0% non-contiguous), 4137785/3906887168 blocks
->>>>
->>>> # MKE2FS_CONFIG=/root/e12/out/etc/mke2fs.conf /root/e12/out/sbin/resize2fs -p /dev/md0 19534435840k
->>>> resize2fs 1.42.12 (29-Aug-2014)
->>>> Resizing the filesystem on /dev/md0 to 4883608960 (4k) blocks.
->>>> Begin pass 2 (max = 6)
->>>> Relocating blocks XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
->>>> Begin pass 3 (max = 119229)
->>>> Scanning inode table XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
->>>> Begin pass 5 (max = 8)
->>>> Moving inode table XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
->>>> The filesystem on /dev/md0 is now 4883608960 (4k) blocks long.
->>>>
->>>> dumpe2fs 1.42.13 (17-May-2015)
->>>> Filesystem volume name:   <none>
->>>> Last mounted on:          <not available>
->>>> Filesystem UUID: 159d3929-1842-4f8d-907f-7509c16f06df
->>>> Filesystem magic number:  0xEF53
->>>> Filesystem revision #:    1 (dynamic)
->>>> Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
->>>> Filesystem flags:         signed_directory_hash
->>>> Default mount options:    user_xattr acl
->>>> Filesystem state:         clean
->>>> Errors behavior:          Continue
->>>> Filesystem OS type:       Linux
->>>> Inode count:              76306432
->>>> Block count:              4883608960
->>>> Reserved block count:     0
->>>> Free blocks:              4878450712
->>>> Free inodes:              76306421
->>>> First block:              0
->>>> Block size:               4096
->>>> Fragment size:            4096
->>>> Group descriptor size:    64
->>>> Blocks per group:         32768
->>>> Fragments per group:      32768
->>>> Inodes per group:         512
->>>> Inode blocks per group:   32
->>>> RAID stride:              32752
->>>> Flex block group size:    16
->>>> Filesystem created:       Sat Sep 12 11:41:10 2015
->>>> Last mount time:          n/a
->>>> Last write time:          Sat Sep 12 11:56:20 2015
->>>> Mount count:              0
->>>> Maximum mount count:      -1
->>>> Last checked:             Sat Sep 12 11:49:28 2015
->>>> Check interval:           0 (<none>)
->>>> Lifetime writes:          279 MB
->>>> Reserved blocks uid:      0 (user root)
->>>> Reserved blocks gid:      0 (group root)
->>>> First inode:              11
->>>> Inode size:               256
->>>> Required extra isize:     28
->>>> Desired extra isize:      28
->>>> Journal inode:            8
->>>> Default directory hash:   half_md4
->>>> Directory Hash Seed: feeea566-bb38-44c6-a4d5-f97aa78001d4
->>>> Journal backup:           inode blocks
->>>> Journal features:         (none)
->>>> Journal size:             128M
->>>> Journal length:           32768
->>>> Journal sequence:         0x00000001
->>>> Journal start:            0
->>>>
->>>> Looking good so far, and now for the final resize to 24 TB using 1.42.13:
->>>> # resize2fs -p /dev/md0
->>>> resize2fs 1.42.13 (17-May-2015)
->>>> Resizing the filesystem on /dev/md0 to 5860330752 (4k) blocks.
->>>> Begin pass 2 (max = 6)
->>>> Relocating blocks XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
->>>> Begin pass 3 (max = 149036)
->>>> Scanning inode table XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
->>>> Begin pass 5 (max = 14)
->>>> Moving inode table XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
->>>> Should never happen: resize inode corrupt!
->>>>
->>>> # dumpe2fs -h /dev/md0
->>>> dumpe2fs 1.42.13 (17-May-2015)
->>>> Filesystem volume name:   <none>
->>>> Last mounted on:          <not available>
->>>> Filesystem UUID: 159d3929-1842-4f8d-907f-7509c16f06df
->>>> Filesystem magic number:  0xEF53
->>>> Filesystem revision #:    1 (dynamic)
->>>> Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
->>>> Filesystem flags:         signed_directory_hash
->>>> Default mount options:    user_xattr acl
->>>> Filesystem state:         clean with errors
->>>> Errors behavior:          Continue
->>>> Filesystem OS type:       Linux
->>>> Inode count:              91568128
->>>> Block count:              5860330752
->>>> Reserved block count:     0
->>>> Free blocks:              5853069550
->>>> Free inodes:              91568117
->>>> First block:              0
->>>> Block size:               4096
->>>> Fragment size:            4096
->>>> Group descriptor size:    64
->>>> Blocks per group:         32768
->>>> Fragments per group:      32768
->>>> Inodes per group:         512
->>>> Inode blocks per group:   32
->>>> RAID stride:              32752
->>>> Flex block group size:    16
->>>> Filesystem created:       Sat Sep 12 11:41:10 2015
->>>> Last mount time:          n/a
->>>> Last write time:          Sat Sep 12 12:03:55 2015
->>>> Mount count:              0
->>>> Maximum mount count:      -1
->>>> Last checked:             Sat Sep 12 11:49:28 2015
->>>> Check interval:           0 (<none>)
->>>> Lifetime writes:          279 MB
->>>> Reserved blocks uid:      0 (user root)
->>>> Reserved blocks gid:      0 (group root)
->>>> First inode:              11
->>>> Inode size:               256
->>>> Required extra isize:     28
->>>> Desired extra isize:      28
->>>> Journal inode:            8
->>>> Default directory hash:   half_md4
->>>> Directory Hash Seed: feeea566-bb38-44c6-a4d5-f97aa78001d4
->>>> Journal backup:           inode blocks
->>>> Journal superblock magic number invalid!
->>>>
->>>>
->>>>> On 2015-09-04 00:16, Johan Harvyl wrote:
->>>>> Hello again,
->>>>>
->>>>> I finally got around to dig some more into this and made what I consider some good progress as I am now able to mount the filesystem read-only so I thought I would update this thread a bit.
->>>>>
->>>>> Short one sentence recap since it's been a while since the original post: I am trying to recover a filesystem that was quite badly damaged by an offline resize2fs of a fairly modern ext4fs from 20 TB to 24 TB.
->>>>>
->>>>> I spent a lot of time trying to get something meaningful out of e2fsck/debugfs and learned quite a bit in the process and I would like to briefly share some observations.
->>>>>
->>>>> 1) The first hurdle running e2fsck -fnv is that the "Superblock has an invalid journal (inode 8)" is considered fatal and cannot be fixed, at least not in r/o mode so e2fsck just stops, this check needed to go away.
->>>>>
->>>>> 2) e2fsck gets utterly confused by the "bad block inode" that incorrectly gets identified as having something worth looking at and spends days iterating through blocks (before I cancelled it). Removing handling if ino == EXT2_BAD_INO in pass1 and pass1b made things a bit better.
->>>>>
->>>>> 3) e2fsck using a backup superblock
->>>>> ext2fs_check_desc: Corrupt group descriptor: bad block for inode table
->>>>> e2fsck: Group descriptors look bad... trying backup blocks...
->>>>> This is bad, as it means using a superblock that has not been updated with the +4TB. Consequently it gets the location of the first block group wrong, or at the very least the first inode table that houses the root inode.
->>>>> Forcing it to use the master superblock again makes things a bit better.
->>>>>
->>>>> I have some logs from various e2fsck runs with various amounts of hacks applied if they are of any interest to developers? I will also likely have the filesystem in this state for a week or two more if any other information I can extract is of interest to figure out what made resize2fs screw things up.
->>>>>
->>>>>
->>>>>
->>>>> In the end, the only actual change I have made to the filesystem to make it mountable is that I borrowed a root inode from a different filesystem and updated the i_block pointer to point to the extent tree corresponding to the root inode of my broken filesystem which was quite easy to find by just looking for the string "lost+found".
->>>>>
->>>>> # mount -o ro,noload /dev/md0 /mnt/loop
->>>>> [2815465.034803] EXT4-fs (md0): mounted filesystem without journal. Opts: noload
->>>>>
->>>>> # df -h /dev/md0
->>>>> Filesystem      Size  Used Avail Use% Mounted on
->>>>> /dev/md0         22T -382T  404T    - /mnt/loop
->>>>>
->>>>> Uh oh, does not look to good.. But hey, doing some checks on the data contents and so far results are very promising. An "ls /" looks good and so does a lot of the data that I can verify checksums on, checks are still running...
->>>>>
->>>>> I really do not know how to move on with trying to repair the filesystem with e2fsck. I do not feel brave enough to let it run r/w on the given how many hacks that I consider very dirty were required to even get it this far. At this point letting it make changes to the filesystem may actually make it worse so I see no other way forward than extracting all the contents and recreating the filesystem from scratch.
->>>>>
->>>>> Question is though, what is the recommended way to create the filesystem? 64bit is clearly necessary, but what about the other feature flags like flex_bg/meta_bg/resize_inode...? I do not care much about slight gains in performance, robustness is more important, and that it can be resized in the future.
->>>>>
->>>>> Only online resize from now on, never offlline, I learned that lesson...
->>>>>
->>>>> Will it be possible to expand from 24 TB to 28 TB online?
->>>>>
->>>>> thanks,
->>>>> -johan
->>>>>
->>>>>
->>>>>> On 2015-08-13 20:12, Johan Harvyl wrote:
->>>>>>> On 2015-08-13 15:27, Theodore Ts'o wrote:
->>>>>>> On Thu, Aug 13, 2015 at 12:00:50AM +0200, Johan Harvyl wrote:
->>>>>>>
->>>>>>>>> I'm not aware of any offline resize with 1.42.13, but it sounds like
->>>>>>>>> you were originally using mke2fs and resize2fs 1.42.10, which did have
->>>>>>>>> some bugs, and so the question is what sort of might it might have
->>>>>>>>> left things.
->>>>>>>> What kind of bugs are we talking about, mke2fs? resize2fs? e2fsck? Any
->>>>>>>> specific commits of interest?
->>>>>>> I suspect it was caused by a bug in resize2fs 1.42.10. The problem is
->>>>>>> that off-line resize2fs is much more powerful; it can handle moving
->>>>>>> file system metadata blocks around, so it can grow file systems in
->>>>>>> cases which aren't supported by online resize --- and it can shrink
->>>>>>> file systems when online resize doesn't support any kind of file
->>>>>>> system shrink.  As such, the code is a lot more complicated, whereas
->>>>>>> the online resize code is much simpler, and ultimately, much more
->>>>>>> robust.
->>>>>> Understood, so would it have been possible to move from my 20 TB -> 24 TB fs with
->>>>>> online resize? I am confused by the threads I see on the net with regards to this.
->>>>>>>> Can you think of why it would zero out the first thousands of
->>>>>>>> inodes, like the root inode, lost+found and so on? I am thinking
->>>>>>>> that would help me assess the potential damage to the files. Could I
->>>>>>>> perhaps expect the same kind of zeroed out blocks at regular
->>>>>>>> intervals all over the device?
->>>>>>> I didn't realize that the first thousands of inodes had been zeroed;
->>>>>>> either you didn't mention this earier or I had missed that from your
->>>>>>> e-mail.  I suspect the resize inode before the resize was pretty
->>>>>>> terribly corrupted, but in a way that e2fsck didn't complain.
->>>>>> Hi,
->>>>>>
->>>>>> I may not have been clear on that it was not just the first handful of inodes.
->>>>>>
->>>>>> When I manually sampled some inodes with debugfs and a disk editor, the first group
->>>>>> I found valid inodes in was:
->>>>>> Group 48: block bitmap at 1572864, inode bitmap at 1572880, inode table at 1572896
->>>>>>
->>>>>> With 512 inodes per group that would mean at least some 24k inodes are blanked out,
->>>>>> but I did not check them all, I just sampled groups manually so there could be some
->>>>>> valid in some of the groups below group 48 or a lot more invalid afterwards.
->>>>>>
->>>>>>> I'll have to try to reproduce the problem based how you originally
->>>>>>> created and grew the file system and see if I can somehow reproduce
->>>>>>> the problem.  Obviously e2fsck and resize2fs should be changed to make
->>>>>>> this operation much more robust.  If you can tell me the exact
->>>>>>> original size (just under 16TB is probably good enough, but if you
->>>>>>> know the exact starting size, that might be helpful), and then steps
->>>>>>> by which the file system was grown, and which version of e2fsprogs was
->>>>>>> installed at the time, that would be quite helpful.
->>>>>>>
->>>>>>> Thanks,
->>>>>>>
->>>>>>>                         - Ted
->>>>>> Cool, I will try to go through its history in some detail below.
->>>>>>
->>>>>> If you have ideas on what I could look for, like ideas on if there is a particular periodicity
->>>>>> to the corruption I can write some python to explore such theories.
->>>>>>
->>>>>>
->>>>>> The filesystem was originally created with e2fsprogs 1.42.10-1 and most likely linux-image
->>>>>> 3.14 from Debian.
->>>>>>
->>>>>> # mkfs.ext4 /dev/md0 -i 262144 -m 0 -O 64bit
->>>>>> mke2fs 1.42.10 (18-May-2014)
->>>>>> Creating filesystem with 3906887168 4k blocks and 61045248 inodes
->>>>>> Filesystem UUID: 13c2eb37-e951-4ad1-b194-21f0880556db
->>>>>> Superblock backups stored on blocks:
->>>>>>         32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208,
->>>>>>         4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968,
->>>>>>         102400000, 214990848, 512000000, 550731776, 644972544, 1934917632,
->>>>>>         2560000000, 3855122432
->>>>>>
->>>>>> Allocating group tables: done
->>>>>> Writing inode tables: done
->>>>>> Creating journal (32768 blocks): done
->>>>>> Writing superblocks and filesystem accounting information: done
->>>>>> #
->>>>>>
->>>>>> It was expanded with 4 TB (another 976721792 4k blocks). Best I can tell from my logs this
->>>>>> was done with either e2fsprogs:amd64 1.42.12-1 or 1.42.12-1.1 (debian packages) and
->>>>>> Linux 3.16. Everything was running fine after this.
->>>>>> NOTE #1: It does *not* look like this filesystem was ever touched by resize2fs 1.42.10.
->>>>>> NOTE #2: The diff between debian packages 1.42.12-1 and 1.42.12-1.1 appear to be this:
->>>>>> 49d0fe2 libext2fs: fix potential buffer overflow in closefs()
->>>>>>
->>>>>> Then for the final 4 TB for a total of 5860330752 4k blocks which was done with
->>>>>> e2fsprogs:amd64 1.42.13-1 and Linux 4.0. This is where the:
->>>>>> "Should never happen: resize inode corrupt"
->>>>>> was seen.
->>>>>>
->>>>>> In both cases the same offline resize was done, with no exotic options:
->>>>>> # umount /dev/md0
->>>>>> # fsck.ext4 -f /dev/md0
->>>>>> # resize2fs /dev/md0
->>>>>>
->>>>>> thanks,
->>>>>> -johan
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
