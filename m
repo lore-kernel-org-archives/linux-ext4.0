@@ -1,51 +1,42 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] resize2fs: clear uninit BG if allocating from new group
-Date: Thu, 17 Sep 2015 22:19:09 -0500
-Message-ID: <55FB82AD.4020302@redhat.com>
-References: <55FB41CA.8010003@redhat.com>
- <20150917235524.GE10390@birch.djwong.org>
- <196754A4-210B-45E7-837A-7955780208E6@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <esandeen@redhat.com>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>
+From: Mike Frysinger <vapier@gentoo.org>
+Subject: [PATCH e2fsprogs] subst: use 0644 perms
+Date: Fri, 18 Sep 2015 03:54:18 -0400
+Message-ID: <1442562858-862-1-git-send-email-vapier@gentoo.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38515 "EHLO mx1.redhat.com"
+Received: from smtp.gentoo.org ([140.211.166.183]:40493 "EHLO smtp.gentoo.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752043AbbIRDTN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Sep 2015 23:19:13 -0400
-In-Reply-To: <196754A4-210B-45E7-837A-7955780208E6@redhat.com>
+	id S1751996AbbIRHyW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Sep 2015 03:54:22 -0400
+Received: from localhost.localdomain (localhost [127.0.0.1])
+	by smtp.gentoo.org (Postfix) with ESMTP id C1360340AE4
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2015 07:54:21 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 9/17/15 7:54 PM, Eric Sandeen wrote:
-> On Sep 17, 2015, at 6:55 PM, Darrick J. Wong <darrick.wong@oracle.com> wrote:
->>
->>> On Thu, Sep 17, 2015 at 05:42:18PM -0500, Eric Sandeen wrote:
->>> If resize2fs_get_alloc_block() allocates from a BLOCK_UNINIT
->>> group, nothing clears the UNINIT flag, so it is skipped when we
->>> go to write out modified bitmaps.  This leads to post-resize2fs
->>> e2fsck errors; used blocks in UNINIT groups, not marked in the
->>> block bitmap.
->>>
->>> This shamelessly cuts & pastes clear_block_uninit() into
->>> resize2fs.c, and my problem goes away.
->>
->> Hmm... which test was it that exhibited this error?
->>
-> r_ext4_small_bg
-> 
-> Originally it was claimed that only a gcc change exposed it; I'm
-> still trying to make sense of that. But the pre-resize image exhibits
-> it with any recent resizefs when resized up to 2g as the test does.
+When running on NFS, opening files with 0444 perms for writing can
+sometimes fail.  Since there's no real reason for these files to be
+read-only, give the owner write permission.
 
-I think the only reason the different gcc tweaked the bug is that the
-test copies the e2fsck/e2fsck binary into the filesystem under test,
-and the size changes depending on the compiler.
+URL: https://bugs.gentoo.org/550986
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ util/subst.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-I can put up an fs image that exhibits it if you're curious...
-
--Eric
+diff --git a/util/subst.c b/util/subst.c
+index f36adb4..e4004c9 100644
+--- a/util/subst.c
++++ b/util/subst.c
+@@ -370,7 +370,7 @@ int main(int argc, char **argv)
+ 		}
+ 		strcpy(newfn, outfn);
+ 		strcat(newfn, ".new");
+-		fd = open(newfn, O_CREAT|O_TRUNC|O_RDWR, 0444);
++		fd = open(newfn, O_CREAT|O_TRUNC|O_RDWR, 0644);
+ 		if (fd < 0) {
+ 			perror(newfn);
+ 			exit(1);
+-- 
+2.5.1
 
