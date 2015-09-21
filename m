@@ -1,112 +1,57 @@
-From: Dmitry Vyukov <dvyukov@google.com>
-Subject: [PATCH] fs/jbd2: fix data races in jbd2_journal_set_features
-Date: Mon, 21 Sep 2015 12:57:19 +0200
-Message-ID: <1442833039-55373-1-git-send-email-dvyukov@google.com>
-Cc: kcc@google.com, glider@google.com, andreyknvl@google.com,
-	ktsan@googlegroups.com, paulmck@linux.vnet.ibm.com,
-	Dmitry Vyukov <dvyukov@google.com>
-To: tytso@mit.edu, jack@suse.com, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Albino B Neto <bino@riseup.net>
+Subject: Re: [PATCH] Fix style and return NULL
+Date: Mon, 21 Sep 2015 15:24:56 -0300
+Message-ID: <CAMu38xJEgUBq0uT5tt3VxUWkKaaFknrUK3wV1Qhe-Z5KtB35Rw@mail.gmail.com>
+References: <tytso@mit.edu>
+	<1442613662-5100-1-git-send-email-bino@riseup.net>
+	<20150919034848.GD2921@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.riseup.net ([198.252.153.129]:43345 "EHLO mx1.riseup.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932821AbbIUSY6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Sep 2015 14:24:58 -0400
+Received: from cotinga.riseup.net (unknown [10.0.1.161])
+	(using TLSv1 with cipher ECDHE-RSA-AES256-SHA (256/256 bits))
+	(Client CN "*.riseup.net", Issuer "COMODO RSA Domain Validation Secure Server CA" (verified OK))
+	by mx1.riseup.net (Postfix) with ESMTPS id E3D3CC33C6
+	for <linux-ext4@vger.kernel.org>; Mon, 21 Sep 2015 11:24:57 -0700 (PDT)
+Received: by qgez77 with SMTP id z77so97329523qge.1
+        for <linux-ext4@vger.kernel.org>; Mon, 21 Sep 2015 11:24:56 -0700 (PDT)
+In-Reply-To: <20150919034848.GD2921@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-jbd2_journal_set_features() uses complex logic to update
-various feature flags while they are being concurrently read.
-This gives compiler whole lot of possibilities to temporary
-set features to unexpected values and break readers.
-For example, compiler can speculatively set or reset some flag
-and then restore the old value if assumptions does not hold.
+2015-09-19 0:48 GMT-03:00 Theodore Ts'o <tytso@mit.edu>:
+> Please don't try to correct "style" --- in fact, you've made things
+> worse, and in fact, you've introduced compile errors when tried to fix
+> "style".
+>
+> You also apparently didn't bother to check and see if the patch
+> compiled correctly.  Please *do* try to make sure you have (a) tested
+> your patches to make sure that they compile, and (b) at the very
+> *minimum* tested your patch to make sure that any code paths you have
+> changed has been exercised.
+>
+> In addition, it is highly preferable that for ext4 changes that you
+> have tested them using kvm-xfstests[1] or gce-xfstests[2] before
+> submitting a patch.  This may seem like a lot of extra work, but
+> unlike other parts of the kernel, if you just make the kernel crash,
+> it will annoy users --- but if you corrupt their data, they users tend
+> to get really steamed, so we have somewhat higher standards in file
+> system code.
+>
+> Of course, if your changes cause the kernel to not even compile, users
+> aren't at risk of losing their data; but then you tend to annoy your
+> fellow kernel developers.  :-)
+>
+>
+> [1] https://git.kernel.org/cgit/fs/ext2/xfstests-bld.git/plain/quick-start?h=META
+> [2] https://git.kernel.org/cgit/fs/ext2/xfstests-bld.git/tree/kvm-xfstests/README.GCE
 
-Use WRITE_ONCE() to update feature flags in jbd2_journal_set_features().
+Thank for help.
 
-The data race was found with KernelThreadSanitizer (KTSAN).
-
-Signed-off-by: Dmitry Vyukov <dvyukov@google.com>
----
-For the record here is KTSAN report on 4.2 rc2:
-
-ThreadSanitizer: data-race in journal_tag_bytes
-
-Read at 0xffff8800bba31028 of size 4 by thread 961 on CPU 6:
- [<ffffffff813c9982>] journal_tag_bytes+0x42/0x90 fs/jbd2/journal.c:2191 (discriminator 1)
- [<ffffffff813ba682>] jbd2_journal_commit_transaction+0x42/0x3190 fs/jbd2/commit.c:390
- [<ffffffff813c698b>] kjournald2+0x13b/0x430 fs/jbd2/journal.c:223
- [<ffffffff810bba40>] kthread+0x150/0x170 kernel/kthread.c:209
- [<ffffffff81ee420f>] ret_from_fork+0x3f/0x70 arch/x86/entry/entry_64.S:529
-
-Previous write at 0xffff8800bba31028 of size 4 by thread 2865 on CPU 2:
- [<ffffffff813c7406>] jbd2_journal_set_features+0x166/0x370 fs/jbd2/journal.c:1872
- [<ffffffff813c106b>] jbd2_journal_revoke+0x4b/0x1b0 fs/jbd2/revoke.c:337
- [<ffffffff8138e2fe>] __ext4_forget+0x13e/0x240 fs/ext4/ext4_jbd2.c:228
- [<ffffffff8139d778>] ext4_free_blocks+0x168/0x10f0 fs/ext4/mballoc.c:4698
- [<ffffffff81381a01>] ext4_ext_rm_idx+0x1e1/0x340 fs/ext4/extents.c:2385
- [<     inline     >] ext4_ext_rm_leaf fs/ext4/extents.c:2771
- [<ffffffff81387844>] ext4_ext_remove_space+0x1604/0x1ad0 fs/ext4/extents.c:2932
- [<ffffffff8138b07f>] ext4_ext_truncate+0xcf/0x150 fs/ext4/extents.c:4656
- [<ffffffff81341bdf>] ext4_truncate+0x64f/0x690 fs/ext4/inode.c:3767
- [<ffffffff81342bff>] ext4_evict_inode+0x63f/0x6f0 fs/ext4/inode.c:261
- [<ffffffff8128d2e0>] evict+0x180/0x2c0 fs/inode.c:544
- [<     inline     >] iput_final fs/inode.c:1465
- [<ffffffff8128e6b4>] iput+0x274/0x3c0 fs/inode.c:1492
- [<ffffffff8127b1a6>] do_unlinkat+0x2b6/0x4a0 fs/namei.c:3864
- [<     inline     >] SYSC_unlink fs/namei.c:3905
- [<ffffffff8127c172>] SyS_unlink+0x22/0x40 fs/namei.c:3903
- [<ffffffff81ee3e11>] entry_SYSCALL_64_fastpath+0x31/0x95 arch/x86/entry/entry_64.S:188
-
-Mutexes locked by thread 2865:
-Mutex 469497 is locked here:
- [<ffffffff81ee0d45>] down_write+0x65/0x80 kernel/locking/rwsem.c:62
- [<ffffffff81341b09>] ext4_truncate+0x579/0x690 fs/ext4/inode.c:3762
- [<ffffffff81342bff>] ext4_evict_inode+0x63f/0x6f0 fs/ext4/inode.c:261
- [<ffffffff8128d2e0>] evict+0x180/0x2c0 fs/inode.c:544
- [<     inline     >] iput_final fs/inode.c:1465
- [<ffffffff8128e6b4>] iput+0x274/0x3c0 fs/inode.c:1492
- [<ffffffff8127b1a6>] do_unlinkat+0x2b6/0x4a0 fs/namei.c:3864
- [<     inline     >] SYSC_unlink fs/namei.c:3905
- [<ffffffff8127c172>] SyS_unlink+0x22/0x40 fs/namei.c:3903
- [<ffffffff81ee3e11>] entry_SYSCALL_64_fastpath+0x31/0x95 arch/x86/entry/entry_64.S:188
----
- fs/jbd2/journal.c | 19 +++++++++++--------
- 1 file changed, 11 insertions(+), 8 deletions(-)
-
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 8270fe9..cfc5127 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1849,8 +1849,8 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 	/* If enabling v3 checksums, update superblock */
- 	if (INCOMPAT_FEATURE_ON(JBD2_FEATURE_INCOMPAT_CSUM_V3)) {
- 		sb->s_checksum_type = JBD2_CRC32C_CHKSUM;
--		sb->s_feature_compat &=
--			~cpu_to_be32(JBD2_FEATURE_COMPAT_CHECKSUM);
-+		WRITE_ONCE(sb->s_feature_compat, sb->s_feature_compat &
-+			~cpu_to_be32(JBD2_FEATURE_COMPAT_CHECKSUM));
- 
- 		/* Load the checksum driver */
- 		if (journal->j_chksum_driver == NULL) {
-@@ -1872,13 +1872,16 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 
- 	/* If enabling v1 checksums, downgrade superblock */
- 	if (COMPAT_FEATURE_ON(JBD2_FEATURE_COMPAT_CHECKSUM))
--		sb->s_feature_incompat &=
-+		WRITE_ONCE(sb->s_feature_incompat, sb->s_feature_incompat &
- 			~cpu_to_be32(JBD2_FEATURE_INCOMPAT_CSUM_V2 |
--				     JBD2_FEATURE_INCOMPAT_CSUM_V3);
--
--	sb->s_feature_compat    |= cpu_to_be32(compat);
--	sb->s_feature_ro_compat |= cpu_to_be32(ro);
--	sb->s_feature_incompat  |= cpu_to_be32(incompat);
-+				     JBD2_FEATURE_INCOMPAT_CSUM_V3));
-+
-+	WRITE_ONCE(sb->s_feature_compat,
-+		sb->s_feature_compat | cpu_to_be32(compat));
-+	WRITE_ONCE(sb->s_feature_ro_compat,
-+		sb->s_feature_ro_compat | cpu_to_be32(ro));
-+	WRITE_ONCE(sb->s_feature_incompat,
-+		sb->s_feature_incompat | cpu_to_be32(incompat));
- 
- 	return 1;
- #undef COMPAT_FEATURE_ON
--- 
-2.6.0.rc0.131.gf624c3d
+  Albino
