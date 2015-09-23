@@ -1,41 +1,48 @@
-From: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+From: Dmitry Monakhov <dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org>
 Subject: Re: [v15 0/4] ext4: add project quota support
-Date: Wed, 23 Sep 2015 21:58:27 +0800
-Message-ID: <CAPTn0cBj4Zpyov0TjcaKN6HKbrqvZHw0Zv8tjYcJFY8UFk_ETg@mail.gmail.com>
-References: <1442146833-13652-1-git-send-email-lixi@ddn.com>
-	<20150923123119.GA13946@quack.suse.cz>
-	<CAPTn0cBB7h89R7NB+zg+J+TVvKXut_Usixs==S=AWs-v7kZExg@mail.gmail.com>
-	<87bncttg61.fsf@openvz.org>
-	<CAPTn0cC=1xWCcUMVqhAx4pvqqX9rXC8p6B4Jt7cpm4HfuaFOMw@mail.gmail.com>
+Date: Wed, 23 Sep 2015 17:13:39 +0300
+Message-ID: <878u7xte98.fsf@openvz.org>
+References: <1442146833-13652-1-git-send-email-lixi@ddn.com> <20150923123119.GA13946@quack.suse.cz> <CAPTn0cBB7h89R7NB+zg+J+TVvKXut_Usixs==S=AWs-v7kZExg@mail.gmail.com> <87bncttg61.fsf@openvz.org> <CAPTn0cC=1xWCcUMVqhAx4pvqqX9rXC8p6B4Jt7cpm4HfuaFOMw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha512; protocol="application/pgp-signature"
 Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
-	"linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"linux-fsdevel\@vger.kernel.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
 	Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
+	"linux-api\@vger.kernel.org" <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
 	Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	"viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org" <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	"hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org" <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-To: Dmitry Monakhov <dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org>
+	"viro\@zeniv.linux.org.uk" <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	"hch\@infradead.org" <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+To: Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
 Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 In-Reply-To: <CAPTn0cC=1xWCcUMVqhAx4pvqqX9rXC8p6B4Jt7cpm4HfuaFOMw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-Sorry, the linkage was missing.
+--=-=-=
+Content-Type: text/plain
 
-https://github.com/ddn-lixi/project_quota_ext4_utils
+Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> writes:
 
-On Wed, Sep 23, 2015 at 9:57 PM, Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wrote:
 > Hi Dmitry,
 >
 > Please check following linkage. It includes all the patches I've made
+Which link? According to annotation all links points to previous
+versions of kernel part. Am I missing something?
 > for ext4 project quota. Unfortunately, multiple tools need to be
 > patched, including 1) patch e2fsprogs 2) patch quota-tools 3) patch
 > linux kernel 4) compile project_manage.
->
+I do believe that.
 > Please let me know if there is any problem.
+It would be very useful for whole community if you just add git-links
+to modified tools. tools for example like follows:
+kernel-pc: http://github.com/blabla/linus.git/prjquota/
+e2fsprogs: http://github.com/blabla/e2fsprogs/prjquota/
+quota-tools: http://github.com/blabla/quota-tools/prjquota/
+
+This allow others to test whole bundle. For example xfstests-bld
+users can simply change git-sources to yours and run full xfstests
 >
 > Thanks,
 > Li Xi
@@ -184,3 +191,19 @@ On Wed, Sep 23, 2015 at 9:57 PM, Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public
 >>>> --
 >>>> Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
 >>>> SUSE Labs, CR
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQEcBAEBCgAGBQJWArOTAAoJELhyPTmIL6kBvdMH/ipFbWG+R2qSenI9+rXVAP3A
+gMVYxxQpecO5OzyzlBgUXV3Co+tJaiRMk1y6MbEPmBwH35OdkduXl3HQwrsD6Q61
+0pTG7/EUat1YfGs/YE5BnpMWoT1Z6yOW2euFwNQ9zY6DsWkZ6gq3kijaZRidx6AP
+SPXjizgu8XzHpLgM0Iisq5SKnjP5nOp6KLpeLjao+zgoI0TqXEjr4MIaRfUXrMlX
++dE/QfY7lgt+eZP7W0MOeQdyzb+T5GgFCoyTC+JiHc8v2uvsMABLimtLll0iUB9a
+9p/DbVnRV+CMuwIm+J8uBEzIiOJDw5Y9qrrUa1fKtTPVCPcmv1TETlfFI8IR5CY=
+=sQ9R
+-----END PGP SIGNATURE-----
+--=-=-=--
