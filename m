@@ -1,53 +1,52 @@
-From: Chris Mason <clm@fb.com>
-Subject: Re: ext4: performance regression introduced by the cgroup writeback
- support
-Date: Wed, 23 Sep 2015 12:13:59 -0400
-Message-ID: <20150923161359.GB25218@ret.masoncoding.com>
-References: <f30d4a6aa8a546ff88f73021d026a453@SIXPR30MB031.064d.mgd.msft.net>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: resize2fs stuck in ext4_group_extend with 100% CPU Utilization
+ With Small Volumes
+Date: Wed, 23 Sep 2015 12:59:07 -0400
+Message-ID: <20150923165907.GF3318@thunk.org>
+References: <06724CF51D6BC94E9BEE7A8A8CB82A6740FE22BCBA@MX01A.corp.emc.com>
+ <5601ACFE.5080904@redhat.com>
+ <06724CF51D6BC94E9BEE7A8A8CB82A6740FE22BCCC@MX01A.corp.emc.com>
+ <20150922230204.GD3318@thunk.org>
+ <06724CF51D6BC94E9BEE7A8A8CB82A6740FE22BCF8@MX01A.corp.emc.com>
+ <20150923151406.GE3318@thunk.org>
+ <06724CF51D6BC94E9BEE7A8A8CB82A6740FE22BD23@MX01A.corp.emc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Tejun Heo <tj@kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Dexuan Cui <decui@microsoft.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Pocas, Jamie" <Jamie.Pocas@emc.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:39028 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753766AbbIWQ7N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Sep 2015 12:59:13 -0400
 Content-Disposition: inline
-In-Reply-To: <f30d4a6aa8a546ff88f73021d026a453@SIXPR30MB031.064d.mgd.msft.net>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <06724CF51D6BC94E9BEE7A8A8CB82A6740FE22BD23@MX01A.corp.emc.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 23, 2015 at 01:49:31PM +0000, Dexuan Cui wrote:
-> Hi all,
-> Since some point between July and Sep, I have been suffered from a strange "very slow write" issue and on Sep 9 I reported it to LKML (but got no reply): https://lkml.org/lkml/2015/9/9/290
-> 
-> The issue is: under high CPU and disk I/O pressure, *some* processes can suffer from a very slow write speed (e.g., <1MB/s or even only 20KB/s), while the normal write speed should be at least dozens of MB/s.
-> 
-> I think I identified the commit which introduced the regression:
-> ext4: implement cgroup writeback support (https://git.kernel.org/cgit/linux/kernel/git/next/linux-next.git/commit/?id=001e4a8775f6e8ad52a89e0072f09aee47d5d252)
-> 
-> This commit is already in the mainline tree, so I can reproduce the issue there too:
-> With the latest mainline,  I can reproduce the issue; after I revert the patch, I can't reproduce the issue.
-> 
-> When the issue happens:
-> 1. the read speed is pretty normal, e.g.. it's still >100MB/s.
-> 2. 'top' shows both the 'user' and 'sys' utilization is about 0%, but the IO-wait is always about 100%.
-> 3. 'iotop' shows the read speed is 0 (this is correct because there is indeed no read request)  and the write speed is pretty slow (the average is <1MB/s or even 20KB/s).
-> 4. when the issue happens, sometimes any new process suffers from the slow write issue, but sometimes it looks not all the new processes suffers from the issue.
-> 5. The " WARNING: CPU: 7 PID: 6782 at fs/inode.c:390 ihold+0x30/0x40() " in my Sep-9 mail may be another different issue.
-> 6. To reproduce the issue, I need to run my workload for enough long time (see the below).
-> 
-> My workload is simple: I just repeatedly build the kernel source ("make clean; make -j16"). My kernel config is attached FYI.
-> 
-> I can reproduce the issue on a physical machine: e.g., in my kernel building test with my .config, it took only ~5 minutes in the first 176 runs, but since the 177th run, it could take from 10 hours to 5 minutes - very unstable.
-> 
-> It looks it's easier to reproduce the issue in a Hyper-V VM: usually I can reproduce the issue within the first 10 or 20 runs.
-> 
-> Any idea?
+On Wed, Sep 23, 2015 at 12:04:49PM -0400, Pocas, Jamie wrote:
+> Interesting. Thanks for the detailed break-down! I don't mind the
+> workaround of using 4k "soft" block size on the filesystem, even for
+> smaller filesystems. Now that I understand better, I think you were
+> on target with your earlier explanation of bd_set_size(). So this
+> means it's not an ext4 bug. I think the online resize of loopback
+> device (or any other block device driver) should use something like
+> the code in check_disk_size_change() instead of bd_set_size(). I
+> will have to test this out. Thanks again.
 
-Are you using cgroups?  That patch really shouldn't impact load unless
-there are actual IO controls in place.
+To be clear, the 4k file system block size is an on-disk format thing,
+and it will give you better performance (at the cost of increasing
+internal fragmentation overhead which can consume more space).  It
+will cause the soft block size to be set to be 4k when the file system
+is mounted, but that's a different thing.
 
--chris
+Note that for larger ext4 file systems, or if you are using XFS, the
+file system block size will be 4k, so explicitly configuring the
+blocksize to 4k isn't anything particularly unusual.  It's a change in
+the defaults, but I showed you how you can change the defaults by
+editing /etc/mke2fs.conf.
+
+Cheers,
+
+						- Ted
