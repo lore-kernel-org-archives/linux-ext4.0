@@ -1,52 +1,60 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: resize2fs stuck in ext4_group_extend with 100% CPU Utilization
- With Small Volumes
-Date: Wed, 23 Sep 2015 12:59:07 -0400
-Message-ID: <20150923165907.GF3318@thunk.org>
-References: <06724CF51D6BC94E9BEE7A8A8CB82A6740FE22BCBA@MX01A.corp.emc.com>
- <5601ACFE.5080904@redhat.com>
- <06724CF51D6BC94E9BEE7A8A8CB82A6740FE22BCCC@MX01A.corp.emc.com>
- <20150922230204.GD3318@thunk.org>
- <06724CF51D6BC94E9BEE7A8A8CB82A6740FE22BCF8@MX01A.corp.emc.com>
- <20150923151406.GE3318@thunk.org>
- <06724CF51D6BC94E9BEE7A8A8CB82A6740FE22BD23@MX01A.corp.emc.com>
+Subject: Re: [PATCH 2/2] ext4: implement cgroup writeback support
+Date: Wed, 23 Sep 2015 13:02:38 -0400
+Message-ID: <20150923170238.GG3318@thunk.org>
+References: <1434495193-31182-1-git-send-email-tj@kernel.org>
+ <1434495193-31182-3-git-send-email-tj@kernel.org>
+ <20150722035620.GD2944@thunk.org>
+ <1443012552.19983.209.camel@gmail.com>
+ <1443016253.19983.230.camel@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Pocas, Jamie" <Jamie.Pocas@emc.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39028 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753766AbbIWQ7N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Sep 2015 12:59:13 -0400
+Cc: Tejun Heo <tj@kernel.org>, axboe@kernel.dk,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	lizefan@huawei.com, cgroups@vger.kernel.org, hannes@cmpxchg.org,
+	kernel-team@fb.com, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org
+To: Artem Bityutskiy <dedekind1@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <06724CF51D6BC94E9BEE7A8A8CB82A6740FE22BD23@MX01A.corp.emc.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1443016253.19983.230.camel@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Sep 23, 2015 at 12:04:49PM -0400, Pocas, Jamie wrote:
-> Interesting. Thanks for the detailed break-down! I don't mind the
-> workaround of using 4k "soft" block size on the filesystem, even for
-> smaller filesystems. Now that I understand better, I think you were
-> on target with your earlier explanation of bd_set_size(). So this
-> means it's not an ext4 bug. I think the online resize of loopback
-> device (or any other block device driver) should use something like
-> the code in check_disk_size_change() instead of bd_set_size(). I
-> will have to test this out. Thanks again.
+On Wed, Sep 23, 2015 at 04:50:53PM +0300, Artem Bityutskiy wrote:
+> On Wed, 2015-09-23 at 15:49 +0300, Artem Bityutskiy wrote:
+> > On Tue, 2015-07-21 at 23:56 -0400, Theodore Ts'o wrote:
+> > > > v2: Updated for MS_CGROUPWB -> SB_I_CGROUPWB.
+> > > > 
+> > > > Signed-off-by: Tejun Heo <tj@kernel.org>
+> > > > Cc: "Theodore Ts'o" <tytso@mit.edu>
+> > > > Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+> > > > Cc: linux-ext4@vger.kernel.org
+> > > 
+> > > Thanks, applied.
+> > 
+> > Hi, this patch introduces a regression - a major one, I'd say.
+> > 
+> > Symptoms: copy a bunch of file, run sync, then run 'reboot', and
+> > after
+> > you boot up the copied files are corrupted. So basically the user
+> > -visible symptom is that 'sync' does not work.
+> 
+> Just FYI, this is the issue I briefly reported last Fri:
+> 
+> https://lkml.org/lkml/2015/9/18/640
 
-To be clear, the 4k file system block size is an on-disk format thing,
-and it will give you better performance (at the cost of increasing
-internal fragmentation overhead which can consume more space).  It
-will cause the soft block size to be set to be 4k when the file system
-is mounted, but that's a different thing.
+Also note this performance regression reported by Dexuan Cui
 
-Note that for larger ext4 file systems, or if you are using XFS, the
-file system block size will be 4k, so explicitly configuring the
-blocksize to 4k isn't anything particularly unusual.  It's a change in
-the defaults, but I showed you how you can change the defaults by
-editing /etc/mke2fs.conf.
+	https://lkml.org/lkml/2015/9/23/333
 
-Cheers,
+I didn't notice these problems since I my userspace doesn't enable the
+writeback cgroup.  (In fact I don't know how to do it using Debian
+Jessie.)
+
+Tejun, can you please take a look at this and give me a
+recommendation?  I'm willing to wait a day or two while we try to fix
+the problem, but past that point I'd like to have a fix or revert this
+commit before Linus releases the next -rc release.
 
 						- Ted
