@@ -1,69 +1,46 @@
-From: Dexuan Cui <decui@microsoft.com>
-Subject: RE: ext4: performance regression introduced by the cgroup writeback
- support
-Date: Thu, 24 Sep 2015 07:26:20 +0000
-Message-ID: <5b1f9f0d50f94eea922dd0c7405428be@SIXPR30MB031.064d.mgd.msft.net>
-References: <f30d4a6aa8a546ff88f73021d026a453@SIXPR30MB031.064d.mgd.msft.net>
- <20150923161359.GB25218@ret.masoncoding.com>
- <20150923185337.GK26647@mtj.duckdns.org>
+From: Artem Bityutskiy <dedekind1@gmail.com>
+Subject: Re: [PATCH cgroup/for-4.3-fixes] cgroup, writeback: don't enable
+ cgroup writeback on traditional hierarchies
+Date: Thu, 24 Sep 2015 11:09:46 +0300
+Message-ID: <1443082186.19983.234.camel@gmail.com>
+References: <1434495193-31182-1-git-send-email-tj@kernel.org>
+	 <1434495193-31182-3-git-send-email-tj@kernel.org>
+	 <20150722035620.GD2944@thunk.org> <1443012552.19983.209.camel@gmail.com>
+	 <20150923180934.GE26647@mtj.duckdns.org>
+	 <20150923185137.GJ26647@mtj.duckdns.org>
+	 <20150923210729.GA23180@mtj.duckdns.org>
+Reply-To: dedekind1@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-To: Tejun Heo <tj@kernel.org>, Chris Mason <clm@fb.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, axboe@kernel.dk,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	lizefan@huawei.com, cgroups@vger.kernel.org, hannes@cmpxchg.org,
+	kernel-team@fb.com, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, Dexuan Cui <decui@microsoft.com>
+To: Tejun Heo <tj@kernel.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Language: en-US
+In-Reply-To: <20150923210729.GA23180@mtj.duckdns.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> From: Dexuan Cui
-> Sent: Thursday, September 24, 2015 8:16
-> To: 'Tejun Heo' <tj@kernel.org>; Chris Mason <clm@fb.com>; Theodore Ts'o
-> <tytso@mit.edu>; Andreas Dilger <adilger.kernel@dilger.ca>; linux-
-> ext4@vger.kernel.org; linux-fsdevel@vger.kernel.org; linux-
-> kernel@vger.kernel.org
-> Subject: RE: ext4: performance regression introduced by the cgroup writeback
-> support
+On Wed, 2015-09-23 at 17:07 -0400, Tejun Heo wrote:
+> Hello,
 > 
-> > -----Original Message-----
-> > From: Tejun Heo [mailto:htejun@gmail.com] On Behalf Of Tejun Heo
-> > Sent: Thursday, September 24, 2015 2:54
-> > To: Chris Mason <clm@fb.com>; Dexuan Cui <decui@microsoft.com>;
-> > Theodore Ts'o <tytso@mit.edu>; Andreas Dilger <adilger.kernel@dilger.ca>;
-> > linux-ext4@vger.kernel.org; linux-fsdevel@vger.kernel.org; linux-
-> > kernel@vger.kernel.org
-> > Subject: Re: ext4: performance regression introduced by the cgroup writeback
-> > support
-> >
-> > On Wed, Sep 23, 2015 at 12:13:59PM -0400, Chris Mason wrote:
-> > > > The issue is: under high CPU and disk I/O pressure, *some* processes can
-> > suffer from a very slow write speed (e.g., <1MB/s or even only 20KB/s), while
-> > the normal write speed should be at least dozens of MB/s.
-> >
-> > So, I think I know what caused this regression.  Separate wb domains
-> > shouldn't have been enabled on traditional hierarchies.  It doesn't
-> > work there and leads to multiple wb domains competing on the same
-> > blkcg and the bw estimation would go completely haywire.  Will update
-> > soon.
-> >
-> > Thanks.
-> >
-> > --
-> > tejun
-> 
-> Thanks a lot for the quick fix, Tejun!
-> 
-> I'll test the fix.
-> I'll report back in case it can't fix the issue --I think this is unlikely. :-)
-> 
-> -- Dexuan
+> So, this should make the regression go away.  It doesn't fix the
+> underlying bugs but they shouldn't get triggered by people not
+> experimenting with cgroup.
 
-Hi Tejun,
-Thank you!
-I believe your patch fixes my issue, according to my test.
+Tejun,
 
--- Dexuan
+this hits the nail on the head and makes the problem go away.
+
+I've tested the tip of Linuses tree (v4.3-rc2+) plus this patch - no
+data corruption after reboots.
+
+I've tested just the tip of Linuses tree (v4.3-rc2+) without this
+patch, and I do see the data corruption after reboots.
+
+Tested-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+
+Artem.
