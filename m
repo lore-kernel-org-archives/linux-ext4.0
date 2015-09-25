@@ -1,423 +1,169 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: Re: [PATCH cgroup/for-4.3-fixes] cgroup, writeback: don't enable
- cgroup writeback on traditional hierarchies
-Date: Fri, 25 Sep 2015 11:49:25 -0400
-Message-ID: <20150925154925.GH4449@mtj.duckdns.org>
-References: <1434495193-31182-3-git-send-email-tj@kernel.org>
- <20150722035620.GD2944@thunk.org>
- <1443012552.19983.209.camel@gmail.com>
- <20150923180934.GE26647@mtj.duckdns.org>
- <20150923185137.GJ26647@mtj.duckdns.org>
- <20150923210729.GA23180@mtj.duckdns.org>
- <1443082186.19983.234.camel@gmail.com>
- <20150924204529.GF25415@mtj.duckdns.org>
- <1443163749.19983.254.camel@gmail.com>
- <1443178222.10230.10.camel@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Help to explain a data race in ext4_da_invalidatepage
+Date: Fri, 25 Sep 2015 12:48:44 -0400
+Message-ID: <20150925164844.GB3989@thunk.org>
+References: <CACT4Y+Zsj043RxDbjCMzOzjGqZm57BYRPm7xZJ63X65hXAsWLw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Ts'o <tytso@mit.edu>, axboe@kernel.dk,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	lizefan@huawei.com, cgroups@vger.kernel.org, hannes@cmpxchg.org,
-	kernel-team@fb.com, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, Dexuan Cui <decui@microsoft.com>
-To: Artem Bityutskiy <dedekind1@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@google.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org,
+	Andrey Konovalov <andreyknvl@google.com>,
+	ktsan@googlegroups.com
+To: Dmitry Vyukov <dvyukov@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:43120 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932234AbbIYQsr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Sep 2015 12:48:47 -0400
 Content-Disposition: inline
-In-Reply-To: <1443178222.10230.10.camel@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <CACT4Y+Zsj043RxDbjCMzOzjGqZm57BYRPm7xZJ63X65hXAsWLw@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hello, Artem.
+On Fri, Sep 18, 2015 at 02:25:35PM +0200, Dmitry Vyukov wrote:
+> Hello,
+> 
+> We are working on a data race detector for kernel,
+> KernelThreadSanitizer (https://github.com/google/ktsan) and got the
+> following race report (on 4.2. rc2). My ext4-fu is not strong enough
+> to prove or disprove whether it is a real issue or a bug in the tool.
+> 
+> I will appreciate if you explain how the following memory accesses are
+> supposed to be synchronized (not happen concurrently).
 
-On Fri, Sep 25, 2015 at 01:50:22PM +0300, Artem Bityutskiy wrote:
-> > Does not compile with multiple errors like
-> >=20
-> > linux/fs/fs-writeback.c:799:10: error: =E2=80=98struct bdi_writebac=
-k=E2=80=99 has no
-> > member named =E2=80=98last_comp_gen=E2=80=99
-> >    bdi->wb.last_comp_gen =3D bdi->wb.comp_gen;
->=20
-> I tried to extend your patch with these fields, but I am not sure I g=
-ot
-> it right, so please, send a new patch, I'll run the reboot corruption
-> test with your patch.
+They are synchronized by the fact that the page is locked.  So here:
 
-Oops, sorry, I'm an idiot.
+>  [<ffffffff811e503b>] truncate_inode_pages_range+0x20b/0x8e0 mm/truncate.c:280
 
-> Please, note, because this test is about reboots, I'll probably outpu=
-t
-> everything to the serial console. Therefore, please, do not print too
-> much data. Otherwise I'd have to modify my scripts to collect dmesg
-> before restarting, which is more work.
+and here:
 
-Hmmm... I'm gonna add ratelimit on inode printouts; other than that,
-it shouldn't print too much.
+>  [<ffffffff81338520>] mpage_prepare_extent_to_map+0x450/0x500 fs/ext4/inode.c:2351 (discriminator 2)
 
-Thanks.
+We iterate over a series of pages we make sure that before we call
+truncate_inode_page() (in the first loop) and mpage_process_page_bufs
+(in the second loop), we make sure that (a) the page is locked, and
+(b) it is not under writeback.
 
----
- fs/fs-writeback.c                |  154 ++++++++++++++++++++++++++++++=
-+++++++--
- fs/inode.c                       |    1=20
- include/linux/backing-dev-defs.h |    2=20
- include/linux/backing-dev.h      |   20 ++++-
- include/linux/fs.h               |    2=20
- mm/backing-dev.c                 |    2=20
- 6 files changed, 173 insertions(+), 8 deletions(-)
+In the first loop, we use a trylock_page() and skip the page if it is
+locked (or if it is under writeback).  In the second loop we use
+lock_page(), and if we are doing a synchronous writeback, we will use
+wait_on_page_writeback() to make sure the page is no longer writeback
+before proceeding.  (The reason why we don't just skip the page is
+that there is always a chance that while the page is getting written
+to disk, the page could have gotten dirtied again --- at least for
+devices that don't require stable page writes.)
 
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -101,7 +101,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(wbc_writepa
-=20
- static bool wb_io_lists_populated(struct bdi_writeback *wb)
- {
--	if (wb_has_dirty_io(wb)) {
-+	if (test_bit(WB_has_dirty_io, &wb->state)) {
- 		return false;
- 	} else {
- 		set_bit(WB_has_dirty_io, &wb->state);
-@@ -763,6 +763,15 @@ static long wb_split_bdi_pages(struct bd
- 		return DIV_ROUND_UP_ULL((u64)nr_pages * this_bw, tot_bw);
- }
-=20
-+extern spinlock_t cgwb_lock;
-+
-+struct split_work_dbg {
-+	DECLARE_BITMAP(all_wbs, 8192);
-+	DECLARE_BITMAP(iterated_wbs, 8192);
-+	DECLARE_BITMAP(written_wbs, 8192);
-+	DECLARE_BITMAP(sync_wbs, 8192);
-+};
-+
- /**
-  * bdi_split_work_to_wbs - split a wb_writeback_work to all wb's of a =
-bdi
-  * @bdi: target backing_dev_info
-@@ -776,11 +785,25 @@ static long wb_split_bdi_pages(struct bd
-  */
- static void bdi_split_work_to_wbs(struct backing_dev_info *bdi,
- 				  struct wb_writeback_work *base_work,
--				  bool skip_if_busy)
-+				  bool skip_if_busy, struct split_work_dbg *dbg)
- {
- 	int next_memcg_id =3D 0;
- 	struct bdi_writeback *wb;
- 	struct wb_iter iter;
-+	struct radix_tree_iter riter;
-+	void **slot;
-+
-+	if (dbg) {
-+		spin_lock_irq(&cgwb_lock);
-+		set_bit(bdi->wb.memcg_css->id, dbg->all_wbs);
-+		bdi->wb.last_comp_gen =3D bdi->wb.comp_gen;
-+		radix_tree_for_each_slot(slot, &bdi->cgwb_tree, &riter, 0) {
-+			wb =3D *slot;
-+			set_bit(wb->memcg_css->id, dbg->all_wbs);
-+			wb->last_comp_gen =3D wb->comp_gen;
-+		}
-+		spin_unlock_irq(&cgwb_lock);
-+	}
-=20
- 	might_sleep();
- restart:
-@@ -791,6 +814,9 @@ restart:
- 		struct wb_writeback_work *work;
- 		long nr_pages;
-=20
-+		if (dbg)
-+			set_bit(wb->memcg_css->id, dbg->iterated_wbs);
-+
- 		/* SYNC_ALL writes out I_DIRTY_TIME too */
- 		if (!wb_has_dirty_io(wb) &&
- 		    (base_work->sync_mode =3D=3D WB_SYNC_NONE ||
-@@ -799,6 +825,9 @@ restart:
- 		if (skip_if_busy && writeback_in_progress(wb))
- 			continue;
-=20
-+		if (dbg)
-+			set_bit(wb->memcg_css->id, dbg->written_wbs);
-+
- 		nr_pages =3D wb_split_bdi_pages(wb, base_work->nr_pages);
-=20
- 		work =3D kmalloc(sizeof(*work), GFP_ATOMIC);
-@@ -817,6 +846,8 @@ restart:
- 		work->auto_free =3D 0;
- 		work->done =3D &fallback_work_done;
-=20
-+		if (dbg)
-+			set_bit(wb->memcg_css->id, dbg->sync_wbs);
- 		wb_queue_work(wb, work);
-=20
- 		next_memcg_id =3D wb->memcg_css->id + 1;
-@@ -1425,6 +1456,9 @@ static long writeback_sb_inodes(struct s
- 			break;
- 		}
-=20
-+		inode->i_dbg_marker =3D 0;
-+		inode->i_dbg_marker2 =3D 0;
-+
- 		/*
- 		 * Don't bother with new inodes or inodes being freed, first
- 		 * kind does not need periodic writeout yet, and for the latter
-@@ -1515,6 +1549,7 @@ static long writeback_sb_inodes(struct s
- 				break;
- 		}
- 	}
-+
- 	return wrote;
- }
-=20
-@@ -1574,6 +1609,28 @@ static long writeback_inodes_wb(struct b
- 	return nr_pages - work.nr_pages;
- }
-=20
-+static int inode_which_wb_io_list(struct inode *inode, struct backing_=
-dev_info *bdi)
-+{
-+	struct bdi_writeback *wb =3D inode->i_wb ?: &bdi->wb;
-+	struct inode *pos;
-+
-+	if (list_empty(&inode->i_io_list))
-+		return 0;
-+	list_for_each_entry(pos, &wb->b_dirty, i_io_list)
-+		if (pos =3D=3D inode)
-+			return 1;
-+	list_for_each_entry(pos, &wb->b_io, i_io_list)
-+		if (pos =3D=3D inode)
-+			return 2;
-+	list_for_each_entry(pos, &wb->b_more_io, i_io_list)
-+		if (pos =3D=3D inode)
-+			return 3;
-+	list_for_each_entry(pos, &wb->b_dirty_time, i_io_list)
-+		if (pos =3D=3D inode)
-+			return 4;
-+	return 5;
-+}
-+
- /*
-  * Explicit flushing or periodic writeback of "old" data.
-  *
-@@ -1604,6 +1661,16 @@ static long wb_writeback(struct bdi_writ
-=20
- 	blk_start_plug(&plug);
- 	spin_lock(&wb->list_lock);
-+
-+	list_for_each_entry(inode, &wb->b_dirty, i_io_list)
-+		inode->i_dbg_marker2 =3D 1;
-+	list_for_each_entry(inode, &wb->b_io, i_io_list)
-+		inode->i_dbg_marker2 =3D 2;
-+	list_for_each_entry(inode, &wb->b_more_io, i_io_list)
-+		inode->i_dbg_marker2 =3D 3;
-+	list_for_each_entry(inode, &wb->b_dirty_time, i_io_list)
-+		inode->i_dbg_marker2 =3D 4;
-+
- 	for (;;) {
- 		/*
- 		 * Stop writeback when nr_pages has been consumed
-@@ -1681,6 +1748,24 @@ static long wb_writeback(struct bdi_writ
- 			spin_lock(&wb->list_lock);
- 		}
- 	}
-+
-+	if (work->sync_mode =3D=3D WB_SYNC_ALL) {
-+		list_for_each_entry(inode, &wb->b_dirty, i_io_list)
-+			if (inode->i_dbg_marker2)
-+				printk("XXX wb_writeback: inode %lu marker2=3D%d on b_dirty\n",
-+				       inode->i_ino, inode->i_dbg_marker2);
-+		list_for_each_entry(inode, &wb->b_io, i_io_list)
-+			printk("XXX wb_writeback: inode %lu marker2=3D%d on b_io\n",
-+			       inode->i_ino, inode->i_dbg_marker2);
-+		list_for_each_entry(inode, &wb->b_more_io, i_io_list)
-+			printk("XXX wb_writeback: inode %lu marker2=3D%d on b_more_io\n",
-+			       inode->i_ino, inode->i_dbg_marker2);
-+		list_for_each_entry(inode, &wb->b_dirty_time, i_io_list)
-+			if (inode->i_dbg_marker2)
-+				printk("XXX wb_writeback: inode %lu marker2=3D%d on b_dirty_time\n=
-",
-+				       inode->i_ino, inode->i_dbg_marker2);
-+	}
-+
- 	spin_unlock(&wb->list_lock);
- 	blk_finish_plug(&plug);
-=20
-@@ -1785,8 +1870,11 @@ static long wb_do_writeback(struct bdi_w
-=20
- 		if (work->auto_free)
- 			kfree(work);
--		if (done && atomic_dec_and_test(&done->cnt))
--			wake_up_all(&wb->bdi->wb_waitq);
-+		if (done) {
-+			wb->comp_gen++;
-+			if (atomic_dec_and_test(&done->cnt))
-+				wake_up_all(&wb->bdi->wb_waitq);
-+		}
- 	}
-=20
- 	/*
-@@ -1976,6 +2064,9 @@ void __mark_inode_dirty(struct inode *in
-=20
- 	trace_writeback_mark_inode_dirty(inode, flags);
-=20
-+	WARN_ON_ONCE(!(sb->s_flags & MS_LAZYTIME) &&
-+		     !list_empty(&inode_to_bdi(inode)->wb.b_dirty_time));
-+
- 	/*
- 	 * Don't do this for I_DIRTY_PAGES - that doesn't actually
- 	 * dirty the inode itself
-@@ -2165,7 +2256,7 @@ static void __writeback_inodes_sb_nr(str
- 		return;
- 	WARN_ON(!rwsem_is_locked(&sb->s_umount));
-=20
--	bdi_split_work_to_wbs(sb->s_bdi, &work, skip_if_busy);
-+	bdi_split_work_to_wbs(sb->s_bdi, &work, skip_if_busy, NULL);
- 	wb_wait_for_completion(bdi, &done);
- }
-=20
-@@ -2257,6 +2348,10 @@ void sync_inodes_sb(struct super_block *
- 		.for_sync	=3D 1,
- 	};
- 	struct backing_dev_info *bdi =3D sb->s_bdi;
-+	static DEFINE_MUTEX(dbg_mutex);
-+	static struct split_work_dbg dbg;
-+	static DECLARE_BITMAP(tmp_bitmap, 8192);
-+	struct inode *inode;
-=20
- 	/*
- 	 * Can't skip on !bdi_has_dirty() because we should wait for !dirty
-@@ -2267,9 +2362,56 @@ void sync_inodes_sb(struct super_block *
- 		return;
- 	WARN_ON(!rwsem_is_locked(&sb->s_umount));
-=20
--	bdi_split_work_to_wbs(bdi, &work, false);
-+	mutex_lock(&dbg_mutex);
-+
-+	printk("XXX SYNCING %d:%d\n", MAJOR(sb->s_dev), MINOR(sb->s_dev));
-+
-+	bitmap_zero(dbg.all_wbs, 8192);
-+	bitmap_zero(dbg.iterated_wbs, 8192);
-+	bitmap_zero(dbg.written_wbs, 8192);
-+	bitmap_zero(dbg.sync_wbs, 8192);
-+
-+	spin_lock(&sb->s_inode_list_lock);
-+	list_for_each_entry(inode, &sb->s_inodes, i_sb_list) {
-+		spin_lock(&inode->i_lock);
-+		inode->i_dbg_marker =3D inode_which_wb_io_list(inode, bdi);
-+		spin_unlock(&inode->i_lock);
-+	}
-+	spin_unlock(&sb->s_inode_list_lock);
-+
-+	bdi_split_work_to_wbs(bdi, &work, false, &dbg);
- 	wb_wait_for_completion(bdi, &done);
-=20
-+	spin_lock(&sb->s_inode_list_lock);
-+	list_for_each_entry(inode, &sb->s_inodes, i_sb_list) {
-+		struct bdi_writeback *wb =3D inode->i_wb ?: &bdi->wb;
-+
-+		if (!inode->i_dbg_marker)
-+			continue;
-+
-+		spin_lock_irq(&wb->list_lock);
-+		if (inode->i_state & I_DIRTY_ALL)
-+			printk_ratelimited("XXX sync_inodes_sb(%d:%d): dirty inode %lu skip=
-ped, wb=3D%d comp_gen=3D%d->%d which=3D%d->%d i_state=3D0x%lx\n",
-+			       MAJOR(sb->s_dev), MINOR(sb->s_dev), inode->i_ino,
-+			       wb->memcg_css->id, wb->last_comp_gen, wb->comp_gen,
-+			       inode->i_dbg_marker, inode_which_wb_io_list(inode, bdi),
-+			       inode->i_state);
-+		spin_unlock_irq(&wb->list_lock);
-+	}
-+	spin_unlock(&sb->s_inode_list_lock);
-+
-+	bitmap_andnot(tmp_bitmap, dbg.all_wbs, dbg.iterated_wbs, 8192);
-+	if (!bitmap_empty(tmp_bitmap, 8192))
-+		printk("XXX sync_inodes_sb(%d:%d): iteration skipped %8192pbl\n",
-+		       MAJOR(sb->s_dev), MINOR(sb->s_dev), tmp_bitmap);
-+
-+	printk("XXX all_wbs      =3D %8192pbl\n", dbg.all_wbs);
-+	printk("XXX iterated_wbs =3D %8192pbl\n", dbg.iterated_wbs);
-+	printk("XXX written_wbs  =3D %8192pbl\n", dbg.written_wbs);
-+	printk("XXX sync_wbs     =3D %8192pbl\n", dbg.sync_wbs);
-+
-+	mutex_unlock(&dbg_mutex);
-+
- 	wait_sb_inodes(sb);
- }
- EXPORT_SYMBOL(sync_inodes_sb);
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -183,6 +183,7 @@ int inode_init_always(struct super_block
- #endif
- 	inode->i_flctx =3D NULL;
- 	this_cpu_inc(nr_inodes);
-+	inode->i_dbg_marker =3D 0;
-=20
- 	return 0;
- out:
---- a/include/linux/backing-dev-defs.h
-+++ b/include/linux/backing-dev-defs.h
-@@ -129,6 +129,8 @@ struct bdi_writeback {
- 		struct rcu_head rcu;
- 	};
- #endif
-+	int comp_gen;
-+	int last_comp_gen;
- };
-=20
- struct backing_dev_info {
---- a/include/linux/backing-dev.h
-+++ b/include/linux/backing-dev.h
-@@ -38,7 +38,25 @@ extern struct workqueue_struct *bdi_wq;
-=20
- static inline bool wb_has_dirty_io(struct bdi_writeback *wb)
- {
--	return test_bit(WB_has_dirty_io, &wb->state);
-+	bool ret =3D test_bit(WB_has_dirty_io, &wb->state);
-+	long tot_write_bw =3D atomic_long_read(&wb->bdi->tot_write_bandwidth)=
-;
-+
-+	if (!ret && (!list_empty(&wb->b_dirty) || !list_empty(&wb->b_io) ||
-+		     !list_empty(&wb->b_more_io))) {
-+		const char *name =3D wb->bdi->dev ? dev_name(wb->bdi->dev) : "UNK";
-+
-+		pr_err("wb_has_dirty_io: ERR %s has_dirty=3D%d b_dirty=3D%d b_io=3D%=
-d b_more_io=3D%d\n",
-+		       name, ret, !list_empty(&wb->b_dirty), !list_empty(&wb->b_io),=
- !list_empty(&wb->b_more_io));
-+		WARN_ON(1);
-+	}
-+	if (ret && !tot_write_bw) {
-+		const char *name =3D wb->bdi->dev ? dev_name(wb->bdi->dev) : "UNK";
-+
-+		pr_err("wb_has_dirty_io: ERR %s has_dirty=3D%d but tot_write_bw=3D%l=
-d\n",
-+		       name, ret, tot_write_bw);
-+		WARN_ON(1);
-+	}
-+	return ret;
- }
-=20
- static inline bool bdi_has_dirty_io(struct backing_dev_info *bdi)
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -677,6 +677,8 @@ struct inode {
- #endif
-=20
- 	void			*i_private; /* fs or device private pointer */
-+	unsigned		i_dbg_marker;
-+	unsigned		i_dbg_marker2;
- };
-=20
- static inline int inode_unhashed(struct inode *inode)
---- a/mm/backing-dev.c
-+++ b/mm/backing-dev.c
-@@ -382,7 +382,7 @@ static void wb_exit(struct bdi_writeback
-  * protected.  cgwb_release_wait is used to wait for the completion of=
- cgwb
-  * releases from bdi destruction path.
-  */
--static DEFINE_SPINLOCK(cgwb_lock);
-+DEFINE_SPINLOCK(cgwb_lock);
- static DECLARE_WAIT_QUEUE_HEAD(cgwb_release_wait);
-=20
- /**
+In any case, we rely on lock_page() to provide synchronization --- and
+I'm guessing that perhaps KernelThreadSynchronizer wasn't taught that
+lock_page(), unlock_page(), and trylock_page() were synchronization
+primitives?
+
+Or maybe KernelThreadSynchronizer knew about lock_page() and
+unlock_page() implementations in mm/filemap.c, but wasn't aware of the
+trylock_page() implementation include/linux/pagemap.h?
+
+Cheers,
+
+					- Ted
+					
+> ThreadSanitizer: data-race in kmem_cache_free
+> 
+> Write at 0xffff8800bb412e70 of size 8 by thread 3050 on CPU 9:
+>  [<     inline     >] __cache_free mm/slab.c:3384
+>  [<ffffffff812451f2>] kmem_cache_free+0x92/0x480 mm/slab.c:3562
+>  [<ffffffff812b7800>] free_buffer_head+0x40/0x70 fs/buffer.c:3363
+>  [<ffffffff812b922d>] try_to_free_buffers+0xcd/0x120 fs/buffer.c:3278
+> (discriminator 1)
+>  [<ffffffff813b7da9>] jbd2_journal_try_to_free_buffers+0x109/0x190
+> fs/jbd2/transaction.c:1960
+>  [<ffffffff8133666f>] ext4_releasepage+0x9f/0x120 fs/ext4/inode.c:2995
+>  [<ffffffff811cbf3b>] try_to_release_page+0x6b/0x90 mm/filemap.c:2688
+>  [<ffffffff812b885e>] block_invalidatepage+0x16e/0x1c0 fs/buffer.c:1576
+>  [<ffffffff813375e1>] ext4_invalidatepage+0x81/0x100
+> fs/ext4/inode.c:2957 (discriminator 11)
+>  [<ffffffff81338a70>] ext4_da_invalidatepage+0x50/0x540 fs/ext4/inode.c:2802
+>  [<     inline     >] do_invalidatepage mm/truncate.c:92
+>  [<     inline     >] truncate_complete_page mm/truncate.c:112
+>  [<ffffffff811e4dae>] truncate_inode_page+0xde/0xe0 mm/truncate.c:156
+>  [<ffffffff811e503b>] truncate_inode_pages_range+0x20b/0x8e0 mm/truncate.c:280
+>  [<     inline     >] truncate_inode_pages mm/truncate.c:390
+>  [<ffffffff811e585c>] truncate_pagecache+0x5c/0x80 mm/truncate.c:685
+>  [<ffffffff81344032>] ext4_setattr+0x682/0xcd0 fs/ext4/inode.c:4768
+>  [<ffffffff8129034d>] notify_change+0x3ed/0x570 fs/attr.c:266
+>  [<ffffffff8125d0a2>] do_truncate+0xb2/0x110 fs/open.c:63
+>  [<ffffffff8125d592>] do_sys_ftruncate.constprop.16+0x182/0x1f0 fs/open.c:193
+>  [<     inline     >] C_SYSC_ftruncate fs/open.c:209
+>  [<ffffffff8125d6d0>] compat_SyS_ftruncate+0x20/0x30 fs/open.c:207
+>  [<ffffffff81ee681a>] ia32_do_call+0x1b/0x25
+> arch/x86/entry/entry_64_compat.S:505
+> 
+> Previous read at 0xffff8800bb412e70 of size 8 by thread 829 on CPU 0:
+>  [<ffffffff813379f2>] mpage_process_page_bufs+0x202/0x220 fs/ext4/inode.c:1973
+>  [<ffffffff81338520>] mpage_prepare_extent_to_map+0x450/0x500
+> fs/ext4/inode.c:2351 (discriminator 2)
+>  [<ffffffff8133ffaa>] ext4_writepages+0x64a/0x15e0 fs/ext4/inode.c:2505
+>  [<ffffffff811e0453>] do_writepages+0x53/0x80 mm/page-writeback.c:2332
+>  [<ffffffff812aac2f>] __writeback_single_inode+0x7f/0x510
+> fs/fs-writeback.c:1259 (discriminator 3)
+>  [<ffffffff812ab5b8>] writeback_sb_inodes+0x4f8/0x720 fs/fs-writeback.c:1516
+>  [<ffffffff812ab8a4>] __writeback_inodes_wb+0xc4/0x100 fs/fs-writeback.c:1562
+>  [<ffffffff812abc8c>] wb_writeback+0x3ac/0x440 fs/fs-writeback.c:1666
+>  [<     inline     >] wb_check_background_flush fs/fs-writeback.c:1746
+>  [<     inline     >] wb_do_writeback fs/fs-writeback.c:1824
+>  [<ffffffff812ac9df>] wb_workfn+0x43f/0x7e0 fs/fs-writeback.c:1852
+>  [<ffffffff810b1d6e>] process_one_work+0x47e/0x930 kernel/workqueue.c:2036
+>  [<ffffffff810b22d0>] worker_thread+0xb0/0x900 kernel/workqueue.c:2170
+>  [<ffffffff810bba40>] kthread+0x150/0x170 kernel/kthread.c:209
+>  [<ffffffff81ee420f>] ret_from_fork+0x3f/0x70 arch/x86/entry/entry_64.S:529
+> 
+> Mutexes locked by thread 3050:
+> Mutex 469545 is locked here:
+>  [<ffffffff81ee0407>] mutex_lock+0x57/0x70 kernel/locking/mutex.c:108
+>  [<ffffffff8125d094>] do_truncate+0xa4/0x110 fs/open.c:61
+>  [<ffffffff8125d592>] do_sys_ftruncate.constprop.16+0x182/0x1f0 fs/open.c:193
+>  [<     inline     >] C_SYSC_ftruncate fs/open.c:209
+>  [<ffffffff8125d6d0>] compat_SyS_ftruncate+0x20/0x30 fs/open.c:207
+>  [<ffffffff81ee681a>] ia32_do_call+0x1b/0x25
+> arch/x86/entry/entry_64_compat.S:505
+> 
+> Mutexes locked by thread 829:
+> Mutex 119525 is read locked here:
+>  [<ffffffff810de882>] down_read_trylock+0x52/0x60 kernel/locking/rwsem.c:45
+>  [<ffffffff81265428>] trylock_super+0x28/0x90 fs/super.c:369
+>  [<ffffffff812ab85d>] __writeback_inodes_wb+0x7d/0x100 fs/fs-writeback.c:1553
+>  [<ffffffff812abc8c>] wb_writeback+0x3ac/0x440 fs/fs-writeback.c:1666
+>  [<     inline     >] wb_check_background_flush fs/fs-writeback.c:1746
+>  [<     inline     >] wb_do_writeback fs/fs-writeback.c:1824
+>  [<ffffffff812ac9df>] wb_workfn+0x43f/0x7e0 fs/fs-writeback.c:1852
+>  [<ffffffff810b1d6e>] process_one_work+0x47e/0x930 kernel/workqueue.c:2036
+>  [<ffffffff810b22d0>] worker_thread+0xb0/0x900 kernel/workqueue.c:2170
+>  [<ffffffff810bba40>] kthread+0x150/0x170 kernel/kthread.c:209
+>  [<ffffffff81ee420f>] ret_from_fork+0x3f/0x70 arch/x86/entry/entry_64.S:529
+> 
+> 
+> The second memory access is read of head->b_page, while head is being freed.
+> This followed by some other accesses to buffer_head, for example (this
+> is read of bh_offset(bh)):
+> 
+> Previous read at 0xffff8800bb412e88 of size 8 by thread 829 on CPU 0:
+>  [<ffffffff81345e2a>] ext4_bio_write_page+0xfa/0x5e0 fs/ext4/page-io.c:460
+>  [<ffffffff81337786>] mpage_submit_page+0x96/0x100 fs/ext4/inode.c:1868
+>  [<ffffffff813379fe>] mpage_process_page_bufs+0x20e/0x220 fs/ext4/inode.c:1973
+>  [<ffffffff81338520>] mpage_prepare_extent_to_map+0x450/0x500
+> fs/ext4/inode.c:2351 (discriminator 2)
+>  [<ffffffff8133ffaa>] ext4_writepages+0x64a/0x15e0 fs/ext4/inode.c:2505
+>  [<ffffffff811e0453>] do_writepages+0x53/0x80 mm/page-writeback.c:2332
+>  [<ffffffff812aac2f>] __writeback_single_inode+0x7f/0x510
+> fs/fs-writeback.c:1259 (discriminator 3)
+>  [<ffffffff812ab5b8>] writeback_sb_inodes+0x4f8/0x720 fs/fs-writeback.c:1516
+>  [<ffffffff812ab8a4>] __writeback_inodes_wb+0xc4/0x100 fs/fs-writeback.c:1562
+>  [<ffffffff812abc8c>] wb_writeback+0x3ac/0x440 fs/fs-writeback.c:1666
+>  [<     inline     >] wb_check_background_flush fs/fs-writeback.c:1746
+>  [<     inline     >] wb_do_writeback fs/fs-writeback.c:1824
+>  [<ffffffff812ac9df>] wb_workfn+0x43f/0x7e0 fs/fs-writeback.c:1852
+>  [<ffffffff810b1d6e>] process_one_work+0x47e/0x930 kernel/workqueue.c:2036
+>  [<ffffffff810b22d0>] worker_thread+0xb0/0x900 kernel/workqueue.c:2170
+>  [<ffffffff810bba40>] kthread+0x150/0x170 kernel/kthread.c:209
+>  [<ffffffff81ee420f>] ret_from_fork+0x3f/0x70 arch/x86/entry/entry_64.S:529
+> 
