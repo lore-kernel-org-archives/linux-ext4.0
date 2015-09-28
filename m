@@ -1,11 +1,11 @@
 From: Yaowei Bai <bywxiaobai@163.com>
 Subject: [PATCH 06/17] fs/ext2: remove unnecessary new_valid_dev check
-Date: Mon, 28 Sep 2015 21:47:25 +0800
-Message-ID: <1443448045-5236-1-git-send-email-bywxiaobai@163.com>
+Date: Mon, 28 Sep 2015 22:21:29 +0800
+Message-ID: <1443450089-5555-1-git-send-email-bywxiaobai@163.com>
 References: <1443446807-4838-1-git-send-email-bywxiaobai@163.com>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-To: viro@zeniv.linux.org.uk, jack@suse.com
+To: viro@zeniv.linux.org.uk, jack@suse.cz
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1443446807-4838-1-git-send-email-bywxiaobai@163.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
