@@ -1,109 +1,82 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [4.3-rc1, regression] ext2 vs ext3/ext4 fs probing issues
-Date: Mon, 28 Sep 2015 10:04:08 +1000
-Message-ID: <20150928000408.GX19114@dastard>
-References: <20150921070715.GL26895@dastard>
- <20150925235126.GW19114@dastard>
- <20150927231458.GA8638@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 104571] ext4_mb_generate_buddy block bitmap and bg descriptor
+ inconsistent
+Date: Mon, 28 Sep 2015 08:04:48 +0000
+Message-ID: <bug-104571-13602-WqohDu3A4u@https.bugzilla.kernel.org/>
+References: <bug-104571-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20150927231458.GA8638@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:38761 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756469AbbI1IEv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Sep 2015 04:04:51 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 88AB6206D6
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Sep 2015 08:04:50 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 0763E206CD
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Sep 2015 08:04:49 +0000 (UTC)
+In-Reply-To: <bug-104571-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 27, 2015 at 07:14:58PM -0400, Theodore Ts'o wrote:
-> On Sat, Sep 26, 2015 at 09:51:26AM +1000, Dave Chinner wrote:
-> > Ping?
-> 
-> Sorry, I somehow missed this the first time you posted this.
-> 
-> > > Which tells me that there's a problem with fstype probe ordering
-> > > regressions w.r.t ext2 and ext3 as a result of removing the ext3
-> > > module. It also doesn't fail fsck checks now, so boots successfully
-> > > every time. I suspect the "boot hang" problem is that e2fsck sees a
-> > > dirty journal, fixes everything and then asks for a reboot, which
-> > > fails.
-> 
-> The original probe ordering was: ext3, ext2, ext4.  As you've
-> correctly pointed out, this allowed us to preferentially use ext3 over
-> ext2 even if the file system did not need a file system replay.  We
-> put ext4 at the end so that if there was an ext2-only root file
-> system, we would use ext2 in preference over ext4.  This was useful
-> for backwards compatibility for certain ancient enterprise
-> distributions, and/or when ext4 was still under development and we
-> wanted to make sure for an ext2-only root, we would use ext2 if
-> possible.
-> 
-> When ext3 was removed, we were now left with the boot order: ext2,
-> ext4. 
+https://bugzilla.kernel.org/show_bug.cgi?id=104571
 
-Yup, that's what I thought, given the way the ext4 code explictly
-registers ext3/ext2/ext4 in that order when ext4 is being used for
-all of themmm.
+--- Comment #1 from Sander Smeenk <linux-ext4@freshdot.net> ---
+Hit by this bug again:
 
-> P.S.  Regarding the problem which triggered your investigation of the
-> boot order:
-> 
-> > > One the first cold boot of a new kernel, the boot appears to hang.
-> > > What i've discovered (which took a long time thanks to the shitpile
-> > > that is systemd) is that it appears to be doing a e2fsck on the root
-> > > device, and that is failing resulting in systemd outputing:
-> > >
-> > > [FAILED] Failed to start File System Check on Root Device.
-> 
-> Clearly both you and I don't have the same refined tastes as Lennart
-> Poettering.  :-)
-> 
-> After all, instead of grepping through shell scripts, Lennart clearly
-> prefers people to have to go diving through C source code to figure
-> out what is going on....
+| EXT4-fs error (device vdb): ext4_mb_generate_buddy:757: group 76916,
+|    block bitmap and bg descriptor inconsistent: 959 vs 957 free
+|    clusters
+| Aborting journal on device vdb-8.
+| EXT4-fs (vdb): Remounting filesystem read-only
+| ------------[ cut here ]------------
+| WARNING: CPU: 0 PID: 5000 at fs/ext4/mballoc.c:758
+|    ext4_mb_generate_buddy+0x1fa/0x340()
+| Modules linked in: btrfs xor raid6_pq ufs qnx4 hfsplus hfs minix ntfs
+|    msdos jfs xfs libcrc32c xt_tcpudp nf_conntrack_ipv6 nf_defrag_ipv6
+|    ip6table_filter ip6_tables nf_conntrack_ipv4 nf_defrag_ipv4 xt_conntrack
+|    nf_conntrack iptable_filter ip_tables x_tables cirrus ttm drm_kms_helper
+|    drm kvm_intel kvm ppdev syscopyarea sysfillrect serio_raw pvpanic
+|    sysimgblt 8250_fintek parport_pc i2c_piix4 mac_hid nfsd auth_rpcgss
+|    nfs_acl lockd grace sunrpc lp parport autofs4 psmouse floppy pata_acpi
+| CPU: 0 PID: 5000 Comm: deluged Not tainted 3.19.8-ckt4 #1
+| Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+|  ffffffff81ab4fef ffff8800db637858 ffffffff817c3760 ffff88011fc0fdb8
+|  0000000000000000 ffff8800db637898 ffffffff8107696a 0000000000000001
+|  00000000000003bf ffff8800d98e4000 0000000000008000 ffff8800084c1000
+| Call Trace:
+|  [<ffffffff817c3760>] dump_stack+0x45/0x57
+|  [<ffffffff8107696a>] warn_slowpath_common+0x8a/0xc0
+|  [<ffffffff81076a5a>] warn_slowpath_null+0x1a/0x20
+|  [<ffffffff812ae6ea>] ext4_mb_generate_buddy+0x1fa/0x340
+|  [<ffffffff812aed00>] ext4_mb_init_cache+0x390/0x700
+|  [<ffffffff812af5cd>] ext4_mb_load_buddy+0x1ad/0x360
+|  [<ffffffff812b25d7>] ext4_mb_regular_allocator+0x1b7/0x450
+|  [<ffffffff812b41f1>] ext4_mb_new_blocks+0x401/0x550
+|  [<ffffffff812a4120>] ? ext4_find_extent+0x140/0x330
+|  [<ffffffff812a8a87>] ext4_ext_map_blocks+0x637/0xe50
+|  [<ffffffff8127b6d9>] ext4_map_blocks+0x129/0x570
+|  [<ffffffff8127eac2>] ext4_writepages+0x582/0xca0
+|  [<ffffffff810f0700>] ? get_futex_key+0x1c0/0x2b0
+|  [<ffffffff810a71c8>] ? __enqueue_entity+0x78/0x80
+|  [<ffffffff81187a4e>] do_writepages+0x1e/0x30
+|  [<ffffffff8117bbe9>] __filemap_fdatawrite_range+0x59/0x60
+|  [<ffffffff8117bc4c>] filemap_write_and_wait+0x2c/0x60
+|  [<ffffffff8120903d>] do_vfs_ioctl+0x3fd/0x4e0
+|  [<ffffffff812091a1>] SyS_ioctl+0x81/0xa0
+|  [<ffffffff817ca84d>] system_call_fastpath+0x16/0x1b
+| ---[ end trace 860c733f0437c9b7 ]---
 
-That's the single biggest problem systemd has - you need another
-machine with source code on it to debug a machine that is failing to
-boot.
+After which the kernel starts logging in rapid succession:
+| EXT4-fs error (device vdb): ext4_find_extent:900: inode #84410502:
+|    comm deluged: pblk 223281469 bad header/extent: invalid magic - magic
+|    80da, entries 13942, max 3979(0), depth 42746(0)
+| EXT4-fs error: 40 callbacks suppressed
 
-> I could be wrong, since the systemd sources is a twisty maze of C
-> code, all different, but I *believe* that error is caused by the fact
-
-[snip]
-
-I didn't feel like doing this when it became clear that I could just
-work around systemd's issues by using a different kernel config.
-
-> And it *does* appear that if we had modified the root file system and
-> had requested a reboot (at least from the version of systemd sources I
-> examined) , it does appear that systemd should have immediately
-> started rebooting the system, having printed the exit code (probably
-> 3, i.e. FSCK_NONDESTRUCT | FSCK_REBOOT).
-> 
-> So I think something else was going on here, but given the inability
-> for systemd to save logs in this instance, I'm not sure we'll be able
-> to figure out what was going on.
-
-That something else is probably the fact that ever since systemd
-took over the init scripts, reboot/halt operations fail to actually
-reboot/halt my VMs - they just hang instead, which in most
-cases is just fine so I've never bothered to track down what magic
-kernel config option I need to set to make it work again.
-
-The thing here is that systemd output is not making it clear that it
-is rebooting and the fact that the e2fsck output like "**** REBOOT
-IMMEDIATELY ****" are swallowed and never appear on the console
-means that it's pretty much impossible to determine what went wrong.
-Add to that the console log being a massive confusion of things
-still starting and some things stopping, and it ends up being
-completely indecipherable as to what is going on when it finally
-stops doing stuff....
-
-Brave new world, eh?
-
-Cheers,
-
-Dave.
 -- 
-Dave Chinner
-david@fromorbit.com
+You are receiving this mail because:
+You are watching the assignee of the bug.
