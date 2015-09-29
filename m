@@ -1,40 +1,75 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 101011] Kernel Oops when disconnecting a mounted ext4 usb stick
-Date: Tue, 29 Sep 2015 16:33:42 +0000
-Message-ID: <bug-101011-13602-INssOGbETM@https.bugzilla.kernel.org/>
-References: <bug-101011-13602@https.bugzilla.kernel.org/>
+From: Dan Williams <dan.j.williams@intel.com>
+Subject: [PATCH] ext2, ext4: warn when mounting with dax enabled
+Date: Tue, 29 Sep 2015 15:48:11 -0400
+Message-ID: <20150929194806.5276.863.stgit@dwillia2-desk3.jf.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:39909 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932398AbbI2Qdp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Sep 2015 12:33:45 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id D4FC920747
-	for <linux-ext4@vger.kernel.org>; Tue, 29 Sep 2015 16:33:43 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 60CA8206E0
-	for <linux-ext4@vger.kernel.org>; Tue, 29 Sep 2015 16:33:42 +0000 (UTC)
-In-Reply-To: <bug-101011-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-nvdimm@lists.01.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.com>, linux-fsdevel@vger.kernel.org,
+	Matthew Wilcox <willy@linux.intel.com>,
+	linux-ext4@vger.kernel.org,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+To: ross.zwisler@linux.intel.com, david@fromorbit.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=101011
+Similar to XFS warn when mounting DAX while it is still considered under
+development.  Also, aspects of the DAX implementation, for example
+synchronization against multiple faults and faults causing block
+allocation, depend on the correct implementation in the filesystem.  The
+maturity of a given DAX implementation is filesystem specific.
 
---- Comment #14 from Ronny Standtke <ronny.standtke@gmx.net> ---
-> The revert is upstream as commit bdfe0cbd746aa9
+Cc: Jan Kara <jack@suse.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Matthew Wilcox <willy@linux.intel.com>
+Cc: linux-ext4@vger.kernel.org
+Cc: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+Reported-by: Dave Chinner <david@fromorbit.com>
+Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+---
+Given the pending investigations [1], and rather than marking FS_DAX
+broken, warn about DAX usage until we've landed fixes for the issues
+that Dave has identified.
 
-Thanks for the info! I will apply the revert to 4.2.1.
+[1]: https://lists.01.org/pipermail/linux-nvdimm/2015-September/002266.html
 
-> Especially if you are receiving paid support from the distribution, they are 
-> much more likely to listen to you.  :-)
+ fs/ext2/super.c |    2 ++
+ fs/ext4/super.c |    6 +++++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
 
-It's the other way around. I am maintaining a distribution and get paid for
-supporting it. :-)
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 900e19cf9ef6..2597b0663bf2 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -566,6 +566,8 @@ static int parse_options(char *options, struct super_block *sb)
+ 			/* Fall through */
+ 		case Opt_dax:
+ #ifdef CONFIG_FS_DAX
++			ext2_msg(sb, KERN_WARNING,
++		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
+ 			set_opt(sbi->s_mount_opt, DAX);
+ #else
+ 			ext2_msg(sb, KERN_INFO, "dax option not supported");
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a63c7b0a10cf..4db6eb0b6979 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1656,8 +1656,12 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 		}
+ 		sbi->s_jquota_fmt = m->mount_opt;
+ #endif
+-#ifndef CONFIG_FS_DAX
+ 	} else if (token == Opt_dax) {
++#ifdef CONFIG_FS_DAX
++		ext4_msg(sb, KERN_WARNING,
++		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
++			sbi->s_mount_opt |= m->mount_opt;
++#else
+ 		ext4_msg(sb, KERN_INFO, "dax option not supported");
+ 		return -1;
+ #endif
 
--- 
-You are receiving this mail because:
-You are on the CC list for the bug.
