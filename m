@@ -1,56 +1,68 @@
-From: Mike Frysinger <vapier@gentoo.org>
-Subject: [PATCH v2 e2fsprogs] subst: use 0644 perms
-Date: Mon, 28 Sep 2015 21:14:38 -0400
-Message-ID: <1443489278-6435-1-git-send-email-vapier@gentoo.org>
-References: <1442562858-862-1-git-send-email-vapier@gentoo.org>
-To: linux-ext4@vger.kernel.org
+From: "Coen Scheen" <test@chemia.bialystok.pl>
+Subject: RE: Loan
+Date: Tue, 29 Sep 2015 03:11:49 +0200
+Message-ID: <20150929035611.AC6D435BC41@poczta.chemia.bialystok.pl>
+Reply-To: jessegay30@yahoo.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Recipients <test@chemia.bialystok.pl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:42320 "EHLO smtp.gentoo.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753129AbbI2BOq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Sep 2015 21:14:46 -0400
-Received: from localhost.localdomain (localhost [127.0.0.1])
-	by smtp.gentoo.org (Postfix) with ESMTP id 03B7B3403C1
-	for <linux-ext4@vger.kernel.org>; Tue, 29 Sep 2015 01:14:40 +0000 (UTC)
-In-Reply-To: <1442562858-862-1-git-send-email-vapier@gentoo.org>
+Received: from poczta.chemia.bialystok.pl ([83.3.220.92]:56793 "EHLO
+	poczta.chemia.bialystok.pl" rhost-flags-OK-FAIL-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1750786AbbI2EFy convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Sep 2015 00:05:54 -0400
+Content-Description: Mail message body
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When running on NFS, opening files with 0444 perms for writing can
-sometimes fail.  Delay the permission update until the end (which
-restores behavior to pre-commit 2873927d15ffb9ee9ed0e2700791a0e5).
+Hello
 
-URL: https://bugs.gentoo.org/550986
-Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+Do you need 100% finance? We Fund any long term or short term project a=
+t 3%. We have a passion for empowering people to improve their financia=
+l well-being.If you need a loan, kindly Contact us at: jessegay30@yahoo=
+=2Ecom
+
+=46ull name:
+Loan amount:
+Loan duration:
+Country:
+Phone number:
+
+Note:- All reply must be sent via: jessegay30@yahoo.com
+
+Thanks,
+Anouncer
+Coen Scheen
+
+*************************************************************
+
+hallo
+
+Het jy 100% finansiering nodig? Ons befonds enige langtermyn of kortter=
+myn-projek by 3%. Ons het 'n passie vir die bemagtiging van mense te ve=
+rbeter hul finansi=EBle goed being.If jy 'n lening nodig het, kontak on=
+s asseblief by: jessegay30@yahoo.com
+
+Volle naam:
+Leningsbedrag:
+Lening duur:
+land:
+Telefoon nommer:
+
+Let wel: -: jessegay30@yahoo.com Alle antwoord moet gestuur word via
+
+Dankie,
+Anouncer
+Coen Scheen
+
 ---
- util/subst.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
 
-diff --git a/util/subst.c b/util/subst.c
-index f36adb4..10ad6b9 100644
---- a/util/subst.c
-+++ b/util/subst.c
-@@ -370,7 +370,7 @@ int main(int argc, char **argv)
- 		}
- 		strcpy(newfn, outfn);
- 		strcat(newfn, ".new");
--		fd = open(newfn, O_CREAT|O_TRUNC|O_RDWR, 0444);
-+		fd = open(newfn, O_CREAT|O_TRUNC|O_RDWR, 0644);
- 		if (fd < 0) {
- 			perror(newfn);
- 			exit(1);
-@@ -443,6 +443,11 @@ int main(int argc, char **argv)
- 				perror("rename");
- 				exit(1);
- 			}
-+			/* set read-only to alert user it is a generated file */
-+			if (chmod(outfn, 0444)) {
-+				perror("chmod");
-+				exit(1);
-+			}
- 		}
- 	}
- 	if (old)
--- 
-2.5.2
-
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
