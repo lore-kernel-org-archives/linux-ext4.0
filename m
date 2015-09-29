@@ -1,90 +1,51 @@
-From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH v8 00/41] Richacls
-Date: Tue, 29 Sep 2015 16:54:37 +0200
-Message-ID: <CAHpGcMKfNewTJOL0ono8kCDoU8YZvxGfuLe3XP6VCGKuZL3mnA@mail.gmail.com>
-References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
-	<20150928163543.GF1358@fieldses.org>
-	<CAHpGcM++=D1yrkVmZsKwdQCQj4yPdwGGNbmF-Bma7Yo_+kpNQQ@mail.gmail.com>
-	<20150928174648.GA3190@fieldses.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH] tune2fs: don't change UUID on a mounted metadata_csum fs
+Date: Tue, 29 Sep 2015 08:31:22 -0700
+Message-ID: <20150929153122.GJ10390@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux FS-devel Mailing List <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux API Mailing List <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20150928174648.GA3190-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:28554 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934005AbbI2Pb0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Sep 2015 11:31:26 -0400
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-2015-09-28 19:46 GMT+02:00 J. Bruce Fields <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>:
-> On Mon, Sep 28, 2015 at 07:10:06PM +0200, Andreas Gr=C3=BCnbacher wro=
-te:
->> 2015-09-28 18:35 GMT+02:00 J. Bruce Fields <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>:
->> > On Mon, Sep 28, 2015 at 12:08:51AM +0200, Andreas Gruenbacher wrot=
-e:
->> >> Open issues in nfs:
->> >>
->> >> * When a user or group name cannot be mapped, nfs's idmapper alwa=
-ys maps it
->> >>   to nobody. That's good enough for mapping the file owner and ow=
-ning
->> >>   group, but not for identifiers in acls. For now, to get the nfs=
- richacl
->> >>   support somewhat working, I'm explicitly checking if mapping ha=
-s resulted
->> >>   in uid/gid 99 in the kernel.
->> >>
->> >> * When the nfs server replies with NFS4ERR_BADNAME for any user o=
-r group
->> >>   name lookup, the client will stop sending numeric uids and gids=
- to the
->> >>   server even when the lookup wasn't numeric.  From then on, the =
-client
->> >>   will translate uids and gids that have no mapping to the string=
- "nobody",
->> >>   and the server will reject them.  This problem is not specific =
-to acls.
->> >
->> > Do you have fixes in mind for these two issues?
->>
->> I'm not sure how to best fix the idmapper problem, with backwards
->> compatibility and all.
->
-> I haven't looked at the current nfsidmap interface....  So it's
-> completely lacking any way to communicate failure?
+It's not safe to change the UUID on a mounted filesystem when the
+metadata_csum feature is enabled because there's (currently) no
+way to update the kernel's CRC seeds, which precompute the UUID
+component of the checksum for all metadata blocks.  Not to mention
+that we'd have to rewrite /all/ metadata blocks, and any kernel disk
+accesses will race with tune2fs, thus destroying the filesystem.
 
-Yes, when a user doesn't exist, idmapper maps that to the nobody
-uid/gid. That's the failure mode of stat. In the acl case, we do want
-to map user and group names to their respective ids where possible (so
-that the acl makes sense in the local system context), but we do want
-to preserve the original user and group names when there is no such
-mapping instead of mapping to the nobody uid/gid.
+Note that it's fine to do the online UUID update if *only* group
+descriptor checksums are enabled.
 
->> The second problem shouldn't be too hard to fix.
->
-> Is it enough to turn off the failover in the case there's no possibil=
-ity
-> it could have been caused by a numeric id?
+This is a regression introduced by 2334bd3a ("tune2fs: allow changing
+the UUID mounted file systems with the -f option") which does not
+seem to have been reviewed on the mailing list.
 
-Yes, I believe that would be enough.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ misc/tune2fs.c |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-> If any user can set ACLs with arbitrary strings as names, then we'd b=
-e
-> giving any user unprivileged user the ability to turn off numeric
-> idmapping, so I think we need to fix that.
-
-The bug can be triggered by unprivileged users with nfs4_setfacl.
-
-Thanks,
-Andreas
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 2f27d6f..ad833de 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -2960,7 +2960,9 @@ retry_open:
+ 			 * Changing the UUID requires rewriting all metadata,
+ 			 * which can race with a mounted fs.  Don't allow that.
+ 			 */
+-			if ((mount_flags & EXT2_MF_MOUNTED) && !f_flag) {
++			if ((mount_flags & EXT2_MF_MOUNTED) && (!f_flag ||
++			     EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))) {
+ 				fputs(_("The UUID may only be "
+ 					"changed when the filesystem is "
+ 					"unmounted.\n"), stderr);
