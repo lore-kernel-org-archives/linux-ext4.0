@@ -1,662 +1,1333 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH 1/2] jbd2: clean up feature flag checking and usage
-Date: Sat,  3 Oct 2015 03:37:07 -0600
-Message-ID: <1443865028-5943-1-git-send-email-adilger@dilger.ca>
+Subject: [PATCH 2/2] ext4: clean up feature flag checking and usage
+Date: Sat,  3 Oct 2015 03:37:08 -0600
+Message-ID: <1443865028-5943-2-git-send-email-adilger@dilger.ca>
+References: <1443865028-5943-1-git-send-email-adilger@dilger.ca>
 Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-no.shaw.ca ([64.59.134.13]:46902 "EHLO
+Received: from smtp-out-no.shaw.ca ([64.59.134.12]:46905 "EHLO
 	smtp-out-no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751565AbbJCJpU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Oct 2015 05:45:20 -0400
+	with ESMTP id S1751014AbbJCJpV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Oct 2015 05:45:21 -0400
+In-Reply-To: <1443865028-5943-1-git-send-email-adilger@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Clean up the JBD2_HAS_{,RO,IN}COMPAT_FEATURE() flag checking to be
-easier to read, as well as safer from accidental coding mistakes.
-Instead of passing the whole JBD2_FEATURE_*COMPAT_foo flag name to
-the macro, generate the JBD2_FEATURE_*COMPAT prefix internal to the
-macro, to ensure the flag name matches the check being done,
-since the numerical value might be for the wrong compat type.
-
-Also clean up the functions jbd2_journal_check_used_features() and
-jbd2_journal_check_available_features(), jbd2_journal_set_features(),
-and jbd2_journal_clear_features() to actually return bool rather
-than just pretending to.  Clean up functions to match modern style.
+Clean up the EXT4_{HAS,SET,CLEAR}_{,RO_,IN}COMPAT_FEATURE() flag
+checking to be easier to read, as well as safer from accidental
+coding mistakes.  Instead of passing the EXT4_FEATURE_*COMPAT_foo
+flag name to the macro, generate the EXT4_FEATURE_*COMPAT prefix
+within the macro, to ensure the flag name matches the check being
+done, since the numerical value might be for the wrong compat type.
 
 Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/jbd2/commit.c     |   34 +++++------
- fs/jbd2/journal.c    |  159 ++++++++++++++++++++++++++------------------------
- fs/jbd2/recovery.c   |   15 ++---
- fs/jbd2/revoke.c     |    9 ++-
- include/linux/jbd2.h |   72 +++++++++++++---------
- 5 files changed, 150 insertions(+), 139 deletions(-)
+ fs/ext4/balloc.c    |   17 ++---
+ fs/ext4/dir.c       |    7 +-
+ fs/ext4/ext4.h      |   70 ++++++++++---------
+ fs/ext4/ext4_jbd2.h |   26 +++----
+ fs/ext4/extents.c   |    4 +-
+ fs/ext4/ialloc.c    |    4 +-
+ fs/ext4/indirect.c  |    3 +-
+ fs/ext4/inline.c    |    3 +-
+ fs/ext4/inode.c     |   18 ++---
+ fs/ext4/ioctl.c     |   15 ++---
+ fs/ext4/migrate.c   |   13 ++--
+ fs/ext4/mmp.c       |    7 +-
+ fs/ext4/namei.c     |    8 +--
+ fs/ext4/resize.c    |   29 +++-----
+ fs/ext4/super.c     |  191 ++++++++++++++++++++++++---------------------------
+ fs/ext4/xattr.c     |    4 +-
+ 16 files changed, 194 insertions(+), 225 deletions(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 362e5f6..24eeb91 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -142,11 +142,10 @@ static int journal_submit_commit_record(journal_t *journal,
- 	tmp->h_commit_sec = cpu_to_be64(now.tv_sec);
- 	tmp->h_commit_nsec = cpu_to_be32(now.tv_nsec);
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index cd6ea29..bc44979 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -213,7 +213,7 @@ static int ext4_init_block_bitmap(struct super_block *sb,
  
--	if (JBD2_HAS_COMPAT_FEATURE(journal,
--				    JBD2_FEATURE_COMPAT_CHECKSUM)) {
--		tmp->h_chksum_type 	= JBD2_CRC32_CHKSUM;
--		tmp->h_chksum_size 	= JBD2_CRC32_CHKSUM_SIZE;
--		tmp->h_chksum[0] 	= cpu_to_be32(crc32_sum);
-+	if (JBD2_HAS_COMPAT_FEATURE(journal, CHECKSUM)) {
-+		tmp->h_chksum_type	= JBD2_CRC32_CHKSUM;
-+		tmp->h_chksum_size	= JBD2_CRC32_CHKSUM_SIZE;
-+		tmp->h_chksum[0]	= cpu_to_be32(crc32_sum);
+ 	start = ext4_group_first_block_no(sb, block_group);
+ 
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, FLEX_BG))
+ 		flex_bg = 1;
+ 
+ 	/* Set bits for block and inode bitmaps, and inode table */
+@@ -322,7 +322,7 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
+ 	ext4_fsblk_t blk;
+ 	ext4_fsblk_t group_first_block;
+ 
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, FLEX_BG)) {
+ 		/* with FLEX_BG, the inode/block bitmaps and itable
+ 		 * blocks may not be in the group at all
+ 		 * so the bitmap validation will be skipped for those groups
+@@ -740,14 +740,13 @@ int ext4_bg_has_super(struct super_block *sb, ext4_group_t group)
+ 
+ 	if (group == 0)
+ 		return 1;
+-	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_SPARSE_SUPER2)) {
++	if (EXT4_HAS_COMPAT_FEATURE(sb, SPARSE_SUPER2)) {
+ 		if (group == le32_to_cpu(es->s_backup_bgs[0]) ||
+ 		    group == le32_to_cpu(es->s_backup_bgs[1]))
+ 			return 1;
+ 		return 0;
  	}
- 	jbd2_commit_block_csum_set(journal, bh);
+-	if ((group <= 1) || !EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-					EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER))
++	if ((group <= 1) || !EXT4_HAS_RO_COMPAT_FEATURE(sb, SPARSE_SUPER))
+ 		return 1;
+ 	if (!(group & 1))
+ 		return 0;
+@@ -776,7 +775,7 @@ static unsigned long ext4_bg_num_gdb_nometa(struct super_block *sb,
+ 	if (!ext4_bg_has_super(sb, group))
+ 		return 0;
  
-@@ -157,8 +156,7 @@ static int journal_submit_commit_record(journal_t *journal,
- 	bh->b_end_io = journal_end_buffer_io_sync;
- 
- 	if (journal->j_flags & JBD2_BARRIER &&
--	    !JBD2_HAS_INCOMPAT_FEATURE(journal,
--				       JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT))
-+	    !JBD2_HAS_INCOMPAT_FEATURE(journal, ASYNC_COMMIT))
- 		ret = submit_bh(WRITE_SYNC | WRITE_FLUSH_FUA, bh);
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb,EXT4_FEATURE_INCOMPAT_META_BG))
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, META_BG))
+ 		return le32_to_cpu(EXT4_SB(sb)->s_es->s_first_meta_bg);
  	else
- 		ret = submit_bh(WRITE_SYNC, bh);
-@@ -317,7 +315,7 @@ static void write_tag_block(journal_t *j, journal_block_tag_t *tag,
- 				   unsigned long long block)
+ 		return EXT4_SB(sb)->s_gdb_count;
+@@ -797,8 +796,8 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
+ 			le32_to_cpu(EXT4_SB(sb)->s_es->s_first_meta_bg);
+ 	unsigned long metagroup = group / EXT4_DESC_PER_BLOCK(sb);
+ 
+-	if (!EXT4_HAS_INCOMPAT_FEATURE(sb,EXT4_FEATURE_INCOMPAT_META_BG) ||
+-			metagroup < first_meta_bg)
++	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, META_BG) ||
++	    metagroup < first_meta_bg)
+ 		return ext4_bg_num_gdb_nometa(sb, group);
+ 
+ 	return ext4_bg_num_gdb_meta(sb,group);
+@@ -818,7 +817,7 @@ static unsigned ext4_num_base_meta_clusters(struct super_block *sb,
+ 	/* Check for superblock and gdt backups in this group */
+ 	num = ext4_bg_has_super(sb, block_group);
+ 
+-	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG) ||
++	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, META_BG) ||
+ 	    block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
+ 			  sbi->s_desc_per_block) {
+ 		if (num) {
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index f9e1491..bf38cea 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -40,10 +40,9 @@ static int is_dx_dir(struct inode *inode)
  {
- 	tag->t_blocknr = cpu_to_be32(block & (u32)~0);
--	if (JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_64BIT))
-+	if (JBD2_HAS_INCOMPAT_FEATURE(j, 64BIT))
- 		tag->t_blocknr_high = cpu_to_be32((block >> 31) >> 1);
- }
+ 	struct super_block *sb = inode->i_sb;
  
-@@ -356,7 +354,7 @@ static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
- 			     bh->b_size);
- 	kunmap_atomic(addr);
- 
--	if (JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V3))
-+	if (JBD2_HAS_INCOMPAT_FEATURE(j, CSUM_V3))
- 		tag3->t_checksum = cpu_to_be32(csum32);
- 	else
- 		tag->t_checksum = cpu_to_be16(csum32);
-@@ -731,7 +729,7 @@ start_journal_io:
- 				 * Compute checksum.
- 				 */
- 				if (JBD2_HAS_COMPAT_FEATURE(journal,
--					JBD2_FEATURE_COMPAT_CHECKSUM)) {
-+							    CHECKSUM)) {
- 					crc32_sum =
- 					    jbd2_checksum_data(crc32_sum, bh);
- 				}
-@@ -797,10 +795,9 @@ start_journal_io:
- 		blkdev_issue_flush(journal->j_fs_dev, GFP_NOFS, NULL);
- 
- 	/* Done it all: now write the commit record asynchronously. */
--	if (JBD2_HAS_INCOMPAT_FEATURE(journal,
--				      JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, ASYNC_COMMIT)) {
- 		err = journal_submit_commit_record(journal, commit_transaction,
--						 &cbh, crc32_sum);
-+						   &cbh, crc32_sum);
- 		if (err)
- 			__jbd2_journal_abort_hard(journal);
- 	}
-@@ -889,20 +886,17 @@ start_journal_io:
- 	commit_transaction->t_state = T_COMMIT_JFLUSH;
- 	write_unlock(&journal->j_state_lock);
- 
--	if (!JBD2_HAS_INCOMPAT_FEATURE(journal,
--				       JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
-+	if (!JBD2_HAS_INCOMPAT_FEATURE(journal, ASYNC_COMMIT)) {
- 		err = journal_submit_commit_record(journal, commit_transaction,
--						&cbh, crc32_sum);
-+						   &cbh, crc32_sum);
- 		if (err)
- 			__jbd2_journal_abort_hard(journal);
- 	}
- 	if (cbh)
- 		err = journal_wait_on_commit_record(journal, cbh);
--	if (JBD2_HAS_INCOMPAT_FEATURE(journal,
--				      JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT) &&
--	    journal->j_flags & JBD2_BARRIER) {
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, ASYNC_COMMIT) &&
-+	    journal->j_flags & JBD2_BARRIER)
- 		blkdev_issue_flush(journal->j_dev, GFP_NOFS, NULL);
--	}
- 
- 	if (err)
- 		jbd2_journal_abort(journal, err);
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 8270fe9..0a25b88 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1523,8 +1523,8 @@ static int journal_get_superblock(journal_t *journal)
- 		goto out;
- 	}
- 
--	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2) &&
--	    JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V3)) {
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, CSUM_V2) &&
-+	    JBD2_HAS_INCOMPAT_FEATURE(journal, CSUM_V3)) {
- 		/* Can't have checksum v2 and v3 at the same time! */
- 		printk(KERN_ERR "JBD2: Can't enable checksumming v2 and v3 "
- 		       "at the same time!\n");
-@@ -1532,7 +1532,7 @@ static int journal_get_superblock(journal_t *journal)
- 	}
- 
- 	if (jbd2_journal_has_csum_v2or3(journal) &&
--	    JBD2_HAS_COMPAT_FEATURE(journal, JBD2_FEATURE_COMPAT_CHECKSUM)) {
-+	    JBD2_HAS_COMPAT_FEATURE(journal, CHECKSUM)) {
- 		/* Can't have checksum v1 and v2 on at the same time! */
- 		printk(KERN_ERR "JBD2: Can't enable checksumming v1 and v2/3 "
- 		       "at the same time!\n");
-@@ -1611,26 +1611,24 @@ static int load_superblock(journal_t *journal)
-  */
- int jbd2_journal_load(journal_t *journal)
- {
--	int err;
- 	journal_superblock_t *sb;
-+	int err;
- 
- 	err = load_superblock(journal);
- 	if (err)
- 		return err;
- 
- 	sb = journal->j_superblock;
-+
- 	/* If this is a V2 superblock, then we have to check the
- 	 * features flags on it. */
--
--	if (journal->j_format_version >= 2) {
--		if ((sb->s_feature_ro_compat &
--		     ~cpu_to_be32(JBD2_KNOWN_ROCOMPAT_FEATURES)) ||
--		    (sb->s_feature_incompat &
--		     ~cpu_to_be32(JBD2_KNOWN_INCOMPAT_FEATURES))) {
--			printk(KERN_WARNING
--				"JBD2: Unrecognised features on journal\n");
--			return -EINVAL;
--		}
-+	if (JBD2_HAS_ROCOMPAT_FEATURE(journal, UNKNOWN) ||
-+	    JBD2_HAS_INCOMPAT_FEATURE(journal, UNKNOWN)) {
-+		printk(KERN_WARNING
-+		       "JBD2: Unrecognised features %#x/%#x on journal\n",
-+		       be32_to_cpu(sb->s_feature_rocompat),
-+		       be32_to_cpu(sb->s_feature_incompat));
-+		return -EINVAL;
- 	}
- 
- 	/*
-@@ -1737,98 +1735,105 @@ int jbd2_journal_destroy(journal_t *journal)
- 
- 
- /**
-- *int jbd2_journal_check_used_features () - Check if features specified are used.
-+ * jbd2_journal_check_used_features - Check if features specified are used.
-  * @journal: Journal to check.
-  * @compat: bitmask of compatible features
-- * @ro: bitmask of features that force read-only mount
-+ * @rocompat: bitmask of features that force read-only mount
-  * @incompat: bitmask of incompatible features
-  *
-- * Check whether the journal uses all of a given set of
-- * features.  Return true (non-zero) if it does.
-+ * Check whether the journal uses all of a given set of features.
-+ * Return true if it does.
-  **/
--
--int jbd2_journal_check_used_features (journal_t *journal, unsigned long compat,
--				 unsigned long ro, unsigned long incompat)
-+bool jbd2_journal_check_used_features(journal_t *journal, unsigned long compat,
-+				      unsigned long rocompat,
-+				      unsigned long incompat)
- {
- 	journal_superblock_t *sb;
- 
--	if (!compat && !ro && !incompat)
--		return 1;
-+	if (!compat && !rocompat && !incompat)
-+		return true;
-+
- 	/* Load journal superblock if it is not loaded yet. */
- 	if (journal->j_format_version == 0 &&
- 	    journal_get_superblock(journal) != 0)
--		return 0;
--	if (journal->j_format_version == 1)
--		return 0;
-+		return false;
-+	if (journal->j_format_version < 2)
-+		return false;
- 
- 	sb = journal->j_superblock;
- 
- 	if (((be32_to_cpu(sb->s_feature_compat) & compat) == compat) &&
--	    ((be32_to_cpu(sb->s_feature_ro_compat) & ro) == ro) &&
-+	    ((be32_to_cpu(sb->s_feature_rocompat) & rocompat) == rocompat) &&
- 	    ((be32_to_cpu(sb->s_feature_incompat) & incompat) == incompat))
--		return 1;
-+		return true;
- 
--	return 0;
-+	return false;
- }
- 
- /**
-- * int jbd2_journal_check_available_features() - Check feature set in journalling layer
-+ * jbd2_journal_check_available_features - Check feature set in journal layer
-  * @journal: Journal to check.
-  * @compat: bitmask of compatible features
-- * @ro: bitmask of features that force read-only mount
-+ * @rocompat: bitmask of features that force read-only mount
-  * @incompat: bitmask of incompatible features
-  *
-  * Check whether the journaling code supports the use of
-  * all of a given set of features on this journal.  Return true
-- * (non-zero) if it can. */
--
--int jbd2_journal_check_available_features (journal_t *journal, unsigned long compat,
--				      unsigned long ro, unsigned long incompat)
-+ * if all features are supported.
-+ */
-+bool jbd2_journal_check_available_features(journal_t *journal,
-+					   unsigned long compat,
-+					   unsigned long rocompat,
-+					   unsigned long incompat)
- {
--	if (!compat && !ro && !incompat)
--		return 1;
-+	if (!compat && !rocompat && !incompat)
-+		return true;
- 
- 	/* We can support any known requested features iff the
- 	 * superblock is in version 2.  Otherwise we fail to support any
- 	 * extended sb features. */
--
- 	if (journal->j_format_version != 2)
--		return 0;
-+		return false;
- 
--	if ((compat   & JBD2_KNOWN_COMPAT_FEATURES) == compat &&
--	    (ro       & JBD2_KNOWN_ROCOMPAT_FEATURES) == ro &&
--	    (incompat & JBD2_KNOWN_INCOMPAT_FEATURES) == incompat)
--		return 1;
-+	if ((compat   & JBD2_FEATURE_COMPAT_KNOWN) == compat &&
-+	    (rocompat & JBD2_FEATURE_ROCOMPAT_KNOWN) == rocompat &&
-+	    (incompat & JBD2_FEATURE_INCOMPAT_KNOWN) == incompat)
-+		return true;
- 
--	return 0;
-+	return false;
- }
- 
- /**
-- * int jbd2_journal_set_features () - Mark a given journal feature in the superblock
-+ * jbd2_journal_set_features() - Mark journal feature(s) in the superblock
-  * @journal: Journal to act on.
-  * @compat: bitmask of compatible features
-- * @ro: bitmask of features that force read-only mount
-+ * @rocompat: bitmask of features that force read-only mount
-  * @incompat: bitmask of incompatible features
-  *
-  * Mark a given journal feature as present on the
-  * superblock.  Returns true if the requested features could be set.
-- *
-  */
--
--int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
--			  unsigned long ro, unsigned long incompat)
--{
--#define INCOMPAT_FEATURE_ON(f) \
--		((incompat & (f)) && !(sb->s_feature_incompat & cpu_to_be32(f)))
--#define COMPAT_FEATURE_ON(f) \
--		((compat & (f)) && !(sb->s_feature_compat & cpu_to_be32(f)))
-+bool jbd2_journal_set_features(journal_t *journal, unsigned long compat,
-+			       unsigned long rocompat, unsigned long incompat)
-+{
-+#define COMPAT_FEATURE_ON(f)						\
-+	((compat & (JBD2_FEATURE_COMPAT_ ## f)) &&			\
-+	 !(sb->s_feature_compat & cpu_to_be32(JBD2_FEATURE_COMPAT_ ## f)))
-+#define ROCOMPAT_FEATURE_ON(f)						\
-+	((rocompat & (JBD2_FEATURE_ROCOMPAT_ ## f)) &&			\
-+	 !(sb->s_feature_rocompat & cpu_to_be32(JBD2_FEATURE_ROCOMPAT_ ## f)))
-+#define INCOMPAT_FEATURE_ON(f)						\
-+	((incompat & (JBD2_FEATURE_INCOMPAT_ ## f)) &&			\
-+	 !(sb->s_feature_incompat & cpu_to_be32(JBD2_FEATURE_INCOMPAT_ ## f)))
- 	journal_superblock_t *sb;
- 
--	if (jbd2_journal_check_used_features(journal, compat, ro, incompat))
--		return 1;
-+	if (jbd2_journal_check_used_features(journal, compat,
-+					     rocompat, incompat))
-+		return true;
- 
--	if (!jbd2_journal_check_available_features(journal, compat, ro, incompat))
--		return 0;
-+	if (!jbd2_journal_check_available_features(journal, compat,
-+						   rocompat, incompat))
-+		return false;
- 
- 	/* If enabling v2 checksums, turn on v3 instead */
- 	if (incompat & JBD2_FEATURE_INCOMPAT_CSUM_V2) {
-@@ -1842,12 +1847,12 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 		compat &= ~JBD2_FEATURE_COMPAT_CHECKSUM;
- 
- 	jbd_debug(1, "Setting new features 0x%lx/0x%lx/0x%lx\n",
--		  compat, ro, incompat);
-+		  compat, rocompat, incompat);
- 
- 	sb = journal->j_superblock;
- 
- 	/* If enabling v3 checksums, update superblock */
--	if (INCOMPAT_FEATURE_ON(JBD2_FEATURE_INCOMPAT_CSUM_V3)) {
-+	if (INCOMPAT_FEATURE_ON(CSUM_V3)) {
- 		sb->s_checksum_type = JBD2_CRC32C_CHKSUM;
- 		sb->s_feature_compat &=
- 			~cpu_to_be32(JBD2_FEATURE_COMPAT_CHECKSUM);
-@@ -1860,7 +1865,7 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 				printk(KERN_ERR "JBD2: Cannot load crc32c "
- 				       "driver.\n");
- 				journal->j_chksum_driver = NULL;
--				return 0;
-+				return false;
- 			}
- 
- 			/* Precompute checksum seed for all metadata */
-@@ -1871,44 +1876,44 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 	}
- 
- 	/* If enabling v1 checksums, downgrade superblock */
--	if (COMPAT_FEATURE_ON(JBD2_FEATURE_COMPAT_CHECKSUM))
-+	if (COMPAT_FEATURE_ON(CHECKSUM))
- 		sb->s_feature_incompat &=
- 			~cpu_to_be32(JBD2_FEATURE_INCOMPAT_CSUM_V2 |
- 				     JBD2_FEATURE_INCOMPAT_CSUM_V3);
- 
--	sb->s_feature_compat    |= cpu_to_be32(compat);
--	sb->s_feature_ro_compat |= cpu_to_be32(ro);
--	sb->s_feature_incompat  |= cpu_to_be32(incompat);
-+	sb->s_feature_compat   |= cpu_to_be32(compat);
-+	sb->s_feature_rocompat |= cpu_to_be32(rocompat);
-+	sb->s_feature_incompat |= cpu_to_be32(incompat);
- 
--	return 1;
-+	return true;
- #undef COMPAT_FEATURE_ON
-+#undef ROCOMPAT_FEATURE_ON
- #undef INCOMPAT_FEATURE_ON
- }
- 
- /*
-- * jbd2_journal_clear_features () - Clear a given journal feature in the
-- * 				    superblock
-+ * jbd2_journal_clear_features() - Clear journal feature(s) from the superblock
-  * @journal: Journal to act on.
-  * @compat: bitmask of compatible features
-- * @ro: bitmask of features that force read-only mount
-+ * @rocompat: bitmask of features that force read-only mount
-  * @incompat: bitmask of incompatible features
-  *
-  * Clear a given journal feature as present on the
-  * superblock.
-  */
- void jbd2_journal_clear_features(journal_t *journal, unsigned long compat,
--				unsigned long ro, unsigned long incompat)
-+				unsigned long rocompat, unsigned long incompat)
- {
- 	journal_superblock_t *sb;
- 
- 	jbd_debug(1, "Clear features 0x%lx/0x%lx/0x%lx\n",
--		  compat, ro, incompat);
-+		  compat, rocompat, incompat);
- 
- 	sb = journal->j_superblock;
- 
--	sb->s_feature_compat    &= ~cpu_to_be32(compat);
--	sb->s_feature_ro_compat &= ~cpu_to_be32(ro);
--	sb->s_feature_incompat  &= ~cpu_to_be32(incompat);
-+	sb->s_feature_compat   &= ~cpu_to_be32(compat);
-+	sb->s_feature_rocompat &= ~cpu_to_be32(rocompat);
-+	sb->s_feature_incompat &= ~cpu_to_be32(incompat);
- }
- EXPORT_SYMBOL(jbd2_journal_clear_features);
- 
-@@ -2197,15 +2202,15 @@ size_t journal_tag_bytes(journal_t *journal)
- {
- 	size_t sz;
- 
--	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V3))
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, CSUM_V3))
- 		return sizeof(journal_block_tag3_t);
- 
- 	sz = sizeof(journal_block_tag_t);
- 
--	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, CSUM_V2))
- 		sz += sizeof(__u16);
- 
--	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, 64BIT))
- 		return sz;
- 	else
- 		return sz - sizeof(__u32);
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index a9079d0..b3cfe15 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -342,7 +342,7 @@ static inline unsigned long long read_tag_block(journal_t *journal,
- 						journal_block_tag_t *tag)
- {
- 	unsigned long long block = be32_to_cpu(tag->t_blocknr);
--	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, 64BIT))
- 		block |= (u64)be32_to_cpu(tag->t_blocknr_high) << 32;
- 	return block;
- }
-@@ -411,7 +411,7 @@ static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
- 	csum32 = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&seq, sizeof(seq));
- 	csum32 = jbd2_chksum(j, csum32, buf, j->j_blocksize);
- 
--	if (JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V3))
-+	if (JBD2_HAS_INCOMPAT_FEATURE(j, CSUM_V3))
- 		return tag3->t_checksum == cpu_to_be32(csum32);
- 	else
- 		return tag->t_checksum == cpu_to_be16(csum32);
-@@ -539,7 +539,7 @@ static int do_one_pass(journal_t *journal,
- 			if (pass != PASS_REPLAY) {
- 				if (pass == PASS_SCAN &&
- 				    JBD2_HAS_COMPAT_FEATURE(journal,
--					    JBD2_FEATURE_COMPAT_CHECKSUM) &&
-+							    CHECKSUM) &&
- 				    !info->end_transaction) {
- 					if (calc_chksums(journal, bh,
- 							&next_log_block,
-@@ -694,8 +694,7 @@ static int do_one_pass(journal_t *journal,
- 			 * much to do other than move on to the next sequence
- 			 * number. */
- 			if (pass == PASS_SCAN &&
--			    JBD2_HAS_COMPAT_FEATURE(journal,
--				    JBD2_FEATURE_COMPAT_CHECKSUM)) {
-+			    JBD2_HAS_COMPAT_FEATURE(journal, CHECKSUM)) {
- 				int chksum_err, chksum_seen;
- 				struct commit_header *cbh =
- 					(struct commit_header *)bh->b_data;
-@@ -736,7 +735,7 @@ static int do_one_pass(journal_t *journal,
- 					info->end_transaction = next_commit_ID;
- 
- 					if (!JBD2_HAS_INCOMPAT_FEATURE(journal,
--					   JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)){
-+								ASYNC_COMMIT)) {
- 						journal->j_failed_commit =
- 							next_commit_ID;
- 						brelse(bh);
-@@ -751,7 +750,7 @@ static int do_one_pass(journal_t *journal,
- 				info->end_transaction = next_commit_ID;
- 
- 				if (!JBD2_HAS_INCOMPAT_FEATURE(journal,
--				     JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
-+							       ASYNC_COMMIT)) {
- 					journal->j_failed_commit =
- 						next_commit_ID;
- 					brelse(bh);
-@@ -859,7 +858,7 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
- 		return -EINVAL;
- 	max = rcount;
- 
--	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, 64BIT))
- 		record_len = 8;
- 
- 	while (offset + record_len <= max) {
-diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-index 0abf2e7..aa5b26a 100644
---- a/fs/jbd2/revoke.c
-+++ b/fs/jbd2/revoke.c
-@@ -334,8 +334,9 @@ int jbd2_journal_revoke(handle_t *handle, unsigned long long blocknr,
- 		BUFFER_TRACE(bh_in, "enter");
- 
- 	journal = handle->h_transaction->t_journal;
--	if (!jbd2_journal_set_features(journal, 0, 0, JBD2_FEATURE_INCOMPAT_REVOKE)){
--		J_ASSERT (!"Cannot set revoke feature!");
-+	if (!jbd2_journal_set_features(journal, 0, 0,
-+				       JBD2_FEATURE_INCOMPAT_REVOKE)) {
-+		J_ASSERT(!"Cannot set revoke feature!");
- 		return -EINVAL;
- 	}
- 
-@@ -589,7 +590,7 @@ static void write_one_revoke_record(journal_t *journal,
- 	if (jbd2_journal_has_csum_v2or3(journal))
- 		csum_size = sizeof(struct jbd2_journal_revoke_tail);
- 
--	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, 64BIT))
- 		sz = 8;
- 	else
- 		sz = 4;
-@@ -619,7 +620,7 @@ static void write_one_revoke_record(journal_t *journal,
- 		*descriptorp = descriptor;
- 	}
- 
--	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, 64BIT))
- 		* ((__be64 *)(&descriptor->b_data[offset])) =
- 			cpu_to_be64(record->blocknr);
- 	else
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index df07e78..0d1912c 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -254,7 +254,7 @@ typedef struct journal_superblock_s
- 	/* Remaining fields are only valid in a version-2 superblock */
- 	__be32	s_feature_compat;	/* compatible feature set */
- 	__be32	s_feature_incompat;	/* incompatible feature set */
--	__be32	s_feature_ro_compat;	/* readonly-compatible feature set */
-+	__be32	s_feature_rocompat;	/* readonly-compatible feature set */
- /* 0x0030 */
- 	__u8	s_uuid[16];		/* 128-bit uuid for journal */
- 
-@@ -278,17 +278,20 @@ typedef struct journal_superblock_s
- /* 0x0400 */
- } journal_superblock_t;
- 
--#define JBD2_HAS_COMPAT_FEATURE(j,mask)					\
-+#define JBD2_HAS_COMPAT_FEATURE(j, name)				\
- 	((j)->j_format_version >= 2 &&					\
--	 ((j)->j_superblock->s_feature_compat & cpu_to_be32((mask))))
--#define JBD2_HAS_RO_COMPAT_FEATURE(j,mask)				\
-+	 ((j)->j_superblock->s_feature_compat &				\
-+	  cpu_to_be32(JBD2_FEATURE_COMPAT_ ## name)))
-+#define JBD2_HAS_ROCOMPAT_FEATURE(j, name)				\
- 	((j)->j_format_version >= 2 &&					\
--	 ((j)->j_superblock->s_feature_ro_compat & cpu_to_be32((mask))))
--#define JBD2_HAS_INCOMPAT_FEATURE(j,mask)				\
-+	 ((j)->j_superblock->s_feature_rocompat &			\
-+	  cpu_to_be32(JBD2_FEATURE_ROCOMPAT_ ## name)))
-+#define JBD2_HAS_INCOMPAT_FEATURE(j, name)				\
- 	((j)->j_format_version >= 2 &&					\
--	 ((j)->j_superblock->s_feature_incompat & cpu_to_be32((mask))))
-+	 ((j)->j_superblock->s_feature_incompat &			\
-+	  cpu_to_be32(JBD2_FEATURE_INCOMPAT_ ## name)))
- 
--#define JBD2_FEATURE_COMPAT_CHECKSUM	0x00000001
-+#define JBD2_FEATURE_COMPAT_CHECKSUM		0x00000001
- 
- #define JBD2_FEATURE_INCOMPAT_REVOKE		0x00000001
- #define JBD2_FEATURE_INCOMPAT_64BIT		0x00000002
-@@ -297,13 +300,16 @@ typedef struct journal_superblock_s
- #define JBD2_FEATURE_INCOMPAT_CSUM_V3		0x00000010
- 
- /* Features known to this kernel version: */
--#define JBD2_KNOWN_COMPAT_FEATURES	JBD2_FEATURE_COMPAT_CHECKSUM
--#define JBD2_KNOWN_ROCOMPAT_FEATURES	0
--#define JBD2_KNOWN_INCOMPAT_FEATURES	(JBD2_FEATURE_INCOMPAT_REVOKE | \
--					JBD2_FEATURE_INCOMPAT_64BIT | \
--					JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT | \
--					JBD2_FEATURE_INCOMPAT_CSUM_V2 | \
--					JBD2_FEATURE_INCOMPAT_CSUM_V3)
-+#define JBD2_FEATURE_COMPAT_KNOWN	(JBD2_FEATURE_COMPAT_CHECKSUM)
-+#define JBD2_FEATURE_ROCOMPAT_KNOWN	0
-+#define JBD2_FEATURE_INCOMPAT_KNOWN	(JBD2_FEATURE_INCOMPAT_REVOKE | \
-+					 JBD2_FEATURE_INCOMPAT_64BIT | \
-+					 JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT | \
-+					 JBD2_FEATURE_INCOMPAT_CSUM_V2 | \
-+					 JBD2_FEATURE_INCOMPAT_CSUM_V3)
-+#define JBD2_FEATURE_COMPAT_UNKNOWN	~JBD2_FEATURE_COMPAT_KNOWN
-+#define JBD2_FEATURE_ROCOMPAT_UNKNOWN	~JBD2_FEATURE_ROCOMPAT_KNOWN
-+#define JBD2_FEATURE_INCOMPAT_UNKNOWN	~JBD2_FEATURE_INCOMPAT_KNOWN
- 
- #ifdef __KERNEL__
- 
-@@ -1178,19 +1184,25 @@ extern int	 jbd2_journal_flush (journal_t *);
- extern void	 jbd2_journal_lock_updates (journal_t *);
- extern void	 jbd2_journal_unlock_updates (journal_t *);
- 
--extern journal_t * jbd2_journal_init_dev(struct block_device *bdev,
--				struct block_device *fs_dev,
--				unsigned long long start, int len, int bsize);
--extern journal_t * jbd2_journal_init_inode (struct inode *);
--extern int	   jbd2_journal_update_format (journal_t *);
--extern int	   jbd2_journal_check_used_features
--		   (journal_t *, unsigned long, unsigned long, unsigned long);
--extern int	   jbd2_journal_check_available_features
--		   (journal_t *, unsigned long, unsigned long, unsigned long);
--extern int	   jbd2_journal_set_features
--		   (journal_t *, unsigned long, unsigned long, unsigned long);
--extern void	   jbd2_journal_clear_features
--		   (journal_t *, unsigned long, unsigned long, unsigned long);
-+extern journal_t *jbd2_journal_init_dev(struct block_device *bdev,
-+					struct block_device *fs_dev,
-+					unsigned long long start,
-+					int len, int bsize);
-+extern journal_t *jbd2_journal_init_inode(struct inode *);
-+extern int jbd2_journal_update_format(journal_t *);
-+extern bool jbd2_journal_check_used_features(journal_t *, unsigned long compat,
-+					     unsigned long rocompat,
-+					     unsigned long incompat);
-+extern bool jbd2_journal_check_available_features(journal_t *,
-+						  unsigned long compat,
-+						  unsigned long rocompat,
-+						  unsigned long incompat);
-+extern bool jbd2_journal_set_features(journal_t *, unsigned long compat,
-+				      unsigned long rocompat,
-+				      unsigned long incompat);
-+extern void jbd2_journal_clear_features(journal_t *, unsigned long compat,
-+					unsigned long rocompat,
-+					unsigned long incompat);
- extern int	   jbd2_journal_load       (journal_t *journal);
- extern int	   jbd2_journal_destroy    (journal_t *);
- extern int	   jbd2_journal_recover    (journal_t *journal);
-@@ -1340,8 +1352,8 @@ extern size_t journal_tag_bytes(journal_t *journal);
- 
- static inline int jbd2_journal_has_csum_v2or3(journal_t *journal)
- {
--	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2) ||
--	    JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V3))
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, CSUM_V2) ||
-+	    JBD2_HAS_INCOMPAT_FEATURE(journal, CSUM_V3))
+-	if (EXT4_HAS_COMPAT_FEATURE(inode->i_sb,
+-		     EXT4_FEATURE_COMPAT_DIR_INDEX) &&
+-	    ((ext4_test_inode_flag(inode, EXT4_INODE_INDEX)) ||
+-	     ((inode->i_size >> sb->s_blocksize_bits) == 1) ||
++	if (EXT4_HAS_COMPAT_FEATURE(inode->i_sb, DIR_INDEX) &&
++	    (ext4_test_inode_flag(inode, EXT4_INODE_INDEX) ||
++	     (inode->i_size >> sb->s_blocksize_bits) == 1 ||
+ 	     ext4_has_inline_data(inode)))
  		return 1;
  
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index fd1f28b..721c7c2 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1522,24 +1522,33 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+  * Feature set definitions
+  */
+ 
+-#define EXT4_HAS_COMPAT_FEATURE(sb,mask)			\
+-	((EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask)) != 0)
+-#define EXT4_HAS_RO_COMPAT_FEATURE(sb,mask)			\
+-	((EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask)) != 0)
+-#define EXT4_HAS_INCOMPAT_FEATURE(sb,mask)			\
+-	((EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask)) != 0)
+-#define EXT4_SET_COMPAT_FEATURE(sb,mask)			\
+-	EXT4_SB(sb)->s_es->s_feature_compat |= cpu_to_le32(mask)
+-#define EXT4_SET_RO_COMPAT_FEATURE(sb,mask)			\
+-	EXT4_SB(sb)->s_es->s_feature_ro_compat |= cpu_to_le32(mask)
+-#define EXT4_SET_INCOMPAT_FEATURE(sb,mask)			\
+-	EXT4_SB(sb)->s_es->s_feature_incompat |= cpu_to_le32(mask)
+-#define EXT4_CLEAR_COMPAT_FEATURE(sb,mask)			\
+-	EXT4_SB(sb)->s_es->s_feature_compat &= ~cpu_to_le32(mask)
+-#define EXT4_CLEAR_RO_COMPAT_FEATURE(sb,mask)			\
+-	EXT4_SB(sb)->s_es->s_feature_ro_compat &= ~cpu_to_le32(mask)
+-#define EXT4_CLEAR_INCOMPAT_FEATURE(sb,mask)			\
+-	EXT4_SB(sb)->s_es->s_feature_incompat &= ~cpu_to_le32(mask)
++#define EXT4_HAS_COMPAT_FEATURE(sb, name)			\
++	((EXT4_SB(sb)->s_es->s_feature_compat &			\
++	  cpu_to_le32(EXT4_FEATURE_COMPAT_ ## name)) != 0)
++#define EXT4_HAS_RO_COMPAT_FEATURE(sb, name)			\
++	((EXT4_SB(sb)->s_es->s_feature_ro_compat &		\
++	  cpu_to_le32(EXT4_FEATURE_RO_COMPAT_ ## name)) != 0)
++#define EXT4_HAS_INCOMPAT_FEATURE(sb, name)			\
++	((EXT4_SB(sb)->s_es->s_feature_incompat &		\
++	  cpu_to_le32(EXT4_FEATURE_INCOMPAT_ ## name)) != 0)
++#define EXT4_SET_COMPAT_FEATURE(sb, name)			\
++	EXT4_SB(sb)->s_es->s_feature_compat |=			\
++		cpu_to_le32(EXT4_FEATURE_COMPAT_ ## name)
++#define EXT4_SET_RO_COMPAT_FEATURE(sb, name)			\
++	EXT4_SB(sb)->s_es->s_feature_ro_compat |=		\
++		cpu_to_le32(EXT4_FEATURE_RO_COMPAT_ ## name)
++#define EXT4_SET_INCOMPAT_FEATURE(sb, name)			\
++	EXT4_SB(sb)->s_es->s_feature_incompat |=		\
++		cpu_to_le32(EXT4_FEATURE_INCOMPAT_ ## name)
++#define EXT4_CLEAR_COMPAT_FEATURE(sb, name)			\
++	EXT4_SB(sb)->s_es->s_feature_compat &=			\
++		~cpu_to_le32(EXT4_FEATURE_COMPAT_ ## name)
++#define EXT4_CLEAR_RO_COMPAT_FEATURE(sb, name)			\
++	EXT4_SB(sb)->s_es->s_feature_ro_compat &=		\
++		~cpu_to_le32(EXT4_FEATURE_RO_COMPAT_ ## name)
++#define EXT4_CLEAR_INCOMPAT_FEATURE(sb, name)			\
++	EXT4_SB(sb)->s_es->s_feature_incompat &=		\
++		~cpu_to_le32(EXT4_FEATURE_INCOMPAT_ ## name)
+ 
+ #define EXT4_FEATURE_COMPAT_DIR_PREALLOC	0x0001
+ #define EXT4_FEATURE_COMPAT_IMAGIC_INODES	0x0002
+@@ -1583,14 +1592,14 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+ #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
+ #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
+ 
+-#define EXT2_FEATURE_COMPAT_SUPP	EXT4_FEATURE_COMPAT_EXT_ATTR
++#define EXT2_FEATURE_COMPAT_SUPP	(EXT4_FEATURE_COMPAT_EXT_ATTR)
+ #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
+ 					 EXT4_FEATURE_INCOMPAT_META_BG)
+ #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR)
+ 
+-#define EXT3_FEATURE_COMPAT_SUPP	EXT4_FEATURE_COMPAT_EXT_ATTR
++#define EXT3_FEATURE_COMPAT_SUPP	(EXT4_FEATURE_COMPAT_EXT_ATTR)
+ #define EXT3_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
+ 					 EXT4_FEATURE_INCOMPAT_RECOVER| \
+ 					 EXT4_FEATURE_INCOMPAT_META_BG)
+@@ -1598,7 +1607,7 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR)
+ 
+-#define EXT4_FEATURE_COMPAT_SUPP	EXT2_FEATURE_COMPAT_EXT_ATTR
++#define EXT4_FEATURE_COMPAT_SUPP	(EXT2_FEATURE_COMPAT_EXT_ATTR)
+ #define EXT4_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
+ 					 EXT4_FEATURE_INCOMPAT_RECOVER| \
+ 					 EXT4_FEATURE_INCOMPAT_META_BG| \
+@@ -1769,8 +1778,7 @@ static inline __le16 ext4_rec_len_to_disk(unsigned len, unsigned blocksize)
+  * (c) Daniel Phillips, 2001
+  */
+ 
+-#define is_dx(dir) (EXT4_HAS_COMPAT_FEATURE(dir->i_sb, \
+-				      EXT4_FEATURE_COMPAT_DIR_INDEX) && \
++#define is_dx(dir) (EXT4_HAS_COMPAT_FEATURE(dir->i_sb, DIR_INDEX) && \
+ 		    ext4_test_inode_flag((dir), EXT4_INODE_INDEX))
+ #define EXT4_DIR_LINK_MAX(dir) (!is_dx(dir) && (dir)->i_nlink >= EXT4_LINK_MAX)
+ #define EXT4_DIR_LINK_EMPTY(dir) ((dir)->i_nlink == 2 || (dir)->i_nlink == 1)
+@@ -2072,7 +2080,7 @@ int ext4_init_crypto(void);
+ void ext4_exit_crypto(void);
+ static inline int ext4_sb_has_crypto(struct super_block *sb)
+ {
+-	return EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_ENCRYPT);
++	return EXT4_HAS_INCOMPAT_FEATURE(sb, ENCRYPT);
+ }
+ #else
+ static inline int ext4_init_crypto(void) { return 0; }
+@@ -2193,8 +2201,7 @@ int ext4_insert_dentry(struct inode *dir,
+ 		       struct ext4_filename *fname);
+ static inline void ext4_update_dx_flag(struct inode *inode)
+ {
+-	if (!EXT4_HAS_COMPAT_FEATURE(inode->i_sb,
+-				     EXT4_FEATURE_COMPAT_DIR_INDEX))
++	if (!EXT4_HAS_COMPAT_FEATURE(inode->i_sb, DIR_INDEX))
+ 		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
+ }
+ static unsigned char ext4_filetype_table[] = {
+@@ -2203,8 +2210,7 @@ static unsigned char ext4_filetype_table[] = {
+ 
+ static inline  unsigned char get_dtype(struct super_block *sb, int filetype)
+ {
+-	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FILETYPE) ||
+-	    (filetype >= EXT4_FT_MAX))
++	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, FILETYPE) || filetype >= EXT4_FT_MAX)
+ 		return DT_UNKNOWN;
+ 
+ 	return ext4_filetype_table[filetype];
+@@ -2534,15 +2540,13 @@ extern int ext4_register_li_request(struct super_block *sb,
+ 
+ static inline int ext4_has_group_desc_csum(struct super_block *sb)
+ {
+-	return EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-					  EXT4_FEATURE_RO_COMPAT_GDT_CSUM) ||
++	return EXT4_HAS_RO_COMPAT_FEATURE(sb, GDT_CSUM) ||
+ 	       (EXT4_SB(sb)->s_chksum_driver != NULL);
+ }
+ 
+ static inline int ext4_has_metadata_csum(struct super_block *sb)
+ {
+-	WARN_ON_ONCE(EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
++	WARN_ON_ONCE(EXT4_HAS_RO_COMPAT_FEATURE(sb, METADATA_CSUM) &&
+ 		     !EXT4_SB(sb)->s_chksum_driver);
+ 
+ 	return (EXT4_SB(sb)->s_chksum_driver != NULL);
+@@ -2889,7 +2893,7 @@ static unsigned char ext4_type_by_mode[S_IFMT >> S_SHIFT] = {
+ static inline void ext4_set_de_type(struct super_block *sb,
+ 				struct ext4_dir_entry_2 *de,
+ 				umode_t mode) {
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FILETYPE))
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, FILETYPE))
+ 		de->file_type = ext4_type_by_mode[(mode & S_IFMT)>>S_SHIFT];
+ }
+ 
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 9c5b49f..e00a04f 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -34,8 +34,7 @@
+  */
+ 
+ #define EXT4_SINGLEDATA_TRANS_BLOCKS(sb)				\
+-	(EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)   \
+-	 ? 20U : 8U)
++	(EXT4_HAS_INCOMPAT_FEATURE(sb, EXTENTS) ? 20U : 8U)
+ 
+ /* Extended attribute operations touch at most two data buffers,
+  * two bitmap buffers, and two group summaries, in addition to the inode
+@@ -83,20 +82,19 @@
+ #ifdef CONFIG_QUOTA
+ /* Amount of blocks needed for quota update - we know that the structure was
+  * allocated so we need to update only data block */
+-#define EXT4_QUOTA_TRANS_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
+-		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
+-		1 : 0)
++#define EXT4_QUOTA_TRANS_BLOCKS(sb)					     \
++	((test_opt(sb, QUOTA) || EXT4_HAS_RO_COMPAT_FEATURE(sb, QUOTA)) ? 1 : 0)
+ /* Amount of blocks needed for quota insert/delete - we do some block writes
+  * but inode, sb and group updates are done only once */
+-#define EXT4_QUOTA_INIT_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
+-		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
+-		(DQUOT_INIT_ALLOC*(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)\
+-		 +3+DQUOT_INIT_REWRITE) : 0)
+-
+-#define EXT4_QUOTA_DEL_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
+-		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
+-		(DQUOT_DEL_ALLOC*(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)\
+-		 +3+DQUOT_DEL_REWRITE) : 0)
++#define EXT4_QUOTA_INIT_BLOCKS(sb)					     \
++	((test_opt(sb, QUOTA) || EXT4_HAS_RO_COMPAT_FEATURE(sb, QUOTA)) ?    \
++		(DQUOT_INIT_ALLOC * (EXT4_SINGLEDATA_TRANS_BLOCKS(sb) - 3) + \
++		 3 + DQUOT_INIT_REWRITE) : 0)
++
++#define EXT4_QUOTA_DEL_BLOCKS(sb)					     \
++	((test_opt(sb, QUOTA) || EXT4_HAS_RO_COMPAT_FEATURE(sb, QUOTA)) ?    \
++		(DQUOT_DEL_ALLOC * (EXT4_SINGLEDATA_TRANS_BLOCKS(sb) - 3) +  \
++		 3 + DQUOT_DEL_REWRITE) : 0)
+ #else
+ #define EXT4_QUOTA_TRANS_BLOCKS(sb) 0
+ #define EXT4_QUOTA_INIT_BLOCKS(sb) 0
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 2553aa8..6995df3 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3054,7 +3054,7 @@ void ext4_ext_init(struct super_block *sb)
+ 	 * possible initialization would be here
+ 	 */
+ 
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXTENTS)) {
+ #if defined(AGGRESSIVE_TEST) || defined(CHECK_BINSEARCH) || defined(EXTENTS_STATS)
+ 		printk(KERN_INFO "EXT4-fs: file extents enabled"
+ #ifdef AGGRESSIVE_TEST
+@@ -3081,7 +3081,7 @@ void ext4_ext_init(struct super_block *sb)
+  */
+ void ext4_ext_release(struct super_block *sb)
+ {
+-	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS))
++	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXTENTS))
+ 		return;
+ 
+ #ifdef EXTENTS_STATS
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 619bfc1..d3835e5 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -1045,7 +1045,7 @@ got:
+ 
+ 	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
+ 	ei->i_inline_off = 0;
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_INLINE_DATA))
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, INLINE_DATA))
+ 		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
+ 	ret = inode;
+ 	err = dquot_alloc_inode(inode);
+@@ -1060,7 +1060,7 @@ got:
+ 	if (err)
+ 		goto fail_free_drop;
+ 
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXTENTS)) {
+ 		/* set extent flag only for directory, file and normal symlink*/
+ 		if (S_ISDIR(mode) || S_ISREG(mode) || S_ISLNK(mode)) {
+ 			ext4_set_inode_flag(inode, EXT4_INODE_EXTENTS);
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 2468261..05c9c02 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -562,8 +562,7 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+ 	/*
+ 	 * Okay, we need to do block allocation.
+ 	*/
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-				       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb, BIGALLOC)) {
+ 		EXT4_ERROR_INODE(inode, "Can't allocate blocks for "
+ 				 "non-extent mapped inodes with bigalloc");
+ 		return -EUCLEAN;
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index cd944a7..9fe1530 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -434,8 +434,7 @@ static int ext4_destroy_inline_data_nolock(handle_t *handle,
+ 	memset((void *)ext4_raw_inode(&is.iloc)->i_block,
+ 		0, EXT4_MIN_INLINE_DATA_SIZE);
+ 
+-	if (EXT4_HAS_INCOMPAT_FEATURE(inode->i_sb,
+-				      EXT4_FEATURE_INCOMPAT_EXTENTS)) {
++	if (EXT4_HAS_INCOMPAT_FEATURE(inode->i_sb, EXTENTS)) {
+ 		if (S_ISDIR(inode->i_mode) ||
+ 		    S_ISREG(inode->i_mode) || S_ISLNK(inode->i_mode)) {
+ 			ext4_set_inode_flag(inode, EXT4_INODE_EXTENTS);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 612fbcf..f1f912b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2599,8 +2599,7 @@ static int ext4_nonda_switch(struct super_block *sb)
+ /* We always reserve for an inode update; the superblock could be there too */
+ static int ext4_da_write_credits(struct inode *inode, loff_t pos, unsigned len)
+ {
+-	if (likely(EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-				EXT4_FEATURE_RO_COMPAT_LARGE_FILE)))
++	if (likely(EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb, LARGE_FILE)))
+ 		return 1;
+ 
+ 	if (pos + len <= 0x7fffffffULL)
+@@ -4006,8 +4005,7 @@ static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
+ 	struct inode *inode = &(ei->vfs_inode);
+ 	struct super_block *sb = inode->i_sb;
+ 
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				EXT4_FEATURE_RO_COMPAT_HUGE_FILE)) {
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, HUGE_FILE)) {
+ 		/* we are using combined 48 bit field */
+ 		i_blocks = ((u64)le16_to_cpu(raw_inode->i_blocks_high)) << 32 |
+ 					le32_to_cpu(raw_inode->i_blocks_lo);
+@@ -4130,7 +4128,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 	ei->i_flags = le32_to_cpu(raw_inode->i_flags);
+ 	inode->i_blocks = ext4_inode_blocks(raw_inode, ei);
+ 	ei->i_file_acl = le32_to_cpu(raw_inode->i_file_acl_lo);
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_64BIT))
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, 64BIT))
+ 		ei->i_file_acl |=
+ 			((__u64)le16_to_cpu(raw_inode->i_file_acl_high)) << 32;
+ 	inode->i_size = ext4_isize(raw_inode);
+@@ -4294,7 +4292,7 @@ static int ext4_inode_blocks_set(handle_t *handle,
+ 		ext4_clear_inode_flag(inode, EXT4_INODE_HUGE_FILE);
+ 		return 0;
+ 	}
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_HUGE_FILE))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, HUGE_FILE))
+ 		return -EFBIG;
+ 
+ 	if (i_blocks <= 0xffffffffffffULL) {
+@@ -4455,9 +4453,8 @@ static int ext4_do_update_inode(handle_t *handle,
+ 		need_datasync = 1;
+ 	}
+ 	if (ei->i_disksize > 0x7fffffffULL) {
+-		if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				EXT4_FEATURE_RO_COMPAT_LARGE_FILE) ||
+-				EXT4_SB(sb)->s_es->s_rev_level ==
++		if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, LARGE_FILE) ||
++		    EXT4_SB(sb)->s_es->s_rev_level ==
+ 		    cpu_to_le32(EXT4_GOOD_OLD_REV))
+ 			set_large_file = 1;
+ 	}
+@@ -4505,8 +4502,7 @@ static int ext4_do_update_inode(handle_t *handle,
+ 		if (err)
+ 			goto out_brelse;
+ 		ext4_update_dynamic_rev(sb);
+-		EXT4_SET_RO_COMPAT_FEATURE(sb,
+-					   EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
++		EXT4_SET_RO_COMPAT_FEATURE(sb, LARGE_FILE);
+ 		ext4_handle_sync(handle);
+ 		err = ext4_handle_dirty_super(handle, sb);
+ 	}
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 1346cfa..751c802 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -145,8 +145,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 		inode_bl->i_version = 1;
+ 		i_size_write(inode_bl, 0);
+ 		inode_bl->i_mode = S_IFREG;
+-		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
+-					      EXT4_FEATURE_INCOMPAT_EXTENTS)) {
++		if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXTENTS)) {
+ 			ext4_set_inode_flag(inode_bl, EXT4_INODE_EXTENTS);
+ 			ext4_ext_tree_init(handle, inode_bl);
+ 		} else
+@@ -383,8 +382,7 @@ setversion_out:
+ 			goto group_extend_out;
+ 		}
+ 
+-		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb, BIGALLOC)) {
+ 			ext4_msg(sb, KERN_ERR,
+ 				 "Online resizing not supported with bigalloc");
+ 			err = -EOPNOTSUPP;
+@@ -432,8 +430,7 @@ group_extend_out:
+ 			goto mext_out;
+ 		}
+ 
+-		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb, BIGALLOC)) {
+ 			ext4_msg(sb, KERN_ERR,
+ 				 "Online defrag not supported with bigalloc");
+ 			err = -EOPNOTSUPP;
+@@ -470,8 +467,7 @@ mext_out:
+ 			goto group_add_out;
+ 		}
+ 
+-		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb, BIGALLOC)) {
+ 			ext4_msg(sb, KERN_ERR,
+ 				 "Online resizing not supported with bigalloc");
+ 			err = -EOPNOTSUPP;
+@@ -553,8 +549,7 @@ group_add_out:
+ 		int err = 0, err2 = 0;
+ 		ext4_group_t o_group = EXT4_SB(sb)->s_groups_count;
+ 
+-		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb, BIGALLOC)) {
+ 			ext4_msg(sb, KERN_ERR,
+ 				 "Online resizing not (yet) supported with bigalloc");
+ 			return -EOPNOTSUPP;
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index 6163ad2..fc225bb 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -448,9 +448,8 @@ int ext4_ext_migrate(struct inode *inode)
+ 	 * If the filesystem does not support extents, or the inode
+ 	 * already is extent-based, error out.
+ 	 */
+-	if (!EXT4_HAS_INCOMPAT_FEATURE(inode->i_sb,
+-				       EXT4_FEATURE_INCOMPAT_EXTENTS) ||
+-	    (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
++	if (!EXT4_HAS_INCOMPAT_FEATURE(inode->i_sb, EXTENTS) ||
++	    ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+ 		return -EINVAL;
+ 
+ 	if (S_ISLNK(inode->i_mode) && inode->i_blocks == 0)
+@@ -625,13 +624,11 @@ int ext4_ind_migrate(struct inode *inode)
+ 	handle_t			*handle;
+ 	int				ret;
+ 
+-	if (!EXT4_HAS_INCOMPAT_FEATURE(inode->i_sb,
+-				       EXT4_FEATURE_INCOMPAT_EXTENTS) ||
+-	    (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
++	if (!EXT4_HAS_INCOMPAT_FEATURE(inode->i_sb, EXTENTS) ||
++	    !ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+ 		return -EINVAL;
+ 
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-				       EXT4_FEATURE_RO_COMPAT_BIGALLOC))
++	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb, BIGALLOC))
+ 		return -EOPNOTSUPP;
+ 
+ 	/*
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index 6eb1a61..8578836 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -169,21 +169,20 @@ static int kmmpd(void *data)
+ 		 * Don't spew too many error messages. Print one every
+ 		 * (s_mmp_update_interval * 60) seconds.
+ 		 */
+-		if (retval) {
++		if (unlikely(retval)) {
+ 			if ((failed_writes % 60) == 0)
+ 				ext4_error(sb, "Error writing to MMP block");
+ 			failed_writes++;
+ 		}
+ 
+-		if (!(le32_to_cpu(es->s_feature_incompat) &
+-		    EXT4_FEATURE_INCOMPAT_MMP)) {
++		if (unlikely(!EXT4_HAS_INCOMPAT_FEATURE(sb, MMP))) {
+ 			ext4_warning(sb, "kmmpd being stopped since MMP feature"
+ 				     " has been disabled.");
+ 			EXT4_SB(sb)->s_mmp_tsk = NULL;
+ 			goto failed;
+ 		}
+ 
+-		if (sb->s_flags & MS_RDONLY) {
++		if (unlikely(sb->s_flags & MS_RDONLY)) {
+ 			ext4_warning(sb, "kmmpd being stopped since filesystem "
+ 				     "has been remounted as readonly.");
+ 			EXT4_SB(sb)->s_mmp_tsk = NULL;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 9f61e76..df36af6 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2118,7 +2118,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 			goto out;
+ 
+ 		if (blocks == 1 && !dx_fallback &&
+-		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX)) {
++		    EXT4_HAS_COMPAT_FEATURE(sb, DIR_INDEX)) {
+ 			retval = make_indexed_dir(handle, &fname, dentry,
+ 						  inode, bh);
+ 			bh = NULL; /* make_indexed_dir releases bh */
+@@ -2388,8 +2388,7 @@ static void ext4_inc_count(handle_t *handle, struct inode *inode)
+ 		/* limit is 16-bit i_links_count */
+ 		if (inode->i_nlink >= EXT4_LINK_MAX || inode->i_nlink == 2) {
+ 			set_nlink(inode, 1);
+-			EXT4_SET_RO_COMPAT_FEATURE(inode->i_sb,
+-					      EXT4_FEATURE_RO_COMPAT_DIR_NLINK);
++			EXT4_SET_RO_COMPAT_FEATURE(inode->i_sb, DIR_NLINK);
+ 		}
+ 	}
+ }
+@@ -3352,8 +3351,7 @@ static int ext4_setent(handle_t *handle, struct ext4_renament *ent,
+ 	if (retval)
+ 		return retval;
+ 	ent->de->inode = cpu_to_le32(ino);
+-	if (EXT4_HAS_INCOMPAT_FEATURE(ent->dir->i_sb,
+-				      EXT4_FEATURE_INCOMPAT_FILETYPE))
++	if (EXT4_HAS_INCOMPAT_FEATURE(ent->dir->i_sb, FILETYPE))
+ 		ent->de->file_type = file_type;
+ 	ent->dir->i_version++;
+ 	ent->dir->i_ctime = ent->dir->i_mtime =
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index cf0c472..5b47753 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -490,7 +490,7 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
+ 	       group_data[0].group != sbi->s_groups_count);
+ 
+ 	reserved_gdb = le16_to_cpu(es->s_reserved_gdt_blocks);
+-	meta_bg = EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG);
++	meta_bg = EXT4_HAS_INCOMPAT_FEATURE(sb, META_BG);
+ 
+ 	/* This transaction may be extended/restarted along the way */
+ 	handle = ext4_journal_start_sb(sb, EXT4_HT_RESIZE, EXT4_MAX_TRANS_DATA);
+@@ -680,8 +680,7 @@ static unsigned ext4_list_backups(struct super_block *sb, unsigned *three,
+ 	int mult = 3;
+ 	unsigned ret;
+ 
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-					EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER)) {
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, SPARSE_SUPER)) {
+ 		ret = *min;
+ 		*min += 1;
+ 		return ret;
+@@ -1158,7 +1157,7 @@ static int ext4_add_new_descs(handle_t *handle, struct super_block *sb,
+ 	int i, gdb_off, gdb_num, err = 0;
+ 	int meta_bg;
+ 
+-	meta_bg = EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG);
++	meta_bg = EXT4_HAS_INCOMPAT_FEATURE(sb, META_BG);
+ 	for (i = 0; i < count; i++, group++) {
+ 		int reserved_gdb = ext4_bg_has_super(sb, group) ?
+ 			le16_to_cpu(es->s_reserved_gdt_blocks) : 0;
+@@ -1381,8 +1380,7 @@ static void ext4_update_super(struct super_block *sb,
+ 
+ 	ext4_debug("free blocks count %llu",
+ 		   percpu_counter_read(&sbi->s_freeclusters_counter));
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb,
+-				      EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, FLEX_BG) &&
+ 	    sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group;
+ 		flex_group = ext4_flex_group(sbi, group_data[0].group);
+@@ -1476,8 +1474,7 @@ exit_journal:
+ 		int gdb_num = group / EXT4_DESC_PER_BLOCK(sb);
+ 		int gdb_num_end = ((group + flex_gd->count - 1) /
+ 				   EXT4_DESC_PER_BLOCK(sb));
+-		int meta_bg = EXT4_HAS_INCOMPAT_FEATURE(sb,
+-				EXT4_FEATURE_INCOMPAT_META_BG);
++		int meta_bg = EXT4_HAS_INCOMPAT_FEATURE(sb, META_BG);
+ 		sector_t old_gdb = 0;
+ 
+ 		update_backups(sb, sbi->s_sbh->b_blocknr, (char *)es,
+@@ -1585,8 +1582,7 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 
+ 	gdb_off = input->group % EXT4_DESC_PER_BLOCK(sb);
+ 
+-	if (gdb_off == 0 && !EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-					EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER)) {
++	if (gdb_off == 0 && !EXT4_HAS_RO_COMPAT_FEATURE(sb, SPARSE_SUPER)) {
+ 		ext4_warning(sb, "Can't resize non-sparse filesystem further");
+ 		return -EPERM;
+ 	}
+@@ -1604,9 +1600,8 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	}
+ 
+ 	if (reserved_gdb || gdb_off == 0) {
+-		if (!EXT4_HAS_COMPAT_FEATURE(sb,
+-					     EXT4_FEATURE_COMPAT_RESIZE_INODE)
+-		    || !le16_to_cpu(es->s_reserved_gdt_blocks)) {
++		if (!EXT4_HAS_COMPAT_FEATURE(sb, RESIZE_INODE) ||
++		    !le16_to_cpu(es->s_reserved_gdt_blocks)) {
+ 			ext4_warning(sb,
+ 				     "No reserved GDT blocks, can't resize");
+ 			return -EPERM;
+@@ -1825,8 +1820,8 @@ static int ext4_convert_meta_bg(struct super_block *sb, struct inode *inode)
+ 	if (err)
+ 		goto errout;
+ 
+-	EXT4_CLEAR_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_RESIZE_INODE);
+-	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG);
++	EXT4_CLEAR_COMPAT_FEATURE(sb, RESIZE_INODE);
++	EXT4_SET_INCOMPAT_FEATURE(sb, META_BG);
+ 	sbi->s_es->s_first_meta_bg =
+ 		cpu_to_le32(num_desc_blocks(sb, sbi->s_groups_count));
+ 
+@@ -1918,9 +1913,9 @@ retry:
+ 	n_desc_blocks = num_desc_blocks(sb, n_group + 1);
+ 	o_desc_blocks = num_desc_blocks(sb, sbi->s_groups_count);
+ 
+-	meta_bg = EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG);
++	meta_bg = EXT4_HAS_INCOMPAT_FEATURE(sb, META_BG);
+ 
+-	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_RESIZE_INODE)) {
++	if (EXT4_HAS_COMPAT_FEATURE(sb, RESIZE_INODE)) {
+ 		if (meta_bg) {
+ 			ext4_error(sb, "resize_inode and meta_bg enabled "
+ 				   "simultaneously");
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a63c7b0..7d0c320 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -115,8 +115,7 @@ MODULE_ALIAS("ext3");
+ static int ext4_verify_csum_type(struct super_block *sb,
+ 				 struct ext4_super_block *es)
+ {
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, METADATA_CSUM))
+ 		return 1;
+ 
+ 	return es->s_checksum_type == EXT4_CRC32C_CHKSUM;
+@@ -808,7 +807,7 @@ static void ext4_put_super(struct super_block *sb)
+ 	ext4_xattr_put_super(sb);
+ 
+ 	if (!(sb->s_flags & MS_RDONLY)) {
+-		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
++		EXT4_CLEAR_INCOMPAT_FEATURE(sb, RECOVER);
+ 		es->s_state = cpu_to_le16(sbi->s_mount_state);
+ 	}
+ 	if (!(sb->s_flags & MS_RDONLY))
+@@ -1288,7 +1287,7 @@ static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
+ 			"quota options when quota turned on");
+ 		return -1;
+ 	}
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) {
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, QUOTA)) {
+ 		ext4_msg(sb, KERN_ERR, "Cannot set journaled quota options "
+ 			 "when QUOTA feature is enabled");
+ 		return -1;
+@@ -1647,8 +1646,7 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 				 "quota options when quota turned on");
+ 			return -1;
+ 		}
+-		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-					       EXT4_FEATURE_RO_COMPAT_QUOTA)) {
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb, QUOTA)) {
+ 			ext4_msg(sb, KERN_ERR,
+ 				 "Cannot set journaled quota options "
+ 				 "when QUOTA feature is enabled");
+@@ -1707,7 +1705,7 @@ static int parse_options(char *options, struct super_block *sb,
+ 			return 0;
+ 	}
+ #ifdef CONFIG_QUOTA
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, QUOTA) &&
+ 	    (test_opt(sb, USRQUOTA) || test_opt(sb, GRPQUOTA))) {
+ 		ext4_msg(sb, KERN_ERR, "Cannot set quota options when QUOTA "
+ 			 "feature is enabled");
+@@ -1944,7 +1942,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 	es->s_mtime = cpu_to_le32(get_seconds());
+ 	ext4_update_dynamic_rev(sb);
+ 	if (sbi->s_journal)
+-		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
++		EXT4_SET_INCOMPAT_FEATURE(sb, RECOVER);
+ 
+ 	ext4_commit_super(sb, 1);
+ done:
+@@ -2106,7 +2104,7 @@ static int ext4_check_descriptors(struct super_block *sb,
+ 	int flexbg_flag = 0;
+ 	ext4_group_t i, grp = sbi->s_groups_count;
+ 
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, FLEX_BG))
+ 		flexbg_flag = 1;
+ 
+ 	ext4_debug("Checking group descriptors");
+@@ -2413,7 +2411,7 @@ static ext4_fsblk_t descriptor_loc(struct super_block *sb,
+ 
+ 	first_meta_bg = le32_to_cpu(sbi->s_es->s_first_meta_bg);
+ 
+-	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG) ||
++	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, META_BG) ||
+ 	    nr < first_meta_bg)
+ 		return logical_sb_block + nr + 1;
+ 	bg = sbi->s_desc_per_block * nr;
+@@ -2799,6 +2797,8 @@ static struct kobj_type ext4_feat_ktype = {
+ 	.release	= ext4_feat_release,
+ };
+ 
++#define EXT4_FEATURE_INCOMPAT_EXT4_UNKNOWN	~EXT4_FEATURE_INCOMPAT_SUPP
++#define EXT4_FEATURE_RO_COMPAT_EXT4_UNKNOWN	~EXT4_FEATURE_RO_COMPAT_SUPP
+ /*
+  * Check whether this filesystem can be mounted based on
+  * the features present and the RDONLY/RDWR mount requested.
+@@ -2807,37 +2807,37 @@ static struct kobj_type ext4_feat_ktype = {
+  */
+ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
+ {
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, ~EXT4_FEATURE_INCOMPAT_SUPP)) {
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_UNKNOWN)) {
+ 		ext4_msg(sb, KERN_ERR,
+ 			"Couldn't mount because of "
+ 			"unsupported optional features (%x)",
+ 			(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_incompat) &
+-			~EXT4_FEATURE_INCOMPAT_SUPP));
++			EXT4_FEATURE_INCOMPAT_EXT4_UNKNOWN));
+ 		return 0;
+ 	}
+ 
+ 	if (readonly)
+ 		return 1;
+ 
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_READONLY)) {
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, READONLY)) {
+ 		ext4_msg(sb, KERN_INFO, "filesystem is read-only");
+ 		sb->s_flags |= MS_RDONLY;
+ 		return 1;
+ 	}
+ 
+ 	/* Check that feature set is OK for a read-write mount */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, ~EXT4_FEATURE_RO_COMPAT_SUPP)) {
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_UNKNOWN)) {
+ 		ext4_msg(sb, KERN_ERR, "couldn't mount RDWR because of "
+ 			 "unsupported optional features (%x)",
+ 			 (le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_ro_compat) &
+-				~EXT4_FEATURE_RO_COMPAT_SUPP));
++			  EXT4_FEATURE_RO_COMPAT_EXT4_UNKNOWN));
+ 		return 0;
+ 	}
+ 	/*
+ 	 * Large file size enabled file system can only be mounted
+ 	 * read-write on 32-bit systems if kernel is built with CONFIG_LBDAF
+ 	 */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_HUGE_FILE)) {
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, HUGE_FILE)) {
+ 		if (sizeof(blkcnt_t) < sizeof(u64)) {
+ 			ext4_msg(sb, KERN_ERR, "Filesystem with huge files "
+ 				 "cannot be mounted RDWR without "
+@@ -2845,8 +2845,8 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
+ 			return 0;
+ 		}
+ 	}
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_BIGALLOC) &&
+-	    !EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, BIGALLOC) &&
++	    !EXT4_HAS_INCOMPAT_FEATURE(sb, EXTENTS)) {
+ 		ext4_msg(sb, KERN_ERR,
+ 			 "Can't support bigalloc feature without "
+ 			 "extents feature\n");
+@@ -2854,7 +2854,7 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
+ 	}
+ 
+ #ifndef CONFIG_QUOTA
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, QUOTA) &&
+ 	    !readonly) {
+ 		ext4_msg(sb, KERN_ERR,
+ 			 "Filesystem with quota feature cannot be mounted RDWR "
+@@ -3266,23 +3266,21 @@ static int set_journal_csum_feature_set(struct super_block *sb)
+ 	}
+ 
+ 	jbd2_journal_clear_features(sbi->s_journal,
+-			JBD2_FEATURE_COMPAT_CHECKSUM, 0,
+-			JBD2_FEATURE_INCOMPAT_CSUM_V3 |
+-			JBD2_FEATURE_INCOMPAT_CSUM_V2);
++				    JBD2_FEATURE_COMPAT_CHECKSUM, 0,
++				    JBD2_FEATURE_INCOMPAT_CSUM_V3 |
++				    JBD2_FEATURE_INCOMPAT_CSUM_V2);
+ 	if (test_opt(sb, JOURNAL_ASYNC_COMMIT)) {
+-		ret = jbd2_journal_set_features(sbi->s_journal,
+-				compat, 0,
+-				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT |
+-				incompat);
++		ret = jbd2_journal_set_features(sbi->s_journal, compat, 0,
++				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT | incompat);
+ 	} else if (test_opt(sb, JOURNAL_CHECKSUM)) {
+ 		ret = jbd2_journal_set_features(sbi->s_journal,
+-				compat, 0,
+-				incompat);
++						compat, 0,
++						incompat);
+ 		jbd2_journal_clear_features(sbi->s_journal, 0, 0,
+-				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
++					    JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
+ 	} else {
+ 		jbd2_journal_clear_features(sbi->s_journal, 0, 0,
+-				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
++					    JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
+ 	}
+ 
+ 	return ret;
+@@ -3312,7 +3310,7 @@ static int count_overhead(struct super_block *sb, ext4_group_t grp,
+ 	ext4_group_t		i, ngroups = ext4_get_groups_count(sb);
+ 	int			s, j, count = 0;
+ 
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_BIGALLOC))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, BIGALLOC))
+ 		return (ext4_bg_has_super(sb, grp) + ext4_bg_num_gdb(sb, grp) +
+ 			sbi->s_itb_per_group + 2);
+ 
+@@ -3414,7 +3412,7 @@ static ext4_fsblk_t ext4_calculate_resv_clusters(struct super_block *sb)
+ 	 * hole punching doesn't need new metadata... This is needed especially
+ 	 * to keep ext2/3 backward compatibility.
+ 	 */
+-	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS))
++	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXTENTS))
+ 		return 0;
+ 	/*
+ 	 * By default we reserve 2% or 4096 clusters, whichever is smaller.
+@@ -3446,6 +3444,9 @@ static int ext4_reserve_clusters(struct ext4_sb_info *sbi, ext4_fsblk_t count)
  	return 0;
+ }
+ 
++#define EXT4_FEATURE_COMPAT_ANY		(~0)
++#define EXT4_FEATURE_RO_COMPAT_ANY	(~0)
++#define EXT4_FEATURE_INCOMPAT_ANY	(~0)
+ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ {
+ 	char *orig_data = kstrdup(data, GFP_KERNEL);
+@@ -3526,9 +3527,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi->s_kbytes_written = le64_to_cpu(es->s_kbytes_written);
+ 
+ 	/* Warn if metadata_csum and gdt_csum are both set. */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
+-	    EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, METADATA_CSUM) &&
++	    EXT4_HAS_RO_COMPAT_FEATURE(sb, GDT_CSUM))
+ 		ext4_warning(sb, "metadata_csum and uninit_bg are "
+ 			     "redundant flags; please run fsck.");
+ 
+@@ -3541,8 +3541,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	}
+ 
+ 	/* Load the checksum driver */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, METADATA_CSUM)) {
+ 		sbi->s_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
+ 		if (IS_ERR(sbi->s_chksum_driver)) {
+ 			ext4_msg(sb, KERN_ERR, "Cannot load crc32c driver.");
+@@ -3664,17 +3663,16 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
+ 
+ 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
+-	    (EXT4_HAS_COMPAT_FEATURE(sb, ~0U) ||
+-	     EXT4_HAS_RO_COMPAT_FEATURE(sb, ~0U) ||
+-	     EXT4_HAS_INCOMPAT_FEATURE(sb, ~0U)))
++	    (EXT4_HAS_COMPAT_FEATURE(sb, ANY) ||
++	     EXT4_HAS_RO_COMPAT_FEATURE(sb, ANY) ||
++	     EXT4_HAS_INCOMPAT_FEATURE(sb, ANY)))
+ 		ext4_msg(sb, KERN_WARNING,
+ 		       "feature flags set on rev 0 fs, "
+ 		       "running e2fsck is recommended");
+ 
+ 	if (es->s_creator_os == cpu_to_le32(EXT4_OS_HURD)) {
+ 		set_opt2(sb, HURD_COMPAT);
+-		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
+-					      EXT4_FEATURE_INCOMPAT_64BIT)) {
++		if (EXT4_HAS_INCOMPAT_FEATURE(sb, 64BIT)) {
+ 			ext4_msg(sb, KERN_ERR,
+ 				 "The Hurd can't support 64-bit file systems");
+ 			goto failed_mount;
+@@ -3732,8 +3730,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		}
+ 	}
+ 
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_ENCRYPT) &&
+-	    es->s_encryption_level) {
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, ENCRYPT) && es->s_encryption_level) {
+ 		ext4_msg(sb, KERN_ERR, "Unsupported encryption level %d",
+ 			 es->s_encryption_level);
+ 		goto failed_mount;
+@@ -3765,8 +3762,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		}
+ 	}
+ 
+-	has_huge_files = EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				EXT4_FEATURE_RO_COMPAT_HUGE_FILE);
++	has_huge_files = EXT4_HAS_RO_COMPAT_FEATURE(sb, HUGE_FILE);
+ 	sbi->s_bitmap_maxbytes = ext4_max_bitmap_size(sb->s_blocksize_bits,
+ 						      has_huge_files);
+ 	sb->s_maxbytes = ext4_max_size(sb->s_blocksize_bits, has_huge_files);
+@@ -3790,7 +3786,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	}
+ 
+ 	sbi->s_desc_size = le16_to_cpu(es->s_desc_size);
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_64BIT)) {
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, 64BIT)) {
+ 		if (sbi->s_desc_size < EXT4_MIN_DESC_SIZE_64BIT ||
+ 		    sbi->s_desc_size > EXT4_MAX_DESC_SIZE ||
+ 		    !is_power_of_2(sbi->s_desc_size)) {
+@@ -3821,7 +3817,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	for (i = 0; i < 4; i++)
+ 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
+ 	sbi->s_def_hash_version = es->s_def_hash_version;
+-	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX)) {
++	if (EXT4_HAS_COMPAT_FEATURE(sb, DIR_INDEX)) {
+ 		i = le32_to_cpu(es->s_flags);
+ 		if (i & EXT2_FLAGS_UNSIGNED_HASH)
+ 			sbi->s_hash_unsigned = 3;
+@@ -3841,8 +3837,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 
+ 	/* Handle clustersize */
+ 	clustersize = BLOCK_SIZE << le32_to_cpu(es->s_log_cluster_size);
+-	has_bigalloc = EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				EXT4_FEATURE_RO_COMPAT_BIGALLOC);
++	has_bigalloc = EXT4_HAS_RO_COMPAT_FEATURE(sb, BIGALLOC);
+ 	if (has_bigalloc) {
+ 		if (clustersize < blocksize) {
+ 			ext4_msg(sb, KERN_ERR,
+@@ -4007,7 +4002,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sb->s_xattr = ext4_xattr_handlers;
+ #ifdef CONFIG_QUOTA
+ 	sb->dq_op = &ext4_quota_operations;
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, QUOTA))
+ 		sb->s_qcop = &dquot_quotactl_sysfile_ops;
+ 	else
+ 		sb->s_qcop = &ext4_qctl_operations;
+@@ -4021,11 +4016,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sb->s_root = NULL;
+ 
+ 	needs_recovery = (es->s_last_orphan != 0 ||
+-			  EXT4_HAS_INCOMPAT_FEATURE(sb,
+-				    EXT4_FEATURE_INCOMPAT_RECOVER));
++			  EXT4_HAS_INCOMPAT_FEATURE(sb, RECOVER));
+ 
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_MMP) &&
+-	    !(sb->s_flags & MS_RDONLY))
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, MMP) && !(sb->s_flags & MS_RDONLY))
+ 		if (ext4_multi_mount_protect(sb, le64_to_cpu(es->s_mmp_block)))
+ 			goto failed_mount3a;
+ 
+@@ -4034,11 +4027,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	 * root first: it may be modified in the journal!
+ 	 */
+ 	if (!test_opt(sb, NOLOAD) &&
+-	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL)) {
++	    EXT4_HAS_COMPAT_FEATURE(sb, HAS_JOURNAL)) {
+ 		if (ext4_load_journal(sb, es, journal_devnum))
+ 			goto failed_mount3a;
+ 	} else if (test_opt(sb, NOLOAD) && !(sb->s_flags & MS_RDONLY) &&
+-	      EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER)) {
++		   EXT4_HAS_INCOMPAT_FEATURE(sb, RECOVER)) {
+ 		ext4_msg(sb, KERN_ERR, "required journal recovery "
+ 		       "suppressed and not mounted read-only");
+ 		goto failed_mount_wq;
+@@ -4049,7 +4042,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto no_journal;
+ 	}
+ 
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_64BIT) &&
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, 64BIT) &&
+ 	    !jbd2_journal_set_features(EXT4_SB(sb)->s_journal, 0, 0,
+ 				       JBD2_FEATURE_INCOMPAT_64BIT)) {
+ 		ext4_msg(sb, KERN_ERR, "Failed to set 64-bit journal feature");
+@@ -4102,7 +4095,7 @@ no_journal:
+ 	}
+ 
+ 	if ((DUMMY_ENCRYPTION_ENABLED(sbi) ||
+-	     EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_ENCRYPT)) &&
++	     EXT4_HAS_INCOMPAT_FEATURE(sb, ENCRYPT)) &&
+ 	    (blocksize != PAGE_CACHE_SIZE)) {
+ 		ext4_msg(sb, KERN_ERR,
+ 			 "Unsupported blocksize for fs encryption");
+@@ -4111,8 +4104,8 @@ no_journal:
+ 
+ 	if (DUMMY_ENCRYPTION_ENABLED(sbi) &&
+ 	    !(sb->s_flags & MS_RDONLY) &&
+-	    !EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_ENCRYPT)) {
+-		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_ENCRYPT);
++	    !EXT4_HAS_INCOMPAT_FEATURE(sb, ENCRYPT)) {
++		EXT4_SET_INCOMPAT_FEATURE(sb, ENCRYPT);
+ 		ext4_commit_super(sb, 1);
+ 	}
+ 
+@@ -4171,8 +4164,7 @@ no_journal:
+ 	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE) {
+ 		sbi->s_want_extra_isize = sizeof(struct ext4_inode) -
+ 						     EXT4_GOOD_OLD_INODE_SIZE;
+-		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				       EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE)) {
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXTRA_ISIZE)) {
+ 			if (sbi->s_want_extra_isize <
+ 			    le16_to_cpu(es->s_want_extra_isize))
+ 				sbi->s_want_extra_isize =
+@@ -4236,7 +4228,7 @@ no_journal:
+ 		goto failed_mount6;
+ 	}
+ 
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, FLEX_BG))
+ 		if (!ext4_fill_flex_info(sb)) {
+ 			ext4_msg(sb, KERN_ERR,
+ 			       "unable to initialize "
+@@ -4257,7 +4249,7 @@ no_journal:
+ 
+ #ifdef CONFIG_QUOTA
+ 	/* Enable quota usage during mount. */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, QUOTA) &&
+ 	    !(sb->s_flags & MS_RDONLY)) {
+ 		err = ext4_enable_quotas(sb);
+ 		if (err)
+@@ -4403,7 +4395,7 @@ static journal_t *ext4_get_journal(struct super_block *sb,
+ 	struct inode *journal_inode;
+ 	journal_t *journal;
+ 
+-	BUG_ON(!EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL));
++	BUG_ON(!EXT4_HAS_COMPAT_FEATURE(sb, HAS_JOURNAL));
+ 
+ 	/* First, test for the existence of a valid inode on disk.  Bad
+ 	 * things happen if we iget() an unused inode, as the subsequent
+@@ -4453,7 +4445,7 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
+ 	struct ext4_super_block *es;
+ 	struct block_device *bdev;
+ 
+-	BUG_ON(!EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL));
++	BUG_ON(!EXT4_HAS_COMPAT_FEATURE(sb, HAS_JOURNAL));
+ 
+ 	bdev = ext4_blkdev_get(j_dev, sb);
+ 	if (bdev == NULL)
+@@ -4480,8 +4472,7 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
+ 	if ((le16_to_cpu(es->s_magic) != EXT4_SUPER_MAGIC) ||
+ 	    !(le32_to_cpu(es->s_feature_incompat) &
+ 	      EXT4_FEATURE_INCOMPAT_JOURNAL_DEV)) {
+-		ext4_msg(sb, KERN_ERR, "external journal has "
+-					"bad superblock");
++		ext4_msg(sb, KERN_ERR, "external journal has bad superblock");
+ 		brelse(bh);
+ 		goto out_bdev;
+ 	}
+@@ -4545,7 +4536,7 @@ static int ext4_load_journal(struct super_block *sb,
+ 	int err = 0;
+ 	int really_read_only;
+ 
+-	BUG_ON(!EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL));
++	BUG_ON(!EXT4_HAS_COMPAT_FEATURE(sb, HAS_JOURNAL));
+ 
+ 	if (journal_devnum &&
+ 	    journal_devnum != le32_to_cpu(es->s_journal_dev)) {
+@@ -4562,7 +4553,7 @@ static int ext4_load_journal(struct super_block *sb,
+ 	 * crash?  For recovery, we need to check in advance whether we
+ 	 * can get read-write access to the device.
+ 	 */
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER)) {
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, RECOVER)) {
+ 		if (sb->s_flags & MS_RDONLY) {
+ 			ext4_msg(sb, KERN_INFO, "INFO: recovery "
+ 					"required on readonly filesystem");
+@@ -4593,7 +4584,7 @@ static int ext4_load_journal(struct super_block *sb,
+ 	if (!(journal->j_flags & JBD2_BARRIER))
+ 		ext4_msg(sb, KERN_INFO, "barriers disabled");
+ 
+-	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER))
++	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, RECOVER))
+ 		err = jbd2_journal_wipe(journal, !really_read_only);
+ 	if (!err) {
+ 		char *save = kmalloc(EXT4_S_ERR_LEN, GFP_KERNEL);
+@@ -4707,7 +4698,7 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
+ {
+ 	journal_t *journal = EXT4_SB(sb)->s_journal;
+ 
+-	if (!EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL)) {
++	if (!EXT4_HAS_COMPAT_FEATURE(sb, HAS_JOURNAL)) {
+ 		BUG_ON(journal != NULL);
+ 		return;
+ 	}
+@@ -4715,9 +4706,9 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
+ 	if (jbd2_journal_flush(journal) < 0)
+ 		goto out;
+ 
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER) &&
+-	    sb->s_flags & MS_RDONLY) {
+-		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, RECOVER) &&
++	    (sb->s_flags & MS_RDONLY)) {
++		EXT4_CLEAR_INCOMPAT_FEATURE(sb, RECOVER);
+ 		ext4_commit_super(sb, 1);
+ 	}
+ 
+@@ -4737,7 +4728,7 @@ static void ext4_clear_journal_err(struct super_block *sb,
+ 	int j_errno;
+ 	const char *errstr;
+ 
+-	BUG_ON(!EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL));
++	BUG_ON(!EXT4_HAS_COMPAT_FEATURE(sb, HAS_JOURNAL));
+ 
+ 	journal = EXT4_SB(sb)->s_journal;
+ 
+@@ -4852,7 +4843,7 @@ static int ext4_freeze(struct super_block *sb)
+ 			goto out;
+ 
+ 		/* Journal blocked and flushed, clear needs_recovery flag. */
+-		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
++		EXT4_CLEAR_INCOMPAT_FEATURE(sb, RECOVER);
+ 	}
+ 
+ 	error = ext4_commit_super(sb, 1);
+@@ -4872,10 +4863,9 @@ static int ext4_unfreeze(struct super_block *sb)
+ 	if (sb->s_flags & MS_RDONLY)
+ 		return 0;
+ 
+-	if (EXT4_SB(sb)->s_journal) {
+-		/* Reset the needs_recovery flag before the fs is unlocked. */
+-		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+-	}
++	/* Reset the needs_recovery flag before the fs is unlocked. */
++	if (EXT4_SB(sb)->s_journal)
++		EXT4_SET_INCOMPAT_FEATURE(sb, RECOVER);
+ 
+ 	ext4_commit_super(sb, 1);
+ 	return 0;
+@@ -5027,8 +5017,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 				ext4_mark_recovery_complete(sb, es);
+ 		} else {
+ 			/* Make sure we can mount this feature set readwrite */
+-			if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-					EXT4_FEATURE_RO_COMPAT_READONLY) ||
++			if (EXT4_HAS_RO_COMPAT_FEATURE(sb, READONLY) ||
+ 			    !ext4_feature_set_ok(sb, 0)) {
+ 				err = -EROFS;
+ 				goto restore_opts;
+@@ -5076,13 +5065,12 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 			sbi->s_mount_state = le16_to_cpu(es->s_state);
+ 			if (!ext4_setup_super(sb, es, 0))
+ 				sb->s_flags &= ~MS_RDONLY;
+-			if (EXT4_HAS_INCOMPAT_FEATURE(sb,
+-						     EXT4_FEATURE_INCOMPAT_MMP))
+-				if (ext4_multi_mount_protect(sb,
++			if (EXT4_HAS_INCOMPAT_FEATURE(sb, MMP) &&
++			    ext4_multi_mount_protect(sb,
+ 						le64_to_cpu(es->s_mmp_block))) {
+-					err = -EROFS;
+-					goto restore_opts;
+-				}
++				err = -EROFS;
++				goto restore_opts;
++			}
+ 			enable_quota = 1;
+ 		}
+ 	}
+@@ -5108,10 +5096,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 	for (i = 0; i < EXT4_MAXQUOTAS; i++)
+ 		kfree(old_opts.s_qf_names[i]);
+ 	if (enable_quota) {
+-		if (sb_any_quota_suspended(sb))
++		if (sb_any_quota_suspended(sb)) {
+ 			dquot_resume(sb, -1);
+-		else if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-					EXT4_FEATURE_RO_COMPAT_QUOTA)) {
++		} else if (EXT4_HAS_RO_COMPAT_FEATURE(sb, QUOTA)) {
+ 			err = ext4_enable_quotas(sb);
+ 			if (err)
+ 				goto restore_opts;
+@@ -5255,7 +5242,7 @@ static int ext4_mark_dquot_dirty(struct dquot *dquot)
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
+ 	/* Are we journaling quotas? */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) ||
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, QUOTA) ||
+ 	    sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
+ 		dquot_mark_dquot_dirty(dquot);
+ 		return ext4_write_dquot(dquot);
+@@ -5343,7 +5330,7 @@ static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
+ 		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
+ 	};
+ 
+-	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA));
++	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(sb, QUOTA));
+ 
+ 	if (!qf_inums[type])
+ 		return -EPERM;
+@@ -5535,13 +5522,15 @@ static inline void unregister_as_ext2(void)
+ 	unregister_filesystem(&ext2_fs_type);
+ }
+ 
++#define EXT4_FEATURE_INCOMPAT_EXT2_UNKNOWN	~EXT2_FEATURE_INCOMPAT_SUPP
++#define EXT4_FEATURE_RO_COMPAT_EXT2_UNKNOWN	~EXT2_FEATURE_RO_COMPAT_SUPP
+ static inline int ext2_feature_set_ok(struct super_block *sb)
+ {
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, ~EXT2_FEATURE_INCOMPAT_SUPP))
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT2_UNKNOWN))
+ 		return 0;
+ 	if (sb->s_flags & MS_RDONLY)
+ 		return 1;
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, ~EXT2_FEATURE_RO_COMPAT_SUPP))
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT2_UNKNOWN))
+ 		return 0;
+ 	return 1;
+ }
+@@ -5564,15 +5553,17 @@ static inline void unregister_as_ext3(void)
+ 	unregister_filesystem(&ext3_fs_type);
+ }
+ 
++#define EXT4_FEATURE_INCOMPAT_EXT3_UNKNOWN	~EXT3_FEATURE_INCOMPAT_SUPP
++#define EXT4_FEATURE_RO_COMPAT_EXT3_UNKNOWN	~EXT3_FEATURE_RO_COMPAT_SUPP
+ static inline int ext3_feature_set_ok(struct super_block *sb)
+ {
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, ~EXT3_FEATURE_INCOMPAT_SUPP))
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT3_UNKNOWN))
+ 		return 0;
+-	if (!EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
++	if (!EXT4_HAS_COMPAT_FEATURE(sb, HAS_JOURNAL))
+ 		return 0;
+ 	if (sb->s_flags & MS_RDONLY)
+ 		return 1;
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, ~EXT3_FEATURE_RO_COMPAT_SUPP))
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT3_UNKNOWN))
+ 		return 0;
+ 	return 1;
+ }
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 16e28c0..995a832 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -525,12 +525,12 @@ errout:
+ static void ext4_xattr_update_super_block(handle_t *handle,
+ 					  struct super_block *sb)
+ {
+-	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_EXT_ATTR))
++	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT_ATTR))
+ 		return;
+ 
+ 	BUFFER_TRACE(EXT4_SB(sb)->s_sbh, "get_write_access");
+ 	if (ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh) == 0) {
+-		EXT4_SET_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_EXT_ATTR);
++		EXT4_SET_COMPAT_FEATURE(sb, EXT_ATTR);
+ 		ext4_handle_dirty_super(handle, sb);
+ 	}
+ }
 -- 
 1.7.3.4
 
