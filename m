@@ -1,89 +1,91 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext2, ext4: warn when mounting with dax enabled
-Date: Fri, 2 Oct 2015 16:16:05 +0200
-Message-ID: <20151002141605.GC14603@quack.suse.cz>
-References: <20150929194806.5276.863.stgit@dwillia2-desk3.jf.intel.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH v2] jbd2: gate checksum calculations on crc driver presence,
+ not sb flags
+Date: Fri, 2 Oct 2015 20:46:12 -0700
+Message-ID: <20151003034601.GN10390@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ross.zwisler@linux.intel.com, david@fromorbit.com,
-	Theodore Ts'o <tytso@mit.edu>, linux-nvdimm@lists.01.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.com>, linux-fsdevel@vger.kernel.org,
-	Matthew Wilcox <willy@linux.intel.com>,
-	linux-ext4@vger.kernel.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-To: Dan Williams <dan.j.williams@intel.com>
+Cc: Nikolay Borisov <kernel@kyup.com>, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	SiteGround Operations <operations@siteground.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.com>, "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20150929194806.5276.863.stgit@dwillia2-desk3.jf.intel.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 29-09-15 15:48:11, Dan Williams wrote:
-> Similar to XFS warn when mounting DAX while it is still considered under
-> development.  Also, aspects of the DAX implementation, for example
-> synchronization against multiple faults and faults causing block
-> allocation, depend on the correct implementation in the filesystem.  The
-> maturity of a given DAX implementation is filesystem specific.
-> 
-> Cc: Jan Kara <jack@suse.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: Matthew Wilcox <willy@linux.intel.com>
-> Cc: linux-ext4@vger.kernel.org
-> Cc: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
-> Reported-by: Dave Chinner <david@fromorbit.com>
-> Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+Change the journal's checksum functions to gate on whether or not the
+crc32c driver is loaded, and gate the loading on the superblock bits.
+This prevents a journal crash if someone loads a journal in no-csum
+mode and then randomizes the superblock, thus flipping on the feature
+bits.
 
-Agreed. You can add:
-Acked-by: Jan Kara <jack@suse.com>
+v2: Create a feature-test helper, use it everywhere.
 
-								Honza
+Tested-By: Nikolay Borisov <kernel@kyup.com>
+Reported-by: Nikolay Borisov <kernel@kyup.com>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ fs/jbd2/journal.c    |    6 +++---
+ include/linux/jbd2.h |   13 +++++++++----
+ 2 files changed, 12 insertions(+), 7 deletions(-)
 
-> ---
-> Given the pending investigations [1], and rather than marking FS_DAX
-> broken, warn about DAX usage until we've landed fixes for the issues
-> that Dave has identified.
-> 
-> [1]: https://lists.01.org/pipermail/linux-nvdimm/2015-September/002266.html
-> 
->  fs/ext2/super.c |    2 ++
->  fs/ext4/super.c |    6 +++++-
->  2 files changed, 7 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-> index 900e19cf9ef6..2597b0663bf2 100644
-> --- a/fs/ext2/super.c
-> +++ b/fs/ext2/super.c
-> @@ -566,6 +566,8 @@ static int parse_options(char *options, struct super_block *sb)
->  			/* Fall through */
->  		case Opt_dax:
->  #ifdef CONFIG_FS_DAX
-> +			ext2_msg(sb, KERN_WARNING,
-> +		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
->  			set_opt(sbi->s_mount_opt, DAX);
->  #else
->  			ext2_msg(sb, KERN_INFO, "dax option not supported");
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index a63c7b0a10cf..4db6eb0b6979 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1656,8 +1656,12 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
->  		}
->  		sbi->s_jquota_fmt = m->mount_opt;
->  #endif
-> -#ifndef CONFIG_FS_DAX
->  	} else if (token == Opt_dax) {
-> +#ifdef CONFIG_FS_DAX
-> +		ext4_msg(sb, KERN_WARNING,
-> +		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
-> +			sbi->s_mount_opt |= m->mount_opt;
-> +#else
->  		ext4_msg(sb, KERN_INFO, "dax option not supported");
->  		return -1;
->  #endif
-> 
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 8270fe9..00f7dbd 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -124,7 +124,7 @@ EXPORT_SYMBOL(__jbd2_debug);
+ /* Checksumming functions */
+ static int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
+ {
+-	if (!jbd2_journal_has_csum_v2or3(j))
++	if (!jbd2_journal_has_csum_v2or3_feature(j))
+ 		return 1;
+ 
+ 	return sb->s_checksum_type == JBD2_CRC32C_CHKSUM;
+@@ -1531,7 +1531,7 @@ static int journal_get_superblock(journal_t *journal)
+ 		goto out;
+ 	}
+ 
+-	if (jbd2_journal_has_csum_v2or3(journal) &&
++	if (jbd2_journal_has_csum_v2or3_feature(journal) &&
+ 	    JBD2_HAS_COMPAT_FEATURE(journal, JBD2_FEATURE_COMPAT_CHECKSUM)) {
+ 		/* Can't have checksum v1 and v2 on at the same time! */
+ 		printk(KERN_ERR "JBD2: Can't enable checksumming v1 and v2/3 "
+@@ -1545,7 +1545,7 @@ static int journal_get_superblock(journal_t *journal)
+ 	}
+ 
+ 	/* Load the checksum driver */
+-	if (jbd2_journal_has_csum_v2or3(journal)) {
++	if (jbd2_journal_has_csum_v2or3_feature(journal)) {
+ 		journal->j_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
+ 		if (IS_ERR(journal->j_chksum_driver)) {
+ 			printk(KERN_ERR "JBD2: Cannot load crc32c driver.\n");
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index df07e78..6da6f89 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1338,13 +1338,18 @@ static inline int tid_geq(tid_t x, tid_t y)
+ extern int jbd2_journal_blocks_per_page(struct inode *inode);
+ extern size_t journal_tag_bytes(journal_t *journal);
+ 
++static inline bool jbd2_journal_has_csum_v2or3_feature(journal_t *j)
++{
++	return JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2) ||
++	       JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V3);
++}
++
+ static inline int jbd2_journal_has_csum_v2or3(journal_t *journal)
+ {
+-	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2) ||
+-	    JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V3))
+-		return 1;
++	WARN_ON_ONCE(jbd2_journal_has_csum_v2or3_feature(journal) &&
++		     journal->j_chksum_driver == NULL);
+ 
+-	return 0;
++	return journal->j_chksum_driver != NULL;
+ }
+ 
+ /*
