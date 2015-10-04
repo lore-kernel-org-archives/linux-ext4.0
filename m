@@ -1,60 +1,148 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/5] ext4 crypto: fix memory leak in ext4_bio_write_page()
-Date: Sun,  4 Oct 2015 01:38:16 -0400
-Message-ID: <1443937100-25781-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+Subject: [PATCH 3/5] ext4 crypto: ext4_page_crypto() doesn't need a encryption context
+Date: Sun,  4 Oct 2015 01:38:18 -0400
+Message-ID: <1443937100-25781-3-git-send-email-tytso@mit.edu>
+References: <1443937100-25781-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58784 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:58791 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751208AbbJDFiY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 4 Oct 2015 01:38:24 -0400
+	id S1751258AbbJDFiZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 4 Oct 2015 01:38:25 -0400
+In-Reply-To: <1443937100-25781-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There are times when ext4_bio_write_page() is called even though we
-don't actually need to do any I/O.  This happens when ext4_writepage()
-gets called by the jbd2 commit path when an inode needs to force its
-pages written out in order to provide data=ordered guarantees --- and
-a page is backed by an unwritten (e.g., uninitialized) block on disk,
-or if delayed allocation means the page's backing store hasn't been
-allocated yet.  In that case, we need to skip the call to
-ext4_encrypt_page(), since in addition to wasting CPU, it leads to a
-bounce page and an ext4 crypto context getting leaked.
+Since ext4_page_crypto() doesn't need an encryption context (at least
+not any more), this allows us to simplify a number function signature
+and also allows us to avoid needing to allocate a context in
+ext4_block_write_begin().  It also means we no longer need a separate
+ext4_decrypt_one() function.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@vger.kernel.org
 ---
- fs/ext4/page-io.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ fs/ext4/crypto.c   | 28 +++++-----------------------
+ fs/ext4/ext4.h     |  3 +--
+ fs/ext4/inode.c    |  4 ++--
+ fs/ext4/readpage.c |  2 +-
+ 4 files changed, 9 insertions(+), 28 deletions(-)
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 84ba4d2..17fbe38 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -425,6 +425,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	struct buffer_head *bh, *head;
- 	int ret = 0;
- 	int nr_submitted = 0;
-+	int nr_to_submit = 0;
+diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+index 4573155..3a5a7a2 100644
+--- a/fs/ext4/crypto.c
++++ b/fs/ext4/crypto.c
+@@ -253,8 +253,7 @@ typedef enum {
+ 	EXT4_ENCRYPT,
+ } ext4_direction_t;
  
- 	blocksize = 1 << inode->i_blkbits;
+-static int ext4_page_crypto(struct ext4_crypto_ctx *ctx,
+-			    struct inode *inode,
++static int ext4_page_crypto(struct inode *inode,
+ 			    ext4_direction_t rw,
+ 			    pgoff_t index,
+ 			    struct page *src_page,
+@@ -353,7 +352,7 @@ struct page *ext4_encrypt(struct inode *inode,
+ 	if (IS_ERR(ciphertext_page))
+ 		goto errout;
+ 	ctx->w.control_page = plaintext_page;
+-	err = ext4_page_crypto(ctx, inode, EXT4_ENCRYPT, plaintext_page->index,
++	err = ext4_page_crypto(inode, EXT4_ENCRYPT, plaintext_page->index,
+ 			       plaintext_page, ciphertext_page);
+ 	if (err) {
+ 		ciphertext_page = ERR_PTR(err);
+@@ -378,31 +377,14 @@ struct page *ext4_encrypt(struct inode *inode,
+  *
+  * Return: Zero on success, non-zero otherwise.
+  */
+-int ext4_decrypt(struct ext4_crypto_ctx *ctx, struct page *page)
++int ext4_decrypt(struct page *page)
+ {
+ 	BUG_ON(!PageLocked(page));
  
-@@ -477,11 +478,13 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 			unmap_underlying_metadata(bh->b_bdev, bh->b_blocknr);
+-	return ext4_page_crypto(ctx, page->mapping->host,
++	return ext4_page_crypto(page->mapping->host,
+ 				EXT4_DECRYPT, page->index, page, page);
+ }
+ 
+-/*
+- * Convenience function which takes care of allocating and
+- * deallocating the encryption context
+- */
+-int ext4_decrypt_one(struct inode *inode, struct page *page)
+-{
+-	int ret;
+-
+-	struct ext4_crypto_ctx *ctx = ext4_get_crypto_ctx(inode);
+-
+-	if (IS_ERR(ctx))
+-		return PTR_ERR(ctx);
+-	ret = ext4_decrypt(ctx, page);
+-	ext4_release_crypto_ctx(ctx);
+-	return ret;
+-}
+-
+ int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
+ {
+ 	struct ext4_crypto_ctx	*ctx;
+@@ -426,7 +408,7 @@ int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
+ 	}
+ 
+ 	while (len--) {
+-		err = ext4_page_crypto(ctx, inode, EXT4_ENCRYPT, lblk,
++		err = ext4_page_crypto(inode, EXT4_ENCRYPT, lblk,
+ 				       ZERO_PAGE(0), ciphertext_page);
+ 		if (err)
+ 			goto errout;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 766b7f7..3f248c9 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2063,8 +2063,7 @@ void ext4_release_crypto_ctx(struct ext4_crypto_ctx *ctx);
+ void ext4_restore_control_page(struct page *data_page);
+ struct page *ext4_encrypt(struct inode *inode,
+ 			  struct page *plaintext_page);
+-int ext4_decrypt(struct ext4_crypto_ctx *ctx, struct page *page);
+-int ext4_decrypt_one(struct inode *inode, struct page *page);
++int ext4_decrypt(struct page *page);
+ int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex);
+ 
+ #ifdef CONFIG_EXT4_FS_ENCRYPTION
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c95d406..ae52e32 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -965,7 +965,7 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 	if (unlikely(err))
+ 		page_zero_new_buffers(page, from, to);
+ 	else if (decrypt)
+-		err = ext4_decrypt_one(inode, page);
++		err = ext4_decrypt(page);
+ 	return err;
+ }
+ #endif
+@@ -3404,7 +3404,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 			/* We expect the key to be set. */
+ 			BUG_ON(!ext4_has_encryption_key(inode));
+ 			BUG_ON(blocksize != PAGE_CACHE_SIZE);
+-			WARN_ON_ONCE(ext4_decrypt_one(inode, page));
++			WARN_ON_ONCE(ext4_decrypt(page));
  		}
- 		set_buffer_async_write(bh);
-+		nr_to_submit++;
- 	} while ((bh = bh->b_this_page) != head);
+ 	}
+ 	if (ext4_should_journal_data(inode)) {
+diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+index e26803f..a91e4bf 100644
+--- a/fs/ext4/readpage.c
++++ b/fs/ext4/readpage.c
+@@ -62,7 +62,7 @@ static void completion_pages(struct work_struct *work)
+ 	bio_for_each_segment_all(bv, bio, i) {
+ 		struct page *page = bv->bv_page;
  
- 	bh = head = page_buffers(page);
- 
--	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode)) {
-+	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode) &&
-+	    nr_to_submit) {
- 		data_page = ext4_encrypt(inode, page);
- 		if (IS_ERR(data_page)) {
- 			ret = PTR_ERR(data_page);
+-		int ret = ext4_decrypt(ctx, page);
++		int ret = ext4_decrypt(page);
+ 		if (ret) {
+ 			WARN_ON_ONCE(1);
+ 			SetPageError(page);
 -- 
 2.5.0
 
