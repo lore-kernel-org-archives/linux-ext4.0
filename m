@@ -1,98 +1,60 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 5/5] ext4 crypto: fix bugs in ext4_encrypted_zeroout()
-Date: Sun,  4 Oct 2015 01:38:20 -0400
-Message-ID: <1443937100-25781-5-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/5] ext4: optimize ext4_writepage() for attempted 4k delalloc writes
+Date: Sun,  4 Oct 2015 01:38:17 -0400
+Message-ID: <1443937100-25781-2-git-send-email-tytso@mit.edu>
 References: <1443937100-25781-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:58783 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751233AbbJDFiY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 4 Oct 2015 01:38:24 -0400
 In-Reply-To: <1443937100-25781-1-git-send-email-tytso@mit.edu>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Fix multiple bugs in ext4_encrypted_zeroout(), including one that
-could cause us to write an encrypted zero page to the wrong location
-on disk, potentially causing data and file system corruption.
-Fortunately, this tends to only show up in stress tests, but even with
-these fixes, we are seeing some test failures with generic/127 --- but
-these are now caused by data failures instead of metadata corruption.
-
-Since ext4_encrypted_zeroout() is only used for some optimizations to
-keep the extent tree from being too fragmented, and
-ext4_encrypted_zeroout() itself isn't all that optimized from a time
-or IOPS perspective, disable the extent tree optimization for
-encrypted inodes for now.  This prevents the data corruption issues
-reported by generic/127 until we can figure out what's going wrong.
+In cases where the file system block size is the same as the page
+size, and ext4_writepage() is asked to write out a page which is
+either has the unwritten bit set in the extent tree, or which does not
+yet have a block assigned due to delayed allocation, we can bail out
+early and, unlocking the page earlier and avoiding a round trip
+through ext4_bio_write_page() with the attendant calls to
+set_page_writeback() and redirty_page_for_writeback().
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@vger.kernel.org
 ---
- fs/ext4/crypto.c  | 23 +++++++++++++++++++----
- fs/ext4/extents.c |  3 +++
- 2 files changed, 22 insertions(+), 4 deletions(-)
+ fs/ext4/inode.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-index 879cb15..af06830 100644
---- a/fs/ext4/crypto.c
-+++ b/fs/ext4/crypto.c
-@@ -392,7 +392,13 @@ int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
- 	ext4_lblk_t		lblk = ex->ee_block;
- 	ext4_fsblk_t		pblk = ext4_ext_pblock(ex);
- 	unsigned int		len = ext4_ext_get_actual_len(ex);
--	int			err = 0;
-+	int			ret, err = 0;
-+
-+#if 0
-+	ext4_msg(inode->i_sb, KERN_CRIT,
-+		 "ext4_encrypted_zeroout ino %lu lblk %u len %u",
-+		 (unsigned long) inode->i_ino, lblk, len);
-+#endif
- 
- 	BUG_ON(inode->i_sb->s_blocksize != PAGE_CACHE_SIZE);
- 
-@@ -418,17 +424,26 @@ int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
- 			goto errout;
- 		}
- 		bio->bi_bdev = inode->i_sb->s_bdev;
--		bio->bi_iter.bi_sector = pblk;
--		err = bio_add_page(bio, ciphertext_page,
-+		bio->bi_iter.bi_sector =
-+			pblk << (inode->i_sb->s_blocksize_bits - 9);
-+		ret = bio_add_page(bio, ciphertext_page,
- 				   inode->i_sb->s_blocksize, 0);
--		if (err) {
-+		if (ret != inode->i_sb->s_blocksize) {
-+			/* should never happen! */
-+			ext4_msg(inode->i_sb, KERN_ERR,
-+				 "bio_add_page failed: %d", ret);
-+			WARN_ON(1);
- 			bio_put(bio);
-+			err = -EIO;
- 			goto errout;
- 		}
- 		err = submit_bio_wait(WRITE, bio);
-+		if ((err == 0) && bio->bi_error)
-+			err = -EIO;
- 		bio_put(bio);
- 		if (err)
- 			goto errout;
-+		lblk++; pblk++;
- 	}
- 	err = 0;
- errout:
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 2553aa8..7f486e3 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3558,6 +3558,9 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		max_zeroout = sbi->s_extent_max_zeroout_kb >>
- 			(inode->i_sb->s_blocksize_bits - 10);
- 
-+	if (ext4_encrypted_inode(inode))
-+		max_zeroout = 0;
-+
- 	/* If extent is less than s_max_zeroout_kb, zeroout directly */
- 	if (max_zeroout && (ee_len <= max_zeroout)) {
- 		err = ext4_ext_zeroout(inode, ex);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 612fbcf..c95d406 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1815,11 +1815,22 @@ static int ext4_writepage(struct page *page,
+ 	 * the page. But we may reach here when we do a journal commit via
+ 	 * journal_submit_inode_data_buffers() and in that case we must write
+ 	 * allocated buffers to achieve data=ordered mode guarantees.
++	 *
++	 * Also, if there is only one buffer per page (the fs block
++	 * size == the page size), if one buffer needs block
++	 * allocation or needs to modify the extent tree to clear the
++	 * unwritten flag, we know that the page can't be written at
++	 * all, so we might as well refuse the write immediately.
++	 * Unfortunately if the block size != page size, we can't as
++	 * easily detect this case using ext4_walk_page_buffers(), but
++	 * for the extremely common case, this is an optimization that
++	 * skips a useless round trip through ext4_bio_write_page().
+ 	 */
+ 	if (ext4_walk_page_buffers(NULL, page_bufs, 0, len, NULL,
+ 				   ext4_bh_delay_or_unwritten)) {
+ 		redirty_page_for_writepage(wbc, page);
+-		if (current->flags & PF_MEMALLOC) {
++		if ((current->flags & PF_MEMALLOC) ||
++		    (inode->i_sb->s_blocksize == PAGE_CACHE_SIZE)) {
+ 			/*
+ 			 * For memory cleaning there's no point in writing only
+ 			 * some buffers. So just bail out. Warn if we came here
 -- 
 2.5.0
+
