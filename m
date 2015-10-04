@@ -1,60 +1,46 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/5] ext4: optimize ext4_writepage() for attempted 4k delalloc writes
-Date: Sun,  4 Oct 2015 01:38:17 -0400
-Message-ID: <1443937100-25781-2-git-send-email-tytso@mit.edu>
-References: <1443937100-25781-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58783 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751233AbbJDFiY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 4 Oct 2015 01:38:24 -0400
-In-Reply-To: <1443937100-25781-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH v8 00/41] Richacls
+Date: Sat, 3 Oct 2015 23:23:13 -0700
+Message-ID: <20151004062313.GA20212@infradead.org>
+References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	Anna Schumaker <anna.schumaker@netapp.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-api@vger.kernel.org
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-In cases where the file system block size is the same as the page
-size, and ext4_writepage() is asked to write out a page which is
-either has the unwritten bit set in the extent tree, or which does not
-yet have a block assigned due to delayed allocation, we can bail out
-early and, unlocking the page earlier and avoiding a round trip
-through ext4_bio_write_page() with the attendant calls to
-set_page_writeback() and redirty_page_for_writeback().
+On Mon, Sep 28, 2015 at 12:08:51AM +0200, Andreas Gruenbacher wrote:
+> Hello,
+> 
+> here's another update of the richacl patch queue.  At this stage, I would
+> like to ask for final feedback so that the core and ext4 code (patches
+> 1-19) can be merged in the 4.4 merge window.  The nfsd and nfs code should
+> then go through the respective maintainer trees.
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/inode.c | 13 ++++++++++++-
- 1 file changed, 12 insertions(+), 1 deletion(-)
+Now way in this form even if everyone agrees we should have these
+bastard ACLs.  I certainly disagree.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 612fbcf..c95d406 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1815,11 +1815,22 @@ static int ext4_writepage(struct page *page,
- 	 * the page. But we may reach here when we do a journal commit via
- 	 * journal_submit_inode_data_buffers() and in that case we must write
- 	 * allocated buffers to achieve data=ordered mode guarantees.
-+	 *
-+	 * Also, if there is only one buffer per page (the fs block
-+	 * size == the page size), if one buffer needs block
-+	 * allocation or needs to modify the extent tree to clear the
-+	 * unwritten flag, we know that the page can't be written at
-+	 * all, so we might as well refuse the write immediately.
-+	 * Unfortunately if the block size != page size, we can't as
-+	 * easily detect this case using ext4_walk_page_buffers(), but
-+	 * for the extremely common case, this is an optimization that
-+	 * skips a useless round trip through ext4_bio_write_page().
- 	 */
- 	if (ext4_walk_page_buffers(NULL, page_bufs, 0, len, NULL,
- 				   ext4_bh_delay_or_unwritten)) {
- 		redirty_page_for_writepage(wbc, page);
--		if (current->flags & PF_MEMALLOC) {
-+		if ((current->flags & PF_MEMALLOC) ||
-+		    (inode->i_sb->s_blocksize == PAGE_CACHE_SIZE)) {
- 			/*
- 			 * For memory cleaning there's no point in writing only
- 			 * some buffers. So just bail out. Warn if we came here
--- 
-2.5.0
+Ayway, back to the VFS <-> FS interface.  You still require tons of
+boilderplate code in the filesystem which isn't required and we got rid
+of for Posix ACLs.  The filesystem should not look at the userspace
+xattr format, please follow a model similar to ->get_acl and ->set_acl
+for Posix ACLs.  After that the wire up should be so trivial that you
+can wire up btrfs, xfs and f2fs as well, which is important to make the
+feature mergeable.
 
+And honestly I tink adding even more overload to xattrs is a really bad
+idea and after 10 years of experience with that junk we really need to
+learn and make new overloads proper system calls.
