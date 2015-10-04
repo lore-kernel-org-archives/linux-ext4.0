@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 4/5] ext4 crypto: replace some BUG_ON()'s with error checks
-Date: Sun,  4 Oct 2015 01:38:19 -0400
-Message-ID: <1443937100-25781-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH 5/5] ext4 crypto: fix bugs in ext4_encrypted_zeroout()
+Date: Sun,  4 Oct 2015 01:38:20 -0400
+Message-ID: <1443937100-25781-5-git-send-email-tytso@mit.edu>
 References: <1443937100-25781-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
@@ -10,104 +10,89 @@ In-Reply-To: <1443937100-25781-1-git-send-email-tytso@mit.edu>
 Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Buggy (or hostile) userspace should not be able to cause the kernel to
-crash.
+Fix multiple bugs in ext4_encrypted_zeroout(), including one that
+could cause us to write an encrypted zero page to the wrong location
+on disk, potentially causing data and file system corruption.
+Fortunately, this tends to only show up in stress tests, but even with
+these fixes, we are seeing some test failures with generic/127 --- but
+these are now caused by data failures instead of metadata corruption.
+
+Since ext4_encrypted_zeroout() is only used for some optimizations to
+keep the extent tree from being too fragmented, and
+ext4_encrypted_zeroout() itself isn't all that optimized from a time
+or IOPS perspective, disable the extent tree optimization for
+encrypted inodes for now.  This prevents the data corruption issues
+reported by generic/127 until we can figure out what's going wrong.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Cc: stable@vger.kernel.org
 ---
- fs/ext4/crypto.c        |  1 -
- fs/ext4/crypto_fname.c  |  2 --
- fs/ext4/crypto_key.c    | 16 +++++++++++++---
- fs/ext4/crypto_policy.c |  3 ++-
- 4 files changed, 15 insertions(+), 7 deletions(-)
+ fs/ext4/crypto.c  | 23 +++++++++++++++++++----
+ fs/ext4/extents.c |  3 +++
+ 2 files changed, 22 insertions(+), 4 deletions(-)
 
 diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-index 3a5a7a2..879cb15 100644
+index 879cb15..af06830 100644
 --- a/fs/ext4/crypto.c
 +++ b/fs/ext4/crypto.c
-@@ -295,7 +295,6 @@ static int ext4_page_crypto(struct inode *inode,
- 	else
- 		res = crypto_ablkcipher_encrypt(req);
- 	if (res == -EINPROGRESS || res == -EBUSY) {
--		BUG_ON(req->base.data != &ecr);
- 		wait_for_completion(&ecr.completion);
- 		res = ecr.res;
- 	}
-diff --git a/fs/ext4/crypto_fname.c b/fs/ext4/crypto_fname.c
-index 847f919..2fbef8a 100644
---- a/fs/ext4/crypto_fname.c
-+++ b/fs/ext4/crypto_fname.c
-@@ -120,7 +120,6 @@ static int ext4_fname_encrypt(struct inode *inode,
- 	ablkcipher_request_set_crypt(req, &src_sg, &dst_sg, ciphertext_len, iv);
- 	res = crypto_ablkcipher_encrypt(req);
- 	if (res == -EINPROGRESS || res == -EBUSY) {
--		BUG_ON(req->base.data != &ecr);
- 		wait_for_completion(&ecr.completion);
- 		res = ecr.res;
- 	}
-@@ -182,7 +181,6 @@ static int ext4_fname_decrypt(struct inode *inode,
- 	ablkcipher_request_set_crypt(req, &src_sg, &dst_sg, iname->len, iv);
- 	res = crypto_ablkcipher_decrypt(req);
- 	if (res == -EINPROGRESS || res == -EBUSY) {
--		BUG_ON(req->base.data != &ecr);
- 		wait_for_completion(&ecr.completion);
- 		res = ecr.res;
- 	}
-diff --git a/fs/ext4/crypto_key.c b/fs/ext4/crypto_key.c
-index 1d510c1..f9270ec 100644
---- a/fs/ext4/crypto_key.c
-+++ b/fs/ext4/crypto_key.c
-@@ -71,7 +71,6 @@ static int ext4_derive_key_aes(char deriving_key[EXT4_AES_128_ECB_KEY_SIZE],
- 				     EXT4_AES_256_XTS_KEY_SIZE, NULL);
- 	res = crypto_ablkcipher_encrypt(req);
- 	if (res == -EINPROGRESS || res == -EBUSY) {
--		BUG_ON(req->base.data != &ecr);
- 		wait_for_completion(&ecr.completion);
- 		res = ecr.res;
- 	}
-@@ -208,7 +207,12 @@ retry:
- 		goto out;
- 	}
- 	crypt_info->ci_keyring_key = keyring_key;
--	BUG_ON(keyring_key->type != &key_type_logon);
-+	if (keyring_key->type != &key_type_logon) {
-+		printk_once(KERN_WARNING
-+			    "ext4: key type must be logon\n");
-+		res = -ENOKEY;
-+		goto out;
-+	}
- 	ukp = ((struct user_key_payload *)keyring_key->payload.data);
- 	if (ukp->datalen != sizeof(struct ext4_encryption_key)) {
- 		res = -EINVAL;
-@@ -217,7 +221,13 @@ retry:
- 	master_key = (struct ext4_encryption_key *)ukp->data;
- 	BUILD_BUG_ON(EXT4_AES_128_ECB_KEY_SIZE !=
- 		     EXT4_KEY_DERIVATION_NONCE_SIZE);
--	BUG_ON(master_key->size != EXT4_AES_256_XTS_KEY_SIZE);
-+	if (master_key->size != EXT4_AES_256_XTS_KEY_SIZE) {
-+		printk_once(KERN_WARNING
-+			    "ext4: key size incorrect: %d\n",
-+			    master_key->size);
-+		res = -ENOKEY;
-+		goto out;
-+	}
- 	res = ext4_derive_key_aes(ctx.nonce, master_key->raw,
- 				  raw_key);
- 	if (res)
-diff --git a/fs/ext4/crypto_policy.c b/fs/ext4/crypto_policy.c
-index a640ec2..ad05069 100644
---- a/fs/ext4/crypto_policy.c
-+++ b/fs/ext4/crypto_policy.c
-@@ -150,7 +150,8 @@ int ext4_is_child_context_consistent_with_parent(struct inode *parent,
+@@ -392,7 +392,13 @@ int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
+ 	ext4_lblk_t		lblk = ex->ee_block;
+ 	ext4_fsblk_t		pblk = ext4_ext_pblock(ex);
+ 	unsigned int		len = ext4_ext_get_actual_len(ex);
+-	int			err = 0;
++	int			ret, err = 0;
++
++#if 0
++	ext4_msg(inode->i_sb, KERN_CRIT,
++		 "ext4_encrypted_zeroout ino %lu lblk %u len %u",
++		 (unsigned long) inode->i_ino, lblk, len);
++#endif
  
- 	if ((parent == NULL) || (child == NULL)) {
- 		pr_err("parent %p child %p\n", parent, child);
--		BUG_ON(1);
-+		WARN_ON(1);	/* Should never happen */
-+		return 0;
+ 	BUG_ON(inode->i_sb->s_blocksize != PAGE_CACHE_SIZE);
+ 
+@@ -418,17 +424,26 @@ int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
+ 			goto errout;
+ 		}
+ 		bio->bi_bdev = inode->i_sb->s_bdev;
+-		bio->bi_iter.bi_sector = pblk;
+-		err = bio_add_page(bio, ciphertext_page,
++		bio->bi_iter.bi_sector =
++			pblk << (inode->i_sb->s_blocksize_bits - 9);
++		ret = bio_add_page(bio, ciphertext_page,
+ 				   inode->i_sb->s_blocksize, 0);
+-		if (err) {
++		if (ret != inode->i_sb->s_blocksize) {
++			/* should never happen! */
++			ext4_msg(inode->i_sb, KERN_ERR,
++				 "bio_add_page failed: %d", ret);
++			WARN_ON(1);
+ 			bio_put(bio);
++			err = -EIO;
+ 			goto errout;
+ 		}
+ 		err = submit_bio_wait(WRITE, bio);
++		if ((err == 0) && bio->bi_error)
++			err = -EIO;
+ 		bio_put(bio);
+ 		if (err)
+ 			goto errout;
++		lblk++; pblk++;
  	}
- 	/* no restrictions if the parent directory is not encrypted */
- 	if (!ext4_encrypted_inode(parent))
+ 	err = 0;
+ errout:
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 2553aa8..7f486e3 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3558,6 +3558,9 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		max_zeroout = sbi->s_extent_max_zeroout_kb >>
+ 			(inode->i_sb->s_blocksize_bits - 10);
+ 
++	if (ext4_encrypted_inode(inode))
++		max_zeroout = 0;
++
+ 	/* If extent is less than s_max_zeroout_kb, zeroout directly */
+ 	if (max_zeroout && (ee_len <= max_zeroout)) {
+ 		err = ext4_ext_zeroout(inode, ex);
 -- 
 2.5.0
