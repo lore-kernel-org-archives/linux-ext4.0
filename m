@@ -1,148 +1,113 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/5] ext4 crypto: ext4_page_crypto() doesn't need a encryption context
-Date: Sun,  4 Oct 2015 01:38:18 -0400
-Message-ID: <1443937100-25781-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 4/5] ext4 crypto: replace some BUG_ON()'s with error checks
+Date: Sun,  4 Oct 2015 01:38:19 -0400
+Message-ID: <1443937100-25781-4-git-send-email-tytso@mit.edu>
 References: <1443937100-25781-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58791 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751258AbbJDFiZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 4 Oct 2015 01:38:25 -0400
+Return-path: <stable-owner@vger.kernel.org>
 In-Reply-To: <1443937100-25781-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Since ext4_page_crypto() doesn't need an encryption context (at least
-not any more), this allows us to simplify a number function signature
-and also allows us to avoid needing to allocate a context in
-ext4_block_write_begin().  It also means we no longer need a separate
-ext4_decrypt_one() function.
+Buggy (or hostile) userspace should not be able to cause the kernel to
+crash.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@vger.kernel.org
 ---
- fs/ext4/crypto.c   | 28 +++++-----------------------
- fs/ext4/ext4.h     |  3 +--
- fs/ext4/inode.c    |  4 ++--
- fs/ext4/readpage.c |  2 +-
- 4 files changed, 9 insertions(+), 28 deletions(-)
+ fs/ext4/crypto.c        |  1 -
+ fs/ext4/crypto_fname.c  |  2 --
+ fs/ext4/crypto_key.c    | 16 +++++++++++++---
+ fs/ext4/crypto_policy.c |  3 ++-
+ 4 files changed, 15 insertions(+), 7 deletions(-)
 
 diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-index 4573155..3a5a7a2 100644
+index 3a5a7a2..879cb15 100644
 --- a/fs/ext4/crypto.c
 +++ b/fs/ext4/crypto.c
-@@ -253,8 +253,7 @@ typedef enum {
- 	EXT4_ENCRYPT,
- } ext4_direction_t;
- 
--static int ext4_page_crypto(struct ext4_crypto_ctx *ctx,
--			    struct inode *inode,
-+static int ext4_page_crypto(struct inode *inode,
- 			    ext4_direction_t rw,
- 			    pgoff_t index,
- 			    struct page *src_page,
-@@ -353,7 +352,7 @@ struct page *ext4_encrypt(struct inode *inode,
- 	if (IS_ERR(ciphertext_page))
- 		goto errout;
- 	ctx->w.control_page = plaintext_page;
--	err = ext4_page_crypto(ctx, inode, EXT4_ENCRYPT, plaintext_page->index,
-+	err = ext4_page_crypto(inode, EXT4_ENCRYPT, plaintext_page->index,
- 			       plaintext_page, ciphertext_page);
- 	if (err) {
- 		ciphertext_page = ERR_PTR(err);
-@@ -378,31 +377,14 @@ struct page *ext4_encrypt(struct inode *inode,
-  *
-  * Return: Zero on success, non-zero otherwise.
-  */
--int ext4_decrypt(struct ext4_crypto_ctx *ctx, struct page *page)
-+int ext4_decrypt(struct page *page)
- {
- 	BUG_ON(!PageLocked(page));
- 
--	return ext4_page_crypto(ctx, page->mapping->host,
-+	return ext4_page_crypto(page->mapping->host,
- 				EXT4_DECRYPT, page->index, page, page);
- }
- 
--/*
-- * Convenience function which takes care of allocating and
-- * deallocating the encryption context
-- */
--int ext4_decrypt_one(struct inode *inode, struct page *page)
--{
--	int ret;
--
--	struct ext4_crypto_ctx *ctx = ext4_get_crypto_ctx(inode);
--
--	if (IS_ERR(ctx))
--		return PTR_ERR(ctx);
--	ret = ext4_decrypt(ctx, page);
--	ext4_release_crypto_ctx(ctx);
--	return ret;
--}
--
- int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
- {
- 	struct ext4_crypto_ctx	*ctx;
-@@ -426,7 +408,7 @@ int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
+@@ -295,7 +295,6 @@ static int ext4_page_crypto(struct inode *inode,
+ 	else
+ 		res = crypto_ablkcipher_encrypt(req);
+ 	if (res == -EINPROGRESS || res == -EBUSY) {
+-		BUG_ON(req->base.data != &ecr);
+ 		wait_for_completion(&ecr.completion);
+ 		res = ecr.res;
  	}
- 
- 	while (len--) {
--		err = ext4_page_crypto(ctx, inode, EXT4_ENCRYPT, lblk,
-+		err = ext4_page_crypto(inode, EXT4_ENCRYPT, lblk,
- 				       ZERO_PAGE(0), ciphertext_page);
- 		if (err)
- 			goto errout;
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 766b7f7..3f248c9 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2063,8 +2063,7 @@ void ext4_release_crypto_ctx(struct ext4_crypto_ctx *ctx);
- void ext4_restore_control_page(struct page *data_page);
- struct page *ext4_encrypt(struct inode *inode,
- 			  struct page *plaintext_page);
--int ext4_decrypt(struct ext4_crypto_ctx *ctx, struct page *page);
--int ext4_decrypt_one(struct inode *inode, struct page *page);
-+int ext4_decrypt(struct page *page);
- int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex);
- 
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c95d406..ae52e32 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -965,7 +965,7 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 	if (unlikely(err))
- 		page_zero_new_buffers(page, from, to);
- 	else if (decrypt)
--		err = ext4_decrypt_one(inode, page);
-+		err = ext4_decrypt(page);
- 	return err;
- }
- #endif
-@@ -3404,7 +3404,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
- 			/* We expect the key to be set. */
- 			BUG_ON(!ext4_has_encryption_key(inode));
- 			BUG_ON(blocksize != PAGE_CACHE_SIZE);
--			WARN_ON_ONCE(ext4_decrypt_one(inode, page));
-+			WARN_ON_ONCE(ext4_decrypt(page));
- 		}
+diff --git a/fs/ext4/crypto_fname.c b/fs/ext4/crypto_fname.c
+index 847f919..2fbef8a 100644
+--- a/fs/ext4/crypto_fname.c
++++ b/fs/ext4/crypto_fname.c
+@@ -120,7 +120,6 @@ static int ext4_fname_encrypt(struct inode *inode,
+ 	ablkcipher_request_set_crypt(req, &src_sg, &dst_sg, ciphertext_len, iv);
+ 	res = crypto_ablkcipher_encrypt(req);
+ 	if (res == -EINPROGRESS || res == -EBUSY) {
+-		BUG_ON(req->base.data != &ecr);
+ 		wait_for_completion(&ecr.completion);
+ 		res = ecr.res;
  	}
- 	if (ext4_should_journal_data(inode)) {
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index e26803f..a91e4bf 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -62,7 +62,7 @@ static void completion_pages(struct work_struct *work)
- 	bio_for_each_segment_all(bv, bio, i) {
- 		struct page *page = bv->bv_page;
+@@ -182,7 +181,6 @@ static int ext4_fname_decrypt(struct inode *inode,
+ 	ablkcipher_request_set_crypt(req, &src_sg, &dst_sg, iname->len, iv);
+ 	res = crypto_ablkcipher_decrypt(req);
+ 	if (res == -EINPROGRESS || res == -EBUSY) {
+-		BUG_ON(req->base.data != &ecr);
+ 		wait_for_completion(&ecr.completion);
+ 		res = ecr.res;
+ 	}
+diff --git a/fs/ext4/crypto_key.c b/fs/ext4/crypto_key.c
+index 1d510c1..f9270ec 100644
+--- a/fs/ext4/crypto_key.c
++++ b/fs/ext4/crypto_key.c
+@@ -71,7 +71,6 @@ static int ext4_derive_key_aes(char deriving_key[EXT4_AES_128_ECB_KEY_SIZE],
+ 				     EXT4_AES_256_XTS_KEY_SIZE, NULL);
+ 	res = crypto_ablkcipher_encrypt(req);
+ 	if (res == -EINPROGRESS || res == -EBUSY) {
+-		BUG_ON(req->base.data != &ecr);
+ 		wait_for_completion(&ecr.completion);
+ 		res = ecr.res;
+ 	}
+@@ -208,7 +207,12 @@ retry:
+ 		goto out;
+ 	}
+ 	crypt_info->ci_keyring_key = keyring_key;
+-	BUG_ON(keyring_key->type != &key_type_logon);
++	if (keyring_key->type != &key_type_logon) {
++		printk_once(KERN_WARNING
++			    "ext4: key type must be logon\n");
++		res = -ENOKEY;
++		goto out;
++	}
+ 	ukp = ((struct user_key_payload *)keyring_key->payload.data);
+ 	if (ukp->datalen != sizeof(struct ext4_encryption_key)) {
+ 		res = -EINVAL;
+@@ -217,7 +221,13 @@ retry:
+ 	master_key = (struct ext4_encryption_key *)ukp->data;
+ 	BUILD_BUG_ON(EXT4_AES_128_ECB_KEY_SIZE !=
+ 		     EXT4_KEY_DERIVATION_NONCE_SIZE);
+-	BUG_ON(master_key->size != EXT4_AES_256_XTS_KEY_SIZE);
++	if (master_key->size != EXT4_AES_256_XTS_KEY_SIZE) {
++		printk_once(KERN_WARNING
++			    "ext4: key size incorrect: %d\n",
++			    master_key->size);
++		res = -ENOKEY;
++		goto out;
++	}
+ 	res = ext4_derive_key_aes(ctx.nonce, master_key->raw,
+ 				  raw_key);
+ 	if (res)
+diff --git a/fs/ext4/crypto_policy.c b/fs/ext4/crypto_policy.c
+index a640ec2..ad05069 100644
+--- a/fs/ext4/crypto_policy.c
++++ b/fs/ext4/crypto_policy.c
+@@ -150,7 +150,8 @@ int ext4_is_child_context_consistent_with_parent(struct inode *parent,
  
--		int ret = ext4_decrypt(ctx, page);
-+		int ret = ext4_decrypt(page);
- 		if (ret) {
- 			WARN_ON_ONCE(1);
- 			SetPageError(page);
+ 	if ((parent == NULL) || (child == NULL)) {
+ 		pr_err("parent %p child %p\n", parent, child);
+-		BUG_ON(1);
++		WARN_ON(1);	/* Should never happen */
++		return 0;
+ 	}
+ 	/* no restrictions if the parent directory is not encrypted */
+ 	if (!ext4_encrypted_inode(parent))
 -- 
 2.5.0
-
