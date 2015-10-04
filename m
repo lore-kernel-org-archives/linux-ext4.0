@@ -1,384 +1,434 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/3] ext4: refactor sysfs support code
-Date: Sun,  4 Oct 2015 01:36:32 -0400
-Message-ID: <1443936993-23831-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 3/3] ext4: move procfs registration code to fs/ext4/sysfs.c
+Date: Sun,  4 Oct 2015 01:36:33 -0400
+Message-ID: <1443936993-23831-3-git-send-email-tytso@mit.edu>
 References: <1443936993-23831-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58772 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:58770 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751199AbbJDFgk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751185AbbJDFgk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 4 Oct 2015 01:36:40 -0400
 In-Reply-To: <1443936993-23831-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Make the code more easily extensible as well as taking up less
-compiled space.
+This allows us to refactor the procfs code, which saves a bit of
+compiled space.  More importantly it isolates most of the procfs
+support code into a single file, so it's easier to #ifdef it out if
+the proc file system has been disabled.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/sysfs.c | 261 +++++++++++++++++++++++++++-----------------------------
- 1 file changed, 128 insertions(+), 133 deletions(-)
+ fs/ext4/ext4.h           |  3 +++
+ fs/ext4/extents_status.c | 60 ++----------------------------------------
+ fs/ext4/extents_status.h |  2 ++
+ fs/ext4/mballoc.c        |  9 +------
+ fs/ext4/super.c          | 41 +++--------------------------
+ fs/ext4/sysfs.c          | 68 ++++++++++++++++++++++++++++++++++++++++++++++--
+ 6 files changed, 77 insertions(+), 106 deletions(-)
 
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index 9fdc21b..87ac089 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -15,37 +15,35 @@
- #include "ext4.h"
- #include "ext4_jbd2.h"
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 76daccf..766b7f7 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2245,6 +2245,7 @@ extern int ext4_init_inode_table(struct super_block *sb,
+ extern void ext4_end_bitmap_read(struct buffer_head *bh, int uptodate);
  
-+typedef enum {
-+	attr_noop,
-+	attr_delayed_allocation_blocks,
-+	attr_session_write_kbytes,
-+	attr_lifetime_write_kbytes,
-+	attr_reserved_clusters,
-+	attr_inode_readahead,
-+	attr_trigger_test_error,
-+	attr_feature,
-+	attr_pointer_ui,
-+	attr_pointer_atomic,
-+} attr_id_t;
-+
-+typedef enum {
-+	ptr_explicit,
-+	ptr_ext4_sb_info_offset,
-+	ptr_ext4_super_block_offset,
-+} attr_ptr_t;
-+
- struct ext4_attr {
- 	struct attribute attr;
--	ssize_t (*show)(struct ext4_attr *, struct ext4_sb_info *, char *);
--	ssize_t (*store)(struct ext4_attr *, struct ext4_sb_info *,
--			 const char *, size_t);
-+	short attr_id;
-+	short attr_ptr;
- 	union {
- 		int offset;
--		int deprecated_val;
-+		void *explicit_ptr;
- 	} u;
- };
+ /* mballoc.c */
++extern const struct file_operations ext4_seq_mb_groups_fops;
+ extern long ext4_mb_stats;
+ extern long ext4_mb_max_to_scan;
+ extern int ext4_mb_init(struct super_block *);
+@@ -2372,6 +2373,7 @@ extern int ext4_group_extend(struct super_block *sb,
+ extern int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count);
  
--static int parse_strtoull(const char *buf,
--		unsigned long long max, unsigned long long *value)
+ /* super.c */
++extern int ext4_seq_options_show(struct seq_file *seq, void *offset);
+ extern int ext4_calculate_overhead(struct super_block *sb);
+ extern void ext4_superblock_csum_set(struct super_block *sb);
+ extern void *ext4_kvmalloc(size_t size, gfp_t flags);
+@@ -2905,6 +2907,7 @@ extern const struct inode_operations ext4_fast_symlink_inode_operations;
+ 
+ /* sysfs.c */
+ extern int ext4_register_sysfs(struct super_block *sb);
++extern void ext4_unregister_sysfs(struct super_block *sb);
+ extern int __init ext4_init_sysfs(void);
+ extern void ext4_exit_sysfs(void);
+ 
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 26724ae..ac748b3 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -1089,20 +1089,9 @@ static unsigned long ext4_es_scan(struct shrinker *shrink,
+ 	return nr_shrunk;
+ }
+ 
+-static void *ext4_es_seq_shrinker_info_start(struct seq_file *seq, loff_t *pos)
++int ext4_seq_es_shrinker_info_show(struct seq_file *seq, void *v)
+ {
+-	return *pos ? NULL : SEQ_START_TOKEN;
+-}
+-
+-static void *
+-ext4_es_seq_shrinker_info_next(struct seq_file *seq, void *v, loff_t *pos)
+-{
+-	return NULL;
+-}
+-
+-static int ext4_es_seq_shrinker_info_show(struct seq_file *seq, void *v)
+-{
+-	struct ext4_sb_info *sbi = seq->private;
++	struct ext4_sb_info *sbi = EXT4_SB((struct super_block *) seq->private);
+ 	struct ext4_es_stats *es_stats = &sbi->s_es_stats;
+ 	struct ext4_inode_info *ei, *max = NULL;
+ 	unsigned int inode_cnt = 0;
+@@ -1143,45 +1132,6 @@ static int ext4_es_seq_shrinker_info_show(struct seq_file *seq, void *v)
+ 	return 0;
+ }
+ 
+-static void ext4_es_seq_shrinker_info_stop(struct seq_file *seq, void *v)
+-{
+-}
+-
+-static const struct seq_operations ext4_es_seq_shrinker_info_ops = {
+-	.start = ext4_es_seq_shrinker_info_start,
+-	.next  = ext4_es_seq_shrinker_info_next,
+-	.stop  = ext4_es_seq_shrinker_info_stop,
+-	.show  = ext4_es_seq_shrinker_info_show,
+-};
+-
+-static int
+-ext4_es_seq_shrinker_info_open(struct inode *inode, struct file *file)
 -{
 -	int ret;
 -
--	ret = kstrtoull(skip_spaces(buf), 0, value);
--	if (!ret && *value > max)
--		ret = -EINVAL;
+-	ret = seq_open(file, &ext4_es_seq_shrinker_info_ops);
+-	if (!ret) {
+-		struct seq_file *m = file->private_data;
+-		m->private = PDE_DATA(inode);
+-	}
+-
 -	return ret;
 -}
 -
--static ssize_t delayed_allocation_blocks_show(struct ext4_attr *a,
--					      struct ext4_sb_info *sbi,
--					      char *buf)
+-static int
+-ext4_es_seq_shrinker_info_release(struct inode *inode, struct file *file)
 -{
--	return snprintf(buf, PAGE_SIZE, "%llu\n",
--		(s64) EXT4_C2B(sbi,
--			percpu_counter_sum(&sbi->s_dirtyclusters_counter)));
+-	return seq_release(inode, file);
 -}
 -
- static ssize_t session_write_kbytes_show(struct ext4_attr *a,
- 					 struct ext4_sb_info *sbi, char *buf)
+-static const struct file_operations ext4_es_seq_shrinker_info_fops = {
+-	.owner		= THIS_MODULE,
+-	.open		= ext4_es_seq_shrinker_info_open,
+-	.read		= seq_read,
+-	.llseek		= seq_lseek,
+-	.release	= ext4_es_seq_shrinker_info_release,
+-};
+-
+ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
  {
-@@ -89,46 +87,6 @@ static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
- 	return count;
+ 	int err;
+@@ -1210,10 +1160,6 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
+ 	if (err)
+ 		goto err2;
+ 
+-	if (sbi->s_proc)
+-		proc_create_data("es_shrinker_info", S_IRUGO, sbi->s_proc,
+-				 &ext4_es_seq_shrinker_info_fops, sbi);
+-
+ 	return 0;
+ 
+ err2:
+@@ -1225,8 +1171,6 @@ err1:
+ 
+ void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi)
+ {
+-	if (sbi->s_proc)
+-		remove_proc_entry("es_shrinker_info", sbi->s_proc);
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_all_cnt);
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_shk_cnt);
+ 	unregister_shrinker(&sbi->s_es_shrinker);
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index 691b526..f7aa24f 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -172,4 +172,6 @@ static inline void ext4_es_store_pblock_status(struct extent_status *es,
+ extern int ext4_es_register_shrinker(struct ext4_sb_info *sbi);
+ extern void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi);
+ 
++extern int ext4_seq_es_shrinker_info_show(struct seq_file *seq, void *v);
++
+ #endif /* _EXT4_EXTENTS_STATUS_H */
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 34b610e..b0f7ee5 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2333,7 +2333,7 @@ static int ext4_mb_seq_groups_open(struct inode *inode, struct file *file)
+ 
  }
  
--static ssize_t sbi_ui_show(struct ext4_attr *a,
--			   struct ext4_sb_info *sbi, char *buf)
--{
--	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->u.offset);
--
--	return snprintf(buf, PAGE_SIZE, "%u\n", *ui);
--}
--
--static ssize_t sbi_ui_store(struct ext4_attr *a,
--			    struct ext4_sb_info *sbi,
--			    const char *buf, size_t count)
--{
--	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->u.offset);
--	unsigned long t;
--	int ret;
--
--	ret = kstrtoul(skip_spaces(buf), 0, &t);
--	if (ret)
--		return ret;
--	*ui = t;
--	return count;
--}
--
--static ssize_t es_ui_show(struct ext4_attr *a,
--			   struct ext4_sb_info *sbi, char *buf)
--{
--
--	unsigned int *ui = (unsigned int *) (((char *) sbi->s_es) +
--			   a->u.offset);
--
--	return snprintf(buf, PAGE_SIZE, "%u\n", *ui);
--}
--
--static ssize_t reserved_clusters_show(struct ext4_attr *a,
--				  struct ext4_sb_info *sbi, char *buf)
--{
--	return snprintf(buf, PAGE_SIZE, "%llu\n",
--		(unsigned long long) atomic64_read(&sbi->s_resv_clusters));
--}
--
- static ssize_t reserved_clusters_store(struct ext4_attr *a,
- 				   struct ext4_sb_info *sbi,
- 				   const char *buf, size_t count)
-@@ -136,11 +94,10 @@ static ssize_t reserved_clusters_store(struct ext4_attr *a,
- 	unsigned long long val;
- 	ext4_fsblk_t clusters = (ext4_blocks_count(sbi->s_es) >>
- 				 sbi->s_cluster_bits);
-+	int ret;
+-static const struct file_operations ext4_mb_seq_groups_fops = {
++const struct file_operations ext4_seq_mb_groups_fops = {
+ 	.owner		= THIS_MODULE,
+ 	.open		= ext4_mb_seq_groups_open,
+ 	.read		= seq_read,
+@@ -2661,10 +2661,6 @@ int ext4_mb_init(struct super_block *sb)
+ 	if (ret != 0)
+ 		goto out_free_locality_groups;
  
--	if (parse_strtoull(buf, -1ULL, &val))
--		return -EINVAL;
+-	if (sbi->s_proc)
+-		proc_create_data("mb_groups", S_IRUGO, sbi->s_proc,
+-				 &ext4_mb_seq_groups_fops, sb);
 -
--	if (val >= clusters)
-+	ret = kstrtoull(skip_spaces(buf), 0, &val);
-+	if (!ret || val >= clusters)
- 		return -EINVAL;
+ 	return 0;
  
- 	atomic64_set(&sbi->s_resv_clusters, val);
-@@ -164,60 +121,51 @@ static ssize_t trigger_test_error(struct ext4_attr *a,
- 	return count;
+ out_free_locality_groups:
+@@ -2705,9 +2701,6 @@ int ext4_mb_release(struct super_block *sb)
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct kmem_cache *cachep = get_groupinfo_cache(sb->s_blocksize_bits);
+ 
+-	if (sbi->s_proc)
+-		remove_proc_entry("mb_groups", sbi->s_proc);
+-
+ 	if (sbi->s_group_info) {
+ 		for (i = 0; i < ngroups; i++) {
+ 			grinfo = ext4_get_group_info(sb, i);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 4a574fb..7ef3fa5 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -34,7 +34,6 @@
+ #include <linux/namei.h>
+ #include <linux/quotaops.h>
+ #include <linux/seq_file.h>
+-#include <linux/proc_fs.h>
+ #include <linux/ctype.h>
+ #include <linux/log2.h>
+ #include <linux/crc16.h>
+@@ -54,7 +53,6 @@
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/ext4.h>
+ 
+-static struct proc_dir_entry *ext4_proc_root;
+ static struct ext4_lazy_init *ext4_li_info;
+ static struct mutex ext4_li_mtx;
+ static int ext4_mballoc_ready;
+@@ -797,6 +795,7 @@ static void ext4_put_super(struct super_block *sb)
+ 			ext4_abort(sb, "Couldn't clean up the journal");
+ 	}
+ 
++	ext4_unregister_sysfs(sb);
+ 	ext4_es_unregister_shrinker(sbi);
+ 	del_timer_sync(&sbi->s_err_report);
+ 	ext4_release_system_zone(sb);
+@@ -811,12 +810,6 @@ static void ext4_put_super(struct super_block *sb)
+ 	if (!(sb->s_flags & MS_RDONLY))
+ 		ext4_commit_super(sb, 1);
+ 
+-	if (sbi->s_proc) {
+-		remove_proc_entry("options", sbi->s_proc);
+-		remove_proc_entry(sb->s_id, ext4_proc_root);
+-	}
+-	kobject_del(&sbi->s_kobj);
+-
+ 	for (i = 0; i < sbi->s_gdb_count; i++)
+ 		brelse(sbi->s_group_desc[i]);
+ 	kvfree(sbi->s_group_desc);
+@@ -1877,7 +1870,7 @@ static int ext4_show_options(struct seq_file *seq, struct dentry *root)
+ 	return _ext4_show_options(seq, root->d_sb, 0);
  }
  
--static ssize_t sbi_deprecated_show(struct ext4_attr *a,
--				   struct ext4_sb_info *sbi, char *buf)
+-static int options_seq_show(struct seq_file *seq, void *offset)
++int ext4_seq_options_show(struct seq_file *seq, void *offset)
+ {
+ 	struct super_block *sb = seq->private;
+ 	int rc;
+@@ -1888,19 +1881,6 @@ static int options_seq_show(struct seq_file *seq, void *offset)
+ 	return rc;
+ }
+ 
+-static int options_open_fs(struct inode *inode, struct file *file)
 -{
--	return snprintf(buf, PAGE_SIZE, "%d\n", a->u.deprecated_val);
-+#define EXT4_ATTR(_name,_mode,_id)					\
-+static struct ext4_attr ext4_attr_##_name = {				\
-+	.attr = {.name = __stringify(_name), .mode = _mode },		\
-+	.attr_id = attr_##_id,						\
- }
- 
--#define EXT4_ATTR_OFFSET(_name,_mode,_show,_store,_elname) \
-+#define EXT4_ATTR_FUNC(_name,_mode)  EXT4_ATTR(_name,_mode,_name)
-+
-+#define EXT4_ATTR_FEATURE(_name)   EXT4_ATTR(_name, 0444, feature)
-+
-+#define EXT4_ATTR_OFFSET(_name,_mode,_id,_struct,_elname)	\
- static struct ext4_attr ext4_attr_##_name = {			\
- 	.attr = {.name = __stringify(_name), .mode = _mode },	\
--	.show	= _show,					\
--	.store	= _store,					\
-+	.attr_id = attr_##_id,					\
-+	.attr_ptr = ptr_##_struct##_offset,			\
- 	.u = {							\
--		.offset = offsetof(struct ext4_sb_info, _elname),\
-+		.offset = offsetof(struct _struct, _elname),\
- 	},							\
- }
- 
--#define EXT4_ATTR_OFFSET_ES(_name,_mode,_show,_store,_elname)		\
--static struct ext4_attr ext4_attr_##_name = {				\
--	.attr = {.name = __stringify(_name), .mode = _mode },		\
--	.show	= _show,						\
--	.store	= _store,						\
--	.u = {								\
--		.offset = offsetof(struct ext4_super_block, _elname),	\
--	},								\
+-	return single_open(file, options_seq_show, PDE_DATA(inode));
 -}
 -
--#define EXT4_ATTR(name, mode, show, store) \
--static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
+-static const struct file_operations ext4_seq_options_fops = {
+-	.owner = THIS_MODULE,
+-	.open = options_open_fs,
+-	.read = seq_read,
+-	.llseek = seq_lseek,
+-	.release = single_release,
+-};
 -
--#define EXT4_INFO_ATTR(name) EXT4_ATTR(name, 0444, NULL, NULL)
--#define EXT4_RO_ATTR(name) EXT4_ATTR(name, 0444, name##_show, NULL)
--#define EXT4_RW_ATTR(name) EXT4_ATTR(name, 0644, name##_show, name##_store)
-+#define EXT4_RO_ATTR_ES_UI(_name,_elname)				\
-+	EXT4_ATTR_OFFSET(_name, 0444, pointer_ui, ext4_super_block, _elname)
+ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 			    int read_only)
+ {
+@@ -3616,13 +3596,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount;
+ 	}
  
--#define EXT4_RO_ATTR_ES_UI(name, elname)	\
--	EXT4_ATTR_OFFSET_ES(name, 0444, es_ui_show, NULL, elname)
--#define EXT4_RW_ATTR_SBI_UI(name, elname)	\
--	EXT4_ATTR_OFFSET(name, 0644, sbi_ui_show, sbi_ui_store, elname)
-+#define EXT4_RW_ATTR_SBI_UI(_name,_elname)	\
-+	EXT4_ATTR_OFFSET(_name, 0644, pointer_ui, ext4_sb_info, _elname)
+-	if (ext4_proc_root)
+-		sbi->s_proc = proc_mkdir(sb->s_id, ext4_proc_root);
+-
+-	if (sbi->s_proc)
+-		proc_create_data("options", S_IRUGO, sbi->s_proc,
+-				 &ext4_seq_options_fops, sb);
+-
+ 	bgl_lock_init(sbi->s_blockgroup_lock);
  
--#define ATTR_LIST(name) &ext4_attr_##name.attr
--#define EXT4_DEPRECATED_ATTR(_name, _val)	\
-+#define EXT4_ATTR_PTR(_name,_mode,_id,_ptr) \
- static struct ext4_attr ext4_attr_##_name = {			\
--	.attr = {.name = __stringify(_name), .mode = 0444 },	\
--	.show	= sbi_deprecated_show,				\
-+	.attr = {.name = __stringify(_name), .mode = _mode },	\
-+	.attr_id = attr_##_id,					\
-+	.attr_ptr = ptr_explicit,				\
- 	.u = {							\
--		.deprecated_val = _val,				\
-+		.explicit_ptr = _ptr,				\
- 	},							\
- }
+ 	for (i = 0; i < db_count; i++) {
+@@ -3960,7 +3933,7 @@ cantfind_ext4:
  
--EXT4_RO_ATTR(delayed_allocation_blocks);
--EXT4_RO_ATTR(session_write_kbytes);
--EXT4_RO_ATTR(lifetime_write_kbytes);
--EXT4_RW_ATTR(reserved_clusters);
--EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, sbi_ui_show,
--		 inode_readahead_blks_store, s_inode_readahead_blks);
-+#define ATTR_LIST(name) &ext4_attr_##name.attr
+ #ifdef CONFIG_QUOTA
+ failed_mount8:
+-	kobject_del(&sbi->s_kobj);
++	ext4_unregister_sysfs(sb);
+ #endif
+ failed_mount7:
+ 	ext4_unregister_li_request(sb);
+@@ -4000,10 +3973,6 @@ failed_mount2:
+ failed_mount:
+ 	if (sbi->s_chksum_driver)
+ 		crypto_free_shash(sbi->s_chksum_driver);
+-	if (sbi->s_proc) {
+-		remove_proc_entry("options", sbi->s_proc);
+-		remove_proc_entry(sb->s_id, ext4_proc_root);
+-	}
+ #ifdef CONFIG_QUOTA
+ 	for (i = 0; i < EXT4_MAXQUOTAS; i++)
+ 		kfree(sbi->s_qf_names[i]);
+@@ -5264,7 +5233,6 @@ static int __init ext4_init_fs(void)
+ 	err = ext4_init_system_zone();
+ 	if (err)
+ 		goto out4;
+-	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
+ 
+ 	err = ext4_init_sysfs();
+ 	if (err)
+@@ -5295,8 +5263,6 @@ out1:
+ out2:
+ 	ext4_exit_sysfs();
+ out3:
+-	if (ext4_proc_root)
+-		remove_proc_entry("fs/ext4", NULL);
+ 	ext4_exit_system_zone();
+ out4:
+ 	ext4_exit_pageio();
+@@ -5316,7 +5282,6 @@ static void __exit ext4_exit_fs(void)
+ 	destroy_inodecache();
+ 	ext4_exit_mballoc();
+ 	ext4_exit_sysfs();
+-	remove_proc_entry("fs/ext4", NULL);
+ 	ext4_exit_system_zone();
+ 	ext4_exit_pageio();
+ 	ext4_exit_es();
+diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+index 87ac089..62bef0f 100644
+--- a/fs/ext4/sysfs.c
++++ b/fs/ext4/sysfs.c
+@@ -34,6 +34,9 @@ typedef enum {
+ 	ptr_ext4_super_block_offset,
+ } attr_ptr_t;
+ 
++static const char *proc_dirname = "fs/ext4";
++static struct proc_dir_entry *ext4_proc_root;
 +
-+EXT4_ATTR_FUNC(delayed_allocation_blocks, 0444);
-+EXT4_ATTR_FUNC(session_write_kbytes, 0444);
-+EXT4_ATTR_FUNC(lifetime_write_kbytes, 0444);
-+EXT4_ATTR_FUNC(reserved_clusters, 0644);
-+
-+EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, inode_readahead,
-+		 ext4_sb_info, s_inode_readahead_blks);
- EXT4_RW_ATTR_SBI_UI(inode_goal, s_inode_goal);
- EXT4_RW_ATTR_SBI_UI(mb_stats, s_mb_stats);
- EXT4_RW_ATTR_SBI_UI(mb_max_to_scan, s_mb_max_to_scan);
-@@ -225,9 +173,8 @@ EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
- EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
- EXT4_RW_ATTR_SBI_UI(mb_stream_req, s_mb_stream_request);
- EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
--EXT4_DEPRECATED_ATTR(max_writeback_mb_bump, 128);
- EXT4_RW_ATTR_SBI_UI(extent_max_zeroout_kb, s_extent_max_zeroout_kb);
--EXT4_ATTR(trigger_fs_error, 0200, NULL, trigger_test_error);
-+EXT4_ATTR(trigger_fs_error, 0200, trigger_test_error);
- EXT4_RW_ATTR_SBI_UI(err_ratelimit_interval_ms, s_err_ratelimit_state.interval);
- EXT4_RW_ATTR_SBI_UI(err_ratelimit_burst, s_err_ratelimit_state.burst);
- EXT4_RW_ATTR_SBI_UI(warning_ratelimit_interval_ms, s_warning_ratelimit_state.interval);
-@@ -238,6 +185,9 @@ EXT4_RO_ATTR_ES_UI(errors_count, s_error_count);
- EXT4_RO_ATTR_ES_UI(first_error_time, s_first_error_time);
- EXT4_RO_ATTR_ES_UI(last_error_time, s_last_error_time);
- 
-+static unsigned int old_bump_val = 128;
-+EXT4_ATTR_PTR(max_writeback_mb_bump, 0444, pointer_ui, &old_bump_val);
-+
- static struct attribute *ext4_attrs[] = {
- 	ATTR_LIST(delayed_allocation_blocks),
- 	ATTR_LIST(session_write_kbytes),
-@@ -267,10 +217,10 @@ static struct attribute *ext4_attrs[] = {
+ struct ext4_attr {
+ 	struct attribute attr;
+ 	short attr_id;
+@@ -347,14 +350,71 @@ static struct kobject ext4_feat = {
+ 	.kset	= &ext4_kset,
  };
  
- /* Features this copy of ext4 supports */
--EXT4_INFO_ATTR(lazy_itable_init);
--EXT4_INFO_ATTR(batched_discard);
--EXT4_INFO_ATTR(meta_bg_resize);
--EXT4_INFO_ATTR(encryption);
-+EXT4_ATTR_FEATURE(lazy_itable_init);
-+EXT4_ATTR_FEATURE(batched_discard);
-+EXT4_ATTR_FEATURE(meta_bg_resize);
-+EXT4_ATTR_FEATURE(encryption);
- 
- static struct attribute *ext4_feat_attrs[] = {
- 	ATTR_LIST(lazy_itable_init),
-@@ -280,14 +230,56 @@ static struct attribute *ext4_feat_attrs[] = {
- 	NULL,
- };
- 
-+static void *calc_ptr(struct ext4_attr *a, struct ext4_sb_info *sbi)
-+{
-+	switch (a->attr_ptr) {
-+	case ptr_explicit:
-+		return a->u.explicit_ptr;
-+	case ptr_ext4_sb_info_offset:
-+		return (void *) (((char *) sbi) + a->u.offset);
-+	case ptr_ext4_super_block_offset:
-+		return (void *) (((char *) sbi->s_es) + a->u.offset);
-+	}
-+	return NULL;
++#define PROC_FILE_SHOW_DEFN(name) \
++static int name##_open(struct inode *inode, struct file *file) \
++{ \
++	return single_open(file, ext4_seq_##name##_show, PDE_DATA(inode)); \
++} \
++\
++const struct file_operations ext4_seq_##name##_fops = { \
++	.owner		= THIS_MODULE, \
++	.open		= name##_open, \
++	.read		= seq_read, \
++	.llseek		= seq_lseek, \
++	.release	= single_release, \
 +}
 +
- static ssize_t ext4_attr_show(struct kobject *kobj,
- 			      struct attribute *attr, char *buf)
++#define PROC_FILE_LIST(name) \
++	{ __stringify(name), &ext4_seq_##name##_fops }
++
++PROC_FILE_SHOW_DEFN(es_shrinker_info);
++PROC_FILE_SHOW_DEFN(options);
++
++static struct ext4_proc_files {
++	const char *name;
++	const struct file_operations *fops;
++} proc_files[] = {
++	PROC_FILE_LIST(options),
++	PROC_FILE_LIST(es_shrinker_info),
++	PROC_FILE_LIST(mb_groups),
++	{ NULL, NULL },
++};
++
+ int ext4_register_sysfs(struct super_block *sb)
  {
- 	struct ext4_sb_info *sbi = container_of(kobj, struct ext4_sb_info,
- 						s_kobj);
- 	struct ext4_attr *a = container_of(attr, struct ext4_attr, attr);
--
--	return a->show ? a->show(a, sbi, buf) : 0;
-+	void *ptr = calc_ptr(a, sbi);
-+
-+	switch (a->attr_id) {
-+	case attr_delayed_allocation_blocks:
-+		return snprintf(buf, PAGE_SIZE, "%llu\n",
-+				(s64) EXT4_C2B(sbi,
-+		       percpu_counter_sum(&sbi->s_dirtyclusters_counter)));
-+	case attr_session_write_kbytes:
-+		return session_write_kbytes_show(a, sbi, buf);
-+	case attr_lifetime_write_kbytes:
-+		return lifetime_write_kbytes_show(a, sbi, buf);
-+	case attr_reserved_clusters:
-+		return snprintf(buf, PAGE_SIZE, "%llu\n",
-+				(unsigned long long)
-+				atomic64_read(&sbi->s_resv_clusters));
-+	case attr_inode_readahead:
-+	case attr_pointer_ui:
-+		if (!ptr)
-+			return 0;
-+		return snprintf(buf, PAGE_SIZE, "%u\n",
-+				*((unsigned int *) ptr));
-+	case attr_pointer_atomic:
-+		if (!ptr)
-+			return 0;
-+		return snprintf(buf, PAGE_SIZE, "%d\n",
-+				atomic_read((atomic_t *) ptr));
-+	case attr_feature:
-+		return snprintf(buf, PAGE_SIZE, "supported\n");
-+	}
-+
-+	return 0;
- }
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_proc_files *p;
++	int err;
  
- static ssize_t ext4_attr_store(struct kobject *kobj,
-@@ -297,8 +289,27 @@ static ssize_t ext4_attr_store(struct kobject *kobj,
- 	struct ext4_sb_info *sbi = container_of(kobj, struct ext4_sb_info,
- 						s_kobj);
- 	struct ext4_attr *a = container_of(attr, struct ext4_attr, attr);
-+	void *ptr = calc_ptr(a, sbi);
-+	unsigned long t;
-+	int ret;
- 
--	return a->store ? a->store(a, sbi, buf, len) : 0;
-+	switch (a->attr_id) {
-+	case attr_reserved_clusters:
-+		return reserved_clusters_store(a, sbi, buf, len);
-+	case attr_pointer_ui:
-+		if (!ptr)
-+			return 0;
-+		ret = kstrtoul(skip_spaces(buf), 0, &t);
-+		if (ret)
-+			return ret;
-+		*((unsigned int *) ptr) = t;
-+		return len;
-+	case attr_inode_readahead:
-+		return inode_readahead_blks_store(a, sbi, buf, len);
-+	case attr_trigger_test_error:
-+		return trigger_test_error(a, sbi, buf, len);
+ 	sbi->s_kobj.kset = &ext4_kset;
+ 	init_completion(&sbi->s_kobj_unregister);
+-	return kobject_init_and_add(&sbi->s_kobj, &ext4_sb_ktype, NULL,
+-				    "%s", sb->s_id);
++	err = kobject_init_and_add(&sbi->s_kobj, &ext4_sb_ktype, NULL,
++				   "%s", sb->s_id);
++	if (err)
++		return err;
++
++	if (ext4_proc_root)
++		sbi->s_proc = proc_mkdir(sb->s_id, ext4_proc_root);
++
++	if (sbi->s_proc) {
++		for (p = proc_files; p->name; p++)
++			proc_create_data(p->name, S_IRUGO, sbi->s_proc,
++					 p->fops, sb);
 +	}
 +	return 0;
++}
++
++void ext4_unregister_sysfs(struct super_block *sb)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_proc_files *p;
++
++	if (sbi->s_proc) {
++		for (p = proc_files; p->name; p++)
++			remove_proc_entry(p->name, sbi->s_proc);
++		remove_proc_entry(sb->s_id, ext4_proc_root);
++	}
++	kobject_del(&sbi->s_kobj);
  }
  
- static void ext4_sb_release(struct kobject *kobj)
-@@ -327,25 +338,9 @@ static struct kset ext4_kset = {
- 	.kobj   = {.ktype = &ext4_ktype},
- };
+ int __init ext4_init_sysfs(void)
+@@ -371,6 +431,8 @@ int __init ext4_init_sysfs(void)
+ 				   NULL, "features");
+ 	if (ret)
+ 		kset_unregister(&ext4_kset);
++	else
++		ext4_proc_root = proc_mkdir(proc_dirname, NULL);
+ 	return ret;
+ }
  
--static ssize_t ext4_feat_show(struct kobject *kobj,
--			      struct attribute *attr, char *buf)
--{
--	return snprintf(buf, PAGE_SIZE, "supported\n");
--}
--
--/*
-- * We can not use ext4_attr_show/store because it relies on the kobject
-- * being embedded in the ext4_sb_info structure which is definitely not
-- * true in this case.
-- */
--static const struct sysfs_ops ext4_feat_ops = {
--	.show	= ext4_feat_show,
--	.store	= NULL,
--};
+@@ -378,5 +440,7 @@ void ext4_exit_sysfs(void)
+ {
+ 	kobject_put(&ext4_feat);
+ 	kset_unregister(&ext4_kset);
++	remove_proc_entry(proc_dirname, NULL);
++	ext4_proc_root = NULL;
+ }
+ 
+-- 
+2.5.0
+
