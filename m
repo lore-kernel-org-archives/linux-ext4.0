@@ -1,50 +1,84 @@
-From: Andy Leiserson <andy@leiserson.org>
-Subject: Fwd: meta_bg descriptor backup calculation bug
-Date: Mon, 5 Oct 2015 09:07:41 -0700
-Message-ID: <CAP8U4WbQ=P9UMySzXmpmxBfCNEhJZHH1ES5+GH7az0A5bu+tyw@mail.gmail.com>
-References: <CAP8U4WYkO377Ec7YSKAt0otd8Sz2HQWUCd4fKdRZMaoYf8wwCw@mail.gmail.com>
+From: Dave Hansen <dave.hansen@linux.intel.com>
+Subject: Re: [REGRESSION] 998ef75ddb and aio-dio-invalidate-failure w/
+ data=journal
+Date: Mon, 5 Oct 2015 09:23:15 -0700
+Message-ID: <5612A3F3.2040609@linux.intel.com>
+References: <20151005152236.GA8140@thunk.org>
+ <CA+55aFzARo_ZtbO6PDxgenWQtEEbynBCWFWCwVJT2NbXmJOd9Q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f179.google.com ([209.85.212.179]:34446 "EHLO
-	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752348AbbJEQHn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Oct 2015 12:07:43 -0400
-Received: by wicfx3 with SMTP id fx3so127526515wic.1
-        for <linux-ext4@vger.kernel.org>; Mon, 05 Oct 2015 09:07:42 -0700 (PDT)
-In-Reply-To: <CAP8U4WYkO377Ec7YSKAt0otd8Sz2HQWUCd4fKdRZMaoYf8wwCw@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	"H. Peter Anvin" <hpa@linux.intel.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <CA+55aFzARo_ZtbO6PDxgenWQtEEbynBCWFWCwVJT2NbXmJOd9Q@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Just sent a patch related to this. Some more background:
+On 10/05/2015 08:58 AM, Linus Torvalds wrote:
+=2E..
+> Dave, mind sharing the micro-benchmark or perhaps even just a kernel
+> profile of it? How is that "iov_iter_fault_in_readable()" so
+> noticeable? It really shouldn't be a big deal.
 
-I observed this on a 1K block filesystem that I resized from 16 GB to
-24 GB. Prior to the resize there were no remaining reserved GDT
-blocks.
+The micro was just plugging this test:
 
-Possibly related to this issue, or possibly due to unrelated
-corruption, the filesystem errored and remounted read only. I rebooted
-and fsck'ed and discovered the corruption to be substantial.
-Unfortunately I don't have a block-level backup of the original state
-of the filesystem, the errors from before the reboot, or a log of what
-the initial fsck did. (I don't think that I let it do much, if
-anything, more than try to replay the journal, which was not
-successful.)
+	https://www.sr71.net/~dave/intel/write1byte.c
 
-What I found in debugfs was that:
-* The descriptor data for groups 0..31 instead described groups 3040..3071.
-* The descriptor data for groups 2048..3071 was zero'ed (except checksum)
+In to will-it-scale:
 
-The first bullet is what gave me the idea that the new descriptors
-were being written in the wrong place. But I don't have a solid
-explanation for the second bullet.
+	https://github.com/antonblanchard/will-it-scale
 
-I tried similar resizes to the original with debugging enabled before
-and after my proposed fix, and the "updating metadata backup" messages
-are consistent with the explanation. Before the fix, every meta_bg
-backup goes to blocks 8194 and 253953. 8194 is a backup copy of the
-first descriptor block, explaining why groups 0..31 were overwritten
-(assuming fsck tried to use the first backup copy). 253953 contains a
-block bitmap, and doing an fsck immediately after the resize finds a
-bunch of block bitmap inconsistencies.
+iov_iter_fault_in_readable() shows up as the third-most expensive kerne=
+l
+function in a profile:
+
+>      7.45%  write1byte_proc  [kernel.kallsyms]     [k] copy_user_enha=
+nced_fast_string=20
+>      6.51%  write1byte_proc  [kernel.kallsyms]     [k] unlock_page   =
+                =20
+>      6.04%  write1byte_proc  [kernel.kallsyms]     [k] iov_iter_fault=
+_in_readable    =20
+>      5.23%  write1byte_proc  libc-2.20.so          [.] __GI___libc_wr=
+ite             =20
+>      4.86%  write1byte_proc  [kernel.kallsyms]     [k] entry_SYSCALL_=
+64              =20
+>      4.48%  write1byte_proc  [kernel.kallsyms]     [k] iov_iter_copy_=
+from_user_atomic=20
+>      3.94%  write1byte_proc  [kernel.kallsyms]     [k] generic_perfor=
+m_write         =20
+>      3.74%  write1byte_proc  [kernel.kallsyms]     [k] mutex_lock    =
+                =20
+>      3.59%  write1byte_proc  [kernel.kallsyms]     [k] entry_SYSCALL_=
+64_after_swapgs =20
+>      3.55%  write1byte_proc  [kernel.kallsyms]     [k] find_get_entry=
+                =20
+>      3.53%  write1byte_proc  [kernel.kallsyms]     [k] vfs_write     =
+                =20
+>      3.17%  write1byte_proc  [kernel.kallsyms]     [k] find_lock_entr=
+y               =20
+>      3.17%  write1byte_proc  [kernel.kallsyms]     [k] put_page      =
+                =20
+
+The disassembly points at the stac/clac pair being the culprits inside
+the function (copy/paste from 'perf top' disassebly here):
+
+=2E..
+>        =E2=94=82      stac
+>  24.57 =E2=94=82      mov    (%rcx),%sil
+>  15.70 =E2=94=82      clac
+>  28.77 =E2=94=82      test   %eax,%eax
+>   2.15 =E2=94=82      mov    %sil,-0x1(%rbp)
+>   8.93 =E2=94=82    =E2=86=93 jne    66
+>   2.31 =E2=94=82      movslq %edx,%rdx
+
+One thing I've been noticing on Skylake is that barriers (implicit and
+explicit) are showing up more in profiles.  What we're seeing here
+probably isn't actually stac/clac overhead, but the cost of finishing
+some other operations that are outstanding before we can proceed throug=
+h
+here.
