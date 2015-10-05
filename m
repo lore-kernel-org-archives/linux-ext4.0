@@ -1,120 +1,171 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: fix potential use after free in __ext4_journal_stop
-Date: Mon, 5 Oct 2015 13:20:52 -0600
-Message-ID: <D351F62D-C7F5-4B8F-8D7C-246DC6BB52CC@dilger.ca>
-References: <1441205154-16501-1-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1510051618030.4946@localhost.localdomain>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_A093F2CD-5876-4CB3-B319-3BAD035B1F0B"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: linux-ext4@vger.kernel.org
-To: =?utf-8?Q?Luk=C3=A1=C5=A1_Czerner?= <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f48.google.com ([209.85.220.48]:33477 "EHLO
-	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751837AbbJETVH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Oct 2015 15:21:07 -0400
-Received: by pacex6 with SMTP id ex6so185185728pac.0
-        for <linux-ext4@vger.kernel.org>; Mon, 05 Oct 2015 12:21:06 -0700 (PDT)
-In-Reply-To: <alpine.LFD.2.00.1510051618030.4946@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: [PATCH v9 00/43] Richacls
+Date: Mon,  5 Oct 2015 21:36:27 +0200
+Message-ID: <1444073830-21854-1-git-send-email-agruenba@redhat.com>
+To: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
+
+Here is another update of the richacl patch queue.  I would like to ask for
+feedback so that the core and ext4 code (patches 1-21) can be merged in the
+4.4 merge window.  Changes since the last posting
+(https://lkml.org/lkml/2015/9/27/148):
+
+ * A set_richacl inode operation similar to set_acl for POSIX ACLs was
+   added.  The filesystem specific code needed for adding richacl support
+   has shrunk: ext4_richacl_chmod, ext4_xattr_{list,get,set}_richacl,
+   ext4_init_richacl, ext4_richacl_xattr_handler were all replaced by vfs
+   functions.
+
+The complete patch queue is available here:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
+	richacl-2015-10-05
 
 
---Apple-Mail=_A093F2CD-5876-4CB3-B319-3BAD035B1F0B
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=utf-8
+The richacl user-space utilitites and test suite are available here:
+
+  https://github.com/andreas-gruenbacher/richacl/
 
 
-> On Oct 5, 2015, at 8:18 AM, Luk=C3=A1=C5=A1 Czerner =
-<lczerner@redhat.com> wrote:
->=20
-> On Wed, 2 Sep 2015, Lukas Czerner wrote:
->=20
->> Date: Wed,  2 Sep 2015 16:45:54 +0200
->> From: Lukas Czerner <lczerner@redhat.com>
->> To: linux-ext4@vger.kernel.org
->> Cc: Lukas Czerner <lczerner@redhat.com>
->> Subject: [PATCH] ext4: fix potential use after free in =
-__ext4_journal_stop
->>=20
->> There is a use-after-free possibility in __ext4_journal_stop() in the
->> case that we free the handle in the first jbd2_journal_stop() because
->> we're referencing handle->h_err afterwards. This was introduced in
->> 9705acd63b125dee8b15c705216d7186daea4625 and it is wrong. Fix it by
->> storing the handle->h_err value beforehand and avoid referencing
->> potentially freed handle.
->=20
-> ping
->>=20
->> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+We still have two open issues in nfs (see the previous posting) which don't
+affect the core functionality.
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Thanks,
+Andreas
 
->> ---
->> fs/ext4/ext4_jbd2.c | 6 +++---
->> 1 file changed, 3 insertions(+), 3 deletions(-)
->>=20
->> diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
->> index d418431..e770c1ee 100644
->> --- a/fs/ext4/ext4_jbd2.c
->> +++ b/fs/ext4/ext4_jbd2.c
->> @@ -88,13 +88,13 @@ int __ext4_journal_stop(const char *where, =
-unsigned int line, handle_t *handle)
->> 		return 0;
->> 	}
->>=20
->> +	err =3D handle->h_err;
->> 	if (!handle->h_transaction) {
->> -		err =3D jbd2_journal_stop(handle);
->> -		return handle->h_err ? handle->h_err : err;
->> +		rc =3D jbd2_journal_stop(handle);
->> +		return err ? err : rc;
->> 	}
->>=20
->> 	sb =3D handle->h_transaction->t_journal->j_private;
->> -	err =3D handle->h_err;
->> 	rc =3D jbd2_journal_stop(handle);
->>=20
->> 	if (!err)
->>=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Andreas Gruenbacher (41):
+  vfs: Add IS_ACL() and IS_RICHACL() tests
+  vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
+  vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+  vfs: Make the inode passed to inode_change_ok non-const
+  vfs: Add permission flags for setting file attributes
+  richacl: In-memory representation and helper functions
+  richacl: Permission mapping functions
+  richacl: Compute maximum file masks from an acl
+  richacl: Permission check algorithm
+  vfs: Cache base_acl objects in inodes
+  vfs: Add get_richacl and set_richacl inode operations
+  vfs: Cache richacl in struct inode
+  richacl: Update the file masks in chmod()
+  richacl: Check if an acl is equivalent to a file mode
+  richacl: Create-time inheritance
+  richacl: Automatic Inheritance
+  richacl: xattr mapping functions
+  richacl: Add richacl xattr handler
+  vfs: Add richacl permission checking
+  richacl: acl editing helper functions
+  richacl: Move everyone@ aces down the acl
+  richacl: Propagate everyone@ permissions to other aces
+  richacl: Set the owner permissions to the owner mask
+  richacl: Set the other permissions to the other mask
+  richacl: Isolate the owner and group classes
+  richacl: Apply the file masks to a richacl
+  richacl: Create richacl from mode values
+  nfsd: Keep list of acls to dispose of in compoundargs
+  nfsd: Use richacls as internal acl representation
+  nfsd: Add richacl support
+  nfsd: Add support for the v4.1 dacl attribute
+  nfsd: Add support for the MAY_CREATE_{FILE,DIR} permissions
+  richacl: Add support for unmapped identifiers
+  ext4: Don't allow unmapped identifiers in richacls
+  sunrpc: Allow to demand-allocate pages to encode into
+  sunrpc: Add xdr_init_encode_pages
+  nfs: Fix GETATTR bitmap verification
+  nfs: Remove unused xdr page offsets in getacl/setacl arguments
+  nfs: Add richacl support
+  nfs: Add support for the v4.1 dacl attribute
+  richacl: uapi header split
 
+Aneesh Kumar K.V (2):
+  ext4: Add richacl support
+  ext4: Add richacl feature flag
 
-Cheers, Andreas
+ drivers/staging/lustre/lustre/llite/llite_lib.c |   2 +-
+ fs/Kconfig                                      |   9 +
+ fs/Makefile                                     |   3 +
+ fs/attr.c                                       |  81 ++-
+ fs/ext4/Kconfig                                 |  15 +
+ fs/ext4/Makefile                                |   1 +
+ fs/ext4/acl.c                                   |   6 +-
+ fs/ext4/acl.h                                   |  12 +-
+ fs/ext4/ext4.h                                  |   6 +-
+ fs/ext4/file.c                                  |   7 +-
+ fs/ext4/ialloc.c                                |   7 +-
+ fs/ext4/inode.c                                 |  10 +-
+ fs/ext4/namei.c                                 |  13 +-
+ fs/ext4/richacl.c                               | 131 ++++
+ fs/ext4/richacl.h                               |  43 ++
+ fs/ext4/super.c                                 |  42 +-
+ fs/ext4/xattr.c                                 |   7 +
+ fs/f2fs/acl.c                                   |   4 +-
+ fs/inode.c                                      |  15 +-
+ fs/jffs2/acl.c                                  |   6 +-
+ fs/namei.c                                      | 111 ++-
+ fs/nfs/inode.c                                  |   3 -
+ fs/nfs/nfs4proc.c                               | 701 +++++++++++++-----
+ fs/nfs/nfs4xdr.c                                | 257 ++++++-
+ fs/nfs/super.c                                  |   4 +-
+ fs/nfs_common/Makefile                          |   1 +
+ fs/nfs_common/nfs4acl.c                         |  44 ++
+ fs/nfsd/Kconfig                                 |   1 +
+ fs/nfsd/acl.h                                   |  23 +-
+ fs/nfsd/nfs4acl.c                               | 482 +++++++------
+ fs/nfsd/nfs4proc.c                              |  25 +-
+ fs/nfsd/nfs4xdr.c                               | 268 ++++---
+ fs/nfsd/nfsd.h                                  |   6 +-
+ fs/nfsd/nfsfh.c                                 |   8 +-
+ fs/nfsd/vfs.c                                   |  28 +-
+ fs/nfsd/vfs.h                                   |  17 +-
+ fs/nfsd/xdr4.h                                  |  12 +-
+ fs/posix_acl.c                                  |  26 +-
+ fs/richacl_base.c                               | 683 ++++++++++++++++++
+ fs/richacl_compat.c                             | 915 ++++++++++++++++++++++++
+ fs/richacl_inode.c                              | 337 +++++++++
+ fs/richacl_xattr.c                              | 345 +++++++++
+ fs/xattr.c                                      |  34 +-
+ include/linux/fs.h                              |  51 +-
+ include/linux/nfs4.h                            |  24 +-
+ include/linux/nfs4acl.h                         |   7 +
+ include/linux/nfs_fs.h                          |   1 -
+ include/linux/nfs_fs_sb.h                       |   2 +
+ include/linux/nfs_xdr.h                         |  13 +-
+ include/linux/posix_acl.h                       |  12 +-
+ include/linux/richacl.h                         | 276 +++++++
+ include/linux/richacl_compat.h                  |  40 ++
+ include/linux/richacl_xattr.h                   |  49 ++
+ include/linux/sunrpc/xdr.h                      |   2 +
+ include/uapi/linux/Kbuild                       |   2 +
+ include/uapi/linux/fs.h                         |   3 +-
+ include/uapi/linux/nfs4.h                       |   3 +-
+ include/uapi/linux/richacl.h                    | 111 +++
+ include/uapi/linux/richacl_xattr.h              |  43 ++
+ include/uapi/linux/xattr.h                      |   2 +
+ net/sunrpc/xdr.c                                |  34 +
+ 61 files changed, 4694 insertions(+), 732 deletions(-)
+ create mode 100644 fs/ext4/richacl.c
+ create mode 100644 fs/ext4/richacl.h
+ create mode 100644 fs/nfs_common/nfs4acl.c
+ create mode 100644 fs/richacl_base.c
+ create mode 100644 fs/richacl_compat.c
+ create mode 100644 fs/richacl_inode.c
+ create mode 100644 fs/richacl_xattr.c
+ create mode 100644 include/linux/nfs4acl.h
+ create mode 100644 include/linux/richacl.h
+ create mode 100644 include/linux/richacl_compat.h
+ create mode 100644 include/linux/richacl_xattr.h
+ create mode 100644 include/uapi/linux/richacl.h
+ create mode 100644 include/uapi/linux/richacl_xattr.h
 
-
-
-
-
-
---Apple-Mail=_A093F2CD-5876-4CB3-B319-3BAD035B1F0B
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBVhLNlnKl2rkXzB/gAQj+pQ/9GurtZDjk7V9CX0VlGSq88+HS55AubIOx
-sb6nTIMPv7Idw5p6ZAqhwI30dHlj8CbSwUKs1U0Xgl7fD1iRApBMywtqZLZzaZ6I
-Y3aUasXHKFFaP6WoPS7pB0JM4TpknoEt0ZGbB6KpC3JwZttcYJcReOmU84guJL0O
-C14eslCm41o0qagLIH4wYUDsCBaCpLDHZ8FHBxgJpenm+p6Kt7Qpeytdu1XNttPB
-SC/pm2aTjXfJv18pZwaiBd27e4JvMLbwZaV/WESt3s6ZHRQiwFz+09pXSKQIa5ZW
-zjTP0uqcV1dfbhZePLl153PK12PcnIt/qgTkA1kEipPzR/bAeOwOT3kc/i2ftnMn
-oBlGO6SbYWgGJaI0jdYbE8K5XF6OtkIyDaFp+fYTseBqNseciudMAchLqYAm9mKX
-/jxI+hxiKF+e5zCTjQ6I/sgX5bzDemwIua+Oe3iFfM/VNy4c3SPYJP912pSuIEKV
-ihokNUcDyPFyC9vzPTUxoyo3pqlNBEhV70ri0f9+lYbRybhN/PoGb38CKgP2IvlF
-FKGzdszZ3zmgslgk+T7a1R8hH6PamJi+iqdpVjK427+jdCIVUbhBKh57WNtnVbP5
-h0Qx9OtEHevTPIHcAWQBibeAUn1thPLXSpi/+85OpTmA1hXYckDkQMBjWPRXu3yK
-GndpAqNIrF4=
-=wfGg
------END PGP SIGNATURE-----
-
---Apple-Mail=_A093F2CD-5876-4CB3-B319-3BAD035B1F0B--
+-- 
+2.5.0
