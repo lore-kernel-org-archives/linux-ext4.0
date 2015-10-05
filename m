@@ -1,111 +1,119 @@
-From: Nikolay Borisov <kernel@kyup.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 Subject: Re: [PATCH v2] jbd2: gate checksum calculations on crc driver
  presence, not sb flags
-Date: Mon, 5 Oct 2015 09:28:41 +0300
-Message-ID: <56121899.6020806@kyup.com>
+Date: Mon, 5 Oct 2015 00:11:37 -0700
+Message-ID: <20151005071137.GB29098@birch.djwong.org>
 References: <20151003034601.GN10390@birch.djwong.org>
- <56120E06.4040103@kyup.com> <20151005062131.GA29098@birch.djwong.org>
+ <56120E06.4040103@kyup.com>
+ <20151005062131.GA29098@birch.djwong.org>
+ <56121899.6020806@kyup.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.com>, "Theodore Ts'o" <tytso@mit.edu>,
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	SiteGround Operations <operations@siteground.com>,
 	linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20151005062131.GA29098@birch.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
+To: Nikolay Borisov <kernel@kyup.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <56121899.6020806@kyup.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-
-
-On 10/05/2015 09:21 AM, Darrick J. Wong wrote:
-> On Mon, Oct 05, 2015 at 08:43:34AM +0300, Nikolay Borisov wrote:
->> It is just me or am I not seeing this feature test helper in this patch ?
->>
->> On 10/03/2015 06:46 AM, Darrick J. Wong wrote:
->>> Change the journal's checksum functions to gate on whether or not the
->>> crc32c driver is loaded, and gate the loading on the superblock bits.
->>> This prevents a journal crash if someone loads a journal in no-csum
->>> mode and then randomizes the superblock, thus flipping on the feature
->>> bits.
->>>
->>> v2: Create a feature-test helper, use it everywhere.
->>>
->>> Tested-By: Nikolay Borisov <kernel@kyup.com>
->>> Reported-by: Nikolay Borisov <kernel@kyup.com>
->>> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
->>> ---
->>>  fs/jbd2/journal.c    |    6 +++---
->>>  include/linux/jbd2.h |   13 +++++++++----
->>>  2 files changed, 12 insertions(+), 7 deletions(-)
->>>
->>> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
->>> index 8270fe9..00f7dbd 100644
->>> --- a/fs/jbd2/journal.c
->>> +++ b/fs/jbd2/journal.c
->>> @@ -124,7 +124,7 @@ EXPORT_SYMBOL(__jbd2_debug);
->>>  /* Checksumming functions */
->>>  static int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
->>>  {
->>> -	if (!jbd2_journal_has_csum_v2or3(j))
->>> +	if (!jbd2_journal_has_csum_v2or3_feature(j))
->>>  		return 1;
->>>  
->>>  	return sb->s_checksum_type == JBD2_CRC32C_CHKSUM;
->>> @@ -1531,7 +1531,7 @@ static int journal_get_superblock(journal_t *journal)
->>>  		goto out;
->>>  	}
->>>  
->>> -	if (jbd2_journal_has_csum_v2or3(journal) &&
->>> +	if (jbd2_journal_has_csum_v2or3_feature(journal) &&
->>>  	    JBD2_HAS_COMPAT_FEATURE(journal, JBD2_FEATURE_COMPAT_CHECKSUM)) {
->>>  		/* Can't have checksum v1 and v2 on at the same time! */
->>>  		printk(KERN_ERR "JBD2: Can't enable checksumming v1 and v2/3 "
->>> @@ -1545,7 +1545,7 @@ static int journal_get_superblock(journal_t *journal)
->>>  	}
->>>  
->>>  	/* Load the checksum driver */
->>> -	if (jbd2_journal_has_csum_v2or3(journal)) {
->>> +	if (jbd2_journal_has_csum_v2or3_feature(journal)) {
->>>  		journal->j_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
->>>  		if (IS_ERR(journal->j_chksum_driver)) {
->>>  			printk(KERN_ERR "JBD2: Cannot load crc32c driver.\n");
->>> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
->>> index df07e78..6da6f89 100644
->>> --- a/include/linux/jbd2.h
->>> +++ b/include/linux/jbd2.h
->>> @@ -1338,13 +1338,18 @@ static inline int tid_geq(tid_t x, tid_t y)
->>>  extern int jbd2_journal_blocks_per_page(struct inode *inode);
->>>  extern size_t journal_tag_bytes(journal_t *journal);
->>>  
->>> +static inline bool jbd2_journal_has_csum_v2or3_feature(journal_t *j)
+On Mon, Oct 05, 2015 at 09:28:41AM +0300, Nikolay Borisov wrote:
 > 
-> Here ^^^^^^^^^^^^^^^
 > 
-
-But you had this function in v1 as well? I thought you had integrated
-Andreas' suggestion?
-
-> --D
+> On 10/05/2015 09:21 AM, Darrick J. Wong wrote:
+> > On Mon, Oct 05, 2015 at 08:43:34AM +0300, Nikolay Borisov wrote:
+> >> It is just me or am I not seeing this feature test helper in this patch ?
+> >>
+> >> On 10/03/2015 06:46 AM, Darrick J. Wong wrote:
+> >>> Change the journal's checksum functions to gate on whether or not the
+> >>> crc32c driver is loaded, and gate the loading on the superblock bits.
+> >>> This prevents a journal crash if someone loads a journal in no-csum
+> >>> mode and then randomizes the superblock, thus flipping on the feature
+> >>> bits.
+> >>>
+> >>> v2: Create a feature-test helper, use it everywhere.
+> >>>
+> >>> Tested-By: Nikolay Borisov <kernel@kyup.com>
+> >>> Reported-by: Nikolay Borisov <kernel@kyup.com>
+> >>> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> >>> ---
+> >>>  fs/jbd2/journal.c    |    6 +++---
+> >>>  include/linux/jbd2.h |   13 +++++++++----
+> >>>  2 files changed, 12 insertions(+), 7 deletions(-)
+> >>>
+> >>> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> >>> index 8270fe9..00f7dbd 100644
+> >>> --- a/fs/jbd2/journal.c
+> >>> +++ b/fs/jbd2/journal.c
+> >>> @@ -124,7 +124,7 @@ EXPORT_SYMBOL(__jbd2_debug);
+> >>>  /* Checksumming functions */
+> >>>  static int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
+> >>>  {
+> >>> -	if (!jbd2_journal_has_csum_v2or3(j))
+> >>> +	if (!jbd2_journal_has_csum_v2or3_feature(j))
+> >>>  		return 1;
+> >>>  
+> >>>  	return sb->s_checksum_type == JBD2_CRC32C_CHKSUM;
+> >>> @@ -1531,7 +1531,7 @@ static int journal_get_superblock(journal_t *journal)
+> >>>  		goto out;
+> >>>  	}
+> >>>  
+> >>> -	if (jbd2_journal_has_csum_v2or3(journal) &&
+> >>> +	if (jbd2_journal_has_csum_v2or3_feature(journal) &&
+> >>>  	    JBD2_HAS_COMPAT_FEATURE(journal, JBD2_FEATURE_COMPAT_CHECKSUM)) {
+> >>>  		/* Can't have checksum v1 and v2 on at the same time! */
+> >>>  		printk(KERN_ERR "JBD2: Can't enable checksumming v1 and v2/3 "
+> >>> @@ -1545,7 +1545,7 @@ static int journal_get_superblock(journal_t *journal)
+> >>>  	}
+> >>>  
+> >>>  	/* Load the checksum driver */
+> >>> -	if (jbd2_journal_has_csum_v2or3(journal)) {
+> >>> +	if (jbd2_journal_has_csum_v2or3_feature(journal)) {
+> >>>  		journal->j_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
+> >>>  		if (IS_ERR(journal->j_chksum_driver)) {
+> >>>  			printk(KERN_ERR "JBD2: Cannot load crc32c driver.\n");
+> >>> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> >>> index df07e78..6da6f89 100644
+> >>> --- a/include/linux/jbd2.h
+> >>> +++ b/include/linux/jbd2.h
+> >>> @@ -1338,13 +1338,18 @@ static inline int tid_geq(tid_t x, tid_t y)
+> >>>  extern int jbd2_journal_blocks_per_page(struct inode *inode);
+> >>>  extern size_t journal_tag_bytes(journal_t *journal);
+> >>>  
+> >>> +static inline bool jbd2_journal_has_csum_v2or3_feature(journal_t *j)
+> > 
+> > Here ^^^^^^^^^^^^^^^
+> > 
 > 
->>> +{
->>> +	return JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2) ||
->>> +	       JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V3);
->>> +}
->>> +
->>>  static inline int jbd2_journal_has_csum_v2or3(journal_t *journal)
->>>  {
->>> -	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2) ||
->>> -	    JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V3))
->>> -		return 1;
->>> +	WARN_ON_ONCE(jbd2_journal_has_csum_v2or3_feature(journal) &&
->>> +		     journal->j_chksum_driver == NULL);
->>>  
->>> -	return 0;
->>> +	return journal->j_chksum_driver != NULL;
->>>  }
->>>  
->>>  /*
->>>
+> But you had this function in v1 as well? I thought you had integrated
+> Andreas' suggestion?
+> 
+> > --D
+> > 
+> >>> +{
+> >>> +	return JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2) ||
+> >>> +	       JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V3);
+> >>> +}
+> >>> +
+> >>>  static inline int jbd2_journal_has_csum_v2or3(journal_t *journal)
+> >>>  {
+> >>> -	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2) ||
+> >>> -	    JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V3))
+> >>> -		return 1;
+> >>> +	WARN_ON_ONCE(jbd2_journal_has_csum_v2or3_feature(journal) &&
+
+His suggestion was to move it to the header file and use it here too.
+
+--D
+
+> >>> +		     journal->j_chksum_driver == NULL);
+> >>>  
+> >>> -	return 0;
+> >>> +	return journal->j_chksum_driver != NULL;
+> >>>  }
+> >>>  
+> >>>  /*
+> >>>
