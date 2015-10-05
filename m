@@ -1,76 +1,65 @@
-From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Subject: Re: [PATCH v8 00/41] Richacls
-Date: Tue, 6 Oct 2015 08:17:11 +1100
-Message-ID: <20151005211711.GB23350@dastard>
-References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
- <20151004062313.GA20212@infradead.org>
- <CAHc6FU53mXg1k0KCNkWEjxyuC8iAUgWh-A76qX=C3Yth+qEyuQ@mail.gmail.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [REGRESSION] 998ef75ddb and aio-dio-invalidate-failure w/ data=journal
+Date: Mon, 5 Oct 2015 22:18:18 +0100
+Message-ID: <CA+55aFwkA1EODc0bsrdmob945DYfDW_jE+nmrFKpq2YmBn+W4Q@mail.gmail.com>
+References: <20151005152236.GA8140@thunk.org>
+	<CA+55aFzARo_ZtbO6PDxgenWQtEEbynBCWFWCwVJT2NbXmJOd9Q@mail.gmail.com>
+	<5612A3F3.2040609@linux.intel.com>
+	<CA+55aFw1AcOL7+ZUKL=bC9GLJ3iMehQyqLWThAa=O7p1YdoEAQ@mail.gmail.com>
+	<5612E23B.7070606@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <CAHc6FU53mXg1k0KCNkWEjxyuC8iAUgWh-A76qX=C3Yth+qEyuQ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Peter Anvin <hpa@zytor.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Dave Hansen <dave.hansen@linux.intel.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <5612E23B.7070606@linux.intel.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 05, 2015 at 08:45:40PM +0200, Andreas Gruenbacher wrote:
-> On Sun, Oct 4, 2015 at 8:23 AM, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org> wrote:
-> > On Mon, Sep 28, 2015 at 12:08:51AM +0200, Andreas Gruenbacher wrote:
-> >> Hello,
-> >>
-> >> here's another update of the richacl patch queue.  At this stage, I would
-> >> like to ask for final feedback so that the core and ext4 code (patches
-> >> 1-19) can be merged in the 4.4 merge window.  The nfsd and nfs code should
-> >> then go through the respective maintainer trees.
-> >
-> > Now way in this form even if everyone agrees we should have these
-> > bastard ACLs.  I certainly disagree.
-> 
-> Well, thanks for having a look at the patches.
-> 
-> > Ayway, back to the VFS <-> FS interface.  You still require tons of
-> > boilderplate code in the filesystem which isn't required and we got rid
-> > of for Posix ACLs.  The filesystem should not look at the userspace
-> > xattr format, please follow a model similar to ->get_acl and ->set_acl
-> > for Posix ACLs.
-> 
-> I will repost a version that has this cleaned up.
-> 
-> > After that the wire up should be so trivial that you can wire up btrfs,
-> > xfs and f2fs as well, which is important to make the feature mergeable.
-> 
-> Why would the patch queue become more mergeable by having support for
-> more filesystems in it? The filesystem specific code really isn't all
-> that interesting.
+On Mon, Oct 5, 2015 at 9:48 PM, Dave Hansen <dave.hansen@linux.intel.co=
+m> wrote:
+>
+> Although I was probably wrong about the source of the overhead, the
+> point still remains that the prefaulting is eating cycles for no
+> practical benefit.
 
-The hardest part for the filesystem support is the on-disk feature
-flag that needs to be set. The kernel part of that is easy, but it's
-an on-disk format change and so there's also all the userspace side
-for mkfs, fsck, debug tools, etc, that also need to be able to parse
-and understand it. So while the xattr code can be made much more
-generic, there's a bunch of filesystem specific code that needs to
-go into multiple different repositories and userspace packages for
-this.
+Yeah, no, I'm not disagreeing with that part, I'm just more of a "at
+this point in the rc series we are probably better off reverting".
 
-Andreas, I also can't remember if any xfstests have been written for
-these ACLs? That would certainly help make sure all these
-filesystems have equivalent behaviour...
+Your ext4 patch may well fix the issue, and be the right thing to do
+(_regardless_ of the revert, in fact - while it might make the revert
+unnecessary, it might also be a good idea even if we do revert).
 
-Cheers,
+The subtlety of this just worries me, and the reason I'd still be
+inclined to revert is simply "it's been that way a long time, the safe
+thing is to go back and take this slow".
 
-Dave.
--- 
-Dave Chinner
-david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
+> With "-e cycles:pp":
+>>        =E2=94=82      sub    $0x8,%rsp
+>>  24.57 =E2=94=82      stac
+>>  15.49 =E2=94=82      mov    (%rcx),%sil
+>>  29.06 =E2=94=82      clac
+>>   2.24 =E2=94=82      test   %eax,%eax
+>>   8.77 =E2=94=82      mov    %sil,-0x1(%rbp)
+>>   2.22 =E2=94=82    =E2=86=93 jne    66
+>>        =E2=94=82      movslq %edx,%rdx
+
+Ok, so it really is the stac/clac that is the bulk of the cost. Hmm.
+
+You're right that the loop there will only be executed once for your
+case, so moving the stac/clac outside probably doesn't help. It
+*might* still make a difference just for microarchitectural reasons
+(ie they may cause more trouble just because they are close to an
+instruction that depends on them), but it's questionable.
+
+It is a bit worrisome to see that those things are so expensive. Right
+now almost all user accesses will cause *lots* of clac/stac stuff.
+
+I originally asked Intel to do SMAP using a segment prefix, but that
+was not to be..
+
+              Linus
