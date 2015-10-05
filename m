@@ -1,119 +1,70 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH v2] jbd2: gate checksum calculations on crc driver
- presence, not sb flags
-Date: Mon, 5 Oct 2015 00:11:37 -0700
-Message-ID: <20151005071137.GB29098@birch.djwong.org>
-References: <20151003034601.GN10390@birch.djwong.org>
- <56120E06.4040103@kyup.com>
- <20151005062131.GA29098@birch.djwong.org>
- <56121899.6020806@kyup.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	SiteGround Operations <operations@siteground.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Nikolay Borisov <kernel@kyup.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <56121899.6020806@kyup.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.com>
+Subject: [PATCH] jbd2: Fix checkpoint list cleanup
+Date: Mon,  5 Oct 2015 15:59:32 +0200
+Message-ID: <1444053572-15671-1-git-send-email-jack@suse.com>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.com>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:35032 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751265AbbJEN7k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Oct 2015 09:59:40 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 05, 2015 at 09:28:41AM +0300, Nikolay Borisov wrote:
-> 
-> 
-> On 10/05/2015 09:21 AM, Darrick J. Wong wrote:
-> > On Mon, Oct 05, 2015 at 08:43:34AM +0300, Nikolay Borisov wrote:
-> >> It is just me or am I not seeing this feature test helper in this patch ?
-> >>
-> >> On 10/03/2015 06:46 AM, Darrick J. Wong wrote:
-> >>> Change the journal's checksum functions to gate on whether or not the
-> >>> crc32c driver is loaded, and gate the loading on the superblock bits.
-> >>> This prevents a journal crash if someone loads a journal in no-csum
-> >>> mode and then randomizes the superblock, thus flipping on the feature
-> >>> bits.
-> >>>
-> >>> v2: Create a feature-test helper, use it everywhere.
-> >>>
-> >>> Tested-By: Nikolay Borisov <kernel@kyup.com>
-> >>> Reported-by: Nikolay Borisov <kernel@kyup.com>
-> >>> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> >>> ---
-> >>>  fs/jbd2/journal.c    |    6 +++---
-> >>>  include/linux/jbd2.h |   13 +++++++++----
-> >>>  2 files changed, 12 insertions(+), 7 deletions(-)
-> >>>
-> >>> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> >>> index 8270fe9..00f7dbd 100644
-> >>> --- a/fs/jbd2/journal.c
-> >>> +++ b/fs/jbd2/journal.c
-> >>> @@ -124,7 +124,7 @@ EXPORT_SYMBOL(__jbd2_debug);
-> >>>  /* Checksumming functions */
-> >>>  static int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
-> >>>  {
-> >>> -	if (!jbd2_journal_has_csum_v2or3(j))
-> >>> +	if (!jbd2_journal_has_csum_v2or3_feature(j))
-> >>>  		return 1;
-> >>>  
-> >>>  	return sb->s_checksum_type == JBD2_CRC32C_CHKSUM;
-> >>> @@ -1531,7 +1531,7 @@ static int journal_get_superblock(journal_t *journal)
-> >>>  		goto out;
-> >>>  	}
-> >>>  
-> >>> -	if (jbd2_journal_has_csum_v2or3(journal) &&
-> >>> +	if (jbd2_journal_has_csum_v2or3_feature(journal) &&
-> >>>  	    JBD2_HAS_COMPAT_FEATURE(journal, JBD2_FEATURE_COMPAT_CHECKSUM)) {
-> >>>  		/* Can't have checksum v1 and v2 on at the same time! */
-> >>>  		printk(KERN_ERR "JBD2: Can't enable checksumming v1 and v2/3 "
-> >>> @@ -1545,7 +1545,7 @@ static int journal_get_superblock(journal_t *journal)
-> >>>  	}
-> >>>  
-> >>>  	/* Load the checksum driver */
-> >>> -	if (jbd2_journal_has_csum_v2or3(journal)) {
-> >>> +	if (jbd2_journal_has_csum_v2or3_feature(journal)) {
-> >>>  		journal->j_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
-> >>>  		if (IS_ERR(journal->j_chksum_driver)) {
-> >>>  			printk(KERN_ERR "JBD2: Cannot load crc32c driver.\n");
-> >>> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> >>> index df07e78..6da6f89 100644
-> >>> --- a/include/linux/jbd2.h
-> >>> +++ b/include/linux/jbd2.h
-> >>> @@ -1338,13 +1338,18 @@ static inline int tid_geq(tid_t x, tid_t y)
-> >>>  extern int jbd2_journal_blocks_per_page(struct inode *inode);
-> >>>  extern size_t journal_tag_bytes(journal_t *journal);
-> >>>  
-> >>> +static inline bool jbd2_journal_has_csum_v2or3_feature(journal_t *j)
-> > 
-> > Here ^^^^^^^^^^^^^^^
-> > 
-> 
-> But you had this function in v1 as well? I thought you had integrated
-> Andreas' suggestion?
-> 
-> > --D
-> > 
-> >>> +{
-> >>> +	return JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2) ||
-> >>> +	       JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V3);
-> >>> +}
-> >>> +
-> >>>  static inline int jbd2_journal_has_csum_v2or3(journal_t *journal)
-> >>>  {
-> >>> -	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2) ||
-> >>> -	    JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V3))
-> >>> -		return 1;
-> >>> +	WARN_ON_ONCE(jbd2_journal_has_csum_v2or3_feature(journal) &&
+Unlike comments and expectation of callers journal_clean_one_cp_list()
+returned 1 not only if it freed the transaction but also if it freed
+some buffers in the transaction. That could make
+__jbd2_journal_clean_checkpoint_list() skip processing
+t_checkpoint_io_list and continue with processing the next transaction.
+This is mostly a cosmetic issue since the only result is we can
+sometimes free less memory than we could. But it's still worth fixing.
+Fix journal_clean_one_cp_list() to return 1 only if the transaction was
+really freed.
 
-His suggestion was to move it to the header file and use it here too.
+Fixes: 50849db32a9f529235a84bcc84a6b8e631b1d0ec
+Signed-off-by: Jan Kara <jack@suse.com>
+---
+ fs/jbd2/checkpoint.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
 
---D
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 8c44654ce274..684996c8a3a4 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -427,7 +427,6 @@ static int journal_clean_one_cp_list(struct journal_head *jh, bool destroy)
+ 	struct journal_head *last_jh;
+ 	struct journal_head *next_jh = jh;
+ 	int ret;
+-	int freed = 0;
+ 
+ 	if (!jh)
+ 		return 0;
+@@ -441,10 +440,9 @@ static int journal_clean_one_cp_list(struct journal_head *jh, bool destroy)
+ 		else
+ 			ret = __jbd2_journal_remove_checkpoint(jh) + 1;
+ 		if (!ret)
+-			return freed;
++			return 0;
+ 		if (ret == 2)
+ 			return 1;
+-		freed = 1;
+ 		/*
+ 		 * This function only frees up some memory
+ 		 * if possible so we dont have an obligation
+@@ -452,10 +450,10 @@ static int journal_clean_one_cp_list(struct journal_head *jh, bool destroy)
+ 		 * requested:
+ 		 */
+ 		if (need_resched())
+-			return freed;
++			return 0;
+ 	} while (jh != last_jh);
+ 
+-	return freed;
++	return 0;
+ }
+ 
+ /*
+-- 
+2.1.4
 
-> >>> +		     journal->j_chksum_driver == NULL);
-> >>>  
-> >>> -	return 0;
-> >>> +	return journal->j_chksum_driver != NULL;
-> >>>  }
-> >>>  
-> >>>  /*
-> >>>
