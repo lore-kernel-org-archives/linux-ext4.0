@@ -1,70 +1,72 @@
-From: Jan Kara <jack@suse.com>
-Subject: [PATCH] jbd2: Fix checkpoint list cleanup
-Date: Mon,  5 Oct 2015 15:59:32 +0200
-Message-ID: <1444053572-15671-1-git-send-email-jack@suse.com>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.com>
-To: Ted Tso <tytso@mit.edu>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: fix potential use after free in
+ __ext4_journal_stop
+Date: Mon, 5 Oct 2015 16:18:12 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1510051618030.4946@localhost.localdomain>
+References: <1441205154-16501-1-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:35032 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:33046 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751265AbbJEN7k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Oct 2015 09:59:40 -0400
+	id S1751256AbbJEOSR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Oct 2015 10:18:17 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (Postfix) with ESMTPS id E539C91EB1
+	for <linux-ext4@vger.kernel.org>; Mon,  5 Oct 2015 14:18:16 +0000 (UTC)
+Received: from vpn1-6-112.ams2.redhat.com (vpn1-6-112.ams2.redhat.com [10.36.6.112])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t95EICPi006089
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 5 Oct 2015 10:18:15 -0400
+In-Reply-To: <1441205154-16501-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Unlike comments and expectation of callers journal_clean_one_cp_list()
-returned 1 not only if it freed the transaction but also if it freed
-some buffers in the transaction. That could make
-__jbd2_journal_clean_checkpoint_list() skip processing
-t_checkpoint_io_list and continue with processing the next transaction.
-This is mostly a cosmetic issue since the only result is we can
-sometimes free less memory than we could. But it's still worth fixing.
-Fix journal_clean_one_cp_list() to return 1 only if the transaction was
-really freed.
+On Wed, 2 Sep 2015, Lukas Czerner wrote:
 
-Fixes: 50849db32a9f529235a84bcc84a6b8e631b1d0ec
-Signed-off-by: Jan Kara <jack@suse.com>
----
- fs/jbd2/checkpoint.c | 8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
+> Date: Wed,  2 Sep 2015 16:45:54 +0200
+> From: Lukas Czerner <lczerner@redhat.com>
+> To: linux-ext4@vger.kernel.org
+> Cc: Lukas Czerner <lczerner@redhat.com>
+> Subject: [PATCH] ext4: fix potential use after free in __ext4_journal_stop
+> 
+> There is a use-after-free possibility in __ext4_journal_stop() in the
+> case that we free the handle in the first jbd2_journal_stop() because
+> we're referencing handle->h_err afterwards. This was introduced in
+> 9705acd63b125dee8b15c705216d7186daea4625 and it is wrong. Fix it by
+> storing the handle->h_err value beforehand and avoid referencing
+> potentially freed handle.
 
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index 8c44654ce274..684996c8a3a4 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -427,7 +427,6 @@ static int journal_clean_one_cp_list(struct journal_head *jh, bool destroy)
- 	struct journal_head *last_jh;
- 	struct journal_head *next_jh = jh;
- 	int ret;
--	int freed = 0;
- 
- 	if (!jh)
- 		return 0;
-@@ -441,10 +440,9 @@ static int journal_clean_one_cp_list(struct journal_head *jh, bool destroy)
- 		else
- 			ret = __jbd2_journal_remove_checkpoint(jh) + 1;
- 		if (!ret)
--			return freed;
-+			return 0;
- 		if (ret == 2)
- 			return 1;
--		freed = 1;
- 		/*
- 		 * This function only frees up some memory
- 		 * if possible so we dont have an obligation
-@@ -452,10 +450,10 @@ static int journal_clean_one_cp_list(struct journal_head *jh, bool destroy)
- 		 * requested:
- 		 */
- 		if (need_resched())
--			return freed;
-+			return 0;
- 	} while (jh != last_jh);
- 
--	return freed;
-+	return 0;
- }
- 
- /*
--- 
-2.1.4
+ping
 
+-Lukas
+
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  fs/ext4/ext4_jbd2.c | 6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+> index d418431..e770c1ee 100644
+> --- a/fs/ext4/ext4_jbd2.c
+> +++ b/fs/ext4/ext4_jbd2.c
+> @@ -88,13 +88,13 @@ int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
+>  		return 0;
+>  	}
+>  
+> +	err = handle->h_err;
+>  	if (!handle->h_transaction) {
+> -		err = jbd2_journal_stop(handle);
+> -		return handle->h_err ? handle->h_err : err;
+> +		rc = jbd2_journal_stop(handle);
+> +		return err ? err : rc;
+>  	}
+>  
+>  	sb = handle->h_transaction->t_journal->j_private;
+> -	err = handle->h_err;
+>  	rc = jbd2_journal_stop(handle);
+>  
+>  	if (!err)
+> 
