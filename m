@@ -1,84 +1,142 @@
-From: Dave Hansen <dave.hansen@linux.intel.com>
+From: Dave Hansen <dave.hansen@intel.com>
 Subject: Re: [REGRESSION] 998ef75ddb and aio-dio-invalidate-failure w/
  data=journal
-Date: Mon, 5 Oct 2015 09:23:15 -0700
-Message-ID: <5612A3F3.2040609@linux.intel.com>
+Date: Mon, 5 Oct 2015 11:04:35 -0700
+Message-ID: <5612BBB3.7010201@intel.com>
 References: <20151005152236.GA8140@thunk.org>
- <CA+55aFzARo_ZtbO6PDxgenWQtEEbynBCWFWCwVJT2NbXmJOd9Q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-	Theodore Ts'o <tytso@mit.edu>,
+Content-Type: multipart/mixed;
+ boundary="------------000607020101010302050906"
+To: Theodore Ts'o <tytso@mit.edu>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	"H. Peter Anvin" <hpa@linux.intel.com>
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CA+55aFzARo_ZtbO6PDxgenWQtEEbynBCWFWCwVJT2NbXmJOd9Q@mail.gmail.com>
+In-Reply-To: <20151005152236.GA8140@thunk.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 10/05/2015 08:58 AM, Linus Torvalds wrote:
-=2E..
-> Dave, mind sharing the micro-benchmark or perhaps even just a kernel
-> profile of it? How is that "iov_iter_fault_in_readable()" so
-> noticeable? It really shouldn't be a big deal.
+This is a multi-part message in MIME format.
+--------------000607020101010302050906
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
 
-The micro was just plugging this test:
+I managed to catch the condition in an ftrace.  Full spew is below.
 
-	https://www.sr71.net/~dave/intel/write1byte.c
+We can see that the iov_iter_copy_from_user_atomic() "failed" and ended
+up with a copied=0 which we can see in the ext4_journalled_write_end()
+tracepoint as "copied 0".
 
-In to will-it-scale:
+So we're in this code with copied=0 and len=4096:
 
-	https://github.com/antonblanchard/will-it-scale
+> static int ext4_journalled_write_end(struct file *file, ... unsigned copied, ...
+> {
+...
 
-iov_iter_fault_in_readable() shows up as the third-most expensive kerne=
-l
-function in a profile:
+>         else {
+>                 if (copied < len) {
+>                         if (!PageUptodate(page))
+>                                 copied = 0;
+>                         page_zero_new_buffers(page, from+copied, to);
+>                 }
+> 
+>                 ret = ext4_walk_page_buffers(handle, page_buffers(page), from,
+>                                              to, &partial, write_end_fn);
+>                 if (!partial)
+>                         SetPageUptodate(page);
+>         }
 
->      7.45%  write1byte_proc  [kernel.kallsyms]     [k] copy_user_enha=
-nced_fast_string=20
->      6.51%  write1byte_proc  [kernel.kallsyms]     [k] unlock_page   =
-                =20
->      6.04%  write1byte_proc  [kernel.kallsyms]     [k] iov_iter_fault=
-_in_readable    =20
->      5.23%  write1byte_proc  libc-2.20.so          [.] __GI___libc_wr=
-ite             =20
->      4.86%  write1byte_proc  [kernel.kallsyms]     [k] entry_SYSCALL_=
-64              =20
->      4.48%  write1byte_proc  [kernel.kallsyms]     [k] iov_iter_copy_=
-from_user_atomic=20
->      3.94%  write1byte_proc  [kernel.kallsyms]     [k] generic_perfor=
-m_write         =20
->      3.74%  write1byte_proc  [kernel.kallsyms]     [k] mutex_lock    =
-                =20
->      3.59%  write1byte_proc  [kernel.kallsyms]     [k] entry_SYSCALL_=
-64_after_swapgs =20
->      3.55%  write1byte_proc  [kernel.kallsyms]     [k] find_get_entry=
-                =20
->      3.53%  write1byte_proc  [kernel.kallsyms]     [k] vfs_write     =
-                =20
->      3.17%  write1byte_proc  [kernel.kallsyms]     [k] find_lock_entr=
-y               =20
->      3.17%  write1byte_proc  [kernel.kallsyms]     [k] put_page      =
-                =20
 
-The disassembly points at the stac/clac pair being the culprits inside
-the function (copy/paste from 'perf top' disassebly here):
+The warning comes out of ext4_walk_page_buffers() and the dirty state
+comes from page_zero_new_buffers(). That seems a _bit_ goofy that the
+filesystem is marking the page dirty and then so shortly warning about it.
 
-=2E..
->        =E2=94=82      stac
->  24.57 =E2=94=82      mov    (%rcx),%sil
->  15.70 =E2=94=82      clac
->  28.77 =E2=94=82      test   %eax,%eax
->   2.15 =E2=94=82      mov    %sil,-0x1(%rbp)
->   8.93 =E2=94=82    =E2=86=93 jne    66
->   2.31 =E2=94=82      movslq %edx,%rdx
+If we either come in here with copied=0 or force it (when
+!PageUptodate()) we are essentially telling the caller that its write
+must be repeated. We have no data in the buffer to preserve and we are
+not leaking any data we are not marking it Uptodate.
 
-One thing I've been noticing on Skylake is that barriers (implicit and
-explicit) are showing up more in profiles.  What we're seeing here
-probably isn't actually stac/clac overhead, but the cost of finishing
-some other operations that are outstanding before we can proceed throug=
-h
-here.
+The very lightly tested attached patch gets rid of the "Spotted dirty
+metadata buffer" messages that I've been getting testing like this:
+
+	mount -o data=journal /dev/sda1 /mnt/sda1
+	TEST_DIR=/mnt/sda1 TEST_DEV=/dev/sda1 ./tests/generic/208
+
+It _seems_ like a relatively sane thing to do.
+
+>>  2)  aio-dio-3204  |               |              ext4_journalled_write_end() {
+>>  2)  aio-dio-3204  |               |                /* ext4_journalled_write_end: dev 8,1 ino 12 pos 0 len 4096 copied 0 */
+>>  2)  aio-dio-3204  |               |                page_zero_new_buffers() {
+>>  2)  aio-dio-3204  |               |                  mark_buffer_dirty() {
+>>  2)  aio-dio-3204  |               |                    /* block_dirty_buffer: 8,1 sector=34356 size=4096 */
+>>  2)  aio-dio-3204  |   0.025 us    |                    page_mapping();
+>>  2)  aio-dio-3204  |               |                    __set_page_dirty.constprop.46() {
+>>  2)  aio-dio-3204  |   0.026 us    |                      _raw_spin_lock_irqsave();
+>>  2)  aio-dio-3204  |               |                      account_page_dirtied() {
+>>  2)  aio-dio-3204  |               |                        /* writeback_dirty_page: bdi 8:0: ino=12 index=0 */
+>>  2)  aio-dio-3204  |               |                        __inc_zone_page_state() {
+>>  2)  aio-dio-3204  |   0.030 us    |                          __inc_zone_state();
+>>  2)  aio-dio-3204  |   0.211 us    |                        }
+>>  2)  aio-dio-3204  |               |                        __inc_zone_page_state() {
+>>  2)  aio-dio-3204  |   0.024 us    |                          __inc_zone_state();
+>>  2)  aio-dio-3204  |   0.211 us    |                        }
+>>  2)  aio-dio-3204  |   1.085 us    |                      }
+>>  2)  aio-dio-3204  |   0.033 us    |                      _raw_spin_unlock_irqrestore();
+>>  2)  aio-dio-3204  |   1.727 us    |                    }
+>>  2)  aio-dio-3204  |               |                    __mark_inode_dirty() {
+>>  2)  aio-dio-3204  |               |                      /* writeback_mark_inode_dirty: bdi 8:0: ino=12 state=I_DIRTY_SYNC|I_DIRTY_DATASYNC|I_DIRTY_PAGES flags=I_DIRTY_PAGES */
+>>  2)  aio-dio-3204  |   0.207 us    |                    }
+>>  2)  aio-dio-3204  |   2.600 us    |                  }
+>>  2)  aio-dio-3204  |   2.878 us    |                }
+>>  2)  aio-dio-3204  |               |                ext4_walk_page_buffers() {
+>>  2)  aio-dio-3204  |               |                  write_end_fn() {
+>>  2)  aio-dio-3204  |               |                    __ext4_handle_dirty_metadata() {
+>>  2)  aio-dio-3204  |   0.024 us    |                      _cond_resched();
+>>  2)  aio-dio-3204  |               |                      jbd2_journal_dirty_metadata() {
+>>  2)  aio-dio-3204  |   0.025 us    |                        _raw_spin_lock();
+>>  2)  aio-dio-3204  |               |                        __jbd2_journal_file_buffer() {
+>>  2)  aio-dio-3204  |               |                          warn_dirty_buffer.isra.10() {
+>>  2)  aio-dio-3204  |               |                            bdevname() {
+>>  2)  aio-dio-3204  | + 15.280 us   |                              disk_name();
+>>  2)  aio-dio-3204  | + 15.661 us   |                            }
+>>  2)  aio-dio-3204  |               |                            /* ^A4JBD2: Spotted dirty metadata buffer (dev = sda1, blocknr = 34356). There's a risk of filesystem corruption in case of system crash. */
+>>  2)  aio-dio-3204  |               |                            bdevname() {
+>>  2)  aio-dio-3204  |   0.080 us    |                              disk_name();
+>>  2)  aio-dio-3204  |   0.298 us    |                            }
+
+
+--------------000607020101010302050906
+Content-Type: text/x-patch;
+ name="ext4-regression-2015-10-05-0.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="ext4-regression-2015-10-05-0.patch"
+
+diff -puN fs/ext4/inode.c~debug-dont-prefault-on-write fs/ext4/inode.c
+--- a/fs/ext4/inode.c~debug-dont-prefault-on-write	2015-10-05 10:12:35.286153137 -0700
++++ b/fs/ext4/inode.c	2015-10-05 10:50:37.372253050 -0700
+@@ -1204,10 +1204,20 @@ static int ext4_journalled_write_end(str
+ 		copied = ext4_write_inline_data_end(inode, pos, len,
+ 						    copied, page);
+ 	else {
++		/*
++		 * With a short write (copied < len) we have potentially
++		 * valuable data in 'page'.  But, when the page is made Uptodate
++		 * this data will be overwritten.  Setting copied=0 will tell
++		 * the upper layers to repeat the write to 'page'.
++		 *
++		 * Only bother zeroing out buffers when we have _actually_
++		 * written data.
++		 */
+ 		if (copied < len) {
+ 			if (!PageUptodate(page))
+ 				copied = 0;
+-			page_zero_new_buffers(page, from+copied, to);
++			if (copied)
++				page_zero_new_buffers(page, from+copied, to);
+ 		}
+ 
+ 		ret = ext4_walk_page_buffers(handle, page_buffers(page), from,
+_
+
+--------------000607020101010302050906--
