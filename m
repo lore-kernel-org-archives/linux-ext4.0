@@ -1,43 +1,97 @@
-From: "POSTCODESLOTERIJ.NL" <postinfo@luckymail.com>
-Subject: Lucky Email Winner
-Date: Mon, 5 Oct 2015 01:33:46 +0300 (EEST)
-Message-ID: <dd9ef0501dc58aa8bf5a071da8f20d2e.squirrel__42147.1555055634$1444011334$gmane$org@82.79.55.74>
-Reply-To: postinfo@luckymail.com
+From: Nikolay Borisov <kernel@kyup.com>
+Subject: Re: [PATCH v2] jbd2: gate checksum calculations on crc driver
+ presence, not sb flags
+Date: Mon, 5 Oct 2015 08:43:34 +0300
+Message-ID: <56120E06.4040103@kyup.com>
+References: <20151003034601.GN10390@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: undisclosed-recipients:;
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [82.79.55.74] ([82.79.55.74]:50495 "EHLO
-	server-servicii.uvvgsm.ro" rhost-flags-FAIL-FAIL-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751790AbbJECNk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Oct 2015 22:13:40 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	SiteGround Operations <operations@siteground.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20151003034601.GN10390@birch.djwong.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+It is just me or am I not seeing this feature test helper in this patch ?
 
-
-
-We are please to inform you of our yearly promotion award program held =
-1st
-October 2015,have pronounce your email-address as the lucky winner of a
-total sum:of =80500,000.00(Five Hundred Thousand Euros Only)
-CONTACT:
-The claim office/Email:Postinfo@luckymail.com,with your winning=20
-Serial-No:LE0031#13350PSNL.
-Postcodesloterij.nl**************
-WARNING!!
-This winning notification is expected to be read and/or used only by th=
-e
-individual(s) for whom it is intended.If you have received this electro=
-nic
-communication in error, please reply to the sender advising of the erro=
-r
-in transmission and delete the original message FOR SECURITY REASON
-:**************
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On 10/03/2015 06:46 AM, Darrick J. Wong wrote:
+> Change the journal's checksum functions to gate on whether or not the
+> crc32c driver is loaded, and gate the loading on the superblock bits.
+> This prevents a journal crash if someone loads a journal in no-csum
+> mode and then randomizes the superblock, thus flipping on the feature
+> bits.
+> 
+> v2: Create a feature-test helper, use it everywhere.
+> 
+> Tested-By: Nikolay Borisov <kernel@kyup.com>
+> Reported-by: Nikolay Borisov <kernel@kyup.com>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+>  fs/jbd2/journal.c    |    6 +++---
+>  include/linux/jbd2.h |   13 +++++++++----
+>  2 files changed, 12 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index 8270fe9..00f7dbd 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -124,7 +124,7 @@ EXPORT_SYMBOL(__jbd2_debug);
+>  /* Checksumming functions */
+>  static int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
+>  {
+> -	if (!jbd2_journal_has_csum_v2or3(j))
+> +	if (!jbd2_journal_has_csum_v2or3_feature(j))
+>  		return 1;
+>  
+>  	return sb->s_checksum_type == JBD2_CRC32C_CHKSUM;
+> @@ -1531,7 +1531,7 @@ static int journal_get_superblock(journal_t *journal)
+>  		goto out;
+>  	}
+>  
+> -	if (jbd2_journal_has_csum_v2or3(journal) &&
+> +	if (jbd2_journal_has_csum_v2or3_feature(journal) &&
+>  	    JBD2_HAS_COMPAT_FEATURE(journal, JBD2_FEATURE_COMPAT_CHECKSUM)) {
+>  		/* Can't have checksum v1 and v2 on at the same time! */
+>  		printk(KERN_ERR "JBD2: Can't enable checksumming v1 and v2/3 "
+> @@ -1545,7 +1545,7 @@ static int journal_get_superblock(journal_t *journal)
+>  	}
+>  
+>  	/* Load the checksum driver */
+> -	if (jbd2_journal_has_csum_v2or3(journal)) {
+> +	if (jbd2_journal_has_csum_v2or3_feature(journal)) {
+>  		journal->j_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
+>  		if (IS_ERR(journal->j_chksum_driver)) {
+>  			printk(KERN_ERR "JBD2: Cannot load crc32c driver.\n");
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index df07e78..6da6f89 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -1338,13 +1338,18 @@ static inline int tid_geq(tid_t x, tid_t y)
+>  extern int jbd2_journal_blocks_per_page(struct inode *inode);
+>  extern size_t journal_tag_bytes(journal_t *journal);
+>  
+> +static inline bool jbd2_journal_has_csum_v2or3_feature(journal_t *j)
+> +{
+> +	return JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2) ||
+> +	       JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V3);
+> +}
+> +
+>  static inline int jbd2_journal_has_csum_v2or3(journal_t *journal)
+>  {
+> -	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2) ||
+> -	    JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V3))
+> -		return 1;
+> +	WARN_ON_ONCE(jbd2_journal_has_csum_v2or3_feature(journal) &&
+> +		     journal->j_chksum_driver == NULL);
+>  
+> -	return 0;
+> +	return journal->j_chksum_driver != NULL;
+>  }
+>  
+>  /*
+> 
