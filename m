@@ -1,57 +1,50 @@
-From: Dave Hansen <dave.hansen@linux.intel.com>
-Subject: Re: [REGRESSION] 998ef75ddb and aio-dio-invalidate-failure w/
- data=journal
-Date: Mon, 5 Oct 2015 09:03:00 -0700
-Message-ID: <56129F34.5070203@linux.intel.com>
-References: <20151005152236.GA8140@thunk.org>
+From: Andy Leiserson <andy@leiserson.org>
+Subject: Fwd: meta_bg descriptor backup calculation bug
+Date: Mon, 5 Oct 2015 09:07:41 -0700
+Message-ID: <CAP8U4WbQ=P9UMySzXmpmxBfCNEhJZHH1ES5+GH7az0A5bu+tyw@mail.gmail.com>
+References: <CAP8U4WYkO377Ec7YSKAt0otd8Sz2HQWUCd4fKdRZMaoYf8wwCw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-To: Theodore Ts'o <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20151005152236.GA8140@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-wi0-f179.google.com ([209.85.212.179]:34446 "EHLO
+	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752348AbbJEQHn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Oct 2015 12:07:43 -0400
+Received: by wicfx3 with SMTP id fx3so127526515wic.1
+        for <linux-ext4@vger.kernel.org>; Mon, 05 Oct 2015 09:07:42 -0700 (PDT)
+In-Reply-To: <CAP8U4WYkO377Ec7YSKAt0otd8Sz2HQWUCd4fKdRZMaoYf8wwCw@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/05/2015 08:22 AM, Theodore Ts'o wrote:
-...
-> I've bisected it down to commit 998ef75ddb: "fs: do not prefault
-> sys_write() user buffer pages".  I've confirmed that 4.3-rc2 fails as
-> detailed below, but with 998ef75ddb reverted, the problem goes away.
-...
-> Before commit 998ef75ddb, if we need to prefault in the page, we do so
-> before we attempt the copy.  After this commit, we attempt the copy
-> and if it fails because pagefaults have been turned off, we call
-> write_end(), the unlock the page, prefault in the pages, and then
-> retry the commit.
+Just sent a patch related to this. Some more background:
 
-That's nasty.  Thanks for the bug report!
+I observed this on a 1K block filesystem that I resized from 16 GB to
+24 GB. Prior to the resize there were no remaining reserved GDT
+blocks.
 
-I'll go see if I can reproduce this.
+Possibly related to this issue, or possibly due to unrelated
+corruption, the filesystem errored and remounted read only. I rebooted
+and fsck'ed and discovered the corruption to be substantial.
+Unfortunately I don't have a block-level backup of the original state
+of the filesystem, the errors from before the reboot, or a log of what
+the initial fsck did. (I don't think that I let it do much, if
+anything, more than try to replay the journal, which was not
+successful.)
 
-> What I think is going on is that when we do attempt the copy, we end
-> up marking the page dirty before we notice that we need to page fault
-> in the page, which ends up triggering the warning that jbd2
-> buffer_head that is supposed to be journaled has been marked dirty
-> without calling ext4_handle_dirty_metadata() --- which is handled by
-> ext4_journalled_write_end(), but which is now happening out of order
-> given this commit.
-> 
-> Is it possible that we can change iov_iter_copy_from_user_atomic(), to
-> check for the error case before it marks the page dirty?  Or can we
-> create a light-weight function which checks to see if the page needs
-> to be faulted in which is lighter weight than
-> iov_iter_fault_in_readable?
+What I found in debugfs was that:
+* The descriptor data for groups 0..31 instead described groups 3040..3071.
+* The descriptor data for groups 2048..3071 was zero'ed (except checksum)
 
-Maybe I'm not following the macro magic, but I don't see where
-iov_iter_copy_from_user_atomic() is setting 'page' dirty.  It'll set the
-dirty bit in the PTEs of course, but I don't see it touching 'page'
-except to kmap() it.
+The first bullet is what gave me the idea that the new descriptors
+were being written in the wrong place. But I don't have a solid
+explanation for the second bullet.
 
-I do see some ->write_end() implementations doing set_page_dirty(), though.
-
-Could we have just been confused and dirtied a page under ->write_end()
-when we had copied=0 and it wasn't _really_ dirtied?
+I tried similar resizes to the original with debugging enabled before
+and after my proposed fix, and the "updating metadata backup" messages
+are consistent with the explanation. Before the fix, every meta_bg
+backup goes to blocks 8194 and 253953. 8194 is a backup copy of the
+first descriptor block, explaining why groups 0..31 were overwritten
+(assuming fsck tried to use the first backup copy). 253953 contains a
+block bitmap, and doing an fsck immediately after the resize finds a
+bunch of block bitmap inconsistencies.
