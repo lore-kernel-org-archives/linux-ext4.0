@@ -1,110 +1,62 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [REGRESSION] 998ef75ddb and aio-dio-invalidate-failure w/ data=journal
-Date: Mon, 5 Oct 2015 22:55:56 +0100
-Message-ID: <CA+55aFz9hH26=iQa832J5789Kf1ufYEJPt5L_D1wcDhCycUCFQ@mail.gmail.com>
-References: <20151005152236.GA8140@thunk.org>
-	<CA+55aFzARo_ZtbO6PDxgenWQtEEbynBCWFWCwVJT2NbXmJOd9Q@mail.gmail.com>
-	<5612A3F3.2040609@linux.intel.com>
-	<CA+55aFw1AcOL7+ZUKL=bC9GLJ3iMehQyqLWThAa=O7p1YdoEAQ@mail.gmail.com>
-	<5612E23B.7070606@linux.intel.com>
-	<CA+55aFwkA1EODc0bsrdmob945DYfDW_jE+nmrFKpq2YmBn+W4Q@mail.gmail.com>
+From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH v8 00/41] Richacls
+Date: Tue, 6 Oct 2015 00:01:19 +0200
+Message-ID: <CAHc6FU5=nPVRRO+0MycYMMmp66hg7YvY4kMGy-D4JfgD3_FkLQ@mail.gmail.com>
+References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
+	<20151004062313.GA20212@infradead.org>
+	<CAHc6FU53mXg1k0KCNkWEjxyuC8iAUgWh-A76qX=C3Yth+qEyuQ@mail.gmail.com>
+	<20151005211711.GB23350@dastard>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary=001a113ed818f3c21c05216293b5
-Cc: Peter Anvin <hpa@zytor.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: Dave Hansen <dave.hansen@linux.intel.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CA+55aFwkA1EODc0bsrdmob945DYfDW_jE+nmrFKpq2YmBn+W4Q@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20151005211711.GB23350@dastard>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
---001a113ed818f3c21c05216293b5
-Content-Type: text/plain; charset=UTF-8
-
-On Mon, Oct 5, 2015 at 10:18 PM, Linus Torvalds
-<torvalds@linux-foundation.org> wrote:
+On Mon, Oct 5, 2015 at 11:17 PM, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org> wrote:
+> On Mon, Oct 05, 2015 at 08:45:40PM +0200, Andreas Gruenbacher wrote:
+>> On Sun, Oct 4, 2015 at 8:23 AM, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org> wrote:
+>> > After that the wire up should be so trivial that you can wire up btrfs,
+>> > xfs and f2fs as well, which is important to make the feature mergeable.
+>>
+>> Why would the patch queue become more mergeable by having support for
+>> more filesystems in it? The filesystem specific code really isn't all
+>> that interesting.
 >
-> Your ext4 patch may well fix the issue, and be the right thing to do
-> (_regardless_ of the revert, in fact - while it might make the revert
-> unnecessary, it might also be a good idea even if we do revert).
+> The hardest part for the filesystem support is the on-disk feature
+> flag that needs to be set. The kernel part of that is easy, but it's
+> an on-disk format change and so there's also all the userspace side
+> for mkfs, fsck, debug tools, etc, that also need to be able to parse
+> and understand it. So while the xattr code can be made much more
+> generic, there's a bunch of filesystem specific code that needs to
+> go into multiple different repositories and userspace packages for
+> this.
 
-Thinking a bit more about your patch, I actually am getting more and
-more convinced that it's the wrong thing to do.
+Yes.
 
-Why?
+> Andreas, I also can't remember if any xfstests have been written for
+> these ACLs? That would certainly help make sure all these
+> filesystems have equivalent behaviour...
 
-Because the whole "Setting copied=0 will tell the upper layers to
-repeat the write" just seems a nasty layering violation, where the
-low-level filesystem uses a magic return code to introduce a special
-case at the upper layers. But the upper layers are actually already
-*aware* of the special case, and in fact have a comment about it.
+There's a reasonable amount of tests in the richacl user-space package
+which are shell based, with a few small C helpers. We could move those
+into xfstests eventually; now seems a bit early to me.
 
-So I think that the whole "setting copied to 0" would actually make a
-lot more sense in the *caller*. Just do it in generic_perform_write()
-instead. Then all the special cases and the restarting is all
-together.
-
-What do you guys think? This basically simplifies the low-level
-filesystem rules, and says:
-
- - the filesystem will only ever see a partial "->write_end()" for the
-case where the page was up-to-date, so that there is no issue with
-"oops, we now have part of the page that may not have been written at
-all"
-
- - if the page wasn't up-to-date before, ->write_end() will either be
-everything we said we'd do in ->write_begin(), or it will be nothing
-at all.
-
-Hmm? This would seem to keep the special cases at the right layer, and
-actually allow low-level filesystems to simplify things (ie the
-special "copied = 0" special case in ext4 goes away.
-
-The ext4 side still worries me, though. You made that
-"page_zero_new_buffers()" conditional on "copied" being non-zero, but
-I'm not convinced it can be conditional. Even if we retry, that retry
-may end up failing (for example, because the source isn't mapped, so
-we return -EFAULT rather than re-doing the write), but we have those
-new buffers that got allocated in write_begin(), and now nobody has
-ever written any data to them at all, so they have random stale
-contents.
-
-So I do think this needs more thought. Or at least somebody should
-explain to me better why it's all ok.
-
-I'm attaching the "copied = 0" special case thing at the
-generic_perform_write() level as a patch for comments. But for now I
-still think that reverting would seem to be the safer thing (which
-still possibly leaves things buggy with a racy unmap, but at least
-it's the old bug that we've never hit in practice).
-
-Dave? Ted? Comments?
-
-               Linus
-
---001a113ed818f3c21c05216293b5
-Content-Type: text/plain; charset=US-ASCII; name="patch.diff"
-Content-Disposition: attachment; filename="patch.diff"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_ifeh4szj0
-
-IG1tL2ZpbGVtYXAuYyB8IDE0ICsrKysrKysrKysrKysrCiAxIGZpbGUgY2hhbmdlZCwgMTQgaW5z
-ZXJ0aW9ucygrKQoKZGlmZiAtLWdpdCBhL21tL2ZpbGVtYXAuYyBiL21tL2ZpbGVtYXAuYwppbmRl
-eCA3Mjk0MGZiMzg2NjYuLmU4ZDAxOTM2ODE3YSAxMDA2NDQKLS0tIGEvbW0vZmlsZW1hcC5jCisr
-KyBiL21tL2ZpbGVtYXAuYwpAQCAtMjQ5Myw2ICsyNDkzLDIwIEBAIGFnYWluOgogCQlwYWdlZmF1
-bHRfZW5hYmxlKCk7CiAJCWZsdXNoX2RjYWNoZV9wYWdlKHBhZ2UpOwogCisJCS8qCisJCSAqIElm
-IHdlIGRpZG4ndCBzdWNjZXNzZnVsbHkgY29weSBhbGwgdGhlIGRhdGEgZnJvbSB1c2VyIHNwYWNl
-LAorCQkgKiBhbmQgdGhlIHRhcmdldCBwYWdlIGlzIG5vdCB1cC10by1kYXRlLCB3ZSB3aWxsIGhh
-dmUgdG8gcHJlZmF1bHQKKwkJICogdGhlIHNvdXJjZS4gQW5kIGlmIHRoZSBwYWdlIHdhc24ndCB1
-cC10by1kYXRlIGJlZm9yZSB0aGUgd3JpdGUsCisJCSAqIHRoZSAid3JpdGVfZW5kKCkiIG1heSBu
-ZWVkIHRvICptYWtlKiBpdCB1cC10by1kYXRlLCBhbmQgdGh1cworCQkgKiBvdmVyd3JpdGUgb3Vy
-IHBhcnRpYWwgY29weS4KKwkJICoKKwkJICogU28gZm9yIHRoYXQgY2FzZSwgdGhvdyBhd2F5IHRo
-ZSB3aG9sZSB0aGluZyBhbmQgZm9yY2UgYSBmdWxsCisJCSAqIHJlc3RhcnQgKHNlZSBjb21tZW50
-IGFib3ZlLCBhbmQgaW92X2l0ZXJfZmF1bHRfaW5fcmVhZGFibGUoKQorCQkgKiBiZWxvdykuCisJ
-CSAqLworCQlpZiAoY29waWVkIDwgYnl0ZXMgJiYgIVBhZ2VVcHRvZGF0ZShwYWdlKSkKKwkJCWNv
-cGllZCA9IDA7CisKIAkJc3RhdHVzID0gYV9vcHMtPndyaXRlX2VuZChmaWxlLCBtYXBwaW5nLCBw
-b3MsIGJ5dGVzLCBjb3BpZWQsCiAJCQkJCQlwYWdlLCBmc2RhdGEpOwogCQlpZiAodW5saWtlbHko
-c3RhdHVzIDwgMCkpCg==
---001a113ed818f3c21c05216293b5--
+Thanks,
+Andreas
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
