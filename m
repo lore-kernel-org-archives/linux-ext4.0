@@ -1,49 +1,56 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [REGRESSION] 998ef75ddb and aio-dio-invalidate-failure w/ data=journal
-Date: Tue, 6 Oct 2015 10:01:04 +0100
-Message-ID: <CA+55aFyA7YH_cTTBv2vX78Pnv446DxOWxPaO9ud4G3TCrsS8eQ@mail.gmail.com>
-References: <20151005152236.GA8140@thunk.org>
-	<CA+55aFzARo_ZtbO6PDxgenWQtEEbynBCWFWCwVJT2NbXmJOd9Q@mail.gmail.com>
-	<5612A3F3.2040609@linux.intel.com>
-	<CA+55aFw1AcOL7+ZUKL=bC9GLJ3iMehQyqLWThAa=O7p1YdoEAQ@mail.gmail.com>
-	<5612E23B.7070606@linux.intel.com>
-	<CA+55aFwkA1EODc0bsrdmob945DYfDW_jE+nmrFKpq2YmBn+W4Q@mail.gmail.com>
-	<CA+55aFz9hH26=iQa832J5789Kf1ufYEJPt5L_D1wcDhCycUCFQ@mail.gmail.com>
-	<561308BD.5090304@linux.intel.com>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: Re: [PATCH v9 00/43] Richacls
+Date: Tue, 6 Oct 2015 11:07:46 +0200
+Message-ID: <20151006090746.GA27791@xo-6d-61-c0.localdomain>
+References: <1444073830-21854-1-git-send-email-agruenba@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Peter Anvin <hpa@zytor.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: Dave Hansen <dave.hansen@linux.intel.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	Anna Schumaker <anna.schumaker@netapp.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-api@vger.kernel.org
+To: Andreas Gruenbacher <agruenba@redhat.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <561308BD.5090304@linux.intel.com>
+Content-Disposition: inline
+In-Reply-To: <1444073830-21854-1-git-send-email-agruenba@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 6, 2015 at 12:33 AM, Dave Hansen
-<dave.hansen@linux.intel.com> wrote:
->
-> Did you mean that as a cleanup, or to fix the regression?
+On Mon 2015-10-05 21:36:27, Andreas Gruenbacher wrote:
+> Here is another update of the richacl patch queue.  I would like to ask for
+> feedback so that the core and ext4 code (patches 1-21) can be merged in the
+> 4.4 merge window.  Changes since the last posting
+> (https://lkml.org/lkml/2015/9/27/148):
+> 
+>  * A set_richacl inode operation similar to set_acl for POSIX ACLs was
+>    added.  The filesystem specific code needed for adding richacl support
+>    has shrunk: ext4_richacl_chmod, ext4_xattr_{list,get,set}_richacl,
+>    ext4_init_richacl, ext4_richacl_xattr_handler were all replaced by vfs
+>    functions.
+> 
+> The complete patch queue is available here:
+> 
+>   git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
+> 	richacl-2015-10-05
+> 
+> 
+> The richacl user-space utilitites and test suite are available here:
+> 
+>   https://github.com/andreas-gruenbacher/richacl/
+> 
+> 
+> We still have two open issues in nfs (see the previous posting) which don't
+> affect the core functionality.
 
-Purely as a cleanup to try to avoid the (already existing) special
-case in at least ext4 - and possibly others.
+Should there be file in Documentation/ explaining how this works?
 
-So that patch was meant just for discussion - it's not really fixing
-any existing bugs, and I didn't actually keep it live in my tree.
-
-I'm planning on just doing the revert for now, but I'll wait a bit to
-see how this thread pans out first.
-
-> Since the page isn't faulted in yet, iov_iter_copy_from_user_atomic()
-> had already set copied=0
-
-Not necessarily. For your case that only does one-byte writes, yes.
-But in the generic case you may well have a page-crossing source area
-in user space, and get a partial success from the user copy. It's that
-partial success case (when the rest of the missing data isn't
-necessarily already up-to-date) that I'd like to have low-level
-filesystems not have to worry about.
-
-           Linus
+									Pavel
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
