@@ -1,111 +1,75 @@
-From: Dave Hansen <dave.hansen@linux.intel.com>
-Subject: Re: [REGRESSION] 998ef75ddb and aio-dio-invalidate-failure w/
- data=journal
-Date: Mon, 5 Oct 2015 16:33:17 -0700
-Message-ID: <561308BD.5090304@linux.intel.com>
-References: <20151005152236.GA8140@thunk.org>
- <CA+55aFzARo_ZtbO6PDxgenWQtEEbynBCWFWCwVJT2NbXmJOd9Q@mail.gmail.com>
- <5612A3F3.2040609@linux.intel.com>
- <CA+55aFw1AcOL7+ZUKL=bC9GLJ3iMehQyqLWThAa=O7p1YdoEAQ@mail.gmail.com>
- <5612E23B.7070606@linux.intel.com>
- <CA+55aFwkA1EODc0bsrdmob945DYfDW_jE+nmrFKpq2YmBn+W4Q@mail.gmail.com>
- <CA+55aFz9hH26=iQa832J5789Kf1ufYEJPt5L_D1wcDhCycUCFQ@mail.gmail.com>
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: [PATCH v8 00/41] Richacls
+Date: Tue, 6 Oct 2015 12:20:20 +1100
+Message-ID: <20151006012020.GD23350@dastard>
+References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
+ <20151004062313.GA20212@infradead.org>
+ <CAHc6FU53mXg1k0KCNkWEjxyuC8iAUgWh-A76qX=C3Yth+qEyuQ@mail.gmail.com>
+ <20151005211711.GB23350@dastard>
+ <CAHc6FU5=nPVRRO+0MycYMMmp66hg7YvY4kMGy-D4JfgD3_FkLQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: Peter Anvin <hpa@zytor.com>, Theodore Ts'o <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CA+55aFz9hH26=iQa832J5789Kf1ufYEJPt5L_D1wcDhCycUCFQ@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <CAHc6FU5=nPVRRO+0MycYMMmp66hg7YvY4kMGy-D4JfgD3_FkLQ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-> On Mon, Oct 5, 2015 at 10:18 PM, Linus Torvalds
-> <torvalds@linux-foundation.org> wrote:
->>
->> Your ext4 patch may well fix the issue, and be the right thing to do
->> (_regardless_ of the revert, in fact - while it might make the revert
->> unnecessary, it might also be a good idea even if we do revert).
+On Tue, Oct 06, 2015 at 12:01:19AM +0200, Andreas Gruenbacher wrote:
+> On Mon, Oct 5, 2015 at 11:17 PM, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org> wrote:
+> > On Mon, Oct 05, 2015 at 08:45:40PM +0200, Andreas Gruenbacher wrote:
+> >> On Sun, Oct 4, 2015 at 8:23 AM, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org> wrote:
+> >> > After that the wire up should be so trivial that you can wire up btrfs,
+> >> > xfs and f2fs as well, which is important to make the feature mergeable.
+> >>
+> >> Why would the patch queue become more mergeable by having support for
+> >> more filesystems in it? The filesystem specific code really isn't all
+> >> that interesting.
+> >
+> > The hardest part for the filesystem support is the on-disk feature
+> > flag that needs to be set. The kernel part of that is easy, but it's
+> > an on-disk format change and so there's also all the userspace side
+> > for mkfs, fsck, debug tools, etc, that also need to be able to parse
+> > and understand it. So while the xattr code can be made much more
+> > generic, there's a bunch of filesystem specific code that needs to
+> > go into multiple different repositories and userspace packages for
+> > this.
 > 
-> Thinking a bit more about your patch, I actually am getting more and
-> more convinced that it's the wrong thing to do.
+> Yes.
 > 
-> Why?
+> > Andreas, I also can't remember if any xfstests have been written for
+> > these ACLs? That would certainly help make sure all these
+> > filesystems have equivalent behaviour...
 > 
-> Because the whole "Setting copied=0 will tell the upper layers to
-> repeat the write" just seems a nasty layering violation, where the
-> low-level filesystem uses a magic return code to introduce a special
-> case at the upper layers. But the upper layers are actually already
-> *aware* of the special case, and in fact have a comment about it.
+> There's a reasonable amount of tests in the richacl user-space package
+> which are shell based, with a few small C helpers. We could move those
+> into xfstests eventually; now seems a bit early to me.
 
-It's nasty, but it's widespread.  I'm fairly sure some version of that
-code shows up in all these places:
+Well, all the fs developers that will do the userspace work are
+already running xfstests. If you want us to be able to test the
+richACL code as we add all the fs specific flags to the userspace
+code, then we need the tests in xfstests at the same time the
+infrastructure appears in the kernel...
 
-	ext4_journalled_write_end()
-	generic_write_end()->block_write_end()
-	ocfs2_write_end_inline()
-	ocfs2_write_end_nolock()
-	logfs_write_end()
-	ext3_journalled_write_end()
-	btrfs_copy_from_user()
-	reiserfs_write_end()
+Cheers,
 
-> The ext4 side still worries me, though. You made that
-> "page_zero_new_buffers()" conditional on "copied" being non-zero, but
-> I'm not convinced it can be conditional. Even if we retry, that retry
-> may end up failing (for example, because the source isn't mapped, so
-> we return -EFAULT rather than re-doing the write), but we have those
-> new buffers that got allocated in write_begin(), and now nobody has
-> ever written any data to them at all, so they have random stale
-> contents.
-
-Yeah, I guess they're not uptodate and nobody is on the hook to make
-them uptodate.
-
-> So I do think this needs more thought. Or at least somebody should
-> explain to me better why it's all ok.
-> 
-> I'm attaching the "copied = 0" special case thing at the
-> generic_perform_write() level as a patch for comments. But for now I
-> still think that reverting would seem to be the safer thing (which
-> still possibly leaves things buggy with a racy unmap, but at least
-> it's the old bug that we've never hit in practice).
-
-FWIW, I'm not objecting at all to a revert.  It's obviously the safe
-thing to do.
-
-> --- a/mm/filemap.c
-> +++ b/mm/filemap.c
-> @@ -2493,6 +2493,20 @@ again:
->  		pagefault_enable();
->  		flush_dcache_page(page);
->  
-> +		/*
-> +		 * If we didn't successfully copy all the data from user space,
-> +		 * and the target page is not up-to-date, we will have to prefault
-> +		 * the source. And if the page wasn't up-to-date before the write,
-> +		 * the "write_end()" may need to *make* it up-to-date, and thus
-> +		 * overwrite our partial copy.
-> +		 *
-> +		 * So for that case, thow away the whole thing and force a full
-> +		 * restart (see comment above, and iov_iter_fault_in_readable()
-> +		 * below).
-> +		 */
-> +		if (copied < bytes && !PageUptodate(page))
-> +			copied = 0;
-> +
->  		status = a_ops->write_end(file, mapping, pos, bytes, copied,
->  						page, fsdata);
-
-Did you mean that as a cleanup, or to fix the regression?
-
-Since the page isn't faulted in yet, iov_iter_copy_from_user_atomic()
-had already set copied=0, so that has no effect on the ext4 code being
-called and it spits out the same warning Ted originally reported.
-
-Ted, do we really just need to tell ext4 that this dirtying operation is
-OK?  Or is there really a risk of filesystem corruption that we're not
-seeing?
+Dave.
+-- 
+Dave Chinner
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
