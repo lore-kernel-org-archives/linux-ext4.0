@@ -1,54 +1,71 @@
-From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH v8 00/41] Richacls
-Date: Tue, 6 Oct 2015 15:12:36 +0200
-Message-ID: <CAHc6FU5aZJDC3N1iGyVeHfbqMyquM93ONJvUR-t0a9+AjmtAXQ@mail.gmail.com>
-References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
-	<20151004062313.GA20212@infradead.org>
-	<CAHc6FU53mXg1k0KCNkWEjxyuC8iAUgWh-A76qX=C3Yth+qEyuQ@mail.gmail.com>
-	<5612C85C.2060407@gmail.com>
-	<20151006094935.GA14144@infradead.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [REGRESSION] 998ef75ddb and aio-dio-invalidate-failure w/ data=journal
+Date: Tue, 6 Oct 2015 14:29:39 +0100
+Message-ID: <CA+55aFwYW1q2b5BeRBQRunU_hmB+TbB_Q-kPoSwgyhT20g4-ag@mail.gmail.com>
+References: <20151005152236.GA8140@thunk.org>
+	<CA+55aFzARo_ZtbO6PDxgenWQtEEbynBCWFWCwVJT2NbXmJOd9Q@mail.gmail.com>
+	<5612A3F3.2040609@linux.intel.com>
+	<CA+55aFw1AcOL7+ZUKL=bC9GLJ3iMehQyqLWThAa=O7p1YdoEAQ@mail.gmail.com>
+	<B602A991-01B4-42E7-AF13-1E21DFB714F8@zytor.com>
+	<20151006075652.GA11757@gmail.com>
+	<CA+55aFxjcXJ9iaRJpCwsOchbJ5p2ch0zXs5=ywMMOuFUAair1A@mail.gmail.com>
+	<20151006092757.GA27419@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: Austin S Hemmelgarn <ahferroin7-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20151006094935.GA14144-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Cc: "H. Peter Anvin" <hpa@zytor.com>,
+	Dave Hansen <dave.hansen@linux.intel.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Ingo Molnar <mingo@kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20151006092757.GA27419@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 6, 2015 at 11:49 AM, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org> wrote:
-> On Mon, Oct 05, 2015 at 02:58:36PM -0400, Austin S Hemmelgarn wrote:
->> I think the point is that a new VFS feature that is easy to integrate in
->> multiple filesystems should have support for those filesystems.  A decade
->> ago, just having ext* support would probably have been fine, but these days,
->> XFS, BTRFS, and F2FS are used just as much (if not more) on production
->> systems as ext4, and having support for them right from the start would
->> significantly help with adoption of richacls.
+On Tue, Oct 6, 2015 at 10:27 AM, Ingo Molnar <mingo@kernel.org> wrote:
 >
-> That's one reason.  The other is that actually wiring it up for more
-> than a single consumer shows its actually reasonable generic.
+>>
+>> We really should try get rid of _all_ uses of the "__" versions unless they are
+>> very locally and obviously checked with access_ok(). We've had way too many
+>> cases where people thought they were clever, and weren't really.
+>
+> That's a good idea.
+>
+> The logistics worries me a bit: it looks like a major undertaking, considering the
+> widespread use of these APIs in 1400+ call sites:
 
-The filesystem interface now is the same as for POSIX ACLs, used by a
-dozen or so filesystems already.
+Well, quite frankly, I think I'd be ok with just a mass conversion of
+the "__" functions to non-underscore ones.
 
->  I don't want to end up with a situration like Posix ACLs again where
-> different file systems using different on disk formats again.
+>From past experience, I don't think we have anything that really
+cares. The one exception is probably the signal stack handling,
+because it really uses multiple individual accesses, and so it is much
+more noticeable.
 
-Any file system could choose a different on-disk format than the one
-that ext4 currently uses, but I don't see a reason why any should.
-Apart from uid / gid mappings that is the same as the user-space xattr
-format. Network file systems like NFSv4 and CIFS with their predefined
-over-the-wire formats obviously are another story.
+And there should be *no* meaningful difference between the underscore
+version and the non-underscore one, unless somebody does something
+really odd and questionable (ie depends on a kernel pointer - which
+doesn't even work on all architectures!).
 
-Thanks,
-Andreas
+So I really think we could do a mass conversion of everything that
+isn't under "arch/" (and obviously asm-generic/uaccess.h) in just one
+single go.
+
+I obviously wouldn't take that into 4.3, but I really don't think this
+would merit splitting up into multiple patches either.
+
+Then, one by one, we might convert back to __get/put_user() when we've
+(a) added the SMAP/PAN infrastructure (b) verified that there's an
+access_ok() _right_there_ and (c) actually verified that it's
+performance-critical.
+
+I see drivers doing __get/put_user(), and it just makes me go "no".
+Not only are drivers likely to get it wrong, I don't believe the extra
+couple of cycles is going to matter compared to the cost of the
+hardware access itself. And if the access_ok() isn't local and
+obviously in the *only* place that can possibly lead to that code,
+then the code shouldn't use the underscore versions.
+
+                Linus
