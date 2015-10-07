@@ -1,85 +1,57 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 07/12] reflink: concurrent operations tests
-Date: Tue, 06 Oct 2015 22:13:51 -0700
-Message-ID: <20151007051351.3260.25873.stgit@birch.djwong.org>
+Subject: [PATCH 10/12] xfs: test xfs-specific reflink pieces
+Date: Tue, 06 Oct 2015 22:14:11 -0700
+Message-ID: <20151007051411.3260.97743.stgit@birch.djwong.org>
 References: <20151007051257.3260.73072.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Anna.Schumaker@netapp.com, linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
+Cc: Anna.Schumaker@netapp.com, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, fstests@vger.kernel.org,
+	xfs@oss.sgi.com
 To: david@fromorbit.com, darrick.wong@oracle.com
-Return-path: <xfs-bounces@oss.sgi.com>
+Return-path: <fstests-owner@vger.kernel.org>
 In-Reply-To: <20151007051257.3260.73072.stgit@birch.djwong.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Make sure that running reflink ops while other IO is ongoing doesn't
-break the filesystem.
+Check that growfs and xfs_fsr still work properly on reflinked fses.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- tests/generic/821     |   96 ++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/821.out |    6 +++
- tests/generic/822     |   96 ++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/822.out |    6 +++
- tests/generic/823     |   94 +++++++++++++++++++++++++++++++++++++++++++
- tests/generic/823.out |    6 +++
- tests/generic/824     |   95 +++++++++++++++++++++++++++++++++++++++++++
- tests/generic/824.out |    6 +++
- tests/generic/825     |  108 +++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/825.out |    7 +++
- tests/generic/826     |  108 +++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/826.out |    7 +++
- tests/generic/827     |   98 ++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/827.out |    7 +++
- tests/generic/828     |   98 ++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/828.out |    7 +++
- tests/generic/829     |   84 ++++++++++++++++++++++++++++++++++++++
- tests/generic/829.out |    6 +++
- tests/generic/group   |    9 ++++
- 19 files changed, 944 insertions(+)
- create mode 100755 tests/generic/821
- create mode 100644 tests/generic/821.out
- create mode 100755 tests/generic/822
- create mode 100644 tests/generic/822.out
- create mode 100755 tests/generic/823
- create mode 100644 tests/generic/823.out
- create mode 100755 tests/generic/824
- create mode 100644 tests/generic/824.out
- create mode 100755 tests/generic/825
- create mode 100644 tests/generic/825.out
- create mode 100755 tests/generic/826
- create mode 100644 tests/generic/826.out
- create mode 100755 tests/generic/827
- create mode 100644 tests/generic/827.out
- create mode 100755 tests/generic/828
- create mode 100644 tests/generic/828.out
- create mode 100755 tests/generic/829
- create mode 100644 tests/generic/829.out
+ tests/xfs/800     |   77 +++++++++++++++++++++++++++++++
+ tests/xfs/800.out |    5 ++
+ tests/xfs/801     |  133 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/xfs/801.out |   15 ++++++
+ tests/xfs/802     |   89 +++++++++++++++++++++++++++++++++++
+ tests/xfs/802.out |    6 ++
+ tests/xfs/803     |  104 +++++++++++++++++++++++++++++++++++++++++
+ tests/xfs/803.out |   13 +++++
+ tests/xfs/group   |    4 ++
+ 9 files changed, 446 insertions(+)
+ create mode 100755 tests/xfs/800
+ create mode 100644 tests/xfs/800.out
+ create mode 100755 tests/xfs/801
+ create mode 100644 tests/xfs/801.out
+ create mode 100755 tests/xfs/802
+ create mode 100644 tests/xfs/802.out
+ create mode 100755 tests/xfs/803
+ create mode 100644 tests/xfs/803.out
 
 
-diff --git a/tests/generic/821 b/tests/generic/821
+diff --git a/tests/xfs/800 b/tests/xfs/800
 new file mode 100755
-index 0000000..77393cb
+index 0000000..58059f7
 --- /dev/null
-+++ b/tests/generic/821
-@@ -0,0 +1,96 @@
++++ b/tests/xfs/800
+@@ -0,0 +1,77 @@
 +#! /bin/bash
-+# FS QA Test No. 821
++# FS QA Test No. 800
 +#
-+# Test for race between direct I/O and reflink
++# Tests xfs_growfs on a reflinked filesystem
 +#
 +#-----------------------------------------------------------------------
-+# Copyright (c) 2015 Oracle, Inc.  All Rights Reserved.
++# Copyright (c) 2015, Oracle and/or its affiliates.  All Rights Reserved.
 +#
 +# This program is free software; you can redistribute it and/or
 +# modify it under the terms of the GNU General Public License as
@@ -102,98 +74,78 @@ index 0000000..77393cb
 +
 +here=`pwd`
 +tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 7 15
++status=1    # failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
 +
 +_cleanup()
 +{
 +    cd /
-+    rm -rf $tmp.*
-+    wait
++    rm -f $tmp.*
 +}
 +
 +# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
++. common/rc
++. common/filter
 +
 +# real QA test starts here
-+_supported_fs generic
-+_supported_os Linux
-+
++_supported_fs xfs
 +_require_scratch
 +_require_scratch_reflink
++_supported_os Linux
++
 +_require_cp_reflink
-+_require_xfs_io_command "reflink"
 +
 +echo "Format and mount"
-+_scratch_mkfs > $seqres.full 2>&1
++_scratch_mkfs -d size=$((2 * 4096 * 4096)) -l size=4194304 > $seqres.full 2>&1
 +_scratch_mount >> $seqres.full 2>&1
 +
 +TESTDIR=$SCRATCH_MNT/test-$seq
 +rm -rf $TESTDIR
 +mkdir $TESTDIR
 +
-+loops=1024
++echo "Create the original file and reflink to copy1, copy2"
 +BLKSZ="$(stat -f $TESTDIR -c '%S')"
-+iosize=$((BLKSZ * 16))
++$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((BLKSZ * 14 + 71))" $TESTDIR/original \
++    >> $seqres.full 2>&1
++cp --reflink=always $TESTDIR/original $TESTDIR/copy1
++cp --reflink=always $TESTDIR/copy1 $TESTDIR/copy2
 +
-+echo "Initialize files"
-+echo > $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((loops * iosize))" $TESTDIR/file1 >> $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x62 0 $((loops * iosize))" $TESTDIR/file2 >> $seqres.full
++echo "Grow fs"
++$XFS_GROWFS_PROG $SCRATCH_MNT 2>&1 |  _filter_growfs >> $seqres.full
 +
-+# Direct I/O overwriter...
-+overwrite() {
-+	while [ ! -e $TESTDIR/finished ]; do
-+		dd if=/dev/zero of=$TESTDIR/file2 oflag=direct bs=$iosize count=$loops conv=notrunc 2> /dev/null
-+	done
-+}
++xfs_info $SCRATCH_MNT >> $seqres.full
 +
-+echo "Reflink and dio write the target"
-+overwrite &
-+start=`expr $loops - 1`
-+for i in `seq $start -1 0`
-+do
-+	$XFS_IO_PROG -f -c "reflink $TESTDIR/file1 $((i * iosize)) $((i * iosize)) $iosize" $TESTDIR/file2 >> $seqres.full
-+	[ $? -ne 0 ] && exit
-+done
-+touch $TESTDIR/finished
-+wait
-+
-+echo "Check for damage"
++echo "Check scratch fs"
 +umount $SCRATCH_MNT
 +_check_scratch_fs
-+
-+echo "Done"
 +
 +# success, all done
 +status=0
 +exit
-diff --git a/tests/generic/821.out b/tests/generic/821.out
+diff --git a/tests/xfs/800.out b/tests/xfs/800.out
 new file mode 100644
-index 0000000..ca6bc53
+index 0000000..280daa5
 --- /dev/null
-+++ b/tests/generic/821.out
-@@ -0,0 +1,6 @@
-+QA output created by 821
++++ b/tests/xfs/800.out
+@@ -0,0 +1,5 @@
++QA output created by 800
 +Format and mount
-+Initialize files
-+Reflink and dio write the target
-+Check for damage
-+Done
-diff --git a/tests/generic/822 b/tests/generic/822
++Create the original file and reflink to copy1, copy2
++Grow fs
++Check scratch fs
+diff --git a/tests/xfs/801 b/tests/xfs/801
 new file mode 100755
-index 0000000..6ee7a8c
+index 0000000..96a47e4
 --- /dev/null
-+++ b/tests/generic/822
-@@ -0,0 +1,96 @@
++++ b/tests/xfs/801
+@@ -0,0 +1,133 @@
 +#! /bin/bash
-+# FS QA Test No. 822
++# FS QA Test No. 801
 +#
-+# Test for race between buffered I/O and reflink
++# Ensure that xfs_fsr un-reflinks files while defragmenting
 +#
 +#-----------------------------------------------------------------------
-+# Copyright (c) 2015 Oracle, Inc.  All Rights Reserved.
++# Copyright (c) 2015, Oracle and/or its affiliates.  All Rights Reserved.
 +#
 +# This program is free software; you can redistribute it and/or
 +# modify it under the terms of the GNU General Public License as
@@ -216,28 +168,26 @@ index 0000000..6ee7a8c
 +
 +here=`pwd`
 +tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 7 15
++status=1    # failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
 +
 +_cleanup()
 +{
 +    cd /
-+    rm -rf $tmp.*
-+    wait
++    rm -f $tmp.*
 +}
 +
 +# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
++. common/rc
++. common/filter
 +
 +# real QA test starts here
-+_supported_fs generic
-+_supported_os Linux
-+
++_supported_fs xfs
 +_require_scratch
 +_require_scratch_reflink
++_supported_os Linux
++
 +_require_cp_reflink
-+_require_xfs_io_command "reflink"
 +
 +echo "Format and mount"
 +_scratch_mkfs > $seqres.full 2>&1
@@ -246,891 +196,348 @@ index 0000000..6ee7a8c
 +TESTDIR=$SCRATCH_MNT/test-$seq
 +rm -rf $TESTDIR
 +mkdir $TESTDIR
++FREE_BLOCKS0=$(stat -f $TESTDIR -c '%f')
 +
-+loops=1024
++echo "Create the original file and reflink to file2, file3"
++BLKS=2000
++MARGIN=100
 +BLKSZ="$(stat -f $TESTDIR -c '%S')"
-+iosize=$((BLKSZ * 16))
-+
-+echo "Initialize file"
-+echo > $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((loops * iosize))" $TESTDIR/file1 >> $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x62 0 $((loops * iosize))" $TESTDIR/file2 >> $seqres.full
-+
-+# Buffered I/O overwriter...
-+overwrite() {
-+	while [ ! -e $TESTDIR/finished ]; do
-+		dd if=/dev/zero of=$TESTDIR/file2 bs=$iosize count=$loops conv=notrunc 2> /dev/null
-+	done
-+}
-+
-+echo "reflink while overwriting target"
-+overwrite &
-+start=`expr $loops - 1`
-+for i in `seq $start -1 0`
-+do
-+	$XFS_IO_PROG -f -c "reflink $TESTDIR/file1 $((i * iosize)) $((i * iosize)) $iosize" $TESTDIR/file2 >> $seqres.full
-+	[ $? -ne 0 ] && exit
-+done
-+touch $TESTDIR/finished
-+wait
-+
-+echo "Check for damage"
-+umount $SCRATCH_MNT
-+_check_scratch_fs
-+
-+echo "Done"
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/generic/822.out b/tests/generic/822.out
-new file mode 100644
-index 0000000..4c86f97
---- /dev/null
-+++ b/tests/generic/822.out
-@@ -0,0 +1,6 @@
-+QA output created by 822
-+Format and mount
-+Initialize file
-+reflink while overwriting target
-+Check for damage
-+Done
-diff --git a/tests/generic/823 b/tests/generic/823
-new file mode 100755
-index 0000000..bf3a712
---- /dev/null
-+++ b/tests/generic/823
-@@ -0,0 +1,94 @@
-+#! /bin/bash
-+# FS QA Test No. 823
-+#
-+# Test for race between buffered I/O while creating reflink snapshots
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2015 Oracle, Inc.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 7 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -rf $tmp.*
-+    wait
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# real QA test starts here
-+_supported_fs generic
-+_supported_os Linux
-+
-+_require_scratch
-+_require_scratch_reflink
-+_require_cp_reflink
-+_require_xfs_io_command "reflink"
-+
-+echo "Format and mount"
-+_scratch_mkfs > $seqres.full 2>&1
-+_scratch_mount >> $seqres.full 2>&1
-+
-+TESTDIR=$SCRATCH_MNT/test-$seq
-+rm -rf $TESTDIR
-+mkdir $TESTDIR
-+
-+loops=1024
-+BLKSZ="$(stat -f $TESTDIR -c '%S')"
-+iosize=$((BLKSZ * 16))
-+
-+echo "Initialize file"
-+echo > $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((loops * iosize))" $TESTDIR/file1 >> $seqres.full
-+
-+# Snapshot creator...
-+snappy() {
-+	n=0
-+	while [ ! -e $TESTDIR/finished ]; do
-+		cp --reflink=always $TESTDIR/file1 $TESTDIR/snap_$n || break
-+		n=$((n + 1))
-+	done
-+}
-+
-+echo "Snapshot a file undergoing buffered rewrite"
-+snappy &
-+for i in `seq 1 5`; do
-+	dd if=/dev/zero of=$TESTDIR/file1 bs=$iosize count=$loops conv=notrunc 2> /dev/null
-+done
-+touch $TESTDIR/finished
-+wait
-+
-+echo "Check for damage"
-+umount $SCRATCH_MNT
-+_check_scratch_fs
-+
-+echo "Done"
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/generic/823.out b/tests/generic/823.out
-new file mode 100644
-index 0000000..ef3e209
---- /dev/null
-+++ b/tests/generic/823.out
-@@ -0,0 +1,6 @@
-+QA output created by 823
-+Format and mount
-+Initialize file
-+Snapshot a file undergoing buffered rewrite
-+Check for damage
-+Done
-diff --git a/tests/generic/824 b/tests/generic/824
-new file mode 100755
-index 0000000..38737c6
---- /dev/null
-+++ b/tests/generic/824
-@@ -0,0 +1,95 @@
-+#! /bin/bash
-+# FS QA Test No. 824
-+#
-+# Test for race between direct I/O while creating reflink snapshots
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2015 Oracle, Inc.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 7 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -rf $tmp.*
-+    wait
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# real QA test starts here
-+_supported_fs generic
-+_supported_os Linux
-+
-+_require_scratch
-+_require_scratch_reflink
-+_require_cp_reflink
-+_require_xfs_io_command "reflink"
-+
-+echo "Format and mount"
-+_scratch_mkfs > $seqres.full 2>&1
-+_scratch_mount >> $seqres.full 2>&1
-+
-+TESTDIR=$SCRATCH_MNT/test-$seq
-+rm -rf $TESTDIR
-+mkdir $TESTDIR
-+
-+loops=1024
-+BLKSZ="$(stat -f $TESTDIR -c '%S')"
-+iosize=$((BLKSZ * 16))
-+
-+echo "Initialize file"
-+echo > $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((loops * iosize))" $TESTDIR/file1 >> $seqres.full
-+
-+# Snapshot creator...
-+snappy() {
-+	n=0
-+	while [ ! -e $TESTDIR/finished ]; do
-+		cp --reflink=always $TESTDIR/file1 $TESTDIR/snap_$n || break
-+		n=$((n + 1))
-+	done
-+}
-+
-+echo "Snapshot a file while directio rewriting it"
-+snappy &
-+touch $TESTDIR/running
-+for i in `seq 1 5`; do
-+	dd if=/dev/zero of=$TESTDIR/file1 oflag=direct bs=$iosize count=$loops conv=notrunc 2> /dev/null
-+done
-+mv $TESTDIR/running $TESTDIR/finished
-+wait
-+
-+echo "Check for damage"
-+umount $SCRATCH_MNT
-+_check_scratch_fs
-+
-+echo "Done"
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/generic/824.out b/tests/generic/824.out
-new file mode 100644
-index 0000000..27c9bc0
---- /dev/null
-+++ b/tests/generic/824.out
-@@ -0,0 +1,6 @@
-+QA output created by 824
-+Format and mount
-+Initialize file
-+Snapshot a file while directio rewriting it
-+Check for damage
-+Done
-diff --git a/tests/generic/825 b/tests/generic/825
-new file mode 100755
-index 0000000..476527a
---- /dev/null
-+++ b/tests/generic/825
-@@ -0,0 +1,108 @@
-+#! /bin/bash
-+# FS QA Test No. 825
-+#
-+# Test for race between reflink and direct I/O reading the target file
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2015 Oracle, Inc.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 7 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -rf $tmp.*
-+    wait
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# real QA test starts here
-+# Modify as appropriate.
-+_supported_fs generic
-+_supported_os Linux
-+
-+_require_scratch
-+_require_scratch_reflink
-+_require_cp_reflink
-+_require_xfs_io_command "reflink"
-+
-+echo "Format and mount"
-+_scratch_mkfs > $seqres.full 2>&1
-+_scratch_mount >> $seqres.full 2>&1
-+
-+TESTDIR=$SCRATCH_MNT/test-$seq
-+rm -rf $TESTDIR
-+mkdir $TESTDIR
-+
-+loops=512
-+BLKSZ="$(stat -f $TESTDIR -c '%S')"
-+iosize=$((BLKSZ * 16))
-+
-+echo "Initialize files"
-+echo > $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((loops * iosize))" $TESTDIR/file1 >> $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x62 0 $((loops * iosize))" $TESTDIR/file2 >> $seqres.full
-+cp --reflink=always $TESTDIR/file1 $TESTDIR/file3
-+sync
-+
-+reader() {
-+	while [ ! -e $TESTDIR/finished ]; do
-+		dd if=$TESTDIR/file3 iflag=direct 2> /dev/null | od -tx1 -Ax | while read addr rest; do
-+				test -n "$rest" && echo "$rest"
-+		done | egrep -v '(61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61|62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62)'
-+	done
-+}
-+
-+echo "Reflink and dio reread the files!"
-+reader &
-+for i in `seq 1 2`; do
-+	start=`expr $loops - 1`
-+	for i in `seq $start -1 0`
-+	do
-+		$XFS_IO_PROG -f -c "reflink $TESTDIR/file1 $((i * iosize)) $((i * iosize)) $iosize" $TESTDIR/file3 >> $seqres.full
-+		[ $? -ne 0 ] && break
-+	done
-+	start=`expr $loops - 1`
-+	for i in `seq $start -1 0`
-+	do
-+		$XFS_IO_PROG -f -c "reflink $TESTDIR/file2 $((i * iosize)) $((i * iosize)) $iosize" $TESTDIR/file3 >> $seqres.full
-+		[ $? -ne 0 ] && break
-+	done
-+done
-+echo "Finished reflinking"
-+touch $TESTDIR/finished
-+wait
-+
-+echo "Check fs"
-+umount $SCRATCH_MNT
-+_check_scratch_fs
-+
-+echo "Done"
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/generic/825.out b/tests/generic/825.out
-new file mode 100644
-index 0000000..1e2f36c
---- /dev/null
-+++ b/tests/generic/825.out
-@@ -0,0 +1,7 @@
-+QA output created by 825
-+Format and mount
-+Initialize files
-+Reflink and dio reread the files!
-+Finished reflinking
-+Check fs
-+Done
-diff --git a/tests/generic/826 b/tests/generic/826
-new file mode 100755
-index 0000000..1739778
---- /dev/null
-+++ b/tests/generic/826
-@@ -0,0 +1,108 @@
-+#! /bin/bash
-+# FS QA Test No. 826
-+#
-+# Test for race between reflink and buffered I/O reading the target file
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2015 Oracle, Inc.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 7 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -rf $tmp.*
-+    wait
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# real QA test starts here
-+# Modify as appropriate.
-+_supported_fs generic
-+_supported_os Linux
-+
-+_require_scratch
-+_require_scratch_reflink
-+_require_cp_reflink
-+_require_xfs_io_command "reflink"
-+
-+echo "Format and mount"
-+_scratch_mkfs > $seqres.full 2>&1
-+_scratch_mount >> $seqres.full 2>&1
-+
-+TESTDIR=$SCRATCH_MNT/test-$seq
-+rm -rf $TESTDIR
-+mkdir $TESTDIR
-+
-+loops=512
-+BLKSZ="$(stat -f $TESTDIR -c '%S')"
-+iosize=$((BLKSZ * 16))
-+
-+echo "Initialize files"
-+echo > $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((loops * iosize))" $TESTDIR/file1 >> $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x62 0 $((loops * iosize))" $TESTDIR/file2 >> $seqres.full
-+cp --reflink=always $TESTDIR/file1 $TESTDIR/file3
-+sync
-+
-+reader() {
-+	while [ ! -e $TESTDIR/finished ]; do
-+		cat $TESTDIR/file3 | od -tx1 -Ax | while read addr rest; do
-+				test -n "$rest" && echo "$rest"
-+		done | egrep -v '(61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61|62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62)'
-+	done
-+}
-+
-+echo "Reflink and reread the files!"
-+reader &
-+for i in `seq 1 2`; do
-+	start=`expr $loops - 1`
-+	for i in `seq $start -1 0`
-+	do
-+		$XFS_IO_PROG -f -c "reflink $TESTDIR/file1 $((i * iosize)) $((i * iosize)) $iosize" $TESTDIR/file3 >> $seqres.full
-+		[ $? -ne 0 ] && break
-+	done
-+	start=`expr $loops - 1`
-+	for i in `seq $start -1 0`
-+	do
-+		$XFS_IO_PROG -f -c "reflink $TESTDIR/file2 $((i * iosize)) $((i * iosize)) $iosize" $TESTDIR/file3 >> $seqres.full
-+		[ $? -ne 0 ] && break
-+	done
-+done
-+echo "Finished reflinking"
-+touch $TESTDIR/finished
-+wait
-+
-+echo "Check fs"
-+umount $SCRATCH_MNT
-+_check_scratch_fs
-+
-+echo "Done"
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/generic/826.out b/tests/generic/826.out
-new file mode 100644
-index 0000000..144f4bc
---- /dev/null
-+++ b/tests/generic/826.out
-@@ -0,0 +1,7 @@
-+QA output created by 826
-+Format and mount
-+Initialize files
-+Reflink and reread the files!
-+Finished reflinking
-+Check fs
-+Done
-diff --git a/tests/generic/827 b/tests/generic/827
-new file mode 100755
-index 0000000..fa2ba2e
---- /dev/null
-+++ b/tests/generic/827
-@@ -0,0 +1,98 @@
-+#! /bin/bash
-+# FS QA Test No. 827
-+#
-+# Test for race between dedupe and writing the source file
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2015 Oracle, Inc.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 7 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -rf $tmp.*
-+    wait
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# real QA test starts here
-+# Modify as appropriate.
-+_supported_fs generic
-+_supported_os Linux
-+
-+_require_scratch
-+_require_scratch_reflink
-+_require_xfs_io_command "reflink"
-+
-+echo "Format and mount"
-+_scratch_mkfs > $seqres.full 2>&1
-+_scratch_mount >> $seqres.full 2>&1
-+
-+TESTDIR=$SCRATCH_MNT/test-$seq
-+rm -rf $TESTDIR
-+mkdir $TESTDIR
-+
-+loops=512
-+BLKSZ="$(stat -f $TESTDIR -c '%S')"
-+iosize=$((BLKSZ * 16))
-+
-+echo "Initialize files"
-+echo > $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((loops * iosize))" $TESTDIR/file1 >> $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((loops * iosize))" $TESTDIR/file2 >> $seqres.full
-+sync
-+
-+overwrite() {
-+	while [ ! -e $TESTDIR/finished ]; do
-+		$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((loops * iosize))" $TESTDIR/file1 >> $seqres.full
-+	done
-+}
-+
-+echo "Dedupe and rewrite the file!"
-+overwrite &
-+for i in `seq 1 2`; do
-+	start=`expr $loops - 1`
-+	for i in `seq $start -1 0`
-+	do
-+		$XFS_IO_PROG -f -c "dedupe $TESTDIR/file1 $((i * iosize)) $((i * iosize)) $iosize" $TESTDIR/file2 >> $seqres.full
-+		[ $? -ne 0 ] && break
-+	done
-+done
-+echo "Finished dedupeing"
-+touch $TESTDIR/finished
-+wait
-+
-+echo "Check fs"
-+umount $SCRATCH_MNT
-+_check_scratch_fs
-+
-+echo "Done"
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/generic/827.out b/tests/generic/827.out
-new file mode 100644
-index 0000000..1b05f59
---- /dev/null
-+++ b/tests/generic/827.out
-@@ -0,0 +1,7 @@
-+QA output created by 827
-+Format and mount
-+Initialize files
-+Dedupe and rewrite the file!
-+Finished dedupeing
-+Check fs
-+Done
-diff --git a/tests/generic/828 b/tests/generic/828
-new file mode 100755
-index 0000000..43b1682
---- /dev/null
-+++ b/tests/generic/828
-@@ -0,0 +1,98 @@
-+#! /bin/bash
-+# FS QA Test No. 828
-+#
-+# Test for race between dedupe and writing the dest file
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2015 Oracle, Inc.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 7 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -rf $tmp.*
-+    wait
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# real QA test starts here
-+# Modify as appropriate.
-+_supported_fs generic
-+_supported_os Linux
-+
-+_require_scratch
-+_require_scratch_reflink
-+_require_xfs_io_command "reflink"
-+
-+echo "Format and mount"
-+_scratch_mkfs > $seqres.full 2>&1
-+_scratch_mount >> $seqres.full 2>&1
-+
-+TESTDIR=$SCRATCH_MNT/test-$seq
-+rm -rf $TESTDIR
-+mkdir $TESTDIR
-+
-+loops=512
-+BLKSZ="$(stat -f $TESTDIR -c '%S')"
-+iosize=$((BLKSZ * 16))
-+
-+echo "Initialize files"
-+echo > $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((loops * iosize))" $TESTDIR/file1 >> $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((loops * iosize))" $TESTDIR/file2 >> $seqres.full
-+sync
-+
-+overwrite() {
-+	while [ ! -e $TESTDIR/finished ]; do
-+		$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((loops * iosize))" $TESTDIR/file2 >> $seqres.full
-+	done
-+}
-+
-+echo "Dedupe and rewrite the file!"
-+overwrite &
-+for i in `seq 1 2`; do
-+	start=`expr $loops - 1`
-+	for i in `seq $start -1 0`
-+	do
-+		$XFS_IO_PROG -f -c "dedupe $TESTDIR/file1 $((i * iosize)) $((i * iosize)) $iosize" $TESTDIR/file2 >> $seqres.full
-+		[ $? -ne 0 ] && break
-+	done
-+done
-+echo "Finished dedupeing"
-+touch $TESTDIR/finished
-+wait
-+
-+echo "Check fs"
-+umount $SCRATCH_MNT
-+_check_scratch_fs
-+
-+echo "Done"
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/generic/828.out b/tests/generic/828.out
-new file mode 100644
-index 0000000..fb31777
---- /dev/null
-+++ b/tests/generic/828.out
-@@ -0,0 +1,7 @@
-+QA output created by 828
-+Format and mount
-+Initialize files
-+Dedupe and rewrite the file!
-+Finished dedupeing
-+Check fs
-+Done
-diff --git a/tests/generic/829 b/tests/generic/829
-new file mode 100755
-index 0000000..76fe937
---- /dev/null
-+++ b/tests/generic/829
-@@ -0,0 +1,84 @@
-+#! /bin/bash
-+# FS QA Test No. 829
-+#
-+# Test for race between delete a file while rewriting its reflinked twin
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2015 Oracle, Inc.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 7 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -rf $tmp.*
-+    wait
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# real QA test starts here
-+# Modify as appropriate.
-+_supported_fs generic
-+_supported_os Linux
-+
-+_require_scratch
-+_require_scratch_reflink
-+_require_cp_reflink
-+_require_xfs_io_command "reflink"
-+
-+echo "Format and mount"
-+_scratch_mkfs > $seqres.full 2>&1
-+_scratch_mount >> $seqres.full 2>&1
-+
-+TESTDIR=$SCRATCH_MNT/test-$seq
-+rm -rf $TESTDIR
-+mkdir $TESTDIR
-+
-+loops=4096
-+BLKSZ="$(stat -f $TESTDIR -c '%S')"
-+iosize=$((BLKSZ * 16))
-+
-+echo "Initialize files"
-+echo > $seqres.full
-+$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((loops * iosize))" $TESTDIR/file1 >> $seqres.full
++$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((BLKS * BLKSZ))" $TESTDIR/file1 \
++    >> $seqres.full 2>&1
 +cp --reflink=always $TESTDIR/file1 $TESTDIR/file2
-+sync
++cp --reflink=always $TESTDIR/file2 $TESTDIR/file3
++cp --reflink=always $TESTDIR/file3 $TESTDIR/file4
++_test_remount
++FREE_BLOCKS1=$(stat -f $TESTDIR -c '%f')
 +
-+echo "Delete while rewriting"
-+rm -rf $TESTDIR/file1 &
-+$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((loops * iosize))" $TESTDIR/file1 >> $seqres.full
-+wait
++C01=$(_md5_checksum $TESTDIR/file1)
++C02=$(_md5_checksum $TESTDIR/file2)
++C03=$(_md5_checksum $TESTDIR/file3)
++C04=$(_md5_checksum $TESTDIR/file4)
 +
-+echo "Check fs"
++echo "CoW the reflink copies"
++$XFS_IO_PROG -f -c "pwrite -S 0x62 $BLKSZ $BLKSZ" $TESTDIR/file2 >> $seqres.full
++$XFS_IO_PROG -f -c "pwrite -S 0x63 $(( BLKSZ * (BLKS - 1) )) $BLKSZ" $TESTDIR/file3 >> $seqres.full
++_test_remount
++FREE_BLOCKS2=$(stat -f $TESTDIR -c '%f')
++
++C11=$(_md5_checksum $TESTDIR/file1)
++C12=$(_md5_checksum $TESTDIR/file2)
++C13=$(_md5_checksum $TESTDIR/file3)
++C14=$(_md5_checksum $TESTDIR/file4)
++
++echo "Defragment"
++lsattr -l $TESTDIR/ | sed -e "s,$SCRATCH_MNT,SCRATCH_MNT,g"
++xfs_fsr -v -d $TESTDIR/file1 >> $seqres.full
++xfs_fsr -v -d $TESTDIR/file2 >> $seqres.full # fsr probably breaks the link
++xfs_fsr -v -d $TESTDIR/file3 >> $seqres.full # fsr probably breaks the link
++xfs_fsr -v -d $TESTDIR/file4 >> $seqres.full # fsr probably ignores this file
++_test_remount
++FREE_BLOCKS3=$(stat -f $TESTDIR -c '%f')
++
++C21=$(_md5_checksum $TESTDIR/file1)
++C22=$(_md5_checksum $TESTDIR/file2)
++C23=$(_md5_checksum $TESTDIR/file3)
++C24=$(_md5_checksum $TESTDIR/file4)
++
++echo "Check files"
++test $C01 = $C02 || echo "Files 1-2 do not match"
++test $C01 = $C03 || echo "Files 1-3 do not match"
++test $C01 = $C04 || echo "Files 1-4 do not match"
++test $C02 = $C03 || echo "Files 2-3 do not match"
++test $C02 = $C04 || echo "Files 2-4 do not match"
++test $C03 = $C04 || echo "Files 3-4 do not match"
++
++test $C01 = $C11 || echo "File1 should not be different after CoW"
++test $C02 != $C12 || echo "File2 should be different after CoW"
++test $C03 != $C13 || echo "File3 should be different after CoW"
++test $C04 = $C14 || echo "File4 should not be different after CoW"
++
++test $C11 = $C21 || echo "File1 changed by defrag"
++test $C12 = $C22 || echo "File2 changed by defrag"
++test $C13 = $C23 || echo "File3 changed by defrag"
++test $C14 = $C24 || echo "File4 changed by defrag"
++
++#echo $FREE_BLOCKS0 $FREE_BLOCKS1 $FREE_BLOCKS2 $FREE_BLOCKS3
++
++_within_tolerance "free blocks after creating some reflink copies" $FREE_BLOCKS1 $((FREE_BLOCKS0 - BLKS)) $MARGIN -v
++_within_tolerance "free blocks after CoW some reflink copies" $FREE_BLOCKS2 $((FREE_BLOCKS1 - 2)) $MARGIN -v
++_within_tolerance "free blocks after defragging all reflink copies" $FREE_BLOCKS3 $((FREE_BLOCKS2 - (BLKS * 2))) $MARGIN -v
++_within_tolerance "free blocks after all tests" $FREE_BLOCKS3 $((FREE_BLOCKS0 - (BLKS * 3))) $MARGIN -v
++
++echo "Check scratch fs"
 +umount $SCRATCH_MNT
 +_check_scratch_fs
 +
-+echo "Done"
 +# success, all done
 +status=0
 +exit
-diff --git a/tests/generic/829.out b/tests/generic/829.out
+diff --git a/tests/xfs/801.out b/tests/xfs/801.out
 new file mode 100644
-index 0000000..9cee8ba
+index 0000000..9e5f4ca
 --- /dev/null
-+++ b/tests/generic/829.out
-@@ -0,0 +1,6 @@
-+QA output created by 829
++++ b/tests/xfs/801.out
+@@ -0,0 +1,15 @@
++QA output created by 801
 +Format and mount
-+Initialize files
-+Delete while rewriting
-+Check fs
-+Done
-diff --git a/tests/generic/group b/tests/generic/group
-index b4ba56a..7f70690 100644
---- a/tests/generic/group
-+++ b/tests/generic/group
-@@ -227,5 +227,14 @@
- 817 auto quick clone
- 818 auto quick clone
- 819 auto quick clone
-+821 auto quick clone
-+822 auto quick clone
-+823 auto quick clone
-+824 auto quick clone
-+825 auto quick clone
-+826 auto quick clone
-+827 auto quick clone
-+828 auto quick clone
-+829 auto quick clone
- 837 auto quick clone
- 838 auto quick clone
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
++Create the original file and reflink to file2, file3
++CoW the reflink copies
++Defragment
++SCRATCH_MNT/test-801/file1          ---
++SCRATCH_MNT/test-801/file2          ---
++SCRATCH_MNT/test-801/file3          ---
++SCRATCH_MNT/test-801/file4          ---
++Check files
++free blocks after creating some reflink copies is in range
++free blocks after CoW some reflink copies is in range
++free blocks after defragging all reflink copies is in range
++free blocks after all tests is in range
++Check scratch fs
+diff --git a/tests/xfs/802 b/tests/xfs/802
+new file mode 100755
+index 0000000..05c5004
+--- /dev/null
++++ b/tests/xfs/802
+@@ -0,0 +1,89 @@
++#! /bin/bash
++# FS QA Test No. 802
++#
++# Ensure that we can create enough distinct reflink entries to force creation
++# of a multi-level refcount btree, and that metadump will successfully copy
++# said block.
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2015, Oracle and/or its affiliates.  All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#-----------------------------------------------------------------------
++
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1    # failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
++{
++    cd /
++    rm -rf $tmp.* $TESTDIR $METADUMP_FILE
++}
++
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++
++# real QA test starts here
++_supported_fs xfs
++_require_test
++_require_scratch
++_require_scratch_reflink
++_supported_os Linux
++
++_require_xfs_io_command "reflink"
++
++rm -f $seqres.full
++
++_scratch_mkfs >/dev/null 2>&1
++_scratch_mount
++
++TESTDIR=$SCRATCH_MNT/test-$seq
++rm -rf $TESTDIR
++mkdir $TESTDIR
++METADUMP_FILE="${TEST_DIR}/${seq}_metadump"
++
++echo "Create the original file blocks"
++BLKSZ="$(stat -f $TESTDIR -c '%S')"
++NR_BLKS=$((4 * BLKSZ / 12))
++$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((BLKSZ * NR_BLKS))" $TESTDIR/file1 >> $seqres.full
++
++echo "Reflink every other block"
++touch $TESTDIR/file2
++seq 1 $((NR_BLKS / 2)) | while read nr; do
++	$XFS_IO_PROG -f -c "reflink $TESTDIR/file1 $((nr * 2 * BLKSZ)) $((nr * 2 * BLKSZ)) $BLKSZ" $TESTDIR/file2 >> $seqres.full
++done
++
++echo "Create metadump file"
++_scratch_unmount
++_scratch_metadump $METADUMP_FILE
++
++# Now restore the obfuscated one back and take a look around
++echo "Restore metadump"
++xfs_mdrestore "${METADUMP_FILE}" "${SCRATCH_DEV}"
++_scratch_mount
++_scratch_unmount
++
++echo "Check restored fs"
++_check_scratch_fs
++
++# success, all done
++status=0
++exit
+diff --git a/tests/xfs/802.out b/tests/xfs/802.out
+new file mode 100644
+index 0000000..ad2ef03
+--- /dev/null
++++ b/tests/xfs/802.out
+@@ -0,0 +1,6 @@
++QA output created by 802
++Create the original file blocks
++Reflink every other block
++Create metadump file
++Restore metadump
++Check restored fs
+diff --git a/tests/xfs/803 b/tests/xfs/803
+new file mode 100755
+index 0000000..62a9246
+--- /dev/null
++++ b/tests/xfs/803
+@@ -0,0 +1,104 @@
++#! /bin/bash
++# FS QA Test No. 803
++#
++# Create and populate an XFS filesystem, corrupt the refcount btree,
++# then see how the kernel and xfs_repair deal with it.
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2015 Oracle, Inc.  All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#-----------------------------------------------------------------------
++#
++
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
++{
++    cd /
++    #rm -f $tmp.*
++}
++
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++. ./common/attr
++
++# real QA test starts here
++_supported_fs xfs
++_supported_os Linux
++
++_require_scratch
++_require_scratch_reflink
++test -n "${FORCE_FUZZ}" || _require_scratch_xfs_crc
++_require_attrs
++
++rm -f $seqres.full
++
++echo "+ create scratch fs"
++_scratch_mkfs_xfs > /dev/null
++
++echo "+ mount fs image"
++_scratch_mount
++blksz="$(stat -f -c '%s' "${SCRATCH_MNT}")"
++agcount="$(xfs_info "${SCRATCH_MNT}" | grep agcount= | sed -e 's/^.*agcount=\([0-9]*\),.*$/\1/g')"
++
++echo "+ make some files"
++$XFS_IO_PROG -f -c "pwrite -S 0x62 0 $((blksz * 64))" "${SCRATCH_MNT}/file0" >> $seqres.full
++$XFS_IO_PROG -f -c "pwrite -S 0x61 0 $((blksz * 64))" "${SCRATCH_MNT}/file1" >> $seqres.full
++cp --reflink=always "${SCRATCH_MNT}/file0" "${SCRATCH_MNT}/file2"
++cp --reflink=always "${SCRATCH_MNT}/file1" "${SCRATCH_MNT}/file3"
++umount "${SCRATCH_MNT}"
++
++echo "+ check fs"
++_scratch_xfs_repair -n >> $seqres.full 2>&1 || _fail "xfs_repair should not fail"
++
++echo "+ corrupt image"
++for ag in $(seq 1 $((agcount - 1))) 0; do
++	$XFS_DB_PROG -x -c "agf ${ag}" -c "agf ${ag}" -c "addr refcntroot" -c "stack" -c "blocktrash -x 4096 -y 4096 -z -n 8 -3" "${SCRATCH_DEV}" >> $seqres.full 2>&1
++done
++
++echo "+ mount image"
++_scratch_mount
++
++echo "+ reflink more"
++cp --reflink=always "${SCRATCH_MNT}/file1" "${SCRATCH_MNT}/file4" 2> /dev/null && _fail "should not be able to reflink with busted refcount btree"
++umount "${SCRATCH_MNT}"
++
++echo "+ repair fs"
++_scratch_xfs_repair >> $seqres.full 2>&1
++_scratch_xfs_repair >> $seqres.full 2>&1
++
++echo "+ mount image (2)"
++_scratch_mount
++
++echo "+ chattr -R -i"
++chattr -R -f -i "${SCRATCH_MNT}/"
++
++echo "+ reflink more (2)"
++cp --reflink=always "${SCRATCH_MNT}/file1" "${SCRATCH_MNT}/file5" || _fail "modified refcount tree"
++umount "${SCRATCH_MNT}"
++
++echo "+ check fs (2)"
++_scratch_xfs_repair -n >> $seqres.full 2>&1 || _fail "xfs_repair should not fail"
++
++status=0
++exit
+diff --git a/tests/xfs/803.out b/tests/xfs/803.out
+new file mode 100644
+index 0000000..582682d
+--- /dev/null
++++ b/tests/xfs/803.out
+@@ -0,0 +1,13 @@
++QA output created by 803
+++ create scratch fs
+++ mount fs image
+++ make some files
+++ check fs
+++ corrupt image
+++ mount image
+++ reflink more
+++ repair fs
+++ mount image (2)
+++ chattr -R -i
+++ reflink more (2)
+++ check fs (2)
+diff --git a/tests/xfs/group b/tests/xfs/group
+index 8261f86..cbbd810 100644
+--- a/tests/xfs/group
++++ b/tests/xfs/group
+@@ -220,3 +220,7 @@
+ 303 auto quick quota
+ 304 auto quick quota
+ 305 auto quota
++800 auto quick clone
++801 auto quick clone
++802 auto quick clone
++803 fuzzers
