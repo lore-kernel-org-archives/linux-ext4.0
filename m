@@ -1,55 +1,68 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [REGRESSION] 998ef75ddb and aio-dio-invalidate-failure w/
- data=journal
-Date: Tue, 6 Oct 2015 23:34:48 -0400
-Message-ID: <20151007033448.GB24678@thunk.org>
-References: <20151005152236.GA8140@thunk.org>
- <5612BBB3.7010201@intel.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [RFCv3 00/12] xfstests: test the btrfs/xfs reflink/dedupe ioctls
+Date: Tue, 06 Oct 2015 22:12:57 -0700
+Message-ID: <20151007051257.3260.73072.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Dave Hansen <dave.hansen@intel.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <5612BBB3.7010201@intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Anna.Schumaker@netapp.com, linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
+To: david@fromorbit.com, darrick.wong@oracle.com
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 05, 2015 at 11:04:35AM -0700, Dave Hansen wrote:
-> 
-> The warning comes out of ext4_walk_page_buffers() and the dirty state
-> comes from page_zero_new_buffers(). That seems a _bit_ goofy that the
-> filesystem is marking the page dirty and then so shortly warning about it.
+Hi all,
 
-Yes, this is a bug in ext4 --- and in fact in ext3, which apparently
-we've lived with for *years*.  The problem is that when we are
-journalling data buffers, we can't use page_zero_new_buffers(),
-because instead of calling mark_buffer_dirty(bh), we need to call
-ext4_handle_dirty_metadata(bh).  This will call mark_buffer_dirty(bh)
-if journalling is not enabled, or if journalling is enabled, it will
-call jbd2_journal_dirty_metadata(handle,bh).
+This is part of the third revision of an RFC for adding to XFS support
+for tracking reverse-mappings of physical blocks to file and metadata;
+and support for mapping multiple file logical blocks to the same
+physical block, more commonly known as reflinking.
 
-Apprently it is extremely rare that (copied < len) --- especially when
-mm/filemap.c was doing a prefault.  :-)
+This patchset aims to make xfstests perform more rigorous testing of
+the btrfs/XFS file clone, reflink, and dedupe ioctls.  There are now
+tests of the basic functionality of the three ioctls; tests to ensure
+that the filesystem exhibits the expected copy on write semantics;
+tests to try to suss out race conditions in the new write paths; tests
+to ensure that the ioctls peform basic disk accounting correctly;
+tests of the interaction between reflink and the various fallocate
+verbs (allocate, punch, collapse, insert zeroes); and some attempts to
+test the upper limits of reflinking and ENOSPC behavior.  The tests
+have been totally rewritten since the last posting to drop FIEMAP
+usage; this should enable the tests to cover NFS and CIFS.
 
-So your patch looks good, but in addition to that, if copied is > 0
-and less than len, we shouldn't be calling page_zero_new_buffers().
-We're going to need our own version of it that doesn't call
-mark_buffer_dirty().
+Issues: 
 
-So if Linus wants to revert 998ef75ddb patch, we can do that, but I'm
-also happy applying your patch as a way of preventing the failure.
-We'll need to do more work to make ext4_journalled_write_end(), but
-that's a bigger change which I'd rather not do at this point in the
-development cycle.
+ * I think the race checks for dedupe could be a little sharper at
+   finding mistakes.
 
-Thanks again for taking a closer look at things.  I'm currently
-running a full soak test to make sure your patch to
-ext4_journalled_write_end() doesn't introduce any other problems, but
-I'm quite confident it should be fine.
+ * I started the numbering really high to prevent the tests from
+   colliding with whatever new tests might arrive; this will require
+   some intervention to fix.
 
-Cheers,
+ * I don't have any interesting NFS/CIFS setups for test. :(
 
-						- Ted
+If you're going to start using this mess, you probably ought to just
+pull from my github trees for kernel[1], xfsprogs[2], and xfstests[3].
+They should just work with the btrfs that's in 4.3.
+
+Comments and questions are, as always, welcome.
+
+--D
+
+[1] https://github.com/djwong/linux-xfs-dev/commits/master
+[2] https://github.com/djwong/xfsprogs/commits/for-next
+[3] https://github.com/djwong/xfstests/commits/master
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
