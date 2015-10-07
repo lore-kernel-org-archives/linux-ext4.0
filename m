@@ -1,76 +1,45 @@
-From: Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH v8 00/41] Richacls
-Date: Wed, 7 Oct 2015 10:15:19 -0500
-Message-ID: <CAH2r5mt18-CQLCMz0RHnK_sXW5oOFpf2kMVeWJRvrD3Vw2MWLw@mail.gmail.com>
-References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
- <20151004062313.GA20212@infradead.org> <CAHc6FU53mXg1k0KCNkWEjxyuC8iAUgWh-A76qX=C3Yth+qEyuQ@mail.gmail.com>
- <5612C85C.2060407@gmail.com> <20151006094935.GA14144@infradead.org>
- <CAHc6FU5aZJDC3N1iGyVeHfbqMyquM93ONJvUR-t0a9+AjmtAXQ@mail.gmail.com>
- <CF738526-0807-4CE5-A52B-413164D41AA9@dilger.ca> <20151007075053.GA8660@infradead.org>
- <CAHc6FU7TM5LDu_vVvDc3WPuzQN2mkGGp2AvCY+=qN0GvWuC=Ew@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [REGRESSION] 998ef75ddb and aio-dio-invalidate-failure w/
+ data=journal
+Date: Wed, 7 Oct 2015 11:43:03 -0400
+Message-ID: <20151007154303.GC24678@thunk.org>
+References: <20151005152236.GA8140@thunk.org>
+ <5612BBB3.7010201@intel.com>
+ <20151007033448.GB24678@thunk.org>
+ <CA+55aFycvHK2z_0QZ34wEJf5fBMxWDaeOs85cFSmpKnNONDxLQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	Austin S Hemmelgarn <ahferroin7-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	samba-technical <samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org>
-To: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <CAHc6FU7TM5LDu_vVvDc3WPuzQN2mkGGp2AvCY+=qN0GvWuC=Ew-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Dave Hansen <dave.hansen@intel.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <CA+55aFycvHK2z_0QZ34wEJf5fBMxWDaeOs85cFSmpKnNONDxLQ@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Oct 7, 2015 at 8:38 AM, Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
-> On Wed, Oct 7, 2015 at 9:50 AM, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org> wrote:
->> On Tue, Oct 06, 2015 at 02:26:09PM -0600, Andreas Dilger wrote:
->>> And any disk filesystems that have their own non-POSIX ACLs, such as HFS, NTFS, ZFS would presumably also need to map the in-kernel Richacl format to their on-disk format.
->>
->> No, we did this mistake with Posix ACLs, and we're not going to repeat
->> it here.  Filesystems with their own slightly different ACLs must not
->> reuse the interface.
->
-> Well, things may not be quite as clearly delineated. We currently have
-> code in nfsd for mapping between NFSv4 ACLs on the wire and POSIX ACLs
-> on local file systems. This mapping is problematic because of the
-> semantic differences between NFSv4 ACLs and POSIX ACLs (different sets
-> of permissions, access and default acl vs. inheritance flags,
-> different permission check algorithm). I wish we could have avoided
-> that.
->
-> Richacls are designed to support NFSv4 ACLs on top of POSIX systems.
-> This means that they should obviously be supported by the NFSv4 server
-> and client (see the patches) and by the common local filesystems.
->
-> ACLs on NTFS and ZFS mostly fit into the same model. The big remaining
-> difference there is how users and groups are identified: NTFS used
-> SIDs (https://en.wikipedia.org/wiki/Security_Identifier); ZFS could be
-> said to use a hybrid UID / GID / SID model. Exposing those ACLs as
-> richacls would make sense if we can find a clean way of handling this
-> aspect.
+On Wed, Oct 07, 2015 at 08:32:16AM +0100, Linus Torvalds wrote:
+> And none of *those* requirements change just because "copied" would be
+> zero. If you avoid zeroing the buffers and marking them dirty, nothing
+> will ever initialize them on disk, andn if the prefault then later
+> fails during retry, no later write will happen either. So now
+> eventually later, a read() can see stale data from disk.
 
-Samba (e.g. winbind service) has mapping libraries for mapping SIDs to
-UIDs (CIFS ACLs already have the same issue of SID to UID mapping
-which we handle with upcalls) and Samba has various pluggable ways to
-handle UID mapping and is easily extensible.  Similarly NFSv4 ACLs,
-although closely related to CIFS/NTFS ACLs have to be map usernames to
-uids.
+Shoot.  You're right, we could end up allowing a stale data to be
+exposed.  If we knew the caller of write_end() was guaranteed to
+retry, we could skip the jbd2_journal_stop() call and keep the handle
+open, which would prevent the transaction from closing.  But if the
+write gets abandoned, then the transaction would never close, and
+things would grind to a halt.
 
--- 
-Thanks,
+> I do think this is an ext4 bug, and you'll need to do something *like*
+> that patch. Maybe Dave's patch is good as-is. It's the "I think you
+> need to do more" that I worry about. Not at -rc4 time. Not with a core
+> filesystem like ext4. Let's not hurry this too much.
 
-Steve
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Agreed, I know what to do, and and the change is not something I'd
+want to get in -rc4.  I'll target a fix for the next merge window.
+
+    	    	   	       	      	- Ted
