@@ -1,39 +1,26 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v8 00/41] Richacls
-Date: Wed, 7 Oct 2015 00:50:54 -0700
-Message-ID: <20151007075053.GA8660@infradead.org>
-References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
- <20151004062313.GA20212@infradead.org>
- <CAHc6FU53mXg1k0KCNkWEjxyuC8iAUgWh-A76qX=C3Yth+qEyuQ@mail.gmail.com>
- <5612C85C.2060407@gmail.com>
- <20151006094935.GA14144@infradead.org>
- <CAHc6FU5aZJDC3N1iGyVeHfbqMyquM93ONJvUR-t0a9+AjmtAXQ@mail.gmail.com>
- <CF738526-0807-4CE5-A52B-413164D41AA9@dilger.ca>
+From: Alexander Inyukhin <shurick@sectorb.msk.ru>
+Subject: noacl and nouser_xattr deprecation warning
+Date: Wed, 7 Oct 2015 15:47:32 +0300
+Message-ID: <20151007124732.GA17392@shurick.grid.su>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Austin S Hemmelgarn <ahferroin7@gmail.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Trond Myklebust <trond.myklebust@primarydata.com>,
-	Anna Schumaker <anna.schumaker@netapp.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-nfs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.imec.msu.ru ([93.180.3.203]:38083 "EHLO imap.imec.msu.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751543AbbJGMxE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Oct 2015 08:53:04 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by imap.imec.msu.ru (Postfix) with ESMTP id C1479C2AF
+	for <linux-ext4@vger.kernel.org>; Wed,  7 Oct 2015 15:47:35 +0300 (MSK)
 Content-Disposition: inline
-In-Reply-To: <CF738526-0807-4CE5-A52B-413164D41AA9@dilger.ca>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 06, 2015 at 02:26:09PM -0600, Andreas Dilger wrote:
-> And any disk filesystems that have their own non-POSIX ACLs, such as HFS, NTFS, ZFS would presumably also need to map the in-kernel Richacl format to their on-disk format.
+Hi,
 
-No, we did this mistake with Posix ACLs, and we're not going to repeat
-it here.  Filesystems with their own slightly different ACLs must not
-reuse the interface.
+noacl and nouser_xattr mount options produce an annoying
+and misleading warning about their removal "by 3.5".
+It is 4.2 already, does the patch f70486055 still actual?
+
+The options themselves are very useful.
