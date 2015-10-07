@@ -1,69 +1,55 @@
-From: Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH v8 00/41] Richacls
-Date: Tue, 6 Oct 2015 15:55:01 -0500
-Message-ID: <CAH2r5mtbg7QQVQsi_7RDF855dkqumX1K2thCyBirqn=uCRZa8A@mail.gmail.com>
-References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
- <20151004062313.GA20212@infradead.org> <CAHc6FU53mXg1k0KCNkWEjxyuC8iAUgWh-A76qX=C3Yth+qEyuQ@mail.gmail.com>
- <5612C85C.2060407@gmail.com> <20151006094935.GA14144@infradead.org>
- <CAHc6FU5aZJDC3N1iGyVeHfbqMyquM93ONJvUR-t0a9+AjmtAXQ@mail.gmail.com> <CF738526-0807-4CE5-A52B-413164D41AA9@dilger.ca>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [REGRESSION] 998ef75ddb and aio-dio-invalidate-failure w/
+ data=journal
+Date: Tue, 6 Oct 2015 23:34:48 -0400
+Message-ID: <20151007033448.GB24678@thunk.org>
+References: <20151005152236.GA8140@thunk.org>
+ <5612BBB3.7010201@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	Austin S Hemmelgarn <ahferroin7-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <CF738526-0807-4CE5-A52B-413164D41AA9-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Dave Hansen <dave.hansen@intel.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <5612BBB3.7010201@intel.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 6, 2015 at 3:26 PM, Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org> wrote:
-> On Oct 6, 2015, at 7:12 AM, Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
->>
->> On Tue, Oct 6, 2015 at 11:49 AM, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org> wrote:
->>> On Mon, Oct 05, 2015 at 02:58:36PM -0400, Austin S Hemmelgarn wrote:
->>>> I think the point is that a new VFS feature that is easy to integrate in
->>>> multiple filesystems should have support for those filesystems.  A decade
->>>> ago, just having ext* support would probably have been fine, but these days,
->>>> XFS, BTRFS, and F2FS are used just as much (if not more) on production
->>>> systems as ext4, and having support for them right from the start would
->>>> significantly help with adoption of richacls.
->>>
->>> That's one reason.  The other is that actually wiring it up for more
->>> than a single consumer shows its actually reasonable generic.
->>
->> The filesystem interface now is the same as for POSIX ACLs, used by a
->> dozen or so filesystems already.
->>
->>> I don't want to end up with a situration like Posix ACLs again where
->>> different file systems using different on disk formats again.
->>
->> Any file system could choose a different on-disk format than the one
->> that ext4 currently uses, but I don't see a reason why any should.
->> Apart from uid / gid mappings that is the same as the user-space xattr
->> format. Network file systems like NFSv4 and CIFS with their predefined
->> over-the-wire formats obviously are another story.
->
-> And any disk filesystems that have their own non-POSIX ACLs, such as HFS, NTFS, ZFS would presumably also need to map the in-kernel Richacl format to their on-disk format.
+On Mon, Oct 05, 2015 at 11:04:35AM -0700, Dave Hansen wrote:
+> 
+> The warning comes out of ext4_walk_page_buffers() and the dirty state
+> comes from page_zero_new_buffers(). That seems a _bit_ goofy that the
+> filesystem is marking the page dirty and then so shortly warning about it.
 
-Will be interesting to see whether in the long run can have some
-common code in NTFS, CIFS/SMB3 (and even NFSv4.x) ACL parsing since
-their formats are quite closely related
+Yes, this is a bug in ext4 --- and in fact in ext3, which apparently
+we've lived with for *years*.  The problem is that when we are
+journalling data buffers, we can't use page_zero_new_buffers(),
+because instead of calling mark_buffer_dirty(bh), we need to call
+ext4_handle_dirty_metadata(bh).  This will call mark_buffer_dirty(bh)
+if journalling is not enabled, or if journalling is enabled, it will
+call jbd2_journal_dirty_metadata(handle,bh).
 
+Apprently it is extremely rare that (copied < len) --- especially when
+mm/filemap.c was doing a prefault.  :-)
 
+So your patch looks good, but in addition to that, if copied is > 0
+and less than len, we shouldn't be calling page_zero_new_buffers().
+We're going to need our own version of it that doesn't call
+mark_buffer_dirty().
 
--- 
-Thanks,
+So if Linus wants to revert 998ef75ddb patch, we can do that, but I'm
+also happy applying your patch as a way of preventing the failure.
+We'll need to do more work to make ext4_journalled_write_end(), but
+that's a bigger change which I'd rather not do at this point in the
+development cycle.
 
-Steve
+Thanks again for taking a closer look at things.  I'm currently
+running a full soak test to make sure your patch to
+ext4_journalled_write_end() doesn't introduce any other problems, but
+I'm quite confident it should be fine.
+
+Cheers,
+
+						- Ted
