@@ -1,128 +1,55 @@
-From: Ari Sundholm <ari@tuxera.com>
-Subject: Re: [PATCH 03/12] generic/80[0-2]: support xfs in addition to btrfs
-Date: Thu, 08 Oct 2015 15:33:59 +0300
-Message-ID: <1444307639.4004.17.camel@ari-lenovo>
-References: <20151007051257.3260.73072.stgit@birch.djwong.org>
-	 <9163f8156b2742a0b003ba9fa0a26258@nebula-exfe-01.nebula.local>
+From: Jan Kara <jack@suse.cz>
+Subject: ext4_map_blocks() and friends
+Date: Thu, 8 Oct 2015 15:22:19 +0200
+Message-ID: <20151008132219.GA591@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: "david@fromorbit.com" <david@fromorbit.com>,
-	"Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-	"fstests@vger.kernel.org" <fstests@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <fstests-owner@vger.kernel.org>
-In-Reply-To: <9163f8156b2742a0b003ba9fa0a26258@nebula-exfe-01.nebula.local>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:38322 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755371AbbJHNWV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Oct 2015 09:22:21 -0400
+Received: from relay2.suse.de (charybdis-ext.suse.de [195.135.220.254])
+	by mx2.suse.de (Postfix) with ESMTP id 47654AD21
+	for <linux-ext4@vger.kernel.org>; Thu,  8 Oct 2015 13:22:19 +0000 (UTC)
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2015-10-07 at 05:13 +0000, Darrick J. Wong wrote:
-> Modify the reflink tests to support xfs.
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
->  common/rc         |   37 +++++++++++++++++++++++++++++++++++++
->  tests/generic/800 |    2 +-
->  tests/generic/801 |    2 +-
->  tests/generic/802 |    2 +-
->  4 files changed, 40 insertions(+), 3 deletions(-)
-> 
-> 
-> diff --git a/common/rc b/common/rc
-> index 3e97060..7e2f140 100644
-> --- a/common/rc
-> +++ b/common/rc
-> @@ -1429,6 +1429,43 @@ _require_scratch_xfs_crc()
->  	umount $SCRATCH_MNT
->  }
->  
-> +# this test requires the test fs support reflink...
-> +#
-> +_require_test_reflink()
-> +{
-> +    case $FSTYP in
-> +    xfs)
-> +	xfs_info "${TEST_DIR}" | grep reflink=1 -c -q || _notrun "Reflink not supported by this filesystem type: $FSTYP"
-> +	;;
-> +    btrfs)
-> +        true
-> +        ;;
-> +    *)
-> +        _notrun "Reflink not supported by this filesystem type: $FSTYP"
-> +        ;;
-> +    esac
-> +}
-> +
-> +# this test requires the scratch fs support reflink...
-> +#
-> +_require_scratch_reflink()
-> +{
-> +    case $FSTYP in
-> +    xfs)
-> +	_scratch_mkfs > /dev/null 2>&1
-> +	_scratch_mount
-> +	xfs_info "${TEST_DIR}" | grep reflink=1 -c -q || _notrun "$FSTYP does not support reflink"
+Hi!
 
-${SCRATCH_MNT}?
+So I'm going through the twisty labyrinth of ext4_map_blocks() and
+related functions to fix DAX related issues. Since I don't want to just
+bolt changes DAX needs somewhere on the side of that monster (it has
+already enough cruft bolted at various places) I'm looking into factoring
+some parts out.
 
-> +	_scratch_unmount
-> +	;;
-> +    btrfs)
-> +        true
-> +        ;;
-> +    *)
-> +        _notrun "Reflink not supported by this filesystem type: $FSTYP"
-> +        ;;
-> +    esac
-> +}
-> +
->  # this test requires the bigalloc feature to be available in mkfs.ext4
->  #
->  _require_ext4_mkfs_bigalloc()
-> diff --git a/tests/generic/800 b/tests/generic/800
-> index a71f11a..954f39d 100755
-> --- a/tests/generic/800
-> +++ b/tests/generic/800
-> @@ -45,7 +45,7 @@ _cleanup()
->  . common/filter
->  
->  # real QA test starts here
-> -_supported_fs btrfs
-> +_require_test_reflink
->  _supported_os Linux
->  
->  _require_xfs_io_command "fiemap"
-> diff --git a/tests/generic/801 b/tests/generic/801
-> index b21c44b..aedb6e9 100755
-> --- a/tests/generic/801
-> +++ b/tests/generic/801
-> @@ -45,7 +45,7 @@ _cleanup()
->  . common/filter
->  
->  # real QA test starts here
-> -_supported_fs btrfs
-> +_require_test_reflink
->  _supported_os Linux
->  
->  _require_xfs_io_command "fiemap"
-> diff --git a/tests/generic/802 b/tests/generic/802
-> index afd8513..51d3414 100755
-> --- a/tests/generic/802
-> +++ b/tests/generic/802
-> @@ -43,7 +43,7 @@ _cleanup()
->  . ./common/filter
->  
->  # real QA test starts here
-> -_supported_fs btrfs
-> +_require_test_reflink
->  _supported_os Linux
->  
->  _require_xfs_io_command "fiemap"
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe fstests" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+One thing I've noticed is the handling of delayed && unwritten extents.
+Currently we have quite some code to handle this case and it seems a bit
+disproportionate given how rare it is - AFAIU this can happen only when
+someone fallocates blocks under delalloc blocks. Also I'm somewhat uneasy
+that the whole unwritten extent gets marked as dealloc if any block in it
+was delalloc. That seems to have a potential for delalloc accounting issues
+(especially in bigalloc case), SEEK_DATA will report such unwritten extents
+as delayed (only a potential performance issue when someone then reads
+whole unwritten extent only to find out there's a bit of data in it),
+FIEMAP won't report delalloc flag for such extent at all...
+
+I see two solutions here:
+
+1) We can fixup these issues (probably would need some massaging of extent
+cache code, fixup in FIEMAP).
+
+2) We could just forbid such state - we could do that by fsyncing() range
+before it will be fallocated and exclude page faults for the file while
+fallocate is running (using new i_mmap_sem ext4 will have similarly to xfs).
+
+I'm in favor of solution 2) since IMHO fallocate under delalloc blocks
+mostly signals an application problem and so performance doesn't matter.
+But other's may have different opinion... Anyone?
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
