@@ -1,83 +1,29 @@
-From: Eric Curtin <ericcurtin17@gmail.com>
-Subject: Re: [PATCH 2/2] ext2: Add locking for DAX faults
-Date: Tue, 13 Oct 2015 00:35:44 +0100
-Message-ID: <CANpvso6auD-NWsEYw10FNSviusA63tyK785usG=9R3r+a3Rirg@mail.gmail.com>
-References: <1444428128-12200-1-git-send-email-ross.zwisler@linux.intel.com>
-	<1444428128-12200-3-git-send-email-ross.zwisler@linux.intel.com>
-	<20151011231443.GY27164@dastard>
-	<20151012214135.GA24720@linux.intel.com>
-	<20151012232427.GH27164@dastard>
+From: Christine McCarthy <Christine.McCarthy@co.lake.mn.us>
+Subject: Unexpected Luck
+Date: Sun, 11 Oct 2015 17:02:47 -0400
+Message-ID: <18cb3a03-baca-4ede-a3c0-3c165bc220c5__29126.9754212864$1444703712$gmane$org@EXCHANGE-SERVRM.LakeCounty.local>
+Reply-To: <monicatorresesp@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Kernel development list <linux-kernel@vger.kernel.org>,
-	Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
-	Dan Williams <dan.j.williams@intel.com>,
-	linux-nvdimm@lists.01.org,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Andreas Dilger <andreas.dilger@intel.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20151012232427.GH27164@dastard>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Recipients <Christine.McCarthy@co.lake.mn.us>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from zixvpm01.solbrekk.com ([216.17.49.110]:8413 "EHLO
+	zixvpm01.solbrekk.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932153AbbJMCdn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Oct 2015 22:33:43 -0400
+Received: from 127.0.0.1 (ZixVPM [127.0.0.1])
+	by Outbound.solbrekk.com (Proprietary) with SMTP id 5207F3CE0B
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2015 21:25:17 -0500 (CDT)
+Content-Description: Mail message body
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 13 October 2015 at 00:24, Dave Chinner <david@fromorbit.com> wrote:
->
-> On Mon, Oct 12, 2015 at 03:41:35PM -0600, Ross Zwisler wrote:
-> > On Mon, Oct 12, 2015 at 10:14:43AM +1100, Dave Chinner wrote:
-> > > On Fri, Oct 09, 2015 at 04:02:08PM -0600, Ross Zwisler wrote:
-> > > > Add locking to ensure that DAX faults are isolated from ext2 operations
-> > > > that modify the data blocks allocation for an inode.  This is intended to
-> > > > be analogous to the work being done in XFS by Dave Chinner:
-> > > >
-> > > > http://www.spinics.net/lists/linux-fsdevel/msg90260.html
-> > > >
-> > > > Compared with XFS the ext2 case is greatly simplified by the fact that ext2
-> > > > already allocates and zeros new blocks before they are returned as part of
-> > > > ext2_get_block(), so DAX doesn't need to worry about getting unmapped or
-> > > > unwritten buffer heads.
-> > > >
-> > > > This means that the only work we need to do in ext2 is to isolate the DAX
-> > > > faults from inode block allocation changes.  I believe this just means that
-> > > > we need to isolate the DAX faults from truncate operations.
-> > >
-> > > Why limit this just to DAX page faults?
-> >
-> > Yep, I see that XFS uses the same locking to protect both DAX and non-DAX
-> > faults.  I'll add this protection to non-DAX ext2 faults as well.
-> >
-> > One quick question - it looks like that dax_pmd_fault() only grabs the
-> > pagefault lock and updates the file_update_time() if the FAULT_WRITE_FLAG is
-> > set. In xfs_filemap_pfn_mkwrite(), though, these two steps are taken for read
-> > faults as well.  Is this intentional?
->
-> xfs_filemap_pfn_mkwrite() should not be called for read faults.
-> We've already had to have a fault that maps the page to pfn for us
-> to get a pfn based fault, and hence that code is correct.
->
-> Or are you talking about xfs_filemap_pmd_fault()? In which case, I
-> refer you to the commit log and it should be obvious that it was
-> committed without me even looking at it.  I have another patch in my
-> current series for 4.4 that will fix this.
->
-> Cheers,
->
-> Dave.
-> --
-> Dave Chinner
-> david@fromorbit.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+Contact Monica Torres via email: monicatorresesp@gmail.com for your win=
+nings of =E2=82=AC1,000,000.00.
 
-Hi Ross,
-
-For all those int ret declarations. Why not declare and initialize all
-on the same line?
-
-Regards,
-
-Eric
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
