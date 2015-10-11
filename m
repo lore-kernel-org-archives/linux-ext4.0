@@ -1,68 +1,52 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH 2/2] ext2: Add locking for DAX faults
-Date: Fri, 9 Oct 2015 16:38:02 -0600
-Message-ID: <20151009223802.GA13367@linux.intel.com>
-References: <1444428128-12200-1-git-send-email-ross.zwisler@linux.intel.com>
- <1444428128-12200-3-git-send-email-ross.zwisler@linux.intel.com>
- <CAPcyv4jeb=58Y5zG3WKJfPckUecFwUiTW-MZQb7rzvpwPMa4Ow@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 102731] I have a cough.
+Date: Sun, 11 Oct 2015 04:05:31 +0000
+Message-ID: <bug-102731-13602-vsVtnvw9Tt@https.bugzilla.kernel.org/>
+References: <bug-102731-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
-	Dave Chinner <david@fromorbit.com>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Andreas Dilger <andreas.dilger@intel.com>
-To: Dan Williams <dan.j.williams@intel.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CAPcyv4jeb=58Y5zG3WKJfPckUecFwUiTW-MZQb7rzvpwPMa4Ow@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:35975 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750712AbbJKEFh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 11 Oct 2015 00:05:37 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 0609F2092B
+	for <linux-ext4@vger.kernel.org>; Sun, 11 Oct 2015 04:05:36 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 58B7020953
+	for <linux-ext4@vger.kernel.org>; Sun, 11 Oct 2015 04:05:32 +0000 (UTC)
+In-Reply-To: <bug-102731-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 09, 2015 at 03:18:11PM -0700, Dan Williams wrote:
-> On Fri, Oct 9, 2015 at 3:02 PM, Ross Zwisler
-> <ross.zwisler@linux.intel.com> wrote:
-> > Add locking to ensure that DAX faults are isolated from ext2 operations
-> > that modify the data blocks allocation for an inode.  This is intended to
-> > be analogous to the work being done in XFS by Dave Chinner:
-> >
-> > http://www.spinics.net/lists/linux-fsdevel/msg90260.html
-> >
-> > Compared with XFS the ext2 case is greatly simplified by the fact that ext2
-> > already allocates and zeros new blocks before they are returned as part of
-> > ext2_get_block(), so DAX doesn't need to worry about getting unmapped or
-> > unwritten buffer heads.
-> >
-> > This means that the only work we need to do in ext2 is to isolate the DAX
-> > faults from inode block allocation changes.  I believe this just means that
-> > we need to isolate the DAX faults from truncate operations.
-> >
-> > The newly introduced dax_sem is intended to replicate the protection
-> > offered by i_mmaplock in XFS.  In addition to truncate the i_mmaplock also
-> > protects XFS operations like hole punching, fallocate down, extent
-> > manipulation IOCTLS like xfs_ioc_space() and extent swapping.  Truncate is
-> > the only one of these operations supported by ext2.
-> >
-> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> [..]
-> 
-> ...not a review of the ext2 changes.
-> 
-> > diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-> > index c60a248..2b974fc 100644
-> > --- a/fs/ext2/inode.c
-> > +++ b/fs/ext2/inode.c
-> > @@ -1085,6 +1085,7 @@ static void ext2_free_branches(struct inode *inode, __le32 *p, __le32 *q, int de
-> >                 ext2_free_data(inode, p, q);
-> >  }
-> >
-> > +/* dax_sem must be held when calling this function */
-> >  static void __ext2_truncate_blocks(struct inode *inode, loff_t offset)
-> >  {
-> 
-> How about  a "WARN_ON(!rwsem_is_locked(&ei->dax_sem));" to backstop
-> this assumption?
+https://bugzilla.kernel.org/show_bug.cgi?id=102731
 
-Yep, sounds like a good idea.  Thanks.
+--- Comment #17 from Theodore Tso <tytso@mit.edu> ---
+I just realized something which I forgot to ask you --- what file system are
+you using on the *host*?  You said that on the guest you are using ext3 file
+systems with the ext4 driver --- but what about on the host OS side?
+
+I will say that using a full ext4 file system is far more stable on 3.18.21
+than using an ext3 file system in compatibility mode.   Ext4 with the 4.2
+kernel will support ext3 with zero unexpected test failures, but there are a
+handful of test failures that are showing up with the 3.18.21 kernel.  I've
+backported a few bug fixes, but they haven't shown up in the stable kernel
+series yet, and there are still a half-dozen test failures that I haven't had
+time to characterized yet.  (Note: support for long-term stable kernel is
+something I do as a very low priority background task.  My priority is upstream
+regressions and upstream development, and ideally someone would help with
+testing the stable kernels and identifying patches that require manual
+backports, but I haven't found a sucker yet.)
+
+One of the reasons why I ask is that the PUNCH hole functionality was
+relatively new in the 3.18 kernel, and KVM uses it --- and I am suspicious that
+there might be some bug fixes that didn't land in the 3.18 kernel.   So one
+thing that might be worth trying is to get a 4.2.3 kernel for both your Host
+and Guest kernels, and see what that does for you.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
