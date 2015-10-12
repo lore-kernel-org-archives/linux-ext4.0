@@ -1,193 +1,363 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 08/12] libext2fs: store checksum seed in superblock
-Date: Mon, 12 Oct 2015 14:57:19 -0700
-Message-ID: <20151012215719.29065.87728.stgit@birch.djwong.org>
-References: <20151012215629.29065.24418.stgit@birch.djwong.org>
+Subject: [PATCH 8/8] jbd2: clean up feature test macros with predicate
+ functions
+Date: Mon, 12 Oct 2015 14:55:11 -0700
+Message-ID: <20151012215511.28872.23063.stgit@birch.djwong.org>
+References: <20151012215416.28872.8160.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:44704 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752207AbbJLV5W (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Oct 2015 17:57:22 -0400
-In-Reply-To: <20151012215629.29065.24418.stgit@birch.djwong.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:39341 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752621AbbJLVzP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Oct 2015 17:55:15 -0400
+In-Reply-To: <20151012215416.28872.8160.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Allow the filesystem to store the metadata checksum seed in the
-superblock and add an incompat feature to say that we're using it.
-This enables tune2fs to change the UUID on a mounted metadata_csum
-FS without having to (racy!) rewrite all disk metadata.
+Create separate predicate functions to test/set/clear feature flags,
+thereby replacing the wordy old macros.  Furthermore, clean out the
+places where we open-coded feature tests.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- debugfs/set_fields.c        |    1 +
- lib/e2p/feature.c           |    2 ++
- lib/e2p/ls.c                |    4 ++++
- lib/ext2fs/csum.c           |    9 +++++++++
- lib/ext2fs/ext2_fs.h        |    6 ++++--
- lib/ext2fs/ext2fs.h         |   13 +++----------
- lib/ext2fs/swapfs.c         |    1 +
- lib/ext2fs/tst_super_size.c |    3 ++-
- 8 files changed, 26 insertions(+), 13 deletions(-)
+ fs/jbd2/commit.c     |   22 ++++++---------
+ fs/jbd2/journal.c    |   12 ++++----
+ fs/jbd2/recovery.c   |   18 +++++--------
+ fs/jbd2/revoke.c     |    4 +--
+ include/linux/jbd2.h |   71 ++++++++++++++++++++++++++++++++++++++++++++++++--
+ 5 files changed, 91 insertions(+), 36 deletions(-)
 
 
-diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-index b14fec9..b9206f6 100644
---- a/debugfs/set_fields.c
-+++ b/debugfs/set_fields.c
-@@ -173,6 +173,7 @@ static struct field_set_info super_fields[] = {
- 	  FLAG_ARRAY, 4 },
- 	{ "encrypt_pw_salt", &set_sb.s_encrypt_pw_salt, NULL, 16, parse_uuid },
- 	{ "lpf_ino", &set_sb.s_lpf_ino, NULL, 4, parse_uint },
-+	{ "checksum_seed", &set_sb.s_checksum_seed, NULL, 4, parse_uint },
- 	{ 0, 0, 0, 0 }
- };
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 362e5f6..36345fe 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -142,8 +142,7 @@ static int journal_submit_commit_record(journal_t *journal,
+ 	tmp->h_commit_sec = cpu_to_be64(now.tv_sec);
+ 	tmp->h_commit_nsec = cpu_to_be32(now.tv_nsec);
  
-diff --git a/lib/e2p/feature.c b/lib/e2p/feature.c
-index 737b0b9..35e8435 100644
---- a/lib/e2p/feature.c
-+++ b/lib/e2p/feature.c
-@@ -95,6 +95,8 @@ static struct feature feature_list[] = {
- 			"ea_inode"},
- 	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_DIRDATA,
- 			"dirdata"},
-+	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_CSUM_SEED,
-+			"metadata_csum_seed"},
- 	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_LARGEDIR,
- 			"large_dir"},
- 	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_INLINE_DATA,
-diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
-index 6c82857..8df6bb2 100644
---- a/lib/e2p/ls.c
-+++ b/lib/e2p/ls.c
-@@ -450,6 +450,10 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
- 	if (!e2p_is_null_uuid(sb->s_encrypt_pw_salt))
- 		fprintf(f, "Encryption PW Salt:       %s\n",
- 			e2p_uuid2str(sb->s_encrypt_pw_salt));
-+
-+	if (ext2fs_has_feature_csum_seed(sb))
-+		fprintf(f, "Checksum seed:            0x%08x\n",
-+			sb->s_checksum_seed);
+-	if (JBD2_HAS_COMPAT_FEATURE(journal,
+-				    JBD2_FEATURE_COMPAT_CHECKSUM)) {
++	if (jbd2_has_feature_checksum(journal)) {
+ 		tmp->h_chksum_type 	= JBD2_CRC32_CHKSUM;
+ 		tmp->h_chksum_size 	= JBD2_CRC32_CHKSUM_SIZE;
+ 		tmp->h_chksum[0] 	= cpu_to_be32(crc32_sum);
+@@ -157,8 +156,7 @@ static int journal_submit_commit_record(journal_t *journal,
+ 	bh->b_end_io = journal_end_buffer_io_sync;
+ 
+ 	if (journal->j_flags & JBD2_BARRIER &&
+-	    !JBD2_HAS_INCOMPAT_FEATURE(journal,
+-				       JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT))
++	    !jbd2_has_feature_async_commit(journal))
+ 		ret = submit_bh(WRITE_SYNC | WRITE_FLUSH_FUA, bh);
+ 	else
+ 		ret = submit_bh(WRITE_SYNC, bh);
+@@ -317,7 +315,7 @@ static void write_tag_block(journal_t *j, journal_block_tag_t *tag,
+ 				   unsigned long long block)
+ {
+ 	tag->t_blocknr = cpu_to_be32(block & (u32)~0);
+-	if (JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_64BIT))
++	if (jbd2_has_feature_64bit(j))
+ 		tag->t_blocknr_high = cpu_to_be32((block >> 31) >> 1);
  }
  
- void list_super (struct ext2_super_block * s)
-diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-index ab8b83f..ccb3057 100644
---- a/lib/ext2fs/csum.c
-+++ b/lib/ext2fs/csum.c
-@@ -30,6 +30,15 @@
- #define STATIC static
- #endif
+@@ -356,7 +354,7 @@ static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
+ 			     bh->b_size);
+ 	kunmap_atomic(addr);
  
-+void ext2fs_init_csum_seed(ext2_filsys fs)
-+{
-+	if (ext2fs_has_feature_csum_seed(fs->super))
-+		fs->csum_seed = fs->super->s_checksum_seed;
-+	else if (ext2fs_has_feature_metadata_csum(fs->super))
-+		fs->csum_seed = ext2fs_crc32c_le(~0, fs->super->s_uuid,
-+						 sizeof(fs->super->s_uuid));
+-	if (JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V3))
++	if (jbd2_has_feature_csum3(j))
+ 		tag3->t_checksum = cpu_to_be32(csum32);
+ 	else
+ 		tag->t_checksum = cpu_to_be16(csum32);
+@@ -730,8 +728,7 @@ start_journal_io:
+ 				/*
+ 				 * Compute checksum.
+ 				 */
+-				if (JBD2_HAS_COMPAT_FEATURE(journal,
+-					JBD2_FEATURE_COMPAT_CHECKSUM)) {
++				if (jbd2_has_feature_checksum(journal)) {
+ 					crc32_sum =
+ 					    jbd2_checksum_data(crc32_sum, bh);
+ 				}
+@@ -797,8 +794,7 @@ start_journal_io:
+ 		blkdev_issue_flush(journal->j_fs_dev, GFP_NOFS, NULL);
+ 
+ 	/* Done it all: now write the commit record asynchronously. */
+-	if (JBD2_HAS_INCOMPAT_FEATURE(journal,
+-				      JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
++	if (jbd2_has_feature_async_commit(journal)) {
+ 		err = journal_submit_commit_record(journal, commit_transaction,
+ 						 &cbh, crc32_sum);
+ 		if (err)
+@@ -889,8 +885,7 @@ start_journal_io:
+ 	commit_transaction->t_state = T_COMMIT_JFLUSH;
+ 	write_unlock(&journal->j_state_lock);
+ 
+-	if (!JBD2_HAS_INCOMPAT_FEATURE(journal,
+-				       JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
++	if (!jbd2_has_feature_async_commit(journal)) {
+ 		err = journal_submit_commit_record(journal, commit_transaction,
+ 						&cbh, crc32_sum);
+ 		if (err)
+@@ -898,8 +893,7 @@ start_journal_io:
+ 	}
+ 	if (cbh)
+ 		err = journal_wait_on_commit_record(journal, cbh);
+-	if (JBD2_HAS_INCOMPAT_FEATURE(journal,
+-				      JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT) &&
++	if (jbd2_has_feature_async_commit(journal) &&
+ 	    journal->j_flags & JBD2_BARRIER) {
+ 		blkdev_issue_flush(journal->j_dev, GFP_NOFS, NULL);
+ 	}
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 474c178..eb8a754 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1523,8 +1523,8 @@ static int journal_get_superblock(journal_t *journal)
+ 		goto out;
+ 	}
+ 
+-	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2) &&
+-	    JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V3)) {
++	if (jbd2_has_feature_csum2(journal) &&
++	    jbd2_has_feature_csum3(journal)) {
+ 		/* Can't have checksum v2 and v3 at the same time! */
+ 		printk(KERN_ERR "JBD2: Can't enable checksumming v2 and v3 "
+ 		       "at the same time!\n");
+@@ -1532,7 +1532,7 @@ static int journal_get_superblock(journal_t *journal)
+ 	}
+ 
+ 	if (jbd2_journal_has_csum_v2or3_feature(journal) &&
+-	    JBD2_HAS_COMPAT_FEATURE(journal, JBD2_FEATURE_COMPAT_CHECKSUM)) {
++	    jbd2_has_feature_checksum(journal)) {
+ 		/* Can't have checksum v1 and v2 on at the same time! */
+ 		printk(KERN_ERR "JBD2: Can't enable checksumming v1 and v2/3 "
+ 		       "at the same time!\n");
+@@ -2198,15 +2198,15 @@ size_t journal_tag_bytes(journal_t *journal)
+ {
+ 	size_t sz;
+ 
+-	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V3))
++	if (jbd2_has_feature_csum3(journal))
+ 		return sizeof(journal_block_tag3_t);
+ 
+ 	sz = sizeof(journal_block_tag_t);
+ 
+-	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++	if (jbd2_has_feature_csum2(journal))
+ 		sz += sizeof(__u16);
+ 
+-	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
++	if (jbd2_has_feature_64bit(journal))
+ 		return sz;
+ 	else
+ 		return sz - sizeof(__u32);
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index 5c836d7..7f277e4 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -342,7 +342,7 @@ static inline unsigned long long read_tag_block(journal_t *journal,
+ 						journal_block_tag_t *tag)
+ {
+ 	unsigned long long block = be32_to_cpu(tag->t_blocknr);
+-	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
++	if (jbd2_has_feature_64bit(journal))
+ 		block |= (u64)be32_to_cpu(tag->t_blocknr_high) << 32;
+ 	return block;
+ }
+@@ -411,7 +411,7 @@ static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
+ 	csum32 = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&seq, sizeof(seq));
+ 	csum32 = jbd2_chksum(j, csum32, buf, j->j_blocksize);
+ 
+-	if (JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V3))
++	if (jbd2_has_feature_csum3(j))
+ 		return tag3->t_checksum == cpu_to_be32(csum32);
+ 	else
+ 		return tag->t_checksum == cpu_to_be16(csum32);
+@@ -538,8 +538,7 @@ static int do_one_pass(journal_t *journal,
+ 			 * just skip over the blocks it describes. */
+ 			if (pass != PASS_REPLAY) {
+ 				if (pass == PASS_SCAN &&
+-				    JBD2_HAS_COMPAT_FEATURE(journal,
+-					    JBD2_FEATURE_COMPAT_CHECKSUM) &&
++				    jbd2_has_feature_checksum(journal) &&
+ 				    !info->end_transaction) {
+ 					if (calc_chksums(journal, bh,
+ 							&next_log_block,
+@@ -694,8 +693,7 @@ static int do_one_pass(journal_t *journal,
+ 			 * much to do other than move on to the next sequence
+ 			 * number. */
+ 			if (pass == PASS_SCAN &&
+-			    JBD2_HAS_COMPAT_FEATURE(journal,
+-				    JBD2_FEATURE_COMPAT_CHECKSUM)) {
++			    jbd2_has_feature_checksum(journal)) {
+ 				int chksum_err, chksum_seen;
+ 				struct commit_header *cbh =
+ 					(struct commit_header *)bh->b_data;
+@@ -735,8 +733,7 @@ static int do_one_pass(journal_t *journal,
+ 				if (chksum_err) {
+ 					info->end_transaction = next_commit_ID;
+ 
+-					if (!JBD2_HAS_INCOMPAT_FEATURE(journal,
+-					   JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)){
++					if (!jbd2_has_feature_async_commit(journal)) {
+ 						journal->j_failed_commit =
+ 							next_commit_ID;
+ 						brelse(bh);
+@@ -750,8 +747,7 @@ static int do_one_pass(journal_t *journal,
+ 							   bh->b_data)) {
+ 				info->end_transaction = next_commit_ID;
+ 
+-				if (!JBD2_HAS_INCOMPAT_FEATURE(journal,
+-				     JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
++				if (!jbd2_has_feature_async_commit(journal)) {
+ 					journal->j_failed_commit =
+ 						next_commit_ID;
+ 					brelse(bh);
+@@ -859,7 +855,7 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
+ 		return -EINVAL;
+ 	max = rcount;
+ 
+-	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
++	if (jbd2_has_feature_64bit(journal))
+ 		record_len = 8;
+ 
+ 	while (offset + record_len <= max) {
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index 0abf2e7..705ae57 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -589,7 +589,7 @@ static void write_one_revoke_record(journal_t *journal,
+ 	if (jbd2_journal_has_csum_v2or3(journal))
+ 		csum_size = sizeof(struct jbd2_journal_revoke_tail);
+ 
+-	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
++	if (jbd2_has_feature_64bit(journal))
+ 		sz = 8;
+ 	else
+ 		sz = 4;
+@@ -619,7 +619,7 @@ static void write_one_revoke_record(journal_t *journal,
+ 		*descriptorp = descriptor;
+ 	}
+ 
+-	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
++	if (jbd2_has_feature_64bit(journal))
+ 		* ((__be64 *)(&descriptor->b_data[offset])) =
+ 			cpu_to_be64(record->blocknr);
+ 	else
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index f2a4b07..b5ca231 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -278,6 +278,7 @@ typedef struct journal_superblock_s
+ /* 0x0400 */
+ } journal_superblock_t;
+ 
++/* Use the jbd2_{has,set,clear}_feature_* helpers; these will be removed */
+ #define JBD2_HAS_COMPAT_FEATURE(j,mask)					\
+ 	((j)->j_format_version >= 2 &&					\
+ 	 ((j)->j_superblock->s_feature_compat & cpu_to_be32((mask))))
+@@ -288,7 +289,7 @@ typedef struct journal_superblock_s
+ 	((j)->j_format_version >= 2 &&					\
+ 	 ((j)->j_superblock->s_feature_incompat & cpu_to_be32((mask))))
+ 
+-#define JBD2_FEATURE_COMPAT_CHECKSUM	0x00000001
++#define JBD2_FEATURE_COMPAT_CHECKSUM		0x00000001
+ 
+ #define JBD2_FEATURE_INCOMPAT_REVOKE		0x00000001
+ #define JBD2_FEATURE_INCOMPAT_64BIT		0x00000002
+@@ -296,6 +297,8 @@ typedef struct journal_superblock_s
+ #define JBD2_FEATURE_INCOMPAT_CSUM_V2		0x00000008
+ #define JBD2_FEATURE_INCOMPAT_CSUM_V3		0x00000010
+ 
++/* See "journal feature predicate functions" below */
++
+ /* Features known to this kernel version: */
+ #define JBD2_KNOWN_COMPAT_FEATURES	JBD2_FEATURE_COMPAT_CHECKSUM
+ #define JBD2_KNOWN_ROCOMPAT_FEATURES	0
+@@ -1034,6 +1037,69 @@ struct journal_s
+ 	__u32 j_csum_seed;
+ };
+ 
++/* journal feature predicate functions */
++#define JBD2_FEATURE_COMPAT_FUNCS(name, flagname) \
++static inline bool jbd2_has_feature_##name(journal_t *j) \
++{ \
++	return ((j)->j_format_version >= 2 && \
++		((j)->j_superblock->s_feature_compat & \
++		 cpu_to_be32(JBD2_FEATURE_COMPAT_##flagname)) != 0); \
++} \
++static inline void jbd2_set_feature_##name(journal_t *j) \
++{ \
++	(j)->j_superblock->s_feature_compat |= \
++		cpu_to_be32(JBD2_FEATURE_COMPAT_##flagname); \
++} \
++static inline void jbd2_clear_feature_##name(journal_t *j) \
++{ \
++	(j)->j_superblock->s_feature_compat &= \
++		~cpu_to_be32(JBD2_FEATURE_COMPAT_##flagname); \
 +}
 +
- static __u32 ext2fs_mmp_csum(ext2_filsys fs, struct mmp_struct *mmp)
- {
- 	int offset = offsetof(struct mmp_struct, mmp_checksum);
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index 709838d..7e4d10d 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -719,7 +719,8 @@ struct ext2_super_block {
- 	__u8	s_encrypt_algos[4];	/* Encryption algorithms in use  */
- 	__u8	s_encrypt_pw_salt[16];	/* Salt used for string2key algorithm */
- 	__le32	s_lpf_ino;		/* Location of the lost+found inode */
--	__le32	s_reserved[100];	/* Padding to the end of the block */
-+	__le32	s_checksum_seed;	/* crc32c(orig_uuid) if csum_seed set */
-+	__le32	s_reserved[99];		/* Padding to the end of the block */
- 	__u32	s_checksum;		/* crc32c(superblock) */
- };
- 
-@@ -804,7 +805,7 @@ struct ext2_super_block {
- #define EXT4_FEATURE_INCOMPAT_FLEX_BG		0x0200
- #define EXT4_FEATURE_INCOMPAT_EA_INODE		0x0400
- #define EXT4_FEATURE_INCOMPAT_DIRDATA		0x1000
--/* 0x2000 was EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM but this was never used */
-+#define EXT4_FEATURE_INCOMPAT_CSUM_SEED		0x2000
- #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
- #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
- #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
-@@ -894,6 +895,7 @@ EXT4_FEATURE_INCOMPAT_FUNCS(mmp,		4, MMP)
- EXT4_FEATURE_INCOMPAT_FUNCS(flex_bg,		4, FLEX_BG)
- EXT4_FEATURE_INCOMPAT_FUNCS(ea_inode,		4, EA_INODE)
- EXT4_FEATURE_INCOMPAT_FUNCS(dirdata,		4, DIRDATA)
-+EXT4_FEATURE_INCOMPAT_FUNCS(csum_seed,		4, CSUM_SEED)
- EXT4_FEATURE_INCOMPAT_FUNCS(largedir,		4, LARGEDIR)
- EXT4_FEATURE_INCOMPAT_FUNCS(inline_data,	4, INLINE_DATA)
- EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		4, ENCRYPT)
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 30e913c..d9ea105 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -580,7 +580,8 @@ typedef struct ext2_icount *ext2_icount_t;
- 					 EXT4_LIB_INCOMPAT_MMP|\
- 					 EXT4_FEATURE_INCOMPAT_64BIT|\
- 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA|\
--					 EXT4_FEATURE_INCOMPAT_ENCRYPT)
-+					 EXT4_FEATURE_INCOMPAT_ENCRYPT|\
-+					 EXT4_FEATURE_INCOMPAT_CSUM_SEED)
- 
- #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
- 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
-@@ -985,6 +986,7 @@ extern __u32 ext2fs_crc32_be(__u32 crc, unsigned char const *p, size_t len);
- extern __u32 ext2fs_crc32c_le(__u32 crc, unsigned char const *p, size_t len);
- 
- /* csum.c */
-+extern void ext2fs_init_csum_seed(ext2_filsys fs);
- extern errcode_t ext2fs_mmp_csum_set(ext2_filsys fs, struct mmp_struct *mmp);
- extern int ext2fs_mmp_csum_verify(ext2_filsys, struct mmp_struct *mmp);
- extern int ext2fs_verify_csum_type(ext2_filsys fs, struct ext2_super_block *sb);
-@@ -1712,15 +1714,6 @@ extern void ext2fs_dirent_set_file_type(struct ext2_dir_entry *entry, int type);
- #endif /* __STDC_VERSION__ >= 199901L */
- #endif
- 
--static inline void ext2fs_init_csum_seed(ext2_filsys fs)
--{
--	if (!ext2fs_has_feature_metadata_csum(fs->super))
--		return;
--
--	fs->csum_seed = ext2fs_crc32c_le(~0, fs->super->s_uuid,
--					 sizeof(fs->super->s_uuid));
--}
--
- #ifndef EXT2_CUSTOM_MEMORY_ROUTINES
- #include <string.h>
++#define JBD2_FEATURE_RO_COMPAT_FUNCS(name, flagname) \
++static inline bool jbd2_has_feature_##name(journal_t *j) \
++{ \
++	return ((j)->j_format_version >= 2 && \
++		((j)->j_superblock->s_feature_ro_compat & \
++		 cpu_to_be32(JBD2_FEATURE_RO_COMPAT_##flagname)) != 0); \
++} \
++static inline void jbd2_set_feature_##name(journal_t *j) \
++{ \
++	(j)->j_superblock->s_feature_ro_compat |= \
++		cpu_to_be32(JBD2_FEATURE_RO_COMPAT_##flagname); \
++} \
++static inline void jbd2_clear_feature_##name(journal_t *j) \
++{ \
++	(j)->j_superblock->s_feature_ro_compat &= \
++		~cpu_to_be32(JBD2_FEATURE_RO_COMPAT_##flagname); \
++}
++
++#define JBD2_FEATURE_INCOMPAT_FUNCS(name, flagname) \
++static inline bool jbd2_has_feature_##name(journal_t *j) \
++{ \
++	return ((j)->j_format_version >= 2 && \
++		((j)->j_superblock->s_feature_incompat & \
++		 cpu_to_be32(JBD2_FEATURE_INCOMPAT_##flagname)) != 0); \
++} \
++static inline void jbd2_set_feature_##name(journal_t *j) \
++{ \
++	(j)->j_superblock->s_feature_incompat |= \
++		cpu_to_be32(JBD2_FEATURE_INCOMPAT_##flagname); \
++} \
++static inline void jbd2_clear_feature_##name(journal_t *j) \
++{ \
++	(j)->j_superblock->s_feature_incompat &= \
++		~cpu_to_be32(JBD2_FEATURE_INCOMPAT_##flagname); \
++}
++
++JBD2_FEATURE_COMPAT_FUNCS(checksum,		CHECKSUM)
++
++JBD2_FEATURE_INCOMPAT_FUNCS(revoke,		REVOKE)
++JBD2_FEATURE_INCOMPAT_FUNCS(64bit,		64BIT)
++JBD2_FEATURE_INCOMPAT_FUNCS(async_commit,	ASYNC_COMMIT)
++JBD2_FEATURE_INCOMPAT_FUNCS(csum2,		CSUM_V2)
++JBD2_FEATURE_INCOMPAT_FUNCS(csum3,		CSUM_V3)
++
  /*
-diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
-index ee7a455..9d2c535 100644
---- a/lib/ext2fs/swapfs.c
-+++ b/lib/ext2fs/swapfs.c
-@@ -101,6 +101,7 @@ void ext2fs_swap_super(struct ext2_super_block * sb)
- 		sb->s_jnl_blocks[i] = ext2fs_swab32(sb->s_jnl_blocks[i]);
- 	sb->s_backup_bgs[0] = ext2fs_swab32(sb->s_backup_bgs[0]);
- 	sb->s_backup_bgs[1] = ext2fs_swab32(sb->s_backup_bgs[1]);
-+	sb->s_checksum_seed = ext2fs_swab32(sb->s_checksum_seed);
+  * Journal flag definitions
+  */
+@@ -1340,8 +1406,7 @@ extern size_t journal_tag_bytes(journal_t *journal);
+ 
+ static inline bool jbd2_journal_has_csum_v2or3_feature(journal_t *j)
+ {
+-	return JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2) ||
+-	       JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V3);
++	return jbd2_has_feature_csum2(j) || jbd2_has_feature_csum3(j);
  }
  
- void ext2fs_swap_group_desc2(ext2_filsys fs, struct ext2_group_desc *gdp)
-diff --git a/lib/ext2fs/tst_super_size.c b/lib/ext2fs/tst_super_size.c
-index 8e3c21f..f815a0f 100644
---- a/lib/ext2fs/tst_super_size.c
-+++ b/lib/ext2fs/tst_super_size.c
-@@ -140,7 +140,8 @@ int main(int argc, char **argv)
- 	check_field(s_encrypt_algos, 4);
- 	check_field(s_encrypt_pw_salt, 16);
- 	check_field(s_lpf_ino, 4);
--	check_field(s_reserved, 100 * 4);
-+	check_field(s_checksum_seed, 4);
-+	check_field(s_reserved, 99 * 4);
- 	check_field(s_checksum, 4);
- 	do_field("Superblock end", 0, 0, cur_offset, 1024);
- #endif
+ static inline int jbd2_journal_has_csum_v2or3(journal_t *journal)
 
