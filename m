@@ -1,56 +1,56 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH 2/2] ext2: Add locking for DAX faults
-Date: Mon, 12 Oct 2015 11:21:56 -0600
-Message-ID: <20151012172156.GA19076@linux.intel.com>
-References: <1444428128-12200-1-git-send-email-ross.zwisler@linux.intel.com>
- <1444428128-12200-3-git-send-email-ross.zwisler@linux.intel.com>
- <20151011231443.GY27164@dastard>
+From: Andreas Gruenbacher <agruenba@redhat.com>
+Subject: Re: [PATCH v10 44/46] nfs: Add richacl support
+Date: Mon, 12 Oct 2015 21:49:17 +0200
+Message-ID: <CAHc6FU6kp1pR8hRU3g2+A07xfpErMa3bNGJ47Sc4gEJS0U3nJQ@mail.gmail.com>
+References: <1444604337-17651-1-git-send-email-andreas.gruenbacher@gmail.com>
+	<1444604337-17651-45-git-send-email-andreas.gruenbacher@gmail.com>
+	<561BC61E.6010704@Netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-kernel@vger.kernel.org, Jan Kara <jack@suse.com>,
-	linux-ext4@vger.kernel.org,
-	Dan Williams <dan.j.williams@intel.com>,
-	linux-nvdimm@lists.01.org,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Andreas Dilger <andreas.dilger@intel.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20151011231443.GY27164@dastard>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-cifs@vger.kernel.org,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>, Linux API <linux-api@vger.kernel.org>,
+	Andreas Gruenbacher <andreas.gruenbacher@gmail.com>,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <561BC61E.6010704@Netapp.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 12, 2015 at 10:14:43AM +1100, Dave Chinner wrote:
-> [Nit: please send all patches of the series to the same list of
-> recipients. Otherwise people with list based filters end up with the
-> series spread across different mailboxes and people not subscribed
-> to all lists don't get the full series and so are lacking in context
-> for proper review. ]
+Anna,
 
-Okay, will do.
+On Mon, Oct 12, 2015 at 4:39 PM, Anna Schumaker
+<Anna.Schumaker@netapp.com> wrote:
+> I'm not a fan of the "one giant function" approach.  Is there any way to split richacl_from_nfs4_acl() into several smaller functions?
 
-> On Fri, Oct 09, 2015 at 04:02:08PM -0600, Ross Zwisler wrote:
-<>
-> > +/*
-> > + * The lock ordering for ext2 DAX fault paths is:
-> > + *
-> > + * mmap_sem (MM)
-> > + *   ext2_inode_info->dax_sem
-> > + *     sb_start_pagefault (vfs, freeze - taken in DAX)
-> > + *       address_space->i_mmap_rwsem or page_lock (mutually exclusive in DAX)
-> > + *         ext2_inode_info->truncate_mutex
-> 
-> This is a different lock order to XFS - it puts the i_mmaplock
-> inside sb_start_pagefault(), not outside it. This ordering means the
-> timestamp updates during the page fault are also under
-> ext2_inode_info->dax_sem...
+sure, parsing the usr/group identifier could be put in a separate
+function, for example.
 
-Yep - I was trying not not open code dax_fault() yet again, but it looks like
-both XFS and ext4 both open-code dax_fault() and call __dax_fault() directly.
+That function cannot stay as it is right now anyway --- we really need
+idmapper to tell us when an identifier string cannot be mapped to a
+uid or gid so that we can preserve that identifier.
 
-I assume that when we get an analogous lock to i_mmaplock in the ext4 fault
-path we'll end up with the same locking order that is found in XFS.
+Thanks,
+Andreas
 
-I'll do the same for v2 of this patch and I'll kill the then-unused
-dax_fault().
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
