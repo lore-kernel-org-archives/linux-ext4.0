@@ -1,48 +1,54 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 00/12] e2fsprogs: misc fixes and cleanups;
- save checksum seeds
-Date: Mon, 12 Oct 2015 14:56:29 -0700
-Message-ID: <20151012215629.29065.24418.stgit@birch.djwong.org>
+Subject: [PATCH 2/8] ext4: promote ext4 over ext2 in the default probe order
+Date: Mon, 12 Oct 2015 14:54:31 -0700
+Message-ID: <20151012215431.28872.84139.stgit@birch.djwong.org>
+References: <20151012215416.28872.8160.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:39829 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751950AbbJLV4e (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Oct 2015 17:56:34 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:43669 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752446AbbJLVyg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Oct 2015 17:54:36 -0400
+In-Reply-To: <20151012215416.28872.8160.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+Prevent clean ext3 filesystems from mounting by default with the ext2
+driver (with no journal!) by putting ext4 ahead of ext2 in the default
+probe order.  This will have the effect of mounting ext2 filesystems
+with ext4.ko by default, which is a safer failure than hoping the user
+notices that their journalled ext3 is now running without a journal!
 
-Here's a short patch series that rolls up all my pending fixes for
-assorted minor problems with e2fsprogs.  It then replaces all the open
-coded feature flag functions with a series of helper functions; and
-finally it introduces the "metdata_csum_seed" feature which decouples
-the metadata block checksums from the FS UUID so that said UUID can be
-changed while the FS is mounted.
+Users who require ext2.ko for ext2 can either disable ext4.ko or
+explicitly request ext2 via "mount -t ext2" or "rootfstype=ext2".
 
-Patches 1-2 fix an incorrect overhead calculation in mke2fs when
-formatting with meta_bg that prevented formatting devices larger than
-256TB; and teaches mke2fs to enable meta_bg whenever the group
-descriptor blocks overflow a block group.  This makes it possible to
-format ext4 on multi-petabyte block devices, albeit at a SEVERE
-overhead cost.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ fs/Makefile |    7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-Patches 3-7 replace open-coded feature flag manipulation code with
-helper functions.  I've hand-checked all the changes to ensure that
-they are correct.
 
-Patches 8-12 introduces the metadata_csum_seed feature, which saves
-the first component of metadata block checksums (specifically, the
-value of crc32c(~0, FS_UUID)) in the superblock.  This enables the
-administrator to change the UUID on a mounted metadata_csum
-filesystem.
+diff --git a/fs/Makefile b/fs/Makefile
+index f79cf40..79f5225 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -63,10 +63,11 @@ obj-$(CONFIG_DLM)		+= dlm/
+ # Do not add any filesystems before this line
+ obj-$(CONFIG_FSCACHE)		+= fscache/
+ obj-$(CONFIG_REISERFS_FS)	+= reiserfs/
+-obj-$(CONFIG_EXT2_FS)		+= ext2/
+-# We place ext4 after ext2 so plain ext2 root fs's are mounted using ext2
+-# unless explicitly requested by rootfstype
+ obj-$(CONFIG_EXT4_FS)		+= ext4/
++# We place ext4 before ext2 so that clean ext3 root fs's do NOT mount using the
++# ext2 driver, which doesn't know about journalling!  Explicitly request ext2
++# by giving the rootfstype= parameter.
++obj-$(CONFIG_EXT2_FS)		+= ext2/
+ obj-$(CONFIG_JBD2)		+= jbd2/
+ obj-$(CONFIG_CRAMFS)		+= cramfs/
+ obj-$(CONFIG_SQUASHFS)		+= squashfs/
 
-The patchset should apply cleanly against the -next branch as of 29
-September.  Comments and questions are, as always, welcome.
-
---D
