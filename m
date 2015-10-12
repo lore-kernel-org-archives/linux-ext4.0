@@ -1,123 +1,169 @@
-From: Daeho Jeong <daeho.jeong@samsung.com>
-Subject: [PATCH v2] ext4, jbd2: ensure entering into panic after recording an
- error in superblock
-Date: Mon, 12 Oct 2015 11:19:19 +0900
-Message-ID: <1444616359-21149-1-git-send-email-daeho.jeong@samsung.com>
-Cc: Daeho Jeong <daeho.jeong@samsung.com>
-To: tytso@mit.edu, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout4.samsung.com ([203.254.224.34]:33071 "EHLO
-	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752662AbbJLCTG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 11 Oct 2015 22:19:06 -0400
-Received: from epcpsbgr1.samsung.com
- (u141.gpu120.samsung.co.kr [203.254.230.141])
- by mailout4.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
- 64bit (built May  5 2014))
- with ESMTP id <0NW301B2S53RPJ80@mailout4.samsung.com> for
- linux-ext4@vger.kernel.org; Mon, 12 Oct 2015 11:19:03 +0900 (KST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: [PATCH v10 24/46] xfs: Add richacl support
+Date: Mon, 12 Oct 2015 15:05:45 +1100
+Message-ID: <20151012040545.GC27164@dastard>
+References: <1444604337-17651-1-git-send-email-andreas.gruenbacher@gmail.com>
+ <1444604337-17651-25-git-send-email-andreas.gruenbacher@gmail.com>
+ <20151012001033.GA27164@dastard>
+ <CAHpGcMKeJHDegs2cYKaJdX4Tw43Jp30Nv_2WoSNZfBzGJKu=BQ@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org,
+	Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux FS-devel Mailing List <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Linux API Mailing List <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+To: Andreas =?iso-8859-1?Q?Gr=FCnbacher?=
+	<andreas.gruenbacher-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <CAHpGcMKeJHDegs2cYKaJdX4Tw43Jp30Nv_2WoSNZfBzGJKu=BQ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-If a EXT4 filesystem utilizes JBD2 journaling and an error occurs, the
-journaling will be aborted first and the error number will be recorded
-into JBD2 superblock and, finally, the system will enter into the
-panic state in "errors=panic" option.  But, in the rare case, this
-sequence is little twisted like the below figure and it will happen
-that the system enters into panic state, which means the system reset
-in mobile environment, before completion of recording an error in the
-journal superblock. In this case, e2fsck cannot recognize that the
-filesystem failure occurred in the previous run and the corruption
-wouldn't be fixed.
+On Mon, Oct 12, 2015 at 03:51:15AM +0200, Andreas Gr=FCnbacher wrote:
+> 2015-10-12 2:10 GMT+02:00 Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>:
+> > On Mon, Oct 12, 2015 at 12:58:35AM +0200, Andreas Gruenbacher wrote=
+:
+> >> diff --git a/fs/xfs/Kconfig b/fs/xfs/Kconfig
+> >> index 5d47b4d..05dd312 100644
+> >> --- a/fs/xfs/Kconfig
+> >> +++ b/fs/xfs/Kconfig
+> >> @@ -52,6 +52,17 @@ config XFS_POSIX_ACL
+> >>
+> >>         If you don't know what Access Control Lists are, say N.
+> >>
+> >> +config XFS_RICHACL
+> >> +        bool "XFS Rich Access Control Lists (EXPERIMENTAL)"
+> >> +        depends on XFS_FS
+> >> +        select FS_RICHACL
+> >> +        help
+> >> +          Richacls are an implementation of NFSv4 ACLs, extended =
+by file masks
+> >> +          to cleanly integrate into the POSIX file permission mod=
+el.  To learn
+> >> +       more about them, see http://www.bestbits.at/richacl/.
+> >> +
+> >> +          If you don't know what Richacls are, say N.
+> >> +
+> >
+> > So now we have multiple compile time ACL configs that we have to
+> > test. Personally, I see no reason for making either posix or rich
+> > acls compile time dependent. How about we just change CONFIG_FS_XFS
+> > to have "select FS_POSIX_ACL" and "select FS_RICHACL"
+> > unconditionally, and then we can get rid of all the conditional
+> > code?
+>=20
+> I'm sure neither kind of ACLs makes sense on many tiny systems, it
+> should be possible to disable them. XFS may not make sense on those
+> kinds of systems either, that is not my call to make though.
 
-Task A                        Task B
-ext4_handle_error()
--> jbd2_journal_abort()
-  -> __journal_abort_soft()
-    -> __jbd2_journal_abort_hard()
-    | -> journal->j_flags |= JBD2_ABORT;
-    |
-    |                         __ext4_abort()
-    |                         -> jbd2_journal_abort()
-    |                         | -> __journal_abort_soft()
-    |                         |   -> if (journal->j_flags & JBD2_ABORT)
-    |                         |           return;
-    |                         -> panic()
-    |
-    -> jbd2_journal_update_sb_errno()
+Well, the smallest systems that use XFS are typically 1-2 disk NAS
+boxes, and I can see them wanting richacls. As it is, the xfs kernel
+module is almost 1MB of object code, so it you have a small embedded
+box you don't want XFS. Almost all distros turn on ACL support I'm
+not sure that it makes sense to have these config options in XFS
+anymore....
 
-Tested-by: Hobin Woo <hobin.woo@samsung.com>
-Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/super.c      |   12 ++++++++++--
- fs/jbd2/journal.c    |    6 +++++-
- include/linux/jbd2.h |    1 +
- 3 files changed, 16 insertions(+), 3 deletions(-)
+> >> diff --git a/fs/xfs/libxfs/xfs_format.h b/fs/xfs/libxfs/xfs_format=
+=2Eh
+> >> index 9590a06..8c6da45 100644
+> >> --- a/fs/xfs/libxfs/xfs_format.h
+> >> +++ b/fs/xfs/libxfs/xfs_format.h
+> >> @@ -461,10 +461,18 @@ xfs_sb_has_ro_compat_feature(
+> >>  #define XFS_SB_FEAT_INCOMPAT_FTYPE   (1 << 0)        /* filetype =
+in dirent */
+> >>  #define XFS_SB_FEAT_INCOMPAT_SPINODES        (1 << 1)        /* s=
+parse inode chunks */
+> >>  #define XFS_SB_FEAT_INCOMPAT_META_UUID       (1 << 2)        /* m=
+etadata UUID */
+> >> +
+> >> +#ifdef CONFIG_XFS_RICHACL
+> >> +#define XFS_SB_FEAT_INCOMPAT_RICHACL (1 << 3)        /* richacls =
+*/
+> >> +#else
+> >> +#define XFS_SB_FEAT_INCOMPAT_RICHACL 0
+> >> +#endif
+> >> +
+> >
+> > Regardless of whether we build in richacl support, this is wrong.
+> > Feature bits are on-disk format definitions, so it will always have
+> > this value whether or not the kernel supports the feature.
+>=20
+> This is so that xfs_mount_validate_sb() will complain when mounting a
+> richacl filesystem on a kernel which doesn't have richacl suport
+> compiled in. The same effect can be had with extra code there of
+> course.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index ca9d4a2..baecf29 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -380,9 +380,13 @@ static void ext4_handle_error(struct super_block *sb)
- 		smp_wmb();
- 		sb->s_flags |= MS_RDONLY;
- 	}
--	if (test_opt(sb, ERRORS_PANIC))
-+	if (test_opt(sb, ERRORS_PANIC)) {
-+		if (EXT4_SB(sb)->s_journal &&
-+		  !(EXT4_SB(sb)->s_journal->j_flags & JBD2_REC_ERR))
-+			return;
- 		panic("EXT4-fs (device %s): panic forced after error\n",
- 			sb->s_id);
-+	}
- }
- 
- #define ext4_error_ratelimit(sb)					\
-@@ -571,8 +575,12 @@ void __ext4_abort(struct super_block *sb, const char *function,
- 			jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
- 		save_error_info(sb, function, line);
- 	}
--	if (test_opt(sb, ERRORS_PANIC))
-+	if (test_opt(sb, ERRORS_PANIC)) {
-+		if (EXT4_SB(sb)->s_journal &&
-+		  !(EXT4_SB(sb)->s_journal->j_flags & JBD2_REC_ERR))
-+			return;
- 		panic("EXT4-fs panic from previous error\n");
-+	}
- }
- 
- void __ext4_msg(struct super_block *sb,
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index b96bd80..b7ac9f2 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -2053,8 +2053,12 @@ static void __journal_abort_soft (journal_t *journal, int errno)
- 
- 	__jbd2_journal_abort_hard(journal);
- 
--	if (errno)
-+	if (errno) {
- 		jbd2_journal_update_sb_errno(journal);
-+		write_lock(&journal->j_state_lock);
-+		journal->j_flags |= JBD2_REC_ERR;
-+		write_unlock(&journal->j_state_lock);
-+	}
- }
- 
- /**
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 20e7f78..75f2e85 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1007,6 +1007,7 @@ struct journal_s
- #define JBD2_ABORT_ON_SYNCDATA_ERR	0x040	/* Abort the journal on file
- 						 * data write error in ordered
- 						 * mode */
-+#define JBD2_REC_ERR	0x080	/* The errno in the sb has been recorded */
- 
- /*
-  * Function declarations for the journaling transaction and buffer
--- 
-1.7.9.5
+If the kernel doesn't know about a feature, then it will report
+"unknown feature". However, as of this patch set, the kernel will
+know about the richacl feature, and so the correct error message
+is to say "Rich ACLs not supported by this kernel".
 
+Also, from a disk format perspective, this is a this is a read-only
+compat feature, as kernels that don't have richacl support are still
+able to mount and walk the filesystem without errors occurring. It's
+only when allowing modifications are made that problems will arise,
+so why did you make it an incompat feature?
+
+> >> +int
+> >> +xfs_set_richacl(struct inode *inode, struct richacl *acl)
+> >> +{
+> >> +     struct xfs_inode *ip =3D XFS_I(inode);
+> >> +     umode_t mode =3D inode->i_mode;
+> >> +     int error;
+> >> +
+> >> +     if (acl) {
+> >> +             /* Don't allow acls with unmapped identifiers. */
+> >> +             if (richacl_has_unmapped_identifiers(acl))
+> >> +                     return -EINVAL;
+> >> +
+> >> +             if (richacl_equiv_mode(acl, &mode) =3D=3D 0) {
+> >> +                     xfs_set_mode(inode, mode);
+> >> +                     acl =3D NULL;
+> >> +             }
+> >
+> > Comment needed here - why does this now seem to accidentally fall
+> > through to removing the ACL?
+>=20
+> Setting an ACL that is equivalent to a file mode is the same as
+> removing any existing ACLs and doing a chmod to that equivalent file
+> mode. It's the sams as with POSIX ACLs, and the code is the same as
+> well. I'll add a comment though.
+>=20
+> > Also, why is this in the XFS specific
+> > code when it's generic richacl functionality that is being checked?
+>=20
+> This turns into two non-atomic operations if we move it into generic =
+code.
+
+I don't follow you - this isn't an atomic operation to begin with...
+
+> > Also, I really dislike the API where passing a NULL acl means to
+> > "set this acl" actually means "remove the existing ACL". Why no
+> > ->remove_acl method called from the generic code?
+>=20
+> It's not uncommon, it saves inode operations and wiring-up code.
+
+I know it's common. All it does is put extra branches in the
+filesystem code to do this, because remove is a different operation
+to set. The API sucks, and we're not limited on inode operations,
+and the operator overloading makes the filesystem code unnecessarily
+complex as it has to detect when to branch out ot remove or not...
+
+Cheers,
+
+Dave.
+--=20
+Dave Chinner
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
