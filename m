@@ -1,57 +1,39 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] ext2: Add locking for DAX faults
-Date: Tue, 13 Oct 2015 10:07:12 +0200
-Message-ID: <20151013080712.GI17050@quack.suse.cz>
-References: <1444428128-12200-1-git-send-email-ross.zwisler@linux.intel.com>
- <1444428128-12200-3-git-send-email-ross.zwisler@linux.intel.com>
- <20151011231443.GY27164@dastard>
- <20151012214135.GA24720@linux.intel.com>
+From: "Mrs Hayet Zara" <hayetzaara@gmail.com>
+Subject: PLS I NEED YOUR HELP
+Date: Tue, 13 Oct 2015 00:19:48 +0300 (EEST)
+Message-ID: <8ef859dd5adb2f73cb9bb7eb6c128f87.squirrel__49364.1287707307$1444731968$gmane$org@82.79.55.74>
+Reply-To: geldkantornl@aim.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>, linux-kernel@vger.kernel.org,
-	Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
-	Dan Williams <dan.j.williams@intel.com>,
-	linux-nvdimm@lists.01.org,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Andreas Dilger <andreas.dilger@intel.com>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20151012214135.GA24720@linux.intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: undisclosed-recipients:;
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from [82.79.55.74] ([82.79.55.74]:42609 "EHLO
+	server-servicii.uvvgsm.ro" rhost-flags-FAIL-FAIL-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751930AbbJMKYP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 Oct 2015 06:24:15 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 12-10-15 15:41:35, Ross Zwisler wrote:
-> On Mon, Oct 12, 2015 at 10:14:43AM +1100, Dave Chinner wrote:
-> > On Fri, Oct 09, 2015 at 04:02:08PM -0600, Ross Zwisler wrote:
-> > > Add locking to ensure that DAX faults are isolated from ext2 operations
-> > > that modify the data blocks allocation for an inode.  This is intended to
-> > > be analogous to the work being done in XFS by Dave Chinner:
-> > > 
-> > > http://www.spinics.net/lists/linux-fsdevel/msg90260.html
-> > > 
-> > > Compared with XFS the ext2 case is greatly simplified by the fact that ext2
-> > > already allocates and zeros new blocks before they are returned as part of
-> > > ext2_get_block(), so DAX doesn't need to worry about getting unmapped or
-> > > unwritten buffer heads.
-> > > 
-> > > This means that the only work we need to do in ext2 is to isolate the DAX
-> > > faults from inode block allocation changes.  I believe this just means that
-> > > we need to isolate the DAX faults from truncate operations.
-> > 
-> > Why limit this just to DAX page faults?
-> 
-> Yep, I see that XFS uses the same locking to protect both DAX and non-DAX
-> faults.  I'll add this protection to non-DAX ext2 faults as well.
 
-Actually, since ext2 driver doesn't support punch hole, there is no need
-for additional locking in non-DAX paths. So we can save some space in inode
-and locking for that common case. So I'd prefer if we didn't add
-unnecessary locking in those paths and just document that for non-DAX
-faults using page lock and i_size check is enough. After all the main
-usecase of ext2 driver these days is for people with tiny devices...
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+
+I am Mrs Zaara Heyet an oil-servicing equipment merchant, am writing this
+mail to you with tears and love from my heart of charity work i could not
+fulfill before the end of my days due to my present healness ,Please do
+not think of this letter as one of those being sent around to ask for
+money,I got your email id from our chambers of commerce while searching
+for a reliable person to help me carry out this project.
+
+I have an urgent and confidential business proposition involving transfer
+of Nine Million $9,000.000.00 USD ,it will be of great benefit for both of
+us especially you as my days are number on earth. I will give you more
+details as regards this transaction as soon as you, reply me of your
+interest via my personal E-mail: geldkantornl@aim.com , Thanks for your
+interested .
+
+WARNING!!WARNING!!
+This winning notification is expected to be read and/or used only by the
+individual(s) for whom it is intended.:**************
+
