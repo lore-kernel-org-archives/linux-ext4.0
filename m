@@ -1,56 +1,49 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: [PATCH v10 44/46] nfs: Add richacl support
-Date: Mon, 12 Oct 2015 21:49:17 +0200
-Message-ID: <CAHc6FU6kp1pR8hRU3g2+A07xfpErMa3bNGJ47Sc4gEJS0U3nJQ@mail.gmail.com>
-References: <1444604337-17651-1-git-send-email-andreas.gruenbacher@gmail.com>
-	<1444604337-17651-45-git-send-email-andreas.gruenbacher@gmail.com>
-	<561BC61E.6010704@Netapp.com>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH 2/2] ext2: Add locking for DAX faults
+Date: Mon, 12 Oct 2015 15:41:35 -0600
+Message-ID: <20151012214135.GA24720@linux.intel.com>
+References: <1444428128-12200-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1444428128-12200-3-git-send-email-ross.zwisler@linux.intel.com>
+ <20151011231443.GY27164@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-cifs@vger.kernel.org,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>, Linux API <linux-api@vger.kernel.org>,
-	Andreas Gruenbacher <andreas.gruenbacher@gmail.com>,
-	Trond Myklebust <trond.myklebust@primarydata.com>,
-	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <561BC61E.6010704@Netapp.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-kernel@vger.kernel.org, Jan Kara <jack@suse.com>,
+	linux-ext4@vger.kernel.org,
+	Dan Williams <dan.j.williams@intel.com>,
+	linux-nvdimm@lists.01.org,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Andreas Dilger <andreas.dilger@intel.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20151011231443.GY27164@dastard>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Anna,
+On Mon, Oct 12, 2015 at 10:14:43AM +1100, Dave Chinner wrote:
+> On Fri, Oct 09, 2015 at 04:02:08PM -0600, Ross Zwisler wrote:
+> > Add locking to ensure that DAX faults are isolated from ext2 operations
+> > that modify the data blocks allocation for an inode.  This is intended to
+> > be analogous to the work being done in XFS by Dave Chinner:
+> > 
+> > http://www.spinics.net/lists/linux-fsdevel/msg90260.html
+> > 
+> > Compared with XFS the ext2 case is greatly simplified by the fact that ext2
+> > already allocates and zeros new blocks before they are returned as part of
+> > ext2_get_block(), so DAX doesn't need to worry about getting unmapped or
+> > unwritten buffer heads.
+> > 
+> > This means that the only work we need to do in ext2 is to isolate the DAX
+> > faults from inode block allocation changes.  I believe this just means that
+> > we need to isolate the DAX faults from truncate operations.
+> 
+> Why limit this just to DAX page faults?
 
-On Mon, Oct 12, 2015 at 4:39 PM, Anna Schumaker
-<Anna.Schumaker@netapp.com> wrote:
-> I'm not a fan of the "one giant function" approach.  Is there any way to split richacl_from_nfs4_acl() into several smaller functions?
+Yep, I see that XFS uses the same locking to protect both DAX and non-DAX
+faults.  I'll add this protection to non-DAX ext2 faults as well.
 
-sure, parsing the usr/group identifier could be put in a separate
-function, for example.
-
-That function cannot stay as it is right now anyway --- we really need
-idmapper to tell us when an identifier string cannot be mapped to a
-uid or gid so that we can preserve that identifier.
-
-Thanks,
-Andreas
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+One quick question - it looks like that dax_pmd_fault() only grabs the
+pagefault lock and updates the file_update_time() if the FAULT_WRITE_FLAG is
+set. In xfs_filemap_pfn_mkwrite(), though, these two steps are taken for read
+faults as well.  Is this intentional?
