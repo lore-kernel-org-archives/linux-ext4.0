@@ -1,59 +1,66 @@
-From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH v10 24/46] xfs: Add richacl support
-Date: Tue, 13 Oct 2015 15:39:15 +0200
-Message-ID: <CAHc6FU7aNW3drN+Mj2PHyz0Tv8RHexSuUzWCPnCA7eCWY68pHQ@mail.gmail.com>
-References: <1444604337-17651-1-git-send-email-andreas.gruenbacher@gmail.com>
-	<1444604337-17651-25-git-send-email-andreas.gruenbacher@gmail.com>
-	<20151012001033.GA27164@dastard>
-	<CAHpGcMKeJHDegs2cYKaJdX4Tw43Jp30Nv_2WoSNZfBzGJKu=BQ@mail.gmail.com>
-	<20151012040545.GC27164@dastard>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH 2/2] ext2: Add locking for DAX faults
+Date: Tue, 13 Oct 2015 09:02:45 -0600
+Message-ID: <20151013150245.GA22694@linux.intel.com>
+References: <1444428128-12200-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1444428128-12200-3-git-send-email-ross.zwisler@linux.intel.com>
+ <20151011231443.GY27164@dastard>
+ <20151012214135.GA24720@linux.intel.com>
+ <20151012232427.GH27164@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org,
-	Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux FS-devel Mailing List <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Linux API Mailing List <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20151012040545.GC27164@dastard>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-kernel@vger.kernel.org, Jan Kara <jack@suse.com>,
+	linux-ext4@vger.kernel.org,
+	Dan Williams <dan.j.williams@intel.com>,
+	linux-nvdimm@lists.01.org,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Andreas Dilger <andreas.dilger@intel.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20151012232427.GH27164@dastard>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 12, 2015 at 6:05 AM, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org> wro=
-te:
-> On Mon, Oct 12, 2015 at 03:51:15AM +0200, Andreas Gr=C3=BCnbacher wro=
-te:
->> 2015-10-12 2:10 GMT+02:00 Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>:
->> > Also, I really dislike the API where passing a NULL acl means to
->> > "set this acl" actually means "remove the existing ACL". Why no
->> > ->remove_acl method called from the generic code?
->>
->> It's not uncommon, it saves inode operations and wiring-up code.
->
-> I know it's common. All it does is put extra branches in the
-> filesystem code to do this, because remove is a different operation
-> to set. The API sucks, and we're not limited on inode operations,
-> and the operator overloading makes the filesystem code unnecessarily
-> complex as it has to detect when to branch out ot remove or not...
+On Tue, Oct 13, 2015 at 10:24:28AM +1100, Dave Chinner wrote:
+> On Mon, Oct 12, 2015 at 03:41:35PM -0600, Ross Zwisler wrote:
+> > On Mon, Oct 12, 2015 at 10:14:43AM +1100, Dave Chinner wrote:
+> > > On Fri, Oct 09, 2015 at 04:02:08PM -0600, Ross Zwisler wrote:
+> > > > Add locking to ensure that DAX faults are isolated from ext2 operations
+> > > > that modify the data blocks allocation for an inode.  This is intended to
+> > > > be analogous to the work being done in XFS by Dave Chinner:
+> > > > 
+> > > > http://www.spinics.net/lists/linux-fsdevel/msg90260.html
+> > > > 
+> > > > Compared with XFS the ext2 case is greatly simplified by the fact that ext2
+> > > > already allocates and zeros new blocks before they are returned as part of
+> > > > ext2_get_block(), so DAX doesn't need to worry about getting unmapped or
+> > > > unwritten buffer heads.
+> > > > 
+> > > > This means that the only work we need to do in ext2 is to isolate the DAX
+> > > > faults from inode block allocation changes.  I believe this just means that
+> > > > we need to isolate the DAX faults from truncate operations.
+> > > 
+> > > Why limit this just to DAX page faults?
+> > 
+> > Yep, I see that XFS uses the same locking to protect both DAX and non-DAX
+> > faults.  I'll add this protection to non-DAX ext2 faults as well.
+> > 
+> > One quick question - it looks like that dax_pmd_fault() only grabs the
+> > pagefault lock and updates the file_update_time() if the FAULT_WRITE_FLAG is
+> > set. In xfs_filemap_pfn_mkwrite(), though, these two steps are taken for read
+> > faults as well.  Is this intentional?
+> 
+> xfs_filemap_pfn_mkwrite() should not be called for read faults.
+> We've already had to have a fault that maps the page to pfn for us
+> to get a pfn based fault, and hence that code is correct.
+> 
+> Or are you talking about xfs_filemap_pmd_fault()? In which case, I
+> refer you to the commit log and it should be obvious that it was
+> committed without me even looking at it.  I have another patch in my
+> current series for 4.4 that will fix this.
 
-I've tried it out. The filesystem code could be simplified (see the
-richacl-wip [*] branch until the next posting). Adding a
-remove_richacl inode operation on top of that really doesn't help.
-
-Thanks,
-Andreas
-
-[*] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.=
-git
-richacl-wip
+Yep, sorry, I meant xfs_filemap_pmd_fault().  Thanks, I was just making sure the
+pattern I'm following in ext2 where I'm only locking the pagefault lock &
+updating the file_update_time() on writes was correct.
