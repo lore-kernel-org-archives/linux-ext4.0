@@ -1,77 +1,57 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 02/12] libext2fs: automatically enable meta_bg to avoid
- filling up BG 0
-Date: Tue, 13 Oct 2015 00:08:38 -0700
-Message-ID: <20151013070838.GO10390@birch.djwong.org>
-References: <20151012215629.29065.24418.stgit@birch.djwong.org>
- <20151012215642.29065.18353.stgit@birch.djwong.org>
- <6D149520-CD92-4409-B155-8FF587130557@dilger.ca>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] ext2: Add locking for DAX faults
+Date: Tue, 13 Oct 2015 10:07:12 +0200
+Message-ID: <20151013080712.GI17050@quack.suse.cz>
+References: <1444428128-12200-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1444428128-12200-3-git-send-email-ross.zwisler@linux.intel.com>
+ <20151011231443.GY27164@dastard>
+ <20151012214135.GA24720@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "tytso@mit.edu" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:21489 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751866AbbJMHIn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Oct 2015 03:08:43 -0400
+Cc: Dave Chinner <david@fromorbit.com>, linux-kernel@vger.kernel.org,
+	Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+	Dan Williams <dan.j.williams@intel.com>,
+	linux-nvdimm@lists.01.org,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Andreas Dilger <andreas.dilger@intel.com>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <6D149520-CD92-4409-B155-8FF587130557@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20151012214135.GA24720@linux.intel.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 12, 2015 at 08:34:36PM -0600, Andreas Dilger wrote:
-> The commit comment says enable meta_bg if 1/2 of the block group
-> is full, but the code checks for 3/4 of the block group is full.  Which one
-> Should it be?
-
-Oops.  It should be 3/4 since it's generally advantageous to leave meta_bg off
-as long as possible so as to keep the group descriptors nearby.
-
-That said, I also toyed with the idea of making the switch if total overhead
-(gdt + inodes) uses more than 3/4 of a BG.  But the inode size/ratio is
-configurable, so I went with just checking gdt for now.
-
---D
-
+On Mon 12-10-15 15:41:35, Ross Zwisler wrote:
+> On Mon, Oct 12, 2015 at 10:14:43AM +1100, Dave Chinner wrote:
+> > On Fri, Oct 09, 2015 at 04:02:08PM -0600, Ross Zwisler wrote:
+> > > Add locking to ensure that DAX faults are isolated from ext2 operations
+> > > that modify the data blocks allocation for an inode.  This is intended to
+> > > be analogous to the work being done in XFS by Dave Chinner:
+> > > 
+> > > http://www.spinics.net/lists/linux-fsdevel/msg90260.html
+> > > 
+> > > Compared with XFS the ext2 case is greatly simplified by the fact that ext2
+> > > already allocates and zeros new blocks before they are returned as part of
+> > > ext2_get_block(), so DAX doesn't need to worry about getting unmapped or
+> > > unwritten buffer heads.
+> > > 
+> > > This means that the only work we need to do in ext2 is to isolate the DAX
+> > > faults from inode block allocation changes.  I believe this just means that
+> > > we need to isolate the DAX faults from truncate operations.
+> > 
+> > Why limit this just to DAX page faults?
 > 
-> Cheers, Andreas
-> 
-> > On Oct 12, 2015, at 15:56, Darrick J. Wong <darrick.wong@oracle.com> wrote:
-> > 
-> > If during formatting we'd lose more than half of a block group to
-> > group descriptors and other metadata, enable the meta_bg feature.
-> > This enables us to create >500T filesystems with default options.
-> > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > ---
-> > lib/ext2fs/initialize.c |    5 +++++
-> > 1 file changed, 5 insertions(+)
-> > 
-> > 
-> > diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
-> > index f672a27..b5ca928 100644
-> > --- a/lib/ext2fs/initialize.c
-> > +++ b/lib/ext2fs/initialize.c
-> > @@ -381,6 +381,11 @@ ipg_retry:
-> >    overhead = (int) (3 + fs->inode_blocks_per_group +
-> >              super->s_reserved_gdt_blocks);
-> > 
-> > +    /* Enable meta_bg if we'd lose more than 3/4 of a BG to GDT blocks. */
-> > +    if (super->s_reserved_gdt_blocks + fs->desc_blocks >
-> > +        super->s_blocks_per_group * 3 / 4)
-> > +        fs->super->s_feature_incompat |= EXT2_FEATURE_INCOMPAT_META_BG;
-> > +
-> >    if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
-> >        overhead++;
-> >    else
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Yep, I see that XFS uses the same locking to protect both DAX and non-DAX
+> faults.  I'll add this protection to non-DAX ext2 faults as well.
+
+Actually, since ext2 driver doesn't support punch hole, there is no need
+for additional locking in non-DAX paths. So we can save some space in inode
+and locking for that common case. So I'd prefer if we didn't add
+unnecessary locking in those paths and just document that for non-DAX
+faults using page lock and i_size check is enough. After all the main
+usecase of ext2 driver these days is for people with tiny devices...
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
