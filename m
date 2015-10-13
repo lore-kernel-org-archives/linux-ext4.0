@@ -1,55 +1,54 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH 2/2] ext2: Add locking for DAX faults
-Date: Tue, 13 Oct 2015 16:15:30 -0600
-Message-ID: <20151013221530.GA17773@linux.intel.com>
-References: <1444428128-12200-1-git-send-email-ross.zwisler@linux.intel.com>
- <1444428128-12200-3-git-send-email-ross.zwisler@linux.intel.com>
- <20151011231443.GY27164@dastard>
- <20151012214135.GA24720@linux.intel.com>
- <20151012232427.GH27164@dastard>
- <CANpvso6auD-NWsEYw10FNSviusA63tyK785usG=9R3r+a3Rirg@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Dave Chinner <david@fromorbit.com>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Kernel development list <linux-kernel@vger.kernel.org>,
-	Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+Subject: [PATCH v2 0/2] Add updated DAX locking to ext2
+Date: Tue, 13 Oct 2015 16:25:35 -0600
+Message-ID: <1444775137-23685-1-git-send-email-ross.zwisler@linux.intel.com>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Jan Kara <jack@suse.com>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
 	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
 	linux-nvdimm@lists.01.org,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Andreas Dilger <andreas.dilger@intel.com>
-To: Eric Curtin <ericcurtin17@gmail.com>
+	Matthew Wilcox <matthew.r.wilcox@intel.com>
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CANpvso6auD-NWsEYw10FNSviusA63tyK785usG=9R3r+a3Rirg@mail.gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 13, 2015 at 12:35:44AM +0100, Eric Curtin wrote:
-> Hi Ross,
->=20
-> For all those int ret declarations. Why not declare and initialize al=
-l
-> on the same line?
->=20
-> Regards,
-> Eric
+The first patch in this series is a somewhat related bug fix.  The second patch
+adds new locking to ext2 to isolate DAX faults (page faults, PMD faults, page
+mkwrite and pfn mkwrite) from ext2 operations that modify a given inode's data
+block allocations.
 
-Because the return value 'ret' is set unconditionally later in the func=
-tion as
-part of a call into the DAX code.  This call needs to be made after we'=
-ve done
-appropriate locking, though, which really is the point of the ext2 wrap=
-per for
-the DAX function.  Setting it to some random value and then uncondition=
-ally
-overwriting it later in the function is a bad pattern because a) the in=
-itial
-value is meaningless and b) it can hide coding errors where you are no =
-longer
-setting the variable to something meaningful.  The "warning: =E2=80=98r=
-et=E2=80=99 is used
-uninitialized in this function" warnings would otherwise warn you that =
-you've
-made a mistake.
+I've tested this using xfstests with DAX enabled and disabled and verified that
+it compiles without errors with and without CONFIG_FS_DAX.
+
+Changes from v1:
+ - 'dax_sem' is now only present in struct ext2_inode_info if CONFIG_FS_DAX is
+   defined.  This was done to help save space on low-memory machines that are a
+   target audience of ext2. (Jan)
+
+ - The locking order between ext2_inode_info->dax_sem and sb_start_pagefault
+   was swapped to match the locking order in XFS.  This resulted in more
+   open-coding of the various DAX fault routines, and once this is done in ext4
+   we should be able to get rid of many (all?) the DAX fault handler wrappers
+   that do locking for the filesystems. (Dave)
+
+ - Warn if 'dax_sem' isn't properly held in __ext2_truncate_blocks. (Dan)
+
+Ross Zwisler (2):
+  dax: dax_pfn_mkwrite() truncate race check
+  ext2: Add locking for DAX faults
+
+ fs/dax.c        | 13 +++++++--
+ fs/ext2/ext2.h  | 11 ++++++++
+ fs/ext2/file.c  | 84 ++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ fs/ext2/inode.c | 10 +++++++
+ fs/ext2/super.c |  3 +++
+ 5 files changed, 115 insertions(+), 6 deletions(-)
+
+-- 
+2.1.0
