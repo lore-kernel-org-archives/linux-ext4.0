@@ -1,165 +1,272 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2 1/2] dax: dax_pfn_mkwrite() truncate race check
-Date: Wed, 14 Oct 2015 10:40:25 +0200
-Message-ID: <20151014084025.GA23758@quack.suse.cz>
+Subject: Re: [PATCH v2 2/2] ext2: Add locking for DAX faults
+Date: Wed, 14 Oct 2015 10:51:19 +0200
+Message-ID: <20151014085119.GB23758@quack.suse.cz>
 References: <1444775137-23685-1-git-send-email-ross.zwisler@linux.intel.com>
- <1444775137-23685-2-git-send-email-ross.zwisler@linux.intel.com>
- <20151014052550.GL31326@dastard>
+ <1444775137-23685-3-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-kernel@vger.kernel.org,
+Cc: linux-kernel@vger.kernel.org,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
 	Jan Kara <jack@suse.com>,
 	Matthew Wilcox <willy@linux.intel.com>,
 	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	Andrew Morton <akpm@linux-foundation.org>,
 	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>,
 	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
 	linux-nvdimm@lists.01.org,
 	Matthew Wilcox <matthew.r.wilcox@intel.com>
-To: Dave Chinner <david@fromorbit.com>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20151014052550.GL31326@dastard>
+In-Reply-To: <1444775137-23685-3-git-send-email-ross.zwisler@linux.intel.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 14-10-15 16:25:50, Dave Chinner wrote:
-> On Tue, Oct 13, 2015 at 04:25:36PM -0600, Ross Zwisler wrote:
-> > Update dax_pfn_mkwrite() so that it validates i_size before returning.
-> > This is necessary to ensure that the page fault has not raced with truncate
-> > and is now pointing to a region beyond the end of the current file.
-> > 
-> > This change is based on a similar outstanding patch for XFS from Dave
-> > Chinner entitled "xfs: add ->pfn_mkwrite support for DAX".
-> > 
-> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> > Cc: Dave Chinner <david@fromorbit.com>
-> > ---
-> >  fs/dax.c | 13 +++++++++++--
-> >  1 file changed, 11 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/dax.c b/fs/dax.c
-> > index 131fd35a..82be6e4 100644
-> > --- a/fs/dax.c
-> > +++ b/fs/dax.c
-> > @@ -693,12 +693,21 @@ EXPORT_SYMBOL_GPL(dax_pmd_fault);
-> >   */
-> >  int dax_pfn_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
-> >  {
-> > -	struct super_block *sb = file_inode(vma->vm_file)->i_sb;
-> > +	struct inode *inode = file_inode(vma->vm_file);
-> > +	struct super_block *sb = inode->i_sb;
-> > +	int ret = VM_FAULT_NOPAGE;
-> > +	loff_t size;
-> >  
-> >  	sb_start_pagefault(sb);
-> >  	file_update_time(vma->vm_file);
-> > +
-> > +	/* check that the faulting page hasn't raced with truncate */
-> > +	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
-> > +	if (vmf->pgoff >= size)
-> > +		ret = VM_FAULT_SIGBUS;
-> > +
-> >  	sb_end_pagefault(sb);
-> > -	return VM_FAULT_NOPAGE;
-> > +	return ret;
+On Tue 13-10-15 16:25:37, Ross Zwisler wrote:
+> Add locking to ensure that DAX faults are isolated from ext2 operations
+> that modify the data blocks allocation for an inode.  This is intended to
+> be analogous to the work being done in XFS by Dave Chinner:
 > 
-> This is still racy, as the read of the inode size is not serialised
-> against or ordered by any locks held by truncate. The check in XFS
-> is serialised against truncate by the XFS_MMAPLOCK and the generic
-> DAX code does not have such a mechanism to rely on. Hence I'd
-> suggest that the correct thing to do here is remove
-> dax_pfn_mkwrite() and force filesystems to implement their own
-> truncate-safe variants of ->pfn_mkwrite.
-
-Well, the i_size check is just an optimization anyway. See below the
-discussion regarding the hole punch.
-
-> And on further thought, I'm not sure that what I did with XFS is
-> at all correct when considering hole punching. That is, to get a PFN
-> based fault, we've already had to guarantee the file offset has
-> blocks allocated and mapped them. Then:
+> http://www.spinics.net/lists/linux-fsdevel/msg90260.html
 > 
-> process 1				process 2
-> pfn_mkwrite @ X				punch hole @ X
->  xfs_filemap_pfn_mkwrite		XFS_MMAPLOCK_EXCL
->   XFS_MMAPLOCK_SHARED
->     <blocks>
-> 					invalidate mapping @ X
-> 					remove blocks @ X
-> 					....
-> 					unlock XFS_MMAPLOCK_EXCL
->    checks file size
->   unlock XFS_MMAPLOCK_SHARED
->   return VM_FAULT_NOPAGE
+> Compared with XFS the ext2 case is greatly simplified by the fact that ext2
+> already allocates and zeros new blocks before they are returned as part of
+> ext2_get_block(), so DAX doesn't need to worry about getting unmapped or
+> unwritten buffer heads.
 > 
-> And so process 1 continues with an invalid page mapping over the
-> hole process 2 just punched in the file. That's a data
-> exposure/corruption problem the underlying blocks get reallocated
-> to some other file.
+> This means that the only work we need to do in ext2 is to isolate the DAX
+> faults from inode block allocation changes.  I believe this just means that
+> we need to isolate the DAX faults from truncate operations.
 > 
-> Unless I'm missing something here, this gets ugly real fast.
-
-So how I convinced myself that this is not a problem is:
-
-When process 2 invalidates mapping, it will also modify page tables to
-unmap freed pages. Then the pte_same() check in mm/memory.c:wp_pfn_shared()
-will fail, we bail out, CPU will retry the memory access which faults again
-and now we go the right path. So ->pfn_mkwrite() has to be prepared that
-the pfn under it actually isn't there anymore and current implementations
-don't really care so we are fine.
-
-Trying to generalize when we are safe against such races: Unless we modify
-page tables or inode allocation information, we don't care about races with
-truncate() / punch_hole() so even the original dax_pfn_mkwrite() code was
-actually correct. But it's really subtle...
-
-I have this written down before ext4_dax_pfn_mkwrite() handler so that I
-don't forget but it would be good to add the comment also to some generic
-code.
-
-> If we treat ->pfn_mkwrite like ->page_mkwrite() and allocate blocks
-> under the pfn that was invalidated and punched out by the hole punch
-> operation, then *the physical pfn that maps to the file offset that
-> the page fault occurred for changes*.
+> The newly introduced dax_sem is intended to replicate the protection
+> offered by i_mmaplock in XFS.  In addition to truncate the i_mmaplock also
+> protects XFS operations like hole punching, fallocate down, extent
+> manipulation IOCTLS like xfs_ioc_space() and extent swapping.  Truncate is
+> the only one of these operations supported by ext2.
 > 
-> So, we can't allocate new blocks during ->pfn_mkwrite. All we can
-> do is check the pfn mapping is still valid when we have serialised
-> against hole punch/truncate, and if it isn't we need to return
-> VM_FAULT_RETRY so that the page fault is restarted to find the new
-> mapping which can then have ->page_mkwrite/->pfn_mkwrite called
-> on it.
-> 
-> The biggest problem here is that VM_FAULT_RETRY will only allow one
-> retry of the page fault - if the page fault races twice in a row
-> with a hole punch (need 3 processes, two doing write faults at the
-> same offset, and the other repeatedly hole punching the same offset)
-> then we'll SIGBUS the process on the second VM_FAULT_RETRY in a row
-> from ->pfn_mkwrite....
-> 
-> And because I don't have all day to work out all the twisty paths of
-> the page fault code, where is a pfn-based read fault validated
-> against racing truncate/holepunch operations freeing the
-> underlying storage?
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 
-Do you mean a fault which ends up in dax_fault()? There we use that:
+The patch looks good to me. Feel free to add:
 
-a) we hold fs specific i_mmap_lock in exclusive mode in truncate / punch
-   hole over complete sequence of "invalidate mappings, remove blocks from
-   inode".
+Reviewed-by: Jan Kara <jack@suse.com>
 
-b) we hold fs specific i_mmap_lock in shared mode in fault over the
-   sequence "lookup block, install into page tables".
-
-So I don't see a way how we could end up with page tables referencing freed
-blocks - either fault finds a hole which it instantiates in page tables or
-it finds a block, instantiates it in page tables, and subsequent truncate
-will remove the block from page tables again. But I guess you are well
-aware of this so maybe I misunderstood your question.
+Or I can push the patch through my tree as it seems to be independent of
+any other changes, am I right?
 
 								Honza
+> ---
+>  fs/ext2/ext2.h  | 11 ++++++++
+>  fs/ext2/file.c  | 84 ++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+>  fs/ext2/inode.c | 10 +++++++
+>  fs/ext2/super.c |  3 +++
+>  4 files changed, 104 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+> index 8d15feb..4c69c94 100644
+> --- a/fs/ext2/ext2.h
+> +++ b/fs/ext2/ext2.h
+> @@ -684,6 +684,9 @@ struct ext2_inode_info {
+>  	struct rw_semaphore xattr_sem;
+>  #endif
+>  	rwlock_t i_meta_lock;
+> +#ifdef CONFIG_FS_DAX
+> +	struct rw_semaphore dax_sem;
+> +#endif
+>  
+>  	/*
+>  	 * truncate_mutex is for serialising ext2_truncate() against
+> @@ -699,6 +702,14 @@ struct ext2_inode_info {
+>  #endif
+>  };
+>  
+> +#ifdef CONFIG_FS_DAX
+> +#define dax_sem_down_write(ext2_inode)	down_write(&(ext2_inode)->dax_sem)
+> +#define dax_sem_up_write(ext2_inode)	up_write(&(ext2_inode)->dax_sem)
+> +#else
+> +#define dax_sem_down_write(ext2_inode)
+> +#define dax_sem_up_write(ext2_inode)
+> +#endif
+> +
+>  /*
+>   * Inode dynamic state flags
+>   */
+> diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+> index 1982c3f..11a42c5 100644
+> --- a/fs/ext2/file.c
+> +++ b/fs/ext2/file.c
+> @@ -27,27 +27,103 @@
+>  #include "acl.h"
+>  
+>  #ifdef CONFIG_FS_DAX
+> +/*
+> + * The lock ordering for ext2 DAX fault paths is:
+> + *
+> + * mmap_sem (MM)
+> + *   sb_start_pagefault (vfs, freeze)
+> + *     ext2_inode_info->dax_sem
+> + *       address_space->i_mmap_rwsem or page_lock (mutually exclusive in DAX)
+> + *         ext2_inode_info->truncate_mutex
+> + *
+> + * The default page_lock and i_size verification done by non-DAX fault paths
+> + * is sufficient because ext2 doesn't support hole punching.
+> + */
+>  static int ext2_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+>  {
+> -	return dax_fault(vma, vmf, ext2_get_block, NULL);
+> +	struct inode *inode = file_inode(vma->vm_file);
+> +	struct ext2_inode_info *ei = EXT2_I(inode);
+> +	int ret;
+> +
+> +	if (vmf->flags & FAULT_FLAG_WRITE) {
+> +		sb_start_pagefault(inode->i_sb);
+> +		file_update_time(vma->vm_file);
+> +	}
+> +	down_read(&ei->dax_sem);
+> +
+> +	ret = __dax_fault(vma, vmf, ext2_get_block, NULL);
+> +
+> +	up_read(&ei->dax_sem);
+> +	if (vmf->flags & FAULT_FLAG_WRITE)
+> +		sb_end_pagefault(inode->i_sb);
+> +	return ret;
+>  }
+>  
+>  static int ext2_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
+>  						pmd_t *pmd, unsigned int flags)
+>  {
+> -	return dax_pmd_fault(vma, addr, pmd, flags, ext2_get_block, NULL);
+> +	struct inode *inode = file_inode(vma->vm_file);
+> +	struct ext2_inode_info *ei = EXT2_I(inode);
+> +	int ret;
+> +
+> +	if (flags & FAULT_FLAG_WRITE) {
+> +		sb_start_pagefault(inode->i_sb);
+> +		file_update_time(vma->vm_file);
+> +	}
+> +	down_read(&ei->dax_sem);
+> +
+> +	ret = __dax_pmd_fault(vma, addr, pmd, flags, ext2_get_block, NULL);
+> +
+> +	up_read(&ei->dax_sem);
+> +	if (flags & FAULT_FLAG_WRITE)
+> +		sb_end_pagefault(inode->i_sb);
+> +	return ret;
+>  }
+>  
+>  static int ext2_dax_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+>  {
+> -	return dax_mkwrite(vma, vmf, ext2_get_block, NULL);
+> +	struct inode *inode = file_inode(vma->vm_file);
+> +	struct ext2_inode_info *ei = EXT2_I(inode);
+> +	int ret;
+> +
+> +	sb_start_pagefault(inode->i_sb);
+> +	file_update_time(vma->vm_file);
+> +	down_read(&ei->dax_sem);
+> +
+> +	ret = __dax_mkwrite(vma, vmf, ext2_get_block, NULL);
+> +
+> +	up_read(&ei->dax_sem);
+> +	sb_end_pagefault(inode->i_sb);
+> +	return ret;
+> +}
+> +
+> +static int ext2_dax_pfn_mkwrite(struct vm_area_struct *vma,
+> +		struct vm_fault *vmf)
+> +{
+> +	struct inode *inode = file_inode(vma->vm_file);
+> +	struct ext2_inode_info *ei = EXT2_I(inode);
+> +	int ret = VM_FAULT_NOPAGE;
+> +	loff_t size;
+> +
+> +	sb_start_pagefault(inode->i_sb);
+> +	file_update_time(vma->vm_file);
+> +	down_read(&ei->dax_sem);
+> +
+> +	/* check that the faulting page hasn't raced with truncate */
+> +	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
+> +	if (vmf->pgoff >= size)
+> +		ret = VM_FAULT_SIGBUS;
+> +
+> +	up_read(&ei->dax_sem);
+> +	sb_end_pagefault(inode->i_sb);
+> +	return ret;
+>  }
+>  
+>  static const struct vm_operations_struct ext2_dax_vm_ops = {
+>  	.fault		= ext2_dax_fault,
+>  	.pmd_fault	= ext2_dax_pmd_fault,
+>  	.page_mkwrite	= ext2_dax_mkwrite,
+> -	.pfn_mkwrite	= dax_pfn_mkwrite,
+> +	.pfn_mkwrite	= ext2_dax_pfn_mkwrite,
+>  };
+>  
+>  static int ext2_file_mmap(struct file *file, struct vm_area_struct *vma)
+> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+> index c60a248..0aa9bf6 100644
+> --- a/fs/ext2/inode.c
+> +++ b/fs/ext2/inode.c
+> @@ -1085,6 +1085,7 @@ static void ext2_free_branches(struct inode *inode, __le32 *p, __le32 *q, int de
+>  		ext2_free_data(inode, p, q);
+>  }
+>  
+> +/* dax_sem must be held when calling this function */
+>  static void __ext2_truncate_blocks(struct inode *inode, loff_t offset)
+>  {
+>  	__le32 *i_data = EXT2_I(inode)->i_data;
+> @@ -1100,6 +1101,10 @@ static void __ext2_truncate_blocks(struct inode *inode, loff_t offset)
+>  	blocksize = inode->i_sb->s_blocksize;
+>  	iblock = (offset + blocksize-1) >> EXT2_BLOCK_SIZE_BITS(inode->i_sb);
+>  
+> +#ifdef CONFIG_FS_DAX
+> +	WARN_ON(!rwsem_is_locked(&ei->dax_sem));
+> +#endif
+> +
+>  	n = ext2_block_to_path(inode, iblock, offsets, NULL);
+>  	if (n == 0)
+>  		return;
+> @@ -1185,7 +1190,10 @@ static void ext2_truncate_blocks(struct inode *inode, loff_t offset)
+>  		return;
+>  	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
+>  		return;
+> +
+> +	dax_sem_down_write(EXT2_I(inode));
+>  	__ext2_truncate_blocks(inode, offset);
+> +	dax_sem_up_write(EXT2_I(inode));
+>  }
+>  
+>  static int ext2_setsize(struct inode *inode, loff_t newsize)
+> @@ -1213,8 +1221,10 @@ static int ext2_setsize(struct inode *inode, loff_t newsize)
+>  	if (error)
+>  		return error;
+>  
+> +	dax_sem_down_write(EXT2_I(inode));
+>  	truncate_setsize(inode, newsize);
+>  	__ext2_truncate_blocks(inode, newsize);
+> +	dax_sem_up_write(EXT2_I(inode));
+>  
+>  	inode->i_mtime = inode->i_ctime = CURRENT_TIME_SEC;
+>  	if (inode_needs_sync(inode)) {
+> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> index 900e19c..3a71cea 100644
+> --- a/fs/ext2/super.c
+> +++ b/fs/ext2/super.c
+> @@ -192,6 +192,9 @@ static void init_once(void *foo)
+>  	init_rwsem(&ei->xattr_sem);
+>  #endif
+>  	mutex_init(&ei->truncate_mutex);
+> +#ifdef CONFIG_FS_DAX
+> +	init_rwsem(&ei->dax_sem);
+> +#endif
+>  	inode_init_once(&ei->vfs_inode);
+>  }
+>  
+> -- 
+> 2.1.0
+> 
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
