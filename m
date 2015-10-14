@@ -1,71 +1,64 @@
-From: kbuild test robot <lkp@intel.com>
-Subject: Re: [PATCH 4/6] ext4: Provide ext4_issue_zeroout()
-Date: Wed, 14 Oct 2015 21:18:38 +0800
-Message-ID: <201510142156.s6DA4V23%fengguang.wu@intel.com>
-References: <1444822227-29984-5-git-send-email-jack@suse.com>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v2 2/2] ext2: Add locking for DAX faults
+Date: Wed, 14 Oct 2015 09:31:38 -0600
+Message-ID: <20151014153138.GA12470@linux.intel.com>
+References: <1444775137-23685-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1444775137-23685-3-git-send-email-ross.zwisler@linux.intel.com>
+ <20151014085119.GB23758@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: kbuild-all@01.org, linux-ext4@vger.kernel.org,
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-kernel@vger.kernel.org,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Jan Kara <jack@suse.com>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
 	Dan Williams <dan.j.williams@intel.com>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>
-To: Jan Kara <jack@suse.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga03.intel.com ([134.134.136.65]:64489 "EHLO mga03.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752214AbbJNNT1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Oct 2015 09:19:27 -0400
+	Dave Chinner <david@fromorbit.com>,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+	linux-nvdimm@lists.01.org,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1444822227-29984-5-git-send-email-jack@suse.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20151014085119.GB23758@quack.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Jan,
+On Wed, Oct 14, 2015 at 10:51:19AM +0200, Jan Kara wrote:
+> On Tue 13-10-15 16:25:37, Ross Zwisler wrote:
+> > Add locking to ensure that DAX faults are isolated from ext2 operations
+> > that modify the data blocks allocation for an inode.  This is intended to
+> > be analogous to the work being done in XFS by Dave Chinner:
+> > 
+> > http://www.spinics.net/lists/linux-fsdevel/msg90260.html
+> > 
+> > Compared with XFS the ext2 case is greatly simplified by the fact that ext2
+> > already allocates and zeros new blocks before they are returned as part of
+> > ext2_get_block(), so DAX doesn't need to worry about getting unmapped or
+> > unwritten buffer heads.
+> > 
+> > This means that the only work we need to do in ext2 is to isolate the DAX
+> > faults from inode block allocation changes.  I believe this just means that
+> > we need to isolate the DAX faults from truncate operations.
+> > 
+> > The newly introduced dax_sem is intended to replicate the protection
+> > offered by i_mmaplock in XFS.  In addition to truncate the i_mmaplock also
+> > protects XFS operations like hole punching, fallocate down, extent
+> > manipulation IOCTLS like xfs_ioc_space() and extent swapping.  Truncate is
+> > the only one of these operations supported by ext2.
+> > 
+> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> 
+> The patch looks good to me. Feel free to add:
+> 
+> Reviewed-by: Jan Kara <jack@suse.com>
+> 
+> Or I can push the patch through my tree as it seems to be independent of
+> any other changes, am I right?
+> 
+> 								Honza
 
-[auto build test WARNING on v4.3-rc5 -- if it's inappropriate base, please suggest rules for selecting the more suitable base]
-
-url:    https://github.com/0day-ci/linux/commits/Jan-Kara/ext4-Punch-hole-and-DAX-fixes/20151014-193637
-reproduce:
-        # apt-get install sparse
-        make ARCH=x86_64 allmodconfig
-        make C=1 CF=-D__CHECK_ENDIAN__
-
-
-sparse warnings: (new ones prefixed by >>)
-
->> fs/ext4/extents.c:3124:44: sparse: incorrect type in argument 2 (different base types)
-   fs/ext4/extents.c:3124:44:    expected unsigned int [unsigned] [usertype] lblk
-   fs/ext4/extents.c:3124:44:    got restricted __le32 [usertype] ee_block
-
-vim +3124 fs/ext4/extents.c
-
-  3108	
-  3109		if (ee_len == 0)
-  3110			return 0;
-  3111	
-  3112		return ext4_es_insert_extent(inode, ee_block, ee_len, ee_pblock,
-  3113					     EXTENT_STATUS_WRITTEN);
-  3114	}
-  3115	
-  3116	/* FIXME!! we need to try to merge to left or right after zero-out  */
-  3117	static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
-  3118	{
-  3119		ext4_fsblk_t ee_pblock;
-  3120		unsigned int ee_len;
-  3121	
-  3122		ee_len    = ext4_ext_get_actual_len(ex);
-  3123		ee_pblock = ext4_ext_pblock(ex);
-> 3124		return ext4_issue_zeroout(inode, ex->ee_block, ee_pblock, ee_len);
-  3125	}
-  3126	
-  3127	/*
-  3128	 * ext4_split_extent_at() splits an extent at given block.
-  3129	 *
-  3130	 * @handle: the journal handle
-  3131	 * @inode: the file inode
-  3132	 * @path: the path to the extent
-
----
-0-DAY kernel test infrastructure                Open Source Technology Center
-https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
+Yep, it is independent of other patches.  It'd be great if you pushed it up
+through your tree, thanks!
