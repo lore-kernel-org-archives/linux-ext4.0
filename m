@@ -1,71 +1,33 @@
 From: Jan Kara <jack@suse.com>
-Subject: [PATCH 2/6] ext4: Document lock ordering
-Date: Wed, 14 Oct 2015 13:30:23 +0200
-Message-ID: <1444822227-29984-3-git-send-email-jack@suse.com>
-References: <1444822227-29984-1-git-send-email-jack@suse.com>
+Subject: [PATCH 0/6] ext4: Punch hole and DAX fixes
+Date: Wed, 14 Oct 2015 13:30:21 +0200
+Message-ID: <1444822227-29984-1-git-send-email-jack@suse.com>
 Cc: Dan Williams <dan.j.williams@intel.com>,
 	Ross Zwisler <ross.zwisler@linux.intel.com>,
 	Matthew Wilcox <matthew.r.wilcox@intel.com>,
 	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:43239 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:43244 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932133AbbJNLam (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S932138AbbJNLam (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 14 Oct 2015 07:30:42 -0400
-In-Reply-To: <1444822227-29984-1-git-send-email-jack@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We have enough locks that it's probably worth documenting the lock
-ordering rules we have in ext4.
+Hello,
 
-Signed-off-by: Jan Kara <jack@suse.com>
----
- fs/ext4/super.c | 30 ++++++++++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+This series fixes a long standing problem of racing punch hole and page fault
+resulting in possible filesystem corruption or stale data exposure. We fix the
+problem by using a new inode-private rw_semaphore i_mmap_sem to synchronize
+page faults with truncate and punch hole operations.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 61fad9e33bb9..152f719a0c62 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -85,6 +85,36 @@ static void ext4_unregister_li_request(struct super_block *sb);
- static void ext4_clear_request_list(void);
- static int ext4_reserve_clusters(struct ext4_sb_info *, ext4_fsblk_t);
- 
-+/*
-+ * Lock ordering
-+ *
-+ * Note the difference between i_mmap_sem (EXT4_I(inode)->i_mmap_sem) and
-+ * i_mmap_rwsem (inode->i_mmap_rwsem)!
-+ *
-+ * page fault path:
-+ * mmap_sem -> sb_start_pagefault -> i_mmap_sem (r) -> transaction start ->
-+ *   page lock -> i_data_sem (rw)
-+ *
-+ * buffered write path:
-+ * sb_start_write -> i_mutex -> mmap_sem
-+ * sb_start_write -> i_mutex -> transaction start -> page lock ->
-+ *   i_data_sem (rw)
-+ *
-+ * truncate:
-+ * sb_start_write -> i_mutex -> EXT4_STATE_DIOREAD_LOCK (w) -> i_mmap_sem (w) ->
-+ *   i_mmap_rwsem (w) -> page lock
-+ * sb_start_write -> i_mutex -> EXT4_STATE_DIOREAD_LOCK (w) -> i_mmap_sem (w) ->
-+ *   transaction start -> i_data_sem (rw)
-+ *
-+ * direct IO:
-+ * sb_start_write -> i_mutex -> EXT4_STATE_DIOREAD_LOCK (r) -> mmap_sem
-+ * sb_start_write -> i_mutex -> EXT4_STATE_DIOREAD_LOCK (r) ->
-+ *   transaction start -> i_data_sem (rw)
-+ *
-+ * writepages:
-+ * transaction start -> page lock(s) -> i_data_sem (rw)
-+ */
-+
- #if !defined(CONFIG_EXT2_FS) && !defined(CONFIG_EXT2_FS_MODULE) && defined(CONFIG_EXT4_USE_FOR_EXT2)
- static struct file_system_type ext2_fs_type = {
- 	.owner		= THIS_MODULE,
--- 
-2.1.4
+When having this exclusion, the only remaining problem with DAX implementation
+are races between two page faults zeroing out same block concurrently (where
+the data written after the first fault finishes are possibly overwritten by
+the second fault still doing zeroing). That is dealt with by patches 5 and 6
+in this series where we implement block zeroing directly in ext4_map_blocks().
 
+The patches survived xfstests run both in dax and non-dax mode.
+
+								Honza
