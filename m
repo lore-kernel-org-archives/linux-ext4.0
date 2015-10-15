@@ -1,53 +1,64 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 3/8] ext2: only permit ro mounts with compat features we
- know we don't support
-Date: Thu, 15 Oct 2015 09:47:05 -0700
-Message-ID: <20151015164705.GR10390@birch.djwong.org>
-References: <20151012215416.28872.8160.stgit@birch.djwong.org>
- <20151012215437.28872.14707.stgit@birch.djwong.org>
- <20151015143728.GG17329@thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 1/6] ext4: Fix races between page faults and hole punching
+Date: Fri, 16 Oct 2015 07:22:14 +1100
+Message-ID: <20151015202214.GR27164@dastard>
+References: <1444822227-29984-1-git-send-email-jack@suse.com>
+ <1444822227-29984-2-git-send-email-jack@suse.com>
+ <20151015030059.GB31087@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+	Dan Williams <dan.j.williams@intel.com>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:37337 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751374AbbJOQrJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Oct 2015 12:47:09 -0400
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:10485 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751268AbbJOUWj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Oct 2015 16:22:39 -0400
 Content-Disposition: inline
-In-Reply-To: <20151015143728.GG17329@thunk.org>
+In-Reply-To: <20151015030059.GB31087@linux.intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 15, 2015 at 10:37:28AM -0400, Theodore Ts'o wrote:
-> On Mon, Oct 12, 2015 at 02:54:37PM -0700, Darrick J. Wong wrote:
-> > The ext2 mount code never checks the compat features against the ones
-> > it knows about.  This is correct behavior since compat features are
-> > supposed to be rw-compatible with old drivers; however, for certain
-> > configurations (journalled rootfs) the admin is unlikely to want
-> > no-journal mode.  Since we changed the default probe order to put ext4
-> > first, we can make ext2.ko only allow readonly mounts if has_journal is
-> > found.
+On Wed, Oct 14, 2015 at 09:00:59PM -0600, Ross Zwisler wrote:
+> On Wed, Oct 14, 2015 at 01:30:22PM +0200, Jan Kara wrote:
+> > Currently, page faults and hole punching are completely unsynchronized.
+> > This can result in page fault faulting in a page into a range that we
+> > are punching after truncate_pagecache_range() has been called and thus
+> > we can end up with a page mapped to disk blocks that will be shortly
+> > freed. Filesystem corruption will shortly follow. Note that the same
+> > race is avoided for truncate by checking page fault offset against
+> > i_size but there isn't similar mechanism available for punching holes.
 > > 
-> > (Remember, this only affects mounting ext3 filesystems on ext2.ko.)
+> > Fix the problem by creating new rw semaphore i_mmap_sem in inode and
+> > grab it for writing over truncate and hole punching and for read over
+> > page faults. We cannot easily use i_data_sem for this since that ranks
+> > below transaction start and we need something ranking above it so that
+> > it can be held over the whole truncate / hole punching operation.
 > > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > Signed-off-by: Jan Kara <jack@suse.com>
+> > ---
+> >  fs/ext4/ext4.h  | 10 +++++++++
+> >  fs/ext4/file.c  | 66 +++++++++++++++++++++++++++++++++++++++++++++++++--------
+> >  fs/ext4/inode.c | 27 +++++++++++++++++++----
+> >  fs/ext4/super.c |  1 +
+> >  4 files changed, 91 insertions(+), 13 deletions(-)
 > 
-> I'm not sure that we need this patch.  If someone explicitly requests
-> a r/w mount of an ext3 file system using ext2, we should let it.
-> After changing the default probe order, the only time your change
-> would prohibit the mounting of an ext3 file system is when the system
-> administrator has explicitly mentioned the file system type in command
-> line.
-
-Okay, let's drop it then.
-
---D
-
+> I wonder if there are a few other operations in ext4_fallocate() that
+> we may need to protect in addition to ext4_punch_hole()?
 > 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Do ext4_collapse_range(), ext4_insert_range() and maybe even ext4_zero_range()
+> need protection?
+
+Yes, they do. Anything that does direct extent manipulation needs
+to invalidate current mappings across the range and that requires
+page fault serialisation.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
