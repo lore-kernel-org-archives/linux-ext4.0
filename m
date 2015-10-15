@@ -1,96 +1,56 @@
-From: Daeho Jeong <daeho.jeong@samsung.com>
-Subject: [PATCH] ext4: fix xfstest generic/269 double revoked buffer bug
-Date: Thu, 15 Oct 2015 09:23:18 +0900
-Message-ID: <1444868598-16188-1-git-send-email-daeho.jeong@samsung.com>
-Cc: Daeho Jeong <daeho.jeong@samsung.com>
-To: tytso@mit.edu, linux-ext4@vger.kernel.org
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH 1/6] ext4: Fix races between page faults and hole punching
+Date: Wed, 14 Oct 2015 21:00:59 -0600
+Message-ID: <20151015030059.GB31087@linux.intel.com>
+References: <1444822227-29984-1-git-send-email-jack@suse.com>
+ <1444822227-29984-2-git-send-email-jack@suse.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	Dan Williams <dan.j.williams@intel.com>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Dave Chinner <david@fromorbit.com>
+To: Jan Kara <jack@suse.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout2.samsung.com ([203.254.224.25]:54483 "EHLO
-	mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753098AbbJOAXH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Oct 2015 20:23:07 -0400
-Received: from epcpsbgr1.samsung.com
- (u141.gpu120.samsung.co.kr [203.254.230.141])
- by mailout2.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
- 64bit (built May  5 2014))
- with ESMTP id <0NW8002WRJQH3200@mailout2.samsung.com> for
- linux-ext4@vger.kernel.org; Thu, 15 Oct 2015 09:23:05 +0900 (KST)
+Received: from mga03.intel.com ([134.134.136.65]:21596 "EHLO mga03.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751103AbbJODBB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Oct 2015 23:01:01 -0400
+Content-Disposition: inline
+In-Reply-To: <1444822227-29984-2-git-send-email-jack@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When you repeatly execute xfstest generic/269 with bigalloc_1k option
-enabled using the below command:
+On Wed, Oct 14, 2015 at 01:30:22PM +0200, Jan Kara wrote:
+> Currently, page faults and hole punching are completely unsynchronized.
+> This can result in page fault faulting in a page into a range that we
+> are punching after truncate_pagecache_range() has been called and thus
+> we can end up with a page mapped to disk blocks that will be shortly
+> freed. Filesystem corruption will shortly follow. Note that the same
+> race is avoided for truncate by checking page fault offset against
+> i_size but there isn't similar mechanism available for punching holes.
+> 
+> Fix the problem by creating new rw semaphore i_mmap_sem in inode and
+> grab it for writing over truncate and hole punching and for read over
+> page faults. We cannot easily use i_data_sem for this since that ranks
+> below transaction start and we need something ranking above it so that
+> it can be held over the whole truncate / hole punching operation.
+> 
+> Signed-off-by: Jan Kara <jack@suse.com>
+> ---
+>  fs/ext4/ext4.h  | 10 +++++++++
+>  fs/ext4/file.c  | 66 +++++++++++++++++++++++++++++++++++++++++++++++++--------
+>  fs/ext4/inode.c | 27 +++++++++++++++++++----
+>  fs/ext4/super.c |  1 +
+>  4 files changed, 91 insertions(+), 13 deletions(-)
 
-"./kvm-xfstests -c bigalloc_1k -m nodelalloc -C 1000 generic/269"
+I wonder if there are a few other operations in ext4_fallocate() that
+we may need to protect in addition to ext4_punch_hole()?
 
-you can easily see the below bug message.
+Do ext4_collapse_range(), ext4_insert_range() and maybe even ext4_zero_range()
+need protection?
 
-"JBD2 unexpected failure: jbd2_journal_revoke: !buffer_revoked(bh);"
-
-This means that an already revoked buffer is erroneously revoked again
-and it is caused by doing revoke for the buffer at the wrong position
-in ext4_free_blocks(). We need to re-position the buffer revoke
-procedure for an unspecified buffer after checking the cluster boundary
-for bigalloc option. If not, some part of the cluster can be doubly
-revoked.
-
-Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
----
- fs/ext4/mballoc.c |   33 ++++++++++++++++++---------------
- 1 file changed, 18 insertions(+), 15 deletions(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 34b610e..abea276 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4682,22 +4682,11 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 	ext4_debug("freeing block %llu\n", block);
- 	trace_ext4_free_blocks(inode, block, count, flags);
- 
--	if (flags & EXT4_FREE_BLOCKS_FORGET) {
--		struct buffer_head *tbh = bh;
--		int i;
--
--		BUG_ON(bh && (count > 1));
-+	if (bh && (flags & EXT4_FREE_BLOCKS_FORGET)) {
-+		BUG_ON(count > 1);
- 
--		for (i = 0; i < count; i++) {
--			cond_resched();
--			if (!bh)
--				tbh = sb_find_get_block(inode->i_sb,
--							block + i);
--			if (!tbh)
--				continue;
--			ext4_forget(handle, flags & EXT4_FREE_BLOCKS_METADATA,
--				    inode, tbh, block + i);
--		}
-+		ext4_forget(handle, flags & EXT4_FREE_BLOCKS_METADATA,
-+			    inode, bh, block);
- 	}
- 
- 	/*
-@@ -4742,6 +4731,20 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 			count += sbi->s_cluster_ratio - overflow;
- 	}
- 
-+	if (!bh && (flags & EXT4_FREE_BLOCKS_FORGET)) {
-+		int i;
-+
-+		for (i = 0; i < count; i++) {
-+			cond_resched();
-+			bh = sb_find_get_block(inode->i_sb,
-+					       block + i);
-+			if (!bh)
-+				continue;
-+			ext4_forget(handle, flags & EXT4_FREE_BLOCKS_METADATA,
-+				    inode, bh, block + i);
-+		}
-+	}
-+
- do_more:
- 	overflow = 0;
- 	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
--- 
-1.7.9.5
-
+For what it's worth the rest of the locking looks good to me.  The lock
+ordering is the same as with ext2 and XFS, and all the DAX fault handlers look
+correct to me.
