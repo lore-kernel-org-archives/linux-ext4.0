@@ -1,60 +1,54 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/6] ext4: Fix races between page faults and hole punching
-Date: Thu, 15 Oct 2015 11:14:16 +0200
-Message-ID: <20151015091416.GB5234@quack.suse.cz>
-References: <1444822227-29984-1-git-send-email-jack@suse.com>
- <1444822227-29984-2-git-send-email-jack@suse.com>
- <20151015030059.GB31087@linux.intel.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 03/12] generic/80[0-2]: support xfs in addition to btrfs
+Date: Thu, 15 Oct 2015 02:19:44 -0700
+Message-ID: <20151015091944.GA13683@infradead.org>
+References: <20151007051257.3260.73072.stgit@birch.djwong.org>
+	<20151007051323.3260.60421.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
-	Dan Williams <dan.j.williams@intel.com>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Dave Chinner <david@fromorbit.com>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:46676 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750856AbbJOJOS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Oct 2015 05:14:18 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: fstests@vger.kernel.org, xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	Anna.Schumaker@netapp.com, linux-btrfs@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20151015030059.GB31087@linux.intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20151007051323.3260.60421.stgit@birch.djwong.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 14-10-15 21:00:59, Ross Zwisler wrote:
-> On Wed, Oct 14, 2015 at 01:30:22PM +0200, Jan Kara wrote:
-> > Currently, page faults and hole punching are completely unsynchronized.
-> > This can result in page fault faulting in a page into a range that we
-> > are punching after truncate_pagecache_range() has been called and thus
-> > we can end up with a page mapped to disk blocks that will be shortly
-> > freed. Filesystem corruption will shortly follow. Note that the same
-> > race is avoided for truncate by checking page fault offset against
-> > i_size but there isn't similar mechanism available for punching holes.
-> > 
-> > Fix the problem by creating new rw semaphore i_mmap_sem in inode and
-> > grab it for writing over truncate and hole punching and for read over
-> > page faults. We cannot easily use i_data_sem for this since that ranks
-> > below transaction start and we need something ranking above it so that
-> > it can be held over the whole truncate / hole punching operation.
-> > 
-> > Signed-off-by: Jan Kara <jack@suse.com>
-> > ---
-> >  fs/ext4/ext4.h  | 10 +++++++++
-> >  fs/ext4/file.c  | 66 +++++++++++++++++++++++++++++++++++++++++++++++++--------
-> >  fs/ext4/inode.c | 27 +++++++++++++++++++----
-> >  fs/ext4/super.c |  1 +
-> >  4 files changed, 91 insertions(+), 13 deletions(-)
-> 
-> I wonder if there are a few other operations in ext4_fallocate() that
-> we may need to protect in addition to ext4_punch_hole()?
-> 
-> Do ext4_collapse_range(), ext4_insert_range() and maybe even
-> ext4_zero_range() need protection?
+> +# this test requires the test fs support reflink...
+> +#
+> +_require_test_reflink()
+> +{
+> +    case $FSTYP in
+> +    xfs)
+> +	xfs_info "${TEST_DIR}" | grep reflink=1 -c -q || _notrun "Reflink not supported by this filesystem type: $FSTYP"
+> +	;;
+> +    btrfs)
+> +        true
+> +        ;;
+> +    *)
+> +        _notrun "Reflink not supported by this filesystem type: $FSTYP"
+> +        ;;
+> +    esac
 
-Yeah, they do. I'll recheck what have I missed... Thanks for catching this!
+I don't think that's a good test - we need to check if it's supported by
+trying it.  That'll automatically get us coverage for other file systems
+like xfs.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Note that dedup should get it's own feature check, as currently hacking
+nfs into this check will also run dedup tests that can't really be
+supported.
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
