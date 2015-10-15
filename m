@@ -1,114 +1,37 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: use private version of page_zero_new_buffers() for
- data=journal mode
-Date: Thu, 15 Oct 2015 13:17:01 +0200
-Message-ID: <20151015111701.GB7173@quack.suse.cz>
-References: <20151007154303.GC24678@thunk.org>
- <1444363269-25956-1-git-send-email-tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/8] jbd2: gate checksum calculations on crc driver
+ presence, not sb flags
+Date: Thu, 15 Oct 2015 10:32:25 -0400
+Message-ID: <20151015143225.GE17329@thunk.org>
+References: <20151012215416.28872.8160.stgit@birch.djwong.org>
+ <20151012215422.28872.71133.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	dave.hansen@intel.com, torvalds@linux-foundation.org,
-	akpm@linux-foundation.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, Nikolay Borisov <kernel@kyup.com>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:52002 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751956AbbJOOca (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Oct 2015 10:32:30 -0400
 Content-Disposition: inline
-In-Reply-To: <1444363269-25956-1-git-send-email-tytso@mit.edu>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20151012215422.28872.71133.stgit@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 09-10-15 00:01:09, Ted Tso wrote:
-> If there is a error while copying data from userspace into the page
-> cache during a write(2) system call, in data=journal mode, in
-> ext4_journalled_write_end() were using page_zero_new_buffers() from
-> fs/buffer.c.  Unfortunately, this sets the buffer dirty flag, which is
-> no good if journalling is enabled.  This is a long-standing bug that
-> goes back for years and years in ext3, but a combination of (a)
-> data=journal not being very common, (b) in many case it only results
-> in a warning message. and (c) only very rarely causes the kernel hang,
-> means that we only really noticed this as a problem when commit
-> 998ef75ddb caused this failure to happen frequently enough to cause
-> generic/208 to fail when run in data=journal mode.
+On Mon, Oct 12, 2015 at 02:54:22PM -0700, Darrick J. Wong wrote:
+> Change the journal's checksum functions to gate on whether or not the
+> crc32c driver is loaded, and gate the loading on the superblock bits.
+> This prevents a journal crash if someone loads a journal in no-csum
+> mode and then randomizes the superblock, thus flipping on the feature
+> bits.
 > 
-> The fix is to have our own version of this function that doesn't call
-> mark_dirty_buffer(), since we will end up calling
-> ext4_handle_dirty_metadata() on the buffer head(s) in questions very
-> shortly afterwards in ext4_journalled_write_end().
+> v2: Create a feature-test helper, use it everywhere.
 > 
-> Thanks to Dave Hansen and Linus Torvalds for helping to identify the
-> root cause of the problem.
-> 
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> Tested-By: Nikolay Borisov <kernel@kyup.com>
+> Reported-by: Nikolay Borisov <kernel@kyup.com>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Looks good to me. You can add:
+Thanks, applied.
 
-Reviewed-by: Jan Kara <jack@suse.com>
-
-								Honza
-> ---
->  fs/ext4/inode.c | 34 +++++++++++++++++++++++++++++++++-
->  1 file changed, 33 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index ae52e32..0a589bb 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1181,6 +1181,38 @@ errout:
->  	return ret ? ret : copied;
->  }
->  
-> +/*
-> + * This is a private version of page_zero_new_buffers() which doesn't
-> + * set the buffer to be dirty, since in data=journalled mode we need
-> + * to call ext4_handle_dirty_metadata() instad.
-> + */
-> +static void zero_new_buffers(struct page *page, unsigned from, unsigned to)
-> +{
-> +	unsigned int block_start = 0, block_end;
-> +	struct buffer_head *head, *bh;
-> +
-> +	bh = head = page_buffers(page);
-> +	do {
-> +		block_end = block_start + bh->b_size;
-> +		if (buffer_new(bh)) {
-> +			if (block_end > from && block_start < to) {
-> +				if (!PageUptodate(page)) {
-> +					unsigned start, size;
-> +
-> +					start = max(from, block_start);
-> +					size = min(to, block_end) - start;
-> +
-> +					zero_user(page, start, size);
-> +					set_buffer_uptodate(bh);
-> +				}
-> +				clear_buffer_new(bh);
-> +			}
-> +		}
-> +		block_start = block_end;
-> +		bh = bh->b_this_page;
-> +	} while (bh != head);
-> +}
-> +
->  static int ext4_journalled_write_end(struct file *file,
->  				     struct address_space *mapping,
->  				     loff_t pos, unsigned len, unsigned copied,
-> @@ -1207,7 +1239,7 @@ static int ext4_journalled_write_end(struct file *file,
->  		if (copied < len) {
->  			if (!PageUptodate(page))
->  				copied = 0;
-> -			page_zero_new_buffers(page, from+copied, to);
-> +			zero_new_buffers(page, from+copied, to);
->  		}
->  
->  		ret = ext4_walk_page_buffers(handle, page_buffers(page), from,
-> -- 
-> 2.5.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+						- Ted
