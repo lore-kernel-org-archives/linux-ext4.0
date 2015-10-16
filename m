@@ -1,33 +1,61 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: e2fsprogs: Richacl support
-Date: Fri, 16 Oct 2015 18:03:29 +0200
-Message-ID: <CAHc6FU5s7-t3+jtKDusVFqc542Ag7pEOTUqp1LSxg8_uCPyF=A@mail.gmail.com>
+From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH v11 16/48] richacl: Automatic Inheritance
+Date: Fri, 16 Oct 2015 18:13:19 +0200
+Message-ID: <CAHc6FU7SNs6+xt34s18xM-C4U_7v5DLcN_feHXhVMY1q=K6zxA@mail.gmail.com>
+References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
+	<1445008706-15115-17-git-send-email-agruenba@redhat.com>
+	<CALCETrXFkB01tk21FuEOqABHWg1XyOQwsT+s=Lq0RYye6X_7xw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-To: linux-ext4 <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f169.google.com ([209.85.217.169]:34531 "EHLO
-	mail-lb0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932833AbbJPQDb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Oct 2015 12:03:31 -0400
-Received: by lbbwb3 with SMTP id wb3so42316631lbb.1
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2015 09:03:29 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org,
+	"linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux FS Devel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Andy Lutomirski <luto-kltTT9wpgjJwATOyAt5JVQ@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <CALCETrXFkB01tk21FuEOqABHWg1XyOQwsT+s=Lq0RYye6X_7xw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+On Fri, Oct 16, 2015 at 6:00 PM, Andy Lutomirski <luto-kltTT9wpgjJwATOyAt5JVQ@public.gmane.org> wrote:
+> On Fri, Oct 16, 2015 at 8:17 AM, Andreas Gruenbacher
+> <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
+>> Automatic Inheritance works as follows:
+>>
+>>  - When the RICHACL_AUTO_INHERIT flag in the acl of a file or directory
+>>    is not set, the file or directory is not affected by AI.
+>>
+>>  - When the RICHACL_AUTO_INHERIT flag in the acl of a directory is set
+>>    and a file or subdirectory is created in that directory, the
+>>    inherited acl will have the RICHACL_AUTO_INHERIT flag set, and all
+>>    inherited aces will have the RICHACE_INHERITED_ACE flag set.  This
+>>    allows user space to distinguish between aces which have been
+>>    inherited and aces which have been explicitly added.
+>
+> What if the file or subdirectory that's created in that directory is a
+> hard link?
 
-could the richacl feature flag please be added to e2fsprogs so that we
-won't end up with incompatible file systems?
+Directories cannot have hard links.
 
-  https://github.com/andreas-gruenbacher/e2fsprogs
-
-Also, should this really be an incompatible feature flag? With a
-read-only compatibility flag, mounting a richacl filesystem on a
-kernel without richacl support would work but it's not safe --- it
-could grant unwanted access to files. (The same applies to the xfs
-support, etc.)
+When a file is hard linked into multiple directories with different
+inheritable permissions, the permissions set last will "win". This
+isn't particularly pretty, but it's the way this has worked on that
+other operating system with significant marked share for the last
+fifteen years.
 
 Thanks,
 Andreas
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
