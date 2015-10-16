@@ -1,123 +1,144 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: High write latency spikes when writing to EXT4
-Date: Fri, 16 Oct 2015 10:58:01 -0600
-Message-ID: <DBD0EC66-0B63-4E50-9025-DBA9D20FB0D4@dilger.ca>
-References: <loom.20151016T095437-595@post.gmane.org>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_BAA5C98A-62B7-485B-9072-20053D126B71"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: linux-ext4@vger.kernel.org
-To: Jean-Paul Smeets <jean-paul.smeets@asml.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:34954 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932233AbbJPQ6H (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Oct 2015 12:58:07 -0400
-Received: by padcn9 with SMTP id cn9so10631806pad.2
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2015 09:58:06 -0700 (PDT)
-In-Reply-To: <loom.20151016T095437-595@post.gmane.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Austin S Hemmelgarn <ahferroin7-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Subject: Re: [PATCH v11 21/48] ext4: Add richacl feature flag
+Date: Fri, 16 Oct 2015 13:31:26 -0400
+Message-ID: <5621346E.5000500@gmail.com>
+References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
+ <1445008706-15115-22-git-send-email-agruenba@redhat.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-512; boundary="------------ms080105070900080704090103"
+Cc: "Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
+To: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <1445008706-15115-22-git-send-email-agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
+This is a cryptographically signed message in MIME format.
 
---Apple-Mail=_BAA5C98A-62B7-485B-9072-20053D126B71
+--------------ms080105070900080704090103
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
 
-On Oct 16, 2015, at 2:07 AM, Jean-Paul Smeets =
-<jean-paul.smeets@asml.com> wrote:
-> In our application we are seeing occasional high latency spikes (500ms =
-range
-> )when writing small amounts of data (a couple MB, a couple of 100 IOs) =
-to
-> files on an EXT4 volume (data=3Dordered). We are running kernel =
-3.10.62.
->=20
-> What seems to be happening is that a journal commit takes a long time.
-> During that time no write access to the journal is possible.
-> So a subsequent vfs.write is blocked until the journal commit is =
-finished.
->=20
-> We expected the page cache to decouple the vfs.write from this and not =
-to
-> block the vfs.write.
-> This behavior causes large spikes in on average much lower write =
-latencies.
->=20
-> Small log excerpt (duration in us):
-> 16:18:56.966387, PROCA, 20234, __ext4_journal_get_write_access: =
-duration: 140412
-> 16:18:56.966406, PROCB, 19965, __ext4_journal_get_write_access: =
-duration: 461892
-> 16:18:56.966422, PROCC, 20387, __ext4_journal_get_write_access: =
-duration: 391105
-> 16:18:56.966439, PROCD, 20041, __ext4_journal_get_write_access: =
-duration: 64256
-> 16:18:56.966454, itheex, 19823, __ext4_journal_get_write_access: =
-duration:
-> 383671
-> 16:18:56.966718, jbd2/dm-8-8, 684, jbd2_journal_commit_transaction:
-> duration: 468959
-> 16:18:56.967426, PROCE, 19867, ext4_file_write: duration: 469431
-> 16:18:56.967442, PROCE, 19867, vfs.write: duration: 469452
->=20
-> A similar, but less frequent issue is with the =
-__ext4_journal_start_sb.
-> Small log excerpt:
-> 16:17:43.337004, PROCF, 20041, __ext4_journal_start_sb: duration: =
-240753
-> 16:17:43.337024, PROCG, 19980, __ext4_journal_start_sb: duration: =
-269051
-> 16:17:43.337498, PROCG, 19980, ext4_file_write: duration: 269531
-> 16:17:43.337515, PROCG, 19980, vfs.write: duration: 269554
->=20
-> Can anything be done about these very high latency spikes ?
+On 2015-10-16 11:17, Andreas Gruenbacher wrote:
+> From: "Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
+>
+> This feature flag selects richacl instead of posix acl support on the
+> file system. In addition, the "acl" mount option is needed for enabling=
 
-There are a number of options to disconnect the file write operations =
-from the journal commits:
-- preallocate file blocks with fallocate() so that there are no =
-allocations
-  during the write
-- use data=3Dwriteback so that writes are not ordered with journal =
-commits
+> either of the two kinds of acls.
+>
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
+> Signed-off-by: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+> ---
+>   fs/ext4/ext4.h  |  6 ++++--
+>   fs/ext4/super.c | 42 +++++++++++++++++++++++++++++++++---------
+>   2 files changed, 37 insertions(+), 11 deletions(-)
+>
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index fd1f28b..b97a3b1 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -991,7 +991,7 @@ struct ext4_inode_info {
+>   #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal forma=
+t */
+>   #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
+>   #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */=
 
-It is also possible to store the journal on a separate low-latency =
-device
-like SSD or PCI NVRAM so that the journal commits are very fast and do =
-not
-cause latency spikes during writes.
+> -#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */=
 
-Cheers, Andreas
+> +#define EXT4_MOUNT_ACL			0x08000	/* Access Control Lists */
+>   #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mappi=
+ng */
+>   #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
+>   #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+> @@ -1582,6 +1582,7 @@ static inline int ext4_encrypted_inode(struct ino=
+de *inode)
+>   #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree=
+ */
+>   #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
+>   #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
+> +#define EXT4_FEATURE_INCOMPAT_RICHACL		0x20000
+I would like to re-iterate, on both XFS and ext4, I _really_ think this=20
+should be a ro_compat flag, and not an incompat one.  If a person has=20
+the ability to mount the FS (even if it's a read-only mount), then they=20
+by definition have read access to the file or partition that the=20
+filesystem is contained in, which means that any ACL's stored on the=20
+filesystem are functionally irrelevant, and making this an incompat=20
+feature will just complicate things further for people who have a=20
+legitimate need to recover data.
 
 
+--------------ms080105070900080704090103
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Description: S/MIME Cryptographic Signature
 
-
-
-
---Apple-Mail=_BAA5C98A-62B7-485B-9072-20053D126B71
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBViEsmnKl2rkXzB/gAQjWuQ/+OUr/NgFgsSUNzLFOjmO47veEhi0mBNYA
-Py6KGgId0fuQPYnjzKCBGQRTvvNqkNLlRaKOz39sJX3AyV9LFRryjqq93Vu4Jkp3
-OiK4e0ZWnVezx9IwvN5qXpRLTS++Mz3Htu4I2yeUEExH3SWncQvhlXNi80BLJ47t
-dEMeDhDI6r5k2mmAXsLQL2Do5/I74Vjif1c4rWgBPHeGALB2+iwGNrYcS5O2mjvG
-wRKGx3jCbB4Ds1DpYmJq8mcrxo6tlSPZqiGXtNlsccDuX71GJYgsi+0soFWFSznp
-r+ATP91kG8z1JSyGD5vLy3hX6MSCSeaOrMrQDLtvgIDdF3VNZWGxrSl0Un+gh8AA
-8V8wQJJ5Ys/p4BtWyFMhEscSyMImGgN9bjX5mVcjGbpfO40PhdY5AJWvs0ZCDsHP
-aq++XVoPDXgdNGRdmCz9agsuMe9ZJGKuiWnA6uiT/ZXV98XZVjfrNEHoanXVxP0v
-ESvTpH1czgiM9mZUMNT6dpq7wLNez0z0KDQZ5F9hFxdXi/p0I6z2Me8rVZs6lV5X
-RzoQ1KaAJMWI/+T+S4BZey0bX1Yv8814N+5w0lAo1Z6u+rAgsvxxKB4lSHb+ZHa5
-A+u1lxdQzjswG/9uNGvQyNsg0KwZ3dfVn8pLouyeorrvwrdvWTTcObdynKEg4Qt6
-rl3ysKRbx8c=
-=58GX
------END PGP SIGNATURE-----
-
---Apple-Mail=_BAA5C98A-62B7-485B-9072-20053D126B71--
+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
+cnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcN
+AQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DANBglghkgBZQMEAgMFAKCCAiEwGAYJKoZI
+hvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTUxMDE2MTczMTI2WjBPBgkq
+hkiG9w0BCQQxQgRAPhvf1wDQT+zY79/J/S+GlQuTEjNgTXDad8G8O18RNeFdjxHt3mpiCQ82
+rufwknYUE44F4fxbLMbe6U6gPJLvtjBsBgkqhkiG9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjAL
+BglghkgBZQMEAQIwCgYIKoZIhvcNAwcwDgYIKoZIhvcNAwICAgCAMA0GCCqGSIb3DQMCAgFA
+MAcGBSsOAwIHMA0GCCqGSIb3DQMCAgEoMIGRBgkrBgEEAYI3EAQxgYMwgYAweTEQMA4GA1UE
+ChMHUm9vdCBDQTEeMBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlD
+QSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2Vy
+dC5vcmcCAxEt+DCBkwYLKoZIhvcNAQkQAgsxgYOggYAweTEQMA4GA1UEChMHUm9vdCBDQTEe
+MBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25p
+bmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DAN
+BgkqhkiG9w0BAQEFAASCAgBhVrX0WVc4FHJb+ZrN+BO5uwBBBz933mTcl0qCV6MZD4ryS6ir
+8lHOyIBz9GvZlZ4xA7IA0K3/2b2fMtEuX4DZ7xPfzvMFrSrJOZbs9Nu70eZaUqxC0sJMFDGh
+nikYW+mHbq7/g16LcDv7FuM8oRHWkLwOL45pTZKwr+LunnbbwlZsugnaxRp4WAjFyWSBiqZJ
+Om7BzqUq6nBRZmOno+Np4U68YbquM3kYVJROjn97QRjftmG13IGqSgiayrUEqcgg1KNq3yQL
+QaOHE1S9XqfwnjIkI8vDwVv1izeJF6gv0LdrfkodV6q72CyVxeZT6bg+2eKadM/ftVl60Q9k
+jTAdo3ZGoi2IkbbJxKYYweCxrCzXB5swtQvHa5bwp32udj+Ddc09dHhkdsrgT6pDdPebzpBw
+CroIT9QEMIO5lyd1JJHYYhUm4j4rtRI9crViS4tyKgP59YLCUvr/tfnq1DIzNtB7VvNvo0Ni
+sIROwtVD/Qua4JLpx3mKN3UMPVoP05Hf8ahazbI907qLz6tiK//eREBeA0q989QtntRrfgVg
+xPs5PMSbkLWdUZNhVg81eGApuyQvEDd59Urs01EdVGC6I71kWJoa2X98dsHdj8P/5Ii9Yq5b
+T8IUVQ8c5AOoob5gq3VNrq2oVvl0n1DEH9MjprNwnDxDLTQ5Y6xdE4yxZgAAAAAAAA==
+--------------ms080105070900080704090103--
