@@ -1,205 +1,66 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2 1/2] dax: dax_pfn_mkwrite() truncate race check
-Date: Fri, 16 Oct 2015 09:55:44 +0200
-Message-ID: <20151016075544.GB22182@quack.suse.cz>
-References: <1444775137-23685-1-git-send-email-ross.zwisler@linux.intel.com>
- <1444775137-23685-2-git-send-email-ross.zwisler@linux.intel.com>
- <20151014052550.GL31326@dastard>
- <20151014084025.GA23758@quack.suse.cz>
- <20151014225316.GQ31326@dastard>
+From: Jean-Paul Smeets <jean-paul.smeets@asml.com>
+Subject: High write latency spikes when writing to EXT4
+Date: Fri, 16 Oct 2015 08:07:41 +0000 (UTC)
+Message-ID: <loom.20151016T095437-595@post.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-kernel@vger.kernel.org,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Jan Kara <jack@suse.com>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dan Williams <dan.j.williams@intel.com>,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-	linux-nvdimm@lists.01.org,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20151014225316.GQ31326@dastard>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from plane.gmane.org ([80.91.229.3]:32821 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753732AbbJPIKX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 Oct 2015 04:10:23 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1Zn05U-0003VG-CX
+	for linux-ext4@vger.kernel.org; Fri, 16 Oct 2015 10:10:04 +0200
+Received: from 195.75.179.148 ([195.75.179.148])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2015 10:10:04 +0200
+Received: from jean-paul.smeets by 195.75.179.148 with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2015 10:10:04 +0200
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 15-10-15 09:53:16, Dave Chinner wrote:
-> On Wed, Oct 14, 2015 at 10:40:25AM +0200, Jan Kara wrote:
-> > On Wed 14-10-15 16:25:50, Dave Chinner wrote:
-> > > On Tue, Oct 13, 2015 at 04:25:36PM -0600, Ross Zwisler wrote:
-> > > > Update dax_pfn_mkwrite() so that it validates i_size before returning.
-> > > > This is necessary to ensure that the page fault has not raced with truncate
-> > > > and is now pointing to a region beyond the end of the current file.
-> > > > 
-> > > > This change is based on a similar outstanding patch for XFS from Dave
-> > > > Chinner entitled "xfs: add ->pfn_mkwrite support for DAX".
-> > > > 
-> > > > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> > > > Cc: Dave Chinner <david@fromorbit.com>
-> > > > ---
-> > > >  fs/dax.c | 13 +++++++++++--
-> > > >  1 file changed, 11 insertions(+), 2 deletions(-)
-> > > > 
-> > > > diff --git a/fs/dax.c b/fs/dax.c
-> > > > index 131fd35a..82be6e4 100644
-> > > > --- a/fs/dax.c
-> > > > +++ b/fs/dax.c
-> > > > @@ -693,12 +693,21 @@ EXPORT_SYMBOL_GPL(dax_pmd_fault);
-> > > >   */
-> > > >  int dax_pfn_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
-> > > >  {
-> > > > -	struct super_block *sb = file_inode(vma->vm_file)->i_sb;
-> > > > +	struct inode *inode = file_inode(vma->vm_file);
-> > > > +	struct super_block *sb = inode->i_sb;
-> > > > +	int ret = VM_FAULT_NOPAGE;
-> > > > +	loff_t size;
-> > > >  
-> > > >  	sb_start_pagefault(sb);
-> > > >  	file_update_time(vma->vm_file);
-> > > > +
-> > > > +	/* check that the faulting page hasn't raced with truncate */
-> > > > +	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
-> > > > +	if (vmf->pgoff >= size)
-> > > > +		ret = VM_FAULT_SIGBUS;
-> > > > +
-> > > >  	sb_end_pagefault(sb);
-> > > > -	return VM_FAULT_NOPAGE;
-> > > > +	return ret;
-> > > 
-> > > This is still racy, as the read of the inode size is not serialised
-> > > against or ordered by any locks held by truncate. The check in XFS
-> > > is serialised against truncate by the XFS_MMAPLOCK and the generic
-> > > DAX code does not have such a mechanism to rely on. Hence I'd
-> > > suggest that the correct thing to do here is remove
-> > > dax_pfn_mkwrite() and force filesystems to implement their own
-> > > truncate-safe variants of ->pfn_mkwrite.
-> > 
-> > Well, the i_size check is just an optimization anyway. See below the
-> > discussion regarding the hole punch.
-> > 
-> > > And on further thought, I'm not sure that what I did with XFS is
-> > > at all correct when considering hole punching. That is, to get a PFN
-> > > based fault, we've already had to guarantee the file offset has
-> > > blocks allocated and mapped them. Then:
-> > > 
-> > > process 1				process 2
-> > > pfn_mkwrite @ X				punch hole @ X
-> > >  xfs_filemap_pfn_mkwrite		XFS_MMAPLOCK_EXCL
-> > >   XFS_MMAPLOCK_SHARED
-> > >     <blocks>
-> > > 					invalidate mapping @ X
-> > > 					remove blocks @ X
-> > > 					....
-> > > 					unlock XFS_MMAPLOCK_EXCL
-> > >    checks file size
-> > >   unlock XFS_MMAPLOCK_SHARED
-> > >   return VM_FAULT_NOPAGE
-> > > 
-> > > And so process 1 continues with an invalid page mapping over the
-> > > hole process 2 just punched in the file. That's a data
-> > > exposure/corruption problem the underlying blocks get reallocated
-> > > to some other file.
-> > > 
-> > > Unless I'm missing something here, this gets ugly real fast.
-> > 
-> > So how I convinced myself that this is not a problem is:
-> > 
-> > When process 2 invalidates mapping, it will also modify page tables to
-> > unmap freed pages. Then the pte_same() check in mm/memory.c:wp_pfn_shared()
-> > will fail, we bail out,
-> 
-> So this comes in through handle_pte_fault()? And if !pte_same(),
-> we return 0:
-> 
-> __handle_mm_fault
->   handle_pte_fault
->     do_wp_page
->       wp_pfn_shared()
->         ->pfn_mkwrite
->           xfs_filemap_pfn_mkwrite
-> 	    return VM_FAULT_NOPAGE
->         !pte_same
->         return 0;
->       return 0;
->     return 0;
->   return 0;
-> return 0;
-> 
-> and so we return all the way back out to __do_page_fault() with a
-> return value of zero, which then thinks the page fault succeeded...
+Hi,
 
-Yes. Except "succeeded" is a bit misleading term here. Let's say it was
-handled without fatal error.
+In our application we are seeing occasional high latency spikes (500ms range
+)when writing small amounts of data (a couple MB, a couple of 100 IOs) to
+files on an EXT4 volume (data=ordered). We are running kernel 3.10.62.
 
-> > CPU will retry the memory access which faults again
-> > and now we go the right path. So ->pfn_mkwrite() has to be prepared that
-> > the pfn under it actually isn't there anymore and current implementations
-> > don't really care so we are fine.
-> 
-> Ok, that's what I was missing - the CPU refaulting when retrying the
-> write and that provides the retry path.
-> 
-> IOWs, we're relying on pte_same() to catch the truncate/hole
-> punch invalidation of the pfn mapping, but that can only work if the
-> filesystem ->pfn_mkwrite implementation first serialises the page
-> fault against the pte invalidation that the hole punch/truncation
-> does.
-> 
-> Right?
+What seems to be happening is that a journal commit takes a long time.
+During that time no write access to the journal is possible.
+So a subsequent vfs.write is blocked until the journal commit is finished.
 
-Well, faults and invalidation are already serialized by pte lock. The
-sequence looks like this:
+We expected the page cache to decouple the vfs.write from this and not to
+block the vfs.write.
+This behavior causes large spikes in on average much lower write latencies.
 
-page fault
-	...
-	pte_lock
-	check page tables, see valid pfn but we need to set write lock
-	pte_unlock
-	->pfn_mkwrite()
-	pte_lock
-	if (page table entry changed from when we last looked)
-		bail out
-	finish fault
-	pte_unlock
+Small log excerpt (duration in us): 
+16:18:56.966387, PROCA, 20234, __ext4_journal_get_write_access: duration: 140412
+16:18:56.966406, PROCB, 19965, __ext4_journal_get_write_access: duration: 461892
+16:18:56.966422, PROCC, 20387, __ext4_journal_get_write_access: duration: 391105
+16:18:56.966439, PROCD, 20041, __ext4_journal_get_write_access: duration: 64256
+16:18:56.966454, itheex, 19823, __ext4_journal_get_write_access: duration:
+383671
+16:18:56.966718, jbd2/dm-8-8, 684, jbd2_journal_commit_transaction:
+duration: 468959
+16:18:56.967426, PROCE, 19867, ext4_file_write: duration: 469431
+16:18:56.967442, PROCE, 19867, vfs.write: duration: 469452
 
-truncate
-	...
-	for each page removed
-		for each mapping of that page
-			pte_lock
-			clear all page table entry for this page
-			pte_unlock
-  
-So the check that pte entry is still valid after we called ->pfn_mkwrite()
-and reacquired pte_lock is all that is needed to make sure we don't map
-invalid pfn (already truncated one) into the page tables.
+A similar, but less frequent issue is with the __ext4_journal_start_sb.
+Small log excerpt:
+16:17:43.337004, PROCF, 20041, __ext4_journal_start_sb: duration: 240753
+16:17:43.337024, PROCG, 19980, __ext4_journal_start_sb: duration: 269051
+16:17:43.337498, PROCG, 19980, ext4_file_write: duration: 269531
+16:17:43.337515, PROCG, 19980, vfs.write: duration: 269554
 
-For read faults we have to be more careful since there the filesystem looks
-up pfn which is then inserted into page tables so *there* we need the
-truncate vs fault serialization so that fs doesn't ask mm to insert pfn
-that got truncated from the file in the mean time.
+Can anything be done about these very high latency spikes ?
 
-> My head hurts now.
+Best regards,
+Jean-Paul Smeets
 
-Yup.
 
-> > Trying to generalize when we are safe against such races: Unless we modify
-> > page tables or inode allocation information, we don't care about races with
-> > truncate() / punch_hole() so even the original dax_pfn_mkwrite() code was
-> > actually correct. But it's really subtle...
-> 
-> I'd call it "completely undocumented", not "subtle". :/
-
-Yeah, probably we need a writeup about the whole truncate/punch hole vs fault
-vs munmap serialization. Probably somewhere in Documentation/... I'll try
-to find time to write that down sometime next week.
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
