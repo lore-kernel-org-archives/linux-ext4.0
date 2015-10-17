@@ -1,85 +1,93 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: memory leak: data=journal and {collapse,insert,zero}_range
-Date: Sat, 17 Oct 2015 12:02:30 -0400
-Message-ID: <20151017160230.GA19968@thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: e2fsprogs: Richacl support
+Date: Sun, 18 Oct 2015 09:59:10 +1100
+Message-ID: <20151017225910.GT27164@dastard>
+References: <CAHc6FU5s7-t3+jtKDusVFqc542Ag7pEOTUqp1LSxg8_uCPyF=A@mail.gmail.com>
+	<20151016231615.GF15011@thunk.org>
+	<CAHc6FU5B35D30Cc0-iSAfKDrCfc29paYe-tg-GGP7KEH08+2rA@mail.gmail.com>
+	<20151017143951.GA2678@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Namjae Jeon <namjae.jeon@samsung.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:56082 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752528AbbJQQCd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 17 Oct 2015 12:02:33 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Andreas Gruenbacher <agruenba@redhat.com>, xfs@oss.sgi.com
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20151017143951.GA2678@thunk.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On the last conference call I mentioned that I had recently been
-running into memory leaks with data=journal.  I've traced it down to
-{collapse,insert,zero}_range calls.
+On Sat, Oct 17, 2015 at 10:39:51AM -0400, Theodore Ts'o wrote:
+> On Sat, Oct 17, 2015 at 02:22:25AM +0200, Andreas Gruenbacher wrote:
+> One way of dealing with this is would be use a new mount option to
+> enable richacls (e.g., "richacl"), which older kernels would fail to
+> recognize and would thus fail the mount.  This works since the most
+> likely failure case is if the user boots into an older kernel.
 
-It bisected down to 1ce01c4a199: "ext4: fix COLLAPSE_RANGE test
-failure in data journalling mode", and specifically, this bit of code
-the collapse/insert/zero range functions:
+I don't think this is a good idea. The rich-ACL feature bit is an
+/on-disk format/ identifier. Both the kernel and the filesystem need
+to support the feature for it to work, and that's exactly what we
+use feature bits for.
 
-	/* Call ext4_force_commit to flush all data in case of data=journal. */
-	if (ext4_should_journal_data(inode)) {
-		ret = ext4_force_commit(inode->i_sb);
-		if (ret)
-			return ret;
-	}
+For XFS userspace we also need this feature bit for xfs_repair so
+that it doesn't attempt to validate the on-disk ACL format is in a
+valid posix ACL format. IOWs, we need an on-disk feature bit to
+indicate the on-disk format of the ACL in XFS.
 
-This is needed to prevent data from being lost with the insert and
-collapse range calls.  (It is not obvious to me whether this bit of
-code, and the filemap_write_and_wait_range() call, is needed for
-zero_range, but I haven't had a chance to investigate this more
-deeply.)
+Further, a user could mount the ext4 fs with "norichacl,acl" to
+force the kernel to parse the rich acls as posix acls because
+without a feature bit the fs does not know what format it's acls are
+in on-disk. This will only end in tears for users.
 
-Further investigation shows that the problem seems to be a buffer_head
-leak.  Running generic/091 with data=journal in a loop, and using the
-following between each test runs:
+> This doesn't protect against the case where someone is using richacls
+> on a USB stick, and moves it over to another system --- but that seems
+> like a use case that's not very likely.  It also doesn't help against
+> someone using an old rescue cd-rom, but in that case, it's not clear
+> that it's hugely problematic, either -- someone using rescue media has
+> physical access to the machine, so access controls are generally not a
+> major concern, and they are also not likely to be making wholesale
+> changes to the file system where acl inheritance is going to be a
+> primary concern, either.
+> 
+> This is basically how we handled the POSIX acl situation for ext4 ---
+> we just required a mount option to enable it, originally and
+> eventually we defaulted the option to always on once it was highly
+> unlikely someone was going to be trying to install, say, a 2.6 kernel
+> on an enterprise userspace --- which was not likely to work at all.
 
-#!/bin/sh
-# /tmp/hooks/logger
-echo 3 > /proc/sys/vm/drop_caches
-logger $(grep MemFree /proc/meminfo)
-logger $(grep buffer_head /proc/slabinfo)
-logger $(grep jbd2_journal_head /proc/slabinfo)
+Using a mount option was wrong here, too, because ext4 was a *brand
+new filesystem*. ext4 should have just defaulted to enabling posix
+acls if the support was built into the kernel. Just like XFS had
+already been doing for years before ext4 came along....
 
-what we find is:
+> What do you think?  If we really want to burn a feature flag, I'd
+> probably use a RO_INCOMPAT flag rather than an INCOMPAT flag, on the
+> theory that read-only mounts are much more often used for system
+> administration.  But it might be using a mount option is a better way
+> to go here.
 
-logger: MemFree: 7348684 kB
-logger: buffer_head 608 1600 128 32 1 : tunables 32 16 8 : slabdata 50 50 0 : globalstat 108003 36592 3294 0 0 1 0 0 0 : cpustat 102424 6803 101863 6760
-logger: jbd2_journal_head 120 120 136 30 1 : tunables 32 16 8 : slabdata 4 4 0 : globalstat 203 120 4 0 0 0 0 0 0 : cpustat 179 14 84 0
+I asked this same question on the kernel side of things. While I
+think that from an "on-disk consistency" POV using RO_INCOMPAT would
+be fine, from a user visible POV the behaviour won't be compatible
+and so INCOMPAT makes sense from that perspective.
 
-logger: MemFree: 7155576 kB
-logger: buffer_head 45008 65920 128 32 1 : tunables 32 16 8 : slabdata 2060 2060 0 : globalstat 207971 79408 5753 0 0 1 0 0 0 : cpustat 354158 14482 311984 11664
-logger: jbd2_journal_head 206 690 136 30 1 : tunables 32 16 8 : slabdata 23 23 128 : globalstat 38817 11086 1142 0 0 0 0 0 0 : cpustat 68275 3482 68402 3326
+Cheers,
 
-kernel: logger (5838): drop_caches: 3
-logger: MemFree: 6967656 kB
-logger: buffer_head 89552 111616 128 32 1 : tunables 32 16 8 : slabdata 3488 3488 0 : globalstat 308435 124352 7589 0 0 1 0 0 0 : cpustat 606287 22193 522363 16591
-logger: jbd2_journal_head 210 660 136 30 1 : tunables 32 16 8 : slabdata 22 22 128 : globalstat 77205 11086 2158 0 0 0 0 0 0 : cpustat 136335 6954 136593 6669
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
 
-logger: MemFree: 6780176 kB
-logger: buffer_head 134080 155328 128 32 1 : tunables 32 16 8 : slabdata 4854 4854 0 : globalstat 408163 168144 9369 0 0 1 0 0 0 : cpustat 857710 29874 732032 21489
-logger: jbd2_journal_head 210 570 136 30 1 : tunables 32 16 8 : slabdata 19 19 128 : globalstat 115685 11086 3198 0 0 0 0 0 0 : cpustat 204408 10417 204798 9998
-
-The problem then appears to be with the buffer heads associated with
-pages that have been recently written in data=journal mode are not
-getting freed.  I haven't had time to take this any further, but I
-wanted to document what I've found to date as a checkpoint.  If
-someone has time to take this further, or has any additional insight,
-I'd certainly appreciate it!
-
-							- Ted
-
-P.S.  I will shortly be releasing an enhancement to kvm-xfstests and
-gce-xfstests which allows collapse/insert/zero range to be easily
-disabled, like this:
-
-gce-xfstests --hooks /tmp/hooks  -C 20 -c data_journal --no-collapse --no-zero --no-insert generic/091
-
-(The above traces were taken without --no-collapse --no-zero and
---noinsert.  With those options added, the memory leak goes away.)
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
