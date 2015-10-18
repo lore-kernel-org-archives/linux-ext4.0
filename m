@@ -1,101 +1,117 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [v15 0/4] ext4: add project quota support
-Date: Sat, 17 Oct 2015 21:01:43 -0400
-Message-ID: <20151018010143.GE2678@thunk.org>
-References: <1442146833-13652-1-git-send-email-lixi@ddn.com>
+Subject: Re: [PATCH 4/8] ext4: store checksum seed in superblock
+Date: Sat, 17 Oct 2015 21:19:46 -0400
+Message-ID: <20151018011946.GF2678@thunk.org>
+References: <20151012215416.28872.8160.stgit@birch.djwong.org>
+ <20151012215444.28872.23113.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-api@vger.kernel.org, adilger@dilger.ca, jack@suse.cz,
-	viro@zeniv.linux.org.uk, hch@infradead.org, dmonakhov@openvz.org
-To: Li Xi <pkuelelixi@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:56533 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751745AbbJRBTt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 17 Oct 2015 21:19:49 -0400
 Content-Disposition: inline
-In-Reply-To: <1442146833-13652-1-git-send-email-lixi@ddn.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20151012215444.28872.23113.stgit@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This is a patch to reserve the code points used by the project quota
-feature.  It should be the no different from the ones used by the
-project quota patches; please let me know ASAP if you spot any
-discrepancies, or anything else that I might have missed.
+On Mon, Oct 12, 2015 at 02:54:44PM -0700, Darrick J. Wong wrote:
+> Allow the filesystem to store the metadata checksum seed in the
+> superblock and add an incompat feature to say that we're using it.
+> This enables tune2fs to change the UUID on a mounted metadata_csum
+> FS without having to (racy!) rewrite all disk metadata.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+
+This is what I have in my tree after deconflict with project quota's
+superblock usage.
 
 Cheers,
 
 					- Ted
+					
 
+commit 8c81bd8f586c46eaf114758a78d82895a2b081c2
+Author: Darrick J. Wong <darrick.wong@oracle.com>
+Date:   Sat Oct 17 16:16:02 2015 -0400
 
-commit 8b4953e13f4c5d9a3c869f5fca7d51e1700e7db0
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sat Oct 17 16:15:18 2015 -0400
-
-    ext4: reserve code points for the project quota feature
+    ext4: store checksum seed in superblock
     
+    Allow the filesystem to store the metadata checksum seed in the
+    superblock and add an incompat feature to say that we're using it.
+    This enables tune2fs to change the UUID on a mounted metadata_csum
+    FS without having to (racy!) rewrite all disk metadata.
+    
+    Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
     Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3f248c9..320f10e 100644
+index 320f10e..cd832b9 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -374,6 +374,7 @@ struct flex_groups {
- #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
- #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
- #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
-+#define EXT4_PROJINHERIT_FL		0x20000000 /* Create with parents projid */
- #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
- 
- #define EXT4_FL_USER_VISIBLE		0x004BDFFF /* User visible flags */
-@@ -431,6 +432,7 @@ enum {
- 	EXT4_INODE_EA_INODE	= 21,	/* Inode used for large EA */
- 	EXT4_INODE_EOFBLOCKS	= 22,	/* Blocks allocated beyond EOF */
- 	EXT4_INODE_INLINE_DATA	= 28,	/* Data in inode. */
-+	EXT4_INODE_PROJINHERIT	= 29,	/* Create with parents projid */
- 	EXT4_INODE_RESERVED	= 31,	/* reserved for ext4 lib */
- };
- 
-@@ -475,6 +477,7 @@ static inline void ext4_check_flag_values(void)
- 	CHECK_FLAG_VALUE(EA_INODE);
- 	CHECK_FLAG_VALUE(EOFBLOCKS);
- 	CHECK_FLAG_VALUE(INLINE_DATA);
-+	CHECK_FLAG_VALUE(PROJINHERIT);
- 	CHECK_FLAG_VALUE(RESERVED);
- }
- 
-@@ -692,6 +695,7 @@ struct ext4_inode {
- 	__le32  i_crtime;       /* File Creation time */
- 	__le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch) */
- 	__le32  i_version_hi;	/* high 32 bits for 64-bit version */
-+	__le32	i_projid;	/* Project ID */
- };
- 
- struct move_extent {
-@@ -1179,7 +1183,8 @@ struct ext4_super_block {
- 	__u8	s_encrypt_algos[4];	/* Encryption algorithms in use  */
+@@ -1184,7 +1184,8 @@ struct ext4_super_block {
  	__u8	s_encrypt_pw_salt[16];	/* Salt used for string2key algorithm */
  	__le32	s_lpf_ino;		/* Location of the lost+found inode */
--	__le32	s_reserved[100];	/* Padding to the end of the block */
-+	__le32	s_prj_quota_inum;	/* inode for tracking project quota */
-+	__le32	s_reserved[99];		/* Padding to the end of the block */
+ 	__le32	s_prj_quota_inum;	/* inode for tracking project quota */
+-	__le32	s_reserved[99];		/* Padding to the end of the block */
++	__le32	s_checksum_seed;	/* crc32c(uuid) if csum_seed set */
++	__le32	s_reserved[98];		/* Padding to the end of the block */
  	__le32	s_checksum;		/* crc32c(superblock) */
  };
  
-@@ -1566,6 +1571,7 @@ static inline int ext4_encrypted_inode(struct inode *inode)
-  */
- #define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
- #define EXT4_FEATURE_RO_COMPAT_READONLY		0x1000
-+#define EXT4_FEATURE_RO_COMPAT_PROJECT		0x2000
+@@ -1584,7 +1585,7 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+ #define EXT4_FEATURE_INCOMPAT_FLEX_BG		0x0200
+ #define EXT4_FEATURE_INCOMPAT_EA_INODE		0x0400 /* EA in inode */
+ #define EXT4_FEATURE_INCOMPAT_DIRDATA		0x1000 /* data in dirent */
+-#define EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM	0x2000 /* use crc32c for bg */
++#define EXT4_FEATURE_INCOMPAT_CSUM_SEED		0x2000
+ #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
+ #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
+ #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
+@@ -1613,7 +1614,8 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+ 					 EXT4_FEATURE_INCOMPAT_FLEX_BG| \
+ 					 EXT4_FEATURE_INCOMPAT_MMP | \
+ 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
+-					 EXT4_FEATURE_INCOMPAT_ENCRYPT)
++					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
++					 EXT4_FEATURE_INCOMPAT_CSUM_SEED)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7ef3fa5..43c0cc8 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3196,7 +3196,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	}
  
- #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
- #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index 9b964a5..f15d980 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -197,6 +197,7 @@ struct inodes_stat_t {
- #define FS_EXTENT_FL			0x00080000 /* Extents */
- #define FS_DIRECTIO_FL			0x00100000 /* Use direct i/o */
- #define FS_NOCOW_FL			0x00800000 /* Do not cow file */
-+#define FS_PROJINHERIT_FL		0x20000000 /* Create with parents projid */
- #define FS_RESERVED_FL			0x80000000 /* reserved for ext2 lib */
+ 	/* Precompute checksum seed for all metadata */
+-	if (ext4_has_metadata_csum(sb))
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_CSUM_SEED))
++		sbi->s_csum_seed = le32_to_cpu(es->s_checksum_seed);
++	else if (ext4_has_metadata_csum(sb))
+ 		sbi->s_csum_seed = ext4_chksum(sbi, ~0, es->s_uuid,
+ 					       sizeof(es->s_uuid));
  
- #define FS_FL_USER_VISIBLE		0x0003DFFF /* User visible flags */
+diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+index 62bef0f..1b57c72 100644
+--- a/fs/ext4/sysfs.c
++++ b/fs/ext4/sysfs.c
+@@ -224,12 +224,14 @@ EXT4_ATTR_FEATURE(lazy_itable_init);
+ EXT4_ATTR_FEATURE(batched_discard);
+ EXT4_ATTR_FEATURE(meta_bg_resize);
+ EXT4_ATTR_FEATURE(encryption);
++EXT4_ATTR_FEATURE(metadata_csum_seed);
+ 
+ static struct attribute *ext4_feat_attrs[] = {
+ 	ATTR_LIST(lazy_itable_init),
+ 	ATTR_LIST(batched_discard),
+ 	ATTR_LIST(meta_bg_resize),
+ 	ATTR_LIST(encryption),
++	ATTR_LIST(metadata_csum_seed),
+ 	NULL,
+ };
+ 
