@@ -1,91 +1,55 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: e2fsprogs: Richacl support
-Date: Mon, 19 Oct 2015 00:46:49 +0200
-Message-ID: <CAHc6FU7J9OESpAJzOKOmu-UP-bC_kzKT-oVg-MVKAaVzswOacA@mail.gmail.com>
-References: <CAHc6FU5s7-t3+jtKDusVFqc542Ag7pEOTUqp1LSxg8_uCPyF=A@mail.gmail.com>
-	<20151016231615.GF15011@thunk.org>
-	<CAHc6FU5B35D30Cc0-iSAfKDrCfc29paYe-tg-GGP7KEH08+2rA@mail.gmail.com>
-	<20151017143951.GA2678@thunk.org> <20151017225910.GT27164@dastard>
-	<20151018003532.GD2678@thunk.org>
-	<CAHc6FU6U-r4YjxdvhW_OAmdekzK-tBT62Hs_JBYFB0V65qDw4w@mail.gmail.com>
-	<20151018214456.GM2678@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2] ext4, jbd2: ensure entering into panic after
+ recording an error in superblock
+Date: Sun, 18 Oct 2015 19:38:04 -0400
+Message-ID: <20151018233804.GO2678@thunk.org>
+References: <1444616359-21149-1-git-send-email-daeho.jeong@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20151018214456.GM2678@thunk.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Daeho Jeong <daeho.jeong@samsung.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:57952 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751642AbbJRXiI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 18 Oct 2015 19:38:08 -0400
+Content-Disposition: inline
+In-Reply-To: <1444616359-21149-1-git-send-email-daeho.jeong@samsung.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Oct 18, 2015 at 11:44 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Sun, Oct 18, 2015 at 10:46:23PM +0200, Andreas Gruenbacher wrote:
->> > The only question is whether we pay attention to the richacl acl's at
->> > all.  One thing that's not clear to me is what VFS is supposed to do
->> > if an inode has both an Posix ACL xattr and a Richacl xattr at the
->> > same time.
->>
->> The VFS will either look for POSIX ACLs or for a richacl; it won't
->> even notice if both are present.
->
-> How does this work in practice?  Does it look for richacl's first, and
-> if it doesn't find it, it will then look for a Posix ACL, or vice
-> versa?
+On Mon, Oct 12, 2015 at 11:19:19AM +0900, Daeho Jeong wrote:
+> If a EXT4 filesystem utilizes JBD2 journaling and an error occurs, the
+> journaling will be aborted first and the error number will be recorded
+> into JBD2 superblock and, finally, the system will enter into the
+> panic state in "errors=panic" option.  But, in the rare case, this
+> sequence is little twisted like the below figure and it will happen
+> that the system enters into panic state, which means the system reset
+> in mobile environment, before completion of recording an error in the
+> journal superblock. In this case, e2fsck cannot recognize that the
+> filesystem failure occurred in the previous run and the corruption
+> wouldn't be fixed.
+> 
+> Task A                        Task B
+> ext4_handle_error()
+> -> jbd2_journal_abort()
+>   -> __journal_abort_soft()
+>     -> __jbd2_journal_abort_hard()
+>     | -> journal->j_flags |= JBD2_ABORT;
+>     |
+>     |                         __ext4_abort()
+>     |                         -> jbd2_journal_abort()
+>     |                         | -> __journal_abort_soft()
+>     |                         |   -> if (journal->j_flags & JBD2_ABORT)
+>     |                         |           return;
+>     |                         -> panic()
+>     |
+>     -> jbd2_journal_update_sb_errno()
+> 
+> Tested-by: Hobin Woo <hobin.woo@samsung.com>
+> Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-The filesystem sets the MS_POSIXACL super-block flag for POSIX ACLs or
-the MS_RICHACL super-block flag for richacls. These flags are checked
-with the IS_POSIXACL(inode) and IS_RICHACL(inode) macros.
+Applied, thanks.
 
->> Right now, filesystems that e2fsck is perfectly happy with can still
->> cause errors when used. It would be nice to fix that.
->>
->> With POSIX ACLs, this problem is slightly less severe because the ACL
->> isn't looked at for the owner; it would even be possible to replace a
->> corrupted POSIX ACL. Richacls unfortunately don't allow this
->> optimization.
->
-> Is there code we can use to verify a richacl, and if it's corrupted,
-> what are the options about how we can fix it?  Or do we just remove
-> it, and just use the inode's i_uid field for the owner instead of
-> whatever might be in the richacl?
-
-The on-disk format is relatively simple, it's the same on ext4 and on
-xfs and hopefully will be the same on other filesystems as well. That
-code could be shared.
-
-If a richacl is found to be corrupt, a safe way of recovering would be
-to remove the richacl and clear the S_IRWXUGO mode bits. I don't think
-trying to fix ACLs would make sense. The i_uid field is unrelated.
-
-> Ideally, if you can send the patch to add support to validate / fix
-> Richacl's in e2fsck, that would be great.
-
-I can send the validation code; not sure how removing corrupt xattrs
-would fit into e2fsck though. Can e2fsck remove individual xattrs?
-
->> This really should be a feature flag and not a mount option, it just
->> doesn't make sense to switch at mount time.
->>
->> From this discussion, I'm even more convinced that we should use an
->> incompat feature rather than a ro-incompat feature.
->
-> OK, let's go with that.
-
-Okay, good.
-
-Thanks,
-Andreas
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+						- Ted
