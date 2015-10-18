@@ -1,99 +1,101 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: e2fsprogs: Richacl support
-Date: Sat, 17 Oct 2015 20:35:32 -0400
-Message-ID: <20151018003532.GD2678@thunk.org>
-References: <CAHc6FU5s7-t3+jtKDusVFqc542Ag7pEOTUqp1LSxg8_uCPyF=A@mail.gmail.com>
-	<20151016231615.GF15011@thunk.org>
-	<CAHc6FU5B35D30Cc0-iSAfKDrCfc29paYe-tg-GGP7KEH08+2rA@mail.gmail.com>
-	<20151017143951.GA2678@thunk.org> <20151017225910.GT27164@dastard>
+Subject: Re: [v15 0/4] ext4: add project quota support
+Date: Sat, 17 Oct 2015 21:01:43 -0400
+Message-ID: <20151018010143.GE2678@thunk.org>
+References: <1442146833-13652-1-git-send-email-lixi@ddn.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Gruenbacher <agruenba@redhat.com>, xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-api@vger.kernel.org, adilger@dilger.ca, jack@suse.cz,
+	viro@zeniv.linux.org.uk, hch@infradead.org, dmonakhov@openvz.org
+To: Li Xi <pkuelelixi@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20151017225910.GT27164@dastard>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+In-Reply-To: <1442146833-13652-1-git-send-email-lixi@ddn.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Oct 18, 2015 at 09:59:10AM +1100, Dave Chinner wrote:
-> For XFS userspace we also need this feature bit for xfs_repair so
-> that it doesn't attempt to validate the on-disk ACL format is in a
-> valid posix ACL format. IOWs, we need an on-disk feature bit to
-> indicate the on-disk format of the ACL in XFS.
-> 
-> Further, a user could mount the ext4 fs with "norichacl,acl" to
-> force the kernel to parse the rich acls as posix acls because
-> without a feature bit the fs does not know what format it's acls are
-> in on-disk. This will only end in tears for users.
+This is a patch to reserve the code points used by the project quota
+feature.  It should be the no different from the ones used by the
+project quota patches; please let me know ASAP if you spot any
+discrepancies, or anything else that I might have missed.
 
-So at least for ext4, the richacl xattr using a completely different
-index, and so it's not possible to interpret the richacl as an acl.
-The only question is whether we pay attention to the richacl acl's at
-all.  One thing that's not clear to me is what VFS is supposed to do
-if an inode has both an Posix ACL xattr and a Richacl xattr at the
-same time.
+Cheers,
 
-We're also not trying to validate the on-disk ACL format at all using
-e2fsck, just as we're not trying to validate say, the SELinux xattr.
-They are just bags of bits as far as e2fsck is concerned.  So for that
-reason, at least as the patches I've seen for richacl for ext4,
-e2fsprogs doesn't actually need a file system feature bit at all.  We
-could in theory use the 1.42 version of e2fsck against an ext4 file
-system with richacl, and modulo the incompat flag, there wouldn't be
-any problems from e2fsck point of view.
+					- Ted
 
-What Andreas G. has said is that the only problem is if the file
-system is mounted read/write, and someone creates an inode on a
-non-richacl knowledgeable kernel, the inode would get created w/o an
-richacl.  This might be surprising to the user if he or she was
-expecting richacl semantics, but that would only happen if they had
-say, enabled richacl's on a distribution that had full richacl support
-(including the richacl userspace utilities so they could set and get
-richacl entries), and then booted an older kernel on that
-distribution.  This doesn't seem like _that_ likely a scenario, but I
-suppose it could happen.  And whether you call the file system
-"inconsistent" really depends on your point of view.  From the
-perspective of fsck, which for ext4 is completely, happily ignorant of
-richacl support, it's not inconsistent and all of the inodes are
-valid.
 
-> I asked this same question on the kernel side of things. While I
-> think that from an "on-disk consistency" POV using RO_INCOMPAT would
-> be fine, from a user visible POV the behaviour won't be compatible
-> and so INCOMPAT makes sense from that perspective.
+commit 8b4953e13f4c5d9a3c869f5fca7d51e1700e7db0
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sat Oct 17 16:15:18 2015 -0400
 
-If you believe that the only real use of richacl will be primarily for
-supporting Samba and NFSv4 servers, then using a read-only compat
-feature flag isn't that terrible, and it might be helpful in the case
-of someone using a rescue media that hasn't been updated yet to be
-able to access the system --- since it seems unlikely that the user
-would try to launch a Samba or NFSv4 server from a rescue CD.
+    ext4: reserve code points for the project quota feature
+    
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-But I different people of good will can differ with each other, and at
-the end of the day I don't think it makes *that* much difference
-unless we drop the use of the feature flag entirely.  Given that
-systemd has infected all of the distributions, and systemd is getting
-more and more tightly integrated into modern kernel features w/o
-offerring backwards compatibility, it seems very likely to me that you
-wouldn't even be able to *boot* a downrev kernel on a modern
-distribution that has richacl support without seeing systemd or its
-dependencies explode into millions of tiny pleaces, so I'm not that
-terribly worried one way or another.  :-)
-
-						- Ted
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3f248c9..320f10e 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -374,6 +374,7 @@ struct flex_groups {
+ #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
+ #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
+ #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
++#define EXT4_PROJINHERIT_FL		0x20000000 /* Create with parents projid */
+ #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
+ 
+ #define EXT4_FL_USER_VISIBLE		0x004BDFFF /* User visible flags */
+@@ -431,6 +432,7 @@ enum {
+ 	EXT4_INODE_EA_INODE	= 21,	/* Inode used for large EA */
+ 	EXT4_INODE_EOFBLOCKS	= 22,	/* Blocks allocated beyond EOF */
+ 	EXT4_INODE_INLINE_DATA	= 28,	/* Data in inode. */
++	EXT4_INODE_PROJINHERIT	= 29,	/* Create with parents projid */
+ 	EXT4_INODE_RESERVED	= 31,	/* reserved for ext4 lib */
+ };
+ 
+@@ -475,6 +477,7 @@ static inline void ext4_check_flag_values(void)
+ 	CHECK_FLAG_VALUE(EA_INODE);
+ 	CHECK_FLAG_VALUE(EOFBLOCKS);
+ 	CHECK_FLAG_VALUE(INLINE_DATA);
++	CHECK_FLAG_VALUE(PROJINHERIT);
+ 	CHECK_FLAG_VALUE(RESERVED);
+ }
+ 
+@@ -692,6 +695,7 @@ struct ext4_inode {
+ 	__le32  i_crtime;       /* File Creation time */
+ 	__le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch) */
+ 	__le32  i_version_hi;	/* high 32 bits for 64-bit version */
++	__le32	i_projid;	/* Project ID */
+ };
+ 
+ struct move_extent {
+@@ -1179,7 +1183,8 @@ struct ext4_super_block {
+ 	__u8	s_encrypt_algos[4];	/* Encryption algorithms in use  */
+ 	__u8	s_encrypt_pw_salt[16];	/* Salt used for string2key algorithm */
+ 	__le32	s_lpf_ino;		/* Location of the lost+found inode */
+-	__le32	s_reserved[100];	/* Padding to the end of the block */
++	__le32	s_prj_quota_inum;	/* inode for tracking project quota */
++	__le32	s_reserved[99];		/* Padding to the end of the block */
+ 	__le32	s_checksum;		/* crc32c(superblock) */
+ };
+ 
+@@ -1566,6 +1571,7 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+  */
+ #define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
+ #define EXT4_FEATURE_RO_COMPAT_READONLY		0x1000
++#define EXT4_FEATURE_RO_COMPAT_PROJECT		0x2000
+ 
+ #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
+ #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
+diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+index 9b964a5..f15d980 100644
+--- a/include/uapi/linux/fs.h
++++ b/include/uapi/linux/fs.h
+@@ -197,6 +197,7 @@ struct inodes_stat_t {
+ #define FS_EXTENT_FL			0x00080000 /* Extents */
+ #define FS_DIRECTIO_FL			0x00100000 /* Use direct i/o */
+ #define FS_NOCOW_FL			0x00800000 /* Do not cow file */
++#define FS_PROJINHERIT_FL		0x20000000 /* Create with parents projid */
+ #define FS_RESERVED_FL			0x80000000 /* reserved for ext2 lib */
+ 
+ #define FS_FL_USER_VISIBLE		0x0003DFFF /* User visible flags */
