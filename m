@@ -1,35 +1,73 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC,3/5] ext4: Fix abs() usage in ext4_mb_check_group_pa
-Date: Mon, 19 Oct 2015 00:03:30 -0400
-Message-ID: <20151019040330.GA9381@thunk.org>
-References: <1442279124-7309-4-git-send-email-john.stultz@linaro.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2 2/2] ext2: Add locking for DAX faults
+Date: Mon, 19 Oct 2015 14:47:49 +0200
+Message-ID: <20151019124749.GG25787@quack.suse.cz>
+References: <1444775137-23685-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1444775137-23685-3-git-send-email-ross.zwisler@linux.intel.com>
+ <20151014085119.GB23758@quack.suse.cz>
+ <20151014153138.GA12470@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: John Stultz <john.stultz@linaro.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58197 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750726AbbJSEDd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Oct 2015 00:03:33 -0400
+Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Jan Kara <jack@suse.com>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+	linux-nvdimm@lists.01.org,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1442279124-7309-4-git-send-email-john.stultz@linaro.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20151014153138.GA12470@linux.intel.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Sep 14, 2015 at 06:05:22PM -0700, John Stultz wrote:
-> The ext4_fsblk_t type is a long long, which should not be used
-> with abs(), as is done in ext4_mb_check_group_pa().
+On Wed 14-10-15 09:31:38, Ross Zwisler wrote:
+> On Wed, Oct 14, 2015 at 10:51:19AM +0200, Jan Kara wrote:
+> > On Tue 13-10-15 16:25:37, Ross Zwisler wrote:
+> > > Add locking to ensure that DAX faults are isolated from ext2 operations
+> > > that modify the data blocks allocation for an inode.  This is intended to
+> > > be analogous to the work being done in XFS by Dave Chinner:
+> > > 
+> > > http://www.spinics.net/lists/linux-fsdevel/msg90260.html
+> > > 
+> > > Compared with XFS the ext2 case is greatly simplified by the fact that ext2
+> > > already allocates and zeros new blocks before they are returned as part of
+> > > ext2_get_block(), so DAX doesn't need to worry about getting unmapped or
+> > > unwritten buffer heads.
+> > > 
+> > > This means that the only work we need to do in ext2 is to isolate the DAX
+> > > faults from inode block allocation changes.  I believe this just means that
+> > > we need to isolate the DAX faults from truncate operations.
+> > > 
+> > > The newly introduced dax_sem is intended to replicate the protection
+> > > offered by i_mmaplock in XFS.  In addition to truncate the i_mmaplock also
+> > > protects XFS operations like hole punching, fallocate down, extent
+> > > manipulation IOCTLS like xfs_ioc_space() and extent swapping.  Truncate is
+> > > the only one of these operations supported by ext2.
+> > > 
+> > > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> > 
+> > The patch looks good to me. Feel free to add:
+> > 
+> > Reviewed-by: Jan Kara <jack@suse.com>
+> > 
+> > Or I can push the patch through my tree as it seems to be independent of
+> > any other changes, am I right?
+> > 
+> > 								Honza
 > 
-> This patch modifies ext4_mb_check_group_pa() to use abs64()
-> instead.
-> 
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: Ingo Molnar <mingo@kernel.org>
-> Cc: linux-ext4@vger.kernel.org
-> Signed-off-by: John Stultz <john.stultz@linaro.org>
+> Yep, it is independent of other patches.  It'd be great if you pushed it up
+> through your tree, thanks!
 
-Applied, thanks.
+I've pulled the patch into my tree and will push it to Linus in the next
+merge window.
 
-						- Ted
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
