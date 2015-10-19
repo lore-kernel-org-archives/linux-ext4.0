@@ -1,53 +1,42 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: e2fsprogs: Richacl support
-Date: Sun, 18 Oct 2015 20:17:04 -0400
-Message-ID: <20151019001704.GQ2678@thunk.org>
-References: <CAHc6FU5s7-t3+jtKDusVFqc542Ag7pEOTUqp1LSxg8_uCPyF=A@mail.gmail.com>
-	<20151016231615.GF15011@thunk.org>
-	<CAHc6FU5B35D30Cc0-iSAfKDrCfc29paYe-tg-GGP7KEH08+2rA@mail.gmail.com>
-	<20151017143951.GA2678@thunk.org> <20151017225910.GT27164@dastard>
-	<20151018003532.GD2678@thunk.org>
-	<CAHc6FU6U-r4YjxdvhW_OAmdekzK-tBT62Hs_JBYFB0V65qDw4w@mail.gmail.com>
-	<20151018214456.GM2678@thunk.org>
-	<CAHc6FU7J9OESpAJzOKOmu-UP-bC_kzKT-oVg-MVKAaVzswOacA@mail.gmail.com>
+Subject: xfstests ext4/304 failing due to donor inode's i_size == 0
+Date: Sun, 18 Oct 2015 22:57:27 -0400
+Message-ID: <20151019025727.GA6676@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: dmonakhov@openvz.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:58140 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752528AbbJSC5a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 18 Oct 2015 22:57:30 -0400
 Content-Disposition: inline
-In-Reply-To: <CAHc6FU7J9OESpAJzOKOmu-UP-bC_kzKT-oVg-MVKAaVzswOacA@mail.gmail.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 19, 2015 at 12:46:49AM +0200, Andreas Gruenbacher wrote:
-> The filesystem sets the MS_POSIXACL super-block flag for POSIX ACLs or
-> the MS_RICHACL super-block flag for richacls. These flags are checked
-> with the IS_POSIXACL(inode) and IS_RICHACL(inode) macros.
+Hi Dmitry,
 
-Ah, OK.  So it's either one thing or another.
+I was investigating why ext4/304 is failing, and it's due to
+defrag-fuzzer returning an error:
 
-> I can send the validation code; not sure how removing corrupt xattrs
-> would fit into e2fsck though. Can e2fsck remove individual xattrs?
+defrag-fuzzer: (groupid=0, jobs=1): err=22 (file:ioengines.c:309, func=td_io_que
+ue, error=Invalid argument): pid=3207: Sun Oct 18 19:43:57 2015
 
-Yep.  Using the libext2fs function ext2fs_xattr_remove(), in
-lib/ext2fs/ext_attr.c.  This requires the development branch of
-e2fsprogs, but by adding a new feature flag, richacl is going to
-require a 1.43 version of e2fsprogs (not yet released, but hopefully
-will be released soon).
+After instrumenting the kernel, it appears that this is due to donor
+inode's i_size being set to 0.
+
+Can you reproduce this faiure?  And if it's working for you, what
+version of fio are you using?  I normally use fio 2.1.3, since newer
+versions of fio have caused test regressions that appear to be caused
+by fio bugs.  I tried fio 2.1.14, it was also failing.  I could try
+using 2.2.x versions of fio, but as I recall, that set of versions was
+were I started running into other test failures caused by fio bugs.
+(When I asked Dave Chinner about this a while back, he tod me he was
+using 2.1.3 because he had run into regressions caused by vio, and
+I've been sticking with fio 2.1.3 for quite a while now.)
+
+Thanks,
 
 						- Ted
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
