@@ -1,55 +1,53 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] ext4, jbd2: ensure entering into panic after
- recording an error in superblock
-Date: Sun, 18 Oct 2015 19:38:04 -0400
-Message-ID: <20151018233804.GO2678@thunk.org>
-References: <1444616359-21149-1-git-send-email-daeho.jeong@samsung.com>
+Subject: Re: e2fsprogs: Richacl support
+Date: Sun, 18 Oct 2015 20:17:04 -0400
+Message-ID: <20151019001704.GQ2678@thunk.org>
+References: <CAHc6FU5s7-t3+jtKDusVFqc542Ag7pEOTUqp1LSxg8_uCPyF=A@mail.gmail.com>
+	<20151016231615.GF15011@thunk.org>
+	<CAHc6FU5B35D30Cc0-iSAfKDrCfc29paYe-tg-GGP7KEH08+2rA@mail.gmail.com>
+	<20151017143951.GA2678@thunk.org> <20151017225910.GT27164@dastard>
+	<20151018003532.GD2678@thunk.org>
+	<CAHc6FU6U-r4YjxdvhW_OAmdekzK-tBT62Hs_JBYFB0V65qDw4w@mail.gmail.com>
+	<20151018214456.GM2678@thunk.org>
+	<CAHc6FU7J9OESpAJzOKOmu-UP-bC_kzKT-oVg-MVKAaVzswOacA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Daeho Jeong <daeho.jeong@samsung.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57952 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751642AbbJRXiI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 18 Oct 2015 19:38:08 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <1444616359-21149-1-git-send-email-daeho.jeong@samsung.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CAHc6FU7J9OESpAJzOKOmu-UP-bC_kzKT-oVg-MVKAaVzswOacA@mail.gmail.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 12, 2015 at 11:19:19AM +0900, Daeho Jeong wrote:
-> If a EXT4 filesystem utilizes JBD2 journaling and an error occurs, the
-> journaling will be aborted first and the error number will be recorded
-> into JBD2 superblock and, finally, the system will enter into the
-> panic state in "errors=panic" option.  But, in the rare case, this
-> sequence is little twisted like the below figure and it will happen
-> that the system enters into panic state, which means the system reset
-> in mobile environment, before completion of recording an error in the
-> journal superblock. In this case, e2fsck cannot recognize that the
-> filesystem failure occurred in the previous run and the corruption
-> wouldn't be fixed.
-> 
-> Task A                        Task B
-> ext4_handle_error()
-> -> jbd2_journal_abort()
->   -> __journal_abort_soft()
->     -> __jbd2_journal_abort_hard()
->     | -> journal->j_flags |= JBD2_ABORT;
->     |
->     |                         __ext4_abort()
->     |                         -> jbd2_journal_abort()
->     |                         | -> __journal_abort_soft()
->     |                         |   -> if (journal->j_flags & JBD2_ABORT)
->     |                         |           return;
->     |                         -> panic()
->     |
->     -> jbd2_journal_update_sb_errno()
-> 
-> Tested-by: Hobin Woo <hobin.woo@samsung.com>
-> Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+On Mon, Oct 19, 2015 at 12:46:49AM +0200, Andreas Gruenbacher wrote:
+> The filesystem sets the MS_POSIXACL super-block flag for POSIX ACLs or
+> the MS_RICHACL super-block flag for richacls. These flags are checked
+> with the IS_POSIXACL(inode) and IS_RICHACL(inode) macros.
 
-Applied, thanks.
+Ah, OK.  So it's either one thing or another.
+
+> I can send the validation code; not sure how removing corrupt xattrs
+> would fit into e2fsck though. Can e2fsck remove individual xattrs?
+
+Yep.  Using the libext2fs function ext2fs_xattr_remove(), in
+lib/ext2fs/ext_attr.c.  This requires the development branch of
+e2fsprogs, but by adding a new feature flag, richacl is going to
+require a 1.43 version of e2fsprogs (not yet released, but hopefully
+will be released soon).
 
 						- Ted
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
