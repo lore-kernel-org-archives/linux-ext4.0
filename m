@@ -1,91 +1,58 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: xfstests ext4/304 failing due to donor inode's i_size == 0
-Date: Tue, 20 Oct 2015 17:44:03 +0300
-Message-ID: <87h9llior0.fsf@openvz.org>
-References: <20151019025727.GA6676@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 102731] I have a cough.
+Date: Tue, 20 Oct 2015 15:44:59 +0000
+Message-ID: <bug-102731-13602-0iuVkdAOTn@https.bugzilla.kernel.org/>
+References: <bug-102731-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-=-="
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f181.google.com ([209.85.217.181]:32911 "EHLO
-	mail-lb0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750868AbbJTOoK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Oct 2015 10:44:10 -0400
-Received: by lbbec13 with SMTP id ec13so14654433lbb.0
-        for <linux-ext4@vger.kernel.org>; Tue, 20 Oct 2015 07:44:09 -0700 (PDT)
-In-Reply-To: <20151019025727.GA6676@thunk.org>
+Received: from mail.kernel.org ([198.145.29.136]:56076 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751543AbbJTPpC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 Oct 2015 11:45:02 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id B0E132085A
+	for <linux-ext4@vger.kernel.org>; Tue, 20 Oct 2015 15:45:01 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id B4EEC2082F
+	for <linux-ext4@vger.kernel.org>; Tue, 20 Oct 2015 15:45:00 +0000 (UTC)
+In-Reply-To: <bug-102731-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
-Content-Type: multipart/signed; boundary="==-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
+https://bugzilla.kernel.org/show_bug.cgi?id=102731
 
---==-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+--- Comment #27 from John Hughes <john@calva.com> ---
+And now I have had (with 4.2.3) an error on my /home filesystem:
 
-Theodore Ts'o <tytso@mit.edu> writes:
+Oct 20 16:06:58 olympic kernel: [ 8027.714881] EXT4-fs error (device dm-2):
+ext4_mb_generate_buddy:758: group 519, block bitmap and bg descriptor
+inconsistent: 22589 vs 22588 free clusters
+Oct 20 16:06:58 olympic kernel: [ 8027.718806] Aborting journal on device
+dm-2-8.
+Oct 20 16:06:58 olympic kernel: [ 8027.722387] EXT4-fs (dm-2): Remounting
+filesystem read-only
+Oct 20 16:06:58 olympic kernel: [ 8027.724291] EXT4-fs error (device dm-2) in
+ext4_free_blocks:4889: Journal has aborted
+Oct 20 16:06:58 olympic kernel: [ 8027.727369] EXT4-fs error (device dm-2) in
+ext4_do_update_inode:4504: Journal has aborted
+Oct 20 16:06:58 olympic kernel: [ 8027.735809] EXT4-fs error (device dm-2) in
+ext4_truncate:3789: IO failure
+Oct 20 16:06:58 olympic kernel: [ 8027.739795] EXT4-fs error (device dm-2) in
+ext4_orphan_del:2895: Journal has aborted
+Oct 20 16:06:58 olympic kernel: [ 8027.743834] EXT4-fs error (device dm-2) in
+ext4_do_update_inode:4504: Journal has aborted
 
-> Hi Dmitry,
->
-> I was investigating why ext4/304 is failing, and it's due to
-> defrag-fuzzer returning an error:
-Yep. You are right. I have out of tree patch which fix that. I'll send it
-to xfstests-dev list.=20
+Note that this is the ext4_mb_generate_buddy error cwseys mentioned.  AARGH!
 
+When I ran fsck only one error was detected: "block bitmap differences
++17016320"
 
---==-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+As the system was down I've moved the host to 4.2.3 (the users were already
+screaming, so...)
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQEcBAEBCgAGBQJWJlMzAAoJELhyPTmIL6kB+O8H/RJ2zv8N3/4ibCe/CE+tiijo
-b0hxQ48VrLmyiwqZZLA+SVOaWUId/OQfXACK2gqcrTDRNMlOsCmCEuf74RyzpPch
-iXY0RbzrLy018No6ukn4CvpfPxKN29VS7u0A8ds5c5hz2GHNWCOs2wPqKgoOy57L
-kyzBm8uukeE7s4WrdWJMNMYFpep5xK/bQdWUz8q/2wzaCZi48al2Xv7zWqZf6R2S
-6/r71d11IN6ULLl3kYoJyVLm3hAYHH2APz/JOdB56d9Jhnv4uzaEgW4Y7cLxocdr
-LPiQSYjDuS96xfekPbn9S44ET1AuWMRzo9xDNArRI2WgJWYstbb7WiJCQsnH6kg=
-=aYOF
------END PGP SIGNATURE-----
---==-=-=--
-
---=-=-=
-Content-Type: text/x-diff
-Content-Disposition: inline; filename=ext4-304-fix.patch
-
->From ee628504370564704e218ecf089f00c243b6fd12 Mon Sep 17 00:00:00 2001
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Date: Tue, 20 Oct 2015 18:32:03 +0400
-Subject: [PATCH] ext4/304 handle ENOSPC/EINVAL correctly
-
-'defrag-fuzzer' is  task which  try to perform inplace defrag, inline-defrag
-is basically  of {falloc,ioc_swap} and may fail due to ENOSPC on first stage.
-In that case IOCTL returns EINVAL (because we try to swap invalid extents)
-
-Since this is hard core test then ENOSPC and corresponding EINVAL is expected.
-
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- tests/ext4/304 |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
-
-diff --git a/tests/ext4/304 b/tests/ext4/304
-index 7b90f1d..81d69b8 100644
---- a/tests/ext4/304
-+++ b/tests/ext4/304
-@@ -76,6 +76,7 @@ donorname=test4.def
- filename=test4
- inplace=1
- rw=randwrite
-+ignore_error=,EINVAL
- numjobs=4*${LOAD_FACTOR}
- runtime=30*${TIME_FACTOR}
- time_based
 -- 
-1.7.1
-
-
---=-=-=--
+You are receiving this mail because:
+You are watching the assignee of the bug.
