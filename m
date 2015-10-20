@@ -1,116 +1,265 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: memory leak: data=journal and {collapse,insert,zero}_range
-Date: Tue, 20 Oct 2015 21:06:08 +0900
-Message-ID: <009301d10b2f$b410e6b0$1c32b410$@samsung.com>
-References: <20151017160230.GA19968@thunk.org>
+From: Austin S Hemmelgarn <ahferroin7@gmail.com>
+Subject: Re: [PATCH v11 21/48] ext4: Add richacl feature flag
+Date: Tue, 20 Oct 2015 08:33:54 -0400
+Message-ID: <562634B2.30209@gmail.com>
+References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
+	<1445008706-15115-22-git-send-email-agruenba@redhat.com>
+	<5621346E.5000500@gmail.com>
+	<CAHc6FU7sR2zN-K3un74wCv+1NPnrqJ=LYiWo+YQ_2X0kopyoTQ@mail.gmail.com>
+	<5624ED40.7040206@gmail.com>
+	<CAHc6FU4CVQAn6TCQzC8r9m9URmqD_eHQBwhDK2o_o4eb3myW=A@mail.gmail.com>
+	<5625182C.3050007@gmail.com>
+	<CAHc6FU75GXGeav1ho-QraPS_F8fpOXnoDyv17+b=koiF=9YE5A@mail.gmail.com>
+	<56253A35.4070309@gmail.com>
+	<CAHc6FU4jcatmY+A39oQb-2x9Gs8WFVsXOD_9eBV=_fgNzZx3Xg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/mixed; boundary="===============1381062868233193127=="
+Cc: linux-cifs@vger.kernel.org,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>, Linux API <linux-api@vger.kernel.org>,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	Anna Schumaker <anna.schumaker@netapp.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <CAHc6FU4jcatmY+A39oQb-2x9Gs8WFVsXOD_9eBV=_fgNzZx3Xg@mail.gmail.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
+
+This is a cryptographically signed message in MIME format.
+
+--===============1381062868233193127==
+Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-512; boundary="------------ms040606010009020500030007"
+
+This is a cryptographically signed message in MIME format.
+
+--------------ms040606010009020500030007
+Content-Type: text/plain; charset=gbk; format=flowed
+Content-Transfer-Encoding: quoted-printable
+
+On 2015-10-19 16:20, Andreas Gruenbacher wrote:
+> On Mon, Oct 19, 2015 at 8:45 PM, Austin S Hemmelgarn
+> <ahferroin7@gmail.com> wrote:
+>> On 2015-10-19 13:33, Andreas Gruenbacher wrote:
+>>> Please spare me with all that nonsense. Compared to mount options,
+>>> filesystem feature flags in this case simplify things (you don't have=
+
+>>> to specify whether a filesystem contains POSIX ACLs or richacls), and=
+
+>>> they prevent administrator errors: when a filesystem mounts, it is
+>>> safe to use; when it doesn't, it is not. That's all there is to it.
+>>
+>> You're ignoring what I'm actually saying. I've said absolutely nothing=
+
+>> about needing to use mount options at all, and I'm not arguing against=
+ using
+>> filesystem feature flags, I'm arguing for using them sensibly in a way=
+ that
+>> does not present a false sense of security.
+>
+> We could be on a multi-user system, and the user mounting the
+> filesystem may not be the only user on the system. When a filesystem
+> can be mounted read-only, it should be safe to use read-only. It is
+> not safe in general to use such a filesystem read-only, so an
+> incompatible feature flag which prevents such unsafe mounting is more
+> approporiate than a read-only incompatible feature flag.
+Except that mounting a filesystem that wasn't created on the system=20
+mounting it always has that exact same risk, because (AFAIK) all=20
+Linux/BSD/Other UNIX filesystems store GID's and UID's as numbers, not=20
+names.  Perfect example of this, take a minimal install of some Linux=20
+distribution, install a couple of packages that add new UID's, and mount =
+
+the root filesystem on a completely different distribution (say mount a=20
+Debian root filesystem on a Gentoo box), any of the new UID's from the=20
+first system will almost certainly not map to the same user on the=20
+second system (in fact, you can also do this with two Gentoo systems=20
+where the packages were installed in different orders).  This is a=20
+really basic security risk that any seasoned sysadmin should know, and=20
+most new ones find out about rather quickly.
+
+Also, based on established context of _every_ other feature with an=20
+incompat feature flag in both ext4 and XFS, 'safe' means that you can=20
+get the correct file contents off of the filesystem,and don't run the=20
+risk of crashing the system, not that you have no risk of compromising=20
+security.
+> Mounting a filesystem read-only doesn't mean that the filesystem is
+> being recovered, it is perfectly legal to mount a filesystem read-only
+> for other reasons. I don't want to give people using read-only
+> filesystems the false sense that everything is okay.
+Yes, and this is why any sane filesystem will spit a warning out through =
+
+dmesg when a mount is forced read-only because of incompatible features. =
+
+  If someone is actively mounting such a filesystem read-only (that is,=20
+they've specified 'ro' in the mount options), then it's relatively safe=20
+for the kernel to assume they are doing so for some very specific reason =
+
+and/or already know about the data safety implications.
+>
+>> Making it an incompatible flag will likely cause headaches for some
+>> legitimate users,
+>
+> Indeed. It will also make it less likely for users to accidentally
+> shoot themselves in the foot. If someone knows better, they can clear
+> the feature flag.
+Except there will be a lot of people who think they know better but=20
+really don't.  Such people will do this anyway, and by modifying the=20
+filesystem run a bigger risk of shooting themselves in the foot (because =
+
+they'll almost certainly mount the filesystem read-write, and then end=20
+up turning on richacls again).  You're not removing the gun, you're just =
+
+hiding a potentially bigger one somewhere else.
+
+It's a separate issue entirely however whether or not you absolutely=20
+need to know that the richacls have the correct syntax in a recovery=20
+situation.  Fsck doesn't parse SELinux labels, (AFAIK) doesn't parse=20
+filecaps attributes (bad filecaps syntax will only make things have=20
+fewer privileges, but it will cause user visible brokenness), (again,=20
+AFAIK) doesn't validate POSIX ACL's, and absolutely doesn't check IMA or =
+
+EVM hashes.  IMA and EVM hashes being wrong _will_ cause almost any=20
+system actually using them they way they are intended to fail to boot,=20
+and incorrect SELinux labeling will make many systems not boot=20
+correctly, and both situations are much worse for a significant majority =
+
+of users than a (security leak due to a bad ACL.
+>
+> When recovering a broken system that contains richacl filesystems, you
+> really want to have richacl support in the rescue system as well.
+> Otherwise, you won't be able to fsck those filesystems.
+While it's something that 'should' be the case, there are probably quite =
+
+a few people who will not realize this until they're already in a=20
+situation that they need to recover data.  On top of that some people=20
+will likely assume that they just need richacl support in userspace for=20
+their recovery environment.
+>
+>> and at most delay competent hackers by a few seconds to a
+>> few minutes, and script kiddies by a few hours, and is really no bette=
+r than
+>> security by obscurity (and from a purely logistical standpoint, that's=
+ _all_
+>> it is) in that it actively tries to hide the fact that someone having =
+read
+>> access to the storage the filesystem is on can bypass the ACL's.
+>>
+>> To reiterate, if someone can call mount() on a filesystem, and mount()=
+ does
+>> not return -EPERM, then even if mount() returns a different error, the=
+y
+>> still have the ability to completely bypass all permissions and ACL's =
+in
+>> that filesystem, because they have the ability to read the entire file=
+system
+>> directly.
+>>
+>> The _only_ way to properly protect against people bypassing the ACL's =
+is to
+>> use full disk encryption and lock down root access on the system, and =
+even
+>> that can't completely prevent it from happening.
+>
+> That's all completely beside the point. I'm not talking about
+> preventing attacks at all, just basic administrative workflows.
+While that may be the case, there will be people who assume that because =
+
+it's an incompat feature, their ACL's will _always_ be enforced.  Such=20
+people should admittedly not be allowed to run systems with any real=20
+world security requirements, but that mentality is something that still=20
+needs to be considered, and this is arguably making it easier for them=20
+to shoot themselves in the foot.
+
+
+--------------ms040606010009020500030007
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Description: S/MIME Cryptographic Signature
+
+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
+cnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcN
+AQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DANBglghkgBZQMEAgMFAKCCAiEwGAYJKoZI
+hvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTUxMDIwMTIzMzU0WjBPBgkq
+hkiG9w0BCQQxQgRAj1L+Syg4dbUYi2qcwmE+jNm5rTyYPrSY5Ob8jRK38O9LlayAfHOj9jb8
+SEf1wFoaPsAGxvubcBrHDkkKizb5cjBsBgkqhkiG9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjAL
+BglghkgBZQMEAQIwCgYIKoZIhvcNAwcwDgYIKoZIhvcNAwICAgCAMA0GCCqGSIb3DQMCAgFA
+MAcGBSsOAwIHMA0GCCqGSIb3DQMCAgEoMIGRBgkrBgEEAYI3EAQxgYMwgYAweTEQMA4GA1UE
+ChMHUm9vdCBDQTEeMBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlD
+QSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2Vy
+dC5vcmcCAxEt+DCBkwYLKoZIhvcNAQkQAgsxgYOggYAweTEQMA4GA1UEChMHUm9vdCBDQTEe
+MBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25p
+bmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DAN
+BgkqhkiG9w0BAQEFAASCAgCWWuFoUTqUSz3x3mcTcR+lwaVb2l1uaKJ+t2BrrztgX2LuV6bR
+W5Bu+AZ5fiuCz0DkRWPTLylUlHpRhcMxbWk+K1fdwIoQ4eahjhm7IGJxCgKtl5RXhV9wQC3Q
+Epb/iIZbbRVQE/BjZKayDRlJlQTUxVGm6rq8eK2xK93KLraCKpDkXm8bE2bjzq4pcj0l1+6g
++EcnJXt+lTVlgdiUO8iEtXbsl+JNldmLY2PFSWvHWjZmk9Io6qIABx5usfQwro7/g9WZng7N
+WzsyAHDo4OM4+wjo7hKf6jlrCTAhq2TYqJ0xfbM4qh+2NX3IE5scQxX+Tawrq729onQ+6uN9
+UvZOCljtOKWJPshwWQgWBnJk84ijIp55KYTyWwfdMFhzQxcU0MRh5gaKD8AhPAW/dY3yyhaT
+alt8FA1BkOLb1XwC1AfTZ9LSiK4aB2x9RNl1P671wl1e81zrzBXde04EsSs38hIZFbooxXc7
+NANxTEmDhKX85MRll75lDLU7sQCajx8BtYEfbSvHwh6Fs2d6DuBamBcQbL9sEK8Vu29S7CYB
+No/SBmsFRim1bLpAhUIRNo/7FnYt112SVUIVp+vpnZpybjCpz4vproYMhMiJBeXYxSVPFjGd
+AKxZRXd2s2IMc5LukNGsVk0AyBn/jtY5Jg1l1YcUKoVY6W14hA2IxbbNHwAAAAAAAA==
+--------------ms040606010009020500030007--
+
+
+--===============1381062868233193127==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: 'Theodore Ts'o' <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout3.samsung.com ([203.254.224.33]:38868 "EHLO
-	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751590AbbJTMGK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Oct 2015 08:06:10 -0400
-Received: from epcpsbgr4.samsung.com
- (u144.gpu120.samsung.co.kr [203.254.230.144])
- by mailout3.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
- 64bit (built May  5 2014))
- with ESMTP id <0NWI00VCCPM8FLE0@mailout3.samsung.com> for
- linux-ext4@vger.kernel.org; Tue, 20 Oct 2015 21:06:08 +0900 (KST)
-In-reply-to: <20151017160230.GA19968@thunk.org>
-Content-language: ko
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Disposition: inline
 
-Hi Ted,
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
 
-I will check this issue.
-
-Thanks!
-
-> -----Original Message-----
-> From: Theodore Ts'o [mailto:tytso@mit.edu]
-> Sent: Sunday, October 18, 2015 1:03 AM
-> To: linux-ext4@vger.kernel.org
-> Cc: Namjae Jeon
-> Subject: memory leak: data=journal and {collapse,insert,zero}_range
-> 
-> On the last conference call I mentioned that I had recently been
-> running into memory leaks with data=journal.  I've traced it down to
-> {collapse,insert,zero}_range calls.
-> 
-> It bisected down to 1ce01c4a199: "ext4: fix COLLAPSE_RANGE test
-> failure in data journalling mode", and specifically, this bit of code
-> the collapse/insert/zero range functions:
-> 
-> 	/* Call ext4_force_commit to flush all data in case of data=journal. */
-> 	if (ext4_should_journal_data(inode)) {
-> 		ret = ext4_force_commit(inode->i_sb);
-> 		if (ret)
-> 			return ret;
-> 	}
-> 
-> This is needed to prevent data from being lost with the insert and
-> collapse range calls.  (It is not obvious to me whether this bit of
-> code, and the filemap_write_and_wait_range() call, is needed for
-> zero_range, but I haven't had a chance to investigate this more
-> deeply.)
-> 
-> Further investigation shows that the problem seems to be a buffer_head
-> leak.  Running generic/091 with data=journal in a loop, and using the
-> following between each test runs:
-> 
-> #!/bin/sh
-> # /tmp/hooks/logger
-> echo 3 > /proc/sys/vm/drop_caches
-> logger $(grep MemFree /proc/meminfo)
-> logger $(grep buffer_head /proc/slabinfo)
-> logger $(grep jbd2_journal_head /proc/slabinfo)
-> 
-> what we find is:
-> 
-> logger: MemFree: 7348684 kB
-> logger: buffer_head 608 1600 128 32 1 : tunables 32 16 8 : slabdata 50 50 0 : globalstat 108003 36592
-> 3294 0 0 1 0 0 0 : cpustat 102424 6803 101863 6760
-> logger: jbd2_journal_head 120 120 136 30 1 : tunables 32 16 8 : slabdata 4 4 0 : globalstat 203 120 4
-> 0 0 0 0 0 0 : cpustat 179 14 84 0
-> 
-> logger: MemFree: 7155576 kB
-> logger: buffer_head 45008 65920 128 32 1 : tunables 32 16 8 : slabdata 2060 2060 0 : globalstat 207971
-> 79408 5753 0 0 1 0 0 0 : cpustat 354158 14482 311984 11664
-> logger: jbd2_journal_head 206 690 136 30 1 : tunables 32 16 8 : slabdata 23 23 128 : globalstat 38817
-> 11086 1142 0 0 0 0 0 0 : cpustat 68275 3482 68402 3326
-> 
-> kernel: logger (5838): drop_caches: 3
-> logger: MemFree: 6967656 kB
-> logger: buffer_head 89552 111616 128 32 1 : tunables 32 16 8 : slabdata 3488 3488 0 : globalstat
-> 308435 124352 7589 0 0 1 0 0 0 : cpustat 606287 22193 522363 16591
-> logger: jbd2_journal_head 210 660 136 30 1 : tunables 32 16 8 : slabdata 22 22 128 : globalstat 77205
-> 11086 2158 0 0 0 0 0 0 : cpustat 136335 6954 136593 6669
-> 
-> logger: MemFree: 6780176 kB
-> logger: buffer_head 134080 155328 128 32 1 : tunables 32 16 8 : slabdata 4854 4854 0 : globalstat
-> 408163 168144 9369 0 0 1 0 0 0 : cpustat 857710 29874 732032 21489
-> logger: jbd2_journal_head 210 570 136 30 1 : tunables 32 16 8 : slabdata 19 19 128 : globalstat 115685
-> 11086 3198 0 0 0 0 0 0 : cpustat 204408 10417 204798 9998
-> 
-> The problem then appears to be with the buffer heads associated with
-> pages that have been recently written in data=journal mode are not
-> getting freed.  I haven't had time to take this any further, but I
-> wanted to document what I've found to date as a checkpoint.  If
-> someone has time to take this further, or has any additional insight,
-> I'd certainly appreciate it!
-> 
-> 							- Ted
-> 
-> P.S.  I will shortly be releasing an enhancement to kvm-xfstests and
-> gce-xfstests which allows collapse/insert/zero range to be easily
-> disabled, like this:
-> 
-> gce-xfstests --hooks /tmp/hooks  -C 20 -c data_journal --no-collapse --no-zero --no-insert generic/091
-> 
-> (The above traces were taken without --no-collapse --no-zero and
-> --noinsert.  With those options added, the memory leak goes away.)
-
+--===============1381062868233193127==--
