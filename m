@@ -1,92 +1,116 @@
-From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH v11 21/48] ext4: Add richacl feature flag
-Date: Mon, 19 Oct 2015 22:20:43 +0200
-Message-ID: <CAHc6FU4jcatmY+A39oQb-2x9Gs8WFVsXOD_9eBV=_fgNzZx3Xg@mail.gmail.com>
-References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
-	<1445008706-15115-22-git-send-email-agruenba@redhat.com>
-	<5621346E.5000500@gmail.com>
-	<CAHc6FU7sR2zN-K3un74wCv+1NPnrqJ=LYiWo+YQ_2X0kopyoTQ@mail.gmail.com>
-	<5624ED40.7040206@gmail.com>
-	<CAHc6FU4CVQAn6TCQzC8r9m9URmqD_eHQBwhDK2o_o4eb3myW=A@mail.gmail.com>
-	<5625182C.3050007@gmail.com>
-	<CAHc6FU75GXGeav1ho-QraPS_F8fpOXnoDyv17+b=koiF=9YE5A@mail.gmail.com>
-	<56253A35.4070309@gmail.com>
+From: Namjae Jeon <namjae.jeon@samsung.com>
+Subject: RE: memory leak: data=journal and {collapse,insert,zero}_range
+Date: Tue, 20 Oct 2015 21:06:08 +0900
+Message-ID: <009301d10b2f$b410e6b0$1c32b410$@samsung.com>
+References: <20151017160230.GA19968@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
-	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org,
-	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
-To: Austin S Hemmelgarn <ahferroin7-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <56253A35.4070309-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: 'Theodore Ts'o' <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailout3.samsung.com ([203.254.224.33]:38868 "EHLO
+	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751590AbbJTMGK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Oct 2015 08:06:10 -0400
+Received: from epcpsbgr4.samsung.com
+ (u144.gpu120.samsung.co.kr [203.254.230.144])
+ by mailout3.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
+ 64bit (built May  5 2014))
+ with ESMTP id <0NWI00VCCPM8FLE0@mailout3.samsung.com> for
+ linux-ext4@vger.kernel.org; Tue, 20 Oct 2015 21:06:08 +0900 (KST)
+In-reply-to: <20151017160230.GA19968@thunk.org>
+Content-language: ko
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 19, 2015 at 8:45 PM, Austin S Hemmelgarn
-<ahferroin7-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wrote:
-> On 2015-10-19 13:33, Andreas Gruenbacher wrote:
->> Please spare me with all that nonsense. Compared to mount options,
->> filesystem feature flags in this case simplify things (you don't have
->> to specify whether a filesystem contains POSIX ACLs or richacls), and
->> they prevent administrator errors: when a filesystem mounts, it is
->> safe to use; when it doesn't, it is not. That's all there is to it.
->
-> You're ignoring what I'm actually saying. I've said absolutely nothing
-> about needing to use mount options at all, and I'm not arguing against using
-> filesystem feature flags, I'm arguing for using them sensibly in a way that
-> does not present a false sense of security.
+Hi Ted,
 
-We could be on a multi-user system, and the user mounting the
-filesystem may not be the only user on the system. When a filesystem
-can be mounted read-only, it should be safe to use read-only. It is
-not safe in general to use such a filesystem read-only, so an
-incompatible feature flag which prevents such unsafe mounting is more
-approporiate than a read-only incompatible feature flag.
+I will check this issue.
 
-Mounting a filesystem read-only doesn't mean that the filesystem is
-being recovered, it is perfectly legal to mount a filesystem read-only
-for other reasons. I don't want to give people using read-only
-filesystems the false sense that everything is okay.
+Thanks!
 
-> Making it an incompatible flag will likely cause headaches for some
-> legitimate users,
+> -----Original Message-----
+> From: Theodore Ts'o [mailto:tytso@mit.edu]
+> Sent: Sunday, October 18, 2015 1:03 AM
+> To: linux-ext4@vger.kernel.org
+> Cc: Namjae Jeon
+> Subject: memory leak: data=journal and {collapse,insert,zero}_range
+> 
+> On the last conference call I mentioned that I had recently been
+> running into memory leaks with data=journal.  I've traced it down to
+> {collapse,insert,zero}_range calls.
+> 
+> It bisected down to 1ce01c4a199: "ext4: fix COLLAPSE_RANGE test
+> failure in data journalling mode", and specifically, this bit of code
+> the collapse/insert/zero range functions:
+> 
+> 	/* Call ext4_force_commit to flush all data in case of data=journal. */
+> 	if (ext4_should_journal_data(inode)) {
+> 		ret = ext4_force_commit(inode->i_sb);
+> 		if (ret)
+> 			return ret;
+> 	}
+> 
+> This is needed to prevent data from being lost with the insert and
+> collapse range calls.  (It is not obvious to me whether this bit of
+> code, and the filemap_write_and_wait_range() call, is needed for
+> zero_range, but I haven't had a chance to investigate this more
+> deeply.)
+> 
+> Further investigation shows that the problem seems to be a buffer_head
+> leak.  Running generic/091 with data=journal in a loop, and using the
+> following between each test runs:
+> 
+> #!/bin/sh
+> # /tmp/hooks/logger
+> echo 3 > /proc/sys/vm/drop_caches
+> logger $(grep MemFree /proc/meminfo)
+> logger $(grep buffer_head /proc/slabinfo)
+> logger $(grep jbd2_journal_head /proc/slabinfo)
+> 
+> what we find is:
+> 
+> logger: MemFree: 7348684 kB
+> logger: buffer_head 608 1600 128 32 1 : tunables 32 16 8 : slabdata 50 50 0 : globalstat 108003 36592
+> 3294 0 0 1 0 0 0 : cpustat 102424 6803 101863 6760
+> logger: jbd2_journal_head 120 120 136 30 1 : tunables 32 16 8 : slabdata 4 4 0 : globalstat 203 120 4
+> 0 0 0 0 0 0 : cpustat 179 14 84 0
+> 
+> logger: MemFree: 7155576 kB
+> logger: buffer_head 45008 65920 128 32 1 : tunables 32 16 8 : slabdata 2060 2060 0 : globalstat 207971
+> 79408 5753 0 0 1 0 0 0 : cpustat 354158 14482 311984 11664
+> logger: jbd2_journal_head 206 690 136 30 1 : tunables 32 16 8 : slabdata 23 23 128 : globalstat 38817
+> 11086 1142 0 0 0 0 0 0 : cpustat 68275 3482 68402 3326
+> 
+> kernel: logger (5838): drop_caches: 3
+> logger: MemFree: 6967656 kB
+> logger: buffer_head 89552 111616 128 32 1 : tunables 32 16 8 : slabdata 3488 3488 0 : globalstat
+> 308435 124352 7589 0 0 1 0 0 0 : cpustat 606287 22193 522363 16591
+> logger: jbd2_journal_head 210 660 136 30 1 : tunables 32 16 8 : slabdata 22 22 128 : globalstat 77205
+> 11086 2158 0 0 0 0 0 0 : cpustat 136335 6954 136593 6669
+> 
+> logger: MemFree: 6780176 kB
+> logger: buffer_head 134080 155328 128 32 1 : tunables 32 16 8 : slabdata 4854 4854 0 : globalstat
+> 408163 168144 9369 0 0 1 0 0 0 : cpustat 857710 29874 732032 21489
+> logger: jbd2_journal_head 210 570 136 30 1 : tunables 32 16 8 : slabdata 19 19 128 : globalstat 115685
+> 11086 3198 0 0 0 0 0 0 : cpustat 204408 10417 204798 9998
+> 
+> The problem then appears to be with the buffer heads associated with
+> pages that have been recently written in data=journal mode are not
+> getting freed.  I haven't had time to take this any further, but I
+> wanted to document what I've found to date as a checkpoint.  If
+> someone has time to take this further, or has any additional insight,
+> I'd certainly appreciate it!
+> 
+> 							- Ted
+> 
+> P.S.  I will shortly be releasing an enhancement to kvm-xfstests and
+> gce-xfstests which allows collapse/insert/zero range to be easily
+> disabled, like this:
+> 
+> gce-xfstests --hooks /tmp/hooks  -C 20 -c data_journal --no-collapse --no-zero --no-insert generic/091
+> 
+> (The above traces were taken without --no-collapse --no-zero and
+> --noinsert.  With those options added, the memory leak goes away.)
 
-Indeed. It will also make it less likely for users to accidentally
-shoot themselves in the foot. If someone knows better, they can clear
-the feature flag.
-
-When recovering a broken system that contains richacl filesystems, you
-really want to have richacl support in the rescue system as well.
-Otherwise, you won't be able to fsck those filesystems.
-
-> and at most delay competent hackers by a few seconds to a
-> few minutes, and script kiddies by a few hours, and is really no better than
-> security by obscurity (and from a purely logistical standpoint, that's _all_
-> it is) in that it actively tries to hide the fact that someone having read
-> access to the storage the filesystem is on can bypass the ACL's.
->
-> To reiterate, if someone can call mount() on a filesystem, and mount() does
-> not return -EPERM, then even if mount() returns a different error, they
-> still have the ability to completely bypass all permissions and ACL's in
-> that filesystem, because they have the ability to read the entire filesystem
-> directly.
->
-> The _only_ way to properly protect against people bypassing the ACL's is to
-> use full disk encryption and lock down root access on the system, and even
-> that can't completely prevent it from happening.
-
-That's all completely beside the point. I'm not talking about
-preventing attacks at all, just basic administrative workflows.
-
-Andreas
