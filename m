@@ -1,129 +1,32 @@
-From: Jan Kara <jack@suse.com>
-Subject: [PATCH 8/9] ext4: Implement allocation of pre-zeroed blocks
-Date: Thu, 22 Oct 2015 10:16:00 +0200
-Message-ID: <1445501761-14528-9-git-send-email-jack@suse.com>
-References: <1445501761-14528-1-git-send-email-jack@suse.com>
-Cc: Ted Tso <tytso@mit.edu>, Dan Williams <dan.j.williams@intel.com>,
-	ross.zwisler@linux.intel.com, willy@linux.intel.com,
-	Jan Kara <jack@suse.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Test ext4/001
+Date: Thu, 22 Oct 2015 11:10:17 +0200
+Message-ID: <20151022091017.GC14445@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: fstests@vger.kernel.org
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52206 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756802AbbJVIQ0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Oct 2015 04:16:26 -0400
-In-Reply-To: <1445501761-14528-1-git-send-email-jack@suse.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <fstests-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-DAX page fault path needs to get blocks that are pre-zeroed to avoid
-races when two concurrent page faults happen in the same block of a
-file. Implement support for this in ext4_map_blocks().
+Hi,
 
-Signed-off-by: Jan Kara <jack@suse.com>
----
- fs/ext4/ext4.h              |  4 ++++
- fs/ext4/extents.c           |  8 ++++++++
- fs/ext4/inode.c             | 20 +++++++++++++++++---
- include/trace/events/ext4.h |  3 ++-
- 4 files changed, 31 insertions(+), 4 deletions(-)
+I've checked why test ext4/001 fails for me with DAX and after some
+investigation I've realized that the test assumes that
+extent_max_zeroout_kb is 32 KB and thus unwritten extent will get converted
+to written as a whole and not split. With DAX that doesn't happen (because
+of difference between EXT4_GET_BLOCKS_ flags passed in writeback path and
+DAX write path) and so the result differs.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 785737a342e6..0a11a34d54c9 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -553,6 +553,10 @@ enum {
- #define EXT4_GET_BLOCKS_KEEP_SIZE		0x0080
- 	/* Convert written extents to unwritten */
- #define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0100
-+	/* Write zeros to newly created written extents */
-+#define EXT4_GET_BLOCKS_ZERO			0x0200
-+#define EXT4_GET_BLOCKS_CREATE_ZERO		(EXT4_GET_BLOCKS_CREATE |\
-+					EXT4_GET_BLOCKS_ZERO)
- 
- /*
-  * The bit position of these flags must not overlap with any of the
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 273bf40cca23..8e0d853a8044 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4040,6 +4040,14 @@ ext4_ext_handle_unwritten_extents(handle_t *handle, struct inode *inode,
- 	}
- 	/* IO end_io complete, convert the filled extent to written */
- 	if (flags & EXT4_GET_BLOCKS_CONVERT) {
-+		if (flags & EXT4_GET_BLOCKS_ZERO) {
-+			if (allocated > map->m_len)
-+				allocated = map->m_len;
-+			err = ext4_issue_zeroout(inode, map->m_lblk, newblock,
-+						 allocated);
-+			if (err < 0)
-+				goto out2;
-+		}
- 		ret = ext4_convert_unwritten_extents_endio(handle, inode, map,
- 							   ppath);
- 		if (ret >= 0) {
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5e5795bde6b4..73c6214084d4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -643,7 +643,7 @@ found:
- 		if ((flags & EXT4_GET_BLOCKS_PRE_IO) &&
- 		    ext4_es_lookup_extent(inode, map->m_lblk, &es)) {
- 			if (ext4_es_is_written(&es))
--				goto has_zeroout;
-+				goto out_sem;
- 		}
- 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
- 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
-@@ -654,11 +654,24 @@ found:
- 			status |= EXTENT_STATUS_DELAYED;
- 		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
- 					    map->m_pblk, status);
--		if (ret < 0)
-+		if (ret < 0) {
- 			retval = ret;
-+			goto out_sem;
-+		}
-+
-+		if (flags & EXT4_GET_BLOCKS_ZERO &&
-+		    map->m_flags & EXT4_MAP_MAPPED &&
-+		    map->m_flags & EXT4_MAP_NEW) {
-+			ret = ext4_issue_zeroout(inode, map->m_lblk,
-+						 map->m_pblk, map->m_len);
-+			if (ret) {
-+				retval = ret;
-+				goto out_sem;
-+			}
-+		}
- 	}
- 
--has_zeroout:
-+out_sem:
- 	up_write((&EXT4_I(inode)->i_data_sem));
- 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
- 		ret = check_block_validity(inode, map);
-@@ -3041,6 +3054,7 @@ int ext4_get_block_dax(struct inode *inode, sector_t iblock,
- 		   struct buffer_head *bh_result, int create)
- {
- 	int flags = EXT4_GET_BLOCKS_PRE_IO | EXT4_GET_BLOCKS_UNWRIT_EXT;
-+
- 	if (create)
- 		flags |= EXT4_GET_BLOCKS_CREATE;
- 	ext4_debug("ext4_get_block_dax: inode %lu, create flag %d\n",
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 5f2ace56efc5..4e4b2fa78609 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -42,7 +42,8 @@ struct extent_status;
- 	{ EXT4_GET_BLOCKS_CONVERT,		"CONVERT" },		\
- 	{ EXT4_GET_BLOCKS_METADATA_NOFAIL,	"METADATA_NOFAIL" },	\
- 	{ EXT4_GET_BLOCKS_NO_NORMALIZE,		"NO_NORMALIZE" },	\
--	{ EXT4_GET_BLOCKS_KEEP_SIZE,		"KEEP_SIZE" })
-+	{ EXT4_GET_BLOCKS_KEEP_SIZE,		"KEEP_SIZE" },		\
-+	{ EXT4_GET_BLOCKS_ZERO,			"ZERO" })
- 
- #define show_mflags(flags) __print_flags(flags, "",	\
- 	{ EXT4_MAP_NEW,		"N" },			\
+So I was wondering how to best fix this. Either we could switch
+extent_max_zeroout_kb to 0 to make the result same (but that has a slight
+disadvantage that we would lose testing of the zeroout logic) or we could
+increase file size so that zeroout doesn't trigger or something else?
+Anyone has some idea?
+
+								Honza
 -- 
-2.1.4
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
