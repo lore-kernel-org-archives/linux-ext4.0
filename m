@@ -1,121 +1,201 @@
 From: Jan Kara <jack@suse.com>
-Subject: [PATCH 4/9] ext4: Fix races of writeback with punch hole and zero range
-Date: Thu, 22 Oct 2015 10:15:56 +0200
-Message-ID: <1445501761-14528-5-git-send-email-jack@suse.com>
+Subject: [PATCH 9/9] ext4: Use pre-zeroed blocks for DAX page faults
+Date: Thu, 22 Oct 2015 10:16:01 +0200
+Message-ID: <1445501761-14528-10-git-send-email-jack@suse.com>
 References: <1445501761-14528-1-git-send-email-jack@suse.com>
 Cc: Ted Tso <tytso@mit.edu>, Dan Williams <dan.j.williams@intel.com>,
 	ross.zwisler@linux.intel.com, willy@linux.intel.com,
 	Jan Kara <jack@suse.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52164 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:52203 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756822AbbJVIQV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Oct 2015 04:16:21 -0400
+	id S1756831AbbJVIQY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Oct 2015 04:16:24 -0400
 In-Reply-To: <1445501761-14528-1-git-send-email-jack@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When doing delayed allocation, update of on-disk inode size is postponed
-until IO submission time. However hole punch or zero range fallocate
-calls can end up discarding the tail page cache page and thus on-disk
-inode size would never be properly updated.
-
-Make sure the on-disk inode size is updated before truncating page
-cache.
+Make DAX fault path use pre-zeroed blocks to avoid races with extent
+conversion and zeroing when two page faults to the same block happen.
 
 Signed-off-by: Jan Kara <jack@suse.com>
 ---
- fs/ext4/ext4.h    |  3 +++
- fs/ext4/extents.c |  5 +++++
- fs/ext4/inode.c   | 35 ++++++++++++++++++++++++++++++++++-
- 3 files changed, 42 insertions(+), 1 deletion(-)
+ fs/ext4/ext4.h  |  4 +--
+ fs/ext4/file.c  | 20 +++-----------
+ fs/ext4/inode.c | 81 +++++++++++++++++++++++++++++++++++++++++++++------------
+ 3 files changed, 69 insertions(+), 36 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index c19ff61ccbdf..c86546efec30 100644
+index 0a11a34d54c9..9b6e5813968b 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -2691,6 +2691,9 @@ static inline int ext4_update_inode_size(struct inode *inode, loff_t newsize)
- 	return changed;
+@@ -2284,8 +2284,8 @@ struct buffer_head *ext4_getblk(handle_t *, struct inode *, ext4_lblk_t, int);
+ struct buffer_head *ext4_bread(handle_t *, struct inode *, ext4_lblk_t, int);
+ int ext4_get_block_write(struct inode *inode, sector_t iblock,
+ 			 struct buffer_head *bh_result, int create);
+-int ext4_get_block_dax(struct inode *inode, sector_t iblock,
+-			 struct buffer_head *bh_result, int create);
++int ext4_dax_mmap_get_block(struct inode *inode, sector_t iblock,
++			    struct buffer_head *bh_result, int create);
+ int ext4_get_block(struct inode *inode, sector_t iblock,
+ 				struct buffer_head *bh_result, int create);
+ int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 0d24ebcd7c9e..749b222e6498 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -193,18 +193,6 @@ out:
  }
  
-+int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
-+				      loff_t len);
-+
- struct ext4_group_info {
- 	unsigned long   bb_state;
- 	struct rb_root  bb_free_root;
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 892245a55c53..9977b557d50d 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4843,6 +4843,11 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 		 * released from page cache.
- 		 */
- 		down_write(&EXT4_I(inode)->i_mmap_sem);
-+		ret = ext4_update_disksize_before_punch(inode, offset, len);
-+		if (ret) {
-+			up_write(&EXT4_I(inode)->i_mmap_sem);
-+			goto out_dio;
-+		}
- 		/* Now release the pages and zero block aligned part of pages */
- 		truncate_pagecache_range(inode, start, end - 1);
- 		inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
+ #ifdef CONFIG_FS_DAX
+-static void ext4_end_io_unwritten(struct buffer_head *bh, int uptodate)
+-{
+-	struct inode *inode = bh->b_assoc_map->host;
+-	/* XXX: breaks on 32-bit > 16TB. Is that even supported? */
+-	loff_t offset = (loff_t)(uintptr_t)bh->b_private << inode->i_blkbits;
+-	int err;
+-	if (!uptodate)
+-		return;
+-	WARN_ON(!buffer_unwritten(bh));
+-	err = ext4_convert_unwritten_extents(NULL, inode, offset, bh->b_size);
+-}
+-
+ static int ext4_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+ {
+ 	int result;
+@@ -225,8 +213,7 @@ static int ext4_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	if (IS_ERR(handle))
+ 		result = VM_FAULT_SIGBUS;
+ 	else
+-		result = __dax_fault(vma, vmf, ext4_get_block_dax,
+-						ext4_end_io_unwritten);
++		result = __dax_fault(vma, vmf, ext4_dax_mmap_get_block, NULL);
+ 
+ 	if (write) {
+ 		if (!IS_ERR(handle))
+@@ -262,7 +249,7 @@ static int ext4_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
+ 		result = VM_FAULT_SIGBUS;
+ 	else
+ 		result = __dax_pmd_fault(vma, addr, pmd, flags,
+-				ext4_get_block_dax, ext4_end_io_unwritten);
++				ext4_dax_mmap_get_block, NULL);
+ 
+ 	if (write) {
+ 		if (!IS_ERR(handle))
+@@ -283,8 +270,7 @@ static int ext4_dax_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	sb_start_pagefault(inode->i_sb);
+ 	file_update_time(vma->vm_file);
+ 	down_read(&EXT4_I(inode)->i_mmap_sem);
+-	err = __dax_mkwrite(vma, vmf, ext4_get_block_dax,
+-			    ext4_end_io_unwritten);
++	err = __dax_mkwrite(vma, vmf, ext4_dax_mmap_get_block, NULL);
+ 	up_read(&EXT4_I(inode)->i_mmap_sem);
+ 	sb_end_pagefault(inode->i_sb);
+ 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 36ad45906d26..f72212ef1fee 100644
+index 73c6214084d4..c2a476a35464 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -3517,6 +3517,35 @@ int ext4_can_truncate(struct inode *inode)
+@@ -718,16 +718,6 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
+ 
+ 		map_bh(bh, inode->i_sb, map.m_pblk);
+ 		bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
+-		if (IS_DAX(inode) && buffer_unwritten(bh)) {
+-			/*
+-			 * dgc: I suspect unwritten conversion on ext4+DAX is
+-			 * fundamentally broken here when there are concurrent
+-			 * read/write in progress on this inode.
+-			 */
+-			WARN_ON_ONCE(io_end);
+-			bh->b_assoc_map = inode->i_mapping;
+-			bh->b_private = (void *)(unsigned long)iblock;
+-		}
+ 		if (io_end && io_end->flag & EXT4_IO_END_UNWRITTEN)
+ 			set_buffer_defer_completion(bh);
+ 		bh->b_size = inode->i_sb->s_blocksize * map.m_len;
+@@ -3050,17 +3040,74 @@ static int ext4_get_block_overwrite(struct inode *inode, sector_t iblock,
+ 	return ret;
  }
  
- /*
-+ * We have to make sure i_disksize gets properly updated before we truncate
-+ * page cache due to hole punching or zero range. Otherwise i_disksize update
-+ * can get lost as it may have been postponed to submission of writeback but
-+ * that will never happen after we truncate page cache.
-+ */
-+int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
-+				      loff_t len)
-+{
-+	handle_t *handle;
-+	loff_t size = i_size_read(inode);
-+
-+	WARN_ON(!mutex_is_locked(&inode->i_mutex));
-+	if (offset > size || offset + len < size)
-+		return 0;
-+
-+	if (EXT4_I(inode)->i_disksize >= size)
-+		return 0;
-+
-+	handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
-+	ext4_update_i_disksize(inode, size);
-+	ext4_mark_inode_dirty(handle, inode);
-+	ext4_journal_stop(handle);
-+
-+	return 0;
-+}
-+
-+/*
-  * ext4_punch_hole: punches a hole in a file by releaseing the blocks
-  * associated with the given offset and length
-  *
-@@ -3594,9 +3623,13 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
- 	last_block_offset = round_down((offset + length), sb->s_blocksize) - 1;
+-int ext4_get_block_dax(struct inode *inode, sector_t iblock,
+-		   struct buffer_head *bh_result, int create)
++#ifdef CONFIG_FS_DAX
++int ext4_dax_mmap_get_block(struct inode *inode, sector_t iblock,
++			    struct buffer_head *bh_result, int create)
+ {
+-	int flags = EXT4_GET_BLOCKS_PRE_IO | EXT4_GET_BLOCKS_UNWRIT_EXT;
++	int ret, err;
++	int credits;
++	struct ext4_map_blocks map;
++	handle_t *handle = NULL;
++	int flags = 0;
  
- 	/* Now release the pages and zero block aligned part of pages*/
--	if (last_block_offset > first_block_offset)
-+	if (last_block_offset > first_block_offset) {
-+		ret = ext4_update_disksize_before_punch(inode, offset, length);
-+		if (ret)
-+			goto out_dio;
- 		truncate_pagecache_range(inode, first_block_offset,
- 					 last_block_offset);
+-	if (create)
+-		flags |= EXT4_GET_BLOCKS_CREATE;
+-	ext4_debug("ext4_get_block_dax: inode %lu, create flag %d\n",
++	ext4_debug("ext4_dax_mmap_get_block: inode %lu, create flag %d\n",
+ 		   inode->i_ino, create);
+-	return _ext4_get_block(inode, iblock, bh_result, flags);
++	map.m_lblk = iblock;
++	map.m_len = bh_result->b_size >> inode->i_blkbits;
++	credits = ext4_chunk_trans_blocks(inode, map.m_len);
++	if (create) {
++		flags |= EXT4_GET_BLOCKS_PRE_IO | EXT4_GET_BLOCKS_CREATE_ZERO;
++		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS, credits);
++		if (IS_ERR(handle)) {
++			ret = PTR_ERR(handle);
++			return ret;
++		}
 +	}
++
++	ret = ext4_map_blocks(handle, inode, &map, flags);
++	if (create) {
++		err = ext4_journal_stop(handle);
++		if (ret >= 0 && err < 0)
++			ret = err;
++	}
++	if (ret <= 0)
++		goto out;
++	if (map.m_flags & EXT4_MAP_UNWRITTEN) {
++		int err2;
++
++		/*
++		 * We are protected by i_mmap_sem so we know block cannot go
++		 * away from under us even though we dropped i_data_sem.
++		 * Convert extent to written and write zeros there.
++		 *
++		 * Note: We may get here even when create == 0.
++		 */
++		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS, credits);
++		if (IS_ERR(handle)) {
++			ret = PTR_ERR(handle);
++			goto out;
++		}
++
++		err = ext4_map_blocks(handle, inode, &map,
++		      EXT4_GET_BLOCKS_CONVERT | EXT4_GET_BLOCKS_CREATE_ZERO);
++		if (err < 0)
++			ret = err;
++		err2 = ext4_journal_stop(handle);
++		if (err2 < 0 && ret > 0)
++			ret = err2;
++	}
++out:
++	WARN_ON_ONCE(ret == 0 && create);
++	if (ret > 0) {
++		map_bh(bh_result, inode->i_sb, map.m_pblk);
++		bh_result->b_state = (bh_result->b_state & ~EXT4_MAP_FLAGS) |
++					map.m_flags;
++		bh_result->b_size = map.m_len << inode->i_blkbits;
++		ret = 0;
++	}
++	return ret;
+ }
++#endif
  
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
- 		credits = ext4_writepage_trans_blocks(inode);
+ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+ 			    ssize_t size, void *private)
 -- 
 2.1.4
 
