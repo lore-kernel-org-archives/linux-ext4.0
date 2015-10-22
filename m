@@ -1,83 +1,121 @@
 From: Jan Kara <jack@suse.com>
-Subject: [PATCH 2/9] ext4: Move unlocked dio protection from ext4_alloc_file_blocks()
-Date: Thu, 22 Oct 2015 10:15:54 +0200
-Message-ID: <1445501761-14528-3-git-send-email-jack@suse.com>
+Subject: [PATCH 4/9] ext4: Fix races of writeback with punch hole and zero range
+Date: Thu, 22 Oct 2015 10:15:56 +0200
+Message-ID: <1445501761-14528-5-git-send-email-jack@suse.com>
 References: <1445501761-14528-1-git-send-email-jack@suse.com>
 Cc: Ted Tso <tytso@mit.edu>, Dan Williams <dan.j.williams@intel.com>,
 	ross.zwisler@linux.intel.com, willy@linux.intel.com,
 	Jan Kara <jack@suse.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52165 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:52164 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756802AbbJVIQV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1756822AbbJVIQV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 22 Oct 2015 04:16:21 -0400
 In-Reply-To: <1445501761-14528-1-git-send-email-jack@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently ext4_alloc_file_blocks() was handling protection against
-unlocked DIO. However we now need to sometimes call it under i_mmap_sem
-and sometimes not and DIO protection ranks above it (although strictly
-speaking this cannot currently create any deadlocks). Also
-ext4_zero_range() was actually getting & releasing unlocked DIO
-protection twice in some cases. Luckily it didn't introduce any real bug
-but it was a land mine waiting to be stepped on.  So move DIO protection
-out from ext4_alloc_file_blocks() into the two callsites.
+When doing delayed allocation, update of on-disk inode size is postponed
+until IO submission time. However hole punch or zero range fallocate
+calls can end up discarding the tail page cache page and thus on-disk
+inode size would never be properly updated.
+
+Make sure the on-disk inode size is updated before truncating page
+cache.
 
 Signed-off-by: Jan Kara <jack@suse.com>
 ---
- fs/ext4/extents.c | 21 ++++++++++-----------
- 1 file changed, 10 insertions(+), 11 deletions(-)
+ fs/ext4/ext4.h    |  3 +++
+ fs/ext4/extents.c |  5 +++++
+ fs/ext4/inode.c   | 35 ++++++++++++++++++++++++++++++++++-
+ 3 files changed, 42 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 6e0c5d37a232..66ab89b58c1f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4681,10 +4681,6 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
- 	if (len <= EXT_UNWRITTEN_MAX_LEN)
- 		flags |= EXT4_GET_BLOCKS_NO_NORMALIZE;
- 
--	/* Wait all existing dio workers, newcomers will block on i_mutex */
--	ext4_inode_block_unlocked_dio(inode);
--	inode_dio_wait(inode);
--
- 	/*
- 	 * credits to insert 1 extent into extent tree
- 	 */
-@@ -4748,8 +4744,6 @@ retry:
- 		goto retry;
- 	}
- 
--	ext4_inode_resume_unlocked_dio(inode);
--
- 	return ret > 0 ? ret2 : ret;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index c19ff61ccbdf..c86546efec30 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2691,6 +2691,9 @@ static inline int ext4_update_inode_size(struct inode *inode, loff_t newsize)
+ 	return changed;
  }
  
-@@ -4823,6 +4817,10 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 	if (mode & FALLOC_FL_KEEP_SIZE)
- 		flags |= EXT4_GET_BLOCKS_KEEP_SIZE;
- 
-+	/* Wait all existing dio workers, newcomers will block on i_mutex */
-+	ext4_inode_block_unlocked_dio(inode);
-+	inode_dio_wait(inode);
++int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
++				      loff_t len);
 +
- 	/* Preallocate the range including the unaligned edges */
- 	if (partial_begin || partial_end) {
- 		ret = ext4_alloc_file_blocks(file,
-@@ -4831,7 +4829,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 				 round_down(offset, 1 << blkbits)) >> blkbits,
- 				new_size, flags, mode);
- 		if (ret)
--			goto out_mutex;
+ struct ext4_group_info {
+ 	unsigned long   bb_state;
+ 	struct rb_root  bb_free_root;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 892245a55c53..9977b557d50d 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4843,6 +4843,11 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+ 		 * released from page cache.
+ 		 */
+ 		down_write(&EXT4_I(inode)->i_mmap_sem);
++		ret = ext4_update_disksize_before_punch(inode, offset, len);
++		if (ret) {
++			up_write(&EXT4_I(inode)->i_mmap_sem);
 +			goto out_dio;
++		}
+ 		/* Now release the pages and zero block aligned part of pages */
+ 		truncate_pagecache_range(inode, start, end - 1);
+ 		inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 36ad45906d26..f72212ef1fee 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3517,6 +3517,35 @@ int ext4_can_truncate(struct inode *inode)
+ }
  
- 	}
+ /*
++ * We have to make sure i_disksize gets properly updated before we truncate
++ * page cache due to hole punching or zero range. Otherwise i_disksize update
++ * can get lost as it may have been postponed to submission of writeback but
++ * that will never happen after we truncate page cache.
++ */
++int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
++				      loff_t len)
++{
++	handle_t *handle;
++	loff_t size = i_size_read(inode);
++
++	WARN_ON(!mutex_is_locked(&inode->i_mutex));
++	if (offset > size || offset + len < size)
++		return 0;
++
++	if (EXT4_I(inode)->i_disksize >= size)
++		return 0;
++
++	handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
++	if (IS_ERR(handle))
++		return PTR_ERR(handle);
++	ext4_update_i_disksize(inode, size);
++	ext4_mark_inode_dirty(handle, inode);
++	ext4_journal_stop(handle);
++
++	return 0;
++}
++
++/*
+  * ext4_punch_hole: punches a hole in a file by releaseing the blocks
+  * associated with the given offset and length
+  *
+@@ -3594,9 +3623,13 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
+ 	last_block_offset = round_down((offset + length), sb->s_blocksize) - 1;
  
-@@ -4840,10 +4838,6 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 		flags |= (EXT4_GET_BLOCKS_CONVERT_UNWRITTEN |
- 			  EXT4_EX_NOCACHE);
+ 	/* Now release the pages and zero block aligned part of pages*/
+-	if (last_block_offset > first_block_offset)
++	if (last_block_offset > first_block_offset) {
++		ret = ext4_update_disksize_before_punch(inode, offset, length);
++		if (ret)
++			goto out_dio;
+ 		truncate_pagecache_range(inode, first_block_offset,
+ 					 last_block_offset);
++	}
  
--		/* Wait all existing dio workers, newcomers will block on i_mutex */
--		ext4_inode_block_unlocked_dio(inode);
--		inode_dio_wait(inode);
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+ 		credits = ext4_writepage_trans_blocks(inode);
+-- 
+2.1.4
+
