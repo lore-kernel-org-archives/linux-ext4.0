@@ -1,63 +1,83 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: memory leak: data=journal and {collapse,insert,zero}_range
-Date: Wed, 21 Oct 2015 10:52:14 -0400
-Message-ID: <20151021145214.GC2165@thunk.org>
-References: <20151017160230.GA19968@thunk.org>
- <009301d10b2f$b410e6b0$1c32b410$@samsung.com>
- <20151020155443.GM2972@thunk.org>
- <011f01d10be5$099d38d0$1cd7aa70$@samsung.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Namjae Jeon <namjae.jeon@samsung.com>
+From: Jan Kara <jack@suse.com>
+Subject: [PATCH 2/9] ext4: Move unlocked dio protection from ext4_alloc_file_blocks()
+Date: Thu, 22 Oct 2015 10:15:54 +0200
+Message-ID: <1445501761-14528-3-git-send-email-jack@suse.com>
+References: <1445501761-14528-1-git-send-email-jack@suse.com>
+Cc: Ted Tso <tytso@mit.edu>, Dan Williams <dan.j.williams@intel.com>,
+	ross.zwisler@linux.intel.com, willy@linux.intel.com,
+	Jan Kara <jack@suse.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36116 "EHLO imap.thunk.org"
+Received: from mx2.suse.de ([195.135.220.15]:52165 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751737AbbJUOwQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 Oct 2015 10:52:16 -0400
-Content-Disposition: inline
-In-Reply-To: <011f01d10be5$099d38d0$1cd7aa70$@samsung.com>
+	id S1756802AbbJVIQV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Oct 2015 04:16:21 -0400
+In-Reply-To: <1445501761-14528-1-git-send-email-jack@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 21, 2015 at 06:44:10PM +0900, Namjae Jeon wrote:
-> > Interestingly we're not seeing these memory leaks on the truncate
-> > path, so I suspect the issue is in how collapse range is clearing
-> > pages from the page cache, especially pages that were freshly written
-> > to the journal by the commit but which hadn't yet been writtten to
-> > disk and then marked as complete so we can allow the relevant
-> > transaction to be checkpointed.  (Although we're not leaking the
-> > journal head structures, but only the buffer heads, so the story most
-> > be a bit more complicated than that.)
-> 
-> Okay, Thanks for sharing your view and points !!
-> 
-> Currently I can reproduce memory leak issue without collase/insert/zero range.
-> conditions like the following.(collase/insert/zero range are disable with -I -C -z option and add -y option instead of -W)
->   1. small size parition(1GB)
->   2. run fsx with these options "./fsx -N 30000 -o 128000 -l 500000 -r 4096 -t 512 -w 512 -Z -R -y -I -C -z testfile"
-> And same result with generic/091 is showing (buffer_head leak)
-> 
-> So I am starting to find root-cause base on your points.
-> I will share the result or the patch.
+Currently ext4_alloc_file_blocks() was handling protection against
+unlocked DIO. However we now need to sometimes call it under i_mmap_sem
+and sometimes not and DIO protection ranks above it (although strictly
+speaking this cannot currently create any deadlocks). Also
+ext4_zero_range() was actually getting & releasing unlocked DIO
+protection twice in some cases. Luckily it didn't introduce any real bug
+but it was a land mine waiting to be stepped on.  So move DIO protection
+out from ext4_alloc_file_blocks() into the two callsites.
 
-Thanks, that's very interesting data point.  So this makes it appear
-that the problem *is* probably with how we deal with checkpointing
-buffers after the pages get discarded using either a truncate or a
-collapse_range, since the 'y' option causes a lot fsync's, and hence
-commits, some of which are happening after a truncate command.
+Signed-off-by: Jan Kara <jack@suse.com>
+---
+ fs/ext4/extents.c | 21 ++++++++++-----------
+ 1 file changed, 10 insertions(+), 11 deletions(-)
 
-Thanks for a taking a look at this.  I really appreciate it.
-
-Cheers,
-
-					- Ted
-
-
-
-
-
-
-
-
-
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 6e0c5d37a232..66ab89b58c1f 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4681,10 +4681,6 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
+ 	if (len <= EXT_UNWRITTEN_MAX_LEN)
+ 		flags |= EXT4_GET_BLOCKS_NO_NORMALIZE;
+ 
+-	/* Wait all existing dio workers, newcomers will block on i_mutex */
+-	ext4_inode_block_unlocked_dio(inode);
+-	inode_dio_wait(inode);
+-
+ 	/*
+ 	 * credits to insert 1 extent into extent tree
+ 	 */
+@@ -4748,8 +4744,6 @@ retry:
+ 		goto retry;
+ 	}
+ 
+-	ext4_inode_resume_unlocked_dio(inode);
+-
+ 	return ret > 0 ? ret2 : ret;
+ }
+ 
+@@ -4823,6 +4817,10 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+ 	if (mode & FALLOC_FL_KEEP_SIZE)
+ 		flags |= EXT4_GET_BLOCKS_KEEP_SIZE;
+ 
++	/* Wait all existing dio workers, newcomers will block on i_mutex */
++	ext4_inode_block_unlocked_dio(inode);
++	inode_dio_wait(inode);
++
+ 	/* Preallocate the range including the unaligned edges */
+ 	if (partial_begin || partial_end) {
+ 		ret = ext4_alloc_file_blocks(file,
+@@ -4831,7 +4829,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+ 				 round_down(offset, 1 << blkbits)) >> blkbits,
+ 				new_size, flags, mode);
+ 		if (ret)
+-			goto out_mutex;
++			goto out_dio;
+ 
+ 	}
+ 
+@@ -4840,10 +4838,6 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+ 		flags |= (EXT4_GET_BLOCKS_CONVERT_UNWRITTEN |
+ 			  EXT4_EX_NOCACHE);
+ 
+-		/* Wait all existing dio workers, newcomers will block on i_mutex */
+-		ext4_inode_block_unlocked_dio(inode);
+-		inode_dio_wait(inode);
