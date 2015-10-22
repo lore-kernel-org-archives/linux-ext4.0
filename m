@@ -1,130 +1,193 @@
 From: Jan Kara <jack@suse.com>
-Subject: [PATCH 7/9] ext4: Provide ext4_issue_zeroout()
-Date: Thu, 22 Oct 2015 10:15:59 +0200
-Message-ID: <1445501761-14528-8-git-send-email-jack@suse.com>
+Subject: [PATCH 6/9] ext4: Get rid of EXT4_GET_BLOCKS_NO_LOCK flag
+Date: Thu, 22 Oct 2015 10:15:58 +0200
+Message-ID: <1445501761-14528-7-git-send-email-jack@suse.com>
 References: <1445501761-14528-1-git-send-email-jack@suse.com>
 Cc: Ted Tso <tytso@mit.edu>, Dan Williams <dan.j.williams@intel.com>,
 	ross.zwisler@linux.intel.com, willy@linux.intel.com,
 	Jan Kara <jack@suse.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52207 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:52208 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756836AbbJVIQ0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1756837AbbJVIQ0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 22 Oct 2015 04:16:26 -0400
 In-Reply-To: <1445501761-14528-1-git-send-email-jack@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Create new function ext4_issue_zeroout() to zeroout contiguous (both
-logically and physically) part of inode data. We will need to issue
-zeroout when extent structure is not readily available and this function
-will allow us to do it without making up fake extent structures.
+When dioread_nolock mode is enabled, we grab i_data_sem in
+ext4_ext_direct_IO() and therefore we need to instruct _ext4_get_block()
+not to grab i_data_sem again using EXT4_GET_BLOCKS_NO_LOCK. However
+holding i_data_sem over overwrite direct IO isn't needed these days. We
+have exclusion against truncate / hole punching because we increase
+i_dio_count under i_mutex in ext4_ext_direct_IO() so once
+ext4_file_write_iter() verifies blocks are allocated & written, they are
+guaranteed to stay so during the whole direct IO even after we drop
+i_mutex.
+
+So we can just remove this locking abuse and the no longer necessary
+EXT4_GET_BLOCKS_NO_LOCK flag.
 
 Signed-off-by: Jan Kara <jack@suse.com>
 ---
- fs/ext4/crypto.c  |  6 ++----
- fs/ext4/ext4.h    |  5 ++++-
- fs/ext4/extents.c | 12 ++----------
- fs/ext4/inode.c   | 15 +++++++++++++++
- 4 files changed, 23 insertions(+), 15 deletions(-)
+ fs/ext4/ext4.h              |  4 +---
+ fs/ext4/inode.c             | 43 ++++++++++++++++++++-----------------------
+ include/trace/events/ext4.h |  3 +--
+ 3 files changed, 22 insertions(+), 28 deletions(-)
 
-diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-index 45731558138c..6b63d1e9f05a 100644
---- a/fs/ext4/crypto.c
-+++ b/fs/ext4/crypto.c
-@@ -403,14 +403,12 @@ int ext4_decrypt_one(struct inode *inode, struct page *page)
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index c86546efec30..142e935d1f3d 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -551,10 +551,8 @@ enum {
+ #define EXT4_GET_BLOCKS_NO_NORMALIZE		0x0040
+ 	/* Request will not result in inode size update (user for fallocate) */
+ #define EXT4_GET_BLOCKS_KEEP_SIZE		0x0080
+-	/* Do not take i_data_sem locking in ext4_map_blocks */
+-#define EXT4_GET_BLOCKS_NO_LOCK			0x0100
+ 	/* Convert written extents to unwritten */
+-#define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0200
++#define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0100
+ 
+ /*
+  * The bit position of these flags must not overlap with any of the
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f72212ef1fee..39da009cbc89 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -403,8 +403,7 @@ static void ext4_map_blocks_es_recheck(handle_t *handle,
+ 	 * out taking i_data_sem.  So at the time the unwritten extent
+ 	 * could be converted.
+ 	 */
+-	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
+-		down_read(&EXT4_I(inode)->i_data_sem);
++	down_read(&EXT4_I(inode)->i_data_sem);
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
+ 		retval = ext4_ext_map_blocks(handle, inode, map, flags &
+ 					     EXT4_GET_BLOCKS_KEEP_SIZE);
+@@ -412,8 +411,7 @@ static void ext4_map_blocks_es_recheck(handle_t *handle,
+ 		retval = ext4_ind_map_blocks(handle, inode, map, flags &
+ 					     EXT4_GET_BLOCKS_KEEP_SIZE);
+ 	}
+-	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
+-		up_read((&EXT4_I(inode)->i_data_sem));
++	up_read((&EXT4_I(inode)->i_data_sem));
+ 
+ 	/*
+ 	 * We don't check m_len because extent will be collpased in status
+@@ -509,8 +507,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	 * Try to see if we can get the block without requesting a new
+ 	 * file system block.
+ 	 */
+-	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
+-		down_read(&EXT4_I(inode)->i_data_sem);
++	down_read(&EXT4_I(inode)->i_data_sem);
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
+ 		retval = ext4_ext_map_blocks(handle, inode, map, flags &
+ 					     EXT4_GET_BLOCKS_KEEP_SIZE);
+@@ -541,8 +538,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		if (ret < 0)
+ 			retval = ret;
+ 	}
+-	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
+-		up_read((&EXT4_I(inode)->i_data_sem));
++	up_read((&EXT4_I(inode)->i_data_sem));
+ 
+ found:
+ 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+@@ -674,7 +670,7 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
+ 	map.m_lblk = iblock;
+ 	map.m_len = bh->b_size >> inode->i_blkbits;
+ 
+-	if (flags && !(flags & EXT4_GET_BLOCKS_NO_LOCK) && !handle) {
++	if (flags && !handle) {
+ 		/* Direct IO write... */
+ 		if (map.m_len > DIO_MAX_BLOCKS)
+ 			map.m_len = DIO_MAX_BLOCKS;
+@@ -879,9 +875,6 @@ int do_journal_get_write_access(handle_t *handle,
  	return ret;
  }
  
--int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
-+int ext4_encrypted_zeroout(struct inode *inode, ext4_lblk_t lblk,
-+			   ext4_fsblk_t pblk, ext4_lblk_t len)
- {
- 	struct ext4_crypto_ctx	*ctx;
- 	struct page		*ciphertext_page = NULL;
- 	struct bio		*bio;
--	ext4_lblk_t		lblk = ex->ee_block;
--	ext4_fsblk_t		pblk = ext4_ext_pblock(ex);
--	unsigned int		len = ext4_ext_get_actual_len(ex);
- 	int			err = 0;
- 
- 	BUG_ON(inode->i_sb->s_blocksize != PAGE_CACHE_SIZE);
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 142e935d1f3d..785737a342e6 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2072,7 +2072,8 @@ struct page *ext4_encrypt(struct inode *inode,
- 			  struct page *plaintext_page);
- int ext4_decrypt(struct ext4_crypto_ctx *ctx, struct page *page);
- int ext4_decrypt_one(struct inode *inode, struct page *page);
--int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex);
-+int ext4_encrypted_zeroout(struct inode *inode, ext4_lblk_t lblk,
-+			   ext4_fsblk_t pblk, ext4_lblk_t len);
- 
+-static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
+-		   struct buffer_head *bh_result, int create);
+-
  #ifdef CONFIG_EXT4_FS_ENCRYPTION
- int ext4_init_crypto(void);
-@@ -2327,6 +2328,8 @@ extern int ext4_filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf);
- extern qsize_t *ext4_get_reserved_space(struct inode *inode);
- extern void ext4_da_update_reserve_space(struct inode *inode,
- 					int used, int quota_claim);
-+extern int ext4_issue_zeroout(struct inode *inode, ext4_lblk_t lblk,
-+			      ext4_fsblk_t pblk, ext4_lblk_t len);
+ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 				  get_block_t *get_block)
+@@ -3012,13 +3005,21 @@ int ext4_get_block_write(struct inode *inode, sector_t iblock,
+ 			       EXT4_GET_BLOCKS_IO_CREATE_EXT);
+ }
  
- /* indirect.c */
- extern int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 9977b557d50d..273bf40cca23 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3118,19 +3118,11 @@ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
+-static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
++static int ext4_get_block_overwrite(struct inode *inode, sector_t iblock,
+ 		   struct buffer_head *bh_result, int create)
  {
- 	ext4_fsblk_t ee_pblock;
- 	unsigned int ee_len;
--	int ret;
- 
- 	ee_len    = ext4_ext_get_actual_len(ex);
- 	ee_pblock = ext4_ext_pblock(ex);
--
--	if (ext4_encrypted_inode(inode))
--		return ext4_encrypted_zeroout(inode, ex);
--
--	ret = sb_issue_zeroout(inode->i_sb, ee_pblock, ee_len, GFP_NOFS);
--	if (ret > 0)
--		ret = 0;
--
--	return ret;
-+	return ext4_issue_zeroout(inode, le32_to_cpu(ex->ee_block), ee_pblock,
-+				  ee_len);
- }
- 
- /*
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 39da009cbc89..5e5795bde6b4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -383,6 +383,21 @@ static int __check_block_validity(struct inode *inode, const char *func,
- 	return 0;
- }
- 
-+int ext4_issue_zeroout(struct inode *inode, ext4_lblk_t lblk, ext4_fsblk_t pblk,
-+		       ext4_lblk_t len)
-+{
+-	ext4_debug("ext4_get_block_write_nolock: inode %lu, create flag %d\n",
 +	int ret;
 +
-+	if (ext4_encrypted_inode(inode))
-+		return ext4_encrypted_zeroout(inode, lblk, pblk, len);
-+
-+	ret = sb_issue_zeroout(inode->i_sb, pblk, len, GFP_NOFS);
-+	if (ret > 0)
-+		ret = 0;
++	ext4_debug("ext4_get_block_overwrite: inode %lu, create flag %d\n",
+ 		   inode->i_ino, create);
+-	return _ext4_get_block(inode, iblock, bh_result,
+-			       EXT4_GET_BLOCKS_NO_LOCK);
++	ret = _ext4_get_block(inode, iblock, bh_result, 0);
++	/*
++	 * Blocks should have been preallocated! ext4_file_write_iter() checks
++	 * that.
++	 */
++	WARN_ON_ONCE(ret == 0);
 +
 +	return ret;
-+}
-+
- #define check_block_validity(inode, map)	\
- 	__check_block_validity((inode), __func__, __LINE__, (map))
+ }
  
+ int ext4_get_block_dax(struct inode *inode, sector_t iblock,
+@@ -3101,10 +3102,8 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
+ 	/* If we do a overwrite dio, i_mutex locking can be released */
+ 	overwrite = *((int *)iocb->private);
+ 
+-	if (overwrite) {
+-		down_read(&EXT4_I(inode)->i_data_sem);
++	if (overwrite)
+ 		mutex_unlock(&inode->i_mutex);
+-	}
+ 
+ 	/*
+ 	 * We could direct write to holes and fallocate.
+@@ -3147,7 +3146,7 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
+ 	}
+ 
+ 	if (overwrite) {
+-		get_block_func = ext4_get_block_write_nolock;
++		get_block_func = ext4_get_block_overwrite;
+ 	} else {
+ 		get_block_func = ext4_get_block_write;
+ 		dio_flags = DIO_LOCKING;
+@@ -3203,10 +3202,8 @@ retake_lock:
+ 	if (iov_iter_rw(iter) == WRITE)
+ 		inode_dio_end(inode);
+ 	/* take i_mutex locking again if we do a ovewrite dio */
+-	if (overwrite) {
+-		up_read(&EXT4_I(inode)->i_data_sem);
++	if (overwrite)
+ 		mutex_lock(&inode->i_mutex);
+-	}
+ 
+ 	return ret;
+ }
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 594b4b29a224..5f2ace56efc5 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -42,8 +42,7 @@ struct extent_status;
+ 	{ EXT4_GET_BLOCKS_CONVERT,		"CONVERT" },		\
+ 	{ EXT4_GET_BLOCKS_METADATA_NOFAIL,	"METADATA_NOFAIL" },	\
+ 	{ EXT4_GET_BLOCKS_NO_NORMALIZE,		"NO_NORMALIZE" },	\
+-	{ EXT4_GET_BLOCKS_KEEP_SIZE,		"KEEP_SIZE" },		\
+-	{ EXT4_GET_BLOCKS_NO_LOCK,		"NO_LOCK" })
++	{ EXT4_GET_BLOCKS_KEEP_SIZE,		"KEEP_SIZE" })
+ 
+ #define show_mflags(flags) __print_flags(flags, "",	\
+ 	{ EXT4_MAP_NEW,		"N" },			\
 -- 
 2.1.4
 
