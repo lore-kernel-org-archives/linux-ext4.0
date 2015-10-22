@@ -1,60 +1,71 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: Test ext4/001
-Date: Thu, 22 Oct 2015 22:23:09 +0200
-Message-ID: <20151022202309.GA8670@quack.suse.cz>
-References: <20151022091017.GC14445@quack.suse.cz>
- <20151022192213.GP2972@thunk.org>
+Subject: Re: [PATCH 0/9 v2] ext4: Punch hole and DAX fixes
+Date: Thu, 22 Oct 2015 23:14:36 +0200
+Message-ID: <20151022211436.GD8670@quack.suse.cz>
+References: <1445501761-14528-1-git-send-email-jack@suse.com>
+ <20151022180910.GA3358@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	fstests@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <fstests-owner@vger.kernel.org>
+Cc: Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+	Ted Tso <tytso@mit.edu>,
+	Dan Williams <dan.j.williams@intel.com>, willy@linux.intel.com
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:49964 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752153AbbJVVOk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Oct 2015 17:14:40 -0400
 Content-Disposition: inline
-In-Reply-To: <20151022192213.GP2972@thunk.org>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20151022180910.GA3358@linux.intel.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 22-10-15 15:22:13, Ted Tso wrote:
-> On Thu, Oct 22, 2015 at 11:10:17AM +0200, Jan Kara wrote:
+On Thu 22-10-15 12:09:10, Ross Zwisler wrote:
+> On Thu, Oct 22, 2015 at 10:15:52AM +0200, Jan Kara wrote:
+> > Hello,
 > > 
-> > I've checked why test ext4/001 fails for me with DAX and after some
-> > investigation I've realized that the test assumes that
-> > extent_max_zeroout_kb is 32 KB and thus unwritten extent will get converted
-> > to written as a whole and not split. With DAX that doesn't happen (because
-> > of difference between EXT4_GET_BLOCKS_ flags passed in writeback path and
-> > DAX write path) and so the result differs.
+> > This series fixes a long standing problem of racing punch hole and page fault
+> > resulting in possible filesystem corruption or stale data exposure. We fix the
+> > problem by using a new inode-private rw_semaphore i_mmap_sem to synchronize
+> > page faults with truncate and punch hole operations.
+> > 
+> > When having this exclusion, the only remaining problem with DAX implementation
+> > are races between two page faults zeroing out same block concurrently (where
+> > the data written after the first fault finishes are possibly overwritten by
+> > the second fault still doing zeroing).
+> > 
+> > Patch 1 introduces i_mmap_sem lock in ext4 inode and uses it to properly
+> > serialize extent manipulation operations and page faults.
+> > 
+> > Patch 2 is mostly a preparatory cleanup patch which also avoids double lock /
+> > unlock in unlocked DIO protections (currently harmless but nasty surprise).
+> > 
+> > Patches 3-4 fix further races of extent manipulation functions (such as zero
+> > range, collapse range, insert range) with buffered IO, page writeback
+> > 
+> > Patch 5 documents locking order of ext4 filesystem locks.
+> > 
+> > Patch 6 removes locking abuse of i_data_sem from the get_blocks() path when
+> > dioread_nolock is enabled since it is not needed anymore.
+> > 
+> > Patches 7-9 implement allocation of pre-zeroed blocks in ext4_map_blocks()
+> > callback and use such blocks for allocations from DAX page faults.
+> > 
+> > The patches survived xfstests run both in dax and non-dax mode.
+> > 
+> > 								Honza
 > 
-> Out of curiosity, how much memory are you using to test ext4 with DAX?
-> I assume you're doing something like what Matthew Wilcox documented
-> at: http://patchwork.ozlabs.org/patch/491107/
-> 
-> I should really figure out a way to automate doing DAX regression
-> testing using my scripts.
+> In my setup generic/081 passes, but causes all sorts of errors reported in
+> syslog.  I think these errors are a normal part of the test because they happen
+> in the non-DAX case as well, but in the DAX case I think we end up in a bad
+> state.  After this, all other tests fail.
 
-Well, I took a machine with 128GB of RAM and use 2x16GB for test disks. I
-have used the trick Matthew described but setting up plain ramdisk works as
-well AFAICT.
-
-> > So I was wondering how to best fix this. Either we could switch
-> > extent_max_zeroout_kb to 0 to make the result same (but that has a slight
-> > disadvantage that we would lose testing of the zeroout logic) or we could
-> > increase file size so that zeroout doesn't trigger or something else?
-> > Anyone has some idea?
-> 
-> The approach I would suggest is to fork 001.out to 001.out.zeroout and
-> 001.out.nozerrout, and then test to see if our output file matches
-> either file.  That means we'll redirect the output to our own 001.tmp2
-> file and do the check against the two possible 001.out files in the
-> ext4/001 script, but the advantage of doing things that way is that is
-> that will also solve a false positive we're seeing when ext4
-> encryption is enabled, and for a similar reason (extent zero-out is
-> disabled when encryption is enabled).
-
-Yeah, that's an interesting idea. I'll see how to make that work in the
-cleanest possible way.
+Thanks for report! I was using ramdisk for testing and test generic/081 got
+skipped because the device doesn't have "sane flush". I'll retest with pmem
+and debug what's going on.
 
 								Honza
+
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
