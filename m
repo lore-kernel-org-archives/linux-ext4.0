@@ -1,88 +1,99 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 93031] root becomes read-only at boot due to
- journal_async_commit in /etc/fstab
-Date: Fri, 23 Oct 2015 12:27:00 +0000
-Message-ID: <bug-93031-13602-TcJ14l4YtD@https.bugzilla.kernel.org/>
-References: <bug-93031-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Question about ext4 journal
+Date: Fri, 23 Oct 2015 08:50:33 -0400
+Message-ID: <20151023125033.GD7917@thunk.org>
+References: <CALLJCT3fAapW4aCSNPekeB8wx6XOU4O_PKfvQ7VhY-t8hrPBnA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Masanari Iida <standby24x7@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:51351 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:40171 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750827AbbJWM1F (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 23 Oct 2015 08:27:05 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id BDA0C20972
-	for <linux-ext4@vger.kernel.org>; Fri, 23 Oct 2015 12:27:03 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 8A7F620968
-	for <linux-ext4@vger.kernel.org>; Fri, 23 Oct 2015 12:27:00 +0000 (UTC)
-In-Reply-To: <bug-93031-13602@https.bugzilla.kernel.org/>
+	id S1751585AbbJWMvQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 23 Oct 2015 08:51:16 -0400
+Content-Disposition: inline
+In-Reply-To: <CALLJCT3fAapW4aCSNPekeB8wx6XOU4O_PKfvQ7VhY-t8hrPBnA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=93031
+On Fri, Oct 23, 2015 at 01:04:54PM +0900, Masanari Iida wrote:
+> Hello Developer,
+> I have a question about ext4's internal.
+> 
+> OS: RHEL6.2
+> Filesystem EXT4
+> mount option = ordered
+> 
+> My understanding on ext4 with ordered mode,
+> When a file is created,  data is written to FS block,
+> At the same time,  metadata is stored into journal,
+> and then meta data on journal is written to the inode block.
+> What is the next?
 
-Theodore Tso <tytso@mit.edu> changed:
+Well, that's not quite a complete picture.  Ext4 has an advanced
+feature called delayed allocation, which means that the FS block is
+not allocated until writeback occurs.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+So there is some file system metadata which is modified as soon as the
+file is created (i.e., the directory, inode allocation bitmap, the
+inode table block itself), and this is held in memory until the
+journal commit is triggered (either every five seconds, or if the size
+of the transaction grows beyond a certian size, or an fsync), at which
+point the metadata blocks that have been modified since the last
+commit are written into the journal, and once the commit block is
+written, the modified metadata blocks are _allowed_ to be written back
+to disk by the normal writeback mechanisms.
 
---- Comment #4 from Theodore Tso <tytso@mit.edu> ---
-It works if you don't have journal_async_commit in /etc/fstab and you also use
-journal_async_commit in rootflags:
+When the data writeback timer expires (30 seconds by default), then
+writeback happens.  It's only then that the location on disk is
+determined, and when the block is allocated, this will result in more
+metadata blocks getting modified, which are handled as described
+above.  In general once we've allocated the block, the write to disk
+is immediately scheduled, and the commit that commits the will happen
+shortly after.
 
-% kvm-xfstests -o rootflags=journal_async_commit shell
-Networking disabled.
+> My question is
+> Does the kernel remove the meta data on journal after each successful
+>  transaction?
 
-(process:13728): GLib-WARNING **:
-/build/glib2.0-l3js1a/glib2.0-2.46.1/./glib/gmem.c:482: custom memory
-allocation vtable not supported
-[    2.405408] systemd-fsck[1392]: /dev/vda: clean, 10240/65536 files,
-66092/262144 blocks
-[    2.720772] systemd-fsck[2455]: /dev/vdg: recovering journal
-[    2.732840] systemd-fsck[2455]: /dev/vdg: clean, 86/327680 files,
-58658/1310720 blocks
+The journal is a circular buffer.  Once all of the blocks that
+participated in the a jbd2 transaction have been written back to their
+final location on disk, the transaction gets retired.  However, we
+don't necessarily automatically update the jbd2 superblock's tail
+pointer each time a transaction can be retired, because doing this to
+"remove" one or more transsaction requires a write to the jbd2
+superblock, and we want to minimize unnecessary writes.  This might
+mean that when we recover after a crash, we might end up replaying
+some transcations that don't need to be replayed, but that should be
+an uncommon case that we shouldn't be optimizing for.
 
-Debian GNU/Linux 8 kvm-xfstests ttyS0
+> As I see the contents of journal entries in EXT4 using debugfs(8),
+> the journal entries are growing when creating or deleting the files.
+> I am curious to know what make the system to remove journal entries
+> while mounted the fs.
+> 
+> Background of the question.
+> I have encountered a case that when I delete and create some files,
+> journal entry for deleting the file exist
+> But journal entry for creating the file was not exist.
+> FYI, the file itself exist when I see it by using debugfs.
+> 
+> I created snapshot of the filesystem and  run fsck on copy image.
+> Then the file was _removed_ by fsck operation.
+> This is why I want to know how journal on EXT4 were controlled.
 
-kvm-xfstests login: root (automatic login)
+This is too vague for me to comment.  If you give very detailed of
+what file system operations you might have been trying to do, and
+whether you called fsync(2) or not, and how long you waited before
+taking the snapshot, that would be helpful.
 
-Linux kvm-xfstests 4.3.0-rc2ext4-00025-g1a70ea8 #223 SMP Mon Oct 19 00:01:49
-EDT 2015 i686
+I will observe that because of delayed allocation, if you don't wait
+for the writeback timer to expire, if you take a snapshot or there is
+a crash immediately after writing the file, what you might find after
+the recovery process is a zero-length file.  If you want to make sure
+a file and its contents will be there after a crash, make sure you call
+the fsync() system call.
 
-The programs included with the Debian GNU/Linux system are free software;
-the exact distribution terms for each program are described in the
-individual files in /usr/share/doc/*/copyright.
-
-Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
-permitted by applicable law.
-root@kvm-xfstests:~# grep root /etc/fstab
-/dev/rootfs    /    ext4    noatime 0 1
-root@kvm-xfstests:~# grep root /proc/mounts
-/dev/root / ext4 rw,noatime,journal_checksum,journal_async_commit,data=ordered
-0 0
-root@kvm-xfstests:~# cat /proc/cmdline
-quiet loglevel=0 root=/dev/vda console=ttyS0,115200 cmd=maint
-fstesttz=America/New_York fstesttyp=ext4 fstestapi=1.2
-rootflags=journal_async_commit
-
-
-The changes that were made between 3.13 and 3.18 were intentional and made for
-good reasons.   Changing journalling modes while the file system is mounted is
-dangerous.  In the specific case of changing a read-only to read-write mode it
-could be made safe, but it's not a priority, because (a) there _is_ a
-workaround that works, (b) journal_async_commit is not something that to be
-honest, is not safe unless you are using a pre-release 1.43 version of
-e2fsprogs, and I'm not super eager to encourage more people to use it unless
-they really, really know what they are doing.   One way you can prove that you
-know what you are doing is to submit a patch.  Using terms like "pedantic
-idiots" isn't calculated to encourage people to go out of their way to help you
-or to think that you indeed know what you are doing.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+						- Ted
+						
