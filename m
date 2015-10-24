@@ -1,25 +1,25 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 07/12] debugfs: clean up feature test macros with
+Subject: Re: [PATCH 06/12] resize2fs: clean up feature test macros with
  predicate functions
-Date: Sat, 24 Oct 2015 01:26:49 -0400
-Message-ID: <20151024052649.GP7917@thunk.org>
+Date: Sat, 24 Oct 2015 01:24:21 -0400
+Message-ID: <20151024052421.GO7917@thunk.org>
 References: <20151012215629.29065.24418.stgit@birch.djwong.org>
- <20151012215713.29065.49803.stgit@birch.djwong.org>
+ <20151012215707.29065.22042.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41799 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:41800 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751470AbbJXKvd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751543AbbJXKvd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 24 Oct 2015 06:51:33 -0400
 Content-Disposition: inline
-In-Reply-To: <20151012215713.29065.49803.stgit@birch.djwong.org>
+In-Reply-To: <20151012215707.29065.22042.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 12, 2015 at 02:57:13PM -0700, Darrick J. Wong wrote:
+On Mon, Oct 12, 2015 at 02:57:07PM -0700, Darrick J. Wong wrote:
 > Create separate predicate functions to test/set/clear feature flags,
 > thereby replacing the wordy old macros.  Furthermore, clean out the
 > places where we open-coded feature tests.
