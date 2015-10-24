@@ -1,65 +1,66 @@
-From: Masanari Iida <standby24x7@gmail.com>
-Subject: Re: Question about ext4 journal
-Date: Sat, 24 Oct 2015 12:10:48 +0900
-Message-ID: <CALLJCT2T9t9Qsn+6CPCJqd9HLTHn1ZHdOOM74+8X-LHvPuhqaw@mail.gmail.com>
-References: <CALLJCT3fAapW4aCSNPekeB8wx6XOU4O_PKfvQ7VhY-t8hrPBnA@mail.gmail.com>
-	<CAOQ4uxhFw5HCyVuYsKROKvMHJWBCEqZfBM8gtcV1bPQGFXT-hQ@mail.gmail.com>
-	<CAOQ4uxh79509HYo=4N27FamLanh0sV9PqeQWWTk3HK526iTdHA@mail.gmail.com>
+From: "Eunji Lee" <alicia0729@gmail.com>
+Subject: [PATCH] fix jbd2 asynchronous commit
+Date: Sat, 24 Oct 2015 17:14:15 +0900
+Message-ID: <14b201d10e33$fb91c390$f2b54ab0$@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Ext4 <linux-ext4@vger.kernel.org>
-To: Amir Goldstein <amir73il@gmail.com>
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: <linux-ext4@vger.kernel.org>, <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:33400 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750869AbbJXDKs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Oct 2015 23:10:48 -0400
-Received: by igbkq10 with SMTP id kq10so45804256igb.0
-        for <linux-ext4@vger.kernel.org>; Fri, 23 Oct 2015 20:10:48 -0700 (PDT)
-In-Reply-To: <CAOQ4uxh79509HYo=4N27FamLanh0sV9PqeQWWTk3HK526iTdHA@mail.gmail.com>
+Received: from mail-pa0-f46.google.com ([209.85.220.46]:32917 "EHLO
+	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751082AbbJXIOb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 24 Oct 2015 04:14:31 -0400
+Received: by pabrc13 with SMTP id rc13so138385897pab.0
+        for <linux-ext4@vger.kernel.org>; Sat, 24 Oct 2015 01:14:29 -0700 (PDT)
+Content-Language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 23, 2015 at 3:22 PM, Amir Goldstein <amir73il@gmail.com> wrote:
-> On Fri, Oct 23, 2015 at 7:04 AM, Masanari Iida <standby24x7@gmail.com> wrote:
->>
->> As I see the contents of journal entries in EXT4 using debugfs(8),
->> the journal entries are growing when creating or deleting the files.
->> I am curious to know what make the system to remove journal entries
->> while mounted the fs.
->
-> it's called the orphan inode list.
-> every deleted inode gets inserted into the list, then deleted, then
-> removed from orphan inodes list.
-> on mount, fs starts by "playing" the journal, then clearing the orphan
-> inodes list
->
-Hello Amir,   Ted,
+This patch is to fix a (seemingly) bug of asynchronous commit process
+(pinging w/ a patch). 
 
-My test case
-(1)   Create a small file by vi.  (about 1000bytes)
-(2)   Delete the file "rm -f"
-===== within 1 min =====
-(3)   Create a small file again with same file name as (1).
-=====  12 hours of no operation ,  no umount, no mount, no fsck ======
-(4)  Snapshot ( created by storage device )
-===== some days ======
-(5)  Run fsck the fs image and mount the fs
+In asynchronous commit, JBD2 issues a "FLUSH" request only once after
+issuing a commit record if a file system and a journal reside on the same
+device. This can reduce redundant storage flushes relying on the checksum. 
 
-I understand that in step2,  when the file delete happen,
-   inode gets insert into orphan list,
-         delete the file data
-             inode gets deleted from orphan list.
+However, it seems to incur an undesirable result in ordered mode.
+Specifically, the system can crash after metadata blocks and a commit record
+are successfully written to the journal (i.e., with no checksum error), but
+before data blocks are reflected to the file system. Then, on the system
+recovery, metadata updates in a journal area will be replayed as the
+checksum has no error, even though the associated data blocks are not
+reflected to the file system. This fails to provide the correct ordering -
+associated data blocks are written before metadata updates are written. 
 
-My wild guess is
-file was created in inode #100 (for example),
-it was deleted and inode #100 moved to orphan list.
-The inode #100 was re-used in step 3.
-snapshot taken.
-Run fsck.   inode #100 was found in orphan list, so the file with same
-inode was deleted during fsck.
+This patch flushes a storage device before issuing a commit record, even if
+a journal and a file system use a same device, thereby guaranteeing the
+correct ordering between metadata and data block updates. 
 
-Did we have such trouble during 2.6.32 time?
+Without asynchronous commit, it does not matter because the commit record
+with WRITE_FUA guarantees to flush storage cache before the commit record is
+written to the journal. 
 
-Regards,
-Masanari
+
+Signed-off-by: Eunji Lee <alicia0729@gmail.com>
+
+---
+ fs/jbd2/commit.c |    1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 362e5f6..118b377 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -792,7 +792,6 @@ start_journal_io:
+     * the commit record
+     */
+    if (commit_transaction->t_need_data_flush &&
+-       (journal->j_fs_dev != journal->j_dev) &&
+        (journal->j_flags & JBD2_BARRIER))
+        blkdev_issue_flush(journal->j_fs_dev, GFP_NOFS, NULL);
+
+--
+1.7.9.5
+
