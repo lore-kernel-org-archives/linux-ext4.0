@@ -1,36 +1,43 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: xfstests ext4/304 failing due to donor inode's i_size == 0
-Date: Sun, 25 Oct 2015 07:10:41 -0400
-Message-ID: <20151025111041.GF27558@thunk.org>
-References: <20151019025727.GA6676@thunk.org>
- <87h9llior0.fsf@openvz.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: Test ext4/001
+Date: Mon, 26 Oct 2015 07:41:01 +1100
+Message-ID: <20151025204101.GH19199@dastard>
+References: <20151022091017.GC14445@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:42674 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750802AbbJYLKr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 25 Oct 2015 07:10:47 -0400
+Cc: linux-ext4@vger.kernel.org, fstests@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <87h9llior0.fsf@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20151022091017.GC14445@quack.suse.cz>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 20, 2015 at 05:44:03PM +0300, Dmitry Monakhov wrote:
-> Theodore Ts'o <tytso@mit.edu> writes:
+On Thu, Oct 22, 2015 at 11:10:17AM +0200, Jan Kara wrote:
+> Hi,
 > 
-> > Hi Dmitry,
-> >
-> > I was investigating why ext4/304 is failing, and it's due to
-> > defrag-fuzzer returning an error:
-> Yep. You are right. I have out of tree patch which fix that. I'll send it
-> to xfstests-dev list.
+> I've checked why test ext4/001 fails for me with DAX and after some
+> investigation I've realized that the test assumes that
+> extent_max_zeroout_kb is 32 KB and thus unwritten extent will get converted
+> to written as a whole and not split. With DAX that doesn't happen (because
+> of difference between EXT4_GET_BLOCKS_ flags passed in writeback path and
+> DAX write path) and so the result differs.
+> 
+> So I was wondering how to best fix this. Either we could switch
+> extent_max_zeroout_kb to 0 to make the result same (but that has a slight
+> disadvantage that we would lose testing of the zeroout logic) or we could
+> increase file size so that zeroout doesn't trigger or something else?
+> Anyone has some idea?
 
-I tried the patch you sent, but ext4/304 is still failing.  At the end
-of 304.full:
+Generic tests that have this problem with ext4 turn set zeroout to
+0. You could always just filter the mount options to remove DAX from
+this test - filtering mount options is not uncommon in XFS specific
+tests that are designed to test specific functionality that may be
+incompatible with the provided mount options.
 
-fio: file hash not empty on exit
+Cheers,
 
-						- Ted
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
