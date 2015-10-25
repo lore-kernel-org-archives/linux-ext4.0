@@ -1,43 +1,64 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Test ext4/001
-Date: Mon, 26 Oct 2015 07:41:01 +1100
-Message-ID: <20151025204101.GH19199@dastard>
-References: <20151022091017.GC14445@quack.suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Refreshed rootfs.img for kvm-xfstests
+Date: Sun, 25 Oct 2015 17:26:46 -0400
+Message-ID: <20151025212646.GA25680@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, fstests@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <fstests-owner@vger.kernel.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:43211 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752342AbbJYV0v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 25 Oct 2015 17:26:51 -0400
 Content-Disposition: inline
-In-Reply-To: <20151022091017.GC14445@quack.suse.cz>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 22, 2015 at 11:10:17AM +0200, Jan Kara wrote:
-> Hi,
-> 
-> I've checked why test ext4/001 fails for me with DAX and after some
-> investigation I've realized that the test assumes that
-> extent_max_zeroout_kb is 32 KB and thus unwritten extent will get converted
-> to written as a whole and not split. With DAX that doesn't happen (because
-> of difference between EXT4_GET_BLOCKS_ flags passed in writeback path and
-> DAX write path) and so the result differs.
-> 
-> So I was wondering how to best fix this. Either we could switch
-> extent_max_zeroout_kb to 0 to make the result same (but that has a slight
-> disadvantage that we would lose testing of the zeroout logic) or we could
-> increase file size so that zeroout doesn't trigger or something else?
-> Anyone has some idea?
+Hi, I've uploaded an updated rootfs.img at:
 
-Generic tests that have this problem with ext4 turn set zeroout to
-0. You could always just filter the mount options to remove DAX from
-this test - filtering mount options is not uncommon in XFS specific
-tests that are designed to test specific functionality that may be
-incompatible with the provided mount options.
+https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests
 
-Cheers,
+It includes the xfstests-dev upstream version 0e6ead559169 (Updated
+from Oct. 14th) and some configuration changes to minimize some test
+failure noise.  The config files are commented with the known
+failures, for example:
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+https://git.kernel.org/cgit/fs/ext2/xfstests-bld.git/tree/kvm-xfstests/test-appliance/files/root/conf/encrypt.exclude
+
+https://git.kernel.org/cgit/fs/ext2/xfstests-bld.git/tree/kvm-xfstests/test-appliance/files/root/conf/data_journal_noleak
+
+I am currently getting the following results:
+
+BEGIN TEST 4k: Ext4 4k block Sun Oct 25 07:29:52 EDT 2015
+Failures: ext4/304
+BEGIN TEST 1k: Ext4 1k block Sun Oct 25 08:12:58 EDT 2015
+Failures: ext4/304 generic/018
+BEGIN TEST ext3: Ext4 4k block emulating ext3 Sun Oct 25 09:01:21 EDT 2015
+Failures: ext4/301 ext4/302 ext4/303 ext4/304 generic/018
+BEGIN TEST encrypt: Ext4 encryption Sun Oct 25 09:44:13 EDT 2015
+Failures: ext4/301 ext4/303 ext4/304
+BEGIN TEST nojournal: Ext4 4k block w/ no journal Sun Oct 25 10:20:57 EDT 2015
+Failures: ext4/301 ext4/304
+BEGIN TEST ext3conv: Ext4 4k block w/nodelalloc and no flex_bg Sun Oct 25 11:01:06 EDT 2015
+Failures: ext4/304
+BEGIN TEST dioread_nolock: Ext4 4k block w/dioread_nolock Sun Oct 25 11:41:36 EDT 2015
+Failures: ext4/001 ext4/304 ext4/308 generic/324
+BEGIN TEST data_journal_noleak: Ext4 4k block w/data=journal Sun Oct 25 12:24:57 EDT 2015
+Failures: ext4/271 ext4/301 ext4/302 ext4/303 ext4/304 ext4/308 generic/018
+BEGIN TEST inline: Ext4 4k block w/inline Sun Oct 25 13:16:58 EDT 2015
+Failures: ext4/304
+BEGIN TEST bigalloc: Ext4 4k block w/bigalloc Sun Oct 25 14:00:23 EDT 2015
+Failures: ext4/004 generic/018 generic/204 generic/219 generic/235 generic/273
+BEGIN TEST bigalloc_1k: Ext4 1k block w/bigalloc Sun Oct 25 14:46:29 EDT 2015
+Failures: ext4/004 generic/018 generic/204 generic/235
+
+(The ext4/30[1234] failures we only recently added back the these
+tests that had been previously marked as dangerous and not in the auto
+group.  ext4/304 is pretty clearly a buggy test as near as I can tell.
+I haven't had a chance to rule out the others.  generic/018 is an
+expected failures due to how we handle defrag; I should just add that
+to all.exclude.  I need to take a closer look at some of the other
+failures to understand what is going on.)
+
+						- Ted
+
