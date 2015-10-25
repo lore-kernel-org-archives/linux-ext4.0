@@ -1,79 +1,64 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/9] ext4: Fix races between page faults and hole punching
-Date: Sun, 25 Oct 2015 05:58:55 +0100
-Message-ID: <20151025045855.GA28981@quack.suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 9/9] ext4: Use pre-zeroed blocks for DAX page faults
+Date: Sun, 25 Oct 2015 05:23:27 -0400
+Message-ID: <20151025092327.GD27558@thunk.org>
 References: <1445501761-14528-1-git-send-email-jack@suse.com>
- <1445501761-14528-2-git-send-email-jack@suse.com>
- <20151024012135.GG7917@thunk.org>
+ <1445501761-14528-10-git-send-email-jack@suse.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+Cc: linux-ext4@vger.kernel.org,
 	Dan Williams <dan.j.williams@intel.com>,
 	ross.zwisler@linux.intel.com, willy@linux.intel.com
-To: Theodore Ts'o <tytso@mit.edu>
+To: Jan Kara <jack@suse.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:60326 "EHLO mx2.suse.de"
+Received: from imap.thunk.org ([74.207.234.97]:42570 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750740AbbJYE7H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 25 Oct 2015 00:59:07 -0400
+	id S1751470AbbJYJXe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 25 Oct 2015 05:23:34 -0400
 Content-Disposition: inline
-In-Reply-To: <20151024012135.GG7917@thunk.org>
+In-Reply-To: <1445501761-14528-10-git-send-email-jack@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 23-10-15 21:21:35, Ted Tso wrote:
-> On Thu, Oct 22, 2015 at 10:15:53AM +0200, Jan Kara wrote:
-> > Currently, page faults and hole punching are completely unsynchronized.
-> > This can result in page fault faulting in a page into a range that we
-> > are punching after truncate_pagecache_range() has been called and thus
-> > we can end up with a page mapped to disk blocks that will be shortly
-> > freed. Filesystem corruption will shortly follow. Note that the same
-> > race is avoided for truncate by checking page fault offset against
-> > i_size but there isn't similar mechanism available for punching holes.
-> > 
-> > Fix the problem by creating new rw semaphore i_mmap_sem in inode and
-> > grab it for writing over truncate, hole punching, and other functions
-> > removing blocks from extent tree and for read over page faults. We
-> > cannot easily use i_data_sem for this since that ranks below transaction
-> > start and we need something ranking above it so that it can be held over
-> > the whole truncate / hole punching operation. Also remove various
-> > workarounds we had in the code to reduce race window when page fault
-> > could have created pages with stale mapping information.
-> > 
-> > Signed-off-by: Jan Kara <jack@suse.com>
-> 
-> This patch is causing ext4/001 to fail even using the standard 4k
-> non-DAX test configuration.  You had mentioned that extent zeroing was
-> getting suppressed for DAX file systems, but it looks like it's
-> getting suppressed even in the non-DAX configuration:
+Here's the list of new test failures that I found after applying this
+patch series:
 
-I'll verify this in detail but if I remember correctly, this was caused by
-some thing like that with my patches we don't bother to first write out pages
-that aregoing to be zeroed out shortly because that's pretty pointless. But
-as I said, I'll check again to be sure.
+CMDLINE: full
+FSTESTVER: e2fsprogs	v1.43-WIP-2015-05-18-64-g2334bd3 (Sat, 5 Sep 2015 22:21:35 -0400)
+FSTESTVER: fio		fio-2.1.3 (Tue, 24 Sep 2013 08:42:24 -0600)
+FSTESTVER: quota		022aabf (Wed, 26 Nov 2014 10:22:08 +0100)
+FSTESTVER: xfsprogs	v4.2.0 (Mon, 7 Sep 2015 10:14:31 +1000)
+FSTESTVER: xfstests-bld	dbb0a26 (Sun, 18 Oct 2015 08:34:14 -0400)
+FSTESTVER: xfstests	linux-v3.8-779-gc17e548 (Sun, 18 Oct 2015 23:40:39 -0400)
+FSTESTVER: kernel	4.3.0-rc2-ext4-00034-gf29d88e8 #115 SMP Sat Oct 24 20:20:43 EDT 2015 x86_64
+FSTESTCFG: "4k 1k ext3 encrypt nojournal ext3conv dioread_nolock data_journal_noleak inline bigalloc bigalloc_1k"
+FSTESTSET: "-g auto"
+FSTESTEXC: ""
+FSTESTOPT: "aex"
+MNTOPTS: ""
+CPUS: "2"
+MEM: "7477.52"
+MEM: 7680 MB (Max capacity)
+BEGIN TEST 4k: Ext4 4k block Sat Oct 24 20:53:11 EDT 2015
+Failures: ext4/001
+BEGIN TEST 1k: Ext4 1k block Sat Oct 24 21:35:55 EDT 2015
+Failures: ext4/001 generic/075 generic/091 generic/112 generic/127 generic/263
+BEGIN TEST ext3: Ext4 4k block emulating ext3 Sat Oct 24 22:20:37 EDT 2015
+BEGIN TEST encrypt: Ext4 encryption Sat Oct 24 23:03:38 EDT 2015
+BEGIN TEST nojournal: Ext4 4k block w/ no journal Sat Oct 24 23:40:09 EDT 2015
+Failures: ext4/001
+BEGIN TEST ext3conv: Ext4 4k block w/nodelalloc and no flex_bg Sun Oct 25 00:20:14 EDT 2015
+Failures: generic/269
+BEGIN TEST dioread_nolock: Ext4 4k block w/dioread_nolock Sun Oct 25 01:01:48 EDT 2015
+Failures: ext4/001 generic/091
+BEGIN TEST data_journal_noleak: Ext4 4k block w/data=journal Sun Oct 25 01:45:39 EDT 2015
+BEGIN TEST inline: Ext4 4k block w/inline Sun Oct 25 02:37:44 EDT 2015
+Failures: ext4/001
+BEGIN TEST bigalloc: Ext4 4k block w/bigalloc Sun Oct 25 03:22:02 EDT 2015
+Failures: ext4/001
+BEGIN TEST bigalloc_1k: Ext4 1k block w/bigalloc Sun Oct 25 04:08:26 EDT 2015
+Failures: ext4/001
 
-								Honza
-> 
-> % kvm-xfstests -c 4k ext4/001
-> ...
-> ext4/001		[21:11:29][    7.796142] run fstests ext4/001 at 2015-10-23 21:11:29
->  [21:11:32] - output mismatch (see /results/results-4k/ext4/001.out.bad)
->     --- tests/ext4/001.out	2015-10-18 23:46:49.000000000 -0400
->     +++ /results/results-4k/ext4/001.out.bad	2015-10-23 21:11:32.104276540 -0400
->     @@ -131,14 +131,10 @@
->      2: [32..39]: hole
->      daa100df6e6711906b61c9ab5aa16032
->      	11. data -> hole -> data
->     -0: [0..7]: data
->     -1: [8..31]: unwritten
->     -2: [32..39]: data
->     +0: [0..39]: data
->     ...
->     (Run 'diff -u tests/ext4/001.out /results/results-4k/ext4/001.out.bad'  to see the entire diff)
-> 
-> 
->       	  		     					       - Ted
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Cheers,
+
+						- Ted
