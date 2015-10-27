@@ -1,39 +1,84 @@
-From: Davies@vger.kernel.org
-Subject: Re:
-Date: Mon, 26 Oct 2015 09:30:03 +0200
-Message-ID: <BY1PR17MB0133DD5B2938C9523C4FE7C2B8230@BY1PR17MB0133.namprd17.prod.outlook.com>
-Reply-To: <bendackgroup10@gmail.com>
+From: Nikhilesh Reddy <reddyn@codeaurora.org>
+Subject: Re: Running XFS tests on qemu
+Date: Tue, 27 Oct 2015 10:55:17 -0700
+Message-ID: <562FBA85.8060502@codeaurora.org>
+References: <55F8A71A.3030001@codeaurora.org> <20150920034248.GB2909@thunk.org> <5629D4CE.2070400@codeaurora.org> <20151023093428.GA7917@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: Recipients@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bn1bhn0252.outbound.protection.outlook.com ([157.56.111.252]:25376
-	"EHLO na01-bn1-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752955AbbJZHam convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Oct 2015 03:30:42 -0400
-Content-Description: Mail message body
+Received: from smtp.codeaurora.org ([198.145.29.96]:41511 "EHLO
+	smtp.codeaurora.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754821AbbJ0RzT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Oct 2015 13:55:19 -0400
+In-Reply-To: <20151023093428.GA7917@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello
+On Fri 23 Oct 2015 02:34:28 AM PDT, Theodore Ts'o wrote:
+> On Thu, Oct 22, 2015 at 11:33:50PM -0700, Nikhilesh Reddy wrote:
+>> Hi Ted
+>>
+>> Can you please help point me to instructions to setup and run xfs tests for
+>> ext4 to run on a local qemu installation from scratch?
+>
+> https://git.kernel.org/cgit/fs/ext2/xfstests-bld.git/tree/quick-start?h=META
+>
+> I haven't tried to make this work for qemu for arm (which I assume
+> you'd be more interested in), but if you do, please let me know.  Also
+> note that I *do* have changes to build xfstests for android / bionic.
+> The build infrastructure is in the xfstests-bld git tree; however,
+> some of the changes to xfstests and xfsprogs haven't been accepted
+> upstream yet, but let me know if you are interested and I'll get you
+> the patches that haven't yet been accepted.
+>
+> What's missing is the automation to talk to an Android device; I
+> ultimately fixed the bug I was chasing via other means.
+> (Unfortunately the USB-C device that was supposedly able to power a
+> Macbook Pro as well as connecting to a USB-attached SSD didn't work
+> against a Nexus 5X, and so I never finished getting xfstests running
+> on Android, although 95% of the work should be done.).
+>
+> The two other missing pieces was getting upstream fio working on
+> Android/bionic (although there is a fio is the AOSP tree which should
+> work), and IIRC there were one or two fixup patches that I needed
+> against the bleeding-edge tip of coreutils so it would work with the
+> latest Android NDK.  They were pretty obvious, but if you want I can
+> dig up the changes from my tree.
+>
+> Finally, if you are doing x86-based development, you might be
+> interested in using Google Compute Engine to run your tests.  I do
+> must of my testinng on GCE these days, beacuse it's much faster and I
+> can run multiple tests in parallel.
+>
+> https://git.kernel.org/cgit/fs/ext2/xfstests-bld.git/tree/kvm-xfstests/README.GCE
+>
+> Cheers,
+>
+> 						- Ted
 
-Do you need 100% finance? We Fund any long term or short term project at 3%. We have a passion for empowering people to improve their financial well-being.If you need a loan, kindly Contact us at: bendackgroup10@gmail.com
+Sorry for the delayed reply ... been crazy busy!
 
-Full name:
-Loan amount:
-Loan duration:
-Country:
-Phone number:
+*Thanks so much ted ! you are really awesome!*
 
-Note:- All reply must be sent via: bendackgroup10@gmail.com
+.. Yes i am trying to get these on both Android ( and run some kind of 
+automation)  and an Arm Qemu for development.
+I would be grateful if you can share the patches that  fix the issues 
+that are known.... even if they are not fully functional ...
 
-Thanks,
-Anouncer
-Daniel I. MarreroGoyco
+I can try to see if I can finish the automation part and send the 
+patches assuming i can finish them before you do :)
 
----
-This email has been checked for viruses by Avast antivirus software.
-https://www.avast.com/antivirus
+Yes i will look into GCE as well.
+
+--
+Thanks
+Nikhilesh Reddy
+
+Qualcomm Innovation Center, Inc.
+The Qualcomm Innovation Center, Inc. is a member of the Code Aurora 
+Forum,
+a Linux Foundation Collaborative Project.
 
