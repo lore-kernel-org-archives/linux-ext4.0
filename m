@@ -1,84 +1,93 @@
-From: Nikhilesh Reddy <reddyn@codeaurora.org>
-Subject: Re: Running XFS tests on qemu
-Date: Tue, 27 Oct 2015 10:55:17 -0700
-Message-ID: <562FBA85.8060502@codeaurora.org>
-References: <55F8A71A.3030001@codeaurora.org> <20150920034248.GB2909@thunk.org> <5629D4CE.2070400@codeaurora.org> <20151023093428.GA7917@thunk.org>
+From: Eunryoung Lim <eunryoung.lim@gmail.com>
+Subject: JBD2 issue unnecessary journal commit mark I/O
+Date: Wed, 28 Oct 2015 17:19:02 +0900
+Message-ID: <CAJKSsyDG26b9n-me+U=nZw6ZNLzwXmGapU3J=8ejHjQjuRP1OQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.codeaurora.org ([198.145.29.96]:41511 "EHLO
-	smtp.codeaurora.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754821AbbJ0RzT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Oct 2015 13:55:19 -0400
-In-Reply-To: <20151023093428.GA7917@thunk.org>
+Received: from mail-io0-f175.google.com ([209.85.223.175]:36565 "EHLO
+	mail-io0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932588AbbJ1ITD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Oct 2015 04:19:03 -0400
+Received: by ioll68 with SMTP id l68so2434154iol.3
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Oct 2015 01:19:02 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 23 Oct 2015 02:34:28 AM PDT, Theodore Ts'o wrote:
-> On Thu, Oct 22, 2015 at 11:33:50PM -0700, Nikhilesh Reddy wrote:
->> Hi Ted
->>
->> Can you please help point me to instructions to setup and run xfs tests for
->> ext4 to run on a local qemu installation from scratch?
->
-> https://git.kernel.org/cgit/fs/ext2/xfstests-bld.git/tree/quick-start?h=META
->
-> I haven't tried to make this work for qemu for arm (which I assume
-> you'd be more interested in), but if you do, please let me know.  Also
-> note that I *do* have changes to build xfstests for android / bionic.
-> The build infrastructure is in the xfstests-bld git tree; however,
-> some of the changes to xfstests and xfsprogs haven't been accepted
-> upstream yet, but let me know if you are interested and I'll get you
-> the patches that haven't yet been accepted.
->
-> What's missing is the automation to talk to an Android device; I
-> ultimately fixed the bug I was chasing via other means.
-> (Unfortunately the USB-C device that was supposedly able to power a
-> Macbook Pro as well as connecting to a USB-attached SSD didn't work
-> against a Nexus 5X, and so I never finished getting xfstests running
-> on Android, although 95% of the work should be done.).
->
-> The two other missing pieces was getting upstream fio working on
-> Android/bionic (although there is a fio is the AOSP tree which should
-> work), and IIRC there were one or two fixup patches that I needed
-> against the bleeding-edge tip of coreutils so it would work with the
-> latest Android NDK.  They were pretty obvious, but if you want I can
-> dig up the changes from my tree.
->
-> Finally, if you are doing x86-based development, you might be
-> interested in using Google Compute Engine to run your tests.  I do
-> must of my testinng on GCE these days, beacuse it's much faster and I
-> can run multiple tests in parallel.
->
-> https://git.kernel.org/cgit/fs/ext2/xfstests-bld.git/tree/kvm-xfstests/README.GCE
->
-> Cheers,
->
-> 						- Ted
+Hello,
 
-Sorry for the delayed reply ... been crazy busy!
+I am Eunryoung Lim and have a question about EXT4 journaling source.
+I will be appreciated for your any comments.
 
-*Thanks so much ted ! you are really awesome!*
+* ordered journaling mode, disabled async_jounral_commit
+On my understating, below steps is the simple process of journal
+transaction commit (jbd2_journal_commit_transaction() ).
+Step 1,3,4 are optional.
 
-.. Yes i am trying to get these on both Android ( and run some kind of 
-automation)  and an Arm Qemu for development.
-I would be grateful if you can share the patches that  fix the issues 
-that are known.... even if they are not fully functional ...
+1. Write journal revoke block (if it required).
+2. Write journal descriptor + journal buffer=E2=80=99s page.
+3. Submit all the data buffers of inode associated with the
+transaction (journal_submit_data_buffers() ) (if it required).
+4. Wait for data submitted for writeback page
+(journal_finish_inode_data_buffers() ) (if it required).
+5. Write journal commit mark.
 
-I can try to see if I can finish the automation part and send the 
-patches assuming i can finish them before you do :)
+The problem is that JBD2 issue unnecessary journal commit mark I/O.
+=46or example, JBD2 write journal commit mark (step 5), even though
+transaction (running ->commit state) has no journal buffer yet.
+The I/O for journal descriptor + journal buffer=E2=80=99s page (step 2)=
+ can be
+skipped because JBD2 check whether the transaction has journal buffer
+or not.
+void jbd2_journal_commit_transaction(journal_t *journal)
+{
+            =E2=80=A6.
+            /* start to commit transaction */
+            while (commit_transaction->t_buffers) {
+            /* Find the next buffer to be journaled... */
+            jh =3D commit_transaction->t_buffers;
+            .=E2=80=A6
+}
 
-Yes i will look into GCE as well.
+I think, if the journal buffers do not exist in the transaction, JBD2
+can skip step 5 to reduce amount of I/O.
+Thus, the code can be modified as follows: (this is simple way, we can
+optimize more)
+(current)
+        err =3D journal_submit_commit_record(journal, commit_transactio=
+n,
+(after)
+        if ( IS_ERR_OR_NULL(commit_transaction->t_buffers) ) {
+        err =3D journal_submit_commit_record(journal, commit_transactio=
+n,
+}
+or we can simply return the function.
+(add)if ( IS_ERR_OR_NULL(commit_transaction->t_buffers) )
+            return ;
 
+        /* start to commit transaction */
+        while (commit_transaction->t_buffers) {
+        ....
+
+Note. Android uses SQLite, and it makes sure that directory entry
+contains newly created journal file by calling fsync() to the
+directory.
+(However, SQLite call fsync() to directory even though the file is not =
+created).
+When fsync() is called to directory,
+EXT4 calls ext4_sync_file() -> ext4_force_commit() ->
+ext4_journal_force_commit() -> jbd2_journal_force_commit() -> ... and
+finally, jbd2_journal_commit_transaction();
+If journal transaction is empty, JBD2 only write journal commit mark
+and it causes lots of I/Os.
+
+
+Thanks,
+Eunryoung Lim.
 --
-Thanks
-Nikhilesh Reddy
-
-Qualcomm Innovation Center, Inc.
-The Qualcomm Innovation Center, Inc. is a member of the Code Aurora 
-Forum,
-a Linux Foundation Collaborative Project.
-
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
