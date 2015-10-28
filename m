@@ -1,93 +1,56 @@
-From: Eunryoung Lim <eunryoung.lim@gmail.com>
-Subject: JBD2 issue unnecessary journal commit mark I/O
-Date: Wed, 28 Oct 2015 17:19:02 +0900
-Message-ID: <CAJKSsyDG26b9n-me+U=nZw6ZNLzwXmGapU3J=8ejHjQjuRP1OQ@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+From: Li Xi <pkuelelixi@gmail.com>
+Subject: [v1 0/4] Add project quota support for e2fsprogs
+Date: Thu, 29 Oct 2015 00:42:09 +0900
+Message-ID: <1446046933-26571-1-git-send-email-lixi@ddn.com>
+To: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca,
+	jack@suse.cz, viro@zeniv.linux.org.uk, hch@infradead.org,
+	dmonakhov@openvz.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f175.google.com ([209.85.223.175]:36565 "EHLO
-	mail-io0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932588AbbJ1ITD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Oct 2015 04:19:03 -0400
-Received: by ioll68 with SMTP id l68so2434154iol.3
-        for <linux-ext4@vger.kernel.org>; Wed, 28 Oct 2015 01:19:02 -0700 (PDT)
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:35455 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755964AbbJ1PmX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Oct 2015 11:42:23 -0400
+Received: by pasz6 with SMTP id z6so10448586pas.2
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Oct 2015 08:42:22 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+The following patches adds project quota support for e2fsprogs. The
+first patch cleans up current codes to prepare for adding project
+quota support. And other patches adds project ID as well as
+project feature support for e2fsprogs.
 
-I am Eunryoung Lim and have a question about EXT4 journaling source.
-I will be appreciated for your any comments.
+Li Xi (4):
+  clean up codes for adding new quota type
+  Add project quota support
+  Add project feature
+  Add inherit flags for project quota
 
-* ordered journaling mode, disabled async_jounral_commit
-On my understating, below steps is the simple process of journal
-transaction commit (jbd2_journal_commit_transaction() ).
-Step 1,3,4 are optional.
+ debugfs/quota.c                 |    2 +-
+ debugfs/set_fields.c            |    2 +
+ e2fsck/pass1.c                  |   35 +++++++++++--
+ e2fsck/quota.c                  |   28 ++++------
+ e2fsck/unix.c                   |   26 +++++-----
+ lib/e2p/feature.c               |    2 +
+ lib/e2p/ls.c                    |   29 ++++++++---
+ lib/e2p/pf.c                    |    1 +
+ lib/ext2fs/ext2_fs.h            |   12 +++-
+ lib/ext2fs/ext2fs.h             |    3 +-
+ lib/ext2fs/swapfs.c             |    2 +
+ lib/ext2fs/tst_inode_size.c     |    1 +
+ lib/ext2fs/tst_super_size.c     |    3 +-
+ lib/support/mkquota.c           |  105 ++++++++++++++++++++++-----------------
+ lib/support/quotaio.c           |   80 ++++++++++++++++++++----------
+ lib/support/quotaio.h           |   74 ++++++++++++++++++++--------
+ lib/support/quotaio_tree.c      |    2 +-
+ misc/chattr.c                   |    3 +-
+ misc/ext4.5.in                  |    5 ++
+ misc/mke2fs.c                   |   19 +++++--
+ misc/tune2fs.c                  |   89 +++++++++++++++++++--------------
+ tests/d_fallocate_blkmap/expect |    4 +-
+ tests/f_create_symlinks/expect  |    8 ++--
+ tests/m_bigjournal/expect.1     |    4 +-
+ tests/m_large_file/expect.1     |    4 +-
+ tests/m_quota/expect.1          |   15 +++---
+ 26 files changed, 356 insertions(+), 202 deletions(-)
 
-1. Write journal revoke block (if it required).
-2. Write journal descriptor + journal buffer=E2=80=99s page.
-3. Submit all the data buffers of inode associated with the
-transaction (journal_submit_data_buffers() ) (if it required).
-4. Wait for data submitted for writeback page
-(journal_finish_inode_data_buffers() ) (if it required).
-5. Write journal commit mark.
-
-The problem is that JBD2 issue unnecessary journal commit mark I/O.
-=46or example, JBD2 write journal commit mark (step 5), even though
-transaction (running ->commit state) has no journal buffer yet.
-The I/O for journal descriptor + journal buffer=E2=80=99s page (step 2)=
- can be
-skipped because JBD2 check whether the transaction has journal buffer
-or not.
-void jbd2_journal_commit_transaction(journal_t *journal)
-{
-            =E2=80=A6.
-            /* start to commit transaction */
-            while (commit_transaction->t_buffers) {
-            /* Find the next buffer to be journaled... */
-            jh =3D commit_transaction->t_buffers;
-            .=E2=80=A6
-}
-
-I think, if the journal buffers do not exist in the transaction, JBD2
-can skip step 5 to reduce amount of I/O.
-Thus, the code can be modified as follows: (this is simple way, we can
-optimize more)
-(current)
-        err =3D journal_submit_commit_record(journal, commit_transactio=
-n,
-(after)
-        if ( IS_ERR_OR_NULL(commit_transaction->t_buffers) ) {
-        err =3D journal_submit_commit_record(journal, commit_transactio=
-n,
-}
-or we can simply return the function.
-(add)if ( IS_ERR_OR_NULL(commit_transaction->t_buffers) )
-            return ;
-
-        /* start to commit transaction */
-        while (commit_transaction->t_buffers) {
-        ....
-
-Note. Android uses SQLite, and it makes sure that directory entry
-contains newly created journal file by calling fsync() to the
-directory.
-(However, SQLite call fsync() to directory even though the file is not =
-created).
-When fsync() is called to directory,
-EXT4 calls ext4_sync_file() -> ext4_force_commit() ->
-ext4_journal_force_commit() -> jbd2_journal_force_commit() -> ... and
-finally, jbd2_journal_commit_transaction();
-If journal transaction is empty, JBD2 only write journal commit mark
-and it causes lots of I/Os.
-
-
-Thanks,
-Eunryoung Lim.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
