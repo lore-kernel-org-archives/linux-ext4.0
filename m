@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [RFC 07/11] mm: add find_get_entries_tag()
-Date: Thu, 29 Oct 2015 14:12:11 -0600
-Message-ID: <1446149535-16200-8-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [RFC 10/11] xfs, ext2: call dax_pfn_mkwrite() on write fault
+Date: Thu, 29 Oct 2015 14:12:14 -0600
+Message-ID: <1446149535-16200-11-git-send-email-ross.zwisler@linux.intel.com>
 References: <1446149535-16200-1-git-send-email-ross.zwisler@linux.intel.com>
 Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	"H. Peter Anvin" <hpa@zytor.com>,
@@ -11,128 +11,87 @@ Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Dan Williams <dan.j.williams@intel.com>,
 	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>,
-	Jan Kara <jack@suse.com>,
+	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
 	Jeff Layton <jlayton@poochiereds.net>,
 	Matthew Wilcox <willy@linux.intel.com>,
 	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org,
-	x86@kernel.org,
-	xfs@oss.sgi.com,
-	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-nvdimm@lists.01.org, x86@kernel.org,
+	xfs@oss.sgi.com, Andrew Morton <akpm@linux-foundation.org>,
 	Matthew Wilcox <matthew.r.wilcox@intel.com>
 To: linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1446149535-16200-1-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Add find_get_entries_tag() to the family of functions that include
-find_get_entries(), find_get_pages() and find_get_pages_tag().  This is
-needed for DAX dirty page handling because we need a list of both page
-offsets and radix tree entries ('indices' and 'entries' in this function)
-that are marked with the PAGECACHE_TAG_TOWRITE tag.
+Previously the functionality offered by dax_pfn_mkwrite() was open-coded in
+XFS and ext2.  With the addition of DAX msync/fsync support we need to call
+dax_pfn_mkwrite() so that the newly writeable page can be added to the
+radix tree and marked as dirty.
 
 Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 ---
- include/linux/pagemap.h |  3 +++
- mm/filemap.c            | 61 +++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 64 insertions(+)
+ fs/ext2/file.c    | 4 +++-
+ fs/xfs/xfs_file.c | 9 +++++----
+ 2 files changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index a6c78e0..6fea3be 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -354,6 +354,9 @@ unsigned find_get_pages_contig(struct address_space *mapping, pgoff_t start,
- 			       unsigned int nr_pages, struct page **pages);
- unsigned find_get_pages_tag(struct address_space *mapping, pgoff_t *index,
- 			int tag, unsigned int nr_pages, struct page **pages);
-+unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t start,
-+			int tag, unsigned int nr_entries,
-+			struct page **entries, pgoff_t *indices);
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index fc1418c..5741e29 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -102,8 +102,8 @@ static int ext2_dax_pfn_mkwrite(struct vm_area_struct *vma,
+ {
+ 	struct inode *inode = file_inode(vma->vm_file);
+ 	struct ext2_inode_info *ei = EXT2_I(inode);
+-	int ret = VM_FAULT_NOPAGE;
+ 	loff_t size;
++	int ret;
  
- struct page *grab_cache_page_write_begin(struct address_space *mapping,
- 			pgoff_t index, unsigned flags);
-diff --git a/mm/filemap.c b/mm/filemap.c
-index c3a9e4f..992cf84 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1454,6 +1454,67 @@ repeat:
- }
- EXPORT_SYMBOL(find_get_pages_tag);
+ 	sb_start_pagefault(inode->i_sb);
+ 	file_update_time(vma->vm_file);
+@@ -113,6 +113,8 @@ static int ext2_dax_pfn_mkwrite(struct vm_area_struct *vma,
+ 	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
+ 	if (vmf->pgoff >= size)
+ 		ret = VM_FAULT_SIGBUS;
++	else
++		ret = dax_pfn_mkwrite(vma, vmf);
  
-+/**
-+ * find_get_entries_tag - find and return entries that match @tag
-+ * @mapping:	the address_space to search
-+ * @start:	the starting page cache index
-+ * @tag:	the tag index
-+ * @nr_entries:	the maximum number of entries
-+ * @entries:	where the resulting entries are placed
-+ * @indices:	the cache indices corresponding to the entries in @entries
-+ *
-+ * Like find_get_entries, except we only return entries which are tagged with
-+ * @tag.
-+ */
-+unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t start,
-+			int tag, unsigned int nr_entries,
-+			struct page **entries, pgoff_t *indices)
-+{
-+	void **slot;
-+	unsigned int ret = 0;
-+	struct radix_tree_iter iter;
-+
-+	if (!nr_entries)
-+		return 0;
-+
-+	rcu_read_lock();
-+restart:
-+	radix_tree_for_each_tagged(slot, &mapping->page_tree,
-+				   &iter, start, tag) {
-+		struct page *page;
-+repeat:
-+		page = radix_tree_deref_slot(slot);
-+		if (unlikely(!page))
-+			continue;
-+		if (radix_tree_exception(page)) {
-+			if (radix_tree_deref_retry(page))
-+				goto restart;
-+			/*
-+			 * A shadow entry of a recently evicted page, a swap
-+			 * entry from shmem/tmpfs or a DAX entry.  Return it
-+			 * without attempting to raise page count.
-+			 */
-+			goto export;
-+		}
-+		if (!page_cache_get_speculative(page))
-+			goto repeat;
-+
-+		/* Has the page moved? */
-+		if (unlikely(page != *slot)) {
-+			page_cache_release(page);
-+			goto repeat;
-+		}
-+export:
-+		indices[ret] = iter.index;
-+		entries[ret] = page;
-+		if (++ret == nr_entries)
-+			break;
-+	}
-+	rcu_read_unlock();
-+	return ret;
-+}
-+EXPORT_SYMBOL(find_get_entries_tag);
-+
+ 	up_read(&ei->dax_sem);
+ 	sb_end_pagefault(inode->i_sb);
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index f429662..584e4eb 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -1575,9 +1575,8 @@ xfs_filemap_pmd_fault(
  /*
-  * CD/DVDs are error prone. When a medium error occurs, the driver may fail
-  * a _large_ part of the i/o request. Imagine the worst scenario:
+  * pfn_mkwrite was originally inteneded to ensure we capture time stamp
+  * updates on write faults. In reality, it's need to serialise against
+- * truncate similar to page_mkwrite. Hence we open-code dax_pfn_mkwrite()
+- * here and cycle the XFS_MMAPLOCK_SHARED to ensure we serialise the fault
+- * barrier in place.
++ * truncate similar to page_mkwrite. Hence we cycle the XFS_MMAPLOCK_SHARED
++ * to ensure we serialise the fault barrier in place.
+  */
+ static int
+ xfs_filemap_pfn_mkwrite(
+@@ -1587,7 +1586,7 @@ xfs_filemap_pfn_mkwrite(
+ 
+ 	struct inode		*inode = file_inode(vma->vm_file);
+ 	struct xfs_inode	*ip = XFS_I(inode);
+-	int			ret = VM_FAULT_NOPAGE;
++	int			ret;
+ 	loff_t			size;
+ 
+ 	trace_xfs_filemap_pfn_mkwrite(ip);
+@@ -1600,6 +1599,8 @@ xfs_filemap_pfn_mkwrite(
+ 	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
+ 	if (vmf->pgoff >= size)
+ 		ret = VM_FAULT_SIGBUS;
++	else
++		ret = dax_pfn_mkwrite(vma, vmf);
+ 	xfs_iunlock(ip, XFS_MMAPLOCK_SHARED);
+ 	sb_end_pagefault(inode->i_sb);
+ 	return ret;
 -- 
 2.1.0
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
