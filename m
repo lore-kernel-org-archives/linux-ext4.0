@@ -1,86 +1,27 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [RFC 11/11] ext4: add ext4_dax_pfn_mkwrite()
-Date: Thu, 29 Oct 2015 14:12:15 -0600
-Message-ID: <1446149535-16200-12-git-send-email-ross.zwisler@linux.intel.com>
-References: <1446149535-16200-1-git-send-email-ross.zwisler@linux.intel.com>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>,
-	Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org,
-	x86@kernel.org,
-	xfs@oss.sgi.com,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>
-To: linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1446149535-16200-1-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 07/17] fs/ext4: remove unnecessary new_valid_dev check
+Date: Thu, 29 Oct 2015 14:09:01 -0400
+Message-ID: <20151029180901.GA29914@thunk.org>
+References: <1443446807-4838-1-git-send-email-bywxiaobai@163.com>
+ <1443448237-5285-1-git-send-email-bywxiaobai@163.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: viro@zeniv.linux.org.uk, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Yaowei Bai <bywxiaobai@163.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1443448237-5285-1-git-send-email-bywxiaobai@163.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Add ext4_dax_pfn_mkwrite() that properly protects against freeze, sets
-the file update time and calls into dax_pfn_mkwrite() to add the newly
-dirtied page to the radix tree which tracks dirty DAX pages.
+On Mon, Sep 28, 2015 at 09:50:37PM +0800, Yaowei Bai wrote:
+> As new_valid_dev always returns 1, so !new_valid_dev check is not
+> needed, remove it.
+> 
+> Signed-off-by: Yaowei Bai <bywxiaobai@163.com>
 
-Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
----
- fs/ext4/file.c | 22 +++++++++++++++++++++-
- 1 file changed, 21 insertions(+), 1 deletion(-)
+Thanks, applied.
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 54d7729..7f62cad 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -272,11 +272,31 @@ static int ext4_dax_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 				ext4_end_io_unwritten);
- }
- 
-+static int ext4_dax_pfn_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
-+{
-+	struct inode *inode = file_inode(vma->vm_file);
-+	loff_t size;
-+	int ret;
-+
-+	sb_start_pagefault(inode->i_sb);
-+	file_update_time(vma->vm_file);
-+
-+	/* check that the faulting page hasn't raced with truncate */
-+	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
-+	if (vmf->pgoff >= size)
-+		ret = VM_FAULT_SIGBUS;
-+	else
-+		ret = dax_pfn_mkwrite(vma, vmf);
-+
-+	sb_end_pagefault(inode->i_sb);
-+	return ret;
-+}
-+
- static const struct vm_operations_struct ext4_dax_vm_ops = {
- 	.fault		= ext4_dax_fault,
- 	.pmd_fault	= ext4_dax_pmd_fault,
- 	.page_mkwrite	= ext4_dax_mkwrite,
--	.pfn_mkwrite	= dax_pfn_mkwrite,
-+	.pfn_mkwrite	= ext4_dax_pfn_mkwrite,
- };
- #else
- #define ext4_dax_vm_ops	ext4_file_vm_ops
--- 
-2.1.0
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+					- Ted
