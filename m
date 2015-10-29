@@ -1,111 +1,71 @@
-From: Chris Hunter <chris.hunter@yale.edu>
-Subject: errors following e2fsck + enable quota
-Date: Thu, 29 Oct 2015 01:35:39 -0400
-Message-ID: <5631B02B.2060404@yale.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [v1 0/4] Add project quota support for e2fsprogs
+Date: Thu, 29 Oct 2015 00:49:12 -0600
+Message-ID: <9526BD71-6FB5-4544-9333-504326FAD6F3@dilger.ca>
+References: <1446046933-26571-1-git-send-email-lixi@ddn.com>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"tytso@mit.edu" <tytso@mit.edu>, "jack@suse.cz" <jack@suse.cz>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"hch@infradead.org" <hch@infradead.org>,
+	"dmonakhov@openvz.org" <dmonakhov@openvz.org>
+To: Li Xi <pkuelelixi@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.yale.edu ([130.132.50.187]:53441 "EHLO
-	vm-emlprdomg-08.its.yale.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756629AbbJ2GcQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 Oct 2015 02:32:16 -0400
-Received: from localhost.localdomain ([172.28.220.52])
-	(authenticated bits=0)
-	by vm-emlprdomg-08.its.yale.edu (8.15.0.59/8.14.7) with ESMTPSA id t9T5Zdse000818
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2015 01:35:39 -0400
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:34985 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753696AbbJ2GtP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Oct 2015 02:49:15 -0400
+Received: by pasz6 with SMTP id z6so31537462pas.2
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Oct 2015 23:49:14 -0700 (PDT)
+In-Reply-To: <1446046933-26571-1-git-send-email-lixi@ddn.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I have lustre ext4 filesystem where I encountered issues when using 
-"e2fsck -D" followed by enabling quota feature via "tune2fs -O quota".
+On Oct 28, 2015, at 09:42, Li Xi <pkuelelixi@gmail.com> wrote:
+> 
+> The following patches adds project quota support for e2fsprogs. The
+> first patch cleans up current codes to prepare for adding project
+> quota support. And other patches adds project ID as well as
+> project feature support for e2fsprogs.
 
-Before I started, I unmounted the filesystem and verified e2fsck 
-reported no errors. Then I ran this sequence of commands:
-1. read-only fsck (e2fsck -nfv <BLKDEV>)
-2. read-write fsck (e2fsck -yDfv <BLKDEV>)
-3. clear quota bit in superblock (tune2fs -O^quota <BLKDEV>)
-4. enable quota bit (tune2fs -O quota <BLKDEV>)
-5. read-only fsck (e2fsck -nfv <BLKDEV>)
+Looks good. You can add my:
 
-Steps 1-4 did not produce any errors. At #5 the read-only fsck reported 
-directory entry errors eg)
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-> e2fsck 1.42.12.wc1 (15-Sep-2014)
-> MMP interval is 7 seconds and total wait time is 30 seconds. Please wait...
-> Pass 1: Checking inodes, blocks, and sizes
-> Inode 79691783, end of extent exceeds allowed value
->         (logical block 1405, physical block 2550170101, len 714)
-> Clear? no
->
-> Inode 79691783, end of extent exceeds allowed value
->         (logical block 2119, physical block 2550376976, len 4294967141)
-> Clear? no
->
-> Inode 79691783, i_size is 8044544, should be 5754880.  Fix? no
->
-> Inode 79691783, i_blocks is 15768, should be 11280.  Fix? no
-...
-
-> Pass 2: Checking directory structure
-> Problem in HTREE directory inode 79691783 (/O/0/d3): bad block number 1960.
-> Clear HTree index? no
->
-> Problem in HTREE directory inode 79691783 (/O/0/d3): bad block number 1961.
-> Clear HTree index? no
->
-> Problem in HTREE directory inode 79691783 (/O/0/d3): bad block number 1962.
-> Clear HTree index? no
- >
-> Problem in HTREE directory inode 79691783 (/O/0/d3): bad block number 1963.
-> Clear HTree index? no
-....
-> Problem in HTREE directory inode 79691783: block #1 has invalid depth (2)
-> Problem in HTREE directory inode 79691783: block #1 has bad max hash
-> Problem in HTREE directory inode 79691783: block #1 not referenced
-> Problem in HTREE directory inode 79691783: block #2 has invalid depth (2)
-> Problem in HTREE directory inode 79691783: block #2 has bad max hash
-> Problem in HTREE directory inode 79691783: block #2 not referenced
-> Problem in HTREE directory inode 79691783: block #3 has invalid depth (2)
-> Problem in HTREE directory inode 79691783: block #3 has bad max hash
-> Problem in HTREE directory inode 79691783: block #3 not referenced
-...
-> Problem in HTREE directory inode 79691783: block #1404 has invalid depth (2)
-> Problem in HTREE directory inode 79691783: block #1404 has bad max hash
-> Problem in HTREE directory inode 79691783: block #1404 not referenced
-> Invalid HTREE directory inode 79691783 (/O/0/d3).  Clear HTree index? no
-...
-
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Unattached inode 129
-> Connect to /lost+found? no
-...
-> Unattached zero-length inode 1049063.  Clear? no
->
-> Unattached inode 1049063
-> Connect to /lost+found? no
-
-The filesystem was created using mkfs.lustre wrapper that ran command:
-> mkfs_cmd = mke2fs -j -b 4096 -L scratch-OST0044 -m1 -i 131072 -J
-> size=400 -I 256 -q -O
-> extents,uninit_bg,mmp,dir_nlink,huge_file,flex_bg -G 256 -E
-> resize=4290772992,lazy_journal_init -F /dev/mapper/ost_scratch_68
-> 3823108096
-
-Perhaps this is caused by a hardware problem; I ran this command 
-sequence on 20 lustre ext-formatted block devices (using same storage 
-backend) and only 12 had e2fsck errors.
-
-Perhaps the combination of the e2fck -D option followed by enabling the 
-quota feature corrupted the directory tree.
-
-I think running "e2fsck -D" a 2nd time will clear some of the directory 
-errors but won't resolve the "bad block number" errors.
-
-chris hunter
-chris.hunter@yale.edu
-
+> Li Xi (4):
+>  clean up codes for adding new quota type
+>  Add project quota support
+>  Add project feature
+>  Add inherit flags for project quota
+> 
+> debugfs/quota.c                 |    2 +-
+> debugfs/set_fields.c            |    2 +
+> e2fsck/pass1.c                  |   35 +++++++++++--
+> e2fsck/quota.c                  |   28 ++++------
+> e2fsck/unix.c                   |   26 +++++-----
+> lib/e2p/feature.c               |    2 +
+> lib/e2p/ls.c                    |   29 ++++++++---
+> lib/e2p/pf.c                    |    1 +
+> lib/ext2fs/ext2_fs.h            |   12 +++-
+> lib/ext2fs/ext2fs.h             |    3 +-
+> lib/ext2fs/swapfs.c             |    2 +
+> lib/ext2fs/tst_inode_size.c     |    1 +
+> lib/ext2fs/tst_super_size.c     |    3 +-
+> lib/support/mkquota.c           |  105 ++++++++++++++++++++++-----------------
+> lib/support/quotaio.c           |   80 ++++++++++++++++++++----------
+> lib/support/quotaio.h           |   74 ++++++++++++++++++++--------
+> lib/support/quotaio_tree.c      |    2 +-
+> misc/chattr.c                   |    3 +-
+> misc/ext4.5.in                  |    5 ++
+> misc/mke2fs.c                   |   19 +++++--
+> misc/tune2fs.c                  |   89 +++++++++++++++++++--------------
+> tests/d_fallocate_blkmap/expect |    4 +-
+> tests/f_create_symlinks/expect  |    8 ++--
+> tests/m_bigjournal/expect.1     |    4 +-
+> tests/m_large_file/expect.1     |    4 +-
+> tests/m_quota/expect.1          |   15 +++---
+> 26 files changed, 356 insertions(+), 202 deletions(-)
+> 
