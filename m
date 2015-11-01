@@ -1,125 +1,38 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [RFC 00/11] DAX fsynx/msync support
-Date: Fri, 30 Oct 2015 12:51:40 -0700
-Message-ID: <CAPcyv4jnEF2g+tUs+ZZxzmdgacWhU=KepKQvXLfFVHri=Pj+Jg@mail.gmail.com>
-References: <1446149535-16200-1-git-send-email-ross.zwisler@linux.intel.com>
-	<CAPcyv4haGNytokPfgL3m-qOEw=BO4QF5dO3woLSYZDCRmL-YWg@mail.gmail.com>
-	<20151030194300.GA22670@linux.intel.com>
+From: "Allen" <info@asianlanguagesolutions.com>
+Subject: Chinese Simultaneous Interpreting Application
+Date: Sun, 1 Nov 2015 16:49:37 +0800
+Message-ID: <201511011649375624203@a.wangyeyy.com>
+Reply-To: info@asianlanguagesolutions.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Dan Williams <dan.j.williams@intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux MM <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	X86 ML <x86@kernel.org>, xfs@oss.sgi.com,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20151030194300.GA22670@linux.intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain;
+	charset="GB2312"
+Content-Transfer-Encoding: base64
+To: "linux-ext4" <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from [69.165.66.84] ([69.165.66.84]:59903 "EHLO a.wangyeyy.com"
+	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752382AbbKAKf4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 1 Nov 2015 05:35:56 -0500
+Received: from ttqnvgh (unknown [118.186.129.205])
+	by a.wangyeyy.com (Postfix) with ESMTPA id 63F535ABD
+	for <linux-ext4@vger.kernel.org>; Sun,  1 Nov 2015 16:47:29 +0800 (CST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 30, 2015 at 12:43 PM, Ross Zwisler
-<ross.zwisler@linux.intel.com> wrote:
-> On Fri, Oct 30, 2015 at 11:34:07AM -0700, Dan Williams wrote:
->> On Thu, Oct 29, 2015 at 1:12 PM, Ross Zwisler
->> <ross.zwisler@linux.intel.com> wrote:
->> > This patch series adds support for fsync/msync to DAX.
->> >
->> > Patches 1 through 8 add various utilities that the DAX code will eventually
->> > need, and the DAX code itself is added by patch 9.  Patches 10 and 11 are
->> > filesystem changes that are needed after the DAX code is added, but these
->> > patches may change slightly as the filesystem fault handling for DAX is
->> > being modified ([1] and [2]).
->> >
->> > I've marked this series as RFC because I'm still testing, but I wanted to
->> > get this out there so people would see the direction I was going and
->> > hopefully comment on any big red flags sooner rather than later.
->> >
->> > I realize that we are getting pretty dang close to the v4.4 merge window,
->> > but I think that if we can get this reviewed and working it's a much better
->> > solution than the "big hammer" approach that blindly flushes entire PMEM
->> > namespaces [3].
->> >
->> > [1] http://oss.sgi.com/archives/xfs/2015-10/msg00523.html
->> > [2] http://marc.info/?l=linux-ext4&m=144550211312472&w=2
->> > [3] https://lists.01.org/pipermail/linux-nvdimm/2015-October/002614.html
->> >
->> > Ross Zwisler (11):
->> >   pmem: add wb_cache_pmem() to the PMEM API
->> >   mm: add pmd_mkclean()
->> >   pmem: enable REQ_FLUSH handling
->> >   dax: support dirty DAX entries in radix tree
->> >   mm: add follow_pte_pmd()
->> >   mm: add pgoff_mkclean()
->> >   mm: add find_get_entries_tag()
->> >   fs: add get_block() to struct inode_operations
->> >   dax: add support for fsync/sync
->> >   xfs, ext2: call dax_pfn_mkwrite() on write fault
->> >   ext4: add ext4_dax_pfn_mkwrite()
->>
->> This is great to have when the flush-the-world solution ends up
->> killing performance.  However, there are a couple mitigating options
->> for workloads that dirty small amounts and flush often that we need to
->> collect data on:
->>
->> 1/ Using cache management and pcommit from userspace to skip calls to
->> msync / fsync.  Although, this does not eliminate all calls to
->> blkdev_issue_flush as the fs may invoke it for other reasons.  I
->> suspect turning on REQ_FUA support eliminates a number of those
->> invocations, and pmem already satisfies REQ_FUA semantics by default.
->
-> Sure, I'll turn on REQ_FUA in addition to REQ_FLUSH - I agree that PMEM
-> already handles the requirements of REQ_FUA, but I didn't realize that it
-> might reduce the number of REQ_FLUSH bios we receive.
-
-I'll let Dave chime in, but a lot of the flush requirements come from
-guaranteeing the state of the metadata, if metadata updates can be
-done with REQ_FUA then there is no subsequent need to flush.
-
->> 2/ Turn off DAX and use the page cache.  As Dave mentions [1] we
->> should enable this control on a per-inode basis.  I'm folding in this
->> capability as a blkdev_ioctl for the next version of the raw block DAX
->> support patch.
->
-> Umm...I think you just said "the way to avoid this delay is to just not use
-> DAX".  :)  I don't think this is where we want to go - we are trying to make
-> DAX better, not abandon it.
-
-That's a bit of an exaggeration.  Avoiding DAX where it is not
-necessary is not "abandoning DAX", it's using the right tool for the
-job.  Page cache is fine for many cases.
-
->> It's entirely possible these mitigations won't eliminate the need for
->> a mechanism like this, but I think we have a bit more work to do to
->> find out how bad this is in practice as well as the crossover point
->> where walking the radix becomes prohibitive.
->
-> I'm guessing a single run through xfstests will be enough to convince you that
-> the "big hammer" approach is untenable.  Tests that used to take a second now
-> take several minutes, at least in my VM testing environment...  And that's
-> only using a tiny 4GiB namespace.
->
-> Yes, we can distribute the cost over multiple CPUs, but that just distributes
-> the problem and doesn't reduce the overall work that needs to be done.
-> Ultimately I think that looping through multiple GiB or even TiB of cache
-> lines and blindly writing them back individually on every REQ_FLUSH is going
-> to be a deal breaker.
-
-Right, part of the problem is that the driver doesn't know which
-blocks are actively DAX mapped.  I think we can incrementally fix that
-without requiring DAX specific fsync/msync handling code for each fs
-that supports DAX.
+RGVhciBsaW51eC1leHQ0LA0KDQpJIGFtIEFsbGVuLCBhIHByb2plY3QgbWFuYWdlciBhdCBBc2lh
+biBMYW5ndWFnZSBTb2x1dGlvbnMuIEkgYW0gd3JpdGluZyB0byBvZmZlciB5b3Ugb3VyIHNlcnZp
+Y2UgaW4gbGFuZ3VhZ2Ugc29sdXRpb25zLg0Kd2UgaGF2ZSBkZXZlbG9wZWQgYW5kIGdyb3duIGlu
+IHRoaXMgaW5mb3JtYXRpb24gYWdlIGZvciBvdmVyIHRlbiB5ZWFycy4gU28gd2UgY2xlYXJseSBr
+bm93IHdoYXQgdGhlIGJlc3Qgc2VydmljZSBpcyBhbmQgd2hhdCB0aGUgYmVzdCB0cmFuc2xhdGlv
+biBpcy4NCkp1c3QgYmFzZWQgb24gb3VyIGNsZWFyICBhd2FyZW5lc3MgaW4gdHJhbnNsYXRpb24g
+YW5kIGludGVycHJldGF0aW9uIGluZHVzdHJ5LCB3ZSBoYXZlIGhlbHBlZCBvdXIgY2xpZW50cyBt
+YWRlIHRoZSBkaWZmZXJlbmNlIGFuZCBlc3RhYmxpc2hlZCBnb29kIGFuZCBsb25nLXRlcm0gcmVs
+YXRpb25zaGlwIHdpdGggdGhlbS4NCldoZW4gdGhlcmUgaXMgYmlnIHByb2plY3QgaW5pdGlhdGVk
+LCBvdXIgY2xpZW50cyB3b3VsZCB1c3VhbGx5IGNvbnRhY3QgdXMgZmlyc3QuIFdlIGFyZSBmZWVs
+IHByb3VkIG9mIHRoaXMuDQpPdXIgaW50ZXJwcmV0ZXJzIGFuZCB0cmFuc2xhdG9ycyBhcmUgd2l0
+aCB0aGUgYmVzdCBwcm9mZXNzaW9hbCBldGhpY3MgYW5kIHRoZXkgY291bGQgYWx3YXlzIGNhdGNo
+IGV2ZXJ5IGRldGFpbCBhbmQgZGVsaXZlciBhIHNhdGlzZmFjdG9yeSBqb2IgdG8gb3VyIGNsaWVu
+dHMuDQpCZXNpZGVzLCB3ZSBoYXZlIGVxdWlwbWVudHMoQk9TQ0ggSUkpIHVzZWQgZm9yIHNpbXVs
+dGFuZW91cyBpbnRlcnByZXRpbmcgc28gd2UgY291bGQgb2ZmZXIgeW91IG9uZS1zdG9wIHNlcnZp
+Y2UuDQpJIGFtIGxvb2tpbmcgZm9yd2FyZCB0byB5b3VyIHBvc2l0aXZlIHJlc3BvbnNlLg0KcmVn
+YXJkcywNCkFsbGVu
