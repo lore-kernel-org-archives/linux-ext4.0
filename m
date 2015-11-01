@@ -1,33 +1,31 @@
 From: Xu Cang <cangxumu@gmail.com>
-Subject: [PATCH] ext4: add "static" to ext4_seq_##name##_fops struct
-Date: Sun, 1 Nov 2015 11:23:20 -0500
-Message-ID: <CAOjcEBJ10SNdHwHH8mHxF5r3Zvz--UF8H7gdiv7T07T7y9=JuA@mail.gmail.com>
+Subject: [PATCH] ext4: use le32_to_cpu for ee_block in crypto.c
+Date: Sun, 1 Nov 2015 16:14:49 -0500
+Message-ID: <CAOjcEBL4eOHAkVpoaMby=Dm9ot5egFG27aGSRAwMYnnQBTBT0Q@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f67.google.com ([74.125.82.67]:33977 "EHLO
-	mail-wm0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752224AbbKAQXV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Nov 2015 11:23:21 -0500
-Received: by wmeg8 with SMTP id g8so5920046wme.1
-        for <linux-ext4@vger.kernel.org>; Sun, 01 Nov 2015 08:23:20 -0800 (PST)
+Received: from mail-wi0-f196.google.com ([209.85.212.196]:34556 "EHLO
+	mail-wi0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752880AbbKAVOu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Nov 2015 16:14:50 -0500
+Received: by wicuk10 with SMTP id uk10so8318900wic.1
+        for <linux-ext4@vger.kernel.org>; Sun, 01 Nov 2015 13:14:49 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-to fix sparse warning, add static to ext4_seq_##name##_fops struct.
-
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index 1b57c72..1420a3c 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -358,7 +358,7 @@ static int name##_open(struct inode *inode, struct
-file *file) \
-        return single_open(file, ext4_seq_##name##_show, PDE_DATA(inode)); \
- } \
- \
--const struct file_operations ext4_seq_##name##_fops = { \
-+static const struct file_operations ext4_seq_##name##_fops = { \
-        .owner          = THIS_MODULE, \
-        .open           = name##_open, \
-        .read           = seq_read, \
+diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+index af06830..1a08350 100644
+--- a/fs/ext4/crypto.c
++++ b/fs/ext4/crypto.c
+@@ -389,7 +389,7 @@ int ext4_encrypted_zeroout(struct inode *inode,
+struct ext4_extent *ex)
+        struct ext4_crypto_ctx  *ctx;
+        struct page             *ciphertext_page = NULL;
+        struct bio              *bio;
+-       ext4_lblk_t             lblk = ex->ee_block;
++       ext4_lblk_t             lblk = le32_to_cpu(ex->ee_block);
+        ext4_fsblk_t            pblk = ext4_ext_pblock(ex);
+        unsigned int            len = ext4_ext_get_actual_len(ex);
+        int                     ret, err = 0;
