@@ -1,31 +1,62 @@
-From: "Thomas" <topmag1@163.com>
-Subject: Regarding magnets,Can you get your questions answered on the spot?
-Date: Mon, 2 Nov 2015 11:07:56 +0800
-Message-ID: <201511021107561879135@a.wifi0514.com>
-Reply-To: topmag1@163.com
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [RFC 00/11] DAX fsynx/msync support
+Date: Mon, 02 Nov 2015 09:22:15 -0500
+Message-ID: <x49vb9kqy5k.fsf@segfault.boston.devel.redhat.com>
+References: <1446149535-16200-1-git-send-email-ross.zwisler@linux.intel.com>
+	<20151030035533.GU19199@dastard>
+	<20151030183938.GC24643@linux.intel.com>
+	<20151101232948.GF10656@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="GB2312"
-Content-Transfer-Encoding: base64
-To: "linux-ext4" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [113.228.164.105] ([113.228.164.105]:4438 "HELO a.wifi0514.com"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with SMTP
-	id S1750935AbbKBDLN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 1 Nov 2015 22:11:13 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>, linux-kernel@vger.kernel.org,
+        "H. Peter Anvin" <hpa@zytor.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Matthew Wilcox <willy@linux.intel.com>,
+        Thomas Gleixner <tglx@linutronix.de>, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        linux-nvdimm@ml01.01.org, x86@kernel.org, xfs@oss.sgi.com,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Matthew Wilcox <matthew.r.wilcox@intel.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20151101232948.GF10656@dastard> (Dave Chinner's message of "Mon,
+	2 Nov 2015 10:29:48 +1100")
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-RGVhciBzaXIsDQoNCkhvdyBhcmUgeW91PyBUaGlzIGlzIFRob21hcyBmcm9tIENoaW5hIFRvcG1h
-Z3RlY2ggTHRkLCBXZSBnZXQgeW91ciBjb250YWN0IGZyb20gbXkgZnJpZW5kIGFuZCBrbm93aW5n
-IHRoYXQgeW91IGFyZSBidXlpbmcgc29tZSBwcmVjaXNlZCBtYWduZXRpemVkIG1hZ25ldHMgZm9y
-IHlvdXIgaXRlbXMuDQoNCldlIGFyZSBwcm9mZXNzaW9uYWwgbWFudWZhY3R1cmUgU2ludGVyZWQg
-TmRGZUIgJiBNYWduZXRpYyBBc3NlbWJsaWVzLg0KT3VyIGFkdmFudGFnZSBpczogUHJlY2lzZSBt
-YWduZXRpemF0aW9uLCBjb21wbGljYXRlZCBzaGFwZSBhbmQgbWFnbmV0aWMgYXNzZW1ibHkgZWN0
-Lg0KIA0KSG9wZSBoYXZlIGNoYW5jZSB0byBtYWtlIGxvbmcgdGVybSBjb29wZXJhdGlvbiB3aXRo
-IHlvdS4gV2UgY2FuIG1ha2Ugb3VyIGNvbXBldGl0aXZlIHByaWNlIGFuZCBmcmVlIHNhbXBsZXMg
-Zm9yIHlvdS4NCiANCkFueSBxdWVzdGlvbiBvciByZXF1ZXN0IHBsZWFzZSBmZWVsIGZyZWUgdG8g
-Y29udGFjdCB1cy4NCg0KQmVzdHMgUmVnYXJkcw0KDQpUaG9tYXMgLS0tIFNhbGVzIEVuZ2luZWVy
-ICANCk1vYmlsZTogMDA4Ni0xNTg4OTcwNjgzNw0KQWRkcmVzczogRGFsYW5nIHN0cmVldCxMb25n
-aHVhIGRpc3RyaWN0LCBTaGVuemhlbixQUkMgDQpUZWw6ODYtNzU1LTI5MDE5ODcxIA0KRS1tYWls
-OiB0b3BtYWcxQDE2My5jb20=
+Dave Chinner <david@fromorbit.com> writes:
+
+> Further, REQ_FLUSH/REQ_FUA are more than just "put the data on stable
+> storage" commands. They are also IO barriers that affect scheduling
+> of IOs in progress and in the request queues.  A REQ_FLUSH/REQ_FUA
+> IO cannot be dispatched before all prior IO has been dispatched and
+> drained from the request queue, and IO submitted after a queued
+> REQ_FLUSH/REQ_FUA cannot be scheduled ahead of the queued
+> REQ_FLUSH/REQ_FUA operation.
+>
+> IOWs, REQ_FUA/REQ_FLUSH not only guarantee data is on stable
+> storage, they also guarantee the order of IO dispatch and
+> completion when concurrent IO is in progress.
+
+This hasn't been the case for several years, now.  It used to work that
+way, and that was deemed a big performance problem.  Since file systems
+already issued and waited for all I/O before sending down a barrier, we
+decided to get rid of the I/O ordering pieces of barriers (and stop
+calling them barriers).
+
+See commit 28e7d184521 (block: drop barrier ordering by queue draining).
+
+Cheers,
+Jeff
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
