@@ -1,90 +1,40 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [RFC 00/11] DAX fsynx/msync support
-Date: Tue, 3 Nov 2015 07:10:29 +1100
-Message-ID: <20151102201029.GI10656@dastard>
-References: <1446149535-16200-1-git-send-email-ross.zwisler@linux.intel.com>
- <20151030035533.GU19199@dastard>
- <20151030183938.GC24643@linux.intel.com>
- <20151101232948.GF10656@dastard>
- <x49vb9kqy5k.fsf@segfault.boston.devel.redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: crypto return correct error for file_mmap when
+ get_encryption_info failed.
+Date: Mon, 2 Nov 2015 15:26:00 -0500
+Message-ID: <20151102202600.GA6729@thunk.org>
+References: <CAOjcEBL6QQYdSpVq_6mSuzyMq6XO6kJGhseF6bD3WOeYLgC6Vw@mail.gmail.com>
+ <20151102003235.GT10390@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-nvdimm@ml01.01.org, x86@kernel.org, xfs@oss.sgi.com,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>
-To: Jeff Moyer <jmoyer@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: Xu Cang <cangxumu@gmail.com>, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:37926 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752177AbbKBU0C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Nov 2015 15:26:02 -0500
 Content-Disposition: inline
-In-Reply-To: <x49vb9kqy5k.fsf@segfault.boston.devel.redhat.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20151102003235.GT10390@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 02, 2015 at 09:22:15AM -0500, Jeff Moyer wrote:
-> Dave Chinner <david@fromorbit.com> writes:
+On Sun, Nov 01, 2015 at 04:32:35PM -0800, Darrick J. Wong wrote:
+> On Sun, Nov 01, 2015 at 05:01:37PM -0500, Xu Cang wrote:
+> > diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> > index 113837e..1c0086a 100644
+> > --- a/fs/ext4/file.c
+> > +++ b/fs/ext4/file.c
+> > @@ -295,7 +295,7 @@ static int ext4_file_mmap(struct file *file,
+> > struct vm_area_struct *vma)
+> >         if (ext4_encrypted_inode(inode)) {
+> >                 int err = ext4_get_encryption_info(inode);
+> >                 if (err)
+> > -                       return 0;
+> > +                       return -EACCES;
 > 
-> > Further, REQ_FLUSH/REQ_FUA are more than just "put the data on stable
-> > storage" commands. They are also IO barriers that affect scheduling
-> > of IOs in progress and in the request queues.  A REQ_FLUSH/REQ_FUA
-> > IO cannot be dispatched before all prior IO has been dispatched and
-> > drained from the request queue, and IO submitted after a queued
-> > REQ_FLUSH/REQ_FUA cannot be scheduled ahead of the queued
-> > REQ_FLUSH/REQ_FUA operation.
-> >
-> > IOWs, REQ_FUA/REQ_FLUSH not only guarantee data is on stable
-> > storage, they also guarantee the order of IO dispatch and
-> > completion when concurrent IO is in progress.
-> 
-> This hasn't been the case for several years, now.  It used to work that
-> way, and that was deemed a big performance problem.  Since file systems
-> already issued and waited for all I/O before sending down a barrier, we
-> decided to get rid of the I/O ordering pieces of barriers (and stop
-> calling them barriers).
-> 
-> See commit 28e7d184521 (block: drop barrier ordering by queue draining).
+> Shouldn't this return err here?
 
-Yes, I realise that, even if I wasn't very clear about how I wrote
-it. ;)
+Yes, it should return err here.
 
-Correct me if I'm wrong: AFAIA, dispatch ordering (i.e. the "IO
-barrier") is still enforced by the scheduler via REQ_FUA|REQ_FLUSH
--> ELEVATOR_INSERT_FLUSH -> REQ_SOFTBARRIER and subsequent IO
-scheduler calls to elv_dispatch_sort() that don't pass
-REQ_SOFTBARRIER in the queue.
-
-IOWs, if we queue a bunch of REQ_WRITE IOs followed by a
-REQ_WRITE|REQ_FLUSH IO, all of the prior REQ_WRITE IOs will be
-dispatched before the REQ_WRITE|REQ_FLUSH IO and hence be captured
-by the cache flush.
-
-Hence once the filesystem has waited on the REQ_WRITE|REQ_FLUSH IO
-to complete, we know that all the earlier REQ_WRITE IOs are on
-stable storage, too. Hence there's no need for the elevator to drain
-the queue to guarantee completion ordering - the dispatch ordering
-and flush/fua write semantics guarantee that when the flush/fua
-completes, all the IOs dispatch prior to that flush/fua write are
-also on stable storage...
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+					- Ted
