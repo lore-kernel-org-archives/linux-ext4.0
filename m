@@ -1,63 +1,94 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Corruption from interrupted e2fsck
-Date: Mon, 2 Nov 2015 14:31:01 -0700
-Message-ID: <273A3EEA-06EB-4C6B-BD51-060EC20543D4@dilger.ca>
-References: <B9F63236-3539-492E-83EB-3377836C2FDB@dilger.ca> <20151102152353.GA4024@thunk.org>
+Subject: e2fsck performance for large lost+found dirs
+Date: Mon, 2 Nov 2015 15:49:38 -0700
+Message-ID: <62BDBCF1-B82A-449C-BFDD-84AF76CC829E@dilger.ca>
 Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_4873A10C-51C2-4A0E-B334-60821F61CF6D"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Content-Type: multipart/signed; boundary="Apple-Mail=_D161EF78-9597-415B-B70D-18F149D1D630"; protocol="application/pgp-signature"; micalg=pgp-sha256
 Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+To: Theodore Ts'o <tytso@mit.edu>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f45.google.com ([209.85.220.45]:33119 "EHLO
-	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754450AbbKBVbG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Nov 2015 16:31:06 -0500
-Received: by pabfh17 with SMTP id fh17so35586320pab.0
-        for <linux-ext4@vger.kernel.org>; Mon, 02 Nov 2015 13:31:06 -0800 (PST)
-In-Reply-To: <20151102152353.GA4024@thunk.org>
+Received: from mail-pa0-f41.google.com ([209.85.220.41]:34761 "EHLO
+	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754232AbbKBWto (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Nov 2015 17:49:44 -0500
+Received: by padec8 with SMTP id ec8so52229792pad.1
+        for <linux-ext4@vger.kernel.org>; Mon, 02 Nov 2015 14:49:44 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_4873A10C-51C2-4A0E-B334-60821F61CF6D
+--Apple-Mail=_D161EF78-9597-415B-B70D-18F149D1D630
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
+Running e2fsck on a filesystem with a large number of disconnected =
+inodes
+can take a long time to complete.   This can happen with Lustre, since =
+there
+may be hundreds of thousands of inodes in one directory, and extent =
+corruption
+can wipe out the whole directory (more on that in a separate email).
 
-> On Nov 2, 2015, at 8:23 AM, Theodore Ts'o <tytso@mit.edu> wrote:
->=20
-> On Sun, Nov 01, 2015 at 06:16:50PM -0700, Andreas Dilger wrote:
->> Is there a reason not to have a cancel check right after the return =
-from
->> e2fsck_run() rather than trying to recover the journal and quota =
-files?
->> I can imagine that there is a desire to flush out modified inodes and =
-such
->> that have been repaired, so that restarting an interrupted e2fsck =
-will make
->> progress, but the quota file update is plain wrong unless at least =
-pass1
->> has finished, and the journal recreation is also dangerous if the =
-block
->> bitmaps have not been fully updated.
->=20
-> You're right.  My suggested fix would be in the case of
-> E2F_FLAG_CANCEL, we set the ctx->invalid_bitmaps flag, and then avoid
-> writing out the quota file if invalid_bitmaps is enabled.
+It is a very lengthy O(n^2) operation to reattach all disconnected =
+inodes
+to lost+found, which can take a long time if there are millions of them.
 
-I was looking at that too.  In some sense it isn't a bad idea to allow
-updating the quota file in this case, but it still bothers me that =
-e2fsck
-would continue on to update the quotas if the user wants to kill it, so
-my preference would be to not write the quota files at all if e2fsck is
-interrupted.
 
-It would probably make more sense to have an option like "-E quota-only"
-to allow running a shorter e2fsck (maybe useful for link-farm backups
-that take a long time in later passes) but most of the time pass 1 is
-the slowest so there is usually minimal benefit from skipping later =
-passes.
+It would be much more efficient to keep a cursor pointing to the last =
+leaf
+block in the directory in which an entry was inserted. Since e2fsck is =
+not
+deleting entries from lost+found, and because the entry names are always
+getting longer (due to scanning in increasing inode number order) there =
+is
+no value to search earlier blocks again. This would make lost+found =
+insertion
+O(1) and significantly improve e2fsck performance in this case. This =
+could be
+very fast since there is only the inode bitmap to traverse, and =
+filenames are
+"#ino" so only leaf block allocation and writes needed.
+
+For generic libext2fs usage (e.g. Darrick's FUSE interface) where =
+entries
+may be deleted from a directory, the cursor could be reset to the block =
+of
+any deleted entry, if it was at a lower offset.
+
+Darrick, at one time I thought you had a patch to fix this behaviour, =
+but
+I couldn't find it.  Maybe your patch was related to a similar O(n^2) =
+search
+problem with block allocation?
+
+
+Any thoughts about how to fix this?  I was originally thinking that I =
+could
+just cache this into the "file pointer", but no such thing exists in the
+ext2fs_link() interface, only the directory inode number is passed, and =
+it
+has an additional level of indirection in that it calls the block =
+iterator
+with a callback to process each leaf block separately.  It also has the
+problem that any cache would be local to ext2fs_link() and not visible =
+to
+ext2fs_unlink().
+
+I was thinking to start with ext2fs_link() calling ext2fs_dir_iterate2()
+directly, just to avoid the first level of confusion in this code.  That
+still doesn't allow passing a starting offset for the iteration, =
+however.
+
+Next, cache the block number into the link_struct state and skip the =
+leaf
+block searches if block number < cursor, but that still needs iterating
+over all the blocks to skip to the last one.
+
+Should I just call ext2fs_block_iterate2() in e2fsck_reconnect_file()
+and keep the mechanics local to e2fsck?  I thought it might be a good
+generic optimization, but the interfaces make this difficult.
 
 Cheers, Andreas
 
@@ -66,7 +97,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_4873A10C-51C2-4A0E-B334-60821F61CF6D
+--Apple-Mail=_D161EF78-9597-415B-B70D-18F149D1D630
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -77,19 +108,19 @@ Content-Description: Message signed with OpenPGP using GPGMail
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIVAwUBVjfWFnKl2rkXzB/gAQg+pQ//Uf/5D0ebYW6dFIAx0FCKobMINaClP/x3
-Fc/9IUAj3InUxis7T6GzT7X/nQsStR+7Eboz4OIx5ghCQN0+R2GoR9kXbYUvWZ6z
-rRtNMMW+j2JY5qG9f0zy6U/ir+No7EbUXlmqb+M7VanIQxcsOQJj6LKqh8n4PbAs
-AtK7W9oja6J73qHVbZL29C+foU2HaUb5Vq3fP3XjbfQWnn/uYeylI+YAQ1Cc9zEc
-eFcfz3MYurjvMwBJNqdcEe3qM4taYmbffBQFPGYs15mHOxS9gPuksyrL/qSnHEFI
-N/+eh7MLN13ZCBzErmaEBmouoqkpnfIc/J5rdeO6Vf+8U7a6n6xA+ZVjwLeY5WQ3
-0UDJixL8u9bKBN8VonSJpGiafXeFgSVojIBZpx2AtASPcrOrx4i7Mecp4CFZUg6L
-TE70o4PEKkRBr1FyeLd90edtOlNsKJS0die/KdNGwvrWmPIcCVakbe/4w5OE0rc3
-9D9SJU3xJvXqV1rcsFlk4v/yRIRSL0tzf1mv+7zPuXaSGPj+h9C+sTPrdL9x/DYA
-xlIKoEa3Q4kB0MHlY425Xe5sekU2LrOeZ8QRoxhumpm631qmYMLuSfQMghrrSd2o
-QvTan0TZK0Rln3V2b+XdJpkd+uAcJDSEzGBfoKV52sPupFg1pzQmsUCkLgMFQUnx
-VujUw/jrlss=
-=m7Rq
+iQIVAwUBVjfog3Kl2rkXzB/gAQhp1Q/+M5iA3tTlPhBHg2ZJ1k0kVY1jp3nYtBaA
+HUH6ROkiwyEiGGU3wmJsA/wX1F5BCeOxmVSsbAQ4Iz9hQNhYM9FzJABnxQZsBF89
+jTBk05EoYtGhpawGGlXLNHZdw7kCCfzHqFoC1/C2JYpEaoKOsLmvf/KznPZ0AbcI
+d86tM4OKsXzQrkkjyLoBMWyYHUVeCbHCJ9FQG1YiAZiIKtOw99fFP8Dn60kOdueV
+vBB1YewSdiwxllzFNxFQR7272ra9cNPOd91wQPDuOWkZiMJM25Fbxc4UxCek1/zg
+OEPcgqCdimk2jteYXLHS5SRajLx9v/SQz/dMPeSuVtlgzH1PwnBh/8xt9ZJvgZRu
+KV7YrML7KMPwxiKVcnmG1zceAhem3B8XNZaEvP8QnIPJ+x0JQfbAfhigHKK0NO95
+6J/K9XyVDXwR3JR3JU9kZMYPsyn1Iyw42CcVC8c+ifjt9/40R4VMr/0ClCqcbSke
+WxdG2OMjZa17wJOWBgA7BOcDFDP+AYSeEDLdIdRQe0U53qrHmlF3UfYNQVlCZtKF
+Oy1Geu/BHxgQNO82Ctfu2b6FwfGi/4Fw1qWfOOZ+ea7ObmADyCh13P6pWepB5Bvp
+Cbe63zaFaa8TbL/Mer4ZOZRHrYSy2JExS8RMU7qh+qr+O1jzimLAvVBRMNnRXteb
+dFRz2TuCtRw=
+=9n5Y
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_4873A10C-51C2-4A0E-B334-60821F61CF6D--
+--Apple-Mail=_D161EF78-9597-415B-B70D-18F149D1D630--
