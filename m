@@ -1,99 +1,95 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [RFC 00/11] DAX fsynx/msync support
-Date: Mon, 02 Nov 2015 16:02:48 -0500
-Message-ID: <x49twp4p11j.fsf@segfault.boston.devel.redhat.com>
-References: <1446149535-16200-1-git-send-email-ross.zwisler@linux.intel.com>
-	<20151030035533.GU19199@dastard>
-	<20151030183938.GC24643@linux.intel.com>
-	<20151101232948.GF10656@dastard>
-	<x49vb9kqy5k.fsf@segfault.boston.devel.redhat.com>
-	<20151102201029.GI10656@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-nvdimm@ml01.01.org, x86@kernel.org,
-	xfs@oss.sgi.com, Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>, axboe@kernel.dk
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20151102201029.GI10656@dastard> (Dave Chinner's message of "Tue,
-	3 Nov 2015 07:10:29 +1100")
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: Corruption from interrupted e2fsck
+Date: Mon, 2 Nov 2015 14:31:01 -0700
+Message-ID: <273A3EEA-06EB-4C6B-BD51-060EC20543D4@dilger.ca>
+References: <B9F63236-3539-492E-83EB-3377836C2FDB@dilger.ca> <20151102152353.GA4024@thunk.org>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_4873A10C-51C2-4A0E-B334-60821F61CF6D"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pa0-f45.google.com ([209.85.220.45]:33119 "EHLO
+	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754450AbbKBVbG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Nov 2015 16:31:06 -0500
+Received: by pabfh17 with SMTP id fh17so35586320pab.0
+        for <linux-ext4@vger.kernel.org>; Mon, 02 Nov 2015 13:31:06 -0800 (PST)
+In-Reply-To: <20151102152353.GA4024@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Dave Chinner <david@fromorbit.com> writes:
 
-> On Mon, Nov 02, 2015 at 09:22:15AM -0500, Jeff Moyer wrote:
->> Dave Chinner <david@fromorbit.com> writes:
->> 
->> > Further, REQ_FLUSH/REQ_FUA are more than just "put the data on stable
->> > storage" commands. They are also IO barriers that affect scheduling
->> > of IOs in progress and in the request queues.  A REQ_FLUSH/REQ_FUA
->> > IO cannot be dispatched before all prior IO has been dispatched and
->> > drained from the request queue, and IO submitted after a queued
->> > REQ_FLUSH/REQ_FUA cannot be scheduled ahead of the queued
->> > REQ_FLUSH/REQ_FUA operation.
->> >
->> > IOWs, REQ_FUA/REQ_FLUSH not only guarantee data is on stable
->> > storage, they also guarantee the order of IO dispatch and
->> > completion when concurrent IO is in progress.
->> 
->> This hasn't been the case for several years, now.  It used to work that
->> way, and that was deemed a big performance problem.  Since file systems
->> already issued and waited for all I/O before sending down a barrier, we
->> decided to get rid of the I/O ordering pieces of barriers (and stop
->> calling them barriers).
->> 
->> See commit 28e7d184521 (block: drop barrier ordering by queue draining).
->
-> Yes, I realise that, even if I wasn't very clear about how I wrote
-> it. ;)
->
-> Correct me if I'm wrong: AFAIA, dispatch ordering (i.e. the "IO
-> barrier") is still enforced by the scheduler via REQ_FUA|REQ_FLUSH
-> -> ELEVATOR_INSERT_FLUSH -> REQ_SOFTBARRIER and subsequent IO
-> scheduler calls to elv_dispatch_sort() that don't pass
-> REQ_SOFTBARRIER in the queue.
+--Apple-Mail=_4873A10C-51C2-4A0E-B334-60821F61CF6D
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-This part is right.
 
-> IOWs, if we queue a bunch of REQ_WRITE IOs followed by a
-> REQ_WRITE|REQ_FLUSH IO, all of the prior REQ_WRITE IOs will be
-> dispatched before the REQ_WRITE|REQ_FLUSH IO and hence be captured
-> by the cache flush.
+> On Nov 2, 2015, at 8:23 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+>=20
+> On Sun, Nov 01, 2015 at 06:16:50PM -0700, Andreas Dilger wrote:
+>> Is there a reason not to have a cancel check right after the return =
+from
+>> e2fsck_run() rather than trying to recover the journal and quota =
+files?
+>> I can imagine that there is a desire to flush out modified inodes and =
+such
+>> that have been repaired, so that restarting an interrupted e2fsck =
+will make
+>> progress, but the quota file update is plain wrong unless at least =
+pass1
+>> has finished, and the journal recreation is also dangerous if the =
+block
+>> bitmaps have not been fully updated.
+>=20
+> You're right.  My suggested fix would be in the case of
+> E2F_FLAG_CANCEL, we set the ctx->invalid_bitmaps flag, and then avoid
+> writing out the quota file if invalid_bitmaps is enabled.
 
-But this part is not.  It is up to the I/O scheduler to decide when to
-dispatch requests.  It can hold on to them for a variety of reasons.
-Flush requests, however, do not go through the I/O scheduler.  At the
-very moment that the flush request is inserted, it goes directly to the
-dispatch queue (assuming no other flush is in progress).  The prior
-requests may still be waiting in the I/O scheduler's internal lists.
+I was looking at that too.  In some sense it isn't a bad idea to allow
+updating the quota file in this case, but it still bothers me that =
+e2fsck
+would continue on to update the quotas if the user wants to kill it, so
+my preference would be to not write the quota files at all if e2fsck is
+interrupted.
 
-So, any newly dispatched I/Os will certainly not get past the REQ_FLUSH.
-However, the REQ_FLUSH is very likely to jump ahead of prior I/Os in the
-queue.
+It would probably make more sense to have an option like "-E quota-only"
+to allow running a shorter e2fsck (maybe useful for link-farm backups
+that take a long time in later passes) but most of the time pass 1 is
+the slowest so there is usually minimal benefit from skipping later =
+passes.
 
-> Hence once the filesystem has waited on the REQ_WRITE|REQ_FLUSH IO
-> to complete, we know that all the earlier REQ_WRITE IOs are on
-> stable storage, too. Hence there's no need for the elevator to drain
-> the queue to guarantee completion ordering - the dispatch ordering
-> and flush/fua write semantics guarantee that when the flush/fua
-> completes, all the IOs dispatch prior to that flush/fua write are
-> also on stable storage...
+Cheers, Andreas
 
-Des xfs rely on this model for correctness?  If so, I'd say we've got a
-problem.
 
-Cheers,
-Jeff
+
+
+
+
+--Apple-Mail=_4873A10C-51C2-4A0E-B334-60821F61CF6D
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBVjfWFnKl2rkXzB/gAQg+pQ//Uf/5D0ebYW6dFIAx0FCKobMINaClP/x3
+Fc/9IUAj3InUxis7T6GzT7X/nQsStR+7Eboz4OIx5ghCQN0+R2GoR9kXbYUvWZ6z
+rRtNMMW+j2JY5qG9f0zy6U/ir+No7EbUXlmqb+M7VanIQxcsOQJj6LKqh8n4PbAs
+AtK7W9oja6J73qHVbZL29C+foU2HaUb5Vq3fP3XjbfQWnn/uYeylI+YAQ1Cc9zEc
+eFcfz3MYurjvMwBJNqdcEe3qM4taYmbffBQFPGYs15mHOxS9gPuksyrL/qSnHEFI
+N/+eh7MLN13ZCBzErmaEBmouoqkpnfIc/J5rdeO6Vf+8U7a6n6xA+ZVjwLeY5WQ3
+0UDJixL8u9bKBN8VonSJpGiafXeFgSVojIBZpx2AtASPcrOrx4i7Mecp4CFZUg6L
+TE70o4PEKkRBr1FyeLd90edtOlNsKJS0die/KdNGwvrWmPIcCVakbe/4w5OE0rc3
+9D9SJU3xJvXqV1rcsFlk4v/yRIRSL0tzf1mv+7zPuXaSGPj+h9C+sTPrdL9x/DYA
+xlIKoEa3Q4kB0MHlY425Xe5sekU2LrOeZ8QRoxhumpm631qmYMLuSfQMghrrSd2o
+QvTan0TZK0Rln3V2b+XdJpkd+uAcJDSEzGBfoKV52sPupFg1pzQmsUCkLgMFQUnx
+VujUw/jrlss=
+=m7Rq
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_4873A10C-51C2-4A0E-B334-60821F61CF6D--
