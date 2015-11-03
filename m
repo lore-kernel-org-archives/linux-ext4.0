@@ -1,118 +1,84 @@
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH v13 47/51] nfs: Fix GETATTR bitmap verification
-Date: Tue, 3 Nov 2015 11:30:19 -0500
-Message-ID: <CAHQdGtTiOEzNMCjgLna5VDtq4mKz83UdA4xAO8vtvRQGHMN0VQ@mail.gmail.com>
-References: <1446563847-14005-1-git-send-email-agruenba@redhat.com>
-	<1446563847-14005-48-git-send-email-agruenba@redhat.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: ext4: make the bitmap read routines return real error codes
+Date: Tue, 3 Nov 2015 11:20:41 -0800
+Message-ID: <20151103192041.GC2223@birch.djwong.org>
+References: <20151103120445.GA20788@mwanda>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-cifs@vger.kernel.org,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Linux API Mailing List <linux-api@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	xfs@oss.sgi.com, "J. Bruce Fields" <bfields@fieldses.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-	Jeff Layton <jlayton@poochiereds.net>, linux-ext4@vger.kernel.org,
-	Anna Schumaker <anna.schumaker@netapp.com>
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1446563847-14005-48-git-send-email-agruenba@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:29687 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755842AbbKCTUs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Nov 2015 14:20:48 -0500
+Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
+	by userp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id tA3JKl0A023453
+	(version=TLSv1 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 3 Nov 2015 19:20:48 GMT
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+	by aserv0021.oracle.com (8.13.8/8.13.8) with ESMTP id tA3JKlS6009759
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
+	for <linux-ext4@vger.kernel.org>; Tue, 3 Nov 2015 19:20:47 GMT
+Received: from abhmp0018.oracle.com (abhmp0018.oracle.com [141.146.116.24])
+	by aserv0121.oracle.com (8.13.8/8.13.8) with ESMTP id tA3JKl7g009157
+	for <linux-ext4@vger.kernel.org>; Tue, 3 Nov 2015 19:20:47 GMT
+Content-Disposition: inline
+In-Reply-To: <20151103120445.GA20788@mwanda>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 3, 2015 at 10:17 AM, Andreas Gruenbacher
-<agruenba@redhat.com> wrote:
-> When decoding GETATTR replies, the client checks the attribute bitmap
-> for which attributes the server has sent.  It misses bits at the word
-> boundaries, though; fix that.
->
-> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-> ---
->  fs/nfs/nfs4xdr.c | 23 +++++++++++++++++++++++
->  1 file changed, 23 insertions(+)
->
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 788adf3..6f6d921 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -4375,6 +4375,11 @@ static int decode_statfs(struct xdr_stream *xdr, struct nfs_fsstat *fsstat)
->                 goto xdr_error;
->         if ((status = decode_attr_files_total(xdr, bitmap, &fsstat->tfiles)) != 0)
->                 goto xdr_error;
-> +
-> +       status = -EIO;
-> +       if (unlikely(bitmap[0]))
-> +               goto xdr_error;
-> +
->         if ((status = decode_attr_space_avail(xdr, bitmap, &fsstat->abytes)) != 0)
->                 goto xdr_error;
->         if ((status = decode_attr_space_free(xdr, bitmap, &fsstat->fbytes)) != 0)
-> @@ -4574,6 +4579,10 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
->                 goto xdr_error;
->         fattr->valid |= status;
->
-> +       status = -EIO;
-> +       if (unlikely(bitmap[0]))
-> +               goto xdr_error;
-> +
->         status = decode_attr_mode(xdr, bitmap, &fmode);
->         if (status < 0)
->                 goto xdr_error;
-> @@ -4627,6 +4636,10 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
->                 goto xdr_error;
->         fattr->valid |= status;
->
-> +       status = -EIO;
-> +       if (unlikely(bitmap[1]))
-> +               goto xdr_error;
-> +
->         status = decode_attr_mdsthreshold(xdr, bitmap, fattr->mdsthreshold);
->         if (status < 0)
->                 goto xdr_error;
-> @@ -4789,12 +4802,22 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
->         if ((status = decode_attr_maxwrite(xdr, bitmap, &fsinfo->wtmax)) != 0)
->                 goto xdr_error;
->         fsinfo->wtpref = fsinfo->wtmax;
-> +
-> +       status = -EIO;
-> +       if (unlikely(bitmap[0]))
-> +               goto xdr_error;
-> +
->         status = decode_attr_time_delta(xdr, bitmap, &fsinfo->time_delta);
->         if (status != 0)
->                 goto xdr_error;
->         status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
->         if (status != 0)
->                 goto xdr_error;
-> +
-> +       status = -EIO;
-> +       if (unlikely(bitmap[1]))
-> +               goto xdr_error;
-> +
->         status = decode_attr_layout_blksize(xdr, bitmap, &fsinfo->blksize);
->         if (status)
->                 goto xdr_error;
-> --
-> 2.5.0
+On Tue, Nov 03, 2015 at 03:04:45PM +0300, Dan Carpenter wrote:
+> Hello Darrick J. Wong,
+> 
+> The patch 7d6232775976: "ext4: make the bitmap read routines return
+> real error codes" from Oct 17, 2015, leads to the following static
+> checker warning:
+> 
+> 	fs/ext4/mballoc.c:2989 ext4_mb_mark_diskspace_used()
+> 	error: 'bitmap_bh' dereferencing possible ERR_PTR()
+> 
+> fs/ext4/mballoc.c
+>   2899          bitmap_bh = ext4_read_block_bitmap(sb, ac->ac_b_ex.fe_group);
+>   2900          if (IS_ERR(bitmap_bh)) {
+>   2901                  err = PTR_ERR(bitmap_bh);
+>   2902                  goto out_err;
+>   2903          }
+>   2904  
+> 
+> [ snip ]
+> 
+>   2987  
+>   2988  out_err:
+>   2989          brelse(bitmap_bh);
+>   2990          return err;
+>   2991  }
+> 
+> Also:
+> 
+> fs/ext4/mballoc.c:4894 ext4_free_blocks() error: 'bitmap_bh' dereferencing possible ERR_PTR()
+> fs/ext4/mballoc.c:5028 ext4_group_add_blocks() error: 'bitmap_bh' dereferencing possible ERR_PTR()
+> 
+> This is One Err style error handling where one error label handles every
+> possible error so it's error prone (handling every error is more
+> complicated than doing a specific thing).
+> 
+> The old code relied on the sanity check in brelse() to avoid NULL
+> dereferences but now we are passing ERR_PTRs so it's not enough.
+> Probably the fix is to update the sanity check in brelse().  Another
+> idea would be to not free things until they have been allocated.
 
-This patch can and should be merged separately from this patchset.
-Please submit it through the usual channels.
+Or just slip in a "bitmap_bh = NULL;" just before line 2902.  We've saved
+the error code, so the pointer can be zeroed.
 
-Trond
+Hmm, thank you for the report, I'll get a patch out soon.  Guess I should
+go figure out how to smatch-scan my dev tree. :)
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+(Particularly because I fixed this exact problem in other parts of the patch,
+but not here. Sigh.)
+
+--D
+
+> 
+> regards,
+> dan carpenter
