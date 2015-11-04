@@ -1,93 +1,141 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 104571] ext4_mb_generate_buddy block bitmap and bg descriptor
- inconsistent
-Date: Wed, 04 Nov 2015 21:12:08 +0000
-Message-ID: <bug-104571-13602-t4ogcYYFmv@https.bugzilla.kernel.org/>
-References: <bug-104571-13602@https.bugzilla.kernel.org/>
+From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH v13 10/51] vfs: Cache base_acl objects in inodes
+Date: Wed, 4 Nov 2015 22:54:48 +0100
+Message-ID: <CAHc6FU6rryA3B=fV1jP9LsRAJdPTh9ze7fGYdpE-DZ6TmsPjug@mail.gmail.com>
+References: <1446563847-14005-1-git-send-email-agruenba@redhat.com>
+	<1446563847-14005-11-git-send-email-agruenba@redhat.com>
+	<D235953B-3EAF-4B00-AC07-4420B85E9E9E@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:40139 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932428AbbKDVMM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Nov 2015 16:12:12 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 1C8D9205DD
-	for <linux-ext4@vger.kernel.org>; Wed,  4 Nov 2015 21:12:11 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 5B5C7202FE
-	for <linux-ext4@vger.kernel.org>; Wed,  4 Nov 2015 21:12:08 +0000 (UTC)
-In-Reply-To: <bug-104571-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
+	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <D235953B-3EAF-4B00-AC07-4420B85E9E9E-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=104571
+Andreas,
 
-Sander Smeenk <linux-ext4@freshdot.net> changed:
+On Tue, Nov 3, 2015 at 11:29 PM, Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org> wrote:
+> On Nov 3, 2015, at 8:16 AM, Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
+>>
+>> POSIX ACLs and richacls are both objects allocated by kmalloc() with a
+>> reference count which are freed by kfree_rcu().  An inode can either
+>> cache an access and a default POSIX ACL, or a richacl (richacls do not
+>> have default acls).  To allow an inode to cache either of the two kinds
+>> of acls, introduce a new base_acl type and convert i_acl and
+>> i_default_acl to that type. In most cases, the vfs then doesn't have to
+>> care which kind of acl an inode caches (if any).
+>
+> For new wrapper functions like this better to name them as "NOUN_VERB" so
+> rather than "VERB_NOUN" so that related functions sort together, like
+> base_acl_init(), base_acl_get(), base_acl_put(), base_acl_refcount(), etc.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-     Kernel Version|3.19.8-ckt4                 |4.2.0-16-generic
+That's better, yes. I agree with all your comments and I've changed
+things accordingly.
 
---- Comment #3 from Sander Smeenk <linux-ext4@freshdot.net> ---
-Since then, running 4.2.0-16-generic (Ubuntu 'Wily', 15.10), problem still
-persists. I've re-created the FS, made it 10T bigger (20T total, 11T in use),
-copied all data.
+>> @@ -270,7 +270,7 @@ static struct posix_acl *f2fs_acl_clone(const struct posix_acl *acl,
+>>                               sizeof(struct posix_acl_entry);
+>>               clone = kmemdup(acl, size, flags);
+>>               if (clone)
+>> -                     atomic_set(&clone->a_refcount, 1);
+>> +                     atomic_set(&clone->a_base.ba_refcount, 1);
+>
+> This should be base_acl_init() since this should also reset the RCU state
+> if it was just copied from "acl" above.
 
-Logs:
+Yes. The rcu_head doesn't need initializing or resetting though.
 
-Nov  4 15:45:16 [447918.885531] EXT4-fs (vdb): pa ffff88002162ef08: logic
-192512, phys. 2823200768, len 1929
-Nov  4 15:45:16 [447918.885776] EXT4-fs error (device vdb):
-ext4_mb_release_inode_pa:3788: group 86157, free 1917, pa_free 1915
-Nov  4 15:45:16 [447918.926300] EXT4-fs (vdb): Remounting filesystem read-only
-Nov  4 15:45:16 [447918.926652] EXT4-fs error (device vdb) in
-ext4_writepages:2520: IO failure
-Nov  4 15:45:16 [447918.968068] EXT4-fs (vdb): ext4_writepages: jbd2_start:
-9223372036854775790 pages, ino 310215523; err -30
+>  That wouldn't be quite correct if
+> there are other fields added to struct base_acl that don't need to be
+> initialized when it is copied, so possibly base_acl_reinit() would be better
+> here and below if that will be the case in the near future (I haven't looked
+> through the whole patch series yet).
 
-Nov  4 15:54:39 [448481.868756] EXT4-fs error (device vdb):
-ext4_mb_generate_buddy:758: group 86156, block bitmap and bg descriptor
-inconsistent: 28672 vs 21008 free clusters
-Nov  4 15:54:39 [448481.869114] EXT4-fs (vdb): pa ffff880105bb9888: logic
-301056, phys. 2823186432, len 2048
-Nov  4 15:54:39 [448481.869343] EXT4-fs error (device vdb):
-ext4_mb_release_inode_pa:3788: group 86156, free 2048, pa_free 1926
-Nov  4 15:54:39 [448482.020157] EXT4-fs (vdb): pa ffff88010b6298f0: logic
-464896, phys. 2823178240, len 2048
-Nov  4 15:54:39 [448482.020434] EXT4-fs error (device vdb):
-ext4_mb_release_inode_pa:3788: group 86156, free 2048, pa_free 1683
-Nov  4 15:54:40 [448482.570440] EXT4-fs error (device vdb): ext4_put_super:803:
-Couldn't clean up the journal 
+We won't need a base_acl_reinit() function for now.
 
-Nov  4 18:21:31 [457294.270301] EXT4-fs error (device vdb):
-ext4_mb_generate_buddy:758: group 86089, block bitmap and bg descriptor
-inconsistent: 13143 vs 13141 free clusters
-Nov  4 18:21:31 [457294.333046] EXT4-fs (vdb): Remounting filesystem read-only
-Nov  4 18:21:31 [457294.333211] EXT4-fs error (device vdb) in
-ext4_writepages:2520: IO failure
+>> @@ -25,9 +25,9 @@ struct posix_acl **acl_by_type(struct inode *inode, int type)
+>> {
+>>       switch (type) {
+>>       case ACL_TYPE_ACCESS:
+>> -             return &inode->i_acl;
+>> +             return (struct posix_acl **)&inode->i_acl;
+>>       case ACL_TYPE_DEFAULT:
+>> -             return &inode->i_default_acl;
+>> +             return (struct posix_acl **)&inode->i_default_acl;
+>
+> This would be better to use container_of() to unwrap struct base_acl from
+> struct posix_acl.  That avoids the hard requirement (which isn't documented
+> anywhere) that base_acl needs to be the first member of struct posix_acl.
+>
+> I was originally going to write that you should add a comment that base_acl
+> needs to be the first member of both richacl and posix_acl, but container_of()
+> is both cleaner and safer.
+>
+> Looking further down, that IS actually needed due to the way kfree is used on
+> the base_acl pointer, but using container_of() is still cleaner and safer
+> than directly casting double pointers (which some compilers and static
+> analysis tools will be unhappy with).
 
-Nov  4 21:22:53 [ 7546.252366] EXT4-fs (vdb): pa ffff8800062eabc8: logic 64708,
-phys. 2822632644, len 828
-Nov  4 21:22:53 [ 7546.252475] EXT4-fs error (device vdb):
-ext4_mb_release_inode_pa:3788: group 86139, free 42, pa_free 40 
-Nov  4 21:22:53 [ 7546.317200] EXT4-fs (vdb): Remounting filesystem read-only
-Nov  4 21:22:53 [ 7546.317529] EXT4-fs error (device vdb) in
-ext4_writepages:2520: IO failure
-Nov  4 21:22:53 [ 7546.374769] EXT4-fs (vdb): ext4_writepages: jbd2_start:
-9223372036854774720 pages, ino 310215559; err -30
+Well, we would end up with &container_of() here which doesn't work and
+doesn't make sense, either. Let me change acl_by_type to return a
+base_acl ** to clean this up.
 
+>> @@ -576,6 +576,12 @@ static inline void mapping_allow_writable(struct address_space *mapping)
+>> #define i_size_ordered_init(inode) do { } while (0)
+>> #endif
+>>
+>> +struct base_acl {
+>> +     union {
+>> +             atomic_t ba_refcount;
+>> +             struct rcu_head ba_rcu;
+>> +     };
+>> +};
+>> struct posix_acl;
+>
+> Is this forward declaration of struct posix_acl even needed anymore after
+> the change below?  There shouldn't be references to the struct in the common
+> code anymore (at least not by the end of the patch series.
 
-After this last incident at 21:22:53 CET, i've reconfigured the VM to use
-'default' values for 'Cache Mode' and 'IO Mode' in libvirt/qemu. It was set to
-'Cache Mode: None', 'IO Mode: Native'. It still uses the VirtIO disk bus.
+The get_acl and set_acl inode operations expect struct posix_acl to be declared.
 
-The problem must be triggered by large spikes of random IO (non-sequential
-reads & writes) to sparse files on the FS. I will try to re-create this in a
-test-VM.
+> Hmm, using the base_acl pointer as the pointer to kfree means that the
+> base_acl structure DOES need to be the first one in both struct posix_acl
+> and struct richacl, so that needs to be commented at each structure so
+> it doesn't accidentally break in the future.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Yes. I've added comments; there are also BUILD_BUG_ON() asserts in
+posix_acl_release and richacl_put.
+
+>> @@ -57,7 +57,7 @@ static inline struct richacl *
+>> richacl_get(struct richacl *acl)
+>> {
+>>       if (acl)
+>> -             atomic_inc(&acl->a_refcount);
+>> +             atomic_inc(&acl->a_base.ba_refcount);
+>>       return acl;
+>
+> This should also use base_acl_get() for consistency. That said, where is
+> the call to base_acl_put() in the richacl code?
+> Also, where is the change to struct richacl?  It looks like this patch would
+> not be able to compile by itself.
+
+Ah, a little problem in how the patches are split. I've fixed it. This
+code doesn't get pulled into the build because nothing requires
+CONFIG_FS_RICHACL at that point; that's why I didn't notice.
+
+Thanks,
+Andreas
