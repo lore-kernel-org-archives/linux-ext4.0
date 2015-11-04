@@ -1,79 +1,51 @@
-From: SF Markus Elfring <elfring@users.sourceforge.net>
-Subject: [PATCH] fs-ext4: Delete unnecessary checks before the function call
- "iput"
-Date: Wed, 4 Nov 2015 18:57:06 +0100
-Message-ID: <563A46F2.4050908@users.sourceforge.net>
-References: <5307CAA2.8060406@users.sourceforge.net>
- <alpine.DEB.2.02.1402212321410.2043@localhost6.localdomain6>
- <530A086E.8010901@users.sourceforge.net>
- <alpine.DEB.2.02.1402231635510.1985@localhost6.localdomain6>
- <530A72AA.3000601@users.sourceforge.net>
- <alpine.DEB.2.02.1402240658210.2090@localhost6.localdomain6>
- <530B5FB6.6010207@users.sourceforge.net>
- <alpine.DEB.2.10.1402241710370.2074@hadrien>
- <530C5E18.1020800@users.sourceforge.net>
- <alpine.DEB.2.10.1402251014170.2080@hadrien>
- <530CD2C4.4050903@users.sourceforge.net>
- <alpine.DEB.2.10.1402251840450.7035@hadrien>
- <530CF8FF.8080600@users.sourceforge.net>
- <alpine.DEB.2.02.1402252117150.2047@localhost6.localdomain6>
- <530DD06F.4090703@users.sourceforge.net>
- <alpine.DEB.2.02.1402262129250.2221@localhost6.localdomain6>
- <5317A59D.4@users.sourceforge.net>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [RFC 00/11] DAX fsynx/msync support
+Date: Wed, 04 Nov 2015 13:34:58 -0500
+Message-ID: <x49a8qtpq99.fsf@segfault.boston.devel.redhat.com>
+References: <1446149535-16200-1-git-send-email-ross.zwisler@linux.intel.com>
+	<20151030035533.GU19199@dastard>
+	<20151030183938.GC24643@linux.intel.com>
+	<20151101232948.GF10656@dastard>
+	<x49vb9kqy5k.fsf@segfault.boston.devel.redhat.com>
+	<20151102201029.GI10656@dastard>
+	<x49twp4p11j.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: LKML <linux-kernel@vger.kernel.org>,
-	kernel-janitors@vger.kernel.org,
-	Julia Lawall <julia.lawall@lip6.fr>
-To: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <5317A59D.4@users.sourceforge.net>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: linux-nvdimm@ml01.01.org, "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-mm@kvack.org, Andreas Dilger <adilger.kernel@dilger.ca>,
+        "H. Peter Anvin" <hpa@zytor.com>,
+        Jeff Layton <jlayton@poochiereds.net>, x86@kernel.org,
+        Ingo Molnar <mingo@redhat.com>, linux-ext4@vger.kernel.org,
+        xfs@oss.sgi.com, Alexander Viro <viro@zeniv.linux.org.uk>,
+        Thomas Gleixner <tglx@linutronix.de>, axboe@kernel.dk,
+        "Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+        Jan Kara <jack@suse.com>, linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Matthew Wilcox <matthew.r.wilcox@intel.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <x49twp4p11j.fsf@segfault.boston.devel.redhat.com> (Jeff Moyer's
+	message of "Mon, 02 Nov 2015 16:02:48 -0500")
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Markus Elfring <elfring@users.sourceforge.net>
-Date: Wed, 4 Nov 2015 18:48:38 +0100
+Jeff Moyer <jmoyer@redhat.com> writes:
 
-The iput() function tests whether its argument is NULL and then
-returns immediately. Thus the test around the call is not needed.
+>> Hence once the filesystem has waited on the REQ_WRITE|REQ_FLUSH IO
+>> to complete, we know that all the earlier REQ_WRITE IOs are on
+>> stable storage, too. Hence there's no need for the elevator to drain
+>> the queue to guarantee completion ordering - the dispatch ordering
+>> and flush/fua write semantics guarantee that when the flush/fua
+>> completes, all the IOs dispatch prior to that flush/fua write are
+>> also on stable storage...
+>
+> Des xfs rely on this model for correctness?  If so, I'd say we've got a
+> problem.
 
-This issue was detected by using the Coccinelle software.
+Dave?
 
-Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
----
- fs/ext4/resize.c | 11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
-
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index ad62d7a..7918012 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1942,10 +1942,10 @@ retry:
- 		err = ext4_convert_meta_bg(sb, resize_inode);
- 		if (err)
- 			goto out;
--		if (resize_inode) {
--			iput(resize_inode);
--			resize_inode = NULL;
--		}
-+
-+		iput(resize_inode);
-+		resize_inode = NULL;
-+
- 		if (n_blocks_count_retry) {
- 			n_blocks_count = n_blocks_count_retry;
- 			n_blocks_count_retry = 0;
-@@ -2011,8 +2011,7 @@ retry:
- out:
- 	if (flex_gd)
- 		free_flex_gd(flex_gd);
--	if (resize_inode != NULL)
--		iput(resize_inode);
-+	iput(resize_inode);
- 	ext4_msg(sb, KERN_INFO, "resized filesystem to %llu", n_blocks_count);
- 	return err;
- }
--- 
-2.6.2
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
