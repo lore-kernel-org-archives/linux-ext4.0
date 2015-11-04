@@ -1,130 +1,201 @@
 From: Jan Kara <jack@suse.com>
-Subject: [PATCH 7/9] ext4: Provide ext4_issue_zeroout()
-Date: Wed,  4 Nov 2015 17:18:38 +0100
-Message-ID: <1446653920-23127-8-git-send-email-jack@suse.com>
+Subject: [PATCH 9/9] ext4: Use pre-zeroed blocks for DAX page faults
+Date: Wed,  4 Nov 2015 17:18:40 +0100
+Message-ID: <1446653920-23127-10-git-send-email-jack@suse.com>
 References: <1446653920-23127-1-git-send-email-jack@suse.com>
 Cc: linux-ext4@vger.kernel.org,
 	Ross Zwisler <ross.zwisler@linux.intel.com>,
 	dan.j.williams@intel.com, Jan Kara <jack@suse.com>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34142 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:34145 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755119AbbKDQSx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755380AbbKDQSx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 4 Nov 2015 11:18:53 -0500
 In-Reply-To: <1446653920-23127-1-git-send-email-jack@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Create new function ext4_issue_zeroout() to zeroout contiguous (both
-logically and physically) part of inode data. We will need to issue
-zeroout when extent structure is not readily available and this function
-will allow us to do it without making up fake extent structures.
+Make DAX fault path use pre-zeroed blocks to avoid races with extent
+conversion and zeroing when two page faults to the same block happen.
 
 Signed-off-by: Jan Kara <jack@suse.com>
 ---
- fs/ext4/crypto.c  |  6 ++----
- fs/ext4/ext4.h    |  5 ++++-
- fs/ext4/extents.c | 12 ++----------
- fs/ext4/inode.c   | 15 +++++++++++++++
- 4 files changed, 23 insertions(+), 15 deletions(-)
+ fs/ext4/ext4.h  |  4 +--
+ fs/ext4/file.c  | 20 +++-----------
+ fs/ext4/inode.c | 81 +++++++++++++++++++++++++++++++++++++++++++++------------
+ 3 files changed, 69 insertions(+), 36 deletions(-)
 
-diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-index 45731558138c..6b63d1e9f05a 100644
---- a/fs/ext4/crypto.c
-+++ b/fs/ext4/crypto.c
-@@ -403,14 +403,12 @@ int ext4_decrypt_one(struct inode *inode, struct page *page)
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 0a11a34d54c9..9b6e5813968b 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2284,8 +2284,8 @@ struct buffer_head *ext4_getblk(handle_t *, struct inode *, ext4_lblk_t, int);
+ struct buffer_head *ext4_bread(handle_t *, struct inode *, ext4_lblk_t, int);
+ int ext4_get_block_write(struct inode *inode, sector_t iblock,
+ 			 struct buffer_head *bh_result, int create);
+-int ext4_get_block_dax(struct inode *inode, sector_t iblock,
+-			 struct buffer_head *bh_result, int create);
++int ext4_dax_mmap_get_block(struct inode *inode, sector_t iblock,
++			    struct buffer_head *bh_result, int create);
+ int ext4_get_block(struct inode *inode, sector_t iblock,
+ 				struct buffer_head *bh_result, int create);
+ int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 0d24ebcd7c9e..749b222e6498 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -193,18 +193,6 @@ out:
+ }
+ 
+ #ifdef CONFIG_FS_DAX
+-static void ext4_end_io_unwritten(struct buffer_head *bh, int uptodate)
+-{
+-	struct inode *inode = bh->b_assoc_map->host;
+-	/* XXX: breaks on 32-bit > 16TB. Is that even supported? */
+-	loff_t offset = (loff_t)(uintptr_t)bh->b_private << inode->i_blkbits;
+-	int err;
+-	if (!uptodate)
+-		return;
+-	WARN_ON(!buffer_unwritten(bh));
+-	err = ext4_convert_unwritten_extents(NULL, inode, offset, bh->b_size);
+-}
+-
+ static int ext4_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+ {
+ 	int result;
+@@ -225,8 +213,7 @@ static int ext4_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	if (IS_ERR(handle))
+ 		result = VM_FAULT_SIGBUS;
+ 	else
+-		result = __dax_fault(vma, vmf, ext4_get_block_dax,
+-						ext4_end_io_unwritten);
++		result = __dax_fault(vma, vmf, ext4_dax_mmap_get_block, NULL);
+ 
+ 	if (write) {
+ 		if (!IS_ERR(handle))
+@@ -262,7 +249,7 @@ static int ext4_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
+ 		result = VM_FAULT_SIGBUS;
+ 	else
+ 		result = __dax_pmd_fault(vma, addr, pmd, flags,
+-				ext4_get_block_dax, ext4_end_io_unwritten);
++				ext4_dax_mmap_get_block, NULL);
+ 
+ 	if (write) {
+ 		if (!IS_ERR(handle))
+@@ -283,8 +270,7 @@ static int ext4_dax_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	sb_start_pagefault(inode->i_sb);
+ 	file_update_time(vma->vm_file);
+ 	down_read(&EXT4_I(inode)->i_mmap_sem);
+-	err = __dax_mkwrite(vma, vmf, ext4_get_block_dax,
+-			    ext4_end_io_unwritten);
++	err = __dax_mkwrite(vma, vmf, ext4_dax_mmap_get_block, NULL);
+ 	up_read(&EXT4_I(inode)->i_mmap_sem);
+ 	sb_end_pagefault(inode->i_sb);
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 74543c892b16..73d00d92bb4d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -718,16 +718,6 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
+ 
+ 		map_bh(bh, inode->i_sb, map.m_pblk);
+ 		bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
+-		if (IS_DAX(inode) && buffer_unwritten(bh)) {
+-			/*
+-			 * dgc: I suspect unwritten conversion on ext4+DAX is
+-			 * fundamentally broken here when there are concurrent
+-			 * read/write in progress on this inode.
+-			 */
+-			WARN_ON_ONCE(io_end);
+-			bh->b_assoc_map = inode->i_mapping;
+-			bh->b_private = (void *)(unsigned long)iblock;
+-		}
+ 		if (io_end && io_end->flag & EXT4_IO_END_UNWRITTEN)
+ 			set_buffer_defer_completion(bh);
+ 		bh->b_size = inode->i_sb->s_blocksize * map.m_len;
+@@ -3050,17 +3040,74 @@ static int ext4_get_block_overwrite(struct inode *inode, sector_t iblock,
  	return ret;
  }
  
--int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
-+int ext4_encrypted_zeroout(struct inode *inode, ext4_lblk_t lblk,
-+			   ext4_fsblk_t pblk, ext4_lblk_t len)
+-int ext4_get_block_dax(struct inode *inode, sector_t iblock,
+-		   struct buffer_head *bh_result, int create)
++#ifdef CONFIG_FS_DAX
++int ext4_dax_mmap_get_block(struct inode *inode, sector_t iblock,
++			    struct buffer_head *bh_result, int create)
  {
- 	struct ext4_crypto_ctx	*ctx;
- 	struct page		*ciphertext_page = NULL;
- 	struct bio		*bio;
--	ext4_lblk_t		lblk = ex->ee_block;
--	ext4_fsblk_t		pblk = ext4_ext_pblock(ex);
--	unsigned int		len = ext4_ext_get_actual_len(ex);
- 	int			err = 0;
+-	int flags = EXT4_GET_BLOCKS_PRE_IO | EXT4_GET_BLOCKS_UNWRIT_EXT;
++	int ret, err;
++	int credits;
++	struct ext4_map_blocks map;
++	handle_t *handle = NULL;
++	int flags = 0;
  
- 	BUG_ON(inode->i_sb->s_blocksize != PAGE_CACHE_SIZE);
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 142e935d1f3d..785737a342e6 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2072,7 +2072,8 @@ struct page *ext4_encrypt(struct inode *inode,
- 			  struct page *plaintext_page);
- int ext4_decrypt(struct ext4_crypto_ctx *ctx, struct page *page);
- int ext4_decrypt_one(struct inode *inode, struct page *page);
--int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex);
-+int ext4_encrypted_zeroout(struct inode *inode, ext4_lblk_t lblk,
-+			   ext4_fsblk_t pblk, ext4_lblk_t len);
- 
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
- int ext4_init_crypto(void);
-@@ -2327,6 +2328,8 @@ extern int ext4_filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf);
- extern qsize_t *ext4_get_reserved_space(struct inode *inode);
- extern void ext4_da_update_reserve_space(struct inode *inode,
- 					int used, int quota_claim);
-+extern int ext4_issue_zeroout(struct inode *inode, ext4_lblk_t lblk,
-+			      ext4_fsblk_t pblk, ext4_lblk_t len);
- 
- /* indirect.c */
- extern int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index be5496c14f6b..e13669b09dc1 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3118,19 +3118,11 @@ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
- {
- 	ext4_fsblk_t ee_pblock;
- 	unsigned int ee_len;
--	int ret;
- 
- 	ee_len    = ext4_ext_get_actual_len(ex);
- 	ee_pblock = ext4_ext_pblock(ex);
--
--	if (ext4_encrypted_inode(inode))
--		return ext4_encrypted_zeroout(inode, ex);
--
--	ret = sb_issue_zeroout(inode->i_sb, ee_pblock, ee_len, GFP_NOFS);
--	if (ret > 0)
--		ret = 0;
--
--	return ret;
-+	return ext4_issue_zeroout(inode, le32_to_cpu(ex->ee_block), ee_pblock,
-+				  ee_len);
- }
- 
- /*
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f220dfa6dbc3..5c92b0096f85 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -383,6 +383,21 @@ static int __check_block_validity(struct inode *inode, const char *func,
- 	return 0;
- }
- 
-+int ext4_issue_zeroout(struct inode *inode, ext4_lblk_t lblk, ext4_fsblk_t pblk,
-+		       ext4_lblk_t len)
-+{
-+	int ret;
+-	if (create)
+-		flags |= EXT4_GET_BLOCKS_CREATE;
+-	ext4_debug("ext4_get_block_dax: inode %lu, create flag %d\n",
++	ext4_debug("ext4_dax_mmap_get_block: inode %lu, create flag %d\n",
+ 		   inode->i_ino, create);
+-	return _ext4_get_block(inode, iblock, bh_result, flags);
++	map.m_lblk = iblock;
++	map.m_len = bh_result->b_size >> inode->i_blkbits;
++	credits = ext4_chunk_trans_blocks(inode, map.m_len);
++	if (create) {
++		flags |= EXT4_GET_BLOCKS_PRE_IO | EXT4_GET_BLOCKS_CREATE_ZERO;
++		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS, credits);
++		if (IS_ERR(handle)) {
++			ret = PTR_ERR(handle);
++			return ret;
++		}
++	}
 +
-+	if (ext4_encrypted_inode(inode))
-+		return ext4_encrypted_zeroout(inode, lblk, pblk, len);
++	ret = ext4_map_blocks(handle, inode, &map, flags);
++	if (create) {
++		err = ext4_journal_stop(handle);
++		if (ret >= 0 && err < 0)
++			ret = err;
++	}
++	if (ret <= 0)
++		goto out;
++	if (map.m_flags & EXT4_MAP_UNWRITTEN) {
++		int err2;
 +
-+	ret = sb_issue_zeroout(inode->i_sb, pblk, len, GFP_NOFS);
-+	if (ret > 0)
++		/*
++		 * We are protected by i_mmap_sem so we know block cannot go
++		 * away from under us even though we dropped i_data_sem.
++		 * Convert extent to written and write zeros there.
++		 *
++		 * Note: We may get here even when create == 0.
++		 */
++		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS, credits);
++		if (IS_ERR(handle)) {
++			ret = PTR_ERR(handle);
++			goto out;
++		}
++
++		err = ext4_map_blocks(handle, inode, &map,
++		      EXT4_GET_BLOCKS_CONVERT | EXT4_GET_BLOCKS_CREATE_ZERO);
++		if (err < 0)
++			ret = err;
++		err2 = ext4_journal_stop(handle);
++		if (err2 < 0 && ret > 0)
++			ret = err2;
++	}
++out:
++	WARN_ON_ONCE(ret == 0 && create);
++	if (ret > 0) {
++		map_bh(bh_result, inode->i_sb, map.m_pblk);
++		bh_result->b_state = (bh_result->b_state & ~EXT4_MAP_FLAGS) |
++					map.m_flags;
++		bh_result->b_size = map.m_len << inode->i_blkbits;
 +		ret = 0;
-+
++	}
 +	return ret;
-+}
-+
- #define check_block_validity(inode, map)	\
- 	__check_block_validity((inode), __func__, __LINE__, (map))
+ }
++#endif
  
+ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+ 			    ssize_t size, void *private)
 -- 
 2.1.4
 
