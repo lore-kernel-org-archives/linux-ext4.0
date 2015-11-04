@@ -1,129 +1,121 @@
 From: Jan Kara <jack@suse.com>
-Subject: [PATCH 8/9] ext4: Implement allocation of pre-zeroed blocks
-Date: Wed,  4 Nov 2015 17:18:39 +0100
-Message-ID: <1446653920-23127-9-git-send-email-jack@suse.com>
+Subject: [PATCH 4/9] ext4: Fix races of writeback with punch hole and zero range
+Date: Wed,  4 Nov 2015 17:18:35 +0100
+Message-ID: <1446653920-23127-5-git-send-email-jack@suse.com>
 References: <1446653920-23127-1-git-send-email-jack@suse.com>
 Cc: linux-ext4@vger.kernel.org,
 	Ross Zwisler <ross.zwisler@linux.intel.com>,
 	dan.j.williams@intel.com, Jan Kara <jack@suse.com>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34127 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:34094 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932323AbbKDQSw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Nov 2015 11:18:52 -0500
+	id S1755039AbbKDQSv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Nov 2015 11:18:51 -0500
 In-Reply-To: <1446653920-23127-1-git-send-email-jack@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-DAX page fault path needs to get blocks that are pre-zeroed to avoid
-races when two concurrent page faults happen in the same block of a
-file. Implement support for this in ext4_map_blocks().
+When doing delayed allocation, update of on-disk inode size is postponed
+until IO submission time. However hole punch or zero range fallocate
+calls can end up discarding the tail page cache page and thus on-disk
+inode size would never be properly updated.
+
+Make sure the on-disk inode size is updated before truncating page
+cache.
 
 Signed-off-by: Jan Kara <jack@suse.com>
 ---
- fs/ext4/ext4.h              |  4 ++++
- fs/ext4/extents.c           |  8 ++++++++
- fs/ext4/inode.c             | 20 +++++++++++++++++---
- include/trace/events/ext4.h |  3 ++-
- 4 files changed, 31 insertions(+), 4 deletions(-)
+ fs/ext4/ext4.h    |  3 +++
+ fs/ext4/extents.c |  5 +++++
+ fs/ext4/inode.c   | 35 ++++++++++++++++++++++++++++++++++-
+ 3 files changed, 42 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 785737a342e6..0a11a34d54c9 100644
+index c19ff61ccbdf..c86546efec30 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -553,6 +553,10 @@ enum {
- #define EXT4_GET_BLOCKS_KEEP_SIZE		0x0080
- 	/* Convert written extents to unwritten */
- #define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0100
-+	/* Write zeros to newly created written extents */
-+#define EXT4_GET_BLOCKS_ZERO			0x0200
-+#define EXT4_GET_BLOCKS_CREATE_ZERO		(EXT4_GET_BLOCKS_CREATE |\
-+					EXT4_GET_BLOCKS_ZERO)
+@@ -2691,6 +2691,9 @@ static inline int ext4_update_inode_size(struct inode *inode, loff_t newsize)
+ 	return changed;
+ }
  
- /*
-  * The bit position of these flags must not overlap with any of the
++int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
++				      loff_t len);
++
+ struct ext4_group_info {
+ 	unsigned long   bb_state;
+ 	struct rb_root  bb_free_root;
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index e13669b09dc1..76113dbdfcf7 100644
+index a333c9cc651f..be5496c14f6b 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -4040,6 +4040,14 @@ ext4_ext_handle_unwritten_extents(handle_t *handle, struct inode *inode,
- 	}
- 	/* IO end_io complete, convert the filled extent to written */
- 	if (flags & EXT4_GET_BLOCKS_CONVERT) {
-+		if (flags & EXT4_GET_BLOCKS_ZERO) {
-+			if (allocated > map->m_len)
-+				allocated = map->m_len;
-+			err = ext4_issue_zeroout(inode, map->m_lblk, newblock,
-+						 allocated);
-+			if (err < 0)
-+				goto out2;
+@@ -4843,6 +4843,11 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+ 		 * released from page cache.
+ 		 */
+ 		down_write(&EXT4_I(inode)->i_mmap_sem);
++		ret = ext4_update_disksize_before_punch(inode, offset, len);
++		if (ret) {
++			up_write(&EXT4_I(inode)->i_mmap_sem);
++			goto out_dio;
 +		}
- 		ret = ext4_convert_unwritten_extents_endio(handle, inode, map,
- 							   ppath);
- 		if (ret >= 0) {
+ 		/* Now release the pages and zero block aligned part of pages */
+ 		truncate_pagecache_range(inode, start, end - 1);
+ 		inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5c92b0096f85..74543c892b16 100644
+index 36ad45906d26..f72212ef1fee 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -643,7 +643,7 @@ found:
- 		if ((flags & EXT4_GET_BLOCKS_PRE_IO) &&
- 		    ext4_es_lookup_extent(inode, map->m_lblk, &es)) {
- 			if (ext4_es_is_written(&es))
--				goto has_zeroout;
-+				goto out_sem;
- 		}
- 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
- 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
-@@ -654,11 +654,24 @@ found:
- 			status |= EXTENT_STATUS_DELAYED;
- 		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
- 					    map->m_pblk, status);
--		if (ret < 0)
-+		if (ret < 0) {
- 			retval = ret;
-+			goto out_sem;
-+		}
-+
-+		if (flags & EXT4_GET_BLOCKS_ZERO &&
-+		    map->m_flags & EXT4_MAP_MAPPED &&
-+		    map->m_flags & EXT4_MAP_NEW) {
-+			ret = ext4_issue_zeroout(inode, map->m_lblk,
-+						 map->m_pblk, map->m_len);
-+			if (ret) {
-+				retval = ret;
-+				goto out_sem;
-+			}
-+		}
- 	}
+@@ -3517,6 +3517,35 @@ int ext4_can_truncate(struct inode *inode)
+ }
  
--has_zeroout:
-+out_sem:
- 	up_write((&EXT4_I(inode)->i_data_sem));
- 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
- 		ret = check_block_validity(inode, map);
-@@ -3041,6 +3054,7 @@ int ext4_get_block_dax(struct inode *inode, sector_t iblock,
- 		   struct buffer_head *bh_result, int create)
- {
- 	int flags = EXT4_GET_BLOCKS_PRE_IO | EXT4_GET_BLOCKS_UNWRIT_EXT;
+ /*
++ * We have to make sure i_disksize gets properly updated before we truncate
++ * page cache due to hole punching or zero range. Otherwise i_disksize update
++ * can get lost as it may have been postponed to submission of writeback but
++ * that will never happen after we truncate page cache.
++ */
++int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
++				      loff_t len)
++{
++	handle_t *handle;
++	loff_t size = i_size_read(inode);
 +
- 	if (create)
- 		flags |= EXT4_GET_BLOCKS_CREATE;
- 	ext4_debug("ext4_get_block_dax: inode %lu, create flag %d\n",
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 5f2ace56efc5..4e4b2fa78609 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -42,7 +42,8 @@ struct extent_status;
- 	{ EXT4_GET_BLOCKS_CONVERT,		"CONVERT" },		\
- 	{ EXT4_GET_BLOCKS_METADATA_NOFAIL,	"METADATA_NOFAIL" },	\
- 	{ EXT4_GET_BLOCKS_NO_NORMALIZE,		"NO_NORMALIZE" },	\
--	{ EXT4_GET_BLOCKS_KEEP_SIZE,		"KEEP_SIZE" })
-+	{ EXT4_GET_BLOCKS_KEEP_SIZE,		"KEEP_SIZE" },		\
-+	{ EXT4_GET_BLOCKS_ZERO,			"ZERO" })
++	WARN_ON(!mutex_is_locked(&inode->i_mutex));
++	if (offset > size || offset + len < size)
++		return 0;
++
++	if (EXT4_I(inode)->i_disksize >= size)
++		return 0;
++
++	handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
++	if (IS_ERR(handle))
++		return PTR_ERR(handle);
++	ext4_update_i_disksize(inode, size);
++	ext4_mark_inode_dirty(handle, inode);
++	ext4_journal_stop(handle);
++
++	return 0;
++}
++
++/*
+  * ext4_punch_hole: punches a hole in a file by releaseing the blocks
+  * associated with the given offset and length
+  *
+@@ -3594,9 +3623,13 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
+ 	last_block_offset = round_down((offset + length), sb->s_blocksize) - 1;
  
- #define show_mflags(flags) __print_flags(flags, "",	\
- 	{ EXT4_MAP_NEW,		"N" },			\
+ 	/* Now release the pages and zero block aligned part of pages*/
+-	if (last_block_offset > first_block_offset)
++	if (last_block_offset > first_block_offset) {
++		ret = ext4_update_disksize_before_punch(inode, offset, length);
++		if (ret)
++			goto out_dio;
+ 		truncate_pagecache_range(inode, first_block_offset,
+ 					 last_block_offset);
++	}
+ 
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+ 		credits = ext4_writepage_trans_blocks(inode);
 -- 
 2.1.4
 
