@@ -1,45 +1,35 @@
 From: Jan Kara <jack@suse.com>
-Subject: [PATCH 2/4] ext4/001: Update output
-Date: Wed,  4 Nov 2015 17:31:36 +0100
-Message-ID: <1446654698-23577-3-git-send-email-jack@suse.com>
-References: <1446654698-23577-1-git-send-email-jack@suse.com>
+Subject: [PATCH 0/4] Output selection, improvements for ext4/001
+Date: Wed,  4 Nov 2015 17:31:34 +0100
+Message-ID: <1446654698-23577-1-git-send-email-jack@suse.com>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.com>
 To: fstests@vger.kernel.org
-Return-path: <fstests-owner@vger.kernel.org>
-In-Reply-To: <1446654698-23577-1-git-send-email-jack@suse.com>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:35734 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965625AbbKDQbv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Nov 2015 11:31:51 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-After patch "ext4: Fix races of writeback with punch hole and zero
-range" we don't flush range that's going to be zeroed out which results
-in different final extent layout because some extents will be zeroed-out
-instead of being split. Update the output file accordingly.
+Hello,
 
-Signed-off-by: Jan Kara <jack@suse.com>
----
- tests/ext4/001.out | 8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+the patch series below addresses some issues with test ext4/001. The first
+patch is just a minor improvement to _filter_fiemap to work with older awk
+programs. The second patch updates expected output of the test because it
+slightly changes after punch hole fixes.
 
-diff --git a/tests/ext4/001.out b/tests/ext4/001.out
-index 212c24783387..c2f728483b23 100644
---- a/tests/ext4/001.out
-+++ b/tests/ext4/001.out
-@@ -131,14 +131,10 @@ cc63069677939f69a6e8f68cae6a6dac
- 2: [32..39]: hole
- daa100df6e6711906b61c9ab5aa16032
- 	11. data -> hole -> data
--0: [0..7]: data
--1: [8..31]: unwritten
--2: [32..39]: data
-+0: [0..39]: data
- f6aeca13ec49e5b266cd1c913cd726e3
- 	12. unwritten -> data -> unwritten
--0: [0..7]: data
--1: [8..31]: unwritten
--2: [32..39]: data
-+0: [0..39]: unwritten
- daa100df6e6711906b61c9ab5aa16032
- 	13. data -> unwritten -> data
- 0: [0..7]: data
--- 
-2.1.4
+Patch 3 implements function which allows selecting different output file based
+on mount options (or basically any feature string that's passed to the function
+- e.g. selection based on fs blocksize can be easily done as well). Current
+helper _link_out_file() could be implemented using this as well but for now
+I left it alone. I think this feature can be useful when different mount
+options change behavior of the filesystem and thus different output is
+generated but we want to have test working all mount options.
+
+Patch 4 uses the output selection function in ext4/001 to select different
+output files based on mount options.
+
+Comments welcome!
+
+								Honza
