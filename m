@@ -1,95 +1,55 @@
-From: Shuichi Ihara <sihara@ddn.com>
-Subject: Re: [v15 0/4] ext4: add project quota support
-Date: Thu, 5 Nov 2015 15:13:10 +0000
-Message-ID: <7360A48E-8576-49DB-878B-DFC2EFC83BC4@ddn.com>
-References: <1442146833-13652-1-git-send-email-lixi@ddn.com>
- <43B1BB97-8D53-4D93-9B57-B5E2048F7E7A@dilger.ca>
- <CAPTn0cBp4d09u9XzQm2cXzd6kcE0+FDRX0b_H=xJBZT-i5eKcw@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC] ext4: fix a BUG in ext4_mpage_readpages()
+Date: Thu, 5 Nov 2015 16:40:31 +0100
+Message-ID: <20151105154031.GC23628@quack.suse.cz>
+References: <1446623914-9367-1-git-send-email-yalin.wang2010@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Linux API <linux-api@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Christoph Hellwig <hch@infradead.org>,
-	Dave Chinner <david@fromorbit.com>,
-	=?utf-8?B?0JTQvNC40YLRgNC40Lkg0JzQvtC90LDRhdC+0LI=?=
-	<dmonakhov@openvz.org>, Shuichi Ihara <ihashu@gmail.com>
-To: Li Xi <pkuelelixi@gmail.com>, Andreas Dilger <adilger@dilger.ca>,
-	Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <CAPTn0cBp4d09u9XzQm2cXzd6kcE0+FDRX0b_H=xJBZT-i5eKcw@mail.gmail.com>
-Content-Language: ja-JP
-Content-ID: <BD2F65B7E5A97B49852D7E490EA23CC2@ddn.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: yalin wang <yalin.wang2010@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1446623914-9367-1-git-send-email-yalin.wang2010@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-SGVsbG8gVGVkLCBBbmRyZWFzLA0KDQoNCg0KU2hpbG9uZyBwb3N0ZWQgYW4gZW1haWwgaGVyZSBh
-IHdlZWsgYWdvIGJlbG93Lg0KaHR0cDovL2xpc3RzLm9wZW53YWxsLm5ldC9saW51eC1leHQ0LzIw
-MTUvMTAvMzAvMg0KDQp3ZSBpZGVudGlmaWVkIDEwIHByb2plY3QgcXVvdGEgcmVsYXRlZCB4ZnN0
-ZXN0IGFuZCBwb3J0ZWQgdGhlbSBpbnRvIGV4dDQveHh4Lg0KdGVzdCBudW1iZXIgYXJlIDMwNCwg
-MzA1LCAyOTksIDI0NCwgMTk2LCAxMzQsIDEwOCwgMTA3LCAxMDYsIDA1MCBpbiB4ZnMuDQoNCg0K
-V2UgcG9ydGVkIDkvMTAgdGVzdHMgaW50byBleHQ0L3h4eA0KZXh0NC8wNTAgZXh0NC8xMDYgZXh0
-NC8xMDcgZXh0NC8xMDggZXh0NC8xOTYgZXh0NC8yNDQgZXh0NC8yOTkgZXh0NC80MDAgZXh0NC80
-MDENCg0KcGxlYXNlIGNoZWNrIGh0dHBzOi8vZ2l0aHViLmNvbS93YW5nc2hpbG9uZy94ZnN0ZXN0
-cw0KDQpBbiBhbm90aGVyIHBhdGNoIHdhcyBub3QgdmFsaWQgc2luY2UgcXVvdGEgdXRpbGl0eSBp
-cyBkaWZmZXJlbnQuDQoNCg0KSW4gb3JkZXIgdG8gcnVuIHBvcnRlZCB0ZXN0cywgcGF0Y2hlZCBx
-dW90YS10b29scyBhbmQgTGkgWGkgcG9ydGVkIHBhdGNoIG9mIGUyZnNwcm9ncyByZXF1aXJlZC4N
-Cmh0dHBzOi8vZ2l0aHViLmNvbS93YW5nc2hpbG9uZy9xdW90YS10b29scy9jb21taXRzL3Byb2pl
-Y3QNCmh0dHA6Ly9saXN0cy5vcGVud2FsbC5uZXQvbGludXgtZXh0NC8yMDE1LzEwLzI5LzINCg0K
-VGhhbmtzDQpJaGFyYQ0KDQoxMS81LzE1LCAxMTo0NSBQTSAsICJsaW51eC1leHQ0LW93bmVyQHZn
-ZXIua2VybmVsLm9yZyAoTGkgWGkg44Gu5Luj55CGKSIgPGxpbnV4LWV4dDQtb3duZXJAdmdlci5r
-ZXJuZWwub3JnIChwa3VlbGVsaXhpQGdtYWlsLmNvbSDjga7ku6PnkIYpPiB3cm90ZToNCg0KPk9u
-IEZyaSwgU2VwIDI1LCAyMDE1IGF0IDE6MTIgQU0sIEFuZHJlYXMgRGlsZ2VyIDxhZGlsZ2VyQGRp
-bGdlci5jYT4gd3JvdGU6DQo+PiBPbiBTZXAgMTMsIDIwMTUsIGF0IDI6MjAgUE0sIExpIFhpIDxw
-a3VlbGVsaXhpQGdtYWlsLmNvbT4gd3JvdGU6DQo+Pj4NCj4+PiBUaGUgZm9sbG93aW5nIHBhdGNo
-ZXMgcHJvcG9zZSBhbiBpbXBsZW1lbnRhdGlvbiBvZiBwcm9qZWN0IHF1b3RhDQo+Pj4gc3VwcG9y
-dCBmb3IgZXh0NC4gQSBwcm9qZWN0IGlzIGFuIGFnZ3JlZ2F0ZSBvZiB1bnJlbGF0ZWQgaW5vZGVz
-DQo+Pj4gd2hpY2ggbWlnaHQgc2NhdHRlciBpbiBkaWZmZXJlbnQgZGlyZWN0b3JpZXMuIElub2Rl
-cyB0aGF0IGJlbG9uZw0KPj4+IHRvIHRoZSBzYW1lIHByb2plY3QgcG9zc2VzcyBhbiBpZGVudGlj
-YWwgaWRlbnRpZmljYXRpb24gaS5lLg0KPj4+ICdwcm9qZWN0IElEJywganVzdCBsaWtlIGV2ZXJ5
-IGlub2RlIGhhcyBpdHMgdXNlci9ncm91cA0KPj4+IGlkZW50aWZpY2F0aW9uLiBUaGUgZm9sbG93
-aW5nIHBhdGNoZXMgYWRkIHByb2plY3QgcXVvdGEgYXMNCj4+PiBzdXBwbGVtZW50IHRvIHRoZSBm
-b3JtZXIgdWVyL2dyb3VwIHF1b3RhIHR5cGVzLg0KPj4NCj4+IFdlIGRpc2N1c3NlZCB0aGlzIG9u
-IHRoZSBleHQ0IGRldmVsb3BlciBjb25jYWxsIHRvZGF5IGFuZCB0cmllZCB0bw0KPj4gbW92ZSB0
-aGUgbGFuZGluZyBvZiB0aGVzZSBwYXRjaGVzIGZvcndhcmQuICBTb21lIG5vdGVzIGJlbG93Og0K
-Pj4NCj4+IC0gVGVkOiBhZ3JlZWQgdG8gcmVzZXJ2ZSBFWFQ0X0ZFQVRVUkVfUk9fQ09NUEFUX1BS
-T0pFQ1QsIHNfcHJqX3F1b3RhX2ludW0sDQo+PiAgIEVYVDRfUFJPSklOSEVSSVRfRkwsIGFuZCBp
-X3Byb2ppZCBmaWVsZHMgZm9yIHVzZSBieSBwcm9qZWN0IHF1b3RhIHRvDQo+PiAgIGF2b2lkIGNv
-bXBhdGliaWxpdHkgaXNzdWVzIGlmIHBhdGNoZXMgYXJlIG5vdCBsYW5kZWQgaW1tZWRpYXRlbHku
-DQo+PiAgICAtIFRlZDogdG8gZG8gZmluYWwgY2hlY2sgb2YgaW5vZGUgZmxhZyB2YWx1ZQ0KPj4g
-ICAgLSBleHQ0IHByb2plY3QgcXVvdGEgaW5vZGUgZG9lcyBub3QgbmVlZCB0byB1c2UgYSByZXNl
-cnZlZCBpbm9kZSwgYnV0DQo+PiAgICAgIGNvdWxkIGFmdGVyIEphbidzIHBhdGNoIHRvIGluY3Jl
-YXNlIHJlc2VydmVkIGlub2RlcyBsYW5kcw0KPj4gLSBMaSBYaTogaWRlbnRpZnkgeGZzdGVzdHMg
-c3VidGVzdHMgdGhhdCBhcmUgZXhlcmNpc2luZyBwcm9qZWN0IHF1b3RhDQo+PiAgICAtIHN1Ym1p
-dCBwYXRjaGVzIHRvIHhmc3Rlc3RzIHRoYXQgd2lsbCBhY3RpdmF0ZSB0aGVtIGZvciBleHQ0DQo+
-PiAgICAtIGtlZXAgaW4gZXh0NCB4ZnN0ZXN0cyBmb3IgdGVzdGluZyB1bnRpbCBwYXRjaGVzIGxh
-bmQgdXBzdHJlYW0NCj4+ICAgIC0gdGhpcyBuZWVkcyB0byBiZSBkb25lIGJlZm9yZSBsYW5kaW5n
-IHRvIGVuc3VyZSBleHQ0IGNvZGUgd29ya3MNCj4+IC0gTGkgWGk6IGRvY3VtZW50IHRoZSBiZWhh
-dmlvdXIgb2YgcHJvamVjdCBxdW90YSAoaWYgbm8gZXhpc3RpbmcNCj4+ICAgZG9jdW1lbnQgZXhp
-c3RzIGZvciBYRlMgYWxyZWFkeSksIHNvbWUgb2YgdGhpcyBpcyBhbHJlYWR5IGJlbG93DQo+PiAg
-ICAtIHVwZGF0ZSBtYW4gcGFnZXMgZm9yIGRmKDEpIGFuZCBzdGF0ZnMoMikgZm9yIHN1YmRpciB3
-aXRoIHByb2plY3QgSUQNCj4+ICAgICAgKGkuZS4gdGhhdCBpdCByZXR1cm5zIG9ubHkgcXVvdGEg
-dXNhZ2UgYW5kIGxpbWl0IGZvciBwcm9qZWN0IElEKQ0KPj4gICAgLSBUZWQ6IHdoZXJlIHNob3Vs
-ZCBkb2N1bWVudCBnbz8gbGludXgvRG9jdW1lbnRhdGlvbi9mcz8gZXh0NCB3aWtpPw0KPj4gICAg
-LSBub3QgYSByZXF1aXJlbWVudCBmb3IgdGVzdGluZywgY2FuIGJlIGRvbmUgYWZ0ZXIgbGFuZGlu
-Zw0KPj4NCj4+IC0gQWxsOiBkZWNpZGUgb24gYSBjb21tb24gdG9vbCBmb3Igc2V0dGluZyBwcm9q
-ZWN0IElEIG9uIGZpbGUvZGlyZWN0b3J5DQo+PiAgICAtIGRvbid0IHdhbnQgdG8gcmVxdWlyZSB4
-ZnN1dGlscyBpbiBvcmRlciB0byB1c2UgcHJvamVjdCBxdW90YQ0KPj4gICAgLSBzdGFydCB3aXRo
-IGNoYXR0ciAodXNpbmcgRlNfSU9DX0ZTe0dFVCxTRVR9WEFUVFIpIGluIGUyZnNwcm9ncw0KPj4g
-ICAgICAtIGFsbG93cyB0ZXN0aW5nIHByb2plY3QgcXVvdGEgd2l0aCBlMmZzcHJvZ3MvZXh0NA0K
-Pj4gICAgLSBjaHByb2ogKGxpa2UgY2hvd24vY2hncnApIHdvdWxkIGFsc28gYmUgYW4gb3B0aW9u
-DQo+PiAgICAgIC0gbmVlZHMgbW9yZSBkaXNjdXNzaW9uL2RldmVsb3BtZW50IGVmZm9ydCwgZ29l
-cyBpbnRvIGZpbGV1dGlscw0KPj4gICAgLSB0aGlzIGRvZXNuJ3QgbmVlZCB0byBiZSBkZWNpZGVk
-IGltbWVkaWF0ZWx5LCBhbmQgYm90aCBjb3VsZCBiZSBkb25lDQo+Pg0KPkhpLA0KPg0KPkkndmUg
-cHVzaGVkIHRoZSBwYXRjaCBvZiBFeHQ0IGFzIHdlbGwgYXMgZTJmc3Byb2dzLiBTaGlsb25nIGhh
-cyBhZGRlZCB0ZXN0DQo+c3VpdHMgZm9yIGV4dDQgcHJvamVjdCBxdW90YSBpbiB4ZnN0ZXN0LCBh
-bmQgd2lsbCBwdXNoIHBhdGNoZXMgc29vbi4gSQ0KPndpbGwgd3JpdGUNCj5uZWNlc3NhcnkgZG9j
-dW1lbnRhdGlvbiBib3RoIGZvciBtYW51YWwgYW5kIGxpbnV4L0RvY3VtZW50YXRpb24vZnMuDQo+
-DQo+SG9wZWZ1bGx5LCBhdCBsZWFzdCB0aGUga2VybmVsIHBhdGNoZXMgb2YgZXh0NCBwcm9qZWN0
-IHF1b3RhIHdpbGwgYmUgbWVyZ2VkDQo+c29vbi4NCj4NCj5SZWdhcmRzLA0KPkxpIFhpDQo+LS0N
-Cj5UbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3Jp
-YmUgbGludXgtZXh0NCIgaW4NCj50aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZn
-ZXIua2VybmVsLm9yZw0KPk1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5l
-bC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0K
+On Wed 04-11-15 15:58:34, yalin wang wrote:
+> The last block should be the total read pages last block,
+> need adjust the block number when caculate every page.
+> 
+> Signed-off-by: yalin wang <yalin.wang2010@gmail.com>
+> ---
+>  fs/ext4/readpage.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+> index 5dc5e95..d20c39d 100644
+> --- a/fs/ext4/readpage.c
+> +++ b/fs/ext4/readpage.c
+> @@ -174,7 +174,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
+>  			goto confused;
+>  
+>  		block_in_file = (sector_t)page->index << (PAGE_CACHE_SHIFT - blkbits);
+> -		last_block = block_in_file + nr_pages * blocks_per_page;
+> +		last_block = block_in_file + (nr_pages - page_idx) * blocks_per_page;
+
+I don't think your patch is correct. The for loop decrements nr_pages at each
+iteration so the original code looks fine... Or which problems do you
+observe?
+
+								Honza
+
+>  		last_block_in_file = (i_size_read(inode) + blocksize - 1) >> blkbits;
+>  		if (last_block > last_block_in_file)
+>  			last_block = last_block_in_file;
+> -- 
+> 1.9.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
