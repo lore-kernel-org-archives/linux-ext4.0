@@ -1,113 +1,95 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: JBD2 issue unnecessary journal commit mark I/O
-Date: Thu, 5 Nov 2015 16:03:49 +0100
-Message-ID: <20151105150349.GB23628@quack.suse.cz>
-References: <CAJKSsyDG26b9n-me+U=nZw6ZNLzwXmGapU3J=8ejHjQjuRP1OQ@mail.gmail.com>
+From: Shuichi Ihara <sihara@ddn.com>
+Subject: Re: [v15 0/4] ext4: add project quota support
+Date: Thu, 5 Nov 2015 15:13:10 +0000
+Message-ID: <7360A48E-8576-49DB-878B-DFC2EFC83BC4@ddn.com>
+References: <1442146833-13652-1-git-send-email-lixi@ddn.com>
+ <43B1BB97-8D53-4D93-9B57-B5E2048F7E7A@dilger.ca>
+ <CAPTn0cBp4d09u9XzQm2cXzd6kcE0+FDRX0b_H=xJBZT-i5eKcw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Eunryoung Lim <eunryoung.lim@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:50307 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1032707AbbKEPDw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Nov 2015 10:03:52 -0500
-Content-Disposition: inline
-In-Reply-To: <CAJKSsyDG26b9n-me+U=nZw6ZNLzwXmGapU3J=8ejHjQjuRP1OQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	Linux API <linux-api@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Christoph Hellwig <hch@infradead.org>,
+	Dave Chinner <david@fromorbit.com>,
+	=?utf-8?B?0JTQvNC40YLRgNC40Lkg0JzQvtC90LDRhdC+0LI=?=
+	<dmonakhov@openvz.org>, Shuichi Ihara <ihashu@gmail.com>
+To: Li Xi <pkuelelixi@gmail.com>, Andreas Dilger <adilger@dilger.ca>,
+	Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <CAPTn0cBp4d09u9XzQm2cXzd6kcE0+FDRX0b_H=xJBZT-i5eKcw@mail.gmail.com>
+Content-Language: ja-JP
+Content-ID: <BD2F65B7E5A97B49852D7E490EA23CC2@ddn.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 28-10-15 17:19:02, Eunryoung Lim wrote:
-> Hello,
->=20
-> I am Eunryoung Lim and have a question about EXT4 journaling source.
-> I will be appreciated for your any comments.
->=20
-> * ordered journaling mode, disabled async_jounral_commit
-> On my understating, below steps is the simple process of journal
-> transaction commit (jbd2_journal_commit_transaction() ).
-> Step 1,3,4 are optional.
->=20
-> 1. Write journal revoke block (if it required).
-> 2. Write journal descriptor + journal buffer=E2=80=99s page.
-> 3. Submit all the data buffers of inode associated with the
-> transaction (journal_submit_data_buffers() ) (if it required).
-> 4. Wait for data submitted for writeback page
-> (journal_finish_inode_data_buffers() ) (if it required).
-> 5. Write journal commit mark.
->=20
-> The problem is that JBD2 issue unnecessary journal commit mark I/O.
-> For example, JBD2 write journal commit mark (step 5), even though
-> transaction (running ->commit state) has no journal buffer yet.
-> The I/O for journal descriptor + journal buffer=E2=80=99s page (step =
-2) can be
-> skipped because JBD2 check whether the transaction has journal buffer
-> or not.
-> void jbd2_journal_commit_transaction(journal_t *journal)
-> {
->             =E2=80=A6.
->             /* start to commit transaction */
->             while (commit_transaction->t_buffers) {
->             /* Find the next buffer to be journaled... */
->             jh =3D commit_transaction->t_buffers;
->             .=E2=80=A6
-> }
->=20
-> I think, if the journal buffers do not exist in the transaction, JBD2
-> can skip step 5 to reduce amount of I/O.
-> Thus, the code can be modified as follows: (this is simple way, we ca=
-n
-> optimize more)
-> (current)
->         err =3D journal_submit_commit_record(journal, commit_transact=
-ion,
-> (after)
->         if ( IS_ERR_OR_NULL(commit_transaction->t_buffers) ) {
->         err =3D journal_submit_commit_record(journal, commit_transact=
-ion,
-> }
-> or we can simply return the function.
-> (add)if ( IS_ERR_OR_NULL(commit_transaction->t_buffers) )
->             return ;
->=20
->         /* start to commit transaction */
->         while (commit_transaction->t_buffers) {
->         ....
->=20
-> Note. Android uses SQLite, and it makes sure that directory entry
-> contains newly created journal file by calling fsync() to the
-> directory.
-> (However, SQLite call fsync() to directory even though the file is no=
-t created).
-> When fsync() is called to directory,
-> EXT4 calls ext4_sync_file() -> ext4_force_commit() ->
-> ext4_journal_force_commit() -> jbd2_journal_force_commit() -> ... and
-> finally, jbd2_journal_commit_transaction();
-> If journal transaction is empty, JBD2 only write journal commit mark
-> and it causes lots of I/Os.
-
-However note that __jbd2_journal_force_commit() doesn't do anything if
-there isn't running transaction. Are you sure the commit contains only =
-the
-commit block? It is possible but someone would have to call
-jbd2_journal_start() and then don't dirty any buffers...
-
-=46rankly, skipping empty commit seems like a rather special case and s=
-olving
-the problem at the wrong level. I think we rather shouldn't force the
-transaction commit if the directory is unchanged. We can use i_sync_tid=
- in
-a similar way as we do for regular files, we just have to add that trac=
-king
-into directory code. That would save us much more commits.
-
-								Honza
---=20
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+SGVsbG8gVGVkLCBBbmRyZWFzLA0KDQoNCg0KU2hpbG9uZyBwb3N0ZWQgYW4gZW1haWwgaGVyZSBh
+IHdlZWsgYWdvIGJlbG93Lg0KaHR0cDovL2xpc3RzLm9wZW53YWxsLm5ldC9saW51eC1leHQ0LzIw
+MTUvMTAvMzAvMg0KDQp3ZSBpZGVudGlmaWVkIDEwIHByb2plY3QgcXVvdGEgcmVsYXRlZCB4ZnN0
+ZXN0IGFuZCBwb3J0ZWQgdGhlbSBpbnRvIGV4dDQveHh4Lg0KdGVzdCBudW1iZXIgYXJlIDMwNCwg
+MzA1LCAyOTksIDI0NCwgMTk2LCAxMzQsIDEwOCwgMTA3LCAxMDYsIDA1MCBpbiB4ZnMuDQoNCg0K
+V2UgcG9ydGVkIDkvMTAgdGVzdHMgaW50byBleHQ0L3h4eA0KZXh0NC8wNTAgZXh0NC8xMDYgZXh0
+NC8xMDcgZXh0NC8xMDggZXh0NC8xOTYgZXh0NC8yNDQgZXh0NC8yOTkgZXh0NC80MDAgZXh0NC80
+MDENCg0KcGxlYXNlIGNoZWNrIGh0dHBzOi8vZ2l0aHViLmNvbS93YW5nc2hpbG9uZy94ZnN0ZXN0
+cw0KDQpBbiBhbm90aGVyIHBhdGNoIHdhcyBub3QgdmFsaWQgc2luY2UgcXVvdGEgdXRpbGl0eSBp
+cyBkaWZmZXJlbnQuDQoNCg0KSW4gb3JkZXIgdG8gcnVuIHBvcnRlZCB0ZXN0cywgcGF0Y2hlZCBx
+dW90YS10b29scyBhbmQgTGkgWGkgcG9ydGVkIHBhdGNoIG9mIGUyZnNwcm9ncyByZXF1aXJlZC4N
+Cmh0dHBzOi8vZ2l0aHViLmNvbS93YW5nc2hpbG9uZy9xdW90YS10b29scy9jb21taXRzL3Byb2pl
+Y3QNCmh0dHA6Ly9saXN0cy5vcGVud2FsbC5uZXQvbGludXgtZXh0NC8yMDE1LzEwLzI5LzINCg0K
+VGhhbmtzDQpJaGFyYQ0KDQoxMS81LzE1LCAxMTo0NSBQTSAsICJsaW51eC1leHQ0LW93bmVyQHZn
+ZXIua2VybmVsLm9yZyAoTGkgWGkg44Gu5Luj55CGKSIgPGxpbnV4LWV4dDQtb3duZXJAdmdlci5r
+ZXJuZWwub3JnIChwa3VlbGVsaXhpQGdtYWlsLmNvbSDjga7ku6PnkIYpPiB3cm90ZToNCg0KPk9u
+IEZyaSwgU2VwIDI1LCAyMDE1IGF0IDE6MTIgQU0sIEFuZHJlYXMgRGlsZ2VyIDxhZGlsZ2VyQGRp
+bGdlci5jYT4gd3JvdGU6DQo+PiBPbiBTZXAgMTMsIDIwMTUsIGF0IDI6MjAgUE0sIExpIFhpIDxw
+a3VlbGVsaXhpQGdtYWlsLmNvbT4gd3JvdGU6DQo+Pj4NCj4+PiBUaGUgZm9sbG93aW5nIHBhdGNo
+ZXMgcHJvcG9zZSBhbiBpbXBsZW1lbnRhdGlvbiBvZiBwcm9qZWN0IHF1b3RhDQo+Pj4gc3VwcG9y
+dCBmb3IgZXh0NC4gQSBwcm9qZWN0IGlzIGFuIGFnZ3JlZ2F0ZSBvZiB1bnJlbGF0ZWQgaW5vZGVz
+DQo+Pj4gd2hpY2ggbWlnaHQgc2NhdHRlciBpbiBkaWZmZXJlbnQgZGlyZWN0b3JpZXMuIElub2Rl
+cyB0aGF0IGJlbG9uZw0KPj4+IHRvIHRoZSBzYW1lIHByb2plY3QgcG9zc2VzcyBhbiBpZGVudGlj
+YWwgaWRlbnRpZmljYXRpb24gaS5lLg0KPj4+ICdwcm9qZWN0IElEJywganVzdCBsaWtlIGV2ZXJ5
+IGlub2RlIGhhcyBpdHMgdXNlci9ncm91cA0KPj4+IGlkZW50aWZpY2F0aW9uLiBUaGUgZm9sbG93
+aW5nIHBhdGNoZXMgYWRkIHByb2plY3QgcXVvdGEgYXMNCj4+PiBzdXBwbGVtZW50IHRvIHRoZSBm
+b3JtZXIgdWVyL2dyb3VwIHF1b3RhIHR5cGVzLg0KPj4NCj4+IFdlIGRpc2N1c3NlZCB0aGlzIG9u
+IHRoZSBleHQ0IGRldmVsb3BlciBjb25jYWxsIHRvZGF5IGFuZCB0cmllZCB0bw0KPj4gbW92ZSB0
+aGUgbGFuZGluZyBvZiB0aGVzZSBwYXRjaGVzIGZvcndhcmQuICBTb21lIG5vdGVzIGJlbG93Og0K
+Pj4NCj4+IC0gVGVkOiBhZ3JlZWQgdG8gcmVzZXJ2ZSBFWFQ0X0ZFQVRVUkVfUk9fQ09NUEFUX1BS
+T0pFQ1QsIHNfcHJqX3F1b3RhX2ludW0sDQo+PiAgIEVYVDRfUFJPSklOSEVSSVRfRkwsIGFuZCBp
+X3Byb2ppZCBmaWVsZHMgZm9yIHVzZSBieSBwcm9qZWN0IHF1b3RhIHRvDQo+PiAgIGF2b2lkIGNv
+bXBhdGliaWxpdHkgaXNzdWVzIGlmIHBhdGNoZXMgYXJlIG5vdCBsYW5kZWQgaW1tZWRpYXRlbHku
+DQo+PiAgICAtIFRlZDogdG8gZG8gZmluYWwgY2hlY2sgb2YgaW5vZGUgZmxhZyB2YWx1ZQ0KPj4g
+ICAgLSBleHQ0IHByb2plY3QgcXVvdGEgaW5vZGUgZG9lcyBub3QgbmVlZCB0byB1c2UgYSByZXNl
+cnZlZCBpbm9kZSwgYnV0DQo+PiAgICAgIGNvdWxkIGFmdGVyIEphbidzIHBhdGNoIHRvIGluY3Jl
+YXNlIHJlc2VydmVkIGlub2RlcyBsYW5kcw0KPj4gLSBMaSBYaTogaWRlbnRpZnkgeGZzdGVzdHMg
+c3VidGVzdHMgdGhhdCBhcmUgZXhlcmNpc2luZyBwcm9qZWN0IHF1b3RhDQo+PiAgICAtIHN1Ym1p
+dCBwYXRjaGVzIHRvIHhmc3Rlc3RzIHRoYXQgd2lsbCBhY3RpdmF0ZSB0aGVtIGZvciBleHQ0DQo+
+PiAgICAtIGtlZXAgaW4gZXh0NCB4ZnN0ZXN0cyBmb3IgdGVzdGluZyB1bnRpbCBwYXRjaGVzIGxh
+bmQgdXBzdHJlYW0NCj4+ICAgIC0gdGhpcyBuZWVkcyB0byBiZSBkb25lIGJlZm9yZSBsYW5kaW5n
+IHRvIGVuc3VyZSBleHQ0IGNvZGUgd29ya3MNCj4+IC0gTGkgWGk6IGRvY3VtZW50IHRoZSBiZWhh
+dmlvdXIgb2YgcHJvamVjdCBxdW90YSAoaWYgbm8gZXhpc3RpbmcNCj4+ICAgZG9jdW1lbnQgZXhp
+c3RzIGZvciBYRlMgYWxyZWFkeSksIHNvbWUgb2YgdGhpcyBpcyBhbHJlYWR5IGJlbG93DQo+PiAg
+ICAtIHVwZGF0ZSBtYW4gcGFnZXMgZm9yIGRmKDEpIGFuZCBzdGF0ZnMoMikgZm9yIHN1YmRpciB3
+aXRoIHByb2plY3QgSUQNCj4+ICAgICAgKGkuZS4gdGhhdCBpdCByZXR1cm5zIG9ubHkgcXVvdGEg
+dXNhZ2UgYW5kIGxpbWl0IGZvciBwcm9qZWN0IElEKQ0KPj4gICAgLSBUZWQ6IHdoZXJlIHNob3Vs
+ZCBkb2N1bWVudCBnbz8gbGludXgvRG9jdW1lbnRhdGlvbi9mcz8gZXh0NCB3aWtpPw0KPj4gICAg
+LSBub3QgYSByZXF1aXJlbWVudCBmb3IgdGVzdGluZywgY2FuIGJlIGRvbmUgYWZ0ZXIgbGFuZGlu
+Zw0KPj4NCj4+IC0gQWxsOiBkZWNpZGUgb24gYSBjb21tb24gdG9vbCBmb3Igc2V0dGluZyBwcm9q
+ZWN0IElEIG9uIGZpbGUvZGlyZWN0b3J5DQo+PiAgICAtIGRvbid0IHdhbnQgdG8gcmVxdWlyZSB4
+ZnN1dGlscyBpbiBvcmRlciB0byB1c2UgcHJvamVjdCBxdW90YQ0KPj4gICAgLSBzdGFydCB3aXRo
+IGNoYXR0ciAodXNpbmcgRlNfSU9DX0ZTe0dFVCxTRVR9WEFUVFIpIGluIGUyZnNwcm9ncw0KPj4g
+ICAgICAtIGFsbG93cyB0ZXN0aW5nIHByb2plY3QgcXVvdGEgd2l0aCBlMmZzcHJvZ3MvZXh0NA0K
+Pj4gICAgLSBjaHByb2ogKGxpa2UgY2hvd24vY2hncnApIHdvdWxkIGFsc28gYmUgYW4gb3B0aW9u
+DQo+PiAgICAgIC0gbmVlZHMgbW9yZSBkaXNjdXNzaW9uL2RldmVsb3BtZW50IGVmZm9ydCwgZ29l
+cyBpbnRvIGZpbGV1dGlscw0KPj4gICAgLSB0aGlzIGRvZXNuJ3QgbmVlZCB0byBiZSBkZWNpZGVk
+IGltbWVkaWF0ZWx5LCBhbmQgYm90aCBjb3VsZCBiZSBkb25lDQo+Pg0KPkhpLA0KPg0KPkkndmUg
+cHVzaGVkIHRoZSBwYXRjaCBvZiBFeHQ0IGFzIHdlbGwgYXMgZTJmc3Byb2dzLiBTaGlsb25nIGhh
+cyBhZGRlZCB0ZXN0DQo+c3VpdHMgZm9yIGV4dDQgcHJvamVjdCBxdW90YSBpbiB4ZnN0ZXN0LCBh
+bmQgd2lsbCBwdXNoIHBhdGNoZXMgc29vbi4gSQ0KPndpbGwgd3JpdGUNCj5uZWNlc3NhcnkgZG9j
+dW1lbnRhdGlvbiBib3RoIGZvciBtYW51YWwgYW5kIGxpbnV4L0RvY3VtZW50YXRpb24vZnMuDQo+
+DQo+SG9wZWZ1bGx5LCBhdCBsZWFzdCB0aGUga2VybmVsIHBhdGNoZXMgb2YgZXh0NCBwcm9qZWN0
+IHF1b3RhIHdpbGwgYmUgbWVyZ2VkDQo+c29vbi4NCj4NCj5SZWdhcmRzLA0KPkxpIFhpDQo+LS0N
+Cj5UbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3Jp
+YmUgbGludXgtZXh0NCIgaW4NCj50aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZn
+ZXIua2VybmVsLm9yZw0KPk1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5l
+bC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0K
