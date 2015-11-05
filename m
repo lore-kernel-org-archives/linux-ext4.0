@@ -1,8 +1,8 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC] ext4: fix a BUG in ext4_mpage_readpages()
-Date: Thu, 5 Nov 2015 16:40:31 +0100
-Message-ID: <20151105154031.GC23628@quack.suse.cz>
-References: <1446623914-9367-1-git-send-email-yalin.wang2010@gmail.com>
+Subject: Re: [RFC] ext4: remove unused page_idx
+Date: Thu, 5 Nov 2015 16:42:27 +0100
+Message-ID: <20151105154227.GD23628@quack.suse.cz>
+References: <1446624219-27190-1-git-send-email-yalin.wang2010@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
@@ -10,39 +10,49 @@ Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
 To: yalin wang <yalin.wang2010@gmail.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1446623914-9367-1-git-send-email-yalin.wang2010@gmail.com>
+In-Reply-To: <1446624219-27190-1-git-send-email-yalin.wang2010@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 04-11-15 15:58:34, yalin wang wrote:
-> The last block should be the total read pages last block,
-> need adjust the block number when caculate every page.
-> 
+On Wed 04-11-15 16:03:39, yalin wang wrote:
 > Signed-off-by: yalin wang <yalin.wang2010@gmail.com>
 > ---
->  fs/ext4/readpage.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+>  fs/ext4/readpage.c | 3 +--
+>  1 file changed, 1 insertion(+), 2 deletions(-)
 > 
-> diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-> index 5dc5e95..d20c39d 100644
-> --- a/fs/ext4/readpage.c
-> +++ b/fs/ext4/readpage.c
-> @@ -174,7 +174,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
->  			goto confused;
->  
->  		block_in_file = (sector_t)page->index << (PAGE_CACHE_SHIFT - blkbits);
-> -		last_block = block_in_file + nr_pages * blocks_per_page;
-> +		last_block = block_in_file + (nr_pages - page_idx) * blocks_per_page;
+> ignore my previous patch
 
-I don't think your patch is correct. The for loop decrements nr_pages at each
-iteration so the original code looks fine... Or which problems do you
-observe?
+Ah, ignore my previous review ;) But next time it is good to reply to that
+patch that you are withdrawing it to so that people can immediately see it.
+
+This patch look good to me. You can add:
+
+Reviewed-by: Jan Kara <jack@suse.com>
 
 								Honza
 
->  		last_block_in_file = (i_size_read(inode) + blocksize - 1) >> blkbits;
->  		if (last_block > last_block_in_file)
->  			last_block = last_block_in_file;
+> 
+> diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+> index 5dc5e95..2cc2760 100644
+> --- a/fs/ext4/readpage.c
+> +++ b/fs/ext4/readpage.c
+> @@ -135,7 +135,6 @@ int ext4_mpage_readpages(struct address_space *mapping,
+>  			 unsigned nr_pages)
+>  {
+>  	struct bio *bio = NULL;
+> -	unsigned page_idx;
+>  	sector_t last_block_in_bio = 0;
+>  
+>  	struct inode *inode = mapping->host;
+> @@ -157,7 +156,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
+>  	map.m_len = 0;
+>  	map.m_flags = 0;
+>  
+> -	for (page_idx = 0; nr_pages; page_idx++, nr_pages--) {
+> +	for (; nr_pages; nr_pages--) {
+>  		int fully_mapped = 1;
+>  		unsigned first_hole = blocks_per_page;
+>  
 > -- 
 > 1.9.1
 > 
