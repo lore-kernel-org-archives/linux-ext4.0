@@ -1,129 +1,68 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [RFC 00/11] DAX fsynx/msync support
-Date: Thu, 5 Nov 2015 19:33:09 +1100
-Message-ID: <20151105083309.GJ19199@dastard>
-References: <1446149535-16200-1-git-send-email-ross.zwisler@linux.intel.com>
- <20151030035533.GU19199@dastard>
- <20151030183938.GC24643@linux.intel.com>
- <20151101232948.GF10656@dastard>
- <x49vb9kqy5k.fsf@segfault.boston.devel.redhat.com>
- <20151102201029.GI10656@dastard>
- <x49twp4p11j.fsf@segfault.boston.devel.redhat.com>
+From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH v13 45/51] sunrpc: Allow to demand-allocate pages to
+ encode into
+Date: Thu, 5 Nov 2015 12:07:05 +0100
+Message-ID: <CAHc6FU5xkjWJeGFR5mO8+OAEMwwU6yWK7H8CV1fn5dk-LS23-g@mail.gmail.com>
+References: <1446563847-14005-1-git-send-email-agruenba@redhat.com>
+	<1446563847-14005-46-git-send-email-agruenba@redhat.com>
+	<CAHQdGtScoRb-722ES168O8tkp-Rbvwe6bZ=70WwgiXpCC3vsHw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-nvdimm@ml01.01.org, x86@kernel.org, xfs@oss.sgi.com,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>, axboe@kernel.dk
-To: Jeff Moyer <jmoyer@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <x49twp4p11j.fsf@segfault.boston.devel.redhat.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
+	Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux FS-devel Mailing List <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Linux API Mailing List <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <CAHQdGtScoRb-722ES168O8tkp-Rbvwe6bZ=70WwgiXpCC3vsHw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-[ sorry for slow response, been without an internet connection for
-~36 hours ]
+Trond,
 
-On Mon, Nov 02, 2015 at 04:02:48PM -0500, Jeff Moyer wrote:
-> Dave Chinner <david@fromorbit.com> writes:
-> 
-> > On Mon, Nov 02, 2015 at 09:22:15AM -0500, Jeff Moyer wrote:
-> >> Dave Chinner <david@fromorbit.com> writes:
-> >> 
-> >> > Further, REQ_FLUSH/REQ_FUA are more than just "put the data on stable
-> >> > storage" commands. They are also IO barriers that affect scheduling
-> >> > of IOs in progress and in the request queues.  A REQ_FLUSH/REQ_FUA
-> >> > IO cannot be dispatched before all prior IO has been dispatched and
-> >> > drained from the request queue, and IO submitted after a queued
-> >> > REQ_FLUSH/REQ_FUA cannot be scheduled ahead of the queued
-> >> > REQ_FLUSH/REQ_FUA operation.
-> >> >
-> >> > IOWs, REQ_FUA/REQ_FLUSH not only guarantee data is on stable
-> >> > storage, they also guarantee the order of IO dispatch and
-> >> > completion when concurrent IO is in progress.
-> >> 
-> >> This hasn't been the case for several years, now.  It used to work that
-> >> way, and that was deemed a big performance problem.  Since file systems
-> >> already issued and waited for all I/O before sending down a barrier, we
-> >> decided to get rid of the I/O ordering pieces of barriers (and stop
-> >> calling them barriers).
-> >> 
-> >> See commit 28e7d184521 (block: drop barrier ordering by queue draining).
-> >
-> > Yes, I realise that, even if I wasn't very clear about how I wrote
-> > it. ;)
-> >
-> > Correct me if I'm wrong: AFAIA, dispatch ordering (i.e. the "IO
-> > barrier") is still enforced by the scheduler via REQ_FUA|REQ_FLUSH
-> > -> ELEVATOR_INSERT_FLUSH -> REQ_SOFTBARRIER and subsequent IO
-> > scheduler calls to elv_dispatch_sort() that don't pass
-> > REQ_SOFTBARRIER in the queue.
-> 
-> This part is right.
-> 
-> > IOWs, if we queue a bunch of REQ_WRITE IOs followed by a
-> > REQ_WRITE|REQ_FLUSH IO, all of the prior REQ_WRITE IOs will be
-> > dispatched before the REQ_WRITE|REQ_FLUSH IO and hence be captured
-> > by the cache flush.
-> 
-> But this part is not.  It is up to the I/O scheduler to decide when to
-> dispatch requests.  It can hold on to them for a variety of reasons.
-> Flush requests, however, do not go through the I/O scheduler.  At the
+On Tue, Nov 3, 2015 at 5:25 PM, Trond Myklebust
+<trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org> wrote:
+> On Tue, Nov 3, 2015 at 10:17 AM, Andreas Gruenbacher
+> <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
+>> When encoding large, variable-length objects such as acls into xdr_bufs,
+>> it is easier to allocate buffer pages on demand rather than precomputing
+>> the required buffer size.
+>
+> NACK. We're not doing allocations from inside the XDR encoders. This
+> can and should be done before calling into the SUNRPC layer.
 
-That's pure REQ_FLUSH bios, right? Aren't data IOs with
-REQ_FLUSH|REQ_FUA sorted like any other IO?
+an XDR-encoded ACL can be up to 64k (16 pages) in size. In practice,
+large ACLs like that will almost never occur and almost all ACLs will
+fit into a single page though.
 
-> very moment that the flush request is inserted, it goes directly to the
-> dispatch queue (assuming no other flush is in progress).  The prior
-> requests may still be waiting in the I/O scheduler's internal lists.
-> 
-> So, any newly dispatched I/Os will certainly not get past the REQ_FLUSH.
-> However, the REQ_FLUSH is very likely to jump ahead of prior I/Os in the
-> queue.
+The XDR-encoded ACL contains strings for the user and group names
+which need to be looked up when the idmapper is used. Those lookups
+are somewhat expensive; in addition, the lookup results can change
+over time. When precomputing the size, allocating space, and then
+encoding the ACL, we could run out of space when encoding.
 
-Uh, ok, that's different, and most definitely not the "IO barrier" I
-was under the impression REQ_FLUSH|REQ_FUA gave us.
+So we could always allocate the maximum 16 pages, encode the acl, and
+free the unused pages. This would be rather wasteful though.
 
-> > Hence once the filesystem has waited on the REQ_WRITE|REQ_FLUSH IO
-> > to complete, we know that all the earlier REQ_WRITE IOs are on
-> > stable storage, too. Hence there's no need for the elevator to drain
-> > the queue to guarantee completion ordering - the dispatch ordering
-> > and flush/fua write semantics guarantee that when the flush/fua
-> > completes, all the IOs dispatch prior to that flush/fua write are
-> > also on stable storage...
-> 
-> Des xfs rely on this model for correctness?  If so, I'd say we've got a
-> problem
+Given how simple it is to allocate pages as we go, this seems the
+better choice here. This doesn't break any existing code either; NULL
+page pointers would have oopsed in xdr_get_next_encode_buffer before.
 
-No, it doesn't. The XFS integrity model doesn't trust the IO layers
-to tell the truth about IO ordering and completion or for it's
-developers to fully understand how IO layer ordering works. :P
+>From the memory management point of view, there is no difference in
+preallocating GFP_NOFS pages and allocating them on demand; the pages
+are allocated in the same task and locking context in both cases.
 
-i.e. we wait for full completions of all dependent IO before issuing
-flushes or log writes that use REQ_FLUSH|REQ_FUA semantics to ensure
-the dependent IOs are fully caught by the cache flushes...
+So could you please explain why you object to this change?
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Thanks,
+Andreas
