@@ -1,47 +1,37 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 107301] system hang during ext4 xattr operation
-Date: Thu, 05 Nov 2015 17:02:57 +0000
-Message-ID: <bug-107301-13602-CY4XwSLMNn@https.bugzilla.kernel.org/>
-References: <bug-107301-13602@https.bugzilla.kernel.org/>
+From: David Howells <dhowells@redhat.com>
+Subject: Is EXT4_FITS_IN_INODE() broken?
+Date: Thu, 05 Nov 2015 17:18:57 +0000
+Message-ID: <25591.1446743937@warthog.procyon.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="us-ascii"
+Cc: dhowells@redhat.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:48483 "EHLO mail.kernel.org"
+Received: from mx1.redhat.com ([209.132.183.28]:53789 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030726AbbKERDA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Nov 2015 12:03:00 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 852752084B
-	for <linux-ext4@vger.kernel.org>; Thu,  5 Nov 2015 17:02:59 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id F296220851
-	for <linux-ext4@vger.kernel.org>; Thu,  5 Nov 2015 17:02:57 +0000 (UTC)
-In-Reply-To: <bug-107301-13602@https.bugzilla.kernel.org/>
+	id S1755688AbbKERTA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Nov 2015 12:19:00 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (Postfix) with ESMTPS id 6F6638E4E2
+	for <linux-ext4@vger.kernel.org>; Thu,  5 Nov 2015 17:19:00 +0000 (UTC)
+Content-ID: <25590.1446743937.1@warthog.procyon.org.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=107301
+Is EXT4_FITS_IN_INODE() broken?  It makes use of i_extra_isize - which is an
+optional field and doesn't exist if the filesystem was made with "-I 128".
 
-Jan Kara <jack@suse.cz> changed:
+	(gdb) p &((struct ext4_inode *)0)->i_extra_isize
+	$2 = (__le16 *) 0x80 <irq_stack_union+128>
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |NEEDINFO
+Should EXT4_FITS_IN_INODE():
 
---- Comment #1 from Jan Kara <jack@suse.cz> ---
-Hum, from the stack traces in the log it seems mb_cache_entry_alloc() is racing
-with other operations on the LRU and restarting all the time. Another
-possibility is that there are lots of entries in the LRU and it takes a long
-time to scan (if I remember right ceph is a heavy user of xattrs).
+	#define EXT4_FITS_IN_INODE(ext4_inode, einode, field)	\
+		((offsetof(typeof(*ext4_inode), field) +	\
+		  sizeof((ext4_inode)->field))			\
+		<= (EXT4_GOOD_OLD_INODE_SIZE +			\
+		    (einode)->i_extra_isize))			\
 
-The first problem would be easily fixed by adding cond_resched() at appropriate
-place, the second problem would require more intrusive changes in how LRU is
-handled.
+be using EXT4_INODE_SIZE() and consulting the superblock instead?
 
-Can you reproduce the issue?
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+David
