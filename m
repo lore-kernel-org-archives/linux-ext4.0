@@ -1,65 +1,37 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC] ext4: remove unused page_idx
-Date: Thu, 5 Nov 2015 16:42:27 +0100
-Message-ID: <20151105154227.GD23628@quack.suse.cz>
-References: <1446624219-27190-1-git-send-email-yalin.wang2010@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 107301] system hang during ext4 xattr operation
+Date: Thu, 05 Nov 2015 15:45:08 +0000
+Message-ID: <bug-107301-13602-FNNWi6QtqT@https.bugzilla.kernel.org/>
+References: <bug-107301-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: yalin wang <yalin.wang2010@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1446624219-27190-1-git-send-email-yalin.wang2010@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:41796 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756303AbbKEPpP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Nov 2015 10:45:15 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id DCEC42089D
+	for <linux-ext4@vger.kernel.org>; Thu,  5 Nov 2015 15:45:13 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 881B0208BD
+	for <linux-ext4@vger.kernel.org>; Thu,  5 Nov 2015 15:45:08 +0000 (UTC)
+In-Reply-To: <bug-107301-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 04-11-15 16:03:39, yalin wang wrote:
-> Signed-off-by: yalin wang <yalin.wang2010@gmail.com>
-> ---
->  fs/ext4/readpage.c | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
-> 
-> ignore my previous patch
+https://bugzilla.kernel.org/show_bug.cgi?id=107301
 
-Ah, ignore my previous review ;) But next time it is good to reply to that
-patch that you are withdrawing it to so that people can immediately see it.
+Jan Kara <jack@suse.cz> changed:
 
-This patch look good to me. You can add:
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+ Attachment #192191|application/octet-stream    |text/plain
+          mime type|                            |
+                 CC|                            |jack@suse.cz
 
-Reviewed-by: Jan Kara <jack@suse.com>
-
-								Honza
-
-> 
-> diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-> index 5dc5e95..2cc2760 100644
-> --- a/fs/ext4/readpage.c
-> +++ b/fs/ext4/readpage.c
-> @@ -135,7 +135,6 @@ int ext4_mpage_readpages(struct address_space *mapping,
->  			 unsigned nr_pages)
->  {
->  	struct bio *bio = NULL;
-> -	unsigned page_idx;
->  	sector_t last_block_in_bio = 0;
->  
->  	struct inode *inode = mapping->host;
-> @@ -157,7 +156,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
->  	map.m_len = 0;
->  	map.m_flags = 0;
->  
-> -	for (page_idx = 0; nr_pages; page_idx++, nr_pages--) {
-> +	for (; nr_pages; nr_pages--) {
->  		int fully_mapped = 1;
->  		unsigned first_hole = blocks_per_page;
->  
-> -- 
-> 1.9.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
