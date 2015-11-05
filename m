@@ -1,74 +1,284 @@
-From: Li Xi <pkuelelixi@gmail.com>
-Subject: Re: [v15 0/4] ext4: add project quota support
-Date: Thu, 5 Nov 2015 22:45:12 +0800
-Message-ID: <CAPTn0cBp4d09u9XzQm2cXzd6kcE0+FDRX0b_H=xJBZT-i5eKcw@mail.gmail.com>
-References: <1442146833-13652-1-git-send-email-lixi@ddn.com>
-	<43B1BB97-8D53-4D93-9B57-B5E2048F7E7A@dilger.ca>
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH] Ext4: Fix extended timestamp encoding and decoding
+Date: Thu, 05 Nov 2015 14:49:16 +0000
+Message-ID: <20151105144916.6333.58880.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Linux API <linux-api@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Christoph Hellwig <hch@infradead.org>,
-	Dave Chinner <david@fromorbit.com>,
-	=?UTF-8?B?0JTQvNC40YLRgNC40Lkg0JzQvtC90LDRhdC+0LI=?=
-	<dmonakhov@openvz.org>, Shuichi Ihara <ihashu@gmail.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <43B1BB97-8D53-4D93-9B57-B5E2048F7E7A@dilger.ca>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	arnd@arndb.de
+To: tytso@mit.edu, kalpak@clusterfs.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Sep 25, 2015 at 1:12 AM, Andreas Dilger <adilger@dilger.ca> wrote:
-> On Sep 13, 2015, at 2:20 PM, Li Xi <pkuelelixi@gmail.com> wrote:
->>
->> The following patches propose an implementation of project quota
->> support for ext4. A project is an aggregate of unrelated inodes
->> which might scatter in different directories. Inodes that belong
->> to the same project possess an identical identification i.e.
->> 'project ID', just like every inode has its user/group
->> identification. The following patches add project quota as
->> supplement to the former uer/group quota types.
->
-> We discussed this on the ext4 developer concall today and tried to
-> move the landing of these patches forward.  Some notes below:
->
-> - Ted: agreed to reserve EXT4_FEATURE_RO_COMPAT_PROJECT, s_prj_quota_inum,
->   EXT4_PROJINHERIT_FL, and i_projid fields for use by project quota to
->   avoid compatibility issues if patches are not landed immediately.
->    - Ted: to do final check of inode flag value
->    - ext4 project quota inode does not need to use a reserved inode, but
->      could after Jan's patch to increase reserved inodes lands
-> - Li Xi: identify xfstests subtests that are exercising project quota
->    - submit patches to xfstests that will activate them for ext4
->    - keep in ext4 xfstests for testing until patches land upstream
->    - this needs to be done before landing to ensure ext4 code works
-> - Li Xi: document the behaviour of project quota (if no existing
->   document exists for XFS already), some of this is already below
->    - update man pages for df(1) and statfs(2) for subdir with project ID
->      (i.e. that it returns only quota usage and limit for project ID)
->    - Ted: where should document go? linux/Documentation/fs? ext4 wiki?
->    - not a requirement for testing, can be done after landing
->
-> - All: decide on a common tool for setting project ID on file/directory
->    - don't want to require xfsutils in order to use project quota
->    - start with chattr (using FS_IOC_FS{GET,SET}XATTR) in e2fsprogs
->      - allows testing project quota with e2fsprogs/ext4
->    - chproj (like chown/chgrp) would also be an option
->      - needs more discussion/development effort, goes into fileutils
->    - this doesn't need to be decided immediately, and both could be done
->
-Hi,
+The handling of extended timestamps in Ext4 is broken as can be seen in the
+output of the test program attached below:
 
-I've pushed the patch of Ext4 as well as e2fsprogs. Shilong has added test
-suits for ext4 project quota in xfstest, and will push patches soon. I
-will write
-necessary documentation both for manual and linux/Documentation/fs.
+time     extra   bad decode        good decode         bad encode  good encode
+======== =====   ================= =================   =========== ===========
+ffffffff     0 >  ffffffffffffffff  ffffffffffffffff > *ffffffff 3  ffffffff 0
+80000000     0 >  ffffffff80000000  ffffffff80000000 > *80000000 3  80000000 0
+00000000     0 >                 0                 0 >  00000000 0  00000000 0
+7fffffff     0 >          7fffffff          7fffffff >  7fffffff 0  7fffffff 0
+80000000     1 > *ffffffff80000000          80000000 > *80000000 0  80000000 1
+ffffffff     1 > *ffffffffffffffff          ffffffff > *ffffffff 0  ffffffff 1
+00000000     1 >         100000000         100000000 >  00000000 1  00000000 1
+7fffffff     1 >         17fffffff         17fffffff >  7fffffff 1  7fffffff 1
+80000000     2 > *ffffffff80000000         180000000 > *80000000 1  80000000 2
+ffffffff     2 > *ffffffffffffffff         1ffffffff > *ffffffff 1  ffffffff 2
+00000000     2 >         200000000         200000000 >  00000000 2  00000000 2
+7fffffff     2 >         27fffffff         27fffffff >  7fffffff 2  7fffffff 2
+80000000     3 > *ffffffff80000000         280000000 > *80000000 2  80000000 3
+ffffffff     3 > *ffffffffffffffff         2ffffffff > *ffffffff 2  ffffffff 3
+00000000     3 >         300000000         300000000 >  00000000 3  00000000 3
+7fffffff     3 >         37fffffff         37fffffff >  7fffffff 3  7fffffff 3
 
-Hopefully, at least the kernel patches of ext4 project quota will be merged
-soon.
+The values marked with asterisks are wrong.
 
-Regards,
-Li Xi
+The problem is that with a 64-bit time, in ext4_decode_extra_time() the
+epoch value is just OR'd with the sign-extended time - which, if negative,
+has all of the upper 32 bits set anyway.  We need to add the epoch instead
+of OR'ing it.  In ext4_encode_extra_time(), the reverse operation needs to
+take place as the 32-bit part of the number of seconds needs to be
+subtracted from the 64-bit value before the epoch is shifted down.
+
+Since the epoch is presumably unsigned, this has the slightly strange
+effect of, for epochs > 0, putting the 0x80000000-0xffffffff range before
+the 0x00000000-0x7fffffff range.
+
+This affects all kernels from v2.6.23-rc1 onwards.
+
+The test program:
+
+	#include <stdio.h>
+
+	#define EXT4_FITS_IN_INODE(x, y, z) 1
+	#define EXT4_EPOCH_BITS 2
+	#define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
+	#define EXT4_NSEC_MASK  (~0UL << EXT4_EPOCH_BITS)
+
+	#define le32_to_cpu(x) (x)
+	#define cpu_to_le32(x) (x)
+	typedef unsigned int __le32;
+	typedef unsigned int u32;
+	typedef signed int s32;
+	typedef unsigned long long __u64;
+	typedef signed long long s64;
+
+	struct timespec {
+		long long	tv_sec;			/* seconds */
+		long		tv_nsec;		/* nanoseconds */
+	};
+
+	struct ext4_inode_info {
+		struct timespec i_crtime;
+	};
+
+	struct ext4_inode {
+		__le32  i_crtime;       /* File Creation time */
+		__le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch) */
+	};
+
+	/* Incorrect implementation */
+	static inline void ext4_decode_extra_time_bad(struct timespec *time, __le32 extra)
+	{
+	       if (sizeof(time->tv_sec) > 4)
+		       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
+				       << 32;
+	       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
+	}
+
+	static inline __le32 ext4_encode_extra_time_bad(struct timespec *time)
+	{
+	       return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
+				   (time->tv_sec >> 32) & EXT4_EPOCH_MASK : 0) |
+				  ((time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK));
+	}
+
+	/* Fixed implementation */
+	static inline void ext4_decode_extra_time_good(struct timespec *time, __le32 _extra)
+	{
+		u32 extra = le32_to_cpu(_extra);
+		u32 epoch = extra & EXT4_EPOCH_MASK;
+
+		time->tv_sec = (s32)time->tv_sec + ((s64)epoch  << 32);
+		time->tv_nsec = (extra & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
+	}
+
+	static inline __le32 ext4_encode_extra_time_good(struct timespec *time)
+	{
+		u32 extra;
+		s64 epoch = time->tv_sec - (s32)time->tv_sec;
+
+		extra = (epoch >> 32) & EXT4_EPOCH_MASK;
+		extra |= (time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK;
+		return cpu_to_le32(extra);
+	}
+
+	#define EXT4_INODE_GET_XTIME_BAD(xtime, inode, raw_inode)		\
+	do {									       \
+		(inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
+		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+			ext4_decode_extra_time_bad(&(inode)->xtime,		\
+						   raw_inode->xtime ## _extra);	\
+		else								       \
+			(inode)->xtime.tv_nsec = 0;				       \
+	} while (0)
+
+	#define EXT4_INODE_SET_XTIME_BAD(xtime, inode, raw_inode)		\
+	do {									       \
+		(raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec);	       \
+		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+			(raw_inode)->xtime ## _extra =				       \
+				ext4_encode_extra_time_bad(&(inode)->xtime);	\
+	} while (0)
+
+	#define EXT4_INODE_GET_XTIME_GOOD(xtime, inode, raw_inode)		\
+	do {									       \
+		(inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
+		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+			ext4_decode_extra_time_good(&(inode)->xtime,			       \
+					       raw_inode->xtime ## _extra);	\
+		else								       \
+			(inode)->xtime.tv_nsec = 0;				       \
+	} while (0)
+
+	#define EXT4_INODE_SET_XTIME_GOOD(xtime, inode, raw_inode)		\
+	do {									       \
+		(raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec);	       \
+		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+			(raw_inode)->xtime ## _extra =				       \
+				ext4_encode_extra_time_good(&(inode)->xtime);	\
+	} while (0)
+
+	static const struct test {
+		unsigned crtime;
+		unsigned extra;
+		long long sec;
+		int nsec;
+	} tests[] = {
+		// crtime	extra		tv_sec			tv_nsec
+		0xffffffff,	0x00000000,	0xffffffffffffffff,	0,
+		0x80000000,	0x00000000,	0xffffffff80000000,	0,
+		0x00000000,	0x00000000,	0x0000000000000000,	0,
+		0x7fffffff,	0x00000000,	0x000000007fffffff,	0,
+		0x80000000,	0x00000001,	0x0000000080000000,	0,
+		0xffffffff,	0x00000001,	0x00000000ffffffff,	0,
+		0x00000000,	0x00000001,	0x0000000100000000,	0,
+		0x7fffffff,	0x00000001,	0x000000017fffffff,	0,
+		0x80000000,	0x00000002,	0x0000000180000000,	0,
+		0xffffffff,	0x00000002,	0x00000001ffffffff,	0,
+		0x00000000,	0x00000002,	0x0000000200000000,	0,
+		0x7fffffff,	0x00000002,	0x000000027fffffff,	0,
+		0x80000000,	0x00000003,	0x0000000280000000,	0,
+		0xffffffff,	0x00000003,	0x00000002ffffffff,	0,
+		0x00000000,	0x00000003,	0x0000000300000000,	0,
+		0x7fffffff,	0x00000003,	0x000000037fffffff,	0,
+	};
+
+	int main()
+	{
+		struct ext4_inode_info ii_bad, ii_good;
+		struct ext4_inode raw, *praw = &raw;
+		struct ext4_inode raw_bad, *praw_bad = &raw_bad;
+		struct ext4_inode raw_good, *praw_good = &raw_good;
+		const struct test *t;
+		int i, ret = 0;
+
+		printf("time     extra   bad decode        good decode         bad encode  good encode\n");
+		printf("======== =====   ================= =================   =========== ===========\n");
+		for (i = 0; i < sizeof(tests) / sizeof(t[0]); i++) {
+			t = &tests[i];
+			raw.i_crtime = t->crtime;
+			raw.i_crtime_extra = t->extra;
+			printf("%08x %5d > ", t->crtime, t->extra);
+
+			EXT4_INODE_GET_XTIME_BAD(i_crtime, &ii_bad, praw);
+			EXT4_INODE_GET_XTIME_GOOD(i_crtime, &ii_good, praw);
+			if (ii_bad.i_crtime.tv_sec != t->sec ||
+			    ii_bad.i_crtime.tv_nsec != t->nsec)
+				printf("*");
+			else
+				printf(" ");
+			printf("%16llx", ii_bad.i_crtime.tv_sec);
+			printf(" ");
+			if (ii_good.i_crtime.tv_sec != t->sec ||
+			    ii_good.i_crtime.tv_nsec != t->nsec) {
+				printf("*");
+				ret = 1;
+			} else {
+				printf(" ");
+			}
+			printf("%16llx", ii_good.i_crtime.tv_sec);
+
+			EXT4_INODE_SET_XTIME_BAD(i_crtime, &ii_good, praw_bad);
+			EXT4_INODE_SET_XTIME_GOOD(i_crtime, &ii_good, praw_good);
+
+			printf(" > ");
+			if (raw_bad.i_crtime != raw.i_crtime ||
+			    raw_bad.i_crtime_extra != raw.i_crtime_extra)
+				printf("*");
+			else
+				printf(" ");
+			printf("%08llx %d", raw_bad.i_crtime, raw_bad.i_crtime_extra);
+			printf(" ");
+
+			if (raw_good.i_crtime != raw.i_crtime ||
+			    raw_good.i_crtime_extra != raw.i_crtime_extra) {
+				printf("*");
+				ret = 1;
+			} else {
+				printf(" ");
+			}
+			printf("%08llx %d", raw_good.i_crtime, raw_good.i_crtime_extra);
+			printf("\n");
+		}
+
+		return ret;
+	}
+
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
+
+ fs/ext4/ext4.h |   22 +++++++++++++---------
+ 1 file changed, 13 insertions(+), 9 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index fd1f28be5296..31efcd78bf51 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -723,19 +723,23 @@ struct move_extent {
+ 	<= (EXT4_GOOD_OLD_INODE_SIZE +			\
+ 	    (einode)->i_extra_isize))			\
+ 
+-static inline __le32 ext4_encode_extra_time(struct timespec *time)
++static inline void ext4_decode_extra_time(struct timespec *time, __le32 _extra)
+ {
+-       return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
+-			   (time->tv_sec >> 32) & EXT4_EPOCH_MASK : 0) |
+-                          ((time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK));
++	u32 extra = le32_to_cpu(_extra);
++	u32 epoch = extra & EXT4_EPOCH_MASK;
++
++	time->tv_sec = (s32)time->tv_sec + ((s64)epoch  << 32);
++	time->tv_nsec = (extra & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
+ }
+ 
+-static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
++static inline __le32 ext4_encode_extra_time(struct timespec *time)
+ {
+-       if (sizeof(time->tv_sec) > 4)
+-	       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
+-			       << 32;
+-       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
++	u32 extra;
++	s64 epoch = time->tv_sec - (s32)time->tv_sec;
++
++	extra = (epoch >> 32) & EXT4_EPOCH_MASK;
++	extra |= (time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK;
++	return cpu_to_le32(extra);
+ }
+ 
+ #define EXT4_INODE_SET_XTIME(xtime, inode, raw_inode)			       \
