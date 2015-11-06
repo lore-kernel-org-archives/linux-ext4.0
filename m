@@ -1,57 +1,41 @@
-From: Jens Axboe <axboe@kernel.dk>
-Subject: Re: [RFC 00/11] DAX fsynx/msync support
-Date: Thu, 5 Nov 2015 13:54:19 -0700
-Message-ID: <563BC1FB.60004@kernel.dk>
-References: <1446149535-16200-1-git-send-email-ross.zwisler@linux.intel.com>
- <20151030035533.GU19199@dastard> <20151030183938.GC24643@linux.intel.com>
- <20151101232948.GF10656@dastard>
- <x49vb9kqy5k.fsf@segfault.boston.devel.redhat.com>
- <20151102201029.GI10656@dastard>
- <x49twp4p11j.fsf@segfault.boston.devel.redhat.com>
- <20151105083309.GJ19199@dastard>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 107301] system hang during ext4 xattr operation
+Date: Fri, 06 Nov 2015 02:43:17 +0000
+Message-ID: <bug-107301-13602-4d84kGjvSi@https.bugzilla.kernel.org/>
+References: <bug-107301-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
- linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
- "J. Bruce Fields" <bfields@fieldses.org>, Theodore Ts'o <tytso@mit.edu>,
- Alexander Viro <viro@zeniv.linux.org.uk>,
- Andreas Dilger <adilger.kernel@dilger.ca>,
- Dan Williams <dan.j.williams@intel.com>, Ingo Molnar <mingo@redhat.com>,
- Jan Kara <jack@suse.com>, Jeff Layton <jlayton@poochiereds.net>,
- Matthew Wilcox <willy@linux.intel.com>, Thomas Gleixner
- <tglx@linutronix.de>, linux-ext4@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-mm@kvack.org, linux-nvdimm@ml01.01.org,
- x86@kernel.org, xfs@oss.sgi.com, Andrew Morton <akpm@linux-foundation.org>,
- Matthew Wilcox <matthew.r.wilcox@intel.com>
-To: Dave Chinner <david@fromorbit.com>, Jeff Moyer <jmoyer@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20151105083309.GJ19199@dastard>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:55006 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1030909AbbKFCnV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Nov 2015 21:43:21 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 130D420807
+	for <linux-ext4@vger.kernel.org>; Fri,  6 Nov 2015 02:43:20 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 7284020808
+	for <linux-ext4@vger.kernel.org>; Fri,  6 Nov 2015 02:43:17 +0000 (UTC)
+In-Reply-To: <bug-107301-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/05/2015 01:33 AM, Dave Chinner wrote:
->> Des xfs rely on this model for correctness?  If so, I'd say we've got a
->> problem
->
-> No, it doesn't. The XFS integrity model doesn't trust the IO layers
-> to tell the truth about IO ordering and completion or for it's
-> developers to fully understand how IO layer ordering works. :P
+https://bugzilla.kernel.org/show_bug.cgi?id=107301
 
-That's good, because the storage developers simplified the model so that 
-fs developers would be able to get and use it.
+Theodore Tso <tytso@mit.edu> changed:
 
-> i.e. we wait for full completions of all dependent IO before issuing
-> flushes or log writes that use REQ_FLUSH|REQ_FUA semantics to ensure
-> the dependent IOs are fully caught by the cache flushes...
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
 
-... which is what you are supposed to do, that's how it works.
+--- Comment #3 from Theodore Tso <tytso@mit.edu> ---
+If Ceph is using xattrs that are all different for each inode, the mbcache is
+not really useful at all.   So I wonder if we should have a mount option which
+disables the mbcache.   This will prove the scalability of the xattr functions,
+and should be a pretty big performance win for Ceph.
 
 -- 
-Jens Axboe
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+You are receiving this mail because:
+You are watching the assignee of the bug.
