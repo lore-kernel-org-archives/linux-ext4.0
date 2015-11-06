@@ -1,27 +1,25 @@
-From: "WEBMASTER" <cyy@cc.hwh.edu.tw>
-Subject: Attention: E-mail User
-Date: Fri, 06 Nov 2015 14:07:01 +0800 (CST)
-Message-ID: <1446790021.24823.cyy@cc.hwh.edu.tw>
-Reply-To: nwebmaster@addme.com
+From: Dmitry Kasatkin <dmitry.kasatkin@gmail.com>
+Subject: Ext4 encryption backporting
+Date: Fri, 6 Nov 2015 09:40:18 +0200
+Message-ID: <CACE9dm_y-z_xvMr5ub1rho819sE2NbzcLDMi7Cwbf+hHgVj84A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=big5
-Content-Transfer-Encoding: 8BIT
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cc.hwh.edu.tw ([140.131.39.200]:37148 "HELO cc.hwh.edu.tw"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1757239AbbKFG2a convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Nov 2015 01:28:30 -0500
+Received: from mail-lb0-f173.google.com ([209.85.217.173]:34753 "EHLO
+	mail-lb0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757213AbbKFHkU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Nov 2015 02:40:20 -0500
+Received: by lbbwb3 with SMTP id wb3so51971318lbb.1
+        for <linux-ext4@vger.kernel.org>; Thu, 05 Nov 2015 23:40:18 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Attention: E-mail User,
- 
-You have exceeded your E-mail account limit quota of 250MB and you are requested to expand it within 24 hours or else your E-mail account will be disable from our database. 
+Hi,
 
-===>  CLICK HERE : http://itverification43.stinge.com/ with the complete information requested to expand your Webmail account quota to 1GB.
+Can anyone roughly to tell is it a big effort to backport Ext4
+encryption to 3.10 kernel?
 
-Thank you for using E-mail services.
-
-&#169;2015 Office Information Center.
-All rights reserved.
+-- 
+Thanks,
+Dmitry
