@@ -1,41 +1,27 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 107301] system hang during ext4 xattr operation
-Date: Fri, 06 Nov 2015 02:43:17 +0000
-Message-ID: <bug-107301-13602-4d84kGjvSi@https.bugzilla.kernel.org/>
-References: <bug-107301-13602@https.bugzilla.kernel.org/>
+From: "WEBMASTER" <cyy@cc.hwh.edu.tw>
+Subject: Attention: E-mail User
+Date: Fri, 06 Nov 2015 14:07:01 +0800 (CST)
+Message-ID: <1446790021.24823.cyy@cc.hwh.edu.tw>
+Reply-To: nwebmaster@addme.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=big5
+Content-Transfer-Encoding: 8BIT
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:55006 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030909AbbKFCnV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Nov 2015 21:43:21 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 130D420807
-	for <linux-ext4@vger.kernel.org>; Fri,  6 Nov 2015 02:43:20 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 7284020808
-	for <linux-ext4@vger.kernel.org>; Fri,  6 Nov 2015 02:43:17 +0000 (UTC)
-In-Reply-To: <bug-107301-13602@https.bugzilla.kernel.org/>
+Received: from cc.hwh.edu.tw ([140.131.39.200]:37148 "HELO cc.hwh.edu.tw"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1757239AbbKFG2a convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Nov 2015 01:28:30 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=107301
+Attention: E-mail User,
+ 
+You have exceeded your E-mail account limit quota of 250MB and you are requested to expand it within 24 hours or else your E-mail account will be disable from our database. 
 
-Theodore Tso <tytso@mit.edu> changed:
+===>  CLICK HERE : http://itverification43.stinge.com/ with the complete information requested to expand your Webmail account quota to 1GB.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+Thank you for using E-mail services.
 
---- Comment #3 from Theodore Tso <tytso@mit.edu> ---
-If Ceph is using xattrs that are all different for each inode, the mbcache is
-not really useful at all.   So I wonder if we should have a mount option which
-disables the mbcache.   This will prove the scalability of the xattr functions,
-and should be a pretty big performance win for Ceph.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+&#169;2015 Office Information Center.
+All rights reserved.
