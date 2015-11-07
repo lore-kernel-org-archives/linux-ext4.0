@@ -1,148 +1,107 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: [PATCH v14 03/22] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD
-	permission flags
-Date: Sat, 7 Nov 2015 21:47:28 +0100
-Message-ID: <CAHc6FU7h5JLPfiB=fx=k0yjCAp+ujy3bY0XbMz3rR--1uo=5AQ@mail.gmail.com>
-References: <1446723580-3747-1-git-send-email-agruenba@redhat.com>
-	<1446723580-3747-4-git-send-email-agruenba@redhat.com>
-	<8C966D9B-A46D-47EC-BD4B-20E2F9B42555@dilger.ca>
+From: "Richard W.M. Jones" <rjones@redhat.com>
+Subject: Re: mkfs.ext2 succeeds despite nbd write errors?
+Date: Sat, 7 Nov 2015 21:02:03 +0000
+Message-ID: <20151107210203.GW29330@redhat.com>
+References: <CALuDM+AtyUUMFcdTOocxCw9BxQ4PBx5aeYVYwmy_UErh1MZjww@mail.gmail.com>
+	<20151107110354.GM1908@redhat.com>
+	<CALuDM+Aw9JCMVbQcRKaaUu+=+xvDpMgL8sUZpT2snz9Qp5DqpA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: linux-cifs@vger.kernel.org,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>, Linux API <linux-api@vger.kernel.org>,
-	Trond Myklebust <trond.myklebust@primarydata.com>,
-	LKML <linux-kernel@vger.kernel.org>, XFS Developers <xfs@oss.sgi.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Anna Schumaker <anna.schumaker@netapp.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <8C966D9B-A46D-47EC-BD4B-20E2F9B42555@dilger.ca>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Cc: linux-ext4@vger.kernel.org, libguestfs@redhat.com
+To: Jason Pepas <jasonpepas@gmail.com>
+Return-path: <libguestfs-bounces@redhat.com>
+Content-Disposition: inline
+In-Reply-To: <CALuDM+Aw9JCMVbQcRKaaUu+=+xvDpMgL8sUZpT2snz9Qp5DqpA@mail.gmail.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/options/libguestfs>,
+	<mailto:libguestfs-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/libguestfs>
+List-Post: <mailto:libguestfs@redhat.com>
+List-Help: <mailto:libguestfs-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/libguestfs>,
+	<mailto:libguestfs-request@redhat.com?subject=subscribe>
+Sender: libguestfs-bounces@redhat.com
+Errors-To: libguestfs-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Nov 6, 2015 at 10:26 PM, Andreas Dilger <adilger@dilger.ca> wrote:
-> On Nov 5, 2015, at 4:39 AM, Andreas Gruenbacher <agruenba@redhat.com> wrote:
->>
->> Normally, deleting a file requires MAY_WRITE access to the parent
->> directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
->> to the parent directory or with MAY_DELETE_SELF access to the file.
->>
->> To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
->> when checking for delete access inside a directory, and MAY_DELETE_SELF
->> when checking for delete access to a file itelf.
->>
->> The MAY_DELETE_SELF permission overrides the sticky directory check.
->>
->> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
->> Reviewed-by: J. Bruce Fields <bfields@redhat.com>
->> ---
->> fs/namei.c         | 21 ++++++++++++---------
->> include/linux/fs.h |  2 ++
->> 2 files changed, 14 insertions(+), 9 deletions(-)
->>
->> diff --git a/fs/namei.c b/fs/namei.c
->> index 0259392..2eab19e 100644
->> --- a/fs/namei.c
->> +++ b/fs/namei.c
->> @@ -453,9 +453,9 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
->>  * this, letting us set arbitrary permissions for filesystem access without
->>  * changing the "normal" UIDs which are used for other things.
->>  *
->> - * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE, or
->> - * MAY_CREATE_DIR are set.  That way, file systems that don't support these
->> - * permissions will check for MAY_WRITE instead.
->> + * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE,
->> + * MAY_CREATE_DIR, or MAY_DELETE_CHILD are set.  That way, file systems that
->> + * don't support these permissions will check for MAY_WRITE instead.
->>  */
->> int inode_permission(struct inode *inode, int mask)
->> {
->> @@ -2555,7 +2555,7 @@ static int may_delete(struct inode *dir, struct dentry *victim,
->>                     bool isdir, bool replace)
->> {
->>       struct inode *inode = d_backing_inode(victim);
->> -     int error, mask = MAY_WRITE | MAY_EXEC;
->> +     int error, mask = MAY_EXEC;
->>
->>       if (d_is_negative(victim))
->>               return -ENOENT;
->> @@ -2565,15 +2565,18 @@ static int may_delete(struct inode *dir, struct dentry *victim,
->>       audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
->>
->>       if (replace)
->> -             mask |= isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
->> -     error = inode_permission(dir, mask);
->> +             mask |= MAY_WRITE | (isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE);
->> +     error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
->> +     if (!error && check_sticky(dir, inode))
->> +             error = -EPERM;
->> +     if (error && IS_RICHACL(inode) &&
->> +         inode_permission(inode, MAY_DELETE_SELF) == 0)
->> +             error = 0;
->
-> This looks like a serious bug, as it is overriding other errors returned
-> from inode_permission() such as -EROFS from sb_permission() or even from
-> generic_permission->acl_permission_check().  Clearing the error returned
-> by an earlier check doesn't seem safe, only new errors should be added.
+[Adding linux-ext4 mailing list.  The original bug report is here:
+https://www.redhat.com/archives/libguestfs/2015-November/msg00078.html ]
 
-See further below ...
+On Sat, Nov 07, 2015 at 01:22:45PM -0600, Jason Pepas wrote:
+> On Sat, Nov 7, 2015 at 5:03 AM, Richard W.M. Jones <rjones@redhat.com> wrote:
+> > How about 'strace mkfs.ext2 ..' and see if any system calls are
+> > returning errors.  That would show you whether nbd-client is throwing
+> > errors away, or whether mkfs is getting the errors and ignoring them
+> > (seems pretty unlikely, but you never know).
+> >
+> > After that, it'd be down to tracing where the errors end up in the
+> > kernel.
+> 
+> Thanks for the tip!
+> 
+> The results are interesting.  It looks like all of mkfs's pwrite()
+> calls succeed, but its final fsync() calls do actually fail:
+> 
+> 
+> root@debian:~# strace mkfs.ext2 /dev/nbd0 2>&1 | tee strace.out
+> 
+> root@debian:~# cat strace.out | grep pwrite
+> pwrite(3, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"...,
+> 32768, 8187379712) = 32768
+> pwrite(3, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"...,
+> 32768, 8187412480) = 32768
+> pwrite(3, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"...,
+> 32768, 8187445248) = 32768
+> ...
+> 
+> root@debian:~# cat strace.out | grep fsync
+> fsync(3)                                = -1 EIO (Input/output error)
+> fsync(3)                                = -1 EIO (Input/output error)
+> 
+> 
+> The fsync() calls happen just before mkfs exists success:
+> 
+> 
+> root@debian:~# cat strace.out | tail
+> pwrite(3, "\1\2\0\0\2\2\0\0\3\2\0\0\367{\365\37\2\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"...,
+> 4096, 6576672768) = 4096
+> fsync(3)                                = -1 EIO (Input/output error)
+> pwrite(3, "\0\0\10\0\0\0
+> \0\231\231\1\0qm\37\0\365\377\7\0\0\0\0\0\2\0\0\0\2\0\0\0"..., 1024,
+> 1024) = 1024
+> fsync(3)                                = -1 EIO (Input/output error)
+> close(3)                                = 0
+> write(1, "done\n\n", 6done
+> 
+> )                 = 6
+> exit_group(0)                           = ?
+> +++ exited with 0 +++
+> root@debian:~#
+> 
+> 
+> I did manage to find two calls to fsync in the e2fsprogs source which
+> are not return-value-checked:
+> 
+> https://github.com/tytso/e2fsprogs/blob/956b0f18a5ddb6815a9dff4f10a1e3125cdca9ba/misc/filefrag.c#L303
+> https://github.com/tytso/e2fsprogs/blob/956b0f18a5ddb6815a9dff4f10a1e3125cdca9ba/lib/ext2fs/unix_io.c#L915
 
-> The call to inode_permission(inode) is also duplicating the sb_permission()
-> check from inode_permission(dir), so at most should be __inode_permission().
+That second one looks very suspicious to me.  I don't think that it's
+ever right for mke2fs to ignore the return value from an fsync call,
+so assuming mke2fs calls that function it's surely a bug.
 
-This could be optimized, but that would make the code harder to read.
-I don't think it really matters: this only affects file with the
-MAY_DELETE_SELF permission, and sb_permissions is really cheap anyway.
+> I'll see about submitting a patch there.
+> 
+> I'm not sure where to start with hunting down why mkfs's pwrite()
+> calls aren't failing.  I'd look to the kernel source for that?
 
-> It looks like this would be correct if you check MAY_DELETE_SELF together
-> with check_sticky():
->
->         if (!error && check_sticky(dir, inode) &&
->             !__inode_permission(inode, MAY_DELETE_SELF))
->                 error = -EPERM;
+It looks like it's really an e2fsprogs problem, not a kernel problem.
+That's pretty surprising - I wasn't expecting it.
 
-Nope, this version would deny users with MAY_DELETE_SELF access to a
-file and MAY_EXEC access to the directory the right to delete the file
-because @error would already be set then.
+Rich.
 
-You are right that the check for MAY_DELETE_SELF overrides too much
-here though; we need an additional inode_permission(dir, ...) check in
-there.
-
-I've pushed a fixed version here that I will do some more testing on
-before reposting:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git
-richacl-wip
-
-> I ommitted the IS_RICHACL() check here, since that should probably be in
-> __inode_permission() when MAY_DELETE_SELF is passed?
-
-The IS_RICHACL() check is indeed done in inode_permission ->
-__inode_permission -> do_inode_permission -> generic_permission ->
-acl_permission_check. I've duplicated that check here to avoid slowing
-down may_delete in the common case where the filesystem doesn't
-support richacls.
-
-Thanks,
-Andreas
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+-- 
+Richard Jones, Virtualization Group, Red Hat http://people.redhat.com/~rjones
+Read my programming and virtualization blog: http://rwmj.wordpress.com
+virt-p2v converts physical machines to virtual machines.  Boot with a
+live CD or over the network (PXE) and turn machines into KVM guests.
+http://libguestfs.org/virt-v2v
