@@ -1,84 +1,47 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 0/9 v3] ext4: Punch hole and DAX fixes
-Date: Sat, 7 Nov 2015 09:17:27 +1100
-Message-ID: <20151106221727.GS10656@dastard>
-References: <1446653920-23127-1-git-send-email-jack@suse.com>
- <80B02B5F638F054B8B1358323FECDE0A5EA64CCF@G1W3650.americas.hpqcorp.net>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 107301] system hang during ext4 xattr operation
+Date: Sat, 07 Nov 2015 15:24:34 +0000
+Message-ID: <bug-107301-13602-ABplKwzMFH@https.bugzilla.kernel.org/>
+References: <bug-107301-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.com>, Ted Tso <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"dan.j.williams@intel.com" <dan.j.williams@intel.com>
-To: "Boylston, Brian" <brian.boylston@hpe.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:3247 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1030298AbbKFWRa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Nov 2015 17:17:30 -0500
-Content-Disposition: inline
-In-Reply-To: <80B02B5F638F054B8B1358323FECDE0A5EA64CCF@G1W3650.americas.hpqcorp.net>
+Received: from mail.kernel.org ([198.145.29.136]:53517 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753432AbbKGPYi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Nov 2015 10:24:38 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id E03B12063E
+	for <linux-ext4@vger.kernel.org>; Sat,  7 Nov 2015 15:24:36 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 19FF3205EE
+	for <linux-ext4@vger.kernel.org>; Sat,  7 Nov 2015 15:24:35 +0000 (UTC)
+In-Reply-To: <bug-107301-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 06, 2015 at 05:57:04PM +0000, Boylston, Brian wrote:
-> Hi,
-> 
-> I've written a test tool (included below) that exercises page faults on
-> hole-y portions of an mmapped file.  The file is created, sized using
-> various methods, mmapped, and then two threads race to write a marker to
-> different offsets within each mapped page.  Once the threads have
-> finished marking each page, the pages are checked for the presence of
-> the markers.
-> 
-> With vanilla 4.2 and 4.3 kernels, this test easily exposes corruption on
-> pmem-backed, DAX-mounted xfs and ext4 file systems.
+https://bugzilla.kernel.org/show_bug.cgi?id=107301
 
-4.2/4.3 kernels do not have a fix for this race problem in them, so
-it's no surprise that they fail the test. The fixes for this problem
-in XFS are currently in the for-next branch, and will be merged into
-4.4 during the merge window.
+--- Comment #5 from Laurent GUERBY <laurent@guerby.net> ---
+My reading of the mbcache code is that
 
-And FWIW, with XFS on a ramdisk on a 4.3+for-next branch kernel,
-this test passes just fine:
+cache->c_max_entries = bucket_count << 4
 
-$ ./dax-hole-test -f /mnt/scratch/holetest 1000
-holetest r0
+is limiting to on average 16 entries per bucket. For ext4 bucket_bits is 10 so
+1024 buckets.
 
-INFO: zero-filled test...
-INFO: sz = 3e800000, npages = 256000
-INFO: vastart = 00007fc5a90bd000
-INFO: thread 0 is 7fc5a90bc700
-INFO: thread 1 is 7fc5a88bb700
-INFO: 0 error(s) detected
+Once the cache is full which is very likely situation given ceph use of xattr
+with differing values all ceph threads will compete for the global mbcache
+locks on *each* xattr operation.
 
-INFO: posix_fallocate test...
-INFO: sz = 3e800000, npages = 256000
-INFO: vastart = 00007fc5a90bd000
-INFO: thread 0 is 7fc5a88bb700
-INFO: thread 1 is 7fc5a90bc700
-INFO: 0 error(s) detected
+Am I correct here?
 
-INFO: fallocate test...
-INFO: sz = 3e800000, npages = 256000
-INFO: vastart = 00007fc5a90bd000
-INFO: thread 0 is 7fc5a90bc700
-INFO: thread 1 is 7fc5a88bb700
-INFO: 0 error(s) detected
+ceph is designed to have one process managing one non shared device the mbcache
+design is very likely limiting scalability here by having global locks. Plus
+probably has a locking bug.
 
-INFO: ftruncate test...
-INFO: sz = 3e800000, npages = 256000
-INFO: vastart = 00007fc5a90bd000
-INFO: thread 0 is 7fc5a88bb700
-INFO: thread 1 is 7fc5a90bc700
-INFO: 0 error(s) detected
-
-That tends to indicate a bug in the ext4 patchset, not that the
-method we've taken to solve the problem is fundamentally wrong.
-
-Cheers,
-
-Dave.
 -- 
-Dave Chinner
-david@fromorbit.com
+You are receiving this mail because:
+You are watching the assignee of the bug.
