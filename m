@@ -1,20 +1,17 @@
-From: "Richard W.M. Jones" <rjones@redhat.com>
+From: Jason Pepas <jasonpepas@gmail.com>
 Subject: Re: mkfs.ext2 succeeds despite nbd write errors?
-Date: Sat, 7 Nov 2015 23:20:01 +0000
-Message-ID: <20151107232001.GX29330@redhat.com>
+Date: Sat, 7 Nov 2015 17:23:46 -0600
+Message-ID: <CALuDM+BwJoa+7fYz61WofYzdh=T-WvgJL76OzP3U5sm+m=HKrg@mail.gmail.com>
 References: <CALuDM+AtyUUMFcdTOocxCw9BxQ4PBx5aeYVYwmy_UErh1MZjww@mail.gmail.com>
 	<20151107110354.GM1908@redhat.com>
 	<CALuDM+Aw9JCMVbQcRKaaUu+=+xvDpMgL8sUZpT2snz9Qp5DqpA@mail.gmail.com>
 	<20151107210203.GW29330@redhat.com>
-	<CALuDM+CAE1g8-9g9_72hU3xcQnA5k8QTkSQj4rjHh2tHc8mgLw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: multipart/mixed; boundary=089e0115f052e152690523fba6e9
 Cc: linux-ext4@vger.kernel.org, libguestfs@redhat.com
-To: Jason Pepas <jasonpepas@gmail.com>
+To: "Richard W.M. Jones" <rjones@redhat.com>
 Return-path: <libguestfs-bounces@redhat.com>
-Content-Disposition: inline
-In-Reply-To: <CALuDM+CAE1g8-9g9_72hU3xcQnA5k8QTkSQj4rjHh2tHc8mgLw@mail.gmail.com>
+In-Reply-To: <20151107210203.GW29330@redhat.com>
 List-Unsubscribe: <https://www.redhat.com/mailman/options/libguestfs>,
 	<mailto:libguestfs-request@redhat.com?subject=unsubscribe>
 List-Archive: <https://www.redhat.com/archives/libguestfs>
@@ -26,51 +23,123 @@ Sender: libguestfs-bounces@redhat.com
 Errors-To: libguestfs-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Nov 07, 2015 at 05:09:52PM -0600, Jason Pepas wrote:
-> On Sat, Nov 7, 2015 at 3:02 PM, Richard W.M. Jones <rjones@redhat.com> wrote:
-> >> I'm not sure where to start with hunting down why mkfs's pwrite()
-> >> calls aren't failing.  I'd look to the kernel source for that?
-> >
-> > It looks like it's really an e2fsprogs problem, not a kernel problem.
-> > That's pretty surprising - I wasn't expecting it.
-> 
-> I agree the fsync() issue is an e2fsprogs problem, but as for
-> specifically the pwrite() calls not getting a -1 return value, that's
-> the kernel's fault, right?
+--089e0115f052e152690523fba6e9
+Content-Type: text/plain; charset=UTF-8
 
-I'm definitely not an expert here, but I do recall being told that
-writes and reads are allowed to return an "OK" indication, but a later
-close(2) or fsync(2) might fail.  That is particularly a problem with NFS.
+On Sat, Nov 7, 2015 at 3:02 PM, Richard W.M. Jones <rjones@redhat.com> wrote:
+> On Sat, Nov 07, 2015 at 01:22:45PM -0600, Jason Pepas wrote:
+>> I did manage to find two calls to fsync in the e2fsprogs source which
+>> are not return-value-checked:
+>>
+>> https://github.com/tytso/e2fsprogs/blob/956b0f18a5ddb6815a9dff4f10a1e3125cdca9ba/misc/filefrag.c#L303
+>> https://github.com/tytso/e2fsprogs/blob/956b0f18a5ddb6815a9dff4f10a1e3125cdca9ba/lib/ext2fs/unix_io.c#L915
+>
+> That second one looks very suspicious to me.  I don't think that it's
+> ever right for mke2fs to ignore the return value from an fsync call,
+> so assuming mke2fs calls that function it's surely a bug.
 
-I'll leave the rest to the true experts on the ext4 mailing list.
 
-> I've been rolling this around in my mind and I think I can see why the
-> kernel would correctly make fsync() fail but not pwrite() fail.  Let
-> me run this by you:
-> 
-> When a pwrite() happens, that doesn't immediately cause nbd to send a
-> network packet out, and doesn't wait on a network reply before
-> returning, right?  It just ends up in some dirty block device queue,
-> I'm guessing?  And then something triggers a bunch of dirty blocks to
-> get flushed out to "disk"?  If that's the case, then its impossible
-> for the kernel to give an accurate return code to pwrite(), because it
-> doesn't know those blocks will eventually fail to be written to "disk"
-> (nbd).
-> 
-> But as for fsync(), the kernel is probably waiting until every last
-> dirty sector gets written before it decides what the return code is,
-> which is why we see that pwrite() isn't failing, but fsync() is
-> failing.
-> 
-> Does that make sense?
-> 
-> I wonder if the block device were opened with O_DIRECT by e2fsprogs if
-> that would cause the pwrite() calls to fail correctly?
+I locally patched mke2fs to check the return value of those two
+fsync() calls, and now it exits failure like it should:
 
-Rich.
 
--- 
-Richard Jones, Virtualization Group, Red Hat http://people.redhat.com/~rjones
-Read my programming and virtualization blog: http://rwmj.wordpress.com
-libguestfs lets you edit virtual machines.  Supports shell scripting,
-bindings from many languages.  http://libguestfs.org
+root@debian:~/mkfs/e2fsprogs-1.42.12/build/misc# strace ./mke2fs
+/dev/nbd0 2>&1 | tail
+write(1, "\10\10\10\10\1)          = 5
+pwrite(3, "\1\2\0\0\2\2\0\0\3\2\0\0\367{\365\37\2\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"...,
+4096, 6576672768) = 4096
+fsync(3)                                = -1 EIO (Input/output error)
+pwrite(3, "\0\0\10\0\0\0
+\0\231\231\1\0qm\37\0\365\377\7\0\0\0\0\0\2\0\0\0\2\0\0\0"..., 1024,
+1024) = 1024
+fsync(3)                                = -1 EIO (Input/output error)
+close(3)                                = 0
+write(2, "\nWarning, had trouble writing ou"..., 46
+Warning, had trouble writing out superblocks.) = 46
+exit_group(5)                           = ?
++++ exited with 5 +++
+
+
+
+The patches are pretty simple:
+
+
+root@debian:~/mkfs# diff -urN e2fsprogs-1.42.12.orig/misc/filefrag.c
+e2fsprogs-1.42.12/misc/filefrag.c
+--- e2fsprogs-1.42.12.orig/misc/filefrag.c      2014-08-13
+14:57:29.000000000 -0500
++++ e2fsprogs-1.42.12/misc/filefrag.c   2015-11-07 13:44:17.089128243 -0600
+@@ -292,8 +292,11 @@
+                fm_ext.fe_flags = FIEMAP_EXTENT_MERGED;
+        }
+
+-       if (sync_file)
+-               fsync(fd);
++       if (sync_file) {
++               int rc = fsync(fd);
++               if (rc < 0)
++                       return rc;
++       }
+
+        for (i = 0, logical = 0, *num_extents = 0, count = last_block = 0;
+             i < numblocks;
+root@debian:~/mkfs# diff -urN
+e2fsprogs-1.42.12.orig/lib/ext2fs/unix_io.c
+e2fsprogs-1.42.12/lib/ext2fs/unix_io.c
+--- e2fsprogs-1.42.12.orig/lib/ext2fs/unix_io.c 2014-08-08
+15:59:39.000000000 -0500
++++ e2fsprogs-1.42.12/lib/ext2fs/unix_io.c      2015-11-07
+14:31:28.209005806 -0600
+@@ -887,7 +887,9 @@
+ #ifndef NO_IO_CACHE
+        retval = flush_cached_blocks(channel, data, 0);
+ #endif
+-       fsync(data->dev);
++       if (fsync(data->dev) == -1)
++               return errno;
++
+        return retval;
+ }
+
+
+(attached)
+
+-jason
+
+--089e0115f052e152690523fba6e9
+Content-Type: text/x-patch; charset=US-ASCII; name="filefrag.patch"
+Content-Disposition: attachment; filename="filefrag.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_igppw1da0
+
+LS0tIGUyZnNwcm9ncy0xLjQyLjEyLm9yaWcvbGliL2V4dDJmcy91bml4X2lvLmMgMjAxNC0wOC0w
+OCAxNTo1OTozOS4wMDAwMDAwMDAgLTA1MDAKKysrIGUyZnNwcm9ncy0xLjQyLjEyL2xpYi9leHQy
+ZnMvdW5peF9pby5jICAgICAgMjAxNS0xMS0wNyAxNDozMToyOC4yMDkwMDU4MDYgLTA2MDAKQEAg
+LTg4Nyw3ICs4ODcsOSBAQAogI2lmbmRlZiBOT19JT19DQUNIRQogICAgICAgIHJldHZhbCA9IGZs
+dXNoX2NhY2hlZF9ibG9ja3MoY2hhbm5lbCwgZGF0YSwgMCk7CiAjZW5kaWYKLSAgICAgICBmc3lu
+YyhkYXRhLT5kZXYpOworICAgICAgIGlmIChmc3luYyhkYXRhLT5kZXYpID09IC0xKQorICAgICAg
+ICAgICAgICAgcmV0dXJuIGVycm5vOworCiAgICAgICAgcmV0dXJuIHJldHZhbDsKIH0KIAo=
+--089e0115f052e152690523fba6e9
+Content-Type: text/x-patch; charset=US-ASCII; name="unix_io.patch"
+Content-Disposition: attachment; filename="unix_io.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_igppw1ej1
+
+LS0tIGUyZnNwcm9ncy0xLjQyLjEyLm9yaWcvbGliL2V4dDJmcy91bml4X2lvLmMgMjAxNC0wOC0w
+OCAxNTo1OTozOS4wMDAwMDAwMDAgLTA1MDAKKysrIGUyZnNwcm9ncy0xLjQyLjEyL2xpYi9leHQy
+ZnMvdW5peF9pby5jICAgICAgMjAxNS0xMS0wNyAxNDozMToyOC4yMDkwMDU4MDYgLTA2MDAKQEAg
+LTg4Nyw3ICs4ODcsOSBAQAogI2lmbmRlZiBOT19JT19DQUNIRQogICAgICAgIHJldHZhbCA9IGZs
+dXNoX2NhY2hlZF9ibG9ja3MoY2hhbm5lbCwgZGF0YSwgMCk7CiAjZW5kaWYKLSAgICAgICBmc3lu
+YyhkYXRhLT5kZXYpOworICAgICAgIGlmIChmc3luYyhkYXRhLT5kZXYpID09IC0xKQorICAgICAg
+ICAgICAgICAgcmV0dXJuIGVycm5vOworCiAgICAgICAgcmV0dXJuIHJldHZhbDsKIH0KIAo=
+--089e0115f052e152690523fba6e9
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+Libguestfs mailing list
+Libguestfs@redhat.com
+https://www.redhat.com/mailman/listinfo/libguestfs
+--089e0115f052e152690523fba6e9--
