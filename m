@@ -1,65 +1,56 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 107301] system hang during ext4 xattr operation
-Date: Mon, 09 Nov 2015 18:13:16 +0000
-Message-ID: <bug-107301-13602-XXgQsHgUtV@https.bugzilla.kernel.org/>
-References: <bug-107301-13602@https.bugzilla.kernel.org/>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [RFCv3 00/12] xfstests: test the btrfs/xfs reflink/dedupe ioctls
+Date: Mon, 9 Nov 2015 10:49:13 -0800
+Message-ID: <20151109184913.GB3255@birch.djwong.org>
+References: <20151007051257.3260.73072.stgit@birch.djwong.org>
+ <20151109075926.GB17974@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:54373 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752306AbbKISN3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Nov 2015 13:13:29 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 3D44F20663
-	for <linux-ext4@vger.kernel.org>; Mon,  9 Nov 2015 18:13:25 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 9F92020680
-	for <linux-ext4@vger.kernel.org>; Mon,  9 Nov 2015 18:13:16 +0000 (UTC)
-In-Reply-To: <bug-107301-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: david@fromorbit.com, fstests@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Anna.Schumaker@netapp.com,
+	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <fstests-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20151109075926.GB17974@infradead.org>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=107301
+On Sun, Nov 08, 2015 at 11:59:26PM -0800, Christoph Hellwig wrote:
+> On Tue, Oct 06, 2015 at 10:12:57PM -0700, Darrick J. Wong wrote:
+> >  * I don't have any interesting NFS/CIFS setups for test. :(
+> 
+> I have a banrch with client and server support for NFSv4.2 CLONE
+> support:
+> 
+> http://git.infradead.org/users/hch/pnfs.git/shortlog/refs/heads/reflink+clone
+> 
+> For now you want to use btrfs on the server, as using reflinks on XFS
+> seems to be a little unstable over NFS.
 
-Andreas Dilger <adilger.kernelbugzilla@dilger.ca> changed:
+I found a few more bugs in the kernel-side implementation, which might explain
+that.  I'm about to start working on making CoW less crappy, but I'll push all
+the patches out to github.  (I wasn't planning on patchbombing again until
+December.)
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |adilger.kernelbugzilla@dilg
-                   |                            |er.ca
+> > If you're going to start using this mess, you probably ought to just
+> > pull from my github trees for kernel[1], xfsprogs[2], and xfstests[3].
+> > They should just work with the btrfs that's in 4.3.
+> > 
+> > Comments and questions are, as always, welcome.
+> 
+> Any reason the groups are called clone?  I don't really have an opinion
+> on clone vs reflink but given that the xfs_io command is reflink I'd
+> rather be consistent.
 
---- Comment #12 from Andreas Dilger <adilger.kernelbugzilla@dilger.ca> ---
-Created attachment 192551
-  --> https://bugzilla.kernel.org/attachment.cgi?id=192551&action=edit
-add "no_mbcache
+The existing btrfs reflink tests were tagged in the 'clone' group prior to my
+patchset.
 
-We have a patch for Lustre ldiskfs (ext4 modified with Lustre patches) to
-disable mbcache, since it has similar performance impact for Lustre servers,
-and provides no value because the xattrs Lustre stores on each file are unique
-and cannot be shared.  
+> Otherwise I'd say get it merged ASAP, we can still fix up various
+> details later.
 
-Canonical patch location:
-http://git.hpdd.intel.com/fs/lustre-release.git/blob_plain/HEAD:/ldiskfs/kernel_patches/patches/rhel7/ext4-disable-mb-cache.patch
+I'll merge your patch and repost the whole pile of tests.  I'm almost ready to
+send a pile of updates for the XFS on-disk structure document which add stuff
+about the v5 format, rmapbt, and reflink.
 
-While the referenced patch is for RHEL 7, it is small enough to port easily to
-the upstream kernel.
-
-This patch adds a "no_mbcache" mount option, which Lustre automatically adds to
-the filesystem options when the servers are mounted.  There was a patch to
-improve mbcache performance in ext4 by making the cache per-sb, but that
-doesn't improve the contention within a filesystem, and doesn't avoid the fact
-that mbcache provides absolutely no value for Lustre (or Ceph, it seems). 
-Doing no work at all is better than doing it somewhat more efficiently.
-
-The only way I could see this working automatically is if mbcache disabled
-itself after having a low/zero cache hit ratio within a certain number of
-inserts, and if not finding any shared xattr blocks when reading from disk.  In
-the meantime, I think having a mount option is a viable alternative for those
-people who know better than the auto-detection heuristics.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+--D
