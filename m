@@ -1,66 +1,65 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/9 v3] ext4: Punch hole and DAX fixes
-Date: Mon, 9 Nov 2015 17:51:49 +0100
-Message-ID: <20151109165149.GI11149@quack.suse.cz>
-References: <1446653920-23127-1-git-send-email-jack@suse.com>
- <80B02B5F638F054B8B1358323FECDE0A5EA64CCF@G1W3650.americas.hpqcorp.net>
- <20151109162256.GH11149@quack.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 107301] system hang during ext4 xattr operation
+Date: Mon, 09 Nov 2015 18:13:16 +0000
+Message-ID: <bug-107301-13602-XXgQsHgUtV@https.bugzilla.kernel.org/>
+References: <bug-107301-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.com>, Ted Tso <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"dan.j.williams@intel.com" <dan.j.williams@intel.com>,
-	dchinner@redhat.com
-To: "Boylston, Brian" <brian.boylston@hpe.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34138 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.29.136]:54373 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752495AbbKIQvy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Nov 2015 11:51:54 -0500
-Content-Disposition: inline
-In-Reply-To: <20151109162256.GH11149@quack.suse.cz>
+	id S1752306AbbKISN3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Nov 2015 13:13:29 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 3D44F20663
+	for <linux-ext4@vger.kernel.org>; Mon,  9 Nov 2015 18:13:25 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 9F92020680
+	for <linux-ext4@vger.kernel.org>; Mon,  9 Nov 2015 18:13:16 +0000 (UTC)
+In-Reply-To: <bug-107301-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 09-11-15 17:22:56, Jan Kara wrote:
->   Hi,
-> 
-> On Fri 06-11-15 17:57:04, Boylston, Brian wrote:
-> > I've written a test tool (included below) that exercises page faults on
-> > hole-y portions of an mmapped file.  The file is created, sized using
-> > various methods, mmapped, and then two threads race to write a marker to
-> > different offsets within each mapped page.  Once the threads have
-> > finished marking each page, the pages are checked for the presence of
-> > the markers.
-> > 
-> > With vanilla 4.2 and 4.3 kernels, this test easily exposes corruption on
-> > pmem-backed, DAX-mounted xfs and ext4 file systems.
-> > 
-> > With 4.3 and this ext4 patch set, the data corruption is still seen:
-> > 
-> > $ ./holetest -f /pmem1/brian/holetest 1000
-> > holetest r207
-> 
-> Thanks for the test. I'll try to reproduce locally and have a look why
-> my block zeroing patch didn't work as expected.
+https://bugzilla.kernel.org/show_bug.cgi?id=107301
 
-Ah, OK, I see what's going on. So ext4 with my patches still returns
-buffer_new buffer even though it is zeroed out and thus generic DAX code
-still tries to zero out the buffer again which indeed causes the corrution
-(will test everything tomorrow with that code disabled).  Now I have
-decided that block mapping function should return buffer_new buffer even
-though it is zeroed out because e.g. if block zeroing was used for page
-cache writes, we'd still need code in fs/buffer.c to do proper zeroing of
-parts of the block that are not written. And that happens based on
-buffer_new flag.
+Andreas Dilger <adilger.kernelbugzilla@dilger.ca> changed:
 
-The zeroing code in __dax_fault() needs to go away anyway so whether we
-return buffer_new buffer is not really substantial but I'd like to get some
-agreement and consistency among filesystems in with which flags zeroed
-blocks are returned. Thoughts?
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |adilger.kernelbugzilla@dilg
+                   |                            |er.ca
 
-								Honza
+--- Comment #12 from Andreas Dilger <adilger.kernelbugzilla@dilger.ca> ---
+Created attachment 192551
+  --> https://bugzilla.kernel.org/attachment.cgi?id=192551&action=edit
+add "no_mbcache
+
+We have a patch for Lustre ldiskfs (ext4 modified with Lustre patches) to
+disable mbcache, since it has similar performance impact for Lustre servers,
+and provides no value because the xattrs Lustre stores on each file are unique
+and cannot be shared.  
+
+Canonical patch location:
+http://git.hpdd.intel.com/fs/lustre-release.git/blob_plain/HEAD:/ldiskfs/kernel_patches/patches/rhel7/ext4-disable-mb-cache.patch
+
+While the referenced patch is for RHEL 7, it is small enough to port easily to
+the upstream kernel.
+
+This patch adds a "no_mbcache" mount option, which Lustre automatically adds to
+the filesystem options when the servers are mounted.  There was a patch to
+improve mbcache performance in ext4 by making the cache per-sb, but that
+doesn't improve the contention within a filesystem, and doesn't avoid the fact
+that mbcache provides absolutely no value for Lustre (or Ceph, it seems). 
+Doing no work at all is better than doing it somewhat more efficiently.
+
+The only way I could see this working automatically is if mbcache disabled
+itself after having a low/zero cache hit ratio within a certain number of
+inserts, and if not finding any shared xattr blocks when reading from disk.  In
+the meantime, I think having a mount option is a viable alternative for those
+people who know better than the auto-detection heuristics.
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
