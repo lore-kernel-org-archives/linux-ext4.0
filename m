@@ -1,56 +1,35 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [RFCv3 00/12] xfstests: test the btrfs/xfs reflink/dedupe ioctls
-Date: Mon, 9 Nov 2015 10:49:13 -0800
-Message-ID: <20151109184913.GB3255@birch.djwong.org>
-References: <20151007051257.3260.73072.stgit@birch.djwong.org>
- <20151109075926.GB17974@infradead.org>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: discard_zeroes_data questions
+Date: Mon, 9 Nov 2015 17:08:38 -0600
+Message-ID: <56412776.6080604@sandeen.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: david@fromorbit.com, fstests@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Anna.Schumaker@netapp.com,
-	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <fstests-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20151109075926.GB17974@infradead.org>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+To: "Martin K. Petersen" <mkp@mkp.net>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sandeen.net ([63.231.237.45]:37693 "EHLO sandeen.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750997AbbKIXRc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Nov 2015 18:17:32 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 08, 2015 at 11:59:26PM -0800, Christoph Hellwig wrote:
-> On Tue, Oct 06, 2015 at 10:12:57PM -0700, Darrick J. Wong wrote:
-> >  * I don't have any interesting NFS/CIFS setups for test. :(
-> 
-> I have a banrch with client and server support for NFSv4.2 CLONE
-> support:
-> 
-> http://git.infradead.org/users/hch/pnfs.git/shortlog/refs/heads/reflink+clone
-> 
-> For now you want to use btrfs on the server, as using reflinks on XFS
-> seems to be a little unstable over NFS.
+Hi Martin (and linux-ext4 list...) 
 
-I found a few more bugs in the kernel-side implementation, which might explain
-that.  I'm about to start working on making CoW less crappy, but I'll push all
-the patches out to github.  (I wasn't planning on patchbombing again until
-December.)
+tl;dr:
 
-> > If you're going to start using this mess, you probably ought to just
-> > pull from my github trees for kernel[1], xfsprogs[2], and xfstests[3].
-> > They should just work with the btrfs that's in 4.3.
-> > 
-> > Comments and questions are, as always, welcome.
-> 
-> Any reason the groups are called clone?  I don't really have an opinion
-> on clone vs reflink but given that the xfs_io command is reflink I'd
-> rather be consistent.
+mke2fs today thinks that if discard_zeroes_data == 1 and a BLKDISCARD ioctl of the whole device succeeds, then we have guarantees that any blocks read back will be full of zero, and we don't need to initialize them to zero.  Is this ok?  (barring crappy hardware, that is).
 
-The existing btrfs reflink tests were tagged in the 'clone' group prior to my
-patchset.
+slightly longer:
 
-> Otherwise I'd say get it merged ASAP, we can still fix up various
-> details later.
+Does discard_zeroes_data == 1 mean that a discard *request* will guarantee zeroes on a read, or does it mean that a discard-request-which-actually-was-executed-and-not-ignored-as-just-a-hint will give us back zeroes on a read?  (because UNMAP is a hint, right?  I don't know about SATA trim ...)
 
-I'll merge your patch and repost the whole pile of tests.  I'm almost ready to
-send a pile of updates for the XFS on-disk structure document which add stuff
-about the v5 format, rmapbt, and reflink.
+I did see 7985090 sd: disable discard_zeroes_data for UNMAP - so I think that for v3.19+, on *scsi*, what e2fsprogs is doing is ok (now).
 
---D
+But I'm wondering about dm-thin and SATA, too, so trying to figure out what discard_zeroes_data really implies.  That after a BLKDISCARD, a read *will* return zeros, or that it'll return zeros *iff* the hint is taken?
+
+I hope that made sense, but I've been communicating badly today.  ;)
+
+Thanks,
+-Eric
