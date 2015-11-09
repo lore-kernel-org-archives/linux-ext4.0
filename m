@@ -1,53 +1,50 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [RFCv3 00/12] xfstests: test the btrfs/xfs reflink/dedupe ioctls
-Date: Sun, 8 Nov 2015 23:59:26 -0800
-Message-ID: <20151109075926.GB17974@infradead.org>
-References: <20151007051257.3260.73072.stgit@birch.djwong.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 107301] system hang during ext4 xattr operation
+Date: Mon, 09 Nov 2015 08:50:58 +0000
+Message-ID: <bug-107301-13602-wfM2NtuuTF@https.bugzilla.kernel.org/>
+References: <bug-107301-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: fstests@vger.kernel.org, xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
-	Anna.Schumaker@netapp.com, linux-btrfs@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <20151007051257.3260.73072.stgit@birch.djwong.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:41040 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751275AbbKIIvC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Nov 2015 03:51:02 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id D02DC205EC
+	for <linux-ext4@vger.kernel.org>; Mon,  9 Nov 2015 08:51:00 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 83663204A0
+	for <linux-ext4@vger.kernel.org>; Mon,  9 Nov 2015 08:50:58 +0000 (UTC)
+In-Reply-To: <bug-107301-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 06, 2015 at 10:12:57PM -0700, Darrick J. Wong wrote:
->  * I don't have any interesting NFS/CIFS setups for test. :(
+https://bugzilla.kernel.org/show_bug.cgi?id=107301
 
-I have a banrch with client and server support for NFSv4.2 CLONE
-support:
+--- Comment #7 from Jan Kara <jack@suse.cz> ---
+Yeah, that would test what the performance would look like without mbcache.
+BTW: Among xattrs ceph is using how many of them are the same? Mbcache is a win
+for the common case where xattrs are mostly used for ACLs or SE Linux labels
+and thus the reuse is big (mbcache is essentially a deduplication layer for
+xattrs). 
 
-http://git.infradead.org/users/hch/pnfs.git/shortlog/refs/heads/reflink+clone
+And yes, it is in a need of some updates to meet current scalability demands (I
+don't think what you hit is a bug as such, rather an inefficiency that becomes
+lethal at your scale) - other users than ceph occasionally report issues as
+well. Probably we should track things per-fs, not globally, hook each per-fs
+mbcache into the shrinker framework and don't introduce artificial upper bounds
+on the number of entries and instead let natural memory pressure deal with it.
 
-For now you want to use btrfs on the server, as using reflinks on XFS
-seems to be a little unstable over NFS.
+For now I'm not convinced adding a mount option to disable mbcache is the right
+way to go. Rather we should make it lightweight enough that it doesn't add too
+much overhead for the cases where it is not needed. With the mount option there
+is always the trouble that someone has to know it to turn it on/off and
+sometimes there even isn't a good choice as you can have heavy xattr reuse for
+some inodes and also quite a few unique xattrs for other inodes...
 
-> If you're going to start using this mess, you probably ought to just
-> pull from my github trees for kernel[1], xfsprogs[2], and xfstests[3].
-> They should just work with the btrfs that's in 4.3.
-> 
-> Comments and questions are, as always, welcome.
-
-Any reason the groups are called clone?  I don't really have an opinion
-on clone vs reflink but given that the xfs_io command is reflink I'd
-rather be consistent.
-
-Otherwise I'd say get it merged ASAP, we can still fix up various
-details later.
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
