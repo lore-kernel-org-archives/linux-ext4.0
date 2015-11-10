@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.com>
-Subject: [PATCH 6/9] ext4: Get rid of EXT4_GET_BLOCKS_NO_LOCK flag
-Date: Tue, 10 Nov 2015 20:50:56 +0100
-Message-ID: <1447185059-16166-7-git-send-email-jack@suse.com>
+Subject: [PATCH 8/9] ext4: Implement allocation of pre-zeroed blocks
+Date: Tue, 10 Nov 2015 20:50:58 +0100
+Message-ID: <1447185059-16166-9-git-send-email-jack@suse.com>
 References: <1447185059-16166-1-git-send-email-jack@suse.com>
 Cc: linux-ext4@vger.kernel.org,
 	Ross Zwisler <ross.zwisler@linux.intel.com>,
@@ -9,183 +9,130 @@ Cc: linux-ext4@vger.kernel.org,
 	Jan Kara <jack@suse.com>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52903 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:52910 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751731AbbKJTvR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Nov 2015 14:51:17 -0500
+	id S1751749AbbKJTvS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Nov 2015 14:51:18 -0500
 In-Reply-To: <1447185059-16166-1-git-send-email-jack@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When dioread_nolock mode is enabled, we grab i_data_sem in
-ext4_ext_direct_IO() and therefore we need to instruct _ext4_get_block()
-not to grab i_data_sem again using EXT4_GET_BLOCKS_NO_LOCK. However
-holding i_data_sem over overwrite direct IO isn't needed these days. We
-have exclusion against truncate / hole punching because we increase
-i_dio_count under i_mutex in ext4_ext_direct_IO() so once
-ext4_file_write_iter() verifies blocks are allocated & written, they are
-guaranteed to stay so during the whole direct IO even after we drop
-i_mutex.
-
-So we can just remove this locking abuse and the no longer necessary
-EXT4_GET_BLOCKS_NO_LOCK flag.
+DAX page fault path needs to get blocks that are pre-zeroed to avoid
+races when two concurrent page faults happen in the same block of a
+file. Implement support for this in ext4_map_blocks().
 
 Signed-off-by: Jan Kara <jack@suse.com>
 ---
- fs/ext4/ext4.h              |  4 +---
- fs/ext4/inode.c             | 43 ++++++++++++++++++++-----------------------
- include/trace/events/ext4.h |  3 +--
- 3 files changed, 22 insertions(+), 28 deletions(-)
+ fs/ext4/ext4.h              |  4 ++++
+ fs/ext4/extents.c           |  8 ++++++++
+ fs/ext4/inode.c             | 25 ++++++++++++++++++++++---
+ include/trace/events/ext4.h |  3 ++-
+ 4 files changed, 36 insertions(+), 4 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index d049fc76efcd..1d09345c9793 100644
+index 353089c35485..e667a7947b48 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -554,10 +554,8 @@ enum {
- #define EXT4_GET_BLOCKS_NO_NORMALIZE		0x0040
- 	/* Request will not result in inode size update (user for fallocate) */
+@@ -556,6 +556,10 @@ enum {
  #define EXT4_GET_BLOCKS_KEEP_SIZE		0x0080
--	/* Do not take i_data_sem locking in ext4_map_blocks */
--#define EXT4_GET_BLOCKS_NO_LOCK			0x0100
  	/* Convert written extents to unwritten */
--#define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0200
-+#define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0100
+ #define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0100
++	/* Write zeros to newly created written extents */
++#define EXT4_GET_BLOCKS_ZERO			0x0200
++#define EXT4_GET_BLOCKS_CREATE_ZERO		(EXT4_GET_BLOCKS_CREATE |\
++					EXT4_GET_BLOCKS_ZERO)
  
  /*
   * The bit position of these flags must not overlap with any of the
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c0c7650c35ba..f7df02a15a18 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4044,6 +4044,14 @@ ext4_ext_handle_unwritten_extents(handle_t *handle, struct inode *inode,
+ 	}
+ 	/* IO end_io complete, convert the filled extent to written */
+ 	if (flags & EXT4_GET_BLOCKS_CONVERT) {
++		if (flags & EXT4_GET_BLOCKS_ZERO) {
++			if (allocated > map->m_len)
++				allocated = map->m_len;
++			err = ext4_issue_zeroout(inode, map->m_lblk, newblock,
++						 allocated);
++			if (err < 0)
++				goto out2;
++		}
+ 		ret = ext4_convert_unwritten_extents_endio(handle, inode, map,
+ 							   ppath);
+ 		if (ret >= 0) {
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index fcd4ab065e4a..528d1a0aebff 100644
+index 39cdad9e2338..32e643a82890 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -403,8 +403,7 @@ static void ext4_map_blocks_es_recheck(handle_t *handle,
- 	 * out taking i_data_sem.  So at the time the unwritten extent
- 	 * could be converted.
- 	 */
--	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
--		down_read(&EXT4_I(inode)->i_data_sem);
-+	down_read(&EXT4_I(inode)->i_data_sem);
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
- 		retval = ext4_ext_map_blocks(handle, inode, map, flags &
- 					     EXT4_GET_BLOCKS_KEEP_SIZE);
-@@ -412,8 +411,7 @@ static void ext4_map_blocks_es_recheck(handle_t *handle,
- 		retval = ext4_ind_map_blocks(handle, inode, map, flags &
- 					     EXT4_GET_BLOCKS_KEEP_SIZE);
- 	}
--	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
--		up_read((&EXT4_I(inode)->i_data_sem));
-+	up_read((&EXT4_I(inode)->i_data_sem));
+@@ -637,13 +637,29 @@ found:
+ 		}
  
- 	/*
- 	 * We don't check m_len because extent will be collpased in status
-@@ -509,8 +507,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 	 * Try to see if we can get the block without requesting a new
- 	 * file system block.
- 	 */
--	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
--		down_read(&EXT4_I(inode)->i_data_sem);
-+	down_read(&EXT4_I(inode)->i_data_sem);
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
- 		retval = ext4_ext_map_blocks(handle, inode, map, flags &
- 					     EXT4_GET_BLOCKS_KEEP_SIZE);
-@@ -541,8 +538,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		if (ret < 0)
+ 		/*
++		 * We have to zeroout blocks before inserting them into extent
++		 * status tree. Otherwise someone could look them up there and
++		 * use them before they are really zeroed.
++		 */
++		if (flags & EXT4_GET_BLOCKS_ZERO &&
++		    map->m_flags & EXT4_MAP_MAPPED &&
++		    map->m_flags & EXT4_MAP_NEW) {
++			ret = ext4_issue_zeroout(inode, map->m_lblk,
++						 map->m_pblk, map->m_len);
++			if (ret) {
++				retval = ret;
++				goto out_sem;
++			}
++		}
++
++		/*
+ 		 * If the extent has been zeroed out, we don't need to update
+ 		 * extent status tree.
+ 		 */
+ 		if ((flags & EXT4_GET_BLOCKS_PRE_IO) &&
+ 		    ext4_es_lookup_extent(inode, map->m_lblk, &es)) {
+ 			if (ext4_es_is_written(&es))
+-				goto has_zeroout;
++				goto out_sem;
+ 		}
+ 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+ 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+@@ -654,11 +670,13 @@ found:
+ 			status |= EXTENT_STATUS_DELAYED;
+ 		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+ 					    map->m_pblk, status);
+-		if (ret < 0)
++		if (ret < 0) {
  			retval = ret;
++			goto out_sem;
++		}
  	}
--	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
--		up_read((&EXT4_I(inode)->i_data_sem));
-+	up_read((&EXT4_I(inode)->i_data_sem));
  
- found:
+-has_zeroout:
++out_sem:
+ 	up_write((&EXT4_I(inode)->i_data_sem));
  	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
-@@ -674,7 +670,7 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
- 	map.m_lblk = iblock;
- 	map.m_len = bh->b_size >> inode->i_blkbits;
- 
--	if (flags && !(flags & EXT4_GET_BLOCKS_NO_LOCK) && !handle) {
-+	if (flags && !handle) {
- 		/* Direct IO write... */
- 		if (map.m_len > DIO_MAX_BLOCKS)
- 			map.m_len = DIO_MAX_BLOCKS;
-@@ -879,9 +875,6 @@ int do_journal_get_write_access(handle_t *handle,
- 	return ret;
- }
- 
--static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
--		   struct buffer_head *bh_result, int create);
--
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
- static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 				  get_block_t *get_block)
-@@ -3054,13 +3047,21 @@ int ext4_get_block_write(struct inode *inode, sector_t iblock,
- 			       EXT4_GET_BLOCKS_IO_CREATE_EXT);
- }
- 
--static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
-+static int ext4_get_block_overwrite(struct inode *inode, sector_t iblock,
+ 		ret = check_block_validity(inode, map);
+@@ -3083,6 +3101,7 @@ int ext4_get_block_dax(struct inode *inode, sector_t iblock,
  		   struct buffer_head *bh_result, int create)
  {
--	ext4_debug("ext4_get_block_write_nolock: inode %lu, create flag %d\n",
-+	int ret;
+ 	int flags = EXT4_GET_BLOCKS_PRE_IO | EXT4_GET_BLOCKS_UNWRIT_EXT;
 +
-+	ext4_debug("ext4_get_block_overwrite: inode %lu, create flag %d\n",
- 		   inode->i_ino, create);
--	return _ext4_get_block(inode, iblock, bh_result,
--			       EXT4_GET_BLOCKS_NO_LOCK);
-+	ret = _ext4_get_block(inode, iblock, bh_result, 0);
-+	/*
-+	 * Blocks should have been preallocated! ext4_file_write_iter() checks
-+	 * that.
-+	 */
-+	WARN_ON_ONCE(!buffer_mapped(bh_result));
-+
-+	return ret;
- }
- 
- int ext4_get_block_dax(struct inode *inode, sector_t iblock,
-@@ -3143,10 +3144,8 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
- 	/* If we do a overwrite dio, i_mutex locking can be released */
- 	overwrite = *((int *)iocb->private);
- 
--	if (overwrite) {
--		down_read(&EXT4_I(inode)->i_data_sem);
-+	if (overwrite)
- 		mutex_unlock(&inode->i_mutex);
--	}
- 
- 	/*
- 	 * We could direct write to holes and fallocate.
-@@ -3189,7 +3188,7 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
- 	}
- 
- 	if (overwrite) {
--		get_block_func = ext4_get_block_write_nolock;
-+		get_block_func = ext4_get_block_overwrite;
- 	} else {
- 		get_block_func = ext4_get_block_write;
- 		dio_flags = DIO_LOCKING;
-@@ -3245,10 +3244,8 @@ retake_lock:
- 	if (iov_iter_rw(iter) == WRITE)
- 		inode_dio_end(inode);
- 	/* take i_mutex locking again if we do a ovewrite dio */
--	if (overwrite) {
--		up_read(&EXT4_I(inode)->i_data_sem);
-+	if (overwrite)
- 		mutex_lock(&inode->i_mutex);
--	}
- 
- 	return ret;
- }
+ 	if (create)
+ 		flags |= EXT4_GET_BLOCKS_CREATE;
+ 	ext4_debug("ext4_get_block_dax: inode %lu, create flag %d\n",
 diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 594b4b29a224..5f2ace56efc5 100644
+index 5f2ace56efc5..4e4b2fa78609 100644
 --- a/include/trace/events/ext4.h
 +++ b/include/trace/events/ext4.h
-@@ -42,8 +42,7 @@ struct extent_status;
+@@ -42,7 +42,8 @@ struct extent_status;
  	{ EXT4_GET_BLOCKS_CONVERT,		"CONVERT" },		\
  	{ EXT4_GET_BLOCKS_METADATA_NOFAIL,	"METADATA_NOFAIL" },	\
  	{ EXT4_GET_BLOCKS_NO_NORMALIZE,		"NO_NORMALIZE" },	\
--	{ EXT4_GET_BLOCKS_KEEP_SIZE,		"KEEP_SIZE" },		\
--	{ EXT4_GET_BLOCKS_NO_LOCK,		"NO_LOCK" })
-+	{ EXT4_GET_BLOCKS_KEEP_SIZE,		"KEEP_SIZE" })
+-	{ EXT4_GET_BLOCKS_KEEP_SIZE,		"KEEP_SIZE" })
++	{ EXT4_GET_BLOCKS_KEEP_SIZE,		"KEEP_SIZE" },		\
++	{ EXT4_GET_BLOCKS_ZERO,			"ZERO" })
  
  #define show_mflags(flags) __print_flags(flags, "",	\
  	{ EXT4_MAP_NEW,		"N" },			\
