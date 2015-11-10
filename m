@@ -1,34 +1,33 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 107301] system hang during ext4 xattr operation
-Date: Tue, 10 Nov 2015 11:16:37 +0000
-Message-ID: <bug-107301-13602-IJawEQAIdo@https.bugzilla.kernel.org/>
-References: <bug-107301-13602@https.bugzilla.kernel.org/>
+From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Subject: Re: [PATCH v15 00/22] Richacls (Core and Ext4)
+Date: Tue, 10 Nov 2015 03:29:43 -0800
+Message-ID: <20151110112943.GA17038@infradead.org>
+References: <1447067343-31479-1-git-send-email-agruenba@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:52062 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752226AbbKJLQl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Nov 2015 06:16:41 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 6F0F6207B0
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Nov 2015 11:16:39 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id A715D2065E
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Nov 2015 11:16:37 +0000 (UTC)
-In-Reply-To: <bug-107301-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <1447067343-31479-1-git-send-email-agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=107301
+On Mon, Nov 09, 2015 at 12:08:41PM +0100, Andreas Gruenbacher wrote:
+> Here is another update to the richacl patch queue.  This posting contains
+> the patches ready to be merged; the patches later in the queue still need
+> some more review.
 
---- Comment #13 from Laurent GUERBY <laurent@guerby.net> ---
-We restarted all of our cluster machines with ubuntu 3.19 + my ext4 mbcache
-removal patch: so far no data loss, no new freeze and no visible change in
-performance (production too noisy to detect small changes).
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+It still has the same crappy fs interfaces with lots of boilerplate
+code and still abuses xattrs instead of a proper syscall interface.
+That's far from being ready to merge.
