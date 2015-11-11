@@ -1,45 +1,61 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 107301] system hang during ext4 xattr operation
-Date: Wed, 11 Nov 2015 02:37:59 +0000
-Message-ID: <bug-107301-13602-p54vYtFXdo@https.bugzilla.kernel.org/>
-References: <bug-107301-13602@https.bugzilla.kernel.org/>
+From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Subject: Re: [PATCH v15 00/22] Richacls (Core and Ext4)
+Date: Tue, 10 Nov 2015 23:57:07 -0800
+Message-ID: <20151111075707.GA23752@infradead.org>
+References: <1447067343-31479-1-git-send-email-agruenba@redhat.com>
+ <20151110112943.GA17038@infradead.org>
+ <CAHc6FU5g7=wd1Wt4+GCaLJjNu7giruZyAON3VcYn-A=ffYMsmw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:57223 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751519AbbKKCiG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Nov 2015 21:38:06 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id D2B76207AA
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Nov 2015 02:38:03 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id A8A5920793
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Nov 2015 02:37:59 +0000 (UTC)
-In-Reply-To: <bug-107301-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
+	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <CAHc6FU5g7=wd1Wt4+GCaLJjNu7giruZyAON3VcYn-A=ffYMsmw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=107301
+On Tue, Nov 10, 2015 at 01:39:52PM +0100, Andreas Gruenbacher wrote:
+> > It still has the same crappy fs interfaces with lots of boilerplate
+> > code
+> 
+> Could you please be more specific so that I can trace this complaint
+> to some actual code?
 
---- Comment #14 from Theodore Tso <tytso@mit.edu> ---
-In response to Jan's concerns in comment #11, I wonder if we can use some
-hueristics to decide when to use mbcache and when to skip it.   So if there are
-ways that we can identify certain xattr's by name or type as being almost
-always unique, then if there are any of those xattrs in the external xattr
-block, there's no point using the mbcache.   If we had such a function, we
-could also use it to bias putting the unique xattrs in the extended inode
-space, which might increase the chance that the external xattr block is more
-likely to be shareable.
+if (IS_RICHACL())
+	richacl_foo()
+else
+	posix_acl_foo()
 
-The final thing I'll note is that because of the mbcache locking, it can turn
-into a real scalability bottlencheck for ext4, and it's not clear this is a
-soluble problem.   So if you are running on a high-CPU count machine, and you
-are using xattrs, and (for example) the SELinux xattr is so piggy that it won't
-fit in your 256-byte inodes, things can get pretty painful.
+for every call from the filesystem is the major one that came to mind.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+> > and still abuses xattrs instead of a proper syscall interface.
+> > That's far from being ready to merge.
+> 
+> The xattr syscall interface is what's used for very similar kinds of
+> things today; using it for richacls as well sure does not count as
+> abuse. Things could be improved in the xattr interface and in its
+> implementation, but we need more substantial reasons than that for
+> reimplementing the wheel once again.
+
+And it's a horrible interface.  Look at all the pain for example in
+XFS which has a different ACL format, or in fact everyone who just
+uses a different xattr name or even none at all.  And all the mess
+of people trying to shoe horn crazy interfaces into xattrs.
+
+It was an experiment worth trying with Posix ACLs, but it failed, so
+do not repeat it.
