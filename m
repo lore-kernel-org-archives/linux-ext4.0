@@ -1,235 +1,39 @@
-From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH v15 00/22] Richacls (Core and Ext4)
-Date: Wed, 11 Nov 2015 14:59:21 +0100
-Message-ID: <1447250361-5561-1-git-send-email-agruenba@redhat.com>
-References: <1447067343-31479-1-git-send-email-agruenba@redhat.com> <20151110112943.GA17038@infradead.org> <20151111075707.GA23752@infradead.org>
-Cc: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
-	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
-	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20151111075707.GA23752-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 107301] system hang during ext4 xattr operation
+Date: Wed, 11 Nov 2015 14:53:10 +0000
+Message-ID: <bug-107301-13602-bAQvW8mTOD@https.bugzilla.kernel.org/>
+References: <bug-107301-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:60952 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751798AbbKKOxN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Nov 2015 09:53:13 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id E4DE8206DB
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Nov 2015 14:53:11 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 5F8AE20672
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Nov 2015 14:53:10 +0000 (UTC)
+In-Reply-To: <bug-107301-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 11, 2015 at 8:57 AM, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org> wrote:
-> On Tue, Nov 10, 2015 at 01:39:52PM +0100, Andreas Gruenbacher wrote:
->> > It still has the same crappy fs interfaces with lots of boilerplate
->> > code
->>
->> Could you please be more specific so that I can trace this complaint
->> to some actual code?
->
-> if (IS_RICHACL())
->         richacl_foo()
-> else
->         posix_acl_foo()
->
-> for every call from the filesystem is the major one that came to mind.
+https://bugzilla.kernel.org/show_bug.cgi?id=107301
 
-There are two such places in ext4, ext4_new_acl and ext4_acl_chmod.  Those
-could be replaced by function pointers as below, I'm not sure we seriously
-want to consider that.
+--- Comment #17 from Jan Kara <jack@suse.cz> ---
+Ultimately it is Ted's call but your argument is like (randomly taken out of
+top of my head): "Proper locking to protect from hole punching costs us some
+performance and our workload doesn't use hole punching so let's create mount
+option to disable the locking". Sure it can be done and it will benefit your
+workload but how much you gain? And how many users need this? This has to be
+weighted against the cost of the new mount option in terms of testing and
+usability (and code complexity but that is fairly small in this case so I'm not
+that concerned).
 
-In xfs, we have xfs_acl_chmod which is similar.  xfs_generic_create doesn't
-quite follow this pattern.
-
-This seems to be about it though.
-
-Thanks,
-Andreas
-
----
- fs/ext4/ext4.h     | 10 ++++++++++
- fs/ext4/ialloc.c   | 11 +----------
- fs/ext4/inode.c    | 11 +----------
- fs/ext4/super.c    | 30 ++++++++++++++++++++++++++++++
- include/linux/fs.h |  1 +
- 5 files changed, 43 insertions(+), 20 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b97a3b1..5ff4556 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3049,6 +3049,16 @@ extern struct mutex ext4__aio_mutex[EXT4_WQ_HASH_SZ];
- extern int ext4_resize_begin(struct super_block *sb);
- extern void ext4_resize_end(struct super_block *sb);
- 
-+struct ext4_acl_ops {
-+	int (*chmod)(struct inode *, umode_t);
-+	int (*init_acl)(handle_t *, struct inode *, struct inode *);
-+};
-+
-+static inline const struct ext4_acl_ops *ACL_OPS(struct inode *inode)
-+{
-+	return inode->i_sb->s_private;
-+}
-+
- #endif	/* __KERNEL__ */
- 
- #endif	/* _EXT4_H */
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 9657b3a..e33646f 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -27,7 +27,6 @@
- #include "ext4_jbd2.h"
- #include "xattr.h"
- #include "acl.h"
--#include "richacl.h"
- 
- #include <trace/events/ext4.h>
- 
-@@ -698,14 +697,6 @@ out:
- 	return ret;
- }
- 
--static inline int
--ext4_new_acl(handle_t *handle, struct inode *inode, struct inode *dir)
--{
--	if (IS_RICHACL(dir))
--		return ext4_init_richacl(handle, inode, dir);
--	return ext4_init_acl(handle, inode, dir);
--}
--
- /*
-  * There are two policies for allocating an inode.  If the new inode is
-  * a directory, then a forward search is made for a block group with both
-@@ -1061,7 +1052,7 @@ got:
- 	if (err)
- 		goto fail_drop;
- 
--	err = ext4_new_acl(handle, inode, dir);
-+	err = ACL_OPS(inode)->init_acl(handle, inode, dir);
- 	if (err)
- 		goto fail_free_drop;
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 647f3c3..9f179ee 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -42,7 +42,6 @@
- #include "xattr.h"
- #include "acl.h"
- #include "truncate.h"
--#include "richacl.h"
- 
- #include <trace/events/ext4.h>
- 
-@@ -4639,14 +4638,6 @@ static void ext4_wait_for_tail_page_commit(struct inode *inode)
- 	}
- }
- 
--static inline int
--ext4_acl_chmod(struct inode *inode, umode_t mode)
--{
--	if (IS_RICHACL(inode))
--		return richacl_chmod(inode, inode->i_mode);
--	return posix_acl_chmod(inode, inode->i_mode);
--}
--
- /*
-  * ext4_setattr()
-  *
-@@ -4815,7 +4806,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 		ext4_orphan_del(NULL, inode);
- 
- 	if (!rc && (ia_valid & ATTR_MODE))
--		rc = ext4_acl_chmod(inode, inode->i_mode);
-+		rc = ACL_OPS(inode)->chmod(inode, inode->i_mode);
- err_out:
- 	ext4_std_error(inode->i_sb, error);
- 	if (!error)
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7457ea8..879bc2c 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -49,6 +49,7 @@
- #include "ext4_jbd2.h"
- #include "xattr.h"
- #include "acl.h"
-+#include "richacl.h"
- #include "mballoc.h"
- 
- #define CREATE_TRACE_POINTS
-@@ -1270,25 +1271,54 @@ static ext4_fsblk_t get_sb_block(void **data)
- 	return sb_block;
- }
- 
-+static int no_chmod_acl(struct inode *inode, umode_t mode)
-+{
-+	return 0;
-+}
-+
-+static int no_init_acl(handle_t *handle, struct inode *inode, struct inode *dir)
-+{
-+	return 0;
-+}
-+
-+struct ext4_acl_ops no_acl_ops = {
-+	.chmod = no_chmod_acl,
-+	.init_acl = no_init_acl,
-+};
-+
-+struct ext4_acl_ops ext4_posix_acl_ops = {
-+	.chmod = posix_acl_chmod,
-+	.init_acl = ext4_init_acl,
-+};
-+
-+struct ext4_acl_ops ext4_richacl_ops = {
-+	.chmod = richacl_chmod,
-+	.init_acl = ext4_init_richacl,
-+};
-+
- static int enable_acl(struct super_block *sb)
- {
- 	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
-+	sb->s_private = &no_acl_ops;
- 	if (test_opt(sb, ACL)) {
- 		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
- 					      EXT4_FEATURE_INCOMPAT_RICHACL)) {
- #ifdef CONFIG_EXT4_FS_RICHACL
- 			sb->s_flags |= MS_RICHACL;
-+			sb->s_private = &ext4_richacl_ops;
- #else
- 			return -EOPNOTSUPP;
- #endif
- 		} else {
- #ifdef CONFIG_EXT4_FS_POSIX_ACL
- 			sb->s_flags |= MS_POSIXACL;
-+			sb->s_private = &ext4_posix_acl_ops;
- #else
- 			return -EOPNOTSUPP;
- #endif
- 		}
- 	}
-+
- 	return 0;
- }
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 05fb943..5803bf6 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1324,6 +1324,7 @@ struct super_block {
- 	void                    *s_security;
- #endif
- 	const struct xattr_handler **s_xattr;
-+	const void *s_private;
- 
- 	struct hlist_bl_head	s_anon;		/* anonymous dentries for (nfs) exporting */
- 	struct list_head	s_mounts;	/* list of mounts; _not_ for fs use */
 -- 
-2.5.0
+You are receiving this mail because:
+You are watching the assignee of the bug.
