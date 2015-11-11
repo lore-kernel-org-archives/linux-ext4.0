@@ -1,37 +1,72 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 107301] system hang during ext4 xattr operation
-Date: Wed, 11 Nov 2015 11:37:33 +0000
-Message-ID: <bug-107301-13602-tVCgGqf6Fh@https.bugzilla.kernel.org/>
-References: <bug-107301-13602@https.bugzilla.kernel.org/>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [RFCv3 00/12] xfstests: test the btrfs/xfs reflink/dedupe ioctls
+Date: Wed, 11 Nov 2015 05:56:39 -0800
+Message-ID: <20151111135639.GA4760@infradead.org>
+References: <20151007051257.3260.73072.stgit@birch.djwong.org>
+	<20151109075926.GB17974@infradead.org>
+	<20151109184913.GB3255@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:49941 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751942AbbKKLhh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Nov 2015 06:37:37 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 4B92020675
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Nov 2015 11:37:36 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 28262205EA
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Nov 2015 11:37:34 +0000 (UTC)
-In-Reply-To: <bug-107301-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: fstests@vger.kernel.org, xfs@oss.sgi.com,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-ext4@vger.kernel.org, Anna.Schumaker@netapp.com,
+	linux-btrfs@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <20151109184913.GB3255@birch.djwong.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=107301
+On Mon, Nov 09, 2015 at 10:49:13AM -0800, Darrick J. Wong wrote:
+> I found a few more bugs in the kernel-side implementation, which might explain
+> that.  I'm about to start working on making CoW less crappy, but I'll push all
+> the patches out to github.  (I wasn't planning on patchbombing again until
+> December.)
 
---- Comment #16 from Andreas Dilger <adilger.kernelbugzilla@dilger.ca> ---
-I think that regardless of how efficient mbcache can be made, it is not as
-efficient (both CPU and RAM) as not using it at all in cases where it is not
-providing any benefit.  I'm not against improving the efficiency, but I think
-it still makes sense to have an option to disable it completely. Since mbcache
-is already a per-sb cache, having a per-sb mount option makes sense and doesn't
-interfere with other improvements to mbcache.
+Yes, please push your WIP code out as often as possible!
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Btw, here is another additional fixup, as two tests were wrongly
+tagged as needing reflink instead of dedupe:
+
+
+diff --git a/tests/generic/827 b/tests/generic/827
+index cc1bc52..c8ce7cf 100755
+--- a/tests/generic/827
++++ b/tests/generic/827
+@@ -47,7 +47,7 @@ _supported_fs generic
+ _supported_os Linux
+ 
+ _require_scratch
+-_require_xfs_io_command "reflink"
++_require_xfs_io_command "dedupe"
+ 
+ echo "Format and mount"
+ _scratch_mkfs > $seqres.full 2>&1
+diff --git a/tests/generic/828 b/tests/generic/828
+index 1757985..f5b7298 100755
+--- a/tests/generic/828
++++ b/tests/generic/828
+@@ -47,7 +47,7 @@ _supported_fs generic
+ _supported_os Linux
+ 
+ _require_scratch
+-_require_xfs_io_command "reflink"
++_require_xfs_io_command "dedupe"
+ 
+ echo "Format and mount"
+ _scratch_mkfs > $seqres.full 2>&1
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
