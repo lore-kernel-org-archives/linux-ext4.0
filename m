@@ -1,69 +1,153 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 0/9 v3] ext4: Punch hole and DAX fixes
-Date: Wed, 11 Nov 2015 09:31:39 +1100
-Message-ID: <20151110223139.GN19199@dastard>
-References: <1446653920-23127-1-git-send-email-jack@suse.com>
- <80B02B5F638F054B8B1358323FECDE0A5EA64CCF@G1W3650.americas.hpqcorp.net>
- <20151109162256.GH11149@quack.suse.cz>
- <20151109165149.GI11149@quack.suse.cz>
- <20151110000027.GM19199@dastard>
- <20151110100253.GF26699@quack.suse.cz>
+From: Andreas Gruenbacher <agruenba@redhat.com>
+Subject: Re: [PATCH v15 19/22] richacl: Add richacl xattr handler
+Date: Wed, 11 Nov 2015 02:16:33 +0100
+Message-ID: <CAHc6FU7hZdo7aoz2TmhSuw1Gkr=-+YhP2MLz408w8ZDrf-Y_6A@mail.gmail.com>
+References: <1447067343-31479-1-git-send-email-agruenba@redhat.com>
+	<1447067343-31479-20-git-send-email-agruenba@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Boylston, Brian" <brian.boylston@hpe.com>,
-	Jan Kara <jack@suse.com>, Ted Tso <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"dan.j.williams@intel.com" <dan.j.williams@intel.com>,
-	dchinner@redhat.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:5580 "EHLO
-	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751031AbbKJWbn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Nov 2015 17:31:43 -0500
-Content-Disposition: inline
-In-Reply-To: <20151110100253.GF26699@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: Andreas Gruenbacher <agruenba@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	Anna Schumaker <anna.schumaker@netapp.com>,
+	Dave Chinner <david@fromorbit.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	XFS Developers <xfs@oss.sgi.com>,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1447067343-31479-20-git-send-email-agruenba@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Nov 10, 2015 at 11:02:53AM +0100, Jan Kara wrote:
-> On Tue 10-11-15 11:00:27, Dave Chinner wrote:
-> > On Mon, Nov 09, 2015 at 05:51:49PM +0100, Jan Kara wrote:
-> > > The zeroing code in __dax_fault() needs to go away anyway so whether we
-> > > return buffer_new buffer is not really substantial but I'd like to get some
-> > > agreement and consistency among filesystems in with which flags zeroed
-> > > blocks are returned. Thoughts?
-> > 
-> > There is no consistency to begin with, especially w.r.t. unwritten
-> > extent behaviour as the upper layers don't all understand that
-> > buffer_unwritten is a valid flag for getblock to return. Hence we
-> > have hacks in XFS setting buffer_new() in strange cases to get the
-> > upper level code to zero stuff that really needs zeroing...
-> 
-> In ext4 we set buffer as new in two cases:
-> 
-> 1) When it was freshly allocated (regardless whether into unwritten or
->    normal extent).
+On Mon, Nov 9, 2015 at 12:09 PM, Andreas Gruenbacher
+<agruenba@redhat.com> wrote:
+> Add richacl xattr handler implementing the xattr operations based on the
+> get_richacl and set_richacl inode operations.
+>
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> ---
+>  fs/richacl_xattr.c            | 78 +++++++++++++++++++++++++++++++++++++++++++
+>  include/linux/richacl_xattr.h |  2 ++
+>  2 files changed, 80 insertions(+)
+>
+> diff --git a/fs/richacl_xattr.c b/fs/richacl_xattr.c
+> index 38473b6..767c1f7 100644
+> --- a/fs/richacl_xattr.c
+> +++ b/fs/richacl_xattr.c
+> @@ -18,7 +18,9 @@
+>  #include <linux/fs.h>
+>  #include <linux/slab.h>
+>  #include <linux/module.h>
+> +#include <linux/xattr.h>
+>  #include <linux/richacl_xattr.h>
+> +#include <uapi/linux/xattr.h>
+>
+>  MODULE_LICENSE("GPL");
+>
+> @@ -161,6 +163,82 @@ richacl_to_xattr(struct user_namespace *user_ns,
+>  }
+>  EXPORT_SYMBOL_GPL(richacl_to_xattr);
+>
+> +static size_t
+> +richacl_xattr_list(struct dentry *dentry, char *list, size_t list_len,
+> +                  const char *name, size_t name_len, int handler_flags)
+> +{
+> +       const size_t size = sizeof(XATTR_NAME_RICHACL);
+> +
+> +       if (!IS_RICHACL(d_backing_inode(dentry)))
+> +               return 0;
+> +       if (list && size <= list_len)
+> +               memcpy(list, XATTR_NAME_RICHACL, size);
+> +       return size;
+> +}
+> +
+> +static int
+> +richacl_xattr_get(struct dentry *dentry, const char *name, void *buffer,
+> +                 size_t buffer_size, int handler_flags)
+> +{
+> +       struct inode *inode = d_backing_inode(dentry);
+> +       struct richacl *acl;
+> +       int error;
+> +
+> +       if (strcmp(name, "") != 0)
+> +               return -EINVAL;
+> +       if (!IS_RICHACL(inode))
+> +               return EOPNOTSUPP;
 
-Which only works for freshly allocated unwritten extents, not for
-writes into preallocated extents.
+This should have been -EOPNOTSUPP instead.
 
-> 2) When it was converted from unwritten to written state.
-
-Which, for direct IO, is no good when we do the conversion after IO
-completion because we need to know at IO submission if we need to do
-sub-block zeroing (i.e. dio_zero_block() will skip the zeroing if
-buffer_new() is not set on unwritten blocks).
-
-Like I said, there's no consistency of behaviour between
-filesystems; we do what works for the specific filesystem
-algorithms...
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+> +       if (S_ISLNK(inode->i_mode))
+> +               return -EOPNOTSUPP;
+> +       acl = get_richacl(inode);
+> +       if (IS_ERR(acl))
+> +               return PTR_ERR(acl);
+> +       if (acl == NULL)
+> +               return -ENODATA;
+> +       error = richacl_to_xattr(&init_user_ns, acl, buffer, buffer_size);
+> +       richacl_put(acl);
+> +       return error;
+> +}
+> +
+> +static int
+> +richacl_xattr_set(struct dentry *dentry, const char *name,
+> +                 const void *value, size_t size, int flags, int handler_flags)
+> +{
+> +       struct inode *inode = d_backing_inode(dentry);
+> +       struct richacl *acl = NULL;
+> +       int ret;
+> +
+> +       if (strcmp(name, "") != 0)
+> +               return -EINVAL;
+> +       if (!IS_RICHACL(inode))
+> +               return -EOPNOTSUPP;
+> +       if (!inode->i_op->set_richacl)
+> +               return -EOPNOTSUPP;
+> +
+> +       if (!uid_eq(current_fsuid(), inode->i_uid) &&
+> +           inode_permission(inode, MAY_CHMOD) &&
+> +           !capable(CAP_FOWNER))
+> +               return -EPERM;
+> +
+> +       if (value) {
+> +               acl = richacl_from_xattr(&init_user_ns, value, size);
+> +               if (IS_ERR(acl))
+> +                       return PTR_ERR(acl);
+> +       }
+> +
+> +       ret = inode->i_op->set_richacl(inode, acl);
+> +       richacl_put(acl);
+> +       return ret;
+> +}
+> +
+> +struct xattr_handler richacl_xattr_handler = {
+> +       .prefix = XATTR_NAME_RICHACL,
+> +       .list = richacl_xattr_list,
+> +       .get = richacl_xattr_get,
+> +       .set = richacl_xattr_set,
+> +};
+> +EXPORT_SYMBOL(richacl_xattr_handler);
+> +
+>  /*
+>   * Fix up the uids and gids in richacl extended attributes in place.
+>   */
+> diff --git a/include/linux/richacl_xattr.h b/include/linux/richacl_xattr.h
+> index 7fc5ca8..45ec27a 100644
+> --- a/include/linux/richacl_xattr.h
+> +++ b/include/linux/richacl_xattr.h
+> @@ -39,4 +39,6 @@ static inline void richacl_fix_xattr_to_user(void *value, size_t size)
+>  }
+>  #endif
+>
+> +extern struct xattr_handler richacl_xattr_handler;
+> +
+>  #endif /* __RICHACL_XATTR_H */
+> --
+> 2.5.0
+>
