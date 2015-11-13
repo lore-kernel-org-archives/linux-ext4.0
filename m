@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 01/12] test-scripts: test migration scripts
-Date: Fri, 13 Nov 2015 13:36:50 -0800
-Message-ID: <20151113213650.31124.16817.stgit@birch.djwong.org>
+Subject: [PATCH 03/12] reflink: add test support routines to a separate file
+Date: Fri, 13 Nov 2015 13:37:03 -0800
+Message-ID: <20151113213703.31124.57109.stgit@birch.djwong.org>
 References: <20151113213643.31124.80975.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -23,124 +23,394 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-Add two scripts: "nextid" finds the next available test ID number in a
-group, and "mvtest" relocates a test, fixes the golden output, and
-moves the group entry for that test.
+Put all the reflink/dedupe-related test support routines in a separate
+file, then modify the existing reflink tests to use them.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- mvtest |   58 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- nextid |   35 +++++++++++++++++++++++++++++++++++
- 2 files changed, 93 insertions(+)
- create mode 100755 mvtest
- create mode 100755 nextid
+ common/rc         |   51 +++++++++------
+ common/reflink    |  185 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/btrfs/029   |    1 
+ tests/btrfs/031   |    1 
+ tests/btrfs/108   |    1 
+ tests/btrfs/109   |    1 
+ tests/generic/110 |    3 +
+ tests/generic/111 |    3 +
+ tests/generic/115 |    3 +
+ 9 files changed, 225 insertions(+), 24 deletions(-)
+ create mode 100644 common/reflink
 
 
-diff --git a/mvtest b/mvtest
-new file mode 100755
-index 0000000..b5406d1
+diff --git a/common/rc b/common/rc
+index adf1edf..4c2f42c 100644
+--- a/common/rc
++++ b/common/rc
+@@ -82,6 +82,27 @@ _md5_checksum()
+ 	md5sum $1 | cut -d ' ' -f1
+ }
+ 
++# Write a byte into a range of a file
++_pwrite_byte() {
++	pattern="$1"
++	offset="$2"
++	len="$3"
++	file="$4"
++	xfs_io_args="$5"
++
++	"$XFS_IO_PROG" $xfs_io_args -f -c "pwrite -S $pattern $offset $len" "$file"
++}
++
++# mmap-write a byte into a range of a file
++_mwrite_byte() {
++	pattern="$1"
++	offset="$2"
++	len="$3"
++	mmap_len="$4"
++	file="$5"
++
++	"$XFS_IO_PROG" -f -c "mmap -rw 0 $mmap_len" -c "mwrite -S $pattern $offset $len" "$file"
++}
+ 
+ # ls -l w/ selinux sometimes puts a dot at the end:
+ # -rwxrw-r--. id1 id2 file1
+@@ -2569,12 +2590,6 @@ _require_ugid_map()
+ 	fi
+ }
+ 
+-_require_cp_reflink()
+-{
+-       cp --help | grep -q reflink || \
+-               _notrun "This test requires a cp with --reflink support."
+-}
+-
+ _require_fssum()
+ {
+ 	FSSUM_PROG=$here/src/fssum
+@@ -2588,21 +2603,6 @@ _require_cloner()
+ 		_notrun "cloner binary not present at $CLONER_PROG"
+ }
+ 
+-# Given 2 files, verify that they have the same mapping but different
+-# inodes - i.e. an undisturbed reflink
+-# Silent if so, make noise if not
+-_verify_reflink()
+-{
+-       # not a hard link or symlink?
+-       cmp -s  <(stat -c '%i' $1) <(stat -c '%i' $2) \
+-               && echo "$1 and $2 are not reflinks: same inode number"
+-
+-       # same mapping?
+-       diff -u <($XFS_IO_PROG -c "fiemap" $1 | grep -v $1) \
+-               <($XFS_IO_PROG -c "fiemap" $2 | grep -v $2) \
+-               || echo "$1 and $2 are not reflinks: different extents"
+-}
+-
+ _require_atime()
+ {
+ 	if [ "$FSTYP" == "nfs" ]; then
+@@ -2764,6 +2764,15 @@ _require_btrfs_dev_del_by_devid()
+ 			"(must support 'btrfs device delete <devid> /<mnt>')"
+ }
+ 
++_require_test_lsattr()
++{
++	testio=$(lsattr -d $TEST_DIR 2>&1)
++	echo $testio | grep -q "Operation not supported" && \
++		_notrun "lsattr not supported by test filesystem type: $FSTYP"
++	echo $testio | grep -q "Inappropriate ioctl for device" && \
++		_notrun "lsattr not supported by test filesystem type: $FSTYP"
++}
++
+ _get_total_inode()
+ {
+ 	if [ -z "$1" ]; then
+diff --git a/common/reflink b/common/reflink
+new file mode 100644
+index 0000000..eab7f66
 --- /dev/null
-+++ b/mvtest
-@@ -0,0 +1,58 @@
-+#!/bin/sh
++++ b/common/reflink
+@@ -0,0 +1,185 @@
++##/bin/bash
++# Routines for reflinking, deduping, and comparing parts of files.
++#-----------------------------------------------------------------------
++#  Copyright (c) 2015 Oracle.  All Rights Reserved.
++#  This program is free software; you can redistribute it and/or modify
++#  it under the terms of the GNU General Public License as published by
++#  the Free Software Foundation; either version 2 of the License, or
++#  (at your option) any later version.
++#
++#  This program is distributed in the hope that it will be useful,
++#  but WITHOUT ANY WARRANTY; without even the implied warranty of
++#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++#  GNU General Public License for more details.
++#
++#  You should have received a copy of the GNU General Public License
++#  along with this program; if not, write to the Free Software
++#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
++#  USA
++#
++#  Contact information: Oracle Corporation, 500 Oracle Parkway,
++#  Redwood Shores, CA 94065, USA, or: http://www.oracle.com/
++#-----------------------------------------------------------------------
 +
-+# Renumber a test
-+
-+if [ -z "$1" ] || [ "$1" = "--help" ]; then
-+	echo "Usage: $0 path_to_test new_path_to_test"
-+	exit 1
-+fi
-+
-+src="$1"
-+dest="$2"
-+
-+die() {
-+	echo "$@"
-+	exit 1
++# Check that cp has a reflink argument
++_require_cp_reflink()
++{
++       cp --help | grep -q reflink || \
++               _notrun "This test requires a cp with --reflink support."
 +}
 +
-+nsort() {
-+	sort -g < "$1" > "$2"
++# Given 2 files, verify that they have the same mapping but different
++# inodes - i.e. an undisturbed reflink
++# Silent if so, make noise if not
++_verify_reflink()
++{
++       # not a hard link or symlink?
++       cmp -s  <(stat -c '%i' $1) <(stat -c '%i' $2) \
++               && echo "$1 and $2 are not reflinks: same inode number"
++
++       # same mapping?
++       diff -u <($XFS_IO_PROG -c "fiemap" $1 | grep -v $1) \
++               <($XFS_IO_PROG -c "fiemap" $2 | grep -v $2) \
++               || echo "$1 and $2 are not reflinks: different extents"
 +}
 +
-+append() {
-+	out="$1"
-+	shift
-+	echo "$@" >> "${out}"
-+}
++# New reflink/dedupe helpers
 +
-+test "${src}" != "${dest}" || die "Test \"${src}\" is the same as dest."
-+test -e "tests/${src}" || die "Test \"${src}\" does not exist."
-+test ! -e "tests/${dest}" || die "Test \"${src}\" already exists."
++# this test requires the test fs support reflink...
++_require_test_reflink()
++{
++	_require_test
++	_require_xfs_io_command "reflink"
 +
-+sid="$(basename "${src}")"
-+did="$(basename "${dest}")"
-+
-+sgroup="$(basename "$(dirname "tests/${src}")")"
-+dgroup="$(basename "$(dirname "tests/${dest}")")"
-+
-+sgroupfile="tests/${sgroup}/group"
-+dgroupfile="tests/${sgroup}/group"
-+
-+$DBG git mv "tests/${src}" "tests/${dest}"
-+$DBG git mv "tests/${src}.out" "tests/${dest}.out"
-+$DBG sed -e "s/^# FS QA Test No. ${sid}$/# FS QA Test No. ${did}/g" -i "tests/${dest}"
-+$DBG sed -e "s/^QA output created by ${sid}$/QA output created by ${did}/g" -i "tests/${dest}.out"
-+$DBG sed -e "s/test-${sid}/test-${did}/g" -i "tests/${dest}.out"
-+
-+grpline="$(grep "^${sid} " "${sgroupfile}")"
-+newgrpline="$(echo "${grpline}" | sed -e "s/^${sid} /${did} /g")"
-+
-+$DBG sed -e "/^${sid}.*$/d" -i "${sgroupfile}"
-+$DBG cp "${dgroupfile}" "${dgroupfile}.new"
-+$DBG append "${dgroupfile}.new" "${newgrpline}"
-+$DBG nsort "${dgroupfile}.new" "${dgroupfile}"
-+$DBG rm "${dgroupfile}.new"
-+
-+echo "Moved \"${src}\" to \"${dest}\"."
-+
-+exit 0
-diff --git a/nextid b/nextid
-new file mode 100755
-index 0000000..285b549
---- /dev/null
-+++ b/nextid
-@@ -0,0 +1,35 @@
-+#!/bin/sh
-+
-+# Given a group name, find the next available test number.
-+
-+if [ -z "$1" ] || [ "$1" = "--help" ]; then
-+	echo "Usage: $0 groupname[/start_looking_at_this_number]"
-+	exit 1
-+fi
-+
-+die() {
-+	echo "$@"
-+	exit 1
-+}
-+
-+if [ "$(basename "$1")" != "$1" ]; then
-+	group="$(dirname "$1")"
-+	id="$(basename "$1")"
-+else
-+	group="$1"
-+	id=1
-+fi
-+test -e "tests/${group}/group" || die "Unknown group \"${group}\"."
-+
-+while test "${id}" -lt 1000; do
-+	name="$(printf "%.03d" "${id}")"
-+	if [ ! -e "tests/${group}/${name}" ]; then
-+		echo "${group}/${name}"
-+		exit 0
++	rm -rf "$TEST_DIR/file1" "$TEST_DIR/file2"
++	"$XFS_IO_PROG" -f -c "pwrite -S 0x61 0 65536" "$TEST_DIR/file1" > /dev/null
++	"$XFS_IO_PROG" -f -c "reflink $TEST_DIR/file1 0 0 65536" "$TEST_DIR/file2" > /dev/null
++	if [ ! -s "$TEST_DIR/file2" ]; then
++		rm -rf "$TEST_DIR/file1" "$TEST_DIR/file2"
++		_notrun "Reflink not supported by test filesystem type: $FSTYP"
 +	fi
-+	id=$((id + 1))
-+done
++	rm -rf "$TEST_DIR/file1" "$TEST_DIR/file2"
++}
 +
-+echo "No free IDs less than ${id} in group \"${group}\"."
++# this test requires the scratch fs support reflink...
++_require_scratch_reflink()
++{
++	_require_scratch
++	_require_xfs_io_command "reflink"
 +
-+exit 1
++	_scratch_mkfs > /dev/null
++	_scratch_mount
++	"$XFS_IO_PROG" -f -c "pwrite -S 0x61 0 65536" "$SCRATCH_MNT/file1" > /dev/null
++	"$XFS_IO_PROG" -f -c "reflink $SCRATCH_MNT/file1 0 0 65536" "$SCRATCH_MNT/file2" > /dev/null
++	if [ ! -s "$SCRATCH_MNT/file2" ]; then
++		_scratch_unmount
++		_notrun "Reflink not supported by scratch filesystem type: $FSTYP"
++	fi
++	_scratch_unmount
++}
++
++# this test requires the test fs support dedupe...
++_require_test_dedupe()
++{
++	_require_test
++	_require_xfs_io_command "dedupe"
++
++	rm -rf "$TEST_DIR/file1" "$TEST_DIR/file2"
++	"$XFS_IO_PROG" -f -c "pwrite -S 0x61 0 65536" "$TEST_DIR/file1" > /dev/null
++	"$XFS_IO_PROG" -f -c "pwrite -S 0x61 0 65536" "$TEST_DIR/file2" > /dev/null
++	testio="$("$XFS_IO_PROG" -f -c "dedupe $TEST_DIR/file1 0 0 65536" "$TEST_DIR/file2" 2>&1)"
++	echo $testio | grep -q "Operation not supported" && \
++		_notrun "Dedupe not supported by test filesystem type: $FSTYP"
++	echo $testio | grep -q "Inappropriate ioctl for device" && \
++		_notrun "Dedupe not supported by test filesystem type: $FSTYP"
++	rm -rf "$TEST_DIR/file1" "$TEST_DIR/file2"
++}
++
++# this test requires the scratch fs support dedupe...
++_require_scratch_dedupe()
++{
++	_require_scratch
++	_require_xfs_io_command "dedupe"
++
++	_scratch_mkfs > /dev/null
++	_scratch_mount
++	"$XFS_IO_PROG" -f -c "pwrite -S 0x61 0 65536" "$SCRATCH_MNT/file1" > /dev/null
++	"$XFS_IO_PROG" -f -c "pwrite -S 0x61 0 65536" "$SCRATCH_MNT/file2" > /dev/null
++	testio="$("$XFS_IO_PROG" -f -c "dedupe $TEST_DIR/file1 0 0 65536" "$TEST_DIR/file2" 2>&1)"
++	echo $testio | grep -q "Operation not supported" && \
++		_notrun "Dedupe not supported by test filesystem type: $FSTYP"
++	echo $testio | grep -q "Inappropriate ioctl for device" && \
++		_notrun "Dedupe not supported by test filesystem type: $FSTYP"
++	_scratch_unmount
++}
++
++# Prints a range of a file as a hex dump
++_read_range() {
++	file="$1"
++	offset="$2"
++	len="$3"
++	xfs_io_args="$4"
++
++	$XFS_IO_PROG $xfs_io_args -f -c "pread -q -v $offset $len" "$file" | cut -d ' ' -f '3-18'
++}
++
++# Compare ranges of two files
++_compare_range() {
++	file1="$1"
++	offset1="$2"
++	file2="$3"
++	offset2="$4"
++	len="$5"
++
++	cmp -s <(_read_range "$file1" "$offset1" "$len") \
++	       <(_read_range "$file2" "$offset2" "$len")
++}
++
++# Prints the md5 checksum of a hexdump of a part of a given file
++_md5_range_checksum() {
++	file="$1"
++	offset="$2"
++	len="$3"
++
++	md5sum <(_read_range "$file" "$offset" "$len") | cut -d ' ' -f 1
++}
++
++# Reflink some file1 into file2 via cp
++_cp_reflink() {
++	file1="$1"
++	file2="$2"
++
++	cp --reflink=always "$file1" "$file2"
++}
++
++# Reflink some file1 into file2
++_reflink() {
++	file1="$1"
++	file2="$2"
++
++	"$XFS_IO_PROG" -f -c "reflink $file1" "$file2"
++}
++
++# Reflink some part of file1 into another part of file2
++_reflink_range() {
++	file1="$1"
++	offset1="$2"
++	file2="$3"
++	offset2="$4"
++	len="$5"
++	xfs_io_args="$6"
++
++	"$XFS_IO_PROG" $xfs_io_args -f -c "reflink $file1 $offset1 $offset2 $len" "$file2"
++}
++
++# Dedupe some part of file1 into another part of file2
++_dedupe_range() {
++	file1="$1"
++	offset1="$2"
++	file2="$3"
++	offset2="$4"
++	len="$5"
++	xfs_io_args="$6"
++
++	"$XFS_IO_PROG" $xfs_io_args -f -c "dedupe $file1 $offset1 $offset2 $len" "$file2"
++}
+diff --git a/tests/btrfs/029 b/tests/btrfs/029
+index 0b77b33..175317a 100755
+--- a/tests/btrfs/029
++++ b/tests/btrfs/029
+@@ -47,6 +47,7 @@ _cleanup()
+ # get standard environment, filters and checks
+ . ./common/rc
+ . ./common/filter
++. ./common/reflink
+ 
+ # real QA test starts here
+ _supported_fs btrfs
+diff --git a/tests/btrfs/031 b/tests/btrfs/031
+index bcd332c..c5763da 100755
+--- a/tests/btrfs/031
++++ b/tests/btrfs/031
+@@ -48,6 +48,7 @@ _cleanup()
+ # get standard environment, filters and checks
+ . ./common/rc
+ . ./common/filter
++. ./common/reflink
+ 
+ # real QA test starts here
+ _supported_fs btrfs
+diff --git a/tests/btrfs/108 b/tests/btrfs/108
+index 5e3a403..18e5b99 100755
+--- a/tests/btrfs/108
++++ b/tests/btrfs/108
+@@ -41,6 +41,7 @@ _cleanup()
+ # get standard environment, filters and checks
+ . ./common/rc
+ . ./common/filter
++. ./common/reflink
+ 
+ # real QA test starts here
+ _supported_fs btrfs
+diff --git a/tests/btrfs/109 b/tests/btrfs/109
+index e2aeb73..b86336c 100755
+--- a/tests/btrfs/109
++++ b/tests/btrfs/109
+@@ -41,6 +41,7 @@ _cleanup()
+ # get standard environment, filters and checks
+ . ./common/rc
+ . ./common/filter
++. ./common/reflink
+ 
+ # real QA test starts here
+ _supported_fs btrfs
+diff --git a/tests/generic/110 b/tests/generic/110
+index ec74357..468d859 100755
+--- a/tests/generic/110
++++ b/tests/generic/110
+@@ -43,9 +43,10 @@ _cleanup()
+ # get standard environment, filters and checks
+ . common/rc
+ . common/filter
++. common/reflink
+ 
+ # real QA test starts here
+-_supported_fs btrfs
++_require_test_reflink
+ _supported_os Linux
+ 
+ _require_xfs_io_command "fiemap"
+diff --git a/tests/generic/111 b/tests/generic/111
+index 9da3f40..1797233 100755
+--- a/tests/generic/111
++++ b/tests/generic/111
+@@ -43,9 +43,10 @@ _cleanup()
+ # get standard environment, filters and checks
+ . common/rc
+ . common/filter
++. common/reflink
+ 
+ # real QA test starts here
+-_supported_fs btrfs
++_require_test_reflink
+ _supported_os Linux
+ 
+ _require_xfs_io_command "fiemap"
+diff --git a/tests/generic/115 b/tests/generic/115
+index 35f0417..b5c64ec 100755
+--- a/tests/generic/115
++++ b/tests/generic/115
+@@ -41,9 +41,10 @@ _cleanup()
+ # get standard environment, filters and checks
+ . ./common/rc
+ . ./common/filter
++. ./common/reflink
+ 
+ # real QA test starts here
+-_supported_fs btrfs
++_require_test_reflink
+ _supported_os Linux
+ 
+ _require_xfs_io_command "fiemap"
 
 _______________________________________________
 xfs mailing list
