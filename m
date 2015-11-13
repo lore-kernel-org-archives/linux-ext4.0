@@ -1,25 +1,16 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [RFCv3.1 00/11] xfstests: test the nfs/cifs/btrfs/xfs
+Subject: [RFCv3.2 00/12] xfstests: test the nfs/cifs/btrfs/xfs
 	reflink/dedupe ioctls
-Date: Fri, 13 Nov 2015 10:32:34 -0800
-Message-ID: <20151113183234.GD2224@birch.djwong.org>
-References: <20151111192628.15056.6451.stgit@birch.djwong.org>
-	<20151112090756.GA25685@infradead.org>
-	<20151112125115.GA28822@infradead.org>
-	<20151112173427.GC2217@birch.djwong.org>
-	<20151112173635.GA9247@infradead.org>
-	<20151113090822.GB2214@birch.djwong.org>
-	<20151113141228.GA7218@infradead.org>
+Date: Fri, 13 Nov 2015 13:36:43 -0800
+Message-ID: <20151113213643.31124.80975.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: fstests@vger.kernel.org, xfs@oss.sgi.com, tao.peng@primarydata.com,
-	linux-ext4@vger.kernel.org, Anna.Schumaker@netapp.com,
-	linux-btrfs@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Cc: fstests@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	tao.peng@primarydata.com, linux-ext4@vger.kernel.org,
+	Anna.Schumaker@netapp.com, linux-btrfs@vger.kernel.org
+To: david@fromorbit.com, darrick.wong@oracle.com
 Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <20151113141228.GA7218@infradead.org>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -31,34 +22,59 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Nov 13, 2015 at 06:12:28AM -0800, Christoph Hellwig wrote:
-> On Fri, Nov 13, 2015 at 01:08:22AM -0800, Darrick J. Wong wrote:
-> > I think I got all the tests renumbered correctly and fixed all the other bugs.
-> > I'd like to send the updated patchpile to Dave tomorrow, but if you have a few
-> > spare cycles would you mind giving this a quick test to make sure I fixed
-> > everything?
-> > 
-> > https://github.com/djwong/xfstests/tree/for-dave
-> 
-> Looks good enough to go in
-> 
-> Acked-by: Christoph Hellwig <hch@lst.de>
-> 
-> I have for failing tests on NFS currently.  Two of them probably are
-> NFS issues (free block count), but and two others fail because NFS
-> doesn't support chattr/lsattr.  I will send an incremental check to adda
-> feature test for those.
+Hi all,
 
-I separated the chattr +i tests into a separate test that doesn't run if lsattr
-doesn't make sense; will post patches shortly.
+This is part of the third revision of an RFC for adding to XFS support
+for tracking reverse-mappings of physical blocks to file and metadata;
+and support for mapping multiple file logical blocks to the same
+physical block, more commonly known as reflinking.
+
+This patchset aims to make xfstests perform more rigorous testing of
+the NFS/CIFS/btrfs/XFS file clone, reflink, and dedupe ioctls.
+There are now tests of the basic functionality of the three ioctls;
+tests to ensure that the filesystem exhibits the expected copy on
+write semantics; tests to try to suss out race conditions in the new
+write paths; tests to ensure that the ioctls peform basic disk
+accounting correctly; tests of the interaction between reflink and the
+various fallocate verbs (allocate, punch, collapse, insert zeroes);
+and some attempts to test the upper limits of reflinking and ENOSPC
+behavior.
+
+Since the last posting, each test tries to reflink (or dedupe) on the
+test or scratch FS to decide if they're going to run, instead of
+guessing based on FS type.  Per Dave's suggestion, I also converted
+the basic functionality tests to use fixed sizes so that I can use
+md5sum in the golden output to check that the file contents match
+exactly.
+
+Since "RFCv3.1", I've made the following changes:
+
+ * Renumbered the tests to the lowest numbers possible, per Dave's
+   request.
+
+ * Fixed the reflink and dedupe _require tests so that they can run
+   on things like NFS which support reflink but not dedupe.
+
+ * Added checks for lsattr/chattr support so that we don't produce
+   bogus failures on NFS, and put the *attr tests in separate test
+   files.
+
+ * Appended a couple of tools I wrote to handle finding minimal test
+   numbers and moving tests around.
+
+If you're going to start using this mess, you probably ought to just
+pull from my github trees for kernel[1], xfsprogs[2], xfstests[3], and
+xfs-docs[4].  They should just work with the btrfs that's in 4.3...
+and somewhat buggily with the 4.3 XFS patched with [1].
+
+Comments and questions are, as always, welcome.
 
 --D
 
-> 
-> _______________________________________________
-> xfs mailing list
-> xfs@oss.sgi.com
-> http://oss.sgi.com/mailman/listinfo/xfs
+[1] https://github.com/djwong/linux/tree/for-dave
+[2] https://github.com/djwong/xfsprogs/tree/for-dave
+[3] https://github.com/djwong/xfstests/tree/for-dave
+[4] https://github.com/djwong/xfs-documentation/tree/for-dave
 
 _______________________________________________
 xfs mailing list
