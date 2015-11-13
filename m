@@ -1,71 +1,60 @@
-From: Alexandru Moise <00moses.alexander00@gmail.com>
-Subject: [PATCH] jbd2: redefine jbd2_get_transaction to jbd2_init_transaction
-Date: Fri, 13 Nov 2015 00:27:56 +0200
-Message-ID: <20151112222756.GA668@gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [RFCv3.1 00/11] xfstests: test the nfs/cifs/btrfs/xfs
+	reflink/dedupe ioctls
+Date: Fri, 13 Nov 2015 01:08:22 -0800
+Message-ID: <20151113090822.GB2214@birch.djwong.org>
+References: <20151111192628.15056.6451.stgit@birch.djwong.org>
+	<20151112090756.GA25685@infradead.org>
+	<20151112125115.GA28822@infradead.org>
+	<20151112173427.GC2217@birch.djwong.org>
+	<20151112173635.GA9247@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.com, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: tytso@mit.edu
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: fstests@vger.kernel.org, xfs@oss.sgi.com, tao.peng@primarydata.com,
+	linux-ext4@vger.kernel.org, Anna.Schumaker@netapp.com,
+	linux-btrfs@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20151112173635.GA9247@infradead.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-This patch follows the same logic of a 2012 patch to jbd
-(prior to ext3 removal). Yuanhan Liu renamed the jbd
-get_transaction() function to init_transaction(), as the function
-was as an initialization function, as it is mostly in our case.
+On Thu, Nov 12, 2015 at 09:36:35AM -0800, Christoph Hellwig wrote:
+> On Thu, Nov 12, 2015 at 09:34:27AM -0800, Darrick J. Wong wrote:
+> > Bleargh, _require_*_dedupe forgot to check for ENOTTY output, so all the dedupe
+> > tests should have _notrun.
+> > 
+> > Also, generic/806 was calling the wrong _require.
+> > 
+> > I'll start renumbering tests; Christoph, did you see anything else?
+> 
+> Looks fine so far otherwise.
 
-Also remove the return value as it is unused.
+I think I got all the tests renumbered correctly and fixed all the other bugs.
+I'd like to send the updated patchpile to Dave tomorrow, but if you have a few
+spare cycles would you mind giving this a quick test to make sure I fixed
+everything?
 
-Signed-off-by: Alexandru Moise <00moses.alexander00@gmail.com>
-Reviewed-by: Jan Kara <jack@suse.com>
----
- fs/jbd2/transaction.c | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
+https://github.com/djwong/xfstests/tree/for-dave
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 89463ee..3fd597b 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -65,7 +65,7 @@ void jbd2_journal_free_transaction(transaction_t *transaction)
- }
- 
- /*
-- * jbd2_get_transaction: obtain a new transaction_t object.
-+ * jbd2_init_transaction: obtain a new transaction_t object.
-  *
-  * Simply allocate and initialise a new transaction.  Create it in
-  * RUNNING state and add it to the current journal (which should not
-@@ -79,8 +79,8 @@ void jbd2_journal_free_transaction(transaction_t *transaction)
-  *
-  */
- 
--static transaction_t *
--jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
-+static void
-+jbd2_init_transaction(journal_t *journal, transaction_t *transaction)
- {
- 	transaction->t_journal = journal;
- 	transaction->t_state = T_RUNNING;
-@@ -104,8 +104,6 @@ jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
- 	transaction->t_max_wait = 0;
- 	transaction->t_start = jiffies;
- 	transaction->t_requested = 0;
--
--	return transaction;
- }
- 
- /*
-@@ -343,7 +341,7 @@ repeat:
- 		write_lock(&journal->j_state_lock);
- 		if (!journal->j_running_transaction &&
- 		    (handle->h_reserved || !journal->j_barrier_count)) {
--			jbd2_get_transaction(journal, new_transaction);
-+			jbd2_init_transaction(journal, new_transaction);
- 			new_transaction = NULL;
- 		}
- 		write_unlock(&journal->j_state_lock);
--- 
-2.6.2
+--D
+
+> --
+> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
