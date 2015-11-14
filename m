@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v2 07/11] mm: add find_get_entries_tag()
-Date: Fri, 13 Nov 2015 17:06:46 -0700
-Message-ID: <1447459610-14259-8-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v2 06/11] mm: add pgoff_mkclean()
+Date: Fri, 13 Nov 2015 17:06:45 -0700
+Message-ID: <1447459610-14259-7-git-send-email-ross.zwisler@linux.intel.com>
 References: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
 Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	"H. Peter Anvin" <hpa@zytor.com>,
@@ -11,118 +11,131 @@ Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Dan Williams <dan.j.williams@intel.com>,
 	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
+	Ingo Molnar <mingo@redhat.com>,
+	Jan Kara <jack@suse.com>,
 	Jeff Layton <jlayton@poochiereds.net>,
 	Matthew Wilcox <willy@linux.intel.com>,
 	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-nvdimm@lists.01.org, x86@kernel.org,
-	xfs@oss.sgi.com, Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org,
+	x86@kernel.org,
+	xfs@oss.sgi.com,
+	Andrew Morton <akpm@linux-foundation.org>,
 	Matthew Wilcox <matthew.r.wilcox@intel.com>,
 	Dave Hansen <dave.hansen@linux.intel.com>
 To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Add find_get_entries_tag() to the family of functions that include
-find_get_entries(), find_get_pages() and find_get_pages_tag().  This is
-needed for DAX dirty page handling because we need a list of both page
-offsets and radix tree entries ('indices' and 'entries' in this function)
-that are marked with the PAGECACHE_TAG_TOWRITE tag.
+Introduce pgoff_mkclean() which conceptually is similar to page_mkclean()
+except it works in the absence of struct page and it can also be used to
+clean PMDs.  This is needed for DAX's dirty page handling.
+
+pgoff_mkclean() doesn't return an error for a missing PTE/PMD when looping
+through the VMAs because it's not a requirement that each of the
+potentially many VMAs associated with a given struct address_space have a
+mapping set up for our pgoff.
 
 Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 ---
- include/linux/pagemap.h |  3 +++
- mm/filemap.c            | 61 +++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 64 insertions(+)
+ include/linux/rmap.h |  5 +++++
+ mm/rmap.c            | 51 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 56 insertions(+)
 
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index a6c78e0..6fea3be 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -354,6 +354,9 @@ unsigned find_get_pages_contig(struct address_space *mapping, pgoff_t start,
- 			       unsigned int nr_pages, struct page **pages);
- unsigned find_get_pages_tag(struct address_space *mapping, pgoff_t *index,
- 			int tag, unsigned int nr_pages, struct page **pages);
-+unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t start,
-+			int tag, unsigned int nr_entries,
-+			struct page **entries, pgoff_t *indices);
+diff --git a/include/linux/rmap.h b/include/linux/rmap.h
+index 29446ae..171a4ac 100644
+--- a/include/linux/rmap.h
++++ b/include/linux/rmap.h
+@@ -223,6 +223,11 @@ unsigned long page_address_in_vma(struct page *, struct vm_area_struct *);
+ int page_mkclean(struct page *);
  
- struct page *grab_cache_page_write_begin(struct address_space *mapping,
- 			pgoff_t index, unsigned flags);
-diff --git a/mm/filemap.c b/mm/filemap.c
-index d5e94fd..89ab448 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1454,6 +1454,67 @@ repeat:
- }
- EXPORT_SYMBOL(find_get_pages_tag);
- 
-+/**
-+ * find_get_entries_tag - find and return entries that match @tag
-+ * @mapping:	the address_space to search
-+ * @start:	the starting page cache index
-+ * @tag:	the tag index
-+ * @nr_entries:	the maximum number of entries
-+ * @entries:	where the resulting entries are placed
-+ * @indices:	the cache indices corresponding to the entries in @entries
-+ *
-+ * Like find_get_entries, except we only return entries which are tagged with
-+ * @tag.
-+ */
-+unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t start,
-+			int tag, unsigned int nr_entries,
-+			struct page **entries, pgoff_t *indices)
-+{
-+	void **slot;
-+	unsigned int ret = 0;
-+	struct radix_tree_iter iter;
-+
-+	if (!nr_entries)
-+		return 0;
-+
-+	rcu_read_lock();
-+restart:
-+	radix_tree_for_each_tagged(slot, &mapping->page_tree,
-+				   &iter, start, tag) {
-+		struct page *page;
-+repeat:
-+		page = radix_tree_deref_slot(slot);
-+		if (unlikely(!page))
-+			continue;
-+		if (radix_tree_exception(page)) {
-+			if (radix_tree_deref_retry(page))
-+				goto restart;
-+			/*
-+			 * A shadow entry of a recently evicted page, a swap
-+			 * entry from shmem/tmpfs or a DAX entry.  Return it
-+			 * without attempting to raise page count.
-+			 */
-+			goto export;
-+		}
-+		if (!page_cache_get_speculative(page))
-+			goto repeat;
-+
-+		/* Has the page moved? */
-+		if (unlikely(page != *slot)) {
-+			page_cache_release(page);
-+			goto repeat;
-+		}
-+export:
-+		indices[ret] = iter.index;
-+		entries[ret] = page;
-+		if (++ret == nr_entries)
-+			break;
-+	}
-+	rcu_read_unlock();
-+	return ret;
-+}
-+EXPORT_SYMBOL(find_get_entries_tag);
-+
  /*
-  * CD/DVDs are error prone. When a medium error occurs, the driver may fail
-  * a _large_ part of the i/o request. Imagine the worst scenario:
++ * Cleans and write protects the PTEs of shared mappings.
++ */
++void pgoff_mkclean(pgoff_t, struct address_space *);
++
++/*
+  * called in munlock()/munmap() path to check for other vmas holding
+  * the page mlocked.
+  */
+diff --git a/mm/rmap.c b/mm/rmap.c
+index f5b5c1f..8114862 100644
+--- a/mm/rmap.c
++++ b/mm/rmap.c
+@@ -586,6 +586,16 @@ vma_address(struct page *page, struct vm_area_struct *vma)
+ 	return address;
+ }
+ 
++static inline unsigned long
++pgoff_address(pgoff_t pgoff, struct vm_area_struct *vma)
++{
++	unsigned long address;
++
++	address = vma->vm_start + ((pgoff - vma->vm_pgoff) << PAGE_SHIFT);
++	VM_BUG_ON_VMA(address < vma->vm_start || address >= vma->vm_end, vma);
++	return address;
++}
++
+ #ifdef CONFIG_ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH
+ static void percpu_flush_tlb_batch_pages(void *data)
+ {
+@@ -1040,6 +1050,47 @@ int page_mkclean(struct page *page)
+ }
+ EXPORT_SYMBOL_GPL(page_mkclean);
+ 
++void pgoff_mkclean(pgoff_t pgoff, struct address_space *mapping)
++{
++	struct vm_area_struct *vma;
++	int ret = 0;
++
++	i_mmap_lock_read(mapping);
++	vma_interval_tree_foreach(vma, &mapping->i_mmap, pgoff, pgoff) {
++		struct mm_struct *mm = vma->vm_mm;
++		pmd_t pmd, *pmdp = NULL;
++		pte_t pte, *ptep = NULL;
++		unsigned long address;
++		spinlock_t *ptl;
++
++		address = pgoff_address(pgoff, vma);
++
++		/* when this returns successfully ptl is locked */
++		ret = follow_pte_pmd(mm, address, &ptep, &pmdp, &ptl);
++		if (ret)
++			continue;
++
++		if (pmdp) {
++			flush_cache_page(vma, address, pmd_pfn(*pmdp));
++			pmd = pmdp_huge_clear_flush(vma, address, pmdp);
++			pmd = pmd_wrprotect(pmd);
++			pmd = pmd_mkclean(pmd);
++			set_pmd_at(mm, address, pmdp, pmd);
++			spin_unlock(ptl);
++		} else {
++			BUG_ON(!ptep);
++			flush_cache_page(vma, address, pte_pfn(*ptep));
++			pte = ptep_clear_flush(vma, address, ptep);
++			pte = pte_wrprotect(pte);
++			pte = pte_mkclean(pte);
++			set_pte_at(mm, address, ptep, pte);
++			pte_unmap_unlock(ptep, ptl);
++		}
++	}
++	i_mmap_unlock_read(mapping);
++}
++EXPORT_SYMBOL_GPL(pgoff_mkclean);
++
+ /**
+  * page_move_anon_rmap - move a page to our anon_vma
+  * @page:	the page to move to our anon_vma
 -- 
 2.1.0
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
