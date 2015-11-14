@@ -1,193 +1,137 @@
 From: Andreas Dilger <andreas.dilger@intel.com>
-Subject: [PATCH 2/4] LU-7368 e2fsck: skip quota update when interrupted
-Date: Fri, 13 Nov 2015 18:10:27 -0700
-Message-ID: <1447463429-5966-2-git-send-email-andreas.dilger@intel.com>
-References: <1447463429-5966-1-git-send-email-andreas.dilger@intel.com>
+Subject: [PATCH 1/4] libext2fs: fix parents when modifying extents
+Date: Fri, 13 Nov 2015 18:10:26 -0700
+Message-ID: <1447463429-5966-1-git-send-email-andreas.dilger@intel.com>
 Cc: linux-ext4@vger.kernel.org,
-	Andreas Dilger <andreas.dilger@intel.com>
+	"Darrick J. Wong" <darrick.wong@oracle.com>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-no.shaw.ca ([64.59.134.12]:47735 "EHLO
+Received: from smtp-out-no.shaw.ca ([64.59.134.9]:47734 "EHLO
 	smtp-out-no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751957AbbKNBSl (ORCPT
+	with ESMTP id S1751573AbbKNBSl (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Nov 2015 20:18:41 -0500
-In-Reply-To: <1447463429-5966-1-git-send-email-andreas.dilger@intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There is a bug in how e2fsck handles being interrupted by CTRL-C.
-If CTRL-C is pressed to kill e2fsck rather than e.g. kill -9, then
-the interrupt handler sets E2F_FLAG_CANCEL in the context but doesn't
-actually kill the process.  Instead, e2fsck_pass1() checks this flag
-before processing the next inode.
+From: Darrick J. Wong <darrick.wong@oracle.com>
 
-If a filesystem is running in fix mode (e2fsck -fy) is interrupted,
-and the quota feature is enabled, then the quota file will still be
-written to disk even though the inode scan was not complete and the
-quota information is totally inaccurate.  Even worse, if the Pass 1
-inode and block scan was not finished, then the in-memory block
-bitmaps (which are used for block allocation during e2fsck) are also
-invalid, so any blocks allocated to the quota files may corrupt other
-files if those blocks were actually used.
+In ext2fs_extent_set_bmap() and ext2fs_punch_extent(), fix the parents
+when altering either end of an extent so that the parent nodes reflect
+the added mapping.
 
-  e2fsck 1.42.13.wc3 (28-Aug-2015)
-  Pass 1: Checking inodes, blocks, and sizes
-  ^C[QUOTA WARNING] Usage inconsistent for ID 0:
-      actual (6455296, 168) != expected (8568832, 231)
-  [QUOTA WARNING] Usage inconsistent for ID 695:
-      actual (614932320256, 63981) != expected (2102405386240, 176432)
-  Update quota info for quota type 0? yes
+There's a slight complication to using fix_parents: if there are two
+mappings to an lblk in the tree, the value of handle->path->curr can
+point to either extent afterwards), which is documented in a comment.
 
-  [QUOTA WARNING] Usage inconsistent for ID 0:
-      actual (6455296, 168) != expected (8568832, 231)
-  [QUOTA WARNING] Usage inconsistent for ID 538:
-      actual (614932320256, 63981) != expected (2102405386240, 176432)
-  Update quota info for quota type 1? yes
+Some additional color commentary from Darrick:
 
-  myth-OST0001: e2fsck canceled.
-  myth-OST0001: ***** FILE SYSTEM WAS MODIFIED *****
+  In the _set_bmap() case, I noticed that the "remapping last block in
+  extent" case would produce symptoms if we are trying to remap a
+  block from "extent" to "next_extent", and the two extents are
+  pointed to by different index nodes.  _extent_replace(...,
+  next_extent) updates e_lblk in the leaf extent, but because there's
+  no _extent_fix_parents() call, the index nodes never get updated.
 
-There may be a desire to flush out modified inodes and such that have
-been repaired, so that restarting an interrupted e2fsck will make
-progress, but the quota file update is plain wrong unless at least
-pass1 has finished, and the journal recreation is also dangerous if
-the block bitmaps have not been fully updated.
+  In the _punch_extent() case, we conclude that we need to split an
+  extent into two pieces since we're punching out the middle.  If the
+  extent is the last extent in the block, the second extent will be
+  inserted into a new leaf node block.  Without _fix_parents(), the
+  index node doesn't seem to get updated.
 
-Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Change-Id: I0fb7af2f6e88c84ef2e4656e2116a4721d57fd45
 ---
- e2fsck/e2fsck.c |    2 --
- e2fsck/e2fsck.h |    4 ++--
- e2fsck/pass1.c  |    4 +++-
- e2fsck/pass2.c  |   10 +++++-----
- e2fsck/unix.c   |   18 ++++++++++--------
- 5 files changed, 20 insertions(+), 18 deletions(-)
+ lib/ext2fs/extent.c |   30 ++++++++++++++++++++++++------
+ lib/ext2fs/punch.c  |   14 ++++++++++----
+ 2 files changed, 34 insertions(+), 10 deletions(-)
 
-diff --git a/e2fsck/e2fsck.c b/e2fsck/e2fsck.c
-index 0ec1540..2002dc0 100644
---- a/e2fsck/e2fsck.c
-+++ b/e2fsck/e2fsck.c
-@@ -203,8 +203,6 @@ static pass_t e2fsck_passes[] = {
- 	e2fsck_pass1, e2fsck_pass2, e2fsck_pass3, e2fsck_pass4,
- 	e2fsck_pass5, 0 };
- 
--#define E2F_FLAG_RUN_RETURN	(E2F_FLAG_SIGNAL_MASK|E2F_FLAG_RESTART)
--
- int e2fsck_run(e2fsck_t ctx)
- {
- 	int	i;
-diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index f904026..810030e 100644
---- a/e2fsck/e2fsck.h
-+++ b/e2fsck/e2fsck.h
-@@ -173,10 +173,10 @@ struct resource_track {
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index c12bc93..d3d5445 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -734,7 +734,14 @@ errcode_t ext2fs_extent_goto(ext2_extent_handle_t handle,
+  * and so on.
+  *
+  * Safe to call for any position in node; if not at the first entry,
+- * will  simply return.
++ * it will simply return.
++ *
++ * Note a subtlety of this function -- if there happen to be two extents
++ * mapping the same lblk and someone calls fix_parents on the second of the two
++ * extents, the position of the extent handle after the call will be the second
++ * extent if nothing happened, or the first extent if something did.  A caller
++ * in this situation must use ext2fs_extent_goto() after calling this function.
++ * Or simply don't map the same lblk with two extents, ever.
   */
- #define E2F_FLAG_ABORT		0x0001 /* Abort signaled */
- #define E2F_FLAG_CANCEL		0x0002 /* Cancel signaled */
--#define E2F_FLAG_SIGNAL_MASK	0x0003
-+#define E2F_FLAG_SIGNAL_MASK	(E2F_FLAG_ABORT | E2F_FLAG_CANCEL)
- #define E2F_FLAG_RESTART	0x0004 /* Restart signaled */
-+#define E2F_FLAG_RUN_RETURN	(E2F_FLAG_SIGNAL_MASK | E2F_FLAG_RESTART)
- #define E2F_FLAG_RESTART_LATER	0x0008 /* Restart after all iterations done */
--
- #define E2F_FLAG_SETJMP_OK	0x0010 /* Setjmp valid for abort */
- 
- #define E2F_FLAG_PROG_BAR	0x0020 /* Progress bar on screen */
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 50a8b99..1c2b8fd 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -766,7 +766,7 @@ void e2fsck_pass1(e2fsck_t ctx)
- 							  inode, inode_size);
- 		ehandler_operation(old_op);
- 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
--			return;
-+			goto endit;
- 		if (pctx.errcode == EXT2_ET_BAD_BLOCK_IN_INODE_TABLE) {
- 			if (!ctx->inode_bb_map)
- 				alloc_bb_map(ctx);
-@@ -1276,6 +1276,8 @@ endit:
- 
- 	if ((ctx->flags & E2F_FLAG_SIGNAL_MASK) == 0)
- 		print_resource_track(ctx, _("Pass 1"), &rtrack, ctx->fs->io);
-+	else
-+		ctx->invalid_bitmaps++;
- }
- 
- /*
-diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-index 2b7bff4..822eee4 100644
---- a/e2fsck/pass2.c
-+++ b/e2fsck/pass2.c
-@@ -148,14 +148,14 @@ void e2fsck_pass2(e2fsck_t ctx)
- 
- 	cd.pctx.errcode = ext2fs_dblist_iterate2(fs->dblist, check_dir_block,
- 						 &cd);
--	if (ctx->flags & E2F_FLAG_SIGNAL_MASK || ctx->flags & E2F_FLAG_RESTART)
--		return;
--
- 	if (ctx->flags & E2F_FLAG_RESTART_LATER) {
- 		ctx->flags |= E2F_FLAG_RESTART;
--		return;
-+		ctx->flags &= ~E2F_FLAG_RESTART_LATER;
- 	}
- 
-+	if (ctx->flags & E2F_FLAG_RUN_RETURN)
-+		return;
-+
- 	if (cd.pctx.errcode) {
- 		fix_problem(ctx, PR_2_DBLIST_ITERATE, &cd.pctx);
- 		ctx->flags |= E2F_FLAG_ABORT;
-@@ -739,7 +739,7 @@ static int check_dir_block(ext2_filsys fs,
- 	buf = cd->buf;
- 	ctx = cd->ctx;
- 
--	if (ctx->flags & E2F_FLAG_SIGNAL_MASK || ctx->flags & E2F_FLAG_RESTART)
-+	if (ctx->flags & E2F_FLAG_RUN_RETURN)
- 		return DIRENT_ABORT;
- 
- 	if (ctx->progress && (ctx->progress)(ctx, 2, cd->count++, cd->max))
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 66debcd..6d87f50 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -1667,8 +1667,15 @@ print_unsupp_features:
- 	}
- no_journal:
- 
--	if (ctx->qctx) {
-+	if (run_result & E2F_FLAG_ABORT) {
-+		fatal_error(ctx, _("aborted"));
-+	} else if (run_result & E2F_FLAG_CANCEL) {
-+		log_out(ctx, _("%s: e2fsck canceled.\n"), ctx->device_name ?
-+			ctx->device_name : ctx->filesystem_name);
-+		exit_value |= FSCK_CANCELED;
-+	} else if (ctx->qctx && !ctx->invalid_bitmaps) {
- 		int i, needs_writeout;
-+
- 		for (i = 0; i < MAXQUOTAS; i++) {
- 			if (qtype != -1 && qtype != i)
- 				continue;
-@@ -1695,18 +1702,13 @@ no_journal:
- 		ext2fs_close_free(&fs);
- 		goto restart;
- 	}
--	if (run_result & E2F_FLAG_ABORT)
--		fatal_error(ctx, _("aborted"));
- 
- #ifdef MTRACE
- 	mtrace_print("Cleanup");
- #endif
- 	was_changed = ext2fs_test_changed(fs);
--	if (run_result & E2F_FLAG_CANCEL) {
--		log_out(ctx, _("%s: e2fsck canceled.\n"), ctx->device_name ?
--			ctx->device_name : ctx->filesystem_name);
--		exit_value |= FSCK_CANCELED;
--	} else if (!(ctx->options & E2F_OPT_READONLY)) {
-+	if (!(ctx->flags & E2F_FLAG_RUN_RETURN) &&
-+	    !(ctx->options & E2F_OPT_READONLY)) {
- 		if (ext2fs_test_valid(fs)) {
- 			if (!(sb->s_state & EXT2_VALID_FS))
- 				exit_value |= FSCK_NONDESTRUCT;
+ errcode_t ext2fs_extent_fix_parents(ext2_extent_handle_t handle)
+ {
+@@ -1424,17 +1431,25 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 							       &next_extent);
+ 				if (retval)
+ 					goto done;
+-				retval = ext2fs_extent_fix_parents(handle);
+-				if (retval)
+-					goto done;
+ 			} else
+ 				retval = ext2fs_extent_insert(handle,
+ 				      EXT2_EXTENT_INSERT_AFTER, &newextent);
+ 			if (retval)
+ 				goto done;
+-			/* Now pointing at inserted extent; move back to prev */
++			retval = ext2fs_extent_fix_parents(handle);
++			if (retval)
++				goto done;
++			/*
++			 * Now pointing at inserted extent; move back to prev.
++			 *
++			 * We cannot use EXT2_EXTENT_PREV to go back; note the
++			 * subtlety in the comment for fix_parents().
++			 */
++			retval = ext2fs_extent_goto(handle, logical);
++			if (retval)
++				goto done;
+ 			retval = ext2fs_extent_get(handle,
+-						   EXT2_EXTENT_PREV_LEAF,
++						   EXT2_EXTENT_CURRENT,
+ 						   &extent);
+ 			if (retval)
+ 				goto done;
+@@ -1467,6 +1482,9 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 							      0, &newextent);
+ 			if (retval)
+ 				goto done;
++			retval = ext2fs_extent_fix_parents(handle);
++			if (retval)
++				goto done;
+ 			retval = ext2fs_extent_get(handle,
+ 						   EXT2_EXTENT_NEXT_LEAF,
+ 						   &extent);
+diff --git a/lib/ext2fs/punch.c b/lib/ext2fs/punch.c
+index a3d020e..2a2cf10 100644
+--- a/lib/ext2fs/punch.c
++++ b/lib/ext2fs/punch.c
+@@ -343,10 +343,16 @@ static errcode_t ext2fs_punch_extent(ext2_filsys fs, ext2_ino_t ino,
+ 					EXT2_EXTENT_INSERT_AFTER, &newex);
+ 			if (retval)
+ 				goto errout;
+-			/* Now pointing at inserted extent; so go back */
+-			retval = ext2fs_extent_get(handle,
+-						   EXT2_EXTENT_PREV_LEAF,
+-						   &newex);
++			retval = ext2fs_extent_fix_parents(handle);
++			if (retval)
++				goto errout;
++			/*
++			 * Now pointing at inserted extent; so go back.
++			 *
++			 * We cannot use EXT2_EXTENT_PREV to go back; note the
++			 * subtlety in the comment for fix_parents().
++			 */
++			retval = ext2fs_extent_goto(handle, extent.e_lblk);
+ 			if (retval)
+ 				goto errout;
+ 		} 
 -- 
 1.7.3.4
 
