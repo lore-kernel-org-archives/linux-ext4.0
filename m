@@ -1,77 +1,22 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH v2 03/11] pmem: enable REQ_FUA/REQ_FLUSH handling
-Date: Fri, 13 Nov 2015 18:32:40 -0800
-Message-ID: <CAPcyv4jwx3VzyRugcpH7KCOKM64kJ4Bq4wgY=iNJMvLTHrBv-Q@mail.gmail.com>
-References: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
-	<1447459610-14259-4-git-send-email-ross.zwisler@linux.intel.com>
-	<CAPcyv4j4arHE+iAALn1WPDzSb_QSCDy8udtXU1FV=kYSZDfv8A@mail.gmail.com>
-	<22E0F870-C1FB-431E-BF6C-B395A09A2B0D@dilger.ca>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [RFCv3.2 00/12] xfstests: test the nfs/cifs/btrfs/xfs
+ reflink/dedupe ioctls
+Date: Sat, 14 Nov 2015 00:41:03 -0800
+Message-ID: <20151114084103.GA6894@infradead.org>
+References: <20151113213643.31124.80975.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>, "Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>, Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>, Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>, Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux MM <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>, X86 ML <x86@kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>, Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>, Dave Hansen <dave.hansen@linux.intel.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <22E0F870-C1FB-431E-BF6C-B395A09A2B0D@dilger.ca>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=us-ascii
+Cc: david@fromorbit.com, fstests@vger.kernel.org, xfs@oss.sgi.com,
+	hch@infradead.org, tao.peng@primarydata.com,
+	linux-ext4@vger.kernel.org, Anna.Schumaker@netapp.com,
+	linux-btrfs@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <fstests-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20151113213643.31124.80975.stgit@birch.djwong.org>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Nov 13, 2015 at 4:43 PM, Andreas Dilger <adilger@dilger.ca> wrote:
-> On Nov 13, 2015, at 5:20 PM, Dan Williams <dan.j.williams@intel.com> wrote:
->>
->> On Fri, Nov 13, 2015 at 4:06 PM, Ross Zwisler
->> <ross.zwisler@linux.intel.com> wrote:
->>> Currently the PMEM driver doesn't accept REQ_FLUSH or REQ_FUA bios.  These
->>> are sent down via blkdev_issue_flush() in response to a fsync() or msync()
->>> and are used by filesystems to order their metadata, among other things.
->>>
->>> When we get an msync() or fsync() it is the responsibility of the DAX code
->>> to flush all dirty pages to media.  The PMEM driver then just has issue a
->>> wmb_pmem() in response to the REQ_FLUSH to ensure that before we return all
->>> the flushed data has been durably stored on the media.
->>>
->>> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
->>
->> Hmm, I'm not seeing why we need this patch.  If the actual flushing of
->> the cache is done by the core why does the driver need support
->> REQ_FLUSH?  Especially since it's just a couple instructions.  REQ_FUA
->> only makes sense if individual writes can bypass the "drive" cache,
->> but no I/O submitted to the driver proper is ever cached we always
->> flush it through to media.
->
-> If the upper level filesystem gets an error when submitting a flush
-> request, then it assumes the underlying hardware is broken and cannot
-> be as aggressive in IO submission, but instead has to wait for in-flight
-> IO to complete.
+Looks good,
 
-Upper level filesystems won't get errors when the driver does not
-support flush.  Those requests are ended cleanly in
-generic_make_request_checks().  Yes, the fs still needs to wait for
-outstanding I/O to complete but in the case of pmem all I/O is
-synchronous.  There's never anything to await when flushing at the
-pmem driver level.
-
-> Since FUA/FLUSH is basically a no-op for pmem devices,
-> it doesn't make sense _not_ to support this functionality.
-
-Seems to be a nop either way.  Given that DAX may lead to dirty data
-pending to the device in the cpu cache that a REQ_FLUSH request will
-not touch, its better to leave it all to the mm core to handle.  I.e.
-it doesn't make sense to call the driver just for two instructions
-(sfence + pcommit) when the mm core is taking on the cache flushing.
-Either handle it all in the mm or the driver, not a mixture.
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Acked-by: Christoph Hellwig <hch@lst.de>
