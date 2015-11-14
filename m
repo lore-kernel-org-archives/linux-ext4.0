@@ -1,41 +1,193 @@
-From: Dave Hansen <dave.hansen@intel.com>
-Subject: Re: [PATCH v2 02/11] mm: add pmd_mkclean()
-Date: Fri, 13 Nov 2015 17:02:48 -0800
-Message-ID: <56468838.6010506@intel.com>
-References: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
- <1447459610-14259-3-git-send-email-ross.zwisler@linux.intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: "H. Peter Anvin" <hpa@zytor.com>, "J. Bruce Fields"
- <bfields@fieldses.org>, Theodore Ts'o <tytso@mit.edu>,
- Alexander Viro <viro@zeniv.linux.org.uk>,
- Andreas Dilger <adilger.kernel@dilger.ca>,
- Dan Williams <dan.j.williams@intel.com>, Dave Chinner <david@fromorbit.com>,
- Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
- Jeff Layton <jlayton@poochiereds.net>, Matthew Wilcox
- <willy@linux.intel.com>, Thomas Gleixner <tglx@linutronix.de>,
- linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-mm@kvack.org, linux-nvdimm@lists.01.org, x86@kernel.org,
- xfs@oss.sgi.com, Andrew Morton <akpm@linux-foundation.org>,
- Matthew Wilcox <matthew.r.wilcox@intel.com>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>, linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1447459610-14259-3-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <andreas.dilger@intel.com>
+Subject: [PATCH 2/4] LU-7368 e2fsck: skip quota update when interrupted
+Date: Fri, 13 Nov 2015 18:10:27 -0700
+Message-ID: <1447463429-5966-2-git-send-email-andreas.dilger@intel.com>
+References: <1447463429-5966-1-git-send-email-andreas.dilger@intel.com>
+Cc: linux-ext4@vger.kernel.org,
+	Andreas Dilger <andreas.dilger@intel.com>
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp-out-no.shaw.ca ([64.59.134.12]:47735 "EHLO
+	smtp-out-no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751957AbbKNBSl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Nov 2015 20:18:41 -0500
+In-Reply-To: <1447463429-5966-1-git-send-email-andreas.dilger@intel.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/13/2015 04:06 PM, Ross Zwisler wrote:
-> +static inline pmd_t pmd_mkclean(pmd_t pmd)
-> +{
-> +	return pmd_clear_flags(pmd, _PAGE_DIRTY | _PAGE_SOFT_DIRTY);
-> +}
+There is a bug in how e2fsck handles being interrupted by CTRL-C.
+If CTRL-C is pressed to kill e2fsck rather than e.g. kill -9, then
+the interrupt handler sets E2F_FLAG_CANCEL in the context but doesn't
+actually kill the process.  Instead, e2fsck_pass1() checks this flag
+before processing the next inode.
 
-pte_mkclean() doesn't clear _PAGE_SOFT_DIRTY.  What the thought behind
-doing it here?
+If a filesystem is running in fix mode (e2fsck -fy) is interrupted,
+and the quota feature is enabled, then the quota file will still be
+written to disk even though the inode scan was not complete and the
+quota information is totally inaccurate.  Even worse, if the Pass 1
+inode and block scan was not finished, then the in-memory block
+bitmaps (which are used for block allocation during e2fsck) are also
+invalid, so any blocks allocated to the quota files may corrupt other
+files if those blocks were actually used.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+  e2fsck 1.42.13.wc3 (28-Aug-2015)
+  Pass 1: Checking inodes, blocks, and sizes
+  ^C[QUOTA WARNING] Usage inconsistent for ID 0:
+      actual (6455296, 168) != expected (8568832, 231)
+  [QUOTA WARNING] Usage inconsistent for ID 695:
+      actual (614932320256, 63981) != expected (2102405386240, 176432)
+  Update quota info for quota type 0? yes
+
+  [QUOTA WARNING] Usage inconsistent for ID 0:
+      actual (6455296, 168) != expected (8568832, 231)
+  [QUOTA WARNING] Usage inconsistent for ID 538:
+      actual (614932320256, 63981) != expected (2102405386240, 176432)
+  Update quota info for quota type 1? yes
+
+  myth-OST0001: e2fsck canceled.
+  myth-OST0001: ***** FILE SYSTEM WAS MODIFIED *****
+
+There may be a desire to flush out modified inodes and such that have
+been repaired, so that restarting an interrupted e2fsck will make
+progress, but the quota file update is plain wrong unless at least
+pass1 has finished, and the journal recreation is also dangerous if
+the block bitmaps have not been fully updated.
+
+Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
+---
+ e2fsck/e2fsck.c |    2 --
+ e2fsck/e2fsck.h |    4 ++--
+ e2fsck/pass1.c  |    4 +++-
+ e2fsck/pass2.c  |   10 +++++-----
+ e2fsck/unix.c   |   18 ++++++++++--------
+ 5 files changed, 20 insertions(+), 18 deletions(-)
+
+diff --git a/e2fsck/e2fsck.c b/e2fsck/e2fsck.c
+index 0ec1540..2002dc0 100644
+--- a/e2fsck/e2fsck.c
++++ b/e2fsck/e2fsck.c
+@@ -203,8 +203,6 @@ static pass_t e2fsck_passes[] = {
+ 	e2fsck_pass1, e2fsck_pass2, e2fsck_pass3, e2fsck_pass4,
+ 	e2fsck_pass5, 0 };
+ 
+-#define E2F_FLAG_RUN_RETURN	(E2F_FLAG_SIGNAL_MASK|E2F_FLAG_RESTART)
+-
+ int e2fsck_run(e2fsck_t ctx)
+ {
+ 	int	i;
+diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+index f904026..810030e 100644
+--- a/e2fsck/e2fsck.h
++++ b/e2fsck/e2fsck.h
+@@ -173,10 +173,10 @@ struct resource_track {
+  */
+ #define E2F_FLAG_ABORT		0x0001 /* Abort signaled */
+ #define E2F_FLAG_CANCEL		0x0002 /* Cancel signaled */
+-#define E2F_FLAG_SIGNAL_MASK	0x0003
++#define E2F_FLAG_SIGNAL_MASK	(E2F_FLAG_ABORT | E2F_FLAG_CANCEL)
+ #define E2F_FLAG_RESTART	0x0004 /* Restart signaled */
++#define E2F_FLAG_RUN_RETURN	(E2F_FLAG_SIGNAL_MASK | E2F_FLAG_RESTART)
+ #define E2F_FLAG_RESTART_LATER	0x0008 /* Restart after all iterations done */
+-
+ #define E2F_FLAG_SETJMP_OK	0x0010 /* Setjmp valid for abort */
+ 
+ #define E2F_FLAG_PROG_BAR	0x0020 /* Progress bar on screen */
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 50a8b99..1c2b8fd 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -766,7 +766,7 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 							  inode, inode_size);
+ 		ehandler_operation(old_op);
+ 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
+-			return;
++			goto endit;
+ 		if (pctx.errcode == EXT2_ET_BAD_BLOCK_IN_INODE_TABLE) {
+ 			if (!ctx->inode_bb_map)
+ 				alloc_bb_map(ctx);
+@@ -1276,6 +1276,8 @@ endit:
+ 
+ 	if ((ctx->flags & E2F_FLAG_SIGNAL_MASK) == 0)
+ 		print_resource_track(ctx, _("Pass 1"), &rtrack, ctx->fs->io);
++	else
++		ctx->invalid_bitmaps++;
+ }
+ 
+ /*
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 2b7bff4..822eee4 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -148,14 +148,14 @@ void e2fsck_pass2(e2fsck_t ctx)
+ 
+ 	cd.pctx.errcode = ext2fs_dblist_iterate2(fs->dblist, check_dir_block,
+ 						 &cd);
+-	if (ctx->flags & E2F_FLAG_SIGNAL_MASK || ctx->flags & E2F_FLAG_RESTART)
+-		return;
+-
+ 	if (ctx->flags & E2F_FLAG_RESTART_LATER) {
+ 		ctx->flags |= E2F_FLAG_RESTART;
+-		return;
++		ctx->flags &= ~E2F_FLAG_RESTART_LATER;
+ 	}
+ 
++	if (ctx->flags & E2F_FLAG_RUN_RETURN)
++		return;
++
+ 	if (cd.pctx.errcode) {
+ 		fix_problem(ctx, PR_2_DBLIST_ITERATE, &cd.pctx);
+ 		ctx->flags |= E2F_FLAG_ABORT;
+@@ -739,7 +739,7 @@ static int check_dir_block(ext2_filsys fs,
+ 	buf = cd->buf;
+ 	ctx = cd->ctx;
+ 
+-	if (ctx->flags & E2F_FLAG_SIGNAL_MASK || ctx->flags & E2F_FLAG_RESTART)
++	if (ctx->flags & E2F_FLAG_RUN_RETURN)
+ 		return DIRENT_ABORT;
+ 
+ 	if (ctx->progress && (ctx->progress)(ctx, 2, cd->count++, cd->max))
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index 66debcd..6d87f50 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -1667,8 +1667,15 @@ print_unsupp_features:
+ 	}
+ no_journal:
+ 
+-	if (ctx->qctx) {
++	if (run_result & E2F_FLAG_ABORT) {
++		fatal_error(ctx, _("aborted"));
++	} else if (run_result & E2F_FLAG_CANCEL) {
++		log_out(ctx, _("%s: e2fsck canceled.\n"), ctx->device_name ?
++			ctx->device_name : ctx->filesystem_name);
++		exit_value |= FSCK_CANCELED;
++	} else if (ctx->qctx && !ctx->invalid_bitmaps) {
+ 		int i, needs_writeout;
++
+ 		for (i = 0; i < MAXQUOTAS; i++) {
+ 			if (qtype != -1 && qtype != i)
+ 				continue;
+@@ -1695,18 +1702,13 @@ no_journal:
+ 		ext2fs_close_free(&fs);
+ 		goto restart;
+ 	}
+-	if (run_result & E2F_FLAG_ABORT)
+-		fatal_error(ctx, _("aborted"));
+ 
+ #ifdef MTRACE
+ 	mtrace_print("Cleanup");
+ #endif
+ 	was_changed = ext2fs_test_changed(fs);
+-	if (run_result & E2F_FLAG_CANCEL) {
+-		log_out(ctx, _("%s: e2fsck canceled.\n"), ctx->device_name ?
+-			ctx->device_name : ctx->filesystem_name);
+-		exit_value |= FSCK_CANCELED;
+-	} else if (!(ctx->options & E2F_OPT_READONLY)) {
++	if (!(ctx->flags & E2F_FLAG_RUN_RETURN) &&
++	    !(ctx->options & E2F_OPT_READONLY)) {
+ 		if (ext2fs_test_valid(fs)) {
+ 			if (!(sb->s_state & EXT2_VALID_FS))
+ 				exit_value |= FSCK_NONDESTRUCT;
+-- 
+1.7.3.4
+
