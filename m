@@ -1,137 +1,74 @@
 From: Andreas Dilger <andreas.dilger@intel.com>
-Subject: [PATCH 1/4] libext2fs: fix parents when modifying extents
-Date: Fri, 13 Nov 2015 18:10:26 -0700
-Message-ID: <1447463429-5966-1-git-send-email-andreas.dilger@intel.com>
+Subject: [PATCH 3/4] libext2fs: fix block-mapped file punch
+Date: Fri, 13 Nov 2015 18:10:28 -0700
+Message-ID: <1447463429-5966-3-git-send-email-andreas.dilger@intel.com>
+References: <1447463429-5966-1-git-send-email-andreas.dilger@intel.com>
 Cc: linux-ext4@vger.kernel.org,
-	"Darrick J. Wong" <darrick.wong@oracle.com>
+	Andreas Dilger <andreas.dilger@intel.com>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-no.shaw.ca ([64.59.134.9]:47734 "EHLO
+Received: from smtp-out-no.shaw.ca ([64.59.134.9]:47733 "EHLO
 	smtp-out-no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751573AbbKNBSl (ORCPT
+	with ESMTP id S1752051AbbKNBSl (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Nov 2015 20:18:41 -0500
+In-Reply-To: <1447463429-5966-1-git-send-email-andreas.dilger@intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Darrick J. Wong <darrick.wong@oracle.com>
+If ext2fs_punch() is called with "end = ~0U" (which is natural from
+a programming POV) it tries to compute "count" based on "start" and
+"end", but doesn't quite get it right.
 
-In ext2fs_extent_set_bmap() and ext2fs_punch_extent(), fix the parents
-when altering either end of an extent so that the parent nodes reflect
-the added mapping.
+Fix ext2fs_punch() if "end" is anywhere beyond the 2^32 block limit
+so that the 32-bit calculations don't overflow.  Pass "count=~0"
+in this case, and also handle that explicitly in ext2_punch_ind().
+Since ext2_punch_ind() is itself a public function, so it makes
+sense to fix this in both places.
 
-There's a slight complication to using fix_parents: if there are two
-mappings to an lblk in the tree, the value of handle->path->curr can
-point to either extent afterwards), which is documented in a comment.
-
-Some additional color commentary from Darrick:
-
-  In the _set_bmap() case, I noticed that the "remapping last block in
-  extent" case would produce symptoms if we are trying to remap a
-  block from "extent" to "next_extent", and the two extents are
-  pointed to by different index nodes.  _extent_replace(...,
-  next_extent) updates e_lblk in the leaf extent, but because there's
-  no _extent_fix_parents() call, the index nodes never get updated.
-
-  In the _punch_extent() case, we conclude that we need to split an
-  extent into two pieces since we're punching out the middle.  If the
-  extent is the last extent in the block, the second extent will be
-  inserted into a new leaf node block.  Without _fix_parents(), the
-  index node doesn't seem to get updated.
-
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Change-Id: I0fb7af2f6e88c84ef2e4656e2116a4721d57fd45
+Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
 ---
- lib/ext2fs/extent.c |   30 ++++++++++++++++++++++++------
- lib/ext2fs/punch.c  |   14 ++++++++++----
- 2 files changed, 34 insertions(+), 10 deletions(-)
+ lib/ext2fs/punch.c |   18 +++++++++++++-----
+ 1 files changed, 13 insertions(+), 5 deletions(-)
 
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index c12bc93..d3d5445 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -734,7 +734,14 @@ errcode_t ext2fs_extent_goto(ext2_extent_handle_t handle,
-  * and so on.
-  *
-  * Safe to call for any position in node; if not at the first entry,
-- * will  simply return.
-+ * it will simply return.
-+ *
-+ * Note a subtlety of this function -- if there happen to be two extents
-+ * mapping the same lblk and someone calls fix_parents on the second of the two
-+ * extents, the position of the extent handle after the call will be the second
-+ * extent if nothing happened, or the first extent if something did.  A caller
-+ * in this situation must use ext2fs_extent_goto() after calling this function.
-+ * Or simply don't map the same lblk with two extents, ever.
-  */
- errcode_t ext2fs_extent_fix_parents(ext2_extent_handle_t handle)
- {
-@@ -1424,17 +1431,25 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
- 							       &next_extent);
- 				if (retval)
- 					goto done;
--				retval = ext2fs_extent_fix_parents(handle);
--				if (retval)
--					goto done;
- 			} else
- 				retval = ext2fs_extent_insert(handle,
- 				      EXT2_EXTENT_INSERT_AFTER, &newextent);
- 			if (retval)
- 				goto done;
--			/* Now pointing at inserted extent; move back to prev */
-+			retval = ext2fs_extent_fix_parents(handle);
-+			if (retval)
-+				goto done;
-+			/*
-+			 * Now pointing at inserted extent; move back to prev.
-+			 *
-+			 * We cannot use EXT2_EXTENT_PREV to go back; note the
-+			 * subtlety in the comment for fix_parents().
-+			 */
-+			retval = ext2fs_extent_goto(handle, logical);
-+			if (retval)
-+				goto done;
- 			retval = ext2fs_extent_get(handle,
--						   EXT2_EXTENT_PREV_LEAF,
-+						   EXT2_EXTENT_CURRENT,
- 						   &extent);
- 			if (retval)
- 				goto done;
-@@ -1467,6 +1482,9 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
- 							      0, &newextent);
- 			if (retval)
- 				goto done;
-+			retval = ext2fs_extent_fix_parents(handle);
-+			if (retval)
-+				goto done;
- 			retval = ext2fs_extent_get(handle,
- 						   EXT2_EXTENT_NEXT_LEAF,
- 						   &extent);
 diff --git a/lib/ext2fs/punch.c b/lib/ext2fs/punch.c
-index a3d020e..2a2cf10 100644
+index 2a2cf10..0c954c1 100644
 --- a/lib/ext2fs/punch.c
 +++ b/lib/ext2fs/punch.c
-@@ -343,10 +343,16 @@ static errcode_t ext2fs_punch_extent(ext2_filsys fs, ext2_ino_t ino,
- 					EXT2_EXTENT_INSERT_AFTER, &newex);
- 			if (retval)
- 				goto errout;
--			/* Now pointing at inserted extent; so go back */
--			retval = ext2fs_extent_get(handle,
--						   EXT2_EXTENT_PREV_LEAF,
--						   &newex);
-+			retval = ext2fs_extent_fix_parents(handle);
-+			if (retval)
-+				goto errout;
-+			/*
-+			 * Now pointing at inserted extent; so go back.
-+			 *
-+			 * We cannot use EXT2_EXTENT_PREV to go back; note the
-+			 * subtlety in the comment for fix_parents().
-+			 */
-+			retval = ext2fs_extent_goto(handle, extent.e_lblk);
- 			if (retval)
- 				goto errout;
- 		} 
+@@ -119,6 +119,9 @@ static errcode_t ext2fs_punch_ind(ext2_filsys fs, struct ext2_inode *inode,
+ 	}
+ 
+ 	addr_per_block = (blk_t) fs->blocksize >> 2;
++	/* make sure that count + start doesn't overflow a 32-bit value */
++	if (count == ~0U)
++		count = ~0U - start;
+ 
+ 	for (level = 0; level < 4; level++, max *= (blk64_t)addr_per_block) {
+ #ifdef PUNCH_DEBUG
+@@ -458,14 +461,19 @@ errcode_t ext2fs_punch(ext2_filsys fs, ext2_ino_t ino,
+ 
+ 		if (start > ~0U)
+ 			return 0;
+-		if (end > ~0U)
+-			end = ~0U;
+-		count = ((end - start + 1) < ~0U) ? (end - start + 1) : ~0U;
+-		retval = ext2fs_punch_ind(fs, inode, block_buf, 
+-					  (blk_t) start, count);
++		if (end >= ~0U || end - start + 1 >= ~0U)
++			count = ~0U;
++		else
++			count = end - start + 1;
++		retval = ext2fs_punch_ind(fs, inode, block_buf,
++					  (blk_t)start, count);
+ 	}
+ 	if (retval)
+ 		return retval;
+ 
++#ifdef PUNCH_DEBUG
++	printf("%u: write inode size now %u blocks %u\n",
++		ino, inode->i_size, inode->i_blocks);
++#endif
+ 	return ext2fs_write_inode(fs, ino, inode);
+ }
 -- 
 1.7.3.4
 
