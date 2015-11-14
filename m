@@ -1,91 +1,46 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v2 09/11] ext2: add support for DAX fsync/msync
-Date: Fri, 13 Nov 2015 17:06:48 -0700
-Message-ID: <1447459610-14259-10-git-send-email-ross.zwisler@linux.intel.com>
+From: Dan Williams <dan.j.williams@intel.com>
+Subject: Re: [PATCH v2 03/11] pmem: enable REQ_FUA/REQ_FLUSH handling
+Date: Fri, 13 Nov 2015 16:20:39 -0800
+Message-ID: <CAPcyv4j4arHE+iAALn1WPDzSb_QSCDy8udtXU1FV=kYSZDfv8A@mail.gmail.com>
 References: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>,
-	Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org,
-	x86@kernel.org,
-	xfs@oss.sgi.com,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	<1447459610-14259-4-git-send-email-ross.zwisler@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "H. Peter Anvin" <hpa@zytor.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>, "Theodore Ts'o" <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>, Andreas Dilger <adilger.kernel@dilger.ca>,
+	Dave Chinner <david@fromorbit.com>, Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>, Matthew Wilcox <willy@linux.intel.com>,
+	Thomas Gleixner <tglx@linutronix.de>, linux-ext4@vger.kernel.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>, Linux MM <linux-mm@kvack.org>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>, X86 ML <x86@kernel.org>, xfs@oss.sgi.com,
+	Andrew Morton <akpm@linux-foundation.org>, Matthew Wilcox <matthew.r.wilcox@intel.com>,
 	Dave Hansen <dave.hansen@linux.intel.com>
-To: linux-kernel@vger.kernel.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
+In-Reply-To: <1447459610-14259-4-git-send-email-ross.zwisler@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-To properly support the new DAX fsync/msync infrastructure filesystems
-need to call dax_pfn_mkwrite() so that DAX can properly track when a user
-write faults on a previously cleaned address.  They also need to call
-dax_fsync() in the filesystem fsync() path.  This dax_fsync() call uses
-addresses retrieved from get_block() so it needs to be ordered with
-respect to truncate.  This is accomplished by using the same locking that
-was set up for DAX page faults.
+On Fri, Nov 13, 2015 at 4:06 PM, Ross Zwisler
+<ross.zwisler@linux.intel.com> wrote:
+> Currently the PMEM driver doesn't accept REQ_FLUSH or REQ_FUA bios.  These
+> are sent down via blkdev_issue_flush() in response to a fsync() or msync()
+> and are used by filesystems to order their metadata, among other things.
+>
+> When we get an msync() or fsync() it is the responsibility of the DAX code
+> to flush all dirty pages to media.  The PMEM driver then just has issue a
+> wmb_pmem() in response to the REQ_FLUSH to ensure that before we return all
+> the flushed data has been durably stored on the media.
+>
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 
-Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
----
- fs/ext2/file.c | 14 +++++++++++++-
- 1 file changed, 13 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index 11a42c5..6c30ea2 100644
---- a/fs/ext2/file.c
-+++ b/fs/ext2/file.c
-@@ -102,8 +102,8 @@ static int ext2_dax_pfn_mkwrite(struct vm_area_struct *vma,
- {
- 	struct inode *inode = file_inode(vma->vm_file);
- 	struct ext2_inode_info *ei = EXT2_I(inode);
--	int ret = VM_FAULT_NOPAGE;
- 	loff_t size;
-+	int ret;
- 
- 	sb_start_pagefault(inode->i_sb);
- 	file_update_time(vma->vm_file);
-@@ -113,6 +113,8 @@ static int ext2_dax_pfn_mkwrite(struct vm_area_struct *vma,
- 	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
- 	if (vmf->pgoff >= size)
- 		ret = VM_FAULT_SIGBUS;
-+	else
-+		ret = dax_pfn_mkwrite(vma, vmf);
- 
- 	up_read(&ei->dax_sem);
- 	sb_end_pagefault(inode->i_sb);
-@@ -161,6 +163,16 @@ int ext2_fsync(struct file *file, loff_t start, loff_t end, int datasync)
- 	struct super_block *sb = file->f_mapping->host->i_sb;
- 	struct address_space *mapping = sb->s_bdev->bd_inode->i_mapping;
- 
-+#ifdef CONFIG_FS_DAX
-+	if (dax_mapping(mapping)) {
-+		struct ext2_inode_info *ei = EXT2_I(file_inode(file));
-+
-+		down_read(&ei->dax_sem);
-+		dax_fsync(mapping, start, end);
-+		up_read(&ei->dax_sem);
-+	}
-+#endif
-+
- 	ret = generic_file_fsync(file, start, end, datasync);
- 	if (ret == -EIO || test_and_clear_bit(AS_EIO, &mapping->flags)) {
- 		/* We don't really know where the IO error happened... */
--- 
-2.1.0
+Hmm, I'm not seeing why we need this patch.  If the actual flushing of
+the cache is done by the core why does the driver need support
+REQ_FLUSH?  Especially since it's just a couple instructions.  REQ_FUA
+only makes sense if individual writes can bypass the "drive" cache,
+but no I/O submitted to the driver proper is ever cached we always
+flush it through to media.
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
