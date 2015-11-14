@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v2 06/11] mm: add pgoff_mkclean()
-Date: Fri, 13 Nov 2015 17:06:45 -0700
-Message-ID: <1447459610-14259-7-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v2 10/11] ext4: add support for DAX fsync/msync
+Date: Fri, 13 Nov 2015 17:06:49 -0700
+Message-ID: <1447459610-14259-11-git-send-email-ross.zwisler@linux.intel.com>
 References: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
 Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	"H. Peter Anvin" <hpa@zytor.com>,
@@ -11,131 +11,94 @@ Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Dan Williams <dan.j.williams@intel.com>,
 	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>,
-	Jan Kara <jack@suse.com>,
+	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
 	Jeff Layton <jlayton@poochiereds.net>,
 	Matthew Wilcox <willy@linux.intel.com>,
 	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org,
-	x86@kernel.org,
-	xfs@oss.sgi.com,
-	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-nvdimm@lists.01.org, x86@kernel.org,
+	xfs@oss.sgi.com, Andrew Morton <akpm@linux-foundation.org>,
 	Matthew Wilcox <matthew.r.wilcox@intel.com>,
 	Dave Hansen <dave.hansen@linux.intel.com>
 To: linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Introduce pgoff_mkclean() which conceptually is similar to page_mkclean()
-except it works in the absence of struct page and it can also be used to
-clean PMDs.  This is needed for DAX's dirty page handling.
-
-pgoff_mkclean() doesn't return an error for a missing PTE/PMD when looping
-through the VMAs because it's not a requirement that each of the
-potentially many VMAs associated with a given struct address_space have a
-mapping set up for our pgoff.
+To properly support the new DAX fsync/msync infrastructure filesystems
+need to call dax_pfn_mkwrite() so that DAX can properly track when a user
+write faults on a previously cleaned address.  They also need to call
+dax_fsync() in the filesystem fsync() path.  This dax_fsync() call uses
+addresses retrieved from get_block() so it needs to be ordered with
+respect to truncate.  This is accomplished by using the same locking that
+was set up for DAX page faults.
 
 Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 ---
- include/linux/rmap.h |  5 +++++
- mm/rmap.c            | 51 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 56 insertions(+)
+ fs/ext4/file.c  |  4 +++-
+ fs/ext4/fsync.c | 12 ++++++++++--
+ 2 files changed, 13 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/rmap.h b/include/linux/rmap.h
-index 29446ae..171a4ac 100644
---- a/include/linux/rmap.h
-+++ b/include/linux/rmap.h
-@@ -223,6 +223,11 @@ unsigned long page_address_in_vma(struct page *, struct vm_area_struct *);
- int page_mkclean(struct page *);
- 
- /*
-+ * Cleans and write protects the PTEs of shared mappings.
-+ */
-+void pgoff_mkclean(pgoff_t, struct address_space *);
-+
-+/*
-  * called in munlock()/munmap() path to check for other vmas holding
-  * the page mlocked.
-  */
-diff --git a/mm/rmap.c b/mm/rmap.c
-index f5b5c1f..8114862 100644
---- a/mm/rmap.c
-+++ b/mm/rmap.c
-@@ -586,6 +586,16 @@ vma_address(struct page *page, struct vm_area_struct *vma)
- 	return address;
- }
- 
-+static inline unsigned long
-+pgoff_address(pgoff_t pgoff, struct vm_area_struct *vma)
-+{
-+	unsigned long address;
-+
-+	address = vma->vm_start + ((pgoff - vma->vm_pgoff) << PAGE_SHIFT);
-+	VM_BUG_ON_VMA(address < vma->vm_start || address >= vma->vm_end, vma);
-+	return address;
-+}
-+
- #ifdef CONFIG_ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH
- static void percpu_flush_tlb_batch_pages(void *data)
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 749b222..8c8965c 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -291,8 +291,8 @@ static int ext4_dax_pfn_mkwrite(struct vm_area_struct *vma,
  {
-@@ -1040,6 +1050,47 @@ int page_mkclean(struct page *page)
- }
- EXPORT_SYMBOL_GPL(page_mkclean);
+ 	struct inode *inode = file_inode(vma->vm_file);
+ 	struct super_block *sb = inode->i_sb;
+-	int ret = VM_FAULT_NOPAGE;
+ 	loff_t size;
++	int ret;
  
-+void pgoff_mkclean(pgoff_t pgoff, struct address_space *mapping)
-+{
-+	struct vm_area_struct *vma;
-+	int ret = 0;
-+
-+	i_mmap_lock_read(mapping);
-+	vma_interval_tree_foreach(vma, &mapping->i_mmap, pgoff, pgoff) {
-+		struct mm_struct *mm = vma->vm_mm;
-+		pmd_t pmd, *pmdp = NULL;
-+		pte_t pte, *ptep = NULL;
-+		unsigned long address;
-+		spinlock_t *ptl;
-+
-+		address = pgoff_address(pgoff, vma);
-+
-+		/* when this returns successfully ptl is locked */
-+		ret = follow_pte_pmd(mm, address, &ptep, &pmdp, &ptl);
-+		if (ret)
-+			continue;
-+
-+		if (pmdp) {
-+			flush_cache_page(vma, address, pmd_pfn(*pmdp));
-+			pmd = pmdp_huge_clear_flush(vma, address, pmdp);
-+			pmd = pmd_wrprotect(pmd);
-+			pmd = pmd_mkclean(pmd);
-+			set_pmd_at(mm, address, pmdp, pmd);
-+			spin_unlock(ptl);
-+		} else {
-+			BUG_ON(!ptep);
-+			flush_cache_page(vma, address, pte_pfn(*ptep));
-+			pte = ptep_clear_flush(vma, address, ptep);
-+			pte = pte_wrprotect(pte);
-+			pte = pte_mkclean(pte);
-+			set_pte_at(mm, address, ptep, pte);
-+			pte_unmap_unlock(ptep, ptl);
-+		}
+ 	sb_start_pagefault(sb);
+ 	file_update_time(vma->vm_file);
+@@ -300,6 +300,8 @@ static int ext4_dax_pfn_mkwrite(struct vm_area_struct *vma,
+ 	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
+ 	if (vmf->pgoff >= size)
+ 		ret = VM_FAULT_SIGBUS;
++	else
++		ret = dax_pfn_mkwrite(vma, vmf);
+ 	up_read(&EXT4_I(inode)->i_mmap_sem);
+ 	sb_end_pagefault(sb);
+ 
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 8850254..e87c29b 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -27,6 +27,7 @@
+ #include <linux/sched.h>
+ #include <linux/writeback.h>
+ #include <linux/blkdev.h>
++#include <linux/dax.h>
+ 
+ #include "ext4.h"
+ #include "ext4_jbd2.h"
+@@ -86,7 +87,8 @@ static int ext4_sync_parent(struct inode *inode)
+ 
+ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ {
+-	struct inode *inode = file->f_mapping->host;
++	struct address_space *mapping = file->f_mapping;
++	struct inode *inode = mapping->host;
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
+ 	int ret = 0, err;
+@@ -112,7 +114,13 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ 		goto out;
+ 	}
+ 
+-	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
++	if (dax_mapping(mapping)) {
++		down_read(&ei->i_mmap_sem);
++		dax_fsync(mapping, start, end);
++		up_read(&ei->i_mmap_sem);
 +	}
-+	i_mmap_unlock_read(mapping);
-+}
-+EXPORT_SYMBOL_GPL(pgoff_mkclean);
 +
- /**
-  * page_move_anon_rmap - move a page to our anon_vma
-  * @page:	the page to move to our anon_vma
++	ret = filemap_write_and_wait_range(mapping, start, end);
+ 	if (ret)
+ 		return ret;
+ 	/*
 -- 
 2.1.0
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
