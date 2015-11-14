@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v2 11/11] xfs: add support for DAX fsync/msync
-Date: Fri, 13 Nov 2015 17:06:50 -0700
-Message-ID: <1447459610-14259-12-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v2 09/11] ext2: add support for DAX fsync/msync
+Date: Fri, 13 Nov 2015 17:06:48 -0700
+Message-ID: <1447459610-14259-10-git-send-email-ross.zwisler@linux.intel.com>
 References: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
 Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	"H. Peter Anvin" <hpa@zytor.com>,
@@ -41,59 +41,49 @@ was set up for DAX page faults.
 
 Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 ---
- fs/xfs/xfs_file.c | 18 +++++++++++++-----
- 1 file changed, 13 insertions(+), 5 deletions(-)
+ fs/ext2/file.c | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
 
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 39743ef..2b490a1 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -209,7 +209,8 @@ xfs_file_fsync(
- 	loff_t			end,
- 	int			datasync)
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index 11a42c5..6c30ea2 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -102,8 +102,8 @@ static int ext2_dax_pfn_mkwrite(struct vm_area_struct *vma,
  {
--	struct inode		*inode = file->f_mapping->host;
-+	struct address_space	*mapping = file->f_mapping;
-+	struct inode		*inode = mapping->host;
- 	struct xfs_inode	*ip = XFS_I(inode);
- 	struct xfs_mount	*mp = ip->i_mount;
- 	int			error = 0;
-@@ -218,7 +219,13 @@ xfs_file_fsync(
+ 	struct inode *inode = file_inode(vma->vm_file);
+ 	struct ext2_inode_info *ei = EXT2_I(inode);
+-	int ret = VM_FAULT_NOPAGE;
+ 	loff_t size;
++	int ret;
  
- 	trace_xfs_file_fsync(ip);
- 
--	error = filemap_write_and_wait_range(inode->i_mapping, start, end);
-+	if (dax_mapping(mapping)) {
-+		xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
-+		dax_fsync(mapping, start, end);
-+		xfs_iunlock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
-+	}
-+
-+	error = filemap_write_and_wait_range(mapping, start, end);
- 	if (error)
- 		return error;
- 
-@@ -1603,9 +1610,8 @@ xfs_filemap_pmd_fault(
- /*
-  * pfn_mkwrite was originally inteneded to ensure we capture time stamp
-  * updates on write faults. In reality, it's need to serialise against
-- * truncate similar to page_mkwrite. Hence we open-code dax_pfn_mkwrite()
-- * here and cycle the XFS_MMAPLOCK_SHARED to ensure we serialise the fault
-- * barrier in place.
-+ * truncate similar to page_mkwrite. Hence we cycle the XFS_MMAPLOCK_SHARED
-+ * to ensure we serialise the fault barrier in place.
-  */
- static int
- xfs_filemap_pfn_mkwrite(
-@@ -1628,6 +1634,8 @@ xfs_filemap_pfn_mkwrite(
+ 	sb_start_pagefault(inode->i_sb);
+ 	file_update_time(vma->vm_file);
+@@ -113,6 +113,8 @@ static int ext2_dax_pfn_mkwrite(struct vm_area_struct *vma,
  	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
  	if (vmf->pgoff >= size)
  		ret = VM_FAULT_SIGBUS;
-+	else if (IS_DAX(inode))
++	else
 +		ret = dax_pfn_mkwrite(vma, vmf);
- 	xfs_iunlock(ip, XFS_MMAPLOCK_SHARED);
+ 
+ 	up_read(&ei->dax_sem);
  	sb_end_pagefault(inode->i_sb);
- 	return ret;
+@@ -161,6 +163,16 @@ int ext2_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+ 	struct super_block *sb = file->f_mapping->host->i_sb;
+ 	struct address_space *mapping = sb->s_bdev->bd_inode->i_mapping;
+ 
++#ifdef CONFIG_FS_DAX
++	if (dax_mapping(mapping)) {
++		struct ext2_inode_info *ei = EXT2_I(file_inode(file));
++
++		down_read(&ei->dax_sem);
++		dax_fsync(mapping, start, end);
++		up_read(&ei->dax_sem);
++	}
++#endif
++
+ 	ret = generic_file_fsync(file, start, end, datasync);
+ 	if (ret == -EIO || test_and_clear_bit(AS_EIO, &mapping->flags)) {
+ 		/* We don't really know where the IO error happened... */
 -- 
 2.1.0
 
