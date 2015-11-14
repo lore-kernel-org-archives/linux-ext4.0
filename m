@@ -1,7 +1,8 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v2 00/11] DAX fsynx/msync support
-Date: Fri, 13 Nov 2015 17:06:39 -0700
-Message-ID: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v2 01/11] pmem: add wb_cache_pmem() to the PMEM API
+Date: Fri, 13 Nov 2015 17:06:40 -0700
+Message-ID: <1447459610-14259-2-git-send-email-ross.zwisler@linux.intel.com>
+References: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
 Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	"H. Peter Anvin" <hpa@zytor.com>,
 	"J. Bruce Fields" <bfields@fieldses.org>,
@@ -10,71 +11,136 @@ Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Dan Williams <dan.j.williams@intel.com>,
 	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
+	Ingo Molnar <mingo@redhat.com>,
+	Jan Kara <jack@suse.com>,
 	Jeff Layton <jlayton@poochiereds.net>,
 	Matthew Wilcox <willy@linux.intel.com>,
 	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-nvdimm@lists.01.org, x86@kernel.org,
-	xfs@oss.sgi.com, Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org,
+	x86@kernel.org,
+	xfs@oss.sgi.com,
+	Andrew Morton <akpm@linux-foundation.org>,
 	Matthew Wilcox <matthew.r.wilcox@intel.com>,
 	Dave Hansen <dave.hansen@linux.intel.com>
 To: linux-kernel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch series adds support for fsync/msync to DAX.
+The function __arch_wb_cache_pmem() was already an internal implementation
+detail of the x86 PMEM API, but this functionality needs to be exported as
+part of the general PMEM API to handle the fsync/msync case for DAX mmaps.
 
-Patches 1 through 7 add various utilities that the DAX code will eventually
-need, and the DAX code itself is added by patch 8.  Patches 9-11 update the
-three filesystems that currently support DAX, ext2, ext4 and XFS, to use
-the new DAX fsync/msync code.
+One thing worth noting is that we really do want this to be part of the
+PMEM API as opposed to a stand-alone function like clflush_cache_range()
+because of ordering restrictions.  By having wb_cache_pmem() as part of the
+PMEM API we can leave it unordered, call it multiple times to write back
+large amounts of memory, and then order the multiple calls with a single
+wmb_pmem().
 
-These patches build on the recent DAX locking changes from Dave Chinner,
-Jan Kara and myself.  Dave's changes for XFS and my changes for ext2 have
-been merged in the v4.4 window, but Jan's are still unmerged.  You can grab
-them here:
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+---
+ arch/x86/include/asm/pmem.h | 11 ++++++-----
+ include/linux/pmem.h        | 22 +++++++++++++++++++++-
+ 2 files changed, 27 insertions(+), 6 deletions(-)
 
-http://www.spinics.net/lists/linux-ext4/msg49951.html
-
-Ross Zwisler (11):
-  pmem: add wb_cache_pmem() to the PMEM API
-  mm: add pmd_mkclean()
-  pmem: enable REQ_FUA/REQ_FLUSH handling
-  dax: support dirty DAX entries in radix tree
-  mm: add follow_pte_pmd()
-  mm: add pgoff_mkclean()
-  mm: add find_get_entries_tag()
-  dax: add support for fsync/sync
-  ext2: add support for DAX fsync/msync
-  ext4: add support for DAX fsync/msync
-  xfs: add support for DAX fsync/msync
-
- arch/x86/include/asm/pgtable.h |   5 ++
- arch/x86/include/asm/pmem.h    |  11 ++--
- drivers/nvdimm/pmem.c          |   3 +-
- fs/block_dev.c                 |   3 +-
- fs/dax.c                       | 140 +++++++++++++++++++++++++++++++++++++++--
- fs/ext2/file.c                 |  14 ++++-
- fs/ext4/file.c                 |   4 +-
- fs/ext4/fsync.c                |  12 +++-
- fs/inode.c                     |   1 +
- fs/xfs/xfs_file.c              |  18 ++++--
- include/linux/dax.h            |   6 ++
- include/linux/fs.h             |   1 +
- include/linux/mm.h             |   2 +
- include/linux/pagemap.h        |   3 +
- include/linux/pmem.h           |  22 ++++++-
- include/linux/radix-tree.h     |   8 +++
- include/linux/rmap.h           |   5 ++
- mm/filemap.c                   |  71 ++++++++++++++++++++-
- mm/huge_memory.c               |  14 ++---
- mm/memory.c                    |  38 ++++++++---
- mm/rmap.c                      |  51 +++++++++++++++
- mm/truncate.c                  |  62 ++++++++++--------
- 22 files changed, 425 insertions(+), 69 deletions(-)
-
+diff --git a/arch/x86/include/asm/pmem.h b/arch/x86/include/asm/pmem.h
+index d8ce3ec..6c7ade0 100644
+--- a/arch/x86/include/asm/pmem.h
++++ b/arch/x86/include/asm/pmem.h
+@@ -67,18 +67,19 @@ static inline void arch_wmb_pmem(void)
+ }
+ 
+ /**
+- * __arch_wb_cache_pmem - write back a cache range with CLWB
++ * arch_wb_cache_pmem - write back a cache range with CLWB
+  * @vaddr:	virtual start address
+  * @size:	number of bytes to write back
+  *
+  * Write back a cache range using the CLWB (cache line write back)
+  * instruction.  This function requires explicit ordering with an
+- * arch_wmb_pmem() call.  This API is internal to the x86 PMEM implementation.
++ * arch_wmb_pmem() call.
+  */
+-static inline void __arch_wb_cache_pmem(void *vaddr, size_t size)
++static inline void arch_wb_cache_pmem(void __pmem *addr, size_t size)
+ {
+ 	u16 x86_clflush_size = boot_cpu_data.x86_clflush_size;
+ 	unsigned long clflush_mask = x86_clflush_size - 1;
++	void *vaddr = (void __force *)addr;
+ 	void *vend = vaddr + size;
+ 	void *p;
+ 
+@@ -115,7 +116,7 @@ static inline size_t arch_copy_from_iter_pmem(void __pmem *addr, size_t bytes,
+ 	len = copy_from_iter_nocache(vaddr, bytes, i);
+ 
+ 	if (__iter_needs_pmem_wb(i))
+-		__arch_wb_cache_pmem(vaddr, bytes);
++		arch_wb_cache_pmem(addr, bytes);
+ 
+ 	return len;
+ }
+@@ -138,7 +139,7 @@ static inline void arch_clear_pmem(void __pmem *addr, size_t size)
+ 	else
+ 		memset(vaddr, 0, size);
+ 
+-	__arch_wb_cache_pmem(vaddr, size);
++	arch_wb_cache_pmem(addr, size);
+ }
+ 
+ static inline bool __arch_has_wmb_pmem(void)
+diff --git a/include/linux/pmem.h b/include/linux/pmem.h
+index 85f810b3..2cd5003 100644
+--- a/include/linux/pmem.h
++++ b/include/linux/pmem.h
+@@ -53,12 +53,18 @@ static inline void arch_clear_pmem(void __pmem *addr, size_t size)
+ {
+ 	BUG();
+ }
++
++static inline void arch_wb_cache_pmem(void __pmem *addr, size_t size)
++{
++	BUG();
++}
+ #endif
+ 
+ /*
+  * Architectures that define ARCH_HAS_PMEM_API must provide
+  * implementations for arch_memcpy_to_pmem(), arch_wmb_pmem(),
+- * arch_copy_from_iter_pmem(), arch_clear_pmem() and arch_has_wmb_pmem().
++ * arch_copy_from_iter_pmem(), arch_clear_pmem(), arch_wb_cache_pmem()
++ * and arch_has_wmb_pmem().
+  */
+ static inline void memcpy_from_pmem(void *dst, void __pmem const *src, size_t size)
+ {
+@@ -202,4 +208,18 @@ static inline void clear_pmem(void __pmem *addr, size_t size)
+ 	else
+ 		default_clear_pmem(addr, size);
+ }
++
++/**
++ * wb_cache_pmem - write back processor cache for PMEM memory range
++ * @addr:	virtual start address
++ * @size:	number of bytes to write back
++ *
++ * Write back the processor cache range starting at 'addr' for 'size' bytes.
++ * This function requires explicit ordering with a wmb_pmem() call.
++ */
++static inline void wb_cache_pmem(void __pmem *addr, size_t size)
++{
++	if (arch_has_pmem_api())
++		arch_wb_cache_pmem(addr, size);
++}
+ #endif /* __PMEM_H__ */
 -- 
 2.1.0
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
