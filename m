@@ -1,60 +1,146 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH v2 03/11] pmem: enable REQ_FUA/REQ_FLUSH handling
-Date: Mon, 16 Nov 2015 12:34:55 -0800
-Message-ID: <CAPcyv4hU0HMBFy=MveUaECK0fVfgUFBjUUPTWA8HOP6MG5XEfQ@mail.gmail.com>
-References: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
-	<1447459610-14259-4-git-send-email-ross.zwisler@linux.intel.com>
-	<CAPcyv4j4arHE+iAALn1WPDzSb_QSCDy8udtXU1FV=kYSZDfv8A@mail.gmail.com>
-	<22E0F870-C1FB-431E-BF6C-B395A09A2B0D@dilger.ca>
-	<CAPcyv4jwx3VzyRugcpH7KCOKM64kJ4Bq4wgY=iNJMvLTHrBv-Q@mail.gmail.com>
-	<20151116133714.GB3443@quack.suse.cz>
-	<20151116140526.GA6733@quack.suse.cz>
-	<CAPcyv4jZjnkz2YYtGWmkA23KAUMT092kjRtFkJ3QrzgPfTucfA@mail.gmail.com>
-	<20151116194846.GB32203@linux.intel.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 01/12] test-scripts: test migration scripts
+Date: Tue, 17 Nov 2015 07:58:45 +1100
+Message-ID: <20151116205845.GK14311@dastard>
+References: <20151113213643.31124.80975.stgit@birch.djwong.org>
+ <20151113213650.31124.16817.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: Ross Zwisler <ross.zwisler@linux.intel.com>, Dan Williams <dan.j.williams@intel.com>,
-	Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>, "Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>, Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>, Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>, Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux MM <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>, X86 ML <x86@kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>, Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20151116194846.GB32203@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=us-ascii
+Cc: fstests@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	tao.peng@primarydata.com, linux-ext4@vger.kernel.org,
+	Anna.Schumaker@netapp.com, linux-btrfs@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <fstests-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20151113213650.31124.16817.stgit@birch.djwong.org>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 16, 2015 at 11:48 AM, Ross Zwisler
-<ross.zwisler@linux.intel.com> wrote:
-> On Mon, Nov 16, 2015 at 09:28:59AM -0800, Dan Williams wrote:
->> On Mon, Nov 16, 2015 at 6:05 AM, Jan Kara <jack@suse.cz> wrote:
->> > On Mon 16-11-15 14:37:14, Jan Kara wrote:
-[..]
-> Is there any reason why this wouldn't work or wouldn't be a good idea?
+On Fri, Nov 13, 2015 at 01:36:50PM -0800, Darrick J. Wong wrote:
+> Add two scripts: "nextid" finds the next available test ID number in a
+> group, and "mvtest" relocates a test, fixes the golden output, and
+> moves the group entry for that test.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+>  mvtest |   58 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  nextid |   35 +++++++++++++++++++++++++++++++++++
 
-We don't have numbers to support the claim that pcommit is so
-expensive as to need be deferred, especially if the upper layers are
-already taking the hit on doing the flushes.
+These should be placed in the "tools" directory.
 
-REQ_FLUSH, means flush your volatile write cache.  Currently all I/O
-through the driver never hits a volatile cache so there's no need to
-tell the block layer that we have a volatile write cache, especially
-when you have the core mm taking responsibility for doing cache
-maintenance for dax-mmap ranges.
+>  create mode 100755 mvtest
+>  create mode 100755 nextid
+> 
+> 
+> diff --git a/mvtest b/mvtest
+> new file mode 100755
+> index 0000000..b5406d1
+> --- /dev/null
+> +++ b/mvtest
+> @@ -0,0 +1,58 @@
+> +#!/bin/sh
+> +
+> +# Renumber a test
+> +
+> +if [ -z "$1" ] || [ "$1" = "--help" ]; then
+> +	echo "Usage: $0 path_to_test new_path_to_test"
+> +	exit 1
+> +fi
+> +
+> +src="$1"
+> +dest="$2"
+> +
+> +die() {
+> +	echo "$@"
+> +	exit 1
+> +}
+> +
+> +nsort() {
+> +	sort -g < "$1" > "$2"
+> +}
+> +
+> +append() {
+> +	out="$1"
+> +	shift
+> +	echo "$@" >> "${out}"
+> +}
+> +
+> +test "${src}" != "${dest}" || die "Test \"${src}\" is the same as dest."
+> +test -e "tests/${src}" || die "Test \"${src}\" does not exist."
+> +test ! -e "tests/${dest}" || die "Test \"${src}\" already exists."
+> +
+> +sid="$(basename "${src}")"
+> +did="$(basename "${dest}")"
+> +
+> +sgroup="$(basename "$(dirname "tests/${src}")")"
+> +dgroup="$(basename "$(dirname "tests/${dest}")")"
+> +
+> +sgroupfile="tests/${sgroup}/group"
+> +dgroupfile="tests/${sgroup}/group"
+> +
+> +$DBG git mv "tests/${src}" "tests/${dest}"
 
-We also don't have numbers on if/when wbinvd is a more performant solution.
+$DBG?
 
-tl;dr Now that we have a baseline implementation can we please use
-data to make future arch decisions?
+....
+> +$DBG sed -e "/^${sid}.*$/d" -i "${sgroupfile}"
+> +$DBG cp "${dgroupfile}" "${dgroupfile}.new"
+> +$DBG append "${dgroupfile}.new" "${newgrpline}"
+> +$DBG nsort "${dgroupfile}.new" "${dgroupfile}"
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+What does this do to comments in the group file?
+
+...
+
+> diff --git a/nextid b/nextid
+> new file mode 100755
+> index 0000000..285b549
+> --- /dev/null
+> +++ b/nextid
+> @@ -0,0 +1,35 @@
+> +#!/bin/sh
+> +
+> +# Given a group name, find the next available test number.
+> +
+> +if [ -z "$1" ] || [ "$1" = "--help" ]; then
+> +	echo "Usage: $0 groupname[/start_looking_at_this_number]"
+> +	exit 1
+> +fi
+> +
+> +die() {
+> +	echo "$@"
+> +	exit 1
+> +}
+> +
+> +if [ "$(basename "$1")" != "$1" ]; then
+> +	group="$(dirname "$1")"
+> +	id="$(basename "$1")"
+> +else
+> +	group="$1"
+> +	id=1
+> +fi
+> +test -e "tests/${group}/group" || die "Unknown group \"${group}\"."
+> +
+> +while test "${id}" -lt 1000; do
+> +	name="$(printf "%.03d" "${id}")"
+> +	if [ ! -e "tests/${group}/${name}" ]; then
+> +		echo "${group}/${name}"
+> +		exit 0
+> +	fi
+> +	id=$((id + 1))
+> +done
+> +
+> +echo "No free IDs less than ${id} in group \"${group}\"."
+
+So the "new" script does this differently, by reading the group
+file and looking for the first non-contiguous ID in the file. It
+doesn't need scan ID limits because EOF triggers that. Wouldn't it
+be better to to factor the code out of the "new" script to find the
+next id, and then have the new script call that?
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
