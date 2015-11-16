@@ -1,26 +1,35 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] In mke2fs, accept a human readable size as input to the
- 'bytes-per-inode' argument.
-Date: Sun, 15 Nov 2015 20:10:59 -0500
-Message-ID: <20151116011059.GB19264@thunk.org>
-References: <1447601094-19655-1-git-send-email-matt.59491@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Matthieu Dupont <matt.59491@gmail.com>
+From: Jan Kara <jack@suse.com>
+Subject: [PATCH] chattr: Fix typo in a manpage
+Date: Mon, 16 Nov 2015 13:33:48 +0100
+Message-ID: <1447677228-6340-1-git-send-email-jack@suse.com>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.com>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60608 "EHLO imap.thunk.org"
+Received: from mx2.suse.de ([195.135.220.15]:58335 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751991AbbKPBLI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 15 Nov 2015 20:11:08 -0500
-Content-Disposition: inline
-In-Reply-To: <1447601094-19655-1-git-send-email-matt.59491@gmail.com>
+	id S1751358AbbKPMd6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Nov 2015 07:33:58 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 15, 2015 at 04:24:54PM +0100, Matthieu Dupont wrote:
-> Signed-off-by: Matthieu Dupont <matt.59491@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.com>
+---
+ misc/chattr.1.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Thanks, applied.
+diff --git a/misc/chattr.1.in b/misc/chattr.1.in
+index 33ef9a20f591..1d6b057a45ac 100644
+--- a/misc/chattr.1.in
++++ b/misc/chattr.1.in
+@@ -93,7 +93,7 @@ set on new or empty files.  If it is set on a file which already has
+ data blocks, it is undefined when the blocks assigned to the file will
+ be fully stable.  If the 'C' flag is set on a directory, it will have no
+ effect on the directory, but new files created in that directory will
+-the No_COW attribute.)
++have the No_COW attribute set.)
+ .PP
+ A file with the 'd' attribute set is not candidate for backup when the
+ .BR dump (8)
+-- 
+2.1.4
 
-					- Ted
