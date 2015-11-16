@@ -1,47 +1,38 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH v2 03/11] pmem: enable REQ_FUA/REQ_FLUSH handling
-Date: Mon, 16 Nov 2015 09:28:59 -0800
-Message-ID: <CAPcyv4jZjnkz2YYtGWmkA23KAUMT092kjRtFkJ3QrzgPfTucfA@mail.gmail.com>
-References: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
-	<1447459610-14259-4-git-send-email-ross.zwisler@linux.intel.com>
-	<CAPcyv4j4arHE+iAALn1WPDzSb_QSCDy8udtXU1FV=kYSZDfv8A@mail.gmail.com>
-	<22E0F870-C1FB-431E-BF6C-B395A09A2B0D@dilger.ca>
-	<CAPcyv4jwx3VzyRugcpH7KCOKM64kJ4Bq4wgY=iNJMvLTHrBv-Q@mail.gmail.com>
-	<20151116133714.GB3443@quack.suse.cz>
-	<20151116140526.GA6733@quack.suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 3/4] libext2fs: fix block-mapped file punch
+Date: Mon, 16 Nov 2015 07:04:28 -0500
+Message-ID: <20151116120428.GC29432@thunk.org>
+References: <1447463429-5966-1-git-send-email-andreas.dilger@intel.com>
+ <1447463429-5966-3-git-send-email-andreas.dilger@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Andreas Dilger <adilger@dilger.ca>, Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>, "Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>, Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>, Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>, Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux MM <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>, X86 ML <x86@kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>, Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>, Dave Hansen <dave.hansen@linux.intel.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20151116140526.GA6733@quack.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <andreas.dilger@intel.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:33966 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750781AbbKPTIY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Nov 2015 14:08:24 -0500
+Content-Disposition: inline
+In-Reply-To: <1447463429-5966-3-git-send-email-andreas.dilger@intel.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 16, 2015 at 6:05 AM, Jan Kara <jack@suse.cz> wrote:
-> On Mon 16-11-15 14:37:14, Jan Kara wrote:
-[..]
-> But a question: Won't it be better to do sfence + pcommit only in response
-> to REQ_FLUSH request and don't do it after each write? I'm not sure how
-> expensive these instructions are but in theory it could be a performance
-> win, couldn't it? For filesystems this is enough wrt persistency
-> guarantees...
+On Fri, Nov 13, 2015 at 06:10:28PM -0700, Andreas Dilger wrote:
+> If ext2fs_punch() is called with "end = ~0U" (which is natural from
+> a programming POV) it tries to compute "count" based on "start" and
+> "end", but doesn't quite get it right.
 
-We would need to gather the performance data...  The expectation is
-that the cache flushing is more expensive than the sfence + pcommit.
+You should make clear that this only applies in the case where we are
+punching on an indirect block mapped file.  I read this and alarm
+bells started going off since end is a blk64_t, and we can't do this
+for extent-mapped files.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> Pass "count=~0"
+> in this case, and also handle that explicitly in ext2_punch_ind().
+> Since ext2_punch_ind() is itself a public function, so it makes
+> sense to fix this in both places.
+
+Um, ext2fs_punch()_ind is *not* a public function.
+
+						- Ted
