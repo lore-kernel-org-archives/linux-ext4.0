@@ -1,133 +1,188 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v2 03/11] pmem: enable REQ_FUA/REQ_FLUSH handling
-Date: Tue, 17 Nov 2015 10:42:46 +1100
-Message-ID: <20151116234246.GZ19199@dastard>
-References: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
- <1447459610-14259-4-git-send-email-ross.zwisler@linux.intel.com>
- <CAPcyv4j4arHE+iAALn1WPDzSb_QSCDy8udtXU1FV=kYSZDfv8A@mail.gmail.com>
- <22E0F870-C1FB-431E-BF6C-B395A09A2B0D@dilger.ca>
- <CAPcyv4jwx3VzyRugcpH7KCOKM64kJ4Bq4wgY=iNJMvLTHrBv-Q@mail.gmail.com>
- <20151116133714.GB3443@quack.suse.cz>
- <20151116140526.GA6733@quack.suse.cz>
- <20151116221412.GV19199@dastard>
- <20151116232927.GA5582@linux.intel.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 01/12] test-scripts: test migration scripts
+Date: Mon, 16 Nov 2015 15:51:11 -0800
+Message-ID: <20151116235111.GE2224@birch.djwong.org>
+References: <20151113213643.31124.80975.stgit@birch.djwong.org>
+	<20151113213650.31124.16817.stgit@birch.djwong.org>
+	<20151116205845.GK14311@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Ross Zwisler <ross.zwisler@linux.intel.com>, Jan Kara <jack@suse.cz>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Andreas Dilger <adilger@dilger.ca>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux MM <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	X86 ML <x86@kernel.org>, XFS Developers <xfs@oss.sgi.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Dave Hansen <dave.ha
-Return-path: <owner-linux-mm@kvack.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: fstests@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	tao.peng@primarydata.com, linux-ext4@vger.kernel.org,
+	Anna.Schumaker@netapp.com, linux-btrfs@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20151116232927.GA5582@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <20151116205845.GK14311@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 16, 2015 at 04:29:27PM -0700, Ross Zwisler wrote:
-> On Tue, Nov 17, 2015 at 09:14:12AM +1100, Dave Chinner wrote:
-> > On Mon, Nov 16, 2015 at 03:05:26PM +0100, Jan Kara wrote:
-> > > On Mon 16-11-15 14:37:14, Jan Kara wrote:
-> > > > On Fri 13-11-15 18:32:40, Dan Williams wrote:
-> > > > > On Fri, Nov 13, 2015 at 4:43 PM, Andreas Dilger <adilger@dilger.ca> wrote:
-> > > > > > On Nov 13, 2015, at 5:20 PM, Dan Williams <dan.j.williams@intel.com> wrote:
-> > > > > >>
-> > > > > >> On Fri, Nov 13, 2015 at 4:06 PM, Ross Zwisler
-> > > > > >> <ross.zwisler@linux.intel.com> wrote:
-> > > > > >>> Currently the PMEM driver doesn't accept REQ_FLUSH or REQ_FUA bios.  These
-> > > > > >>> are sent down via blkdev_issue_flush() in response to a fsync() or msync()
-> > > > > >>> and are used by filesystems to order their metadata, among other things.
-> > > > > >>>
-> > > > > >>> When we get an msync() or fsync() it is the responsibility of the DAX code
-> > > > > >>> to flush all dirty pages to media.  The PMEM driver then just has issue a
-> > > > > >>> wmb_pmem() in response to the REQ_FLUSH to ensure that before we return all
-> > > > > >>> the flushed data has been durably stored on the media.
-> > > > > >>>
-> > > > > >>> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> > > > > >>
-> > > > > >> Hmm, I'm not seeing why we need this patch.  If the actual flushing of
-> > > > > >> the cache is done by the core why does the driver need support
-> > > > > >> REQ_FLUSH?  Especially since it's just a couple instructions.  REQ_FUA
-> > > > > >> only makes sense if individual writes can bypass the "drive" cache,
-> > > > > >> but no I/O submitted to the driver proper is ever cached we always
-> > > > > >> flush it through to media.
-> > > > > >
-> > > > > > If the upper level filesystem gets an error when submitting a flush
-> > > > > > request, then it assumes the underlying hardware is broken and cannot
-> > > > > > be as aggressive in IO submission, but instead has to wait for in-flight
-> > > > > > IO to complete.
-> > > > > 
-> > > > > Upper level filesystems won't get errors when the driver does not
-> > > > > support flush.  Those requests are ended cleanly in
-> > > > > generic_make_request_checks().  Yes, the fs still needs to wait for
-> > > > > outstanding I/O to complete but in the case of pmem all I/O is
-> > > > > synchronous.  There's never anything to await when flushing at the
-> > > > > pmem driver level.
-> > > > > 
-> > > > > > Since FUA/FLUSH is basically a no-op for pmem devices,
-> > > > > > it doesn't make sense _not_ to support this functionality.
-> > > > > 
-> > > > > Seems to be a nop either way.  Given that DAX may lead to dirty data
-> > > > > pending to the device in the cpu cache that a REQ_FLUSH request will
-> > > > > not touch, its better to leave it all to the mm core to handle.  I.e.
-> > > > > it doesn't make sense to call the driver just for two instructions
-> > > > > (sfence + pcommit) when the mm core is taking on the cache flushing.
-> > > > > Either handle it all in the mm or the driver, not a mixture.
-> > > > 
-> > > > So I think REQ_FLUSH requests *must* end up doing sfence + pcommit because
-> > > > e.g. journal writes going through block layer or writes done through
-> > > > dax_do_io() must be on permanent storage once REQ_FLUSH request finishes
-> > > > and the way driver does IO doesn't guarantee this, does it?
-> > > 
-> > > Hum, and looking into how dax_do_io() works and what drivers/nvdimm/pmem.c
-> > > does, I'm indeed wrong because they both do wmb_pmem() after each write
-> > > which seems to include sfence + pcommit. Sorry for confusion.
+On Tue, Nov 17, 2015 at 07:58:45AM +1100, Dave Chinner wrote:
+> On Fri, Nov 13, 2015 at 01:36:50PM -0800, Darrick J. Wong wrote:
+> > Add two scripts: "nextid" finds the next available test ID number in a
+> > group, and "mvtest" relocates a test, fixes the golden output, and
+> > moves the group entry for that test.
 > > 
-> > Which I want to remove, because it makes DAX IO 3x slower than
-> > buffered IO on ramdisk based testing.
-> > 
-> > > But a question: Won't it be better to do sfence + pcommit only in response
-> > > to REQ_FLUSH request and don't do it after each write? I'm not sure how
-> > > expensive these instructions are but in theory it could be a performance
-> > > win, couldn't it? For filesystems this is enough wrt persistency
-> > > guarantees...
-> > 
-> > I'm pretty sure it would be, because all of the overhead (and
-> > therefore latency) I measured is in the cache flushing instructions.
-> > But before we can remove the wmb_pmem() from  dax_do_io(), we need
-> > the underlying device to support REQ_FLUSH correctly...
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > ---
+> >  mvtest |   58 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+> >  nextid |   35 +++++++++++++++++++++++++++++++++++
 > 
-> By "support REQ_FLUSH correctly" do you mean call wmb_pmem() as I do in my
-> set?  Or do you mean something that also involves cache flushing such as the
-> "big hammer" that flushes everything or something like WBINVD?
+> These should be placed in the "tools" directory.
 
-Either. Both solve the problem of defering the cache flush penalty
-to the context that needs it..
+<nod>
 
-Cheers,
+> 
+> >  create mode 100755 mvtest
+> >  create mode 100755 nextid
+> > 
+> > 
+> > diff --git a/mvtest b/mvtest
+> > new file mode 100755
+> > index 0000000..b5406d1
+> > --- /dev/null
+> > +++ b/mvtest
+> > @@ -0,0 +1,58 @@
+> > +#!/bin/sh
+> > +
+> > +# Renumber a test
+> > +
+> > +if [ -z "$1" ] || [ "$1" = "--help" ]; then
+> > +	echo "Usage: $0 path_to_test new_path_to_test"
+> > +	exit 1
+> > +fi
+> > +
+> > +src="$1"
+> > +dest="$2"
+> > +
+> > +die() {
+> > +	echo "$@"
+> > +	exit 1
+> > +}
+> > +
+> > +nsort() {
+> > +	sort -g < "$1" > "$2"
+> > +}
+> > +
+> > +append() {
+> > +	out="$1"
+> > +	shift
+> > +	echo "$@" >> "${out}"
+> > +}
+> > +
+> > +test "${src}" != "${dest}" || die "Test \"${src}\" is the same as dest."
+> > +test -e "tests/${src}" || die "Test \"${src}\" does not exist."
+> > +test ! -e "tests/${dest}" || die "Test \"${src}\" already exists."
+> > +
+> > +sid="$(basename "${src}")"
+> > +did="$(basename "${dest}")"
+> > +
+> > +sgroup="$(basename "$(dirname "tests/${src}")")"
+> > +dgroup="$(basename "$(dirname "tests/${dest}")")"
+> > +
+> > +sgroupfile="tests/${sgroup}/group"
+> > +dgroupfile="tests/${sgroup}/group"
+> > +
+> > +$DBG git mv "tests/${src}" "tests/${dest}"
+> 
+> $DBG?
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+"DBG=echo ./mvtest foo bar" to see what it would have run, more or less.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+(I suppose I could getopt a --dry-run, but I could also just get rid of them.)
+
+> 
+> ....
+> > +$DBG sed -e "/^${sid}.*$/d" -i "${sgroupfile}"
+> > +$DBG cp "${dgroupfile}" "${dgroupfile}.new"
+> > +$DBG append "${dgroupfile}.new" "${newgrpline}"
+> > +$DBG nsort "${dgroupfile}.new" "${dgroupfile}"
+> 
+> What does this do to comments in the group file?
+
+Eats them.  I don't know of a good way to sort just the uncommented lines
+in the file, short of writing a python script to do that.
+
+I guess it's not that hard; I've sort of needed one here and there over
+the years, but never wrote one, and $google doesn't immediately provide
+any such thing.
+
+> 
+> ...
+> 
+> > diff --git a/nextid b/nextid
+> > new file mode 100755
+> > index 0000000..285b549
+> > --- /dev/null
+> > +++ b/nextid
+> > @@ -0,0 +1,35 @@
+> > +#!/bin/sh
+> > +
+> > +# Given a group name, find the next available test number.
+> > +
+> > +if [ -z "$1" ] || [ "$1" = "--help" ]; then
+> > +	echo "Usage: $0 groupname[/start_looking_at_this_number]"
+> > +	exit 1
+> > +fi
+> > +
+> > +die() {
+> > +	echo "$@"
+> > +	exit 1
+> > +}
+> > +
+> > +if [ "$(basename "$1")" != "$1" ]; then
+> > +	group="$(dirname "$1")"
+> > +	id="$(basename "$1")"
+> > +else
+> > +	group="$1"
+> > +	id=1
+> > +fi
+> > +test -e "tests/${group}/group" || die "Unknown group \"${group}\"."
+> > +
+> > +while test "${id}" -lt 1000; do
+> > +	name="$(printf "%.03d" "${id}")"
+> > +	if [ ! -e "tests/${group}/${name}" ]; then
+> > +		echo "${group}/${name}"
+> > +		exit 0
+> > +	fi
+> > +	id=$((id + 1))
+> > +done
+> > +
+> > +echo "No free IDs less than ${id} in group \"${group}\"."
+> 
+> So the "new" script does this differently, by reading the group
+> file and looking for the first non-contiguous ID in the file. It
+> doesn't need scan ID limits because EOF triggers that. Wouldn't it
+> be better to to factor the code out of the "new" script to find the
+> next id, and then have the new script call that?
+
+Sure!
+
+--D
+
+> 
+> Cheers,
+> 
+> Dave.
+> -- 
+> Dave Chinner
+> david@fromorbit.com
+> 
+> _______________________________________________
+> xfs mailing list
+> xfs@oss.sgi.com
+> http://oss.sgi.com/mailman/listinfo/xfs
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
