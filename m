@@ -1,94 +1,113 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 3/4] common: Add function for selecting from different
- output files
-Date: Tue, 17 Nov 2015 08:29:24 +1100
-Message-ID: <20151116212924.GL14311@dastard>
-References: <1446654698-23577-1-git-send-email-jack@suse.com>
- <1446654698-23577-4-git-send-email-jack@suse.com>
+Subject: Re: [PATCH v2 03/11] pmem: enable REQ_FUA/REQ_FLUSH handling
+Date: Tue, 17 Nov 2015 09:14:12 +1100
+Message-ID: <20151116221412.GV19199@dastard>
+References: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1447459610-14259-4-git-send-email-ross.zwisler@linux.intel.com>
+ <CAPcyv4j4arHE+iAALn1WPDzSb_QSCDy8udtXU1FV=kYSZDfv8A@mail.gmail.com>
+ <22E0F870-C1FB-431E-BF6C-B395A09A2B0D@dilger.ca>
+ <CAPcyv4jwx3VzyRugcpH7KCOKM64kJ4Bq4wgY=iNJMvLTHrBv-Q@mail.gmail.com>
+ <20151116133714.GB3443@quack.suse.cz>
+ <20151116140526.GA6733@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.com>
-Return-path: <fstests-owner@vger.kernel.org>
+Cc: Dan Williams <dan.j.williams@intel.com>,
+	Andreas Dilger <adilger@dilger.ca>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"H. Peter Anvin" <hpa@zytor.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux MM <linux-mm@kvack.org>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+	X86 ML <x86@kernel.org>, XFS Developers <xfs@oss.sgi.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Dave Hansen <dave.hansen@linux.intel.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1446654698-23577-4-git-send-email-jack@suse.com>
-Sender: fstests-owner@vger.kernel.org
+In-Reply-To: <20151116140526.GA6733@quack.suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 04, 2015 at 05:31:37PM +0100, Jan Kara wrote:
-> Add function for selection of different output files. The idea is that
-> in config file ($seq.cfg) there are several lines like:
+On Mon, Nov 16, 2015 at 03:05:26PM +0100, Jan Kara wrote:
+> On Mon 16-11-15 14:37:14, Jan Kara wrote:
+> > On Fri 13-11-15 18:32:40, Dan Williams wrote:
+> > > On Fri, Nov 13, 2015 at 4:43 PM, Andreas Dilger <adilger@dilger.ca> wrote:
+> > > > On Nov 13, 2015, at 5:20 PM, Dan Williams <dan.j.williams@intel.com> wrote:
+> > > >>
+> > > >> On Fri, Nov 13, 2015 at 4:06 PM, Ross Zwisler
+> > > >> <ross.zwisler@linux.intel.com> wrote:
+> > > >>> Currently the PMEM driver doesn't accept REQ_FLUSH or REQ_FUA bios.  These
+> > > >>> are sent down via blkdev_issue_flush() in response to a fsync() or msync()
+> > > >>> and are used by filesystems to order their metadata, among other things.
+> > > >>>
+> > > >>> When we get an msync() or fsync() it is the responsibility of the DAX code
+> > > >>> to flush all dirty pages to media.  The PMEM driver then just has issue a
+> > > >>> wmb_pmem() in response to the REQ_FLUSH to ensure that before we return all
+> > > >>> the flushed data has been durably stored on the media.
+> > > >>>
+> > > >>> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> > > >>
+> > > >> Hmm, I'm not seeing why we need this patch.  If the actual flushing of
+> > > >> the cache is done by the core why does the driver need support
+> > > >> REQ_FLUSH?  Especially since it's just a couple instructions.  REQ_FUA
+> > > >> only makes sense if individual writes can bypass the "drive" cache,
+> > > >> but no I/O submitted to the driver proper is ever cached we always
+> > > >> flush it through to media.
+> > > >
+> > > > If the upper level filesystem gets an error when submitting a flush
+> > > > request, then it assumes the underlying hardware is broken and cannot
+> > > > be as aggressive in IO submission, but instead has to wait for in-flight
+> > > > IO to complete.
+> > > 
+> > > Upper level filesystems won't get errors when the driver does not
+> > > support flush.  Those requests are ended cleanly in
+> > > generic_make_request_checks().  Yes, the fs still needs to wait for
+> > > outstanding I/O to complete but in the case of pmem all I/O is
+> > > synchronous.  There's never anything to await when flushing at the
+> > > pmem driver level.
+> > > 
+> > > > Since FUA/FLUSH is basically a no-op for pmem devices,
+> > > > it doesn't make sense _not_ to support this functionality.
+> > > 
+> > > Seems to be a nop either way.  Given that DAX may lead to dirty data
+> > > pending to the device in the cpu cache that a REQ_FLUSH request will
+> > > not touch, its better to leave it all to the mm core to handle.  I.e.
+> > > it doesn't make sense to call the driver just for two instructions
+> > > (sfence + pcommit) when the mm core is taking on the cache flushing.
+> > > Either handle it all in the mm or the driver, not a mixture.
+> > 
+> > So I think REQ_FLUSH requests *must* end up doing sfence + pcommit because
+> > e.g. journal writes going through block layer or writes done through
+> > dax_do_io() must be on permanent storage once REQ_FLUSH request finishes
+> > and the way driver does IO doesn't guarantee this, does it?
 > 
-> feat1,feat2: suffix
-> 
-> The function is passed a feature string (or uses MOUNT_OPTIONS if no
-> argument is passed) and selects output file with a suffix for which all
-> features are present in the feature string. If there is no matching
-> line, output with 'default' suffix is selected.
-> 
-> Signed-off-by: Jan Kara <jack@suse.com>
+> Hum, and looking into how dax_do_io() works and what drivers/nvdimm/pmem.c
+> does, I'm indeed wrong because they both do wmb_pmem() after each write
+> which seems to include sfence + pcommit. Sorry for confusion.
 
-Looks like a good idea, but probably needs to be integrated into
-_link_out_file(), which already does platform based output file
-linking...
+Which I want to remove, because it makes DAX IO 3x slower than
+buffered IO on ramdisk based testing.
 
-> ---
->  common/rc | 41 +++++++++++++++++++++++++++++++++++++++++
->  1 file changed, 41 insertions(+)
-> 
-> diff --git a/common/rc b/common/rc
-> index adf1edf64d8d..543780c92c59 100644
-> --- a/common/rc
-> +++ b/common/rc
-> @@ -3142,6 +3142,47 @@ get_block_size()
->  	echo `stat -f -c %S $1`
->  }
->  
-> +_select_output()
-> +{
-> +	if [ $# -eq 0 ]; then
-> +		FEATURES=${MOUNT_OPTIONS##"-o "}
-> +	else
-> +		FEATURES=$1
-> +	fi
-> +
-> +	export FEATURES
-> +	seqfull=$SRC_DIR/$seqnum
-> +	perl -e '
-> +		my %feathash;
-> +		my $feature, $result, $suffix, $opts;
-> +
-> +		foreach $feature (split(/,/, $ENV{"FEATURES"})) {
-> +			$feathash{$feature} = 1;
-> +		}
-> +		$result = "default";
-> +		while (<>) {
-> +			my $found = 1;
-> +
-> +			chomp;
-> +			($opts, $suffix) = split(/ *: */);
-> +			foreach my $opt (split(/,/, $opts)) {
-> +				if (!exists($feathash{$opt})) {
-> +					$found = 0;
-> +					last;
-> +				}
-> +			}
-> +			if ($found == 1) {
-> +				$result = $suffix;
-> +				last;
-> +			}
-> +		}
-> +		print $result
-> +		' <$seqfull.cfg | {
-> +			read SUFFIX
-> +			ln -fs $seq.out.$SUFFIX $seqfull.out
-> +		}
-> +}
+> But a question: Won't it be better to do sfence + pcommit only in response
+> to REQ_FLUSH request and don't do it after each write? I'm not sure how
+> expensive these instructions are but in theory it could be a performance
+> win, couldn't it? For filesystems this is enough wrt persistency
+> guarantees...
 
-I'd much prefer the perl code simply returns the appropriately
-matched suffix and then the shell code does the linking of the
-output file. That way other things that the test harness is aware of
-can also be taken into account.
+I'm pretty sure it would be, because all of the overhead (and
+therefore latency) I measured is in the cache flushing instructions.
+But before we can remove the wmb_pmem() from  dax_do_io(), we need
+the underlying device to support REQ_FLUSH correctly...
 
 Cheers,
 
@@ -96,3 +115,9 @@ Dave.
 -- 
 Dave Chinner
 david@fromorbit.com
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
