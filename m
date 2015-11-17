@@ -1,83 +1,50 @@
-From: "Boylston, Brian" <brian.boylston@hpe.com>
-Subject: RE: [PATCH 0/9 v4] ext4: Punch hole and DAX fixes
-Date: Tue, 17 Nov 2015 17:41:55 +0000
-Message-ID: <80B02B5F638F054B8B1358323FECDE0A5EA7097A@G2W2437.americas.hpqcorp.net>
-References: <1447185059-16166-1-git-send-email-jack@suse.com>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v2 02/11] mm: add pmd_mkclean()
+Date: Tue, 17 Nov 2015 10:52:43 -0700
+Message-ID: <20151117175243.GA28024@linux.intel.com>
+References: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1447459610-14259-3-git-send-email-ross.zwisler@linux.intel.com>
+ <56468838.6010506@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"dan.j.williams@intel.com" <dan.j.williams@intel.com>
-To: Jan Kara <jack@suse.com>, Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g9t1613g.houston.hp.com ([15.240.0.71]:50183 "EHLO
-	g9t1613g.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932320AbbKQRrS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Nov 2015 12:47:18 -0500
-Received: from g2t2353.austin.hp.com (g2t2353.austin.hp.com [15.217.128.52])
-	(using TLSv1.2 with cipher DHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by g9t1613g.houston.hp.com (Postfix) with ESMTPS id D2BDA62298
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2015 17:47:17 +0000 (UTC)
-In-Reply-To: <1447185059-16166-1-git-send-email-jack@suse.com>
-Content-Language: en-US
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Ingo Molnar <mingo@redhat.com>,
+	Jan Kara <jack@suse.com>, Jeff Layton <jlayton@poochiereds.net>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	Thomas Gleixner <tglx@linutronix.de>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, x86@kernel.org, xfs@oss.sgi.com,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>
+To: Dave Hansen <dave.hansen@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <56468838.6010506@intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Nov 10, 2015 at 2:51 PM, Jan Kara wrote:
-> Another version of my ext4 fixes. Since previous version I have fixed DAX block
-> mapping to really avoid races for parallel page faults so that the test program
-> by Brian passes. Note that you'll see ext4/001 failures - xfstests updates were
+On Fri, Nov 13, 2015 at 05:02:48PM -0800, Dave Hansen wrote:
+> On 11/13/2015 04:06 PM, Ross Zwisler wrote:
+> > +static inline pmd_t pmd_mkclean(pmd_t pmd)
+> > +{
+> > +	return pmd_clear_flags(pmd, _PAGE_DIRTY | _PAGE_SOFT_DIRTY);
+> > +}
+> 
+> pte_mkclean() doesn't clear _PAGE_SOFT_DIRTY.  What the thought behind
+> doing it here?
 
-Thanks for the updated patches!
+I just wrote it to undo the work done by pmd_mkdirty() - you're right, it
+should mirror the work done by pte_mkclean() and not clear _PAGE_SOFT_DIRTY.
+I'll fix this for v3, thanks!
 
-> submitted. Also note that testing with 1 KB blocksize on ramdisk is broken
-> since brd has buggy discard implementation - Jens has a fix queued.
-> 
-> Change since v3:
-> * Fixed ext4_dax_mmap_get_block() to not return buffer_new buffer and thus
->   avoid racy zeroing in generic dax code
-> * Fixed ext4_map_blocks() to zeroout blocks before inserting entry into
->   extent status tree to avoid racy lookups of blocks.
-> 
-> Changes since v2:
-> * Fixed collaps range to truncate pagecache properly with blocksize < pagesize
-> * Fixed assertion in ext4_get_blocks_overwrite
-> 
-> Patch set description
-> 
-> This series fixes a long standing problem of racing punch hole and page fault
-> resulting in possible filesystem corruption or stale data exposure. We fix the
-> problem by using a new inode-private rw_semaphore i_mmap_sem to synchronize
-> page faults with truncate and punch hole operations.
-> 
-> When having this exclusion, the only remaining problem with DAX implementation
-> are races between two page faults zeroing out same block concurrently (where
-> the data written after the first fault finishes are possibly overwritten by
-> the second fault still doing zeroing).
-
-Is this still a problem for this version of the patch set?
-
-Thanks!
-Brian
-
-> Patch 1 introduces i_mmap_sem lock in ext4 inode and uses it to properly
-> serialize extent manipulation operations and page faults.
-> 
-> Patch 2 is mostly a preparatory cleanup patch which also avoids double lock /
-> unlock in unlocked DIO protections (currently harmless but nasty surprise).
-> 
-> Patches 3-4 fix further races of extent manipulation functions (such as zero
-> range, collapse range, insert range) with buffered IO, page writeback
-> 
-> Patch 5 documents locking order of ext4 filesystem locks.
-> 
-> Patch 6 removes locking abuse of i_data_sem from the get_blocks() path when
-> dioread_nolock is enabled since it is not needed anymore.
-> 
-> Patches 7-9 implement allocation of pre-zeroed blocks in ext4_map_blocks()
-> callback and use such blocks for allocations from DAX page faults.
-> 
-> The patches survived xfstests run both in dax and non-dax mode.
-
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
