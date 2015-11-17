@@ -1,95 +1,203 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: [PATCH 0/8] dax fixes / cleanups: pmd vs thp, lifetime, and locking
-Date: Tue, 17 Nov 2015 12:15:52 -0800
-Message-ID: <20151117201551.15053.32709.stgit@dwillia2-desk3.jf.intel.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 01/12] test-scripts: test migration scripts
+Date: Tue, 17 Nov 2015 13:16:43 -0800
+Message-ID: <20151117211643.GF2217@birch.djwong.org>
+References: <20151113213643.31124.80975.stgit@birch.djwong.org>
+	<20151113213650.31124.16817.stgit@birch.djwong.org>
+	<20151116205845.GK14311@dastard>
+	<20151116235111.GE2224@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.com>, Boaz Harrosh <boaz@plexistor.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Dave Hansen <dave.hansen@linux.intel.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Yigal Korman <yigal@plexistor.com>, stable@vger.kernel.org,
-	Jens Axboe <axboe@fb.com>, Jeff Moyer <jmoyer@redhat.com>,
-	linux-block@vger.kernel.org,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Dave Chinner <dchinner@redhat.com>,
-	linux-fsdevel@vger.kernel.org, willy@linux.intel.com,
-	ross.zwisler@linux.intel.com, linux-ext4@vger.kernel.org,
-	akpm@linux-foundation.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>
-To: linux-nvdimm@lists.01.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:34730 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752032AbbKQUQ3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Nov 2015 15:16:29 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: fstests@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	tao.peng@primarydata.com, linux-ext4@vger.kernel.org,
+	Anna.Schumaker@netapp.com, linux-btrfs@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <20151116235111.GE2224@birch.djwong.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Changes since last posting [1]:
+On Mon, Nov 16, 2015 at 03:51:11PM -0800, Darrick J. Wong wrote:
+> On Tue, Nov 17, 2015 at 07:58:45AM +1100, Dave Chinner wrote:
+> > On Fri, Nov 13, 2015 at 01:36:50PM -0800, Darrick J. Wong wrote:
+> > > Add two scripts: "nextid" finds the next available test ID number in a
+> > > group, and "mvtest" relocates a test, fixes the golden output, and
+> > > moves the group entry for that test.
+> > > 
+> > > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > > ---
+> > >  mvtest |   58 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+> > >  nextid |   35 +++++++++++++++++++++++++++++++++++
+> > 
+> > These should be placed in the "tools" directory.
+> 
+> <nod>
+> 
+> > 
+> > >  create mode 100755 mvtest
+> > >  create mode 100755 nextid
+> > > 
+> > > 
+> > > diff --git a/mvtest b/mvtest
+> > > new file mode 100755
+> > > index 0000000..b5406d1
+> > > --- /dev/null
+> > > +++ b/mvtest
+> > > @@ -0,0 +1,58 @@
+> > > +#!/bin/sh
+> > > +
+> > > +# Renumber a test
+> > > +
+> > > +if [ -z "$1" ] || [ "$1" = "--help" ]; then
+> > > +	echo "Usage: $0 path_to_test new_path_to_test"
+> > > +	exit 1
+> > > +fi
+> > > +
+> > > +src="$1"
+> > > +dest="$2"
+> > > +
+> > > +die() {
+> > > +	echo "$@"
+> > > +	exit 1
+> > > +}
+> > > +
+> > > +nsort() {
+> > > +	sort -g < "$1" > "$2"
+> > > +}
+> > > +
+> > > +append() {
+> > > +	out="$1"
+> > > +	shift
+> > > +	echo "$@" >> "${out}"
+> > > +}
+> > > +
+> > > +test "${src}" != "${dest}" || die "Test \"${src}\" is the same as dest."
+> > > +test -e "tests/${src}" || die "Test \"${src}\" does not exist."
+> > > +test ! -e "tests/${dest}" || die "Test \"${src}\" already exists."
+> > > +
+> > > +sid="$(basename "${src}")"
+> > > +did="$(basename "${dest}")"
+> > > +
+> > > +sgroup="$(basename "$(dirname "tests/${src}")")"
+> > > +dgroup="$(basename "$(dirname "tests/${dest}")")"
+> > > +
+> > > +sgroupfile="tests/${sgroup}/group"
+> > > +dgroupfile="tests/${sgroup}/group"
+> > > +
+> > > +$DBG git mv "tests/${src}" "tests/${dest}"
+> > 
+> > $DBG?
+> 
+> "DBG=echo ./mvtest foo bar" to see what it would have run, more or less.
+> 
+> (I suppose I could getopt a --dry-run, but I could also just get rid of them.)
+> 
+> > 
+> > ....
+> > > +$DBG sed -e "/^${sid}.*$/d" -i "${sgroupfile}"
+> > > +$DBG cp "${dgroupfile}" "${dgroupfile}.new"
+> > > +$DBG append "${dgroupfile}.new" "${newgrpline}"
+> > > +$DBG nsort "${dgroupfile}.new" "${dgroupfile}"
+> > 
+> > What does this do to comments in the group file?
+> 
+> Eats them.  I don't know of a good way to sort just the uncommented lines
+> in the file, short of writing a python script to do that.
+> 
+> I guess it's not that hard; I've sort of needed one here and there over
+> the years, but never wrote one, and $google doesn't immediately provide
+> any such thing.
+> 
+> > 
+> > ...
+> > 
+> > > diff --git a/nextid b/nextid
+> > > new file mode 100755
+> > > index 0000000..285b549
+> > > --- /dev/null
+> > > +++ b/nextid
+> > > @@ -0,0 +1,35 @@
+> > > +#!/bin/sh
+> > > +
+> > > +# Given a group name, find the next available test number.
+> > > +
+> > > +if [ -z "$1" ] || [ "$1" = "--help" ]; then
+> > > +	echo "Usage: $0 groupname[/start_looking_at_this_number]"
+> > > +	exit 1
+> > > +fi
+> > > +
+> > > +die() {
+> > > +	echo "$@"
+> > > +	exit 1
+> > > +}
+> > > +
+> > > +if [ "$(basename "$1")" != "$1" ]; then
+> > > +	group="$(dirname "$1")"
+> > > +	id="$(basename "$1")"
+> > > +else
+> > > +	group="$1"
+> > > +	id=1
+> > > +fi
+> > > +test -e "tests/${group}/group" || die "Unknown group \"${group}\"."
+> > > +
+> > > +while test "${id}" -lt 1000; do
+> > > +	name="$(printf "%.03d" "${id}")"
+> > > +	if [ ! -e "tests/${group}/${name}" ]; then
+> > > +		echo "${group}/${name}"
+> > > +		exit 0
+> > > +	fi
+> > > +	id=$((id + 1))
+> > > +done
+> > > +
+> > > +echo "No free IDs less than ${id} in group \"${group}\"."
+> > 
+> > So the "new" script does this differently, by reading the group
+> > file and looking for the first non-contiguous ID in the file. It
+> > doesn't need scan ID limits because EOF triggers that. Wouldn't it
+> > be better to to factor the code out of the "new" script to find the
+> > next id, and then have the new script call that?
+> 
+> Sure!
 
-1/ Further cleanups to dax_clear_blocks(): Dropped increments of 'addr'
-   since we call bdev_direct_access() before the next use, and dropped the
-   BUG_ON for sector unaligned return values from bdev_direct_access().
+In the end I wrote a short Python program to sort group files and it wasn't
+much harder to reuse the code to implement nextid, so I did that instead.
 
-2/ In [PATCH 8/8] introduce blk_dax_ctl to remove the need to have
-   separate dax_map_atomic and __dax_map_atomic routines.  Note,
-   blk_dax_ctl is not passed through to drivers, it gets unpacked in
-   bdev_direct_access.  (Willy)
+I'll probably post this and a patch to fix the error codes in generic/157
+later this week.
 
-3/ New [PATCH 2/8]: Disable huge page dax mappings while we resolve
-   various crash scenarios in this development cycle.
+--D
 
-4/ New [PATCH 4/8]: Unmap all dax mappings at block device shutdown
+> 
+> --D
+> 
+> > 
+> > Cheers,
+> > 
+> > Dave.
+> > -- 
+> > Dave Chinner
+> > david@fromorbit.com
+> > 
+> > _______________________________________________
+> > xfs mailing list
+> > xfs@oss.sgi.com
+> > http://oss.sgi.com/mailman/listinfo/xfs
+> --
+> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-I have kept the reviewed-by's received to date, let me know if these
-incremental updates invalidate that review.
-
-[1]: https://lists.01.org/pipermail/linux-nvdimm/2015-November/002733.html
-
----
-
-The first 4 patches in this series I consider 4.4-rc / -stable material.
-The rest are for 4.5.  [PATCH 4/8] needs scrutiny.  It is yet another
-example of where DAX behavior necessarily differs from page cache
-behavior.  I still maintain that we should not be surprising unaware
-applications with DAX semantics, i.e. that DAX should be per-inode
-opt-in, not globally enabled for all inodes at fs mount time.
-
-The largest patch in the set, [PATCH 8/8], addresses the lifetime of the
-'addr' returned by bdev_direct_access.  That address is only valid while
-the device driver is enabled.  The new dax_map_atomic() /
-dax_unmap_atomic() pairing guarantees that 'addr' stays valid for the
-duration of that mapping.
-
-While dax_map_atomic() protects against 'addr' going invalid, the new
-calls to truncate_pagecache() via invalidate_inodes() protect against
-the 'pfn' returned from bdev_direct_access() going invalid.  Otherwise,
-the storage media can be directly accessed after the driver has been
-disabled.
-
----
-
-[PATCH 1/8] ext2, ext4: warn when mounting with dax enabled
-[PATCH 2/8] dax: disable pmd mappings
-[PATCH 3/8] mm, dax: fix DAX deadlocks (COW fault)
-[PATCH 4/8] mm, dax: truncate dax mappings at bdev or fs shutdown
-[PATCH 5/8] pmem, dax: clean up clear_pmem()
-[PATCH 6/8] dax: increase granularity of dax_clear_blocks() operations
-[PATCH 7/8] dax: guarantee page aligned results from bdev_direct_access()
-[PATCH 8/8] dax: fix lifetime of in-kernel dax mappings with dax_map_atomic()
-
- arch/x86/include/asm/pmem.h |    7 -
- block/blk.h                 |    2 
- fs/Kconfig                  |    6 +
- fs/block_dev.c              |   15 +--
- fs/dax.c                    |  228 ++++++++++++++++++++++++++-----------------
- fs/ext2/super.c             |    2 
- fs/ext4/super.c             |    6 +
- fs/inode.c                  |   27 +++++
- include/linux/blkdev.h      |   19 +++-
- mm/memory.c                 |    8 +-
- mm/truncate.c               |   13 ++
- 11 files changed, 217 insertions(+), 116 deletions(-)
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
