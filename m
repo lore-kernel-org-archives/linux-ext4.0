@@ -1,219 +1,225 @@
-From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Subject: Re: [PATCH] lib/kobject: fix memory leak in error path of
- kset_create_and_add()
-Date: Mon, 16 Nov 2015 20:12:13 -0800
-Message-ID: <20151117041213.GA10860@kroah.com>
-References: <871tbpebjw.fsf@gmail.com>
+From: Namjae Jeon <namjae.jeon@samsung.com>
+Subject: RE: memory leak: data=journal and {collapse,insert,zero}_range
+Date: Tue, 17 Nov 2015 13:47:50 +0900
+Message-ID: <005901d120f3$1d880410$58980c30$@samsung.com>
+References: <20151017160230.GA19968@thunk.org>
+ <009301d10b2f$b410e6b0$1c32b410$@samsung.com>
+ <20151020155443.GM2972@thunk.org>
+ <011f01d10be5$099d38d0$1cd7aa70$@samsung.com>
+ <20151021145214.GC2165@thunk.org>
+ <004301d11aae$72683a40$5738aec0$@samsung.com>
+ <20151110144946.GB3156@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Joe Perches <joe@perches.com>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com
-To: Nicolai Stange <nicstange@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <871tbpebjw.fsf@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: 'Theodore Ts'o' <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: 'Jan Kara' <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailout1.samsung.com ([203.254.224.24]:53378 "EHLO
+	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751790AbbKQEry (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Nov 2015 23:47:54 -0500
+Received: from epcpsbgr4.samsung.com
+ (u144.gpu120.samsung.co.kr [203.254.230.144])
+ by mailout1.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
+ 64bit (built May  5 2014))
+ with ESMTP id <0NXX01CHOZZR6NC0@mailout1.samsung.com> for
+ linux-ext4@vger.kernel.org; Tue, 17 Nov 2015 13:47:51 +0900 (KST)
+In-reply-to: <20151110144946.GB3156@quack.suse.cz>
+Content-language: ko
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 17, 2015 at 01:04:19AM +0100, Nicolai Stange wrote:
-> In kset_create_and_add(), the name duped into the kset's kobject by
-> kset_create() gets leaked if the call to kset_register() fails.
+> On Mon 09-11-15 14:21:11, Namjae Jeon wrote:
+> > >
+> > > On Wed, Oct 21, 2015 at 06:44:10PM +0900, Namjae Jeon wrote:
+> > > > > Interestingly we're not seeing these memory leaks on the truncate
+> > > > > path, so I suspect the issue is in how collapse range is clearing
+> > > > > pages from the page cache, especially pages that were freshly written
+> > > > > to the journal by the commit but which hadn't yet been writtten to
+> > > > > disk and then marked as complete so we can allow the relevant
+> > > > > transaction to be checkpointed.  (Although we're not leaking the
+> > > > > journal head structures, but only the buffer heads, so the story most
+> > > > > be a bit more complicated than that.)
+> > > >
+> > > > Okay, Thanks for sharing your view and points !!
+> > > >
+> > > > Currently I can reproduce memory leak issue without collase/insert/zero range.
+> > > > conditions like the following.(collase/insert/zero range are disable with -I -C -z option and
+> add -y
+> > > option instead of -W)
+> > > >   1. small size parition(1GB)
+> > > >   2. run fsx with these options "./fsx -N 30000 -o 128000 -l 500000 -r 4096 -t 512 -w 512 -Z -R
+> -y -
+> > > I -C -z testfile"
+> > > > And same result with generic/091 is showing (buffer_head leak)
+> > > >
+> > > > So I am starting to find root-cause base on your points.
+> > > > I will share the result or the patch.
+> > >
+> > > Thanks, that's very interesting data point.  So this makes it appear
+> > > that the problem *is* probably with how we deal with checkpointing
+> > > buffers after the pages get discarded using either a truncate or a
+> > > collapse_range, since the 'y' option causes a lot fsync's, and hence
+> > > commits, some of which are happening after a truncate command.
+> > >
+> > > Thanks for a taking a look at this.  I really appreciate it.
+> > >
+> > > Cheers,
+> >
+> >
+> > Hi Ted,
+> >
+> > Could you review this patch?
+> >
+> > Thanks!
+> > ---------------------------------------------------------------------------------
+> > Subject: [PATCH] jbd2: try to free buffers from truncated page after
+> >  checkpoint
+> >
+> > when ext4 is mounted in data=journal mode, and truncate operation
+> > such as settatr(size), collopse, insert and zero range are used, there are
+> > are many truncated pages with NULL page->mapping. Such truncated pages
+> > pile up quickly due to truncate_pagecache on data pages associated with journal.
+> > As page->mapping is NULL for such truncated pages, they are not freed
+> > by drop cache(3) or umount. As a result, MemFree in /proc/meminfo decreases
+> > quickly and active buffer_head slab objects grow in /proc/slabinfo.
+> > This patch attempts to free buffers from such pages at the end of jbd2
+> > checkpoint, if pages do not have any busy buffers and NULL mapping.
 > 
-> Indeed, triggering failure by invoking kset_create_and_add() with a
-> duplicate name makes kmemleak reporting
-> 
->   unreferenced object 0xffff8800b4a1f428 (size 16):
->     comm "insmod", pid 682, jiffies 4294745489 (age 50.477s)
->     hex dump (first 16 bytes):
->       64 75 70 6c 69 63 61 74 65 00 6b 6b 6b 6b 6b a5  duplicate.kkkkk.
->     backtrace:
->       [<ffffffff814380ee>] kmemleak_alloc+0x4e/0xb0
->       [<ffffffff811aab01>] __kmalloc_track_caller+0x2b1/0x390
->       [<ffffffff811797f1>] kstrdup+0x31/0x60
->       [<ffffffff81179843>] kstrdup_const+0x23/0x30
->       [<ffffffff81290254>] kvasprintf_const+0x54/0x90
->       [<ffffffff81284d21>] kobject_set_name_vargs+0x21/0xa0
->       [<ffffffff81284dee>] kobject_set_name+0x4e/0x70
->       [<ffffffff812854f5>] kset_create_and_add+0x45/0xa0
->       [...]
-> 
-> Similar problems exist at all call sites of kset_register(), that is
-> in drivers/base, fs/ext4 and in fs/ocfs2.
+> Hum, why such pages didn't get freed by release_buffer_page() call
+> happening when processing transaction's forget list? Because the idea is
+> that such pages should be discarded at that point...
+Hi Jan,
 
-Yes, but those calls all succeed, so this isn't a problem in the "real"
-world :)
+When I checked this code, release_buffer_page is not called
+when buffer_jbddirty is true. Such buffers with JBD_Dirty are added
+to new checkpoint.
 
-> The deeper cause behind this are the current semantics of the kset
-> initialization, creation and registration functions which differ from the
-> ones of their corresponding kobject counterparts.
-> Namely,
-> - there is no _exported_ kset initialization function,
-> - the (not exported) kset_create() creates a halfway initialized kset
->   object,
-> - and the kset_register() finishes a kset object's initialization but
->   expects its name to already have been set at its entry.
-> 
-> To fix this:
-> - Export kset_init() and let it mimic the semantics of kobject_init().
->   Especially it takes and sets a kobj_type which makes the kset object
->   kset_put()able upon return.
-> - Let the internal kset_create() do the complete initialization by means
->   of kset_init().
-> - Remove any kset initialization from kset_register(): it expects a
->   readily initialized kset object now. Furthermore, let kset_register()
->   take and set the kset object's name. This resembles the behaviour of
->   kobject_add(). In analogy to the latter, require the caller to call
->   kset_put() or kset_unregister() unconditionally, even on failure.
-> 
-> At the call sites of kset_register():
-> - Replace the open coded kset object initialization by a call to
->   kset_init().
-> - Remove the explicit name setting and let the kset_register() call do
->   that work.
-> - Replace any kfree()s by kset_put()s where appropriate.
-> 
-> Signed-off-by: Nicolai Stange <nicstange@gmail.com>
-> ---
-> To the maintainers of ext4 and ocfs2: although several subsystems are
-> touched, the changes come in one single patch in order to keep them bisectable.
-> 
-> 
->  drivers/base/bus.c         | 14 ++-----
->  drivers/base/class.c       | 39 ++++++++++++++-----
->  fs/ext4/sysfs.c            | 13 +++----
->  fs/ocfs2/cluster/masklog.c | 13 ++++---
->  include/linux/kobject.h    |  6 ++-
->  lib/kobject.c              | 94 ++++++++++++++++++++++++++++------------------
->  6 files changed, 110 insertions(+), 69 deletions(-)
-> 
-> diff --git a/drivers/base/bus.c b/drivers/base/bus.c
-> index 5005924..a81227c 100644
-> --- a/drivers/base/bus.c
-> +++ b/drivers/base/bus.c
-> @@ -900,15 +900,11 @@ int bus_register(struct bus_type *bus)
->  
->  	BLOCKING_INIT_NOTIFIER_HEAD(&priv->bus_notifier);
->  
-> -	retval = kobject_set_name(&priv->subsys.kobj, "%s", bus->name);
-> -	if (retval)
-> -		goto out;
-> -
-> -	priv->subsys.kobj.kset = bus_kset;
-> -	priv->subsys.kobj.ktype = &bus_ktype;
->  	priv->drivers_autoprobe = 1;
->  
-> -	retval = kset_register(&priv->subsys);
-> +	kset_init(&priv->subsys, &bus_ktype, NULL);
-> +	priv->subsys.kobj.kset = bus_kset;
-> +	retval = kset_register(&priv->subsys, bus->name, NULL);
->  	if (retval)
->  		goto out;
->  
-> @@ -955,10 +951,8 @@ bus_drivers_fail:
->  bus_devices_fail:
->  	bus_remove_file(bus, &bus_attr_uevent);
->  bus_uevent_fail:
-> -	kset_unregister(&bus->p->subsys);
->  out:
-> -	kfree(bus->p);
-> -	bus->p = NULL;
-> +	kset_unregister(&bus->p->subsys);
->  	return retval;
->  }
->  EXPORT_SYMBOL_GPL(bus_register);
-> diff --git a/drivers/base/class.c b/drivers/base/class.c
-> index 71059e3..94a5b040 100644
-> --- a/drivers/base/class.c
-> +++ b/drivers/base/class.c
-> @@ -19,6 +19,7 @@
->  #include <linux/slab.h>
->  #include <linux/genhd.h>
->  #include <linux/mutex.h>
-> +#include <linux/printk.h>
->  #include "base.h"
->  
->  #define to_class_attr(_attr) container_of(_attr, struct class_attribute, attr)
-> @@ -82,6 +83,24 @@ static struct kobj_type class_ktype = {
->  	.child_ns_type	= class_child_ns_type,
->  };
->  
-> +static void glue_dirs_release_dummy(struct kobject *kobj)
-> +{
-> +	/*
-> +	 * The glue_dirs kset member of struct subsys_private is never
-> +	 * registered and thus, never unregistered.
-> +	 * This release function is a dummy to make kset_init() happy.
-> +	 */
-> +	pr_err(
-> +	"class (%p): unexpected kset_put() on glue_dirs, something is broken.",
-> +		container_of(kobj, struct subsys_private,
-> +				glue_dirs.kobj)->class);
-> +	dump_stack();
+                if (buffer_jbddirty(bh)) {
+                       JBUFFER_TRACE(jh, "add to new checkpointing trans");
+                       __jbd2_journal_insert_checkpoint(jh, commit_transaction);
+                       if (is_journal_aborted(journal))
+                               clear_buffer_jbddirty(bh);
+                } else {
+                       J_ASSERT_BH(bh, !buffer_dirty(bh));
+                       /*
+                        * The buffer on BJ_Forget list and not jbddirty means
+                        * it has been freed by this transaction and hence it
+                        * could not have been reallocated until this
+                        * transaction has committed. *BUT* it could be
+                        * reallocated once we have written all the data to
+                        * disk and before we process the buffer on BJ_Forget
+                        * list.
+                        */
+                       if (!jh->b_next_transaction)
+                               try_to_free = 1;
+                }
+                JBUFFER_TRACE(jh, "refile or unfile buffer");
+                __jbd2_journal_refile_buffer(jh);
+                jbd_unlock_bh_state(bh);
 
-How can this ever happen?
+Next buffer was unfiled by __jbd2_journal_refile_buffer, JBD_Dirty cleared and
+BH_Dirty was set in same function. Later it must have been written back as
+BH_Dirty was cleared.
+And ext4_wait_for_tail_page_commit-> __ext4_journalled_invalidatepage ->
+journal_unmap_buffer zaps the buffer:
 
-> +}
-> +
-> +static struct kobj_type glue_dirs_ktype = {
-> +	.release = glue_dirs_release_dummy,
-> +};
-> +
->  /* Hotplug events for classes go to the class subsys */
->  static struct kset *class_kset;
->  
-> @@ -175,18 +194,14 @@ int __class_register(struct class *cls, struct lock_class_key *key)
->  		return -ENOMEM;
->  	klist_init(&cp->klist_devices, klist_class_dev_get, klist_class_dev_put);
->  	INIT_LIST_HEAD(&cp->interfaces);
-> -	kset_init(&cp->glue_dirs);
-> +	kset_init(&cp->glue_dirs, &glue_dirs_ktype, NULL);
->  	__mutex_init(&cp->mutex, "subsys mutex", key);
-> -	error = kobject_set_name(&cp->subsys.kobj, "%s", cls->name);
-> -	if (error) {
-> -		kfree(cp);
-> -		return error;
-> -	}
->  
->  	/* set the default /sys/dev directory for devices of this class */
->  	if (!cls->dev_kobj)
->  		cls->dev_kobj = sysfs_dev_char_kobj;
->  
-> +	kset_init(&cp->subsys, &class_ktype, NULL);
->  #if defined(CONFIG_BLOCK)
->  	/* let the block class directory show up in the root of sysfs */
->  	if (!sysfs_deprecated || cls != &block_class)
-> @@ -194,13 +209,19 @@ int __class_register(struct class *cls, struct lock_class_key *key)
->  #else
->  	cp->subsys.kobj.kset = class_kset;
->  #endif
-> -	cp->subsys.kobj.ktype = &class_ktype;
->  	cp->class = cls;
->  	cls->p = cp;
->  
-> -	error = kset_register(&cp->subsys);
-> +	error = kset_register(&cp->subsys, cls->name, NULL);
->  	if (error) {
-> -		kfree(cp);
-> +		/*
-> +		 * class->release() would be called by cp->subsys'
-> +		 * release function. Prevent this from happening in
-> +		 * the error case by zeroing cp->class out.
-> +		 */
-> +		cp->class = NULL;
-> +		cls->p = NULL;
-> +		kset_put(&cp->subsys);
+                if (!buffer_dirty(bh)) {
+                        /* bdflush has written it.  We can drop it now */
+                        goto zap_buffer;
+                }
 
-That seems pretty messy, why can't we allow the release to be called?  I
-don't think this is really correct :(
+next, truncate_pagecache is called, which clears the page mapping.
+Eventually, remove checkpoint is called, but such page with NULL mapping was
+not freed. So, I had added release_buffer_page at the end of remove checkpoint
+to attempt to free such free buffer pages. Please let me know your opinion.
 
-But overall I like the patch, nice job.  Any way to fix this last bit
-up?
+Thanks.
+> 								Honza
+> >
+> > ---
+> >  fs/jbd2/checkpoint.c | 11 +++++++++++
+> >  fs/jbd2/commit.c     |  2 +-
+> >  include/linux/jbd2.h |  1 +
+> >  3 files changed, 13 insertions(+), 1 deletion(-)
+> >
+> > diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+> > index 4227dc4..bf68442 100644
+> > --- a/fs/jbd2/checkpoint.c
+> > +++ b/fs/jbd2/checkpoint.c
+> > @@ -529,6 +529,7 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
+> >  	transaction_t *transaction;
+> >  	journal_t *journal;
+> >  	int ret = 0;
+> > +	struct buffer_head *bh;
+> >
+> >  	JBUFFER_TRACE(jh, "entry");
+> >
+> > @@ -538,10 +539,20 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
+> >  	}
+> >  	journal = transaction->t_journal;
+> >
+> > +	bh = jh2bh(jh);
+> > +	get_bh(bh);
+> >  	JBUFFER_TRACE(jh, "removing from transaction");
+> >  	__buffer_unlink(jh);
+> >  	jh->b_cp_transaction = NULL;
+> >  	jbd2_journal_put_journal_head(jh);
+> > +	/*
+> > +	 * if journal head is freed, try to free buffers from a truncated
+> > +	 * page, if page buffers are not busy and page->mapping is NULL
+> > +	 */
+> > +	if (!buffer_jbd(bh))
+> > +		release_buffer_page(bh);
+> > +	else
+> > +		__brelse(bh);
+> >
+> >  	if (transaction->t_checkpoint_list != NULL ||
+> >  	    transaction->t_checkpoint_io_list != NULL)
+> > diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> > index b73e021..d94ec3f 100644
+> > --- a/fs/jbd2/commit.c
+> > +++ b/fs/jbd2/commit.c
+> > @@ -63,7 +63,7 @@ static void journal_end_buffer_io_sync(struct buffer_head *bh, int uptodate)
+> >   * Called under lock_journal(), and possibly under journal_datalist_lock.  The
+> >   * caller provided us with a ref against the buffer, and we drop that here.
+> >   */
+> > -static void release_buffer_page(struct buffer_head *bh)
+> > +void release_buffer_page(struct buffer_head *bh)
+> >  {
+> >  	struct page *page;
+> >
+> > diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> > index edb640a..523f345 100644
+> > --- a/include/linux/jbd2.h
+> > +++ b/include/linux/jbd2.h
+> > @@ -1039,6 +1039,7 @@ int __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
+> >  void jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
+> >
+> >  /* Commit management */
+> > +extern void release_buffer_page(struct buffer_head *);
+> >  extern void jbd2_journal_commit_transaction(journal_t *);
+> >
+> >  /* Checkpoint list management */
+> >
+> > ----------------------------------------------------------
+> > >
+> > > 					- Ted
+> > >
+> > >
+> > >
+> > >
+> > >
+> > >
+> > >
+> >
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
 
-thanks,
-
-greg k-h
