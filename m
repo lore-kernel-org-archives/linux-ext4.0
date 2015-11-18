@@ -1,108 +1,109 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v2 03/11] pmem: enable REQ_FUA/REQ_FLUSH handling
-Date: Wed, 18 Nov 2015 09:16:08 -0700
-Message-ID: <20151118161608.GA10656@linux.intel.com>
-References: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
- <1447459610-14259-4-git-send-email-ross.zwisler@linux.intel.com>
- <CAPcyv4j4arHE+iAALn1WPDzSb_QSCDy8udtXU1FV=kYSZDfv8A@mail.gmail.com>
- <22E0F870-C1FB-431E-BF6C-B395A09A2B0D@dilger.ca>
- <CAPcyv4jwx3VzyRugcpH7KCOKM64kJ4Bq4wgY=iNJMvLTHrBv-Q@mail.gmail.com>
- <20151116200950.GB9737@linux.intel.com>
- <20151118104055.GA6097@quack.suse.cz>
+From: Nicolai Stange <nicstange@gmail.com>
+Subject: [PATCH v2] kset- and class-registration cleanups
+Date: Wed, 18 Nov 2015 17:43:28 +0100
+Message-ID: <87k2pfcl73.fsf_-_@gmail.com>
+References: <871tbpebjw.fsf@gmail.com> <20151117041213.GA10860@kroah.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Andreas Dilger <adilger@dilger.ca>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
+Content-Type: text/plain
+Cc: Nicolai Stange <nicstange@gmail.com>,
 	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux MM <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	X86 ML <x86@kernel.org>, XFS Developers <xfs@oss.sgi.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Dave Han
-To: Jan Kara <jack@suse.cz>
+	Joe Perches <joe@perches.com>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20151118104055.GA6097@quack.suse.cz>
+In-Reply-To: <20151117041213.GA10860@kroah.com> (Greg Kroah-Hartman's message
+	of "Mon, 16 Nov 2015 20:12:13 -0800")
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 18, 2015 at 11:40:55AM +0100, Jan Kara wrote:
-> On Mon 16-11-15 13:09:50, Ross Zwisler wrote:
-> > On Fri, Nov 13, 2015 at 06:32:40PM -0800, Dan Williams wrote:
-> > > On Fri, Nov 13, 2015 at 4:43 PM, Andreas Dilger <adilger@dilger.ca> wrote:
-> > > > On Nov 13, 2015, at 5:20 PM, Dan Williams <dan.j.williams@intel.com> wrote:
-> > > >>
-> > > >> On Fri, Nov 13, 2015 at 4:06 PM, Ross Zwisler
-> > > >> <ross.zwisler@linux.intel.com> wrote:
-> > > >>> Currently the PMEM driver doesn't accept REQ_FLUSH or REQ_FUA bios.  These
-> > > >>> are sent down via blkdev_issue_flush() in response to a fsync() or msync()
-> > > >>> and are used by filesystems to order their metadata, among other things.
-> > > >>>
-> > > >>> When we get an msync() or fsync() it is the responsibility of the DAX code
-> > > >>> to flush all dirty pages to media.  The PMEM driver then just has issue a
-> > > >>> wmb_pmem() in response to the REQ_FLUSH to ensure that before we return all
-> > > >>> the flushed data has been durably stored on the media.
-> > > >>>
-> > > >>> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> > > >>
-> > > >> Hmm, I'm not seeing why we need this patch.  If the actual flushing of
-> > > >> the cache is done by the core why does the driver need support
-> > > >> REQ_FLUSH?  Especially since it's just a couple instructions.  REQ_FUA
-> > > >> only makes sense if individual writes can bypass the "drive" cache,
-> > > >> but no I/O submitted to the driver proper is ever cached we always
-> > > >> flush it through to media.
-> > > >
-> > > > If the upper level filesystem gets an error when submitting a flush
-> > > > request, then it assumes the underlying hardware is broken and cannot
-> > > > be as aggressive in IO submission, but instead has to wait for in-flight
-> > > > IO to complete.
-> > > 
-> > > Upper level filesystems won't get errors when the driver does not
-> > > support flush.  Those requests are ended cleanly in
-> > > generic_make_request_checks().  Yes, the fs still needs to wait for
-> > > outstanding I/O to complete but in the case of pmem all I/O is
-> > > synchronous.  There's never anything to await when flushing at the
-> > > pmem driver level.
-> > > 
-> > > > Since FUA/FLUSH is basically a no-op for pmem devices,
-> > > > it doesn't make sense _not_ to support this functionality.
-> > > 
-> > > Seems to be a nop either way.  Given that DAX may lead to dirty data
-> > > pending to the device in the cpu cache that a REQ_FLUSH request will
-> > > not touch, its better to leave it all to the mm core to handle.  I.e.
-> > > it doesn't make sense to call the driver just for two instructions
-> > > (sfence + pcommit) when the mm core is taking on the cache flushing.
-> > > Either handle it all in the mm or the driver, not a mixture.
-> > 
-> > Does anyone know if ext4 and/or XFS alter their algorithms based on whether
-> > the driver supports REQ_FLUSH/REQ_FUA?  Will the filesystem behave more
-> > efficiently with respect to their internal I/O ordering, etc., if PMEM
-> > advertises REQ_FLUSH/REQ_FUA support, even though we could do the same thing
-> > at the DAX layer?
-> 
-> So the information whether the driver supports FLUSH / FUA is generally
-> ignored by filesystems. We issue REQ_FLUSH / REQ_FUA requests to achieve
-> required ordering for fs consistency and expect that block layer does the
-> right thing - i.e., if the device has volatile write cache, it will be
-> flushed, if it doesn't have it, the request will be ignored. So the
-> difference between supporting and not supporting REQ_FLUSH / REQ_FUA is
-> only in how block layer handles such requests.
+In order to have something to base further discussion on, here comes the
+second version.
 
-Cool, thank you for the info.  Based on this I'll pull out the
-REQ_FLUSH/REQ_FUA patch for v3 of this series and move the wmb_pmem() call up
-to DAX as Dan suggests.  If performance data shows that we can get a benefit
-from centralizing wmb_pmem() behind REQ_FUA/REQ_FLUSH, I'll add it back in
-later as part of that series.
+In addition to some changes to the inital patch (now [1/3]), two
+additional ones have been introduced.
+
+The three patches depend on one another in sequence.
+
+For a detailed changelist, see the end of this mail.
+
+Greg Kroah-Hartman <gregkh@linuxfoundation.org> writes:
+> On Tue, Nov 17, 2015 at 01:04:19AM +0100, Nicolai Stange wrote:
+> Yes, but those calls all succeed, so this isn't a problem in the "real"
+> world :)
+
+I added a word about non-impact in the commit message of [1/3].
+
+>> +static void glue_dirs_release_dummy(struct kobject *kobj)
+>> +{
+>> +	/*
+>> +	 * The glue_dirs kset member of struct subsys_private is never
+>> +	 * registered and thus, never unregistered.
+>> +	 * This release function is a dummy to make kset_init() happy.
+>> +	 */
+>> +	pr_err(
+>> +	"class (%p): unexpected kset_put() on glue_dirs, something is broken.",
+>> +		container_of(kobj, struct subsys_private,
+>> +				glue_dirs.kobj)->class);
+>> +	dump_stack();
+>
+> How can this ever happen?
+
+Not at all. I'm not sure I understand you correctly here.
+Do you strictly want to abandon the dummy releaser, or more specifically,
+the dummy kobj_type?
+For the moment, I turned the pr_err()/dump_stack() into a WARN() for the
+sake of better style.
+
+>>  	if (error) {
+>> -		kfree(cp);
+>> +		/*
+>> +		 * class->release() would be called by cp->subsys'
+>> +		 * release function. Prevent this from happening in
+>> +		 * the error case by zeroing cp->class out.
+>> +		 */
+>> +		cp->class = NULL;
+>> +		cls->p = NULL;
+>> +		kset_put(&cp->subsys);
+>
+> That seems pretty messy, why can't we allow the release to be called?  I
+> don't think this is really correct :(
+
+At the moment, it is necessary. I've added [3/3] for the case that you
+want cls->class_release() to get called from __class_register() on error.
+In [3/3] you will also find the (few) callers expecting the behaviour as
+it currently is.
+
+
+Detailed changes from initial version to v2:
+[1/3] lib/kobject: fix memory leak in error path of kset_create_and_add()
+This one is the original patch with a few changes:
+- added a word of non-impact to commit message
+- use WARN() instead of open coded pr_error()/dump_stack() pair in
+  struct class' glue_dirs' dummy class releaser.
+- follow my own advice in the docstring of kset_register() and
+  use kset_put() instead of kset_unregister() on error of
+  kset_register() in ext4's ext4_init_sysfs() and ocfs2's mlog_sys_init().
+
+[2/3] drivers/base/class: __class_register(): make error behaviour consistent
+This one is new and quite unrelated to the original patch.
+Following the sidenote made in my last mail, it makes __class_register()
+properly clean up after itself on error.
+
+[3/3] drivers/base/class: __class_register(): invoke class' releaser on failure
+This one is new.
+It addresses Greg K-H's comment on the initial version about the messiness
+of avoiding to call class->class_release() from __class_register() on
+error. Given the fact that I had to introduce an explicit
+cls->class_release() in the early part when there is no kset object
+available yet, I'm by no means sure that it is much less messy now and
+that this patch is worth the trouble.
+-> It is up to you to judge.
+As there are enough people bothered already, I did not CC the people
+suggested for this one by get_maintainer.pl: all of them are maintainers
+of external subsystems and probably not particularly interested in
+__class_register() and friends. I will do this as soon as
+a decision for this patch has been made, perhaps in a separate thread.
