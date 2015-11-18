@@ -1,59 +1,108 @@
-From: "Zwisler, Ross" <ross.zwisler@intel.com>
-Subject: Re: dax pmd fault handler never returns to userspace
-Date: Wed, 18 Nov 2015 15:56:46 +0000
-Message-ID: <1447862206.12885.0.camel@intel.com>
-References: <x49wptfnw2l.fsf@segfault.boston.devel.redhat.com>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v2 03/11] pmem: enable REQ_FUA/REQ_FLUSH handling
+Date: Wed, 18 Nov 2015 09:16:08 -0700
+Message-ID: <20151118161608.GA10656@linux.intel.com>
+References: <1447459610-14259-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1447459610-14259-4-git-send-email-ross.zwisler@linux.intel.com>
+ <CAPcyv4j4arHE+iAALn1WPDzSb_QSCDy8udtXU1FV=kYSZDfv8A@mail.gmail.com>
+ <22E0F870-C1FB-431E-BF6C-B395A09A2B0D@dilger.ca>
+ <CAPcyv4jwx3VzyRugcpH7KCOKM64kJ4Bq4wgY=iNJMvLTHrBv-Q@mail.gmail.com>
+ <20151116200950.GB9737@linux.intel.com>
+ <20151118104055.GA6097@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"willy@linux.intel.com" <willy@linux.intel.com>,
-	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: "jmoyer@redhat.com" <jmoyer@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <x49wptfnw2l.fsf@segfault.boston.devel.redhat.com>
-Content-Language: en-US
-Content-ID: <F77677A62DF43442847EDC568FC9BCF8@intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Andreas Dilger <adilger@dilger.ca>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"H. Peter Anvin" <hpa@zytor.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Dave Chinner <david@fromorbit.com>,
+	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux MM <linux-mm@kvack.org>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+	X86 ML <x86@kernel.org>, XFS Developers <xfs@oss.sgi.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Dave Han
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20151118104055.GA6097@quack.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-T24gV2VkLCAyMDE1LTExLTE4IGF0IDEwOjUzIC0wNTAwLCBKZWZmIE1veWVyIHdyb3RlOg0KPiBI
-aSwNCj4gDQo+IFdoZW4gcnVubmluZyB0aGUgbnZtbCBsaWJyYXJ5J3MgdGVzdCBzdWl0ZSBhZ2Fp
-bnN0IGFuIGV4dDQgZmlsZSBzeXN0ZW0NCj4gbW91bnRlZCB3aXRoIC1vIGRheCwgSSByYW4gaW50
-byBhbiBpc3N1ZSB3aGVyZSBtYW55IG9mIHRoZSB0ZXN0cyB3b3VsZA0KPiBzaW1wbHkgdGltZW91
-dC4gIFRoZSBwcm9ibGVtIGFwcGVhcnMgdG8gYmUgdGhhdCB0aGUgcG1kIGZhdWx0IGhhbmRsZXIN
-Cj4gbmV2ZXIgcmV0dXJucyB0byB1c2Vyc3BhY2UgKHRoZSBhcHBsaWNhdGlvbiBpcyBkb2luZyBh
-IG1lbWNweSBvZiA1MTINCj4gYnl0ZXMgaW50byBwbWVtKS4gIEhlcmUncyB0aGUgJ3BlcmYgcmVw
-b3J0IC1nJyBvdXRwdXQ6DQo+IA0KPiAtICAgODguMzAlICAgICAwLjAxJSAgYmxrX25vbl96ZXJv
-LnN0ICBsaWJjLTIuMTcuc28gICAgICAgICAgICAgICAgICBbLl0gX19tZW1tb3ZlX3Nzc2UzX2Jh
-Y2sNCj4gICAgLSA4OC4zMCUgX19tZW1tb3ZlX3Nzc2UzX2JhY2sNCj4gICAgICAgLSA2Ni42MyUg
-cGFnZV9mYXVsdA0KPiAgICAgICAgICAtIDY2LjQ3JSBkb19wYWdlX2ZhdWx0DQo+ICAgICAgICAg
-ICAgIC0gNjYuMTYlIF9fZG9fcGFnZV9mYXVsdA0KPiAgICAgICAgICAgICAgICAtIDYzLjM4JSBo
-YW5kbGVfbW1fZmF1bHQNCj4gICAgICAgICAgICAgICAgICAgLSA2MS4xNSUgZXh0NF9kYXhfcG1k
-X2ZhdWx0DQo+ICAgICAgICAgICAgICAgICAgICAgIC0gNDUuMDQlIF9fZGF4X3BtZF9mYXVsdA0K
-PiAgICAgICAgICAgICAgICAgICAgICAgICAtIDM3LjA1JSB2bWZfaW5zZXJ0X3Bmbl9wbWQNCj4g
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgLSB0cmFja19wZm5faW5zZXJ0DQo+ICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgIC0gMzUuNTglIGxvb2t1cF9tZW10eXBlDQo+ICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgIC0gMzMuODAlIHBhdF9wYWdlcmFuZ2VfaXNfcmFtDQo+
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC0gMzMuNDAlIHdhbGtfc3lzdGVt
-X3JhbV9yYW5nZQ0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAtIDMx
-LjYzJSBmaW5kX25leHRfaW9tZW1fcmVzDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgMjEuNzglIHN0cmNtcA0KPiANCj4gQW5kIGhlcmUncyAncGVyZiB0b3An
-Og0KPiANCj4gU2FtcGxlczogMk0gb2YgZXZlbnQgJ2N5Y2xlczpwcCcsIEV2ZW50IGNvdW50IChh
-cHByb3guKTogNTYwODAxNTA1MTkNCj4gT3ZlcmhlYWQgIFNoYXJlZCBPYmplY3QgICAgICAgICAg
-ICBTeW1ib2wNCj4gICAyMi41NSUgIFtrZXJuZWxdICAgICAgICAgICAgICAgICBba10gc3RyY21w
-DQo+ICAgMjAuMzMlICBbdW5rbm93bl0gICAgICAgICAgICAgICAgW2tdIDB4MDAwMDdmOWY1NDll
-ZjNmMw0KPiAgIDEwLjAxJSAgW2tlcm5lbF0gICAgICAgICAgICAgICAgIFtrXSBuYXRpdmVfaXJx
-X3JldHVybl9pcmV0DQo+ICAgIDkuNTQlICBba2VybmVsXSAgICAgICAgICAgICAgICAgW2tdIGZp
-bmRfbmV4dF9pb21lbV9yZXMNCj4gICAgMy4wMCUgIFtqYmQyXSAgICAgICAgICAgICAgICAgICBb
-a10gc3RhcnRfdGhpc19oYW5kbGUNCj4gDQo+IFRoaXMgaXMgZWFzaWx5IHJlcHJvZHVjZWQgYnkg
-ZG9pbmcgdGhlIGZvbGxvd2luZzoNCj4gDQo+IGdpdCBjbG9uZSBodHRwczovL2dpdGh1Yi5jb20v
-cG1lbS9udm1sLmdpdA0KPiBjZCBudm1sDQo+IG1ha2UNCj4gbWFrZSB0ZXN0DQo+IGNkIHNyYy90
-ZXN0L2Jsa19ub25femVybw0KPiAuL2Jsa19ub25femVyby5zdGF0aWMtbm9uZGVidWcgNTEyIC9w
-YXRoL3RvL2V4dDQvZGF4L2ZzL3Rlc3RmaWxlMSBjIDEwNzM3NDE4MjQgdzowDQo+IA0KPiBJIGFs
-c28gcmFuIHRoZSB0ZXN0IHN1aXRlIGFnYWluc3QgeGZzLCBhbmQgdGhlIHByb2JsZW0gaXMgbm90
-IHByZXNlbnQNCj4gdGhlcmUuICBIb3dldmVyLCBJIGRpZCBub3QgdmVyaWZ5IHRoYXQgdGhlIHhm
-cyB0ZXN0cyB3ZXJlIGdldHRpbmcgcG1kDQo+IGZhdWx0cy4NCj4gDQo+IEknbSBoYXBweSB0byBo
-ZWxwIGRpYWdub3NlIHRoZSBwcm9ibGVtIGZ1cnRoZXIsIGlmIG5lY2Vzc2FyeS4NCg0KVGhhbmtz
-IGZvciB0aGUgcmVwb3J0LCBJJ2xsIHRha2UgYSBsb29rLg0KDQotIFJvc3MNCg0KDQo=
+On Wed, Nov 18, 2015 at 11:40:55AM +0100, Jan Kara wrote:
+> On Mon 16-11-15 13:09:50, Ross Zwisler wrote:
+> > On Fri, Nov 13, 2015 at 06:32:40PM -0800, Dan Williams wrote:
+> > > On Fri, Nov 13, 2015 at 4:43 PM, Andreas Dilger <adilger@dilger.ca> wrote:
+> > > > On Nov 13, 2015, at 5:20 PM, Dan Williams <dan.j.williams@intel.com> wrote:
+> > > >>
+> > > >> On Fri, Nov 13, 2015 at 4:06 PM, Ross Zwisler
+> > > >> <ross.zwisler@linux.intel.com> wrote:
+> > > >>> Currently the PMEM driver doesn't accept REQ_FLUSH or REQ_FUA bios.  These
+> > > >>> are sent down via blkdev_issue_flush() in response to a fsync() or msync()
+> > > >>> and are used by filesystems to order their metadata, among other things.
+> > > >>>
+> > > >>> When we get an msync() or fsync() it is the responsibility of the DAX code
+> > > >>> to flush all dirty pages to media.  The PMEM driver then just has issue a
+> > > >>> wmb_pmem() in response to the REQ_FLUSH to ensure that before we return all
+> > > >>> the flushed data has been durably stored on the media.
+> > > >>>
+> > > >>> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> > > >>
+> > > >> Hmm, I'm not seeing why we need this patch.  If the actual flushing of
+> > > >> the cache is done by the core why does the driver need support
+> > > >> REQ_FLUSH?  Especially since it's just a couple instructions.  REQ_FUA
+> > > >> only makes sense if individual writes can bypass the "drive" cache,
+> > > >> but no I/O submitted to the driver proper is ever cached we always
+> > > >> flush it through to media.
+> > > >
+> > > > If the upper level filesystem gets an error when submitting a flush
+> > > > request, then it assumes the underlying hardware is broken and cannot
+> > > > be as aggressive in IO submission, but instead has to wait for in-flight
+> > > > IO to complete.
+> > > 
+> > > Upper level filesystems won't get errors when the driver does not
+> > > support flush.  Those requests are ended cleanly in
+> > > generic_make_request_checks().  Yes, the fs still needs to wait for
+> > > outstanding I/O to complete but in the case of pmem all I/O is
+> > > synchronous.  There's never anything to await when flushing at the
+> > > pmem driver level.
+> > > 
+> > > > Since FUA/FLUSH is basically a no-op for pmem devices,
+> > > > it doesn't make sense _not_ to support this functionality.
+> > > 
+> > > Seems to be a nop either way.  Given that DAX may lead to dirty data
+> > > pending to the device in the cpu cache that a REQ_FLUSH request will
+> > > not touch, its better to leave it all to the mm core to handle.  I.e.
+> > > it doesn't make sense to call the driver just for two instructions
+> > > (sfence + pcommit) when the mm core is taking on the cache flushing.
+> > > Either handle it all in the mm or the driver, not a mixture.
+> > 
+> > Does anyone know if ext4 and/or XFS alter their algorithms based on whether
+> > the driver supports REQ_FLUSH/REQ_FUA?  Will the filesystem behave more
+> > efficiently with respect to their internal I/O ordering, etc., if PMEM
+> > advertises REQ_FLUSH/REQ_FUA support, even though we could do the same thing
+> > at the DAX layer?
+> 
+> So the information whether the driver supports FLUSH / FUA is generally
+> ignored by filesystems. We issue REQ_FLUSH / REQ_FUA requests to achieve
+> required ordering for fs consistency and expect that block layer does the
+> right thing - i.e., if the device has volatile write cache, it will be
+> flushed, if it doesn't have it, the request will be ignored. So the
+> difference between supporting and not supporting REQ_FLUSH / REQ_FUA is
+> only in how block layer handles such requests.
+
+Cool, thank you for the info.  Based on this I'll pull out the
+REQ_FLUSH/REQ_FUA patch for v3 of this series and move the wmb_pmem() call up
+to DAX as Dan suggests.  If performance data shows that we can get a benefit
+from centralizing wmb_pmem() behind REQ_FUA/REQ_FLUSH, I'll add it back in
+later as part of that series.
