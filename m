@@ -1,106 +1,64 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/4] common: Add function for selecting from different
- output files
-Date: Wed, 18 Nov 2015 16:37:14 +0100
-Message-ID: <20151118153714.GH6097@quack.suse.cz>
-References: <1446654698-23577-1-git-send-email-jack@suse.com>
- <1446654698-23577-4-git-send-email-jack@suse.com>
- <20151116212924.GL14311@dastard>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: dax pmd fault handler never returns to userspace
+Date: Wed, 18 Nov 2015 10:53:06 -0500
+Message-ID: <x49wptfnw2l.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.com>, fstests@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <fstests-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20151116212924.GL14311@dastard>
-Sender: fstests-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: ross.zwisler@intel.com, "Matthew R. Wilcox" <willy@linux.intel.com>
+To: linux-ext4@vger.kernel.org, linux-nvdimm@ml01.01.org,
+	linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 17-11-15 08:29:24, Dave Chinner wrote:
-> On Wed, Nov 04, 2015 at 05:31:37PM +0100, Jan Kara wrote:
-> > Add function for selection of different output files. The idea is that
-> > in config file ($seq.cfg) there are several lines like:
-> > 
-> > feat1,feat2: suffix
-> > 
-> > The function is passed a feature string (or uses MOUNT_OPTIONS if no
-> > argument is passed) and selects output file with a suffix for which all
-> > features are present in the feature string. If there is no matching
-> > line, output with 'default' suffix is selected.
-> > 
-> > Signed-off-by: Jan Kara <jack@suse.com>
-> 
-> Looks like a good idea, but probably needs to be integrated into
-> _link_out_file(), which already does platform based output file
-> linking...
+Hi,
 
-OK, will do.
+When running the nvml library's test suite against an ext4 file system
+mounted with -o dax, I ran into an issue where many of the tests would
+simply timeout.  The problem appears to be that the pmd fault handler
+never returns to userspace (the application is doing a memcpy of 512
+bytes into pmem).  Here's the 'perf report -g' output:
 
-> > ---
-> >  common/rc | 41 +++++++++++++++++++++++++++++++++++++++++
-> >  1 file changed, 41 insertions(+)
-> > 
-> > diff --git a/common/rc b/common/rc
-> > index adf1edf64d8d..543780c92c59 100644
-> > --- a/common/rc
-> > +++ b/common/rc
-> > @@ -3142,6 +3142,47 @@ get_block_size()
-> >  	echo `stat -f -c %S $1`
-> >  }
-> >  
-> > +_select_output()
-> > +{
-> > +	if [ $# -eq 0 ]; then
-> > +		FEATURES=${MOUNT_OPTIONS##"-o "}
-> > +	else
-> > +		FEATURES=$1
-> > +	fi
-> > +
-> > +	export FEATURES
-> > +	seqfull=$SRC_DIR/$seqnum
-> > +	perl -e '
-> > +		my %feathash;
-> > +		my $feature, $result, $suffix, $opts;
-> > +
-> > +		foreach $feature (split(/,/, $ENV{"FEATURES"})) {
-> > +			$feathash{$feature} = 1;
-> > +		}
-> > +		$result = "default";
-> > +		while (<>) {
-> > +			my $found = 1;
-> > +
-> > +			chomp;
-> > +			($opts, $suffix) = split(/ *: */);
-> > +			foreach my $opt (split(/,/, $opts)) {
-> > +				if (!exists($feathash{$opt})) {
-> > +					$found = 0;
-> > +					last;
-> > +				}
-> > +			}
-> > +			if ($found == 1) {
-> > +				$result = $suffix;
-> > +				last;
-> > +			}
-> > +		}
-> > +		print $result
-> > +		' <$seqfull.cfg | {
-> > +			read SUFFIX
-> > +			ln -fs $seq.out.$SUFFIX $seqfull.out
-> > +		}
-> > +}
-> 
-> I'd much prefer the perl code simply returns the appropriately
-> matched suffix and then the shell code does the linking of the
-> output file. That way other things that the test harness is aware of
-> can also be taken into account.
+-   88.30%     0.01%  blk_non_zero.st  libc-2.17.so                  [.] __memmove_ssse3_back
+   - 88.30% __memmove_ssse3_back
+      - 66.63% page_fault
+         - 66.47% do_page_fault
+            - 66.16% __do_page_fault
+               - 63.38% handle_mm_fault
+                  - 61.15% ext4_dax_pmd_fault
+                     - 45.04% __dax_pmd_fault
+                        - 37.05% vmf_insert_pfn_pmd
+                           - track_pfn_insert
+                              - 35.58% lookup_memtype
+                                 - 33.80% pat_pagerange_is_ram
+                                    - 33.40% walk_system_ram_range
+                                       - 31.63% find_next_iomem_res
+                                            21.78% strcmp
 
-Well, the perl code does return (print) the selected suffix. But I guess
-you dislike the piping into a shell block where the linking happens. I
-wanted to save on some shell escaping but it actually won't be that bad.
-I'll remove the pipe.
+And here's 'perf top':
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Samples: 2M of event 'cycles:pp', Event count (approx.): 56080150519
+Overhead  Shared Object            Symbol
+  22.55%  [kernel]                 [k] strcmp
+  20.33%  [unknown]                [k] 0x00007f9f549ef3f3
+  10.01%  [kernel]                 [k] native_irq_return_iret
+   9.54%  [kernel]                 [k] find_next_iomem_res
+   3.00%  [jbd2]                   [k] start_this_handle
+
+This is easily reproduced by doing the following:
+
+git clone https://github.com/pmem/nvml.git
+cd nvml
+make
+make test
+cd src/test/blk_non_zero
+./blk_non_zero.static-nondebug 512 /path/to/ext4/dax/fs/testfile1 c 1073741824 w:0
+
+I also ran the test suite against xfs, and the problem is not present
+there.  However, I did not verify that the xfs tests were getting pmd
+faults.
+
+I'm happy to help diagnose the problem further, if necessary.
+
+Cheers,
+Jeff
