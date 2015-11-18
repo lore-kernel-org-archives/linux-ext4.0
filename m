@@ -1,183 +1,147 @@
-From: Toshi Kani <toshi.kani@hpe.com>
-Subject: Re: dax pmd fault handler never returns to userspace
-Date: Wed, 18 Nov 2015 14:33:09 -0700
-Message-ID: <1447882389.21443.151.camel@hpe.com>
-References: <x49wptfnw2l.fsf@segfault.boston.devel.redhat.com>
-	 <CAPcyv4jnNNFAp_L5BFbP4K6vNhffELSS7g0aekhGnCadsBCfnw@mail.gmail.com>
-	 <20151118170014.GB10656@linux.intel.com>
-	 <x4937w3nqze.fsf@segfault.boston.devel.redhat.com>
-	 <CAPcyv4grgkLTVHdGhVSOs1sXsiLQyB1ubcRvmhW=hMZnA9MnHQ@mail.gmail.com>
-	 <20151118182320.GA7901@linux.intel.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: memory leak: data=journal and {collapse,insert,zero}_range
+Date: Wed, 18 Nov 2015 22:36:51 +0100
+Message-ID: <20151118213651.GI6097@quack.suse.cz>
+References: <20151017160230.GA19968@thunk.org>
+ <009301d10b2f$b410e6b0$1c32b410$@samsung.com>
+ <20151020155443.GM2972@thunk.org>
+ <011f01d10be5$099d38d0$1cd7aa70$@samsung.com>
+ <20151021145214.GC2165@thunk.org>
+ <004301d11aae$72683a40$5738aec0$@samsung.com>
+ <20151110144946.GB3156@quack.suse.cz>
+ <005901d120f3$1d880410$58980c30$@samsung.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-d1XwpQ0qbHDz3iQMGjyv"
-Cc: linux-nvdimm <linux-nvdimm@ml01.01.org>,
-	Ross Zwisler <ross.zwisler@intel.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Dan Williams <dan.j.williams@intel.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20151118182320.GA7901@linux.intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: 'Jan Kara' <jack@suse.cz>, 'Theodore Ts'o' <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+To: Namjae Jeon <namjae.jeon@samsung.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:41017 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755483AbbKRVgz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Nov 2015 16:36:55 -0500
+Content-Disposition: inline
+In-Reply-To: <005901d120f3$1d880410$58980c30$@samsung.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-
---=-d1XwpQ0qbHDz3iQMGjyv
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-
-On Wed, 2015-11-18 at 11:23 -0700, Ross Zwisler wrote:
-> On Wed, Nov 18, 2015 at 10:10:45AM -0800, Dan Williams wrote:
-> > On Wed, Nov 18, 2015 at 9:43 AM, Jeff Moyer <jmoyer@redhat.com> wrote:
-> > > Ross Zwisler <ross.zwisler@linux.intel.com> writes:
-> > > 
-> > > > On Wed, Nov 18, 2015 at 08:52:59AM -0800, Dan Williams wrote:
-> > > > > Sysrq-t or sysrq-w dump?  Also do you have the locking fix from Yigal?
-> > > > > 
-> > > > > https://lists.01.org/pipermail/linux-nvdimm/2015-November/002842.html
-> > > > 
-> > > > I was able to reproduce the issue in my setup with v4.3, and the patch
-> > > > from
-> > > > Yigal seems to solve it.  Jeff, can you confirm?
-> > > 
-> > > I applied the patch from Yigal and the symptoms persist.  Ross, what are
-> > > you testing on?  I'm using an NVDIMM-N.
-> > > 
-> > > Dan, here's sysrq-l (which is what w used to look like, I think).  Only
-> > > cpu 3 is interesting:
-> > > 
-> > > [  825.339264] NMI backtrace for cpu 3
-> > > [  825.356347] CPU: 3 PID: 13555 Comm: blk_non_zero.st Not tainted 4.4.0
-> > > -rc1+ #17
-> > > [  825.392056] Hardware name: HP ProLiant DL380 Gen9, BIOS P89 06/09/2015
-> > > [  825.424472] task: ffff880465bf6a40 ti: ffff88046133c000 task.ti:
-> > > ffff88046133c000
-> > > [  825.461480] RIP: 0010:[<ffffffff81329856>]  [<ffffffff81329856>]
-> > > strcmp+0x6/0x30
-> > > [  825.497916] RSP: 0000:ffff88046133fbc8  EFLAGS: 00000246
-> > > [  825.524836] RAX: 0000000000000000 RBX: ffff880c7fffd7c0 RCX:
-> > > 000000076c800000
-> > > [  825.566847] RDX: 000000076c800fff RSI: ffffffff818ea1c8 RDI:
-> > > ffffffff818ea1c8
-> > > [  825.605265] RBP: ffff88046133fbc8 R08: 0000000000000001 R09:
-> > > ffff8804652300c0
-> > > [  825.643628] R10: 00007f1b4fe0b000 R11: ffff880465230228 R12:
-> > > ffffffff818ea1bd
-> > > [  825.681381] R13: 0000000000000001 R14: ffff88046133fc20 R15:
-> > > 0000000080000200
-> > > [  825.718607] FS:  00007f1b5102d880(0000) GS:ffff88046f8c0000(0000)
-> > > knlGS:00000000000000
-> > > 00
-> > > [  825.761663] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> > > [  825.792213] CR2: 00007f1b4fe0b000 CR3: 000000046b225000 CR4:
-> > > 00000000001406e0
-> > > [  825.830906] Stack:
-> > > [  825.841235]  ffff88046133fc10 ffffffff81084610 000000076c800000
-> > > 000000076c800fff
-> > > [  825.879533]  000000076c800fff 00000000ffffffff ffff88046133fc90
-> > > ffffffff8106d1d0
-> > > [  825.916774]  000000000000000c ffff88046133fc80 ffffffff81084f0d
-> > > 000000076c800000
-> > > [  825.953220] Call Trace:
-> > > [  825.965386]  [<ffffffff81084610>] find_next_iomem_res+0xd0/0x130
-> > > [  825.996804]  [<ffffffff8106d1d0>] ? pat_enabled+0x20/0x20
-> > > [  826.024773]  [<ffffffff81084f0d>] walk_system_ram_range+0x8d/0xf0
-> > > [  826.055565]  [<ffffffff8106d2d8>] pat_pagerange_is_ram+0x78/0xa0
-> > > [  826.088971]  [<ffffffff8106d475>] lookup_memtype+0x35/0xc0
-> > > [  826.121385]  [<ffffffff8106e33b>] track_pfn_insert+0x2b/0x60
-> > > [  826.154600]  [<ffffffff811e5523>] vmf_insert_pfn_pmd+0xb3/0x210
-> > > [  826.187992]  [<ffffffff8124acab>] __dax_pmd_fault+0x3cb/0x610
-> > > [  826.221337]  [<ffffffffa0769910>] ? ext4_dax_mkwrite+0x20/0x20 [ext4]
-> > > [  826.259190]  [<ffffffffa0769a4d>] ext4_dax_pmd_fault+0xcd/0x100 [ext4]
-> > > [  826.293414]  [<ffffffff811b0af7>] handle_mm_fault+0x3b7/0x510
-> > > [  826.323763]  [<ffffffff81068f98>] __do_page_fault+0x188/0x3f0
-> > > [  826.358186]  [<ffffffff81069230>] do_page_fault+0x30/0x80
-> > > [  826.391212]  [<ffffffff8169c148>] page_fault+0x28/0x30
-> > > [  826.420752] Code: 89 e5 74 09 48 83 c2 01 80 3a 00 75 f7 48 83 c6 01 0f
-> > > b6 4e ff 48 83
-> > >  c2 01 84 c9 88 4a ff 75 ed 5d c3 0f 1f 00 55 48 89 e5 eb 04 <84> c0 74 18
-> > > 48 83 c7 01 0f
-> > >  b6 47 ff 48 83 c6 01 3a 46 ff 74 eb
+On Tue 17-11-15 13:47:50, Namjae Jeon wrote:
+> > On Mon 09-11-15 14:21:11, Namjae Jeon wrote:
+> > > >
+> > > > On Wed, Oct 21, 2015 at 06:44:10PM +0900, Namjae Jeon wrote:
+> > > > > > Interestingly we're not seeing these memory leaks on the truncate
+> > > > > > path, so I suspect the issue is in how collapse range is clearing
+> > > > > > pages from the page cache, especially pages that were freshly written
+> > > > > > to the journal by the commit but which hadn't yet been writtten to
+> > > > > > disk and then marked as complete so we can allow the relevant
+> > > > > > transaction to be checkpointed.  (Although we're not leaking the
+> > > > > > journal head structures, but only the buffer heads, so the story most
+> > > > > > be a bit more complicated than that.)
+> > > > >
+> > > > > Okay, Thanks for sharing your view and points !!
+> > > > >
+> > > > > Currently I can reproduce memory leak issue without collase/insert/zero range.
+> > > > > conditions like the following.(collase/insert/zero range are disable with -I -C -z option and
+> > add -y
+> > > > option instead of -W)
+> > > > >   1. small size parition(1GB)
+> > > > >   2. run fsx with these options "./fsx -N 30000 -o 128000 -l 500000 -r 4096 -t 512 -w 512 -Z -R
+> > -y -
+> > > > I -C -z testfile"
+> > > > > And same result with generic/091 is showing (buffer_head leak)
+> > > > >
+> > > > > So I am starting to find root-cause base on your points.
+> > > > > I will share the result or the patch.
+> > > >
+> > > > Thanks, that's very interesting data point.  So this makes it appear
+> > > > that the problem *is* probably with how we deal with checkpointing
+> > > > buffers after the pages get discarded using either a truncate or a
+> > > > collapse_range, since the 'y' option causes a lot fsync's, and hence
+> > > > commits, some of which are happening after a truncate command.
+> > > >
+> > > > Thanks for a taking a look at this.  I really appreciate it.
+> > > >
+> > > > Cheers,
+> > >
+> > >
+> > > Hi Ted,
+> > >
+> > > Could you review this patch?
+> > >
+> > > Thanks!
+> > > ---------------------------------------------------------------------------------
+> > > Subject: [PATCH] jbd2: try to free buffers from truncated page after
+> > >  checkpoint
+> > >
+> > > when ext4 is mounted in data=journal mode, and truncate operation
+> > > such as settatr(size), collopse, insert and zero range are used, there are
+> > > are many truncated pages with NULL page->mapping. Such truncated pages
+> > > pile up quickly due to truncate_pagecache on data pages associated with journal.
+> > > As page->mapping is NULL for such truncated pages, they are not freed
+> > > by drop cache(3) or umount. As a result, MemFree in /proc/meminfo decreases
+> > > quickly and active buffer_head slab objects grow in /proc/slabinfo.
+> > > This patch attempts to free buffers from such pages at the end of jbd2
+> > > checkpoint, if pages do not have any busy buffers and NULL mapping.
 > > 
-> > Hmm, a loop in the resource sibling list?
-> > 
-> > What does /proc/iomem say?
-> > 
-> > Not related to this bug, but lookup_memtype() looks broken for pmd
-> > mappings as we only check for PAGE_SIZE instead of HPAGE_SIZE.  Which
-> > will cause problems if we're straddling the end of memory.
-> > 
-> > > The full output is large (48 cpus), so I'm going to be lazy and not
-> > > cut-n-paste it here.
-> > 
-> > Thanks for that ;-)
+> > Hum, why such pages didn't get freed by release_buffer_page() call
+> > happening when processing transaction's forget list? Because the idea is
+> > that such pages should be discarded at that point...
+> Hi Jan,
 > 
-> Yea, my first round of testing was broken, sorry about that.
+> When I checked this code, release_buffer_page is not called
+> when buffer_jbddirty is true. Such buffers with JBD_Dirty are added
+> to new checkpoint.
 > 
-> It looks like this test causes the PMD fault handler to be called repeatedly
-> over and over until you kill the userspace process.  This doesn't happen for
-> XFS because when using XFS this test doesn't hit PMD faults, only PTE faults.
+>                 if (buffer_jbddirty(bh)) {
+>                        JBUFFER_TRACE(jh, "add to new checkpointing trans");
+>                        __jbd2_journal_insert_checkpoint(jh, commit_transaction);
+>                        if (is_journal_aborted(journal))
+>                                clear_buffer_jbddirty(bh);
+>                 } else {
+>                        J_ASSERT_BH(bh, !buffer_dirty(bh));
+>                        /*
+>                         * The buffer on BJ_Forget list and not jbddirty means
+>                         * it has been freed by this transaction and hence it
+>                         * could not have been reallocated until this
+>                         * transaction has committed. *BUT* it could be
+>                         * reallocated once we have written all the data to
+>                         * disk and before we process the buffer on BJ_Forget
+>                         * list.
+>                         */
+>                        if (!jh->b_next_transaction)
+>                                try_to_free = 1;
+>                 }
+>                 JBUFFER_TRACE(jh, "refile or unfile buffer");
+>                 __jbd2_journal_refile_buffer(jh);
+>                 jbd_unlock_bh_state(bh);
 > 
-> So, looks like a livelock as far as I can tell.
+> Next buffer was unfiled by __jbd2_journal_refile_buffer, JBD_Dirty cleared and
+> BH_Dirty was set in same function. Later it must have been written back as
+> BH_Dirty was cleared.
+> And ext4_wait_for_tail_page_commit-> __ext4_journalled_invalidatepage ->
+> journal_unmap_buffer zaps the buffer:
 > 
-> Still debugging.
+>                 if (!buffer_dirty(bh)) {
+>                         /* bdflush has written it.  We can drop it now */
+>                         goto zap_buffer;
+>                 }
+> 
+> next, truncate_pagecache is called, which clears the page mapping.
+> Eventually, remove checkpoint is called, but such page with NULL mapping was
+> not freed. So, I had added release_buffer_page at the end of remove checkpoint
+> to attempt to free such free buffer pages. Please let me know your opinion.
 
-I am seeing a similar/same problem in my test.  I think the problem is that in
-case of a WP fault, wp_huge_pmd() -> __dax_pmd_fault() -> vmf_insert_pfn_pmd(),
-which is a no-op since the PMD is mapped already.  We need WP handling for this
-PMD map.
+OK, thanks for the detailed analysis. But when the buffer gets truncated,
+jbd2_journal_invalidatepage() either removes the buffer from the
+transaction (obviously didn't happen here) or it sets buffer_freed and
+buffer_jbddirty should get cleared when processing the BJ_Forget list. So
+why that didn't happen? Can you have a look into what
+jbd2_journal_invalidatepage() did to buffer in that page?
 
-If it helps, I have attached change for follow_trans_huge_pmd().  I have not
-tested much, though.
+Generally truncated buffers should not enter checkpoint list since writing
+them is just a waste of disk bandwidth...
 
-Thanks,
--Toshi
---=-d1XwpQ0qbHDz3iQMGjyv
-Content-Disposition: attachment; filename="follow_pfn_pmd.patch"
-Content-Type: text/x-patch; name="follow_pfn_pmd.patch"; charset="UTF-8"
-Content-Transfer-Encoding: base64
-
-Ci0tLQogaW5jbHVkZS9saW51eC9tbS5oIHwgICAgMiArKwogbW0vZ3VwLmMgICAgICAgICAgIHwg
-ICAyNCArKysrKysrKysrKysrKysrKysrKysrKysKIG1tL2h1Z2VfbWVtb3J5LmMgICB8ICAgIDgg
-KysrKysrKysKIDMgZmlsZXMgY2hhbmdlZCwgMzQgaW5zZXJ0aW9ucygrKQoKZGlmZiAtLWdpdCBh
-L2luY2x1ZGUvbGludXgvbW0uaCBiL2luY2x1ZGUvbGludXgvbW0uaAppbmRleCAwMGJhZDc3Li5h
-NDI3Yjg4IDEwMDY0NAotLS0gYS9pbmNsdWRlL2xpbnV4L21tLmgKKysrIGIvaW5jbHVkZS9saW51
-eC9tbS5oCkBAIC0xMDg0LDYgKzEwODQsOCBAQCBzdHJ1Y3QgemFwX2RldGFpbHMgewogCiBzdHJ1
-Y3QgcGFnZSAqdm1fbm9ybWFsX3BhZ2Uoc3RydWN0IHZtX2FyZWFfc3RydWN0ICp2bWEsIHVuc2ln
-bmVkIGxvbmcgYWRkciwKIAkJcHRlX3QgcHRlKTsKK2ludCBmb2xsb3dfcGZuX3BtZChzdHJ1Y3Qg
-dm1fYXJlYV9zdHJ1Y3QgKnZtYSwgdW5zaWduZWQgbG9uZyBhZGRyZXNzLAorCQlwbWRfdCAqcG1k
-LCB1bnNpZ25lZCBpbnQgZmxhZ3MpOwogCiBpbnQgemFwX3ZtYV9wdGVzKHN0cnVjdCB2bV9hcmVh
-X3N0cnVjdCAqdm1hLCB1bnNpZ25lZCBsb25nIGFkZHJlc3MsCiAJCXVuc2lnbmVkIGxvbmcgc2l6
-ZSk7CmRpZmYgLS1naXQgYS9tbS9ndXAuYyBiL21tL2d1cC5jCmluZGV4IGRlYWZhMmMuLjE1MTM1
-ZWUgMTAwNjQ0Ci0tLSBhL21tL2d1cC5jCisrKyBiL21tL2d1cC5jCkBAIC0zNCw2ICszNCwzMCBA
-QCBzdGF0aWMgc3RydWN0IHBhZ2UgKm5vX3BhZ2VfdGFibGUoc3RydWN0IHZtX2FyZWFfc3RydWN0
-ICp2bWEsCiAJcmV0dXJuIE5VTEw7CiB9CiAKK2ludCBmb2xsb3dfcGZuX3BtZChzdHJ1Y3Qgdm1f
-YXJlYV9zdHJ1Y3QgKnZtYSwgdW5zaWduZWQgbG9uZyBhZGRyZXNzLAorCQlwbWRfdCAqcG1kLCB1
-bnNpZ25lZCBpbnQgZmxhZ3MpCit7CisJLyogTm8gcGFnZSB0byBnZXQgcmVmZXJlbmNlICovCisJ
-aWYgKGZsYWdzICYgRk9MTF9HRVQpCisJCXJldHVybiAtRUZBVUxUOworCisJaWYgKGZsYWdzICYg
-Rk9MTF9UT1VDSCkgeworCQlwbWRfdCBlbnRyeSA9ICpwbWQ7CisKKwkJaWYgKGZsYWdzICYgRk9M
-TF9XUklURSkKKwkJCWVudHJ5ID0gcG1kX21rZGlydHkoZW50cnkpOworCQllbnRyeSA9IHBtZF9t
-a3lvdW5nKGVudHJ5KTsKKworCQlpZiAoIXBtZF9zYW1lKCpwbWQsIGVudHJ5KSkgeworCQkJc2V0
-X3BtZF9hdCh2bWEtPnZtX21tLCBhZGRyZXNzLCBwbWQsIGVudHJ5KTsKKwkJCXVwZGF0ZV9tbXVf
-Y2FjaGVfcG1kKHZtYSwgYWRkcmVzcywgcG1kKTsKKwkJfQorCX0KKworCS8qIFByb3BlciBwYWdl
-IHRhYmxlIGVudHJ5IGV4aXN0cywgYnV0IG5vIGNvcnJlc3BvbmRpbmcgc3RydWN0IHBhZ2UgKi8K
-KwlyZXR1cm4gLUVFWElTVDsKK30KKwogc3RhdGljIGludCBmb2xsb3dfcGZuX3B0ZShzdHJ1Y3Qg
-dm1fYXJlYV9zdHJ1Y3QgKnZtYSwgdW5zaWduZWQgbG9uZyBhZGRyZXNzLAogCQlwdGVfdCAqcHRl
-LCB1bnNpZ25lZCBpbnQgZmxhZ3MpCiB7CmRpZmYgLS1naXQgYS9tbS9odWdlX21lbW9yeS5jIGIv
-bW0vaHVnZV9tZW1vcnkuYwppbmRleCBjMjlkZGViLi40MWIyNzdhIDEwMDY0NAotLS0gYS9tbS9o
-dWdlX21lbW9yeS5jCisrKyBiL21tL2h1Z2VfbWVtb3J5LmMKQEAgLTEyNzYsNiArMTI3Niw3IEBA
-IHN0cnVjdCBwYWdlICpmb2xsb3dfdHJhbnNfaHVnZV9wbWQoc3RydWN0IHZtX2FyZWFfc3RydWN0
-ICp2bWEsCiB7CiAJc3RydWN0IG1tX3N0cnVjdCAqbW0gPSB2bWEtPnZtX21tOwogCXN0cnVjdCBw
-YWdlICpwYWdlID0gTlVMTDsKKwlpbnQgcmV0OwogCiAJYXNzZXJ0X3NwaW5fbG9ja2VkKHBtZF9s
-b2NrcHRyKG1tLCBwbWQpKTsKIApAQCAtMTI5MCw2ICsxMjkxLDEzIEBAIHN0cnVjdCBwYWdlICpm
-b2xsb3dfdHJhbnNfaHVnZV9wbWQoc3RydWN0IHZtX2FyZWFfc3RydWN0ICp2bWEsCiAJaWYgKChm
-bGFncyAmIEZPTExfTlVNQSkgJiYgcG1kX3Byb3Rub25lKCpwbWQpKQogCQlnb3RvIG91dDsKIAor
-CS8qIHBmbiBtYXAgZG9lcyBub3QgaGF2ZSBzdHJ1Y3QgcGFnZSAqLworCWlmICh2bWEtPnZtX2Zs
-YWdzICYgKFZNX1BGTk1BUCB8IFZNX01JWEVETUFQKSkgeworCQlyZXQgPSBmb2xsb3dfcGZuX3Bt
-ZCh2bWEsIGFkZHIsIHBtZCwgZmxhZ3MpOworCQlwYWdlID0gRVJSX1BUUihyZXQpOworCQlnb3Rv
-IG91dDsKKwl9CisKIAlwYWdlID0gcG1kX3BhZ2UoKnBtZCk7CiAJVk1fQlVHX09OX1BBR0UoIVBh
-Z2VIZWFkKHBhZ2UpLCBwYWdlKTsKIAlpZiAoZmxhZ3MgJiBGT0xMX1RPVUNIKSB7Cg==
-
-
---=-d1XwpQ0qbHDz3iQMGjyv--
-
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
