@@ -1,64 +1,59 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: dax pmd fault handler never returns to userspace
-Date: Wed, 18 Nov 2015 10:53:06 -0500
-Message-ID: <x49wptfnw2l.fsf@segfault.boston.devel.redhat.com>
+From: "Zwisler, Ross" <ross.zwisler@intel.com>
+Subject: Re: dax pmd fault handler never returns to userspace
+Date: Wed, 18 Nov 2015 15:56:46 +0000
+Message-ID: <1447862206.12885.0.camel@intel.com>
+References: <x49wptfnw2l.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: ross.zwisler@intel.com, "Matthew R. Wilcox" <willy@linux.intel.com>
-To: linux-ext4@vger.kernel.org, linux-nvdimm@ml01.01.org,
-	linux-fsdevel@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"willy@linux.intel.com" <willy@linux.intel.com>,
+	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: "jmoyer@redhat.com" <jmoyer@redhat.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <x49wptfnw2l.fsf@segfault.boston.devel.redhat.com>
+Content-Language: en-US
+Content-ID: <F77677A62DF43442847EDC568FC9BCF8@intel.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
-
-When running the nvml library's test suite against an ext4 file system
-mounted with -o dax, I ran into an issue where many of the tests would
-simply timeout.  The problem appears to be that the pmd fault handler
-never returns to userspace (the application is doing a memcpy of 512
-bytes into pmem).  Here's the 'perf report -g' output:
-
--   88.30%     0.01%  blk_non_zero.st  libc-2.17.so                  [.] __memmove_ssse3_back
-   - 88.30% __memmove_ssse3_back
-      - 66.63% page_fault
-         - 66.47% do_page_fault
-            - 66.16% __do_page_fault
-               - 63.38% handle_mm_fault
-                  - 61.15% ext4_dax_pmd_fault
-                     - 45.04% __dax_pmd_fault
-                        - 37.05% vmf_insert_pfn_pmd
-                           - track_pfn_insert
-                              - 35.58% lookup_memtype
-                                 - 33.80% pat_pagerange_is_ram
-                                    - 33.40% walk_system_ram_range
-                                       - 31.63% find_next_iomem_res
-                                            21.78% strcmp
-
-And here's 'perf top':
-
-Samples: 2M of event 'cycles:pp', Event count (approx.): 56080150519
-Overhead  Shared Object            Symbol
-  22.55%  [kernel]                 [k] strcmp
-  20.33%  [unknown]                [k] 0x00007f9f549ef3f3
-  10.01%  [kernel]                 [k] native_irq_return_iret
-   9.54%  [kernel]                 [k] find_next_iomem_res
-   3.00%  [jbd2]                   [k] start_this_handle
-
-This is easily reproduced by doing the following:
-
-git clone https://github.com/pmem/nvml.git
-cd nvml
-make
-make test
-cd src/test/blk_non_zero
-./blk_non_zero.static-nondebug 512 /path/to/ext4/dax/fs/testfile1 c 1073741824 w:0
-
-I also ran the test suite against xfs, and the problem is not present
-there.  However, I did not verify that the xfs tests were getting pmd
-faults.
-
-I'm happy to help diagnose the problem further, if necessary.
-
-Cheers,
-Jeff
+T24gV2VkLCAyMDE1LTExLTE4IGF0IDEwOjUzIC0wNTAwLCBKZWZmIE1veWVyIHdyb3RlOg0KPiBI
+aSwNCj4gDQo+IFdoZW4gcnVubmluZyB0aGUgbnZtbCBsaWJyYXJ5J3MgdGVzdCBzdWl0ZSBhZ2Fp
+bnN0IGFuIGV4dDQgZmlsZSBzeXN0ZW0NCj4gbW91bnRlZCB3aXRoIC1vIGRheCwgSSByYW4gaW50
+byBhbiBpc3N1ZSB3aGVyZSBtYW55IG9mIHRoZSB0ZXN0cyB3b3VsZA0KPiBzaW1wbHkgdGltZW91
+dC4gIFRoZSBwcm9ibGVtIGFwcGVhcnMgdG8gYmUgdGhhdCB0aGUgcG1kIGZhdWx0IGhhbmRsZXIN
+Cj4gbmV2ZXIgcmV0dXJucyB0byB1c2Vyc3BhY2UgKHRoZSBhcHBsaWNhdGlvbiBpcyBkb2luZyBh
+IG1lbWNweSBvZiA1MTINCj4gYnl0ZXMgaW50byBwbWVtKS4gIEhlcmUncyB0aGUgJ3BlcmYgcmVw
+b3J0IC1nJyBvdXRwdXQ6DQo+IA0KPiAtICAgODguMzAlICAgICAwLjAxJSAgYmxrX25vbl96ZXJv
+LnN0ICBsaWJjLTIuMTcuc28gICAgICAgICAgICAgICAgICBbLl0gX19tZW1tb3ZlX3Nzc2UzX2Jh
+Y2sNCj4gICAgLSA4OC4zMCUgX19tZW1tb3ZlX3Nzc2UzX2JhY2sNCj4gICAgICAgLSA2Ni42MyUg
+cGFnZV9mYXVsdA0KPiAgICAgICAgICAtIDY2LjQ3JSBkb19wYWdlX2ZhdWx0DQo+ICAgICAgICAg
+ICAgIC0gNjYuMTYlIF9fZG9fcGFnZV9mYXVsdA0KPiAgICAgICAgICAgICAgICAtIDYzLjM4JSBo
+YW5kbGVfbW1fZmF1bHQNCj4gICAgICAgICAgICAgICAgICAgLSA2MS4xNSUgZXh0NF9kYXhfcG1k
+X2ZhdWx0DQo+ICAgICAgICAgICAgICAgICAgICAgIC0gNDUuMDQlIF9fZGF4X3BtZF9mYXVsdA0K
+PiAgICAgICAgICAgICAgICAgICAgICAgICAtIDM3LjA1JSB2bWZfaW5zZXJ0X3Bmbl9wbWQNCj4g
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgLSB0cmFja19wZm5faW5zZXJ0DQo+ICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgIC0gMzUuNTglIGxvb2t1cF9tZW10eXBlDQo+ICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgIC0gMzMuODAlIHBhdF9wYWdlcmFuZ2VfaXNfcmFtDQo+
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC0gMzMuNDAlIHdhbGtfc3lzdGVt
+X3JhbV9yYW5nZQ0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAtIDMx
+LjYzJSBmaW5kX25leHRfaW9tZW1fcmVzDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgMjEuNzglIHN0cmNtcA0KPiANCj4gQW5kIGhlcmUncyAncGVyZiB0b3An
+Og0KPiANCj4gU2FtcGxlczogMk0gb2YgZXZlbnQgJ2N5Y2xlczpwcCcsIEV2ZW50IGNvdW50IChh
+cHByb3guKTogNTYwODAxNTA1MTkNCj4gT3ZlcmhlYWQgIFNoYXJlZCBPYmplY3QgICAgICAgICAg
+ICBTeW1ib2wNCj4gICAyMi41NSUgIFtrZXJuZWxdICAgICAgICAgICAgICAgICBba10gc3RyY21w
+DQo+ICAgMjAuMzMlICBbdW5rbm93bl0gICAgICAgICAgICAgICAgW2tdIDB4MDAwMDdmOWY1NDll
+ZjNmMw0KPiAgIDEwLjAxJSAgW2tlcm5lbF0gICAgICAgICAgICAgICAgIFtrXSBuYXRpdmVfaXJx
+X3JldHVybl9pcmV0DQo+ICAgIDkuNTQlICBba2VybmVsXSAgICAgICAgICAgICAgICAgW2tdIGZp
+bmRfbmV4dF9pb21lbV9yZXMNCj4gICAgMy4wMCUgIFtqYmQyXSAgICAgICAgICAgICAgICAgICBb
+a10gc3RhcnRfdGhpc19oYW5kbGUNCj4gDQo+IFRoaXMgaXMgZWFzaWx5IHJlcHJvZHVjZWQgYnkg
+ZG9pbmcgdGhlIGZvbGxvd2luZzoNCj4gDQo+IGdpdCBjbG9uZSBodHRwczovL2dpdGh1Yi5jb20v
+cG1lbS9udm1sLmdpdA0KPiBjZCBudm1sDQo+IG1ha2UNCj4gbWFrZSB0ZXN0DQo+IGNkIHNyYy90
+ZXN0L2Jsa19ub25femVybw0KPiAuL2Jsa19ub25femVyby5zdGF0aWMtbm9uZGVidWcgNTEyIC9w
+YXRoL3RvL2V4dDQvZGF4L2ZzL3Rlc3RmaWxlMSBjIDEwNzM3NDE4MjQgdzowDQo+IA0KPiBJIGFs
+c28gcmFuIHRoZSB0ZXN0IHN1aXRlIGFnYWluc3QgeGZzLCBhbmQgdGhlIHByb2JsZW0gaXMgbm90
+IHByZXNlbnQNCj4gdGhlcmUuICBIb3dldmVyLCBJIGRpZCBub3QgdmVyaWZ5IHRoYXQgdGhlIHhm
+cyB0ZXN0cyB3ZXJlIGdldHRpbmcgcG1kDQo+IGZhdWx0cy4NCj4gDQo+IEknbSBoYXBweSB0byBo
+ZWxwIGRpYWdub3NlIHRoZSBwcm9ibGVtIGZ1cnRoZXIsIGlmIG5lY2Vzc2FyeS4NCg0KVGhhbmtz
+IGZvciB0aGUgcmVwb3J0LCBJJ2xsIHRha2UgYSBsb29rLg0KDQotIFJvc3MNCg0KDQo=
