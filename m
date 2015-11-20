@@ -1,444 +1,171 @@
-From: Laurent GUERBY <laurent@guerby.net>
-Subject: [PATCH] Remove ext4 xattr mbcache to fix CPU lockup when using ceph
- #107301
-Date: Fri, 20 Nov 2015 10:43:48 +0100
-Message-ID: <1448012628.1905.253.camel@guerby.net>
+From: David Howells <dhowells@redhat.com>
+Subject: [RFC][PATCH 00/12] Enhanced file stat system call
+Date: Fri, 20 Nov 2015 14:54:22 +0000
+Message-ID: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, sage@redhat.com,
-	Abaakouk Mehdi <sileht@sileht.net>,
-	Loic Dachary <loic@dachary.org>
-To: tytso@mit.edu, Jan Kara <jack@suse.cz>, adilger@dilger.ca
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.tetaneutral.net ([91.224.149.83]:58210 "EHLO
-	mx1.tetaneutral.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1162310AbbKTJuo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Nov 2015 04:50:44 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+	linux-kernel@vger.kernel.org, dhowells@redhat.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: arnd@arndb.de
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
 
-This is a followup on the discussions here:
-https://bugzilla.kernel.org/show_bug.cgi?id=107301
+Implement new system calls to provide enhanced file stats and enhanced
+filesystem stats.  The patches can be found here:
 
-The patch in comment 6 has been extensively tested on 11 ubuntu 14.04
-with kernel 3.19 machines of our ceph cluster for about 10 days of heavy
-ext4 xattr use without issue, without the patch same machines would
-freeze every 4 to 24 hours depending on core count. The patch below is a
-mechanical upgrade against the current linux tree, only the super.c
-first hunk did not apply and was fixed by hand, kernel with defconfig
-did build cleanly.
+	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=xstat
 
-It would be great to have a working cache but it's not easy to do and
-leaving the current code isn't nice to many ext4 xattr users out there
-since their machine will at some point lockup: for us it worked for
-about one year then we got suddenly lockup hell probably after some
-limit was hit. 
 
-The Lustre developpers have a patch to add a mount option to do the
-mbcache removal as they had the same issue.
+===========
+DESCRIPTION
+===========
 
-I assume maintainers of older kernels will consider backporting this
-patch as well if it is accepted in current as the issue is present since
-the beginning.
+The third patch provides this new system call:
 
-In case my mailer corrupts it the patch is here:
+	long ret = statx(int dfd,
+			 const char *filename,
+			 unsigned atflag,
+			 unsigned mask,
+			 struct statx *buffer);
 
-http://guerby.org/ftp/remove-ext4-mbcache-current.patch
+This is an enhanced file stat function that provides a number of useful
+features, in summary:
 
-Cc: Jan Kara <jack@suse.com>
-Cc: Ted Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Signed-off-by: Laurent GUERBY <laurent@guerby.net>
+ (1) More information: creation time, data version number,
+     flags/attributes.  A subset of these is available through a number of
+     filesystems (such as CIFS, NFS, AFS, Ext4 and BTRFS).
+
+ (2) Lightweight stat (AT_NO_ATTR_SYNC): Ask for just those details of
+     interest, and allow a network fs to approximate anything not of
+     interest, without going to the server.
+
+ (3) Heavyweight stat (AT_FORCE_ATTR_SYNC): Force a network fs to flush
+     buffers and go to the server, even if it thinks its cached attributes
+     are up to date.
+
+ (4) Allow the filesystem to indicate what it can/cannot provide: A
+     filesystem can now say it doesn't support a standard stat feature if
+     that isn't available.
+
+ (5) Make the fields a consistent size on all arches, and make them large.
+
+ (6) Can be extended by using more request flags and using up the padding
+     space in the statx struct.
+
+Note that no lstat() equivalent is required as that can be implemented
+through statx() with atflag == 0.  There is also no fstat() equivalent as
+that can be implemented through statx() with filename == NULL and the
+relevant fd passed as dfd.
+
+
+The seventh patch provides another new system call:
+
+	long ret = fsinfo(int dfd,
+			  const char *filename,
+			  unsigned atflag,
+			  unsigned request,
+			  void *buffer);
+
+This is an enhanced filesystem stat and information retrieval function that
+provides more information, in summary:
+
+ (1) All the information provided by statfs() and more.  The fields are
+     made large.
+
+ (2) Provides information about timestamp range and resolution to
+     complement statx().
+
+ (3) Provides information about IOC flags supported in statx()'s return.
+
+ (4) Provides volume binary IDs and UUIDs.
+
+ (5) Provides the filesystem name according to the kernel as a string
+     (eg. "ext4" or "nfs3") in addition to the magic number.
+
+ (6) Provides information obtained from network filesystems, such as volume
+     and domain names.
+
+ (7) Has lots of spare space that can be used for future extenstions and a
+     bit mask indicating what was provided.
+
+Note that I've added a 'request' identifier.  This is to select the set of
+data to be returned.  The idea is that 'buffer' points to a fixed-size
+struct selected by request.  Currently only 0 is available and this refers
+to 'struct fsinfo'.  However, I could split up the buffer into say 3:
+
+ (0) statfs-type information
+
+ (1) Timestamp and IOC flags info.
+
+ (2) Network fs strings.
+
+However, some of this might be better retrieved through getxattr().
+
+
+=======
+TESTING
+=======
+
+Test programs are added into samples/statx/ by the appropriate patches.
+
+David
 ---
+David Howells (12):
+      Ext4: Fix extended timestamp encoding and decoding
+      statx: Provide IOC flags for Windows fs attributes
+      statx: Add a system call to make enhanced file info available
+      statx: AFS: Return enhanced file attributes
+      statx: Ext4: Return enhanced file attributes
+      statx: NFS: Return enhanced file attributes
+      statx: CIFS: Return enhanced attributes
+      fsinfo: Add a system call to make enhanced filesystem info available
+      fsinfo: Ext4: Return information through the filesystem info syscall
+      fsinfo: AFS: Return information through the filesystem info syscall
+      fsinfo: NFS: Return information through the filesystem info syscall
+      fsinfo: CIFS: Return information through the filesystem info syscall
 
---- linux/fs/ext4/ext4.h.orig	2015-11-20 09:32:30.995575644 +0100
-+++ linux/fs/ext4/ext4.h	2015-11-20 09:37:53.880915440 +0100
-@@ -1371,7 +1371,6 @@ struct ext4_sb_info {
- 	struct list_head s_es_list;	/* List of inodes with reclaimable extents */
- 	long s_es_nr_inode;
- 	struct ext4_es_stats s_es_stats;
--	struct mb_cache *s_mb_cache;
- 	spinlock_t s_es_lock ____cacheline_aligned_in_smp;
- 
- 	/* Ratelimit ext4 messages. */
---- linux/fs/ext4/super.c.orig	2015-11-20 09:32:31.007575695 +0100
-+++ linux/fs/ext4/super.c	2015-11-20 09:39:11.373229371 +0100
-@@ -55,7 +55,6 @@
- 
- static struct ext4_lazy_init *ext4_li_info;
- static struct mutex ext4_li_mtx;
--static int ext4_mballoc_ready;
- static struct ratelimit_state ext4_mount_msg_ratelimit;
- 
- static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
-@@ -857,10 +856,6 @@ static void ext4_put_super(struct super_
- 		invalidate_bdev(sbi->journal_bdev);
- 		ext4_blkdev_remove(sbi);
- 	}
--	if (sbi->s_mb_cache) {
--		ext4_xattr_destroy_cache(sbi->s_mb_cache);
--		sbi->s_mb_cache = NULL;
--	}
- 	if (sbi->s_mmp_tsk)
- 		kthread_stop(sbi->s_mmp_tsk);
- 	sb->s_fs_info = NULL;
-@@ -3754,13 +3749,6 @@ static int ext4_fill_super(struct super_
- 	sbi->s_journal->j_commit_callback = ext4_journal_commit_callback;
- 
- no_journal:
--	if (ext4_mballoc_ready) {
--		sbi->s_mb_cache = ext4_xattr_create_cache(sb->s_id);
--		if (!sbi->s_mb_cache) {
--			ext4_msg(sb, KERN_ERR, "Failed to create an mb_cache");
--			goto failed_mount_wq;
--		}
--	}
- 
- 	if ((DUMMY_ENCRYPTION_ENABLED(sbi) || ext4_has_feature_encrypt(sb)) &&
- 	    (blocksize != PAGE_CACHE_SIZE)) {
-@@ -5267,8 +5255,6 @@ static int __init ext4_init_fs(void)
- 	err = ext4_init_mballoc();
- 	if (err)
- 		goto out2;
--	else
--		ext4_mballoc_ready = 1;
- 	err = init_inodecache();
- 	if (err)
- 		goto out1;
-@@ -5284,7 +5270,6 @@ out:
- 	unregister_as_ext3();
- 	destroy_inodecache();
- out1:
--	ext4_mballoc_ready = 0;
- 	ext4_exit_mballoc();
- out2:
- 	ext4_exit_sysfs();
---- linux/fs/ext4/xattr.h.orig	2015-11-20 09:32:31.007575695 +0100
-+++ linux/fs/ext4/xattr.h	2015-11-20 09:37:53.884915457 +0100
-@@ -124,9 +124,6 @@ extern int ext4_xattr_ibody_inline_set(h
- 				       struct ext4_xattr_info *i,
- 				       struct ext4_xattr_ibody_find *is);
- 
--extern struct mb_cache *ext4_xattr_create_cache(char *name);
--extern void ext4_xattr_destroy_cache(struct mb_cache *);
--
- #ifdef CONFIG_EXT4_FS_SECURITY
- extern int ext4_init_security(handle_t *handle, struct inode *inode,
- 			      struct inode *dir, const struct qstr *qstr);
---- linux/fs/ext4/xattr.c.orig	2015-11-20 09:32:31.007575695 +0100
-+++ linux/fs/ext4/xattr.c	2015-11-20 09:37:53.884915457 +0100
-@@ -53,7 +53,6 @@
- #include <linux/init.h>
- #include <linux/fs.h>
- #include <linux/slab.h>
--#include <linux/mbcache.h>
- #include <linux/quotaops.h>
- #include "ext4_jbd2.h"
- #include "ext4.h"
-@@ -80,10 +79,6 @@
- # define ea_bdebug(bh, fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
- #endif
- 
--static void ext4_xattr_cache_insert(struct mb_cache *, struct buffer_head *);
--static struct buffer_head *ext4_xattr_cache_find(struct inode *,
--						 struct ext4_xattr_header *,
--						 struct mb_cache_entry **);
- static void ext4_xattr_rehash(struct ext4_xattr_header *,
- 			      struct ext4_xattr_entry *);
- static int ext4_xattr_list(struct dentry *dentry, char *buffer,
-@@ -114,9 +109,6 @@ const struct xattr_handler *ext4_xattr_h
- 	NULL
- };
- 
--#define EXT4_GET_MB_CACHE(inode)	(((struct ext4_sb_info *) \
--				inode->i_sb->s_fs_info)->s_mb_cache)
--
- static __le32 ext4_xattr_block_csum(struct inode *inode,
- 				    sector_t block_nr,
- 				    struct ext4_xattr_header *hdr)
-@@ -278,7 +270,6 @@ ext4_xattr_block_get(struct inode *inode
- 	struct ext4_xattr_entry *entry;
- 	size_t size;
- 	int error;
--	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
- 
- 	ea_idebug(inode, "name=%d.%s, buffer=%p, buffer_size=%ld",
- 		  name_index, name, buffer, (long)buffer_size);
-@@ -300,7 +291,6 @@ bad_block:
- 		error = -EFSCORRUPTED;
- 		goto cleanup;
- 	}
--	ext4_xattr_cache_insert(ext4_mb_cache, bh);
- 	entry = BFIRST(bh);
- 	error = ext4_xattr_find_entry(&entry, name_index, name, bh->b_size, 1);
- 	if (error == -EFSCORRUPTED)
-@@ -425,7 +415,6 @@ ext4_xattr_block_list(struct dentry *den
- 	struct inode *inode = d_inode(dentry);
- 	struct buffer_head *bh = NULL;
- 	int error;
--	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
- 
- 	ea_idebug(inode, "buffer=%p, buffer_size=%ld",
- 		  buffer, (long)buffer_size);
-@@ -447,7 +436,6 @@ ext4_xattr_block_list(struct dentry *den
- 		error = -EFSCORRUPTED;
- 		goto cleanup;
- 	}
--	ext4_xattr_cache_insert(ext4_mb_cache, bh);
- 	error = ext4_xattr_list_entries(dentry, BFIRST(bh), buffer, buffer_size);
- 
- cleanup:
-@@ -542,11 +530,8 @@ static void
- ext4_xattr_release_block(handle_t *handle, struct inode *inode,
- 			 struct buffer_head *bh)
- {
--	struct mb_cache_entry *ce = NULL;
- 	int error = 0;
--	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
- 
--	ce = mb_cache_entry_get(ext4_mb_cache, bh->b_bdev, bh->b_blocknr);
- 	BUFFER_TRACE(bh, "get_write_access");
- 	error = ext4_journal_get_write_access(handle, bh);
- 	if (error)
-@@ -555,8 +540,6 @@ ext4_xattr_release_block(handle_t *handl
- 	lock_buffer(bh);
- 	if (BHDR(bh)->h_refcount == cpu_to_le32(1)) {
- 		ea_bdebug(bh, "refcount now=0; freeing");
--		if (ce)
--			mb_cache_entry_free(ce);
- 		get_bh(bh);
- 		unlock_buffer(bh);
- 		ext4_free_blocks(handle, inode, bh, 0, 1,
-@@ -564,8 +547,6 @@ ext4_xattr_release_block(handle_t *handl
- 				 EXT4_FREE_BLOCKS_FORGET);
- 	} else {
- 		le32_add_cpu(&BHDR(bh)->h_refcount, -1);
--		if (ce)
--			mb_cache_entry_release(ce);
- 		/*
- 		 * Beware of this ugliness: Releasing of xattr block references
- 		 * from different inodes can race and so we have to protect
-@@ -778,17 +759,13 @@ ext4_xattr_block_set(handle_t *handle, s
- 	struct super_block *sb = inode->i_sb;
- 	struct buffer_head *new_bh = NULL;
- 	struct ext4_xattr_search *s = &bs->s;
--	struct mb_cache_entry *ce = NULL;
- 	int error = 0;
--	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
- 
- #define header(x) ((struct ext4_xattr_header *)(x))
- 
- 	if (i->value && i->value_len > sb->s_blocksize)
- 		return -ENOSPC;
- 	if (s->base) {
--		ce = mb_cache_entry_get(ext4_mb_cache, bs->bh->b_bdev,
--					bs->bh->b_blocknr);
- 		BUFFER_TRACE(bs->bh, "get_write_access");
- 		error = ext4_journal_get_write_access(handle, bs->bh);
- 		if (error)
-@@ -796,18 +773,12 @@ ext4_xattr_block_set(handle_t *handle, s
- 		lock_buffer(bs->bh);
- 
- 		if (header(s->base)->h_refcount == cpu_to_le32(1)) {
--			if (ce) {
--				mb_cache_entry_free(ce);
--				ce = NULL;
--			}
- 			ea_bdebug(bs->bh, "modifying in-place");
- 			error = ext4_xattr_set_entry(i, s);
- 			if (!error) {
- 				if (!IS_LAST_ENTRY(s->first))
- 					ext4_xattr_rehash(header(s->base),
- 							  s->here);
--				ext4_xattr_cache_insert(ext4_mb_cache,
--					bs->bh);
- 			}
- 			unlock_buffer(bs->bh);
- 			if (error == -EFSCORRUPTED)
-@@ -823,10 +794,6 @@ ext4_xattr_block_set(handle_t *handle, s
- 			int offset = (char *)s->here - bs->bh->b_data;
- 
- 			unlock_buffer(bs->bh);
--			if (ce) {
--				mb_cache_entry_release(ce);
--				ce = NULL;
--			}
- 			ea_bdebug(bs->bh, "cloning");
- 			s->base = kmalloc(bs->bh->b_size, GFP_NOFS);
- 			error = -ENOMEM;
-@@ -863,37 +830,7 @@ ext4_xattr_block_set(handle_t *handle, s
- 
- inserted:
- 	if (!IS_LAST_ENTRY(s->first)) {
--		new_bh = ext4_xattr_cache_find(inode, header(s->base), &ce);
--		if (new_bh) {
--			/* We found an identical block in the cache. */
--			if (new_bh == bs->bh)
--				ea_bdebug(new_bh, "keeping");
--			else {
--				/* The old block is released after updating
--				   the inode. */
--				error = dquot_alloc_block(inode,
--						EXT4_C2B(EXT4_SB(sb), 1));
--				if (error)
--					goto cleanup;
--				BUFFER_TRACE(new_bh, "get_write_access");
--				error = ext4_journal_get_write_access(handle,
--								      new_bh);
--				if (error)
--					goto cleanup_dquot;
--				lock_buffer(new_bh);
--				le32_add_cpu(&BHDR(new_bh)->h_refcount, 1);
--				ea_bdebug(new_bh, "reusing; refcount now=%d",
--					le32_to_cpu(BHDR(new_bh)->h_refcount));
--				unlock_buffer(new_bh);
--				error = ext4_handle_dirty_xattr_block(handle,
--								      inode,
--								      new_bh);
--				if (error)
--					goto cleanup_dquot;
--			}
--			mb_cache_entry_release(ce);
--			ce = NULL;
--		} else if (bs->bh && s->base == bs->bh->b_data) {
-+		if (bs->bh && s->base == bs->bh->b_data) {
- 			/* We were modifying this block in-place. */
- 			ea_bdebug(bs->bh, "keeping this block");
- 			new_bh = bs->bh;
-@@ -938,7 +875,6 @@ getblk_failed:
- 			memcpy(new_bh->b_data, s->base, new_bh->b_size);
- 			set_buffer_uptodate(new_bh);
- 			unlock_buffer(new_bh);
--			ext4_xattr_cache_insert(ext4_mb_cache, new_bh);
- 			error = ext4_handle_dirty_xattr_block(handle,
- 							      inode, new_bh);
- 			if (error)
-@@ -955,8 +891,6 @@ getblk_failed:
- 	error = 0;
- 
- cleanup:
--	if (ce)
--		mb_cache_entry_release(ce);
- 	brelse(new_bh);
- 	if (!(bs->bh && s->base == bs->bh->b_data))
- 		kfree(s->base);
-@@ -1516,41 +1450,9 @@ cleanup:
- void
- ext4_xattr_put_super(struct super_block *sb)
- {
--	mb_cache_shrink(sb->s_bdev);
-+	return;
- }
- 
--/*
-- * ext4_xattr_cache_insert()
-- *
-- * Create a new entry in the extended attribute cache, and insert
-- * it unless such an entry is already in the cache.
-- *
-- * Returns 0, or a negative error number on failure.
-- */
--static void
--ext4_xattr_cache_insert(struct mb_cache *ext4_mb_cache, struct buffer_head *bh)
--{
--	__u32 hash = le32_to_cpu(BHDR(bh)->h_hash);
--	struct mb_cache_entry *ce;
--	int error;
--
--	ce = mb_cache_entry_alloc(ext4_mb_cache, GFP_NOFS);
--	if (!ce) {
--		ea_bdebug(bh, "out of memory");
--		return;
--	}
--	error = mb_cache_entry_insert(ce, bh->b_bdev, bh->b_blocknr, hash);
--	if (error) {
--		mb_cache_entry_free(ce);
--		if (error == -EBUSY) {
--			ea_bdebug(bh, "already in cache");
--			error = 0;
--		}
--	} else {
--		ea_bdebug(bh, "inserting [%x]", (int)hash);
--		mb_cache_entry_release(ce);
--	}
--}
- 
- /*
-  * ext4_xattr_cmp()
-@@ -1592,55 +1494,6 @@ ext4_xattr_cmp(struct ext4_xattr_header
- 	return 0;
- }
- 
--/*
-- * ext4_xattr_cache_find()
-- *
-- * Find an identical extended attribute block.
-- *
-- * Returns a pointer to the block found, or NULL if such a block was
-- * not found or an error occurred.
-- */
--static struct buffer_head *
--ext4_xattr_cache_find(struct inode *inode, struct ext4_xattr_header *header,
--		      struct mb_cache_entry **pce)
--{
--	__u32 hash = le32_to_cpu(header->h_hash);
--	struct mb_cache_entry *ce;
--	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
--
--	if (!header->h_hash)
--		return NULL;  /* never share */
--	ea_idebug(inode, "looking for cached blocks [%x]", (int)hash);
--again:
--	ce = mb_cache_entry_find_first(ext4_mb_cache, inode->i_sb->s_bdev,
--				       hash);
--	while (ce) {
--		struct buffer_head *bh;
--
--		if (IS_ERR(ce)) {
--			if (PTR_ERR(ce) == -EAGAIN)
--				goto again;
--			break;
--		}
--		bh = sb_bread(inode->i_sb, ce->e_block);
--		if (!bh) {
--			EXT4_ERROR_INODE(inode, "block %lu read error",
--					 (unsigned long) ce->e_block);
--		} else if (le32_to_cpu(BHDR(bh)->h_refcount) >=
--				EXT4_XATTR_REFCOUNT_MAX) {
--			ea_idebug(inode, "block %lu refcount %d>=%d",
--				  (unsigned long) ce->e_block,
--				  le32_to_cpu(BHDR(bh)->h_refcount),
--					  EXT4_XATTR_REFCOUNT_MAX);
--		} else if (ext4_xattr_cmp(header, BHDR(bh)) == 0) {
--			*pce = ce;
--			return bh;
--		}
--		brelse(bh);
--		ce = mb_cache_entry_find_next(ce, inode->i_sb->s_bdev, hash);
--	}
--	return NULL;
--}
- 
- #define NAME_HASH_SHIFT 5
- #define VALUE_HASH_SHIFT 16
-@@ -1709,18 +1562,3 @@ static void ext4_xattr_rehash(struct ext
- }
- 
- #undef BLOCK_HASH_SHIFT
--
--#define	HASH_BUCKET_BITS	10
--
--struct mb_cache *
--ext4_xattr_create_cache(char *name)
--{
--	return mb_cache_create(name, HASH_BUCKET_BITS);
--}
--
--void ext4_xattr_destroy_cache(struct mb_cache *cache)
--{
--	if (cache)
--		mb_cache_destroy(cache);
--}
+
+ arch/x86/entry/syscalls/syscall_32.tbl |    2 
+ arch/x86/entry/syscalls/syscall_64.tbl |    2 
+ fs/afs/inode.c                         |   23 ++
+ fs/afs/super.c                         |   39 ++++
+ fs/cifs/cifsfs.c                       |   25 +++
+ fs/cifs/cifsfs.h                       |    4 
+ fs/cifs/cifsglob.h                     |    8 +
+ fs/cifs/dir.c                          |    2 
+ fs/cifs/inode.c                        |  124 ++++++++++---
+ fs/cifs/netmisc.c                      |    4 
+ fs/exportfs/expfs.c                    |    4 
+ fs/ext4/ext4.h                         |   24 ++-
+ fs/ext4/file.c                         |    2 
+ fs/ext4/inode.c                        |   31 +++
+ fs/ext4/namei.c                        |    2 
+ fs/ext4/super.c                        |   39 ++++
+ fs/ext4/symlink.c                      |    2 
+ fs/nfs/inode.c                         |   45 ++++-
+ fs/nfs/internal.h                      |    1 
+ fs/nfs/nfs4super.c                     |    1 
+ fs/nfs/super.c                         |   58 ++++++
+ fs/ntfs/time.h                         |    2 
+ fs/stat.c                              |  305 +++++++++++++++++++++++++++++---
+ fs/statfs.c                            |  218 +++++++++++++++++++++++
+ include/linux/fs.h                     |    7 +
+ include/linux/stat.h                   |   14 +
+ include/linux/syscalls.h               |    6 +
+ include/linux/time64.h                 |    2 
+ include/uapi/linux/fcntl.h             |    2 
+ include/uapi/linux/fs.h                |    7 +
+ include/uapi/linux/stat.h              |  185 +++++++++++++++++++
+ samples/Makefile                       |    3 
+ samples/statx/Makefile                 |   13 +
+ samples/statx/test-fsinfo.c            |  179 +++++++++++++++++++
+ samples/statx/test-statx.c             |  273 +++++++++++++++++++++++++++++
+ 35 files changed, 1558 insertions(+), 100 deletions(-)
+ create mode 100644 samples/statx/Makefile
+ create mode 100644 samples/statx/test-fsinfo.c
+ create mode 100644 samples/statx/test-statx.c
