@@ -1,132 +1,131 @@
-From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: [PATCH 12/12] fsinfo: CIFS: Return information through the
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 09/12] fsinfo: Ext4: Return information through the
  filesystem info syscall
-Date: Fri, 20 Nov 2015 14:56:51 +0000
-Message-ID: <20151120145651.18930.93196.stgit@warthog.procyon.org.uk>
+Date: Fri, 20 Nov 2015 14:56:13 +0000
+Message-ID: <20151120145613.18930.78846.stgit@warthog.procyon.org.uk>
 References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-afs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: arnd-r2nGTMty4D4@public.gmane.org
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20151120145422.18930.72662.stgit-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Cc: linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+	linux-kernel@vger.kernel.org, dhowells@redhat.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: arnd@arndb.de
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Return CIFS filesystem information through the filesystem info retrieval
+Return Ext4 filesystem information through the filesystem info retrieval
 system call.  This includes the following:
 
  (1) information about the capacity and resolution of the inode timestamps;
 
- (2) information about the supported IOC flags;
+ (2) the volume label as the volume name, setting FSINFO_VOLUME_NAME;
 
-and unless AT_NO_ATTR_SYNC is specified:
+ (3) the remote FSID as the volume ID, setting FSINFO_VOLUME_ID;
 
- (3) the statfs information retrieved from the server.
+ (4) the statfs information;
 
-We could also return the server and/or domain name.
+ (5) a list of supported IOC flags.
 
-[NOTE: THIS PATCH IS UNTESTED!]
+Example output:
 
-Signed-off-by: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+	[root@andromeda ~]# ./test-fsinfo /var/cache/fscache/
+	fsinfo(/var/cache/fscache/) = 0
+	mask  : 9f
+	dev   : 08:06
+	fs    : type=ef53 name=ext4
+	ioc   : 4bdfff
+	nameln: 255
+	flags : 1020
+	times : range=ffffffff80000000-37fffffff
+	atime : gran=1e-09s
+	btime : gran=1e-09s
+	ctime : gran=1e-09s
+	mtime : gran=1e-09s
+	blocks: n=1123529 fr=208887 av=146054
+	files : n=293760 fr=225334 av=225334
+	bsize : 4096
+	frsize: 4096
+	fsid  : 48bc815f32464608
+	volume: 'fred'
+
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/cifs/cifsfs.c       |   25 +++++++++++++++++++++++++
- fs/cifs/netmisc.c      |    4 ----
- fs/ntfs/time.h         |    2 --
- include/linux/time64.h |    2 ++
- 4 files changed, 27 insertions(+), 6 deletions(-)
+ fs/ext4/super.c |   39 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 39 insertions(+)
 
-diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
-index e739950ca084..213831972164 100644
---- a/fs/cifs/cifsfs.c
-+++ b/fs/cifs/cifsfs.c
-@@ -207,6 +207,30 @@ cifs_statfs(struct dentry *dentry, struct kstatfs *buf)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a63c7b0a10cf..fbd1cad4ff3b 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -73,6 +73,8 @@ static void ext4_clear_journal_err(struct super_block *sb,
+ static int ext4_sync_fs(struct super_block *sb, int wait);
+ static int ext4_remount(struct super_block *sb, int *flags, char *data);
+ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
++static int ext4_get_fsinfo(struct dentry *dentry, struct fsinfo *f,
++			   unsigned flags);
+ static int ext4_unfreeze(struct super_block *sb);
+ static int ext4_freeze(struct super_block *sb);
+ static struct dentry *ext4_mount(struct file_system_type *fs_type, int flags,
+@@ -1122,6 +1124,7 @@ static const struct super_operations ext4_sops = {
+ 	.freeze_fs	= ext4_freeze,
+ 	.unfreeze_fs	= ext4_unfreeze,
+ 	.statfs		= ext4_statfs,
++	.get_fsinfo	= ext4_get_fsinfo,
+ 	.remount_fs	= ext4_remount,
+ 	.show_options	= ext4_show_options,
+ #ifdef CONFIG_QUOTA
+@@ -3524,6 +3527,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (sb->s_magic != EXT4_SUPER_MAGIC)
+ 		goto cantfind_ext4;
+ 	sbi->s_kbytes_written = le64_to_cpu(es->s_kbytes_written);
++	memcpy(sb->s_uuid, es->s_uuid, sizeof(sb->s_uuid));
+ 
+ 	/* Warn if metadata_csum and gdt_csum are both set. */
+ 	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+@@ -5179,6 +5183,41 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
  	return 0;
  }
  
 +/*
 + * Read filesystem information.
 + */
-+static int cifs_get_fsinfo(struct dentry *dentry, struct fsinfo *f,
++static int ext4_get_fsinfo(struct dentry *dentry, struct fsinfo *f,
 +			   unsigned flags)
 +{
-+	f->f_namelen = PATH_MAX;
++	struct super_block *sb = dentry->d_sb;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_super_block *es = sbi->s_es;
++	struct inode *inode = d_inode(dentry);
++	struct ext4_inode *raw_inode;
++	struct ext4_inode_info *ei = EXT4_I(inode);
 +
-+	/* Times are signed 64-bit values with a granularity of 100ns
-+	 * with a zero point of 1st Jan 1601.
-+	 */
-+	f->f_min_time = S64_MIN / 10000000 - NTFS_TIME_OFFSET;
-+	f->f_max_time = S64_MAX / 10000000 - NTFS_TIME_OFFSET;
-+	f->f_atime_gran_exponent = -7;
-+	f->f_btime_gran_exponent = -7;
-+	f->f_ctime_gran_exponent = -7;
-+	f->f_mtime_gran_exponent = -7;
++	strcpy(f->f_volume_name, es->s_volume_name);
 +
-+	f->f_supported_ioc_flags =
-+		FS_IMMUTABLE_FL | FS_COMPR_FL | FS_HIDDEN_FL |
-+		FS_SYSTEM_FL | FS_ARCHIVE_FL;
-+	return 0;
++	f->f_mask = FSINFO_FSID | FSINFO_VOLUME_NAME;
++	f->f_supported_ioc_flags = EXT4_FL_USER_VISIBLE;
++
++	f->f_min_time = S32_MIN;
++	f->f_max_time = S32_MAX;
++
++	if (EXT4_FITS_IN_INODE(raw_inode, ei, i_ctime_extra))
++		f->f_ctime_gran_exponent = -9;
++	if (EXT4_FITS_IN_INODE(raw_inode, ei, i_mtime_extra))
++		f->f_mtime_gran_exponent = -9;
++	if (EXT4_FITS_IN_INODE(raw_inode, ei, i_atime_extra)) {
++		f->f_atime_gran_exponent = -9;
++		f->f_max_time += ((1 << EXT4_EPOCH_BITS) - 1) * 0x100000000LL;
++	}
++	if (EXT4_FITS_IN_INODE(raw_inode, ei, i_crtime_extra))
++		f->f_btime_gran_exponent = -9;
++
++	return vfs_get_fsinfo_from_statfs(dentry, f, flags);
 +}
 +
- static long cifs_fallocate(struct file *file, int mode, loff_t off, loff_t len)
- {
- 	struct cifs_sb_info *cifs_sb = CIFS_FILE_SB(file);
-@@ -571,6 +595,7 @@ static int cifs_drop_inode(struct inode *inode)
- 
- static const struct super_operations cifs_super_ops = {
- 	.statfs = cifs_statfs,
-+	.get_fsinfo	= cifs_get_fsinfo,
- 	.alloc_inode = cifs_alloc_inode,
- 	.destroy_inode = cifs_destroy_inode,
- 	.drop_inode	= cifs_drop_inode,
-diff --git a/fs/cifs/netmisc.c b/fs/cifs/netmisc.c
-index abae6dd2c6b9..74fdbd8d824d 100644
---- a/fs/cifs/netmisc.c
-+++ b/fs/cifs/netmisc.c
-@@ -910,10 +910,6 @@ smbCalcSize(void *buf)
- 		2 /* size of the bcc field */ + get_bcc(ptr));
- }
- 
--/* The following are taken from fs/ntfs/util.c */
--
--#define NTFS_TIME_OFFSET ((u64)(369*365 + 89) * 24 * 3600 * 10000000)
--
- /*
-  * Convert the NT UTC (based 1601-01-01, in hundred nanosecond units)
-  * into Unix UTC (based 1970-01-01, in seconds).
-diff --git a/fs/ntfs/time.h b/fs/ntfs/time.h
-index 01233989d5d1..7b546d0615ca 100644
---- a/fs/ntfs/time.h
-+++ b/fs/ntfs/time.h
-@@ -27,8 +27,6 @@
- 
- #include "endian.h"
- 
--#define NTFS_TIME_OFFSET ((s64)(369 * 365 + 89) * 24 * 3600 * 10000000)
--
- /**
-  * utc2ntfs - convert Linux UTC time to NTFS time
-  * @ts:		Linux UTC time to convert to NTFS time
-diff --git a/include/linux/time64.h b/include/linux/time64.h
-index 367d5af899e8..a12f6384febf 100644
---- a/include/linux/time64.h
-+++ b/include/linux/time64.h
-@@ -6,6 +6,8 @@
- 
- typedef __s64 time64_t;
- 
-+#define NTFS_TIME_OFFSET ((u64)(369*365 + 89) * 24 * 3600 * 10000000)
-+
- /*
-  * This wants to go into uapi/linux/time.h once we agreed about the
-  * userspace interfaces.
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ /* Helper function for writing quotas on sync - we need to start transaction
+  * before quota file is locked for write. Otherwise the are possible deadlocks:
+  * Process 1                         Process 2
