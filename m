@@ -1,7 +1,8 @@
 From: David Howells <dhowells@redhat.com>
-Subject: [RFC][PATCH 00/12] Enhanced file stat system call
-Date: Fri, 20 Nov 2015 14:54:22 +0000
-Message-ID: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
+Subject: [PATCH 01/12] Ext4: Fix extended timestamp encoding and decoding
+Date: Fri, 20 Nov 2015 14:54:35 +0000
+Message-ID: <20151120145434.18930.89755.stgit@warthog.procyon.org.uk>
+References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
@@ -11,161 +12,276 @@ Cc: linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
 To: arnd@arndb.de
 Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+The handling of extended timestamps in Ext4 is broken as can be seen in the
+output of the test program attached below:
 
-Implement new system calls to provide enhanced file stats and enhanced
-filesystem stats.  The patches can be found here:
+time     extra   bad decode        good decode         bad encode  good encode
+======== =====   ================= =================   =========== ===========
+ffffffff     0 >  ffffffffffffffff  ffffffffffffffff > *ffffffff 3  ffffffff 0
+80000000     0 >  ffffffff80000000  ffffffff80000000 > *80000000 3  80000000 0
+00000000     0 >                 0                 0 >  00000000 0  00000000 0
+7fffffff     0 >          7fffffff          7fffffff >  7fffffff 0  7fffffff 0
+80000000     1 > *ffffffff80000000          80000000 > *80000000 0  80000000 1
+ffffffff     1 > *ffffffffffffffff          ffffffff > *ffffffff 0  ffffffff 1
+00000000     1 >         100000000         100000000 >  00000000 1  00000000 1
+7fffffff     1 >         17fffffff         17fffffff >  7fffffff 1  7fffffff 1
+80000000     2 > *ffffffff80000000         180000000 > *80000000 1  80000000 2
+ffffffff     2 > *ffffffffffffffff         1ffffffff > *ffffffff 1  ffffffff 2
+00000000     2 >         200000000         200000000 >  00000000 2  00000000 2
+7fffffff     2 >         27fffffff         27fffffff >  7fffffff 2  7fffffff 2
+80000000     3 > *ffffffff80000000         280000000 > *80000000 2  80000000 3
+ffffffff     3 > *ffffffffffffffff         2ffffffff > *ffffffff 2  ffffffff 3
+00000000     3 >         300000000         300000000 >  00000000 3  00000000 3
+7fffffff     3 >         37fffffff         37fffffff >  7fffffff 3  7fffffff 3
 
-	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=xstat
+The values marked with asterisks are wrong.
 
+The problem is that with a 64-bit time, in ext4_decode_extra_time() the
+epoch value is just OR'd with the sign-extended time - which, if negative,
+has all of the upper 32 bits set anyway.  We need to add the epoch instead
+of OR'ing it.  In ext4_encode_extra_time(), the reverse operation needs to
+take place as the 32-bit part of the number of seconds needs to be
+subtracted from the 64-bit value before the epoch is shifted down.
 
-===========
-DESCRIPTION
-===========
+Since the epoch is presumably unsigned, this has the slightly strange
+effect of, for epochs > 0, putting the 0x80000000-0xffffffff range before
+the 0x00000000-0x7fffffff range.
 
-The third patch provides this new system call:
+This affects all kernels from v2.6.23-rc1 onwards.
 
-	long ret = statx(int dfd,
-			 const char *filename,
-			 unsigned atflag,
-			 unsigned mask,
-			 struct statx *buffer);
+The test program:
 
-This is an enhanced file stat function that provides a number of useful
-features, in summary:
+	#include <stdio.h>
 
- (1) More information: creation time, data version number,
-     flags/attributes.  A subset of these is available through a number of
-     filesystems (such as CIFS, NFS, AFS, Ext4 and BTRFS).
+	#define EXT4_FITS_IN_INODE(x, y, z) 1
+	#define EXT4_EPOCH_BITS 2
+	#define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
+	#define EXT4_NSEC_MASK  (~0UL << EXT4_EPOCH_BITS)
 
- (2) Lightweight stat (AT_NO_ATTR_SYNC): Ask for just those details of
-     interest, and allow a network fs to approximate anything not of
-     interest, without going to the server.
+	#define le32_to_cpu(x) (x)
+	#define cpu_to_le32(x) (x)
+	typedef unsigned int __le32;
+	typedef unsigned int u32;
+	typedef signed int s32;
+	typedef unsigned long long __u64;
+	typedef signed long long s64;
 
- (3) Heavyweight stat (AT_FORCE_ATTR_SYNC): Force a network fs to flush
-     buffers and go to the server, even if it thinks its cached attributes
-     are up to date.
+	struct timespec {
+		long long	tv_sec;			/* seconds */
+		long		tv_nsec;		/* nanoseconds */
+	};
 
- (4) Allow the filesystem to indicate what it can/cannot provide: A
-     filesystem can now say it doesn't support a standard stat feature if
-     that isn't available.
+	struct ext4_inode_info {
+		struct timespec i_crtime;
+	};
 
- (5) Make the fields a consistent size on all arches, and make them large.
+	struct ext4_inode {
+		__le32  i_crtime;       /* File Creation time */
+		__le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch) */
+	};
 
- (6) Can be extended by using more request flags and using up the padding
-     space in the statx struct.
+	/* Incorrect implementation */
+	static inline void ext4_decode_extra_time_bad(struct timespec *time, __le32 extra)
+	{
+	       if (sizeof(time->tv_sec) > 4)
+		       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
+				       << 32;
+	       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
+	}
 
-Note that no lstat() equivalent is required as that can be implemented
-through statx() with atflag == 0.  There is also no fstat() equivalent as
-that can be implemented through statx() with filename == NULL and the
-relevant fd passed as dfd.
+	static inline __le32 ext4_encode_extra_time_bad(struct timespec *time)
+	{
+	       return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
+				   (time->tv_sec >> 32) & EXT4_EPOCH_MASK : 0) |
+				  ((time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK));
+	}
 
+	/* Fixed implementation */
+	static inline void ext4_decode_extra_time_good(struct timespec *time, __le32 _extra)
+	{
+		u32 extra = le32_to_cpu(_extra);
+		u32 epoch = extra & EXT4_EPOCH_MASK;
 
-The seventh patch provides another new system call:
+		time->tv_sec = (s32)time->tv_sec + ((s64)epoch  << 32);
+		time->tv_nsec = (extra & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
+	}
 
-	long ret = fsinfo(int dfd,
-			  const char *filename,
-			  unsigned atflag,
-			  unsigned request,
-			  void *buffer);
+	static inline __le32 ext4_encode_extra_time_good(struct timespec *time)
+	{
+		u32 extra;
+		s64 epoch = time->tv_sec - (s32)time->tv_sec;
 
-This is an enhanced filesystem stat and information retrieval function that
-provides more information, in summary:
+		extra = (epoch >> 32) & EXT4_EPOCH_MASK;
+		extra |= (time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK;
+		return cpu_to_le32(extra);
+	}
 
- (1) All the information provided by statfs() and more.  The fields are
-     made large.
+	#define EXT4_INODE_GET_XTIME_BAD(xtime, inode, raw_inode)		\
+	do {									       \
+		(inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
+		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+			ext4_decode_extra_time_bad(&(inode)->xtime,		\
+						   raw_inode->xtime ## _extra);	\
+		else								       \
+			(inode)->xtime.tv_nsec = 0;				       \
+	} while (0)
 
- (2) Provides information about timestamp range and resolution to
-     complement statx().
+	#define EXT4_INODE_SET_XTIME_BAD(xtime, inode, raw_inode)		\
+	do {									       \
+		(raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec);	       \
+		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+			(raw_inode)->xtime ## _extra =				       \
+				ext4_encode_extra_time_bad(&(inode)->xtime);	\
+	} while (0)
 
- (3) Provides information about IOC flags supported in statx()'s return.
+	#define EXT4_INODE_GET_XTIME_GOOD(xtime, inode, raw_inode)		\
+	do {									       \
+		(inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
+		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+			ext4_decode_extra_time_good(&(inode)->xtime,			       \
+					       raw_inode->xtime ## _extra);	\
+		else								       \
+			(inode)->xtime.tv_nsec = 0;				       \
+	} while (0)
 
- (4) Provides volume binary IDs and UUIDs.
+	#define EXT4_INODE_SET_XTIME_GOOD(xtime, inode, raw_inode)		\
+	do {									       \
+		(raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec);	       \
+		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+			(raw_inode)->xtime ## _extra =				       \
+				ext4_encode_extra_time_good(&(inode)->xtime);	\
+	} while (0)
 
- (5) Provides the filesystem name according to the kernel as a string
-     (eg. "ext4" or "nfs3") in addition to the magic number.
+	static const struct test {
+		unsigned crtime;
+		unsigned extra;
+		long long sec;
+		int nsec;
+	} tests[] = {
+		// crtime	extra		tv_sec			tv_nsec
+		0xffffffff,	0x00000000,	0xffffffffffffffff,	0,
+		0x80000000,	0x00000000,	0xffffffff80000000,	0,
+		0x00000000,	0x00000000,	0x0000000000000000,	0,
+		0x7fffffff,	0x00000000,	0x000000007fffffff,	0,
+		0x80000000,	0x00000001,	0x0000000080000000,	0,
+		0xffffffff,	0x00000001,	0x00000000ffffffff,	0,
+		0x00000000,	0x00000001,	0x0000000100000000,	0,
+		0x7fffffff,	0x00000001,	0x000000017fffffff,	0,
+		0x80000000,	0x00000002,	0x0000000180000000,	0,
+		0xffffffff,	0x00000002,	0x00000001ffffffff,	0,
+		0x00000000,	0x00000002,	0x0000000200000000,	0,
+		0x7fffffff,	0x00000002,	0x000000027fffffff,	0,
+		0x80000000,	0x00000003,	0x0000000280000000,	0,
+		0xffffffff,	0x00000003,	0x00000002ffffffff,	0,
+		0x00000000,	0x00000003,	0x0000000300000000,	0,
+		0x7fffffff,	0x00000003,	0x000000037fffffff,	0,
+	};
 
- (6) Provides information obtained from network filesystems, such as volume
-     and domain names.
+	int main()
+	{
+		struct ext4_inode_info ii_bad, ii_good;
+		struct ext4_inode raw, *praw = &raw;
+		struct ext4_inode raw_bad, *praw_bad = &raw_bad;
+		struct ext4_inode raw_good, *praw_good = &raw_good;
+		const struct test *t;
+		int i, ret = 0;
 
- (7) Has lots of spare space that can be used for future extenstions and a
-     bit mask indicating what was provided.
+		printf("time     extra   bad decode        good decode         bad encode  good encode\n");
+		printf("======== =====   ================= =================   =========== ===========\n");
+		for (i = 0; i < sizeof(tests) / sizeof(t[0]); i++) {
+			t = &tests[i];
+			raw.i_crtime = t->crtime;
+			raw.i_crtime_extra = t->extra;
+			printf("%08x %5d > ", t->crtime, t->extra);
 
-Note that I've added a 'request' identifier.  This is to select the set of
-data to be returned.  The idea is that 'buffer' points to a fixed-size
-struct selected by request.  Currently only 0 is available and this refers
-to 'struct fsinfo'.  However, I could split up the buffer into say 3:
+			EXT4_INODE_GET_XTIME_BAD(i_crtime, &ii_bad, praw);
+			EXT4_INODE_GET_XTIME_GOOD(i_crtime, &ii_good, praw);
+			if (ii_bad.i_crtime.tv_sec != t->sec ||
+			    ii_bad.i_crtime.tv_nsec != t->nsec)
+				printf("*");
+			else
+				printf(" ");
+			printf("%16llx", ii_bad.i_crtime.tv_sec);
+			printf(" ");
+			if (ii_good.i_crtime.tv_sec != t->sec ||
+			    ii_good.i_crtime.tv_nsec != t->nsec) {
+				printf("*");
+				ret = 1;
+			} else {
+				printf(" ");
+			}
+			printf("%16llx", ii_good.i_crtime.tv_sec);
 
- (0) statfs-type information
+			EXT4_INODE_SET_XTIME_BAD(i_crtime, &ii_good, praw_bad);
+			EXT4_INODE_SET_XTIME_GOOD(i_crtime, &ii_good, praw_good);
 
- (1) Timestamp and IOC flags info.
+			printf(" > ");
+			if (raw_bad.i_crtime != raw.i_crtime ||
+			    raw_bad.i_crtime_extra != raw.i_crtime_extra)
+				printf("*");
+			else
+				printf(" ");
+			printf("%08llx %d", raw_bad.i_crtime, raw_bad.i_crtime_extra);
+			printf(" ");
 
- (2) Network fs strings.
+			if (raw_good.i_crtime != raw.i_crtime ||
+			    raw_good.i_crtime_extra != raw.i_crtime_extra) {
+				printf("*");
+				ret = 1;
+			} else {
+				printf(" ");
+			}
+			printf("%08llx %d", raw_good.i_crtime, raw_good.i_crtime_extra);
+			printf("\n");
+		}
 
-However, some of this might be better retrieved through getxattr().
+		return ret;
+	}
 
-
-=======
-TESTING
-=======
-
-Test programs are added into samples/statx/ by the appropriate patches.
-
-David
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
-David Howells (12):
-      Ext4: Fix extended timestamp encoding and decoding
-      statx: Provide IOC flags for Windows fs attributes
-      statx: Add a system call to make enhanced file info available
-      statx: AFS: Return enhanced file attributes
-      statx: Ext4: Return enhanced file attributes
-      statx: NFS: Return enhanced file attributes
-      statx: CIFS: Return enhanced attributes
-      fsinfo: Add a system call to make enhanced filesystem info available
-      fsinfo: Ext4: Return information through the filesystem info syscall
-      fsinfo: AFS: Return information through the filesystem info syscall
-      fsinfo: NFS: Return information through the filesystem info syscall
-      fsinfo: CIFS: Return information through the filesystem info syscall
 
+ fs/ext4/ext4.h |   22 +++++++++++++---------
+ 1 file changed, 13 insertions(+), 9 deletions(-)
 
- arch/x86/entry/syscalls/syscall_32.tbl |    2 
- arch/x86/entry/syscalls/syscall_64.tbl |    2 
- fs/afs/inode.c                         |   23 ++
- fs/afs/super.c                         |   39 ++++
- fs/cifs/cifsfs.c                       |   25 +++
- fs/cifs/cifsfs.h                       |    4 
- fs/cifs/cifsglob.h                     |    8 +
- fs/cifs/dir.c                          |    2 
- fs/cifs/inode.c                        |  124 ++++++++++---
- fs/cifs/netmisc.c                      |    4 
- fs/exportfs/expfs.c                    |    4 
- fs/ext4/ext4.h                         |   24 ++-
- fs/ext4/file.c                         |    2 
- fs/ext4/inode.c                        |   31 +++
- fs/ext4/namei.c                        |    2 
- fs/ext4/super.c                        |   39 ++++
- fs/ext4/symlink.c                      |    2 
- fs/nfs/inode.c                         |   45 ++++-
- fs/nfs/internal.h                      |    1 
- fs/nfs/nfs4super.c                     |    1 
- fs/nfs/super.c                         |   58 ++++++
- fs/ntfs/time.h                         |    2 
- fs/stat.c                              |  305 +++++++++++++++++++++++++++++---
- fs/statfs.c                            |  218 +++++++++++++++++++++++
- include/linux/fs.h                     |    7 +
- include/linux/stat.h                   |   14 +
- include/linux/syscalls.h               |    6 +
- include/linux/time64.h                 |    2 
- include/uapi/linux/fcntl.h             |    2 
- include/uapi/linux/fs.h                |    7 +
- include/uapi/linux/stat.h              |  185 +++++++++++++++++++
- samples/Makefile                       |    3 
- samples/statx/Makefile                 |   13 +
- samples/statx/test-fsinfo.c            |  179 +++++++++++++++++++
- samples/statx/test-statx.c             |  273 +++++++++++++++++++++++++++++
- 35 files changed, 1558 insertions(+), 100 deletions(-)
- create mode 100644 samples/statx/Makefile
- create mode 100644 samples/statx/test-fsinfo.c
- create mode 100644 samples/statx/test-statx.c
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index fd1f28be5296..31efcd78bf51 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -723,19 +723,23 @@ struct move_extent {
+ 	<= (EXT4_GOOD_OLD_INODE_SIZE +			\
+ 	    (einode)->i_extra_isize))			\
+ 
+-static inline __le32 ext4_encode_extra_time(struct timespec *time)
++static inline void ext4_decode_extra_time(struct timespec *time, __le32 _extra)
+ {
+-       return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
+-			   (time->tv_sec >> 32) & EXT4_EPOCH_MASK : 0) |
+-                          ((time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK));
++	u32 extra = le32_to_cpu(_extra);
++	u32 epoch = extra & EXT4_EPOCH_MASK;
++
++	time->tv_sec = (s32)time->tv_sec + ((s64)epoch  << 32);
++	time->tv_nsec = (extra & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
+ }
+ 
+-static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
++static inline __le32 ext4_encode_extra_time(struct timespec *time)
+ {
+-       if (sizeof(time->tv_sec) > 4)
+-	       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
+-			       << 32;
+-       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
++	u32 extra;
++	s64 epoch = time->tv_sec - (s32)time->tv_sec;
++
++	extra = (epoch >> 32) & EXT4_EPOCH_MASK;
++	extra |= (time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK;
++	return cpu_to_le32(extra);
+ }
+ 
+ #define EXT4_INODE_SET_XTIME(xtime, inode, raw_inode)			       \
