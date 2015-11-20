@@ -1,81 +1,68 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: dax pmd fault handler never returns to userspace
-Date: Fri, 20 Nov 2015 09:34:58 +1100
-Message-ID: <20151119223458.GE19199@dastard>
-References: <x49wptfnw2l.fsf@segfault.boston.devel.redhat.com>
- <CAPcyv4jnNNFAp_L5BFbP4K6vNhffELSS7g0aekhGnCadsBCfnw@mail.gmail.com>
- <20151118170014.GB10656@linux.intel.com>
- <x4937w3nqze.fsf@segfault.boston.devel.redhat.com>
- <CAPcyv4grgkLTVHdGhVSOs1sXsiLQyB1ubcRvmhW=hMZnA9MnHQ@mail.gmail.com>
- <20151118182320.GA7901@linux.intel.com>
- <x49lh9vma41.fsf@segfault.boston.devel.redhat.com>
- <20151118185326.GA29052@linux.intel.com>
- <CAPcyv4i9o4Uznpi3z=FUGZJ14GVnM6dWxyXbgi-1v1YPo=jKqg@mail.gmail.com>
+From: Dan Williams <dan.j.williams@intel.com>
+Subject: [PATCH] ext4: drop file_update_time from ext4_dax_fault
+Date: Thu, 19 Nov 2015 16:18:13 -0800
+Message-ID: <20151120001813.27997.41722.stgit@dwillia2-desk3.jf.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Jeff Moyer <jmoyer@redhat.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-nvdimm <linux-nvdimm@ml01.01.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Ross Zwisler <ross.zwisler@intel.com>
-To: Dan Williams <dan.j.williams@intel.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, Ted Ts'o <tytso@mit.edu>,
+	linux-nvdimm@lists.01.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CAPcyv4i9o4Uznpi3z=FUGZJ14GVnM6dWxyXbgi-1v1YPo=jKqg@mail.gmail.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 18, 2015 at 10:58:29AM -0800, Dan Williams wrote:
-> On Wed, Nov 18, 2015 at 10:53 AM, Ross Zwisler
-> <ross.zwisler@linux.intel.com> wrote:
-> > On Wed, Nov 18, 2015 at 01:32:46PM -0500, Jeff Moyer wrote:
-> >> Ross Zwisler <ross.zwisler@linux.intel.com> writes:
-> >>
-> >> > Yea, my first round of testing was broken, sorry about that.
-> >> >
-> >> > It looks like this test causes the PMD fault handler to be called repeatedly
-> >> > over and over until you kill the userspace process.  This doesn't happen for
-> >> > XFS because when using XFS this test doesn't hit PMD faults, only PTE faults.
-> >>
-> >> Hmm, I wonder why not?
-> >
-> > Well, whether or not you get PMDs is dependent on the block allocator for the
-> > filesystem.  We ask the FS how much space is contiguous via get_blocks(), and
-> > if it's less than PMD_SIZE (2 MiB) we fall back to the regular 4k page fault
-> > path.   This code all lives in __dax_pmd_fault().  There are also a bunch of
-> > other reasons why we'd fall back to 4k faults - the virtual address isn't 2
-> > MiB aligned, etc.   It's actually pretty hard to get everything right so you
-> > actually get PMD faults.
-> >
-> > Anyway, my guess is that we're failing to meet one of our criteria in XFS, so
-> > we just always fall back to PTEs for this test.
-> >
-> >> Sounds like that will need investigating as well, right?
-> >
-> > Yep, on it.
-> 
-> XFS can do pmd faults just fine, you just need to use fiemap to find a
-> 2MiB aligned physical offset.  See the ndctl pmd test I posted.
+Neither the filemap_fault() nor the xfs dax fault path is updating time.
+This call leads to the following WARN() when the block device has been
+torn down:
 
-This comes under the topic of "XFS and Storage Alignment 101".
-there's nothing new here and it's just like aligning your filesystem
-to RAID5/6 geometries for optimal sequential IO patterns:
+ WARNING: CPU: 0 PID: 2133 at fs/fs-writeback.c:2065 __mark_inode_dirty+0x261/0x350()
+ bdi-block not registered
+ [..]
+ Call Trace:
+  [<ffffffff81459f62>] dump_stack+0x44/0x62
+  [<ffffffff810a2052>] warn_slowpath_common+0x82/0xc0
+  [<ffffffff810a20ec>] warn_slowpath_fmt+0x5c/0x80
+  [<ffffffff812831a1>] __mark_inode_dirty+0x261/0x350
+  [<ffffffff8126d109>] generic_update_time+0x79/0xd0
+  [<ffffffff8126d28d>] file_update_time+0xbd/0x110
+  [<ffffffff812e4bc8>] ext4_dax_fault+0x68/0x110
+  [<ffffffff811f816e>] __do_fault+0x4e/0xf0
+  [<ffffffff811fc2a7>] handle_mm_fault+0x5e7/0x1b50
+  [<ffffffff811fbd11>] ? handle_mm_fault+0x51/0x1b50
+  [<ffffffff810689c1>] __do_page_fault+0x191/0x3f0
+  [<ffffffff81068cef>] trace_do_page_fault+0x4f/0x120
+  [<ffffffff8106314a>] do_async_page_fault+0x1a/0xa0
+  [<ffffffff81902678>] async_page_fault+0x28/0x30
 
-# mkfs.xfs -f -d su=2m,sw=1 /dev/pmem0
-....
-# mount /dev/pmem0 /mnt/xfs
-# xfs_io -c "extsize 2m" /mnt/xfs
+Cc: Jan Kara <jack@suse.com>
+Cc: Ted Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+---
+ fs/ext4/file.c |    2 --
+ 1 file changed, 2 deletions(-)
 
-And now XFS will allocate strip unit (2MB) aligned extents of 2MB
-in all files created in that filesystem. Now all you have to care
-about is correctly aligning the base address of /dev/pmem0 to 2MB so
-that all the stripe units (and hence file extent allocations) are
-correctly aligned to the page tables.
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 113837e7ba98..76854dd6dd7d 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -214,7 +214,6 @@ static int ext4_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 
+ 	if (write) {
+ 		sb_start_pagefault(sb);
+-		file_update_time(vma->vm_file);
+ 		handle = ext4_journal_start_sb(sb, EXT4_HT_WRITE_PAGE,
+ 						EXT4_DATA_TRANS_BLOCKS(sb));
+ 	}
+@@ -245,7 +244,6 @@ static int ext4_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
+ 
+ 	if (write) {
+ 		sb_start_pagefault(sb);
+-		file_update_time(vma->vm_file);
+ 		handle = ext4_journal_start_sb(sb, EXT4_HT_WRITE_PAGE,
+ 				ext4_chunk_trans_blocks(inode,
+ 							PMD_SIZE / PAGE_SIZE));
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
