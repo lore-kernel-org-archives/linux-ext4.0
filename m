@@ -1,7 +1,7 @@
 From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 01/12] Ext4: Fix extended timestamp encoding and decoding
-Date: Fri, 20 Nov 2015 14:54:35 +0000
-Message-ID: <20151120145434.18930.89755.stgit@warthog.procyon.org.uk>
+Subject: [PATCH 04/12] statx: AFS: Return enhanced file attributes
+Date: Fri, 20 Nov 2015 14:55:10 +0000
+Message-ID: <20151120145510.18930.50221.stgit@warthog.procyon.org.uk>
 References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,272 +16,94 @@ In-Reply-To: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-The handling of extended timestamps in Ext4 is broken as can be seen in the
-output of the test program attached below:
+Return enhanced file attributes from the AFS filesystem.  This includes the
+following:
 
-time     extra   bad decode        good decode         bad encode  good encode
-======== =====   ================= =================   =========== ===========
-ffffffff     0 >  ffffffffffffffff  ffffffffffffffff > *ffffffff 3  ffffffff 0
-80000000     0 >  ffffffff80000000  ffffffff80000000 > *80000000 3  80000000 0
-00000000     0 >                 0                 0 >  00000000 0  00000000 0
-7fffffff     0 >          7fffffff          7fffffff >  7fffffff 0  7fffffff 0
-80000000     1 > *ffffffff80000000          80000000 > *80000000 0  80000000 1
-ffffffff     1 > *ffffffffffffffff          ffffffff > *ffffffff 0  ffffffff 1
-00000000     1 >         100000000         100000000 >  00000000 1  00000000 1
-7fffffff     1 >         17fffffff         17fffffff >  7fffffff 1  7fffffff 1
-80000000     2 > *ffffffff80000000         180000000 > *80000000 1  80000000 2
-ffffffff     2 > *ffffffffffffffff         1ffffffff > *ffffffff 1  ffffffff 2
-00000000     2 >         200000000         200000000 >  00000000 2  00000000 2
-7fffffff     2 >         27fffffff         27fffffff >  7fffffff 2  7fffffff 2
-80000000     3 > *ffffffff80000000         280000000 > *80000000 2  80000000 3
-ffffffff     3 > *ffffffffffffffff         2ffffffff > *ffffffff 2  ffffffff 3
-00000000     3 >         300000000         300000000 >  00000000 3  00000000 3
-7fffffff     3 >         37fffffff         37fffffff >  7fffffff 3  7fffffff 3
+ (1) The data version number as st_version, setting STATX_VERSION.
 
-The values marked with asterisks are wrong.
+ (2) STATX_INFO_AUTOMOUNT will be set on automount directories by virtue of
+     S_AUTOMOUNT being set on the inode.  These are referrals to other
+     volumes or other cells.
 
-The problem is that with a 64-bit time, in ext4_decode_extra_time() the
-epoch value is just OR'd with the sign-extended time - which, if negative,
-has all of the upper 32 bits set anyway.  We need to add the epoch instead
-of OR'ing it.  In ext4_encode_extra_time(), the reverse operation needs to
-take place as the 32-bit part of the number of seconds needs to be
-subtracted from the 64-bit value before the epoch is shifted down.
+ (3) STATX_INFO_AUTODIR on a directory that does cell lookup for
+     non-existent names and mounts them (typically mounted on /afs with -o
+     autocell).  The resulting directories are marked STATX_INFO_FABRICATED
+     as they do not actually exist in the mounted AFS directory.
 
-Since the epoch is presumably unsigned, this has the slightly strange
-effect of, for epochs > 0, putting the 0x80000000-0xffffffff range before
-the 0x00000000-0x7fffffff range.
+ (4) Files, directories and symlinks accessed over AFS are marked
+     STATX_INFO_REMOTE.  Local fake directories are marked
+     STATX_INFO_FABRICATED.
 
-This affects all kernels from v2.6.23-rc1 onwards.
+ (5) STATX_INFO_NONSYSTEM_OWNERSHIP is set as the UID and GID retrieved
+     from an AFS share may not be applicable on the system.
 
-The test program:
+STATX_ATIME, STATX_CTIME and STATX_BLOCKS are cleared as AFS does not
+support them.
 
-	#include <stdio.h>
+Example output:
 
-	#define EXT4_FITS_IN_INODE(x, y, z) 1
-	#define EXT4_EPOCH_BITS 2
-	#define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
-	#define EXT4_NSEC_MASK  (~0UL << EXT4_EPOCH_BITS)
-
-	#define le32_to_cpu(x) (x)
-	#define cpu_to_le32(x) (x)
-	typedef unsigned int __le32;
-	typedef unsigned int u32;
-	typedef signed int s32;
-	typedef unsigned long long __u64;
-	typedef signed long long s64;
-
-	struct timespec {
-		long long	tv_sec;			/* seconds */
-		long		tv_nsec;		/* nanoseconds */
-	};
-
-	struct ext4_inode_info {
-		struct timespec i_crtime;
-	};
-
-	struct ext4_inode {
-		__le32  i_crtime;       /* File Creation time */
-		__le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch) */
-	};
-
-	/* Incorrect implementation */
-	static inline void ext4_decode_extra_time_bad(struct timespec *time, __le32 extra)
-	{
-	       if (sizeof(time->tv_sec) > 4)
-		       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
-				       << 32;
-	       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
-	}
-
-	static inline __le32 ext4_encode_extra_time_bad(struct timespec *time)
-	{
-	       return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
-				   (time->tv_sec >> 32) & EXT4_EPOCH_MASK : 0) |
-				  ((time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK));
-	}
-
-	/* Fixed implementation */
-	static inline void ext4_decode_extra_time_good(struct timespec *time, __le32 _extra)
-	{
-		u32 extra = le32_to_cpu(_extra);
-		u32 epoch = extra & EXT4_EPOCH_MASK;
-
-		time->tv_sec = (s32)time->tv_sec + ((s64)epoch  << 32);
-		time->tv_nsec = (extra & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
-	}
-
-	static inline __le32 ext4_encode_extra_time_good(struct timespec *time)
-	{
-		u32 extra;
-		s64 epoch = time->tv_sec - (s32)time->tv_sec;
-
-		extra = (epoch >> 32) & EXT4_EPOCH_MASK;
-		extra |= (time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK;
-		return cpu_to_le32(extra);
-	}
-
-	#define EXT4_INODE_GET_XTIME_BAD(xtime, inode, raw_inode)		\
-	do {									       \
-		(inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
-		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
-			ext4_decode_extra_time_bad(&(inode)->xtime,		\
-						   raw_inode->xtime ## _extra);	\
-		else								       \
-			(inode)->xtime.tv_nsec = 0;				       \
-	} while (0)
-
-	#define EXT4_INODE_SET_XTIME_BAD(xtime, inode, raw_inode)		\
-	do {									       \
-		(raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec);	       \
-		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
-			(raw_inode)->xtime ## _extra =				       \
-				ext4_encode_extra_time_bad(&(inode)->xtime);	\
-	} while (0)
-
-	#define EXT4_INODE_GET_XTIME_GOOD(xtime, inode, raw_inode)		\
-	do {									       \
-		(inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
-		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
-			ext4_decode_extra_time_good(&(inode)->xtime,			       \
-					       raw_inode->xtime ## _extra);	\
-		else								       \
-			(inode)->xtime.tv_nsec = 0;				       \
-	} while (0)
-
-	#define EXT4_INODE_SET_XTIME_GOOD(xtime, inode, raw_inode)		\
-	do {									       \
-		(raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec);	       \
-		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
-			(raw_inode)->xtime ## _extra =				       \
-				ext4_encode_extra_time_good(&(inode)->xtime);	\
-	} while (0)
-
-	static const struct test {
-		unsigned crtime;
-		unsigned extra;
-		long long sec;
-		int nsec;
-	} tests[] = {
-		// crtime	extra		tv_sec			tv_nsec
-		0xffffffff,	0x00000000,	0xffffffffffffffff,	0,
-		0x80000000,	0x00000000,	0xffffffff80000000,	0,
-		0x00000000,	0x00000000,	0x0000000000000000,	0,
-		0x7fffffff,	0x00000000,	0x000000007fffffff,	0,
-		0x80000000,	0x00000001,	0x0000000080000000,	0,
-		0xffffffff,	0x00000001,	0x00000000ffffffff,	0,
-		0x00000000,	0x00000001,	0x0000000100000000,	0,
-		0x7fffffff,	0x00000001,	0x000000017fffffff,	0,
-		0x80000000,	0x00000002,	0x0000000180000000,	0,
-		0xffffffff,	0x00000002,	0x00000001ffffffff,	0,
-		0x00000000,	0x00000002,	0x0000000200000000,	0,
-		0x7fffffff,	0x00000002,	0x000000027fffffff,	0,
-		0x80000000,	0x00000003,	0x0000000280000000,	0,
-		0xffffffff,	0x00000003,	0x00000002ffffffff,	0,
-		0x00000000,	0x00000003,	0x0000000300000000,	0,
-		0x7fffffff,	0x00000003,	0x000000037fffffff,	0,
-	};
-
-	int main()
-	{
-		struct ext4_inode_info ii_bad, ii_good;
-		struct ext4_inode raw, *praw = &raw;
-		struct ext4_inode raw_bad, *praw_bad = &raw_bad;
-		struct ext4_inode raw_good, *praw_good = &raw_good;
-		const struct test *t;
-		int i, ret = 0;
-
-		printf("time     extra   bad decode        good decode         bad encode  good encode\n");
-		printf("======== =====   ================= =================   =========== ===========\n");
-		for (i = 0; i < sizeof(tests) / sizeof(t[0]); i++) {
-			t = &tests[i];
-			raw.i_crtime = t->crtime;
-			raw.i_crtime_extra = t->extra;
-			printf("%08x %5d > ", t->crtime, t->extra);
-
-			EXT4_INODE_GET_XTIME_BAD(i_crtime, &ii_bad, praw);
-			EXT4_INODE_GET_XTIME_GOOD(i_crtime, &ii_good, praw);
-			if (ii_bad.i_crtime.tv_sec != t->sec ||
-			    ii_bad.i_crtime.tv_nsec != t->nsec)
-				printf("*");
-			else
-				printf(" ");
-			printf("%16llx", ii_bad.i_crtime.tv_sec);
-			printf(" ");
-			if (ii_good.i_crtime.tv_sec != t->sec ||
-			    ii_good.i_crtime.tv_nsec != t->nsec) {
-				printf("*");
-				ret = 1;
-			} else {
-				printf(" ");
-			}
-			printf("%16llx", ii_good.i_crtime.tv_sec);
-
-			EXT4_INODE_SET_XTIME_BAD(i_crtime, &ii_good, praw_bad);
-			EXT4_INODE_SET_XTIME_GOOD(i_crtime, &ii_good, praw_good);
-
-			printf(" > ");
-			if (raw_bad.i_crtime != raw.i_crtime ||
-			    raw_bad.i_crtime_extra != raw.i_crtime_extra)
-				printf("*");
-			else
-				printf(" ");
-			printf("%08llx %d", raw_bad.i_crtime, raw_bad.i_crtime_extra);
-			printf(" ");
-
-			if (raw_good.i_crtime != raw.i_crtime ||
-			    raw_good.i_crtime_extra != raw.i_crtime_extra) {
-				printf("*");
-				ret = 1;
-			} else {
-				printf(" ");
-			}
-			printf("%08llx %d", raw_good.i_crtime, raw_good.i_crtime_extra);
-			printf("\n");
-		}
-
-		return ret;
-	}
+	[root@andromeda ~]# ./samples/statx/test-statx /afs
+	statx(/afs) = 0
+	results=7ef
+	  Size: 2048            Blocks: 0          IO Block: 4096    directory
+	Device: 00:25           Inode: 1           Links: 2
+	Access: (0777/drwxrwxrwx)  Uid:     0   Gid:     0
+	Access: 2006-05-07 00:21:15.000000000+0100
+	Modify: 2006-05-07 00:21:15.000000000+0100
+	Change: 2006-05-07 00:21:15.000000000+0100
+	IO-blocksize: blksize=4096
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/ext4/ext4.h |   22 +++++++++++++---------
- 1 file changed, 13 insertions(+), 9 deletions(-)
+ fs/afs/inode.c |   23 ++++++++++++++++++-----
+ 1 file changed, 18 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index fd1f28be5296..31efcd78bf51 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -723,19 +723,23 @@ struct move_extent {
- 	<= (EXT4_GOOD_OLD_INODE_SIZE +			\
- 	    (einode)->i_extra_isize))			\
- 
--static inline __le32 ext4_encode_extra_time(struct timespec *time)
-+static inline void ext4_decode_extra_time(struct timespec *time, __le32 _extra)
+diff --git a/fs/afs/inode.c b/fs/afs/inode.c
+index e06f5a23352a..dcf0338ea5cc 100644
+--- a/fs/afs/inode.c
++++ b/fs/afs/inode.c
+@@ -71,9 +71,9 @@ static int afs_inode_map_status(struct afs_vnode *vnode, struct key *key)
+ 	inode->i_uid		= vnode->status.owner;
+ 	inode->i_gid		= GLOBAL_ROOT_GID;
+ 	inode->i_size		= vnode->status.size;
+-	inode->i_ctime.tv_sec	= vnode->status.mtime_server;
+-	inode->i_ctime.tv_nsec	= 0;
+-	inode->i_atime		= inode->i_mtime = inode->i_ctime;
++	inode->i_mtime.tv_sec	= vnode->status.mtime_server;
++	inode->i_mtime.tv_nsec	= 0;
++	inode->i_atime		= inode->i_ctime = inode->i_mtime;
+ 	inode->i_blocks		= 0;
+ 	inode->i_generation	= vnode->fid.unique;
+ 	inode->i_version	= vnode->status.data_version;
+@@ -374,8 +374,7 @@ error_unlock:
+ /*
+  * read the attributes of an inode
+  */
+-int afs_getattr(struct vfsmount *mnt, struct dentry *dentry,
+-		      struct kstat *stat)
++int afs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
  {
--       return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
--			   (time->tv_sec >> 32) & EXT4_EPOCH_MASK : 0) |
--                          ((time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK));
-+	u32 extra = le32_to_cpu(_extra);
-+	u32 epoch = extra & EXT4_EPOCH_MASK;
+ 	struct inode *inode;
+ 
+@@ -384,6 +383,20 @@ int afs_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ 	_enter("{ ino=%lu v=%u }", inode->i_ino, inode->i_generation);
+ 
+ 	generic_fillattr(inode, stat);
 +
-+	time->tv_sec = (s32)time->tv_sec + ((s64)epoch  << 32);
-+	time->tv_nsec = (extra & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
++	stat->result_mask &= ~(STATX_ATIME | STATX_CTIME | STATX_BLOCKS);
++	stat->result_mask |= STATX_VERSION;
++	stat->version = inode->i_version;
++
++	if (test_bit(AFS_VNODE_AUTOCELL, &AFS_FS_I(inode)->flags))
++		stat->information |= STATX_INFO_AUTODIR;
++
++	if (test_bit(AFS_VNODE_PSEUDODIR, &AFS_FS_I(inode)->flags))
++		stat->information |= STATX_INFO_FABRICATED;
++	else
++		stat->information |= STATX_INFO_REMOTE;
++
++	stat->information |= STATX_INFO_NONSYSTEM_OWNERSHIP;
+ 	return 0;
  }
  
--static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
-+static inline __le32 ext4_encode_extra_time(struct timespec *time)
- {
--       if (sizeof(time->tv_sec) > 4)
--	       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
--			       << 32;
--       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
-+	u32 extra;
-+	s64 epoch = time->tv_sec - (s32)time->tv_sec;
-+
-+	extra = (epoch >> 32) & EXT4_EPOCH_MASK;
-+	extra |= (time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK;
-+	return cpu_to_le32(extra);
- }
- 
- #define EXT4_INODE_SET_XTIME(xtime, inode, raw_inode)			       \
