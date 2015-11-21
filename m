@@ -1,47 +1,62 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] Remove ext4 xattr mbcache to fix CPU lockup when using
- ceph #107301
-Date: Fri, 20 Nov 2015 23:22:08 -0500
-Message-ID: <20151121042208.GC350@thunk.org>
-References: <1448012628.1905.253.camel@guerby.net>
- <DD9C7131-404D-4873-A240-349F4E34E2BD@dilger.ca>
+Subject: Re: fuse2fs
+Date: Sat, 21 Nov 2015 09:10:13 -0500
+Message-ID: <20151121141013.GA4741@thunk.org>
+References: <EA601C64-3B42-4FA7-A572-6BD07443AEE1@lovstrand.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Laurent GUERBY <laurent@guerby.net>, Jan Kara <jack@suse.cz>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"sage@redhat.com" <sage@redhat.com>,
-	Abaakouk Mehdi <sileht@sileht.net>,
-	Loic Dachary <loic@dachary.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, darrick.wong@oracle.com
+To: Lennart =?iso-8859-1?Q?L=F6vstrand?= <lennart@lovstrand.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:44061 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:44360 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751666AbbKUEWa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Nov 2015 23:22:30 -0500
+	id S1760877AbbKUOkl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 21 Nov 2015 09:40:41 -0500
 Content-Disposition: inline
-In-Reply-To: <DD9C7131-404D-4873-A240-349F4E34E2BD@dilger.ca>
+In-Reply-To: <EA601C64-3B42-4FA7-A572-6BD07443AEE1@lovstrand.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 20, 2015 at 06:08:15PM -0700, Andreas Dilger wrote:
+Hi Lennart,
+
+Apologies for the delay in getting back to you.  Things have been very
+busy this past month, and your e-mail slipped between the cracks.
+
+> I got it to compile under OS X 10.11 with a few minor tweaks, but
+> when testing it, I noticed pretty quickly that I couldn't create new
+> files. I tracked it down to the UID & GID fields not being set on
+> new inodes. This caused them to be owned by root in op_create, which
+> in turn made its call to __op_open fail since it couldn't open the
+> file as the current user, which in turn made op_create fail (even
+> though the file actually was created). It seems like such a simple
+> and obvious error that I'm surprised it's there and it makes me
+> wonder if this code really has been used in read/write mode to any
+> large extent.
 > 
-> I'm definitely not in favor of deleting mbcache entirely, just having the
-> mount option to disable it in cases where it is known not to be useful,
-> such as Ceph or Lustre backing stores that never have shared xattrs.
-> 
-> In some cases mbcache can be useful, since it allows sharing xattrs
-> between inodes. 
-> 
-> I thought you would update our patch to add the mount option to disable
-> mbcache?
+> Could you advise?  I notice that it's marked with "Copyright
+> Oracle", so I'm assuming it was contributed by someone else and not
+> actually your own code.
 
-And better yet would be if there was a blacklist of Lustre and Ceph
-xattr type/keys that will never have shared attrs, so that mbcache is
-not used for those xattrs automatically, *without* using a mount
-option.  Can someone at least start help creating that list?
+Yes, if you had checked the git logs, you would have seen that Darrick
+contributed the code.
 
-But yeah, a complete deletion of mbcache is a non-starter.
+It looks like op_create is missing a call to set the inode uid/gid
+from the fuse_context's uid/gid fields, but I'm not an expert on FUSE;
+Darrick should be able to comment more intelligently on your bug
+report.
 
-Regards,
+> BTW, if I were to create a decent .fs package for OS X, would you be
+> interested in making it part of the e2fsprogs source, or do you
+> think it would be better to make it a separate distribution?  What
+> kind of attribution would you like me to put into it in that case?
+> My intent would be to distribute it freely & openly, of course.
 
-						- Ted
+I'm not sure what a ".fs package" is.  Is this some kind of spec file
+ala the RPM spec file or the debian dpkg files that are used to
+build a package?  If so, sure, we could put something like that in the
+contrib directory along with directions of how to build a new OSX
+package from source.
+
+Cheers,
+
+					- Ted
