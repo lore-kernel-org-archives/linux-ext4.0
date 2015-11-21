@@ -1,186 +1,222 @@
-From: Casey Schaufler <casey@schaufler-ca.com>
-Subject: Re: [RFC][PATCH 00/12] Enhanced file stat system call
-Date: Fri, 20 Nov 2015 08:50:22 -0800
-Message-ID: <564F4F4E.8060603@schaufler-ca.com>
-References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH 1/2] test-scripts: test migration scripts
+Date: Fri, 20 Nov 2015 16:50:08 -0800
+Message-ID: <20151121005008.20398.37255.stgit@birch.djwong.org>
+References: <20151121005001.20398.92856.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: David Howells <dhowells@redhat.com>, arnd@arndb.de
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: fstests@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	tao.peng@primarydata.com, linux-ext4@vger.kernel.org,
+	Anna.Schumaker@netapp.com, linux-btrfs@vger.kernel.org
+To: david@fromorbit.com, darrick.wong@oracle.com
+Return-path: <fstests-owner@vger.kernel.org>
+In-Reply-To: <20151121005001.20398.92856.stgit@birch.djwong.org>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Add two scripts: "nextid" finds the next available test ID number in a
+group, and "mvtest" relocates a test, fixes the golden output, and
+moves the group entry for that test.
+
+v2: sorting group files should preserve group order; nextid should use
+the same algorithm as new; move both tools to tools/.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ tools/mvtest     |   55 +++++++++++++++++++++++++++
+ tools/nextid     |    1 
+ tools/sort-group |  112 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 168 insertions(+)
+ create mode 100755 tools/mvtest
+ create mode 120000 tools/nextid
+ create mode 100755 tools/sort-group
 
 
-On 11/20/2015 6:54 AM, David Howells wrote:
-> Implement new system calls to provide enhanced file stats and enhanced
-> filesystem stats.  The patches can be found here:
->
-> 	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=xstat
->
->
-> ===========
-> DESCRIPTION
-> ===========
->
-> The third patch provides this new system call:
->
-> 	long ret = statx(int dfd,
-> 			 const char *filename,
-> 			 unsigned atflag,
-> 			 unsigned mask,
-> 			 struct statx *buffer);
->
-> This is an enhanced file stat function that provides a number of useful
-> features, in summary:
->
->   (1) More information: creation time, data version number,
->       flags/attributes.  A subset of these is available through a number of
->       filesystems (such as CIFS, NFS, AFS, Ext4 and BTRFS).
->
->   (2) Lightweight stat (AT_NO_ATTR_SYNC): Ask for just those details of
->       interest, and allow a network fs to approximate anything not of
->       interest, without going to the server.
->
->   (3) Heavyweight stat (AT_FORCE_ATTR_SYNC): Force a network fs to flush
->       buffers and go to the server, even if it thinks its cached attributes
->       are up to date.
->
->   (4) Allow the filesystem to indicate what it can/cannot provide: A
->       filesystem can now say it doesn't support a standard stat feature if
->       that isn't available.
->
->   (5) Make the fields a consistent size on all arches, and make them large.
->
->   (6) Can be extended by using more request flags and using up the padding
->       space in the statx struct.
-
-How about relevant xattrs? SELinux context, ACL, that sort of thing.
-The fact that these are optional should be taken care of by (4).
-
->
-> Note that no lstat() equivalent is required as that can be implemented
-> through statx() with atflag == 0.  There is also no fstat() equivalent as
-> that can be implemented through statx() with filename == NULL and the
-> relevant fd passed as dfd.
->
->
-> The seventh patch provides another new system call:
->
-> 	long ret = fsinfo(int dfd,
-> 			  const char *filename,
-> 			  unsigned atflag,
-> 			  unsigned request,
-> 			  void *buffer);
->
-> This is an enhanced filesystem stat and information retrieval function that
-> provides more information, in summary:
->
->   (1) All the information provided by statfs() and more.  The fields are
->       made large.
->
->   (2) Provides information about timestamp range and resolution to
->       complement statx().
->
->   (3) Provides information about IOC flags supported in statx()'s return.
->
->   (4) Provides volume binary IDs and UUIDs.
->
->   (5) Provides the filesystem name according to the kernel as a string
->       (eg. "ext4" or "nfs3") in addition to the magic number.
->
->   (6) Provides information obtained from network filesystems, such as volume
->       and domain names.
->
->   (7) Has lots of spare space that can be used for future extenstions and a
->       bit mask indicating what was provided.
->
-> Note that I've added a 'request' identifier.  This is to select the set of
-> data to be returned.  The idea is that 'buffer' points to a fixed-size
-> struct selected by request.  Currently only 0 is available and this refers
-> to 'struct fsinfo'.  However, I could split up the buffer into say 3:
->
->   (0) statfs-type information
->
->   (1) Timestamp and IOC flags info.
->
->   (2) Network fs strings.
->
-> However, some of this might be better retrieved through getxattr().
->
->
-> =======
-> TESTING
-> =======
->
-> Test programs are added into samples/statx/ by the appropriate patches.
->
-> David
-> ---
-> David Howells (12):
->        Ext4: Fix extended timestamp encoding and decoding
->        statx: Provide IOC flags for Windows fs attributes
->        statx: Add a system call to make enhanced file info available
->        statx: AFS: Return enhanced file attributes
->        statx: Ext4: Return enhanced file attributes
->        statx: NFS: Return enhanced file attributes
->        statx: CIFS: Return enhanced attributes
->        fsinfo: Add a system call to make enhanced filesystem info available
->        fsinfo: Ext4: Return information through the filesystem info syscall
->        fsinfo: AFS: Return information through the filesystem info syscall
->        fsinfo: NFS: Return information through the filesystem info syscall
->        fsinfo: CIFS: Return information through the filesystem info syscall
->
->
->   arch/x86/entry/syscalls/syscall_32.tbl |    2
->   arch/x86/entry/syscalls/syscall_64.tbl |    2
->   fs/afs/inode.c                         |   23 ++
->   fs/afs/super.c                         |   39 ++++
->   fs/cifs/cifsfs.c                       |   25 +++
->   fs/cifs/cifsfs.h                       |    4
->   fs/cifs/cifsglob.h                     |    8 +
->   fs/cifs/dir.c                          |    2
->   fs/cifs/inode.c                        |  124 ++++++++++---
->   fs/cifs/netmisc.c                      |    4
->   fs/exportfs/expfs.c                    |    4
->   fs/ext4/ext4.h                         |   24 ++-
->   fs/ext4/file.c                         |    2
->   fs/ext4/inode.c                        |   31 +++
->   fs/ext4/namei.c                        |    2
->   fs/ext4/super.c                        |   39 ++++
->   fs/ext4/symlink.c                      |    2
->   fs/nfs/inode.c                         |   45 ++++-
->   fs/nfs/internal.h                      |    1
->   fs/nfs/nfs4super.c                     |    1
->   fs/nfs/super.c                         |   58 ++++++
->   fs/ntfs/time.h                         |    2
->   fs/stat.c                              |  305 +++++++++++++++++++++++++++++---
->   fs/statfs.c                            |  218 +++++++++++++++++++++++
->   include/linux/fs.h                     |    7 +
->   include/linux/stat.h                   |   14 +
->   include/linux/syscalls.h               |    6 +
->   include/linux/time64.h                 |    2
->   include/uapi/linux/fcntl.h             |    2
->   include/uapi/linux/fs.h                |    7 +
->   include/uapi/linux/stat.h              |  185 +++++++++++++++++++
->   samples/Makefile                       |    3
->   samples/statx/Makefile                 |   13 +
->   samples/statx/test-fsinfo.c            |  179 +++++++++++++++++++
->   samples/statx/test-statx.c             |  273 +++++++++++++++++++++++++++++
->   35 files changed, 1558 insertions(+), 100 deletions(-)
->   create mode 100644 samples/statx/Makefile
->   create mode 100644 samples/statx/test-fsinfo.c
->   create mode 100644 samples/statx/test-statx.c
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
->
+diff --git a/tools/mvtest b/tools/mvtest
+new file mode 100755
+index 0000000..af601d6
+--- /dev/null
++++ b/tools/mvtest
+@@ -0,0 +1,55 @@
++#!/bin/sh
++
++# Renumber a test
++dir="$(dirname "$0")"
++
++if [ -z "$1" ] || [ "$1" = "--help" ]; then
++	echo "Usage: $0 path_to_test new_path_to_test"
++	exit 1
++fi
++
++src="$1"
++dest="$2"
++
++die() {
++	echo "$@"
++	exit 1
++}
++
++append() {
++	out="$1"
++	shift
++	echo "$@" >> "${out}"
++}
++
++test "${src}" != "${dest}" || die "Test \"${src}\" is the same as dest."
++test -e "tests/${src}" || die "Test \"${src}\" does not exist."
++test ! -e "tests/${dest}" || die "Test \"${src}\" already exists."
++
++sid="$(basename "${src}")"
++did="$(basename "${dest}")"
++
++sgroup="$(basename "$(dirname "tests/${src}")")"
++dgroup="$(basename "$(dirname "tests/${dest}")")"
++
++sgroupfile="tests/${sgroup}/group"
++dgroupfile="tests/${sgroup}/group"
++
++git mv "tests/${src}" "tests/${dest}"
++git mv "tests/${src}.out" "tests/${dest}.out"
++sed -e "s/^# FS QA Test No. ${sid}$/# FS QA Test No. ${did}/g" -i "tests/${dest}"
++sed -e "s/^QA output created by ${sid}$/QA output created by ${did}/g" -i "tests/${dest}.out"
++sed -e "s/test-${sid}/test-${did}/g" -i "tests/${dest}.out"
++
++grpline="$(grep "^${sid} " "${sgroupfile}")"
++newgrpline="$(echo "${grpline}" | sed -e "s/^${sid} /${did} /g")"
++
++sed -e "/^${sid}.*$/d" -i "${sgroupfile}"
++cp "${dgroupfile}" "${dgroupfile}.new"
++append "${dgroupfile}.new" "${newgrpline}"
++"${dir}/sort-group.py" "${dgroupfile}.new"
++mv "${dgroupfile}.new" "${dgroupfile}"
++
++echo "Moved \"${src}\" to \"${dest}\"."
++
++exit 0
+diff --git a/tools/nextid b/tools/nextid
+new file mode 120000
+index 0000000..5c31d60
+--- /dev/null
++++ b/tools/nextid
+@@ -0,0 +1 @@
++sort-group
+\ No newline at end of file
+diff --git a/tools/sort-group b/tools/sort-group
+new file mode 100755
+index 0000000..84944ed
+--- /dev/null
++++ b/tools/sort-group
+@@ -0,0 +1,112 @@
++#!/usr/bin/env python
++import sys
++
++# Sort a group list, carefully preserving comments.
++
++def xfstest_key(key):
++	'''Extract the numeric part of a test name if possible.'''
++	k = 0
++
++	assert type(key) == str
++
++	# No test number at all...
++	if not key[0].isdigit():
++		return key
++
++	# ...otherwise extract as much number as we can.
++	for digit in key:
++		if digit.isdigit():
++			k = k * 10 + int(digit)
++		else:
++			return k
++	return k
++
++def read_group(fd):
++	'''Read the group list, carefully attaching comments to the next test.'''
++	tests = {}
++	comments = None
++
++	for line in fd:
++		sline = line.strip()
++		tokens = sline.split()
++		if len(tokens) == 0 or tokens[0] == '#':
++			if comments == None:
++				comments = []
++			comments.append(sline)
++		else:
++			tests[tokens[0]] = (comments, tokens[1:])
++			comments = None
++	return tests
++
++def sort_keys(keys):
++	'''Separate keys into integer and non-integer tests.'''
++	int_keys = []
++	int_xkeys = []
++	str_keys = []
++
++	# Sort keys into integer(ish) tests and other
++	for key in keys:
++		xkey = xfstest_key(key)
++		if type(xkey) == int:
++			int_keys.append(key)
++			int_xkeys.append(xkey)
++		else:
++			str_keys.append(key)
++	return (int_keys, int_xkeys, str_keys)
++
++def write_sorted(tests, fd):
++	def dump_xkey(xkey):
++		(comments, tokens) = tests[key]
++		if comments:
++			for c in comments:
++				fd.write('%s\n' % c)
++		fd.write('%s %s\n' % (key, ' '.join(tokens)))
++	'''Print tests (and comments) in number order.'''
++
++	(int_keys, ignored, str_keys) = sort_keys(tests.keys())
++	for key in sorted(int_keys, key = xfstest_key):
++		dump_xkey(key)
++	for key in sorted(str_keys):
++		dump_xkey(key)
++
++def sort_main():
++	if '--help' in sys.argv[1:]:
++		print('Usage: %s groupfiles' % sys.argv[0])
++		sys.exit(0)
++
++	for arg in sys.argv[1:]:
++		with open(arg, 'r+') as fd:
++			x = read_group(fd)
++			fd.seek(0, 0)
++			write_sorted(x, fd)
++
++def nextid_main():
++	if '--help' in sys.argv[1:]:
++		print('Usage: %s group[/startid] ' % sys.argv[0])
++		sys.exit(0)
++
++	if len(sys.argv) != 2:
++		print('Specify exactly one group name.')
++		sys.exit(1)
++
++	c = sys.argv[1].split('/')
++	if len(c) > 1:
++		startid = int(c[1])
++	else:
++		startid = 1
++	group = c[0]
++
++	with open('tests/%s/group' % group, 'r') as fd:
++		x = read_group(fd)
++		xkeys = {int(x) for x in sort_keys(x.keys())[1]}
++
++		xid = startid
++		while xid in xkeys:
++			xid += 1
++		print('%s/%d' % (group, xid))
++
++if __name__ == '__main__':
++	if 'nextid' in sys.argv[0]:
++		nextid_main()
++	else:
++		sort_main()
