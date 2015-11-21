@@ -1,62 +1,41 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: fuse2fs
-Date: Sat, 21 Nov 2015 09:10:13 -0500
-Message-ID: <20151121141013.GA4741@thunk.org>
-References: <EA601C64-3B42-4FA7-A572-6BD07443AEE1@lovstrand.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 2/2] generic/15[78]: fix error messages in the golden
+ output
+Date: Sat, 21 Nov 2015 10:06:44 -0800
+Message-ID: <20151121180644.GA23916@infradead.org>
+References: <20151121005001.20398.92856.stgit@birch.djwong.org>
+ <20151121005014.20398.22316.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, darrick.wong@oracle.com
-To: Lennart =?iso-8859-1?Q?L=F6vstrand?= <lennart@lovstrand.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:44360 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760877AbbKUOkl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 21 Nov 2015 09:40:41 -0500
+Cc: david@fromorbit.com, fstests@vger.kernel.org, xfs@oss.sgi.com,
+	hch@infradead.org, tao.peng@primarydata.com,
+	linux-ext4@vger.kernel.org, Anna.Schumaker@netapp.com,
+	linux-btrfs@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <EA601C64-3B42-4FA7-A572-6BD07443AEE1@lovstrand.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20151121005014.20398.22316.stgit@birch.djwong.org>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Lennart,
+> --- a/tests/generic/158.out
+> +++ b/tests/generic/158.out
+>  Try to dedupe a device
+> -XFS_IOC_FILE_EXTENT_SAME: Permission denied
+> +XFS_IOC_FILE_EXTENT_SAME: Invalid argument
+>  Try to dedupe to a dir
+> -/mnt/test-158/dir1: Is a directory
+> +TEST_DIR/test-158/dir1: Is a directory
+>  Try to dedupe to a device
+> -dedupe: Permission denied
+> +dedupe: Operation not supported
+>  Try to dedupe to a fifo
+> -dedupe: Permission denied
+> +dedupe: Operation not supported
 
-Apologies for the delay in getting back to you.  Things have been very
-busy this past month, and your e-mail slipped between the cracks.
+Shouldn't these be Invalid argument just like the
+to a device case above or the clone case?
 
-> I got it to compile under OS X 10.11 with a few minor tweaks, but
-> when testing it, I noticed pretty quickly that I couldn't create new
-> files. I tracked it down to the UID & GID fields not being set on
-> new inodes. This caused them to be owned by root in op_create, which
-> in turn made its call to __op_open fail since it couldn't open the
-> file as the current user, which in turn made op_create fail (even
-> though the file actually was created). It seems like such a simple
-> and obvious error that I'm surprised it's there and it makes me
-> wonder if this code really has been used in read/write mode to any
-> large extent.
-> 
-> Could you advise?  I notice that it's marked with "Copyright
-> Oracle", so I'm assuming it was contributed by someone else and not
-> actually your own code.
+Otherwise looks good,
 
-Yes, if you had checked the git logs, you would have seen that Darrick
-contributed the code.
-
-It looks like op_create is missing a call to set the inode uid/gid
-from the fuse_context's uid/gid fields, but I'm not an expert on FUSE;
-Darrick should be able to comment more intelligently on your bug
-report.
-
-> BTW, if I were to create a decent .fs package for OS X, would you be
-> interested in making it part of the e2fsprogs source, or do you
-> think it would be better to make it a separate distribution?  What
-> kind of attribution would you like me to put into it in that case?
-> My intent would be to distribute it freely & openly, of course.
-
-I'm not sure what a ".fs package" is.  Is this some kind of spec file
-ala the RPM spec file or the debian dpkg files that are used to
-build a package?  If so, sure, we could put something like that in the
-contrib directory along with directions of how to build a new OSX
-package from source.
-
-Cheers,
-
-					- Ted
+Reviewed-by: Christoph Hellwig <hch@lst.de>
