@@ -1,98 +1,137 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [v15 0/4] ext4: add project quota support
-Date: Mon, 23 Nov 2015 10:25:23 +0100
-Message-ID: <20151123092523.GB23418@quack.suse.cz>
-References: <1442146833-13652-1-git-send-email-lixi@ddn.com>
- <43B1BB97-8D53-4D93-9B57-B5E2048F7E7A@dilger.ca>
- <CAPTn0cBp4d09u9XzQm2cXzd6kcE0+FDRX0b_H=xJBZT-i5eKcw@mail.gmail.com>
- <7360A48E-8576-49DB-878B-DFC2EFC83BC4@ddn.com>
- <20151108212830.GL19199@dastard>
- <81500210-A31E-45CE-A3AE-9F5D0A785954@ddn.com>
- <20151119214727.GC19199@dastard>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: memory leak: data=journal and {collapse,insert,zero}_range
+Date: Mon, 23 Nov 2015 14:53:42 +0100
+Message-ID: <20151123135342.GJ23418@quack.suse.cz>
+References: <009301d10b2f$b410e6b0$1c32b410$@samsung.com>
+ <20151020155443.GM2972@thunk.org>
+ <011f01d10be5$099d38d0$1cd7aa70$@samsung.com>
+ <20151021145214.GC2165@thunk.org>
+ <004301d11aae$72683a40$5738aec0$@samsung.com>
+ <20151110144946.GB3156@quack.suse.cz>
+ <005901d120f3$1d880410$58980c30$@samsung.com>
+ <20151118213651.GI6097@quack.suse.cz>
+ <20151119094240.GB18581@quack.suse.cz>
+ <000001d1234c$c37079b0$4a516d10$@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Shuichi Ihara <sihara-LfVdkaOWEx8@public.gmane.org>, Li Xi <pkuelelixi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
-	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
-	Al Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	=?utf-8?B?0JTQvNC40YLRgNC40Lkg0JzQvtC90LDRhdC+0LI=?=
-	<dmonakhov-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org>, Shuichi Ihara <ihashu-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Type: multipart/mixed; boundary="AqsLC8rIMeq19msA"
+Cc: 'Jan Kara' <jack@suse.cz>, 'Theodore Ts'o' <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+To: Namjae Jeon <namjae.jeon@samsung.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:35929 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751728AbbKWNxq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Nov 2015 08:53:46 -0500
 Content-Disposition: inline
-In-Reply-To: <20151119214727.GC19199@dastard>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <000001d1234c$c37079b0$4a516d10$@samsung.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 20-11-15 08:47:27, Dave Chinner wrote:
-> On Wed, Nov 18, 2015 at 02:14:32PM +0000, Shuichi Ihara wrote:
-> > 
-> > 11/9/15, 6:28 AM , "Dave Chinner" <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org> wrote:
-> > 
-> > >On Thu, Nov 05, 2015 at 03:13:10PM +0000, Shuichi Ihara wrote:
-> > >> Hello Ted, Andreas,
-> > >> 
-> > >> Shilong posted an email here a week ago below.
-> > >> http://lists.openwall.net/linux-ext4/2015/10/30/2
-> > >> 
-> > >> we identified 10 project quota related xfstest and ported them into ext4/xxx.
-> > >> test number are 304, 305, 299, 244, 196, 134, 108, 107, 106, 050 in xfs.
-> > >> 
-> > >> 
-> > >> We ported 9/10 tests into ext4/xxx
-> > >> ext4/050 ext4/106 ext4/107 ext4/108 ext4/196 ext4/244 ext4/299 ext4/400 ext4/401
-> > >
-> > >Please make them generic tests - the ext4 project quota
-> > >functioanlity should work with those tests being completely
-> > >unchanged except for a "_requires_project_quota()" function...
-> > 
-> > Right now, we enhanced quotatool to support project quota and above project quota tests in ext4 uses that interface.
-> > xfs uses own interface xfs_xx for project quota tests in xfs.
-> > what interface are you looking at if we move ext4's project quota tests into generic tests?
+
+--AqsLC8rIMeq19msA
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+On Fri 20-11-15 13:34:36, Namjae Jeon wrote:
+> Actually, I can quickly create memleak with simple testcase like:
+> while(1000)
+> {
+> Random seek(max 500M) -> write 1M -> fsync ->truncate(random size)
+> }
 > 
-> The project quota support in the generic quota tool should work XFS
-> as well as ext4. If it doesn't, then it's not a generic tool, right?
-> The whole point of having ext4 use the same userspace API as XFS is
-> so that all quotas can be managed with the one tool. Essentially, if
-> ext4 project quotas cannot be controlled by xfs_quota, then the ext4
-> code is not compatible with XFS and hence still needs work.
+> As there is significant memleak in this situation also, I started focusing
+> on this simple testcase only. When use this testcase, I never saw EBUSY path
+> in jbd2_journal_invalidatepage() -> journal_unmap_buffer().
 > 
-> FWIW, if ext4 has implemented the kernel project quota interfaces
-> correctly, then it should not matter whether we use xfs_quota or the
-> generic quotatool because the kernel will translate the filesystem
-> information to whatever format the quota was requested in...
+> On the other hand(), for memleak pages jbd2_journal_invalidatepage() ->
+> journal_unmap_buffer() was almost bailing out every time from
+>                 if (!buffer_dirty(bh)) {
+>                         /* bdflush has written it.  We can drop it now */
+>                         goto zap_buffer;
+>                 }
 > 
-> So, you should be able to simply use the xfs_quota tool in the tests
-> you make generic without needing any significant modification to the
-> tests to run them on ext4. Yes, that may mean you need to send a 5
-> line patch to make xfs_quota run on ext4, but that's trivial
-> compared to duplicating >10 tests and then having to maintain them
-> forever...
+> As per debugging, NULL mapping page or buffer is created in below scenario:
+> Write(or Kjournald) -> jbd2_journal_commit_transaction
+>                     -> BH_JBDDirty buffer is added to forget list.
+>                     -> Buffer is added to new checkpoint,
+>                        additional reference count is taken on b_jcount which
+>                        keeps buffer busy until remove checkpoint.
+>                     -> Buffer is unfiled, removed from forget list, BH_JBDDirty
+>                        is cleared and BH_Dirty is set, it is exposed to VM. 
 
-Yeah, last time I tried the only modification xfs_quota tool needed to work
-correctly with ext4 was to remove / modify the check for filesystem type
-in fs_table_initialise_mounts(). The question is how to properly deal with
-that. I don't think just removing the fs type check is the right way to go
-as that will have unexpected side effects for operations working on
-"all" filesystems - currently these are restricted to "all" *XFS*
-filesystems.
-
-Maybe we can add a command line option which will disable the fs type check
-so that non-XFS filesystems can be handled. We used to have an option like
-this for xfs_io but it seems it got removed so I'm not sure we want to add
-that into xfs_quota though. Dave?
-
-Another option would be to use generic quota-tools for project quota tests
-once the patches land. But that would require some more work on xfstests
-side and so far I didn't get an official submission of patches for
-quota-tools to support project quota.
+Ah, I see! Thanks for the easy reproduction testcase and for the debugging.
+Attached patch fixes the issue (at least the simple truncate case) for me.
+Can you check whether it fixes the issue for you as well? Thanks!
 
 								Honza
-
 -- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+Jan Kara <jack@suse.com>
 SUSE Labs, CR
+
+--AqsLC8rIMeq19msA
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment; filename="0001-jbd2-Fix-unreclaimed-pages-after-truncate-in-data-jo.patch"
+
+>From 29e43b5691866e8eb363c1ef64e1fc89b2792e86 Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Mon, 23 Nov 2015 13:34:30 +0100
+Subject: [PATCH] jbd2: Fix unreclaimed pages after truncate in data=journal
+ mode
+
+Ted and Namjae have reported that truncated pages don't get timely
+reclaimed after being truncated in data=journal mode. The following test
+triggers the issue easily:
+
+for (i = 0; i < 1000; i++) {
+	pwrite(fd, buf, 1024*1024, 0);
+	fsync(fd);
+	fsync(fd);
+	ftruncate(fd, 0);
+}
+
+The reason is that journal_unmap_buffer() finds that truncated buffers
+are not journalled (jh->b_transaction == NULL), they are part of
+checkpoint list of a transaction (jh->b_cp_transaction != NULL) and have
+been already written out (!buffer_dirty(bh)). We clean such buffers but
+we leave them in the checkpoint list. Since checkpoint transaction holds
+a reference to the journal head, these buffers cannot be released until
+the checkpoint transaction is cleaned up. And at that point we don't
+call release_buffer_page() anymore so pages detached from mapping are
+lingering in the system waiting for reclaim to find them and free them.
+
+Fix the problem by removing buffers from transaction checkpoint lists
+when journal_unmap_buffer() finds out they don't have to be there
+anymore.
+
+Reported-by: Namjae Jeon <namjae.jeon@samsung.com>
+Fixes: de1b794130b130e77ffa975bb58cb843744f9ae5
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/transaction.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 89463eee6791..daa1514259e0 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -2152,6 +2152,7 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh,
+ 
+ 		if (!buffer_dirty(bh)) {
+ 			/* bdflush has written it.  We can drop it now */
++			__jbd2_journal_remove_checkpoint(jh);
+ 			goto zap_buffer;
+ 		}
+ 
+@@ -2181,6 +2182,7 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh,
+ 				/* The orphan record's transaction has
+ 				 * committed.  We can cleanse this buffer */
+ 				clear_buffer_jbddirty(bh);
++				__jbd2_journal_remove_checkpoint(jh);
+ 				goto zap_buffer;
+ 			}
+ 		}
+-- 
+2.1.4
+
+
+--AqsLC8rIMeq19msA--
