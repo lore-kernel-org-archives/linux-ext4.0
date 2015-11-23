@@ -1,137 +1,57 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: memory leak: data=journal and {collapse,insert,zero}_range
-Date: Mon, 23 Nov 2015 14:53:42 +0100
-Message-ID: <20151123135342.GJ23418@quack.suse.cz>
-References: <009301d10b2f$b410e6b0$1c32b410$@samsung.com>
- <20151020155443.GM2972@thunk.org>
- <011f01d10be5$099d38d0$1cd7aa70$@samsung.com>
- <20151021145214.GC2165@thunk.org>
- <004301d11aae$72683a40$5738aec0$@samsung.com>
- <20151110144946.GB3156@quack.suse.cz>
- <005901d120f3$1d880410$58980c30$@samsung.com>
- <20151118213651.GI6097@quack.suse.cz>
- <20151119094240.GB18581@quack.suse.cz>
- <000001d1234c$c37079b0$4a516d10$@samsung.com>
+Subject: Re: [PATCH] ext4: drop file_update_time from ext4_dax_fault
+Date: Mon, 23 Nov 2015 15:15:56 +0100
+Message-ID: <20151123141556.GK23418@quack.suse.cz>
+References: <20151120001813.27997.41722.stgit@dwillia2-desk3.jf.intel.com>
+ <20151120030344.GH19199@dastard>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="AqsLC8rIMeq19msA"
-Cc: 'Jan Kara' <jack@suse.cz>, 'Theodore Ts'o' <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Namjae Jeon <namjae.jeon@samsung.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:35929 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751728AbbKWNxq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Nov 2015 08:53:46 -0500
-Content-Disposition: inline
-In-Reply-To: <000001d1234c$c37079b0$4a516d10$@samsung.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-
---AqsLC8rIMeq19msA
 Content-Type: text/plain; charset=us-ascii
+Cc: Dan Williams <dan.j.williams@intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Ted Ts'o <tytso@mit.edu>, linux-nvdimm@lists.01.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
+In-Reply-To: <20151120030344.GH19199@dastard>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri 20-11-15 13:34:36, Namjae Jeon wrote:
-> Actually, I can quickly create memleak with simple testcase like:
-> while(1000)
-> {
-> Random seek(max 500M) -> write 1M -> fsync ->truncate(random size)
-> }
+On Fri 20-11-15 14:03:44, Dave Chinner wrote:
+> On Thu, Nov 19, 2015 at 04:18:13PM -0800, Dan Williams wrote:
+> >  WARNING: CPU: 0 PID: 2133 at fs/fs-writeback.c:2065 __mark_inode_dirty+0x261/0x350()
+> >  bdi-block not registered
+>    ^^^^^^^^^^^^^^^^^^^^^^^^
+> >  [..]
+> >  Call Trace:
+> >   [<ffffffff81459f62>] dump_stack+0x44/0x62
+> >   [<ffffffff810a2052>] warn_slowpath_common+0x82/0xc0
+> >   [<ffffffff810a20ec>] warn_slowpath_fmt+0x5c/0x80
+> >   [<ffffffff812831a1>] __mark_inode_dirty+0x261/0x350
+> >   [<ffffffff8126d109>] generic_update_time+0x79/0xd0
+> >   [<ffffffff8126d28d>] file_update_time+0xbd/0x110
+> >   [<ffffffff812e4bc8>] ext4_dax_fault+0x68/0x110
+> >   [<ffffffff811f816e>] __do_fault+0x4e/0xf0
+> >   [<ffffffff811fc2a7>] handle_mm_fault+0x5e7/0x1b50
+> >   [<ffffffff811fbd11>] ? handle_mm_fault+0x51/0x1b50
+> >   [<ffffffff810689c1>] __do_page_fault+0x191/0x3f0
+> >   [<ffffffff81068cef>] trace_do_page_fault+0x4f/0x120
+> >   [<ffffffff8106314a>] do_async_page_fault+0x1a/0xa0
+> >   [<ffffffff81902678>] async_page_fault+0x28/0x30
 > 
-> As there is significant memleak in this situation also, I started focusing
-> on this simple testcase only. When use this testcase, I never saw EBUSY path
-> in jbd2_journal_invalidatepage() -> journal_unmap_buffer().
-> 
-> On the other hand(), for memleak pages jbd2_journal_invalidatepage() ->
-> journal_unmap_buffer() was almost bailing out every time from
->                 if (!buffer_dirty(bh)) {
->                         /* bdflush has written it.  We can drop it now */
->                         goto zap_buffer;
->                 }
-> 
-> As per debugging, NULL mapping page or buffer is created in below scenario:
-> Write(or Kjournald) -> jbd2_journal_commit_transaction
->                     -> BH_JBDDirty buffer is added to forget list.
->                     -> Buffer is added to new checkpoint,
->                        additional reference count is taken on b_jcount which
->                        keeps buffer busy until remove checkpoint.
->                     -> Buffer is unfiled, removed from forget list, BH_JBDDirty
->                        is cleared and BH_Dirty is set, it is exposed to VM. 
+> Doesn't this indicate some problem at the block/bdi level?
+> __mark_inode_dirty() should not throw warnings like this regardless
+> of where it is called from...
 
-Ah, I see! Thanks for the easy reproduction testcase and for the debugging.
-Attached patch fixes the issue (at least the simple truncate case) for me.
-Can you check whether it fixes the issue for you as well? Thanks!
+The warning warns that we are dirtying inodes against a backing device that
+advertises it does writeback but is not registered with writeback code (so
+flusher does not run for it). That makes sense but people seem to be
+experimenting a lot with removing devices under filesystems lately and so
+this warning triggers. Probably we have to refine it to not trigger for
+such cases...
 
 								Honza
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
-
---AqsLC8rIMeq19msA
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-jbd2-Fix-unreclaimed-pages-after-truncate-in-data-jo.patch"
-
->From 29e43b5691866e8eb363c1ef64e1fc89b2792e86 Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Mon, 23 Nov 2015 13:34:30 +0100
-Subject: [PATCH] jbd2: Fix unreclaimed pages after truncate in data=journal
- mode
-
-Ted and Namjae have reported that truncated pages don't get timely
-reclaimed after being truncated in data=journal mode. The following test
-triggers the issue easily:
-
-for (i = 0; i < 1000; i++) {
-	pwrite(fd, buf, 1024*1024, 0);
-	fsync(fd);
-	fsync(fd);
-	ftruncate(fd, 0);
-}
-
-The reason is that journal_unmap_buffer() finds that truncated buffers
-are not journalled (jh->b_transaction == NULL), they are part of
-checkpoint list of a transaction (jh->b_cp_transaction != NULL) and have
-been already written out (!buffer_dirty(bh)). We clean such buffers but
-we leave them in the checkpoint list. Since checkpoint transaction holds
-a reference to the journal head, these buffers cannot be released until
-the checkpoint transaction is cleaned up. And at that point we don't
-call release_buffer_page() anymore so pages detached from mapping are
-lingering in the system waiting for reclaim to find them and free them.
-
-Fix the problem by removing buffers from transaction checkpoint lists
-when journal_unmap_buffer() finds out they don't have to be there
-anymore.
-
-Reported-by: Namjae Jeon <namjae.jeon@samsung.com>
-Fixes: de1b794130b130e77ffa975bb58cb843744f9ae5
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/jbd2/transaction.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 89463eee6791..daa1514259e0 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -2152,6 +2152,7 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh,
- 
- 		if (!buffer_dirty(bh)) {
- 			/* bdflush has written it.  We can drop it now */
-+			__jbd2_journal_remove_checkpoint(jh);
- 			goto zap_buffer;
- 		}
- 
-@@ -2181,6 +2182,7 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh,
- 				/* The orphan record's transaction has
- 				 * committed.  We can cleanse this buffer */
- 				clear_buffer_jbddirty(bh);
-+				__jbd2_journal_remove_checkpoint(jh);
- 				goto zap_buffer;
- 			}
- 		}
--- 
-2.1.4
-
-
---AqsLC8rIMeq19msA--
