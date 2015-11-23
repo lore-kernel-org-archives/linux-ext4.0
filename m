@@ -1,57 +1,61 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: drop file_update_time from ext4_dax_fault
-Date: Mon, 23 Nov 2015 15:15:56 +0100
-Message-ID: <20151123141556.GK23418@quack.suse.cz>
-References: <20151120001813.27997.41722.stgit@dwillia2-desk3.jf.intel.com>
- <20151120030344.GH19199@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dan Williams <dan.j.williams@intel.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Ted Ts'o <tytso@mit.edu>, linux-nvdimm@lists.01.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20151120030344.GH19199@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH] ext4: fix race aio-dio vs freeze_fs
+Date: Mon, 23 Nov 2015 20:02:48 +0400
+Message-ID: <1448294568-20892-1-git-send-email-dmonakhov@openvz.org>
+Cc: jack@suse.cz, tytso@mit.edu, Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailhub.sw.ru ([195.214.232.25]:18631 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750704AbbKWQDG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Nov 2015 11:03:06 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 20-11-15 14:03:44, Dave Chinner wrote:
-> On Thu, Nov 19, 2015 at 04:18:13PM -0800, Dan Williams wrote:
-> >  WARNING: CPU: 0 PID: 2133 at fs/fs-writeback.c:2065 __mark_inode_dirty+0x261/0x350()
-> >  bdi-block not registered
->    ^^^^^^^^^^^^^^^^^^^^^^^^
-> >  [..]
-> >  Call Trace:
-> >   [<ffffffff81459f62>] dump_stack+0x44/0x62
-> >   [<ffffffff810a2052>] warn_slowpath_common+0x82/0xc0
-> >   [<ffffffff810a20ec>] warn_slowpath_fmt+0x5c/0x80
-> >   [<ffffffff812831a1>] __mark_inode_dirty+0x261/0x350
-> >   [<ffffffff8126d109>] generic_update_time+0x79/0xd0
-> >   [<ffffffff8126d28d>] file_update_time+0xbd/0x110
-> >   [<ffffffff812e4bc8>] ext4_dax_fault+0x68/0x110
-> >   [<ffffffff811f816e>] __do_fault+0x4e/0xf0
-> >   [<ffffffff811fc2a7>] handle_mm_fault+0x5e7/0x1b50
-> >   [<ffffffff811fbd11>] ? handle_mm_fault+0x51/0x1b50
-> >   [<ffffffff810689c1>] __do_page_fault+0x191/0x3f0
-> >   [<ffffffff81068cef>] trace_do_page_fault+0x4f/0x120
-> >   [<ffffffff8106314a>] do_async_page_fault+0x1a/0xa0
-> >   [<ffffffff81902678>] async_page_fault+0x28/0x30
-> 
-> Doesn't this indicate some problem at the block/bdi level?
-> __mark_inode_dirty() should not throw warnings like this regardless
-> of where it is called from...
+After freeze_fs was revoked (from Jan Kara) pages's write-back completion
+is deffered before unwritten conversion, so explicit flush_unwritten_io()
+was removed here: c724585b62411
+But we still may face deferred conversion for aio-dio case
+# Trivial testcase
+for ((i=0;i<60;i++));do fsfreeze -f /mnt ;sleep 1;fsfreeze -u /mnt;done &
+fio --bs=4k --ioengine=libaio --iodepth=128 --size=1g --direct=1 \
+    --runtime=60 --filename=/mnt/file --name=rand-write --rw=randwrite
+NOTE: Sane testcase should be integrated to xfstests, but it requires
+changes in common/* code, so let's use this this test at the moment.
 
-The warning warns that we are dirtying inodes against a backing device that
-advertises it does writeback but is not registered with writeback code (so
-flusher does not run for it). That makes sense but people seem to be
-experimenting a lot with removing devices under filesystems lately and so
-this warning triggers. Probably we have to refine it to not trigger for
-such cases...
+In order to fix this race we have to guard journal transaction with explicit
+sb_{start,end}_intwrite()  as we do with ext4_evict_inode here:8e8ad8a5
 
-								Honza
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/extents.c |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 3a6197a..4cba944 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -5040,6 +5040,12 @@ int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
+ 	max_blocks = ((EXT4_BLOCK_ALIGN(len + offset, blkbits) >> blkbits) -
+ 		      map.m_lblk);
+ 	/*
++	 * Protect us against freezing - AIO-DIO case. Caller didn't have to
++	 * have any protection against it
++	 */
++	sb_start_intwrite(inode->i_sb);
++
++	/*
+ 	 * This is somewhat ugly but the idea is clear: When transaction is
+ 	 * reserved, everything goes into it. Otherwise we rather start several
+ 	 * smaller transactions for conversion of each extent separately.
+@@ -5083,6 +5089,7 @@ int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
+ 	}
+ 	if (!credits)
+ 		ret2 = ext4_journal_stop(handle);
++	sb_end_intwrite(inode->i_sb);
+ 	return ret > 0 ? ret2 : ret;
+ }
+ 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+1.7.1
+
