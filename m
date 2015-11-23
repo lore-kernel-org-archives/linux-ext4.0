@@ -1,140 +1,66 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH] ext4: fix race aio-dio vs freeze_fs
-Date: Mon, 23 Nov 2015 19:37:56 +0300
-Message-ID: <87a8q4k6xn.fsf@openvz.org>
-References: <1448294568-20892-1-git-send-email-dmonakhov@openvz.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] ext4: drop file_update_time from ext4_dax_fault
+Date: Tue, 24 Nov 2015 06:55:34 +1100
+Message-ID: <20151123195534.GM19199@dastard>
+References: <20151120001813.27997.41722.stgit@dwillia2-desk3.jf.intel.com>
+ <20151120030344.GH19199@dastard>
+ <20151123141556.GK23418@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
-Cc: jack@suse.cz, tytso@mit.edu
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f172.google.com ([209.85.217.172]:35940 "EHLO
-	mail-lb0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751672AbbKWQiF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Nov 2015 11:38:05 -0500
-Received: by lbblt2 with SMTP id lt2so99500635lbb.3
-        for <linux-ext4@vger.kernel.org>; Mon, 23 Nov 2015 08:38:03 -0800 (PST)
-In-Reply-To: <1448294568-20892-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Dan Williams <dan.j.williams@intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Ted Ts'o <tytso@mit.edu>, linux-nvdimm@lists.01.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20151123141556.GK23418@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Mon, Nov 23, 2015 at 03:15:56PM +0100, Jan Kara wrote:
+> On Fri 20-11-15 14:03:44, Dave Chinner wrote:
+> > On Thu, Nov 19, 2015 at 04:18:13PM -0800, Dan Williams wrote:
+> > >  WARNING: CPU: 0 PID: 2133 at fs/fs-writeback.c:2065 __mark_inode_dirty+0x261/0x350()
+> > >  bdi-block not registered
+> >    ^^^^^^^^^^^^^^^^^^^^^^^^
+> > >  [..]
+> > >  Call Trace:
+> > >   [<ffffffff81459f62>] dump_stack+0x44/0x62
+> > >   [<ffffffff810a2052>] warn_slowpath_common+0x82/0xc0
+> > >   [<ffffffff810a20ec>] warn_slowpath_fmt+0x5c/0x80
+> > >   [<ffffffff812831a1>] __mark_inode_dirty+0x261/0x350
+> > >   [<ffffffff8126d109>] generic_update_time+0x79/0xd0
+> > >   [<ffffffff8126d28d>] file_update_time+0xbd/0x110
+> > >   [<ffffffff812e4bc8>] ext4_dax_fault+0x68/0x110
+> > >   [<ffffffff811f816e>] __do_fault+0x4e/0xf0
+> > >   [<ffffffff811fc2a7>] handle_mm_fault+0x5e7/0x1b50
+> > >   [<ffffffff811fbd11>] ? handle_mm_fault+0x51/0x1b50
+> > >   [<ffffffff810689c1>] __do_page_fault+0x191/0x3f0
+> > >   [<ffffffff81068cef>] trace_do_page_fault+0x4f/0x120
+> > >   [<ffffffff8106314a>] do_async_page_fault+0x1a/0xa0
+> > >   [<ffffffff81902678>] async_page_fault+0x28/0x30
+> > 
+> > Doesn't this indicate some problem at the block/bdi level?
+> > __mark_inode_dirty() should not throw warnings like this regardless
+> > of where it is called from...
+> 
+> The warning warns that we are dirtying inodes against a backing device that
+> advertises it does writeback but is not registered with writeback code (so
+> flusher does not run for it). That makes sense but people seem to be
+> experimenting a lot with removing devices under filesystems lately and so
+> this warning triggers. Probably we have to refine it to not trigger for
+> such cases...
 
-Dmitry Monakhov <dmonakhov@openvz.org> writes:
+Or, alternatively, have the block devices inform the filesystem that
+it no longer has a valid bdi backing it. That way the filesystem can
+error out at a higher layer and we never get to the point of trying
+to mark an inode dirty when the backing device has been unplugged...
 
-> After freeze_fs was revoked (from Jan Kara) pages's write-back completion
-> is deffered before unwritten conversion, so explicit flush_unwritten_io()
-> was removed here: c724585b62411
-> But we still may face deferred conversion for aio-dio case
-> # Trivial testcase
-> for ((i=3D0;i<60;i++));do fsfreeze -f /mnt ;sleep 1;fsfreeze -u /mnt;done=
- &
-> fio --bs=3D4k --ioengine=3Dlibaio --iodepth=3D128 --size=3D1g --direct=3D=
-1 \
->     --runtime=3D60 --filename=3D/mnt/file --name=3Drand-write --rw=3Drand=
-write
-> NOTE: Sane testcase should be integrated to xfstests, but it requires
-> changes in common/* code, so let's use this this test at the moment.
->
-> In order to fix this race we have to guard journal transaction with expli=
-cit
-> sb_{start,end}_intwrite()  as we do with ext4_evict_inode here:8e8ad8a5
-Fairly to say I'm not very happy with the fix because it continues bad
-practice of ad-hock fixes for generic journal vs freeze synchronization
+Cheers,
 
-Ideal fix would be to move sb_start_intwrite/sb_end_intwrite() to
-ext4_journal_start()/ext4_journal_stop() but this is not possible due to
-limitations introduced by nojournal mode (described here:8e8ad8a5)
-So let's fix nojournal instead. In order to do that we somehow have
-store ref_count and pointer to sb inside nojournal_handle.
-There are two possible ways to do that.
-1) Embed second journal related field to task_struct and guard it with
-   compile macros definition.
-void *journal_info;
-+ #ifdef CONFIG_EXTRA_JOURNAL_INFO
-+   void *journal_info2;
-+ #endif
-
-2) Encode ref and sb in to single long. This can be done by aligning
-   ext4_sb_info pointer to 4096. So we can embed ref count to lower bits
-   like follows.
-#define EXT4_NOJOURNAL_SHIFT 12
-#define EXT4_NOJOURNAL_MAX_REF_COUNT 1 << (EXT4_NOJOURNAL_SHIFT-1)
-#define EXT4_NOJOURNAL_MASK  (1 << EXT4_NOJOURNAL_SHIFT) -1
-#define NOJOURNAL_SB(handle) (handle & ~EXT4_NOJOURNAL_MASK)
-#define NOJOURNAL_REF(handle) ((handle & ~EXT4_NOJOURNAL_MASK) >> 1)
-static int ext4_handle_valid(handle_t *handle)
-{
-        return !(handle & 0x1);
-}
-static handle_t *get_nojournal_handle(struct super_block *sb)
-{
-        handle_t *handle =3D current->journal_info;
-        struct super_block *old_sb  =3D NOJOURNAL_SB(handle);
-        unsigned long ref_cnt =3D NOJOURNAL_REF(handle);
-        BUG_ON(old_sb && old_sb !=3D sb);
-        ref++;
-        current->journal_info =3D NOJOURNAL_SB(handle);
-}
-
-What do you think about this? Are where any better way to fix this?
-
->
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  fs/ext4/extents.c |    7 +++++++
->  1 files changed, 7 insertions(+), 0 deletions(-)
->
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 3a6197a..4cba944 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -5040,6 +5040,12 @@ int ext4_convert_unwritten_extents(handle_t *handl=
-e, struct inode *inode,
->  	max_blocks =3D ((EXT4_BLOCK_ALIGN(len + offset, blkbits) >> blkbits) -
->  		      map.m_lblk);
->  	/*
-> +	 * Protect us against freezing - AIO-DIO case. Caller didn't have to
-> +	 * have any protection against it
-> +	 */
-> +	sb_start_intwrite(inode->i_sb);
-> +
-> +	/*
->  	 * This is somewhat ugly but the idea is clear: When transaction is
->  	 * reserved, everything goes into it. Otherwise we rather start several
->  	 * smaller transactions for conversion of each extent separately.
-> @@ -5083,6 +5089,7 @@ int ext4_convert_unwritten_extents(handle_t *handle=
-, struct inode *inode,
->  	}
->  	if (!credits)
->  		ret2 =3D ext4_journal_stop(handle);
-> +	sb_end_intwrite(inode->i_sb);
->  	return ret > 0 ? ret2 : ret;
->  }
->=20=20
-> --=20
-> 1.7.1
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQEcBAEBCgAGBQJWU0DkAAoJELhyPTmIL6kBXwgIAJYS/CBmW+5m8sB8i4dZaE6l
-pxOEOQxOiduskQuk8tjdQH0XSdGi5nWytNFZn0jNF6I9f9p3d9N27hMuwTaKELFh
-V42DDcQsmtYsJLPF/9TeaJU3ccN/aJs39XBh67pC7M2FOhVaMo8vrIVSk6mTHAH0
-VrZFlKjSpSsNyY/FUDAGiW2n3ro9sTxQKi/00PoaXbWx0jeUlDTPQP+RvgMfu7/0
-fQAe5LJDEP1OQda7xT7b26/NkSXgWd4E0CyHuYbr5pmLbt/BjGQdS6Zgdb7kWCwq
-p5FwdMNHRiNQBTEkOeO+p9BXQfbRrNg0WCsgiIFIZshV6EjmAUV06OkpklbQWeA=
-=qoQO
------END PGP SIGNATURE-----
---=-=-=--
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
