@@ -1,74 +1,58 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: fuse2fs
-Date: Mon, 23 Nov 2015 12:49:16 -0800
-Message-ID: <20151123204916.GA10589@birch.djwong.org>
-References: <EA601C64-3B42-4FA7-A572-6BD07443AEE1@lovstrand.com>
- <20151121141013.GA4741@thunk.org>
+Subject: [PATCH] fuse2fs: set inode's uid/gid when creating inode
+Date: Mon, 23 Nov 2015 12:56:20 -0800
+Message-ID: <20151123205620.GA10580@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Lennart =?iso-8859-1?Q?L=F6vstrand?= <lennart@lovstrand.com>,
 	linux-ext4@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:29710 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:33657 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751127AbbKWUt1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Nov 2015 15:49:27 -0500
+	with ESMTP id S1750708AbbKWU4c (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Nov 2015 15:56:32 -0500
 Content-Disposition: inline
-In-Reply-To: <20151121141013.GA4741@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Nov 21, 2015 at 09:10:13AM -0500, Theodore Ts'o wrote:
-> Hi Lennart,
-> 
-> Apologies for the delay in getting back to you.  Things have been very
-> busy this past month, and your e-mail slipped between the cracks.
-> 
-> > I got it to compile under OS X 10.11 with a few minor tweaks, but
-> > when testing it, I noticed pretty quickly that I couldn't create new
-> > files. I tracked it down to the UID & GID fields not being set on
-> > new inodes. This caused them to be owned by root in op_create, which
-> > in turn made its call to __op_open fail since it couldn't open the
-> > file as the current user, which in turn made op_create fail (even
-> > though the file actually was created). It seems like such a simple
-> > and obvious error that I'm surprised it's there and it makes me
-> > wonder if this code really has been used in read/write mode to any
-> > large extent.
+When creating a file in op_create, set the file's uid and gid to the
+user's uid and gid.  Do the same in op_mknod.
 
-So far it's only been used as root...
+Reported-by: Lennart L=F6vstrand <lennart@lovstrand.com>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ misc/fuse2fs.c |    4 ++++
+ 1 file changed, 4 insertions(+)
 
-...in any case, you're correct that op_create fails to set uid/gid on
-the new inode.  Will send out a patch shortly; thank you for reporting
-this!
-
---D
-
-> > 
-> > Could you advise?  I notice that it's marked with "Copyright
-> > Oracle", so I'm assuming it was contributed by someone else and not
-> > actually your own code.
-> 
-> Yes, if you had checked the git logs, you would have seen that Darrick
-> contributed the code.
-> 
-> It looks like op_create is missing a call to set the inode uid/gid
-> from the fuse_context's uid/gid fields, but I'm not an expert on FUSE;
-> Darrick should be able to comment more intelligently on your bug
-> report.
-> 
-> > BTW, if I were to create a decent .fs package for OS X, would you be
-> > interested in making it part of the e2fsprogs source, or do you
-> > think it would be better to make it a separate distribution?  What
-> > kind of attribution would you like me to put into it in that case?
-> > My intent would be to distribute it freely & openly, of course.
-> 
-> I'm not sure what a ".fs package" is.  Is this some kind of spec file
-> ala the RPM spec file or the debian dpkg files that are used to
-> build a package?  If so, sure, we could put something like that in the
-> contrib directory along with directions of how to build a new OSX
-> package from source.
-> 
-> Cheers,
-> 
-> 					- Ted
+diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
+index 7d8bb60..1cbdcb7 100644
+--- a/misc/fuse2fs.c
++++ b/misc/fuse2fs.c
+@@ -994,6 +994,8 @@ static int op_mknod(const char *path, mode_t mode, =
+dev_t dev)
+ 	inode.i_links_count =3D 1;
+ 	inode.i_extra_isize =3D sizeof(struct ext2_inode_large) -
+ 		EXT2_GOOD_OLD_INODE_SIZE;
++	inode.i_uid =3D ctxt->uid;
++	inode.i_gid =3D ctxt->gid;
+=20
+ 	err =3D ext2fs_write_new_inode(fs, child, (struct ext2_inode *)&inode=
+);
+ 	if (err) {
+@@ -2895,6 +2897,8 @@ static int op_create(const char *path, mode_t mod=
+e, struct fuse_file_info *fp)
+ 	inode.i_links_count =3D 1;
+ 	inode.i_extra_isize =3D sizeof(struct ext2_inode_large) -
+ 		EXT2_GOOD_OLD_INODE_SIZE;
++	inode.i_uid =3D ctxt->uid;
++	inode.i_gid =3D ctxt->gid;
+ 	if (ext2fs_has_feature_extents(fs->super)) {
+ 		ext2_extent_handle_t handle;
+=20
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
