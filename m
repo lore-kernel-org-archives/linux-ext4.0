@@ -1,58 +1,49 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] fuse2fs: set inode's uid/gid when creating inode
-Date: Mon, 23 Nov 2015 12:56:20 -0800
-Message-ID: <20151123205620.GA10580@birch.djwong.org>
+Subject: Re: [PATCH 2/2] generic/15[78]: fix error messages in the golden
+ output
+Date: Mon, 23 Nov 2015 13:25:33 -0800
+Message-ID: <20151123212533.GC10589@birch.djwong.org>
+References: <20151121005001.20398.92856.stgit@birch.djwong.org>
+ <20151121005014.20398.22316.stgit@birch.djwong.org>
+ <20151121180644.GA23916@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Lennart =?iso-8859-1?Q?L=F6vstrand?= <lennart@lovstrand.com>,
-	linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:33657 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750708AbbKWU4c (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Nov 2015 15:56:32 -0500
+Content-Type: text/plain; charset=us-ascii
+Cc: david@fromorbit.com, fstests@vger.kernel.org, xfs@oss.sgi.com,
+	tao.peng@primarydata.com, linux-ext4@vger.kernel.org,
+	Anna.Schumaker@netapp.com, linux-btrfs@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20151121180644.GA23916@infradead.org>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-When creating a file in op_create, set the file's uid and gid to the
-user's uid and gid.  Do the same in op_mknod.
+On Sat, Nov 21, 2015 at 10:06:44AM -0800, Christoph Hellwig wrote:
+> > --- a/tests/generic/158.out
+> > +++ b/tests/generic/158.out
+> >  Try to dedupe a device
+> > -XFS_IOC_FILE_EXTENT_SAME: Permission denied
+> > +XFS_IOC_FILE_EXTENT_SAME: Invalid argument
+> >  Try to dedupe to a dir
+> > -/mnt/test-158/dir1: Is a directory
+> > +TEST_DIR/test-158/dir1: Is a directory
+> >  Try to dedupe to a device
+> > -dedupe: Permission denied
+> > +dedupe: Operation not supported
+> >  Try to dedupe to a fifo
+> > -dedupe: Permission denied
+> > +dedupe: Operation not supported
+> 
+> Shouldn't these be Invalid argument just like the
+> to a device case above or the clone case?
 
-Reported-by: Lennart L=F6vstrand <lennart@lovstrand.com>
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- misc/fuse2fs.c |    4 ++++
- 1 file changed, 4 insertions(+)
+I was trying to mirror the behavior of reflink, which spits out EOPNOTSUPP when
+the destination isn't a regular file and EINVAL when the source isn't a regular
+file.
 
-diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
-index 7d8bb60..1cbdcb7 100644
---- a/misc/fuse2fs.c
-+++ b/misc/fuse2fs.c
-@@ -994,6 +994,8 @@ static int op_mknod(const char *path, mode_t mode, =
-dev_t dev)
- 	inode.i_links_count =3D 1;
- 	inode.i_extra_isize =3D sizeof(struct ext2_inode_large) -
- 		EXT2_GOOD_OLD_INODE_SIZE;
-+	inode.i_uid =3D ctxt->uid;
-+	inode.i_gid =3D ctxt->gid;
-=20
- 	err =3D ext2fs_write_new_inode(fs, child, (struct ext2_inode *)&inode=
-);
- 	if (err) {
-@@ -2895,6 +2897,8 @@ static int op_create(const char *path, mode_t mod=
-e, struct fuse_file_info *fp)
- 	inode.i_links_count =3D 1;
- 	inode.i_extra_isize =3D sizeof(struct ext2_inode_large) -
- 		EXT2_GOOD_OLD_INODE_SIZE;
-+	inode.i_uid =3D ctxt->uid;
-+	inode.i_gid =3D ctxt->gid;
- 	if (ext2fs_has_feature_extents(fs->super)) {
- 		ext2_extent_handle_t handle;
-=20
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--D
+
+> 
+> Otherwise looks good,
+> 
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
