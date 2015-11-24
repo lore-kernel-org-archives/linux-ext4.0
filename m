@@ -1,38 +1,26 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 2/2] generic/15[78]: fix error messages in the golden
- output
-Date: Mon, 23 Nov 2015 23:41:59 -0800
-Message-ID: <20151124074159.GA32289@infradead.org>
-References: <20151121005001.20398.92856.stgit@birch.djwong.org>
- <20151121005014.20398.22316.stgit@birch.djwong.org>
- <20151121180644.GA23916@infradead.org>
- <20151123212533.GC10589@birch.djwong.org>
+From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Subject: Re: [RFC][PATCH 00/12] Enhanced file stat system call
+Date: Tue, 24 Nov 2015 00:11:49 -0800
+Message-ID: <20151124081149.GA8840@infradead.org>
+References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, david@fromorbit.com,
-	fstests@vger.kernel.org, xfs@oss.sgi.com, tao.peng@primarydata.com,
-	linux-ext4@vger.kernel.org, Anna.Schumaker@netapp.com,
-	linux-btrfs@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <fstests-owner@vger.kernel.org>
+Cc: arnd-r2nGTMty4D4@public.gmane.org, linux-afs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20151123212533.GC10589@birch.djwong.org>
-Sender: fstests-owner@vger.kernel.org
+In-Reply-To: <20151120145422.18930.72662.stgit-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 23, 2015 at 01:25:33PM -0800, Darrick J. Wong wrote:
-> > Shouldn't these be Invalid argument just like the
-> > to a device case above or the clone case?
-> 
-> I was trying to mirror the behavior of reflink, which spits out
-> EOPNOTSUPP when the destination isn't a regular file and EINVAL
-> when the source isn't a regular file.
+Hi David,
 
-clone is called on the destination and takes the source from the
-ioctl argument.  dedupe is called on the source and then opens the
-destinations, so they're not really comparable.  Btrfs currently
-returns EACCES for non-dir, non-regular destinations which look
-wrong and I think EINVAL for a mismatch between source and destination
-types would make most sense.  I've also prepared a btrfs patch for
-this and clone, but I'd like to have consensus on the exact error
-first.
+from a quick look the statx bits looks fine in general.  I think Ted
+last time had a problem with the IOC flag allocation, so you might
+want to ping him.
+
+But fsinfo with the multiplexer and the void pointer is just horrible.
+What were you thinking there?
