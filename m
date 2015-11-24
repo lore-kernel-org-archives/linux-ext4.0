@@ -1,47 +1,70 @@
-From: Martin Steigerwald <martin@lichtvoll.de>
-Subject: Re: [RFC][PATCH 00/12] Enhanced file stat system call
-Date: Tue, 24 Nov 2015 09:48:22 +0100
-Message-ID: <51731897.vGpjiNuy9t@merkaba>
-References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk> <1502878.QisWlqATFu@merkaba> <20151124081308.GB8840@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7Bit
-Cc: David Howells <dhowells@redhat.com>, arnd@arndb.de,
-	linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>, linux-btrfs@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20151124081308.GB8840@infradead.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] jbd2: Fix unreclaimed pages after truncate in data=journal mode
+Date: Tue, 24 Nov 2015 09:47:31 +0100
+Message-ID: <1448354851-25405-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Namjae Jeon <namjae.jeon@samsung.com>,
+	Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:59410 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752243AbbKXIrh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Nov 2015 03:47:37 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Am Dienstag, 24. November 2015, 00:13:08 CET schrieb Christoph Hellwig:
-> On Fri, Nov 20, 2015 at 05:19:31PM +0100, Martin Steigerwald wrote:
-> > I know its mostly relevant for just for FAT32, but on any account rather
-> > than trying to write 4 GiB and then file, it would be good to at some
-> > time get a dialog at the beginning of the copy.
-> 
-> pathconf/fpathconf is supposed to handle that.  It's not super pretty
-> but part of Posix.  Linus hates it, but it might be time to give it
-> another try.
+Ted and Namjae have reported that truncated pages don't get timely
+reclaimed after being truncated in data=journal mode. The following test
+triggers the issue easily:
 
-It might be interesting for BTRFS as well, to be able to ask what amount of 
-free space there currently is *at* a given path. Cause with BTRFS and 
-Subvolumes this may differ between different paths. Even tough its not 
-implemented yet, it may be possible in the future to have one subvolume with 
-RAID 1 profile and one with RAID 0 profile.
+for (i = 0; i < 1000; i++) {
+	pwrite(fd, buf, 1024*1024, 0);
+	fsync(fd);
+	fsync(fd);
+	ftruncate(fd, 0);
+}
 
-That said an application wanting to make sure it can write a certain amount of 
-data can use fallocate. And thats thats the only reliable way to ensure it, I 
-know of. Which can become tedious for several files, but there is no principal 
-problem with preallocating all files if their sizes are known. Even rsync or 
-desktop environments could work like that. First fallocate everything, then, 
-only if that succeeds, start actually copying data. Disadvantage: On aborted 
-copies you have all files with their correct sizes and no easy indicates on 
-where the copy stopped.
+The reason is that journal_unmap_buffer() finds that truncated buffers
+are not journalled (jh->b_transaction == NULL), they are part of
+checkpoint list of a transaction (jh->b_cp_transaction != NULL) and have
+been already written out (!buffer_dirty(bh)). We clean such buffers but
+we leave them in the checkpoint list. Since checkpoint transaction holds
+a reference to the journal head, these buffers cannot be released until
+the checkpoint transaction is cleaned up. And at that point we don't
+call release_buffer_page() anymore so pages detached from mapping are
+lingering in the system waiting for reclaim to find them and free them.
 
-Thanks,
+Fix the problem by removing buffers from transaction checkpoint lists
+when journal_unmap_buffer() finds out they don't have to be there
+anymore.
+
+Reported-and-tested-by: Namjae Jeon <namjae.jeon@samsung.com>
+Fixes: de1b794130b130e77ffa975bb58cb843744f9ae5
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/transaction.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 89463eee6791..daa1514259e0 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -2152,6 +2152,7 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh,
+ 
+ 		if (!buffer_dirty(bh)) {
+ 			/* bdflush has written it.  We can drop it now */
++			__jbd2_journal_remove_checkpoint(jh);
+ 			goto zap_buffer;
+ 		}
+ 
+@@ -2181,6 +2182,7 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh,
+ 				/* The orphan record's transaction has
+ 				 * committed.  We can cleanse this buffer */
+ 				clear_buffer_jbddirty(bh);
++				__jbd2_journal_remove_checkpoint(jh);
+ 				goto zap_buffer;
+ 			}
+ 		}
 -- 
-Martin
+2.1.4
+
