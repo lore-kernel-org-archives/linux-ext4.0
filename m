@@ -1,26 +1,28 @@
-From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [RFC][PATCH 00/12] Enhanced file stat system call
-Date: Tue, 24 Nov 2015 00:11:49 -0800
-Message-ID: <20151124081149.GA8840@infradead.org>
+Date: Tue, 24 Nov 2015 00:13:08 -0800
+Message-ID: <20151124081308.GB8840@infradead.org>
 References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
+ <1502878.QisWlqATFu@merkaba>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: arnd-r2nGTMty4D4@public.gmane.org, linux-afs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: David Howells <dhowells@redhat.com>, arnd@arndb.de,
+	linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Martin Steigerwald <martin@lichtvoll.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20151120145422.18930.72662.stgit-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+In-Reply-To: <1502878.QisWlqATFu@merkaba>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi David,
+On Fri, Nov 20, 2015 at 05:19:31PM +0100, Martin Steigerwald wrote:
+> I know its mostly relevant for just for FAT32, but on any account rather than 
+> trying to write 4 GiB and then file, it would be good to at some time get a 
+> dialog at the beginning of the copy.
 
-from a quick look the statx bits looks fine in general.  I think Ted
-last time had a problem with the IOC flag allocation, so you might
-want to ping him.
-
-But fsinfo with the multiplexer and the void pointer is just horrible.
-What were you thinking there?
+pathconf/fpathconf is supposed to handle that.  It's not super pretty
+but part of Posix.  Linus hates it, but it might be time to give it
+another try.
