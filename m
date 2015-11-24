@@ -1,38 +1,27 @@
 From: Steve French <smfrench@gmail.com>
 Subject: Re: [PATCH 07/12] statx: CIFS: Return enhanced attributes
-Date: Tue, 24 Nov 2015 11:33:53 -0600
-Message-ID: <CAH2r5muw4_8gVgeJ_LuAe4+27wXt8uwSQCyv+dt7gLiBs2a2hw@mail.gmail.com>
-References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
- <20151120145548.18930.11614.stgit@warthog.procyon.org.uk>
+Date: Tue, 24 Nov 2015 11:34:52 -0600
+Message-ID: <CAH2r5mt2SZPD+THkj12qxoZ9=F-NC_ZuhdoJRy0pQe5S+bUo3w@mail.gmail.com>
+References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk> <20151120145548.18930.11614.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Cc: linux-afs@vger.kernel.org,
- "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
- Arnd Bergmann <arnd@arndb.de>,
- "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
- samba-technical <samba-technical@lists.samba.org>,
- LKML <linux-kernel@vger.kernel.org>,
- linux-fsdevel <linux-fsdevel@vger.kernel.org>,
- "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: David Howells <dhowells@redhat.com>
-Return-path: <samba-technical-bounces@lists.samba.org>
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+	samba-technical <samba-technical@lists.samba.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20151120145548.18930.11614.stgit@warthog.procyon.org.uk>
-List-Unsubscribe: <https://lists.samba.org/mailman/options/samba-technical>,
- <mailto:samba-technical-request@lists.samba.org?subject=unsubscribe>
-List-Archive: <http://lists.samba.org/pipermail/samba-technical/>
-List-Post: <mailto:samba-technical@lists.samba.org>
-List-Help: <mailto:samba-technical-request@lists.samba.org?subject=help>
-List-Subscribe: <https://lists.samba.org/mailman/listinfo/samba-technical>,
- <mailto:samba-technical-request@lists.samba.org?subject=subscribe>
-Errors-To: samba-technical-bounces@lists.samba.org
-Sender: "samba-technical" <samba-technical-bounces@lists.samba.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Is it worth storing the same creation time twice (in slightly different
-formats, struct timespec and u64 DCE time) in cifsInodeInfo?
+Is it worth storing the same creation time twice (in slightly
+different formats, struct timespec and u64 DCE time) in cifsInodeInfo?
 
 On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
-
 > Return enhanced attributes from the CIFS filesystem.  This includes the
 > following:
 >
@@ -106,8 +95,7 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 >  fs/cifs/cifsfs.h   |    4 +-
 >  fs/cifs/cifsglob.h |    8 +++
 >  fs/cifs/dir.c      |    2 -
->  fs/cifs/inode.c    |  124
-> +++++++++++++++++++++++++++++++++++++++++-----------
+>  fs/cifs/inode.c    |  124 +++++++++++++++++++++++++++++++++++++++++-----------
 >  4 files changed, 108 insertions(+), 30 deletions(-)
 >
 > diff --git a/fs/cifs/cifsfs.h b/fs/cifs/cifsfs.h
@@ -133,24 +121,20 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 > @@ -1152,7 +1152,11 @@ struct cifsInodeInfo {
 >         unsigned long flags;
 >         spinlock_t writers_lock;
->         unsigned int writers;           /* Number of writers on this inode
-> */
+>         unsigned int writers;           /* Number of writers on this inode */
 > +       bool btime_valid:1;             /* stored creation time is valid */
 > +       bool uid_faked:1;               /* true if i_uid is faked */
 > +       bool gid_faked:1;               /* true if i_gid is faked */
->         unsigned long time;             /* jiffies of last update of inode
-> */
+>         unsigned long time;             /* jiffies of last update of inode */
 > +       struct timespec btime;          /* creation time */
->         u64  server_eof;                /* current file size on server --
-> protected by i_lock */
+>         u64  server_eof;                /* current file size on server -- protected by i_lock */
 >         u64  uniqueid;                  /* server inode number */
 >         u64  createtime;                /* creation time on server */
 > @@ -1365,6 +1369,9 @@ struct dfs_info3_param {
 >  #define CIFS_FATTR_NEED_REVAL          0x4
 >  #define CIFS_FATTR_INO_COLLISION       0x8
 >  #define CIFS_FATTR_UNKNOWN_NLINK       0x10
-> +#define CIFS_FATTR_WINATTRS_VALID      0x20    /* T if cf_btime and
-> cf_cifsattrs valid */
+> +#define CIFS_FATTR_WINATTRS_VALID      0x20    /* T if cf_btime and cf_cifsattrs valid */
 > +#define CIFS_FATTR_UID_FAKED           0x40    /* T if cf_uid is faked */
 > +#define CIFS_FATTR_GID_FAKED           0x80    /* T if cf_gid is faked */
 >
@@ -168,8 +152,7 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 > index c3eb998a99bd..4984f04b0677 100644
 > --- a/fs/cifs/dir.c
 > +++ b/fs/cifs/dir.c
-> @@ -792,7 +792,7 @@ cifs_d_revalidate(struct dentry *direntry, unsigned
-> int flags)
+> @@ -792,7 +792,7 @@ cifs_d_revalidate(struct dentry *direntry, unsigned int flags)
 >                 return -ECHILD;
 >
 >         if (d_really_is_positive(direntry)) {
@@ -182,8 +165,7 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 > index 6b66dd5d1540..fcb024efbd4b 100644
 > --- a/fs/cifs/inode.c
 > +++ b/fs/cifs/inode.c
-> @@ -166,13 +166,21 @@ cifs_fattr_to_inode(struct inode *inode, struct
-> cifs_fattr *fattr)
+> @@ -166,13 +166,21 @@ cifs_fattr_to_inode(struct inode *inode, struct cifs_fattr *fattr)
 >         cifs_nlink_fattr_to_inode(inode, fattr);
 >         inode->i_uid = fattr->cf_uid;
 >         inode->i_gid = fattr->cf_gid;
@@ -206,8 +188,7 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 >
 >         if (fattr->cf_flags & CIFS_FATTR_NEED_REVAL)
 >                 cifs_i->time = 0;
-> @@ -284,18 +292,22 @@ cifs_unix_basic_to_fattr(struct cifs_fattr *fattr,
-> FILE_UNIX_BASIC_INFO *info,
+> @@ -284,18 +292,22 @@ cifs_unix_basic_to_fattr(struct cifs_fattr *fattr, FILE_UNIX_BASIC_INFO *info,
 >                 u64 id = le64_to_cpu(info->Uid);
 >                 if (id < ((uid_t)-1)) {
 >                         kuid_t uid = make_kuid(&init_user_ns, id);
@@ -233,8 +214,7 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 >                 }
 >         }
 >
-> @@ -324,7 +336,8 @@ cifs_create_dfs_fattr(struct cifs_fattr *fattr, struct
-> super_block *sb)
+> @@ -324,7 +336,8 @@ cifs_create_dfs_fattr(struct cifs_fattr *fattr, struct super_block *sb)
 >         fattr->cf_ctime = CURRENT_TIME;
 >         fattr->cf_mtime = CURRENT_TIME;
 >         fattr->cf_nlink = 2;
@@ -244,8 +224,7 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 >  }
 >
 >  static int
-> @@ -590,6 +603,7 @@ cifs_all_info_to_fattr(struct cifs_fattr *fattr,
-> FILE_ALL_INFO *info,
+> @@ -590,6 +603,7 @@ cifs_all_info_to_fattr(struct cifs_fattr *fattr, FILE_ALL_INFO *info,
 >         struct cifs_tcon *tcon = cifs_sb_master_tcon(cifs_sb);
 >
 >         memset(fattr, 0, sizeof(*fattr));
@@ -253,8 +232,7 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 >         fattr->cf_cifsattrs = le32_to_cpu(info->Attributes);
 >         if (info->DeletePending)
 >                 fattr->cf_flags |= CIFS_FATTR_DELETE_PENDING;
-> @@ -601,6 +615,7 @@ cifs_all_info_to_fattr(struct cifs_fattr *fattr,
-> FILE_ALL_INFO *info,
+> @@ -601,6 +615,7 @@ cifs_all_info_to_fattr(struct cifs_fattr *fattr, FILE_ALL_INFO *info,
 >
 >         fattr->cf_ctime = cifs_NTtimeToUnix(info->ChangeTime);
 >         fattr->cf_mtime = cifs_NTtimeToUnix(info->LastWriteTime);
@@ -272,8 +250,7 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 >  {
 >         unsigned int xid;
 >         int rc = 0;
-> @@ -1898,7 +1914,7 @@ int cifs_revalidate_dentry_attr(struct dentry
-> *dentry)
+> @@ -1898,7 +1914,7 @@ int cifs_revalidate_dentry_attr(struct dentry *dentry)
 >         if (inode == NULL)
 >                 return -ENOENT;
 >
@@ -282,8 +259,7 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 >                 return rc;
 >
 >         xid = get_xid();
-> @@ -1915,9 +1931,12 @@ int cifs_revalidate_dentry_attr(struct dentry
-> *dentry)
+> @@ -1915,9 +1931,12 @@ int cifs_revalidate_dentry_attr(struct dentry *dentry)
 >                  full_path, inode, inode->i_count.counter,
 >                  dentry, dentry->d_time, jiffies);
 >
@@ -314,8 +290,7 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 >         if (rc)
 >                 return rc;
 >
-> @@ -1958,28 +1978,62 @@ int cifs_getattr(struct vfsmount *mnt, struct
-> dentry *dentry,
+> @@ -1958,28 +1978,62 @@ int cifs_getattr(struct vfsmount *mnt, struct dentry *dentry,
 >         struct cifs_sb_info *cifs_sb = CIFS_SB(dentry->d_sb);
 >         struct cifs_tcon *tcon = cifs_sb_master_tcon(cifs_sb);
 >         struct inode *inode = d_inode(dentry);
@@ -327,8 +302,7 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 >         int rc;
 >
 > -       /*
-> -        * We need to be sure that all dirty pages are written and the
-> server
+> -        * We need to be sure that all dirty pages are written and the server
 > -        * has actual ctime, mtime and file length.
 > -        */
 > -       if (!CIFS_CACHE_READ(CIFS_I(inode)) && inode->i_mapping &&
@@ -347,10 +321,8 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 > +               want_extra_bits = force = true;
 > +
 > +       if (!(stat->query_flags & AT_NO_ATTR_SYNC)) {
-> +               /* Unless we're explicitly told not to sync, we need to be
-> sure
-> +                * that all dirty pages are written and the server has
-> actual
+> +               /* Unless we're explicitly told not to sync, we need to be sure
+> +                * that all dirty pages are written and the server has actual
 > +                * ctime, mtime and file length.
 > +                */
 > +               bool flush = force;
@@ -373,8 +345,7 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 > -       rc = cifs_revalidate_dentry_attr(dentry);
 > -       if (rc)
 > -               return rc;
-> +               rc = cifs_revalidate_dentry(dentry, want_extra_bits,
-> force);
+> +               rc = cifs_revalidate_dentry(dentry, want_extra_bits, force);
 > +               if (rc)
 > +                       return rc;
 > +       }
@@ -397,8 +368,7 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 >
 >         /*
 >          * If on a multiuser mount without unix extensions or cifsacl being
-> @@ -1993,8 +2047,24 @@ int cifs_getattr(struct vfsmount *mnt, struct
-> dentry *dentry,
+> @@ -1993,8 +2047,24 @@ int cifs_getattr(struct vfsmount *mnt, struct dentry *dentry,
 >                         stat->uid = current_fsuid();
 >                 if (!(cifs_sb->mnt_cifs_flags & CIFS_MOUNT_OVERR_GID))
 >                         stat->gid = current_fsgid();
@@ -429,7 +399,6 @@ On Fri, Nov 20, 2015 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
 
 
 
