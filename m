@@ -1,99 +1,66 @@
 From: Dan Williams <dan.j.williams@intel.com>
-Subject: [PATCH v2 0/7] dax cleanups and lifetime fixes
-Date: Wed, 25 Nov 2015 10:36:56 -0800
-Message-ID: <20151125183656.12508.52212.stgit@dwillia2-desk3.amr.corp.intel.com>
+Subject: [PATCH v2 6/7] ext4: skip inode dirty when backing device is gone
+Date: Wed, 25 Nov 2015 10:37:29 -0800
+Message-ID: <20151125183729.12508.60473.stgit@dwillia2-desk3.amr.corp.intel.com>
+References: <20151125183656.12508.52212.stgit@dwillia2-desk3.amr.corp.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-block@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Dave Hansen <dave.hansen@linux.intel.com>,
-	Dave Chinner <david@fromorbit.com>, Jens Axboe <axboe@fb.com>,
-	Jeff Moyer <jmoyer@redhat.com>,
+Cc: Theodore Ts'o <tytso@mit.edu>, Dave Chinner <david@fromorbit.com>,
+	linux-block@vger.kernel.org,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Jan Kara <jack@suse.com>, linux-fsdevel@vger.kernel.org,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
 	linux-ext4@vger.kernel.org
 To: linux-nvdimm@lists.01.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20151125183656.12508.52212.stgit@dwillia2-desk3.amr.corp.intel.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Changes since v1: [1]
+Use SB_I_BDI_DEAD to prevent dirtying an inode after a del_gendisk()
+event.
 
-1/ Dropped the patches that were merged for v4.4-rc2
-
-2/ Introduce a new super-block flag that filesystems can use to error
-   out early when there is no longer a backing device available. Use it to
-   prevent a spurious warning triggered by ext4 on surprise removal. (Dave)
-
-3/ Include the unmap_partition implementation initially posted here [2].
-
-[1]: https://lists.01.org/pipermail/linux-nvdimm/2015-November/002876.html
-[2]: https://lists.01.org/pipermail/linux-nvdimm/2015-November/002922.html
-
-Testing this patch set reveals that xfs needs more XFS_FORCED_SHUTDOWN
-checks, especially in the unmount path.  Currently we deadlock here on
-umount after block device removal:
-
- INFO: task umount:2187 blocked for more than 120 seconds.
-       Tainted: G           O    4.4.0-rc2+ #1953  
- "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
- umount          D ffff8800d2fbfd70     0  2187   2095 0x00000080
-  ffff8800d2fbfd70 ffffffff81f94f98 ffff88031fc97bd8 ffff88030af5ad80
-  ffff8800db71db00 ffff8800d2fc0000 ffff8800db8dbde0 ffff8800d93b6708
-  ffff8800d93b6760 ffff8800d93b66d8 ffff8800d2fbfd88 ffffffff818f0695
+ WARNING: CPU: 0 PID: 2133 at fs/fs-writeback.c:2065 __mark_inode_dirty+0x261/0x350()
+ bdi-block not registered
+ [..]
  Call Trace:
-  [<ffffffff818f0695>] schedule+0x35/0x80
-  [<ffffffffa01e134e>] xfs_ail_push_all_sync+0xbe/0x110 [xfs]
-  [<ffffffff810ecc30>] ? wait_woken+0x80/0x80
-  [<ffffffffa01c8d91>] xfs_unmountfs+0x81/0x1b0 [xfs]
-  [<ffffffffa01c991b>] ? xfs_mru_cache_destroy+0x6b/0x90 [xfs]
-  [<ffffffffa01cbf30>] xfs_fs_put_super+0x30/0x90 [xfs]
-  [<ffffffff81247eca>] generic_shutdown_super+0x6a/0xf0
+  [<ffffffff81459f62>] dump_stack+0x44/0x62
+  [<ffffffff810a2052>] warn_slowpath_common+0x82/0xc0
+  [<ffffffff810a20ec>] warn_slowpath_fmt+0x5c/0x80
+  [<ffffffff812831a1>] __mark_inode_dirty+0x261/0x350
+  [<ffffffff8126d109>] generic_update_time+0x79/0xd0
+  [<ffffffff8126d28d>] file_update_time+0xbd/0x110
+  [<ffffffff812e4bc8>] ext4_dax_fault+0x68/0x110
+  [<ffffffff811f816e>] __do_fault+0x4e/0xf0
+  [<ffffffff811fc2a7>] handle_mm_fault+0x5e7/0x1b50
+  [<ffffffff811fbd11>] ? handle_mm_fault+0x51/0x1b50
+  [<ffffffff810689c1>] __do_page_fault+0x191/0x3f0
+  [<ffffffff81068cef>] trace_do_page_fault+0x4f/0x120
+  [<ffffffff8106314a>] do_async_page_fault+0x1a/0xa0
+  [<ffffffff81902678>] async_page_fault+0x28/0x30
 
-Earlier in this trace xfs has already performed:
-
- XFS (pmem0m): xfs_do_force_shutdown(0x2) called from line 1197 of file fs/xfs/xfs_log.c.
-
-...but xfs_log_work_queue() continues to run periodically.
-
+Cc: Jan Kara <jack@suse.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+Suggested-by: Dave Chinner <david@fromorbit.com>
+Signed-off-by: Dan Williams <dan.j.williams@intel.com>
 ---
+ fs/fs-writeback.c |    3 +++
+ 1 file changed, 3 insertions(+)
 
-The motivation for these lifetime fixes is to prevent crashes and
-mapping leaks when using dax.  Most of the safety guarantees in this
-series come from the protection afforded by blk_queue_enter +
-blk_queue_exit.  After a successful blk_queue_enter we can issue any
-block device operations we want without needing to worry about the block
-layer infrastructure for the device being torn down.
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index 023f6a1f23cd..33e8b24f78ab 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -2005,6 +2005,9 @@ void __mark_inode_dirty(struct inode *inode, int flags)
+ 		flags &= ~I_DIRTY_TIME;
+ 	dirtytime = flags & I_DIRTY_TIME;
+ 
++	if (sb->s_iflags & SB_I_BDI_DEAD)
++		return;
++
+ 	/*
+ 	 * Paired with smp_mb() in __writeback_single_inode() for the
+ 	 * following lockless i_state test.  See there for details.
 
-blk_queue_enter is chosen for this "is bdev alive?" check over
-SB_I_BDI_DEAD or error returns from get_blocks() because it synchronizes
-with blk_cleanup_queue.  SB_I_BDI_DEAD is there to let a file system
-optionally error out early before getting -ENODEV from the block layer,
-but it's optional an asynchronous.
-
----
-
-Dan Williams (7):
-      pmem, dax: clean up clear_pmem()
-      dax: increase granularity of dax_clear_blocks() operations
-      dax: guarantee page aligned results from bdev_direct_access()
-      dax: fix lifetime of in-kernel dax mappings with dax_map_atomic()
-      fs: notify superblocks of backing-device death
-      ext4: skip inode dirty when backing device is gone
-      mm, dax: unmap dax mappings at bdev shutdown
-
-
- arch/x86/include/asm/pmem.h  |    7 -
- block/genhd.c                |   93 +++++++++++++++--
- drivers/block/brd.c          |    3 -
- drivers/nvdimm/pmem.c        |    3 -
- drivers/s390/block/dcssblk.c |    6 -
- fs/block_dev.c               |   73 ++++++++++++--
- fs/dax.c                     |  224 +++++++++++++++++++++++++-----------------
- fs/fs-writeback.c            |    3 +
- include/linux/blkdev.h       |   17 +++
- include/linux/fs.h           |    3 +
- include/linux/genhd.h        |    1 
- 11 files changed, 304 insertions(+), 129 deletions(-)
