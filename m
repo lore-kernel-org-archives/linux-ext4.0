@@ -1,85 +1,62 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [RFC][PATCH 00/12] Enhanced file stat system call
-Date: Thu, 26 Nov 2015 15:06:19 -0700
-Message-ID: <46109C88-01C8-40A1-B44B-B76BF8C119C7@dilger.ca>
-References: <20151124081149.GA8840@infradead.org> <20151120145422.18930.72662.stgit@warthog.procyon.org.uk> <7342.1448551183@warthog.procyon.org.uk>
+From: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Subject: Re: [PATCH 02/12] statx: Provide IOC flags for Windows fs attributes
+Date: Thu, 26 Nov 2015 15:10:16 -0700
+Message-ID: <591F46C1-DBA1-434A-9BD1-1D45DD94611B@dilger.ca>
+References: <20151124195256.GB3482@thunk.org> <20151120145422.18930.72662.stgit@warthog.procyon.org.uk> <20151120145447.18930.5308.stgit@warthog.procyon.org.uk> <7976.1448552129@warthog.procyon.org.uk>
 Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_0D35D9D1-1072-40EB-A0C2-891C4163E436"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: Christoph Hellwig <hch@infradead.org>, arnd@arndb.de,
-	linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: David Howells <dhowells@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <7342.1448551183@warthog.procyon.org.uk>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: multipart/signed; boundary="Apple-Mail=_11804957-1D5E-42D1-9FC2-1FF410D3FF51"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, arnd-r2nGTMty4D4@public.gmane.org,
+	linux-afs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <7976.1448552129-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
 
---Apple-Mail=_0D35D9D1-1072-40EB-A0C2-891C4163E436
+--Apple-Mail=_11804957-1D5E-42D1-9FC2-1FF410D3FF51
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
-On Nov 26, 2015, at 8:19 AM, David Howells <dhowells@redhat.com> wrote:
+On Nov 26, 2015, at 8:35 AM, David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
 >=20
-> Christoph Hellwig <hch@infradead.org> wrote:
+> Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org> wrote:
 >=20
->> from a quick look the statx bits looks fine in general.  I think Ted
->> last time had a problem with the IOC flag allocation, so you might
->> want to ping him.
+>> As a result, I would suggest that we not try to use the
+>> FS_IOC_[GS]ETFLAGS number scheme for any new interface, so we're at
+>> least not making a bad situation worse.
+>>=20
+>> The only reason why some other file systems have chosen to use
+>> FS_IOC_[GS]ETFLAGS, instead of defining their own ioctl, is so they
+>> can use lsattr/chattr from e2fsprogs instead of creating their own
+>> utility.  But for statx, there isn't a good reason use the same flags
+>> number space.  At the very least, can we use a new flags field for =
+the
+>> Windows file attributes?  It's not like lsattr/chattr has the ability
+>> to set those flags today anyway.  So we might as well use a new flags
+>> field and a new flags numberspace for them.
 >=20
-> Yeah - he commented on that.
->=20
->> But fsinfo with the multiplexer and the void pointer is just =
-horrible.
->> What were you thinking there?
->=20
-> I think the fsinfo data struct probably wants splitting up.
+> Hmmm...  I was trying to make it so that these bits would be saved to =
+disk as
+> part of the IOC flags so that Samba could make use of them.  I guess =
+they'll
+> have to be stored in an xattr instead.
 
-Could we separate the statx() and fsinfo() submissions so that this =
-doesn't
-block statx() landing indefinitely?  I think people are generally in =
-support
-of statx() as it is today, and it's been _sooo_ long in coming that I'd =
-hate
-to see it delayed further.  The statx() syscall definitely has value =
-without
-fsinfo() to improve the life of network filesystems.
-
-Cheers, Andreas
-
->  Now this could be
-> done in a number of ways, including:
->=20
-> (1) By adding multiple syscalls (statfsx, fsinfo, netfsinfo, ...) but =
-each
->     one needs a bit in the kernel to handle the basics (path/fd =
-lookup,
->     security check, buffer allocation and freeing, ...) which could =
-all be in
->     common - hence the mux method.
->=20
-> (2) Adding an argument to the fsinfo syscall since it has at least one
->     syscall argument spare.
->=20
-> (3) Offloading some of the bits to standardised xattr calls.  The =
-large
->     string fields (domain name, volume name, ...) would seem to be =
-obvious
->     candidates for this.
->=20
-> Given that the core VFS gets to manage the contents of the buffer, it
-> shouldn't be as controversial as pioctl().
->=20
-> David
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
+The flags can be part of the same flags word in the statx() API, and how =
+they
+are stored on disk is a filesystem implementation detail.  In some =
+cases, not
+all of the flags can be stored on disk (e.g. FAT or whatever) and an =
+error
+will be returned.  In other cases they can be stored efficiently as bits =
 in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+the inode, and other filesystems may chose to store them as internal =
+xattrs.
+That shouldn't be the concern of the statx() syscall.
 
 Cheers, Andreas
 
@@ -88,7 +65,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_0D35D9D1-1072-40EB-A0C2-891C4163E436
+--Apple-Mail=_11804957-1D5E-42D1-9FC2-1FF410D3FF51
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -99,19 +76,19 @@ Content-Description: Message signed with OpenPGP using GPGMail
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIVAwUBVleCXXKl2rkXzB/gAQjJbA//cBhy5Ew7OJ1xn4MLdvpzbE8AKUbG7RmY
-fopEv+iiYM4GhHSAApH+/G++Q4DVhXc6EgCpdkMJmoPavNTgr5LSMNyzd7HUhFPh
-iaGsgB90GagjLazR8B5X8ESQfxxgJrV8ytugrz/OC08Myz/0DW5qrd1E3/Q6oYok
-iX2WctbZJN6OfrBGbxLVqz0iGmyTu9ky5Zgwt1FTVHKlgf4aUf7I8TKMPV6WxsGh
-Z18ZJZ0V7a30ANILncW5PdU+hB09KLhxyIaauCsLeqJhc/ncWBL9ZB73+TlNGyr1
-i9BELLXdMSvNPPpY0PzV1cuBRuErcTIEiBSgElLz3KZUuQZ0YReowCN9juqNUUTG
-CdDq/TkCob3tMKxerb359GHpr+Uuk/cRMZf2d/SYHHv+TQh6WeaUS61wXq96lf8x
-rrHReu+hTuWgtFQj07Onzs8SPYYd7KlgteCtzPNdV214glFOayVAGpizYIhxF0sY
-cTaoT/MDThrXHy7NwOAE3Aun39D9uqEeVn0RKmNiCenfpIy6W4D8GZLIG9rre2YQ
-44UElWKofhz9Z+rD2TYyG0GzIYaxhiG0cdBqMiidkplyoWBfpr188hwcd/U/Na9r
-3hmqc87SPplcTxIUnpFVvnTc8oIt9eeI/cCdCM7jncw9LdjyWlPAPjCUa4/hmXUY
-AtST8EW4QZU=
-=Z4o0
+iQIVAwUBVleDSHKl2rkXzB/gAQjCNA//Zcdl0r/qkNmEYtHIORP91tJ5V7sEOdlA
+89Gj88sPqOMw6KZ3N+yFfe+JXsnJd8lCKcXEJTIwL3bwSGQ07s77x6d78QF9YVwB
+kvXaY/AwfUHJJjANP6LsIWXlsgIh0t6p4DdXiJinFxEsMeijTbrgsDRhBaQYNRmA
+fWlAcEuYcrHjc6oBbdvx0qW4zKuFqtyovP3sj3hH01ltgbipRwrkzK9z7aBfl9kg
+DHqzkopRCwRM6FQVENqHJtyalUiJqo92YjrkTkzN5s7SOpd2fehgW8x7Aw1w9xT/
+SgYJKj/Ni/bYQu2tJvYmzfs8oh7DMAklMFedR1c2vkK5RBnTnVBdOJ6nr8QH/rVP
+8LX9JzXGfgvPG1mKNd+cSn3OmdbCIeyQFYAWQJrHBibjAHpWuzq4IAxfybYvYGO3
+cgL3ie9wFQ0yGwsQqOy1XL56ZnfG4CO9y6hMVxIdggi+N/aEbKEL4q7NWNL/FYOG
+77kFAdXnTKAHbr27TCdjtjAY26H868XCeRp3Yo+QzHDjsT8+dCOpSUwPPuwuBf+f
+aADRTSNgY+spoAUGEBY0r1q6ADfivqmZIQLZoyKDH1N28SINhVuIWOki9TqqkVOA
+MpCFHm1uIFP0PHKqT/aMzdy9PCAPMzwMqcJwFgRvcMf0pMzVORbbBum0TCDCG7Sd
+BY4Qo+Yr3lI=
+=lTnh
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_0D35D9D1-1072-40EB-A0C2-891C4163E436--
+--Apple-Mail=_11804957-1D5E-42D1-9FC2-1FF410D3FF51--
