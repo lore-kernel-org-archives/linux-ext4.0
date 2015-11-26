@@ -1,51 +1,41 @@
-From: Artemiy Volkov <artemiyv@acm.org>
-Subject: [PATCH v3] e2fsck: do not read EA header beyond the end of an inode
-Date: Thu, 26 Nov 2015 20:59:54 +0000
-Message-ID: <1448571594-32225-1-git-send-email-artemiyv@acm.org>
-References: <1448569394-27134-1-git-send-email-artemiyv@acm.org>
-Cc: Artemiy Volkov <artemiyv@acm.org>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f51.google.com ([74.125.82.51]:33890 "EHLO
-	mail-wm0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753391AbbKZU75 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Nov 2015 15:59:57 -0500
-Received: by wmvv187 with SMTP id v187so46075339wmv.1
-        for <linux-ext4@vger.kernel.org>; Thu, 26 Nov 2015 12:59:56 -0800 (PST)
-In-Reply-To: <1448569394-27134-1-git-send-email-artemiyv@acm.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: [PATCH] fix an endianness bug in ext4_encrypted_follow_link()
+Date: Thu, 26 Nov 2015 21:02:24 +0000
+Message-ID: <20151126210223.GV22011@ZenIV.linux.org.uk>
+References: <20151126152728.GT22011@ZenIV.linux.org.uk>
+ <1448566837.18647.16.camel@perches.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, Julia Lawall <julia.lawall@lip6.fr>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Joe Perches <joe@perches.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1448566837.18647.16.camel@perches.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-In check_inode_extra_space(), if we attempt to read an EA header at
-the end of the extra space, in a corrupted filesystem it may result in
-a read beyond the bounds of the inode. Add a check to prevent this.
+On Thu, Nov 26, 2015 at 11:40:37AM -0800, Joe Perches wrote:
+> (cc'ing Julia Lawall)
+> 
+> On Thu, 2015-11-26 at 15:27 +0000, Al Viro wrote:
+> > applying le32_to_cpu() to 16bit value is a bad idea...
+> 
+> Julia, perhaps you or your crew could produce a coccinelle test
+> for this class of error?
 
-Reproduced by running ./test_one --valgrind f_write_ea_toobig_extra_isize.
-
-Signed-off-by: Artemiy Volkov <artemiyv@acm.org>
----
-
-A quick fix to v1 which wrongly uses spaces instead of tabs.
-Correct a nonexistent struct ext2_inode_large field name used in v2.
-
- e2fsck/pass1.c |    4 ++++
- 1 file changed, 4 insertions(+)
-
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 0a8e23e..71ea943 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -482,6 +482,10 @@ static void check_inode_extra_space(e2fsck_t ctx, struct problem_context *pctx)
- 		return;
- 	}
- 
-+	/* check if there is no place for an EA header */
-+	if (inode->i_extra_isize >= max - sizeof(__u32))
-+		return;
-+
- 	eamagic = (__u32 *) (((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
- 			inode->i_extra_isize);
- 	if (*eamagic == EXT2_EXT_ATTR_MAGIC) {
--- 
-1.7.10.4
-
+What's wrong with something like make C=2 CF=-D__CHECK_ENDIAN__ fs/ext4/ ?
+Worked just fine, TYVM -
+  CHECK   fs/ext4/symlink.c
+fs/ext4/symlink.c:55:21: warning: cast to restricted __le32
+fs/ext4/symlink.c:55:21: warning: cast from restricted __le16
+points to exact location...  Sure, you need to figure out _how_ it's
+broken (e.g. with something like
+struct foo {
+	__le32 a;
+	__le16 b;
+} *p;
+le32_to_cpu(p->b) might have been misspelled le16_to_cpu(p->b) as well
+as le32_to_cpu(p->a)) - no way to tell one from another without actually
+reading and understanding the code in question. But that doesn't depend
+upon the tool used to locate the damn thing and sparse does locate them...
