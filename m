@@ -1,81 +1,133 @@
-From: Fengguang Wu <lkp@intel.com>
-Subject: Re: [PATCH] fix an endianness bug in ext4_encrypted_follow_link()
-Date: Fri, 27 Nov 2015 09:31:54 +0800
-Message-ID: <20151127013154.GA23817@wfg-t540p.sh.intel.com>
-References: <20151126152728.GT22011@ZenIV.linux.org.uk>
- <1448566837.18647.16.camel@perches.com>
- <20151126210223.GV22011@ZenIV.linux.org.uk>
- <alpine.DEB.2.02.1511262227080.2034@localhost6.localdomain6>
- <1448578076.18647.37.camel@perches.com>
+From: Junxiao Bi <junxiao.bi@oracle.com>
+Subject: [PATCH] jbd2: fix null committed data return in
+	undo_access
+Date: Fri, 27 Nov 2015 09:57:21 +0800
+Message-ID: <1448589441-19321-1-git-send-email-junxiao.bi@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Julia Lawall <julia.lawall@lip6.fr>,
-	Al Viro <viro@ZenIV.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Joe Perches <joe@perches.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1448578076.18647.37.camel@perches.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: ocfs2-devel@oss.oracle.com, jack@suse.com
+To: linux-ext4@vger.kernel.org
+Return-path: <ocfs2-devel-bounces@oss.oracle.com>
+List-Unsubscribe: <https://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
+List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
+List-Post: <mailto:ocfs2-devel@oss.oracle.com>
+List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
+List-Subscribe: <https://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
+Sender: ocfs2-devel-bounces@oss.oracle.com
+Errors-To: ocfs2-devel-bounces@oss.oracle.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Nov 26, 2015 at 02:47:56PM -0800, Joe Perches wrote:
-> On Thu, 2015-11-26 at 22:28 +0100, Julia Lawall wrote:
-> > On Thu, 26 Nov 2015, Al Viro wrote:
-> > > On Thu, Nov 26, 2015 at 11:40:37AM -0800, Joe Perches wrote:
-> > > (cc'ing Julia Lawall)
-> > > > On Thu, 2015-11-26 at 15:27 +0000, Al Viro wrote:
-> > > > applying le32_to_cpu() to 16bit value is a bad idea...
-> > > Julia, perhaps you or your crew could produce a coccinelle test
-> > > for this class of error?
-> > What's wrong with something like make C=2 CF=-D__CHECK_ENDIAN__ fs/ext4/ ?
-> > Worked just fine, TYVM -
-> > sparse does locate them...
-> 
-> Nothing at all.
-> 
-> > As long as the code of interest is getting compiled in the current
-> > configuration, relying on the compiler for this seems like a better choice.
-> 
-> Sparse isn't the compiler, but that would be fine by me
-> as long as something can catch them.
-> 
-> The original commit (f348c252320b9) was from April.
-> Isn't the kbuild robot using sparse and __CHECK_ENDIAN__?
+commit de92c8c ("jbd2: speedup jbd2_journal_get_[write|undo]_access()")
+introduced jbd2_write_access_granted() to improve write|undo_access
+speed, but missed to check the status of b_committed_data which caused
+a kernel panic on ocfs2.
 
-Yes 0day did catch the sparse warning, however it seems the email
-somehow failed to get delivered. Here is the local record:
+[ 6538.405938] ------------[ cut here ]------------
+[ 6538.406686] kernel BUG at fs/ocfs2/suballoc.c:2400!
+[ 6538.406686] invalid opcode: 0000 [#1] SMP
+[ 6538.406686] Modules linked in: ocfs2 nfsd lockd grace nfs_acl auth_rpcgss sunrpc autofs4 ocfs2_dlmfs ocfs2_stack_o2cb ocfs2_dlm ocfs2_nodemanager ocfs2_stackglue configfs sd_mod sg ip6t_REJECT nf_reject_ipv6 nf_conntrack_ipv6 nf_defrag_ipv6 xt_state nf_conntrack ip6table_filter ip6_tables be2iscsi iscsi_boot_sysfs bnx2i cnic uio cxgb4i cxgb4 cxgb3i libcxgbi cxgb3 mdio ib_iser rdma_cm ib_cm iw_cm ib_sa ib_mad ib_core ib_addr ipv6 iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi ppdev xen_kbdfront xen_netfront xen_fbfront parport_pc parport pcspkr i2c_piix4 acpi_cpufreq ext4 jbd2 mbcache xen_blkfront floppy pata_acpi ata_generic ata_piix cirrus ttm drm_kms_helper drm fb_sys_fops sysimgblt sysfillrect i2c_core syscopyarea dm_mirror dm_region_hash dm_log dm_mod
+[ 6538.406686] CPU: 1 PID: 16265 Comm: mmap_truncate Not tainted 4.3.0 #1
+[ 6538.406686] Hardware name: Xen HVM domU, BIOS 4.3.1OVM 05/14/2014
+[ 6538.406686] task: ffff88007c2bab00 ti: ffff880075b78000 task.ti: ffff880075b78000
+[ 6538.406686] RIP: 0010:[<ffffffffa06a286b>]  [<ffffffffa06a286b>] ocfs2_block_group_clear_bits+0x23b/0x250 [ocfs2]
+[ 6538.406686] RSP: 0018:ffff880075b7b7f8  EFLAGS: 00010246
+[ 6538.406686] RAX: ffff8800760c5b40 RBX: ffff88006c06a000 RCX: ffffffffa06e6df0
+[ 6538.406686] RDX: 0000000000000000 RSI: ffff88007a6f6ea0 RDI: ffff88007a760430
+[ 6538.406686] RBP: ffff880075b7b878 R08: 0000000000000002 R09: 0000000000000001
+[ 6538.406686] R10: ffffffffa06769be R11: 0000000000000000 R12: 0000000000000001
+[ 6538.406686] R13: ffffffffa06a1750 R14: 0000000000000001 R15: ffff88007a6f6ea0
+[ 6538.406686] FS:  00007f17fde30720(0000) GS:ffff88007f040000(0000) knlGS:0000000000000000
+[ 6538.406686] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[ 6538.406686] CR2: 0000000000601730 CR3: 000000007aea0000 CR4: 00000000000406e0
+[ 6538.406686] Stack:
+[ 6538.406686]  ffff88007c2bb5b0 ffff880075b7b8e0 ffff88007a7604b0 ffff88006c640800
+[ 6538.406686]  ffff88007a7604b0 ffff880075d77390 0000000075b7b878 ffffffffa06a309d
+[ 6538.406686]  ffff880075d752d8 ffff880075b7b990 ffff880075b7b898 0000000000000000
+[ 6538.406686] Call Trace:
+[ 6538.406686]  [<ffffffffa06a309d>] ? ocfs2_read_group_descriptor+0x6d/0xa0 [ocfs2]
+[ 6538.406686]  [<ffffffffa06a3654>] _ocfs2_free_suballoc_bits+0xe4/0x320 [ocfs2]
+[ 6538.406686]  [<ffffffffa06a1750>] ? ocfs2_put_slot+0xf0/0xf0 [ocfs2]
+[ 6538.406686]  [<ffffffffa06a397e>] _ocfs2_free_clusters+0xee/0x210 [ocfs2]
+[ 6538.406686]  [<ffffffffa06a1750>] ? ocfs2_put_slot+0xf0/0xf0 [ocfs2]
+[ 6538.406686]  [<ffffffffa06a1750>] ? ocfs2_put_slot+0xf0/0xf0 [ocfs2]
+[ 6538.406686]  [<ffffffffa0682d50>] ? ocfs2_extend_trans+0x50/0x1a0 [ocfs2]
+[ 6538.406686]  [<ffffffffa06a3ad5>] ocfs2_free_clusters+0x15/0x20 [ocfs2]
+[ 6538.406686]  [<ffffffffa065072c>] ocfs2_replay_truncate_records+0xfc/0x290 [ocfs2]
+[ 6538.406686]  [<ffffffffa06843ac>] ? ocfs2_start_trans+0xec/0x1d0 [ocfs2]
+[ 6538.406686]  [<ffffffffa0654600>] __ocfs2_flush_truncate_log+0x140/0x2d0 [ocfs2]
+[ 6538.406686]  [<ffffffffa0654394>] ? ocfs2_reserve_blocks_for_rec_trunc.clone.0+0x44/0x170 [ocfs2]
+[ 6538.406686]  [<ffffffffa065acd4>] ocfs2_remove_btree_range+0x374/0x630 [ocfs2]
+[ 6538.406686]  [<ffffffffa017486b>] ? jbd2_journal_stop+0x25b/0x470 [jbd2]
+[ 6538.406686]  [<ffffffffa065d5b5>] ocfs2_commit_truncate+0x305/0x670 [ocfs2]
+[ 6538.406686]  [<ffffffffa0683430>] ? ocfs2_journal_access_eb+0x20/0x20 [ocfs2]
+[ 6538.406686]  [<ffffffffa067adb7>] ocfs2_truncate_file+0x297/0x380 [ocfs2]
+[ 6538.406686]  [<ffffffffa01759e4>] ? jbd2_journal_begin_ordered_truncate+0x64/0xc0 [jbd2]
+[ 6538.406686]  [<ffffffffa067c7a2>] ocfs2_setattr+0x572/0x860 [ocfs2]
+[ 6538.406686]  [<ffffffff810e4a3f>] ? current_fs_time+0x3f/0x50
+[ 6538.406686]  [<ffffffff812124b7>] notify_change+0x1d7/0x340
+[ 6538.406686]  [<ffffffff8121abf9>] ? generic_getxattr+0x79/0x80
+[ 6538.406686]  [<ffffffff811f5876>] do_truncate+0x66/0x90
+[ 6538.406686]  [<ffffffff81120e30>] ? __audit_syscall_entry+0xb0/0x110
+[ 6538.406686]  [<ffffffff811f5bb3>] do_sys_ftruncate.clone.0+0xf3/0x120
+[ 6538.406686]  [<ffffffff811f5bee>] SyS_ftruncate+0xe/0x10
+[ 6538.406686]  [<ffffffff816aa2ae>] entry_SYSCALL_64_fastpath+0x12/0x71
+[ 6538.406686] Code: 28 48 81 ee b0 04 00 00 48 8b 92 50 fb ff ff 48 8b 80 b0 03 00 00 48 39 90 88 00 00 00 0f 84 30 fe ff ff 0f 0b eb fe 0f 0b eb fe <0f> 0b 0f 1f 00 eb fb 66 66 66 66 66 2e 0f 1f 84 00 00 00 00 00
+[ 6538.406686] RIP  [<ffffffffa06a286b>] ocfs2_block_group_clear_bits+0x23b/0x250 [ocfs2]
+[ 6538.406686]  RSP <ffff880075b7b7f8>
+[ 6538.691128] ---[ end trace 31cd7011d6770d7e ]---
+[ 6538.694492] Kernel panic - not syncing: Fatal exception
+[ 6538.695484] Kernel Offset: disabled
 
-        Date: Mon, 13 Apr 2015 16:41:54 +0800
-        From: kbuild test robot <fengguang.wu@intel.com>
-        To: Theodore Ts'o <tytso@mit.edu>
-        Cc: kbuild-all@01.org, Uday Savagaonkar <savagaon@google.com>
-        Subject: [ext4:dev 32/33] fs/ext4/namei.c:3262:25: sparse: incorrect type in
-         assignment (different base types)
-        Message-ID: <201504131652.Ox8dW5C0%fengguang.wu@intel.com>
-        MIME-Version: 1.0
-        Content-Type: text/plain; charset=us-ascii
-        Content-Disposition: inline
-        User-Agent: Mutt/1.5.23 (2014-03-12)
+Fixes: de92c8c("jbd2: speedup jbd2_journal_get_[write|undo]_access()")
+Cc: <stable@vger.kernel.org>
+Signed-off-by: Junxiao Bi <junxiao.bi@oracle.com>
+---
+ fs/jbd2/transaction.c |    9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-        tree:   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-        head:   3a19824f63e0a0df99c0a133097eb87c0152545e
-        commit: f1195c72c95115858123813e9a84badad37424c0 [32/33] ext4 crypto: Add symlink encryption
-        reproduce:
-          # apt-get install sparse
-          git checkout f1195c72c95115858123813e9a84badad37424c0
-          make ARCH=x86_64 allmodconfig
-          make C=1 CF=-D__CHECK_ENDIAN__
-
-        sparse warnings: (new ones prefixed by >>)
-
-        >> fs/ext4/namei.c:3262:25: sparse: incorrect type in assignment (different base types)
-           fs/ext4/namei.c:3262:25:    expected restricted __le16 [usertype] len
-           fs/ext4/namei.c:3262:25:    got restricted __le32 [usertype] <noident>
-        --
-        >> fs/ext4/symlink.c:74:29: sparse: cast to restricted __le32
-        >> fs/ext4/symlink.c:74:29: sparse: cast from restricted __le16
-
-Thanks,
-Fengguang
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 6b8338e..4750bda 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1009,7 +1009,8 @@ out:
+ }
+ 
+ /* Fast check whether buffer is already attached to the required transaction */
+-static bool jbd2_write_access_granted(handle_t *handle, struct buffer_head *bh)
++static bool jbd2_write_access_granted(handle_t *handle, struct buffer_head *bh,
++							int undo)
+ {
+ 	struct journal_head *jh;
+ 	bool ret = false;
+@@ -1036,6 +1037,8 @@ static bool jbd2_write_access_granted(handle_t *handle, struct buffer_head *bh)
+ 	jh = READ_ONCE(bh->b_private);
+ 	if (!jh)
+ 		goto out;
++	if (undo && !jh->b_committed_data)
++		goto out;
+ 	if (jh->b_transaction != handle->h_transaction &&
+ 	    jh->b_next_transaction != handle->h_transaction)
+ 		goto out;
+@@ -1073,7 +1076,7 @@ int jbd2_journal_get_write_access(handle_t *handle, struct buffer_head *bh)
+ 	struct journal_head *jh;
+ 	int rc;
+ 
+-	if (jbd2_write_access_granted(handle, bh))
++	if (jbd2_write_access_granted(handle, bh, 0))
+ 		return 0;
+ 
+ 	jh = jbd2_journal_add_journal_head(bh);
+@@ -1210,7 +1213,7 @@ int jbd2_journal_get_undo_access(handle_t *handle, struct buffer_head *bh)
+ 	char *committed_data = NULL;
+ 
+ 	JBUFFER_TRACE(jh, "entry");
+-	if (jbd2_write_access_granted(handle, bh))
++	if (jbd2_write_access_granted(handle, bh, 1))
+ 		return 0;
+ 
+ 	jh = jbd2_journal_add_journal_head(bh);
+-- 
+1.7.9.5
