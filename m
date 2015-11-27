@@ -1,97 +1,73 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd2: fix null committed data return in undo_access
-Date: Fri, 27 Nov 2015 09:45:53 +0100
-Message-ID: <20151127084553.GB3093@quack.suse.cz>
-References: <1448589441-19321-1-git-send-email-junxiao.bi@oracle.com>
+From: Bo Branten <bosse@acc.umu.se>
+Subject: found an error that e2fsck does not fix
+Date: Fri, 27 Nov 2015 20:11:34 +0100 (CET)
+Message-ID: <alpine.DEB.2.10.1511272003250.1707@suiko.acc.umu.se>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-	jack@suse.com
-To: Junxiao Bi <junxiao.bi@oracle.com>
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36356 "EHLO mx2.suse.de"
+Received: from mail.acc.umu.se ([130.239.18.156]:34583 "EHLO mail.acc.umu.se"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753890AbbK0Ip4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Nov 2015 03:45:56 -0500
-Content-Disposition: inline
-In-Reply-To: <1448589441-19321-1-git-send-email-junxiao.bi@oracle.com>
+	id S1754597AbbK0TTV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 27 Nov 2015 14:19:21 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by amavisd-new (Postfix) with ESMTP id 8CBF2344
+	for <linux-ext4@vger.kernel.org>; Fri, 27 Nov 2015 20:11:35 +0100 (MET)
+Received: from suiko.acc.umu.se (suiko.acc.umu.se [IPv6:2001:6b0:e:2018::162])
+	by mail.acc.umu.se (Postfix) with ESMTP id C8717342
+	for <linux-ext4@vger.kernel.org>; Fri, 27 Nov 2015 20:11:34 +0100 (MET)
+Received: from localhost (localhost [127.0.0.1])
+	by suiko.acc.umu.se (Postfix) with ESMTP id BA8D244B8B
+	for <linux-ext4@vger.kernel.org>; Fri, 27 Nov 2015 20:11:34 +0100 (CET)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 27-11-15 09:57:21, Junxiao Bi wrote:
-> commit de92c8c ("jbd2: speedup jbd2_journal_get_[write|undo]_access()")
-> introduced jbd2_write_access_granted() to improve write|undo_access
-> speed, but missed to check the status of b_committed_data which caused
-> a kernel panic on ocfs2.
 
-Thanks for debugging this! Just a few minor nits:
+Hello,
 
-1) Please use at least 12 characters of the commit hash - i.e. de92c8caf16c
-- that is pretty much guaranteed to stay unique for the lifetime of Linux.
-Using just 7 characters will become non-unique with high probability rather
-soon.
+I am debugging an Windows driver for ext4 and when creating an zero length 
+file the error below shows up on Linux, while this ofcause is an bug in 
+the Windows driver (looks like it forgets to flush some metadata) I wanted 
+to report here that every time I run fsck on this test volume it will mark 
+it as clean again but without fixing the error, so if I mount and unmount 
+the filesystem again it is again in need of fsck wich in turn will mark it 
+clean witout fixing the problem.
 
-2) Send this patch to Ted Tso as well as he is the one merging jbd2
-patches.
+Test case, testa and testb is created from Windows and only testb gets one 
+character written to with notepad:
 
-3) The fact that OCFS2 hit this problem means that it is mixing
-jbd2_journal_get_write_access() and jbd2_journal_get_undo_access() for the
-same buffer. That is slightly suspicious to me. Not that it would be
-outright bug but you have to account for the fact that someone can be
-modifying the buffer data while you are getting undo access...
+bo@ubuntu:~$ cd /mnt2/src
+bo@ubuntu:/mnt2/src$ ls -l
+ls: cannot access testa: Input/output error
+total 4
+drwxr-xr-x 15 bo bo 1024 Mar 13  1994 linux-1.0
+drwxr-xr-x 13 bo bo 1024 Mar  7  1995 linux-1.2.0
+drwxr-xr-x 15 bo bo 1024 Jun  9  1996 linux-2.0
+-?????????  ? ?  ?     ?            ? testa
+-rw-r--r--  1 bo bo    1 Nov 27 18:21 testb
+bo@ubuntu:/mnt2/src$ dmesg|tail
+[ 1657.016023] ieee80211 phy0: rt2x00queue_flush_queue: Warning - Queue 2 
+failed to flush
+[ 1773.388021] ieee80211 phy0: rt2x00queue_flush_queue: Warning - Queue 2 
+failed to flush
+[ 1774.908022] ieee80211 phy0: rt2x00queue_flush_queue: Warning - Queue 2 
+failed to flush
+[ 2254.276023] ieee80211 phy0: rt2x00queue_flush_queue: Warning - Queue 2 
+failed to flush
+[ 3064.029061] EXT4-fs (sdb5): mounted filesystem with ordered data mode. 
+Opts: (null)
+[ 3081.376794] EXT4-fs error (device sdb5): ext4_ext_check_inode:464: 
+inode #3641: comm ls: bad header/extent: invalid magic - magic 0, entries 
+0, max 0(0), depth 0(0)
+[ 4097.233826] EXT4-fs (sdb5): mounted filesystem with ordered data mode. 
+Opts: (null)
+[ 4108.835169] EXT4-fs error (device sdb5): ext4_ext_check_inode:464: 
+inode #3641: comm ls: bad header/extent: invalid magic - magic 0, entries 
+0, max 0(0), depth 0(0)
+[ 6333.410987] EXT4-fs (sdb5): mounted filesystem with ordered data mode. 
+Opts: (null)
+[ 6338.997450] EXT4-fs error (device sdb5): ext4_ext_check_inode:464: 
+inode #3641: comm ls: bad header/extent: invalid magic - magic 0, entries 
+0, max 0(0), depth 0(0)
+bo@ubuntu:/mnt2/src$
 
-4) Some other comments below in the code.
-
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index 6b8338e..4750bda 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -1009,7 +1009,8 @@ out:
->  }
->  
->  /* Fast check whether buffer is already attached to the required transaction */
-> -static bool jbd2_write_access_granted(handle_t *handle, struct buffer_head *bh)
-> +static bool jbd2_write_access_granted(handle_t *handle, struct buffer_head *bh,
-> +							int undo)
-							^^^
-Use 'bool' please. The function is already using bools so it is good for
-consistency.
-
->  {
->  	struct journal_head *jh;
->  	bool ret = false;
-> @@ -1036,6 +1037,8 @@ static bool jbd2_write_access_granted(handle_t *handle, struct buffer_head *bh)
->  	jh = READ_ONCE(bh->b_private);
->  	if (!jh)
->  		goto out;
-
-Short comment here please. Like:
-
-	/* For undo access buffer must have data copied */
-
-> +	if (undo && !jh->b_committed_data)
-> +		goto out;
->  	if (jh->b_transaction != handle->h_transaction &&
->  	    jh->b_next_transaction != handle->h_transaction)
->  		goto out;
-> @@ -1073,7 +1076,7 @@ int jbd2_journal_get_write_access(handle_t *handle, struct buffer_head *bh)
->  	struct journal_head *jh;
->  	int rc;
->  
-> -	if (jbd2_write_access_granted(handle, bh))
-> +	if (jbd2_write_access_granted(handle, bh, 0))
-
-Here 'false' instead of 0.
-
->  	JBUFFER_TRACE(jh, "entry");
-> -	if (jbd2_write_access_granted(handle, bh))
-> +	if (jbd2_write_access_granted(handle, bh, 1))
-
-Here 'true' instead of 1.
-
-Thanks.
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
