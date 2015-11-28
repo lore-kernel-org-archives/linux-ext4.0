@@ -1,63 +1,133 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: Bo Branten <bosse@acc.umu.se>
 Subject: Re: found an error that e2fsck does not fix
-Date: Sat, 28 Nov 2015 07:27:47 -0500
-Message-ID: <20151128122747.GA2836@thunk.org>
-References: <alpine.DEB.2.10.1511272003250.1707@suiko.acc.umu.se>
+Date: Sat, 28 Nov 2015 19:08:49 +0100 (CET)
+Message-ID: <alpine.DEB.2.10.1511281855120.13844@suiko.acc.umu.se>
+References: <alpine.DEB.2.10.1511272003250.1707@suiko.acc.umu.se> <20151128122747.GA2836@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: MULTIPART/MIXED; BOUNDARY="-276651502-1242803360-1448734129=:13844"
 Cc: linux-ext4@vger.kernel.org
-To: Bo Branten <bosse@acc.umu.se>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55364 "EHLO imap.thunk.org"
+Received: from mail.acc.umu.se ([130.239.18.156]:56288 "EHLO mail.acc.umu.se"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751087AbbK1M1x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 28 Nov 2015 07:27:53 -0500
-Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.10.1511272003250.1707@suiko.acc.umu.se>
+	id S1752489AbbK1SIx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 28 Nov 2015 13:08:53 -0500
+In-Reply-To: <20151128122747.GA2836@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 27, 2015 at 08:11:34PM +0100, Bo Branten wrote:
-> 
-> I am debugging an Windows driver for ext4 and when creating an zero length
-> file the error below shows up on Linux, while this ofcause is an bug in the
-> Windows driver (looks like it forgets to flush some metadata) I wanted to
-> report here that every time I run fsck on this test volume it will mark it
-> as clean again but without fixing the error, so if I mount and unmount the
-> filesystem again it is again in need of fsck wich in turn will mark it clean
-> witout fixing the problem.
-> 
-> Test case, testa and testb is created from Windows and only testb gets one
-> character written to with notepad:
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-This test case doesn't really help since I don't have access to your
-potentially buggy Windows driver for ext4.
+---276651502-1242803360-1448734129=:13844
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
 
-What would be helpful:
 
-(a) the output of "e2fsck -fy /dev/sdXX" run twice.  If e2fsck isn't
-fixing a problem, then a forced check should show it trying to fix the
-problem again.  Also the exact output of what e2fsck prints would be
-heplful.  It's possible that mounting and unmounting the file system
-using the Windows driver is causing the problem, so running "e2fsck
--fy" twice in succeession will determine whether or not this is the
-case.  In general, "e2fsck -fy" should fix all corruptions in a single
-run.  So a second run of "e2fsck -fy", if it shows errors, is an
-indication of either (a) a hardware problem (e.g., so an update of the
-file system image is getting lost or the disk image is geting
-changed/corrupted between runs of e2fsck), or (b) a bug in e2fsck.
+Hello,
 
-(b) See the REPORTING BUGS section of the e2fsck man page; in
-particular, note its suggestion to use e2image.  The e2image man page
-will have more details, but the short version is to send me the output
-of "e2image -r /dev/sdXX - | bzip2 > sdXX.e2i.bz2".
+first I want to say that we have found the bug: ext4_ext_tree_init was 
+only called when first extending the file and not at create time.
 
-If you can reproduce the problem on an arbitrary file system, create a
-small test file system "mke2fs -b 4096 /dev/sdXX 1M" and then either
-use the e2image directions described above to send me a minimal test
-case.
+However e2fsck 1.42.13 (17-May-2015) does not fix the error so I have 
+created the test images you asked for:
 
-Thanks,
+/* create test fs */
+sudo dd bs=1024 count=1024 if=/dev/zero of=/dev/sdb5
+sudo mke2fs -b 4096 /dev/sdb5 1M
+sudo tune2fs -O extents /dev/sdb5
 
-					- Ted
+/* reboot to Windows and create file 'testa' and 'testb' */
 
+/* create the images attached */
+sudo dd bs=1024 count=1024 if=/dev/sdb5 of=ext4.img
+sudo e2image -r /dev/sdb5 - | bzip2 > sdb5.e2i.bz2
+
+/* then try the fs from Linux */
+bo@ubuntu:~$ sudo mount -t ext4 /dev/sdb5 /mnt
+bo@ubuntu:~$ ls -l /mnt
+ls: cannot access /mnt/testa: Input/output error
+total 20
+drwx------ 2 root root 16384 Nov 28 18:09 lost+found
+-????????? ? ?    ?        ?            ? testa
+-rw-r--r-- 1 root root     1 Nov 28 18:15 testb
+bo@ubuntu:~$ cat /mnt/testa
+cat: /mnt/testa: Input/output error
+bo@ubuntu:~$ cat /mnt/testb
+bo@ubuntu:~$ sudo umount /mnt
+bo@ubuntu:~$ sudo ~bo/src/e2fsprogs-1.42.13/e2fsck/e2fsck -fy /dev/sdb5
+e2fsck 1.42.13 (17-May-2015)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/dev/sdb5: 13/128 files (0.0% non-contiguous), 15/256 blocks
+bo@ubuntu:~$ sudo ~bo/src/e2fsprogs-1.42.13/e2fsck/e2fsck -fy /dev/sdb5
+e2fsck 1.42.13 (17-May-2015)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/dev/sdb5: 13/128 files (0.0% non-contiguous), 15/256 blocks
+bo@ubuntu:~$ sudo mount -t ext4 /dev/sdb5 /mnt
+bo@ubuntu:~$ ls -l /mnt
+ls: cannot access /mnt/testa: Input/output error
+total 20
+drwx------ 2 root root 16384 Nov 28 18:09 lost+found
+-????????? ? ?    ?        ?            ? testa
+-rw-r--r-- 1 root root     1 Nov 28 18:15 testb
+bo@ubuntu:~$ cat /mnt/testa
+cat: /mnt/testa: Input/output error
+bo@ubuntu:~$ cat /mnt/testb
+bbo@ubuntu:~$ 
+bbo@ubuntu:~$ dmesg|tail
+[ 1376.496018] wlan0: associate with ec:43:f6:37:14:14 (try 1/3)
+[ 1376.501718] wlan0: RX AssocResp from ec:43:f6:37:14:14 (capab=0xc11 status=0 aid=3)
+[ 1376.501967] wlan0: associated
+[ 1407.949284] EXT4-fs (sdb5): mounted filesystem without journal. Opts: (null)
+[ 1420.748311] EXT4-fs error (device sdb5): ext4_ext_check_inode:464: inode #12: comm ls: bad header/extent: invalid magic - magic 0, entries 0, max 0(0), depth 0(0)
+[ 1429.169785] EXT4-fs error (device sdb5): ext4_ext_check_inode:464: inode #12: comm bash: bad header/extent: invalid magic - magic 0, entries 0, max 0(0), depth 0(0)
+[ 1430.328150] EXT4-fs error (device sdb5): ext4_ext_check_inode:464: inode #12: comm cat: bad header/extent: invalid magic - magic 0, entries 0, max 0(0), depth 0(0)
+[ 1457.061338] EXT4-fs (sdb5): mounted filesystem without journal. Opts: (null)
+[ 1469.698684] EXT4-fs error (device sdb5): ext4_ext_check_inode:464: inode #12: comm ls: bad header/extent: invalid magic - magic 0, entries 0, max 0(0), depth 0(0)
+[ 1474.838003] EXT4-fs error (device sdb5): ext4_ext_check_inode:464: inode #12: comm cat: bad header/extent: invalid magic - magic 0, entries 0, max 0(0), depth 0(0)
+bo@ubuntu:~$
+---276651502-1242803360-1448734129=:13844
+Content-Type: APPLICATION/octet-stream; name=ext4-bb.img.bz2
+Content-Transfer-Encoding: BASE64
+Content-ID: <alpine.DEB.2.10.1511281908490.13844@suiko.acc.umu.se>
+Content-Description: 
+Content-Disposition: attachment; filename=ext4-bb.img.bz2
+
+QlpoOTFBWSZTWds2bx4AACb///7/9TDgvQBIdMDLsD9H7kTgAE4CBgAQAEQI
+QEDgpqxYsAGNomaGiJqnmpqDRpoyPSaaaAMmBAaNpPQjQaDQfqT1M9Uw00qn
++lTIaaaZNDEMmhkMgZMQGmIGjTEaYQPJBFKKeUNNDQAABoAAAAAAAAAaRNcS
+sUyF6F4SVqW+9BBKUV41LeSlFHRDgBZ5ggoyItyBFlgBOGKdneEoAxCg3cIi
+qLrUGacKEWgqDWKCSZRSFsQCVoRmcGMgu4FCfhzS46BGzIzqF7RnQRVWeAWl
+CbNXIqUIEts2RFFVaqKBDgQMkISwzQyV8SU4UKMI0oRrYRRVWUsKWl44s79f
+dYShjEFh3/spNTkDJhsyqL6UkgRiAxEGFUOYGI+C4hBUnK9hf1Qw0oeOtZdg
+PtAV46PyyYiwb3r8MMEhnJkfK9dte30XKVQIMtt8PAkAoSCCU3Q7zYxiRii9
+Vy/fGPvFjY7HCgSXRGV3UMWBQ/XdV4N2nyEe+3AbiJUCeuihh/R5TaxX+Q5T
+IocOWvkShJ2Q/EhBkYw4LqpPUnOmEmhEFVYVeSAAkgAD6Fak2YXckU4UJDbN
+m8eA
+
+---276651502-1242803360-1448734129=:13844
+Content-Type: APPLICATION/octet-stream; name=sdb5.e2i.bz2
+Content-Transfer-Encoding: BASE64
+Content-ID: <alpine.DEB.2.10.1511281908491.13844@suiko.acc.umu.se>
+Content-Description: 
+Content-Disposition: attachment; filename=sdb5.e2i.bz2
+
+QlpoOTFBWSZTWbmXWRsAACT///7/9TDgrQBIdsDLsD9H7kTgAE4CBgAQAEQI
+QEDgpqxYsAFto2mGhCm0p6T1NGQDQBoNANPUAaaPU0AaM1MnpPUeKENSp7Sm
+NJkwh6T0RkwEMAQAMDSYBDT9UwZQRSQoxA01ME0wBqYACZAwACMAA0BDMtTo
+3iFu00UnWOvNq1abBbYjrUUmq+FkQomQDDBFXhQZoUDdivW+xMoJfwiICsqb
+PQSGWYgy5QZRhzg2GuEBHXDWSsyhNBBnsC4SGAUdl6+afrmRGKq2UAtWE/dn
+IUqQJWzpIoqrPFQhwoGUITQ0QytolkQIWsI1YRpwiiqsxb1dPrx7JselImCu
+QW/T7TFGRIMqGsTmDMSgSeAngpUYDUFmLxsMEIKyS35soLGM/98vayL3cVKe
+L9LLAa13bNd8AEsk1OBHkGx6YUOhBkZOtuFvIAiBgECNLnESlK4Bei+G1LuE
+YIsMbknYgpOCQocgxYGn+OVGibQeISVpvI1pTjV06yRnfOU5o2TkN8yK1cls
+fykUcAehRDIxc882ehPQHoZCiEQVVhV4IACUAAWBX4o+RdyRThQkLmXWRsA=
+
+---276651502-1242803360-1448734129=:13844--
