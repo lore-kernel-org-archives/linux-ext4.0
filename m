@@ -1,45 +1,60 @@
-From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: [PATCH 01/12] Ext4: Fix extended timestamp encoding and decoding
-Date: Sat, 28 Nov 2015 21:45:55 -0500
-Message-ID: <20151129024555.GA31968@thunk.org>
-References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
- <20151120145434.18930.89755.stgit@warthog.procyon.org.uk>
- <20151124193646.GA3482@thunk.org>
- <3495329.crWmoA5ACn@wuerfel>
+From: Bo Branten <bosse@acc.umu.se>
+Subject: Re: [PATCH] e2fsck: zap extent-format inode with no extent header
+Date: Sun, 29 Nov 2015 18:39:58 +0100 (CET)
+Message-ID: <alpine.DEB.2.10.1511291838260.27997@suiko.acc.umu.se>
+References: <20151128215132.GD10580@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-afs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <3495329.crWmoA5ACn@wuerfel>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.acc.umu.se ([130.239.18.156]:46824 "EHLO mail.acc.umu.se"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751301AbbK2RkC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 29 Nov 2015 12:40:02 -0500
+In-Reply-To: <20151128215132.GD10580@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 24, 2015 at 09:10:53PM +0100, Arnd Bergmann wrote:
-> On Tuesday 24 November 2015 14:36:46 Theodore Ts'o wrote:
-> > This is the patch I would prefer to use (and in fact which I have
-> > added to the ext4 tree):
-> > 
-> > There are issues with 32-bit vs 64-bit encoding of times before
-> > January 1, 1970, which are handled with this patch which is not
-> > handled with what you have in your patch series.  So I'd prefer if you
-> > drop this patch, and I'll get this sent to Linus as a bug fix for 4.4.
-> 
-> I'm happy with either one. Apparently both Davids have arrived with
-> almost the same algorithm and implementation, with the exception of
-> the pre-1970 handling you mention there.
 
-I was doing some testing on x86, which leads me to ask --- what's the
-current thinking about post y2038 on 32-bit platforms such as x86?  I
-see that there was some talk about using struct timespec64, but we
-haven't made the transition in the VFS interfaces yet, despite a
-comment in an LWN article from 2014 stating that "the first steps have
-been taken; hopefully the rest will follow before too long".
+Thank you for this patch, I tryed it on my computer and it does fix the 
+error our bug caused:
 
-Cheers,
+bo@ubuntu:~/src/e2fsprogs-1.42.13$ sudo mount -t ext4 /dev/sdb5 /mnt
+bo@ubuntu:~/src/e2fsprogs-1.42.13$ ls -l /mnt
+ls: cannot access /mnt/testa: Input/output error
+total 20
+drwx------ 2 root root 16384 Nov 28 18:09 lost+found
+-????????? ? ?    ?        ?            ? testa
+-rw-r--r-- 1 root root     1 Nov 28 18:15 testb
+bo@ubuntu:~/src/e2fsprogs-1.42.13$ sudo umount /mnt
+bo@ubuntu:~/src/e2fsprogs-1.42.13$ sudo ./e2fsck/e2fsck -fy /dev/sdb5
+e2fsck 1.42.13 (17-May-2015)
+Pass 1: Checking inodes, blocks, and sizes
+Inode 12 has corrupt extent header.  Clear inode? yes
 
-					- Ted
+Pass 2: Checking directory structure
+Entry 'testa' in / (2) has deleted/unused inode 12.  Clear? yes
+
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+Inode bitmap differences:  -12
+Fix? yes
+
+Free inodes count wrong for group #0 (115, counted=116).
+Fix? yes
+
+Free inodes count wrong (115, counted=116).
+Fix? yes
+
+
+/dev/sdb5: ***** FILE SYSTEM WAS MODIFIED *****
+/dev/sdb5: 12/128 files (0.0% non-contiguous), 15/256 blocks
+bo@ubuntu:~/src/e2fsprogs-1.42.13$ sudo mount -t ext4 /dev/sdb5 /mnt
+bo@ubuntu:~/src/e2fsprogs-1.42.13$ ls -l /mnt
+total 20
+drwx------ 2 root root 16384 Nov 28 18:09 lost+found
+-rw-r--r-- 1 root root     1 Nov 28 18:15 testb
+bo@ubuntu:~/src/e2fsprogs-1.42.13$
+
