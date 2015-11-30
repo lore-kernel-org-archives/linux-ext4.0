@@ -1,33 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3] e2fsck: do not read EA header beyond the end of an
- inode
-Date: Mon, 30 Nov 2015 12:06:52 -0500
-Message-ID: <20151130170652.GC4316@thunk.org>
-References: <1448569394-27134-1-git-send-email-artemiyv@acm.org>
- <1448571594-32225-1-git-send-email-artemiyv@acm.org>
+Subject: Re: [PATCH] libext2fs: fix tst_badblocks buffer overrun
+Date: Mon, 30 Nov 2015 12:10:36 -0500
+Message-ID: <20151130171036.GD4316@thunk.org>
+References: <1448401810-90675-1-git-send-email-adilger@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Artemiy Volkov <artemiyv@acm.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57913 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:57928 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752572AbbK3RGy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Nov 2015 12:06:54 -0500
+	id S1752140AbbK3RKi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Nov 2015 12:10:38 -0500
 Content-Disposition: inline
-In-Reply-To: <1448571594-32225-1-git-send-email-artemiyv@acm.org>
+In-Reply-To: <1448401810-90675-1-git-send-email-adilger@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 26, 2015 at 08:59:54PM +0000, Artemiy Volkov wrote:
-> In check_inode_extra_space(), if we attempt to read an EA header at
-> the end of the extra space, in a corrupted filesystem it may result in
-> a read beyond the bounds of the inode. Add a check to prevent this.
+On Tue, Nov 24, 2015 at 02:50:10PM -0700, Andreas Dilger wrote:
+> The test2[] array is not 0-terminated and the create_test_list() for
+> loop does not terminate properly at the end of this array, but
+> continues until it hits the 0 at the end of test3[].
 > 
-> Reproduced by running ./test_one --valgrind f_write_ea_toobig_extra_isize.
-> 
-> Signed-off-by: Artemiy Volkov <artemiyv@acm.org>
+> Reported-by: Hanno Boeck <hanno@hboeck.de>
+> Addresses: https://bugzilla.kernel.org/show_bug.cgi?id=104311
+> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 
-Applied, thanks.
+Thanks, applied.
 
 					- Ted
