@@ -1,63 +1,113 @@
-From: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
-Subject: Re: [PATCH 01/12] Ext4: Fix extended timestamp encoding and decoding
-Date: Sun, 29 Nov 2015 22:30:39 +0100
-Message-ID: <2872067.shHdUXoF07@wuerfel>
-References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk> <3495329.crWmoA5ACn@wuerfel> <20151129024555.GA31968@thunk.org>
+From: Junxiao Bi <junxiao.bi@oracle.com>
+Subject: Re: [PATCH] jbd2: fix null committed data return in
+	undo_access
+Date: Mon, 30 Nov 2015 11:03:57 +0800
+Message-ID: <565BBC9D.6040007@oracle.com>
+References: <1448589441-19321-1-git-send-email-junxiao.bi@oracle.com>
+	<20151127084553.GB3093@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7Bit
-Cc: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-afs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Deepa Dinamani <deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-To: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20151129024555.GA31968-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Transfer-Encoding: 7bit
+Cc: Mark Fasheh <mfasheh@suse.com>, linux-ext4@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com, jack@suse.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <ocfs2-devel-bounces@oss.oracle.com>
+In-Reply-To: <20151127084553.GB3093@quack.suse.cz>
+List-Unsubscribe: <https://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
+List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
+List-Post: <mailto:ocfs2-devel@oss.oracle.com>
+List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
+List-Subscribe: <https://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
+Sender: ocfs2-devel-bounces@oss.oracle.com
+Errors-To: ocfs2-devel-bounces@oss.oracle.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Saturday 28 November 2015 21:45:55 Theodore Ts'o wrote:
-> On Tue, Nov 24, 2015 at 09:10:53PM +0100, Arnd Bergmann wrote:
-> > On Tuesday 24 November 2015 14:36:46 Theodore Ts'o wrote:
-> > > This is the patch I would prefer to use (and in fact which I have
-> > > added to the ext4 tree):
-> > > 
-> > > There are issues with 32-bit vs 64-bit encoding of times before
-> > > January 1, 1970, which are handled with this patch which is not
-> > > handled with what you have in your patch series.  So I'd prefer if you
-> > > drop this patch, and I'll get this sent to Linus as a bug fix for 4.4.
-> > 
-> > I'm happy with either one. Apparently both Davids have arrived with
-> > almost the same algorithm and implementation, with the exception of
-> > the pre-1970 handling you mention there.
+On 11/27/2015 04:45 PM, Jan Kara wrote:
+> On Fri 27-11-15 09:57:21, Junxiao Bi wrote:
+>> commit de92c8c ("jbd2: speedup jbd2_journal_get_[write|undo]_access()")
+>> introduced jbd2_write_access_granted() to improve write|undo_access
+>> speed, but missed to check the status of b_committed_data which caused
+>> a kernel panic on ocfs2.
 > 
-> I was doing some testing on x86, which leads me to ask --- what's the
-> current thinking about post y2038 on 32-bit platforms such as x86?  I
-> see that there was some talk about using struct timespec64, but we
-> haven't made the transition in the VFS interfaces yet, despite a
-> comment in an LWN article from 2014 stating that "the first steps have
-> been taken; hopefully the rest will follow before too long".
+> Thanks for debugging this! Just a few minor nits:
+> 
+> 1) Please use at least 12 characters of the commit hash - i.e. de92c8caf16c
+> - that is pretty much guaranteed to stay unique for the lifetime of Linux.
+> Using just 7 characters will become non-unique with high probability rather
+> soon.
+I saw this report from checkpatch.pl. Since there have "patch subject",
+so i didn't modify it. I will update it in v2 patch.
+> 
+> 2) Send this patch to Ted Tso as well as he is the one merging jbd2
+> patches.
+OK.
+> 
+> 3) The fact that OCFS2 hit this problem means that it is mixing
+> jbd2_journal_get_write_access() and jbd2_journal_get_undo_access() for the
+> same buffer. That is slightly suspicious to me. Not that it would be
+> outright bug but you have to account for the fact that someone can be
+> modifying the buffer data while you are getting undo access...
+I am not sure about this. Mark involved this in commit b4414eea0e
+("ocfs2: Clear undo bits when local alloc is freed").
 
-The approach in my initial VFS series was to introduce 'struct inode_time',
-but I have basically abandoned that idea now, after we decided to introduce
-'timespec64' inside of the kernel and use that for other subsystems.
-The rought plan is now to have separate time64_t and u32 seconds/nanoseconds
-values in 'struct inode', 'struct iattr' and 'struct kstat' and use
-inline functions or macros to extract or set them as time64_t or timespec64
-in file system code, but that code is not written yet.
+Mark, is mixing using undo/write access a bug?
+> 
+> 4) Some other comments below in the code.
+> 
+>> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+>> index 6b8338e..4750bda 100644
+>> --- a/fs/jbd2/transaction.c
+>> +++ b/fs/jbd2/transaction.c
+>> @@ -1009,7 +1009,8 @@ out:
+>>  }
+>>  
+>>  /* Fast check whether buffer is already attached to the required transaction */
+>> -static bool jbd2_write_access_granted(handle_t *handle, struct buffer_head *bh)
+>> +static bool jbd2_write_access_granted(handle_t *handle, struct buffer_head *bh,
+>> +							int undo)
+> 							^^^
+> Use 'bool' please. The function is already using bools so it is good for
+> consistency.
+Will fix this in v2.
 
-I'm mostly coordinating the y2038 work at the moment, but that means that
-a lot of the work is going into individual drivers that a single person
-can easily handle. We've had a couple of people who tried looking at VFS,
-but none of them followed through, so it got delayed a bit. However,
-Deepa Dinamani is now looking y2038 for VFS and individual file systems
-as part of her Outreachy internship and I'm optimistic that we'll soon
-be making progress again here with her work.
-
-The other large missing piece is the system call implementation. I have
-posted a series earlier this year before my parental leave, and it's
-currently lacking review from libc folks, and blocked on me to update
-the series and post it again.
-
-	Arnd
+Thanks,
+Junxiao.
+> 
+>>  {
+>>  	struct journal_head *jh;
+>>  	bool ret = false;
+>> @@ -1036,6 +1037,8 @@ static bool jbd2_write_access_granted(handle_t *handle, struct buffer_head *bh)
+>>  	jh = READ_ONCE(bh->b_private);
+>>  	if (!jh)
+>>  		goto out;
+> 
+> Short comment here please. Like:
+> 
+> 	/* For undo access buffer must have data copied */
+> 
+>> +	if (undo && !jh->b_committed_data)
+>> +		goto out;
+>>  	if (jh->b_transaction != handle->h_transaction &&
+>>  	    jh->b_next_transaction != handle->h_transaction)
+>>  		goto out;
+>> @@ -1073,7 +1076,7 @@ int jbd2_journal_get_write_access(handle_t *handle, struct buffer_head *bh)
+>>  	struct journal_head *jh;
+>>  	int rc;
+>>  
+>> -	if (jbd2_write_access_granted(handle, bh))
+>> +	if (jbd2_write_access_granted(handle, bh, 0))
+> 
+> Here 'false' instead of 0.
+> 
+>>  	JBUFFER_TRACE(jh, "entry");
+>> -	if (jbd2_write_access_granted(handle, bh))
+>> +	if (jbd2_write_access_granted(handle, bh, 1))
+> 
+> Here 'true' instead of 1.
+> 
+> Thanks.
+> 
+> 								Honza
+> 
