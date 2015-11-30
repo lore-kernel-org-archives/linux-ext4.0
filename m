@@ -1,105 +1,119 @@
 From: Jan Kara <jack@suse.cz>
 Subject: Re: [PATCH 1/3] ext4: handle unwritten or delalloc buffers before
  enabling per-file data journaling
-Date: Mon, 30 Nov 2015 14:45:37 +0100
-Message-ID: <20151130134537.GC4522@quack.suse.cz>
+Date: Mon, 30 Nov 2015 14:55:21 +0100
+Message-ID: <20151130135521.GD4522@quack.suse.cz>
 References: <1447810474-14840-1-git-send-email-daeho.jeong@samsung.com>
+ <20151130134537.GC4522@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 To: Daeho Jeong <daeho.jeong@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:60800 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:33279 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752959AbbK3Npl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Nov 2015 08:45:41 -0500
+	id S1752067AbbK3NzY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Nov 2015 08:55:24 -0500
 Content-Disposition: inline
-In-Reply-To: <1447810474-14840-1-git-send-email-daeho.jeong@samsung.com>
+In-Reply-To: <20151130134537.GC4522@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 18-11-15 10:34:32, Daeho Jeong wrote:
-> We already allocate delalloc blocks before changing the inode mode into
-> "per-file data journal" mode to prevent delalloc blocks from remaining
-> not allocated, but another issue concerned with "BH_Unwritten" status
-> still exists. For example, by fallocate(), several buffers' status
-> change into "BH_Unwritten", but these buffers cannot be processed by
-> ext4_alloc_da_blocks(). So, they still remain in unwritten status after
-> per-file data journaling is enabled and they cannot be changed into
-> written status any more and, if they are journaled and eventually
-> checkpointed, these unwritten buffer will cause a kernel panic by the
-> below BUG_ON() function of submit_bh_wbc() when they are submitted
-> during checkpointing.
+On Mon 30-11-15 14:45:37, Jan Kara wrote:
+> On Wed 18-11-15 10:34:32, Daeho Jeong wrote:
+> > We already allocate delalloc blocks before changing the inode mode into
+> > "per-file data journal" mode to prevent delalloc blocks from remaining
+> > not allocated, but another issue concerned with "BH_Unwritten" status
+> > still exists. For example, by fallocate(), several buffers' status
+> > change into "BH_Unwritten", but these buffers cannot be processed by
+> > ext4_alloc_da_blocks(). So, they still remain in unwritten status after
+> > per-file data journaling is enabled and they cannot be changed into
+> > written status any more and, if they are journaled and eventually
+> > checkpointed, these unwritten buffer will cause a kernel panic by the
+> > below BUG_ON() function of submit_bh_wbc() when they are submitted
+> > during checkpointing.
+> > 
+> > static int submit_bh_wbc(int rw, struct buffer_head *bh,...
+> > {
+> >         ...
+> >         BUG_ON(buffer_unwritten(bh));
+> > 
+> > Moreover, when "dioread_nolock" option is enabled, the status of a
+> > buffer is changed into "BH_Unwritten" after write_begin() completes and
+> > the "BH_Unwritten" status will be cleared after I/O is done. Therefore,
+> > if a buffer's status is changed into unwrutten but the buffer's I/O is
+> > not submitted and completed, it can cause the same problem after
+> > enabling per-file data journaling. You can easily generate this bug by
+> > executing the following command.
+> > 
+> > ./kvm-xfstests -C 10000 -m nodelalloc,dioread_nolock generic/269
+> > 
+> > To resolve these problems and define a boundary between the previous
+> > mode and per-file data journaling mode, we need to flush and wait all
+> > the I/O of buffers of a file before enabling per-file data journaling
+> > of the file.
 > 
-> static int submit_bh_wbc(int rw, struct buffer_head *bh,...
-> {
->         ...
->         BUG_ON(buffer_unwritten(bh));
 > 
-> Moreover, when "dioread_nolock" option is enabled, the status of a
-> buffer is changed into "BH_Unwritten" after write_begin() completes and
-> the "BH_Unwritten" status will be cleared after I/O is done. Therefore,
-> if a buffer's status is changed into unwrutten but the buffer's I/O is
-> not submitted and completed, it can cause the same problem after
-> enabling per-file data journaling. You can easily generate this bug by
-> executing the following command.
+> > 
+> > Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
+> > ---
+> >  fs/ext4/inode.c |    9 +++++++--
+> >  1 file changed, 7 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > index 612fbcf..1f9458e 100644
+> > --- a/fs/ext4/inode.c
+> > +++ b/fs/ext4/inode.c
+> > @@ -5168,9 +5168,14 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+> >  	 * be allocated any more. even more truncate on delalloc blocks
+> >  	 * could trigger BUG by flushing delalloc blocks in journal.
+> >  	 * There is no delalloc block in non-journal data mode.
+> > +	 * We also have to handle unwritten buffers generated by
+> > +	 * fallocate() and dioread_nolock option. Once per-file data
+> > +	 * journaling is enabled, unwritten buffers will remain in
+> > +	 * unwritten status forever and they will be the seeds of
+> > +	 * kernel panic when they are checkpointed.
 > 
-> ./kvm-xfstests -C 10000 -m nodelalloc,dioread_nolock generic/269
+> Can we maybe rephrase the whole comment like:
 > 
-> To resolve these problems and define a boundary between the previous
-> mode and per-file data journaling mode, we need to flush and wait all
-> the I/O of buffers of a file before enabling per-file data journaling
-> of the file.
-
-
+> 	/* 
+> 	 * Before flushing the journal and switching inode's aops, we have
+> 	 * to flush all dirty data the inode has. There can be outstanding
+> 	 * delayed allocations, there can be unwritten extents created by
+> 	 * fallocate or buffered writes in dioread_nolock mode covered by
+> 	 * dirty data which can be converted only after flushing the dirty
+> 	 * data (and journalled aops don't know how to handle these cases).
+> 	 */
 > 
-> Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
-> ---
->  fs/ext4/inode.c |    9 +++++++--
->  1 file changed, 7 insertions(+), 2 deletions(-)
+> Otherwise the patch looks good to me. So after updating the comment you can
+> add:
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 612fbcf..1f9458e 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -5168,9 +5168,14 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
->  	 * be allocated any more. even more truncate on delalloc blocks
->  	 * could trigger BUG by flushing delalloc blocks in journal.
->  	 * There is no delalloc block in non-journal data mode.
-> +	 * We also have to handle unwritten buffers generated by
-> +	 * fallocate() and dioread_nolock option. Once per-file data
-> +	 * journaling is enabled, unwritten buffers will remain in
-> +	 * unwritten status forever and they will be the seeds of
-> +	 * kernel panic when they are checkpointed.
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-Can we maybe rephrase the whole comment like:
-
-	/* 
-	 * Before flushing the journal and switching inode's aops, we have
-	 * to flush all dirty data the inode has. There can be outstanding
-	 * delayed allocations, there can be unwritten extents created by
-	 * fallocate or buffered writes in dioread_nolock mode covered by
-	 * dirty data which can be converted only after flushing the dirty
-	 * data (and journalled aops don't know how to handle these cases).
-	 */
-
-Otherwise the patch looks good to me. So after updating the comment you can
-add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
+BTW, the code is still racy wrt mmap write faults. Once Ted merges my
+patches for hole punching races, we need to grab i_mmap_sem for writing
+here as well to avoid write page fault from creating dirty page while we
+are switching aops... I'm mostly writing this here so that there's lower
+chance this gets lost.
 
 								Honza
-
-> -	if (val && test_opt(inode->i_sb, DELALLOC)) {
-> -		err = ext4_alloc_da_blocks(inode);
-> +	if (val) {
-> +		err = filemap_write_and_wait(inode->i_mapping);
->  		if (err < 0)
->  			return err;
->  	}
+> > -	if (val && test_opt(inode->i_sb, DELALLOC)) {
+> > -		err = ext4_alloc_da_blocks(inode);
+> > +	if (val) {
+> > +		err = filemap_write_and_wait(inode->i_mapping);
+> >  		if (err < 0)
+> >  			return err;
+> >  	}
+> > -- 
+> > 1.7.9.5
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > -- 
-> 1.7.9.5
-> 
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
