@@ -1,31 +1,38 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] libext2fs: fix tst_badblocks buffer overrun
-Date: Mon, 30 Nov 2015 12:10:36 -0500
-Message-ID: <20151130171036.GD4316@thunk.org>
-References: <1448401810-90675-1-git-send-email-adilger@dilger.ca>
+Subject: Re: [PATCH v2] tune2fs: warn if the filesystem journal is dirty
+Date: Mon, 30 Nov 2015 12:14:45 -0500
+Message-ID: <20151130171445.GE4316@thunk.org>
+References: <1448410059-3691-1-git-send-email-adilger@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Jim Garlick <garlick@llnl.gov>,
+	Andreas Dilger <andreas.dilger@intel.com>
 To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57928 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:57947 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752140AbbK3RKi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Nov 2015 12:10:38 -0500
+	id S1752140AbbK3ROs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Nov 2015 12:14:48 -0500
 Content-Disposition: inline
-In-Reply-To: <1448401810-90675-1-git-send-email-adilger@dilger.ca>
+In-Reply-To: <1448410059-3691-1-git-send-email-adilger@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 24, 2015 at 02:50:10PM -0700, Andreas Dilger wrote:
-> The test2[] array is not 0-terminated and the create_test_list() for
-> loop does not terminate properly at the end of this array, but
-> continues until it hits the 0 at the end of test3[].
+On Tue, Nov 24, 2015 at 05:07:39PM -0700, Andreas Dilger wrote:
+> From: Jim Garlick <garlick@llnl.gov>
 > 
-> Reported-by: Hanno Boeck <hanno@hboeck.de>
-> Addresses: https://bugzilla.kernel.org/show_bug.cgi?id=104311
-> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+> Running tune2fs on a filesystem with an unrecovered journal can
+> cause the tune2fs settings changes in the superblock to be reverted
+> when the journal is replayed if it contains an uncommitted copy of
+> the superblock.  Print a warning if this is detected so that the
+> user isn't surprised if it happens.
+> 
+> Signed-off-by: Jim Garlick <garlick@llnl.gov>
+> 
+> Updated message printed to include steps to replay journal.
+> 
+> Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
 
-Thanks, applied.
+Applied, thanks.
 
-					- Ted
+						- Ted
