@@ -1,61 +1,49 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] filefrag: accommodate holes when calculating expected values
-Date: Mon, 30 Nov 2015 16:03:10 -0800
-Message-ID: <20151201000310.GF10580@birch.djwong.org>
+From: Daeho Jeong <daeho.jeong@samsung.com>
+Subject: Re: [PATCH 1/3] ext4: handle unwritten or delalloc buffers before
+ enabling per-file data journaling
+Date: Tue, 01 Dec 2015 04:42:57 +0000 (GMT)
+Message-ID: <172779421.90491448944976300.JavaMail.weblogic@epmlwas04c>
+Reply-To: daeho.jeong@samsung.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: base64
+Cc: "tytso@mit.edu" <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	=?utf-8?Q?=EC=A0=95=EB=8C=80=ED=98=B8?= <daeho.jeong@samsung.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:17555 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754534AbbLAADO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Nov 2015 19:03:14 -0500
-Content-Disposition: inline
+Received: from mailout3.samsung.com ([203.254.224.33]:48073 "EHLO
+	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752273AbbLAEm7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Nov 2015 23:42:59 -0500
+Received: from epcpsbgr4.samsung.com
+ (u144.gpu120.samsung.co.kr [203.254.230.144])
+ by mailout3.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
+ 64bit (built May  5 2014))
+ with ESMTP id <0NYN018DXX3LU980@mailout3.samsung.com> for
+ linux-ext4@vger.kernel.org; Tue, 01 Dec 2015 13:42:57 +0900 (KST)
+MIME-version: 1.0
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently, filefrag's "expected physical block" column expects extent
-records to be physically adjacent regardless of the amount of logical
-block space between the two records.  This means that if we punch a
-hole in a file, we get reports like this:
+VGhhbmsgeW91LCBKYW4uDQoNCj4gQ2FuIHdlIG1heWJlIHJlcGhyYXNlIHRoZSB3aG9sZSBjb21t
+ZW50IGxpa2U6DQo+IA0KPiAvKiANCj4gKiBCZWZvcmUgZmx1c2hpbmcgdGhlIGpvdXJuYWwgYW5k
+IHN3aXRjaGluZyBpbm9kZSdzIGFvcHMsIHdlIGhhdmUNCj4gKiB0byBmbHVzaCBhbGwgZGlydHkg
+ZGF0YSB0aGUgaW5vZGUgaGFzLiBUaGVyZSBjYW4gYmUgb3V0c3RhbmRpbmcNCj4gKiBkZWxheWVk
+IGFsbG9jYXRpb25zLCB0aGVyZSBjYW4gYmUgdW53cml0dGVuIGV4dGVudHMgY3JlYXRlZCBieQ0K
+PiAqIGZhbGxvY2F0ZSBvciBidWZmZXJlZCB3cml0ZXMgaW4gZGlvcmVhZF9ub2xvY2sgbW9kZSBj
+b3ZlcmVkIGJ5DQo+ICogZGlydHkgZGF0YSB3aGljaCBjYW4gYmUgY29udmVydGVkIG9ubHkgYWZ0
+ZXIgZmx1c2hpbmcgdGhlIGRpcnR5DQo+ICogZGF0YSAoYW5kIGpvdXJuYWxsZWQgYW9wcyBkb24n
+dCBrbm93IGhvdyB0byBoYW5kbGUgdGhlc2UgY2FzZXMpLg0KPiAqLw0KDQpZb3VyIGNvbW1lbnQg
+aXMgbW9yZSB1bmRlcnN0YW5kYWJsZSwgc28gSSB3aWxsIGNoYW5nZSB0aGUgY29tbWVudCBpbg0K
+dGhlIHBhdGNoLg0KDQo+IEJUVywgdGhlIGNvZGUgaXMgc3RpbGwgcmFjeSB3cnQgbW1hcCB3cml0
+ZSBmYXVsdHMuIE9uY2UgVGVkIG1lcmdlcyBteQ0KPiBwYXRjaGVzIGZvciBob2xlIHB1bmNoaW5n
+IHJhY2VzLCB3ZSBuZWVkIHRvIGdyYWIgaV9tbWFwX3NlbSBmb3Igd3JpdGluZw0KPiBoZXJlIGFz
+IHdlbGwgdG8gYXZvaWQgd3JpdGUgcGFnZSBmYXVsdCBmcm9tIGNyZWF0aW5nIGRpcnR5IHBhZ2Ug
+d2hpbGUgd2UNCj4gYXJlIHN3aXRjaGluZyBhb3BzLi4uIEknbSBtb3N0bHkgd3JpdGluZyB0aGlz
+IGhlcmUgc28gdGhhdCB0aGVyZSdzIGxvd2VyDQo+IGNoYW5jZSB0aGlzIGdldHMgbG9zdC4NCg0K
+T2suIEkndmUgcmVjb2duaXplZCBhbm90aGVyIHJhY3kgY29uZGl0aW9uIHdoZW4gc3dpdGNoaW5n
+IGFvcHMgb2YgYW4gaW5vZGUuDQpJIHdpbGwgYWxzbyBjb25zaWRlciB0aGUgcG9pbnQgaW4gdjIg
+b2YgdGhpcyBwYXRjaC4NCg==
 
-4:     4096..    8343:   57376..  61623:   4248:   55328:
-5:     8345..   10313:   61625..  63593:   1969:   61624:
 
-Notice how it expects 8345 to map to 61624, and scores this against
-the fragmentation of the file.  Flagging this as "unexpected" is
-incorrect because the gap in the logical mapping is exactly the same
-size as the gap in the physical extents.
-
-Furthermore, this scenario leaves the door open to the optimal mapping
--- if a write to block 8344 causes it to be mapped to 61624, the
-entire range 4096-10313 can be mapped with a single extent.  Until
-that happens, there's no way to combine extents 4 and 5 because of the
-gap in the logical mapping at block 8344.
-
-Therefore, tweak the extent report to account for holes.
-
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- misc/filefrag.c |    7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
-
-diff --git a/misc/filefrag.c b/misc/filefrag.c
-index 5bcde91..dacdae6 100644
---- a/misc/filefrag.c
-+++ b/misc/filefrag.c
-@@ -266,7 +266,12 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
- 				print_extent_info(&fm_ext[i], n, expected,
- 						  blk_shift, st);
- 
--			expected = fm_ext[i].fe_physical + fm_ext[i].fe_length;
-+			expected = fm_ext[i].fe_physical;
-+			if (i < fiemap->fm_mapped_extents - 1)
-+				expected += fm_ext[i + 1].fe_logical -
-+						fm_ext[i].fe_logical;
-+			else
-+				expected += fm_ext[i].fe_length;
- 			if (fm_ext[i].fe_flags & FIEMAP_EXTENT_LAST)
- 				last = 1;
- 			n++;
