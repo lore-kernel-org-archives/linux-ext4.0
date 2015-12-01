@@ -1,175 +1,73 @@
 From: Vegard Nossum <vegard.nossum@oracle.com>
-Subject: ext4 endless "orphan list check failed!" spew/lockup
-Date: Tue, 1 Dec 2015 17:42:36 +0100
-Message-ID: <565DCDFC.3010300@oracle.com>
+Subject: Re: EXT4-fs (device loop0): panic forced after error -- bug or not?
+Date: Tue, 1 Dec 2015 17:59:07 +0100
+Message-ID: <565DD1DB.4060803@oracle.com>
+References: <565DAD0A.6030305@oracle.com> <20151201153202.GA3179@thunk.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------070805090208030109000508"
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:18449 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:32799 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751442AbbLAQmq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Dec 2015 11:42:46 -0500
+	with ESMTP id S1754713AbbLAQ7P (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Dec 2015 11:59:15 -0500
+In-Reply-To: <20151201153202.GA3179@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------070805090208030109000508
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
+On 12/01/2015 04:32 PM, Theodore Ts'o wrote:
+> On Tue, Dec 01, 2015 at 03:22:02PM +0100, Vegard Nossum wrote:
+>>
+>> I'm a bit unsure about whether this is really a bug or not; it looks
+>> like the filesystem is set to panic on error but I still find it weird
+>> that this behaviour is allowed by default (would it still panic if
+>> somebody inserted this filesystem on a USB stick and it got automounted?).
+>
+> If the distribution cares about this, it should automount with mount
+> option "errors=remount-ro".
+>
+>> I call mount() with mountflags=0 and data=NULL followed by opendir() and
+>> readdir(), but if I just a manual mount + ls from the shell I don't see
+>> the panic at all, just some of the errors, so I thought maybe there's
+>> some sort of race somewhere?
+>
+> I'm not able to reproduce this; I'm getting EACCES to the opendir().
+>
+> But looking at your kernel messages, it's not a bug.
 
-Hi,
+Alright, I'll add errors=remount-ro to my scripts.
 
-Mounting the attached filesystem image (fuzzed) on latest linus/master
-causes an endless stream of the following output on the console:
+Strange that you get EACCESS, without errors=remount-ro I get:
 
-EXT4-fs (loop0): Inode 5 (ffff8800153ed720): orphan list check failed!
-ffff8800153ed720: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed730: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed740: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed750: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed760: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed770: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed780: 153ed780 ffff8800 153ed780 ffff8800  ..>.......>.....
-ffff8800153ed790: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed7a0: 153edcc0 ffff8800 15a0b920 ffff8800  ..>..... .......
-ffff8800153ed7b0: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed7c0: 153ed7c0 ffff8800 153ed7c0 ffff8800  ..>.......>.....
-ffff8800153ed7d0: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed7e0: 00008000 00000000 00000000 00000000  ................
-ffff8800153ed7f0: ffffffff ffffffff ffffffff ffffffff  ................
-ffff8800153ed800: 82080e80 ffffffff 15a0c050 ffff8800  ........P.......
-ffff8800153ed810: 153ed938 ffff8800 0007dc80 ffff8800  8.>.............
-ffff8800153ed820: 00000005 00000000 00000000 00000000  ................
-ffff8800153ed830: 00000000 00000000 565dc7b8 00000000  ..........]V....
-ffff8800153ed840: 00000000 00000000 565dc7b8 00000000  ..........]V....
-ffff8800153ed850: 00000000 00000000 565dc7b8 00000000  ..........]V....
-ffff8800153ed860: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed870: 0000000a 00000000 00000000 00000000  ................
-ffff8800153ed880: 00000060 00000000 00000001 00000000  `...............
-ffff8800153ed890: 153ed890 ffff8800 153ed890 ffff8800  ..>.......>.....
-ffff8800153ed8a0: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed8b0: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed8c0: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed8d0: 153ed8d0 ffff8800 153ed8d0 ffff8800  ..>.......>.....
-ffff8800153ed8e0: 153ed8e0 ffff8800 153ed8e0 ffff8800  ..>.......>.....
-ffff8800153ed8f0: 153ed8f0 ffff8800 153ed8f0 ffff8800  ..>.......>.....
-ffff8800153ed900: 00000000 00000000 81317bc0 ffffffff  .........{1.....
-ffff8800153ed910: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed920: 00000000 00000000 82080fa0 ffffffff  ................
-ffff8800153ed930: 00000000 00000000 153ed7e0 ffff8800  ..........>.....
-ffff8800153ed940: 00000000 02080020 00000000 00000000  .... ...........
-ffff8800153ed950: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed960: 00000000 00000000 153ed968 ffff8800  ........h.>.....
-ffff8800153ed970: 153ed968 ffff8800 00000000 00000000  h.>.............
-ffff8800153ed980: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed990: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed9a0: 82080d80 ffffffff 024200ca 00000000  ..........B.....
-ffff8800153ed9b0: 00000000 00000000 153ed9b8 ffff8800  ..........>.....
-ffff8800153ed9c0: 153ed9b8 ffff8800 00000000 00000000  ..>.............
-ffff8800153ed9d0: 153ed9d0 ffff8800 153ed9d0 ffff8800  ..>.......>.....
-ffff8800153ed9e0: 00000000 00000000 00000000 00000000  ................
-ffff8800153ed9f0: 00000000 00000000 00000000 00000000  ................
-ffff8800153eda00: 00000000 00000000 00000000 00000000  ................
-ffff8800153eda10: 00000000 00000000 00000000 00000000  ................
-ffff8800153eda20: 153eda20 ffff8800 153eda20 ffff8800   .>..... .>.....
-ffff8800153eda30: 00000000 00000000 00000000 00000000  ................
-ffff8800153eda40: 00000000 00000000 00000000 00000000  ................
-ffff8800153eda50: 153eda50 ffff8800 153eda50 ffff8800  P.>.....P.>.....
-ffff8800153eda60: 00000000 00000000 00000000 ffffffff  ................
-ffff8800153eda70: 00000000 00000000 00000000 00000000  ................
-ffff8800153eda80: 00000000 00000000 00000000 00000000  ................
-ffff8800153eda90: 00000000 00000000 00000000 00000000  ................
-ffff8800153edaa0: 153edaa0 ffff8800 153edaa0 ffff8800  ..>.......>.....
-ffff8800153edab0: 00000000 00000000 ffffffe0 0000000f  ................
-ffff8800153edac0: 153edac0 ffff8800 153edac0 ffff8800  ..>.......>.....
-ffff8800153edad0: 81302e40 ffffffff 00000000 00000003  @.0.............
-ffff8800153edae0: 00000003 00000000 00000000 00000000  ................
-ffff8800153edaf0: 00000000 00000000 00000000 00000000  ................
-ffff8800153edb00: 00000000 00000000                    ........
-CPU: 1 PID: 957 Comm: mount Not tainted 4.4.0-rc3+ #244
-  ffffffff820ac0c0 ffff88001562f868 ffffffff81610cc9 ffff8800153ed7e0
-  ffff88001562f8a0 ffffffff8133097a 00000000000003e8 ffffffff00000001
-  ffff8800153ed7e0 ffffffff820ac0c0 ffff8800153ed880 ffff88001562f8c0
-Call Trace:
-  [<ffffffff81610cc9>] dump_stack+0x44/0x5b
-  [<ffffffff8133097a>] ext4_destroy_inode+0xba/0xc0
-  [<ffffffff8125440f>] destroy_inode+0x5f/0x80
-  [<ffffffff81254d75>] evict+0x1e5/0x270
-  [<ffffffff81256217>] iput+0x297/0x350
-  [<ffffffff813393c5>] ext4_fill_super+0x4fa5/0x53b0
-  [<ffffffff8121f53a>] ? deactivate_slab+0x32a/0x3e0
-  [<ffffffff8161e1e1>] ? strnlen+0x31/0x60
-  [<ffffffff81334420>] ? ext4_calculate_overhead+0x530/0x530
-  [<ffffffff816233f8>] ? snprintf+0x88/0xa0
-  [<ffffffff810e2e91>] ? up_write+0x11/0x30
-  [<ffffffff811c902a>] ? register_shrinker+0xca/0x110
-  [<ffffffff8128329e>] ? set_blocksize+0x8e/0x140
-  [<ffffffff81232614>] mount_bdev+0x284/0x2e0
-  [<ffffffff81334420>] ? ext4_calculate_overhead+0x530/0x530
-  [<ffffffff81232390>] ? mount_ns+0xc0/0xc0
-  [<ffffffff8122356e>] ? __kmalloc_track_caller+0xbe/0x190
-  [<ffffffff811d656e>] ? kstrdup_const+0x1e/0x20
-  [<ffffffff81224796>] ? memcpy+0x36/0x40
-  [<ffffffff81317da0>] ext4_mount+0x10/0x20
-  [<ffffffff812328e6>] mount_fs+0x56/0x1b0
-  [<ffffffff8125ba32>] ? alloc_vfsmnt+0x2f2/0x350
-  [<ffffffff8125e116>] vfs_kern_mount+0x66/0x190
-  [<ffffffff8125fc32>] do_mount+0x362/0x16b0
-  [<ffffffff8121fb72>] ? ___slab_alloc+0x152/0x470
-  [<ffffffff8125f8d0>] ? copy_mount_string+0x20/0x20
-  [<ffffffff81223986>] ? kasan_unpoison_shadow+0x36/0x50
-  [<ffffffff81223bbe>] ? kasan_kmalloc+0x5e/0x70
-  [<ffffffff81223bdd>] ? kasan_slab_alloc+0xd/0x10
-  [<ffffffff8122356e>] ? __kmalloc_track_caller+0xbe/0x190
-  [<ffffffff811d66c1>] ? strndup_user+0x41/0x70
-  [<ffffffff8125f703>] ? copy_mount_options+0x23/0x1d0
-  [<ffffffff811d664d>] ? memdup_user+0x3d/0x70
-  [<ffffffff812614b6>] SyS_mount+0xf6/0x160
-  [<ffffffff812613c0>] ? copy_mnt_ns+0x440/0x440
-  [<ffffffff81f7d82e>] entry_SYSCALL_64_fastpath+0x12/0x71
+open("/dev/loop0", O_RDWR)              = 3
+mkdir("/mnt/ext4", 0755)                = -1 EEXIST (File exists)
+open("ext4.0", O_RDWR)                  = 4
+ioctl(3, LOOP_SET_FD, 0x4)              = 0
+close(4)                                = 0
+ioctl(3, LOOP_SET_STATUS64, {offset=0, number=0, flags=0, 
+file_name="ext4.0", ...}) = 0
+mount("/dev/loop0", "/mnt/ext4", "ext4", 0, NULL) = 0
+open("/mnt/ext4", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 4
+getdents(4, <panic>
 
-This seems to lock up the VM as well.
+If I do add errors=remount-ro, I get:
 
-A quick look/guess suggests maybe a cycle in the orphan list, maybe
-something in ext4_orphan_del() could cause an infinite loop in the cleanup?
+open("/dev/loop0", O_RDWR)              = 3
+mkdir("/mnt/ext4", 0755)                = -1 EEXIST (File exists)
+open("ext4.0", O_RDWR)                  = 4
+ioctl(3, LOOP_SET_FD, 0x4)              = 0
+close(4)                                = 0
+ioctl(3, LOOP_SET_STATUS64, {offset=0, number=0, flags=0, 
+file_name="ext4.0", ...}) = 0
+mount("/dev/loop0", "/mnt/ext4", "ext4", 0, "errors=remount-ro") = 0
+open("/mnt/ext4", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 4
+getdents(4, /* 0 entries */, 32768)     = 0
+close(4)                                = 0
 
-I can test patches. Thanks,
+Thanks for the quick response.
 
 
 Vegard
-
---------------070805090208030109000508
-Content-Type: application/x-bzip;
- name="ext4.1.bz2"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="ext4.1.bz2"
-
-QlpoOTFBWSZTWTZfgysAAHT//////////////wE9Ez/Pn7D8ACL5xOsxr8hABAbk86590AS+
-AxOIAdAAg0xA0aAGjBABo0YTCZDENANGTTI0yDTT96pExDQyNGgADQAADQGkmijQAAAAANBp
-iDGo0NGTT1AAyAAAAADQAAAAAAQ9VSmJgRgAAAAAAAAAAAAAAAAAAAAAAABBgTRpoaaaYmJo
-aaaGAjAIwgMmAmmjAQBgATIwCaZAMgBiGmQFSSIJhJk0Tap+mimj1P0MqaaA00aNqepkNNqb
-IT1PUeiNDZT0hoB6QMg8p6mjRtTyT1DMo/Uep6UvxvvrveMIvNzmExUuY5pS6Xxky2RhZFox
-Tft/PEl0wMfkdln0XfOW8ldszoMrdY19cxTSrfKkjvlGChnqI5im+lEZFcKsFN6vt1q6Do/h
-rkX5N9ZMVJCRhoiRDq0kiSJMtQlUQIJPSqQgkEZ6iQRJ9XQRpSSS6RImi1OBj4IXrtG/eHnY
-PO51u8u19DF5mUMVSbzLoo1dNMEwVHEpxqSanHpYbH2NrOaRq6b4OyvWos0AYwJXNoFOGJXG
-zp8klj0DifWrl65KgoaKjYJBjGEtMyRCZgKQ1KzTpkSp6hpU1SQayrZYGwq29YqClbXV9hY2
-VmqFpli2OLczgxOF5OThi7mTBmQODg4UJJBmSIOdoZyTckEQkTwGBHImoMFCpakvVPFUxVBE
-gB4ijuU2FSS+gPqfTtahVSKpmVItRVKqGBa6XTYeesqMiCKxisiCKwARARAAEBFBQAABAAAB
-QRAAFBUBAAEQAAABQBUAAVwVgwAAAAAFQARABVAozxUg8hklpipe4yi0F1RllSLKnvVQRIAc
-/Qsl5gW4e9ksRcxsrKvmIqEwpQXr8MF0RPDqSfQVIRepIS+pEOEqSAgCzfLX3WySnL7yfobS
-/u9jyl0lJUyMk15rrmBtyTDc4HSl0P2ZbIb9QyKnLo2da0k6Dj5mjTPgRkqRpSXyXHNX6lfC
-epcwtBie3R2ztNA9jrloTr8BZG3lt76cWLJcqbKuIpnqGurrSoWe53q6Lll1zVVPgSllKRUN
-ip39HzaF7hSluLTNKPd7NprqBvFZ2ZY8eVk3O3cf9KR39JHs17KjtP9WNVTajU1uRpanDKsr
-hWhKq6EopQsAAAYAAAAAAJAAA3DAhGRLshCOic7o9Lzel5/ocmeFKdOoOUo+ZUfPKT9Sk1vr
-SWslWkpzXIaz1F6eLM9jqKh4xX9aHVVqypyle1KScX8dWkbiXrHo4asncK8d6Vp++n5inVlE
-xyjy1dWE8KkHUnrxHZohX3vAnTmSeC6b1VM2zSazYXLvWd71nrPXf20Wg5LjvY0mY/uy4M2N
-8Ziddou1L2HRZHYuWbwwcNTeuwszPK05icLXSXSmnXyZQXR6Cht+ZafO5zw1uof7co8GEm1j
-4yh5fjTtrndnBcGdqdFz3ppTzWOatfFqbTpFk3T/3A2+T5OHdKTdntp6pd2yjbm6dE4e3leA
-xf5lc+Sei9N7jc0qrDgwWaZUkhIAZiU7kpxKXH52F7u5em7KSMMqSe0oqlUTdu5rr8/CO7VV
-/8XckU4UJA2X4MrA
---------------070805090208030109000508--
