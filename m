@@ -1,48 +1,144 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: EXT4-fs (device loop0): panic forced after error -- bug or not?
-Date: Wed, 2 Dec 2015 08:41:15 -0500
-Message-ID: <20151202134115.GA3356@thunk.org>
-References: <565DAD0A.6030305@oracle.com>
- <20151201153202.GA3179@thunk.org>
- <565DD1DB.4060803@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Vegard Nossum <vegard.nossum@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33833 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751894AbbLBNlU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Dec 2015 08:41:20 -0500
-Content-Disposition: inline
-In-Reply-To: <565DD1DB.4060803@oracle.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: [PATCH v16 00/22] Richacls (Core and Ext4)
+Date: Wed,  2 Dec 2015 22:01:06 +0100
+Message-ID: <1449090088-9281-1-git-send-email-agruenba@redhat.com>
+Cc: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+To: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 01, 2015 at 05:59:07PM +0100, Vegard Nossum wrote:
-> Strange that you get EACCESS, without errors=remount-ro I get:
-> 
-> open("/dev/loop0", O_RDWR)              = 3
-> mkdir("/mnt/ext4", 0755)                = -1 EEXIST (File exists)
-> open("ext4.0", O_RDWR)                  = 4
-> ioctl(3, LOOP_SET_FD, 0x4)              = 0
-> close(4)                                = 0
-> ioctl(3, LOOP_SET_STATUS64, {offset=0, number=0, flags=0,
-> file_name="ext4.0", ...}) = 0
-> mount("/dev/loop0", "/mnt/ext4", "ext4", 0, NULL) = 0
-> open("/mnt/ext4", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 4
-> getdents(4, <panic>
+Here is another update to the richacl patch queue.  I still think these patches
+are ready for the next merge window.
 
-What is the source code of your test program, and what version of C
-library are you using?  On my system, opendir() is getting translated
-to:
+In reply to the previous posting (https://lkml.org/lkml/2015/11/11/60),
+Christoph has commented that richacls should use new syscalls as their
+user-space interface instead of xattrs; the arguments didn't seem very
+convincing though.  So instead, I started looking into things that can be
+improved in the xattr code (see https://lkml.org/lkml/2015/12/2/343).
 
-openat(AT_FDCWD, "/vdc", O_RDONLY|O_NONBLOCK|O_LARGEFILE|O_DIRECTORY|O_CLOEXEC) = -1 EACCES (Permission denied)
 
-(It would have saved me time if you had sent me the source of your
-test program, BTW.)
+Changes since the last posting:
 
-Cheers,
+ * Fix a typo (https://lkml.org/lkml/2015/11/10/681) that was causing
+   getxattr to return 95 instead of failing with error EOPNOTSUPP when
+   richacls were disabled.
 
-					- Ted
+ * The user namespace conversions for richacls have moved from the VFS
+   into the get and set operations of richacl_xattr_handler; the VFS
+   doesn't have to bother anymore.
+
+   (POSIX ACLs arguably should behave the same way, but fixing that
+   without breaking anything is tricky.)
+
+
+The complete patch queue is available in git form here:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
+        richacl-2015-11-09
+
+
+The richacl user-space utilitites, man pages, and test suite are available
+here:
+
+  https://github.com/andreas-gruenbacher/richacl
+
+
+Changes to other user-space packages for richacl are available here:
+
+  https://github.com/andreas-gruenbacher/coreutils
+  https://github.com/andreas-gruenbacher/e2fsprogs
+  https://github.com/andreas-gruenbacher/xfsprogs-dev
+  https://github.com/andreas-gruenbacher/nfs-utils
+
+
+Please see the richacl homepage for more information:
+
+  http://www.bestbits.at/richacl/
+
+
+Thanks,
+Andreas
+
+Andreas Gruenbacher (20):
+  vfs: Add IS_ACL() and IS_RICHACL() tests
+  vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
+  vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+  vfs: Make the inode passed to inode_change_ok non-const
+  vfs: Add permission flags for setting file attributes
+  richacl: In-memory representation and helper functions
+  richacl: Permission mapping functions
+  richacl: Compute maximum file masks from an acl
+  richacl: Permission check algorithm
+  posix_acl: Unexport acl_by_type and make it static
+  vfs: Cache base_acl objects in inodes
+  vfs: Add get_richacl and set_richacl inode operations
+  vfs: Cache richacl in struct inode
+  richacl: Update the file masks in chmod()
+  richacl: Check if an acl is equivalent to a file mode
+  richacl: Create-time inheritance
+  richacl: Automatic Inheritance
+  richacl: xattr mapping functions
+  richacl: Add richacl xattr handler
+  vfs: Add richacl permission checking
+
+Aneesh Kumar K.V (2):
+  ext4: Add richacl support
+  ext4: Add richacl feature flag
+
+ drivers/staging/lustre/lustre/llite/llite_lib.c |   2 +-
+ fs/Kconfig                                      |   3 +
+ fs/Makefile                                     |   2 +
+ fs/attr.c                                       |  81 +++-
+ fs/ext4/Kconfig                                 |  11 +
+ fs/ext4/Makefile                                |   1 +
+ fs/ext4/ext4.h                                  |   6 +-
+ fs/ext4/file.c                                  |   3 +
+ fs/ext4/ialloc.c                                |  11 +-
+ fs/ext4/inode.c                                 |  12 +-
+ fs/ext4/namei.c                                 |   5 +
+ fs/ext4/richacl.c                               | 142 ++++++
+ fs/ext4/richacl.h                               |  40 ++
+ fs/ext4/super.c                                 |  49 +-
+ fs/ext4/xattr.c                                 |   7 +
+ fs/f2fs/acl.c                                   |   4 +-
+ fs/inode.c                                      |  15 +-
+ fs/jffs2/acl.c                                  |  10 +-
+ fs/namei.c                                      | 118 +++--
+ fs/posix_acl.c                                  |  50 +--
+ fs/richacl_base.c                               | 564 ++++++++++++++++++++++++
+ fs/richacl_inode.c                              | 333 ++++++++++++++
+ fs/richacl_xattr.c                              | 298 +++++++++++++
+ fs/xattr.c                                      |  34 +-
+ include/linux/fs.h                              |  60 ++-
+ include/linux/posix_acl.h                       |  13 +-
+ include/linux/richacl.h                         | 208 +++++++++
+ include/linux/richacl_xattr.h                   |  44 ++
+ include/uapi/linux/Kbuild                       |   2 +
+ include/uapi/linux/fs.h                         |   3 +-
+ include/uapi/linux/richacl.h                    | 152 +++++++
+ include/uapi/linux/richacl_xattr.h              |  44 ++
+ include/uapi/linux/xattr.h                      |   2 +
+ 33 files changed, 2222 insertions(+), 107 deletions(-)
+ create mode 100644 fs/ext4/richacl.c
+ create mode 100644 fs/ext4/richacl.h
+ create mode 100644 fs/richacl_base.c
+ create mode 100644 fs/richacl_inode.c
+ create mode 100644 fs/richacl_xattr.c
+ create mode 100644 include/linux/richacl.h
+ create mode 100644 include/linux/richacl_xattr.h
+ create mode 100644 include/uapi/linux/richacl.h
+ create mode 100644 include/uapi/linux/richacl_xattr.h
+
+-- 
+2.5.0
