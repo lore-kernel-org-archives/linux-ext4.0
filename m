@@ -1,168 +1,365 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH v2] filefrag: accommodate holes when calculating expected
- values
-Date: Thu, 3 Dec 2015 12:37:26 -0800
-Message-ID: <20151203203726.GH10580@birch.djwong.org>
+Subject: [PATCH] tune2fs: confirm slow/dangerous operations
+Date: Thu, 3 Dec 2015 12:40:24 -0800
+Message-ID: <20151203204024.GI10580@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:46190 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:48143 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753519AbbLCUha (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2015 15:37:30 -0500
+	with ESMTP id S1751324AbbLCUka convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2015 15:40:30 -0500
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently, filefrag's "expected physical block" column expects extent
-records to be physically adjacent regardless of the amount of logical
-block space between the two records.  This means that if we punch a
-hole in a file, we get reports like this:
+Give admins a short amount of time to confirm that they want to
+proceed with a dangerous operation.  Refuse to perform the op
+unless the filesystem is freshly checked.
 
-ext:   logical_offset:   physical_offset: length:  expected: flags:
-4:     4096..    8343:   57376..  61623:   4248:
-5:     8345..   10313:   61625..  63593:   1969:   61624:
-
-Notice how it expects 8345 to map to 61624, and scores this against
-the fragmentation of the file.  Flagging this as "unexpected" is
-incorrect because the gap in the logical mapping is exactly the same
-size as the gap in the physical extents.
-
-Furthermore, this particular mapping leaves the door open to the
-optimal mapping -- if a write to block 8344 causes it to be mapped to
-61624, the entire range 4096-10313 can be mapped with a single extent.
-Until that happens, there's no way to combine extents 4 and 5 because
-of the gap in the logical mapping at block 8344.
-
-Therefore, tweak the extent report to account for holes.
-
-v2: Make it work for extents crossing FIEMAP calls, and clean up the
-FIBMAP version to report correct expected values.
-
+Cc: Andreas Dilger <adilger@dilger.ca>
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- misc/filefrag.c |   74 +++++++++++++++++++++++++++++++++----------------------
- 1 file changed, 45 insertions(+), 29 deletions(-)
+ misc/tune2fs.c           |   41 ++++++++++----
+ tests/t_dangerous/expect |   97 +++++++++++++++++++++++++++++++++
+ tests/t_dangerous/name   |    1 
+ tests/t_dangerous/script |  134 ++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 260 insertions(+), 13 deletions(-)
+ create mode 100644 tests/t_dangerous/expect
+ create mode 100644 tests/t_dangerous/name
+ create mode 100644 tests/t_dangerous/script
 
-diff --git a/misc/filefrag.c b/misc/filefrag.c
-index 5bcde91..5ad6ee0 100644
---- a/misc/filefrag.c
-+++ b/misc/filefrag.c
-@@ -208,6 +208,7 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
- 	__u64 buf[2048];	/* __u64 for proper field alignment */
- 	struct fiemap *fiemap = (struct fiemap *)buf;
- 	struct fiemap_extent *fm_ext = &fiemap->fm_extents[0];
-+	struct fiemap_extent fm_last;
- 	int count = (sizeof(buf) - sizeof(*fiemap)) /
- 			sizeof(struct fiemap_extent);
- 	unsigned long long expected = 0;
-@@ -219,6 +220,7 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
- 	int rc;
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index af7d73c..aaa1597 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -405,14 +405,25 @@ static int update_mntopts(ext2_filsys fs, char *mntopts)
+ 	return 0;
+ }
  
- 	memset(fiemap, 0, sizeof(struct fiemap));
-+	memset(&fm_last, 0, sizeof(struct fiemap_extent));
- 
- 	if (sync_file)
- 		flags |= FIEMAP_FLAG_SYNC;
-@@ -254,6 +256,8 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
- 		}
- 
- 		for (i = 0; i < fiemap->fm_mapped_extents; i++) {
-+			expected = fm_last.fe_physical +
-+				   fm_ext[i].fe_logical - fm_last.fe_logical;
- 			if (fm_ext[i].fe_logical != 0 &&
- 			    fm_ext[i].fe_physical != expected) {
- 				tot_extents++;
-@@ -265,10 +269,9 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
- 			if (verbose)
- 				print_extent_info(&fm_ext[i], n, expected,
- 						  blk_shift, st);
--
--			expected = fm_ext[i].fe_physical + fm_ext[i].fe_length;
- 			if (fm_ext[i].fe_flags & FIEMAP_EXTENT_LAST)
- 				last = 1;
-+			fm_last = fm_ext[i];
- 			n++;
- 		}
- 
-@@ -287,14 +290,15 @@ static int filefrag_fibmap(int fd, int blk_shift, int *num_extents,
- 			   ext2fs_struct_stat *st,
- 			   unsigned long numblocks, int is_ext2)
+-static int check_fsck_needed(ext2_filsys fs)
++static void check_fsck_needed(ext2_filsys fs, const char *prompt)
  {
--	struct fiemap_extent	fm_ext;
-+	struct fiemap_extent	fm_ext, fm_last;
- 	unsigned long		i, last_block;
--	unsigned long long	logical;
-+	unsigned long long	logical, expected = 0;
- 				/* Blocks per indirect block */
- 	const long		bpib = st->st_blksize / 4;
- 	int			count;
- 
- 	memset(&fm_ext, 0, sizeof(fm_ext));
-+	memset(&fm_last, 0, sizeof(fm_last));
- 	if (force_extent) {
- 		fm_ext.fe_flags = FIEMAP_EXTENT_MERGED;
- 	}
-@@ -322,40 +326,52 @@ static int filefrag_fibmap(int fd, int blk_shift, int *num_extents,
- 			return rc;
- 		if (block == 0)
- 			continue;
--		if (*num_extents == 0) {
--			(*num_extents)++;
--			if (force_extent) {
+-	if (fs->super->s_state & EXT2_VALID_FS)
+-		return 0;
+-	printf("\n%s\n", _(please_fsck));
+-	if (mount_flags & EXT2_MF_READONLY)
+-		printf("%s", _("(and reboot afterwards!)\n"));
+-	return 1;
++	/* Refuse to modify anything but a freshly checked valid filesystem. */
++	if (!(fs->super->s_state & EXT2_VALID_FS) ||
++	    (fs->super->s_state & EXT2_ERROR_FS) ||
++	    (fs->super->s_lastcheck < fs->super->s_mtime)) {
++		printf("\n%s\n", _(please_fsck));
++		if (mount_flags & EXT2_MF_READONLY)
++			printf("%s", _("(and reboot afterwards!)\n"));
++		exit(1);
++	}
 +
-+		if (*num_extents == 0 || block != last_block + 1 ||
-+		    fm_ext.fe_logical + fm_ext.fe_length != logical) {
-+			/*
-+			 * This is the start of a new extent; figure out where
-+			 * we expected it to be and report the extent.
-+			 */
-+			if (*num_extents != 0 && fm_last.fe_length) {
-+				expected = fm_last.fe_physical +
-+					(fm_ext.fe_logical - fm_last.fe_logical);
-+				if (expected == fm_ext.fe_physical)
-+					expected = 0;
-+			}
-+			if (force_extent && *num_extents == 0)
- 				print_extent_header();
--				fm_ext.fe_physical = block * st->st_blksize;
-+			if (force_extent && *num_extents != 0) {
-+				print_extent_info(&fm_ext, *num_extents - 1,
-+						  expected, blk_shift, st);
- 			}
--		}
--		count++;
--		if (force_extent && last_block != 0 &&
--		    (block != last_block + 1 ||
--		     fm_ext.fe_logical + fm_ext.fe_length != logical)) {
--			print_extent_info(&fm_ext, *num_extents - 1,
--					  (last_block + 1) * st->st_blksize,
--					  blk_shift, st);
--			fm_ext.fe_length = 0;
-+			if (verbose && expected != 0) {
-+				printf("Discontinuity: Block %llu is at %llu "
-+				       "(was %llu)\n",
-+					fm_ext.fe_logical / st->st_blksize,
-+					fm_ext.fe_physical / st->st_blksize,
-+					expected / st->st_blksize);
-+			}
-+			/* create the new extent */
-+			fm_last = fm_ext;
- 			(*num_extents)++;
--			fm_ext.fe_logical = logical;
- 			fm_ext.fe_physical = block * st->st_blksize;
--		} else if (last_block && (block != last_block + 1)) {
--			if (verbose)
--				printf("Discontinuity: Block %ld is at %lu (was "
--				       "%lu)\n", i, block, last_block + 1);
--			fm_ext.fe_length = 0;
--			(*num_extents)++;
- 			fm_ext.fe_logical = logical;
--			fm_ext.fe_physical = block * st->st_blksize;
-+			fm_ext.fe_length = 0;
++	/* Give the admin a few seconds to bail out of a dangerous op. */
++	if (!getenv("TUNE2FS_FORCE_PROMPT") && (!isatty(0) || !isatty(1)))
++		return;
++
++	puts(prompt);
++	proceed_question(5);
++	return;
+ }
+ 
+ static void request_dir_fsck_afterwards(ext2_filsys fs)
+@@ -1145,8 +1156,8 @@ mmp_error:
+ 
+ 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
+ 		       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
+-		if (check_fsck_needed(fs))
+-			exit(1);
++		check_fsck_needed(fs,
++			_("Enabling checksums could take some time."));
+ 		if (mount_flags & EXT2_MF_MOUNTED) {
+ 			fputs(_("Cannot enable metadata_csum on a mounted "
+ 				"filesystem!\n"), stderr);
+@@ -1186,8 +1197,8 @@ mmp_error:
+ 			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
+ 		__u32	test_features[3];
+ 
+-		if (check_fsck_needed(fs))
+-			exit(1);
++		check_fsck_needed(fs,
++			_("Disabling checksums could take some time."));
+ 		if (mount_flags & EXT2_MF_MOUNTED) {
+ 			fputs(_("Cannot disable metadata_csum on a mounted "
+ 				"filesystem!\n"), stderr);
+@@ -2784,6 +2795,8 @@ retry_open:
+ 			rc = 1;
+ 			goto closefs;
  		}
- 		fm_ext.fe_length += st->st_blksize;
- 		last_block = block;
- 	}
++		check_fsck_needed(fs,
++			_("Resizing inodes could take some time."));
+ 		/*
+ 		 * If inode resize is requested use the
+ 		 * Undo I/O manager
+@@ -2999,8 +3012,10 @@ retry_open:
+ 				try_confirm_csum_seed_support();
+ 				exit(1);
+ 			}
+-			if (check_fsck_needed(fs))
+-				exit(1);
++			if (!ext2fs_has_feature_csum_seed(fs->super))
++				check_fsck_needed(fs,
++					_("Setting UUID on a checksummed "
++					  "filesystem could take some time."));
+ 
+ 			/*
+ 			 * Determine if the block group checksums are
+diff --git a/tests/t_dangerous/expect b/tests/t_dangerous/expect
+new file mode 100644
+index 0000000..353bd57
+--- /dev/null
++++ b/tests/t_dangerous/expect
+@@ -0,0 +1,97 @@
++tune2fs dangerous prompts test
++Creating filesystem with 524288 1k blocks and 65536 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
++
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (16384 blocks): done
++Creating 445 huge file(s) with 1024 blocks each: done
++Writing superblocks and filesystem accounting information:      done
++
++tune2fs -O metadata_csum test.img
++
++Please run e2fsck on the filesystem.
++
++Exit status is 1
++tune2fs -O metadata_csum test.img
++Exit status is 0
++Creating filesystem with 524288 1k blocks and 65536 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
++
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (16384 blocks): done
++Creating 445 huge file(s) with 1024 blocks each: done
++Writing superblocks and filesystem accounting information:      done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
++tune2fs -O metadata_csum test.img
++Enabling checksums could take some time.
++Proceed anyway (or wait 5 seconds) ? (y,n) 
++Exit status is 1
++tune2fs -I 512 test.img
++Resizing inodes could take some time.
++Proceed anyway (or wait 5 seconds) ? (y,n) 
++Exit status is 1
++tune2fs -U random test.img
++Setting UUID on a checksummed filesystem could take some time.
++Proceed anyway (or wait 5 seconds) ? (y,n) 
++Exit status is 1
++
++Change in FS metadata:
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
++tune2fs -O metadata_csum test.img
++Enabling checksums could take some time.
++Proceed anyway (or wait 5 seconds) ? (y,n) 
++Please run e2fsck -D on the filesystem.
++
++Exit status is 0
++test_filesys was not cleanly unmounted, check forced.
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 3A: Optimizing directories
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++
++
++tune2fs -I 512 test.img
++Resizing inodes could take some time.
++Proceed anyway (or wait 5 seconds) ? (y,n) Setting inode size 512
++Exit status is 0
++tune2fs -U f0f0f0f0-f0f0-f0f0-f0f0-f0f0f0f0f0f0 test.img
++Setting UUID on a checksummed filesystem could take some time.
++Proceed anyway (or wait 5 seconds) ? (y,n) Exit status is 0
++Backing up journal inode block information.
++
++
++Change in FS metadata:
++@@ -1,3 +1,3 @@
++-Filesystem UUID:          6fc3daa4-180d-4f2b-a6f2-f7a5efb79bcf
++-Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
++-Inode size:	          256
+++Filesystem UUID:          f0f0f0f0-f0f0-f0f0-f0f0-f0f0f0f0f0f0
+++Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit sparse_super large_file huge_file dir_nlink extra_isize metadata_csum
+++Inode size:	          512
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
+diff --git a/tests/t_dangerous/name b/tests/t_dangerous/name
+new file mode 100644
+index 0000000..c9a1030
+--- /dev/null
++++ b/tests/t_dangerous/name
+@@ -0,0 +1 @@
++dangerous tune2fs operation prompts
+diff --git a/tests/t_dangerous/script b/tests/t_dangerous/script
+new file mode 100644
+index 0000000..ee6e90c
+--- /dev/null
++++ b/tests/t_dangerous/script
+@@ -0,0 +1,134 @@
++FSCK_OPT=-fn
++OUT=$test_name.log
++EXP=$test_dir/expect
++CONF=$TMPFILE.conf
++
++cat > $CONF << ENDL
++[fs_types]
++	ext4h = {
++		features = has_journal,extent,huge_file,^flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode,64bit
++		blocksize = 1024
++		inode_size = 256
++		make_hugefiles = true
++		hugefiles_dir = /
++		hugefiles_slack = 32M
++		hugefiles_name = aaaaa
++		hugefiles_digits = 4
++		hugefiles_size = 1M
++		zero_hugefiles = false
++	}
++ENDL
++
++echo "tune2fs dangerous prompts test" > $OUT
++
++MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h -U 6fc3daa4-180d-4f2b-a6f2-f7a5efb79bcf $TMPFILE 524288 >> $OUT 2>&1
++
++# trigger a filesystem check
++$DEBUGFS -w -R 'ssv mtime 300000000' $TMPFILE > /dev/null 2>&1
++$DEBUGFS -w -R 'ssv lastcheck 20000' $TMPFILE > /dev/null 2>&1
++
++# add mcsum
++echo "tune2fs -O metadata_csum test.img" >> $OUT
++$TUNE2FS -O metadata_csum $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# check fs
++$FSCK -f -y -N test_filesys $TMPFILE > /dev/null 2>&1
++
++# add mcsum
++echo "tune2fs -O metadata_csum test.img" >> $OUT
++$TUNE2FS -O metadata_csum $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h -U 6fc3daa4-180d-4f2b-a6f2-f7a5efb79bcf $TMPFILE 524288 >> $OUT 2>&1
++
++# dump and check
++$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.before
++$FSCK $FSCK_OPT -f -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# add mcsum
++echo "tune2fs -O metadata_csum test.img" >> $OUT
++echo 'n' | TUNE2FS_FORCE_PROMPT=1 $TUNE2FS -O metadata_csum $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# change inode size
++echo "tune2fs -I 512 test.img" >> $OUT
++echo 'n' | TUNE2FS_FORCE_PROMPT=1 $TUNE2FS -I 512 $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# change uuid
++echo "tune2fs -U random test.img" >> $OUT
++echo 'n' | TUNE2FS_FORCE_PROMPT=1 $TUNE2FS -U random $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# check
++$FSCK -yD -N test_filesys $TMPFILE >> $OUT 2>&1
++
++# dump and check
++$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.after
++echo "Change in FS metadata:" >> $OUT
++diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++$DUMPE2FS $TMPFILE 2> /dev/null | egrep '^(Filesystem features:|Filesystem UUID:|Inode size:)' > $OUT.before
++
++# add mcsum
++echo "tune2fs -O metadata_csum test.img" >> $OUT
++echo 'y' | TUNE2FS_FORCE_PROMPT=1 $TUNE2FS -O metadata_csum $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++$FSCK -yD -N test_filesys $TMPFILE >> $OUT 2>&1
++
++# change inode size
++echo "tune2fs -I 512 test.img" >> $OUT
++echo 'y' | TUNE2FS_FORCE_PROMPT=1 $TUNE2FS -I 512 $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# change uuid
++echo "tune2fs -U f0f0f0f0-f0f0-f0f0-f0f0-f0f0f0f0f0f0 test.img" >> $OUT
++echo 'y' | TUNE2FS_FORCE_PROMPT=1 $TUNE2FS -U f0f0f0f0-f0f0-f0f0-f0f0-f0f0f0f0f0f0 $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# check
++$FSCK -yD -N test_filesys $TMPFILE >> $OUT 2>&1
++
++# dump and check
++$DUMPE2FS $TMPFILE 2> /dev/null | egrep '^(Filesystem features:|Filesystem UUID:|Inode size:)' > $OUT.after
++echo "Change in FS metadata:" >> $OUT
++diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++rm $TMPFILE $OUT.before $OUT.after $CONF
++
++#
++# Do the verification
++#
++
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
++mv $OUT.new $OUT
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++fi
++
++unset IMAGE FSCK_OPT OUT EXP CONF
