@@ -1,46 +1,54 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 89511] USB-storage mount error
-Date: Thu, 03 Dec 2015 01:18:54 +0000
-Message-ID: <bug-89511-13602-XkvQVgnPLL@https.bugzilla.kernel.org/>
-References: <bug-89511-13602@https.bugzilla.kernel.org/>
+From: lokesh jaliminche <lokesh.jaliminche@gmail.com>
+Subject: Regarding random grouop search start for allocation of inode.
+Date: Thu, 3 Dec 2015 13:14:37 +0530
+Message-ID: <CAKJOkCrU7b3XLKHFUS-_eyZ9Lvh7XoPcU15pjAs+qGy2o6XA-w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: base64
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:42601 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757872AbbLCBS7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Dec 2015 20:18:59 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id DB9F9205DF
-	for <linux-ext4@vger.kernel.org>; Thu,  3 Dec 2015 01:18:57 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id BF17520551
-	for <linux-ext4@vger.kernel.org>; Thu,  3 Dec 2015 01:18:55 +0000 (UTC)
-In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
+Received: from mail-wm0-f48.google.com ([74.125.82.48]:37012 "EHLO
+	mail-wm0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750897AbbLCHoi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2015 02:44:38 -0500
+Received: by wmww144 with SMTP id w144so10229227wmw.0
+        for <linux-ext4@vger.kernel.org>; Wed, 02 Dec 2015 23:44:37 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=89511
-
-bradhaack@fastmail.us <bradhaack@fastmail.us> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |bradhaack@fastmail.us
-
---- Comment #69 from bradhaack@fastmail.us <bradhaack@fastmail.us> ---
-This bug affects me.   I'm trying the workaround shown here
-https://bugzilla.kernel.org/show_bug.cgi?id=89511#c19
-
-sudo echo 'temporary write through'
->/sys/block/sdb/device/scsi_disk/6\:0\:0\:0/cache_type 
-
-and I'm getting an operation not permitted error no matter how I try it.  If I
-run lsatter, I get
-lsattr: Inappropriate ioctl for device While reading flags on cache_type
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+aGVsbG8gZm9sa3MsDQogICAgICAgICAgICAgICAgSSBhbSBuZXcgdG8gZXh0NCBjb2RlLiBJIHdh
+cyBnb2luZyB0aHJvdWdoIHRoZQ0KZXh0NC1zb3VyY2UgZm9yIGFsbG9jYXRpb24gb2YgaW5vZGUu
+DQpUaGVyZSBpcyBvbmUgdGhpbmcgdGhhdCBJIGRpZCBub3QgdW5kZXJzdGFuZCB3aGlsZSBzZWxl
+Y3Rpb24gb2YgZ3JvdXBzDQpmb3IgaW5vZGUgYWxsb2NhdGlvbiAuIEkgY2FtZSBhY3Jvc3MgdGhp
+cyBjb2RlIHNuaXBwZXQgd2hpY2ggaXMgcGFydA0Kb2YgZmluZF9ncm91cF9vcmxvdiBmdW5jdGlv
+bi4gcXVlc3Rpb24gaXMsIHdoeSBncm91cCBzZWFyY2ggc3RhcnQgaXMNCnJhbmRvbSA/DQoNCkNv
+ZGUgc25pcHBldDoNCj09PT09PT09PT0NCsK3wrfCt2lmIChxc3RyKSB7DQrCu8K3wrfCt8K3wrfC
+t8K3wrvCt8K3wrfCt8K3wrfCt8K7wrfCt8K3wrfCt8K3wrdoaW5mby5oYXNoX3ZlcnNpb24gPSBM
+RElTS0ZTX0RYX0hBU0hfSEFMRl9NRDQ7DQrCu8K3wrfCt8K3wrfCt8K3wrvCt8K3wrfCt8K3wrfC
+t8K7wrfCt8K3wrfCt8K3wrdoaW5mby5zZWVkID0gc2JpLT5zX2hhc2hfc2VlZDsNCsK7wrfCt8K3
+wrfCt8K3wrfCu8K3wrfCt8K3wrfCt8K3wrvCt8K3wrfCt8K3wrfCt2xkaXNrZnNmc19kaXJoYXNo
+KHFzdHItPm5hbWUsIHFzdHItPmxlbiwgJmhpbmZvKTsNCsK7wrfCt8K3wrfCt8K3wrfCu8K3wrfC
+t8K3wrfCt8K3wrvCt8K3wrfCt8K3wrfCt2dycCA9IGhpbmZvLmhhc2g7DQrCu8K3wrfCt8K3wrfC
+t8K3wrvCt8K3wrfCt8K3wrfCt30gZWxzZQ0KwrvCt8K3wrfCt8K3wrfCt8K7wrfCt8K3wrfCt8K3
+wrfCu8K3wrfCt8K3wrfCt8K3Z2V0X3JhbmRvbV9ieXRlcygmZ3JwLCBzaXplb2YoZ3JwKSk7DQrC
+u8K3wrfCt8K3wrfCt8K3wrvCt8K3wrfCt8K3wrfCt3BhcmVudF9ncm91cCA9ICh1bnNpZ25lZCln
+cnAgJSBuZ3JvdXBzOw0KwrvCt8K3wrfCt8K3wrfCt8K7wrfCt8K3wrfCt8K3wrdmb3IgKGkgPSAw
+OyBpIDwgbmdyb3VwczsgaSsrKSB7DQrCu8K3wrfCt8K3wrfCt8K3wrvCt8K3wrfCt8K3wrfCt8K7
+wrfCt8K3wrfCt8K3wrdnID0gKHBhcmVudF9ncm91cCArIGkpICUgbmdyb3VwczsNCsK7wrfCt8K3
+wrfCt8K3wrfCu8K3wrfCt8K3wrfCt8K3wrvCt8K3wrfCt8K3wrfCt2dldF9vcmxvdl9zdGF0cyhz
+YiwgZywgZmxleF9zaXplLCAmc3RhdHMpOw0KwrvCt8K3wrfCt8K3wrfCt8K7wrfCt8K3wrfCt8K3
+wrfCu8K3wrfCt8K3wrfCt8K3aWYgKCFzdGF0cy5mcmVlX2lub2RlcykNCsK7wrfCt8K3wrfCt8K3
+wrfCu8K3wrfCt8K3wrfCt8K3wrvCt8K3wrfCt8K3wrfCt8K7wrfCt8K3wrfCt8K3wrdjb250aW51
+ZTsNCsK7wrfCt8K3wrfCt8K3wrfCu8K3wrfCt8K3wrfCt8K3wrvCt8K3wrfCt8K3wrfCt2lmIChz
+dGF0cy51c2VkX2RpcnMgPj0gYmVzdF9uZGlyKQ0KwrvCt8K3wrfCt8K3wrfCt8K7wrfCt8K3wrfC
+t8K3wrfCu8K3wrfCt8K3wrfCt8K3wrvCt8K3wrfCt8K3wrfCt2NvbnRpbnVlOw0KwrvCt8K3wrfC
+t8K3wrfCt8K7wrfCt8K3wrfCt8K3wrfCu8K3wrfCt8K3wrfCt8K3aWYgKHN0YXRzLmZyZWVfaW5v
+ZGVzIDwgYXZlZnJlZWkpDQrCu8K3wrfCt8K3wrfCt8K3wrvCt8K3wrfCt8K3wrfCt8K7wrfCt8K3
+wrfCt8K3wrfCu8K3wrfCt8K3wrfCt8K3Y29udGludWU7DQrCu8K3wrfCt8K3wrfCt8K3wrvCt8K3
+wrfCt8K3wrfCt8K7wrfCt8K3wrfCt8K3wrdpZiAoc3RhdHMuZnJlZV9ibG9ja3MgPCBhdmVmcmVl
+YikNCsK7wrfCt8K3wrfCt8K3wrfCu8K3wrfCt8K3wrfCt8K3wrvCt8K3wrfCt8K3wrfCt8K7wrfC
+t8K3wrfCt8K3wrdjb250aW51ZTsNCsK7wrfCt8K3wrfCt8K3wrfCu8K3wrfCt8K3wrfCt8K3wrvC
+t8K3wrfCt8K3wrfCt2dycCA9IGc7DQrCu8K3wrfCt8K3wrfCt8K3wrvCt8K3wrfCt8K3wrfCt8K7
+wrfCt8K3wrfCt8K3wrdyZXQgPSAwOw0KwrvCt8K3wrfCt8K3wrfCt8K7wrfCt8K3wrfCt8K3wrfC
+u8K3wrfCt8K3wrfCt8K3YmVzdF9uZGlyID0gc3RhdHMudXNlZF9kaXJzOw0KwrvCt8K3wrfCt8K3
+wrfCt8K7wrfCt8K3wrfCt8K3wrd9DQoNClRoYW5rcyAmIFJlZ2FyZHMsDQogIExva2VzaA0K
