@@ -1,120 +1,76 @@
-From: lokesh jaliminche <lokesh.jaliminche@gmail.com>
-Subject: Re: Regarding random grouop search start for allocation of inode.
-Date: Fri, 4 Dec 2015 00:43:07 +0530
-Message-ID: <CAKJOkCr7fsyTxCxPivOp9-0MsbPL0nMQCnAcGUjd=gDq7zS6uQ@mail.gmail.com>
-References: <CAKJOkCrU7b3XLKHFUS-_eyZ9Lvh7XoPcU15pjAs+qGy2o6XA-w@mail.gmail.com>
-	<CAKJOkCoZExQv6mNMQ7kM_ihQ4B41WoNQJYF+pOhXKJLg-OOt+Q@mail.gmail.com>
-	<ED92218E-3E81-456C-A6C6-37C2D32AD06B@dilger.ca>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] filefrag: accommodate holes when calculating expected
+ values
+Date: Thu, 3 Dec 2015 12:30:38 -0800
+Message-ID: <20151203203038.GG10580@birch.djwong.org>
+References: <20151201000310.GF10580@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: base64
-To: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f46.google.com ([74.125.82.46]:34854 "EHLO
-	mail-wm0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751618AbbLCTNJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2015 14:13:09 -0500
-Received: by wmuu63 with SMTP id u63so34525635wmu.0
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Dec 2015 11:13:08 -0800 (PST)
-In-Reply-To: <ED92218E-3E81-456C-A6C6-37C2D32AD06B@dilger.ca>
+Received: from aserp1040.oracle.com ([141.146.126.69]:41421 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753597AbbLCUaq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2015 15:30:46 -0500
+Content-Disposition: inline
+In-Reply-To: <20151201000310.GF10580@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-T2hoIHRoYW5rcyBmb3IgdGhlIGNsYXJpZmljYXRpb24uIFRoZXJlIGlzIG9uZSBtb3JlIHRoaW5n
-IEkgd291bGQgbGlrZQ0KdG8gcG9pbnQgb3V0IGhlcmUuDQpJbiB0aGUgY29kZSB0aGVyZSAgaXMg
-YSBsb29wIHRvIHNjYW4gdGhlIGdyb3VwcyBmb3IgaW5vZGUNCmFsbGxvY2F0aW9uKEluc2lkZSBm
-aW5kX2dyb3VwX29ybG92IGZ1bmN0aW9uKS4NClRoZXJlIGFyZSBzb21lIHBvbGljaWVzIGZvciBn
-cm91cCBzZWxlY3Rpb24gLiB3aGlsZSBzY2FubmluZyB0aGUNCmdyb3VwcywgaXQgY2hlY2tzIGZv
-ciB0aGVzZQ0KcG9saWNpZXMgdG8gYmUgc2F0aXNmaWVkLg0KSWYgYSBwYXJ0aWN1bGFyIGdyb3Vw
-IHNhdGlzZnkgdGhlc2UgcHJvcGVydGllcyBpdCBzaG91bGQgZ2V0IHNlbGVjdGVkDQpmb3IgaW5v
-ZGUgYWxsb2NhdGlvbiBidXQgaW5zdGVhZA0KaXQgZG9lcyBmdXJ0aGVyIGxvb2t1cCBpbiBuZXh0
-IGdyb3Vwcy4NCkkgdGhpbmsgdGhlcmUgaXMgbWlzc2luZyBicmVha2luZyBjb25kaXRpb24uIEkg
-aGF2ZSBhZGRlZCBicmVhayBvdmVyDQp0aGVyZSBhbmQgaGVyZSBpcyB0aGUNCnBhdGNoIGZvciB0
-aGF0LiBBbnkgcmVhc29uIGZvciBub3QgaGF2aW5nIGJyZWFrIGNvbmRpdGlvbiBvdmVyIGhlcmUg
-Pw0KDQpkaWZmIC1OdXIgbGludXgtMi42LjMyLTQzMS4xNy4xLmVsNi54ODZfNjQvZnMvZXh0NC9p
-YWxsb2MuYw0KbGludXgtMi42LjMyLTQzMS4xNy4xLmVsNi54ODZfNjQvZnMvZXh0NC9pYWxsb2Mu
-Yw0KLS0tIGxpbnV4LTIuNi4zMi00MzEuMTcuMS5lbDYueDg2XzY0L2ZzL2V4dDQvaWFsbG9jLmMg
-ICAgMjAxNC0wNC0xMg0KMDE6MjA6MzEuMDAwMDAwMDAwICswNTMwDQorKysgbGludXgtMi42LjMy
-LTQzMS4xNy4xLmVsNi54ODZfNjQvZnMvZXh0NC9pYWxsb2MuYyAgICAyMDE1LTExLTI5DQoyMToz
-Njo1MS44MDU1NDIyMDkgKzA1MzANCkBAIC01MjksNiArNTI5LDcgQEANCiAgICAgICAgICAgICBn
-cnAgPSBnOw0KICAgICAgICAgICAgIHJldCA9IDA7DQogICAgICAgICAgICAgYmVzdF9uZGlyID0g
-c3RhdHMudXNlZF9kaXJzOw0KKyAgICAgICAgICAgIGJyZWFrOw0KICAgICAgICAgfQ0KICAgICAg
-ICAgaWYgKHJldCkNCiAgICAgICAgIGdvdG8gZmFsbGJhY2s7DQoNClRoYW5rcyAmIFJlZ2FyZHMs
-DQogICBMb2tlc2gNCg0KDQoNCk9uIFRodSwgRGVjIDMsIDIwMTUgYXQgMTE6MjggUE0sIEFuZHJl
-YXMgRGlsZ2VyIDxhZGlsZ2VyQGRpbGdlci5jYT4gd3JvdGU6DQo+IE9uIERlYyAzLCAyMDE1LCBh
-dCAwMTowNywgbG9rZXNoIGphbGltaW5jaGUgPGxva2VzaC5qYWxpbWluY2hlQGdtYWlsLmNvbT4g
-d3JvdGU6DQo+Pg0KPj4gVGhvdWdodCBvZiBnaXZpbmcgbW9yZSBjbGFyaWZpY2F0aW9uIG9uIG15
-IHF1ZXN0aW9uDQo+PiB3aHkgZ3JvdXAgc2VhcmNoIHN0YXJ0IGlzIHJhbmRvbSA/IGJlY2F1c2Ug
-d2UgY2FuIGFsc28gc3RhcnQgIHNlYXJjaA0KPj4gZm9yIHZhbGlkIGdyb3VwcyBmb3IgaW5vZGUg
-YWxsb2NhdGlvbiBmcm9tIHRoZSBzdGFydC4gQXMgdGhpcyBncm91cA0KPj4gc2VhcmNoIGlzIHJh
-bmRvbSAgaW5vZGUgc2VsZWN0aW9uIG1pZ2h0IGdvIHRvIGVuZCBvZiBncm91cHMgd2hpY2gNCj4+
-IG1pZ2h0IGFmZmVjdCBJTyBwZXJmb3JtYW5jZQ0KPg0KPiBTdGFydGluZyB0aGUgaW5vZGUgc2Vh
-cmNoIGF0IHRoZSBiZWdpbm5pbmcgb2YgdGhlIGRpc2sgZWFjaCB0aW1lDQo+IG1lYW5zIHRoYXQg
-aW5vZGUgYWxsb2NhdGlvbiB3aWxsIGJlIGluZWZmaWNpZW50IGJlY2F1c2UgaXQgd2lsbCBzZWFy
-Y2gNCj4gb3ZlciBncm91cHMgdGhhdCBhcmUgbW9zdGx5IG9yIGVudGlyZWx5IGZ1bGwgYWxyZWFk
-eS4NCj4NCj4gQWxsb2NhdGluZyB0aGUgbmV3IGRpcmVjdG9yeSBpbiBhIHNlbWktcmFuZG9tIGdy
-b3VwLCBvbmUgdGhhdCBpcw0KPiByZWxhdGl2ZWx5IHVudXNlZCwgZW5zdXJlcyB0aGF0IG5ldw0K
-PiBpbm9kZSBhbmQgYmxvY2sgYWxsb2NhdGlvbnMgYXJlIHJlbGF0aXZlbHkgZWZmaWNpZW50IGFm
-dGVyd2FyZC4NCj4NCj4gQ2hlZXJzLCBBbmRyZWFzDQo+DQo+PiBPbiBUaHUsIERlYyAzLCAyMDE1
-IGF0IDE6MTQgUE0sIGxva2VzaCBqYWxpbWluY2hlDQo+PiA8bG9rZXNoLmphbGltaW5jaGVAZ21h
-aWwuY29tPiB3cm90ZToNCj4+PiBoZWxsbyBmb2xrcywNCj4+PiAgICAgICAgICAgICAgICBJIGFt
-IG5ldyB0byBleHQ0IGNvZGUuIEkgd2FzIGdvaW5nIHRocm91Z2ggdGhlDQo+Pj4gZXh0NC1zb3Vy
-Y2UgZm9yIGFsbG9jYXRpb24gb2YgaW5vZGUuDQo+Pj4gVGhlcmUgaXMgb25lIHRoaW5nIHRoYXQg
-SSBkaWQgbm90IHVuZGVyc3RhbmQgd2hpbGUgc2VsZWN0aW9uIG9mIGdyb3Vwcw0KPj4+IGZvciBp
-bm9kZSBhbGxvY2F0aW9uIC4gSSBjYW1lIGFjcm9zcyB0aGlzIGNvZGUgc25pcHBldCB3aGljaCBp
-cyBwYXJ0DQo+Pj4gb2YgZmluZF9ncm91cF9vcmxvdiBmdW5jdGlvbi4gcXVlc3Rpb24gaXMsIHdo
-eSBncm91cCBzZWFyY2ggc3RhcnQgaXMNCj4+PiByYW5kb20gPw0KPj4+DQo+Pj4gQ29kZSBzbmlw
-cGV0Og0KPj4+ID09PT09PT09PT0NCj4+PiDQksK30JLCt9CSwrdpZiAocXN0cikgew0KPj4+INCS
-wrvQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCu9CSwrfQksK30JLCt9CSwrfQksK30JLC
-t9CSwrfQksK70JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCt2hpbmZvLmhhc2hfdmVyc2lvbiA9
-IExESVNLRlNfRFhfSEFTSF9IQUxGX01ENDsNCj4+PiDQksK70JLCt9CSwrfQksK30JLCt9CSwrfQ
-ksK30JLCt9CSwrvQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCu9CSwrfQksK30JLCt9CS
-wrfQksK30JLCt9CSwrdoaW5mby5zZWVkID0gc2JpLT5zX2hhc2hfc2VlZDsNCj4+PiDQksK70JLC
-t9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrvQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK3
-0JLCu9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrdsZGlza2ZzZnNfZGlyaGFzaChxc3RyLT5u
-YW1lLCBxc3RyLT5sZW4sICZoaW5mbyk7DQo+Pj4g0JLCu9CSwrfQksK30JLCt9CSwrfQksK30JLC
-t9CSwrfQksK70JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrvQksK30JLCt9CSwrfQksK3
-0JLCt9CSwrfQksK3Z3JwID0gaGluZm8uaGFzaDsNCj4+PiDQksK70JLCt9CSwrfQksK30JLCt9CS
-wrfQksK30JLCt9CSwrvQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK3fSBlbHNlDQo+Pj4g0JLC
-u9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK70JLCt9CSwrfQksK30JLCt9CSwrfQksK3
-0JLCt9CSwrvQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK3Z2V0X3JhbmRvbV9ieXRlcygmZ3Jw
-LCBzaXplb2YoZ3JwKSk7DQo+Pj4g0JLCu9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK7
-0JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCt3BhcmVudF9ncm91cCA9ICh1bnNpZ25lZClncnAg
-JSBuZ3JvdXBzOw0KPj4+INCSwrvQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCu9CSwrfQ
-ksK30JLCt9CSwrfQksK30JLCt9CSwrdmb3IgKGkgPSAwOyBpIDwgbmdyb3VwczsgaSsrKSB7DQo+
-Pj4g0JLCu9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK70JLCt9CSwrfQksK30JLCt9CS
-wrfQksK30JLCt9CSwrvQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK3ZyA9IChwYXJlbnRfZ3Jv
-dXAgKyBpKSAlIG5ncm91cHM7DQo+Pj4g0JLCu9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrfQ
-ksK70JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrvQksK30JLCt9CSwrfQksK30JLCt9CS
-wrfQksK3Z2V0X29ybG92X3N0YXRzKHNiLCBnLCBmbGV4X3NpemUsICZzdGF0cyk7DQo+Pj4g0JLC
-u9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK70JLCt9CSwrfQksK30JLCt9CSwrfQksK3
-0JLCt9CSwrvQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK3aWYgKCFzdGF0cy5mcmVlX2lub2Rl
-cykNCj4+PiDQksK70JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrvQksK30JLCt9CSwrfQ
-ksK30JLCt9CSwrfQksK30JLCu9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK70JLCt9CS
-wrfQksK30JLCt9CSwrfQksK30JLCt2NvbnRpbnVlOw0KPj4+INCSwrvQksK30JLCt9CSwrfQksK3
-0JLCt9CSwrfQksK30JLCu9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK70JLCt9CSwrfQ
-ksK30JLCt9CSwrfQksK30JLCt2lmIChzdGF0cy51c2VkX2RpcnMgPj0gYmVzdF9uZGlyKQ0KPj4+
-INCSwrvQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCu9CSwrfQksK30JLCt9CSwrfQksK3
-0JLCt9CSwrfQksK70JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrvQksK30JLCt9CSwrfQ
-ksK30JLCt9CSwrfQksK3Y29udGludWU7DQo+Pj4g0JLCu9CSwrfQksK30JLCt9CSwrfQksK30JLC
-t9CSwrfQksK70JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrvQksK30JLCt9CSwrfQksK3
-0JLCt9CSwrfQksK3aWYgKHN0YXRzLmZyZWVfaW5vZGVzIDwgYXZlZnJlZWkpDQo+Pj4g0JLCu9CS
-wrfQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK70JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLC
-t9CSwrvQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCu9CSwrfQksK30JLCt9CSwrfQksK3
-0JLCt9CSwrdjb250aW51ZTsNCj4+PiDQksK70JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CS
-wrvQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCu9CSwrfQksK30JLCt9CSwrfQksK30JLC
-t9CSwrdpZiAoc3RhdHMuZnJlZV9ibG9ja3MgPCBhdmVmcmVlYikNCj4+PiDQksK70JLCt9CSwrfQ
-ksK30JLCt9CSwrfQksK30JLCt9CSwrvQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCu9CS
-wrfQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK70JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLC
-t2NvbnRpbnVlOw0KPj4+INCSwrvQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCu9CSwrfQ
-ksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK70JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCt2dy
-cCA9IGc7DQo+Pj4g0JLCu9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK70JLCt9CSwrfQ
-ksK30JLCt9CSwrfQksK30JLCt9CSwrvQksK30JLCt9CSwrfQksK30JLCt9CSwrfQksK3cmV0ID0g
-MDsNCj4+PiDQksK70JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrvQksK30JLCt9CSwrfQ
-ksK30JLCt9CSwrfQksK30JLCu9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrdiZXN0X25kaXIg
-PSBzdGF0cy51c2VkX2RpcnM7DQo+Pj4g0JLCu9CSwrfQksK30JLCt9CSwrfQksK30JLCt9CSwrfQ
-ksK70JLCt9CSwrfQksK30JLCt9CSwrfQksK30JLCt30NCj4+Pg0KPj4+IFRoYW5rcyAmIFJlZ2Fy
-ZHMsDQo+Pj4gIExva2VzaA0KPj4gTuKAucKn0IbQttC8ctGR4oC6edGK0LjRmdCoYtCGWMKswrbQ
-l8KndtCoXuKAkynQrtGUey5u0Jcr4oCwwrfSkNCJe8KxeyB40Il7YXnRlCDQmuKAodCq4oSi0Lss
-aiDCrdGeZtCI0Z7Ct2jRmeKAudCweuKEliDCrnfSkNGe0ZEg0Z7Ct8KmajorduKAsNCB0Il30Lhq
-0KhtwrbRn9GP0ZUgwqvigJjQutC3elor0ZPRidGZ0IvQidCt0Z5qItGc0YohwrZpDQo=
+NAK, this patch doesn't handle extents that cross multiple FIEMAP calls.
+
+Digging further, the fibmap version prints some rather borken results,
+so I might as well fix both issues for v2.
+
+--D
+
+On Mon, Nov 30, 2015 at 04:03:10PM -0800, Darrick J. Wong wrote:
+> Currently, filefrag's "expected physical block" column expects extent
+> records to be physically adjacent regardless of the amount of logical
+> block space between the two records.  This means that if we punch a
+> hole in a file, we get reports like this:
+> 
+> 4:     4096..    8343:   57376..  61623:   4248:   55328:
+> 5:     8345..   10313:   61625..  63593:   1969:   61624:
+> 
+> Notice how it expects 8345 to map to 61624, and scores this against
+> the fragmentation of the file.  Flagging this as "unexpected" is
+> incorrect because the gap in the logical mapping is exactly the same
+> size as the gap in the physical extents.
+> 
+> Furthermore, this scenario leaves the door open to the optimal mapping
+> -- if a write to block 8344 causes it to be mapped to 61624, the
+> entire range 4096-10313 can be mapped with a single extent.  Until
+> that happens, there's no way to combine extents 4 and 5 because of the
+> gap in the logical mapping at block 8344.
+> 
+> Therefore, tweak the extent report to account for holes.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+>  misc/filefrag.c |    7 ++++++-
+>  1 file changed, 6 insertions(+), 1 deletion(-)
+> 
+> diff --git a/misc/filefrag.c b/misc/filefrag.c
+> index 5bcde91..dacdae6 100644
+> --- a/misc/filefrag.c
+> +++ b/misc/filefrag.c
+> @@ -266,7 +266,12 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
+>  				print_extent_info(&fm_ext[i], n, expected,
+>  						  blk_shift, st);
+>  
+> -			expected = fm_ext[i].fe_physical + fm_ext[i].fe_length;
+> +			expected = fm_ext[i].fe_physical;
+> +			if (i < fiemap->fm_mapped_extents - 1)
+> +				expected += fm_ext[i + 1].fe_logical -
+> +						fm_ext[i].fe_logical;
+> +			else
+> +				expected += fm_ext[i].fe_length;
+>  			if (fm_ext[i].fe_flags & FIEMAP_EXTENT_LAST)
+>  				last = 1;
+>  			n++;
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
