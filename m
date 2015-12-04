@@ -1,272 +1,256 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Regarding random grouop search start for allocation of inode.
-Date: Fri, 4 Dec 2015 14:54:59 -0700
-Message-ID: <AB526984-C3CC-4EBF-BF17-D7AAE33F2337@dilger.ca>
-References: <CAKJOkCrU7b3XLKHFUS-_eyZ9Lvh7XoPcU15pjAs+qGy2o6XA-w@mail.gmail.com> <CAKJOkCoZExQv6mNMQ7kM_ihQ4B41WoNQJYF+pOhXKJLg-OOt+Q@mail.gmail.com> <ED92218E-3E81-456C-A6C6-37C2D32AD06B@dilger.ca> <CAKJOkCr7fsyTxCxPivOp9-0MsbPL0nMQCnAcGUjd=gDq7zS6uQ@mail.gmail.com>
+Subject: Re: [PATCH v2] filefrag: accommodate holes when calculating expected values
+Date: Fri, 4 Dec 2015 15:06:04 -0700
+Message-ID: <8B852D41-28F6-4280-9DF0-7A370ADC5B2D@dilger.ca>
+References: <20151203203726.GH10580@birch.djwong.org>
 Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_8508C28C-81E0-4D0F-8449-6B998D8EDF58"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: linux-ext4@vger.kernel.org
-To: lokesh jaliminche <lokesh.jaliminche@gmail.com>
+Content-Type: multipart/signed; boundary="Apple-Mail=_C9975A66-E91F-4CB7-A150-A498B48C99D3"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ig0-f172.google.com ([209.85.213.172]:33904 "EHLO
-	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754867AbbLDVzF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Dec 2015 16:55:05 -0500
-Received: by igvg19 with SMTP id g19so45338691igv.1
-        for <linux-ext4@vger.kernel.org>; Fri, 04 Dec 2015 13:55:04 -0800 (PST)
-In-Reply-To: <CAKJOkCr7fsyTxCxPivOp9-0MsbPL0nMQCnAcGUjd=gDq7zS6uQ@mail.gmail.com>
+Received: from mail-io0-f172.google.com ([209.85.223.172]:34891 "EHLO
+	mail-io0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754970AbbLDWGK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Dec 2015 17:06:10 -0500
+Received: by ioc74 with SMTP id 74so130261015ioc.2
+        for <linux-ext4@vger.kernel.org>; Fri, 04 Dec 2015 14:06:10 -0800 (PST)
+In-Reply-To: <20151203203726.GH10580@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_8508C28C-81E0-4D0F-8449-6B998D8EDF58
+--Apple-Mail=_C9975A66-E91F-4CB7-A150-A498B48C99D3
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
-	charset=utf-8
+	charset=us-ascii
 
-
-> On Dec 3, 2015, at 12:13 PM, lokesh jaliminche =
-<lokesh.jaliminche@gmail.com> wrote:
->=20
-> Ohh thanks for the clarification. There is one more thing I would like
-> to point out here.
-> In the code there  is a loop to scan the groups for inode
-> alllocation(Inside find_group_orlov function).
-> There are some policies for group selection . while scanning the
-> groups, it checks for these
-> policies to be satisfied.
-> If a particular group satisfy these properties it should get selected
-> for inode allocation but instead
-> it does further lookup in next groups.
-> I think there is missing breaking condition. I have added break over
-> there and here is the
-> patch for that. Any reason for not having break condition over here ?
->=20
-> diff -Nur linux-2.6.32-431.17.1.el6.x86_64/fs/ext4/ialloc.c
-> linux-2.6.32-431.17.1.el6.x86_64/fs/ext4/ialloc.c
-> --- linux-2.6.32-431.17.1.el6.x86_64/fs/ext4/ialloc.c    2014-04-12
-> 01:20:31.000000000 +0530
-> +++ linux-2.6.32-431.17.1.el6.x86_64/fs/ext4/ialloc.c    2015-11-29
-> 21:36:51.805542209 +0530
-> @@ -529,6 +529,7 @@
->             grp =3D g;
->             ret =3D 0;
->             best_ndir =3D stats.used_dirs;
-> +            break;
->         }
->         if (ret)
->         goto fallback;
-
-No, this isn't correct.  This loop is looking for the *best* group it =
-can find,
-and your "break" would have it exit the loop as soon as the *first* =
-directory
-that matches the conditions is found.  Since those conditions are fairly =
-weak,
-for example that the group actually has free inodes, and it has better =
-than
-average free inodes and blocks, it makes sense to search beyond just the =
-first
-matching group.
-
-That said, it also doesn't make sense to search beyond a "perfect" group =
-that
-has no allocated inodes and no allocated blocks, so a break condition =
-could be
-added to this loop and make it more efficient, especially for very large
-filesystems that have 128k+ groups.
-
-It should be noted that this part of the algorithm only applies to "top =
-level"
-directories (those below the root inode, or with the EXT4_INODE_TOPDIR =
-flag
-set, so searching a bit longer for a good group is not a bad idea in =
-this case.
-
-Cheers, Andreas.
-
-> Thanks & Regards,
->   Lokesh
->=20
->=20
->=20
-> On Thu, Dec 3, 2015 at 11:28 PM, Andreas Dilger <adilger@dilger.ca> =
+On Dec 3, 2015, at 1:37 PM, Darrick J. Wong <darrick.wong@oracle.com> =
 wrote:
->> On Dec 3, 2015, at 01:07, lokesh jaliminche =
-<lokesh.jaliminche@gmail.com> wrote:
->>>=20
->>> Thought of giving more clarification on my question
->>> why group search start is random ? because we can also start  search
->>> for valid groups for inode allocation from the start. As this group
->>> search is random  inode selection might go to end of groups which
->>> might affect IO performance
->>=20
->> Starting the inode search at the beginning of the disk each time
->> means that inode allocation will be inefficient because it will =
-search
->> over groups that are mostly or entirely full already.
->>=20
->> Allocating the new directory in a semi-random group, one that is
->> relatively unused, ensures that new
->> inode and block allocations are relatively efficient afterward.
->>=20
->> Cheers, Andreas
->>=20
->>> On Thu, Dec 3, 2015 at 1:14 PM, lokesh jaliminche
->>> <lokesh.jaliminche@gmail.com> wrote:
->>>> hello folks,
->>>>               I am new to ext4 code. I was going through the
->>>> ext4-source for allocation of inode.
->>>> There is one thing that I did not understand while selection of =
-groups
->>>> for inode allocation . I came across this code snippet which is =
-part
->>>> of find_group_orlov function. question is, why group search start =
-is
->>>> random ?
->>>>=20
->>>> Code snippet:
->>>> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
->>>> =D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7if (qstr) {
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7hinfo.hash_=
-version =3D LDISKFS_DX_HASH_HALF_MD4;
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7hinfo.seed =
-=3D sbi->s_hash_seed;
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7ldiskfsfs_d=
-irhash(qstr->name, qstr->len, &hinfo);
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7grp =3D =
-hinfo.hash;
->>>> =D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=
-=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7} else
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7get_random_=
-bytes(&grp, sizeof(grp));
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7parent_group =3D (unsigned)grp =
-% ngroups;
->>>> =D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=
-=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7for (i =3D 0; i < =
-ngroups; i++) {
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7g =3D =
-(parent_group + i) % ngroups;
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7get_orlov_s=
-tats(sb, g, flex_size, &stats);
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7if =
-(!stats.free_inodes)
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=
-=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7continue;
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7if =
-(stats.used_dirs >=3D best_ndir)
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=
-=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7continue;
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7if =
-(stats.free_inodes < avefreei)
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=
-=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7continue;
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7if =
-(stats.free_blocks < avefreeb)
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=
-=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7continue;
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7grp =3D =
-g;
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7ret =3D =
-0;
->>>> =
-=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=
-=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=
-=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7best_ndir =
-=3D stats.used_dirs;
->>>> =D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=
-=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=BB=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=
-=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7=D0=92=C2=B7}
->>>>=20
->>>> Thanks & Regards,
->>>> Lokesh
->>> =
-N=E2=80=B9=C2=A7=D0=86=D0=B6=D0=BCr=D1=91=E2=80=BAy=D1=8A=D0=B8=D1=99=D0=A8=
-b=D0=86X=C2=AC=C2=B6=D0=97=C2=A7v=D0=A8^=E2=80=93)=D0=AE=D1=94{.n=D0=97+=E2=
-=80=B0=C2=B7=D2=90=D0=89{=C2=B1{ x=D0=89{ay=D1=94 =D0=9A=E2=80=A1=D0=AA=E2=
-=84=A2=D0=BB,j =C2=AD=D1=9Ef=D0=88=D1=9E=C2=B7h=D1=99=E2=80=B9=D0=B0z=E2=84=
-=96 =C2=AEw=D2=90=D1=9E=D1=91 =D1=9E=C2=B7=C2=A6j:+v=E2=80=B0=D0=81=D0=89w=
-=D0=B8j=D0=A8m=C2=B6=D1=9F=D1=8F=D1=95 =
-=C2=AB=E2=80=98=D0=BA=D0=B7zZ+=D1=93=D1=89=D1=99=D0=8B=D0=89=D0=AD=D1=9Ej"=
-=D1=9C=D1=8A!=C2=B6i
+>=20
+> Currently, filefrag's "expected physical block" column expects extent
+> records to be physically adjacent regardless of the amount of logical
+> block space between the two records.  This means that if we punch a
+> hole in a file, we get reports like this:
+>=20
+> ext:   logical_offset:   physical_offset: length:  expected: flags:
+> 4:     4096..    8343:   57376..  61623:   4248:
+> 5:     8345..   10313:   61625..  63593:   1969:   61624:
+>=20
+> Notice how it expects 8345 to map to 61624, and scores this against
+> the fragmentation of the file.  Flagging this as "unexpected" is
+> incorrect because the gap in the logical mapping is exactly the same
+> size as the gap in the physical extents.
+>=20
+> Furthermore, this particular mapping leaves the door open to the
+> optimal mapping -- if a write to block 8344 causes it to be mapped to
+> 61624, the entire range 4096-10313 can be mapped with a single extent.
+> Until that happens, there's no way to combine extents 4 and 5 because
+> of the gap in the logical mapping at block 8344.
+>=20
+> Therefore, tweak the extent report to account for holes.
+>=20
+> v2: Make it work for extents crossing FIEMAP calls, and clean up the
+> FIBMAP version to report correct expected values.
+>=20
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+> misc/filefrag.c |   74 =
++++++++++++++++++++++++++++++++++----------------------
+> 1 file changed, 45 insertions(+), 29 deletions(-)
+>=20
+> diff --git a/misc/filefrag.c b/misc/filefrag.c
+> index 5bcde91..5ad6ee0 100644
+> --- a/misc/filefrag.c
+> +++ b/misc/filefrag.c
+> @@ -208,6 +208,7 @@ static int filefrag_fiemap(int fd, int blk_shift, =
+int *num_extents,
+> 	__u64 buf[2048];	/* __u64 for proper field alignment */
+> 	struct fiemap *fiemap =3D (struct fiemap *)buf;
+> 	struct fiemap_extent *fm_ext =3D &fiemap->fm_extents[0];
+> +	struct fiemap_extent fm_last;
+> 	int count =3D (sizeof(buf) - sizeof(*fiemap)) /
+> 			sizeof(struct fiemap_extent);
+> 	unsigned long long expected =3D 0;
+> @@ -219,6 +220,7 @@ static int filefrag_fiemap(int fd, int blk_shift, =
+int *num_extents,
+> 	int rc;
+>=20
+> 	memset(fiemap, 0, sizeof(struct fiemap));
+> +	memset(&fm_last, 0, sizeof(struct fiemap_extent));
+
+This could just be an initializer at declaration time?
+
+> 	if (sync_file)
+> 		flags |=3D FIEMAP_FLAG_SYNC;
+> @@ -254,6 +256,8 @@ static int filefrag_fiemap(int fd, int blk_shift, =
+int *num_extents,
+> 		}
+>=20
+> 		for (i =3D 0; i < fiemap->fm_mapped_extents; i++) {
+> +			expected =3D fm_last.fe_physical +
+> +				   fm_ext[i].fe_logical - =
+fm_last.fe_logical;
+
+Does it make sense to allow two "expected" values? Either the sparse one =
+that
+leaves a gap for the block, or the dense one that packs physical blocks =
+adjacent
+to each other seem acceptable, depending on the application.  It doesn't =
+make
+sense to preserve holes in files that are never going to be modified =
+in-place
+(e.g. core dump or something).  Something like:
+
+			expected_dense =3D fm_last.fe_physical + =
+fm_last.fe_length;
+			expected_sparse =3D fm_last.fe_physical +
+				   fm_ext[i].fe_logical - =
+fm_last.fe_logical;
+
+			if (fm_ext[i].fe_logical !=3D 0 &&
+			    fm_ext[i].fe_physical !=3D expected_dense &&
+			    fm_ext[i].fe_physical !=3D expected_sparse) =
+{
+				tot_extents++;
+
+Cheers, Andreas
+
+> @@ -265,10 +269,9 @@ static int filefrag_fiemap(int fd, int blk_shift, =
+int *num_extents,
+> 			if (verbose)
+> 				print_extent_info(&fm_ext[i], n, =
+expected,
+> 						  blk_shift, st);
+> -
+> -			expected =3D fm_ext[i].fe_physical + =
+fm_ext[i].fe_length;
+> 			if (fm_ext[i].fe_flags & FIEMAP_EXTENT_LAST)
+> 				last =3D 1;
+> +			fm_last =3D fm_ext[i];
+> 			n++;
+> 		}
+>=20
+> @@ -287,14 +290,15 @@ static int filefrag_fibmap(int fd, int =
+blk_shift, int *num_extents,
+> 			   ext2fs_struct_stat *st,
+> 			   unsigned long numblocks, int is_ext2)
+> {
+> -	struct fiemap_extent	fm_ext;
+> +	struct fiemap_extent	fm_ext, fm_last;
+> 	unsigned long		i, last_block;
+> -	unsigned long long	logical;
+> +	unsigned long long	logical, expected =3D 0;
+> 				/* Blocks per indirect block */
+> 	const long		bpib =3D st->st_blksize / 4;
+> 	int			count;
+>=20
+> 	memset(&fm_ext, 0, sizeof(fm_ext));
+> +	memset(&fm_last, 0, sizeof(fm_last));
+
+These could be declaration initializers.
+
+> 	if (force_extent) {
+> 		fm_ext.fe_flags =3D FIEMAP_EXTENT_MERGED;
+> 	}
+> @@ -322,40 +326,52 @@ static int filefrag_fibmap(int fd, int =
+blk_shift, int *num_extents,
+> 			return rc;
+> 		if (block =3D=3D 0)
+> 			continue;
+> -		if (*num_extents =3D=3D 0) {
+> -			(*num_extents)++;
+> -			if (force_extent) {
+> +
+> +		if (*num_extents =3D=3D 0 || block !=3D last_block + 1 =
+||
+> +		    fm_ext.fe_logical + fm_ext.fe_length !=3D logical) {
+> +			/*
+> +			 * This is the start of a new extent; figure out =
+where
+> +			 * we expected it to be and report the extent.
+> +			 */
+> +			if (*num_extents !=3D 0 && fm_last.fe_length) {
+> +				expected =3D fm_last.fe_physical +
+> +					(fm_ext.fe_logical - =
+fm_last.fe_logical);
+> +				if (expected =3D=3D fm_ext.fe_physical)
+> +					expected =3D 0;
+> +			}
+> +			if (force_extent && *num_extents =3D=3D 0)
+> 				print_extent_header();
+> -				fm_ext.fe_physical =3D block * =
+st->st_blksize;
+> +			if (force_extent && *num_extents !=3D 0) {
+> +				print_extent_info(&fm_ext, *num_extents =
+- 1,
+> +						  expected, blk_shift, =
+st);
+> 			}
+> -		}
+> -		count++;
+> -		if (force_extent && last_block !=3D 0 &&
+> -		    (block !=3D last_block + 1 ||
+> -		     fm_ext.fe_logical + fm_ext.fe_length !=3D logical)) =
+{
+> -			print_extent_info(&fm_ext, *num_extents - 1,
+> -					  (last_block + 1) * =
+st->st_blksize,
+> -					  blk_shift, st);
+> -			fm_ext.fe_length =3D 0;
+> +			if (verbose && expected !=3D 0) {
+> +				printf("Discontinuity: Block %llu is at =
+%llu "
+> +				       "(was %llu)\n",
+> +					fm_ext.fe_logical / =
+st->st_blksize,
+> +					fm_ext.fe_physical / =
+st->st_blksize,
+> +					expected / st->st_blksize);
+> +			}
+> +			/* create the new extent */
+> +			fm_last =3D fm_ext;
+> 			(*num_extents)++;
+> -			fm_ext.fe_logical =3D logical;
+> 			fm_ext.fe_physical =3D block * st->st_blksize;
+> -		} else if (last_block && (block !=3D last_block + 1)) {
+> -			if (verbose)
+> -				printf("Discontinuity: Block %ld is at =
+%lu (was "
+> -				       "%lu)\n", i, block, last_block + =
+1);
+> -			fm_ext.fe_length =3D 0;
+> -			(*num_extents)++;
+> 			fm_ext.fe_logical =3D logical;
+> -			fm_ext.fe_physical =3D block * st->st_blksize;
+> +			fm_ext.fe_length =3D 0;
+> 		}
+> 		fm_ext.fe_length +=3D st->st_blksize;
+> 		last_block =3D block;
+> 	}
+> -
+> -	if (force_extent)
+> -		print_extent_info(&fm_ext, *num_extents - 1,
+> -				  last_block * st->st_blksize, =
+blk_shift, st);
+> +	if (force_extent && *num_extents !=3D 0) {
+> +		if (fm_last.fe_length) {
+> +			expected =3D fm_last.fe_physical +
+> +				   (fm_ext.fe_logical - =
+fm_last.fe_logical);
+> +			if (expected =3D=3D fm_ext.fe_physical)
+> +				expected =3D 0;
+> +		}
+> +		print_extent_info(&fm_ext, *num_extents - 1, expected,
+> +				  blk_shift, st);
+> +	}
+>=20
+> 	return count;
+> }
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
 Cheers, Andreas
@@ -276,7 +260,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_8508C28C-81E0-4D0F-8449-6B998D8EDF58
+--Apple-Mail=_C9975A66-E91F-4CB7-A150-A498B48C99D3
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -287,19 +271,19 @@ Content-Description: Message signed with OpenPGP using GPGMail
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIVAwUBVmILtHKl2rkXzB/gAQhx8A//cOY1heopfzVlw3IVBVIHTsp0M1AJ1BKp
-fBb1KYehoPhwGLw9IOU02Z/ydEnw9EVKsJCCVnKDN3pI+qHNS1d2zAmICnfDHTrK
-mRBfGwN5DPsGfTkUA3mN1EKdmrjQi1eNllinMrDHi9H8ajjHrgjmGrCg5bn6c/Ae
-ilVpUEiiLAldm1txcfqMNAwXVcZqtEzzS30xO2eQCoOnZQ3Nw/cq9dTpV3cnHf2k
-8Mcr1d8c7EHtsG9FpciaKKPasJ75ehS7krsHO4Xe9ZEzNZFKufWnLl2/KgmMJWmk
-GklsfOpGGGdb0PhDnjAI5+kQ0U1tKXyKTpc6CQODfzndxUd9eXqSDT00Qk9nmEvZ
-R/gCldjgtpWnlcez4YmRnNgeMjI0PjlBQpRn0nwgT3zxfqJ0PYyYtlQiG5AaRiBg
-zsfylLJpBjmR70CC+xe8Ya3VtJw6nVaTF6CZ2wqoe0kgMAL3vRfAcyQg0pGL6P72
-LXgvFMAxH8TtYO8ZuhtB9AMuwmQlWTtW6AsKWdy/8MdLXyUg8rfwWqVxoLtAgIMy
-dX8/onrkL9d+uxSf32tEVVhb0RP2sB0cMLhbbWeLHr8N1F+WB/DAiPzaV8WEkusD
-fjsrn7tK7TpkK5DLzoCkwrU8GcRxZEkEvr4pahjcNzO+ZEm0pqIHW32bRJL8L7JT
-ldA2LK7rlHQ=
-=Phn8
+iQIVAwUBVmIOTHKl2rkXzB/gAQj5FhAAt+MshCaxjJXKPKffAKUBk3dLUtmy+SJB
+mxMSCe4KJGP9bRm5NhlEg6zXHC0zq+agjzJsXct4NBIqvshc/G6qHzuWV1aLUXC0
+0LBkBIHeuz29LO7pATym0kAtNPb7iOJHPOhRTaz08fz0wp5MmAaVgq4wm7LvYzlM
+KgQFdbL5x1UuVpNmlLArx6+G8JtfgGoLc+1ehDlYfqzY8gVaNvqK008N/+XOt+NC
+4v6e8P1b1ha38UlrzbrVn4ziE+dKupr9e1oawN1BZ989AsDdIXHyKGvkv6t51xWB
+4x1KiLZ46pGLwL7j4GUYWuCspX2+ePRq0OAiTyBDO+OzJB5L+9poMUseW55Id3+u
+Auw/qvrEY8pg7rchcvdfqVsqyYFfAWUKjMztw0JEHFWxLWetzoh8vSfKJXRTQc0q
+n9G1L5GlOHvJ9zY+ljJ9xH3sVmJGRwlwR43+7HcNO7Efgk9aF/URvZRCAs43XUtj
+0NumHgdZ3qoh3KqJVuXREHKVZuGVHq17ReW2MBIzcp2SqTodqhjw2d19OpHmtFmH
+V8cKOWBvzTuV4Y11xt+QjVtt+7n5LaKU/reEvHsjxK+F29jY6VEAW23ygI0ER14r
+Wy0lQZF8lX4UBZIDFZU0Iz/bKwoSsdb3LpTw7EMWmR5X1ng5h/eph+S1awz5ViFZ
+F9lqPJz5rJg=
+=Sm4z
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_8508C28C-81E0-4D0F-8449-6B998D8EDF58--
+--Apple-Mail=_C9975A66-E91F-4CB7-A150-A498B48C99D3--
