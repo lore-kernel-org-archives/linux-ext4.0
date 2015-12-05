@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 6/8] filefrag: accommodate holes when calculating expected
- values
-Date: Fri, 04 Dec 2015 18:44:55 -0800
-Message-ID: <20151205024455.31087.21058.stgit@birch.djwong.org>
+Subject: [PATCH 8/8] tune2fs: recover the journal
+Date: Fri, 04 Dec 2015 18:45:07 -0800
+Message-ID: <20151205024507.31087.42777.stgit@birch.djwong.org>
 References: <20151205024416.31087.14808.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,167 +9,197 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:42761 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755762AbbLECo7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Dec 2015 21:44:59 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:35989 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755828AbbLECpL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Dec 2015 21:45:11 -0500
 In-Reply-To: <20151205024416.31087.14808.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently, filefrag's "expected physical block" column expects extent
-records to be physically adjacent regardless of the amount of logical
-block space between the two records.  This means that if we punch a
-hole in a file, we get reports like this:
-
-ext:   logical_offset:   physical_offset: length:  expected: flags:
-4:     4096..    8343:   57376..  61623:   4248:
-5:     8345..   10313:   61625..  63593:   1969:   61624:
-
-Notice how it expects 8345 to map to 61624, and scores this against
-the fragmentation of the file.  Flagging this as "unexpected" is
-incorrect because the gap in the logical mapping is exactly the same
-size as the gap in the physical extents.
-
-Furthermore, this particular mapping leaves the door open to the
-optimal mapping -- if a write to block 8344 causes it to be mapped to
-61624, the entire range 4096-10313 can be mapped with a single extent.
-Until that happens, there's no way to combine extents 4 and 5 because
-of the gap in the logical mapping at block 8344.
-
-Therefore, tweak the extent report to account for holes.
-
-v2: Make it work for extents crossing FIEMAP calls, and clean up the
-FIBMAP version to report correct expected values.
-
-v3: Don't count physically but not logically contiguous extents
-in the fragmentation summary.
+If the journal needs to be recovered to avoid clobbering whatever
+changes tune2fs makes, do so.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- misc/filefrag.c |   79 ++++++++++++++++++++++++++++++++++---------------------
- 1 file changed, 49 insertions(+), 30 deletions(-)
+ misc/Makefile.in              |    2 +
+ misc/tune2fs.c                |   22 ++++++++++-----
+ tests/t_replay_and_set/expect |   36 +++++++++++++++++++++++++
+ tests/t_replay_and_set/name   |    1 +
+ tests/t_replay_and_set/script |   60 +++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 112 insertions(+), 9 deletions(-)
+ create mode 100644 tests/t_replay_and_set/expect
+ create mode 100644 tests/t_replay_and_set/name
+ create mode 100644 tests/t_replay_and_set/script
 
 
-diff --git a/misc/filefrag.c b/misc/filefrag.c
-index 5bcde91..d89d3c9 100644
---- a/misc/filefrag.c
-+++ b/misc/filefrag.c
-@@ -208,9 +208,11 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
- 	__u64 buf[2048];	/* __u64 for proper field alignment */
- 	struct fiemap *fiemap = (struct fiemap *)buf;
- 	struct fiemap_extent *fm_ext = &fiemap->fm_extents[0];
-+	struct fiemap_extent fm_last = {0};
- 	int count = (sizeof(buf) - sizeof(*fiemap)) /
- 			sizeof(struct fiemap_extent);
- 	unsigned long long expected = 0;
-+	unsigned long long expected_dense = 0;
- 	unsigned long flags = 0;
- 	unsigned int i;
- 	int fiemap_header_printed = 0;
-@@ -254,8 +256,13 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
- 		}
+diff --git a/misc/Makefile.in b/misc/Makefile.in
+index 52cd5bb..98872df 100644
+--- a/misc/Makefile.in
++++ b/misc/Makefile.in
+@@ -47,7 +47,7 @@ UMANPAGES=	chattr.1 lsattr.1 @UUID_CMT@ uuidgen.1
  
- 		for (i = 0; i < fiemap->fm_mapped_extents; i++) {
-+			expected_dense = fm_last.fe_physical +
-+					 fm_last.fe_length;
-+			expected = fm_last.fe_physical +
-+				   fm_ext[i].fe_logical - fm_last.fe_logical;
- 			if (fm_ext[i].fe_logical != 0 &&
--			    fm_ext[i].fe_physical != expected) {
-+			    fm_ext[i].fe_physical != expected &&
-+			    fm_ext[i].fe_physical != expected_dense) {
- 				tot_extents++;
- 			} else {
- 				expected = 0;
-@@ -265,10 +272,9 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
- 			if (verbose)
- 				print_extent_info(&fm_ext[i], n, expected,
- 						  blk_shift, st);
--
--			expected = fm_ext[i].fe_physical + fm_ext[i].fe_length;
- 			if (fm_ext[i].fe_flags & FIEMAP_EXTENT_LAST)
- 				last = 1;
-+			fm_last = fm_ext[i];
- 			n++;
- 		}
+ LPROGS=		@E2INITRD_PROG@
  
-@@ -287,14 +293,15 @@ static int filefrag_fibmap(int fd, int blk_shift, int *num_extents,
- 			   ext2fs_struct_stat *st,
- 			   unsigned long numblocks, int is_ext2)
- {
--	struct fiemap_extent	fm_ext;
-+	struct fiemap_extent	fm_ext, fm_last;
- 	unsigned long		i, last_block;
--	unsigned long long	logical;
-+	unsigned long long	logical, expected = 0;
- 				/* Blocks per indirect block */
- 	const long		bpib = st->st_blksize / 4;
- 	int			count;
+-TUNE2FS_OBJS=	tune2fs.o util.o
++TUNE2FS_OBJS=	tune2fs.o util.o journal.o recovery.o revoke.o
+ MKLPF_OBJS=	mklost+found.o
+ MKE2FS_OBJS=	mke2fs.o util.o default_profile.o mk_hugefiles.o \
+ 			create_inode.o
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 457e9e5..657349a 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -113,6 +113,7 @@ struct blk_move {
+ 	blk64_t new_loc;
+ };
  
- 	memset(&fm_ext, 0, sizeof(fm_ext));
-+	memset(&fm_last, 0, sizeof(fm_last));
- 	if (force_extent) {
- 		fm_ext.fe_flags = FIEMAP_EXTENT_MERGED;
++errcode_t ext2fs_run_ext3_journal(ext2_filsys *fs);
+ 
+ static const char *please_fsck = N_("Please run e2fsck on the filesystem.\n");
+ static const char *please_dir_fsck =
+@@ -3139,15 +3140,20 @@ retry_open:
+ 		free(ext_mount_opts);
  	}
-@@ -322,40 +329,52 @@ static int filefrag_fibmap(int fd, int blk_shift, int *num_extents,
- 			return rc;
- 		if (block == 0)
- 			continue;
--		if (*num_extents == 0) {
--			(*num_extents)++;
--			if (force_extent) {
+ 
+-	/* Warn if file system needs recovery and it is opened for writing. */
++	/* Recover the journal if possible. */
+ 	if ((open_flag & EXT2_FLAG_RW) && !(mount_flags & EXT2_MF_MOUNTED) &&
+-	    (sb->s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL) &&
+-	    (sb->s_feature_incompat & EXT3_FEATURE_INCOMPAT_RECOVER)) {
+-		fprintf(stderr,
+-_("Warning: The journal is dirty. You may wish to replay the journal like:\n\n"
+-  "\te2fsck -E journal_only %s\n\n"
+-  "then rerun this command.  Otherwise, any changes made may be overwritten\n"
+-  "by journal recovery.\n"), device_name);
++	    ext2fs_has_feature_journal_needs_recovery(fs->super)) {
++		errcode_t err;
 +
-+		if (*num_extents == 0 || block != last_block + 1 ||
-+		    fm_ext.fe_logical + fm_ext.fe_length != logical) {
-+			/*
-+			 * This is the start of a new extent; figure out where
-+			 * we expected it to be and report the extent.
-+			 */
-+			if (*num_extents != 0 && fm_last.fe_length) {
-+				expected = fm_last.fe_physical +
-+					(fm_ext.fe_logical - fm_last.fe_logical);
-+				if (expected == fm_ext.fe_physical)
-+					expected = 0;
-+			}
-+			if (force_extent && *num_extents == 0)
- 				print_extent_header();
--				fm_ext.fe_physical = block * st->st_blksize;
-+			if (force_extent && *num_extents != 0) {
-+				print_extent_info(&fm_ext, *num_extents - 1,
-+						  expected, blk_shift, st);
- 			}
--		}
--		count++;
--		if (force_extent && last_block != 0 &&
--		    (block != last_block + 1 ||
--		     fm_ext.fe_logical + fm_ext.fe_length != logical)) {
--			print_extent_info(&fm_ext, *num_extents - 1,
--					  (last_block + 1) * st->st_blksize,
--					  blk_shift, st);
--			fm_ext.fe_length = 0;
-+			if (verbose && expected != 0) {
-+				printf("Discontinuity: Block %llu is at %llu "
-+				       "(was %llu)\n",
-+					fm_ext.fe_logical / st->st_blksize,
-+					fm_ext.fe_physical / st->st_blksize,
-+					expected / st->st_blksize);
-+			}
-+			/* create the new extent */
-+			fm_last = fm_ext;
- 			(*num_extents)++;
--			fm_ext.fe_logical = logical;
- 			fm_ext.fe_physical = block * st->st_blksize;
--		} else if (last_block && (block != last_block + 1)) {
--			if (verbose)
--				printf("Discontinuity: Block %ld is at %lu (was "
--				       "%lu)\n", i, block, last_block + 1);
--			fm_ext.fe_length = 0;
--			(*num_extents)++;
- 			fm_ext.fe_logical = logical;
--			fm_ext.fe_physical = block * st->st_blksize;
-+			fm_ext.fe_length = 0;
- 		}
- 		fm_ext.fe_length += st->st_blksize;
- 		last_block = block;
++		printf(_("Recovering journal.\n"));
++		err = ext2fs_run_ext3_journal(&fs);
++		if (err) {
++			com_err("tune2fs", err, "while recovering journal.\n");
++			printf(_("Please run e2fsck -fy %s.\n"), argv[1]);
++			goto closefs;
++		}
++		ext2fs_clear_feature_journal_needs_recovery(fs->super);
++		ext2fs_mark_super_dirty(fs);
  	}
+ 
+ 	free(device_name);
+diff --git a/tests/t_replay_and_set/expect b/tests/t_replay_and_set/expect
+new file mode 100644
+index 0000000..f491937
+--- /dev/null
++++ b/tests/t_replay_and_set/expect
+@@ -0,0 +1,36 @@
++64-bit filesystem support is not enabled.  The larger fields afforded by this feature enable full-strength checksumming.  Pass -O 64bit to rectify.
++Creating filesystem with 65536 4k blocks and 16384 inodes
++Superblock backups stored on blocks: 
++	32768
++
++Allocating group tables:    done                            
++Writing inode tables:    done                            
++Creating journal (4096 blocks): done
++Writing superblocks and filesystem accounting information:    done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++Exit status is 0
++debugfs write journal
++disable metadata_csum on a dirty-journal fs
++Recovering journal.
++fsck the whole mess
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++Block bitmap differences:  +(0--1050) +(32768--36880)
++Fix? yes
++
++Inode bitmap differences:  +(1--11)
++Fix? yes
++
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++Exit status is 1
+diff --git a/tests/t_replay_and_set/name b/tests/t_replay_and_set/name
+new file mode 100644
+index 0000000..4e4759e
+--- /dev/null
++++ b/tests/t_replay_and_set/name
+@@ -0,0 +1 @@
++recover journal and clear features
+diff --git a/tests/t_replay_and_set/script b/tests/t_replay_and_set/script
+new file mode 100644
+index 0000000..1253099
+--- /dev/null
++++ b/tests/t_replay_and_set/script
+@@ -0,0 +1,60 @@
++if test -x $DEBUGFS_EXE; then
++
++FSCK_OPT=-fy
++OUT=$test_name.log
++if [ -f $test_dir/expect.gz ]; then
++	EXP=$test_name.tmp
++	gunzip < $test_dir/expect.gz > $EXP1
++else
++	EXP=$test_dir/expect
++fi
++
++cp /dev/null $OUT
++
++$MKE2FS -F -o Linux -b 4096 -O has_journal,metadata_csum -T ext4 $TMPFILE 65536 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT 2>&1
++
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++bitmaps="$($DUMPE2FS $TMPFILE 2>&1 | grep 'bitmap at' | sed -e 's/^.*bitmap at \([0-9]*\).*$/\1/g' | tr '\n' ',')"
++
++echo "debugfs write journal" >> $OUT
++echo "jo" > $TMPFILE.cmd
++echo "jw -b $bitmaps /dev/zero" >> $TMPFILE.cmd
++echo "jc" >> $TMPFILE.cmd
++$DEBUGFS_EXE -w -f $TMPFILE.cmd $TMPFILE 2>> $OUT.new > /dev/null
++sed -f $cmd_dir/filter.sed < $OUT.new >> $OUT
++rm -rf $OUT.new
++
++echo "disable metadata_csum on a dirty-journal fs" >> $OUT
++$TUNE2FS -O ^metadata_csum $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT 2>&1
++
++echo "fsck the whole mess" >> $OUT
++$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
++rm -f $OUT.new
++
++rm -f $TMPFILE
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++	rm -f $test_name.tmp
++fi
++
++unset IMAGE FSCK_OPT OUT EXP
++
++else #if test -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped"
++fi
+
