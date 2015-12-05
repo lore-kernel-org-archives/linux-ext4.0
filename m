@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 4/8] mke2fs: store checksum seed at format time
-Date: Fri, 04 Dec 2015 18:44:42 -0800
-Message-ID: <20151205024442.31087.42715.stgit@birch.djwong.org>
+Subject: [PATCH 3/8] e2fsck: check the checksum seed feature flag is set
+ correctly
+Date: Fri, 04 Dec 2015 18:44:35 -0800
+Message-ID: <20151205024435.31087.90646.stgit@birch.djwong.org>
 References: <20151205024416.31087.14808.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,61 +10,70 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:35863 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755732AbbLECoq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Dec 2015 21:44:46 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:42719 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755664AbbLECoj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Dec 2015 21:44:39 -0500
 In-Reply-To: <20151205024416.31087.14808.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Allow users to turn on metadata_csum_seed at format time so that UUIDs
-can be live-changed at any time.
-
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- misc/mke2fs.c |   15 ++++++++++++++-
- 1 file changed, 14 insertions(+), 1 deletion(-)
+ e2fsck/problem.c |    5 +++++
+ e2fsck/problem.h |    3 +++
+ e2fsck/super.c   |    9 +++++++++
+ 3 files changed, 17 insertions(+)
 
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index dd467f2..7d31e42 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1074,7 +1074,8 @@ static __u32 ok_features[3] = {
- 		EXT4_FEATURE_INCOMPAT_MMP |
- 		EXT4_FEATURE_INCOMPAT_64BIT|
- 		EXT4_FEATURE_INCOMPAT_INLINE_DATA|
--		EXT4_FEATURE_INCOMPAT_ENCRYPT,
-+		EXT4_FEATURE_INCOMPAT_ENCRYPT |
-+		EXT4_FEATURE_INCOMPAT_CSUM_SEED,
- 	/* R/O compat */
- 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE|
- 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
-@@ -2774,6 +2775,13 @@ int main (int argc, char *argv[])
- 				 "Pass -O 64bit to rectify.\n"));
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index a7da94d..971b0ad 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -467,6 +467,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("External @j @S checksum does not match @S.  "),
+ 	  PROMPT_FIX, PR_PREEN_OK },
+ 
++	/* metadata_csum_seed means nothing without metadata_csum */
++	{ PR_0_CSUM_SEED_WITHOUT_META_CSUM,
++	  N_("@S metadata_csum_seed is not necessary without metadata_csum."),
++	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK},
++
+ 	/* Pass 1 errors */
+ 
+ 	/* Pass 1: Checking inodes, blocks, and sizes */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 3b92e41..b3f5b8f 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -268,6 +268,9 @@ struct problem_context {
+ /* External journal has corrupt superblock */
+ #define PR_0_EXT_JOURNAL_SUPER_CSUM_INVALID	0x00004A
+ 
++/* metadata_csum_seed means nothing without metadata_csum */
++#define PR_0_CSUM_SEED_WITHOUT_META_CSUM	0x00004B
++
+ /*
+  * Pass 1 errors
+  */
+diff --git a/e2fsck/super.c b/e2fsck/super.c
+index af6d680..e09c14c 100644
+--- a/e2fsck/super.c
++++ b/e2fsck/super.c
+@@ -589,6 +589,15 @@ void check_super_block(e2fsck_t ctx)
+ 			ext2fs_group_desc_csum_set(fs, i);
  	}
  
-+	if (ext2fs_has_feature_csum_seed(fs->super) &&
-+	    !ext2fs_has_feature_metadata_csum(fs->super)) {
-+		printf("%s", _("The metadata_csum_seed feature "
-+			       "requres the metadata_csum feature.\n"));
-+		exit(1);
++	/* We can't have ^metadata_csum,metadata_csum_seed */
++	if (!ext2fs_has_feature_metadata_csum(fs->super) &&
++	    ext2fs_has_feature_csum_seed(fs->super) &&
++	    fix_problem(ctx, PR_0_CSUM_SEED_WITHOUT_META_CSUM, &pctx)) {
++		ext2fs_clear_feature_csum_seed(fs->super);
++		fs->super->s_checksum_seed = 0;
++		ext2fs_mark_super_dirty(fs);
 +	}
 +
- 	/* Calculate journal blocks */
- 	if (!journal_device && ((journal_size) ||
- 	    ext2fs_has_feature_journal(&fs_param)))
-@@ -2829,6 +2837,11 @@ int main (int argc, char *argv[])
- 		}
- 	} else
- 		uuid_generate(fs->super->s_uuid);
-+
-+	if (ext2fs_has_feature_csum_seed(fs->super))
-+		fs->super->s_checksum_seed = ext2fs_crc32c_le(~0,
-+				fs->super->s_uuid, sizeof(fs->super->s_uuid));
-+
- 	ext2fs_init_csum_seed(fs);
- 
- 	/*
+ 	/* Is 64bit set and extents unset? */
+ 	if (ext2fs_has_feature_64bit(fs->super) &&
+ 	    !ext2fs_has_feature_extents(fs->super) &&
 
