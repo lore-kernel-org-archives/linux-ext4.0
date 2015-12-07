@@ -1,48 +1,54 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Does ext4 write anything during reading with relatime?
-Date: Sun, 6 Dec 2015 16:14:54 -0500
-Message-ID: <20151206211454.GB2614@thunk.org>
-References: <5662C472.2050902@inbox.ru>
+Subject: [GIT PULL] ext4 bugfixes for 4.4
+Date: Sun, 6 Dec 2015 22:40:55 -0500
+Message-ID: <20151207034055.GA424@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: The Ghost <the-ghost@inbox.ru>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41751 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754481AbbLFVO5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 6 Dec 2015 16:14:57 -0500
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <5662C472.2050902@inbox.ru>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Dec 05, 2015 at 02:03:14PM +0300, The Ghost wrote:
-> When mounted read-only, naturally, reading from an ext4 filesystem does not
-> cause any write operations. But if I mount it read-write and try to read
-> from it, then apparently some write operations are issued, because my
-> "write-mostly" drive in a RAID1 array spins up. Now, I understand that
-> apparently the mount operation itself does write something, and I do mount
-> it with a "relatime" option, but I'm just reading stuff over and over again
-> - it shouldn't be caused by atime updating. Also, a bug with "write-mostly"
-> finally got fixed, and I'm using a fixed kernel (latest 3.16 from Debian
-> Jessie-backports).
+The following changes since commit be69e1c19f0efb091f29521715c380842fa4cd7e:
 
-Relatime doesn't guarantee that there will be _no_ atime updates.  You
-would need to mount with noatime if you want to guarantee that there
-will be zero atime updates.
+  fs/ext4: remove unnecessary new_valid_dev check (2015-10-29 14:18:13 -0400)
 
-Relatime will update atime if the file is accessed and the atime is
-older than 24 hours.  This guarantees that atime is up to date to
-approximately a day, so you can tell if a file has been accessed
-recently.  This is useful for any system administrators.
+are available in the git repository at:
 
-But it does mean there will still be quite a bit of atime updates ---
-especially since atime updates apply to directories as much as files.
-Hence, if you haven't mounted the file system in 24 hours, and then
-you run a find operation on the entire file system, the atime for
-every single directory on the file system will need to be updated.
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
 
-Cheers,
+for you to fetch changes up to 087ffd4eae9929afd06f6a709861df3c3508492a:
 
-					- Ted
+  jbd2: fix null committed data return in undo_access (2015-12-04 12:29:28 -0500)
+
+----------------------------------------------------------------
+Ext4 bug fixes for v4.4, including fixes for post-2038 time encodings,
+some endian conversion problems with ext4 encryption, potential memory
+leaks after truncate in data=journal mode, and an ocfs2 regression
+caused by a jbd2 performance improvement.
+
+----------------------------------------------------------------
+Al Viro (2):
+      ext4: fix an endianness bug in ext4_encrypted_zeroout()
+      ext4: fix an endianness bug in ext4_encrypted_follow_link()
+
+David Turner (1):
+      ext4: Fix handling of extended tv_sec
+
+Jan Kara (1):
+      jbd2: Fix unreclaimed pages after truncate in data=journal mode
+
+Junxiao Bi (1):
+      jbd2: fix null committed data return in undo_access
+
+Xu Cang (1):
+      ext4: add "static" to ext4_seq_##name##_fops struct
+
+ fs/ext4/crypto.c      |  2 +-
+ fs/ext4/ext4.h        | 51 ++++++++++++++++++++++++++++++++++++++++++++-------
+ fs/ext4/symlink.c     |  2 +-
+ fs/ext4/sysfs.c       |  2 +-
+ fs/jbd2/transaction.c | 12 +++++++++---
+ 5 files changed, 56 insertions(+), 13 deletions(-)
