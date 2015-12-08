@@ -1,163 +1,109 @@
-From: Geliang Tang <geliangtang@163.com>
-Subject: [PATCH] ext4: use list_for_each_entry*
-Date: Tue,  8 Dec 2015 22:20:39 +0800
-Message-ID: <b1c5048a0af78a2e27ea7e2ea041fbf41b9495bd.1449584350.git.geliangtang@163.com>
-Cc: Geliang Tang <geliangtang@163.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: [PATCH v3 0/7] DAX fsync/msync support
+Date: Tue,  8 Dec 2015 12:18:38 -0700
+Message-ID: <1449602325-20572-1-git-send-email-ross.zwisler@linux.intel.com>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	"H. Peter Anvin" <hpa@zytor.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Dave Chinner <david@fromorbit.com>,
+	Ingo Molnar <mingo@redhat.com>,
+	Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org,
+	x86@kernel.org,
+	xfs@oss.sgi.com,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Dave Hansen <dave.hansen@linux.intel.com>
+To: linux-kernel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Use list_for_each_entry*() instead of list_for_each*() to simplify
-the code.
+This patch series adds a slimmed down version of fsync/msync support to
+DAX.  The major change versus v2 of this patch series is that we no longer
+remove DAX entries from the radix tree during fsync/msync calls.  Instead
+the list of DAX entries in the radix tree grows for the lifetime of the
+mapping.  We reclaim DAX entries from the radix tree via
+clear_exceptional_entry() for truncate, when the filesystem is unmounted,
+etc.
 
-Signed-off-by: Geliang Tang <geliangtang@163.com>
----
- fs/ext4/mballoc.c | 22 +++++++---------------
- fs/ext4/super.c   | 27 +++++++++------------------
- 2 files changed, 16 insertions(+), 33 deletions(-)
+This change was made because if we try and remove radix tree entries during
+writeback operations there are a number of race conditions that exist
+between those writeback operations and page faults.  In the non-DAX case
+these races are dealt with using the page lock, but we don't have a good
+replacement lock with the same granularity.  These races could leave us in
+a place where we have a DAX page that is dirty and writeable from userspace
+but no longer in the radix tree.  This page would then be skipped during
+subsequent writeback operations, which is unacceptable.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 61eaf74..920fcab 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -565,7 +565,7 @@ static int __mb_check_buddy(struct ext4_buddy *e4b, char *file,
- 	struct ext4_group_info *grp;
- 	int fragments = 0;
- 	int fstart;
--	struct list_head *cur;
-+	struct ext4_prealloc_space *pa;
- 	void *buddy;
- 	void *buddy2;
- 
-@@ -637,10 +637,8 @@ static int __mb_check_buddy(struct ext4_buddy *e4b, char *file,
- 	MB_CHECK_ASSERT(e4b->bd_info->bb_fragments == fragments);
- 
- 	grp = ext4_get_group_info(sb, e4b->bd_group);
--	list_for_each(cur, &grp->bb_prealloc_list) {
-+	list_for_each_entry(pa, &grp->bb_prealloc_list, pa_group_list) {
- 		ext4_group_t groupnr;
--		struct ext4_prealloc_space *pa;
--		pa = list_entry(cur, struct ext4_prealloc_space, pa_group_list);
- 		ext4_get_group_no_and_offset(sb, pa->pa_pstart, &groupnr, &k);
- 		MB_CHECK_ASSERT(groupnr == e4b->bd_group);
- 		for (i = 0; i < pa->pa_len; i++)
-@@ -2684,12 +2682,11 @@ out:
- /* need to called with the ext4 group lock held */
- static void ext4_mb_cleanup_pa(struct ext4_group_info *grp)
- {
--	struct ext4_prealloc_space *pa;
--	struct list_head *cur, *tmp;
-+	struct ext4_prealloc_space *pa, *tmp;
- 	int count = 0;
- 
--	list_for_each_safe(cur, tmp, &grp->bb_prealloc_list) {
--		pa = list_entry(cur, struct ext4_prealloc_space, pa_group_list);
-+	list_for_each_entry_safe(pa, tmp, &grp->bb_prealloc_list,
-+				 pa_group_list) {
- 		list_del(&pa->pa_group_list);
- 		count++;
- 		kmem_cache_free(ext4_pspace_cachep, pa);
-@@ -3469,7 +3466,6 @@ void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
- {
- 	struct ext4_group_info *grp = ext4_get_group_info(sb, group);
- 	struct ext4_prealloc_space *pa;
--	struct list_head *cur;
- 	ext4_group_t groupnr;
- 	ext4_grpblk_t start;
- 	int preallocated = 0;
-@@ -3483,8 +3479,7 @@ void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
- 	 * allocation in buddy when concurrent ext4_mb_put_pa()
- 	 * is dropping preallocation
- 	 */
--	list_for_each(cur, &grp->bb_prealloc_list) {
--		pa = list_entry(cur, struct ext4_prealloc_space, pa_group_list);
-+	list_for_each_entry(pa, &grp->bb_prealloc_list, pa_group_list) {
- 		spin_lock(&pa->pa_lock);
- 		ext4_get_group_no_and_offset(sb, pa->pa_pstart,
- 					     &groupnr, &start);
-@@ -4077,11 +4072,8 @@ static void ext4_mb_show_ac(struct ext4_allocation_context *ac)
- 		struct ext4_group_info *grp = ext4_get_group_info(sb, i);
- 		struct ext4_prealloc_space *pa;
- 		ext4_grpblk_t start;
--		struct list_head *cur;
- 		ext4_lock_group(sb, i);
--		list_for_each(cur, &grp->bb_prealloc_list) {
--			pa = list_entry(cur, struct ext4_prealloc_space,
--					pa_group_list);
-+		list_for_each_entry(pa, &grp->bb_prealloc_list, pa_group_list) {
- 			spin_lock(&pa->pa_lock);
- 			ext4_get_group_no_and_offset(sb, pa->pa_pstart,
- 						     NULL, &start);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f1b56ff..3d08fa0 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -766,21 +766,16 @@ static void ext4_blkdev_remove(struct ext4_sb_info *sbi)
- 	}
- }
- 
--static inline struct inode *orphan_list_entry(struct list_head *l)
--{
--	return &list_entry(l, struct ext4_inode_info, i_orphan)->vfs_inode;
--}
--
- static void dump_orphan_list(struct super_block *sb, struct ext4_sb_info *sbi)
- {
--	struct list_head *l;
-+	struct ext4_inode_info *ei;
- 
- 	ext4_msg(sb, KERN_ERR, "sb orphan head is %d",
- 		 le32_to_cpu(sbi->s_es->s_last_orphan));
- 
- 	printk(KERN_ERR "sb_info orphan list:\n");
--	list_for_each(l, &sbi->s_orphan) {
--		struct inode *inode = orphan_list_entry(l);
-+	list_for_each_entry(ei, &sbi->s_orphan, i_orphan) {
-+		struct inode *inode = &ei->vfs_inode;
- 		printk(KERN_ERR "  "
- 		       "inode %s:%lu at %p: mode %o, nlink %d, next %d\n",
- 		       inode->i_sb->s_id, inode->i_ino, inode,
-@@ -2668,8 +2663,7 @@ static struct task_struct *ext4_lazyinit_task;
- static int ext4_lazyinit_thread(void *arg)
- {
- 	struct ext4_lazy_init *eli = (struct ext4_lazy_init *)arg;
--	struct list_head *pos, *n;
--	struct ext4_li_request *elr;
-+	struct ext4_li_request *elr, *n;
- 	unsigned long next_wakeup, cur;
- 
- 	BUG_ON(NULL == eli);
-@@ -2684,9 +2678,8 @@ cont_thread:
- 			goto exit_thread;
- 		}
- 
--		list_for_each_safe(pos, n, &eli->li_request_list) {
--			elr = list_entry(pos, struct ext4_li_request,
--					 lr_request);
-+		list_for_each_entry_safe(elr, n, &eli->li_request_list,
-+					 lr_request) {
- 
- 			if (time_after_eq(jiffies, elr->lr_next_sched)) {
- 				if (ext4_run_li_request(elr) != 0) {
-@@ -2744,13 +2737,11 @@ exit_thread:
- 
- static void ext4_clear_request_list(void)
- {
--	struct list_head *pos, *n;
--	struct ext4_li_request *elr;
-+	struct ext4_li_request *elr, *n;
- 
- 	mutex_lock(&ext4_li_info->li_list_mtx);
--	list_for_each_safe(pos, n, &ext4_li_info->li_request_list) {
--		elr = list_entry(pos, struct ext4_li_request,
--				 lr_request);
-+	list_for_each_entry_safe(elr, n, &ext4_li_info->li_request_list,
-+				 lr_request) {
- 		ext4_remove_li_request(elr);
- 	}
- 	mutex_unlock(&ext4_li_info->li_list_mtx);
+I do plan to continue to try and solve these race conditions so that we can
+have a more optimal fsync/msync solution for DAX, but I wanted to get this
+set out for v4.5 consideration while I continued working.  While
+suboptimal the solution in this series gives us correct behavior for DAX
+fsync/msync and seems like a reasonable short term compromise.
+
+This series is built upon v4.4-rc4 plus the recent ext4 DAX series from Jan
+Kara (http://www.spinics.net/lists/linux-ext4/msg49951.html) and a recent
+XFS fix from Dave Chinner (https://lkml.org/lkml/2015/12/2/923).  The tree
+with all this working can be found here:
+
+https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=fsync_v3
+
+Other changes versus v2:
+ - Renamed dax_fsync() to dax_writeback_mapping_range(). (Dave Chinner)
+ - Removed REQ_FUA/REQ_FLUSH support from the PMEM driver and instead just
+   make the call to wmb_pmem() in dax_writeback_mapping_range().  (Dan)
+ - Reworked some BUG_ON() calls to be a WARN_ON() followed by an error
+   return.
+ - Moved call to dax_writeback_mapping_range() from the filesystems down
+   into filemap_write_and_wait_range(). (Dave Chinner)
+ - Fixed handling of DAX read faults so they create a radix tree entry but
+   don't mark it as dirty until the follow-up dax_pfn_mkwrite() call.
+ - Update clear_exceptional_entry() and to dax_writeback_one() so they
+   validate the DAX radix tree entry before they use it. (Dave Chinner)
+ - Added a comment to find_get_entries_tag() to explain the restart
+   condition. (Dave Chinner)
+
+Ross Zwisler (7):
+  pmem: add wb_cache_pmem() to the PMEM API
+  dax: support dirty DAX entries in radix tree
+  mm: add find_get_entries_tag()
+  dax: add support for fsync/sync
+  ext2: call dax_pfn_mkwrite() for DAX fsync/msync
+  ext4: call dax_pfn_mkwrite() for DAX fsync/msync
+  xfs: call dax_pfn_mkwrite() for DAX fsync/msync
+
+ arch/x86/include/asm/pmem.h |  11 ++--
+ fs/block_dev.c              |   3 +-
+ fs/dax.c                    | 147 ++++++++++++++++++++++++++++++++++++++++++--
+ fs/ext2/file.c              |   4 +-
+ fs/ext4/file.c              |   4 +-
+ fs/inode.c                  |   1 +
+ fs/xfs/xfs_file.c           |   7 ++-
+ include/linux/dax.h         |   7 +++
+ include/linux/fs.h          |   1 +
+ include/linux/pagemap.h     |   3 +
+ include/linux/pmem.h        |  22 ++++++-
+ include/linux/radix-tree.h  |   9 +++
+ mm/filemap.c                |  84 ++++++++++++++++++++++++-
+ mm/truncate.c               |  64 +++++++++++--------
+ 14 files changed, 319 insertions(+), 48 deletions(-)
+
 -- 
 2.5.0
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
