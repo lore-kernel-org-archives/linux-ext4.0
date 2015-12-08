@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v3 1/7] pmem: add wb_cache_pmem() to the PMEM API
-Date: Tue,  8 Dec 2015 12:18:39 -0700
-Message-ID: <1449602325-20572-2-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v3 3/7] mm: add find_get_entries_tag()
+Date: Tue,  8 Dec 2015 12:18:41 -0700
+Message-ID: <1449602325-20572-4-git-send-email-ross.zwisler@linux.intel.com>
 References: <1449602325-20572-1-git-send-email-ross.zwisler@linux.intel.com>
 Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	"H. Peter Anvin" <hpa@zytor.com>,
@@ -31,111 +31,111 @@ In-Reply-To: <1449602325-20572-1-git-send-email-ross.zwisler@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-The function __arch_wb_cache_pmem() was already an internal implementation
-detail of the x86 PMEM API, but this functionality needs to be exported as
-part of the general PMEM API to handle the fsync/msync case for DAX mmaps.
-
-One thing worth noting is that we really do want this to be part of the
-PMEM API as opposed to a stand-alone function like clflush_cache_range()
-because of ordering restrictions.  By having wb_cache_pmem() as part of the
-PMEM API we can leave it unordered, call it multiple times to write back
-large amounts of memory, and then order the multiple calls with a single
-wmb_pmem().
+Add find_get_entries_tag() to the family of functions that include
+find_get_entries(), find_get_pages() and find_get_pages_tag().  This is
+needed for DAX dirty page handling because we need a list of both page
+offsets and radix tree entries ('indices' and 'entries' in this function)
+that are marked with the PAGECACHE_TAG_TOWRITE tag.
 
 Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 ---
- arch/x86/include/asm/pmem.h | 11 ++++++-----
- include/linux/pmem.h        | 22 +++++++++++++++++++++-
- 2 files changed, 27 insertions(+), 6 deletions(-)
+ include/linux/pagemap.h |  3 +++
+ mm/filemap.c            | 68 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 71 insertions(+)
 
-diff --git a/arch/x86/include/asm/pmem.h b/arch/x86/include/asm/pmem.h
-index d8ce3ec..6c7ade0 100644
---- a/arch/x86/include/asm/pmem.h
-+++ b/arch/x86/include/asm/pmem.h
-@@ -67,18 +67,19 @@ static inline void arch_wmb_pmem(void)
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 26eabf5..4db0425 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -361,6 +361,9 @@ unsigned find_get_pages_contig(struct address_space *mapping, pgoff_t start,
+ 			       unsigned int nr_pages, struct page **pages);
+ unsigned find_get_pages_tag(struct address_space *mapping, pgoff_t *index,
+ 			int tag, unsigned int nr_pages, struct page **pages);
++unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t start,
++			int tag, unsigned int nr_entries,
++			struct page **entries, pgoff_t *indices);
+ 
+ struct page *grab_cache_page_write_begin(struct address_space *mapping,
+ 			pgoff_t index, unsigned flags);
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 167a4d9..99dfbc9 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1498,6 +1498,74 @@ repeat:
  }
+ EXPORT_SYMBOL(find_get_pages_tag);
  
- /**
-- * __arch_wb_cache_pmem - write back a cache range with CLWB
-+ * arch_wb_cache_pmem - write back a cache range with CLWB
-  * @vaddr:	virtual start address
-  * @size:	number of bytes to write back
-  *
-  * Write back a cache range using the CLWB (cache line write back)
-  * instruction.  This function requires explicit ordering with an
-- * arch_wmb_pmem() call.  This API is internal to the x86 PMEM implementation.
-+ * arch_wmb_pmem() call.
-  */
--static inline void __arch_wb_cache_pmem(void *vaddr, size_t size)
-+static inline void arch_wb_cache_pmem(void __pmem *addr, size_t size)
- {
- 	u16 x86_clflush_size = boot_cpu_data.x86_clflush_size;
- 	unsigned long clflush_mask = x86_clflush_size - 1;
-+	void *vaddr = (void __force *)addr;
- 	void *vend = vaddr + size;
- 	void *p;
- 
-@@ -115,7 +116,7 @@ static inline size_t arch_copy_from_iter_pmem(void __pmem *addr, size_t bytes,
- 	len = copy_from_iter_nocache(vaddr, bytes, i);
- 
- 	if (__iter_needs_pmem_wb(i))
--		__arch_wb_cache_pmem(vaddr, bytes);
-+		arch_wb_cache_pmem(addr, bytes);
- 
- 	return len;
- }
-@@ -138,7 +139,7 @@ static inline void arch_clear_pmem(void __pmem *addr, size_t size)
- 	else
- 		memset(vaddr, 0, size);
- 
--	__arch_wb_cache_pmem(vaddr, size);
-+	arch_wb_cache_pmem(addr, size);
- }
- 
- static inline bool __arch_has_wmb_pmem(void)
-diff --git a/include/linux/pmem.h b/include/linux/pmem.h
-index acfea8c..7c3d11a 100644
---- a/include/linux/pmem.h
-+++ b/include/linux/pmem.h
-@@ -53,12 +53,18 @@ static inline void arch_clear_pmem(void __pmem *addr, size_t size)
- {
- 	BUG();
- }
-+
-+static inline void arch_wb_cache_pmem(void __pmem *addr, size_t size)
-+{
-+	BUG();
-+}
- #endif
- 
- /*
-  * Architectures that define ARCH_HAS_PMEM_API must provide
-  * implementations for arch_memcpy_to_pmem(), arch_wmb_pmem(),
-- * arch_copy_from_iter_pmem(), arch_clear_pmem() and arch_has_wmb_pmem().
-+ * arch_copy_from_iter_pmem(), arch_clear_pmem(), arch_wb_cache_pmem()
-+ * and arch_has_wmb_pmem().
-  */
- static inline void memcpy_from_pmem(void *dst, void __pmem const *src, size_t size)
- {
-@@ -178,4 +184,18 @@ static inline void clear_pmem(void __pmem *addr, size_t size)
- 	else
- 		default_clear_pmem(addr, size);
- }
-+
 +/**
-+ * wb_cache_pmem - write back processor cache for PMEM memory range
-+ * @addr:	virtual start address
-+ * @size:	number of bytes to write back
++ * find_get_entries_tag - find and return entries that match @tag
++ * @mapping:	the address_space to search
++ * @start:	the starting page cache index
++ * @tag:	the tag index
++ * @nr_entries:	the maximum number of entries
++ * @entries:	where the resulting entries are placed
++ * @indices:	the cache indices corresponding to the entries in @entries
 + *
-+ * Write back the processor cache range starting at 'addr' for 'size' bytes.
-+ * This function requires explicit ordering with a wmb_pmem() call.
++ * Like find_get_entries, except we only return entries which are tagged with
++ * @tag.
 + */
-+static inline void wb_cache_pmem(void __pmem *addr, size_t size)
++unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t start,
++			int tag, unsigned int nr_entries,
++			struct page **entries, pgoff_t *indices)
 +{
-+	if (arch_has_pmem_api())
-+		arch_wb_cache_pmem(addr, size);
++	void **slot;
++	unsigned int ret = 0;
++	struct radix_tree_iter iter;
++
++	if (!nr_entries)
++		return 0;
++
++	rcu_read_lock();
++restart:
++	radix_tree_for_each_tagged(slot, &mapping->page_tree,
++				   &iter, start, tag) {
++		struct page *page;
++repeat:
++		page = radix_tree_deref_slot(slot);
++		if (unlikely(!page))
++			continue;
++		if (radix_tree_exception(page)) {
++			if (radix_tree_deref_retry(page)) {
++				/*
++				 * Transient condition which can only trigger
++				 * when entry at index 0 moves out of or back
++				 * to root: none yet gotten, safe to restart.
++				 */
++				goto restart;
++			}
++
++			/*
++			 * A shadow entry of a recently evicted page, a swap
++			 * entry from shmem/tmpfs or a DAX entry.  Return it
++			 * without attempting to raise page count.
++			 */
++			goto export;
++		}
++		if (!page_cache_get_speculative(page))
++			goto repeat;
++
++		/* Has the page moved? */
++		if (unlikely(page != *slot)) {
++			page_cache_release(page);
++			goto repeat;
++		}
++export:
++		indices[ret] = iter.index;
++		entries[ret] = page;
++		if (++ret == nr_entries)
++			break;
++	}
++	rcu_read_unlock();
++	return ret;
 +}
- #endif /* __PMEM_H__ */
++EXPORT_SYMBOL(find_get_entries_tag);
++
+ /*
+  * CD/DVDs are error prone. When a medium error occurs, the driver may fail
+  * a _large_ part of the i/o request. Imagine the worst scenario:
 -- 
 2.5.0
 
