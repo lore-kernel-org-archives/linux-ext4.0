@@ -1,34 +1,52 @@
-From: Changlong Xie <xiecl.fnst@cn.fujitsu.com>
-Subject: [PATCH] ext4: remove MAX_32_NUM
-Date: Tue, 8 Dec 2015 11:34:33 +0800
-Message-ID: <1449545673-18182-1-git-send-email-xiecl.fnst@cn.fujitsu.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH v3.4 0/3] xfstests: test the nfs/cifs/btrfs/xfs
+ reflink/dedupe ioctls
+Date: Mon, 07 Dec 2015 22:28:44 -0800
+Message-ID: <20151208062844.21871.23644.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-To: <linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
-	<tytso@mit.edu>, <adilger.kernel@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: fstests@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	tao.peng@primarydata.com, linux-ext4@vger.kernel.org,
+	Anna.Schumaker@netapp.com, linux-btrfs@vger.kernel.org
+To: david@fromorbit.com, darrick.wong@oracle.com
+Return-path: <fstests-owner@vger.kernel.org>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-No one use this marco now, just remove it.
+Hi all,
 
-Signed-off-by: Changlong Xie <xiecl.fnst@cn.fujitsu.com>
----
- fs/ext4/ioctl.c | 2 --
- 1 file changed, 2 deletions(-)
+This is a small patch set against the reflink/dedupe test cases in
+xfstests.  The first patch is a rewrite of the tools to find the
+lowest vacant ID number and to move a test case.  These two programs
+are useful for staging a lot of new tests at a high number and moving
+them to lower numbers when the maintainer wants to accept the new
+tests.
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 5e872fd..ea34f70 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -18,8 +18,6 @@
- #include "ext4_jbd2.h"
- #include "ext4.h"
- 
--#define MAX_32_NUM ((((unsigned long long) 1) << 32) - 1)
--
- /**
-  * Swap memory between @a and @b for @len bytes.
-  *
--- 
-1.9.3
+The second patch updates the golden output for the test that examines
+the results of feeding bad inputs to the two ioctls.  The new error
+values are based on a discussion of how to react to bad file types on
+the mailing lists and the ongoing work to hoist the ioctls to the VFS
+level.
+
+The third patch has a few more tests for things that I found while
+rewriting XFS copy-on-write, and for explicitly testing the ability to
+reflink/dedupe "to the end of the file" by setting len == 0.  These
+tests are new and need more careful review than the first two patches.
+
+If you're going to start using this mess, you probably ought to just
+pull from my github trees for kernel[1], xfsprogs[2], xfstests[3], and
+xfs-docs[4].  They should just work with the btrfs that's in 4.4...
+and somewhat buggily with the 4.4 XFS patched with [1].  The relevant
+xfs_io support will be in xfsprogs 4.3 though it still needs a patch
+to fix len == 0 support.  Probably easier just to grab [2] and build
+that.
+
+Comments and questions are, as always, welcome.
+
+--D
+
+[1] https://github.com/djwong/linux/tree/for-dave
+[2] https://github.com/djwong/xfsprogs/tree/for-dave
+[3] https://github.com/djwong/xfstests/tree/for-dave
+[4] https://github.com/djwong/xfs-documentation/tree/for-dave
