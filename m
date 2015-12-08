@@ -1,34 +1,34 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 0/9 v4] ext4: Punch hole and DAX fixes
-Date: Mon, 7 Dec 2015 20:08:41 -0500
-Message-ID: <20151208010841.GF3094@thunk.org>
-References: <1447185059-16166-1-git-send-email-jack@suse.com>
+From: Changlong Xie <xiecl.fnst@cn.fujitsu.com>
+Subject: [PATCH] ext4: remove MAX_32_NUM
+Date: Tue, 8 Dec 2015 11:34:33 +0800
+Message-ID: <1449545673-18182-1-git-send-email-xiecl.fnst@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	dan.j.williams@intel.com, brian.boylston@hpe.com
-To: Jan Kara <jack@suse.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:44368 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932114AbbLHBIu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Dec 2015 20:08:50 -0500
-Content-Disposition: inline
-In-Reply-To: <1447185059-16166-1-git-send-email-jack@suse.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain
+To: <linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+	<tytso@mit.edu>, <adilger.kernel@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Nov 10, 2015 at 08:50:50PM +0100, Jan Kara wrote:
-> Hello,
-> 
-> Another version of my ext4 fixes. Since previous version I have fixed DAX block
-> mapping to really avoid races for parallel page faults so that the test program
-> by Brian passes. Note that you'll see ext4/001 failures - xfstests updates were
-> submitted. Also note that testing with 1 KB blocksize on ramdisk is broken
-> since brd has buggy discard implementation - Jens has a fix queued.
+No one use this marco now, just remove it.
 
-Thanks, I've applied these patches to the ext4 git tree and they are
-on the dev branch.
+Signed-off-by: Changlong Xie <xiecl.fnst@cn.fujitsu.com>
+---
+ fs/ext4/ioctl.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-						- Ted
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 5e872fd..ea34f70 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -18,8 +18,6 @@
+ #include "ext4_jbd2.h"
+ #include "ext4.h"
+ 
+-#define MAX_32_NUM ((((unsigned long long) 1) << 32) - 1)
+-
+ /**
+  * Swap memory between @a and @b for @len bytes.
+  *
+-- 
+1.9.3
