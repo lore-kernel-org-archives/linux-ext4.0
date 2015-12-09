@@ -1,150 +1,139 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 6/6] mbcache2: Use referenced bit instead of LRU
-Date: Wed,  9 Dec 2015 18:57:38 +0100
-Message-ID: <1449683858-28936-7-git-send-email-jack@suse.cz>
-References: <1449683858-28936-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Laurent GUERBY <laurent@guerby.net>,
-	Andreas Dilger <adilger@dilger.ca>, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33140 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753207AbbLIR5s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 Dec 2015 12:57:48 -0500
-In-Reply-To: <1449683858-28936-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Dan Williams <dan.j.williams@gmail.com>
+Subject: Re: [PATCH v3 3/7] mm: add find_get_entries_tag()
+Date: Wed, 9 Dec 2015 11:44:16 -0800
+Message-ID: <CAA9_cmeVYinm4mMiDU4oz8fW4HQ3n1RqEbPHBW7A3OGmi9eXtw@mail.gmail.com>
+References: <1449602325-20572-1-git-send-email-ross.zwisler@linux.intel.com>
+	<1449602325-20572-4-git-send-email-ross.zwisler@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>, Dave Hansen <dave.hansen@linux.intel.com>,
+	Dave Chinner <david@fromorbit.com>, "J. Bruce Fields" <bfields@fieldses.org>,
+	linux-mm <linux-mm@kvack.org>, Andreas Dilger <adilger.kernel@dilger.ca>,
+	"H. Peter Anvin" <hpa@zytor.com>, Jeff Layton <jlayton@poochiereds.net>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>, "the arch/x86 maintainers" <x86@kernel.org>,
+	Ingo Molnar <mingo@redhat.com>, ext4 hackers <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
+	Alexander Viro <viro@zeniv.linux.org.uk>, Thomas Gleixner <tglx@linutronix.de>,
+	"Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>, Andrew Morton <akpm@linux-foundation.org>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1449602325-20572-4-git-send-email-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Currently we maintain perfect LRU list by moving entry to the tail of
-the list when it gets used. However these operations on cache-global
-list are relatively expensive.
+On Tue, Dec 8, 2015 at 11:18 AM, Ross Zwisler
+<ross.zwisler@linux.intel.com> wrote:
+> Add find_get_entries_tag() to the family of functions that include
+> find_get_entries(), find_get_pages() and find_get_pages_tag().  This is
+> needed for DAX dirty page handling because we need a list of both page
+> offsets and radix tree entries ('indices' and 'entries' in this function)
+> that are marked with the PAGECACHE_TAG_TOWRITE tag.
+>
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> ---
+>  include/linux/pagemap.h |  3 +++
+>  mm/filemap.c            | 68 +++++++++++++++++++++++++++++++++++++++++++++++++
+>  2 files changed, 71 insertions(+)
+>
+> diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+> index 26eabf5..4db0425 100644
+> --- a/include/linux/pagemap.h
+> +++ b/include/linux/pagemap.h
+> @@ -361,6 +361,9 @@ unsigned find_get_pages_contig(struct address_space *mapping, pgoff_t start,
+>                                unsigned int nr_pages, struct page **pages);
+>  unsigned find_get_pages_tag(struct address_space *mapping, pgoff_t *index,
+>                         int tag, unsigned int nr_pages, struct page **pages);
+> +unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t start,
+> +                       int tag, unsigned int nr_entries,
+> +                       struct page **entries, pgoff_t *indices);
+>
+>  struct page *grab_cache_page_write_begin(struct address_space *mapping,
+>                         pgoff_t index, unsigned flags);
+> diff --git a/mm/filemap.c b/mm/filemap.c
+> index 167a4d9..99dfbc9 100644
+> --- a/mm/filemap.c
+> +++ b/mm/filemap.c
+> @@ -1498,6 +1498,74 @@ repeat:
+>  }
+>  EXPORT_SYMBOL(find_get_pages_tag);
+>
+> +/**
+> + * find_get_entries_tag - find and return entries that match @tag
+> + * @mapping:   the address_space to search
+> + * @start:     the starting page cache index
+> + * @tag:       the tag index
+> + * @nr_entries:        the maximum number of entries
+> + * @entries:   where the resulting entries are placed
+> + * @indices:   the cache indices corresponding to the entries in @entries
+> + *
+> + * Like find_get_entries, except we only return entries which are tagged with
+> + * @tag.
+> + */
+> +unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t start,
+> +                       int tag, unsigned int nr_entries,
+> +                       struct page **entries, pgoff_t *indices)
+> +{
+> +       void **slot;
+> +       unsigned int ret = 0;
+> +       struct radix_tree_iter iter;
+> +
+> +       if (!nr_entries)
+> +               return 0;
+> +
+> +       rcu_read_lock();
+> +restart:
+> +       radix_tree_for_each_tagged(slot, &mapping->page_tree,
+> +                                  &iter, start, tag) {
+> +               struct page *page;
+> +repeat:
+> +               page = radix_tree_deref_slot(slot);
+> +               if (unlikely(!page))
+> +                       continue;
+> +               if (radix_tree_exception(page)) {
+> +                       if (radix_tree_deref_retry(page)) {
+> +                               /*
+> +                                * Transient condition which can only trigger
+> +                                * when entry at index 0 moves out of or back
+> +                                * to root: none yet gotten, safe to restart.
+> +                                */
+> +                               goto restart;
+> +                       }
+> +
+> +                       /*
+> +                        * A shadow entry of a recently evicted page, a swap
+> +                        * entry from shmem/tmpfs or a DAX entry.  Return it
+> +                        * without attempting to raise page count.
+> +                        */
+> +                       goto export;
+> +               }
+> +               if (!page_cache_get_speculative(page))
+> +                       goto repeat;
+> +
+> +               /* Has the page moved? */
+> +               if (unlikely(page != *slot)) {
+> +                       page_cache_release(page);
+> +                       goto repeat;
+> +               }
+> +export:
+> +               indices[ret] = iter.index;
+> +               entries[ret] = page;
+> +               if (++ret == nr_entries)
+> +                       break;
+> +       }
+> +       rcu_read_unlock();
+> +       return ret;
+> +}
+> +EXPORT_SYMBOL(find_get_entries_tag);
+> +
 
-In this patch we switch to lazy updates of LRU list. Whenever entry gets
-used, we set a referenced bit in it. When reclaiming entries, we give
-referenced entries another round in the LRU.
+Why does this mostly duplicate find_get_entries()?
 
-In my testing this logic gives about 30% boost to workloads with mostly
-unique xattr blocks (e.g. xattr-bench with 10 files and 10000 unique
-xattr values).
+Surely find_get_entries() can be implemented as a special case of
+find_get_entries_tag().
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/mbcache2.c            | 41 +++++++++++++++++++++++++++++++++--------
- include/linux/mbcache2.h |  7 +++++--
- 2 files changed, 38 insertions(+), 10 deletions(-)
-
-diff --git a/fs/mbcache2.c b/fs/mbcache2.c
-index fe9f6f6a2953..60310a690f8d 100644
---- a/fs/mbcache2.c
-+++ b/fs/mbcache2.c
-@@ -39,6 +39,29 @@ static struct kmem_cache *mb2_entry_cache;
- static unsigned long mb2_cache_shrink(struct mb2_cache *cache,
- 				      unsigned int nr_to_scan);
- 
-+static inline bool mb2_cache_entry_referenced(struct mb2_cache_entry *entry)
-+{
-+	return entry->_e_hash_list_head & 1;
-+}
-+
-+static inline void mb2_cache_entry_set_referenced(struct mb2_cache_entry *entry)
-+{
-+	entry->_e_hash_list_head |= 1;
-+}
-+
-+static inline void mb2_cache_entry_clear_referenced(
-+					struct mb2_cache_entry *entry)
-+{
-+	entry->_e_hash_list_head &= ~1;
-+}
-+
-+static inline struct hlist_bl_head *mb2_cache_entry_head(
-+					struct mb2_cache_entry *entry)
-+{
-+	return (struct hlist_bl_head *)
-+			(entry->_e_hash_list_head & ~1);
-+}
-+
- /*
-  * Number of entries to reclaim synchronously when there are too many entries
-  * in cache
-@@ -83,7 +106,7 @@ struct mb2_cache_entry *mb2_cache_entry_create(struct mb2_cache *cache,
- 	entry->e_key = key;
- 	entry->e_block = block;
- 	head = &cache->c_hash[hash_32(key, cache->c_bucket_bits)];
--	entry->e_hash_list_head = head;
-+	entry->_e_hash_list_head = (unsigned long)head;
- 	hlist_bl_lock(head);
- 	hlist_bl_for_each_entry(dup, dup_node, head, e_hash_list) {
- 		if (dup->e_key == key && dup->e_block == block) {
-@@ -125,7 +148,7 @@ EXPORT_SYMBOL(__mb2_cache_entry_free);
- void mb2_cache_entry_delete(struct mb2_cache *cache,
- 			    struct mb2_cache_entry *entry)
- {
--	struct hlist_bl_head *head = entry->e_hash_list_head;
-+	struct hlist_bl_head *head = mb2_cache_entry_head(entry);
- 
- 	hlist_bl_lock(head);
- 	if (!hlist_bl_unhashed(&entry->e_hash_list)) {
-@@ -153,7 +176,7 @@ static struct mb2_cache_entry *__entry_find(struct mb2_cache *cache,
- 	struct hlist_bl_head *head;
- 
- 	if (entry)
--		head = entry->e_hash_list_head;
-+		head = mb2_cache_entry_head(entry);
- 	else
- 		head = &cache->c_hash[hash_32(key, cache->c_bucket_bits)];
- 	hlist_bl_lock(head);
-@@ -256,10 +279,7 @@ EXPORT_SYMBOL(mb2_cache_entry_delete_block);
- void mb2_cache_entry_touch(struct mb2_cache *cache,
- 			   struct mb2_cache_entry *entry)
- {
--	spin_lock(&cache->c_lru_list_lock);
--	if (!list_empty(&entry->e_lru_list))
--		list_move_tail(&cache->c_lru_list, &entry->e_lru_list);
--	spin_unlock(&cache->c_lru_list_lock);
-+	mb2_cache_entry_set_referenced(entry);
- }
- EXPORT_SYMBOL(mb2_cache_entry_touch);
- 
-@@ -284,6 +304,11 @@ static unsigned long mb2_cache_shrink(struct mb2_cache *cache,
- 	while (nr_to_scan-- && !list_empty(&cache->c_lru_list)) {
- 		entry = list_first_entry(&cache->c_lru_list,
- 					 struct mb2_cache_entry, e_lru_list);
-+		if (mb2_cache_entry_referenced(entry)) {
-+			mb2_cache_entry_clear_referenced(entry);
-+			list_move_tail(&cache->c_lru_list, &entry->e_lru_list);
-+			continue;
-+		}
- 		list_del_init(&entry->e_lru_list);
- 		cache->c_entry_count--;
- 		/*
-@@ -291,7 +316,7 @@ static unsigned long mb2_cache_shrink(struct mb2_cache *cache,
- 		 * from under us.
- 		 */
- 		spin_unlock(&cache->c_lru_list_lock);
--		head = entry->e_hash_list_head;
-+		head = mb2_cache_entry_head(entry);
- 		hlist_bl_lock(head);
- 		if (!hlist_bl_unhashed(&entry->e_hash_list)) {
- 			hlist_bl_del_init(&entry->e_hash_list);
-diff --git a/include/linux/mbcache2.h b/include/linux/mbcache2.h
-index 2a58c51c3a0a..ca5b509c14a8 100644
---- a/include/linux/mbcache2.h
-+++ b/include/linux/mbcache2.h
-@@ -19,8 +19,11 @@ struct mb2_cache_entry {
- 	unsigned int		e_key;
- 	/* Block number of hashed block - stable during lifetime of the entry */
- 	sector_t		e_block;
--	/* Head of hash list (for list bit lock) - stable */
--	struct hlist_bl_head	*e_hash_list_head;
-+	/*
-+	 * Head of hash list (for list bit lock) - stable. Combined with
-+	 * referenced bit of entry
-+	 */
-+	unsigned long		_e_hash_list_head;
- };
- 
- struct mb2_cache *mb2_cache_create(int bucket_bits);
--- 
-2.1.4
-
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
