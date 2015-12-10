@@ -1,67 +1,152 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 0/9 v4] ext4: Punch hole and DAX fixes
-Date: Thu, 10 Dec 2015 11:26:42 -0500
-Message-ID: <20151210162642.GB8898@thunk.org>
-References: <1447185059-16166-1-git-send-email-jack@suse.com>
- <20151208010841.GF3094@thunk.org>
- <20151209235518.GA31235@linux.intel.com>
+Subject: Re: [PATCH v3 0/3] ext4 crypto: back up encrypted files
+Date: Thu, 10 Dec 2015 11:31:24 -0500
+Message-ID: <20151210163124.GC8898@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Content-Type: multipart/mixed; boundary="uAKRQypu60I7Lcqm"
+Cc: mhalcrow@google.com
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50743 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:50764 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753280AbbLJQ0o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Dec 2015 11:26:44 -0500
+	id S1751121AbbLJQbZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Dec 2015 11:31:25 -0500
 Content-Disposition: inline
-In-Reply-To: <20151209235518.GA31235@linux.intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 09, 2015 at 04:55:18PM -0700, Ross Zwisler wrote:
-> Hey Ted,
-> 
-> I'm working on some fsync/msync patches that I'm hoping to merge for v4.5 and
-> my patches build upon the work done in this series by Jan.
-> 
-> I see Jan's patches in your dev branch - do you expect that branch to be part
-> of a pull request (are the commit IDs stable)?  Or will patches from the dev
-> branch get moved into another branch before you send the pull request to
-> Linus?
 
-Thanks for asking.  I assume your work is not just ext4 specific (in
-which I could just manage it using patches in the ext4 patch queue).,
-but where you want to start a git tree and then push to Linus
-independently, yes?
+--uAKRQypu60I7Lcqm
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> I'm just trying to figure out what I should use as a baseline for my changes
-> since I need to build on Jan's patches but obviously don't want to include new
-> ext4 code with my pull request (which I will send after you send yours). :)
+And here are some test programs / scripts that I've been using to test
+these patches.  They also demonstrate how to use the ioctl's.
 
-Please use the "master" branch from the ext4 tree as your baseline.
-Normally dev is a rewinding branch, but for these sorts of situations
-I'll guarantee that everything between origin..master will be stable,
-while commits between master..dev may be rewound or dropped to fix
-bugs/regressions:
+      		     	  	      	     - Ted
 
-* dde86e3 - (HEAD -> guilt/origin, dev) ext4 crypto: add missing locking for keyring_key access (10 hours ago)
-* 0969c39 - ext4 crypto: add ioctls to allow backup of encryption metadata (10 hours ago)
-* 843848f - ext4 crypto: add ciphertext_access mount option (10 hours ago)
-* ba5843f - (master) ext4: use pre-zeroed blocks for DAX page faults (3 days ago)
-* c86d8db - ext4: implement allocation of pre-zeroed blocks (3 days ago)
-* 53085fa - ext4: provide ext4_issue_zeroout() (3 days ago)
-* 2dcba47 - ext4: get rid of EXT4_GET_BLOCKS_NO_LOCK flag (3 days ago)
-* e74031f - ext4: document lock ordering (3 days ago)
-* 0112784 - ext4: fix races of writeback with punch hole and zero range (3 days ago)
-* 32ebffd - ext4: fix races between buffered IO and collapse / insert range (3 days ago)
-* 17048e8 - ext4: move unlocked dio protection from ext4_alloc_file_blocks() (3 days ago)
-* ea3d720 - ext4: fix races between page faults and hole punching (3 days ago)
+--uAKRQypu60I7Lcqm
+Content-Type: text/x-csrc; charset=us-ascii
+Content-Disposition: attachment; filename="ext4-crypto-cp-md.c"
 
-Jan's patches have gone through multiple rounds of testing and I'm
-quite confident there are no bugs or regressions that can't be dealt
-with using follow up patches.
+/*
+ * Test program to trigger the precache ioctl
+ */
 
-Cheers,
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
 
-							- Ted
+typedef unsigned long u32;
+
+struct ext4_encrypted_metadata {
+	u32 len;
+	char metadata[288];
+};
+
+#ifndef EXT4_IOC_GET_ENCRYPTION_METADATA
+#define EXT4_IOC_GET_ENCRYPTION_METADATA _IOWR('f', 22, struct ext4_encrypted_metadata)
+#endif
+#ifndef EXT4_IOC_SET_ENCRYPTION_METADATA
+#define EXT4_IOC_SET_ENCRYPTION_METADATA _IOR('f', 23, struct ext4_encrypted_metadata)
+#endif
+#ifndef EXT4_IOC_GET_ENCRYPTED_FILENAME
+#define EXT4_IOC_GET_ENCRYPTED_FILENAME	_IOWR('f', 24, struct ext4_encrypted_metadata)
+#endif
+
+void print_mdata(const char *s, struct ext4_encrypted_metadata *mdata)
+{
+	int i;
+
+	printf("%s len %d: \n", s, mdata->len);
+	for (i = 0; i < mdata->len; i++)
+		printf("%02x ", mdata->metadata[i] & 0xFF);
+	printf("\n");
+}
+
+int main(int argc, char **argv)
+{
+	int	s_fd, d_fd = -1;
+	int	oflags = O_RDONLY;
+	struct ext4_encrypted_metadata f_mdata, fn_mdata;
+
+	if (argc < 2 || argc > 3) {
+		fprintf(stderr, "Usage: %s source [destination]\n",
+			argv[0]);
+		exit(1);
+	}
+	s_fd = open(argv[1], O_RDONLY);
+	if (s_fd < 0) {
+		perror(argv[1]);
+		exit(1);
+	}
+	if (argc > 2) {
+		d_fd = open(argv[2], O_RDONLY);
+		if (d_fd < 0) {
+			perror(argv[2]);
+			exit(1);
+		}
+	}
+	f_mdata.len = sizeof(f_mdata.metadata);
+	if (ioctl(s_fd, EXT4_IOC_GET_ENCRYPTION_METADATA, &f_mdata)) {
+		perror("EXT4_IOC_GET_ENCRYPTION_METADATA");
+		f_mdata.len = 0;
+	} else {
+		print_mdata("file", &f_mdata);
+	}
+	fn_mdata.len = sizeof(fn_mdata.metadata);
+	if (ioctl(s_fd, EXT4_IOC_GET_ENCRYPTED_FILENAME, &fn_mdata)) {
+		perror("EXT4_IOC_GET_ENCRYPTED_FILENAME");
+	} else {
+		print_mdata("filename", &fn_mdata);
+	}
+	if (d_fd >= 0 && f_mdata.len > 0) {
+		if (ioctl(d_fd, EXT4_IOC_SET_ENCRYPTION_METADATA, &f_mdata)) {
+			perror("EXT4_IOC_SET_ENCRYPTION_METADATA");
+		}
+	}
+	return 0;
+}
+
+--uAKRQypu60I7Lcqm
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename=test-cp-md
+
+#!/bin/bash -vx
+umount /vdc
+dmesg -n 7
+mke2fs -Fq -t ext4 -O encrypt /dev/vdc
+debugfs -w -R "ssv encrypt_pw_salt deadbeef-dead-beef-1234-5678deadbeef" /dev/vdc
+mount -t ext4 /dev/vdc /vdc
+mkdir /vdc/a
+echo foobar | e4crypt add_key /vdc/a
+cat << EOF > /vdc/a/test_file
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. In accumsan
+mi ac magna vestibulum commodo. Cras facilisis posuere tellus in
+efficitur. Sed mollis mi eget elit vulputate pellentesque. Ut vitae
+laoreet diam. Aliquam sem leo, luctus eget leo eu, hendrerit egestas
+risus. Nulla non nisi ut nisl suscipit dictum. Donec eleifend dapibus
+mi eu porttitor. Nulla lacinia tellus nec porttitor tincidunt. Nam
+lectus nibh, fringilla sit amet enim id, consequat tincidunt
+mauris. Ut blandit orci vitae elit suscipit varius. Donec vel sem
+tristique, efficitur felis sit amet, sagittis metus. In laoreet
+ultricies interdum. Aliquam felis est, pharetra eget nisl vel,
+fringilla aliquet velit. Etiam ut augue ut ante fringilla gravida quis
+a arcu.
+EOF
+umount /vdc
+keyctl purge logon
+mount -t ext4 -o ciphertext_access /dev/vdc /vdc
+F=/vdc/a/$(ls /vdc/a)
+dd if=$F of=/vdc/out iflag=direct oflag=direct bs=4k
+/vdb/ext4-crypto-cp-md $F /vdc/out
+umount /vdc
+mount -t ext4 /dev/vdc /vdc
+echo foobar | e4crypt add_key
+truncate --reference /vdc/a/test_file /vdc/out
+diff /vdc/out /vdc/a/test_file
+
+--uAKRQypu60I7Lcqm--
