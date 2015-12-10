@@ -1,23 +1,41 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 3/3] reflink: more tests
-Date: Thu, 10 Dec 2015 08:34:49 -0800
-Message-ID: <20151210163449.GA15774@infradead.org>
-References: <20151208062844.21871.23644.stgit@birch.djwong.org>
- <20151208062904.21871.30589.stgit@birch.djwong.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 107301] system hang during ext4 xattr operation
+Date: Thu, 10 Dec 2015 16:51:43 +0000
+Message-ID: <bug-107301-13602-pTBio41oqF@https.bugzilla.kernel.org/>
+References: <bug-107301-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: david@fromorbit.com, fstests@vger.kernel.org, xfs@oss.sgi.com,
-	hch@infradead.org, tao.peng@primarydata.com,
-	linux-ext4@vger.kernel.org, Anna.Schumaker@netapp.com,
-	linux-btrfs@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20151208062904.21871.30589.stgit@birch.djwong.org>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:33008 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751538AbbLJQvr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Dec 2015 11:51:47 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 22CF4205E3
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2015 16:51:45 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 79214205B3
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2015 16:51:43 +0000 (UTC)
+In-Reply-To: <bug-107301-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The new 849 fails reliably on btrfs, which makes me wonder if either
-the test is doing something wrong, or the btrfs whole file clone
-behavior is broken, which wouldn't be very reasuring.  I didn't have
-time to look into why it's failing yet.
+https://bugzilla.kernel.org/show_bug.cgi?id=107301
+
+--- Comment #22 from Theodore Tso <tytso@mit.edu> ---
+Using 512 byte inodes for Ceph is a really good idea.
+
+Before folks go there, can people give Jan Kara's mbcache rewrite a try?
+
+http://thread.gmane.org/gmane.comp.file-systems.ext4/51094
+
+I'd really appreciate comments and any performance numbers you could give me on
+your workloads.
+
+Thanks!!
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
