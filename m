@@ -1,139 +1,33 @@
-From: Dan Williams <dan.j.williams@gmail.com>
-Subject: Re: [PATCH v3 3/7] mm: add find_get_entries_tag()
-Date: Wed, 9 Dec 2015 11:44:16 -0800
-Message-ID: <CAA9_cmeVYinm4mMiDU4oz8fW4HQ3n1RqEbPHBW7A3OGmi9eXtw@mail.gmail.com>
-References: <1449602325-20572-1-git-send-email-ross.zwisler@linux.intel.com>
-	<1449602325-20572-4-git-send-email-ross.zwisler@linux.intel.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 107301] system hang during ext4 xattr operation
+Date: Thu, 10 Dec 2015 02:51:52 +0000
+Message-ID: <bug-107301-13602-OybNWXrkzg@https.bugzilla.kernel.org/>
+References: <bug-107301-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>, Dave Hansen <dave.hansen@linux.intel.com>,
-	Dave Chinner <david@fromorbit.com>, "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-mm <linux-mm@kvack.org>, Andreas Dilger <adilger.kernel@dilger.ca>,
-	"H. Peter Anvin" <hpa@zytor.com>, Jeff Layton <jlayton@poochiereds.net>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>, "the arch/x86 maintainers" <x86@kernel.org>,
-	Ingo Molnar <mingo@redhat.com>, ext4 hackers <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
-	Alexander Viro <viro@zeniv.linux.org.uk>, Thomas Gleixner <tglx@linutronix.de>,
-	"Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>, Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1449602325-20572-4-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:41249 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751538AbbLJCvz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 Dec 2015 21:51:55 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id D30B0204FB
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2015 02:51:54 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 64BB6204A0
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2015 02:51:52 +0000 (UTC)
+In-Reply-To: <bug-107301-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 8, 2015 at 11:18 AM, Ross Zwisler
-<ross.zwisler@linux.intel.com> wrote:
-> Add find_get_entries_tag() to the family of functions that include
-> find_get_entries(), find_get_pages() and find_get_pages_tag().  This is
-> needed for DAX dirty page handling because we need a list of both page
-> offsets and radix tree entries ('indices' and 'entries' in this function)
-> that are marked with the PAGECACHE_TAG_TOWRITE tag.
->
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> ---
->  include/linux/pagemap.h |  3 +++
->  mm/filemap.c            | 68 +++++++++++++++++++++++++++++++++++++++++++++++++
->  2 files changed, 71 insertions(+)
->
-> diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-> index 26eabf5..4db0425 100644
-> --- a/include/linux/pagemap.h
-> +++ b/include/linux/pagemap.h
-> @@ -361,6 +361,9 @@ unsigned find_get_pages_contig(struct address_space *mapping, pgoff_t start,
->                                unsigned int nr_pages, struct page **pages);
->  unsigned find_get_pages_tag(struct address_space *mapping, pgoff_t *index,
->                         int tag, unsigned int nr_pages, struct page **pages);
-> +unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t start,
-> +                       int tag, unsigned int nr_entries,
-> +                       struct page **entries, pgoff_t *indices);
->
->  struct page *grab_cache_page_write_begin(struct address_space *mapping,
->                         pgoff_t index, unsigned flags);
-> diff --git a/mm/filemap.c b/mm/filemap.c
-> index 167a4d9..99dfbc9 100644
-> --- a/mm/filemap.c
-> +++ b/mm/filemap.c
-> @@ -1498,6 +1498,74 @@ repeat:
->  }
->  EXPORT_SYMBOL(find_get_pages_tag);
->
-> +/**
-> + * find_get_entries_tag - find and return entries that match @tag
-> + * @mapping:   the address_space to search
-> + * @start:     the starting page cache index
-> + * @tag:       the tag index
-> + * @nr_entries:        the maximum number of entries
-> + * @entries:   where the resulting entries are placed
-> + * @indices:   the cache indices corresponding to the entries in @entries
-> + *
-> + * Like find_get_entries, except we only return entries which are tagged with
-> + * @tag.
-> + */
-> +unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t start,
-> +                       int tag, unsigned int nr_entries,
-> +                       struct page **entries, pgoff_t *indices)
-> +{
-> +       void **slot;
-> +       unsigned int ret = 0;
-> +       struct radix_tree_iter iter;
-> +
-> +       if (!nr_entries)
-> +               return 0;
-> +
-> +       rcu_read_lock();
-> +restart:
-> +       radix_tree_for_each_tagged(slot, &mapping->page_tree,
-> +                                  &iter, start, tag) {
-> +               struct page *page;
-> +repeat:
-> +               page = radix_tree_deref_slot(slot);
-> +               if (unlikely(!page))
-> +                       continue;
-> +               if (radix_tree_exception(page)) {
-> +                       if (radix_tree_deref_retry(page)) {
-> +                               /*
-> +                                * Transient condition which can only trigger
-> +                                * when entry at index 0 moves out of or back
-> +                                * to root: none yet gotten, safe to restart.
-> +                                */
-> +                               goto restart;
-> +                       }
-> +
-> +                       /*
-> +                        * A shadow entry of a recently evicted page, a swap
-> +                        * entry from shmem/tmpfs or a DAX entry.  Return it
-> +                        * without attempting to raise page count.
-> +                        */
-> +                       goto export;
-> +               }
-> +               if (!page_cache_get_speculative(page))
-> +                       goto repeat;
-> +
-> +               /* Has the page moved? */
-> +               if (unlikely(page != *slot)) {
-> +                       page_cache_release(page);
-> +                       goto repeat;
-> +               }
-> +export:
-> +               indices[ret] = iter.index;
-> +               entries[ret] = page;
-> +               if (++ret == nr_entries)
-> +                       break;
-> +       }
-> +       rcu_read_unlock();
-> +       return ret;
-> +}
-> +EXPORT_SYMBOL(find_get_entries_tag);
-> +
+https://bugzilla.kernel.org/show_bug.cgi?id=107301
 
-Why does this mostly duplicate find_get_entries()?
+--- Comment #21 from Andreas Gruenbacher <agruen@kernel.org> ---
+As far as ceph is concerned, are there reasons for not using 512-byte inodes?
+In-inode xattrs are generally much faster.
 
-Surely find_get_entries() can be implemented as a special case of
-find_get_entries_tag().
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
