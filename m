@@ -1,86 +1,67 @@
-From: Borislav Petkov <bp@alien8.de>
-Subject: Re: ext4/jbd splat in 4.4-rc4+
-Date: Thu, 10 Dec 2015 17:27:33 +0100
-Message-ID: <20151210162733.GA6587@pd.tnic>
-References: <20151210140404.GA3049@nazgul.tnic>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 0/9 v4] ext4: Punch hole and DAX fixes
+Date: Thu, 10 Dec 2015 11:26:42 -0500
+Message-ID: <20151210162642.GB8898@thunk.org>
+References: <1447185059-16166-1-git-send-email-jack@suse.com>
+ <20151208010841.GF3094@thunk.org>
+ <20151209235518.GA31235@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	Paolo Bonzini <pbonzini@redhat.com>,
-	lkml <linux-kernel@vger.kernel.org>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:50743 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753280AbbLJQ0o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Dec 2015 11:26:44 -0500
 Content-Disposition: inline
-In-Reply-To: <20151210140404.GA3049@nazgul.tnic>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20151209235518.GA31235@linux.intel.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 10, 2015 at 03:04:04PM +0100, Borislav Petkov wrote:
-> Hi guys,
+On Wed, Dec 09, 2015 at 04:55:18PM -0700, Ross Zwisler wrote:
+> Hey Ted,
 > 
-> I'm getting this nasty splat in ext4 land while booting kernels in
-> qemu/kvm. Last time it happened while injecting NMIs in the guest using
-> the qemu monitor, this time too. Any ideas?
+> I'm working on some fsync/msync patches that I'm hoping to merge for v4.5 and
+> my patches build upon the work done in this series by Jan.
 > 
-> Sadly, rIP is gone so I can't really pinpoint the problem but someone
-> might have an idea.
-> 
-> Last time it happened, the box froze solid, this time it was barely
-> alive so that I was able to suck dmesg out before it crashes completely.
-> 
-> Any suggestions appreciated.
+> I see Jan's patches in your dev branch - do you expect that branch to be part
+> of a pull request (are the commit IDs stable)?  Or will patches from the dev
+> branch get moved into another branch before you send the pull request to
+> Linus?
 
-Hmm, got a second one, again during injecting NMIs in the guest, the
-*host* exploded like this. And this time not in ext4 which would mean,
-some corruption is happening.
+Thanks for asking.  I assume your work is not just ext4 specific (in
+which I could just manage it using patches in the ext4 patch queue).,
+but where you want to start a git tree and then push to Linus
+independently, yes?
 
-Paolo, any ideas? What happens when I do "nmi" in qemu's monitor, why
-does it corrupt the host?
+> I'm just trying to figure out what I should use as a baseline for my changes
+> since I need to build on Jan's patches but obviously don't want to include new
+> ext4 code with my pull request (which I will send after you send yours). :)
 
-Lemme test plain rc4 in the guest...
+Please use the "master" branch from the ext4 tree as your baseline.
+Normally dev is a rewinding branch, but for these sorts of situations
+I'll guarantee that everything between origin..master will be stable,
+while commits between master..dev may be rewound or dropped to fix
+bugs/regressions:
 
-[ 3405.741284] kvm: zapping shadow pages for mmio generation wraparound
-[ 3451.874613] kvm: zapping shadow pages for mmio generation wraparound
-[ 4493.572305] kvm: zapping shadow pages for mmio generation wraparound
-[ 4519.739695] BUG: unable to handle kernel NULL pointer dereference at           (null)
-[ 4519.751390] IP: [<          (null)>]           (null)
-[ 4519.760275] PGD 0 
-[ 4519.766054] Oops: 0010 [#1] PREEMPT SMP 
-[ 4519.773785] Modules linked in: tun sha256_ssse3 sha256_generic drbg binfmt_misc ipv6 vfat fat fuse dm_crypt dm_mod kvm_amd kvm irqbypass crc32_pclmul aesni_intel aes_x86_64 lrw gf128mul glue_helper ablk_helper cryptd fam15h_power k10temp amd64_edac_mod edac_mce_amd amdkfd amd_iommu_v2 radeon acpi_cpufreq
-[ 4519.809462] CPU: 4 PID: 32028 Comm: qemu-system-x86 Not tainted 4.4.0-rc4+ #1
-[ 4519.820667] Hardware name: To be filled by O.E.M. To be filled by O.E.M./M5A97 EVO R2.0, BIOS 1503 01/16/2013
-[ 4519.834710] task: ffff880423715e00 ti: ffff88040f3a8000 task.ti: ffff88040f3a8000
-[ 4519.846340] RIP: 0010:[<0000000000000000>]  [<          (null)>]           (null)
-[ 4519.857998] RSP: 0018:ffff88040f3abe38  EFLAGS: 00010286
-[ 4519.867492] RAX: ffff880423715e00 RBX: 0000000000000286 RCX: 0000000000000001
-[ 4519.867494] RDX: ffff8804237164e0 RSI: 0000000000000000 RDI: ffff880423715e01
-[ 4519.867496] RBP: ffff88040f3abe90 R08: 0000000000000000 R09: 0000000000000000
-[ 4519.867497] R10: 0000000000000000 R11: 0000000000000007 R12: 0000000000000000
-[ 4519.867498] R13: 0000000000000002 R14: 0000000000000000 R15: 0000000000000000
-[ 4519.867501] FS:  00007ff557300700(0000) GS:ffff88042ce00000(0000) knlGS:0000000000000000
-[ 4519.867503] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[ 4519.867505] CR2: 0000000000000000 CR3: 000000040f018000 CR4: 00000000000406e0
-[ 4519.867506] Stack:
-[ 4519.867511]  ffffffff811ac675 ffff880400000000 0000000000000000 0000000000000286
-[ 4519.867515]  000000000f3abe78 ffffffff81a3c1e0 ffff8804288616c0 0000000000000009
-[ 4519.867519]  0000000000000000 0000000000004000 00007ff5572ffab0 ffff88040f3abed8
-[ 4519.867520] Call Trace:
-[ 4519.867529]  [<ffffffff811ac675>] ? __fget+0x5/0x210
-[ 4519.867535]  [<ffffffff811ac6c4>] __fget+0x54/0x210
-[ 4519.867540]  [<ffffffff811ac675>] ? __fget+0x5/0x210
-[ 4519.867545]  [<ffffffff810a6a42>] ? trace_hardirqs_on_caller+0xf2/0x210
-[ 4519.867551]  [<ffffffff811ac8e9>] __fget_light+0x29/0x90
-[ 4519.867562]  [<ffffffff811ac963>] __fdget+0x13/0x20
-[ 4519.867565]  [<ffffffff811a0bbf>] SyS_ioctl+0x2f/0x90
-[ 4519.867571]  [<ffffffff816e2d5b>] entry_SYSCALL_64_fastpath+0x16/0x6f
-[ 4519.867579] Code:  Bad RIP value.
-[ 4519.867581] RIP  [<          (null)>]           (null)
-[ 4519.867583]  RSP <ffff88040f3abe38>
-[ 4519.867584] CR2: 0000000000000000
-[ 4519.867655] ---[ end trace faf028eac08ef3a3 ]---
+* dde86e3 - (HEAD -> guilt/origin, dev) ext4 crypto: add missing locking for keyring_key access (10 hours ago)
+* 0969c39 - ext4 crypto: add ioctls to allow backup of encryption metadata (10 hours ago)
+* 843848f - ext4 crypto: add ciphertext_access mount option (10 hours ago)
+* ba5843f - (master) ext4: use pre-zeroed blocks for DAX page faults (3 days ago)
+* c86d8db - ext4: implement allocation of pre-zeroed blocks (3 days ago)
+* 53085fa - ext4: provide ext4_issue_zeroout() (3 days ago)
+* 2dcba47 - ext4: get rid of EXT4_GET_BLOCKS_NO_LOCK flag (3 days ago)
+* e74031f - ext4: document lock ordering (3 days ago)
+* 0112784 - ext4: fix races of writeback with punch hole and zero range (3 days ago)
+* 32ebffd - ext4: fix races between buffered IO and collapse / insert range (3 days ago)
+* 17048e8 - ext4: move unlocked dio protection from ext4_alloc_file_blocks() (3 days ago)
+* ea3d720 - ext4: fix races between page faults and hole punching (3 days ago)
 
--- 
-Regards/Gruss,
-    Boris.
+Jan's patches have gone through multiple rounds of testing and I'm
+quite confident there are no bugs or regressions that can't be dealt
+with using follow up patches.
 
-ECO tip #101: Trim your mails when you reply.
+Cheers,
+
+							- Ted
