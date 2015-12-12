@@ -1,1196 +1,591 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [v1 1/4] clean up codes for adding new quota type
-Date: Sat, 12 Dec 2015 03:52:01 -0700
-Message-ID: <2CA220A4-BBE6-45D9-910B-8C727D0DFFEA@dilger.ca>
-References: <1446046933-26571-1-git-send-email-lixi@ddn.com> <1446046933-26571-2-git-send-email-lixi@ddn.com>
+Subject: Re: [v1 2/4] Add project quota support
+Date: Sat, 12 Dec 2015 04:04:25 -0700
+Message-ID: <EB95134E-B618-4673-B658-9A16DC431B06@dilger.ca>
+References: <1446046933-26571-1-git-send-email-lixi@ddn.com> <1446046933-26571-3-git-send-email-lixi@ddn.com>
 Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_AFC3EF2F-3EBB-4456-806B-476A86E59C28"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Content-Type: multipart/signed; boundary="Apple-Mail=_0A337BA1-175E-4C57-B757-7976B1CC7416"; protocol="application/pgp-signature"; micalg=pgp-sha256
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
 	viro@zeniv.linux.org.uk, hch@infradead.org, dmonakhov@openvz.org
 To: Li Xi <pkuelelixi@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f180.google.com ([209.85.223.180]:34767 "EHLO
-	mail-io0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751936AbbLLKwI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Dec 2015 05:52:08 -0500
-Received: by ioae126 with SMTP id e126so2211020ioa.1
-        for <linux-ext4@vger.kernel.org>; Sat, 12 Dec 2015 02:52:07 -0800 (PST)
-In-Reply-To: <1446046933-26571-2-git-send-email-lixi@ddn.com>
+Received: from mail-io0-f172.google.com ([209.85.223.172]:36722 "EHLO
+	mail-io0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752287AbbLLLEc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Dec 2015 06:04:32 -0500
+Received: by iofo67 with SMTP id o67so1988141iof.3
+        for <linux-ext4@vger.kernel.org>; Sat, 12 Dec 2015 03:04:31 -0800 (PST)
+In-Reply-To: <1446046933-26571-3-git-send-email-lixi@ddn.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_AFC3EF2F-3EBB-4456-806B-476A86E59C28
+--Apple-Mail=_0A337BA1-175E-4C57-B757-7976B1CC7416
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
 On Oct 28, 2015, at 9:42 AM, Li Xi <pkuelelixi@gmail.com> wrote:
 >=20
-> Adding directory/project quota support to ext4 is widely discussed
-> these days. E2fsprogs has to be updated if we want that new feature.
-> As a preparation for it, this patch cleans up quota codes of e2fsprogs
-> so as to make it easier to add new quota type(s).
->=20
 > Signed-off-by: Li Xi <lixi@ddn.com>
-> Change-Id: I330cebc0e95aa8d81477a63932381bcc84eea3c1
+> Change-Id: I30e6e56f8d45e26e2c6c5a1ffae1cf32f1c923cb
 > ---
-> debugfs/quota.c            |    2 +-
-> debugfs/set_fields.c       |    1 +
-> e2fsck/pass1.c             |   28 ++++++++++--
-> e2fsck/quota.c             |   28 +++++-------
-> e2fsck/unix.c              |   26 ++++++------
-> lib/e2p/ls.c               |   28 +++++++++---
-> lib/support/mkquota.c      |  100 =
-++++++++++++++++++++++++--------------------
-> lib/support/quotaio.c      |   71 ++++++++++++++++++++-----------
-> lib/support/quotaio.h      |   65 ++++++++++++++++++++--------
-> lib/support/quotaio_tree.c |    2 +-
-> misc/mke2fs.c              |   10 ++--
-> misc/tune2fs.c             |   82 ++++++++++++++++++++----------------
-> 12 files changed, 269 insertions(+), 174 deletions(-)
+> debugfs/set_fields.c            |    1 +
+> e2fsck/pass1.c                  |   17 ++++++++++++-----
+> lib/e2p/ls.c                    |    1 +
+> lib/ext2fs/ext2_fs.h            |    6 +++++-
+> lib/ext2fs/swapfs.c             |    2 ++
+> lib/ext2fs/tst_inode_size.c     |    1 +
+> lib/ext2fs/tst_super_size.c     |    3 ++-
+> lib/support/mkquota.c           |    5 +++++
+> lib/support/quotaio.c           |    9 ++++++++-
+> lib/support/quotaio.h           |   11 ++++++++---
+> misc/mke2fs.c                   |    6 ++++++
+> misc/tune2fs.c                  |    4 ++++
+> tests/d_fallocate_blkmap/expect |    4 ++--
+> tests/f_create_symlinks/expect  |    8 ++++----
+> tests/m_bigjournal/expect.1     |    4 ++--
+> tests/m_large_file/expect.1     |    4 ++--
+> tests/m_quota/expect.1          |   15 ++++++++-------
+> 17 files changed, 73 insertions(+), 28 deletions(-)
 >=20
-> diff --git a/debugfs/quota.c b/debugfs/quota.c
-> index 7aa0f3b..d0f6bff 100644
-> --- a/debugfs/quota.c
-> +++ b/debugfs/quota.c
-> @@ -43,7 +43,7 @@ static int load_quota_ctx(char *progname)
-> 	if (current_qctx)
-> 		return 0;
->=20
-> -	retval =3D quota_init_context(&current_qctx, current_fs, -1);
-> +	retval =3D quota_init_context(&current_qctx, current_fs, =
-QUOTA_ALL_BIT);
-> 	if (retval) {
-> 		com_err(current_fs->device_name, retval,
-> 			"while trying to load quota information");
 > diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-> index b14fec9..57ef871 100644
+> index 57ef871..c027d8e 100644
 > --- a/debugfs/set_fields.c
 > +++ b/debugfs/set_fields.c
-> @@ -40,6 +40,7 @@
-> #include "debugfs.h"
-> #include "uuid/uuid.h"
-> #include "e2p/e2p.h"
-> +#include "support/quotaio.h"
->=20
-> static struct ext2_super_block set_sb;
-> static struct ext2_inode_large set_inode;
+> @@ -153,6 +153,7 @@ static struct field_set_info super_fields[] =3D {
+> 	{ "mount_opts",  &set_sb.s_mount_opts, NULL, 64, parse_string },
+> 	{ "usr_quota_inum", &set_sb.s_usr_quota_inum, NULL, 4, =
+parse_uint },
+> 	{ "grp_quota_inum", &set_sb.s_grp_quota_inum, NULL, 4, =
+parse_uint },
+> +	{ "prj_quota_inum", &set_sb.s_prj_quota_inum, NULL, 4, =
+parse_uint },
+> 	{ "overhead_blocks", &set_sb.s_overhead_blocks, NULL, 4, =
+parse_uint },
+> 	{ "backup_bgs", &set_sb.s_backup_bgs[0], NULL, 4, parse_uint,
+> 	  FLAG_ARRAY, 2 },
 > diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-> index 61ae2d9..23d15bd 100644
+> index 23d15bd..eb3d19d 100644
 > --- a/e2fsck/pass1.c
 > +++ b/e2fsck/pass1.c
-> @@ -954,6 +954,28 @@ out:
-> 	}
+> @@ -965,13 +965,20 @@ static int quota_inum_is_super(struct =
+ext2_super_block *sb, ext2_ino_t ino)
+> 	return 0;
 > }
 >=20
-> +static int quota_inum_is_super(struct ext2_super_block *sb, =
-ext2_ino_t ino)
-> +{
-> +	enum quota_type qtype;
-> +
-> +	for (qtype =3D 0; qtype < MAXQUOTAS; qtype++)
-> +		if (*quota_sb_inump(sb, qtype) =3D=3D ino)
-> +			return 1;
-> +
-> +	return 0;
-> +}
-> +
-> +static int quota_inum_is_reserved(ext2_ino_t ino)
-
-It would be good to know exactly what the intent of this function is.
-Is it to see if they are quota inodes are referenced by the superblock,
-or to see if the quota inodes are in the reserved space (ino < =
-s_first_ino),
-or both?  At a minimum, a comment would be helpful, maybe with some =
-input
-from Ted as to what is the right check here, and if we even need to have
-a separate function from quota_inum_is_super().
-
-> +{
-> +	enum quota_type qtype;
-> +
-> +	for (qtype =3D 0; qtype < MAXQUOTAS; qtype++)
-> +		if (quota_type2inum(qtype) =3D=3D ino)
-> +			return 1;
-> +
-> +	return 0;
-> +}
-> +
-> void e2fsck_pass1(e2fsck_t ctx)
+> -static int quota_inum_is_reserved(ext2_ino_t ino)
+> +static int quota_inum_is_reserved(ext2_filsys fs, ext2_ino_t ino)
 > {
-> 	int	i;
-> @@ -1504,13 +1526,11 @@ void e2fsck_pass1(e2fsck_t ctx)
+> 	enum quota_type qtype;
+>=20
+> -	for (qtype =3D 0; qtype < MAXQUOTAS; qtype++)
+> -		if (quota_type2inum(qtype) =3D=3D ino)
+> -			return 1;
+> +	for (qtype =3D 0; qtype < MAXQUOTAS; qtype++) {
+> +		if (quota_type2inum(qtype) =3D=3D ino) {
+> +			if (qtype !=3D PRJQUOTA)
+> +				return 1;
+
+No need for "else" after return.
+
+> +			else if (quota_inum_is_super(fs->super, ino))
+> +				return 1;
+> +			else
+> +				return 0;
+
+The complexity of this check makes me feel that it is doing the wrong
+thing.  quota_type2inum() returns only the reserved quota inodes
+EXT4_USR_QUOTA_INO, EXT4_GRP_QUOTA_INO, EXT4_PRJ_QUOTA_INO even
+if they are not in use.  Is the intent of checking quota_inum_is_super()
+to see if the superblock is referencing the reserved inode also?  Why
+would it matter, instead of:
+
+                        return (ino < fs->super->s_first_ino);
+
+That would always be true for USR and GRP, and would be true if PRJ
+quota was enabled at format time, or if something else increased the
+reserved inode count, in which case the EXT4_PRJ_QUOTA_INO should
+also be handled in the same way as USR and GRP inodes.
+
+If we decide that (ino < fs->super->s_first_ino) is correct, it could
+be moved into the 1/4 patch I think, though it doesn't really matter.
+
+> +		}
+> +	}
+>=20
+> 	return 0;
+> }
+> @@ -1526,7 +1533,7 @@ void e2fsck_pass1(e2fsck_t ctx)
 > 							inode_size, =
 "pass1");
 > 				failed_csum =3D 0;
 > 			}
-> -		} else if ((ino =3D=3D EXT4_USR_QUOTA_INO) ||
-> -			   (ino =3D=3D EXT4_GRP_QUOTA_INO)) {
-> +		} else if (quota_inum_is_reserved(ino)) {
+> -		} else if (quota_inum_is_reserved(ino)) {
+> +		} else if (quota_inum_is_reserved(fs, ino)) {
 > 			ext2fs_mark_inode_bitmap2(ctx->inode_used_map, =
 ino);
 > 			if ((fs->super->s_feature_ro_compat &
 > 					EXT4_FEATURE_RO_COMPAT_QUOTA) &&
-> -			    ((fs->super->s_usr_quota_inum =3D=3D ino) ||
-> -			     (fs->super->s_grp_quota_inum =3D=3D ino))) =
-{
-> +			    quota_inum_is_super(fs->super, ino)) {
-
-Per my comments above, this check is a bit tricky.  We want all the =
-inodes
-referenced by s_*_quota_inum to be checked as regular quota inodes and =
-marked
-used in the bitmaps even if they are not reserved inodes.  Is this check
-only for reserved inodes (quota_inum_is_reserved() with an (ino < =
-s_first_ino)
-check, or for all quota inodes (quota_inum_is_super() and we don't need =
-to
-have quota_inum_is_reserved() at all?
-
-Cheers, Andreas
-
-> 				if (!LINUX_S_ISREG(inode->i_mode) &&
-> 				    fix_problem(ctx, =
-PR_1_QUOTA_BAD_MODE,
-> 							&pctx)) {
-> diff --git a/e2fsck/quota.c b/e2fsck/quota.c
-> index 2293aad..5050b69 100644
-> --- a/e2fsck/quota.c
-> +++ b/e2fsck/quota.c
-> @@ -17,7 +17,7 @@
-> #include "problem.h"
->=20
-> static void move_quota_inode(ext2_filsys fs, ext2_ino_t from_ino,
-> -			     ext2_ino_t to_ino, int qtype)
-> +			     ext2_ino_t to_ino, enum quota_type qtype)
-> {
-> 	struct ext2_inode	inode;
-> 	errcode_t		retval;
-> @@ -62,6 +62,8 @@ void e2fsck_hide_quota(e2fsck_t ctx)
-> 	struct ext2_super_block *sb =3D ctx->fs->super;
-> 	struct problem_context	pctx;
-> 	ext2_filsys		fs =3D ctx->fs;
-> +	enum quota_type qtype;
-> +	ext2_ino_t quota_ino;
->=20
-> 	clear_problem_context(&pctx);
->=20
-> @@ -69,22 +71,14 @@ void e2fsck_hide_quota(e2fsck_t ctx)
-> 	    !(sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_QUOTA))
-> 		return;
->=20
-> -	pctx.ino =3D sb->s_usr_quota_inum;
-> -	if (sb->s_usr_quota_inum &&
-> -	    (sb->s_usr_quota_inum !=3D EXT4_USR_QUOTA_INO) &&
-> -	    fix_problem(ctx, PR_0_HIDE_QUOTA, &pctx)) {
-> -		move_quota_inode(fs, sb->s_usr_quota_inum, =
-EXT4_USR_QUOTA_INO,
-> -				 USRQUOTA);
-> -		sb->s_usr_quota_inum =3D EXT4_USR_QUOTA_INO;
-> -	}
-> -
-> -	pctx.ino =3D sb->s_grp_quota_inum;
-> -	if (sb->s_grp_quota_inum &&
-> -	    (sb->s_grp_quota_inum !=3D EXT4_GRP_QUOTA_INO) &&
-> -	    fix_problem(ctx, PR_0_HIDE_QUOTA, &pctx)) {
-> -		move_quota_inode(fs, sb->s_grp_quota_inum, =
-EXT4_GRP_QUOTA_INO,
-> -				 GRPQUOTA);
-> -		sb->s_grp_quota_inum =3D EXT4_GRP_QUOTA_INO;
-> +	for (qtype =3D 0; qtype < MAXQUOTAS; qtype++) {
-> +		pctx.ino =3D *quota_sb_inump(sb, qtype);
-> +		quota_ino =3D quota_type2inum(qtype);
-> +		if (pctx.ino && (pctx.ino !=3D quota_ino) &&
-> +		    fix_problem(ctx, PR_0_HIDE_QUOTA, &pctx)) {
-> +			move_quota_inode(fs, pctx.ino, quota_ino, =
-qtype);
-> +			*quota_sb_inump(sb, qtype) =3D quota_ino;
-> +		}
-> 	}
->=20
-> 	return;
-> diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-> index 9d49a0e..553c188 100644
-> --- a/e2fsck/unix.c
-> +++ b/e2fsck/unix.c
-> @@ -1338,7 +1338,8 @@ int main (int argc, char *argv[])
-> 	int old_bitmaps;
-> 	__u32 features[3];
-> 	char *cp;
-> -	int qtype =3D -99;  /* quota type */
-> +	unsigned int qtype_bits =3D 0;
-> +	enum quota_type qtype;
->=20
-> 	clear_problem_context(&pctx);
-> 	sigcatcher_setup();
-> @@ -1778,13 +1779,12 @@ print_unsupp_features:
->=20
-> 	if (sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_QUOTA) {
-> 		/* Quotas were enabled. Do quota accounting during fsck. =
-*/
-> -		if ((sb->s_usr_quota_inum && sb->s_grp_quota_inum) ||
-> -		    (!sb->s_usr_quota_inum && !sb->s_grp_quota_inum))
-> -			qtype =3D -1;
-> -		else
-> -			qtype =3D sb->s_usr_quota_inum ? USRQUOTA : =
-GRPQUOTA;
-> +		for (qtype =3D 0; qtype < MAXQUOTAS; qtype++) {
-> +			if (*quota_sb_inump(sb, qtype) !=3D 0)
-> +				qtype_bits |=3D 1 << qtype;
-> +		}
->=20
-> -		quota_init_context(&ctx->qctx, ctx->fs, qtype);
-> +		quota_init_context(&ctx->qctx, ctx->fs, qtype_bits);
-> 	}
->=20
-> 	run_result =3D e2fsck_run(ctx);
-> @@ -1821,17 +1821,17 @@ print_unsupp_features:
-> no_journal:
->=20
-> 	if (ctx->qctx) {
-> -		int i, needs_writeout;
-> -		for (i =3D 0; i < MAXQUOTAS; i++) {
-> -			if (qtype !=3D -1 && qtype !=3D i)
-> +		int needs_writeout;
-> +		for (qtype =3D 0; qtype < MAXQUOTAS; qtype++) {
-> +			if (((1 << qtype) & qtype_bits) =3D=3D 0)
-> 				continue;
-> 			needs_writeout =3D 0;
-> -			pctx.num =3D i;
-> -			retval =3D quota_compare_and_update(ctx->qctx, =
-i,
-> +			pctx.num =3D qtype;
-> +			retval =3D quota_compare_and_update(ctx->qctx, =
-qtype,
-> 							  =
-&needs_writeout);
-> 			if ((retval || needs_writeout) &&
-> 			    fix_problem(ctx, PR_6_UPDATE_QUOTAS, &pctx))
-> -				quota_write_inode(ctx->qctx, i);
-> +				quota_write_inode(ctx->qctx, 1 << =
-qtype);
-> 		}
-> 		quota_release_context(&ctx->qctx);
-> 	}
 > diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
-> index 2e98c14..4e80372 100644
+> index 4e80372..d9594cd 100644
 > --- a/lib/e2p/ls.c
 > +++ b/lib/e2p/ls.c
-> @@ -23,6 +23,7 @@
-> #include <time.h>
+> @@ -210,6 +210,7 @@ static const char *checksum_type(__u8 type)
+> static const char const *quota_prefix[MAXQUOTAS] =3D {
+>         [USRQUOTA] =3D "User quota inode:",
+>         [GRPQUOTA] =3D "Group quota inode:",
+> +        [PRJQUOTA] =3D "Project quota inode:",
+> };
 >=20
-> #include "e2p.h"
-> +#include "support/quotaio.h"
+> /**
+> diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+> index cfeaa05..a5f4124 100644
+> --- a/lib/ext2fs/ext2_fs.h
+> +++ b/lib/ext2fs/ext2_fs.h
+> @@ -52,6 +52,7 @@
+> #define EXT2_JOURNAL_INO	 8	/* Journal inode */
+> #define EXT2_EXCLUDE_INO	 9	/* The "exclude" inode, for =
+snapshots */
+> #define EXT4_REPLICA_INO	10	/* Used by non-upstream feature =
+*/
+> +#define EXT4_PRJ_QUOTA_INO	11	/* Project quota inode */
+
+This should be reserved as EXT4_LOST_FOUND_INO just to avoid many =
+potential
+compatibility problems, and then use "12" for EXT4_PRJ_QUOTA_INO.
+
+> /* First non-reserved inode for old ext2 filesystems */
+> #define EXT2_GOOD_OLD_FIRST_INO	11
+
+This value should be left as-is, and then a new constant used to =
+increase the
+reserved inodes significantly, like:
+
+#define EXT2_NEW_FIRST_INO 32
+
+Some places need to keep using EXT2_GOOD_OLD_FIRST_INO, but we should =
+consider
+to change ext2fs_initialize() to use EXT2_NEW_FIRST_INO as well, or =
+should
+that only be done on a case-by-case basis for features that need a new
+reserved inode, and hope that the feature flags will deter other tools
+that assume "11 =3D lost+found"?
+
+> @@ -473,6 +474,7 @@ struct ext2_inode_large {
+> 	__u32	i_crtime;	/* File creation time */
+> 	__u32	i_crtime_extra;	/* extra File creation time (nsec << 2 | =
+epoch)*/
+> 	__u32	i_version_hi;	/* high 32 bits for 64-bit version */
+> +	__u32   i_projid;       /* Project ID */
+> };
 >=20
-> static void print_user (unsigned short uid, FILE *f)
-> {
-> @@ -206,11 +207,25 @@ static const char *checksum_type(__u8 type)
-> 	}
-> }
+> #define EXT4_INODE_CSUM_HI_EXTRA_END	\
+> @@ -506,6 +508,7 @@ struct ext2_inode_large {
 >=20
-> +static const char const *quota_prefix[MAXQUOTAS] =3D {
-> +        [USRQUOTA] =3D "User quota inode:",
-> +        [GRPQUOTA] =3D "Group quota inode:",
-> +};
-> +
-> +/**
-> + * Convert type of quota to written representation
-> + */
-> +const char *quota_type2prefix(enum quota_type qtype)
-> +{
-> +	return quota_prefix[qtype];
-> +}
-> +
-> void list_super2(struct ext2_super_block * sb, FILE *f)
-> {
-> 	int inode_blocks_per_group;
-> 	char buf[80], *str;
-> 	time_t	tm;
-> +	enum quota_type qtype;
+> #define inode_uid(inode)	((inode).i_uid | =
+(inode).osd2.linux2.l_i_uid_high << 16)
+> #define inode_gid(inode)	((inode).i_gid | =
+(inode).osd2.linux2.l_i_gid_high << 16)
+> +#define inode_projid(large_inode) ((large_inode).i_projid)
+> #define ext2fs_set_i_uid_high(inode,x) =
+((inode).osd2.linux2.l_i_uid_high =3D (x))
+> #define ext2fs_set_i_gid_high(inode,x) =
+((inode).osd2.linux2.l_i_gid_high =3D (x))
 >=20
-> 	inode_blocks_per_group =3D (((sb->s_inodes_per_group *
-> 				    EXT2_INODE_SIZE(sb)) +
-> @@ -434,13 +449,12 @@ void list_super2(struct ext2_super_block * sb, =
-FILE *f)
-> 		fprintf(f, "MMP update interval:      %u\n",
-> 			sb->s_mmp_update_interval);
-> 	}
-> -	if (sb->s_usr_quota_inum)
-> -		fprintf(f, "User quota inode:         %u\n",
-> -			sb->s_usr_quota_inum);
-> -	if (sb->s_grp_quota_inum)
-> -		fprintf(f, "Group quota inode:        %u\n",
-> -			sb->s_grp_quota_inum);
-> -
-> +	for (qtype =3D 0; qtype < MAXQUOTAS; qtype++) {
-> +		if (*quota_sb_inump(sb, qtype) !=3D 0)
-> +			fprintf(f, "%-26s%u\n",
-> +				quota_type2prefix(qtype),
-> +				*quota_sb_inump(sb, qtype));
-> +	}
-> 	if (sb->s_feature_ro_compat & =
-EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) {
-> 		fprintf(f, "Checksum type:            %s\n",
-> 			checksum_type(sb->s_checksum_type));
+> @@ -719,7 +722,8 @@ struct ext2_super_block {
+> 	__u8	s_encrypt_algos[4];	/* Encryption algorithms in use  =
+*/
+> 	__u8	s_encrypt_pw_salt[16];	/* Salt used for string2key =
+algorithm */
+> 	__le32	s_lpf_ino;		/* Location of the lost+found =
+inode */
+> -	__le32	s_reserved[100];	/* Padding to the end of the =
+block */
+> +	__u32   s_prj_quota_inum;	/* inode number of project quota =
+file */
+> +	__le32	s_reserved[99];		/* Padding to the end of the =
+block */
+> 	__u32	s_checksum;		/* crc32c(superblock) */
+> };
+>=20
+> diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
+> index ee7a455..bc50fd4 100644
+> --- a/lib/ext2fs/swapfs.c
+> +++ b/lib/ext2fs/swapfs.c
+> @@ -320,6 +320,8 @@ void ext2fs_swap_inode_full(ext2_filsys fs, struct =
+ext2_inode_large *t,
+> 		t->i_crtime_extra =3D ext2fs_swab32(f->i_crtime_extra);
+> 	if (extra_isize >=3D 28)
+> 		t->i_version_hi =3D ext2fs_swab32(f->i_version_hi);
+> +	if (extra_isize >=3D 32)
+> +		t->i_projid =3D ext2fs_swab32(f->i_projid);
+
+It seems to me that this should be using offsetof() instead of =
+hard-coding
+the field offsets, since that seems prone to error, but this is not =
+worse
+than any of the other code here.
+
+> 	i =3D sizeof(struct ext2_inode) + extra_isize + sizeof(__u32);
+> 	if (bufsize < (int) i)
+> diff --git a/lib/ext2fs/tst_inode_size.c b/lib/ext2fs/tst_inode_size.c
+> index e20ec98..cc5d165 100644
+> --- a/lib/ext2fs/tst_inode_size.c
+> +++ b/lib/ext2fs/tst_inode_size.c
+> @@ -81,6 +81,7 @@ int main(int argc, char **argv)
+> 	check_field(i_crtime, 4);
+> 	check_field(i_crtime_extra, 4);
+> 	check_field(i_version_hi, 4);
+> +	check_field(i_projid, 4);
+> 	/* This size will change as new fields are added */
+> 	do_field("Large inode end", 0, 0, cur_offset, sizeof(inode));
+> #endif
+> diff --git a/lib/ext2fs/tst_super_size.c b/lib/ext2fs/tst_super_size.c
+> index 8e3c21f..9b25cce 100644
+> --- a/lib/ext2fs/tst_super_size.c
+> +++ b/lib/ext2fs/tst_super_size.c
+> @@ -140,7 +140,8 @@ int main(int argc, char **argv)
+> 	check_field(s_encrypt_algos, 4);
+> 	check_field(s_encrypt_pw_salt, 16);
+> 	check_field(s_lpf_ino, 4);
+> -	check_field(s_reserved, 100 * 4);
+> +	check_field(s_prj_quota_inum, 4);
+> +	check_field(s_reserved, 99 * 4);
+> 	check_field(s_checksum, 4);
+> 	do_field("Superblock end", 0, 0, cur_offset, 1024);
+> #endif
 > diff --git a/lib/support/mkquota.c b/lib/support/mkquota.c
-> index 00e96f8..b74c885 100644
+> index b74c885..442fd38 100644
 > --- a/lib/support/mkquota.c
 > +++ b/lib/support/mkquota.c
-> @@ -67,7 +67,7 @@ static void print_dquot(const char *desc =
-EXT2FS_ATTR((unused)),
->  * Returns 0 if not able to find the quota file, otherwise returns its
->  * inode number.
->  */
-> -int quota_file_exists(ext2_filsys fs, int qtype)
-> +int quota_file_exists(ext2_filsys fs, enum quota_type qtype)
-> {
-> 	char qf_name[256];
-> 	errcode_t ret;
-> @@ -89,12 +89,11 @@ int quota_file_exists(ext2_filsys fs, int qtype)
-> /*
->  * Set the value for reserved quota inode number field in superblock.
->  */
-> -void quota_set_sb_inum(ext2_filsys fs, ext2_ino_t ino, int qtype)
-> +void quota_set_sb_inum(ext2_filsys fs, ext2_ino_t ino, enum =
-quota_type qtype)
-> {
-> 	ext2_ino_t *inump;
->=20
-> -	inump =3D (qtype =3D=3D USRQUOTA) ? &fs->super->s_usr_quota_inum =
-:
-> -		&fs->super->s_grp_quota_inum;
-> +	inump =3D quota_sb_inump(fs->super, qtype);
->=20
-> 	log_debug("setting quota ino in superblock: ino=3D%u, type=3D%d", =
-ino,
-> 		 qtype);
-> @@ -102,7 +101,7 @@ void quota_set_sb_inum(ext2_filsys fs, ext2_ino_t =
-ino, int qtype)
-> 	ext2fs_mark_super_dirty(fs);
-> }
->=20
-> -errcode_t quota_remove_inode(ext2_filsys fs, int qtype)
-> +errcode_t quota_remove_inode(ext2_filsys fs, enum quota_type qtype)
-> {
-> 	ext2_ino_t qf_ino;
-> 	errcode_t	retval;
-> @@ -112,8 +111,7 @@ errcode_t quota_remove_inode(ext2_filsys fs, int =
-qtype)
-> 		log_err("Couldn't read bitmaps: %s", =
-error_message(retval));
-> 		return retval;
-> 	}
-> -	qf_ino =3D (qtype =3D=3D USRQUOTA) ? fs->super->s_usr_quota_inum =
-:
-> -		fs->super->s_grp_quota_inum;
-> +	qf_ino =3D *quota_sb_inump(fs->super, qtype);
-> 	quota_set_sb_inum(fs, 0, qtype);
-> 	/* Truncate the inode only if its a reserved one. */
-> 	if (qf_ino < EXT2_FIRST_INODE(fs->super))
-> @@ -145,9 +143,10 @@ static void write_dquots(dict_t *dict, struct =
-quota_handle *qh)
-> 	}
-> }
->=20
-> -errcode_t quota_write_inode(quota_ctx_t qctx, int qtype)
-> +errcode_t quota_write_inode(quota_ctx_t qctx, unsigned int =
-qtype_bits)
-> {
-> -	int		retval =3D 0, i;
-> +	int		retval =3D 0;
-> +	enum quota_type	qtype;
-> 	dict_t		*dict;
-> 	ext2_filsys	fs;
-> 	struct quota_handle *h =3D NULL;
-> @@ -170,15 +169,15 @@ errcode_t quota_write_inode(quota_ctx_t qctx, =
-int qtype)
-> 		goto out;
-> 	}
->=20
-> -	for (i =3D 0; i < MAXQUOTAS; i++) {
-> -		if ((qtype !=3D -1) && (i !=3D qtype))
-> +	for (qtype =3D 0; qtype < MAXQUOTAS; qtype++) {
-> +		if (((1 << qtype) & qtype_bits) =3D=3D 0)
-> 			continue;
->=20
-> -		dict =3D qctx->quota_dict[i];
-> +		dict =3D qctx->quota_dict[qtype];
-> 		if (!dict)
-> 			continue;
->=20
-> -		retval =3D quota_file_create(h, fs, i, fmt);
-> +		retval =3D quota_file_create(h, fs, qtype, fmt);
-> 		if (retval < 0) {
-> 			log_err("Cannot initialize io on quotafile");
-> 			continue;
-> @@ -196,7 +195,7 @@ errcode_t quota_write_inode(quota_ctx_t qctx, int =
-qtype)
-> 		}
->=20
-> 		/* Set quota inode numbers in superblock. */
-> -		quota_set_sb_inum(fs, h->qh_qf.ino, i);
-> +		quota_set_sb_inum(fs, h->qh_qf.ino, qtype);
-> 		ext2fs_mark_super_dirty(fs);
-> 		ext2fs_mark_bb_dirty(fs);
-> 		fs->flags &=3D ~EXT2_FLAG_SUPER_ONLY;
-> @@ -232,11 +231,18 @@ static int dict_uint_cmp(const void *a, const =
+> @@ -233,11 +233,16 @@ static int dict_uint_cmp(const void *a, const =
 void *b)
-> 		return -1;
-> }
 >=20
-> -static inline qid_t get_qid(struct ext2_inode *inode, int qtype)
-> +static inline qid_t get_qid(struct ext2_inode *inode, enum quota_type =
+> static inline qid_t get_qid(struct ext2_inode *inode, enum quota_type =
 qtype)
 > {
-> -	if (qtype =3D=3D USRQUOTA)
-> -		return inode_uid(*inode);
-> -	return inode_gid(*inode);
-> +	switch (qtype) {
-> +		case USRQUOTA:
-> +			return inode_uid(*inode);
-> +		case GRPQUOTA:
-> +			return inode_gid(*inode);
-> +		default:
-> +			return 0;
-> +	}
+> +	struct ext2_inode_large *large_inode;
 > +
-> +	return 0;
-> }
->=20
-> static void quota_dnode_free(dnode_t *node,
-> @@ -251,12 +257,13 @@ static void quota_dnode_free(dnode_t *node,
-> /*
->  * Set up the quota tracking data structures.
->  */
-> -errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs, int =
-qtype)
-> +errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs,
-> +			     unsigned int qtype_bits)
-> {
-> 	errcode_t err;
-> 	dict_t	*dict;
-> 	quota_ctx_t ctx;
-> -	int	i;
-> +	enum quota_type	qtype;
->=20
-> 	err =3D ext2fs_get_mem(sizeof(struct quota_ctx), &ctx);
-> 	if (err) {
-> @@ -265,9 +272,9 @@ errcode_t quota_init_context(quota_ctx_t *qctx, =
-ext2_filsys fs, int qtype)
+> 	switch (qtype) {
+> 		case USRQUOTA:
+> 			return inode_uid(*inode);
+> 		case GRPQUOTA:
+> 			return inode_gid(*inode);
+> +		case PRJQUOTA:
+> +			large_inode =3D (struct ext2_inode_large *) =
+inode;
+
+No space after typecast.
+
+> +			return inode_projid(*large_inode);
+> 		default:
+> 			return 0;
 > 	}
->=20
-> 	memset(ctx, 0, sizeof(struct quota_ctx));
-> -	for (i =3D 0; i < MAXQUOTAS; i++) {
-> -		ctx->quota_file[i] =3D NULL;
-> -		if ((qtype !=3D -1) && (i !=3D qtype))
-> +	for (qtype =3D 0; qtype < MAXQUOTAS; qtype++) {
-> +		ctx->quota_file[qtype] =3D NULL;
-> +		if (((1 << qtype) & qtype_bits) =3D=3D 0)
-> 			continue;
-> 		err =3D ext2fs_get_mem(sizeof(dict_t), &dict);
-> 		if (err) {
-> @@ -275,7 +282,7 @@ errcode_t quota_init_context(quota_ctx_t *qctx, =
-ext2_filsys fs, int qtype)
-> 			quota_release_context(&ctx);
-> 			return err;
-> 		}
-> -		ctx->quota_dict[i] =3D dict;
-> +		ctx->quota_dict[qtype] =3D dict;
-> 		dict_init(dict, DICTCOUNT_T_MAX, dict_uint_cmp);
-> 		dict_set_allocator(dict, NULL, quota_dnode_free, NULL);
-> 	}
-> @@ -289,26 +296,26 @@ void quota_release_context(quota_ctx_t *qctx)
-> {
-> 	errcode_t err;
-> 	dict_t	*dict;
-> -	int	i;
-> +	enum quota_type	qtype;
-> 	quota_ctx_t ctx;
->=20
-> 	if (!qctx)
-> 		return;
->=20
-> 	ctx =3D *qctx;
-> -	for (i =3D 0; i < MAXQUOTAS; i++) {
-> -		dict =3D ctx->quota_dict[i];
-> -		ctx->quota_dict[i] =3D 0;
-> +	for (qtype =3D 0; qtype < MAXQUOTAS; qtype++) {
-> +		dict =3D ctx->quota_dict[qtype];
-> +		ctx->quota_dict[qtype] =3D 0;
-> 		if (dict) {
-> 			dict_free_nodes(dict);
-> 			free(dict);
-> 		}
-> -		if (ctx->quota_file[i]) {
-> -			err =3D quota_file_close(ctx, =
-ctx->quota_file[i]);
-> +		if (ctx->quota_file[qtype]) {
-> +			err =3D quota_file_close(ctx, =
-ctx->quota_file[qtype]);
-> 			if (err) {
-> 				log_err("Cannot close quotafile: %s",
-> 					strerror(errno));
-> -				ext2fs_free_mem(&ctx->quota_file[i]);
-> +				=
-ext2fs_free_mem(&ctx->quota_file[qtype]);
-> 			}
-> 		}
-> 	}
-> @@ -346,7 +353,7 @@ void quota_data_add(quota_ctx_t qctx, struct =
-ext2_inode *inode,
-> {
-> 	struct dquot	*dq;
-> 	dict_t		*dict;
-> -	int		i;
-> +	enum quota_type	qtype;
->=20
-> 	if (!qctx)
-> 		return;
-> @@ -354,10 +361,10 @@ void quota_data_add(quota_ctx_t qctx, struct =
-ext2_inode *inode,
-> 	log_debug("ADD_DATA: Inode: %u, UID/GID: %u/%u, space: %ld", =
-ino,
-> 			inode_uid(*inode),
-> 			inode_gid(*inode), space);
-> -	for (i =3D 0; i < MAXQUOTAS; i++) {
-> -		dict =3D qctx->quota_dict[i];
-> +	for (qtype =3D 0; qtype < MAXQUOTAS; qtype++) {
-> +		dict =3D qctx->quota_dict[qtype];
-> 		if (dict) {
-> -			dq =3D get_dq(dict, get_qid(inode, i));
-> +			dq =3D get_dq(dict, get_qid(inode, qtype));
-> 			if (dq)
-> 				dq->dq_dqb.dqb_curspace +=3D space;
-> 		}
-> @@ -373,7 +380,7 @@ void quota_data_sub(quota_ctx_t qctx, struct =
-ext2_inode *inode,
-> {
-> 	struct dquot	*dq;
-> 	dict_t		*dict;
-> -	int		i;
-> +	enum quota_type	qtype;
->=20
-> 	if (!qctx)
-> 		return;
-> @@ -381,10 +388,10 @@ void quota_data_sub(quota_ctx_t qctx, struct =
-ext2_inode *inode,
-> 	log_debug("SUB_DATA: Inode: %u, UID/GID: %u/%u, space: %ld", =
-ino,
-> 			inode_uid(*inode),
-> 			inode_gid(*inode), space);
-> -	for (i =3D 0; i < MAXQUOTAS; i++) {
-> -		dict =3D qctx->quota_dict[i];
-> +	for (qtype =3D 0; qtype < MAXQUOTAS; qtype++) {
-> +		dict =3D qctx->quota_dict[qtype];
-> 		if (dict) {
-> -			dq =3D get_dq(dict, get_qid(inode, i));
-> +			dq =3D get_dq(dict, get_qid(inode, qtype));
-> 			dq->dq_dqb.dqb_curspace -=3D space;
-> 		}
-> 	}
-> @@ -398,7 +405,7 @@ void quota_data_inodes(quota_ctx_t qctx, struct =
-ext2_inode *inode,
-> {
-> 	struct dquot	*dq;
-> 	dict_t		*dict;
-> -	int		i;
-> +	enum quota_type	qtype;
->=20
-> 	if (!qctx)
-> 		return;
-> @@ -406,10 +413,10 @@ void quota_data_inodes(quota_ctx_t qctx, struct =
-ext2_inode *inode,
-> 	log_debug("ADJ_INODE: Inode: %u, UID/GID: %u/%u, adjust: %d", =
-ino,
-> 			inode_uid(*inode),
-> 			inode_gid(*inode), adjust);
-> -	for (i =3D 0; i < MAXQUOTAS; i++) {
-> -		dict =3D qctx->quota_dict[i];
-> +	for (qtype =3D 0; qtype < MAXQUOTAS; qtype++) {
-> +		dict =3D qctx->quota_dict[qtype];
-> 		if (dict) {
-> -			dq =3D get_dq(dict, get_qid(inode, i));
-> +			dq =3D get_dq(dict, get_qid(inode, qtype));
-> 			dq->dq_dqb.dqb_curinodes +=3D adjust;
-> 		}
-> 	}
-> @@ -542,7 +549,8 @@ static errcode_t quota_write_all_dquots(struct =
-quota_handle *qh,
-> /*
->  * Updates the in-memory quota limits from the given quota inode.
->  */
-> -errcode_t quota_update_limits(quota_ctx_t qctx, ext2_ino_t qf_ino, =
-int type)
-> +errcode_t quota_update_limits(quota_ctx_t qctx, ext2_ino_t qf_ino,
-> +			      enum quota_type qtype)
-> {
-> 	struct quota_handle *qh;
-> 	errcode_t err;
-> @@ -556,7 +564,7 @@ errcode_t quota_update_limits(quota_ctx_t qctx, =
-ext2_ino_t qf_ino, int type)
-> 		return err;
-> 	}
->=20
-> -	err =3D quota_file_open(qctx, qh, qf_ino, type, -1, 0);
-> +	err =3D quota_file_open(qctx, qh, qf_ino, qtype, -1, 0);
-> 	if (err) {
-> 		log_err("Open quota file failed");
-> 		goto out;
-> @@ -581,7 +589,7 @@ out:
->  * on disk and updates the limits in qctx->quota_dict. =
-'usage_inconsistent' is
->  * set to 1 if the supplied and on-disk quota usage values are not =
-identical.
->  */
-> -errcode_t quota_compare_and_update(quota_ctx_t qctx, int qtype,
-> +errcode_t quota_compare_and_update(quota_ctx_t qctx, enum quota_type =
-qtype,
-> 				   int *usage_inconsistent)
-> {
-> 	struct quota_handle qh;
 > diff --git a/lib/support/quotaio.c b/lib/support/quotaio.c
-> index 3af82f7..bd8123e 100644
+> index bd8123e..6f52409 100644
 > --- a/lib/support/quotaio.c
 > +++ b/lib/support/quotaio.c
-> @@ -15,6 +15,7 @@
-> #include <sys/types.h>
-> #include <sys/stat.h>
-> #include <sys/file.h>
-> +#include <assert.h>
->=20
+> @@ -20,7 +20,11 @@
 > #include "common.h"
 > #include "quotaio.h"
-> @@ -37,15 +38,35 @@ struct disk_dqheader {
-> /**
->  * Convert type of quota to written representation
->  */
-> -const char *type2name(int type)
-> +const char *quota_type2name(enum quota_type qtype)
-> {
-> -	return extensions[type];
-> +	assert(qtype >=3D 0);
-> +	assert(qtype < MAXQUOTAS);
-> +	return extensions[qtype];
-> +}
-> +
-> +ext2_ino_t quota_type2inum(enum quota_type qtype)
-> +{
-> +	assert(qtype >=3D 0);
-> +	assert(qtype < MAXQUOTAS);
-> +	switch (qtype) {
-> +	case USRQUOTA:
-> +		return EXT4_USR_QUOTA_INO;
+>=20
+> -static const char * const extensions[MAXQUOTAS] =3D {"user", =
+"group"};
+> +static const char * const extensions[MAXQUOTAS] =3D {
+> +	[USRQUOTA] =3D "user",
+> +	[GRPQUOTA] =3D "group",
+> +	[PRJQUOTA] =3D "project",
+> +};
+> static const char * const basenames[] =3D {
+> 	"",		/* undefined */
+> 	"quota",	/* QFMT_VFS_OLD */
+> @@ -56,6 +60,9 @@ ext2_ino_t quota_type2inum(enum quota_type qtype)
+> 	case GRPQUOTA:
+> 		return EXT4_GRP_QUOTA_INO;
+> 		break;
+> +	case PRJQUOTA:
+> +		return EXT4_PRJ_QUOTA_INO;
 > +		break;
-> +	case GRPQUOTA:
-> +		return EXT4_GRP_QUOTA_INO;
-> +		break;
-> +	default:
-> +		return 0;
-> +		break;
-> +	}
-> +	return 0;
-> }
->=20
-> /**
->  * Creates a quota file name for given type and format.
->  */
-> -const char *quota_get_qf_name(int type, int fmt, char *buf)
-> +const char *quota_get_qf_name(enum quota_type type, int fmt, char =
-*buf)
-> {
-> 	if (!buf)
-> 		return NULL;
-> @@ -99,11 +120,16 @@ errcode_t quota_inode_truncate(ext2_filsys fs, =
-ext2_ino_t ino)
-> {
-> 	struct ext2_inode inode;
-> 	errcode_t err;
-> +	enum quota_type qtype;
->=20
-> 	if ((err =3D ext2fs_read_inode(fs, ino, &inode)))
-> 		return err;
->=20
-> -	if ((ino =3D=3D EXT4_USR_QUOTA_INO) || (ino =3D=3D =
-EXT4_GRP_QUOTA_INO)) {
-> +	for (qtype =3D 0; qtype < MAXQUOTAS; qtype++)
-> +		if (ino =3D=3D quota_type2inum(qtype))
-> +			break;
-> +
-> +	if (qtype !=3D MAXQUOTAS) {
-> 		inode.i_dtime =3D fs->now ? fs->now : time(0);
-> 		if (!ext2fs_inode_has_valid_blocks2(fs, &inode))
-> 			return 0;
-> @@ -183,14 +209,15 @@ static unsigned int quota_read_nomount(struct =
-quota_file *qf,
->  * Detect quota format and initialize quota IO
->  */
-> errcode_t quota_file_open(quota_ctx_t qctx, struct quota_handle *h,
-> -			  ext2_ino_t qf_ino, int type, int fmt, int =
-flags)
-> +			  ext2_ino_t qf_ino, enum quota_type qtype,
-> +			  int fmt, int flags)
-> {
-> 	ext2_filsys fs =3D qctx->fs;
-> 	ext2_file_t e2_file;
-> 	errcode_t err;
-> 	int allocated_handle =3D 0;
->=20
-> -	if (type >=3D MAXQUOTAS)
-> +	if (qtype >=3D MAXQUOTAS)
-> 		return EINVAL;
->=20
-> 	if (fmt =3D=3D -1)
-> @@ -200,14 +227,10 @@ errcode_t quota_file_open(quota_ctx_t qctx, =
-struct quota_handle *h,
-> 	if (err)
-> 		return err;
->=20
-> -	if (qf_ino =3D=3D 0) {
-> -		if (type =3D=3D USRQUOTA)
-> -			qf_ino =3D fs->super->s_usr_quota_inum;
-> -		else
-> -			qf_ino =3D fs->super->s_grp_quota_inum;
-> -	}
-> +	if (qf_ino =3D=3D 0)
-> +		qf_ino =3D *quota_sb_inump(fs->super, qtype)
->=20
-> -	log_debug("Opening quota ino=3D%lu, type=3D%d", qf_ino, type);
-> +	log_debug("Opening quota ino=3D%lu, type=3D%d", qf_ino, qtype);
-> 	err =3D ext2fs_file_open(fs, qf_ino, flags, &e2_file);
-> 	if (err) {
-> 		log_err("ext2fs_file_open failed: %s", =
-error_message(err));
-> @@ -215,8 +238,8 @@ errcode_t quota_file_open(quota_ctx_t qctx, struct =
-quota_handle *h,
-> 	}
->=20
-> 	if (!h) {
-> -		if (qctx->quota_file[type]) {
-> -			h =3D qctx->quota_file[type];
-> +		if (qctx->quota_file[qtype]) {
-> +			h =3D qctx->quota_file[qtype];
-> 			if (((flags & EXT2_FILE_WRITE) =3D=3D 0) ||
-> 			    (h->qh_file_flags & EXT2_FILE_WRITE))
-> 				return 0;
-> @@ -237,13 +260,13 @@ errcode_t quota_file_open(quota_ctx_t qctx, =
-struct quota_handle *h,
-> 	h->e2fs_read =3D quota_read_nomount;
-> 	h->qh_file_flags =3D flags;
-> 	h->qh_io_flags =3D 0;
-> -	h->qh_type =3D type;
-> +	h->qh_type =3D qtype;
-> 	h->qh_fmt =3D fmt;
-> 	memset(&h->qh_info, 0, sizeof(h->qh_info));
-> 	h->qh_ops =3D &quotafile_ops_2;
->=20
-> 	if (h->qh_ops->check_file &&
-> -	    (h->qh_ops->check_file(h, type, fmt) =3D=3D 0)) {
-> +	    (h->qh_ops->check_file(h, qtype, fmt) =3D=3D 0)) {
-> 		log_err("qh_ops->check_file failed");
-> 		goto errout;
-> 	}
-> @@ -253,7 +276,7 @@ errcode_t quota_file_open(quota_ctx_t qctx, struct =
-quota_handle *h,
-> 		goto errout;
-> 	}
-> 	if (allocated_handle)
-> -		qctx->quota_file[type] =3D h;
-> +		qctx->quota_file[qtype] =3D h;
->=20
-> 	return 0;
-> errout:
-> @@ -299,7 +322,8 @@ static errcode_t quota_inode_init_new(ext2_filsys =
-fs, ext2_ino_t ino)
-> /*
->  * Create new quotafile of specified format on given filesystem
->  */
-> -errcode_t quota_file_create(struct quota_handle *h, ext2_filsys fs, =
-int type, int fmt)
-> +errcode_t quota_file_create(struct quota_handle *h, ext2_filsys fs,
-> +			    enum quota_type qtype, int fmt)
-> {
-> 	ext2_file_t e2_file;
-> 	int err;
-> @@ -309,11 +333,8 @@ errcode_t quota_file_create(struct quota_handle =
-*h, ext2_filsys fs, int type, in
-> 		fmt =3D QFMT_VFS_V1;
->=20
-> 	h->qh_qf.fs =3D fs;
-> -	if (type =3D=3D USRQUOTA)
-> -		qf_inum =3D EXT4_USR_QUOTA_INO;
-> -	else if (type =3D=3D GRPQUOTA)
-> -		qf_inum =3D EXT4_GRP_QUOTA_INO;
-> -	else
-> +	qf_inum =3D quota_type2inum(qtype);
-> +	if (qf_inum =3D=3D 0)
-> 		return -1;
->=20
-> 	err =3D ext2fs_read_bitmaps(fs);
-> @@ -339,7 +360,7 @@ errcode_t quota_file_create(struct quota_handle =
-*h, ext2_filsys fs, int type, in
-> 	h->qh_qf.e2_file =3D e2_file;
->=20
-> 	h->qh_io_flags =3D 0;
-> -	h->qh_type =3D type;
-> +	h->qh_type =3D qtype;
-> 	h->qh_fmt =3D fmt;
-> 	memset(&h->qh_info, 0, sizeof(h->qh_info));
-> 	h->qh_ops =3D &quotafile_ops_2;
+> 	default:
+> 		return 0;
+> 		break;
 > diff --git a/lib/support/quotaio.h b/lib/support/quotaio.h
-> index 9d580ae..fc114e2 100644
+> index fc114e2..438d077 100644
 > --- a/lib/support/quotaio.h
 > +++ b/lib/support/quotaio.h
-> @@ -10,9 +10,9 @@
->  * {
->  *	quota_ctx_t qctx;
->  *
-> - *	quota_init_context(&qctx, fs, -1);
-> + *	quota_init_context(&qctx, fs, QUOTA_ALL_BIT);
->  *	{
-> - *		quota_compute_usage(qctx, -1);
-> + *		quota_compute_usage(qctx, QUOTA_ALL_BIT);
->  *		AND/OR
->  *		quota_data_add/quota_data_sub/quota_data_inodes();
->  *	}
-> @@ -43,9 +43,20 @@
+> @@ -46,9 +46,10 @@ typedef int64_t qsize_t;	/* Type in which we =
+store size limitations */
+> enum quota_type {
+> 	USRQUOTA =3D 0,
+> 	GRPQUOTA =3D 1,
+> +	PRJQUOTA =3D 2,
+> };
 >=20
-> typedef int64_t qsize_t;	/* Type in which we store size =
-limitations */
+> -#define MAXQUOTAS 2
+> +#define MAXQUOTAS 3
+
+This should be the last item in the enum.
+
+> #if MAXQUOTAS > 32
+> #error "cannot have more than 32 quota types to fit in qtype_bits"
+> @@ -56,7 +57,8 @@ enum quota_type {
 >=20
-> +enum quota_type {
-> +	USRQUOTA =3D 0,
-> +	GRPQUOTA =3D 1,
-> +};
-> +
-> #define MAXQUOTAS 2
-> -#define USRQUOTA 0
-> -#define GRPQUOTA 1
-> +
-> +#if MAXQUOTAS > 32
-> +#error "cannot have more than 32 quota types to fit in qtype_bits"
-> +#endif
-> +
-> +#define QUOTA_USR_BIT (1 << USRQUOTA)
-> +#define QUOTA_GRP_BIT (1 << GRPQUOTA)
-> +#define QUOTA_ALL_BIT (QUOTA_USR_BIT | QUOTA_GRP_BIT)
+> #define QUOTA_USR_BIT (1 << USRQUOTA)
+> #define QUOTA_GRP_BIT (1 << GRPQUOTA)
+> -#define QUOTA_ALL_BIT (QUOTA_USR_BIT | QUOTA_GRP_BIT)
+> +#define QUOTA_PRJ_BIT (1 << PRJQUOTA)
+> +#define QUOTA_ALL_BIT (QUOTA_USR_BIT | QUOTA_GRP_BIT | QUOTA_PRJ_BIT)
 >=20
 > typedef struct quota_ctx *quota_ctx_t;
 > struct dict_t;
-> @@ -104,7 +115,7 @@ struct quota_file {
->=20
-> /* Structure for one opened quota file */
-> struct quota_handle {
-> -	int qh_type;		/* Type of quotafile */
-> +	enum quota_type qh_type;	/* Type of quotafile */
-> 	int qh_fmt;		/* Quotafile format */
-> 	int qh_file_flags;
-> 	int qh_io_flags;	/* IO flags for file */
-> @@ -174,12 +185,13 @@ extern struct quotafile_ops quotafile_ops_meta;
-> /* Open existing quotafile of given type (and verify its format) on =
-given
->  * filesystem. */
-> errcode_t quota_file_open(quota_ctx_t qctx, struct quota_handle *h,
-> -			  ext2_ino_t qf_ino, int type, int fmt, int =
-flags);
-> +			  ext2_ino_t qf_ino, enum quota_type type,
-> +			  int fmt, int flags);
->=20
->=20
-> /* Create new quotafile of specified format on given filesystem */
-> errcode_t quota_file_create(struct quota_handle *h, ext2_filsys fs,
-> -			    int type, int fmt);
-> +			    enum quota_type qtype, int fmt);
->=20
-> /* Close quotafile */
-> errcode_t quota_file_close(quota_ctx_t qctx, struct quota_handle *h);
-> @@ -189,7 +201,8 @@ struct dquot *get_empty_dquot(void);
->=20
-> errcode_t quota_inode_truncate(ext2_filsys fs, ext2_ino_t ino);
->=20
-> -const char *type2name(int type);
-> +const char *quota_type2name(enum quota_type qtype);
-> +ext2_ino_t quota_type2inum(enum quota_type qtype);
->=20
-> void update_grace_times(struct dquot *q);
->=20
-> @@ -197,27 +210,41 @@ void update_grace_times(struct dquot *q);
->    than maxlen of extensions[] and fmtnames[] (plus 2) found in =
-quotaio.c */
-> #define QUOTA_NAME_LEN 16
->=20
-> -const char *quota_get_qf_name(int type, int fmt, char *buf);
-> +const char *quota_get_qf_name(enum quota_type qtype, int fmt, char =
-*buf);
->=20
-> /* In mkquota.c */
-> -errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs, int =
-qtype);
-> +errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs,
-> +			     unsigned int qtype_bits);
-> void quota_data_inodes(quota_ctx_t qctx, struct ext2_inode *inode, =
-ext2_ino_t ino,
-> 		int adjust);
-> void quota_data_add(quota_ctx_t qctx, struct ext2_inode *inode, =
-ext2_ino_t ino,
-> 		qsize_t space);
-> void quota_data_sub(quota_ctx_t qctx, struct ext2_inode *inode, =
-ext2_ino_t ino,
-> 		qsize_t space);
-> -errcode_t quota_write_inode(quota_ctx_t qctx, int qtype);
-> -errcode_t quota_update_limits(quota_ctx_t qctx, ext2_ino_t qf_ino, =
-int type);
-> +errcode_t quota_write_inode(quota_ctx_t qctx, enum quota_type qtype);
-> +errcode_t quota_update_limits(quota_ctx_t qctx, ext2_ino_t qf_ino,
-> +			      enum quota_type type);
-> errcode_t quota_compute_usage(quota_ctx_t qctx);
-> void quota_release_context(quota_ctx_t *qctx);
->=20
-> -errcode_t quota_remove_inode(ext2_filsys fs, int qtype);
-> -int quota_file_exists(ext2_filsys fs, int qtype);
-> -void quota_set_sb_inum(ext2_filsys fs, ext2_ino_t ino, int qtype);
-> -errcode_t quota_compare_and_update(quota_ctx_t qctx, int qtype,
-> -				   int *usage_inconsistent);
-> -
-> -
-> +errcode_t quota_remove_inode(ext2_filsys fs, enum quota_type qtype);
-> +int quota_file_exists(ext2_filsys fs, enum quota_type qtype);
-> +void quota_set_sb_inum(ext2_filsys fs, ext2_ino_t ino, enum =
-quota_type qtype);
-> +errcode_t quota_compare_and_update(quota_ctx_t qctx, enum quota_type =
-qtype,
-> + 				   int *usage_inconsistent);
-> +
-> +static inline ext2_ino_t *quota_sb_inump(struct ext2_super_block *sb, =
-enum quota_type qtype)
-> +{
-> +	switch (qtype) {
-> +		case USRQUOTA:
-> +			return &sb->s_usr_quota_inum;
-> +		case GRPQUOTA:
-> +			return &sb->s_grp_quota_inum;
-> +		default:
-> +			return NULL;
-> +	}
-> +
-> +	return NULL;
-> +}
->=20
-> #endif /* GUARD_QUOTAIO_H */
-> diff --git a/lib/support/quotaio_tree.c b/lib/support/quotaio_tree.c
-> index e7f3e95..2a85698 100644
-> --- a/lib/support/quotaio_tree.c
-> +++ b/lib/support/quotaio_tree.c
-> @@ -587,7 +587,7 @@ static void check_reference(struct quota_handle =
-*h, unsigned int blk)
-> 			"Please run e2fsck (8) to fix it.",
-> 			blk,
-> 			h->qh_info.u.v2_mdqi.dqi_qtree.dqi_blocks,
-> -			type2name(h->qh_type));
-> +			quota_type2name(h->qh_type));
+> @@ -72,7 +74,8 @@ struct quota_ctx {
+>  */
+> #define INITQMAGICS {\
+> 	0xd9c01f11,	/* USRQUOTA */\
+> -	0xd9c01927	/* GRPQUOTA */\
+> +	0xd9c01927,	/* GRPQUOTA */\
+> +	0xd9c03f14      /* PRJQUOTA */\
 > }
 >=20
-> static int report_tree(struct dquot *dquot, unsigned int blk, int =
-depth,
+> /* Size of blocks in which are counted size limits in generic utility =
+parts */
+> @@ -240,6 +243,8 @@ static inline ext2_ino_t *quota_sb_inump(struct =
+ext2_super_block *sb, enum quota
+> 			return &sb->s_usr_quota_inum;
+> 		case GRPQUOTA:
+> 			return &sb->s_grp_quota_inum;
+> +		case PRJQUOTA:
+> +			return &sb->s_prj_quota_inum;
+> 		default:
+> 			return NULL;
+> 	}
 > diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 179a4d1..5ead18e 100644
+> index 5ead18e..97aa8c4 100644
 > --- a/misc/mke2fs.c
 > +++ b/misc/mke2fs.c
-> @@ -95,7 +95,7 @@ static int	lazy_itable_init;
-> static int	packed_meta_blocks;
-> static char	*bad_blocks_filename =3D NULL;
-> static __u32	fs_stride;
-> -static int	quotatype =3D -1;  /* Initialize both user and group =
-quotas by default */
-> +static unsigned int quotatype_bits =3D QUOTA_ALL_BIT;  /* Initialize =
-all quotas by default */
-> static __u64	offset;
-> static blk64_t journal_location =3D ~0LL;
-> static int	proceed_delay =3D -1;
-> @@ -1014,9 +1014,9 @@ static void parse_extended_opts(struct =
+> @@ -1017,6 +1017,8 @@ static void parse_extended_opts(struct =
 ext2_super_block *param,
-> 				continue;
-> 			}
-> 			if (!strncmp(arg, "usr", 3)) {
-> -				quotatype =3D 0;
-> +				quotatype_bits =3D QUOTA_USR_BIT;
+> 				quotatype_bits =3D QUOTA_USR_BIT;
 > 			} else if (!strncmp(arg, "grp", 3)) {
-> -				quotatype =3D 1;
-> +				quotatype_bits =3D QUOTA_GRP_BIT;
+> 				quotatype_bits =3D QUOTA_GRP_BIT;
+> +			} else if (!strncmp(arg, "prj", 3)) {
+> +				quotatype_bits =3D QUOTA_PRJ_BIT;
+
+See comments on previous patch.  This would only allow enabling a single
+quota type at a time, which probably isn't enough if someone wants to
+enable both "usr,grp" but not "prj".
+
 > 			} else {
 > 				fprintf(stderr,
 > 					_("Invalid quotatype parameter: =
 %s\n"),
-> @@ -2669,9 +2669,9 @@ static int create_quota_inodes(ext2_filsys fs)
-> {
-> 	quota_ctx_t qctx;
+> @@ -2961,6 +2963,10 @@ int main (int argc, char *argv[])
+> 		exit(ext2fs_close_free(&fs) ? 1 : 0);
+> 	}
 >=20
-> -	quota_init_context(&qctx, fs, -1);
-> +	quota_init_context(&qctx, fs, QUOTA_ALL_BIT);
-> 	quota_compute_usage(qctx);
-> -	quota_write_inode(qctx, quotatype);
-> +	quota_write_inode(qctx, quotatype_bits);
-> 	quota_release_context(&qctx);
->=20
-> 	return 0;
+> +	if (EXT2_HAS_RO_COMPAT_FEATURE(&fs_param,
+> +				       EXT4_FEATURE_RO_COMPAT_QUOTA))
+> +		fs->super->s_first_ino =3D EXT2_GOOD_OLD_FIRST_INO + 1;
+
+This changes compatibility, but hides the details deep in the code here
+and doesn't gain much benefit for the future.  This should use the
+EXT2_NEW_FIRST_INO constant as described above.
+
+> +
+> 	if (bad_blocks_filename)
+> 		read_bb_file(fs, &bb_list, bad_blocks_filename);
+> 	if (cflag)
 > diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-> index f9ce38c..1684225 100644
+> index 1684225..94e962c 100644
 > --- a/misc/tune2fs.c
 > +++ b/misc/tune2fs.c
-> @@ -95,7 +95,7 @@ static int stride_set, stripe_width_set;
-> static char *extended_cmd;
-> static unsigned long new_inode_size;
-> static char *ext_mount_opts;
-> -static int usrquota, grpquota;
-> +static int quota_enable[MAXQUOTAS];
-> static int rewrite_checksums;
-> static int feature_64bit;
-> static int fsck_requested;
-> @@ -963,6 +963,7 @@ static int update_feature_set(ext2_filsys fs, char =
-*features)
-> 	int		type_err;
-> 	unsigned int	mask_err;
-> 	errcode_t	err;
-> +	enum quota_type qtype;
->=20
-> #define FEATURE_ON(type, mask) (!(old_features[(type)] & (mask)) && \
-> 				((&sb->s_feature_compat)[(type)] & =
-(mask)))
-> @@ -1279,9 +1280,9 @@ mmp_error:
-> 		 */
-> 		if (!Q_flag) {
-> 			Q_flag =3D 1;
-> -			/* Enable both user quota and group quota by =
-default */
-> -			usrquota =3D QOPT_ENABLE;
-> -			grpquota =3D QOPT_ENABLE;
-> +			/* Enable all quota by default */
-> +			for (qtype =3D 0; qtype < MAXQUOTAS; qtype++)
-> +				quota_enable[qtype] =3D QOPT_ENABLE;
-> 		}
-> 		sb->s_feature_ro_compat &=3D =
-~EXT4_FEATURE_RO_COMPAT_QUOTA;
-> 	}
-> @@ -1296,9 +1297,9 @@ mmp_error:
-> 			fputs(_("\nWarning: '^quota' option overrides =
-'-Q'"
-> 				"arguments.\n"), stderr);
-> 		Q_flag =3D 1;
-> -		/* Disable both user quota and group quota by default */
-> -		usrquota =3D QOPT_DISABLE;
-> -		grpquota =3D QOPT_DISABLE;
-> +		/* Disable all quota by default */
-> +		for (qtype =3D 0; qtype < MAXQUOTAS; qtype++)
-> +			quota_enable[qtype] =3D QOPT_DISABLE;
-> 	}
->=20
-> 	if (FEATURE_ON(E2P_FEATURE_INCOMPAT, =
-EXT4_FEATURE_INCOMPAT_ENCRYPT)) {
-> @@ -1421,42 +1422,51 @@ static void handle_quota_options(ext2_filsys =
-fs)
-> {
-> 	quota_ctx_t qctx;
-> 	ext2_ino_t qf_ino;
-> +	enum quota_type qtype;
-> +	int enable =3D 0;
->=20
-> -	if (!usrquota && !grpquota)
-> +	for (qtype =3D 0 ; qtype < MAXQUOTAS; qtype++)
-> +		if (quota_enable[qtype] !=3D 0)
-> +			break;
-> +	if (qtype =3D=3D MAXQUOTAS)
-> 		/* Nothing to do. */
-> 		return;
->=20
-> -	quota_init_context(&qctx, fs, -1);
-> -
-> -	if (usrquota =3D=3D QOPT_ENABLE || grpquota =3D=3D QOPT_ENABLE)
-> -		quota_compute_usage(qctx);
-> -
-> -	if (usrquota =3D=3D QOPT_ENABLE && !fs->super->s_usr_quota_inum) =
-{
-> -		if ((qf_ino =3D quota_file_exists(fs, USRQUOTA)) > 0)
-> -			quota_update_limits(qctx, qf_ino, USRQUOTA);
-> -		quota_write_inode(qctx, USRQUOTA);
-> -	} else if (usrquota =3D=3D QOPT_DISABLE) {
-> -		quota_remove_inode(fs, USRQUOTA);
-> +	quota_init_context(&qctx, fs, QUOTA_ALL_BIT);
-> +	for (qtype =3D 0 ; qtype < MAXQUOTAS; qtype++) {
-> +		if (quota_enable[qtype] =3D=3D QOPT_ENABLE) {
-> +			enable =3D 1;
-> +			break;
-> +		}
-> 	}
-> +	if (enable)
-> +		quota_compute_usage(qctx);
->=20
-> -	if (grpquota =3D=3D QOPT_ENABLE && !fs->super->s_grp_quota_inum) =
-{
-> -		if ((qf_ino =3D quota_file_exists(fs, GRPQUOTA)) > 0)
-> -			quota_update_limits(qctx, qf_ino, GRPQUOTA);
-> -		quota_write_inode(qctx, GRPQUOTA);
-> -	} else if (grpquota =3D=3D QOPT_DISABLE) {
-> -		quota_remove_inode(fs, GRPQUOTA);
-> -	}
-> +	for (qtype =3D 0 ; qtype < MAXQUOTAS; qtype++) {
-> +		if (quota_enable[qtype] =3D=3D QOPT_ENABLE &&
-> +		    *quota_sb_inump(fs->super, qtype) !=3D 0) {
-> +			if ((qf_ino =3D quota_file_exists(fs, qtype)) > =
-0)
-> +				quota_update_limits(qctx, qf_ino, =
-qtype);
-> +			quota_write_inode(qctx, 1 << qtype);
-> +		} else if (quota_enable[qtype] =3D=3D QOPT_DISABLE) {
-> +			quota_remove_inode(fs, qtype);
-> +		}
-> + 	}
->=20
-> 	quota_release_context(&qctx);
->=20
-> -	if ((usrquota =3D=3D QOPT_ENABLE) || (grpquota =3D=3D =
-QOPT_ENABLE)) {
-> +	if (enable) {
-> 		fs->super->s_feature_ro_compat |=3D =
-EXT4_FEATURE_RO_COMPAT_QUOTA;
-> 		ext2fs_mark_super_dirty(fs);
-> -	} else if (!fs->super->s_usr_quota_inum &&
-> -		   !fs->super->s_grp_quota_inum) {
-> -		fs->super->s_feature_ro_compat &=3D =
-~EXT4_FEATURE_RO_COMPAT_QUOTA;
-> -		ext2fs_mark_super_dirty(fs);
-> -	}
-> +	} else {
-> +		for (qtype =3D 0 ; qtype < MAXQUOTAS; qtype++)
-> +			if (*quota_sb_inump(fs->super, qtype) !=3D 0)
-> +				break;
-> +		if (qtype =3D=3D MAXQUOTAS) {
-> +			fs->super->s_feature_ro_compat &=3D =
-~EXT4_FEATURE_RO_COMPAT_QUOTA;
-> +			ext2fs_mark_super_dirty(fs);
-> +		}
-> + 	}
->=20
-> 	return;
-> }
-> @@ -1483,13 +1493,13 @@ static void parse_quota_opts(const char *opts)
-> 		}
->=20
-> 		if (strcmp(token, "usrquota") =3D=3D 0) {
-> -			usrquota =3D QOPT_ENABLE;
-> +			quota_enable[USRQUOTA] =3D QOPT_ENABLE;
-> 		} else if (strcmp(token, "^usrquota") =3D=3D 0) {
-> -			usrquota =3D QOPT_DISABLE;
-> +			quota_enable[USRQUOTA] =3D QOPT_DISABLE;
-> 		} else if (strcmp(token, "grpquota") =3D=3D 0) {
-> -			grpquota =3D QOPT_ENABLE;
-> +			quota_enable[GRPQUOTA] =3D QOPT_ENABLE;
+> @@ -1500,6 +1500,10 @@ static void parse_quota_opts(const char *opts)
+> 			quota_enable[GRPQUOTA] =3D QOPT_ENABLE;
 > 		} else if (strcmp(token, "^grpquota") =3D=3D 0) {
-> -			grpquota =3D QOPT_DISABLE;
-> +			quota_enable[GRPQUOTA] =3D QOPT_DISABLE;
+> 			quota_enable[GRPQUOTA] =3D QOPT_DISABLE;
+> +		} else if (strcmp(token, "prjquota") =3D=3D 0) {
+> +			quota_enable[PRJQUOTA] =3D QOPT_ENABLE;
+> +		} else if (strcmp(token, "^prjquota") =3D=3D 0) {
+> +			quota_enable[PRJQUOTA] =3D QOPT_DISABLE;
 > 		} else {
 > 			fputs(_("\nBad quota options specified.\n\n"
 > 				"Following valid quota options are =
 available "
+> diff --git a/tests/d_fallocate_blkmap/expect =
+b/tests/d_fallocate_blkmap/expect
+> index f7ae606..a66b06a 100644
+> --- a/tests/d_fallocate_blkmap/expect
+> +++ b/tests/d_fallocate_blkmap/expect
+> @@ -21,7 +21,7 @@ User:     0   Group:     0   Size: 40960
+> File ACL: 0    Directory ACL: 0
+> Links: 1   Blockcount: 82
+> Fragment:  Address: 0    Number: 0    Size: 0
+> -Size of extra inode fields: 28
+> +Size of extra inode fields: 32
+> BLOCKS:
+> (0-1):1312-1313, (2-11):8000-8009, (IND):8010, (12-39):8011-8038
+> TOTAL: 41
+> @@ -33,7 +33,7 @@ User:     0   Group:     0   Size: 10240000
+> File ACL: 0    Directory ACL: 0
+> Links: 1   Blockcount: 20082
+> Fragment:  Address: 0    Number: 0    Size: 0
+> -Size of extra inode fields: 28
+> +Size of extra inode fields: 32
+> BLOCKS:
+> (0-11):10000-10011, (IND):10012, (12-267):10013-10268, (DIND):10269, =
+(IND):10270, (268-523):10271-10526, (IND):10527, (524-779):10528-10783, =
+(IND):10784, (780-1035):10785-11040, (IND):11041, =
+(1036-1291):11042-11297, (IND):11298, (1292-1547):11299-11554, =
+(IND):11555, (1548-1803):11556-11811, (IND):11812, =
+(1804-2059):11813-12068, (IND):12069, (2060-2315):12070-12325, =
+(IND):12326, (2316-2571):12327-12582, (IND):12583, =
+(2572-2827):12584-12839, (IND):12840, (2828-3083):12841-13096, =
+(IND):13097, (3084-3339):13098-13353, (IND):13354, =
+(3340-3595):13355-13610, (IND):13611, (3596-3851):13612-13867, =
+(IND):13868, (3852-4107):13869-14124, (IND):14125, =
+(4108-4363):14126-14381, (IND):14382, (4364-4619):14383-14638, =
+(IND):14639, (4620-4875):14640-14895, (IND):14896, =
+(4876-5131):14897-15152, (IND):15153, (5132-5387):15154-15409, =
+(IND):15410, (5388-5643):15411-15666, (IND):15667, =
+(5644-5899):15668-15923, (IND):15924, (5900-6155):15925-16180, =
+(IND):16181, (6156-6411):16182-16437, (IND):16438, =
+(6412-6667):16439-16694, (IND):16695, (6668-6923):16696-16951, =
+(IND):16952, (6924-7179):16953-17208, (IND):17209, =
+(7180-7435):17210-17465, (IND):17466, (7436-7691):17467-17722, =
+(IND):17723, (7692-7947):17724-17979, (IND):17980, =
+(7948-8203):17981-18236, (IND):18237, (8204-8459):18238-18493, =
+(IND):18494, (8460-8715):18495-18750, (IND):18751, =
+(8716-8971):18752-19007, (IND):19008, (8972-9227):19009-19264, =
+(IND):19265, (9228-9483):19266-19521, (IND):19522, =
+(9484-9739):19523-19778, (IND):19779, (9740-9995):19780-20035, =
+(IND):20036, (9996-9999):20037-20040
+> TOTAL: 10041
+> diff --git a/tests/f_create_symlinks/expect =
+b/tests/f_create_symlinks/expect
+> index 47fa468..6e1553c 100644
+> --- a/tests/f_create_symlinks/expect
+> +++ b/tests/f_create_symlinks/expect
+> @@ -23,7 +23,7 @@ User:     0   Group:     0   Size: 31
+> File ACL: 0    Directory ACL: 0
+> Links: 1   Blockcount: 0
+> Fragment:  Address: 0    Number: 0    Size: 0
+> -Size of extra inode fields: 28
+> +Size of extra inode fields: 32
+> Fast link dest: "/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+> debugfs -R "stat /l_70" test.img
+> Inode: 13   Type: symlink    Mode:  0777   Flags: 0x10000000
+> @@ -32,7 +32,7 @@ User:     0   Group:     0   Size: 71
+> File ACL: 0    Directory ACL: 0
+> Links: 1   Blockcount: 0
+> Fragment:  Address: 0    Number: 0    Size: 0
+> -Size of extra inode fields: 28
+> +Size of extra inode fields: 32
+> Extended attributes:
+>   system.data (11)
+> Fast link dest: =
+"/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+> @@ -43,7 +43,7 @@ User:     0   Group:     0   Size: 501
+> File ACL: 0    Directory ACL: 0
+> Links: 1   Blockcount: 2
+> Fragment:  Address: 0    Number: 0    Size: 0
+> -Size of extra inode fields: 28
+> +Size of extra inode fields: 32
+> EXTENTS:
+> (0):153
+> debugfs -R "stat /l_1023" test.img
+> @@ -53,7 +53,7 @@ User:     0   Group:     0   Size: 1024
+> File ACL: 0    Directory ACL: 0
+> Links: 1   Blockcount: 2
+> Fragment:  Address: 0    Number: 0    Size: 0
+> -Size of extra inode fields: 28
+> +Size of extra inode fields: 32
+> EXTENTS:
+> (0):154
+> debugfs -R "stat /l_1024" test.img
+> diff --git a/tests/m_bigjournal/expect.1 b/tests/m_bigjournal/expect.1
+> index 61d85f9..8900596 100644
+> --- a/tests/m_bigjournal/expect.1
+> +++ b/tests/m_bigjournal/expect.1
+> @@ -35,8 +35,8 @@ Reserved blocks uid:      0
+> Reserved blocks gid:      0
+> First inode:              11
+> Inode size:	          256
+> -Required extra isize:     28
+> -Desired extra isize:      28
+> +Required extra isize:     32
+> +Desired extra isize:      32
+> Journal inode:            8
+> Default directory hash:   half_md4
+> Journal backup:           inode blocks
+> diff --git a/tests/m_large_file/expect.1 b/tests/m_large_file/expect.1
+> index 4acca41..06c8257 100644
+> --- a/tests/m_large_file/expect.1
+> +++ b/tests/m_large_file/expect.1
+> @@ -40,8 +40,8 @@ Reserved blocks uid:      0
+> Reserved blocks gid:      0
+> First inode:              11
+> Inode size:	          256
+> -Required extra isize:     28
+> -Desired extra isize:      28
+> +Required extra isize:     32
+> +Desired extra isize:      32
+> Default directory hash:   half_md4
+>=20
+>=20
+> diff --git a/tests/m_quota/expect.1 b/tests/m_quota/expect.1
+> index 787871c..dc8eca9 100644
+> --- a/tests/m_quota/expect.1
+> +++ b/tests/m_quota/expect.1
+> @@ -12,7 +12,7 @@ Pass 2: Checking directory structure
+> Pass 3: Checking directory connectivity
+> Pass 4: Checking reference counts
+> Pass 5: Checking group summary information
+> -test_filesys: 11/32768 files (18.2% non-contiguous), 5703/131072 =
+blocks
+> +test_filesys: 12/32768 files (25.0% non-contiguous), 5709/131072 =
+blocks
+> Exit status is 0
+> Filesystem volume name:   <none>
+> Last mounted on:          <not available>
+> @@ -26,8 +26,8 @@ Filesystem OS type:       Linux
+> Inode count:              32768
+> Block count:              131072
+> Reserved block count:     6553
+> -Free blocks:              125369
+> -Free inodes:              32757
+> +Free blocks:              125363
+> +Free inodes:              32756
+> First block:              1
+> Block size:               1024
+> Fragment size:            1024
+> @@ -40,11 +40,12 @@ Mount count:              0
+> Check interval:           15552000 (6 months)
+> Reserved blocks uid:      0
+> Reserved blocks gid:      0
+> -First inode:              11
+> +First inode:              12
+> Inode size:	          128
+> Default directory hash:   half_md4
+> User quota inode:         3
+> Group quota inode:        4
+> +Project quota inode:      11
+>=20
+>=20
+> Group 0: (Blocks 1-8192)
+> @@ -52,9 +53,9 @@ Group 0: (Blocks 1-8192)
+>   Reserved GDT blocks at 3-258
+>   Block bitmap at 259 (+258), Inode bitmap at 260 (+259)
+>   Inode table at 261-516 (+260)
+> -  7650 free blocks, 2037 free inodes, 2 directories
+> -  Free blocks: 543-8192
+> -  Free inodes: 12-2048
+> +  7644 free blocks, 2036 free inodes, 2 directories
+> +  Free blocks: 549-8192
+> +  Free inodes: 13-2048
+> Group 1: (Blocks 8193-16384)
+>   Backup superblock at 8193, Group descriptors at 8194-8194
+>   Reserved GDT blocks at 8195-8450
 > --
 > 1.7.1
 >=20
@@ -1203,7 +598,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_AFC3EF2F-3EBB-4456-806B-476A86E59C28
+--Apple-Mail=_0A337BA1-175E-4C57-B757-7976B1CC7416
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -1214,19 +609,19 @@ Content-Description: Message signed with OpenPGP using GPGMail
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIVAwUBVmv8UnKl2rkXzB/gAQiLERAAgRWggVIbK3CdZTDO4QYL/ST5EsxfcBxa
-kRfC+6oaRJtcdRcyauVqfHPvw4cxJNwCCbGj0ZjBrxXZzs9YQ6pdp6JK0dUqA/+K
-Z0TFoluypxUHrCEydSmLGF2hJBeVVak6QQ64HmbNzH9UwUTO3s3B7pIuStVi4GPw
-y7Zo4OQ4BXfQ73vX0uBMq4E+HuP+eRlMec0NZB3oZnfftOoYZ0HN2MW5IxLAVz68
-tGgB8lcfZvYBEPRsLjtqkW9VXGSeLoxue4yYIuSZdN6RwOMO5YsTdN3alechLq2t
-7DKVGw/vwe75cz496yZKf8+bKImRnBLgu7+j0jlUGc/CIkkuVAl7zJ/Ww2DWfke/
-97tUd7PlsE4oqVlJ8AzRrM6q46YfIIa0aqjB47jEu92pRb1pVcYB+JbriZ4jgH6Z
-PHnwefeH5z28aBYNHFSMVxx7q9FMGtshPVomrPaQC7OcDCM7C1RhaJ9GEupSCkn1
-TP107hafrCUMLLvuRyPhCPuHLO/HZooNFMascx2oJVKJJxykrSUJ3wUZZYqD/n+X
-p+Cbyu8uOWmAHujSP4wngLDcvJisQDlTuBTrQ+gglFC0iCyvL1RgZpYmv5i+tb3m
-WJa9tHgiIumYoWgwOC5NUYmkhHw9lXKGTszJAleN+bKTYhCt1SbglvmfkE76n5pQ
-cAW0bwC496E=
-=E+8O
+iQIVAwUBVmv/OXKl2rkXzB/gAQg9QhAAuCBmT3KVtk4zbnpFd77kvdbPj9e5DWHO
+ZxEl8R5OXP0AcQ8D3/5ZMcdq0uAWhjZ+il8ZA4K2JwH8wl6ftZqRW5jO8aIE4YsO
+7WqNbFfBXKbJn16l3DjCZuchgw9WXCcDNjHQO8htLMygF+orMZBVAyP0lVM4OJWm
+/YhzlOfSwdiOSCyYcn0d8fLA8ZlIrwTPfNUtqRIKta7JikoWYlS3xlS8p4Znd4QR
+XcgnwWpN2tF4wkh3EpY17JbOtaydxkufl48muWO/JNs4ey2LFWNwGsLfIVIDt71Q
+cZ14GChCkDpaGkdfCDfzQSZK2o50mMR0KvuAn50CLr1ppQE/E59JeQrlu8ob2vr9
+wRmNrv3ygdsuy3qVT9LQnA4QhK4lJ0M30Yi+HhZ3UTQzQyQ/5PjzBdPgNXZFYanO
+s23LVGnyW2klydKLJVjNY1veX6uiD93tO+dDx5H0sje7vWuzkHpKp4FM7XB6Ypmh
+NFjoM92mdxHt6ZG5Diq2KVUXCI/3DeSiCLGwb1A+COGXSPYcNbBcUEVbHJSeSHkX
+FI48TfsEbHl1yxAibtXT94KzW/qk5bFwOXbAC5MoOjCw3HN1vrZLq1BFtoSRmTHX
+zilMqnSeKjmxzRTqjlXHLsC97cTqYeVDQCxAHtjmljyqEKasJBmZzkRHINs0hHji
+vkv3JQF1OrE=
+=ASyJ
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_AFC3EF2F-3EBB-4456-806B-476A86E59C28--
+--Apple-Mail=_0A337BA1-175E-4C57-B757-7976B1CC7416--
