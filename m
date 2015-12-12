@@ -1,26 +1,26 @@
 From: Andreas Dilger <adilger@dilger.ca>
 Subject: Re: [v1 1/4] clean up codes for adding new quota type
-Date: Sat, 12 Dec 2015 02:32:33 -0700
-Message-ID: <A685F1B1-2006-4E24-BD88-E47A5A597618@dilger.ca>
+Date: Sat, 12 Dec 2015 03:52:01 -0700
+Message-ID: <2CA220A4-BBE6-45D9-910B-8C727D0DFFEA@dilger.ca>
 References: <1446046933-26571-1-git-send-email-lixi@ddn.com> <1446046933-26571-2-git-send-email-lixi@ddn.com>
 Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_E2E06F89-589F-4D65-BD91-E5B8C54CD0FC"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Content-Type: multipart/signed; boundary="Apple-Mail=_AFC3EF2F-3EBB-4456-806B-476A86E59C28"; protocol="application/pgp-signature"; micalg=pgp-sha256
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
 	viro@zeniv.linux.org.uk, hch@infradead.org, dmonakhov@openvz.org
 To: Li Xi <pkuelelixi@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f179.google.com ([209.85.223.179]:35395 "EHLO
-	mail-io0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751093AbbLLJcl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Dec 2015 04:32:41 -0500
-Received: by ioc74 with SMTP id 74so150144360ioc.2
-        for <linux-ext4@vger.kernel.org>; Sat, 12 Dec 2015 01:32:40 -0800 (PST)
+Received: from mail-io0-f180.google.com ([209.85.223.180]:34767 "EHLO
+	mail-io0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751936AbbLLKwI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Dec 2015 05:52:08 -0500
+Received: by ioae126 with SMTP id e126so2211020ioa.1
+        for <linux-ext4@vger.kernel.org>; Sat, 12 Dec 2015 02:52:07 -0800 (PST)
 In-Reply-To: <1446046933-26571-2-git-send-email-lixi@ddn.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_E2E06F89-589F-4D65-BD91-E5B8C54CD0FC
+--Apple-Mail=_AFC3EF2F-3EBB-4456-806B-476A86E59C28
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
@@ -31,9 +31,7 @@ On Oct 28, 2015, at 9:42 AM, Li Xi <pkuelelixi@gmail.com> wrote:
 > these days. E2fsprogs has to be updated if we want that new feature.
 > As a preparation for it, this patch cleans up quota codes of e2fsprogs
 > so as to make it easier to add new quota type(s).
-
-Some minor issues I just noticed.
-
+>=20
 > Signed-off-by: Li Xi <lixi@ddn.com>
 > Change-Id: I330cebc0e95aa8d81477a63932381bcc84eea3c1
 > ---
@@ -99,6 +97,16 @@ ext2_ino_t ino)
 > +}
 > +
 > +static int quota_inum_is_reserved(ext2_ino_t ino)
+
+It would be good to know exactly what the intent of this function is.
+Is it to see if they are quota inodes are referenced by the superblock,
+or to see if the quota inodes are in the reserved space (ino < =
+s_first_ino),
+or both?  At a minimum, a comment would be helpful, maybe with some =
+input
+from Ted as to what is the right check here, and if we even need to have
+a separate function from quota_inum_is_super().
+
 > +{
 > +	enum quota_type qtype;
 > +
@@ -128,6 +136,20 @@ ino);
 > -			     (fs->super->s_grp_quota_inum =3D=3D ino))) =
 {
 > +			    quota_inum_is_super(fs->super, ino)) {
+
+Per my comments above, this check is a bit tricky.  We want all the =
+inodes
+referenced by s_*_quota_inum to be checked as regular quota inodes and =
+marked
+used in the bitmaps even if they are not reserved inodes.  Is this check
+only for reserved inodes (quota_inum_is_reserved() with an (ino < =
+s_first_ino)
+check, or for all quota inodes (quota_inum_is_super() and we don't need =
+to
+have quota_inum_is_reserved() at all?
+
+Cheers, Andreas
+
 > 				if (!LINUX_S_ISREG(inode->i_mode) &&
 > 				    fix_problem(ctx, =
 PR_1_QUOTA_BAD_MODE,
@@ -198,7 +220,6 @@ qtype);
 > 	char *cp;
 > -	int qtype =3D -99;  /* quota type */
 > +	unsigned int qtype_bits =3D 0;
-
 > +	enum quota_type qtype;
 >=20
 > 	clear_problem_context(&pctx);
@@ -277,9 +298,6 @@ qtype);
 > + * Convert type of quota to written representation
 > + */
 > +const char *quota_type2prefix(enum quota_type qtype)
-
-This function should be static.
-
 > +{
 > +	return quota_prefix[qtype];
 > +}
@@ -653,21 +671,6 @@ qtype,
 > -	return extensions[type];
 > +	assert(qtype >=3D 0);
 > +	assert(qtype < MAXQUOTAS);
-
-These asserts might fail if there are ever callers that pass in the =
-wrong
-values (e.g. from disk, or from user code that links to e2fsprogs.  It
-would be better to just handle invalid input more robustly, like:
-
-
-const char *quota_type2name(enum quota_type qtype)
-{
-        if (qtype >=3D MAXQUOTAS || qtype < 0)
-                return "unknown";
-
-        return extensions[qtype];
-}
-
 > +	return extensions[qtype];
 > +}
 > +
@@ -675,10 +678,6 @@ const char *quota_type2name(enum quota_type qtype)
 > +{
 > +	assert(qtype >=3D 0);
 > +	assert(qtype < MAXQUOTAS);
-
-Since this is already returning 0 for invalid values and the callers are
-already checking for that, these assert() checks could just be removed.
-
 > +	switch (qtype) {
 > +	case USRQUOTA:
 > +		return EXT4_USR_QUOTA_INO;
@@ -865,11 +864,6 @@ limitations */
 > +};
 > +
 > #define MAXQUOTAS 2
-
-This should be part of the enum quota_type so that it is always correct =
-if
-new quota types are added.
-
 > -#define USRQUOTA 0
 > -#define GRPQUOTA 1
 > +
@@ -969,8 +963,6 @@ qtype,
 > +
 > +static inline ext2_ino_t *quota_sb_inump(struct ext2_super_block *sb, =
 enum quota_type qtype)
-
-Wrap line at 80 columns.
 > +{
 > +	switch (qtype) {
 > +		case USRQUOTA:
@@ -1012,9 +1004,6 @@ depth,
 quotas by default */
 > +static unsigned int quotatype_bits =3D QUOTA_ALL_BIT;  /* Initialize =
 all quotas by default */
-
-Wrap at 80 columns or move comment to previous line.
-
 > static __u64	offset;
 > static blk64_t journal_location =3D ~0LL;
 > static int	proceed_delay =3D -1;
@@ -1028,24 +1017,6 @@ ext2_super_block *param,
 > 			} else if (!strncmp(arg, "grp", 3)) {
 > -				quotatype =3D 1;
 > +				quotatype_bits =3D QUOTA_GRP_BIT;
-
-This works OK if there are only two types of quota, but not if there are
-three types in the next patch, since it isn't possible for two of the
-three different quota types to be enabled.
-
-Either this needs to have a loop to parse a comma-separated list of =
-values
-like tune2fs.c:parse_quota_opts(), or use "strstr(arg, <type>);" for =
-each
-quota type ("usr", "grp", "prj"), so that it can appear anywhere in the
-argument string.  This should reset quotatype_bits =3D 0 if this option =
-is
-given, and then find each option and "|=3D" the QUOTA_GRP_* bit in.
-
-I don't think that there will be so many different quota types that =
-there
-is a danger of name collisions if strstr() is used.
-
 > 			} else {
 > 				fprintf(stderr,
 > 					_("Invalid quotatype parameter: =
@@ -1202,10 +1173,6 @@ EXT4_FEATURE_RO_COMPAT_QUOTA;
 > 	return;
 > }
 > @@ -1483,13 +1493,13 @@ static void parse_quota_opts(const char *opts)
-
-This function could move into lib/quota/ so that it can be used by =
-mke2fs.c.
-
 > 		}
 >=20
 > 		if (strcmp(token, "usrquota") =3D=3D 0) {
@@ -1236,7 +1203,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_E2E06F89-589F-4D65-BD91-E5B8C54CD0FC
+--Apple-Mail=_AFC3EF2F-3EBB-4456-806B-476A86E59C28
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -1247,19 +1214,19 @@ Content-Description: Message signed with OpenPGP using GPGMail
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIVAwUBVmvpsnKl2rkXzB/gAQh2oRAAhGiQ/vaz1OsV6u4q04Bpdy/4ti6JafHV
-rGtPsoD/5OcXPHvX2wn+PyEcT4cFRTpUe5Es/c9SodL9YWV4YNeb+91gNntoErEN
-qCaPePk0xOrAh74dC/pQbQwv5EMOE5wz7kZcZc5Ij5UMHW0l0gmaL/b0ekPBt5uH
-kJp+Cacyy+/AYeYZDCrQR0NBBcq+gmH9urgc3Zf5T+0Ho5IqelIuNUaKDgNR3aa2
-9wP/QDVqfdYagnKwvs/uhLxtYH4lf87PN+rrctC5RgzmMmZWQ9TkSG5YEnPJ+AvQ
-VYoHhWQrjDI4vp2HzFdRmVg7rMJG7TfrEC9Ssd+8plysVoSb/C+fi7CjKDewwWpL
-0iXXoWV9CHXJr4u1y9pfbwiSEE3Qb0dpfruWdpq0ksLYDuVMz1bBvhhCyOjevtP7
-1cpe4znVwV8FzVMkYtfFHK/fc0riygnhuVVLtLLVv7hzU4dJhIgSDtU7LSeGaDOm
-lnLNlXppio7/7IY3obQ2vcyRPLyPgQRxbEPaiHHB5Eh9HBRFZftBWwTTqpbeMltw
-KoGnvW2003uS7deYUlp1S9+9WvzFVzOf42skeY2IT/DM6e58no9MveOHH9ARxzBK
-Ka3vL+I+AMNGP8cuQuwjHvU5x8tKsXdt2czBrs+OH5J9hhuLtvXv51PEfjzcQd5p
-2e9HDk7eTts=
-=gTTV
+iQIVAwUBVmv8UnKl2rkXzB/gAQiLERAAgRWggVIbK3CdZTDO4QYL/ST5EsxfcBxa
+kRfC+6oaRJtcdRcyauVqfHPvw4cxJNwCCbGj0ZjBrxXZzs9YQ6pdp6JK0dUqA/+K
+Z0TFoluypxUHrCEydSmLGF2hJBeVVak6QQ64HmbNzH9UwUTO3s3B7pIuStVi4GPw
+y7Zo4OQ4BXfQ73vX0uBMq4E+HuP+eRlMec0NZB3oZnfftOoYZ0HN2MW5IxLAVz68
+tGgB8lcfZvYBEPRsLjtqkW9VXGSeLoxue4yYIuSZdN6RwOMO5YsTdN3alechLq2t
+7DKVGw/vwe75cz496yZKf8+bKImRnBLgu7+j0jlUGc/CIkkuVAl7zJ/Ww2DWfke/
+97tUd7PlsE4oqVlJ8AzRrM6q46YfIIa0aqjB47jEu92pRb1pVcYB+JbriZ4jgH6Z
+PHnwefeH5z28aBYNHFSMVxx7q9FMGtshPVomrPaQC7OcDCM7C1RhaJ9GEupSCkn1
+TP107hafrCUMLLvuRyPhCPuHLO/HZooNFMascx2oJVKJJxykrSUJ3wUZZYqD/n+X
+p+Cbyu8uOWmAHujSP4wngLDcvJisQDlTuBTrQ+gglFC0iCyvL1RgZpYmv5i+tb3m
+WJa9tHgiIumYoWgwOC5NUYmkhHw9lXKGTszJAleN+bKTYhCt1SbglvmfkE76n5pQ
+cAW0bwC496E=
+=E+8O
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_E2E06F89-589F-4D65-BD91-E5B8C54CD0FC--
+--Apple-Mail=_AFC3EF2F-3EBB-4456-806B-476A86E59C28--
