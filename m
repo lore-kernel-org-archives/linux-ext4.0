@@ -1,54 +1,84 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Subject: re: ext4 crypto: add ciphertext_access mount option
-Date: Sat, 12 Dec 2015 17:24:56 +0300
-Message-ID: <20151212142456.GA24945@mwanda>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:41904 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751032AbbLLOZF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Dec 2015 09:25:05 -0500
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Vegard Nossum <vegard.nossum@oracle.com>
+Subject: [PATCH] ext4: fix ext4_find_extent() allocation with order >= MAX_ORDER
+Date: Mon, 14 Dec 2015 00:47:12 +0100
+Message-ID: <1450050432-16248-1-git-send-email-vegard.nossum@oracle.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Vegard Nossum <vegard.nossum@oracle.com>,
+	Quentin Casasnovas <quentin.casasnovas@oracle.com>,
+	stable@vger.kernel.org
+To: tytso@mit.edu, adilger.kernel@dilger.ca
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello Theodore Ts'o,
+Mounting a fuzzed ext4 image on a recent linus/master I see the
+following warning:
 
-The patch 843848f73114: "ext4 crypto: add ciphertext_access mount
-option" from Dec 10, 2015, leads to the following static checker
-warning:
+[ 2.370000] ------------[ cut here ]------------
+[ 2.370000] WARNING: CPU: 0 PID: 1005 at mm/page_alloc.c:2989 __alloc_pages_nodemask+0x1afe/0x1d90()
+[ 2.370000] Kernel panic - not syncing: panic_on_warn set ...
+[ 2.370000]
+[ 2.370000] CPU: 0 PID: 1005 Comm: ext4.exe Not tainted 4.4.0-rc4 #1
+[ 2.370000] Stack:
+[ 2.370000] e0eed440 601097ab 00000000 6187e780
+[ 2.370000] 611ba838 601ada46 e0eed460 60acf851
+[ 2.370000] 60acf814 60aef320 e0eed580 601ad587
+[ 2.370000] Call Trace:
+[ 2.370000] [<6005852e>] show_stack+0x1fe/0x430
+[ 2.370000] [<60acf851>] dump_stack+0x3d/0x4c
+[ 2.370000] [<601ad587>] panic+0x206/0x5be
+[ 2.370000] [<60089923>] warn_slowpath_common+0x1e3/0x1f0
+[ 2.370000] [<60089b84>] warn_slowpath_null+0x34/0x40
+[ 2.370000] [<601c48ce>] __alloc_pages_nodemask+0x1afe/0x1d90
+[ 2.370000] [<601c4f0f>] alloc_kmem_pages+0x2f/0x40
+[ 2.370000] [<601f6e12>] kmalloc_order+0x32/0xc0
+[ 2.370000] [<60246270>] __kmalloc+0x340/0x450
+[ 2.370000] [<604469b4>] ext4_find_extent+0x3e4/0x6b0
+[ 2.370000] [<60450074>] ext4_ext_map_blocks+0x84/0x2770
+[ 2.370000] [<603fb68b>] ext4_map_blocks+0xfb/0xd80
+[ 2.370000] [<603fc442>] _ext4_get_block+0x132/0x3c0
+[ 2.370000] [<603fd3ab>] ext4_get_block+0x2b/0x40
+[...]
 
-	fs/ext4/inode.c:3349 ext4_direct_IO()
-	warn: we tested '(()->type & (1 << 0)) == (1 << 0)' before and it was 'false'
+This is mm/page_alloc.c:2989 __alloc_pages_nodemask+0x1afe/0x1d90():
 
-fs/ext4/inode.c
-  3336  static ssize_t ext4_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
-  3337                                loff_t offset)
-  3338  {
-  3339          struct file *file = iocb->ki_filp;
-  3340          struct inode *inode = file->f_mapping->host;
-  3341          size_t count = iov_iter_count(iter);
-  3342          ssize_t ret;
-  3343  
-  3344          if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode)) {
-  3345                  if (iov_iter_rw(iter) == WRITE)
-                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-Checked.
+	if (order >= MAX_ORDER) {
+		WARN_ON_ONCE(!(gfp_mask & __GFP_NOWARN));
 
-  3346                          return 0;
-  3347                  if (test_opt(inode->i_sb, CIPHERTEXT_ACCESS) &&
-  3348                      capable(CAP_SYS_ADMIN)) {
-  3349                          if (iov_iter_rw(iter) == WRITE)
-                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
-Checked again but we know that it's not true.
+and the call into the memory allocator is coming from ext4_find_extent():
 
-  3350                                  return -EPERM;
-  3351                  } else
-  3352                          return 0;
-  3353          }
+	if (!path) {
+		/* account possible depth increase */
+		path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 2),
+			GFP_NOFS);
 
-regards,
-dan carpenter
+The problem is that the 'depth' variable is a plain 'short', whereas
+the value from the inode is a unsigned 16-bit number; in my case, its
+value was -3328.
+
+Simply changing the depth variable to be unsigned short is not
+advisable, as that could still break on edge cases like 0xffff in the
+subsequent loop without extra care.
+
+Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
+Cc: Quentin Casasnovas <quentin.casasnovas@oracle.com>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/extents.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git fs/ext4/extents.c fs/ext4/extents.c
+index 551353b..a069cff 100644
+--- fs/ext4/extents.c
++++ fs/ext4/extents.c
+@@ -863,7 +863,7 @@ ext4_find_extent(struct inode *inode, ext4_lblk_t block,
+ 	struct ext4_extent_header *eh;
+ 	struct buffer_head *bh;
+ 	struct ext4_ext_path *path = orig_path ? *orig_path : NULL;
+-	short int depth, i, ppos = 0;
++	int depth, i, ppos = 0;
+ 	int ret;
+ 
+ 	eh = ext_inode_hdr(inode);
+-- 
+1.9.1
