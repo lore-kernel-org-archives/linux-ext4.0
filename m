@@ -1,84 +1,63 @@
-From: Vegard Nossum <vegard.nossum@oracle.com>
-Subject: [PATCH] ext4: fix ext4_find_extent() allocation with order >= MAX_ORDER
-Date: Mon, 14 Dec 2015 00:47:12 +0100
-Message-ID: <1450050432-16248-1-git-send-email-vegard.nossum@oracle.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Vegard Nossum <vegard.nossum@oracle.com>,
-	Quentin Casasnovas <quentin.casasnovas@oracle.com>,
-	stable@vger.kernel.org
-To: tytso@mit.edu, adilger.kernel@dilger.ca
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 109331] New: EXT4-fs (sda1): couldn't mount as ext3 due to
+ feature incompatibilities
+Date: Mon, 14 Dec 2015 04:26:05 +0000
+Message-ID: <bug-109331-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:56137 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752167AbbLNE0I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 13 Dec 2015 23:26:08 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 27B07204FC
+	for <linux-ext4@vger.kernel.org>; Mon, 14 Dec 2015 04:26:07 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id AA782204D9
+	for <linux-ext4@vger.kernel.org>; Mon, 14 Dec 2015 04:26:05 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Mounting a fuzzed ext4 image on a recent linus/master I see the
-following warning:
+https://bugzilla.kernel.org/show_bug.cgi?id=109331
 
-[ 2.370000] ------------[ cut here ]------------
-[ 2.370000] WARNING: CPU: 0 PID: 1005 at mm/page_alloc.c:2989 __alloc_pages_nodemask+0x1afe/0x1d90()
-[ 2.370000] Kernel panic - not syncing: panic_on_warn set ...
-[ 2.370000]
-[ 2.370000] CPU: 0 PID: 1005 Comm: ext4.exe Not tainted 4.4.0-rc4 #1
-[ 2.370000] Stack:
-[ 2.370000] e0eed440 601097ab 00000000 6187e780
-[ 2.370000] 611ba838 601ada46 e0eed460 60acf851
-[ 2.370000] 60acf814 60aef320 e0eed580 601ad587
-[ 2.370000] Call Trace:
-[ 2.370000] [<6005852e>] show_stack+0x1fe/0x430
-[ 2.370000] [<60acf851>] dump_stack+0x3d/0x4c
-[ 2.370000] [<601ad587>] panic+0x206/0x5be
-[ 2.370000] [<60089923>] warn_slowpath_common+0x1e3/0x1f0
-[ 2.370000] [<60089b84>] warn_slowpath_null+0x34/0x40
-[ 2.370000] [<601c48ce>] __alloc_pages_nodemask+0x1afe/0x1d90
-[ 2.370000] [<601c4f0f>] alloc_kmem_pages+0x2f/0x40
-[ 2.370000] [<601f6e12>] kmalloc_order+0x32/0xc0
-[ 2.370000] [<60246270>] __kmalloc+0x340/0x450
-[ 2.370000] [<604469b4>] ext4_find_extent+0x3e4/0x6b0
-[ 2.370000] [<60450074>] ext4_ext_map_blocks+0x84/0x2770
-[ 2.370000] [<603fb68b>] ext4_map_blocks+0xfb/0xd80
-[ 2.370000] [<603fc442>] _ext4_get_block+0x132/0x3c0
-[ 2.370000] [<603fd3ab>] ext4_get_block+0x2b/0x40
-[...]
+            Bug ID: 109331
+           Summary: EXT4-fs (sda1): couldn't mount as ext3 due to feature
+                    incompatibilities
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.4.2
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: 3fdd1e5d@opayq.com
+        Regression: No
 
-This is mm/page_alloc.c:2989 __alloc_pages_nodemask+0x1afe/0x1d90():
+Created attachment 197281
+  --> https://bugzilla.kernel.org/attachment.cgi?id=197281&action=edit
+config-4.3.2
 
-	if (order >= MAX_ORDER) {
-		WARN_ON_ONCE(!(gfp_mask & __GFP_NOWARN));
+I compiled 4.3.2 and when I was looking over the logs I noticed this message in
+dmesg;
 
-and the call into the memory allocator is coming from ext4_find_extent():
+EXT4-fs (sda1): couldn't mount as ext3 due to feature incompatibilities
 
-	if (!path) {
-		/* account possible depth increase */
-		path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 2),
-			GFP_NOFS);
+I personally don't get this message, as to why the kernel is trying to mount
+ext4 as ext3? Or at least it's the way the message comes across.
 
-The problem is that the 'depth' variable is a plain 'short', whereas
-the value from the inode is a unsigned 16-bit number; in my case, its
-value was -3328.
+Can't say I've ever seen anything like this before in the kernel logs...
 
-Simply changing the depth variable to be unsigned short is not
-advisable, as that could still break on edge cases like 0xffff in the
-subsequent loop without extra care.
+Hmm
 
-Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
-Cc: Quentin Casasnovas <quentin.casasnovas@oracle.com>
-Cc: stable@vger.kernel.org
----
- fs/ext4/extents.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+I've attached my config
 
-diff --git fs/ext4/extents.c fs/ext4/extents.c
-index 551353b..a069cff 100644
---- fs/ext4/extents.c
-+++ fs/ext4/extents.c
-@@ -863,7 +863,7 @@ ext4_find_extent(struct inode *inode, ext4_lblk_t block,
- 	struct ext4_extent_header *eh;
- 	struct buffer_head *bh;
- 	struct ext4_ext_path *path = orig_path ? *orig_path : NULL;
--	short int depth, i, ppos = 0;
-+	int depth, i, ppos = 0;
- 	int ret;
- 
- 	eh = ext_inode_hdr(inode);
 -- 
-1.9.1
+You are receiving this mail because:
+You are watching the assignee of the bug.
