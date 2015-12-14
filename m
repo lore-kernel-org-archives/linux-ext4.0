@@ -1,46 +1,107 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 109331] EXT4-fs (sda1): couldn't mount as ext3 due to feature
- incompatibilities
-Date: Mon, 14 Dec 2015 16:12:58 +0000
-Message-ID: <bug-109331-13602-M8aoWcluGs@https.bugzilla.kernel.org/>
-References: <bug-109331-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:42832 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751591AbbLNQNB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Dec 2015 11:13:01 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 1EF86203AE
-	for <linux-ext4@vger.kernel.org>; Mon, 14 Dec 2015 16:13:00 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id C4198203C4
-	for <linux-ext4@vger.kernel.org>; Mon, 14 Dec 2015 16:12:58 +0000 (UTC)
-In-Reply-To: <bug-109331-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Vegard Nossum <vegard.nossum@oracle.com>
+Subject: [PATCH] ext4: handle errors during orphan cleanup
+Date: Mon, 14 Dec 2015 18:59:15 +0100
+Message-ID: <1450115955-11537-1-git-send-email-vegard.nossum@oracle.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Vegard Nossum <vegard.nossum@oracle.com>
+To: tytso@mit.edu, adilger.kernel@dilger.ca
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D109331
+If a filesystem is mounted with errors=remount-ro, then orphan cleanup
+can enter an infinite loop since the iput() inside the linked list
+traversal doesn't actually always cause es->s_last_orphan to advance to
+the next orphan inode (i.e. in case of errors).
 
-Huaitong Han <oenhan@gmail.com> changed:
+The bug manifests in two different ways. It's an endless spew of either:
 
-           What    |Removed                     |Added
------------------------------------------------------------------------=
------
-                 CC|                            |oenhan@gmail.com
+  EXT4-fs (loop0): Inode 5 (ffff8800153ed720): orphan list check failed!
+  [...]
+  CPU: 1 PID: 957 Comm: mount Not tainted 4.4.0-rc3+ #244
+   ffffffff820ac0c0 ffff88001562f868 ffffffff81610cc9 ffff8800153ed7e0
+   ffff88001562f8a0 ffffffff8133097a 00000000000003e8 ffffffff00000001
+   ffff8800153ed7e0 ffffffff820ac0c0 ffff8800153ed880 ffff88001562f8c0
+  Call Trace:
+   [<ffffffff81610cc9>] dump_stack+0x44/0x5b
+   [<ffffffff8133097a>] ext4_destroy_inode+0xba/0xc0
+   [<ffffffff8125440f>] destroy_inode+0x5f/0x80
+   [<ffffffff81254d75>] evict+0x1e5/0x270
+   [<ffffffff81256217>] iput+0x297/0x350
+   [<ffffffff813393c5>] ext4_fill_super+0x4fa5/0x53b0
+  [...]
 
---- Comment #3 from Huaitong Han <oenhan@gmail.com> ---
-what's the result of executing =E2=80=9Cfile -s /dev/sda1=E2=80=9D ? I =
-guess sda1 filesystem is
-ext3.
+or:
 
---=20
-You are receiving this mail because:
-You are watching the assignee of the bug.--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+  WARNING: CPU: 0 PID: 924 at lib/list_debug.c:36 __list_add+0xf9/0x100()
+  list_add double add: new=00000000dfba0070, prev=00000000dffba970, next=00000000dfba0070.
+  CPU: 0 PID: 924 Comm: mount.exe Tainted: G        W       4.4.0-rc3 #1
+  Stack:
+   df7f59b0 60075642 6071c3ae 00000009
+   df7f5a30 600bc4fe df7f59c0 603f1e5f
+   df7f5a20 600412cd df7f59e0 6040d859
+  Call Trace:
+   [<60029f9b>] show_stack+0xdb/0x1a0
+   [<603f1e5f>] dump_stack+0x2a/0x3b
+   [<600412cd>] warn_slowpath_common+0x9d/0xf0
+   [<600413f4>] warn_slowpath_fmt+0x94/0xa0
+   [<6040d859>] __list_add+0xf9/0x100
+   [<601b28d4>] ext4_fill_super+0x3e04/0x4040
+  [...]
+
+This was the smallest change I could find that still covers all the
+cases I ran into. It probably also makes sense intuitively to not
+continue orphan cleanup if there was an error in the meantime.
+
+Thanks to Jamie and Quentin for helping with the debugging.
+
+Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
+Cc: Jamie Iles <jamie.iles@oracle.com>
+Cc: Quentin Casasnovas <quentin.casasnovas@oracle.com>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/super.c | 22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
+
+diff --git fs/ext4/super.c fs/ext4/super.c
+index c9ab67d..8952fcc 100644
+--- fs/ext4/super.c
++++ fs/ext4/super.c
+@@ -2206,17 +2206,6 @@ static void ext4_orphan_cleanup(struct super_block *sb,
+ 		return;
+ 	}
+ 
+-	if (EXT4_SB(sb)->s_mount_state & EXT4_ERROR_FS) {
+-		/* don't clear list on RO mount w/ errors */
+-		if (es->s_last_orphan && !(s_flags & MS_RDONLY)) {
+-			ext4_msg(sb, KERN_INFO, "Errors on filesystem, "
+-				  "clearing orphan list.\n");
+-			es->s_last_orphan = 0;
+-		}
+-		jbd_debug(1, "Skipping orphan recovery on fs with errors.\n");
+-		return;
+-	}
+-
+ 	if (s_flags & MS_RDONLY) {
+ 		ext4_msg(sb, KERN_INFO, "orphan cleanup on readonly fs");
+ 		sb->s_flags &= ~MS_RDONLY;
+@@ -2239,6 +2228,17 @@ static void ext4_orphan_cleanup(struct super_block *sb,
+ 	while (es->s_last_orphan) {
+ 		struct inode *inode;
+ 
++		if (EXT4_SB(sb)->s_mount_state & EXT4_ERROR_FS) {
++			/* don't clear list on RO mount w/ errors */
++			if (es->s_last_orphan && !(s_flags & MS_RDONLY)) {
++				ext4_msg(sb, KERN_INFO, "Errors on filesystem, "
++					  "clearing orphan list.\n");
++				es->s_last_orphan = 0;
++			}
++			jbd_debug(1, "Skipping rest of orphan recovery on fs with errors.\n");
++			break;
++		}
++
+ 		inode = ext4_orphan_get(sb, le32_to_cpu(es->s_last_orphan));
+ 		if (IS_ERR(inode)) {
+ 			es->s_last_orphan = 0;
+-- 
+1.9.1
