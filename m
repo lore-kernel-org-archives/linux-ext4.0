@@ -1,129 +1,52 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/6] ext[24]: MBCache rewrite
-Date: Mon, 14 Dec 2015 22:14:10 +0100
-Message-ID: <20151214211410.GP8474@quack.suse.cz>
-References: <1449683858-28936-1-git-send-email-jack@suse.cz>
- <CAHpGcMKvyBqouqaq7zhCrxDCjW3vq_GE_wfoDyK00=ppPeYWzQ@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 109331] EXT4-fs (sda1): couldn't mount as ext3 due to feature
+ incompatibilities
+Date: Mon, 14 Dec 2015 21:19:27 +0000
+Message-ID: <bug-109331-13602-B9gl8Udf9Q@https.bugzilla.kernel.org/>
+References: <bug-109331-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, Laurent GUERBY <laurent@guerby.net>,
-	Andreas Dilger <adilger@dilger.ca>
-To: Andreas =?iso-8859-1?Q?Gr=FCnbacher?=
-	<andreas.gruenbacher@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36412 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.29.136]:35601 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932290AbbLNVOM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Dec 2015 16:14:12 -0500
-Content-Disposition: inline
-In-Reply-To: <CAHpGcMKvyBqouqaq7zhCrxDCjW3vq_GE_wfoDyK00=ppPeYWzQ@mail.gmail.com>
+	id S932207AbbLNVTc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Dec 2015 16:19:32 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 69D4C202AE
+	for <linux-ext4@vger.kernel.org>; Mon, 14 Dec 2015 21:19:31 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 30126202C8
+	for <linux-ext4@vger.kernel.org>; Mon, 14 Dec 2015 21:19:28 +0000 (UTC)
+In-Reply-To: <bug-109331-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+https://bugzilla.kernel.org/show_bug.cgi?id=109331
 
-On Sat 12-12-15 00:57:01, Andreas Gr=FCnbacher wrote:
-> 2015-12-09 18:57 GMT+01:00 Jan Kara <jack@suse.cz>:
-> > Hello,
-> >
-> > inspired by recent reports [1] of problems with mbcache I had a loo=
-k into what
-> > we could to improve it. I found the current code rather overenginee=
-red
-> > (counting with single entry being in several indices, having homegr=
-own
-> > implementation of rw semaphore, ...).
-> >
-> > After some thinking I've decided to just reimplement mbcache instea=
-d of
-> > improving the original code in small steps since the fundamental ch=
-anges in
-> > locking and layout would be actually harder to review in small step=
-s than in
-> > one big chunk and overall the new mbcache is actually pretty simple=
- piece of
-> > code (~450 lines).
-> >
-> > The result of rewrite is smaller code (almost half the original siz=
-e), smaller
-> > cache entries (7 longs instead of 13), and better performance (see =
-below
-> > for details).
->=20
-> I agree that mbcache has scalability problems worth fixing; you may
-> also be right about replacing instead of fixing it.
->=20
-> I would prefer an actual replacement over adding mbcache2 though: the
-> two existing users will be converted immediately; there is no point i=
-n
-> keeping the old version around. For that, can the current mbcache be
-> converted to the API of the new one in a separate patch first (alloc =
-+
-> insert vs. create, get + release/free vs. delete_block)?
+--- Comment #4 from KernelBug <3fdd1e5d@opayq.com> ---
+I'm running Slackware 14.1 x86_64 I formatted during the install as ext4.
 
-Well, conversion into the new API isn't that trivial because of the
-lifetime / locking differences. If people prefer it, I can add a patch =
-that
-just renames everything from mb2 to mb after the old code is removed.
-Opinions?
 
-> The corner cases that mbcache has problems with are:
->=20
-> (1) Many files with the same xattrs: Right now, an xattr block can be
-> shared among at most EXT[24]_XATTR_REFCOUNT_MAX =3D 2^10 inodes. If 2=
-^20
+file -s /dev/sda1
 
-Do you know why there's this limit BTW? The on-disk format can support =
-upto
-2^32 references...
+/dev/sda1: Linux rev 1.0 ext4 filesystem data,
+UUID=7d75a56d-fa34-48c5-a278-45ede11df261 (needs journal recovery) (extents)
+(large files) (huge files)
 
-> inodes are cached, they will have at least 2^10 xattr blocks, all of
-> which will end up in the same hash chain. An xattr block should be
-> removed from the mbcache once it has reached its maximum refcount, bu=
-t
-> if I haven't overlooked something, this doesn't happen right now.
-> Fixing that should be relatively easy.
+I don't claim to know everything as a Slacker, LOL, so either I forgot, or
+didn't realize that the kernel is going to try each FS until it finds the one
+compiled in.
 
-Yeah, that sounds like a good optimization. I'll try that.
+Either way, this message shouldn't be appearing, telling us what we know
+already, which is of course you can't load ext3 when you have it compiled for
+ext4, such a pointless message...
 
-> (2) Very many files with unique xattrs. We might be able to come up
-> with a reasonable heuristic or tweaking knob for detecting this case;
-> if not, we could at least use a resizable hash table to keep the hash
-> chains reasonably short.
+Please let's get this fixed or silenced...
 
-So far we limit number of entries in the cache which keeps hash chains
-short as well. Using resizable hash table and letting the system balanc=
-e
-number of cached entries just by shrinker is certainly possible however=
- I'm
-not sure whether the complexity is really worth it.
+thanks
 
-Regarding detection of unique xattrs: We could certainly detect trashin=
-g
-of mbcache relatively easily. The difficult part if how to detect when =
-to
-enable it again because the workload can change. I'm thinking about som=
-e
-backoff mechanism like caching only each k-th entry asked to be inserte=
-d
-(starting with k =3D 1) and doubling k if we don't reach some low-water=
-mark
-cache hit ratio in some number of cache lookups, reducing k to half if
-we reach high-watermark cache hit ratio. However again I'm not yet
-convinced complex schemes like this are worth it for mbcache (although =
-it
-might be interesting research topic as such) and so I didn't try anythi=
-ng
-like this for the initial posting.
-
-								Honza
---=20
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
