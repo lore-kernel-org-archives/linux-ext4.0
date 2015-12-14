@@ -1,74 +1,315 @@
-From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
-Subject: Re: [PATCH 0/6] ext[24]: MBCache rewrite
-Date: Mon, 14 Dec 2015 23:47:31 +0100
-Message-ID: <CAHpGcMLo2ScBw4E6x4ZVd+o5VX5toL0SqAH04Jb+ucnm5C84hA@mail.gmail.com>
-References: <1449683858-28936-1-git-send-email-jack@suse.cz>
-	<CAHpGcMKvyBqouqaq7zhCrxDCjW3vq_GE_wfoDyK00=ppPeYWzQ@mail.gmail.com>
-	<20151214211410.GP8474@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Laurent GUERBY <laurent@guerby.net>,
-	Andreas Dilger <adilger@dilger.ca>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f44.google.com ([74.125.82.44]:35564 "EHLO
-	mail-wm0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752546AbbLNWrd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Dec 2015 17:47:33 -0500
-Received: by mail-wm0-f44.google.com with SMTP id p66so66422150wmp.0
-        for <linux-ext4@vger.kernel.org>; Mon, 14 Dec 2015 14:47:32 -0800 (PST)
-In-Reply-To: <20151214211410.GP8474@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: [PATCH v4 4/7] dax: add support for fsync/sync
+Date: Mon, 14 Dec 2015 16:31:43 -0700
+Message-ID: <1450135903-20313-1-git-send-email-ross.zwisler@linux.intel.com>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	"H. Peter Anvin" <hpa@zytor.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Dave Chinner <david@fromorbit.com>,
+	Ingo Molnar <mingo@redhat.com>,
+	Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org,
+	x86@kernel.org,
+	xfs@oss.sgi.com,
+	Jeff Moyer <jmoyer@redhat.com>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Dave Hansen <dave.hansen@linux.intel.com>
+To: linux-kernel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Jan,
+To properly handle fsync/msync in an efficient way DAX needs to track dirty
+pages so it is able to flush them durably to media on demand.
 
-2015-12-14 22:14 GMT+01:00 Jan Kara <jack@suse.cz>:
->> (1) Many files with the same xattrs: Right now, an xattr block can be
->> shared among at most EXT[24]_XATTR_REFCOUNT_MAX = 2^10 inodes. If 2^20
->
-> Do you know why there's this limit BTW? The on-disk format can support upto
-> 2^32 references...
+The tracking of dirty pages is done via the radix tree in struct
+address_space.  This radix tree is already used by the page writeback
+infrastructure for tracking dirty pages associated with an open file, and
+it already has support for exceptional (non struct page*) entries.  We
+build upon these features to add exceptional entries to the radix tree for
+DAX dirty PMD or PTE pages at fault time.
 
-the idea behind that is to limit the damage that a single bad block can cause.
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+---
 
->> inodes are cached, they will have at least 2^10 xattr blocks, all of
->> which will end up in the same hash chain. An xattr block should be
->> removed from the mbcache once it has reached its maximum refcount, but
->> if I haven't overlooked something, this doesn't happen right now.
->> Fixing that should be relatively easy.
->
-> Yeah, that sounds like a good optimization. I'll try that.
->
->> (2) Very many files with unique xattrs. We might be able to come up
->> with a reasonable heuristic or tweaking knob for detecting this case;
->> if not, we could at least use a resizable hash table to keep the hash
->> chains reasonably short.
->
-> So far we limit number of entries in the cache which keeps hash chains
-> short as well. Using resizable hash table and letting the system balance
-> number of cached entries just by shrinker is certainly possible however I'm
-> not sure whether the complexity is really worth it.
->
-> Regarding detection of unique xattrs: We could certainly detect trashing
-> of mbcache relatively easily. The difficult part if how to detect when to
-> enable it again because the workload can change. I'm thinking about some
-> backoff mechanism like caching only each k-th entry asked to be inserted
-> (starting with k = 1) and doubling k if we don't reach some low-watermark
-> cache hit ratio in some number of cache lookups, reducing k to half if
-> we reach high-watermark cache hit ratio.
+For v4 I'm just sending out this one changed patch in an effort to not spam
+everyone.
 
-Such a heuristic would probably start in the same state after each
-reboot, so frequent reboots would lead to bad performance. Something
-as dumb as a configurable list of unsharable xattr names would allow
-to tune things without such problems and without adding much
-complexity.
+Changes since v3:
 
-No matter what we end up doing here, mostly-unique xattrs on separate
-blocks will always lead to bad performance compared to in-inode
-xattrs. Some wasted memory for the mbcache is not the main problem
-here.
+- Rebased on top of ext4/master which provides the patches from Jan which I'm
+  building upon.  The rebased tree can be found here: 
 
-Thanks,
-Andreas
+https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=fsync_v4
+
+- Removed a WARN_ONCE() and added a comment for the case where we can get a
+  dax_pfn_mkwrite() call that has lost a race with a hole punch operation.  
+
+---
+ fs/dax.c            | 159 ++++++++++++++++++++++++++++++++++++++++++++++++++--
+ include/linux/dax.h |   2 +
+ mm/filemap.c        |   3 +
+ 3 files changed, 158 insertions(+), 6 deletions(-)
+
+diff --git a/fs/dax.c b/fs/dax.c
+index 43671b6..19347cf 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -24,6 +24,7 @@
+ #include <linux/memcontrol.h>
+ #include <linux/mm.h>
+ #include <linux/mutex.h>
++#include <linux/pagevec.h>
+ #include <linux/pmem.h>
+ #include <linux/sched.h>
+ #include <linux/uio.h>
+@@ -289,6 +290,143 @@ static int copy_user_bh(struct page *to, struct buffer_head *bh,
+ 	return 0;
+ }
+ 
++static int dax_radix_entry(struct address_space *mapping, pgoff_t index,
++		void __pmem *addr, bool pmd_entry, bool dirty)
++{
++	struct radix_tree_root *page_tree = &mapping->page_tree;
++	int error = 0;
++	void *entry;
++
++	__mark_inode_dirty(mapping->host, I_DIRTY_PAGES);
++
++	spin_lock_irq(&mapping->tree_lock);
++	entry = radix_tree_lookup(page_tree, index);
++
++	if (entry) {
++		if (!pmd_entry || RADIX_DAX_TYPE(entry) == RADIX_DAX_PMD)
++			goto dirty;
++		radix_tree_delete(&mapping->page_tree, index);
++		mapping->nrdax--;
++	}
++
++	if (!addr) {
++		/*
++		 * This can happen during correct operation if our pfn_mkwrite
++		 * fault raced against a hole punch operation.  If this
++		 * happens the pte that was hole punched will have been
++		 * unmapped and the radix tree entry will have been removed by
++		 * the time we are called, but the call will still happen.  We
++		 * will return all the way up to wp_pfn_shared(), where the
++		 * pte_same() check will fail, eventually causing page fault
++		 * to be retried by the CPU.
++		 */
++		goto unlock;
++	} else if (RADIX_DAX_TYPE(addr)) {
++		WARN_ONCE(1, "%s: invalid address %p\n", __func__, addr);
++		goto unlock;
++	}
++
++	error = radix_tree_insert(page_tree, index,
++			RADIX_DAX_ENTRY(addr, pmd_entry));
++	if (error)
++		goto unlock;
++
++	mapping->nrdax++;
++ dirty:
++	if (dirty)
++		radix_tree_tag_set(page_tree, index, PAGECACHE_TAG_DIRTY);
++ unlock:
++	spin_unlock_irq(&mapping->tree_lock);
++	return error;
++}
++
++static void dax_writeback_one(struct address_space *mapping, pgoff_t index,
++		void *entry)
++{
++	struct radix_tree_root *page_tree = &mapping->page_tree;
++	int type = RADIX_DAX_TYPE(entry);
++	struct radix_tree_node *node;
++	void **slot;
++
++	if (type != RADIX_DAX_PTE && type != RADIX_DAX_PMD) {
++		WARN_ON_ONCE(1);
++		return;
++	}
++
++	spin_lock_irq(&mapping->tree_lock);
++	/*
++	 * Regular page slots are stabilized by the page lock even
++	 * without the tree itself locked.  These unlocked entries
++	 * need verification under the tree lock.
++	 */
++	if (!__radix_tree_lookup(page_tree, index, &node, &slot))
++		goto unlock;
++	if (*slot != entry)
++		goto unlock;
++
++	/* another fsync thread may have already written back this entry */
++	if (!radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_TOWRITE))
++		goto unlock;
++
++	radix_tree_tag_clear(page_tree, index, PAGECACHE_TAG_TOWRITE);
++
++	if (type == RADIX_DAX_PMD)
++		wb_cache_pmem(RADIX_DAX_ADDR(entry), PMD_SIZE);
++	else
++		wb_cache_pmem(RADIX_DAX_ADDR(entry), PAGE_SIZE);
++ unlock:
++	spin_unlock_irq(&mapping->tree_lock);
++}
++
++/*
++ * Flush the mapping to the persistent domain within the byte range of [start,
++ * end]. This is required by data integrity operations to ensure file data is
++ * on persistent storage prior to completion of the operation.
++ */
++void dax_writeback_mapping_range(struct address_space *mapping, loff_t start,
++		loff_t end)
++{
++	struct inode *inode = mapping->host;
++	pgoff_t indices[PAGEVEC_SIZE];
++	pgoff_t start_page, end_page;
++	struct pagevec pvec;
++	void *entry;
++	int i;
++
++	if (inode->i_blkbits != PAGE_SHIFT) {
++		WARN_ON_ONCE(1);
++		return;
++	}
++
++	rcu_read_lock();
++	entry = radix_tree_lookup(&mapping->page_tree, start & PMD_MASK);
++	rcu_read_unlock();
++
++	/* see if the start of our range is covered by a PMD entry */
++	if (entry && RADIX_DAX_TYPE(entry) == RADIX_DAX_PMD)
++		start &= PMD_MASK;
++
++	start_page = start >> PAGE_CACHE_SHIFT;
++	end_page = end >> PAGE_CACHE_SHIFT;
++
++	tag_pages_for_writeback(mapping, start_page, end_page);
++
++	pagevec_init(&pvec, 0);
++	while (1) {
++		pvec.nr = find_get_entries_tag(mapping, start_page,
++				PAGECACHE_TAG_TOWRITE, PAGEVEC_SIZE,
++				pvec.pages, indices);
++
++		if (pvec.nr == 0)
++			break;
++
++		for (i = 0; i < pvec.nr; i++)
++			dax_writeback_one(mapping, indices[i], pvec.pages[i]);
++	}
++	wmb_pmem();
++}
++EXPORT_SYMBOL_GPL(dax_writeback_mapping_range);
++
+ static int dax_insert_mapping(struct inode *inode, struct buffer_head *bh,
+ 			struct vm_area_struct *vma, struct vm_fault *vmf)
+ {
+@@ -329,7 +467,11 @@ static int dax_insert_mapping(struct inode *inode, struct buffer_head *bh,
+ 	}
+ 
+ 	error = vm_insert_mixed(vma, vaddr, pfn);
++	if (error)
++		goto out;
+ 
++	error = dax_radix_entry(mapping, vmf->pgoff, addr, false,
++			vmf->flags & FAULT_FLAG_WRITE);
+  out:
+ 	i_mmap_unlock_read(mapping);
+ 
+@@ -452,6 +594,7 @@ int __dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 		delete_from_page_cache(page);
+ 		unlock_page(page);
+ 		page_cache_release(page);
++		page = NULL;
+ 	}
+ 
+ 	/*
+@@ -539,7 +682,7 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+ 	pgoff_t size, pgoff;
+ 	sector_t block, sector;
+ 	unsigned long pfn;
+-	int result = 0;
++	int error, result = 0;
+ 
+ 	/* dax pmd mappings are broken wrt gup and fork */
+ 	if (!IS_ENABLED(CONFIG_FS_DAX_PMD))
+@@ -651,6 +794,13 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+ 		}
+ 
+ 		result |= vmf_insert_pfn_pmd(vma, address, pmd, pfn, write);
++
++		if (write) {
++			error = dax_radix_entry(mapping, pgoff, kaddr, true,
++					true);
++			if (error)
++				goto fallback;
++		}
+ 	}
+ 
+  out:
+@@ -702,15 +852,12 @@ EXPORT_SYMBOL_GPL(dax_pmd_fault);
+  * dax_pfn_mkwrite - handle first write to DAX page
+  * @vma: The virtual memory area where the fault occurred
+  * @vmf: The description of the fault
+- *
+  */
+ int dax_pfn_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ {
+-	struct super_block *sb = file_inode(vma->vm_file)->i_sb;
++	struct file *file = vma->vm_file;
+ 
+-	sb_start_pagefault(sb);
+-	file_update_time(vma->vm_file);
+-	sb_end_pagefault(sb);
++	dax_radix_entry(file->f_mapping, vmf->pgoff, NULL, false, true);
+ 	return VM_FAULT_NOPAGE;
+ }
+ EXPORT_SYMBOL_GPL(dax_pfn_mkwrite);
+diff --git a/include/linux/dax.h b/include/linux/dax.h
+index e9d57f68..11eb183 100644
+--- a/include/linux/dax.h
++++ b/include/linux/dax.h
+@@ -41,4 +41,6 @@ static inline bool dax_mapping(struct address_space *mapping)
+ {
+ 	return mapping->host && IS_DAX(mapping->host);
+ }
++void dax_writeback_mapping_range(struct address_space *mapping, loff_t start,
++		loff_t end);
+ #endif
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 99dfbc9..9577783 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -482,6 +482,9 @@ int filemap_write_and_wait_range(struct address_space *mapping,
+ {
+ 	int err = 0;
+ 
++	if (dax_mapping(mapping) && mapping->nrdax)
++		dax_writeback_mapping_range(mapping, lstart, lend);
++
+ 	if (mapping->nrpages) {
+ 		err = __filemap_fdatawrite_range(mapping, lstart, lend,
+ 						 WB_SYNC_ALL);
+-- 
+2.5.0
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
