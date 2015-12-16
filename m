@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/7] mbcache2: Reimplement mbcache
-Date: Wed, 16 Dec 2015 18:00:18 +0100
-Message-ID: <1450285224-1525-2-git-send-email-jack@suse.cz>
+Subject: [PATCH 2/7] ext4: Convert to mbcache2
+Date: Wed, 16 Dec 2015 18:00:19 +0100
+Message-ID: <1450285224-1525-3-git-send-email-jack@suse.cz>
 References: <1450285224-1525-1-git-send-email-jack@suse.cz>
 Cc: =?UTF-8?q?Andreas=20Gr=C3=BCnbacher?=
 	<andreas.gruenbacher@gmail.com>,
@@ -10,518 +10,394 @@ Cc: =?UTF-8?q?Andreas=20Gr=C3=BCnbacher?=
 	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:60149 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:60148 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966042AbbLPRAh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S966018AbbLPRAh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 16 Dec 2015 12:00:37 -0500
 In-Reply-To: <1450285224-1525-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Original mbcache was designed to have more features than what ext?
-filesystems ended up using. It supported entry being in more hashes, it
-had a home-grown rwlocking of each entry, and one cache could cache
-entries from multiple filesystems. This genericity also resulted in more
-complex locking, larger cache entries, and generally more code
-complexity.
-
-This is reimplementation of the mbcache functionality to exactly fit the
-purpose ext? filesystems use it for. Cache entries are now considerably
-smaller (7 instead of 13 longs), the code is considerably smaller as
-well (414 vs 913 lines of code), and IMO also simpler. The new code is
-also much more lightweight.
-
-I have measured the speed using artificial xattr-bench benchmark, which
-spawns P processes, each process sets xattr for F different files, and
-the value of xattr is randomly chosen from a pool of V values. Averages
-of runtimes for 5 runs for various combinations of parameters are below.
-The first value in each cell is old mbache, the second value is the new
-mbcache.
-
-V=10
-F\P	1		2		4		8		16		32		64
-10	0.158,0.157	0.208,0.196	0.500,0.277	0.798,0.400	3.258,0.584	13.807,1.047	61.339,2.803
-100	0.172,0.167	0.279,0.222	0.520,0.275	0.825,0.341	2.981,0.505	12.022,1.202	44.641,2.943
-1000	0.185,0.174	0.297,0.239	0.445,0.283	0.767,0.340	2.329,0.480	6.342,1.198	16.440,3.888
-
-V=100
-F\P	1		2		4		8		16		32		64
-10	0.162,0.153	0.200,0.186	0.362,0.257	0.671,0.496	1.433,0.943	3.801,1.345	7.938,2.501
-100	0.153,0.160	0.221,0.199	0.404,0.264	0.945,0.379	1.556,0.485	3.761,1.156	7.901,2.484
-1000	0.215,0.191	0.303,0.246	0.471,0.288	0.960,0.347	1.647,0.479	3.916,1.176	8.058,3.160
-
-V=1000
-F\P	1		2		4		8		16		32		64
-10	0.151,0.129	0.210,0.163	0.326,0.245	0.685,0.521	1.284,0.859	3.087,2.251	6.451,4.801
-100	0.154,0.153	0.211,0.191	0.276,0.282	0.687,0.506	1.202,0.877	3.259,1.954	8.738,2.887
-1000	0.145,0.179	0.202,0.222	0.449,0.319	0.899,0.333	1.577,0.524	4.221,1.240	9.782,3.579
-
-V=10000
-F\P	1		2		4		8		16		32		64
-10	0.161,0.154	0.198,0.190	0.296,0.256	0.662,0.480	1.192,0.818	2.989,2.200	6.362,4.746
-100	0.176,0.174	0.236,0.203	0.326,0.255	0.696,0.511	1.183,0.855	4.205,3.444	19.510,17.760
-1000	0.199,0.183	0.240,0.227	1.159,1.014	2.286,2.154	6.023,6.039	---,10.933	---,36.620
-
-V=100000
-F\P	1		2		4		8		16		32		64
-10	0.171,0.162	0.204,0.198	0.285,0.230	0.692,0.500	1.225,0.881	2.990,2.243	6.379,4.771
-100	0.151,0.171	0.220,0.210	0.295,0.255	0.720,0.518	1.226,0.844	3.423,2.831	19.234,17.544
-1000	0.192,0.189	0.249,0.225	1.162,1.043	2.257,2.093	5.853,4.997	---,10.399	---,32.198
-
-We see that the new code is faster in pretty much all the cases and
-starting from 4 processes there are significant gains with the new code
-resulting in upto 20-times shorter runtimes. Also for large numbers of
-cached entries all values for the old code could not be measured as the
-kernel started hitting softlockups and died before the test completed.
+The conversion is generally straightforward. The only tricky part is
+that xattr block corresponding to found mbcache entry can get freed
+before we get buffer lock for that block. So we have to check whether
+the entry is still valid after getting buffer lock.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/Makefile              |   2 +-
- fs/mbcache2.c            | 362 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/mbcache2.h |  52 +++++++
- 3 files changed, 415 insertions(+), 1 deletion(-)
- create mode 100644 fs/mbcache2.c
- create mode 100644 include/linux/mbcache2.h
+ fs/ext4/ext4.h  |   2 +-
+ fs/ext4/super.c |   7 ++-
+ fs/ext4/xattr.c | 135 +++++++++++++++++++++++++++++---------------------------
+ fs/ext4/xattr.h |   5 +--
+ 4 files changed, 77 insertions(+), 72 deletions(-)
 
-diff --git a/fs/Makefile b/fs/Makefile
-index 79f522575cba..15b3d6c4e46a 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -41,7 +41,7 @@ obj-$(CONFIG_COMPAT_BINFMT_ELF)	+= compat_binfmt_elf.o
- obj-$(CONFIG_BINFMT_ELF_FDPIC)	+= binfmt_elf_fdpic.o
- obj-$(CONFIG_BINFMT_FLAT)	+= binfmt_flat.o
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 750063f7a50c..068a3eaa41ac 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1371,7 +1371,7 @@ struct ext4_sb_info {
+ 	struct list_head s_es_list;	/* List of inodes with reclaimable extents */
+ 	long s_es_nr_inode;
+ 	struct ext4_es_stats s_es_stats;
+-	struct mb_cache *s_mb_cache;
++	struct mb2_cache *s_mb_cache;
+ 	spinlock_t s_es_lock ____cacheline_aligned_in_smp;
  
--obj-$(CONFIG_FS_MBCACHE)	+= mbcache.o
-+obj-$(CONFIG_FS_MBCACHE)	+= mbcache.o mbcache2.o
- obj-$(CONFIG_FS_POSIX_ACL)	+= posix_acl.o
- obj-$(CONFIG_NFS_COMMON)	+= nfs_common/
- obj-$(CONFIG_COREDUMP)		+= coredump.o
-diff --git a/fs/mbcache2.c b/fs/mbcache2.c
-new file mode 100644
-index 000000000000..283c46e62f5f
---- /dev/null
-+++ b/fs/mbcache2.c
-@@ -0,0 +1,362 @@
-+#include <linux/spinlock.h>
-+#include <linux/slab.h>
-+#include <linux/list.h>
-+#include <linux/list_bl.h>
-+#include <linux/module.h>
-+#include <linux/sched.h>
+ 	/* Ratelimit ext4 messages. */
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index c9ab67da6e5a..dbd5b9b9c99a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -814,7 +814,6 @@ static void ext4_put_super(struct super_block *sb)
+ 	ext4_release_system_zone(sb);
+ 	ext4_mb_release(sb);
+ 	ext4_ext_release(sb);
+-	ext4_xattr_put_super(sb);
+ 
+ 	if (!(sb->s_flags & MS_RDONLY)) {
+ 		ext4_clear_feature_journal_needs_recovery(sb);
+@@ -3759,7 +3758,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 
+ no_journal:
+ 	if (ext4_mballoc_ready) {
+-		sbi->s_mb_cache = ext4_xattr_create_cache(sb->s_id);
++		sbi->s_mb_cache = ext4_xattr_create_cache();
+ 		if (!sbi->s_mb_cache) {
+ 			ext4_msg(sb, KERN_ERR, "Failed to create an mb_cache");
+ 			goto failed_mount_wq;
+@@ -3989,6 +3988,10 @@ failed_mount4:
+ 	if (EXT4_SB(sb)->rsv_conversion_wq)
+ 		destroy_workqueue(EXT4_SB(sb)->rsv_conversion_wq);
+ failed_mount_wq:
++	if (sbi->s_mb_cache) {
++		ext4_xattr_destroy_cache(sbi->s_mb_cache);
++		sbi->s_mb_cache = NULL;
++	}
+ 	if (sbi->s_journal) {
+ 		jbd2_journal_destroy(sbi->s_journal);
+ 		sbi->s_journal = NULL;
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 6b6b3e751f8c..a80e5e2acadd 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -53,7 +53,7 @@
+ #include <linux/init.h>
+ #include <linux/fs.h>
+ #include <linux/slab.h>
+-#include <linux/mbcache.h>
 +#include <linux/mbcache2.h>
+ #include <linux/quotaops.h>
+ #include "ext4_jbd2.h"
+ #include "ext4.h"
+@@ -80,10 +80,10 @@
+ # define ea_bdebug(bh, fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
+ #endif
+ 
+-static void ext4_xattr_cache_insert(struct mb_cache *, struct buffer_head *);
++static void ext4_xattr_cache_insert(struct mb2_cache *, struct buffer_head *);
+ static struct buffer_head *ext4_xattr_cache_find(struct inode *,
+ 						 struct ext4_xattr_header *,
+-						 struct mb_cache_entry **);
++						 struct mb2_cache_entry **);
+ static void ext4_xattr_rehash(struct ext4_xattr_header *,
+ 			      struct ext4_xattr_entry *);
+ static int ext4_xattr_list(struct dentry *dentry, char *buffer,
+@@ -278,7 +278,7 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
+ 	struct ext4_xattr_entry *entry;
+ 	size_t size;
+ 	int error;
+-	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
++	struct mb2_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
+ 
+ 	ea_idebug(inode, "name=%d.%s, buffer=%p, buffer_size=%ld",
+ 		  name_index, name, buffer, (long)buffer_size);
+@@ -425,7 +425,7 @@ ext4_xattr_block_list(struct dentry *dentry, char *buffer, size_t buffer_size)
+ 	struct inode *inode = d_inode(dentry);
+ 	struct buffer_head *bh = NULL;
+ 	int error;
+-	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
++	struct mb2_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
+ 
+ 	ea_idebug(inode, "buffer=%p, buffer_size=%ld",
+ 		  buffer, (long)buffer_size);
+@@ -542,11 +542,8 @@ static void
+ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+ 			 struct buffer_head *bh)
+ {
+-	struct mb_cache_entry *ce = NULL;
+ 	int error = 0;
+-	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
+ 
+-	ce = mb_cache_entry_get(ext4_mb_cache, bh->b_bdev, bh->b_blocknr);
+ 	BUFFER_TRACE(bh, "get_write_access");
+ 	error = ext4_journal_get_write_access(handle, bh);
+ 	if (error)
+@@ -554,9 +551,15 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+ 
+ 	lock_buffer(bh);
+ 	if (BHDR(bh)->h_refcount == cpu_to_le32(1)) {
++		__u32 hash = le32_to_cpu(BHDR(bh)->h_hash);
 +
-+/*
-+ * Mbcache is a simple key-value store. Keys need not be unique, however
-+ * key-value pairs are expected to be unique (we use this fact in
-+ * mb2_cache_entry_delete_block()).
-+ *
-+ * Ext2 and ext4 use this cache for deduplication of extended attribute blocks.
-+ * They use hash of a block contents as a key and block number as a value.
-+ * That's why keys need not be unique (different xattr blocks may end up having
-+ * the same hash). However block number always uniquely identifies a cache
-+ * entry.
-+ *
-+ * We provide functions for creation and removal of entries, search by key,
-+ * and a special "delete entry with given key-value pair" operation. Fixed
-+ * size hash table is used for fast key lookups.
-+ */
-+
-+struct mb2_cache {
-+	/* Hash table of entries */
-+	struct hlist_bl_head	*c_hash;
-+	/* log2 of hash table size */
-+	int			c_bucket_bits;
-+	/* Protects c_lru_list, c_entry_count */
-+	spinlock_t		c_lru_list_lock;
-+	struct list_head	c_lru_list;
-+	/* Number of entries in cache */
-+	unsigned long		c_entry_count;
-+	struct shrinker		c_shrink;
-+};
-+
-+static struct kmem_cache *mb2_entry_cache;
-+
-+/*
-+ * mb2_cache_entry_create - create entry in cache
-+ * @cache - cache where the entry should be created
-+ * @mask - gfp mask with which the entry should be allocated
-+ * @key - key of the entry
-+ * @block - block that contains data
-+ *
-+ * Creates entry in @cache with key @key and records that data is stored in
-+ * block @block. The function returns -EBUSY if entry with the same key
-+ * and for the same block already exists in cache. Otherwise reference to
-+ * the created entry is returned.
-+ */
-+struct mb2_cache_entry *mb2_cache_entry_create(struct mb2_cache *cache,
-+					       gfp_t mask,
-+					       unsigned int key,
-+					       sector_t block)
-+{
-+	struct mb2_cache_entry *entry, *dup;
-+	struct hlist_bl_node *dup_node;
-+	struct hlist_bl_head *head;
-+
-+	entry = kmem_cache_alloc(mb2_entry_cache, mask);
-+	if (!entry)
-+		return ERR_PTR(-ENOMEM);
-+
-+	INIT_LIST_HEAD(&entry->e_lru_list);
-+	/* One ref for hash, one ref returned */
-+	atomic_set(&entry->e_refcnt, 2);
-+	entry->e_key = key;
-+	entry->e_block = block;
-+	head = &cache->c_hash[hash_32(key, cache->c_bucket_bits)];
-+	entry->e_hash_list_head = head;
-+	hlist_bl_lock(head);
-+	hlist_bl_for_each_entry(dup, dup_node, head, e_hash_list) {
-+		if (dup->e_key == key && dup->e_block == block) {
-+			hlist_bl_unlock(head);
-+			kmem_cache_free(mb2_entry_cache, entry);
-+			return ERR_PTR(-EBUSY);
-+		}
-+	}
-+	hlist_bl_add_head(&entry->e_hash_list, head);
-+	hlist_bl_unlock(head);
-+
-+	spin_lock(&cache->c_lru_list_lock);
-+	list_add_tail(&entry->e_lru_list, &cache->c_lru_list);
-+	/* Grab ref for LRU list */
-+	atomic_inc(&entry->e_refcnt);
-+	cache->c_entry_count++;
-+	spin_unlock(&cache->c_lru_list_lock);
-+
-+	return entry;
-+}
-+EXPORT_SYMBOL(mb2_cache_entry_create);
-+
-+void __mb2_cache_entry_free(struct mb2_cache_entry *entry)
-+{
-+	kmem_cache_free(mb2_entry_cache, entry);
-+}
-+EXPORT_SYMBOL(__mb2_cache_entry_free);
-+
-+static struct mb2_cache_entry *__entry_find(struct mb2_cache *cache,
-+					    struct mb2_cache_entry *entry,
-+					    unsigned int key)
-+{
-+	struct mb2_cache_entry *old_entry = entry;
-+	struct hlist_bl_node *node;
-+	struct hlist_bl_head *head;
-+
-+	if (entry)
-+		head = entry->e_hash_list_head;
-+	else
-+		head = &cache->c_hash[hash_32(key, cache->c_bucket_bits)];
-+	hlist_bl_lock(head);
-+	if (entry && !hlist_bl_unhashed(&entry->e_hash_list))
-+		node = entry->e_hash_list.next;
-+	else
-+		node = hlist_bl_first(head);
-+	while (node) {
-+		entry = hlist_bl_entry(node, struct mb2_cache_entry,
-+				       e_hash_list);
-+		if (entry->e_key == key) {
-+			atomic_inc(&entry->e_refcnt);
-+			goto out;
-+		}
-+		node = node->next;
-+	}
-+	entry = NULL;
-+out:
-+	hlist_bl_unlock(head);
-+	if (old_entry)
-+		mb2_cache_entry_put(cache, old_entry);
-+
-+	return entry;
-+}
-+
-+/*
-+ * mb2_cache_entry_find_first - find the first entry in cache with given key
-+ * @cache: cache where we should search
-+ * @key: key to look for
-+ *
-+ * Search in @cache for entry with key @key. Grabs reference to the first
-+ * entry found and returns the entry.
-+ */
-+struct mb2_cache_entry *mb2_cache_entry_find_first(struct mb2_cache *cache,
-+						   unsigned int key)
-+{
-+	return __entry_find(cache, NULL, key);
-+}
-+EXPORT_SYMBOL(mb2_cache_entry_find_first);
-+
-+/*
-+ * mb2_cache_entry_find_next - find next entry in cache with the same
-+ * @cache: cache where we should search
-+ * @entry: entry to start search from
-+ *
-+ * Finds next entry in the hash chain which has the same key as @entry.
-+ * If @entry is unhashed (which can happen when deletion of entry races
-+ * with the search), finds the first entry in the hash chain. The function
-+ * drops reference to @entry and returns with a reference to the found entry.
-+ */
-+struct mb2_cache_entry *mb2_cache_entry_find_next(struct mb2_cache *cache,
-+						  struct mb2_cache_entry *entry)
-+{
-+	return __entry_find(cache, entry, entry->e_key);
-+}
-+EXPORT_SYMBOL(mb2_cache_entry_find_next);
-+
-+/* mb2_cache_entry_delete_block - remove information about block from cache
-+ * @cache - cache we work with
-+ * @key - key of the entry to remove
-+ * @block - block containing data for @key
-+ *
-+ * Remove entry from cache @cache with key @key with data stored in @block.
-+ */
-+void mb2_cache_entry_delete_block(struct mb2_cache *cache, unsigned int key,
-+				  sector_t block)
-+{
-+	struct hlist_bl_node *node;
-+	struct hlist_bl_head *head;
-+	struct mb2_cache_entry *entry;
-+
-+	head = &cache->c_hash[hash_32(key, cache->c_bucket_bits)];
-+	hlist_bl_lock(head);
-+	hlist_bl_for_each_entry(entry, node, head, e_hash_list) {
-+		if (entry->e_key == key && entry->e_block == block) {
-+			/* We keep hash list reference to keep entry alive */
-+			hlist_bl_del_init(&entry->e_hash_list);
-+			hlist_bl_unlock(head);
-+			spin_lock(&cache->c_lru_list_lock);
-+			if (!list_empty(&entry->e_lru_list)) {
-+				list_del_init(&entry->e_lru_list);
-+				cache->c_entry_count--;
-+				atomic_dec(&entry->e_refcnt);
-+			}
-+			spin_unlock(&cache->c_lru_list_lock);
-+			mb2_cache_entry_put(cache, entry);
-+			return;
-+		}
-+	}
-+	hlist_bl_unlock(head);
-+}
-+EXPORT_SYMBOL(mb2_cache_entry_delete_block);
-+
-+/* mb2_cache_entry_touch - cache entry got used
-+ * @cache - cache the entry belongs to
-+ * @entry - entry that got used
-+ *
-+ * Move entry in lru list to reflect the fact that it was used.
-+ */
-+void mb2_cache_entry_touch(struct mb2_cache *cache,
-+			   struct mb2_cache_entry *entry)
-+{
-+	spin_lock(&cache->c_lru_list_lock);
-+	if (!list_empty(&entry->e_lru_list))
-+		list_move_tail(&cache->c_lru_list, &entry->e_lru_list);
-+	spin_unlock(&cache->c_lru_list_lock);
-+}
-+EXPORT_SYMBOL(mb2_cache_entry_touch);
-+
-+static unsigned long mb2_cache_count(struct shrinker *shrink,
-+				     struct shrink_control *sc)
-+{
-+	struct mb2_cache *cache = container_of(shrink, struct mb2_cache,
-+					       c_shrink);
-+
-+	return cache->c_entry_count;
-+}
-+
-+/* Shrink number of entries in cache */
-+static unsigned long mb2_cache_scan(struct shrinker *shrink,
-+				    struct shrink_control *sc)
-+{
-+	int nr_to_scan = sc->nr_to_scan;
-+	struct mb2_cache *cache = container_of(shrink, struct mb2_cache,
-+					      c_shrink);
-+	struct mb2_cache_entry *entry;
-+	struct hlist_bl_head *head;
-+	unsigned int shrunk = 0;
-+
-+	spin_lock(&cache->c_lru_list_lock);
-+	while (nr_to_scan-- && !list_empty(&cache->c_lru_list)) {
-+		entry = list_first_entry(&cache->c_lru_list,
-+					 struct mb2_cache_entry, e_lru_list);
-+		list_del_init(&entry->e_lru_list);
-+		cache->c_entry_count--;
+ 		ea_bdebug(bh, "refcount now=0; freeing");
+-		if (ce)
+-			mb_cache_entry_free(ce);
 +		/*
-+		 * We keep LRU list reference so that entry doesn't go away
-+		 * from under us.
++		 * This must happen under buffer lock for
++		 * ext4_xattr_block_set() to reliably detect freed block
 +		 */
-+		spin_unlock(&cache->c_lru_list_lock);
-+		head = entry->e_hash_list_head;
-+		hlist_bl_lock(head);
-+		if (!hlist_bl_unhashed(&entry->e_hash_list)) {
-+			hlist_bl_del_init(&entry->e_hash_list);
-+			atomic_dec(&entry->e_refcnt);
-+		}
-+		hlist_bl_unlock(head);
-+		if (mb2_cache_entry_put(cache, entry))
-+			shrunk++;
-+		cond_resched();
-+		spin_lock(&cache->c_lru_list_lock);
-+	}
-+	spin_unlock(&cache->c_lru_list_lock);
++		mb2_cache_entry_delete_block(EXT4_GET_MB_CACHE(inode), hash,
++					     bh->b_blocknr);
+ 		get_bh(bh);
+ 		unlock_buffer(bh);
+ 		ext4_free_blocks(handle, inode, bh, 0, 1,
+@@ -564,8 +567,6 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+ 				 EXT4_FREE_BLOCKS_FORGET);
+ 	} else {
+ 		le32_add_cpu(&BHDR(bh)->h_refcount, -1);
+-		if (ce)
+-			mb_cache_entry_release(ce);
+ 		/*
+ 		 * Beware of this ugliness: Releasing of xattr block references
+ 		 * from different inodes can race and so we have to protect
+@@ -778,17 +779,15 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 	struct super_block *sb = inode->i_sb;
+ 	struct buffer_head *new_bh = NULL;
+ 	struct ext4_xattr_search *s = &bs->s;
+-	struct mb_cache_entry *ce = NULL;
++	struct mb2_cache_entry *ce = NULL;
+ 	int error = 0;
+-	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
++	struct mb2_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
+ 
+ #define header(x) ((struct ext4_xattr_header *)(x))
+ 
+ 	if (i->value && i->value_len > sb->s_blocksize)
+ 		return -ENOSPC;
+ 	if (s->base) {
+-		ce = mb_cache_entry_get(ext4_mb_cache, bs->bh->b_bdev,
+-					bs->bh->b_blocknr);
+ 		BUFFER_TRACE(bs->bh, "get_write_access");
+ 		error = ext4_journal_get_write_access(handle, bs->bh);
+ 		if (error)
+@@ -796,10 +795,15 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 		lock_buffer(bs->bh);
+ 
+ 		if (header(s->base)->h_refcount == cpu_to_le32(1)) {
+-			if (ce) {
+-				mb_cache_entry_free(ce);
+-				ce = NULL;
+-			}
++			__u32 hash = le32_to_cpu(BHDR(bs->bh)->h_hash);
 +
-+	return shrunk;
-+}
-+
-+/*
-+ * mb2_cache_create - create cache
-+ * @bucket_bits: log2 of the hash table size
-+ *
-+ * Create cache for keys with 2^bucket_bits hash entries.
-+ */
-+struct mb2_cache *mb2_cache_create(int bucket_bits)
-+{
-+	struct mb2_cache *cache;
-+	int bucket_count = 1 << bucket_bits;
-+	int i;
-+
-+	if (!try_module_get(THIS_MODULE))
-+		return NULL;
-+
-+	cache = kzalloc(sizeof(struct mb2_cache), GFP_KERNEL);
-+	if (!cache)
-+		goto err_out;
-+	cache->c_bucket_bits = bucket_bits;
-+	INIT_LIST_HEAD(&cache->c_lru_list);
-+	spin_lock_init(&cache->c_lru_list_lock);
-+	cache->c_hash = kmalloc(bucket_count * sizeof(struct hlist_bl_head),
-+				GFP_KERNEL);
-+	if (!cache->c_hash) {
-+		kfree(cache);
-+		goto err_out;
-+	}
-+	for (i = 0; i < bucket_count; i++)
-+		INIT_HLIST_BL_HEAD(&cache->c_hash[i]);
-+
-+	cache->c_shrink.count_objects = mb2_cache_count;
-+	cache->c_shrink.scan_objects = mb2_cache_scan;
-+	cache->c_shrink.seeks = DEFAULT_SEEKS;
-+	register_shrinker(&cache->c_shrink);
-+
-+	return cache;
-+
-+err_out:
-+	module_put(THIS_MODULE);
-+	return NULL;
-+}
-+EXPORT_SYMBOL(mb2_cache_create);
-+
-+/*
-+ * mb2_cache_destroy - destroy cache
-+ * @cache: the cache to destroy
-+ *
-+ * Free all entries in cache and cache itself. Caller must make sure nobody
-+ * (except shrinker) can reach @cache when calling this.
-+ */
-+void mb2_cache_destroy(struct mb2_cache *cache)
-+{
-+	struct mb2_cache_entry *entry, *next;
-+
-+	unregister_shrinker(&cache->c_shrink);
-+
-+	/*
-+	 * We don't bother with any locking. Cache must not be used at this
-+	 * point.
-+	 */
-+	list_for_each_entry_safe(entry, next, &cache->c_lru_list, e_lru_list) {
-+		if (!hlist_bl_unhashed(&entry->e_hash_list)) {
-+			hlist_bl_del_init(&entry->e_hash_list);
-+			atomic_dec(&entry->e_refcnt);
-+		} else
-+			WARN_ON(1);
-+		list_del(&entry->e_lru_list);
-+		WARN_ON(atomic_read(&entry->e_refcnt) != 1);
-+		mb2_cache_entry_put(cache, entry);
-+	}
-+	kfree(cache->c_hash);
-+	kfree(cache);
-+	module_put(THIS_MODULE);
-+}
-+EXPORT_SYMBOL(mb2_cache_destroy);
-+
-+static int __init mb2cache_init(void)
-+{
-+	mb2_entry_cache = kmem_cache_create("mbcache",
-+				sizeof(struct mb2_cache_entry), 0,
-+				SLAB_RECLAIM_ACCOUNT|SLAB_MEM_SPREAD, NULL);
-+	BUG_ON(!mb2_entry_cache);
-+	return 0;
-+}
-+
-+static void __exit mb2cache_exit(void)
-+{
-+	kmem_cache_destroy(mb2_entry_cache);
-+}
-+
-+module_init(mb2cache_init)
-+module_exit(mb2cache_exit)
-+
-+MODULE_AUTHOR("Jan Kara <jack@suse.cz>");
-+MODULE_DESCRIPTION("Meta block cache (for extended attributes)");
-+MODULE_LICENSE("GPL");
-diff --git a/include/linux/mbcache2.h b/include/linux/mbcache2.h
-new file mode 100644
-index 000000000000..26ec4ecd2a18
---- /dev/null
-+++ b/include/linux/mbcache2.h
-@@ -0,0 +1,52 @@
-+#ifndef _LINUX_MB2CACHE_H
-+#define _LINUX_MB2CACHE_H
-+
-+#include <linux/hash.h>
-+#include <linux/list_bl.h>
-+#include <linux/list.h>
-+#include <linux/atomic.h>
-+#include <linux/fs.h>
-+
-+struct mb2_cache;
-+
-+struct mb2_cache_entry {
-+	/* LRU list - protected by cache->c_lru_list_lock */
-+	struct list_head	e_lru_list;
-+	/* Hash table list - protected by bitlock in e_hash_list_head */
-+	struct hlist_bl_node	e_hash_list;
-+	atomic_t		e_refcnt;
-+	/* Key in hash - stable during lifetime of the entry */
-+	unsigned int		e_key;
-+	/* Block number of hashed block - stable during lifetime of the entry */
-+	sector_t		e_block;
-+	/* Head of hash list (for list bit lock) - stable */
-+	struct hlist_bl_head	*e_hash_list_head;
-+};
-+
-+struct mb2_cache *mb2_cache_create(int bucket_bits);
-+void mb2_cache_destroy(struct mb2_cache *cache);
-+
-+struct mb2_cache_entry *mb2_cache_entry_create(struct mb2_cache *cache,
-+					       gfp_t mask,
-+					       unsigned int key,
-+					       sector_t block);
-+void __mb2_cache_entry_free(struct mb2_cache_entry *entry);
-+static inline int mb2_cache_entry_put(struct mb2_cache *cache,
-+				      struct mb2_cache_entry *entry)
-+{
-+	if (!atomic_dec_and_test(&entry->e_refcnt))
-+		return 0;
-+	__mb2_cache_entry_free(entry);
-+	return 1;
-+}
-+
-+void mb2_cache_entry_delete_block(struct mb2_cache *cache, unsigned int key,
-+				  sector_t block);
-+struct mb2_cache_entry *mb2_cache_entry_find_first(struct mb2_cache *cache,
-+						   unsigned int key);
-+struct mb2_cache_entry *mb2_cache_entry_find_next(struct mb2_cache *cache,
-+						  struct mb2_cache_entry *entry);
-+void mb2_cache_entry_touch(struct mb2_cache *cache,
-+			   struct mb2_cache_entry *entry);
-+
-+#endif	/* _LINUX_MB2CACHE_H */
++			/*
++			 * This must happen under buffer lock for
++			 * ext4_xattr_block_set() to reliably detect modified
++			 * block
++			 */
++			mb2_cache_entry_delete_block(ext4_mb_cache, hash,
++						     bs->bh->b_blocknr);
+ 			ea_bdebug(bs->bh, "modifying in-place");
+ 			error = ext4_xattr_set_entry(i, s);
+ 			if (!error) {
+@@ -823,10 +827,6 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 			int offset = (char *)s->here - bs->bh->b_data;
+ 
+ 			unlock_buffer(bs->bh);
+-			if (ce) {
+-				mb_cache_entry_release(ce);
+-				ce = NULL;
+-			}
+ 			ea_bdebug(bs->bh, "cloning");
+ 			s->base = kmalloc(bs->bh->b_size, GFP_NOFS);
+ 			error = -ENOMEM;
+@@ -881,6 +881,31 @@ inserted:
+ 				if (error)
+ 					goto cleanup_dquot;
+ 				lock_buffer(new_bh);
++				/*
++				 * We have to be careful about races with
++				 * freeing or rehashing of xattr block. Once we
++				 * hold buffer lock xattr block's state is
++				 * stable so we can check whether the block got
++				 * freed / rehashed or not.  Since we unhash
++				 * mbcache entry under buffer lock when freeing
++				 * / rehashing xattr block, checking whether
++				 * entry is still hashed is reliable.
++				 */
++				if (hlist_bl_unhashed(&ce->e_hash_list)) {
++					/*
++					 * Undo everything and check mbcache
++					 * again.
++					 */
++					unlock_buffer(new_bh);
++					dquot_free_block(inode,
++							 EXT4_C2B(EXT4_SB(sb),
++								  1));
++					brelse(new_bh);
++					mb2_cache_entry_put(ext4_mb_cache, ce);
++					ce = NULL;
++					new_bh = NULL;
++					goto inserted;
++				}
+ 				le32_add_cpu(&BHDR(new_bh)->h_refcount, 1);
+ 				ea_bdebug(new_bh, "reusing; refcount now=%d",
+ 					le32_to_cpu(BHDR(new_bh)->h_refcount));
+@@ -891,7 +916,8 @@ inserted:
+ 				if (error)
+ 					goto cleanup_dquot;
+ 			}
+-			mb_cache_entry_release(ce);
++			mb2_cache_entry_touch(ext4_mb_cache, ce);
++			mb2_cache_entry_put(ext4_mb_cache, ce);
+ 			ce = NULL;
+ 		} else if (bs->bh && s->base == bs->bh->b_data) {
+ 			/* We were modifying this block in-place. */
+@@ -956,7 +982,7 @@ getblk_failed:
+ 
+ cleanup:
+ 	if (ce)
+-		mb_cache_entry_release(ce);
++		mb2_cache_entry_put(ext4_mb_cache, ce);
+ 	brelse(new_bh);
+ 	if (!(bs->bh && s->base == bs->bh->b_data))
+ 		kfree(s->base);
+@@ -1509,17 +1535,6 @@ cleanup:
+ }
+ 
+ /*
+- * ext4_xattr_put_super()
+- *
+- * This is called when a file system is unmounted.
+- */
+-void
+-ext4_xattr_put_super(struct super_block *sb)
+-{
+-	mb_cache_shrink(sb->s_bdev);
+-}
+-
+-/*
+  * ext4_xattr_cache_insert()
+  *
+  * Create a new entry in the extended attribute cache, and insert
+@@ -1528,27 +1543,22 @@ ext4_xattr_put_super(struct super_block *sb)
+  * Returns 0, or a negative error number on failure.
+  */
+ static void
+-ext4_xattr_cache_insert(struct mb_cache *ext4_mb_cache, struct buffer_head *bh)
++ext4_xattr_cache_insert(struct mb2_cache *ext4_mb_cache, struct buffer_head *bh)
+ {
+ 	__u32 hash = le32_to_cpu(BHDR(bh)->h_hash);
+-	struct mb_cache_entry *ce;
++	struct mb2_cache_entry *ce;
+ 	int error;
+ 
+-	ce = mb_cache_entry_alloc(ext4_mb_cache, GFP_NOFS);
+-	if (!ce) {
+-		ea_bdebug(bh, "out of memory");
+-		return;
+-	}
+-	error = mb_cache_entry_insert(ce, bh->b_bdev, bh->b_blocknr, hash);
+-	if (error) {
+-		mb_cache_entry_free(ce);
+-		if (error == -EBUSY) {
++	ce = mb2_cache_entry_create(ext4_mb_cache, GFP_NOFS, hash,
++				    bh->b_blocknr);
++	if (IS_ERR(ce)) {
++		if (PTR_ERR(ce) == -EBUSY) {
+ 			ea_bdebug(bh, "already in cache");
+ 			error = 0;
+ 		}
+ 	} else {
+ 		ea_bdebug(bh, "inserting [%x]", (int)hash);
+-		mb_cache_entry_release(ce);
++		mb2_cache_entry_put(ext4_mb_cache, ce);
+ 	}
+ }
+ 
+@@ -1602,26 +1612,19 @@ ext4_xattr_cmp(struct ext4_xattr_header *header1,
+  */
+ static struct buffer_head *
+ ext4_xattr_cache_find(struct inode *inode, struct ext4_xattr_header *header,
+-		      struct mb_cache_entry **pce)
++		      struct mb2_cache_entry **pce)
+ {
+ 	__u32 hash = le32_to_cpu(header->h_hash);
+-	struct mb_cache_entry *ce;
+-	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
++	struct mb2_cache_entry *ce;
++	struct mb2_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
+ 
+ 	if (!header->h_hash)
+ 		return NULL;  /* never share */
+ 	ea_idebug(inode, "looking for cached blocks [%x]", (int)hash);
+-again:
+-	ce = mb_cache_entry_find_first(ext4_mb_cache, inode->i_sb->s_bdev,
+-				       hash);
++	ce = mb2_cache_entry_find_first(ext4_mb_cache, hash);
+ 	while (ce) {
+ 		struct buffer_head *bh;
+ 
+-		if (IS_ERR(ce)) {
+-			if (PTR_ERR(ce) == -EAGAIN)
+-				goto again;
+-			break;
+-		}
+ 		bh = sb_bread(inode->i_sb, ce->e_block);
+ 		if (!bh) {
+ 			EXT4_ERROR_INODE(inode, "block %lu read error",
+@@ -1637,7 +1640,7 @@ again:
+ 			return bh;
+ 		}
+ 		brelse(bh);
+-		ce = mb_cache_entry_find_next(ce, inode->i_sb->s_bdev, hash);
++		ce = mb2_cache_entry_find_next(ext4_mb_cache, ce);
+ 	}
+ 	return NULL;
+ }
+@@ -1712,15 +1715,15 @@ static void ext4_xattr_rehash(struct ext4_xattr_header *header,
+ 
+ #define	HASH_BUCKET_BITS	10
+ 
+-struct mb_cache *
+-ext4_xattr_create_cache(char *name)
++struct mb2_cache *
++ext4_xattr_create_cache(void)
+ {
+-	return mb_cache_create(name, HASH_BUCKET_BITS);
++	return mb2_cache_create(HASH_BUCKET_BITS);
+ }
+ 
+-void ext4_xattr_destroy_cache(struct mb_cache *cache)
++void ext4_xattr_destroy_cache(struct mb2_cache *cache)
+ {
+ 	if (cache)
+-		mb_cache_destroy(cache);
++		mb2_cache_destroy(cache);
+ }
+ 
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index ddc0957760ba..10b0f7323ed6 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -108,7 +108,6 @@ extern int ext4_xattr_set(struct inode *, int, const char *, const void *, size_
+ extern int ext4_xattr_set_handle(handle_t *, struct inode *, int, const char *, const void *, size_t, int);
+ 
+ extern void ext4_xattr_delete_inode(handle_t *, struct inode *);
+-extern void ext4_xattr_put_super(struct super_block *);
+ 
+ extern int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+ 			    struct ext4_inode *raw_inode, handle_t *handle);
+@@ -124,8 +123,8 @@ extern int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
+ 				       struct ext4_xattr_info *i,
+ 				       struct ext4_xattr_ibody_find *is);
+ 
+-extern struct mb_cache *ext4_xattr_create_cache(char *name);
+-extern void ext4_xattr_destroy_cache(struct mb_cache *);
++extern struct mb2_cache *ext4_xattr_create_cache(void);
++extern void ext4_xattr_destroy_cache(struct mb2_cache *);
+ 
+ #ifdef CONFIG_EXT4_FS_SECURITY
+ extern int ext4_init_security(handle_t *handle, struct inode *inode,
 -- 
 2.1.4
 
