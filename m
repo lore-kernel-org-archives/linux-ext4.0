@@ -1,8 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/7] ext2: Convert to mbcache2
-Date: Wed, 16 Dec 2015 18:00:20 +0100
-Message-ID: <1450285224-1525-4-git-send-email-jack@suse.cz>
-References: <1450285224-1525-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 0/7 v2] ext[24]: MBCache rewrite
+Date: Wed, 16 Dec 2015 18:00:17 +0100
+Message-ID: <1450285224-1525-1-git-send-email-jack@suse.cz>
 Cc: =?UTF-8?q?Andreas=20Gr=C3=BCnbacher?=
 	<andreas.gruenbacher@gmail.com>,
 	Andreas Dilger <adilger@dilger.ca>,
@@ -10,507 +9,118 @@ Cc: =?UTF-8?q?Andreas=20Gr=C3=BCnbacher?=
 	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:60146 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:60147 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966041AbbLPRAh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S966038AbbLPRAh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 16 Dec 2015 12:00:37 -0500
-In-Reply-To: <1450285224-1525-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The conversion is generally straightforward. We convert filesystem from
-a global cache to per-fs one. Similarly to ext4 the tricky part is that
-xattr block corresponding to found mbcache entry can get freed before we
-get buffer lock for that block. So we have to check whether the entry is
-still valid after getting the buffer lock.
+Hello,
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+here is a new version of mbcache rewrite series. I've implemented some small
+changes suggested by Andreas since the previous version.
+
+Changes since v1:
+* renamed mbcache2 to mbcache (and all functions and structures) once old
+  mbcache code is removed.
+* renamed LRU list since it isn't LRU anymore
+* removed unused mb2_cache_entry_delete() function
+* updated explanation of mbcache function
+* fixed swapped entries in table of benchmark results
+
+I have also investigated options of not caching xattr blocks with max refcount
+but it didn't bring is significant benefit in the measurements I did. We'd
+need more sophisticated (and costly) logic to avoid caching many blocks with
+the same content which doesn't seem worth it for now.
+
+I also had a look into using rhashtables instead of normal fixed-size hash
+table however the complexity increase is noticeable and we'd have to somehow
+handle issue with non-unique keys which rhashtables don't support. So again
+I've decided the gain is not worth it.
+
 ---
- fs/ext2/ext2.h  |   3 ++
- fs/ext2/super.c |  25 ++++++----
- fs/ext2/xattr.c | 146 +++++++++++++++++++++++++++-----------------------------
- fs/ext2/xattr.h |  21 ++------
- 4 files changed, 95 insertions(+), 100 deletions(-)
+Full motivation:
 
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index 4c69c94cafd8..f98ce7e60a0f 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -61,6 +61,8 @@ struct ext2_block_alloc_info {
- #define rsv_start rsv_window._rsv_start
- #define rsv_end rsv_window._rsv_end
- 
-+struct mb2_cache;
-+
- /*
-  * second extended-fs super-block data in memory
-  */
-@@ -111,6 +113,7 @@ struct ext2_sb_info {
- 	 * of the mount options.
- 	 */
- 	spinlock_t s_lock;
-+	struct mb2_cache *s_mb_cache;
- };
- 
- static inline spinlock_t *
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 748d35afc902..111a31761ffa 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -131,7 +131,10 @@ static void ext2_put_super (struct super_block * sb)
- 
- 	dquot_disable(sb, -1, DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
- 
--	ext2_xattr_put_super(sb);
-+	if (sbi->s_mb_cache) {
-+		ext2_xattr_destroy_cache(sbi->s_mb_cache);
-+		sbi->s_mb_cache = NULL;
-+	}
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		struct ext2_super_block *es = sbi->s_es;
- 
-@@ -1104,6 +1107,14 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
- 		ext2_msg(sb, KERN_ERR, "error: insufficient memory");
- 		goto failed_mount3;
- 	}
-+
-+#ifdef CONFIG_EXT2_FS_XATTR
-+	sbi->s_mb_cache = ext2_xattr_create_cache();
-+	if (!sbi->s_mb_cache) {
-+		ext2_msg(sb, KERN_ERR, "Failed to create an mb_cache");
-+		goto failed_mount3;
-+	}
-+#endif
- 	/*
- 	 * set up enough so that it can read an inode
- 	 */
-@@ -1149,6 +1160,8 @@ cantfind_ext2:
- 			sb->s_id);
- 	goto failed_mount;
- failed_mount3:
-+	if (sbi->s_mb_cache)
-+		ext2_xattr_destroy_cache(sbi->s_mb_cache);
- 	percpu_counter_destroy(&sbi->s_freeblocks_counter);
- 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
- 	percpu_counter_destroy(&sbi->s_dirs_counter);
-@@ -1555,20 +1568,17 @@ MODULE_ALIAS_FS("ext2");
- 
- static int __init init_ext2_fs(void)
- {
--	int err = init_ext2_xattr();
--	if (err)
--		return err;
-+	int err;
-+
- 	err = init_inodecache();
- 	if (err)
--		goto out1;
-+		return err;
-         err = register_filesystem(&ext2_fs_type);
- 	if (err)
- 		goto out;
- 	return 0;
- out:
- 	destroy_inodecache();
--out1:
--	exit_ext2_xattr();
- 	return err;
- }
- 
-@@ -1576,7 +1586,6 @@ static void __exit exit_ext2_fs(void)
- {
- 	unregister_filesystem(&ext2_fs_type);
- 	destroy_inodecache();
--	exit_ext2_xattr();
- }
- 
- MODULE_AUTHOR("Remy Card and others");
-diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index fa70848afa8f..c7ab4cadcea0 100644
---- a/fs/ext2/xattr.c
-+++ b/fs/ext2/xattr.c
-@@ -56,7 +56,7 @@
- #include <linux/buffer_head.h>
- #include <linux/init.h>
- #include <linux/slab.h>
--#include <linux/mbcache.h>
-+#include <linux/mbcache2.h>
- #include <linux/quotaops.h>
- #include <linux/rwsem.h>
- #include <linux/security.h>
-@@ -92,14 +92,12 @@
- static int ext2_xattr_set2(struct inode *, struct buffer_head *,
- 			   struct ext2_xattr_header *);
- 
--static int ext2_xattr_cache_insert(struct buffer_head *);
-+static int ext2_xattr_cache_insert(struct mb2_cache *, struct buffer_head *);
- static struct buffer_head *ext2_xattr_cache_find(struct inode *,
- 						 struct ext2_xattr_header *);
- static void ext2_xattr_rehash(struct ext2_xattr_header *,
- 			      struct ext2_xattr_entry *);
- 
--static struct mb_cache *ext2_xattr_cache;
--
- static const struct xattr_handler *ext2_xattr_handler_map[] = {
- 	[EXT2_XATTR_INDEX_USER]		     = &ext2_xattr_user_handler,
- #ifdef CONFIG_EXT2_FS_POSIX_ACL
-@@ -154,6 +152,7 @@ ext2_xattr_get(struct inode *inode, int name_index, const char *name,
- 	size_t name_len, size;
- 	char *end;
- 	int error;
-+	struct mb2_cache *ext2_mb_cache = EXT2_SB(inode->i_sb)->s_mb_cache;
- 
- 	ea_idebug(inode, "name=%d.%s, buffer=%p, buffer_size=%ld",
- 		  name_index, name, buffer, (long)buffer_size);
-@@ -198,7 +197,7 @@ bad_block:	ext2_error(inode->i_sb, "ext2_xattr_get",
- 			goto found;
- 		entry = next;
- 	}
--	if (ext2_xattr_cache_insert(bh))
-+	if (ext2_xattr_cache_insert(ext2_mb_cache, bh))
- 		ea_idebug(inode, "cache insert failed");
- 	error = -ENODATA;
- 	goto cleanup;
-@@ -211,7 +210,7 @@ found:
- 	    le16_to_cpu(entry->e_value_offs) + size > inode->i_sb->s_blocksize)
- 		goto bad_block;
- 
--	if (ext2_xattr_cache_insert(bh))
-+	if (ext2_xattr_cache_insert(ext2_mb_cache, bh))
- 		ea_idebug(inode, "cache insert failed");
- 	if (buffer) {
- 		error = -ERANGE;
-@@ -249,6 +248,7 @@ ext2_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
- 	char *end;
- 	size_t rest = buffer_size;
- 	int error;
-+	struct mb2_cache *ext2_mb_cache = EXT2_SB(inode->i_sb)->s_mb_cache;
- 
- 	ea_idebug(inode, "buffer=%p, buffer_size=%ld",
- 		  buffer, (long)buffer_size);
-@@ -283,7 +283,7 @@ bad_block:	ext2_error(inode->i_sb, "ext2_xattr_list",
- 			goto bad_block;
- 		entry = next;
- 	}
--	if (ext2_xattr_cache_insert(bh))
-+	if (ext2_xattr_cache_insert(ext2_mb_cache, bh))
- 		ea_idebug(inode, "cache insert failed");
- 
- 	/* list the attribute names */
-@@ -480,22 +480,23 @@ bad_block:		ext2_error(sb, "ext2_xattr_set",
- 	/* Here we know that we can set the new attribute. */
- 
- 	if (header) {
--		struct mb_cache_entry *ce;
--
- 		/* assert(header == HDR(bh)); */
--		ce = mb_cache_entry_get(ext2_xattr_cache, bh->b_bdev,
--					bh->b_blocknr);
- 		lock_buffer(bh);
- 		if (header->h_refcount == cpu_to_le32(1)) {
-+			__u32 hash = le32_to_cpu(header->h_hash);
-+
- 			ea_bdebug(bh, "modifying in-place");
--			if (ce)
--				mb_cache_entry_free(ce);
-+			/*
-+			 * This must happen under buffer lock for
-+			 * ext2_xattr_set2() to reliably detect modified block
-+			 */
-+			mb2_cache_entry_delete_block(EXT2_SB(sb)->s_mb_cache,
-+						     hash, bh->b_blocknr);
-+
- 			/* keep the buffer locked while modifying it. */
- 		} else {
- 			int offset;
- 
--			if (ce)
--				mb_cache_entry_release(ce);
- 			unlock_buffer(bh);
- 			ea_bdebug(bh, "cloning");
- 			header = kmalloc(bh->b_size, GFP_KERNEL);
-@@ -623,6 +624,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 	struct super_block *sb = inode->i_sb;
- 	struct buffer_head *new_bh = NULL;
- 	int error;
-+	struct mb2_cache *ext2_mb_cache = EXT2_SB(sb)->s_mb_cache;
- 
- 	if (header) {
- 		new_bh = ext2_xattr_cache_find(inode, header);
-@@ -650,7 +652,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 			   don't need to change the reference count. */
- 			new_bh = old_bh;
- 			get_bh(new_bh);
--			ext2_xattr_cache_insert(new_bh);
-+			ext2_xattr_cache_insert(ext2_mb_cache, new_bh);
- 		} else {
- 			/* We need to allocate a new block */
- 			ext2_fsblk_t goal = ext2_group_first_block_no(sb,
-@@ -671,7 +673,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 			memcpy(new_bh->b_data, header, new_bh->b_size);
- 			set_buffer_uptodate(new_bh);
- 			unlock_buffer(new_bh);
--			ext2_xattr_cache_insert(new_bh);
-+			ext2_xattr_cache_insert(ext2_mb_cache, new_bh);
- 			
- 			ext2_xattr_update_super_block(sb);
- 		}
-@@ -704,19 +706,21 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 
- 	error = 0;
- 	if (old_bh && old_bh != new_bh) {
--		struct mb_cache_entry *ce;
--
- 		/*
- 		 * If there was an old block and we are no longer using it,
- 		 * release the old block.
- 		 */
--		ce = mb_cache_entry_get(ext2_xattr_cache, old_bh->b_bdev,
--					old_bh->b_blocknr);
- 		lock_buffer(old_bh);
- 		if (HDR(old_bh)->h_refcount == cpu_to_le32(1)) {
-+			__u32 hash = le32_to_cpu(HDR(old_bh)->h_hash);
-+
-+			/*
-+			 * This must happen under buffer lock for
-+			 * ext2_xattr_set2() to reliably detect freed block
-+			 */
-+			mb2_cache_entry_delete_block(ext2_mb_cache,
-+						     hash, old_bh->b_blocknr);
- 			/* Free the old block. */
--			if (ce)
--				mb_cache_entry_free(ce);
- 			ea_bdebug(old_bh, "freeing");
- 			ext2_free_blocks(inode, old_bh->b_blocknr, 1);
- 			mark_inode_dirty(inode);
-@@ -727,8 +731,6 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 		} else {
- 			/* Decrement the refcount only. */
- 			le32_add_cpu(&HDR(old_bh)->h_refcount, -1);
--			if (ce)
--				mb_cache_entry_release(ce);
- 			dquot_free_block_nodirty(inode, 1);
- 			mark_inode_dirty(inode);
- 			mark_buffer_dirty(old_bh);
-@@ -754,7 +756,6 @@ void
- ext2_xattr_delete_inode(struct inode *inode)
- {
- 	struct buffer_head *bh = NULL;
--	struct mb_cache_entry *ce;
- 
- 	down_write(&EXT2_I(inode)->xattr_sem);
- 	if (!EXT2_I(inode)->i_file_acl)
-@@ -774,19 +775,22 @@ ext2_xattr_delete_inode(struct inode *inode)
- 			EXT2_I(inode)->i_file_acl);
- 		goto cleanup;
- 	}
--	ce = mb_cache_entry_get(ext2_xattr_cache, bh->b_bdev, bh->b_blocknr);
- 	lock_buffer(bh);
- 	if (HDR(bh)->h_refcount == cpu_to_le32(1)) {
--		if (ce)
--			mb_cache_entry_free(ce);
-+		__u32 hash = le32_to_cpu(HDR(bh)->h_hash);
-+
-+		/*
-+		 * This must happen under buffer lock for ext2_xattr_set2() to
-+		 * reliably detect freed block
-+		 */
-+		mb2_cache_entry_delete_block(EXT2_SB(inode->i_sb)->s_mb_cache,
-+					     hash, bh->b_blocknr);
- 		ext2_free_blocks(inode, EXT2_I(inode)->i_file_acl, 1);
- 		get_bh(bh);
- 		bforget(bh);
- 		unlock_buffer(bh);
- 	} else {
- 		le32_add_cpu(&HDR(bh)->h_refcount, -1);
--		if (ce)
--			mb_cache_entry_release(ce);
- 		ea_bdebug(bh, "refcount now=%d",
- 			le32_to_cpu(HDR(bh)->h_refcount));
- 		unlock_buffer(bh);
-@@ -803,18 +807,6 @@ cleanup:
- }
- 
- /*
-- * ext2_xattr_put_super()
-- *
-- * This is called when a file system is unmounted.
-- */
--void
--ext2_xattr_put_super(struct super_block *sb)
--{
--	mb_cache_shrink(sb->s_bdev);
--}
--
--
--/*
-  * ext2_xattr_cache_insert()
-  *
-  * Create a new entry in the extended attribute cache, and insert
-@@ -823,27 +815,22 @@ ext2_xattr_put_super(struct super_block *sb)
-  * Returns 0, or a negative error number on failure.
-  */
- static int
--ext2_xattr_cache_insert(struct buffer_head *bh)
-+ext2_xattr_cache_insert(struct mb2_cache *cache, struct buffer_head *bh)
- {
- 	__u32 hash = le32_to_cpu(HDR(bh)->h_hash);
--	struct mb_cache_entry *ce;
-+	struct mb2_cache_entry *ce;
- 	int error;
- 
--	ce = mb_cache_entry_alloc(ext2_xattr_cache, GFP_NOFS);
--	if (!ce)
--		return -ENOMEM;
--	error = mb_cache_entry_insert(ce, bh->b_bdev, bh->b_blocknr, hash);
--	if (error) {
--		mb_cache_entry_free(ce);
--		if (error == -EBUSY) {
-+	ce = mb2_cache_entry_create(cache, GFP_NOFS, hash, bh->b_blocknr);
-+	if (IS_ERR(ce)) {
-+		if (PTR_ERR(ce) == -EBUSY) {
- 			ea_bdebug(bh, "already in cache (%d cache entries)",
- 				atomic_read(&ext2_xattr_cache->c_entry_count));
- 			error = 0;
- 		}
- 	} else {
--		ea_bdebug(bh, "inserting [%x] (%d cache entries)", (int)hash,
--			  atomic_read(&ext2_xattr_cache->c_entry_count));
--		mb_cache_entry_release(ce);
-+		ea_bdebug(bh, "inserting [%x]", (int)hash);
-+		mb2_cache_entry_put(cache, ce);
- 	}
- 	return error;
- }
-@@ -900,23 +887,17 @@ static struct buffer_head *
- ext2_xattr_cache_find(struct inode *inode, struct ext2_xattr_header *header)
- {
- 	__u32 hash = le32_to_cpu(header->h_hash);
--	struct mb_cache_entry *ce;
-+	struct mb2_cache_entry *ce;
-+	struct mb2_cache *ext2_mb_cache = EXT2_SB(inode->i_sb)->s_mb_cache;
- 
- 	if (!header->h_hash)
- 		return NULL;  /* never share */
- 	ea_idebug(inode, "looking for cached blocks [%x]", (int)hash);
- again:
--	ce = mb_cache_entry_find_first(ext2_xattr_cache, inode->i_sb->s_bdev,
--				       hash);
-+	ce = mb2_cache_entry_find_first(ext2_mb_cache, hash);
- 	while (ce) {
- 		struct buffer_head *bh;
- 
--		if (IS_ERR(ce)) {
--			if (PTR_ERR(ce) == -EAGAIN)
--				goto again;
--			break;
--		}
--
- 		bh = sb_bread(inode->i_sb, ce->e_block);
- 		if (!bh) {
- 			ext2_error(inode->i_sb, "ext2_xattr_cache_find",
-@@ -924,7 +905,21 @@ again:
- 				inode->i_ino, (unsigned long) ce->e_block);
- 		} else {
- 			lock_buffer(bh);
--			if (le32_to_cpu(HDR(bh)->h_refcount) >
-+			/*
-+			 * We have to be careful about races with freeing or
-+			 * rehashing of xattr block. Once we hold buffer lock
-+			 * xattr block's state is stable so we can check
-+			 * whether the block got freed / rehashed or not.
-+			 * Since we unhash mbcache entry under buffer lock when
-+			 * freeing / rehashing xattr block, checking whether
-+			 * entry is still hashed is reliable.
-+			 */
-+			if (hlist_bl_unhashed(&ce->e_hash_list)) {
-+				mb2_cache_entry_put(ext2_mb_cache, ce);
-+				unlock_buffer(bh);
-+				brelse(bh);
-+				goto again;
-+			} else if (le32_to_cpu(HDR(bh)->h_refcount) >
- 				   EXT2_XATTR_REFCOUNT_MAX) {
- 				ea_idebug(inode, "block %ld refcount %d>%d",
- 					  (unsigned long) ce->e_block,
-@@ -933,13 +928,14 @@ again:
- 			} else if (!ext2_xattr_cmp(header, HDR(bh))) {
- 				ea_bdebug(bh, "b_count=%d",
- 					  atomic_read(&(bh->b_count)));
--				mb_cache_entry_release(ce);
-+				mb2_cache_entry_touch(ext2_mb_cache, ce);
-+				mb2_cache_entry_put(ext2_mb_cache, ce);
- 				return bh;
- 			}
- 			unlock_buffer(bh);
- 			brelse(bh);
- 		}
--		ce = mb_cache_entry_find_next(ce, inode->i_sb->s_bdev, hash);
-+		ce = mb2_cache_entry_find_next(ext2_mb_cache, ce);
- 	}
- 	return NULL;
- }
-@@ -1012,17 +1008,15 @@ static void ext2_xattr_rehash(struct ext2_xattr_header *header,
- 
- #undef BLOCK_HASH_SHIFT
- 
--int __init
--init_ext2_xattr(void)
-+#define HASH_BUCKET_BITS 10
-+
-+struct mb2_cache *ext2_xattr_create_cache(void)
- {
--	ext2_xattr_cache = mb_cache_create("ext2_xattr", 6);
--	if (!ext2_xattr_cache)
--		return -ENOMEM;
--	return 0;
-+	return mb2_cache_create(HASH_BUCKET_BITS);
- }
- 
--void
--exit_ext2_xattr(void)
-+void ext2_xattr_destroy_cache(struct mb2_cache *cache)
- {
--	mb_cache_destroy(ext2_xattr_cache);
-+	if (cache)
-+		mb2_cache_destroy(cache);
- }
-diff --git a/fs/ext2/xattr.h b/fs/ext2/xattr.h
-index 60edf298644e..6ea38aa9563a 100644
---- a/fs/ext2/xattr.h
-+++ b/fs/ext2/xattr.h
-@@ -53,6 +53,8 @@ struct ext2_xattr_entry {
- #define EXT2_XATTR_SIZE(size) \
- 	(((size) + EXT2_XATTR_ROUND) & ~EXT2_XATTR_ROUND)
- 
-+struct mb2_cache;
-+
- # ifdef CONFIG_EXT2_FS_XATTR
- 
- extern const struct xattr_handler ext2_xattr_user_handler;
-@@ -65,10 +67,9 @@ extern int ext2_xattr_get(struct inode *, int, const char *, void *, size_t);
- extern int ext2_xattr_set(struct inode *, int, const char *, const void *, size_t, int);
- 
- extern void ext2_xattr_delete_inode(struct inode *);
--extern void ext2_xattr_put_super(struct super_block *);
- 
--extern int init_ext2_xattr(void);
--extern void exit_ext2_xattr(void);
-+extern struct mb2_cache *ext2_xattr_create_cache(void);
-+extern void ext2_xattr_destroy_cache(struct mb2_cache *cache);
- 
- extern const struct xattr_handler *ext2_xattr_handlers[];
- 
-@@ -93,19 +94,7 @@ ext2_xattr_delete_inode(struct inode *inode)
- {
- }
- 
--static inline void
--ext2_xattr_put_super(struct super_block *sb)
--{
--}
--
--static inline int
--init_ext2_xattr(void)
--{
--	return 0;
--}
+Inspired by recent reports [1] of problems with mbcache I had a look into what
+we could to improve it. I found the current code rather overengineered
+(counting with single entry being in several indices, having homegrown
+implementation of rw semaphore, ...).
+
+After some thinking I've decided to just reimplement mbcache instead of
+improving the original code in small steps since the fundamental changes in
+locking and layout would be actually harder to review in small steps than in
+one big chunk and overall the new mbcache is actually pretty simple piece of
+code (~450 lines).
+
+The result of rewrite is smaller code (almost half the original size), smaller
+cache entries (7 longs instead of 13), and better performance (see below
+for details).
+
+For measuring performance of mbcache I have written a stress test (I called it
+xattr-bench). The test spawns P processes, each process sets xattr for F
+different files, and the value of xattr is randomly chosen from a pool of V
+values. Each process runs until it sets extended attribute 50000 times (this is
+arbitrarily chosen number so that run times for the particular test machine are
+reasonable). The test machine has 24 CPUs and 64 GB of RAM, the test filesystem
+was created on ramdisk. Each test has been run 5 times.
+
+I have measured performance for original mbache, new mbcache2 code where LRU
+is implemented as a simple list, mbcache2 where LRU is implemented using
+list_lru, and mbcache2 where we keep LRU lazily and just use referenced bit.
+I have also measured performance when mbcache was completely disabled (to
+be able to quantify how much gain can some loads get from disabling mbcache).
+The graphs for different combinations of parameters (I have measured
+P=1,2,4,8,16,32,64; F=10,100,1000; V=10,100,1000,10000,100000) can be found
+at [2].
+
+Based on the numbers I have chosen the implementation using LRU with referenced
+bit for submission. Implementation using list_lru is faster in some heavily
+contended cases but slower in most of the cases so I figured it is not worth
+it. My measurements show that completely disabling mbcache can still result
+in upto ~2x faster execution of the benchmark so even after improvements
+there is some gain users like Lustre or Ceph could have from completely
+disabling mbcache.
+
+Here is a comparison table with averages of 5 runs. Measured numbers are in
+order "old mbcache", "mbcache2 with normal LRU", "mbcache2 with list_lru LRU",
+"mbcache2 with referenced bit", "disabled mbcache". Note that some numbers for
+"old mbcache" are not available since the machine just dies due to softlockups
+under the pressure.
+
+V=10
+F\P	1				2				4				8				16				32				64
+10	0.158,0.157,0.209,0.155,0.135	0.208,0.196,0.263,0.229,0.154	0.500,0.277,0.364,0.305,0.176	0.798,0.400,0.380,0.384,0.237	3.258,0.584,0.593,0.664,0.500	13.807,1.047,1.029,1.100,0.986	61.339,2.803,3.615,2.994,1.799
+100	0.172,0.167,0.161,0.185,0.126	0.279,0.222,0.244,0.222,0.156	0.520,0.275,0.275,0.273,0.199	0.825,0.341,0.408,0.333,0.217	2.981,0.505,0.523,0.523,0.315	12.022,1.202,1.210,1.125,1.293	44.641,2.943,2.869,3.337,13.056
+1000	0.185,0.174,0.187,0.153,0.160	0.297,0.239,0.247,0.227,0.176	0.445,0.283,0.276,0.272,0.957	0.767,0.340,0.357,0.324,1.975	2.329,0.480,0.498,0.476,5.391	6.342,1.198,1.235,1.204,8.283	16.440,3.888,3.817,3.896,17.878
+
+V=100
+F\P	1				2				4				8				16				32				64
+10	0.162,0.153,0.180,0.126,0.126	0.200,0.186,0.241,0.165,0.154	0.362,0.257,0.313,0.208,0.181	0.671,0.496,0.422,0.379,0.194	1.433,0.943,0.773,0.676,0.570	3.801,1.345,1.353,1.221,1.021	7.938,2.501,2.700,2.484,1.790
+100	0.153,0.160,0.164,0.130,0.144	0.221,0.199,0.232,0.217,0.166	0.404,0.264,0.300,0.270,0.180	0.945,0.379,0.400,0.322,0.240	1.556,0.485,0.512,0.496,0.339	3.761,1.156,1.214,1.197,1.301	7.901,2.484,2.508,2.526,13.039
+1000	0.215,0.191,0.205,0.212,0.156	0.303,0.246,0.246,0.247,0.182	0.471,0.288,0.305,0.300,0.896	0.960,0.347,0.375,0.347,1.892	1.647,0.479,0.530,0.509,4.744	3.916,1.176,1.288,1.205,8.300	8.058,3.160,3.232,3.200,17.616
+
+V=1000
+F\P	1				2				4				8				16				32				64
+10	0.151,0.129,0.179,0.160,0.130	0.210,0.163,0.248,0.193,0.155	0.326,0.245,0.313,0.204,0.191	0.685,0.521,0.493,0.365,0.210	1.284,0.859,0.772,0.613,0.389	3.087,2.251,1.307,1.745,0.896	6.451,4.801,2.693,3.736,1.806
+100	0.154,0.153,0.156,0.159,0.120	0.211,0.191,0.232,0.194,0.158	0.276,0.282,0.286,0.228,0.170	0.687,0.506,0.496,0.400,0.259	1.202,0.877,0.712,0.632,0.326	3.259,1.954,1.564,1.336,1.255	8.738,2.887,14.421,3.111,13.175
+1000	0.145,0.179,0.184,0.175,0.156	0.202,0.222,0.218,0.220,0.174	0.449,0.319,0.836,0.276,0.965	0.899,0.333,0.793,0.353,2.002	1.577,0.524,0.529,0.523,4.676	4.221,1.240,1.280,1.281,8.371	9.782,3.579,3.605,3.585,17.425
+
+V=10000
+F\P	1				2				4				8				16				32				64
+10	0.161,0.154,0.204,0.158,0.137	0.198,0.190,0.271,0.190,0.153	0.296,0.256,0.340,0.229,0.164	0.662,0.480,0.475,0.368,0.239	1.192,0.818,0.785,0.646,0.349	2.989,2.200,1.237,1.725,0.961	6.362,4.746,2.666,3.718,1.793
+100	0.176,0.174,0.136,0.155,0.123	0.236,0.203,0.202,0.188,0.165	0.326,0.255,0.267,0.241,0.182	0.696,0.511,0.415,0.387,0.213	1.183,0.855,0.679,0.689,0.330	4.205,3.444,1.444,2.760,1.249	19.510,17.760,15.203,17.387,12.828
+1000	0.199,0.183,0.183,0.183,0.164	0.240,0.227,0.225,0.226,0.179	1.159,1.014,1.014,1.036,0.985	2.286,2.154,1.987,2.019,1.997	6.023,6.039,6.594,5.657,5.069	N/A,10.933,9.272,10.382,8.305	N/A,36.620,27.886,36.165,17.683
+
+V=100000
+F\P	1				2				4				8				16				32				64
+10	0.171,0.162,0.220,0.163,0.143	0.204,0.198,0.272,0.192,0.154	0.285,0.230,0.318,0.218,0.172	0.692,0.500,0.505,0.367,0.210	1.225,0.881,0.827,0.687,0.338	2.990,2.243,1.266,1.696,0.942	6.379,4.771,2.609,3.722,1.778
+100	0.151,0.171,0.176,0.171,0.153	0.220,0.210,0.226,0.201,0.167	0.295,0.255,0.265,0.242,0.175	0.720,0.518,0.417,0.387,0.221	1.226,0.844,0.689,0.672,0.343	3.423,2.831,1.392,2.370,1.354	19.234,17.544,15.419,16.700,13.172
+1000	0.192,0.189,0.188,0.184,0.164	0.249,0.225,0.223,0.218,0.178	1.162,1.043,1.031,1.024,1.003	2.257,2.093,2.180,2.004,1.960	5.853,4.997,6.143,5.315,5.350	N/A,10.399,8.578,9.190,8.309	N/A,32.198,19.465,19.194,17.210
+
+Thoughs, opinions, comments welcome.
+
+								Honza
+
+[1] https://bugzilla.kernel.org/show_bug.cgi?id=107301
+[2] http://beta.suse.com/private/jack/mbcache2/
