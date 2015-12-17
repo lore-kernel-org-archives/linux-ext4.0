@@ -1,101 +1,66 @@
-From: Daeho Jeong <daeho.jeong@samsung.com>
-Subject: [PATCH v2] ext4: make sure to revoke all the freeable blocks in
- ext4_free_blocks
-Date: Thu, 17 Dec 2015 10:49:00 +0900
-Message-ID: <1450316940-10774-1-git-send-email-daeho.jeong@samsung.com>
-To: tytso@mit.edu, jack@suse.cz, linux-ext4@vger.kernel.org,
-	daeho.jeong@samsung.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout1.samsung.com ([203.254.224.24]:33783 "EHLO
-	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751356AbbLQBsU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Dec 2015 20:48:20 -0500
-Received: from epcpsbgr3.samsung.com
- (u143.gpu120.samsung.co.kr [203.254.230.143])
- by mailout1.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
- 64bit (built May  5 2014))
- with ESMTP id <0NZH005I4BO80YD0@mailout1.samsung.com> for
- linux-ext4@vger.kernel.org; Thu, 17 Dec 2015 10:48:08 +0900 (KST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Qu Wenruo <quwenruo@cn.fujitsu.com>
+Subject: Re: Ideas on unified real-ro mount option across all filesystems
+Date: Thu, 17 Dec 2015 09:58:32 +0800
+Message-ID: <567216C8.5090304@cn.fujitsu.com>
+References: <567212DA.8050808@cn.fujitsu.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: btrfs <linux-btrfs@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+	<linux-xfs@vger.kernel.org>
+To: fsdevel <linux-fsdevel@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <567212DA.8050808@cn.fujitsu.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Now, ext4_free_blocks() doesn't revoke data blocks of per-file data
-journalled inode and it can cause file data inconsistency problems.
-Even though data blocks of per-file data journalled inode are already
-forgotten by jbd2_journal_invalidatepage() in advance of invoking
-ext4_free_blocks(), we still need to revoke the data blocks here.
-Moreover some of the metadata blocks, which are not found by
-sb_find_get_block(), are still needed to be revoked, but this is also
-missing here.
+And here is the existing discussion in btrfs mail list, just for reference:
 
-Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/mballoc.c |   32 +++++++++++++-------------------
- 1 file changed, 13 insertions(+), 19 deletions(-)
+http://thread.gmane.org/gmane.comp.file-systems.btrfs/51098
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 61eaf74..26419d6 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4695,16 +4695,6 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 	}
- 
- 	/*
--	 * We need to make sure we don't reuse the freed block until
--	 * after the transaction is committed, which we can do by
--	 * treating the block as metadata, below.  We make an
--	 * exception if the inode is to be written in writeback mode
--	 * since writeback mode has weak data consistency guarantees.
--	 */
--	if (!ext4_should_writeback_data(inode))
--		flags |= EXT4_FREE_BLOCKS_METADATA;
--
--	/*
- 	 * If the extent to be freed does not begin on a cluster
- 	 * boundary, we need to deal with partial clusters at the
- 	 * beginning and end of the extent.  Normally we will free
-@@ -4738,14 +4728,13 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 
- 	if (!bh && (flags & EXT4_FREE_BLOCKS_FORGET)) {
- 		int i;
-+		int is_metadata = flags & EXT4_FREE_BLOCKS_METADATA;
- 
- 		for (i = 0; i < count; i++) {
- 			cond_resched();
--			bh = sb_find_get_block(inode->i_sb, block + i);
--			if (!bh)
--				continue;
--			ext4_forget(handle, flags & EXT4_FREE_BLOCKS_METADATA,
--				    inode, bh, block + i);
-+			if (is_metadata)
-+				bh = sb_find_get_block(inode->i_sb, block + i);
-+			ext4_forget(handle, is_metadata, inode, bh, block + i);
- 		}
- 	}
- 
-@@ -4819,12 +4808,17 @@ do_more:
- 	if (err)
- 		goto error_return;
- 
--	if ((flags & EXT4_FREE_BLOCKS_METADATA) && ext4_handle_valid(handle)) {
-+	/*
-+	 * We need to make sure we don't reuse the freed block until after the
-+	 * transaction is committed. We make an exception if the inode is to be
-+	 * written in writeback mode since writeback mode has weak data
-+	 * consistency guarantees.
-+	 */
-+	if (ext4_handle_valid(handle) &&
-+	    ((flags & EXT4_FREE_BLOCKS_METADATA) ||
-+	     !ext4_should_writeback_data(inode))) {
- 		struct ext4_free_data *new_entry;
- 		/*
--		 * blocks being freed are metadata. these blocks shouldn't
--		 * be used until this transaction is committed
--		 *
- 		 * We use __GFP_NOFAIL because ext4_free_blocks() is not allowed
- 		 * to fail.
- 		 */
--- 
-1.7.9.5
+Thanks,
+Qu
+
+Qu Wenruo wrote on 2015/12/17 09:41 +0800:
+> Hi,
+>
+> In a recent btrfs patch, it is going to add a mount option to disable
+> log replay for btrfs, just like "norecovery" for ext4/xfs.
+>
+> But in the discussion on the mount option name and use case, it seems
+> better to have an unified and fs independent mount option alias for real
+> RO mount
+>
+> Reasons:
+> 1) Some file system may have already used [no]"recovery" mount option
+>     In fact, btrfs has already used "recovery" mount option.
+>     Using "norecovery" mount option will be quite confusing for btrfs.
+>
+> 2) More straight forward mount option
+>     Currently, to get real RO mount, for ext4/xfs, user must use -o
+>     ro,norecovery.
+>     Just ro won't ensure real RO, and norecovery can't be used alone.
+>     If we have a simple alias, it would be much better for user to use.
+>     (it maybe done just in user space mount)
+>
+>     Not to mention some fs (yeah, btrfs again) doesn't have "norecovery"
+>     but "nologreplay".
+>
+> 3) A lot of user even don't now mount ro can still modify device
+>     Yes, I didn't know this point until I checked the log replay code of
+>     btrfs.
+>     Adding such mount option alias may raise some attention of users.
+>
+>
+> Any ideas about this?
+>
+> Thanks,
+> Qu
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-btrfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
