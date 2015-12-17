@@ -1,101 +1,105 @@
-From: Daeho Jeong <daeho.jeong@samsung.com>
-Subject: [PATCH v2] ext4: make sure to revoke all the freeable blocks in
- ext4_free_blocks
-Date: Thu, 17 Dec 2015 11:42:11 +0900
-Message-ID: <1450320131-10914-1-git-send-email-daeho.jeong@samsung.com>
-Cc: Daeho Jeong <daeho.jeong@samsung.com>
-To: tytso@mit.edu, jack@suse.cz, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout4.samsung.com ([203.254.224.34]:56613 "EHLO
-	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753049AbbLQClH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Dec 2015 21:41:07 -0500
-Received: from epcpsbgr1.samsung.com
- (u141.gpu120.samsung.co.kr [203.254.230.141])
- by mailout4.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
- 64bit (built May  5 2014))
- with ESMTP id <0NZH01OTUE4G0200@mailout4.samsung.com> for
- linux-ext4@vger.kernel.org; Thu, 17 Dec 2015 11:41:04 +0900 (KST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Ideas on unified real-ro mount option across all filesystems
+Date: Wed, 16 Dec 2015 21:15:59 -0600
+Message-ID: <567228EF.80007@redhat.com>
+References: <567212DA.8050808@cn.fujitsu.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, btrfs <linux-btrfs@vger.kernel.org>,
+	xfs@oss.sgi.com
+To: Qu Wenruo <quwenruo@cn.fujitsu.com>,
+	fsdevel <linux-fsdevel@vger.kernel.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <567212DA.8050808@cn.fujitsu.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Now, ext4_free_blocks() doesn't revoke data blocks of per-file data
-journalled inode and it can cause file data inconsistency problems.
-Even though data blocks of per-file data journalled inode are already
-forgotten by jbd2_journal_invalidatepage() in advance of invoking
-ext4_free_blocks(), we still need to revoke the data blocks here.
-Moreover some of the metadata blocks, which are not found by
-sb_find_get_block(), are still needed to be revoked, but this is also
-missing here.
+<xfs list address fixed>
 
-Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/mballoc.c |   32 +++++++++++++-------------------
- 1 file changed, 13 insertions(+), 19 deletions(-)
+On 12/16/15 7:41 PM, Qu Wenruo wrote:
+> Hi,
+> 
+> In a recent btrfs patch, it is going to add a mount option to disable
+> log replay for btrfs, just like "norecovery" for ext4/xfs.
+> 
+> But in the discussion on the mount option name and use case, it seems
+> better to have an unified and fs independent mount option alias for
+> real RO mount
+> 
+> Reasons:
+> 1) Some file system may have already used [no]"recovery" mount option
+>    In fact, btrfs has already used "recovery" mount option.
+>    Using "norecovery" mount option will be quite confusing for btrfs.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 61eaf74..26419d6 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4695,16 +4695,6 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 	}
- 
- 	/*
--	 * We need to make sure we don't reuse the freed block until
--	 * after the transaction is committed, which we can do by
--	 * treating the block as metadata, below.  We make an
--	 * exception if the inode is to be written in writeback mode
--	 * since writeback mode has weak data consistency guarantees.
--	 */
--	if (!ext4_should_writeback_data(inode))
--		flags |= EXT4_FREE_BLOCKS_METADATA;
--
--	/*
- 	 * If the extent to be freed does not begin on a cluster
- 	 * boundary, we need to deal with partial clusters at the
- 	 * beginning and end of the extent.  Normally we will free
-@@ -4738,14 +4728,13 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 
- 	if (!bh && (flags & EXT4_FREE_BLOCKS_FORGET)) {
- 		int i;
-+		int is_metadata = flags & EXT4_FREE_BLOCKS_METADATA;
- 
- 		for (i = 0; i < count; i++) {
- 			cond_resched();
--			bh = sb_find_get_block(inode->i_sb, block + i);
--			if (!bh)
--				continue;
--			ext4_forget(handle, flags & EXT4_FREE_BLOCKS_METADATA,
--				    inode, bh, block + i);
-+			if (is_metadata)
-+				bh = sb_find_get_block(inode->i_sb, block + i);
-+			ext4_forget(handle, is_metadata, inode, bh, block + i);
- 		}
- 	}
- 
-@@ -4819,12 +4808,17 @@ do_more:
- 	if (err)
- 		goto error_return;
- 
--	if ((flags & EXT4_FREE_BLOCKS_METADATA) && ext4_handle_valid(handle)) {
-+	/*
-+	 * We need to make sure we don't reuse the freed block until after the
-+	 * transaction is committed. We make an exception if the inode is to be
-+	 * written in writeback mode since writeback mode has weak data
-+	 * consistency guarantees.
-+	 */
-+	if (ext4_handle_valid(handle) &&
-+	    ((flags & EXT4_FREE_BLOCKS_METADATA) ||
-+	     !ext4_should_writeback_data(inode))) {
- 		struct ext4_free_data *new_entry;
- 		/*
--		 * blocks being freed are metadata. these blocks shouldn't
--		 * be used until this transaction is committed
--		 *
- 		 * We use __GFP_NOFAIL because ext4_free_blocks() is not allowed
- 		 * to fail.
- 		 */
--- 
-1.7.9.5
+Too bad btrfs picked those semantics when "norecovery" has existed on
+other filesystems for quite some time with a different meaning... :(
 
+> 2) More straight forward mount option
+>    Currently, to get real RO mount, for ext4/xfs, user must use -o
+>    ro,norecovery.
+>    Just ro won't ensure real RO, and norecovery can't be used alone.
+>    If we have a simple alias, it would be much better for user to use.
+>    (it maybe done just in user space mount)
+
+mount(8) simply says:
+
+       ro     Mount the filesystem read-only.
+
+and mount(2) is no more illustrative:
+
+       MS_RDONLY
+              Mount file system read-only.
+
+kernel code is no help, either:
+
+#define MS_RDONLY        1      /* Mount read-only */
+
+They say nothing about what, exactly, "read-only" means.  But since at least
+the early ext3 days, it means that you cannot write through the filesystem, not
+that the filesystem will leave the block device unmodified when it mounts.
+
+I have always interpreted it as simply "no user changes to the filesystem,"
+and that is clearly what the vfs does with the flag...
+
+>    Not to mention some fs (yeah, btrfs again) doesn't have "norecovery"
+>    but "nologreplay".
+
+well, again, btrfs picked unfortunate semantics, given the precedent set
+by other filesystems.
+
+f2fs, ext4, gfs2, nilfs2, and xfs all support "norecovery" - xfs since
+forever, ext4 & f2fs since 2009, etc.
+
+> 3) A lot of user even don't now mount ro can still modify device
+>    Yes, I didn't know this point until I checked the log replay code of
+>    btrfs.
+>    Adding such mount option alias may raise some attention of users.
+
+Given that nothing in the documentation implies that the block device itself
+must remain unchanged on a read-only mount, I don't see any problem which
+needs fixing.  MS_RDONLY rejects user IO; that's all.
+
+If you want to be sure your block device rejects all IO for forensics or
+what have you, I'd suggest # blockdev --setro /dev/whatever prior to mount,
+and take it out of the filesystem's control.  Or better yet, making an
+image and not touching the original.
+
+-Eric
+
+> Any ideas about this?
+
+
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
