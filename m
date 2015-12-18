@@ -1,42 +1,130 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3 0/3] ext4 crypto: back up encrypted files
-Date: Thu, 17 Dec 2015 19:49:35 -0500
-Message-ID: <20151218004935.GA17115@thunk.org>
-References: <1449759879-2166-1-git-send-email-tytso@mit.edu>
- <20151216151010.GB16918@quack.suse.cz>
+From: Qu Wenruo <quwenruo@cn.fujitsu.com>
+Subject: Re: Ideas on unified real-ro mount option across all filesystems
+Date: Fri, 18 Dec 2015 09:29:16 +0800
+Message-ID: <5673616C.1040706@cn.fujitsu.com>
+References: <567212DA.8050808@cn.fujitsu.com> <567228EF.80007@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	mhalcrow@google.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36831 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753512AbbLRAti (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Dec 2015 19:49:38 -0500
-Content-Disposition: inline
-In-Reply-To: <20151216151010.GB16918@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"; Format="flowed"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: Eric Sandeen <sandeen@redhat.com>, fsdevel
+	<linux-fsdevel@vger.kernel.org>, btrfs <linux-btrfs@vger.kernel.org>,
+	<kzak@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <567228EF.80007@redhat.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Dec 16, 2015 at 04:10:10PM +0100, Jan Kara wrote:
-> 
-> Umm, I don't quite follow. O_DIRECT reads will actually read final file
-> block in full even if i_size is somewhere in the middle of it. We then
-> report only data upto i_size as transferred but that's not really
-> important for you.
 
-I had tried this approach first but it appeared that the data was
-getting zero'ed between i_size and the end of the block.  It turns out
-it was a bug in my test program, sigh.
 
-I agree about the locking issues.  It isn't so much of an issue since
-without the encryption key, you can't modify the file, so this
-prevents most of the nasty races.  Of course, it could be the case
-that user A (say, root) doesn't have access to the key, but user B
-(say the user account) does have access.  So dropping the shadow inode
-is the better way to go.
+Eric Sandeen wrote on 2015/12/16 21:15 -0600:
+> <xfs list address fixed>
+>
+> On 12/16/15 7:41 PM, Qu Wenruo wrote:
+>> Hi,
+>>
+>> In a recent btrfs patch, it is going to add a mount option to disable
+>> log replay for btrfs, just like "norecovery" for ext4/xfs.
+>>
+>> But in the discussion on the mount option name and use case, it seems
+>> better to have an unified and fs independent mount option alias for
+>> real RO mount
+>>
+>> Reasons:
+>> 1) Some file system may have already used [no]"recovery" mount option
+>>     In fact, btrfs has already used "recovery" mount option.
+>>     Using "norecovery" mount option will be quite confusing for btrfs.
+>
+> Too bad btrfs picked those semantics when "norecovery" has existed on
+> other filesystems for quite some time with a different meaning... :(
+>
+>> 2) More straight forward mount option
+>>     Currently, to get real RO mount, for ext4/xfs, user must use -o
+>>     ro,norecovery.
+>>     Just ro won't ensure real RO, and norecovery can't be used alone.
+>>     If we have a simple alias, it would be much better for user to use.
+>>     (it maybe done just in user space mount)
+>
+> mount(8) simply says:
+>
+>         ro     Mount the filesystem read-only.
+>
+> and mount(2) is no more illustrative:
+>
+>         MS_RDONLY
+>                Mount file system read-only.
+>
+> kernel code is no help, either:
+>
+> #define MS_RDONLY        1      /* Mount read-only */
+>
+> They say nothing about what, exactly, "read-only" means.  But since at least
+> the early ext3 days, it means that you cannot write through the filesystem, not
+> that the filesystem will leave the block device unmodified when it mounts.
+>
+> I have always interpreted it as simply "no user changes to the filesystem,"
+> and that is clearly what the vfs does with the flag...
+>
+>>     Not to mention some fs (yeah, btrfs again) doesn't have "norecovery"
+>>     but "nologreplay".
+>
+> well, again, btrfs picked unfortunate semantics, given the precedent set
+> by other filesystems.
+>
+> f2fs, ext4, gfs2, nilfs2, and xfs all support "norecovery" - xfs since
+> forever, ext4 & f2fs since 2009, etc.
 
-Thanks!!
+I understand it's btrfs' fault.
+Considering how many filesystems are already using "norecovery", it is 
+almost a standard.
 
-						- Ted
+Not sure if it's possible to change the "recovery" mount option to other 
+name for btrfs, but it seems using "norecovery" would be the best solution.
+
+>
+>> 3) A lot of user even don't now mount ro can still modify device
+>>     Yes, I didn't know this point until I checked the log replay code of
+>>     btrfs.
+>>     Adding such mount option alias may raise some attention of users.
+>
+> Given that nothing in the documentation implies that the block device itself
+> must remain unchanged on a read-only mount, I don't see any problem which
+> needs fixing.  MS_RDONLY rejects user IO; that's all.
+
+And thanks for the info provided by Karel, it's clear that at least 
+mount(8) itself already has explain on what ro will do and what it won't do.
+
+Thanks,
+Qu
+>
+> If you want to be sure your block device rejects all IO for forensics or
+> what have you, I'd suggest # blockdev --setro /dev/whatever prior to mount,
+> and take it out of the filesystem's control.  Or better yet, making an
+> image and not touching the original.
+>
+> -Eric
+>
+>> Any ideas about this?
+>
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
