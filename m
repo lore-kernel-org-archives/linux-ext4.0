@@ -1,75 +1,85 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v3 2/7] dax: support dirty DAX entries in radix tree
-Date: Fri, 18 Dec 2015 22:23:49 -0700
-Message-ID: <20151219052349.GA3553@linux.intel.com>
-References: <1449602325-20572-1-git-send-email-ross.zwisler@linux.intel.com>
- <1449602325-20572-3-git-send-email-ross.zwisler@linux.intel.com>
- <20151218090110.GB4297@quack.suse.cz>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH v4 00/11] xfstests: test the nfs/cifs/btrfs/xfs
+	reflink/dedupe ioctls
+Date: Sat, 19 Dec 2015 01:10:52 -0800
+Message-ID: <20151219091052.15320.94973.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dave Chinner <david@fromorbit.com>, Ingo Molnar <mingo@redhat.com>,
-	Jan Kara <jack@suse.com>, Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org, x86@kernel.org, xfs@oss.sgi.com,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Dave Hansen <dave.hansen@linux.intel.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20151218090110.GB4297@quack.suse.cz>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, fstests@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
+To: david@fromorbit.com, darrick.wong@oracle.com
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Dec 18, 2015 at 10:01:10AM +0100, Jan Kara wrote:
-> On Tue 08-12-15 12:18:40, Ross Zwisler wrote:
-> > Add support for tracking dirty DAX entries in the struct address_space
-> > radix tree.  This tree is already used for dirty page writeback, and it
-> > already supports the use of exceptional (non struct page*) entries.
-> > 
-> > In order to properly track dirty DAX pages we will insert new exceptional
-> > entries into the radix tree that represent dirty DAX PTE or PMD pages.
-> > These exceptional entries will also contain the writeback addresses for the
-> > PTE or PMD faults that we can use at fsync/msync time.
-> > 
-> > There are currently two types of exceptional entries (shmem and shadow)
-> > that can be placed into the radix tree, and this adds a third.  There
-> > shouldn't be any collisions between these various exceptional entries
-> > because only one type of exceptional entry should be able to be found in a
-> > radix tree at a time depending on how it is being used.
-> 
-> I was thinking about this and I'm not sure the use of exceptional entries
-> cannot collide. DAX uses page cache for read mapping of holes. When memory
-> pressure happens, page can get evicted again and entry in the radix tree
-> will get replaced with a shadow entry. So shadow entries *can* exist in DAX
-> mappings. Thus at least your change to clear_exceptional_entry() looks
-> wrong to me.
-> 
-> Also when we'd like to insert DAX radix tree entry, we have to count with
-> the fact that there can be shadow entry in place and we have to tear it
-> down properly.
+Hi all,
 
-You are right, thank you for catching this.
+This is a small patch set against the reflink/dedupe test cases in
+xfstests.  The first patch is a rewrite of the tools to find the
+lowest vacant ID number and to move a test case.  These two programs
+are useful for staging a lot of new tests at a high number and moving
+them to lower numbers when the maintainer wants to accept the new
+tests.
 
-I think the correct thing to do is to just explicitly disallow having shadow
-entries in trees for DAX mappings.  As you say the only usage is to track zero
-page mappings for reading holes which will get minimal benefit from shadow
-entries, and this choice makes the logic both in clear_exceptional_entry() and
-in the rest of the DAX code simpler.
+The second patch fixes some reflink tests that didn't clean up after
+themselves.
 
-I've sent out a v5 that fixes this issue.
+Patch 3 updates the golden output for the test that examines the
+results of feeding bad inputs to the two ioctls.  The new error values
+are based on a discussion of how to react to bad file types on the
+mailing lists and the ongoing work to hoist the ioctls to the VFS
+level.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Patches 4-5 fix some minor errors found while testing with different
+kernel config and block size options.
+
+Patch 6 introduces new tests to check the behavior of unaligned CoW,
+punch-while-CoWd, and ensures that passing len == 0 to reflink
+actually runs to EOF.
+
+Patch 7 introduces some XFS-specific ENOSPC testing, wherein we try to
+crash the filesystem by allocating all the blocks in an AG and then
+expanding the refcount and rmap btrees until the AG runs out of space.
+
+Patch 8 introduces checks that CoW works with a variety of different
+neighbor blocks -- delalloc, unwritten, hole, and regular.
+
+Patch 9 introduces checks for CoW when blocksize < pagesize.
+
+Patch 10 tries some large CoW operations to ensure that it works
+correctly.
+
+Patch 11 creates a 'dedupe' group for testing specifically dedupe
+functionality.
+
+If you're going to start using this mess, you probably ought to just
+pull from my github trees for kernel[1], xfsprogs[2], xfstests[3],
+xfs-docs[4], and man-pages[5].  They should just work with the btrfs
+that's in 4.4...  and somewhat buggily with the 4.4 XFS patched with
+[1].  The relevant xfs_io support will be in xfsprogs 4.3 though it
+still needs a patch to fix len == 0 support.  Probably easier just to
+grab [2] and build that.
+
+Comments and questions are, as always, welcome.
+
+--D
+
+[1] https://github.com/djwong/linux/tree/for-dave
+[2] https://github.com/djwong/xfsprogs/tree/for-dave
+[3] https://github.com/djwong/xfstests/tree/for-dave
+[4] https://github.com/djwong/xfs-documentation/tree/for-dave
+[5] https://github.com/djwong/man-pages/commits/for-mtk
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
