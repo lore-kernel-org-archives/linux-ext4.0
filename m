@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v5 5/7] ext2: call dax_pfn_mkwrite() for DAX fsync/msync
-Date: Fri, 18 Dec 2015 22:22:18 -0700
-Message-ID: <1450502540-8744-6-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v5 7/7] xfs: call dax_pfn_mkwrite() for DAX fsync/msync
+Date: Fri, 18 Dec 2015 22:22:20 -0700
+Message-ID: <1450502540-8744-8-git-send-email-ross.zwisler@linux.intel.com>
 References: <1450502540-8744-1-git-send-email-ross.zwisler@linux.intel.com>
 Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	"H. Peter Anvin" <hpa@zytor.com>,
@@ -37,32 +37,34 @@ dirtied.
 
 Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 ---
- fs/ext2/file.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/xfs/xfs_file.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index 11a42c5..2c88d68 100644
---- a/fs/ext2/file.c
-+++ b/fs/ext2/file.c
-@@ -102,8 +102,8 @@ static int ext2_dax_pfn_mkwrite(struct vm_area_struct *vma,
- {
- 	struct inode *inode = file_inode(vma->vm_file);
- 	struct ext2_inode_info *ei = EXT2_I(inode);
--	int ret = VM_FAULT_NOPAGE;
- 	loff_t size;
-+	int ret;
- 
- 	sb_start_pagefault(inode->i_sb);
- 	file_update_time(vma->vm_file);
-@@ -113,6 +113,8 @@ static int ext2_dax_pfn_mkwrite(struct vm_area_struct *vma,
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index f5392ab..40ffbb1 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -1603,9 +1603,8 @@ xfs_filemap_pmd_fault(
+ /*
+  * pfn_mkwrite was originally inteneded to ensure we capture time stamp
+  * updates on write faults. In reality, it's need to serialise against
+- * truncate similar to page_mkwrite. Hence we open-code dax_pfn_mkwrite()
+- * here and cycle the XFS_MMAPLOCK_SHARED to ensure we serialise the fault
+- * barrier in place.
++ * truncate similar to page_mkwrite. Hence we cycle the XFS_MMAPLOCK_SHARED
++ * to ensure we serialise the fault barrier in place.
+  */
+ static int
+ xfs_filemap_pfn_mkwrite(
+@@ -1628,6 +1627,8 @@ xfs_filemap_pfn_mkwrite(
  	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
  	if (vmf->pgoff >= size)
  		ret = VM_FAULT_SIGBUS;
-+	else
++	else if (IS_DAX(inode))
 +		ret = dax_pfn_mkwrite(vma, vmf);
- 
- 	up_read(&ei->dax_sem);
+ 	xfs_iunlock(ip, XFS_MMAPLOCK_SHARED);
  	sb_end_pagefault(inode->i_sb);
+ 	return ret;
 -- 
 2.5.0
 
