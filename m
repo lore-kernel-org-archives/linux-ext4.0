@@ -1,124 +1,81 @@
-From: lokesh jaliminche <lokesh.jaliminche@gmail.com>
-Subject: [PATCH] EXT4: optimizing group serch for inode allocation
-Date: Sat, 19 Dec 2015 05:02:56 +0530
-Message-ID: <CAKJOkCr-O+37QfFFJgtkRUZfo_-U=qmYy=Ooc7oqtqcVrz1HWQ@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary=001a1148f8621f296a0527348f17
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f53.google.com ([74.125.82.53]:36413 "EHLO
-	mail-wm0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751592AbbLRXc6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Dec 2015 18:32:58 -0500
-Received: by mail-wm0-f53.google.com with SMTP id p187so3843776wmp.1
-        for <linux-ext4@vger.kernel.org>; Fri, 18 Dec 2015 15:32:57 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: [PATCH v5 0/7] DAX fsync/msync support
+Date: Fri, 18 Dec 2015 22:22:13 -0700
+Message-ID: <1450502540-8744-1-git-send-email-ross.zwisler@linux.intel.com>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	"H. Peter Anvin" <hpa@zytor.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Dave Chinner <david@fromorbit.com>,
+	Ingo Molnar <mingo@redhat.com>,
+	Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org,
+	x86@kernel.org,
+	xfs@oss.sgi.com,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Dave Hansen <dave.hansen@linux.intel.com>
+To: linux-kernel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
---001a1148f8621f296a0527348f17
-Content-Type: text/plain; charset=UTF-8
+Changes from v4:
+ - Explicity prevent shadow entries from being added to radix trees for DAX
+   mappings in patch 2.  The only shadow entries that would be generated
+   for DAX radix trees would be to track zero page mappings that were
+   created for holes.  These pages would receive minimal benefit from
+   having shadow entries, and the choice to have only one type of
+   exceptional entry in a given radix tree makes the logic simpler both in
+   clear_exceptional_entry() and in the rest of DAX.  (Jan)
 
->From 9e09fef78b2fa552c883bf8124af873abfde0805 Mon Sep 17 00:00:00 2001
-From: Lokesh Nagappa Jaliminche <lokesh.jaliminche@seagate.com>
+ - Added Reviewed-by from Jan to patch 3.
 
-Added a check at the start of group search loop to
-avoid looping unecessarily in case of empty group.
-This also allow group search to jump directly to
-"found_flex_bg" with "stats" and "group" already set,
-so there is no need to go through the extra steps of
-setting "best_desc" and "best_group" and then break
-out of the loop just to set "stats" and "group" again.
+This series is built upon ext4/master.  A working tree with this series
+applied can be found here:
 
-Signed-off-by: Lokesh N Jaliminche <lokesh.jaliminche@gmail.com>
----
- fs/ext4/ialloc.c |    8 ++++++++
- 1 files changed, 8 insertions(+), 0 deletions(-)
+https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=fsync_v5
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 1b8024d..588bf8e 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -446,6 +446,8 @@ static int find_group_orlov(struct super_block
-*sb, struct inode *parent,
-  struct ext4_sb_info *sbi = EXT4_SB(sb);
-  ext4_group_t real_ngroups = ext4_get_groups_count(sb);
-  int inodes_per_group = EXT4_INODES_PER_GROUP(sb);
-+ unsigned int inodes_per_flex_group;
-+ long unsigned int blocks_per_clustre;
-  unsigned int freei, avefreei, grp_free;
-  ext4_fsblk_t freeb, avefreec;
-  unsigned int ndirs;
-@@ -470,6 +472,8 @@ static int find_group_orlov(struct super_block
-*sb, struct inode *parent,
-  percpu_counter_read_positive(&sbi->s_freeclusters_counter));
-  avefreec = freeb;
-  do_div(avefreec, ngroups);
-+ inodes_per_flex_group = inodes_per_group * flex_size;
-+ blocks_per_clustre = sbi->s_blocks_per_group * flex_size;
-  ndirs = percpu_counter_read_positive(&sbi->s_dirs_counter);
+Ross Zwisler (7):
+  pmem: add wb_cache_pmem() to the PMEM API
+  dax: support dirty DAX entries in radix tree
+  mm: add find_get_entries_tag()
+  dax: add support for fsync/sync
+  ext2: call dax_pfn_mkwrite() for DAX fsync/msync
+  ext4: call dax_pfn_mkwrite() for DAX fsync/msync
+  xfs: call dax_pfn_mkwrite() for DAX fsync/msync
 
-  if (S_ISDIR(mode) &&
-@@ -489,6 +493,10 @@ static int find_group_orlov(struct super_block
-*sb, struct inode *parent,
-  for (i = 0; i < ngroups; i++) {
-  g = (parent_group + i) % ngroups;
-  get_orlov_stats(sb, g, flex_size, &stats);
-+ /* the group can't get any better than empty */
-+ if (inodes_per_flex_group == stats.free_inodes &&
-+ blocks_per_clustre == stats.free_clusters)
-+ goto found_flex_bg;
-  if (!stats.free_inodes)
-  continue;
-  if (stats.used_dirs >= best_ndir)
+ arch/x86/include/asm/pmem.h |  11 +--
+ fs/block_dev.c              |   3 +-
+ fs/dax.c                    | 159 ++++++++++++++++++++++++++++++++++++++++++--
+ fs/ext2/file.c              |   4 +-
+ fs/ext4/file.c              |   4 +-
+ fs/inode.c                  |   1 +
+ fs/xfs/xfs_file.c           |   7 +-
+ include/linux/dax.h         |   7 ++
+ include/linux/fs.h          |   1 +
+ include/linux/pagemap.h     |   3 +
+ include/linux/pmem.h        |  22 +++++-
+ include/linux/radix-tree.h  |   9 +++
+ mm/filemap.c                |  84 ++++++++++++++++++++++-
+ mm/truncate.c               |  64 ++++++++++--------
+ mm/vmscan.c                 |   9 ++-
+ 15 files changed, 339 insertions(+), 49 deletions(-)
+
 -- 
-1.7.1
+2.5.0
 
---001a1148f8621f296a0527348f17
-Content-Type: application/octet-stream;
-	name="0001-EXT4-optimizing-group-serch-for-inode-allocation.patch"
-Content-Disposition: attachment;
-	filename="0001-EXT4-optimizing-group-serch-for-inode-allocation.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_iicb9fva0
-
-RnJvbSA5ZTA5ZmVmNzhiMmZhNTUyYzg4M2JmODEyNGFmODczYWJmZGUwODA1IE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBMb2tlc2ggTmFnYXBwYSBKYWxpbWluY2hlIDxsb2tlc2guamFs
-aW1pbmNoZUBzZWFnYXRlLmNvbT4KRGF0ZTogU2F0LCAxOSBEZWMgMjAxNSAwMDozMzowNiArMDUz
-MApTdWJqZWN0OiBbUEFUQ0hdIEVYVDQ6IG9wdGltaXppbmcgZ3JvdXAgc2VyY2ggZm9yIGlub2Rl
-IGFsbG9jYXRpb24KCkFkZGVkIGEgY2hlY2sgYXQgdGhlIHN0YXJ0IG9mIGdyb3VwIHNlYXJjaCBs
-b29wIHRvCmF2b2lkIGxvb3BpbmcgdW5lY2Vzc2FyaWx5IGluIGNhc2Ugb2YgZW1wdHkgZ3JvdXAu
-ClRoaXMgYWxzbyBhbGxvdyBncm91cCBzZWFyY2ggdG8ganVtcCBkaXJlY3RseSB0bwoiZm91bmRf
-ZmxleF9iZyIgd2l0aCAic3RhdHMiIGFuZCAiZ3JvdXAiIGFscmVhZHkgc2V0LApzbyB0aGVyZSBp
-cyBubyBuZWVkIHRvIGdvIHRocm91Z2ggdGhlIGV4dHJhIHN0ZXBzIG9mCnNldHRpbmcgImJlc3Rf
-ZGVzYyIgYW5kICJiZXN0X2dyb3VwIiBhbmQgdGhlbiBicmVhawpvdXQgb2YgdGhlIGxvb3AganVz
-dCB0byBzZXQgInN0YXRzIiBhbmQgImdyb3VwIiBhZ2Fpbi4KClNpZ25lZC1vZmYtYnk6IExva2Vz
-aCBOYWdhcHBhIEphbGltaW5jaGUgPGxva2VzaC5qYWxpbWluY2hlQGdtYWlsLmNvbT4KLS0tCiBm
-cy9leHQ0L2lhbGxvYy5jIHwgICAgOCArKysrKysrKwogMSBmaWxlcyBjaGFuZ2VkLCA4IGluc2Vy
-dGlvbnMoKyksIDAgZGVsZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvZnMvZXh0NC9pYWxsb2MuYyBi
-L2ZzL2V4dDQvaWFsbG9jLmMKaW5kZXggMWI4MDI0ZC4uNTg4YmY4ZSAxMDA2NDQKLS0tIGEvZnMv
-ZXh0NC9pYWxsb2MuYworKysgYi9mcy9leHQ0L2lhbGxvYy5jCkBAIC00NDYsNiArNDQ2LDggQEAg
-c3RhdGljIGludCBmaW5kX2dyb3VwX29ybG92KHN0cnVjdCBzdXBlcl9ibG9jayAqc2IsIHN0cnVj
-dCBpbm9kZSAqcGFyZW50LAogCXN0cnVjdCBleHQ0X3NiX2luZm8gKnNiaSA9IEVYVDRfU0Ioc2Ip
-OwogCWV4dDRfZ3JvdXBfdCByZWFsX25ncm91cHMgPSBleHQ0X2dldF9ncm91cHNfY291bnQoc2Ip
-OwogCWludCBpbm9kZXNfcGVyX2dyb3VwID0gRVhUNF9JTk9ERVNfUEVSX0dST1VQKHNiKTsKKwl1
-bnNpZ25lZCBpbnQgaW5vZGVzX3Blcl9mbGV4X2dyb3VwOworCWxvbmcgdW5zaWduZWQgaW50IGJs
-b2Nrc19wZXJfY2x1c3RyZTsKIAl1bnNpZ25lZCBpbnQgZnJlZWksIGF2ZWZyZWVpLCBncnBfZnJl
-ZTsKIAlleHQ0X2ZzYmxrX3QgZnJlZWIsIGF2ZWZyZWVjOwogCXVuc2lnbmVkIGludCBuZGlyczsK
-QEAgLTQ3MCw2ICs0NzIsOCBAQCBzdGF0aWMgaW50IGZpbmRfZ3JvdXBfb3Jsb3Yoc3RydWN0IHN1
-cGVyX2Jsb2NrICpzYiwgc3RydWN0IGlub2RlICpwYXJlbnQsCiAJCXBlcmNwdV9jb3VudGVyX3Jl
-YWRfcG9zaXRpdmUoJnNiaS0+c19mcmVlY2x1c3RlcnNfY291bnRlcikpOwogCWF2ZWZyZWVjID0g
-ZnJlZWI7CiAJZG9fZGl2KGF2ZWZyZWVjLCBuZ3JvdXBzKTsKKwlpbm9kZXNfcGVyX2ZsZXhfZ3Jv
-dXAgPSBpbm9kZXNfcGVyX2dyb3VwICogZmxleF9zaXplOworCWJsb2Nrc19wZXJfY2x1c3RyZSA9
-IHNiaS0+c19ibG9ja3NfcGVyX2dyb3VwICogZmxleF9zaXplOwogCW5kaXJzID0gcGVyY3B1X2Nv
-dW50ZXJfcmVhZF9wb3NpdGl2ZSgmc2JpLT5zX2RpcnNfY291bnRlcik7CiAKIAlpZiAoU19JU0RJ
-Uihtb2RlKSAmJgpAQCAtNDg5LDYgKzQ5MywxMCBAQCBzdGF0aWMgaW50IGZpbmRfZ3JvdXBfb3Js
-b3Yoc3RydWN0IHN1cGVyX2Jsb2NrICpzYiwgc3RydWN0IGlub2RlICpwYXJlbnQsCiAJCWZvciAo
-aSA9IDA7IGkgPCBuZ3JvdXBzOyBpKyspIHsKIAkJCWcgPSAocGFyZW50X2dyb3VwICsgaSkgJSBu
-Z3JvdXBzOwogCQkJZ2V0X29ybG92X3N0YXRzKHNiLCBnLCBmbGV4X3NpemUsICZzdGF0cyk7CisJ
-CQkvKiB0aGUgZ3JvdXAgY2FuJ3QgZ2V0IGFueSBiZXR0ZXIgdGhhbiBlbXB0eSAqLworCQkJaWYg
-KGlub2Rlc19wZXJfZmxleF9ncm91cCA9PSBzdGF0cy5mcmVlX2lub2RlcyAmJgorCQkJCWJsb2Nr
-c19wZXJfY2x1c3RyZSA9PSBzdGF0cy5mcmVlX2NsdXN0ZXJzKQorCQkJCQlnb3RvIGZvdW5kX2Zs
-ZXhfYmc7CiAJCQlpZiAoIXN0YXRzLmZyZWVfaW5vZGVzKQogCQkJCWNvbnRpbnVlOwogCQkJaWYg
-KHN0YXRzLnVzZWRfZGlycyA+PSBiZXN0X25kaXIpCi0tIAoxLjcuMQoK
---001a1148f8621f296a0527348f17--
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
