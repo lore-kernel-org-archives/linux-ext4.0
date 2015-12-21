@@ -1,85 +1,77 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH v5 4/7] dax: add support for fsync/sync
-Date: Sat, 19 Dec 2015 10:37:46 -0800
-Message-ID: <CAPcyv4irspQEPVdYfLK+QfW4t-1_y1gFFVuBm00=i03PFQwEYw@mail.gmail.com>
-References: <1450502540-8744-1-git-send-email-ross.zwisler@linux.intel.com>
-	<1450502540-8744-5-git-send-email-ross.zwisler@linux.intel.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 2/3] common: Improve _link_output_file to be more
+ versatile
+Date: Mon, 21 Dec 2015 11:34:23 +1100
+Message-ID: <20151221003423.GN19802@dastard>
+References: <1448361598-28438-1-git-send-email-jack@suse.cz>
+ <1448361598-28438-3-git-send-email-jack@suse.cz>
+ <20151207232619.GC3094@thunk.org>
+ <20151209122707.GE3137@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>, "Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>, Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dave Chinner <david@fromorbit.com>, Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>, Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>, linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>, Linux MM <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>, X86 ML <x86@kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>, Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>, Dave Hansen <dave.hansen@linux.intel.com>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1450502540-8744-5-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, fstests@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <fstests-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20151209122707.GE3137@quack.suse.cz>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Dec 18, 2015 at 9:22 PM, Ross Zwisler
-<ross.zwisler@linux.intel.com> wrote:
-> To properly handle fsync/msync in an efficient way DAX needs to track dirty
-> pages so it is able to flush them durably to media on demand.
->
-> The tracking of dirty pages is done via the radix tree in struct
-> address_space.  This radix tree is already used by the page writeback
-> infrastructure for tracking dirty pages associated with an open file, and
-> it already has support for exceptional (non struct page*) entries.  We
-> build upon these features to add exceptional entries to the radix tree for
-> DAX dirty PMD or PTE pages at fault time.
->
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-[..]
-> +static void dax_writeback_one(struct address_space *mapping, pgoff_t index,
-> +               void *entry)
-> +{
-> +       struct radix_tree_root *page_tree = &mapping->page_tree;
-> +       int type = RADIX_DAX_TYPE(entry);
-> +       struct radix_tree_node *node;
-> +       void **slot;
-> +
-> +       if (type != RADIX_DAX_PTE && type != RADIX_DAX_PMD) {
-> +               WARN_ON_ONCE(1);
-> +               return;
-> +       }
-> +
-> +       spin_lock_irq(&mapping->tree_lock);
-> +       /*
-> +        * Regular page slots are stabilized by the page lock even
-> +        * without the tree itself locked.  These unlocked entries
-> +        * need verification under the tree lock.
-> +        */
-> +       if (!__radix_tree_lookup(page_tree, index, &node, &slot))
-> +               goto unlock;
-> +       if (*slot != entry)
-> +               goto unlock;
-> +
-> +       /* another fsync thread may have already written back this entry */
-> +       if (!radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_TOWRITE))
-> +               goto unlock;
-> +
-> +       radix_tree_tag_clear(page_tree, index, PAGECACHE_TAG_TOWRITE);
-> +
-> +       if (type == RADIX_DAX_PMD)
-> +               wb_cache_pmem(RADIX_DAX_ADDR(entry), PMD_SIZE);
-> +       else
-> +               wb_cache_pmem(RADIX_DAX_ADDR(entry), PAGE_SIZE);
+On Wed, Dec 09, 2015 at 01:27:07PM +0100, Jan Kara wrote:
+> On Mon 07-12-15 18:26:19, Ted Tso wrote:
+> > On Tue, Nov 24, 2015 at 11:39:57AM +0100, Jan Kara wrote:
+> > > From: Jan Kara <jack@suse.com>
+> > > 
+> > > Currently _link_output_file() selects output file suffix based on the
+> > > current operating system. Make it more versatile by allowing selection
+> > > of output file suffix based on any feature string. The idea is that
+> > > in config file ($seq.cfg) there are several lines like:
+> > > 
+> > > feat1,feat2: suffix
+> > > 
+> > > The function is passed a feature string (or uses os_name,MOUNT_OPTIONS
+> > > if no argument is passed) and selects output file with a suffix for
+> > > which all features are present in the feature string. If there is no
+> > > matching line, output with 'default' suffix is selected.
+> > > 
+> > > Update all tests using _link_out_file to the new calling convention.
+> > > 
+> > > Signed-off-by: Jan Kara <jack@suse.com>
+> > 
+> > I made a slight change so that if $seqfull.cfg doesn't exist, we use
+> > ./common/default.cfg instead.  This avoids the need to create a large
+> > number of identical files:
+> > 
+> > >  tests/generic/088.cfg       |   2 +
+> > >  tests/xfs/018.cfg           |   2 +
+> > >  tests/xfs/022.cfg           |   2 +
+> > >  tests/xfs/023.cfg           |   2 +
+> > >  tests/xfs/030.cfg           |   2 +
+> > >  tests/xfs/031.cfg           |   2 +
+> > >  tests/xfs/035.cfg           |   2 +
+> > >  tests/xfs/036.cfg           |   2 +
+> > >  tests/xfs/039.cfg           |   2 +
+> > >  tests/xfs/043.cfg           |   2 +
+> > >  tests/xfs/082.cfg           |   2 +
+> > >  tests/xfs/146.cfg           |   2 +
+> > 
+> > What do you think?
+> 
+> So I'm somewhat undecided whether this is better or not ;). It certainly
+> saves us some churn with identical .cfg files for linux vs irix configs
+> but OTOH I don't expect there to be much more .cfg files selecting between
+> irix and linux so this is mostly one-time issue. So I guess I'll leave it
+> upto Dave and his taste to decide what he finds better.
 
-Hi Ross, I should have realized this sooner, but what guarantees that
-the address returned by RADIX_DAX_ADDR(entry) is still valid at this
-point?  I think we need to store the sector in the radix tree and then
-perform a new dax_map_atomic() operation to either lookup a valid
-address or fail the sync request.  Otherwise, if the device is gone
-we'll crash, or write into some other random vmalloc address space.
+I'll take the one-time change here, but as Christoph suggested it
+really is getting to the point where we should stop considering
+xfstests to be a cross-platform test suite. Just another cleanup to
+be done...
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
