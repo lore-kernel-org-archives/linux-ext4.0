@@ -1,100 +1,29 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH v5 4/7] dax: add support for fsync/sync
-Date: Mon, 21 Dec 2015 11:27:35 -0800
-Message-ID: <CAPcyv4jThXLT06z6Lw1EHiaD4JHOgdQ5TXzEjoHavtU+_BTzow@mail.gmail.com>
-References: <1450502540-8744-1-git-send-email-ross.zwisler@linux.intel.com>
-	<1450502540-8744-5-git-send-email-ross.zwisler@linux.intel.com>
-	<CAPcyv4irspQEPVdYfLK+QfW4t-1_y1gFFVuBm00=i03PFQwEYw@mail.gmail.com>
-	<20151221170545.GA13494@linux.intel.com>
+From: David Howells <dhowells@redhat.com>
+Subject: Re: [PATCH 03/12] statx: Add a system call to make enhanced file info available
+Date: Mon, 21 Dec 2015 23:21:24 +0000
+Message-ID: <4234.1450740084@warthog.procyon.org.uk>
+References: <20151204120633.GI14427@amd> <20151120145422.18930.72662.stgit@warthog.procyon.org.uk> <20151120145457.18930.79678.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: Ross Zwisler <ross.zwisler@linux.intel.com>, Dan Williams <dan.j.williams@intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>, "Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>, Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dave Chinner <david@fromorbit.com>, Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>, Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>, linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>, Linux MM <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>, X86 ML <x86@kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>, Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20151221170545.GA13494@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: dhowells@redhat.com, arnd@arndb.de, linux-afs@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Pavel Machek <pavel@ucw.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20151204120633.GI14427@amd>
+Content-ID: <6178.1449249670.1@warthog.procyon.org.uk>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 21, 2015 at 9:05 AM, Ross Zwisler
-<ross.zwisler@linux.intel.com> wrote:
-> On Sat, Dec 19, 2015 at 10:37:46AM -0800, Dan Williams wrote:
->> On Fri, Dec 18, 2015 at 9:22 PM, Ross Zwisler
->> <ross.zwisler@linux.intel.com> wrote:
->> > To properly handle fsync/msync in an efficient way DAX needs to track dirty
->> > pages so it is able to flush them durably to media on demand.
->> >
->> > The tracking of dirty pages is done via the radix tree in struct
->> > address_space.  This radix tree is already used by the page writeback
->> > infrastructure for tracking dirty pages associated with an open file, and
->> > it already has support for exceptional (non struct page*) entries.  We
->> > build upon these features to add exceptional entries to the radix tree for
->> > DAX dirty PMD or PTE pages at fault time.
->> >
->> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
->> [..]
->> > +static void dax_writeback_one(struct address_space *mapping, pgoff_t index,
->> > +               void *entry)
->> > +{
->> > +       struct radix_tree_root *page_tree = &mapping->page_tree;
->> > +       int type = RADIX_DAX_TYPE(entry);
->> > +       struct radix_tree_node *node;
->> > +       void **slot;
->> > +
->> > +       if (type != RADIX_DAX_PTE && type != RADIX_DAX_PMD) {
->> > +               WARN_ON_ONCE(1);
->> > +               return;
->> > +       }
->> > +
->> > +       spin_lock_irq(&mapping->tree_lock);
->> > +       /*
->> > +        * Regular page slots are stabilized by the page lock even
->> > +        * without the tree itself locked.  These unlocked entries
->> > +        * need verification under the tree lock.
->> > +        */
->> > +       if (!__radix_tree_lookup(page_tree, index, &node, &slot))
->> > +               goto unlock;
->> > +       if (*slot != entry)
->> > +               goto unlock;
->> > +
->> > +       /* another fsync thread may have already written back this entry */
->> > +       if (!radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_TOWRITE))
->> > +               goto unlock;
->> > +
->> > +       radix_tree_tag_clear(page_tree, index, PAGECACHE_TAG_TOWRITE);
->> > +
->> > +       if (type == RADIX_DAX_PMD)
->> > +               wb_cache_pmem(RADIX_DAX_ADDR(entry), PMD_SIZE);
->> > +       else
->> > +               wb_cache_pmem(RADIX_DAX_ADDR(entry), PAGE_SIZE);
->>
->> Hi Ross, I should have realized this sooner, but what guarantees that
->> the address returned by RADIX_DAX_ADDR(entry) is still valid at this
->> point?  I think we need to store the sector in the radix tree and then
->> perform a new dax_map_atomic() operation to either lookup a valid
->> address or fail the sync request.  Otherwise, if the device is gone
->> we'll crash, or write into some other random vmalloc address space.
->
-> Ah, good point, thank you.  v4 of this series is based on a version of
-> DAX where we aren't properly dealing with PMEM device removal.  I've got an
-> updated version that merges with your dax_map_atomic() changes, and I'll add
-> this change into v5 which I will send out today.  Thank you for the
-> suggestion.
+Pavel Machek <pavel@ucw.cz> wrote:
 
-To make the merge simpler you could skip the rebase for now and just
-call blk_queue_enter() / blk_queue_exit() around the calls to
-wb_cache_pmem.
+> But fstat() is really different operation to stat() -- tell me about
+> my file descriptor vs. tell me about this filename, and ptrace (and
+> some "security" solutions) might want to allow one but disallow the
+> second. I'd not group them together..
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+You can argue it either way.  I think Linus came down on the side of combining
+them.
+
+David
