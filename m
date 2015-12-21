@@ -1,321 +1,139 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v5 2/7] dax: support dirty DAX entries in radix tree
-Date: Mon, 21 Dec 2015 18:15:12 +0100
-Message-ID: <20151221171512.GA7030@quack.suse.cz>
-References: <1450502540-8744-1-git-send-email-ross.zwisler@linux.intel.com>
- <1450502540-8744-3-git-send-email-ross.zwisler@linux.intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-nvdimm@lists.01.org, x86@kernel.org,
-	xfs@oss.sgi.com, Andrew Morton <akpm@linux-foundation.org>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Dave Hansen <dave.hansen@linux.intel.com>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] EXT4: optimizing group serch for inode allocation
+Date: Mon, 21 Dec 2015 10:27:37 -0700
+Message-ID: <9CF60D02-FF10-44FF-A31E-D4E99F627AF2@dilger.ca>
+References: <CAKJOkCr-O+37QfFFJgtkRUZfo_-U=qmYy=Ooc7oqtqcVrz1HWQ@mail.gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_1CA89E7E-22C9-4A60-ADA4-08EAF00096F1"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Cc: linux-ext4@vger.kernel.org
+To: lokesh jaliminche <lokesh.jaliminche@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:46076 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751208AbbLURP2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Dec 2015 12:15:28 -0500
-Content-Disposition: inline
-In-Reply-To: <1450502540-8744-3-git-send-email-ross.zwisler@linux.intel.com>
+Received: from mail-io0-f177.google.com ([209.85.223.177]:33517 "EHLO
+	mail-io0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751728AbbLUR1p (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Dec 2015 12:27:45 -0500
+Received: by mail-io0-f177.google.com with SMTP id 186so163325910iow.0
+        for <linux-ext4@vger.kernel.org>; Mon, 21 Dec 2015 09:27:44 -0800 (PST)
+In-Reply-To: <CAKJOkCr-O+37QfFFJgtkRUZfo_-U=qmYy=Ooc7oqtqcVrz1HWQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 18-12-15 22:22:15, Ross Zwisler wrote:
-> Add support for tracking dirty DAX entries in the struct address_space
-> radix tree.  This tree is already used for dirty page writeback, and it
-> already supports the use of exceptional (non struct page*) entries.
-> 
-> In order to properly track dirty DAX pages we will insert new exceptional
-> entries into the radix tree that represent dirty DAX PTE or PMD pages.
-> These exceptional entries will also contain the writeback addresses for the
-> PTE or PMD faults that we can use at fsync/msync time.
-> 
-> There are currently two types of exceptional entries (shmem and shadow)
-> that can be placed into the radix tree, and this adds a third.  We rely on
-> the fact that only one type of exceptional entry can be found in a given
-> radix tree based on its usage.  This happens for free with DAX vs shmem but
-> we explicitly prevent shadow entries from being added to radix trees for
-> DAX mappings.
-> 
-> The only shadow entries that would be generated for DAX radix trees would
-> be to track zero page mappings that were created for holes.  These pages
-> would receive minimal benefit from having shadow entries, and the choice
-> to have only one type of exceptional entry in a given radix tree makes the
-> logic simpler both in clear_exceptional_entry() and in the rest of DAX.
-> 
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 
-The patch looks good to me. Just one comment: When we have this exclusion
-between different types of exceptional entries, there is no real need to
-have separate counters of 'shadow' and 'dax' entries, is there? We can have
-one 'nrexceptional' counter and don't have to grow struct inode
-unnecessarily which would be really welcome since DAX isn't a mainstream
-feature. Could you please change the code? Thanks!
+--Apple-Mail=_1CA89E7E-22C9-4A60-ADA4-08EAF00096F1
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-								Honza
+On Dec 18, 2015, at 4:32 PM, lokesh jaliminche =
+<lokesh.jaliminche@gmail.com> wrote:
+>=20
+> =46rom 9e09fef78b2fa552c883bf8124af873abfde0805 Mon Sep 17 00:00:00 =
+2001
+> From: Lokesh Nagappa Jaliminche <lokesh.jaliminche@seagate.com>
+
+In the patch summary there is a typo - s/serch/search/
+
+Also, it appears your email client has mangled the whitespace in the
+patch.  Please use "git send-email" to send your patch to the list:
+
+  git send-email --to tytso@mit.edu --cc linux-ext4@vger.kernel.org =
+HEAD~1
+
+so that it arrives intact.  You probably need to set it up in =
+~/.gitconfig:
+
+[sendemail]
+        confirm =3D compose
+        smtpdomain =3D {your client hostname}
+        smtpserver =3D {your SMTP server hostname}
+
+Cheers, Andreas
+
+> Added a check at the start of group search loop to
+> avoid looping unecessarily in case of empty group.
+> This also allow group search to jump directly to
+> "found_flex_bg" with "stats" and "group" already set,
+> so there is no need to go through the extra steps of
+> setting "best_desc" and "best_group" and then break
+> out of the loop just to set "stats" and "group" again.
+>=20
+> Signed-off-by: Lokesh N Jaliminche <lokesh.jaliminche@gmail.com>
 > ---
->  fs/block_dev.c             |  3 ++-
->  fs/inode.c                 |  1 +
->  include/linux/dax.h        |  5 ++++
->  include/linux/fs.h         |  1 +
->  include/linux/radix-tree.h |  9 +++++++
->  mm/filemap.c               | 13 +++++++---
->  mm/truncate.c              | 64 +++++++++++++++++++++++++++-------------------
->  mm/vmscan.c                |  9 ++++++-
->  8 files changed, 73 insertions(+), 32 deletions(-)
-> 
-> diff --git a/fs/block_dev.c b/fs/block_dev.c
-> index c25639e..226dacc 100644
-> --- a/fs/block_dev.c
-> +++ b/fs/block_dev.c
-> @@ -75,7 +75,8 @@ void kill_bdev(struct block_device *bdev)
->  {
->  	struct address_space *mapping = bdev->bd_inode->i_mapping;
->  
-> -	if (mapping->nrpages == 0 && mapping->nrshadows == 0)
-> +	if (mapping->nrpages == 0 && mapping->nrshadows == 0 &&
-> +			mapping->nrdax == 0)
->  		return;
->  
->  	invalidate_bh_lrus();
-> diff --git a/fs/inode.c b/fs/inode.c
-> index 1be5f90..79d828f 100644
-> --- a/fs/inode.c
-> +++ b/fs/inode.c
-> @@ -496,6 +496,7 @@ void clear_inode(struct inode *inode)
->  	spin_lock_irq(&inode->i_data.tree_lock);
->  	BUG_ON(inode->i_data.nrpages);
->  	BUG_ON(inode->i_data.nrshadows);
-> +	BUG_ON(inode->i_data.nrdax);
->  	spin_unlock_irq(&inode->i_data.tree_lock);
->  	BUG_ON(!list_empty(&inode->i_data.private_list));
->  	BUG_ON(!(inode->i_state & I_FREEING));
-> diff --git a/include/linux/dax.h b/include/linux/dax.h
-> index b415e52..e9d57f68 100644
-> --- a/include/linux/dax.h
-> +++ b/include/linux/dax.h
-> @@ -36,4 +36,9 @@ static inline bool vma_is_dax(struct vm_area_struct *vma)
->  {
->  	return vma->vm_file && IS_DAX(vma->vm_file->f_mapping->host);
->  }
-> +
-> +static inline bool dax_mapping(struct address_space *mapping)
-> +{
-> +	return mapping->host && IS_DAX(mapping->host);
-> +}
->  #endif
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 3aa5142..b9ac534 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -433,6 +433,7 @@ struct address_space {
->  	/* Protected by tree_lock together with the radix tree */
->  	unsigned long		nrpages;	/* number of total pages */
->  	unsigned long		nrshadows;	/* number of shadow entries */
-> +	unsigned long		nrdax;	        /* number of DAX entries */
->  	pgoff_t			writeback_index;/* writeback starts here */
->  	const struct address_space_operations *a_ops;	/* methods */
->  	unsigned long		flags;		/* error bits/gfp mask */
-> diff --git a/include/linux/radix-tree.h b/include/linux/radix-tree.h
-> index 33170db..f793c99 100644
-> --- a/include/linux/radix-tree.h
-> +++ b/include/linux/radix-tree.h
-> @@ -51,6 +51,15 @@
->  #define RADIX_TREE_EXCEPTIONAL_ENTRY	2
->  #define RADIX_TREE_EXCEPTIONAL_SHIFT	2
->  
-> +#define RADIX_DAX_MASK	0xf
-> +#define RADIX_DAX_PTE  (0x4 | RADIX_TREE_EXCEPTIONAL_ENTRY)
-> +#define RADIX_DAX_PMD  (0x8 | RADIX_TREE_EXCEPTIONAL_ENTRY)
-> +#define RADIX_DAX_TYPE(entry) ((__force unsigned long)entry & RADIX_DAX_MASK)
-> +#define RADIX_DAX_ADDR(entry) ((void __pmem *)((unsigned long)entry & \
-> +			~RADIX_DAX_MASK))
-> +#define RADIX_DAX_ENTRY(addr, pmd) ((void *)((__force unsigned long)addr | \
-> +			(pmd ? RADIX_DAX_PMD : RADIX_DAX_PTE)))
-> +
->  static inline int radix_tree_is_indirect_ptr(void *ptr)
->  {
->  	return (int)((unsigned long)ptr & RADIX_TREE_INDIRECT_PTR);
-> diff --git a/mm/filemap.c b/mm/filemap.c
-> index 1bb0076..167a4d9 100644
-> --- a/mm/filemap.c
-> +++ b/mm/filemap.c
-> @@ -11,6 +11,7 @@
->   */
->  #include <linux/export.h>
->  #include <linux/compiler.h>
-> +#include <linux/dax.h>
->  #include <linux/fs.h>
->  #include <linux/uaccess.h>
->  #include <linux/capability.h>
-> @@ -579,6 +580,12 @@ static int page_cache_tree_insert(struct address_space *mapping,
->  		p = radix_tree_deref_slot_protected(slot, &mapping->tree_lock);
->  		if (!radix_tree_exceptional_entry(p))
->  			return -EEXIST;
-> +
-> +		if (dax_mapping(mapping)) {
-> +			WARN_ON(1);
-> +			return -EINVAL;
-> +		}
-> +
->  		if (shadowp)
->  			*shadowp = p;
->  		mapping->nrshadows--;
-> @@ -1242,9 +1249,9 @@ repeat:
->  			if (radix_tree_deref_retry(page))
->  				goto restart;
->  			/*
-> -			 * A shadow entry of a recently evicted page,
-> -			 * or a swap entry from shmem/tmpfs.  Return
-> -			 * it without attempting to raise page count.
-> +			 * A shadow entry of a recently evicted page, a swap
-> +			 * entry from shmem/tmpfs or a DAX entry.  Return it
-> +			 * without attempting to raise page count.
->  			 */
->  			goto export;
->  		}
-> diff --git a/mm/truncate.c b/mm/truncate.c
-> index 76e35ad..1dc9f29 100644
-> --- a/mm/truncate.c
-> +++ b/mm/truncate.c
-> @@ -9,6 +9,7 @@
->  
->  #include <linux/kernel.h>
->  #include <linux/backing-dev.h>
-> +#include <linux/dax.h>
->  #include <linux/gfp.h>
->  #include <linux/mm.h>
->  #include <linux/swap.h>
-> @@ -34,31 +35,39 @@ static void clear_exceptional_entry(struct address_space *mapping,
->  		return;
->  
->  	spin_lock_irq(&mapping->tree_lock);
-> -	/*
-> -	 * Regular page slots are stabilized by the page lock even
-> -	 * without the tree itself locked.  These unlocked entries
-> -	 * need verification under the tree lock.
-> -	 */
-> -	if (!__radix_tree_lookup(&mapping->page_tree, index, &node, &slot))
-> -		goto unlock;
-> -	if (*slot != entry)
-> -		goto unlock;
-> -	radix_tree_replace_slot(slot, NULL);
-> -	mapping->nrshadows--;
-> -	if (!node)
-> -		goto unlock;
-> -	workingset_node_shadows_dec(node);
-> -	/*
-> -	 * Don't track node without shadow entries.
-> -	 *
-> -	 * Avoid acquiring the list_lru lock if already untracked.
-> -	 * The list_empty() test is safe as node->private_list is
-> -	 * protected by mapping->tree_lock.
-> -	 */
-> -	if (!workingset_node_shadows(node) &&
-> -	    !list_empty(&node->private_list))
-> -		list_lru_del(&workingset_shadow_nodes, &node->private_list);
-> -	__radix_tree_delete_node(&mapping->page_tree, node);
-> +
-> +	if (dax_mapping(mapping)) {
-> +		if (radix_tree_delete_item(&mapping->page_tree, index, entry))
-> +			mapping->nrdax--;
-> +	} else {
-> +		/*
-> +		 * Regular page slots are stabilized by the page lock even
-> +		 * without the tree itself locked.  These unlocked entries
-> +		 * need verification under the tree lock.
-> +		 */
-> +		if (!__radix_tree_lookup(&mapping->page_tree, index, &node,
-> +					&slot))
-> +			goto unlock;
-> +		if (*slot != entry)
-> +			goto unlock;
-> +		radix_tree_replace_slot(slot, NULL);
-> +		mapping->nrshadows--;
-> +		if (!node)
-> +			goto unlock;
-> +		workingset_node_shadows_dec(node);
-> +		/*
-> +		 * Don't track node without shadow entries.
-> +		 *
-> +		 * Avoid acquiring the list_lru lock if already untracked.
-> +		 * The list_empty() test is safe as node->private_list is
-> +		 * protected by mapping->tree_lock.
-> +		 */
-> +		if (!workingset_node_shadows(node) &&
-> +		    !list_empty(&node->private_list))
-> +			list_lru_del(&workingset_shadow_nodes,
-> +					&node->private_list);
-> +		__radix_tree_delete_node(&mapping->page_tree, node);
-> +	}
->  unlock:
->  	spin_unlock_irq(&mapping->tree_lock);
->  }
-> @@ -228,7 +237,8 @@ void truncate_inode_pages_range(struct address_space *mapping,
->  	int		i;
->  
->  	cleancache_invalidate_inode(mapping);
-> -	if (mapping->nrpages == 0 && mapping->nrshadows == 0)
-> +	if (mapping->nrpages == 0 && mapping->nrshadows == 0 &&
-> +			mapping->nrdax == 0)
->  		return;
->  
->  	/* Offsets within partial pages */
-> @@ -423,7 +433,7 @@ void truncate_inode_pages_final(struct address_space *mapping)
->  	smp_rmb();
->  	nrshadows = mapping->nrshadows;
->  
-> -	if (nrpages || nrshadows) {
-> +	if (nrpages || nrshadows || mapping->nrdax) {
->  		/*
->  		 * As truncation uses a lockless tree lookup, cycle
->  		 * the tree lock to make sure any ongoing tree
-> diff --git a/mm/vmscan.c b/mm/vmscan.c
-> index 2aec424..8071956 100644
-> --- a/mm/vmscan.c
-> +++ b/mm/vmscan.c
-> @@ -46,6 +46,7 @@
->  #include <linux/oom.h>
->  #include <linux/prefetch.h>
->  #include <linux/printk.h>
-> +#include <linux/dax.h>
->  
->  #include <asm/tlbflush.h>
->  #include <asm/div64.h>
-> @@ -671,9 +672,15 @@ static int __remove_mapping(struct address_space *mapping, struct page *page,
->  		 * inode reclaim needs to empty out the radix tree or
->  		 * the nodes are lost.  Don't plant shadows behind its
->  		 * back.
-> +		 *
-> +		 * We also don't store shadows for DAX mappings because the
-> +		 * only page cache pages found in these are zero pages
-> +		 * covering holes, and because we don't want to mix DAX
-> +		 * exceptional entries and shadow exceptional entries in the
-> +		 * same page_tree.
->  		 */
->  		if (reclaimed && page_is_file_cache(page) &&
-> -		    !mapping_exiting(mapping))
-> +		    !mapping_exiting(mapping) && !dax_mapping(mapping))
->  			shadow = workingset_eviction(mapping, page);
->  		__delete_from_page_cache(page, shadow, memcg);
->  		spin_unlock_irqrestore(&mapping->tree_lock, flags);
-> -- 
-> 2.5.0
-> 
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> fs/ext4/ialloc.c |    8 ++++++++
+> 1 files changed, 8 insertions(+), 0 deletions(-)
+>=20
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 1b8024d..588bf8e 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -446,6 +446,8 @@ static int find_group_orlov(struct super_block
+> *sb, struct inode *parent,
+>  struct ext4_sb_info *sbi =3D EXT4_SB(sb);
+>  ext4_group_t real_ngroups =3D ext4_get_groups_count(sb);
+>  int inodes_per_group =3D EXT4_INODES_PER_GROUP(sb);
+> + unsigned int inodes_per_flex_group;
+> + long unsigned int blocks_per_clustre;
+>  unsigned int freei, avefreei, grp_free;
+>  ext4_fsblk_t freeb, avefreec;
+>  unsigned int ndirs;
+> @@ -470,6 +472,8 @@ static int find_group_orlov(struct super_block
+> *sb, struct inode *parent,
+>  percpu_counter_read_positive(&sbi->s_freeclusters_counter));
+>  avefreec =3D freeb;
+>  do_div(avefreec, ngroups);
+> + inodes_per_flex_group =3D inodes_per_group * flex_size;
+> + blocks_per_clustre =3D sbi->s_blocks_per_group * flex_size;
+>  ndirs =3D percpu_counter_read_positive(&sbi->s_dirs_counter);
+>=20
+>  if (S_ISDIR(mode) &&
+> @@ -489,6 +493,10 @@ static int find_group_orlov(struct super_block
+> *sb, struct inode *parent,
+>  for (i =3D 0; i < ngroups; i++) {
+>  g =3D (parent_group + i) % ngroups;
+>  get_orlov_stats(sb, g, flex_size, &stats);
+> + /* the group can't get any better than empty */
+> + if (inodes_per_flex_group =3D=3D stats.free_inodes &&
+> + blocks_per_clustre =3D=3D stats.free_clusters)
+> + goto found_flex_bg;
+>  if (!stats.free_inodes)
+>  continue;
+>  if (stats.used_dirs >=3D best_ndir)
+> --
+> 1.7.1
+> <0001-EXT4-optimizing-group-serch-for-inode-allocation.patch>
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_1CA89E7E-22C9-4A60-ADA4-08EAF00096F1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBVng2inKl2rkXzB/gAQjUzhAArpCHDR3n4YoSGnNrOruGBPJWl7a1102N
+f5pIdKrCP1e29/DR05hKEGXJGQYCuBw5XpN1/0t4EE4DinmxKGZxaDa+Tk7W6Lg0
+W6560TezRBwhe2kjkQ4VsG3Mw6jyHLbj3J3H85AXttmkJA8H9avQWCVDSN4/17Uj
+wTWDvHsvqfUaH56kILrRcemqRjUVq3aIucUnJpk3j3PmqGg/7iQgl8YaLFh+8je8
+kzgUmvGBB/guAgPSpfSr96dBBkFVCpk02q+jkpnKYFouSwAsJKL1xWSWJxrfFAGD
+V/6WzP2N/UNm+ecs+xhyBp6GXzP/z68NS7p1IrMQhQYnlcvNdTIn+wzgDCkOjx6F
+nqmq1Pc5wN8GX1dA4XGQ+u3XojH75aTNrbd52DS/PHmABc+J9NlKhiBuodSwLGs/
+TTxSrMjJU2rBQEn35MpUSfEoMajEyTqjB7rtQxaV5f9kb/g34yBn6FkIi4w5NQaT
+t7hpcaovSxiHJfw0ni+2DdvK6iCb2FT6xIZQGPUCpU9aRfkOnVX5ubSS1ZQqBEFa
+/NXI5EZ4YV/i847k9iBPpouoaE1hkk+FwKEe1SnRqI/fIWq6QQUOdKw45hRVhFqm
+SpxiN3MkBSirYHOkoIXIodNPE+GNd1IBxevD8OX70+xkihuStM9O/jIazy0sjA5O
+nV1Ha8I1TR8=
+=IVAv
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_1CA89E7E-22C9-4A60-ADA4-08EAF00096F1--
