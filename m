@@ -1,12 +1,14 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v5 6/7] ext4: call dax_pfn_mkwrite() for DAX fsync/msync
-Date: Mon, 21 Dec 2015 18:32:24 +0100
-Message-ID: <20151221173223.GC7030@quack.suse.cz>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v5 2/7] dax: support dirty DAX entries in radix tree
+Date: Mon, 21 Dec 2015 10:45:34 -0700
+Message-ID: <20151221174534.GA4978@linux.intel.com>
 References: <1450502540-8744-1-git-send-email-ross.zwisler@linux.intel.com>
- <1450502540-8744-7-git-send-email-ross.zwisler@linux.intel.com>
+ <1450502540-8744-3-git-send-email-ross.zwisler@linux.intel.com>
+ <20151221171512.GA7030@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
 	"J. Bruce Fields" <bfields@fieldses.org>,
 	Theodore Ts'o <tytso@mit.edu>,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -21,60 +23,47 @@ Cc: linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
 	Dan Williams <dan.j.williams@intel.com>,
 	Matthew Wilcox <matthew.r.wilcox@intel.com>,
 	Dave Hansen <dave.hansen@linux.intel.com>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1450502540-8744-7-git-send-email-ross.zwisler@linux.intel.com>
+In-Reply-To: <20151221171512.GA7030@quack.suse.cz>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 18-12-15 22:22:19, Ross Zwisler wrote:
-> To properly support the new DAX fsync/msync infrastructure filesystems
-> need to call dax_pfn_mkwrite() so that DAX can track when user pages are
-> dirtied.
-
-The patch looks good to me. You can add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
+On Mon, Dec 21, 2015 at 06:15:12PM +0100, Jan Kara wrote:
+> On Fri 18-12-15 22:22:15, Ross Zwisler wrote:
+> > Add support for tracking dirty DAX entries in the struct address_space
+> > radix tree.  This tree is already used for dirty page writeback, and it
+> > already supports the use of exceptional (non struct page*) entries.
+> > 
+> > In order to properly track dirty DAX pages we will insert new exceptional
+> > entries into the radix tree that represent dirty DAX PTE or PMD pages.
+> > These exceptional entries will also contain the writeback addresses for the
+> > PTE or PMD faults that we can use at fsync/msync time.
+> > 
+> > There are currently two types of exceptional entries (shmem and shadow)
+> > that can be placed into the radix tree, and this adds a third.  We rely on
+> > the fact that only one type of exceptional entry can be found in a given
+> > radix tree based on its usage.  This happens for free with DAX vs shmem but
+> > we explicitly prevent shadow entries from being added to radix trees for
+> > DAX mappings.
+> > 
+> > The only shadow entries that would be generated for DAX radix trees would
+> > be to track zero page mappings that were created for holes.  These pages
+> > would receive minimal benefit from having shadow entries, and the choice
+> > to have only one type of exceptional entry in a given radix tree makes the
+> > logic simpler both in clear_exceptional_entry() and in the rest of DAX.
+> > 
+> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 > 
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> ---
->  fs/ext4/file.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 749b222..8c8965c 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -291,8 +291,8 @@ static int ext4_dax_pfn_mkwrite(struct vm_area_struct *vma,
->  {
->  	struct inode *inode = file_inode(vma->vm_file);
->  	struct super_block *sb = inode->i_sb;
-> -	int ret = VM_FAULT_NOPAGE;
->  	loff_t size;
-> +	int ret;
->  
->  	sb_start_pagefault(sb);
->  	file_update_time(vma->vm_file);
-> @@ -300,6 +300,8 @@ static int ext4_dax_pfn_mkwrite(struct vm_area_struct *vma,
->  	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
->  	if (vmf->pgoff >= size)
->  		ret = VM_FAULT_SIGBUS;
-> +	else
-> +		ret = dax_pfn_mkwrite(vma, vmf);
->  	up_read(&EXT4_I(inode)->i_mmap_sem);
->  	sb_end_pagefault(sb);
->  
-> -- 
-> 2.5.0
-> 
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> The patch looks good to me. Just one comment: When we have this exclusion
+> between different types of exceptional entries, there is no real need to
+> have separate counters of 'shadow' and 'dax' entries, is there? We can have
+> one 'nrexceptional' counter and don't have to grow struct inode
+> unnecessarily which would be really welcome since DAX isn't a mainstream
+> feature. Could you please change the code? Thanks!
+
+Sure, this sounds good.  Thanks!
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
