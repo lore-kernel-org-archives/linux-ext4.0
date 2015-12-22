@@ -1,183 +1,162 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/6] mbcache2: Reimplement mbcache
-Date: Tue, 22 Dec 2015 14:29:50 +0100
-Message-ID: <20151222132950.GC7266@quack.suse.cz>
-References: <1449683858-28936-1-git-send-email-jack@suse.cz>
- <1449683858-28936-2-git-send-email-jack@suse.cz>
- <CAHpGcMJ_gWOTt89E9RnxSY4-yhdU_OQ14Jb5gJvETzQ_NXvXmA@mail.gmail.com>
- <20151215110809.GA1899@quack.suse.cz>
- <20151216155209.GD16918@quack.suse.cz>
- <CAHpGcMLWgiJ9-9onrYPowoMMgDHbsyLSyZ2wXp4RSRtmUeTgEw@mail.gmail.com>
- <20151222130752.GB7266@quack.suse.cz>
- <CAHpGcMLibLH5g7nJ4624Dd-bgLx_dp3FOVzmufOqPGihYDsGRQ@mail.gmail.com>
+Subject: Re: ext4 out of order when use cfq scheduler
+Date: Tue, 22 Dec 2015 16:00:37 +0100
+Message-ID: <20151222150037.GB18178@quack.suse.cz>
+References: <697280a570654ae0aa1723fb7d11f51e@SGPMBX1004.APAC.bosch.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="r5Pyd7+fXNt84Ff3"
-Content-Transfer-Encoding: 8bit
-Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, Laurent GUERBY <laurent@guerby.net>,
-	Andreas Dilger <adilger@dilger.ca>
-To: Andreas =?iso-8859-1?Q?Gr=FCnbacher?=
-	<andreas.gruenbacher@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Li, Michael" <huayil@qti.qualcomm.com>
+To: "HUANG Weller (CM/EPF1-CN)" <Weller.Huang@cn.bosch.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34318 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:55491 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751752AbbLVN3x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Dec 2015 08:29:53 -0500
+	id S1753207AbbLVPAj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Dec 2015 10:00:39 -0500
 Content-Disposition: inline
-In-Reply-To: <CAHpGcMLibLH5g7nJ4624Dd-bgLx_dp3FOVzmufOqPGihYDsGRQ@mail.gmail.com>
+In-Reply-To: <697280a570654ae0aa1723fb7d11f51e@SGPMBX1004.APAC.bosch.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+  Hello,
 
---r5Pyd7+fXNt84Ff3
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
+On Tue 22-12-15 06:24:29, HUANG Weller (CM/EPF1-CN) wrote:
+> I am doing the power failure on a storage device. We are arm embedded
+> system.
+> 
+> Test environment:
+> Kernel: 3.10.63
+> Test type: power failure
+> File create type: O_SYNC flag enabled
+> Mount option: data=ordered, journal_checksum,barrier=1
+> IO scheduler: CFQ
+> 
+> Debug method: kernel print every block number of write request. print
+> whether it is journal block.  print whether it is (REQ_FUA | REQ_META |
+> write) After system startup, backup journal blocks before mount the test
+> partition.
 
-On Tue 22-12-15 14:16:28, Andreas Grünbacher wrote:
-> 2015-12-22 14:07 GMT+01:00 Jan Kara <jack@suse.cz>:
-> > On Tue 22-12-15 13:20:58, Andreas Grünbacher wrote:
-> >> That test scenario probably isn't very realistic: xattrs are mostly
-> >> initialized at or immediately after file create time; they rarely
-> >> removed. Hash chains should shrink significantly for that scenario.
-> >
-> > Well, the refcount gets dropped when the file itself is deleted. And that
-> > isn't that rare. So I agree my benchmark isn't completely realistic in
-> > changing the xattr but dropping xattr block refcount due to deleted file
-> > will be relatively frequent so I don't thing refcount distribution obtained
-> > by my benchmark is completely out.
-> 
-> Good point.
-> 
-> >> In addition, if the hash table is sized reasonably, long hash chains
-> >> won't hurt that much because we can stop searching them as soon as we
-> >> find the first reusable block. This won't help when there are hash
-> >> conflicts, but those should be unlikely.
-> >
-> > Well, this is what happens currently as well...
-> 
-> Yes, except that many "unshareable" xattr blocks can remain in the
-> hash table where they can only be skipped over. Since you have already
-> written the code for fixing that and that fix won't make things worse,
-> I would like to see that go in.
+Do you know blktrace / blkparse tools? They would give you this information
+without the need of patching the kernel...
 
-So for reference I'm attaching the patch which stops caching xattr block
-when it reaches max refcount. Frankly, I'm not in favor of merging this
-patch unless we can show it really improves noticeably some realistic
-scenario. Removal and re-adding of xattr block from / to cache costs some
-CPU cycles as well so overall I'm not convinced it is a clear win and
-although the patch is simple it still adds some complexity.
+> Below is analysis which I think there is a out of order:
+> hp0000017aMhWY3i0vMv is the file which checksum is error. Only half of
+> the file contents is correct.
+
+Can you post the test program you are using? What is in the incorrect
+block? Previous content of the file or some random garbage? If you are just
+overwriting the file and see old contents, that could happen and is legal (we
+just guarantee newly allocated blocks are first written out).
+
+Is the problem reproducible?
 
 								Honza
+
+> [root@SiRFatlas6 ~]# debugfs /dev/nandblk0p3
+> debugfs 1.42.9 (28-Dec-2013)
+> debugfs:  imap test/hp0000017aMhWY3i0vMv
+> Inode 390 is part of block group 0
+>         located at block 141, offset 0x0280
+> 
+> 00000280  80 81 00 00 10 00 04 00  c8 09 00 00 66 0a 00 00  |............f...|
+> 00000290  66 0a 00 00 00 00 00 00  00 00 01 00 04 02 00 00  |f...............|
+> 000002a0  00 00 08 00 01 00 00 00  0a f3 02 00 04 00 00 00  |................|
+> 000002b0  00 00 00 00 00 00 00 00  80 00 00 00 00 2c 01 00  |.............,..|  ==> the file contents is at 0x00012c00
+> 000002c0  80 00 00 00 01 00 00 00  8e 26 01 00 00 00 00 00  |.........&......|
+> 
+> 
+> Search the block number from the journal blocks:
+> 
+> [root@SiRFatlas6 ~]# hexdump j.bin  -C |  grep "00 2c 01 00"
+> 00039ab0  00 00 00 00 00 00 00 00  80 00 00 00 00 2c 01 00  |.............,..|
+> 
+> Search file name which the file checksum is error in journal blocks:
+> 
+> [root@SiRFatlas6 ~]# hexdump j.bin  -C |  grep "3i0vMv" -B1
+> 00030c60  86 01 00 00 1c 00 14 01  68 70 30 30 30 30 30 31  |........hp000001|
+> 00030c70  37 61 4d 68 57 59 33 69  30 76 4d 76 88 01 00 00  |7aMhWY3i0vMv....|
+> 
+> 
+> List all journal block record to check which journal block records it:
+> 
+> [root@SiRFatlas6 ~]# hexdump j.bin -C | grep "c0 3b 39 98"
+> 00000000  c0 3b 39 98 00 00 00 04  00 00 00 00 00 00 08 00  |.;9.............|
+> 00000800  c0 3b 39 98 00 00 00 05  00 00 00 6f 00 00 00 24  |.;9........o...$|
+> 00001000  c0 3b 39 98 00 00 00 01  00 00 00 6f 00 00 00 75  |.;9........o...u|
+> 0000c800  c0 3b 39 98 00 00 00 02  00 00 00 6f 00 00 00 00  |.;9........o....|
+> 0000d000  c0 3b 39 98 00 00 00 01  00 00 00 70 00 00 00 65  |.;9........p...e|
+> 00016000  c0 3b 39 98 00 00 00 02  00 00 00 70 00 00 00 00  |.;9........p....|
+> 00016800  c0 3b 39 98 00 00 00 01  00 00 00 71 00 00 00 7c  |.;9........q...||
+> 00021000  c0 3b 39 98 00 00 00 02  00 00 00 71 00 00 00 00  |.;9........q....|
+> 00021800  c0 3b 39 98 00 00 00 01  00 00 00 72 00 00 00 82  |.;9........r....|
+> 0002d000  c0 3b 39 98 00 00 00 02  00 00 00 72 00 00 00 00  |.;9........r....|
+> 0002d800  c0 3b 39 98 00 00 00 01  00 00 00 73 00 00 00 88  |.;9........s....|  ==>00039ab0 is in last block, the file name and the start block number are all recorded in the journals.
+> 0003a000  c0 3b 39 98 00 00 00 02  00 00 00 73 00 00 00 00  |.;9........s....|
+> 
+> 
+> Back to see the kernel log which it print all the block numbers:
+> 
+> ...
+> ...
+> [   46.222671] 244109  75277 
+> [   46.222693] 
+> [   46.272438] 244352  75520 
+> [   46.272460] 
+> [   46.348417] 238443  69611 
+> [   46.348438] 
+> [   46.349811] 244480  75648 
+> [   46.352287] 
+> [   46.404904] 244609  75777 
+> [   46.404926] 
+> [   46.454698] 244738  75906 
+> [   46.454719] 
+> [   46.505439] 244992  76160 
+> [   46.505459] 
+> [   46.557783] 245120  76288 
+> [   46.557804] 
+> [   46.610075] 245249  76417 
+> [   46.610096] 
+> [   46.660196] 245378  76546 
+> [   46.660219] 
+> [   46.709906] 201691  32859   ==> journal start is 32768, so the offset is 91, block size=2048,  so, the offset address in the j.bin is 0x2d800
+> [   46.709928] J [   46.711233] 
+> [   46.740635] drop to 9v
+> [   46.749540] 201716  32884 
+> [   46.749560] J S 
+> [   46.751039] 
+> [   46.753151] 245632  76800  ==> 76800 in hex is 0x012c00, it is the same start block of the file which checksum is error.
+> [   46.755284] 
+> nanddisk idle -> 1.
+> [   46.800227] 6v irq-2
+> 
+> 
+> The j.bin offset 0x2d800
+> 
+> 0002d800  c0 3b 39 98 00 00 00 01  00 00 00 73 00 00 00 88  |.;9........s....|  ==>00039ab0 is in last block
+> 0003a000  c0 3b 39 98 00 00 00 02  00 00 00 73 00 00 00 00  |.;9........s....|
+> 
+> 
+> Normally, ext4 will first write the file contents, and then write the
+> journal and journal commit. Then after some delay, it will write the meta
+> data.  So The journal blocks contains the meta data of the file which the
+> file contents already been written before.  But from above analysis,  the
+> journal sequence 0x73 already contain the file name(hp0000017aMhWY3i0vMv)
+> and the start block number(76800). So from the kernel log,  the block
+> number(76800) should be available before the journal blocks but NOT after
+> it.  It seems that there is out of order happen.
+> 
+> Could you please help to check this issue ? or give a explanation about
+> it ?  Many thanks.
+> 
+> Best regards
+> 
+> Weller HUANG
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
-
---r5Pyd7+fXNt84Ff3
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-mbcache2-Do-not-cache-blocks-with-maximum-refcount.patch"
-
->From cf25c42595b5ff237ff4bc6c9968bb4e92181619 Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Wed, 16 Dec 2015 13:29:46 +0100
-Subject: [PATCH] mbcache2: Do not cache blocks with maximum refcount
-
-Maximum number of inodes sharing xattr block is limited to 1024 to limit
-amount of damage one corrupted / bad block can cause. Thus xattr blocks
-that have reached this limit cannot be used for further deduplicating
-and are just occupying space in cache needlessly. The worst thing is
-that all these blocks with the same content have the same hash and thus
-they all end up in the same hash chain making chain unnecessarily long.
-In the extreme case of a single xattr block value we degrade the hash
-table to a linked list.
-
-Improve the situation by removing entries for xattr blocks with maximum
-refcount from the cache and adding them back once refcount drops. This
-can cause some unnecessary cache removal & additions in cases when xattr
-block frequently transations between max refcount and max refcount - 1,
-but overall this is a win.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/xattr.c | 28 +++++++++++++++++++++++++---
- 1 file changed, 25 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index a80e5e2acadd..a8401a650221 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -567,6 +567,10 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
- 				 EXT4_FREE_BLOCKS_FORGET);
- 	} else {
- 		le32_add_cpu(&BHDR(bh)->h_refcount, -1);
-+		/* Entry with max refcount was not cached. Add it now. */
-+		if (le32_to_cpu(BHDR(bh)->h_refcount) ==
-+		    EXT4_XATTR_REFCOUNT_MAX - 1)
-+			ext4_xattr_cache_insert(EXT4_GET_MB_CACHE(inode), bh);
- 		/*
- 		 * Beware of this ugliness: Releasing of xattr block references
- 		 * from different inodes can race and so we have to protect
-@@ -865,6 +869,8 @@ inserted:
- 	if (!IS_LAST_ENTRY(s->first)) {
- 		new_bh = ext4_xattr_cache_find(inode, header(s->base), &ce);
- 		if (new_bh) {
-+			bool delete = false;
-+
- 			/* We found an identical block in the cache. */
- 			if (new_bh == bs->bh)
- 				ea_bdebug(new_bh, "keeping");
-@@ -907,6 +913,9 @@ inserted:
- 					goto inserted;
- 				}
- 				le32_add_cpu(&BHDR(new_bh)->h_refcount, 1);
-+				if (le32_to_cpu(BHDR(new_bh)->h_refcount) ==
-+				    EXT4_XATTR_REFCOUNT_MAX)
-+					delete = true;
- 				ea_bdebug(new_bh, "reusing; refcount now=%d",
- 					le32_to_cpu(BHDR(new_bh)->h_refcount));
- 				unlock_buffer(new_bh);
-@@ -916,8 +925,16 @@ inserted:
- 				if (error)
- 					goto cleanup_dquot;
- 			}
--			mb2_cache_entry_touch(ext4_mb_cache, ce);
--			mb2_cache_entry_put(ext4_mb_cache, ce);
-+			/*
-+			 * Delete entry from cache in case it reached max
-+			 * refcount and thus cannot be used anymore
-+			 */
-+			if (unlikely(delete)) {
-+				mb2_cache_entry_delete(ext4_mb_cache, ce);
-+			} else {
-+				mb2_cache_entry_touch(ext4_mb_cache, ce);
-+				mb2_cache_entry_put(ext4_mb_cache, ce);
-+			}
- 			ce = NULL;
- 		} else if (bs->bh && s->base == bs->bh->b_data) {
- 			/* We were modifying this block in-place. */
-@@ -1538,7 +1555,8 @@ cleanup:
-  * ext4_xattr_cache_insert()
-  *
-  * Create a new entry in the extended attribute cache, and insert
-- * it unless such an entry is already in the cache.
-+ * it unless such an entry is already in the cache or it has too many
-+ * references.
-  *
-  * Returns 0, or a negative error number on failure.
-  */
-@@ -1549,6 +1567,10 @@ ext4_xattr_cache_insert(struct mb2_cache *ext4_mb_cache, struct buffer_head *bh)
- 	struct mb2_cache_entry *ce;
- 	int error;
- 
-+	/* Don't cache entry with too many references as it cannot be used */
-+	if (le32_to_cpu(BHDR(bh)->h_refcount) >= EXT4_XATTR_REFCOUNT_MAX)
-+		return;
-+
- 	ce = mb2_cache_entry_create(ext4_mb_cache, GFP_NOFS, hash,
- 				    bh->b_blocknr);
- 	if (IS_ERR(ce)) {
--- 
-1.7.12.4
-
-
---r5Pyd7+fXNt84Ff3--
