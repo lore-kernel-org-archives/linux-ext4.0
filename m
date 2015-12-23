@@ -1,75 +1,141 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v6 7/7] xfs: call dax_pfn_mkwrite() for DAX fsync/msync
-Date: Wed, 23 Dec 2015 12:39:20 -0700
-Message-ID: <1450899560-26708-8-git-send-email-ross.zwisler@linux.intel.com>
-References: <1450899560-26708-1-git-send-email-ross.zwisler@linux.intel.com>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>,
-	Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org,
-	x86@kernel.org,
-	xfs@oss.sgi.com,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Dave Hansen <dave.hansen@linux.intel.com>
-To: linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1450899560-26708-1-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+From: "Elliott, Robert (Persistent Memory)" <elliott@hpe.com>
+Subject: RE: A blocksize problem about dax and ext4
+Date: Wed, 23 Dec 2015 21:18:05 +0000
+Message-ID: <94D0CD8314A33A4D9D801C0FE68B40295BEC985F@G9W0745.americas.hpqcorp.net>
+References: <CAM=YXF-aXxp19=uFDExUswpEfKXNN6LJScxAB-7-u-AgRiXJ2g@mail.gmail.com>
+	<CAPcyv4gYHuSWuugnELSO6B1rye+b89io3zJVUXwRt0wE1ZfPrA@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
+To: Dan Williams <dan.j.williams@intel.com>, Cholerae Hu
+	<choleraehyq@gmail.com>, Ted Tso <tytso@mit.edu>,
+	"adilger.kernel@dilger.ca"
+	<adilger.kernel@dilger.ca>, "david@fromorbit.com" <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <CAPcyv4gYHuSWuugnELSO6B1rye+b89io3zJVUXwRt0wE1ZfPrA@mail.gmail.com>
+Content-Language: en-US
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-To properly support the new DAX fsync/msync infrastructure filesystems
-need to call dax_pfn_mkwrite() so that DAX can track when user pages are
-dirtied.
 
-Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> -----Original Message-----
+> From: Linux-nvdimm [mailto:linux-nvdimm-bounces@lists.01.org] On Behalf Of
+> Dan Williams
+> Sent: Wednesday, December 23, 2015 11:16 AM
+> To: Cholerae Hu <choleraehyq@gmail.com>
+> Cc: linux-nvdimm@lists.01.org
+> Subject: Re: A blocksize problem about dax and ext4
+> 
+> On Wed, Dec 23, 2015 at 4:03 AM, Cholerae Hu <choleraehyq@gmail.com>
+> wrote:
+...
+> > [root@localhost cholerae]# mount -o dax /dev/pmem0 /mnt/mem
+> > mount: wrong fs type, bad option, bad superblock on /dev/pmem0,
+> >        missing codepage or helper program, or other error
+> >
+> >        In some cases useful info is found in syslog - try
+> >        dmesg | tail or so.
+> > [root@localhost cholerae]# dmesg | tail
+...
+> > [   81.779582] EXT4-fs (pmem0): error: unsupported blocksize for dax
+...
+
+> What's the fs block size?  For example:
+> # dumpe2fs -h /dev/pmem0  | grep "Block size"
+> dumpe2fs 1.42.9 (28-Dec-2013)
+> Block size:               4096
+> Depending on the size of /dev/pmem0 it may have automatically set it
+> to a block size less than 4 KiB which is incompatible with "-o dax".
+
+I noticed a few things while trying that out on both ext4 and xfs.
+
+$ sudo mkfs.ext4 -F -b 1024 /dev/pmem0
+$ sudo mount -o dax /dev/pmem0 /mnt/ext4-pmem0
+$ sudo mkfs.xfs -f -b size=1024 /dev/pmem0
+$ sudo mount -o dax /dev/pmem0 /mnt/xfs-pmem0
+
+[  199.679195] EXT4-fs (pmem0): DAX enabled. Warning: EXPERIMENTAL, use at your own risk
+[  199.724931] EXT4-fs (pmem0): error: unsupported block size 1024 for dax 
+[  859.077766] XFS (pmem0): DAX enabled. Warning: EXPERIMENTAL, use at your own risk
+[  859.118106] XFS (pmem0): Filesystem block size invalid for DAX Turning DAX off.
+[  859.156950] XFS (pmem0): Mounting V4 Filesystem
+[  859.183626] XFS (pmem0): Ending clean mount
+
+
+1. ext4 fails to mount the filesystem, while xfs just disables DAX.
+It seems like they should they be the same.
+
+2. if CONFIG_FS_DAX is not supported, ext4 fails to mount, but prints
+the message at the KERN_INFO level. All the rest of its mount errors
+use KERN_ERR.
+
+Completely unknown mount options are reported like this at the
+KERN_ERR level:
+[ 2188.194775] EXT4-fs (pmem0): Unrecognized mount option "xyzzy" or missing value
+
+In contrast, if CONFIG_FS_DAX is not supported, then xfs lumps it in
+with the rest of the unknown mount options, which are reported with 
+xfs_warn():
+[ 2347.654182] XFS (pmem0): unknown mount option [xyzzy].
+
+
+3. It might be worth printing the problematic filesystem block size
+ (here and in a few other similar messages).  
+
+I like how xfs' wording of "Filesystem block size" helps distinguish
+the value from the block device's logical block size.
+
+
+Code excerpts
+=============
+fs/xfs/xfs_super.c:
+#ifdef CONFIG_FS_DAX
+                } else if (!strcmp(this_char, MNTOPT_DAX)) {
+                        mp->m_flags |= XFS_MOUNT_DAX;
+#endif
+...
+        if (mp->m_flags & XFS_MOUNT_DAX) {
+                xfs_warn(mp,
+        "DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
+                if (sb->s_blocksize != PAGE_SIZE) {
+                        xfs_alert(mp,
+                "Filesystem block size invalid for DAX Turning DAX off.");
+                        mp->m_flags &= ~XFS_MOUNT_DAX;
+                } else if (!sb->s_bdev->bd_disk->fops->direct_access) {
+                        xfs_alert(mp,
+                "Block device does not support DAX Turning DAX off.");
+                        mp->m_flags &= ~XFS_MOUNT_DAX;
+                }
+        }
+
+fs/ext4/super.c:
+        } else if (token == Opt_dax) {
+#ifdef CONFIG_FS_DAX
+                ext4_msg(sb, KERN_WARNING,
+                "DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
+                        sbi->s_mount_opt |= m->mount_opt;
+#else
+                ext4_msg(sb, KERN_INFO, "dax option not supported");
+                return -1;
+#endif
+
 ---
- fs/xfs/xfs_file.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+Robert Elliott, HPE Persistent Memory
 
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index f5392ab..40ffbb1 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -1603,9 +1603,8 @@ xfs_filemap_pmd_fault(
- /*
-  * pfn_mkwrite was originally inteneded to ensure we capture time stamp
-  * updates on write faults. In reality, it's need to serialise against
-- * truncate similar to page_mkwrite. Hence we open-code dax_pfn_mkwrite()
-- * here and cycle the XFS_MMAPLOCK_SHARED to ensure we serialise the fault
-- * barrier in place.
-+ * truncate similar to page_mkwrite. Hence we cycle the XFS_MMAPLOCK_SHARED
-+ * to ensure we serialise the fault barrier in place.
-  */
- static int
- xfs_filemap_pfn_mkwrite(
-@@ -1628,6 +1627,8 @@ xfs_filemap_pfn_mkwrite(
- 	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
- 	if (vmf->pgoff >= size)
- 		ret = VM_FAULT_SIGBUS;
-+	else if (IS_DAX(inode))
-+		ret = dax_pfn_mkwrite(vma, vmf);
- 	xfs_iunlock(ip, XFS_MMAPLOCK_SHARED);
- 	sb_end_pagefault(inode->i_sb);
- 	return ret;
--- 
-2.6.3
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
