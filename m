@@ -1,133 +1,146 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v5 2/7] dax: support dirty DAX entries in radix tree
-Date: Tue, 22 Dec 2015 17:16:27 -0700
-Message-ID: <20151223001627.GC24124@linux.intel.com>
-References: <1450502540-8744-1-git-send-email-ross.zwisler@linux.intel.com>
-	<1450502540-8744-3-git-send-email-ross.zwisler@linux.intel.com>
-	<20151222144605.08a84ded98a42d6125a7991e@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-nvdimm@ml01.01.org, Dave Hansen <dave.hansen@linux.intel.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>, linux-mm@kvack.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"H. Peter Anvin" <hpa@zytor.com>, Jeff Layton <jlayton@poochiereds.net>,
-	Dan Williams <dan.j.williams@intel.com>, x86@kernel.org,
-	Ingo Molnar <mingo@redhat.com>, Matthew Wilcox <willy@linux.intel.com>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+Subject: [PATCH v6 1/7] pmem: add wb_cache_pmem() to the PMEM API
+Date: Wed, 23 Dec 2015 12:39:14 -0700
+Message-ID: <1450899560-26708-2-git-send-email-ross.zwisler@linux.intel.com>
+References: <1450899560-26708-1-git-send-email-ross.zwisler@linux.intel.com>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	"H. Peter Anvin" <hpa@zytor.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Dave Chinner <david@fromorbit.com>,
+	Ingo Molnar <mingo@redhat.com>,
+	Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Matthew Wilcox <willy@linux.intel.com>,
 	Thomas Gleixner <tglx@linutronix.de>,
-	Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-	Jan Kara <jack@suse.com>, linux-fsdevel@vger.kernel.org,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <20151222144605.08a84ded98a42d6125a7991e@linux-foundation.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org,
+	x86@kernel.org,
+	xfs@oss.sgi.com,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Dave Hansen <dave.hansen@linux.intel.com>
+To: linux-kernel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1450899560-26708-1-git-send-email-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 22, 2015 at 02:46:05PM -0800, Andrew Morton wrote:
-> On Fri, 18 Dec 2015 22:22:15 -0700 Ross Zwisler <ross.zwisler@linux.intel.com> wrote:
-> 
-> > Add support for tracking dirty DAX entries in the struct address_space
-> > radix tree.  This tree is already used for dirty page writeback, and it
-> > already supports the use of exceptional (non struct page*) entries.
-> > 
-> > In order to properly track dirty DAX pages we will insert new exceptional
-> > entries into the radix tree that represent dirty DAX PTE or PMD pages.
-> > These exceptional entries will also contain the writeback addresses for the
-> > PTE or PMD faults that we can use at fsync/msync time.
-> > 
-> > There are currently two types of exceptional entries (shmem and shadow)
-> > that can be placed into the radix tree, and this adds a third.  We rely on
-> > the fact that only one type of exceptional entry can be found in a given
-> > radix tree based on its usage.  This happens for free with DAX vs shmem but
-> > we explicitly prevent shadow entries from being added to radix trees for
-> > DAX mappings.
-> > 
-> > The only shadow entries that would be generated for DAX radix trees would
-> > be to track zero page mappings that were created for holes.  These pages
-> > would receive minimal benefit from having shadow entries, and the choice
-> > to have only one type of exceptional entry in a given radix tree makes the
-> > logic simpler both in clear_exceptional_entry() and in the rest of DAX.
-> > 
-> >
-> > ...
-> >
-> > --- a/include/linux/dax.h
-> > +++ b/include/linux/dax.h
-> > @@ -36,4 +36,9 @@ static inline bool vma_is_dax(struct vm_area_struct *vma)
-> >  {
-> >  	return vma->vm_file && IS_DAX(vma->vm_file->f_mapping->host);
-> >  }
-> > +
-> > +static inline bool dax_mapping(struct address_space *mapping)
-> > +{
-> > +	return mapping->host && IS_DAX(mapping->host);
-> > +}
-> 
-> Can we make this evaluate to plain old "0" when CONFIG_FS_DAX=n?  That
-> way a bunch of code in callers will fall away as well.
-> 
-> If the compiler has any brains then a good way to do this would be to
-> make IS_DAX be "0" but one would need to check that the zeroness
-> properly propagated out of the inline.
+The function __arch_wb_cache_pmem() was already an internal implementation
+detail of the x86 PMEM API, but this functionality needs to be exported as
+part of the general PMEM API to handle the fsync/msync case for DAX mmaps.
 
-Ah, it already works that way due to some magic with IS_DAX().  I believe we
-already use the fact that blocks protected by IS_DAX() go away if
-CONFIG_FS_DAX isn't set.
+One thing worth noting is that we really do want this to be part of the
+PMEM API as opposed to a stand-alone function like clflush_cache_range()
+because of ordering restrictions.  By having wb_cache_pmem() as part of the
+PMEM API we can leave it unordered, call it multiple times to write back
+large amounts of memory, and then order the multiple calls with a single
+wmb_pmem().
 
-The trick is that S_DAX is defined to be 0 if CONFIG_FS_DAX isn't set.
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+---
+ arch/x86/include/asm/pmem.h | 11 ++++++-----
+ include/linux/pmem.h        | 22 +++++++++++++++++++++-
+ 2 files changed, 27 insertions(+), 6 deletions(-)
 
-I'm pretty sure this is working because of the code in
-filemap_write_and_wait_range().  I added a block with the later "dax: add
-support for fsync/msync" patch which looks like this:
-
-@@ -482,6 +482,9 @@ int filemap_write_and_wait_range(struct address_space *mapping,
- {
-        int err = 0;
+diff --git a/arch/x86/include/asm/pmem.h b/arch/x86/include/asm/pmem.h
+index 1544fab..c57fd1e 100644
+--- a/arch/x86/include/asm/pmem.h
++++ b/arch/x86/include/asm/pmem.h
+@@ -67,18 +67,19 @@ static inline void arch_wmb_pmem(void)
+ }
  
-+       if (dax_mapping(mapping) && mapping->nrdax)
-+               dax_writeback_mapping_range(mapping, lstart, lend);
+ /**
+- * __arch_wb_cache_pmem - write back a cache range with CLWB
++ * arch_wb_cache_pmem - write back a cache range with CLWB
+  * @vaddr:	virtual start address
+  * @size:	number of bytes to write back
+  *
+  * Write back a cache range using the CLWB (cache line write back)
+  * instruction.  This function requires explicit ordering with an
+- * arch_wmb_pmem() call.  This API is internal to the x86 PMEM implementation.
++ * arch_wmb_pmem() call.
+  */
+-static inline void __arch_wb_cache_pmem(void *vaddr, size_t size)
++static inline void arch_wb_cache_pmem(void __pmem *addr, size_t size)
+ {
+ 	u16 x86_clflush_size = boot_cpu_data.x86_clflush_size;
+ 	unsigned long clflush_mask = x86_clflush_size - 1;
++	void *vaddr = (void __force *)addr;
+ 	void *vend = vaddr + size;
+ 	void *p;
+ 
+@@ -115,7 +116,7 @@ static inline size_t arch_copy_from_iter_pmem(void __pmem *addr, size_t bytes,
+ 	len = copy_from_iter_nocache(vaddr, bytes, i);
+ 
+ 	if (__iter_needs_pmem_wb(i))
+-		__arch_wb_cache_pmem(vaddr, bytes);
++		arch_wb_cache_pmem(addr, bytes);
+ 
+ 	return len;
+ }
+@@ -133,7 +134,7 @@ static inline void arch_clear_pmem(void __pmem *addr, size_t size)
+ 	void *vaddr = (void __force *)addr;
+ 
+ 	memset(vaddr, 0, size);
+-	__arch_wb_cache_pmem(vaddr, size);
++	arch_wb_cache_pmem(addr, size);
+ }
+ 
+ static inline bool __arch_has_wmb_pmem(void)
+diff --git a/include/linux/pmem.h b/include/linux/pmem.h
+index acfea8c..7c3d11a 100644
+--- a/include/linux/pmem.h
++++ b/include/linux/pmem.h
+@@ -53,12 +53,18 @@ static inline void arch_clear_pmem(void __pmem *addr, size_t size)
+ {
+ 	BUG();
+ }
 +
++static inline void arch_wb_cache_pmem(void __pmem *addr, size_t size)
++{
++	BUG();
++}
+ #endif
+ 
+ /*
+  * Architectures that define ARCH_HAS_PMEM_API must provide
+  * implementations for arch_memcpy_to_pmem(), arch_wmb_pmem(),
+- * arch_copy_from_iter_pmem(), arch_clear_pmem() and arch_has_wmb_pmem().
++ * arch_copy_from_iter_pmem(), arch_clear_pmem(), arch_wb_cache_pmem()
++ * and arch_has_wmb_pmem().
+  */
+ static inline void memcpy_from_pmem(void *dst, void __pmem const *src, size_t size)
+ {
+@@ -178,4 +184,18 @@ static inline void clear_pmem(void __pmem *addr, size_t size)
+ 	else
+ 		default_clear_pmem(addr, size);
+ }
++
++/**
++ * wb_cache_pmem - write back processor cache for PMEM memory range
++ * @addr:	virtual start address
++ * @size:	number of bytes to write back
++ *
++ * Write back the processor cache range starting at 'addr' for 'size' bytes.
++ * This function requires explicit ordering with a wmb_pmem() call.
++ */
++static inline void wb_cache_pmem(void __pmem *addr, size_t size)
++{
++	if (arch_has_pmem_api())
++		arch_wb_cache_pmem(addr, size);
++}
+ #endif /* __PMEM_H__ */
+-- 
+2.6.3
 
-Without the dax_mapping() check there the behavior is the same, but we fail to
-compile if CONFIG_FS_DAX isn't set because dax_writeback_mapping_range() isn't
-defined.  (Guess how I found that out.  :)  )
-
-> >  #endif
-> > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > index 3aa5142..b9ac534 100644
-> > --- a/include/linux/fs.h
-> > +++ b/include/linux/fs.h
-> > @@ -433,6 +433,7 @@ struct address_space {
-> >  	/* Protected by tree_lock together with the radix tree */
-> >  	unsigned long		nrpages;	/* number of total pages */
-> >  	unsigned long		nrshadows;	/* number of shadow entries */
-> > +	unsigned long		nrdax;	        /* number of DAX entries */
-> 
-> hm, that's unfortunate - machines commonly carry tremendous numbers of
-> address_spaces in memory and adding pork to them is rather a big deal. 
-> We can't avoid this somehow?  Maybe share the space with nrshadows by
-> some means?  Find some other field which is unused for dax files?
-
-Jan Kara noticed the same thing:
-
-https://lists.01.org/pipermail/linux-nvdimm/2015-December/003626.html
-
-It'll be fixed in the next spin of the patch set.
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
