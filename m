@@ -1,80 +1,71 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 109901] New: linux-image-4.4.0-rc4-amd64: Fails to boot on
- kernel 4.4rc4
-Date: Thu, 24 Dec 2015 11:28:03 +0000
-Message-ID: <bug-109901-13602@https.bugzilla.kernel.org/>
+From: "Elliott, Robert (Persistent Memory)" <elliott@hpe.com>
+Subject: RE: A blocksize problem about dax and ext4
+Date: Thu, 24 Dec 2015 12:26:18 +0000
+Message-ID: <94D0CD8314A33A4D9D801C0FE68B40295BEDCB5E@G9W0745.americas.hpqcorp.net>
+References: <CAM=YXF-aXxp19=uFDExUswpEfKXNN6LJScxAB-7-u-AgRiXJ2g@mail.gmail.com>
+	<CAPcyv4gYHuSWuugnELSO6B1rye+b89io3zJVUXwRt0wE1ZfPrA@mail.gmail.com>
+	<94D0CD8314A33A4D9D801C0FE68B40295BEC985F@G9W0745.americas.hpqcorp.net>
+	<20151224000021.GU19802@dastard>
+	<CAM=YXF9Dt-BuY9yM7d023a16gp=edGHeCDVTCwV-AEotj6sbFg@mail.gmail.com>
+	<CAPcyv4g1eHgm8oUvxFaJkRD-T7jAyw95FQ-q3_GC2JU_kkU-Kg@mail.gmail.com>
+	<CAM=YXF-wZEhodxVRN8nqyH9Vg7t85ut2-0PnEn9OvhpG_jX3mA@mail.gmail.com>
+	<94D0CD8314A33A4D9D801C0FE68B40295BEC9CDD@G9W0745.americas.hpqcorp.net>
+	<20151224101111.GA6438@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:43638 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751323AbbLXL2H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 24 Dec 2015 06:28:07 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 2B32420600
-	for <linux-ext4@vger.kernel.org>; Thu, 24 Dec 2015 11:28:05 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 8EC3D2051D
-	for <linux-ext4@vger.kernel.org>; Thu, 24 Dec 2015 11:28:03 +0000 (UTC)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Ted Tso <tytso@mit.edu>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@ml01.01.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+	Cholerae Hu <choleraehyq@gmail.com>,
+	Dan Williams <dan.j.williams@intel.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20151224101111.GA6438@infradead.org>
+Content-Language: en-US
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=109901
 
-            Bug ID: 109901
-           Summary: linux-image-4.4.0-rc4-amd64: Fails to boot on kernel
-                    4.4rc4
-           Product: File System
-           Version: 2.5
-    Kernel Version: 4.4.0-rc4
-          Hardware: x86-64
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: blocking
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: ar.kernel@ange7.com
-        Regression: No
 
-Actually, i'm usging linux-image-4.3.0-amd64 on Dell XPS 13 9350. 
+> -----Original Message-----
+> From: Christoph Hellwig [mailto:hch@infradead.org]
+> Sent: Thursday, December 24, 2015 4:11 AM
+> Subject: Re: A blocksize problem about dax and ext4
+> 
+> On Thu, Dec 24, 2015 at 02:47:07AM +0000, Elliott, Robert (Persistent
+> Memory) wrote:
+> > > Did you mean that I should make the blocksize bigger until the mount
+> > > command tell me that dax is enabled?
+> >
+> > To really use DAX, the filesystem block size must match the
+> > system CPU's page size, which is probably 4096 bytes.
+> 
+> No, it doesn't.  File you use for DAX must be aligne at page size
+> granularity.  For XFS you could do this with the per-inode extent
+> size hint for example even if the overall block size is smaller.
 
-In order to fix WiFi problem i would install linux-image-4.4.0rc4 but it makes
-it impossible to boot my laptop.
+I think that's a future goal.
 
-I have this message before Luks ask passphrase :
+Currently, the checks are like this:
 
-Loading, please wait...
-modprobe: module microcode not found in modules.dep
-lvmetad is not active yet, using direct activation during sysinit
-volume group "vg" not found
-Cannot process volume group vg
-/run/lvm/lvmetad.socket: connect failed: No such file or directory
-WARNING: Failed to connect to lvmetad. Falling back to internal scanning.
-Reading all physical volumes. This may take a while...
-/run/lvm/lvmetad.socket: connect failed: No such file or directory
-WARNING: Failed to connect to lvmetad. Falling back to internal scanning.
-Reading all physical volumes. This may take a while...
-/run/lvm/lvmetad.socket: connect failed: No such file or directory
-WARNING: Failed to connect to lvmetad. Falling back to internal scanning.
-Reading all physical volumes. This may take a while...
-/run/lvm/lvmetad.socket: connect failed: No such file or directory
-WARNING: Failed to connect to lvmetad. Falling back to internal scanning.
-Reading all physical volumes. This may take a while...
-/run/lvm/lvmetad.socket: connect failed: No such file or directory
-WARNING: Failed to connect to lvmetad. Falling back to internal scanning.
-Reading all physical volumes. This may take a while...
-/run/lvm/lvmetad.socket: connect failed: No such file or directory
-WARNING: Failed to connect to lvmetad. Falling back to internal scanning.
+	if (sb->s_blocksize != PAGE_SIZE) {
+		xfs_alert(mp,
+		"Filesystem block size invalid for DAX Turning DAX off.");
 
-I have the same problem with Rc5 & Rc6
 
-- Debian Jessie
-- dell XPS 9350 (december 2015, professionnal version, no developer version)
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
