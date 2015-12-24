@@ -1,141 +1,205 @@
-From: "Elliott, Robert (Persistent Memory)" <elliott@hpe.com>
-Subject: RE: A blocksize problem about dax and ext4
-Date: Wed, 23 Dec 2015 21:18:05 +0000
-Message-ID: <94D0CD8314A33A4D9D801C0FE68B40295BEC985F@G9W0745.americas.hpqcorp.net>
-References: <CAM=YXF-aXxp19=uFDExUswpEfKXNN6LJScxAB-7-u-AgRiXJ2g@mail.gmail.com>
-	<CAPcyv4gYHuSWuugnELSO6B1rye+b89io3zJVUXwRt0wE1ZfPrA@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
-To: Dan Williams <dan.j.williams@intel.com>, Cholerae Hu
-	<choleraehyq@gmail.com>, Ted Tso <tytso@mit.edu>,
-	"adilger.kernel@dilger.ca"
-	<adilger.kernel@dilger.ca>, "david@fromorbit.com" <david@fromorbit.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <CAPcyv4gYHuSWuugnELSO6B1rye+b89io3zJVUXwRt0wE1ZfPrA@mail.gmail.com>
-Content-Language: en-US
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+From: Robert Elliott <elliott@hpe.com>
+Subject: [PATCH] ext2, ext4: include filesystem block size in error messages
+Date: Wed, 23 Dec 2015 18:10:01 -0600
+Message-ID: <1450915801-2320-1-git-send-email-elliott@hpe.com>
+Cc: david@fromorbit.com, linux-nvdimm@lists.01.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Robert Elliott <elliott@hpe.com>
+To: jack@suse.com, tytso@mit.edu, adilger.kernel@dilger.ca,
+	dan.j.williams@intel.com, choleraehyq@gmail.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Print the problematic value in messages about the filesystem
+block size.
 
-> -----Original Message-----
-> From: Linux-nvdimm [mailto:linux-nvdimm-bounces@lists.01.org] On Behalf Of
-> Dan Williams
-> Sent: Wednesday, December 23, 2015 11:16 AM
-> To: Cholerae Hu <choleraehyq@gmail.com>
-> Cc: linux-nvdimm@lists.01.org
-> Subject: Re: A blocksize problem about dax and ext4
-> 
-> On Wed, Dec 23, 2015 at 4:03 AM, Cholerae Hu <choleraehyq@gmail.com>
-> wrote:
-...
-> > [root@localhost cholerae]# mount -o dax /dev/pmem0 /mnt/mem
-> > mount: wrong fs type, bad option, bad superblock on /dev/pmem0,
-> >        missing codepage or helper program, or other error
-> >
-> >        In some cases useful info is found in syslog - try
-> >        dmesg | tail or so.
-> > [root@localhost cholerae]# dmesg | tail
-...
-> > [   81.779582] EXT4-fs (pmem0): error: unsupported blocksize for dax
-...
+Normalize all of the blocksize messages that use "blocksize" to
+use "filesystem block size". This helps distinguish this block size
+from the underlying block device's logical block size (i.e.,
+sector size) and physical block size.
 
-> What's the fs block size?  For example:
-> # dumpe2fs -h /dev/pmem0  | grep "Block size"
-> dumpe2fs 1.42.9 (28-Dec-2013)
-> Block size:               4096
-> Depending on the size of /dev/pmem0 it may have automatically set it
-> to a block size less than 4 KiB which is incompatible with "-o dax".
+Example old messages:
+	EXT2-fs (pmem0): unable to set blocksize
+	EXT4-fs (pmem0): error: unsupported blocksize for dax
+	EXT4-fs (pmem0): unsupported blocksize for fs encryption
+	EXT2-fs (pmem0): bad blocksize %d
 
-I noticed a few things while trying that out on both ext4 and xfs.
+Example new message:
+	EXT4-fs (pmem0): error: unsupported filesystem block size 2048 for dax
 
-$ sudo mkfs.ext4 -F -b 1024 /dev/pmem0
-$ sudo mount -o dax /dev/pmem0 /mnt/ext4-pmem0
-$ sudo mkfs.xfs -f -b size=1024 /dev/pmem0
-$ sudo mount -o dax /dev/pmem0 /mnt/xfs-pmem0
-
-[  199.679195] EXT4-fs (pmem0): DAX enabled. Warning: EXPERIMENTAL, use at your own risk
-[  199.724931] EXT4-fs (pmem0): error: unsupported block size 1024 for dax 
-[  859.077766] XFS (pmem0): DAX enabled. Warning: EXPERIMENTAL, use at your own risk
-[  859.118106] XFS (pmem0): Filesystem block size invalid for DAX Turning DAX off.
-[  859.156950] XFS (pmem0): Mounting V4 Filesystem
-[  859.183626] XFS (pmem0): Ending clean mount
-
-
-1. ext4 fails to mount the filesystem, while xfs just disables DAX.
-It seems like they should they be the same.
-
-2. if CONFIG_FS_DAX is not supported, ext4 fails to mount, but prints
-the message at the KERN_INFO level. All the rest of its mount errors
-use KERN_ERR.
-
-Completely unknown mount options are reported like this at the
-KERN_ERR level:
-[ 2188.194775] EXT4-fs (pmem0): Unrecognized mount option "xyzzy" or missing value
-
-In contrast, if CONFIG_FS_DAX is not supported, then xfs lumps it in
-with the rest of the unknown mount options, which are reported with 
-xfs_warn():
-[ 2347.654182] XFS (pmem0): unknown mount option [xyzzy].
-
-
-3. It might be worth printing the problematic filesystem block size
- (here and in a few other similar messages).  
-
-I like how xfs' wording of "Filesystem block size" helps distinguish
-the value from the block device's logical block size.
-
-
-Code excerpts
-=============
-fs/xfs/xfs_super.c:
-#ifdef CONFIG_FS_DAX
-                } else if (!strcmp(this_char, MNTOPT_DAX)) {
-                        mp->m_flags |= XFS_MOUNT_DAX;
-#endif
-...
-        if (mp->m_flags & XFS_MOUNT_DAX) {
-                xfs_warn(mp,
-        "DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
-                if (sb->s_blocksize != PAGE_SIZE) {
-                        xfs_alert(mp,
-                "Filesystem block size invalid for DAX Turning DAX off.");
-                        mp->m_flags &= ~XFS_MOUNT_DAX;
-                } else if (!sb->s_bdev->bd_disk->fops->direct_access) {
-                        xfs_alert(mp,
-                "Block device does not support DAX Turning DAX off.");
-                        mp->m_flags &= ~XFS_MOUNT_DAX;
-                }
-        }
-
-fs/ext4/super.c:
-        } else if (token == Opt_dax) {
-#ifdef CONFIG_FS_DAX
-                ext4_msg(sb, KERN_WARNING,
-                "DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
-                        sbi->s_mount_opt |= m->mount_opt;
-#else
-                ext4_msg(sb, KERN_INFO, "dax option not supported");
-                return -1;
-#endif
-
+Signed-off-by: Robert Elliott <elliott@hpe.com>
 ---
-Robert Elliott, HPE Persistent Memory
+ fs/ext2/super.c | 17 +++++++++++------
+ fs/ext4/super.c | 33 ++++++++++++++++++++-------------
+ 2 files changed, 31 insertions(+), 19 deletions(-)
 
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 748d35a..1186a5b 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -31,6 +31,7 @@
+ #include <linux/mount.h>
+ #include <linux/log2.h>
+ #include <linux/quotaops.h>
++#include <linux/stringify.h>
+ #include <asm/uaccess.h>
+ #include "ext2.h"
+ #include "xattr.h"
+@@ -822,7 +823,9 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 	 */
+ 	blocksize = sb_min_blocksize(sb, BLOCK_SIZE);
+ 	if (!blocksize) {
+-		ext2_msg(sb, KERN_ERR, "error: unable to set blocksize");
++		ext2_msg(sb, KERN_ERR,
++			 "error: unable to set filesystem block size "
++			 __stringify(BLOCK_SIZE));
+ 		goto failed_sbi;
+ 	}
+ 
+@@ -921,7 +924,8 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (sbi->s_mount_opt & EXT2_MOUNT_DAX) {
+ 		if (blocksize != PAGE_SIZE) {
+ 			ext2_msg(sb, KERN_ERR,
+-					"error: unsupported blocksize for dax");
++			 "error: unsupported filesystem block size %d for dax",
++				 blocksize);
+ 			goto failed_mount;
+ 		}
+ 		if (!sb->s_bdev->bd_disk->fops->direct_access) {
+@@ -937,7 +941,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 
+ 		if (!sb_set_blocksize(sb, blocksize)) {
+ 			ext2_msg(sb, KERN_ERR,
+-				"error: bad blocksize %d", blocksize);
++			 "error: bad filesystem block size %d", blocksize);
+ 			goto failed_sbi;
+ 		}
+ 
+@@ -1007,14 +1011,15 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 
+ 	if (sb->s_blocksize != bh->b_size) {
+ 		if (!silent)
+-			ext2_msg(sb, KERN_ERR, "error: unsupported blocksize");
++			ext2_msg(sb, KERN_ERR,
++				 "error: unsupported filesystem block size %lu",
++				 sb->s_blocksize);
+ 		goto failed_mount;
+ 	}
+ 
+ 	if (sb->s_blocksize != sbi->s_frag_size) {
+ 		ext2_msg(sb, KERN_ERR,
+-			"error: fragsize %lu != blocksize %lu"
+-			"(not supported yet)",
++	 "error: fragsize %lu != filesystem block size %lu (not supported yet)",
+ 			sbi->s_frag_size, sb->s_blocksize);
+ 		goto failed_mount;
+ 	}
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index c9ab67d..9e1c049 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -42,6 +42,7 @@
+ 
+ #include <linux/kthread.h>
+ #include <linux/freezer.h>
++#include <linux/stringify.h>
+ 
+ #include "ext4.h"
+ #include "ext4_extents.h"	/* Needed for trace points definition */
+@@ -1750,8 +1751,9 @@ static int parse_options(char *options, struct super_block *sb,
+ 			BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
+ 
+ 		if (blocksize < PAGE_CACHE_SIZE) {
+-			ext4_msg(sb, KERN_ERR, "can't mount with "
+-				 "dioread_nolock if block size != PAGE_SIZE");
++			ext4_msg(sb, KERN_ERR,
++				"can't mount with dioread_nolock if filesystem block size %d != PAGE_SIZE",
++				blocksize);
+ 			return 0;
+ 		}
+ 	}
+@@ -3147,7 +3149,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	ret = -EINVAL;
+ 	blocksize = sb_min_blocksize(sb, EXT4_MIN_BLOCK_SIZE);
+ 	if (!blocksize) {
+-		ext4_msg(sb, KERN_ERR, "unable to set blocksize");
++		ext4_msg(sb, KERN_ERR,
++			 "unable to set filesystem block size "
++			 __stringify(EXT4_MIN_BLOCK_SIZE));
+ 		goto out_fail;
+ 	}
+ 
+@@ -3367,14 +3371,15 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (blocksize < EXT4_MIN_BLOCK_SIZE ||
+ 	    blocksize > EXT4_MAX_BLOCK_SIZE) {
+ 		ext4_msg(sb, KERN_ERR,
+-		       "Unsupported filesystem blocksize %d", blocksize);
++			 "Unsupported filesystem block size %d", blocksize);
+ 		goto failed_mount;
+ 	}
+ 
+ 	if (sbi->s_mount_opt & EXT4_MOUNT_DAX) {
+ 		if (blocksize != PAGE_SIZE) {
+ 			ext4_msg(sb, KERN_ERR,
+-					"error: unsupported blocksize for dax");
++			 "error: unsupported filesystem block size %d for dax",
++				 blocksize);
+ 			goto failed_mount;
+ 		}
+ 		if (!sb->s_bdev->bd_disk->fops->direct_access) {
+@@ -3393,7 +3398,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (sb->s_blocksize != blocksize) {
+ 		/* Validate the filesystem blocksize */
+ 		if (!sb_set_blocksize(sb, blocksize)) {
+-			ext4_msg(sb, KERN_ERR, "bad block size %d",
++			ext4_msg(sb, KERN_ERR, "bad filesystem block size %d",
+ 					blocksize);
+ 			goto failed_mount;
+ 		}
+@@ -3495,8 +3500,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (has_bigalloc) {
+ 		if (clustersize < blocksize) {
+ 			ext4_msg(sb, KERN_ERR,
+-				 "cluster size (%d) smaller than "
+-				 "block size (%d)", clustersize, blocksize);
++		 "cluster size (%d) smaller than filesystem block size (%d)",
++				clustersize, blocksize);
+ 			goto failed_mount;
+ 		}
+ 		sbi->s_cluster_bits = le32_to_cpu(es->s_log_cluster_size) -
+@@ -3519,9 +3524,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		}
+ 	} else {
+ 		if (clustersize != blocksize) {
+-			ext4_warning(sb, "fragment/cluster size (%d) != "
+-				     "block size (%d)", clustersize,
+-				     blocksize);
++			ext4_warning(sb,
++		 "fragment/cluster size (%d) != filesystem block size (%d)",
++				     clustersize, blocksize);
+ 			clustersize = blocksize;
+ 		}
+ 		if (sbi->s_blocks_per_group > blocksize * 8) {
+@@ -3769,7 +3774,8 @@ no_journal:
+ 	if ((DUMMY_ENCRYPTION_ENABLED(sbi) || ext4_has_feature_encrypt(sb)) &&
+ 	    (blocksize != PAGE_CACHE_SIZE)) {
+ 		ext4_msg(sb, KERN_ERR,
+-			 "Unsupported blocksize for fs encryption");
++		 "Unsupported filesystem block size %d for fs encryption",
++			 blocksize);
+ 		goto failed_mount_wq;
+ 	}
+ 
+@@ -4112,7 +4118,8 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
+ 	hblock = bdev_logical_block_size(bdev);
+ 	if (blocksize < hblock) {
+ 		ext4_msg(sb, KERN_ERR,
+-			"blocksize too small for journal device");
++			"filesystem block size %d too small for journal device",
++			blocksize);
+ 		goto out_bdev;
+ 	}
+ 
+-- 
+2.4.3
