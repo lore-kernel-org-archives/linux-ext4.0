@@ -1,34 +1,35 @@
 From: Lokesh Jaliminche <lokesh.jaliminche@gmail.com>
-Subject: Re: [PATCH v3] EXT4: optimizing group serch for inode allocation
-Date: Sat, 26 Dec 2015 13:58:58 +0530
-Message-ID: <20151226082858.GA4082@server_lokesh.domain.name>
+Subject: Re: [PATCH v3] EXT4: optimizing group search for inode allocation
+Date: Sat, 26 Dec 2015 14:11:53 +0530
+Message-ID: <20151226084153.GA4248@server_lokesh.domain.name>
 References: <CAKJOkCr-O+37QfFFJgtkRUZfo_-U=qmYy=Ooc7oqtqcVrz1HWQ@mail.gmail.com>
  <9CF60D02-FF10-44FF-A31E-D4E99F627AF2@dilger.ca>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="UlVJffcvxoiEqYs2"
+Content-Type: multipart/mixed; boundary="WIyZ46R2i8wDzkSu"
 Cc: linux-ext4@vger.kernel.org
 To: Andreas Dilger <adilger@dilger.ca>, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f176.google.com ([209.85.192.176]:34065 "EHLO
-	mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750815AbbLZI3G (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Dec 2015 03:29:06 -0500
-Received: by mail-pf0-f176.google.com with SMTP id e65so36197053pfe.1
-        for <linux-ext4@vger.kernel.org>; Sat, 26 Dec 2015 00:29:05 -0800 (PST)
+Received: from mail-pf0-f169.google.com ([209.85.192.169]:33875 "EHLO
+	mail-pf0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751544AbbLZJcZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Dec 2015 04:32:25 -0500
+Received: by mail-pf0-f169.google.com with SMTP id e65so36687239pfe.1
+        for <linux-ext4@vger.kernel.org>; Sat, 26 Dec 2015 01:32:25 -0800 (PST)
 Content-Disposition: inline
 In-Reply-To: <9CF60D02-FF10-44FF-A31E-D4E99F627AF2@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---UlVJffcvxoiEqYs2
+--WIyZ46R2i8wDzkSu
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+
 
 >From 5199982d29ff291b181c25af63a22d6f2d6d3f7b Mon Sep 17 00:00:00 2001
 From: Lokesh Nagappa Jaliminche <lokesh.jaliminche@gmail.com>
 Date: Sat, 26 Dec 2015 13:19:36 +0530
-Subject: [PATCH] ext4: optimizing group serch for inode allocation
+Subject: [PATCH v3] ext4: optimizing group search for inode allocation
 
 Added a check at the start of group search loop to
 avoid looping unecessarily in case of empty group.
@@ -61,7 +62,6 @@ index 1b8024d..16f94db 100644
                 int ret = -1;
 +               inodes_per_flex_group = inodes_per_group * flex_size;
 +               clusters_per_flex_group = sbi->s_clusters_per_group * flex_size;
-
                 if (qstr) {
                         hinfo.hash_version = DX_HASH_HALF_MD4;
 @@ -489,6 +493,10 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
@@ -77,6 +77,7 @@ index 1b8024d..16f94db 100644
                         if (stats.used_dirs >= best_ndir)
 -- 
 1.7.1
+
 
 On Mon, Dec 21, 2015 at 10:27:37AM -0700, Andreas Dilger wrote:
 > On Dec 18, 2015, at 4:32 PM, lokesh jaliminche <lokesh.jaliminche@gmail.com> wrote:
@@ -163,7 +164,7 @@ On Mon, Dec 21, 2015 at 10:27:37AM -0700, Andreas Dilger wrote:
 
 
 
---UlVJffcvxoiEqYs2
+--WIyZ46R2i8wDzkSu
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="0001-ext4-optimizing-group-serch-for-inode-allocation.patch"
 
@@ -221,4 +222,4 @@ index 1b8024d..16f94db 100644
 1.7.1
 
 
---UlVJffcvxoiEqYs2--
+--WIyZ46R2i8wDzkSu--
