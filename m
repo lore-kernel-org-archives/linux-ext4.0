@@ -1,39 +1,31 @@
-From: "Jeff Skoll" <verna.viajar@icdd.uni-kassel.de>
-Subject: Donation/Charity
-Date: Tue, 29 Dec 2015 00:01:58 -0500
-Message-ID: <auto-000005779834@mailadmin.uni-kassel.de>
-Reply-To: jeff.skoll@skollcharity.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: EXT4 Statistics
+Date: Tue, 29 Dec 2015 10:23:01 -0500
+Message-ID: <20151229152301.GD3248@thunk.org>
+References: <5681b67a.44de8c0a.82c37.3f52@mx.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Me <verna.viajar@icdd.uni-kassel.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: funky.shelf@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx3.its.uni-kassel.de ([141.51.12.64]:47839 "EHLO
-	mx3.its.uni-kassel.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752519AbbL2GUF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Dec 2015 01:20:05 -0500
-Content-Description: Mail message body
+Received: from imap.thunk.org ([74.207.234.97]:58052 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752982AbbL2PXD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Dec 2015 10:23:03 -0500
+Content-Disposition: inline
+In-Reply-To: <5681b67a.44de8c0a.82c37.3f52@mx.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-My name is Jeffrey Skoll, a philanthropist and the founder of one of th=
-e largest private foundations in the world. I believe strongly in =E2=80=
-=98giving while living.=E2=80=99 I had one idea that never changed in m=
-y mind =E2=80=94 that you should use your wealth to help people and I h=
-ave decided to secretly give USD2.498 Million to a randomly selected in=
-dividual. On receipt of this email, you should count yourself as the in=
-dividual. Kindly get back to me at your earliest convenience, so I know=
- your email address is valid.
+On Mon, Dec 28, 2015 at 02:23:54PM -0800, funky.shelf@gmail.com wrote:
+> Would it be possible to store the number of successful read and
+> write operations that a regular file witnesses during its lifetime?
+> I'm sorry if this question has been asked before. If the information
+> is already available, where may one find it?
 
-Visit the web page to know more about me: http://www.theglobeandmail.co=
-m/news/national/meet-the-canadian-billionaire-whos-giving-it-all-away/a=
-rticle4209888/ or you can read an article of me on Wikipedia.
+Ext4 doesn't currently do this; if it did it would be a performance
+disaster, so it's not likely that it's something we would add.
 
-Regards,
-Jeffrey Skoll.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Why would you want such a thing?  What are you trying to do?
+
+						- Ted
