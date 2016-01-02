@@ -1,76 +1,56 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH v6 2/7] dax: support dirty DAX entries in radix tree
-Date: Thu, 31 Dec 2015 14:08:36 -0800
-Message-ID: <CAPcyv4hUfQVff60JiN7=gQTEFeRf7FRnobwbT84dTLvW2jdfvg@mail.gmail.com>
-References: <1450899560-26708-1-git-send-email-ross.zwisler@linux.intel.com>
-	<1450899560-26708-3-git-send-email-ross.zwisler@linux.intel.com>
-	<56838FA3.5030909@oracle.com>
-	<CAPcyv4jAO-jJ3VCOJRCc7zrQULED362SdZ88dDgN+zfQQEsfsA@mail.gmail.com>
-	<5684A0CD.9040005@oracle.com>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: [PATCH] ext4: disable retry logic in ext4_set_encrypted_filename
+Date: Sat, 02 Jan 2016 20:50:11 +0100
+Message-ID: <3125077.SmBO9VTSER@wuerfel>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux MM <linux-mm@kvack.org>,
-	linux-nvdimm <linux-nvdimm@ml01.01.org>, X86 ML <x86@kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Dave Hansen <dave.hansen@linux.intel.com>
-To: Bob Liu <bob.liu@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <5684A0CD.9040005@oracle.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7Bit
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mout.kundenserver.de ([217.72.192.75]:57292 "EHLO
+	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751210AbcABTuU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Jan 2016 14:50:20 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 30, 2015 at 7:28 PM, Bob Liu <bob.liu@oracle.com> wrote:
->
-> On 12/31/2015 04:39 AM, Dan Williams wrote:
->> On Wed, Dec 30, 2015 at 12:02 AM, Bob Liu <bob.liu@oracle.com> wrote:
->>> Hi Ross,
->>>
->>> On 12/24/2015 03:39 AM, Ross Zwisler wrote:
->>>> Add support for tracking dirty DAX entries in the struct address_space
->>>> radix tree.  This tree is already used for dirty page writeback, and it
->>>> already supports the use of exceptional (non struct page*) entries.
->>>>
->>>> In order to properly track dirty DAX pages we will insert new exceptional
->>>> entries into the radix tree that represent dirty DAX PTE or PMD pages.
->>>
->>> I may get it wrong, but there is "struct page" for persistent memory after
->>> "[PATCH v4 00/18]get_user_pages() for dax pte and pmd mappings".
->>> So why not just add "struct page" to radix tree directly just like normal page cache?
->>>
->>> Then we don't need to deal with any exceptional entries and special writeback.
->>
->> That "struct page" is optional and fsync/msync needs to operate in its absence.
->>
->
-> Any special reason or scenario that "struct page" should not be enabled?
-> I didn't see any disadvantages if always enable "struct page" by force when using DAX model for pmem.
-> The benefits would be things can be more simple and less potential bugs because of smaller patches.
->
+gcc correctly warns that the ctx variable in ext4_set_encrypted_filename
+has gone out of scope in ext4_set_encrypted_filename if we enter the
+retry path and a 'goto' into the previous code block can not guarantee
+to get the contents back:
 
-We can't enable struct page coverage by default.
+fs/ext4/namei.c: In function 'ext4_set_encrypted_filename':
+fs/ext4/namei.c:4035:10: warning: 'ctx' may be used uninitialized in this function [-Wmaybe-uninitialized]
+   retval = ext4_xattr_set_handle(handle, inode,
 
-The persistent memory capacity may be too large to allocate the memmap
-array from DRAM.  Allocating it from pmem reduces the size of the
-device and we can't have a block device change sizes just by booting a
-different kernel (any kernel less than 4.5).  So, enabling struct page
-must be an explicit action.
+I tried moving the variable declaration to the start of the function,
+but that does not shut up the warning, as it's apparently too hard
+for the compiler to follow the control flow and determine that it's
+correct (or for me reading the code, for that matter).
 
-> Happy New Year!
+This adds a hack to avoid the undefined behavior at the cost of
+losing the chance to retry on a spurious -ENOSPC error. We probably
+need a better solution.
 
-Happy New Year!
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Fixes: 374431bae296 ("ext4 crypto: add ioctls to allow backup of encryption metadata")
+---
+The warning appeared with next-20121231, which is the latest next release,
+nevermind if it has already been fixed in the meantime.
+
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index c03f310200d6..fd2bd090bdfa 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -4113,7 +4113,7 @@ out:
+ 	}
+ 	if (handle)
+ 		ext4_journal_stop(handle);
+-	if (do_retry) {
++	if (do_retry /* FIXME: ctx is invalid */ && 0) {
+ 		do_retry = 0;
+ 		goto retry;
+ 	}
+
