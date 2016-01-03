@@ -1,102 +1,80 @@
 From: kbuild test robot <fengguang.wu@intel.com>
-Subject: [ext4:dev 15/17] fs/ext4/super.c:4839:10: error: implicit
- declaration of function 'dqget'
-Date: Sun, 3 Jan 2016 10:57:13 +0800
-Message-ID: <201601031011.TBC40yNQ%fengguang.wu@intel.com>
+Subject: [ext4:dev 16/17] fs/ext4/ioctl.c:399:26: error: implicit declaration
+ of function 'dqget'
+Date: Sun, 3 Jan 2016 11:01:35 +0800
+Message-ID: <201601031134.EpdxyOqh%fengguang.wu@intel.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="YZ5djTAD1cGYuMQK"
+Content-Type: multipart/mixed; boundary="fUYQa+Pmc3FrFX/N"
 Cc: kbuild-all@01.org, linux-ext4@vger.kernel.org,
 	Theodore Ts'o <tytso@mit.edu>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
 	Andreas Dilger <adilger@dilger.ca>, Jan Kara <jack@suse.cz>
 To: Li Xi <pkuelelixi@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([192.55.52.115]:3383 "EHLO mga14.intel.com"
+Received: from mga11.intel.com ([192.55.52.93]:20934 "EHLO mga11.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751355AbcACC6N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 2 Jan 2016 21:58:13 -0500
+	id S1750904AbcACDCo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 2 Jan 2016 22:02:44 -0500
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---YZ5djTAD1cGYuMQK
+--fUYQa+Pmc3FrFX/N
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 
 tree:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
 head:   6ac40c7b5597646ec4335f77ab79cac9663f4a1e
-commit: ff77c62ef3316c4dc8ddf7117c9d581f542194a0 [15/17] ext4: add project quota support
+commit: 92a86644738b2df2eba26acadd4b35a2e2e2bcbc [16/17] ext4: add FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR interface support
 config: x86_64-randconfig-x015-201601 (attached as .config)
 reproduce:
-        git checkout ff77c62ef3316c4dc8ddf7117c9d581f542194a0
+        git checkout 92a86644738b2df2eba26acadd4b35a2e2e2bcbc
         # save the attached .config to linux build tree
         make ARCH=x86_64 
 
 All error/warnings (new ones prefixed by >>):
 
-   fs/ext4/super.c: In function 'ext4_statfs_project':
->> fs/ext4/super.c:4839:10: error: implicit declaration of function 'dqget' [-Werror=implicit-function-declaration]
-     dquot = dqget(sb, qid);
-             ^
->> fs/ext4/super.c:4839:8: warning: assignment makes pointer from integer without a cast [-Wint-conversion]
-     dquot = dqget(sb, qid);
-           ^
->> fs/ext4/super.c:4866:2: error: implicit declaration of function 'dqput' [-Werror=implicit-function-declaration]
-     dqput(dquot);
-     ^
+   fs/ext4/ioctl.c: In function 'ext4_ioctl_setproject':
+>> fs/ext4/ioctl.c:399:26: error: implicit declaration of function 'dqget' [-Werror=implicit-function-declaration]
+     transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(kprojid));
+                             ^
+>> fs/ext4/ioctl.c:399:24: warning: assignment makes pointer from integer without a cast [-Wint-conversion]
+     transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(kprojid));
+                           ^
+>> fs/ext4/ioctl.c:401:9: error: implicit declaration of function '__dquot_transfer' [-Werror=implicit-function-declaration]
+      err = __dquot_transfer(inode, transfer_to);
+            ^
+>> fs/ext4/ioctl.c:402:3: error: implicit declaration of function 'dqput' [-Werror=implicit-function-declaration]
+      dqput(transfer_to[PRJQUOTA]);
+      ^
    cc1: some warnings being treated as errors
 
-vim +/dqget +4839 fs/ext4/super.c
+vim +/dqget +399 fs/ext4/ioctl.c
 
-  4833		struct kqid qid;
-  4834		struct dquot *dquot;
-  4835		u64 limit;
-  4836		u64 curblock;
-  4837	
-  4838		qid = make_kqid_projid(projid);
-> 4839		dquot = dqget(sb, qid);
-  4840		if (!dquot)
-  4841			return -ESRCH;
-  4842		spin_lock(&dq_data_lock);
-  4843	
-  4844		limit = (dquot->dq_dqb.dqb_bsoftlimit ?
-  4845			 dquot->dq_dqb.dqb_bsoftlimit :
-  4846			 dquot->dq_dqb.dqb_bhardlimit) >> sb->s_blocksize_bits;
-  4847		if (limit && buf->f_blocks > limit) {
-  4848			curblock = dquot->dq_dqb.dqb_curspace >> sb->s_blocksize_bits;
-  4849			buf->f_blocks = limit;
-  4850			buf->f_bfree = buf->f_bavail =
-  4851				(buf->f_blocks > curblock) ?
-  4852				 (buf->f_blocks - curblock) : 0;
-  4853		}
-  4854	
-  4855		limit = dquot->dq_dqb.dqb_isoftlimit ?
-  4856			dquot->dq_dqb.dqb_isoftlimit :
-  4857			dquot->dq_dqb.dqb_ihardlimit;
-  4858		if (limit && buf->f_files > limit) {
-  4859			buf->f_files = limit;
-  4860			buf->f_ffree =
-  4861				(buf->f_files > dquot->dq_dqb.dqb_curinodes) ?
-  4862				 (buf->f_files - dquot->dq_dqb.dqb_curinodes) : 0;
-  4863		}
-  4864	
-  4865		spin_unlock(&dq_data_lock);
-> 4866		dqput(dquot);
-  4867		return 0;
-  4868	}
-  4869	
+   393		}
+   394	
+   395		err = ext4_reserve_inode_write(handle, inode, &iloc);
+   396		if (err)
+   397			goto out_stop;
+   398	
+ > 399		transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(kprojid));
+   400		if (transfer_to[PRJQUOTA]) {
+ > 401			err = __dquot_transfer(inode, transfer_to);
+ > 402			dqput(transfer_to[PRJQUOTA]);
+   403			if (err)
+   404				goto out_dirty;
+   405		}
 
 ---
 0-DAY kernel test infrastructure                Open Source Technology Center
 https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
 
---YZ5djTAD1cGYuMQK
+--fUYQa+Pmc3FrFX/N
 Content-Type: application/octet-stream
 Content-Disposition: attachment; filename=".config.gz"
 Content-Transfer-Encoding: base64
 
-H4sICHaNiFYAAy5jb25maWcAjFxLd+O2kt7nV/B0ZnHvotO24zidmeMFRIISIoJgA6QsecOj
+H4sICMKOiFYAAy5jb25maWcAjFxLd+O2kt7nV/B0ZnHvotO24zidmeMFRIISIoJgA6QsecOj
 ttUdn+tHj2Tnds+vnyqADwAqaiaLJEIVQDwKVV894J9/+jlhb68vT9vXh7vt4+OP5Ovuebff
 vu7uky8Pj7v/SjKVlKpOeCbqX4C5eHh++/7h+8er9uoyufzl8pez9/u7y2S52z/vHpP05fnL
 w9c36P/w8vzTzz+lqszFHFhnor7+0f9c297B7/GHKE2tm7QWqmwznqqM65FYcZ23fMXL2gBj
@@ -496,4 +474,4 @@ eoPF1AxAIWI7zD2OqYtSViYqH0//u8Dy5XyRVFZsxbxABcANO0GonVKOZBcfVMFVjTKlpwRN
 P0Yjr4nvHyNanklsiV5etxubhMH082MjwQywdvIx9bqG8QRK1qklyHEOoVYBPRp/jMdeq6PT
 j8AbmhXGZqVkQEH/+YFGGkEJziiBEVvLgdGj0FnbSn8vIP8PHD9BK5pDAQA=
 
---YZ5djTAD1cGYuMQK--
+--fUYQa+Pmc3FrFX/N--
