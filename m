@@ -1,32 +1,39 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: disable retry logic in ext4_set_encrypted_filename
-Date: Sat, 2 Jan 2016 22:54:40 -0500
-Message-ID: <20160103035440.GR3248@thunk.org>
-References: <3125077.SmBO9VTSER@wuerfel>
+From: "Jeff Skoll" <s_w9gc9x@uni-kassel.de>
+Subject: Charity Donation
+Date: Sun, 03 Jan 2016 05:29:02 -0500
+Message-ID: <auto-000000768813@mailadmin.uni-kassel.de>
+Reply-To: jeff.skoll@skollcharity.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Arnd Bergmann <arnd@arndb.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <3125077.SmBO9VTSER@wuerfel>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Me <s_w9gc9x@uni-kassel.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx4.its.uni-kassel.de ([141.51.12.63]:50309 "EHLO
+	mx4.its.uni-kassel.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751543AbcACKaa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Jan 2016 05:30:30 -0500
+Content-Description: Mail message body
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jan 02, 2016 at 08:50:11PM +0100, Arnd Bergmann wrote:
-> gcc correctly warns that the ctx variable in ext4_set_encrypted_filename
-> has gone out of scope in ext4_set_encrypted_filename if we enter the
-> retry path and a 'goto' into the previous code block can not guarantee
-> to get the contents back:
-> 
-> fs/ext4/namei.c: In function 'ext4_set_encrypted_filename':
-> fs/ext4/namei.c:4035:10: warning: 'ctx' may be used uninitialized in this function [-Wmaybe-uninitialized]
->    retval = ext4_xattr_set_handle(handle, inode,
+Hi,
+My name is Jeffrey Skoll, a philanthropist and the founder of one of th=
+e largest private foundations in the world. I believe strongly in =E2=80=
+=98giving while living.=E2=80=99 I had one idea that never changed in m=
+y mind =E2=80=94 that you should use your wealth to help people and I h=
+ave decided to secretly give USD2.498 Million to a randomly selected in=
+dividual. On receipt of this email, you should count yourself as the in=
+dividual. Kindly get back to me at your earliest convenience, so I know=
+ your email address is valid.
 
-Sorry, this was a known bug that I fixed about a week ago, but I
-hadn't pushed out an update to the ext4 dev branch because I hadn't
-had a chance to finish testing the project quota changes.  I've just
-pushed out an update.
+Visit the web page to know more about me: http://www.theglobeandmail.co=
+m/news/national/meet-the-canadian-billionaire-whos-giving-it-all-away/a=
+rticle4209888/ or you can read an article of me on Wikipedia.
 
-					- Ted
+Regards,
+Jeffrey Skoll.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
