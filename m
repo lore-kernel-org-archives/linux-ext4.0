@@ -1,95 +1,47 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH v6 4/7] dax: add support for fsync/msync
-Date: Sun, 3 Jan 2016 10:13:06 -0800
-Message-ID: <CAPcyv4jVJGPO8Yhz8WgSJTFw+o8=5n6yx17zchXA6C+wEKcajg@mail.gmail.com>
-References: <1450899560-26708-1-git-send-email-ross.zwisler@linux.intel.com>
-	<1450899560-26708-5-git-send-email-ross.zwisler@linux.intel.com>
+From: =?UTF-8?q?Toralf=20F=C3=B6rster?= <toralf.foerster@gmx.de>
+Subject: [PATCH 1/2] ext4: use XATTR_*_PREFIX_LEN instead sizeof(...)
+Date: Sun,  3 Jan 2016 20:56:37 +0100
+Message-ID: <1451850998-28639-1-git-send-email-toralf.foerster@gmx.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>, "Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>, Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dave Chinner <david@fromorbit.com>, Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>, Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>, linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>, Linux MM <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>, X86 ML <x86@kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>, Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>, Dave Hansen <dave.hansen@linux.intel.com>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1450899560-26708-5-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-kernel@vger.kernel.org,
+	=?UTF-8?q?Toralf=20F=C3=B6rster?= <toralf.foerster@gmx.de>
+To: linux-security-module@vger.kernel.org, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mout.gmx.net ([212.227.17.22]:50842 "EHLO mout.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751345AbcACT4m (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 3 Jan 2016 14:56:42 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 23, 2015 at 11:39 AM, Ross Zwisler
-<ross.zwisler@linux.intel.com> wrote:
-> To properly handle fsync/msync in an efficient way DAX needs to track dirty
-> pages so it is able to flush them durably to media on demand.
->
-> The tracking of dirty pages is done via the radix tree in struct
-> address_space.  This radix tree is already used by the page writeback
-> infrastructure for tracking dirty pages associated with an open file, and
-> it already has support for exceptional (non struct page*) entries.  We
-> build upon these features to add exceptional entries to the radix tree for
-> DAX dirty PMD or PTE pages at fault time.
->
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+use the definition in include/uapi/linux/xattr.h
 
-I'm hitting the following report with the ndctl dax test [1] on
-next-20151231.  I bisected it to
- commit 3cb108f941de "dax-add-support-for-fsync-sync-v6".  I'll take a
-closer look tomorrow, but in case someone can beat me to it, here's
-the back-trace:
+Signed-off-by: Toralf F=C3=B6rster <toralf.foerster@gmx.de>
+---
+ fs/ext4/xattr_security.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-------------[ cut here ]------------
-kernel BUG at fs/inode.c:497!
-[..]
-CPU: 1 PID: 3001 Comm: umount Tainted: G           O    4.4.0-rc7+ #2412
-Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-task: ffff8800da2a5a00 ti: ffff880307794000 task.ti: ffff880307794000
-RIP: 0010:[<ffffffff81280171>]  [<ffffffff81280171>] clear_inode+0x71/0x80
-RSP: 0018:ffff880307797d50  EFLAGS: 00010002
-RAX: ffff8800da2a5a00 RBX: ffff8800ca2e7328 RCX: ffff8800da2a5a28
-RDX: 0000000000000001 RSI: 0000000000000005 RDI: ffff8800ca2e7530
-RBP: ffff880307797d60 R08: ffffffff82900ae0 R09: 0000000000000000
-R10: ffff8800ca2e7548 R11: 0000000000000000 R12: ffff8800ca2e7530
-R13: ffff8800ca2e7328 R14: ffff8800da2e88d0 R15: ffff8800da2e88d0
-FS:  00007f2b22f4a880(0000) GS:ffff88031fc40000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00005648abd933e8 CR3: 000000007f3fc000 CR4: 00000000000006e0
-Stack:
-ffff8800ca2e7328 ffff8800ca2e7000 ffff880307797d88 ffffffffa01c18af
-ffff8800ca2e7328 ffff8800ca2e74d0 ffffffffa01ec740 ffff880307797db0
-ffffffff81281038 ffff8800ca2e74c0 ffff880307797e00 ffff8800ca2e7328
-Call Trace:
-[<ffffffffa01c18af>] xfs_fs_evict_inode+0x5f/0x110 [xfs]
-[<ffffffff81281038>] evict+0xb8/0x180
-[<ffffffff8128113b>] dispose_list+0x3b/0x50
-[<ffffffff81282014>] evict_inodes+0x144/0x170
-[<ffffffff8126447f>] generic_shutdown_super+0x3f/0xf0
-[<ffffffff81264837>] kill_block_super+0x27/0x70
-[<ffffffff81264a53>] deactivate_locked_super+0x43/0x70
-[<ffffffff81264e9c>] deactivate_super+0x5c/0x60
-[<ffffffff81285aff>] cleanup_mnt+0x3f/0x90
-[<ffffffff81285b92>] __cleanup_mnt+0x12/0x20
-[<ffffffff810c4f26>] task_work_run+0x76/0x90
-[<ffffffff81003e3a>] syscall_return_slowpath+0x20a/0x280
-[<ffffffff8192671a>] int_ret_from_sys_call+0x25/0x9f
-Code: 48 8d 93 30 03 00 00 48 39 c2 75 23 48 8b 83 d0 00 00 00 a8 20
-74 1a a8 40 75 18 48 c7 8
-3 d0 00 00 00 60 00 00 00 5b 41 5c 5d c3 <0f> 0b 0f 0b 0f 0b 0f 0b 0f
-0b 0f 1f 44 00 00 0f 1f
-44 00 00 55
-RIP  [<ffffffff81280171>] clear_inode+0x71/0x80
-RSP <ffff880307797d50>
----[ end trace 3b1d8898a94a4fc1 ]---
-
-[1]: git://git@github.com:pmem/ndctl.git pending
-make TESTS="test/dax.sh" check
+diff --git a/fs/ext4/xattr_security.c b/fs/ext4/xattr_security.c
+index 36f4c1a..1a3d629 100644
+--- a/fs/ext4/xattr_security.c
++++ b/fs/ext4/xattr_security.c
+@@ -16,7 +16,7 @@ ext4_xattr_security_list(const struct xattr_handler *=
+handler,
+ 			 struct dentry *dentry, char *list, size_t list_size,
+ 			 const char *name, size_t name_len)
+ {
+-	const size_t prefix_len =3D sizeof(XATTR_SECURITY_PREFIX)-1;
++	const size_t prefix_len =3D XATTR_SECURITY_PREFIX_LEN;
+ 	const size_t total_len =3D prefix_len + name_len + 1;
+=20
+=20
+--=20
+2.4.10
 
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
