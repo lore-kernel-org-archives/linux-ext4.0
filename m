@@ -1,227 +1,77 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext2, ext4: include filesystem block size in error
- messages
-Date: Mon, 4 Jan 2016 10:04:44 +0100
-Message-ID: <20160104090444.GA3888@quack.suse.cz>
-References: <1450915801-2320-1-git-send-email-elliott@hpe.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 06/11] reflink: more tests
+Date: Mon, 4 Jan 2016 11:47:08 -0800
+Message-ID: <20160104194708.GA28357@birch.djwong.org>
+References: <20151219091052.15320.94973.stgit@birch.djwong.org>
+	<20151219091131.15320.12391.stgit@birch.djwong.org>
+	<20151221063111.GO19802@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.com, tytso@mit.edu, adilger.kernel@dilger.ca,
-	dan.j.williams@intel.com, choleraehyq@gmail.com,
-	david@fromorbit.com, linux-nvdimm@lists.01.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Robert Elliott <elliott@hpe.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:44248 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751509AbcADJEg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Jan 2016 04:04:36 -0500
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, fstests@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <1450915801-2320-1-git-send-email-elliott@hpe.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20151221063111.GO19802@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 23-12-15 18:10:01, Robert Elliott wrote:
-> Print the problematic value in messages about the filesystem
-> block size.
+On Mon, Dec 21, 2015 at 05:31:11PM +1100, Dave Chinner wrote:
+> On Sat, Dec 19, 2015 at 01:11:31AM -0800, Darrick J. Wong wrote:
+> > Add more tests for unaligned copy-on-write things, and explicitly
+> > test the ability to pass "len == 0" to mean reflink/dedupe all
+> > the way to the end of the file".
+> > 
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> .....
+> > +_cleanup()
+> > +{
+> > +    cd /
+> > +    rm -rf "$tmp".* "$TESTDIR"
+> > +}
+> .....
+> > +
+> > +TESTDIR="$TEST_DIR/test-$seq"
+> > +rm -rf "$TESTDIR"
+> > +mkdir "$TESTDIR"
 > 
-> Normalize all of the blocksize messages that use "blocksize" to
-> use "filesystem block size". This helps distinguish this block size
-> from the underlying block device's logical block size (i.e.,
-> sector size) and physical block size.
+> This use of TESTDIR is highly confusing. When I see TESTDIR I think
+> that it's the mount point of the test device, not potentially some
+> directory on the scratch device.
 > 
-> Example old messages:
-> 	EXT2-fs (pmem0): unable to set blocksize
-> 	EXT4-fs (pmem0): error: unsupported blocksize for dax
-> 	EXT4-fs (pmem0): unsupported blocksize for fs encryption
-> 	EXT2-fs (pmem0): bad blocksize %d
+> I see that this occurs through lots of tests, not just these new
+> ones. Can you do a pass across the tests with, say, sed and rename
+> all these to something less confusing? e.g. "testdir", in lower
+> case, makes it clear that it's a local variable, not the global test
+> device mount point.... (i.e. test local variables are lower case,
+> exported test harnes variables are upper case ;)
 > 
-> Example new message:
-> 	EXT4-fs (pmem0): error: unsupported filesystem block size 2048 for dax
+> Separate patch/pull req is fine.
 
-Looks good to me. You can add:
+No problem.  Will give it a spin on the test harness before sending.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+(Yikes, it's a 272K patch...)
 
-								Honza
+--D
+
 > 
-> Signed-off-by: Robert Elliott <elliott@hpe.com>
-> ---
->  fs/ext2/super.c | 17 +++++++++++------
->  fs/ext4/super.c | 33 ++++++++++++++++++++-------------
->  2 files changed, 31 insertions(+), 19 deletions(-)
+> Cheers,
 > 
-> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-> index 748d35a..1186a5b 100644
-> --- a/fs/ext2/super.c
-> +++ b/fs/ext2/super.c
-> @@ -31,6 +31,7 @@
->  #include <linux/mount.h>
->  #include <linux/log2.h>
->  #include <linux/quotaops.h>
-> +#include <linux/stringify.h>
->  #include <asm/uaccess.h>
->  #include "ext2.h"
->  #include "xattr.h"
-> @@ -822,7 +823,9 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
->  	 */
->  	blocksize = sb_min_blocksize(sb, BLOCK_SIZE);
->  	if (!blocksize) {
-> -		ext2_msg(sb, KERN_ERR, "error: unable to set blocksize");
-> +		ext2_msg(sb, KERN_ERR,
-> +			 "error: unable to set filesystem block size "
-> +			 __stringify(BLOCK_SIZE));
->  		goto failed_sbi;
->  	}
->  
-> @@ -921,7 +924,8 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
->  	if (sbi->s_mount_opt & EXT2_MOUNT_DAX) {
->  		if (blocksize != PAGE_SIZE) {
->  			ext2_msg(sb, KERN_ERR,
-> -					"error: unsupported blocksize for dax");
-> +			 "error: unsupported filesystem block size %d for dax",
-> +				 blocksize);
->  			goto failed_mount;
->  		}
->  		if (!sb->s_bdev->bd_disk->fops->direct_access) {
-> @@ -937,7 +941,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
->  
->  		if (!sb_set_blocksize(sb, blocksize)) {
->  			ext2_msg(sb, KERN_ERR,
-> -				"error: bad blocksize %d", blocksize);
-> +			 "error: bad filesystem block size %d", blocksize);
->  			goto failed_sbi;
->  		}
->  
-> @@ -1007,14 +1011,15 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
->  
->  	if (sb->s_blocksize != bh->b_size) {
->  		if (!silent)
-> -			ext2_msg(sb, KERN_ERR, "error: unsupported blocksize");
-> +			ext2_msg(sb, KERN_ERR,
-> +				 "error: unsupported filesystem block size %lu",
-> +				 sb->s_blocksize);
->  		goto failed_mount;
->  	}
->  
->  	if (sb->s_blocksize != sbi->s_frag_size) {
->  		ext2_msg(sb, KERN_ERR,
-> -			"error: fragsize %lu != blocksize %lu"
-> -			"(not supported yet)",
-> +	 "error: fragsize %lu != filesystem block size %lu (not supported yet)",
->  			sbi->s_frag_size, sb->s_blocksize);
->  		goto failed_mount;
->  	}
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index c9ab67d..9e1c049 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -42,6 +42,7 @@
->  
->  #include <linux/kthread.h>
->  #include <linux/freezer.h>
-> +#include <linux/stringify.h>
->  
->  #include "ext4.h"
->  #include "ext4_extents.h"	/* Needed for trace points definition */
-> @@ -1750,8 +1751,9 @@ static int parse_options(char *options, struct super_block *sb,
->  			BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
->  
->  		if (blocksize < PAGE_CACHE_SIZE) {
-> -			ext4_msg(sb, KERN_ERR, "can't mount with "
-> -				 "dioread_nolock if block size != PAGE_SIZE");
-> +			ext4_msg(sb, KERN_ERR,
-> +				"can't mount with dioread_nolock if filesystem block size %d != PAGE_SIZE",
-> +				blocksize);
->  			return 0;
->  		}
->  	}
-> @@ -3147,7 +3149,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	ret = -EINVAL;
->  	blocksize = sb_min_blocksize(sb, EXT4_MIN_BLOCK_SIZE);
->  	if (!blocksize) {
-> -		ext4_msg(sb, KERN_ERR, "unable to set blocksize");
-> +		ext4_msg(sb, KERN_ERR,
-> +			 "unable to set filesystem block size "
-> +			 __stringify(EXT4_MIN_BLOCK_SIZE));
->  		goto out_fail;
->  	}
->  
-> @@ -3367,14 +3371,15 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	if (blocksize < EXT4_MIN_BLOCK_SIZE ||
->  	    blocksize > EXT4_MAX_BLOCK_SIZE) {
->  		ext4_msg(sb, KERN_ERR,
-> -		       "Unsupported filesystem blocksize %d", blocksize);
-> +			 "Unsupported filesystem block size %d", blocksize);
->  		goto failed_mount;
->  	}
->  
->  	if (sbi->s_mount_opt & EXT4_MOUNT_DAX) {
->  		if (blocksize != PAGE_SIZE) {
->  			ext4_msg(sb, KERN_ERR,
-> -					"error: unsupported blocksize for dax");
-> +			 "error: unsupported filesystem block size %d for dax",
-> +				 blocksize);
->  			goto failed_mount;
->  		}
->  		if (!sb->s_bdev->bd_disk->fops->direct_access) {
-> @@ -3393,7 +3398,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	if (sb->s_blocksize != blocksize) {
->  		/* Validate the filesystem blocksize */
->  		if (!sb_set_blocksize(sb, blocksize)) {
-> -			ext4_msg(sb, KERN_ERR, "bad block size %d",
-> +			ext4_msg(sb, KERN_ERR, "bad filesystem block size %d",
->  					blocksize);
->  			goto failed_mount;
->  		}
-> @@ -3495,8 +3500,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	if (has_bigalloc) {
->  		if (clustersize < blocksize) {
->  			ext4_msg(sb, KERN_ERR,
-> -				 "cluster size (%d) smaller than "
-> -				 "block size (%d)", clustersize, blocksize);
-> +		 "cluster size (%d) smaller than filesystem block size (%d)",
-> +				clustersize, blocksize);
->  			goto failed_mount;
->  		}
->  		sbi->s_cluster_bits = le32_to_cpu(es->s_log_cluster_size) -
-> @@ -3519,9 +3524,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  		}
->  	} else {
->  		if (clustersize != blocksize) {
-> -			ext4_warning(sb, "fragment/cluster size (%d) != "
-> -				     "block size (%d)", clustersize,
-> -				     blocksize);
-> +			ext4_warning(sb,
-> +		 "fragment/cluster size (%d) != filesystem block size (%d)",
-> +				     clustersize, blocksize);
->  			clustersize = blocksize;
->  		}
->  		if (sbi->s_blocks_per_group > blocksize * 8) {
-> @@ -3769,7 +3774,8 @@ no_journal:
->  	if ((DUMMY_ENCRYPTION_ENABLED(sbi) || ext4_has_feature_encrypt(sb)) &&
->  	    (blocksize != PAGE_CACHE_SIZE)) {
->  		ext4_msg(sb, KERN_ERR,
-> -			 "Unsupported blocksize for fs encryption");
-> +		 "Unsupported filesystem block size %d for fs encryption",
-> +			 blocksize);
->  		goto failed_mount_wq;
->  	}
->  
-> @@ -4112,7 +4118,8 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
->  	hblock = bdev_logical_block_size(bdev);
->  	if (blocksize < hblock) {
->  		ext4_msg(sb, KERN_ERR,
-> -			"blocksize too small for journal device");
-> +			"filesystem block size %d too small for journal device",
-> +			blocksize);
->  		goto out_bdev;
->  	}
->  
+> dave.
 > -- 
-> 2.4.3
-> 
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> Dave Chinner
+> david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
