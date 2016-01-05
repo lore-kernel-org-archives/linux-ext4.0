@@ -1,77 +1,39 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 06/11] reflink: more tests
-Date: Mon, 4 Jan 2016 11:47:08 -0800
-Message-ID: <20160104194708.GA28357@birch.djwong.org>
-References: <20151219091052.15320.94973.stgit@birch.djwong.org>
-	<20151219091131.15320.12391.stgit@birch.djwong.org>
-	<20151221063111.GO19802@dastard>
+From: "Skoll, Jeff" <uk038853@student.uni-kassel.de>
+Subject: Charity/Donation
+Date: Mon, 04 Jan 2016 21:40:01 -0500
+Message-ID: <auto-000000074659__34653.6016361371$1451962387$gmane$org@mailadmin.uni-kassel.de>
+Reply-To: jeff.skoll@skollcharity.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, fstests@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <20151221063111.GO19802@dastard>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Me <uk038853@student.uni-kassel.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.its.uni-kassel.de ([141.51.12.52]:54958 "EHLO
+	mx2.its.uni-kassel.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753842AbcAECw2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Jan 2016 21:52:28 -0500
+Content-Description: Mail message body
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 21, 2015 at 05:31:11PM +1100, Dave Chinner wrote:
-> On Sat, Dec 19, 2015 at 01:11:31AM -0800, Darrick J. Wong wrote:
-> > Add more tests for unaligned copy-on-write things, and explicitly
-> > test the ability to pass "len == 0" to mean reflink/dedupe all
-> > the way to the end of the file".
-> > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> .....
-> > +_cleanup()
-> > +{
-> > +    cd /
-> > +    rm -rf "$tmp".* "$TESTDIR"
-> > +}
-> .....
-> > +
-> > +TESTDIR="$TEST_DIR/test-$seq"
-> > +rm -rf "$TESTDIR"
-> > +mkdir "$TESTDIR"
-> 
-> This use of TESTDIR is highly confusing. When I see TESTDIR I think
-> that it's the mount point of the test device, not potentially some
-> directory on the scratch device.
-> 
-> I see that this occurs through lots of tests, not just these new
-> ones. Can you do a pass across the tests with, say, sed and rename
-> all these to something less confusing? e.g. "testdir", in lower
-> case, makes it clear that it's a local variable, not the global test
-> device mount point.... (i.e. test local variables are lower case,
-> exported test harnes variables are upper case ;)
-> 
-> Separate patch/pull req is fine.
+Hi,
+My name is Jeffrey Skoll, a philanthropist and the founder of one of th=
+e largest private foundations in the world. I believe strongly in =E2=80=
+=98giving while living.=E2=80=99 I had one idea that never changed in m=
+y mind =E2=80=94 that you should use your wealth to help people and I h=
+ave decided to secretly give USD2.498 Million to a randomly selected in=
+dividual. On receipt of this email, you should count yourself as the in=
+dividual. Kindly get back to me at your earliest convenience, so I know=
+ your email address is valid.
 
-No problem.  Will give it a spin on the test harness before sending.
+Visit the web page to know more about me: http://www.theglobeandmail.co=
+m/news/national/meet-the-canadian-billionaire-whos-giving-it-all-away/a=
+rticle4209888/ or you can read an article of me on Wikipedia.
 
-(Yikes, it's a 272K patch...)
-
---D
-
-> 
-> Cheers,
-> 
-> dave.
-> -- 
-> Dave Chinner
-> david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Regards,
+Jeffrey Skoll.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
