@@ -1,68 +1,39 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: lazytime implementation questions
-Date: Tue, 5 Jan 2016 18:36:04 +0100
-Message-ID: <20160105173604.GE18604@quack.suse.cz>
-References: <20160104062219.GB19802@dastard>
+From: =?UTF-8?q?Toralf=20F=C3=B6rster?= <toralf.foerster@gmx.de>
+Subject: [PATCH 1/2] ext4: use XATTR_*_PREFIX_LEN instead sizeof(...)
+Date: Tue,  5 Jan 2016 18:49:41 +0100
+Message-ID: <1452016181-7883-1-git-send-email-toralf.foerster@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	tytso-3s7WtUTddSA@public.gmane.org
-To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20160104062219.GB19802@dastard>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-kernel@vger.kernel.org, jack@suse.cz,
+	=?UTF-8?q?Toralf=20F=C3=B6rster?= <toralf.foerster@gmx.de>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-  Hi,
+use the definition in include/uapi/linux/xattr.h
 
-On Mon 04-01-16 17:22:19, Dave Chinner wrote:
-> I've been looking at implementing the lazytime mount option for XFS,
-> and I'm struggling to work out what it is supposed to mean.
-> 
-> AFAICT, on ext4, lazytime means that pure timestamp updates are not
-> journalled and they are only ever written back when the inode is
-> otherwise dirtied and written, or they are timestamp dirty for 24
-> hours which triggers writeback.
-> 
-> This poses a couple of problems for XFS:
-> 
-> 	1. we log every timestamp change, so there is no mechanism
-> 	   for delayed/deferred update.
-> 
-> 	2. we track dirty metadata in the journal, not via the VFS
-> 	   dirty inode lists, so all the infrastructure written for
-> 	   ext4 to do periodic flushing is useless to us.
-> 
-> These are solvable problems, but what I'm not sure about is exactly
-> what the intended semantics of lazytime durability are. That is,
-> exactly what guaranteed are we giving userspace about timestamp
-> updates when lazytime is used? The guarantees we have to give will
-> greatly influence the XFS implementation, so I really need to nail
-> down what we are expected to provide userspace. Can we:
-> 
-> 	a) just ignore all durability concerns?
-> 	b) if not, do we only need to care about the 24 hour
-> 	   writeback and unmount?
-> 	c) if not, are fsync/sync/syncfs/freeze/unmount supposed
-> 	   to provide durability of all metadata changes?
-> 	d) do we have to care about ordering - if we fsync one inode
-> 	   with 1 hour old timestamps, do we also need to guarantee
-> 	   that all the inodes with older dirty timestamps also get
-> 	   made durable?
+Signed-off-by: Toralf F=C3=B6rster <toralf.foerster@gmx.de>
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-So the intended semantics is:
-1) fsync / sync / freeze / unmount will write the timestamp updates even
-   with lazytime. So unless crash happens, timestamps are guaranteed to be
-   consistent. Also sync / fsync guarantees all changes to get to disk.
-2) We periodically write back timestamps (once per 24 hours) to avoid too
-   big timestamp inconsistencies in case of crash.
+---
+ fs/ext4/xattr_security.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Otherwise there are no guarantees wrt durability. I've CCed Ted who
-designed this just in case I missed something.
-
-								Honza
--- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
-SUSE Labs, CR
+diff --git a/fs/ext4/xattr_security.c b/fs/ext4/xattr_security.c
+index 36f4c1a..1a3d629 100644
+--- a/fs/ext4/xattr_security.c
++++ b/fs/ext4/xattr_security.c
+@@ -16,7 +16,7 @@ ext4_xattr_security_list(const struct xattr_handler *=
+handler,
+ 			 struct dentry *dentry, char *list, size_t list_size,
+ 			 const char *name, size_t name_len)
+ {
+-	const size_t prefix_len =3D sizeof(XATTR_SECURITY_PREFIX)-1;
++	const size_t prefix_len =3D XATTR_SECURITY_PREFIX_LEN;
+ 	const size_t total_len =3D prefix_len + name_len + 1;
+=20
+=20
+--=20
+2.4.10
