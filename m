@@ -1,39 +1,76 @@
-From: "Skoll, Jeff" <uk038853@student.uni-kassel.de>
-Subject: Charity/Donation
-Date: Tue, 05 Jan 2016 00:04:11 -0500
-Message-ID: <auto-000000159799__3860.3481757038$1451970334$gmane$org@mailadmin.uni-kassel.de>
-Reply-To: jeff.skoll@skollcharity.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v6 2/7] dax: support dirty DAX entries in radix tree
+Date: Tue, 5 Jan 2016 10:41:01 +0100
+Message-ID: <20160105094101.GB2724@quack.suse.cz>
+References: <1450899560-26708-1-git-send-email-ross.zwisler@linux.intel.com>
+	<1450899560-26708-3-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Me <uk038853@student.uni-kassel.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.its.uni-kassel.de ([141.51.12.52]:51710 "EHLO
-	mx2.its.uni-kassel.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751852AbcAEFEg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Jan 2016 00:04:36 -0500
-Content-Description: Mail message body
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Dave Hansen <dave.hansen@linux.intel.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>, linux-mm@kvack.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	"H. Peter Anvin" <hpa@zytor.com>, Jeff Layton <jlayton@poochiereds.net>,
+	Dan Williams <dan.j.williams@intel.com>,
+	linux-nvdimm@lists.01.org, x86@kernel.org, Ingo Molnar <mingo@redhat.com>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	Jan Kara <jack@suse.com>, linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <1450899560-26708-3-git-send-email-ross.zwisler@linux.intel.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
-My name is Jeffrey Skoll, a philanthropist and the founder of one of th=
-e largest private foundations in the world. I believe strongly in =E2=80=
-=98giving while living.=E2=80=99 I had one idea that never changed in m=
-y mind =E2=80=94 that you should use your wealth to help people and I h=
-ave decided to secretly give USD2.498 Million to a randomly selected in=
-dividual. On receipt of this email, you should count yourself as the in=
-dividual. Kindly get back to me at your earliest convenience, so I know=
- your email address is valid.
+On Wed 23-12-15 12:39:15, Ross Zwisler wrote:
+> Add support for tracking dirty DAX entries in the struct address_space
+> radix tree.  This tree is already used for dirty page writeback, and it
+> already supports the use of exceptional (non struct page*) entries.
+> 
+> In order to properly track dirty DAX pages we will insert new exceptional
+> entries into the radix tree that represent dirty DAX PTE or PMD pages.
+> These exceptional entries will also contain the writeback sectors for the
+> PTE or PMD faults that we can use at fsync/msync time.
+> 
+> There are currently two types of exceptional entries (shmem and shadow)
+> that can be placed into the radix tree, and this adds a third.  We rely on
+> the fact that only one type of exceptional entry can be found in a given
+> radix tree based on its usage.  This happens for free with DAX vs shmem but
+> we explicitly prevent shadow entries from being added to radix trees for
+> DAX mappings.
+> 
+> The only shadow entries that would be generated for DAX radix trees would
+> be to track zero page mappings that were created for holes.  These pages
+> would receive minimal benefit from having shadow entries, and the choice
+> to have only one type of exceptional entry in a given radix tree makes the
+> logic simpler both in clear_exceptional_entry() and in the rest of DAX.
+> 
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 
-Visit the web page to know more about me: http://www.theglobeandmail.co=
-m/news/national/meet-the-canadian-billionaire-whos-giving-it-all-away/a=
-rticle4209888/ or you can read an article of me on Wikipedia.
+The patch looks good to me. You can add:
 
-Regards,
-Jeffrey Skoll.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
