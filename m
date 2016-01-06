@@ -1,53 +1,35 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [patch] ext4: checking for NULL instead of IS_ERR
-Date: Wed, 6 Jan 2016 14:05:11 +0100
-Message-ID: <20160106130511.GA29528@quack.suse.cz>
-References: <20160106100425.GG23185@mwanda>
+From: Bart Van Assche <bart.vanassche@sandisk.com>
+Subject: Re: [dm-devel] [PATCH 01/35] block/fs/drivers: remove rw argument
+ from submit_bio
+Date: Wed, 6 Jan 2016 16:59:26 +0100
+Message-ID: <568D39DE.2060709@sandisk.com>
+References: <1452027218-32303-1-git-send-email-mchristi@redhat.com>
+ <1452027218-32303-2-git-send-email-mchristi@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Li Xi <pkuelelixi@gmail.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Return-path: <kernel-janitors-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160106100425.GG23185@mwanda>
-Sender: kernel-janitors-owner@vger.kernel.org
+Content-Type: text/plain; charset="windows-1252"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Mike Christie <mchristi@redhat.com>
+To: device-mapper development <dm-devel@redhat.com>,
+	<linux-f2fs-devel@lists.sourceforge.net>,
+	<linux-ext4@vger.kernel.org>, <konrad.wilk@oracle.com>,
+	<drbd-dev@lists.linbit.com>, <philipp.reisner@linbit.com>,
+	<lars.ellenberg@linbit.com>, <linux-raid@vger.kernel.org>,
+	<linux-fsdevel@vger.kernel.org>, <linux-bcache@vger.kernel.org>,
+	<linux-block@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+	<linux-scsi@vger.kernel.org>, <linux-mtd@lists.infradead.org>,
+	<target-devel@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
+	<osd-dev@open-osd.org>, <xfs@oss.sgi.com>,
+	<ocfs2-devel@oss.oracle.com>
+Return-path: <linux-scsi-owner@vger.kernel.org>
+In-Reply-To: <1452027218-32303-2-git-send-email-mchristi@redhat.com>
+Sender: linux-scsi-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 06-01-16 13:04:25, Dan Carpenter wrote:
-> The dqget() function returns error pointers on error, it doesn't return
-> NULL.
-> 
-> Fixes: 76481d7a60a4 ('ext4: add project quota support')
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+On 01/05/2016 09:53 PM, mchristi@redhat.com wrote:
+> From: Mike Christie <mchristi@redhat.com>
+>
+> This has callers of submit_bio/submit_bio_wait set the bio->bi_rw
+> instead of passing it in. This makes that use the same as
+> generic_make_request and how we set the other bio fields.
 
-Correct. You can add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 50b2207..103a7a3 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -4844,8 +4844,8 @@ static int ext4_statfs_project(struct super_block *sb,
->  
->  	qid = make_kqid_projid(projid);
->  	dquot = dqget(sb, qid);
-> -	if (!dquot)
-> -		return -ESRCH;
-> +	if (IS_ERR(dquot))
-> +		return PTR_ERR(dquot);
->  	spin_lock(&dq_data_lock);
->  
->  	limit = (dquot->dq_dqb.dqb_bsoftlimit ?
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Reviewed-by: Bart Van Assche <bart.vanassche@sandisk.com>
