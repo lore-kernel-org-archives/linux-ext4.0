@@ -1,7 +1,8 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v7 0/9] DAX fsync/msync support
-Date: Wed,  6 Jan 2016 11:00:54 -0700
-Message-ID: <1452103263-1592-1-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v7 1/9] dax: fix NULL pointer dereference in __dax_dbg()
+Date: Wed,  6 Jan 2016 11:00:55 -0700
+Message-ID: <1452103263-1592-2-git-send-email-ross.zwisler@linux.intel.com>
+References: <1452103263-1592-1-git-send-email-ross.zwisler@linux.intel.com>
 Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	"H. Peter Anvin" <hpa@zytor.com>,
 	"J. Bruce Fields" <bfields@fieldses.org>,
@@ -21,65 +22,44 @@ Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	linux-mm@kvack.org, linux-nvdimm@lists.01.org, x86@kernel.org,
 	xfs@oss.sgi.com
 To: linux-kernel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:47400 "EHLO mga02.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751605AbcAFSBM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Jan 2016 13:01:12 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1452103263-1592-1-git-send-email-ross.zwisler@linux.intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Changes since v6 [1]:
+__dax_dbg() currently assumes that bh->b_bdev is non-NULL, passing it into
+bdevname() where is is dereferenced.  This assumption isn't always true -
+when called for reads of holes, ext4_dax_mmap_get_block() returns a buffer
+head where bh->b_bdev is never set.  I hit this BUG while testing the DAX
+PMD fault path.
 
-1) Fixed an existing NULL pointer dereference bug in __dax_dbg() in patch 1.
+Instead, verify that we have a valid bh->b_bdev, else just say "unknown"
+for the block device.
 
-2) Fixed an existing bug with the way holes are converted into DAX PMD
-entries in patch 2.  This solves a BUG_ON reported by Dan Williams.
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Cc: Dan Williams <dan.j.williams@intel.com>
+---
+ fs/dax.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-3) Removed second verification of our radix tree entry before cache flush
-in dax_writeback_one(). (Jan Kara)
-
-4) Updated to the new argument list types for dax_pmd_dbg(). (Dan Williams)
-
-5) Fixed the text of a random debug message so that it accurately reflects
-the error being found.
-
-This series replaces v6 in the MM tree and in the "akpm" branch of the next
-tree.  A working tree can be found here:
-
-https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=fsync_v7
-
-[1]: https://lists.01.org/pipermail/linux-nvdimm/2015-December/003663.html
-
-Ross Zwisler (9):
-  dax: fix NULL pointer dereference in __dax_dbg()
-  dax: fix conversion of holes to PMDs
-  pmem: add wb_cache_pmem() to the PMEM API
-  dax: support dirty DAX entries in radix tree
-  mm: add find_get_entries_tag()
-  dax: add support for fsync/msync
-  ext2: call dax_pfn_mkwrite() for DAX fsync/msync
-  ext4: call dax_pfn_mkwrite() for DAX fsync/msync
-  xfs: call dax_pfn_mkwrite() for DAX fsync/msync
-
- arch/x86/include/asm/pmem.h |  11 +--
- fs/block_dev.c              |   2 +-
- fs/dax.c                    | 214 ++++++++++++++++++++++++++++++++++++++++----
- fs/ext2/file.c              |   4 +-
- fs/ext4/file.c              |   4 +-
- fs/inode.c                  |   2 +-
- fs/xfs/xfs_file.c           |   7 +-
- include/linux/dax.h         |   7 ++
- include/linux/fs.h          |   3 +-
- include/linux/pagemap.h     |   3 +
- include/linux/pmem.h        |  22 ++++-
- include/linux/radix-tree.h  |   9 ++
- mm/filemap.c                |  91 +++++++++++++++++--
- mm/truncate.c               |  69 +++++++-------
- mm/vmscan.c                 |   9 +-
- mm/workingset.c             |   4 +-
- 16 files changed, 391 insertions(+), 70 deletions(-)
-
+diff --git a/fs/dax.c b/fs/dax.c
+index 7af8797..03cc4a3 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -563,7 +563,12 @@ static void __dax_dbg(struct buffer_head *bh, unsigned long address,
+ {
+ 	if (bh) {
+ 		char bname[BDEVNAME_SIZE];
+-		bdevname(bh->b_bdev, bname);
++
++		if (bh->b_bdev)
++			bdevname(bh->b_bdev, bname);
++		else
++			snprintf(bname, BDEVNAME_SIZE, "unknown");
++
+ 		pr_debug("%s: %s addr: %lx dev %s state %lx start %lld "
+ 			"length %zd fallback: %s\n", fn, current->comm,
+ 			address, bname, bh->b_state, (u64)bh->b_blocknr,
 -- 
 2.5.0
 
