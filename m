@@ -1,47 +1,70 @@
-From: "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-Subject: Re: [PATCH 25/35] target: set bi_op to REQ_OP
-Date: Wed, 06 Jan 2016 11:06:00 -0800
-Message-ID: <1452107160.26125.39.camel@haakon3.risingtidesystems.com>
-References: <1452027218-32303-1-git-send-email-mchristi@redhat.com>
-	 <1452027218-32303-26-git-send-email-mchristi@redhat.com>
+From: Dan Williams <dan.j.williams@intel.com>
+Subject: Re: [PATCH v7 1/9] dax: fix NULL pointer dereference in __dax_dbg()
+Date: Wed, 6 Jan 2016 11:14:09 -0800
+Message-ID: <CAPcyv4h3NcXHHQAWL=HwgGxTbFTeOa98S9fxWu7dA3nTEcFxxA@mail.gmail.com>
+References: <1452103263-1592-1-git-send-email-ross.zwisler@linux.intel.com>
+	<1452103263-1592-2-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-	konrad.wilk@oracle.com, drbd-dev@lists.linbit.com,
-	philipp.reisner@linbit.com, lars.ellenberg@linbit.com,
-	linux-raid@vger.kernel.org, dm-devel@redhat.com,
-	linux-fsdevel@vger.kernel.org, linux-bcache@vger.kernel.org,
-	linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-scsi@vger.kernel.org, linux-mtd@lists.infradead.org,
-	target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	osd-dev@open-osd.org, xfs@oss.sgi.com, ocfs2-devel@oss.oracle.com
-To: mchristi@redhat.com
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <1452027218-32303-26-git-send-email-mchristi@redhat.com>
-Sender: linux-btrfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "H. Peter Anvin" <hpa@zytor.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>, "Theodore Ts'o" <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>, Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>, Dave Chinner <david@fromorbit.com>,
+	Dave Hansen <dave.hansen@linux.intel.com>, Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>, Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Matthew Wilcox <willy@linux.intel.com>, Thomas Gleixner <tglx@linutronix.de>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux MM <linux-mm@kvack.org>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>, X86 ML <x86@kernel.org>,
+	XFS Developers <xfs@oss.sgi.com>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1452103263-1592-2-git-send-email-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Mike,
-
-On Tue, 2016-01-05 at 14:53 -0600, mchristi@redhat.com wrote:
-> From: Mike Christie <mchristi@redhat.com>
-> 
-> This patch has the target modules set the bio bi_op to a REQ_OP, and
-> rq_flag_bits to bi_rw.
-> 
-> This patch is compile tested only.
-> 
-> Signed-off-by: Mike Christie <mchristi@redhat.com>
+On Wed, Jan 6, 2016 at 10:00 AM, Ross Zwisler
+<ross.zwisler@linux.intel.com> wrote:
+> __dax_dbg() currently assumes that bh->b_bdev is non-NULL, passing it into
+> bdevname() where is is dereferenced.  This assumption isn't always true -
+> when called for reads of holes, ext4_dax_mmap_get_block() returns a buffer
+> head where bh->b_bdev is never set.  I hit this BUG while testing the DAX
+> PMD fault path.
+>
+> Instead, verify that we have a valid bh->b_bdev, else just say "unknown"
+> for the block device.
+>
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> Cc: Dan Williams <dan.j.williams@intel.com>
 > ---
->  drivers/target/target_core_iblock.c | 38 ++++++++++++++++++++++---------------
->  drivers/target/target_core_pscsi.c  |  2 +-
->  2 files changed, 24 insertions(+), 16 deletions(-)
-> 
+>  fs/dax.c | 7 ++++++-
+>  1 file changed, 6 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/dax.c b/fs/dax.c
+> index 7af8797..03cc4a3 100644
+> --- a/fs/dax.c
+> +++ b/fs/dax.c
+> @@ -563,7 +563,12 @@ static void __dax_dbg(struct buffer_head *bh, unsigned long address,
+>  {
+>         if (bh) {
+>                 char bname[BDEVNAME_SIZE];
+> -               bdevname(bh->b_bdev, bname);
+> +
+> +               if (bh->b_bdev)
+> +                       bdevname(bh->b_bdev, bname);
+> +               else
+> +                       snprintf(bname, BDEVNAME_SIZE, "unknown");
+> +
+>                 pr_debug("%s: %s addr: %lx dev %s state %lx start %lld "
+>                         "length %zd fallback: %s\n", fn, current->comm,
+>                         address, bname, bh->b_state, (u64)bh->b_blocknr,
 
-Nice work to clean this long standing abuse.  ;)
+I'm assuming there's no danger of a such a buffer_head ever being used
+for the bdev parameter to dax_map_atomic()?  Shouldn't we also/instead
+go fix ext4 to not send partially filled buffer_heads?
 
-For the target/iblock bit:
-
-Acked-by: Nicholas Bellinger <nab@linux-iscsi.org>
-
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
