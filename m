@@ -1,220 +1,243 @@
-From: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
-Subject: RE: ext4 out of order when use cfq scheduler
-Date: Thu, 7 Jan 2016 06:51:18 +0000
-Message-ID: <52667a5f60c84c98983c1948cc078487@SGPMBX1004.APAC.bosch.com>
-References: <697280a570654ae0aa1723fb7d11f51e@SGPMBX1004.APAC.bosch.com>
- <20151222150037.GB18178@quack.suse.cz>
- <c67f356b63d94d35ad010a6e987b68f0@SGPMBX1004.APAC.bosch.com>
- <20160105153050.GF14464@quack.suse.cz>
- <c73ca48af09742318189c61d167c4459@SGPMBX1004.APAC.bosch.com>
- <E3F0FC8F-DE43-41F4-9E7B-E732867130FC@dilger.ca>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 108631] Stuck on mb_cache_spinlock
+Date: Thu, 07 Jan 2016 09:02:42 +0000
+Message-ID: <bug-108631-13602-GtFqrqjGZP@https.bugzilla.kernel.org/>
+References: <bug-108631-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: Jan Kara <jack@suse.cz>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp6-v.fe.bosch.de ([139.15.237.11]:33821 "EHLO
-	smtp6-v.fe.bosch.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750747AbcAGGvZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Jan 2016 01:51:25 -0500
-In-Reply-To: <E3F0FC8F-DE43-41F4-9E7B-E732867130FC@dilger.ca>
-Content-Language: en-US
+Received: from mail.kernel.org ([198.145.29.136]:36332 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751905AbcAGJCs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Jan 2016 04:02:48 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 79071200E6
+	for <linux-ext4@vger.kernel.org>; Thu,  7 Jan 2016 09:02:46 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id C558820172
+	for <linux-ext4@vger.kernel.org>; Thu,  7 Jan 2016 09:02:42 +0000 (UTC)
+In-Reply-To: <bug-108631-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=108631
+
+Norman Meilick <nm@sbe.de> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |nm@sbe.de
+
+--- Comment #1 from Norman Meilick <nm@sbe.de> ---
+Hi,
+
+we have the same problem on several of our servers (mostly HP ProLiant ML350p
+Gen8 but also other brands) and are able to reproduce it reliably on some of
+them. Usually the soft lockups are triggered during our nightly rsync backups
+(backing up lots of local files with POSIX ACLs to a local disk), but they also
+happened during normal use. After a few hours of soft lockups and an unusable
+server, the hardware watchdog finally kicks in and a kernel panic results.
+
+All file systems involved are EXT3.
+We've confirmed the problem with kernels 3.16, 3.18 and 4.3.
+Kernel 3.14 seems not to be affected - no problems on any server after the
+downgrade.
+
+Soft lockup:
+[26331.750524] BUG: soft lockup - CPU#2 stuck for 22s! [rsync:17146]
+[26331.750552] Modules linked in: snd_mtpav netconsole snd_rawmidi
+snd_seq_device snd soundcore mptctl mptbase xt_REDIRECT ip_set_bitmap_port
+ip_set_hash_netport ip_set_hash_net ip_set_hash_ip ipmi_devintf configfs hpwdt
+quota_v2 quota_tree autofs4 veth act_police cls_basic cls_flow cls_fw cls_u32
+sch_fq_codel sch_tbf sch_prio sch_htb sch_hfsc sch_ingress sch_sfq stp llc
+ppdev lp parport xt_CHECKSUM ipt_rpfilter xt_statistic xt_CT xt_LOG
+xt_connlimit xt_realm xt_addrtype xt_comment xt_recent xt_nat ipt_ULOG
+ipt_REJECT ipt_MASQUERADE ipt_ECN ipt_CLUSTERIP ipt_ah xt_set ip_set
+nf_nat_tftp nf_nat_snmp_basic nf_conntrack_snmp nf_nat_sip nf_nat_pptp
+nf_nat_proto_gre nf_nat_irc nf_nat_h323 nf_nat_ftp nf_nat_amanda ts_kmp
+nf_conntrack_amanda nf_conntrack_sane nf_conntrack_tftp nf_conntrack_sip
+nf_conntrack_proto_udplite nf_conntrack_proto_sctp nf_conntrack_pptp
+nf_conntrack_proto_gre nf_conntrack_netlink nf_conntrack_netbios_ns
+nf_conntrack_broadcast nf_conntrack_irc nf_conntrack_h323 nf_conntrack_ftp
+xt_TPROXY nf_defrag_ipv6 xt_time xt_TCPMSS xt_tcpmss xt_sctp xt_policy
+xt_pkttype xt_physdev xt_owner xt_NFQUEUE xt_NFLOG nfnetlink_log xt_multiport
+xt_mark xt_mac xt_limit xt_length xt_iprange xt_helper xt_hashlimit xt_DSCP
+xt_dscp xt_dccp xt_conntrack xt_connmark xt_CLASSIFY xt_AUDIT xt_tcpudp
+xt_state iptable_raw iptable_nat nf_nat_ipv4 nf_nat nf_conntrack_ipv4
+nf_defrag_ipv4 nf_conntrack iptable_mangle nfnetlink iptable_filter ip_tables
+x_tables openvswitch gre vxlan libcrc32c intel_rapl x86_pkg_temp_thermal
+intel_powerclamp coretemp kvm_intel kvm crct10dif_pclmul crc32_pclmul
+aesni_intel hpilo sb_edac edac_core aes_x86_64 lrw shpchp gf128mul glue_helper
+ipmi_si ablk_helper ipmi_msghandler serio_raw cryptd ioatdma pcspkr lpc_ich wmi
+joydev acpi_power_meter mac_hid hid_generic psmouse igb usbhid tg3 i2c_algo_bit
+pata_acpi hid dca hpsa ptp pps_core [last unloaded: snd_mtpav]
+[26331.750591] CPU: 2 PID: 17146 Comm: rsync Tainted: G        W    
+3.16.0-57-generic #77~14.04.1-Ubuntu
+[26331.750592] Hardware name: HP ProLiant ML350p Gen8, BIOS P72 07/01/2015
+[26331.750593] task: ffff8800857ea8c0 ti: ffff88015c01c000 task.ti:
+ffff88015c01c000
+[26331.750599] RIP: 0010:[<ffffffff81770b12>]  [<ffffffff81770b12>]
+_raw_spin_lock+0x32/0x50
+[26331.750600] RSP: 0018:ffff88015c01fb40  EFLAGS: 00000202
+[26331.750600] RAX: 0000000000004ade RBX: ffffffff81120324 RCX:
+00000000000054e8
+[26331.750601] RDX: 00000000000054ea RSI: 00000000000054ea RDI:
+ffffffff81f8d600
+[26331.750602] RBP: ffff88015c01fb40 R08: 20043814dd400000 R09:
+dffb4fec30c53750
+[26331.750602] R10: 3998000000000000 R11: 000000609ccc0000 R12:
+ffffffff81206960
+[26331.750603] R13: ffff8800b9481310 R14: ffffffff81206fd8 R15:
+ffff88015c01fb00
+[26331.750604] FS:  00007fc052b8f740(0000) GS:ffff88043f440000(0000)
+knlGS:0000000000000000
+[26331.750605] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[26331.750606] CR2: 00000000edd93000 CR3: 000000015c2d0000 CR4:
+00000000000407e0
+[26331.750606] Stack:
+[26331.750608]  ffff88015c01fb98 ffffffff8122d027 ffff8801b4364000
+ffff8800b9481040
+[26331.750609]  0000000008290bcc 0000000000001000 ffff88015c01fba8
+ffff88020f0218f0
+[26331.750611]  ffff88020f0218f0 ffff88015c01fc70 ffffff9f634c2733
+ffff88015c01fbc0
+[26331.750611] Call Trace:
+[26331.750616]  [<ffffffff8122d027>] __mb_cache_entry_find+0x187/0x1e0
+[26331.750617]  [<ffffffff8122d1a2>] mb_cache_entry_find_next+0x82/0xb0
+[26331.750621]  [<ffffffff81296e7b>] ext4_xattr_block_set+0x26b/0xa30
+[26331.750623]  [<ffffffff81298235>] ext4_xattr_set_handle+0x315/0x450
+[26331.750625]  [<ffffffff8129c64b>] __ext4_set_acl+0x29b/0x350
+[26331.750628]  [<ffffffff8129cb53>] ext4_init_acl+0x43/0xd0
+[26331.750629]  [<ffffffff81253b19>] __ext4_new_inode+0xe59/0x12f0
+[26331.750632]  [<ffffffff812641ac>] ext4_mkdir+0x1ac/0x400
+[26331.750635]  [<ffffffff811e0747>] vfs_mkdir+0xb7/0x160
+[26331.750637]  [<ffffffff811e686b>] SyS_mkdir+0xab/0xe0
+[26331.750639]  [<ffffffff8177108d>] system_call_fastpath+0x1a/0x1f
+[26331.750652] Code: 89 e5 b8 00 00 02 00 f0 0f c1 07 89 c2 c1 ea 10 66 39 c2
+75 02 5d c3 83 e2 fe 0f b7 f2 b8 00 80 00 00 eb 0c 0f 1f 44 00 00 f3 90 <83> e8
+01 74 0a 0f b7 0f 66 39 ca 75 f1 5d c3 66 66 66 90 66 66 
+[26332.682647] Modules linked in: snd_mtpav netconsole snd_rawmidi
+snd_seq_device snd soundcore mptctl mptbase xt_REDIRECT ip_set_bitmap_port
+ip_set_hash_netport ip_set_hash_net ip_set_hash_ip ipmi_devintf configfs hpwdt
+quota_v2 quota_tree autofs4 veth act_police cls_basic cls_flow cls_fw cls_u32
+sch_fq_codel sch_tbf sch_prio sch_htb sch_hfsc sch_ingress sch_sfq stp llc
+ppdev lp parport xt_CHECKSUM ipt_rpfilter xt_statistic xt_CT xt_LOG
+xt_connlimit xt_realm xt_addrtype xt_comment xt_recent xt_nat ipt_ULOG
+ipt_REJECT ipt_MASQUERADE ipt_ECN ipt_CLUSTERIP ipt_ah xt_set ip_set
+nf_nat_tftp nf_nat_snmp_basic nf_conntrack_snmp nf_nat_sip nf_nat_pptp
+nf_nat_proto_gre nf_nat_irc nf_nat_h323 nf_nat_ftp nf_nat_amanda ts_kmp
+nf_conntrack_amanda nf_conntrack_sane nf_conntrack_tftp nf_conntrack_sip
+nf_conntrack_proto_udplite nf_conntrack_proto_sctp nf_conntrack_pptp
+nf_conntrack_proto_gre nf_conntrack_netlink nf_conntrack_netbios_ns
+nf_conntrack_broadcast nf_conntrack_irc nf_conntrack_h323 nf_conntrack_ftp
+xt_TPROXY nf_defrag_ipv6 xt_time xt_TCPMSS xt_tcpmss xt_sctp xt_policy
+xt_pkttype xt_physdev xt_owner xt_NFQUEUE xt_NFLOG nfnetlink_log xt_multiport
+xt_mark xt_mac xt_limit xt_length xt_iprange xt_helper xt_hashlimit xt_DSCP
+xt_dscp xt_dccp xt_conntrack xt_connmark xt_CLASSIFY xt_AUDIT xt_tcpudp
+xt_state iptable_raw iptable_nat nf_nat_ipv4 nf_nat nf_conntrack_ipv4
+nf_defrag_ipv4 nf_conntrack iptable_mangle nfnetlink iptable_filter ip_tables
+x_tables openvswitch gre vxlan libcrc32c intel_rapl x86_pkg_temp_thermal
+intel_powerclamp coretemp kvm_intel kvm crct10dif_pclmul crc32_pclmul
+aesni_intel hpilo sb_edac edac_core aes_x86_64 lrw shpchp gf128mul glue_helper
+ipmi_si ablk_helper ipmi_msghandler serio_raw cryptd ioatdma pcspkr lpc_ich wmi
+joydev acpi_power_meter mac_hid hid_generic psmouse igb usbhid tg3 i2c_algo_bit
+pata_acpi hid dca hpsa ptp pps_core [last unloaded: snd_mtpav]
+[26332.890168] CPU: 0 PID: 51806 Comm: rsync Tainted: G        W    
+3.16.0-57-generic #77~14.04.1-Ubuntu
+[26332.911627] Hardware name: HP ProLiant ML350p Gen8, BIOS P72 07/01/2015
+[26332.933421] task: ffff88034d5a7010 ti: ffff88009089c000 task.ti:
+ffff88009089c000
+[26332.954043] RIP: 0010:[<ffffffff8122d869>]  [<ffffffff8122d869>]
+mb_cache_entry_alloc+0x69/0x230
+[26332.974573] RSP: 0018:ffff88009089fbd0  EFLAGS: 00000246
+[26332.994921] RAX: ffff88010e053750 RBX: ffff88009089fbc0 RCX:
+ffff88010e053750
+[26333.015346] RDX: ffff88010e053750 RSI: 0000000000000050 RDI:
+0000000000000001
+[26333.035819] RBP: ffff88009089fbe8 R08: ffff880329aaa750 R09:
+ffffffff81aaa85e
+[26333.056281] R10: ffff880329aaa750 R11: 0000000000000246 R12:
+ffff8801986e49a0
+[26333.075995] R13: ffff8801986e49a0 R14: ffffffff810b5dc5 R15:
+ffffffff8129edba
+[26333.095567] FS:  00007fc052b8f740(0000) GS:ffff88043f400000(0000)
+knlGS:0000000000000000
+[26333.115318] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[26333.134546] CR2: 00000000f77b7000 CR3: 000000016c415000 CR4:
+00000000000407f0
+[26333.153632] Stack:
+[26333.172429]  ffff880003603fc0 ffff880003603fc0 ffff880329aaa750
+ffff88009089fc10
+[26333.191585]  ffffffff81296073 ffff880003603fc0 ffffffff81aaa85e
+ffff880003603f58
+[26333.210546]  ffff88009089fc80 ffffffff81297cc0 ffff880003603fc0
+ffff8800b9481040
+[26333.229103] Call Trace:
+[26333.247342]  [<ffffffff81296073>] ext4_xattr_cache_insert+0x23/0x70
+[26333.265668]  [<ffffffff81297cc0>] ext4_xattr_get+0x200/0x290
+[26333.283669]  [<ffffffff812960fb>] ? ext4_xattr_find_entry+0x3b/0x100
+[26333.301506]  [<ffffffff8129ccaa>] ext4_xattr_security_get+0x2a/0x30
+[26333.319294]  [<ffffffff811f9b2c>] generic_getxattr+0x4c/0x70
+[26333.338108]  [<ffffffff812ec0ad>] cap_inode_need_killpriv+0x2d/0x40
+[26333.357066]  [<ffffffff812edeb6>] security_inode_need_killpriv+0x16/0x20
+[26333.375541]  [<ffffffff811efe63>] file_remove_suid+0x43/0xc0
+[26333.393366]  [<ffffffff8129def0>] ? jbd2_journal_stop+0x1c0/0x3b0
+[26333.411155]  [<ffffffff81164f86>] __generic_file_write_iter+0x126/0x350
+[26333.428916]  [<ffffffff81250c00>] ext4_file_write_iter+0xf0/0x3a0
+[26333.445980]  [<ffffffff811d51a1>] new_sync_write+0x81/0xb0
+[26333.461304]  [<ffffffff811d5957>] vfs_write+0xb7/0x1f0
+[26333.476357]  [<ffffffff811d64f6>] SyS_write+0x46/0xb0
+[26333.490799]  [<ffffffff8177108d>] system_call_fastpath+0x1a/0x1f
 
 
-> -----Original Message-----
-> From: Andreas Dilger [mailto:adilger@dilger.ca]
-> Sent: Thursday, January 07, 2016 3:18 AM
-> To: HUANG Weller (CM/ESW12-CN) <Weller.Huang@cn.bosch.com>
-> Cc: Jan Kara <jack@suse.cz>; linux-ext4@vger.kernel.org
-> Subject: Re: ext4 out of order when use cfq scheduler
-> 
-> 
-> > On Jan 5, 2016, at 7:39 PM, HUANG Weller (CM/ESW12-CN)
-> <Weller.Huang@cn.bosch.com> wrote:
-> >
-> >> So you are running in 'ws' mode of your tool, am I right? Just
-> >> looking into the sources you've sent me I've noticed that although
-> >> you set O_SYNC in openflg when mode == MODE_WS, you do not use
-> >> openflg at all. So file won't be synced at all. That would well
-> >> explain why you see that not all file contents is written. So did you
-> >> just send me a different version of the source or is your test program really
-> buggy?
-> >>
-> >
-> > Yes, it is a bug of the test code. So the test tool create files without O_SYNC
-> flag actually.
-> > But , even in this case, is the out of order acceptable ? or is it normal ?
-> 
-> Without O_SYNC there is no ordering guarantee between non-overlapping writes.
-> They may be reordered by the filesystem or the elevator or the storage device.
-> 
+Kernel panic:
+[35127.073300] Kernel panic - not syncing: An NMI occurred. Depending on your
+system the reason for the NMI is logged in any one of the following resources:
+[35127.073300] 1. Integrated Management Log (IML)
+[35127.073300] 2. OA Syslog
+[35127.073300] 3. OA Forward Progress Log
+[35127.073300] 4. iLO Event Log
+[35127.148146] CPU: 0 PID: 51806 Comm: rsync Tainted: G        W    
+3.16.0-57-generic #77~14.04.1-Ubuntu
+[35127.163193] Hardware name: HP ProLiant ML350p Gen8, BIOS P72 07/01/2015
+[35127.178164]  00001ff2a8b9cc34 ffff88043f405d88 ffffffff8176891e
+ffffffffc05532d8
+[35127.193308]  ffff88043f405e00 ffffffff81760d39 0000000000000008
+ffff88043f405e10
+[35127.208326]  ffff88043f405db0 0000000000000000 ffffc90012068072
+0000000000000001
+[35127.223370] Call Trace:
+[35127.238143]  <NMI>  [<ffffffff8176891e>] dump_stack+0x45/0x56
+[35127.252982]  [<ffffffff81760d39>] panic+0xc8/0x1fc
+[35127.268159]  [<ffffffffc05528fd>] hpwdt_pretimeout+0xdd/0xdd [hpwdt]
+[35127.283291]  [<ffffffff8101d2d9>] ? sched_clock+0x9/0x10
+[35127.298505]  [<ffffffff81017f68>] nmi_handle+0x88/0x120
+[35127.313634]  [<ffffffff81017f72>] ? nmi_handle+0x92/0x120
+[35127.329260]  [<ffffffff8101840e>] io_check_error+0x1e/0xa0
+[35127.345045]  [<ffffffff81018529>] default_do_nmi+0x99/0x140
+[35127.360063]  [<ffffffff810186c0>] do_nmi+0xf0/0x160
+[35127.374762]  [<ffffffff8177348f>] end_repeat_nmi+0x1a/0x1e
+[35127.389518]  [<ffffffff8122d85b>] ? mb_cache_entry_alloc+0x5b/0x230
+[35127.404386]  [<ffffffff8122d85b>] ? mb_cache_entry_alloc+0x5b/0x230
+[35127.419001]  [<ffffffff8122d85b>] ? mb_cache_entry_alloc+0x5b/0x230
+[35127.433400]  <<EOE>>  [<ffffffff81296073>] ext4_xattr_cache_insert+0x23/0x70
+[35127.448042]  [<ffffffff81297cc0>] ext4_xattr_get+0x200/0x290
+[35127.462789]  [<ffffffff812960fb>] ? ext4_xattr_find_entry+0x3b/0x100
+[35127.478030]  [<ffffffff8129ccaa>] ext4_xattr_security_get+0x2a/0x30
+[35127.491919]  [<ffffffff811f9b2c>] generic_getxattr+0x4c/0x70
+[35127.505158]  [<ffffffff812ec0ad>] cap_inode_need_killpriv+0x2d/0x40
+[35127.517814]  [<ffffffff812edeb6>] security_inode_need_killpriv+0x16/0x20
+[35127.530709]  [<ffffffff811efe63>] file_remove_suid+0x43/0xc0
+[35127.543130]  [<ffffffff8129def0>] ? jbd2_journal_stop+0x1c0/0x3b0
+[35127.555322]  [<ffffffff81164f86>] __generic_file_write_iter+0x126/0x350
+[35127.567068]  [<ffffffff81250c00>] ext4_file_write_iter+0xf0/0x3a0
+[35127.578833]  [<ffffffff811d51a1>] new_sync_write+0x81/0xb0
+[35127.589820]  [<ffffffff811d5957>] vfs_write+0xb7/0x1f0
+[35127.600817]  [<ffffffff811d64f6>] SyS_write+0x46/0xb0
+[35127.611291]  [<ffffffff8177108d>] system_call_fastpath+0x1a/0x1f
 
-The out of sequence is happen before sending the block request to the storage device FW. I printed the log from the device block driver.
-I remember, 2 years ago, I test on freescale platform with kernel version 3.8 and with same test tools. I never see such issue.
-The journal blocks already contain the inode information of a file. But the file contents were wrote after the journal commit. The problem is that the length of the file described in the inode is not zero before the real data was written.
-I think it is a problem. Do you agree with me ?
-
-
-> 
-> >
-> >>
-> >>>>> [root@SiRFatlas6 ~]# debugfs /dev/nandblk0p3 debugfs 1.42.9
-> >>>>> (28-Dec-2013)
-> >>>>> debugfs:  imap test/hp0000017aMhWY3i0vMv Inode 390 is part of
-> >>>>> block group 0
-> >>>>>        located at block 141, offset 0x0280
-> >>>>>
-> >>>>> 00000280  80 81 00 00 10 00 04 00  c8 09 00 00 66 0a 00 00
-> >>>>> |............f...|
-> >>>>> 00000290  66 0a 00 00 00 00 00 00  00 00 01 00 04 02 00 00
-> >>>>> |f...............|
-> >>>>> 000002a0  00 00 08 00 01 00 00 00  0a f3 02 00 04 00 00 00
-> >>>>> |................|
-> >>>>> 000002b0  00 00 00 00 00 00 00 00  80 00 00 00 00 2c 01 00
-> >>>>> |.............,..|  ==> the file contents is at 0x00012c00
-> >>>>> 000002c0  80 00 00 00 01 00 00 00  8e 26 01 00 00 00 00 00
-> >>>>> |.........&......|
-> >>>>>
-> >>>>>
-> >>>>> Search the block number from the journal blocks:
-> >>>>>
-> >>>>> [root@SiRFatlas6 ~]# hexdump j.bin  -C |  grep "00 2c 01 00"
-> >>>>> 00039ab0  00 00 00 00 00 00 00 00  80 00 00 00 00 2c 01 00
-> >>>>> |.............,..|
-> >>>>>
-> >>>>> Search file name which the file checksum is error in journal blocks:
-> >>>>>
-> >>>>> [root@SiRFatlas6 ~]# hexdump j.bin  -C |  grep "3i0vMv" -B1
-> >>>>> 00030c60  86 01 00 00 1c 00 14 01  68 70 30 30 30 30 30 31
-> >>>>> |........hp000001|
-> >>>>> 00030c70  37 61 4d 68 57 59 33 69  30 76 4d 76 88 01 00 00
-> >>>>> |7aMhWY3i0vMv....|
-> >>>>>
-> >>>>>
-> >>>>> List all journal block record to check which journal block records it:
-> >>>>>
-> >>>>> [root@SiRFatlas6 ~]# hexdump j.bin -C | grep "c0 3b 39 98"
-> >>>>> 00000000  c0 3b 39 98 00 00 00 04  00 00 00 00 00 00 08 00
-> >>>>> |.;9.............|
-> >>>>> 00000800  c0 3b 39 98 00 00 00 05  00 00 00 6f 00 00 00 24
-> >>>>> |.;9........o...$|
-> >>>>> 00001000  c0 3b 39 98 00 00 00 01  00 00 00 6f 00 00 00 75
-> >>>>> |.;9........o...u|
-> >>>>> 0000c800  c0 3b 39 98 00 00 00 02  00 00 00 6f 00 00 00 00
-> >>>>> |.;9........o....|
-> >>>>> 0000d000  c0 3b 39 98 00 00 00 01  00 00 00 70 00 00 00 65
-> >>>>> |.;9........p...e|
-> >>>>> 00016000  c0 3b 39 98 00 00 00 02  00 00 00 70 00 00 00 00
-> >>>>> |.;9........p....|
-> >>>>> 00016800  c0 3b 39 98 00 00 00 01  00 00 00 71 00 00 00 7c
-> >>>>> |.;9........q...||
-> >>>>> 00021000  c0 3b 39 98 00 00 00 02  00 00 00 71 00 00 00 00
-> >>>>> |.;9........q....|
-> >>>>> 00021800  c0 3b 39 98 00 00 00 01  00 00 00 72 00 00 00 82
-> >>>>> |.;9........r....|
-> >>>>> 0002d000  c0 3b 39 98 00 00 00 02  00 00 00 72 00 00 00 00
-> >>>>> |.;9........r....|
-> >>>>> 0002d800  c0 3b 39 98 00 00 00 01  00 00 00 73 00 00 00 88
-> >>>>> |.;9........s....|
-> >>>> ==>00039ab0 is in last block, the file name and the start block
-> >>>> number are all recorded in the journals.
-> >>>>> 0003a000  c0 3b 39 98 00 00 00 02  00 00 00 73 00 00 00 00
-> >>>>> |.;9........s....|
-> >>>>>
-> >>>>>
-> >>>>> Back to see the kernel log which it print all the block numbers:
-> >>>>>
-> >>>>> ...
-> >>>>> ...
-> >>>>> [   46.222671] 244109  75277
-> >>>>> [   46.222693]
-> >>>>> [   46.272438] 244352  75520
-> >>>>> [   46.272460]
-> >>>>> [   46.348417] 238443  69611
-> >>>>> [   46.348438]
-> >>>>> [   46.349811] 244480  75648
-> >>>>> [   46.352287]
-> >>>>> [   46.404904] 244609  75777
-> >>>>> [   46.404926]
-> >>>>> [   46.454698] 244738  75906
-> >>>>> [   46.454719]
-> >>>>> [   46.505439] 244992  76160
-> >>>>> [   46.505459]
-> >>>>> [   46.557783] 245120  76288
-> >>>>> [   46.557804]
-> >>>>> [   46.610075] 245249  76417
-> >>>>> [   46.610096]
-> >>>>> [   46.660196] 245378  76546
-> >>>>> [   46.660219]
-> >>>>> [   46.709906] 201691  32859   ==> journal start is 32768, so the offset is 91,
-> >>>> block size=2048,  so, the offset address in the j.bin is 0x2d800
-> >>>>> [   46.709928] J [   46.711233]
-> >>>>> [   46.740635] drop to 9v
-> >>>>> [   46.749540] 201716  32884
-> >>>>> [   46.749560] J S
-> >>>>> [   46.751039]
-> >>>>> [   46.753151] 245632  76800  ==> 76800 in hex is 0x012c00, it is the same
-> >> start
-> >>>> block of the file which checksum is error.
-> >>>>> [   46.755284]
-> >>>>> nanddisk idle -> 1.
-> >>>>> [   46.800227] 6v irq-2
-> >>>>>
-> >>>>>
-> >>>>> The j.bin offset 0x2d800
-> >>>>>
-> >>>>> 0002d800  c0 3b 39 98 00 00 00 01  00 00 00 73 00 00 00 88
-> >>>>> |.;9........s....|  ==>00039ab0 is in last block
-> >>>>> 0003a000  c0 3b 39 98 00 00 00 02  00 00 00 73 00 00 00 00
-> >>>>> |.;9........s....|
-> >>>>>
-> >>>>>
-> >>>>> Normally, ext4 will first write the file contents, and then write
-> >>>>> the journal and journal commit. Then after some delay, it will
-> >>>>> write the meta data.  So The journal blocks contains the meta data
-> >>>>> of the file which the file contents already been written before.
-> >>>>> But from above analysis,  the journal sequence 0x73 already
-> >>>>> contain the file
-> >>>>> name(hp0000017aMhWY3i0vMv) and the start block number(76800). So
-> >>>>> from the kernel log,  the block
-> >>>>> number(76800) should be available before the journal blocks but
-> >>>>> NOT after it.  It seems that there is out of order happen.
-> >>>>>
-> >>>>> Could you please help to check this issue ? or give a explanation
-> >>>>> about it ?  Many thanks.
-> >>>>>
-> >>>>> Best regards
-> >>>>>
-> >>>>> Weller HUANG
-> >>>>>
-> >>>>>
-> >>>>> --
-> >>>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4"
-> >>>>> in the body of a message to majordomo@vger.kernel.org More
-> >>>>> majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>>> --
-> >>>> Jan Kara <jack@suse.com>
-> >>>> SUSE Labs, CR
-> >>
-> >>
-> >>
-> >> --
-> >> Jan Kara <jack@suse.com>
-> >> SUSE Labs, CR
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4"
-> > in the body of a message to majordomo@vger.kernel.org More majordomo
-> > info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
