@@ -1,59 +1,65 @@
-From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Subject: Re: lazytime implementation questions
-Date: Thu, 7 Jan 2016 13:21:40 +1100
-Message-ID: <20160107022140.GM21461@dastard>
-References: <20160104062219.GB19802@dastard>
- <20160105173604.GE18604@quack.suse.cz>
- <20160105225907.GE21461@dastard>
- <20160107010506.GB2866@thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 13/35] xfs: set bi_op to REQ_OP
+Date: Thu, 7 Jan 2016 14:11:31 +1100
+Message-ID: <20160107031131.GB32200@dastard>
+References: <1452027218-32303-1-git-send-email-mchristi@redhat.com>
+	<1452027218-32303-14-git-send-email-mchristi@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-bcache@vger.kernel.org, linux-block@vger.kernel.org, xfs@oss.sgi.com,
+	ocfs2-devel@oss.oracle.com, linux-scsi@vger.kernel.org,
+	konrad.wilk@oracle.com, linux-kernel@vger.kernel.org,
+	philipp.reisner@linbit.com, linux-f2fs-devel@lists.sourceforge.net,
+	linux-raid@vger.kernel.org, dm-devel@redhat.com,
+	target-devel@vger.kernel.org, linux-mtd@lists.infradead.org,
+	osd-dev@open-osd.org, linux-fsdevel@vger.kernel.org,
+	lars.ellenberg@linbit.com, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, drbd-dev@lists.linbit.com
+To: mchristi@redhat.com
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20160107010506.GB2866-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+In-Reply-To: <1452027218-32303-14-git-send-email-mchristi@redhat.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jan 06, 2016 at 08:05:06PM -0500, Theodore Ts'o wrote:
-> On Wed, Jan 06, 2016 at 09:59:07AM +1100, Dave Chinner wrote:
-> > > So the intended semantics is:
-> > > 1) fsync / sync / freeze / unmount will write the timestamp updates even
-> > >    with lazytime. So unless crash happens, timestamps are guaranteed to be
-> > >    consistent. Also sync / fsync guarantees all changes to get to disk.
-> > > 2) We periodically write back timestamps (once per 24 hours) to avoid too
-> > >    big timestamp inconsistencies in case of crash.
-> > 
-> > Ok, so it's supposed to be a delayed timestamp update mechanism
-> > without any specific ordering guarantees, not an opportunistic
-> > timestamp update mechanism.
+On Tue, Jan 05, 2016 at 02:53:16PM -0600, mchristi@redhat.com wrote:
+> From: Mike Christie <mchristi@redhat.com>
 > 
-> There is an optimization which ext4 has which will update related
-> timestamps when we write an inode table block, which is
-> "opportunistic", but there is no guarantee that this will happen.
+> This patch has xfs set the bio bi_op to a REQ_OP, and
+> rq_flag_bits to bi_rw.
+> 
+> Note:
+> I have run xfs tests on these btrfs patches. There were some failures
+> with and without the patches. I have not had time to track down why
+> xfstest fails without the patches.
+> 
+> Signed-off-by: Mike Christie <mchristi@redhat.com>
+> ---
+>  fs/xfs/xfs_aops.c |  3 ++-
+>  fs/xfs/xfs_buf.c  | 27 +++++++++++++++------------
+>  2 files changed, 17 insertions(+), 13 deletions(-)
 
-XFS used to do that, too, before we removed all that hackery when we
-moved to logging timestamp updates unconditionally a few years ago.
-I'm going to have to re-instate some of that code for lazytime, I
-think.
+Not sure which patches your note is refering to here.
 
-> This is purely optional; other file systems don't have to do this, but
-> it can be a win in that if related inodes are in the same 4k block,
-> and we need to update, say, the index file one because we are changing
-> i_size, but we were also doing non-allocating writes to the data file,
-> then we might as well write out the timestamps for the data file at
-> the same time, since this is "free".
+The XFS change here looks fine.
 
-*nod*. Explicit, optimised clustered inode writeback (rather than
-purely opportunistic clustering via delayed buffer writeback) was
-added to XFS way back in early 1999. :)
+Acked-by: Dave Chinner <dchinner@redhat.com>
 
-Cheers,
-
-Dave.
+-Dave.
 -- 
 Dave Chinner
-david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
+david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
