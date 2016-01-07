@@ -1,160 +1,153 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/4] jbd2: Remove some unnecessary arguments of jbd2_journal_write_revoke_records
-Date: Thu,  7 Jan 2016 15:41:52 +0100
-Message-ID: <1452177715-9671-2-git-send-email-jack@suse.cz>
+Subject: [PATCH 2/4] jbd2: Factor out common descriptor block initialization
+Date: Thu,  7 Jan 2016 15:41:53 +0100
+Message-ID: <1452177715-9671-3-git-send-email-jack@suse.cz>
 References: <1452177715-9671-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:37478 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:37476 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752521AbcAGOlv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752356AbcAGOlv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 7 Jan 2016 09:41:51 -0500
 In-Reply-To: <1452177715-9671-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-jbd2_journal_write_revoke_records() takes journal pointer and write_op,
-although journal can be obtained from the passed transaction and
-write_op is always WRITE_SYNC. Remove these superfluous arguments.
+Descriptor block header is initialized in several places. Factor out the
+common code into jbd2_journal_get_descriptor_buffer().
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/commit.c     |  3 +--
- fs/jbd2/revoke.c     | 33 +++++++++++++++------------------
- include/linux/jbd2.h |  6 ++----
- 3 files changed, 18 insertions(+), 24 deletions(-)
+ fs/jbd2/commit.c     | 16 +++++-----------
+ fs/jbd2/journal.c    |  9 ++++++++-
+ fs/jbd2/revoke.c     |  8 ++------
+ include/linux/jbd2.h |  2 +-
+ 4 files changed, 16 insertions(+), 19 deletions(-)
 
 diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 36345fefa3ff..ae4402d15d46 100644
+index ae4402d15d46..cf221f3d955a 100644
 --- a/fs/jbd2/commit.c
 +++ b/fs/jbd2/commit.c
-@@ -554,8 +554,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 		jbd2_journal_abort(journal, err);
+@@ -131,14 +131,12 @@ static int journal_submit_commit_record(journal_t *journal,
+ 	if (is_journal_aborted(journal))
+ 		return 0;
  
- 	blk_start_plug(&plug);
--	jbd2_journal_write_revoke_records(journal, commit_transaction,
--					  &log_bufs, WRITE_SYNC);
-+	jbd2_journal_write_revoke_records(commit_transaction, &log_bufs);
+-	bh = jbd2_journal_get_descriptor_buffer(journal);
++	bh = jbd2_journal_get_descriptor_buffer(commit_transaction,
++						JBD2_COMMIT_BLOCK);
+ 	if (!bh)
+ 		return 1;
  
- 	jbd_debug(3, "JBD2: commit phase 2b\n");
+ 	tmp = (struct commit_header *)bh->b_data;
+-	tmp->h_magic = cpu_to_be32(JBD2_MAGIC_NUMBER);
+-	tmp->h_blocktype = cpu_to_be32(JBD2_COMMIT_BLOCK);
+-	tmp->h_sequence = cpu_to_be32(commit_transaction->t_tid);
+ 	tmp->h_commit_sec = cpu_to_be64(now.tv_sec);
+ 	tmp->h_commit_nsec = cpu_to_be32(now.tv_nsec);
  
+@@ -379,7 +377,6 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	ktime_t start_time;
+ 	u64 commit_time;
+ 	char *tagp = NULL;
+-	journal_header_t *header;
+ 	journal_block_tag_t *tag = NULL;
+ 	int space_left = 0;
+ 	int first_tag = 0;
+@@ -615,7 +612,9 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 
+ 			jbd_debug(4, "JBD2: get descriptor\n");
+ 
+-			descriptor = jbd2_journal_get_descriptor_buffer(journal);
++			descriptor = jbd2_journal_get_descriptor_buffer(
++							commit_transaction,
++							JBD2_DESCRIPTOR_BLOCK);
+ 			if (!descriptor) {
+ 				jbd2_journal_abort(journal, -EIO);
+ 				continue;
+@@ -624,11 +623,6 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 			jbd_debug(4, "JBD2: got buffer %llu (%p)\n",
+ 				(unsigned long long)descriptor->b_blocknr,
+ 				descriptor->b_data);
+-			header = (journal_header_t *)descriptor->b_data;
+-			header->h_magic     = cpu_to_be32(JBD2_MAGIC_NUMBER);
+-			header->h_blocktype = cpu_to_be32(JBD2_DESCRIPTOR_BLOCK);
+-			header->h_sequence  = cpu_to_be32(commit_transaction->t_tid);
+-
+ 			tagp = &descriptor->b_data[sizeof(journal_header_t)];
+ 			space_left = descriptor->b_size -
+ 						sizeof(journal_header_t);
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 81e622681c82..28d05bd9a588 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -805,10 +805,13 @@ int jbd2_journal_bmap(journal_t *journal, unsigned long blocknr,
+  * But we don't bother doing that, so there will be coherency problems with
+  * mmaps of blockdevs which hold live JBD-controlled filesystems.
+  */
+-struct buffer_head *jbd2_journal_get_descriptor_buffer(journal_t *journal)
++struct buffer_head *
++jbd2_journal_get_descriptor_buffer(transaction_t *transaction, int type)
+ {
++	journal_t *journal = transaction->t_journal;
+ 	struct buffer_head *bh;
+ 	unsigned long long blocknr;
++	journal_header_t *header;
+ 	int err;
+ 
+ 	err = jbd2_journal_next_log_block(journal, &blocknr);
+@@ -821,6 +824,10 @@ struct buffer_head *jbd2_journal_get_descriptor_buffer(journal_t *journal)
+ 		return NULL;
+ 	lock_buffer(bh);
+ 	memset(bh->b_data, 0, journal->j_blocksize);
++	header = (journal_header_t *)bh->b_data;
++	header->h_magic = cpu_to_be32(JBD2_MAGIC_NUMBER);
++	header->h_blocktype = cpu_to_be32(type);
++	header->h_sequence = cpu_to_be32(transaction->t_tid);
+ 	set_buffer_uptodate(bh);
+ 	unlock_buffer(bh);
+ 	BUFFER_TRACE(bh, "return this buffer");
 diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-index 705ae577882b..c839332be56b 100644
+index c839332be56b..d1ebb1d41d17 100644
 --- a/fs/jbd2/revoke.c
 +++ b/fs/jbd2/revoke.c
-@@ -122,11 +122,11 @@ struct jbd2_revoke_table_s
- 
- 
- #ifdef __KERNEL__
--static void write_one_revoke_record(journal_t *, transaction_t *,
-+static void write_one_revoke_record(transaction_t *,
- 				    struct list_head *,
- 				    struct buffer_head **, int *,
--				    struct jbd2_revoke_record_s *, int);
--static void flush_descriptor(journal_t *, struct buffer_head *, int, int);
-+				    struct jbd2_revoke_record_s *);
-+static void flush_descriptor(journal_t *, struct buffer_head *, int);
- #endif
- 
- /* Utility functions to maintain the revoke table */
-@@ -519,11 +519,10 @@ void jbd2_journal_switch_revoke_table(journal_t *journal)
-  * Write revoke records to the journal for all entries in the current
-  * revoke hash, deleting the entries as we go.
-  */
--void jbd2_journal_write_revoke_records(journal_t *journal,
--				       transaction_t *transaction,
--				       struct list_head *log_bufs,
--				       int write_op)
-+void jbd2_journal_write_revoke_records(transaction_t *transaction,
-+				       struct list_head *log_bufs)
- {
-+	journal_t *journal = transaction->t_journal;
- 	struct buffer_head *descriptor;
- 	struct jbd2_revoke_record_s *record;
- 	struct jbd2_revoke_table_s *revoke;
-@@ -544,16 +543,15 @@ void jbd2_journal_write_revoke_records(journal_t *journal,
- 		while (!list_empty(hash_list)) {
- 			record = (struct jbd2_revoke_record_s *)
- 				hash_list->next;
--			write_one_revoke_record(journal, transaction, log_bufs,
--						&descriptor, &offset,
--						record, write_op);
-+			write_one_revoke_record(transaction, log_bufs,
-+						&descriptor, &offset, record);
- 			count++;
- 			list_del(&record->hash);
- 			kmem_cache_free(jbd2_revoke_record_cache, record);
- 		}
- 	}
- 	if (descriptor)
--		flush_descriptor(journal, descriptor, offset, write_op);
-+		flush_descriptor(journal, descriptor, offset);
- 	jbd_debug(1, "Wrote %d revoke records\n", count);
- }
- 
-@@ -562,14 +560,13 @@ void jbd2_journal_write_revoke_records(journal_t *journal,
-  * block if the old one is full or if we have not already created one.
-  */
- 
--static void write_one_revoke_record(journal_t *journal,
--				    transaction_t *transaction,
-+static void write_one_revoke_record(transaction_t *transaction,
- 				    struct list_head *log_bufs,
- 				    struct buffer_head **descriptorp,
- 				    int *offsetp,
--				    struct jbd2_revoke_record_s *record,
--				    int write_op)
-+				    struct jbd2_revoke_record_s *record)
- {
-+	journal_t *journal = transaction->t_journal;
+@@ -570,7 +570,6 @@ static void write_one_revoke_record(transaction_t *transaction,
  	int csum_size = 0;
  	struct buffer_head *descriptor;
  	int sz, offset;
-@@ -597,7 +594,7 @@ static void write_one_revoke_record(journal_t *journal,
- 	/* Make sure we have a descriptor with space left for the record */
- 	if (descriptor) {
- 		if (offset + sz > journal->j_blocksize - csum_size) {
--			flush_descriptor(journal, descriptor, offset, write_op);
-+			flush_descriptor(journal, descriptor, offset);
- 			descriptor = NULL;
- 		}
+-	journal_header_t *header;
+ 
+ 	/* If we are already aborting, this all becomes a noop.  We
+            still need to go round the loop in
+@@ -600,13 +599,10 @@ static void write_one_revoke_record(transaction_t *transaction,
  	}
-@@ -654,7 +651,7 @@ static void jbd2_revoke_csum_set(journal_t *j, struct buffer_head *bh)
  
- static void flush_descriptor(journal_t *journal,
- 			     struct buffer_head *descriptor,
--			     int offset, int write_op)
-+			     int offset)
- {
- 	jbd2_journal_revoke_header_t *header;
+ 	if (!descriptor) {
+-		descriptor = jbd2_journal_get_descriptor_buffer(journal);
++		descriptor = jbd2_journal_get_descriptor_buffer(transaction,
++							JBD2_REVOKE_BLOCK);
+ 		if (!descriptor)
+ 			return;
+-		header = (journal_header_t *)descriptor->b_data;
+-		header->h_magic     = cpu_to_be32(JBD2_MAGIC_NUMBER);
+-		header->h_blocktype = cpu_to_be32(JBD2_REVOKE_BLOCK);
+-		header->h_sequence  = cpu_to_be32(transaction->t_tid);
  
-@@ -670,7 +667,7 @@ static void flush_descriptor(journal_t *journal,
- 	set_buffer_jwrite(descriptor);
- 	BUFFER_TRACE(descriptor, "write");
- 	set_buffer_dirty(descriptor);
--	write_dirty_buffer(descriptor, write_op);
-+	write_dirty_buffer(descriptor, WRITE_SYNC);
- }
- #endif
- 
+ 		/* Record it so that we can wait for IO completion later */
+ 		BUFFER_TRACE(descriptor, "file in log_bufs");
 diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 65407f6c9120..5716d9554e77 100644
+index 5716d9554e77..3649cb8d3a41 100644
 --- a/include/linux/jbd2.h
 +++ b/include/linux/jbd2.h
-@@ -1327,10 +1327,8 @@ extern int	   jbd2_journal_init_revoke_caches(void);
- extern void	   jbd2_journal_destroy_revoke(journal_t *);
- extern int	   jbd2_journal_revoke (handle_t *, unsigned long long, struct buffer_head *);
- extern int	   jbd2_journal_cancel_revoke(handle_t *, struct journal_head *);
--extern void	   jbd2_journal_write_revoke_records(journal_t *journal,
--						     transaction_t *transaction,
--						     struct list_head *log_bufs,
--						     int write_op);
-+extern void	   jbd2_journal_write_revoke_records(transaction_t *transaction,
-+						     struct list_head *log_bufs);
+@@ -1137,7 +1137,7 @@ static inline void jbd2_unfile_log_bh(struct buffer_head *bh)
+ }
  
- /* Recovery revoke support */
- extern int	jbd2_journal_set_revoke(journal_t *, unsigned long long, tid_t);
+ /* Log buffer allocation */
+-struct buffer_head *jbd2_journal_get_descriptor_buffer(journal_t *journal);
++struct buffer_head *jbd2_journal_get_descriptor_buffer(transaction_t *, int);
+ int jbd2_journal_next_log_block(journal_t *, unsigned long long *);
+ int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
+ 			      unsigned long *block);
 -- 
 2.6.2
 
