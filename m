@@ -1,87 +1,222 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 4/4] jbd2: Save some atomic ops in __JI_COMMIT_RUNNING handling
-Date: Thu,  7 Jan 2016 15:41:55 +0100
-Message-ID: <1452177715-9671-5-git-send-email-jack@suse.cz>
+Subject: [PATCH 3/4] jbd2: Unify revoke and tag block checksum handling
+Date: Thu,  7 Jan 2016 15:41:54 +0100
+Message-ID: <1452177715-9671-4-git-send-email-jack@suse.cz>
 References: <1452177715-9671-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:37481 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:37477 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752553AbcAGOlv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752387AbcAGOlv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 7 Jan 2016 09:41:51 -0500
 In-Reply-To: <1452177715-9671-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently we used atomic bit operations to manipulate
-__JI_COMMIT_RUNNING bit. However this is unnecessary as i_flags are
-always written and read under j_list_lock. So just change the operations
-to standard bit operations.
+Revoke and tag descriptor blocks are just different kinds of descriptor
+blocks and thus have checksum in the same place. Unify computation and
+checking of checksums for these.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/commit.c  | 12 ++++++------
- fs/jbd2/journal.c |  2 +-
- 2 files changed, 7 insertions(+), 7 deletions(-)
+ fs/jbd2/commit.c     | 18 +-----------------
+ fs/jbd2/journal.c    | 15 +++++++++++++++
+ fs/jbd2/recovery.c   | 31 +++++--------------------------
+ fs/jbd2/revoke.c     | 19 ++-----------------
+ include/linux/jbd2.h |  8 ++------
+ 5 files changed, 25 insertions(+), 66 deletions(-)
 
 diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index ae832cd44dd8..517f2de784cf 100644
+index cf221f3d955a..ae832cd44dd8 100644
 --- a/fs/jbd2/commit.c
 +++ b/fs/jbd2/commit.c
-@@ -220,7 +220,7 @@ static int journal_submit_data_buffers(journal_t *journal,
- 	spin_lock(&journal->j_list_lock);
- 	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list) {
- 		mapping = jinode->i_vfs_inode->i_mapping;
--		set_bit(__JI_COMMIT_RUNNING, &jinode->i_flags);
-+		jinode->i_flags |= JI_COMMIT_RUNNING;
- 		spin_unlock(&journal->j_list_lock);
- 		/*
- 		 * submit the inode data buffers. We use writepage
-@@ -234,8 +234,8 @@ static int journal_submit_data_buffers(journal_t *journal,
- 			ret = err;
- 		spin_lock(&journal->j_list_lock);
- 		J_ASSERT(jinode->i_transaction == commit_transaction);
--		clear_bit(__JI_COMMIT_RUNNING, &jinode->i_flags);
--		smp_mb__after_atomic();
-+		jinode->i_flags &= ~JI_COMMIT_RUNNING;
-+		smp_mb();
- 		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
- 	}
- 	spin_unlock(&journal->j_list_lock);
-@@ -256,7 +256,7 @@ static int journal_finish_inode_data_buffers(journal_t *journal,
- 	/* For locking, see the comment in journal_submit_data_buffers() */
- 	spin_lock(&journal->j_list_lock);
- 	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list) {
--		set_bit(__JI_COMMIT_RUNNING, &jinode->i_flags);
-+		jinode->i_flags |= JI_COMMIT_RUNNING;
- 		spin_unlock(&journal->j_list_lock);
- 		err = filemap_fdatawait(jinode->i_vfs_inode->i_mapping);
- 		if (err) {
-@@ -272,8 +272,8 @@ static int journal_finish_inode_data_buffers(journal_t *journal,
- 				ret = err;
- 		}
- 		spin_lock(&journal->j_list_lock);
--		clear_bit(__JI_COMMIT_RUNNING, &jinode->i_flags);
--		smp_mb__after_atomic();
-+		jinode->i_flags &= ~JI_COMMIT_RUNNING;
-+		smp_mb();
- 		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
- 	}
+@@ -317,22 +317,6 @@ static void write_tag_block(journal_t *j, journal_block_tag_t *tag,
+ 		tag->t_blocknr_high = cpu_to_be32((block >> 31) >> 1);
+ }
  
+-static void jbd2_descr_block_csum_set(journal_t *j,
+-				      struct buffer_head *bh)
+-{
+-	struct jbd2_journal_block_tail *tail;
+-	__u32 csum;
+-
+-	if (!jbd2_journal_has_csum_v2or3(j))
+-		return;
+-
+-	tail = (struct jbd2_journal_block_tail *)(bh->b_data + j->j_blocksize -
+-			sizeof(struct jbd2_journal_block_tail));
+-	tail->t_checksum = 0;
+-	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
+-	tail->t_checksum = cpu_to_be32(csum);
+-}
+-
+ static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
+ 				    struct buffer_head *bh, __u32 sequence)
+ {
+@@ -714,7 +698,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 
+ 			tag->t_flags |= cpu_to_be16(JBD2_FLAG_LAST_TAG);
+ 
+-			jbd2_descr_block_csum_set(journal, descriptor);
++			jbd2_descriptor_block_csum_set(journal, descriptor);
+ start_journal_io:
+ 			for (i = 0; i < bufs; i++) {
+ 				struct buffer_head *bh = wbuf[i];
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index defa962a8e15..7bf1683e81af 100644
+index 28d05bd9a588..defa962a8e15 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
-@@ -2587,7 +2587,7 @@ void jbd2_journal_release_jbd_inode(journal_t *journal,
- restart:
- 	spin_lock(&journal->j_list_lock);
- 	/* Is commit writing out inode - we have to wait */
--	if (test_bit(__JI_COMMIT_RUNNING, &jinode->i_flags)) {
-+	if (jinode->i_flags & JI_COMMIT_RUNNING) {
- 		wait_queue_head_t *wq;
- 		DEFINE_WAIT_BIT(wait, &jinode->i_flags, __JI_COMMIT_RUNNING);
- 		wq = bit_waitqueue(&jinode->i_flags, __JI_COMMIT_RUNNING);
--- 
-2.6.2
-
+@@ -834,6 +834,21 @@ jbd2_journal_get_descriptor_buffer(transaction_t *transaction, int type)
+ 	return bh;
+ }
+ 
++void jbd2_descriptor_block_csum_set(journal_t *j, struct buffer_head *bh)
++{
++	struct jbd2_journal_block_tail *tail;
++	__u32 csum;
++
++	if (!jbd2_journal_has_csum_v2or3(j))
++		return;
++
++	tail = (struct jbd2_journal_block_tail *)(bh->b_data + j->j_blocksize -
++			sizeof(struct jbd2_journal_block_tail));
++	tail->t_checksum = 0;
++	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
++	tail->t_checksum = cpu_to_be32(csum);
++}
++
+ /*
+  * Return tid of the oldest transaction in the journal and block in the journal
+  * where the transaction starts.
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index 7f277e49fe88..08a456b96e4e 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -174,8 +174,7 @@ static int jread(struct buffer_head **bhp, journal_t *journal,
+ 	return 0;
+ }
+ 
+-static int jbd2_descr_block_csum_verify(journal_t *j,
+-					void *buf)
++static int jbd2_descriptor_block_csum_verify(journal_t *j, void *buf)
+ {
+ 	struct jbd2_journal_block_tail *tail;
+ 	__be32 provided;
+@@ -522,8 +521,8 @@ static int do_one_pass(journal_t *journal,
+ 				descr_csum_size =
+ 					sizeof(struct jbd2_journal_block_tail);
+ 			if (descr_csum_size > 0 &&
+-			    !jbd2_descr_block_csum_verify(journal,
+-							  bh->b_data)) {
++			    !jbd2_descriptor_block_csum_verify(journal,
++							       bh->b_data)) {
+ 				printk(KERN_ERR "JBD2: Invalid checksum "
+ 				       "recovering block %lu in log\n",
+ 				       next_log_block);
+@@ -811,26 +810,6 @@ static int do_one_pass(journal_t *journal,
+ 	return err;
+ }
+ 
+-static int jbd2_revoke_block_csum_verify(journal_t *j,
+-					 void *buf)
+-{
+-	struct jbd2_journal_revoke_tail *tail;
+-	__be32 provided;
+-	__u32 calculated;
+-
+-	if (!jbd2_journal_has_csum_v2or3(j))
+-		return 1;
+-
+-	tail = (struct jbd2_journal_revoke_tail *)(buf + j->j_blocksize -
+-			sizeof(struct jbd2_journal_revoke_tail));
+-	provided = tail->r_checksum;
+-	tail->r_checksum = 0;
+-	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
+-	tail->r_checksum = provided;
+-
+-	return provided == cpu_to_be32(calculated);
+-}
+-
+ /* Scan a revoke record, marking all blocks mentioned as revoked. */
+ 
+ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
+@@ -846,11 +825,11 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
+ 	offset = sizeof(jbd2_journal_revoke_header_t);
+ 	rcount = be32_to_cpu(header->r_count);
+ 
+-	if (!jbd2_revoke_block_csum_verify(journal, header))
++	if (!jbd2_descriptor_block_csum_verify(journal, header))
+ 		return -EFSBADCRC;
+ 
+ 	if (jbd2_journal_has_csum_v2or3(journal))
+-		csum_size = sizeof(struct jbd2_journal_revoke_tail);
++		csum_size = sizeof(struct jbd2_journal_block_tail);
+ 	if (rcount > journal->j_blocksize - csum_size)
+ 		return -EINVAL;
+ 	max = rcount;
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index d1ebb1d41d17..91171dc352cb 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -583,7 +583,7 @@ static void write_one_revoke_record(transaction_t *transaction,
+ 
+ 	/* Do we need to leave space at the end for a checksum? */
+ 	if (jbd2_journal_has_csum_v2or3(journal))
+-		csum_size = sizeof(struct jbd2_journal_revoke_tail);
++		csum_size = sizeof(struct jbd2_journal_block_tail);
+ 
+ 	if (jbd2_has_feature_64bit(journal))
+ 		sz = 8;
+@@ -623,21 +623,6 @@ static void write_one_revoke_record(transaction_t *transaction,
+ 	*offsetp = offset;
+ }
+ 
+-static void jbd2_revoke_csum_set(journal_t *j, struct buffer_head *bh)
+-{
+-	struct jbd2_journal_revoke_tail *tail;
+-	__u32 csum;
+-
+-	if (!jbd2_journal_has_csum_v2or3(j))
+-		return;
+-
+-	tail = (struct jbd2_journal_revoke_tail *)(bh->b_data + j->j_blocksize -
+-			sizeof(struct jbd2_journal_revoke_tail));
+-	tail->r_checksum = 0;
+-	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
+-	tail->r_checksum = cpu_to_be32(csum);
+-}
+-
+ /*
+  * Flush a revoke descriptor out to the journal.  If we are aborting,
+  * this is a noop; otherwise we are generating a buffer which needs to
+@@ -658,7 +643,7 @@ static void flush_descriptor(journal_t *journal,
+ 
+ 	header = (jbd2_journal_revoke_header_t *)descriptor->b_data;
+ 	header->r_count = cpu_to_be32(offset);
+-	jbd2_revoke_csum_set(journal, descriptor);
++	jbd2_descriptor_block_csum_set(journal, descriptor);
+ 
+ 	set_buffer_jwrite(descriptor);
+ 	BUFFER_TRACE(descriptor, "write");
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 3649cb8d3a41..fd1083c46c61 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -200,7 +200,7 @@ typedef struct journal_block_tag_s
+ 	__be32		t_blocknr_high; /* most-significant high 32bits. */
+ } journal_block_tag_t;
+ 
+-/* Tail of descriptor block, for checksumming */
++/* Tail of descriptor or revoke block, for checksumming */
+ struct jbd2_journal_block_tail {
+ 	__be32		t_checksum;	/* crc32c(uuid+descr_block) */
+ };
+@@ -215,11 +215,6 @@ typedef struct jbd2_journal_revoke_header_s
+ 	__be32		 r_count;	/* Count of bytes used in the block */
+ } jbd2_journal_revoke_header_t;
+ 
+-/* Tail of revoke block, for checksumming */
+-struct jbd2_journal_revoke_tail {
+-	__be32		r_checksum;	/* crc32c(uuid+revoke_block) */
+-};
