@@ -1,105 +1,119 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v7 1/9] dax: fix NULL pointer dereference in __dax_dbg()
-Date: Thu, 7 Jan 2016 15:16:06 -0700
-Message-ID: <20160107221606.GB20802@linux.intel.com>
+Subject: Re: [PATCH v7 2/9] dax: fix conversion of holes to PMDs
+Date: Thu, 7 Jan 2016 15:34:55 -0700
+Message-ID: <20160107223455.GC20802@linux.intel.com>
 References: <1452103263-1592-1-git-send-email-ross.zwisler@linux.intel.com>
-	<1452103263-1592-2-git-send-email-ross.zwisler@linux.intel.com>
-	<CAPcyv4h3NcXHHQAWL=HwgGxTbFTeOa98S9fxWu7dA3nTEcFxxA@mail.gmail.com>
-	<20160107093402.GA8380@quack.suse.cz>
-	<CAPcyv4i_xfihzc_LKYiz_XuTVVCMSf5dsJQE8g7-NURe170p7g@mail.gmail.com>
+ <1452103263-1592-3-git-send-email-ross.zwisler@linux.intel.com>
+ <CAPcyv4ig1W8LpC6ORYCZd65idK3QuOYa40FsbujWXXaZT_WMRA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Dave Hansen <dave.hansen@linux.intel.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>, Linux MM <linux-mm@kvack.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"H. Peter Anvin" <hpa@zytor.com>, Jeff Layton <jlayton@poochiereds.net>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	X86 ML <x86@kernel.org>, Ingo Molnar <mingo@redhat.com>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, XFS Developers <xfs@oss.sgi.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Thomas Gleixner <tglx@linutronix.de>, Theodore Ts'o <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	Jan Kara <jack@suse.com>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	"H. Peter Anvin" <hpa@zytor.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>
+	Dave Chinner <david@fromorbit.com>,
+	Dave Hansen <dave.hansen@linux.intel.com>,
+	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux MM <linux-mm@kvack.org>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+	X86 ML <x86@kernel.org>, XFS Developers <xfs@oss.sgi.com>
 To: Dan Williams <dan.j.williams@intel.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <CAPcyv4i_xfihzc_LKYiz_XuTVVCMSf5dsJQE8g7-NURe170p7g@mail.gmail.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+In-Reply-To: <CAPcyv4ig1W8LpC6ORYCZd65idK3QuOYa40FsbujWXXaZT_WMRA@mail.gmail.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 07, 2016 at 07:17:22AM -0800, Dan Williams wrote:
-> On Thu, Jan 7, 2016 at 1:34 AM, Jan Kara <jack@suse.cz> wrote:
-> > On Wed 06-01-16 11:14:09, Dan Williams wrote:
-> >> On Wed, Jan 6, 2016 at 10:00 AM, Ross Zwisler
-> >> <ross.zwisler@linux.intel.com> wrote:
-> >> > __dax_dbg() currently assumes that bh->b_bdev is non-NULL, passing it into
-> >> > bdevname() where is is dereferenced.  This assumption isn't always true -
-> >> > when called for reads of holes, ext4_dax_mmap_get_block() returns a buffer
-> >> > head where bh->b_bdev is never set.  I hit this BUG while testing the DAX
-> >> > PMD fault path.
-> >> >
-> >> > Instead, verify that we have a valid bh->b_bdev, else just say "unknown"
-> >> > for the block device.
-> >> >
-> >> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> >> > Cc: Dan Williams <dan.j.williams@intel.com>
-> >> > ---
-> >> >  fs/dax.c | 7 ++++++-
-> >> >  1 file changed, 6 insertions(+), 1 deletion(-)
-> >> >
-> >> > diff --git a/fs/dax.c b/fs/dax.c
-> >> > index 7af8797..03cc4a3 100644
-> >> > --- a/fs/dax.c
-> >> > +++ b/fs/dax.c
-> >> > @@ -563,7 +563,12 @@ static void __dax_dbg(struct buffer_head *bh, unsigned long address,
-> >> >  {
-> >> >         if (bh) {
-> >> >                 char bname[BDEVNAME_SIZE];
-> >> > -               bdevname(bh->b_bdev, bname);
-> >> > +
-> >> > +               if (bh->b_bdev)
-> >> > +                       bdevname(bh->b_bdev, bname);
-> >> > +               else
-> >> > +                       snprintf(bname, BDEVNAME_SIZE, "unknown");
-> >> > +
-> >> >                 pr_debug("%s: %s addr: %lx dev %s state %lx start %lld "
-> >> >                         "length %zd fallback: %s\n", fn, current->comm,
-> >> >                         address, bname, bh->b_state, (u64)bh->b_blocknr,
-> >>
-> >> I'm assuming there's no danger of a such a buffer_head ever being used
-> >> for the bdev parameter to dax_map_atomic()?  Shouldn't we also/instead
-> >> go fix ext4 to not send partially filled buffer_heads?
+On Wed, Jan 06, 2016 at 11:04:35AM -0800, Dan Williams wrote:
+> On Wed, Jan 6, 2016 at 10:00 AM, Ross Zwisler
+> <ross.zwisler@linux.intel.com> wrote:
+> > When we get a DAX PMD fault for a write it is possible that there could be
+> > some number of 4k zero pages already present for the same range that were
+> > inserted to service reads from a hole.  These 4k zero pages need to be
+> > unmapped from the VMAs and removed from the struct address_space radix tree
+> > before the real DAX PMD entry can be inserted.
 > >
-> > No. The real problem is a long-standing abuse of struct buffer_head to be
-> > used for passing block mapping information (it's on my todo list to remove
-> > that at least from DAX code and use cleaner block mapping interface but
-> > first I want basic DAX functionality to settle down to avoid unnecessary
-> > conflicts). Filesystem is not supposed to touch bh->b_bdev. If you need
-> > that filled in, set it yourself in before passing bh to the block mapping
-> > function.
+> > For PTE faults this same use case also exists and is handled by a
+> > combination of unmap_mapping_range() to unmap the VMAs and
+> > delete_from_page_cache() to remove the page from the address_space radix
+> > tree.
 > >
+> > For PMD faults we do have a call to unmap_mapping_range() (protected by a
+> > buffer_new() check), but nothing clears out the radix tree entry.  The
+> > buffer_new() check is also incorrect as the current ext4 and XFS filesystem
+> > code will never return a buffer_head with BH_New set, even when allocating
+> > new blocks over a hole.  Instead the filesystem will zero the blocks
+> > manually and return a buffer_head with only BH_Mapped set.
+> >
+> > Fix this situation by removing the buffer_new() check and adding a call to
+> > truncate_inode_pages_range() to clear out the radix tree entries before we
+> > insert the DAX PMD.
+> >
+> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 > 
-> Ok, makes sense.
+> Replaced the current contents of v6 in -mm from next-20160106 with
+> this v7 set and it looks good.
 > 
-> Ross, can you fix this instead by unconditionally looking up the bdev
-> rather that saying "unknown".  The bdev should always be retrievable.
+> Reported-by: Dan Williams <dan.j.williams@intel.com>
+> Tested-by: Dan Williams <dan.j.williams@intel.com>
+> 
+> One question below...
+> 
+> > ---
+> >  fs/dax.c | 20 ++++++++++----------
+> >  1 file changed, 10 insertions(+), 10 deletions(-)
+> >
+> > diff --git a/fs/dax.c b/fs/dax.c
+> > index 03cc4a3..9dc0c97 100644
+> > --- a/fs/dax.c
+> > +++ b/fs/dax.c
+> > @@ -594,6 +594,7 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+> >         bool write = flags & FAULT_FLAG_WRITE;
+> >         struct block_device *bdev;
+> >         pgoff_t size, pgoff;
+> > +       loff_t lstart, lend;
+> >         sector_t block;
+> >         int result = 0;
+> >
+> > @@ -647,15 +648,13 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+> >                 goto fallback;
+> >         }
+> >
+> > -       /*
+> > -        * If we allocated new storage, make sure no process has any
+> > -        * zero pages covering this hole
+> > -        */
+> > -       if (buffer_new(&bh)) {
+> > -               i_mmap_unlock_read(mapping);
+> > -               unmap_mapping_range(mapping, pgoff << PAGE_SHIFT, PMD_SIZE, 0);
+> > -               i_mmap_lock_read(mapping);
+> > -       }
+> > +       /* make sure no process has any zero pages covering this hole */
+> > +       lstart = pgoff << PAGE_SHIFT;
+> > +       lend = lstart + PMD_SIZE - 1; /* inclusive */
+> > +       i_mmap_unlock_read(mapping);
+> > +       unmap_mapping_range(mapping, lstart, PMD_SIZE, 0);
+> > +       truncate_inode_pages_range(mapping, lstart, lend);
+> 
+> Do we need to do both unmap and truncate given that
+> truncate_inode_page() optionally does an unmap_mapping_range()
+> internally?
 
-Sure, will do.
+Ah, indeed it does.  Sure, having just the call to truncate_inode_page() seems
+cleaner.  I'll re-test and send this out in v8.
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
