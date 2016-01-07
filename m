@@ -1,146 +1,171 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4 out of order when use cfq scheduler
-Date: Thu, 7 Jan 2016 13:19:07 +0100
-Message-ID: <20160107121907.GD8380@quack.suse.cz>
-References: <697280a570654ae0aa1723fb7d11f51e@SGPMBX1004.APAC.bosch.com>
- <20151222150037.GB18178@quack.suse.cz>
- <c67f356b63d94d35ad010a6e987b68f0@SGPMBX1004.APAC.bosch.com>
- <20160105153050.GF14464@quack.suse.cz>
- <c73ca48af09742318189c61d167c4459@SGPMBX1004.APAC.bosch.com>
- <20160106100621.GA24046@quack.suse.cz>
- <3ab48fa47e434455b101251730e69bd2@SGPMBX1004.APAC.bosch.com>
- <20160107102420.GB8380@quack.suse.cz>
- <f0c925079bb4450380c019a7455a2537@SGPMBX1004.APAC.bosch.com>
- <20160107114736.GC8380@quack.suse.cz>
+Subject: Re: [PATCH v7 2/9] dax: fix conversion of holes to PMDs
+Date: Thu, 7 Jan 2016 14:22:06 +0100
+Message-ID: <20160107132206.GE8380@quack.suse.cz>
+References: <1452103263-1592-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1452103263-1592-3-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Li, Michael" <huayil@qti.qualcomm.com>
-To: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56241 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753189AbcAGMTA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Jan 2016 07:19:00 -0500
+Cc: linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Dave Hansen <dave.hansen@linux.intel.com>,
+	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	Thomas Gleixner <tglx@linutronix.de>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, x86@kernel.org, xfs@oss.sgi.com
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20160107114736.GC8380@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1452103263-1592-3-git-send-email-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 07-01-16 12:47:36, Jan Kara wrote:
-> On Thu 07-01-16 11:02:29, HUANG Weller (CM/ESW12-CN) wrote:
-> > > -----Original Message-----
-> > > From: Jan Kara [mailto:jack@suse.cz]
-> > > Sent: Thursday, January 07, 2016 6:24 PM
-> > > To: HUANG Weller (CM/ESW12-CN) <Weller.Huang@cn.bosch.com>
-> > > Cc: Jan Kara <jack@suse.cz>; linux-ext4@vger.kernel.org
-> > > Subject: Re: ext4 out of order when use cfq scheduler
-> > > 
-> > > On Thu 07-01-16 06:43:00, HUANG Weller (CM/ESW12-CN) wrote:
-> > > > > -----Original Message-----
-> > > > > From: Jan Kara [mailto:jack@suse.cz]
-> > > > > Sent: Wednesday, January 06, 2016 6:06 PM
-> > > > > To: HUANG Weller (CM/ESW12-CN) <Weller.Huang@cn.bosch.com>
-> > > > > Subject: Re: ext4 out of order when use cfq scheduler
-> > > > >
-> > > > > On Wed 06-01-16 02:39:15, HUANG Weller (CM/ESW12-CN) wrote:
-> > > > > > > So you are running in 'ws' mode of your tool, am I right? Just
-> > > > > > > looking into the sources you've sent me I've noticed that
-> > > > > > > although you set O_SYNC in openflg when mode == MODE_WS, you do
-> > > > > > > not use openflg at all. So file won't be synced at all. That
-> > > > > > > would well explain why you see that not all file contents is
-> > > > > > > written. So did you just send me a different version of the
-> > > > > > > source or is your test program
-> > > > > really buggy?
-> > > > > > >
-> > > > > >
-> > > > > > Yes, it is a bug of the test code. So the test tool create files
-> > > > > > without O_SYNC flag actually.  But , even in this case, is the out
-> > > > > > of order acceptable ? or is it normal ?
-> > > > >
-> > > > > Without fsync(2) or O_SYNC, it is perfectly possible that some files
-> > > > > are written and others are not since nobody guarantees order of
-> > > > > writeback of inodes. OTOH you shouldn't ever see uninitialized data
-> > > > > in the inode (but so far it isn't clear to me whether you really see
-> > > > > unitialized data or whether we really wrote zeros to those blocks -
-> > > > > ext4 can sometimes decide to do so).  Your traces and disk contents
-> > > > > show that the problematic inode has extent of length 128 blocks
-> > > > > starting at block
-> > > > > 0x12c00 and then extent of lenght 1 block starting at block 0x1268e.
-> > > > > What is the block size of the filesystem?  Because inode size is only 0x40010.
-> > > > >
-> > > > > Some suggestions to try:
-> > > > > 1) Print also length of a write request in addition to the starting
-> > > > > block so that we can see how much actually got written
-> > > >
-> > > > Please see below failure analysis.
-> > > >
-> > > > > 2) Initialize the device to 0xff so that we can distinguish
-> > > > > uninitialized blocks from zeroed-out blocks.
-> > > >
-> > > > Yes, i Initialize the device to 0xff this time.
-> > > >
-> > > > > 3) Report exactly for which 512-byte blocks checksum matches and for
-> > > > > which it is wrong.
-> > > > The wrong contents are old file contents which are created in previous
-> > > > test round.  It is caused by the "wrong" sequence inode data(in
-> > > > journal) and  the file contents. So the file contents are not updated.
-> > > 
-> > > So this confuses me somewhat. You previously said that you always remove files
-> > > after each test round and then new ones are created. Is it still the case? So the old
-> > > file contents you speak about above is just some random contents that happened
-> > > to be in disk blocks we freshly allocated to the file, am I right?
-> > 
-> > Yes. You are right.
-> >  The "old file contents" means that the disk blocks which the contents is generated from last test round, and they are allocated to a new file in new test round.
-> > 
-> > 
-> > > 
-> > > OK, so I was looking into the code and indeed, reality is correct and my mental
-> > > model was wrong! ;) I thought that inode gets added to the list of inodes for which
-> > > we need to wait for data IO completion during transaction commit during block
-> > > allocation. And I was wrong. It used to happen in
-> > > mpage_da_map_and_submit() until commit f3b59291a69d (ext4: remove calls to
-> > > ext4_jbd2_file_inode() from delalloc write path) where it got removed. And that was
-> > > wrong because although we submit data writes before dropping handle for
-> > > allocating transaction and updating i_size, nobody guarantees that data IO is not
-> > > delayed in the block layer until transaction commit.
-> > > Which seems to happen in your case. I'll send a fix. Thanks for your report and
-> > > persistence!
-> > > 
-> > 
-> > Thanks a lot for your feedback :-)
-> > Because I am not familiar with the detail of the ext4 internal code.  I will try to understand your explanation which you describe above.  And have a look on related funcations.
-> > Could you send the fix in this mail ?
-> > And whether the kernel 3.14 also have such issue, right ?
+On Wed 06-01-16 11:00:56, Ross Zwisler wrote:
+> When we get a DAX PMD fault for a write it is possible that there could be
+> some number of 4k zero pages already present for the same range that were
+> inserted to service reads from a hole.  These 4k zero pages need to be
+> unmapped from the VMAs and removed from the struct address_space radix tree
+> before the real DAX PMD entry can be inserted.
 > 
-> The problem is in all kernels starting with 3.8. Attached is a patch which
-> should fix the issue. Can you test whether it fixes the problem for you?
+> For PTE faults this same use case also exists and is handled by a
+> combination of unmap_mapping_range() to unmap the VMAs and
+> delete_from_page_cache() to remove the page from the address_space radix
+> tree.
+> 
+> For PMD faults we do have a call to unmap_mapping_range() (protected by a
+> buffer_new() check), but nothing clears out the radix tree entry.  The
+> buffer_new() check is also incorrect as the current ext4 and XFS filesystem
+> code will never return a buffer_head with BH_New set, even when allocating
+> new blocks over a hole.  Instead the filesystem will zero the blocks
+> manually and return a buffer_head with only BH_Mapped set.
+> 
+> Fix this situation by removing the buffer_new() check and adding a call to
+> truncate_inode_pages_range() to clear out the radix tree entries before we
+> insert the DAX PMD.
 
-Oh, I have realized the patch is on top of current ext4 development tree
-and it won't compile for current vanilla kernel because of
-EXT4_GET_BLOCKS_ZERO check. Just remove that line when  you get compilation
-failure.
+Ho, hum, let me understand this. So we have a file, different processes are
+mapping it. One process maps is with normal page granularity and another
+process with huge page granularity. Thus when the first process read-faults
+a few normal pages and then the second process write-faults the huge page
+in the same range, we have a problem. Do I understand this correctly?
+Because otherwise I don't understand how a single page table can have both
+huge page and normal page in the same range...
 
-> +		if (map->m_flags & EXT4_MAP_NEW &&
-> +		    !(map->m_flags & EXT4_MAP_UNWRITTEN) &&
-> +		    !(flags & EXT4_GET_BLOCKS_ZERO) &&
+And if this is indeed the problem then what prevents the unmapping and
+truncation in huge page fault to race with mapping the same range again
+using small pages? Sure now blocks are allocated so the mapping itself will
+be consistent but radix tree will have the same issues it had before this
+patch, won't it?
 
-Just remove the above line and things should work for older kernels as
-well.
+... thinking some more about this ...
 
-> +		    ext4_should_order_data(inode)) {
-> +			ret = ext4_jbd2_file_inode(handle, inode);
-> +			if (ret)
-> +				return ret;
-> +		}
->  	}
->  	return retval;
->  }
+OK, there is some difference - we will only have DAX exceptional entries
+for the range covered by huge page and those we replace properly in
+dax_radix_entry() code. So things are indeed fine *except* that nothing
+seems so serialize dax_load() hole with PMD fault. The race like following
+seems possible:
+
+CPU1 - process 1		CPU2 - process 2
+
+__dax_fault() - file f, index 1
+  get_block() -> returns hole
+				__dax_pmd_fault() - file f, index 0
+				  get_block() -> allocates blocks
+				  ...
+				  truncate_pagecache_range()
+  dax_load_hole()
+
+Boom, we have hole page instantiated for allocated range (data corruption)
+and corruption of radix tree entries as well. Actually this problem is
+there even for two different processes doing normal page faults (one read,
+one write) against the same page in the file.
+
+... thinking about possible fixes ...
+
+So we need some exclusion that makes sure pgoff->block mapping information
+is uptodate at the moment we insert it into page tables. The simplest
+reasonably fast thing I can see is:
+
+When handling a read fault, things stay as is and filesystem protects the
+fault with an equivalent of EXT4_I(inode)->i_mmap_sem held for reading. When
+handling a write fault we first grab EXT4_I(inode)->i_mmap_sem for reading
+and try a read fault. If __dax_fault() sees a hole returned from
+get_blocks() during a write fault, it bails out. Filesystem grabs
+EXT4_I(inode)->i_mmap_sem for writing and retries with different
+get_blocks() callback which will allocate blocks. That way we get proper
+exclusion for faults needing to allocate blocks. Thoughts?
 
 								Honza
 
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> ---
+>  fs/dax.c | 20 ++++++++++----------
+>  1 file changed, 10 insertions(+), 10 deletions(-)
+> 
+> diff --git a/fs/dax.c b/fs/dax.c
+> index 03cc4a3..9dc0c97 100644
+> --- a/fs/dax.c
+> +++ b/fs/dax.c
+> @@ -594,6 +594,7 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+>  	bool write = flags & FAULT_FLAG_WRITE;
+>  	struct block_device *bdev;
+>  	pgoff_t size, pgoff;
+> +	loff_t lstart, lend;
+>  	sector_t block;
+>  	int result = 0;
+>  
+> @@ -647,15 +648,13 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+>  		goto fallback;
+>  	}
+>  
+> -	/*
+> -	 * If we allocated new storage, make sure no process has any
+> -	 * zero pages covering this hole
+> -	 */
+> -	if (buffer_new(&bh)) {
+> -		i_mmap_unlock_read(mapping);
+> -		unmap_mapping_range(mapping, pgoff << PAGE_SHIFT, PMD_SIZE, 0);
+> -		i_mmap_lock_read(mapping);
+> -	}
+> +	/* make sure no process has any zero pages covering this hole */
+> +	lstart = pgoff << PAGE_SHIFT;
+> +	lend = lstart + PMD_SIZE - 1; /* inclusive */
+> +	i_mmap_unlock_read(mapping);
+> +	unmap_mapping_range(mapping, lstart, PMD_SIZE, 0);
+> +	truncate_inode_pages_range(mapping, lstart, lend);
+> +	i_mmap_lock_read(mapping);
+>  
+>  	/*
+>  	 * If a truncate happened while we were allocating blocks, we may
+> @@ -669,7 +668,8 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+>  		goto out;
+>  	}
+>  	if ((pgoff | PG_PMD_COLOUR) >= size) {
+> -		dax_pmd_dbg(&bh, address, "pgoff unaligned");
+> +		dax_pmd_dbg(&bh, address,
+> +				"offset + huge page size > file size");
+>  		goto fallback;
+>  	}
+>  
+> -- 
+> 2.5.0
+> 
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
