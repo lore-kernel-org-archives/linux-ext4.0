@@ -1,84 +1,186 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH v2] e2fsck: fix problem report typo
-Date: Thu, 7 Jan 2016 10:44:03 -0800
-Message-ID: <20160107184403.GB28338@birch.djwong.org>
-References: <20160107183118.GB8716@localhost.localdomain>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v7 2/9] dax: fix conversion of holes to PMDs
+Date: Thu, 7 Jan 2016 15:11:14 -0700
+Message-ID: <20160107221114.GA20802@linux.intel.com>
+References: <1452103263-1592-1-git-send-email-ross.zwisler@linux.intel.com>
+	<1452103263-1592-3-git-send-email-ross.zwisler@linux.intel.com>
+	<20160107132206.GE8380@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Eric Whitney <enwlinux@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:32387 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751220AbcAGSoI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Jan 2016 13:44:08 -0500
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Dave Hansen <dave.hansen@linux.intel.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>, linux-mm@kvack.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	"H. Peter Anvin" <hpa@zytor.com>, Jeff Layton <jlayton@poochiereds.net>,
+	Dan Williams <dan.j.williams@intel.com>,
+	linux-nvdimm@lists.01.org, x86@kernel.org, Ingo Molnar <mingo@redhat.com>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	Jan Kara <jack@suse.com>, linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20160107183118.GB8716@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160107132206.GE8380@quack.suse.cz>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 07, 2016 at 01:31:18PM -0500, Eric Whitney wrote:
-> Remove the stray left parenthesis.  Observed while testing bigalloc_1k
-> filesystems with shared/298 on 32 bit ARM running 4.3 kernels.
+On Thu, Jan 07, 2016 at 02:22:06PM +0100, Jan Kara wrote:
+> On Wed 06-01-16 11:00:56, Ross Zwisler wrote:
+> > When we get a DAX PMD fault for a write it is possible that there could be
+> > some number of 4k zero pages already present for the same range that were
+> > inserted to service reads from a hole.  These 4k zero pages need to be
+> > unmapped from the VMAs and removed from the struct address_space radix tree
+> > before the real DAX PMD entry can be inserted.
+> > 
+> > For PTE faults this same use case also exists and is handled by a
+> > combination of unmap_mapping_range() to unmap the VMAs and
+> > delete_from_page_cache() to remove the page from the address_space radix
+> > tree.
+> > 
+> > For PMD faults we do have a call to unmap_mapping_range() (protected by a
+> > buffer_new() check), but nothing clears out the radix tree entry.  The
+> > buffer_new() check is also incorrect as the current ext4 and XFS filesystem
+> > code will never return a buffer_head with BH_New set, even when allocating
+> > new blocks over a hole.  Instead the filesystem will zero the blocks
+> > manually and return a buffer_head with only BH_Mapped set.
+> > 
+> > Fix this situation by removing the buffer_new() check and adding a call to
+> > truncate_inode_pages_range() to clear out the radix tree entries before we
+> > insert the DAX PMD.
 > 
-> v2: Modify the expect files for the relevant regression tests.
+> Ho, hum, let me understand this. So we have a file, different processes are
+> mapping it. One process maps is with normal page granularity and another
+> process with huge page granularity. Thus when the first process read-faults
+> a few normal pages and then the second process write-faults the huge page
+> in the same range, we have a problem. Do I understand this correctly?
+> Because otherwise I don't understand how a single page table can have both
+> huge page and normal page in the same range...
 
-Looks ok now,
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+I don't think that it necessarily has to do with multiple threads.  The bit to
+notice here is we *always* use 4k zero pages to cover holes.  So, a single
+thread can hit this condition by doing some reads from a hole (insert 4k
+pages), then doing a write.  This write is the first time that we will try and
+use real DAX storage to insert into the page tables, and we may end up getting
+a PMD.  This means that we need to clear out all the 4k pages that we inserted
+while reading holes in this same range, now that we have a 2M segment
+allocated by the filesystem and the entire range is no longer a hole.
 
---D
+> And if this is indeed the problem then what prevents the unmapping and
+> truncation in huge page fault to race with mapping the same range again
+> using small pages? Sure now blocks are allocated so the mapping itself will
+> be consistent but radix tree will have the same issues it had before this
+> patch, won't it?
 
+Yep, this is a separate issue, but I think that we handle this case
+successfully, though we may end up flushing the same address multiple times.
+Once the filesystem has established a block mapping (assuming we avoid the
+race described below where one thread is mapping in holes and the other sees a
+block allocation), I think we are okay.  It's true that one thread can map in
+PMDs, and another thread could potentially map in PTEs that cover the same
+range if they hare working with mmaps that are smaller than a PMD, but the
+sectors inserted into the radix tree by each of those threads will be
+individually correct - the only issue is that they may overlap.
+
+Say, for example you have the following:
+
+CPU1 - process 1				CPU2 - process 2
+mmap for sector 0, size 2M
+insert PMD into radix tree for sector 0
+  This radix tree covers sectors 0-4096
+						mmap for sector 32, size 4k
+						insert PTE entry into radix
+						tree for sector 32
+
+In this case a fsync of the fd by process 1 will end up flushing sector 32
+twice, which is correct but inefficient.  I think we can make this more
+efficient by adjusting the insertion code and dirtying code in
+dax_radix_entry() to look for PMDs that cover this same range.
+
+> ... thinking some more about this ...
 > 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
-> ---
->  e2fsck/problem.c                            | 2 +-
->  tests/f_compress_extent_tree_level/expect.1 | 2 +-
->  tests/f_extent_oobounds/expect.1            | 2 +-
->  3 files changed, 3 insertions(+), 3 deletions(-)
+> OK, there is some difference - we will only have DAX exceptional entries
+> for the range covered by huge page and those we replace properly in
+> dax_radix_entry() code. So things are indeed fine *except* that nothing
+> seems so serialize dax_load() hole with PMD fault. The race like following
+> seems possible:
 > 
-> diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-> index a7da94d..7bd660d 100644
-> --- a/e2fsck/problem.c
-> +++ b/e2fsck/problem.c
-> @@ -1255,7 +1255,7 @@ static struct e2fsck_problem problem_table[] = {
->  
->  	/* Inode extent tree could be narrower */
->  	{ PR_1E_CAN_NARROW_EXTENT_TREE,
-> -	  N_("@i %i @x tree (at (level %b) could be narrower.  "),
-> +	  N_("@i %i @x tree (at level %b) could be narrower.  "),
->  	  PROMPT_FIX, PR_NO_OK | PR_PREEN_NO | PR_PREEN_OK },
->  
->  	/* Pass 2 errors */
-> diff --git a/tests/f_compress_extent_tree_level/expect.1 b/tests/f_compress_extent_tree_level/expect.1
-> index 1159f24..a359c99 100644
-> --- a/tests/f_compress_extent_tree_level/expect.1
-> +++ b/tests/f_compress_extent_tree_level/expect.1
-> @@ -10,7 +10,7 @@ Level Entries       Logical      Physical Length Flags
->   1/ 1   2/  3    19 -    19   104 -   104      1 
->   1/ 1   3/  3    21 -    21   105 -   105      1 
->  Pass 1: Checking inodes, blocks, and sizes
-> -Inode 12 extent tree (at (level 1) could be narrower.  Fix? yes
-> +Inode 12 extent tree (at level 1) could be narrower.  Fix? yes
->  
->  Pass 1E: Optimizing extent trees
->  Pass 2: Checking directory structure
-> diff --git a/tests/f_extent_oobounds/expect.1 b/tests/f_extent_oobounds/expect.1
-> index 59e1952..056689f 100644
-> --- a/tests/f_extent_oobounds/expect.1
-> +++ b/tests/f_extent_oobounds/expect.1
-> @@ -3,7 +3,7 @@ Inode 12, end of extent exceeds allowed value
->  	(logical block 15, physical block 200, len 30)
->  Clear? yes
->  
-> -Inode 12 extent tree (at (level 1) could be narrower.  Fix? yes
-> +Inode 12 extent tree (at level 1) could be narrower.  Fix? yes
->  
->  Inode 12, i_blocks is 154, should be 94.  Fix? yes
->  
-> -- 
-> 2.1.4
+> CPU1 - process 1		CPU2 - process 2
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> __dax_fault() - file f, index 1
+>   get_block() -> returns hole
+> 				__dax_pmd_fault() - file f, index 0
+> 				  get_block() -> allocates blocks
+> 				  ...
+> 				  truncate_pagecache_range()
+>   dax_load_hole()
+> 
+> Boom, we have hole page instantiated for allocated range (data corruption)
+> and corruption of radix tree entries as well. Actually this problem is
+> there even for two different processes doing normal page faults (one read,
+> one write) against the same page in the file.
+
+Yea, I agree, this seems like an existing issue that you could hit with just
+the PTE path:
+
+CPU1 - process 1		CPU2 - process 2
+
+__dax_fault() - read file f, index 0
+  get_block() -> returns hole
+				__dax_fault() - write file f, index 0
+				  get_block() -> allocates blocks
+				  ...
+				  skips unmap_mapping_range() and
+				    delete_from_page_cache() because it didn't
+				    find a page for this pgoff
+				  dax_insert_mapping()
+  dax_load_hole()
+  *data corruption*
+
+> ... thinking about possible fixes ...
+> 
+> So we need some exclusion that makes sure pgoff->block mapping information
+> is uptodate at the moment we insert it into page tables. The simplest
+> reasonably fast thing I can see is:
+> 
+> When handling a read fault, things stay as is and filesystem protects the
+> fault with an equivalent of EXT4_I(inode)->i_mmap_sem held for reading. When
+> handling a write fault we first grab EXT4_I(inode)->i_mmap_sem for reading
+> and try a read fault. If __dax_fault() sees a hole returned from
+> get_blocks() during a write fault, it bails out. Filesystem grabs
+> EXT4_I(inode)->i_mmap_sem for writing and retries with different
+> get_blocks() callback which will allocate blocks. That way we get proper
+> exclusion for faults needing to allocate blocks. Thoughts?
+
+I think this would work.  ext4, ext2 and xfs all handle their exclusion with
+rw_semaphores, so this should work for each of them, I think.  Thanks for the
+problem statement & solution!  :) 
+
+I guess our best course is to make sure that we don't make this existing
+problem worse via the fsync/msync patches by handling the error gracefully,
+and fix this for v4.6.  I do feel the need to point out that this is a
+pre-existing issue with DAX, and that my fsync patches just happened to help
+us find it.  They don't make the situation any better or any worse, and I
+really hope this issue doesn't end up blocking the fsync/msync patches from
+getting merged for v4.5.
+
+Thanks,
+- Ross
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
