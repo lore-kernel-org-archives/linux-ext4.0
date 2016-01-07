@@ -1,43 +1,97 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] e2fsck: fix problem report typo
-Date: Thu, 7 Jan 2016 11:40:25 -0500
-Message-ID: <20160107164025.GA1958@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qg0-f42.google.com ([209.85.192.42]:33533 "EHLO
-	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751057AbcAGQk6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Jan 2016 11:40:58 -0500
-Received: by mail-qg0-f42.google.com with SMTP id b35so201627157qge.0
-        for <linux-ext4@vger.kernel.org>; Thu, 07 Jan 2016 08:40:58 -0800 (PST)
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext4: Fix bh->b_state corruption
+Date: Thu,  7 Jan 2016 17:55:21 +0100
+Message-ID: <1452185721-32477-1-git-send-email-jack@suse.cz>
+Cc: Nikolay Borisov <kernel@kyup.com>, linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.com>, stable@vger.kernel.org,
+	Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Remove the stray left parenthesis.  Observed while testing bigalloc_1k
-filesystems with shared/298 on 32 bit ARM running 4.3 kernels.
+From: Jan Kara <jack@suse.com>
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+ext4 can update bh->b_state non-atomically in _ext4_get_block() and
+ext4_da_get_block_prep(). Usually this is fine since bh is just a
+temporary storage for mapping information on stack but in some cases it
+can be fully living bh attached to a page. In such case non-atomic
+update of bh->b_state can race with an atomic update which then gets
+lost. Usually when we are mapping bh and thus updating bh->b_state
+non-atomically, nobody else touches the bh and so things work out fine
+but there is one case to especially worry about: ext4_finish_bio() uses
+BH_Uptodate_Lock on the first bh in the page to synchronize handling of
+PageWriteback state. So when blocksize < pagesize, we can be atomically
+modifying bh->b_state of a buffer that actually isn't under IO and thus
+can race e.g. with delalloc trying to map that buffer. The result is
+that we can mistakenly set / clear BH_Uptodate_Lock bit resulting in the
+corruption of PageWriteback state or missed unlock of BH_Uptodate_Lock.
+
+Fix the problem by always updating bh->b_state bits atomically.
+
+CC: stable@vger.kernel.org
+Reported-by: Nikolay Borisov <kernel@kyup.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- e2fsck/problem.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/inode.c | 32 ++++++++++++++++++++++++++++++--
+ 1 file changed, 30 insertions(+), 2 deletions(-)
 
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index a7da94d..7bd660d 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -1255,7 +1255,7 @@ static struct e2fsck_problem problem_table[] = {
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ea433a7f4bca..06bda0361e7c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -657,6 +657,34 @@ has_zeroout:
+ 	return retval;
+ }
  
- 	/* Inode extent tree could be narrower */
- 	{ PR_1E_CAN_NARROW_EXTENT_TREE,
--	  N_("@i %i @x tree (at (level %b) could be narrower.  "),
-+	  N_("@i %i @x tree (at level %b) could be narrower.  "),
- 	  PROMPT_FIX, PR_NO_OK | PR_PREEN_NO | PR_PREEN_OK },
++/*
++ * Update EXT4_MAP_FLAGS in bh->b_state. For buffer heads attached to pages
++ * we have to be careful as someone else may be manipulating b_state as well.
++ */
++static void ext4_update_bh_state(struct buffer_head *bh, unsigned long flags)
++{
++	unsigned long old_state;
++	unsigned long new_state;
++
++	flags &= EXT4_MAP_FLAGS;
++
++	/* Dummy buffer_head? Set non-atomically. */
++	if (!bh->b_page) {
++		bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | flags;
++		return;
++	}
++	/*
++	 * Someone else may be modifying b_state. Be careful! This is ugly but
++	 * once we get rid of using bh as a container for mapping information
++	 * to pass to / from get_block functions, this can go away.
++	 */
++	do {
++		old_state = READ_ONCE(bh->b_state);
++		new_state = (old_state & ~EXT4_MAP_FLAGS) | flags;
++	} while (unlikely(
++		 cmpxchg(&bh->b_state, old_state, new_state) != old_state));
++}
++
+ /* Maximum number of blocks we map for direct IO at once. */
+ #define DIO_MAX_BLOCKS 4096
  
- 	/* Pass 2 errors */
+@@ -693,7 +721,7 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
+ 		ext4_io_end_t *io_end = ext4_inode_aio(inode);
+ 
+ 		map_bh(bh, inode->i_sb, map.m_pblk);
+-		bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
++		ext4_update_bh_state(bh, map.m_flags);
+ 		if (IS_DAX(inode) && buffer_unwritten(bh)) {
+ 			/*
+ 			 * dgc: I suspect unwritten conversion on ext4+DAX is
+@@ -1669,7 +1697,7 @@ int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+ 		return ret;
+ 
+ 	map_bh(bh, inode->i_sb, map.m_pblk);
+-	bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
++	ext4_update_bh_state(bh, map.m_flags);
+ 
+ 	if (buffer_unwritten(bh)) {
+ 		/* A delayed write to unwritten bh should be marked
 -- 
-2.1.4
-
+2.6.2
