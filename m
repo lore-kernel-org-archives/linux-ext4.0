@@ -1,97 +1,254 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Fix bh->b_state corruption
-Date: Thu,  7 Jan 2016 17:55:21 +0100
-Message-ID: <1452185721-32477-1-git-send-email-jack@suse.cz>
-Cc: Nikolay Borisov <kernel@kyup.com>, linux-ext4@vger.kernel.org,
-	Jan Kara <jack@suse.com>, stable@vger.kernel.org,
-	Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 3/4] jbd2: Unify revoke and tag block checksum handling
+Date: Thu, 7 Jan 2016 09:16:45 -0800
+Message-ID: <20160107171645.GA28338@birch.djwong.org>
+References: <1452177715-9671-1-git-send-email-jack@suse.cz>
+ <1452177715-9671-4-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:16753 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751709AbcAGRQx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Jan 2016 12:16:53 -0500
+Content-Disposition: inline
+In-Reply-To: <1452177715-9671-4-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Kara <jack@suse.com>
+On Thu, Jan 07, 2016 at 03:41:54PM +0100, Jan Kara wrote:
+> Revoke and tag descriptor blocks are just different kinds of descriptor
+> blocks and thus have checksum in the same place. Unify computation and
+> checking of checksums for these.
 
-ext4 can update bh->b_state non-atomically in _ext4_get_block() and
-ext4_da_get_block_prep(). Usually this is fine since bh is just a
-temporary storage for mapping information on stack but in some cases it
-can be fully living bh attached to a page. In such case non-atomic
-update of bh->b_state can race with an atomic update which then gets
-lost. Usually when we are mapping bh and thus updating bh->b_state
-non-atomically, nobody else touches the bh and so things work out fine
-but there is one case to especially worry about: ext4_finish_bio() uses
-BH_Uptodate_Lock on the first bh in the page to synchronize handling of
-PageWriteback state. So when blocksize < pagesize, we can be atomically
-modifying bh->b_state of a buffer that actually isn't under IO and thus
-can race e.g. with delalloc trying to map that buffer. The result is
-that we can mistakenly set / clear BH_Uptodate_Lock bit resulting in the
-corruption of PageWriteback state or missed unlock of BH_Uptodate_Lock.
+Looks ok to me,
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Fix the problem by always updating bh->b_state bits atomically.
+Is there a corresponding update to e2fsprogs' journal code?
 
-CC: stable@vger.kernel.org
-Reported-by: Nikolay Borisov <kernel@kyup.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c | 32 ++++++++++++++++++++++++++++++--
- 1 file changed, 30 insertions(+), 2 deletions(-)
+--D
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ea433a7f4bca..06bda0361e7c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -657,6 +657,34 @@ has_zeroout:
- 	return retval;
- }
- 
-+/*
-+ * Update EXT4_MAP_FLAGS in bh->b_state. For buffer heads attached to pages
-+ * we have to be careful as someone else may be manipulating b_state as well.
-+ */
-+static void ext4_update_bh_state(struct buffer_head *bh, unsigned long flags)
-+{
-+	unsigned long old_state;
-+	unsigned long new_state;
-+
-+	flags &= EXT4_MAP_FLAGS;
-+
-+	/* Dummy buffer_head? Set non-atomically. */
-+	if (!bh->b_page) {
-+		bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | flags;
-+		return;
-+	}
-+	/*
-+	 * Someone else may be modifying b_state. Be careful! This is ugly but
-+	 * once we get rid of using bh as a container for mapping information
-+	 * to pass to / from get_block functions, this can go away.
-+	 */
-+	do {
-+		old_state = READ_ONCE(bh->b_state);
-+		new_state = (old_state & ~EXT4_MAP_FLAGS) | flags;
-+	} while (unlikely(
-+		 cmpxchg(&bh->b_state, old_state, new_state) != old_state));
-+}
-+
- /* Maximum number of blocks we map for direct IO at once. */
- #define DIO_MAX_BLOCKS 4096
- 
-@@ -693,7 +721,7 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
- 		ext4_io_end_t *io_end = ext4_inode_aio(inode);
- 
- 		map_bh(bh, inode->i_sb, map.m_pblk);
--		bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
-+		ext4_update_bh_state(bh, map.m_flags);
- 		if (IS_DAX(inode) && buffer_unwritten(bh)) {
- 			/*
- 			 * dgc: I suspect unwritten conversion on ext4+DAX is
-@@ -1669,7 +1697,7 @@ int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
- 		return ret;
- 
- 	map_bh(bh, inode->i_sb, map.m_pblk);
--	bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
-+	ext4_update_bh_state(bh, map.m_flags);
- 
- 	if (buffer_unwritten(bh)) {
- 		/* A delayed write to unwritten bh should be marked
--- 
-2.6.2
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/jbd2/commit.c     | 18 +-----------------
+>  fs/jbd2/journal.c    | 15 +++++++++++++++
+>  fs/jbd2/recovery.c   | 31 +++++--------------------------
+>  fs/jbd2/revoke.c     | 19 ++-----------------
+>  include/linux/jbd2.h |  8 ++------
+>  5 files changed, 25 insertions(+), 66 deletions(-)
+> 
+> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> index cf221f3d955a..ae832cd44dd8 100644
+> --- a/fs/jbd2/commit.c
+> +++ b/fs/jbd2/commit.c
+> @@ -317,22 +317,6 @@ static void write_tag_block(journal_t *j, journal_block_tag_t *tag,
+>  		tag->t_blocknr_high = cpu_to_be32((block >> 31) >> 1);
+>  }
+>  
+> -static void jbd2_descr_block_csum_set(journal_t *j,
+> -				      struct buffer_head *bh)
+> -{
+> -	struct jbd2_journal_block_tail *tail;
+> -	__u32 csum;
+> -
+> -	if (!jbd2_journal_has_csum_v2or3(j))
+> -		return;
+> -
+> -	tail = (struct jbd2_journal_block_tail *)(bh->b_data + j->j_blocksize -
+> -			sizeof(struct jbd2_journal_block_tail));
+> -	tail->t_checksum = 0;
+> -	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
+> -	tail->t_checksum = cpu_to_be32(csum);
+> -}
+> -
+>  static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
+>  				    struct buffer_head *bh, __u32 sequence)
+>  {
+> @@ -714,7 +698,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+>  
+>  			tag->t_flags |= cpu_to_be16(JBD2_FLAG_LAST_TAG);
+>  
+> -			jbd2_descr_block_csum_set(journal, descriptor);
+> +			jbd2_descriptor_block_csum_set(journal, descriptor);
+>  start_journal_io:
+>  			for (i = 0; i < bufs; i++) {
+>  				struct buffer_head *bh = wbuf[i];
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index 28d05bd9a588..defa962a8e15 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -834,6 +834,21 @@ jbd2_journal_get_descriptor_buffer(transaction_t *transaction, int type)
+>  	return bh;
+>  }
+>  
+> +void jbd2_descriptor_block_csum_set(journal_t *j, struct buffer_head *bh)
+> +{
+> +	struct jbd2_journal_block_tail *tail;
+> +	__u32 csum;
+> +
+> +	if (!jbd2_journal_has_csum_v2or3(j))
+> +		return;
+> +
+> +	tail = (struct jbd2_journal_block_tail *)(bh->b_data + j->j_blocksize -
+> +			sizeof(struct jbd2_journal_block_tail));
+> +	tail->t_checksum = 0;
+> +	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
+> +	tail->t_checksum = cpu_to_be32(csum);
+> +}
+> +
+>  /*
+>   * Return tid of the oldest transaction in the journal and block in the journal
+>   * where the transaction starts.
+> diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+> index 7f277e49fe88..08a456b96e4e 100644
+> --- a/fs/jbd2/recovery.c
+> +++ b/fs/jbd2/recovery.c
+> @@ -174,8 +174,7 @@ static int jread(struct buffer_head **bhp, journal_t *journal,
+>  	return 0;
+>  }
+>  
+> -static int jbd2_descr_block_csum_verify(journal_t *j,
+> -					void *buf)
+> +static int jbd2_descriptor_block_csum_verify(journal_t *j, void *buf)
+>  {
+>  	struct jbd2_journal_block_tail *tail;
+>  	__be32 provided;
+> @@ -522,8 +521,8 @@ static int do_one_pass(journal_t *journal,
+>  				descr_csum_size =
+>  					sizeof(struct jbd2_journal_block_tail);
+>  			if (descr_csum_size > 0 &&
+> -			    !jbd2_descr_block_csum_verify(journal,
+> -							  bh->b_data)) {
+> +			    !jbd2_descriptor_block_csum_verify(journal,
+> +							       bh->b_data)) {
+>  				printk(KERN_ERR "JBD2: Invalid checksum "
+>  				       "recovering block %lu in log\n",
+>  				       next_log_block);
+> @@ -811,26 +810,6 @@ static int do_one_pass(journal_t *journal,
+>  	return err;
+>  }
+>  
+> -static int jbd2_revoke_block_csum_verify(journal_t *j,
+> -					 void *buf)
+> -{
+> -	struct jbd2_journal_revoke_tail *tail;
+> -	__be32 provided;
+> -	__u32 calculated;
+> -
+> -	if (!jbd2_journal_has_csum_v2or3(j))
+> -		return 1;
+> -
+> -	tail = (struct jbd2_journal_revoke_tail *)(buf + j->j_blocksize -
+> -			sizeof(struct jbd2_journal_revoke_tail));
+> -	provided = tail->r_checksum;
+> -	tail->r_checksum = 0;
+> -	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
+> -	tail->r_checksum = provided;
+> -
+> -	return provided == cpu_to_be32(calculated);
+> -}
+> -
+>  /* Scan a revoke record, marking all blocks mentioned as revoked. */
+>  
+>  static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
+> @@ -846,11 +825,11 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
+>  	offset = sizeof(jbd2_journal_revoke_header_t);
+>  	rcount = be32_to_cpu(header->r_count);
+>  
+> -	if (!jbd2_revoke_block_csum_verify(journal, header))
+> +	if (!jbd2_descriptor_block_csum_verify(journal, header))
+>  		return -EFSBADCRC;
+>  
+>  	if (jbd2_journal_has_csum_v2or3(journal))
+> -		csum_size = sizeof(struct jbd2_journal_revoke_tail);
+> +		csum_size = sizeof(struct jbd2_journal_block_tail);
+>  	if (rcount > journal->j_blocksize - csum_size)
+>  		return -EINVAL;
+>  	max = rcount;
+> diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+> index d1ebb1d41d17..91171dc352cb 100644
+> --- a/fs/jbd2/revoke.c
+> +++ b/fs/jbd2/revoke.c
+> @@ -583,7 +583,7 @@ static void write_one_revoke_record(transaction_t *transaction,
+>  
+>  	/* Do we need to leave space at the end for a checksum? */
+>  	if (jbd2_journal_has_csum_v2or3(journal))
+> -		csum_size = sizeof(struct jbd2_journal_revoke_tail);
+> +		csum_size = sizeof(struct jbd2_journal_block_tail);
+>  
+>  	if (jbd2_has_feature_64bit(journal))
+>  		sz = 8;
+> @@ -623,21 +623,6 @@ static void write_one_revoke_record(transaction_t *transaction,
+>  	*offsetp = offset;
+>  }
+>  
+> -static void jbd2_revoke_csum_set(journal_t *j, struct buffer_head *bh)
+> -{
+> -	struct jbd2_journal_revoke_tail *tail;
+> -	__u32 csum;
+> -
+> -	if (!jbd2_journal_has_csum_v2or3(j))
+> -		return;
+> -
+> -	tail = (struct jbd2_journal_revoke_tail *)(bh->b_data + j->j_blocksize -
+> -			sizeof(struct jbd2_journal_revoke_tail));
+> -	tail->r_checksum = 0;
+> -	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
+> -	tail->r_checksum = cpu_to_be32(csum);
+> -}
+> -
+>  /*
+>   * Flush a revoke descriptor out to the journal.  If we are aborting,
+>   * this is a noop; otherwise we are generating a buffer which needs to
+> @@ -658,7 +643,7 @@ static void flush_descriptor(journal_t *journal,
+>  
+>  	header = (jbd2_journal_revoke_header_t *)descriptor->b_data;
+>  	header->r_count = cpu_to_be32(offset);
+> -	jbd2_revoke_csum_set(journal, descriptor);
+> +	jbd2_descriptor_block_csum_set(journal, descriptor);
+>  
+>  	set_buffer_jwrite(descriptor);
+>  	BUFFER_TRACE(descriptor, "write");
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index 3649cb8d3a41..fd1083c46c61 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -200,7 +200,7 @@ typedef struct journal_block_tag_s
+>  	__be32		t_blocknr_high; /* most-significant high 32bits. */
+>  } journal_block_tag_t;
+>  
+> -/* Tail of descriptor block, for checksumming */
+> +/* Tail of descriptor or revoke block, for checksumming */
+>  struct jbd2_journal_block_tail {
+>  	__be32		t_checksum;	/* crc32c(uuid+descr_block) */
+>  };
+> @@ -215,11 +215,6 @@ typedef struct jbd2_journal_revoke_header_s
+>  	__be32		 r_count;	/* Count of bytes used in the block */
+>  } jbd2_journal_revoke_header_t;
+>  
+> -/* Tail of revoke block, for checksumming */
+> -struct jbd2_journal_revoke_tail {
+> -	__be32		r_checksum;	/* crc32c(uuid+revoke_block) */
+> -};
+> -
+>  /* Definitions for the journal tag flags word: */
+>  #define JBD2_FLAG_ESCAPE		1	/* on-disk block is escaped */
+>  #define JBD2_FLAG_SAME_UUID	2	/* block has same uuid as previous */
+> @@ -1138,6 +1133,7 @@ static inline void jbd2_unfile_log_bh(struct buffer_head *bh)
+>  
+>  /* Log buffer allocation */
+>  struct buffer_head *jbd2_journal_get_descriptor_buffer(transaction_t *, int);
+> +void jbd2_descriptor_block_csum_set(journal_t *, struct buffer_head *);
+>  int jbd2_journal_next_log_block(journal_t *, unsigned long long *);
+>  int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
+>  			      unsigned long *block);
+> -- 
+> 2.6.2
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
