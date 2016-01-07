@@ -1,91 +1,39 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH v7 1/9] dax: fix NULL pointer dereference in __dax_dbg()
-Date: Thu, 7 Jan 2016 07:17:22 -0800
-Message-ID: <CAPcyv4i_xfihzc_LKYiz_XuTVVCMSf5dsJQE8g7-NURe170p7g@mail.gmail.com>
-References: <1452103263-1592-1-git-send-email-ross.zwisler@linux.intel.com>
-	<1452103263-1592-2-git-send-email-ross.zwisler@linux.intel.com>
-	<CAPcyv4h3NcXHHQAWL=HwgGxTbFTeOa98S9fxWu7dA3nTEcFxxA@mail.gmail.com>
-	<20160107093402.GA8380@quack.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 108631] Stuck on mb_cache_spinlock
+Date: Thu, 07 Jan 2016 15:33:08 +0000
+Message-ID: <bug-108631-13602-IXzpZRjmsF@https.bugzilla.kernel.org/>
+References: <bug-108631-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dave Chinner <david@fromorbit.com>,
-	Dave Hansen <dave.hansen@linux.intel.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux MM <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	X86 ML <x86@kernel.org>, XFS Developers <xfs@oss.sgi.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20160107093402.GA8380@quack.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:34512 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751515AbcAGPdM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Jan 2016 10:33:12 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id A32CB201C0
+	for <linux-ext4@vger.kernel.org>; Thu,  7 Jan 2016 15:33:10 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 087552014A
+	for <linux-ext4@vger.kernel.org>; Thu,  7 Jan 2016 15:33:09 +0000 (UTC)
+In-Reply-To: <bug-108631-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 7, 2016 at 1:34 AM, Jan Kara <jack@suse.cz> wrote:
-> On Wed 06-01-16 11:14:09, Dan Williams wrote:
->> On Wed, Jan 6, 2016 at 10:00 AM, Ross Zwisler
->> <ross.zwisler@linux.intel.com> wrote:
->> > __dax_dbg() currently assumes that bh->b_bdev is non-NULL, passing it into
->> > bdevname() where is is dereferenced.  This assumption isn't always true -
->> > when called for reads of holes, ext4_dax_mmap_get_block() returns a buffer
->> > head where bh->b_bdev is never set.  I hit this BUG while testing the DAX
->> > PMD fault path.
->> >
->> > Instead, verify that we have a valid bh->b_bdev, else just say "unknown"
->> > for the block device.
->> >
->> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
->> > Cc: Dan Williams <dan.j.williams@intel.com>
->> > ---
->> >  fs/dax.c | 7 ++++++-
->> >  1 file changed, 6 insertions(+), 1 deletion(-)
->> >
->> > diff --git a/fs/dax.c b/fs/dax.c
->> > index 7af8797..03cc4a3 100644
->> > --- a/fs/dax.c
->> > +++ b/fs/dax.c
->> > @@ -563,7 +563,12 @@ static void __dax_dbg(struct buffer_head *bh, unsigned long address,
->> >  {
->> >         if (bh) {
->> >                 char bname[BDEVNAME_SIZE];
->> > -               bdevname(bh->b_bdev, bname);
->> > +
->> > +               if (bh->b_bdev)
->> > +                       bdevname(bh->b_bdev, bname);
->> > +               else
->> > +                       snprintf(bname, BDEVNAME_SIZE, "unknown");
->> > +
->> >                 pr_debug("%s: %s addr: %lx dev %s state %lx start %lld "
->> >                         "length %zd fallback: %s\n", fn, current->comm,
->> >                         address, bname, bh->b_state, (u64)bh->b_blocknr,
->>
->> I'm assuming there's no danger of a such a buffer_head ever being used
->> for the bdev parameter to dax_map_atomic()?  Shouldn't we also/instead
->> go fix ext4 to not send partially filled buffer_heads?
->
-> No. The real problem is a long-standing abuse of struct buffer_head to be
-> used for passing block mapping information (it's on my todo list to remove
-> that at least from DAX code and use cleaner block mapping interface but
-> first I want basic DAX functionality to settle down to avoid unnecessary
-> conflicts). Filesystem is not supposed to touch bh->b_bdev. If you need
-> that filled in, set it yourself in before passing bh to the block mapping
-> function.
->
+https://bugzilla.kernel.org/show_bug.cgi?id=108631
 
-Ok, makes sense.
+--- Comment #5 from Norman Meilick <nm@sbe.de> ---
+Thank you very much, I'll try the patches tomorrow.
 
-Ross, can you fix this instead by unconditionally looking up the bdev
-rather that saying "unknown".  The bdev should always be retrievable.
+And yes, we're indeed running several LXC containers on the affected servers.
+
+One quick correction to my original comment: When I stated that kernel 3.14
+does not seem to be affected, I mixed up the version number. It's 3.13 that
+doesn't exhibit any problems for us (we didn't test with 3.14). I'm sorry for
+the mistake.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
