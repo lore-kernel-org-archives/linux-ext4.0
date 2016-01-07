@@ -1,153 +1,42 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/4] jbd2: Factor out common descriptor block initialization
-Date: Thu,  7 Jan 2016 15:41:53 +0100
-Message-ID: <1452177715-9671-3-git-send-email-jack@suse.cz>
-References: <1452177715-9671-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 108631] Stuck on mb_cache_spinlock
+Date: Thu, 07 Jan 2016 15:06:26 +0000
+Message-ID: <bug-108631-13602-05NtWhieP1@https.bugzilla.kernel.org/>
+References: <bug-108631-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:37476 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.29.136]:32917 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752356AbcAGOlv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Jan 2016 09:41:51 -0500
-In-Reply-To: <1452177715-9671-1-git-send-email-jack@suse.cz>
+	id S1751031AbcAGPG3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Jan 2016 10:06:29 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id DBDBE201DD
+	for <linux-ext4@vger.kernel.org>; Thu,  7 Jan 2016 15:06:27 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 76DE420172
+	for <linux-ext4@vger.kernel.org>; Thu,  7 Jan 2016 15:06:26 +0000 (UTC)
+In-Reply-To: <bug-108631-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Descriptor block header is initialized in several places. Factor out the
-common code into jbd2_journal_get_descriptor_buffer().
+https://bugzilla.kernel.org/show_bug.cgi?id=108631
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/jbd2/commit.c     | 16 +++++-----------
- fs/jbd2/journal.c    |  9 ++++++++-
- fs/jbd2/revoke.c     |  8 ++------
- include/linux/jbd2.h |  2 +-
- 4 files changed, 16 insertions(+), 19 deletions(-)
+Theodore Tso <tytso@mit.edu> changed:
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index ae4402d15d46..cf221f3d955a 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -131,14 +131,12 @@ static int journal_submit_commit_record(journal_t *journal,
- 	if (is_journal_aborted(journal))
- 		return 0;
- 
--	bh = jbd2_journal_get_descriptor_buffer(journal);
-+	bh = jbd2_journal_get_descriptor_buffer(commit_transaction,
-+						JBD2_COMMIT_BLOCK);
- 	if (!bh)
- 		return 1;
- 
- 	tmp = (struct commit_header *)bh->b_data;
--	tmp->h_magic = cpu_to_be32(JBD2_MAGIC_NUMBER);
--	tmp->h_blocktype = cpu_to_be32(JBD2_COMMIT_BLOCK);
--	tmp->h_sequence = cpu_to_be32(commit_transaction->t_tid);
- 	tmp->h_commit_sec = cpu_to_be64(now.tv_sec);
- 	tmp->h_commit_nsec = cpu_to_be32(now.tv_nsec);
- 
-@@ -379,7 +377,6 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 	ktime_t start_time;
- 	u64 commit_time;
- 	char *tagp = NULL;
--	journal_header_t *header;
- 	journal_block_tag_t *tag = NULL;
- 	int space_left = 0;
- 	int first_tag = 0;
-@@ -615,7 +612,9 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 
- 			jbd_debug(4, "JBD2: get descriptor\n");
- 
--			descriptor = jbd2_journal_get_descriptor_buffer(journal);
-+			descriptor = jbd2_journal_get_descriptor_buffer(
-+							commit_transaction,
-+							JBD2_DESCRIPTOR_BLOCK);
- 			if (!descriptor) {
- 				jbd2_journal_abort(journal, -EIO);
- 				continue;
-@@ -624,11 +623,6 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 			jbd_debug(4, "JBD2: got buffer %llu (%p)\n",
- 				(unsigned long long)descriptor->b_blocknr,
- 				descriptor->b_data);
--			header = (journal_header_t *)descriptor->b_data;
--			header->h_magic     = cpu_to_be32(JBD2_MAGIC_NUMBER);
--			header->h_blocktype = cpu_to_be32(JBD2_DESCRIPTOR_BLOCK);
--			header->h_sequence  = cpu_to_be32(commit_transaction->t_tid);
--
- 			tagp = &descriptor->b_data[sizeof(journal_header_t)];
- 			space_left = descriptor->b_size -
- 						sizeof(journal_header_t);
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 81e622681c82..28d05bd9a588 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -805,10 +805,13 @@ int jbd2_journal_bmap(journal_t *journal, unsigned long blocknr,
-  * But we don't bother doing that, so there will be coherency problems with
-  * mmaps of blockdevs which hold live JBD-controlled filesystems.
-  */
--struct buffer_head *jbd2_journal_get_descriptor_buffer(journal_t *journal)
-+struct buffer_head *
-+jbd2_journal_get_descriptor_buffer(transaction_t *transaction, int type)
- {
-+	journal_t *journal = transaction->t_journal;
- 	struct buffer_head *bh;
- 	unsigned long long blocknr;
-+	journal_header_t *header;
- 	int err;
- 
- 	err = jbd2_journal_next_log_block(journal, &blocknr);
-@@ -821,6 +824,10 @@ struct buffer_head *jbd2_journal_get_descriptor_buffer(journal_t *journal)
- 		return NULL;
- 	lock_buffer(bh);
- 	memset(bh->b_data, 0, journal->j_blocksize);
-+	header = (journal_header_t *)bh->b_data;
-+	header->h_magic = cpu_to_be32(JBD2_MAGIC_NUMBER);
-+	header->h_blocktype = cpu_to_be32(type);
-+	header->h_sequence = cpu_to_be32(transaction->t_tid);
- 	set_buffer_uptodate(bh);
- 	unlock_buffer(bh);
- 	BUFFER_TRACE(bh, "return this buffer");
-diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-index c839332be56b..d1ebb1d41d17 100644
---- a/fs/jbd2/revoke.c
-+++ b/fs/jbd2/revoke.c
-@@ -570,7 +570,6 @@ static void write_one_revoke_record(transaction_t *transaction,
- 	int csum_size = 0;
- 	struct buffer_head *descriptor;
- 	int sz, offset;
--	journal_header_t *header;
- 
- 	/* If we are already aborting, this all becomes a noop.  We
-            still need to go round the loop in
-@@ -600,13 +599,10 @@ static void write_one_revoke_record(transaction_t *transaction,
- 	}
- 
- 	if (!descriptor) {
--		descriptor = jbd2_journal_get_descriptor_buffer(journal);
-+		descriptor = jbd2_journal_get_descriptor_buffer(transaction,
-+							JBD2_REVOKE_BLOCK);
- 		if (!descriptor)
- 			return;
--		header = (journal_header_t *)descriptor->b_data;
--		header->h_magic     = cpu_to_be32(JBD2_MAGIC_NUMBER);
--		header->h_blocktype = cpu_to_be32(JBD2_REVOKE_BLOCK);
--		header->h_sequence  = cpu_to_be32(transaction->t_tid);
- 
- 		/* Record it so that we can wait for IO completion later */
- 		BUFFER_TRACE(descriptor, "file in log_bufs");
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 5716d9554e77..3649cb8d3a41 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1137,7 +1137,7 @@ static inline void jbd2_unfile_log_bh(struct buffer_head *bh)
- }
- 
- /* Log buffer allocation */
--struct buffer_head *jbd2_journal_get_descriptor_buffer(journal_t *journal);
-+struct buffer_head *jbd2_journal_get_descriptor_buffer(transaction_t *, int);
- int jbd2_journal_next_log_block(journal_t *, unsigned long long *);
- int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
- 			      unsigned long *block);
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+
+--- Comment #4 from Theodore Tso <tytso@mit.edu> ---
+I would definitely ask you to try Jan's patches to see if they make a
+difference, although given that your reports are with what happens with the
+mbcache shrinker, it's not quite the same as the bug in 107301.
+
+Quick question, are you using containers at all in these systems?
+
 -- 
-2.6.2
-
+You are receiving this mail because:
+You are watching the assignee of the bug.
