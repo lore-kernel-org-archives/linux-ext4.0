@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v8 9/9] xfs: call dax_pfn_mkwrite() for DAX fsync/msync
-Date: Thu,  7 Jan 2016 22:27:59 -0700
-Message-ID: <1452230879-18117-10-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v8 8/9] ext4: call dax_pfn_mkwrite() for DAX fsync/msync
+Date: Thu,  7 Jan 2016 22:27:58 -0700
+Message-ID: <1452230879-18117-9-git-send-email-ross.zwisler@linux.intel.com>
 References: <1452230879-18117-1-git-send-email-ross.zwisler@linux.intel.com>
 Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	"H. Peter Anvin" <hpa@zytor.com>,
@@ -13,58 +13,62 @@ Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	Dan Williams <dan.j.williams@intel.com>,
 	Dave Chinner <david@fromorbit.com>,
 	Dave Hansen <dave.hansen@linux.intel.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
+	Ingo Molnar <mingo@redhat.com>,
+	Jan Kara <jack@suse.com>,
 	Jeff Layton <jlayton@poochiereds.net>,
 	Matthew Wilcox <matthew.r.wilcox@intel.com>,
 	Matthew Wilcox <willy@linux.intel.com>,
 	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-nvdimm@lists.01.org, x86@kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org,
+	x86@kernel.org,
 	xfs@oss.sgi.com
 To: linux-kernel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([192.55.52.115]:53828 "EHLO mga14.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751968AbcAHF22 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Jan 2016 00:28:28 -0500
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <1452230879-18117-1-git-send-email-ross.zwisler@linux.intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
 To properly support the new DAX fsync/msync infrastructure filesystems
 need to call dax_pfn_mkwrite() so that DAX can track when user pages are
 dirtied.
 
 Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/xfs/xfs_file.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ fs/ext4/file.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index ebe9b82..55e16e2 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -1610,9 +1610,8 @@ xfs_filemap_pmd_fault(
- /*
-  * pfn_mkwrite was originally inteneded to ensure we capture time stamp
-  * updates on write faults. In reality, it's need to serialise against
-- * truncate similar to page_mkwrite. Hence we open-code dax_pfn_mkwrite()
-- * here and cycle the XFS_MMAPLOCK_SHARED to ensure we serialise the fault
-- * barrier in place.
-+ * truncate similar to page_mkwrite. Hence we cycle the XFS_MMAPLOCK_SHARED
-+ * to ensure we serialise the fault barrier in place.
-  */
- static int
- xfs_filemap_pfn_mkwrite(
-@@ -1635,6 +1634,8 @@ xfs_filemap_pfn_mkwrite(
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 60683ab..fa899c9 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -291,8 +291,8 @@ static int ext4_dax_pfn_mkwrite(struct vm_area_struct *vma,
+ {
+ 	struct inode *inode = file_inode(vma->vm_file);
+ 	struct super_block *sb = inode->i_sb;
+-	int ret = VM_FAULT_NOPAGE;
+ 	loff_t size;
++	int ret;
+ 
+ 	sb_start_pagefault(sb);
+ 	file_update_time(vma->vm_file);
+@@ -300,6 +300,8 @@ static int ext4_dax_pfn_mkwrite(struct vm_area_struct *vma,
  	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
  	if (vmf->pgoff >= size)
  		ret = VM_FAULT_SIGBUS;
-+	else if (IS_DAX(inode))
++	else
 +		ret = dax_pfn_mkwrite(vma, vmf);
- 	xfs_iunlock(ip, XFS_MMAPLOCK_SHARED);
- 	sb_end_pagefault(inode->i_sb);
- 	return ret;
+ 	up_read(&EXT4_I(inode)->i_mmap_sem);
+ 	sb_end_pagefault(sb);
+ 
 -- 
 2.5.0
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
