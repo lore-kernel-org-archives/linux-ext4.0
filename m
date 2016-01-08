@@ -1,31 +1,34 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [patch] ext4 crypto: unlock on error in
- ext4_set_encryption_metadata()
-Date: Fri, 8 Jan 2016 15:36:26 -0500
-Message-ID: <20160108203626.GD28412@thunk.org>
-References: <20160105095719.GF23619@mwanda>
+From: Mike Christie <michaelc@cs.wisc.edu>
+Subject: Re: [PATCH 00/35 v2] separate operations from flags in the bio/request
+ structs
+Date: Fri, 08 Jan 2016 14:50:58 -0600
+Message-ID: <56902132.8080008@cs.wisc.edu>
+References: <1452027218-32303-1-git-send-email-mchristi@redhat.com> <20160108133237.GA7663@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39915 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932533AbcAHUg3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Jan 2016 15:36:29 -0500
-Content-Disposition: inline
-In-Reply-To: <20160105095719.GF23619@mwanda>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+	konrad.wilk@oracle.com, drbd-dev@lists.linbit.com,
+	philipp.reisner@linbit.com, lars.ellenberg@linbit.com,
+	linux-raid@vger.kernel.org, dm-devel@redhat.com,
+	linux-fsdevel@vger.kernel.org, linux-bcache@vger.kernel.org,
+	linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-scsi@vger.kernel.org, linux-mtd@lists.infradead.org,
+	target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	osd-dev@open-osd.org, xfs@oss.sgi.com, ocfs2-devel@oss.oracle.com
+To: Christoph Hellwig <hch@infradead.org>, mchristi@redhat.com
+Return-path: <linux-scsi-owner@vger.kernel.org>
+In-Reply-To: <20160108133237.GA7663@infradead.org>
+Sender: linux-scsi-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jan 05, 2016 at 12:57:19PM +0300, Dan Carpenter wrote:
-> There is a missing unlock if ext4_journal_start() fails.
-> 
-> Fixes: 374431bae296 ('ext4 crypto: add ioctls to allow backup of encryption metadata')
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+On 01/08/2016 07:32 AM, Christoph Hellwig wrote:
+> This looks good to me from a highlevel point of view.
+> Do you also have a git tree to take a look at all the changes in a
+> single big diff?
 
-Thanks for pointing this out!  I've fixed this by folded this into the
-appropriate commit.
+I uploaded a git tree here:
 
-       	   	    	 	     	    - Ted
+https://github.com/mikechristie/linux-kernel.git
+
+based off of linux-next today. The patches are just in the master branch.
