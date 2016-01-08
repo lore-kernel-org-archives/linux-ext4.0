@@ -1,113 +1,67 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v7 1/9] dax: fix NULL pointer dereference in __dax_dbg()
-Date: Thu, 7 Jan 2016 16:39:46 -0700
-Message-ID: <20160107233946.GD20802@linux.intel.com>
-References: <1452103263-1592-1-git-send-email-ross.zwisler@linux.intel.com>
- <1452103263-1592-2-git-send-email-ross.zwisler@linux.intel.com>
- <CAPcyv4h3NcXHHQAWL=HwgGxTbFTeOa98S9fxWu7dA3nTEcFxxA@mail.gmail.com>
- <20160107093402.GA8380@quack.suse.cz>
- <20160107231000.GO21461@dastard>
+From: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
+Subject: RE: ext4 out of order when use cfq scheduler
+Date: Fri, 8 Jan 2016 00:46:42 +0000
+Message-ID: <c91b1f9d6ed04caa964cb60b19d972e5@SGPMBX1004.APAC.bosch.com>
+References: <697280a570654ae0aa1723fb7d11f51e@SGPMBX1004.APAC.bosch.com>
+ <20151222150037.GB18178@quack.suse.cz>
+ <c67f356b63d94d35ad010a6e987b68f0@SGPMBX1004.APAC.bosch.com>
+ <20160105153050.GF14464@quack.suse.cz>
+ <c73ca48af09742318189c61d167c4459@SGPMBX1004.APAC.bosch.com>
+ <20160106100621.GA24046@quack.suse.cz>
+ <3ab48fa47e434455b101251730e69bd2@SGPMBX1004.APAC.bosch.com>
+ <20160107102420.GB8380@quack.suse.cz>
+ <f0c925079bb4450380c019a7455a2537@SGPMBX1004.APAC.bosch.com>
+ <20160107114736.GC8380@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Dan Williams <dan.j.williams@intel.com>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dave Hansen <dave.hansen@linux.intel.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux MM <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	X86 ML <x86@kernel.org>, XFS
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20160107231000.GO21461@dastard>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Li, Michael" <huayil@qti.qualcomm.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp6-v.fe.bosch.de ([139.15.237.11]:59287 "EHLO
+	smtp6-v.fe.bosch.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753264AbcAHAqr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Jan 2016 19:46:47 -0500
+In-Reply-To: <20160107114736.GC8380@quack.suse.cz>
+Content-Language: en-US
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 08, 2016 at 10:10:00AM +1100, Dave Chinner wrote:
-> On Thu, Jan 07, 2016 at 10:34:02AM +0100, Jan Kara wrote:
-> > On Wed 06-01-16 11:14:09, Dan Williams wrote:
-> > > On Wed, Jan 6, 2016 at 10:00 AM, Ross Zwisler
-> > > <ross.zwisler@linux.intel.com> wrote:
-> > > > __dax_dbg() currently assumes that bh->b_bdev is non-NULL, passing it into
-> > > > bdevname() where is is dereferenced.  This assumption isn't always true -
-> > > > when called for reads of holes, ext4_dax_mmap_get_block() returns a buffer
-> > > > head where bh->b_bdev is never set.  I hit this BUG while testing the DAX
-> > > > PMD fault path.
-> > > >
-> > > > Instead, verify that we have a valid bh->b_bdev, else just say "unknown"
-> > > > for the block device.
-> > > >
-> > > > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> > > > Cc: Dan Williams <dan.j.williams@intel.com>
-> > > > ---
-> > > >  fs/dax.c | 7 ++++++-
-> > > >  1 file changed, 6 insertions(+), 1 deletion(-)
-> > > >
-> > > > diff --git a/fs/dax.c b/fs/dax.c
-> > > > index 7af8797..03cc4a3 100644
-> > > > --- a/fs/dax.c
-> > > > +++ b/fs/dax.c
-> > > > @@ -563,7 +563,12 @@ static void __dax_dbg(struct buffer_head *bh, unsigned long address,
-> > > >  {
-> > > >         if (bh) {
-> > > >                 char bname[BDEVNAME_SIZE];
-> > > > -               bdevname(bh->b_bdev, bname);
-> > > > +
-> > > > +               if (bh->b_bdev)
-> > > > +                       bdevname(bh->b_bdev, bname);
-> > > > +               else
-> > > > +                       snprintf(bname, BDEVNAME_SIZE, "unknown");
-> > > > +
-> > > >                 pr_debug("%s: %s addr: %lx dev %s state %lx start %lld "
-> > > >                         "length %zd fallback: %s\n", fn, current->comm,
-> > > >                         address, bname, bh->b_state, (u64)bh->b_blocknr,
-> > > 
-> > > I'm assuming there's no danger of a such a buffer_head ever being used
-> > > for the bdev parameter to dax_map_atomic()?  Shouldn't we also/instead
-> > > go fix ext4 to not send partially filled buffer_heads?
-> > 
-> > No. The real problem is a long-standing abuse of struct buffer_head to be
-> > used for passing block mapping information (it's on my todo list to remove
-> > that at least from DAX code and use cleaner block mapping interface but
-> > first I want basic DAX functionality to settle down to avoid unnecessary
-> > conflicts). Filesystem is not supposed to touch bh->b_bdev.
+> >
+> > >
+> > > OK, so I was looking into the code and indeed, reality is correct
+> > > and my mental model was wrong! ;) I thought that inode gets added to
+> > > the list of inodes for which we need to wait for data IO completion
+> > > during transaction commit during block allocation. And I was wrong.
+> > > It used to happen in
+> > > mpage_da_map_and_submit() until commit f3b59291a69d (ext4: remove
+> > > calls to
+> > > ext4_jbd2_file_inode() from delalloc write path) where it got
+> > > removed. And that was wrong because although we submit data writes
+> > > before dropping handle for allocating transaction and updating
+> > > i_size, nobody guarantees that data IO is not delayed in the block layer until
+> transaction commit.
+> > > Which seems to happen in your case. I'll send a fix. Thanks for your
+> > > report and persistence!
+> > >
+> >
+> > Thanks a lot for your feedback :-)
+> > Because I am not familiar with the detail of the ext4 internal code.  I will try to
+> understand your explanation which you describe above.  And have a look on
+> related funcations.
+> > Could you send the fix in this mail ?
+> > And whether the kernel 3.14 also have such issue, right ?
 > 
-> That has not been true for a long, long time. e.g. XFS always
-> rewrites bh->b_bdev in get_blocks because the file may not reside on
-> the primary block device of the filesystem. i.e.:
+> The problem is in all kernels starting with 3.8. Attached is a patch which should fix
+> the issue. Can you test whether it fixes the problem for you?
 > 
->         /*
->          * If this is a realtime file, data may be on a different device.
->          * to that pointed to from the buffer_head b_bdev currently.
->          */
->         bh_result->b_bdev = xfs_find_bdev_for_inode(inode);
-> 
-> > If you need
-> > that filled in, set it yourself in before passing bh to the block mapping
-> > function.
-> 
-> That may be true, but we cannot assume that the bdev coming back
-> out of get_block is the same one that was passed in.
+> 								Honza
+> --
 
-For our use case I think this is fine - we just need the bdev to be filled in
-so that we can print reasonable error messages.  If the filesystem updates
-bh->b_bdev during get_blocks(), we are fine with that.
+Yes, of course I will redo the test with the patch. And also give you feedback.
+Thanks.
+Huang weller
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
