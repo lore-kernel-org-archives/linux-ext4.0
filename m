@@ -1,27 +1,31 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 00/35 v2] separate operations from flags in the
- bio/request structs
-Date: Fri, 8 Jan 2016 05:32:37 -0800
-Message-ID: <20160108133237.GA7663@infradead.org>
-References: <1452027218-32303-1-git-send-email-mchristi@redhat.com>
+From: Finance Department <tk_danang@vksndtc.gov.vn>
+Subject: Payment
+Date: Fri, 8 Jan 2016 16:57:34 +0700 (ICT)
+Message-ID: <1422368440.864507.1452247054168.JavaMail.zimbra__39619.116302538$1452264144$gmane$org@vksndtc.gov.vn>
+Reply-To: Finance Department <un44401@qq.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-	konrad.wilk@oracle.com, drbd-dev@lists.linbit.com,
-	philipp.reisner@linbit.com, lars.ellenberg@linbit.com,
-	linux-raid@vger.kernel.org, dm-devel@redhat.com,
-	linux-fsdevel@vger.kernel.org, linux-bcache@vger.kernel.org,
-	linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-scsi@vger.kernel.org, linux-mtd@lists.infradead.org,
-	target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	osd-dev@open-osd.org, xfs@oss.sgi.com, ocfs2-devel@oss.oracle.com
-To: mchristi@redhat.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1452027218-32303-1-git-send-email-mchristi@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from static.vdc.vn ([123.30.8.197]:44128 "EHLO mail.vksndtc.gov.vn"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752478AbcAHOmM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Jan 2016 09:42:12 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This looks good to me from a highlevel point of view.
-Do you also have a git tree to take a look at all the changes in a
-single big diff?
+Hello,
+
+We wish to inform you that your email as been selected and awarded the =
+sum of Eight Million Pounds sterling (=C2=A38,000,000.00) with referenc=
+e number 77100146. This compensation funds is from the United Nations. =
+To receive payment Send us your full personal details to deliver your f=
+unds as soon as possible.
+
+Gloria Peter
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
