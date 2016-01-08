@@ -1,34 +1,28 @@
-From: Mike Christie <michaelc@cs.wisc.edu>
-Subject: Re: [PATCH 00/35 v2] separate operations from flags in the bio/request
- structs
-Date: Fri, 08 Jan 2016 14:50:58 -0600
-Message-ID: <56902132.8080008@cs.wisc.edu>
-References: <1452027218-32303-1-git-send-email-mchristi@redhat.com> <20160108133237.GA7663@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [patch] ext4: checking for NULL instead of IS_ERR
+Date: Fri, 8 Jan 2016 15:52:28 -0500
+Message-ID: <20160108205228.GE28412@thunk.org>
+References: <20160106100425.GG23185@mwanda>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-	konrad.wilk@oracle.com, drbd-dev@lists.linbit.com,
-	philipp.reisner@linbit.com, lars.ellenberg@linbit.com,
-	linux-raid@vger.kernel.org, dm-devel@redhat.com,
-	linux-fsdevel@vger.kernel.org, linux-bcache@vger.kernel.org,
-	linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-scsi@vger.kernel.org, linux-mtd@lists.infradead.org,
-	target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	osd-dev@open-osd.org, xfs@oss.sgi.com, ocfs2-devel@oss.oracle.com
-To: Christoph Hellwig <hch@infradead.org>, mchristi@redhat.com
-Return-path: <linux-scsi-owner@vger.kernel.org>
-In-Reply-To: <20160108133237.GA7663@infradead.org>
-Sender: linux-scsi-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Li Xi <pkuelelixi@gmail.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Return-path: <kernel-janitors-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160106100425.GG23185@mwanda>
+Sender: kernel-janitors-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 01/08/2016 07:32 AM, Christoph Hellwig wrote:
-> This looks good to me from a highlevel point of view.
-> Do you also have a git tree to take a look at all the changes in a
-> single big diff?
+On Wed, Jan 06, 2016 at 01:04:25PM +0300, Dan Carpenter wrote:
+> The dqget() function returns error pointers on error, it doesn't return
+> NULL.
+> 
+> Fixes: 76481d7a60a4 ('ext4: add project quota support')
+> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 
-I uploaded a git tree here:
+Thanks for pointing this out.  I've folded this into the commit with
+the bug.
 
-https://github.com/mikechristie/linux-kernel.git
-
-based off of linux-next today. The patches are just in the master branch.
+					- Ted
