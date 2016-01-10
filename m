@@ -1,12 +1,13 @@
 From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [dm-devel] [PATCH 02/35] block: add REQ_OP definitions and
  bi_op/op fields
-Date: Sat, 9 Jan 2016 23:14:57 -0800
-Message-ID: <20160110071457.GA12831@infradead.org>
+Date: Sat, 9 Jan 2016 23:15:58 -0800
+Message-ID: <20160110071558.GB12831@infradead.org>
 References: <1452027218-32303-1-git-send-email-mchristi@redhat.com>
  <1452027218-32303-3-git-send-email-mchristi@redhat.com>
  <20160109133716.GB26660@infradead.org>
  <5691AC2E.2050403@cs.wisc.edu>
+ <5691B208.9060001@cs.wisc.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: device-mapper development <dm-devel@redhat.com>,
@@ -23,12 +24,24 @@ Cc: device-mapper development <dm-devel@redhat.com>,
 To: Mike Christie <michaelc@cs.wisc.edu>
 Return-path: <linux-bcache-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <5691AC2E.2050403@cs.wisc.edu>
+In-Reply-To: <5691B208.9060001@cs.wisc.edu>
 Sender: linux-bcache-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Jan 09, 2016 at 06:56:14PM -0600, Mike Christie wrote:
-> I did not change the flush related code until the last patches. I added
-> REQ_OP_FLUSH in patch:
+On Sat, Jan 09, 2016 at 07:21:12PM -0600, Mike Christie wrote:
+> Oh yeah, to answer the second part of your question, REQ_OP_FLUSH is
+> only a flush operation like what request_fn drivers wanted.
 
-Oh, I missed that.
+And that's the odd part that trips me up.
+
+> 
+> REQ_PREFLUSH can be set with a REQ_OP_WRITE bio when filesystems want to
+> do both.
+> 
+> There is then the case where filesystems and blkdev_issue_flush could
+> just want to request a flush. I left them as a REQ_PREFLUSH with
+> REQ_OP_WRITE set, so there would be a single code path.
+
+But the pure flush without data transfer case is pretty different,
+so it seems rather odd to handle it like that.  But I suspec we could
+just fix that up later.
