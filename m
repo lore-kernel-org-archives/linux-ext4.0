@@ -1,465 +1,80 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH v4] EXT4: optimizing group search for inode allocation
-Date: Mon, 11 Jan 2016 14:13:46 -0700
-Message-ID: <687935F0-EEA5-4CB6-9E5C-43E49FBB39E2@dilger.ca>
-References: <CAKJOkCr-O+37QfFFJgtkRUZfo_-U=qmYy=Ooc7oqtqcVrz1HWQ@mail.gmail.com> <9CF60D02-FF10-44FF-A31E-D4E99F627AF2@dilger.ca> <20151226084153.GA4248@server_lokesh.domain.name> <2DA2ED68-7DD4-425D-8A47-E896E9BF0F4A@dilger.ca> <20160107004639.GA3902@server_lokesh.domain.name>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_4FD64765-07FE-417E-AEDD-73D9481FF84C"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Lokesh Jaliminche <lokesh.jaliminche@gmail.com>,
-	Theodore Ts'o <tytso@mit.edu>
+From: Richard Weinberger <richard@nod.at>
+Subject: Consolidated file encryption interface/semantics?
+Date: Mon, 11 Jan 2016 23:56:25 +0100
+Message-ID: <56943319.9080802@nod.at>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org
+To: linux-fsdevel <linux-fsdevel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:33250 "EHLO
-	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932900AbcAKVNx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Jan 2016 16:13:53 -0500
-Received: by mail-io0-f196.google.com with SMTP id f81so11371429iof.0
-        for <linux-ext4@vger.kernel.org>; Mon, 11 Jan 2016 13:13:53 -0800 (PST)
-In-Reply-To: <20160107004639.GA3902@server_lokesh.domain.name>
+Received: from a.ns.miles-group.at ([95.130.255.143]:11949 "EHLO radon.swed.at"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933565AbcAKW43 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Jan 2016 17:56:29 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi!
 
---Apple-Mail=_4FD64765-07FE-417E-AEDD-73D9481FF84C
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+I consider adding file encryption to UBIFS.
+While looking into ext4 and f2fs I realized that both
+use the same data structures/concepts.
 
-On Jan 6, 2016, at 5:46 PM, Lokesh Jaliminche =
-<lokesh.jaliminche@gmail.com> wrote:
->=20
-> you are right flex groups cannot be completely empty as some
-> blocks are used for inode table and allocation bitmaps. I
-> missed that point. I have corrected that. Also I have tested
-> and validated this patch by putting some traces it works!
+f2fs copy&pasted a lot from ext4.
+Before I do the next copy&paste, I'd to ask whether it would make sense
+to more parts of the ioctl() interface out to VFS?
 
-Good news.  Thanks for updating the patch and testing it.
-More comments below.
+Let's checkout the user visible interface:
 
-> Here are corresponding logs:
-> commands:
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D
-> mkfs.ext4 -g 10000 -G 2 /dev/sdc
-> mount -t ext4  /dev/sdc /mnt/test_ext4/
-> cd /mnt/test_ext4
-> mkdir 1
-> cd 1
->=20
-> logs:
-> =3D=3D=3D=3D=3D
-> Jan  7 03:36:45 root kernel: [   64.792939] =
-max_usable_blocks_per_flex_group     =3D  [19692]
-> Jan  7 03:36:45 root kernel: [   64.792939] stats.free_clusters        =
-          =3D  [19264]
-> Jan  7 03:36:45 root kernel: [   64.792939] Inodes_per_flex_group      =
-          =3D  [4864]
-> Jan  7 03:36:45 root kernel: [   64.792939] stats.free_inodes          =
-          =3D  [4853]
-> Jan  7 03:36:45 root kernel: [   64.792950] =
-max_usable_blocks_per_flex_group     =3D  [19692]
-> Jan  7 03:36:45 root kernel: [   64.792950] stats.free_clusters        =
-          =3D  [19481]
-> Jan  7 03:36:45 root kernel: [   64.792950] Inodes_per_flex_group      =
-          =3D  [4864]
-> Jan  7 03:36:45 root kernel: [   64.792950] stats.free_inodes          =
-          =3D  [4864]
-> Jan  7 03:36:45 root kernel: [   64.792958] =
-max_usable_blocks_per_flex_group     =3D  [19692]
-> Jan  7 03:36:45 root kernel: [   64.792958] stats.free_clusters        =
-          =3D  [19481]
-> Jan  7 03:36:45 root kernel: [   64.792958] Inodes_per_flex_group      =
-          =3D  [4864]
-> Jan  7 03:36:45 root kernel: [   64.792958] stats.free_inodes          =
-          =3D  [4864]
-> Jan  7 03:36:45 root kernel: [   64.792965] =
-max_usable_blocks_per_flex_group     =3D  [19692]
-> Jan  7 03:36:45 root kernel: [   64.792965] stats.free_clusters        =
-          =3D  [19481]
-> Jan  7 03:36:45 root kernel: [   64.792965] Inodes_per_flex_group      =
-          =3D  [4864]
-> Jan  7 03:36:45 root kernel: [   64.792965] stats.free_inodes          =
-          =3D  [4864]
-> Jan  7 03:36:45 root kernel: [   64.792972] =
-max_usable_blocks_per_flex_group     =3D  [19692]
-> Jan  7 03:36:45 root kernel: [   64.792972] stats.free_clusters        =
-          =3D  [19481]
-> Jan  7 03:36:45 root kernel: [   64.792972] Inodes_per_flex_group      =
-          =3D  [4864]
-> Jan  7 03:36:45 root kernel: [   64.792972] stats.free_inodes          =
-          =3D  [4864]
-> Jan  7 03:36:45 root kernel: [   64.792979] =
-max_usable_blocks_per_flex_group     =3D  [19692]<<<<<<<<<<<
-> Jan  7 03:36:45 root kernel: [   64.792979] stats.free_clusters        =
-          =3D  [19692]<<<<<<<<<<<
-> Jan  7 03:36:45 root kernel: [   64.792979] Inodes_per_flex_group      =
-          =3D  [4864]<<<<<<<<<<<<
-> Jan  7 03:36:45 root kernel: [   64.792979] stats.free_inodes          =
-          =3D  [4864]<<<<<<<<<<<<
-> Jan  7 03:36:45 root kernel: [   64.792985] found_flex_bg =
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>condition satisfied
->=20
->=20
-> [Patch v4]:
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> From: Lokesh Nagappa Jaliminche <lokesh.jaliminche@gmail.com>
-> Date: Thu, 7 Jan 2016 05:12:20 +0530
-> Subject: [PATCH] ext4: optimizing group serch for inode allocation
->=20
-> Added a check at the start of group search loop to
-> avoid looping unecessarily in case of empty group.
-> This also allow group search to jump directly to
-> "found_flex_bg" with "stats" and "group" already set,
-> so there is no need to go through the extra steps of
-> setting "best_desc" , "best_group" and then break
-> out of the loop just to set "stats" and "group" again.
->=20
-> Signed-off-by: Lokesh Nagappa Jaliminche <lokesh.jaliminche@gmail.com>
-> ---
-> fs/ext4/ext4.h   |    2 ++
-> fs/ext4/ialloc.c |   21 +++++++++++++++++++--
-> 2 files changed, 21 insertions(+), 2 deletions(-)
->=20
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index cc7ca4e..fc48f9a 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -326,6 +326,8 @@ struct flex_groups {
-> #define        EXT4_MAX_DESC_SIZE              EXT4_MIN_BLOCK_SIZE
-> #define EXT4_DESC_SIZE(s)              (EXT4_SB(s)->s_desc_size)
-> #ifdef __KERNEL__
-> +# define EXT4_INODE_TABLE_BLOCKS_PER_GROUP(s)  =
-(EXT4_SB(s)->s_itb_per_group)
-> +# define EXT4_BLOCKS_PER_CLUSTER(s)    (EXT4_SB(s)->s_cluster_ratio)
+ext4 offers:
+EXT4_IOC_SET_ENCRYPTION_POLICY
+EXT4_IOC_GET_ENCRYPTION_PWSALT
+EXT4_IOC_GET_ENCRYPTION_POLICY
 
-I don't think there is much value to these macros.  They aren't much
-shorter than the actual variable access, and they don't provide any
-improved clarity for the reader.
+with:
+#define EXT4_KEY_DESCRIPTOR_SIZE 8
 
-I think they were introduced many years ago so that this header could
-be shared between the kernel and e2fsprogs, but that is no longer true
-so I don't think there is a need to add new ones.
-
-Ted, any opinion on this?
-
-> # define EXT4_BLOCKS_PER_GROUP(s)      =
-(EXT4_SB(s)->s_blocks_per_group)
-> # define EXT4_CLUSTERS_PER_GROUP(s)    =
-(EXT4_SB(s)->s_clusters_per_group)
-> # define EXT4_DESC_PER_BLOCK(s)                =
-(EXT4_SB(s)->s_desc_per_block)
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 1b8024d..dc66ad8 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -463,7 +463,6 @@ static int find_group_orlov(struct super_block =
-*sb, struct inode *parent,
->                        sbi->s_log_groups_per_flex;
->                parent_group >>=3D sbi->s_log_groups_per_flex;
->        }
-> -
->        freei =3D =
-percpu_counter_read_positive(&sbi->s_freeinodes_counter);
->        avefreei =3D freei / ngroups;
-
-Not sure why this line is being deleted?
-
-> @@ -477,7 +476,20 @@ static int find_group_orlov(struct super_block =
-*sb, struct inode *parent,
->             (ext4_test_inode_flag(parent, EXT4_INODE_TOPDIR)))) {
->                int best_ndir =3D inodes_per_group;
->                int ret =3D -1;
-> -
-> +               /* blocks used for inode table and allocation bitmaps =
-*/
-> +               unsigned int max_usable_blocks_per_flex_group;
-
-This could be shorter and still clear, like "max_blocks_per_flex".
-
-> +               unsigned int blocks_per_group =3D =
-EXT4_BLOCKS_PER_GROUP(sb);
-> +               unsigned int inode_table_blocks_per_group =3D \
-> +                               EXT4_INODE_TABLE_BLOCKS_PER_GROUP(sb);
-> +               /* Number of blocks per cluster */
-> +               unsigned int cluster_ratio =3D =
-EXT4_BLOCKS_PER_CLUSTER(sb);
-
-There also isn't much value to making local variables that hold these
-same values again.  It increases stack space for little benefit.  They
-are only accessed once anyway.
-
-> +               unsigned int inodes_per_flex_group =3D =
-inodes_per_group * \
-> +                                                       flex_size;
-> +               max_usable_blocks_per_flex_group =3D \
-> +                                       ((blocks_per_group*flex_size) =
-- \
-
-Spaces around that '*'.
-
-> +                                       (inode_table_blocks_per_group =
-* \
-> +                                       flex_size + 2 * flex_size)) / =
-\
-
-This is C and not a CPP macro, so no need for linefeed escapes.
-
-> +                                       cluster_ratio;
-
-This should be ">> EXT4_SB(sb)->s_cluster_bits" to avoid the divide.
-
->                if (qstr) {
->                        hinfo.hash_version =3D DX_HASH_HALF_MD4;
->                        hinfo.seed =3D sbi->s_hash_seed;
-> @@ -489,6 +501,11 @@ static int find_group_orlov(struct super_block =
-*sb, struct inode *parent,
->                for (i =3D 0; i < ngroups; i++) {
->                        g =3D (parent_group + i) % ngroups;
->                        get_orlov_stats(sb, g, flex_size, &stats);
-> +                       /* can't get better group than empty group */
-> +                       if (max_usable_blocks_per_flex_group =3D=3D \
-> +                               stats.free_clusters && \
-
-No need for linefeed escapes.
-
-> +                               inodes_per_flex_group =3D=3D =
-stats.free_inodes)
-
-Align continued line after '(' from the "if (" line.
-
-> +                                       goto found_flex_bg;
-
-This is indented too much.  It will work properly when you fix the
-previous line.
-
->                        if (!stats.free_inodes)
->                                continue;
->                        if (stats.used_dirs >=3D best_ndir)
-> --
-> 1.7.1
->=20
-> Regards,
-> Lokesh
->=20
-> On Sun, Jan 03, 2016 at 11:34:51AM -0700, Andreas Dilger wrote:
->> On Dec 26, 2015, at 01:41, Lokesh Jaliminche =
-<lokesh.jaliminche@gmail.com> wrote:
->>>=20
->>>=20
->>> =46rom 5199982d29ff291b181c25af63a22d6f2d6d3f7b Mon Sep 17 00:00:00 =
-2001
->>> From: Lokesh Nagappa Jaliminche <lokesh.jaliminche@gmail.com>
->>> Date: Sat, 26 Dec 2015 13:19:36 +0530
->>> Subject: [PATCH v3] ext4: optimizing group search for inode =
-allocation
->>>=20
->>> Added a check at the start of group search loop to
->>> avoid looping unecessarily in case of empty group.
->>> This also allow group search to jump directly to
->>> "found_flex_bg" with "stats" and "group" already set,
->>> so there is no need to go through the extra steps of
->>> setting "best_desc" and "best_group" and then break
->>> out of the loop just to set "stats" and "group" again.
->>>=20
->>> Signed-off-by: Lokesh Nagappa Jaliminche =
-<lokesh.jaliminche@gmail.com>
->>> ---
->>> fs/ext4/ialloc.c |   12 ++++++++++--
->>> 1 files changed, 10 insertions(+), 2 deletions(-)
->>>=20
->>> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
->>> index 1b8024d..16f94db 100644
->>> --- a/fs/ext4/ialloc.c
->>> +++ b/fs/ext4/ialloc.c
->>> @@ -473,10 +473,14 @@ static int find_group_orlov(struct super_block =
-*sb, struct inode *parent,
->>>       ndirs =3D percpu_counter_read_positive(&sbi->s_dirs_counter);
->>>=20
->>>       if (S_ISDIR(mode) &&
->>> -           ((parent =3D=3D d_inode(sb->s_root)) ||
->>> -            (ext4_test_inode_flag(parent, EXT4_INODE_TOPDIR)))) {
->>> +               ((parent =3D=3D d_inode(sb->s_root)) ||
->>> +               (ext4_test_inode_flag(parent, EXT4_INODE_TOPDIR)))) =
-{
->>=20
->> I don't understand why you are changing the indentation here?
->>=20
->>> +               unsigned int inodes_per_flex_group;
->>> +               unsigned long int clusters_per_flex_group;
->>>               int best_ndir =3D inodes_per_group;
->>>               int ret =3D -1;
->>> +               inodes_per_flex_group =3D inodes_per_group * =
-flex_size;
->>> +               clusters_per_flex_group =3D =
-sbi->s_clusters_per_group * flex_size;
->>=20
->> Have you actually tested if this code works?  When I was looking at =
-this
->> code I was accidentally looking at the ext2 version, which only deals =
-with
->> individual groups, and not flex groups.  I don't think that a flex =
-group
->> can actually be completely empty, since it will always contain at =
-least
->> an inode table and some bitmaps.
->>=20
->> This calculation needs to take this into account or it will just be
->> overhead and not an optimization. Something like:
->>=20
->>                /* account for inode table and allocation bitmaps */
->>                clusters_per_flex_group =3D sbi->s_clusters_per_group =
-* flex_size -
->>                        ((inodes_per_flex_group * EXT4_INODE_SIZE(sb) =
-+
->>                          (flex_size << sb->s_blocksize_bits) * 2 ) >>
->>                        EXT4_SB(sb)->s_cluster_bits;
->>=20
->> It would be worthwhile to print this out and verify that there are =
-actually
->> groups with this many free blocks in a newly formatted filesystem.
->>=20
->> Cheers, Andreas
->>=20
->>>               if (qstr) {
->>>                       hinfo.hash_version =3D DX_HASH_HALF_MD4;
->>> @@ -489,6 +493,10 @@ static int find_group_orlov(struct super_block =
-*sb, struct inode *parent,
->>>               for (i =3D 0; i < ngroups; i++) {
->>>                       g =3D (parent_group + i) % ngroups;
->>>                       get_orlov_stats(sb, g, flex_size, &stats);
->>> +                       /* the group can't get any better than empty =
-*/
->>> +                       if (inodes_per_flex_group =3D=3D =
-stats.free_inodes &&
->>> +                               clusters_per_flex_group =3D=3D =
-stats.free_clusters)
->>> +                               goto found_flex_bg;
->>>                       if (!stats.free_inodes)
->>>                               continue;
->>>                       if (stats.used_dirs >=3D best_ndir)
->>> --
->>> 1.7.1
->>>=20
->>>=20
->>>> On Mon, Dec 21, 2015 at 10:27:37AM -0700, Andreas Dilger wrote:
->>>>> On Dec 18, 2015, at 4:32 PM, lokesh jaliminche =
-<lokesh.jaliminche@gmail.com> wrote:
->>>>>=20
->>>>> =46rom 9e09fef78b2fa552c883bf8124af873abfde0805 Mon Sep 17 =
-00:00:00 2001
->>>>> From: Lokesh Nagappa Jaliminche <lokesh.jaliminche@seagate.com>
->>>>=20
->>>> In the patch summary there is a typo - s/serch/search/
->>>>=20
->>>> Also, it appears your email client has mangled the whitespace in =
-the
->>>> patch.  Please use "git send-email" to send your patch to the list:
->>>>=20
->>>> git send-email --to tytso@mit.edu --cc linux-ext4@vger.kernel.org =
-HEAD~1
->>>>=20
->>>> so that it arrives intact.  You probably need to set it up in =
-~/.gitconfig:
->>>>=20
->>>> [sendemail]
->>>>       confirm =3D compose
->>>>       smtpdomain =3D {your client hostname}
->>>>       smtpserver =3D {your SMTP server hostname}
->>>>=20
->>>> Cheers, Andreas
->>>>=20
->>>>> Added a check at the start of group search loop to
->>>>> avoid looping unecessarily in case of empty group.
->>>>> This also allow group search to jump directly to
->>>>> "found_flex_bg" with "stats" and "group" already set,
->>>>> so there is no need to go through the extra steps of
->>>>> setting "best_desc" and "best_group" and then break
->>>>> out of the loop just to set "stats" and "group" again.
->>>>>=20
->>>>> Signed-off-by: Lokesh N Jaliminche <lokesh.jaliminche@gmail.com>
->>>>> ---
->>>>> fs/ext4/ialloc.c |    8 ++++++++
->>>>> 1 files changed, 8 insertions(+), 0 deletions(-)
->>>>>=20
->>>>> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
->>>>> index 1b8024d..588bf8e 100644
->>>>> --- a/fs/ext4/ialloc.c
->>>>> +++ b/fs/ext4/ialloc.c
->>>>> @@ -446,6 +446,8 @@ static int find_group_orlov(struct super_block
->>>>> *sb, struct inode *parent,
->>>>> struct ext4_sb_info *sbi =3D EXT4_SB(sb);
->>>>> ext4_group_t real_ngroups =3D ext4_get_groups_count(sb);
->>>>> int inodes_per_group =3D EXT4_INODES_PER_GROUP(sb);
->>>>> + unsigned int inodes_per_flex_group;
->>>>> + long unsigned int blocks_per_clustre;
->>>>> unsigned int freei, avefreei, grp_free;
->>>>> ext4_fsblk_t freeb, avefreec;
->>>>> unsigned int ndirs;
->>>>> @@ -470,6 +472,8 @@ static int find_group_orlov(struct super_block
->>>>> *sb, struct inode *parent,
->>>>> percpu_counter_read_positive(&sbi->s_freeclusters_counter));
->>>>> avefreec =3D freeb;
->>>>> do_div(avefreec, ngroups);
->>>>> + inodes_per_flex_group =3D inodes_per_group * flex_size;
->>>>> + blocks_per_clustre =3D sbi->s_blocks_per_group * flex_size;
->>>>> ndirs =3D percpu_counter_read_positive(&sbi->s_dirs_counter);
->>>>>=20
->>>>> if (S_ISDIR(mode) &&
->>>>> @@ -489,6 +493,10 @@ static int find_group_orlov(struct =
-super_block
->>>>> *sb, struct inode *parent,
->>>>> for (i =3D 0; i < ngroups; i++) {
->>>>> g =3D (parent_group + i) % ngroups;
->>>>> get_orlov_stats(sb, g, flex_size, &stats);
->>>>> + /* the group can't get any better than empty */
->>>>> + if (inodes_per_flex_group =3D=3D stats.free_inodes &&
->>>>> + blocks_per_clustre =3D=3D stats.free_clusters)
->>>>> + goto found_flex_bg;
->>>>> if (!stats.free_inodes)
->>>>> continue;
->>>>> if (stats.used_dirs >=3D best_ndir)
->>>>> --
->>>>> 1.7.1
->>>>> <0001-EXT4-optimizing-group-serch-for-inode-allocation.patch>
->>>>=20
->>>>=20
->>>> Cheers, Andreas
->>>=20
->>>=20
->>> <0001-ext4-optimizing-group-serch-for-inode-allocation.patch>
-> <0001-ext4-optimizing-group-serch-for-inode-allocation.patch>
+/* Policy provided via an ioctl on the topmost directory */
+struct ext4_encryption_policy {
+        char version;
+        char contents_encryption_mode;
+        char filenames_encryption_mode;
+        char flags;
+        char master_key_descriptor[EXT4_KEY_DESCRIPTOR_SIZE];
+} __attribute__((__packed__));
 
 
-Cheers, Andreas
+f2fs:
+F2FS_IOC_SET_ENCRYPTION_POLICY
+F2FS_IOC_GET_ENCRYPTION_POLICY
+F2FS_IOC_GET_ENCRYPTION_PWSALT
 
+#define F2FS_KEY_DESCRIPTOR_SIZE        8
 
+/* Policy provided via an ioctl on the topmost directory */
+struct f2fs_encryption_policy {
+        char version;
+        char contents_encryption_mode;
+        char filenames_encryption_mode;
+        char flags;
+        char master_key_descriptor[F2FS_KEY_DESCRIPTOR_SIZE];
+} __attribute__((__packed__));
 
+So, the data structures are identical and AFAIK also the supported cipher modes are.
+But as both use their own ioctls having a single tool to control file encryption
+can be error prone in future.
+Interestingly the current ioctls for ext4 and f2fs resolve to the same integers,
+is this on purpose? :)
 
+Wouldn't it be worthwhile having exactly the same ioctls such that util-linux could offer
+a decent file encryption tool which can be used by all file systems with file encryption
+support?
 
+Another thing are semantics, ext4 implemented a policy which controls
+under which conditions encrypted files are allowed to be unlinked, moved, etc...
+f2fs adopted these from ext4. But can't we do that in VFS or at least
+agree one a policy and document it? :-)
 
---Apple-Mail=_4FD64765-07FE-417E-AEDD-73D9481FF84C
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBVpQbC3Kl2rkXzB/gAQgfBw/8DjKlTC0gmsnw6NVxkDNFOFD4JVriVJd8
-7tQylrRcJDmFFalm/N45vkab7t/xhZnxn+OkNMYkD4HRIdYZ4DJRlnZIU2+jcwn8
-DP9m0AYby58Imy2/bk4+JByE2leS7WAezcejI41KG0+ABUu0jVB6MrW1coa2sjpR
-2eTeeNPq+1svURNozuUw0kTMEXW0CM5NQzd8/yP5n5yvVCiQZ4u94qUdyyepRsKe
-pK+dXBweHZU6q1mtAunDAny6Ysn7z6Wxmm65+5ARxJ3NDvYEte3FlqoXWDvQEcjB
-FSGHtMKZkbzFN7aA3m6GmLu9i7HTMxYtqLC3cxu8mfw1OKg4pad6aMLxFIJ/fDnO
-KZOpRwKRbgJRMgI8fmkfykyhCb3A0fPefF61s03QXr+Y/5+ds9GwqxC0pPizS91K
-2IaOUtdHgpGKBKzkLeGcuXJyGunD3M5C00KSejSlNalB/jmH9zjR9uNlcwcK7vyr
-Fzg1Avtod8I4dQnWXl1CqUq9Dy0YOBNnnSFC02WwhQRsMaUtoyBsG24r3UebJnsV
-VygrtVHSdJGfd+yHQ4ZNXu6+QeZkVEDB/dMmaHVjwzZ3jKimtvhgXn6ihDONartk
-sWBM6eKKVd3ls1Ik/9rxKA4gUa1ItqJ8h7zNVphj6b6DeSpyhRCJtvQB3dj78unF
-B2+vrpe7+7c=
-=J168
------END PGP SIGNATURE-----
-
---Apple-Mail=_4FD64765-07FE-417E-AEDD-73D9481FF84C--
+Thanks,
+//richard
