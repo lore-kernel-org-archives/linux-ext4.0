@@ -1,934 +1,465 @@
-From: mchristi@redhat.com
-Subject: [PATCH 30/35] block, fs,
-	drivers: do not test bi_rw for REQ_OPs
-Date: Mon, 11 Jan 2016 14:21:28 -0600
-Message-ID: <1452543693-4440-31-git-send-email-mchristi@redhat.com>
-References: <1452543693-4440-1-git-send-email-mchristi@redhat.com>
-Reply-To: device-mapper development <dm-devel@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Mike Christie <mchristi@redhat.com>
-To: linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-        konrad.wilk@oracle.com, drbd-dev@lists.linbit.com,
-        philipp.reisner@linbit.com, lars.ellenberg@linbit.com,
-        linux-raid@vger.kernel.org, dm-devel@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-bcache@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-scsi@vger.kernel.org, linux-mtd@lists.infradead.org,
-        target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        osd-dev@open-osd.org, xfs@oss.sgi.com, ocfs2-devel@oss.oracle.com
-Return-path: <dm-devel-bounces@redhat.com>
-In-Reply-To: <1452543693-4440-1-git-send-email-mchristi@redhat.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/dm-devel>
-List-Post: <mailto:dm-devel@redhat.com>
-List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=subscribe>
-Sender: dm-devel-bounces@redhat.com
-Errors-To: dm-devel-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v4] EXT4: optimizing group search for inode allocation
+Date: Mon, 11 Jan 2016 14:13:46 -0700
+Message-ID: <687935F0-EEA5-4CB6-9E5C-43E49FBB39E2@dilger.ca>
+References: <CAKJOkCr-O+37QfFFJgtkRUZfo_-U=qmYy=Ooc7oqtqcVrz1HWQ@mail.gmail.com> <9CF60D02-FF10-44FF-A31E-D4E99F627AF2@dilger.ca> <20151226084153.GA4248@server_lokesh.domain.name> <2DA2ED68-7DD4-425D-8A47-E896E9BF0F4A@dilger.ca> <20160107004639.GA3902@server_lokesh.domain.name>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_4FD64765-07FE-417E-AEDD-73D9481FF84C"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Lokesh Jaliminche <lokesh.jaliminche@gmail.com>,
+	Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-io0-f196.google.com ([209.85.223.196]:33250 "EHLO
+	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932900AbcAKVNx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Jan 2016 16:13:53 -0500
+Received: by mail-io0-f196.google.com with SMTP id f81so11371429iof.0
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Jan 2016 13:13:53 -0800 (PST)
+In-Reply-To: <20160107004639.GA3902@server_lokesh.domain.name>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Mike Christie <mchristi@redhat.com>
 
-We no longer use the bio->bi_rw field for REQ_OPs: REQ_WRITE,
-REQ_DISCARD, REQ_WRITE_SAME, so this patch stops checking
-for them in bi_rw and also removes the related compat code.
+--Apple-Mail=_4FD64765-07FE-417E-AEDD-73D9481FF84C
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-v2:
+On Jan 6, 2016, at 5:46 PM, Lokesh Jaliminche =
+<lokesh.jaliminche@gmail.com> wrote:
+>=20
+> you are right flex groups cannot be completely empty as some
+> blocks are used for inode table and allocation bitmaps. I
+> missed that point. I have corrected that. Also I have tested
+> and validated this patch by putting some traces it works!
 
-1. Remove compat code in __get_request.
+Good news.  Thanks for updating the patch and testing it.
+More comments below.
 
-Signed-off-by: Mike Christie <mchristi@redhat.com>
----
- block/bio.c                                 |  6 ++---
- block/blk-core.c                            | 34 ++++++++---------------------
- block/blk-merge.c                           | 14 ++++++------
- block/blk-mq.c                              |  3 +--
- drivers/ata/libata-scsi.c                   |  2 +-
- drivers/block/brd.c                         |  2 +-
- drivers/block/drbd/drbd_main.c              | 15 +++++++------
- drivers/block/drbd/drbd_worker.c            |  4 ++--
- drivers/block/loop.c                        |  6 ++---
- drivers/block/rbd.c                         |  2 +-
- drivers/block/rsxx/dma.c                    |  2 +-
- drivers/block/umem.c                        |  2 +-
- drivers/block/zram/zram_drv.c               |  2 +-
- drivers/ide/ide-floppy.c                    |  2 +-
- drivers/lightnvm/rrpc.c                     |  2 +-
- drivers/md/bcache/request.c                 | 10 ++++-----
- drivers/md/dm-cache-target.c                | 10 +++++----
- drivers/md/dm-crypt.c                       |  2 +-
- drivers/md/dm-log-writes.c                  |  2 +-
- drivers/md/dm-raid1.c                       |  8 +++----
- drivers/md/dm-region-hash.c                 |  4 ++--
- drivers/md/dm-stripe.c                      |  4 ++--
- drivers/md/dm-thin.c                        | 15 ++++++++-----
- drivers/md/dm.c                             |  6 ++---
- drivers/md/linear.c                         |  2 +-
- drivers/md/raid0.c                          |  2 +-
- drivers/scsi/osd/osd_initiator.c            |  4 ++--
- drivers/staging/lustre/lustre/llite/lloop.c |  8 +++----
- include/linux/bio.h                         | 15 ++++++++-----
- include/linux/fs.h                          | 25 +++++++--------------
- 30 files changed, 100 insertions(+), 115 deletions(-)
+> Here are corresponding logs:
+> commands:
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D
+> mkfs.ext4 -g 10000 -G 2 /dev/sdc
+> mount -t ext4  /dev/sdc /mnt/test_ext4/
+> cd /mnt/test_ext4
+> mkdir 1
+> cd 1
+>=20
+> logs:
+> =3D=3D=3D=3D=3D
+> Jan  7 03:36:45 root kernel: [   64.792939] =
+max_usable_blocks_per_flex_group     =3D  [19692]
+> Jan  7 03:36:45 root kernel: [   64.792939] stats.free_clusters        =
+          =3D  [19264]
+> Jan  7 03:36:45 root kernel: [   64.792939] Inodes_per_flex_group      =
+          =3D  [4864]
+> Jan  7 03:36:45 root kernel: [   64.792939] stats.free_inodes          =
+          =3D  [4853]
+> Jan  7 03:36:45 root kernel: [   64.792950] =
+max_usable_blocks_per_flex_group     =3D  [19692]
+> Jan  7 03:36:45 root kernel: [   64.792950] stats.free_clusters        =
+          =3D  [19481]
+> Jan  7 03:36:45 root kernel: [   64.792950] Inodes_per_flex_group      =
+          =3D  [4864]
+> Jan  7 03:36:45 root kernel: [   64.792950] stats.free_inodes          =
+          =3D  [4864]
+> Jan  7 03:36:45 root kernel: [   64.792958] =
+max_usable_blocks_per_flex_group     =3D  [19692]
+> Jan  7 03:36:45 root kernel: [   64.792958] stats.free_clusters        =
+          =3D  [19481]
+> Jan  7 03:36:45 root kernel: [   64.792958] Inodes_per_flex_group      =
+          =3D  [4864]
+> Jan  7 03:36:45 root kernel: [   64.792958] stats.free_inodes          =
+          =3D  [4864]
+> Jan  7 03:36:45 root kernel: [   64.792965] =
+max_usable_blocks_per_flex_group     =3D  [19692]
+> Jan  7 03:36:45 root kernel: [   64.792965] stats.free_clusters        =
+          =3D  [19481]
+> Jan  7 03:36:45 root kernel: [   64.792965] Inodes_per_flex_group      =
+          =3D  [4864]
+> Jan  7 03:36:45 root kernel: [   64.792965] stats.free_inodes          =
+          =3D  [4864]
+> Jan  7 03:36:45 root kernel: [   64.792972] =
+max_usable_blocks_per_flex_group     =3D  [19692]
+> Jan  7 03:36:45 root kernel: [   64.792972] stats.free_clusters        =
+          =3D  [19481]
+> Jan  7 03:36:45 root kernel: [   64.792972] Inodes_per_flex_group      =
+          =3D  [4864]
+> Jan  7 03:36:45 root kernel: [   64.792972] stats.free_inodes          =
+          =3D  [4864]
+> Jan  7 03:36:45 root kernel: [   64.792979] =
+max_usable_blocks_per_flex_group     =3D  [19692]<<<<<<<<<<<
+> Jan  7 03:36:45 root kernel: [   64.792979] stats.free_clusters        =
+          =3D  [19692]<<<<<<<<<<<
+> Jan  7 03:36:45 root kernel: [   64.792979] Inodes_per_flex_group      =
+          =3D  [4864]<<<<<<<<<<<<
+> Jan  7 03:36:45 root kernel: [   64.792979] stats.free_inodes          =
+          =3D  [4864]<<<<<<<<<<<<
+> Jan  7 03:36:45 root kernel: [   64.792985] found_flex_bg =
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>condition satisfied
+>=20
+>=20
+> [Patch v4]:
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> From: Lokesh Nagappa Jaliminche <lokesh.jaliminche@gmail.com>
+> Date: Thu, 7 Jan 2016 05:12:20 +0530
+> Subject: [PATCH] ext4: optimizing group serch for inode allocation
+>=20
+> Added a check at the start of group search loop to
+> avoid looping unecessarily in case of empty group.
+> This also allow group search to jump directly to
+> "found_flex_bg" with "stats" and "group" already set,
+> so there is no need to go through the extra steps of
+> setting "best_desc" , "best_group" and then break
+> out of the loop just to set "stats" and "group" again.
+>=20
+> Signed-off-by: Lokesh Nagappa Jaliminche <lokesh.jaliminche@gmail.com>
+> ---
+> fs/ext4/ext4.h   |    2 ++
+> fs/ext4/ialloc.c |   21 +++++++++++++++++++--
+> 2 files changed, 21 insertions(+), 2 deletions(-)
+>=20
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index cc7ca4e..fc48f9a 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -326,6 +326,8 @@ struct flex_groups {
+> #define        EXT4_MAX_DESC_SIZE              EXT4_MIN_BLOCK_SIZE
+> #define EXT4_DESC_SIZE(s)              (EXT4_SB(s)->s_desc_size)
+> #ifdef __KERNEL__
+> +# define EXT4_INODE_TABLE_BLOCKS_PER_GROUP(s)  =
+(EXT4_SB(s)->s_itb_per_group)
+> +# define EXT4_BLOCKS_PER_CLUSTER(s)    (EXT4_SB(s)->s_cluster_ratio)
 
-diff --git a/block/bio.c b/block/bio.c
-index 3b8e970..ca0c52d 100644
---- a/block/bio.c
-+++ b/block/bio.c
-@@ -669,10 +669,10 @@ struct bio *bio_clone_bioset(struct bio *bio_src, gfp_t gfp_mask,
- 	bio->bi_iter.bi_sector	= bio_src->bi_iter.bi_sector;
- 	bio->bi_iter.bi_size	= bio_src->bi_iter.bi_size;
- 
--	if (bio->bi_rw & REQ_DISCARD)
-+	if (bio->bi_op == REQ_OP_DISCARD)
- 		goto integrity_clone;
- 
--	if (bio->bi_rw & REQ_WRITE_SAME) {
-+	if (bio->bi_op == REQ_OP_WRITE_SAME) {
- 		bio->bi_io_vec[bio->bi_vcnt++] = bio_src->bi_io_vec[0];
- 		goto integrity_clone;
- 	}
-@@ -1792,7 +1792,7 @@ struct bio *bio_split(struct bio *bio, int sectors,
- 	 * Discards need a mutable bio_vec to accommodate the payload
- 	 * required by the DSM TRIM and UNMAP commands.
- 	 */
--	if (bio->bi_rw & REQ_DISCARD)
-+	if (bio->bi_op == REQ_OP_DISCARD)
- 		split = bio_clone_bioset(bio, gfp, bs);
- 	else
- 		split = bio_clone_fast(bio, gfp, bs);
-diff --git a/block/blk-core.c b/block/blk-core.c
-index dacbd68..b3db65c 100644
---- a/block/blk-core.c
-+++ b/block/blk-core.c
-@@ -1151,8 +1151,7 @@ static struct request *__get_request(struct request_list *rl, int op,
- 
- 	blk_rq_init(q, rq);
- 	blk_rq_set_rl(rq, rl);
--	/* tmp compat - allow users to check either one for the op */
--	rq->cmd_flags = op | op_flags | REQ_ALLOCED;
-+	rq->cmd_flags = op_flags | REQ_ALLOCED;
- 	rq->op = op;
- 
- 	/* init elvpriv */
-@@ -1704,8 +1703,7 @@ void init_request_from_bio(struct request *req, struct bio *bio)
- {
- 	req->cmd_type = REQ_TYPE_FS;
- 
--	/* tmp compat. Allow users to set bi_op or bi_rw */
--	req->cmd_flags |= (bio->bi_rw | bio->bi_op) & REQ_COMMON_MASK;
-+	req->cmd_flags |= bio->bi_rw & REQ_COMMON_MASK;
- 	if (bio->bi_rw & REQ_RAHEAD)
- 		req->cmd_flags |= REQ_FAILFAST_MASK;
- 
-@@ -1855,9 +1853,9 @@ static void handle_bad_sector(struct bio *bio)
- 	char b[BDEVNAME_SIZE];
- 
- 	printk(KERN_INFO "attempt to access beyond end of device\n");
--	printk(KERN_INFO "%s: rw=%ld, want=%Lu, limit=%Lu\n",
-+	printk(KERN_INFO "%s: rw=%d,%ld, want=%Lu, limit=%Lu\n",
- 			bdevname(bio->bi_bdev, b),
--			bio->bi_rw,
-+			bio->bi_op, bio->bi_rw,
- 			(unsigned long long)bio_end_sector(bio),
- 			(long long)(i_size_read(bio->bi_bdev->bd_inode) >> 9));
- }
-@@ -1978,14 +1976,14 @@ generic_make_request_checks(struct bio *bio)
- 		}
- 	}
- 
--	if ((bio->bi_rw & REQ_DISCARD) &&
-+	if ((bio->bi_op == REQ_OP_DISCARD) &&
- 	    (!blk_queue_discard(q) ||
- 	     ((bio->bi_rw & REQ_SECURE) && !blk_queue_secdiscard(q)))) {
- 		err = -EOPNOTSUPP;
- 		goto end_io;
- 	}
- 
--	if (bio->bi_rw & REQ_WRITE_SAME && !bdev_write_same(bio->bi_bdev)) {
-+	if (bio->bi_op == REQ_OP_WRITE_SAME && !bdev_write_same(bio->bi_bdev)) {
- 		err = -EOPNOTSUPP;
- 		goto end_io;
- 	}
-@@ -2039,12 +2037,6 @@ blk_qc_t generic_make_request(struct bio *bio)
- 	struct bio_list bio_list_on_stack;
- 	blk_qc_t ret = BLK_QC_T_NONE;
- 
--	/* tmp compat. Allow users to set either one or both.
--	 * This will be removed when we have converted
--	 * everyone in the next patches.
--	 */
--	bio->bi_rw |= bio->bi_op;
--
- 	if (!generic_make_request_checks(bio))
- 		goto out;
- 
-@@ -2114,12 +2106,6 @@ EXPORT_SYMBOL(generic_make_request);
-  */
- blk_qc_t submit_bio(struct bio *bio)
- {
--	/* tmp compat. Allow users to set either one or both.
--	 * This will be removed when we have converted
--	 * everyone in the next patches.
--	 */
--	bio->bi_rw |= bio->bi_op;
--
- 	/*
- 	 * If it's a regular read/write or a barrier with data attached,
- 	 * go through the normal accounting stuff before submission.
-@@ -2127,12 +2113,12 @@ blk_qc_t submit_bio(struct bio *bio)
- 	if (bio_has_data(bio)) {
- 		unsigned int count;
- 
--		if (unlikely(bio->bi_rw & REQ_WRITE_SAME))
-+		if (unlikely(bio->bi_op == REQ_OP_WRITE_SAME))
- 			count = bdev_logical_block_size(bio->bi_bdev) >> 9;
- 		else
- 			count = bio_sectors(bio);
- 
--		if (bio->bi_rw & WRITE) {
-+		if (op_is_write(bio->bi_op)) {
- 			count_vm_events(PGPGOUT, count);
- 		} else {
- 			task_io_account_read(bio->bi_iter.bi_size);
-@@ -2143,7 +2129,7 @@ blk_qc_t submit_bio(struct bio *bio)
- 			char b[BDEVNAME_SIZE];
- 			printk(KERN_DEBUG "%s(%d): %s block %Lu on %s (%u sectors)\n",
- 			current->comm, task_pid_nr(current),
--				(bio->bi_rw & WRITE) ? "WRITE" : "READ",
-+				op_is_write(bio->bi_op) ? "WRITE" : "READ",
- 				(unsigned long long)bio->bi_iter.bi_sector,
- 				bdevname(bio->bi_bdev, b),
- 				count);
-@@ -2991,8 +2977,6 @@ EXPORT_SYMBOL_GPL(__blk_end_request_err);
- void blk_rq_bio_prep(struct request_queue *q, struct request *rq,
- 		     struct bio *bio)
- {
--	/* tmp compat. Allow users to set bi_op or bi_rw */
--	rq->cmd_flags |= bio_data_dir(bio);
- 	rq->op = bio->bi_op;
- 
- 	if (bio_has_data(bio))
-diff --git a/block/blk-merge.c b/block/blk-merge.c
-index de73ed1..f53fefc 100644
---- a/block/blk-merge.c
-+++ b/block/blk-merge.c
-@@ -147,9 +147,9 @@ void blk_queue_split(struct request_queue *q, struct bio **bio,
- 	struct bio *split, *res;
- 	unsigned nsegs;
- 
--	if ((*bio)->bi_rw & REQ_DISCARD)
-+	if ((*bio)->bi_op == REQ_OP_DISCARD)
- 		split = blk_bio_discard_split(q, *bio, bs, &nsegs);
--	else if ((*bio)->bi_rw & REQ_WRITE_SAME)
-+	else if ((*bio)->bi_op == REQ_OP_WRITE_SAME)
- 		split = blk_bio_write_same_split(q, *bio, bs, &nsegs);
- 	else
- 		split = blk_bio_segment_split(q, *bio, q->bio_split, &nsegs);
-@@ -188,10 +188,10 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
- 	 * This should probably be returning 0, but blk_add_request_payload()
- 	 * (Christoph!!!!)
- 	 */
--	if (bio->bi_rw & REQ_DISCARD)
-+	if (bio->bi_op == REQ_OP_DISCARD)
- 		return 1;
- 
--	if (bio->bi_rw & REQ_WRITE_SAME)
-+	if (bio->bi_op == REQ_OP_WRITE_SAME)
- 		return 1;
- 
- 	fbio = bio;
-@@ -364,7 +364,7 @@ static int __blk_bios_map_sg(struct request_queue *q, struct bio *bio,
- 	nsegs = 0;
- 	cluster = blk_queue_cluster(q);
- 
--	if (bio->bi_rw & REQ_DISCARD) {
-+	if (bio->bi_op == REQ_OP_DISCARD) {
- 		/*
- 		 * This is a hack - drivers should be neither modifying the
- 		 * biovec, nor relying on bi_vcnt - but because of
-@@ -379,7 +379,7 @@ static int __blk_bios_map_sg(struct request_queue *q, struct bio *bio,
- 		return 0;
- 	}
- 
--	if (bio->bi_rw & REQ_WRITE_SAME) {
-+	if (bio->bi_op == REQ_OP_WRITE_SAME) {
- single_segment:
- 		*sg = sglist;
- 		bvec = bio_iovec(bio);
-@@ -418,7 +418,7 @@ int blk_rq_map_sg(struct request_queue *q, struct request *rq,
- 	}
- 
- 	if (q->dma_drain_size && q->dma_drain_needed(rq)) {
--		if (rq->cmd_flags & REQ_WRITE)
-+		if (op_is_write(rq->op))
- 			memset(q->dma_drain_buffer, 0, q->dma_drain_size);
- 
- 		sg_unmark_end(sg);
-diff --git a/block/blk-mq.c b/block/blk-mq.c
-index 745dae8..72a028b 100644
---- a/block/blk-mq.c
-+++ b/block/blk-mq.c
-@@ -170,8 +170,7 @@ static void blk_mq_rq_ctx_init(struct request_queue *q, struct blk_mq_ctx *ctx,
- 	rq->q = q;
- 	rq->mq_ctx = ctx;
- 	rq->op = op;
--	/* tmp compat - allow users to check either one for the op */
--	rq->cmd_flags |= op | op_flags;
-+	rq->cmd_flags |= op_flags;
- 	/* do not touch atomic flags, it needs atomic ops against the timer */
- 	rq->cpu = -1;
- 	INIT_HLIST_NODE(&rq->hash);
-diff --git a/drivers/ata/libata-scsi.c b/drivers/ata/libata-scsi.c
-index 7e959f9..05ab70e 100644
---- a/drivers/ata/libata-scsi.c
-+++ b/drivers/ata/libata-scsi.c
-@@ -1125,7 +1125,7 @@ static int atapi_drain_needed(struct request *rq)
- 	if (likely(rq->cmd_type != REQ_TYPE_BLOCK_PC))
- 		return 0;
- 
--	if (!blk_rq_bytes(rq) || (rq->cmd_flags & REQ_WRITE))
-+	if (!blk_rq_bytes(rq) || op_is_write(rq->op))
- 		return 0;
- 
- 	return atapi_cmd_type(rq->cmd[0]) == ATAPI_MISC;
-diff --git a/drivers/block/brd.c b/drivers/block/brd.c
-index 5e6eb98..c7c25b1 100644
---- a/drivers/block/brd.c
-+++ b/drivers/block/brd.c
-@@ -339,7 +339,7 @@ static blk_qc_t brd_make_request(struct request_queue *q, struct bio *bio)
- 	if (bio_end_sector(bio) > get_capacity(bdev->bd_disk))
- 		goto io_error;
- 
--	if (unlikely(bio->bi_rw & REQ_DISCARD)) {
-+	if (unlikely(bio->bi_op == REQ_OP_DISCARD)) {
- 		if (sector & ((PAGE_SIZE >> SECTOR_SHIFT) - 1) ||
- 		    bio->bi_iter.bi_size & PAGE_MASK)
- 			goto io_error;
-diff --git a/drivers/block/drbd/drbd_main.c b/drivers/block/drbd/drbd_main.c
-index f6626e5..76ff804 100644
---- a/drivers/block/drbd/drbd_main.c
-+++ b/drivers/block/drbd/drbd_main.c
-@@ -1603,15 +1603,16 @@ static int _drbd_send_zc_ee(struct drbd_peer_device *peer_device,
- 	return 0;
- }
- 
--static u32 bio_flags_to_wire(struct drbd_connection *connection, unsigned long bi_rw)
-+static u32 bio_flags_to_wire(struct drbd_connection *connection,
-+			     struct bio *bio)
- {
- 	if (connection->agreed_pro_version >= 95)
--		return  (bi_rw & REQ_SYNC ? DP_RW_SYNC : 0) |
--			(bi_rw & REQ_FUA ? DP_FUA : 0) |
--			(bi_rw & REQ_FLUSH ? DP_FLUSH : 0) |
--			(bi_rw & REQ_DISCARD ? DP_DISCARD : 0);
-+		return  (bio->bi_rw & REQ_SYNC ? DP_RW_SYNC : 0) |
-+			(bio->bi_rw & REQ_FUA ? DP_FUA : 0) |
-+			(bio->bi_rw & REQ_FLUSH ? DP_FLUSH : 0) |
-+			(bio->bi_op == REQ_OP_DISCARD ? DP_DISCARD : 0);
- 	else
--		return bi_rw & REQ_SYNC ? DP_RW_SYNC : 0;
-+		return bio->bi_rw & REQ_SYNC ? DP_RW_SYNC : 0;
- }
- 
- /* Used to send write or TRIM aka REQ_DISCARD requests
-@@ -1636,7 +1637,7 @@ int drbd_send_dblock(struct drbd_peer_device *peer_device, struct drbd_request *
- 	p->sector = cpu_to_be64(req->i.sector);
- 	p->block_id = (unsigned long)req;
- 	p->seq_num = cpu_to_be32(atomic_inc_return(&device->packet_seq));
--	dp_flags = bio_flags_to_wire(peer_device->connection, req->master_bio->bi_rw);
-+	dp_flags = bio_flags_to_wire(peer_device->connection, req->master_bio);
- 	if (device->state.conn >= C_SYNC_SOURCE &&
- 	    device->state.conn <= C_PAUSED_SYNC_T)
- 		dp_flags |= DP_MAY_SET_IN_SYNC;
-diff --git a/drivers/block/drbd/drbd_worker.c b/drivers/block/drbd/drbd_worker.c
-index f92f533..4335f2d 100644
---- a/drivers/block/drbd/drbd_worker.c
-+++ b/drivers/block/drbd/drbd_worker.c
-@@ -174,7 +174,7 @@ void drbd_peer_request_endio(struct bio *bio)
- 	struct drbd_peer_request *peer_req = bio->bi_private;
- 	struct drbd_device *device = peer_req->peer_device->device;
- 	int is_write = bio_data_dir(bio) == WRITE;
--	int is_discard = !!(bio->bi_rw & REQ_DISCARD);
-+	int is_discard = !!(bio->bi_op == REQ_OP_DISCARD);
- 
- 	if (bio->bi_error && __ratelimit(&drbd_ratelimit_state))
- 		drbd_warn(device, "%s: error=%d s=%llus\n",
-@@ -248,7 +248,7 @@ void drbd_request_endio(struct bio *bio)
- 
- 	/* to avoid recursion in __req_mod */
- 	if (unlikely(bio->bi_error)) {
--		if (bio->bi_rw & REQ_DISCARD)
-+		if (bio->bi_op == REQ_OP_DISCARD)
- 			what = (bio->bi_error == -EOPNOTSUPP)
- 				? DISCARD_COMPLETED_NOTSUPP
- 				: DISCARD_COMPLETED_WITH_ERROR;
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index e771bab..1afc03c 100644
---- a/drivers/block/loop.c
-+++ b/drivers/block/loop.c
-@@ -447,7 +447,7 @@ static int lo_req_flush(struct loop_device *lo, struct request *rq)
- 
- static inline void handle_partial_read(struct loop_cmd *cmd, long bytes)
- {
--	if (bytes < 0 || (cmd->rq->cmd_flags & REQ_WRITE))
-+	if (bytes < 0 || op_is_write(cmd->rq->op))
- 		return;
- 
- 	if (unlikely(bytes < blk_rq_bytes(cmd->rq))) {
-@@ -535,7 +535,7 @@ static int do_req_filebacked(struct loop_device *lo, struct request *rq)
- 
- 	pos = ((loff_t) blk_rq_pos(rq) << 9) + lo->lo_offset;
- 
--	if (rq->cmd_flags & REQ_WRITE) {
-+	if (op_is_write(rq->op)) {
- 		if (rq->cmd_flags & REQ_FLUSH)
- 			ret = lo_req_flush(lo, rq);
- 		else if (rq->op == REQ_OP_DISCARD)
-@@ -1666,7 +1666,7 @@ static int loop_queue_rq(struct blk_mq_hw_ctx *hctx,
- 
- static void loop_handle_cmd(struct loop_cmd *cmd)
- {
--	const bool write = cmd->rq->cmd_flags & REQ_WRITE;
-+	const bool write = op_is_write(cmd->rq->op);
- 	struct loop_device *lo = cmd->rq->q->queuedata;
- 	int ret = 0;
- 
-diff --git a/drivers/block/rbd.c b/drivers/block/rbd.c
-index ea326ef..0afccb1 100644
---- a/drivers/block/rbd.c
-+++ b/drivers/block/rbd.c
-@@ -3375,7 +3375,7 @@ static void rbd_queue_workfn(struct work_struct *work)
- 
- 	if (rq->op == REQ_OP_DISCARD)
- 		op_type = OBJ_OP_DISCARD;
--	else if (rq->cmd_flags & REQ_WRITE)
-+	else if (rq->op == REQ_OP_WRITE)
- 		op_type = OBJ_OP_WRITE;
- 	else
- 		op_type = OBJ_OP_READ;
-diff --git a/drivers/block/rsxx/dma.c b/drivers/block/rsxx/dma.c
-index cf8cd29..dfc189e 100644
---- a/drivers/block/rsxx/dma.c
-+++ b/drivers/block/rsxx/dma.c
-@@ -705,7 +705,7 @@ int rsxx_dma_queue_bio(struct rsxx_cardinfo *card,
- 		dma_cnt[i] = 0;
- 	}
- 
--	if (bio->bi_rw & REQ_DISCARD) {
-+	if (bio->bi_op == REQ_OP_DISCARD) {
- 		bv_len = bio->bi_iter.bi_size;
- 
- 		while (bv_len > 0) {
-diff --git a/drivers/block/umem.c b/drivers/block/umem.c
-index 7939b9f..a24ccbc 100644
---- a/drivers/block/umem.c
-+++ b/drivers/block/umem.c
-@@ -462,7 +462,7 @@ static void process_page(unsigned long data)
- 				le32_to_cpu(desc->local_addr)>>9,
- 				le32_to_cpu(desc->transfer_size));
- 			dump_dmastat(card, control);
--		} else if ((bio->bi_rw & REQ_WRITE) &&
-+		} else if (op_is_write(bio->bi_op) &&
- 			   le32_to_cpu(desc->local_addr) >> 9 ==
- 				card->init_size) {
- 			card->init_size += le32_to_cpu(desc->transfer_size) >> 9;
-diff --git a/drivers/block/zram/zram_drv.c b/drivers/block/zram/zram_drv.c
-index 47915d7..8d14cea 100644
---- a/drivers/block/zram/zram_drv.c
-+++ b/drivers/block/zram/zram_drv.c
-@@ -849,7 +849,7 @@ static void __zram_make_request(struct zram *zram, struct bio *bio)
- 	offset = (bio->bi_iter.bi_sector &
- 		  (SECTORS_PER_PAGE - 1)) << SECTOR_SHIFT;
- 
--	if (unlikely(bio->bi_rw & REQ_DISCARD)) {
-+	if (unlikely(bio->bi_op == REQ_OP_DISCARD)) {
- 		zram_bio_discard(zram, index, offset, bio);
- 		bio_endio(bio);
- 		return;
-diff --git a/drivers/ide/ide-floppy.c b/drivers/ide/ide-floppy.c
-index 2fb5350..f079d8d 100644
---- a/drivers/ide/ide-floppy.c
-+++ b/drivers/ide/ide-floppy.c
-@@ -206,7 +206,7 @@ static void idefloppy_create_rw_cmd(ide_drive_t *drive,
- 	memcpy(rq->cmd, pc->c, 12);
- 
- 	pc->rq = rq;
--	if (rq->cmd_flags & REQ_WRITE)
-+	if (cmd == WRITE)
- 		pc->flags |= PC_FLAG_WRITING;
- 
- 	pc->flags |= PC_FLAG_DMA_OK;
-diff --git a/drivers/lightnvm/rrpc.c b/drivers/lightnvm/rrpc.c
-index c20cb18..9b5a8c3 100644
---- a/drivers/lightnvm/rrpc.c
-+++ b/drivers/lightnvm/rrpc.c
-@@ -853,7 +853,7 @@ static blk_qc_t rrpc_make_rq(struct request_queue *q, struct bio *bio)
- 	struct nvm_rq *rqd;
- 	int err;
- 
--	if (bio->bi_rw & REQ_DISCARD) {
-+	if (bio->bi_op == REQ_OP_DISCARD) {
- 		rrpc_discard(rrpc, bio);
- 		return BLK_QC_T_NONE;
- 	}
-diff --git a/drivers/md/bcache/request.c b/drivers/md/bcache/request.c
-index cd6837c..be8cd63f 100644
---- a/drivers/md/bcache/request.c
-+++ b/drivers/md/bcache/request.c
-@@ -378,7 +378,7 @@ static bool check_should_bypass(struct cached_dev *dc, struct bio *bio)
- 
- 	if (test_bit(BCACHE_DEV_DETACHING, &dc->disk.flags) ||
- 	    c->gc_stats.in_use > CUTOFF_CACHE_ADD ||
--	    (bio->bi_rw & REQ_DISCARD))
-+	    (bio->bi_op == REQ_OP_DISCARD))
- 		goto skip;
- 
- 	if (mode == CACHE_MODE_NONE ||
-@@ -899,7 +899,7 @@ static void cached_dev_write(struct cached_dev *dc, struct search *s)
- 	 * But check_overlapping drops dirty keys for which io hasn't started,
- 	 * so we still want to call it.
- 	 */
--	if (bio->bi_rw & REQ_DISCARD)
-+	if (bio->bi_op == REQ_OP_DISCARD)
- 		s->iop.bypass = true;
- 
- 	if (should_writeback(dc, s->orig_bio,
-@@ -913,7 +913,7 @@ static void cached_dev_write(struct cached_dev *dc, struct search *s)
- 		s->iop.bio = s->orig_bio;
- 		bio_get(s->iop.bio);
- 
--		if (!(bio->bi_rw & REQ_DISCARD) ||
-+		if (!(bio->bi_op == REQ_OP_DISCARD) ||
- 		    blk_queue_discard(bdev_get_queue(dc->bdev)))
- 			closure_bio_submit(bio, cl);
- 	} else if (s->iop.writeback) {
-@@ -993,7 +993,7 @@ static blk_qc_t cached_dev_make_request(struct request_queue *q,
- 				cached_dev_read(dc, s);
- 		}
- 	} else {
--		if ((bio->bi_rw & REQ_DISCARD) &&
-+		if ((bio->bi_op == REQ_OP_DISCARD) &&
- 		    !blk_queue_discard(bdev_get_queue(dc->bdev)))
- 			bio_endio(bio);
- 		else
-@@ -1104,7 +1104,7 @@ static blk_qc_t flash_dev_make_request(struct request_queue *q,
- 					&KEY(d->id, bio->bi_iter.bi_sector, 0),
- 					&KEY(d->id, bio_end_sector(bio), 0));
- 
--		s->iop.bypass		= (bio->bi_rw & REQ_DISCARD) != 0;
-+		s->iop.bypass		= (bio->bi_op == REQ_OP_DISCARD) != 0;
- 		s->iop.writeback	= true;
- 		s->iop.bio		= bio;
- 
-diff --git a/drivers/md/dm-cache-target.c b/drivers/md/dm-cache-target.c
-index 5780acc..4c54326 100644
---- a/drivers/md/dm-cache-target.c
-+++ b/drivers/md/dm-cache-target.c
-@@ -788,7 +788,8 @@ static void check_if_tick_bio_needed(struct cache *cache, struct bio *bio)
- 
- 	spin_lock_irqsave(&cache->lock, flags);
- 	if (cache->need_tick_bio &&
--	    !(bio->bi_rw & (REQ_FUA | REQ_FLUSH | REQ_DISCARD))) {
-+	    !(bio->bi_rw & (REQ_FUA | REQ_FLUSH)) &&
-+	    bio->bi_op != REQ_OP_DISCARD) {
- 		pb->tick = true;
- 		cache->need_tick_bio = false;
- 	}
-@@ -851,7 +852,7 @@ static void inc_ds(struct cache *cache, struct bio *bio,
- static bool accountable_bio(struct cache *cache, struct bio *bio)
- {
- 	return ((bio->bi_bdev == cache->origin_dev->bdev) &&
--		!(bio->bi_rw & REQ_DISCARD));
-+		bio->bi_op != REQ_OP_DISCARD);
- }
- 
- static void accounted_begin(struct cache *cache, struct bio *bio)
-@@ -1062,7 +1063,8 @@ static void dec_io_migrations(struct cache *cache)
- 
- static bool discard_or_flush(struct bio *bio)
- {
--	return bio->bi_rw & (REQ_FLUSH | REQ_FUA | REQ_DISCARD);
-+	return bio->bi_op == REQ_OP_DISCARD ||
-+	       bio->bi_rw & (REQ_FLUSH | REQ_FUA);
- }
- 
- static void __cell_defer(struct cache *cache, struct dm_bio_prison_cell *cell)
-@@ -1975,7 +1977,7 @@ static void process_deferred_bios(struct cache *cache)
- 
- 		if (bio->bi_rw & REQ_FLUSH)
- 			process_flush_bio(cache, bio);
--		else if (bio->bi_rw & REQ_DISCARD)
-+		else if (bio->bi_op == REQ_OP_DISCARD)
- 			process_discard_bio(cache, &structs, bio);
- 		else
- 			process_bio(cache, &structs, bio);
-diff --git a/drivers/md/dm-crypt.c b/drivers/md/dm-crypt.c
-index f466fec..b7cbd39 100644
---- a/drivers/md/dm-crypt.c
-+++ b/drivers/md/dm-crypt.c
-@@ -1913,7 +1913,7 @@ static int crypt_map(struct dm_target *ti, struct bio *bio)
- 	 * - for REQ_FLUSH device-mapper core ensures that no IO is in-flight
- 	 * - for REQ_DISCARD caller must use flush if IO ordering matters
- 	 */
--	if (unlikely(bio->bi_rw & (REQ_FLUSH | REQ_DISCARD))) {
-+	if (unlikely(bio->bi_rw & REQ_FLUSH || bio->bi_op == REQ_OP_DISCARD)) {
- 		bio->bi_bdev = cc->dev->bdev;
- 		if (bio_sectors(bio))
- 			bio->bi_iter.bi_sector = cc->start +
-diff --git a/drivers/md/dm-log-writes.c b/drivers/md/dm-log-writes.c
-index f63bbf4..813bb4d 100644
---- a/drivers/md/dm-log-writes.c
-+++ b/drivers/md/dm-log-writes.c
-@@ -557,7 +557,7 @@ static int log_writes_map(struct dm_target *ti, struct bio *bio)
- 	int i = 0;
- 	bool flush_bio = (bio->bi_rw & REQ_FLUSH);
- 	bool fua_bio = (bio->bi_rw & REQ_FUA);
--	bool discard_bio = (bio->bi_rw & REQ_DISCARD);
-+	bool discard_bio = (bio->bi_op == REQ_OP_DISCARD);
- 
- 	pb->block = NULL;
- 
-diff --git a/drivers/md/dm-raid1.c b/drivers/md/dm-raid1.c
-index 6b61b62..54cc0c7 100644
---- a/drivers/md/dm-raid1.c
-+++ b/drivers/md/dm-raid1.c
-@@ -626,7 +626,7 @@ static void write_callback(unsigned long error, void *context)
- 	 * If the bio is discard, return an error, but do not
- 	 * degrade the array.
- 	 */
--	if (bio->bi_rw & REQ_DISCARD) {
-+	if (bio->bi_op == REQ_OP_DISCARD) {
- 		bio->bi_error = -EOPNOTSUPP;
- 		bio_endio(bio);
- 		return;
-@@ -665,7 +665,7 @@ static void do_write(struct mirror_set *ms, struct bio *bio)
- 		.client = ms->io_client,
- 	};
- 
--	if (bio->bi_rw & REQ_DISCARD) {
-+	if (bio->bi_op == REQ_OP_DISCARD) {
- 		io_req.bi_op = REQ_OP_DISCARD;
- 		io_req.mem.type = DM_IO_KMEM;
- 		io_req.mem.ptr.addr = NULL;
-@@ -705,7 +705,7 @@ static void do_writes(struct mirror_set *ms, struct bio_list *writes)
- 
- 	while ((bio = bio_list_pop(writes))) {
- 		if ((bio->bi_rw & REQ_FLUSH) ||
--		    (bio->bi_rw & REQ_DISCARD)) {
-+		    (bio->bi_op == REQ_OP_DISCARD)) {
- 			bio_list_add(&sync, bio);
- 			continue;
- 		}
-@@ -1253,7 +1253,7 @@ static int mirror_end_io(struct dm_target *ti, struct bio *bio, int error)
- 	 * We need to dec pending if this was a write.
- 	 */
- 	if (rw == WRITE) {
--		if (!(bio->bi_rw & (REQ_FLUSH | REQ_DISCARD)))
-+		if (!(bio->bi_rw & REQ_FLUSH) && bio->bi_op != REQ_OP_DISCARD)
- 			dm_rh_dec(ms->rh, bio_record->write_region);
- 		return error;
- 	}
-diff --git a/drivers/md/dm-region-hash.c b/drivers/md/dm-region-hash.c
-index 74cb7b9..ce4af57 100644
---- a/drivers/md/dm-region-hash.c
-+++ b/drivers/md/dm-region-hash.c
-@@ -403,7 +403,7 @@ void dm_rh_mark_nosync(struct dm_region_hash *rh, struct bio *bio)
- 		return;
- 	}
- 
--	if (bio->bi_rw & REQ_DISCARD)
-+	if (bio->bi_op == REQ_OP_DISCARD)
- 		return;
- 
- 	/* We must inform the log that the sync count has changed. */
-@@ -526,7 +526,7 @@ void dm_rh_inc_pending(struct dm_region_hash *rh, struct bio_list *bios)
- 	struct bio *bio;
- 
- 	for (bio = bios->head; bio; bio = bio->bi_next) {
--		if (bio->bi_rw & (REQ_FLUSH | REQ_DISCARD))
-+		if (bio->bi_rw & REQ_FLUSH || bio->bi_op == REQ_OP_DISCARD)
- 			continue;
- 		rh_inc(rh, dm_rh_bio_to_region(rh, bio));
- 	}
-diff --git a/drivers/md/dm-stripe.c b/drivers/md/dm-stripe.c
-index 797ddb9..12b1630 100644
---- a/drivers/md/dm-stripe.c
-+++ b/drivers/md/dm-stripe.c
-@@ -292,8 +292,8 @@ static int stripe_map(struct dm_target *ti, struct bio *bio)
- 		bio->bi_bdev = sc->stripe[target_bio_nr].dev->bdev;
- 		return DM_MAPIO_REMAPPED;
- 	}
--	if (unlikely(bio->bi_rw & REQ_DISCARD) ||
--	    unlikely(bio->bi_rw & REQ_WRITE_SAME)) {
-+	if (unlikely(bio->bi_op == REQ_OP_DISCARD) ||
-+	    unlikely(bio->bi_op == REQ_OP_WRITE_SAME)) {
- 		target_bio_nr = dm_bio_get_target_bio_nr(bio);
- 		BUG_ON(target_bio_nr >= sc->stripes);
- 		return stripe_map_range(sc, bio, target_bio_nr);
-diff --git a/drivers/md/dm-thin.c b/drivers/md/dm-thin.c
-index 5e1d281..0b2c6c1 100644
---- a/drivers/md/dm-thin.c
-+++ b/drivers/md/dm-thin.c
-@@ -705,7 +705,7 @@ static void inc_all_io_entry(struct pool *pool, struct bio *bio)
- {
- 	struct dm_thin_endio_hook *h;
- 
--	if (bio->bi_rw & REQ_DISCARD)
-+	if (bio->bi_op == REQ_OP_DISCARD)
- 		return;
- 
- 	h = dm_per_bio_data(bio, sizeof(struct dm_thin_endio_hook));
-@@ -868,7 +868,8 @@ static void __inc_remap_and_issue_cell(void *context,
- 	struct bio *bio;
- 
- 	while ((bio = bio_list_pop(&cell->bios))) {
--		if (bio->bi_rw & (REQ_DISCARD | REQ_FLUSH | REQ_FUA))
-+		if (bio->bi_rw & (REQ_FLUSH | REQ_FUA) ||
-+		    bio->bi_op == REQ_OP_DISCARD)
- 			bio_list_add(&info->defer_bios, bio);
- 		else {
- 			inc_all_io_entry(info->tc->pool, bio);
-@@ -1646,7 +1647,8 @@ static void __remap_and_issue_shared_cell(void *context,
- 
- 	while ((bio = bio_list_pop(&cell->bios))) {
- 		if ((bio_data_dir(bio) == WRITE) ||
--		    (bio->bi_rw & (REQ_DISCARD | REQ_FLUSH | REQ_FUA)))
-+		    (bio->bi_rw & (REQ_FLUSH | REQ_FUA) ||
-+		     bio->bi_op == REQ_OP_DISCARD))
- 			bio_list_add(&info->defer_bios, bio);
- 		else {
- 			struct dm_thin_endio_hook *h = dm_per_bio_data(bio, sizeof(struct dm_thin_endio_hook));;
-@@ -2035,7 +2037,7 @@ static void process_thin_deferred_bios(struct thin_c *tc)
- 			break;
- 		}
- 
--		if (bio->bi_rw & REQ_DISCARD)
-+		if (bio->bi_op == REQ_OP_DISCARD)
- 			pool->process_discard(tc, bio);
- 		else
- 			pool->process_bio(tc, bio);
-@@ -2122,7 +2124,7 @@ static void process_thin_deferred_cells(struct thin_c *tc)
- 				return;
- 			}
- 
--			if (cell->holder->bi_rw & REQ_DISCARD)
-+			if (cell->holder->bi_op == REQ_OP_DISCARD)
- 				pool->process_discard_cell(tc, cell);
- 			else
- 				pool->process_cell(tc, cell);
-@@ -2558,7 +2560,8 @@ static int thin_bio_map(struct dm_target *ti, struct bio *bio)
- 		return DM_MAPIO_SUBMITTED;
- 	}
- 
--	if (bio->bi_rw & (REQ_DISCARD | REQ_FLUSH | REQ_FUA)) {
-+	if (bio->bi_rw & (REQ_FLUSH | REQ_FUA) ||
-+	    bio->bi_op == REQ_OP_DISCARD) {
- 		thin_defer_bio_with_throttle(tc, bio);
- 		return DM_MAPIO_SUBMITTED;
- 	}
-diff --git a/drivers/md/dm.c b/drivers/md/dm.c
-index 0e7ddc4..4200164 100644
---- a/drivers/md/dm.c
-+++ b/drivers/md/dm.c
-@@ -1016,7 +1016,7 @@ static void clone_endio(struct bio *bio)
- 		}
- 	}
- 
--	if (unlikely(r == -EREMOTEIO && (bio->bi_rw & REQ_WRITE_SAME) &&
-+	if (unlikely(r == -EREMOTEIO && (bio->bi_op == REQ_OP_WRITE_SAME) &&
- 		     !bdev_get_queue(bio->bi_bdev)->limits.max_write_same_sectors))
- 		disable_write_same(md);
- 
-@@ -1690,9 +1690,9 @@ static int __split_and_process_non_flush(struct clone_info *ci)
- 	struct dm_target *ti;
- 	unsigned len;
- 
--	if (unlikely(bio->bi_rw & REQ_DISCARD))
-+	if (unlikely(bio->bi_op == REQ_OP_DISCARD))
- 		return __send_discard(ci);
--	else if (unlikely(bio->bi_rw & REQ_WRITE_SAME))
-+	else if (unlikely(bio->bi_op == REQ_OP_WRITE_SAME))
- 		return __send_write_same(ci);
- 
- 	ti = dm_table_find_target(ci->map, ci->sector);
-diff --git a/drivers/md/linear.c b/drivers/md/linear.c
-index b7fe7e9..aad82c7 100644
---- a/drivers/md/linear.c
-+++ b/drivers/md/linear.c
-@@ -252,7 +252,7 @@ static void linear_make_request(struct mddev *mddev, struct bio *bio)
- 		split->bi_iter.bi_sector = split->bi_iter.bi_sector -
- 			start_sector + data_offset;
- 
--		if (unlikely((split->bi_rw & REQ_DISCARD) &&
-+		if (unlikely((split->bi_op == REQ_OP_DISCARD) &&
- 			 !blk_queue_discard(bdev_get_queue(split->bi_bdev)))) {
- 			/* Just ignore it */
- 			bio_endio(split);
-diff --git a/drivers/md/raid0.c b/drivers/md/raid0.c
-index 2ea12c6..e0d1b8c 100644
---- a/drivers/md/raid0.c
-+++ b/drivers/md/raid0.c
-@@ -488,7 +488,7 @@ static void raid0_make_request(struct mddev *mddev, struct bio *bio)
- 		split->bi_iter.bi_sector = sector + zone->dev_start +
- 			tmp_dev->data_offset;
- 
--		if (unlikely((split->bi_rw & REQ_DISCARD) &&
-+		if (unlikely((split->bi_op == REQ_OP_DISCARD) &&
- 			 !blk_queue_discard(bdev_get_queue(split->bi_bdev)))) {
- 			/* Just ignore it */
- 			bio_endio(split);
-diff --git a/drivers/scsi/osd/osd_initiator.c b/drivers/scsi/osd/osd_initiator.c
-index 4e7b440..680d9e4 100644
---- a/drivers/scsi/osd/osd_initiator.c
-+++ b/drivers/scsi/osd/osd_initiator.c
-@@ -824,7 +824,7 @@ void osd_req_write(struct osd_request *or,
- {
- 	_osd_req_encode_common(or, OSD_ACT_WRITE, obj, offset, len);
- 	WARN_ON(or->out.bio || or->out.total_bytes);
--	WARN_ON(0 == (bio->bi_rw & REQ_WRITE));
-+	WARN_ON(!op_is_write(bio->bi_op));
- 	or->out.bio = bio;
- 	or->out.total_bytes = len;
- }
-@@ -875,7 +875,7 @@ void osd_req_read(struct osd_request *or,
- {
- 	_osd_req_encode_common(or, OSD_ACT_READ, obj, offset, len);
- 	WARN_ON(or->in.bio || or->in.total_bytes);
--	WARN_ON(bio->bi_rw & REQ_WRITE);
-+	WARN_ON(op_is_write(bio->bi_op));
- 	or->in.bio = bio;
- 	or->in.total_bytes = len;
- }
-diff --git a/drivers/staging/lustre/lustre/llite/lloop.c b/drivers/staging/lustre/lustre/llite/lloop.c
-index 420d391..37a52ed 100644
---- a/drivers/staging/lustre/lustre/llite/lloop.c
-+++ b/drivers/staging/lustre/lustre/llite/lloop.c
-@@ -212,9 +212,9 @@ static int do_bio_lustrebacked(struct lloop_device *lo, struct bio *head)
- 	io->ci_lockreq = CILR_NEVER;
- 
- 	LASSERT(head != NULL);
--	rw = head->bi_rw;
-+	rw = bio_data_dir(head);
- 	for (bio = head; bio != NULL; bio = bio->bi_next) {
--		LASSERT(rw == bio->bi_rw);
-+		LASSERT(rw == bio_data_dir(bio));
- 
- 		offset = (pgoff_t)(bio->bi_iter.bi_sector << 9) + lo->lo_offset;
- 		bio_for_each_segment(bvec, bio, iter) {
-@@ -305,9 +305,9 @@ static unsigned int loop_get_bio(struct lloop_device *lo, struct bio **req)
- 	/* TODO: need to split the bio, too bad. */
- 	LASSERT(first->bi_vcnt <= LLOOP_MAX_SEGMENTS);
- 
--	rw = first->bi_rw;
-+	rw = bio_data_dir(first);
- 	bio = &lo->lo_bio;
--	while (*bio && (*bio)->bi_rw == rw) {
-+	while (*bio && bio_data_dir(*bio) == rw) {
- 		CDEBUG(D_INFO, "bio sector %llu size %u count %u vcnt%u \n",
- 		       (unsigned long long)(*bio)->bi_iter.bi_sector,
- 		       (*bio)->bi_iter.bi_size,
-diff --git a/include/linux/bio.h b/include/linux/bio.h
-index 9f0e2cf..1e4b3b5 100644
---- a/include/linux/bio.h
-+++ b/include/linux/bio.h
-@@ -106,18 +106,23 @@ static inline bool bio_has_data(struct bio *bio)
- {
- 	if (bio &&
- 	    bio->bi_iter.bi_size &&
--	    !(bio->bi_rw & REQ_DISCARD))
-+	    !(bio->bi_op == REQ_OP_DISCARD))
- 		return true;
- 
- 	return false;
- }
- 
-+static inline bool bio_no_advance_iter(struct bio *bio)
-+{
-+	return bio->bi_op == REQ_OP_DISCARD || bio->bi_op == REQ_OP_WRITE_SAME;
-+}
+I don't think there is much value to these macros.  They aren't much
+shorter than the actual variable access, and they don't provide any
+improved clarity for the reader.
+
+I think they were introduced many years ago so that this header could
+be shared between the kernel and e2fsprogs, but that is no longer true
+so I don't think there is a need to add new ones.
+
+Ted, any opinion on this?
+
+> # define EXT4_BLOCKS_PER_GROUP(s)      =
+(EXT4_SB(s)->s_blocks_per_group)
+> # define EXT4_CLUSTERS_PER_GROUP(s)    =
+(EXT4_SB(s)->s_clusters_per_group)
+> # define EXT4_DESC_PER_BLOCK(s)                =
+(EXT4_SB(s)->s_desc_per_block)
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 1b8024d..dc66ad8 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -463,7 +463,6 @@ static int find_group_orlov(struct super_block =
+*sb, struct inode *parent,
+>                        sbi->s_log_groups_per_flex;
+>                parent_group >>=3D sbi->s_log_groups_per_flex;
+>        }
+> -
+>        freei =3D =
+percpu_counter_read_positive(&sbi->s_freeinodes_counter);
+>        avefreei =3D freei / ngroups;
+
+Not sure why this line is being deleted?
+
+> @@ -477,7 +476,20 @@ static int find_group_orlov(struct super_block =
+*sb, struct inode *parent,
+>             (ext4_test_inode_flag(parent, EXT4_INODE_TOPDIR)))) {
+>                int best_ndir =3D inodes_per_group;
+>                int ret =3D -1;
+> -
+> +               /* blocks used for inode table and allocation bitmaps =
+*/
+> +               unsigned int max_usable_blocks_per_flex_group;
+
+This could be shorter and still clear, like "max_blocks_per_flex".
+
+> +               unsigned int blocks_per_group =3D =
+EXT4_BLOCKS_PER_GROUP(sb);
+> +               unsigned int inode_table_blocks_per_group =3D \
+> +                               EXT4_INODE_TABLE_BLOCKS_PER_GROUP(sb);
+> +               /* Number of blocks per cluster */
+> +               unsigned int cluster_ratio =3D =
+EXT4_BLOCKS_PER_CLUSTER(sb);
+
+There also isn't much value to making local variables that hold these
+same values again.  It increases stack space for little benefit.  They
+are only accessed once anyway.
+
+> +               unsigned int inodes_per_flex_group =3D =
+inodes_per_group * \
+> +                                                       flex_size;
+> +               max_usable_blocks_per_flex_group =3D \
+> +                                       ((blocks_per_group*flex_size) =
+- \
+
+Spaces around that '*'.
+
+> +                                       (inode_table_blocks_per_group =
+* \
+> +                                       flex_size + 2 * flex_size)) / =
+\
+
+This is C and not a CPP macro, so no need for linefeed escapes.
+
+> +                                       cluster_ratio;
+
+This should be ">> EXT4_SB(sb)->s_cluster_bits" to avoid the divide.
+
+>                if (qstr) {
+>                        hinfo.hash_version =3D DX_HASH_HALF_MD4;
+>                        hinfo.seed =3D sbi->s_hash_seed;
+> @@ -489,6 +501,11 @@ static int find_group_orlov(struct super_block =
+*sb, struct inode *parent,
+>                for (i =3D 0; i < ngroups; i++) {
+>                        g =3D (parent_group + i) % ngroups;
+>                        get_orlov_stats(sb, g, flex_size, &stats);
+> +                       /* can't get better group than empty group */
+> +                       if (max_usable_blocks_per_flex_group =3D=3D \
+> +                               stats.free_clusters && \
+
+No need for linefeed escapes.
+
+> +                               inodes_per_flex_group =3D=3D =
+stats.free_inodes)
+
+Align continued line after '(' from the "if (" line.
+
+> +                                       goto found_flex_bg;
+
+This is indented too much.  It will work properly when you fix the
+previous line.
+
+>                        if (!stats.free_inodes)
+>                                continue;
+>                        if (stats.used_dirs >=3D best_ndir)
+> --
+> 1.7.1
+>=20
+> Regards,
+> Lokesh
+>=20
+> On Sun, Jan 03, 2016 at 11:34:51AM -0700, Andreas Dilger wrote:
+>> On Dec 26, 2015, at 01:41, Lokesh Jaliminche =
+<lokesh.jaliminche@gmail.com> wrote:
+>>>=20
+>>>=20
+>>> =46rom 5199982d29ff291b181c25af63a22d6f2d6d3f7b Mon Sep 17 00:00:00 =
+2001
+>>> From: Lokesh Nagappa Jaliminche <lokesh.jaliminche@gmail.com>
+>>> Date: Sat, 26 Dec 2015 13:19:36 +0530
+>>> Subject: [PATCH v3] ext4: optimizing group search for inode =
+allocation
+>>>=20
+>>> Added a check at the start of group search loop to
+>>> avoid looping unecessarily in case of empty group.
+>>> This also allow group search to jump directly to
+>>> "found_flex_bg" with "stats" and "group" already set,
+>>> so there is no need to go through the extra steps of
+>>> setting "best_desc" and "best_group" and then break
+>>> out of the loop just to set "stats" and "group" again.
+>>>=20
+>>> Signed-off-by: Lokesh Nagappa Jaliminche =
+<lokesh.jaliminche@gmail.com>
+>>> ---
+>>> fs/ext4/ialloc.c |   12 ++++++++++--
+>>> 1 files changed, 10 insertions(+), 2 deletions(-)
+>>>=20
+>>> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+>>> index 1b8024d..16f94db 100644
+>>> --- a/fs/ext4/ialloc.c
+>>> +++ b/fs/ext4/ialloc.c
+>>> @@ -473,10 +473,14 @@ static int find_group_orlov(struct super_block =
+*sb, struct inode *parent,
+>>>       ndirs =3D percpu_counter_read_positive(&sbi->s_dirs_counter);
+>>>=20
+>>>       if (S_ISDIR(mode) &&
+>>> -           ((parent =3D=3D d_inode(sb->s_root)) ||
+>>> -            (ext4_test_inode_flag(parent, EXT4_INODE_TOPDIR)))) {
+>>> +               ((parent =3D=3D d_inode(sb->s_root)) ||
+>>> +               (ext4_test_inode_flag(parent, EXT4_INODE_TOPDIR)))) =
+{
+>>=20
+>> I don't understand why you are changing the indentation here?
+>>=20
+>>> +               unsigned int inodes_per_flex_group;
+>>> +               unsigned long int clusters_per_flex_group;
+>>>               int best_ndir =3D inodes_per_group;
+>>>               int ret =3D -1;
+>>> +               inodes_per_flex_group =3D inodes_per_group * =
+flex_size;
+>>> +               clusters_per_flex_group =3D =
+sbi->s_clusters_per_group * flex_size;
+>>=20
+>> Have you actually tested if this code works?  When I was looking at =
+this
+>> code I was accidentally looking at the ext2 version, which only deals =
+with
+>> individual groups, and not flex groups.  I don't think that a flex =
+group
+>> can actually be completely empty, since it will always contain at =
+least
+>> an inode table and some bitmaps.
+>>=20
+>> This calculation needs to take this into account or it will just be
+>> overhead and not an optimization. Something like:
+>>=20
+>>                /* account for inode table and allocation bitmaps */
+>>                clusters_per_flex_group =3D sbi->s_clusters_per_group =
+* flex_size -
+>>                        ((inodes_per_flex_group * EXT4_INODE_SIZE(sb) =
 +
- static inline bool bio_is_rw(struct bio *bio)
- {
- 	if (!bio_has_data(bio))
- 		return false;
- 
--	if (bio->bi_rw & BIO_NO_ADVANCE_ITER_MASK)
-+	if (bio_no_advance_iter(bio))
- 		return false;
- 
- 	return true;
-@@ -225,7 +230,7 @@ static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
- {
- 	iter->bi_sector += bytes >> 9;
- 
--	if (bio->bi_rw & BIO_NO_ADVANCE_ITER_MASK)
-+	if (bio_no_advance_iter(bio))
- 		iter->bi_size -= bytes;
- 	else
- 		bvec_iter_advance(bio->bi_io_vec, iter, bytes);
-@@ -253,10 +258,10 @@ static inline unsigned bio_segments(struct bio *bio)
- 	 * differently:
- 	 */
- 
--	if (bio->bi_rw & REQ_DISCARD)
-+	if (bio->bi_op == REQ_OP_DISCARD)
- 		return 1;
- 
--	if (bio->bi_rw & REQ_WRITE_SAME)
-+	if (bio->bi_op == REQ_OP_WRITE_SAME)
- 		return 1;
- 
- 	bio_for_each_segment(bv, bio, iter)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 204ea4c..0a9fe5a 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2419,33 +2419,24 @@ static inline bool op_is_write(int op)
- }
- 
- /*
-- * return READ, READA, or WRITE
-+ * return data direction, READ or WRITE
-  */
--static inline int bio_rw(struct bio *bio)
-+static inline int bio_data_dir(struct bio *bio)
- {
--	/*
--	 * tmp cpmpat. Allow users to set either op or rw, until
--	 * all code is converted in the next patches.
--	 */
- 	if (op_is_write(bio->bi_op))
- 		return WRITE;
--
--	return bio->bi_rw & (RW_MASK | RWA_MASK);
-+	return READ;
- }
- 
- /*
-- * return data direction, READ or WRITE
-+ * return READ, READA, or WRITE
-  */
--static inline int bio_data_dir(struct bio *bio)
-+static inline int bio_rw(struct bio *bio)
- {
--	/*
--	 * tmp cpmpat. Allow users to set either op or rw, until
--	 * all code is converted in the next patches.
--	 */
--	if (op_is_write(bio->bi_op))
--		return WRITE;
-+	if (bio->bi_rw & RWA_MASK)
-+		return READA;
- 
--	return bio->bi_rw & 1;
-+	return bio_data_dir(bio);
- }
- 
- extern void check_disk_size_change(struct gendisk *disk,
--- 
-1.8.3.1
+>>                          (flex_size << sb->s_blocksize_bits) * 2 ) >>
+>>                        EXT4_SB(sb)->s_cluster_bits;
+>>=20
+>> It would be worthwhile to print this out and verify that there are =
+actually
+>> groups with this many free blocks in a newly formatted filesystem.
+>>=20
+>> Cheers, Andreas
+>>=20
+>>>               if (qstr) {
+>>>                       hinfo.hash_version =3D DX_HASH_HALF_MD4;
+>>> @@ -489,6 +493,10 @@ static int find_group_orlov(struct super_block =
+*sb, struct inode *parent,
+>>>               for (i =3D 0; i < ngroups; i++) {
+>>>                       g =3D (parent_group + i) % ngroups;
+>>>                       get_orlov_stats(sb, g, flex_size, &stats);
+>>> +                       /* the group can't get any better than empty =
+*/
+>>> +                       if (inodes_per_flex_group =3D=3D =
+stats.free_inodes &&
+>>> +                               clusters_per_flex_group =3D=3D =
+stats.free_clusters)
+>>> +                               goto found_flex_bg;
+>>>                       if (!stats.free_inodes)
+>>>                               continue;
+>>>                       if (stats.used_dirs >=3D best_ndir)
+>>> --
+>>> 1.7.1
+>>>=20
+>>>=20
+>>>> On Mon, Dec 21, 2015 at 10:27:37AM -0700, Andreas Dilger wrote:
+>>>>> On Dec 18, 2015, at 4:32 PM, lokesh jaliminche =
+<lokesh.jaliminche@gmail.com> wrote:
+>>>>>=20
+>>>>> =46rom 9e09fef78b2fa552c883bf8124af873abfde0805 Mon Sep 17 =
+00:00:00 2001
+>>>>> From: Lokesh Nagappa Jaliminche <lokesh.jaliminche@seagate.com>
+>>>>=20
+>>>> In the patch summary there is a typo - s/serch/search/
+>>>>=20
+>>>> Also, it appears your email client has mangled the whitespace in =
+the
+>>>> patch.  Please use "git send-email" to send your patch to the list:
+>>>>=20
+>>>> git send-email --to tytso@mit.edu --cc linux-ext4@vger.kernel.org =
+HEAD~1
+>>>>=20
+>>>> so that it arrives intact.  You probably need to set it up in =
+~/.gitconfig:
+>>>>=20
+>>>> [sendemail]
+>>>>       confirm =3D compose
+>>>>       smtpdomain =3D {your client hostname}
+>>>>       smtpserver =3D {your SMTP server hostname}
+>>>>=20
+>>>> Cheers, Andreas
+>>>>=20
+>>>>> Added a check at the start of group search loop to
+>>>>> avoid looping unecessarily in case of empty group.
+>>>>> This also allow group search to jump directly to
+>>>>> "found_flex_bg" with "stats" and "group" already set,
+>>>>> so there is no need to go through the extra steps of
+>>>>> setting "best_desc" and "best_group" and then break
+>>>>> out of the loop just to set "stats" and "group" again.
+>>>>>=20
+>>>>> Signed-off-by: Lokesh N Jaliminche <lokesh.jaliminche@gmail.com>
+>>>>> ---
+>>>>> fs/ext4/ialloc.c |    8 ++++++++
+>>>>> 1 files changed, 8 insertions(+), 0 deletions(-)
+>>>>>=20
+>>>>> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+>>>>> index 1b8024d..588bf8e 100644
+>>>>> --- a/fs/ext4/ialloc.c
+>>>>> +++ b/fs/ext4/ialloc.c
+>>>>> @@ -446,6 +446,8 @@ static int find_group_orlov(struct super_block
+>>>>> *sb, struct inode *parent,
+>>>>> struct ext4_sb_info *sbi =3D EXT4_SB(sb);
+>>>>> ext4_group_t real_ngroups =3D ext4_get_groups_count(sb);
+>>>>> int inodes_per_group =3D EXT4_INODES_PER_GROUP(sb);
+>>>>> + unsigned int inodes_per_flex_group;
+>>>>> + long unsigned int blocks_per_clustre;
+>>>>> unsigned int freei, avefreei, grp_free;
+>>>>> ext4_fsblk_t freeb, avefreec;
+>>>>> unsigned int ndirs;
+>>>>> @@ -470,6 +472,8 @@ static int find_group_orlov(struct super_block
+>>>>> *sb, struct inode *parent,
+>>>>> percpu_counter_read_positive(&sbi->s_freeclusters_counter));
+>>>>> avefreec =3D freeb;
+>>>>> do_div(avefreec, ngroups);
+>>>>> + inodes_per_flex_group =3D inodes_per_group * flex_size;
+>>>>> + blocks_per_clustre =3D sbi->s_blocks_per_group * flex_size;
+>>>>> ndirs =3D percpu_counter_read_positive(&sbi->s_dirs_counter);
+>>>>>=20
+>>>>> if (S_ISDIR(mode) &&
+>>>>> @@ -489,6 +493,10 @@ static int find_group_orlov(struct =
+super_block
+>>>>> *sb, struct inode *parent,
+>>>>> for (i =3D 0; i < ngroups; i++) {
+>>>>> g =3D (parent_group + i) % ngroups;
+>>>>> get_orlov_stats(sb, g, flex_size, &stats);
+>>>>> + /* the group can't get any better than empty */
+>>>>> + if (inodes_per_flex_group =3D=3D stats.free_inodes &&
+>>>>> + blocks_per_clustre =3D=3D stats.free_clusters)
+>>>>> + goto found_flex_bg;
+>>>>> if (!stats.free_inodes)
+>>>>> continue;
+>>>>> if (stats.used_dirs >=3D best_ndir)
+>>>>> --
+>>>>> 1.7.1
+>>>>> <0001-EXT4-optimizing-group-serch-for-inode-allocation.patch>
+>>>>=20
+>>>>=20
+>>>> Cheers, Andreas
+>>>=20
+>>>=20
+>>> <0001-ext4-optimizing-group-serch-for-inode-allocation.patch>
+> <0001-ext4-optimizing-group-serch-for-inode-allocation.patch>
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_4FD64765-07FE-417E-AEDD-73D9481FF84C
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBVpQbC3Kl2rkXzB/gAQgfBw/8DjKlTC0gmsnw6NVxkDNFOFD4JVriVJd8
+7tQylrRcJDmFFalm/N45vkab7t/xhZnxn+OkNMYkD4HRIdYZ4DJRlnZIU2+jcwn8
+DP9m0AYby58Imy2/bk4+JByE2leS7WAezcejI41KG0+ABUu0jVB6MrW1coa2sjpR
+2eTeeNPq+1svURNozuUw0kTMEXW0CM5NQzd8/yP5n5yvVCiQZ4u94qUdyyepRsKe
+pK+dXBweHZU6q1mtAunDAny6Ysn7z6Wxmm65+5ARxJ3NDvYEte3FlqoXWDvQEcjB
+FSGHtMKZkbzFN7aA3m6GmLu9i7HTMxYtqLC3cxu8mfw1OKg4pad6aMLxFIJ/fDnO
+KZOpRwKRbgJRMgI8fmkfykyhCb3A0fPefF61s03QXr+Y/5+ds9GwqxC0pPizS91K
+2IaOUtdHgpGKBKzkLeGcuXJyGunD3M5C00KSejSlNalB/jmH9zjR9uNlcwcK7vyr
+Fzg1Avtod8I4dQnWXl1CqUq9Dy0YOBNnnSFC02WwhQRsMaUtoyBsG24r3UebJnsV
+VygrtVHSdJGfd+yHQ4ZNXu6+QeZkVEDB/dMmaHVjwzZ3jKimtvhgXn6ihDONartk
+sWBM6eKKVd3ls1Ik/9rxKA4gUa1ItqJ8h7zNVphj6b6DeSpyhRCJtvQB3dj78unF
+B2+vrpe7+7c=
+=J168
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_4FD64765-07FE-417E-AEDD-73D9481FF84C--
