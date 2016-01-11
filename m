@@ -1,177 +1,160 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 1/7] mbcache2: Reimplement mbcache
-Date: Sun, 10 Jan 2016 12:14:46 -0700
-Message-ID: <3342D7D7-C5A2-421D-9CB0-B7A4DD0A1200@dilger.ca>
-References: <1450285224-1525-1-git-send-email-jack@suse.cz> <1450285224-1525-2-git-send-email-jack@suse.cz> <CAHpGcMKzJhsfAFitZEmvbs=C-X=PjmFN5rDSuq-RavZGqOxdGg@mail.gmail.com>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
-	Laurent GUERBY <laurent@guerby.net>, linux-ext4@vger.kernel.org
-To: =?utf-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
+From: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
+Subject: RE: ext4 out of order when use cfq scheduler
+Date: Mon, 11 Jan 2016 09:05:20 +0000
+Message-ID: <97be88d3acae4317ba1b6443f859ada0@SGPMBX1004.APAC.bosch.com>
+References: <697280a570654ae0aa1723fb7d11f51e@SGPMBX1004.APAC.bosch.com>
+ <20151222150037.GB18178@quack.suse.cz>
+ <c67f356b63d94d35ad010a6e987b68f0@SGPMBX1004.APAC.bosch.com>
+ <20160105153050.GF14464@quack.suse.cz>
+ <c73ca48af09742318189c61d167c4459@SGPMBX1004.APAC.bosch.com>
+ <20160106100621.GA24046@quack.suse.cz>
+ <3ab48fa47e434455b101251730e69bd2@SGPMBX1004.APAC.bosch.com>
+ <20160107102420.GB8380@quack.suse.cz>
+ <f0c925079bb4450380c019a7455a2537@SGPMBX1004.APAC.bosch.com>
+ <20160107114736.GC8380@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: multipart/mixed;
+	boundary="_002_97be88d3acae4317ba1b6443f859ada0SGPMBX1004APACboschcom_"
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Li, Michael" <huayil@qti.qualcomm.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ig0-f196.google.com ([209.85.213.196]:34804 "EHLO
-	mail-ig0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757314AbcAJTOu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Jan 2016 14:14:50 -0500
-Received: by mail-ig0-f196.google.com with SMTP id ik10so11656604igb.1
-        for <linux-ext4@vger.kernel.org>; Sun, 10 Jan 2016 11:14:50 -0800 (PST)
-In-Reply-To: <CAHpGcMKzJhsfAFitZEmvbs=C-X=PjmFN5rDSuq-RavZGqOxdGg@mail.gmail.com>
+Received: from smtp6-v.fe.bosch.de ([139.15.237.11]:63013 "EHLO
+	smtp6-v.fe.bosch.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759084AbcAKJFb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Jan 2016 04:05:31 -0500
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jan 9, 2016, at 05:11, Andreas Gr=C3=BCnbacher <andreas.gruenbacher@=
-gmail.com> wrote:
->=20
-> 2015-12-16 18:00 GMT+01:00 Jan Kara <jack@suse.cz>:
->> Original mbcache was designed to have more features than what ext?
->> filesystems ended up using. It supported entry being in more hashes,=
- it
->> had a home-grown rwlocking of each entry, and one cache could cache
->> entries from multiple filesystems. This genericity also resulted in =
-more
->> complex locking, larger cache entries, and generally more code
->> complexity.
->>=20
->> This is reimplementation of the mbcache functionality to exactly fit=
- the
->> purpose ext? filesystems use it for. Cache entries are now considera=
-bly
->> smaller (7 instead of 13 longs), the code is considerably smaller as
->> well (414 vs 913 lines of code), and IMO also simpler. The new code =
-is
->> also much more lightweight.
->>=20
->> I have measured the speed using artificial xattr-bench benchmark, wh=
-ich
->> spawns P processes, each process sets xattr for F different files, a=
-nd
->> the value of xattr is randomly chosen from a pool of V values. Avera=
-ges
->> of runtimes for 5 runs for various combinations of parameters are be=
-low.
->> The first value in each cell is old mbache, the second value is the =
-new
->> mbcache.
->>=20
->> V=3D10
->> F\P     1               2               4               8           =
-    16              32              64
->> 10      0.158,0.157     0.208,0.196     0.500,0.277     0.798,0.400 =
-    3.258,0.584     13.807,1.047    61.339,2.803
->> 100     0.172,0.167     0.279,0.222     0.520,0.275     0.825,0.341 =
-    2.981,0.505     12.022,1.202    44.641,2.943
->> 1000    0.185,0.174     0.297,0.239     0.445,0.283     0.767,0.340 =
-    2.329,0.480     6.342,1.198     16.440,3.888
->>=20
->> V=3D100
->> F\P     1               2               4               8           =
-    16              32              64
->> 10      0.162,0.153     0.200,0.186     0.362,0.257     0.671,0.496 =
-    1.433,0.943     3.801,1.345     7.938,2.501
->> 100     0.153,0.160     0.221,0.199     0.404,0.264     0.945,0.379 =
-    1.556,0.485     3.761,1.156     7.901,2.484
->> 1000    0.215,0.191     0.303,0.246     0.471,0.288     0.960,0.347 =
-    1.647,0.479     3.916,1.176     8.058,3.160
->>=20
->> V=3D1000
->> F\P     1               2               4               8           =
-    16              32              64
->> 10      0.151,0.129     0.210,0.163     0.326,0.245     0.685,0.521 =
-    1.284,0.859     3.087,2.251     6.451,4.801
->> 100     0.154,0.153     0.211,0.191     0.276,0.282     0.687,0.506 =
-    1.202,0.877     3.259,1.954     8.738,2.887
->> 1000    0.145,0.179     0.202,0.222     0.449,0.319     0.899,0.333 =
-    1.577,0.524     4.221,1.240     9.782,3.579
->>=20
->> V=3D10000
->> F\P     1               2               4               8           =
-    16              32              64
->> 10      0.161,0.154     0.198,0.190     0.296,0.256     0.662,0.480 =
-    1.192,0.818     2.989,2.200     6.362,4.746
->> 100     0.176,0.174     0.236,0.203     0.326,0.255     0.696,0.511 =
-    1.183,0.855     4.205,3.444     19.510,17.760
->> 1000    0.199,0.183     0.240,0.227     1.159,1.014     2.286,2.154 =
-    6.023,6.039     ---,10.933      ---,36.620
->>=20
->> V=3D100000
->> F\P     1               2               4               8           =
-    16              32              64
->> 10      0.171,0.162     0.204,0.198     0.285,0.230     0.692,0.500 =
-    1.225,0.881     2.990,2.243     6.379,4.771
->> 100     0.151,0.171     0.220,0.210     0.295,0.255     0.720,0.518 =
-    1.226,0.844     3.423,2.831     19.234,17.544
->> 1000    0.192,0.189     0.249,0.225     1.162,1.043     2.257,2.093 =
-    5.853,4.997     ---,10.399      ---,32.198
->>=20
->> We see that the new code is faster in pretty much all the cases and
->> starting from 4 processes there are significant gains with the new c=
-ode
->> resulting in upto 20-times shorter runtimes. Also for large numbers =
-of
->> cached entries all values for the old code could not be measured as =
-the
->> kernel started hitting softlockups and died before the test complete=
-d.
->>=20
->> Signed-off-by: Jan Kara <jack@suse.cz>
->> ---
->> fs/Makefile              |   2 +-
->> fs/mbcache2.c            | 362 +++++++++++++++++++++++++++++++++++++=
-++++++++++
->> include/linux/mbcache2.h |  52 +++++++
->> 3 files changed, 415 insertions(+), 1 deletion(-)
->> create mode 100644 fs/mbcache2.c
->> create mode 100644 include/linux/mbcache2.h
->>=20
->> diff --git a/fs/Makefile b/fs/Makefile
->> index 79f522575cba..15b3d6c4e46a 100644
->> --- a/fs/Makefile
->> +++ b/fs/Makefile
->> @@ -41,7 +41,7 @@ obj-$(CONFIG_COMPAT_BINFMT_ELF)       +=3D compat_=
-binfmt_elf.o
->> obj-$(CONFIG_BINFMT_ELF_FDPIC) +=3D binfmt_elf_fdpic.o
->> obj-$(CONFIG_BINFMT_FLAT)      +=3D binfmt_flat.o
->>=20
->> -obj-$(CONFIG_FS_MBCACHE)       +=3D mbcache.o
->> +obj-$(CONFIG_FS_MBCACHE)       +=3D mbcache.o mbcache2.o
->> obj-$(CONFIG_FS_POSIX_ACL)     +=3D posix_acl.o
->> obj-$(CONFIG_NFS_COMMON)       +=3D nfs_common/
->> obj-$(CONFIG_COREDUMP)         +=3D coredump.o
->> diff --git a/fs/mbcache2.c b/fs/mbcache2.c
->> new file mode 100644
->> index 000000000000..283c46e62f5f
->> --- /dev/null
->> +++ b/fs/mbcache2.c
->> @@ -0,0 +1,362 @@
->> +#include <linux/spinlock.h>
->> +#include <linux/slab.h>
->> +#include <linux/list.h>
->> +#include <linux/list_bl.h>
->> +#include <linux/module.h>
->> +#include <linux/sched.h>
->> +#include <linux/mbcache2.h>
->> +
->> +/*
->> + * Mbcache is a simple key-value store. Keys need not be unique, ho=
-wever
->> + * key-value pairs are expected to be unique (we use this fact in
->> + * mb2_cache_entry_delete_block()).
->> + *
->> + * Ext2 and ext4 use this cache for deduplication of extended attri=
-bute blocks.
->=20
-> The term deduplication usually refers to removing existing duplicates=
-;
-> here we're trying to avoid creating duplicates in the first place
-> though.
+--_002_97be88d3acae4317ba1b6443f859ada0SGPMBX1004APACboschcom_
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-It can be either. Online deduplication avoids creating duplicate blocks=
- in the first place, offline deduplication is removing duplicates after=
- the fact.=20
 
-Cheers, Andreas--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> -----Original Message-----
+> From: HUANG Weller (CM/ESW12-CN)
+> Sent: Friday, January 08, 2016 8:47 AM
+> To: 'Jan Kara' <jack@suse.cz>
+> Cc: linux-ext4@vger.kernel.org; Li, Michael <huayil@qti.qualcomm.com>
+> Subject: RE: ext4 out of order when use cfq scheduler
+>=20
+> > >
+> > > >
+> > > > OK, so I was looking into the code and indeed, reality is correct
+> > > > and my mental model was wrong! ;) I thought that inode gets added
+> > > > to the list of inodes for which we need to wait for data IO
+> > > > completion during transaction commit during block allocation. And I=
+ was
+> wrong.
+> > > > It used to happen in
+> > > > mpage_da_map_and_submit() until commit f3b59291a69d (ext4: remove
+> > > > calls to
+> > > > ext4_jbd2_file_inode() from delalloc write path) where it got
+> > > > removed. And that was wrong because although we submit data writes
+> > > > before dropping handle for allocating transaction and updating
+> > > > i_size, nobody guarantees that data IO is not delayed in the block
+> > > > layer until
+> > transaction commit.
+> > > > Which seems to happen in your case. I'll send a fix. Thanks for
+> > > > your report and persistence!
+> > > >
+> > >
+> > > Thanks a lot for your feedback :-)
+> > > Because I am not familiar with the detail of the ext4 internal code.
+> > > I will try to
+> > understand your explanation which you describe above.  And have a look
+> > on related funcations.
+> > > Could you send the fix in this mail ?
+> > > And whether the kernel 3.14 also have such issue, right ?
+> >
+> > The problem is in all kernels starting with 3.8. Attached is a patch
+> > which should fix the issue. Can you test whether it fixes the problem f=
+or you?
+> >
+> > 								Honza
+> > --
+>=20
+> Yes, of course I will redo the test with the patch. And also give you fee=
+dback.
+
+Test result:
+Test on 2 targets with the kernel applied your patch. Both of them are OK a=
+fter 5000 power failure tests. Our target test cycle is 10,000.
+By the way, since your original patch can't be applied on 3.x kernel, The a=
+ttached one  is based on yours and can applied on old kernel(mine is 3.10) =
+directly.
+
+>=20
+> > Jan Kara <jack@suse.com>
+> > SUSE Labs, CR
+
+--_002_97be88d3acae4317ba1b6443f859ada0SGPMBX1004APACboschcom_
+Content-Type: application/octet-stream;
+	name="0001-ext4-Fix-data-exposure-after-a-crash.patch"
+Content-Description: 0001-ext4-Fix-data-exposure-after-a-crash.patch
+Content-Disposition: attachment;
+	filename="0001-ext4-Fix-data-exposure-after-a-crash.patch"; size=3185;
+	creation-date="Mon, 11 Jan 2016 09:05:11 GMT";
+	modification-date="Mon, 11 Jan 2016 09:04:50 GMT"
+Content-Transfer-Encoding: base64
+
+RnJvbSA5OGNmODIxZTI3MDc0ODQ4NjEzMjA3OWFjOGQxYzk1NTdjOWFkZmI5IE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBKYW4gS2FyYSA8amFja0BzdXNlLmN6PgpEYXRlOiBUaHUsIDcg
+SmFuIDIwMTYgMTI6MjE6MjUgKzAxMDAKU3ViamVjdDogW1BBVENIXSBleHQ0OiBGaXggZGF0YSBl
+eHBvc3VyZSBhZnRlciBhIGNyYXNoCgpIdWFuZyBoYXMgcmVwb3J0ZWQgdGhhdCBpbiBoaXMgcG93
+ZXJmYWlsIHRlc3RpbmcgaGUgaXMgc2VlaW5nIHN0YWxlCmJsb2NrIGNvbnRlbnRzIGluIHNvbWUg
+b2YgcmVjZW50bHkgYWxsb2NhdGVkIGJsb2NrcyBhbHRob3VnaCBoZSBtb3VudHMKZXh0NCBpbiBk
+YXRhPW9yZGVyZWQgbW9kZS4gQWZ0ZXIgc29tZSBpbnZlc3RpZ2F0aW9uIEkgaGF2ZSBmb3VuZCBv
+dXQKdGhhdCBpbmRlZWQgd2hlbiBkZWxheWVkIGFsbG9jYXRpb24gaXMgdXNlZCwgd2UgZG9uJ3Qg
+YWRkIGlub2RlIHRvCnRyYW5zYWN0aW9uJ3MgbGlzdCBvZiBpbm9kZXMgbmVlZGluZyBmbHVzaGlu
+ZyBiZWZvcmUgY29tbWl0LiBPcmlnaW5hbGx5CndlIHdlcmUgZG9pbmcgdGhhdCBidXQgY29tbWl0
+IGYzYjU5MjkxYTY5ZCByZW1vdmVkIHRoZSBsb2dpYyB3aXRoIGEKZmxhd2VkIGFyZ3VtZW50IHRo
+YXQgaXQgaXMgbm90IG5lZWRlZC4KClRoZSBwcm9ibGVtIGlzIHRoYXQgYWx0aG91Z2ggZm9yIGRl
+bGF5ZWQgYWxsb2NhdGVkIGJsb2NrcyB3ZSB3cml0ZSB0aGVpcgpjb250ZW50cyBpbW1lZGlhdGVs
+eSBhZnRlciBhbGxvY2F0aW5nIHRoZW0sIHRoZXJlIGlzIG5vIGd1YXJhbnRlZSB0aGF0CnRoZSBJ
+TyBzY2hlZHVsZXIgb3IgZGV2aWNlIGRvZXNuJ3QgcmVvcmRlciB0aGluZ3MgYW5kIHRodXMgdHJh
+bnNhY3Rpb24KYWxsb2NhdGluZyBibG9ja3MgYW5kIGF0dGFjaGluZyB0aGVtIHRvIGlub2RlIGNh
+biByZWFjaCBzdGFibGUgc3RvcmFnZQpiZWZvcmUgYWN0dWFsIGJsb2NrIGNvbnRlbnRzLiBBY3R1
+YWxseSB3aGVuZXZlciB3ZSBhdHRhY2ggZnJlc2hseQphbGxvY2F0ZWQgYmxvY2tzIHRvIGlub2Rl
+IHVzaW5nIGEgd3JpdHRlbiBleHRlbnQsIHdlIHNob3VsZCBhZGQgaW5vZGUgdG8KdHJhbnNhY3Rp
+b24ncyBvcmRlcmVkIGlub2RlIGxpc3QgdG8gbWFrZSBzdXJlIHdlIHByb3Blcmx5IHdhaXQgZm9y
+IGJsb2NrCmNvbnRlbnRzIHRvIGJlIHdyaXR0ZW4gYmVmb3JlIGNvbW1pdHRpbmcgdGhlIHRyYW5z
+YWN0aW9uLiBTbyB0aGF0IGlzCndoYXQgd2UgZG8gaW4gdGhpcyBwYXRjaC4gVGhpcyBhbHNvIGhh
+bmRsZXMgb3RoZXIgY2FzZXMgd2hlcmUgc3RhbGUgZGF0YQpleHBvc3VyZSB3YXMgcG9zc2libGUg
+LSBsaWtlIGZpbGxpbmcgaG9sZSB2aWEgbW1hcCBpbgpkYXRhPW9yZGVyZWQsbm9kZWxhbGxvYyBt
+b2RlLgoKVGhlIG9ubHkgZXhjZXB0aW9uIHRvIHRoZSBhYm92ZSBydWxlIGFyZSBleHRlbmRpbmcg
+ZGlyZWN0IElPIHdyaXRlcyB3aGVyZQpibGtkZXZfZGlyZWN0X0lPKCkgd2FpdHMgZm9yIElPIHRv
+IGNvbXBsZXRlIGJlZm9yZSBpbmNyZWFzaW5nIGlfc2l6ZSBhbmQKdGh1cyBzdGFsZSBkYXRhIGV4
+cG9zdXJlIGlzIG5vdCBwb3NzaWJsZS4gRm9yIG5vdyB3ZSBkb24ndCBjb21wbGljYXRlCnRoZSBj
+b2RlIHdpdGggb3B0aW1pemluZyB0aGlzIHNwZWNpYWwgY2FzZSBzaW5jZSB0aGUgb3ZlcmhlYWQg
+aXMgcHJldHR5Cmxvdy4gSW4gY2FzZSB0aGlzIGlzIG9ic2VydmVkIHRvIGJlIGEgcGVyZm9ybWFu
+Y2UgcHJvYmxlbSB3ZSBjYW4gYWx3YXlzCmhhbmRsZSBpdCB1c2luZyBhIHNwZWNpYWwgZmxhZyB0
+byBleHQ0X21hcF9ibG9ja3MoKS4KCkNDOiBzdGFibGVAdmdlci5rZXJuZWwub3JnCkZpeGVzOiBm
+M2I1OTI5MWE2OWQwYjczNGJlMWZjOGJlNDg5ZmVmMmRkODQ2ZDNkClJlcG9ydGVkLWJ5OiAiSFVB
+TkcgV2VsbGVyIChDTS9FU1cxMi1DTikiIDxXZWxsZXIuSHVhbmdAY24uYm9zY2guY29tPgpTaWdu
+ZWQtb2ZmLWJ5OiBKYW4gS2FyYSA8amFja0BzdXNlLmN6PgpmaXggY29uZmxpY3Qgd2l0aCAzLjEw
+IGtlcm5lbC4KU2lnbmVkLW9mZi1ieTogd2VsbGVyIGh1YW5nIDx3ZWxsZXIuaHVhbmdAY24uYm9z
+Y2guY29tPgotLS0KIGZzL2V4dDQvaW5vZGUuYyB8ICAgMjAgKysrKysrKysrKystLS0tLS0tLS0K
+IDEgZmlsZSBjaGFuZ2VkLCAxMSBpbnNlcnRpb25zKCspLCA5IGRlbGV0aW9ucygtKQoKZGlmZiAt
+LWdpdCBhL2ZzL2V4dDQvaW5vZGUuYyBiL2ZzL2V4dDQvaW5vZGUuYwppbmRleCBlNDhiZDVhLi5k
+NWQ2ZDZjIDEwMDY0NAotLS0gYS9mcy9leHQ0L2lub2RlLmMKKysrIGIvZnMvZXh0NC9pbm9kZS5j
+CkBAIC03NTEsNiArNzUxLDE3IEBAIGhhc196ZXJvb3V0OgogCQlpbnQgcmV0ID0gY2hlY2tfYmxv
+Y2tfdmFsaWRpdHkoaW5vZGUsIG1hcCk7CiAJCWlmIChyZXQgIT0gMCkKIAkJCXJldHVybiByZXQ7
+CisKKwkJLyoKKwkJICogSW5vZGVzIHdpdGggZnJlc2hseSBhbGxvY2F0ZWQgYmxvY2tzIHdoZXJl
+IGNvbnRlbnRzIHdpbGwgYmUKKwkJICogdmlzaWJsZSBhZnRlciB0cmFuc2FjdGlvbiBjb21taXQg
+bXVzdCBiZSBvbiB0cmFuc2FjdGlvbidzCisJCSAqIG9yZGVyZWQgZGF0YSBsaXN0LgorCQkgKi8K
+KwkJaWYoZXh0NF9zaG91bGRfb3JkZXJfZGF0YShpbm9kZSkpIHsKKwkJCXJldCA9IGV4dDRfamJk
+Ml9maWxlX2lub2RlKGhhbmRsZSwgaW5vZGUpOworCQkJaWYgKHJldCkKKwkJCQlyZXR1cm4gcmV0
+OworCQl9CiAJfQogCXJldHVybiByZXR2YWw7CiB9CkBAIC0xMTEwLDE1ICsxMTIxLDYgQEAgc3Rh
+dGljIGludCBleHQ0X3dyaXRlX2VuZChzdHJ1Y3QgZmlsZSAqZmlsZSwKIAlpbnQgaV9zaXplX2No
+YW5nZWQgPSAwOwogCiAJdHJhY2VfZXh0NF93cml0ZV9lbmQoaW5vZGUsIHBvcywgbGVuLCBjb3Bp
+ZWQpOwotCWlmIChleHQ0X3Rlc3RfaW5vZGVfc3RhdGUoaW5vZGUsIEVYVDRfU1RBVEVfT1JERVJF
+RF9NT0RFKSkgewotCQlyZXQgPSBleHQ0X2piZDJfZmlsZV9pbm9kZShoYW5kbGUsIGlub2RlKTsK
+LQkJaWYgKHJldCkgewotCQkJdW5sb2NrX3BhZ2UocGFnZSk7Ci0JCQlwYWdlX2NhY2hlX3JlbGVh
+c2UocGFnZSk7Ci0JCQlnb3RvIGVycm91dDsKLQkJfQotCX0KLQogCWlmIChleHQ0X2hhc19pbmxp
+bmVfZGF0YShpbm9kZSkpIHsKIAkJcmV0ID0gZXh0NF93cml0ZV9pbmxpbmVfZGF0YV9lbmQoaW5v
+ZGUsIHBvcywgbGVuLAogCQkJCQkJIGNvcGllZCwgcGFnZSk7Ci0tIAoxLjcuOS41Cgo=
+
+--_002_97be88d3acae4317ba1b6443f859ada0SGPMBX1004APACboschcom_--
+
