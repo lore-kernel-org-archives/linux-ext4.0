@@ -1,263 +1,87 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/4] jbd2: Unify revoke and tag block checksum handling
-Date: Tue, 12 Jan 2016 13:41:01 +0100
-Message-ID: <20160112124101.GU6262@quack.suse.cz>
-References: <1452177715-9671-1-git-send-email-jack@suse.cz>
- <1452177715-9671-4-git-send-email-jack@suse.cz>
- <20160107171645.GA28338@birch.djwong.org>
+From: Dave Jones <davej@codemonkey.org.uk>
+Subject: ext4 unkillable lseek.
+Date: Tue, 12 Jan 2016 09:53:48 -0500
+Message-ID: <20160112145348.GA15634@codemonkey.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:49804 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752211AbcALMk7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Jan 2016 07:40:59 -0500
+Cc: linux-ext4@vger.kernel.org
+To: Linux Kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20160107171645.GA28338@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 07-01-16 09:16:45, Darrick J. Wong wrote:
-> On Thu, Jan 07, 2016 at 03:41:54PM +0100, Jan Kara wrote:
-> > Revoke and tag descriptor blocks are just different kinds of descriptor
-> > blocks and thus have checksum in the same place. Unify computation and
-> > checking of checksums for these.
-> 
-> Looks ok to me,
-> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+I was investigating a case where it looked like Trinity was getting
+into a deadlock.
 
-Thanks for review.
+The running task is doing an lseek(fd, <bignum>, SEEK_DATA) on a sparse
+file that looks like this..
 
-> Is there a corresponding update to e2fsprogs' journal code?
+$ ll trinity-testfile4 
+--wxrwx--- 1 davej davej 4947802326691 Jan 12 09:14 trinity-testfile4*
+$ sudo filefrag trinity-testfile4 
+trinity-testfile4: 3 extents found
 
-No, I can write one if Ted decides to merge this in JBD2.
+The kernel trace for that process looks like..
 
-								Honza
+trinity-c11     R  running task    22192 11483   2439 0x00080004
+ ffff8800428a7c98 ffff8800a2ef87dc ffff8800a3bdf758 ffff8800a3bdf730
+ ffff8800a2ef8008 ffff8800a2ef8340 ffff88009f8e9980 ffff8800a2ef8000
+ ffff8800428a0000 ffffed0008514001 ffff8800428a0008 ffff8800935499e0
+Call Trace:
+ [<ffffffff8f5e8bd2>] preempt_schedule_common+0x42/0x70
+ [<ffffffff8f5e8c1f>] preempt_schedule+0x1f/0x30
+ [<ffffffff8e003058>] ___preempt_schedule+0x12/0x14
+ [<ffffffff8e7a1e90>] ? ext4_es_find_delayed_extent_range+0x2a0/0x780
+ [<ffffffff8f5f6f81>] ? _raw_read_unlock+0x31/0x50
+ [<ffffffff8f5f6f94>] ? _raw_read_unlock+0x44/0x50
+ [<ffffffff8e7a1e90>] ext4_es_find_delayed_extent_range+0x2a0/0x780
+ [<ffffffff8e69c307>] ext4_llseek+0x567/0x870
+ [<ffffffff8e69bda0>] ? ext4_find_unwritten_pgoff.isra.12+0x790/0x790
+ [<ffffffff8f5edafc>] ? mutex_lock_nested+0x51c/0x8e0
+ [<ffffffff8e20e5f9>] ? trace_hardirqs_on_caller+0x3f9/0x580
+ [<ffffffff8e56e1a5>] ? __fdget_pos+0xd5/0x110
+ [<ffffffff8e20e78d>] ? trace_hardirqs_on+0xd/0x10
+ [<ffffffff8f5ed5e0>] ? mutex_lock_interruptible_nested+0x9f0/0x9f0
+ [<ffffffff8e00508f>] ? enter_from_user_mode+0x1f/0x50
+ [<ffffffff8e005338>] ? syscall_trace_enter_phase1+0x278/0x470
+ [<ffffffff8e248527>] ? debug_lockdep_rcu_enabled+0x77/0x90
+ [<ffffffff8e518acd>] SyS_lseek+0x10d/0x180
+ [<ffffffff8f5f7457>] entry_SYSCALL_64_fastpath+0x12/0x6b
 
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  fs/jbd2/commit.c     | 18 +-----------------
-> >  fs/jbd2/journal.c    | 15 +++++++++++++++
-> >  fs/jbd2/recovery.c   | 31 +++++--------------------------
-> >  fs/jbd2/revoke.c     | 19 ++-----------------
-> >  include/linux/jbd2.h |  8 ++------
-> >  5 files changed, 25 insertions(+), 66 deletions(-)
-> > 
-> > diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> > index cf221f3d955a..ae832cd44dd8 100644
-> > --- a/fs/jbd2/commit.c
-> > +++ b/fs/jbd2/commit.c
-> > @@ -317,22 +317,6 @@ static void write_tag_block(journal_t *j, journal_block_tag_t *tag,
-> >  		tag->t_blocknr_high = cpu_to_be32((block >> 31) >> 1);
-> >  }
-> >  
-> > -static void jbd2_descr_block_csum_set(journal_t *j,
-> > -				      struct buffer_head *bh)
-> > -{
-> > -	struct jbd2_journal_block_tail *tail;
-> > -	__u32 csum;
-> > -
-> > -	if (!jbd2_journal_has_csum_v2or3(j))
-> > -		return;
-> > -
-> > -	tail = (struct jbd2_journal_block_tail *)(bh->b_data + j->j_blocksize -
-> > -			sizeof(struct jbd2_journal_block_tail));
-> > -	tail->t_checksum = 0;
-> > -	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
-> > -	tail->t_checksum = cpu_to_be32(csum);
-> > -}
-> > -
-> >  static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
-> >  				    struct buffer_head *bh, __u32 sequence)
-> >  {
-> > @@ -714,7 +698,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
-> >  
-> >  			tag->t_flags |= cpu_to_be16(JBD2_FLAG_LAST_TAG);
-> >  
-> > -			jbd2_descr_block_csum_set(journal, descriptor);
-> > +			jbd2_descriptor_block_csum_set(journal, descriptor);
-> >  start_journal_io:
-> >  			for (i = 0; i < bufs; i++) {
-> >  				struct buffer_head *bh = wbuf[i];
-> > diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> > index 28d05bd9a588..defa962a8e15 100644
-> > --- a/fs/jbd2/journal.c
-> > +++ b/fs/jbd2/journal.c
-> > @@ -834,6 +834,21 @@ jbd2_journal_get_descriptor_buffer(transaction_t *transaction, int type)
-> >  	return bh;
-> >  }
-> >  
-> > +void jbd2_descriptor_block_csum_set(journal_t *j, struct buffer_head *bh)
-> > +{
-> > +	struct jbd2_journal_block_tail *tail;
-> > +	__u32 csum;
-> > +
-> > +	if (!jbd2_journal_has_csum_v2or3(j))
-> > +		return;
-> > +
-> > +	tail = (struct jbd2_journal_block_tail *)(bh->b_data + j->j_blocksize -
-> > +			sizeof(struct jbd2_journal_block_tail));
-> > +	tail->t_checksum = 0;
-> > +	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
-> > +	tail->t_checksum = cpu_to_be32(csum);
-> > +}
-> > +
-> >  /*
-> >   * Return tid of the oldest transaction in the journal and block in the journal
-> >   * where the transaction starts.
-> > diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-> > index 7f277e49fe88..08a456b96e4e 100644
-> > --- a/fs/jbd2/recovery.c
-> > +++ b/fs/jbd2/recovery.c
-> > @@ -174,8 +174,7 @@ static int jread(struct buffer_head **bhp, journal_t *journal,
-> >  	return 0;
-> >  }
-> >  
-> > -static int jbd2_descr_block_csum_verify(journal_t *j,
-> > -					void *buf)
-> > +static int jbd2_descriptor_block_csum_verify(journal_t *j, void *buf)
-> >  {
-> >  	struct jbd2_journal_block_tail *tail;
-> >  	__be32 provided;
-> > @@ -522,8 +521,8 @@ static int do_one_pass(journal_t *journal,
-> >  				descr_csum_size =
-> >  					sizeof(struct jbd2_journal_block_tail);
-> >  			if (descr_csum_size > 0 &&
-> > -			    !jbd2_descr_block_csum_verify(journal,
-> > -							  bh->b_data)) {
-> > +			    !jbd2_descriptor_block_csum_verify(journal,
-> > +							       bh->b_data)) {
-> >  				printk(KERN_ERR "JBD2: Invalid checksum "
-> >  				       "recovering block %lu in log\n",
-> >  				       next_log_block);
-> > @@ -811,26 +810,6 @@ static int do_one_pass(journal_t *journal,
-> >  	return err;
-> >  }
-> >  
-> > -static int jbd2_revoke_block_csum_verify(journal_t *j,
-> > -					 void *buf)
-> > -{
-> > -	struct jbd2_journal_revoke_tail *tail;
-> > -	__be32 provided;
-> > -	__u32 calculated;
-> > -
-> > -	if (!jbd2_journal_has_csum_v2or3(j))
-> > -		return 1;
-> > -
-> > -	tail = (struct jbd2_journal_revoke_tail *)(buf + j->j_blocksize -
-> > -			sizeof(struct jbd2_journal_revoke_tail));
-> > -	provided = tail->r_checksum;
-> > -	tail->r_checksum = 0;
-> > -	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
-> > -	tail->r_checksum = provided;
-> > -
-> > -	return provided == cpu_to_be32(calculated);
-> > -}
-> > -
-> >  /* Scan a revoke record, marking all blocks mentioned as revoked. */
-> >  
-> >  static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
-> > @@ -846,11 +825,11 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
-> >  	offset = sizeof(jbd2_journal_revoke_header_t);
-> >  	rcount = be32_to_cpu(header->r_count);
-> >  
-> > -	if (!jbd2_revoke_block_csum_verify(journal, header))
-> > +	if (!jbd2_descriptor_block_csum_verify(journal, header))
-> >  		return -EFSBADCRC;
-> >  
-> >  	if (jbd2_journal_has_csum_v2or3(journal))
-> > -		csum_size = sizeof(struct jbd2_journal_revoke_tail);
-> > +		csum_size = sizeof(struct jbd2_journal_block_tail);
-> >  	if (rcount > journal->j_blocksize - csum_size)
-> >  		return -EINVAL;
-> >  	max = rcount;
-> > diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-> > index d1ebb1d41d17..91171dc352cb 100644
-> > --- a/fs/jbd2/revoke.c
-> > +++ b/fs/jbd2/revoke.c
-> > @@ -583,7 +583,7 @@ static void write_one_revoke_record(transaction_t *transaction,
-> >  
-> >  	/* Do we need to leave space at the end for a checksum? */
-> >  	if (jbd2_journal_has_csum_v2or3(journal))
-> > -		csum_size = sizeof(struct jbd2_journal_revoke_tail);
-> > +		csum_size = sizeof(struct jbd2_journal_block_tail);
-> >  
-> >  	if (jbd2_has_feature_64bit(journal))
-> >  		sz = 8;
-> > @@ -623,21 +623,6 @@ static void write_one_revoke_record(transaction_t *transaction,
-> >  	*offsetp = offset;
-> >  }
-> >  
-> > -static void jbd2_revoke_csum_set(journal_t *j, struct buffer_head *bh)
-> > -{
-> > -	struct jbd2_journal_revoke_tail *tail;
-> > -	__u32 csum;
-> > -
-> > -	if (!jbd2_journal_has_csum_v2or3(j))
-> > -		return;
-> > -
-> > -	tail = (struct jbd2_journal_revoke_tail *)(bh->b_data + j->j_blocksize -
-> > -			sizeof(struct jbd2_journal_revoke_tail));
-> > -	tail->r_checksum = 0;
-> > -	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
-> > -	tail->r_checksum = cpu_to_be32(csum);
-> > -}
-> > -
-> >  /*
-> >   * Flush a revoke descriptor out to the journal.  If we are aborting,
-> >   * this is a noop; otherwise we are generating a buffer which needs to
-> > @@ -658,7 +643,7 @@ static void flush_descriptor(journal_t *journal,
-> >  
-> >  	header = (jbd2_journal_revoke_header_t *)descriptor->b_data;
-> >  	header->r_count = cpu_to_be32(offset);
-> > -	jbd2_revoke_csum_set(journal, descriptor);
-> > +	jbd2_descriptor_block_csum_set(journal, descriptor);
-> >  
-> >  	set_buffer_jwrite(descriptor);
-> >  	BUFFER_TRACE(descriptor, "write");
-> > diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> > index 3649cb8d3a41..fd1083c46c61 100644
-> > --- a/include/linux/jbd2.h
-> > +++ b/include/linux/jbd2.h
-> > @@ -200,7 +200,7 @@ typedef struct journal_block_tag_s
-> >  	__be32		t_blocknr_high; /* most-significant high 32bits. */
-> >  } journal_block_tag_t;
-> >  
-> > -/* Tail of descriptor block, for checksumming */
-> > +/* Tail of descriptor or revoke block, for checksumming */
-> >  struct jbd2_journal_block_tail {
-> >  	__be32		t_checksum;	/* crc32c(uuid+descr_block) */
-> >  };
-> > @@ -215,11 +215,6 @@ typedef struct jbd2_journal_revoke_header_s
-> >  	__be32		 r_count;	/* Count of bytes used in the block */
-> >  } jbd2_journal_revoke_header_t;
-> >  
-> > -/* Tail of revoke block, for checksumming */
-> > -struct jbd2_journal_revoke_tail {
-> > -	__be32		r_checksum;	/* crc32c(uuid+revoke_block) */
-> > -};
-> > -
-> >  /* Definitions for the journal tag flags word: */
-> >  #define JBD2_FLAG_ESCAPE		1	/* on-disk block is escaped */
-> >  #define JBD2_FLAG_SAME_UUID	2	/* block has same uuid as previous */
-> > @@ -1138,6 +1133,7 @@ static inline void jbd2_unfile_log_bh(struct buffer_head *bh)
-> >  
-> >  /* Log buffer allocation */
-> >  struct buffer_head *jbd2_journal_get_descriptor_buffer(transaction_t *, int);
-> > +void jbd2_descriptor_block_csum_set(journal_t *, struct buffer_head *);
-> >  int jbd2_journal_next_log_block(journal_t *, unsigned long long *);
-> >  int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
-> >  			      unsigned long *block);
-> > -- 
-> > 2.6.2
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+It's currently been running for a hour.
+Even though it's preempting back to userspace, it's ignoring
+all the SIGKILLs that trinity has been sending it for taking too long.
+
+Meanwhile all the other processes are backing up on the f_pos lock.
+
+trinity-c7      D ffff880066857d50 24240 11628   2439 0x00080004
+ ffff880066857d50 0000000000000007 ffff8800a3bdf758 ffff8800a3bdf730
+ ffff880045286608 ffff880045286940 ffff8800a0150000 ffff880045286600
+ ffff880066850000 ffffed000cd0a001 ffff880066850008 dffffc0000000000
+Call Trace:
+ [<ffffffff8f5e8e0f>] schedule+0x9f/0x1c0
+ [<ffffffff8f5e9588>] schedule_preempt_disabled+0x18/0x30
+ [<ffffffff8f5ed92d>] mutex_lock_nested+0x34d/0x8e0
+ [<ffffffff8e56e1a5>] ? __fdget_pos+0xd5/0x110
+ [<ffffffff8e337fe3>] ? acct_account_cputime+0x63/0x80
+ [<ffffffff8e56e1a5>] ? __fdget_pos+0xd5/0x110
+ [<ffffffff8f5ed5e0>] ? mutex_lock_interruptible_nested+0x9f0/0x9f0
+ [<ffffffff8e248527>] ? debug_lockdep_rcu_enabled+0x77/0x90
+ [<ffffffff8e56e1a5>] __fdget_pos+0xd5/0x110
+ [<ffffffff8e51c029>] SyS_read+0x79/0x230
+ [<ffffffff8e51bfb0>] ? do_sendfile+0x1280/0x1280
+ [<ffffffff8e20e5f9>] ? trace_hardirqs_on_caller+0x3f9/0x580
+ [<ffffffff8e003017>] ? trace_hardirqs_on_thunk+0x17/0x19
+ [<ffffffff8f5f7457>] entry_SYSCALL_64_fastpath+0x12/0x6b
+
+Eventually it does complete, but waiting a half hour every time
+trinity picks lseek as a syscall is kinda crappy.
+
+Shouldn't lseek be a killable operation ?
+
+I notice this doesn't seem to happen with btrfs, suggesting it's
+an ext'ism.   This has probably been there for a while, I've not
+been doing fuzz runs on ext4 enabled systems for a long time.
+
+	Dave
