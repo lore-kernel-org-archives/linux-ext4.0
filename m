@@ -1,84 +1,84 @@
-From: Dave Chinner <david@fromorbit.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: Consolidated file encryption interface/semantics?
-Date: Tue, 12 Jan 2016 10:36:20 +1100
-Message-ID: <20160111233620.GB6033@dastard>
+Date: Tue, 12 Jan 2016 00:30:49 -0500
+Message-ID: <20160112053049.GA4466@thunk.org>
 References: <56943319.9080802@nod.at>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org
 To: Richard Weinberger <richard@nod.at>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:41356 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753534AbcALFaz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Jan 2016 00:30:55 -0500
 Content-Disposition: inline
 In-Reply-To: <56943319.9080802@nod.at>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 On Mon, Jan 11, 2016 at 11:56:25PM +0100, Richard Weinberger wrote:
-> Hi!
 > 
-> I consider adding file encryption to UBIFS.
-> While looking into ext4 and f2fs I realized that both
-> use the same data structures/concepts.
-
-When the ext4 code was first posted, I noted that 90% of the
-implementation was not ext4 specific at all. I asked that the
-encryption part of it be lifted to fs/ and the API made generic so
-that it can be shared without needing to copy and re-review
-encryption code (which is notoriously hard to get right) when others
-implement the same fucntionality. This was considered SEP.
-
-> f2fs copy&pasted a lot from ext4.
-
-Yes, they did, even though I asked them not to, but to instead pull
-all the code that is non-ext4 specific up to the VFS first and then
-use that. Again, this was considered SEP.
-
-> Before I do the next copy&paste, I'd to ask whether it would make sense
-> to more parts of the ioctl() interface out to VFS?
-
-Yes, unfortunately you're the first "somebody else" who is going to
-have to deal with this problem. It's not just the API - most of the
-encryption implementation is also copy and pasted, too.
-
-This simply hasn't got to the top of my list of stuff to do for XFS
-yet, so I haven't started down this path yet. However, if you do
-start on the hard work  to pull all this stuff up into the VFS and
-generic helpers, I'll do what I can to get the necessary parts of
-XFS working with it as well....
-
-[snip]
-
 > So, the data structures are identical and AFAIK also the supported cipher modes are.
 > But as both use their own ioctls having a single tool to control file encryption
 > can be error prone in future.
 > Interestingly the current ioctls for ext4 and f2fs resolve to the same integers,
 > is this on purpose? :)
 
-Yes, so that when someone factors it all into a generic
-implementation the new "FS_IOC*" ioctl API will be binary compatible
-with the existing ext4 and f2fs ioctl implementations and the
-existing userspace tools will just continue to work.
+As far as tools to control file encryption, there is the beginnings of
+such a tool in the e2fsprogs directory, called e4crypt[1], which I've
+been using to do some of my testing.  There is also a dummy encryption
+key mount option for stress testing using xfstests.
 
-> Wouldn't it be worthwhile having exactly the same ioctls such that util-linux could offer
-> a decent file encryption tool which can be used by all file systems with file encryption
-> support?
+[1] http://git.kernel.org/cgit/fs/ext2/e2fsprogs.git/tree/misc/e4crypt.c
 
-Yes, it should have been done that way in the first place.
+There is also code in the Android Open Source Project which uses these
+ioctls although the way the user key management is handled is a bit
+different.  (In particular, they don't use the per-file system salt,
+but instead use a different mechanism to derive the key from stored
+secret information --- which could potentially use ARM Trustzone for
+those devices that have it --- and the user's pin / password.)
+
+Since the primary / initial user for this code has been in the Android
+Userspace, the e4crypt tool hasn't gotten as much attention as I would
+like.  One of the thigns on my "to-implement" list is storing the
+per-file system password salts which it knows about in a dot file so
+that if you are using multiple USB thumb drives, when you enter the
+password once, the password can be transformed into different keys for
+the different USB thumb drives, even if some of them aren't currently
+available to the system because they currently aren't plugged in and
+available to the system.
 
 > Another thing are semantics, ext4 implemented a policy which controls
 > under which conditions encrypted files are allowed to be unlinked, moved, etc...
 > f2fs adopted these from ext4. But can't we do that in VFS or at least
 > agree one a policy and document it? :-)
 
-Yes, we should. Having a single set of policies implemented and
-enforced at the VFS is how this should be done. Users will
-absolutely hate us if per-file encryption devolves into APIs and
-policies that differ between filesystems.
+It's been on my todo list to uplift the common code into a VFS
+library, and so it wasn't my intent to make it be someone else's
+problems.  I just haven't had time to get to that point yet, and I
+also wanted to make sure we had adequate implementation and practice
+experience before we uplifted the code, since it was faster to make
+changes when all of the code is in a single layer.  Hopefully I will
+have time to start work on this in the next month or two.
+
+The final thing I'll note is that for *most* use cases, it makes for
+more sense to do encryption at the block layer.  It's only if you need
+per-user, or per-work profile keying, then maybe it makes sense to
+have file system level encryption.  So you might want to consider
+whether for your intended use case, whether or not it makes sense for
+UBIFS to have encryption, or whether you would be better off doing it
+below the file system, at the block or MTD layer.
 
 Cheers,
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+					- Ted
+
+P.S.  Also on the todo list is to update the following document from
+"as designed" to "as built".  In particular there were some
+late-breaking changes in how file naem and symlink encryption were
+handled that didn't get reflected in the design doc:
+
+https://docs.google.com/document/d/1ft26lUQyuSpiu6VleP70_npaWdRfXFoNnB8JYnykNTg/edit#
+
