@@ -1,121 +1,91 @@
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-Subject: LSF/MM 2016: Call for Proposals
-Date: Tue, 12 Jan 2016 11:05:45 -0500
-Message-ID: <yq14meiye92.fsf@sermon.lab.mkp.net>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [f2fs-dev] Consolidated file encryption interface/semantics?
+Date: Tue, 12 Jan 2016 11:21:20 -0500
+Message-ID: <20160112162120.GA30329@thunk.org>
+References: <56943319.9080802@nod.at>
+ <20160112074756.GB35051@jaegeuk.granlibakkenguest>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: lsf-pc@lists.linux-foundation.org
-To: linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ide@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-nfs@vger.kernel.org, linux-scsi@vger.kernel.org, xfs@oss.sgi.com
-Return-path: <owner-linux-mm@kvack.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Richard Weinberger <richard@nod.at>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+	andreym@codeaurora.org
+To: Jaegeuk Kim <jaegeuk@kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:48877 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750786AbcALQVb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Jan 2016 11:21:31 -0500
+Content-Disposition: inline
+In-Reply-To: <20160112074756.GB35051@jaegeuk.granlibakkenguest>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, Jan 11, 2016 at 11:47:56PM -0800, Jaegeuk Kim wrote:
+> 
+> Actually, I tried to prepare this quite long time ago [1], which was stuck
+> that moment unfortunately, since I needed to wait for how AOSP finally treats
+> with this feature. At some moment later, I couldn't even follow up every ext4
+> changes into this patch set, since the feature was not quickly settled down in
+> AOSP rather than what I expected.
 
-The annual Linux Storage, Filesystem and Memory Management Summit for
-2016 will be held on April 18th and 19th at the Raleigh Marriott City
-center, Raleigh, NC.
+Yeah, unfortunately the feature didn't end up landing in M because
+there was an ARM/Android specific bug that couldn't be found using
+xfstests running on x86 (this is why I detoured to port xfstests and
+xfsprogs so they could build against bionic C library; I'm still
+hoping to find someone who is willing to help create an adb-xfstests
+system ala kvm-xfstests and gce-xfstests which fastboots the kernel to
+be tested and then launches the tests and collects the results using
+adb, by the way).
 
-Like last year, LSF/MM will be colocated with the Linux Foundation Vault
-conference which takes place on April 20th and 21st in the same
-venue. For those that do not know, Vault is designed to be an event
-where open source storage and filesystem practitioners meet storage
-implementors and, as such, it would be of benefit for LSF/MM attendees
-to attend.
+In any case, I did finally find the bug, but not in time for the M
+release.  So if you take the latest ext4 crypto bug fixes from
+upstream and apply them to the AOSP versions of the Nexus 9, Nexus 5X,
+and Nexus 6P kernels, and then replace AOSP version of e2fsprogs with
+the upstream e2fsprogs (use the master or next branch, and run the
+script ./util/gen-android-files to create the Android.mk files), and
+finally then change the fstab file in the 
+aosp/devices/<manufacturer>/<model>/fstab.<model> file and change the
+mount options so instead of "forceencrypt=/dev/block/platform/..." it
+uses the mount option "fileencryption" for the /data partition, this
+should allow you to build an AOSP system image that should work well
+enough to demo / test the kernel features.
 
-	http://events.linuxfoundation.org/events/linux-storage-filesystem-and-mm-summit
-	http://events.linuxfoundation.org/events/vault
+Some of the future work that I have planned or in progress:
 
-On behalf of the committee I am issuing a call for agenda proposals that
-are suitable for cross-track discussion as well as technical subjects
-for the breakout sessions.
+1) Patches that allow userspace to move / backup a set of encrypted
+files from one file system to another without having access to the
+key.  Dmitri asked for this as a feature request for desktop/laptop
+uses of ext4 encryption, and happily it turns out there is a reason
+why this would be useful for Android as well.  These patches have been
+floated on the ext4 list, but I don't yet have support for moving /
+backing up symlinks, so these patches won't be landing during the
+current merge window.
 
-1) Proposals for agenda topics should be sent before February 29th, 2016
-to:
+2) Work to allow IP blocks that have line speed encryption engines,
+such Qualcomm (as evidenced by the patch they tried to send for
+ecryptfs at https://lkml.org/lkml/2015/11/9/660), but one which is
+done in an upstream acceptable way, which means plumbing the crypto
+support through the block layer in a way which is SOC vendor agnostic.
+(Probably using a similar mechanism to how we tie DIF/DIX information
+to a block I/O request.)  I'm hoping Qualcomm and possibly other SOC
+vendors will be willing to work with me so this we can have something
+which is upstream acceptable (since I don't plan to accept a patch
+which adds some random, hacky, function pointers to code that only
+lives in a BSP kernel).  This may be a useful thing to discuss at the
+in Raleigh at the LSF/MM workshop in April, assuming I can get
+representatives from the relevant SOC vendors to show up.
 
-	lsf-pc@lists.linux-foundation.org
+> But, now it seems that there's no strong reason to postpone this work any more.
+> If Ted doen't mind, I'd like to investigate all the diffs between ext4 and f2fs
+> first.
 
-and cc the Linux list or lists that are relevant for the topic in
-question:
+Sure, if you could help with this I'd greatly appreciate it.
 
-	ATA:	linux-ide@vger.kernel.org
-	Block:	linux-block@vger.kernel.org
-	FS:	linux-fsdevel@vger.kernel.org
-	MM:	linux-mm@kvack.org
-	SCSI:	linux-scsi@vger.kernel.org
+There have been a number of improvements and optimizations since the
+last time you sync'ed the f2fs code with ext4, but I'm sure you'll see
+that as you look at the various commits.
 
-If advance notice is required for visa applications then please send
-proposals before February 11th. The committee will complete the first
-round of selections near that date to accommodate applications.
+Regards,
 
-Please tag your proposal with [LSF/MM TOPIC] to make it easier to
-track. In addition, please make sure to start a new thread for each
-topic rather than following up to an existing one.
-
-Agenda topics and attendees will be selected by the program committee,
-but the final agenda will be formed by consensus of the attendees at the
-summit.
-
-We will try to cap attendance at around 25-30 per track to facilitate
-discussions, although the final numbers will depend on the room sizes at
-the venue.
-
-2) Requests to attend the summit should be sent to:
-
-	lsf-pc@lists.linux-foundation.org
-
-Please summarise what expertise you will bring to the meeting, and what
-you would like to discuss. Please also tag your email with [LSF/MM
-ATTEND] so there is less chance of it getting lost.
-
-Presentations are allowed to guide discussion, but are strongly
-discouraged. There will be no recording or audio bridge. However, we
-expect that written minutes will be published as we did in previous
-years
-
-2015:
-	https://lwn.net/Articles/lsfmm2015/
-
-2014:
-	http://lwn.net/Articles/LSFMM2014/
-
-2013:
-	http://lwn.net/Articles/548089/
-
-3) If you have feedback on last year's meeting that we can use to
-improve this year's, please also send that to:
-
-	lsf-pc@lists.linux-foundation.org
-
-Thank you on behalf of the program committee:
-
-Storage:
-	Jens Axboe (track chair)
-	James Bottomley
-	Christoph Hellwig
-	Martin K. Petersen (program chair)
-
-Filesystems:
-	Josef Bacik
-	Jan Kara
-	Jeff Layton (track chair)
-	Anna Schumaker
-	Theodore Ts'o
-	Ric Wheeler
-
-MM:
-	Mel Gorman
-	Johannes Weiner
-	Rik van Riel (track chair)
-
--- 
-Martin K. Petersen	Oracle Linux Engineering
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+					- Ted
