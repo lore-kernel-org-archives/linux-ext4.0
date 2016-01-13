@@ -1,264 +1,164 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v8 6/9] dax: add support for fsync/msync
-Date: Wed, 13 Jan 2016 00:30:19 -0700
-Message-ID: <20160113073019.GB30496@linux.intel.com>
-References: <1452230879-18117-1-git-send-email-ross.zwisler@linux.intel.com>
- <1452230879-18117-7-git-send-email-ross.zwisler@linux.intel.com>
- <20160112105716.GT6262@quack.suse.cz>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: ext4 unkillable lseek.
+Date: Wed, 13 Jan 2016 10:36:09 +0300
+Message-ID: <87vb6y3p92.fsf@openvz.org>
+References: <20160112145348.GA15634@codemonkey.org.uk> <723A6BDE-4D73-47A5-BF0B-7A3D4ACD2C6A@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Dave Hansen <dave.hansen@linux.intel.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org, x86@kernel.org, xfs@oss.sgi.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20160112105716.GT6262@quack.suse.cz>
-Sender: owner-linux-mm@kvack.org
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha512; protocol="application/pgp-signature"
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>,
+	Dave Jones <davej@codemonkey.org.uk>, Ted Tso <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <723A6BDE-4D73-47A5-BF0B-7A3D4ACD2C6A@dilger.ca>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jan 12, 2016 at 11:57:16AM +0100, Jan Kara wrote:
-> On Thu 07-01-16 22:27:56, Ross Zwisler wrote:
-> > To properly handle fsync/msync in an efficient way DAX needs to track dirty
-> > pages so it is able to flush them durably to media on demand.
-> > 
-> > The tracking of dirty pages is done via the radix tree in struct
-> > address_space.  This radix tree is already used by the page writeback
-> > infrastructure for tracking dirty pages associated with an open file, and
-> > it already has support for exceptional (non struct page*) entries.  We
-> > build upon these features to add exceptional entries to the radix tree for
-> > DAX dirty PMD or PTE pages at fault time.
-> > 
-> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> 
-> Some comments below.
-> 
-> > ---
-> >  fs/dax.c            | 194 ++++++++++++++++++++++++++++++++++++++++++++++++++--
-> >  include/linux/dax.h |   2 +
-> >  mm/filemap.c        |   6 ++
-> >  3 files changed, 196 insertions(+), 6 deletions(-)
-> > 
-> > diff --git a/fs/dax.c b/fs/dax.c
-> > index 5b84a46..0db21ea 100644
-> > --- a/fs/dax.c
-> > +++ b/fs/dax.c
-> > @@ -24,6 +24,7 @@
-> >  #include <linux/memcontrol.h>
-> >  #include <linux/mm.h>
-> >  #include <linux/mutex.h>
-> > +#include <linux/pagevec.h>
-> >  #include <linux/pmem.h>
-> >  #include <linux/sched.h>
-> >  #include <linux/uio.h>
-> > @@ -324,6 +325,174 @@ static int copy_user_bh(struct page *to, struct inode *inode,
-> >  	return 0;
-> >  }
-> >  
-> > +#define NO_SECTOR -1
-> > +
-> > +static int dax_radix_entry(struct address_space *mapping, pgoff_t index,
-> > +		sector_t sector, bool pmd_entry, bool dirty)
-> > +{
-> > +	struct radix_tree_root *page_tree = &mapping->page_tree;
-> > +	int type, error = 0;
-> > +	void *entry;
-> > +
-> > +	__mark_inode_dirty(mapping->host, I_DIRTY_PAGES);
-> > +
-> > +	spin_lock_irq(&mapping->tree_lock);
-> > +	entry = radix_tree_lookup(page_tree, index);
-> > +
-> > +	if (entry) {
-> > +		type = RADIX_DAX_TYPE(entry);
-> > +		if (WARN_ON_ONCE(type != RADIX_DAX_PTE &&
-> > +					type != RADIX_DAX_PMD)) {
-> > +			error = -EIO;
-> > +			goto unlock;
-> > +		}
-> > +
-> > +		if (!pmd_entry || type == RADIX_DAX_PMD)
-> > +			goto dirty;
-> > +		radix_tree_delete(&mapping->page_tree, index);
-> > +		mapping->nrexceptional--;
-> 
-> In theory, you can delete here DIRTY / TOWRITE PTE entry and insert a clean
-> PMD entry instead of it. That will cause fsync() to miss some flushes. So
-> you should make sure you transfer all the tags to the new entry.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Ah, great catch, I'll address it in v9 which I'll send out tomorrow.
+Andreas Dilger <adilger@dilger.ca> writes:
 
-> > +static int dax_writeback_one(struct block_device *bdev,
-> > +		struct address_space *mapping, pgoff_t index, void *entry)
-> > +{
-> > +	struct radix_tree_root *page_tree = &mapping->page_tree;
-> > +	int type = RADIX_DAX_TYPE(entry);
-> > +	struct radix_tree_node *node;
-> > +	struct blk_dax_ctl dax;
-> > +	void **slot;
-> > +	int ret = 0;
-> > +
-> > +	spin_lock_irq(&mapping->tree_lock);
-> > +	/*
-> > +	 * Regular page slots are stabilized by the page lock even
-> > +	 * without the tree itself locked.  These unlocked entries
-> > +	 * need verification under the tree lock.
-> > +	 */
-> > +	if (!__radix_tree_lookup(page_tree, index, &node, &slot))
-> > +		goto unlock;
-> > +	if (*slot != entry)
-> > +		goto unlock;
-> > +
-> > +	/* another fsync thread may have already written back this entry */
-> > +	if (!radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_TOWRITE))
-> > +		goto unlock;
-> > +
-> > +	radix_tree_tag_clear(page_tree, index, PAGECACHE_TAG_TOWRITE);
-> > +
-> > +	if (WARN_ON_ONCE(type != RADIX_DAX_PTE && type != RADIX_DAX_PMD)) {
-> > +		ret = -EIO;
-> > +		goto unlock;
-> > +	}
-> > +
-> > +	dax.sector = RADIX_DAX_SECTOR(entry);
-> > +	dax.size = (type == RADIX_DAX_PMD ? PMD_SIZE : PAGE_SIZE);
-> > +	spin_unlock_irq(&mapping->tree_lock);
-> 
-> This seems to be somewhat racy as well - if there are two fsyncs running
-> against the same inode, one wins the race and clears TOWRITE tag, the
-> second then bails out and may finish before the skipped page gets flushed.
-> 
-> So we should clear the TOWRITE tag only after the range is flushed.  This
-> can result in some amount of duplicit flushing but I don't think the race
-> will happen that frequently in practice to be performance relevant.
+> On Jan 12, 2016, at 7:53 AM, Dave Jones <davej@codemonkey.org.uk> wrote:
+>>=20
+>> I was investigating a case where it looked like Trinity was getting
+>> into a deadlock.
+>>=20
+>> The running task is doing an lseek(fd, <bignum>, SEEK_DATA) on a sparse
+>> file that looks like this..
+>>=20
+>> $ ll trinity-testfile4
+>> --wxrwx--- 1 davej davej 4947802326691 Jan 12 09:14 trinity-testfile4*
+>> $ sudo filefrag trinity-testfile4
+>> trinity-testfile4: 3 extents found
+>>=20
+>> The kernel trace for that process looks like..
+>>=20
+>> trinity-c11     R  running task    22192 11483   2439 0x00080004
+>> ffff8800428a7c98 ffff8800a2ef87dc ffff8800a3bdf758 ffff8800a3bdf730
+>> ffff8800a2ef8008 ffff8800a2ef8340 ffff88009f8e9980 ffff8800a2ef8000
+>> ffff8800428a0000 ffffed0008514001 ffff8800428a0008 ffff8800935499e0
+>> Call Trace:
+>> [<ffffffff8f5e8bd2>] preempt_schedule_common+0x42/0x70
+>> [<ffffffff8f5e8c1f>] preempt_schedule+0x1f/0x30
+>> [<ffffffff8e003058>] ___preempt_schedule+0x12/0x14
+>> [<ffffffff8e7a1e90>] ? ext4_es_find_delayed_extent_range+0x2a0/0x780
+>> [<ffffffff8f5f6f81>] ? _raw_read_unlock+0x31/0x50
+>> [<ffffffff8f5f6f94>] ? _raw_read_unlock+0x44/0x50
+>> [<ffffffff8e7a1e90>] ext4_es_find_delayed_extent_range+0x2a0/0x780
+>
+> It looks like ext4_es_find_delayed_extent_range() is being called once
+> for every block in the file looking for any delalloc data, which is
+> pretty awful.  Checking the git history for this code, it seems it was
+> fixed once upon a time in commit 14516bb7bb:
+>
+>     ext4: fix suboptimal seek_{data,hole} extents traversial
+>
+>     It is ridiculous practice to scan inode block by block, this technique
+>     applicable only for old indirect files. This takes significant amount
+>     of time for really large files. Let's reuse ext4_fiemap which already
+>     traverse inode-tree in most optimal meaner.
+>
+>     TESTCASE:
+>     ftruncate64(fd, 0);
+>     ftruncate64(fd, 1ULL << 40);
+>     /* lseek will spin very long time */
+>     lseek64(fd, 0, SEEK_DATA);
+>     lseek64(fd, 0, SEEK_HOLE);
+>
+>     Original report: https://lkml.org/lkml/2014/10/16/620
+>
+>     Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+>     Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+>
+> but it was later reverted in ad7fefb10 because of a problem with ext3 and
+> never restored.
+>
+>     Revert "ext4: fix suboptimal seek_{data,hole} extents traversial"
+>
+>     This reverts commit 14516bb7bb6ffbd49f35389f9ece3b2045ba5815.
+>
+>     This was causing regression test failures with generic/285 with an ex=
+t3
+>     filesystem using CONFIG_EXT4_USE_FOR_EXT23.
+>
+>     Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+>
+> Looks like that patch needs to be revived.
+Yes. It is in my queue. I'll do it.
+>
+>> [<ffffffff8e69c307>] ext4_llseek+0x567/0x870
+>> [<ffffffff8e69bda0>] ? ext4_find_unwritten_pgoff.isra.12+0x790/0x790
+>> [<ffffffff8f5edafc>] ? mutex_lock_nested+0x51c/0x8e0
+>> [<ffffffff8e20e5f9>] ? trace_hardirqs_on_caller+0x3f9/0x580
+>> [<ffffffff8e56e1a5>] ? __fdget_pos+0xd5/0x110
+>> [<ffffffff8e20e78d>] ? trace_hardirqs_on+0xd/0x10
+>> [<ffffffff8f5ed5e0>] ? mutex_lock_interruptible_nested+0x9f0/0x9f0
+>> [<ffffffff8e00508f>] ? enter_from_user_mode+0x1f/0x50
+>> [<ffffffff8e005338>] ? syscall_trace_enter_phase1+0x278/0x470
+>> [<ffffffff8e248527>] ? debug_lockdep_rcu_enabled+0x77/0x90
+>> [<ffffffff8e518acd>] SyS_lseek+0x10d/0x180
+>> [<ffffffff8f5f7457>] entry_SYSCALL_64_fastpath+0x12/0x6b
+>>=20
+>> It's currently been running for a hour.
+>> Even though it's preempting back to userspace, it's ignoring
+>> all the SIGKILLs that trinity has been sending it for taking too long.
+>>=20
+>> Meanwhile all the other processes are backing up on the f_pos lock.
+>>=20
+>> trinity-c7      D ffff880066857d50 24240 11628   2439 0x00080004
+>> ffff880066857d50 0000000000000007 ffff8800a3bdf758 ffff8800a3bdf730
+>> ffff880045286608 ffff880045286940 ffff8800a0150000 ffff880045286600
+>> ffff880066850000 ffffed000cd0a001 ffff880066850008 dffffc0000000000
+>> Call Trace:
+>> [<ffffffff8f5e8e0f>] schedule+0x9f/0x1c0
+>> [<ffffffff8f5e9588>] schedule_preempt_disabled+0x18/0x30
+>> [<ffffffff8f5ed92d>] mutex_lock_nested+0x34d/0x8e0
+>> [<ffffffff8e56e1a5>] ? __fdget_pos+0xd5/0x110
+>> [<ffffffff8e337fe3>] ? acct_account_cputime+0x63/0x80
+>> [<ffffffff8e56e1a5>] ? __fdget_pos+0xd5/0x110
+>> [<ffffffff8f5ed5e0>] ? mutex_lock_interruptible_nested+0x9f0/0x9f0
+>> [<ffffffff8e248527>] ? debug_lockdep_rcu_enabled+0x77/0x90
+>> [<ffffffff8e56e1a5>] __fdget_pos+0xd5/0x110
+>> [<ffffffff8e51c029>] SyS_read+0x79/0x230
+>> [<ffffffff8e51bfb0>] ? do_sendfile+0x1280/0x1280
+>> [<ffffffff8e20e5f9>] ? trace_hardirqs_on_caller+0x3f9/0x580
+>> [<ffffffff8e003017>] ? trace_hardirqs_on_thunk+0x17/0x19
+>> [<ffffffff8f5f7457>] entry_SYSCALL_64_fastpath+0x12/0x6b
+>>=20
+>> Eventually it does complete, but waiting a half hour every time
+>> trinity picks lseek as a syscall is kinda crappy.
+>>=20
+>> Shouldn't lseek be a killable operation ?
+>>=20
+>> I notice this doesn't seem to happen with btrfs, suggesting it's
+>> an ext'ism.   This has probably been there for a while, I've not
+>> been doing fuzz runs on ext4 enabled systems for a long time.
+>>=20
+>> 	Dave
+>>=20
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+> Cheers, Andreas
 
-Yep, this make sense.  I'll also fix that in v9.
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
-> And secondly: You must write-protect all mappings of the flushed range so
-> that you get fault when the sector gets written-to again. We spoke about
-> this in the past already but somehow it got lost and I forgot about it as
-> well. You need something like rmap_walk_file()...
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
 
-The code that write protected mappings and then cleaned the radix tree entries
-did get written, and was part of v2:
-
-https://lkml.org/lkml/2015/11/13/759
-
-I removed all the code that cleaned PTE entries and radix tree entries for v3.
-The reason behind this was that there was a race that I couldn't figure out
-how to solve between the cleaning of the PTEs and the cleaning of the radix
-tree entries.
-
-The race goes like this:
-
-Thread 1 (write)			Thread 2 (fsync)
-================			================
-wp_pfn_shared()
-pfn_mkwrite()
-dax_radix_entry()
-radix_tree_tag_set(DIRTY)
-					dax_writeback_mapping_range()
-					dax_writeback_one()
-					radix_tag_clear(DIRTY)
-					pgoff_mkclean()
-... return up to wp_pfn_shared()
-wp_page_reuse()
-pte_mkdirty()
-
-After this sequence we end up with a dirty PTE that is writeable, but with a
-clean radix tree entry.  This means that users can write to the page, but that
-a follow-up fsync or msync won't flush this dirty data to media.
-
-The overall issue is that in the write path that goes through wp_pfn_shared(),
-the DAX code has control over when the radix tree entry is dirtied but not
-when the PTE is made dirty and writeable.  This happens up in wp_page_reuse().
-This means that we can't easily add locking, etc. to protect ourselves.
-
-I spoke a bit about this with Dave Chinner and with Dave Hansen, but no really
-easy solutions presented themselves in the absence of a page lock.  I do have
-one idea, but I think it's pretty invasive and will need to wait for another
-kernel cycle.
-
-The current code that leaves the radix tree entry will give us correct
-behavior - it'll just be less efficient because we will have an ever-growing
-dirty set to flush.
-
-> > +	/*
-> > +	 * We cannot hold tree_lock while calling dax_map_atomic() because it
-> > +	 * eventually calls cond_resched().
-> > +	 */
-> > +	ret = dax_map_atomic(bdev, &dax);
-> > +	if (ret < 0)
-> > +		return ret;
-> > +
-> > +	if (WARN_ON_ONCE(ret < dax.size)) {
-> > +		ret = -EIO;
-> > +		goto unmap;
-> > +	}
-> > +
-> > +	wb_cache_pmem(dax.addr, dax.size);
-> > + unmap:
-> > +	dax_unmap_atomic(bdev, &dax);
-> > +	return ret;
-> > +
-> > + unlock:
-> > +	spin_unlock_irq(&mapping->tree_lock);
-> > +	return ret;
-> > +}
-> 
-> ...
-> 
-> > @@ -791,15 +976,12 @@ EXPORT_SYMBOL_GPL(dax_pmd_fault);
-> >   * dax_pfn_mkwrite - handle first write to DAX page
-> >   * @vma: The virtual memory area where the fault occurred
-> >   * @vmf: The description of the fault
-> > - *
-> >   */
-> >  int dax_pfn_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
-> >  {
-> > -	struct super_block *sb = file_inode(vma->vm_file)->i_sb;
-> > +	struct file *file = vma->vm_file;
-> >  
-> > -	sb_start_pagefault(sb);
-> > -	file_update_time(vma->vm_file);
-> > -	sb_end_pagefault(sb);
-> > +	dax_radix_entry(file->f_mapping, vmf->pgoff, NO_SECTOR, false, true);
-> 
-> Why is NO_SECTOR argument correct here?
-
-Right - so NO_SECTOR means "I expect there to already be an entry in the radix
-tree - just make that entry dirty".  This works because pfn_mkwrite() always
-follows a normal __dax_fault() or __dax_pmd_fault() call.  These fault calls
-will insert the radix tree entry, regardless of whether the fault was for a
-read or a write.  If the fault was for a write, the radix tree entry will also
-be made dirty.
-
-For reads the radix tree entry will be inserted but left clean.  When the
-first write happens we will get a pfn_mkwrite() call, which will call
-dax_radix_entry() with the NO_SECTOR argument.  This will look up the radix
-tree entry & set the dirty tag.
-
-This also has the added benefit that the pfn_mkwrite() path can remain minimal
-- if we needed to actually insert a radix tree entry with sector information
-we'd have to duplicate a bunch of the fault path code so that we could call
-get_block().
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+iQEcBAEBCgAGBQJWlf5pAAoJELhyPTmIL6kBAGYH/1xiYd1v6WvyBH3Dd23bcH01
+AOXyyUhibOvvBup1n6fzR1jQkP+/Cw60NqiRpeg4XLVxJOzV3K9S9jthQRNycevL
+DbmaVnZCPy6rmdpWFVtPXhrYfP2ofWYhz8rSTqS9AQUZtbYgVkK7F8l8Ir+Rnw61
+p5idx3y3Wn7trRfRaOXV64tdRT5IDe2Wa84tns0NGD0eeQHcG5EjQRaQsecjae3K
+RmQ3HhoQ1x9C5l/MBCq6Vk0O2cFY74IBMCcPDqc7aQwkLugxhfGJllb3Y5TPLEwR
+8kwuNPk3O3ECpHwGUKHreFfwnHGsVSjs9OmyUXlBCDzJ+8S5Pyc4rg41AyE3BNg=
+=9aSA
+-----END PGP SIGNATURE-----
+--=-=-=--
