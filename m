@@ -1,269 +1,77 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 3/4] jbd2: Unify revoke and tag block checksum handling
-Date: Tue, 12 Jan 2016 17:25:47 -0800
-Message-ID: <20160113012547.GB2455@birch.djwong.org>
-References: <1452177715-9671-1-git-send-email-jack@suse.cz>
- <1452177715-9671-4-git-send-email-jack@suse.cz>
- <20160107171645.GA28338@birch.djwong.org>
- <20160112124101.GU6262@quack.suse.cz>
+From: Li Xi <pkuelelixi@gmail.com>
+Subject: Re: [v16 0/4] ext4: add project quota support
+Date: Wed, 13 Jan 2016 11:12:02 +0800
+Message-ID: <CAPTn0cC1LQaWytjSQQ3e7qn6yMZ0J1gFhJe_O_Jtcu1Eq8nLPA@mail.gmail.com>
+References: <1452588970-18309-1-git-send-email-lixi@ddn.com>
+	<20160112174556.GA22719@thunk.org>
+	<CAPTn0cCSzqKfS5g7Y9ESmw4wMnD2H7XCepA3drRvXH_+PN85AA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=UTF-8
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@dilger.ca>, Jan Kara <jack@suse.cz>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"hch@infradead.org" <hch@infradead.org>,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:46105 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751058AbcAMBZx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jan 2016 20:25:53 -0500
-Content-Disposition: inline
-In-Reply-To: <20160112124101.GU6262@quack.suse.cz>
+Received: from mail-vk0-f51.google.com ([209.85.213.51]:35051 "EHLO
+	mail-vk0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754100AbcAMDMF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jan 2016 22:12:05 -0500
+Received: by mail-vk0-f51.google.com with SMTP id k1so254431669vkb.2
+        for <linux-ext4@vger.kernel.org>; Tue, 12 Jan 2016 19:12:03 -0800 (PST)
+In-Reply-To: <CAPTn0cCSzqKfS5g7Y9ESmw4wMnD2H7XCepA3drRvXH_+PN85AA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 12, 2016 at 01:41:01PM +0100, Jan Kara wrote:
-> On Thu 07-01-16 09:16:45, Darrick J. Wong wrote:
-> > On Thu, Jan 07, 2016 at 03:41:54PM +0100, Jan Kara wrote:
-> > > Revoke and tag descriptor blocks are just different kinds of descriptor
-> > > blocks and thus have checksum in the same place. Unify computation and
-> > > checking of checksums for these.
-> > 
-> > Looks ok to me,
-> > Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-> 
-> Thanks for review.
-> 
-> > Is there a corresponding update to e2fsprogs' journal code?
-> 
-> No, I can write one if Ted decides to merge this in JBD2.
+Hi Ted,
 
-Ok, just checking.  I'll review one if/when I see it. :)
+I ran following tests on the new git tree, and also walked through the patches.
+I didn't find any problem.
+(https://github.com/ddn-lixi/project_quota_ext4_utils/blob/master/test.sh)
 
---D
+Regards,
+Li Xi
 
-> 
-> 								Honza
-> 
-> > > Signed-off-by: Jan Kara <jack@suse.cz>
-> > > ---
-> > >  fs/jbd2/commit.c     | 18 +-----------------
-> > >  fs/jbd2/journal.c    | 15 +++++++++++++++
-> > >  fs/jbd2/recovery.c   | 31 +++++--------------------------
-> > >  fs/jbd2/revoke.c     | 19 ++-----------------
-> > >  include/linux/jbd2.h |  8 ++------
-> > >  5 files changed, 25 insertions(+), 66 deletions(-)
-> > > 
-> > > diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> > > index cf221f3d955a..ae832cd44dd8 100644
-> > > --- a/fs/jbd2/commit.c
-> > > +++ b/fs/jbd2/commit.c
-> > > @@ -317,22 +317,6 @@ static void write_tag_block(journal_t *j, journal_block_tag_t *tag,
-> > >  		tag->t_blocknr_high = cpu_to_be32((block >> 31) >> 1);
-> > >  }
-> > >  
-> > > -static void jbd2_descr_block_csum_set(journal_t *j,
-> > > -				      struct buffer_head *bh)
-> > > -{
-> > > -	struct jbd2_journal_block_tail *tail;
-> > > -	__u32 csum;
-> > > -
-> > > -	if (!jbd2_journal_has_csum_v2or3(j))
-> > > -		return;
-> > > -
-> > > -	tail = (struct jbd2_journal_block_tail *)(bh->b_data + j->j_blocksize -
-> > > -			sizeof(struct jbd2_journal_block_tail));
-> > > -	tail->t_checksum = 0;
-> > > -	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
-> > > -	tail->t_checksum = cpu_to_be32(csum);
-> > > -}
-> > > -
-> > >  static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
-> > >  				    struct buffer_head *bh, __u32 sequence)
-> > >  {
-> > > @@ -714,7 +698,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
-> > >  
-> > >  			tag->t_flags |= cpu_to_be16(JBD2_FLAG_LAST_TAG);
-> > >  
-> > > -			jbd2_descr_block_csum_set(journal, descriptor);
-> > > +			jbd2_descriptor_block_csum_set(journal, descriptor);
-> > >  start_journal_io:
-> > >  			for (i = 0; i < bufs; i++) {
-> > >  				struct buffer_head *bh = wbuf[i];
-> > > diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> > > index 28d05bd9a588..defa962a8e15 100644
-> > > --- a/fs/jbd2/journal.c
-> > > +++ b/fs/jbd2/journal.c
-> > > @@ -834,6 +834,21 @@ jbd2_journal_get_descriptor_buffer(transaction_t *transaction, int type)
-> > >  	return bh;
-> > >  }
-> > >  
-> > > +void jbd2_descriptor_block_csum_set(journal_t *j, struct buffer_head *bh)
-> > > +{
-> > > +	struct jbd2_journal_block_tail *tail;
-> > > +	__u32 csum;
-> > > +
-> > > +	if (!jbd2_journal_has_csum_v2or3(j))
-> > > +		return;
-> > > +
-> > > +	tail = (struct jbd2_journal_block_tail *)(bh->b_data + j->j_blocksize -
-> > > +			sizeof(struct jbd2_journal_block_tail));
-> > > +	tail->t_checksum = 0;
-> > > +	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
-> > > +	tail->t_checksum = cpu_to_be32(csum);
-> > > +}
-> > > +
-> > >  /*
-> > >   * Return tid of the oldest transaction in the journal and block in the journal
-> > >   * where the transaction starts.
-> > > diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-> > > index 7f277e49fe88..08a456b96e4e 100644
-> > > --- a/fs/jbd2/recovery.c
-> > > +++ b/fs/jbd2/recovery.c
-> > > @@ -174,8 +174,7 @@ static int jread(struct buffer_head **bhp, journal_t *journal,
-> > >  	return 0;
-> > >  }
-> > >  
-> > > -static int jbd2_descr_block_csum_verify(journal_t *j,
-> > > -					void *buf)
-> > > +static int jbd2_descriptor_block_csum_verify(journal_t *j, void *buf)
-> > >  {
-> > >  	struct jbd2_journal_block_tail *tail;
-> > >  	__be32 provided;
-> > > @@ -522,8 +521,8 @@ static int do_one_pass(journal_t *journal,
-> > >  				descr_csum_size =
-> > >  					sizeof(struct jbd2_journal_block_tail);
-> > >  			if (descr_csum_size > 0 &&
-> > > -			    !jbd2_descr_block_csum_verify(journal,
-> > > -							  bh->b_data)) {
-> > > +			    !jbd2_descriptor_block_csum_verify(journal,
-> > > +							       bh->b_data)) {
-> > >  				printk(KERN_ERR "JBD2: Invalid checksum "
-> > >  				       "recovering block %lu in log\n",
-> > >  				       next_log_block);
-> > > @@ -811,26 +810,6 @@ static int do_one_pass(journal_t *journal,
-> > >  	return err;
-> > >  }
-> > >  
-> > > -static int jbd2_revoke_block_csum_verify(journal_t *j,
-> > > -					 void *buf)
-> > > -{
-> > > -	struct jbd2_journal_revoke_tail *tail;
-> > > -	__be32 provided;
-> > > -	__u32 calculated;
-> > > -
-> > > -	if (!jbd2_journal_has_csum_v2or3(j))
-> > > -		return 1;
-> > > -
-> > > -	tail = (struct jbd2_journal_revoke_tail *)(buf + j->j_blocksize -
-> > > -			sizeof(struct jbd2_journal_revoke_tail));
-> > > -	provided = tail->r_checksum;
-> > > -	tail->r_checksum = 0;
-> > > -	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
-> > > -	tail->r_checksum = provided;
-> > > -
-> > > -	return provided == cpu_to_be32(calculated);
-> > > -}
-> > > -
-> > >  /* Scan a revoke record, marking all blocks mentioned as revoked. */
-> > >  
-> > >  static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
-> > > @@ -846,11 +825,11 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
-> > >  	offset = sizeof(jbd2_journal_revoke_header_t);
-> > >  	rcount = be32_to_cpu(header->r_count);
-> > >  
-> > > -	if (!jbd2_revoke_block_csum_verify(journal, header))
-> > > +	if (!jbd2_descriptor_block_csum_verify(journal, header))
-> > >  		return -EFSBADCRC;
-> > >  
-> > >  	if (jbd2_journal_has_csum_v2or3(journal))
-> > > -		csum_size = sizeof(struct jbd2_journal_revoke_tail);
-> > > +		csum_size = sizeof(struct jbd2_journal_block_tail);
-> > >  	if (rcount > journal->j_blocksize - csum_size)
-> > >  		return -EINVAL;
-> > >  	max = rcount;
-> > > diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-> > > index d1ebb1d41d17..91171dc352cb 100644
-> > > --- a/fs/jbd2/revoke.c
-> > > +++ b/fs/jbd2/revoke.c
-> > > @@ -583,7 +583,7 @@ static void write_one_revoke_record(transaction_t *transaction,
-> > >  
-> > >  	/* Do we need to leave space at the end for a checksum? */
-> > >  	if (jbd2_journal_has_csum_v2or3(journal))
-> > > -		csum_size = sizeof(struct jbd2_journal_revoke_tail);
-> > > +		csum_size = sizeof(struct jbd2_journal_block_tail);
-> > >  
-> > >  	if (jbd2_has_feature_64bit(journal))
-> > >  		sz = 8;
-> > > @@ -623,21 +623,6 @@ static void write_one_revoke_record(transaction_t *transaction,
-> > >  	*offsetp = offset;
-> > >  }
-> > >  
-> > > -static void jbd2_revoke_csum_set(journal_t *j, struct buffer_head *bh)
-> > > -{
-> > > -	struct jbd2_journal_revoke_tail *tail;
-> > > -	__u32 csum;
-> > > -
-> > > -	if (!jbd2_journal_has_csum_v2or3(j))
-> > > -		return;
-> > > -
-> > > -	tail = (struct jbd2_journal_revoke_tail *)(bh->b_data + j->j_blocksize -
-> > > -			sizeof(struct jbd2_journal_revoke_tail));
-> > > -	tail->r_checksum = 0;
-> > > -	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
-> > > -	tail->r_checksum = cpu_to_be32(csum);
-> > > -}
-> > > -
-> > >  /*
-> > >   * Flush a revoke descriptor out to the journal.  If we are aborting,
-> > >   * this is a noop; otherwise we are generating a buffer which needs to
-> > > @@ -658,7 +643,7 @@ static void flush_descriptor(journal_t *journal,
-> > >  
-> > >  	header = (jbd2_journal_revoke_header_t *)descriptor->b_data;
-> > >  	header->r_count = cpu_to_be32(offset);
-> > > -	jbd2_revoke_csum_set(journal, descriptor);
-> > > +	jbd2_descriptor_block_csum_set(journal, descriptor);
-> > >  
-> > >  	set_buffer_jwrite(descriptor);
-> > >  	BUFFER_TRACE(descriptor, "write");
-> > > diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> > > index 3649cb8d3a41..fd1083c46c61 100644
-> > > --- a/include/linux/jbd2.h
-> > > +++ b/include/linux/jbd2.h
-> > > @@ -200,7 +200,7 @@ typedef struct journal_block_tag_s
-> > >  	__be32		t_blocknr_high; /* most-significant high 32bits. */
-> > >  } journal_block_tag_t;
-> > >  
-> > > -/* Tail of descriptor block, for checksumming */
-> > > +/* Tail of descriptor or revoke block, for checksumming */
-> > >  struct jbd2_journal_block_tail {
-> > >  	__be32		t_checksum;	/* crc32c(uuid+descr_block) */
-> > >  };
-> > > @@ -215,11 +215,6 @@ typedef struct jbd2_journal_revoke_header_s
-> > >  	__be32		 r_count;	/* Count of bytes used in the block */
-> > >  } jbd2_journal_revoke_header_t;
-> > >  
-> > > -/* Tail of revoke block, for checksumming */
-> > > -struct jbd2_journal_revoke_tail {
-> > > -	__be32		r_checksum;	/* crc32c(uuid+revoke_block) */
-> > > -};
-> > > -
-> > >  /* Definitions for the journal tag flags word: */
-> > >  #define JBD2_FLAG_ESCAPE		1	/* on-disk block is escaped */
-> > >  #define JBD2_FLAG_SAME_UUID	2	/* block has same uuid as previous */
-> > > @@ -1138,6 +1133,7 @@ static inline void jbd2_unfile_log_bh(struct buffer_head *bh)
-> > >  
-> > >  /* Log buffer allocation */
-> > >  struct buffer_head *jbd2_journal_get_descriptor_buffer(transaction_t *, int);
-> > > +void jbd2_descriptor_block_csum_set(journal_t *, struct buffer_head *);
-> > >  int jbd2_journal_next_log_block(journal_t *, unsigned long long *);
-> > >  int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
-> > >  			      unsigned long *block);
-> > > -- 
-> > > 2.6.2
-> > > 
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> -- 
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
+On Wed, Jan 13, 2016 at 9:15 AM, Li Xi <pkuelelixi@gmail.com> wrote:
+> Hi Ted,
+>
+> Thanks for merging it.
+>
+> That is true, there is no other change beyong rebasing it to 4.4 kernel (master
+> branch of linux git). I ran regression tests of project quota on
+> current patches.
+>
+> Sure, I will check the patches in the git tree. And also, I'd like to
+> build the kernel
+> and test it again together with the latest e2fsprogs patches to make
+> sure everything
+> works, just in case.
+>
+> BTW, I have a patch of quota-tools.git that adds project quota support
+> for quota tools.
+> Do you know which mail list should I send that patch to?
+>
+> Regards
+> Li Xi
+>
+> On Wed, Jan 13, 2016 at 1:45 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+>> Hi Li,
+>>
+>> The ext4 project quota patches are in the ext4.git tree and are
+>> planned to be merged during this merge window.  I've already made some
+>> changes to fix problems that were reported by zero day testting
+>> service (when CONFIG_QUOTA was not enabled, for example).  Since
+>> you've reported that the only changes in this patch series was to
+>> rebase it to the 4.4 kernel, I don't plan to be taking a close look at
+>> this version of the patches; please let me know if there were any
+>> changes beyond just the rebasing changes.
+>>
+>> Also, if you could take a look at the project quota patches in the
+>> ext4.git tree, please let me know if you have changes you would like
+>> since this is what I plan to be sending to Linus in the next few days.
+>>
+>> Many thanks!
+>>
+>>                                                 - Ted
+>>
