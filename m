@@ -1,61 +1,119 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 unkillable lseek.
-Date: Wed, 13 Jan 2016 12:00:21 -0500
-Message-ID: <20160113170021.GD30894@thunk.org>
-References: <20160112145348.GA15634@codemonkey.org.uk>
- <723A6BDE-4D73-47A5-BF0B-7A3D4ACD2C6A@dilger.ca>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v8 4/9] dax: support dirty DAX entries in radix tree
+Date: Wed, 13 Jan 2016 11:48:32 -0700
+Message-ID: <20160113184832.GA5904@linux.intel.com>
+References: <1452230879-18117-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1452230879-18117-5-git-send-email-ross.zwisler@linux.intel.com>
+ <20160113094411.GA17057@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dave Jones <davej@codemonkey.org.uk>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Dave Hansen <dave.hansen@linux.intel.com>,
+	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-nvdimm@lists.01.org, x86@kernel.org,
+	xfs@oss.sgi.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga14.intel.com ([192.55.52.115]:47951 "EHLO mga14.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932402AbcAMSsf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Jan 2016 13:48:35 -0500
 Content-Disposition: inline
-In-Reply-To: <723A6BDE-4D73-47A5-BF0B-7A3D4ACD2C6A@dilger.ca>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20160113094411.GA17057@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 12, 2016 at 02:17:43PM -0700, Andreas Dilger wrote:
+On Wed, Jan 13, 2016 at 10:44:11AM +0100, Jan Kara wrote:
+> On Thu 07-01-16 22:27:54, Ross Zwisler wrote:
+> > Add support for tracking dirty DAX entries in the struct address_space
+> > radix tree.  This tree is already used for dirty page writeback, and it
+> > already supports the use of exceptional (non struct page*) entries.
+> > 
+> > In order to properly track dirty DAX pages we will insert new exceptional
+> > entries into the radix tree that represent dirty DAX PTE or PMD pages.
+> > These exceptional entries will also contain the writeback sectors for the
+> > PTE or PMD faults that we can use at fsync/msync time.
+> > 
+> > There are currently two types of exceptional entries (shmem and shadow)
+> > that can be placed into the radix tree, and this adds a third.  We rely on
+> > the fact that only one type of exceptional entry can be found in a given
+> > radix tree based on its usage.  This happens for free with DAX vs shmem but
+> > we explicitly prevent shadow entries from being added to radix trees for
+> > DAX mappings.
+> > 
+> > The only shadow entries that would be generated for DAX radix trees would
+> > be to track zero page mappings that were created for holes.  These pages
+> > would receive minimal benefit from having shadow entries, and the choice
+> > to have only one type of exceptional entry in a given radix tree makes the
+> > logic simpler both in clear_exceptional_entry() and in the rest of DAX.
+> > 
+> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> > Reviewed-by: Jan Kara <jack@suse.cz>
 > 
-> It looks like ext4_es_find_delayed_extent_range() is being called once
-> for every block in the file looking for any delalloc data, which is
-> pretty awful.  Checking the git history for this code, it seems it was
-> fixed once upon a time in commit 14516bb7bb:
+> I have realized there's one issue with this code. See below:
 > 
->     ext4: fix suboptimal seek_{data,hole} extents traversial
+> > @@ -34,31 +35,39 @@ static void clear_exceptional_entry(struct address_space *mapping,
+> >  		return;
+> >  
+> >  	spin_lock_irq(&mapping->tree_lock);
+> > -	/*
+> > -	 * Regular page slots are stabilized by the page lock even
+> > -	 * without the tree itself locked.  These unlocked entries
+> > -	 * need verification under the tree lock.
+> > -	 */
+> > -	if (!__radix_tree_lookup(&mapping->page_tree, index, &node, &slot))
+> > -		goto unlock;
+> > -	if (*slot != entry)
+> > -		goto unlock;
+> > -	radix_tree_replace_slot(slot, NULL);
+> > -	mapping->nrshadows--;
+> > -	if (!node)
+> > -		goto unlock;
+> > -	workingset_node_shadows_dec(node);
+> > -	/*
+> > -	 * Don't track node without shadow entries.
+> > -	 *
+> > -	 * Avoid acquiring the list_lru lock if already untracked.
+> > -	 * The list_empty() test is safe as node->private_list is
+> > -	 * protected by mapping->tree_lock.
+> > -	 */
+> > -	if (!workingset_node_shadows(node) &&
+> > -	    !list_empty(&node->private_list))
+> > -		list_lru_del(&workingset_shadow_nodes, &node->private_list);
+> > -	__radix_tree_delete_node(&mapping->page_tree, node);
+> > +
+> > +	if (dax_mapping(mapping)) {
+> > +		if (radix_tree_delete_item(&mapping->page_tree, index, entry))
+> > +			mapping->nrexceptional--;
 > 
->     It is ridiculous practice to scan inode block by block, this technique
->     applicable only for old indirect files. This takes significant amount
->     of time for really large files. Let's reuse ext4_fiemap which already
->     traverse inode-tree in most optimal meaner.
-> 
->     TESTCASE:
->     ftruncate64(fd, 0);
->     ftruncate64(fd, 1ULL << 40);
->     /* lseek will spin very long time */
->     lseek64(fd, 0, SEEK_DATA);
->     lseek64(fd, 0, SEEK_HOLE);
-> 
->     Original report: https://lkml.org/lkml/2014/10/16/620
-> 
->     Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
->     Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> 
-> but it was later reverted in ad7fefb10 because of a problem with ext3 and
-> never restored.
+> So when you punch hole in a file, you can delete a PMD entry from a radix
+> tree which covers part of the file which still stays. So in this case you
+> have to split the PMD entry into PTE entries (probably that needs to happen
+> up in truncate_inode_pages_range()) or something similar...
 
-The relevant thread dates back to January 3, 2015 when it went
-dead/dormant.  The last message from Dimitri was:
+I think (and will verify) that the DAX code just unmaps the entire PMD range
+when we receive a hole punch request inside of the PMD.  If this is true then
+I think the radix tree code should behave the same way and just remove the PMD
+entry in the radix tree.
 
->Crap. I do not understand why I cant not reproduce this.
->I'm out of my normal dev environment for couple of days,
->so patch reverting looks reasonable.  But please add code which
->break the loop on signal because otherwise this result in DOS for huge file
+This will cause new accesses that used to land in the PMD range to get new
+page faults.  These faults will call get_blocks(), where presumably the
+filesystem will tell us that we don't have a contiguous 2MiB range anymore, so
+we will fall back to PTE faults.  These PTEs will fill in both the radix tree
+and the page tables.
 
-We never did do that last bit, which is probably what we should do as
-a short-term fix until we can debug the "fix suboptimal seek_{data,hole}
-extents traversal" patch.
-
-							- Ted
+So, I think the work here is to verify the behavior of DAX wrt hole punches
+for PMD ranges, and make the radix tree code match that behavior.  Sound good?
