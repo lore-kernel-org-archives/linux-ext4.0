@@ -1,77 +1,29 @@
-From: Li Xi <pkuelelixi@gmail.com>
-Subject: Re: [v16 0/4] ext4: add project quota support
-Date: Wed, 13 Jan 2016 11:12:02 +0800
-Message-ID: <CAPTn0cC1LQaWytjSQQ3e7qn6yMZ0J1gFhJe_O_Jtcu1Eq8nLPA@mail.gmail.com>
-References: <1452588970-18309-1-git-send-email-lixi@ddn.com>
-	<20160112174556.GA22719@thunk.org>
-	<CAPTn0cCSzqKfS5g7Y9ESmw4wMnD2H7XCepA3drRvXH_+PN85AA@mail.gmail.com>
+From: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
+Subject: which IO-scheduler is best for flash based storage device with ext4
+Date: Wed, 13 Jan 2016 06:33:28 +0000
+Message-ID: <a6b26fd61d88475784c7745b92fe0ae2@SGPMBX1004.APAC.bosch.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@dilger.ca>, Jan Kara <jack@suse.cz>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"hch@infradead.org" <hch@infradead.org>,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+To: Jan Kara <jack@suse.cz>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vk0-f51.google.com ([209.85.213.51]:35051 "EHLO
-	mail-vk0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754100AbcAMDMF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jan 2016 22:12:05 -0500
-Received: by mail-vk0-f51.google.com with SMTP id k1so254431669vkb.2
-        for <linux-ext4@vger.kernel.org>; Tue, 12 Jan 2016 19:12:03 -0800 (PST)
-In-Reply-To: <CAPTn0cCSzqKfS5g7Y9ESmw4wMnD2H7XCepA3drRvXH_+PN85AA@mail.gmail.com>
+Received: from smtp6-v.fe.bosch.de ([139.15.237.11]:18617 "EHLO
+	smtp6-v.fe.bosch.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751142AbcAMGde convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Jan 2016 01:33:34 -0500
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+Hi,
 
-I ran following tests on the new git tree, and also walked through the patches.
-I didn't find any problem.
-(https://github.com/ddn-lixi/project_quota_ext4_utils/blob/master/test.sh)
+Could you tell me which  IO-scheduler is best for flash based storage device with ext4 ?
+Just search from WWW, I saw it is said that the noop is best because the CFQ is design for the mechanical hard disk.
+And I did the performance test with IOzone between the IO-scheduler noop and cfq. The performance difference is small.
+So here I want to get some answer from you about this question.
 
-Regards,
-Li Xi
+Thanks.
+Huang weller
 
-On Wed, Jan 13, 2016 at 9:15 AM, Li Xi <pkuelelixi@gmail.com> wrote:
-> Hi Ted,
->
-> Thanks for merging it.
->
-> That is true, there is no other change beyong rebasing it to 4.4 kernel (master
-> branch of linux git). I ran regression tests of project quota on
-> current patches.
->
-> Sure, I will check the patches in the git tree. And also, I'd like to
-> build the kernel
-> and test it again together with the latest e2fsprogs patches to make
-> sure everything
-> works, just in case.
->
-> BTW, I have a patch of quota-tools.git that adds project quota support
-> for quota tools.
-> Do you know which mail list should I send that patch to?
->
-> Regards
-> Li Xi
->
-> On Wed, Jan 13, 2016 at 1:45 AM, Theodore Ts'o <tytso@mit.edu> wrote:
->> Hi Li,
->>
->> The ext4 project quota patches are in the ext4.git tree and are
->> planned to be merged during this merge window.  I've already made some
->> changes to fix problems that were reported by zero day testting
->> service (when CONFIG_QUOTA was not enabled, for example).  Since
->> you've reported that the only changes in this patch series was to
->> rebase it to the 4.4 kernel, I don't plan to be taking a close look at
->> this version of the patches; please let me know if there were any
->> changes beyond just the rebasing changes.
->>
->> Also, if you could take a look at the project quota patches in the
->> ext4.git tree, please let me know if you have changes you would like
->> since this is what I plan to be sending to Linus in the next few days.
->>
->> Many thanks!
->>
->>                                                 - Ted
->>
+
