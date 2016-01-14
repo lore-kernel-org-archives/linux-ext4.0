@@ -1,146 +1,243 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v8 6/9] dax: add support for fsync/msync
-Date: Wed, 13 Jan 2016 11:58:02 -0700
-Message-ID: <20160113185802.GB5904@linux.intel.com>
-References: <1452230879-18117-1-git-send-email-ross.zwisler@linux.intel.com>
- <1452230879-18117-7-git-send-email-ross.zwisler@linux.intel.com>
- <20160112105716.GT6262@quack.suse.cz>
- <20160113073019.GB30496@linux.intel.com>
- <20160113093525.GD14630@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Dave Hansen <dave.hansen@linux.intel.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org, x86@kernel.org, xfs@oss.sgi.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20160113093525.GD14630@quack.suse.cz>
-Sender: owner-linux-mm@kvack.org
+From: Dave Chinner <david@fromorbit.com>
+Subject: [PATCH] xfs_quota: allow operation on foreign filesystem types
+Date: Thu, 14 Jan 2016 11:03:08 +1100
+Message-ID: <1452729788-5396-1-git-send-email-david@fromorbit.com>
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: xfs@oss.sgi.com
+Return-path: <fstests-owner@vger.kernel.org>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jan 13, 2016 at 10:35:25AM +0100, Jan Kara wrote:
-> On Wed 13-01-16 00:30:19, Ross Zwisler wrote:
-> > > And secondly: You must write-protect all mappings of the flushed range so
-> > > that you get fault when the sector gets written-to again. We spoke about
-> > > this in the past already but somehow it got lost and I forgot about it as
-> > > well. You need something like rmap_walk_file()...
-> > 
-> > The code that write protected mappings and then cleaned the radix tree entries
-> > did get written, and was part of v2:
-> > 
-> > https://lkml.org/lkml/2015/11/13/759
-> > 
-> > I removed all the code that cleaned PTE entries and radix tree entries for v3.
-> > The reason behind this was that there was a race that I couldn't figure out
-> > how to solve between the cleaning of the PTEs and the cleaning of the radix
-> > tree entries.
-> > 
-> > The race goes like this:
-> > 
-> > Thread 1 (write)			Thread 2 (fsync)
-> > ================			================
-> > wp_pfn_shared()
-> > pfn_mkwrite()
-> > dax_radix_entry()
-> > radix_tree_tag_set(DIRTY)
-> > 					dax_writeback_mapping_range()
-> > 					dax_writeback_one()
-> > 					radix_tag_clear(DIRTY)
-> > 					pgoff_mkclean()
-> > ... return up to wp_pfn_shared()
-> > wp_page_reuse()
-> > pte_mkdirty()
-> > 
-> > After this sequence we end up with a dirty PTE that is writeable, but with a
-> > clean radix tree entry.  This means that users can write to the page, but that
-> > a follow-up fsync or msync won't flush this dirty data to media.
-> > 
-> > The overall issue is that in the write path that goes through wp_pfn_shared(),
-> > the DAX code has control over when the radix tree entry is dirtied but not
-> > when the PTE is made dirty and writeable.  This happens up in wp_page_reuse().
-> > This means that we can't easily add locking, etc. to protect ourselves.
-> > 
-> > I spoke a bit about this with Dave Chinner and with Dave Hansen, but no really
-> > easy solutions presented themselves in the absence of a page lock.  I do have
-> > one idea, but I think it's pretty invasive and will need to wait for another
-> > kernel cycle.
-> > 
-> > The current code that leaves the radix tree entry will give us correct
-> > behavior - it'll just be less efficient because we will have an ever-growing
-> > dirty set to flush.
-> 
-> Ahaa! Somehow I imagined tag_pages_for_writeback() clears DIRTY radix tree
-> tags but it does not (I should have known, I have written that functions
-> few years ago ;). Makes sense. Thanks for clarification.
-> 
-> > > > @@ -791,15 +976,12 @@ EXPORT_SYMBOL_GPL(dax_pmd_fault);
-> > > >   * dax_pfn_mkwrite - handle first write to DAX page
-> > > >   * @vma: The virtual memory area where the fault occurred
-> > > >   * @vmf: The description of the fault
-> > > > - *
-> > > >   */
-> > > >  int dax_pfn_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
-> > > >  {
-> > > > -	struct super_block *sb = file_inode(vma->vm_file)->i_sb;
-> > > > +	struct file *file = vma->vm_file;
-> > > >  
-> > > > -	sb_start_pagefault(sb);
-> > > > -	file_update_time(vma->vm_file);
-> > > > -	sb_end_pagefault(sb);
-> > > > +	dax_radix_entry(file->f_mapping, vmf->pgoff, NO_SECTOR, false, true);
-> > > 
-> > > Why is NO_SECTOR argument correct here?
-> > 
-> > Right - so NO_SECTOR means "I expect there to already be an entry in the radix
-> > tree - just make that entry dirty".  This works because pfn_mkwrite() always
-> > follows a normal __dax_fault() or __dax_pmd_fault() call.  These fault calls
-> > will insert the radix tree entry, regardless of whether the fault was for a
-> > read or a write.  If the fault was for a write, the radix tree entry will also
-> > be made dirty.
-> >
-> > For reads the radix tree entry will be inserted but left clean.  When the
-> > first write happens we will get a pfn_mkwrite() call, which will call
-> > dax_radix_entry() with the NO_SECTOR argument.  This will look up the radix
-> > tree entry & set the dirty tag.
-> 
-> So the explanation of this should be somewhere so that everyone knows that
-> we must have radix tree entries even for clean mapped blocks. Because upto
-> know that was not clear to me.  Also __dax_pmd_fault() seems to insert
-> entries only for write fault so the assumption doesn't seem to hold there?
+From: Dave Chinner <dchinner@redhat.com>
 
-Ah, right, sorry, the read fault() -> pfn_mkwrite() sequence only happens for
-4k pages.  You are right about our handling of 2MiB pages - for a read
-followed by a write we will just call into the normal __dax_pmd_fault() code
-again, which will do the get_block() call and insert a dirty radix tree entry.
-Because we have to go all the way through the fault handler again at write
-time there isn't a benefit to inserting a clean radix tree entry on read, so
-we just skip it.
+This allows xfs_quota to be used on ext4 for project quota testing
+in xfstests.
 
-> I'm somewhat uneasy that a bug in this logic can be hidden as a simple race
-> with hole punching. But I guess I can live with that.
->  
-> 								Honza
-> -- 
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
+Signed-off-by: Dave Chinner <dchinner@redhat.com>
+---
+ include/command.h |  3 ++-
+ include/path.h    |  1 +
+ io/init.h         |  2 +-
+ libxcmd/paths.c   |  7 +++----
+ quota/free.c      |  1 +
+ quota/init.c      | 16 ++++++++++++++++
+ quota/path.c      |  5 +++--
+ quota/project.c   |  1 +
+ quota/quota.c     |  1 +
+ quota/report.c    |  2 ++
+ quota/state.c     |  2 ++
+ 11 files changed, 33 insertions(+), 8 deletions(-)
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+diff --git a/include/command.h b/include/command.h
+index 7b9fc28..81d5a4d 100644
+--- a/include/command.h
++++ b/include/command.h
+@@ -20,7 +20,8 @@
+ 
+ #include <sys/time.h>
+ 
+-#define CMD_FLAG_GLOBAL	((int)0x80000000)	/* don't iterate "args" */
++#define CMD_FLAG_GLOBAL		(1<<31)	/* don't iterate "args" */
++#define CMD_FLAG_FOREIGN_OK	(1<<30)	/* command not restricted to XFS */
+ 
+ typedef int (*cfunc_t)(int argc, char **argv);
+ typedef void (*helpfunc_t)(void);
+diff --git a/include/path.h b/include/path.h
+index 46a887e..39c1a95 100644
+--- a/include/path.h
++++ b/include/path.h
+@@ -29,6 +29,7 @@
+ 
+ #define FS_MOUNT_POINT	(1<<0)
+ #define FS_PROJECT_PATH	(1<<1)
++#define FS_FOREIGN	(1<<2)
+ 
+ typedef struct fs_path {
+ 	char		*fs_name;	/* Data device for filesystem 	*/
+diff --git a/io/init.h b/io/init.h
+index d773b1b..bb25242 100644
+--- a/io/init.h
++++ b/io/init.h
+@@ -18,7 +18,7 @@
+ 
+ #define CMD_NOFILE_OK	(1<<0)	/* command doesn't need an open file	*/
+ #define CMD_NOMAP_OK	(1<<1)	/* command doesn't need a mapped region	*/
+-#define CMD_FOREIGN_OK	(1<<2)	/* command not restricted to XFS files	*/
++#define CMD_FOREIGN_OK	CMD_FLAG_FOREIGN_OK
+ 
+ extern char	*progname;
+ extern int	exitcode;
+diff --git a/libxcmd/paths.c b/libxcmd/paths.c
+index 71af25f..7c8c673 100644
+--- a/libxcmd/paths.c
++++ b/libxcmd/paths.c
+@@ -113,6 +113,9 @@ fs_table_insert(
+ 			goto out_nodev;
+ 	}
+ 
++	if (!platform_test_xfs_path(dir))
++		flags |= FS_FOREIGN;
++
+ 	/*
+ 	 * Make copies of the directory and data device path.
+ 	 * The log device and real-time device, if non-null,
+@@ -301,8 +304,6 @@ fs_table_initialise_mounts(
+ 			return errno;
+ 
+ 	while ((mnt = getmntent(mtp)) != NULL) {
+-		if (strcmp(mnt->mnt_type, "xfs") != 0)
+-			continue;
+ 		if (!realpath(mnt->mnt_dir, rmnt_dir))
+ 			continue;
+ 		if (!realpath(mnt->mnt_fsname, rmnt_fsname))
+@@ -360,8 +361,6 @@ fs_table_initialise_mounts(
+ 			return errno;
+ 
+ 	for (i = 0; i < count; i++) {
+-		if (strcmp(stats[i].f_fstypename, "xfs") != 0)
+-			continue;
+ 		if (!realpath(stats[i].f_mntfromname, rmntfromname))
+ 			continue;
+ 		if (!realpath(stats[i].f_mntonname, rmntonname))
+diff --git a/quota/free.c b/quota/free.c
+index dcbe8ce..c7a1ec5 100644
+--- a/quota/free.c
++++ b/quota/free.c
+@@ -371,6 +371,7 @@ free_init(void)
+ 	free_cmd.args = _("[-bir] [-hn] [-f file]");
+ 	free_cmd.oneline = _("show free and used counts for blocks and inodes");
+ 	free_cmd.help = free_help;
++	free_cmd.flags = CMD_FLAG_FOREIGN_OK;
+ 
+ 	add_command(&free_cmd);
+ }
+diff --git a/quota/init.c b/quota/init.c
+index 52f7941..f1d3328 100644
+--- a/quota/init.c
++++ b/quota/init.c
+@@ -92,6 +92,21 @@ init_args_command(
+ 	return index;
+ }
+ 
++static int
++init_check_command(
++	const cmdinfo_t	*ct)
++{
++	if (fs_path &&
++	    !(ct->flags & CMD_FLAG_FOREIGN_OK) &&
++	     (fs_path->fs_flags & FS_FOREIGN)) {
++		fprintf(stderr,
++	_("foreign mount active, %s command is for XFS filesystems only\n"),
++			ct->name);
++		return 0;
++	}
++	return 1;
++}
++
+ static void
+ init(
+ 	int		argc,
+@@ -140,6 +155,7 @@ init(
+ 
+ 	init_commands();
+ 	add_args_command(init_args_command);
++	add_check_command(init_check_command);
+ 
+ 	/*
+ 	 * Ensure that global commands don't end up with an invalid path pointer
+diff --git a/quota/path.c b/quota/path.c
+index bdb8c98..a623d25 100644
+--- a/quota/path.c
++++ b/quota/path.c
+@@ -42,6 +42,7 @@ printpath(
+ 	if (number) {
+ 		printf(_("%c%03d%c "), braces? '[':' ', index, braces? ']':' ');
+ 	}
++	printf("%s ", (path->fs_flags & FS_FOREIGN) ? "(F)" : "   ");
+ 	printf(_("%-19s %s"), path->fs_dir, path->fs_name);
+ 	if (path->fs_flags & FS_PROJECT_PATH) {
+ 		prj = getprprid(path->fs_prid);
+@@ -127,7 +128,7 @@ path_init(void)
+ 	path_cmd.cfunc = path_f;
+ 	path_cmd.argmin = 0;
+ 	path_cmd.argmax = 1;
+-	path_cmd.flags = CMD_FLAG_GLOBAL;
++	path_cmd.flags = CMD_FLAG_GLOBAL | CMD_FLAG_FOREIGN_OK;
+ 	path_cmd.oneline = _("set current path, or show the list of paths");
+ 
+ 	print_cmd.name = "print";
+@@ -135,7 +136,7 @@ path_init(void)
+ 	print_cmd.cfunc = print_f;
+ 	print_cmd.argmin = 0;
+ 	print_cmd.argmax = 0;
+-	print_cmd.flags = CMD_FLAG_GLOBAL;
++	print_cmd.flags = CMD_FLAG_GLOBAL | CMD_FLAG_FOREIGN_OK;
+ 	print_cmd.oneline = _("list known mount points and projects");
+ 
+ 	if (expert)
+diff --git a/quota/project.c b/quota/project.c
+index 17a83b0..79a0a8e 100644
+--- a/quota/project.c
++++ b/quota/project.c
+@@ -355,6 +355,7 @@ project_init(void)
+ 	project_cmd.argmax = -1;
+ 	project_cmd.oneline = _("check, setup or clear project quota trees");
+ 	project_cmd.help = project_help;
++	project_cmd.flags = CMD_FLAG_FOREIGN_OK;
+ 
+ 	if (expert)
+ 		add_command(&project_cmd);
+diff --git a/quota/quota.c b/quota/quota.c
+index f6b24c3..555ffd7 100644
+--- a/quota/quota.c
++++ b/quota/quota.c
+@@ -464,6 +464,7 @@ quota_init(void)
+ 	quota_cmd.args = _("[-bir] [-gpu] [-hnNv] [-f file] [id|name]...");
+ 	quota_cmd.oneline = _("show usage and limits");
+ 	quota_cmd.help = quota_help;
++	quota_cmd.flags = CMD_FLAG_FOREIGN_OK;
+ 
+ 	add_command(&quota_cmd);
+ }
+diff --git a/quota/report.c b/quota/report.c
+index c77b24f..eaf3a67 100644
+--- a/quota/report.c
++++ b/quota/report.c
+@@ -658,6 +658,7 @@ report_init(void)
+ 	dump_cmd.args = _("[-gpu] [-f file]");
+ 	dump_cmd.oneline = _("dump quota information for backup utilities");
+ 	dump_cmd.help = dump_help;
++	dump_cmd.flags = CMD_FLAG_FOREIGN_OK;
+ 
+ 	report_cmd.name = "report";
+ 	report_cmd.altname = "repquota";
+@@ -668,6 +669,7 @@ report_init(void)
+ 	report_cmd.args = _("[-bir] [-gpu] [-ahnt] [-f file]");
+ 	report_cmd.oneline = _("report filesystem quota information");
+ 	report_cmd.help = report_help;
++	report_cmd.flags = CMD_FLAG_FOREIGN_OK;
+ 
+ 	if (expert) {
+ 		add_command(&dump_cmd);
+diff --git a/quota/state.c b/quota/state.c
+index 8186762..9d24d74 100644
+--- a/quota/state.c
++++ b/quota/state.c
+@@ -527,6 +527,7 @@ state_init(void)
+ 	off_cmd.args = _("[-gpu] [-v]");
+ 	off_cmd.oneline = _("permanently switch quota off for a path");
+ 	off_cmd.help = off_help;
++	off_cmd.flags = CMD_FLAG_FOREIGN_OK;
+ 
+ 	state_cmd.name = "state";
+ 	state_cmd.cfunc = state_f;
+@@ -535,6 +536,7 @@ state_init(void)
+ 	state_cmd.args = _("[-gpu] [-a] [-v] [-f file]");
+ 	state_cmd.oneline = _("get overall quota state information");
+ 	state_cmd.help = state_help;
++	state_cmd.flags = CMD_FLAG_FOREIGN_OK;
+ 
+ 	enable_cmd.name = "enable";
+ 	enable_cmd.cfunc = enable_f;
+-- 
+2.5.0
