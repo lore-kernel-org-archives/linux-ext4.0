@@ -1,112 +1,112 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH V3] resize2fs: clear uninit BG if allocating from new group
-Date: Thu, 14 Jan 2016 13:27:26 -0600
-Message-ID: <5697F69E.4090404@redhat.com>
-References: <55FB41CA.8010003@redhat.com> <5697ECEB.3020408@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] mke2fs: don't accept too-high revision levels
+Date: Thu, 14 Jan 2016 12:36:11 -0700
+Message-ID: <AF0456DC-B670-4840-A5A4-82222C8ED53A@dilger.ca>
+References: <5362A6A2.7040504@redhat.com> <5697EA79.40902@redhat.com>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_F3E59E56-66CC-4EA5-965D-7785B3244433"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59879 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932318AbcANT11 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Jan 2016 14:27:27 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (Postfix) with ESMTPS id DDD0FA12CC
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Jan 2016 19:27:27 +0000 (UTC)
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u0EJRQE1030694
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Jan 2016 14:27:27 -0500
-In-Reply-To: <5697ECEB.3020408@redhat.com>
+Received: from mail-pf0-f174.google.com ([209.85.192.174]:33279 "EHLO
+	mail-pf0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755850AbcANTgR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jan 2016 14:36:17 -0500
+Received: by mail-pf0-f174.google.com with SMTP id e65so104813588pfe.0
+        for <linux-ext4@vger.kernel.org>; Thu, 14 Jan 2016 11:36:17 -0800 (PST)
+In-Reply-To: <5697EA79.40902@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If resize2fs_get_alloc_block() allocates from a BLOCK_UNINIT
-group, nothing clears the UNINIT flag, so it is skipped when we
-go to write out modified bitmaps.  This leads to post-resize2fs
-e2fsck errors; used blocks in UNINIT groups, not marked in the
-block bitmap.  This was seen on r_ext4_small_bg.
 
-This patch uses clear_block_uninit() to clear the flag,
-and my problem goes away.
+--Apple-Mail=_F3E59E56-66CC-4EA5-965D-7785B3244433
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=windows-1252
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
 
-V2: don't cut and paste, sorry! 
-V3: ext2fs_* namespace for the exported function, thanks Darrick
+> On Jan 14, 2016, at 11:35 AM, Eric Sandeen <sandeen@redhat.com> wrote:
+> 
+> Came across this, still not merged, so ping?
+> 
+> On 5/1/14 2:55 PM, Eric Sandeen wrote:
+>> It's a bit strange to accept revision levels higher than
+>> the code creating the filesystem can understand, so don't
+>> allow it.
+>> 
+>> At least the kernel will mount the fs readonly if it's too
+>> high, but no other utility will touch it, so you can't
+>> fix the error.
+>> 
+>> Just reject anything > EXT2_MAX_SUPP_REV at mkfs time.
+>> 
+>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Thanks,
--Eric
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
-index 86e7f99..ce59e85 100644
---- a/lib/ext2fs/alloc.c
-+++ b/lib/ext2fs/alloc.c
-@@ -39,7 +39,7 @@
- /*
-  * Clear the uninit block bitmap flag if necessary
-  */
--static void clear_block_uninit(ext2_filsys fs, dgrp_t group)
-+void ext2fs_clear_block_uninit(ext2_filsys fs, dgrp_t group)
- {
- 	if (!ext2fs_has_group_desc_csum(fs) ||
- 	    !(ext2fs_bg_flags_test(fs, group, EXT2_BG_BLOCK_UNINIT)))
-@@ -183,7 +183,7 @@ allocated:
- 	if (retval)
- 		return retval;
- 
--	clear_block_uninit(fs, ext2fs_group_of_blk2(fs, b));
-+	ext2fs_clear_block_uninit(fs, ext2fs_group_of_blk2(fs, b));
- 	*ret = b;
- 	return 0;
- }
-@@ -455,7 +455,7 @@ errcode_t ext2fs_new_range(ext2_filsys fs, int flags, blk64_t goal,
- allocated:
- 			for (b = start; b < end;
- 			     b += fs->super->s_blocks_per_group)
--				clear_block_uninit(fs,
-+				ext2fs_clear_block_uninit(fs,
- 						ext2fs_group_of_blk2(fs, b));
- 			return 0;
- 		}
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 86d860f..d5e9684 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -647,6 +647,7 @@ static inline int ext2fs_needs_large_file_feature(unsigned long long file_size)
- }
- 
- /* alloc.c */
-+extern void ext2fs_clear_block_uninit(ext2_filsys fs, dgrp_t group);
- extern errcode_t ext2fs_new_inode(ext2_filsys fs, ext2_ino_t dir, int mode,
- 				  ext2fs_inode_bitmap map, ext2_ino_t *ret);
- extern errcode_t ext2fs_new_block(ext2_filsys fs, blk_t goal,
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 07c6a0c..42435b2 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -1620,6 +1620,7 @@ static errcode_t resize2fs_get_alloc_block(ext2_filsys fs,
- {
- 	ext2_resize_t rfs = (ext2_resize_t) fs->priv_data;
- 	blk64_t blk;
-+	int group;
- 
- 	blk = get_new_block(rfs);
- 	if (!blk)
-@@ -1632,6 +1633,12 @@ static errcode_t resize2fs_get_alloc_block(ext2_filsys fs,
- 
- 	ext2fs_mark_block_bitmap2(rfs->old_fs->block_map, blk);
- 	ext2fs_mark_block_bitmap2(rfs->new_fs->block_map, blk);
-+
-+	group = ext2fs_group_of_blk2(rfs->old_fs, blk);
-+	ext2fs_clear_block_uninit(rfs->old_fs, group);
-+	group = ext2fs_group_of_blk2(rfs->new_fs, blk);
-+	ext2fs_clear_block_uninit(rfs->new_fs, group);
-+
- 	*ret = (blk64_t) blk;
- 	return 0;
- }
+>> ---
+>> 
+>> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+>> index aecd5d5..82019dc 100644
+>> --- a/misc/mke2fs.c
+>> +++ b/misc/mke2fs.c
+>> @@ -1679,9 +1679,10 @@ profile_error:
+>> 			break;
+>> 		case 'r':
+>> 			r_opt = strtoul(optarg, &tmp, 0);
+>> -			if (*tmp) {
+>> +			if (*tmp || (r_opt > EXT2_MAX_SUPP_REV)) {
+>> 				com_err(program_name, 0,
+>> -					_("bad revision level - %s"), optarg);
+>> +					_("bad revision level - %s (max %d)"),
+>> +					   optarg, EXT2_MAX_SUPP_REV);
+>> 				exit(1);
+>> 			}
+>> 			fs_param.s_rev_level = r_opt;
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_F3E59E56-66CC-4EA5-965D-7785B3244433
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBVpf4rHKl2rkXzB/gAQjduA//c7UgKMbqtFZaMU6xH8dL1LxvSA0eRk2n
+/fCrxCKHf7qS8+aIMxC0IW2tYGCefUQhbh5ty5x7iYZP/b/iYDIzbzQxe3ZPfnx1
+V52AFkHuBrvvFpSvn8qn+I2Moj+SD0M4F7ifghfVh/vXWdrR7k3ilX6fHkz8nQAa
+pRUwgcVySCY+3BcR1dsz2ryIWs0z+loSR+Zn3YDKpMNyuAhPI9FSaa5536SY++5k
+mbFa2ZmcD/IYg2W3o12XBhoNcP1h7p0ABGhoo/Utw4OtAZdh2RjiSPiOFrsdTFYc
+lDQTu40G2WdvD8kSPFC8rFlRA1MuFK2bOMRCrrD4MHM8iOZOAzNkrh7t19K28pkh
+elKGYOkUhXKUykWQD4tJ1Yx6QPgyKjqtqIAQBhPypsnm4hd3xz0m8qZXYuTb4qLf
+9ylDW5Dq8dz8HjGwMWaI05P7W8kiGv17fVdpIB/Nx2qrIcWH7MSzfnBGpAxBXGkw
+/7zuibw92McasowWigqr5dNFLUWeiRjiBzkvCNosOSq/wDRscYcyzcpEN56Cop+b
+isg2Y7qLbn6J7DaIWZA/iS3mxtrFbw6wyC1F3PyTzlq7Kk55wE0859KAeL6GbVuv
+6BLJXlP9/JMrhkPHN/8ZoExRA/ycr7mamlcQCGhrnnS4zh+QR3ZY6EwWi2arKBJc
+NGMJtzhf9QM=
+=k1+Y
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_F3E59E56-66CC-4EA5-965D-7785B3244433--
