@@ -1,128 +1,102 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH V3] resize2fs: clear uninit BG if allocating from new
- group
-Date: Thu, 14 Jan 2016 13:57:14 -0600
-Message-ID: <5697FD9A.1060801@redhat.com>
-References: <55FB41CA.8010003@redhat.com> <5697ECEB.3020408@redhat.com>
- <5697F69E.4090404@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+From: Kamal Mostafa <kamal@canonical.com>
+Subject: [4.2.y-ckt stable] Patch "ext2, ext4: warn when mounting with dax enabled" has been added to staging queue
+Date: Thu, 14 Jan 2016 14:27:22 -0800
+Message-ID: <1452810442-18951-1-git-send-email-kamal@canonical.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	linux-ext4@vger.kernel.org,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
+	Kamal Mostafa <kamal@canonical.com>,
+	kernel-team@lists.ubuntu.com
+To: Dan Williams <dan.j.williams@intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53679 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757031AbcANT5P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Jan 2016 14:57:15 -0500
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (Postfix) with ESMTPS id 60FFAC001273
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Jan 2016 19:57:15 +0000 (UTC)
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u0EJvEfp003383
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Jan 2016 14:57:15 -0500
-In-Reply-To: <5697F69E.4090404@redhat.com>
+Received: from youngberry.canonical.com ([91.189.89.112]:48329 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753728AbcANW1a (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jan 2016 17:27:30 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 1/14/16 1:27 PM, Eric Sandeen wrote:
-> If resize2fs_get_alloc_block() allocates from a BLOCK_UNINIT
-> group, nothing clears the UNINIT flag, so it is skipped when we
-> go to write out modified bitmaps.  This leads to post-resize2fs
-> e2fsck errors; used blocks in UNINIT groups, not marked in the
-> block bitmap.  This was seen on r_ext4_small_bg.
-> 
-> This patch uses clear_block_uninit() to clear the flag,
-> and my problem goes away.
+This is a note to let you know that I have just added a patch titled
 
-Ted, if you want to clarify the commit log, I realized that the
-issue here is that although we are called via ->get_alloc_block,
-and the caller clears uninit after the call, in resize-land we
-have *2* filesystems to deal with, hanging off the fs private
-pointer.  Explicitly clearing uninit in both filesystems
-in the resize code seems like the safest path.
+    ext2, ext4: warn when mounting with dax enabled
 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
-> 
-> V2: don't cut and paste, sorry! 
-> V3: ext2fs_* namespace for the exported function, thanks Darrick
-> 
-> Thanks,
-> -Eric
-> 
-> diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
-> index 86e7f99..ce59e85 100644
-> --- a/lib/ext2fs/alloc.c
-> +++ b/lib/ext2fs/alloc.c
-> @@ -39,7 +39,7 @@
->  /*
->   * Clear the uninit block bitmap flag if necessary
->   */
-> -static void clear_block_uninit(ext2_filsys fs, dgrp_t group)
-> +void ext2fs_clear_block_uninit(ext2_filsys fs, dgrp_t group)
->  {
->  	if (!ext2fs_has_group_desc_csum(fs) ||
->  	    !(ext2fs_bg_flags_test(fs, group, EXT2_BG_BLOCK_UNINIT)))
-> @@ -183,7 +183,7 @@ allocated:
->  	if (retval)
->  		return retval;
->  
-> -	clear_block_uninit(fs, ext2fs_group_of_blk2(fs, b));
-> +	ext2fs_clear_block_uninit(fs, ext2fs_group_of_blk2(fs, b));
->  	*ret = b;
->  	return 0;
->  }
-> @@ -455,7 +455,7 @@ errcode_t ext2fs_new_range(ext2_filsys fs, int flags, blk64_t goal,
->  allocated:
->  			for (b = start; b < end;
->  			     b += fs->super->s_blocks_per_group)
-> -				clear_block_uninit(fs,
-> +				ext2fs_clear_block_uninit(fs,
->  						ext2fs_group_of_blk2(fs, b));
->  			return 0;
->  		}
-> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> index 86d860f..d5e9684 100644
-> --- a/lib/ext2fs/ext2fs.h
-> +++ b/lib/ext2fs/ext2fs.h
-> @@ -647,6 +647,7 @@ static inline int ext2fs_needs_large_file_feature(unsigned long long file_size)
->  }
->  
->  /* alloc.c */
-> +extern void ext2fs_clear_block_uninit(ext2_filsys fs, dgrp_t group);
->  extern errcode_t ext2fs_new_inode(ext2_filsys fs, ext2_ino_t dir, int mode,
->  				  ext2fs_inode_bitmap map, ext2_ino_t *ret);
->  extern errcode_t ext2fs_new_block(ext2_filsys fs, blk_t goal,
-> diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-> index 07c6a0c..42435b2 100644
-> --- a/resize/resize2fs.c
-> +++ b/resize/resize2fs.c
-> @@ -1620,6 +1620,7 @@ static errcode_t resize2fs_get_alloc_block(ext2_filsys fs,
->  {
->  	ext2_resize_t rfs = (ext2_resize_t) fs->priv_data;
->  	blk64_t blk;
-> +	int group;
->  
->  	blk = get_new_block(rfs);
->  	if (!blk)
-> @@ -1632,6 +1633,12 @@ static errcode_t resize2fs_get_alloc_block(ext2_filsys fs,
->  
->  	ext2fs_mark_block_bitmap2(rfs->old_fs->block_map, blk);
->  	ext2fs_mark_block_bitmap2(rfs->new_fs->block_map, blk);
-> +
-> +	group = ext2fs_group_of_blk2(rfs->old_fs, blk);
-> +	ext2fs_clear_block_uninit(rfs->old_fs, group);
-> +	group = ext2fs_group_of_blk2(rfs->new_fs, blk);
-> +	ext2fs_clear_block_uninit(rfs->new_fs, group);
-> +
->  	*ret = (blk64_t) blk;
->  	return 0;
->  }
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+to the linux-4.2.y-queue branch of the 4.2.y-ckt extended stable tree 
+which can be found at:
+
+    http://kernel.ubuntu.com/git/ubuntu/linux.git/log/?h=linux-4.2.y-queue
+
+This patch is scheduled to be released in version 4.2.8-ckt2.
+
+If you, or anyone else, feels it should not be added to this tree, please 
+reply to this email.
+
+For more information about the 4.2.y-ckt tree, see
+https://wiki.ubuntu.com/Kernel/Dev/ExtendedStable
+
+Thanks.
+-Kamal
+
+---8<------------------------------------------------------------
+
+>From 02435ed4921871c0fa6dd804ec16b82091d4ffc4 Mon Sep 17 00:00:00 2001
+From: Dan Williams <dan.j.williams@intel.com>
+Date: Tue, 29 Sep 2015 15:48:11 -0400
+Subject: ext2, ext4: warn when mounting with dax enabled
+
+commit ef83b6e8f40bb24b92ad73b5889732346e54a793 upstream.
+
+Similar to XFS warn when mounting DAX while it is still considered under
+development.  Also, aspects of the DAX implementation, for example
+synchronization against multiple faults and faults causing block
+allocation, depend on the correct implementation in the filesystem.  The
+maturity of a given DAX implementation is filesystem specific.
+
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Matthew Wilcox <willy@linux.intel.com>
+Cc: linux-ext4@vger.kernel.org
+Cc: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+Reported-by: Dave Chinner <david@fromorbit.com>
+Acked-by: Jan Kara <jack@suse.com>
+Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+Signed-off-by: Kamal Mostafa <kamal@canonical.com>
+---
+ fs/ext2/super.c | 2 ++
+ fs/ext4/super.c | 6 +++++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 900e19c..2597b06 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -566,6 +566,8 @@ static int parse_options(char *options, struct super_block *sb)
+ 			/* Fall through */
+ 		case Opt_dax:
+ #ifdef CONFIG_FS_DAX
++			ext2_msg(sb, KERN_WARNING,
++		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
+ 			set_opt(sbi->s_mount_opt, DAX);
+ #else
+ 			ext2_msg(sb, KERN_INFO, "dax option not supported");
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index bc24d1b..b22d844 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1667,8 +1667,12 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 		}
+ 		sbi->s_jquota_fmt = m->mount_opt;
+ #endif
+-#ifndef CONFIG_FS_DAX
+ 	} else if (token == Opt_dax) {
++#ifdef CONFIG_FS_DAX
++		ext4_msg(sb, KERN_WARNING,
++		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
++			sbi->s_mount_opt |= m->mount_opt;
++#else
+ 		ext4_msg(sb, KERN_INFO, "dax option not supported");
+ 		return -1;
+ #endif
+--
+1.9.1
 
