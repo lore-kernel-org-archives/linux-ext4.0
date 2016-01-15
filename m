@@ -1,102 +1,149 @@
-From: Kamal Mostafa <kamal@canonical.com>
-Subject: [4.2.y-ckt stable] Patch "ext2, ext4: warn when mounting with dax enabled" has been added to staging queue
-Date: Thu, 14 Jan 2016 14:27:22 -0800
-Message-ID: <1452810442-18951-1-git-send-email-kamal@canonical.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v8 6/9] dax: add support for fsync/msync
+Date: Fri, 15 Jan 2016 14:10:32 +0100
+Message-ID: <20160115131032.GK15950@quack.suse.cz>
+References: <1452230879-18117-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1452230879-18117-7-git-send-email-ross.zwisler@linux.intel.com>
+ <20160112105716.GT6262@quack.suse.cz>
+ <20160113073019.GB30496@linux.intel.com>
+ <20160113093525.GD14630@quack.suse.cz>
+ <20160113185802.GB5904@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
+	"H. Peter Anvin" <hpa@zytor.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Dave Hansen <dave.hansen@linux.intel.com>,
+	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
 	Matthew Wilcox <willy@linux.intel.com>,
-	linux-ext4@vger.kernel.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
-	Kamal Mostafa <kamal@canonical.com>,
-	kernel-team@lists.ubuntu.com
-To: Dan Williams <dan.j.williams@intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from youngberry.canonical.com ([91.189.89.112]:48329 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753728AbcANW1a (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jan 2016 17:27:30 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+	Thomas Gleixner <tglx@linutronix.de>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, x86@kernel.org, xfs@oss.sgi.com
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20160113185802.GB5904@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-This is a note to let you know that I have just added a patch titled
+On Wed 13-01-16 11:58:02, Ross Zwisler wrote:
+> On Wed, Jan 13, 2016 at 10:35:25AM +0100, Jan Kara wrote:
+> > On Wed 13-01-16 00:30:19, Ross Zwisler wrote:
+> > > > And secondly: You must write-protect all mappings of the flushed range so
+> > > > that you get fault when the sector gets written-to again. We spoke about
+> > > > this in the past already but somehow it got lost and I forgot about it as
+> > > > well. You need something like rmap_walk_file()...
+> > > 
+> > > The code that write protected mappings and then cleaned the radix tree entries
+> > > did get written, and was part of v2:
+> > > 
+> > > https://lkml.org/lkml/2015/11/13/759
+> > > 
+> > > I removed all the code that cleaned PTE entries and radix tree entries for v3.
+> > > The reason behind this was that there was a race that I couldn't figure out
+> > > how to solve between the cleaning of the PTEs and the cleaning of the radix
+> > > tree entries.
+> > > 
+> > > The race goes like this:
+> > > 
+> > > Thread 1 (write)			Thread 2 (fsync)
+> > > ================			================
+> > > wp_pfn_shared()
+> > > pfn_mkwrite()
+> > > dax_radix_entry()
+> > > radix_tree_tag_set(DIRTY)
+> > > 					dax_writeback_mapping_range()
+> > > 					dax_writeback_one()
+> > > 					radix_tag_clear(DIRTY)
+> > > 					pgoff_mkclean()
+> > > ... return up to wp_pfn_shared()
+> > > wp_page_reuse()
+> > > pte_mkdirty()
+> > > 
+> > > After this sequence we end up with a dirty PTE that is writeable, but with a
+> > > clean radix tree entry.  This means that users can write to the page, but that
+> > > a follow-up fsync or msync won't flush this dirty data to media.
+> > > 
+> > > The overall issue is that in the write path that goes through wp_pfn_shared(),
+> > > the DAX code has control over when the radix tree entry is dirtied but not
+> > > when the PTE is made dirty and writeable.  This happens up in wp_page_reuse().
+> > > This means that we can't easily add locking, etc. to protect ourselves.
+> > > 
+> > > I spoke a bit about this with Dave Chinner and with Dave Hansen, but no really
+> > > easy solutions presented themselves in the absence of a page lock.  I do have
+> > > one idea, but I think it's pretty invasive and will need to wait for another
+> > > kernel cycle.
+> > > 
+> > > The current code that leaves the radix tree entry will give us correct
+> > > behavior - it'll just be less efficient because we will have an ever-growing
+> > > dirty set to flush.
+> > 
+> > Ahaa! Somehow I imagined tag_pages_for_writeback() clears DIRTY radix tree
+> > tags but it does not (I should have known, I have written that functions
+> > few years ago ;). Makes sense. Thanks for clarification.
+> > 
+> > > > > @@ -791,15 +976,12 @@ EXPORT_SYMBOL_GPL(dax_pmd_fault);
+> > > > >   * dax_pfn_mkwrite - handle first write to DAX page
+> > > > >   * @vma: The virtual memory area where the fault occurred
+> > > > >   * @vmf: The description of the fault
+> > > > > - *
+> > > > >   */
+> > > > >  int dax_pfn_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+> > > > >  {
+> > > > > -	struct super_block *sb = file_inode(vma->vm_file)->i_sb;
+> > > > > +	struct file *file = vma->vm_file;
+> > > > >  
+> > > > > -	sb_start_pagefault(sb);
+> > > > > -	file_update_time(vma->vm_file);
+> > > > > -	sb_end_pagefault(sb);
+> > > > > +	dax_radix_entry(file->f_mapping, vmf->pgoff, NO_SECTOR, false, true);
+> > > > 
+> > > > Why is NO_SECTOR argument correct here?
+> > > 
+> > > Right - so NO_SECTOR means "I expect there to already be an entry in the radix
+> > > tree - just make that entry dirty".  This works because pfn_mkwrite() always
+> > > follows a normal __dax_fault() or __dax_pmd_fault() call.  These fault calls
+> > > will insert the radix tree entry, regardless of whether the fault was for a
+> > > read or a write.  If the fault was for a write, the radix tree entry will also
+> > > be made dirty.
+> > >
+> > > For reads the radix tree entry will be inserted but left clean.  When the
+> > > first write happens we will get a pfn_mkwrite() call, which will call
+> > > dax_radix_entry() with the NO_SECTOR argument.  This will look up the radix
+> > > tree entry & set the dirty tag.
+> > 
+> > So the explanation of this should be somewhere so that everyone knows that
+> > we must have radix tree entries even for clean mapped blocks. Because upto
+> > know that was not clear to me.  Also __dax_pmd_fault() seems to insert
+> > entries only for write fault so the assumption doesn't seem to hold there?
+> 
+> Ah, right, sorry, the read fault() -> pfn_mkwrite() sequence only happens for
+> 4k pages.  You are right about our handling of 2MiB pages - for a read
+> followed by a write we will just call into the normal __dax_pmd_fault() code
+> again, which will do the get_block() call and insert a dirty radix tree entry.
+> Because we have to go all the way through the fault handler again at write
+> time there isn't a benefit to inserting a clean radix tree entry on read, so
+> we just skip it.
 
-    ext2, ext4: warn when mounting with dax enabled
+Ouch, I wasn't aware of this asymetry between PMD and PTE faults. OK, so
+please just document this all somewhere because I'm pretty sure casual
+reader won't be able to figure this all out just from the code.
 
-to the linux-4.2.y-queue branch of the 4.2.y-ckt extended stable tree 
-which can be found at:
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
 
-    http://kernel.ubuntu.com/git/ubuntu/linux.git/log/?h=linux-4.2.y-queue
-
-This patch is scheduled to be released in version 4.2.8-ckt2.
-
-If you, or anyone else, feels it should not be added to this tree, please 
-reply to this email.
-
-For more information about the 4.2.y-ckt tree, see
-https://wiki.ubuntu.com/Kernel/Dev/ExtendedStable
-
-Thanks.
--Kamal
-
----8<------------------------------------------------------------
-
->From 02435ed4921871c0fa6dd804ec16b82091d4ffc4 Mon Sep 17 00:00:00 2001
-From: Dan Williams <dan.j.williams@intel.com>
-Date: Tue, 29 Sep 2015 15:48:11 -0400
-Subject: ext2, ext4: warn when mounting with dax enabled
-
-commit ef83b6e8f40bb24b92ad73b5889732346e54a793 upstream.
-
-Similar to XFS warn when mounting DAX while it is still considered under
-development.  Also, aspects of the DAX implementation, for example
-synchronization against multiple faults and faults causing block
-allocation, depend on the correct implementation in the filesystem.  The
-maturity of a given DAX implementation is filesystem specific.
-
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Matthew Wilcox <willy@linux.intel.com>
-Cc: linux-ext4@vger.kernel.org
-Cc: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
-Reported-by: Dave Chinner <david@fromorbit.com>
-Acked-by: Jan Kara <jack@suse.com>
-Signed-off-by: Dan Williams <dan.j.williams@intel.com>
-Signed-off-by: Kamal Mostafa <kamal@canonical.com>
----
- fs/ext2/super.c | 2 ++
- fs/ext4/super.c | 6 +++++-
- 2 files changed, 7 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 900e19c..2597b06 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -566,6 +566,8 @@ static int parse_options(char *options, struct super_block *sb)
- 			/* Fall through */
- 		case Opt_dax:
- #ifdef CONFIG_FS_DAX
-+			ext2_msg(sb, KERN_WARNING,
-+		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
- 			set_opt(sbi->s_mount_opt, DAX);
- #else
- 			ext2_msg(sb, KERN_INFO, "dax option not supported");
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index bc24d1b..b22d844 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1667,8 +1667,12 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 		}
- 		sbi->s_jquota_fmt = m->mount_opt;
- #endif
--#ifndef CONFIG_FS_DAX
- 	} else if (token == Opt_dax) {
-+#ifdef CONFIG_FS_DAX
-+		ext4_msg(sb, KERN_WARNING,
-+		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
-+			sbi->s_mount_opt |= m->mount_opt;
-+#else
- 		ext4_msg(sb, KERN_INFO, "dax option not supported");
- 		return -1;
- #endif
 --
-1.9.1
-
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
