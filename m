@@ -1,121 +1,88 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v8 4/9] dax: support dirty DAX entries in radix tree
-Date: Fri, 15 Jan 2016 12:03:42 -0700
-Message-ID: <20160115190342.GA20168@linux.intel.com>
-References: <1452230879-18117-1-git-send-email-ross.zwisler@linux.intel.com>
- <1452230879-18117-5-git-send-email-ross.zwisler@linux.intel.com>
- <20160113094411.GA17057@quack.suse.cz>
- <20160113184832.GA5904@linux.intel.com>
- <20160115132249.GL15950@quack.suse.cz>
+From: Kamal Mostafa <kamal@canonical.com>
+Subject: [PATCH 4.2.y-ckt 022/305] ext2,
+ ext4: warn when mounting with dax enabled
+Date: Fri, 15 Jan 2016 15:57:16 -0800
+Message-ID: <1452902519-2754-23-git-send-email-kamal@canonical.com>
+References: <1452902519-2754-1-git-send-email-kamal@canonical.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Dave Hansen <dave.hansen@linux.intel.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org, x86@kernel.org, xfs@oss.sgi.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20160115132249.GL15950@quack.suse.cz>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, Kamal Mostafa <kamal@canonical.com>,
+ Matthew Wilcox <willy@linux.intel.com>,
+ Dan Williams <dan.j.williams@intel.com>, linux-ext4@vger.kernel.org,
+ "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+To: linux-kernel@vger.kernel.org, stable@vger.kernel.org,
+ kernel-team@lists.ubuntu.com
+Return-path: <kernel-team-bounces@lists.ubuntu.com>
+In-Reply-To: <1452902519-2754-1-git-send-email-kamal@canonical.com>
+List-Unsubscribe: <https://lists.ubuntu.com/mailman/options/kernel-team>,
+ <mailto:kernel-team-request@lists.ubuntu.com?subject=unsubscribe>
+List-Archive: <https://lists.ubuntu.com/archives/kernel-team>
+List-Post: <mailto:kernel-team@lists.ubuntu.com>
+List-Help: <mailto:kernel-team-request@lists.ubuntu.com?subject=help>
+List-Subscribe: <https://lists.ubuntu.com/mailman/listinfo/kernel-team>,
+ <mailto:kernel-team-request@lists.ubuntu.com?subject=subscribe>
+Errors-To: kernel-team-bounces@lists.ubuntu.com
+Sender: kernel-team-bounces@lists.ubuntu.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 15, 2016 at 02:22:49PM +0100, Jan Kara wrote:
-> On Wed 13-01-16 11:48:32, Ross Zwisler wrote:
-> > On Wed, Jan 13, 2016 at 10:44:11AM +0100, Jan Kara wrote:
-> > > On Thu 07-01-16 22:27:54, Ross Zwisler wrote:
-> > > > Add support for tracking dirty DAX entries in the struct address_space
-> > > > radix tree.  This tree is already used for dirty page writeback, and it
-> > > > already supports the use of exceptional (non struct page*) entries.
-> > > > 
-> > > > In order to properly track dirty DAX pages we will insert new exceptional
-> > > > entries into the radix tree that represent dirty DAX PTE or PMD pages.
-> > > > These exceptional entries will also contain the writeback sectors for the
-> > > > PTE or PMD faults that we can use at fsync/msync time.
-> > > > 
-> > > > There are currently two types of exceptional entries (shmem and shadow)
-> > > > that can be placed into the radix tree, and this adds a third.  We rely on
-> > > > the fact that only one type of exceptional entry can be found in a given
-> > > > radix tree based on its usage.  This happens for free with DAX vs shmem but
-> > > > we explicitly prevent shadow entries from being added to radix trees for
-> > > > DAX mappings.
-> > > > 
-> > > > The only shadow entries that would be generated for DAX radix trees would
-> > > > be to track zero page mappings that were created for holes.  These pages
-> > > > would receive minimal benefit from having shadow entries, and the choice
-> > > > to have only one type of exceptional entry in a given radix tree makes the
-> > > > logic simpler both in clear_exceptional_entry() and in the rest of DAX.
-> > > > 
-> > > > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> > > > Reviewed-by: Jan Kara <jack@suse.cz>
-> > > 
-> > > I have realized there's one issue with this code. See below:
-> > > 
-> > > > @@ -34,31 +35,39 @@ static void clear_exceptional_entry(struct address_space *mapping,
-> > > >  		return;
-> > > >  
-> > > >  	spin_lock_irq(&mapping->tree_lock);
-> > > > -	/*
-> > > > -	 * Regular page slots are stabilized by the page lock even
-> > > > -	 * without the tree itself locked.  These unlocked entries
-> > > > -	 * need verification under the tree lock.
-> > > > -	 */
-> > > > -	if (!__radix_tree_lookup(&mapping->page_tree, index, &node, &slot))
-> > > > -		goto unlock;
-> > > > -	if (*slot != entry)
-> > > > -		goto unlock;
-> > > > -	radix_tree_replace_slot(slot, NULL);
-> > > > -	mapping->nrshadows--;
-> > > > -	if (!node)
-> > > > -		goto unlock;
-> > > > -	workingset_node_shadows_dec(node);
-> > > > -	/*
-> > > > -	 * Don't track node without shadow entries.
-> > > > -	 *
-> > > > -	 * Avoid acquiring the list_lru lock if already untracked.
-> > > > -	 * The list_empty() test is safe as node->private_list is
-> > > > -	 * protected by mapping->tree_lock.
-> > > > -	 */
-> > > > -	if (!workingset_node_shadows(node) &&
-> > > > -	    !list_empty(&node->private_list))
-> > > > -		list_lru_del(&workingset_shadow_nodes, &node->private_list);
-> > > > -	__radix_tree_delete_node(&mapping->page_tree, node);
-> > > > +
-> > > > +	if (dax_mapping(mapping)) {
-> > > > +		if (radix_tree_delete_item(&mapping->page_tree, index, entry))
-> > > > +			mapping->nrexceptional--;
-> > > 
-> > > So when you punch hole in a file, you can delete a PMD entry from a radix
-> > > tree which covers part of the file which still stays. So in this case you
-> > > have to split the PMD entry into PTE entries (probably that needs to happen
-> > > up in truncate_inode_pages_range()) or something similar...
-> > 
-> > I think (and will verify) that the DAX code just unmaps the entire PMD range
-> > when we receive a hole punch request inside of the PMD.  If this is true then
-> > I think the radix tree code should behave the same way and just remove the PMD
-> > entry in the radix tree.
-> 
-> But you cannot just remove it if it is dirty... You have to keep somewhere
-> information that part of the PMD range is still dirty (or write that range
-> out before removing the radix tree entry).
+4.2.8-ckt2 -stable review patch.  If anyone has any objections, please let me know.
 
-Yep, agreed.
+---8<------------------------------------------------------------
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+From: Dan Williams <dan.j.williams@intel.com>
+
+commit ef83b6e8f40bb24b92ad73b5889732346e54a793 upstream.
+
+Similar to XFS warn when mounting DAX while it is still considered under
+development.  Also, aspects of the DAX implementation, for example
+synchronization against multiple faults and faults causing block
+allocation, depend on the correct implementation in the filesystem.  The
+maturity of a given DAX implementation is filesystem specific.
+
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Matthew Wilcox <willy@linux.intel.com>
+Cc: linux-ext4@vger.kernel.org
+Cc: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+Reported-by: Dave Chinner <david@fromorbit.com>
+Acked-by: Jan Kara <jack@suse.com>
+Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+Signed-off-by: Kamal Mostafa <kamal@canonical.com>
+---
+ fs/ext2/super.c | 2 ++
+ fs/ext4/super.c | 6 +++++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 900e19c..2597b06 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -566,6 +566,8 @@ static int parse_options(char *options, struct super_block *sb)
+ 			/* Fall through */
+ 		case Opt_dax:
+ #ifdef CONFIG_FS_DAX
++			ext2_msg(sb, KERN_WARNING,
++		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
+ 			set_opt(sbi->s_mount_opt, DAX);
+ #else
+ 			ext2_msg(sb, KERN_INFO, "dax option not supported");
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index bc24d1b..b22d844 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1667,8 +1667,12 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 		}
+ 		sbi->s_jquota_fmt = m->mount_opt;
+ #endif
+-#ifndef CONFIG_FS_DAX
+ 	} else if (token == Opt_dax) {
++#ifdef CONFIG_FS_DAX
++		ext4_msg(sb, KERN_WARNING,
++		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
++			sbi->s_mount_opt |= m->mount_opt;
++#else
+ 		ext4_msg(sb, KERN_INFO, "dax option not supported");
+ 		return -1;
+ #endif
+-- 
+1.9.1
