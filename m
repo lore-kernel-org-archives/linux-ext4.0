@@ -1,7 +1,7 @@
 From: Lokesh Jaliminche <lokesh.jaliminche@gmail.com>
 Subject: Re: [PATCH v5] EXT4: optimizing group search for inode allocation
-Date: Sun, 17 Jan 2016 04:20:11 +0530
-Message-ID: <20160116225011.GA3189@server_lokesh>
+Date: Sun, 17 Jan 2016 04:32:26 +0530
+Message-ID: <20160116230226.GB3189@server_lokesh>
 References: <CAKJOkCr-O+37QfFFJgtkRUZfo_-U=qmYy=Ooc7oqtqcVrz1HWQ@mail.gmail.com>
  <9CF60D02-FF10-44FF-A31E-D4E99F627AF2@dilger.ca>
  <20151226084153.GA4248@server_lokesh.domain.name>
@@ -9,23 +9,23 @@ References: <CAKJOkCr-O+37QfFFJgtkRUZfo_-U=qmYy=Ooc7oqtqcVrz1HWQ@mail.gmail.com>
  <20160107004639.GA3902@server_lokesh.domain.name>
  <687935F0-EEA5-4CB6-9E5C-43E49FBB39E2@dilger.ca>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="jRHKVT23PllUwdXP"
+Content-Type: multipart/mixed; boundary="4SFOXa2GPu3tIq4H"
 Cc: linux-ext4 <linux-ext4@vger.kernel.org>
 To: Andreas Dilger <adilger@dilger.ca>, Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f194.google.com ([209.85.192.194]:36750 "EHLO
-	mail-pf0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752860AbcAPWuX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 16 Jan 2016 17:50:23 -0500
-Received: by mail-pf0-f194.google.com with SMTP id n128so9981201pfn.3
-        for <linux-ext4@vger.kernel.org>; Sat, 16 Jan 2016 14:50:22 -0800 (PST)
+Received: from mail-pa0-f65.google.com ([209.85.220.65]:35895 "EHLO
+	mail-pa0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752973AbcAPXCj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 16 Jan 2016 18:02:39 -0500
+Received: by mail-pa0-f65.google.com with SMTP id a20so25849558pag.3
+        for <linux-ext4@vger.kernel.org>; Sat, 16 Jan 2016 15:02:39 -0800 (PST)
 Content-Disposition: inline
 In-Reply-To: <687935F0-EEA5-4CB6-9E5C-43E49FBB39E2@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---jRHKVT23PllUwdXP
+--4SFOXa2GPu3tIq4H
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 
@@ -43,39 +43,41 @@ out of the loop just to set "stats" and "group" again.
 
 Signed-off-by: Lokesh Nagappa Jaliminche <lokesh.jaliminche@gmail.com>
 ---
-  fs/ext4/ialloc.c |   10 ++++++++++
-  1 files changed, 10 insertions(+), 0 deletions(-)
+ fs/ext4/ialloc.c |   10 ++++++++++
+ 1 files changed, 10 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
 index 1b8024d..d2835cc 100644
 --- a/fs/ext4/ialloc.c
 +++ b/fs/ext4/ialloc.c
 @@ -477,6 +477,12 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
-	     (ext4_test_inode_flag(parent, EXT4_INODE_TOPDIR)))) {
-		int best_ndir = inodes_per_group;
-		int ret = -1;
-+		/* Maximum usable blocks per group as some blocks are used
-+		 * for inode tables and allocation bitmaps */
-+			unsigned int max_blocks_per_flex =
-+			((sbi->s_blocks_per_group -
-+			 (sbi->s_itb_per_group + 2)) *
-+			flex_size) >> sbi->s_cluster_bits;
+             (ext4_test_inode_flag(parent, EXT4_INODE_TOPDIR)))) {
+                int best_ndir = inodes_per_group;
+                int ret = -1;
++               /* Maximum usable blocks per group as some blocks are used
++                * for inode tables and allocation bitmaps */
++               unsigned int max_blocks_per_flex =
++                       ((sbi->s_blocks_per_group -
++                         (sbi->s_itb_per_group +  2)) *
++                        flex_size) >>  sbi->s_cluster_bits;
 
-		if (qstr) {
-			hinfo.hash_version = DX_HASH_HALF_MD4;
+                if (qstr) {
+                        hinfo.hash_version = DX_HASH_HALF_MD4;
 @@ -489,6 +495,10 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
-		for (i = 0; i < ngroups; i++) {
-			g = (parent_group + i) % ngroups;
-			get_orlov_stats(sb, g, flex_size, &stats);
-+			/* can't get better group than empty group */
-+			if (max_blocks_per_flex == stats.free_clusters &&
-+			    (inodes_per_group * flex_size) == stats.free_inodes)
-+				goto found_flex_bg;
-			if (!stats.free_inodes)
-				continue;
-			if (stats.used_dirs >= best_ndir)
---.
+                for (i = 0; i < ngroups; i++) {
+                        g = (parent_group + i) % ngroups;
+                        get_orlov_stats(sb, g, flex_size, &stats);
++                       /* can't get better group than empty group */
++                       if (max_blocks_per_flex == stats.free_clusters &&
++                           (inodes_per_group * flex_size) == stats.free_inodes)
++                               goto found_flex_bg;
+                        if (!stats.free_inodes)
+                                continue;
+                        if (stats.used_dirs >= best_ndir)
+--
 1.7.1
+
+
 
 On Mon, Jan 11, 2016 at 02:13:46PM -0700, Andreas Dilger wrote:
 > On Jan 6, 2016, at 5:46 PM, Lokesh Jaliminche <lokesh.jaliminche@gmail.com> wrote:
@@ -424,7 +426,7 @@ On Mon, Jan 11, 2016 at 02:13:46PM -0700, Andreas Dilger wrote:
 
 
 
---jRHKVT23PllUwdXP
+--4SFOXa2GPu3tIq4H
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="0001-ext4-optimizing-group-serch-for-inode-allocation.patch"
 
@@ -478,4 +480,4 @@ index 1b8024d..d2835cc 100644
 1.7.1
 
 
---jRHKVT23PllUwdXP--
+--4SFOXa2GPu3tIq4H--
