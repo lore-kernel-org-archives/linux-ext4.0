@@ -1,26 +1,27 @@
 From: kbuild test robot <lkp@intel.com>
-Subject: Re: [v16 2/4] ext4: adds project quota support
-Date: Mon, 18 Jan 2016 08:07:11 +0800
-Message-ID: <201601180814.X5gJS3Jn%fengguang.wu@intel.com>
-References: <1452588970-18309-3-git-send-email-lixi@ddn.com>
+Subject: Re: [v16 3/4] ext4: adds FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR
+ interface support
+Date: Mon, 18 Jan 2016 08:16:09 +0800
+Message-ID: <201601180808.WL9oEPyq%fengguang.wu@intel.com>
+References: <1452588970-18309-4-git-send-email-lixi@ddn.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="vkogqOf2sHV7VnPd"
+Content-Type: multipart/mixed; boundary="45Z9DzgjV8m4Oswq"
 Cc: kbuild-all@01.org, linux-ext4@vger.kernel.org, tytso@mit.edu,
 	adilger@dilger.ca, jack@suse.cz, viro@zeniv.linux.org.uk,
 	hch@infradead.org, dmonakhov@openvz.org
 To: Li Xi <pkuelelixi@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([192.55.52.115]:21258 "EHLO mga14.intel.com"
+Received: from mga09.intel.com ([134.134.136.24]:38717 "EHLO mga09.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752117AbcARAIO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 17 Jan 2016 19:08:14 -0500
+	id S1753107AbcARAR2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 17 Jan 2016 19:17:28 -0500
 Content-Disposition: inline
-In-Reply-To: <1452588970-18309-3-git-send-email-lixi@ddn.com>
+In-Reply-To: <1452588970-18309-4-git-send-email-lixi@ddn.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---vkogqOf2sHV7VnPd
+--45Z9DzgjV8m4Oswq
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 
@@ -40,68 +41,47 @@ reproduce:
 
 All errors (new ones prefixed by >>):
 
-   fs/ext4/super.c: In function 'ext4_statfs_project':
->> fs/ext4/super.c:4803:10: error: implicit declaration of function 'dqget' [-Werror=implicit-function-declaration]
-     dquot = dqget(sb, qid);
-             ^
-   fs/ext4/super.c:4803:8: warning: assignment makes pointer from integer without a cast [-Wint-conversion]
-     dquot = dqget(sb, qid);
-           ^
->> fs/ext4/super.c:4830:2: error: implicit declaration of function 'dqput' [-Werror=implicit-function-declaration]
-     dqput(dquot);
-     ^
+   fs/ext4/ioctl.c: In function 'ext4_ioctl_setproject':
+>> fs/ext4/ioctl.c:366:26: error: implicit declaration of function 'dqget' [-Werror=implicit-function-declaration]
+     transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(kprojid));
+                             ^
+   fs/ext4/ioctl.c:366:24: warning: assignment makes pointer from integer without a cast [-Wint-conversion]
+     transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(kprojid));
+                           ^
+>> fs/ext4/ioctl.c:368:9: error: implicit declaration of function '__dquot_transfer' [-Werror=implicit-function-declaration]
+      err = __dquot_transfer(inode, transfer_to);
+            ^
+>> fs/ext4/ioctl.c:369:3: error: implicit declaration of function 'dqput' [-Werror=implicit-function-declaration]
+      dqput(transfer_to[PRJQUOTA]);
+      ^
    cc1: some warnings being treated as errors
 
-vim +/dqget +4803 fs/ext4/super.c
+vim +/dqget +366 fs/ext4/ioctl.c
 
-  4797		struct kqid qid;
-  4798		struct dquot *dquot;
-  4799		u64 limit;
-  4800		u64 curblock;
-  4801	
-  4802		qid = make_kqid_projid(projid);
-> 4803		dquot = dqget(sb, qid);
-  4804		if (!dquot)
-  4805			return -ESRCH;
-  4806		spin_lock(&dq_data_lock);
-  4807	
-  4808		limit = dquot->dq_dqb.dqb_bsoftlimit ?
-  4809			dquot->dq_dqb.dqb_bsoftlimit :
-  4810			dquot->dq_dqb.dqb_bhardlimit;
-  4811		if (limit && buf->f_blocks * buf->f_bsize > limit) {
-  4812			curblock = dquot->dq_dqb.dqb_curspace / buf->f_bsize;
-  4813			buf->f_blocks = limit / buf->f_bsize;
-  4814			buf->f_bfree = buf->f_bavail =
-  4815				(buf->f_blocks > curblock) ?
-  4816				 (buf->f_blocks - curblock) : 0;
-  4817		}
-  4818	
-  4819		limit = dquot->dq_dqb.dqb_isoftlimit ?
-  4820			dquot->dq_dqb.dqb_isoftlimit :
-  4821			dquot->dq_dqb.dqb_ihardlimit;
-  4822		if (limit && buf->f_files > limit) {
-  4823			buf->f_files = limit;
-  4824			buf->f_ffree =
-  4825				(buf->f_files > dquot->dq_dqb.dqb_curinodes) ?
-  4826				 (buf->f_files - dquot->dq_dqb.dqb_curinodes) : 0;
-  4827		}
-  4828	
-  4829		spin_unlock(&dq_data_lock);
-> 4830		dqput(dquot);
-  4831		return 0;
-  4832	}
-  4833	
+   360		}
+   361	
+   362		err = ext4_reserve_inode_write(handle, inode, &iloc);
+   363		if (err)
+   364			goto out_stop;
+   365	
+ > 366		transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(kprojid));
+   367		if (transfer_to[PRJQUOTA]) {
+ > 368			err = __dquot_transfer(inode, transfer_to);
+ > 369			dqput(transfer_to[PRJQUOTA]);
+   370			if (err)
+   371				goto out_dirty;
+   372		}
 
 ---
 0-DAY kernel test infrastructure                Open Source Technology Center
 https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
 
---vkogqOf2sHV7VnPd
+--45Z9DzgjV8m4Oswq
 Content-Type: application/octet-stream
 Content-Disposition: attachment; filename=".config.gz"
 Content-Transfer-Encoding: base64
 
-H4sICLErnFYAAy5jb25maWcAlDxNd9u2svv+Cp30Le5dpLEdV03PO15AJCihIgmUAGXJGx7H
+H4sICPgtnFYAAy5jb25maWcAlDxNd9u2svv+Cp30Le5dpLEdV03PO15AJCihIgmUAGXJGx7H
 Vlqf649cSW6Tf/9mAFIEwKHcl0USzgyGwGC+AerHH36csNfDy9Pt4eHu9vHx++SP7fN2d3vY
 3k++PDxu/3eSykkpzYSnwvwExPnD8+u3D98+TZvp5eTyp8ufzt7v7j5Nltvd8/Zxkrw8f3n4
 4xXGP7w8//DjD4ksMzEH0pkwV9+7x7UdHTz3D6LUpqoTI2TZpDyRKa96pOJV1vAVL40GQsPz
@@ -643,4 +623,4 @@ gerHKneW4KoB2dsYRB9cqAyILn9eRhB3+hF08XPmBVkg8MNPMmM54lowdZu6/VJM9asGDO3f
 BCQQujYsftKhLrY9dDSS6XcNfUi1TaFn85/zedDH2enPmddcCY5mJcnvx3mVsJJYURNT3sLz
 a95l/ojCF8LQ7K2Q/wc4QK7JobUBAA==
 
---vkogqOf2sHV7VnPd--
+--45Z9DzgjV8m4Oswq--
