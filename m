@@ -1,27 +1,39 @@
-From: =?UTF-8?B?Rm9yZXN0IFN0dXJu?= <forest36sturn@inbox.ru>
-Subject: (unknown)
-Date: Mon, 18 Jan 2016 16:23:42 +0300
-Message-ID: <1453123422.532765197@f150.i.mail.ru>
-Reply-To: =?UTF-8?B?Rm9yZXN0IFN0dXJu?= <forest36sturn@inbox.ru>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 00/35 v3] eparate operations from flags in the
+ bio/request structs
+Date: Mon, 18 Jan 2016 10:15:47 -0800
+Message-ID: <20160118181547.GA30789@infradead.org>
+References: <1452543693-4440-1-git-send-email-mchristi@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: base64
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fallback6.mail.ru ([94.100.181.147]:44046 "EHLO
-	fallback6.mail.ru" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755000AbcARNnw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jan 2016 08:43:52 -0500
-Received: from f150.i.mail.ru (f150.i.mail.ru [94.100.178.200])
-	by fallback6.mail.ru (mPOP.Fallback_MX) with ESMTP id 6B6AD1DB87CD
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Jan 2016 16:23:45 +0300 (MSK)
-Received: from [94.179.68.195] (ident=mail)
-	by f150.i.mail.ru with local (envelope-from <forest36sturn@inbox.ru>)
-	id 1aL9mY-0006Rn-HP
-	for linux-ext4@vger.kernel.org; Mon, 18 Jan 2016 16:23:42 +0300
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+	konrad.wilk@oracle.com, drbd-dev@lists.linbit.com,
+	philipp.reisner@linbit.com, lars.ellenberg@linbit.com,
+	linux-raid@vger.kernel.org, dm-devel@redhat.com,
+	linux-fsdevel@vger.kernel.org, linux-bcache@vger.kernel.org,
+	linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-scsi@vger.kernel.org, linux-mtd@lists.infradead.org,
+	target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	osd-dev@open-osd.org, xfs@oss.sgi.com, ocfs2-devel@oss.oracle.com
+To: mchristi@redhat.com
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1452543693-4440-1-git-send-email-mchristi@redhat.com>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-U3VjY2VzcyB3aWxsIGZvbGxvdyB3aGVuIHlvdSBoYXZlIGEgbWFnbmlmaWNlbnQgdGltZXBpZWNl
-Cmh0dHA6Ly9tY2ZjdGF1LiU3MyU3MCU2NSU2MyU2OSU2MSU2YyU3MiU2NSU3MCU2NyU2OSU2NiU3
-NCUyZSU3MiU3NQo=
+The whole sries looks fine to me:
+
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+
+There are a few pieces of future work on top of this I'd rather see
+sooner than later though:
+
+ - use REQ_OP_FLUSH for all empty flushes, including those at the bio
+   level.
+ - merge the req->cmd_type values into req->op.  Right now that's
+   basically only a new REQ_OP_BLOCK_PC (or better REQ_OP_SCSI while
+   we're at it) and a REQ_OP_DRV_PRIV as the last value.
+ - drop as many of the crazy defines based on REQ_* in fs.h (e.g.
+   (READ_SYNC, WRITE_SYNC, WRITE_ODIRECT, WRITE_FLUSH, WRITE_FUA,
+   WRITE_FLUSH_FUA, RW_MASK, RWA_MASK)
