@@ -1,98 +1,85 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: [oops, 4.4-rc8] panic on ext3 during unlink
-Date: Wed, 20 Jan 2016 14:33:34 +1100
-Message-ID: <20160120033334.GB20456@dastard>
+From: "vikram.jadhav07" <vikramjadhavpucsd2007@gmail.com>
+Subject: [PATCH] ext4: Buffer Head Leak In mmp
+Date: Wed, 20 Jan 2016 21:18:02 +0530
+Message-ID: <CAJ-febOhan58G=Aw+-CD6OD2iKuFY3dxkzBfVMCwBd6vXs1rFg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: multipart/mixed; boundary=089e013cbeb4481a7d0529c5e9dc
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:3376 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933912AbcATDdh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Jan 2016 22:33:37 -0500
-Received: from dave by dastard with local (Exim 4.80)
-	(envelope-from <david@fromorbit.com>)
-	id 1aLjWY-0007jL-KW
-	for linux-ext4@vger.kernel.org; Wed, 20 Jan 2016 14:33:34 +1100
-Content-Disposition: inline
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:38292 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756060AbcATPsE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jan 2016 10:48:04 -0500
+Received: by mail-ig0-f178.google.com with SMTP id mw1so14699951igb.1
+        for <linux-ext4@vger.kernel.org>; Wed, 20 Jan 2016 07:48:03 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-HI folks,
+--089e013cbeb4481a7d0529c5e9dc
+Content-Type: text/plain; charset=UTF-8
 
-I just had one of my test VMs panic with this from it's root ext3
-filesystem. This is on 4.4.-rc8, using the ext4 driver for ext2/3.
+Description:  ext4: Buffer Head Leak In mmp
 
-[11526.376361] ------------[ cut here ]------------
-[11526.377218] kernel BUG at fs/ext4/xattr.c:1243!
-[11526.378022] invalid opcode: 0000 [#1] PREEMPT SMP
-[11526.378918] Modules linked in:
-[11526.379479] CPU: 7 PID: 4667 Comm: rm Tainted: G        W       4.4.0-rc8-dgc+ #631
-[11526.380822] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Debian-1.8.2-1 04/01/2014
-[11526.382372] task: ffff8801b22c22c0 ti: ffff8801c2ccc000 task.ti: ffff8801c2ccc000
-[11526.383619] RIP: 0010:[<ffffffff812e618b>]  [<ffffffff812e618b>] ext4_xattr_shift_entries+0x5b/0x60
-[11526.385146] RSP: 0018:ffff8801c2ccfcf8  EFLAGS: 00010202
-[11526.386043] RAX: 000000000030000e RBX: 000000000000000a RCX: ffff88025a336f9c
-[11526.387233] RDX: 0000000000000000 RSI: 000000000000000c RDI: ffff88025a336fa0
-[11526.388421] RBP: ffff8801c2ccfcf8 R08: ffffffffffffffd0 R09: 0000000000001000
-[11526.389620] R10: 000000000000000e R11: ffff88025a336fa0 R12: ffff8801a406f3c0
-[11526.390814] R13: ffff8802f1d925c0 R14: 0000000000000000 R15: ffff88004401a7b0
-[11526.392009] FS:  00007fc60bf93700(0000) GS:ffff88043fce0000(0000) knlGS:0000000000000000
-[11526.393353] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[11526.394320] CR2: 0000000000b53000 CR3: 00000002ddbbf000 CR4: 00000000000006e0
-[11526.395509] Stack:
-[11526.395856]  ffff8801c2ccfde0 ffffffff812e8408 000000000000001c ffff88004401a718
-[11526.397157]  ffff8800bb3e13a8 0000000000000ebc ffff880428b3b0f0 ffff8801c2ccfda0
-[11526.398464]  ffff88025a336f00 0000000000000000 0000000000000000 ffff88025a336fa0
-[11526.399771] Call Trace:
-[11526.400191]  [<ffffffff812e8408>] ext4_expand_extra_isize_ea+0x368/0x790
-[11526.401313]  [<ffffffff812a8398>] ext4_mark_inode_dirty+0x1a8/0x210
-[11526.402370]  [<ffffffff812b43f8>] ext4_unlink+0x308/0x340
-[11526.403270]  [<ffffffff811e2641>] vfs_unlink+0xf1/0x180
-[11526.404142]  [<ffffffff811e52c5>] do_unlinkat+0x245/0x2b0
-[11526.405056]  [<ffffffff811e5cab>] SyS_unlinkat+0x1b/0x30
-[11526.405961]  [<ffffffff81dcbfae>] entry_SYSCALL_64_fastpath+0x12/0x71
-[11526.407041] Code: 77 29 66 44 89 57 02 0f b6 07 48 83 c0 13 48 83 e0 fc 48 01 c7 8b 07 85 c0 75 c9 4c 89 c2 48 89 ce 4c 89 df e8 67 9b 4c 00 5d c3 <0f> 0b 0f 1f 00
-[11526.411253] RIP  [<ffffffff812e618b>] ext4_xattr_shift_entries+0x5b/0x60
-[11526.412384]  RSP <ffff8801c2ccfcf8>
-[11526.413410] ---[ end trace c3688067451bf619 ]---
+There is memory leak as both caller function kmmpd() and callee
+read_mmp_block() not releasing bh_check  (i.e buffer_head).
+Given patch fixes this problem.
 
-The filesystem had just gone ENOSPC, and I was cleaning up some
-files that I have no idea how long they'd been there. A boot time
-e2fsck check ran clean yesterday (the root fs is checked every 30
-boots), so the problem is recent.
+Signed-off-by: Jadhav Vikram <vikramjadhavpucsd2007@gmail.com>
 
-rebooting, remounting and re-running the rm command results in the
-same panic.
+Patch:
+=====
+--- /root/linux.orig/fs/ext4/mmp.c      2016-01-18 07:23:06.227519005 +0530
++++ /root/linux/fs/ext4/mmp.c   2016-01-18 07:31:18.545518552 +0530
+@@ -98,12 +98,17 @@
+        }
 
-Get it into single user mode, tell systemd's dhcp client to fuck off
-(netowrking hasn't been started!) so I can remount the root
-filesystem read only, and I get:
+        mmp = (struct mmp_struct *)((*bh)->b_data);
+-       if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC)
++       if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC) {
+                ret = -EFSCORRUPTED;
+-       else if (!ext4_mmp_csum_verify(sb, mmp))
++               brelse(*bh);
++               *bh = NULL;
++       } else if (!ext4_mmp_csum_verify(sb, mmp)) {
+                ret = -EFSBADCRC;
+-       else
++               brelse(*bh);
++               *bh = NULL;
++       } else {
+                return 0;
++       }
 
-# e2fsck -f /dev/sda1
-e2fsck 1.42.13 (17-May-2015)
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-/dev/sda1: 229275/624624 files (3.9% non-contiguous), 2366037/2496091 blocks
-#
-# mount -o rw,remount /
-[  588.745315] EXT4-fs (sda1): re-mounted. Opts: errors=remount-ro
-# mount |grep " / "
-/dev/sda1 on / type ext3 (rw,relatime,errors=remount-ro,data=ordered)
-# rm -rf /mnt/scratch/*
-[  591.706140] ------------[ cut here ]------------
-[  591.707046] kernel BUG at fs/ext4/xattr.c:1243!
-[  591.707862] invalid opcode: 0000 [#1] PREEMPT SMP 
-[  591.708787] Modules linked in:
-.....
+ warn_exit:
+        ext4_warning(sb, "Error %d while reading MMP block %llu",
+@@ -225,6 +230,7 @@
+                                             "The filesystem seems to have been"
+                                             " multiply mounted.");
+                                ext4_error(sb, "abort");
++                               put_bh(bh_check);
+                                goto failed;
+                        }
+                        put_bh(bh_check);
 
-Cheers,
+--089e013cbeb4481a7d0529c5e9dc
+Content-Type: application/octet-stream; name="ext4-mmp-brelse.patch"
+Content-Disposition: attachment; filename="ext4-mmp-brelse.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_ijmzp5s60
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+LS0tIC9yb290L2xpbnV4Lm9yaWcvZnMvZXh0NC9tbXAuYwkyMDE2LTAxLTE4IDA3OjIzOjA2LjIy
+NzUxOTAwNSArMDUzMAorKysgL3Jvb3QvbGludXgvZnMvZXh0NC9tbXAuYwkyMDE2LTAxLTE4IDA3
+OjMxOjE4LjU0NTUxODU1MiArMDUzMApAQCAtOTgsMTIgKzk4LDE3IEBACiAJfQogCiAJbW1wID0g
+KHN0cnVjdCBtbXBfc3RydWN0ICopKCgqYmgpLT5iX2RhdGEpOwotCWlmIChsZTMyX3RvX2NwdSht
+bXAtPm1tcF9tYWdpYykgIT0gRVhUNF9NTVBfTUFHSUMpCisJaWYgKGxlMzJfdG9fY3B1KG1tcC0+
+bW1wX21hZ2ljKSAhPSBFWFQ0X01NUF9NQUdJQykgewogCQlyZXQgPSAtRUZTQ09SUlVQVEVEOwot
+CWVsc2UgaWYgKCFleHQ0X21tcF9jc3VtX3ZlcmlmeShzYiwgbW1wKSkKKwkJYnJlbHNlKCpiaCk7
+CisJCSpiaCA9IE5VTEw7CisJfSBlbHNlIGlmICghZXh0NF9tbXBfY3N1bV92ZXJpZnkoc2IsIG1t
+cCkpIHsKIAkJcmV0ID0gLUVGU0JBRENSQzsKLQllbHNlCisJCWJyZWxzZSgqYmgpOworCQkqYmgg
+PSBOVUxMOworCX0gZWxzZSB7CiAJCXJldHVybiAwOworCX0KIAogd2Fybl9leGl0OgogCWV4dDRf
+d2FybmluZyhzYiwgIkVycm9yICVkIHdoaWxlIHJlYWRpbmcgTU1QIGJsb2NrICVsbHUiLApAQCAt
+MjI1LDYgKzIzMCw3IEBACiAJCQkJCSAgICAgIlRoZSBmaWxlc3lzdGVtIHNlZW1zIHRvIGhhdmUg
+YmVlbiIKIAkJCQkJICAgICAiIG11bHRpcGx5IG1vdW50ZWQuIik7CiAJCQkJZXh0NF9lcnJvcihz
+YiwgImFib3J0Iik7CisJCQkJcHV0X2JoKGJoX2NoZWNrKTsKIAkJCQlnb3RvIGZhaWxlZDsKIAkJ
+CX0KIAkJCXB1dF9iaChiaF9jaGVjayk7Cg==
+--089e013cbeb4481a7d0529c5e9dc--
