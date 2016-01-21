@@ -1,109 +1,44 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: [GIT PULL] xfs: update #2 for 4.5-rc1
-Date: Fri, 22 Jan 2016 10:22:27 +1100
-Message-ID: <20160121232227.GH20456@dastard>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 102731] I have a cough.
+Date: Thu, 21 Jan 2016 23:57:59 +0000
+Message-ID: <bug-102731-13602-gZNavv89Ri@https.bugzilla.kernel.org/>
+References: <bug-102731-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-To: torvalds@linux-foundation.org
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:48556 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751111AbcAUX6E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Jan 2016 18:58:04 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 0995320461
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Jan 2016 23:58:03 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 1149620460
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Jan 2016 23:58:00 +0000 (UTC)
+In-Reply-To: <bug-102731-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Linus,
+https://bugzilla.kernel.org/show_bug.cgi?id=102731
 
-Can you please pull the changes from the tag below? This is the
-second update for XFS that I mentioned in the original pull request
-last week. It contains a revert for a suspend regression in 4.4 and
-a fix for a long standing log recovery issue that has been further
-exposed by all the log recovery changes made in the original 4.5
-merge.
+--- Comment #33 from cwseys@physics.wisc.edu ---
+Hello,
+    Could you summarize your findings?  It is hard to keep track after so much 
+time.  :)
+    Here is a beginning:
 
-There is one more thing in this pull request - one that I forgot to
-merge into the origin. That is, pulling the XFS_IOC_FS[GS]ETXATTR
-ioctl up to the VFS level so that other filesystems can also use it
-for modifying project quota IDs. This allows the new ext4 project
-quota functionality to work with the XFs quota tools to manage
-project quotas, which means the ext4 project quota code can be
-tested against all the xfstests project quota tests that are written
-around xfs_quota. The original branch I posted has been used by Ted
-in the ext4 tree, so I have not modified it to add SOBs, etc. I've
-added those tags in the summary for the tag for this pull request,
-hence they shouldn't ever get lost.
+Hversion    Gversion  Gmem  read-only?   uptime
+3.16           3.16         ????       yes               ~14 days
+4.2.3          4.2.3        2 GB      no                ~60 days
+4.2.3          3.16         ? GB      inprogress
+
 
 Thanks!
+Chad.
 
--Dave.
-
-The following changes since commit dde7f55bd000696acc38296c21241971e1840142:
-
-  Merge branch 'xfs-misc-fixes-for-4.5-2' into for-next (2016-01-12 07:04:30 +1100)
-
-are available in the git repository at:
-
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/dgc/linux-xfs.git tags/xfs-for-linus-4.5-2
-
-for you to fetch changes up to ee3804d9f94c5a391c66386b70b9fe5a58775507:
-
-  Merge branch 'xfs-misc-fixes-for-4.5-3' into for-next (2016-01-19 08:28:36 +1100)
-
-----------------------------------------------------------------
-
-xfs: Update 2 for 4.5-rc1
-
-This update contains:
-
-o promotion of XFS_IOC_FS[GS]ETXATTR ioctl to the vfs level so that
-  it can be shared with other filesystems. The ext4 project quota
-  functionality is the first target for this. The commits in this
-  series have not been updated with review or final SOB tags because
-  the branch they were originally published in was needed by ext4.
-  Those tags are:
-
-  Reviewed-by: Theodore Ts'o <tytso@mit.edu>
-  Signed-off-by: Dave Chinner <david@fromrobit.com>
-
-o Revert a change that is causing suspend failures.
-o Fix a use-after-free that can occur on log mount failures. Been
-  around forever, but now exposed by other changes to log recovery
-  made in the first 4.5 merge.
-
-----------------------------------------------------------------
-Dave Chinner (7):
-      fs: XFS_IOC_FS[SG]SETXATTR to FS_IOC_FS[SG]ETXATTR promotion
-      xfs: use FS_XFLAG definitions directly
-      xfs: introduce per-inode DAX enablement
-      Merge branch 'xfs-setxattr-promotion' into for-next
-      Revert "xfs: clear PF_NOFREEZE for xfsaild kthread"
-      xfs: log mount failures don't wait for buffers to be released
-      Merge branch 'xfs-misc-fixes-for-4.5-3' into for-next
-
- fs/xfs/libxfs/xfs_format.h |   11 +++++-
- fs/xfs/libxfs/xfs_fs.h     |   38 +-----------------
- fs/xfs/xfs_buf.c           |   10 +++++
- fs/xfs/xfs_inode.c         |   60 ++++++++++++++++++-----------
- fs/xfs/xfs_ioctl.c         |   92 ++++++++++++++++++++++++++------------------
- fs/xfs/xfs_iops.c          |    4 +-
- fs/xfs/xfs_trans_ail.c     |    1 -
- include/uapi/linux/fs.h    |   33 ++++++++++++++++
- 8 files changed, 147 insertions(+), 102 deletions(-)
 -- 
-Dave Chinner
-david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+You are receiving this mail because:
+You are watching the assignee of the bug.
