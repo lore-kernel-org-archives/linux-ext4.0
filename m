@@ -1,42 +1,55 @@
 From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 108631] Stuck on mb_cache_spinlock
-Date: Fri, 22 Jan 2016 09:08:18 +0000
-Message-ID: <bug-108631-13602-b4J1IdDOmm@https.bugzilla.kernel.org/>
-References: <bug-108631-13602@https.bugzilla.kernel.org/>
+Subject: [Bug 102731] I have a cough.
+Date: Fri, 22 Jan 2016 10:27:24 +0000
+Message-ID: <bug-102731-13602-EqBrnOnyqM@https.bugzilla.kernel.org/>
+References: <bug-102731-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:42549 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.136]:46406 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751889AbcAVJIX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Jan 2016 04:08:23 -0500
+	id S1751529AbcAVK12 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Jan 2016 05:27:28 -0500
 Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id D0E0220395
-	for <linux-ext4@vger.kernel.org>; Fri, 22 Jan 2016 09:08:21 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 92BD320434
-	for <linux-ext4@vger.kernel.org>; Fri, 22 Jan 2016 09:08:18 +0000 (UTC)
-In-Reply-To: <bug-108631-13602@https.bugzilla.kernel.org/>
+	by mail.kernel.org (Postfix) with ESMTP id D560320383
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Jan 2016 10:27:26 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 862C720384
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Jan 2016 10:27:24 +0000 (UTC)
+In-Reply-To: <bug-102731-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=108631
+https://bugzilla.kernel.org/show_bug.cgi?id=102731
 
---- Comment #7 from Norman Meilick <nm@sbe.de> ---
-I'm sorry for the long delay, testing took longer than expected. While we could
-trigger the problem every time with kernels 3.14 to 3.18, it took 2-3 attempts
-(usually about 8 hours of backing up around 2.5M files) until the spinlock
-contention appeared with kernels 4.2.0 and 4.4.0-rc8.
+--- Comment #34 from John Hughes <john@calva.com> ---
+I first started seeing the problem when I moved the guest kernel to 3.16 
+(i.e. started using the ext4 driver for my ext3 fileystems).
 
-Since applying Jan's patches to 4.4.0-rc8 we have not experienced any problems,
-so it seems to us that this fixed the issue. Thank you very much to both of
-you.
+1. Host 3.16, Guest 3.16, 1G memory, filesystem goes readonly after 
+around 4 days
 
-I'm also grateful for the advice regarding containers. On our test server we
-only have six containers with a modest memory use (we made sure to monitor it
-during the tests), so this likely wasn't an issue there.
+Then I upgraded the guest to 3.18.19
+
+2. Host 3.16 Guest 3.18.19, 1G memory, filesystem goes readonly after 
+around 20 days
+
+Then I upgraded the guest to 4.3.2
+
+3. Host 3.16 Guest 4.3.2, 1G memory, filesystem goes readonly after 4 days
+
+Then I upgraded the host to 4.3.2, noticed the guest had only 1G of 
+memory (and the guest kernel was bitching about not having enough memory 
+during some TCP operations) so I increased the guest memory to 2G,  Bad 
+debugging style, but I was desperate.
+
+4. Host 4.3.2, Guest 4.3.2, 2G memory, system ran for 90 days with no 
+problem.
+
+So now I've set the guest to 3.16 with 1G of memory.  We'll see what 
+happens next.
 
 -- 
 You are receiving this mail because:
