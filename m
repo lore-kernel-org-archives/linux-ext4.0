@@ -1,75 +1,109 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 changes for 4.5
-Date: Fri, 22 Jan 2016 01:06:39 -0500
-Message-ID: <20160122060639.GA4746@thunk.org>
+From: Nikolay Borisov <kernel@kyup.com>
+Subject: Re: [PATCH] ext4: Fix bh->b_state corruption
+Date: Fri, 22 Jan 2016 09:08:55 +0200
+Message-ID: <56A1D587.1020504@kyup.com>
+References: <1452185721-32477-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: torvalds@linux-foundation.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.com>,
+	stable@vger.kernel.org
+To: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37061 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751899AbcAVGGm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Jan 2016 01:06:42 -0500
-Content-Disposition: inline
+Received: from mail-wm0-f51.google.com ([74.125.82.51]:35465 "EHLO
+	mail-wm0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751126AbcAVHI7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jan 2016 02:08:59 -0500
+Received: by mail-wm0-f51.google.com with SMTP id r129so201068756wmr.0
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Jan 2016 23:08:57 -0800 (PST)
+In-Reply-To: <1452185721-32477-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-(I thought I had sent this earlier, but apparently the e-mail never
-left my machine.  Apologies if this is a duplicate, but I'm pretty
-sure it was never sent on my end.)
+Ping on that one, it seems it's going to miss the 4.5 merge window?
 
-
-The following changes since commit f41683a204ea61568f0fd0804d47c19561f2ee39:
-
-  Merge tag 'ext4_for_linus_stable' of git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4 (2015-12-07 10:25:00 -0800)
-
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
-
-for you to fetch changes up to 68ce7bfcd995a8a393b1b14fa67dbc16fa3dc784:
-
-  fs: clean up the flags definition in uapi/linux/fs.h (2016-01-08 16:01:25 -0500)
-
-----------------------------------------------------------------
-Some locking and page fault bug fixes from Jan Kara, some ext4
-encryption fixes from me, and Li Xi's Project Quota commits.
-
-----------------------------------------------------------------
-Jan Kara (9):
-      ext4: fix races between page faults and hole punching
-      ext4: move unlocked dio protection from ext4_alloc_file_blocks()
-      ext4: fix races between buffered IO and collapse / insert range
-      ext4: fix races of writeback with punch hole and zero range
-      ext4: document lock ordering
-      ext4: get rid of EXT4_GET_BLOCKS_NO_LOCK flag
-      ext4: provide ext4_issue_zeroout()
-      ext4: implement allocation of pre-zeroed blocks
-      ext4: use pre-zeroed blocks for DAX page faults
-
-Li Xi (3):
-      ext4: adds project ID support
-      ext4: add project quota support
-      ext4: add FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR interface support
-
-Theodore Ts'o (3):
-      ext4 crypto: add missing locking for keyring_key access
-      ext4 crypto: simplify interfaces to directory entry insert functions
-      fs: clean up the flags definition in uapi/linux/fs.h
-
- fs/ext4/crypto.c            |   6 +-
- fs/ext4/crypto_key.c        |   4 +
- fs/ext4/ext4.h              |  99 ++++++++++++++++++++---
- fs/ext4/extents.c           | 153 +++++++++++++++++++----------------
- fs/ext4/file.c              |  82 +++++++++++++------
- fs/ext4/ialloc.c            |   7 ++
- fs/ext4/inline.c            |  10 +--
- fs/ext4/inode.c             | 268 ++++++++++++++++++++++++++++++++++++++++++++++++------------
- fs/ext4/ioctl.c             | 376 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------
- fs/ext4/namei.c             |  34 +++++---
- fs/ext4/super.c             |  97 ++++++++++++++++++++--
- fs/ext4/truncate.h          |   2 +
- include/trace/events/ext4.h |   2 +-
- include/uapi/linux/fs.h     |  31 ++++++-
- 14 files changed, 895 insertions(+), 276 deletions(-)
+On 01/07/2016 06:55 PM, Jan Kara wrote:
+> From: Jan Kara <jack@suse.com>
+> 
+> ext4 can update bh->b_state non-atomically in _ext4_get_block() and
+> ext4_da_get_block_prep(). Usually this is fine since bh is just a
+> temporary storage for mapping information on stack but in some cases it
+> can be fully living bh attached to a page. In such case non-atomic
+> update of bh->b_state can race with an atomic update which then gets
+> lost. Usually when we are mapping bh and thus updating bh->b_state
+> non-atomically, nobody else touches the bh and so things work out fine
+> but there is one case to especially worry about: ext4_finish_bio() uses
+> BH_Uptodate_Lock on the first bh in the page to synchronize handling of
+> PageWriteback state. So when blocksize < pagesize, we can be atomically
+> modifying bh->b_state of a buffer that actually isn't under IO and thus
+> can race e.g. with delalloc trying to map that buffer. The result is
+> that we can mistakenly set / clear BH_Uptodate_Lock bit resulting in the
+> corruption of PageWriteback state or missed unlock of BH_Uptodate_Lock.
+> 
+> Fix the problem by always updating bh->b_state bits atomically.
+> 
+> CC: stable@vger.kernel.org
+> Reported-by: Nikolay Borisov <kernel@kyup.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/inode.c | 32 ++++++++++++++++++++++++++++++--
+>  1 file changed, 30 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index ea433a7f4bca..06bda0361e7c 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -657,6 +657,34 @@ has_zeroout:
+>  	return retval;
+>  }
+>  
+> +/*
+> + * Update EXT4_MAP_FLAGS in bh->b_state. For buffer heads attached to pages
+> + * we have to be careful as someone else may be manipulating b_state as well.
+> + */
+> +static void ext4_update_bh_state(struct buffer_head *bh, unsigned long flags)
+> +{
+> +	unsigned long old_state;
+> +	unsigned long new_state;
+> +
+> +	flags &= EXT4_MAP_FLAGS;
+> +
+> +	/* Dummy buffer_head? Set non-atomically. */
+> +	if (!bh->b_page) {
+> +		bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | flags;
+> +		return;
+> +	}
+> +	/*
+> +	 * Someone else may be modifying b_state. Be careful! This is ugly but
+> +	 * once we get rid of using bh as a container for mapping information
+> +	 * to pass to / from get_block functions, this can go away.
+> +	 */
+> +	do {
+> +		old_state = READ_ONCE(bh->b_state);
+> +		new_state = (old_state & ~EXT4_MAP_FLAGS) | flags;
+> +	} while (unlikely(
+> +		 cmpxchg(&bh->b_state, old_state, new_state) != old_state));
+> +}
+> +
+>  /* Maximum number of blocks we map for direct IO at once. */
+>  #define DIO_MAX_BLOCKS 4096
+>  
+> @@ -693,7 +721,7 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
+>  		ext4_io_end_t *io_end = ext4_inode_aio(inode);
+>  
+>  		map_bh(bh, inode->i_sb, map.m_pblk);
+> -		bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
+> +		ext4_update_bh_state(bh, map.m_flags);
+>  		if (IS_DAX(inode) && buffer_unwritten(bh)) {
+>  			/*
+>  			 * dgc: I suspect unwritten conversion on ext4+DAX is
+> @@ -1669,7 +1697,7 @@ int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+>  		return ret;
+>  
+>  	map_bh(bh, inode->i_sb, map.m_pblk);
+> -	bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
+> +	ext4_update_bh_state(bh, map.m_flags);
+>  
+>  	if (buffer_unwritten(bh)) {
+>  		/* A delayed write to unwritten bh should be marked
+> 
