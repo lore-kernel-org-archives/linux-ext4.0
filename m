@@ -1,109 +1,43 @@
-From: Nikolay Borisov <kernel@kyup.com>
-Subject: Re: [PATCH] ext4: Fix bh->b_state corruption
-Date: Fri, 22 Jan 2016 09:08:55 +0200
-Message-ID: <56A1D587.1020504@kyup.com>
-References: <1452185721-32477-1-git-send-email-jack@suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 108631] Stuck on mb_cache_spinlock
+Date: Fri, 22 Jan 2016 09:08:18 +0000
+Message-ID: <bug-108631-13602-b4J1IdDOmm@https.bugzilla.kernel.org/>
+References: <bug-108631-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.com>,
-	stable@vger.kernel.org
-To: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f51.google.com ([74.125.82.51]:35465 "EHLO
-	mail-wm0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751126AbcAVHI7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jan 2016 02:08:59 -0500
-Received: by mail-wm0-f51.google.com with SMTP id r129so201068756wmr.0
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Jan 2016 23:08:57 -0800 (PST)
-In-Reply-To: <1452185721-32477-1-git-send-email-jack@suse.cz>
+Received: from mail.kernel.org ([198.145.29.136]:42549 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751889AbcAVJIX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Jan 2016 04:08:23 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id D0E0220395
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Jan 2016 09:08:21 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 92BD320434
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Jan 2016 09:08:18 +0000 (UTC)
+In-Reply-To: <bug-108631-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ping on that one, it seems it's going to miss the 4.5 merge window?
+https://bugzilla.kernel.org/show_bug.cgi?id=108631
 
-On 01/07/2016 06:55 PM, Jan Kara wrote:
-> From: Jan Kara <jack@suse.com>
-> 
-> ext4 can update bh->b_state non-atomically in _ext4_get_block() and
-> ext4_da_get_block_prep(). Usually this is fine since bh is just a
-> temporary storage for mapping information on stack but in some cases it
-> can be fully living bh attached to a page. In such case non-atomic
-> update of bh->b_state can race with an atomic update which then gets
-> lost. Usually when we are mapping bh and thus updating bh->b_state
-> non-atomically, nobody else touches the bh and so things work out fine
-> but there is one case to especially worry about: ext4_finish_bio() uses
-> BH_Uptodate_Lock on the first bh in the page to synchronize handling of
-> PageWriteback state. So when blocksize < pagesize, we can be atomically
-> modifying bh->b_state of a buffer that actually isn't under IO and thus
-> can race e.g. with delalloc trying to map that buffer. The result is
-> that we can mistakenly set / clear BH_Uptodate_Lock bit resulting in the
-> corruption of PageWriteback state or missed unlock of BH_Uptodate_Lock.
-> 
-> Fix the problem by always updating bh->b_state bits atomically.
-> 
-> CC: stable@vger.kernel.org
-> Reported-by: Nikolay Borisov <kernel@kyup.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/inode.c | 32 ++++++++++++++++++++++++++++++--
->  1 file changed, 30 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index ea433a7f4bca..06bda0361e7c 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -657,6 +657,34 @@ has_zeroout:
->  	return retval;
->  }
->  
-> +/*
-> + * Update EXT4_MAP_FLAGS in bh->b_state. For buffer heads attached to pages
-> + * we have to be careful as someone else may be manipulating b_state as well.
-> + */
-> +static void ext4_update_bh_state(struct buffer_head *bh, unsigned long flags)
-> +{
-> +	unsigned long old_state;
-> +	unsigned long new_state;
-> +
-> +	flags &= EXT4_MAP_FLAGS;
-> +
-> +	/* Dummy buffer_head? Set non-atomically. */
-> +	if (!bh->b_page) {
-> +		bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | flags;
-> +		return;
-> +	}
-> +	/*
-> +	 * Someone else may be modifying b_state. Be careful! This is ugly but
-> +	 * once we get rid of using bh as a container for mapping information
-> +	 * to pass to / from get_block functions, this can go away.
-> +	 */
-> +	do {
-> +		old_state = READ_ONCE(bh->b_state);
-> +		new_state = (old_state & ~EXT4_MAP_FLAGS) | flags;
-> +	} while (unlikely(
-> +		 cmpxchg(&bh->b_state, old_state, new_state) != old_state));
-> +}
-> +
->  /* Maximum number of blocks we map for direct IO at once. */
->  #define DIO_MAX_BLOCKS 4096
->  
-> @@ -693,7 +721,7 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
->  		ext4_io_end_t *io_end = ext4_inode_aio(inode);
->  
->  		map_bh(bh, inode->i_sb, map.m_pblk);
-> -		bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
-> +		ext4_update_bh_state(bh, map.m_flags);
->  		if (IS_DAX(inode) && buffer_unwritten(bh)) {
->  			/*
->  			 * dgc: I suspect unwritten conversion on ext4+DAX is
-> @@ -1669,7 +1697,7 @@ int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
->  		return ret;
->  
->  	map_bh(bh, inode->i_sb, map.m_pblk);
-> -	bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
-> +	ext4_update_bh_state(bh, map.m_flags);
->  
->  	if (buffer_unwritten(bh)) {
->  		/* A delayed write to unwritten bh should be marked
-> 
+--- Comment #7 from Norman Meilick <nm@sbe.de> ---
+I'm sorry for the long delay, testing took longer than expected. While we could
+trigger the problem every time with kernels 3.14 to 3.18, it took 2-3 attempts
+(usually about 8 hours of backing up around 2.5M files) until the spinlock
+contention appeared with kernels 4.2.0 and 4.4.0-rc8.
+
+Since applying Jan's patches to 4.4.0-rc8 we have not experienced any problems,
+so it seems to us that this fixed the issue. Thank you very much to both of
+you.
+
+I'm also grateful for the advice regarding containers. On our test server we
+only have six containers with a modest memory use (we made sure to monitor it
+during the tests), so this likely wasn't an issue there.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
