@@ -1,54 +1,58 @@
-From: Matthew Wilcox <willy@linux.intel.com>
-Subject: Re: [RFC PATCH] dax, ext2, ext4, XFS: fix data corruption race
-Date: Fri, 22 Jan 2016 21:01:02 -0500
-Message-ID: <20160123020102.GG2948@linux.intel.com>
-References: <1453503971-5319-1-git-send-email-ross.zwisler@linux.intel.com>
+From: Jeff Merkey <linux.mdb@gmail.com>
+Subject: [BUG REPORT] NULL pointer dereference in jdb2_journal_grab_journal_head
+ (RDI)
+Date: Sat, 23 Jan 2016 09:42:52 -0700
+Message-ID: <CAO6TR8Vhxjp-nX-wPXeBLOPmsHcb7_3y2uxk7x_V19o8hTZG0g@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-nvdimm@lists.01.org,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Jan Kara <jack@suse.com>, linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>, linux-ext4@vger.kernel.org,
-	Dan Williams <dan.j.williams@intel.com>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <1453503971-5319-1-git-send-email-ross.zwisler@linux.intel.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Content-Type: text/plain; charset=UTF-8
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+	linux-ext4@vger.kernel.org
+To: LKML <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 22, 2016 at 04:06:11PM -0700, Ross Zwisler wrote:
-> +++ b/fs/block_dev.c
-> @@ -1733,13 +1733,28 @@ static const struct address_space_operations def_blk_aops = {
->   */
->  static int blkdev_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
->  {
-> -	return __dax_fault(vma, vmf, blkdev_get_block, NULL);
-> +	int ret;
-> +
-> +	ret = __dax_fault(vma, vmf, blkdev_get_block, NULL, false);
-> +
-> +	if (WARN_ON_ONCE(ret == -EAGAIN))
-> +		ret = VM_FAULT_SIGBUS;
-> +
-> +	return ret;
->  }
+If I leave the system in the debugger console overnight with all the
+processors suspended for about 8 hours, then type go, the following
+bug shows up during file I/O.  This particular bug showed up while
+using git to update some branches.
 
-Let's not mix up -E returns and VM_FAULT returns.  We already have a
-perfectly good VM_FAULT return value -- VM_FAULT_RETRY.
+I have only seen this bug once and I attempted to reproduce it to get
+a trace dump but have not been able to trigger it again.  The NULL
+pointer is RDI set to NULL while trying to obtain a lock.
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+(2)> .z grab_journal
+ffffffffa00bb740 t jbd2_journal_grab_journal_head [jbd2]
+(2)> u ffffffffa00bb740
+jbd2|jbd2_journal_grab_journal_head:
+0xffffffffa00bb740 0F1F440000      nop    DWORD PTR [rax+rax]=0x0
+0xffffffffa00bb745 55              push   rbp
+0xffffffffa00bb746 4889E5          mov    rbp,rsp
+<<<<<<<<<<<<   Crashes here with RDI set to NULL
+0xffffffffa00bb749 F00FBA2F18      lock bts DWORD PTR [rdi]=0x0,0x18
+<<<<<<<<<<<<
+0xffffffffa00bb74e 7219            jb
+jbd2_journal_grab_journal_head+0x29 (0xffffffffa00bb769) (down)
+0xffffffffa00bb750 488B07          mov    rax,QWORD PTR [rdi]=0x0
+0xffffffffa00bb753 A900000200      test   eax,0x20000
+0xffffffffa00bb758 741D            je
+jbd2_journal_grab_journal_head+0x37 (0xffffffffa00bb777) (down)
+0xffffffffa00bb75a 488B4740        mov    rax,QWORD PTR [rdi+64]=0x0
+0xffffffffa00bb75e 83400801        add    DWORD PTR [rax+8]=0x0,0x1
+0xffffffffa00bb762 F0806703FE      lock and BYTE PTR [rdi+3]=0x00,0xfe
+0xffffffffa00bb767 5D              pop    rbp
+0xffffffffa00bb768 C3              ret
+0xffffffffa00bb769 F390            pause
+0xffffffffa00bb76b 488B07          mov    rax,QWORD PTR [rdi]=0x0
+0xffffffffa00bb76e A900000001      test   eax,0x1000000
+0xffffffffa00bb773 75F4            jne
+jbd2_journal_grab_journal_head+0x29 (0xffffffffa00bb769) (up)
+0xffffffffa00bb775 EBD2            jmp
+jbd2_journal_grab_journal_head+0x9 (0xffffffffa00bb749) (up)
+0xffffffffa00bb777 31C0            xor    eax,eax
+
+The backtrace showed this function being called from the swapper
+thread when the crash occurred.   It's damn hard to reproduce.  If I
+see it again, I'll get you a better trace.
+
+Jeff
