@@ -1,51 +1,114 @@
-From: Greg KH <greg-U8xfFu+wG4EAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH 6/26] staging: rtl8192u: Use skcipher and ahash
-Date: Sun, 24 Jan 2016 12:00:52 -0800
-Message-ID: <20160124200052.GB17868@kroah.com>
-References: <20160124131021.GA31153@gondor.apana.org.au>
- <E1aNKXJ-0008BG-BI@gondolin.me.apana.org.au>
-Reply-To: open-iscsi-/JYPxA39Uh5TLH3MbocFFw@public.gmane.org
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [RFC PATCH] dax, ext2, ext4, XFS: fix data corruption race
+Date: Mon, 25 Jan 2016 09:01:07 +1100
+Message-ID: <20160124220107.GI20456@dastard>
+References: <1453503971-5319-1-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Linux Crypto Mailing List <linux-crypto-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, devel-gWbeCf7V1WCQmaza687I9mD2FQJk+8+b@public.gmane.org,
-	dm-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ecryptfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, keyrings-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-bluetooth-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-wpan-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org,
-	drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org, open-iscsi-/JYPxA39Uh5TLH3MbocFFw@public.gmane.org
-To: Herbert Xu <herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org>
-Return-path: <open-iscsi+bncBDK73744WQBRB5O2SS2QKGQE4CYEEOQ-/JYPxA39Uh5TLH3MbocFFw@public.gmane.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-nvdimm@lists.01.org,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Jan Kara <jack@suse.com>, linux-fsdevel@vger.kernel.org,
+	Matthew Wilcox <willy@linux.intel.com>,
+	Andrew Morton <akpm@linux-foundation.org>, linux-ext4@vger.kernel.org,
+	Dan Williams <dan.j.williams@intel.com>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <E1aNKXJ-0008BG-BI-XQvu0L+U/CjiRBuR/1fSEKKkPtS2pBon@public.gmane.org>
-List-Post: <https://groups.google.com/group/open-iscsi/post>, <mailto:open-iscsi-/JYPxA39Uh5TLH3MbocFFw@public.gmane.org>
-List-Help: <https://groups.google.com/support/>, <mailto:open-iscsi+help-/JYPxA39Uh5TLH3MbocFFw@public.gmane.org>
-List-Archive: <https://groups.google.com/group/open-iscsi
-Sender: open-iscsi-/JYPxA39Uh5TLH3MbocFFw@public.gmane.org
-List-Subscribe: <https://groups.google.com/group/open-iscsi/subscribe>, <mailto:open-iscsi+subscribe-/JYPxA39Uh5TLH3MbocFFw@public.gmane.org>
-List-Unsubscribe: <mailto:googlegroups-manage+856124926423+unsubscribe-/JYPxA39Uh5TLH3MbocFFw@public.gmane.org>,
- <https://groups.google.com/group/open-iscsi/subscribe>
+In-Reply-To: <1453503971-5319-1-git-send-email-ross.zwisler@linux.intel.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Jan 24, 2016 at 09:16:57PM +0800, Herbert Xu wrote:
-> This patch replaces uses of blkcipher with skcipher, and the long
-> obsolete hash interface with ahash.
->     
-> Signed-off-by: Herbert Xu <herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org>
-> ---
+On Fri, Jan 22, 2016 at 04:06:11PM -0700, Ross Zwisler wrote:
+> With the current DAX code the following race exists:
 > 
->  drivers/staging/rtl8192u/ieee80211/ieee80211_crypt_tkip.c |   92 +++++++-------
->  drivers/staging/rtl8192u/ieee80211/ieee80211_crypt_wep.c  |   46 ++++---
->  2 files changed, 81 insertions(+), 57 deletions(-)
+> Process 1                	Process 2
+> ---------			---------
+> 
+> __dax_fault() - read file f, index 0
+>   get_block() -> returns hole
+>                              	__dax_fault() - write file f, index 0
+>                                   get_block() -> allocates blocks
+>                                   dax_insert_mapping()
+>   dax_load_hole()
+>   *data corruption*
+> 
+> An analogous race exists between __dax_fault() loading a hole and
+> __dax_pmd_fault() allocating a PMD DAX page and trying to insert it, and
+> that race also ends in data corruption.
 
-Acked-by: Greg Kroah-Hartman <gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org>
+Ok, so why doesn't this problem exist for the normal page cache
+insertion case with concurrent read vs write faults?  It's because
+the write fault first does a read fault and so always the write
+fault always has a page in the radix tree for the get_block call
+that allocates the extents, right?
 
+And DAX has an optimisation in the page fault part where it skips
+the read fault part of the write fault?  And so essentially the DAX
+write fault is missing the object (page lock of page in the radix
+tree) that the non-DAX write fault uses to avoid this problem?
+
+What happens if we get rid of that DAX write fault optimisation that
+skips the initial read fault? The write fault will always run on a
+mapping that has a hole loaded, right?, so the race between
+dax_load_hole() and dax_insert_mapping() goes away, because nothing
+will be calling dax_load_hole() once the write fault is allocating
+blocks....
+
+> One solution to this race was proposed by Jan Kara:
+> 
+>   So we need some exclusion that makes sure pgoff->block mapping
+>   information is uptodate at the moment we insert it into page tables. The
+>   simplest reasonably fast thing I can see is:
+> 
+>   When handling a read fault, things stay as is and filesystem protects the
+>   fault with an equivalent of EXT4_I(inode)->i_mmap_sem held for reading.
+>   When handling a write fault we first grab EXT4_I(inode)->i_mmap_sem for
+>   reading and try a read fault. If __dax_fault() sees a hole returned from
+>   get_blocks() during a write fault, it bails out. Filesystem grabs
+>   EXT4_I(inode)->i_mmap_sem for writing and retries with different
+>   get_blocks() callback which will allocate blocks. That way we get proper
+>   exclusion for faults needing to allocate blocks.
+> 
+> This patch adds this logic to DAX, ext2, ext4 and XFS.
+
+It's too ugly to live. It hacks around a special DAX optimisation in
+the fault code by adding special case locking to the filesystems,
+and adds a siginificant new locking constraint to the page fault
+path.
+
+If the write fault first goes through the read fault path and loads
+the hole, this race condition simply does not exist. I'd suggest
+that we get rid of the DAX optimisation that skips read fault
+processing on write fault so that this problem simply goes away.
+Yes, it means write faults on holes will be a little slower (which,
+quite frankly, I don't care at all about), but it means we don't
+need to hack special cases into code that should not have to care
+about various different types of page fault races. Correctness
+first, speed later.
+
+FWIW, this also means we can get rid of the hacks in the filesystem
+code where we have to handle write faults through the ->fault
+handler rather than the ->page_mkwrite handler.
+
+Cheers,
+
+Dave.
 -- 
-You received this message because you are subscribed to the Google Groups "open-iscsi" group.
-To unsubscribe from this group and stop receiving emails from it, send an email to open-iscsi+unsubscribe-/JYPxA39Uh5TLH3MbocFF+G/Ez6ZCGd0@public.gmane.org
-To post to this group, send email to open-iscsi-/JYPxA39Uh5TLH3MbocFF+G/Ez6ZCGd0@public.gmane.org
-Visit this group at https://groups.google.com/group/open-iscsi.
-For more options, visit https://groups.google.com/d/optout.
+Dave Chinner
+david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
