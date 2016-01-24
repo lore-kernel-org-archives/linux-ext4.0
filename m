@@ -1,137 +1,110 @@
-From: Dmitry Vyukov <dvyukov@google.com>
-Subject: ext4: BUG: scheduling while atomic in ext4_commit_super
-Date: Sun, 24 Jan 2016 17:48:00 +0100
-Message-ID: <CACT4Y+Y5MveKSQ0Yywdcfa8M+cVPAEXRTiaFGM-ajo_x_pTWHQ@mail.gmail.com>
+From: Julia Lawall <julia.lawall-L2FTfq7BK8M@public.gmane.org>
+Subject: Re: [PATCH 9/26] eCryptfs: Use skcipher and shash
+Date: Sun, 24 Jan 2016 19:10:50 +0100 (CET)
+Message-ID: <alpine.DEB.2.10.1601241909430.2498@hadrien>
+References: <201601250207.1gdHywwq%fengguang.wu@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: syzkaller <syzkaller@googlegroups.com>,
-	Kostya Serebryany <kcc@google.com>,
-	Alexander Potapenko <glider@google.com>,
-	Sasha Levin <sasha.levin@oracle.com>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Linux Crypto Mailing List <linux-crypto-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, devel-gWbeCf7V1WCQmaza687I9mD2FQJk+8+b@public.gmane.org,
+	dm-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ecryptfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, keyrings-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-bluetooth-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-wpan-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org,
+	drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org, open-iscsi-/JYPxA39Uh5TLH3MbocFFw@public.gmane.org,
+	kbuild-all-JC7UmRfGjtg@public.gmane.org
+To: Herbert Xu <herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org>
+Return-path: <linux-bluetooth-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <201601250207.1gdHywwq%fengguang.wu-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Sender: linux-bluetooth-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+Maybe the goto on line 1726 needs a preceding mutex_unlock?
 
-I've hit the following BUG while running syzkaller fuzzer:
+julia
 
-JBD2: Spotted dirty metadata buffer (dev = sda, blocknr = 1). There's
-a risk of filesystem corruption in case of system crash.
-EXT4-fs error (device sda): ext4_init_block_bitmap:194: comm
-kworker/u10:2: Checksum bad for group 3
-BUG: sleeping function called from invalid context at
-include/linux/buffer_head.h:354
-in_atomic(): 1, irqs_disabled(): 0, pid: 20922, name: kworker/u10:2
-INFO: lockdep is turned off.
-CPU: 3 PID: 20922 Comm: kworker/u10:2 Tainted: G        W       4.4.0+ #276
-Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
-Workqueue: writeback wb_workfn (flush-8:0)
- 00000000ffffffff ffff8800608ded00 ffffffff82999e2d ffff880067570000
- 00000000000051ba 0000000000000000 ffff8800608ded28 ffffffff813cc25b
- ffff880067570000 ffffffff864a4ba0 0000000000000162 ffff8800608ded68
-Call Trace:
- [<     inline     >] __dump_stack lib/dump_stack.c:15
- [<ffffffff82999e2d>] dump_stack+0x6f/0xa2 lib/dump_stack.c:50
- [<ffffffff813cc25b>] ___might_sleep+0x27b/0x3a0 kernel/sched/core.c:7703
- [<ffffffff813cc410>] __might_sleep+0x90/0x1a0 kernel/sched/core.c:7665
- [<     inline     >] lock_buffer include/linux/buffer_head.h:354
- [<ffffffff8186b353>] __sync_dirty_buffer+0x63/0x270 fs/buffer.c:3129
- [<ffffffff81acb8b3>] ext4_commit_super+0x713/0xa80 fs/ext4/super.c:4333
- [<     inline     >] save_error_info fs/ext4/super.c:316
- [<ffffffff81acc547>] __ext4_error+0xe7/0x1d0 fs/ext4/super.c:419
- [<     inline     >] ext4_init_block_bitmap fs/ext4/balloc.c:194
- [<ffffffff81a31749>] ext4_read_block_bitmap_nowait+0x1159/0x1850
-fs/ext4/balloc.c:446
- [<ffffffff81a31e5f>] ext4_read_block_bitmap+0x1f/0x60 fs/ext4/balloc.c:513
- [<ffffffff81b28da7>] ext4_mb_mark_diskspace_used+0x177/0x13f0
-fs/ext4/mballoc.c:2899
- [<ffffffff81b2e5ea>] ext4_mb_new_blocks+0xd2a/0x25e0 fs/ext4/mballoc.c:4504
- [<ffffffff81b04a1f>] ext4_ext_map_blocks+0x1f0f/0x3030 fs/ext4/extents.c:4466
- [<ffffffff81a4fb63>] ext4_map_blocks+0x3c3/0xef0 fs/ext4/inode.c:593
- [<     inline     >] mpage_map_one_extent fs/ext4/inode.c:2153
- [<     inline     >] mpage_map_and_submit_extent fs/ext4/inode.c:2209
- [<ffffffff81a5cad0>] ext4_writepages+0x1110/0x2bc0 fs/ext4/inode.c:2552
- [<ffffffff816805c7>] do_writepages+0x97/0x100 mm/page-writeback.c:2354
- [<ffffffff8184820e>] __writeback_single_inode+0xee/0xd20 fs/fs-writeback.c:1231
- [<ffffffff8184a22d>] writeback_sb_inodes+0x44d/0x10e0 fs/fs-writeback.c:1492
- [<ffffffff8184afc4>] __writeback_inodes_wb+0x104/0x1e0 fs/fs-writeback.c:1553
- [<ffffffff8184b920>] wb_writeback+0x720/0x9e0 fs/fs-writeback.c:1662
- [<     inline     >] wb_do_writeback fs/fs-writeback.c:1797
- [<ffffffff8184ce13>] wb_workfn+0x2f3/0xd60 fs/fs-writeback.c:1837
- [<ffffffff813a0836>] process_one_work+0x796/0x1440 kernel/workqueue.c:2037
- [<ffffffff813a15bb>] worker_thread+0xdb/0xfc0 kernel/workqueue.c:2171
- [<ffffffff813b4d4f>] kthread+0x23f/0x2d0 drivers/block/aoe/aoecmd.c:1303
- [<ffffffff86336fef>] ret_from_fork+0x3f/0x70 arch/x86/entry/entry_64.S:468
-BUG: scheduling while atomic: kworker/u10:2/20922/0x00000002
-INFO: lockdep is turned off.
-Modules linked in:
-CPU: 3 PID: 20922 Comm: kworker/u10:2 Tainted: G        W       4.4.0+ #276
-Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
-Workqueue: writeback wb_workfn (flush-8:0)
- 00000000ffffffff ffff8800608de570 ffffffff82999e2d ffff880067570000
- 0000000000000002 0000000000020140 ffff8800608de590 ffffffff813cb589
- ffff88006d720140 ffff8800608d8000 ffff8800608de618 ffffffff8632755d
-Call Trace:
- [<     inline     >] __dump_stack lib/dump_stack.c:15
- [<ffffffff82999e2d>] dump_stack+0x6f/0xa2 lib/dump_stack.c:50
- [<ffffffff813cb589>] __schedule_bug+0xb9/0xe0 kernel/sched/core.c:3101
- [<     inline     >] schedule_debug kernel/sched/core.c:3115
- [<ffffffff8632755d>] __schedule+0x118d/0x1c50 kernel/sched/core.c:3225
- [<ffffffff863280b7>] schedule+0x97/0x1c0 kernel/sched/core.c:3311
- [<ffffffff8633436d>] schedule_timeout+0x55d/0x920 kernel/time/timer.c:1508
- [<ffffffff863261fe>] io_schedule_timeout+0x1be/0x390 kernel/sched/core.c:4888
- [<     inline     >] io_schedule include/linux/sched.h:437
- [<ffffffff82940a62>] bt_get+0x2d2/0x700 block/blk-mq-tag.c:301
- [<     inline     >] __blk_mq_get_tag block/blk-mq-tag.c:325
- [<ffffffff8294177b>] blk_mq_get_tag+0x11b/0x360 block/blk-mq-tag.c:354
- [<ffffffff829308f4>] __blk_mq_alloc_request+0x24/0xa20 block/blk-mq.c:215
- [<ffffffff829383cb>] blk_mq_map_request+0x79b/0xac0 block/blk-mq.c:1186
- [<ffffffff8293bf5f>] blk_sq_make_request+0x36f/0xc20 block/blk-mq.c:1358
- [<ffffffff8290ec60>] generic_make_request+0x310/0x800 block/blk-core.c:2066
- [<ffffffff8290f2ae>] submit_bio+0x15e/0x4c0 block/blk-core.c:2129
- [<ffffffff81866600>] submit_bh_wbc+0x400/0x560 fs/buffer.c:3036
- [<     inline     >] submit_bh fs/buffer.c:3048
- [<ffffffff8186b3f6>] __sync_dirty_buffer+0x106/0x270 fs/buffer.c:3133
- [<ffffffff81acb8b3>] ext4_commit_super+0x713/0xa80 fs/ext4/super.c:4333
- [<     inline     >] save_error_info fs/ext4/super.c:316
- [<ffffffff81acc547>] __ext4_error+0xe7/0x1d0 fs/ext4/super.c:419
- [<     inline     >] ext4_init_block_bitmap fs/ext4/balloc.c:194
- [<ffffffff81a31749>] ext4_read_block_bitmap_nowait+0x1159/0x1850
-fs/ext4/balloc.c:446
- [<ffffffff81a31e5f>] ext4_read_block_bitmap+0x1f/0x60 fs/ext4/balloc.c:513
- [<ffffffff81b28da7>] ext4_mb_mark_diskspace_used+0x177/0x13f0
-fs/ext4/mballoc.c:2899
- [<ffffffff81b2e5ea>] ext4_mb_new_blocks+0xd2a/0x25e0 fs/ext4/mballoc.c:4504
- [<ffffffff81b04a1f>] ext4_ext_map_blocks+0x1f0f/0x3030 fs/ext4/extents.c:4466
- [<ffffffff81a4fb63>] ext4_map_blocks+0x3c3/0xef0 fs/ext4/inode.c:593
- [<     inline     >] mpage_map_one_extent fs/ext4/inode.c:2153
- [<     inline     >] mpage_map_and_submit_extent fs/ext4/inode.c:2209
- [<ffffffff81a5cad0>] ext4_writepages+0x1110/0x2bc0 fs/ext4/inode.c:2552
- [<ffffffff816805c7>] do_writepages+0x97/0x100 mm/page-writeback.c:2354
- [<ffffffff8184820e>] __writeback_single_inode+0xee/0xd20 fs/fs-writeback.c:1231
- [<ffffffff8184a22d>] writeback_sb_inodes+0x44d/0x10e0 fs/fs-writeback.c:1492
- [<ffffffff8184afc4>] __writeback_inodes_wb+0x104/0x1e0 fs/fs-writeback.c:1553
- [<ffffffff8184b920>] wb_writeback+0x720/0x9e0 fs/fs-writeback.c:1662
- [<     inline     >] wb_do_writeback fs/fs-writeback.c:1797
- [<ffffffff8184ce13>] wb_workfn+0x2f3/0xd60 fs/fs-writeback.c:1837
- [<ffffffff813a0836>] process_one_work+0x796/0x1440 kernel/workqueue.c:2037
- [<ffffffff813a15bb>] worker_thread+0xdb/0xfc0 kernel/workqueue.c:2171
- [<ffffffff813b4d4f>] kthread+0x23f/0x2d0 drivers/block/aoe/aoecmd.c:1303
- [<ffffffff86336fef>] ret_from_fork+0x3f/0x70 arch/x86/entry/entry_64.S:468
+On Mon, 25 Jan 2016, kbuild test robot wrote:
 
-The fuzzer especially corrupted /dev/hda, but this call path of
-ext4_error seems to be expected in real life as well:
-
-static int ext4_init_block_bitmap(struct super_block *sb,
-...
-        /* If checksum is bad mark all blocks used to prevent allocation
-         * essentially implementing a per-group read-only flag. */
-        if (!ext4_group_desc_csum_verify(sb, block_group, gdp)) {
-                ext4_error(sb, "Checksum bad for group %u", block_group);
-
-On commit 30f05309bde49295e02e45c7e615f73aa4e0ccc2.
+> Hi Herbert,
+>
+> [auto build test WARNING on net/master]
+> [also build test WARNING on v4.4 next-20160122]
+> [if your patch is applied to the wrong git tree, please drop us a note to help improving the system]
+>
+> url:    https://github.com/0day-ci/linux/commits/Herbert-Xu/crypto-Use-skcipher-and-ahash-shash-where-possible/20160124-212323
+> :::::: branch date: 5 hours ago
+> :::::: commit date: 5 hours ago
+>
+> >> fs/ecryptfs/keystore.c:1761:1-7: preceding lock on line 1719
+>
+> git remote add linux-review https://github.com/0day-ci/linux
+> git remote update linux-review
+> git checkout 0186bf144c1f96606f491be0e7ed47b79ea0d285
+> vim +1761 fs/ecryptfs/keystore.c
+>
+> ac97b9f9 Michael Halcrow 2008-11-19  1713  	if (rc < 1 || rc > 2) {
+> f4aad16a Michael Halcrow 2007-10-16  1714  		printk(KERN_ERR "Internal error whilst attempting to convert "
+> f4aad16a Michael Halcrow 2007-10-16  1715  			"auth_tok->session_key.decrypted_key to scatterlist; "
+> f4aad16a Michael Halcrow 2007-10-16  1716  			"expected rc = 1; got rc = [%d]\n", rc);
+> f4aad16a Michael Halcrow 2007-10-16  1717  		goto out;
+> 237fead6 Michael Halcrow 2006-10-04  1718  	}
+> 237fead6 Michael Halcrow 2006-10-04 @1719  	mutex_lock(tfm_mutex);
+> 0186bf14 Herbert Xu      2016-01-24  1720  	req = skcipher_request_alloc(tfm, GFP_KERNEL);
+> 0186bf14 Herbert Xu      2016-01-24  1721  	if (!req) {
+> 0186bf14 Herbert Xu      2016-01-24  1722  		printk(KERN_ERR "%s: Out of kernel memory whilst attempting to "
+> 0186bf14 Herbert Xu      2016-01-24  1723  		       "skcipher_request_alloc for %s\n", __func__,
+> 0186bf14 Herbert Xu      2016-01-24  1724  		       crypto_skcipher_driver_name(tfm));
+> 0186bf14 Herbert Xu      2016-01-24  1725  		rc = -ENOMEM;
+> 0186bf14 Herbert Xu      2016-01-24  1726  		goto out;
+> 0186bf14 Herbert Xu      2016-01-24  1727  	}
+> 0186bf14 Herbert Xu      2016-01-24  1728
+> 0186bf14 Herbert Xu      2016-01-24  1729  	skcipher_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP,
+> 0186bf14 Herbert Xu      2016-01-24  1730  				      NULL, NULL);
+> 0186bf14 Herbert Xu      2016-01-24  1731  	rc = crypto_skcipher_setkey(
+> 0186bf14 Herbert Xu      2016-01-24  1732  		tfm, auth_tok->token.password.session_key_encryption_key,
+> 237fead6 Michael Halcrow 2006-10-04  1733  		crypt_stat->key_size);
+> f4aad16a Michael Halcrow 2007-10-16  1734  	if (unlikely(rc < 0)) {
+> f4aad16a Michael Halcrow 2007-10-16  1735  		mutex_unlock(tfm_mutex);
+> e5d9cbde Michael Halcrow 2006-10-30  1736  		printk(KERN_ERR "Error setting key for crypto context\n");
+> e5d9cbde Michael Halcrow 2006-10-30  1737  		rc = -EINVAL;
+> f4aad16a Michael Halcrow 2007-10-16  1738  		goto out;
+> 237fead6 Michael Halcrow 2006-10-04  1739  	}
+> 0186bf14 Herbert Xu      2016-01-24  1740  	skcipher_request_set_crypt(req, src_sg, dst_sg,
+> 0186bf14 Herbert Xu      2016-01-24  1741  				   auth_tok->session_key.encrypted_key_size,
+> 0186bf14 Herbert Xu      2016-01-24  1742  				   NULL);
+> 0186bf14 Herbert Xu      2016-01-24  1743  	rc = crypto_skcipher_decrypt(req);
+> f4aad16a Michael Halcrow 2007-10-16  1744  	mutex_unlock(tfm_mutex);
+> f4aad16a Michael Halcrow 2007-10-16  1745  	if (unlikely(rc)) {
+> 8bba066f Michael Halcrow 2006-10-30  1746  		printk(KERN_ERR "Error decrypting; rc = [%d]\n", rc);
+> f4aad16a Michael Halcrow 2007-10-16  1747  		goto out;
+> 8bba066f Michael Halcrow 2006-10-30  1748  	}
+> 237fead6 Michael Halcrow 2006-10-04  1749  	auth_tok->session_key.flags |= ECRYPTFS_CONTAINS_DECRYPTED_KEY;
+> 237fead6 Michael Halcrow 2006-10-04  1750  	memcpy(crypt_stat->key, auth_tok->session_key.decrypted_key,
+> 237fead6 Michael Halcrow 2006-10-04  1751  	       auth_tok->session_key.decrypted_key_size);
+> e2bd99ec Michael Halcrow 2007-02-12  1752  	crypt_stat->flags |= ECRYPTFS_KEY_VALID;
+> f4aad16a Michael Halcrow 2007-10-16  1753  	if (unlikely(ecryptfs_verbosity > 0)) {
+> f24b3887 Tyler Hicks     2010-11-15  1754  		ecryptfs_printk(KERN_DEBUG, "FEK of size [%zd]:\n",
+> f4aad16a Michael Halcrow 2007-10-16  1755  				crypt_stat->key_size);
+> 237fead6 Michael Halcrow 2006-10-04  1756  		ecryptfs_dump_hex(crypt_stat->key,
+> 237fead6 Michael Halcrow 2006-10-04  1757  				  crypt_stat->key_size);
+> f4aad16a Michael Halcrow 2007-10-16  1758  	}
+> 237fead6 Michael Halcrow 2006-10-04  1759  out:
+> 0186bf14 Herbert Xu      2016-01-24  1760  	skcipher_request_free(req);
+> 237fead6 Michael Halcrow 2006-10-04 @1761  	return rc;
+> 237fead6 Michael Halcrow 2006-10-04  1762  }
+> 237fead6 Michael Halcrow 2006-10-04  1763
+> 237fead6 Michael Halcrow 2006-10-04  1764  /**
+>
+> :::::: The code at line 1761 was first introduced by commit
+> :::::: 237fead619984cc48818fe12ee0ceada3f55b012 [PATCH] ecryptfs: fs/Makefile and fs/Kconfig
+>
+> :::::: TO: Michael Halcrow <mhalcrow-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org>
+> :::::: CC: Linus Torvalds <torvalds-hNm40g4Ew95AfugRpC6u6w@public.gmane.org>
+>
+> ---
+> 0-DAY kernel test infrastructure                Open Source Technology Center
+> https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
+>
