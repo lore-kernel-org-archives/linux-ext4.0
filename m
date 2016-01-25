@@ -1,43 +1,47 @@
-From: Marcel Holtmann <marcel@holtmann.org>
-Subject: Re: [PATCH 15/26] Bluetooth: Use skcipher and hash
-Date: Mon, 25 Jan 2016 07:48:46 +0100
-Message-ID: <B35B9E9E-DA6B-4AAD-B1EF-2DE778645CAC@holtmann.org>
-References: <20160124131021.GA31153@gondor.apana.org.au> <E1aNKYo-0008Dp-5h@gondolin.me.apana.org.au>
-Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [BUG REPORT] NULL pointer dereference in
+ jdb2_journal_grab_journal_head (RDI)
+Date: Mon, 25 Jan 2016 13:30:59 +0100
+Message-ID: <20160125123059.GB24938@quack.suse.cz>
+References: <CAO6TR8Vhxjp-nX-wPXeBLOPmsHcb7_3y2uxk7x_V19o8hTZG0g@mail.gmail.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Network Development <netdev@vger.kernel.org>,
-	devel@driverdev.osuosl.org, dm-devel@redhat.com,
-	linux-wireless <linux-wireless@vger.kernel.org>,
-	linux-cifs@vger.kernel.org, ecryptfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	linux-nfs@vger.kernel.org, keyrings@vger.kernel.org,
-	BlueZ development <linux-bluetooth@vger.kernel.org>,
-	ceph-devel@vger.kernel.org, linux-wpan@vger.kernel.org,
-	linux-afs@lists.infradead.org, drbd-dev@lists.linbit.com,
-	open-iscsi@googlegroups.com
-To: Herbert Xu <herbert@gondor.apana.org.au>
-Return-path: <ecryptfs-owner@vger.kernel.org>
-In-Reply-To: <E1aNKYo-0008Dp-5h@gondolin.me.apana.org.au>
-Sender: ecryptfs-owner@vger.kernel.org
+Cc: LKML <linux-kernel@vger.kernel.org>, Theodore Ts'o <tytso@mit.edu>,
+	Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org
+To: Jeff Merkey <linux.mdb@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <CAO6TR8Vhxjp-nX-wPXeBLOPmsHcb7_3y2uxk7x_V19o8hTZG0g@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Herbert,
-
-> This patch replaces uses of blkcipher with skcipher and the long
-> obsolete hash interface with shash.
+On Sat 23-01-16 09:42:52, Jeff Merkey wrote:
+> If I leave the system in the debugger console overnight with all the
+> processors suspended for about 8 hours, then type go, the following
+> bug shows up during file I/O.  This particular bug showed up while
+> using git to update some branches.
 > 
-> Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
-
-Acked-by: Marcel Holtmann <marcel@holtmann.org>
-
-> ---
+> I have only seen this bug once and I attempted to reproduce it to get
+> a trace dump but have not been able to trigger it again.  The NULL
+> pointer is RDI set to NULL while trying to obtain a lock.
 > 
-> net/bluetooth/smp.c |  135 ++++++++++++++++++++++++----------------------------
-> 1 file changed, 63 insertions(+), 72 deletions(-)
+> (2)> .z grab_journal
+> ffffffffa00bb740 t jbd2_journal_grab_journal_head [jbd2]
+> (2)> u ffffffffa00bb740
+> jbd2|jbd2_journal_grab_journal_head:
+> 0xffffffffa00bb740 0F1F440000      nop    DWORD PTR [rax+rax]=0x0
+> 0xffffffffa00bb745 55              push   rbp
+> 0xffffffffa00bb746 4889E5          mov    rbp,rsp
+> <<<<<<<<<<<<   Crashes here with RDI set to NULL
+> 0xffffffffa00bb749 F00FBA2F18      lock bts DWORD PTR [rdi]=0x0,0x18
+> <<<<<<<<<<<<
 
-Regards
+Thanks for report. Ok, this means jbd2_journal_grab_journal_head() got
+called with 'bh == NULL'. That is certainly wrong but unless we know a full
+stack trace, it's hard to guess what went wrong.
 
-Marcel
+								Honza
+
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
