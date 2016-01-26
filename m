@@ -1,106 +1,137 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC PATCH] dax, ext2, ext4, XFS: fix data corruption race
-Date: Tue, 26 Jan 2016 09:46:54 +0100
-Message-ID: <20160126084654.GT24938@quack.suse.cz>
-References: <1453503971-5319-1-git-send-email-ross.zwisler@linux.intel.com>
-	<20160124220107.GI20456@dastard>
-	<20160125204636.GI2948@linux.intel.com>
+From: Herbert Xu <herbert@gondor.apana.org.au>
+Subject: Re: [PATCH 16/26] libceph: Use skcipher
+Date: Tue, 26 Jan 2016 18:54:55 +0800
+Message-ID: <20160126105455.GA19674@gondor.apana.org.au>
+References: <20160124131021.GA31153@gondor.apana.org.au>
+ <E1aNKYy-0008E6-GI@gondolin.me.apana.org.au>
+ <CAOi1vP9jmMYHR21UeAO175susZ5V74vcXyoxwayBVSTFHxjhBQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-nvdimm@lists.01.org,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Jan Kara <jack@suse.com>, linux-fsdevel@vger.kernel.org,
-	Ross Zwisler <ross.zwisler@linux.intel.com>, linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dan Williams <dan.j.williams@intel.com>
-To: Matthew Wilcox <willy@linux.intel.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Cc: devel@driverdev.osuosl.org, linux-cifs@vger.kernel.org,
+ linux-nfs@vger.kernel.org, open-iscsi@googlegroups.com,
+ netdev <netdev@vger.kernel.org>, ecryptfs@vger.kernel.org,
+ linux-wireless@vger.kernel.org,
+ Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+ linux-f2fs-devel@lists.sourceforge.net, linux-bluetooth@vger.kernel.org,
+ dm-devel@redhat.com, keyrings@vger.kernel.org,
+ Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
+ Ceph Development <ceph-devel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+ linux-wpan@vger.kernel.org, linux-afs@lists.infradead.org,
+ Lars Ellenberg <drbd-dev@lists.linbit.com>
+To: Ilya Dryomov <idryomov@gmail.com>
+Return-path: <driverdev-devel-bounces@linuxdriverproject.org>
 Content-Disposition: inline
-In-Reply-To: <20160125204636.GI2948@linux.intel.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+In-Reply-To: <CAOi1vP9jmMYHR21UeAO175susZ5V74vcXyoxwayBVSTFHxjhBQ@mail.gmail.com>
+List-Unsubscribe: <http://driverdev.linuxdriverproject.org/mailman/options/driverdev-devel>,
+ <mailto:driverdev-devel-request@linuxdriverproject.org?subject=unsubscribe>
+List-Archive: <http://driverdev.linuxdriverproject.org/pipermail/driverdev-devel/>
+List-Post: <mailto:driverdev-devel@linuxdriverproject.org>
+List-Help: <mailto:driverdev-devel-request@linuxdriverproject.org?subject=help>
+List-Subscribe: <http://driverdev.linuxdriverproject.org/mailman/listinfo/driverdev-devel>,
+ <mailto:driverdev-devel-request@linuxdriverproject.org?subject=subscribe>
+Errors-To: driverdev-devel-bounces@linuxdriverproject.org
+Sender: "devel" <driverdev-devel-bounces@linuxdriverproject.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 25-01-16 15:46:36, Matthew Wilcox wrote:
-> On Mon, Jan 25, 2016 at 09:01:07AM +1100, Dave Chinner wrote:
-> > On Fri, Jan 22, 2016 at 04:06:11PM -0700, Ross Zwisler wrote:
-> > > With the current DAX code the following race exists:
-> > > 
-> > > Process 1                	Process 2
-> > > ---------			---------
-> > > 
-> > > __dax_fault() - read file f, index 0
-> > >   get_block() -> returns hole
-> > >                              	__dax_fault() - write file f, index 0
-> > >                                   get_block() -> allocates blocks
-> > >                                   dax_insert_mapping()
-> > >   dax_load_hole()
-> > >   *data corruption*
-> > > 
-> > > An analogous race exists between __dax_fault() loading a hole and
-> > > __dax_pmd_fault() allocating a PMD DAX page and trying to insert it, and
-> > > that race also ends in data corruption.
-> > 
-> > Ok, so why doesn't this problem exist for the normal page cache
-> > insertion case with concurrent read vs write faults?  It's because
-> > the write fault first does a read fault and so always the write
-> > fault always has a page in the radix tree for the get_block call
-> > that allocates the extents, right?
+On Mon, Jan 25, 2016 at 05:18:47PM +0100, Ilya Dryomov wrote:
 > 
-> No, it's because allocation of blocks is separated from allocation of
-> struct page.
-> 
-> > And DAX has an optimisation in the page fault part where it skips
-> > the read fault part of the write fault?  And so essentially the DAX
-> > write fault is missing the object (page lock of page in the radix
-> > tree) that the non-DAX write fault uses to avoid this problem?
-> >
-> > What happens if we get rid of that DAX write fault optimisation that
-> > skips the initial read fault? The write fault will always run on a
-> > mapping that has a hole loaded, right?, so the race between
-> > dax_load_hole() and dax_insert_mapping() goes away, because nothing
-> > will be calling dax_load_hole() once the write fault is allocating
-> > blocks....
-> 
-> So in your proposal, we'd look in the radix tree, find nothing,
-> call get_block(..., 0).  If we get something back, we can insert it.
-> If we hit a hole, we allocate a struct page, put it in the radix tree
-> and return to user space.  If that was a write fault after all, it'll
-> come back to us through the ->page_mkwrite handler where we can take the
-> page lock on the allocated struct page, then call down to DAX which calls
-> back through get_block to allocate?  Then DAX kicks the struct page out
-> of the page cache and frees it.
-> 
-> That seems to work to me.  And we can get rid of pfn_mkwrite at the same
-> time which seems like a win to me.
+> Could you get rid of ivsize instead of assigning to it - see the
+> attached diff?
 
-Getting rid of pfn_mkwrite() would be nice, I agree. But the above scheme
-still has issues when PMD pages come into play. Or maybe to start from the
-beginning: How would you like PMD faults to work? Because there is no
-obvious 'struct page' to protect the allocation of 2MB worth of blocks. You
-could resort to similar tricks like transparent huge pages do (compound
-pages) but then the cure is IMHO worse than the disease.
+How about an incremental patch like this? Thanks!
 
-There is one option: No allocation of blocks for PMD faults. That would
-make code much simpler and solve the races but I'm not sure whether that is
-really an acceptable loss of functionality...
+---8<---
+From: Ilya Dryomov <idryomov@gmail.com>
+Subject: libceph: Remove unnecessary ivsize variables
 
-								Honza
+This patch removes the unnecessary ivsize variabls as they always
+have the value of AES_BLOCK_SIZE.
+
+Signed-off-by: Ilya Dryomov <idryomov@gmail.com>
+
+diff --git a/net/ceph/crypto.c b/net/ceph/crypto.c
+index fb9cb2b..db2847a 100644
+--- a/net/ceph/crypto.c
++++ b/net/ceph/crypto.c
+@@ -166,8 +166,7 @@ static int ceph_aes_encrypt(const void *key, int key_len,
+ 	struct crypto_skcipher *tfm = ceph_crypto_alloc_cipher();
+ 	SKCIPHER_REQUEST_ON_STACK(req, tfm);
+ 	int ret;
+-	int ivsize = AES_BLOCK_SIZE;
+-	char iv[ivsize];
++	char iv[AES_BLOCK_SIZE];
+ 	size_t zero_padding = (0x10 - (src_len & 0x0f));
+ 	char pad[16];
+ 
+@@ -186,7 +185,7 @@ static int ceph_aes_encrypt(const void *key, int key_len,
+ 		goto out_tfm;
+ 
+ 	crypto_skcipher_setkey((void *)tfm, key, key_len);
+-	memcpy(iv, aes_iv, ivsize);
++	memcpy(iv, aes_iv, AES_BLOCK_SIZE);
+ 
+ 	skcipher_request_set_tfm(req, tfm);
+ 	skcipher_request_set_callback(req, 0, NULL, NULL);
+@@ -229,8 +228,7 @@ static int ceph_aes_encrypt2(const void *key, int key_len, void *dst,
+ 	struct crypto_skcipher *tfm = ceph_crypto_alloc_cipher();
+ 	SKCIPHER_REQUEST_ON_STACK(req, tfm);
+ 	int ret;
+-	int ivsize = AES_BLOCK_SIZE;
+-	char iv[ivsize];
++	char iv[AES_BLOCK_SIZE];
+ 	size_t zero_padding = (0x10 - ((src1_len + src2_len) & 0x0f));
+ 	char pad[16];
+ 
+@@ -250,7 +248,7 @@ static int ceph_aes_encrypt2(const void *key, int key_len, void *dst,
+ 		goto out_tfm;
+ 
+ 	crypto_skcipher_setkey((void *)tfm, key, key_len);
+-	memcpy(iv, aes_iv, ivsize);
++	memcpy(iv, aes_iv, AES_BLOCK_SIZE);
+ 
+ 	skcipher_request_set_tfm(req, tfm);
+ 	skcipher_request_set_callback(req, 0, NULL, NULL);
+@@ -294,8 +292,7 @@ static int ceph_aes_decrypt(const void *key, int key_len,
+ 	struct crypto_skcipher *tfm = ceph_crypto_alloc_cipher();
+ 	SKCIPHER_REQUEST_ON_STACK(req, tfm);
+ 	char pad[16];
+-	int ivsize = AES_BLOCK_SIZE;
+-	char iv[16];
++	char iv[AES_BLOCK_SIZE];
+ 	int ret;
+ 	int last_byte;
+ 
+@@ -310,7 +307,7 @@ static int ceph_aes_decrypt(const void *key, int key_len,
+ 		goto out_tfm;
+ 
+ 	crypto_skcipher_setkey((void *)tfm, key, key_len);
+-	memcpy(iv, aes_iv, ivsize);
++	memcpy(iv, aes_iv, AES_BLOCK_SIZE);
+ 
+ 	skcipher_request_set_tfm(req, tfm);
+ 	skcipher_request_set_callback(req, 0, NULL, NULL);
+@@ -363,8 +360,7 @@ static int ceph_aes_decrypt2(const void *key, int key_len,
+ 	struct crypto_skcipher *tfm = ceph_crypto_alloc_cipher();
+ 	SKCIPHER_REQUEST_ON_STACK(req, tfm);
+ 	char pad[16];
+-	int ivsize = AES_BLOCK_SIZE;
+-	char iv[ivsize];
++	char iv[AES_BLOCK_SIZE];
+ 	int ret;
+ 	int last_byte;
+ 
+@@ -380,7 +376,7 @@ static int ceph_aes_decrypt2(const void *key, int key_len,
+ 		goto out_tfm;
+ 
+ 	crypto_skcipher_setkey((void *)tfm, key, key_len);
+-	memcpy(iv, aes_iv, ivsize);
++	memcpy(iv, aes_iv, AES_BLOCK_SIZE);
+ 
+ 	skcipher_request_set_tfm(req, tfm);
+ 	skcipher_request_set_callback(req, 0, NULL, NULL);
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Email: Herbert Xu <herbert@gondor.apana.org.au>
+Home Page: http://gondor.apana.org.au/~herbert/
+PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
