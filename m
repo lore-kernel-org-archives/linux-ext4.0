@@ -1,52 +1,64 @@
-From: Pranith Kumar <bobby.prani@gmail.com>
-Subject: Re: [PATCH] fs: XFS_IOC_FS[SG]SETXATTR to FS_IOC_FS[SG]ETXATTR promotion
-Date: Fri, 29 Jan 2016 23:49:29 -0500
-Message-ID: <CAJhHMCBaP2b6pmw8ocKc_3degNZ1jd+aypzM2b7DLZve8PB_mw@mail.gmail.com>
-References: <1442146833-13652-1-git-send-email-lixi@ddn.com>
- <1442146833-13652-4-git-send-email-lixi@ddn.com> <20160103230534.GE6682@dastard>
- <CAJhHMCAvTJj=bX=uE1oK+DzG8aGNGvM-BkY83+H4BgzQiNBa+A@mail.gmail.com> <20160130044151.GA5925@thunk.org>
+From: "Muthoot Finance Pvt Ltd" <info@adovation.org>
+Subject: my subject...
+Date: Fri, 29 Jan 2016 23:46:56 +0100
+Message-ID: <20160129225437.319DDD45AFE__42333.0425088809$1454155492$gmane$org@adovation.org>
+Reply-To: muthootfinanccehome@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Dave Chinner <david@fromorbit.com>, Li Xi <pkuelelixi@gmail.com>,
-	"open list:OVERLAYFS FILESYSTEM" <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	"open list:KERNEL SELFTEST F..." <linux-api@vger.kernel.org>,
-	adilger@dilger.ca, Jan Kara <jack@suse.cz>,
-	Al Viro <viro@zeniv.linux.org.uk>, hch@infradead.org,
-	dmonakhov@openvz.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Recipients <info@adovation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yk0-f170.google.com ([209.85.160.170]:36679 "EHLO
-	mail-yk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752145AbcA3Et7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Jan 2016 23:49:59 -0500
-In-Reply-To: <20160130044151.GA5925@thunk.org>
+Received: from adovation.org ([108.170.1.90]:49762 "EHLO adovation.org"
+	rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753945AbcA3MEW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jan 2016 07:04:22 -0500
+Content-Description: Mail message body
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 29, 2016 at 11:41 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> So on my Debain system, I don't update linux-libc-dev when I install a
-> new upstream kernel built using "make deb-pkg".  I'll still a new
-> version of the linux-image-*.deb file, and maybe a newer version of
-> linux-firmware-*.dev, but I don't bother installing the
-> linux-headers-*.deb file (since I don't compile external kernel
-> modules), and I don't bother installing linux-libc-dev-*.deb (because
-> of situations like this, where the userspace include files need ot be
-> updated in sync, and this should be the distribution's problem to
-> handle).
+Be informed that Muthoot Finance give out Guarantee Business Loans, Aut=
+omobile Purchase Loans, House Purchase Loans, Personal Loans at 3% inte=
+rest rate, for more info email: muthootfinanccehome@gmail.com
+=3D=3D=3D=3D
+Estar informado de que Muthoot Finanzas Dar a conocer Garanta de negoci=
+os Prstamos, Prstamos de Automviles Compra, Casa Compra prstamos, prsta=
+mos personales a tasa de inters del 3%, para obtener ms informacin emai=
+l: muthootfinanccehome@gmail.com
+=3D=3D=3D=3D
+Assunto: meu tema Ser informado de que Muthoot Finance dar empr=C3=A9st=
+imos de Garantia de Neg=C3=B3cios, Automobile Os empr=C3=A9stimos Purch=
+ase, Casa empr=C3=A9stimos Purchase, empr=C3=A9stimos pessoais na taxa =
+de juros de 3%, para mais informa=C3=A7=C3=B5es e-mail: muthootfinancce=
+home@gmail.com
+=3D=3D=3D=3D
+Nous portons =C3=A0 votre connaissance que Muthoot Finance vous donne d=
+es pr=C3=AAts d=E2=80=99affaires, pour l=E2=80=99achat des automobiles,=
+ des maisons, des pr=C3=AAts personnels, tous pour un taux d'int=C3=A9r=
+=C3=AAts de 3%, pour plus des d=C3=A9tails consultez: muthootfinancceho=
+me@gmail.com
+=3D=3D=3D=3D
+Byt informovan=C3=BD, =C5=BEe Muthoot Financie rozd=C3=A1vat z=C3=A1ruc=
+nej podnikatelsk=C3=BDch =C3=BAverov, automobilov=C3=BD N=C3=A1kup p=C3=
+=B4=C5=BEiciek, =C3=BAverov na b=C3=BDvanie, osobn=C3=A9 p=C3=B4=C5=BEi=
+cky vo v=C3=BD=C5=A1ke 3% =C3=BArokovou sadzbou, pre viac inform=C3=A1c=
+i=C3=AD e-mail: muthootfinanccehome@gmail.com
+=3D=3D=3D=3D
+Wir teilen mit, dass Muthoot Finance Firmen-Darlehen, Darlehen zur Ansc=
+haffung von Kfz-Fahrzeugen, Erwerb von Immobilien sowie pers=C3=B6nlich=
+e Darlehen zu 3% effektiven Jahreszins anbietet, weitere Informationen =
+erhalten Sie per E-Mail: muthootfinanccehome@gmail.com
+=3D=3D=3D=3D
+Det opplyses om at Muthoot Finance gir ut garanti Business l=C3=A5n, Au=
+tomobile kj=C3=B8pe l=C3=A5n, hus kj=C3=B8pe l=C3=A5n, personlige l=C3=A5=
+n p=C3=A5 3% rente, for mer info e-post: muthootfinanccehome@gmail.com
 
-I am using a debian system and built the kernel using
-"make bindeb-pkg". This generated the following debs:
+---
+This email is free from viruses and malware because avast! Antivirus pr=
+otection is active.
+https://www.avast.com/antivirus
 
-linux-firmware-image-4.5.0-rc1+_4.5.0-rc1+-2_powerpc.deb
-linux-image-4.5.0-rc1+_4.5.0-rc1+-2_powerpc.deb
-linux-headers-4.5.0-rc1+_4.5.0-rc1+-2_powerpc.deb
-linux-libc-dev_4.5.0-rc1+-2_powerpc.deb
-
-which I installed as I usually do to test new system calls or run other tests.
-
-I'll try to update the uapi header files manually and see how it goes...
-
-Thanks!
--- 
-Pranith
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
