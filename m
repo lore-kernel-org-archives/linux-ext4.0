@@ -1,64 +1,34 @@
-From: "Muthoot Finance Pvt Ltd" <info@adovation.org>
-Subject: my subject...
-Date: Sun, 31 Jan 2016 02:43:12 +0100
-Message-ID: <20160131015932.EED5FE67B7B__22069.4834636108$1454242457$gmane$org@adovation.org>
-Reply-To: muthootfinanccehome@gmail.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Recipients <info@adovation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from adovation.org ([108.170.1.90]:58680 "EHLO adovation.org"
-	rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757340AbcAaMMW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 31 Jan 2016 07:12:22 -0500
-Content-Description: Mail message body
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Geliang Tang <geliangtang@163.com>
+Subject: [PATCH] ext4: drop unneeded BUFFER_TRACE in ext4_delete_inline_entry()
+Date: Sun, 31 Jan 2016 23:51:54 +0800
+Message-ID: <cf471e3cb545a084fc3f05ee6166b96f523153c3.1454255445.git.geliangtang@163.com>
+Cc: Geliang Tang <geliangtang@163.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Be informed that Muthoot Finance give out Guarantee Business Loans, Aut=
-omobile Purchase Loans, House Purchase Loans, Personal Loans at 3% inte=
-rest rate, for more info email: muthootfinanccehome@gmail.com
-=3D=3D=3D=3D
-Estar informado de que Muthoot Finanzas Dar a conocer Garanta de negoci=
-os Prstamos, Prstamos de Automviles Compra, Casa Compra prstamos, prsta=
-mos personales a tasa de inters del 3%, para obtener ms informacin emai=
-l: muthootfinanccehome@gmail.com
-=3D=3D=3D=3D
-Assunto: meu tema Ser informado de que Muthoot Finance dar empr=C3=A9st=
-imos de Garantia de Neg=C3=B3cios, Automobile Os empr=C3=A9stimos Purch=
-ase, Casa empr=C3=A9stimos Purchase, empr=C3=A9stimos pessoais na taxa =
-de juros de 3%, para mais informa=C3=A7=C3=B5es e-mail: muthootfinancce=
-home@gmail.com
-=3D=3D=3D=3D
-Nous portons =C3=A0 votre connaissance que Muthoot Finance vous donne d=
-es pr=C3=AAts d=E2=80=99affaires, pour l=E2=80=99achat des automobiles,=
- des maisons, des pr=C3=AAts personnels, tous pour un taux d'int=C3=A9r=
-=C3=AAts de 3%, pour plus des d=C3=A9tails consultez: muthootfinancceho=
-me@gmail.com
-=3D=3D=3D=3D
-Byt informovan=C3=BD, =C5=BEe Muthoot Financie rozd=C3=A1vat z=C3=A1ruc=
-nej podnikatelsk=C3=BDch =C3=BAverov, automobilov=C3=BD N=C3=A1kup p=C3=
-=B4=C5=BEiciek, =C3=BAverov na b=C3=BDvanie, osobn=C3=A9 p=C3=B4=C5=BEi=
-cky vo v=C3=BD=C5=A1ke 3% =C3=BArokovou sadzbou, pre viac inform=C3=A1c=
-i=C3=AD e-mail: muthootfinanccehome@gmail.com
-=3D=3D=3D=3D
-Wir teilen mit, dass Muthoot Finance Firmen-Darlehen, Darlehen zur Ansc=
-haffung von Kfz-Fahrzeugen, Erwerb von Immobilien sowie pers=C3=B6nlich=
-e Darlehen zu 3% effektiven Jahreszins anbietet, weitere Informationen =
-erhalten Sie per E-Mail: muthootfinanccehome@gmail.com
-=3D=3D=3D=3D
-Det opplyses om at Muthoot Finance gir ut garanti Business l=C3=A5n, Au=
-tomobile kj=C3=B8pe l=C3=A5n, hus kj=C3=B8pe l=C3=A5n, personlige l=C3=A5=
-n p=C3=A5 3% rente, for mer info e-post: muthootfinanccehome@gmail.com
+BUFFER_TRACE info "call ext4_handle_dirty_metadata" doesn't match the
+code, so drop it.
 
+Signed-off-by: Geliang Tang <geliangtang@163.com>
 ---
-This email is free from viruses and malware because avast! Antivirus pr=
-otection is active.
-https://www.avast.com/antivirus
+ fs/ext4/inline.c | 1 -
+ 1 file changed, 1 deletion(-)
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index dfe3b9b..cbcb907 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1696,7 +1696,6 @@ int ext4_delete_inline_entry(handle_t *handle,
+ 	if (err)
+ 		goto out;
+ 
+-	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+ 	err = ext4_mark_inode_dirty(handle, dir);
+ 	if (unlikely(err))
+ 		goto out;
+-- 
+2.5.0
