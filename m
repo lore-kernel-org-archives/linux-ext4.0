@@ -1,43 +1,61 @@
-From: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Subject: =?utf-8?Q?=D0=9A=D0=BB=D0=B8=D0=B5=D0=BD=D1=82=D1=81=D0?=
-	=?utf-8?Q?=BA=D0=B8=D0=B5_=D0=B1=D0=B0=D0=B7=D1=8B!!!_=D0?=
-	=?utf-8?Q?=A2=D0=B5=D0=BB=5CViber=5CWhatsapp=3A+791339138?=
-	=?utf-8?Q?37_Skype=3Aprodawez389_Email=3Aopotapova53=40gm?=
-	=?utf-8?Q?ail=2Ecom_=D0=A3=D0=B7=D0=BD=D0=B0=D0=B9=D1=82?=
-	=?utf-8?Q?=D0=B5_=D0=BF=D0=BE=D0=B4=D1=80=D0=BE=D0=B1=D0?=
-	=?utf-8?Q?=BD=D0=B5=D0=B5!!!?=
-Date: Mon, 1 Feb 2016 10:22:43 +0600
-Message-ID: <926861F87AAE81429E9BD26D99F553CB@vger.kernel.org>
-Reply-To: "linux-ext4@vger.kernel.org" <zradionova92@gmail.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] fs: XFS_IOC_FS[SG]SETXATTR to FS_IOC_FS[SG]ETXATTR
+ promotion
+Date: Mon, 1 Feb 2016 09:36:23 +1100
+Message-ID: <20160131223623.GM20456@dastard>
+References: <1442146833-13652-1-git-send-email-lixi@ddn.com>
+ <1442146833-13652-4-git-send-email-lixi@ddn.com>
+ <20160103230534.GE6682@dastard>
+ <CAJhHMCAvTJj=bX=uE1oK+DzG8aGNGvM-BkY83+H4BgzQiNBa+A@mail.gmail.com>
+ <20160130044151.GA5925@thunk.org>
+ <CAJhHMCBaP2b6pmw8ocKc_3degNZ1jd+aypzM2b7DLZve8PB_mw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [211.86.251.22] ([211.86.251.22]:38577 "EHLO ubuntu2"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757676AbcBAEeQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 31 Jan 2016 23:34:16 -0500
-Received: from 211.86.251.22 (localhost [IPv6:::1])
-	by ubuntu2 (Postfix) with SMTP id 011ED183B79
-	for <linux-ext4@vger.kernel.org>; Mon,  1 Feb 2016 12:22:51 +0800 (CST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, Li Xi <pkuelelixi@gmail.com>,
+	"open list:OVERLAYFS FILESYSTEM" <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org,
+	"open list:KERNEL SELFTEST F..." <linux-api@vger.kernel.org>,
+	adilger@dilger.ca, Jan Kara <jack@suse.cz>,
+	Al Viro <viro@zeniv.linux.org.uk>, hch@infradead.org,
+	dmonakhov@openvz.org
+To: Pranith Kumar <bobby.prani@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <CAJhHMCBaP2b6pmw8ocKc_3degNZ1jd+aypzM2b7DLZve8PB_mw@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-=D0=A1=D0=BE=D0=B1=D0=B5=D1=80=D0=B5=D0=BC =D0=B4=D0=BB=D1=8F =D0=92=D0=
-=B0=D1=81 =D0=BF=D0=BE =D0=B8=D0=BD=D1=82=D0=B5=D1=80=D0=BD=D0=B5=D1=82=
- =D0=B1=D0=B0=D0=B7=D1=83 =D0=B4=D0=B0=D0=BD=D0=BD=D1=8B=D1=85 =D0=BF=D0=
-=BE=D1=82=D0=B5=D0=BD=D1=86=D0=B8=D0=B0=D0=BB=D1=8C=D0=BD=D1=8B=D1=85 =D0=
-=BA=D0=BB=D0=B8=D0=B5=D0=BD=D1=82=D0=BE=D0=B2 =D0=B4=D0=BB=D1=8F =D0=92=
-=D0=B0=D1=88=D0=B5=D0=B3=D0=BE =D0=91=D0=B8=D0=B7=D0=BD=D0=B5=D1=81=D0=B0=
-!!! =D0=9C=D0=BD=D0=BE=D0=B3=D0=BE! =D0=91=D1=8B=D1=81=D1=82=D1=80=D0=BE=
-! =D0=9D=D0=B5 =D0=B4=D0=BE=D1=80=D0=BE=D0=B3=D0=BE! =D0=A3=D0=B7=D0=BD=
-=D0=B0=D0=B9=D1=82=D0=B5 =D0=BE=D0=B1 =D1=8D=D1=82=D0=BE=D0=BC =D0=BF=D0=
-=BE=D0=B4=D1=80=D0=BE=D0=B1=D0=BD=D0=B5=D0=B5 =D0=BF=D0=BE =D0=A2=D0=B5=
-=D0=BB\Viber\Whatsapp:+79133913837 Skype:prodawez389 Email:nonen22pp@gm=
-ail.com =20
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Fri, Jan 29, 2016 at 11:49:29PM -0500, Pranith Kumar wrote:
+> On Fri, Jan 29, 2016 at 11:41 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> > So on my Debain system, I don't update linux-libc-dev when I install a
+> > new upstream kernel built using "make deb-pkg".  I'll still a new
+> > version of the linux-image-*.deb file, and maybe a newer version of
+> > linux-firmware-*.dev, but I don't bother installing the
+> > linux-headers-*.deb file (since I don't compile external kernel
+> > modules), and I don't bother installing linux-libc-dev-*.deb (because
+> > of situations like this, where the userspace include files need ot be
+> > updated in sync, and this should be the distribution's problem to
+> > handle).
+> 
+> I am using a debian system and built the kernel using
+> "make bindeb-pkg". This generated the following debs:
+> 
+> linux-firmware-image-4.5.0-rc1+_4.5.0-rc1+-2_powerpc.deb
+> linux-image-4.5.0-rc1+_4.5.0-rc1+-2_powerpc.deb
+> linux-headers-4.5.0-rc1+_4.5.0-rc1+-2_powerpc.deb
+> linux-libc-dev_4.5.0-rc1+-2_powerpc.deb
+> 
+> which I installed as I usually do to test new system calls or run other tests.
+> 
+> I'll try to update the uapi header files manually and see how it goes...
+
+You need to update qemu's autoconf to define HAVE_FSXATTR if it's
+found in the uapi/linux/fs.h so that it then isn't defined in
+xfs/xfs_fs.h.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
