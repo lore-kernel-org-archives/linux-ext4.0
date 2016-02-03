@@ -1,43 +1,33 @@
-From: Deepa Dinamani <deepa.kernel@gmail.com>
-Subject: [PATCH 07/10] fs: ext4: Replace CURRENT_TIME with ext4_current_time()
-Date: Tue,  2 Feb 2016 22:07:47 -0800
-Message-ID: <1454479670-8204-8-git-send-email-deepa.kernel@gmail.com>
-References: <1454479670-8204-1-git-send-email-deepa.kernel@gmail.com>
-Cc: Arnd Bergmann <arnd@arndb.de>, Dave Chinner <david@fromorbit.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: linux-fsdevel@vger.kernel.org, y2038@lists.linaro.org
+From: Huaitong Han <huaitong.han@intel.com>
+Subject: [PATCH] ext4: add a line break for proc mb_groups display
+Date: Wed,  3 Feb 2016 21:19:06 +0800
+Message-ID: <1454505546-4875-1-git-send-email-huaitong.han@intel.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Huaitong Han <huaitong.han@intel.com>
+To: tytso@mit.edu, adilger.kernel@dilger.ca
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1454479670-8204-1-git-send-email-deepa.kernel@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-CURRENT_TIME macro is not appropriate for filesystems as it
-doesn't use the right granularity for filesystem timestamps.
-Use ext4_current_time() instead which is appropriate for ext4
-timestamps.
+This patch adds a line break for proc mb_groups display.
 
-Signed-off-by: Deepa Dinamani <deepa.kernel@gmail.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org
+Signed-off-by: Huaitong Han <huaitong.han@intel.com>
 ---
- fs/ext4/super.c | 2 +-
+ fs/ext4/mballoc.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3ed01ec..5e6c866 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5139,7 +5139,7 @@ static int ext4_quota_off(struct super_block *sb, int type)
- 	handle = ext4_journal_start(inode, EXT4_HT_QUOTA, 1);
- 	if (IS_ERR(handle))
- 		goto out;
--	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-+	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
- 	ext4_mark_inode_dirty(handle, inode);
- 	ext4_journal_stop(handle);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 61eaf74..4424b7b 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2285,7 +2285,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+ 	if (group == 0)
+ 		seq_puts(seq, "#group: free  frags first ["
+ 			      " 2^0   2^1   2^2   2^3   2^4   2^5   2^6  "
+-			      " 2^7   2^8   2^9   2^10  2^11  2^12  2^13  ]");
++			      " 2^7   2^8   2^9   2^10  2^11  2^12  2^13  ]\n");
  
+ 	i = (sb->s_blocksize_bits + 2) * sizeof(sg.info.bb_counters[0]) +
+ 		sizeof(struct ext4_group_info);
 -- 
-1.9.1
+2.4.3
