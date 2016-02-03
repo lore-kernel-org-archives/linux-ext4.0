@@ -1,50 +1,49 @@
-From: Joe Perches <joe@perches.com>
-Subject: Re: [PATCH] ext4: add a line break for proc mb_groups display
-Date: Wed, 03 Feb 2016 11:38:33 -0800
-Message-ID: <1454528313.7291.115.camel@perches.com>
-References: <1454505546-4875-1-git-send-email-huaitong.han@intel.com>
-	 <20160203181356.GA5842@birch.djwong.org>
-	 <1454524232.7291.105.camel@perches.com>
-	 <20160203193233.GB5842@birch.djwong.org>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: vfs/xfs: directio updates to ease COW handling V2
+Date: Wed, 03 Feb 2016 14:43:02 -0500
+Message-ID: <x49zivhy3zt.fsf@segfault.boston.devel.redhat.com>
+References: <1454524816-11392-1-git-send-email-hch@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Huaitong Han <huaitong.han@intel.com>, tytso@mit.edu,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20160203193233.GB5842@birch.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain
+Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:59860 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756180AbcBCTnE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Feb 2016 14:43:04 -0500
+In-Reply-To: <1454524816-11392-1-git-send-email-hch@lst.de> (Christoph
+	Hellwig's message of "Wed, 3 Feb 2016 19:40:13 +0100")
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2016-02-03 at 11:32 -0800, Darrick J. Wong wrote:
-> On Wed, Feb 03, 2016 at 10:30:32AM -0800, Joe Perches wrote:
-> > On Wed, 2016-02-03 at 10:13 -0800, Darrick J. Wong wrote:
-> > > On Wed, Feb 03, 2016 at 09:19:06PM +0800, Huaitong Han wrote:
-> > > > This patch adds a line break for proc mb_groups display.
-> >=20
-> > Using 2 lines for output might break any existing users.
-> >=20
-> > Are there any?
->=20
-> It's a multiline file if you have more than one blockgroup; this just=
- makes it
-> so that you don't have to special-case BG 0.
+Hi, Christoph,
 
-And existing scripts might do that now and might fail
-to do properly after this change.
+Can you explain a bit what you mean by easing COW handling?  Whenever I
+see COW referenced near DIO, my mind always turns to g_u_p vs. fork.
 
-> IOW: mb_groups scripts already had to parse multiple lines, and most =
-likely any
-> script parsing it would inject a newline after the header.
+Thanks!
+Jeff
 
-I've no dog in this fight really. =A0I just wanted to make
-it clear that this could cause existing scripts to fail.
+Christoph Hellwig <hch@lst.de> writes:
 
-proc output is supposed to be unchanging except maybe
-adding new fields to existing lines.
-
-Your choice.
-
-cheers, Joe
+> See http://www.infradead.org/rpr.html
+>
+> The first patch ensures ->end_io is always called for direct I/O requests
+> that pass it in, even if there was a zero length write, or if an error
+> occured.  The existing users have been updated to ignore it, but XFS
+> will make use of it in the future, and a comment in ext4 suggests it
+> might be useful for it as well.
+>
+> The other two simplify the XFS direct I/O code.
+>
+> Changes since V1:
+>  - allow ->end_io to return errors
+>  - a comment spelling fix
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
