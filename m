@@ -1,36 +1,40 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 111801] mount fails silently if mount point is "busy"
-Date: Wed, 03 Feb 2016 15:27:53 +0000
-Message-ID: <bug-111801-13602-Gg1sHe22fy@https.bugzilla.kernel.org/>
-References: <bug-111801-13602@https.bugzilla.kernel.org/>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH 1/3] direct-io: always call ->end_io if non-NULL
+Date: Wed, 3 Feb 2016 16:48:16 +0100
+Message-ID: <20160203154816.GA2698@lst.de>
+References: <1454444257-9086-1-git-send-email-hch@lst.de> <1454444257-9086-2-git-send-email-hch@lst.de> <20160203000510.GB5854@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:45241 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754985AbcBCP2B (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Feb 2016 10:28:01 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id E09B120204
-	for <linux-ext4@vger.kernel.org>; Wed,  3 Feb 2016 15:27:59 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id D7B4220221
-	for <linux-ext4@vger.kernel.org>; Wed,  3 Feb 2016 15:27:53 +0000 (UTC)
-In-Reply-To: <bug-111801-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160203000510.GB5854@birch.djwong.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=111801
+> > -	if (dio->end_io && dio->result)
+> > -		dio->end_io(dio->iocb, offset, transferred, dio->private);
+> > +	if (dio->end_io)
+> > +		dio->end_io(dio->iocb, offset, ret, dio->private);
+> 
+> Could we make end_io return an int so that errors during completion can be
+> stuffed into ret to be picked up by whatever's calling directio?  Something
+> like this:
+> 
+> if (dio->end_io) {
+> 	int ret2;
+> 
+> 	ret2 = dio->end_io(dio->iocb, offset, ret, dio->private);
+> 	if (ret2 && !ret)
+> 		ret = ret2;
+> }
+> 
+> That way I can capture IO errors during the CoW remapping step and pass them to
+> userland either via dio_complete()'s return value or through ki_complete.
+> 
+> (If ret itself is an error code then obviously we don't bother with the
+> post-CoW remap.)
 
-David Knight <diemkae@gmail.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-         Resolution|---                         |INVALID
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Should be doable, I'll respin it with that change.
