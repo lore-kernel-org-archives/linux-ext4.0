@@ -1,73 +1,76 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: vfs/xfs: directio updates to ease COW handling V2
-Date: Wed, 3 Feb 2016 12:01:59 -0800
-Message-ID: <20160203200159.GK20038@birch.djwong.org>
-References: <1454524816-11392-1-git-send-email-hch@lst.de>
- <x49zivhy3zt.fsf@segfault.boston.devel.redhat.com>
+Subject: Re: [PATCH] ext4: add a line break for proc mb_groups display
+Date: Wed, 3 Feb 2016 12:07:06 -0800
+Message-ID: <20160203200706.GG22352@birch.djwong.org>
+References: <1454505546-4875-1-git-send-email-huaitong.han@intel.com>
+ <20160203181356.GA5842@birch.djwong.org>
+ <1454524232.7291.105.camel@perches.com>
+ <20160203193233.GB5842@birch.djwong.org>
+ <1454528313.7291.115.camel@perches.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@lst.de>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-	xfs@oss.sgi.com
-To: Jeff Moyer <jmoyer@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Huaitong Han <huaitong.han@intel.com>, tytso@mit.edu,
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Joe Perches <joe@perches.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:51897 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932264AbcBCUMU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Feb 2016 15:12:20 -0500
 Content-Disposition: inline
-In-Reply-To: <x49zivhy3zt.fsf@segfault.boston.devel.redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1454528313.7291.115.camel@perches.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 03, 2016 at 02:43:02PM -0500, Jeff Moyer wrote:
-> Hi, Christoph,
-> 
-> Can you explain a bit what you mean by easing COW handling?  Whenever I
-> see COW referenced near DIO, my mind always turns to g_u_p vs. fork.
+On Wed, Feb 03, 2016 at 11:38:33AM -0800, Joe Perches wrote:
+> On Wed, 2016-02-03 at 11:32 -0800, Darrick J. Wong wrote:
+> > On Wed, Feb 03, 2016 at 10:30:32AM -0800, Joe Perches wrote:
+> > > On Wed, 2016-02-03 at 10:13 -0800, Darrick J. Wong wrote:
+> > > > On Wed, Feb 03, 2016 at 09:19:06PM +0800, Huaitong Han wrote:
+> > > > > This patch adds a line break for proc mb_groups display.
+> > >=20
+> > > Using 2 lines for output might break any existing users.
+> > >=20
+> > > Are there any?
+> >=20
+> > It's a multiline file if you have more than one blockgroup; this ju=
+st makes it
+> > so that you don't have to special-case BG 0.
+>=20
+> And existing scripts might do that now and might fail
+> to do properly after this change.
 
-Just to clarify, I'm talking about copy on write for disk blocks, not for
-memory pages.
+Or they might have sed -e 's/]#0/]\n#0/g' in which case they won't be a=
+ffected.
 
-Basically, XFS implements (disk block) copy on write for (perfectly block
-aligned) directio writes by allocating a set of replacement blocks, mapping the
-dio writes to the new blocks, and playing a punch/remap trick to map the new
-blocks into the file at the appropriate offset.
+> > IOW: mb_groups scripts already had to parse multiple lines, and mos=
+t likely any
+> > script parsing it would inject a newline after the header.
+>=20
+> I've no dog in this fight really. =A0I just wanted to make
+> it clear that this could cause existing scripts to fail.
+>=20
+> proc output is supposed to be unchanging except maybe
+> adding new fields to existing lines.
+>=20
+> Your choice.
 
-If the write fails then we don't want do the remap, so the dio_complete handler
-has to know whether or not the IO succeeded, hence the new parameter.
-Furthermore, if the write succeeds but the remap fails, we also want to be able
-to report that to userspace, hence the change of return value from void to int.
+Ted's, really.  I have no idea which scripts do with various per-fs /pr=
+oc
+files.  Usually poking in mb_groups is only done as part of failure rep=
+ort data
+collection to see what's mucked up the fs this time.
 
-(If the dio write isn't block aligned, we fall back to the page cache.)
-
-Hope that helps,
+Anyway, I'll defer to the maintainer. :)
 
 --D
 
-> 
-> Thanks!
-> Jeff
-> 
-> Christoph Hellwig <hch@lst.de> writes:
-> 
-> > See http://www.infradead.org/rpr.html
-> >
-> > The first patch ensures ->end_io is always called for direct I/O requests
-> > that pass it in, even if there was a zero length write, or if an error
-> > occured.  The existing users have been updated to ignore it, but XFS
-> > will make use of it in the future, and a comment in ext4 suggests it
-> > might be useful for it as well.
-> >
-> > The other two simplify the XFS direct I/O code.
-> >
-> > Changes since V1:
-> >  - allow ->end_io to return errors
-> >  - a comment spelling fix
-> >
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> _______________________________________________
-> xfs mailing list
-> xfs@oss.sgi.com
-> http://oss.sgi.com/mailman/listinfo/xfs
+>=20
+> cheers, Joe
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
