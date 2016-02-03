@@ -1,132 +1,133 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 1/3] direct-io: always call ->end_io if non-NULL
-Date: Tue, 2 Feb 2016 16:05:10 -0800
-Message-ID: <20160203000510.GB5854@birch.djwong.org>
-References: <1454444257-9086-1-git-send-email-hch@lst.de>
- <1454444257-9086-2-git-send-email-hch@lst.de>
+From: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
+Subject: RE: ext4 out of order when use cfq scheduler
+Date: Wed, 3 Feb 2016 06:08:52 +0000
+Message-ID: <a6eb5de650a849ef856707ece14bcd38@SGPMBX1004.APAC.bosch.com>
+References: <697280a570654ae0aa1723fb7d11f51e@SGPMBX1004.APAC.bosch.com>
+ <CADJHv_uHokWy14k7teHiCuVO-P9gKUewDaZnBQ1M4H-RBkn+Aw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1454444257-9086-2-git-send-email-hch@lst.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Li, Michael" <huayil@qti.qualcomm.com>
+To: Xiong Zhou <jencce.kernel@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp6-v.fe.bosch.de ([139.15.237.11]:54079 "EHLO
+	smtp6-v.fe.bosch.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752568AbcBCGI6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Feb 2016 01:08:58 -0500
+In-Reply-To: <CADJHv_uHokWy14k7teHiCuVO-P9gKUewDaZnBQ1M4H-RBkn+Aw@mail.gmail.com>
+Content-Language: en-US
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 02, 2016 at 09:17:35PM +0100, Christoph Hellwig wrote:
-> See http://www.infradead.org/rpr.html
-
-Ick. ^^^
-
-> This way we can pass back errors to the file system, and allow for
-> cleanup required for all direct I/O invocations.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/dax.c          | 2 +-
->  fs/direct-io.c    | 4 ++--
->  fs/ext4/inode.c   | 3 +++
->  fs/ocfs2/aops.c   | 3 +++
->  fs/xfs/xfs_aops.c | 3 +++
->  5 files changed, 12 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/dax.c b/fs/dax.c
-> index 4fd6b0c..e47d1ba 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -267,7 +267,7 @@ ssize_t dax_do_io(struct kiocb *iocb, struct inode *inode,
->  	if ((flags & DIO_LOCKING) && iov_iter_rw(iter) == READ)
->  		inode_unlock(inode);
->  
-> -	if ((retval > 0) && end_io)
-> +	if (end_io)
->  		end_io(iocb, pos, retval, bh.b_private);
->  
->  	if (!(flags & DIO_SKIP_DIO_COUNT))
-> diff --git a/fs/direct-io.c b/fs/direct-io.c
-> index 1b2f7ff..ead7ac1 100644
-> --- a/fs/direct-io.c
-> +++ b/fs/direct-io.c
-> @@ -253,8 +253,8 @@ static ssize_t dio_complete(struct dio *dio, loff_t offset, ssize_t ret,
->  	if (ret == 0)
->  		ret = transferred;
->  
-> -	if (dio->end_io && dio->result)
-> -		dio->end_io(dio->iocb, offset, transferred, dio->private);
-> +	if (dio->end_io)
-> +		dio->end_io(dio->iocb, offset, ret, dio->private);
-
-Could we make end_io return an int so that errors during completion can be
-stuffed into ret to be picked up by whatever's calling directio?  Something
-like this:
-
-if (dio->end_io) {
-	int ret2;
-
-	ret2 = dio->end_io(dio->iocb, offset, ret, dio->private);
-	if (ret2 && !ret)
-		ret = ret2;
-}
-
-That way I can capture IO errors during the CoW remapping step and pass them to
-userland either via dio_complete()'s return value or through ki_complete.
-
-(If ret itself is an error code then obviously we don't bother with the
-post-CoW remap.)
-
---D
-
->  
->  	if (!(dio->flags & DIO_SKIP_DIO_COUNT))
->  		inode_dio_end(dio->inode);
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 83bc8bf..d04555b 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3166,6 +3166,9 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
->  {
->          ext4_io_end_t *io_end = iocb->private;
->  
-> +	if (size <= 0)
-> +		return;
-> +
->  	/* if not async direct IO just return */
->  	if (!io_end)
->  		return;
-> diff --git a/fs/ocfs2/aops.c b/fs/ocfs2/aops.c
-> index 794fd15..1eeb804 100644
-> --- a/fs/ocfs2/aops.c
-> +++ b/fs/ocfs2/aops.c
-> @@ -628,6 +628,9 @@ static void ocfs2_dio_end_io(struct kiocb *iocb,
->  	struct inode *inode = file_inode(iocb->ki_filp);
->  	int level;
->  
-> +	if (bytes <= 0)
-> +		return;
-> +
->  	/* this io's submitter should not have unlocked this before we could */
->  	BUG_ON(!ocfs2_iocb_is_rw_locked(iocb));
->  
-> diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-> index 379c089..c318e9f 100644
-> --- a/fs/xfs/xfs_aops.c
-> +++ b/fs/xfs/xfs_aops.c
-> @@ -1655,6 +1655,9 @@ xfs_end_io_direct_write(
->  	struct inode		*inode = file_inode(iocb->ki_filp);
->  	struct xfs_ioend	*ioend = private;
->  
-> +	if (size <= 0)
-> +		return;
-> +
->  	trace_xfs_gbmap_direct_endio(XFS_I(inode), offset, size,
->  				     ioend ? ioend->io_type : 0, NULL);
->  
-> -- 
-> 2.1.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogWGlvbmcgWmhvdSBbbWFp
+bHRvOmplbmNjZS5rZXJuZWxAZ21haWwuY29tXQ0KPiBTZW50OiBUaHVyc2RheSwgSmFudWFyeSAy
+OCwgMjAxNiA0OjAzIFBNDQo+IFRvOiBIVUFORyBXZWxsZXIgKENNL0VTVzEyLUNOKSA8V2VsbGVy
+Lkh1YW5nQGNuLmJvc2NoLmNvbT4NCj4gQ2M6IGxpbnV4LWV4dDRAdmdlci5rZXJuZWwub3JnOyBM
+aSwgTWljaGFlbCA8aHVheWlsQHF0aS5xdWFsY29tbS5jb20+DQo+IFN1YmplY3Q6IFJlOiBleHQ0
+IG91dCBvZiBvcmRlciB3aGVuIHVzZSBjZnEgc2NoZWR1bGVyDQo+IA0KPiBPbiBUdWUsIERlYyAy
+MiwgMjAxNSBhdCAyOjI0IFBNLCBIVUFORyBXZWxsZXIgKENNL0VQRjEtQ04pDQo+IDxXZWxsZXIu
+SHVhbmdAY24uYm9zY2guY29tPiB3cm90ZToNCj4gPiBIaSBFWFQ0IGRldmVsb3BlcnMsDQo+ID4N
+Cj4gPiBJIGFtIGRvaW5nIHRoZSBwb3dlciBmYWlsdXJlIG9uIGEgc3RvcmFnZSBkZXZpY2UuIFdl
+IGFyZSBhcm0gZW1iZWRkZWQgc3lzdGVtLg0KPiANCj4gSXMgdGhlcmUgYW55IGNoYW5jZSB0aGF0
+IG1ha2UgdGhpcyB0ZXN0IGEgeGZzdGVzdCBjYXNlID8NCj4gDQoNCkRvIHlvdSBtZWFuIHVzZSB0
+aGUgeGZzdGVzdCB0b29sIHRvIGRvIHRoZSB3cml0ZSB0ZXN0ID8gaXMgdGhlcmUgYW55IGRpZmZl
+cmVuY2Ugb3IgYWR2YW50YWdlIHRvIHVzZSB4ZnN0ZXN0ID8NCg0KPiA+DQo+ID4NCj4gPiBUZXN0
+IGVudmlyb25tZW50Og0KPiA+IEtlcm5lbDogMy4xMC42Mw0KPiA+IFRlc3QgdHlwZTogcG93ZXIg
+ZmFpbHVyZQ0KPiA+IEZpbGUgY3JlYXRlIHR5cGU6IE9fU1lOQyBmbGFnIGVuYWJsZWQNCj4gPiBN
+b3VudCBvcHRpb246IGRhdGE9b3JkZXJlZCwgam91cm5hbF9jaGVja3N1bSxiYXJyaWVyPTEgSU8g
+c2NoZWR1bGVyOg0KPiA+IENGUQ0KPiA+DQo+ID4gRGVidWcgbWV0aG9kOiBrZXJuZWwgcHJpbnQg
+ZXZlcnkgYmxvY2sgbnVtYmVyIG9mIHdyaXRlIHJlcXVlc3QuIHByaW50DQo+ID4gd2hldGhlciBp
+dCBpcyBqb3VybmFsIGJsb2NrLiAgcHJpbnQgd2hldGhlciBpdCBpcyAoUkVRX0ZVQSB8IFJFUV9N
+RVRBIHwgd3JpdGUpDQo+IEFmdGVyIHN5c3RlbSBzdGFydHVwLCBiYWNrdXAgam91cm5hbCBibG9j
+a3MgYmVmb3JlIG1vdW50IHRoZSB0ZXN0IHBhcnRpdGlvbi4NCj4gPg0KPiA+IEJlbG93IGlzIGFu
+YWx5c2lzIHdoaWNoIEkgdGhpbmsgdGhlcmUgaXMgYSBvdXQgb2Ygb3JkZXI6DQo+ID4gaHAwMDAw
+MDE3YU1oV1kzaTB2TXYgaXMgdGhlIGZpbGUgd2hpY2ggY2hlY2tzdW0gaXMgZXJyb3IuIE9ubHkg
+aGFsZiBvZiB0aGUgZmlsZQ0KPiBjb250ZW50cyBpcyBjb3JyZWN0Lg0KPiA+DQo+ID4NCj4gPiBb
+cm9vdEBTaVJGYXRsYXM2IH5dIyBkZWJ1Z2ZzIC9kZXYvbmFuZGJsazBwMyBkZWJ1Z2ZzIDEuNDIu
+OQ0KPiA+ICgyOC1EZWMtMjAxMykNCj4gPiBkZWJ1Z2ZzOiAgaW1hcCB0ZXN0L2hwMDAwMDAxN2FN
+aFdZM2kwdk12IElub2RlIDM5MCBpcyBwYXJ0IG9mIGJsb2NrDQo+ID4gZ3JvdXAgMA0KPiA+ICAg
+ICAgICAgbG9jYXRlZCBhdCBibG9jayAxNDEsIG9mZnNldCAweDAyODANCj4gPg0KPiA+IDAwMDAw
+MjgwICA4MCA4MSAwMCAwMCAxMCAwMCAwNCAwMCAgYzggMDkgMDAgMDAgNjYgMGEgMDAgMDANCj4g
+PiB8Li4uLi4uLi4uLi4uZi4uLnwNCj4gPiAwMDAwMDI5MCAgNjYgMGEgMDAgMDAgMDAgMDAgMDAg
+MDAgIDAwIDAwIDAxIDAwIDA0IDAyIDAwIDAwDQo+ID4gfGYuLi4uLi4uLi4uLi4uLi58DQo+ID4g
+MDAwMDAyYTAgIDAwIDAwIDA4IDAwIDAxIDAwIDAwIDAwICAwYSBmMyAwMiAwMCAwNCAwMCAwMCAw
+MA0KPiA+IHwuLi4uLi4uLi4uLi4uLi4ufA0KPiA+IDAwMDAwMmIwICAwMCAwMCAwMCAwMCAwMCAw
+MCAwMCAwMCAgODAgMDAgMDAgMDAgMDAgMmMgMDEgMDANCj4gPiB8Li4uLi4uLi4uLi4uLiwuLnwg
+ID09PiB0aGUgZmlsZSBjb250ZW50cyBpcyBhdCAweDAwMDEyYzAwDQo+ID4gMDAwMDAyYzAgIDgw
+IDAwIDAwIDAwIDAxIDAwIDAwIDAwICA4ZSAyNiAwMSAwMCAwMCAwMCAwMCAwMA0KPiA+IHwuLi4u
+Li4uLi4mLi4uLi4ufA0KPiA+DQo+ID4NCj4gPiBTZWFyY2ggdGhlIGJsb2NrIG51bWJlciBmcm9t
+IHRoZSBqb3VybmFsIGJsb2NrczoNCj4gPg0KPiA+IFtyb290QFNpUkZhdGxhczYgfl0jIGhleGR1
+bXAgai5iaW4gIC1DIHwgIGdyZXAgIjAwIDJjIDAxIDAwIg0KPiA+IDAwMDM5YWIwICAwMCAwMCAw
+MCAwMCAwMCAwMCAwMCAwMCAgODAgMDAgMDAgMDAgMDAgMmMgMDEgMDANCj4gPiB8Li4uLi4uLi4u
+Li4uLiwuLnwNCj4gPg0KPiA+IFNlYXJjaCBmaWxlIG5hbWUgd2hpY2ggdGhlIGZpbGUgY2hlY2tz
+dW0gaXMgZXJyb3IgaW4gam91cm5hbCBibG9ja3M6DQo+ID4NCj4gPiBbcm9vdEBTaVJGYXRsYXM2
+IH5dIyBoZXhkdW1wIGouYmluICAtQyB8ICBncmVwICIzaTB2TXYiIC1CMQ0KPiA+IDAwMDMwYzYw
+ICA4NiAwMSAwMCAwMCAxYyAwMCAxNCAwMSAgNjggNzAgMzAgMzAgMzAgMzAgMzAgMzENCj4gPiB8
+Li4uLi4uLi5ocDAwMDAwMXwNCj4gPiAwMDAzMGM3MCAgMzcgNjEgNGQgNjggNTcgNTkgMzMgNjkg
+IDMwIDc2IDRkIDc2IDg4IDAxIDAwIDAwDQo+ID4gfDdhTWhXWTNpMHZNdi4uLi58DQo+ID4NCj4g
+Pg0KPiA+IExpc3QgYWxsIGpvdXJuYWwgYmxvY2sgcmVjb3JkIHRvIGNoZWNrIHdoaWNoIGpvdXJu
+YWwgYmxvY2sgcmVjb3JkcyBpdDoNCj4gPg0KPiA+IFtyb290QFNpUkZhdGxhczYgfl0jIGhleGR1
+bXAgai5iaW4gLUMgfCBncmVwICJjMCAzYiAzOSA5OCINCj4gPiAwMDAwMDAwMCAgYzAgM2IgMzkg
+OTggMDAgMDAgMDAgMDQgIDAwIDAwIDAwIDAwIDAwIDAwIDA4IDAwDQo+ID4gfC47OS4uLi4uLi4u
+Li4uLi58DQo+ID4gMDAwMDA4MDAgIGMwIDNiIDM5IDk4IDAwIDAwIDAwIDA1ICAwMCAwMCAwMCA2
+ZiAwMCAwMCAwMCAyNA0KPiA+IHwuOzkuLi4uLi4uLm8uLi4kfA0KPiA+IDAwMDAxMDAwICBjMCAz
+YiAzOSA5OCAwMCAwMCAwMCAwMSAgMDAgMDAgMDAgNmYgMDAgMDAgMDAgNzUNCj4gPiB8Ljs5Li4u
+Li4uLi5vLi4udXwNCj4gPiAwMDAwYzgwMCAgYzAgM2IgMzkgOTggMDAgMDAgMDAgMDIgIDAwIDAw
+IDAwIDZmIDAwIDAwIDAwIDAwDQo+ID4gfC47OS4uLi4uLi4uby4uLi58DQo+ID4gMDAwMGQwMDAg
+IGMwIDNiIDM5IDk4IDAwIDAwIDAwIDAxICAwMCAwMCAwMCA3MCAwMCAwMCAwMCA2NQ0KPiA+IHwu
+OzkuLi4uLi4uLnAuLi5lfA0KPiA+IDAwMDE2MDAwICBjMCAzYiAzOSA5OCAwMCAwMCAwMCAwMiAg
+MDAgMDAgMDAgNzAgMDAgMDAgMDAgMDANCj4gPiB8Ljs5Li4uLi4uLi5wLi4uLnwNCj4gPiAwMDAx
+NjgwMCAgYzAgM2IgMzkgOTggMDAgMDAgMDAgMDEgIDAwIDAwIDAwIDcxIDAwIDAwIDAwIDdjDQo+
+ID4gfC47OS4uLi4uLi4ucS4uLnx8DQo+ID4gMDAwMjEwMDAgIGMwIDNiIDM5IDk4IDAwIDAwIDAw
+IDAyICAwMCAwMCAwMCA3MSAwMCAwMCAwMCAwMA0KPiA+IHwuOzkuLi4uLi4uLnEuLi4ufA0KPiA+
+IDAwMDIxODAwICBjMCAzYiAzOSA5OCAwMCAwMCAwMCAwMSAgMDAgMDAgMDAgNzIgMDAgMDAgMDAg
+ODINCj4gPiB8Ljs5Li4uLi4uLi5yLi4uLnwNCj4gPiAwMDAyZDAwMCAgYzAgM2IgMzkgOTggMDAg
+MDAgMDAgMDIgIDAwIDAwIDAwIDcyIDAwIDAwIDAwIDAwDQo+ID4gfC47OS4uLi4uLi4uci4uLi58
+DQo+ID4gMDAwMmQ4MDAgIGMwIDNiIDM5IDk4IDAwIDAwIDAwIDAxICAwMCAwMCAwMCA3MyAwMCAw
+MCAwMCA4OCAgfC47OS4uLi4uLi4ucy4uLi58DQo+ID09PjAwMDM5YWIwIGlzIGluIGxhc3QgYmxv
+Y2ssIHRoZSBmaWxlIG5hbWUgYW5kIHRoZSBzdGFydCBibG9jayBudW1iZXIgYXJlIGFsbA0KPiBy
+ZWNvcmRlZCBpbiB0aGUgam91cm5hbHMuDQo+ID4gMDAwM2EwMDAgIGMwIDNiIDM5IDk4IDAwIDAw
+IDAwIDAyICAwMCAwMCAwMCA3MyAwMCAwMCAwMCAwMA0KPiA+IHwuOzkuLi4uLi4uLnMuLi4ufA0K
+PiA+DQo+ID4NCj4gPiBCYWNrIHRvIHNlZSB0aGUga2VybmVsIGxvZyB3aGljaCBpdCBwcmludCBh
+bGwgdGhlIGJsb2NrIG51bWJlcnM6DQo+ID4NCj4gPiAuLi4NCj4gPiAuLi4NCj4gPiBbICAgNDYu
+MjIyNjcxXSAyNDQxMDkgIDc1Mjc3DQo+ID4gWyAgIDQ2LjIyMjY5M10NCj4gPiBbICAgNDYuMjcy
+NDM4XSAyNDQzNTIgIDc1NTIwDQo+ID4gWyAgIDQ2LjI3MjQ2MF0NCj4gPiBbICAgNDYuMzQ4NDE3
+XSAyMzg0NDMgIDY5NjExDQo+ID4gWyAgIDQ2LjM0ODQzOF0NCj4gPiBbICAgNDYuMzQ5ODExXSAy
+NDQ0ODAgIDc1NjQ4DQo+ID4gWyAgIDQ2LjM1MjI4N10NCj4gPiBbICAgNDYuNDA0OTA0XSAyNDQ2
+MDkgIDc1Nzc3DQo+ID4gWyAgIDQ2LjQwNDkyNl0NCj4gPiBbICAgNDYuNDU0Njk4XSAyNDQ3Mzgg
+IDc1OTA2DQo+ID4gWyAgIDQ2LjQ1NDcxOV0NCj4gPiBbICAgNDYuNTA1NDM5XSAyNDQ5OTIgIDc2
+MTYwDQo+ID4gWyAgIDQ2LjUwNTQ1OV0NCj4gPiBbICAgNDYuNTU3NzgzXSAyNDUxMjAgIDc2Mjg4
+DQo+ID4gWyAgIDQ2LjU1NzgwNF0NCj4gPiBbICAgNDYuNjEwMDc1XSAyNDUyNDkgIDc2NDE3DQo+
+ID4gWyAgIDQ2LjYxMDA5Nl0NCj4gPiBbICAgNDYuNjYwMTk2XSAyNDUzNzggIDc2NTQ2DQo+ID4g
+WyAgIDQ2LjY2MDIxOV0NCj4gPiBbICAgNDYuNzA5OTA2XSAyMDE2OTEgIDMyODU5ICAgPT0+IGpv
+dXJuYWwgc3RhcnQgaXMgMzI3NjgsIHNvIHRoZSBvZmZzZXQgaXMgOTEsDQo+IGJsb2NrIHNpemU9
+MjA0OCwgIHNvLCB0aGUgb2Zmc2V0IGFkZHJlc3MgaW4gdGhlIGouYmluIGlzIDB4MmQ4MDANCj4g
+PiBbICAgNDYuNzA5OTI4XSBKIFsgICA0Ni43MTEyMzNdDQo+ID4gWyAgIDQ2Ljc0MDYzNV0gZHJv
+cCB0byA5dg0KPiA+IFsgICA0Ni43NDk1NDBdIDIwMTcxNiAgMzI4ODQNCj4gPiBbICAgNDYuNzQ5
+NTYwXSBKIFMNCj4gPiBbICAgNDYuNzUxMDM5XQ0KPiA+IFsgICA0Ni43NTMxNTFdIDI0NTYzMiAg
+NzY4MDAgID09PiA3NjgwMCBpbiBoZXggaXMgMHgwMTJjMDAsIGl0IGlzIHRoZSBzYW1lIHN0YXJ0
+DQo+IGJsb2NrIG9mIHRoZSBmaWxlIHdoaWNoIGNoZWNrc3VtIGlzIGVycm9yLg0KPiA+IFsgICA0
+Ni43NTUyODRdDQo+ID4gbmFuZGRpc2sgaWRsZSAtPiAxLg0KPiA+IFsgICA0Ni44MDAyMjddIDZ2
+IGlycS0yDQo+ID4NCj4gPg0KPiA+IFRoZSBqLmJpbiBvZmZzZXQgMHgyZDgwMA0KPiA+DQo+ID4g
+MDAwMmQ4MDAgIGMwIDNiIDM5IDk4IDAwIDAwIDAwIDAxICAwMCAwMCAwMCA3MyAwMCAwMCAwMCA4
+OA0KPiA+IHwuOzkuLi4uLi4uLnMuLi4ufCAgPT0+MDAwMzlhYjAgaXMgaW4gbGFzdCBibG9jaw0K
+PiA+IDAwMDNhMDAwICBjMCAzYiAzOSA5OCAwMCAwMCAwMCAwMiAgMDAgMDAgMDAgNzMgMDAgMDAg
+MDAgMDANCj4gPiB8Ljs5Li4uLi4uLi5zLi4uLnwNCj4gPg0KPiA+DQo+ID4gTm9ybWFsbHksIGV4
+dDQgd2lsbCBmaXJzdCB3cml0ZSB0aGUgZmlsZSBjb250ZW50cywgYW5kIHRoZW4gd3JpdGUgdGhl
+IGpvdXJuYWwgYW5kDQo+IGpvdXJuYWwgY29tbWl0LiBUaGVuIGFmdGVyIHNvbWUgZGVsYXksIGl0
+IHdpbGwgd3JpdGUgdGhlIG1ldGEgZGF0YS4NCj4gPiBTbyBUaGUgam91cm5hbCBibG9ja3MgY29u
+dGFpbnMgdGhlIG1ldGEgZGF0YSBvZiB0aGUgZmlsZSB3aGljaCB0aGUgZmlsZSBjb250ZW50cw0K
+PiBhbHJlYWR5IGJlZW4gd3JpdHRlbiBiZWZvcmUuDQo+ID4gQnV0IGZyb20gYWJvdmUgYW5hbHlz
+aXMsICB0aGUgam91cm5hbCBzZXF1ZW5jZSAweDczIGFscmVhZHkgY29udGFpbiB0aGUgZmlsZQ0K
+PiBuYW1lKGhwMDAwMDAxN2FNaFdZM2kwdk12KSBhbmQgdGhlIHN0YXJ0IGJsb2NrIG51bWJlcig3
+NjgwMCkuIFNvIGZyb20gdGhlDQo+IGtlcm5lbCBsb2csICB0aGUgYmxvY2sgbnVtYmVyKDc2ODAw
+KSBzaG91bGQgYmUgYXZhaWxhYmxlIGJlZm9yZSB0aGUgam91cm5hbCBibG9ja3MNCj4gYnV0IE5P
+VCBhZnRlciBpdC4NCj4gPiBJdCBzZWVtcyB0aGF0IHRoZXJlIGlzIG91dCBvZiBvcmRlciBoYXBw
+ZW4uDQo+ID4NCj4gPiBDb3VsZCB5b3UgcGxlYXNlIGhlbHAgdG8gY2hlY2sgdGhpcyBpc3N1ZSA/
+IG9yIGdpdmUgYSBleHBsYW5hdGlvbiBhYm91dCBpdCA/DQo+ID4gTWFueSB0aGFua3MuDQo+ID4N
+Cj4gPiBCZXN0IHJlZ2FyZHMNCj4gPg0KPiA+IFdlbGxlciBIVUFORw0KPiA+DQo+ID4NCj4gPiAt
+LQ0KPiA+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1
+YnNjcmliZSBsaW51eC1leHQ0Ig0KPiA+IGluIHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpv
+cmRvbW9Admdlci5rZXJuZWwub3JnIE1vcmUgbWFqb3Jkb21vDQo+ID4gaW5mbyBhdCAgaHR0cDov
+L3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo=
