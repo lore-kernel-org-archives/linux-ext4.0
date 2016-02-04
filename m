@@ -1,67 +1,52 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] dax: dirty inode only if required
-Date: Thu, 4 Feb 2016 15:33:44 +0100
-Message-ID: <20160204143344.GA6895@quack.suse.cz>
-References: <87k2mkr2ud.fsf@openvz.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 111891] New: access to file does not change access time to
+ folders above up to /(root)
+Date: Thu, 04 Feb 2016 14:42:42 +0000
+Message-ID: <bug-111891-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux MM <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	X86 ML <x86@kernel.org>, XFS Developers <xfs@oss.sgi.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Dave Hansen <dave.hansen@linux.intel.com>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <87k2mkr2ud.fsf@openvz.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:53379 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750727AbcBDOmp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Feb 2016 09:42:45 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 20373203A0
+	for <linux-ext4@vger.kernel.org>; Thu,  4 Feb 2016 14:42:44 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 8285E2038F
+	for <linux-ext4@vger.kernel.org>; Thu,  4 Feb 2016 14:42:42 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 04-02-16 17:02:02, Dmitry Monakhov wrote:
-> 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+https://bugzilla.kernel.org/show_bug.cgi?id=111891
 
-Makes sense. You can add:
+            Bug ID: 111891
+           Summary: access to file does not change access time to folders
+                    above up to /(root)
+           Product: File System
+           Version: 2.5
+    Kernel Version: 4.1.15
+          Hardware: x86-64
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: armin_mohring@web.de
+        Regression: No
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+Ext4 with relatime mount option.
 
-								Honza
-> ---
->  fs/dax.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/dax.c b/fs/dax.c
-> index e0e9358..fc2e314 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -358,7 +358,8 @@ static int dax_radix_entry(struct address_space *mapping, pgoff_t index,
->  	void *entry;
->  
->  	WARN_ON_ONCE(pmd_entry && !dirty);
-> -	__mark_inode_dirty(mapping->host, I_DIRTY_PAGES);
-> +	if (dirty)
-> +		__mark_inode_dirty(mapping->host, I_DIRTY_PAGES);
->  
->  	spin_lock_irq(&mapping->tree_lock);
->  
-> -- 
-> 1.8.3.1
-> 
+Access to file e.g.: /home/armin/documents/abc (file)
+does lead into the following:
+
+The access time of the /home directory is not changed, but should be.
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
