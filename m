@@ -1,74 +1,55 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH] dax: dirty inode only if required
-Date: Thu, 4 Feb 2016 08:50:39 -0700
-Message-ID: <20160204155039.GA17818@linux.intel.com>
-References: <87k2mkr2ud.fsf@openvz.org>
- <20160204143344.GA6895@quack.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 111891] access to file does not change access time to folders
+ above up to /(root)
+Date: Fri, 05 Feb 2016 02:38:19 +0000
+Message-ID: <bug-111891-13602-EkLXGdG960@https.bugzilla.kernel.org/>
+References: <bug-111891-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux MM <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	X86 ML <x86@kernel.org>, XFS Developers <xfs@oss.sgi.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Da
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160204143344.GA6895@quack.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:39999 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750723AbcBECie (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Feb 2016 21:38:34 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id C8CD120395
+	for <linux-ext4@vger.kernel.org>; Fri,  5 Feb 2016 02:38:29 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 0E2F42038E
+	for <linux-ext4@vger.kernel.org>; Fri,  5 Feb 2016 02:38:20 +0000 (UTC)
+In-Reply-To: <bug-111891-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 04, 2016 at 03:33:44PM +0100, Jan Kara wrote:
-> On Thu 04-02-16 17:02:02, Dmitry Monakhov wrote:
-> > 
-> > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> 
-> Makes sense. You can add:
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
+https://bugzilla.kernel.org/show_bug.cgi?id=111891
 
-Looks good to me as well.
+Andreas Dilger <adilger.kernelbugzilla@dilger.ca> changed:
 
-Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |adilger.kernelbugzilla@dilg
+                   |                            |er.ca
 
-> 								Honza
-> > ---
-> >  fs/dax.c | 3 ++-
-> >  1 file changed, 2 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/dax.c b/fs/dax.c
-> > index e0e9358..fc2e314 100644
-> > --- a/fs/dax.c
-> > +++ b/fs/dax.c
-> > @@ -358,7 +358,8 @@ static int dax_radix_entry(struct address_space *mapping, pgoff_t index,
-> >  	void *entry;
-> >  
-> >  	WARN_ON_ONCE(pmd_entry && !dirty);
-> > -	__mark_inode_dirty(mapping->host, I_DIRTY_PAGES);
-> > +	if (dirty)
-> > +		__mark_inode_dirty(mapping->host, I_DIRTY_PAGES);
-> >  
-> >  	spin_lock_irq(&mapping->tree_lock);
-> >  
-> > -- 
-> > 1.8.3.1
-> > 
-> -- 
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
+--- Comment #1 from Andreas Dilger <adilger.kernelbugzilla@dilger.ca> ---
+I'm not sure where you got the idea that the access time of all parent
+directories should be changed, but that isn't how POSIX works. Only the access
+time of the file will be modified, otherwise there would be a huge amount of
+overhead (e.g. maybe dozens of disk writes) for every file access.
+
+Also, most filesystems have no way of determining the parent directories for a
+given file, and there may be multiple parent directories for a single file
+(hard links), and it wouldn't make sense to update all of those directories, so
+this is also impractical to implement for most filesystems.
+
+People have enough problems with atime without making it even more expensive,
+and relatime is already reducing the number of cases where atime is updated
+significantly.
+
+Seems I cannot close this bug (Ted, can you give me permission for this?), but
+it should be closed as "not a bug".
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
