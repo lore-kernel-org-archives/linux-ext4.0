@@ -1,34 +1,47 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 111891] access to file does not change access time to folders
- above up to /(root)
-Date: Sun, 07 Feb 2016 09:59:54 +0000
-Message-ID: <bug-111891-13602-EY8MHhafDh@https.bugzilla.kernel.org/>
-References: <bug-111891-13602@https.bugzilla.kernel.org/>
+From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
+Subject: RichACLs man-pages review
+Date: Sun, 7 Feb 2016 17:28:38 +0100
+Message-ID: <56B770B6.7040803@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:58017 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753714AbcBGJ76 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 7 Feb 2016 04:59:58 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 5EC69200E3
-	for <linux-ext4@vger.kernel.org>; Sun,  7 Feb 2016 09:59:57 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id BA1D820211
-	for <linux-ext4@vger.kernel.org>; Sun,  7 Feb 2016 09:59:54 +0000 (UTC)
-In-Reply-To: <bug-111891-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-cifs@vger.kernel.org,
+	linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+	Linux API <linux-api@vger.kernel.org>,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	lkml <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
+	"J. Bruce Fields" <bfields@fieldses.org>, mtk.manpages@gmail.com,
+	linux-fsdevel@vger.kernel.org, Jeff Layton <jlayton@poochiereds.net>,
+	linux-ext4@vger.kernel.org, Anna Schumaker <anna.schumaker@netapp.com>
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=111891
+Hello Andreas
 
---- Comment #6 from Armin Mohring <armin_mohring@web.de> ---
-Just backtrace the directory tree.
-Modern firesystems use trees for storing the directory information.
+I've taken a look at the current drafts of the setrichacl(1), 
+getrichacl(1), and richacl(7) man pages, and will send comments
+as separate following mails.
+
+Cheers,
+
+Michael
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Michael Kerrisk
+Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
+Linux/UNIX System Programming Training: http://man7.org/training/
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
