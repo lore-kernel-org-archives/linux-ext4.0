@@ -1,401 +1,86 @@
-From: Dmitry Monakhov <dmonlist@gmail.com>
-Subject: Re: [PATCH v8 6/9] dax: add support for fsync/msync
-Date: Sat, 06 Feb 2016 17:33:07 +0300
-Message-ID: <878u2xrjrw.fsf@openvz.org>
-References: <1452230879-18117-1-git-send-email-ross.zwisler@linux.intel.com> <1452230879-18117-7-git-send-email-ross.zwisler@linux.intel.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 111961] ext4 umount - invalid opcode with PLEXTOR
+ PX-128M6G-2242
+Date: Sun, 07 Feb 2016 03:50:54 +0000
+Message-ID: <bug-111961-13602-ALhbZIX65a@https.bugzilla.kernel.org/>
+References: <bug-111961-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>, "H. Peter Anvin" <hpa@zytor.com>, "J. Bruce Fields" <bfields@fieldses.org>, Theodore Ts'o <tytso@mit.edu>, Alexander Viro <viro@zeniv.linux.org.uk>, Andreas Dilger <adilger.kernel@dilger.ca>, Andrew Morton <akpm@linux-foundation.org>, Dan Williams <dan.j.williams@intel.com>, Dave Chinner <david@fromorbit.com>, Dave Hansen <dave.hansen@linux.intel.com>, Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>, Jeff Layton <jlayton@poochiereds.net>, Matthew Wilcox <matthew.r.wilcox@intel.com>, Matthew Wilcox <willy@linux.intel.com>, Thomas Gleixner <tglx@linutronix.de>, linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, linux-mm@kvack.org, linux-nvdimm@lists.01.org, x86@kernel.org, xfs@oss.sgi.com
-To: Ross Zwisler <ross.zwisler@linux.intel.com>, linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1452230879-18117-7-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:52998 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751392AbcBGDu7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 6 Feb 2016 22:50:59 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 0105A201EF
+	for <linux-ext4@vger.kernel.org>; Sun,  7 Feb 2016 03:50:58 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 4A46E2022D
+	for <linux-ext4@vger.kernel.org>; Sun,  7 Feb 2016 03:50:55 +0000 (UTC)
+In-Reply-To: <bug-111961-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+https://bugzilla.kernel.org/show_bug.cgi?id=111961
 
-Ross Zwisler <ross.zwisler@linux.intel.com> writes:
+--- Comment #6 from Theodore Tso <tytso@mit.edu> ---
+It would be interesting to get the full output from journalctl for the time
+period between Feb 5 11:00 and 21:00 --- but it looks like the root cause was
+file system corruption, perhaps caused by a hardware problem.   From around
+11:14, it looks like an inode table block got zeroed:
 
-> To properly handle fsync/msync in an efficient way DAX needs to track dir=
-ty
-> pages so it is able to flush them durably to media on demand.
-Please see coments below
->
-> The tracking of dirty pages is done via the radix tree in struct
-> address_space.  This radix tree is already used by the page writeback
-> infrastructure for tracking dirty pages associated with an open file, and
-> it already has support for exceptional (non struct page*) entries.  We
-> build upon these features to add exceptional entries to the radix tree for
-> DAX dirty PMD or PTE pages at fault time.
->
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> ---
->  fs/dax.c            | 194 ++++++++++++++++++++++++++++++++++++++++++++++=
-++++--
->  include/linux/dax.h |   2 +
->  mm/filemap.c        |   6 ++
->  3 files changed, 196 insertions(+), 6 deletions(-)
->
-> diff --git a/fs/dax.c b/fs/dax.c
-> index 5b84a46..0db21ea 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -24,6 +24,7 @@
->  #include <linux/memcontrol.h>
->  #include <linux/mm.h>
->  #include <linux/mutex.h>
-> +#include <linux/pagevec.h>
->  #include <linux/pmem.h>
->  #include <linux/sched.h>
->  #include <linux/uio.h>
-> @@ -324,6 +325,174 @@ static int copy_user_bh(struct page *to, struct ino=
-de *inode,
->  	return 0;
->  }
->=20=20
-> +#define NO_SECTOR -1
-> +
-> +static int dax_radix_entry(struct address_space *mapping, pgoff_t index,
-IMHO it would be sane to call that function as dax_radix_entry_insert()=20
-> +		sector_t sector, bool pmd_entry, bool dirty)
-> +{
-> +	struct radix_tree_root *page_tree =3D &mapping->page_tree;
-> +	int type, error =3D 0;
-> +	void *entry;
-> +
-> +	__mark_inode_dirty(mapping->host, I_DIRTY_PAGES);
-> +
-> +	spin_lock_irq(&mapping->tree_lock);
-> +	entry =3D radix_tree_lookup(page_tree, index);
-> +
-> +	if (entry) {
-> +		type =3D RADIX_DAX_TYPE(entry);
-> +		if (WARN_ON_ONCE(type !=3D RADIX_DAX_PTE &&
-> +					type !=3D RADIX_DAX_PMD)) {
-> +			error =3D -EIO;
-> +			goto unlock;
-> +		}
-> +
-> +		if (!pmd_entry || type =3D=3D RADIX_DAX_PMD)
-> +			goto dirty;
-> +		radix_tree_delete(&mapping->page_tree, index);
-> +		mapping->nrexceptional--;
-> +	}
-> +
-> +	if (sector =3D=3D NO_SECTOR) {
-> +		/*
-> +		 * This can happen during correct operation if our pfn_mkwrite
-> +		 * fault raced against a hole punch operation.  If this
-> +		 * happens the pte that was hole punched will have been
-> +		 * unmapped and the radix tree entry will have been removed by
-> +		 * the time we are called, but the call will still happen.  We
-> +		 * will return all the way up to wp_pfn_shared(), where the
-> +		 * pte_same() check will fail, eventually causing page fault
-> +		 * to be retried by the CPU.
-> +		 */
-> +		goto unlock;
-> +	}
-> +
-> +	error =3D radix_tree_insert(page_tree, index,
-> +			RADIX_DAX_ENTRY(sector, pmd_entry));
-> +	if (error)
-> +		goto unlock;
-> +
-> +	mapping->nrexceptional++;
-> + dirty:
-> +	if (dirty)
-> +		radix_tree_tag_set(page_tree, index, PAGECACHE_TAG_DIRTY);
-> + unlock:
-> +	spin_unlock_irq(&mapping->tree_lock);
-> +	return error;
-> +}
-> +
-> +static int dax_writeback_one(struct block_device *bdev,
-> +		struct address_space *mapping, pgoff_t index, void *entry)
-> +{
-> +	struct radix_tree_root *page_tree =3D &mapping->page_tree;
-> +	int type =3D RADIX_DAX_TYPE(entry);
-> +	struct radix_tree_node *node;
-> +	struct blk_dax_ctl dax;
-> +	void **slot;
-> +	int ret =3D 0;
-> +
-> +	spin_lock_irq(&mapping->tree_lock);
-> +	/*
-> +	 * Regular page slots are stabilized by the page lock even
-> +	 * without the tree itself locked.  These unlocked entries
-> +	 * need verification under the tree lock.
-> +	 */
-> +	if (!__radix_tree_lookup(page_tree, index, &node, &slot))
-> +		goto unlock;
-> +	if (*slot !=3D entry)
-> +		goto unlock;
-> +
-> +	/* another fsync thread may have already written back this entry */
-> +	if (!radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_TOWRITE))
-> +		goto unlock;
-> +
-> +	radix_tree_tag_clear(page_tree, index, PAGECACHE_TAG_TOWRITE);
-> +
-> +	if (WARN_ON_ONCE(type !=3D RADIX_DAX_PTE && type !=3D RADIX_DAX_PMD)) {
-> +		ret =3D -EIO;
-> +		goto unlock;
-> +	}
-> +
-> +	dax.sector =3D RADIX_DAX_SECTOR(entry);
-> +	dax.size =3D (type =3D=3D RADIX_DAX_PMD ? PMD_SIZE : PAGE_SIZE);
-> +	spin_unlock_irq(&mapping->tree_lock);
-> +
-> +	/*
-> +	 * We cannot hold tree_lock while calling dax_map_atomic() because it
-> +	 * eventually calls cond_resched().
-> +	 */
-> +	ret =3D dax_map_atomic(bdev, &dax);
-> +	if (ret < 0)
-> +		return ret;
-> +
-> +	if (WARN_ON_ONCE(ret < dax.size)) {
-> +		ret =3D -EIO;
-> +		goto unmap;
-> +	}
-> +
-> +	wb_cache_pmem(dax.addr, dax.size);
-> + unmap:
-> +	dax_unmap_atomic(bdev, &dax);
-> +	return ret;
-> +
-> + unlock:
-> +	spin_unlock_irq(&mapping->tree_lock);
-> +	return ret;
-> +}
-> +
-> +/*
-> + * Flush the mapping to the persistent domain within the byte range of [=
-start,
-> + * end]. This is required by data integrity operations to ensure file da=
-ta is
-> + * on persistent storage prior to completion of the operation.
-> + */
-> +int dax_writeback_mapping_range(struct address_space *mapping, loff_t st=
-art,
-> +		loff_t end)
-> +{
-> +	struct inode *inode =3D mapping->host;
-> +	struct block_device *bdev =3D inode->i_sb->s_bdev;
-> +	pgoff_t indices[PAGEVEC_SIZE];
-> +	pgoff_t start_page, end_page;
-> +	struct pagevec pvec;
-> +	void *entry;
-> +	int i, ret =3D 0;
-> +
-> +	if (WARN_ON_ONCE(inode->i_blkbits !=3D PAGE_SHIFT))
-> +		return -EIO;
-> +
-> +	rcu_read_lock();
-> +	entry =3D radix_tree_lookup(&mapping->page_tree, start & PMD_MASK);
-> +	rcu_read_unlock();
-> +
-> +	/* see if the start of our range is covered by a PMD entry */
-> +	if (entry && RADIX_DAX_TYPE(entry) =3D=3D RADIX_DAX_PMD)
-> +		start &=3D PMD_MASK;
-> +
-> +	start_page =3D start >> PAGE_CACHE_SHIFT;
-> +	end_page =3D end >> PAGE_CACHE_SHIFT;
-> +
-> +	tag_pages_for_writeback(mapping, start_page, end_page);
-> +
-> +	pagevec_init(&pvec, 0);
-> +	while (1) {
-> +		pvec.nr =3D find_get_entries_tag(mapping, start_page,
-> +				PAGECACHE_TAG_TOWRITE, PAGEVEC_SIZE,
-> +				pvec.pages, indices);
-> +
-> +		if (pvec.nr =3D=3D 0)
-> +			break;
-> +
-> +		for (i =3D 0; i < pvec.nr; i++) {
-> +			ret =3D dax_writeback_one(bdev, mapping, indices[i],
-> +					pvec.pages[i]);
-> +			if (ret < 0)
-> +				return ret;
-> +		}
-I think it would be more efficient to use batched locking like follows:
-                spin_lock_irq(&mapping->tree_lock);
-		for (i =3D 0; i < pvec.nr; i++) {
-                    struct blk_dax_ctl dax[PAGEVEC_SIZE];=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20
-                    radix_tree_tag_clear(page_tree, indices[i], PAGECACHE_T=
-AG_TOWRITE);
-                    /* It is also reasonable to merge adjacent dax
-                     * regions in to one */
-                    dax[i].sector =3D RADIX_DAX_SECTOR(entry);
-                    dax[i].size =3D (type =3D=3D RADIX_DAX_PMD ? PMD_SIZE :=
- PAGE_SIZE);=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20
+Feb 05 11:14:13 frodo kernel: EXT4-fs error (device sda3): ext4_lookup:1584:
+inode #790461: comm BrowserBlocking: deleted inode referenced: 789864
+Feb 05 11:14:13 frodo kernel: EXT4-fs error (device sda3): ext4_lookup:1584:
+inode #790461: comm BrowserBlocking: deleted inode referenced: 789850
+Feb 05 11:14:13 frodo kernel: EXT4-fs error (device sda3): ext4_lookup:1584:
+inode #790461: comm BrowserBlocking: deleted inode referenced: 789851
+Feb 05 11:14:13 frodo kernel: EXT4-fs error (device sda3): ext4_lookup:1584:
+inode #790461: comm BrowserBlocking: deleted inode referenced: 789855
 
-                }
-                spin_unlock_irq(&mapping->tree_lock);
-               	if (blk_queue_enter(q, true) !=3D 0)
-                    goto error;
-                for (i =3D 0; i < pvec.nr; i++) {
-                    rc =3D bdev_direct_access(bdev, dax[i]);
-                    wb_cache_pmem(dax[i].addr, dax[i].size);
-                }
-                ret =3D blk_queue_exit(q, true)
-> +	}
-> +	wmb_pmem();
-> +	return 0;
-> +}
-> +EXPORT_SYMBOL_GPL(dax_writeback_mapping_range);
-> +
->  static int dax_insert_mapping(struct inode *inode, struct buffer_head *b=
-h,
->  			struct vm_area_struct *vma, struct vm_fault *vmf)
->  {
-> @@ -363,6 +532,11 @@ static int dax_insert_mapping(struct inode *inode, s=
-truct buffer_head *bh,
->  	}
->  	dax_unmap_atomic(bdev, &dax);
->=20=20
-> +	error =3D dax_radix_entry(mapping, vmf->pgoff, dax.sector, false,
-> +			vmf->flags & FAULT_FLAG_WRITE);
-> +	if (error)
-> +		goto out;
-> +
->  	error =3D vm_insert_mixed(vma, vaddr, dax.pfn);
->=20=20
->   out:
-> @@ -487,6 +661,7 @@ int __dax_fault(struct vm_area_struct *vma, struct vm=
-_fault *vmf,
->  		delete_from_page_cache(page);
->  		unlock_page(page);
->  		page_cache_release(page);
-> +		page =3D NULL;
->  	}
-I've realized that I do not understand why dax_fault code works at all.
-During dax_fault we want to remove page from mapping and insert dax-entry
- Basically code looks like follows:
-0 page =3D find_get_page()
-1 lock_page(page)
-2 delete_from_page_cache(page);
-3 unlock_page(page);
-4 dax_insert_mapping(inode, &bh, vma, vmf);
+It also looks like there was some kind of warning or some other kernel issue
+that triggered a kernel warning, but since I only have the output of
+"journalctl | grep ext4", we're not seeing the full stack trace or other kernel
+warning information:
 
-BUT what on earth protects us from other process to reinsert page again
-after step(2) but before (4)?
-Imagine we do write to file-hole which result in to dax_fault(write), but
-another task also does read fault and reinsert deleted page via dax_hole_lo=
-ad
-As result dax_tree_entry will fail with EIO
-Testcase looks very trivial, but i can not reproduce this.
->=20=20
->  	/*
-> @@ -591,7 +766,7 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsig=
-ned long address,
->  	pgoff_t size, pgoff;
->  	loff_t lstart, lend;
->  	sector_t block;
-> -	int result =3D 0;
-> +	int error, result =3D 0;
->=20=20
->  	/* dax pmd mappings require pfn_t_devmap() */
->  	if (!IS_ENABLED(CONFIG_FS_DAX_PMD))
-> @@ -733,6 +908,16 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsi=
-gned long address,
->  		}
->  		dax_unmap_atomic(bdev, &dax);
->=20=20
-> +		if (write) {
-> +			error =3D dax_radix_entry(mapping, pgoff, dax.sector,
-> +					true, true);
-> +			if (error) {
-> +				dax_pmd_dbg(&bh, address,
-> +						"PMD radix insertion failed");
-> +				goto fallback;
-> +			}
-> +		}
-> +
->  		dev_dbg(part_to_dev(bdev->bd_part),
->  				"%s: %s addr: %lx pfn: %lx sect: %llx\n",
->  				__func__, current->comm, address,
-> @@ -791,15 +976,12 @@ EXPORT_SYMBOL_GPL(dax_pmd_fault);
->   * dax_pfn_mkwrite - handle first write to DAX page
->   * @vma: The virtual memory area where the fault occurred
->   * @vmf: The description of the fault
-> - *
->   */
->  int dax_pfn_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
->  {
-> -	struct super_block *sb =3D file_inode(vma->vm_file)->i_sb;
-> +	struct file *file =3D vma->vm_file;
->=20=20
-> -	sb_start_pagefault(sb);
-> -	file_update_time(vma->vm_file);
-> -	sb_end_pagefault(sb);
-> +	dax_radix_entry(file->f_mapping, vmf->pgoff, NO_SECTOR, false, true);
->  	return VM_FAULT_NOPAGE;
->  }
->  EXPORT_SYMBOL_GPL(dax_pfn_mkwrite);
-> diff --git a/include/linux/dax.h b/include/linux/dax.h
-> index e9d57f68..8204c3d 100644
-> --- a/include/linux/dax.h
-> +++ b/include/linux/dax.h
-> @@ -41,4 +41,6 @@ static inline bool dax_mapping(struct address_space *ma=
-pping)
->  {
->  	return mapping->host && IS_DAX(mapping->host);
->  }
-> +int dax_writeback_mapping_range(struct address_space *mapping, loff_t st=
-art,
-> +		loff_t end);
->  #endif
-> diff --git a/mm/filemap.c b/mm/filemap.c
-> index 1e215fc..2e7c8d9 100644
-> --- a/mm/filemap.c
-> +++ b/mm/filemap.c
-> @@ -482,6 +482,12 @@ int filemap_write_and_wait_range(struct address_spac=
-e *mapping,
->  {
->  	int err =3D 0;
->=20=20
-> +	if (dax_mapping(mapping) && mapping->nrexceptional) {
-> +		err =3D dax_writeback_mapping_range(mapping, lstart, lend);
-> +		if (err)
-> +			return err;
-> +	}
-> +
->  	if (mapping->nrpages) {
->  		err =3D __filemap_fdatawrite_range(mapping, lstart, lend,
->  						 WB_SYNC_ALL);
-> --=20
-> 2.5.0
->
-> --
-> To unsubscribe, send a message with 'unsubscribe linux-mm' in
-> the body to majordomo@kvack.org.  For more info on Linux MM,
-> see: http://www.linux-mm.org/ .
-> Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
+Feb 05 15:51:25 frodo kernel:  [<ffffffffa0197349>] ext4_rename+0x4c9/0x8a0
+[ext4]
+Feb 05 15:51:25 frodo kernel:  [<ffffffffa019773d>] ext4_rename2+0x1d/0x30
+[ext4]
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
+And this was *before* the kernel BUG  reported at 16:22:
 
-iQEcBAEBCgAGBQJWtgQjAAoJELhyPTmIL6kBCwAIAJYQRJRSwkbJDZpwrfftBqwe
-mda1iK6TNeMcEqmObR8SUVr1wxAdEBRJPgPfbNZslKnTwISSqMh3TJIW1sG9uNq/
-6G8n7hxSFloCDz24dL6NLz6rmNHFkE6QPRCmhxjYoVY33tvc6UJUKk+F8BsQzIBH
-U8wY6ljtEkto8FZCbvs4RQyua8lf/pGfk5t8gZKhXPwpQNhUIe8fvfpwyuX+xcOV
-DMrHpKjz+PTksXn5bAGfgOfxPy+9aGHGa/f20n2galOe2o7HyO6kKVJZWfQ4ihA1
-D0sG3MEPmRpk0JCB9z1E301s6CLZrg++ZEGuac2TrxYSWKjrLxBh17+ldfzbRzE=
-=tCyF
------END PGP SIGNATURE-----
---=-=-=--
+Feb 05 16:22:42 frodo kernel: kernel BUG at fs/ext4/super.c:846!
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+More concerning is the fact that the file system was fixed after you ran e2fsck
+manually, and then it was reported clean:
+
+Feb 05 16:30:38 frodo systemd-fsck[197]: /dev/sda3 contains a file system with
+errors, check forced.
+
+
+Feb 05 16:33:29 frodo systemd-fsck[204]: /dev/sda3: clean, 102074/5718016
+files, 4762060/22869846 blocks
+
+It's now marked clean, so you must have run e2fsck between 16:30 and 16:33.
+
+But then at 20:53 the kernel had found more file system corruption, and it
+looks like it was another block that got zeroed out:
+
+Feb 05 20:53:39 frodo kernel: EXT4-fs error (device sda3):
+ext4_find_dest_de:1809: inode #5513136: block 22029326: comm scp: bad entry in
+directory: rec_len is smaller than minimal - offset=0(0), inode=0, rec_len=0,
+name_len=0
+
+No one else has reported problems where file system blocks are getting zero'ed
+out, so the primary suspect that I would have is a hardware problem.   So
+before you do anything else, I'd strongly suggest that you make full backups
+and that you not store anything precious on the flash device until it's been
+resolved (but I suspect it might require replacing the flash device).
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
