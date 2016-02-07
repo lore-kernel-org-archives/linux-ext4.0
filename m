@@ -1,55 +1,63 @@
-From: Martin Steigerwald <martin@lichtvoll.de>
-Subject: Re: getrichacl(1) man page review comments
-Date: Sun, 07 Feb 2016 19:16:40 +0100
-Message-ID: <1505883.O2zQ69A2Zb@merkaba>
-References: <56B770B6.7040803@gmail.com> <56B77139.4080209@gmail.com>
+From: Dan Williams <dan.j.williams@intel.com>
+Subject: Re: [PATCH 1/2] dax: pass bdev argument to dax_clear_blocks()
+Date: Sun, 7 Feb 2016 10:19:29 -0800
+Message-ID: <CAPcyv4jOAKeTXt0EvZzfxzqcaf+ZWrtsFeN2JFP_sf1HcTpVOw@mail.gmail.com>
+References: <1454829553-29499-1-git-send-email-ross.zwisler@linux.intel.com>
+	<1454829553-29499-2-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
-	lkml <linux-kernel@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
-	Dave Chinner <david@fromorbit.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Anna Schumaker <anna.schumaker@netapp.com>,
-	Trond Myklebust <trond.myklebust@primarydata.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Andreas Dilger <adilger@dilger.ca>
-To: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <56B77139.4080209@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "Theodore Ts'o" <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>, Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>, Dave Chinner <david@fromorbit.com>,
+	Jan Kara <jack@suse.com>, Matthew Wilcox <willy@linux.intel.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux MM <linux-mm@kvack.org>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>, XFS Developers <xfs@oss.sgi.com>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1454829553-29499-2-git-send-email-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Am Sonntag, 7. Februar 2016, 17:30:49 CET schrieb Michael Kerrisk (man-=
-pages):
-> Hello Andreas,
->=20
-> Here, some comments on the getrichacl(1) page.
+On Sat, Feb 6, 2016 at 11:19 PM, Ross Zwisler
+<ross.zwisler@linux.intel.com> wrote:
+> dax_clear_blocks() needs a valid struct block_device and previously it was
+> using inode->i_sb->s_bdev in all cases.  This is correct for normal inodes
+> on mounted ext2, ext4 and XFS filesystems, but is incorrect for DAX raw
+> block devices and for XFS real-time devices.
+>
+> Instead, have the caller pass in a struct block_device pointer which it
+> knows to be correct.
+>
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> ---
+>  fs/dax.c               | 4 ++--
+>  fs/ext2/inode.c        | 5 +++--
+>  fs/xfs/xfs_aops.c      | 2 +-
+>  fs/xfs/xfs_aops.h      | 1 +
+>  fs/xfs/xfs_bmap_util.c | 4 +++-
+>  include/linux/dax.h    | 3 ++-
+>  6 files changed, 12 insertions(+), 7 deletions(-)
+>
+> diff --git a/fs/dax.c b/fs/dax.c
+> index 227974a..4592241 100644
+> --- a/fs/dax.c
+> +++ b/fs/dax.c
+> @@ -83,9 +83,9 @@ struct page *read_dax_sector(struct block_device *bdev, sector_t n)
+>   * and hence this means the stack from this point must follow GFP_NOFS
+>   * semantics for all operations.
+>   */
+> -int dax_clear_blocks(struct inode *inode, sector_t block, long _size)
+> +int dax_clear_blocks(struct inode *inode, struct block_device *bdev,
+> +               sector_t block, long _size)
 
-I know that the command names are based on setfacl and getfacl. But som=
-etimes=20
-I still wonder about these names. They just don=C2=B4t fit.
+Since this is a bdev relative routine we should also resolve the
+sector, i.e. the signature should drop the inode:
 
-Its chsomething for changing things in Unix traditionally =E2=80=93 cho=
-wn, chmod,=20
-chattr, chage chsh, you name it =E2=80=93, but there is nothing for que=
-rying things.=20
-So I get where this is coming from, yet I always found setfacl and getf=
-acl=20
-command names cumbersome.
+int dax_clear_sectors(struct block_device *bdev, sector_t sector, long _size)
 
-Sorry, for posting here instead of a previous richacl implementation pa=
-tchset.=20
-I fully appreciate that it may be too late to change anything regarding=
-=20
-command names. Also considering usermod and groupmod the command naming=
- in=20
-Unix / Linux appears to be a big mess anyway.
-
-Thanks,
---=20
-Martin
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
