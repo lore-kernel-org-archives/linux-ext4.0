@@ -1,67 +1,45 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [LSF/MM ATTEND] ext4, DAX pmem/fsync
-Date: Mon, 08 Feb 2016 12:00:22 +0300
-Message-ID: <87lh6vwp95.fsf@openvz.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 2/3] xfs: don't use ioends for direct write completions
+Date: Mon, 8 Feb 2016 20:16:44 +1100
+Message-ID: <20160208091644.GD27429@dastard>
+References: <1454524816-11392-1-git-send-email-hch@lst.de>
+ <1454524816-11392-3-git-send-email-hch@lst.de>
+ <20160208010026.GL31407@dastard>
+ <20160208061731.GC27429@dastard>
+ <20160208073121.GA30092@lst.de>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"linux-nvme@lists.infradead.org" <linux-nvme@lists.infradead.org>
-To: "lsf-pc\@lists.linux-foundation.org"
-	<lsf-pc@lists.linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f182.google.com ([209.85.217.182]:34184 "EHLO
-	mail-lb0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750897AbcBHJAf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Feb 2016 04:00:35 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160208073121.GA30092@lst.de>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
+On Mon, Feb 08, 2016 at 08:31:21AM +0100, Christoph Hellwig wrote:
+> On Mon, Feb 08, 2016 at 05:17:31PM +1100, Dave Chinner wrote:
+> > Right now this series is in a stable branch in the XFS tree:
+> > 
+> > git://git.kernel.org/pub/scm/linux/kernel/git/dgc/linux-xfs.git xfs-dio-fix-4.6
+> > 
+> > If you want to push it through some other tree, please let me know
+> > when/where it is committed so I can rebuild the XFS for-next branch
+> > appropriately from a stable commit/branch...
+> 
+> That's how I think it should be handled.  This would also allow the
+> ext4 and ocfs2 maintainers to depend on the stable branch to clean
+> up their direct I/O completion handling in this merge window if they
+> want to.
 
+I can't tell if you are saying what I've done is fine if the
+xfs-dio-fix-4.6 branch is stable (so others can pull it) or whether
+it should be in some other tree. Can you clarify, Christoph?
 
+Cheers,
 
-I would like to attend LSF/MM 2016 to participate in discussions around
-the optimization of the block and MM for low latency NVM technologies.
-Primary target of interests is to improving DAX performance for general
-purpose FS.
-While working on LightVM project (approach lighter that traditional VM, but more
-secure that containers) we found that existing DAX infrastructure is too
-far from optimum:
-0) DAX msync/fsync patch-set is has a lot in TODO list
-1) DAX implementation has number of significant SMP scalability issues.
-
-I would like to attend LSF/MM this year. I believe I could contribute to the
-following discussions:
-
-*  Block & Filesystem interface from Steven Whitehouse
-http://www.spinics.net/lists/linux-fsdevel/msg93552.html
-
-* Persistent memory: pmem as storage device vs pmem as memory from Dan Williams
-https://lists.01.org/pipermail/linux-nvdimm/2016-February/004331.html
-
-* Persistent Memory Error Handling from Jeff Moyer:
-http://www.spinics.net/lists/linux-mm/msg100560.html
-
-* FS block allocator modification for SMR Zoned Block Devices
-
-* EXT4-mini sumit
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQEcBAEBCgAGBQJWuFkmAAoJELhyPTmIL6kBHs0IAKI3pxTEtxh+HP7/p35tyF7y
-dzrKslTM8WQei81b7GvaYNGiZJNJDhJxnGLI5rwtdFtVeHXkAjmuaKCe5uBPg8LN
-Ua97xhMNdXSypFZdR77ZTT/3YG+BV+33m275HjZZZxnQQkbKcwLK1+m3hyDN+esH
-CiNzw2Fv06KQuUpi1oS8yZssXR0PaufyoEJMN+a1WMhRaULL4pYTpaOh0dmt0Usr
-UdBT/2EO2GuOsQBS2gMbWbIS8nzYFKsL1Tnz9IusRSEUJdOxKLBZcrS9QRtOK8v7
-x9CxGf1tjjhzT1KgSWg8CLvP2ZaW3otx2zIxMsROlGIrRFLIpqQwhSPiryvvj/s=
-=Xj9q
------END PGP SIGNATURE-----
---=-=-=--
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
