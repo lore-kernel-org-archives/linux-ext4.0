@@ -1,56 +1,63 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 2/3] xfs: don't use ioends for direct write completions
-Date: Mon, 8 Feb 2016 12:00:26 +1100
-Message-ID: <20160208010026.GL31407@dastard>
-References: <1454524816-11392-1-git-send-email-hch@lst.de>
- <1454524816-11392-3-git-send-email-hch@lst.de>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH 1/2] dax: pass bdev argument to dax_clear_blocks()
+Date: Sun, 7 Feb 2016 18:44:09 -0700
+Message-ID: <20160208014409.GA2343@linux.intel.com>
+References: <1454829553-29499-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1454829553-29499-2-git-send-email-ross.zwisler@linux.intel.com>
+ <20160207220329.GK31407@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:15942 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750749AbcBHBA3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Feb 2016 20:00:29 -0500
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.com>,
+	Matthew Wilcox <willy@linux.intel.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, xfs@oss.sgi.com
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1454524816-11392-3-git-send-email-hch@lst.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160207220329.GK31407@dastard>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Feb 03, 2016 at 07:40:15PM +0100, Christoph Hellwig wrote:
-> We only need to communicate two bits of information to the direct I/O
-> completion handler:
+On Mon, Feb 08, 2016 at 09:03:29AM +1100, Dave Chinner wrote:
+> On Sun, Feb 07, 2016 at 12:19:12AM -0700, Ross Zwisler wrote:
+> > dax_clear_blocks() needs a valid struct block_device and previously it was
+> > using inode->i_sb->s_bdev in all cases.  This is correct for normal inodes
+> > on mounted ext2, ext4 and XFS filesystems, but is incorrect for DAX raw
+> > block devices and for XFS real-time devices.
+> > 
+> > Instead, have the caller pass in a struct block_device pointer which it
+> > knows to be correct.
+> ....
+> > diff --git a/fs/xfs/xfs_bmap_util.c b/fs/xfs/xfs_bmap_util.c
+> > index 07ef29b..f722ba2 100644
+> > --- a/fs/xfs/xfs_bmap_util.c
+> > +++ b/fs/xfs/xfs_bmap_util.c
+> > @@ -73,9 +73,11 @@ xfs_zero_extent(
+> >  	xfs_daddr_t	sector = xfs_fsb_to_db(ip, start_fsb);
+> >  	sector_t	block = XFS_BB_TO_FSBT(mp, sector);
+> >  	ssize_t		size = XFS_FSB_TO_B(mp, count_fsb);
+> > +	struct inode	*inode = VFS_I(ip);
+> >  
+> >  	if (IS_DAX(VFS_I(ip)))
+> > -		return dax_clear_blocks(VFS_I(ip), block, size);
+> > +		return dax_clear_blocks(inode, xfs_find_bdev_for_inode(inode),
+> > +				block, size);
 > 
->  (1) do we need to convert any unwritten extents in the range
->  (2) do we need to check if we need to update the inode size based
->      on the range passed to the completion handler
-> 
-> We can use the private data passed to the get_block handler and the
-> completion handler as a simple bitmask to communicate this information
-> instead of the current complicated infrastructure reusing the ioends
-> from the buffer I/O path, and thus avoiding a memory allocation and
-> a context switch for any non-trivial direct write.  As a nice side
-> effect we also decouple the direct I/O path implementation from that
-> of the buffered I/O path.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> Reviewed-by: Brian Foster <bfoster@redhat.com>
+> Get rid of the local inode variable and use VFS_I(ip) like the code
+> originally did. Do not change code that is unrelated to the
+> modifcation being made, especially when it results in making
+> the code an inconsistent mess of mixed pointer constructs....
 
-This change is now dependent on the preceeding direct IO API
-changes. Do I a) take the DIO API change through the XFS tree, or
-b) use the older version of the patch that didn't have this
-dependency and let somebody else deal with the API change and merge
-issues?
+The local 'inode' variable was added to avoid multiple calls for VFS_I() for
+the same 'ip'.  That said, I'm happy to make the change.
 
-I'm happy to take the DIO API change through the XFS tree, if that's
-the fastest/easiest way to get the necessary DIO subsystem fixes
-into the mainline tree for XFS. As such, the for-next tree that I'm
-building right now will include the DIO API change patch....
-
--Dave.
-
--- 
-Dave Chinner
-david@fromorbit.com
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
